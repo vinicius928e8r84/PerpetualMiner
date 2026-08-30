@@ -1338,33 +1338,6 @@ class BridgeApp:
             raise last_exc
         return {}
 
-    def _phrase_id_map(self, entries: list[dict[str, Any]]) -> dict[str, int]:
-        mapping: dict[str, int] = {}
-        parser = self.modules["parser"]
-        temp_path = self.jobs_root / "_tmp_mapping.txt"
-        try:
-            temp_path.write_text("\n".join(entry["line"] for entry in entries) + "\n", encoding="utf-8")
-            parsed = parser.parse_mining_file_ru(temp_path) if any("ru" == entry.get("lang") for entry in []) else parser.parse_mining_file(temp_path)
-        finally:
-            if temp_path.exists():
-                temp_path.unlink()
-        for original in parsed:
-            jobs = parser.get_card_jobs(original)
-            for job in jobs:
-                for entry in entries:
-                    if entry["line"] == self._entry_to_line(original):
-                        mapping[job.filename_stem] = entry["phraseId"]
-        return mapping
-
-    def _entry_to_line(self, entry: Any) -> str:
-        source = entry.context_source or ""
-        title = entry.context_title or ""
-        detail = entry.context_detail or ""
-        if len(entry.keywords) == 1 and entry.phrase == entry.keywords[0] and any(ord(ch) > 127 for ch in entry.phrase):
-            return f"{entry.phrase} [Contexto: {source} - {title} - {detail}]".strip()
-        prefix = " | ".join(entry.keywords)
-        return f"{prefix} : {entry.phrase} [Contexto: {source} - {title} - {detail}]".strip()
-
     def _process_job(self, job_id: str) -> None:
         job = self._read_job(job_id)
         workspace = self._job_dir(job_id)
