@@ -1,0 +1,7 @@
+openai
+requests
+gtts
+pyyaml
+python-dotenv
+rich
+Pillow

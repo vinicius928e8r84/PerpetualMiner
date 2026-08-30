@@ -12,6 +12,17 @@ bridge/runtime/chrome-smoke-profile/
 bridge/runtime/*.png
 # mantém: bridge/runtime/start_bridge_hidden.vbs
 
+# Engine (Automatic Anki) — segredos e dados gerados/pessoais
+engine/.env
+engine/.mcp.json
+engine/.tgllm-session.json
+engine/Output/
+engine/log/
+engine/mining.txt
+engine/prompts.txt
+engine/loopany-test.txt
+# mantém: engine/.env.example e engine/prompts/ (templates)
+
 # OS
 Thumbs.db
 .DS_Store

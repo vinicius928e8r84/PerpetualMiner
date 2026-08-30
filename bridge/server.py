@@ -105,7 +105,9 @@ def _file_fingerprint(path: Path) -> dict[str, Any]:
 class BridgeApp:
     def __init__(self, config: dict[str, Any] | None = None) -> None:
         self.config = config if config is not None else _read_json(CONFIG_PATH, {})
-        self.automatic_anki_path = Path(self.config["automatic_anki_path"])
+        # Resolve relative to the repo root (like jobs_root/queue_file below) so the
+        # monorepo is portable; absolute paths in config still work unchanged.
+        self.automatic_anki_path = ROOT / self.config["automatic_anki_path"]
         self.jobs_root = ROOT / self.config.get("jobs_root", "bridge/runtime/jobs")
         self.queue_file = ROOT / self.config.get("queue_file", "bridge/runtime/queue.json")
         self.anki_connect_url = self.config.get("anki_connect_url", "http://127.0.0.1:8765")
