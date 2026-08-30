@@ -1,8 +1,11 @@
 """
 send_to_anki.py - Send generated cards to Anki via AnkiConnect HTTP API.
 
-Success is tracked per card. cleanup_output() is exported so start.py can
-call it only after confirming all (or partial) cards were injected.
+Outcome is tracked per card. run() returns {stem: status} where status is one
+of ADDED / DUPLICATE / FAILED (see below), so callers can tell a freshly
+injected note apart from one that already existed. cleanup_output() is exported
+so start.py / the bridge can delete artifacts only for cards that are actually
+in Anki (ADDED or DUPLICATE), never for FAILED ones (kept for retry).
 """
 
 import base64
@@ -14,6 +17,22 @@ import requests
 
 from config_loader import load_config
 from parser import CardJob, get_card_jobs, normalize_ru_phrase, parse_mining_file
+
+# Per-card outcomes returned by run(). A note that already existed in the deck
+# is reported as DUPLICATE (not ADDED) so it is never silently counted as a
+# freshly sent card. Both ADDED and DUPLICATE mean "the card is in Anki now";
+# only FAILED means the card is absent and its artifacts must be kept.
+ADDED = "added"
+DUPLICATE = "duplicate"
+FAILED = "failed"
+
+# A card is "present in Anki" for either of these outcomes.
+PRESENT_STATUSES = frozenset({ADDED, DUPLICATE})
+
+
+def is_present(status: object) -> bool:
+    """True if the given per-card status means the card is in Anki."""
+    return status in PRESENT_STATUSES
 
 
 def _store_media(path: Path, anki_url: str) -> bool:
@@ -392,8 +411,14 @@ def _ensure_deck(deck_name: str, anki_url: str) -> None:
         print(f"[WARN] Could not ensure deck '{deck_name}' exists: {exc}")
 
 
-def run(entries, config: dict) -> Dict[str, bool]:
-    """Send every CardJob to Anki. Returns {stem: success_bool}."""
+def run(entries, config: dict) -> Dict[str, str]:
+    """Send every CardJob to Anki. Returns {stem: status}.
+
+    status is one of ADDED (freshly injected), DUPLICATE (already existed in
+    the deck, nothing sent) or FAILED (missing artifacts or AnkiConnect
+    rejected). DUPLICATE is deliberately kept distinct from ADDED so a card
+    that already existed is never reported as a newly sent card.
+    """
     deck_name = config["anki"]["deck_name"]
     model_name = config["anki"]["note_type"]
     anki_url = config["anki"]["url"]
@@ -411,7 +436,7 @@ def run(entries, config: dict) -> Dict[str, bool]:
     for entry in entries:
         all_jobs.extend(get_card_jobs(entry))
 
-    results: Dict[str, bool] = {}
+    results: Dict[str, str] = {}
     known_fronts = _existing_fronts(deck_name, front_field, anki_url, lang)
 
     for job in all_jobs:
@@ -425,7 +450,7 @@ def run(entries, config: dict) -> Dict[str, bool]:
         missing = [f.name for f in [note_file, phrase_mp3, word_mp3] if not f.exists()]
         if missing:
             print(f"[WARN] Missing files for '{job.keyword}': {missing} - skipping.")
-            results[stem] = False
+            results[stem] = FAILED
             continue
 
         content = note_file.read_text(encoding="utf-8").replace("## Anki Card", "").strip()
@@ -436,8 +461,8 @@ def run(entries, config: dict) -> Dict[str, bool]:
         normalized_front = _normalize_front_text(front, lang)
 
         if normalized_front in known_fronts:
-            print(f"[INFO] Card already exists in Anki for '{job.keyword}' - skipping real duplicate.")
-            results[stem] = True
+            print(f"[INFO] Card already exists in Anki for '{job.keyword}' - reporting as duplicate (nothing sent).")
+            results[stem] = DUPLICATE
             continue
 
         _store_media(phrase_mp3, anki_url)
@@ -454,7 +479,7 @@ def run(entries, config: dict) -> Dict[str, bool]:
             anki_url,
             card_tags,
         )
-        results[stem] = ok
+        results[stem] = ADDED if ok else FAILED
         if ok:
             known_fronts.add(normalized_front)
         else:
@@ -463,10 +488,15 @@ def run(entries, config: dict) -> Dict[str, bool]:
     return results
 
 
-def cleanup_output(folder: Path, results: Dict[str, bool]) -> None:
-    """Delete output files for successfully sent cards."""
-    for stem, success in results.items():
-        if not success:
+def cleanup_output(folder: Path, results: Dict[str, str]) -> None:
+    """Delete output files for cards that are in Anki (ADDED or DUPLICATE).
+
+    FAILED cards keep their artifacts so a later retry can still send them -
+    this is the safety net against silently discarding a card that never
+    reached Anki.
+    """
+    for stem, status in results.items():
+        if not is_present(status):
             continue
         for suffix in [".txt", "_word.mp3", "_phrase.mp3", ".png"]:
             f = folder / f"{stem}{suffix}"
@@ -476,7 +506,7 @@ def cleanup_output(folder: Path, results: Dict[str, bool]) -> None:
                 except Exception:
                     pass
 
-    if results and all(results.values()):
+    if results and all(is_present(status) for status in results.values()):
         for leftover in folder.glob("*"):
             try:
                 leftover.unlink()
@@ -489,10 +519,12 @@ if __name__ == "__main__":
     entries = parse_mining_file(Path(cfg["paths"]["mining_file"]))
     results = run(entries, cfg)
 
-    ok_count = sum(1 for value in results.values() if value)
-    print(f"Sent {ok_count}/{len(results)} card(s) to Anki.")
+    added = sum(1 for value in results.values() if value == ADDED)
+    dup = sum(1 for value in results.values() if value == DUPLICATE)
+    failed = sum(1 for value in results.values() if value == FAILED)
+    print(f"Added {added}, duplicate {dup}, failed {failed} (of {len(results)} card(s)).")
 
-    if results and all(results.values()):
+    if results and all(is_present(value) for value in results.values()):
         cleanup_output(Path(cfg["paths"]["output_dir"]), results)
         print("Output cleaned.")
     else:

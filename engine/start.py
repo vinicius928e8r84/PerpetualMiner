@@ -1451,7 +1451,9 @@ def _pipeline(config: dict, lang: str, img_source: str):
         _tip("Verifique se o Anki está aberto e se o AnkiConnect está instalado (código 2055492159)")
         results = {}
 
-    ok_count   = sum(1 for v in results.values() if v)
+    added_count = sum(1 for v in results.values() if v == send_to_anki.ADDED)
+    dup_count   = sum(1 for v in results.values() if v == send_to_anki.DUPLICATE)
+    ok_count   = added_count + dup_count
     fail_count = len(results) - ok_count
     output_folder = Path(config["paths"]["output_dir"])
 
@@ -1485,7 +1487,7 @@ def _pipeline(config: dict, lang: str, img_source: str):
             _ok(f"{sl}_word.mp3" in audio_lower),
             _ok(has_image),
             img_sources.get(sl, "-") if has_image else "-",
-            _ok(results.get(job.filename_stem, results.get(sl, False))),
+            _ok(send_to_anki.is_present(results.get(job.filename_stem, results.get(sl)))),
         )
 
     console.print(status_table)
@@ -1501,7 +1503,8 @@ def _pipeline(config: dict, lang: str, img_source: str):
     console.print(Panel(
         f"  [dim]Palavras processadas:[/dim]  [bold]{n_entries}[/bold]\n"
         f"  [dim]Cards criados:[/dim]         [bold]{n_cards}[/bold]\n"
-        f"  [dim]Enviados ao Anki:[/dim]       [bold green]{ok_count}[/bold green]"
+        f"  [dim]Enviados ao Anki:[/dim]       [bold green]{added_count}[/bold green]"
+        + (f"\n  [dim]Já existiam (duplicados):[/dim] [bold yellow]{dup_count}[/bold yellow]" if dup_count else "")
         + (f"\n  [dim]Falhas:[/dim]               [bold red]{fail_count}[/bold red]" if fail_count else "") +
         f"\n  [dim]Deck:[/dim]                  [bold]{deck_name}[/bold]",
         title="[bold green]  Concluído  [/bold green]",
