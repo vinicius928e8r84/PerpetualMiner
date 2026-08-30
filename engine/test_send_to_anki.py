@@ -1,6 +1,10 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest import mock
 
 import send_to_anki
+from parser import MiningEntry
 
 
 RU_CARD_WITH_QUERY_BLOCK = """Anki Card
@@ -174,6 +178,125 @@ class BuildBackTests(unittest.TestCase):
         self.assertNotIn("young girl portrait", back)
         self.assertNotIn("confident girl", back)
         self.assertNotIn("female child portrait", back)
+
+
+def _write_card_files(folder: Path, stem: str, front: str) -> None:
+    (folder / f"{stem}.txt").write_text(f"Front\n{front}\n\nBack\nHello\n", encoding="utf-8")
+    (folder / f"{stem}_phrase.mp3").write_bytes(b"x")
+    (folder / f"{stem}_word.mp3").write_bytes(b"y")
+
+
+def _config(folder: Path, lang: str = "ru") -> dict:
+    return {
+        "anki": {
+            "deck_name": "D",
+            "note_type": "Básico",
+            "url": "http://127.0.0.1:8765",
+            "fields": {"front": "Frente", "back": "Verso"},
+        },
+        "paths": {"output_dir": str(folder)},
+        "lang": lang,
+    }
+
+
+def _normalized_front_for(folder: Path, stem: str, lang: str = "ru") -> str:
+    """Reproduce exactly how run() derives the normalized front for a stem."""
+    content = (folder / f"{stem}.txt").read_text(encoding="utf-8").replace("## Anki Card", "").strip()
+    front = send_to_anki._build_front(content, f"{stem}_phrase.mp3", lang=lang)
+    return send_to_anki._normalize_front_text(front, lang)
+
+
+class RunStatusTests(unittest.TestCase):
+    def test_new_card_is_added_existing_is_duplicate(self):
+        with TemporaryDirectory() as d:
+            folder = Path(d)
+            _write_card_files(folder, "new_stem", "Новая фраза")
+            _write_card_files(folder, "dup_stem", "Старая фраза")
+            entries = [
+                MiningEntry(keywords=["Новая"], phrase="Новая фраза", file_stem="new_stem"),
+                MiningEntry(keywords=["Старая"], phrase="Старая фраза", file_stem="dup_stem"),
+            ]
+            existing = {_normalized_front_for(folder, "dup_stem")}
+
+            with mock.patch.object(send_to_anki, "_ensure_deck"), \
+                 mock.patch.object(send_to_anki, "_existing_fronts", return_value=set(existing)), \
+                 mock.patch.object(send_to_anki, "_store_media", return_value=True), \
+                 mock.patch.object(send_to_anki, "_add_note", return_value=True) as add_note:
+                results = send_to_anki.run(entries, _config(folder))
+
+            self.assertEqual(results["new_stem"], send_to_anki.ADDED)
+            self.assertEqual(results["dup_stem"], send_to_anki.DUPLICATE)
+            # The existing card must NOT trigger an addNote call.
+            self.assertEqual(add_note.call_count, 1)
+            # Both count as "present in Anki".
+            self.assertTrue(send_to_anki.is_present(results["new_stem"]))
+            self.assertTrue(send_to_anki.is_present(results["dup_stem"]))
+
+    def test_missing_files_are_failed_and_rejected_add_is_failed(self):
+        with TemporaryDirectory() as d:
+            folder = Path(d)
+            _write_card_files(folder, "ok_stem", "Ок фраза")
+            # missing_stem has no files on disk
+            entries = [
+                MiningEntry(keywords=["Ок"], phrase="Ок фраза", file_stem="ok_stem"),
+                MiningEntry(keywords=["Falta"], phrase="Sem arquivos", file_stem="missing_stem"),
+            ]
+            with mock.patch.object(send_to_anki, "_ensure_deck"), \
+                 mock.patch.object(send_to_anki, "_existing_fronts", return_value=set()), \
+                 mock.patch.object(send_to_anki, "_store_media", return_value=True), \
+                 mock.patch.object(send_to_anki, "_add_note", return_value=False):
+                results = send_to_anki.run(entries, _config(folder))
+
+            # AnkiConnect rejected the note -> FAILED (not silently present).
+            self.assertEqual(results["ok_stem"], send_to_anki.FAILED)
+            self.assertEqual(results["missing_stem"], send_to_anki.FAILED)
+            self.assertFalse(send_to_anki.is_present(results["ok_stem"]))
+
+
+class CleanupOutputTests(unittest.TestCase):
+    def _seed(self, folder: Path, stem: str) -> None:
+        (folder / f"{stem}.txt").write_text("x", encoding="utf-8")
+        (folder / f"{stem}_word.mp3").write_bytes(b"1")
+        (folder / f"{stem}_phrase.mp3").write_bytes(b"1")
+
+    def test_deletes_present_cards_keeps_failed(self):
+        with TemporaryDirectory() as d:
+            folder = Path(d)
+            for stem in ("added", "dup", "failed"):
+                self._seed(folder, stem)
+            results = {
+                "added": send_to_anki.ADDED,
+                "dup": send_to_anki.DUPLICATE,
+                "failed": send_to_anki.FAILED,
+            }
+            send_to_anki.cleanup_output(folder, results)
+
+            self.assertFalse((folder / "added.txt").exists())
+            self.assertFalse((folder / "dup.txt").exists())
+            # FAILED artifacts survive for a later retry.
+            self.assertTrue((folder / "failed.txt").exists())
+            self.assertTrue((folder / "failed_word.mp3").exists())
+
+    def test_no_full_wipe_when_a_card_failed(self):
+        with TemporaryDirectory() as d:
+            folder = Path(d)
+            self._seed(folder, "added")
+            (folder / "leftover.tmp").write_text("x", encoding="utf-8")
+            send_to_anki.cleanup_output(
+                folder, {"added": send_to_anki.ADDED, "z": send_to_anki.FAILED}
+            )
+            # Not all present -> the stray file must NOT be wiped.
+            self.assertTrue((folder / "leftover.tmp").exists())
+
+    def test_full_wipe_when_all_present(self):
+        with TemporaryDirectory() as d:
+            folder = Path(d)
+            self._seed(folder, "added")
+            (folder / "leftover.tmp").write_text("x", encoding="utf-8")
+            send_to_anki.cleanup_output(
+                folder, {"added": send_to_anki.ADDED, "dup": send_to_anki.DUPLICATE}
+            )
+            self.assertFalse((folder / "leftover.tmp").exists())
 
 
 if __name__ == "__main__":

@@ -485,6 +485,18 @@ class BridgeServerTests(unittest.TestCase):
         self.assertIn('successful = self._unique_phrase_ids([*previously_successful, *new_successful])', process_fn)
         self.assertIn('failedPhraseIds=failed', process_fn)
 
+    def test_process_job_reports_duplicates_apart_from_added(self) -> None:
+        process_fn = _function_source("_process_job")
+
+        # Duplicates must be tracked as their own outcome, never conflated with
+        # freshly added cards, and cleanup must key off "present in Anki".
+        self.assertIn("send_mod.is_present(results.get(stem))", process_fn)
+        self.assertIn("results.get(stem) == send_mod.DUPLICATE", process_fn)
+        self.assertIn("duplicatePhraseIds=duplicate", process_fn)
+        self.assertIn(
+            "all(send_mod.is_present(status) for status in results.values())", process_fn
+        )
+
     def test_health_exposes_loaded_module_fingerprint(self) -> None:
         health_fn = _function_source("health")
 

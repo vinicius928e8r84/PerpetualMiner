@@ -1305,23 +1305,27 @@ class BridgeApp:
             or "timed out" in msg
         )
 
-    def _send_to_anki_with_ready_retry(self, job_id: str, entries: list[Any], config: dict[str, Any]) -> dict[str, bool]:
+    def _send_to_anki_with_ready_retry(self, job_id: str, entries: list[Any], config: dict[str, Any]) -> dict[str, str]:
         import io
         import contextlib
 
+        send_mod = self.modules["send_to_anki"]
         last_exc: Exception | None = None
         for attempt in range(1, 4):
             self.anki.ensure_ready()
             try:
                 buf = io.StringIO()
                 with contextlib.redirect_stdout(buf):
-                    result = self.modules["send_to_anki"].run(entries, config)
+                    result = send_mod.run(entries, config)
                 output = buf.getvalue().strip()
                 if output:
                     LOGGER.info("send_to_anki stdout (job %s attempt %s):\n%s", job_id, attempt, output)
-                failed_stems = [stem for stem, ok in result.items() if not ok]
+                failed_stems = [stem for stem, status in result.items() if not send_mod.is_present(status)]
+                dup_stems = [stem for stem, status in result.items() if status == send_mod.DUPLICATE]
                 if failed_stems:
                     LOGGER.warning("send_to_anki: %d/%d notes failed for job %s: %s", len(failed_stems), len(result), job_id, failed_stems)
+                if dup_stems:
+                    LOGGER.info("send_to_anki: %d/%d notes already existed (duplicates) for job %s: %s", len(dup_stems), len(result), job_id, dup_stems)
                 return result
             except Exception as exc:  # noqa: BLE001
                 last_exc = exc
@@ -1405,6 +1409,7 @@ class BridgeApp:
         send_entries = [parsed_entry for _, parsed_entry in pending_pairs]
 
         self._set_stage(job_id, "send_to_anki")
+        send_mod = self.modules["send_to_anki"]
         stem_to_phrase_id: dict[str, int] = {}
         phrase_to_stems: dict[int, list[str]] = {}
         for src_entry, original in pending_pairs:
@@ -1424,19 +1429,31 @@ class BridgeApp:
             self._update_state(job_id, failedPhraseIds=failed)
             raise
 
+        # A phrase is "present in Anki" when every one of its stems is present
+        # (ADDED or DUPLICATE). Duplicates are tracked separately so the job no
+        # longer reports an already-existing card as freshly sent.
+        def _all_present(stems: list[str]) -> bool:
+            return bool(stems) and all(send_mod.is_present(results.get(stem)) for stem in stems)
+
         new_successful = [
             phrase_id
             for phrase_id, stems in phrase_to_stems.items()
-            if stems and all(results.get(stem) is True for stem in stems)
+            if _all_present(stems)
+        ]
+        new_duplicate = [
+            phrase_id
+            for phrase_id, stems in phrase_to_stems.items()
+            if _all_present(stems) and all(results.get(stem) == send_mod.DUPLICATE for stem in stems)
         ]
         successful = self._unique_phrase_ids([*previously_successful, *new_successful])
         failed = self._unique_phrase_ids([
             phrase_id
             for phrase_id, stems in phrase_to_stems.items()
-            if stems and not all(results.get(stem) is True for stem in stems)
+            if not _all_present(stems)
         ])
-        if results and all(results.values()):
-            self.modules["send_to_anki"].cleanup_output(Path(config["paths"]["output_dir"]), results)
+        duplicate = self._unique_phrase_ids([*state.get("duplicatePhraseIds", []), *new_duplicate])
+        if results and all(send_mod.is_present(status) for status in results.values()):
+            send_mod.cleanup_output(Path(config["paths"]["output_dir"]), results)
         requested = set(self._job_phrase_ids(job.get("entries") or []))
         successful_set = set(successful)
         failed_set = set(failed)
@@ -1449,6 +1466,7 @@ class BridgeApp:
             stage="completed" if completed else ("partial" if successful else "failed"),
             successfulPhraseIds=successful,
             failedPhraseIds=failed,
+            duplicatePhraseIds=duplicate,
             lastError=None if completed else "Falha ao enviar um ou mais cards ao Anki",
         )
 
