@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html style="width:340px">
+<head>
+  <meta charset="UTF-8">
+  <title>PerpetualMiner</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+  <div class="popup-header">
+    <svg width="30" height="30" viewBox="0 0 128 128" fill="none">
+      <rect width="128" height="128" rx="22" fill="#0c0c0c"/>
+      <path d="M76 12 L40 68 H60 L52 116 L88 60 H68 Z" fill="#00ffff"/>
+    </svg>
+    <div class="header-info">
+      <div class="popup-logo-text"><b>Perpetual</b>Miner</div>
+      <div class="popup-subtitle">Minerador de legendas</div>
+    </div>
+  </div>
+
+  <div class="popup-body">
+
+    <!-- Botão painel -->
+    <button class="btn-painel" id="btnIrPainel">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/>
+        <rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+      Abrir Painel de Estudos
+    </button>
+
+    <!-- Auto Miner -->
+    <div class="section-title">Auto Miner</div>
+    <div class="auto-miner-box">
+      <div class="auto-row">
+        <label class="auto-toggle">
+          <input type="checkbox" id="autoMinerEn">
+          <span>EN</span>
+        </label>
+        <input id="autoLimitEn" class="auto-limit" type="number" min="1" max="100" step="1" value="20">
+        <span id="autoCountEn" class="auto-count">0/20</span>
+      </div>
+      <div class="auto-row">
+        <label class="auto-toggle">
+          <input type="checkbox" id="autoMinerRu">
+          <span>RU</span>
+        </label>
+        <input id="autoLimitRu" class="auto-limit" type="number" min="1" max="100" step="1" value="20">
+        <span id="autoCountRu" class="auto-count">0/20</span>
+      </div>
+    </div>
+
+    <!-- Configurar Atalho -->
+    <div class="section-title">Configurar Atalho de Captura</div>
+    <div class="section-atalho">
+      <div class="atalho-status">
+        Atalho atual: <span id="atalhoAtual" class="atalho-badge">Não configurado</span>
+      </div>
+      <button class="btn-gravar" id="btnGravarAtalho">Clique aqui para gravar atalho</button>
+      <div id="atalhoHint" class="atalho-hint" style="display:none;">
+        ⏺ Aguardando… pressione uma tecla ou clique com um botão extra do mouse
+      </div>
+    </div>
+
+    <!-- Adição Manual -->
+    <div class="section-title">Adição Manual</div>
+    <div class="manual-input-area">
+      <textarea id="txtManual" class="textarea-manual" placeholder="Cole ou escreva uma frase…" rows="2"></textarea>
+      <button class="btn-add" id="btnAddManual">Adicionar</button>
+    </div>
+
+    <!-- Últimas mineradas + controles -->
+    <div class="section-header">
+      <div class="section-title">Últimas mineradas</div>
+      <div class="bulk-controls">
+        <button class="btn-refresh" id="btnRefresh" title="Atualizar lista">↻</button>
+        <label class="check-label">
+          <input type="checkbox" id="chkSelectAll"> Tudo
+        </label>
+        <button class="btn-delete" id="btnDeleteSelected" style="display:none;">Deletar</button>
+      </div>
+    </div>
+
+    <div id="listaUltimas">
+      <div class="empty-msg">Carregando...</div>
+    </div>
+
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

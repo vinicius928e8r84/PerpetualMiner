@@ -1,0 +1,15 @@
+{
+  "automatic_anki_path": "C:\\Users\\sadvi\\Desktop\\Automatic Anki",
+  "anki_executable": "C:\\Users\\sadvi\\AppData\\Local\\Programs\\Anki\\anki.exe",
+  "anki_base_path": "C:\\Users\\sadvi\\AppData\\Roaming\\Anki2",
+  "anki_profile": "Ingles - Vinicius",
+  "host": "127.0.0.1",
+  "port": 8766,
+  "anki_connect_url": "http://127.0.0.1:8765",
+  "anki_wait_timeout_sec": 90,
+  "anki_poll_interval_sec": 2,
+  "anki_launch_attempts": 1,
+  "anki_launch_grace_sec": 90,
+  "jobs_root": "bridge\\runtime\\jobs",
+  "queue_file": "bridge\\runtime\\queue.json"
+}

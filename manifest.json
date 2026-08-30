@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "PerpetualMiner",
+  "version": "5.0",
+  "description": "Minerador de legendas com histórico em tempo real e painel de estudos.",
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "activeTab",
+    "tabs",
+    "contextMenus",
+    "identity"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:8766/*",
+    "http://localhost:8766/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://firestore.googleapis.com/*",
+    "https://www.googleapis.com/*",
+    "https://securetoken.googleapis.com/*",
+    "https://identitytoolkit.googleapis.com/*",
+    "https://*.firebaseio.com/*",
+    "https://*.firebaseapp.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["painel.html", "bookreader.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

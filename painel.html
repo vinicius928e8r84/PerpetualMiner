@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>PerpetualMiner</title>
+  <link rel="stylesheet" href="painel.css">
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <div class="sidebar-logo">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+        <defs>
+          <linearGradient id="lgLogo" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%"   stop-color="#4285F4"/>
+            <stop offset="33%"  stop-color="#EA4335"/>
+            <stop offset="66%"  stop-color="#FBBC05"/>
+            <stop offset="100%" stop-color="#34A853"/>
+          </linearGradient>
+        </defs>
+        <path d="M6 11Q6 6 11 6H29Q34 6 34 11V22Q34 27 29 27H24L20 34L16 27H11Q6 27 6 22Z" fill="url(#lgLogo)"/>
+      </svg>
+      <span class="logo-text"><b>Perpetual</b>Miner</span>
+    </div>
+
+    <div class="sidebar-user">
+      <div class="user-greeting">Olá, <strong>Vinicius ;-;</strong></div>
+      <div class="user-stats">
+        Total <span id="total-count">0</span> frases
+        <button id="btn-apagar-tudo" class="btn-ghost-sm" title="Apagar todas">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <hr class="sidebar-divider">
+
+    <!-- ── Seção Firebase Auth ─────────────────────────── -->
+    <div class="sidebar-firebase">
+
+      <!-- Estado: não logado -->
+      <div id="firebase-logged-out">
+        <button id="btn-login-google" class="btn-google-login">
+          <svg width="16" height="16" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+          Login com Google
+        </button>
+        <p class="firebase-hint">Sincronize suas frases em qualquer dispositivo</p>
+      </div>
+
+      <!-- Estado: logado -->
+      <div id="firebase-logged-in" class="hidden">
+        <div class="firebase-user-row">
+          <img id="firebase-avatar" class="firebase-avatar" src="" alt="" style="display:none">
+          <div class="firebase-user-info">
+            <div id="firebase-name" class="firebase-user-name"></div>
+            <div id="sync-status" class="firebase-sync-status">
+              <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Sincronizado
+            </div>
+          </div>
+        </div>
+        <button id="btn-logout" class="btn-firebase-logout">Sair da conta</button>
+      </div>
+
+    </div>
+
+    <hr class="sidebar-divider">
+
+    <section class="bridge-panel">
+      <div class="bridge-panel-header">
+        <h3 class="bridge-title">Anki Bridge</h3>
+        <span id="bridge-health-badge" class="bridge-health-badge offline">Offline</span>
+      </div>
+
+      <div class="bridge-compact-stat">
+        <span>Custo no filtro</span>
+        <strong id="bridge-sidebar-cost">$0.0000</strong>
+      </div>
+      <p id="bridge-sidebar-summary" class="bridge-compact-status">Aguardando bridge...</p>
+      <button id="btn-open-bridge-workspace" class="bridge-manage-btn" type="button">Gerenciar</button>
+    </section>
+
+    <nav id="platform-nav" class="sidebar-nav"></nav>
+
+    <div class="sidebar-footer">
+      <button id="btn-sair" class="nav-item">
+        <span class="nav-icon" style="background:rgba(255,255,255,0.1)">
+          <svg width="16" height="16" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </span>
+        Sair
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <div class="main-header">
+      <div class="header-left">
+        <h1 class="main-title">Frases mineradas</h1>
+        <svg width="18" height="18" fill="none" stroke="#a78bfa" stroke-width="2" viewBox="0 0 24 24">
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+        </svg>
+      </div>
+      <div class="header-right">
+        <a href="bookreader.html" target="_blank" class="bookreader-btn" title="Abrir BookReader – transcrição de livros físicos">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+          BookReader
+        </a>
+        <button id="btn-sel-pagina" class="sel-btn" title="Selecionar/desmarcar frases da página atual">Pág.</button>
+        <button id="btn-sel-todos"  class="sel-btn" title="Selecionar/desmarcar todas as frases visíveis">Todas</button>
+        <button id="btn-bulk-edit" class="bulk-edit-btn" title="Editar metadados das frases selecionadas">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+          </svg>
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
+          Editar Selecionados
+        </button>
+        <span id="selection-count" class="selection-count hidden"></span>
+        <button id="btn-delete-selected" class="btn-delete-selected hidden" title="Deletar frases selecionadas">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+          </svg>
+          Deletar
+        </button>
+        <button id="btn-export" class="export-btn" title="Exportar frases com keyword como .txt">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Exportar .txt
+        </button>
+        <button id="btn-send-anki" class="send-anki-btn" title="Enviar as frases selecionadas direto para o Anki">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M22 2 11 13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+          Enviar ao Anki
+        </button>
+        <input type="file" id="import-file-input" accept=".txt" hidden>
+        <button id="btn-import" class="action-green-btn" title="Importar frases de um arquivo .txt exportado">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 5 17 10"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Importar .txt
+        </button>
+        <button id="btn-multi-add" class="action-green-btn" title="Adicionar várias frases de uma vez via texto">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Adição em Massa
+        </button>
+        <svg width="20" height="20" fill="none" stroke="#9ca3af" stroke-width="2" viewBox="0 0 24 24">
+          <line x1="3" y1="6"  x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </div>
+    </div>
+
+    <section id="bridge-workspace" class="bridge-workspace hidden" aria-labelledby="bridge-workspace-title" tabindex="-1">
+      <div class="bridge-workspace-header">
+        <div>
+          <div class="bridge-kicker">Anki Bridge</div>
+          <h2 id="bridge-workspace-title" class="bridge-workspace-title">Presets e custos</h2>
+          <p class="bridge-workspace-subtitle">Configuracoes separadas da navegacao, com custos e jobs em leitura rapida.</p>
+        </div>
+        <div class="bridge-workspace-actions">
+          <span class="bridge-health-badge offline" data-bridge-health-badge>Offline</span>
+          <button id="btn-bridge-analytics-refresh-main" class="bridge-icon-btn" title="Atualizar custos" aria-label="Atualizar custos">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+              <polyline points="23 4 23 10 17 10"/>
+              <polyline points="1 20 1 14 7 14"/>
+              <path d="M3.5 9a9 9 0 0 1 14.8-3.4L23 10"/>
+              <path d="M20.5 15a9 9 0 0 1-14.8 3.4L1 14"/>
+            </svg>
+          </button>
+          <button id="btn-close-bridge-workspace" class="bridge-close-btn" type="button">Fechar</button>
+        </div>
+      </div>
+
+      <div class="bridge-workspace-grid">
+        <section class="bridge-card bridge-presets-card" aria-labelledby="bridge-presets-title">
+          <div class="bridge-section-head">
+            <div>
+              <h3 id="bridge-presets-title">Presets</h3>
+              <p>Decks, imagem e TLDs usados ao enviar frases para o Anki.</p>
+            </div>
+          </div>
+
+          <div class="bridge-preset-grid">
+            <article class="bridge-preset-card">
+              <div class="bridge-preset-header">
+                <span class="bridge-lang-pill">EN</span>
+                <strong>Ingles</strong>
+              </div>
+              <label class="bridge-field">
+                <span>Deck</span>
+                <input id="preset-main-en-deck" class="bridge-input" type="text" placeholder="CIMV">
+              </label>
+              <label class="bridge-field">
+                <span>Fonte de imagem</span>
+                <select id="preset-main-en-image" class="bridge-select">
+                  <option value="1">Google Images</option>
+                  <option value="2">DALL-E</option>
+                </select>
+              </label>
+              <div class="bridge-grid">
+                <label class="bridge-field">
+                  <span>TLD palavra</span>
+                  <input id="preset-main-en-word-tld" class="bridge-input" type="text" placeholder="com">
+                </label>
+                <label class="bridge-field">
+                  <span>TLD frase</span>
+                  <input id="preset-main-en-phrase-tld" class="bridge-input" type="text" placeholder="co.uk">
+                </label>
+              </div>
+            </article>
+
+            <article class="bridge-preset-card">
+              <div class="bridge-preset-header">
+                <span class="bridge-lang-pill">RU</span>
+                <strong>Russo</strong>
+              </div>
+              <label class="bridge-field">
+                <span>Deck</span>
+                <input id="preset-main-ru-deck" class="bridge-input" type="text" placeholder="RUSSIAN">
+              </label>
+              <label class="bridge-field">
+                <span>Fonte de imagem</span>
+                <select id="preset-main-ru-image" class="bridge-select">
+                  <option value="1">Google Images</option>
+                  <option value="2">DALL-E</option>
+                </select>
+              </label>
+              <div class="bridge-grid">
+                <label class="bridge-field">
+                  <span>TLD palavra</span>
+                  <input id="preset-main-ru-word-tld" class="bridge-input" type="text" placeholder="ru">
+                </label>
+                <label class="bridge-field">
+                  <span>TLD frase</span>
+                  <input id="preset-main-ru-phrase-tld" class="bridge-input" type="text" placeholder="ru">
+                </label>
+              </div>
+            </article>
+          </div>
+
+          <button id="btn-save-bridge-presets-main" class="bridge-save-btn" type="button">Salvar presets</button>
+        </section>
+
+        <section class="bridge-card bridge-cost-card" aria-labelledby="bridge-costs-title">
+          <div class="bridge-section-head">
+            <div>
+              <h3 id="bridge-costs-title">Custos</h3>
+              <p>Gasto, origem das imagens e ultimos jobs do bridge.</p>
+            </div>
+          </div>
+
+          <div class="bridge-cost-layout">
+            <div class="bridge-cost-main">
+              <span>Total do filtro</span>
+              <strong id="bridge-cost-total">$0.0000</strong>
+              <small id="bridge-analytics-status-main">Aguardando bridge...</small>
+            </div>
+            <div id="bridge-analytics-metrics-main" class="bridge-metrics-grid"></div>
+          </div>
+
+          <div class="bridge-analytics-controls">
+            <div class="bridge-range-row" aria-label="Periodo dos custos">
+              <button class="bridge-range-btn active" data-analytics-range-main="today">Hoje</button>
+              <button class="bridge-range-btn" data-analytics-range-main="month">Mes</button>
+              <button class="bridge-range-btn" data-analytics-range-main="all">Tudo</button>
+            </div>
+            <div class="bridge-filter-row">
+              <label class="bridge-field bridge-field-compact">
+                <span>Idioma</span>
+                <select id="bridge-analytics-lang-main" class="bridge-select bridge-analytics-select" title="Idioma">
+                  <option value="all">Todos</option>
+                  <option value="en">EN</option>
+                  <option value="ru">RU</option>
+                </select>
+              </label>
+              <label class="bridge-field bridge-field-compact">
+                <span>De</span>
+                <input id="bridge-analytics-from-main" class="bridge-input bridge-date-input" type="date" title="Data inicial">
+              </label>
+              <label class="bridge-field bridge-field-compact">
+                <span>Ate</span>
+                <input id="bridge-analytics-to-main" class="bridge-input bridge-date-input" type="date" title="Data final">
+              </label>
+            </div>
+          </div>
+
+          <div class="bridge-cost-columns">
+            <div>
+              <div class="bridge-mini-title">Origem das imagens</div>
+              <div id="bridge-image-rates-main" class="bridge-image-rates"></div>
+            </div>
+            <div>
+              <div class="bridge-mini-title">Jobs recentes</div>
+              <div id="bridge-analytics-jobs-main" class="bridge-analytics-jobs"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="bridge-card bridge-anki-card" aria-labelledby="bridge-anki-title">
+          <div class="bridge-section-head">
+            <div>
+              <h3 id="bridge-anki-title">Baralhos e termos</h3>
+              <p>Progresso por idioma no Anki, separado dos custos do bridge.</p>
+            </div>
+            <button id="btn-bridge-anki-repair" class="bridge-debug-btn bridge-repair-btn" type="button" title="Fechar processos travados do Anki e reabrir o perfil configurado">Reparar Anki</button>
+          </div>
+
+          <div class="bridge-anki-stats">
+            <div id="bridge-anki-stats-main" class="bridge-anki-stats-grid">
+              <div class="bridge-analytics-empty">Aguardando Anki...</div>
+            </div>
+          </div>
+
+          <div class="bridge-vocab-panel">
+            <div class="bridge-vocab-toolbar">
+              <div>
+                <div class="bridge-mini-title">Vocabulario</div>
+                <p id="bridge-vocab-summary" class="bridge-vocab-summary">Aguardando Anki...</p>
+              </div>
+              <div class="bridge-vocab-controls">
+                <select id="bridge-vocab-lang" class="bridge-select bridge-vocab-lang" title="Idioma">
+                  <option value="en">Ingles</option>
+                  <option value="ru">Russo</option>
+                </select>
+                <select id="bridge-vocab-type" class="bridge-select bridge-vocab-type" title="Tipo">
+                  <option value="all">Palavras + termos</option>
+                  <option value="word">So palavras</option>
+                  <option value="term">So termos</option>
+                </select>
+                <input id="bridge-vocab-search" class="bridge-input bridge-vocab-search" type="search" placeholder="Buscar">
+                <select id="bridge-vocab-status" class="bridge-select bridge-vocab-status" title="Status da palavra">
+                  <option value="all">Todas</option>
+                  <option value="new">Novas</option>
+                  <option value="recent">Recentes</option>
+                  <option value="mature">Maduras</option>
+                  <option value="mixed">Mistas</option>
+                </select>
+              </div>
+            </div>
+            <div id="bridge-vocab-list" class="bridge-vocab-list">
+              <div class="bridge-analytics-empty">Aguardando vocabulario...</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <div class="main-toolbar">
+      <!-- Filtro: Fonte / Streaming -->
+      <div class="dropdown-wrap">
+        <button id="dropdown-trigger" class="dropdown-trigger">
+          <span id="dropdown-label">Todas as Fontes</span>
+          <svg width="14" height="14" fill="none" stroke="#7c3aed" stroke-width="2.5" viewBox="0 0 24 24">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        <div id="dropdown-menu" class="dropdown-menu hidden"></div>
+      </div>
+
+      <!-- Filtro: Idioma -->
+      <div class="dropdown-wrap">
+        <button id="idioma-trigger" class="dropdown-trigger">
+          <span id="idioma-label">Todos os Idiomas</span>
+          <svg width="14" height="14" fill="none" stroke="#7c3aed" stroke-width="2.5" viewBox="0 0 24 24">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        <div id="idioma-menu" class="dropdown-menu hidden"></div>
+      </div>
+
+      <!-- Filtro: Ordenação -->
+      <div class="dropdown-wrap">
+        <button id="ordem-trigger" class="dropdown-trigger">
+          <span id="ordem-label">Mais novas primeiro</span>
+          <svg width="14" height="14" fill="none" stroke="#7c3aed" stroke-width="2.5" viewBox="0 0 24 24">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        <div id="ordem-menu" class="dropdown-menu hidden">
+          <button class="dropdown-item" data-ordem="novas">Mais novas primeiro</button>
+          <button class="dropdown-item" data-ordem="antigas">Mais velhas primeiro</button>
+        </div>
+      </div>
+
+      <!-- Toggle: Exportadas -->
+      <button id="btn-hide-exported" class="filter-toggle" title="Mostrar/ocultar frases já exportadas para o Anki">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+          <line x1="1" y1="1" x2="23" y2="23"/>
+        </svg>
+        Esconder Exportadas
+      </button>
+      <div class="auto-miner-panel" title="Auto Miner por idioma">
+        <label><input id="panel-auto-en" type="checkbox"> EN</label>
+        <input id="panel-auto-limit-en" type="number" min="1" max="100" value="20">
+        <span id="panel-auto-count-en">0/20</span>
+        <label><input id="panel-auto-ru" type="checkbox"> RU</label>
+        <input id="panel-auto-limit-ru" type="number" min="1" max="100" value="20">
+        <span id="panel-auto-count-ru">0/20</span>
+      </div>
+    </div>
+
+    <div id="phrases-list" class="phrases-list">
+      <div class="empty-state">Carregando...</div>
+    </div>
+
+    <div class="main-footer">
+      <div class="pagination">
+        <button id="btn-first" class="page-btn" title="Primeira">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/>
+          </svg>
+        </button>
+        <button id="btn-prev" class="page-btn" title="Anterior">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+        <span id="page-current" class="page-current">1</span>
+        <span class="page-sep">de</span>
+        <span id="page-total" class="page-sep-bold">1</span>
+        <button id="btn-next" class="page-btn" title="Próxima">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+        <button id="btn-last" class="page-btn" title="Última">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/>
+          </svg>
+        </button>
+      </div>
+      <span id="page-info" class="page-info"></span>
+    </div>
+  </main>
+
+  <!-- ── Modal de Edição de Metadados ─────────────────────────── -->
+  <div id="edit-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal">
+
+      <div class="modal-header">
+        <div>
+          <h3 id="modal-title" class="modal-title">Editar Metadados</h3>
+          <p  id="modal-subtitle" class="modal-subtitle"></p>
+        </div>
+        <button id="btn-modal-close" class="modal-close" title="Fechar">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-field">
+          <label class="modal-label" for="modal-fonte">Fonte</label>
+          <input id="modal-fonte" class="modal-input" type="text"
+                 placeholder="Ex: netflix, youtube, web, livro">
+          <span class="modal-hint">Plataforma ou tipo de origem</span>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label" for="modal-titulo">Título</label>
+          <input id="modal-titulo" class="modal-input" type="text"
+                 placeholder="Ex: Stranger Things, Atomic Habits">
+        </div>
+        <div class="modal-field">
+          <label class="modal-label" for="modal-detalhe">Detalhe</label>
+          <input id="modal-detalhe" class="modal-input" type="text"
+                 placeholder="Ex: S04E01, Cap. 3, Canal: Naval">
+          <span class="modal-hint">Episódio, capítulo ou informação complementar</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btn-modal-cancel" class="btn-modal-cancel">Cancelar</button>
+        <button id="btn-modal-save"   class="btn-modal-save">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Salvar
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Modal de Adição em Massa ────────────────────────────── -->
+  <div id="bulk-add-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal modal-wide">
+
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">Adição em Massa</h3>
+          <p  class="modal-subtitle">Cole as frases — uma por linha</p>
+        </div>
+        <button id="btn-bulk-add-close" class="modal-close" title="Fechar">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-field">
+          <label class="modal-label" for="bulk-add-textarea">Frases</label>
+          <textarea id="bulk-add-textarea" class="modal-textarea"
+                    placeholder="The quick brown fox jumps over the lazy dog&#10;All that glitters is not gold&#10;To be or not to be, that is the question"
+                    rows="8" spellcheck="false"></textarea>
+        </div>
+        <div class="modal-2col">
+          <div class="modal-field">
+            <label class="modal-label" for="bulk-add-fonte">Fonte</label>
+            <input id="bulk-add-fonte" class="modal-input" type="text"
+                   placeholder="Ex: livro, web, podcast">
+          </div>
+          <div class="modal-field">
+            <label class="modal-label" for="bulk-add-titulo">Título</label>
+            <input id="bulk-add-titulo" class="modal-input" type="text"
+                   placeholder="Ex: Atomic Habits">
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <div id="bulk-add-progress-wrap" class="ba-progress hidden">
+          <div class="ba-progress-track">
+            <div id="bulk-add-progress-bar" class="ba-progress-fill"></div>
+          </div>
+          <span id="bulk-add-progress-label" class="ba-progress-label"></span>
+        </div>
+        <button id="btn-bulk-add-cancel" class="btn-modal-cancel">Cancelar</button>
+        <button id="btn-bulk-add-save" class="btn-modal-save btn-green-save">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Adicionar frases
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Overlay de Progresso do Importador ───────────────── -->
+  <div id="import-overlay" class="import-overlay hidden">
+    <div class="import-overlay-box">
+      <div class="import-spinner"></div>
+      <p id="import-overlay-title" class="import-overlay-title">Importando frases…</p>
+      <p id="import-overlay-sub"   class="import-overlay-sub"></p>
+      <div class="ba-progress-track import-bar-track">
+        <div id="import-overlay-bar" class="ba-progress-fill" style="width:0%"></div>
+      </div>
+      <p id="import-overlay-label" class="import-overlay-label"></p>
+    </div>
+  </div>
+
+  <div id="bridge-progress-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">Envio para o Anki</h3>
+          <p id="bridge-progress-subtitle" class="modal-subtitle">Aguardando jobs…</p>
+        </div>
+        <button id="btn-bridge-progress-close" class="modal-close" title="Fechar">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="bridge-progress-list" class="bridge-progress-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-bridge-retry-failed" class="btn-modal-cancel">Retentar falhos</button>
+        <button id="btn-bridge-refresh" class="btn-modal-save">Atualizar status</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="painel.js"></script>
+</body>
+</html>
