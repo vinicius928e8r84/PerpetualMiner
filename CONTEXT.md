@@ -24,6 +24,10 @@ _Avoid_: Streaming, plataforma, origem
 A procedência completa de uma frase: Fonte, Título (obra, vídeo, página) e Detalhe (episódio, capítulo, canal).
 _Avoid_: Metadados
 
+**Palavra**:
+A palavra da frase que o cartão ensina, grifada na frase; pode ser escolhida pela pessoa ou detectada automaticamente. Na tela, o chip diz `palavra: …` quando foi escolhida e `auto: …` quando foi detectada. "keyword" pode ser nome técnico no código, nunca na tela.
+_Avoid_: Keyword (na tela), palavra-chave, nova
+
 ## Destino da frase
 
 **Conexão com o Anki**:

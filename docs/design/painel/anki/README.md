@@ -3,8 +3,9 @@
 Resolução do ticket [Protótipo: Painel · Conexão com o Anki](https://github.com/vinicius928e8r84/PerpetualMiner/issues/13) do mapa [Redesign do front-end do PerpetualMiner](https://github.com/vinicius928e8r84/PerpetualMiner/issues/1). Ela parte:
 - do shell [Ilhas](../shell/README.md), com a mesma sidebar, o cabeçalho de área e os endereços;
 - da identidade [Veio](../../identidade-veio/README.md);
-- da [auditoria](../../auditoria/README.md) (“Painel · Anki Bridge”, Q8 e Q9);
-- do [catálogo de voz](../../voz/README.md) (BRG-01…24, ENV-08, ENV-13, ENV-14).
+- da [auditoria](../../auditoria/README.md) (“Painel · Anki Bridge”, Q8 e Q9). As sub-áreas seguem os nomes e a ordem do shell, **Custos · Baralhos e termos · Vocabulário · Ajustes de envio**, e não “Presets” primeiro, como a auditoria propunha;
+- do [catálogo de voz](../../voz/README.md) (BRG-01…24, ENV-01, ENV-08, ENV-13, ENV-14 e ONB-16);
+- da [Boas-vindas](../boas-vindas/README.md), de onde vêm a F1 (como ligar a Conexão) e o card ONB-16 da primeira vez.
 
 **Protótipo:** [`prototipo-anki.html`](prototipo-anki.html). Abra direto no navegador.
 - `?variant=C` é a arrumação travada e abre por padrão. `A` (Quadro) e `B` (Relatório) ficam como registro das alternativas.
@@ -37,7 +38,7 @@ Avaliado no Lavish em 2026-09-15. O dono escolheu a **C · Por idioma** (“gost
 Recolhida no pé da aba, com borda tracejada e um resumo do que tem dentro:
 - **Custos:**
   - Escolha e Triagem de imagem com 4 casas, e o total com 4 casas;
-  - chaves “Mostrar custos com 4 casas” e “Mostrar IDs dos envios”;
+  - chaves “Mostrar custos com 4 casas” e “Mostrar IDs dos envios”. São **poda**: escondem o que hoje aparece sempre, então são revestimento, não função nova;
   - a lista de envios com **Baixar diagnóstico** em cada um (BRG-23).
 - **Baralhos e termos:** **Reparar Anki**, com uma frase dizendo o que ele faz. O botão também aparece no erro BRG-11.
 - **Ajustes de envio:** o sotaque do áudio (TLD da palavra e da frase) do idioma escolhido, com exemplos de domínio.
@@ -48,6 +49,7 @@ Recolhida no pé da aba, com borda tracejada e um resumo do que tem dentro:
 | estado | como aparece |
 |---|---|
 | Conectando | Faixa neutra “Conectando ao Anki…” (BRG-02) e esqueleto no lugar do conteúdo. |
+| Nunca conectada (primeira vez) | Faixa ENV-01/F1 + **Tentar de novo** em cima. Como não há dado antigo, **as abas dão lugar ao card ONB-16** “Ainda não houve conexão neste computador”, com o O que é e o O que falta sem ela da F1, os 3 passos e o **Detalhes** recolhido e copiável (ver [Boas-vindas § Conexão com o Anki: como ligar](../boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1)). Quando a conexão responde pela primeira vez, as abas voltam. |
 | Desligada | Faixa F1 + **Tentar de novo**. As abas mostram o último dado com o selo BRG-12. **Continuar envio** e **Reparar Anki** ficam indisponíveis, e o tooltip diz por quê (C8). Os Ajustes de envio continuam editáveis, com uma nota de que valem a partir do próximo envio. |
 | Carregando | Linha com o gerúndio + esqueleto (C3): “Somando os custos…”, “Lendo os baralhos do Anki…” (BRG-10), “Lendo o vocabulário…” (BRG-19). |
 | Erro | Inline e persistente, com **Tentar de novo** e Detalhes: BRG-04 (com “Custo indisponível”, BRG-03), BRG-11 (com Reparar Anki) e BRG-20. |
@@ -60,7 +62,7 @@ Recolhida no pé da aba, com borda tracejada e um resumo do que tem dentro:
 ## Convenções
 
 - **Dinheiro:** US$ com 2 casas na camada principal. Valor positivo abaixo de 1 centavo aparece como “< US$ 0,01”, nunca “US$ 0,00”. Com 4 casas ligado no Avançado, todos os valores passam a 4 casas.
-- **Cores das barras:** ouro = foto real e maduros; `info` = gerada por IA e recentes; `muted` = sem imagem e novos; `danger` = falhou. Ficam iguais em todas as abas.
+- **Cores das barras e do anel:** ouro = foto real e maduros; `info` = gerada por IA e recentes; `muted` = sem imagem e novos; `danger` = falhou. Ficam iguais em todas as abas. O ouro e o `info` marcando séries são a **exceção de dataviz escrita no Veio**: vale só dentro do gráfico e da legenda dele; fora dali, o ouro continua só para a ação primária e a seleção.
 - **Janela estreita:** azulejos, faixa e lista × detalhe viram uma coluna, e o detalhe cai para baixo da lista.
 
 ## Fica para outros tickets

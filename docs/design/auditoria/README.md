@@ -2,6 +2,8 @@
 
 Resolução do ticket [Auditoria & inventário do front](https://github.com/vinicius928e8r84/PerpetualMiner/issues/2) do mapa [Redesign do front-end do PerpetualMiner](https://github.com/vinicius928e8r84/PerpetualMiner/issues/1). Auditoria somente-leitura em `42994e0` (2026-09-14). Grilling feito numa página Lavish (cópia visual: [`auditoria-front.html`](auditoria-front.html)); os levantamentos brutos por superfície, com `file:line` para cada item, estão em [`levantamento/`](levantamento/).
 
+Os vereditos valem; nomes e lugares marcados como **Superada em** foram refinados pelas specs das superfícies. Índice: [docs/design](../README.md).
+
 ## Decisões
 
 ### Q0: Para quem é este front?
@@ -38,6 +40,8 @@ Hoje 3 botões soltos com a mesma finalidade: “Adição em Massa” (colar), �
 
 **Decisão:** Um único “Adicionar frases” com 3 modos: Colar · Arquivo .txt · Foto de livro. Popup mantém a adição rápida.
 
+> **Superada em** [Frases](../painel/frases/README.md): o botão é **“Minerar frases”**, com os modos Colar · Arquivo .txt · Foto; a Foto leva à página “Minerar de uma foto”. No popup, a adição rápida é a mineração rápida (botão “Minerar”).
+
 ### Q5: Filtro de fonte duplicado
 
 A lista de fontes da sidebar (“Todos os Streamings”) parece navegação mas é o mesmo filtro do dropdown “Todas as Fontes” da barra de filtros.
@@ -50,17 +54,23 @@ BookReader, Pág., Todas, Editar Selecionados, contador, Deletar, Exportar .txt,
 
 **Decisão:** Ações sobre seleção (Pág./Todas/contador/Editar/Apagar/Exportar/Enviar ao Anki) viram uma barra contextual que só aparece com seleção; fixo só “Adicionar frases”. ☰ e funil cortados.
 
+> **Superada em** [Frases](../painel/frases/README.md): o botão fixo é “Minerar frases ▾”. A barra contextual tem Editar contexto · Exportar .txt · Apagar · Enviar ao Anki.
+
 ### Q7: Exportar/Importar .txt ainda têm lugar?
 
 Exportar .txt marca a frase como “exported” → ganha badge “No Anki” e some com “Esconder Exportadas”, mesmo sem ter ido ao Anki (bug). Import perde as keywords do export.
 
 **Decisão:** Ficam, rebaixados a um menu secundário “Arquivo .txt”; “Enviar ao Anki” é a ação principal.
 
+> **Superada em** [Frases](../painel/frases/README.md): não há menu “Arquivo .txt”. Exportar .txt fica na barra contextual de seleção; Importar é o modo Arquivo .txt do “Minerar frases”. “Enviar ao Anki” segue como a ação principal.
+
 ### Q8: Anki Bridge — onde mora?
 
 Hoje: card na sidebar (badge, “Custo no filtro”, resumo, Gerenciar) + seção inline que abre entre o header e a lista, empurrando as frases para baixo (Presets · Custos · Baralhos e termos · Vocabulário). Badge, custo e status aparecem 2×.
 
 **Decisão:** Sidebar mostra só o status Online/Offline; custo/resumo saem dela. O Bridge vira área própria com 4 sub-áreas (Presets · Custos · Baralhos e termos · Vocabulário).
+
+> **Superada em** [shell](../painel/shell/README.md): a área se chama **Conexão com o Anki**, com as abas na ordem Custos · Baralhos e termos · Vocabulário · Ajustes de envio (“Presets” virou “Ajustes de envio”, BRG-07). Abre em Custos.
 
 ### Q9: Controles técnicos do Bridge
 
@@ -74,11 +84,15 @@ Não é um leitor: é foto → Gemini → trechos marcados → salvar. Página p
 
 **Decisão:** Continua página própria, entra por “Adicionar frases → Foto de livro” (Q4); nome muda para algo que diga o que faz (texto exato no ticket de Voz); Trocar Foto + Limpar Lista viram 1 ação; seleção igual à do painel; chave Gemini sai para Configurações (Q11).
 
+> **Superada em** [Voz](../voz/README.md): a entrada é “Minerar frases → Foto” e o nome da página é “Minerar de uma foto” (V9, C7).
+
 ### Q11: Nasce um agrupamento “Configurações”?
 
 Ajustes espalhados: chave Gemini (sidebar do BookReader), gravar atalho de captura (popup), conta Google + login/logout (sidebar do painel), “apagar tudo” (lixeira da sidebar), presets do Bridge (seção do Bridge).
 
 **Decisão:** Sim: “Configurações” reúne Conta & sync · Chave Gemini · Atalhos (gravar o de seleção + mostrar o Alt+S) · Zona de perigo. Presets ficam no Bridge; limites do Auto Miner ficam no popup.
+
+> **Superada em** [shell](../painel/shell/README.md): os presets são os “Ajustes de envio” da Conexão com o Anki; os dois atalhos são graváveis (R2-2), com os nomes “Minerar legenda” e “Minerar seleção”.
 
 > Nota do dono: O Alt+S deveria ser configurável para outro atalho de teclado ou mouse.
 
@@ -117,6 +131,8 @@ Marque o que pode entrar nos protótipos como revestimento. O resto fica fora (a
 - [x] Busca na lista de frases
 - [x] Contador do Auto Miner no badge do ícone da toolbar **(diverge da recomendação)**
 
+> **Superada em** [lista fechada](../README.md#lista-fechada): a lista final tem **9 itens**. Veja R2-1.
+
 ### Q15: O que fazer com os bugs achados?
 
 ~25 defeitos reais (tabela abaixo), fora do escopo deste mapa. Alguns perdem dados (BookReader salvando em paralelo; delete do popup que ressuscita) e dois são de segurança (postMessage sem origem; innerHTML sem escape).
@@ -139,11 +155,15 @@ Na Q14 você pôs no escopo 4 coisas que criam comportamento: busca na lista, co
 
 **Decisão:** Relaxa com lista fechada: esses 5 entram nos protótipos como “ajustes de UX” permitidos. Qualquer outra função nova continua fora. Eu atualizo a regra no mapa.
 
+> **Superada em** [lista fechada](../README.md#lista-fechada): a lista final tem **9 itens**: (1) busca na lista de frases (PAI-04); (2) confirmação ao apagar 1 frase (PAI-12); (3) Cancelar no carregamento do Minerar de uma foto (FOT-06/07); (4) confirmação ao Recomeçar com frases não mineradas (FOT-17/18); (5) “Tentar de novo” numa foto que falhou (FOT-11, lote FOT-15); (6) contador da mineração automática no badge da toolbar, somando os idiomas ligados (MIN-09); (7) atalho “Minerar legenda” gravável (+ botão do mouse, recusa repetido) com “Restaurar atalhos padrão” (CFG-11…14); (8) abrir a Boas-vindas na instalação (ONB-01); (9) lembrete “Configuração pela metade” ocultável.
+
 ### R2-2: Atalhos: como fica com o Alt+S configurável?
 
 Hoje existem dois conceitos: Alt+S fixo (minera a legenda do vídeo) e um atalho gravável que só captura texto selecionado. O popup chama o segundo de “Atalho de Captura”, sem dizer que é só para seleção.
 
 **Decisão:** Dois atalhos com nome, os dois graváveis (teclado ou botão extra do mouse), no mesmo gravador: “Minerar legenda” (padrão Alt+S) e “Capturar seleção”. Moram em Configurações · Atalhos.
+
+> **Superada em** [Voz](../voz/README.md): o segundo atalho se chama **“Minerar seleção”** (V8: “capturar” sai).
 
 ### R2-3: O plano de assinatura muda o destino deste mapa?
 
@@ -159,6 +179,8 @@ Sua nota: o popup de apagar depois do envio “tá muito fraco, buga, às vezes 
 
 **Decisão:** Ao terminar, o modal mostra um resumo (enviadas · duplicadas · falhas) e dois botões: “Apagar as N enviadas” em destaque e “Manter e marcar como enviadas”.
 
+> **Superada em** [Voz](../voz/README.md): o segundo botão é só **“Manter”**, com o texto sob os botões “Manter deixa as frases no histórico, marcadas como enviadas ao Anki.” (ENV-10).
+
 ## Inventário anotado
 
 Vereditos: **fica** · **corta** (excesso) · **reagrupa** (muda de lugar/grupo). O status é o estado de hoje: working, broken, orphan, dead, redundant, missing. A coluna Q aponta a decisão que justifica o veredito.
@@ -170,7 +192,7 @@ Vereditos: **fica** · **corta** (excesso) · **reagrupa** (muda de lugar/grupo)
 | P1–3 | Cabeçalho: logo raio ciano + “PerpetualMiner” + “Minerador de legendas” | `working` estático | **reagrupa** | → nova identidade | Q0 |
 | P4 | “Abrir Painel de Estudos” | `working` foca aba existente ou abre | **fica** | nome da tela → ticket de Voz |  |
 | P5–11 | Auto Miner EN/RU: toggle, limite (1–100), contador “0/20” | `working` sem rótulo; não diz que é diário | **fica** | casa única do Auto Miner | Q1 |
-| P13–16 | “Configurar Atalho de Captura” (gravar, badge, hint) | `working` rótulos crus (“BracketLeft”, “Mouse Btn 5”); não diz que é p/ texto selecionado | **reagrupa** | → Configurações · Atalhos, como o atalho “Capturar seleção” | R2-2 |
+| P13–16 | “Configurar Atalho de Captura” (gravar, badge, hint) | `working` rótulos crus (“BracketLeft”, “Mouse Btn 5”); não diz que é p/ texto selecionado | **reagrupa** | → Configurações · Atalhos, como o atalho “Capturar seleção” (**Superada em** [Voz](../voz/README.md): “Minerar seleção”) | R2-2 |
 | P17–19 | “Adição Manual”: textarea + “Adicionar” | `working` sem feedback de sucesso/erro; título salvo “Manual Input” | **fica** | adição rápida | Q4 |
 | P20/24 | “Últimas mineradas” (5 cards com checkbox) | `working` clicar no card não faz nada | **fica** | só leitura (sem checkbox) | Q2 |
 | P21 | ↻ “Atualizar lista” | `redundant` redundante com auto-refresh; zera seleção | **corta** |  | Q13 |
@@ -220,15 +242,15 @@ Vereditos: **fica** · **corta** (excesso) · **reagrupa** (muda de lugar/grupo)
 | S17 | “Sair” (window.close) | `working` mesmo ícone de logout | **corta** |  | Q13 |
 | H1 | Título “Frases mineradas” | `working`  | **fica** |  |  |
 | H2 | Ícone funil ao lado do título | `orphan` sem handler | **corta** |  | Q13 |
-| H3 | Link âmbar “BookReader” | `working`  | **reagrupa** | → Adicionar frases · Foto | Q4 |
+| H3 | Link âmbar “BookReader” | `working`  | **reagrupa** | → Adicionar frases · Foto (**Superada em** [Frases](../painel/frases/README.md): Minerar frases → Foto) | Q4 |
 | H4–5 | “Pág.” / “Todas (N)” | `working`  | **reagrupa** | → barra contextual de seleção | Q6 |
 | H6 | “Editar Selecionados” | `working` sempre habilitado | **reagrupa** | → barra contextual | Q6 |
 | H7 | “N selecionada(s)” | `working` conta ocultas pelo filtro | **reagrupa** | → barra contextual | Q6 |
 | H8 | “Deletar” seleção | `working` confirm + Firestore | **reagrupa** | → barra contextual | Q6 |
-| H9 | “Exportar .txt” | `broken` marca “No Anki” falso; tooltip errado | **reagrupa** | → menu “Arquivo .txt” | Q7 |
+| H9 | “Exportar .txt” | `broken` marca “No Anki” falso; tooltip errado | **reagrupa** | → menu “Arquivo .txt” (**Superada em** [Frases](../painel/frases/README.md): Exportar .txt na barra contextual de seleção) | Q7 |
 | H10 | “Enviar ao Anki” | `working` duplo clique duplica; resalva presets | **reagrupa** | → ação principal da barra contextual | Q6 |
-| H12 | “Importar .txt” | `working` perde keywords do export | **reagrupa** | → Adicionar frases · Arquivo | Q4 |
-| H13 | “Adição em Massa” | `working`  | **reagrupa** | → Adicionar frases · Colar | Q4 |
+| H12 | “Importar .txt” | `working` perde keywords do export | **reagrupa** | → Adicionar frases · Arquivo (**Superada em** [Frases](../painel/frases/README.md): Minerar frases · Arquivo .txt) | Q4 |
+| H13 | “Adição em Massa” | `working`  | **reagrupa** | → Adicionar frases · Colar (**Superada em** [Frases](../painel/frases/README.md): Minerar frases · Colar) | Q4 |
 | H14 | Ícone ☰ | `orphan` sem handler | **corta** |  | Q13 |
 
 ### Painel · Frases & modais
@@ -253,9 +275,9 @@ Vereditos: **fica** · **corta** (excesso) · **reagrupa** (muda de lugar/grupo)
 | P1–6 | Paginação (10/pág, 1ª/ant/próx/última, “X a Y de N”) | `working`  | **fica** |  |  |
 | M1 | Modal Editar Metadados (Fonte/Título/Detalhe) | `working` regras bulk≠individual; Enter salva | **fica** |  |  |
 | M1.10 | Foco em Título | `dead` sobrescrito 50 ms depois | **corta** |  | Q13 |
-| M2 | Modal Adição em Massa | `working` sem dedupe, sem Detalhe; duplo clique duplica | **reagrupa** | → Adicionar frases · Colar | Q4 |
+| M2 | Modal Adição em Massa | `working` sem dedupe, sem Detalhe; duplo clique duplica | **reagrupa** | → Adicionar frases · Colar (**Superada em** [Frases](../painel/frases/README.md): Minerar frases · Colar) | Q4 |
 | M2.6 | Barra de progresso | `broken` falsa (salta p/ 100%) | **fica** | estado de progresso; conserto → bugs | Q15 |
-| I1–4 | Overlay de importação | `dead` nunca pinta; spinner sem @keyframes | **fica** | estado de progresso do “Adicionar”; conserto → bugs | Q15 |
+| I1–4 | Overlay de importação | `dead` nunca pinta; spinner sem @keyframes | **fica** | estado de progresso do “Adicionar” (**Superada em** [Frases](../painel/frases/README.md): do “Minerar frases”); conserto → bugs | Q15 |
 | M3 | Modal “Envio para o Anki” (polling 3 s) | `working` sem Esc/backdrop | **fica** |  |  |
 | M3.4 | Card de job: jobId, “Status: completed”, ISO, “Stage atual” | `working` jargão cru | **reagrupa** | status legível + detalhe em Avançado | Q9 |
 | M3.5 | “Continuar” por job | `working`  | **fica** |  |  |

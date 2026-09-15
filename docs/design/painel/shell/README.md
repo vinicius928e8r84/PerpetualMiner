@@ -39,22 +39,25 @@ Decidido em duas rodadas no Lavish e avaliado em 2026-09-14. O dono aceitou toda
 | `#frases` (padrão) | Frases mineradas |
 | `#anki/custos` · `#anki/baralhos` · `#anki/vocabulario` · `#anki/ajustes` | a aba correspondente da Conexão com o Anki |
 | `#configuracoes` · `#configuracoes/conta` · `#configuracoes/atalhos` · `#configuracoes/chave` · `#configuracoes/perigo` | Configurações, rolando até a seção |
+| `#boas-vindas` | a página [Boas-vindas](../boas-vindas/README.md), **sem sidebar**. Abre sozinha na instalação. |
 
 Quem aponta para eles:
 - o **“Mudar atalho”** do popup vai para `#configuracoes/atalhos`;
+- o **“Definir atalho”**, que aparece onde a cópia supõe o atalho de legenda e não há atalho gravado (PAI-02, ONB-05, rodapé do popup), vai para `#configuracoes/atalhos`;
 - o **“Abrir Configurações”** do Minerar de uma foto (FOT-05) vai para `#configuracoes/chave`;
-- o chip de conta vai para `#configuracoes/conta`.
+- o chip de conta vai para `#configuracoes/conta`;
+- a instalação da extensão e o **“Continuar configuração”** (lembrete do popup e faixa de Frases) vão para `#boas-vindas`.
 
 ### Casos de borda
 
 - **Trocar de área e voltar:** filtros, busca, página e seleção continuam como estavam, e a barra contextual de seleção volta aberta. Recarregar a página zera tudo, como hoje.
-- **Envio termina com o modal fechado:** o resumo (ENV-10: “Envio concluído — 12 enviadas · 2 já estavam no Anki · 1 falhou [Apagar as 12 enviadas] [Manter]”) **abre sozinho, em qualquer área**.
+- **Envio termina com o modal fechado:** o resumo (ENV-10: “Envio concluído — 12 enviadas · 2 já estavam no Anki · 1 falhou [Apagar as 12 enviadas] [Manter]”, com a nota “Manter deixa as frases no histórico, marcadas como enviadas ao Anki.” sob os botões) **abre sozinho, em qualquer área**.
 - **Conexão com o Anki desligada:** a área abre normalmente.
   - No topo, uma faixa com a F1 (“A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.”) e o botão **Tentar de novo**.
   - As abas mostram o último dado conhecido, marcado como tal (BRG-12).
   - Os Ajustes de envio continuam editáveis.
   - Em Frases, “Enviar ao Anki” fica indisponível e o tooltip diz por quê.
-- **Primeira execução:** o shell não muda. Mostra `Frases 0`, o ponto desligado e o chip “Sem conta · Só neste computador”, e o vazio de Frases é o da PAI-02. Um guia, se houver, é decisão do [Protótipo: onboarding & primeira execução](https://github.com/vinicius928e8r84/PerpetualMiner/issues/10).
+- **Primeira execução:** o shell não muda. Mostra `Frases 0`, o ponto desligado e o chip “Sem conta · só neste computador”, e o vazio de Frases é o da PAI-02. O guia é a página [Boas-vindas](../boas-vindas/README.md) (`#boas-vindas`, sem sidebar), que abre sozinha na instalação.
 
 ## Shell “Ilhas” (variante B)
 

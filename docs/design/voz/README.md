@@ -6,7 +6,7 @@ O que está aqui:
 
 1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
 2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: 126 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
+3. **Catálogo**: 159 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
 
 Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
 
@@ -27,7 +27,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 | V3 | **Anatomia do erro:** (1) o que aconteceu, nos termos do usuário; (2) o que fazer, com um botão quando existe ação. A causa técnica (código HTTP, mensagem crua, jobId) vai para um **“Detalhes”** recolhido e copiável. | “O envio em inglês não começou. A conexão com o Anki respondeu com erro. [Tentar de novo] · Detalhes” |
 | V4 | **Honestidade:** só se afirma o que já aconteceu. Durante a espera, a mensagem diz a ação em andamento. Falha tem cópia própria. Dado ausente aparece como “indisponível”, nunca como zero. | “Salvando…” → “Frase minerada” / “Não deu para minerar a frase.” · “Custo indisponível” (e não “$0.0000”) |
 | V5 | **Sem emoji no texto.** Ícones de status vêm do componente, não da cópia. Símbolos tipográficos permitidos: “…”, “·” (separador) e “→”. | — |
-| V6 | **Só PT-BR.** Inglês só em nome próprio (Anki, Gemini, Netflix, YouTube). Mensagem de terceiro é traduzida, e o texto original vai para Detalhes. Traduzir a UI para inglês fica fora deste esforço. | “O Gemini está recebendo pedidos demais…” · Detalhes: HTTP 429 |
+| V6 | **Só PT-BR.** Inglês só em nome próprio (Anki, Gemini, Netflix, YouTube). Mensagem de terceiro é traduzida, e o texto original vai para Detalhes. Traduzir a UI para inglês fica fora deste esforço. “keyword” pode continuar como nome técnico no código, nunca na tela: o chip da Palavra diz `palavra: …` quando você a escolheu e `auto: …` quando foi detectada, igual no Painel e no overlay (`keyword:` e `nova:` saem). | “O Gemini está recebendo pedidos demais…” · Detalhes: HTTP 429 |
 | V7 | **Convenções de escrita** (checáveis mecanicamente, ver abaixo). | — |
 | V8 | **Verbo central: minerar.** Pôr uma frase no histórico é minerar, qualquer que seja a Fonte. “Capturar”, “salvar” e “adicionar” saem. | Atalhos “Minerar legenda” e “Minerar seleção” · botão “Minerar frases” |
 | V9 | A página hoje chamada BookReader passa a se chamar **“Minerar de uma foto”**. | — |
@@ -41,7 +41,8 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 - **Reticências** são um caractere só (“…”) e aparecem **só em estado em andamento**. Placeholder não leva reticências.
 - **Ponto final:** não vai em título, botão, rótulo nem em toast de uma frase só. Vai em texto de corpo com mais de uma frase.
 - **Números** vêm sempre com unidade e plural certo: “1 frase”, “12 frases”, “1.284 frases”. Nunca um número solto, “job(s)” ou “frase(s)”.
-- **Dinheiro:** “US$ 0,42”, com 2 casas na camada principal. 4 casas só no Avançado.
+- **Separador “·”:** quando ele continua o mesmo status ou a mesma frase, o que vem depois começa com minúscula: “Sem conta · só neste computador”, “Frase minerada · não deu para copiar”. Quando separa rótulos independentes (modos, etapas, filtros, o idioma), cada rótulo mantém a caixa própria: “Colar · Arquivo .txt · Foto”, “Frase minerada · Inglês”.
+- **Dinheiro:** “US$ 0,42”, com 2 casas por padrão. Com “Mostrar custos com 4 casas” ligado no Avançado, todos os valores passam a 4 casas, em todo lugar. Valor positivo abaixo de 1 centavo aparece como “< US$ 0,01”, nunca “US$ 0,00”.
 - **Datas:** relativas na camada principal (“há 5 min”, “ontem”, “há 3 dias”). ISO e hora exata só em Detalhes.
 - **Botões** dizem verbo + objeto: “Apagar 12 frases”, “Tentar de novo”, “Limpar filtros”. Nunca “OK”, “Sim” ou “Confirmar” sozinhos. O botão de desistir é sempre “Cancelar”.
 - **Acentuação:** completa, sempre. Hoje falta acento em toda a área do Bridge.
@@ -56,18 +57,18 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 | C2 | **Vazio** | São três vazios diferentes. No **primeiro uso**, a mensagem diz o que vai aparecer ali e ensina a encher, com a ação. Quando o **filtro ou a busca não acha nada**, ela diz que é o filtro e oferece “Limpar filtros” ou “Limpar busca”. Quando houve **falha**, não é vazio: é erro, e segue a V3. |
 | C3 | **Loading** | Gerúndio + objeto; nunca um “Carregando” genérico. Com N itens, mostra “3 de 12”. Com etapas, a etapa tem nome de gente (“Gerando imagens”, não “generating_images”). Em espera longa (mais de ~10 s), diz o que está segurando. Espera curta fica sem texto, só esqueleto ou nada. Quando existe, “Cancelar” fica ao lado. |
 | C4 | **Sucesso** | A fórmula é objeto no particípio + contagem + destino, sem “com sucesso”. **Parcial nunca é sucesso**: “10 de 12 frases enviadas · 2 falharam [Ver falhas]”. O app **cala quando a mudança já aparece na tela** (editar na lista, marcar ou desmarcar) e fala quando o efeito é invisível ou acontece em outra tela (minerar por cima do vídeo, envio, cópia, download). |
-| C5 | **Confirmação: anatomia** | **Título**: a pergunta, com contagem e objeto (“Apagar 12 frases?”). **Corpo**: só a consequência que não é óbvia, como sumir de outros dispositivos, não dar para desfazer ou o que a outra opção faz. **Botões**: o destrutivo repete o verbo (“Apagar 12 frases”); o outro é “Cancelar”. |
+| C5 | **Confirmação: anatomia** | **Título**: a pergunta, com contagem e objeto (“Apagar 12 frases?”). **Corpo**: só a consequência que não é óbvia, como sumir de outros computadores, não dar para desfazer ou o que a outra opção faz. **Botões**: o destrutivo repete o verbo (“Apagar 12 frases”); o outro é “Cancelar”. |
 | C6 | **Confirmação: atrito** | Um só modal (o da C5) para apagar 1 frase, apagar a seleção e apagar tudo. O atrito extra de “Apagar tudo” vem do lugar (Configurações › Zona de perigo) e do texto (contagem total e aviso da nuvem). Não é preciso digitar nada para confirmar. |
 | C7 | **Entrada em massa** | O botão é **“Minerar frases”**, com os modos Colar · Arquivo .txt · Foto. A foto leva à página “Minerar de uma foto”. |
 | C8 | **Status persistente** | Rótulo curto com o estado **atual verdadeiro**, nunca o estado otimista inicial. Erro usa palavra e ícone diferentes de andamento. Quando o estado impede algo, a mensagem diz o quê. Todo número vem com o que ele conta. Exemplo: “Sem sincronizar · as frases estão só neste computador”. |
-| C9 | **Silêncios** | Toda ação que o usuário inicia tem retorno visível, a menos que a mudança já apareça na tela. Estes silêncios passam a ter mensagem: legenda não encontrada; mineração rápida do popup (a falha ganha mensagem; o sucesso é a frase aparecendo no topo da lista); falha ao salvar ou copiar ao minerar; erro de rede ao criar ou retomar o Envio; importação que salvou localmente mas não subiu para a nuvem; e a confirmação ao **Recomeçar** o Minerar de uma foto com frases ainda não mineradas (**novo item da lista fechada**). O menu de contexto continua sem retorno, porque isso seria função nova (Auditoria, T6). |
-| F1 | **Conexão desligada** | Por enquanto, cópia genérica: “Ligue-a neste computador”. A instrução concreta de como ligar fica para o [Protótipo: onboarding & primeira execução](https://github.com/vinicius928e8r84/PerpetualMiner/issues/10). |
+| C9 | **Silêncios** | Toda ação que o usuário inicia tem retorno visível, a menos que a mudança já apareça na tela. Estes silêncios passam a ter mensagem: legenda não encontrada; mineração rápida do popup (a falha ganha mensagem; o sucesso é a frase aparecendo no topo da lista); falha ao salvar ou copiar ao minerar; erro de rede ao criar ou retomar o Envio; importação que salvou localmente mas não subiu para a nuvem; e a confirmação ao **Recomeçar** o Minerar de uma foto com frases ainda não mineradas (**novo item da lista fechada**). O menu de contexto continua sem retorno, porque isso seria função nova (Auditoria, T6). Um **“Tentar de novo” que repete a mesma ação com o mesmo dado é revestimento**, não função nova: “Tentar de novo nas que falharam” (FOT-15) é o lote do “Tentar de novo” da foto. |
+| F1 | **Conexão desligada** | Nos erros, cópia genérica: “Ligue-a neste computador” (ENV-01). A instrução concreta de como ligar fica no passo 4 da Boas-vindas e na área Conexão com o Anki enquanto ela nunca respondeu (ONB-08, ONB-16), com o retry “Tentar de novo”. |
 
 ---
 
 ## 3. Catálogo de estados-chave
 
-São 126 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
+São 159 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 
@@ -76,15 +77,17 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
 | POP-01 | Lista das últimas carregando **(some)** | loading | Carregando... | _(sem texto)_ | Espera curta: sem texto, só esqueleto (C3). |
-| POP-02 | Nenhuma frase (1º uso) | vazio | Nenhuma frase salva ainda. | Nenhuma frase ainda. Aperte Alt+S num vídeo com legenda para minerar a primeira. | Mostra o atalho que estiver configurado de fato. |
+| POP-02 | Nenhuma frase (1º uso) | vazio | Nenhuma frase salva ainda. | Nenhuma frase ainda. Aperte Alt+S num vídeo com legenda para minerar a primeira. | Mostra o atalho que estiver configurado de fato. Sem atalho gravado: GLB-02. |
 | POP-03 | Campo da mineração rápida | status | Cole ou escreva uma frase… | Cole ou escreva uma frase | Placeholder não é andamento: sem “…” (V7). |
 | POP-04 | Botão da mineração rápida | status | Adicionar | Minerar |  |
-| POP-05 | Mineração rápida deu certo **(novo)** | sucesso | (nada) | _(sem texto)_ | O campo limpa e a frase aparece no topo das últimas. É visível, então fica sem toast (C4). Se preferir texto, escreva aqui. |
+| POP-05 | Mineração rápida deu certo **(novo)** | sucesso | (nada) | _(sem texto)_ | O campo limpa e a frase aparece no topo das últimas. É visível, então fica sem toast (C4). |
 | POP-06 | Mineração rápida falhou **(novo)** | erro | (falha calada) | Não deu para minerar a frase. Tente de novo. | Inline sob o campo, com “Detalhes” (C9). |
 | POP-10 | Título da seção | status | Auto Miner | Mineração automática |  |
 | POP-07 | Contador da mineração automática | status | 0/20 | 12 de 20 hoje | Número com o que ele conta (C8). |
 | POP-08 | Mineração automática no limite | status | 20/20 (amarelo) | Limite de hoje atingido · 20 de 20 |  |
 | POP-09 | Botão que abre o Painel | status | Abrir Painel de Estudos | Abrir painel | V10. |
+| POP-11 | Rodapé do atalho | status | Configurar Atalho de Captura · Atalho atual: … (o Alt+S não aparece) | Alt+S minera a legenda do vídeo · Mudar atalho | Mostra o atalho “Minerar legenda” gravado, não um texto fixo. “Mudar atalho” abre o painel em Configurações › Atalhos. Sem atalho gravado: GLB-02. |
+| POP-12 | Subtítulo do cabeçalho **(some)** | status | Minerador de legendas | _(sem texto)_ | O popup não tem subtítulo: só a marca Veio + “PerpetualMiner”. A frase descritiva fica para a Boas-vindas (ONB-01) e a loja. |
 
 ### Minerar na página (componente de feedback)
 
@@ -92,13 +95,15 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 |---|---|---|---|---|---|
 | MIN-01 | Alt+S / botão: minerou e copiou | sucesso | Minerado & Copiado · Inglês | Frase minerada e copiada · Inglês | 2ª linha: “{Título} · {Detalhe}”, 3ª: a frase. Só aparece depois de salvar e copiar de verdade (V4). |
 | MIN-02 | Minerou, mas não copiou **(novo)** | sucesso | (dizia sucesso igual) | Frase minerada · não deu para copiar |  |
-| MIN-03 | Falhou ao salvar **(novo)** | erro | (dizia sucesso igual) | Não deu para minerar a frase. Tente de novo. | Fica até fechar, com “Tentar de novo” (C1). |
+| MIN-03 | Falhou ao salvar **(novo)** | erro | (dizia sucesso igual) | Não deu para minerar a frase. Tente de novo. | Fica até fechar (×), Esc ou até a próxima captura substituí-la, com “Tentar de novo” (C1). O sucesso continua sumindo em ~3,5 s. |
 | MIN-04 | Nenhuma legenda na tela **(novo)** | erro | (borda vermelha por 800 ms) | Nenhuma legenda na tela agora. Ative as legendas do vídeo e tente de novo. | C9. |
 | MIN-05 | Atalho de seleção: minerou | sucesso | ⚡ Frase Capturada! | Frase minerada · Inglês | 2ª linha: começo da frase. |
 | MIN-06 | Auto Miner minerou uma linha | sucesso | Auto Miner - Inglês - 12/20 | Mineração automática · Inglês · 12 de 20 hoje |  |
-| MIN-07 | Botão flutuante (title/aria) **(novo)** | status | (nenhum) | Minerar legenda (Alt+S) | Mostra o atalho configurado. |
+| MIN-07 | Botão flutuante (title/aria) **(novo)** | status | (nenhum) | Minerar legenda (Alt+S) | Mostra o atalho configurado. Sem atalho gravado, fica só “Minerar legenda”. |
 | MIN-08 | Menu de contexto do Chrome | status | Enviar para o PerpetualMiner | Minerar com PerpetualMiner | V10: único lugar onde o nome aparece. O retorno visual continua fora (Auditoria T6). |
-| MIN-09 | Badge da toolbar (tooltip) **(novo)** | status | (não existe) | Mineração automática: 12 de 20 hoje | Contador na toolbar: lista fechada. No limite: “Mineração automática: limite de hoje atingido”. |
+| MIN-09 | Badge da toolbar (tooltip) **(novo)** | status | (não existe) | Mineração automática: 12 hoje | Contador na toolbar: lista fechada. Soma só os idiomas ligados. Quando todos os idiomas ligados bateram o limite: “Mineração automática: limite de hoje atingido”. O contador no canto do botão flutuante (n/limite) é o do idioma daquela captura, não o do badge. |
+| MIN-10 | Página sem vídeo e sem seleção **(novo)** | erro | (nada aparece) | Esta página não tem vídeo com legenda. | Alt+S ou o atalho de seleção numa página sem vídeo e sem texto selecionado. A pílula surge no canto inferior direito. C9. |
+| MIN-11 | Contador do botão flutuante (tooltip) **(novo)** | status | Auto Miner: {n} de {limite} hoje | Mineração automática · Inglês: 9 de 15 hoje | O contador `n/limite` do botão é o do idioma daquela captura, não a soma do badge (MIN-09). No limite: “Mineração automática · Inglês: limite de hoje atingido”. |
 
 ### Minerar de uma foto
 
@@ -122,24 +127,27 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 | FOT-16 | Falhou tudo | erro | Não foi possível salvar os trechos. | Não deu para minerar as frases. Tente de novo. |  |
 | FOT-17 | Botão Trocar Foto + Limpar Lista (juntos) | status | Limpar Lista / Trocar Foto | Recomeçar |  |
 | FOT-18 | Recomeçar com resultados não minerados **(novo)** | confirmação | (sem confirmação) | Descartar 12 frases não mineradas? — Elas ainda não foram mineradas e vão se perder. [Cancelar] [Descartar 12 frases] | C9: entra na lista fechada. Sem resultados pendentes, recomeça direto. |
+| FOT-19 | Status de cada foto na fila **(novo)** | status | (não existe) | Pronta · Na fila · Lendo… · 12 frases · Sem marcações · Falhou · Cancelada | Selo por foto. “Falhou” vem com o motivo embaixo e “Tentar de novo”: a 2ª frase do FOT-11 (“O Gemini está recebendo pedidos demais; espere um minuto e tente de novo.”, “A chave do Gemini não funciona. Confira em Configurações.”) ou “Sem conexão com a internet. Confira a rede e tente de novo.”. “Sem marcações” é a leitura que funcionou sem achar nada (FOT-10). |
+| FOT-20 | Progresso da leitura **(novo)** | status | Processando imagem 2 de 5… | 2 de 4 lidas | No topo da fila de fotos, ao lado de “Cancelar”. |
+| FOT-21 | Leitura cancelada **(novo)** | status | (não existe) | Leitura cancelada. 2 fotos ficaram sem ler; as frases das fotos já lidas continuam aqui. | Aviso informativo depois do Cancelar (lista fechada). Singular: “1 foto ficou sem ler”. |
 
 ### Painel · Frases
 
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
 | PAI-01 | Lista carregando **(some)** | loading | Carregando... | _(sem texto)_ | Esqueleto sem texto (C3). |
-| PAI-02 | Nenhuma frase (1º uso) | vazio | Nenhuma frase encontrada. | Nenhuma frase ainda. Minere de um vídeo com Alt+S ou use Minerar frases para colar, importar ou ler uma foto. | Botão “Minerar frases”. |
+| PAI-02 | Nenhuma frase (1º uso) | vazio | Nenhuma frase encontrada. | Nenhuma frase ainda. Minere de um vídeo com Alt+S ou use Minerar frases para colar, importar ou ler uma foto. | Botão “Minerar frases”. Mostra o atalho “Minerar legenda” gravado; sem atalho gravado: GLB-02. |
 | PAI-03 | Filtros esconderam tudo | vazio | Nenhuma frase encontrada. | Nenhuma frase com estes filtros. | Botão “Limpar filtros”. |
 | PAI-04 | Busca sem resultado **(novo)** | vazio | (busca não existe) | Nenhuma frase com “{termo}”. | Botão “Limpar busca”. Busca: lista fechada. |
 | PAI-05 | Total | status | Total 1284 frases | 1.284 frases |  |
 | PAI-06 | Contador de seleção | status | 3 selecionada(s) | 3 selecionadas |  |
-| PAI-07 | Paginação | status | 1 a 50 de 1284 frases | 1–50 de 1.284 |  |
+| PAI-07 | Paginação | status | 1 a 50 de 1284 frases | 1–10 de 1.284 | 10 frases por página. |
 | PAI-08 | Selo da frase | status | ✓ No Anki (também p/ .txt) | Enviada ao Anki · Exportada | Dois selos distintos (glossário). A lógica certa é bug (#9). |
 | PAI-09 | Filtro de enviadas | status | Esconder Exportadas | Ocultar enviadas e exportadas | Diz o que o filtro faz hoje. |
 | PAI-10 | Filtros | status | Todos os Streamings / Todas as Fontes · Todos os Idiomas · 🇬🇧 Inglês | Todas as fontes · Todos os idiomas · Inglês | Sem bandeira (V5). |
 | PAI-11 | Cabeçalho de data | status | (3 dias atrás) · (hoje) · (ontem) | há 3 dias · hoje · ontem |  |
-| PAI-12 | Apagar 1 frase **(novo)** | confirmação | (sem confirmação) | Apagar esta frase? — Ela some também dos outros dispositivos conectados à sua conta. Não dá para desfazer. [Cancelar] [Apagar frase] | Sem conta: sem a frase da nuvem. Depois de apagar: sem toast (a linha some). |
-| PAI-13 | Apagar seleção | confirmação | Deseja deletar as 1 frase selecionadas? Esta ação não pode ser desfeita. | Apagar 12 frases? — Elas somem também dos outros dispositivos conectados à sua conta. Não dá para desfazer. [Cancelar] [Apagar 12 frases] |  |
+| PAI-12 | Apagar 1 frase **(novo)** | confirmação | (sem confirmação) | Apagar esta frase? — Ela some também dos outros computadores conectados à sua conta. Não dá para desfazer. [Cancelar] [Apagar frase] | Sem conta: sem a frase da nuvem. Depois de apagar: sem toast (a linha some). |
+| PAI-13 | Apagar seleção | confirmação | Deseja deletar as 1 frase selecionadas? Esta ação não pode ser desfeita. | Apagar 12 frases? — Elas somem também dos outros computadores conectados à sua conta. Não dá para desfazer. [Cancelar] [Apagar 12 frases] |  |
 | PAI-14 | Seleção apagada | sucesso | 12 frase(s) deletada(s)! | 12 frases apagadas | A seleção pode cobrir várias páginas, então fica o toast. |
 | PAI-15 | Apagou local, nuvem falhou | erro | Erro ao deletar da nuvem: HTTP 403 | As frases foram apagadas deste computador, mas não da nuvem. Elas podem voltar na próxima sincronização. | “Tentar de novo” + Detalhes. |
 | PAI-16 | Editou texto na lista **(some)** | sucesso | Frase atualizada! | _(sem texto)_ | A mudança está na tela (C4). |
@@ -164,6 +172,7 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 | ADD-08 | Arquivo vazio | erro | Arquivo vazio. | O arquivo está vazio. |  |
 | ADD-09 | Nada novo no arquivo | vazio | Nenhuma frase nova. 3 duplicata(s), 1 inválida(s). | Nenhuma frase nova: 3 já estavam no histórico e 1 linha não pôde ser lida. |  |
 | ADD-10 | Arquivo importado | sucesso | 12 frase(s) importada(s)! (3 duplicata(s) ignorada(s)) | 12 frases mineradas · 3 já existiam |  |
+| ADD-11 | Menu Minerar frases: descrição de cada modo **(novo)** | status | (não existe) | Colar — Uma frase por linha · Arquivo .txt — Importar um .txt com uma frase por linha · Foto — Abre Minerar de uma foto numa aba nova | Uma linha de explicação sob cada modo do menu (C7). |
 
 ### Envio ao Anki
 
@@ -183,6 +192,7 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 | ENV-12 | Manteve **(some)** | sucesso | 12 frase(s) enviada(s) ao Anki. | _(sem texto)_ | O resumo já disse (C4). |
 | ENV-13 | Retomar envio (botões) | status | Continuar job · Retentar falhos | Continuar envio · Tentar de novo as que falharam |  |
 | ENV-14 | Retomada OK / falhou | sucesso | Job reenfileirado para continuar. · Falha ao continuar job. · Falha ao retentar jobs. | Envio retomado · Não deu para retomar o envio. Confira se a conexão com o Anki está ligada. | Detalhes no erro. |
+| ENV-15 | Pé do modal de progresso **(novo)** | status | (não existe) | Pode fechar: o resumo abre quando o envio terminar. | O resumo (ENV-10) abre sozinho em qualquer área. |
 
 ### Painel · Conexão com o Anki
 
@@ -190,7 +200,7 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 |---|---|---|---|---|---|
 | BRG-01 | Estado do Bridge | status | Online / Offline | Conexão com o Anki: ligada / desligada · Enviar ao Anki fica indisponível | C8. |
 | BRG-02 | Conectando | loading | Aguardando bridge... | Conectando ao Anki… |  |
-| BRG-03 | Custo total | status | $0.0000 (também quando falhou) | US$ 0,42 · se falhou: Custo indisponível | 4 casas só no Avançado (V7). |
+| BRG-03 | Custo total | status | $0.0000 (também quando falhou) | US$ 0,42 · se falhou: Custo indisponível | 2 casas; com “Mostrar custos com 4 casas” ligado no Avançado, todos os valores com 4 casas (V7). |
 | BRG-04 | Custos falharam | erro | Analytics indisponivel. Verifique se o bridge esta online. | Não deu para carregar os custos. Confira se a conexão com o Anki está ligada. | “Tentar de novo”. |
 | BRG-05 | Resumo do período | status | 12 job(s) no filtro · Custo no filtro | 12 envios neste período |  |
 | BRG-06 | Descrições das seções | status | Decks, imagem e TLDs usados ao enviar… · Gasto, origem das imagens e ultimos jobs do bridge. | Baralho, imagens e termos usados em cada envio. · Quanto cada envio custou e de onde vieram as imagens. · Progresso de cada idioma no Anki. | Com acento (hoje falta em toda a área). |
@@ -212,6 +222,9 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 | BRG-22 | Lista de envios vazia | vazio | Sem jobs nesse filtro. | Nenhum envio neste período. |  |
 | BRG-23 | Diagnóstico (Avançado) | status | Baixar debug bundle · Debug bundle baixado. · Falha ao baixar debug bundle. | Baixar diagnóstico · (download visível, sem toast) · Não deu para baixar o diagnóstico. |  |
 | BRG-24 | Botão atualizar | status | Atualizar custos (também abre o Anki) | Atualizar (abre o Anki se precisar) | Tooltip honesto. |
+| BRG-25 | Custos carregando | loading | Atualizando... | Somando os custos… | Linha com o gerúndio + esqueleto (C3). |
+| BRG-26 | Custo abaixo de 1 centavo | status | $0.0042 | < US$ 0,01 | Valor positivo abaixo de 1 centavo; nunca “US$ 0,00”. Com “Mostrar custos com 4 casas” ligado, mostra as 4 casas (V7). |
+| BRG-27 | Azulejo do baralho que não existe | erro | Baralho nao encontrado \| 0.0% maturidade | baralho não encontrado | Legenda do azulejo, em minúscula como “palavras”; o valor vira “—”. O detalhe mostra BRG-14 com “Abrir Ajustes de envio”. |
 
 ### Configurações · Conta & sync · Atalhos · Chave · Zona de perigo
 
@@ -235,9 +248,37 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 | CFG-16 | Chave: vazia / salva | sucesso | Digite uma API Key antes de salvar. · API Key salva! | Cole a chave antes de salvar · Chave do Gemini salva |  |
 | CFG-17 | Apagar todas as frases | confirmação | Apagar TODAS as frases? Esta ação não pode ser desfeita. | Apagar todas as 1.284 frases? — Elas somem deste computador e de todos os outros conectados à sua conta. Não dá para desfazer. [Cancelar] [Apagar 1.284 frases] | C6: sem digitar. |
 | CFG-18 | Todas apagadas **(novo)** | sucesso | (nada) | Todas as frases foram apagadas | A lista fica em outra área, então fica o toast. |
+| CFG-19 | Atalho repetido **(novo)** | erro | (não existe) | Esse atalho já é do Minerar legenda. Grave outro. | Inline na linha, em `danger`; a gravação continua e nada muda até sair uma combinação livre. Faz parte do item “atalho gravável” da lista fechada. |
+| CFG-20 | Apagar tudo sem frases **(novo)** | status | (não existe) | Nenhuma frase para apagar | O botão da Zona de perigo fica indisponível com este rótulo. |
+| CFG-21 | Restaurar atalhos padrão **(novo)** | status | (não existe) | Restaurar atalhos padrão | Botão fantasma no card Atalhos (lista fechada, item 7). Devolve os atalhos de fábrica sem confirmação: a mudança aparece na linha na hora. |
+| CFG-22 | Atalhos de fábrica (dica) **(novo)** | status | (não existe) | Padrão: Minerar legenda em Alt+S, Minerar seleção sem atalho. | Ao lado de “Restaurar atalhos padrão”. |
+
+### Boas-vindas (primeira execução)
+
+A página não existe hoje: todas as linhas são novas. V10 permite o nome do produto aqui.
+
+| ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
+|---|---|---|---|---|---|
+| ONB-01 | Abertura (título + corpo) **(novo)** | status | (não existe) | Boas-vindas ao PerpetualMiner — Minere frases de vídeos, páginas e fotos de livros, e envie ao Anki como cartões. Seis passos rápidos deixam tudo pronto; os opcionais dá para pular. | Abre sozinha na instalação (lista fechada). |
+| ONB-02 | Botões da abertura **(novo)** | status | (não existe) | Pular a configuração · Começar |  |
+| ONB-03 | Sobretítulo do passo **(novo)** | status | (não existe) | Passo 4 de 6 · opcional |  |
+| ONB-04 | Botões do passo **(novo)** | status | (não existe) | Voltar · Agora não · Continuar | “Agora não” só nos passos opcionais. |
+| ONB-05 | Passo 1 **(novo)** | status | (não existe) | Num vídeo com legenda, aperte Alt+S. A frase vai para o histórico e já fica copiada. / Numa página ou PDF, selecione o texto e use o botão direito › Minerar com PerpetualMiner. / Ou cole uma frase aqui, como no popup: | Mostra o atalho “Minerar legenda” gravado; sem atalho gravado: GLB-02. |
+| ONB-06 | Passo 2 **(novo)** | status | (não existe) | Escolha uma tecla ou um botão extra do mouse para minerar o texto selecionado, sem abrir o menu. | Mostra o atalho de legenda que estiver gravado (não Alt+S fixo), com os mesmos controles de Configurações › Atalhos. |
+| ONB-07 | Passo 3 **(novo)** | status | (não existe) | Entre com Google para ter suas frases em qualquer computador. Sem conta, elas ficam só neste. |  |
+| ONB-08 | Passo 4 **(novo)** | status | (não existe) | A Conexão com o Anki é um programa que roda neste computador, ao lado do Anki. É ela que cria os cartões e diz quais palavras você já conhece. Ela liga sozinha com o Windows depois de instalada uma vez. — 1. Abra o Anki neste computador, com o complemento AnkiConnect. 2. Instale a Conexão com o Anki uma vez (veja Detalhes). Depois ela liga sozinha com o Windows. 3. Volte aqui e use Tentar de novo. | Fecha a F1. Botão “Tentar de novo” (o mesmo retry do shell) + Detalhes recolhido e copiável com os comandos de instalação, a porta e o log. |
+| ONB-09 | Passo 5 **(novo)** | status | (não existe) | Com ela ligada, as legendas com uma palavra que você ainda não conhece são mineradas sozinhas, até um limite por dia. Liga por idioma. / Os mesmos botões ficam no popup, pelo ícone da extensão. | A mineração automática estar no popup e aqui é deliberado. |
+| ONB-10 | Dependência da mineração automática (passo e popup) **(novo)** | status | (não existe) | Nada é minerado com a Conexão com o Anki desligada: é ela que diz quais palavras você já conhece. | C8. |
+| ONB-11 | Passo 6 **(novo)** | status | (não existe) | Só é usada em Minerar de uma foto, para ler os trechos marcados numa página de livro. Dá para adicionar depois: a página pede quando precisar. · Detalhes: No Google AI Studio, em “Get API key”. A chave fica só neste computador. |  |
+| ONB-12 | Tudo pronto **(novo)** | status | (não existe) | Tudo pronto — Dá para mudar qualquer coisa depois, em Configurações. A mineração automática fica no popup. [Abrir painel] | “Abrir painel” abre o Painel em Frases. |
+| ONB-13 | Resumo (por passo) **(novo)** | status | (não existe) | feito (o valor: “Alt+Q”, “ligada”…) · agora não · falta |  |
+| ONB-14 | Lembrete no popup **(novo)** | status | (não existe) | Configuração pela metade · 2 de 6 — Volte de onde parou [Continuar configuração] | O lembrete ocultável é item da lista fechada. |
+| ONB-15 | Lembrete em Frases **(novo)** | status | (não existe) | A configuração ficou pela metade: 2 de 6 passos. [Ocultar] [Continuar configuração] | “Ocultar” esconde o lembrete de vez, nos dois lugares. |
+| ONB-16 | Área Conexão com o Anki, nunca conectada **(novo)** | vazio | (não existe) | Ainda não houve conexão neste computador — A Conexão com o Anki é um programa que roda neste computador, ao lado do Anki. É ela que cria os cartões e diz quais palavras você já conhece. Ela liga sozinha com o Windows depois de instalada uma vez. Sem ela, dá para minerar à vontade; o que fica indisponível é Enviar ao Anki e a mineração automática. | No lugar das abas na primeira vez, com os 3 passos do ONB-08. A faixa ENV-01/F1 continua em cima. |
 
 ### Global
 
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
 | GLB-01 | Erro sem tradução conhecida | erro | <err.message cru> | Algo deu errado. Tente de novo. | Último recurso, sempre com Detalhes. Todo erro conhecido tem cópia própria acima. |
+| GLB-02 | Atalho “Minerar legenda” vazio **(novo)** | status | (Alt+S fixo, não dá para esvaziar) | Sem atalho · [Definir atalho] | Onde a cópia supõe Alt+S (POP-02, POP-11, PAI-02, ONB-05), sem atalho gravado a tecla dá lugar a “Sem atalho” e à ação “Definir atalho”, que abre `#configuracoes/atalhos` (na Boas-vindas, leva ao passo 2 da própria página, onde está o gravador). |

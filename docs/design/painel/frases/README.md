@@ -3,8 +3,8 @@
 Resolução do ticket [Protótipo: Painel · Frases mineradas](https://github.com/vinicius928e8r84/PerpetualMiner/issues/12) do mapa [Redesign do front-end do PerpetualMiner](https://github.com/vinicius928e8r84/PerpetualMiner/issues/1). Ele herda:
 - o shell [Ilhas](../shell/README.md): sidebar, cabeçalho de área e endereços;
 - a identidade [Veio](../../identidade-veio/README.md), com a “linha de frase” e a barra contextual já desenhadas lá;
-- os reagrupamentos da [auditoria](../../auditoria/README.md) (“Painel · shell” e “Painel · Frases & modais”);
-- a cópia do [guia de voz & catálogo](../../voz/README.md) (PAI-01…22, ADD-01…10, ENV-01…14).
+- os reagrupamentos da [auditoria](../../auditoria/README.md) (“Painel · shell” e “Painel · Frases & modais”). Onde a auditoria foi refinada depois, valem os nomes e lugares desta spec: **Minerar frases** (não “Adicionar frases”), **Foto** (não “Foto de livro”), **Minerar seleção** (não “Capturar seleção”) e **Exportar na barra contextual de seleção** (não no menu “Arquivo .txt”);
+- a cópia do [guia de voz & catálogo](../../voz/README.md) (PAI-01…22, ADD-01…10, ENV-01…14 e ONB-15).
 
 **Protótipo:** [`prototipo-frases.html`](prototipo-frases.html). Abra direto no navegador.
 - `?variant=A` é o layout travado. `B` (Planilha) e `C` (Leitor) foram as alternativas e ficam só como registro.
@@ -36,34 +36,38 @@ Decidido numa rodada no Lavish em 2026-09-15. O dono aceitou as 5 recomendaçõe
    - Colar: “Uma frase por linha”;
    - Arquivo .txt: “Importar um .txt com uma frase por linha”;
    - Foto: “Abre Minerar de uma foto numa aba nova”.
-2. **Avisos persistentes** (C1), quando existem. Ficam numa faixa `danger` suave com **Tentar de novo**, **Detalhes** recolhido e ×:
+2. **Lembrete da configuração** (ONB-15), enquanto a [Boas-vindas](../boas-vindas/README.md) não chegou a Tudo pronto e o lembrete não foi ocultado (ver §Retomada de lá). É uma faixa **ouro** no topo: “A configuração ficou pela metade: 2 de 6 passos.”, com os botões **Ocultar** e **Continuar configuração**.
+   - “Continuar configuração” abre `#boas-vindas` no primeiro passo que falta.
+   - “Ocultar” esconde o lembrete de vez, aqui e no popup.
+   - É o item 9 da lista fechada (lembrete “Configuração pela metade” ocultável).
+3. **Avisos persistentes** (C1), quando existem. Ficam numa faixa `danger` suave com **Tentar de novo**, **Detalhes** recolhido e ×:
    - ADD-06: “12 frases mineradas neste computador, mas não foram para a nuvem.”
    - PAI-15: “As frases foram apagadas deste computador, mas não da nuvem. Elas podem voltar na próxima sincronização.”
-3. **Filtros**, numa linha que quebra:
+4. **Filtros**, numa linha que quebra:
    - os selects em pílula **Todas as fontes · Todos os idiomas · Mais novas primeiro**;
    - a **busca** “Buscar nas frases”, com × para limpar quando tem texto (lista fechada), que procura no texto da frase e no Título;
    - o toggle **“Ocultar enviadas e exportadas”**;
    - sem bandeiras e sem o mini-painel da Mineração automática (T6 cortado).
-4. **Linha de seleção**: sem seleção, o checkbox “Selecionar página”. Com seleção, a **barra contextual** em pílula (raio 22, borda ouro a 45%), grudada em `top: 12px`:
+5. **Linha de seleção**: sem seleção, o checkbox “Selecionar página”. Com seleção, a **barra contextual** em pílula (raio 22, borda ouro a 45%), grudada em `top: 12px`:
    - **× Desmarcar todas** e a contagem “12 selecionadas” (PAI-06);
    - o link **“Selecionar todas as 30 frases”**, quando cabe;
    - Editar contexto · Exportar .txt · Apagar (texto `danger`) · **Enviar ao Anki** (primário).
-5. **Lista**: cabeçalho de data em maiúsculas com filete, depois os cartões. Um cartão tem, da esquerda para a direita:
+6. **Lista**: cabeçalho de data em maiúsculas com filete, depois os cartões. Um cartão tem, da esquerda para a direita:
    - **checkbox**;
-   - o **texto** 15/400, com as palavras clicáveis: clicar grifa ou desgrifa a keyword. As grifadas usam o marca-texto `kw-bg`;
-   - o **chip** `keyword:` ou `auto:` (rótulo em mono), com × para remover e **+** (“Adicionar outro grupo”);
+   - o **texto** 15/400, com as palavras clicáveis: clicar grifa ou desgrifa a palavra. As grifadas usam o marca-texto `kw-bg`;
+   - o **chip** `palavra:` (escolhida por você) ou `auto:` (detectada), com o rótulo em mono, × para remover e **+** (“Adicionar outro grupo”);
    - a **linha de Contexto**: badge neutro de Fonte com ícone (Netflix, YouTube, Web, PDF, Livro, Manual), Título · Detalhe e o selo **Enviada ao Anki** (`success`) ou **Exportada** (`info`);
    - as **4 ações** à direita, no hover ou no foco.
 
    O cartão é `bg` dentro da ilha `surface`, com raio 14. Selecionado, ganha borda ouro a 45% e fundo com 5% de acento, sem barra lateral. **Editar texto** troca o texto por uma textarea no lugar: Enter salva, Esc cancela, e os botões são “Cancelar” e “Salvar texto”. Não há toast, porque a mudança está na tela (PAI-16).
-6. **Paginação**: 10 por página, com “1–10 de 30” em mono à esquerda (PAI-07) e **« ‹ 1 de 3 › »** à direita, só-ícone e com tooltip.
+7. **Paginação**: 10 por página, com “1–10 de 1.284” em mono à esquerda (PAI-07) e **« ‹ 1 de 129 › »** à direita, só-ícone e com tooltip.
 
 ### Estados da lista
 
 | estado | o que aparece |
 |---|---|
 | Carregando (PAI-01) | 5 cartões-esqueleto, sem texto. |
-| Primeiro uso (PAI-02) | “Nenhuma frase ainda. Minere de um vídeo com `Alt+S` ou use Minerar frases para colar, importar ou ler uma foto.” + **[Minerar frases]**. |
+| Primeiro uso (PAI-02) | “Nenhuma frase ainda. Minere de um vídeo com `Alt+S` ou use Minerar frases para colar, importar ou ler uma foto.” + **[Minerar frases]**. O `Alt+S` é o atalho de legenda que estiver gravado. Sem atalho gravado, no lugar da tecla aparece “Sem atalho” + a ação **Definir atalho**, que leva a `#configuracoes/atalhos`. |
 | Filtros esconderam tudo (PAI-03) | “Nenhuma frase com estes filtros.” + **[Limpar filtros]**. |
 | Busca sem resultado (PAI-04) | “Nenhuma frase com “{termo}”.” + **[Limpar busca]** e, se houver filtro ligado, **[Limpar filtros]**. |
 | Conexão desligada | **Enviar ao Anki** fica com `aria-disabled` (não `disabled`, para o tooltip funcionar). O tooltip diz: “Indisponível: a conexão com o Anki está desligada. Ligue-a neste computador para enviar.” |
@@ -91,7 +95,7 @@ Todos seguem o modal Veio: `surface`, raio 20, × no canto, Esc e clique fora fe
   - **Foto ↗:** fecha o modal e abre Minerar de uma foto numa aba nova.
 - **Apagar** (PAI-12, PAI-13, C5–C6): um só modal para 1 frase e para a seleção.
   - O título é “Apagar esta frase?” ou “Apagar 12 frases?”.
-  - O corpo diz “Ela some / Elas somem também dos outros dispositivos conectados à sua conta. Não dá para desfazer.” Sem conta, fica só “Não dá para desfazer.”
+  - O corpo diz “Ela some / Elas somem também dos outros computadores conectados à sua conta. Não dá para desfazer.” Sem conta, fica só “Não dá para desfazer.”
   - Os botões são **Cancelar** e **Apagar frase** / **Apagar 12 frases** (perigo, preenchido).
   - Para 1 frase não há toast (a linha some). Para a seleção, o toast é “12 frases apagadas” (PAI-14).
 - **Envio ao Anki** (ENV-05…14): abre na hora (ENV-05 fica sem toast).
@@ -115,7 +119,7 @@ Todos seguem o modal Veio: `surface`, raio 20, × no canto, Esc e clique fora fe
 
 ## Notas para a construção
 
-- **Nada de função nova além da lista fechada.** A busca e a confirmação ao apagar 1 frase são os únicos itens novos desta área. Selecionar página ou todas, exportar, editar contexto e o fluxo do envio são as funções de hoje com outro desenho.
+- **Nada de função nova além da lista fechada.** Os itens novos desta área são a busca na lista de frases (item 1, PAI-04) e a confirmação ao apagar 1 frase (item 2, PAI-12). A faixa ONB-15 é o item 9 (lembrete “Configuração pela metade” ocultável), que vem da Boas-vindas. Selecionar página ou todas, exportar, editar contexto e o fluxo do envio são as funções de hoje com outro desenho.
 - **O “Selecionar todas as N frases” segue os filtros atuais**, como o “Todas” de hoje (frases visíveis). A contagem da barra conta a seleção inteira, inclusive o que está em outras páginas.
 - **Os bugs continuam na issue própria:** o selo “No Anki” no .txt, a barra de progresso falsa, o overlay de importação que nunca pinta, o duplo clique que duplica o envio e o re-salvar dos presets estão em [Bugs encontrados na auditoria do front](https://github.com/vinicius928e8r84/PerpetualMiner/issues/9). O protótipo mostra o estado certo, não conserta a lógica.
 - **Acessibilidade:**

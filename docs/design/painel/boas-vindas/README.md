@@ -19,7 +19,7 @@ Avaliado no Lavish em 2026-09-15, numa rodada de 5 perguntas.
 |---|---|
 | Estrutura | **C · Boas-vindas**: uma página própria, um passo por vez, com o controle real dentro de cada passo. A (vazios que ensinam, sem guia) e B (checklist no topo de Frases) ficaram de fora. |
 | Ordem dos passos | **Valor primeiro** (ver [Os passos](#os-passos)). |
-| Na instalação | **Abre a página Boas-vindas sozinha.** Isso é comportamento novo e **entra na lista fechada**. |
+| Na instalação | **Abre a página Boas-vindas sozinha.** Isso é comportamento novo e **entra na lista fechada** (item 8). |
 | Como ligar a Conexão com o Anki | **Explicação + 3 passos + comandos num “Detalhes”.** Isso fecha a F1 da Voz. Vale por enquanto; ver [Instalador da Conexão](#instalador-da-conexão-com-o-anki). |
 | Mineração automática com a Conexão desligada | **Deixa ligar, com status honesto**: o azulejo do popup e o passo dizem que nada é minerado assim (C8). Não muda comportamento. |
 
@@ -36,7 +36,7 @@ Hoje isso acontece em silêncio: o toggle liga e nada aparece. Por isso a Conex�
 - `chrome.runtime.onInstalled` com `reason === 'install'` abre uma aba em **`painel.html#boas-vindas`**.
   - Só na instalação: atualização da extensão não abre nada.
   - O menu de contexto continua sendo criado como hoje.
-- `#boas-vindas` é um **endereço novo do Painel**, somando-se à tabela de endereços do shell. A página **não tem sidebar**.
+- `#boas-vindas` é um **endereço novo do Painel** e está na [tabela de endereços do shell](../shell/README.md#endereços). A página **não tem sidebar**.
 
 ## A página Boas-vindas
 
@@ -56,7 +56,7 @@ Hoje isso acontece em silêncio: o toggle liga e nada aparece. Por isso a Conex�
     - Rodapé com “Voltar” · “Agora não” (só nos opcionais) · “Continuar” (primário).
 
 **Telas:**
-1. **Abertura:** “Boas-vindas ao PerpetualMiner”, uma linha sobre o produto e a lista dos 6 passos com a etiqueta “opcional”. Botões “Pular a configuração” (fantasma) e “Começar” (primário).
+1. **Abertura:** “Boas-vindas ao PerpetualMiner”, uma linha sobre o produto (a frase descritiva mora aqui e na loja; o popup não tem subtítulo) e a lista dos 6 passos com a etiqueta “opcional”. Botões “Pular a configuração” (fantasma) e “Começar” (primário).
 2. **Os 6 passos**, abaixo.
 3. **Tudo pronto:** o resumo de cada passo (feito · agora não · falta) e o botão “Abrir painel”, que abre o Painel em `#frases`.
 
@@ -66,10 +66,10 @@ A ordem é travada. Cada passo reusa uma função que já existe; nenhum cria fu
 
 | # | passo | controle no passo (função existente) | feito quando |
 |---|---|---|---|
-| 1 | **Minerar a primeira frase** | Texto sobre o Alt+S e o menu de contexto, uma ilustração estática da legenda marcada (linha ouro + keyword grifada + chip, como no [overlay](../../overlay/README.md)) e o campo de mineração rápida do popup. | há ≥ 1 frase |
-| 2 | **Escolher o atalho de Minerar seleção** | O gravador de atalho de Configurações › Atalhos. “Minerar legenda” aparece como `Alt+S`. | `pm_atalho` gravado |
+| 1 | **Minerar a primeira frase** | Texto sobre o atalho de legenda gravado e o menu de contexto, uma ilustração estática da legenda marcada (linha ouro + palavra grifada + chip `palavra:`/`auto:`, como no [overlay](../../overlay/README.md)) e o campo de mineração rápida do popup. Sem atalho de legenda gravado, no lugar da tecla aparece “Sem atalho” + **Definir atalho**, que leva ao passo 2 desta página (o gravador; fora da Boas-vindas, a mesma ação leva a `#configuracoes/atalhos`). | há ≥ 1 frase |
+| 2 | **Escolher o atalho de Minerar seleção** | O gravador de atalho de Configurações › Atalhos, com as mesmas linhas e controles de lá. “Minerar legenda” mostra o atalho que estiver gravado (de fábrica, `Alt+S`), não um `Alt+S` fixo; sem atalho gravado, mostra “Sem atalho” (`kbd` tracejado), com o mesmo “Gravar atalho” ao lado para defini-lo. | `pm_atalho` gravado |
 | 3 | **Entrar com Google** · opcional | O “Entrar com Google” de Configurações › Conta & sync. | conta conectada |
-| 4 | **Ligar a Conexão com o Anki** | O status da conexão, os 3 passos, “Detalhes” e “Verificar de novo” (o mesmo retry do shell). | a conexão responde |
+| 4 | **Ligar a Conexão com o Anki** | O status da conexão, os 3 passos, “Detalhes” e “Tentar de novo” (o mesmo retry do shell e da área Conexão com o Anki). | a conexão responde |
 | 5 | **Ligar a mineração automática** · opcional | Os toggles EN/RU do popup, com o limite por dia. Com a conexão desligada, a nota de dependência aparece. | um idioma ligado |
 | 6 | **Adicionar a chave do Gemini** · opcional | O campo de Configurações › Chave do Gemini. | chave salva |
 
@@ -77,6 +77,7 @@ A ordem é travada. Cada passo reusa uma função que já existe; nenhum cria fu
 - **Pular:**
   - “Agora não” só existe nos opcionais.
   - Nos obrigatórios, “Continuar” segue sem marcar o passo; ele fica como “falta” no resumo.
+- **Mineração automática em dois lugares, de propósito:** os toggles EN/RU moram no popup e aparecem de novo no passo 5, que usa os mesmos controles e o mesmo estado. É deliberado: o passo apresenta a função no momento em que ela passa a funcionar (depois da Conexão), e o texto do passo (ONB-09) e o Tudo pronto (ONB-12) apontam que o lugar dela no dia a dia é o popup.
 
 ## Retomada: o lembrete
 
@@ -86,6 +87,7 @@ A ordem é travada. Cada passo reusa uma função que já existe; nenhum cria fu
   - **em Frases:** uma faixa ouro no topo, “A configuração ficou pela metade: 2 de 6 passos.”, com os botões “Ocultar” e “Continuar configuração”.
 - “Continuar configuração” abre `#boas-vindas` no primeiro passo que falta.
 - “Ocultar” esconde o lembrete **de vez**, nos dois lugares.
+- Esse lembrete ocultável é o **item 9 da lista fechada** (“Configuração pela metade”).
 - Configurações não ganha entrada para reabrir a página. Tudo o que ela configura já mora lá.
 
 ## Conexão com o Anki: como ligar (F1)
@@ -96,7 +98,7 @@ Aparece igual no passo 4 e na área Conexão com o Anki quando ela ainda nunca r
 - **3 passos:**
   1. Abra o Anki neste computador, com o complemento AnkiConnect.
   2. Instale a Conexão com o Anki uma vez (veja Detalhes). Depois ela liga sozinha com o Windows.
-  3. Volte aqui e use Verificar de novo.
+  3. Volte aqui e use Tentar de novo.
 - **Detalhes** (recolhido e copiável):
   - `pip install -r bridge/requirements.txt`
   - `python bridge/install_autostart.py`
@@ -106,7 +108,7 @@ Aparece igual no passo 4 e na área Conexão com o Anki quando ela ainda nunca r
 
 ## Cópia nova
 
-Tudo segue V1–V10 e C1–C9. V10 permite o nome do produto no onboarding. Estes itens entram no catálogo da Voz:
+Tudo segue V1–V10 e C1–C9. V10 permite o nome do produto no onboarding. Estes itens estão no catálogo da Voz, na seção ONB do [guia de voz](../../voz/README.md):
 
 | ID | estado | cópia |
 |---|---|---|
@@ -127,10 +129,13 @@ Tudo segue V1–V10 e C1–C9. V10 permite o nome do produto no onboarding. Este
 | ONB-15 | Lembrete em Frases | A configuração ficou pela metade: 2 de 6 passos. [Ocultar] [Continuar configuração] |
 | ONB-16 | Área Conexão com o Anki, nunca conectada | Ainda não houve conexão neste computador — (O que é + O que falta sem ela, da F1) |
 
+Em ONB-05, o `Alt+S` é o atalho de legenda que estiver gravado. Sem atalho gravado, no lugar da tecla aparece “Sem atalho” + a ação **Definir atalho**. Na Boas-vindas, ela leva ao passo 2 desta página, onde está o gravador; na PAI-02 e no rodapé do popup, leva a `#configuracoes/atalhos`.
+
 ## Lista fechada
 
-A decisão soma um item à lista fechada das Notes do mapa:
-- **abrir a página Boas-vindas na instalação**, com `onInstalled` e `reason === 'install'`.
+A Boas-vindas responde por dois itens da lista fechada das Notes do mapa:
+- **8. abrir a página Boas-vindas na instalação**, com `onInstalled` e `reason === 'install'` (só install; ONB-01);
+- **9. o lembrete “Configuração pela metade” ocultável** (ONB-14 no popup, ONB-15 em Frases; ver [Retomada](#retomada-o-lembrete)).
 
 A página em si é reagrupamento e revestimento: cada controle dentro dela é uma função que já existe, só mostrada em outro lugar.
 
@@ -147,9 +152,9 @@ Isso fica **fora deste mapa**, dentro do esforço futuro “bridge instalável�
 
 Quando ele existir, o passo 4 e a área trocam os 3 passos + Detalhes por esse botão.
 
-## Fica para outros tickets
+## Onde isso mora nas outras specs
 
-- [Protótipo: Painel · Frases mineradas](https://github.com/vinicius928e8r84/PerpetualMiner/issues/12): a faixa do lembrete no topo de Frases e o vazio PAI-02 depois da Boas-vindas.
-- [Protótipo: Painel · Conexão com o Anki](https://github.com/vinicius928e8r84/PerpetualMiner/issues/13): o card “Ainda não houve conexão neste computador” (ONB-16) no lugar das abas na primeira execução.
-- [Protótipo: Painel · Configurações](https://github.com/vinicius928e8r84/PerpetualMiner/issues/14): os passos 2, 3 e 6 reusam os controles de lá, então os dois precisam ficar iguais.
-- **Consolidação final da spec:** incluir `#boas-vindas` na tabela de endereços do shell e os ONB-01–16 no catálogo da Voz.
+- [Painel · Frases mineradas](../frases/README.md): a faixa do lembrete (ONB-15) no topo de Frases e o vazio PAI-02 depois da Boas-vindas.
+- [Painel · Conexão com o Anki](../anki/README.md): o card “Ainda não houve conexão neste computador” (ONB-16) no lugar das abas na primeira execução.
+- [Painel · Configurações](../configuracoes/README.md): os passos 2, 3 e 6 reusam os controles de lá, então os dois precisam ficar iguais.
+- **Consolidação da spec (feita):** `#boas-vindas` está na [tabela de endereços do shell](../shell/README.md#endereços), e os ONB-01…16 estão no catálogo da Voz, na seção ONB do [guia de voz](../../voz/README.md).
