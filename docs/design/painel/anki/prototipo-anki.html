@@ -1,0 +1,834 @@
+<!doctype html>
+<!--
+  PROTÓTIPO DESCARTÁVEL: Painel · Conexão com o Anki, identidade Veio, shell “Ilhas” (travado).
+  Ticket: "Protótipo: Painel · Conexão com o Anki" (issue #13 do mapa #1).
+  Pergunta: como fica a área por dentro? Três arrumações ESTRUTURALMENTE diferentes das
+  mesmas 4 abas (Custos · Baralhos e termos · Vocabulário · Ajustes de envio), trocadas por
+  ?variant=A|B|C (barra flutuante, ← →):
+    A · Quadro       números em azulejos, colunas lado a lado, tabela
+    B · Relatório    uma coluna de leitura: frase-resumo + uma barra-veio por assunto, envios por dia
+    C · Por idioma   o idioma é o eixo (azulejos EN | RU), lista × detalhe
+  Fixo nas três (já decidido): shell Ilhas, abas em controle segmentado, [↻ Atualizar],
+  endereços #anki/custos|baralhos|vocabulario|ajustes, Avançado recolhido no pé de cada aba,
+  Envios recentes dentro de Custos, faixa F1 + dado antigo (BRG-12) com a conexão desligada.
+  VEREDITO (2026-09-15): C · Por idioma, travada, com o card “Origem das imagens” do período
+  trazido da A para Custos (visão geral, não só de um envio). Abre em ?variant=C. A e B ficam
+  só como registro das alternativas.
+  Cópia: catálogo da Voz (BRG-01…24, ENV-08/13/14). Sem persistência: tudo em memória.
+  Teclas: ← → trocam a variante · T alterna o tema.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protótipo · Conexão com o Anki (Veio)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#121110;--surface:#1B1A17;--surface-2:#262420;--border:#302D27;--border-strong:#736B5D;
+  --text:#F2EEE6;--muted:#A89F90;--accent:#F5B83D;--accent-ink:#1A1204;--accent-text:#F5B83D;
+  --kw-bg:rgba(245,184,61,.40);--kw-fg:#F2EEE6;--success:#6FCF8E;--danger:#FF7A66;--info:#86BDF2;
+  --seg-1:#F5B83D;--seg-2:#86BDF2;--seg-3:#A89F90;--seg-4:#FF7A66;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+}
+html[data-theme=light]{
+  --bg:#F7F4EE;--surface:#FFFFFF;--surface-2:#F0EBE1;--border:#E4DCCD;--border-strong:#968C79;
+  --text:#1C1A16;--muted:#625B4F;--accent:#F0AE2E;--accent-ink:#1A1204;--accent-text:#855608;
+  --kw-bg:rgba(240,174,46,.45);--kw-fg:#1C1A16;--success:#1F7A45;--danger:#B42318;--info:#1D5FA8;
+  --seg-1:#F0AE2E;--seg-2:#1D5FA8;--seg-3:#968C79;--seg-4:#B42318;
+  --shadow:0 10px 30px rgba(60,45,20,.12);
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--text);font:400 13.5px/1.5 Manrope,system-ui,sans-serif}
+button,input,select{font:inherit;color:inherit}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:600}
+.hidden{display:none!important}
+.muted{color:var(--muted)}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ---------- shell Ilhas (travado) ---------- */
+.app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh;padding:12px;gap:12px}
+.side{display:flex;flex-direction:column;gap:6px;padding:18px 12px;position:sticky;top:12px;height:calc(100vh - 24px);min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow)}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 18px}
+.brand .tile{width:30px;height:30px;border-radius:8px;background:#1B1A17;display:grid;place-items:center;flex:none;border:1px solid #302D27}
+.brand .name{font-size:16px;letter-spacing:-.01em;white-space:nowrap}
+.brand .name b{font-weight:800}
+.brand .cur{display:inline-block;width:6px;height:15px;background:var(--accent);margin-left:3px;vertical-align:-2px;animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.nav{display:flex;flex-direction:column;gap:4px}
+.nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:14px;color:var(--muted);text-decoration:none;font-weight:600;position:relative;min-width:0}
+.nav a:hover{color:var(--text);background:var(--surface-2)}
+.nav a[aria-current=page]{color:var(--text);background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--border-strong)}
+.nav .lbl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav .count{font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:999px;background:var(--success);flex:none;display:inline-block}
+.dot.off{background:var(--danger)} .dot.wait{background:var(--muted);animation:blink 1.1s steps(1) infinite}
+.spacer{flex:1}
+.foot{display:flex;flex-direction:column;gap:6px;background:var(--surface-2);border-radius:14px;padding:4px}
+.chip{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:14px;text-decoration:none;color:inherit;min-width:0}
+.avatar{width:30px;height:30px;border-radius:999px;background:linear-gradient(135deg,#8a6a2a,#3a2f1c);display:grid;place-items:center;font-weight:800;color:#F2EEE6;flex:none;font-size:12px}
+.chip .who{min-width:0}
+.chip .who b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip .who span{display:block;font-size:11.5px;color:var(--muted);white-space:nowrap}
+.main{min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px 28px 120px}
+.area-head{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:18px}
+.area-head h1{font-size:22px;font-weight:700;margin:0;letter-spacing:-.01em}
+.sketch{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);border:1px dashed var(--border-strong);border-radius:999px;padding:2px 8px;margin-left:10px;vertical-align:4px}
+.app.rail{grid-template-columns:76px minmax(0,1fr)}
+.app.rail .brand .name,.app.rail .nav .lbl,.app.rail .nav .count,.app.rail .chip .who{display:none}
+.app.rail .brand{justify-content:center;padding:2px 0 18px}
+.app.rail .nav a{justify-content:center;padding:11px 0}
+.app.rail .nav .dot{position:absolute;top:7px;right:14px;box-shadow:0 0 0 2px var(--surface)}
+.app.rail .chip{justify-content:center;padding:8px 0}
+.app.rail .main{padding:22px 20px 120px}
+
+/* ---------- componentes Veio ---------- */
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:8px 16px;border:1px solid var(--border-strong);background:transparent;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:hover:not(:disabled){border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{border-color:var(--danger);color:var(--danger)}
+.btn.sm{padding:5px 12px;font-size:12.5px}
+.btn.ghost{border-color:transparent;color:var(--muted)}
+a.btn{text-decoration:none;color:inherit}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.card{background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:16px;min-width:0}
+.card h3,.h3{margin:0 0 4px;font-size:15px;font-weight:700}
+.desc{color:var(--muted);font-size:12.5px;margin:0 0 12px}
+.pill-sel{border:1px solid var(--border-strong);border-radius:999px;padding:6px 12px;background:transparent;cursor:pointer;font-size:12.5px;font-weight:600}
+.pill-sel option{background:var(--surface);color:var(--text)}
+.input{border:1px solid var(--border-strong);background:var(--surface);border-radius:12px;padding:7px 12px;min-width:0;width:100%}
+.input.mono{font-size:12.5px}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;min-width:0}
+.field label,.field .lab-t{font-size:12px;font-weight:700;color:var(--muted)}
+.field small{color:var(--muted);font-size:11.5px}
+.seg{display:inline-flex;background:var(--surface-2);padding:4px;border-radius:999px;gap:2px;flex-wrap:wrap}
+.seg button,.seg a{border:0;background:none;color:var(--muted);font-weight:600;padding:6px 14px;border-radius:999px;font-size:13px;cursor:pointer;white-space:nowrap;text-decoration:none}
+.seg [aria-current=page],.seg [aria-pressed=true]{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.seg.sm button{padding:4px 11px;font-size:12px}
+.tabs{margin-bottom:16px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.toolbar .grow{flex:1}
+.date{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.date input{border:1px solid var(--border-strong);background:transparent;border-radius:999px;padding:4px 10px;font-size:12px;color:var(--text)}
+.banner{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border:1px solid color-mix(in srgb,var(--danger) 50%,var(--border));background:color-mix(in srgb,var(--danger) 10%,transparent);border-radius:14px;padding:12px 14px;margin-bottom:14px}
+.banner.info{border-color:var(--border);background:var(--surface-2)}
+.banner p{margin:0;flex:1;min-width:200px}
+.stale{display:inline-flex;gap:6px;align-items:center;font-size:11.5px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:2px 10px;margin:0 0 12px}
+.note{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);border-radius:14px;padding:10px 14px;font-size:12.5px;color:var(--muted);margin-bottom:12px;background:var(--bg)}
+.note.err{border-color:color-mix(in srgb,var(--danger) 50%,var(--border));color:var(--text);background:color-mix(in srgb,var(--danger) 8%,var(--bg))}
+.note .grow{flex:1;min-width:0}
+.note .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+details.det{margin-top:6px}
+details.det summary{cursor:pointer;color:var(--muted);font-size:12px;font-weight:600;list-style:none;display:inline-flex;gap:4px}
+details.det summary::before{content:"›";display:inline-block;transition:transform .15s}
+details.det[open] summary::before{transform:rotate(90deg)}
+details.det pre{margin:6px 0 0;background:var(--surface-2);border-radius:10px;padding:8px 10px;font:11.5px/1.5 "JetBrains Mono",monospace;white-space:pre-wrap;word-break:break-word;color:var(--muted)}
+.selo{font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;white-space:nowrap;display:inline-block}
+.selo.ok{color:var(--success);background:color-mix(in srgb,var(--success) 14%,transparent)}
+.selo.part{color:var(--accent-text);background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.selo.fail{color:var(--danger);background:color-mix(in srgb,var(--danger) 14%,transparent)}
+.selo.run{color:var(--info);background:color-mix(in srgb,var(--info) 14%,transparent)}
+.selo.neutral{color:var(--muted);background:var(--surface-2)}
+.skel{background:linear-gradient(90deg,var(--surface-2),color-mix(in srgb,var(--surface-2) 40%,var(--bg)),var(--surface-2));background-size:200% 100%;animation:sk 1.2s linear infinite;border-radius:10px}
+@keyframes sk{to{background-position:-200% 0}}
+.loading-line{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12.5px;margin-bottom:12px}
+.empty{text-align:center;padding:36px 20px;color:var(--muted);border:1px dashed var(--border-strong);border-radius:20px}
+.empty b{display:block;color:var(--text);font-size:15px;margin-bottom:6px}
+.empty .btn{margin-top:12px}
+.bar{height:8px;border-radius:999px;background:var(--surface-2);overflow:hidden;display:flex}
+.bar > i{display:block;height:100%}
+.bar.thick{height:14px}
+.bar.vein{height:18px;border-radius:6px;gap:2px;background:transparent}
+.bar.vein > i{border-radius:4px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.legend b{color:var(--text);font-weight:700}
+.num{font-family:"JetBrains Mono",monospace;font-weight:600}
+table.tbl{width:100%;border-collapse:collapse;font-size:13px}
+table.tbl td,table.tbl th{padding:8px 8px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+table.tbl th{color:var(--muted);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+table.tbl td.r,table.tbl th.r{text-align:right}
+.scroll-x{overflow-x:auto}
+details.adv{margin-top:16px;border:1px dashed var(--border-strong);border-radius:14px;padding:10px 14px}
+details.adv > summary{cursor:pointer;color:var(--muted);font-weight:700;list-style:none;display:flex;gap:8px;align-items:center}
+details.adv > summary::-webkit-details-marker{display:none}
+details.adv > summary::before{content:"›";display:inline-block;transition:transform .15s;font-size:16px}
+details.adv[open] > summary::before{transform:rotate(90deg)}
+details.adv > summary small{font-weight:500}
+.adv-body{margin-top:12px;display:flex;flex-direction:column;gap:14px}
+.adv-row{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:10px}
+.switch{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer}
+.switch .track{width:36px;height:22px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border-strong);position:relative;flex:none}
+.switch .track::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:999px;background:var(--muted);transition:left .15s}
+.switch input{position:absolute;opacity:0;pointer-events:none}
+.switch input:checked + .track{background:var(--accent);border-color:var(--accent)}
+.switch input:checked + .track::after{left:17px;background:var(--accent-ink)}
+.toast{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);background:var(--text);color:var(--bg);border-radius:999px;padding:9px 18px;font-weight:600;z-index:80;box-shadow:var(--shadow);font-size:13px}
+.idtag{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:0 5px}
+
+/* ---------- A · Quadro ---------- */
+.A-hero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,2fr);gap:10px;margin-bottom:12px}
+.A-total{background:var(--surface-2);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;justify-content:space-between;gap:8px;min-width:0}
+.A-total small{color:var(--muted);font-size:12px}
+.A-total strong{font-family:"JetBrains Mono",monospace;font-size:34px;line-height:1.1;letter-spacing:-.02em}
+.A-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr));gap:10px}
+.stat{background:var(--surface-2);border-radius:14px;padding:12px 14px;min-width:0}
+.stat small{display:block;color:var(--muted);font-size:11.5px}
+.stat strong{font-family:"JetBrains Mono",monospace;font-size:19px}
+.stat em{font-style:normal;font-size:11.5px;color:var(--muted);display:block}
+.A-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:12px}
+.rate{margin-bottom:12px}
+.rate-top{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;margin-bottom:5px}
+.rate small{color:var(--muted);font-size:11.5px}
+.env{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--border);padding:10px 0}
+.env:first-child{border-top:0;padding-top:0}
+.env-top{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.env-t{font-weight:600}
+.env-m{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.env-err{font-size:12.5px}
+.A-decks{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px}
+.deck-card .big{font-family:"JetBrains Mono",monospace;font-size:26px;font-weight:600;letter-spacing:-.02em;line-height:1.2}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.chips span{font-size:11.5px;color:var(--muted);background:var(--surface-2);border-radius:999px;padding:2px 9px;white-space:nowrap}
+.chips b{color:var(--text);font-family:"JetBrains Mono",monospace;font-weight:600}
+.deck-card.missing{border-color:color-mix(in srgb,var(--danger) 55%,var(--border))}
+.A-aj{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px;margin-bottom:12px}
+.lang-pill{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:600;border:1px solid var(--border-strong);border-radius:999px;padding:1px 7px;margin-right:6px;color:var(--muted)}
+
+/* ---------- B · Relatório ---------- */
+.B-col{max-width:760px}
+.B-lead{font-size:20px;line-height:1.45;font-weight:500;margin:0 0 6px;letter-spacing:-.01em}
+.B-lead b{font-weight:800}
+.B-lead .num{font-weight:600}
+.B-sub{color:var(--muted);margin:0 0 22px}
+.B-sec{border-top:1px solid var(--border);padding:18px 0}
+.B-sec h2{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.B-line{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.day{font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:16px 0 6px}
+.B-env{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:10px 12px;border-radius:14px;background:var(--bg);border:1px solid var(--border);margin-bottom:6px;cursor:pointer}
+.B-env[aria-expanded=true]{border-color:var(--border-strong)}
+.B-env .flag{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);border:1px solid var(--border-strong);border-radius:6px;padding:1px 6px}
+.B-env .more{grid-column:1/-1;border-top:1px solid var(--border);margin-top:8px;padding-top:10px;display:flex;flex-direction:column;gap:8px;cursor:default}
+.B-deck{padding:14px 0;border-top:1px solid var(--border)}
+.B-deck:first-of-type{border-top:0}
+.B-deck .B-line strong{font-size:17px}
+.B-vrow{display:grid;grid-template-columns:minmax(0,1fr) 110px auto;gap:12px;align-items:center;padding:9px 4px;border-bottom:1px solid var(--border)}
+.B-vrow .w{font-size:15px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.B-vrow .w small{font-weight:500;color:var(--muted);font-size:11.5px;margin-left:8px}
+.chipset{display:flex;gap:6px;flex-wrap:wrap}
+.chipset button{border:1px solid var(--border-strong);background:none;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted)}
+.chipset button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+table.matrix{width:100%;border-collapse:separate;border-spacing:0 8px}
+table.matrix th{font-size:12px;text-align:left;color:var(--muted);font-weight:700;padding:0 10px 0 0;width:28%;vertical-align:middle}
+table.matrix thead th{font-size:13px;color:var(--text);width:auto}
+table.matrix td{padding:0 6px;vertical-align:middle}
+
+/* ---------- C · Por idioma ---------- */
+.C-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:10px;margin-bottom:14px}
+.C-tile{border:1px solid var(--border);background:var(--bg);border-radius:14px;padding:12px 14px;text-align:left;cursor:pointer;min-width:0}
+.C-tile[aria-pressed=true]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.C-tile .code{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted)}
+.C-tile b{display:block;font-size:14px}
+.C-tile .v{font-family:"JetBrains Mono",monospace;font-size:18px;font-weight:600}
+.C-tile small{color:var(--muted);font-size:11.5px}
+.C-md{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:12px;align-items:start}
+.C-list{display:flex;flex-direction:column;gap:4px}
+.C-item{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:12px;border:1px solid transparent;background:none;text-align:left;cursor:pointer;width:100%;min-width:0}
+.C-item:hover{background:var(--surface-2)}
+.C-item[aria-selected=true]{background:var(--surface-2);border-color:var(--border-strong)}
+.C-item .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.C-item .t small{display:block;font-weight:500;color:var(--muted);font-size:11.5px}
+.C-item .num{white-space:nowrap}
+.C-detail{position:sticky;top:20px}
+.C-kv{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;font-size:13px;margin:10px 0}
+.C-kv dt{color:var(--muted)} .C-kv dd{margin:0;text-align:right;font-family:"JetBrains Mono",monospace;font-weight:600}
+.C-kv .tot{border-top:1px solid var(--border);padding-top:6px}
+.C-rates{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:4px 18px}
+.C-rates .rate{margin-bottom:4px}
+.C-strip{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);background:var(--surface-2);border-radius:14px;padding:10px 14px;margin-bottom:12px}
+.C-strip b{color:var(--text);font-family:"JetBrains Mono",monospace;font-weight:600}
+.C-donut{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.C-donut svg{width:132px;height:132px;flex:none}
+.C-donut .lbl{font:600 20px "JetBrains Mono",monospace;fill:var(--text)}
+.C-donut .lbl2{font:500 10px Manrope,sans-serif;fill:var(--muted)}
+
+@media (max-width:760px){
+  .A-hero,.A-cols,.C-md{grid-template-columns:minmax(0,1fr)}
+  .C-detail{position:static}
+  .main{padding:18px 16px 120px}
+}
+
+/* ---------- ferramentas do protótipo (não fazem parte do design) ---------- */
+.proto{font-family:system-ui,sans-serif}
+.switcher{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:#fff;color:#111;border-radius:999px;padding:6px;box-shadow:0 6px 24px rgba(0,0,0,.45);z-index:100;font:600 13px system-ui,sans-serif;max-width:calc(100vw - 24px)}
+.switcher button{border:0;background:#111;color:#fff;border-radius:999px;width:32px;height:32px;cursor:pointer;font-size:15px;flex:none}
+.switcher span{padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lab{position:fixed;right:12px;bottom:12px;z-index:90;background:#fff;color:#111;border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.45);font:12.5px/1.4 system-ui,sans-serif;width:280px;max-width:calc(100vw - 24px);max-height:calc(100vh - 90px);overflow:auto}
+.lab summary{cursor:pointer;padding:10px 14px;font-weight:700;list-style:none}
+.lab summary::-webkit-details-marker{display:none}
+.lab .body{padding:0 14px 12px;display:flex;flex-direction:column;gap:8px}
+.lab label{display:flex;flex-direction:column;gap:3px;font-weight:600}
+.lab label.ck{flex-direction:row;align-items:center;gap:6px;font-weight:500}
+.lab select,.lab button{font:12.5px system-ui,sans-serif;padding:5px 8px;border-radius:8px;border:1px solid #bbb;background:#fff;color:#111}
+.lab button{cursor:pointer;background:#111;color:#fff;border-color:#111}
+.lab hr{border:0;border-top:1px solid #ddd;margin:2px 0}
+.lab pre{margin:0;background:#f3f3f3;border-radius:8px;padding:8px;font:11px/1.45 ui-monospace,monospace;white-space:pre-wrap;word-break:break-word}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <aside class="side" aria-label="Navegação do Painel">
+    <div class="brand">
+      <span class="tile" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 2 19 9 12 22 5 9Z" fill="#F5B83D"/><path d="M12 2 19 9H5Z" fill="#FFD27A"/><path d="M5 12.5h14" stroke="#1B1A17" stroke-width="1.6"/></svg></span>
+      <span class="name">Perpetual<b>Miner</b><span class="cur"></span></span>
+    </div>
+    <nav class="nav">
+      <a href="#frases" data-area="frases" title="Frases">
+        <svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span class="lbl">Frases</span><span class="count">1.284</span>
+      </a>
+      <a href="#anki/custos" data-area="anki" id="nav-anki" title="Conexão com o Anki: ligada">
+        <svg class="i" viewBox="0 0 24 24"><path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0V7ZM12 16v5"/></svg>
+        <span class="lbl">Conexão com o Anki</span><span class="dot" id="nav-dot" aria-label="ligada"></span>
+      </a>
+    </nav>
+    <div class="spacer"></div>
+    <div class="foot">
+      <nav class="nav">
+        <a href="#configuracoes" data-area="configuracoes" title="Configurações">
+          <svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+          <span class="lbl">Configurações</span>
+        </a>
+      </nav>
+      <a class="chip" href="#configuracoes/conta" title="Conta e sincronização">
+        <span class="avatar">V</span>
+        <span class="who"><b>Vinicius</b><span>Sincronizado há 2 min</span></span>
+      </a>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    <section data-view="frases" class="hidden">
+      <div class="area-head"><h1>Frases mineradas<span class="sketch">outro ticket</span></h1><button class="btn primary">Minerar frases ▾</button></div>
+      <div class="empty"><b>Frases mineradas tem o próprio ticket.</b>Volte para <a href="#anki/custos" style="color:var(--accent-text)">Conexão com o Anki</a>.</div>
+    </section>
+    <section data-view="configuracoes" class="hidden">
+      <div class="area-head"><h1>Configurações<span class="sketch">outro ticket</span></h1></div>
+      <div class="empty"><b>Configurações tem o próprio ticket.</b>Volte para <a href="#anki/custos" style="color:var(--accent-text)">Conexão com o Anki</a>.</div>
+    </section>
+
+    <!-- ===== CONEXÃO COM O ANKI ===== -->
+    <section data-view="anki">
+      <div class="area-head">
+        <h1>Conexão com o Anki</h1>
+        <button class="btn" id="btn-atualizar" title="Atualizar (abre o Anki se precisar)">↻ Atualizar</button>
+      </div>
+      <div id="anki-top"></div>
+      <nav class="seg tabs" aria-label="Seções da Conexão com o Anki">
+        <a href="#anki/custos" data-tab="custos">Custos</a>
+        <a href="#anki/baralhos" data-tab="baralhos">Baralhos e termos</a>
+        <a href="#anki/vocabulario" data-tab="vocabulario">Vocabulário</a>
+        <a href="#anki/ajustes" data-tab="ajustes">Ajustes de envio</a>
+      </nav>
+      <div id="tab-body"></div>
+    </section>
+  </main>
+</div>
+
+<div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+
+<!-- ======= ferramentas do protótipo ======= -->
+<details class="lab proto" id="lab" open>
+  <summary>⚙ Estados do protótipo</summary>
+  <div class="body">
+    <label>Conexão com o Anki<select id="s-con"><option value="on">ligada</option><option value="wait">conectando…</option><option value="off">desligada (faixa F1 + dado antigo)</option></select></label>
+    <label>Dados da aba aberta<select id="s-data"><option value="ok">prontos</option><option value="loading">carregando</option><option value="error">erro</option><option value="empty">vazio / busca sem resultado</option></select></label>
+    <hr>
+    <label class="ck"><input type="checkbox" id="s-running"> Um envio em andamento</label>
+    <label class="ck"><input type="checkbox" id="s-local"> Baralhos lidos do arquivo local (BRG-13)</label>
+    <label class="ck"><input type="checkbox" id="s-missing"> Baralho “English Mining” não existe (BRG-14)</label>
+    <label>Reparar Anki termina em<select id="s-repair"><option value="ok">Anki reparado</option><option value="timeout">tempo esgotado (BRG-17)</option><option value="denied">Windows bloqueou (BRG-18)</option></select></label>
+    <hr>
+    <label>Janela<select id="s-win"><option value="auto">automática (&lt; 1000 px = trilho)</option><option value="rail">forçar trilho</option><option value="wide">forçar larga</option></select></label>
+    <pre id="readout"></pre>
+  </div>
+</details>
+<div class="switcher proto" role="toolbar" aria-label="Trocar variante">
+  <button id="sw-prev" aria-label="Variante anterior">←</button><span id="sw-label"></span><button id="sw-next" aria-label="Próxima variante">→</button>
+</div>
+
+<script>
+const VARIANTS={A:'Quadro',B:'Relatório',C:'Por idioma · TRAVADA'};
+const KEYS=Object.keys(VARIANTS);
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+let qsVariant=null;try{qsVariant=new URLSearchParams(location.search).get('variant');}catch(e){}
+const S={variant:VARIANTS[qsVariant]?qsVariant:'C',theme:'dark',tab:'custos',con:'on',data:'ok',running:false,local:false,missing:false,
+  repairOutcome:'ok',repair:'idle',period:'mes',lang:'all',adv4:false,advIds:false,selEnvio:null,openEnvio:null,
+  vLang:'en',vType:'all',vStatus:'all',vQ:'',selWord:null,deckLang:'en',ajLang:'en',win:'auto',advOpen:{},
+  presets:{en:{deck:'English Mining',img:'real',wtld:'com',ptld:'co.uk'},ru:{deck:'RUSSIAN',img:'real',wtld:'ru',ptld:'ru'}}};
+
+/* ---------------- dados (em memória) ---------------- */
+const LANG={en:'inglês',ru:'russo'}, LANGC={en:'Inglês',ru:'Russo'};
+const ENVIOS=[
+ {id:'job_8f2c1a',d:0,when:'há 1 h',lang:'en',req:12,ok:12,st:'done',c:{cart:.0810,ger:0,esc:.0021,tri:.0011},img:{real:11,gen:0,skip:1,fail:0}},
+ {id:'job_7d19e0',d:0,when:'há 3 h',lang:'ru',req:4,ok:3,st:'part',c:{cart:.0270,ger:.0120,esc:.0008,tri:.0004},img:{real:1,gen:2,skip:0,fail:1},
+   err:'A conexão com o Anki não respondeu no último cartão.',raw:'HTTP 502 · AnkiConnect: collection is not available\njob_7d19e0 · stage=anki_push · 2026-09-14T15:02:11Z'},
+ {id:'job_77b3c9',d:1,when:'ontem',lang:'en',req:8,ok:8,st:'done',c:{cart:.0540,ger:.0240,esc:.0013,tri:.0007},img:{real:5,gen:2,skip:1,fail:0}},
+ {id:'job_6a02ff',d:1,when:'ontem',lang:'en',req:3,ok:0,st:'fail',c:{cart:.0110,ger:0,esc:0,tri:0},img:{real:0,gen:0,skip:0,fail:0},
+   err:'O envio em inglês não começou. A conexão com o Anki respondeu com erro.',raw:'HTTP 500 · Falha ao criar job EN\njob_6a02ff · 2026-09-13T21:40:03Z'},
+ {id:'job_5c4410',d:3,when:'há 3 dias',lang:'en',req:30,ok:30,st:'done',c:{cart:.1720,ger:.0480,esc:.0031,tri:.0015},img:{real:24,gen:4,skip:2,fail:0}},
+ {id:'job_4b90d3',d:6,when:'há 6 dias',lang:'ru',req:6,ok:6,st:'done',c:{cart:.0390,ger:.0141,esc:.0009,tri:.0008},img:{real:3,gen:2,skip:0,fail:1}},
+ {id:'job_3e71aa',d:41,when:'há 41 dias',lang:'en',req:50,ok:49,st:'done',c:{cart:.2840,ger:.0720,esc:.0052,tri:.0030},img:{real:40,gen:6,skip:2,fail:1}},
+ {id:'job_2d0c55',d:77,when:'há 77 dias',lang:'ru',req:20,ok:20,st:'done',c:{cart:.1130,ger:.0360,esc:.0019,tri:.0012},img:{real:12,gen:6,skip:2,fail:0}},
+];
+const RUNNING={id:'job_9a11b2',d:0,when:'agora',lang:'en',req:6,ok:2,st:'run',stage:'Escolhendo imagens',c:{cart:.0141,ger:0,esc:.0004,tri:.0002},img:{real:2,gen:0,skip:0,fail:0}};
+const DECKS={
+ en:{name:'English Mining',words:3412,cards:2140,terms:1870,avg:1.62,nw:310,rec:420,mat:1410},
+ ru:{name:'RUSSIAN',words:612,cards:480,terms:455,avg:1.27,nw:120,rec:144,mat:216},
+};
+const VOCAB={
+ en:{total:1200,items:[
+  ['take for granted','term',4,'mature',3,1,0],['reluctant','word',3,'recent',0,2,1],['close call','term',2,'mixed',1,0,1],
+  ['cut corners','term',1,'new',0,0,1],['barely','word',6,'mature',6,0,0],['overwhelming','word',2,'recent',0,2,0],
+  ['get away with','term',3,'mixed',1,1,1],['stubborn','word',4,'mature',4,0,0],['on the fence','term',1,'new',0,0,1],
+  ['thorough','word',2,'recent',0,1,1],['bring up','term',5,'mature',4,1,0],['eerie','word',1,'new',0,0,1]]},
+ ru:{total:312,items:[
+  ['спасибо','word',5,'mature',5,0,0],['наверное','word',3,'recent',0,3,0],['как будто','term',2,'mixed',1,0,1],
+  ['всё равно','term',2,'new',0,0,2],['мастер','word',4,'mature',3,1,0],['шёпот','word',1,'new',0,0,1]]},
+};
+const VST={new:'Novo',recent:'Recente',mature:'Maduro',mixed:'Misto'};
+const VSTP={all:'Todos',new:'Novos',recent:'Recentes',mature:'Maduros',mixed:'Mistos'};
+
+/* ---------------- formatação (V7) ---------------- */
+const nf=(n,d)=>n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+function usd(v){ if(S.adv4) return 'US$ '+nf(v,4); if(v>0&&v<.005) return '&lt; US$ 0,01'; return 'US$ '+nf(v,2); }
+const int=n=>n.toLocaleString('pt-BR');
+const pl=(n,s,p)=>`${int(n)} ${n===1?s:p}`;
+const pct=(a,b)=>b?Math.round(a/b*1000)/10:0;
+const pctS=v=>nf(v,v%1?1:0)+'%';
+const PERIOD={hoje:'Hoje',mes:'Este mês',tudo:'Tudo'};
+const PERIOD_PHRASE={hoje:'hoje',mes:'neste mês',tudo:'desde o começo'};
+
+function envios(){
+  let l=[...(S.running?[RUNNING]:[]),...ENVIOS];
+  l=l.filter(e=>S.period==='tudo'||(S.period==='hoje'?e.d===0:e.d<=30));
+  if(S.lang!=='all') l=l.filter(e=>e.lang===S.lang);
+  return l;
+}
+function agg(l){
+  const a={n:l.length,done:0,req:0,ok:0,cart:0,ger:0,esc:0,tri:0,real:0,gen:0,skip:0,fail:0};
+  l.forEach(e=>{a.done+=e.st==='done'?1:0;a.req+=e.req;a.ok+=e.ok;for(const k in e.c)a[k]+=e.c[k];for(const k in e.img)a[k]+=e.img[k];});
+  a.total=a.cart+a.ger+a.esc+a.tri;a.imgs=a.real+a.gen+a.skip+a.fail;
+  a.econ=a.real*.0138; // economia estimada: fotos reais × custo de gerar
+  return a;
+}
+function stLabel(e){
+  return {done:'<span class="selo ok">Concluído</span>',
+    part:`<span class="selo part">Concluído em parte · ${e.ok} de ${pl(e.req,'frase','frases')}</span>`,
+    fail:'<span class="selo fail">Falhou</span>',
+    run:`<span class="selo run">Enviando… · ${e.stage}</span>`}[e.st];
+}
+const envTitle=e=>`Envio em ${LANG[e.lang]} · ${pl(e.req,'frase','frases')}`;
+const imgLine=e=>`${pl(e.img.real,'foto','fotos')} · ${pl(e.img.gen,'gerada','geradas')}`;
+const off=()=>S.con!=='on';
+function contBtn(e){
+  if(!['part','fail'].includes(e.st)) return '';
+  return `<button class="btn sm" data-cont="${e.id}" ${off()?'disabled title="Conexão com o Anki desligada · Continuar envio fica indisponível"':''}>Continuar envio</button>`;
+}
+function errBlock(e){
+  if(!e.err) return '';
+  return `<div class="env-err">${e.err}<details class="det"><summary>Detalhes</summary><pre>${e.raw}</pre></details></div>`;
+}
+
+/* ---------------- pedaços compartilhados ---------------- */
+function periodSeg(){return `<div class="seg sm" role="group" aria-label="Período">${Object.entries(PERIOD).map(([k,v])=>`<button data-period="${k}" aria-pressed="${S.period===k}">${v}</button>`).join('')}</div>`;}
+function langSel(){return `<select class="pill-sel" data-set="lang"><option value="all"${S.lang==='all'?' selected':''}>Todos os idiomas</option><option value="en"${S.lang==='en'?' selected':''}>Inglês</option><option value="ru"${S.lang==='ru'?' selected':''}>Russo</option></select>`;}
+const dates=()=>`<span class="date">De <input type="date" value="2026-09-01"></span><span class="date">Até <input type="date" value="2026-09-14"></span>`;
+function staleChip(){return off()?'<div class="stale">Mostrando dados de há 2 h. Não deu para atualizar agora.</div>':'';}
+function skel(lines,label){
+  return `<div class="loading-line"><span class="dot wait"></span>${label}</div>`+lines.map(h=>`<div class="skel" style="height:${h}px;margin-bottom:10px"></div>`).join('');
+}
+function errState(msg,raw,extra=''){
+  return `<div class="note err" role="alert"><span class="dot off" style="margin-top:6px"></span><div class="grow"><b style="font-weight:600">${msg}</b>
+    <div class="acts">${extra}<button class="btn sm" data-retry>Tentar de novo</button></div>
+    <details class="det"><summary>Detalhes</summary><pre>${raw}</pre></details></div></div>`;
+}
+function adv(tab,body,hint){
+  const open=S.advOpen[tab]?' open':'';
+  return `<details class="adv" data-adv="${tab}"${open}><summary>Avançado <small class="muted">· ${hint}</small></summary><div class="adv-body">${body}</div></details>`;
+}
+function advCustos(a,l){
+  return adv('custos',`
+    <div class="A-tiles">
+      <div class="stat"><small>Escolha de imagem</small><strong>US$ ${nf(a.esc,4)}</strong></div>
+      <div class="stat"><small>Triagem de imagem</small><strong>US$ ${nf(a.tri,4)}</strong></div>
+      <div class="stat"><small>Total com 4 casas</small><strong>US$ ${nf(a.total,4)}</strong></div>
+    </div>
+    <div class="adv-row"><label class="switch"><input type="checkbox" data-toggle="adv4"${S.adv4?' checked':''}><span class="track"></span>Mostrar custos com 4 casas</label>
+      <label class="switch"><input type="checkbox" data-toggle="advIds"${S.advIds?' checked':''}><span class="track"></span>Mostrar IDs dos envios</label></div>
+    <div><div class="h3" style="font-size:13px;margin-bottom:6px">Pacote de diagnóstico</div>
+      <p class="desc" style="margin-bottom:8px">Um arquivo por envio, com etapas, erros e caminhos. Serve para investigar um envio que falhou.</p>
+      <div class="scroll-x"><table class="tbl"><tbody>${l.slice(0,6).map(e=>`<tr><td class="mono" style="font-size:12px">${e.id}</td><td class="muted">${e.when} · ${e.lang.toUpperCase()}</td><td class="muted">${imgLine(e)}</td><td class="r"><button class="btn sm ghost" data-diag="${e.id}">Baixar diagnóstico</button></td></tr>`).join('')}</tbody></table></div>
+    </div>`,'escolha e triagem de imagem, IDs, 4 casas, diagnóstico');
+}
+function repairBtn(){
+  const busy=S.repair==='running';
+  return `<button class="btn sm" data-repair ${busy||off()?'disabled':''} ${off()?'title="Conexão com o Anki desligada · Reparar Anki fica indisponível"':''}>${busy?'Reparando…':'Reparar Anki'}</button>`;
+}
+function advBaralhos(){
+  return adv('baralhos',`<div class="adv-row" style="border-top:0;padding-top:0"><div style="min-width:0;flex:1"><b style="font-weight:600">Reparar Anki</b>
+    <p class="desc" style="margin:2px 0 0">Fecha o Anki travado neste computador e abre de novo no perfil configurado. Use quando os baralhos não carregam.</p></div>${repairBtn()}</div>`,'reparar Anki');
+}
+function advAjustes(lang){
+  const langs=lang?[lang]:['en','ru'];
+  return adv('ajustes',`<p class="desc" style="margin:0">Sotaque do áudio: o domínio do Google usado na voz. Exemplos: <span class="mono">com</span> (Estados Unidos), <span class="mono">co.uk</span> (Reino Unido), <span class="mono">com.au</span> (Austrália).</p>
+    <div class="A-aj" style="margin:0">${langs.map(k=>`<div><div class="h3" style="font-size:13px;margin-bottom:8px">${LANGC[k]}</div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">
+      <div class="field"><label>Sotaque da palavra</label><input class="input mono" data-p="${k}.wtld" value="${S.presets[k].wtld}"></div>
+      <div class="field"><label>Sotaque da frase</label><input class="input mono" data-p="${k}.ptld" value="${S.presets[k].ptld}"></div></div></div>`).join('')}</div>`,'sotaque do áudio');
+}
+function repairNote(){
+  if(S.repair==='running') return `<div class="note"><span class="dot wait" style="margin-top:6px"></span><div class="grow">Fechando o Anki travado e abrindo de novo…</div></div>`;
+  if(S.repair==='timeout') return `<div class="note err" role="alert"><span class="dot off" style="margin-top:6px"></span><div class="grow">O reparo demorou demais e foi interrompido. O Anki pode ter reaberto mesmo assim: atualize para conferir.
+    <div class="acts"><button class="btn sm" data-refresh>↻ Atualizar</button><button class="btn sm ghost" data-dismiss-repair>Fechar</button></div><details class="det"><summary>Detalhes</summary><pre>signal is aborted without reason · timeout 45 s</pre></details></div></div>`;
+  if(S.repair==='denied') return `<div class="note err" role="alert"><span class="dot off" style="margin-top:6px"></span><div class="grow">O Windows não deixou fechar o Anki. Feche o Anki pelo Gerenciador de Tarefas (como administrador) ou reinicie o computador, e tente de novo.
+    <div class="acts">${repairBtn()}<button class="btn sm ghost" data-dismiss-repair>Fechar</button></div><details class="det"><summary>Detalhes</summary><pre>anki_repair_access_denied · processos: 11840, 12204</pre></details></div></div>`;
+  return '';
+}
+function deckNotes(){
+  let h='';
+  if(S.local) h+=`<div class="note"><span class="dot wait" style="margin-top:6px;animation:none"></span><div class="grow">Números lidos direto do arquivo do Anki. Para enviar, o Anki precisa abrir normalmente.</div></div>`;
+  return h;
+}
+function missingNote(k){
+  return `<div class="note err" style="margin:10px 0 0"><div class="grow">O baralho “${DECKS[k].name}” não existe no Anki. Confira o nome em Ajustes de envio.<div class="acts"><a class="btn sm" href="#anki/ajustes">Abrir Ajustes de envio</a></div></div></div>`;
+}
+const isMissing=k=>S.missing&&k==='en';
+function vocabRows(){
+  const v=VOCAB[S.vLang];const q=S.vQ.trim().toLowerCase();
+  let r=v.items.filter(i=>(S.vType==='all'||i[1]===S.vType)&&(S.vStatus==='all'||i[3]===S.vStatus)&&(!q||i[0].toLowerCase().includes(q)));
+  if(S.data==='empty'&&S.tab==='vocabulario') r=[];
+  return r;
+}
+function vocabFilters(withLang=true){
+  return `<div class="toolbar">
+    ${withLang?`<select class="pill-sel" data-set="vLang"><option value="en"${S.vLang==='en'?' selected':''}>Inglês</option><option value="ru"${S.vLang==='ru'?' selected':''}>Russo</option></select>`:''}
+    <select class="pill-sel" data-set="vType"><option value="all"${S.vType==='all'?' selected':''}>Palavras e termos</option><option value="word"${S.vType==='word'?' selected':''}>Só palavras</option><option value="term"${S.vType==='term'?' selected':''}>Só termos</option></select>
+    <select class="pill-sel" data-set="vStatus">${Object.entries(VSTP).map(([k,t])=>`<option value="${k}"${S.vStatus===k?' selected':''}>${t}</option>`).join('')}</select>
+    <input class="input grow" data-set="vQ" placeholder="Buscar no vocabulário" value="${S.vQ.replace(/"/g,'&quot;')}" style="max-width:280px;border-radius:999px">
+  </div>`;
+}
+function vocabSummary(r){return `${pl(VOCAB[S.vLang].total,'item','itens')} em ${LANG[S.vLang]} · mostrando ${int(r.length)}`;}
+function vocabEmpty(){
+  return `<div class="empty"><b>Nenhum item com esta busca.</b>Mude os filtros ou limpe a busca.<br><button class="btn sm" data-clear-vocab>Limpar busca</button></div>`;
+}
+function tabState(){
+  // estados "no lugar do conteúdo" (C1-3); devolve html ou null
+  if(S.con==='wait') return skel([90,160,160],'Conectando ao Anki…');
+  const t=S.tab,d=S.data;
+  if(t==='custos'){
+    if(d==='loading') return skel([96,64,200],'Somando os custos…');
+    if(d==='error') return `<div class="stat" style="margin-bottom:12px;display:inline-block"><small>Total no período</small><strong style="font-size:16px">Custo indisponível</strong></div>`+
+      errState('Não deu para carregar os custos. Confira se a conexão com o Anki está ligada.','GET /analytics/summary · HTTP 503 · bridge offline');
+    if(d==='empty') return `<div class="toolbar">${periodSeg()}${langSel()}</div><div class="empty"><b>Nenhum envio neste período.</b>Os custos aparecem aqui depois do primeiro envio ao Anki.<br><button class="btn sm" data-period="tudo">Ver tudo</button></div>`;
+  }
+  if(t==='baralhos'){
+    if(S.repair==='running') return repairNote()+skel([120,120],'Lendo os baralhos do Anki…');
+    if(d==='loading') return skel([120,120],'Lendo os baralhos do Anki…');
+    if(d==='error') return repairNote()+errState('Não deu para ler os baralhos do Anki. Use Reparar Anki e tente de novo.','GET /anki/stats/decks · anki_stats_unavailable · AnkiConnect timeout',repairBtn())+advBaralhos();
+  }
+  if(t==='vocabulario'){
+    if(d==='loading') return skel([40,300],'Lendo o vocabulário…');
+    if(d==='error') return errState('Não deu para carregar o vocabulário.','GET /anki/vocabulary · vocabulary_unavailable');
+  }
+  return null;
+}
+
+/* ================= A · QUADRO ================= */
+const A={
+ custos(){
+  const l=envios(),a=agg(l);
+  return `<div class="toolbar">${periodSeg()}${langSel()}<span class="grow"></span>${dates()}</div>
+   <div class="A-hero">
+     <div class="A-total"><small>Total ${PERIOD_PHRASE[S.period]}</small><strong>${usd(a.total)}</strong><small>${pl(a.n,'envio','envios')} ${PERIOD_PHRASE[S.period].replace('hoje','hoje')}</small></div>
+     <div class="A-tiles">
+       <div class="stat"><small>Criação de cartões</small><strong>${usd(a.cart)}</strong></div>
+       <div class="stat"><small>Imagens geradas</small><strong>${usd(a.ger)}</strong></div>
+       <div class="stat"><small>Economia com fotos reais</small><strong>${usd(a.econ)}</strong></div>
+       <div class="stat"><small>Frases enviadas</small><strong>${int(a.ok)}</strong><em>de ${pl(a.req,'frase','frases')}</em></div>
+       <div class="stat"><small>Envios concluídos</small><strong>${int(a.done)}</strong><em>de ${pl(a.n,'envio','envios')}</em></div>
+     </div>
+   </div>
+   <div class="A-cols">
+     <div class="card"><h3>Origem das imagens</h3><p class="desc">${pl(a.imgs,'imagem','imagens')} ${PERIOD_PHRASE[S.period]}</p>
+      ${[['Foto real',a.real,'var(--seg-1)'],['Gerada por IA',a.gen,'var(--seg-2)'],['Sem imagem',a.skip,'var(--seg-3)'],['Falhou',a.fail,'var(--seg-4)']].map(([t,n,c])=>`<div class="rate"><div class="rate-top"><span>${t}</span><b class="num">${pctS(pct(n,a.imgs))}</b></div><div class="bar"><i style="width:${pct(n,a.imgs)}%;background:${c}"></i></div><small>${pl(n,'imagem','imagens')}</small></div>`).join('')}
+     </div>
+     <div class="card"><h3>Envios recentes</h3><p class="desc">${pl(a.n,'envio','envios')} ${PERIOD_PHRASE[S.period]}</p>
+      ${l.map(e=>`<div class="env"><div class="env-top"><span class="env-t">${envTitle(e)} ${S.advIds?`<span class="idtag">${e.id}</span>`:''}</span><span class="num">${usd(e.c.cart+e.c.ger+e.c.esc+e.c.tri)}</span></div>
+        <div class="env-m">${stLabel(e)}<span>${e.when}</span>${contBtn(e)}</div>${errBlock(e)}</div>`).join('')}
+     </div>
+   </div>${advCustos(a,l)}`;
+ },
+ baralhos(){
+  const t={words:0,cards:0,terms:0,mat:0,nw:0,rec:0};['en','ru'].forEach(k=>{for(const x in t)t[x]+=DECKS[k][x];});
+  const deck=k=>{const d=DECKS[k],m=isMissing(k);const rev=d.nw+d.rec+d.mat;
+   return `<div class="card deck-card${m?' missing':''}"><div class="desc" style="margin:0 0 4px"><span class="lang-pill">${k.toUpperCase()}</span>${LANGC[k]} · ${d.name}</div>
+    ${m?`<div class="big muted">—</div>${missingNote(k)}`:`<div class="big">${int(d.words)}</div><div class="muted" style="font-size:12px">palavras diferentes nos cartões</div>
+    <div class="chips"><span><b>${int(d.cards)}</b> cartões</span><span><b>${int(d.terms)}</b> termos-alvo</span><span><b>${nf(d.avg,1)}</b> palavra nova por cartão</span></div>
+    <div class="bar"><i style="width:${pct(d.mat,rev)}%;background:var(--seg-1)"></i><i style="width:${pct(d.rec,rev)}%;background:var(--seg-2)"></i><i style="width:${pct(d.nw,rev)}%;background:var(--seg-3)"></i></div>
+    <div class="legend"><span><i style="background:var(--seg-1)"></i><b>${int(d.mat)}</b> maduros</span><span><i style="background:var(--seg-2)"></i><b>${int(d.rec)}</b> recentes</span><span><i style="background:var(--seg-3)"></i><b>${int(d.nw)}</b> novos</span><span>${pctS(pct(d.mat,rev))} de maturidade</span></div>`}
+   </div>`;};
+  return repairNote()+deckNotes()+staleChip()+`<div class="A-decks">
+    <div class="card"><div class="desc" style="margin:0 0 4px">Os dois idiomas</div><div class="big" style="font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:600">${int(t.words)}</div><div class="muted" style="font-size:12px">palavras diferentes nos cartões</div>
+      <div class="chips"><span><b>${int(t.cards)}</b> cartões</span><span><b>${int(t.terms)}</b> termos-alvo</span><span><b>${int(t.mat)}</b> maduros</span></div>
+      <div class="bar"><i style="width:${pct(t.mat,t.nw+t.rec+t.mat)}%;background:var(--seg-1)"></i></div></div>
+    ${deck('en')}${deck('ru')}</div>${advBaralhos()}`;
+ },
+ vocabulario(){
+  const r=vocabRows();
+  return staleChip()+vocabFilters()+`<p class="desc">${vocabSummary(r)}</p>`+(r.length?`<div class="card" style="padding:4px 12px"><div class="scroll-x"><table class="tbl"><thead><tr><th>Item</th><th>Tipo</th><th class="r">Cartões</th><th>Status</th><th class="r">Maduros</th><th class="r">Recentes</th><th class="r">Novos</th></tr></thead><tbody>
+   ${r.map(i=>`<tr><td style="font-weight:600">${i[0]}</td><td class="muted">${i[1]==='term'?'Termo':'Palavra'}</td><td class="r num">${i[2]}</td><td><span class="selo ${i[3]==='mature'?'ok':i[3]==='new'?'neutral':i[3]==='mixed'?'part':'run'}">${VST[i[3]]}</span></td><td class="r num">${i[4]}</td><td class="r num">${i[5]}</td><td class="r num">${i[6]}</td></tr>`).join('')}
+   </tbody></table></div></div>`:vocabEmpty());
+ },
+ ajustes(){
+  return ajNote()+`<div class="A-aj">${['en','ru'].map(k=>`<div class="card"><h3><span class="lang-pill">${k.toUpperCase()}</span>${LANGC[k]}</h3><p class="desc">Baralho e imagens usados em cada envio.</p>${ajFields(k)}</div>`).join('')}</div>
+   <button class="btn primary" data-save>Salvar ajustes</button>${advAjustes()}`;
+ },
+};
+function ajNote(){return off()?'<div class="note"><div class="grow">Os ajustes continuam editáveis com a conexão desligada. Valem a partir do próximo envio.</div></div>':'';}
+function ajFields(k){
+  const p=S.presets[k];
+  return `<div class="field"><label for="d-${k}">Baralho</label><input class="input" id="d-${k}" data-p="${k}.deck" value="${p.deck}"><small>Em branco, volta para “${k==='en'?'English Mining':'RUSSIAN'}”.</small></div>
+   <div class="field"><label for="i-${k}">Imagens</label><select class="input" id="i-${k}" data-p="${k}.img"><option value="real"${p.img==='real'?' selected':''}>Foto real (Google)</option><option value="gen"${p.img==='gen'?' selected':''}>Gerada por IA</option></select>
+   <small>${p.img==='real'?'Quando não acha uma foto boa, gera uma por IA, e aí tem custo.':'Toda imagem é gerada por IA e entra nos custos.'}</small></div>`;
+}
+
+/* ================= B · RELATÓRIO ================= */
+const B={
+ custos(){
+  const l=envios(),a=agg(l);
+  const other=a.esc+a.tri;
+  const byDay={};l.forEach(e=>{(byDay[e.when==='agora'||e.d===0?'Hoje':e.d===1?'Ontem':e.when]??=[]).push(e);});
+  return `<div class="B-col"><div class="toolbar">${periodSeg()}${langSel()}<span class="grow"></span>${dates()}</div>
+   <p class="B-lead">${PERIOD_PHRASE[S.period][0].toUpperCase()+PERIOD_PHRASE[S.period].slice(1)}, <b class="num">${usd(a.total)}</b> em <b>${pl(a.n,'envio','envios')}</b>. ${int(a.ok)} de ${pl(a.req,'frase virou cartão','frases viraram cartões')}.</p>
+   <p class="B-sub">As fotos reais economizaram <b class="num" style="color:var(--text)">${usd(a.econ)}</b> em imagens geradas.</p>
+   <div class="B-sec"><h2>Para onde foi o dinheiro</h2>
+     <div class="bar vein"><i style="flex:${a.cart||0.0001};background:var(--seg-1)"></i><i style="flex:${a.ger||0.0001};background:var(--seg-2)"></i><i style="flex:${other||0.0001};background:var(--seg-3)"></i></div>
+     <div class="legend"><span><i style="background:var(--seg-1)"></i>Criação de cartões <b class="num">${usd(a.cart)}</b></span><span><i style="background:var(--seg-2)"></i>Imagens geradas <b class="num">${usd(a.ger)}</b></span><span><i style="background:var(--seg-3)"></i>Escolha e triagem <b class="num">${usd(other)}</b> <span class="muted">· ver Avançado</span></span></div>
+   </div>
+   <div class="B-sec"><h2>De onde vieram as imagens</h2>
+     <div class="bar vein">${[[a.real,'--seg-1'],[a.gen,'--seg-2'],[a.skip,'--seg-3'],[a.fail,'--seg-4']].map(([n,c])=>n?`<i style="flex:${n};background:var(${c})"></i>`:'').join('')}</div>
+     <div class="legend"><span><i style="background:var(--seg-1)"></i>Foto real <b>${pctS(pct(a.real,a.imgs))}</b></span><span><i style="background:var(--seg-2)"></i>Gerada por IA <b>${pctS(pct(a.gen,a.imgs))}</b></span><span><i style="background:var(--seg-3)"></i>Sem imagem <b>${pctS(pct(a.skip,a.imgs))}</b></span><span><i style="background:var(--seg-4)"></i>Falhou <b>${pctS(pct(a.fail,a.imgs))}</b></span><span class="muted">de ${pl(a.imgs,'imagem','imagens')}</span></div>
+   </div>
+   <div class="B-sec"><h2>Envios recentes</h2>
+    ${Object.entries(byDay).map(([day,es])=>`<div class="day">${day}</div>`+es.map(e=>{const open=S.openEnvio===e.id;
+     return `<div class="B-env" data-open-env="${e.id}" aria-expanded="${open}"><span class="flag">${e.lang.toUpperCase()}</span>
+      <div style="min-width:0"><div class="env-t">${pl(e.req,'frase','frases')} ${S.advIds?`<span class="idtag">${e.id}</span>`:''}</div><div class="env-m">${stLabel(e)}<span>${e.when}</span></div></div>
+      <span class="num">${usd(e.c.cart+e.c.ger+e.c.esc+e.c.tri)}</span>
+      ${open||e.err?`<div class="more">${errBlock(e)}${open?`<div class="env-m">Imagens: ${imgLine(e)} · ${pl(e.img.skip,'sem imagem','sem imagem')} · ${pl(e.img.fail,'falhou','falharam')}</div><div class="env-m">Cartões ${usd(e.c.cart)} · imagens ${usd(e.c.ger)}</div>`:''}${contBtn(e)?`<div>${contBtn(e)}</div>`:''}</div>`:''}
+     </div>`;}).join('')).join('')}
+   </div>${advCustos(a,l)}</div>`;
+ },
+ baralhos(){
+  const t={words:0,cards:0};['en','ru'].forEach(k=>{t.words+=DECKS[k].words;t.cards+=DECKS[k].cards;});
+  return `<div class="B-col">${repairNote()}${deckNotes()}${staleChip()}
+   <p class="B-lead">No Anki, <b class="num">${int(t.words)}</b> palavras diferentes em <b class="num">${int(t.cards)}</b> cartões.</p>
+   <p class="B-sub">Progresso de cada idioma no Anki.</p>
+   ${['en','ru'].map(k=>{const d=DECKS[k],rev=d.nw+d.rec+d.mat;
+    if(isMissing(k)) return `<div class="B-deck"><div class="B-line"><strong>${LANGC[k]} · ${d.name}</strong></div>${missingNote(k)}</div>`;
+    return `<div class="B-deck"><div class="B-line"><strong>${LANGC[k]} <span class="muted" style="font-weight:500">· ${d.name}</span></strong><span><b class="num" style="font-size:17px">${int(d.words)}</b> <span class="muted">palavras</span></span></div>
+     <div class="bar vein" style="margin-top:10px"><i style="flex:${d.mat};background:var(--seg-1)"></i><i style="flex:${d.rec};background:var(--seg-2)"></i><i style="flex:${d.nw};background:var(--seg-3)"></i></div>
+     <div class="legend"><span><i style="background:var(--seg-1)"></i><b>${int(d.mat)}</b> maduros · ${pctS(pct(d.mat,rev))}</span><span><i style="background:var(--seg-2)"></i><b>${int(d.rec)}</b> recentes</span><span><i style="background:var(--seg-3)"></i><b>${int(d.nw)}</b> novos</span></div>
+     <p class="desc" style="margin:8px 0 0">${pl(d.cards,'cartão','cartões')} · ${pl(d.terms,'termo-alvo','termos-alvo')} · ${nf(d.avg,1)} palavra nova por cartão</p></div>`;}).join('')}
+   ${advBaralhos()}</div>`;
+ },
+ vocabulario(){
+  const r=vocabRows();
+  return `<div class="B-col">${staleChip()}<div class="toolbar"><div class="seg sm">${['en','ru'].map(k=>`<button data-vlang="${k}" aria-pressed="${S.vLang===k}">${LANGC[k]}</button>`).join('')}</div>
+    <input class="input grow" data-set="vQ" placeholder="Buscar no vocabulário" value="${S.vQ.replace(/"/g,'&quot;')}" style="border-radius:999px"></div>
+   <div class="toolbar"><div class="chipset">${Object.entries(VSTP).map(([k,t])=>`<button data-vstatus="${k}" aria-pressed="${S.vStatus===k}">${t}</button>`).join('')}</div><span class="grow"></span>
+    <div class="chipset">${[['all','Palavras e termos'],['word','Só palavras'],['term','Só termos']].map(([k,t])=>`<button data-vtype="${k}" aria-pressed="${S.vType===k}">${t}</button>`).join('')}</div></div>
+   <p class="desc">${vocabSummary(r)}</p>
+   ${r.length?r.map(i=>{const tot=i[4]+i[5]+i[6]||1;return `<div class="B-vrow"><span class="w">${i[0]}<small>${i[1]==='term'?'termo':'palavra'} · ${pl(i[2],'cartão','cartões')}</small></span>
+     <div class="bar" title="${i[4]} maduros · ${i[5]} recentes · ${i[6]} novos"><i style="width:${i[4]/tot*100}%;background:var(--seg-1)"></i><i style="width:${i[5]/tot*100}%;background:var(--seg-2)"></i><i style="width:${i[6]/tot*100}%;background:var(--seg-3)"></i></div>
+     <span class="selo ${i[3]==='mature'?'ok':i[3]==='new'?'neutral':i[3]==='mixed'?'part':'run'}">${VST[i[3]]}</span></div>`;}).join('')
+    +`<div class="legend"><span><i style="background:var(--seg-1)"></i>maduros</span><span><i style="background:var(--seg-2)"></i>recentes</span><span><i style="background:var(--seg-3)"></i>novos</span><span>por cartão de cada item</span></div>`:vocabEmpty()}</div>`;
+ },
+ ajustes(){
+  const P=S.presets;
+  return `<div class="B-col">${ajNote()}<p class="B-sub" style="margin-bottom:8px">Baralho e imagens usados em cada envio.</p>
+   <table class="matrix"><thead><tr><th></th><th><span class="lang-pill">EN</span>Inglês</th><th><span class="lang-pill">RU</span>Russo</th></tr></thead><tbody>
+    <tr><th>Baralho</th>${['en','ru'].map(k=>`<td><input class="input" data-p="${k}.deck" value="${P[k].deck}" aria-label="Baralho ${LANG[k]}"></td>`).join('')}</tr>
+    <tr><th>Imagens</th>${['en','ru'].map(k=>`<td><select class="input" data-p="${k}.img" aria-label="Imagens ${LANG[k]}"><option value="real"${P[k].img==='real'?' selected':''}>Foto real (Google)</option><option value="gen"${P[k].img==='gen'?' selected':''}>Gerada por IA</option></select></td>`).join('')}</tr>
+   </tbody></table>
+   <p class="desc">Foto real: quando não acha uma foto boa, gera uma por IA, e aí tem custo. Baralho em branco volta para o padrão.</p>
+   <button class="btn primary" data-save>Salvar ajustes</button>${advAjustes()}</div>`;
+ },
+};
+
+/* ================= C · POR IDIOMA ================= */
+function tiles(key,opts){
+  return `<div class="C-tiles" role="group">${opts.map(o=>`<button class="C-tile" data-tile="${key}" data-v="${o.k}" aria-pressed="${S[key]===o.k}">
+    <span class="code">${o.code}</span><b>${o.t}</b><span class="v">${o.v}</span> <small>${o.s}</small></button>`).join('')}</div>`;
+}
+function donut(d){
+  const rev=d.nw+d.rec+d.mat,C=2*Math.PI*52;let off0=0;
+  const seg=(n,c)=>{const L=n/rev*C;const s=`<circle cx="66" cy="66" r="52" fill="none" stroke="${c}" stroke-width="14" stroke-dasharray="${Math.max(L-2,0)} ${C}" stroke-dashoffset="${-off0}" transform="rotate(-90 66 66)"/>`;off0+=L;return s;};
+  return `<svg viewBox="0 0 132 132" role="img" aria-label="${pctS(pct(d.mat,rev))} de maturidade"><circle cx="66" cy="66" r="52" fill="none" stroke="var(--surface-2)" stroke-width="14"/>${seg(d.mat,'var(--seg-1)')}${seg(d.rec,'var(--seg-2)')}${seg(d.nw,'var(--seg-3)')}
+   <text x="66" y="66" text-anchor="middle" class="lbl">${pctS(Math.round(pct(d.mat,rev)))}</text><text x="66" y="82" text-anchor="middle" class="lbl2">maduros</text></svg>`;
+}
+const C={
+ custos(){
+  const all=(()=>{const s=S.lang;S.lang='all';const r=envios();S.lang=s;return r;})();
+  const l=envios(),a=agg(l);
+  const aL=k=>agg(all.filter(e=>e.lang===k));
+  if(!l.find(e=>e.id===S.selEnvio)) S.selEnvio=l[0]?.id||null;
+  const e=l.find(x=>x.id===S.selEnvio);
+  return `<div class="toolbar">${periodSeg()}<span class="grow"></span>${dates()}</div>
+   ${tiles('lang',[{k:'all',code:'EN + RU',t:'Todos os idiomas',v:usd(agg(all).total),s:pl(all.length,'envio','envios')},{k:'en',code:'EN',t:'Inglês',v:usd(aL('en').total),s:pl(aL('en').n,'envio','envios')},{k:'ru',code:'RU',t:'Russo',v:usd(aL('ru').total),s:pl(aL('ru').n,'envio','envios')}])}
+   <div class="C-strip"><span>Cartões <b>${usd(a.cart)}</b></span><span>Imagens geradas <b>${usd(a.ger)}</b></span><span>Economia com fotos reais <b>${usd(a.econ)}</b></span><span>Frases <b>${int(a.ok)} de ${int(a.req)}</b></span><span>Envios concluídos <b>${int(a.done)} de ${int(a.n)}</b></span></div>
+   <div class="card" style="margin-bottom:12px"><h3>Origem das imagens</h3><p class="desc">${pl(a.imgs,'imagem','imagens')} ${PERIOD_PHRASE[S.period]}${S.lang!=='all'?' · '+LANG[S.lang]:''}</p>
+    <div class="C-rates">${[['Foto real',a.real,'var(--seg-1)'],['Gerada por IA',a.gen,'var(--seg-2)'],['Sem imagem',a.skip,'var(--seg-3)'],['Falhou',a.fail,'var(--seg-4)']].map(([t,n,c])=>`<div class="rate"><div class="rate-top"><span>${t}</span><b class="num">${pctS(pct(n,a.imgs))}</b></div><div class="bar"><i style="width:${pct(n,a.imgs)}%;background:${c}"></i></div><small>${pl(n,'imagem','imagens')}</small></div>`).join('')}</div></div>
+   <div class="C-md">
+    <div class="card" style="padding:10px"><div class="h3" style="padding:4px 6px 8px">Envios recentes <span class="muted" style="font-weight:500;font-size:12px">· ${pl(a.n,'envio','envios')}</span></div>
+     <div class="C-list" role="listbox" aria-label="Envios recentes">${l.map(x=>`<button class="C-item" role="option" data-sel-envio="${x.id}" aria-selected="${x.id===S.selEnvio}">
+      <span class="t">${envTitle(x)}<small>${x.when}${S.advIds?' · '+x.id:''}</small></span><span style="display:flex;gap:8px;align-items:center">${{done:'<span class="dot"></span>',part:'<span class="dot" style="background:var(--accent)"></span>',fail:'<span class="dot off"></span>',run:'<span class="dot wait" style="background:var(--info)"></span>'}[x.st]}<span class="num">${usd(x.c.cart+x.c.ger+x.c.esc+x.c.tri)}</span></span></button>`).join('')}</div></div>
+    <div class="card C-detail">${e?`<div class="desc" style="margin:0">${e.when} · ${LANGC[e.lang]}${S.advIds?` · <span class="idtag">${e.id}</span>`:''}</div><h3 style="font-size:17px;margin:2px 0 8px">${envTitle(e)}</h3>${stLabel(e)}
+      ${errBlock(e)?`<div style="margin-top:10px">${errBlock(e)}</div>`:''}
+      <dl class="C-kv"><dt>Criação de cartões</dt><dd>${usd(e.c.cart)}</dd><dt>Imagens geradas</dt><dd>${usd(e.c.ger)}</dd><dt>Escolha e triagem</dt><dd>${usd(e.c.esc+e.c.tri)}</dd><dt class="tot">Total</dt><dd class="tot">${usd(e.c.cart+e.c.ger+e.c.esc+e.c.tri)}</dd></dl>
+      <div class="h3" style="font-size:13px;margin:12px 0 6px">Imagens</div>
+      <div class="bar thick">${[[e.img.real,'--seg-1'],[e.img.gen,'--seg-2'],[e.img.skip,'--seg-3'],[e.img.fail,'--seg-4']].map(([n,c])=>n?`<i style="flex:${n};background:var(${c})"></i>`:'').join('')||'<i style="flex:1;background:var(--surface-2)"></i>'}</div>
+      <div class="legend"><span><i style="background:var(--seg-1)"></i>${pl(e.img.real,'foto real','fotos reais')}</span><span><i style="background:var(--seg-2)"></i>${pl(e.img.gen,'gerada','geradas')}</span><span><i style="background:var(--seg-3)"></i>${int(e.img.skip)} sem imagem</span><span><i style="background:var(--seg-4)"></i>${pl(e.img.fail,'falhou','falharam')}</span></div>
+      ${contBtn(e)?`<div style="margin-top:14px">${contBtn(e)}</div>`:''}`:'<p class="desc">Nenhum envio neste período.</p>'}</div>
+   </div>${advCustos(a,l)}`;
+ },
+ baralhos(){
+  const k=S.deckLang,d=DECKS[k],rev=d.nw+d.rec+d.mat;
+  return repairNote()+deckNotes()+staleChip()+tiles('deckLang',['en','ru'].map(x=>({k:x,code:x.toUpperCase()+' · '+DECKS[x].name,t:LANGC[x],v:isMissing(x)?'—':int(DECKS[x].words),s:isMissing(x)?'baralho não encontrado':'palavras'})))+
+   `<div class="card">${isMissing(k)?`<h3>${LANGC[k]} · ${d.name}</h3>${missingNote(k)}`:`<div class="C-donut">${donut(d)}
+     <div style="flex:1;min-width:220px"><div class="desc" style="margin:0">${LANGC[k]} · ${d.name}</div><div style="font:600 30px 'JetBrains Mono',monospace;letter-spacing:-.02em">${int(d.words)}</div><div class="muted" style="font-size:12px;margin-bottom:10px">palavras diferentes nos cartões</div>
+     <dl class="C-kv" style="max-width:340px"><dt>Cartões</dt><dd>${int(d.cards)}</dd><dt>Termos-alvo</dt><dd>${int(d.terms)}</dd><dt>Palavra nova por cartão</dt><dd>${nf(d.avg,1)}</dd>
+     <dt><i style="display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--seg-1)"></i> Maduros</dt><dd>${int(d.mat)}</dd><dt><i style="display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--seg-2)"></i> Recentes</dt><dd>${int(d.rec)}</dd><dt><i style="display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--seg-3)"></i> Novos</dt><dd>${int(d.nw)}</dd></dl></div></div>`}</div>${advBaralhos()}`;
+ },
+ vocabulario(){
+  const r=vocabRows();
+  if(!r.find(i=>i[0]===S.selWord)) S.selWord=r[0]?.[0]||null;
+  const w=r.find(i=>i[0]===S.selWord);
+  return staleChip()+tiles('vLang',['en','ru'].map(x=>({k:x,code:x.toUpperCase()+' · '+DECKS[x].name,t:LANGC[x],v:int(VOCAB[x].total),s:'itens'})))+vocabFilters(false)+
+   `<p class="desc">${vocabSummary(r)}</p>`+(r.length?`<div class="C-md"><div class="card" style="padding:8px"><div class="C-list" role="listbox" aria-label="Vocabulário">${r.map(i=>`<button class="C-item" role="option" data-sel-word="${i[0]}" aria-selected="${i[0]===S.selWord}"><span class="t">${i[0]}<small>${i[1]==='term'?'termo':'palavra'} · ${pl(i[2],'cartão','cartões')}</small></span><span class="selo ${i[3]==='mature'?'ok':i[3]==='new'?'neutral':i[3]==='mixed'?'part':'run'}">${VST[i[3]]}</span></button>`).join('')}</div></div>
+   <div class="card C-detail"><div class="desc" style="margin:0">${w[1]==='term'?'Termo':'Palavra'} · ${LANGC[S.vLang]}</div><div style="font-size:24px;font-weight:700;margin:2px 0 10px">${w[0]}</div>
+    <div class="bar thick"><i style="flex:${w[4]||0.0001};background:var(--seg-1)"></i><i style="flex:${w[5]||0.0001};background:var(--seg-2)"></i><i style="flex:${w[6]||0.0001};background:var(--seg-3)"></i></div>
+    <dl class="C-kv"><dt>Aparece em</dt><dd>${pl(w[2],'cartão','cartões')}</dd><dt>Maduros</dt><dd>${w[4]}</dd><dt>Recentes</dt><dd>${w[5]}</dd><dt>Novos</dt><dd>${w[6]}</dd><dt class="tot">Status</dt><dd class="tot" style="font-family:Manrope">${VST[w[3]]}</dd></dl></div></div>`:vocabEmpty());
+ },
+ ajustes(){
+  const k=S.ajLang;
+  return ajNote()+tiles('ajLang',['en','ru'].map(x=>({k:x,code:x.toUpperCase(),t:LANGC[x],v:S.presets[x].deck||'—',s:S.presets[x].img==='real'?'· foto real':'· gerada por IA'})))+
+   `<div class="card" style="max-width:520px"><h3>${LANGC[k]}</h3><p class="desc">Baralho e imagens usados em cada envio em ${LANG[k]}.</p>${ajFields(k)}<button class="btn primary" data-save>Salvar ajustes</button>${advAjustes(k)}</div>`;
+ },
+};
+const R={A,B,C};
+
+/* ---------------- render ---------------- */
+function render(){
+  document.documentElement.dataset.theme=S.theme;
+  $('#sw-label').textContent=`${S.variant} · ${VARIANTS[S.variant]}`;
+  const dot=$('#nav-dot');dot.className='dot'+(S.con==='off'?' off':S.con==='wait'?' wait':'');
+  const t={on:'ligada',off:'desligada',wait:'conectando…'}[S.con];
+  $('#nav-anki').title='Conexão com o Anki: '+t;dot.setAttribute('aria-label',t);
+  $('#anki-top').innerHTML=S.con==='off'?`<div class="banner" role="alert"><span class="dot off"></span><p>A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.</p><button class="btn sm" data-retry-con>Tentar de novo</button></div>`
+    :S.con==='wait'?`<div class="banner info"><span class="dot wait"></span><p>Conectando ao Anki…</p></div>`:'';
+  $$('.tabs a').forEach(a=>{if(a.dataset.tab===S.tab)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
+  const st=S.tab==='ajustes'?null:tabState();
+  $('#tab-body').innerHTML=st??R[S.variant][S.tab]();
+  const rail=S.win==='rail'||(S.win==='auto'&&innerWidth<1000);
+  $('#app').classList.toggle('rail',rail);
+  readout();
+}
+function applyRoute(){
+  const h=(location.hash||'#anki/custos').slice(1).split('/');
+  const area=['frases','anki','configuracoes'].includes(h[0])?h[0]:'anki';
+  if(area==='anki') S.tab=['custos','baralhos','vocabulario','ajustes'].includes(h[1])?h[1]:'custos';
+  $$('[data-view]').forEach(v=>v.classList.toggle('hidden',v.dataset.view!==area));
+  $$('.nav a').forEach(a=>{if(a.dataset.area===area)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
+  $('#nav-anki').setAttribute('href','#anki/'+S.tab);
+  render();
+}
+function readout(){
+  $('#readout').textContent=
+`rota      #${(location.hash||'#anki/custos').slice(1)}
+variante  ${S.variant} · ${VARIANTS[S.variant]}   tema ${S.theme}
+conexão   ${S.con} · dados da aba: ${S.data}
+custos    período=${S.period} idioma=${S.lang} 4casas=${S.adv4} ids=${S.advIds}
+vocab     ${S.vLang} tipo=${S.vType} status=${S.vStatus} busca="${S.vQ}"
+reparar   ${S.repair} (termina em: ${S.repairOutcome})
+ajustes   EN ${S.presets.en.deck}/${S.presets.en.img}/${S.presets.en.wtld}·${S.presets.en.ptld}
+          RU ${S.presets.ru.deck}/${S.presets.ru.img}/${S.presets.ru.wtld}·${S.presets.ru.ptld}`;
+}
+let toastT;function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.remove('hidden');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.add('hidden'),Math.max(1800,msg.length*70));}
+
+function setVariant(k){S.variant=k;try{const u=new URL(location);u.searchParams.set('variant',k);history.replaceState(null,'',u);}catch(e){}render();}
+function cycle(d){const i=KEYS.indexOf(S.variant);setVariant(KEYS[(i+d+KEYS.length)%KEYS.length]);}
+$('#sw-prev').onclick=()=>cycle(-1);$('#sw-next').onclick=()=>cycle(1);
+addEventListener('keydown',e=>{
+  if(e.target.closest('input,textarea,select,[contenteditable]'))return;
+  if(e.key==='ArrowLeft')cycle(-1);else if(e.key==='ArrowRight')cycle(1);
+  else if(e.key==='t'||e.key==='T'){S.theme=S.theme==='dark'?'light':'dark';render();}
+});
+addEventListener('hashchange',applyRoute);addEventListener('resize',render);
+
+/* ---------------- interações ---------------- */
+function refreshSoon(){S.data='loading';$('#s-data').value='loading';render();setTimeout(()=>{S.data='ok';$('#s-data').value='ok';render();},1100);}
+function focusKeep(fn){const a=document.activeElement,key=a?.dataset?.set,pos=a?.selectionStart;fn();if(key){const n=$(`[data-set="${key}"]`);if(n){n.focus();try{n.setSelectionRange(pos,pos);}catch(e){}}}}
+$('#tab-body').addEventListener('click',e=>{
+  const b=e.target.closest('button,[data-open-env]');if(!b)return;
+  const ds=b.dataset;
+  if(ds.period){S.period=ds.period;if(S.data==='empty'){S.data='ok';$('#s-data').value='ok';}render();}
+  else if(ds.tile){S[ds.tile]=ds.v;render();}
+  else if(ds.selEnvio){S.selEnvio=ds.selEnvio;render();}
+  else if(ds.selWord){S.selWord=ds.selWord;render();}
+  else if(ds.vlang){S.vLang=ds.vlang;render();}
+  else if(ds.vstatus){S.vStatus=ds.vstatus;render();}
+  else if(ds.vtype){S.vType=ds.vtype;render();}
+  else if('clearVocab' in ds){S.vQ='';S.vStatus='all';S.vType='all';if(S.data==='empty'){S.data='ok';$('#s-data').value='ok';}render();}
+  else if('retry' in ds){refreshSoon();}
+  else if('refresh' in ds){S.repair='idle';refreshSoon();}
+  else if('dismissRepair' in ds){S.repair='idle';render();}
+  else if(ds.cont){const x=ENVIOS.find(v=>v.id===ds.cont);x.st='run';x.stage='Na fila';toast('Envio retomado');render();
+    setTimeout(()=>{x.stage='Criando cartões';render();},1200);setTimeout(()=>{x.st='done';x.ok=x.req;delete x.err;render();},3200);}
+  else if(ds.diag){toast(`anki-diagnostico-${ds.diag}.json baixado`);}
+  else if('repair' in ds){S.repair='running';S.data='ok';$('#s-data').value='ok';render();
+    setTimeout(()=>{S.repair=S.repairOutcome==='ok'?'idle':S.repairOutcome;if(S.repairOutcome==='ok')toast('Anki reparado');render();},2200);}
+  else if('save' in ds){toast('Ajustes de envio salvos');}
+  else if(ds.openEnv&&!e.target.closest('.more')){S.openEnvio=S.openEnvio===ds.openEnv?null:ds.openEnv;render();}
+});
+$('#tab-body').addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset.toggle){S[t.dataset.toggle]=t.checked;render();return;}
+  if(t.dataset.set&&t.tagName==='SELECT'){S[t.dataset.set]=t.value;render();return;}
+  if(t.dataset.p){const [k,f]=t.dataset.p.split('.');S.presets[k][f]=t.value;render();}
+});
+$('#tab-body').addEventListener('input',e=>{
+  const t=e.target;
+  if(t.dataset.set==='vQ'){S.vQ=t.value;focusKeep(render);}
+  else if(t.dataset.p&&t.tagName==='INPUT'){const [k,f]=t.dataset.p.split('.');S.presets[k][f]=t.value;readout();}
+});
+$('#tab-body').addEventListener('toggle',e=>{const d=e.target.closest?.('details.adv');if(d)S.advOpen[d.dataset.adv]=d.open;},true);
+$('#anki-top').addEventListener('click',e=>{if(e.target.closest('[data-retry-con]')){S.con='wait';$('#s-con').value='wait';render();setTimeout(()=>{S.con='on';$('#s-con').value='on';render();},1300);}});
+$('#btn-atualizar').onclick=refreshSoon;
+$('#s-con').onchange=e=>{S.con=e.target.value;render();};
+$('#s-data').onchange=e=>{S.data=e.target.value;render();};
+$('#s-running').onchange=e=>{S.running=e.target.checked;render();};
+$('#s-local').onchange=e=>{S.local=e.target.checked;render();};
+$('#s-missing').onchange=e=>{S.missing=e.target.checked;render();};
+$('#s-repair').onchange=e=>{S.repairOutcome=e.target.value;readout();};
+$('#s-win').onchange=e=>{S.win=e.target.value;render();};
+
+if(!location.hash) try{history.replaceState(null,'',location.pathname+location.search+'#anki/custos');}catch(e){}
+applyRoute();
+</script>
+</body>
+</html>

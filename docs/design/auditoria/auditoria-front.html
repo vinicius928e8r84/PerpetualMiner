@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="luxury">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auditoria do front — PerpetualMiner</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :where(.grid, .flex) > * { min-width: 0; }
+  :where(p, h1, h2, h3, h4, li, td, th, .badge, label) { overflow-wrap: anywhere; }
+  body { background: var(--color-base-100); color: var(--color-base-content); }
+  .q-card[data-queued="1"] { outline: 2px solid var(--color-success); outline-offset: 2px; }
+  .opt { display:flex; gap:.6rem; align-items:flex-start; padding:.55rem .7rem; border-radius:.6rem; border:1px solid color-mix(in oklab, var(--color-base-content) 12%, transparent); cursor:pointer; }
+  .opt:has(input:checked) { border-color: var(--color-primary); background: color-mix(in oklab, var(--color-primary) 10%, transparent); }
+  .rec { font-size:.7rem; font-weight:700; letter-spacing:.04em; color: var(--color-primary); text-transform: uppercase; }
+  .mark { width:64px; height:64px; display:grid; place-items:center; border-radius:14px; }
+  td.v select { min-width: 7.5rem; }
+  tr[data-changed="1"] td { background: color-mix(in oklab, var(--color-warning) 14%, transparent); }
+  .st { font-size:.68rem; }
+  .sticky-bar { position: sticky; bottom: 0; z-index: 20; }
+</style>
+</head>
+<body>
+<main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-10">
+
+<!-- ============ HEADER ============ -->
+<header class="space-y-3">
+  <div class="text-xs uppercase tracking-widest opacity-60">Wayfinder · Redesign do front-end do PerpetualMiner · ticket de grilling</div>
+  <h1 class="text-3xl font-bold">Auditoria &amp; inventário do front</h1>
+  <p class="opacity-80 max-w-3xl">O que existe, o que funciona, o que é excesso e como reagrupa — <b>sem decidir aparência e sem função nova</b>. Levantei ~260 itens nas 5 superfícies. Cada pergunta abaixo já vem com a <span class="rec">minha recomendação</span> marcada: mude só onde discordar, escreva nota se quiser, e clique <b>Enfileirar</b> (por pergunta ou tudo de uma vez no rodapé). Depois <b>Send to Agent</b>.</p>
+  <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
+    <div class="stat bg-base-200 rounded-box p-3"><div class="stat-title">Itens</div><div class="stat-value text-2xl">~260</div><div class="stat-desc">5 superfícies</div></div>
+    <div class="stat bg-base-200 rounded-box p-3"><div class="stat-title">Quebrados</div><div class="stat-value text-2xl text-error">~25</div><div class="stat-desc">→ lista de bugs (fora do escopo)</div></div>
+    <div class="stat bg-base-200 rounded-box p-3"><div class="stat-title">Órfãos / mortos</div><div class="stat-value text-2xl text-warning">~30</div><div class="stat-desc">corte óbvio</div></div>
+    <div class="stat bg-base-200 rounded-box p-3"><div class="stat-title">Redundâncias</div><div class="stat-value text-2xl">~20</div><div class="stat-desc">mesma função 2–5×</div></div>
+    <div class="stat bg-base-200 rounded-box p-3"><div class="stat-title">Logos</div><div class="stat-value text-2xl">5</div><div class="stat-desc">nenhum oficial</div></div>
+  </div>
+</header>
+
+<!-- ============ IDENTITY STRIP ============ -->
+<section class="space-y-3">
+  <h2 class="text-xl font-semibold">A identidade hoje: 5 marcas, 4 paletas</h2>
+  <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+    <figure class="card bg-base-200 p-3 items-center text-center gap-2">
+      <div class="mark" style="background:#f3f4f6"><svg width="44" height="44" viewBox="0 0 128 128"><rect width="128" height="128" rx="22" fill="#0c0c0c"/><path d="M76 12 L40 68 H60 L52 116 L88 60 H68 Z" fill="#00ffff"/></svg></div>
+      <figcaption class="text-xs"><b>Popup</b> · raio ciano<br><span class="opacity-60">icon.svg (órfão)</span></figcaption>
+    </figure>
+    <figure class="card bg-base-200 p-3 items-center text-center gap-2">
+      <div class="mark" style="background:#f3f4f6"><svg width="44" height="44" viewBox="0 0 40 40"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4285F4"/><stop offset="33%" stop-color="#EA4335"/><stop offset="66%" stop-color="#FBBC05"/><stop offset="100%" stop-color="#34A853"/></linearGradient></defs><path d="M6 11Q6 6 11 6H29Q34 6 34 11V22Q34 27 29 27H24L20 34L16 27H11Q6 27 6 22Z" fill="url(#g1)"/></svg></div>
+      <figcaption class="text-xs"><b>Painel</b> · bolha Google<br><span class="opacity-60">tema claro + sidebar roxa</span></figcaption>
+    </figure>
+    <figure class="card bg-base-200 p-3 items-center text-center gap-2">
+      <div class="mark" style="background:rgba(10,10,10,.9);border:2px solid #00ff88"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5"/></svg></div>
+      <figcaption class="text-xs"><b>Overlay</b> · balão verde neon<br><span class="opacity-60">+ ⚡ ciano na captura</span></figcaption>
+    </figure>
+    <figure class="card bg-base-200 p-3 items-center text-center gap-2">
+      <div class="mark" style="background:#f3f4f6"><svg width="44" height="44" viewBox="0 0 40 40"><defs><linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient></defs><rect x="6" y="5" width="22" height="30" rx="3" fill="url(#g2)"/><rect x="10" y="5" width="3" height="30" fill="rgba(0,0,0,.15)"/><line x1="14" y1="12" x2="24" y2="12" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><line x1="14" y1="17" x2="24" y2="17" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><line x1="14" y1="22" x2="20" y2="22" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+      <figcaption class="text-xs"><b>BookReader</b> · livro roxo<br><span class="opacity-60">entra por botão âmbar</span></figcaption>
+    </figure>
+    <figure class="card bg-base-200 p-3 items-center text-center gap-2">
+      <div class="mark" style="background:#f3f4f6"><div style="width:40px;height:40px;border-radius:8px;background:#9ca3af;color:#fff;display:grid;place-items:center;font:700 22px system-ui">P</div></div>
+      <figcaption class="text-xs"><b>Toolbar</b> · “P” genérico<br><span class="opacity-60">manifest sem ícones</span></figcaption>
+    </figure>
+  </div>
+  <p class="text-sm opacity-70">Nada disso é decidido aqui — vira insumo do ticket <b>Identidade visual própria &amp; design system base</b>. Fonte única em todo lugar: Segoe UI/system-ui; zero variáveis CSS; o popup sozinho usa ~20 opacidades de ciano.</p>
+</section>
+
+<!-- ============ ROUND 2 ============ -->
+<section class="space-y-4">
+  <div role="alert" class="alert alert-info alert-soft">
+    <div>
+      <b>Rodada 1 recebida.</b> Tudo conforme recomendação, com três notas suas e uma divergência (Q14: você marcou os 9 itens, inclusive busca, confirmação por linha, cancelar e badge na toolbar). Isso esbarra na regra do mapa “zero função nova”. A rodada 2 fecha esses pontos. Depois eu gravo tudo: comentário e fechamento no ticket, CONTEXT.md, inventário no repo e a issue de bugs.
+    </div>
+  </div>
+  <div>
+    <h2 class="text-xl font-semibold">Rodada 2 — escopo e desdobramentos</h2>
+    <p class="text-sm opacity-70">Mesma mecânica: recomendação marcada, mude se discordar, enfileire e mande.</p>
+  </div>
+  <div id="questions2" class="space-y-4"></div>
+  <div class="flex justify-end"><button class="btn btn-primary" id="queue-r2" type="button">Enfileirar rodada 2</button></div>
+</section>
+
+<!-- ============ QUESTIONS ============ -->
+<section class="space-y-4 opacity-80">
+  <div>
+    <h2 class="text-xl font-semibold">Rodada 1 — resolvida ✓</h2>
+    <p class="text-sm opacity-70">Onde cada coisa <i>mora</i> (agrupamento). O formato do shell — abas, páginas, sidebar — fica para o ticket <b>Painel — arquitetura de informação &amp; shell</b>; textos exatos ficam para <b>Voz, tom &amp; catálogo de mensagens</b>.</p>
+  </div>
+  <div id="questions" class="space-y-4"></div>
+</section>
+
+<!-- ============ INVENTORY ============ -->
+<section class="space-y-4">
+  <div>
+    <h2 class="text-xl font-semibold">Inventário anotado — veredito por item</h2>
+    <p class="text-sm opacity-70">Veredito pré-preenchido conforme as recomendações acima. Troque o select onde discordar (a linha fica amarela) — só as linhas alteradas vão na resposta. <span class="badge badge-sm badge-success badge-soft">working</span> <span class="badge badge-sm badge-error badge-soft">broken</span> <span class="badge badge-sm badge-warning badge-soft">orphan/dead</span> <span class="badge badge-sm badge-info badge-soft">redundante</span></p>
+  </div>
+  <div role="tablist" class="tabs tabs-box flex-wrap" id="inv-tabs"></div>
+  <div id="inv-tables"></div>
+</section>
+
+<!-- ============ BUGS ============ -->
+<section class="space-y-3">
+  <h2 class="text-xl font-semibold">Bugs encontrados (fora do escopo deste mapa)</h2>
+  <p class="text-sm opacity-70">O mapa é “zero mudança de comportamento”. Estes são defeitos reais que a auditoria expôs — não entram no redesign; a Q15 decide o que fazer com eles. Ordenados por gravidade.</p>
+  <div class="overflow-x-auto rounded-box border border-base-content/10">
+    <table class="table table-sm table-zebra" id="bugs"></table>
+  </div>
+</section>
+
+<!-- ============ MESSAGES HANDOFF ============ -->
+<section class="space-y-3">
+  <h2 class="text-xl font-semibold">“Mensagens que não dizem nada” — insumo para o ticket de Voz &amp; tom</h2>
+  <p class="text-sm opacity-70">Só apontadas aqui (o ticket pede apontar). A reescrita é do ticket <b>Voz, tom &amp; catálogo de mensagens/estados</b>.</p>
+  <div class="grid sm:grid-cols-2 gap-3" id="msgs"></div>
+</section>
+
+<!-- ============ FINAL ============ -->
+<section class="card bg-base-200">
+  <div class="card-body gap-3">
+    <h2 class="card-title">Algo que eu não vi?</h2>
+    <textarea id="free-note" class="textarea w-full" rows="3" placeholder="Superfície/controle que ficou de fora, ou qualquer comentário geral…"></textarea>
+  </div>
+</section>
+
+<div class="sticky-bar">
+  <div class="flex flex-wrap items-center justify-between gap-3 bg-base-300 border border-base-content/10 rounded-box px-4 py-3 shadow-xl">
+    <div class="text-sm"><span id="q-status">0 de 16 perguntas na fila</span> · <span id="inv-status">0 vereditos alterados</span></div>
+    <button class="btn btn-primary" id="queue-all" type="button">Enfileirar tudo (respostas atuais)</button>
+  </div>
+</div>
+</main>
+
+<script>
+/* ===================== QUESTIONS ===================== */
+const Q = [
+ {id:'Q0', t:'Para quem é este front?', b:'Muda o quanto de jargão/controle técnico é aceitável (TLD, Judge/Guard, jobId, debug bundle) e o que fazer com “Olá, Vinicius ;-;” fixo no HTML.',
+  o:[['so-eu','Só eu (ferramenta pessoal). Técnico pode ficar, mas organizado.'],['eu-e-outros','Eu + outros aprendizes no futuro (Web Store): tudo precisa ser legível por leigo.'],['eu-agora','Só eu agora, mas o redesign já deve servir a outros depois.']], r:'eu-agora',
+  why:'O HTML tem seu nome fixo e há um debug bundle exposto — sinais de ferramenta pessoal. Mas vale projetar a camada principal legível e esconder o técnico numa camada avançada (ver Q9), sem custo extra.'},
+ {id:'Q1', t:'Auto Miner — onde mora?', b:'Hoje em 3 lugares: popup (toggle EN/RU + limite + contador), mini-painel sem rótulo dentro da barra de <i>filtros</i> do painel, e o badge contador no botão flutuante (com conta errada).',
+  o:[['popup','Controles só no popup; overlay mantém só o contador (status); sai do painel.'],['popup+config','Controles no popup e numa área de Configurações do painel; overlay com contador.'],['3-lugares','Manter os 3 como hoje.']], r:'popup',
+  why:'Você liga/desliga o Auto Miner enquanto assiste — o popup está a um clique do vídeo. No painel ele está enfiado na barra de filtros de frases, sem título, onde não pertence.'},
+ {id:'Q2', t:'Popup — qual é o papel do “mini painel”?', b:'Hoje: Abrir painel · Auto Miner · Configurar atalho · Adição manual · Últimas 5 (com ↻, “Tudo”, “Deletar” — este quebrado: a frase ressuscita no sync).',
+  o:[['cockpit','“Cockpit de captura”: Abrir painel · Auto Miner · Adição rápida · Últimas 5 só leitura. Corta ↻, “Tudo”, “Deletar”. Atalho vai para Configurações (Q11).'],['cockpit+sel','Igual, mas mantém selecionar/deletar no popup.'],['minimo','Mínimo: só Abrir painel + Auto Miner; todo o resto só no painel.']], r:'cockpit',
+  why:'Gestão (selecionar/apagar) já existe completa no painel; a do popup é a versão quebrada. O popup fica focado em capturar, não em gerenciar.'},
+ {id:'Q3', t:'Apagar — quantos caminhos?', b:'Hoje 5, cada um com regra diferente: lixeira minúscula “apagar TUDO” ao lado do contador na sidebar; “Deletar” da seleção (com confirm); ícone por linha (sem confirm); confirm surpresa pós-envio ao Anki; “Deletar” do popup.',
+  o:[['2+perigo','Fica: por linha + “apagar selecionadas”. “Apagar tudo” vai para uma zona de perigo em Configurações. Pós-envio vira escolha explícita dentro do modal Envio ao Anki. Popup perde o seu.'],['como-hoje-sem-popup','Como hoje, só tirando o do popup.'],['como-hoje','Como hoje.']], r:'2+perigo',
+  why:'Um botão que zera o banco inteiro não pode morar num ícone de 13px ao lado de um contador. E o confirm() que aparece no meio do polling, sem você ter clicado nada, é o controle mais surpreendente do app.'},
+ {id:'Q4', t:'Entrada de frases no painel', b:'Hoje 3 botões soltos com a mesma finalidade: “Adição em Massa” (colar), “Importar .txt” (arquivo) e “BookReader” (foto, outra aba). Regras divergem (só o import deduplica; só Editar tem “Detalhe”) — unificar regras é comportamento e fica fora.',
+  o:[['um-ponto','Um único “Adicionar frases” com 3 modos: Colar · Arquivo .txt · Foto de livro. Popup mantém a adição rápida.'],['colar+arquivo','Junta só Colar + Arquivo num modal; Foto de livro continua botão próprio.'],['como-hoje','3 botões como hoje.']], r:'um-ponto',
+  why:'São três portas para a mesma sala. Agrupar libera o header (Q6) e dá ao BookReader uma entrada que diz o que ele é.'},
+ {id:'Q5', t:'Filtro de fonte duplicado', b:'A lista de fontes da sidebar (“Todos os Streamings”) parece navegação mas é o mesmo filtro do dropdown “Todas as Fontes” da barra de filtros.',
+  o:[['dropdown','Fica o dropdown (junto de Idioma/Ordem); a lista sai da sidebar, que fica livre para navegação de verdade.'],['sidebar','Fica a lista da sidebar; o dropdown sai.'],['ambos','Os dois.']], r:'dropdown',
+  why:'Filtros juntos num lugar só; a sidebar que “parece menu” deve ser menu (formato decidido no ticket de arquitetura do painel).'},
+ {id:'Q6', t:'Header do painel com 11 controles', b:'BookReader, Pág., Todas, Editar Selecionados, contador, Deletar, Exportar .txt, Enviar ao Anki, Importar .txt, Adição em Massa, ☰ (decorativo) — numa linha sem quebra.',
+  o:[['contextual','Ações sobre seleção (Pág./Todas/contador/Editar/Apagar/Exportar/Enviar ao Anki) viram uma barra contextual que só aparece com seleção; fixo só “Adicionar frases”. ☰ e funil cortados.'],['barra-unica','Barra única, só reorganizada e agrupada visualmente.']], r:'contextual',
+  why:'Sete dos 11 controles só fazem sentido com algo selecionado — hoje eles gritam o tempo todo. É reagrupamento puro, zero função nova.'},
+ {id:'Q7', t:'Exportar/Importar .txt ainda têm lugar?', b:'Exportar .txt marca a frase como “exported” → ganha badge “No Anki” e some com “Esconder Exportadas”, mesmo sem ter ido ao Anki (bug). Import perde as keywords do export.',
+  o:[['secundario','Ficam, rebaixados a um menu secundário “Arquivo .txt”; “Enviar ao Anki” é a ação principal.'],['corta','Corta os dois (legado de antes do Bridge).'],['como-hoje','Como hoje, mesmo destaque.']], r:'secundario',
+  why:'Servem de backup/portabilidade, mas não são o fluxo principal desde o Bridge. Se você não usa mais, escolha “Corta”.'},
+ {id:'Q8', t:'Anki Bridge — onde mora?', b:'Hoje: card na sidebar (badge, “Custo no filtro”, resumo, Gerenciar) + seção inline que abre <i>entre</i> o header e a lista, empurrando as frases para baixo (Presets · Custos · Baralhos e termos · Vocabulário). Badge, custo e status aparecem 2×.',
+  o:[['area-propria','Sidebar mostra só o status Online/Offline; custo/resumo saem dela. O Bridge vira área própria com 4 sub-áreas (Presets · Custos · Baralhos e termos · Vocabulário).'],['card+area','Mantém o card completo na sidebar + área própria.'],['como-hoje','Como hoje (seção inline).']], r:'area-propria',
+  why:'“Custo no filtro” na sidebar se refere a um filtro invisível. O Bridge é um mundo à parte das frases; não deveria ser uma gaveta no meio da lista.'},
+ {id:'Q9', t:'Controles técnicos do Bridge', b:'TLD palavra/frase em texto livre, métricas “Judge”/“Guard”, USD com 4 casas, jobId bruto, “G n / IA m”, “Stage atual”, botão “Baixar debug bundle”, “Reparar Anki” (mata processos).',
+  o:[['avancado','Ficam, reagrupados numa camada “Avançado/diagnóstico” recolhida. A camada principal mostra: baralho, fonte de imagem, custo total, frases OK, jobs OK, status do job.'],['visivel','Tudo visível como hoje.'],['cortar','Cortar debug bundle e o detalhe Judge/Guard.']], r:'avancado',
+  why:'Nada é perdido (zero corte de função) e a tela principal fica legível — serve a qualquer resposta da Q0.'},
+ {id:'Q10', t:'BookReader — nome e arrumação interna', b:'Não é um leitor: é foto → Gemini → trechos marcados → salvar. Página própria, entra só por um botão âmbar do painel. “Trocar Foto” e “Limpar Lista” são o mesmo handler; “Marcar todas”/“Desmarcar todas” é o 3º padrão de selecionar-tudo do app.',
+  o:[['renomeia+limpa','Continua página própria, entra por “Adicionar frases → Foto de livro” (Q4); nome muda para algo que diga o que faz (texto exato no ticket de Voz); Trocar Foto + Limpar Lista viram 1 ação; seleção igual à do painel; chave Gemini sai para Configurações (Q11).'],['mantem-nome','Tudo isso, mas mantém o nome “BookReader”.'],['como-hoje','Como hoje.']], r:'renomeia+limpa',
+  why:'O nome promete um leitor que não existe e é o único termo em inglês numa UI em português.'},
+ {id:'Q11', t:'Nasce um agrupamento “Configurações”?', b:'Ajustes espalhados: chave Gemini (sidebar do BookReader), gravar atalho de captura (popup), conta Google + login/logout (sidebar do painel), “apagar tudo” (lixeira da sidebar), presets do Bridge (seção do Bridge).',
+  o:[['config','Sim: “Configurações” reúne Conta &amp; sync · Chave Gemini · Atalhos (gravar o de seleção + mostrar o Alt+S) · Zona de perigo. Presets ficam no Bridge; limites do Auto Miner ficam no popup.'],['config+presets','Sim, e engole também os presets do Bridge.'],['nao','Não: cada ajuste fica onde está.']], r:'config',
+  why:'Hoje, para achar “onde muda X” é preciso conhecer o app de dentro. Onde o grupo aparece (aba, página, modal) é decisão do ticket de arquitetura do painel.'},
+ {id:'Q12', t:'Toasts e overlays do content.js', b:'Três feedbacks in-page com três caras: toast “Minerado &amp; Copiado” (verde, ao lado do botão), overlay “Frase Capturada!” (ciano, centro da tela, com ⚡) e toast Auto Miner (verde-escuro) — dois deles com o mesmo id, substituindo um ao outro.',
+  o:[['um-componente','Um só componente de feedback in-page, com variantes (legenda · seleção · Auto Miner), sempre na mesma posição.'],['dois','Dois: toast junto ao botão (legenda/Auto Miner) + overlay central só para seleção.'],['como-hoje','Como hoje.']], r:'um-componente',
+  why:'É o mesmo evento (“salvei uma frase”) dito de três jeitos.'},
+ {id:'Q13', t:'Limpeza óbvia — confirma o corte?', b:'Itens órfãos, mortos ou sem função. Desmarque o que quiser <b>manter</b>.', multi:true,
+  o:[['hamburger','Ícone ☰ decorativo no header (parece menu, sem handler)'],['funil','Ícone funil ao lado do título (parece filtro, sem handler)'],['ola','“Olá, Vinicius ;-;” fixo no HTML'],['sair','Botão “Sair” da sidebar (só fecha a aba; confunde com “Sair da conta”)'],['refresh-popup','↻ do popup (a lista já atualiza sozinha)'],['atualizar-status','“Atualizar status” no modal Envio ao Anki (já faz polling a cada 3 s)'],['iconsvg','icon.svg órfão (será substituído pela nova identidade)'],['badge-dead','Tooltip do badge, estado “A” e rótulos de skip do Auto Miner (nunca aparecem)'],['strings-dead','Textos inalcançáveis (“Nenhum baralho configurado.”, “Nenhum job foi criado.”, “Adicionando ao histórico de frases…”, “Carregue ao menos uma imagem primeiro.”)'],['legado','IDs legados no JS, CSS órfão (.bridge-analytics-top, .bridge-mini-title-row), listeners mortos, subtítulos de dev do Bridge']],
+  r:['hamburger','funil','ola','sair','refresh-popup','atualizar-status','iconsvg','badge-dead','strings-dead','legado'],
+  why:'Nenhum desses entrega algo ao usuário hoje.'},
+ {id:'Q14', t:'Lacunas vs. “zero função nova” — o que conta como revestimento?', b:'Marque o que pode entrar nos protótipos como <i>revestimento</i>. O resto fica fora (anotado para depois).', multi:true,
+  o:[['rotulos','Rótulos/legendas em contadores e inputs (“hoje”, “limite diário”)'],['aria','title/aria-label no botão flutuante e botões só-ícone'],['icones-png','Ícones PNG 16/32/48/128 no manifest (a identidade precisa deles)'],['mostrar-alts','Mostrar o atalho Alt+S na UI (hoje invisível)'],['vazio','Estado vazio que diferencia “sem frases” de “filtro escondeu tudo”'],['confirm-linha','Confirmação ao apagar 1 frase'],['cancelar','Botão cancelar no carregamento do BookReader'],['busca','Busca na lista de frases'],['badge-toolbar','Contador do Auto Miner no badge do ícone da toolbar']],
+  r:['rotulos','aria','icones-png','mostrar-alts','vazio'],
+  why:'Recomendo: tudo que só <i>mostra</i> o que já existe é revestimento; o que cria comportamento (confirmar, cancelar, buscar, badge novo) é função nova.'},
+ {id:'Q15', t:'O que fazer com os bugs achados?', b:'~25 defeitos reais (tabela abaixo), fora do escopo deste mapa. Alguns perdem dados (BookReader salvando em paralelo; delete do popup que ressuscita) e dois são de segurança (postMessage sem origem; innerHTML sem escape).',
+  o:[['issue-unica','Abrir 1 issue separada “Bugs encontrados na auditoria do front” (fora do mapa), priorizada, com file:line.'],['uma-por-bug','Uma issue por bug (só os graves; o resto agrupado).'],['nada','Não registrar agora.']], r:'issue-unica',
+  why:'Não podem se perder, mas também não podem sequestrar o redesign.'},
+ {id:'Q16', t:'Conceitos do domínio (glossário)', b:'Só os conceitos que mudam o agrupamento — o resto da terminologia vai para o ticket de Voz. Vou gravar no CONTEXT.md do repo.', multi:true,
+  o:[['frase','<b>Frase</b> é a unidade em todo o app (“trecho” do BookReader = frase vinda de livro).'],['fonte','<b>Fonte</b> = de onde veio (netflix, youtube, web, pdf, livro, manual…); <b>Contexto</b> = Fonte + Título + Detalhe. Some “Streaming/Plataforma”.'],['enviada-exportada','<b>Enviada ao Anki</b> e <b>Exportada (.txt)</b> são estados distintos (hoje o código mistura — vai pra lista de bugs).'],['baralho','<b>Baralho</b> (termo do Anki em PT) em vez de Deck.'],['envio','<b>Envio</b> no lugar de job/lote para o usuário (1 envio por idioma).']],
+  r:['frase','fonte','enviada-exportada','baralho','envio'],
+  why:'Cada um desses tem 3–5 variantes hoje; sem nome único, o protótipo não sabe como rotular as áreas.'},
+];
+
+const R2 = [
+ {id:'R2-1', t:'A regra “zero função nova” continua?', b:'Na Q14 você pôs no escopo 4 coisas que criam comportamento: <b>busca na lista</b>, <b>confirmação ao apagar 1 frase</b>, <b>cancelar no BookReader</b> e <b>contador do Auto Miner no badge da toolbar</b>. Na Q11 você pediu <b>Alt+S configurável</b>. Hoje o mapa diz “Zero função nova, zero mudança de comportamento”.',
+  o:[['lista-fechada','Relaxa com lista fechada: esses 5 entram nos protótipos como “ajustes de UX” permitidos. Qualquer outra função nova continua fora. Eu atualizo a regra no mapa.'],['mantem','Mantém a regra: os 5 vão para uma issue “Melhorias pós-redesign” e os protótipos não os mostram.'],['livre','Libera: função nova pequena pode entrar sempre que o protótipo pedir.']], r:'lista-fechada',
+  why:'São pequenos e mudam o layout (a busca precisa de lugar na barra de filtros; cancelar precisa de lugar no carregamento). Se ficarem de fora, o protótipo nasce sem espaço para eles. A lista fechada impede o escopo de crescer sem controle.'},
+ {id:'R2-2', t:'Atalhos: como fica com o Alt+S configurável?', b:'Hoje existem dois conceitos: Alt+S fixo (minera a legenda do vídeo) e um atalho gravável que só captura texto selecionado. O popup chama o segundo de “Atalho de Captura”, sem dizer que é só para seleção.',
+  o:[['dois-nomeados','Dois atalhos com nome, os dois graváveis (teclado ou botão extra do mouse), no mesmo gravador: <b>“Minerar legenda”</b> (padrão Alt+S) e <b>“Capturar seleção”</b>. Moram em Configurações · Atalhos.'],['um-so','Um atalho só que faz as duas coisas (legenda se houver vídeo, seleção se houver texto selecionado).'],['so-alts','Só o Alt+S vira configurável; o de seleção fica como está.']], r:'dois-nomeados',
+  why:'Deixa explícito o que cada atalho faz e reaproveita o gravador que já existe. Juntar os dois num atalho só seria mudança de comportamento, e o caso “vídeo com texto selecionado” fica ambíguo.'},
+ {id:'R2-3', t:'O plano de assinatura muda o destino deste mapa?', b:'Você disse: agora é só você, logo um grupo pequeno, e depois a ideia é deixar plug-and-play e vender como assinatura. Plug-and-play hoje esbarraria em: bridge Python local no Windows, chave Gemini pessoal, projeto Firebase próprio e ausência de onboarding.',
+  o:[['destino-igual','O destino não muda: spec e protótipos deste front. O produto de assinatura (onboarding, cobrança, bridge instalável, contas) entra em “Fora do escopo” como esforço futuro. A identidade e a voz já devem ser de <i>produto</i>, nada pessoal, e isso vira nota nos tickets de identidade e de voz.'],['inclui-onboarding','O destino cresce: inclui protótipo de onboarding e primeira execução para usuário novo.'],['ignora','Ignora por enquanto; nem nota.']], r:'destino-igual',
+  why:'Onboarding e empacotamento são outro projeto, com outras perguntas. O que este mapa pode fazer de graça é não produzir uma identidade “de uso pessoal” que depois tenha de ser refeita.'},
+ {id:'R2-4', t:'O fim do envio ao Anki: como fica a escolha de apagar?', b:'Sua nota: o popup de apagar depois do envio “tá muito fraco, buga, às vezes não aparece e tá muito feio”. Pela Q3 ele vira escolha explícita dentro do modal “Envio ao Anki”. O “às vezes não aparece” vai para a issue de bugs. Uma causa provável: se o painel recarrega durante o envio, ele perde os envios que estava acompanhando e nunca pergunta.',
+  o:[['apagar-primario','Ao terminar, o modal mostra um resumo (enviadas · duplicadas · falhas) e dois botões: <b>“Apagar as N enviadas”</b> em destaque e “Manter e marcar como enviadas”.'],['manter-primario','O mesmo resumo, com “Manter” em destaque e “Apagar” secundário.'],['sem-destaque','Os dois botões com o mesmo peso, sem escolha padrão.']], r:'apagar-primario',
+  why:'Pela sua reclamação, apagar depois de enviar é o seu fluxo normal, então ele merece o botão principal. O resumo com duplicadas também resolve o bug em que duplicatas contam como “enviadas”.'},
+];
+
+function renderQuestions(list, wrap) {
+list.forEach(q => {
+  const card = document.createElement('form');
+  card.className = 'q-card card bg-base-200';
+  card.dataset.lavishQuestion = q.id;
+  const type = q.multi ? 'checkbox' : 'radio';
+  const opts = q.o.map(([v, label]) => {
+    const isRec = q.multi ? q.r.includes(v) : q.r === v;
+    return `<label class="opt"><input type="${type}" class="${q.multi ? 'checkbox' : 'radio'} radio-sm checkbox-sm mt-0.5" name="${q.id}" value="${v}" ${isRec ? 'checked' : ''}>
+      <span class="text-sm">${label}${isRec && !q.multi ? ' <span class="rec ml-1">recomendado</span>' : ''}</span></label>`;
+  }).join('');
+  card.innerHTML = `<div class="card-body gap-3">
+    <div class="flex flex-wrap items-baseline gap-2"><span class="badge badge-primary">${q.id}</span><h3 class="font-semibold text-lg">${q.t}</h3><span class="badge badge-success badge-soft ml-auto hidden q-queued">na fila</span></div>
+    <p class="text-sm opacity-80">${q.b}</p>
+    <div class="grid gap-2">${opts}</div>
+    <p class="text-xs"><span class="rec">Por quê</span> <span class="opacity-80">${q.why}</span></p>
+    <div class="flex flex-wrap gap-2 items-center">
+      <input name="note" class="input input-sm flex-1 min-w-[12rem]" placeholder="Nota (opcional)">
+      <button type="submit" class="btn btn-sm btn-outline">Enfileirar ${q.id}</button>
+    </div></div>`;
+  card.addEventListener('submit', e => { e.preventDefault(); queueQuestion(q, card); updateStatus(); });
+  wrap.appendChild(card);
+});
+wrap.addEventListener('change', e => { const f = e.target.closest('form'); if (f && f.dataset.queued === '1') { f.dataset.queued = '0'; f.querySelector('.q-queued').classList.add('hidden'); updateStatus(); } });
+}
+renderQuestions(R2, document.getElementById('questions2'));
+renderQuestions(Q, document.getElementById('questions'));
+document.getElementById('queue-r2').addEventListener('click', () => {
+  document.querySelectorAll('#questions2 .q-card').forEach((form, i) => queueQuestion(R2[i], form));
+  updateStatus();
+});
+
+function answerOf(q, form) {
+  const fd = new FormData(form);
+  const vals = fd.getAll(q.id);
+  const labelOf = v => (q.o.find(o => o[0] === v) || [v, v])[1].replace(/<[^>]+>/g, '');
+  const note = (fd.get('note') || '').trim();
+  const recommended = q.multi ? JSON.stringify([...q.r].sort()) === JSON.stringify([...vals].sort()) : vals[0] === q.r;
+  return { vals, labels: vals.map(labelOf), note, recommended };
+}
+function queueQuestion(q, form) {
+  const a = answerOf(q, form);
+  if (!q.multi && !a.vals.length) return;
+  const text = `${q.id} (${q.t}): ${q.multi ? (a.labels.length ? a.labels.map(l => '✓ ' + l).join(' | ') : 'nenhum marcado') : a.labels[0]}${a.recommended ? ' [= recomendação]' : ' [DIVERGE da recomendação]'}${a.note ? ' — nota: ' + a.note : ''}`;
+  if (window.lavish && window.lavish.queuePrompt) {
+    window.lavish.queuePrompt(text, { tag: 'decision', text: `${q.id}: ${a.recommended ? 'recomendação' : 'alterado'}`, element: form, queueKey: q.id, data: { question: q.id, answer: a.vals, note: a.note } });
+  }
+  form.dataset.queued = '1';
+  form.querySelector('.q-queued').classList.remove('hidden');
+}
+
+/* ===================== INVENTORY ===================== */
+// [ref, item, o que faz / estado, status, veredito, destino/nota, pergunta]
+const INV = {
+ 'Popup': [
+  ['P1–3','Cabeçalho: logo raio ciano + “PerpetualMiner” + “Minerador de legendas”','estático','working','reagrupa','→ nova identidade','Q0'],
+  ['P4','“Abrir Painel de Estudos”','foca aba existente ou abre','working','fica','nome da tela → ticket de Voz',''],
+  ['P5–11','Auto Miner EN/RU: toggle, limite (1–100), contador “0/20”','sem rótulo; não diz que é diário','working','fica','casa única do Auto Miner','Q1'],
+  ['P13–16','“Configurar Atalho de Captura” (gravar, badge, hint)','rótulos crus (“BracketLeft”, “Mouse Btn 5”); não diz que é p/ texto selecionado','working','reagrupa','→ Configurações · Atalhos','Q11'],
+  ['P17–19','“Adição Manual”: textarea + “Adicionar”','sem feedback de sucesso/erro; título salvo “Manual Input”','working','fica','adição rápida','Q4'],
+  ['P20/24','“Últimas mineradas” (5 cards com checkbox)','clicar no card não faz nada','working','fica','só leitura (sem checkbox)','Q2'],
+  ['P21','↻ “Atualizar lista”','redundante com auto-refresh; zera seleção','redundant','corta','','Q13'],
+  ['P22','“Tudo”','seleciona só os 5 visíveis','redundant','corta','','Q2'],
+  ['P23','“Deletar (N)”','sem confirm, sem Firestore/tombstone → ressuscita','broken','corta','apagar mora no painel','Q3'],
+  ['P25–26','“Carregando...” / “Nenhuma frase salva ainda.”','não ensina a minerar','working','fica','texto → ticket de Voz',''],
+ ],
+ 'Overlay (content.js)': [
+  ['O1','Atalho Alt+S (minerar legenda)','fixo, invisível na UI; sequestra digitação em inputs','working','fica','mostrar na UI (Q14)','Q14'],
+  ['O2','Botão flutuante (div 48px, balão verde)','sem title/aria; aparece com qualquer <video>','working','fica','→ nova identidade','Q0'],
+  ['O3','Atalho custom de seleção','sem callback de erro','working','fica','',''],
+  ['O4','Ponte postMessage (copiar/salvar)','sem checagem de origem; salva 2× se clipboard falha','broken','fica','invisível; defeito → bugs','Q15'],
+  ['O5','Toast “Minerado & Copiado · Idioma”','otimista; innerHTML sem escape','working','reagrupa','→ componente único de feedback','Q12'],
+  ['O6','Overlay central “⚡ Frase Capturada!” (ciano)','otimista; sem escape','working','reagrupa','→ componente único de feedback','Q12'],
+  ['O9','Toast “Auto Miner - Idioma - n/limite”','mesmo id do O5','working','reagrupa','→ componente único de feedback','Q12'],
+  ['O7','Borda vermelha 800 ms (legenda não encontrada)','sem texto','working','fica','mensagem → ticket de Voz',''],
+  ['O8','Badge contador Auto Miner no botão','soma EN+RU mesmo com um desligado (“25/20”)','broken','fica','status do Auto Miner; conta → bugs','Q1'],
+  ['O8a–c','Tooltip do badge, estado “A”, rótulos de skip','nunca aparecem','dead','corta','','Q13'],
+  ['T6','Menu de contexto “Enviar para o PerpetualMiner”','zero feedback','working','fica','feedback = função nova?','Q14'],
+ ],
+ 'Ícone da toolbar': [
+  ['T2','Ícones no manifest','ausentes → Chrome mostra “P” cinza','missing','reagrupa','→ PNGs da nova identidade','Q14'],
+  ['T3','icon.svg','não referenciado; SVG nem é aceito','dead','corta','substituído','Q13'],
+  ['T5','Badge do ícone (setBadgeText)','nunca usado','missing','fica','fora — seria função nova','Q14'],
+ ],
+ 'Painel · shell': [
+  ['S1','Logo bolha Google + wordmark','estático','working','reagrupa','→ nova identidade','Q0'],
+  ['S2','“Olá, Vinicius ;-;”','fixo no HTML','dead','corta','','Q13'],
+  ['S3','“Total N frases”','ignora filtros','working','fica','',''],
+  ['S4','Lixeira “Apagar todas” (ícone 13px)','destrutivo, escondido','working','reagrupa','→ Configurações · Zona de perigo','Q3'],
+  ['S5–6','“Login com Google” + dica de sync','','working','reagrupa','→ Configurações · Conta','Q11'],
+  ['S7–9','Avatar, nome, status de sync','“Erro de sync” com ícone de “sincronizando”','working','fica','status visível no shell','Q11'],
+  ['S10','“Sair da conta”','','working','reagrupa','→ Configurações · Conta','Q11'],
+  ['S11–12','Card “Anki Bridge” + badge Online/Offline','','working','fica','só o status no shell','Q8'],
+  ['S13–14','“Custo no filtro” + resumo “N job(s) no filtro”','filtro invisível; duplica a área do Bridge','redundant','corta','fica só na área do Bridge','Q8'],
+  ['S15','“Gerenciar”','pode abrir o Anki no PC','working','reagrupa','→ entrada da área Bridge','Q8'],
+  ['S16','Lista de fontes (“Todos os Streamings”)','duplica dropdown; sem escape','redundant','corta','','Q5'],
+  ['S17','“Sair” (window.close)','mesmo ícone de logout','working','corta','','Q13'],
+  ['H1','Título “Frases mineradas”','','working','fica','',''],
+  ['H2','Ícone funil ao lado do título','sem handler','orphan','corta','','Q13'],
+  ['H3','Link âmbar “BookReader”','','working','reagrupa','→ Adicionar frases · Foto','Q4'],
+  ['H4–5','“Pág.” / “Todas (N)”','','working','reagrupa','→ barra contextual de seleção','Q6'],
+  ['H6','“Editar Selecionados”','sempre habilitado','working','reagrupa','→ barra contextual','Q6'],
+  ['H7','“N selecionada(s)”','conta ocultas pelo filtro','working','reagrupa','→ barra contextual','Q6'],
+  ['H8','“Deletar” seleção','confirm + Firestore','working','reagrupa','→ barra contextual','Q6'],
+  ['H9','“Exportar .txt”','marca “No Anki” falso; tooltip errado','broken','reagrupa','→ menu “Arquivo .txt”','Q7'],
+  ['H10','“Enviar ao Anki”','duplo clique duplica; resalva presets','working','reagrupa','→ ação principal da barra contextual','Q6'],
+  ['H12','“Importar .txt”','perde keywords do export','working','reagrupa','→ Adicionar frases · Arquivo','Q4'],
+  ['H13','“Adição em Massa”','','working','reagrupa','→ Adicionar frases · Colar','Q4'],
+  ['H14','Ícone ☰','sem handler','orphan','corta','','Q13'],
+ ],
+ 'Painel · Frases & modais': [
+  ['T1','Dropdown “Todas as Fontes”','vira “Todos os Streamings” após escolher','working','fica','filtro único de fonte','Q5'],
+  ['T2–3','Dropdowns Idioma / Ordem','','working','fica','',''],
+  ['T5','“Esconder Exportadas”','inclui exportadas .txt; texto não muda','working','fica','rótulo → Voz','Q16'],
+  ['T6','Mini-painel Auto Miner (sem rótulo)','duplica popup','redundant','corta','','Q1'],
+  ['L1–2','“Carregando...” / “Nenhuma frase encontrada.”','não distingue vazio de filtrado','working','fica','Q14 / Voz','Q14'],
+  ['L3','Cabeçalho de data (hoje/ontem/N dias)','','working','fica','',''],
+  ['L4','Checkbox por linha','','working','fica','',''],
+  ['L5–8','Palavras clicáveis, chip keyword/auto, ×, + grupo','“+” diz “segundo” mas permite N','working','fica','',''],
+  ['L9','Badge “✓ No Anki”','também p/ .txt e duplicatas','broken','fica','semântica → Q16 + bugs','Q16'],
+  ['L10','Linha de contexto (Título · Detalhe · Fonte)','','working','fica','',''],
+  ['L13','Editar texto (inline)','pode desalinhar keywords','working','fica','',''],
+  ['L14','Editar metadados (modal)','','working','fica','',''],
+  ['L15','Copiar','falha silenciosa','working','fica','',''],
+  ['L16','Apagar linha','sem confirm, sem toast','working','fica','confirm = Q14','Q3'],
+  ['P1–6','Paginação (10/pág, 1ª/ant/próx/última, “X a Y de N”)','','working','fica','',''],
+  ['M1','Modal Editar Metadados (Fonte/Título/Detalhe)','regras bulk≠individual; Enter salva','working','fica','',''],
+  ['M1.10','Foco em Título','sobrescrito 50 ms depois','dead','corta','','Q13'],
+  ['M2','Modal Adição em Massa','sem dedupe, sem Detalhe; duplo clique duplica','working','reagrupa','→ Adicionar frases · Colar','Q4'],
+  ['M2.6','Barra de progresso','falsa (salta p/ 100%)','broken','fica','estado de progresso; conserto → bugs','Q15'],
+  ['I1–4','Overlay de importação','nunca pinta; spinner sem @keyframes','dead','fica','estado de progresso do “Adicionar”; conserto → bugs','Q15'],
+  ['M3','Modal “Envio para o Anki” (polling 3 s)','sem Esc/backdrop','working','fica','',''],
+  ['M3.4','Card de job: jobId, “Status: completed”, ISO, “Stage atual”','jargão cru','working','reagrupa','status legível + detalhe em Avançado','Q9'],
+  ['M3.5','“Continuar” por job','','working','fica','',''],
+  ['M3.6','“Retentar falhos”','estilo de Cancelar; sempre visível','working','fica','',''],
+  ['M3.7','“Atualizar status”','redundante com polling','redundant','corta','','Q13'],
+  ['M3.9','Fallback jobs.slice(0,8)','inalcançável','dead','corta','','Q13'],
+  ['M3.10','confirm() “Apagar do Perpetual Miner as N frases…”','surge sem clique, no meio do polling; limpa sua seleção','working','reagrupa','→ escolha explícita no modal','Q3'],
+ ],
+ 'Painel · Anki Bridge': [
+  ['B1–3','Seção inline “Presets e custos” + subtítulo de dev','empurra a lista; título incompleto','working','reagrupa','→ área própria com 4 sub-áreas','Q8'],
+  ['B4','Badge Online/Offline duplicado','','redundant','corta','fica o do shell','Q8'],
+  ['B5','Ícone “Atualizar custos”','recarrega tudo e pode abrir o Anki','working','fica','rótulo → Voz',''],
+  ['B6','“Fechar”','','working','fica','depende do formato (ticket de arquitetura)','Q8'],
+  ['C4/C9','Baralho EN/RU (texto livre)','sem validação; em branco volta ao padrão','working','fica','camada principal','Q9'],
+  ['C5/C10','Fonte de imagem (“Google Images”/“DALL-E”)','“DALL-E” desatualizado; Google pode gerar custo IA','working','fica','rótulo → Voz','Q9'],
+  ['C6–7/C11–12','TLD palavra / TLD frase','técnico (sotaque gTTS)','working','reagrupa','→ Avançado','Q9'],
+  ['C13','“Salvar presets”','também salvo em silêncio a cada envio','working','fica','',''],
+  ['D4–5','Total do filtro + status','“$0.0000” em erro = gasto zero','working','fica','',''],
+  ['D6,D12','Métricas “Cards” (custo), “Imagem IA”, “Economia”','“Cards” como custo confunde','working','fica','camada principal (rótulos → Voz)','Q9'],
+  ['D8–9','Métricas “Judge” / “Guard”','jargão','working','reagrupa','→ Avançado','Q9'],
+  ['D10–11','“Frases OK” / “Jobs OK”','','working','fica','',''],
+  ['D14–19','Período Hoje/Mês/Tudo, Idioma, De/Até','sem acento','working','fica','',''],
+  ['D20–24','Origem das imagens (Google/Gerada/Pulada/Falhou)','sem estado vazio','working','fica','',''],
+  ['D25–28','Jobs recentes (12 máx, meta dd/mm | EN | status)','sem polling','working','fica','',''],
+  ['D27','jobId bruto','','working','reagrupa','→ Avançado','Q9'],
+  ['D29','“Continuar” em Jobs recentes','também no modal','working','fica','',''],
+  ['D30','“Baixar debug bundle”','dump JSON com caminhos','working','reagrupa','→ Avançado','Q9'],
+  ['D31–32','Pills “G n / IA m”, lastError cru','crípticos','working','reagrupa','→ Avançado','Q9'],
+  ['E3','“Reparar Anki”','mata processos sem confirm; timeout 45 s vs 110 s','broken','fica','→ Avançado? timeout → bugs','Q9'],
+  ['E5–7,E9–10','Estados: aguardando/atualizando/erro/cache/fallback local','erro com a mesma cara de carregando','working','fica','textos → Voz',''],
+  ['E8','“Nenhum baralho configurado.”','inalcançável','dead','corta','','Q13'],
+  ['E11–13','Cards de stats (total + por baralho, maturidade)','“Vocabulario na Frente”','working','fica','',''],
+  ['F2–6','Vocabulário: resumo, idioma, tipo, busca, status','sem filtro “Visto”; “items”','working','fica','',''],
+  ['F7','Vocabulário preso em “Aguardando…”','se stats falhar','broken','fica','conserto → bugs','Q15'],
+  ['F11–13','Tabela de vocabulário (até 10 000 linhas)','','working','fica','',''],
+  ['J/K','IDs legados no JS + CSS órfão','','dead','corta','','Q13'],
+ ],
+ 'BookReader': [
+  ['S1','Logo livro roxo + “BookReader / PerpetualMiner”','3º logo','working','reagrupa','→ nova identidade','Q0'],
+  ['S2–6','Chave Gemini (input, olho, “Salvar Key”, link)','não dá para apagar a chave','working','reagrupa','→ Configurações · Chave Gemini','Q11'],
+  ['S7–8','“Título do Livro (opcional)”','nunca é lembrado','working','fica','',''],
+  ['S9','Legenda “Marcações reconhecidas”','“Underscores” vs “_underlines_”','working','fica','',''],
+  ['S10','“Voltar ao Painel”','vira uma 2ª aba do painel','working','fica','comportamento → bugs','Q15'],
+  ['M1–2','“Transcrição de Livro Físico” + subtítulo','nome ≠ “BookReader”','working','fica','nome → Q10/Voz','Q10'],
+  ['M3–4','Barra de erro (5 s) + toast','timers se sobrepõem','working','fica','',''],
+  ['U1–2','Zona de upload (arrastar/clicar)','HEIC anunciado mas quebrado','working','fica','',''],
+  ['P1–5','Prévia + fila + “Analisar Marcações”','fila escondida/indescobrível','working','fica','',''],
+  ['P6','“Trocar Foto”','= mesmo handler de “Limpar Lista”','redundant','reagrupa','→ 1 ação só','Q10'],
+  ['L1–6','Carregando + progresso + fila','sem cancelar','working','fica','cancelar = Q14','Q14'],
+  ['R1–3','Faixa “arraste mais fotos”, “Selecionar”, contador','“1 trecho prontos”','working','fica','',''],
+  ['R4–5','“Marcar todas” / “Desmarcar todas”','3º padrão de selecionar-tudo','redundant','reagrupa','→ 1 toggle igual ao painel','Q10'],
+  ['R6','“Limpar Lista”','sem confirm; não cancela Gemini','redundant','reagrupa','→ mescla com Trocar Foto','Q10'],
+  ['R7','Linhas editáveis com checkbox','','working','fica','',''],
+  ['R8','Estado vazio “Não encontrei trechos…”','aparece também quando a API falhou','broken','fica','conserto → bugs; texto → Voz','Q15'],
+  ['R9','“Salvar no PerpetualMiner”','perde trechos (corrida); re-salva duplicado','broken','fica','conserto → bugs','Q15'],
+  ['—','Textos mortos (“Adicionando ao histórico…”, “Carregue ao menos…”)','inalcançáveis','dead','corta','','Q13'],
+ ],
+};
+const ST = { working:'badge-success', broken:'badge-error', orphan:'badge-warning', dead:'badge-warning', redundant:'badge-info', missing:'badge-warning' };
+const tabs = document.getElementById('inv-tabs'), tables = document.getElementById('inv-tables');
+Object.entries(INV).forEach(([surf, rows], i) => {
+  const tab = document.createElement('button');
+  tab.type = 'button'; tab.role = 'tab'; tab.className = 'tab' + (i === 0 ? ' tab-active' : '');
+  tab.textContent = `${surf} (${rows.length})`;
+  tab.onclick = () => { tabs.querySelectorAll('.tab').forEach(t => t.classList.remove('tab-active')); tab.classList.add('tab-active'); tables.querySelectorAll('[data-surf]').forEach(d => d.hidden = d.dataset.surf !== surf); };
+  tabs.appendChild(tab);
+  const div = document.createElement('div'); div.dataset.surf = surf; div.hidden = i !== 0;
+  div.className = 'overflow-x-auto rounded-box border border-base-content/10 mt-3';
+  div.innerHTML = `<table class="table table-sm"><thead><tr><th>Ref</th><th>Item</th><th>Estado hoje</th><th>Veredito</th><th>Destino / nota</th><th>Q</th></tr></thead><tbody>${rows.map(([ref, item, what, st, v, dest, q]) => `
+    <tr data-ref="${ref}" data-surf="${surf}" data-item="${item.replace(/"/g, '&quot;')}" data-orig="${v}">
+      <td class="font-mono text-xs whitespace-nowrap">${ref}</td>
+      <td class="text-sm">${item}</td>
+      <td class="text-xs opacity-80"><span class="badge badge-soft st ${ST[st] || ''}">${st}</span> ${what}</td>
+      <td class="v"><select class="select select-xs">${['fica','corta','reagrupa'].map(o => `<option ${o === v ? 'selected' : ''}>${o}</option>`).join('')}</select></td>
+      <td class="text-xs">${dest}</td>
+      <td class="text-xs opacity-70">${q}</td></tr>`).join('')}</tbody></table>`;
+  tables.appendChild(div);
+});
+tables.addEventListener('change', e => { const tr = e.target.closest('tr'); if (!tr) return; tr.dataset.changed = e.target.value !== tr.dataset.orig ? '1' : '0'; updateStatus(); });
+
+/* ===================== BUGS ===================== */
+const BUGS = [
+ ['Alta','BookReader','Salvar vários trechos em paralelo → corrida no background (read-modify-write) perde frases; UI diz “N salvos”','bookreader.js:436 · background.js:167'],
+ ['Alta','Popup','“Deletar” não apaga do Firestore nem grava tombstone → frase ressuscita para usuário logado','popup.js:184'],
+ ['Alta','Overlay','postMessage sem checagem de origem → qualquer site injeta frases e sobrescreve o clipboard','content.js:148'],
+ ['Alta','Overlay','innerHTML sem escape com texto da legenda/seleção (toasts e overlay)','content.js:134, 733, 765'],
+ ['Média','Painel','“Exportar .txt” marca exported → badge “No Anki” falso e some com “Esconder Exportadas”','painel.js:2029'],
+ ['Média','Painel','Duplicatas do bridge (duplicatePhraseIds) ignoradas → contam como “enviadas”','painel.js:2243–2333'],
+ ['Média','Painel','Duplo clique em “Enviar ao Anki”/“Adicionar frases” duplica jobs/frases','painel.js:2081, 2538'],
+ ['Média','Painel','Erro de rede em POST /jobs sem mensagem; EN criado + RU falho → job EN órfão','painel.js:2133'],
+ ['Média','Painel','Exportar→Importar .txt perde keywords; textos com “ : ” truncados','painel.js:2666'],
+ ['Média','Bridge','“Reparar Anki”: cliente aborta em 45 s, servidor leva até ~110 s → falso erro','painel.js:1319'],
+ ['Média','Bridge','Vocabulário preso em “Aguardando…” quando stats falha','painel.js:1300'],
+ ['Média','Bridge','Presets salvos em silêncio a cada envio; aba desatualizada sobrescreve','painel.js:2087'],
+ ['Média','BookReader','Botão “salvo” reabilita e re-salva duplicado; Limpar/Trocar não cancelam Gemini (itens fantasma)','bookreader.js:334'],
+ ['Média','BookReader','Estado vazio culpa as marcações quando a API falhou','bookreader.js:368'],
+ ['Média','Overlay','Alt+S sequestra digitação em inputs e salva “captions” de imagens em páginas sem vídeo','content.js:169, 302'],
+ ['Média','Overlay','Salva 2× quando o clipboard falha no top frame','content.js:458, 719'],
+ ['Baixa','Overlay','Badge do Auto Miner soma EN+RU mesmo com idioma desligado (“25/20”)','content.js:351'],
+ ['Baixa','Painel','Overlay de importação nunca pinta; spinner sem @keyframes; progresso falso na Adição em Massa','painel.js:2602 · painel.css:1973'],
+ ['Baixa','Painel','Nomes de fonte sem escape na sidebar/dropdown','painel.js:1667, 1675'],
+ ['Baixa','Painel','Seleção sobrevive a troca de filtro → ações em frases invisíveis; conclusão de job limpa a seleção','painel.js:721, 2325'],
+ ['Baixa','Bridge','Erro com a mesma cara de carregando (CSS sobrescrito); total ≠ soma (otherUsd oculto)','painel.css:1647–1666'],
+ ['Baixa','BookReader','HEIC anunciado mas rejeitado/mal rotulado; título do livro nunca é lembrado; “Voltar” abre 2º painel','bookreader.js:193, 559, 507'],
+ ['Baixa','Todos','Detecção de idioma: tudo que não é cirílico vira “Inglês” (3 cópias)','bookreader.js:571 · background.js:280 · popup.js:203'],
+ ['Baixa','Bridge','Nomes de baralho padrão divergentes em 5 lugares (CIMV / English Mining / teste)','painel.js:32 · background.js:16 · server.py:929'],
+];
+document.getElementById('bugs').innerHTML = `<thead><tr><th>Grav.</th><th>Onde</th><th>Defeito</th><th>Local</th></tr></thead><tbody>${BUGS.map(([s, w, d, l]) => `<tr><td><span class="badge badge-sm ${s === 'Alta' ? 'badge-error' : s === 'Média' ? 'badge-warning' : 'badge-ghost'}">${s}</span></td><td class="text-xs">${w}</td><td class="text-sm">${d}</td><td class="font-mono text-xs">${l}</td></tr>`).join('')}</tbody>`;
+
+/* ===================== MESSAGES ===================== */
+const MSGS = [
+ ['Dumps crus / jargão', ['“Falha ao criar job EN: 500”','“Erro ao deletar da nuvem: HTTP 403”','“Firestore: permissão negada — verifique as regras de segurança no console Firebase.”','“Nao foi possivel reparar o Anki: signal is aborted without reason”','“Mostrando cache anterior… ankistats_refresh_in_progress”','“Status: completed • Atualizado: 2026-…Z” / “Stage atual”','“Imagem 2: HTTP 429” (Gemini, em inglês)']],
+ ['Vagas (sem causa nem próximo passo)', ['“Erro de sync” (com ícone de sincronizando)','“Anki Bridge indisponível.”','“Não foi possível salvar os trechos.”','“Falha ao continuar job.” / “Falha ao retentar jobs.”','“Nenhuma frase encontrada.” (vazio ou filtro?)','“Custo no filtro” / “N job(s) no filtro” (qual filtro?)']],
+ ['Otimistas / mentem', ['“Frase Capturada!” antes de salvar','“Minerado & Copiado” antes do clipboard','“N trechos salvos!” com trechos perdidos','“$0.0000” quando o analytics falhou','“✓ No Anki” para .txt e duplicatas','“Presets do Anki Bridge salvos.” a cada envio']],
+ ['Silêncio (deveria dizer algo)', ['Legenda não encontrada: só borda vermelha 800 ms','Menu de contexto: nenhum feedback','Adição manual do popup falha calada','Erro de rede em “Enviar ao Anki”','Toasts de 1,8 s para mensagens de 3 linhas','Contadores “0/20” sem legenda']],
+];
+document.getElementById('msgs').innerHTML = MSGS.map(([h, list]) => `<div class="card bg-base-200"><div class="card-body p-4 gap-2"><h3 class="font-semibold">${h}</h3><ul class="list-disc pl-5 text-sm space-y-1">${list.map(m => `<li>${m}</li>`).join('')}</ul></div></div>`).join('');
+
+/* ===================== STATUS & QUEUE ALL ===================== */
+function updateStatus() {
+  const n = document.querySelectorAll('#questions2 .q-card[data-queued="1"]').length;
+  const c = document.querySelectorAll('tr[data-changed="1"]').length;
+  document.getElementById('q-status').textContent = `Rodada 2: ${n} de ${R2.length} na fila`;
+  document.getElementById('inv-status').textContent = `${c} veredito(s) alterado(s)`;
+}
+document.getElementById('queue-all').addEventListener('click', () => {
+  document.querySelectorAll('#questions .q-card').forEach((form, i) => queueQuestion(Q[i], form));
+  const changed = [...document.querySelectorAll('tr[data-changed="1"]')].map(tr => `${tr.dataset.surf} ${tr.dataset.ref} “${tr.dataset.item}”: ${tr.dataset.orig} → ${tr.querySelector('select').value}`);
+  if (window.lavish && window.lavish.queuePrompt) {
+    window.lavish.queuePrompt(changed.length ? 'Vereditos do inventário alterados:\n' + changed.join('\n') : 'Inventário: todos os vereditos pré-preenchidos aceitos (nenhuma alteração).', { tag: 'inventory', text: `Inventário: ${changed.length} alteração(ões)`, queueKey: 'inventory', data: { changed } });
+    const free = document.getElementById('free-note').value.trim();
+    if (free) window.lavish.queuePrompt('Nota geral: ' + free, { tag: 'note', text: 'Nota geral', queueKey: 'free-note' });
+  }
+  updateStatus();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,713 @@
+<!doctype html>
+<!--
+  PROTÓTIPO THROWAWAY — ticket "Protótipo: Overlay in-page (content.js)" (issue #8, mapa #1).
+  Pergunta: como fica o overlay in-page (botão flutuante + componente único de feedback + contador do Auto Miner) na identidade Veio?
+  Rodada 2: o dono gostou de C e D. Agora: 3 misturas (M1 D+reserva C · M2 C manual/D Auto · M3 Juntos) + C, D e "Hoje" de referência (A e B saíram; ver commit 9a5c4e8),
+  trocáveis por ?variant= e pela barra flutuante (← →). Cenas: vídeo (legenda + Auto Miner) e página web (seleção).
+  Só VISUAL: nada aqui toca scraping, storage ou background. Microcopy é proposta — decisão final no ticket de Voz (#4).
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Protótipo · Overlay in-page</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Tokens Veio — escuro (o overlay usa SEMPRE o escuro, vive sobre sites de terceiros) */
+:root{
+  --bg:#121110;--surface:#1B1A17;--surface-2:#262420;--border:#302D27;--border-strong:#736B5D;
+  --text:#F2EEE6;--muted:#A89F90;--accent:#F5B83D;--accent-ink:#1A1204;--accent-text:#F5B83D;
+  --accent-soft:rgba(245,184,61,.14);--success:#6FCF8E;--danger:#FF7A66;--danger-soft:rgba(255,122,102,.14);--info:#86BDF2;
+  --kw-bg:rgba(245,184,61,.40);
+  --shadow:0 18px 40px -12px rgba(0,0,0,.6);
+  --font-ui:'Manrope',system-ui,sans-serif;--font-num:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:13.5px/1.45 var(--font-ui)}
+body{padding:20px 16px 110px}
+.wrap{max-width:1120px;margin:0 auto;display:grid;gap:16px}
+h1{font:800 22px/1.15 var(--font-ui);letter-spacing:-.02em;margin:0}
+.wm{font-weight:500}.wm b{font-weight:800}
+.wm .cur{display:inline-block;width:.46em;height:.92em;border-radius:2px;background:var(--accent);vertical-align:-.1em;margin-left:3px;animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.wm .cur{animation:none}}
+.muted{color:var(--muted)}
+.sec-h{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.sec-h::before{content:"";width:9px;height:9px;border-radius:2px;background:var(--accent);transform:rotate(45deg);flex:none}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:8px 14px;border:1px solid var(--border-strong);background:var(--surface-2);color:var(--text);font:600 12.5px var(--font-ui);cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn-primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 16px -8px var(--accent)}
+.btn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-text)}
+.kbd{font:600 11px var(--font-num);padding:1px 6px;border-radius:6px;border:1px solid var(--border-strong);background:var(--surface-2)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px}
+@media (max-width:820px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.state{font:500 11.5px/1.6 var(--font-num);color:var(--muted);white-space:pre-wrap;margin:0;overflow-wrap:anywhere}
+.state b{color:var(--text);font-weight:600}
+
+/* ── Cabeçalho da variante ── */
+.vhead{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.vkey{font:800 30px/1 var(--font-ui);color:var(--accent-text);min-width:40px}
+.vhead h2{margin:0 0 4px;font:700 18px var(--font-ui)}
+.vhead p{margin:0;max-width:78ch}
+.pc{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+@media (max-width:620px){.pc{grid-template-columns:minmax(0,1fr)}}
+.pc div{background:var(--surface-2);border-radius:14px;padding:10px 12px}
+.pc b{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px}
+.pc .gain b{color:var(--success)}.pc .cost b{color:var(--danger)}
+.pc ul{margin:0;padding-left:18px}
+
+/* ── Janela de navegador (mock) ── */
+.browser{border-radius:14px;overflow:hidden;border:1px solid #3a3a3a;background:#202124;box-shadow:var(--shadow)}
+.tabs{display:flex;gap:2px;padding:8px 8px 0;background:#202124;font:12px system-ui,sans-serif;color:#bdc1c6}
+.tab{padding:7px 14px;border-radius:8px 8px 0 0;display:flex;gap:7px;align-items:center;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tab.on{background:#35363a;color:#e8eaed}
+.tab i{width:14px;height:14px;border-radius:3px;flex:none}
+.bar{display:flex;align-items:center;gap:10px;padding:6px 10px;background:#35363a;border-bottom:1px solid #202124}
+.url{flex:1;min-width:0;background:#202124;border-radius:999px;padding:6px 14px;color:#bdc1c6;font:12.5px system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ext{position:relative;width:26px;height:26px;display:grid;place-items:center;border-radius:50%}
+.ext:hover{background:#4a4b4f}
+.ext .tb{position:absolute;right:-5px;bottom:-3px;font:700 9px/1 system-ui,sans-serif;padding:2px 3px;border-radius:4px;background:#F5B83D;color:#1A1204;min-width:14px;text-align:center}
+.viewport{position:relative;overflow:hidden;min-height:200px}
+
+/* Cena vídeo */
+.watch{background:#000;padding:0}
+.player{position:relative;aspect-ratio:16/9;width:100%;overflow:hidden;background:radial-gradient(ellipse at 30% 40%,#4a3f36 0,#1d1a18 55%,#0b0a09 100%)}
+.player .scene{position:absolute;inset:0;background:linear-gradient(160deg,rgba(255,170,90,.22),transparent 45%),radial-gradient(circle at 70% 35%,rgba(120,150,190,.25),transparent 30%),linear-gradient(0deg,rgba(0,0,0,.6),transparent 38%)}
+.player .who{position:absolute;left:4%;top:4%;color:#fff;font:600 14px system-ui,sans-serif;opacity:.85;display:flex;gap:8px;align-items:center}
+.player .who small{opacity:.7;font-weight:400}
+.player .sub{position:absolute;left:50%;bottom:17%;transform:translateX(-50%);max-width:80%;text-align:center;color:#fff;font:600 clamp(13px,2.2vw,24px)/1.35 Arial,sans-serif;text-shadow:0 0 4px #000,0 2px 2px #000}
+.player .sub span{display:inline}
+.player.nosub .sub{display:none}
+.ctrls{position:absolute;left:0;right:0;bottom:0;padding:10px 3%;display:grid;gap:8px;background:linear-gradient(0deg,rgba(0,0,0,.75),transparent)}
+.prog{height:4px;border-radius:2px;background:rgba(255,255,255,.3)}
+.prog i{display:block;height:100%;width:38%;background:#e50914;border-radius:2px}
+.cbtns{display:flex;gap:16px;align-items:center;color:#fff;font:12px system-ui,sans-serif}
+.cbtns svg{width:20px;height:20px}
+.cbtns .sp{flex:1}
+
+/* Cena web */
+.web{background:#fafaf7;color:#1d1d1f;padding:34px clamp(16px,6%,72px) 60px;min-height:480px;font:17px/1.7 Georgia,serif}
+.web .kicker{font:700 11px system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#b3261e}
+.web h3{font:700 30px/1.2 Georgia,serif;margin:8px 0 14px}
+.web p{margin:0 0 16px;max-width:64ch}
+.web .by{font:13px system-ui,sans-serif;color:#666;margin-bottom:22px}
+.web mark.sel{background:#b4d7ff;color:inherit}
+
+/* ═════ Overlay — componentes Veio ═════ */
+.pm{font-family:var(--font-ui);color:var(--text);-webkit-font-smoothing:antialiased}
+.pm-fab{position:absolute;width:46px;height:46px;padding:0;border:0;border-radius:50%;background:none;cursor:pointer;display:grid;place-items:center;box-shadow:0 6px 18px rgba(0,0,0,.45);z-index:5;transition:transform .12s ease}
+.pm-fab svg.mark{width:46px;height:46px;border-radius:50%;display:block}
+.pm-fab:hover{transform:scale(1.06)}
+.pm-fab:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.pm-fab.fail{box-shadow:0 0 0 2px var(--danger),0 6px 18px rgba(0,0,0,.45)}
+.pm-cnt{position:absolute;right:-8px;top:-7px;font:700 10.5px/1 var(--font-num);padding:3px 5px;border-radius:999px;background:var(--accent);color:var(--accent-ink);box-shadow:0 0 0 2px rgba(0,0,0,.45);pointer-events:none;white-space:nowrap}
+.pm-cnt.lim{background:var(--surface);color:var(--accent-text);box-shadow:0 0 0 1.5px var(--accent),0 0 0 3px rgba(0,0,0,.45)}
+.pm-tip{position:absolute;right:calc(100% + 10px);top:50%;transform:translateY(-50%);white-space:nowrap;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:5px 9px;font:600 11.5px var(--font-ui);color:var(--text);opacity:0;pointer-events:none;transition:opacity .12s}
+.pm-tip .kbd{margin-left:4px}
+.pm-fab:hover .pm-tip,.pm-fab:focus-visible .pm-tip{opacity:1}
+
+.fb{display:flex;gap:11px;align-items:flex-start;width:320px;max-width:calc(100vw - 48px);padding:11px 13px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);font-family:var(--font-ui);text-align:left;z-index:6}
+.fb .ic{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--accent-soft);color:var(--accent-text)}
+.fb .ic svg{width:15px;height:15px}
+.fb .bd{min-width:0;flex:1}
+.fb b{font-size:12.5px;display:block;font-weight:700}
+.fb .ctx{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.fb p{margin:3px 0 0;font-size:12.5px;line-height:1.45;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.fb .meta{margin-left:auto;font:600 11px var(--font-num);color:var(--muted);white-space:nowrap;padding-top:1px}
+.fb.err .ic{background:var(--danger-soft);color:var(--danger)}
+.fb.err p{color:var(--muted)}
+.fb-in{animation:fbin .15s ease-out}
+.fb-out{opacity:0;transition:opacity .15s}
+@keyframes fbin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.fb-in{animation:none}}
+
+/* Keyword grifada (marca-texto da identidade: faixa de 50% a 94% da linha) */
+.kwm{background:linear-gradient(transparent 50%,var(--kw-bg) 50%,var(--kw-bg) 94%,transparent 94%);color:var(--text);padding:0 1px}
+.kwc{font:600 10.5px var(--font-num);color:var(--accent-text);padding:1px 7px;border-radius:999px;background:var(--accent-soft)}
+/* Faixa de marca-texto posicionada SOBRE a palavra da legenda do site (overlay, sem tocar no DOM do site) */
+.D-band{position:absolute;background:rgba(245,184,61,.42);pointer-events:none;z-index:3;animation:fbin .15s ease-out}
+.D-band.auto{background:rgba(245,184,61,.30)}
+@media (prefers-reduced-motion:reduce){.D-band{animation:none}}
+.feas{width:100%;border-collapse:collapse;font-size:12.5px}
+.feas th,.feas td{text-align:left;padding:7px 8px;border-top:1px solid var(--border);vertical-align:top}
+.feas th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-top:0}
+.ok{color:var(--success);font-weight:700}.fall{color:var(--accent-text);font-weight:700}.no{color:var(--danger);font-weight:700}
+.tbl{overflow-x:auto}
+
+/* C · Pílula: o botão vira o feedback */
+.C-pill{position:absolute;right:24px;bottom:88px;height:46px;display:flex;flex-direction:row-reverse;align-items:center;border-radius:999px;background:transparent;transition:background .15s,box-shadow .15s;z-index:5}
+.C-pill .pm-fab{position:relative;box-shadow:none}
+.C-pill:not(.open) .pm-fab{box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.C-pill .body{max-width:0;overflow:hidden;display:flex;align-items:center;gap:10px;transition:max-width .15s ease-out;white-space:nowrap}
+.C-pill.open{background:var(--surface);box-shadow:0 0 0 1px var(--border),var(--shadow)}
+.C-pill.open .body{max-width:min(420px,70vw);padding:0 4px 0 6px}
+.C-pill .ic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--accent-soft);color:var(--accent-text)}
+.C-pill .ic svg{width:15px;height:15px}
+.C-pill.err .ic{background:var(--danger-soft);color:var(--danger)}
+.C-pill .tx{min-width:0;max-width:300px}
+.C-pill .tx b{display:block;font-size:12px}
+.C-pill .tx>span{display:block;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.C-pill .meta{font:600 11px var(--font-num);color:var(--muted)}
+.C-pill.free{bottom:24px}
+.C-pill.free:not(.open){opacity:0}
+.C-pill.err.free .pm-fab{display:none}
+
+/* D · Veio: linha de ouro sob o texto capturado + chip */
+.D-line{position:absolute;height:3px;border-radius:2px;background:var(--accent);box-shadow:0 0 12px rgba(245,184,61,.55);transform-origin:left;animation:dline .15s ease-out;pointer-events:none;z-index:4}
+.D-line.auto{background:color-mix(in srgb,var(--accent) 60%,transparent);box-shadow:none}
+@keyframes dline{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.D-chip{position:absolute;transform:translate(-50%,-100%);display:inline-flex;align-items:center;gap:7px;padding:5px 11px 5px 6px;border-radius:999px;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);font:700 11.5px var(--font-ui);color:var(--text);white-space:nowrap;z-index:6;pointer-events:none}
+.D-chip .ic{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-text)}
+.D-chip .ic svg{width:12px;height:12px}
+.D-chip .meta{font:600 10.5px var(--font-num);color:var(--muted)}
+.D-chip.err .ic{background:var(--danger-soft);color:var(--danger)}
+@media (prefers-reduced-motion:reduce){.D-line{animation:none}}
+
+/* HOJE (linha de base — cópia do visual atual do content.js) */
+.H-fab{position:absolute;bottom:95px;right:30px;width:48px;height:48px;background:rgba(10,10,10,.85);border:2px solid #00ff88;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);box-shadow:0 8px 32px rgba(0,0,0,.5);padding:0;z-index:5}
+.H-fab.fail{border-color:red}
+.H-badge{position:absolute;right:-6px;top:-8px;min-width:18px;height:18px;border-radius:999px;padding:0 5px;font:700 9px Segoe UI,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.3);background:#00ff88;color:#06130d}
+.H-badge.lim{background:#facc15}
+.H-toast{position:absolute;right:55px;bottom:0;width:260px;min-height:48px;background:rgba(10,10,10,.98);color:#00ff88;padding:12px 16px;border-radius:12px;border:1px solid #00ff88;font:13px 'Segoe UI',system-ui,sans-serif;box-shadow:-10px 5px 30px rgba(0,0,0,.6);display:flex;flex-direction:column;justify-content:center;text-align:left}
+.H-toast.auto{background:rgba(6,19,13,.98)}
+.H-toast .k{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:4px;opacity:.75;font-weight:bold}
+.H-toast .c{font-size:9px;text-transform:uppercase;letter-spacing:1px;opacity:.55;margin-bottom:2px;color:#fff}
+.H-toast .t{font-weight:500;line-height:1.4;color:#fff;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.H-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:7;background:rgba(15,15,15,.95);border:1px solid rgba(0,255,255,.3);border-radius:14px;padding:20px 32px;color:#00ffff;font:600 14px Segoe UI,system-ui,sans-serif;letter-spacing:.04em;text-align:center;box-shadow:0 0 32px rgba(0,255,255,.18),0 6px 40px rgba(0,0,0,.7)}
+.H-center .p{font-size:11px;color:rgba(0,255,255,.55);font-weight:400;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── Barra do protótipo (não faz parte do design) ── */
+.switcher{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:4px;padding:5px;border-radius:999px;background:#fff;color:#111;box-shadow:0 10px 30px rgba(0,0,0,.5),0 0 0 2px #ff3dbb;font:600 13px system-ui,sans-serif;max-width:calc(100vw - 32px)}
+.switcher button{border:0;background:#111;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;flex:none}
+.switcher .lbl{padding:0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.switcher .tag{font:700 9.5px system-ui;letter-spacing:.12em;color:#ff3dbb;margin-right:6px}
+
+/* Formulários de decisão */
+fieldset{border:0;padding:0;margin:0;display:grid;gap:8px}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border);border-radius:14px;cursor:pointer}
+.opt:has(input:checked){border-color:color-mix(in srgb,var(--accent) 60%,var(--border));background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
+.opt input{accent-color:var(--accent);margin-top:3px}
+.opt small{display:block;color:var(--muted)}
+textarea,input[type=text]{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border-strong);border-radius:12px;padding:8px 10px;font:13px var(--font-ui)}
+textarea:focus,input[type=text]:focus{outline:2px solid var(--accent);outline-offset:1px}
+.copy{display:grid;grid-template-columns:minmax(0,190px) minmax(0,1fr);gap:8px 12px;align-items:center}
+@media (max-width:620px){.copy{grid-template-columns:minmax(0,1fr)}}
+.copy label{font-size:12px;color:var(--muted)}
+.copy label code{font:600 10.5px var(--font-num);color:var(--accent-text);display:block}
+.queued{font:600 11.5px var(--font-num);color:var(--success);min-height:1em}
+.note{font-size:12px;color:var(--muted);margin:8px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="row" style="justify-content:space-between;gap:14px">
+    <div class="row" style="gap:12px">
+      <span id="logoTop"></span>
+      <div>
+        <h1><span class="wm">Perpetual<b>Miner</b><span class="cur"></span></span> · overlay in-page</h1>
+        <div class="muted">Rodada 2: misturas de <b>C · Pílula</b> e <b>D · Veio</b>, agora com a keyword grifada. Protótipo throwaway do <code>content.js</code>, só o visual.</div>
+      </div>
+    </div>
+  </header>
+
+  <section class="panel" id="vpanel"></section>
+
+  <section class="panel">
+    <div class="sec-h">Dispare os estados</div>
+    <div class="row" role="group" aria-label="Cena">
+      <button class="btn" data-scene="video">Cena: vídeo (Netflix)</button>
+      <button class="btn" data-scene="web">Cena: página web (sem vídeo)</button>
+      <span style="width:12px"></span>
+      <button class="btn" data-lang="en">Legenda EN</button>
+      <button class="btn" data-lang="ru">Legenda RU</button>
+      <span style="width:12px"></span>
+      <button class="btn" id="play">▶ Player tocando</button>
+      <button class="btn" id="noRect">Simular: sem retângulo</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn btn-primary" data-fire="legenda">Minerar legenda <span class="kbd" style="background:transparent;border-color:rgba(0,0,0,.35)">Alt+S</span></button>
+      <button class="btn" data-fire="selecao">Capturar seleção</button>
+      <button class="btn" data-fire="auto">Auto Miner minerou</button>
+      <button class="btn" data-fire="erro">Legenda não encontrada</button>
+      <button class="btn" id="nextSub">Próxima legenda</button>
+      <span style="width:12px"></span>
+      <button class="btn" id="amToggle">Auto Miner</button>
+      <button class="btn" id="amLimit">Pular p/ o limite</button>
+    </div>
+    <p class="note"><b>▶ Player tocando</b>: a legenda troca a cada ~2,4 s e o Auto Miner minera sozinho as linhas que têm palavra nova (espera 650 ms de legenda estável, como no código). É aqui que dá pra sentir o tempo real. <b>Sem retângulo</b> força o caso em que não dá pra achar a posição do texto. <span class="kbd">←</span> <span class="kbd">→</span> trocam a variante.</p>
+  </section>
+
+  <div class="browser" aria-label="Janela de navegador simulada">
+    <div class="tabs"><div class="tab on" id="tabTitle"></div><div class="tab"><i style="background:#555"></i>Nova guia</div></div>
+    <div class="bar">
+      <div class="url" id="url"></div>
+      <div class="ext" id="extIcon" title=""></div>
+    </div>
+    <div class="viewport" id="viewport"></div>
+  </div>
+
+  <div class="grid2">
+    <section class="panel">
+      <div class="sec-h">Estado (o que o protótipo está simulando)</div>
+      <pre class="state" id="state"></pre>
+    </section>
+    <section class="panel">
+      <div class="sec-h">A keyword já existe (não é função nova)</div>
+      <ul style="margin:0;padding-left:18px" class="muted">
+        <li><b>Auto Miner:</b> a resposta do <code>background.js</code> já traz <code>evaluation.keywords</code>, as palavras <b>novas</b> (i+1) que fizeram a frase ser aceita. Hoje o <code>content.js</code> recebe e ignora.</li>
+        <li><b>Alt+S / seleção:</b> o <code>SALVAR_HISTORICO</code> já responde <code>{ok, frase}</code> com <code>frase.keywords</code> (a keyword automática que o painel mostra). Hoje ninguém escuta a resposta.</li>
+        <li>O formato é <code>palavra@índice</code>: a posição exata na frase. Grifar a palavra certa é preciso, sem adivinhar.</li>
+        <li>Bônus: usar a resposta deixa o feedback <b>honesto</b> (hoje ele é otimista e diz “salvo” antes de saber).</li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="sec-h">A linha (D) funciona 100%? Não. Funciona onde o miner funciona, com reserva</div>
+    <div class="tbl"><table class="feas">
+      <thead><tr><th>Caso</th><th>Linha + grifo</th><th>Por quê</th></tr></thead>
+      <tbody>
+        <tr><td>Netflix · YouTube · Kinopoisk · HBO Max · Prime (seletor direto)</td><td class="ok">funciona</td><td>O texto é lido de um elemento do DOM (<code>.player-timedtext-text-container</code>, <code>.ytp-caption-segment</code>, <code>[data-tid=Subtitles]</code>, seletores caption/subtitle, <code>.atvwebplayersdk-captions-text</code>). Achou o texto = achou o elemento = tem retângulo. O grifo usa <code>Range.getClientRects()</code> por palavra.</td></tr>
+        <tr><td>Seleção numa página comum</td><td class="ok">funciona</td><td><code>getSelection().getRangeAt(0).getClientRects()</code>, padrão do navegador.</td></tr>
+        <tr><td>Tela cheia · player em iframe</td><td class="ok">funciona</td><td>O overlay vive dentro do container do player (igual ao botão hoje) e o manifest já injeta com <code>all_frames: true</code>.</td></tr>
+        <tr><td>Legenda trocou antes do feedback aparecer (Auto Miner espera 650 ms + resposta)</td><td class="fall">reserva</td><td>A linha só existe enquanto <b>o mesmo texto</b> está na tela; se já trocou, cai na pílula. Teste com ▶ Player tocando.</td></tr>
+        <tr><td>Fallback heurístico (Prime por varredura, <code>minerarLegendaVisual</code>)</td><td class="fall">reserva / risco</td><td>Acha um elemento, mas pode ser o errado → linha no lugar errado. Construção: só desenhar a linha quando o texto do elemento bate com o que foi salvo.</td></tr>
+        <tr><td>Seleção dentro de <code>&lt;input&gt;</code>/<code>&lt;textarea&gt;</code>, visualizador de PDF, Google Docs (canvas)</td><td class="fall">reserva</td><td>Sem retângulo de texto acessível → pílula.</td></tr>
+        <tr><td>Legenda desenhada como imagem/canvas</td><td class="no">nem hoje</td><td>O miner já não consegue ler esse texto; não é um caso novo.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Resumo: a linha é <b>100% viável</b> em todo lugar onde a mineração já funciona, mas não é <b>100% garantida</b> no momento do feedback. Por isso toda mistura tem a pílula como reserva. Na construção, o scraping precisa devolver <code>{texto, elemento}</code> em vez de só o texto: muda o retorno, não o comportamento. Verificado lendo o código, não ao vivo nos sites.</p>
+  </section>
+
+  <div class="grid2">
+    <section class="panel">
+      <div class="sec-h">Sua escolha</div>
+      <form id="pick" data-lavish-question="overlay-variante">
+        <fieldset id="pickOpts"></fieldset>
+        <label class="muted" style="display:block;margin:10px 0 6px;font-size:12px">Ajustes (ex.: “M1, mas sem o chip quando é Auto Miner”)</label>
+        <textarea name="notes" rows="3"></textarea>
+        <div class="row" style="margin-top:10px;justify-content:space-between">
+          <span class="queued" id="pickQ"></span>
+          <button class="btn btn-primary" type="submit">Enviar escolha</button>
+        </div>
+      </form>
+    </section>
+    <section class="panel">
+      <div class="sec-h">Microcopy (proposta · edite ao vivo)</div>
+      <form id="copyForm" data-lavish-question="overlay-microcopy">
+        <div class="copy" id="copyFields"></div>
+        <p class="note">Texto provisório. A redação final é do ticket “Voz, tom &amp; catálogo de mensagens/estados”; o que você mudar aqui vira insumo pra ele.</p>
+        <div class="row" style="margin-top:10px;justify-content:space-between">
+          <span class="queued" id="copyQ"></span>
+          <button class="btn" type="submit">Enviar mudanças de texto</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>
+
+<nav class="switcher" aria-label="Trocar variante do protótipo">
+  <button id="prev" aria-label="Variante anterior">‹</button>
+  <span class="lbl"><span class="tag">PROTÓTIPO</span><span id="swLbl"></span></span>
+  <button id="next" aria-label="Próxima variante">›</button>
+</nav>
+
+<script>
+const LOGO = `<svg class="mark" viewBox="0 0 128 128" aria-hidden="true"><rect width="128" height="128" rx="28" fill="#1B1A17"/><polygon points="64,14 64,114 38,92 38,36" fill="#FFD27A"/><polygon points="64,14 90,36 90,92 64,114" fill="#D9901A"/><polygon points="64,14 90,36 64,46 38,36" fill="#FFE3A6"/><rect x="30" y="68" width="68" height="10" fill="#1B1A17"/></svg>`;
+const I = {
+  caption:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 14h4M13 14h4M7 10h10"/>',
+  select:'<path d="M4 6h16M4 12h10M4 18h7"/>',
+  bolt:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/>',
+};
+const ic = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// kw = grupos de palavras (no código real: ['walk@3','away@4','|',...]). Linha sem kw = Auto Miner pula (no_new_item).
+const SUBS = {
+  en: { ctx:{fonte:'Netflix', titulo:'The Bear', det:'S02E07'}, meta:'EN', lines:[
+    { text:"I'm not saying it's your fault, I'm saying it's your responsibility.", kw:[['responsibility']] },
+    { text:"We're running out of time, chef.", kw:[] },
+    { text:"You can't just walk away from this place.", kw:[['walk','away']] },
+    { text:"Yes, chef.", kw:[] },
+    { text:"Every second counts, and the tickets keep piling up.", kw:[['piling','up']] },
+  ]},
+  ru: { ctx:{fonte:'Netflix', titulo:'Маугли', det:'S01E03'}, meta:'RU', lines:[
+    { text:'Мы с тобой одной крови — ты и я.', kw:[['крови']] },
+    { text:'Пойдём домой.', kw:[] },
+    { text:'Не всё то золото, что блестит.', kw:[['блестит']] },
+    { text:'Да.', kw:[] },
+  ]},
+};
+const SEL = { text:'The devil is in the details, and the details are where most plans quietly fall apart.', kw:[['fall','apart']], ctx:{fonte:'Web', titulo:'Why Plans Fail — The Long Read', det:''} };
+
+const DEFAULT_COPY = {
+  fab_label:     'Minerar legenda',
+  legenda_title: 'Frase minerada e copiada',
+  selecao_title: 'Seleção capturada',
+  auto_title:    'Auto Miner minerou',
+  kw_new:        'nova',
+  kw_manual:     'keyword',
+  erro_title:    'Nenhuma legenda na tela',
+  erro_body:     'Ligue as legendas do player e tente de novo.',
+  erro_web:      'Esta página não tem vídeo com legenda.',
+  cnt_tip:       'Auto Miner: {n} de {limite} hoje',
+  cnt_lim_tip:   'Auto Miner: limite de hoje atingido ({n}/{limite})',
+};
+const COPY_LABELS = {
+  fab_label:'Rótulo do botão (+ atalho)', legenda_title:'Feedback · legenda', selecao_title:'Feedback · seleção',
+  auto_title:'Feedback · Auto Miner', kw_new:'Rótulo da palavra nova (Auto Miner)', kw_manual:'Rótulo da keyword (manual)',
+  erro_title:'Falha · título', erro_body:'Falha · dica (vídeo)', erro_web:'Falha · dica (sem vídeo)',
+  cnt_tip:'Dica do contador', cnt_lim_tip:'Dica do contador no limite',
+};
+let COPY = { ...DEFAULT_COPY };
+
+const S = { variant:'M1', scene:'video', lang:'en', sub:0, playing:false, noRect:false, am:{ on:true, count:8, limit:15 }, last:null, log:[] };
+let pillTimer = null, veioTimer = null, playTimer = null, autoTimer = null;
+
+const curLine = () => SUBS[S.lang].lines[S.sub % SUBS[S.lang].lines.length];
+const kwWords = (kw) => new Set(kw.flat().map(w => w.toLowerCase()));
+const kwLabel = (kw) => kw.map(g => g.join(' ')).join(', ');
+
+/* Texto com a keyword grifada (tokenização Unicode, funciona em cirílico) */
+function markKw(text, kw) {
+  const set = kwWords(kw);
+  return text.split(/([\p{L}\p{M}'’-]+)/u).map(tok => set.has(tok.toLowerCase()) ? `<span class="kwm">${esc(tok)}</span>` : esc(tok)).join('');
+}
+
+// Pílula tem 1 linha: se a frase é longa, a prévia começa perto da keyword pra ela nunca ser cortada
+function aroundKw(text, kw) {
+  const first = kw[0]?.[0]; if (!first || text.length <= 48) return text;
+  const i = text.toLowerCase().indexOf(first.toLowerCase());
+  if (i < 28) return text;
+  const cut = text.lastIndexOf(' ', i - 18);
+  return '…' + text.slice(cut > 0 ? cut : i - 18);
+}
+
+/* ── Conteúdo do feedback ── */
+function payload(kind) {
+  const L = SUBS[S.lang], line = curLine();
+  const ctxStr = (c) => [c.fonte, c.titulo, c.det].filter(Boolean).join(' · ');
+  if (kind === 'legenda') return { kind, icon:'caption', title:COPY.legenda_title, text:line.text, kw:line.kw, kwTag:COPY.kw_manual, ctx:ctxStr(L.ctx), meta:L.meta };
+  if (kind === 'selecao') return { kind, icon:'select', title:COPY.selecao_title, text:SEL.text, kw:SEL.kw, kwTag:COPY.kw_manual, ctx:ctxStr(SEL.ctx), meta:'Web' };
+  if (kind === 'auto')    return { kind, icon:'bolt', title:COPY.auto_title, text:line.text, kw:line.kw, kwTag:COPY.kw_new, ctx:ctxStr(L.ctx), meta:`${L.meta} ${S.am.count}/${S.am.limit}` };
+  return { kind:'erro', icon:'alert', title:COPY.erro_title, text:S.scene === 'web' ? COPY.erro_web : COPY.erro_body, kw:[], ctx:'', meta:'' };
+}
+
+/* ── Contador ── */
+function cntHtml() {
+  if (!S.am.on) return '';
+  return `<span class="pm-cnt ${S.am.count >= S.am.limit ? 'lim' : ''}">${S.am.count}/${S.am.limit}</span>`;
+}
+function cntTip() {
+  const t = S.am.count >= S.am.limit ? COPY.cnt_lim_tip : COPY.cnt_tip;
+  return t.replace('{n}', S.am.count).replace('{limite}', S.am.limit);
+}
+const tipHtml = () => `<span class="pm-tip">${esc(COPY.fab_label)}<span class="kbd">Alt+S</span>${S.am.on ? `<br><span style="color:var(--muted);font-weight:500">${esc(cntTip())}</span>` : ''}</span>`;
+const fabAria = () => `${esc(COPY.fab_label)} (Alt+S)${S.am.on ? ' · ' + esc(cntTip()) : ''}`;
+const fabRound = (style) => `<button class="pm-fab pm" id="fab" style="${style}" aria-label="${fabAria()}">${LOGO}${cntHtml()}${tipHtml()}</button>`;
+const fabPill = () => `<div class="C-pill pm" id="pill"><button class="pm-fab" id="fab" aria-label="${fabAria()}">${LOGO}${cntHtml()}${tipHtml()}</button><div class="body" role="status" aria-live="polite"></div></div>`;
+
+/* ═════ Os dois blocos de construção ═════ */
+
+// Pílula (C): o botão estica e mostra ícone + título + 1 linha com a keyword grifada + meta
+function showPill(p) {
+  clearTimeout(pillTimer);
+  document.getElementById('pillFree')?.remove();
+  let pill = document.getElementById('pill'), free = false;
+  if (!pill) { free = true; pill = mount(`<div class="C-pill pm free" id="pillFree"><span class="pm-fab" style="cursor:default">${LOGO}</span><div class="body" role="status" aria-live="polite"></div></div>`, vp()); }
+  const ru = S.lang === 'ru' && p.kind !== 'selecao' ? 'lang="ru"' : '';
+  pill.querySelector('.body').innerHTML = `<span class="ic">${ic(p.icon)}</span><span class="tx"><b>${esc(p.title)}</b><span ${ru}>${p.kw?.length ? markKw(aroundKw(p.text, p.kw), p.kw) : esc(p.text)}</span></span>${p.meta ? `<span class="meta">${esc(p.meta)}</span>` : ''}`;
+  pill.classList.toggle('err', p.kind === 'erro');
+  void pill.offsetWidth; pill.classList.add('open');
+  pillTimer = setTimeout(() => { pill.classList.remove('open'); if (free) setTimeout(() => pill.remove(), 160); }, 3500);
+  return 'pílula';
+}
+
+// Veio (D): linha ouro sob o texto + faixa de marca-texto sobre a keyword + chip. Retorna false se não há retângulo.
+function drawVeio(p, { faint = false, chip = true } = {}) {
+  if (S.noRect) return false;
+  const inVideo = S.scene === 'video';
+  const host = inVideo ? player() : vp();
+  const target = inVideo ? host.querySelector('.sub span') : vp().querySelector('mark.sel');
+  if (!host || !target) return false;
+  // a legenda na tela ainda é a que foi capturada?
+  if (inVideo && target.textContent !== p.text) return false;
+  clearVeio();
+  const hr = host.getBoundingClientRect();
+  const rects = [...target.getClientRects()];
+  if (!rects.length) return false;
+  let html = rects.map(r => `<div class="D-line ${faint ? 'auto' : ''}" style="left:${r.left - hr.left}px;top:${r.bottom - hr.top + 3}px;width:${r.width}px"></div>`).join('');
+  // grifo por palavra: Range sobre o nó de texto do "site" — nada é injetado no DOM dele
+  const set = kwWords(p.kw || []);
+  const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+  for (let n; (n = walker.nextNode());) {
+    for (const m of n.textContent.matchAll(/[\p{L}\p{M}'’-]+/gu)) {
+      if (!set.has(m[0].toLowerCase())) continue;
+      const rg = document.createRange(); rg.setStart(n, m.index); rg.setEnd(n, m.index + m[0].length);
+      for (const r of rg.getClientRects()) html += `<div class="D-band ${faint ? 'auto' : ''}" style="left:${r.left - hr.left - 1}px;top:${r.top - hr.top + r.height * 0.5}px;width:${r.width + 2}px;height:${r.height * 0.44}px"></div>`;
+    }
+  }
+  if (chip) {
+    const kwc = p.kw?.length ? `<span class="kwc">${esc(p.kwTag)}: ${esc(kwLabel(p.kw))}</span>` : '';
+    const meta = p.kind === 'auto' ? `<span class="meta">${esc(p.meta)}</span>` : `<span class="meta">${esc(p.meta)}</span>`;
+    html += `<div class="D-chip" style="left:${(rects[0].left + rects[0].right) / 2 - hr.left}px;top:${rects[0].top - hr.top - 8}px"><span class="ic">${ic(p.icon)}</span>${esc(p.title)} ${kwc} ${meta}</div>`;
+  }
+  const wrap = document.createElement('div'); wrap.className = 'pm veio-wrap'; wrap.dataset.text = p.text; wrap.innerHTML = html;
+  host.appendChild(wrap);
+  clearTimeout(veioTimer); veioTimer = setTimeout(clearVeio, 3500);
+  return true;
+}
+function clearVeio() { document.querySelectorAll('.veio-wrap').forEach(w => { w.style.transition = 'opacity .15s'; w.style.opacity = '0'; setTimeout(() => w.remove(), 150); }); }
+
+// chip de erro no lugar da legenda (usado só pela D pura)
+function errChip(p) {
+  const host = S.scene === 'video' ? player() : vp(); const hr = host.getBoundingClientRect();
+  const y = S.scene === 'video' ? hr.height * 0.83 : hr.height - 40;
+  const w = document.createElement('div'); w.className = 'pm veio-wrap';
+  w.innerHTML = `<div class="D-chip err" style="left:${hr.width / 2}px;top:${y}px"><span class="ic">${ic('alert')}</span>${esc(p.title)} <span class="meta" style="font-family:var(--font-ui);font-weight:500">${esc(p.text)}</span></div>`;
+  host.appendChild(w); clearTimeout(veioTimer); veioTimer = setTimeout(clearVeio, 3500);
+  return 'chip de erro';
+}
+
+/* ═════ Variantes ═════ */
+const V = {
+  M1: {
+    name:'D com reserva C', tag:'marca onde o texto está; se não der, a pílula fala',
+    idea:'Uma regra só. Quando dá pra marcar o texto (legenda ainda na tela, seleção com retângulo), aparece a linha ouro sob ele, a keyword grifada por cima e um chip com “keyword: …” ou “nova: …”. Quando não dá (legenda já trocou, sem retângulo, falha), o botão vira pílula com o texto e a keyword grifada. O Auto Miner usa a mesma linha, mais apagada.',
+    gain:['O olho não sai da legenda na maioria das vezes','Mostra a palavra nova no próprio vídeo: é o momento de aprender','Nunca fica sem feedback: a pílula cobre todos os buracos da linha'],
+    cost:['Dois visuais pra aprender (linha e pílula), mesmo que a regra seja uma','Com ▶ tocando, parte dos avisos do Auto Miner cai na pílula (legenda já trocou)','A construção mais trabalhosa das três'],
+    fab: fabPill,
+    show(p) {
+      if (p.kind === 'erro') return showPill(p);
+      return drawVeio(p, { faint: p.kind === 'auto' }) ? 'linha + grifo + chip' : showPill(p) + ' (reserva: sem retângulo ou legenda já trocou)';
+    },
+  },
+  M2: {
+    name:'C manual, D Auto Miner', tag:'você pediu → pílula; o Auto Miner → só a linha',
+    idea:'Divide pelo autor da captura. Quando é você (Alt+S, clique, seleção), a pílula confirma com o texto e a keyword grifada: é o que foi salvo e copiado. Quando é o Auto Miner, que dispara toda hora, só aparece a linha apagada e o grifo na palavra nova, sem chip e sem texto repetido. Se a legenda já trocou, o Auto Miner fica só no contador.',
+    gain:['O Auto Miner quase não interrompe o vídeo','O manual sempre mostra exatamente o que foi salvo','Cada visual tem um dono claro, fácil de explicar'],
+    cost:['Sem chip, o Auto Miner não diz qual palavra era nova: só o grifo mostra','Grifo curto demais passa despercebido se você piscar','Seleção ganha pílula, não linha: perde o “marcar o trecho”'],
+    fab: fabPill,
+    show(p) {
+      if (p.kind === 'auto') {
+        const ok = drawVeio(p, { faint: true, chip: false });
+        if (!ok) { bumpFab(); return 'só o contador (legenda já trocou)'; }
+        return 'linha apagada + grifo, sem chip';
+      }
+      return showPill(p);
+    },
+  },
+  M3: {
+    name:'Juntos', tag:'linha no texto E pílula no botão, sempre',
+    idea:'Toda captura faz as duas coisas: a linha e o grifo marcam a legenda e a pílula confirma no botão, com o texto. Máxima confirmação. Se a linha não der, sobra a pílula.',
+    gain:['Impossível não perceber','A pílula dá o texto e a linha dá o lugar'],
+    cost:['O mais barulhento: dois elementos por captura, a cada frase do Auto Miner','Repete na pílula o texto que já está na tela','Mais coisa por cima do vídeo em players pequenos'],
+    fab: fabPill,
+    show(p) {
+      const line = p.kind !== 'erro' && drawVeio(p, { faint: p.kind === 'auto', chip: false });
+      return showPill(p) + (line ? ' + linha/grifo' : '');
+    },
+  },
+  C: {
+    name:'Pílula (referência)', tag:'rodada 1: só o botão vira feedback',
+    idea:'A C da primeira rodada, agora com a keyword grifada dentro da pílula.',
+    gain:['Um elemento só'], cost:['Não marca a legenda'],
+    fab: fabPill, show: (p) => showPill(p),
+  },
+  D: {
+    name:'Veio (referência)', tag:'rodada 1: só a linha, com chip de erro',
+    idea:'A D da primeira rodada, agora com o grifo na keyword. Sem pílula: quando não há retângulo, o aviso some (aqui fica claro por que ela precisa de reserva).',
+    gain:['Marca própria, feedback onde o olho está'], cost:['Sem retângulo = sem feedback'],
+    fab: () => fabRound('right:24px;bottom:88px'),
+    show(p) {
+      if (p.kind === 'erro') return errChip(p);
+      return drawVeio(p, { faint: p.kind === 'auto' }) ? 'linha + grifo + chip' : 'NADA (sem retângulo) ← o buraco da D pura';
+    },
+  },
+  H: {
+    name:'Hoje', tag:'linha de base: o content.js atual',
+    idea:'Como está no main agora: toast verde ao lado do botão, overlay ciano no centro (seleção), toast do Auto Miner; falha = borda vermelha muda.',
+    gain:['Referência pra comparar'], cost:['Nada da identidade Veio','Não mostra keyword nenhuma'],
+    fab() {
+      return `<button class="H-fab" id="fab" aria-label="(hoje: sem rótulo)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5"/></svg>${S.am.on ? `<span class="H-badge ${S.am.count >= S.am.limit ? 'lim' : ''}">${S.am.count}/${S.am.limit}</span>` : ''}</button>`;
+    },
+    show(p) {
+      const fab = document.getElementById('fab');
+      document.querySelectorAll('.H-toast,.H-center').forEach(e => e.remove());
+      if (p.kind === 'erro') { if (fab) { fab.classList.add('fail'); setTimeout(() => fab.classList.remove('fail'), 800); } return 'borda vermelha 800 ms'; }
+      let el;
+      if (p.kind === 'selecao') el = mount(`<div class="H-center"><div style="font-size:22px;margin-bottom:8px">⚡</div><div style="margin-bottom:6px">Frase Capturada!</div><div class="p">${esc(p.text.length > 55 ? p.text.slice(0,55) + '…' : p.text)}</div></div>`, vp());
+      else if (!fab) return 'silêncio';
+      else el = mount(p.kind === 'auto'
+        ? `<div class="H-toast auto"><div class="k">Auto Miner - ${S.lang === 'ru' ? 'Russo' : 'Inglês'} - ${S.am.count}/${S.am.limit}</div><div class="t">${esc(p.text)}</div></div>`
+        : `<div class="H-toast"><div class="k">Minerado &amp; Copiado · ${S.lang === 'ru' ? 'Russo' : 'Inglês'}</div><div class="t">${esc(p.text)}</div></div>`, fab);
+      setTimeout(() => el.remove(), 3500);
+      return 'toast';
+    },
+  },
+};
+const ORDER = ['M1','M2','M3','C','D','H'];
+
+/* ── Cenas ── */
+const vp = () => document.getElementById('viewport');
+const player = () => document.getElementById('player');
+function mount(html, parent) { const t = document.createElement('template'); t.innerHTML = html.trim(); const el = t.content.firstElementChild; parent.appendChild(el); return el; }
+function bumpFab() { const f = document.getElementById('fab'); if (!f) return; f.animate([{ transform:'scale(1)' }, { transform:'scale(1.1)' }, { transform:'scale(1)' }], { duration:150 }); }
+
+function renderScene() {
+  clearTimeout(pillTimer); clearTimeout(veioTimer);
+  const v = V[S.variant], L = SUBS[S.lang], line = curLine();
+  document.getElementById('url').textContent = S.scene === 'video' ? 'netflix.com/watch/81673410' : 'longreads.example.com/why-plans-fail';
+  document.getElementById('tabTitle').innerHTML = S.scene === 'video' ? '<i style="background:#e50914"></i><span>Netflix</span>' : '<i style="background:#b3261e"></i><span>Why Plans Fail — The Long Read</span>';
+  vp().innerHTML = S.scene === 'video'
+    ? `<div class="watch"><div class="player" id="player"><div class="scene"></div>
+         <div class="who">${esc(L.ctx.titulo)} <small>${esc(L.ctx.det)}</small></div>
+         <div class="sub" ${S.lang === 'ru' ? 'lang="ru"' : ''}><span>${esc(line.text)}</span></div>
+         <div class="ctrls"><div class="prog"><i></i></div><div class="cbtns">
+           <svg viewBox="0 0 24 24" fill="currentColor">${S.playing ? '<path d="M7 5h3v14H7zM14 5h3v14h-3z"/>' : '<path d="M7 4l13 8-13 8z"/>'}</svg>
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+           <span>18:42 / 34:10</span><span class="sp"></span><span>Próximo episódio</span>
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 14h4M13 14h4"/></svg>
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+         </div></div>
+         ${v.fab()}
+       </div></div>`
+    : `<article class="web"><div class="kicker">Essay</div><h3>Why Plans Fail</h3><div class="by">By A. Writer · 12 min read</div>
+         <p>Every project starts with a map that looks complete. It never is. The gaps only show once you are already walking, which is why the first week of any plan feels so much smoother than the fifth.</p>
+         <p>Experienced builders know a small truth that beginners resist: <mark class="sel">${esc(SEL.text)}</mark> Nobody fails at the headline; they fail at the footnote.</p>
+         <p>So the trick is not to plan harder, but to plan closer — to shorten the distance between deciding and finding out whether you were right.</p></article>`;
+  document.getElementById('fab')?.addEventListener('click', (e) => { e.preventDefault(); fire('legenda'); });
+  renderChrome();
+}
+
+// troca só o texto da legenda (como o player faz); a linha some se o texto mudou
+function setSub(i) {
+  S.sub = i;
+  const span = player()?.querySelector('.sub span');
+  if (span) span.textContent = curLine().text;
+  document.querySelectorAll('.veio-wrap').forEach(w => { if (w.dataset.text && w.dataset.text !== curLine().text) { w.remove(); S.log.push('linha✕(legenda trocou)'); } });
+  clearTimeout(autoTimer);
+  // Auto Miner: 650 ms de legenda estável + ~250 ms de resposta do background
+  if (S.playing && S.am.on && S.scene === 'video') autoTimer = setTimeout(() => { if (curLine().kw.length) fire('auto'); else { S.last = { kind:'auto', how:'skip: sem item novo (nenhuma palavra nova)' }; renderState(); } }, 900);
+  renderState();
+}
+
+function renderChrome() {
+  const ext = document.getElementById('extIcon');
+  const veio = S.variant !== 'H';
+  ext.innerHTML = veio
+    ? `<svg viewBox="0 0 128 128" width="18" height="18">${LOGO.replace(/^<svg[^>]*>|<\/svg>$/g, '')}</svg>${S.am.on ? `<span class="tb">${S.am.count}</span>` : ''}`
+    : `<svg width="16" height="16" viewBox="0 0 24 24" fill="#22d3ee"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>`;
+  ext.title = veio ? (S.am.on ? 'PerpetualMiner · ' + cntTip() : 'PerpetualMiner') : 'PerpetualMiner (ícone atual, sem badge)';
+  document.querySelectorAll('[data-scene]').forEach(b => b.setAttribute('aria-pressed', b.dataset.scene === S.scene));
+  document.querySelectorAll('[data-lang]').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === S.lang));
+  const am = document.getElementById('amToggle'); am.setAttribute('aria-pressed', S.am.on); am.textContent = S.am.on ? 'Auto Miner: ligado' : 'Auto Miner: desligado';
+  const pl = document.getElementById('play'); pl.setAttribute('aria-pressed', S.playing); pl.textContent = S.playing ? '❚❚ Player tocando' : '▶ Player tocando';
+  document.getElementById('noRect').setAttribute('aria-pressed', S.noRect);
+  renderState();
+}
+
+function renderVariantPanel() {
+  const v = V[S.variant];
+  document.getElementById('vpanel').innerHTML = `<div class="vhead"><div class="vkey">${S.variant === 'H' ? '—' : S.variant}</div>
+    <div style="min-width:0;flex:1"><h2>${esc(v.name)} <span class="muted" style="font-weight:500;font-size:14px">· ${esc(v.tag)}</span></h2><p class="muted">${esc(v.idea)}</p>
+    <div class="pc"><div class="gain"><b>Ganha</b><ul>${v.gain.map(g => `<li>${esc(g)}</li>`).join('')}</ul></div><div class="cost"><b>Custa</b><ul>${v.cost.map(g => `<li>${esc(g)}</li>`).join('')}</ul></div></div></div></div>`;
+  document.getElementById('swLbl').textContent = `${S.variant === 'H' ? 'Hoje' : S.variant} (${v.name})`;
+}
+
+function renderState() {
+  const l = S.last, line = curLine();
+  document.getElementById('state').innerHTML =
+`<b>variante</b>  ${S.variant} · ${esc(V[S.variant].name)}
+<b>cena</b>      ${S.scene === 'video' ? 'vídeo (botão presente)' : 'página web (sem vídeo → sem botão)'}${S.playing ? ' · ▶ tocando' : ''}${S.noRect ? ' · SEM RETÂNGULO' : ''}
+<b>legenda</b>   ${S.lang.toUpperCase()} #${S.sub % SUBS[S.lang].lines.length + 1} · keyword: ${line.kw.length ? esc(kwLabel(line.kw)) : '— (Auto Miner pularia)'}
+<b>autoMiner</b> ${S.am.on ? `ligado · ${S.am.count}/${S.am.limit}${S.am.count >= S.am.limit ? ' · LIMITE' : ''}` : 'desligado (contador some)'}
+<b>toolbar</b>   badge ${S.variant === 'H' ? '— (não existe hoje)' : S.am.on ? `“${S.am.count}”` : 'vazio'}
+<b>último</b>    ${l ? `${l.kind} → ${esc(l.how)}` : '—'}
+<b>histórico</b> ${S.log.slice(-6).map(esc).join(' · ') || '—'}`;
+}
+
+function fire(kind) {
+  if (kind === 'legenda' && S.scene === 'web') kind = 'erro';
+  if (kind === 'auto') {
+    const why = S.scene !== 'video' ? 'ignorado: Auto Miner só roda com vídeo' : !S.am.on ? 'ignorado: Auto Miner desligado' : S.am.count >= S.am.limit ? 'ignorado: limite do dia (o contador já mostra)' : !curLine().kw.length ? 'skip: sem item novo (nenhuma palavra nova)' : '';
+    if (why) { S.last = { kind, how:why }; S.log.push('auto✕'); renderState(); return; }
+    S.am.count++;
+    const old = document.querySelector('#fab .pm-cnt, #fab .H-badge');
+    if (old) old.outerHTML = S.variant === 'H' ? `<span class="H-badge ${S.am.count >= S.am.limit ? 'lim' : ''}">${S.am.count}/${S.am.limit}</span>` : cntHtml();
+  }
+  const p = payload(kind);
+  S.last = { kind, how: V[S.variant].show(p) };
+  S.log.push(kind);
+  renderChrome();
+}
+
+function setVariant(k, push = true) {
+  S.variant = k;
+  if (push) { const u = new URL(location.href); u.searchParams.set('variant', k); history.replaceState(null, '', u); }
+  renderVariantPanel(); renderScene();
+}
+function cycle(d) { const i = ORDER.indexOf(S.variant); setVariant(ORDER[(i + d + ORDER.length) % ORDER.length]); }
+function setPlaying(on) {
+  S.playing = on; clearInterval(playTimer); clearTimeout(autoTimer);
+  if (on) { S.scene = 'video'; renderScene(); playTimer = setInterval(() => setSub(S.sub + 1), 2400); setSub(S.sub); }
+  else renderScene();
+}
+
+/* ── Controles ── */
+document.getElementById('logoTop').innerHTML = LOGO.replace('class="mark"', 'class="mark" width="40" height="40"');
+document.getElementById('prev').onclick = () => cycle(-1);
+document.getElementById('next').onclick = () => cycle(1);
+document.querySelectorAll('[data-scene]').forEach(b => b.onclick = () => { S.scene = b.dataset.scene; if (S.scene === 'web') setPlaying(false); else renderScene(); });
+document.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => { S.lang = b.dataset.lang; S.sub = 0; renderScene(); });
+document.querySelectorAll('[data-fire]').forEach(b => b.onclick = () => fire(b.dataset.fire));
+document.getElementById('nextSub').onclick = () => { if (S.scene !== 'video') { S.scene = 'video'; renderScene(); } setSub(S.sub + 1); };
+document.getElementById('play').onclick = () => setPlaying(!S.playing);
+document.getElementById('noRect').onclick = () => { S.noRect = !S.noRect; renderChrome(); };
+document.getElementById('amToggle').onclick = () => { S.am.on = !S.am.on; renderScene(); };
+document.getElementById('amLimit').onclick = () => { S.am.on = true; S.am.count = S.am.limit; renderScene(); };
+document.addEventListener('keydown', (e) => {
+  const t = e.target; if (t.matches?.('input,textarea,[contenteditable]')) return;
+  if (e.key === 'ArrowLeft') cycle(-1);
+  if (e.key === 'ArrowRight') cycle(1);
+  if (e.altKey && e.code === 'KeyS') { e.preventDefault(); fire('legenda'); }
+});
+
+/* ── Escolha (Lavish) ── */
+const lavishQueue = (text, opts) => { if (window.lavish?.queuePrompt) { window.lavish.queuePrompt(text, opts); return true; } console.log('[lavish ausente]', text); return false; };
+document.getElementById('pickOpts').innerHTML = ['M1','M2','M3','C','D'].map(k => `<label class="opt"><input type="radio" name="v" value="${k}"><span><b>${k} · ${esc(V[k].name)}</b><small>${esc(V[k].tag)}</small></span></label>`).join('');
+document.getElementById('pick').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.currentTarget); const v = fd.get('v'); const notes = (fd.get('notes') || '').trim();
+  if (!v && !notes) { document.getElementById('pickQ').textContent = 'escolha uma variante ou escreva o ajuste'; return; }
+  const msg = `Overlay in-page — escolha: ${v ? v + ' (' + V[v].name + ')' : 'nenhuma pura'}${notes ? '. Ajustes: ' + notes : ''}`;
+  lavishQueue(msg, { tag:'choice', text:msg, element:e.currentTarget, queueKey:'overlay-variante', data:{ question:'overlay-variante', answer:v, notes } });
+  document.getElementById('pickQ').textContent = '✓ na fila — aperte “Send” no Lavish';
+});
+document.getElementById('copyFields').innerHTML = Object.keys(DEFAULT_COPY).map(k => `<label for="c_${k}">${esc(COPY_LABELS[k])}<code>${k}</code></label><input type="text" id="c_${k}" name="${k}" value="${esc(DEFAULT_COPY[k])}">`).join('');
+document.getElementById('copyFields').addEventListener('input', (e) => { COPY[e.target.name] = e.target.value; renderScene(); });
+document.getElementById('copyForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const diff = Object.keys(DEFAULT_COPY).filter(k => COPY[k] !== DEFAULT_COPY[k]).map(k => `${k}: “${DEFAULT_COPY[k]}” → “${COPY[k]}”`);
+  const msg = diff.length ? `Overlay in-page — microcopy: ${diff.join('; ')}` : 'Overlay in-page — microcopy proposta aprovada sem mudanças';
+  lavishQueue(msg, { tag:'microcopy', text:msg, element:e.currentTarget, queueKey:'overlay-microcopy', data:{ question:'overlay-microcopy', diff } });
+  document.getElementById('copyQ').textContent = '✓ na fila — aperte “Send” no Lavish';
+});
+
+const qs = new URLSearchParams(location.search);
+const qv = qs.get('variant'); // decisão: M1
+if (qs.get('scene') === 'web') S.scene = 'web';
+if (qs.get('lang') === 'ru') S.lang = 'ru';
+if (qs.get('norect')) S.noRect = true;
+setVariant(ORDER.includes(qv) ? qv : 'M1', false);
+// ?fire=<legenda|selecao|auto|erro>&hold=1 — só pra capturas de tela do estado
+if (qs.get('fire')) setTimeout(() => { fire(qs.get('fire')); if (qs.get('hold')) { clearTimeout(pillTimer); clearTimeout(veioTimer); } }, 400);
+</script>
+</body>
+</html>

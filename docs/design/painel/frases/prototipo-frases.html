@@ -1,0 +1,928 @@
+<!doctype html>
+<!--
+  PROTÓTIPO DESCARTÁVEL: Painel · Frases mineradas, identidade Veio, shell Ilhas.
+  Ticket: "Protótipo: Painel · Frases mineradas" (issue #12 do mapa #1).
+  Pergunta: como fica a área Frases mineradas dentro do shell Ilhas?
+  VEREDITO (Lavish, 2026-09-15): A · Cartões travada, as 5 recomendações aceitas. B e C ficam só como registro.
+  Três layouts da MESMA área, trocados por ?variant=A|B|C (barra flutuante, ← →):
+    A · Cartões   um cartão por frase sob cabeçalhos de data; ações só-ícone no hover;
+                  barra de seleção grudada no topo da lista
+    B · Planilha  uma linha densa por frase em colunas; ações num menu ⋯;
+                  a barra de seleção toma o lugar dos filtros
+    C · Leitor    lista compacta à esquerda + a frase aberta num painel à direita
+                  (keyword e contexto editados ali); seleção numa doca flutuante
+  Os modais são os mesmos nas três: Editar contexto · Minerar frases (Colar · Arquivo .txt · Foto)
+  · Envio ao Anki (progresso → resumo) · Apagar 1 / N. A cópia vem do catálogo da Voz (PAI, ADD, ENV).
+  Sem persistência: tudo em memória. Abrir com dois cliques ou `python3 -m http.server`.
+  Teclas: ← → trocam a variante · T alterna o tema · Esc fecha modal/menu.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protótipo · Painel · Frases mineradas (Veio)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#121110;--surface:#1B1A17;--surface-2:#262420;--border:#302D27;--border-strong:#736B5D;
+  --text:#F2EEE6;--muted:#A89F90;--accent:#F5B83D;--accent-ink:#1A1204;--accent-text:#F5B83D;
+  --kw-bg:rgba(245,184,61,.40);--kw-fg:#F2EEE6;--success:#6FCF8E;--danger:#FF7A66;--info:#86BDF2;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+}
+html[data-theme=light]{
+  --bg:#F7F4EE;--surface:#FFFFFF;--surface-2:#F0EBE1;--border:#E4DCCD;--border-strong:#968C79;
+  --text:#1C1A16;--muted:#625B4F;--accent:#F0AE2E;--accent-ink:#1A1204;--accent-text:#855608;
+  --kw-bg:rgba(240,174,46,.45);--kw-fg:#1C1A16;--success:#1F7A45;--danger:#B42318;--info:#1D5FA8;
+  --shadow:0 10px 30px rgba(60,45,20,.12);
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--text);font:400 13.5px/1.5 Manrope,system-ui,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:600}
+.hidden{display:none!important}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg.i.s{width:16px;height:16px} svg.i.xs{width:14px;height:14px}
+mark.kw,.w.on{background:linear-gradient(transparent 50%,var(--kw-bg) 50%,var(--kw-bg) 94%,transparent 94%);color:var(--kw-fg);padding:0 1px}
+@media (prefers-reduced-motion:reduce){.brand .cur{animation:none!important}}
+
+/* ---------- shell Ilhas (travado no ticket do shell) ---------- */
+.app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh;padding:12px;gap:12px}
+.side{display:flex;flex-direction:column;gap:6px;padding:18px 12px;position:sticky;top:12px;height:calc(100vh - 24px);min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow)}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 18px}
+.brand .tile{width:30px;height:30px;border-radius:8px;background:#1B1A17;display:grid;place-items:center;flex:none;border:1px solid #302D27}
+.brand .name{font-size:16px;letter-spacing:-.01em;white-space:nowrap}
+.brand .name b{font-weight:800}
+.brand .cur{display:inline-block;width:6px;height:15px;background:var(--accent);margin-left:3px;vertical-align:-2px;animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.nav{display:flex;flex-direction:column;gap:4px}
+.nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:14px;color:var(--muted);text-decoration:none;font-weight:600;position:relative;min-width:0}
+.nav a:hover{color:var(--text);background:var(--surface-2)}
+.nav a[aria-current=page]{color:var(--text);background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--border-strong)}
+.nav .lbl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav .count{font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:999px;background:var(--success);flex:none}
+.dot.off{background:var(--danger)}
+.spacer{flex:1}
+.foot{display:flex;flex-direction:column;gap:6px;background:var(--surface-2);border-radius:14px;padding:4px}
+.chip{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:14px;text-decoration:none;color:inherit;min-width:0}
+.chip:hover{background:var(--surface)}
+.avatar{width:30px;height:30px;border-radius:999px;background:linear-gradient(135deg,#8a6a2a,#3a2f1c);display:grid;place-items:center;font-weight:800;color:#F2EEE6;flex:none;font-size:12px}
+.avatar.none{background:var(--surface);color:var(--muted)}
+.chip .who{min-width:0}
+.chip .who b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip .who span{display:block;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.main{min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px 28px 120px;position:relative}
+.area-head{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:16px}
+.area-head h1{font-size:22px;font-weight:700;margin:0;letter-spacing:-.01em}
+.app.rail{grid-template-columns:76px minmax(0,1fr)}
+.app.rail .brand .name,.app.rail .nav .lbl,.app.rail .nav .count,.app.rail .chip .who{display:none}
+.app.rail .brand{justify-content:center;padding:2px 0 18px}
+.app.rail .nav a{justify-content:center;padding:11px 0}
+.app.rail .nav .dot{position:absolute;top:7px;right:14px;box-shadow:0 0 0 2px var(--surface)}
+.app.rail .chip{justify-content:center;padding:8px 0}
+.app.rail .main{padding:22px 20px 120px}
+.stub{border:1px dashed var(--border-strong);border-radius:20px;padding:40px 20px;text-align:center;color:var(--muted)}
+.stub b{display:block;color:var(--text);font-size:15px;margin-bottom:4px}
+
+/* ---------- componentes Veio ---------- */
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:8px 16px;border:1px solid var(--border-strong);background:transparent;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.danger{border-color:var(--danger);color:var(--danger)}
+.btn.danger.fill{background:var(--danger);color:#fff}
+.btn.ghost{border-color:transparent}
+.btn.ghost:hover{background:var(--surface-2);border-color:transparent}
+.btn.sm{padding:5px 12px;font-size:12.5px}
+.btn:disabled,.btn[aria-disabled=true]{opacity:.45;cursor:not-allowed}
+.btn[aria-disabled=true]:hover{border-color:var(--accent)}
+.ib{width:30px;height:30px;border-radius:999px;border:0;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--muted);flex:none}
+.ib:hover{background:var(--surface-2);color:var(--text)}
+.ib.danger:hover{color:var(--danger);background:color-mix(in srgb,var(--danger) 12%,transparent)}
+.ib svg{width:16px;height:16px}
+.pill-sel{appearance:none;border:1px solid var(--border-strong);border-radius:999px;padding:6px 30px 6px 12px;background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A89F90' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 11px center;cursor:pointer;font-size:12.5px;font-weight:600}
+.input,.ta{border:1px solid var(--border-strong);background:var(--bg);border-radius:12px;padding:8px 12px;min-width:0;width:100%}
+.input:focus,.ta:focus,.pill-sel:focus,.search:focus-within{outline:2px solid color-mix(in srgb,var(--accent) 70%,transparent);outline-offset:1px}
+.ta{resize:vertical;min-height:150px;font-size:14px;line-height:1.55}
+.toggle{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;color:var(--muted);font-weight:600;white-space:nowrap}
+.toggle .track{width:40px;height:24px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border-strong);position:relative;flex:none}
+.toggle .track::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:999px;background:var(--muted);transition:left .15s}
+.toggle input{position:absolute;opacity:0;pointer-events:none}
+.toggle input:checked + .track{background:var(--accent);border-color:var(--accent)}
+.toggle input:checked + .track::after{left:19px;background:var(--accent-ink)}
+.toggle input:focus-visible + .track{outline:2px solid var(--accent);outline-offset:2px}
+.cb{appearance:none;width:18px;height:18px;border-radius:6px;border:2px solid var(--border-strong);flex:none;display:grid;place-items:center;cursor:pointer;margin:0;background:transparent}
+.cb:checked,.cb:indeterminate{background:var(--accent);border-color:var(--accent)}
+.cb:checked::after{content:"";width:8px;height:4px;border:2px solid var(--accent-ink);border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.cb:indeterminate::after{content:"";width:8px;height:2px;background:var(--accent-ink)}
+.cb:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.selo{font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;white-space:nowrap}
+.selo.env{color:var(--success);background:color-mix(in srgb,var(--success) 14%,transparent)}
+.selo.exp{color:var(--info);background:color-mix(in srgb,var(--info) 14%,transparent)}
+.selo.bad{color:var(--danger);background:color-mix(in srgb,var(--danger) 14%,transparent)}
+.fonte{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:1px 8px 1px 6px;white-space:nowrap;background:var(--surface)}
+.fonte svg{width:12px;height:12px}
+.ctx{font-size:12px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-width:0}
+.kwrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.kwchip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:1px 4px 1px 10px;font-size:12.5px;font-weight:600;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--text)}
+.kwchip.auto{background:var(--surface-2)}
+.kwchip .l{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--accent-text)}
+.kwchip.auto .l{color:var(--muted)}
+.kwchip button{border:0;background:none;cursor:pointer;color:var(--muted);width:20px;height:20px;border-radius:999px;display:grid;place-items:center;padding:0}
+.kwchip button:hover{color:var(--text);background:var(--surface-2)}
+.kwadd{border:1px dashed var(--border-strong);background:none;border-radius:999px;width:22px;height:22px;display:grid;place-items:center;cursor:pointer;color:var(--muted);padding:0;font-weight:700}
+.kwadd:hover{color:var(--text);border-color:var(--accent)}
+.w{cursor:pointer;border-radius:3px}
+.w:hover:not(.on){background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.kbd{font-family:"JetBrains Mono",monospace;font-size:12px;border:1px solid var(--border-strong);border-bottom-width:2px;border-radius:8px;padding:1px 7px}
+.search{flex:1;min-width:180px;display:flex;align-items:center;gap:8px;border:1px solid var(--border-strong);border-radius:999px;padding:6px 8px 6px 12px;background:var(--bg)}
+.search input{border:0;background:none;outline:none;flex:1;min-width:0}
+.search .ib{width:22px;height:22px}
+.menu{position:absolute;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:6px;min-width:230px;z-index:30}
+.menu button{display:flex;gap:10px;align-items:flex-start;width:100%;background:none;border:0;padding:8px 10px;border-radius:10px;cursor:pointer;text-align:left}
+.menu button:hover,.menu button:focus-visible{background:var(--surface-2);outline:none}
+.menu button small{display:block;color:var(--muted);font-size:11.5px;font-weight:500}
+.menu button b{font-weight:600}
+.menu button.danger{color:var(--danger)}
+.menu hr{border:0;border-top:1px solid var(--border);margin:4px 6px}
+.tip{position:relative}
+.tip[data-tip]:hover::after,.tip[data-tip]:focus-within::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);right:0;width:max-content;max-width:260px;white-space:normal;background:var(--text);color:var(--bg);font-size:12px;font-weight:600;line-height:1.4;padding:7px 10px;border-radius:10px;z-index:40;pointer-events:none}
+.day{font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:16px 4px 8px;display:flex;align-items:center;gap:10px}
+.day::after{content:"";flex:1;height:1px;background:var(--border)}
+.day .n{font-family:"JetBrains Mono",monospace;letter-spacing:0;font-weight:600}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pager{display:flex;gap:4px;align-items:center;justify-content:flex-end;color:var(--muted);font-size:12.5px;margin-top:14px;flex-wrap:wrap}
+.pager .lbl{margin-right:auto}
+.pager .pg{font-family:"JetBrains Mono",monospace;font-weight:600;color:var(--text);padding:0 6px}
+.ib:disabled{opacity:.35;cursor:not-allowed;background:none}
+.empty{text-align:center;padding:48px 20px;color:var(--muted);border:1px dashed var(--border-strong);border-radius:20px;margin-top:12px}
+.empty b{display:block;color:var(--text);font-size:16px;margin-bottom:6px}
+.empty .acts{margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.banner{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;border:1px solid color-mix(in srgb,var(--danger) 50%,var(--border));background:color-mix(in srgb,var(--danger) 9%,transparent);border-radius:14px;padding:12px 14px;margin-bottom:12px}
+.banner p{margin:0;flex:1;min-width:220px}
+.banner details{flex-basis:100%;font-size:12px;color:var(--muted)}
+.banner details summary{cursor:pointer;font-weight:600;width:max-content}
+.banner pre,.envio details pre{margin:6px 0 0;font:11.5px/1.5 "JetBrains Mono",monospace;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 10px;white-space:pre-wrap;word-break:break-all}
+.skel{height:74px;border-radius:14px;background:linear-gradient(90deg,var(--surface-2),color-mix(in srgb,var(--surface-2) 55%,var(--bg)),var(--surface-2));margin-bottom:8px;opacity:.7}
+.sep{color:var(--border-strong)}
+
+/* toast */
+.toasts{position:fixed;left:50%;bottom:72px;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;align-items:center;z-index:70;pointer-events:none}
+.toast{display:flex;align-items:center;gap:10px;background:var(--text);color:var(--bg);border-radius:999px;padding:9px 18px 9px 12px;font-weight:600;box-shadow:var(--shadow);max-width:min(480px,calc(100vw - 32px))}
+.toast .ok{width:18px;height:18px;border-radius:999px;background:var(--success);display:grid;place-items:center;flex:none}
+.toast .ok::after{content:"";width:7px;height:3px;border:2px solid var(--bg);border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.toast.proto{background:#fff;color:#111;font:600 12.5px system-ui,sans-serif}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;z-index:60;padding:16px;overflow-y:auto}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px;max-width:480px;width:100%;box-shadow:var(--shadow);position:relative}
+.modal.wide{max-width:600px}
+.modal h2{margin:0;font-size:20px;letter-spacing:-.01em;padding-right:36px}
+.modal .sub{color:var(--muted);margin:4px 0 0;font-size:13px}
+.modal .x{position:absolute;right:14px;top:14px}
+.modal .body{margin-top:16px;display:flex;flex-direction:column;gap:12px}
+.modal .acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:18px;align-items:center}
+.modal .acts .grow{margin-right:auto;color:var(--muted);font-size:12.5px}
+.modal .note{color:var(--muted);font-size:12px;margin:10px 0 0;text-align:right}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label{font-size:12px;font-weight:700;color:var(--muted)}
+.field .hint{font-size:11.5px;color:var(--muted)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px}
+.seg{display:inline-flex;background:var(--surface-2);padding:4px;border-radius:999px;gap:2px;margin-top:14px;flex-wrap:wrap}
+.seg button{border:0;background:none;border-radius:999px;padding:6px 14px;font-weight:600;color:var(--muted);cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.seg button[aria-selected=true]{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.drop{border:1.5px dashed var(--border-strong);border-radius:14px;padding:26px 16px;text-align:center;color:var(--muted);background:var(--bg)}
+.drop b{color:var(--text);display:block;margin-bottom:4px}
+.inl-err{display:flex;gap:8px;align-items:flex-start;color:var(--danger);font-size:13px;font-weight:600}
+.inl-info{border:1px solid var(--border);background:var(--surface-2);border-radius:12px;padding:10px 12px;font-size:13px}
+.prog{display:flex;flex-direction:column;gap:6px}
+.bar{height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .3s}
+.bar.bad i{background:var(--danger)} .bar.ok i{background:var(--success)}
+.envio{border:1px solid var(--border);background:var(--bg);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.envio .top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.envio .top b{font-size:14px}
+.envio .stage{font-size:12.5px;font-weight:700;color:var(--accent-text)}
+.envio .stage.ok{color:var(--success)} .envio .stage.bad{color:var(--danger)}
+.envio .meta{font-size:12px;color:var(--muted);display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;align-items:center}
+.envio details{font-size:12px;color:var(--muted)} .envio details summary{cursor:pointer;font-weight:600}
+.sum{display:flex;gap:8px;flex-wrap:wrap}
+.sum .selo{font-size:12.5px;padding:3px 10px}
+
+/* ============ A · Cartões ============ */
+.vA .toolbar{display:flex;flex-direction:column;gap:10px}
+.vA .selrow{margin-top:10px;display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12.5px;font-weight:600;padding:2px 4px}
+.vA .selrow label{display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.vA .ctxbar{position:sticky;top:12px;z-index:20;display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));border-radius:22px;padding:6px 6px 6px 12px;box-shadow:var(--shadow);margin:10px 0 0}
+.ctxbar .n{font-weight:700;margin-right:auto;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.ctxbar .all{font-size:12.5px;font-weight:600;color:var(--accent-text);background:none;border:0;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:3px}
+.vA .card{display:flex;gap:12px;align-items:flex-start;background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:12px 10px 12px 14px;margin-bottom:8px;position:relative}
+.vA .card:hover{border-color:var(--border-strong)}
+.vA .card.sel{border-color:color-mix(in srgb,var(--accent) 45%,transparent);background:color-mix(in srgb,var(--accent) 5%,var(--bg))}
+.vA .card .cb{margin-top:3px}
+.vA .card .bd{flex:1;min-width:0}
+.vA .card .t{font-size:15px;line-height:1.55}
+.vA .card .ctx{margin-top:6px}
+.vA .card .acts{display:flex;gap:2px;opacity:0;transition:opacity .12s}
+.vA .card:hover .acts,.vA .card:focus-within .acts{opacity:1}
+.vA .card.editing .acts{opacity:1}
+
+/* ============ B · Planilha ============ */
+.vB .bar-top{min-height:46px;display:flex;align-items:center}
+.vB .bar-top .filters{flex:1}
+.vB .ctxbar{flex:1;display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:color-mix(in srgb,var(--accent) 8%,var(--surface-2));border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));border-radius:22px;padding:5px 6px 5px 12px}
+.vB .grid{margin-top:12px;border:1px solid var(--border);border-radius:14px;background:var(--bg)}
+.vB .gr{display:grid;grid-template-columns:36px minmax(0,1fr) minmax(0,.62fr) 88px 118px 38px;gap:10px;align-items:center;padding:8px 8px 8px 12px;border-top:1px solid var(--border);min-width:0}
+.vB .gr:first-child{border-top:0}
+.vB .gh{background:var(--surface-2);border-radius:14px 14px 0 0;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);z-index:5}
+.vB .gr.sel{background:color-mix(in srgb,var(--accent) 7%,var(--bg))}
+.vB .gr:not(.gh):hover{background:color-mix(in srgb,var(--text) 3%,var(--bg))}
+.vB .gr.sel:hover{background:color-mix(in srgb,var(--accent) 9%,var(--bg))}
+.vB .ft{font-size:14px;line-height:1.45;min-width:0}
+.vB .ft .kwrow{margin-top:3px}
+.vB .gctx{font-size:12px;color:var(--muted);min-width:0;display:flex;flex-direction:column;gap:2px}
+.vB .gctx .tt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vB .when{font-size:12px;color:var(--muted)}
+.vB .rowmenu{position:relative}
+@media (max-width:1180px){.vB .gr{grid-template-columns:36px minmax(0,1fr) minmax(0,.7fr) 38px}.vB .gc-when,.vB .gc-st{display:none}}
+
+/* ============ C · Leitor ============ */
+.vC .lay{display:grid;grid-template-columns:minmax(300px,.9fr) minmax(0,1.1fr);gap:14px;margin-top:12px;align-items:start}
+.vC .lst{display:flex;flex-direction:column;gap:6px;min-width:0}
+.vC .lhead{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12.5px;font-weight:600;padding:2px 4px 4px}
+.vC .lhead label{display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.vC .li{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:10px 12px;cursor:pointer;min-width:0}
+.vC .li:hover{border-color:var(--border-strong)}
+.vC .li.open{box-shadow:inset 0 0 0 1px var(--text);border-color:var(--text)}
+.vC .li.sel{background:color-mix(in srgb,var(--accent) 5%,var(--bg));border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.vC .li.sel.open{border-color:var(--text)}
+.vC .li .cb{margin-top:2px}
+.vC .li .tx{font-size:13.5px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vC .li .mt{font-size:11.5px;color:var(--muted);margin-top:3px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.vC .li .bd{min-width:0;flex:1}
+.vC .daymini{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:8px 4px 2px}
+.vC .pane{position:sticky;top:12px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:20px 22px;min-width:0}
+.vC .pane .pm{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--muted)}
+.vC .pane .big{font-size:21px;line-height:1.55;margin:14px 0 4px;letter-spacing:-.005em}
+.vC .pane .hint{font-size:11.5px;color:var(--muted)}
+.vC .pane h4{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:20px 0 8px}
+.vC .pane .ctxf{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:10px}
+.vC .pane .pacts{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px;border-top:1px solid var(--border);padding-top:14px}
+.vC .dock{position:fixed;bottom:66px;left:calc(50% + 130px);transform:translateX(-50%);z-index:45;display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid color-mix(in srgb,var(--accent) 55%,var(--border));border-radius:22px;padding:6px 6px 6px 14px;box-shadow:0 14px 40px rgba(0,0,0,.5);width:max-content;max-width:calc(100vw - 32px)}
+.vC .app.rail .dock{left:calc(50% + 44px)}
+.vC .toasts{bottom:128px}
+@media (max-width:980px){.vC .lay{grid-template-columns:minmax(0,1fr)}.vC .pane{position:static}.vC .dock{left:50%}}
+
+/* ---------- ferramentas do protótipo (não fazem parte do design) ---------- */
+.switcher{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:#fff;color:#111;border-radius:999px;padding:6px;box-shadow:0 6px 24px rgba(0,0,0,.45);z-index:100;font:600 13px system-ui,sans-serif;max-width:calc(100vw - 24px)}
+.switcher button{border:0;background:#111;color:#fff;border-radius:999px;width:32px;height:32px;cursor:pointer;font-size:15px;flex:none}
+.switcher span{padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lab{position:fixed;right:12px;bottom:16px;z-index:90;background:#fff;color:#111;border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.45);font:12.5px/1.4 system-ui,sans-serif;width:280px;max-width:calc(100vw - 24px);max-height:calc(100vh - 90px);overflow:auto}
+.lab summary{cursor:pointer;padding:10px 14px;font-weight:700;list-style:none}
+.lab summary::-webkit-details-marker{display:none}
+.lab .body{padding:0 14px 12px;display:flex;flex-direction:column;gap:8px}
+.lab label{display:flex;flex-direction:column;gap:3px;font-weight:600}
+.lab select,.lab button{font:12.5px system-ui,sans-serif;padding:5px 8px;border-radius:8px;border:1px solid #bbb;background:#fff;color:#111}
+.lab button{cursor:pointer;background:#111;color:#fff;border-color:#111;text-align:left}
+.lab h5{margin:6px 0 0;font:700 11px system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#666}
+.lab pre{margin:0;background:#f3f3f3;border-radius:8px;padding:8px;font:11px/1.45 ui-monospace,monospace;white-space:pre-wrap;word-break:break-word}
+</style>
+</head>
+<body class="vA">
+
+<div class="app" id="app">
+  <aside class="side" aria-label="Navegação do Painel">
+    <div class="brand">
+      <span class="tile" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 2 19 9 12 22 5 9Z" fill="#F5B83D"/><path d="M12 2 19 9H5Z" fill="#FFD27A"/><path d="M5 12.5h14" stroke="#1B1A17" stroke-width="1.6"/></svg></span>
+      <span class="name">Perpetual<b>Miner</b><span class="cur"></span></span>
+    </div>
+    <nav class="nav">
+      <a href="#frases" data-area="frases" title="Frases">
+        <svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span class="lbl">Frases</span><span class="count" id="nav-count">0</span>
+      </a>
+      <a href="#anki/custos" data-area="anki" id="nav-anki" title="Conexão com o Anki: ligada">
+        <svg class="i" viewBox="0 0 24 24"><path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0V7ZM12 16v5"/></svg>
+        <span class="lbl">Conexão com o Anki</span><span class="dot" id="nav-dot" aria-label="ligada"></span>
+      </a>
+    </nav>
+    <div class="spacer"></div>
+    <div class="foot">
+      <nav class="nav">
+        <a href="#configuracoes" data-area="configuracoes" title="Configurações">
+          <svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+          <span class="lbl">Configurações</span>
+        </a>
+      </nav>
+      <a class="chip" href="#configuracoes/conta" title="Conta e sincronização">
+        <span class="avatar" id="chip-av">V</span>
+        <span class="who"><b id="chip-name">Vinicius</b><span id="chip-sync">Sincronizado há 2 min</span></span>
+      </a>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    <section data-view="frases">
+      <div class="area-head">
+        <h1>Frases mineradas</h1>
+        <div style="position:relative">
+          <button class="btn primary" id="btn-minerar" aria-haspopup="menu" aria-expanded="false">Minerar frases
+            <svg class="i xs" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+          <div class="menu hidden" id="menu-minerar" role="menu">
+            <button role="menuitem" data-mine="colar"><svg class="i s" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span><b>Colar</b><small>Uma frase por linha</small></span></button>
+            <button role="menuitem" data-mine="arquivo"><svg class="i s" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6"/></svg><span><b>Arquivo .txt</b><small>Importar um .txt com uma frase por linha</small></span></button>
+            <button role="menuitem" data-mine="foto"><svg class="i s" viewBox="0 0 24 24"><path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><circle cx="12" cy="13" r="3.5"/></svg><span><b>Foto</b><small>Abre Minerar de uma foto numa aba nova</small></span></button>
+          </div>
+        </div>
+      </div>
+      <div id="banners"></div>
+      <div id="frases-root"></div>
+    </section>
+    <section data-view="anki" class="hidden">
+      <div class="area-head"><h1>Conexão com o Anki</h1><button class="btn">↻ Atualizar</button></div>
+      <div class="stub"><b>Esta área é outro ticket</b>Protótipo: Painel · Conexão com o Anki. Volte para Frases: filtros, busca, página e seleção continuam como estavam.</div>
+    </section>
+    <section data-view="configuracoes" class="hidden">
+      <div class="area-head"><h1>Configurações</h1></div>
+      <div class="stub"><b>Esta área é outro ticket</b>Protótipo: Painel · Configurações.</div>
+    </section>
+  </main>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="modal-root"></div>
+
+<!-- ======= ferramentas do protótipo ======= -->
+<details class="lab" id="lab">
+  <summary>⚙ Estados do protótipo</summary>
+  <div class="body">
+    <label>Lista<select id="s-lista"><option value="cheia">30 frases</option><option value="carregando">carregando (PAI-01)</option><option value="zero">0 · primeiro uso (PAI-02)</option></select></label>
+    <label>Conexão com o Anki<select id="s-con"><option value="on">ligada</option><option value="off">desligada</option></select></label>
+    <label>Conta<select id="s-conta"><option value="ok">entrou · sincronizado</option><option value="none">sem conta</option></select></label>
+    <h5>Resultados simulados</h5>
+    <label>Envio ao Anki termina<select id="s-envio"><option value="parte">em parte (1 falha, 2 já estavam)</option><option value="ok">todo enviado</option><option value="nao">não começa (ENV-03)</option></select></label>
+    <label>Arquivo .txt<select id="s-arq"><option value="ok">12 novas · 3 já existiam</option><option value="ilegivel">ilegível (ADD-07)</option><option value="vazio">vazio (ADD-08)</option><option value="nada">nada novo (ADD-09)</option></select></label>
+    <label>Nuvem<select id="s-nuvem"><option value="ok">sobe normalmente</option><option value="falha">falha (ADD-06 · PAI-15)</option></select></label>
+    <label>Janela<select id="s-win"><option value="auto">automática (&lt; 1000 px = trilho)</option><option value="rail">forçar trilho</option></select></label>
+    <button id="s-sel12">Selecionar 12 frases (2 páginas)</button>
+    <button id="s-envio-go">Enviar a seleção e ir para Custos</button>
+    <pre id="readout"></pre>
+  </div>
+</details>
+<div class="switcher" role="toolbar" aria-label="Trocar variante">
+  <button id="sw-prev" aria-label="Variante anterior">←</button><span id="sw-label"></span><button id="sw-next" aria-label="Próxima variante">→</button>
+</div>
+
+<script>
+const VARIANTS={A:'Cartões',B:'Planilha',C:'Leitor'};
+const KEYS=Object.keys(VARIANTS);
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=n=>n.toLocaleString('pt-BR');
+const pl=(n,um,muitos)=>`${fmt(n)} ${n===1?um:muitos}`;
+const POR_PAGINA=10;
+
+const IC={
+  texto:'<svg class="i" viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>',
+  ctx:'<svg class="i" viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
+  copiar:'<svg class="i" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  apagar:'<svg class="i" viewBox="0 0 24 24"><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
+  enviar:'<svg class="i s" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4Z"/></svg>',
+  exportar:'<svg class="i s" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>',
+  mais:'<svg class="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg>',
+  x:'<svg class="i s" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  busca:'<svg class="i s" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  first:'<svg class="i" viewBox="0 0 24 24"><path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/></svg>',
+  prev:'<svg class="i" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>',
+  next:'<svg class="i" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>',
+  last:'<svg class="i" viewBox="0 0 24 24"><path d="m13 17 5-5-5-5M6 17l5-5-5-5"/></svg>',
+};
+const FONTES={
+  netflix:['Netflix','<rect x="2" y="5" width="20" height="13" rx="2"/><path d="M8 21h8"/>'],
+  youtube:['YouTube','<rect x="2" y="5" width="20" height="14" rx="4"/><path d="m10 9 5 3-5 3Z"/>'],
+  web:['Web','<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>'],
+  pdf:['PDF','<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6"/>'],
+  livro:['Livro','<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14Z"/>'],
+  manual:['Manual','<path d="M12 5v14M5 12h14"/>'],
+};
+const fonteBadge=f=>{const d=FONTES[f]||[f,FONTES.manual[1]];return `<span class="fonte"><svg class="i" viewBox="0 0 24 24">${d[1]}</svg>${esc(d[0])}</span>`;};
+
+// ---------- dados (em memória) ----------
+const RAW=[
+ ['I never take it for granted.','take for granted',0,'netflix','Dark','T1E3','hoje','env'],
+ ['She was reluctant to say anything.','reluctant',1,'youtube','Vsauce','','hoje',''],
+ ['That was a close call.','close call',0,'netflix','The Bear','T2E1','hoje',''],
+ ['We need to cut corners this time.','cut corners',0,'netflix','Dark','T1E4','hoje',''],
+ ['Он так и не сказал спасибо.','спасибо',0,'livro','Мастер и Маргарита','cap. 3','hoje','exp'],
+ ['The meeting was put off until next week.','put off',1,'web','The Guardian','','hoje',''],
+ ['I\'m not buying it.','buying',0,'netflix','Succession','T1E2','hoje',''],
+ ['He barely made it to the station.','barely',0,'youtube','Kurzgesagt','','ontem',''],
+ ['It\'s a long shot, but worth trying.','long shot',0,'netflix','Ted Lasso','T1E5','ontem','env'],
+ ['Я тебе потом перезвоню.','перезвоню',1,'youtube','Russian with Max','','ontem',''],
+ ['Don\'t beat around the bush.','beat around the bush',0,'pdf','Atomic Habits','cap. 2','ontem',''],
+ ['The results were far from conclusive.','conclusive',1,'web','Nature','','ontem',''],
+ ['She finally came clean about it.','came clean',0,'netflix','Dark','T1E6','ontem',''],
+ ['Это не имеет никакого значения.','значения',0,'livro','Преступление и наказание','cap. 1','ontem',''],
+ ['You can\'t have your cake and eat it too.','have cake | eat',0,'manual','','','há 3 dias',''],
+ ['Let\'s call it a day.','call it a day',0,'youtube','Veritasium','','há 3 dias','env'],
+ ['He\'s been under the weather lately.','under the weather',0,'netflix','The Bear','T2E3','há 3 dias',''],
+ ['I\'ll take a rain check.','rain check',0,'netflix','Friends','T3E7','há 3 dias','exp'],
+ ['Мне всё равно.','всё равно',0,'youtube','Russian with Max','','há 3 dias',''],
+ ['The plan backfired spectacularly.','backfired',1,'web','Wikipedia','','há 3 dias',''],
+ ['Keep me posted.','keep posted',0,'netflix','Succession','T2E4','há 5 dias',''],
+ ['That ship has sailed.','ship has sailed',0,'netflix','Succession','T2E1','há 5 dias','env'],
+ ['She\'s on the fence about moving.','on the fence',0,'youtube','Vsauce','','há 5 dias',''],
+ ['Он бросил курить в прошлом году.','бросил курить',0,'livro','Мастер и Маргарита','cap. 5','há 5 dias',''],
+ ['It\'s not rocket science.','rocket science',0,'manual','','','há 5 dias',''],
+ ['We\'re back to square one.','back to square one',0,'netflix','Dark','T1E8','há 8 dias','env'],
+ ['He tends to overthink things.','overthink',1,'pdf','Atomic Habits','cap. 4','há 8 dias',''],
+ ['Break a leg tonight.','break a leg',0,'netflix','Ted Lasso','T2E2','há 8 dias','env'],
+ ['Не вешай нос.','вешай нос',0,'youtube','Russian with Max','','há 8 dias',''],
+ ['I stand corrected.','',0,'web','Reddit','','há 8 dias',''],
+];
+const DAYORD=['hoje','ontem','há 3 dias','há 5 dias','há 8 dias'];
+let NEXT=1;
+const mk=r=>({id:NEXT++,t:r[0],kw:r[1]?r[1].split(' ').map(w=>w.toLowerCase()):[],auto:!!r[2],fonte:r[3],titulo:r[4],det:r[5],day:r[6],st:r[7],lang:/[Ѐ-ӿ]/.test(r[0])?'ru':'en'});
+let ALL=RAW.map(mk);
+
+const S={variant:new URLSearchParams(location.search).get('variant')||'A',route:'frases',
+  fonte:'',idioma:'',ordem:'novas',busca:'',ocultar:false,page:1,sel:new Set(),open:null,editing:null,
+  lista:'cheia',con:'on',conta:'ok',envioOut:'parte',arq:'ok',nuvem:'ok',win:'auto',theme:'dark',
+  banners:[],menuRow:null,envio:null};
+if(!VARIANTS[S.variant]) S.variant='A';
+
+// ---------- derivados ----------
+function visible(){
+  const q=S.busca.trim().toLowerCase();
+  let r=ALL.filter(f=>(!S.fonte||f.fonte===S.fonte)&&(!S.idioma||f.lang===S.idioma)&&(!S.ocultar||!f.st)
+    &&(!q||f.t.toLowerCase().includes(q)||(f.titulo||'').toLowerCase().includes(q)));
+  if(S.ordem==='antigas') r=r.slice().reverse();
+  return r;
+}
+const totalPages=n=>Math.max(1,Math.ceil(n/POR_PAGINA));
+function pageRows(vis){const tp=totalPages(vis.length);if(S.page>tp)S.page=tp;return vis.slice((S.page-1)*POR_PAGINA,S.page*POR_PAGINA);}
+const filtersOn=()=>!!(S.fonte||S.idioma||S.ocultar);
+
+// ---------- pedaços compartilhados ----------
+function textHTML(f,clickable=true){
+  const set=new Set(f.kw.filter(w=>w!=='|'));
+  return f.t.replace(/[\p{L}\p{M}’'-]+/gu,(w)=>{
+    const on=set.has(w.toLowerCase().replace(/^['’]|['’]$/g,''))?' on':'';
+    return clickable?`<span class="w${on}" data-w="${esc(w.toLowerCase())}" data-id="${f.id}">${esc(w)}</span>`:(on?`<mark class="kw">${esc(w)}</mark>`:esc(w));
+  });
+}
+function kwChip(f,withAdd=true){
+  if(!f.kw.length) return '';
+  const disp=f.kw.join(' ');
+  return `<div class="kwrow"><span class="kwchip${f.auto?' auto':''}"><span class="l">${f.auto?'auto:':'keyword:'}</span>${esc(disp)}<button data-act="kw-clear" data-id="${f.id}" title="Remover keywords" aria-label="Remover keywords">${IC.x}</button></span>${withAdd?`<button class="kwadd" data-act="kw-sep" data-id="${f.id}" title="Adicionar outro grupo" aria-label="Adicionar outro grupo">+</button>`:''}</div>`;
+}
+function ctxLine(f){
+  const bits=[f.titulo,f.det].filter(Boolean).map(esc);
+  const selo=f.st==='env'?'<span class="selo env">Enviada ao Anki</span>':f.st==='exp'?'<span class="selo exp">Exportada</span>':'';
+  return `<div class="ctx">${fonteBadge(f.fonte)}${bits.length?`<span>${bits.join(' <span class="sep">·</span> ')}</span>`:''}${selo}</div>`;
+}
+function filtersHTML(){
+  const opt=(v,l,cur)=>`<option value="${v}"${v===cur?' selected':''}>${l}</option>`;
+  return `<div class="filters">
+    <select class="pill-sel" data-f="fonte" aria-label="Fonte">${opt('','Todas as fontes',S.fonte)}${Object.entries(FONTES).map(([k,v])=>opt(k,v[0],S.fonte)).join('')}</select>
+    <select class="pill-sel" data-f="idioma" aria-label="Idioma">${opt('','Todos os idiomas',S.idioma)}${opt('en','Inglês',S.idioma)}${opt('ru','Russo',S.idioma)}</select>
+    <select class="pill-sel" data-f="ordem" aria-label="Ordem">${opt('novas','Mais novas primeiro',S.ordem)}${opt('antigas','Mais antigas primeiro',S.ordem)}</select>
+    <label class="search">${IC.busca}<input id="f-busca" placeholder="Buscar nas frases" value="${esc(S.busca)}" aria-label="Buscar nas frases">${S.busca?`<button class="ib" data-act="clear-busca" title="Limpar busca" aria-label="Limpar busca">${IC.x}</button>`:''}</label>
+    <label class="toggle"><input type="checkbox" data-f="ocultar"${S.ocultar?' checked':''}><span class="track"></span>Ocultar enviadas e exportadas</label>
+  </div>`;
+}
+function enviarBtn(){
+  const off=S.con!=='on';
+  return `<span class="tip"${off?' data-tip="Indisponível: a conexão com o Anki está desligada. Ligue-a neste computador para enviar."':''}><button class="btn sm primary" data-act="enviar"${off?' aria-disabled="true"':''}>${IC.enviar}Enviar ao Anki</button></span>`;
+}
+function selActions(){
+  return `<button class="btn sm ghost" data-act="ctx-bulk">${IC.ctx.replace('class="i"','class="i s"')}Editar contexto</button>
+    <button class="btn sm ghost" data-act="exportar">${IC.exportar}Exportar .txt</button>
+    <button class="btn sm ghost" data-act="apagar-sel" style="color:var(--danger)">${IC.apagar.replace('class="i"','class="i s"')}Apagar</button>
+    ${enviarBtn()}`;
+}
+function selCount(vis){
+  const n=S.sel.size, pr=pageRows(vis).map(f=>f.id), allPage=pr.length&&pr.every(id=>S.sel.has(id));
+  const offer=allPage&&n<vis.length?`<button class="all" data-act="sel-todas">Selecionar todas as ${pl(vis.length,'frase','frases')}</button>`:'';
+  return `<span class="n"><button class="ib" data-act="sel-limpar" title="Desmarcar todas" aria-label="Desmarcar todas">${IC.x}</button>${n===1?'1 selecionada':fmt(n)+' selecionadas'} ${offer}</span>`;
+}
+function masterCB(vis){
+  const pr=pageRows(vis).map(f=>f.id), k=pr.filter(id=>S.sel.has(id)).length;
+  return `<input type="checkbox" class="cb" data-act="sel-pagina" aria-label="Selecionar página"${k&&k===pr.length?' checked':''}${k&&k<pr.length?' data-ind="1"':''}>`;
+}
+function pagerHTML(vis){
+  const n=vis.length, tp=totalPages(n), a=(S.page-1)*POR_PAGINA+1, b=Math.min(S.page*POR_PAGINA,n);
+  return `<div class="pager"><span class="lbl mono">${n?`${a}–${b} de ${fmt(n)}`:'0 frases'}</span>
+    <button class="ib" data-pg="first" title="Primeira página" aria-label="Primeira página"${S.page<=1?' disabled':''}>${IC.first}</button>
+    <button class="ib" data-pg="prev" title="Página anterior" aria-label="Página anterior"${S.page<=1?' disabled':''}>${IC.prev}</button>
+    <span class="pg">${S.page} de ${tp}</span>
+    <button class="ib" data-pg="next" title="Próxima página" aria-label="Próxima página"${S.page>=tp?' disabled':''}>${IC.next}</button>
+    <button class="ib" data-pg="last" title="Última página" aria-label="Última página"${S.page>=tp?' disabled':''}>${IC.last}</button></div>`;
+}
+function emptyHTML(vis){
+  if(S.lista==='zero'||!ALL.length) return `<div class="empty"><b>Nenhuma frase ainda.</b>Minere de um vídeo com <span class="kbd">Alt+S</span> ou use Minerar frases para colar, importar ou ler uma foto.<div class="acts"><button class="btn primary" data-act="minerar-colar">Minerar frases</button></div></div>`;
+  if(S.busca.trim()) return `<div class="empty"><b>Nenhuma frase com “${esc(S.busca.trim())}”.</b><div class="acts"><button class="btn" data-act="clear-busca">Limpar busca</button>${filtersOn()?'<button class="btn" data-act="clear-f">Limpar filtros</button>':''}</div></div>`;
+  return `<div class="empty"><b>Nenhuma frase com estes filtros.</b><div class="acts"><button class="btn" data-act="clear-f">Limpar filtros</button></div></div>`;
+}
+function rowActions(f){
+  return `<button class="ib" data-act="edit-texto" data-id="${f.id}" title="Editar texto" aria-label="Editar texto">${IC.texto}</button>
+    <button class="ib" data-act="edit-ctx" data-id="${f.id}" title="Editar contexto" aria-label="Editar contexto">${IC.ctx}</button>
+    <button class="ib" data-act="copiar" data-id="${f.id}" title="Copiar frase" aria-label="Copiar frase">${IC.copiar}</button>
+    <button class="ib danger" data-act="apagar-1" data-id="${f.id}" title="Apagar frase" aria-label="Apagar frase">${IC.apagar}</button>`;
+}
+function editBox(f){
+  return `<div class="edit-inline"><textarea class="ta" data-edit="${f.id}" style="min-height:64px">${esc(f.t)}</textarea>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><span style="margin-right:auto;color:var(--muted);font-size:12px;align-self:center">Enter salva · Esc cancela</span><button class="btn sm" data-act="edit-cancel">Cancelar</button><button class="btn sm primary" data-act="edit-save" data-id="${f.id}">Salvar texto</button></div></div>`;
+}
+const skeleton=n=>Array.from({length:n},()=>'<div class="skel"></div>').join('');
+function byDay(rows){const g=[];rows.forEach(f=>{const l=g[g.length-1];if(l&&l.day===f.day)l.items.push(f);else g.push({day:f.day,items:[f]});});return g;}
+
+// ---------- A · Cartões ----------
+function renderA(vis){
+  const rows=pageRows(vis);
+  let h=`<div class="toolbar">${filtersHTML()}</div>`;
+  if(S.sel.size) h+=`<div class="ctxbar">${selCount(vis)}${selActions()}</div>`;
+  else if(vis.length) h+=`<div class="selrow"><label>${masterCB(vis)}Selecionar página</label></div>`;
+  if(S.lista==='carregando') return h+skeleton(5);
+  if(!vis.length) return h+emptyHTML(vis);
+  byDay(rows).forEach(g=>{
+    h+=`<div class="day">${esc(g.day)}</div>`;
+    g.items.forEach(f=>{
+      const ed=S.editing===f.id;
+      h+=`<div class="card${S.sel.has(f.id)?' sel':''}${ed?' editing':''}" data-id="${f.id}">
+        <input type="checkbox" class="cb" data-act="sel" data-id="${f.id}" aria-label="Selecionar frase"${S.sel.has(f.id)?' checked':''}>
+        <div class="bd">${ed?editBox(f):`<div class="t">${textHTML(f)}</div>${kwChip(f)}`}${ctxLine(f)}</div>
+        <div class="acts">${ed?'':rowActions(f)}</div></div>`;
+    });
+  });
+  return h+pagerHTML(vis);
+}
+
+// ---------- B · Planilha ----------
+function renderB(vis){
+  const rows=pageRows(vis);
+  let h=`<div class="bar-top">${S.sel.size?`<div class="ctxbar">${selCount(vis)}${selActions()}</div>`:filtersHTML()}</div>`;
+  if(S.lista==='carregando') return h+'<div style="margin-top:12px">'+skeleton(6)+'</div>';
+  if(!vis.length) return h+emptyHTML(vis);
+  h+=`<div class="grid" role="table"><div class="gr gh" role="row"><span>${masterCB(vis)}</span><span>Frase</span><span>Contexto</span><span class="gc-when">Quando</span><span class="gc-st">Estado</span><span></span></div>`;
+  rows.forEach(f=>{
+    const ed=S.editing===f.id;
+    h+=`<div class="gr${S.sel.has(f.id)?' sel':''}" role="row" data-id="${f.id}">
+      <span><input type="checkbox" class="cb" data-act="sel" data-id="${f.id}" aria-label="Selecionar frase"${S.sel.has(f.id)?' checked':''}></span>
+      <div class="ft">${ed?editBox(f):textHTML(f)+kwChip(f)}</div>
+      <div class="gctx"><span>${fonteBadge(f.fonte)}</span><span class="tt">${esc([f.titulo,f.det].filter(Boolean).join(' · '))||'<span style="opacity:.6">sem título</span>'}</span></div>
+      <span class="when gc-when">${esc(f.day)}</span>
+      <span class="gc-st">${f.st==='env'?'<span class="selo env">Enviada ao Anki</span>':f.st==='exp'?'<span class="selo exp">Exportada</span>':''}</span>
+      <span class="rowmenu"><button class="ib" data-act="row-menu" data-id="${f.id}" title="Mais ações" aria-label="Mais ações" aria-haspopup="menu">${IC.mais}</button>${S.menuRow===f.id?`<div class="menu" role="menu">
+        <button role="menuitem" data-act="edit-texto" data-id="${f.id}">${IC.texto.replace('class="i"','class="i s"')}<b>Editar texto</b></button>
+        <button role="menuitem" data-act="edit-ctx" data-id="${f.id}">${IC.ctx.replace('class="i"','class="i s"')}<b>Editar contexto</b></button>
+        <button role="menuitem" data-act="copiar" data-id="${f.id}">${IC.copiar.replace('class="i"','class="i s"')}<b>Copiar frase</b></button><hr>
+        <button role="menuitem" class="danger" data-act="apagar-1" data-id="${f.id}">${IC.apagar.replace('class="i"','class="i s"')}<b>Apagar frase</b></button></div>`:''}</span>
+    </div>`;
+  });
+  return h+'</div>'+pagerHTML(vis);
+}
+
+// ---------- C · Leitor ----------
+function renderC(vis){
+  const rows=pageRows(vis);
+  let h=filtersHTML();
+  if(S.lista==='carregando') return h+'<div class="lay"><div>'+skeleton(6)+'</div><div class="skel" style="height:320px"></div></div>';
+  if(!vis.length) return h+emptyHTML(vis);
+  if(!S.open||!ALL.some(f=>f.id===S.open)) S.open=rows[0]?.id??null;
+  const f=ALL.find(x=>x.id===S.open);
+  h+=`<div class="lay"><div class="lst"><div class="lhead"><label>${masterCB(vis)}Selecionar página</label></div>`;
+  byDay(rows).forEach(g=>{
+    h+=`<div class="daymini">${esc(g.day)}</div>`;
+    g.items.forEach(x=>{
+      h+=`<div class="li${S.sel.has(x.id)?' sel':''}${x.id===S.open?' open':''}" data-open="${x.id}">
+        <input type="checkbox" class="cb" data-act="sel" data-id="${x.id}" aria-label="Selecionar frase"${S.sel.has(x.id)?' checked':''}>
+        <div class="bd"><div class="tx">${textHTML(x,false)}</div><div class="mt">${esc(FONTES[x.fonte]?.[0]||x.fonte)}${x.titulo?` · ${esc(x.titulo)}`:''}${x.st==='env'?' <span class="selo env">Enviada ao Anki</span>':x.st==='exp'?' <span class="selo exp">Exportada</span>':''}</div></div></div>`;
+    });
+  });
+  h+=pagerHTML(vis)+'</div>';
+  if(f){
+    const ed=S.editing===f.id;
+    h+=`<aside class="pane" aria-label="Frase aberta">
+      <div class="pm">${fonteBadge(f.fonte)}<span>${esc(f.day)}</span>${f.st==='env'?'<span class="selo env">Enviada ao Anki</span>':f.st==='exp'?'<span class="selo exp">Exportada</span>':''}<span style="margin-left:auto" class="mono">${f.lang==='ru'?'Russo':'Inglês'}</span></div>
+      ${ed?`<div style="margin-top:14px">${editBox(f)}</div>`:`<div class="big">${textHTML(f)}</div>${kwChip(f)}<div class="hint" style="margin-top:8px">Clique numa palavra para marcá-la como keyword.</div>`}
+      <h4>Contexto</h4>
+      <div class="ctxf">
+        <div class="field"><label for="pc-fonte">Fonte</label><input class="input" id="pc-fonte" data-pc="fonte" value="${esc(f.fonte)}"></div>
+        <div class="field"><label for="pc-titulo">Título</label><input class="input" id="pc-titulo" data-pc="titulo" value="${esc(f.titulo)}"></div>
+        <div class="field"><label for="pc-det">Detalhe</label><input class="input" id="pc-det" data-pc="det" value="${esc(f.det)}" placeholder="episódio, capítulo ou canal"></div>
+      </div>
+      <div class="pctx-save hidden" style="margin-top:10px;display:flex;justify-content:flex-end;gap:8px"><button class="btn sm" data-act="pc-cancel">Cancelar</button><button class="btn sm primary" data-act="pc-save" data-id="${f.id}">Salvar contexto</button></div>
+      <div class="pacts"><button class="btn sm" data-act="copiar" data-id="${f.id}">${IC.copiar.replace('class="i"','class="i s"')}Copiar frase</button>
+        <button class="btn sm" data-act="edit-texto" data-id="${f.id}">${IC.texto.replace('class="i"','class="i s"')}Editar texto</button>
+        <button class="btn sm danger" data-act="apagar-1" data-id="${f.id}" style="margin-left:auto">${IC.apagar.replace('class="i"','class="i s"')}Apagar frase</button></div>
+    </aside>`;
+  }
+  h+='</div>';
+  if(S.sel.size) h+=`<div class="ctxbar dock" role="toolbar" aria-label="Ações da seleção">${selCount(vis)}${selActions()}</div>`;
+  return h;
+}
+
+// ---------- render ----------
+function render(){
+  document.body.className='v'+S.variant;
+  document.documentElement.dataset.theme=S.theme;
+  $('#sw-label').textContent=`${S.variant} · ${VARIANTS[S.variant]}`;
+  const vis=S.lista==='zero'?[]:visible();
+  const keepFocus=document.activeElement?.id==='f-busca'?document.activeElement.selectionStart:null;
+  $('#frases-root').innerHTML=({A:renderA,B:renderB,C:renderC})[S.variant](vis);
+  $$('#frases-root .cb[data-ind]').forEach(c=>c.indeterminate=true);
+  if(keepFocus!==null){const i=$('#f-busca');if(i){i.focus();i.setSelectionRange(keepFocus,keepFocus);}}
+  const ta=$('#frases-root textarea[data-edit]'); if(ta&&document.activeElement!==ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}
+  // banners persistentes (ADD-06, PAI-15)
+  $('#banners').innerHTML=S.banners.map((b,i)=>`<div class="banner" role="alert"><p>${b.msg}</p><button class="btn sm" data-act="banner-retry" data-i="${i}">Tentar de novo</button><button class="ib" data-act="banner-close" data-i="${i}" aria-label="Fechar aviso">${IC.x}</button><details><summary>Detalhes</summary><pre>${esc(b.det)}</pre></details></div>`).join('');
+  // shell
+  $('#nav-count').textContent=fmt(S.lista==='zero'?0:ALL.length);
+  const dot=$('#nav-dot');dot.className='dot'+(S.con==='off'?' off':'');
+  $('#nav-anki').title='Conexão com o Anki: '+(S.con==='off'?'desligada':'ligada');
+  const none=S.conta==='none';
+  $('#chip-av').textContent=none?'?':'V';$('#chip-av').classList.toggle('none',none);
+  $('#chip-name').textContent=none?'Sem conta':'Vinicius';
+  $('#chip-sync').textContent=none?'Só neste computador':'Sincronizado há 2 min';
+  $('#app').classList.toggle('rail',S.win==='rail'||(S.win==='auto'&&innerWidth<1000));
+  readout(vis);
+}
+function readout(vis){
+  $('#readout').textContent=
+`rota      #${(location.hash||'#frases').slice(1)}
+variante  ${S.variant} · ${VARIANTS[S.variant]} · tema ${S.theme}
+filtros   fonte=${S.fonte||'todas'} idioma=${S.idioma||'todos'} ordem=${S.ordem}
+          busca="${S.busca}" ocultar=${S.ocultar}
+lista     ${vis.length} visíveis de ${ALL.length} · pág ${S.page}/${totalPages(vis.length)}
+seleção   ${S.sel.size} ${S.sel.size?'['+[...S.sel].slice(0,8).join(',')+(S.sel.size>8?'…':'')+']':''}
+aberta    ${S.variant==='C'?S.open:'—'}
+envio     ${S.envio?S.envio.phase:'nenhum'}
+conexão   ${S.con} · conta ${S.conta} · nuvem ${S.nuvem}`;
+}
+
+// ---------- toasts ----------
+function toast(msg,proto=false){
+  const el=document.createElement('div');el.className='toast'+(proto?' proto':'');
+  el.innerHTML=(proto?'':'<span class="ok"></span>')+esc(msg);
+  $('#toasts').appendChild(el);
+  setTimeout(()=>el.remove(),Math.max(2600,msg.length*70));
+}
+
+// ---------- modais ----------
+let modalCloser=null;
+function openModal(html,{wide=false,onClose}={}){
+  $('#modal-root').innerHTML=`<div class="scrim" data-scrim><div class="modal${wide?' wide':''}" role="dialog" aria-modal="true">${html}</div></div>`;
+  modalCloser=onClose||null;
+  const first=$('#modal-root [autofocus]')||$('#modal-root .modal button, #modal-root .modal input');first?.focus();
+}
+function closeModal(){ $('#modal-root').innerHTML=''; const c=modalCloser; modalCloser=null; c&&c(); }
+const xBtn='<button class="ib x" data-m="close" aria-label="Fechar"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>';
+
+// Apagar 1 / N (PAI-12, PAI-13)
+function askDelete(ids,after){
+  const n=ids.length, one=n===1, conta=S.conta!=='none';
+  const body=(one?(conta?'Ela some também dos outros dispositivos conectados à sua conta. ':''):(conta?'Elas somem também dos outros dispositivos conectados à sua conta. ':''))+'Não dá para desfazer.';
+  openModal(`${xBtn}<h2>${one?'Apagar esta frase?':`Apagar ${pl(n,'frase','frases')}?`}</h2><p class="sub" style="margin-top:8px">${body}</p>
+    <div class="acts"><button class="btn" data-m="close">Cancelar</button><button class="btn danger fill" data-m="ok" autofocus>${one?'Apagar frase':`Apagar ${pl(n,'frase','frases')}`}</button></div>`);
+  $('#modal-root [data-m=ok]').onclick=()=>{
+    ALL=ALL.filter(f=>!ids.includes(f.id)); ids.forEach(id=>S.sel.delete(id)); if(ids.includes(S.open))S.open=null;
+    closeModal();
+    if(!one) toast(`${pl(n,'frase apagada','frases apagadas')}`);
+    if(S.nuvem==='falha'&&conta) S.banners.push({msg:`As frases foram apagadas deste computador, mas não da nuvem. Elas podem voltar na próxima sincronização.`,det:'Firestore DELETE usuarios/…/frases → HTTP 403 (PERMISSION_DENIED)\n2026-09-14T21:04:11Z'});
+    after&&after(); render();
+  };
+}
+
+// Editar contexto (PAI-20, PAI-21, PAI-22)
+function editCtx(ids){
+  const one=ids.length===1, f=one?ALL.find(x=>x.id===ids[0]):null;
+  openModal(`${xBtn}<h2>Editar contexto</h2>${one?`<p class="sub">${esc(f.t)}</p>`:`<p class="sub">Editar contexto de ${pl(ids.length,'frase','frases')} · campos em branco ficam como estão</p>`}
+    <div class="body">
+      <div class="field"><label for="m-fonte">Fonte</label><input class="input" id="m-fonte" value="${one?esc(f.fonte):''}" placeholder="netflix, youtube, livro" autofocus><span class="hint">De onde a frase veio (netflix, youtube, livro…)</span></div>
+      <div class="field"><label for="m-titulo">Título</label><input class="input" id="m-titulo" value="${one?esc(f.titulo):''}" placeholder="Dark, Atomic Habits"></div>
+      <div class="field"><label for="m-det">Detalhe</label><input class="input" id="m-det" value="${one?esc(f.det):''}" placeholder="T1E3, cap. 3, canal"><span class="hint">Episódio, capítulo ou canal</span></div>
+    </div>
+    <div class="acts"><button class="btn" data-m="close">Cancelar</button><button class="btn primary" data-m="ok">Salvar contexto</button></div>`);
+  $('#modal-root [data-m=ok]').onclick=()=>{
+    const v={fonte:$('#m-fonte').value.trim(),titulo:$('#m-titulo').value.trim(),det:$('#m-det').value.trim()};
+    ALL.forEach(x=>{if(!ids.includes(x.id))return; if(one){Object.assign(x,v);}else{for(const k in v) if(v[k]) x[k]=v[k];}});
+    closeModal(); if(!one) toast(`Contexto de ${pl(ids.length,'frase','frases')} atualizado`); render();
+  };
+}
+
+// Minerar frases (ADD-01…10, C7)
+function minerar(tab){
+  if(tab==='foto'){toast('Protótipo: abriria “Minerar de uma foto” numa aba nova',true);return;}
+  const M={tab,phase:'edit',file:null,err:''};
+  const draw=()=>{
+    const lines=($('#m-cola')?.value??M.draft??'').split('\n').map(s=>s.trim()).filter(Boolean).length;
+    const seg=`<div class="seg" role="tablist"><button role="tab" data-tab="colar" aria-selected="${M.tab==='colar'}">Colar</button><button role="tab" data-tab="arquivo" aria-selected="${M.tab==='arquivo'}">Arquivo .txt</button><button role="tab" data-tab="foto" aria-selected="false">Foto ↗</button></div>`;
+    let body='',acts='';
+    if(M.phase==='prog'){
+      body=`<div class="prog" style="margin-top:18px"><b>Minerando ${M.done} de ${M.total}…</b><div class="bar"><i style="width:${Math.round(M.done/M.total*100)}%"></i></div></div>`;
+      acts=`<div class="acts"><span class="grow">As frases entram no topo da lista.</span></div>`;
+    }else if(M.tab==='colar'){
+      body=`<div class="body"><div class="field"><label for="m-cola">Frases</label><textarea class="ta" id="m-cola" spellcheck="false" placeholder="Cole as frases, uma por linha" autofocus>${esc(M.draft||'')}</textarea>
+        ${M.err?`<span class="inl-err" role="alert">${M.err}</span>`:''}</div>
+        <div class="two"><div class="field"><label for="m-cf">Fonte</label><input class="input" id="m-cf" placeholder="livro, web, podcast" value="${esc(M.fonte||'')}"></div><div class="field"><label for="m-ct">Título</label><input class="input" id="m-ct" placeholder="Atomic Habits" value="${esc(M.titulo||'')}"></div></div></div>`;
+      acts=`<div class="acts"><span class="grow mono" id="m-count">${pl(lines,'frase','frases')}</span><button class="btn" data-m="close">Cancelar</button><button class="btn primary" data-m="go">${lines?`Minerar ${pl(lines,'frase','frases')}`:'Minerar frases'}</button></div>`;
+    }else{
+      const res=M.result;
+      body=`<div class="body"><div class="drop"><b>${M.file?esc(M.file):'Escolha um arquivo .txt'}</b>Uma frase por linha. O .txt exportado daqui volta com o contexto. Frases que já estão no histórico ficam de fora.<div style="margin-top:12px"><button class="btn sm" data-m="pick">${M.file?'Escolher outro arquivo':'Escolher arquivo'}</button></div></div>
+        ${res==='ilegivel'?'<span class="inl-err" role="alert">Não deu para ler este arquivo. Use um .txt com uma frase por linha.</span>':''}
+        ${res==='vazio'?'<span class="inl-err" role="alert">O arquivo está vazio.</span>':''}
+        ${res==='nada'?'<div class="inl-info">Nenhuma frase nova: 3 já estavam no histórico e 1 linha não pôde ser lida.</div>':''}</div>`;
+      acts=`<div class="acts"><button class="btn" data-m="close">${res==='nada'?'Fechar':'Cancelar'}</button></div>`;
+    }
+    $('#modal-root .modal').innerHTML=`${xBtn}<h2>Minerar frases</h2>${seg}${body}${acts}`;
+    wire(); if(!M.focused&&$('#m-cola')){$('#m-cola').focus();M.focused=true;}
+  };
+  const run=(total,onDone)=>{M.phase='prog';M.total=total;M.done=0;draw();const t=setInterval(()=>{M.done=Math.min(M.total,M.done+Math.ceil(M.total/6));draw();if(M.done>=M.total){clearInterval(t);setTimeout(onDone,350);}},260);};
+  const addNew=(texts,fonte,titulo)=>{
+    const novas=texts.map(t=>mk([t,'',0,fonte||'manual',titulo||'','','hoje','']));
+    ALL=[...novas,...ALL]; S.page=1;
+  };
+  const wire=()=>{
+    $$('#modal-root [data-tab]').forEach(b=>b.onclick=()=>{ if(b.dataset.tab==='foto'){closeModal();minerar('foto');return;} M.draft=$('#m-cola')?.value??M.draft; M.tab=b.dataset.tab; M.err=''; M.result=null; draw(); });
+    const ta=$('#m-cola'); if(ta) ta.oninput=()=>{M.draft=ta.value; const n=ta.value.split('\n').map(s=>s.trim()).filter(Boolean).length; $('#m-count').textContent=pl(n,'frase','frases'); $('#modal-root [data-m=go]').textContent=n?`Minerar ${pl(n,'frase','frases')}`:'Minerar frases'; if(M.err&&n){M.err='';$('#modal-root .inl-err')?.remove();}};
+    const go=$('#modal-root [data-m=go]'); if(go) go.onclick=()=>{
+      const texts=($('#m-cola').value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+      M.fonte=$('#m-cf').value;M.titulo=$('#m-ct').value;M.draft=$('#m-cola').value;
+      if(!texts.length){M.err='Cole pelo menos uma frase.';draw();return;}
+      run(texts.length,()=>{addNew(texts,M.fonte.trim(),M.titulo.trim());closeModal();
+        if(S.nuvem==='falha'&&S.conta!=='none') S.banners.push({msg:`${pl(texts.length,'frase minerada','frases mineradas')} neste computador, mas não foram para a nuvem.`,det:'Firestore PATCH usuarios/…/frases → net::ERR_INTERNET_DISCONNECTED'});
+        else toast(pl(texts.length,'frase minerada','frases mineradas'));
+        render();});
+    };
+    const pick=$('#modal-root [data-m=pick]'); if(pick) pick.onclick=()=>{
+      M.file='frases-dark.txt'; M.result=null; const r=S.arq;
+      if(r==='ok') run(12,()=>{addNew(['Stop beating yourself up.','It\'s up to you.','He got cold feet.','I\'m all ears.','Let\'s play it by ear.','She hit the sack early.','It costs an arm and a leg.','You nailed it.','Hang in there.','Don\'t push your luck.','We\'re on the same page.','Better late than never.'],'netflix','Dark');closeModal();toast('12 frases mineradas · 3 já existiam');render();});
+      else {M.result=r;draw();}
+    };
+  };
+  openModal('',{wide:true});
+  draw();
+}
+
+// Envio ao Anki (ENV-01…14, R2·Q3 do shell: resumo abre em qualquer área)
+const ETAPAS=['Na fila','Criando cartões','Preparando imagens','Gerando áudio','Escolhendo imagens','Esperando o Anki','Enviando ao Anki'];
+function iniciarEnvio(ids){
+  if(S.con!=='on') return;
+  const frases=ALL.filter(f=>ids.includes(f.id));
+  const envios=['en','ru'].map(l=>({lang:l,ids:frases.filter(f=>f.lang===l).map(f=>f.id),i:0,status:'run',id:'job_'+Math.random().toString(16).slice(2,6)})).filter(e=>e.ids.length);
+  S.envio={envios,phase:'progresso',visible:true,sent:[],dup:0,fail:0};
+  if(S.envioOut==='nao'){envios[0].status='nao';}
+  render(); drawEnvio();
+  const tick=setInterval(()=>{
+    const E=S.envio; if(!E){clearInterval(tick);return;}
+    let alive=false;
+    E.envios.forEach(e=>{ if(e.status!=='run')return; e.i++; if(e.i>=ETAPAS.length){e.status=(S.envioOut==='parte'&&e===E.envios[E.envios.length-1])?'parte':'ok';} else alive=true; });
+    if(!alive&&E.envios.every(e=>e.status!=='run')){clearInterval(tick);terminarEnvio();} else if(E.visible) drawEnvio();
+    readout(visible());
+  },900);
+}
+const langNome=l=>l==='ru'?'russo':'inglês';
+function envioCard(e){
+  const n=e.ids.length, pct=e.status==='run'?Math.round((e.i+1)/ETAPAS.length*100):100;
+  const stage=e.status==='run'?ETAPAS[e.i]:e.status==='ok'?'Concluído':e.status==='parte'?'Concluído em parte':'Não começou';
+  const cls=e.status==='ok'?'ok':e.status==='run'?'':'bad';
+  return `<div class="envio"><div class="top"><b>Envio em ${langNome(e.lang)} · ${pl(n,'frase','frases')}</b><span class="stage ${cls}">${stage}</span></div>
+    <div class="bar ${cls}"><i style="width:${e.status==='nao'?100:pct}%"></i></div>
+    ${e.status==='nao'?`<div class="inl-err">O envio em ${langNome(e.lang)} não começou. A conexão com o Anki respondeu com erro.</div>`:''}
+    <div class="meta"><span>atualizado agora</span>${e.status==='parte'?'<button class="btn sm">Continuar envio</button>':e.status==='nao'?'<button class="btn sm" data-m="retry-nao">Tentar de novo</button>':''}</div>
+    <details><summary>Detalhes</summary><pre>${e.id} · lang=${e.lang} · stage=${e.status==='run'?['queued','generating_cards','extracting_prompts','generating_audio','generating_images','waiting_anki','sending_anki'][e.i]:e.status}\nupdatedAt 2026-09-14T21:0${e.i}:12Z</pre></details></div>`;
+}
+function drawEnvio(){
+  const E=S.envio; if(!E||!E.visible) return;
+  const langs=E.envios.map(e=>langNome(e.lang)).join(' e ');
+  const html=`${xBtn}<h2>Enviando ao Anki…</h2><p class="sub">${pl(E.envios.length,'envio','envios')} · ${langs}</p>
+    <div class="body">${E.envios.map(envioCard).join('')}</div>
+    <div class="acts"><span class="grow">Pode fechar: o resumo abre quando o envio terminar.</span></div>`;
+  if($('#modal-root .modal')&&$('#modal-root').dataset.kind==='envio'){$('#modal-root .modal').innerHTML=html;}
+  else{openModal(html,{wide:true,onClose:()=>{if(S.envio)S.envio.visible=false;$('#modal-root').dataset.kind='';}});$('#modal-root').dataset.kind='envio';}
+  const r=$('#modal-root [data-m=retry-nao]'); if(r) r.onclick=()=>{E.envios.forEach(e=>{if(e.status==='nao'){e.status='run';e.i=0;}}); S.envioOut='ok'; $('#s-envio').value='ok'; drawEnvio(); const t=setInterval(()=>{let alive=false;E.envios.forEach(e=>{if(e.status!=='run')return;e.i++;if(e.i>=ETAPAS.length)e.status='ok';else alive=true;});if(!alive){clearInterval(t);terminarEnvio();}else drawEnvio();},900);};
+}
+function terminarEnvio(){
+  const E=S.envio; if(!E) return;
+  if($('#modal-root').innerHTML&&$('#modal-root').dataset.kind!=='envio'){setTimeout(terminarEnvio,800);return;}
+  if(E.envios.some(e=>e.status==='nao')){E.visible=true;drawEnvio();return;}
+  const all=E.envios.flatMap(e=>e.ids);
+  let fail=0,dup=0; if(S.envioOut==='parte'){fail=1;dup=Math.min(2,all.length-1);}
+  const sent=all.slice(0,Math.max(0,all.length-fail-dup)), dups=all.slice(sent.length,sent.length+dup);
+  const okIds=[...sent,...dups]; E.phase='resumo';
+  const failLang=langNome(E.envios[E.envios.length-1].lang);
+  $('#modal-root').dataset.kind='';
+  openModal(`${xBtn}<h2>${fail?'Envio concluído em parte':'Envio concluído'}</h2>
+    <div class="sum" style="margin-top:12px"><span class="selo env">${pl(sent.length,'enviada','enviadas')}</span>${dup?`<span class="selo exp">${dup} já estava${dup>1?'m':''} no Anki</span>`:''}${fail?`<span class="selo bad">${fail} falhou</span>`:''}</div>
+    ${fail?`<div class="inl-info" style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:200px">1 frase em ${failLang} não virou cartão.</span><button class="btn sm">Tentar de novo as que falharam</button></div>`:''}
+    <div class="acts"><button class="btn" data-m="manter"${sent.length?'':' autofocus'}>Manter</button>${sent.length?`<button class="btn primary" data-m="apagar" autofocus>${sent.length===1?'Apagar a enviada':`Apagar as ${sent.length} enviadas`}</button>`:''}</div>
+    <p class="note">Manter deixa as frases no histórico, marcadas como enviadas ao Anki.</p>`,
+    {onClose:()=>{ALL.forEach(f=>{if(okIds.includes(f.id))f.st='env';});S.envio=null;render();}});
+  $('#modal-root [data-m=manter]').onclick=()=>closeModal();
+  const ap=$('#modal-root [data-m=apagar]'); if(ap) ap.onclick=()=>{ALL=ALL.filter(f=>!sent.includes(f.id));ALL.forEach(f=>{if(dups.includes(f.id))f.st='env';});sent.forEach(id=>S.sel.delete(id));modalCloser=null;S.envio=null;$('#modal-root').innerHTML='';toast(pl(sent.length,'frase apagada','frases apagadas'));render();};
+}
+
+// ---------- rotas ----------
+function applyRoute(){
+  const h=(location.hash||'#frases').slice(1).split('/');
+  S.route=['frases','anki','configuracoes'].includes(h[0])?h[0]:'frases';
+  $$('[data-view]').forEach(v=>v.classList.toggle('hidden',v.dataset.view!==S.route));
+  $$('.nav a').forEach(a=>a.dataset.area===S.route?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current'));
+  render();
+}
+
+// ---------- eventos ----------
+function setVariant(k){S.variant=k;S.menuRow=null;const u=new URL(location);u.searchParams.set('variant',k);history.replaceState(null,'',u);render();}
+function cycle(d){const i=KEYS.indexOf(S.variant);setVariant(KEYS[(i+d+KEYS.length)%KEYS.length]);}
+$('#sw-prev').onclick=()=>cycle(-1);$('#sw-next').onclick=()=>cycle(1);
+
+addEventListener('keydown',e=>{
+  if(e.key==='Escape'){ if($('#modal-root').innerHTML){closeModal();return;} if(S.editing){S.editing=null;render();return;} $('#menu-minerar').classList.add('hidden'); if(S.menuRow){S.menuRow=null;render();} return; }
+  const ta=e.target.closest('textarea[data-edit]');
+  if(ta&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();saveEdit(+ta.dataset.edit,ta.value);return;}
+  if(e.target.closest('input,textarea,select,[contenteditable]'))return;
+  if($('#modal-root').innerHTML)return;
+  if(e.key==='ArrowLeft')cycle(-1);else if(e.key==='ArrowRight')cycle(1);
+  else if(e.key==='t'||e.key==='T'){S.theme=S.theme==='dark'?'light':'dark';render();}
+});
+addEventListener('hashchange',applyRoute);addEventListener('resize',()=>render());
+
+function saveEdit(id,val){const f=ALL.find(x=>x.id===id);if(f&&val.trim()){f.t=val.trim();} S.editing=null;render();}
+function toggleWord(id,w){
+  const f=ALL.find(x=>x.id===id); if(!f) return;
+  const i=f.kw.indexOf(w); if(i>=0) f.kw.splice(i,1); else f.kw.push(w);
+  while(f.kw[0]==='|')f.kw.shift();
+  f.auto=false; render();
+}
+
+$('#main').addEventListener('input',e=>{
+  if(e.target.id==='f-busca'){S.busca=e.target.value;S.page=1;render();}
+  if(e.target.dataset.pc){$('.pctx-save')?.classList.remove('hidden');}
+});
+$('#main').addEventListener('change',e=>{
+  const f=e.target.dataset.f;
+  if(f==='ocultar'){S.ocultar=e.target.checked;S.page=1;render();return;}
+  if(f){S[f]=e.target.value;S.page=1;render();}
+});
+document.addEventListener('click',e=>{
+  // menu Minerar frases
+  if(e.target.closest('#btn-minerar')){const m=$('#menu-minerar');m.classList.toggle('hidden');$('#btn-minerar').setAttribute('aria-expanded',!m.classList.contains('hidden'));return;}
+  const mi=e.target.closest('[data-mine]'); if(mi){$('#menu-minerar').classList.add('hidden');minerar(mi.dataset.mine);return;}
+  if(!e.target.closest('#menu-minerar')) $('#menu-minerar').classList.add('hidden');
+  // modal
+  if(e.target.matches('[data-scrim]')||e.target.closest('[data-m=close]')){closeModal();return;}
+  if(e.target.closest('#modal-root')) return;
+  if(!e.target.closest('#main')) return;
+  // palavra → keyword
+  const w=e.target.closest('.w'); if(w){toggleWord(+w.dataset.id,w.dataset.w);return;}
+  const pg=e.target.closest('[data-pg]');
+  if(pg){const tp=totalPages(visible().length);S.page={first:1,prev:Math.max(1,S.page-1),next:Math.min(tp,S.page+1),last:tp}[pg.dataset.pg];render();$('#main').scrollIntoView({block:'start'});return;}
+  const a=e.target.closest('[data-act]');
+  if(!a){
+    if(S.menuRow){S.menuRow=null;render();}
+    const li=e.target.closest('[data-open]'); if(li&&!e.target.closest('.cb')){S.open=+li.dataset.open;S.editing=null;render();}
+    return;
+  }
+  const act=a.dataset.act, id=+a.dataset.id, vis=visible();
+  if(act!=='row-menu'&&S.menuRow) S.menuRow=null;
+  switch(act){
+    case 'sel': S.sel.has(id)?S.sel.delete(id):S.sel.add(id); render(); break;
+    case 'sel-pagina': { const pr=pageRows(vis).map(f=>f.id); const all=pr.every(x=>S.sel.has(x)); pr.forEach(x=>all?S.sel.delete(x):S.sel.add(x)); render(); break; }
+    case 'sel-todas': vis.forEach(f=>S.sel.add(f.id)); render(); break;
+    case 'sel-limpar': S.sel.clear(); render(); break;
+    case 'clear-busca': S.busca=''; S.page=1; render(); break;
+    case 'clear-f': S.fonte='';S.idioma='';S.ocultar=false;S.busca='';S.page=1; render(); break;
+    case 'kw-clear': { const f=ALL.find(x=>x.id===id); f.kw=[]; f.auto=false; render(); break; }
+    case 'kw-sep': { const f=ALL.find(x=>x.id===id); if(f.kw.length&&f.kw[f.kw.length-1]!=='|') f.kw.push('|'); render(); break; }
+    case 'row-menu': S.menuRow=S.menuRow===id?null:id; render(); break;
+    case 'edit-texto': S.editing=id; if(S.variant==='C') S.open=id; render(); break;
+    case 'edit-cancel': S.editing=null; render(); break;
+    case 'edit-save': saveEdit(id,$('#frases-root textarea[data-edit]').value); break;
+    case 'edit-ctx': render(); editCtx([id]); break;
+    case 'copiar': toast('Frase copiada'); render(); break;
+    case 'apagar-1': render(); askDelete([id]); break;
+    case 'apagar-sel': askDelete([...S.sel]); break;
+    case 'ctx-bulk': editCtx([...S.sel]); break;
+    case 'exportar': { const n=S.sel.size; ALL.forEach(f=>{if(S.sel.has(f.id)&&!f.st)f.st='exp';}); toast(`${pl(n,'frase exportada','frases exportadas')} para .txt`); render(); break; }
+    case 'enviar': if(a.getAttribute('aria-disabled')==='true') return; iniciarEnvio([...S.sel]); break;
+    case 'minerar-colar': minerar('colar'); break;
+    case 'pc-cancel': render(); break;
+    case 'pc-save': { const f=ALL.find(x=>x.id===id); f.fonte=$('[data-pc=fonte]').value.trim()||f.fonte; f.titulo=$('[data-pc=titulo]').value.trim(); f.det=$('[data-pc=det]').value.trim(); render(); break; }
+    case 'banner-close': S.banners.splice(+a.dataset.i,1); render(); break;
+    case 'banner-retry': S.banners.splice(+a.dataset.i,1); toast('Frases sincronizadas com a nuvem'); render(); break;
+  }
+});
+
+// laboratório
+const bind=(sel,key,cb)=>$(sel).onchange=e=>{S[key]=e.target.value;cb&&cb();render();};
+bind('#s-lista','lista',()=>{S.sel.clear();S.page=1;});
+bind('#s-con','con');bind('#s-conta','conta');bind('#s-envio','envioOut');bind('#s-arq','arq');bind('#s-nuvem','nuvem');bind('#s-win','win');
+$('#s-sel12').onclick=()=>{S.sel.clear();visible().slice(0,12).forEach(f=>S.sel.add(f.id));render();};
+$('#s-envio-go').onclick=()=>{ if(!S.sel.size) visible().slice(0,8).forEach(f=>S.sel.add(f.id)); if(S.con!=='on'){S.con='on';$('#s-con').value='on';} iniciarEnvio([...S.sel]); setTimeout(()=>{closeModal();location.hash='#anki/custos';},1200); };
+
+applyRoute();
+</script>
+</body>
+</html>

@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<!--
+  PROTÓTIPO DESCARTÁVEL — não é código de produção.
+  Ticket wayfinder #5 "Protótipo: Popup (mini painel)" (mapa #1).
+
+  Pergunta: com a identidade Veio travada (#3) e os vereditos da auditoria (#2),
+  qual ESTRUTURA o popup (340 px) adota como cockpit de captura?
+
+  Plano: três variantes estruturalmente diferentes do popup.html real, trocáveis via
+  ?variant=A|B|C, mais ?variant=Z (lado a lado + veredito). ?theme=dark|light.
+  Setas ← → trocam a variante; T alterna o tema.
+
+  Conteúdo fixo pela auditoria (Q2): Abrir painel · Auto Miner (EN/RU: liga, limite diário,
+  contador) · Adição rápida · Últimas 5 SÓ LEITURA. Cortados: ↻, "Tudo", "Deletar".
+  O gravador de atalho saiu para Configurações · Atalhos (R2-2).
+  Lista fechada que toca o popup: contador do Auto Miner no badge da toolbar.
+  Estado em memória (nada de chrome.storage). Textos provisórios: quem decide é o ticket #4 (Voz).
+
+  Veredito do dono (2026-09-14, via Lavish): A · Cockpit em tudo — botão primário largo,
+  azulejos EN|RU com medidor, rodapé com Alt+S + "Mudar atalho". "A ganhou facilmente."
+  B e C ficam aqui só como registro. Decisão em README.md.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PerpetualMiner · Popup (protótipo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#0e0e10;color:#e7e7ea;font:14px/1.5 system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+input,textarea{font:inherit}
+
+/* ───────── Casca do protótipo (NÃO faz parte do design avaliado) ───────── */
+.shell{padding:22px 16px 110px;max-width:1240px;margin:0 auto}
+.shell h1{font-size:18px;margin:0 0 2px;font-weight:700}
+.shell .lead{color:#9d9da6;margin:0 0 18px;max-width:92ch;font-size:13px}
+.layout{display:grid;grid-template-columns:minmax(0,640px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:980px){.layout{grid-template-columns:minmax(0,1fr)}}
+.insp{background:#17171a;border:1px solid #2a2a30;border-radius:14px;padding:16px;min-width:0;font-size:13px}
+.insp h2{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8e8e98;margin:0 0 8px;font-weight:700}
+.insp section+section{margin-top:18px}
+.insp .btns{display:flex;flex-wrap:wrap;gap:6px}
+.insp button{background:#26262c;border:1px solid #34343c;color:#e7e7ea;border-radius:999px;padding:6px 12px;cursor:pointer;font-size:12.5px}
+.insp button[aria-pressed="true"]{background:#e7e7ea;color:#111;border-color:#e7e7ea;font-weight:700}
+.insp dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;margin:0;font:12px/1.5 ui-monospace,Menlo,monospace}
+.insp dt{color:#8e8e98}.insp dd{margin:0;overflow-wrap:anywhere}
+.insp ol{margin:0;padding-left:18px;color:#c9c9d0;font-size:12.5px}
+.insp ol li+li{margin-top:6px}
+.insp .log{font:11.5px/1.5 ui-monospace,Menlo,monospace;color:#b7b7c0;max-height:120px;overflow:auto;background:#101013;border-radius:8px;padding:8px}
+
+/* Janela do Chrome falsa: dá o contexto do badge e da âncora do popup */
+.browser{border-radius:12px;overflow:hidden;border:1px solid #34353a;background:#202124;min-width:0}
+.browser.light{background:#dee1e6;border-color:#c4c7cc}
+.bt-tabs{display:flex;gap:4px;padding:7px 8px 0;font:12px 'Segoe UI',system-ui,sans-serif}
+.bt-tab{padding:7px 12px;border-radius:8px 8px 0 0;color:#bdc1c6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.bt-tab.on{background:#35363a;color:#e8eaed}
+.browser.light .bt-tab{color:#5f6368}.browser.light .bt-tab.on{background:#fff;color:#202124}
+.bt-bar{display:flex;align-items:center;gap:10px;padding:7px 10px;background:#35363a}
+.browser.light .bt-bar{background:#fff}
+.bt-omni{flex:1;min-width:0;border-radius:999px;padding:6px 14px;background:#202124;color:#bdc1c6;font:12.5px 'Segoe UI',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.browser.light .bt-omni{background:#eef1f4;color:#444}
+.bt-ext{position:relative;width:30px;height:30px;display:grid;place-items:center;border-radius:50%;background:rgba(255,255,255,.12);flex:none}
+.browser.light .bt-ext{background:rgba(0,0,0,.08)}
+.bt-badge{position:absolute;right:-4px;bottom:-1px;font:700 9px/1 'Segoe UI',system-ui,sans-serif;padding:2px 3px;border-radius:4px;min-width:14px;text-align:center;background:#F5B83D;color:#1A1204}
+.bt-puzzle{width:16px;height:16px;color:#9aa0a6}
+.bt-page{position:relative;min-height:660px;background:radial-gradient(ellipse at 30% 35%,#3a3f4a 0,#1b1d22 55%,#0c0d10 100%)}
+.browser.light .bt-page{background:radial-gradient(ellipse at 30% 35%,#4a4f5a 0,#2b2d32 55%,#17181b 100%)}
+.bt-page .vsub{position:absolute;left:6%;right:42%;bottom:12%;text-align:center;color:#fff;font:600 17px/1.35 Arial,sans-serif;text-shadow:0 0 4px #000,0 2px 2px #000}
+.bt-page .anchor{position:absolute;top:6px;right:8px;max-width:calc(100% - 16px)}
+@media (max-width:520px){.bt-page{min-height:0;padding:10px}.bt-page .anchor{position:static}.bt-page .vsub{display:none}}
+
+/* Z: lado a lado */
+.zgrid{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+.zcol{min-width:0}
+.zcol h3{font-size:13px;margin:0 0 8px;color:#c9c9d0}
+.zcol h3 b{color:#fff}
+.verdict{margin-top:24px;background:#17171a;border:1px solid #2a2a30;border-radius:14px;padding:18px;max-width:880px}
+.verdict h2{font-size:16px;margin:0 0 4px}
+.verdict .muted{color:#9d9da6;font-size:12.5px;margin:0 0 14px}
+.verdict fieldset{border:0;padding:0;margin:0 0 16px}
+.verdict legend{font-weight:700;margin-bottom:8px;font-size:13.5px}
+.verdict label{display:inline-flex;gap:6px;align-items:center;margin:0 16px 6px 0;cursor:pointer;font-size:13px}
+.verdict textarea{width:100%;min-height:84px;background:#0f1012;color:#eee;border:1px solid #3a3b42;border-radius:8px;padding:10px;font-size:13px}
+.verdict .go{background:#e7e7ea;color:#111;border:0;border-radius:999px;padding:9px 18px;font-weight:700;cursor:pointer}
+.verdict .sel{font:12px/1.5 ui-monospace,Menlo,monospace;color:#b7b7c0;margin-top:10px;white-space:pre-wrap}
+.verdict .queued{color:#7ed79b;font-weight:700;margin-left:10px;font-size:12.5px}
+
+.pm-switcher{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:4px;background:#fff;color:#111;border:2px solid #111;border-radius:999px;padding:4px;box-shadow:0 10px 30px rgba(0,0,0,.45);font:600 12.5px/1 system-ui,sans-serif;max-width:calc(100vw - 24px)}
+.pm-switcher button{border:0;background:#111;color:#fff;border-radius:999px;height:30px;min-width:30px;padding:0 10px;cursor:pointer;font-weight:700}
+.pm-switcher .lab{padding:0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pm-switcher .th{background:#e9e9ee;color:#111}
+
+/* ───────── Design avaliado: identidade Veio (tokens da spec #3) ───────── */
+.veio{--font-ui:'Manrope',system-ui,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,monospace;--r:14px;--r-sm:10px;--r-in:12px;--r-lg:20px}
+.pop{width:340px;max-width:100%;max-height:600px;overflow:auto;background:var(--bg);color:var(--text);font:13.5px/1.5 var(--font-ui);border-radius:8px;box-shadow:0 18px 44px -10px rgba(0,0,0,.7),0 0 0 1px rgba(0,0,0,.35);display:flex;flex-direction:column;scrollbar-width:thin}
+.muted{color:var(--muted)}
+
+/* base de componentes (Veio F) */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 16px;font-weight:700;font-size:13px;border-radius:999px;border:1px solid transparent;cursor:pointer;white-space:nowrap;line-height:1.2;font-family:var(--font-ui);transition:filter .15s,background .15s}
+.btn svg{width:15px;height:15px;flex:none}
+.btn-primary{background:var(--accent);color:var(--accent-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 16px -8px var(--accent)}
+.btn-primary:hover{filter:brightness(1.06)}
+.btn-secondary{background:var(--surface-2);color:var(--text);border-color:var(--border)}
+.btn-secondary:hover{border-color:var(--border-strong)}
+.btn-ghost{background:transparent;color:var(--accent-text);padding:6px 10px}
+.btn[disabled]{opacity:.45;cursor:default;filter:none}
+.btn-block{width:100%}
+.btn-icon{width:32px;height:32px;padding:0;border-radius:50%;background:transparent;color:var(--muted);border:1px solid transparent;display:inline-grid;place-items:center;cursor:pointer;flex:none}
+.btn-icon:hover{background:var(--surface-2);color:var(--text)}
+.btn-icon svg{width:16px;height:16px}
+.btn:focus-visible,.btn-icon:focus-visible,.inp:focus-visible,.tabs button:focus-visible,.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.inp{background:var(--surface);color:var(--text);border:1px solid var(--border-strong);border-radius:var(--r-in);padding:8px 11px;min-width:0;width:100%;font-size:13px;font-family:var(--font-ui)}
+.inp::placeholder{color:var(--muted)}
+.inp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+textarea.inp{resize:none;line-height:1.45}
+input[type=number].inp{font-family:var(--font-mono);font-weight:600;text-align:center;padding:4px 4px;width:48px;border-radius:10px}
+.tg{display:inline-flex;align-items:center;gap:9px;cursor:pointer;user-select:none;position:relative}
+.tg input{position:absolute;opacity:0;pointer-events:none}
+.tg .trk{position:relative;width:40px;height:24px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border-strong);transition:.15s;flex:none}
+.tg .trk::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--muted);transition:.15s}
+.tg input:checked+.trk{background:var(--accent);border-color:var(--accent)}
+.tg input:checked+.trk::after{left:18px;background:var(--accent-ink)}
+.tg input:focus-visible+.trk{outline:2px solid var(--accent);outline-offset:2px}
+.bdg{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap;line-height:1.35}
+.bdg svg{width:11px;height:11px}
+.kbd{font:600 10.5px var(--font-mono);padding:1px 5px;border:1px solid var(--border-strong);border-bottom-width:2px;border-radius:5px;background:var(--surface);color:var(--text)}
+.kw{background:linear-gradient(transparent 50%,var(--kw-bg) 50%,var(--kw-bg) 94%,transparent 94%);color:var(--kw-fg);padding:0 1px}
+.st{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;display:flex;align-items:center;gap:8px}
+.st::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--accent);transform:rotate(45deg);flex:none}
+.st .aside{margin-left:auto;letter-spacing:.02em;text-transform:none;font-weight:600;font-size:11.5px}
+.wm{font-weight:500;letter-spacing:-.02em;font-size:15px;line-height:1.2}.wm b{font-weight:800}
+.wm .cur{display:inline-block;width:.46em;height:.92em;border-radius:2px;background:var(--accent);vertical-align:-.1em;margin-left:3px;animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.wm .cur{animation:none}}
+.flash{font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;min-width:0}
+.flash svg{width:14px;height:14px;flex:none}
+.flash.ok{color:var(--success)}.flash.err{color:var(--danger)}
+.mono{font-family:var(--font-mono)}
+.meter{height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .15s}
+.off .meter i{background:var(--border-strong)}
+.empty{text-align:center;padding:18px 14px;border:1px dashed var(--border-strong);border-radius:var(--r)}
+.empty svg{width:34px;height:34px;color:var(--accent-text)}
+.empty b{display:block;margin:6px 0 2px;font-size:13.5px}
+.empty p{margin:0;color:var(--muted);font-size:12px}
+.hdr{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface);border-bottom:1px solid var(--border)}
+.hdr .sub{font-size:11.5px;color:var(--muted)}
+.foot{margin-top:auto;padding:9px 14px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.foot .btn-ghost{margin-left:auto;padding:3px 6px;font-size:11.5px}
+
+/* ── A · Cockpit: pilha, Auto Miner em azulejos EN | RU ── */
+.va .body{padding:12px 14px 14px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.va .tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.va .tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 11px;display:grid;gap:7px;min-width:0}
+.va .tile.on{border-color:color-mix(in srgb,var(--accent) 45%,var(--border));background:color-mix(in srgb,var(--accent) 5%,var(--surface))}
+.va .tile-top{display:flex;align-items:center;justify-content:space-between}
+.va .tile-top b{font:700 13px var(--font-mono);letter-spacing:.04em}
+.va .big{font:600 20px/1 var(--font-mono)}
+.va .big small{font-size:12px;color:var(--muted);font-weight:500}
+.va .lim{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.va .full-note{font-size:11px;color:var(--accent-text);font-weight:700}
+.va .add{position:relative}
+.va .add textarea{padding-right:112px;min-height:58px}
+.va .add .btn{position:absolute;right:7px;bottom:7px;padding:6px 12px}
+.va .add-row{min-height:18px;margin-top:5px}
+.va .last{border:1px solid var(--border);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.va .last>div{padding:7px 11px;border-top:1px solid var(--border);min-width:0}
+.va .last>div:first-child{border-top:0}
+.va .last p{margin:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.va .last small{color:var(--muted);font-size:11px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.va .last .new{animation:pop .15s ease-out}
+@keyframes pop{from{background:var(--accent-soft)}}
+
+/* ── B · Abas: header com ação do painel, três abas de altura cheia ── */
+.vb .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;margin:12px 14px 0;background:var(--surface-2);border-radius:999px}
+.vb .tabs button{border:0;background:transparent;color:var(--muted);border-radius:999px;padding:7px 4px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.vb .tabs button[aria-selected="true"]{background:var(--surface);color:var(--text);box-shadow:0 1px 0 rgba(0,0,0,.25),0 0 0 1px var(--border)}
+.vb .tabs .n{font:600 10.5px var(--font-mono);padding:0 6px;border-radius:999px;background:var(--accent-soft);color:var(--accent-text)}
+.vb .pane{padding:14px;display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-content:start;min-height:392px}
+.vb .hero textarea{min-height:120px;font-size:14.5px}
+.vb .ways{display:grid;gap:0;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.vb .ways div{display:grid;grid-template-columns:24px 1fr auto;gap:8px;align-items:center;padding:8px 11px;border-top:1px solid var(--border);font-size:12.5px}
+.vb .ways div:first-child{border-top:0}
+.vb .ways svg{width:16px;height:16px;color:var(--muted)}
+.vb .lang{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;display:grid;gap:9px}
+.vb .lang.on{border-color:color-mix(in srgb,var(--accent) 45%,var(--border))}
+.vb .lang-top{display:flex;align-items:center;gap:10px}
+.vb .lang-top b{font-size:14px}
+.vb .lang-top .tg{margin-left:auto}
+.vb .lang-top .code{font:700 11px var(--font-mono);color:var(--muted)}
+.vb .lang p{margin:0;font-size:12px;color:var(--muted)}
+.vb .lang-foot{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.vb .lang-foot .cnt{margin-left:auto;font:600 13px var(--font-mono);color:var(--text)}
+.vb .lang-foot .cnt small{color:var(--muted);font-weight:500}
+.vb .rec{display:grid;gap:8px}
+.vb .rec article{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:9px 11px;min-width:0}
+.vb .rec p{margin:0;font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vb .rec .meta{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;margin-top:5px;font-size:11px;color:var(--muted);min-width:0}
+
+/* ── C · Feed: o que você minerou em primeiro, compositor fixo embaixo ── */
+.vc .hdr{padding:10px 12px}
+.vc .amstrip{display:flex;align-items:center;gap:6px;padding:9px 12px;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap}
+.vc .amstrip .lbl{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+.vc .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border-strong);background:transparent;border-radius:999px;padding:3px 10px 3px 8px;font:600 11.5px var(--font-mono);color:var(--muted);cursor:pointer}
+.vc .chip .dot{width:7px;height:7px;border-radius:50%;background:var(--border-strong)}
+.vc .chip.on{border-color:color-mix(in srgb,var(--accent) 60%,var(--border));color:var(--text);background:var(--accent-soft)}
+.vc .chip.on .dot{background:var(--accent)}
+.vc .chip.full{color:var(--accent-text)}
+.vc .amstrip .btn-icon{margin-left:auto;width:28px;height:28px}
+.vc .amstrip .btn-icon svg{transition:transform .15s}
+.vc .amstrip .btn-icon[aria-expanded="true"] svg{transform:rotate(180deg)}
+.vc .amx{width:100%;display:grid;gap:6px;padding-top:6px}
+.vc .amx-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;font-size:12px;color:var(--muted)}
+.vc .amx-row b{font:700 12px var(--font-mono);color:var(--text)}
+.vc .amx-row .lim{display:flex;align-items:center;gap:6px;justify-self:end}
+.vc .feed{padding:4px 12px 12px;flex:1}
+.vc .dh{display:flex;align-items:center;gap:10px;font-size:10.5px;font-weight:800;color:var(--muted);margin:12px 0 7px;letter-spacing:.12em;text-transform:uppercase}
+.vc .dh::after{content:"";flex:1;height:1px;background:var(--border)}
+.vc .item{padding:9px 11px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:7px;min-width:0}
+.vc .item p{margin:0;font-size:14px;line-height:1.45}
+.vc .item .meta{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;margin-top:6px;font-size:11px;color:var(--muted)}
+.vc .item .meta .t{margin-left:auto;font-family:var(--font-mono)}
+.vc .item.new{animation:pop .15s ease-out}
+.vc .more{display:flex;justify-content:center;padding-top:2px}
+.vc .composer{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--border);padding:9px 12px 10px}
+.vc .composer .row{display:flex;gap:8px;align-items:flex-end}
+.vc .composer textarea{min-height:38px;max-height:96px;border-radius:19px;padding:8px 14px}
+.vc .composer .send{width:38px;height:38px;border-radius:50%;padding:0;flex:none}
+.vc .composer .send svg{width:16px;height:16px}
+.vc .composer .hint{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);margin-top:6px;min-height:18px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="shell">
+  <h1>Popup · protótipo das 3 estruturas</h1>
+  <p class="lead">O mini painel que abre ao clicar no ícone, na largura real de 340 px e com teto de 600 px de altura, sobre a identidade Veio. O conteúdo é o que a auditoria decidiu: Abrir painel, Auto Miner, Adição rápida e as 5 últimas só leitura. As variantes discordam na <b>estrutura</b>. Tudo funciona em memória: ligue o Auto Miner, mude o limite, adicione uma frase e veja o badge do ícone mudar. Os textos são provisórios, porque quem decide a redação é o ticket de Voz.</p>
+  <div id="app"></div>
+</div>
+
+<div class="pm-switcher" role="toolbar" aria-label="Protótipo: trocar variante">
+  <button id="prev" aria-label="Variante anterior">←</button>
+  <span class="lab" id="lab"></span>
+  <button id="next" aria-label="Próxima variante">→</button>
+  <button class="th" id="theme" aria-label="Alternar tema"></button>
+</div>
+
+<script>
+/* ───────────── Tokens Veio (spec #3) ───────────── */
+const T = {
+  dark:  {bg:'#121110',surface:'#1B1A17','surface-2':'#262420',border:'#302D27','border-strong':'#736B5D',text:'#F2EEE6',muted:'#A89F90',accent:'#F5B83D','accent-ink':'#1A1204','accent-text':'#F5B83D','accent-soft':'rgba(245,184,61,.14)',success:'#6FCF8E',danger:'#FF7A66',info:'#86BDF2','kw-bg':'rgba(245,184,61,.40)','kw-fg':'#F2EEE6'},
+  light: {bg:'#F7F4EE',surface:'#FFFFFF','surface-2':'#F0EBE1',border:'#E4DCCD','border-strong':'#968C79',text:'#1C1A16',muted:'#625B4F',accent:'#F0AE2E','accent-ink':'#1A1204','accent-text':'#855608','accent-soft':'rgba(240,174,46,.18)',success:'#1F7A45',danger:'#B42318',info:'#1D5FA8','kw-bg':'rgba(240,174,46,.45)','kw-fg':'#1C1A16'},
+};
+const logo = (s) => `<svg width="${s}" height="${s}" viewBox="0 0 128 128" aria-hidden="true" style="flex:none"><rect width="128" height="128" rx="28" fill="#1B1A17"/><polygon points="64,14 64,114 38,92 38,36" fill="#FFD27A"/><polygon points="64,14 90,36 90,92 64,114" fill="#D9901A"/><polygon points="64,14 90,36 64,46 38,36" fill="#FFE3A6"/><rect x="30" y="68" width="68" height="10" fill="#1B1A17"/></svg>`;
+const wordmark = `<span class="wm">Perpetual<b>Miner</b><span class="cur"></span></span>`;
+const I = {
+  netflix:'<path d="M4 4h16v16H4z"/><path d="M9 8l6 4-6 4z" fill="currentColor"/>',
+  youtube:'<rect x="2" y="5" width="20" height="14" rx="4"/><path d="M10 9l5 3-5 3z" fill="currentColor"/>',
+  web:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/>',
+  pdf:'<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/>',
+  livro:'<path d="M4 5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2z"/><path d="M4 20a2 2 0 0 0 2 2h13v-4"/>',
+  manual:'<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>', send:'<path d="M5 12h14M13 6l6 6-6 6"/>', check:'<path d="M4 12l5 5L20 6"/>',
+  alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/>', down:'<path d="M6 9l6 6 6-6"/>',
+  caption:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 14h4M13 14h4M7 10h10"/>',
+  select:'<path d="M4 6h16M4 12h10M4 18h7"/>', menu:'<path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6"/>',
+  pickaxe:'<path d="M14 10L4 20"/><path d="M5 7c4-4 10-4 14 0-2-1-5-1-8 1"/><path d="M17 5c4 4 4 10 0 14 1-2 1-5-1-8"/>',
+  ext:'<path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/>',
+};
+const ic = (n, s = 15) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+const FONTE = {netflix:'Netflix',youtube:'YouTube',web:'Web',pdf:'PDF',livro:'Livro',manual:'Manual'};
+const LANG = {en:{code:'EN',name:'Inglês'},ru:{code:'RU',name:'Russo'}};
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ───────────── Estado em memória (espelha chrome.storage: frases + pm_auto_miner_state) ───────────── */
+const MIN = 60e3, H = 60 * MIN;
+const now = () => Date.now();
+const seed = () => [
+  {id:now()-3*MIN,  texto:'I’m not saying it’s your fault, I’m saying it’s your responsibility.', idioma:'Inglês', streaming:'netflix', contexto:{fonte:'netflix',titulo:'The Bear',detalhe:'T2 · E7'}, keywords:['responsibility']},
+  {id:now()-20*MIN, texto:'Мы с тобой одной крови — ты и я.', idioma:'Russo', streaming:'livro', contexto:{fonte:'livro',titulo:'Маугли',detalhe:'cap. 3'}, keywords:['крови']},
+  {id:now()-62*MIN, texto:'Не всё то золото, что блестит.', idioma:'Russo', streaming:'youtube', contexto:{fonte:'youtube',titulo:'Редакция',detalhe:''}, keywords:['золото'], autoKeyword:true},
+  {id:now()-2*H,    texto:'The devil is in the details.', idioma:'Inglês', streaming:'web', contexto:{fonte:'web',titulo:'The Atlantic',detalhe:''}, keywords:['details']},
+  {id:now()-26*H,   texto:'We were on a break!', idioma:'Inglês', streaming:'netflix', contexto:{fonte:'netflix',titulo:'Friends',detalhe:'T3 · E15'}, keywords:['break']},
+  {id:now()-27*H,   texto:'Let’s call it a day.', idioma:'Inglês', streaming:'youtube', contexto:{fonte:'youtube',titulo:'Veritasium',detalhe:''}, keywords:['call it a day']},
+];
+const AUTO_POOL = {
+  en:[['You can’t have your cake and eat it too.','cake','netflix','Succession','T1 · E4'],['I’ll take a rain check.','rain check','netflix','Suits','T2 · E1'],['That ship has sailed.','ship has sailed','youtube','Vox','']],
+  ru:[['Тише едешь — дальше будешь.','дальше','youtube','Редакция',''],['Без труда не выловишь и рыбку из пруда.','труда','netflix','Метод','T1 · E2']],
+};
+const SCEN = {
+  normal:{label:'Dia normal', make:()=>({frases:seed(), am:{en:{on:true,limit:20,count:7},ru:{on:false,limit:15,count:0}}})},
+  primeiro:{label:'Primeiro uso', make:()=>({frases:[], am:{en:{on:false,limit:20,count:0},ru:{on:false,limit:20,count:0}}})},
+  limite:{label:'Limite atingido', make:()=>({frases:seed(), am:{en:{on:true,limit:20,count:20},ru:{on:true,limit:15,count:4}}})},
+  falha:{label:'Falha ao salvar', make:()=>({frases:seed(), am:{en:{on:true,limit:20,count:7},ru:{on:false,limit:15,count:0}}, failNext:true})},
+};
+const ORDER = ['A','B','C','Z'];
+const NAMES = {A:'Cockpit', B:'Abas', C:'Feed', Z:'Lado a lado + veredito'};
+const p = new URLSearchParams(location.search);
+const S = {
+  variant: ORDER.includes(p.get('variant')) ? p.get('variant') : 'A',
+  theme: p.get('theme') === 'light' ? 'light' : 'dark',
+  scen: 'normal', tabB: 'add', amOpenC: false, draft: '', flash: null, lastAdded: null, log: [],
+  ...SCEN.normal.make(),
+};
+function log(msg){ S.log.unshift(new Date().toLocaleTimeString('pt-BR') + '  ' + msg); S.log = S.log.slice(0, 30); }
+function badgeText(){
+  const on = ['en','ru'].filter(l => S.am[l].on);
+  if (!on.length) return '';
+  return String(on.reduce((n, l) => n + S.am[l].count, 0));
+}
+function rel(id){
+  const d = now() - id;
+  if (d < MIN) return 'agora';
+  if (d < H) return `há ${Math.round(d / MIN)} min`;
+  if (d < 24 * H) return `há ${Math.round(d / H)} h`;
+  return 'ontem';
+}
+function hl(f){
+  let t = esc(f.texto);
+  const k = f.keywords?.[0];
+  if (k) { const e = esc(k), i = t.toLowerCase().indexOf(e.toLowerCase()); if (i >= 0) t = t.slice(0, i) + `<span class="kw">${t.slice(i, i + e.length)}</span>` + t.slice(i + e.length); }
+  return t;
+}
+const ctx = (f) => { const c = f.contexto || {}; return [FONTE[c.fonte] || 'Manual', c.fonte === 'manual' ? '' : c.titulo, c.detalhe].filter(Boolean).join(' · '); };
+const langOf = (f) => f.idioma === 'Russo' ? 'RU' : 'EN';
+const last5 = () => S.frases.slice(0, 5);
+
+/* ───────────── Ações (todas em memória) ───────────── */
+function addManual(){
+  const texto = S.draft.trim();
+  if (!texto) return;
+  if (S.failNext) {
+    S.failNext = false;
+    S.flash = {kind:'err', text:'Não deu para salvar. Tente de novo.'};
+    log('SALVAR_HISTORICO → {ok:false} (simulado). O texto fica no campo.');
+  } else {
+    const idioma = /[Ѐ-ӿ]/.test(texto) ? 'Russo' : 'Inglês';
+    const f = {id:now(), texto, idioma, streaming:'manual', contexto:{fonte:'manual',titulo:'',detalhe:''}, keywords:[]};
+    S.frases.unshift(f); S.lastAdded = f.id; S.draft = '';
+    S.flash = {kind:'ok', text:`Frase adicionada · ${idioma === 'Russo' ? 'RU' : 'EN'}`};
+    log(`Adição rápida salvou 1 frase (${idioma}).`);
+  }
+  clearTimeout(S._ft); S._ft = setTimeout(() => { S.flash = null; render(); }, 2600);
+  render();
+}
+function simAuto(){
+  const l = ['en','ru'].find(l => S.am[l].on && S.am[l].count < S.am[l].limit);
+  if (!l) { log('Auto Miner: nada a minerar (desligado ou no limite).'); render(); return; }
+  const pool = AUTO_POOL[l], [texto, kw, fonte, titulo, detalhe] = pool[S.am[l].count % pool.length];
+  S.frases.unshift({id:now(), texto, idioma:l === 'ru' ? 'Russo' : 'Inglês', streaming:fonte, contexto:{fonte,titulo,detalhe}, keywords:[kw], autoKeyword:true});
+  S.am[l].count++; S.lastAdded = S.frases[0].id;
+  log(`Auto Miner ${l.toUpperCase()} minerou 1 → ${S.am[l].count}/${S.am[l].limit}. Badge: ${badgeText()}`);
+  render();
+}
+function simAltS(){
+  const [texto, kw, fonte, titulo, detalhe] = ['I’m gonna make him an offer he can’t refuse.','offer','netflix','The Godfather',''];
+  S.frases.unshift({id:now(), texto, idioma:'Inglês', streaming:fonte, contexto:{fonte,titulo,detalhe}, keywords:[kw]});
+  S.lastAdded = S.frases[0].id;
+  log('Alt+S capturou 1 frase (não conta no Auto Miner).');
+  render();
+}
+
+/* ───────────── Peças compartilhadas ───────────── */
+const emptyList = (compact) => `<div class="empty">${ic('pickaxe', 34)}<b>Nenhuma frase ainda</b><p>${compact ? 'Aperte <span class="kbd">Alt</span>+<span class="kbd">S</span> num vídeo com legenda.' : 'Aperte <span class="kbd">Alt</span>+<span class="kbd">S</span> num vídeo com legenda, ou cole uma frase aqui.'}</p></div>`;
+const flashHtml = () => S.flash ? `<span class="flash ${S.flash.kind}" role="status">${ic(S.flash.kind === 'ok' ? 'check' : 'alert', 14)}${esc(S.flash.text)}</span>` : '';
+const toggle = (l) => `<label class="tg"><input type="checkbox" data-act="am-toggle" data-lang="${l}" ${S.am[l].on ? 'checked' : ''} aria-label="Auto Miner ${LANG[l].name}"><span class="trk"></span></label>`;
+const limitInp = (l) => `<input class="inp" type="number" min="1" max="100" value="${S.am[l].limit}" data-act="am-limit" data-lang="${l}" aria-label="Limite diário ${LANG[l].name}">`;
+const pct = (l) => Math.min(100, Math.round(S.am[l].count / S.am[l].limit * 100));
+const full = (l) => S.am[l].count >= S.am[l].limit;
+const footShortcut = () => `<div class="foot"><span class="kbd">Alt</span>+<span class="kbd">S</span> minera a legenda do vídeo<button class="btn btn-ghost" data-act="atalhos">Mudar atalho</button></div>`;
+
+/* ───────────── A · Cockpit ───────────── */
+function VariantA(){
+  const list = last5();
+  return `<div class="pop va">
+    <div class="hdr">${logo(30)}<div>${wordmark}<div class="sub">Minerador de frases para o Anki</div></div></div>
+    <div class="body">
+      <button class="btn btn-primary btn-block" data-act="painel">${ic('grid')}Abrir painel</button>
+      <section><h3 class="st">Auto Miner <span class="aside">por dia</span></h3>
+        <div class="tiles">${['en','ru'].map(l => `
+          <div class="tile ${S.am[l].on ? 'on' : 'off'}">
+            <div class="tile-top"><b>${LANG[l].code}</b>${toggle(l)}</div>
+            <div class="big">${S.am[l].count}<small>/${S.am[l].limit}</small></div>
+            <div class="meter"><i style="width:${pct(l)}%"></i></div>
+            ${full(l) && S.am[l].on ? `<div class="full-note">Limite de hoje atingido</div>` : `<label class="lim">limite ${limitInp(l)} /dia</label>`}
+          </div>`).join('')}
+        </div></section>
+      <section><h3 class="st">Adição rápida</h3>
+        <div class="add"><textarea class="inp" rows="2" data-act="draft" placeholder="Cole ou escreva uma frase…">${esc(S.draft)}</textarea>
+          <button class="btn btn-secondary" data-act="add" ${S.draft.trim() ? '' : 'disabled'}>${ic('plus')}Adicionar</button></div>
+        <div class="add-row">${flashHtml()}</div></section>
+      <section><h3 class="st">Últimas mineradas ${list.length ? `<button class="btn btn-ghost aside" data-act="painel" style="padding:0">Ver todas</button>` : ''}</h3>
+        ${list.length ? `<div class="last">${list.map(f => `<div class="${f.id === S.lastAdded ? 'new' : ''}"><p lang="${langOf(f).toLowerCase()}">${hl(f)}</p><small>${esc(ctx(f))} · ${rel(f.id)}</small></div>`).join('')}</div>` : emptyList(false)}
+      </section>
+    </div>
+    ${footShortcut()}
+  </div>`;
+}
+
+/* ───────────── B · Abas ───────────── */
+function VariantB(){
+  const list = last5(), tab = S.tabB;
+  const amOn = ['en','ru'].filter(l => S.am[l].on).length;
+  const tabs = [['add','Adicionar',''],['am','Auto Miner', amOn ? `<span class="n">${badgeText()}</span>` : ''],['rec','Recentes', list.length ? `<span class="n">${list.length}</span>` : '']];
+  let pane = '';
+  if (tab === 'add') pane = `
+    <div class="hero"><textarea class="inp" rows="5" data-act="draft" placeholder="Cole ou escreva uma frase em inglês ou russo…">${esc(S.draft)}</textarea></div>
+    <div style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0">${flashHtml()}</div><button class="btn btn-primary" data-act="add" ${S.draft.trim() ? '' : 'disabled'}>${ic('plus')}Adicionar</button></div>
+    <div><h3 class="st">Outros jeitos de minerar</h3>
+      <div class="ways">
+        <div>${ic('caption',16)}<span>Minerar a legenda do vídeo</span><span class="kbd">Alt+S</span></div>
+        <div>${ic('select',16)}<span>Capturar texto selecionado</span><span class="kbd">Ctrl+Q</span></div>
+        <div>${ic('menu',16)}<span>Botão direito → Enviar</span><span></span></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:4px"><button class="btn btn-ghost" data-act="atalhos" style="font-size:12px">Mudar atalhos</button></div></div>`;
+  if (tab === 'am') pane = ['en','ru'].map(l => `
+    <div class="lang ${S.am[l].on ? 'on' : 'off'}">
+      <div class="lang-top"><b>${LANG[l].name}</b><span class="code">${LANG[l].code}</span>${toggle(l)}</div>
+      <p>${S.am[l].on ? (full(l) ? 'Limite de hoje atingido. Volta amanhã.' : `Minera sozinho as legendas em ${LANG[l].name.toLowerCase()} enquanto você assiste.`) : 'Desligado.'}</p>
+      <div class="meter"><i style="width:${pct(l)}%"></i></div>
+      <div class="lang-foot">limite ${limitInp(l)} por dia<span class="cnt">${S.am[l].count}<small>/${S.am[l].limit} hoje</small></span></div>
+    </div>`).join('') + `<p class="muted" style="margin:0;font-size:11.5px">O total de hoje aparece no ícone da extensão.</p>`;
+  if (tab === 'rec') pane = list.length ? `<div class="rec">${list.map(f => `
+      <article class="${f.id === S.lastAdded ? 'new' : ''}"><p lang="${langOf(f).toLowerCase()}">${hl(f)}</p>
+        <div class="meta"><span class="bdg">${ic(f.contexto?.fonte || 'manual', 11)}${FONTE[f.contexto?.fonte] || 'Manual'}</span>${esc([f.contexto?.fonte === 'manual' ? '' : f.contexto?.titulo, f.contexto?.detalhe].filter(Boolean).join(' · '))}<span style="margin-left:auto" class="mono">${rel(f.id)}</span></div></article>`).join('')}</div>
+      <button class="btn btn-secondary btn-block" data-act="painel">Ver todas no painel</button>` : emptyList(true);
+  return `<div class="pop vb">
+    <div class="hdr">${logo(30)}<div style="flex:1;min-width:0">${wordmark}<div class="sub">Minerador de frases para o Anki</div></div>
+      <button class="btn btn-secondary" data-act="painel" style="padding:7px 12px" title="Abrir painel">${ic('grid')}Painel</button></div>
+    <div class="tabs" role="tablist">${tabs.map(([k, l, n]) => `<button role="tab" aria-selected="${tab === k}" data-act="tab" data-tab="${k}">${l}${n}</button>`).join('')}</div>
+    <div class="pane" role="tabpanel">${pane}</div>
+  </div>`;
+}
+
+/* ───────────── C · Feed ───────────── */
+function VariantC(){
+  const list = last5();
+  const today = list.filter(f => now() - f.id < 24 * H), older = list.filter(f => now() - f.id >= 24 * H);
+  const group = (title, arr) => arr.length ? `<div class="dh">${title}</div>` + arr.map(f => `
+      <div class="item ${f.id === S.lastAdded ? 'new' : ''}"><p lang="${langOf(f).toLowerCase()}">${hl(f)}</p>
+        <div class="meta"><span class="bdg">${ic(f.contexto?.fonte || 'manual', 11)}${FONTE[f.contexto?.fonte] || 'Manual'}</span>${esc([f.contexto?.fonte === 'manual' ? '' : f.contexto?.titulo, f.contexto?.detalhe].filter(Boolean).join(' · '))}<span class="t">${rel(f.id)}</span></div></div>`).join('') : '';
+  const chip = (l) => `<button class="chip ${S.am[l].on ? 'on' : ''} ${S.am[l].on && full(l) ? 'full' : ''}" data-act="am-toggle-chip" data-lang="${l}" aria-pressed="${S.am[l].on}" title="Ligar/desligar Auto Miner ${LANG[l].name}"><span class="dot"></span>${LANG[l].code} ${S.am[l].on ? `${S.am[l].count}/${S.am[l].limit}` : 'off'}</button>`;
+  return `<div class="pop vc">
+    <div class="hdr">${logo(26)}<div style="flex:1;min-width:0">${wordmark}</div>
+      <button class="btn-icon" data-act="painel" title="Abrir painel" aria-label="Abrir painel">${ic('ext',16)}</button></div>
+    <div class="amstrip"><span class="lbl">Auto Miner</span>${chip('en')}${chip('ru')}
+      <button class="btn-icon" data-act="am-expand" aria-expanded="${S.amOpenC}" aria-label="Limites do Auto Miner" title="Limites por dia">${ic('down',16)}</button>
+      ${S.amOpenC ? `<div class="amx">${['en','ru'].map(l => `<div class="amx-row"><b>${LANG[l].code}</b><span>${S.am[l].on ? (full(l) ? 'limite de hoje atingido' : `${S.am[l].count} de ${S.am[l].limit} hoje`) : 'desligado'}</span><span class="lim">limite ${limitInp(l)} /dia</span></div>`).join('')}</div>` : ''}
+    </div>
+    <div class="feed">${list.length ? group('Hoje', today) + group('Ontem', older) + `<div class="more"><button class="btn btn-ghost" data-act="painel">Ver todas no painel →</button></div>` : `<div style="padding-top:14px">${emptyList(false)}</div>`}</div>
+    <div class="composer">
+      <div class="row"><textarea class="inp" rows="1" data-act="draft" placeholder="Adicionar uma frase…">${esc(S.draft)}</textarea>
+        <button class="btn btn-primary send" data-act="add" ${S.draft.trim() ? '' : 'disabled'} aria-label="Adicionar frase">${ic('send',16)}</button></div>
+      <div class="hint">${S.flash ? flashHtml() : `<span class="kbd">Alt</span>+<span class="kbd">S</span> minera a legenda do vídeo`}</div>
+    </div>
+  </div>`;
+}
+
+const VARIANTS = {A:VariantA, B:VariantB, C:VariantC};
+
+/* ───────────── Casca ───────────── */
+function browser(inner){
+  const b = badgeText();
+  return `<div class="browser ${S.theme}">
+    <div class="bt-tabs"><div class="bt-tab on">Netflix · The Bear</div><div class="bt-tab">Painel · PerpetualMiner</div></div>
+    <div class="bt-bar"><div class="bt-omni">netflix.com/watch/81xxxxxx</div>
+      <svg class="bt-puzzle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 4a2 2 0 1 1 4 0v2h4v4h-2a2 2 0 1 0 0 4h2v4h-4v-2a2 2 0 1 0-4 0v2H6v-4H4a2 2 0 1 1 0-4h2V6h4z"/></svg>
+      <div class="bt-ext" title="PerpetualMiner${b ? ` · Auto Miner: ${b} hoje` : ''}">${logo(18)}${b ? `<span class="bt-badge">${b}</span>` : ''}</div>
+    </div>
+    <div class="bt-page"><div class="vsub">— I’m saying it’s your responsibility.</div><div class="anchor veio" data-tokens>${inner}</div></div>
+  </div>`;
+}
+function inspector(){
+  const am = (l) => `${S.am[l].on ? 'ligado' : 'desligado'} · ${S.am[l].count}/${S.am[l].limit}`;
+  return `<aside class="insp">
+    <section><h2>Cenário</h2><div class="btns">${Object.entries(SCEN).map(([k, v]) => `<button data-act="scen" data-scen="${k}" aria-pressed="${S.scen === k}">${v.label}</button>`).join('')}</div></section>
+    <section><h2>Simular fora do popup</h2><div class="btns"><button data-act="sim-auto">Auto Miner minerou 1</button><button data-act="sim-alts">Alt+S capturou 1</button></div></section>
+    <section><h2>Estado agora</h2><dl>
+      <dt>frases</dt><dd>${S.frases.length} (popup mostra ${last5().length})</dd>
+      <dt>Auto Miner EN</dt><dd>${am('en')}</dd>
+      <dt>Auto Miner RU</dt><dd>${am('ru')}</dd>
+      <dt>badge</dt><dd>${badgeText() ? `"${badgeText()}" (soma só dos idiomas ligados)` : 'sem badge (Auto Miner desligado)'}</dd>
+      <dt>próx. salvar</dt><dd>${S.failNext ? 'vai falhar' : 'ok'}</dd>
+      <dt>tema</dt><dd>${S.theme === 'dark' ? 'escuro (padrão)' : 'claro'}</dd>
+    </dl></section>
+    <section><h2>Registro</h2><div class="log">${S.log.length ? S.log.map(esc).join('<br>') : 'Nada ainda. Mexa no popup.'}</div></section>
+    <section><h2>O que cada variante aposta</h2><ol>
+      <li><b>A · Cockpit:</b> tudo à vista numa pilha. Abrir painel é o primário; o Auto Miner vira dois azulejos com medidor.</li>
+      <li><b>B · Abas:</b> uma coisa por vez, com espaço. O painel vira botão no cabeçalho; Adicionar ganha uma área grande e ensina os outros jeitos de minerar.</li>
+      <li><b>C · Feed:</b> o que você acabou de minerar vem primeiro. O Auto Miner vira uma faixa de chips (clique liga/desliga; a seta abre os limites) e a adição é um compositor fixo embaixo.</li>
+    </ol></section>
+  </aside>`;
+}
+function verdict(){
+  return `<form class="verdict" data-lavish-question="popup-verdict" id="verdict">
+    <h2>Veredito</h2>
+    <p class="muted">Escolha a base e o que roubar das outras. O pedido mais útil costuma ser “a estrutura de X com a peça Y de Z”.</p>
+    <fieldset><legend>1 · Estrutura base</legend>
+      ${['A · Cockpit','B · Abas','C · Feed'].map(v => `<label><input type="radio" name="base" value="${v}"> ${v}</label>`).join('')}</fieldset>
+    <fieldset><legend>2 · “Abrir painel”</legend>
+      <label><input type="radio" name="painel" value="botão primário largo (A)"> Botão primário largo (A)</label>
+      <label><input type="radio" name="painel" value="botão no cabeçalho (B)"> Botão no cabeçalho (B)</label>
+      <label><input type="radio" name="painel" value="ícone discreto no cabeçalho (C)"> Ícone discreto (C)</label></fieldset>
+    <fieldset><legend>3 · Auto Miner</legend>
+      <label><input type="radio" name="am" value="azulejos EN|RU com medidor (A)"> Azulejos com medidor (A)</label>
+      <label><input type="radio" name="am" value="cartões com explicação, em aba (B)"> Cartões com explicação (B)</label>
+      <label><input type="radio" name="am" value="chips + limites recolhidos (C)"> Chips + limites recolhidos (C)</label></fieldset>
+    <fieldset><legend>4 · Atalhos no popup</legend>
+      <label><input type="radio" name="atalho" value="rodapé com Alt+S + Mudar atalho"> Rodapé com Alt+S</label>
+      <label><input type="radio" name="atalho" value="lista 'Outros jeitos de minerar' (B)"> Lista “Outros jeitos de minerar” (B)</label>
+      <label><input type="radio" name="atalho" value="nenhum: atalhos só em Configurações"> Nenhum, só em Configurações</label></fieldset>
+    <fieldset><legend>Notas (roube peças, corte coisas)</legend><textarea name="notas" placeholder="ex.: estrutura A, mas com o feed da C nas últimas; tirar o subtítulo…"></textarea></fieldset>
+    <button class="go" type="submit">Enviar veredito</button><span class="queued" id="queued"></span>
+    <div class="sel" id="selnow"></div>
+  </form>`;
+}
+function verdictText(fd){
+  const g = (k) => fd.get(k) || '(sem escolha)';
+  return `Veredito do popup (#5): base ${g('base')}; Abrir painel = ${g('painel')}; Auto Miner = ${g('am')}; atalhos = ${g('atalho')}.` + (fd.get('notas')?.trim() ? ` Notas: ${fd.get('notas').trim()}` : '');
+}
+
+function applyTokens(){ document.querySelectorAll('[data-tokens]').forEach(el => { for (const [k, v] of Object.entries(T[S.theme])) el.style.setProperty('--' + k, v); }); }
+
+function render(){
+  const app = document.getElementById('app');
+  const f = document.activeElement;
+  const hadDraftFocus = f?.dataset?.act === 'draft';
+  const pos = hadDraftFocus ? f.selectionStart : 0;
+  const draftIdx = hadDraftFocus ? [...app.querySelectorAll('[data-act="draft"]')].indexOf(f) : -1;
+  const keepVerdict = S.variant === 'Z' ? new FormData(document.getElementById('verdict') || document.createElement('form')) : null;
+  if (S.variant === 'Z') {
+    app.innerHTML = `<div class="zgrid">${['A','B','C'].map(k => `<div class="zcol"><h3><b>${k}</b> · ${NAMES[k]}</h3><div class="veio" data-tokens>${VARIANTS[k]()}</div></div>`).join('')}
+      <div class="zcol" style="flex:1 1 280px">${inspector()}</div></div>${verdict()}`;
+    if (keepVerdict) { const form = document.getElementById('verdict'); for (const [k, v] of keepVerdict.entries()) { const el = form.elements[k]; if (!el) continue; if (el instanceof RadioNodeList) { for (const r of el) r.checked = r.value === v; } else el.value = v; } }
+    wireVerdict();
+  } else {
+    app.innerHTML = `<div class="layout"><div style="min-width:0">${browser(VARIANTS[S.variant]())}</div>${inspector()}</div>`;
+  }
+  applyTokens();
+  if (hadDraftFocus) { const d = app.querySelectorAll('[data-act="draft"]')[draftIdx]; if (d) { d.focus(); d.setSelectionRange(pos, pos); } }
+  document.getElementById('lab').textContent = `${S.variant} · ${NAMES[S.variant]}`;
+  document.getElementById('theme').textContent = S.theme === 'dark' ? '☾ escuro' : '☀ claro';
+}
+function wireVerdict(){
+  const form = document.getElementById('verdict'), sel = document.getElementById('selnow');
+  const upd = () => { sel.textContent = 'Selecionado (ainda não enviado): ' + verdictText(new FormData(form)); };
+  form.addEventListener('input', upd); upd();
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = verdictText(new FormData(form));
+    if (window.lavish?.queuePrompt) {
+      window.lavish.queuePrompt(text, {tag:'choice', text:'Veredito do popup', element:form, queueKey:'popup-verdict', data:{question:'popup-verdict', answer:text}});
+      document.getElementById('queued').textContent = '✓ Na fila. Clique em “Send to Agent” no Lavish.';
+    } else {
+      navigator.clipboard?.writeText(text);
+      document.getElementById('queued').textContent = '✓ Copiado. Cole no chat.';
+    }
+  });
+}
+
+/* ───────────── Eventos (delegação) ───────────── */
+const app = document.getElementById('app');
+app.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-act]'); if (!t) return;
+  const a = t.dataset.act, l = t.dataset.lang;
+  if (a === 'painel') { log('Abrir painel → foca a aba do painel ou abre uma nova.'); render(); }
+  if (a === 'atalhos') { log('Mudar atalho → abre o painel em Configurações · Atalhos.'); render(); }
+  if (a === 'add') addManual();
+  if (a === 'tab') { S.tabB = t.dataset.tab; render(); }
+  if (a === 'am-toggle-chip') { S.am[l].on = !S.am[l].on; log(`Auto Miner ${l.toUpperCase()} ${S.am[l].on ? 'ligado' : 'desligado'}. Badge: ${badgeText() || '—'}`); render(); }
+  if (a === 'am-expand') { S.amOpenC = !S.amOpenC; render(); }
+  if (a === 'scen') { S.scen = t.dataset.scen; Object.assign(S, {failNext:false, flash:null, draft:'', lastAdded:null}, SCEN[S.scen].make()); log(`Cenário: ${SCEN[S.scen].label}.`); render(); }
+  if (a === 'sim-auto') simAuto();
+  if (a === 'sim-alts') simAltS();
+});
+app.addEventListener('change', (e) => {
+  const t = e.target, a = t.dataset?.act, l = t.dataset?.lang;
+  if (a === 'am-toggle') { S.am[l].on = t.checked; log(`Auto Miner ${l.toUpperCase()} ${t.checked ? 'ligado' : 'desligado'}. Badge: ${badgeText() || '—'}`); render(); }
+  if (a === 'am-limit') { S.am[l].limit = Math.max(1, Math.min(100, Math.round(Number(t.value) || 20))); log(`Limite ${l.toUpperCase()} → ${S.am[l].limit}/dia.`); render(); }
+});
+app.addEventListener('input', (e) => {
+  const t = e.target;
+  if (t.dataset?.act !== 'draft') return;
+  S.draft = t.value;
+  app.querySelectorAll('[data-act="add"]').forEach(b => b.disabled = !S.draft.trim());
+  if (t.closest('.vc')) { t.style.height = 'auto'; t.style.height = Math.min(96, t.scrollHeight + 2) + 'px'; }
+});
+app.addEventListener('keydown', (e) => {
+  if (e.target.dataset?.act === 'draft' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addManual(); }
+});
+
+function go(d){ const i = (ORDER.indexOf(S.variant) + d + ORDER.length) % ORDER.length; S.variant = ORDER[i]; sync(); render(); }
+function sync(){ const q = new URLSearchParams(location.search); q.set('variant', S.variant); q.set('theme', S.theme); try { history.replaceState(null, '', '?' + q); } catch {} }
+document.getElementById('prev').onclick = () => go(-1);
+document.getElementById('next').onclick = () => go(1);
+document.getElementById('theme').onclick = () => { S.theme = S.theme === 'dark' ? 'light' : 'dark'; sync(); render(); };
+document.addEventListener('keydown', (e) => {
+  const tg = e.target; if (tg.matches?.('input,textarea,[contenteditable],select')) return;
+  if (e.key === 'ArrowLeft') go(-1);
+  if (e.key === 'ArrowRight') go(1);
+  if (e.key === 't' || e.key === 'T') { S.theme = S.theme === 'dark' ? 'light' : 'dark'; sync(); render(); }
+});
+setInterval(() => { if (!document.activeElement?.matches?.('input,textarea')) render(); }, 60e3);
+render();
+</script>
+</body>
+</html>
