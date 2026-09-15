@@ -9,13 +9,13 @@
   </style>
 </head>
 <body>
-  <!-- O player vem de outra origem e o iframe não delega clipboard-write, como
-       nos sites que embutem o player de um terceiro: o clipboard falha dentro
-       do iframe e a cópia cai para o frame de cima. -->
+  <!-- O player vem de outra origem (?player=<url>, dada pelo teste) e o iframe
+       não delega clipboard-write, como nos sites que embutem o player de um
+       terceiro: o clipboard falha dentro do iframe e a cópia cai para o frame
+       de cima. -->
   <iframe id="player"></iframe>
   <script>
-    // Mesmo servidor, outro nome: outra origem.
-    document.getElementById('player').src = `http://localhost:${location.port}/player.html`;
+    document.getElementById('player').src = new URLSearchParams(location.search).get('player');
   </script>
 </body>
 </html>
