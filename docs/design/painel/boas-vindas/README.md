@@ -1,0 +1,155 @@
+# Onboarding e primeira execução: “Boas-vindas”
+
+Resolução do ticket [Protótipo: onboarding & primeira execução](https://github.com/vinicius928e8r84/PerpetualMiner/issues/10) do mapa [Redesign do front-end do PerpetualMiner](https://github.com/vinicius928e8r84/PerpetualMiner/issues/1). Ele herda:
+- a identidade [Veio](../../identidade-veio/README.md);
+- o [popup Cockpit](../../popup/README.md) e o [shell Ilhas do Painel](../shell/README.md);
+- os nomes e a cópia do [guia de voz & catálogo](../../voz/README.md) (regras V1–V10 e C1–C9).
+
+**Protótipo:** [`prototipo-onboarding.html`](prototipo-onboarding.html). Abra direto no navegador.
+- `?variant=C` é a estrutura travada (padrão). `A` (Vazios que ensinam) e `B` (Primeiros passos) foram as alternativas.
+- É uma janela do Chrome falsa: o ícone da extensão abre o popup, e o Painel roda no shell Ilhas.
+- O painel “Estados do protótipo” simula a instalação nova, Alt+S num vídeo, a mineração automática, a Conexão com o Anki instalada ou não, a conta, o atalho e a chave.
+- As setas ← → trocam a variante, e **T** alterna o tema.
+
+Avaliado no Lavish em 2026-09-15, numa rodada de 5 perguntas.
+
+## Decisão
+
+| pergunta | escolha |
+|---|---|
+| Estrutura | **C · Boas-vindas**: uma página própria, um passo por vez, com o controle real dentro de cada passo. A (vazios que ensinam, sem guia) e B (checklist no topo de Frases) ficaram de fora. |
+| Ordem dos passos | **Valor primeiro** (ver [Os passos](#os-passos)). |
+| Na instalação | **Abre a página Boas-vindas sozinha.** Isso é comportamento novo e **entra na lista fechada**. |
+| Como ligar a Conexão com o Anki | **Explicação + 3 passos + comandos num “Detalhes”.** Isso fecha a F1 da Voz. Vale por enquanto; ver [Instalador da Conexão](#instalador-da-conexão-com-o-anki). |
+| Mineração automática com a Conexão desligada | **Deixa ligar, com status honesto**: o azulejo do popup e o passo dizem que nada é minerado assim (C8). Não muda comportamento. |
+
+### Achado que decidiu a ordem
+
+A mineração automática **não minera nada com a Conexão com o Anki desligada**, nos dois idiomas. Ela precisa do vocabulário do baralho para saber que palavra é nova:
+- `background.js:333`: inglês, com `requireVocabulary`, devolve `[]` quando não há vocabulário;
+- `background.js:345`: russo, mesma coisa.
+
+Hoje isso acontece em silêncio: o toggle liga e nada aparece. Por isso a Conexão vem antes da mineração automática, e o status honesto (Q5) cobre esse silêncio.
+
+## Na instalação
+
+- `chrome.runtime.onInstalled` com `reason === 'install'` abre uma aba em **`painel.html#boas-vindas`**.
+  - Só na instalação: atualização da extensão não abre nada.
+  - O menu de contexto continua sendo criado como hoje.
+- `#boas-vindas` é um **endereço novo do Painel**, somando-se à tabela de endereços do shell. A página **não tem sidebar**.
+
+## A página Boas-vindas
+
+**Layout:**
+- Fundo `bg`, marca Veio de 40 px com o cursor piscando no topo, centralizada.
+- Uma grade de duas colunas (máx. 900 px), que empilha em uma coluna abaixo de ~760 px:
+  - **Coluna da lista (230 px):** ilha `surface` de raio 20 com os 8 itens:
+    - Boas-vindas, os 6 passos e Tudo pronto;
+    - cada passo tem uma marca: número, ✓ ouro quando feito, tracejado quando pulado;
+    - o item atual usa `surface-2` com contorno `border-strong`, igual à nav do shell;
+    - dá para clicar em qualquer item.
+  - **Card do passo:** ilha `surface` de raio 20 com sombra.
+    - Linha de sobretítulo em maiúsculas: “Passo 4 de 6 · opcional”.
+    - Título 24/800.
+    - O texto do passo.
+    - O **controle real** num bloco `bg` de raio 14.
+    - Rodapé com “Voltar” · “Agora não” (só nos opcionais) · “Continuar” (primário).
+
+**Telas:**
+1. **Abertura:** “Boas-vindas ao PerpetualMiner”, uma linha sobre o produto e a lista dos 6 passos com a etiqueta “opcional”. Botões “Pular a configuração” (fantasma) e “Começar” (primário).
+2. **Os 6 passos**, abaixo.
+3. **Tudo pronto:** o resumo de cada passo (feito · agora não · falta) e o botão “Abrir painel”, que abre o Painel em `#frases`.
+
+## Os passos
+
+A ordem é travada. Cada passo reusa uma função que já existe; nenhum cria função nova.
+
+| # | passo | controle no passo (função existente) | feito quando |
+|---|---|---|---|
+| 1 | **Minerar a primeira frase** | Texto sobre o Alt+S e o menu de contexto, uma ilustração estática da legenda marcada (linha ouro + keyword grifada + chip, como no [overlay](../../overlay/README.md)) e o campo de mineração rápida do popup. | há ≥ 1 frase |
+| 2 | **Escolher o atalho de Minerar seleção** | O gravador de atalho de Configurações › Atalhos. “Minerar legenda” aparece como `Alt+S`. | `pm_atalho` gravado |
+| 3 | **Entrar com Google** · opcional | O “Entrar com Google” de Configurações › Conta & sync. | conta conectada |
+| 4 | **Ligar a Conexão com o Anki** | O status da conexão, os 3 passos, “Detalhes” e “Verificar de novo” (o mesmo retry do shell). | a conexão responde |
+| 5 | **Ligar a mineração automática** · opcional | Os toggles EN/RU do popup, com o limite por dia. Com a conexão desligada, a nota de dependência aparece. | um idioma ligado |
+| 6 | **Adicionar a chave do Gemini** · opcional | O campo de Configurações › Chave do Gemini. | chave salva |
+
+- Os passos se marcam **pelo estado real**. Se a pessoa já fez algo fora da página, o passo já aparece feito.
+- **Pular:**
+  - “Agora não” só existe nos opcionais.
+  - Nos obrigatórios, “Continuar” segue sem marcar o passo; ele fica como “falta” no resumo.
+
+## Retomada: o lembrete
+
+- Enquanto a pessoa não chegar a **Tudo pronto**, aparece um lembrete. Isso inclui quem usou “Pular a configuração” ou fechou a aba.
+- O lembrete aparece em dois lugares:
+  - **no popup:** um cartão entre o cabeçalho e “Abrir painel” (acento a 45% + fundo com 5% de acento, com um anel de progresso): “Configuração pela metade · 2 de 6”, “Volte de onde parou” e o botão “Continuar configuração”;
+  - **em Frases:** uma faixa ouro no topo, “A configuração ficou pela metade: 2 de 6 passos.”, com os botões “Ocultar” e “Continuar configuração”.
+- “Continuar configuração” abre `#boas-vindas` no primeiro passo que falta.
+- “Ocultar” esconde o lembrete **de vez**, nos dois lugares.
+- Configurações não ganha entrada para reabrir a página. Tudo o que ela configura já mora lá.
+
+## Conexão com o Anki: como ligar (F1)
+
+Aparece igual no passo 4 e na área Conexão com o Anki quando ela ainda nunca respondeu:
+- **O que é:** “A Conexão com o Anki é um programa que roda neste computador, ao lado do Anki. É ela que cria os cartões e diz quais palavras você já conhece. Ela liga sozinha com o Windows depois de instalada uma vez.”
+- **O que falta sem ela** (na área): “Sem ela, dá para minerar à vontade; o que fica indisponível é Enviar ao Anki e a mineração automática.”
+- **3 passos:**
+  1. Abra o Anki neste computador, com o complemento AnkiConnect.
+  2. Instale a Conexão com o Anki uma vez (veja Detalhes). Depois ela liga sozinha com o Windows.
+  3. Volte aqui e use Verificar de novo.
+- **Detalhes** (recolhido e copiável):
+  - `pip install -r bridge/requirements.txt`
+  - `python bridge/install_autostart.py`
+  - `OPENAI_API_KEY` em `engine/.env`
+  - a porta `127.0.0.1:8766` e o log `bridge/runtime/bridge.log`.
+- Na área Conexão com o Anki, a faixa ENV-01/F1 continua em cima. Na primeira execução não há dado antigo, então as abas dão lugar ao card “Ainda não houve conexão neste computador”.
+
+## Cópia nova
+
+Tudo segue V1–V10 e C1–C9. V10 permite o nome do produto no onboarding. Estes itens entram no catálogo da Voz:
+
+| ID | estado | cópia |
+|---|---|---|
+| ONB-01 | Abertura (título + corpo) | Boas-vindas ao PerpetualMiner — Minere frases de vídeos, páginas e fotos de livros, e envie ao Anki como cartões. Seis passos rápidos deixam tudo pronto; os opcionais dá para pular. |
+| ONB-02 | Botões da abertura | Pular a configuração · Começar |
+| ONB-03 | Sobretítulo do passo | Passo 4 de 6 · opcional |
+| ONB-04 | Botões do passo | Voltar · Agora não · Continuar |
+| ONB-05 | Passo 1 | Num vídeo com legenda, aperte Alt+S. A frase vai para o histórico e já fica copiada. / Numa página ou PDF, selecione o texto e use o botão direito › Minerar com PerpetualMiner. / Ou cole uma frase aqui, como no popup: |
+| ONB-06 | Passo 2 | Escolha uma tecla ou um botão extra do mouse para minerar o texto selecionado, sem abrir o menu. |
+| ONB-07 | Passo 3 | Entre com Google para ter suas frases em qualquer computador. Sem conta, elas ficam só neste. |
+| ONB-08 | Passo 4 | ver [F1](#conexão-com-o-anki-como-ligar-f1) |
+| ONB-09 | Passo 5 | Com ela ligada, as legendas com uma palavra que você ainda não conhece são mineradas sozinhas, até um limite por dia. Liga por idioma. / Os mesmos botões ficam no popup, pelo ícone da extensão. |
+| ONB-10 | Dependência da mineração automática (passo e popup) | Nada é minerado com a Conexão com o Anki desligada: é ela que diz quais palavras você já conhece. |
+| ONB-11 | Passo 6 | Só é usada em Minerar de uma foto, para ler os trechos marcados numa página de livro. Dá para adicionar depois: a página pede quando precisar. · Detalhes: No Google AI Studio, em “Get API key”. A chave fica só neste computador. |
+| ONB-12 | Tudo pronto | Tudo pronto — Dá para mudar qualquer coisa depois, em Configurações. A mineração automática fica no popup. [Abrir painel] |
+| ONB-13 | Resumo (por passo) | feito (o valor: “Alt+Q”, “ligada”…) · agora não · falta |
+| ONB-14 | Lembrete no popup | Configuração pela metade · 2 de 6 — Volte de onde parou [Continuar configuração] |
+| ONB-15 | Lembrete em Frases | A configuração ficou pela metade: 2 de 6 passos. [Ocultar] [Continuar configuração] |
+| ONB-16 | Área Conexão com o Anki, nunca conectada | Ainda não houve conexão neste computador — (O que é + O que falta sem ela, da F1) |
+
+## Lista fechada
+
+A decisão soma um item à lista fechada das Notes do mapa:
+- **abrir a página Boas-vindas na instalação**, com `onInstalled` e `reason === 'install'`.
+
+A página em si é reagrupamento e revestimento: cada controle dentro dela é uma função que já existe, só mostrada em outro lugar.
+
+## Instalador da Conexão com o Anki
+
+A orientação da F1 é provisória. Na rodada, o dono avisou:
+
+> usar isso por enquanto mas vai ter que ter instalador quando eu for passar deixar frictionless pro pessoal e de forma estavel para que se o instalador der erro ela saiba corrigir facilmente ou nem precise saber que deu pau e corrigir só, ou com um simples botao.
+
+Isso fica **fora deste mapa**, dentro do esforço futuro “bridge instalável”. Mas já deixa três requisitos para ele:
+1. um instalador sem terminal;
+2. que se conserte sozinho quando der erro;
+3. ou que se conserte com um botão só.
+
+Quando ele existir, o passo 4 e a área trocam os 3 passos + Detalhes por esse botão.
+
+## Fica para outros tickets
+
+- [Protótipo: Painel · Frases mineradas](https://github.com/vinicius928e8r84/PerpetualMiner/issues/12): a faixa do lembrete no topo de Frases e o vazio PAI-02 depois da Boas-vindas.
+- [Protótipo: Painel · Conexão com o Anki](https://github.com/vinicius928e8r84/PerpetualMiner/issues/13): o card “Ainda não houve conexão neste computador” (ONB-16) no lugar das abas na primeira execução.
+- [Protótipo: Painel · Configurações](https://github.com/vinicius928e8r84/PerpetualMiner/issues/14): os passos 2, 3 e 6 reusam os controles de lá, então os dois precisam ficar iguais.
+- **Consolidação final da spec:** incluir `#boas-vindas` na tabela de endereços do shell e os ONB-01–16 no catálogo da Voz.
