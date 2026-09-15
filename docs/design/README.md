@@ -129,4 +129,4 @@ Fundação primeiro, depois de dentro pra fora: cada passo só usa o que já exi
 
 ## Próximo passo
 
-A construção é um esforço separado. Ela parte daqui, rodando `/to-spec` sobre este handoff para gerar o mapa de construção, que depois vira as issues de construção. Ponto de partida: a issue [Construção do redesign](https://github.com/vinicius928e8r84/PerpetualMiner/issues).
+A construção é um esforço separado. A spec dela é [Construção do redesign do front-end (Veio)](https://github.com/vinicius928e8r84/PerpetualMiner/issues/17): histórias de uso, decisões de implementação e o seam de teste (a extensão desempacotada no Chromium, com a rede falsificada na fronteira HTTP). Dela saem as issues de construção, guiadas pela ordem acima.
