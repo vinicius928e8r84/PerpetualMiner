@@ -119,7 +119,19 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 // ─── Mensagens do content.js ─────────────────────────────────────────────────
 
-chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // Um player em iframe sem permissão de clipboard pede a cópia ao frame de cima
+  // da mesma aba. Só o content script desta extensão alcança este canal; uma
+  // página não, então ela não consegue sobrescrever o clipboard por aqui.
+  if (request.type === 'COPIAR_NO_FRAME_DE_CIMA') {
+    const texto = request.texto;
+    if (sender.id !== chrome.runtime.id || sender.tab?.id == null) return;
+    if (typeof texto !== 'string' || !texto.trim()) return;
+    chrome.tabs.sendMessage(sender.tab.id, { type: 'COPIAR_PARA_CLIPBOARD', texto }, { frameId: 0 })
+      .catch(() => {});
+    return;
+  }
+
   if (request.type === 'SALVAR_HISTORICO') {
     salvarFrase(
       request.texto,
