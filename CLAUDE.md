@@ -55,7 +55,7 @@ Authentication uses `chrome.identity.launchWebAuthFlow` (OAuth2 with Google) —
 
 Pending sync queue: if a Firestore write fails (offline/error), the phrase `id` is added to `pm_pending_sync` in local storage and retried on next panel load.
 
-Deleting (panel or popup) writes a tombstone so the next panel sync doesn't bring the phrase back from the cloud or from another computer: `pm_del_{id}` in `chrome.storage.sync`, the id in local `pm_deleted_ids` (retry of the Firestore DELETE), and, when logged in, the field ``ids.`{id}` `` in `usuarios/{uid}/meta/deleted`. The popup asks the service worker to delete (`APAGAR_FRASES`); the panel does it itself (`removerFrasesFirestore`), but writes the unquoted path `ids.{id}`, which Firestore rejects because a simple field name can't start with a digit — the e2e Firestore fake enforces that rule.
+Deleting (panel or popup) writes a tombstone so the next panel sync doesn't bring the phrase back from the cloud or from another computer: `pm_del_{id}` in `chrome.storage.sync`, the id in local `pm_deleted_ids` (retry of the Firestore DELETE), and, when logged in, the field ``ids.`{id}` `` in `usuarios/{uid}/meta/deleted`. The popup asks the service worker to delete (`APAGAR_FRASES`); the panel does it itself (`removerFrasesFirestore`), but writes the unquoted path `ids.{id}`, which Firestore rejects because a simple field name can't start with a digit — the e2e Firestore fake enforces that rule. "Apagar tudo" (`apagarTudoFirestore`) awaits that write, so it never reaches the cloud DELETE.
 
 ### Storage Schema
 

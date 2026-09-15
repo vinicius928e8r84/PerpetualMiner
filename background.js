@@ -3,7 +3,7 @@
 const FIREBASE_PROJECT  = 'perpetualminer-4c219';
 const FIRESTORE_BASE    = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
 const FB_REFRESH_URL    = `https://securetoken.googleapis.com/v1/token?key=AIzaSyDrbDVUvv8wyoYqjCr5jEMBJPPsIP2k1Ak`;
-const TOMBSTONE_SYNC_PREFIX = 'pm_del_';   // mesma chave que o painel lê em chrome.storage.sync
+const TOMB_PREFIX       = 'pm_del_';   // tombstone em chrome.storage.sync, lido pelo painel
 const BRIDGE_URL        = 'http://127.0.0.1:8766';
 const BRIDGE_PRESETS_KEY = 'ankiBridgePresets';
 const AUTO_MINER_SETTINGS_KEY = 'pm_auto_miner_settings';
@@ -259,44 +259,48 @@ async function apagarFrases(ids) {
     });
   });
 
-  const agora = Date.now();
-  chrome.storage.sync.set(Object.fromEntries(idsStr.map(id => [`${TOMBSTONE_SYNC_PREFIX}${id}`, agora])));
+  const apagadasEm = Date.now();
+  chrome.storage.sync.set(Object.fromEntries(idsStr.map(id => [`${TOMB_PREFIX}${id}`, apagadasEm])));
 
-  apagarDoFirestore(idsStr, agora);
+  apagarDoFirestore(idsStr, apagadasEm);
 }
 
-async function apagarDoFirestore(ids, agora) {
+async function apagarDoFirestore(ids, apagadasEm) {
   try {
     const authData = await sessaoDaConta();
     if (!authData) return;
     const headers = { 'Authorization': `Bearer ${authData.idToken}`, 'Content-Type': 'application/json' };
 
-    // Um campo por frase no mapa `ids`; o id começa com dígito, então o caminho
-    // do campo vai entre crases (ids.`123`), como a API REST exige.
-    const mascara = ids.map(id => `updateMask.fieldPaths=${encodeURIComponent(`ids.\`${id}\``)}`).join('&');
-    const tombstone = await fetch(`${FIRESTORE_BASE}/usuarios/${authData.uid}/meta/deleted?${mascara}`, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify({ fields: { ids: { mapValue: { fields: Object.fromEntries(
-        ids.map(id => [id, { integerValue: String(agora) }]),
-      ) } } } }),
-    });
-    if (!tombstone.ok) console.warn('[Firestore] tombstone falhou:', tombstone.status);
+    await gravarTombstoneFirestore(authData.uid, headers, ids, apagadasEm);
 
     const respostas = await Promise.all(ids.map(id =>
       fetch(`${FIRESTORE_BASE}/usuarios/${authData.uid}/frases/${id}`, { method: 'DELETE', headers }),
     ));
     // 404 = já não existe na nuvem. Qualquer outra falha fica em pm_deleted_ids,
     // e o painel tenta de novo na próxima sincronização.
-    const apagadas = new Set(ids.filter((_, i) => respostas[i].ok || respostas[i].status === 404));
-    if (!apagadas.size) return;
+    const foraDaNuvem = new Set(ids.filter((_, i) => respostas[i].ok || respostas[i].status === 404));
+    if (!foraDaNuvem.size) return;
     await naFilaDeGravacao(async () => {
       const { pm_deleted_ids } = await chromeGet({ pm_deleted_ids: [] });
-      await chromeSet({ pm_deleted_ids: pm_deleted_ids.filter(id => !apagadas.has(id)) });
+      await chromeSet({ pm_deleted_ids: pm_deleted_ids.filter(id => !foraDaNuvem.has(id)) });
     });
   } catch (err) {
     console.warn('[Firestore] apagar falhou, fica pendente:', err?.message);
   }
+}
+
+// Um campo por frase no mapa `ids` de meta/deleted. O id começa com dígito, então
+// o caminho do campo vai entre crases (ids.`123`), como a API REST exige.
+async function gravarTombstoneFirestore(uid, headers, ids, apagadasEm) {
+  const mascara = ids.map(id => `updateMask.fieldPaths=${encodeURIComponent(`ids.\`${id}\``)}`).join('&');
+  const res = await fetch(`${FIRESTORE_BASE}/usuarios/${uid}/meta/deleted?${mascara}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ fields: { ids: { mapValue: { fields: Object.fromEntries(
+      ids.map(id => [id, { integerValue: String(apagadasEm) }]),
+    ) } } } }),
+  });
+  if (!res.ok) console.warn('[Firestore] tombstone falhou:', res.status);
 }
 
 // ─── Firestore Sync via REST API ──────────────────────────────────────────────
