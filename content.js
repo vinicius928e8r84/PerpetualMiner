@@ -126,13 +126,12 @@ function _mostrarOverlayCyan(texto) {
   ].join(';');
 
   const preview = texto.length > 55 ? texto.slice(0, 55) + '…' : texto;
-  overlay.innerHTML = `
-    <div style="font-size:22px;margin-bottom:8px;">⚡</div>
-    <div style="margin-bottom:6px;">Frase Capturada!</div>
-    <div style="font-size:11px;color:rgba(0,255,255,0.55);font-weight:400;
-                max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-    >${preview}</div>
-  `;
+  overlay.append(
+    pmDiv('font-size:22px;margin-bottom:8px;', '⚡'),
+    pmDiv('margin-bottom:6px;', 'Frase Capturada!'),
+    pmDiv(`font-size:11px;color:rgba(0,255,255,0.55);font-weight:400;
+           max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`, preview),
+  );
 
   document.body.appendChild(overlay);
   requestAnimationFrame(() => { requestAnimationFrame(() => { overlay.style.opacity = '1'; }); });
@@ -417,17 +416,14 @@ function mostrarNotificacaoAutoMiner(texto, idioma, state) {
         backdrop-filter: blur(15px);
         text-align: left;
     `;
-    aviso.innerHTML = `
-        <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;
-                    margin-bottom:4px;opacity:0.78;font-weight:bold;color:#00ff88;">
-            Auto Miner - ${idioma} - ${daily?.count || 0}/${limit || 0}
-        </div>
-        <div style="font-weight:500;line-height:1.4;color:#fff;
-                    display:-webkit-box;-webkit-line-clamp:3;
-                    -webkit-box-orient:vertical;overflow:hidden;font-style:normal;">
-            ${pmEscapeHtml(texto)}
-        </div>
-    `;
+    aviso.append(
+        pmDiv(`font-size:9px;text-transform:uppercase;letter-spacing:1.2px;
+               margin-bottom:4px;opacity:0.78;font-weight:bold;color:#00ff88;`,
+            `Auto Miner - ${idioma} - ${daily?.count || 0}/${limit || 0}`),
+        pmDiv(`font-weight:500;line-height:1.4;color:#fff;
+               display:-webkit-box;-webkit-line-clamp:3;
+               -webkit-box-orient:vertical;overflow:hidden;font-style:normal;`, texto),
+    );
     btn.appendChild(aviso);
     setTimeout(() => {
         aviso.style.opacity = '0';
@@ -437,14 +433,13 @@ function mostrarNotificacaoAutoMiner(texto, idioma, state) {
     }, 2800);
 }
 
-function pmEscapeHtml(value) {
-    return String(value || '').replace(/[&<>"']/g, ch => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;',
-    }[ch]));
+// Monta um <div> dos avisos. O texto entra sempre como texto (nunca como HTML),
+// porque vem da página: legenda, seleção, título.
+function pmDiv(cssText, texto) {
+    const div = document.createElement('div');
+    div.style.cssText = cssText;
+    div.textContent = texto;
+    return div;
 }
 
 function minerarLegenda() {
@@ -726,14 +721,6 @@ function mostrarNotificacaoAcoplada(texto, contexto, idioma) {
     const aviso = document.createElement('div');
     aviso.id = 'notificacao-minerador';
 
-    // Linha de contexto para exibir na notificação
-    const ctxLabel = contexto?.titulo
-        ? `<div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;
-                       opacity:0.55;margin-bottom:2px;color:#fff;font-style:normal;">
-               ${contexto.titulo}${contexto.detalhe ? ' · ' + contexto.detalhe : ''}
-           </div>`
-        : '';
-
     aviso.style.cssText = `
         position: absolute; right: 55px; bottom: 0;
         width: 260px; min-height: 48px;
@@ -753,18 +740,20 @@ function mostrarNotificacaoAcoplada(texto, contexto, idioma) {
         text-align: left;
     `;
 
-    aviso.innerHTML = `
-        <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;
-                    margin-bottom:4px;opacity:0.7;font-weight:bold;color:${COR_ICONE};">
-            Minerado &amp; Copiado · ${idioma}
-        </div>
-        ${ctxLabel}
-        <div style="font-weight:500;line-height:1.4;color:#fff;
-                    display:-webkit-box;-webkit-line-clamp:3;
-                    -webkit-box-orient:vertical;overflow:hidden;font-style:normal;">
-            ${texto}
-        </div>
-    `;
+    aviso.appendChild(pmDiv(`font-size:9px;text-transform:uppercase;letter-spacing:1.2px;
+                             margin-bottom:4px;opacity:0.7;font-weight:bold;color:${COR_ICONE};`,
+        `Minerado & Copiado · ${idioma}`));
+
+    // Linha de contexto para exibir na notificação
+    if (contexto?.titulo) {
+        aviso.appendChild(pmDiv(`font-size:9px;text-transform:uppercase;letter-spacing:1px;
+                                 opacity:0.55;margin-bottom:2px;color:#fff;font-style:normal;`,
+            `${contexto.titulo}${contexto.detalhe ? ' · ' + contexto.detalhe : ''}`));
+    }
+
+    aviso.appendChild(pmDiv(`font-weight:500;line-height:1.4;color:#fff;
+                             display:-webkit-box;-webkit-line-clamp:3;
+                             -webkit-box-orient:vertical;overflow:hidden;font-style:normal;`, texto));
 
     if (!document.getElementById('style-minerador-final')) {
         const style = document.createElement('style');
