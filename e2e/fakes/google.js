@@ -4,7 +4,10 @@
 // Guarda os documentos em memória, por caminho relativo a `.../documents/`,
 // no mesmo formato de campos que a API REST usa.
 
-const FIRESTORE_DOCS = /^https:\/\/firestore\.googleapis\.com\/v1\/projects\/[^/]+\/databases\/\(default\)\/documents/;
+const { responderJson } = require('./http');
+
+const RAIZ_DOS_DOCUMENTOS = 'projects/perpetualminer-4c219/databases/(default)/documents';
+const URL_DOS_DOCUMENTOS = `https://firestore.googleapis.com/v1/${RAIZ_DOS_DOCUMENTOS}`;
 
 function criarFakeGoogle() {
   const documentos = new Map();   // 'usuarios/uid/frases/123' → fields
@@ -30,7 +33,7 @@ function criarFakeGoogle() {
   }
 
   function tratarFirestore(route, req, url) {
-    const caminhoCompleto = decodeURIComponent(url.origin + url.pathname).replace(FIRESTORE_DOCS, '');
+    const caminhoCompleto = decodeURIComponent(url.origin + url.pathname).replace(URL_DOS_DOCUMENTOS, '');
     const metodo = req.method();
 
     if (caminhoCompleto === ':batchWrite' && metodo === 'POST') {
@@ -91,11 +94,11 @@ function criarFakeGoogle() {
 }
 
 function caminhoDoNome(nome) {
-  return nome.replace(/^projects\/[^/]+\/databases\/\(default\)\/documents\//, '');
+  return nome.replace(`${RAIZ_DOS_DOCUMENTOS}/`, '');
 }
 
 function nomeDoCaminho(caminho) {
-  return `projects/perpetualminer-4c219/databases/(default)/documents/${caminho}`;
+  return `${RAIZ_DOS_DOCUMENTOS}/${caminho}`;
 }
 
 function camposParaObjeto(fields) {
@@ -108,10 +111,6 @@ function camposParaObjeto(fields) {
     else if ('mapValue' in valor) obj[chave] = camposParaObjeto(valor.mapValue.fields);
   }
   return obj;
-}
-
-function responderJson(route, status, json) {
-  return route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(json) });
 }
 
 module.exports = { criarFakeGoogle };

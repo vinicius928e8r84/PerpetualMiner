@@ -167,10 +167,9 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 // ─── Storage ─────────────────────────────────────────────────────────────────
 
 // Toda leitura-modificação-escrita de `frases` e `pm_pending_sync` passa por esta
-// fila. Sem ela, salvamentos concorrentes (ex.: vários trechos de uma foto) leem
+// fila. Sem ela, gravações concorrentes (ex.: várias frases de uma foto) leem
 // o mesmo histórico e cada escrita apaga as frases gravadas pelas outras.
 let filaDeGravacao = Promise.resolve();
-let ultimoIdGerado = 0;
 
 function naFilaDeGravacao(tarefa) {
   const resultado = filaDeGravacao.then(tarefa);
@@ -178,10 +177,11 @@ function naFilaDeGravacao(tarefa) {
   return resultado;
 }
 
-// Chamado só dentro da fila: frases salvas no mesmo milissegundo ganham ids distintos.
-function proximoIdDeFrase() {
-  ultimoIdGerado = Math.max(Date.now(), ultimoIdGerado + 1);
-  return ultimoIdGerado;
+// Id maior que todos os do histórico: frases gravadas no mesmo milissegundo
+// (ou logo depois de o service worker reiniciar) nunca repetem id.
+function proximoIdDeFrase(historico) {
+  const maiorId = historico.reduce((maior, frase) => Math.max(maior, Number(frase.id) || 0), 0);
+  return Math.max(Date.now(), maiorId + 1);
 }
 
 function marcarPendenteDeSync(id) {
@@ -220,7 +220,7 @@ async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', e
   // descarte a frase do local storage enquanto o PATCH ainda está em voo.
   await naFilaDeGravacao(async () => {
     const data = await chromeGet({ frases: [], pm_pending_sync: [] });
-    novaFrase.id = proximoIdDeFrase();
+    novaFrase.id = proximoIdDeFrase(data.frases);
     const pending = new Set([...data.pm_pending_sync, String(novaFrase.id)]);
     await chromeSet({
       frases:          [novaFrase, ...data.frases],

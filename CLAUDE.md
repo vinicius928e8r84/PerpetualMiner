@@ -100,10 +100,12 @@ The extension is tested for real in Chromium via Playwright, from `e2e/` (its ow
 
 ```bash
 cd e2e
-npm ci                                   # once
-npx playwright install --with-deps chromium   # once (drop --with-deps on Windows/macOS)
-npm test                                 # launches Chromium with the unpacked extension and runs the suite
+npm ci           # once
+npm run setup    # once: downloads Playwright's Chromium
+npm test         # launches Chromium with the unpacked extension and runs the suite
 ```
+
+On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx playwright install-deps chromium`, once.
 
 - `e2e/fixtures.js` launches a fresh Chromium profile per test with the repo root loaded as an unpacked extension, fakes the network at the HTTP boundary and blocks every other external request. It gives tests `extensao` (id, service worker, `url()`, `lerStorage`/`gravarStorage`, `frases()`, `semearSessao()`), `fakes` and `paginas`.
 - `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`), Gemini, and Firestore/Google (in-memory documents, token refresh). `semearSessao()` writes an account session to storage, skipping the real login.

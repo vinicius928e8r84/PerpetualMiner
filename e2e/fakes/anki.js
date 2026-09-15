@@ -1,6 +1,8 @@
 'use strict';
 
-// Fake da Conexão com o Anki: responde na porta local do bridge (127.0.0.1:8766).
+const { responderJson } = require('./http');
+
+// Fake da Conexão com o Anki: responde na porta local dela (127.0.0.1:8766).
 // Por padrão está ligada, com vocabulário vazio. Um teste pode desligá-la
 // (conexão recusada, como quando o programa não está rodando) ou responder
 // uma rota específica com `responder`.
@@ -43,10 +45,6 @@ function criarFakeAnki() {
     definirVocabulario(lang, palavras) { estado.vocabulario[lang] = palavras; },
     responder(metodo, caminho, gerar) { estado.rotas.set(`${metodo} ${caminho}`, gerar); },
   };
-}
-
-function responderJson(route, status, json) {
-  return route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(json) });
 }
 
 module.exports = { criarFakeAnki };

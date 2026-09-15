@@ -1,12 +1,12 @@
 'use strict';
 
-// Bug grave de #9: salvar vários trechos em paralelo (como Minerar de uma foto
+// Bug grave de #9: minerar várias frases em paralelo (como Minerar de uma foto
 // faz) perdia frases numa corrida read-modify-write no service worker, e a tela
 // dizia "N salvos" mesmo assim.
 
 const { test, expect } = require('../fixtures');
 
-const TRECHOS = [
+const FRASES = [
   'The ferry left without a single passenger.',
   'She folded the map along its oldest crease.',
   'Rain drummed on the tin roof all night.',
@@ -22,7 +22,7 @@ test('várias frases mineradas ao mesmo tempo ficam todas no histórico, uma vez
   // Qualquer página da extensão fala com o service worker pela mesma mensagem que o content script usa.
   await page.goto(extensao.url('bookreader.html'));
 
-  const respostas = await page.evaluate(trechos => Promise.all(trechos.map(texto =>
+  const respostas = await page.evaluate(frases => Promise.all(frases.map(texto =>
     chrome.runtime.sendMessage({
       type: 'SALVAR_HISTORICO',
       texto,
@@ -30,33 +30,34 @@ test('várias frases mineradas ao mesmo tempo ficam todas no histórico, uma vez
       idioma: 'Inglês',
       contexto: { fonte: 'livro', titulo: 'Livro de teste', detalhe: '' },
     }),
-  )), TRECHOS);
+  )), FRASES);
 
   expect(respostas.every(r => r?.ok)).toBe(true);
-  const frases = await extensao.frases();
-  expect(frases.map(f => f.texto).sort()).toEqual([...TRECHOS].sort());
-  expect(new Set(frases.map(f => f.id)).size).toBe(TRECHOS.length);
-  await expect.poll(() => fakes.google.frasesDe('uid-paralelo').length).toBe(TRECHOS.length);
+  const gravadas = await extensao.frases();
+  expect(gravadas.map(f => f.texto).sort()).toEqual([...FRASES].sort());
+  expect(new Set(gravadas.map(f => f.id)).size).toBe(FRASES.length);
+  await expect.poll(() => fakes.google.frasesDe('uid-paralelo').length).toBe(FRASES.length);
 });
 
-test('a contagem que Minerar de uma foto mostra depois de salvar bate com o que foi gravado', async ({ page, extensao, fakes }) => {
+test('a contagem que Minerar de uma foto mostra depois de minerar bate com o que foi gravado', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ geminiApiKey: 'chave-de-teste' });
-  fakes.gemini.responderTrechos(TRECHOS);
+  fakes.gemini.responderFrases(FRASES);
   await page.goto(extensao.url('bookreader.html'));
   await expect(page.locator('#api-key-input')).toHaveValue('chave-de-teste');
 
   await page.locator('#file-input').setInputFiles({ name: 'pagina.png', mimeType: 'image/png', buffer: PNG_1X1 });
   await page.locator('#btn-analisar').click();
-  await expect(page.locator('.result-item')).toHaveCount(TRECHOS.length);
+  await expect(page.locator('.result-item')).toHaveCount(FRASES.length);
   await page.locator('#btn-salvar').click();
 
+  // O texto da tela ainda é o antigo ("N trechos salvos"); o redesign troca pela cópia do catálogo.
   const botao = page.locator('#btn-salvar');
   await expect(botao).toHaveText(/\d+ trechos? salvos?/);
   const contagemNaTela = Number((await botao.textContent()).match(/(\d+) trecho/)[1]);
   const gravadas = (await extensao.frases()).filter(f => f.streaming === 'livro');
 
-  expect(contagemNaTela).toBe(TRECHOS.length);
-  expect(gravadas.map(f => f.texto).sort()).toEqual([...TRECHOS].sort());
+  expect(contagemNaTela).toBe(FRASES.length);
+  expect(gravadas.map(f => f.texto).sort()).toEqual([...FRASES].sort());
 });
 
 const PNG_1X1 = Buffer.from(
