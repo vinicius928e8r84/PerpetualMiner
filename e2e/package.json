@@ -1,0 +1,12 @@
+{
+  "name": "perpetualminer-e2e",
+  "private": true,
+  "description": "Testes da extensão desempacotada no Chromium, dirigidos por Playwright.",
+  "scripts": {
+    "test": "playwright test",
+    "setup": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

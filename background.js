@@ -166,12 +166,45 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
 // ─── Storage ─────────────────────────────────────────────────────────────────
 
+// Toda leitura-modificação-escrita de `frases` e `pm_pending_sync` passa por esta
+// fila. Sem ela, gravações concorrentes (ex.: várias frases de uma foto) leem
+// o mesmo histórico e cada escrita apaga as frases gravadas pelas outras.
+let filaDeGravacao = Promise.resolve();
+
+function naFilaDeGravacao(tarefa) {
+  const resultado = filaDeGravacao.then(tarefa);
+  filaDeGravacao = resultado.catch(() => {});
+  return resultado;
+}
+
+// Id maior que todos os do histórico: frases gravadas no mesmo milissegundo
+// (ou logo depois de o service worker reiniciar) nunca repetem id.
+function proximoIdDeFrase(historico) {
+  const maiorId = historico.reduce((maior, frase) => Math.max(maior, Number(frase.id) || 0), 0);
+  return Math.max(Date.now(), maiorId + 1);
+}
+
+function marcarPendenteDeSync(id) {
+  return naFilaDeGravacao(async () => {
+    const { pm_pending_sync } = await chromeGet({ pm_pending_sync: [] });
+    await chromeSet({ pm_pending_sync: [...new Set([...pm_pending_sync, String(id)])] });
+  });
+}
+
+function desmarcarPendenteDeSync(id) {
+  return naFilaDeGravacao(async () => {
+    const { pm_pending_sync } = await chromeGet({ pm_pending_sync: [] });
+    const updated = pm_pending_sync.filter(pendente => pendente !== String(id));
+    if (updated.length !== pm_pending_sync.length) await chromeSet({ pm_pending_sync: updated });
+  });
+}
+
 async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', extras = {}) {
   const novaFrase = {
     texto,
     data:      new Date().toLocaleDateString('pt-BR'),
     streaming: origem,
-    id:        Date.now(),
+    id:        0,           // definido na fila de gravação
     idioma,
     ...(contexto && { contexto }),
     ...extras,
@@ -185,11 +218,14 @@ async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', e
   // Grava no storage local e marca como pendente de sync atomicamente.
   // Marcar como pendente ANTES do sync evita que carregarFrasesFirestore
   // descarte a frase do local storage enquanto o PATCH ainda está em voo.
-  const data = await chromeGet({ frases: [], pm_pending_sync: [] });
-  const pending = new Set([...data.pm_pending_sync, String(novaFrase.id)]);
-  await chromeSet({
-    frases:          [novaFrase, ...data.frases],
-    pm_pending_sync: [...pending],
+  await naFilaDeGravacao(async () => {
+    const data = await chromeGet({ frases: [], pm_pending_sync: [] });
+    novaFrase.id = proximoIdDeFrase(data.frases);
+    const pending = new Set([...data.pm_pending_sync, String(novaFrase.id)]);
+    await chromeSet({
+      frases:          [novaFrase, ...data.frases],
+      pm_pending_sync: [...pending],
+    });
   });
 
   // Se o usuário estiver logado, sincroniza com o Firestore em background
@@ -233,25 +269,15 @@ async function sincronizarComFirestore(frase) {
       const err = await res.json().catch(() => ({}));
       console.warn('[Firestore] Sync falhou:', err?.error?.message || res.status);
       // Marca para retry no próximo carregamento do painel
-      chromeGet({ pm_pending_sync: [] }).then(({ pm_pending_sync }) => {
-        const s = new Set([...pm_pending_sync, String(frase.id)]);
-        chrome.storage.local.set({ pm_pending_sync: [...s] });
-      });
+      marcarPendenteDeSync(frase.id);
       return;
     }
 
     // Sucesso: garante que não está na fila de pending
-    chromeGet({ pm_pending_sync: [] }).then(({ pm_pending_sync }) => {
-      const updated = pm_pending_sync.filter(id => id !== String(frase.id));
-      if (updated.length !== pm_pending_sync.length)
-        chrome.storage.local.set({ pm_pending_sync: updated });
-    });
+    desmarcarPendenteDeSync(frase.id);
   } catch {
     // Offline ou erro de rede: marca para retry
-    chromeGet({ pm_pending_sync: [] }).then(({ pm_pending_sync }) => {
-      const s = new Set([...pm_pending_sync, String(frase.id)]);
-      chrome.storage.local.set({ pm_pending_sync: [...s] });
-    });
+    marcarPendenteDeSync(frase.id);
   }
 }
 

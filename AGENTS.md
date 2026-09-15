@@ -8,6 +8,7 @@ This repository contains a Chrome extension plus a local Python bridge for Anki 
 - Vendor browser libraries live in `lib/firebase/`.
 - The local bridge lives in `bridge/`: `server.py` exposes the HTTP API, `run_bridge.py` starts it, and `install_autostart.py` / `uninstall_autostart.py` manage Windows startup.
 - Bridge tests are in `bridge/test_anki_launcher.py`; root-level tests cover panel and sync behavior.
+- `e2e/` holds the Playwright suite that runs the unpacked extension in Chromium, with its own `package.json` so the extension root stays free of Node files.
 - `bridge/runtime/` contains generated logs, queues, screenshots, job state, audio, images, and card output. Treat it as runtime data, not source.
 - Design notes are under `docs/superpowers/specs/`.
 
@@ -22,6 +23,7 @@ This repository contains a Chrome extension plus a local Python bridge for Anki 
 - `node test_auto_keyword.js`: run keyword extraction tests.
 - `node test_sync.js`: run local sync/tombstone tests.
 - `python test_panel_russian_style.py`: run Russian panel style tests.
+- `cd e2e && npm test`: run the Playwright suite against the unpacked extension in Chromium (first time: `npm ci` and `npm run setup`). See the Testing section of `CLAUDE.md`.
 
 ## Coding Style & Naming Conventions
 
@@ -29,7 +31,7 @@ Use 4-space indentation in Python and 2-space indentation in JavaScript/CSS/HTML
 
 ## Testing Guidelines
 
-Add or update focused tests when touching bridge launch, Anki repair, sync, or panel logic. Python tests use `unittest`; JavaScript tests are plain Node scripts. Name new tests by behavior, for example `test_anki_launch_omits_profile_when_last_loaded_matches_config`.
+Add or update focused tests when touching bridge launch, Anki repair, sync, or panel logic. Python tests use `unittest`; legacy JavaScript tests are plain Node scripts; new extension behavior is tested in `e2e/` through the real extension (assert what the person sees and what gets stored, not internal functions). Name new tests by behavior, for example `test_anki_launch_omits_profile_when_last_loaded_matches_config`.
 
 ## Commit & Pull Request Guidelines
 
