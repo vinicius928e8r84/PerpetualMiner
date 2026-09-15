@@ -63,7 +63,7 @@ Each entry in `chrome.storage.local["frases"]` (unlimited, newest first):
   texto:     string,
   data:      string,          // "dd/mm/yyyy" (pt-BR locale)
   streaming: string,          // platform name, 'web', 'pdf', or 'livro'
-  id:        number,          // Date.now()
+  id:        number,          // max(Date.now(), highest stored id + 1), assigned inside naFilaDeGravacao
   idioma:    string,          // 'Inglês' or 'Russo' (detected by Cyrillic check)
   contexto?: {                // optional; added for web/pdf/book sources
     fonte:   string,
@@ -93,6 +93,10 @@ Other storage keys:
 ### Write Serialization (background.js)
 
 Every read-modify-write of `frases` and `pm_pending_sync` in the service worker goes through `naFilaDeGravacao`, so concurrent saves (e.g. BookReader saving many passages at once) never overwrite each other. Phrase ids are assigned inside that queue and are unique even within the same millisecond.
+
+Not covered by the queue:
+- The auto-miner duplicate check reads `frases` outside the queue before calling `salvarFrase`, so two identical auto candidates arriving together can both be saved (a duplicate, never a lost phrase).
+- `painel.js` and `popup.js` rewrite `frases` directly, outside the service worker, so editing or deleting in the panel during a photo save can still lose phrases.
 
 ## Testing
 
