@@ -27,6 +27,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
 | `test_gemini.js` | Standalone Node.js script to list available Gemini models (not part of the extension) |
+| `e2e/` | Playwright suite that runs the unpacked extension in Chromium (own `package.json`; see Testing) |
 
 ### Data Flow
 
@@ -88,6 +89,29 @@ Other storage keys:
 ### Cross-Frame Communication
 
 `content.js` uses `window.postMessage()` to handle clipboard writes across iframes (avoids cross-origin restrictions). It listens for `COPIAR_PARA_CLIPBOARD` and `COPIAR_E_SALVAR` events and falls back to the parent frame when clipboard access fails.
+
+### Write Serialization (background.js)
+
+Every read-modify-write of `frases` and `pm_pending_sync` in the service worker goes through `naFilaDeGravacao`, so concurrent saves (e.g. BookReader saving many passages at once) never overwrite each other. Phrase ids are assigned inside that queue and are unique even within the same millisecond.
+
+## Testing
+
+The extension is tested for real in Chromium via Playwright, from `e2e/` (its own `package.json`, so the unpacked root stays free of Node files):
+
+```bash
+cd e2e
+npm ci                                   # once
+npx playwright install --with-deps chromium   # once (drop --with-deps on Windows/macOS)
+npm test                                 # launches Chromium with the unpacked extension and runs the suite
+```
+
+- `e2e/fixtures.js` launches a fresh Chromium profile per test with the repo root loaded as an unpacked extension, fakes the network at the HTTP boundary and blocks every other external request. It gives tests `extensao` (id, service worker, `url()`, `lerStorage`/`gravarStorage`, `frases()`, `semearSessao()`), `fakes` and `paginas`.
+- `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`), Gemini, and Firestore/Google (in-memory documents, token refresh). `semearSessao()` writes an account session to storage, skipping the real login.
+- `e2e/pages/`: local fixture pages where the content script is injected: `player.html` (fake player with a caption), `texto.html` (plain text to select), `sem-video.html`.
+- `HEADED=1 npm test` shows the browser.
+- Tests assert what the person sees and what ends up stored, never internal functions.
+
+The legacy tests keep running: `node test_sync.js`, `node test_bridge_panel.js`, `node test_auto_keyword.js`, `python test_panel_russian_style.py` and the bridge tests in `bridge/test_*.py`.
 
 ## Key Constants
 

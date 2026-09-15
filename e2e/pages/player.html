@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Player falso · Episódio de teste</title>
+  <style>
+    body { margin: 0; background: #111; font-family: sans-serif; }
+    .player { position: relative; width: 640px; height: 360px; margin: 24px; }
+    video { width: 640px; height: 360px; background: #000; display: block; }
+    .caption-window { position: absolute; left: 0; right: 0; bottom: 36px; text-align: center; }
+    .caption-text { color: #fff; font-size: 22px; background: rgba(0, 0, 0, .6); padding: 2px 8px; }
+  </style>
+</head>
+<body>
+  <!-- Player sem mídia de verdade: o content script só precisa de um <video>
+       visível e de uma legenda sobre ele. -->
+  <div class="player">
+    <video muted></video>
+    <div class="caption-window"><span class="caption-text" id="legenda">The quiet harbor woke before the gulls did.</span></div>
+  </div>
+</body>
+</html>

@@ -22,6 +22,7 @@ This repository contains a Chrome extension plus a local Python bridge for Anki 
 - `node test_auto_keyword.js`: run keyword extraction tests.
 - `node test_sync.js`: run local sync/tombstone tests.
 - `python test_panel_russian_style.py`: run Russian panel style tests.
+- `cd e2e && npm test`: run the Playwright suite against the unpacked extension in Chromium (first time: `npm ci` and `npx playwright install chromium`). See the Testing section of `CLAUDE.md`.
 
 ## Coding Style & Naming Conventions
 
