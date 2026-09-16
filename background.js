@@ -110,7 +110,7 @@ function registrarMenuDeContexto() {
   });
 }
 
-chrome.runtime.onInstalled.addListener(() => { registrarMenuDeContexto(); });
+chrome.runtime.onInstalled.addListener(() => registrarMenuDeContexto());
 
 chrome.contextMenus.onClicked.addListener(minerarSelecaoDoMenu);
 
@@ -322,7 +322,7 @@ function fraseParaFields(obj) {
 
 function isEnglishPhrase(frase) {
   const idioma = String(frase?.idioma || '').toLowerCase();
-  return idioma.includes('ingl') || idioma === 'en' || (!idioma && !/[\u0400-\u04FF]/.test(frase?.texto || ''));
+  return idioma.includes('ingl') || idioma === 'en' || (!idioma && detectarIdioma(frase?.texto || '') === 'Ingl\u00EAs');
 }
 
 function autoTokenizar(texto) {

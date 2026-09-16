@@ -4,10 +4,27 @@
 //
 // O catálogo é exercitado onde ele vai ser usado de verdade — numa página da
 // extensão e no service worker — e não como um módulo Node solto.
+//
+// Dois critérios de aceite do #24 são sobre o módulo, não sobre uma tela ("um
+// teste falha se um ID pedido não existir", "interpolação com números no formato
+// PT-BR"): nenhuma superfície mostra esses IDs ainda. Esses dois testes chamam
+// `textoDaVoz` direto, de dentro do Chromium. Os outros três afirmam o que fica
+// gravado e o que a extensão entrega ao Chrome.
+
+const fs = require('fs');
+const path = require('path');
 
 const { test, expect } = require('../fixtures');
 
 const FRASE_RUSSA = 'Я улыбаюсь каждое утро без причины.';
+
+/** Os IDs do catálogo como a spec da Voz os lista, lidos da própria spec. */
+function idsDaSpecDaVoz() {
+  const spec = fs.readFileSync(
+    path.join(__dirname, '..', '..', 'docs', 'design', 'voz', 'README.md'), 'utf8');
+  const catalogo = spec.slice(spec.indexOf('## 3. Catálogo de estados-chave'));
+  return [...catalogo.matchAll(/^\| ([A-Z]{3}-\d{2}) \|/gm)].map(m => m[1]);
+}
 
 /** Percorre o catálogo e pede cada texto, com 2 em todo valor de modelo. */
 const PEDIR_TODOS_OS_TEXTOS = () => {
@@ -32,9 +49,12 @@ test('todo ID do catálogo tem texto, e um ID que não existe falha na hora', as
 
   const pedidos = await page.evaluate(PEDIR_TODOS_OS_TEXTOS);
 
-  // O catálogo da Voz tem 159 estados-chave (docs/design/voz/README.md).
-  const ids = new Set(pedidos.map(p => p.id.split('.')[0]));
-  expect(ids.size).toBe(159);
+  // O módulo tem exatamente os estados que a spec da Voz lista — nem um a menos
+  // (uma tela ficaria sem texto), nem um inventado.
+  const naSpec = idsDaSpecDaVoz();
+  const noModulo = [...new Set(pedidos.map(p => p.id.split('.')[0]))];
+  expect(naSpec.length).toBeGreaterThan(0);
+  expect(noModulo.sort()).toEqual([...naSpec].sort());
 
   // Nada volta com um modelo por preencher, e só o silêncio deliberado volta vazio.
   for (const { id, modelo, resultado } of pedidos) {
@@ -83,6 +103,20 @@ test('o content script também detecta o idioma pela base compartilhada', async 
   await page.keyboard.press('Alt+KeyE');
 
   await expect.poll(async () => (await extensao.frases()).map(f => f.idioma)).toEqual(['Russo']);
+});
+
+test('no painel, a frase em cirílico sai marcada como russa e a inglesa não', async ({ page, extensao }) => {
+  await extensao.gravarStorage({
+    frases: [
+      { id: 2, texto: FRASE_RUSSA, data: '15/09/2026', streaming: 'web', idioma: 'Russo' },
+      { id: 1, texto: 'The quiet harbor woke before the gulls did.', data: '15/09/2026', streaming: 'web', idioma: 'Inglês' },
+    ],
+  });
+  await page.goto(extensao.url('painel.html'));
+
+  await expect(page.locator('.phrase-item')).toHaveCount(2);
+  await expect(page.locator('.phrase-item').filter({ hasText: 'улыбаюсь' })).toHaveClass(/frase-ru/);
+  await expect(page.locator('.phrase-item').filter({ hasText: 'quiet harbor' })).not.toHaveClass(/frase-ru/);
 });
 
 test('o menu de contexto mostra MIN-08, lido do catálogo', async ({ extensao }) => {

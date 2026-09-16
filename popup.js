@@ -1,7 +1,7 @@
 'use strict';
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
-// deste arquivo, pelo popup.html: o catálogo fica em `PerpetualMiner.textoDaVoz`.
+// deste arquivo, pelo popup.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
 const { detectarIdioma } = PerpetualMiner;
 
 // ─── Estado ───────────────────────────────────────────────────────────────────

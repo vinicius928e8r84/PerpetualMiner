@@ -1,7 +1,7 @@
 // content.js
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
-// deste arquivo, pelo manifest: o catálogo fica em `PerpetualMiner.textoDaVoz`.
+// deste arquivo, pelo manifest: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
 const { detectarIdioma } = PerpetualMiner;
 
 const ATALHO_TECLA = 'KeyS';

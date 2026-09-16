@@ -75,6 +75,11 @@ silence (`POP-01`, `POP-05`, `PAI-16`…) are `''`.
 Money (`BRG-03`, `BRG-26`) takes an already-formatted `{valor}`: how many decimals to show is an
 Advanced preference that belongs to the panel, not to the catalog.
 
+The content script loads the whole catalog into every frame even though it only needs
+`detectarIdioma` today. That is deliberate: the overlay step rebuilds its feedback component from
+`MIN-01`…`MIN-11`, and the design spec has the content script reading its copy from the catalog like
+every other surface.
+
 ### Firebase / Firestore Sync
 
 Phrases are synced to Firestore under `usuarios/{uid}/frases/{frase.id}` when the user is logged in. Both `background.js` and `painel.js` use the **Firestore REST API directly** (no SDK) to avoid CSP violations in MV3.

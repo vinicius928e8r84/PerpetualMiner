@@ -1,7 +1,7 @@
 'use strict';
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
-// deste arquivo, pelo bookreader.html: o catálogo fica em `PerpetualMiner.textoDaVoz`.
+// deste arquivo, pelo bookreader.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
 const { detectarIdioma } = PerpetualMiner;
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
