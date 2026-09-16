@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- Fundo dark arredondado -->
-  <rect width="128" height="128" rx="22" fill="#0c0c0c"/>
-  <!-- Raio (lightning bolt) em Cyan Elétrico -->
-  <path d="M76 12 L40 68 H60 L52 116 L88 60 H68 Z" fill="#00ffff"/>
-</svg>

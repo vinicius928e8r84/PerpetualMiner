@@ -12,8 +12,8 @@ body {
 /* ─── Header ─────────────────────────────────────────────────────────────── */
 
 .popup-header {
-  background: #0d0d0f;
-  border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+  background: var(--veio-surface);
+  border-bottom: 1px solid var(--veio-border);
   padding: 13px 14px 11px;
   display: flex;
   align-items: center;
@@ -24,16 +24,11 @@ body {
 
 .popup-logo-text {
   font-size: 1.05rem;
-  font-weight: 300;
-  letter-spacing: 0.02em;
-  color: #e2e8f0;
 }
-.popup-logo-text b { font-weight: 700; color: #00ffff; }
 
-.popup-subtitle {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.35);
-  margin-top: 2px;
+.veio-marca {
+  flex: none;
+  border-radius: var(--veio-raio-icone);
 }
 
 /* ─── Body ───────────────────────────────────────────────────────────────── */

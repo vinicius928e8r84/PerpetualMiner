@@ -20,18 +20,49 @@ const { criarFakeGoogle } = require('./fakes/google');
 
 const RAIZ_DA_EXTENSAO = path.resolve(__dirname, '..');
 const PASTA_DAS_PAGINAS = path.join(__dirname, 'pages');
+const PASTA_DA_VITRINE = path.join(__dirname, 'vitrine');
+
+const TIPOS = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.woff2': 'font/woff2',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+};
+
+/**
+ * O arquivo que responde por um caminho, ou null.
+ *
+ * As páginas-fixture e a vitrine vêm pelo nome; `/veio/…` sai da própria
+ * extensão, para a vitrine carregar os mesmos tokens e as mesmas fontes
+ * empacotadas que as páginas da extensão carregam.
+ */
+function arquivoDoPedido(caminhoPedido) {
+  const limpo = path.posix.normalize(decodeURIComponent(caminhoPedido));
+
+  if (limpo.startsWith('/veio/')) {
+    const alvo = path.join(RAIZ_DA_EXTENSAO, limpo.slice(1));
+    return alvo.startsWith(path.join(RAIZ_DA_EXTENSAO, 'veio') + path.sep) ? alvo : null;
+  }
+
+  const nome = path.basename(limpo);
+  if (!nome.endsWith('.html')) return null;
+  return [PASTA_DAS_PAGINAS, PASTA_DA_VITRINE]
+    .map(pasta => path.join(pasta, nome))
+    .find(fs.existsSync) || null;
+}
 
 const test = base.extend({
   // Servidor das páginas-fixture (player falso, página com texto, página sem vídeo).
   paginas: [async ({}, use) => {
     const servidor = http.createServer((req, res) => {
-      const nome = path.basename(new URL(req.url, 'http://x').pathname);
-      const arquivo = path.join(PASTA_DAS_PAGINAS, nome);
-      if (!nome.endsWith('.html') || !fs.existsSync(arquivo)) {
+      const arquivo = arquivoDoPedido(new URL(req.url, 'http://x').pathname);
+      if (!arquivo || !fs.existsSync(arquivo)) {
         res.writeHead(404).end();
         return;
       }
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      const tipo = TIPOS[path.extname(arquivo)] || 'application/octet-stream';
+      res.writeHead(200, { 'Content-Type': tipo });
       fs.createReadStream(arquivo).pipe(res);
     });
     await new Promise(resolve => servidor.listen(0, '127.0.0.1', resolve));

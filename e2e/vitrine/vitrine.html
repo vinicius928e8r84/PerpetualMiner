@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vitrine da Base Veio</title>
+
+  <!-- O mesmo arquivo de tokens que as páginas da extensão carregam. -->
+  <link rel="stylesheet" href="/veio/tokens.css">
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 28px 20px 64px;
+      background: #0B0B0C;
+      font-family: var(--veio-fonte-ui);
+      color: #F2EEE6;
+    }
+
+    .cabecalho {
+      max-width: 1120px;
+      margin: 0 auto 24px;
+    }
+
+    .cabecalho h1 {
+      margin: 0 0 6px;
+      font-size: var(--veio-tam-display);
+      font-weight: var(--veio-peso-display);
+      letter-spacing: var(--veio-tracking-display);
+    }
+
+    .cabecalho p {
+      margin: 0;
+      font-size: var(--veio-tam-corpo);
+      color: #A89F90;
+      max-width: 62ch;
+    }
+
+    .temas {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+      gap: 20px;
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    /* Cada coluna é um tema inteiro: tudo dentro dela lê os tokens dela. */
+    .tema {
+      min-width: 0;
+      padding: 22px;
+      border: 1px solid var(--veio-border);
+      border-radius: var(--veio-raio-painel);
+      background: var(--veio-bg);
+      color: var(--veio-text);
+      font-family: var(--veio-fonte-ui);
+    }
+
+    .tema-nome {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .tema-nome h2 {
+      margin: 0;
+      font-size: var(--veio-tam-pagina);
+      font-weight: var(--veio-peso-titulo);
+    }
+
+    .tema-nome span {
+      font-family: var(--veio-fonte-mono);
+      font-size: var(--veio-tam-legenda);
+      color: var(--veio-muted);
+    }
+
+    .secao {
+      margin-top: 22px;
+    }
+
+    .secao > h3 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 12px;
+      font-size: var(--veio-tam-legenda);
+      font-weight: var(--veio-peso-legenda);
+      letter-spacing: var(--veio-tracking-legenda);
+      text-transform: uppercase;
+      color: var(--veio-muted);
+    }
+
+    .secao > h3::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      flex: none;
+      border-radius: 2px;
+      background: var(--veio-accent);
+      transform: rotate(45deg);
+    }
+
+    .tokens {
+      display: grid;
+      gap: 6px;
+    }
+
+    .token {
+      display: grid;
+      grid-template-columns: 26px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 10px;
+      border: 1px solid var(--veio-border);
+      border-radius: var(--veio-raio-card);
+      background: var(--veio-surface);
+    }
+
+    .amostra {
+      width: 22px;
+      height: 22px;
+      border: 1px solid var(--veio-border-strong);
+      border-radius: 7px;
+    }
+
+    .token code,
+    .token b {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-family: var(--veio-fonte-mono);
+      font-size: var(--veio-tam-legenda);
+      font-weight: 400;
+    }
+
+    .token b {
+      font-weight: var(--veio-peso-num);
+      color: var(--veio-muted);
+      text-align: right;
+    }
+
+    .escala {
+      display: grid;
+      gap: 10px;
+    }
+
+    .linha {
+      display: grid;
+      grid-template-columns: minmax(0, 116px) minmax(0, 1fr);
+      align-items: baseline;
+      gap: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--veio-border);
+    }
+
+    .linha > i {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-family: var(--veio-fonte-mono);
+      font-style: normal;
+      font-size: var(--veio-tam-legenda);
+      line-height: 1.6;
+      color: var(--veio-muted);
+    }
+
+    .linha > i b {
+      display: block;
+      font-weight: var(--veio-peso-num);
+      color: var(--veio-text);
+    }
+
+    .linha > span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .t-display { font-size: var(--veio-tam-display); font-weight: var(--veio-peso-display); letter-spacing: var(--veio-tracking-display); }
+    .t-hero    { font-size: var(--veio-tam-hero); font-weight: var(--veio-peso-display); }
+    .t-pagina  { font-size: var(--veio-tam-pagina); font-weight: var(--veio-peso-titulo); }
+    .t-modal   { font-size: var(--veio-tam-modal); font-weight: var(--veio-peso-titulo); }
+    .t-card    { font-size: var(--veio-tam-card); font-weight: var(--veio-peso-titulo); }
+    .t-frase   { font-family: var(--veio-fonte-frase); font-size: var(--veio-tam-frase); line-height: var(--veio-altura-frase); }
+    .t-corpo   { font-size: var(--veio-tam-corpo); }
+    .t-legenda { font-size: var(--veio-tam-legenda); font-weight: var(--veio-peso-legenda); letter-spacing: var(--veio-tracking-legenda); text-transform: uppercase; color: var(--veio-muted); }
+    .t-num     { font-family: var(--veio-fonte-mono); font-weight: var(--veio-peso-num); }
+
+    .cirilico {
+      padding: 14px 16px;
+      border: 1px solid var(--veio-border);
+      border-radius: var(--veio-raio-card);
+      background: var(--veio-surface);
+    }
+
+    .cirilico p {
+      margin: 0 0 8px;
+      font-family: var(--veio-fonte-frase);
+      font-size: var(--veio-tam-frase);
+      line-height: var(--veio-altura-frase);
+      overflow-wrap: anywhere;
+    }
+
+    .cirilico p:last-child {
+      margin: 0;
+    }
+
+    .cirilico .mono {
+      font-family: var(--veio-fonte-mono);
+      font-size: var(--veio-tam-corpo);
+      color: var(--veio-muted);
+    }
+
+    .marca {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border: 1px solid var(--veio-border);
+      border-radius: var(--veio-raio-card);
+      background: var(--veio-surface);
+    }
+
+    .marca svg {
+      flex: none;
+      border-radius: var(--veio-raio-icone);
+    }
+
+    .marca .veio-nome {
+      font-size: 22px;
+    }
+
+    .raios {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .raios div {
+      display: grid;
+      place-items: center;
+      width: 86px;
+      height: 54px;
+      border: 1px solid var(--veio-border-strong);
+      background: var(--veio-surface-2);
+      font-family: var(--veio-fonte-mono);
+      font-size: var(--veio-tam-legenda);
+      color: var(--veio-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="cabecalho">
+    <h1>Vitrine da Base Veio</h1>
+    <p>
+      Os tokens, a escala de tipo e as fontes empacotadas, nos dois temas, como a extensão
+      os carrega. Nada aqui vem do Google Fonts: as duas famílias são servidas de
+      <code>veio/fontes/</code>. O tema escuro é o padrão da extensão; os tokens do claro já
+      existem, e o seletor fica para outro passo.
+    </p>
+  </header>
+
+  <main class="temas">
+
+    <!-- ESCURO (padrão) ─────────────────────────────────────────────── -->
+    <section class="tema" data-tema="escuro">
+      <div class="tema-nome">
+        <h2>Escuro</h2>
+        <span>padrão</span>
+      </div>
+
+      <div class="secao">
+        <h3>Marca</h3>
+        <div class="marca">
+          <svg width="44" height="44" viewBox="0 0 128 128" role="img" aria-label="PerpetualMiner">
+            <rect width="128" height="128" rx="28" fill="#1B1A17"/>
+            <polygon points="64,14 64,114 38,92 38,36" fill="#FFD27A"/>
+            <polygon points="64,14 90,36 90,92 64,114" fill="#D9901A"/>
+            <polygon points="64,14 90,36 64,46 38,36" fill="#FFE3A6"/>
+            <rect x="30" y="68" width="68" height="10" fill="#1B1A17"/>
+          </svg>
+          <span class="veio-nome">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>
+        </div>
+      </div>
+
+      <div class="secao">
+        <h3>Tokens de cor</h3>
+        <div class="tokens" data-tokens></div>
+      </div>
+
+      <div class="secao">
+        <h3>Escala de tipo</h3>
+        <div class="escala" data-escala></div>
+      </div>
+
+      <div class="secao">
+        <h3>Raios</h3>
+        <div class="raios" data-raios></div>
+      </div>
+
+      <div class="secao">
+        <h3>Cirílico</h3>
+        <div class="cirilico">
+          <p>Тихая гавань проснулась раньше чаек.</p>
+          <p class="mono">Mineração automática · Русский: 9 из 15 сегодня</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CLARO (pronto, sem seletor) ─────────────────────────────────── -->
+    <section class="tema" data-tema="claro">
+      <div class="tema-nome">
+        <h2>Claro</h2>
+        <span>pronto, sem seletor</span>
+      </div>
+
+      <div class="secao">
+        <h3>Marca</h3>
+        <div class="marca">
+          <svg width="44" height="44" viewBox="0 0 128 128" role="img" aria-label="PerpetualMiner">
+            <rect width="128" height="128" rx="28" fill="#1B1A17"/>
+            <polygon points="64,14 64,114 38,92 38,36" fill="#FFD27A"/>
+            <polygon points="64,14 90,36 90,92 64,114" fill="#D9901A"/>
+            <polygon points="64,14 90,36 64,46 38,36" fill="#FFE3A6"/>
+            <rect x="30" y="68" width="68" height="10" fill="#1B1A17"/>
+          </svg>
+          <span class="veio-nome">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>
+        </div>
+      </div>
+
+      <div class="secao">
+        <h3>Tokens de cor</h3>
+        <div class="tokens" data-tokens></div>
+      </div>
+
+      <div class="secao">
+        <h3>Escala de tipo</h3>
+        <div class="escala" data-escala></div>
+      </div>
+
+      <div class="secao">
+        <h3>Raios</h3>
+        <div class="raios" data-raios></div>
+      </div>
+
+      <div class="secao">
+        <h3>Cirílico</h3>
+        <div class="cirilico">
+          <p>Тихая гавань проснулась раньше чаек.</p>
+          <p class="mono">Mineração automática · Русский: 9 из 15 сегодня</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    'use strict';
+
+    // Os nomes vêm da tabela de tokens; os valores são lidos do próprio tema,
+    // para a vitrine nunca discordar do arquivo de tokens.
+    const TOKENS_DE_COR = [
+      '--veio-bg', '--veio-surface', '--veio-surface-2', '--veio-border', '--veio-border-strong',
+      '--veio-text', '--veio-muted', '--veio-accent', '--veio-accent-ink', '--veio-accent-text',
+      '--veio-kw-bg', '--veio-kw-fg', '--veio-success', '--veio-danger', '--veio-info',
+    ];
+
+    const ESCALA = [
+      ['display', '32 / 800', 't-display', 'Minerar frases'],
+      ['hero', '24 / 800', 't-hero', 'Boas-vindas'],
+      ['página', '22 / 700', 't-pagina', 'Frases mineradas'],
+      ['modal', '20 / 700', 't-modal', 'Apagar 12 frases?'],
+      ['card', '15 / 700', 't-card', 'Conexão com o Anki'],
+      ['frase', '15 / 400', 't-frase', 'Тихая гавань проснулась раньше чаек.'],
+      ['corpo', '13,5 / 400', 't-corpo', 'A frase fica no histórico com o Contexto dela.'],
+      ['legenda', '11,5 / 800', 't-legenda', 'Ontem'],
+      ['número', 'mono 600', 't-num', '12 de 20 · US$ 0,42'],
+    ];
+
+    const RAIOS = [
+      ['--veio-raio-icone', '10'],
+      ['--veio-raio-input', '12'],
+      ['--veio-raio-card', '14'],
+      ['--veio-raio-painel', '20'],
+      ['--veio-raio-selecao', '22'],
+      ['--veio-raio-pilula', '999'],
+    ];
+
+    const NOMES_DA_ESCALA = {
+      'display': 'Display', 'hero': 'Hero', 'página': 'Página', 'modal': 'Modal',
+      'card': 'Card', 'frase': 'Frase', 'corpo': 'Corpo', 'legenda': 'Legenda', 'número': 'Número',
+    };
+
+    for (const tema of document.querySelectorAll('[data-tema]')) {
+      const estilo = getComputedStyle(tema);
+
+      const tokens = tema.querySelector('[data-tokens]');
+      for (const nome of TOKENS_DE_COR) {
+        const valor = estilo.getPropertyValue(nome).trim();
+        const linha = document.createElement('div');
+        linha.className = 'token';
+
+        const amostra = document.createElement('span');
+        amostra.className = 'amostra';
+        amostra.style.background = valor;
+
+        const codigo = document.createElement('code');
+        codigo.textContent = nome;
+
+        const lido = document.createElement('b');
+        lido.textContent = valor;
+
+        linha.append(amostra, codigo, lido);
+        tokens.append(linha);
+      }
+
+      const escala = tema.querySelector('[data-escala]');
+      for (const [papel, medida, classe, exemplo] of ESCALA) {
+        const linha = document.createElement('div');
+        linha.className = 'linha';
+
+        const rotulo = document.createElement('i');
+        const nome = document.createElement('b');
+        nome.textContent = NOMES_DA_ESCALA[papel];
+        rotulo.append(nome, medida);
+
+        const amostra = document.createElement('span');
+        amostra.className = classe;
+        amostra.textContent = exemplo;
+
+        linha.append(rotulo, amostra);
+        escala.append(linha);
+      }
+
+      const raios = tema.querySelector('[data-raios]');
+      for (const [nome, valor] of RAIOS) {
+        const caixa = document.createElement('div');
+        caixa.style.borderRadius = `var(${nome})`;
+        caixa.textContent = valor;
+        raios.append(caixa);
+      }
+    }
+  </script>
+
+</body>
+</html>

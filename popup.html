@@ -3,18 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <title>PerpetualMiner</title>
+  <link rel="stylesheet" href="veio/tokens.css">
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
 
   <div class="popup-header">
-    <svg width="30" height="30" viewBox="0 0 128 128" fill="none">
-      <rect width="128" height="128" rx="22" fill="#0c0c0c"/>
-      <path d="M76 12 L40 68 H60 L52 116 L88 60 H68 Z" fill="#00ffff"/>
+    <svg class="veio-marca" width="30" height="30" viewBox="0 0 128 128" role="img" aria-label="PerpetualMiner">
+      <rect width="128" height="128" rx="28" fill="#1B1A17"/>
+      <polygon points="64,14 64,114 38,92 38,36" fill="#FFD27A"/>
+      <polygon points="64,14 90,36 90,92 64,114" fill="#D9901A"/>
+      <polygon points="64,14 90,36 64,46 38,36" fill="#FFE3A6"/>
+      <rect x="30" y="68" width="68" height="10" fill="#1B1A17"/>
     </svg>
     <div class="header-info">
-      <div class="popup-logo-text"><b>Perpetual</b>Miner</div>
-      <div class="popup-subtitle">Minerador de legendas</div>
+      <div class="popup-logo-text veio-nome" aria-hidden="true">Perpetual<b>Miner</b><span class="veio-cursor"></span></div>
     </div>
   </div>
 

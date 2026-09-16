@@ -30,6 +30,10 @@ body {
   gap: 12px;
   padding: 2rem 1.75rem 1.25rem;
 }
+.veio-marca {
+  flex: none;
+  border-radius: var(--veio-raio-icone);
+}
 .logo-title {
   font-size: 1.1rem;
   font-weight: 700;

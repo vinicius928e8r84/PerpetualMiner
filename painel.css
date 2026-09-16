@@ -32,10 +32,12 @@ body {
 }
 .logo-text {
   font-size: 1.5rem;
-  font-weight: 300;
-  letter-spacing: 0.02em;
 }
-.logo-text b { font-weight: 700; }
+
+.veio-marca {
+  flex: none;
+  border-radius: var(--veio-raio-icone);
+}
 
 .sidebar-user {
   padding: 0 1.75rem 1.25rem;
