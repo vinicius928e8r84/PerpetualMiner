@@ -25,26 +25,38 @@ const lerRecurso = (extensao, caminho) =>
     return Array.from(new Uint8Array(await resposta.arrayBuffer()));
   }, extensao.url(caminho));
 
-/** Largura do texto em duas famílias, mais o estado de carregamento da fonte. */
-const medirTexto = (page, familia, texto) =>
-  page.evaluate(async ([familia, texto]) => {
-    document.fonts.load(`400 40px "${familia}"`, texto);
+/**
+ * Como a página renderiza este texto com a fonte que ela própria usa.
+ *
+ * Mede um trecho que herda o estilo da página, sem forçar família nenhuma, e
+ * compara com o mesmo trecho forçado à fonte do sistema: se as duas larguras
+ * batem, a página caiu numa fonte substituta.
+ */
+const comoAPaginaRenderiza = (page, texto) =>
+  page.evaluate(async texto => {
+    // O subset só é buscado quando alguém pede este texto nesta família.
+    await document.fonts.load(`400 40px ${getComputedStyle(document.body).fontFamily}`, texto);
     await document.fonts.ready;
-    const medir = pilha => {
+
+    const medir = estiloExtra => {
       const span = document.createElement('span');
       span.textContent = texto;
-      span.style.cssText = `position:absolute;visibility:hidden;white-space:pre;font:400 40px ${pilha}`;
+      span.style.cssText = `position:absolute;visibility:hidden;white-space:pre;font-size:40px;${estiloExtra}`;
       document.body.appendChild(span);
-      const largura = span.getBoundingClientRect().width;
+      const { width } = span.getBoundingClientRect();
+      const familia = getComputedStyle(span).fontFamily;
       span.remove();
-      return largura;
+      return { width, familia };
     };
+
+    const daPagina = medir('');
     return {
-      carregada: document.fonts.check(`400 40px "${familia}"`, texto),
-      comAFonte: medir(`"${familia}", monospace`),
-      semAFonte: medir('monospace'),
+      familia: daPagina.familia,
+      larguraDaPagina: daPagina.width,
+      larguraDoSistema: medir('font-family:system-ui,sans-serif').width,
+      carregada: document.fonts.check('400 40px Manrope', texto),
     };
-  }, [familia, texto]);
+  }, texto);
 
 test('o manifest e a toolbar usam os PNG da Veio', async ({ extensao }) => {
   const manifesto = await extensao.serviceWorker.evaluate(() => chrome.runtime.getManifest());
@@ -65,14 +77,19 @@ test('o manifest e a toolbar usam os PNG da Veio', async ({ extensao }) => {
   }
 });
 
-test('o ícone legado do raio ciano não está mais na extensão', async ({ extensao }) => {
+test('a marca das páginas é a da Veio, e o icon.svg legado saiu', async ({ page, extensao }) => {
   expect(fs.existsSync(path.join(RAIZ, 'icon.svg'))).toBe(false);
+  expect(await lerRecurso(extensao, 'veio/icones/icone.svg')).not.toHaveLength(0);
 
   for (const pagina of PAGINAS_DA_EXTENSAO) {
-    const html = fs.readFileSync(path.join(RAIZ, pagina), 'utf8');
-    expect(html.toLowerCase()).not.toContain('#00ffff');
+    await page.goto(extensao.url(pagina));
+    const marca = page.locator('img.veio-marca');
+    await expect(marca).toBeVisible();
+    await expect(marca).toHaveJSProperty('complete', true);
+    expect(await marca.evaluate(img => img.naturalWidth)).toBeGreaterThan(0);
+    expect(new URL(await marca.getAttribute('src'), extensao.url('')).pathname)
+      .toBe('/veio/icones/icone.svg');
   }
-  expect(await lerRecurso(extensao, 'veio/icones/icone.svg')).not.toHaveLength(0);
 });
 
 for (const pagina of PAGINAS_DA_EXTENSAO) {
@@ -115,15 +132,32 @@ for (const pagina of PAGINAS_DA_EXTENSAO) {
   });
 }
 
-test('uma frase em russo renderiza em Manrope, sem fonte substituta', async ({ page, extensao }) => {
+for (const pagina of PAGINAS_DA_EXTENSAO) {
+  test(`em ${pagina}, uma frase em russo renderiza em Manrope, sem fonte substituta`, async ({ page, extensao }) => {
+    await page.goto(extensao.url(pagina));
+
+    const russo = await comoAPaginaRenderiza(page, FRASE_RUSSA);
+    expect(russo.familia).toContain('Manrope');
+    expect(russo.carregada).toBe(true);
+    expect(Math.abs(russo.larguraDaPagina - russo.larguraDoSistema)).toBeGreaterThan(1);
+
+    // A mesma frase em latim, para a fonte da página não ser Manrope só no
+    // cirílico (ou vice-versa).
+    const latim = await comoAPaginaRenderiza(page, 'A frase fica no histórico');
+    expect(Math.abs(latim.larguraDaPagina - latim.larguraDoSistema)).toBeGreaterThan(1);
+  });
+}
+
+test('os números e atalhos têm JetBrains Mono empacotada, com cirílico', async ({ page, extensao }) => {
   await page.goto(extensao.url('painel.html'));
 
-  const manrope = await medirTexto(page, 'Manrope', FRASE_RUSSA);
-  expect(manrope.carregada).toBe(true);
-  expect(Math.abs(manrope.comAFonte - manrope.semAFonte)).toBeGreaterThan(1);
+  const carregada = await page.evaluate(async () => {
+    document.fonts.load('400 40px "JetBrains Mono"', '12 из 20');
+    await document.fonts.ready;
+    return document.fonts.check('400 40px "JetBrains Mono"', '12 из 20');
+  });
 
-  const mono = await medirTexto(page, 'JetBrains Mono', '12 из 20');
-  expect(mono.carregada).toBe(true);
+  expect(carregada).toBe(true);
 });
 
 test('os tokens do tema claro existem e trocam a página inteira', async ({ page, extensao }) => {
@@ -161,6 +195,33 @@ test('com movimento reduzido, o cursor fica parado', async ({ page, extensao }) 
   await expect(cursor).toHaveCSS('animation-name', 'none');
 });
 
+for (const pagina of PAGINAS_DA_EXTENSAO) {
+  test(`com movimento reduzido, nada pulsa nem pisca em ${pagina}`, async ({ page, extensao }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto(extensao.url(pagina));
+
+    const emMovimento = await page.evaluate(() => [...document.querySelectorAll('*')]
+      .filter(no => {
+        const estilo = getComputedStyle(no);
+        return estilo.animationName !== 'none' && parseFloat(estilo.animationDuration) > 0.05;
+      })
+      .map(no => `${no.tagName.toLowerCase()}.${no.className}`));
+
+    expect(emMovimento).toEqual([]);
+  });
+}
+
+test('o teclado vê onde está: os controles do popup mostram foco', async ({ page, extensao }) => {
+  await page.goto(extensao.url('popup.html'));
+
+  const botao = page.locator('#btnIrPainel');
+  await botao.focus();
+
+  await expect(botao).toHaveCSS('outline-color', 'rgb(245, 184, 61)');
+  await expect(botao).toHaveCSS('outline-style', 'solid');
+  await expect(botao).toHaveCSS('outline-width', '2px');
+});
+
 test('a vitrine mostra os tokens e a escala de tipo nos dois temas, com uma frase em russo', async ({ page, paginas }) => {
   await page.goto(paginas.url('vitrine.html'));
 
@@ -180,8 +241,9 @@ test('a vitrine mostra os tokens e a escala de tipo nos dois temas, com uma fras
     .map(no => getComputedStyle(no).backgroundColor));
   expect(new Set(fundos).size).toBe(2);
 
-  const manrope = await medirTexto(page, 'Manrope', FRASE_RUSSA);
-  expect(manrope.carregada).toBe(true);
+  const russo = await comoAPaginaRenderiza(page, FRASE_RUSSA);
+  expect(russo.familia).toContain('Manrope');
+  expect(russo.carregada).toBe(true);
 });
 
 test('a vitrine também não pede nada ao Google Fonts', async ({ page, paginas }) => {

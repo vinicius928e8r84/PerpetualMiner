@@ -3,7 +3,7 @@
 body {
   width: 340px;
   min-height: 180px;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--veio-fonte-ui);
   background: #111214;
   color: #e2e8f0;
   overflow-x: hidden;

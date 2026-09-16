@@ -53,7 +53,8 @@ function arquivoDoPedido(caminhoPedido) {
 }
 
 const test = base.extend({
-  // Servidor das páginas-fixture (player falso, página com texto, página sem vídeo).
+  // Servidor das páginas-fixture (player falso, página com texto, página sem
+  // vídeo), da vitrine da Base Veio e dos arquivos de `veio/`.
   paginas: [async ({}, use) => {
     const servidor = http.createServer((req, res) => {
       const arquivo = arquivoDoPedido(new URL(req.url, 'http://x').pathname);

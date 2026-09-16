@@ -14,9 +14,9 @@
     body {
       margin: 0;
       padding: 28px 20px 64px;
-      background: #0B0B0C;
+      background: var(--veio-bg);
       font-family: var(--veio-fonte-ui);
-      color: #F2EEE6;
+      color: var(--veio-text);
     }
 
     .cabecalho {
@@ -34,7 +34,7 @@
     .cabecalho p {
       margin: 0;
       font-size: var(--veio-tam-corpo);
-      color: #A89F90;
+      color: var(--veio-muted);
       max-width: 62ch;
     }
 
@@ -220,7 +220,7 @@
       background: var(--veio-surface);
     }
 
-    .marca svg {
+    .marca img {
       flex: none;
       border-radius: var(--veio-raio-icone);
     }
@@ -272,13 +272,7 @@
       <div class="secao">
         <h3>Marca</h3>
         <div class="marca">
-          <svg width="44" height="44" viewBox="0 0 128 128" role="img" aria-label="PerpetualMiner">
-            <rect width="128" height="128" rx="28" fill="#1B1A17"/>
-            <polygon points="64,14 64,114 38,92 38,36" fill="#FFD27A"/>
-            <polygon points="64,14 90,36 90,92 64,114" fill="#D9901A"/>
-            <polygon points="64,14 90,36 64,46 38,36" fill="#FFE3A6"/>
-            <rect x="30" y="68" width="68" height="10" fill="#1B1A17"/>
-          </svg>
+          <img src="/veio/icones/icone.svg" width="44" height="44" alt="PerpetualMiner">
           <span class="veio-nome">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>
         </div>
       </div>
@@ -317,13 +311,7 @@
       <div class="secao">
         <h3>Marca</h3>
         <div class="marca">
-          <svg width="44" height="44" viewBox="0 0 128 128" role="img" aria-label="PerpetualMiner">
-            <rect width="128" height="128" rx="28" fill="#1B1A17"/>
-            <polygon points="64,14 64,114 38,92 38,36" fill="#FFD27A"/>
-            <polygon points="64,14 90,36 90,92 64,114" fill="#D9901A"/>
-            <polygon points="64,14 90,36 64,46 38,36" fill="#FFE3A6"/>
-            <rect x="30" y="68" width="68" height="10" fill="#1B1A17"/>
-          </svg>
+          <img src="/veio/icones/icone.svg" width="44" height="44" alt="PerpetualMiner">
           <span class="veio-nome">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>
         </div>
       </div>
@@ -365,31 +353,34 @@
       '--veio-kw-bg', '--veio-kw-fg', '--veio-success', '--veio-danger', '--veio-info',
     ];
 
+    // Cada papel da escala: o nome, a classe que aplica os tokens dele e a frase
+    // de exemplo. O tamanho e o peso não vêm escritos aqui: são medidos na
+    // própria amostra depois de renderizada, para a legenda nunca discordar dos
+    // tokens.
     const ESCALA = [
-      ['display', '32 / 800', 't-display', 'Minerar frases'],
-      ['hero', '24 / 800', 't-hero', 'Boas-vindas'],
-      ['página', '22 / 700', 't-pagina', 'Frases mineradas'],
-      ['modal', '20 / 700', 't-modal', 'Apagar 12 frases?'],
-      ['card', '15 / 700', 't-card', 'Conexão com o Anki'],
-      ['frase', '15 / 400', 't-frase', 'Тихая гавань проснулась раньше чаек.'],
-      ['corpo', '13,5 / 400', 't-corpo', 'A frase fica no histórico com o Contexto dela.'],
-      ['legenda', '11,5 / 800', 't-legenda', 'Ontem'],
-      ['número', 'mono 600', 't-num', '12 de 20 · US$ 0,42'],
+      ['Display', 't-display', 'Minerar frases'],
+      ['Hero', 't-hero', 'Boas-vindas'],
+      ['Página', 't-pagina', 'Frases mineradas'],
+      ['Modal', 't-modal', 'Apagar 12 frases?'],
+      ['Card', 't-card', 'Conexão com o Anki'],
+      ['Frase', 't-frase', 'Тихая гавань проснулась раньше чаек.'],
+      ['Corpo', 't-corpo', 'A frase fica no histórico com o Contexto dela.'],
+      ['Legenda', 't-legenda', 'Ontem'],
+      ['Número', 't-num', '12 de 20 · US$ 0,42'],
     ];
 
     const RAIOS = [
-      ['--veio-raio-icone', '10'],
-      ['--veio-raio-input', '12'],
-      ['--veio-raio-card', '14'],
-      ['--veio-raio-painel', '20'],
-      ['--veio-raio-selecao', '22'],
-      ['--veio-raio-pilula', '999'],
+      '--veio-raio-icone', '--veio-raio-input', '--veio-raio-card',
+      '--veio-raio-painel', '--veio-raio-selecao', '--veio-raio-pilula',
     ];
 
-    const NOMES_DA_ESCALA = {
-      'display': 'Display', 'hero': 'Hero', 'página': 'Página', 'modal': 'Modal',
-      'card': 'Card', 'frase': 'Frase', 'corpo': 'Corpo', 'legenda': 'Legenda', 'número': 'Número',
-    };
+    /** "32px / 800", como o navegador de fato renderizou a amostra. */
+    function medidaDe(amostra) {
+      const estilo = getComputedStyle(amostra);
+      const tamanho = Number(parseFloat(estilo.fontSize).toFixed(2)).toString().replace('.', ',');
+      const mono = estilo.fontFamily.includes('JetBrains Mono') ? 'mono ' : '';
+      return `${tamanho}px / ${mono}${estilo.fontWeight}`;
+    }
 
     for (const tema of document.querySelectorAll('[data-tema]')) {
       const estilo = getComputedStyle(tema);
@@ -415,14 +406,14 @@
       }
 
       const escala = tema.querySelector('[data-escala]');
-      for (const [papel, medida, classe, exemplo] of ESCALA) {
+      for (const [papel, classe, exemplo] of ESCALA) {
         const linha = document.createElement('div');
         linha.className = 'linha';
 
         const rotulo = document.createElement('i');
         const nome = document.createElement('b');
-        nome.textContent = NOMES_DA_ESCALA[papel];
-        rotulo.append(nome, medida);
+        nome.textContent = papel;
+        rotulo.append(nome);
 
         const amostra = document.createElement('span');
         amostra.className = classe;
@@ -430,13 +421,16 @@
 
         linha.append(rotulo, amostra);
         escala.append(linha);
+
+        // A medida só existe depois que a amostra está na página.
+        rotulo.append(medidaDe(amostra));
       }
 
       const raios = tema.querySelector('[data-raios]');
-      for (const [nome, valor] of RAIOS) {
+      for (const nome of RAIOS) {
         const caixa = document.createElement('div');
         caixa.style.borderRadius = `var(${nome})`;
-        caixa.textContent = valor;
+        caixa.textContent = estilo.getPropertyValue(nome).trim();
         raios.append(caixa);
       }
     }

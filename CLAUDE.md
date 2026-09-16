@@ -134,4 +134,4 @@ The legacy tests keep running: `node test_sync.js`, `node test_bridge_panel.js`,
 - `storage`, `unlimitedStorage`, `activeTab`, `tabs`, `contextMenus`, `identity`
 - `host_permissions`: Gemini API, Firestore, Google OAuth, Firebase token endpoints
 - Content scripts inject into all URLs with `all_frames: true`
-- `painel.html`, `bookreader.html`, `veio/tokens.css` and `veio/fontes/*.woff2` declared as `web_accessible_resources` (the in-page overlay loads the tokens and the fonts from there)
+- `painel.html`, `bookreader.html`, `veio/tokens.css` and `veio/fontes/*.woff2` declared as `web_accessible_resources`. The tokens and the fonts are exposed so the in-page overlay can load them inside its Shadow DOM; `content.js` does not read them yet — that lands with the overlay rebuild
