@@ -1,5 +1,9 @@
 'use strict';
 
+// A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
+// deste arquivo, pelo painel.html: o catálogo fica em `PerpetualMiner.textoDaVoz`.
+const { detectarIdioma } = PerpetualMiner;
+
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
 const POR_PAGINA = 10;
@@ -2683,10 +2687,6 @@ function parsearLinhaExportada(linha) {
 
   if (!texto) return null;
   return { texto, fonte, titulo, detalhe };
-}
-
-function detectarIdioma(texto) {
-  return /[\u0400-\u04FF]/.test(texto) ? 'Russo' : 'Inglês';
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

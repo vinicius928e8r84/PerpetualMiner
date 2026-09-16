@@ -1,5 +1,9 @@
 'use strict';
 
+// A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
+// deste arquivo, pelo popup.html: o catálogo fica em `PerpetualMiner.textoDaVoz`.
+const { detectarIdioma } = PerpetualMiner;
+
 // ─── Estado ───────────────────────────────────────────────────────────────────
 
 let frasesSalvas  = [];
@@ -200,7 +204,7 @@ function adicionarManual() {
   const textarea = document.getElementById('txtManual');
   const texto    = textarea.value.trim();
   if (!texto) return;
-  const idioma = /[\u0400-\u04FF]/.test(texto) ? 'Russo' : 'Inglês';
+  const idioma = detectarIdioma(texto);
 
   chrome.runtime.sendMessage({
     type: 'SALVAR_HISTORICO',

@@ -25,6 +25,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `popup.html/js/css` | Quick-access popup showing last 5 phrases |
 | `painel.html/js/css` | Full dashboard to view, copy, and delete all saved phrases; Google login and Firestore sync |
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
+| `lib/voz/catalogo.js` | The Voice catalog as data: the 159 approved copy states from `docs/design/voz/` |
+| `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
+| `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
 | `test_gemini.js` | Standalone Node.js script to list available Gemini models (not part of the extension) |
 | `e2e/` | Playwright suite that runs the unpacked extension in Chromium (own `package.json`; see Testing) |
@@ -37,7 +40,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
                                                      └→ Firestore (if logged in)
 
 2. Selected text (any page/PDF)
-   User right-clicks → context menu "Enviar para o PerpetualMiner"
+   User right-clicks → context menu "Minerar com PerpetualMiner" (MIN-08, from the catalog)
    → background.js (contextMenus listener) → chrome.storage.local["frases"]
                                            └→ Firestore (if logged in)
 
@@ -46,6 +49,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    → parsed passages → chrome.storage.local["frases"]
                      └→ Firestore (if logged in)
 ```
+
+### Shared base (`lib/`)
+
+`lib/voz/catalogo.js`, `lib/voz/texto.js` and `lib/idioma.js` are plain scripts (no build) that
+every surface loads before its own script: the three pages via `<script src>`, the service worker
+via `importScripts`, and the content script via the `js` array in `manifest.json`. They attach to
+the `PerpetualMiner` global, so each consumer starts with
+`const { detectarIdioma } = PerpetualMiner;`.
+
+**Copy comes from the catalog, never from a literal.** `textoDaVoz('MIN-08')` returns the approved
+string for that state; `textoDaVoz('PAI-12.titulo')` reaches a part of a state that has several
+(modal title, body, buttons). Templates:
+
+- `{nome}` — substituted. A `number` is formatted pt-BR (`1284` → `1.284`); a string goes in as is.
+- `{n|singular|plural}` — picks by the value of `n` (`|n| === 1` → singular).
+
+The function is named `textoDaVoz`, not `texto`, because `texto` is the phrase text all over the
+codebase and a global by that name would be shadowed inside almost every function.
+
+An unknown ID, a part that does not exist and a missing template value all throw right away, so a
+state never renders as an empty string by accident. Only the entries the catalog marks as deliberate
+silence (`POP-01`, `POP-05`, `PAI-16`…) are `''`.
+
+Money (`BRG-03`, `BRG-26`) takes an already-formatted `{valor}`: how many decimals to show is an
+Advanced preference that belongs to the panel, not to the catalog.
 
 ### Firebase / Firestore Sync
 
@@ -64,7 +92,7 @@ Each entry in `chrome.storage.local["frases"]` (unlimited, newest first):
   data:      string,          // "dd/mm/yyyy" (pt-BR locale)
   streaming: string,          // platform name, 'web', 'pdf', or 'livro'
   id:        number,          // max(Date.now(), highest stored id + 1), assigned inside naFilaDeGravacao
-  idioma:    string,          // 'Inglês' or 'Russo' (detected by Cyrillic check)
+  idioma:    string,          // 'Inglês' or 'Russo' (lib/idioma.js: Cyrillic → Russo, else Inglês)
   contexto?: {                // optional; added for web/pdf/book sources
     fonte:   string,
     titulo:  string,
