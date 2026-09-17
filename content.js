@@ -50,9 +50,8 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
-// Só a pessoa aciona os atalhos: um evento sintético (disparado pela página) não conta.
 function _correspondeAtalho(cfg, e) {
-  if (!cfg || !e.isTrusted) return false;
+  if (!cfg) return false;
   if (cfg.altKey   !== e.altKey)   return false;
   if (cfg.ctrlKey  !== e.ctrlKey)  return false;
   if (cfg.shiftKey !== e.shiftKey) return false;
@@ -71,7 +70,7 @@ document.addEventListener('mousedown', (e) => {
 
   e.preventDefault();
   e.stopImmediatePropagation();
-  _ativarCaptura(texto);
+  _ativarCaptura(texto, e);
 }, true);
 
 // Listener de teclado — ignora campos de input/textarea
@@ -86,10 +85,13 @@ document.addEventListener('keydown', (e) => {
   if (!texto) return;
 
   e.preventDefault();
-  _ativarCaptura(texto);
+  _ativarCaptura(texto, e);
 }, true);
 
-function _ativarCaptura(texto) {
+// Só a pessoa minera: quem pede uma captura passa o evento que a disparou, e um
+// evento sintético (disparado pela página) não conta.
+function _ativarCaptura(texto, evento) {
+  if (!evento?.isTrusted) return;
   _mostrarOverlayCyan(texto);
 
   chrome.runtime.sendMessage({
@@ -161,9 +163,9 @@ chrome.runtime.onMessage.addListener((message, sender) => {
 // ─── Atalho de Teclado ───────────────────────────────────────────────────────
 
 document.addEventListener('keydown', function(event) {
-    if (event.isTrusted && event.altKey && event.code === ATALHO_TECLA) {
+    if (event.altKey && event.code === ATALHO_TECLA) {
         event.preventDefault();
-        minerarLegenda();
+        minerarLegenda(event);
     }
 });
 
@@ -208,7 +210,7 @@ function criarBotaoVisual(video) {
 
     btn.onmouseover = () => { btn.style.transform = 'scale(1.05)'; btn.style.backgroundColor = 'rgba(20,20,20,0.95)'; };
     btn.onmouseout  = () => { btn.style.transform = 'scale(1)';    btn.style.backgroundColor = 'rgba(10,10,10,0.85)'; };
-    btn.onclick     = (e) => { e.stopPropagation(); e.preventDefault(); if (e.isTrusted) minerarLegenda(); };
+    btn.onclick     = (e) => { e.stopPropagation(); e.preventDefault(); minerarLegenda(e); };
 
     const host      = window.location.hostname;
     const container = host.includes('youtube.com')
@@ -441,7 +443,9 @@ function pmEscapeHtml(value) {
     }[ch]));
 }
 
-function minerarLegenda() {
+// Como em _ativarCaptura: só um evento da pessoa minera a legenda.
+function minerarLegenda(evento) {
+    if (!evento?.isTrusted) return;
     const texto = obterLegendaAtual();
 
     if (texto && texto.length > 2) {

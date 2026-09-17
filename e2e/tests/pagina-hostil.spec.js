@@ -18,29 +18,26 @@ async function prepararClipboard(context, page, origem) {
 
 const lerClipboard = page => page.evaluate(() => navigator.clipboard.readText());
 
-test('uma página hostil que manda as mensagens de copiar/salvar não grava frase nem mexe no clipboard', async ({ context, page, paginas, extensao }) => {
+// A página hostil age sozinha; nada pode ter sido gravado nem copiado.
+async function esperarQuePaginaHostilNaoMudeNada({ context, page, paginas, extensao }, agir) {
   await page.goto(paginas.url('hostil.html'));
   await expect(page.locator('#btn-minerador-pro')).toBeVisible();
   await prepararClipboard(context, page, paginas.origem);
 
-  await page.evaluate(() => window.mandarMensagens());
+  await page.evaluate(agir);
 
   // Dá tempo às mensagens de chegarem ao service worker antes de afirmar a ausência.
   await page.waitForTimeout(1500);
   expect(await extensao.frases()).toEqual([]);
   expect(await lerClipboard(page)).toBe(CLIPBOARD_ORIGINAL);
+}
+
+test('uma página hostil que manda as mensagens de copiar/salvar não grava frase nem mexe no clipboard', async ({ context, page, paginas, extensao }) => {
+  await esperarQuePaginaHostilNaoMudeNada({ context, page, paginas, extensao }, () => window.mandarMensagens());
 });
 
 test('uma página hostil que simula o atalho e o clique no botão sobre uma legenda plantada não grava frase nem mexe no clipboard', async ({ context, page, paginas, extensao }) => {
-  await page.goto(paginas.url('hostil.html'));
-  await expect(page.locator('#btn-minerador-pro')).toBeVisible();
-  await prepararClipboard(context, page, paginas.origem);
-
-  await page.evaluate(() => window.simularAtalhoEClique());
-
-  await page.waitForTimeout(1500);
-  expect(await extensao.frases()).toEqual([]);
-  expect(await lerClipboard(page)).toBe(CLIPBOARD_ORIGINAL);
+  await esperarQuePaginaHostilNaoMudeNada({ context, page, paginas, extensao }, () => window.simularAtalhoEClique());
 });
 
 test('legenda num player em iframe de outra origem: minerar ainda grava a frase e copia', async ({ context, page, paginas, extensao }) => {
