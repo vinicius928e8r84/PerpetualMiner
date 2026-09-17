@@ -32,6 +32,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
 | `test_gemini.js` | Standalone Node.js script to list available Gemini models (not part of the extension) |
 | `e2e/` | Playwright suite that runs the unpacked extension in Chromium (own `package.json`; see Testing) |
+| `preview/` | The static site Vercel publishes per branch, so a visual change can be looked at in a browser: `montar.mjs` assembles it, `chrome-simulado.js` fakes `chrome.*` with sample data inside the copied pages. See `preview/README.md` |
 
 ### Data Flow
 
