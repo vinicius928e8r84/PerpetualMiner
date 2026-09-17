@@ -12,6 +12,7 @@ This repository contains a Chrome extension plus a local Python bridge for Anki 
 - `e2e/` holds the Playwright suite that runs the unpacked extension in Chromium, with its own `package.json` so the extension root stays free of Node files.
 - `bridge/runtime/` contains generated logs, queues, screenshots, job state, audio, images, and card output. Treat it as runtime data, not source.
 - Design notes are under `docs/superpowers/specs/`.
+- `preview/` builds the static site Vercel publishes for each branch (`node preview/montar.mjs --servir` runs it locally). It only ever copies files into `preview/dist`; never edit an extension file to make the preview work.
 
 ## Build, Test, and Development Commands
 

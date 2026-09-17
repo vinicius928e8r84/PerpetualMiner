@@ -26,3 +26,4 @@ engine/loopany-test.txt
 # OS
 Thumbs.db
 .DS_Store
+preview/dist/
