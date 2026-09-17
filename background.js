@@ -2,7 +2,7 @@
 
 // A base compartilhada: o catálogo da Voz e a detecção de idioma.
 importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js');
-const { textoDaVoz, detectarIdioma } = PerpetualMiner;
+const { textoDaVoz, detectarIdioma, IDIOMAS } = PerpetualMiner;
 
 const FIREBASE_PROJECT  = 'perpetualminer-4c219';
 const FIRESTORE_BASE    = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
@@ -322,7 +322,7 @@ function fraseParaFields(obj) {
 
 function isEnglishPhrase(frase) {
   const idioma = String(frase?.idioma || '').toLowerCase();
-  return idioma.includes('ingl') || idioma === 'en' || (!idioma && detectarIdioma(frase?.texto || '') === 'Ingl\u00EAs');
+  return idioma.includes('ingl') || idioma === 'en' || (!idioma && detectarIdioma(frase?.texto || '') === IDIOMAS.INGLES);
 }
 
 function autoTokenizar(texto) {

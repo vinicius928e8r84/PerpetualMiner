@@ -8,8 +8,10 @@
 // Dois critérios de aceite do #24 são sobre o módulo, não sobre uma tela ("um
 // teste falha se um ID pedido não existir", "interpolação com números no formato
 // PT-BR"): nenhuma superfície mostra esses IDs ainda. Esses dois testes chamam
-// `textoDaVoz` direto, de dentro do Chromium. Os outros três afirmam o que fica
-// gravado e o que a extensão entrega ao Chrome.
+// `textoDaVoz` direto, de dentro do Chromium. Os outros afirmam o que fica
+// gravado e o que a extensão entrega ao Chrome; os dois do menu de contexto chamam
+// a função que o Chrome chamaria, porque o Playwright não abre o menu nativo.
+// As duas exceções estão na seção de testes do CLAUDE.md.
 
 const fs = require('fs');
 const path = require('path');

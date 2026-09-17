@@ -58,7 +58,12 @@ via `importScripts`, and the content script via the `js` array in `manifest.json
 the `PerpetualMiner` global, so each consumer starts with
 `const { detectarIdioma } = PerpetualMiner;`.
 
-**Copy comes from the catalog, never from a literal.** `textoDaVoz('MIN-08')` returns the approved
+Code that compares a language uses `PerpetualMiner.IDIOMAS` (`IDIOMAS.RUSSO`, `IDIOMAS.INGLES`),
+not a loose `'Russo'`/`'Inglês'` string.
+
+**New or rewritten copy comes from the catalog, never from a literal.** The surfaces still hold
+their old literals; each redesign step moves the surface it rebuilds (today only the context menu
+reads from the catalog). `textoDaVoz('MIN-08')` returns the approved
 string for that state; `textoDaVoz('PAI-12.titulo')` reaches a part of a state that has several
 (modal title, body, buttons). Templates:
 
@@ -148,7 +153,9 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`), Gemini, and Firestore/Google (in-memory documents, token refresh). `semearSessao()` writes an account session to storage, skipping the real login.
 - `e2e/pages/`: local fixture pages where the content script is injected: `player.html` (fake player with a caption), `texto.html` (plain text to select), `sem-video.html`.
 - `HEADED=1 npm test` shows the browser.
-- Tests assert what the person sees and what ends up stored, never internal functions.
+- Tests assert what the person sees and what ends up stored, never internal functions. Two narrow exceptions, each named in the test's own comment:
+  - Where Chromium gives Playwright no way to drive the native UI (the context menu), a test calls the function Chrome would call (`minerarSelecaoDoMenu`, `registrarMenuDeContexto`) and asserts what gets stored or what is handed to Chrome.
+  - Until a surface shows a catalog state, the catalog's own guarantees (every ID present, pt-BR numbers) are asserted through `PerpetualMiner.textoDaVoz`, inside an extension page. These move to the screen when the surface is rebuilt.
 
 The legacy tests keep running: `node test_sync.js`, `node test_bridge_panel.js`, `node test_auto_keyword.js`, `python test_panel_russian_style.py` and the bridge tests in `bridge/test_*.py`.
 

@@ -2,7 +2,7 @@
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
 // deste arquivo, pelo painel.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
-const { detectarIdioma } = PerpetualMiner;
+const { detectarIdioma, IDIOMAS } = PerpetualMiner;
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -1827,7 +1827,7 @@ function renderizar() {
           </div>` : '';
       const checked       = selecionadas.has(f.id) ? 'checked' : '';
       const exportedClass = f.status === 'exported' ? ' exported' : '';
-      const idiomaFraseClasse = (f.idioma === 'Russo' || detectarIdioma(f.texto || '') === 'Russo') ? ' frase-ru' : '';
+      const idiomaFraseClasse = (f.idioma === IDIOMAS.RUSSO || detectarIdioma(f.texto || '') === IDIOMAS.RUSSO) ? ' frase-ru' : '';
       const ankiBadge     = f.status === 'exported'
         ? `<div class="anki-badge"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> No Anki</div>` : '';
       const ctxHtml = renderizarContexto(f);
