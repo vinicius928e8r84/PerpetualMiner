@@ -76,7 +76,7 @@ document.addEventListener('mousedown', (e) => {
 
   e.preventDefault();
   e.stopImmediatePropagation();
-  _ativarCaptura(texto);
+  _ativarCaptura(texto, e);
 }, true);
 
 // Listener de teclado — ignora campos de input/textarea
@@ -91,10 +91,13 @@ document.addEventListener('keydown', (e) => {
   if (!texto) return;
 
   e.preventDefault();
-  _ativarCaptura(texto);
+  _ativarCaptura(texto, e);
 }, true);
 
-function _ativarCaptura(texto) {
+// Só a pessoa minera: quem pede uma captura passa o evento que a disparou, e um
+// evento sintético (disparado pela página) não conta.
+function _ativarCaptura(texto, evento) {
+  if (!evento?.isTrusted) return;
   _mostrarOverlayCyan(texto);
 
   chrome.runtime.sendMessage({
@@ -150,23 +153,16 @@ function _mostrarOverlayCyan(texto) {
 
 // ─── Ponte de Segurança (Cross-Frame) ────────────────────────────────────────
 
-window.addEventListener('message', function(event) {
-    if (!event.data) return;
-    const { type, texto, contexto, idioma } = event.data;
+// Nada passa por window.postMessage: a página divide a janela com o content
+// script e vê as mensagens entre frames, então poderia forjá-las. Quando o
+// clipboard falha num iframe, o pedido de cópia vai pelo service worker, que o
+// entrega só ao frame de cima da mesma aba.
 
-    if (type === 'COPIAR_PARA_CLIPBOARD' || type === 'COPIAR_E_SALVAR') {
-        navigator.clipboard.writeText(texto).catch(() => {});
-
-        if (chrome.runtime && chrome.runtime.sendMessage) {
-            chrome.runtime.sendMessage({
-                type:    'SALVAR_HISTORICO',
-                texto,
-                origem:  window.location.hostname.replace('www.', '').split('.')[0],
-                contexto: contexto || null,
-                idioma:   idioma   || 'Inglês',
-            });
-        }
-    }
+chrome.runtime.onMessage.addListener((message, sender) => {
+    if (message?.type !== 'COPIAR_PARA_CLIPBOARD') return;
+    if (sender.id !== chrome.runtime.id || window !== window.top) return;
+    if (typeof message.texto !== 'string' || !message.texto.trim()) return;
+    navigator.clipboard.writeText(message.texto).catch(() => {});
 });
 
 // ─── Atalho de Teclado ───────────────────────────────────────────────────────
@@ -174,7 +170,7 @@ window.addEventListener('message', function(event) {
 document.addEventListener('keydown', function(event) {
     if (event.altKey && event.code === ATALHO_TECLA) {
         event.preventDefault();
-        minerarLegenda();
+        minerarLegenda(event);
     }
 });
 
@@ -219,7 +215,7 @@ function criarBotaoVisual(video) {
 
     btn.onmouseover = () => { btn.style.transform = 'scale(1.05)'; btn.style.backgroundColor = 'rgba(20,20,20,0.95)'; };
     btn.onmouseout  = () => { btn.style.transform = 'scale(1)';    btn.style.backgroundColor = 'rgba(10,10,10,0.85)'; };
-    btn.onclick     = (e) => { e.stopPropagation(); e.preventDefault(); minerarLegenda(); };
+    btn.onclick     = (e) => { e.stopPropagation(); e.preventDefault(); minerarLegenda(e); };
 
     const host      = window.location.hostname;
     const container = host.includes('youtube.com')
@@ -445,7 +441,9 @@ function pmDivComTexto(cssText, texto) {
     return div;
 }
 
-function minerarLegenda() {
+// Como em _ativarCaptura: só um evento da pessoa minera a legenda.
+function minerarLegenda(evento) {
+    if (!evento?.isTrusted) return;
     const texto = obterLegendaAtual();
 
     if (texto && texto.length > 2) {
@@ -453,7 +451,15 @@ function minerarLegenda() {
         const idioma   = detectarIdioma(texto);
 
         navigator.clipboard.writeText(texto).catch(() => {
-            window.parent.postMessage({ type: 'COPIAR_PARA_CLIPBOARD', texto, contexto, idioma }, '*');
+            if (window !== window.top) chrome.runtime.sendMessage({ type: 'COPIAR_NO_FRAME_DE_CIMA', texto });
+        });
+
+        chrome.runtime.sendMessage({
+            type:    'SALVAR_HISTORICO',
+            texto,
+            origem:  window.location.hostname.replace('www.', '').split('.')[0],
+            contexto,
+            idioma,
         });
 
         mostrarNotificacaoAcoplada(texto, contexto, idioma);
@@ -713,9 +719,6 @@ function detectarIdioma(texto) {
 // ─── Notificação Visual ───────────────────────────────────────────────────────
 
 function mostrarNotificacaoAcoplada(texto, contexto, idioma) {
-    // Dispara a ponte: salva e copia via script principal
-    window.postMessage({ type: 'COPIAR_E_SALVAR', texto, contexto, idioma }, '*');
-
     const btn = document.getElementById('btn-minerador-pro');
     if (!btn) return;
 

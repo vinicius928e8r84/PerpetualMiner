@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Iframe da página hostil</title>
+</head>
+<body>
+  <!-- Iframe controlado pela página hostil: finge ser o player que cai para o frame pai. -->
+  <script>
+    window.mandarParaOPai = (type, texto, contexto) => {
+      window.parent.postMessage({ type, texto, contexto, idioma: 'Inglês' }, '*');
+    };
+  </script>
+</body>
+</html>
