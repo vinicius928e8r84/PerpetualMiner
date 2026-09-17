@@ -114,7 +114,10 @@ The rules the components encode, so a surface does not have to re-decide them:
 - **The highlighted Word** is drawn by `escreverFrase(no, texto, palavra)`: a `kw-bg` band from 50%
   to 94% of the line, no radius. The phrase text always goes in as text, never as HTML.
 - **Copy does not live in the components.** The caller passes the string it already looked up:
-  `textoDaVoz('PAI-13.titulo', { n })`.
+  `textoDaVoz('PAI-13.titulo', { n })` — `montarAviso` even refuses to build without the close
+  label. The only three words the base writes itself are in `ROTULOS_DO_PADRAO`, because they are
+  no screen's state and so have no ID: `palavra:` and `auto:` (fixed by the glossary) and
+  `Detalhes` (the name rule V3 of the Voice gives the collapsed cause).
 
 The legacy surfaces still carry their own CSS; each redesign step moves the surface it rebuilds
 onto these classes. Loading the files everywhere now is deliberate — the classes are prefixed
@@ -192,7 +195,7 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - `e2e/fixtures.js` launches a fresh Chromium profile per test with the repo root loaded as an unpacked extension, fakes the network at the HTTP boundary and blocks every other external request. It gives tests `extensao` (id, service worker, `url()`, `lerStorage`/`gravarStorage`, `frases()`, `semearSessao()`), `fakes` and `paginas`.
 - `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`), Gemini, and Firestore/Google (in-memory documents, token refresh). `semearSessao()` writes an account session to storage, skipping the real login.
 - `e2e/pages/`: local fixture pages where the content script is injected: `player.html` (fake player with a caption), `texto.html` (plain text to select), `sem-video.html`, `player-em-iframe.html?player=<url>` (embeds the player from another origin, e.g. `paginas.urlCruzada('player.html')`), `hostil.html` + `hostil-filho.html` (a page that tries to drive the extension by itself), and `player-marcacao.html` / `texto-marcacao.html` (caption, title and selectable text carrying markup as text, to prove the content script always inserts page text as text, never as HTML).
-- `e2e/vitrine/`: the Veio showcase — tokens, type scale, radii, a Russian phrase and **every base component**, in both themes and in the normal / focus / disabled / error states. `componentes-da-vitrine.js` builds the gallery once per theme with the same function, so the two columns never diverge; its sample copy comes from the Voice catalog by ID (`CATALOGO_DA_VITRINE`), and anything that is showcase scaffolding is marked `data-vitrine-chrome`. The fixture server also serves `/veio/…` and `/lib/…` from the extension root, so the showcase loads the same tokens, fonts, components and catalog the extension pages load. After the owner's review it is **the visual reference**.
+- `e2e/vitrine/`: the Veio showcase — tokens, type scale, radii, a Russian phrase and **every base component**, in both themes and in the states each component actually has (button and field: focus and disabled, plus error on the field; a badge only has normal). `componentes-da-vitrine.js` builds the gallery once per theme with the same function, so the two columns never diverge; its sample copy comes from the Voice catalog by ID (`CATALOGO_DA_VITRINE`), and anything that is showcase scaffolding is marked `data-vitrine-chrome`. The fixture server also serves `/veio/…` and `/lib/…` from the extension root, so the showcase loads the same tokens, fonts, components and catalog the extension pages load. After the owner's review it is **the visual reference**.
 - `HEADED=1 npm test` shows the browser.
 - Tests assert what the person sees and what ends up stored, never internal functions. Two narrow exceptions, each named in the test's own comment:
   - Where Chromium gives Playwright no way to drive the native UI (the context menu), a test calls the function Chrome would call (`minerarSelecaoDoMenu`, `registrarMenuDeContexto`) and asserts what gets stored or what is handed to Chrome.

@@ -11,6 +11,26 @@
 // Voz (`textoDaVoz('PAI-13.titulo', { n })`).
 
 (function (raiz) {
+  /**
+   * As três palavras que a base escreve por conta própria.
+   *
+   * Elas não têm ID no catálogo porque não são estado de tela nenhuma: são
+   * nomes de padrão, fixados fora dele.
+   *
+   * - `palavra:` e `auto:` são o chip da Palavra, e o vocabulário está travado
+   *   no glossário (CONTEXT.md): "o chip diz `palavra: …` quando foi escolhida
+   *   e `auto: …` quando foi detectada". "keyword" nunca aparece na tela.
+   * - `Detalhes` é o nome do recolhido onde a causa técnica vai morar, dado
+   *   pela regra V3 da Voz.
+   *
+   * Qualquer outro texto vem de quem chama, já buscado no catálogo.
+   */
+  const ROTULOS_DO_PADRAO = {
+    palavraEscolhida: 'palavra:',
+    palavraDetectada: 'auto:',
+    detalhes: 'Detalhes',
+  };
+
   /** Toast curto: nunca menos que isso, mesmo numa palavra só. */
   const DURACAO_MINIMA_DO_TOAST = 2600;
 
@@ -253,21 +273,27 @@
    * Monta o aviso e devolve o elemento, para a tela pô-lo no lugar do problema.
    *
    * @param {object} conteudo
-   *   `texto`    o que aconteceu, nos termos da pessoa (catálogo da Voz);
-   *   `acao`     `{ rotulo, aoUsar }` quando existe o que fazer;
-   *   `detalhes` a causa técnica, recolhida;
-   *   `rotuloDosDetalhes` e `rotuloDeFechar` também vêm do catálogo;
-   *   `aoFechar` roda quando a pessoa fecha o aviso.
+   *   `texto`          o que aconteceu, nos termos da pessoa (catálogo da Voz);
+   *   `acao`           `{ rotulo, aoUsar }` quando existe o que fazer;
+   *   `detalhes`       a causa técnica, recolhida;
+   *   `rotuloDeFechar` o nome do × para o leitor de tela, do catálogo;
+   *   `aoFechar`       roda quando a pessoa fecha o aviso.
+   *
+   * O nome do recolhido é "Detalhes", da regra V3 da Voz, e só muda se quem
+   * chama passar outro.
    */
   function montarAviso({
     texto,
     acao,
     detalhes,
-    rotuloDosDetalhes = 'Detalhes',
-    rotuloDeFechar = 'Fechar',
+    rotuloDeFechar,
+    rotuloDosDetalhes = ROTULOS_DO_PADRAO.detalhes,
     aoFechar,
     documento = document,
   }) {
+    if (!rotuloDeFechar) {
+      throw new Error('O aviso precisa do rótulo de fechar, vindo do catálogo da Voz');
+    }
     const aviso = documento.createElement('div');
     aviso.className = 'veio-aviso';
     aviso.setAttribute('role', 'alert');
@@ -359,7 +385,9 @@
 
     const rotulo = documento.createElement('small');
     rotulo.className = 'veio-chip-palavra__rotulo';
-    rotulo.textContent = detectada ? 'auto:' : 'palavra:';
+    rotulo.textContent = detectada
+      ? ROTULOS_DO_PADRAO.palavraDetectada
+      : ROTULOS_DO_PADRAO.palavraEscolhida;
 
     chip.append(rotulo, documento.createTextNode(palavra));
     return chip;
@@ -381,6 +409,7 @@
   }
 
   raiz.Veio = {
+    ROTULOS_DO_PADRAO,
     iconeVeio,
     abrirModal,
     duracaoDoToast,

@@ -31,7 +31,9 @@
     ['POP-07', { n: 7, limite: 20 }], ['POP-08', { n: 20, limite: 20 }],
     ['PAI-13.titulo', { n: 12 }], ['PAI-13.corpo'],
     ['PAI-14', { n: 12 }],
-    ['PAI-15.aviso'], ['PAI-15.tentarDeNovo'],
+    ['PAI-15.aviso'], ['PAI-15.tentarDeNovo'], ['ONB-15.ocultar'],
+    ['PAI-02.texto', { atalho: 'Alt+S' }], ['PAI-02.acao'],
+    ['PAI-04.texto', { termo: 'gavião' }], ['PAI-04.acao'],
     ['PAI-11.hoje'],
   ];
 
@@ -60,6 +62,23 @@
     return no;
   }
 
+  /** Um id que não colide com o da outra coluna de tema. */
+  let proximoId = 0;
+  const idUnico = prefixo => `${prefixo}-${(proximoId += 1)}`;
+
+  /**
+   * O que a linha de um estado pede de cada amostra.
+   *
+   * O nome do estado é lido uma vez aqui, e não redecodificado dentro de cada
+   * grupo. `classeDeFoco` é a amostra de foco parado da vitrine — o anel real
+   * é o que `tokens.css` desenha em `:focus-visible`.
+   */
+  const estadoDaAmostra = estado => ({
+    desabilitado: estado === 'desabilitado',
+    erro: estado === 'erro',
+    classeDeFoco: estado === 'foco' ? 'demo-de-foco' : '',
+  });
+
   /** Um rótulo da própria vitrine, que não é cópia de nenhuma tela. */
   const rotulo = (tag, classe, texto) =>
     el(tag, { class: classe, texto, 'data-vitrine-chrome': true });
@@ -85,8 +104,7 @@
   /* ── Botões ───────────────────────────────────────────────────────────── */
 
   function botoes(estado) {
-    const desabilitado = estado === 'desabilitado';
-    const foco = estado === 'foco' ? 'veio-demo-foco' : '';
+    const { desabilitado, classeDeFoco: foco } = estadoDaAmostra(estado);
     const botao = (variante, id, valores) => el('button', {
       type: 'button',
       class: `veio-botao veio-botao--${variante} ${foco}`.trim(),
@@ -113,14 +131,14 @@
 
   /* ── Campos ───────────────────────────────────────────────────────────── */
 
-  function busca({ desabilitado = false, foco = false } = {}) {
+  function busca({ desabilitado = false, classeDeFoco = '' } = {}) {
     const limpar = el('button', {
       type: 'button', class: 'veio-busca__limpar veio-botao-icone',
       'aria-label': textoDaVoz('PAI-04.acao'), hidden: true, disabled: desabilitado,
     }, iconeVeio('fechar'));
 
     const campo = el('input', {
-      type: 'search', class: `veio-campo ${foco ? 'veio-demo-foco' : ''}`.trim(),
+      type: 'search', class: `veio-campo ${classeDeFoco}`.trim(),
       disabled: desabilitado,
     });
     campo.addEventListener('input', () => { limpar.hidden = campo.value === ''; });
@@ -131,7 +149,7 @@
     });
 
     const nome = rotulo('span', 'campo__nome', 'Busca');
-    nome.id = `busca-${Math.random().toString(36).slice(2, 8)}`;
+    nome.id = idUnico('busca');
     campo.setAttribute('aria-labelledby', nome.id);
 
     return el('label', { class: 'campo' }, nome,
@@ -144,10 +162,8 @@
   }
 
   function campos(estado) {
-    const desabilitado = estado === 'desabilitado';
-    const erro = estado === 'erro';
-    const foco = estado === 'foco';
-    const classe = `veio-campo ${foco ? 'veio-demo-foco' : ''}`.trim();
+    const { desabilitado, erro, classeDeFoco } = estadoDaAmostra(estado);
+    const classe = `veio-campo ${classeDeFoco}`.trim();
 
     const selecao = el('select', { class: classe, disabled: desabilitado, 'aria-invalid': erro ? 'true' : null },
       el('option', { texto: textoDaVoz('PAI-10.todasAsFontes') }),
@@ -165,7 +181,7 @@
     });
 
     return [
-      busca({ desabilitado, foco }),
+      busca({ desabilitado, classeDeFoco }),
       campoComNome('Select', selecao),
       campoComNome('Textarea', erro
         ? el('span', { class: 'campo__pilha' }, area, el('p', { class: 'veio-campo-erro', texto: textoDaVoz('POP-06') }))
@@ -176,16 +192,15 @@
 
   /* ── Toggle e checkbox ────────────────────────────────────────────────── */
 
-  function toggle({ ligado, desabilitado = false, foco = false }) {
+  function toggle({ ligado, desabilitado = false, classeDeFoco = '' }) {
     return el('label', { class: 'veio-toggle' },
       el('input', { type: 'checkbox', checked: ligado, disabled: desabilitado }),
-      el('span', { class: `veio-toggle__trilho ${foco ? 'veio-demo-foco' : ''}`.trim() }),
+      el('span', { class: `veio-toggle__trilho ${classeDeFoco}`.trim() }),
       el('span', { texto: textoDaVoz('POP-10') }));
   }
 
   function checkboxes(estado) {
-    const desabilitado = estado === 'desabilitado';
-    const foco = estado === 'foco' ? 'veio-demo-foco' : '';
+    const { desabilitado, classeDeFoco: foco } = estadoDaAmostra(estado);
 
     const misto = el('input', {
       type: 'checkbox', class: `veio-checkbox ${foco}`.trim(), disabled: desabilitado,
@@ -195,8 +210,8 @@
     refletirSelecao(misto, 3, 12);
 
     return [
-      toggle({ ligado: true, desabilitado, foco: foco !== '' }),
-      toggle({ ligado: false, desabilitado, foco: foco !== '' }),
+      toggle({ ligado: true, desabilitado, classeDeFoco: foco }),
+      toggle({ ligado: false, desabilitado, classeDeFoco: foco }),
       el('label', { class: 'campo-em-linha' },
         el('input', { type: 'checkbox', class: `veio-checkbox ${foco}`.trim(), checked: true, disabled: desabilitado }),
         el('span', { texto: textoDaVoz('PAI-09') })),
@@ -235,10 +250,10 @@
     ];
   }
 
-  function segmentado({ desabilitado = false, foco = false } = {}) {
-    const nomeDoGrupo = `segmentado-${Math.random().toString(36).slice(2, 8)}`;
+  function segmentado({ desabilitado = false, classeDeFoco = '' } = {}) {
+    const nomeDoGrupo = idUnico('segmentado');
     const opcoes = ['ADD-11.colar', 'ADD-11.arquivo', 'ADD-11.foto'].map((id, i) =>
-      el('label', { class: `veio-segmentado__opcao ${foco && i === 0 ? 'veio-demo-foco' : ''}`.trim() },
+      el('label', { class: `veio-segmentado__opcao ${i === 0 ? classeDeFoco : ''}`.trim() },
         el('input', { type: 'radio', name: nomeDoGrupo, checked: i === 0, disabled: desabilitado }),
         el('span', { texto: textoDaVoz(id) })));
 
@@ -272,7 +287,7 @@
     });
 
     const titulo = el('h2', { class: 'veio-modal__titulo', texto: textoDaVoz('PAI-13.titulo', { n: 12 }) });
-    titulo.id = `titulo-do-modal-${temaDaColuna}`;
+    titulo.id = idUnico('titulo-do-modal');
 
     const dialogo = el('div', {
       class: 'veio-modal', role: 'dialog', 'aria-labelledby': titulo.id,
@@ -302,13 +317,43 @@
       mostrarToastDeSucesso(textoDaVoz('PAI-14', { n: 12 })));
   }
 
+  /**
+   * O aviso persistente, que volta depois de fechado.
+   *
+   * Na vitrine ele precisa voltar: é uma página de referência, e um componente
+   * que some no primeiro clique deixa de estar lá para ser olhado.
+   */
   function aviso() {
-    return montarAviso({
+    const lugar = el('div', { class: 'lugar-do-aviso' });
+    const montar = () => lugar.append(montarAviso({
       texto: textoDaVoz('PAI-15.aviso'),
       acao: { rotulo: textoDaVoz('PAI-15.tentarDeNovo'), aoUsar: () => {} },
       detalhes: 'HTTP 403 · PERMISSION_DENIED',
-    });
+      rotuloDeFechar: textoDaVoz('ONB-15.ocultar'),
+      aoFechar: montar,
+    }));
+    montar();
+    return lugar;
   }
+
+  /* ── Estado vazio ─────────────────────────────────────────────────────────
+     O vazio que ensina (PAI-02) e o vazio de uma busca sem resultado
+     (PAI-04), que leva a ação de limpar junto. */
+
+  function vazio(idDoTexto, valores, idDaAcao, icone) {
+    return el('div', { class: 'veio-vazio' },
+      iconeVeio(icone),
+      el('p', { class: 'veio-vazio__texto', texto: textoDaVoz(idDoTexto, valores) }),
+      el('button', {
+        type: 'button', class: 'veio-botao veio-botao--secundario',
+        texto: textoDaVoz(idDaAcao),
+      }));
+  }
+
+  const vazios = () => [
+    vazio('PAI-02.texto', { atalho: 'Alt+S' }, 'PAI-02.acao', 'enviar'),
+    vazio('PAI-04.texto', { termo: 'gavião' }, 'PAI-04.acao', 'busca'),
+  ];
 
   function esqueleto() {
     // POP-01: espera curta é silêncio deliberado — só o esqueleto no lugar
@@ -388,7 +433,7 @@
 
       grupo('Controle segmentado',
         linha('normal', segmentado()),
-        linha('foco', segmentado({ foco: true })),
+        linha('foco', segmentado({ classeDeFoco: 'demo-de-foco' })),
         linha('desabilitado', segmentado({ desabilitado: true }))),
 
       grupo('Azulejo',
@@ -401,6 +446,9 @@
 
       grupo('Aviso persistente',
         linha('erro', aviso())),
+
+      grupo('Estado vazio',
+        linha('vazio', ...vazios())),
 
       grupo('Esqueleto',
         linha('carregando', esqueleto())),

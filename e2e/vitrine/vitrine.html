@@ -328,12 +328,19 @@
       min-width: 0;
     }
 
-    /* Como o foco aparece, parado ao lado dos outros estados. É o mesmo anel
-       que tokens.css desenha em :focus-visible; a vitrine só o deixa visível
-       sem o teclado estar ali. */
-    .veio-demo-foco {
+    /* Como o foco aparece, parado ao lado dos outros estados. Não leva o
+       prefixo veio- porque não é componente: é andaime da vitrine. Repete o
+       anel que tokens.css desenha em :focus-visible, e o teste compara os dois
+       para esta cópia nunca divergir do anel de verdade. */
+    .demo-de-foco {
       outline: 2px solid var(--veio-accent);
       outline-offset: 2px;
+    }
+
+    .lugar-do-aviso {
+      display: grid;
+      width: 100%;
+      min-width: 0;
     }
   </style>
 </head>

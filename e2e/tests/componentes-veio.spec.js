@@ -12,7 +12,7 @@ const { test, expect } = require('../fixtures');
 const COMPONENTES = [
   'Botões', 'Campos', 'Toggle e checkbox', 'Selos', 'Atalhos',
   'Controle segmentado', 'Azulejo', 'Modal', 'Toast', 'Aviso persistente',
-  'Esqueleto', 'Linha de frase',
+  'Estado vazio', 'Esqueleto', 'Linha de frase',
 ];
 
 const TEMAS = ['escuro', 'claro'];
@@ -72,17 +72,32 @@ test('botões e campos aparecem em normal, foco, desabilitado e erro', async ({ 
 test('as seis variantes de botão têm cada uma o seu desenho', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  const linha = page.locator('[data-tema="escuro"] [data-grupo="Botões"] [data-estado="normal"]');
+  const coluna = page.locator('[data-tema="escuro"]');
+  const linha = coluna.locator('[data-grupo="Botões"] [data-estado="normal"]');
   const fundoDe = variante => linha.locator(`.veio-botao--${variante}`)
     .evaluate(no => getComputedStyle(no).backgroundColor);
 
+  // As cores vêm dos tokens do tema, não de um valor escrito aqui.
+  const tokenDe = nome => coluna.evaluate((no, nome) => {
+    const valor = getComputedStyle(no).getPropertyValue(nome).trim();
+    const medida = document.createElement('span');
+    medida.style.color = valor;
+    document.body.append(medida);
+    const rgb = getComputedStyle(medida).color;
+    medida.remove();
+    return rgb;
+  }, nome);
+
+  const ouro = await tokenDe('--veio-accent');
+  const perigo = await tokenDe('--veio-danger');
+
   // Primário é ouro preenchido; perigo tem contorno e preenchido.
-  expect(await fundoDe('primario')).toBe('rgb(245, 184, 61)');
+  expect(await fundoDe('primario')).toBe(ouro);
   expect(await fundoDe('fantasma')).toBe('rgba(0, 0, 0, 0)');
   expect(await fundoDe('perigo')).toBe('rgba(0, 0, 0, 0)');
-  expect(await fundoDe('perigo-cheio')).toBe('rgb(255, 122, 102)');
+  expect(await fundoDe('perigo-cheio')).toBe(perigo);
 
-  await expect(linha.locator('.veio-botao--perigo')).toHaveCSS('border-color', 'rgb(255, 122, 102)');
+  await expect(linha.locator('.veio-botao--perigo')).toHaveCSS('border-color', perigo);
 
   // Só-ícone é circular e diz o que faz, porque não tem texto.
   const soIcone = linha.locator('.veio-botao-icone').first();
@@ -122,8 +137,13 @@ test('o toggle ligado usa o ouro, e o desligado não', async ({ page, paginas })
   await abrirVitrine(page, paginas);
 
   const toggles = page.locator('[data-tema="escuro"] [data-grupo="Toggle e checkbox"] [data-estado="normal"] .veio-toggle');
-  await expect(toggles.nth(0).locator('.veio-toggle__trilho')).toHaveCSS('background-color', 'rgb(245, 184, 61)');
-  await expect(toggles.nth(1).locator('.veio-toggle__trilho')).not.toHaveCSS('background-color', 'rgb(245, 184, 61)');
+  const trilhos = await toggles.locator('.veio-toggle__trilho')
+    .evaluateAll(nos => nos.map(no => getComputedStyle(no).backgroundColor));
+  const ouro = await page.locator('[data-tema="escuro"] .veio-botao--primario').first()
+    .evaluate(no => getComputedStyle(no).backgroundColor);
+
+  expect(trilhos[0]).toBe(ouro);
+  expect(trilhos[1]).not.toBe(ouro);
 });
 
 test('sem atalho gravado, o kbd fica tracejado', async ({ page, paginas }) => {
@@ -136,6 +156,43 @@ test('sem atalho gravado, o kbd fica tracejado', async ({ page, paginas }) => {
   // O atalho gravado é sólido, para os dois não se confundirem.
   await expect(page.locator('[data-tema="escuro"] .veio-kbd:not(.veio-kbd--sem-atalho)').first())
     .toHaveCSS('border-style', 'solid');
+});
+
+test('a amostra de foco parado desenha o mesmo anel do foco de verdade', async ({ page, paginas }) => {
+  await abrirVitrine(page, paginas);
+
+  // A linha "foco" da vitrine pinta o anel o tempo todo, para o dono ver o
+  // estado parado. Se ela divergir do anel que tokens.css desenha no foco de
+  // verdade, a referência passa a mentir — então os dois são comparados.
+  const parado = await page.locator('[data-tema="escuro"] .veio-botao.demo-de-foco').first()
+    .evaluate(no => {
+      const estilo = getComputedStyle(no);
+      return [estilo.outlineStyle, estilo.outlineWidth, estilo.outlineColor, estilo.outlineOffset].join(' ');
+    });
+
+  const deVerdade = await page.locator('[data-tema="escuro"] [data-grupo="Botões"] [data-estado="normal"] .veio-botao').first()
+    .evaluate(no => {
+      no.focus();
+      const estilo = getComputedStyle(no);
+      return [estilo.outlineStyle, estilo.outlineWidth, estilo.outlineColor, estilo.outlineOffset].join(' ');
+    });
+
+  expect(parado).toBe(deVerdade);
+});
+
+test('o estado vazio ensina o que fazer e leva a ação junto', async ({ page, paginas }) => {
+  await abrirVitrine(page, paginas);
+
+  for (const tema of TEMAS) {
+    const vazios = page.locator(`[data-tema="${tema}"] [data-grupo="Estado vazio"] .veio-vazio`);
+    await expect(vazios).toHaveCount(2);
+
+    // O primeiro uso ensina a minerar; a busca sem resultado limpa a busca.
+    await expect(vazios.nth(0)).toContainText('Nenhuma frase ainda');
+    await expect(vazios.nth(0).getByRole('button', { name: 'Minerar frases' })).toBeVisible();
+    await expect(vazios.nth(1)).toContainText('gavião');
+    await expect(vazios.nth(1).getByRole('button', { name: 'Limpar busca' })).toBeVisible();
+  }
 });
 
 /* ── Modal ────────────────────────────────────────────────────────────────── */
@@ -245,6 +302,7 @@ test('o aviso persistente fica até ser fechado e tem Detalhes recolhido', async
   await expect(aviso).toHaveAttribute('role', 'alert');
   await expect(aviso).toContainText('As frases foram apagadas deste computador');
   await expect(aviso.getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
+  await expect(aviso.getByRole('button', { name: 'Ocultar' })).toBeVisible();
 
   // A causa técnica começa recolhida, e abre quando a pessoa pede.
   const detalhes = aviso.locator('.veio-aviso__detalhes');
@@ -257,8 +315,13 @@ test('o aviso persistente fica até ser fechado e tem Detalhes recolhido', async
   await page.waitForTimeout(4000);
   await expect(aviso).toBeVisible();
 
-  await aviso.getByRole('button', { name: 'Fechar' }).click();
-  await expect(aviso).toBeHidden();
+  // Fechado, ele sai — e a vitrine o repõe, para a referência não perder um
+  // componente no primeiro clique.
+  const detalhesAbertos = detalhes.locator('pre');
+  await expect(detalhesAbertos).toBeVisible();
+  await aviso.getByRole('button', { name: 'Ocultar' }).click();
+  await expect(aviso.locator('.veio-aviso__detalhes pre')).toBeHidden();
+  await expect(page.locator('[data-tema="escuro"] .veio-aviso')).toBeVisible();
 });
 
 /* ── Palavra grifada ──────────────────────────────────────────────────────── */
@@ -338,6 +401,7 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
     // só-ícone diz "Apagar frase" pelo aria-label, não por um texto visível.
     const percebido = [
       await coluna.innerText(),
+      await coluna.evaluate(no => no.textContent),
       await toast.innerText(),
       ...await coluna.locator('[aria-label], [placeholder]').evaluateAll(
         nos => nos.flatMap(no => [no.getAttribute('aria-label'), no.getAttribute('placeholder')])),
@@ -358,17 +422,27 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
   const aprovados = new Set(doCatalogo.map(([, texto]) => texto));
   const doGlossario = new Set(['Netflix', 'YouTube', 'Web', 'PDF', 'Livro', 'Manual']);
   const teclasGravadas = new Set(['Alt', 'S']);
+  // Os três nomes de padrão que a própria base escreve: o rótulo do chip da
+  // Palavra (travado no glossário) e o nome do recolhido (regra V3 da Voz).
+  const doPadrao = new Set(await page.evaluate(
+    () => Object.values(PerpetualMiner.Veio.ROTULOS_DO_PADRAO)));
 
   const soltos = await page.evaluate(() => {
-    const SELETORES = '.veio-botao, .veio-selo, .veio-kbd, .veio-segmentado__opcao, .veio-azulejo__numero, .veio-modal__titulo, .veio-modal__corpo, .veio-toast';
+    const SELETORES = ['.veio-botao', '.veio-selo', '.veio-kbd', '.veio-segmentado__opcao',
+      '.veio-azulejo__numero', '.veio-modal__titulo', '.veio-modal__corpo', '.veio-toast',
+      '.veio-chip-palavra__rotulo', '.veio-aviso__texto', '.veio-aviso__detalhes > summary',
+      '.veio-campo-erro', '.veio-vazio__texto', '.veio-cabecalho-de-data'].join(', ');
     return [...document.querySelectorAll(`[data-componentes] :is(${SELETORES})`)]
       .filter(no => !no.closest('[data-vitrine-chrome]') && !no.hasAttribute('data-vitrine-chrome'))
-      .map(no => no.innerText.trim())
+      // textContent, e não innerText: o cabeçalho de data é escrito "hoje" e
+      // só aparece em maiúsculas por causa do text-transform. O que se compara
+      // com o catálogo é a cópia escrita, não a caixa que o CSS dá a ela.
+      .map(no => no.textContent.trim())
       .filter(texto => texto !== '');
   });
 
   expect(soltos.filter(texto => !aprovados.has(texto) && !doGlossario.has(texto)
-    && !teclasGravadas.has(texto))).toEqual([]);
+    && !teclasGravadas.has(texto) && !doPadrao.has(texto))).toEqual([]);
 });
 
 test('todo controle da vitrine mostra onde o foco está', async ({ page, paginas }) => {
@@ -397,7 +471,7 @@ test('todo controle da vitrine mostra onde o foco está', async ({ page, paginas
       if (!no || no === document.body || no.dataset.focoDeTeste) return null;
       // A linha "foco" da vitrine pinta o anel o tempo todo, para o dono ver
       // o estado parado ao lado dos outros: ela não diz nada sobre o foco real.
-      if (no.classList.contains('veio-demo-foco')) return { pular: true };
+      if (no.classList.contains('demo-de-foco')) return { pular: true };
       no.dataset.focoDeTeste = String(ordem);
       return {
         controle: no.id || `${no.tagName.toLowerCase()}.${no.className}`,

@@ -44,7 +44,7 @@
 .veio-botao--primario {
   background: var(--veio-accent);
   color: var(--veio-accent-ink);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), 0 6px 16px -8px var(--veio-accent);
+  box-shadow: inset 0 1px 0 var(--veio-brilho), 0 6px 16px -8px var(--veio-accent);
 }
 
 .veio-botao--secundario {
@@ -274,8 +274,10 @@ select.veio-campo {
   border-color: var(--veio-accent);
 }
 
+/* 20px, e não os 18px do protótipo: num trilho de 40 com botão de 18, o 18
+   deixa 2px de um lado e 4 do outro. É a única divergência proposital. */
 .veio-toggle input:checked + .veio-toggle__trilho::after {
-  left: 18px;
+  left: 20px;
   background: var(--veio-accent-ink);
 }
 
@@ -362,11 +364,11 @@ select.veio-campo {
   padding: 2px 6px;
   border: 1px solid var(--veio-border-strong);
   border-bottom-width: 2px;
-  border-radius: 5px;
+  border-radius: var(--veio-raio-tecla);
   background: var(--veio-surface);
   color: var(--veio-text);
   font-family: var(--veio-fonte-mono);
-  font-size: 11px;
+  font-size: var(--veio-tam-tecla);
   font-weight: 600;
 }
 
@@ -645,12 +647,40 @@ select.veio-campo {
   background-image: linear-gradient(90deg, transparent, var(--veio-border), transparent);
   background-size: 180px 100%;
   background-repeat: no-repeat;
-  animation: veio-esqueleto 1.2s linear infinite;
+  animation: veio-esqueleto var(--veio-esqueleto) linear infinite;
 }
 
 @keyframes veio-esqueleto {
   from { background-position: -180px 0; }
   to { background-position: calc(100% + 180px) 0; }
+}
+
+/* ── Estado vazio ─────────────────────────────────────────────────────────
+   No lugar do conteúdo, quando não há nada a mostrar (C1). Ele ensina o que
+   fazer, e leva a ação junto quando existe uma: "Limpar busca" em PAI-04. */
+
+.veio-vazio {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 26px 16px;
+  border: 1px dashed var(--veio-border-strong);
+  border-radius: var(--veio-raio-painel);
+  text-align: center;
+}
+
+.veio-vazio svg {
+  width: 32px;
+  height: 32px;
+  color: var(--veio-muted);
+}
+
+.veio-vazio__texto {
+  margin: 0;
+  max-width: 36ch;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-corpo);
+  line-height: 1.5;
 }
 
 /* ── Linha de frase ───────────────────────────────────────────────────────
@@ -728,7 +758,7 @@ select.veio-campo {
 .veio-chip-palavra__rotulo {
   color: var(--veio-muted);
   font-family: var(--veio-fonte-mono);
-  font-size: 10.5px;
+  font-size: var(--veio-tam-micro);
 }
 
 .veio-cabecalho-de-data {
@@ -737,7 +767,7 @@ select.veio-campo {
   gap: 10px;
   margin: 14px 0 8px;
   color: var(--veio-muted);
-  font-size: 10.5px;
+  font-size: var(--veio-tam-micro);
   font-weight: var(--veio-peso-legenda);
   letter-spacing: 0.12em;
   text-transform: uppercase;

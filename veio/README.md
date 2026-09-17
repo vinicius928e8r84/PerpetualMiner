@@ -70,6 +70,9 @@ aqui, com o nome da spec, e passa a valer para todas as telas.
   fechado, com a ação ao lado e a causa técnica num Detalhes recolhido (V3).
 - **Esqueleto:** `.veio-esqueleto` no lugar do conteúdo em espera curta, sem
   texto (C3). O brilho é sinal de estado e para com movimento reduzido.
+- **Estado vazio:** `.veio-vazio` no lugar do conteúdo quando não há o que
+  mostrar (C1). Ele ensina o que fazer e leva a ação junto quando existe uma —
+  “Limpar busca”, em PAI-04.
 - **Linha de frase:** `.veio-frase`, com a Palavra grifada por
   `escreverFrase(no, texto, palavra)` — uma faixa `kw-bg` de 50% a 94% da linha,
   sem raio — e o chip de `montarChipDaPalavra(palavra, { detectada })`, que diz
@@ -77,7 +80,23 @@ aqui, com o nome da spec, e passa a valer para todas as telas.
 
 **A cópia não mora aqui.** Quem chama passa o texto já buscado no catálogo da
 Voz: `abrirModal` não conhece “Apagar 12 frases?”, a tela é que a pede por
-`textoDaVoz('PAI-13.titulo', { n })`.
+`textoDaVoz('PAI-13.titulo', { n })`. O aviso chega a recusar o serviço sem o
+rótulo do × — ele não inventa um.
+
+As três únicas palavras que a base escreve sozinha estão em
+`ROTULOS_DO_PADRAO`, porque não são estado de tela nenhuma e por isso não têm
+ID: `palavra:` e `auto:`, travados no glossário (CONTEXT.md), e `Detalhes`, o
+nome que a regra V3 da Voz dá ao recolhido.
+
+### Tokens que a spec não nomeia
+
+A tabela da spec cobre a cor. O que os componentes pediram além dela entrou em
+`tokens.css` com o nome da família a que pertence, e não como valor solto:
+`--veio-danger-ink` (o texto sobre o perigo preenchido, irmão de
+`accent-ink`), `--veio-scrim` e `--veio-sombra` (as camadas que flutuam),
+`--veio-brilho` (o fio de luz do botão primário), `--veio-tam-tecla` e
+`--veio-tam-micro` (os dois degraus abaixo de `legenda`, para a tecla e o
+rótulo do chip), `--veio-raio-tecla` e `--veio-esqueleto`.
 
 ### Diferença conhecida do protótipo
 
@@ -92,6 +111,12 @@ componentes**, nos dois temas e nos estados normal, foco, desabilitado e erro, f
 testes, em [`e2e/vitrine/vitrine.html`](../e2e/vitrine/vitrine.html). Ela é servida pelo próprio
 seam (`cd e2e && npm test`, ou o servidor de fixtures) para carregar os mesmos tokens, as mesmas
 fontes, os mesmos componentes e o mesmo catálogo da Voz que a extensão carrega.
+
+Cada componente aparece nos estados que ele tem: botão e campo têm foco e
+desabilitado (e o campo, erro); um selo ou um `kbd` só têm o normal. A linha
+“foco” é pintada com `demo-de-foco`, uma classe da própria vitrine — sem o
+prefixo `veio-`, porque não é componente —, e um teste compara esse anel parado
+com o anel que o foco de verdade desenha, para a referência não passar a mentir.
 
 A galeria é montada por [`componentes-da-vitrine.js`](../e2e/vitrine/componentes-da-vitrine.js),
 uma vez por tema, pela mesma função: as duas colunas nunca divergem. A cópia das amostras vem do
