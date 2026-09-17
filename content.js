@@ -1,5 +1,9 @@
 // content.js
 
+// A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
+// deste arquivo, pelo manifest: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
+const { detectarIdioma } = PerpetualMiner;
+
 const ATALHO_TECLA = 'KeyS';
 const COR_ICONE    = '#00ff88';
 // Linhas dos avisos de mineração (manual e automática): cabeçalho e texto minerado.
@@ -109,7 +113,7 @@ function _ativarCaptura(texto, evento) {
       titulo:  document.title.trim(),
       detalhe: '',
     },
-    idioma: /[\u0400-\u04FF]/.test(texto) ? 'Russo' : 'Inglês',
+    idioma: detectarIdioma(texto),
   });
 }
 
@@ -709,11 +713,6 @@ function formatarEpisodio(texto) {
     // Já está no formato correto?
     if (/^S\d{2}E\d{2}$/i.test(texto)) return texto.toUpperCase();
     return texto.length <= 25 ? texto : '';
-}
-
-// Detecta cirílico → Russo; caso contrário → Inglês
-function detectarIdioma(texto) {
-    return /[\u0400-\u04FF]/.test(texto) ? 'Russo' : 'Inglês';
 }
 
 // ─── Notificação Visual ───────────────────────────────────────────────────────

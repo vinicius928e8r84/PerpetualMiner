@@ -45,6 +45,13 @@ function loadBackground(storage = {}) {
     },
     __storage: storage,
   };
+  // O service worker carrega a base compartilhada com importScripts; aqui o stub
+  // roda os mesmos arquivos no mesmo contexto.
+  context.importScripts = (...arquivos) => {
+    for (const arquivo of arquivos) {
+      vm.runInContext(fs.readFileSync(arquivo, 'utf8'), context, { filename: arquivo });
+    }
+  };
   vm.createContext(context);
   vm.runInContext(source, context, { filename: 'background.js' });
   return context;

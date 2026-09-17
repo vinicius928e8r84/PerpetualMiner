@@ -1,5 +1,9 @@
 'use strict';
 
+// A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
+// deste arquivo, pelo bookreader.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
+const { detectarIdioma } = PerpetualMiner;
+
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
@@ -567,10 +571,6 @@ function salvarApiKey() {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function detectarIdioma(texto) {
-  return /[\u0400-\u04FF]/.test(texto) ? 'Russo' : 'Inglês';
-}
 
 function esc(str) {
   return String(str)

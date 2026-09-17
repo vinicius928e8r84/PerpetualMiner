@@ -1,5 +1,9 @@
 'use strict';
 
+// A base compartilhada: o catálogo da Voz e a detecção de idioma.
+importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js');
+const { textoDaVoz, detectarIdioma, IDIOMAS } = PerpetualMiner;
+
 importScripts('tombstone.js');
 
 const FIREBASE_PROJECT  = 'perpetualminer-4c219';
@@ -91,19 +95,32 @@ const AUTO_STRONG_PHRASAL_ROOTS = new Set([
 
 // ─── Context Menu ────────────────────────────────────────────────────────────
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: 'enviar-perpetualminer',
-    title: 'Enviar para o PerpetualMiner',
-    contexts: ['selection'],
+const MENU_MINERAR_SELECAO = 'minerar-perpetualminer';
+
+// Os itens do menu ficam gravados entre versões, e o id mudou junto com a cópia
+// (MIN-08). Sem o removeAll, quem atualiza a extensão fica com dois itens.
+function registrarMenuDeContexto() {
+  return new Promise(resolve => {
+    chrome.contextMenus.removeAll(() => {
+      chrome.contextMenus.create({
+        id: MENU_MINERAR_SELECAO,
+        title: textoDaVoz('MIN-08'),
+        contexts: ['selection'],
+      });
+      resolve();
+    });
   });
-});
+}
 
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId !== 'enviar-perpetualminer') return;
+chrome.runtime.onInstalled.addListener(() => registrarMenuDeContexto());
 
-  const texto = info.selectionText?.trim();
-  if (!texto) return;
+chrome.contextMenus.onClicked.addListener(minerarSelecaoDoMenu);
+
+function minerarSelecaoDoMenu(info, tab) {
+  if (info.menuItemId !== MENU_MINERAR_SELECAO) return;
+
+  const selecao = info.selectionText?.trim();
+  if (!selecao) return;
 
   const url   = info.pageUrl || tab?.url || '';
   const isPdf = /\.pdf(\?|#|$)/i.test(url)
@@ -116,8 +133,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     detalhe: '',
   };
 
-  salvarFrase(texto, fonte, contexto, detectarIdioma(texto));
-});
+  salvarFrase(selecao, fonte, contexto, detectarIdioma(selecao));
+}
 
 // ─── Mensagens do content.js ─────────────────────────────────────────────────
 
@@ -391,13 +408,9 @@ function fraseParaFields(obj) {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function detectarIdioma(texto) {
-  return /[\u0400-\u04FF]/.test(texto) ? 'Russo' : 'Inglês';
-}
-
 function isEnglishPhrase(frase) {
   const idioma = String(frase?.idioma || '').toLowerCase();
-  return idioma.includes('ingl') || idioma === 'en' || (!idioma && !/[\u0400-\u04FF]/.test(frase?.texto || ''));
+  return idioma.includes('ingl') || idioma === 'en' || (!idioma && detectarIdioma(frase?.texto || '') === IDIOMAS.INGLES);
 }
 
 function autoTokenizar(texto) {
