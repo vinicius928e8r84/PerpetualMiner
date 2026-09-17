@@ -5,6 +5,7 @@
 This repository contains a Chrome extension plus a local Python bridge for Anki integration.
 
 - Root extension files: `manifest.json`, `background.js`, `content.js`, `popup.*`, `painel.*`, `bookreader.*`, and `tombstone.js` (shared by the service worker and the panel).
+- `veio/` holds the shared Veio identity: `tokens.css` (the only place colors, type, radii and motion are defined), the packaged `.woff2` fonts and the toolbar icons. Every extension page includes `veio/tokens.css` before its own stylesheet; see `veio/README.md`.
 - Shared extension modules live in `lib/`: `lib/voz/` (the Voice catalog and `textoDaVoz`) and `lib/idioma.js` (`detectarIdioma`). Every surface loads them before its own script. Vendor browser libraries live in `lib/firebase/`.
 - New or rewritten UI copy comes from the Voice catalog by ID, never from a literal in the surface. The surfaces still hold their old literals; each redesign step moves the surface it rebuilds. See the shared base section of `CLAUDE.md`.
 - The local bridge lives in `bridge/`: `server.py` exposes the HTTP API, `run_bridge.py` starts it, and `install_autostart.py` / `uninstall_autostart.py` manage Windows startup.
@@ -29,7 +30,7 @@ This repository contains a Chrome extension plus a local Python bridge for Anki 
 
 ## Coding Style & Naming Conventions
 
-Use 4-space indentation in Python and 2-space indentation in JavaScript/CSS/HTML when editing existing files. Keep Python names `snake_case`, JavaScript functions/variables `camelCase`, constants `UPPER_SNAKE_CASE`, and DOM IDs/classes consistent with existing Portuguese UI naming. Prefer small, explicit helpers over broad refactors. Avoid changing generated files in `bridge/runtime/`.
+New colors, font sizes, radii and durations go into `veio/tokens.css` as tokens and are used through `var(--veio-…)`; do not write a new literal color anywhere else. Use 4-space indentation in Python and 2-space indentation in JavaScript/CSS/HTML when editing existing files. Keep Python names `snake_case`, JavaScript functions/variables `camelCase`, constants `UPPER_SNAKE_CASE`, and DOM IDs/classes consistent with existing Portuguese UI naming. Prefer small, explicit helpers over broad refactors. Avoid changing generated files in `bridge/runtime/`.
 
 ## Testing Guidelines
 

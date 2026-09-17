@@ -26,6 +26,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `popup.html/js/css` | Quick-access popup showing last 5 phrases |
 | `painel.html/js/css` | Full dashboard to view, copy, and delete all saved phrases; Google login and Firestore sync |
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
+| `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs and the SVG). See `veio/README.md` |
 | `lib/voz/catalogo.js` | The Voice catalog as data: the 159 approved copy states from `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
@@ -159,6 +160,7 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - `e2e/fixtures.js` launches a fresh Chromium profile per test with the repo root loaded as an unpacked extension, fakes the network at the HTTP boundary and blocks every other external request. It gives tests `extensao` (id, service worker, `url()`, `lerStorage`/`gravarStorage`, `frases()`, `semearSessao()`), `fakes` and `paginas`.
 - `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`), Gemini, and Firestore/Google (in-memory documents, token refresh). `semearSessao()` writes an account session to storage, skipping the real login.
 - `e2e/pages/`: local fixture pages where the content script is injected: `player.html` (fake player with a caption), `texto.html` (plain text to select), `sem-video.html`, `player-em-iframe.html?player=<url>` (embeds the player from another origin, e.g. `paginas.urlCruzada('player.html')`), `hostil.html` + `hostil-filho.html` (a page that tries to drive the extension by itself), and `player-marcacao.html` / `texto-marcacao.html` (caption, title and selectable text carrying markup as text, to prove the content script always inserts page text as text, never as HTML).
+- `e2e/vitrine/vitrine.html`: the Veio showcase (tokens, type scale, radii and a Russian phrase, in both themes). The fixture server also serves `/veio/…` from the extension root, so the showcase loads the same tokens and the same packaged fonts the extension pages load.
 - `HEADED=1 npm test` shows the browser.
 - Tests assert what the person sees and what ends up stored, never internal functions. Two narrow exceptions, each named in the test's own comment:
   - Where Chromium gives Playwright no way to drive the native UI (the context menu), a test calls the function Chrome would call (`minerarSelecaoDoMenu`, `registrarMenuDeContexto`) and asserts what gets stored or what is handed to Chrome.
@@ -179,4 +181,4 @@ The legacy tests keep running: `node test_sync.js`, `node test_bridge_panel.js`,
 - `storage`, `unlimitedStorage`, `activeTab`, `tabs`, `contextMenus`, `identity`
 - `host_permissions`: Gemini API, Firestore, Google OAuth, Firebase token endpoints
 - Content scripts inject into all URLs with `all_frames: true`
-- `painel.html` and `bookreader.html` declared as `web_accessible_resources`
+- `painel.html`, `bookreader.html`, `veio/tokens.css` and `veio/fontes/*.woff2` declared as `web_accessible_resources`. The tokens and the fonts are exposed so the in-page overlay can load them inside its Shadow DOM; `content.js` does not read them yet — that lands with the overlay rebuild

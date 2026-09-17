@@ -6,7 +6,7 @@ body {
   height: 100vh;
   overflow: hidden;
   background: #f9fafb;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: var(--veio-fonte-ui);
   font-size: 14px;
   color: #111827;
 }
@@ -88,7 +88,7 @@ body {
   border-radius: 8px;
   color: white;
   font-size: 12px;
-  font-family: 'Courier New', monospace;
+  font-family: var(--veio-fonte-mono);
   outline: none;
   transition: border-color 0.15s, background 0.15s;
   min-width: 0;

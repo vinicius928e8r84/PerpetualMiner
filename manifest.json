@@ -22,8 +22,20 @@
     "https://*.firebaseio.com/*",
     "https://*.firebaseapp.com/*"
   ],
+  "icons": {
+    "16": "veio/icones/icone-16.png",
+    "32": "veio/icones/icone-32.png",
+    "48": "veio/icones/icone-48.png",
+    "128": "veio/icones/icone-128.png"
+  },
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "veio/icones/icone-16.png",
+      "32": "veio/icones/icone-32.png",
+      "48": "veio/icones/icone-48.png",
+      "128": "veio/icones/icone-128.png"
+    }
   },
   "background": {
     "service_worker": "background.js"
@@ -37,7 +49,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["painel.html", "bookreader.html"],
+      "resources": ["painel.html", "bookreader.html", "veio/tokens.css", "veio/fontes/*.woff2"],
       "matches": ["<all_urls>"]
     }
   ]
