@@ -4,7 +4,7 @@
 
 This repository contains a Chrome extension plus a local Python bridge for Anki integration.
 
-- Root extension files: `manifest.json`, `background.js`, `content.js`, `popup.*`, `painel.*`, and `bookreader.*`.
+- Root extension files: `manifest.json`, `background.js`, `content.js`, `popup.*`, `painel.*`, `bookreader.*`, and `tombstone.js` (shared by the service worker and the panel).
 - Shared extension modules live in `lib/`: `lib/voz/` (the Voice catalog and `textoDaVoz`) and `lib/idioma.js` (`detectarIdioma`). Every surface loads them before its own script. Vendor browser libraries live in `lib/firebase/`.
 - New or rewritten UI copy comes from the Voice catalog by ID, never from a literal in the surface. The surfaces still hold their old literals; each redesign step moves the surface it rebuilds. See the shared base section of `CLAUDE.md`.
 - The local bridge lives in `bridge/`: `server.py` exposes the HTTP API, `run_bridge.py` starts it, and `install_autostart.py` / `uninstall_autostart.py` manage Windows startup.

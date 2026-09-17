@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Site com player em iframe</title>
+  <style>
+    body { margin: 0; background: #222; font-family: sans-serif; }
+    iframe { border: 0; width: 700px; height: 420px; }
+  </style>
+</head>
+<body>
+  <!-- O player vem de outra origem (?player=<url>, dada pelo teste) e o iframe
+       não delega clipboard-write, como nos sites que embutem o player de um
+       terceiro: o clipboard falha dentro do iframe e a cópia cai para o frame
+       de cima. -->
+  <iframe id="player"></iframe>
+  <script>
+    document.getElementById('player').src = new URLSearchParams(location.search).get('player');
+  </script>
+</body>
+</html>

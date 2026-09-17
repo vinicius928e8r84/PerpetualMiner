@@ -8,6 +8,8 @@ function loadBackground(storage = {}) {
   const source = fs.readFileSync('background.js', 'utf8');
   const context = {
     console,
+    importScripts: (...arquivos) => arquivos.forEach(arquivo =>
+      vm.runInContext(fs.readFileSync(arquivo, 'utf8'), context, { filename: arquivo })),
     fetch: async () => ({ ok: false }),
     setTimeout,
     clearTimeout,

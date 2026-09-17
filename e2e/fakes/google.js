@@ -63,11 +63,17 @@ function criarFakeGoogle() {
     if (metodo === 'PATCH') {
       if (recusarEscritas) return responderJson(route, 503, { error: { message: 'indisponível' } });
       const fields = req.postDataJSON().fields || {};
-      const mascara = url.searchParams.getAll('updateMask.fieldPaths');
-      const atual = documentos.get(caminho) || {};
-      const novo = mascara.length
-        ? { ...atual, ...Object.fromEntries(mascara.filter(c => c in fields).map(c => [c, fields[c]])) }
-        : fields;
+      let mascara;
+      try {
+        mascara = url.searchParams.getAll('updateMask.fieldPaths').map(segmentosDoCaminhoDeCampo);
+      } catch (erro) {
+        return responderJson(route, 400, { error: { status: 'INVALID_ARGUMENT', message: erro.message } });
+      }
+      let novo = fields;
+      if (mascara.length) {
+        novo = structuredClone(documentos.get(caminho) || {});
+        for (const segmentos of mascara) gravarCampo(novo, segmentos, lerCampo(fields, segmentos));
+      }
       documentos.set(caminho, novo);
       return responderJson(route, 200, { name: nomeDoCaminho(caminho), fields: novo });
     }
@@ -89,6 +95,10 @@ function criarFakeGoogle() {
         .filter(([doc]) => doc.startsWith(prefixo))
         .map(([, fields]) => camposParaObjeto(fields));
     },
+    /** Ids com tombstone no Firestore do usuário (`usuarios/{uid}/meta/deleted`). */
+    apagadasDe(uid) {
+      return Object.keys(documentos.get(`usuarios/${uid}/meta/deleted`)?.ids?.mapValue?.fields || {});
+    },
     recusarEscritas(valor = true) { recusarEscritas = valor; },
   };
 }
@@ -99,6 +109,42 @@ function caminhoDoNome(nome) {
 
 function nomeDoCaminho(caminho) {
   return `${RAIZ_DOS_DOCUMENTOS}/${caminho}`;
+}
+
+// Caminho de campo como a API REST aceita: segmentos separados por ponto, cada um
+// um nome simples (letras, dígitos e _, sem começar com dígito) ou um nome entre
+// crases, com \ escapando. `ids.123` é recusado; `ids.\`123\`` vale.
+function segmentosDoCaminhoDeCampo(caminho) {
+  const segmentos = [];
+  let resto = caminho;
+  while (true) {
+    const simples = resto.match(/^[A-Za-z_][A-Za-z_0-9]*/);
+    const citado = resto.match(/^`((?:[^`\\]|\\.)+)`/);
+    if (!simples && !citado) throw new Error(`Invalid property path "${caminho}".`);
+    segmentos.push(simples ? simples[0] : citado[1].replace(/\\(.)/g, '$1'));
+    resto = resto.slice((simples || citado)[0].length);
+    if (resto === '') return segmentos;
+    if (resto[0] !== '.') throw new Error(`Invalid property path "${caminho}".`);
+    resto = resto.slice(1);
+  }
+}
+
+function lerCampo(fields, [primeiro, ...resto]) {
+  const valor = fields?.[primeiro];
+  if (!resto.length || valor === undefined) return valor;
+  return lerCampo(valor.mapValue?.fields, resto);
+}
+
+// Campo da máscara ausente no corpo = campo apagado, como no Firestore.
+function gravarCampo(fields, [primeiro, ...resto], valor) {
+  if (!resto.length) {
+    if (valor === undefined) delete fields[primeiro];
+    else fields[primeiro] = valor;
+    return;
+  }
+  if (!fields[primeiro]?.mapValue) fields[primeiro] = { mapValue: { fields: {} } };
+  fields[primeiro].mapValue.fields ||= {};
+  gravarCampo(fields[primeiro].mapValue.fields, resto, valor);
 }
 
 function camposParaObjeto(fields) {

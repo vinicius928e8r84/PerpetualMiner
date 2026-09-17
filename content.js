@@ -6,6 +6,12 @@ const { detectarIdioma } = PerpetualMiner;
 
 const ATALHO_TECLA = 'KeyS';
 const COR_ICONE    = '#00ff88';
+// Linhas dos avisos de mineração (manual e automática): cabeçalho e texto minerado.
+const ESTILO_CABECALHO_AVISO = `font-size:9px;text-transform:uppercase;letter-spacing:1.2px;
+    margin-bottom:4px;font-weight:bold;color:${COR_ICONE};`;
+const ESTILO_TEXTO_AVISO = `font-weight:500;line-height:1.4;color:#fff;
+    display:-webkit-box;-webkit-line-clamp:3;
+    -webkit-box-orient:vertical;overflow:hidden;font-style:normal;`;
 const AUTO_MINER_POLL_MS = 700;
 const AUTO_MINER_LAST_EVENT_KEY = 'pm_auto_miner_last_event';
 const SUBTITLE_UI_TEXT = [
@@ -74,7 +80,7 @@ document.addEventListener('mousedown', (e) => {
 
   e.preventDefault();
   e.stopImmediatePropagation();
-  _ativarCaptura(texto);
+  _ativarCaptura(texto, e);
 }, true);
 
 // Listener de teclado — ignora campos de input/textarea
@@ -89,10 +95,13 @@ document.addEventListener('keydown', (e) => {
   if (!texto) return;
 
   e.preventDefault();
-  _ativarCaptura(texto);
+  _ativarCaptura(texto, e);
 }, true);
 
-function _ativarCaptura(texto) {
+// Só a pessoa minera: quem pede uma captura passa o evento que a disparou, e um
+// evento sintético (disparado pela página) não conta.
+function _ativarCaptura(texto, evento) {
+  if (!evento?.isTrusted) return;
   _mostrarOverlayCyan(texto);
 
   chrome.runtime.sendMessage({
@@ -130,13 +139,12 @@ function _mostrarOverlayCyan(texto) {
   ].join(';');
 
   const preview = texto.length > 55 ? texto.slice(0, 55) + '…' : texto;
-  overlay.innerHTML = `
-    <div style="font-size:22px;margin-bottom:8px;">⚡</div>
-    <div style="margin-bottom:6px;">Frase Capturada!</div>
-    <div style="font-size:11px;color:rgba(0,255,255,0.55);font-weight:400;
-                max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-    >${preview}</div>
-  `;
+  overlay.append(
+    pmDivComTexto('font-size:22px;margin-bottom:8px;', '⚡'),
+    pmDivComTexto('margin-bottom:6px;', 'Frase Capturada!'),
+    pmDivComTexto(`font-size:11px;color:rgba(0,255,255,0.55);font-weight:400;
+           max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`, preview),
+  );
 
   document.body.appendChild(overlay);
   requestAnimationFrame(() => { requestAnimationFrame(() => { overlay.style.opacity = '1'; }); });
@@ -149,23 +157,16 @@ function _mostrarOverlayCyan(texto) {
 
 // ─── Ponte de Segurança (Cross-Frame) ────────────────────────────────────────
 
-window.addEventListener('message', function(event) {
-    if (!event.data) return;
-    const { type, texto, contexto, idioma } = event.data;
+// Nada passa por window.postMessage: a página divide a janela com o content
+// script e vê as mensagens entre frames, então poderia forjá-las. Quando o
+// clipboard falha num iframe, o pedido de cópia vai pelo service worker, que o
+// entrega só ao frame de cima da mesma aba.
 
-    if (type === 'COPIAR_PARA_CLIPBOARD' || type === 'COPIAR_E_SALVAR') {
-        navigator.clipboard.writeText(texto).catch(() => {});
-
-        if (chrome.runtime && chrome.runtime.sendMessage) {
-            chrome.runtime.sendMessage({
-                type:    'SALVAR_HISTORICO',
-                texto,
-                origem:  window.location.hostname.replace('www.', '').split('.')[0],
-                contexto: contexto || null,
-                idioma:   idioma   || 'Inglês',
-            });
-        }
-    }
+chrome.runtime.onMessage.addListener((message, sender) => {
+    if (message?.type !== 'COPIAR_PARA_CLIPBOARD') return;
+    if (sender.id !== chrome.runtime.id || window !== window.top) return;
+    if (typeof message.texto !== 'string' || !message.texto.trim()) return;
+    navigator.clipboard.writeText(message.texto).catch(() => {});
 });
 
 // ─── Atalho de Teclado ───────────────────────────────────────────────────────
@@ -173,7 +174,7 @@ window.addEventListener('message', function(event) {
 document.addEventListener('keydown', function(event) {
     if (event.altKey && event.code === ATALHO_TECLA) {
         event.preventDefault();
-        minerarLegenda();
+        minerarLegenda(event);
     }
 });
 
@@ -218,7 +219,7 @@ function criarBotaoVisual(video) {
 
     btn.onmouseover = () => { btn.style.transform = 'scale(1.05)'; btn.style.backgroundColor = 'rgba(20,20,20,0.95)'; };
     btn.onmouseout  = () => { btn.style.transform = 'scale(1)';    btn.style.backgroundColor = 'rgba(10,10,10,0.85)'; };
-    btn.onclick     = (e) => { e.stopPropagation(); e.preventDefault(); minerarLegenda(); };
+    btn.onclick     = (e) => { e.stopPropagation(); e.preventDefault(); minerarLegenda(e); };
 
     const host      = window.location.hostname;
     const container = host.includes('youtube.com')
@@ -421,17 +422,11 @@ function mostrarNotificacaoAutoMiner(texto, idioma, state) {
         backdrop-filter: blur(15px);
         text-align: left;
     `;
-    aviso.innerHTML = `
-        <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;
-                    margin-bottom:4px;opacity:0.78;font-weight:bold;color:#00ff88;">
-            Auto Miner - ${idioma} - ${daily?.count || 0}/${limit || 0}
-        </div>
-        <div style="font-weight:500;line-height:1.4;color:#fff;
-                    display:-webkit-box;-webkit-line-clamp:3;
-                    -webkit-box-orient:vertical;overflow:hidden;font-style:normal;">
-            ${pmEscapeHtml(texto)}
-        </div>
-    `;
+    aviso.append(
+        pmDivComTexto(ESTILO_CABECALHO_AVISO + 'opacity:0.78;',
+            `Auto Miner - ${idioma} - ${daily?.count || 0}/${limit || 0}`),
+        pmDivComTexto(ESTILO_TEXTO_AVISO, texto),
+    );
     btn.appendChild(aviso);
     setTimeout(() => {
         aviso.style.opacity = '0';
@@ -441,17 +436,18 @@ function mostrarNotificacaoAutoMiner(texto, idioma, state) {
     }, 2800);
 }
 
-function pmEscapeHtml(value) {
-    return String(value || '').replace(/[&<>"']/g, ch => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;',
-    }[ch]));
+// Monta um <div> dos avisos. O texto entra sempre como texto (nunca como HTML),
+// porque vem da página: legenda, seleção, título.
+function pmDivComTexto(cssText, texto) {
+    const div = document.createElement('div');
+    div.style.cssText = cssText;
+    div.textContent = texto;
+    return div;
 }
 
-function minerarLegenda() {
+// Como em _ativarCaptura: só um evento da pessoa minera a legenda.
+function minerarLegenda(evento) {
+    if (!evento?.isTrusted) return;
     const texto = obterLegendaAtual();
 
     if (texto && texto.length > 2) {
@@ -459,7 +455,15 @@ function minerarLegenda() {
         const idioma   = detectarIdioma(texto);
 
         navigator.clipboard.writeText(texto).catch(() => {
-            window.parent.postMessage({ type: 'COPIAR_PARA_CLIPBOARD', texto, contexto, idioma }, '*');
+            if (window !== window.top) chrome.runtime.sendMessage({ type: 'COPIAR_NO_FRAME_DE_CIMA', texto });
+        });
+
+        chrome.runtime.sendMessage({
+            type:    'SALVAR_HISTORICO',
+            texto,
+            origem:  window.location.hostname.replace('www.', '').split('.')[0],
+            contexto,
+            idioma,
         });
 
         mostrarNotificacaoAcoplada(texto, contexto, idioma);
@@ -714,9 +718,6 @@ function formatarEpisodio(texto) {
 // ─── Notificação Visual ───────────────────────────────────────────────────────
 
 function mostrarNotificacaoAcoplada(texto, contexto, idioma) {
-    // Dispara a ponte: salva e copia via script principal
-    window.postMessage({ type: 'COPIAR_E_SALVAR', texto, contexto, idioma }, '*');
-
     const btn = document.getElementById('btn-minerador-pro');
     if (!btn) return;
 
@@ -724,14 +725,6 @@ function mostrarNotificacaoAcoplada(texto, contexto, idioma) {
 
     const aviso = document.createElement('div');
     aviso.id = 'notificacao-minerador';
-
-    // Linha de contexto para exibir na notificação
-    const ctxLabel = contexto?.titulo
-        ? `<div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;
-                       opacity:0.55;margin-bottom:2px;color:#fff;font-style:normal;">
-               ${contexto.titulo}${contexto.detalhe ? ' · ' + contexto.detalhe : ''}
-           </div>`
-        : '';
 
     aviso.style.cssText = `
         position: absolute; right: 55px; bottom: 0;
@@ -752,18 +745,17 @@ function mostrarNotificacaoAcoplada(texto, contexto, idioma) {
         text-align: left;
     `;
 
-    aviso.innerHTML = `
-        <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;
-                    margin-bottom:4px;opacity:0.7;font-weight:bold;color:${COR_ICONE};">
-            Minerado &amp; Copiado · ${idioma}
-        </div>
-        ${ctxLabel}
-        <div style="font-weight:500;line-height:1.4;color:#fff;
-                    display:-webkit-box;-webkit-line-clamp:3;
-                    -webkit-box-orient:vertical;overflow:hidden;font-style:normal;">
-            ${texto}
-        </div>
-    `;
+    aviso.appendChild(pmDivComTexto(ESTILO_CABECALHO_AVISO + 'opacity:0.7;',
+        `Minerado & Copiado · ${idioma}`));
+
+    // Linha de contexto para exibir na notificação
+    if (contexto?.titulo) {
+        aviso.appendChild(pmDivComTexto(`font-size:9px;text-transform:uppercase;letter-spacing:1px;
+                                 opacity:0.55;margin-bottom:2px;color:#fff;font-style:normal;`,
+            `${contexto.titulo}${contexto.detalhe ? ' · ' + contexto.detalhe : ''}`));
+    }
+
+    aviso.appendChild(pmDivComTexto(ESTILO_TEXTO_AVISO, texto));
 
     if (!document.getElementById('style-minerador-final')) {
         const style = document.createElement('style');
