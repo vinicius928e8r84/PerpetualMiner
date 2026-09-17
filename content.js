@@ -2,6 +2,12 @@
 
 const ATALHO_TECLA = 'KeyS';
 const COR_ICONE    = '#00ff88';
+// Linhas dos avisos de mineração (manual e automática): cabeçalho e texto minerado.
+const ESTILO_CABECALHO_AVISO = `font-size:9px;text-transform:uppercase;letter-spacing:1.2px;
+    margin-bottom:4px;font-weight:bold;color:${COR_ICONE};`;
+const ESTILO_TEXTO_AVISO = `font-weight:500;line-height:1.4;color:#fff;
+    display:-webkit-box;-webkit-line-clamp:3;
+    -webkit-box-orient:vertical;overflow:hidden;font-style:normal;`;
 const AUTO_MINER_POLL_MS = 700;
 const AUTO_MINER_LAST_EVENT_KEY = 'pm_auto_miner_last_event';
 const SUBTITLE_UI_TEXT = [
@@ -417,12 +423,9 @@ function mostrarNotificacaoAutoMiner(texto, idioma, state) {
         text-align: left;
     `;
     aviso.append(
-        pmDivComTexto(`font-size:9px;text-transform:uppercase;letter-spacing:1.2px;
-               margin-bottom:4px;opacity:0.78;font-weight:bold;color:#00ff88;`,
+        pmDivComTexto(ESTILO_CABECALHO_AVISO + 'opacity:0.78;',
             `Auto Miner - ${idioma} - ${daily?.count || 0}/${limit || 0}`),
-        pmDivComTexto(`font-weight:500;line-height:1.4;color:#fff;
-               display:-webkit-box;-webkit-line-clamp:3;
-               -webkit-box-orient:vertical;overflow:hidden;font-style:normal;`, texto),
+        pmDivComTexto(ESTILO_TEXTO_AVISO, texto),
     );
     btn.appendChild(aviso);
     setTimeout(() => {
@@ -740,8 +743,7 @@ function mostrarNotificacaoAcoplada(texto, contexto, idioma) {
         text-align: left;
     `;
 
-    aviso.appendChild(pmDivComTexto(`font-size:9px;text-transform:uppercase;letter-spacing:1.2px;
-                             margin-bottom:4px;opacity:0.7;font-weight:bold;color:${COR_ICONE};`,
+    aviso.appendChild(pmDivComTexto(ESTILO_CABECALHO_AVISO + 'opacity:0.7;',
         `Minerado & Copiado · ${idioma}`));
 
     // Linha de contexto para exibir na notificação
@@ -751,9 +753,7 @@ function mostrarNotificacaoAcoplada(texto, contexto, idioma) {
             `${contexto.titulo}${contexto.detalhe ? ' · ' + contexto.detalhe : ''}`));
     }
 
-    aviso.appendChild(pmDivComTexto(`font-weight:500;line-height:1.4;color:#fff;
-                             display:-webkit-box;-webkit-line-clamp:3;
-                             -webkit-box-orient:vertical;overflow:hidden;font-style:normal;`, texto));
+    aviso.appendChild(pmDivComTexto(ESTILO_TEXTO_AVISO, texto));
 
     if (!document.getElementById('style-minerador-final')) {
         const style = document.createElement('style');
