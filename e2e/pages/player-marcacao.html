@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>&lt;img src=t onerror="window.__injetado = 'titulo'"&gt; Episódio</title>
+  <style>
+    body { margin: 0; background: #111; font-family: sans-serif; }
+    .player { position: relative; width: 640px; height: 360px; margin: 24px; }
+    video { width: 640px; height: 360px; background: #000; display: block; }
+    .caption-window { position: absolute; left: 0; right: 0; bottom: 36px; text-align: center; }
+    .caption-text { color: #fff; font-size: 22px; background: rgba(0, 0, 0, .6); padding: 2px 8px; }
+  </style>
+</head>
+<body>
+  <!-- Como player.html, mas a legenda e o título trazem marcação como texto:
+       a extensão tem de mostrá-la literalmente, sem criar elementos nem rodar o handler. -->
+  <div class="player">
+    <video muted></video>
+    <div class="caption-window"><span class="caption-text" id="legenda">&lt;img src=x onerror="window.__injetado = 'legenda'"&gt;Hold the line.</span></div>
+  </div>
+</body>
+</html>

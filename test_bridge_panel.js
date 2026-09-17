@@ -80,6 +80,10 @@ function loadPanel({ confirmResult = true } = {}) {
     __confirmCalls: 0,
   };
   vm.createContext(context);
+  // O painel.html carrega a base compartilhada antes do painel.js.
+  for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js']) {
+    vm.runInContext(fs.readFileSync(arquivo, 'utf8'), context, { filename: arquivo });
+  }
   const source = `${fs.readFileSync('painel.js', 'utf8')}
 globalThis.__setPanelState = (state) => {
   if (Object.prototype.hasOwnProperty.call(state, 'todasFrases')) todasFrases = state.todasFrases;

@@ -1,5 +1,9 @@
 'use strict';
 
+// A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
+// deste arquivo, pelo painel.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
+const { detectarIdioma, IDIOMAS } = PerpetualMiner;
+
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
 const POR_PAGINA = 10;
@@ -591,7 +595,6 @@ function salvarFraseFirestore(frase, campos = null) {
 //   com delay, então não é suficiente sozinho como fonte de verdade.
 
 const TOMBSTONE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
-const TOMB_PREFIX      = 'pm_del_';
 const TOMB_FS_PATH     = () => `usuarios/${usuarioLogado.uid}/meta/deleted`;
 
 // ── Tombstone Firestore ───────────────────────────────────────────────────────
@@ -614,17 +617,11 @@ async function lerTombstoneFirestore() {
   }
 }
 
-/**
- * Grava cada id como campo independente no documento meta/deleted.
- * updateMask por campo: escrita atômica e sem conflito entre dispositivos.
- */
+/** Grava cada id como campo independente no documento meta/deleted (tombstone.js). */
 async function gravarTombstoneFirestore(ids) {
   if (!usuarioLogado || ids.length === 0) return;
-  const agora      = Date.now();
-  const maskParams = ids.map(id => `updateMask.fieldPaths=${encodeURIComponent(`ids.${id}`)}`).join('&');
-  const fields     = { ids: { mapValue: { fields: {} } } };
-  for (const id of ids) fields.ids.mapValue.fields[id] = { integerValue: String(agora) };
-  return fsRequest('PATCH', `${TOMB_FS_PATH()}?${maskParams}`, { fields });
+  const { mascara, corpo } = tombstoneFirestore(ids, Date.now());
+  return fsRequest('PATCH', `${TOMB_FS_PATH()}?${mascara}`, corpo);
 }
 
 // ── Tombstone chrome.storage.sync (fallback offline) ─────────────────────────
@@ -653,10 +650,7 @@ function lerTombstoneSync() {
 
 /** Grava cada id como chave independente no sync — sem conflito entre devices. */
 function marcarParaDeletarSync(ids) {
-  const agora   = Date.now();
-  const entries = {};
-  for (const id of ids) entries[`${TOMB_PREFIX}${id}`] = agora;
-  chrome.storage.sync.set(entries);
+  chrome.storage.sync.set(tombstonesSync(ids, Date.now()));
 }
 
 function limparTombstoneSync(ids) {
@@ -1823,7 +1817,7 @@ function renderizar() {
           </div>` : '';
       const checked       = selecionadas.has(f.id) ? 'checked' : '';
       const exportedClass = f.status === 'exported' ? ' exported' : '';
-      const idiomaFraseClasse = (f.idioma === 'Russo' || /[\u0400-\u04FF]/.test(f.texto || '')) ? ' frase-ru' : '';
+      const idiomaFraseClasse = (f.idioma === IDIOMAS.RUSSO || detectarIdioma(f.texto || '') === IDIOMAS.RUSSO) ? ' frase-ru' : '';
       const ankiBadge     = f.status === 'exported'
         ? `<div class="anki-badge"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> No Anki</div>` : '';
       const ctxHtml = renderizarContexto(f);
@@ -2683,10 +2677,6 @@ function parsearLinhaExportada(linha) {
 
   if (!texto) return null;
   return { texto, fonte, titulo, detalhe };
-}
-
-function detectarIdioma(texto) {
-  return /[\u0400-\u04FF]/.test(texto) ? 'Russo' : 'Inglês';
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

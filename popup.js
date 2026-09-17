@@ -1,5 +1,9 @@
 'use strict';
 
+// A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
+// deste arquivo, pelo popup.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
+const { detectarIdioma } = PerpetualMiner;
+
 // ─── Estado ───────────────────────────────────────────────────────────────────
 
 let frasesSalvas  = [];
@@ -185,12 +189,13 @@ function deletarSelecionados() {
   // Copia o Set antes de limpar, para usar no filtro
   const idsParaDeletar = new Set(selectedIds);
   selectedIds.clear();
+  frasesSalvas = frasesSalvas.filter(f => !idsParaDeletar.has(f.id));
+  renderizar();
 
-  // SEMPRE lê o storage mais recente antes de salvar — evita sobrescrever dados novos
-  chrome.storage.local.get({ frases: [] }, (data) => {
-    const novaLista = (data.frases || []).filter(f => !idsParaDeletar.has(f.id));
-    frasesSalvas = novaLista;
-    chrome.storage.local.set({ frases: novaLista }, () => renderizar());
+  // O service worker apaga na fila de gravação e grava o tombstone; com a conta
+  // conectada, apaga também da nuvem — senão a frase volta na sincronização.
+  chrome.runtime.sendMessage({ type: 'APAGAR_FRASES', ids: [...idsParaDeletar] }, response => {
+    if (chrome.runtime.lastError || response?.ok === false) carregarFrases();
   });
 }
 
@@ -200,7 +205,7 @@ function adicionarManual() {
   const textarea = document.getElementById('txtManual');
   const texto    = textarea.value.trim();
   if (!texto) return;
-  const idioma = /[\u0400-\u04FF]/.test(texto) ? 'Russo' : 'Inglês';
+  const idioma = detectarIdioma(texto);
 
   chrome.runtime.sendMessage({
     type: 'SALVAR_HISTORICO',

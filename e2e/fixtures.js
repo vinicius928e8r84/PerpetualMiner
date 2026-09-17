@@ -67,8 +67,16 @@ const test = base.extend({
       fs.createReadStream(arquivo).pipe(res);
     });
     await new Promise(resolve => servidor.listen(0, '127.0.0.1', resolve));
-    const origem = `http://127.0.0.1:${servidor.address().port}`;
-    await use({ origem, url: nome => `${origem}/${nome}` });
+    const porta = servidor.address().port;
+    const origem = `http://127.0.0.1:${porta}`;
+    // O mesmo servidor sob outro nome é outra origem, para o player em iframe de outra origem.
+    const origemCruzada = `http://localhost:${porta}`;
+    await use({
+      origem,
+      origemCruzada,
+      url: nome => `${origem}/${nome}`,
+      urlCruzada: nome => `${origemCruzada}/${nome}`,
+    });
     await new Promise(resolve => servidor.close(resolve));
   }, { scope: 'worker' }],
 
@@ -88,7 +96,8 @@ const test = base.extend({
     });
 
     // A última rota registrada tem prioridade: o bloqueio geral vem primeiro.
-    await context.route(url => /^https?:$/.test(url.protocol) && url.origin !== paginas.origem,
+    const origensLocais = [paginas.origem, paginas.origemCruzada];
+    await context.route(url => /^https?:$/.test(url.protocol) && !origensLocais.includes(url.origin),
       route => route.abort('blockedbyclient'));
     for (const fake of Object.values(fakes)) await context.route(fake.padrao, fake.tratar);
 

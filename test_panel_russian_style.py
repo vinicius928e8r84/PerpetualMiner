@@ -17,7 +17,10 @@ class PanelRussianStyleTests(unittest.TestCase):
         self.assertIn("idiomaFraseClasse", source)
         self.assertRegex(source, r"phrase-item\$\{exportedClass\}\$\{idiomaFraseClasse\}")
         self.assertIn("frase-ru", source)
-        self.assertIn(r"[\u0400-\u04FF]", source)
+        # A regra de idioma saiu do painel e virou lib/idioma.js. Que a frase em
+        # cir\u00EDlico realmente sai marcada \u00E9 afirmado no seam, em
+        # e2e/tests/catalogo-da-voz.spec.js.
+        self.assertIn("detectarIdioma(f.texto", source)
 
     def test_russian_phrases_override_global_italic_style(self) -> None:
         css = PANEL_CSS.read_text(encoding="utf-8")
