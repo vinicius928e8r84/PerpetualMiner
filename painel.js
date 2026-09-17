@@ -591,7 +591,6 @@ function salvarFraseFirestore(frase, campos = null) {
 //   com delay, então não é suficiente sozinho como fonte de verdade.
 
 const TOMBSTONE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
-const TOMB_PREFIX      = 'pm_del_';
 const TOMB_FS_PATH     = () => `usuarios/${usuarioLogado.uid}/meta/deleted`;
 
 // ── Tombstone Firestore ───────────────────────────────────────────────────────
@@ -614,17 +613,11 @@ async function lerTombstoneFirestore() {
   }
 }
 
-/**
- * Grava cada id como campo independente no documento meta/deleted.
- * updateMask por campo: escrita atômica e sem conflito entre dispositivos.
- */
+/** Grava cada id como campo independente no documento meta/deleted (tombstone.js). */
 async function gravarTombstoneFirestore(ids) {
   if (!usuarioLogado || ids.length === 0) return;
-  const agora      = Date.now();
-  const maskParams = ids.map(id => `updateMask.fieldPaths=${encodeURIComponent(`ids.${id}`)}`).join('&');
-  const fields     = { ids: { mapValue: { fields: {} } } };
-  for (const id of ids) fields.ids.mapValue.fields[id] = { integerValue: String(agora) };
-  return fsRequest('PATCH', `${TOMB_FS_PATH()}?${maskParams}`, { fields });
+  const { mascara, corpo } = tombstoneFirestore(ids, Date.now());
+  return fsRequest('PATCH', `${TOMB_FS_PATH()}?${mascara}`, corpo);
 }
 
 // ── Tombstone chrome.storage.sync (fallback offline) ─────────────────────────
@@ -653,10 +646,7 @@ function lerTombstoneSync() {
 
 /** Grava cada id como chave independente no sync — sem conflito entre devices. */
 function marcarParaDeletarSync(ids) {
-  const agora   = Date.now();
-  const entries = {};
-  for (const id of ids) entries[`${TOMB_PREFIX}${id}`] = agora;
-  chrome.storage.sync.set(entries);
+  chrome.storage.sync.set(tombstonesSync(ids, Date.now()));
 }
 
 function limparTombstoneSync(ids) {

@@ -1,9 +1,10 @@
 'use strict';
 
+importScripts('tombstone.js');
+
 const FIREBASE_PROJECT  = 'perpetualminer-4c219';
 const FIRESTORE_BASE    = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
 const FB_REFRESH_URL    = `https://securetoken.googleapis.com/v1/token?key=AIzaSyDrbDVUvv8wyoYqjCr5jEMBJPPsIP2k1Ak`;
-const TOMB_PREFIX       = 'pm_del_';   // tombstone em chrome.storage.sync, lido pelo painel
 const BRIDGE_URL        = 'http://127.0.0.1:8766';
 const BRIDGE_PRESETS_KEY = 'ankiBridgePresets';
 const AUTO_MINER_SETTINGS_KEY = 'pm_auto_miner_settings';
@@ -260,9 +261,11 @@ async function apagarFrases(ids) {
   });
 
   const apagadasEm = Date.now();
-  chrome.storage.sync.set(Object.fromEntries(idsStr.map(id => [`${TOMB_PREFIX}${id}`, apagadasEm])));
+  chrome.storage.sync.set(tombstonesSync(idsStr, apagadasEm));
 
-  apagarDoFirestore(idsStr, apagadasEm);
+  // Esperar a nuvem mantém o service worker vivo até o DELETE sair; o popup já
+  // tirou a frase da tela e não depende desta resposta.
+  await apagarDoFirestore(idsStr, apagadasEm);
 }
 
 async function apagarDoFirestore(ids, apagadasEm) {
@@ -289,16 +292,12 @@ async function apagarDoFirestore(ids, apagadasEm) {
   }
 }
 
-// Um campo por frase no mapa `ids` de meta/deleted. O id começa com dígito, então
-// o caminho do campo vai entre crases (ids.`123`), como a API REST exige.
 async function gravarTombstoneFirestore(uid, headers, ids, apagadasEm) {
-  const mascara = ids.map(id => `updateMask.fieldPaths=${encodeURIComponent(`ids.\`${id}\``)}`).join('&');
+  const { mascara, corpo } = tombstoneFirestore(ids, apagadasEm);
   const res = await fetch(`${FIRESTORE_BASE}/usuarios/${uid}/meta/deleted?${mascara}`, {
     method: 'PATCH',
     headers,
-    body: JSON.stringify({ fields: { ids: { mapValue: { fields: Object.fromEntries(
-      ids.map(id => [id, { integerValue: String(apagadasEm) }]),
-    ) } } } }),
+    body: JSON.stringify(corpo),
   });
   if (!res.ok) console.warn('[Firestore] tombstone falhou:', res.status);
 }
