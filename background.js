@@ -1,5 +1,7 @@
 'use strict';
 
+importScripts('tombstone.js');
+
 const FIREBASE_PROJECT  = 'perpetualminer-4c219';
 const FIRESTORE_BASE    = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
 const FB_REFRESH_URL    = `https://securetoken.googleapis.com/v1/token?key=AIzaSyDrbDVUvv8wyoYqjCr5jEMBJPPsIP2k1Ak`;
@@ -144,6 +146,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.type === 'APAGAR_FRASES') {
+    apagarFrases(request.ids || [])
+      .then(() => sendResponse({ ok: true }))
+      .catch(err => sendResponse({ ok: false, error: err?.message || 'delete_failed' }));
+    return true;
+  }
+
   if (request.type === 'AUTO_KEYWORDS_FOR_PHRASE') {
     autoKeywordsForPhrase(request.frase || request)
       .then(keywords => sendResponse({ keywords }))
@@ -245,27 +254,94 @@ async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', e
   return novaFrase;
 }
 
+// Apaga frases deste computador e grava o tombstone nos mesmos lugares que o
+// painel usa (chrome.storage.sync, pm_deleted_ids e, com a conta conectada,
+// meta/deleted no Firestore). Sem o tombstone, a próxima sincronização do
+// painel traz a frase de volta da nuvem ou de outro computador.
+async function apagarFrases(ids) {
+  const idsStr = ids.map(String);
+  if (!idsStr.length) return;
+  const apagadas = new Set(idsStr);
+
+  await naFilaDeGravacao(async () => {
+    const data = await chromeGet({ frases: [], pm_pending_sync: [], pm_deleted_ids: [] });
+    await chromeSet({
+      frases:          data.frases.filter(f => !apagadas.has(String(f.id))),
+      pm_pending_sync: data.pm_pending_sync.filter(id => !apagadas.has(id)),
+      pm_deleted_ids:  [...new Set([...data.pm_deleted_ids, ...idsStr])],
+    });
+  });
+
+  const apagadasEm = Date.now();
+  chrome.storage.sync.set(tombstonesSync(idsStr, apagadasEm));
+
+  // Esperar a nuvem mantém o service worker vivo até o DELETE sair; o popup já
+  // tirou a frase da tela e não depende desta resposta.
+  await apagarDoFirestore(idsStr, apagadasEm);
+}
+
+async function apagarDoFirestore(ids, apagadasEm) {
+  try {
+    const authData = await sessaoDaConta();
+    if (!authData) return;
+    const headers = { 'Authorization': `Bearer ${authData.idToken}`, 'Content-Type': 'application/json' };
+
+    await gravarTombstoneFirestore(authData.uid, headers, ids, apagadasEm);
+
+    const respostas = await Promise.all(ids.map(id =>
+      fetch(`${FIRESTORE_BASE}/usuarios/${authData.uid}/frases/${id}`, { method: 'DELETE', headers }),
+    ));
+    // 404 = já não existe na nuvem. Qualquer outra falha fica em pm_deleted_ids,
+    // e o painel tenta de novo na próxima sincronização.
+    const foraDaNuvem = new Set(ids.filter((_, i) => respostas[i].ok || respostas[i].status === 404));
+    if (!foraDaNuvem.size) return;
+    await naFilaDeGravacao(async () => {
+      const { pm_deleted_ids } = await chromeGet({ pm_deleted_ids: [] });
+      await chromeSet({ pm_deleted_ids: pm_deleted_ids.filter(id => !foraDaNuvem.has(id)) });
+    });
+  } catch (err) {
+    console.warn('[Firestore] apagar falhou, fica pendente:', err?.message);
+  }
+}
+
+async function gravarTombstoneFirestore(uid, headers, ids, apagadasEm) {
+  const { mascara, corpo } = tombstoneFirestore(ids, apagadasEm);
+  const res = await fetch(`${FIRESTORE_BASE}/usuarios/${uid}/meta/deleted?${mascara}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(corpo),
+  });
+  if (!res.ok) console.warn('[Firestore] tombstone falhou:', res.status);
+}
+
 // ─── Firestore Sync via REST API ──────────────────────────────────────────────
+
+// Sessão da conta com o token válido (renovado pelo refresh token do Firebase
+// se expirou), ou null sem conta conectada.
+async function sessaoDaConta() {
+  const stored = await chromeGet({ pm_firebase_auth: null });
+  let authData = stored.pm_firebase_auth;
+  if (!authData?.uid) return null;
+
+  if (!authData.idToken || (authData.expiresAt && Date.now() > authData.expiresAt - 60_000)) {
+    if (!authData.refreshToken) return null;
+    const r = await fetch(FB_REFRESH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: authData.refreshToken }),
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    authData = { ...authData, idToken: d.id_token, refreshToken: d.refresh_token, expiresAt: Date.now() + 55 * 60 * 1000 };
+    chrome.storage.local.set({ pm_firebase_auth: authData });
+  }
+  return authData;
+}
 
 async function sincronizarComFirestore(frase) {
   try {
-    const stored = await chromeGet({ pm_firebase_auth: null });
-    let authData = stored.pm_firebase_auth;
-    if (!authData?.uid) return;
-
-    // Renova o token se expirado (usa refresh token do Firebase)
-    if (!authData.idToken || (authData.expiresAt && Date.now() > authData.expiresAt - 60_000)) {
-      if (!authData.refreshToken) return;
-      const r = await fetch(FB_REFRESH_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: authData.refreshToken }),
-      });
-      if (!r.ok) return;
-      const d = await r.json();
-      authData = { ...authData, idToken: d.id_token, refreshToken: d.refresh_token, expiresAt: Date.now() + 55 * 60 * 1000 };
-      chrome.storage.local.set({ pm_firebase_auth: authData });
-    }
+    const authData = await sessaoDaConta();
+    if (!authData) return;
 
     const url = `${FIRESTORE_BASE}/usuarios/${authData.uid}/frases/${frase.id}`;
     const res = await fetch(url, {

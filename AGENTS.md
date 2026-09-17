@@ -4,7 +4,7 @@
 
 This repository contains a Chrome extension plus a local Python bridge for Anki integration.
 
-- Root extension files: `manifest.json`, `background.js`, `content.js`, `popup.*`, `painel.*`, and `bookreader.*`.
+- Root extension files: `manifest.json`, `background.js`, `content.js`, `popup.*`, `painel.*`, `bookreader.*`, and `tombstone.js` (shared by the service worker and the panel).
 - Vendor browser libraries live in `lib/firebase/`.
 - The local bridge lives in `bridge/`: `server.py` exposes the HTTP API, `run_bridge.py` starts it, and `install_autostart.py` / `uninstall_autostart.py` manage Windows startup.
 - Bridge tests are in `bridge/test_anki_launcher.py`; root-level tests cover panel and sync behavior.

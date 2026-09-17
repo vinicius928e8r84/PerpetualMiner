@@ -22,6 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `manifest.json` | Permissions, content script registration |
 | `content.js` | Injected into all pages; mines subtitles, injects floating button |
 | `background.js` | Service worker; handles `SALVAR_HISTORICO` messages and context menu clicks; writes to `chrome.storage.local` and syncs to Firestore |
+| `tombstone.js` | Tombstone of a deleted phrase (`chrome.storage.sync` keys and the Firestore `meta/deleted` PATCH), shared by `background.js` (`importScripts`) and `painel.html` |
 | `popup.html/js/css` | Quick-access popup showing last 5 phrases |
 | `painel.html/js/css` | Full dashboard to view, copy, and delete all saved phrases; Google login and Firestore sync |
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
@@ -55,6 +56,8 @@ Authentication uses `chrome.identity.launchWebAuthFlow` (OAuth2 with Google) —
 
 Pending sync queue: if a Firestore write fails (offline/error), the phrase `id` is added to `pm_pending_sync` in local storage and retried on next panel load.
 
+Deleting (panel or popup) writes a tombstone so the next panel sync doesn't bring the phrase back from the cloud or from another computer: `pm_del_{id}` in `chrome.storage.sync`, the id in local `pm_deleted_ids` (retry of the Firestore DELETE), and, when logged in, the field ``ids.`{id}` `` in `usuarios/{uid}/meta/deleted`. The popup asks the service worker to delete (`APAGAR_FRASES`); the panel does it itself (`removerFrasesFirestore`, `apagarTudoFirestore`). Both build the tombstone with `tombstone.js`: a phrase id starts with a digit, so its field path must be backquoted, and Firestore (and the e2e fake) rejects the bare `ids.{id}`.
+
 ### Storage Schema
 
 Each entry in `chrome.storage.local["frases"]` (unlimited, newest first):
@@ -78,6 +81,7 @@ Other storage keys:
 - `pm_firebase_auth` — `{ uid, idToken, refreshToken, expiresAt }` — Firebase auth session
 - `pm_user_info` — `{ uid, email, displayName, photoURL }` — Google user profile
 - `pm_pending_sync` — `string[]` of phrase IDs awaiting Firestore retry
+- `pm_deleted_ids` — `string[]` of deleted phrase IDs whose Firestore DELETE hasn't succeeded yet
 
 ### Platform-Specific Subtitle Selectors (content.js)
 
@@ -94,11 +98,11 @@ The capture shortcuts and the floating button only react to trusted events (`eve
 
 ### Write Serialization (background.js)
 
-Every read-modify-write of `frases` and `pm_pending_sync` in the service worker goes through `naFilaDeGravacao`, so concurrent saves (e.g. BookReader saving many passages at once) never overwrite each other. Phrase ids are assigned inside that queue and are unique even within the same millisecond.
+Every read-modify-write of `frases`, `pm_pending_sync` and `pm_deleted_ids` in the service worker goes through `naFilaDeGravacao`, so concurrent saves (e.g. BookReader saving many passages at once) never overwrite each other. Deleting from the popup goes through it too. Phrase ids are assigned inside that queue and are unique even within the same millisecond.
 
 Not covered by the queue:
 - The auto-miner duplicate check reads `frases` outside the queue before calling `salvarFrase`, so two identical auto candidates arriving together can both be saved (a duplicate, never a lost phrase).
-- `painel.js` and `popup.js` rewrite `frases` directly, outside the service worker, so editing or deleting in the panel during a photo save can still lose phrases.
+- `painel.js` rewrites `frases` (and `pm_deleted_ids`) directly, outside the service worker, so editing or deleting in the panel during a photo save can still lose phrases.
 
 ## Testing
 
