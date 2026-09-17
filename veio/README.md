@@ -6,6 +6,8 @@ A identidade compartilhada por todas as páginas da extensão. A spec travada es
 | Caminho | O que é |
 |---|---|
 | `tokens.css` | O único arquivo de tokens: cor, tipo, raio e movimento, mais as fontes empacotadas, a marca (cristal, nome e cursor) e a base de acessibilidade (foco visível e movimento reduzido). Toda página o inclui antes do CSS dela. |
+| `componentes.css` | Os componentes base, uma vez só: botões, campos, toggle, checkbox, selos, `kbd`, controle segmentado, azulejo, modal, toast, aviso persistente, esqueleto e a linha de frase. Nenhuma cor é escrita aqui: tudo sai dos tokens. |
+| `componentes.js` | O que os componentes precisam de JavaScript: o modal (foco inicial, foco preso, Esc, clique fora), o toast que some sozinho, o aviso com Detalhes, o grifo da Palavra e os ícones. Pendurado em `PerpetualMiner.Veio`. |
 | `fontes/*.woff2` | Manrope e JetBrains Mono, subsets latin + cyrillic. Nada vem do Google Fonts em runtime. |
 | `icones/` | A marca: `icone.svg` e os PNG 16/32/48/128 que o manifest usa na toolbar. |
 
@@ -13,7 +15,16 @@ A identidade compartilhada por todas as páginas da extensão. A spec travada es
 
 ```html
 <link rel="stylesheet" href="veio/tokens.css">
+<link rel="stylesheet" href="veio/componentes.css">
 <link rel="stylesheet" href="painel.css">
+…
+<script src="lib/voz/catalogo.js"></script>
+<script src="lib/voz/texto.js"></script>
+<script src="veio/componentes.js"></script>
+```
+
+```js
+const { abrirModal, mostrarToastDeSucesso, escreverFrase } = PerpetualMiner.Veio;
 ```
 
 - **Cor nova não se escreve fora daqui.** Se falta um valor, ele entra como token, com o nome da
@@ -27,12 +38,70 @@ A identidade compartilhada por todas as páginas da extensão. A spec travada es
 - **Fontes:** `var(--veio-fonte-ui)` para interface e frases, `var(--veio-fonte-mono)` para número,
   contador, atalho e custo. As duas cobrem cirílico.
 
+## Os componentes
+
+**Um componente existe uma vez.** Uma tela que precisa de um botão usa
+`.veio-botao`; ela não redesenha o botão dela. Se falta uma variante, ela entra
+aqui, com o nome da spec, e passa a valer para todas as telas.
+
+- **Botões:** `.veio-botao` com `--primario` (ouro, um por tela), `--secundario`,
+  `--fantasma`, `--perigo` (contorno: a entrada que abre o modal destrutivo) e
+  `--perigo-cheio` (só o botão que confirma dentro dele). `.veio-botao-icone` é
+  circular e sempre leva `aria-label`, porque não tem texto.
+- **Campos:** `.veio-campo` em `input`, `select` e `textarea`, dentro de
+  `.veio-busca` quando tem lupa e ×. O erro é dito por `aria-invalid="true"`, que
+  pinta a borda e o leitor de tela também ouve; a mensagem vai num
+  `.veio-campo-erro` abaixo.
+- **Toggle e checkbox:** `.veio-toggle` (trilho de 40×24) e `.veio-checkbox`. O
+  estado misto do cabeçalho de uma lista é o `indeterminate` nativo:
+  `refletirSelecao(checkbox, selecionados, total)`.
+- **Selos:** `.veio-selo` neutro para a Fonte (sem a cor de marca de terceiro) e
+  `--ok` / `--info` / `--erro` para estado.
+- **`kbd`:** `.veio-kbd` para o atalho gravado e `.veio-kbd--sem-atalho`, o
+  tracejado de GLB-02, quando não há nenhum.
+- **Modal:** `.veio-scrim` por fora, `[role="dialog"]` por dentro, aberto por
+  `abrirModal(scrim)`. O foco entra no botão seguro — o `[data-foco-seguro]`, ou
+  o primeiro que não está pintado de perigo —, fica preso enquanto o modal está
+  aberto, e volta para quem abriu. Esc e o clique fora fecham. O resto da página
+  fica `inert`.
+- **Toast e aviso:** o toast (`mostrarToastDeSucesso`) é **só para sucesso
+  curto**: some sozinho depois de 2,6 s mais o tempo de leitura do texto. Todo
+  erro que pede ação é `montarAviso(…)`, que fica no lugar do problema até ser
+  fechado, com a ação ao lado e a causa técnica num Detalhes recolhido (V3).
+- **Esqueleto:** `.veio-esqueleto` no lugar do conteúdo em espera curta, sem
+  texto (C3). O brilho é sinal de estado e para com movimento reduzido.
+- **Linha de frase:** `.veio-frase`, com a Palavra grifada por
+  `escreverFrase(no, texto, palavra)` — uma faixa `kw-bg` de 50% a 94% da linha,
+  sem raio — e o chip de `montarChipDaPalavra(palavra, { detectada })`, que diz
+  `palavra:` quando a pessoa a escolheu e `auto:` quando foi detectada.
+
+**A cópia não mora aqui.** Quem chama passa o texto já buscado no catálogo da
+Voz: `abrirModal` não conhece “Apagar 12 frases?”, a tela é que a pede por
+`textoDaVoz('PAI-13.titulo', { n })`.
+
+### Diferença conhecida do protótipo
+
+No protótipo F o botão do toggle ligado para em `left: 18px` num trilho de 40 px
+com botão de 18 px, o que deixa 2 px de um lado e 4 do outro. Aqui ele para em
+`left: 20px`, centrado nos dois lados. É a única divergência proposital.
+
 ## Vitrine
 
-A página que mostra os tokens, a escala de tipo, os raios e uma frase em russo nos dois temas fica
-na pasta de testes, em [`e2e/vitrine/vitrine.html`](../e2e/vitrine/vitrine.html), e é servida pelo
-próprio seam (`cd e2e && npm test`, ou o servidor de fixtures) para carregar os mesmos tokens e as
-mesmas fontes que a extensão carrega.
+A página que mostra os tokens, a escala de tipo, os raios, uma frase em russo e **todos os
+componentes**, nos dois temas e nos estados normal, foco, desabilitado e erro, fica na pasta de
+testes, em [`e2e/vitrine/vitrine.html`](../e2e/vitrine/vitrine.html). Ela é servida pelo próprio
+seam (`cd e2e && npm test`, ou o servidor de fixtures) para carregar os mesmos tokens, as mesmas
+fontes, os mesmos componentes e o mesmo catálogo da Voz que a extensão carrega.
+
+A galeria é montada por [`componentes-da-vitrine.js`](../e2e/vitrine/componentes-da-vitrine.js),
+uma vez por tema, pela mesma função: as duas colunas nunca divergem. A cópia das amostras vem do
+catálogo por ID (a lista está em `CATALOGO_DA_VITRINE`), e o teste confere que o que está na tela é
+o que `textoDaVoz` devolve. O que é rótulo da própria vitrine — “Botões”, “desabilitado”, “Mostrar
+o toast” — fica marcado com `data-vitrine-chrome`, porque é andaime da página de referência, não
+cópia de uma tela do produto.
+
+Depois da revisão do dono, a vitrine é **a referência visual**: uma mudança de componente se vê
+primeiro aqui.
 
 ## Fontes: licença
 

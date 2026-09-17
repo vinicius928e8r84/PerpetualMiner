@@ -26,7 +26,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `popup.html/js/css` | Quick-access popup showing last 5 phrases |
 | `painel.html/js/css` | Full dashboard to view, copy, and delete all saved phrases; Google login and Firestore sync |
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
-| `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs and the SVG). See `veio/README.md` |
+| `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs and the SVG). See `veio/README.md` |
 | `lib/voz/catalogo.js` | The Voice catalog as data: the 159 approved copy states from `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
@@ -87,6 +87,38 @@ The content script loads the whole catalog into every frame even though it only 
 `detectarIdioma` today. That is deliberate: the overlay step rebuilds its feedback component from
 `MIN-01`…`MIN-11`, and the design spec has the content script reading its copy from the catalog like
 every other surface.
+
+### Base components (`veio/componentes.css` + `veio/componentes.js`)
+
+A component exists **once**. A surface that needs a button uses `.veio-botao`; it does not redraw
+its own. The three pages load both files right after `tokens.css` / `lib/voz/texto.js`, so a
+rebuilt surface starts from the shared classes and `PerpetualMiner.Veio`:
+
+```js
+const { abrirModal, mostrarToastDeSucesso, escreverFrase } = PerpetualMiner.Veio;
+```
+
+The rules the components encode, so a surface does not have to re-decide them:
+
+- **Danger has two variants:** `--perigo` (outline) is the entry that opens the destructive modal;
+  `--perigo-cheio` is only the button that confirms inside it.
+- **Modal:** `abrirModal(scrim)` puts the initial focus on the *safe* button (`[data-foco-seguro]`,
+  else the first one not painted as danger), traps focus, closes on Esc and on a click outside,
+  returns focus to whoever opened it, and marks the rest of the page `inert`.
+- **Toast is success-only** and short: it disappears on its own after 2.6 s plus reading time.
+  Every error that asks for an action is `montarAviso(…)` instead — it stays in the place of the
+  problem until closed, with the action beside it and the technical cause in a collapsed
+  “Detalhes” (V3 of the Voice).
+- **Error on a field** is said by `aria-invalid="true"`, not by a class, so the screen reader hears
+  it too.
+- **The highlighted Word** is drawn by `escreverFrase(no, texto, palavra)`: a `kw-bg` band from 50%
+  to 94% of the line, no radius. The phrase text always goes in as text, never as HTML.
+- **Copy does not live in the components.** The caller passes the string it already looked up:
+  `textoDaVoz('PAI-13.titulo', { n })`.
+
+The legacy surfaces still carry their own CSS; each redesign step moves the surface it rebuilds
+onto these classes. Loading the files everywhere now is deliberate — the classes are prefixed
+`veio-`, so nothing collides with what is already there.
 
 ### Firebase / Firestore Sync
 
@@ -160,11 +192,12 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - `e2e/fixtures.js` launches a fresh Chromium profile per test with the repo root loaded as an unpacked extension, fakes the network at the HTTP boundary and blocks every other external request. It gives tests `extensao` (id, service worker, `url()`, `lerStorage`/`gravarStorage`, `frases()`, `semearSessao()`), `fakes` and `paginas`.
 - `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`), Gemini, and Firestore/Google (in-memory documents, token refresh). `semearSessao()` writes an account session to storage, skipping the real login.
 - `e2e/pages/`: local fixture pages where the content script is injected: `player.html` (fake player with a caption), `texto.html` (plain text to select), `sem-video.html`, `player-em-iframe.html?player=<url>` (embeds the player from another origin, e.g. `paginas.urlCruzada('player.html')`), `hostil.html` + `hostil-filho.html` (a page that tries to drive the extension by itself), and `player-marcacao.html` / `texto-marcacao.html` (caption, title and selectable text carrying markup as text, to prove the content script always inserts page text as text, never as HTML).
-- `e2e/vitrine/vitrine.html`: the Veio showcase (tokens, type scale, radii and a Russian phrase, in both themes). The fixture server also serves `/veio/…` from the extension root, so the showcase loads the same tokens and the same packaged fonts the extension pages load.
+- `e2e/vitrine/`: the Veio showcase — tokens, type scale, radii, a Russian phrase and **every base component**, in both themes and in the normal / focus / disabled / error states. `componentes-da-vitrine.js` builds the gallery once per theme with the same function, so the two columns never diverge; its sample copy comes from the Voice catalog by ID (`CATALOGO_DA_VITRINE`), and anything that is showcase scaffolding is marked `data-vitrine-chrome`. The fixture server also serves `/veio/…` and `/lib/…` from the extension root, so the showcase loads the same tokens, fonts, components and catalog the extension pages load. After the owner's review it is **the visual reference**.
 - `HEADED=1 npm test` shows the browser.
 - Tests assert what the person sees and what ends up stored, never internal functions. Two narrow exceptions, each named in the test's own comment:
   - Where Chromium gives Playwright no way to drive the native UI (the context menu), a test calls the function Chrome would call (`minerarSelecaoDoMenu`, `registrarMenuDeContexto`) and asserts what gets stored or what is handed to Chrome.
   - Until a surface shows a catalog state, the catalog's own guarantees (every ID present, pt-BR numbers) are asserted through `PerpetualMiner.textoDaVoz`, inside an extension page. These move to the screen when the surface is rebuilt.
+  - Two guarantees of the base components have no on-screen trigger of their own, so the test calls the component's own function and still asserts the visible result: how long a toast of a given length *stays on screen* (`mostrarToastDeSucesso`), and that a phrase carrying markup is written as text (`escreverFrase`). The surfaces that call them assert the same thing through the screen once they are rebuilt.
 
 The legacy tests keep running: `node test_sync.js`, `node test_bridge_panel.js`, `node test_auto_keyword.js`, `python test_panel_russian_style.py` and the bridge tests in `bridge/test_*.py`.
 

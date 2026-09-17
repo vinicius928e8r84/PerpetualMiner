@@ -25,28 +25,34 @@ const PASTA_DA_VITRINE = path.join(__dirname, 'vitrine');
 const TIPOS_MIME = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
   '.woff2': 'font/woff2',
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
 };
 
+/** As pastas da extensão que a vitrine carrega direto, como a extensão carrega. */
+const PASTAS_DA_EXTENSAO = ['veio', 'lib'];
+
 /**
  * O arquivo que responde por um caminho, ou null.
  *
- * As páginas-fixture e a vitrine vêm pelo nome; `/veio/…` sai da própria
- * extensão, para a vitrine carregar os mesmos tokens e as mesmas fontes
- * empacotadas que as páginas da extensão carregam.
+ * As páginas-fixture e a vitrine vêm pelo nome; `/veio/…` e `/lib/…` saem da
+ * própria extensão, para a vitrine carregar os mesmos tokens, as mesmas
+ * fontes empacotadas, os mesmos componentes e o mesmo catálogo da Voz que as
+ * páginas da extensão carregam.
  */
 function arquivoDoPedido(caminhoPedido) {
   const limpo = path.posix.normalize(decodeURIComponent(caminhoPedido));
 
-  if (limpo.startsWith('/veio/')) {
+  for (const pasta of PASTAS_DA_EXTENSAO) {
+    if (!limpo.startsWith(`/${pasta}/`)) continue;
     const alvo = path.join(RAIZ_DA_EXTENSAO, limpo.slice(1));
-    return alvo.startsWith(path.join(RAIZ_DA_EXTENSAO, 'veio') + path.sep) ? alvo : null;
+    return alvo.startsWith(path.join(RAIZ_DA_EXTENSAO, pasta) + path.sep) ? alvo : null;
   }
 
   const nome = path.basename(limpo);
-  if (!nome.endsWith('.html')) return null;
+  if (!/\.(html|js|css)$/.test(nome)) return null;
   return [PASTA_DAS_PAGINAS, PASTA_DA_VITRINE]
     .map(pasta => path.join(pasta, nome))
     .find(fs.existsSync) || null;

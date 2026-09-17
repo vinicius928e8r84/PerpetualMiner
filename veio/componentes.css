@@ -1,0 +1,767 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Base Veio · componentes.
+
+   Os componentes existem uma vez só, aqui. Toda página da extensão inclui
+   este arquivo depois de tokens.css, e cada tela monta a sua interface com
+   estas classes em vez de redesenhar botão, campo e selo.
+
+   Nenhuma cor é escrita aqui: tudo vem dos tokens. A fundação travada é a
+   variante F do protótipo em docs/design/identidade-veio/.
+
+   O comportamento que precisa de JavaScript (modal, toast, grifo da Palavra)
+   mora em componentes.js.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Botões ───────────────────────────────────────────────────────────────
+   Pílula em todas as variantes; só-ícone é circular. O ouro é da ação
+   primária: cada tela tem uma só. O perigo tem duas variantes — contorno
+   para a entrada que abre o modal destrutivo, preenchido só para o botão
+   que confirma dentro dele. */
+
+.veio-botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--veio-raio-pilula);
+  font-family: var(--veio-fonte-ui);
+  font-size: var(--veio-tam-corpo);
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--veio-transicao), border-color var(--veio-transicao), color var(--veio-transicao);
+}
+
+.veio-botao svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.veio-botao--primario {
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), 0 6px 16px -8px var(--veio-accent);
+}
+
+.veio-botao--secundario {
+  background: var(--veio-surface-2);
+  border-color: var(--veio-border);
+  color: var(--veio-text);
+}
+
+.veio-botao--fantasma {
+  background: transparent;
+  color: var(--veio-text);
+}
+
+.veio-botao--perigo {
+  background: transparent;
+  border-color: var(--veio-danger);
+  color: var(--veio-danger);
+}
+
+.veio-botao--perigo-cheio {
+  background: var(--veio-danger);
+  color: var(--veio-danger-ink);
+}
+
+.veio-botao--bloco {
+  width: 100%;
+}
+
+.veio-botao--fantasma:hover,
+.veio-botao--secundario:hover {
+  background: var(--veio-surface-2);
+}
+
+.veio-botao--perigo:hover {
+  background: var(--veio-danger-soft);
+}
+
+/* Só-ícone: círculo, sempre com aria-label, porque não tem texto. */
+.veio-botao-icone {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--veio-muted);
+  cursor: pointer;
+  transition: background var(--veio-transicao), color var(--veio-transicao);
+}
+
+.veio-botao-icone svg {
+  width: 15px;
+  height: 15px;
+}
+
+.veio-botao-icone:hover {
+  background: var(--veio-surface-2);
+  color: var(--veio-text);
+}
+
+.veio-botao-icone--perigo:hover {
+  color: var(--veio-danger);
+}
+
+.veio-botao:disabled,
+.veio-botao-icone:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ── Campos ───────────────────────────────────────────────────────────────
+   A borda border-strong é o que garante os 3:1 do contorno de controle:
+   nenhum campo fica sem borda. O erro é dito pelo aria-invalid, então a
+   cor segue o atributo e não uma classe solta. */
+
+.veio-campo {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 11px;
+  border: 1px solid var(--veio-border-strong);
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-surface);
+  color: var(--veio-text);
+  font-family: var(--veio-fonte-ui);
+  font-size: var(--veio-tam-corpo);
+  transition: border-color var(--veio-transicao), box-shadow var(--veio-transicao);
+}
+
+.veio-campo::placeholder {
+  color: var(--veio-muted);
+}
+
+.veio-campo:focus {
+  outline: none;
+  border-color: var(--veio-accent);
+  box-shadow: 0 0 0 3px var(--veio-accent-soft);
+}
+
+.veio-campo[aria-invalid="true"] {
+  border-color: var(--veio-danger);
+}
+
+.veio-campo[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px var(--veio-danger-soft);
+}
+
+.veio-campo:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+textarea.veio-campo {
+  min-height: 58px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+/* Número: o limite diário. Mono, porque é número. */
+input[type="number"].veio-campo {
+  font-family: var(--veio-fonte-mono);
+  font-weight: var(--veio-peso-num);
+  text-align: center;
+}
+
+select.veio-campo {
+  appearance: none;
+  padding-right: 30px;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 14px center, right 9px center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+/* A mensagem de erro do campo, logo abaixo dele. */
+.veio-campo-erro {
+  margin: 6px 0 0;
+  color: var(--veio-danger);
+  font-size: var(--veio-tam-legenda);
+  font-weight: 600;
+}
+
+/* Busca: ícone à esquerda e × à direita, que só aparece com texto. */
+.veio-busca {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.veio-busca__lupa {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  width: 15px;
+  height: 15px;
+  transform: translateY(-50%);
+  color: var(--veio-muted);
+  pointer-events: none;
+}
+
+.veio-busca .veio-campo {
+  padding-left: 34px;
+  padding-right: 34px;
+}
+
+.veio-busca__limpar {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+}
+
+.veio-busca__limpar[hidden] {
+  display: none;
+}
+
+/* ── Toggle ───────────────────────────────────────────────────────────────
+   Trilho de 40×24 com botão redondo. Ligado = trilho accent e botão
+   accent-ink. O <input> continua existindo para o leitor de tela. */
+
+.veio-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.veio-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.veio-toggle__trilho {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 24px;
+  border: 1px solid var(--veio-border-strong);
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-surface-2);
+  transition: background var(--veio-transicao), border-color var(--veio-transicao);
+}
+
+.veio-toggle__trilho::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--veio-muted);
+  transition: left var(--veio-transicao), background var(--veio-transicao);
+}
+
+.veio-toggle input:checked + .veio-toggle__trilho {
+  background: var(--veio-accent);
+  border-color: var(--veio-accent);
+}
+
+.veio-toggle input:checked + .veio-toggle__trilho::after {
+  left: 18px;
+  background: var(--veio-accent-ink);
+}
+
+.veio-toggle input:focus-visible + .veio-toggle__trilho {
+  outline: 2px solid var(--veio-accent);
+  outline-offset: 2px;
+}
+
+.veio-toggle:has(input:disabled) {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+/* ── Checkbox ─────────────────────────────────────────────────────────────
+   O estado misto (parte da lista selecionada) é o indeterminate nativo: o
+   traço que o navegador desenha já usa a cor do acento. */
+
+.veio-checkbox {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--veio-accent);
+}
+
+.veio-checkbox:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+/* ── Selos ────────────────────────────────────────────────────────────────
+   Fonte (de onde a frase veio) é neutro e nunca usa a cor da marca de
+   terceiro. Estado usa a cor semântica. */
+
+.veio-selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-surface-2);
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.veio-selo svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
+
+.veio-selo--ok {
+  background: var(--veio-success-soft);
+  color: var(--veio-success);
+}
+
+.veio-selo--info {
+  background: var(--veio-info-soft);
+  color: var(--veio-info);
+}
+
+.veio-selo--erro {
+  background: var(--veio-danger-soft);
+  color: var(--veio-danger);
+}
+
+.veio-selo__ponto {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ── kbd ──────────────────────────────────────────────────────────────────
+   O atalho gravado. Sem atalho gravado (GLB-02), a tecla dá lugar ao kbd
+   tracejado "Sem atalho", que diz que o lugar existe e está vazio. */
+
+.veio-kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  border: 1px solid var(--veio-border-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--veio-surface);
+  color: var(--veio-text);
+  font-family: var(--veio-fonte-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.veio-kbd--sem-atalho {
+  border-style: dashed;
+  border-bottom-width: 1px;
+  background: transparent;
+  color: var(--veio-muted);
+}
+
+/* ── Controle segmentado ──────────────────────────────────────────────────
+   Um grupo de rádios que parece um só controle (Hoje · Este mês · Tudo). A
+   opção escolhida usa a regra de seleção: acento suave e borda de acento,
+   nunca uma barra lateral. */
+
+.veio-segmentado {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-surface-2);
+}
+
+.veio-segmentado__opcao {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--veio-raio-pilula);
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-corpo);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--veio-transicao), color var(--veio-transicao);
+}
+
+.veio-segmentado__opcao input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.veio-segmentado__opcao:has(input:checked) {
+  border-color: color-mix(in srgb, var(--veio-accent) 45%, var(--veio-border));
+  background: color-mix(in srgb, var(--veio-accent) 12%, var(--veio-surface));
+  color: var(--veio-accent-text);
+}
+
+.veio-segmentado__opcao:has(input:focus-visible) {
+  outline: 2px solid var(--veio-accent);
+  outline-offset: 2px;
+}
+
+.veio-segmentado__opcao:has(input:disabled) {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+/* ── Azulejo ──────────────────────────────────────────────────────────────
+   O cartão de número: idioma, contador, medidor. Escolhido = borda de
+   acento a 45% e fundo com 5% de acento. */
+
+.veio-azulejo {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface);
+  min-width: 0;
+  text-align: left;
+}
+
+.veio-azulejo__legenda {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+  font-weight: var(--veio-peso-legenda);
+  letter-spacing: var(--veio-tracking-legenda);
+  text-transform: uppercase;
+}
+
+.veio-azulejo__numero {
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-hero);
+  font-weight: var(--veio-peso-num);
+  color: var(--veio-text);
+}
+
+.veio-azulejo--escolhido {
+  border-color: color-mix(in srgb, var(--veio-accent) 45%, var(--veio-border));
+  background: color-mix(in srgb, var(--veio-accent) 5%, var(--veio-surface));
+}
+
+.veio-medidor {
+  height: 6px;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-surface-2);
+  overflow: hidden;
+}
+
+.veio-medidor > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--veio-accent);
+}
+
+/* ── Modal ────────────────────────────────────────────────────────────────
+   Confirmação destrutiva e fim de envio; nunca o confirm() do navegador. O
+   comportamento (foco inicial, foco preso, Esc, clique fora) está em
+   componentes.js. */
+
+.veio-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: var(--veio-scrim);
+}
+
+.veio-scrim[hidden] {
+  display: none;
+}
+
+.veio-modal {
+  width: min(100%, 440px);
+  max-height: 100%;
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-surface);
+  color: var(--veio-text);
+  box-shadow: var(--veio-sombra);
+}
+
+.veio-modal__titulo {
+  margin: 0 0 6px;
+  font-family: var(--veio-fonte-display);
+  font-size: var(--veio-tam-modal);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.veio-modal__corpo {
+  margin: 0;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-corpo);
+  line-height: 1.5;
+}
+
+.veio-modal__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.veio-modal__ajuda {
+  margin: 10px 0 0;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+  text-align: right;
+}
+
+/* ── Toast ────────────────────────────────────────────────────────────────
+   Só sucesso curto, sem ação: some sozinho. Erro que pede ação é o aviso
+   persistente abaixo. */
+
+.veio-toasts {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 70;
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+  pointer-events: none;
+}
+
+.veio-toast {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(100%, 360px);
+  padding: 10px 16px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-surface);
+  color: var(--veio-text);
+  font-size: var(--veio-tam-corpo);
+  font-weight: 600;
+  box-shadow: var(--veio-sombra);
+  pointer-events: auto;
+  animation: veio-toast-entra var(--veio-transicao) ease-out;
+}
+
+.veio-toast__ponto {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--veio-success);
+}
+
+@keyframes veio-toast-entra {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+/* ── Aviso persistente ────────────────────────────────────────────────────
+   Todo erro que pede ação: fica no lugar do problema até ser resolvido ou
+   fechado, com a ação ao lado e a causa técnica num Detalhes recolhido. */
+
+.veio-aviso {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--veio-danger);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-danger-soft);
+  color: var(--veio-text);
+  font-size: var(--veio-tam-corpo);
+}
+
+.veio-aviso__texto {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.veio-aviso__acoes {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.veio-aviso__detalhes {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+}
+
+.veio-aviso__detalhes > summary {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+  font-weight: 600;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.veio-aviso__detalhes > pre {
+  margin: 8px 0 0;
+  padding: 9px 11px;
+  border-radius: var(--veio-raio-icone);
+  background: var(--veio-surface);
+  color: var(--veio-muted);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+/* ── Esqueleto ────────────────────────────────────────────────────────────
+   O lugar do conteúdo enquanto ele não chega, em espera curta e sem texto.
+   O brilho é sinal de estado: para com movimento reduzido. */
+
+.veio-esqueleto {
+  height: 12px;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-surface-2);
+  background-image: linear-gradient(90deg, transparent, var(--veio-border), transparent);
+  background-size: 180px 100%;
+  background-repeat: no-repeat;
+  animation: veio-esqueleto 1.2s linear infinite;
+}
+
+@keyframes veio-esqueleto {
+  from { background-position: -180px 0; }
+  to { background-position: calc(100% + 180px) 0; }
+}
+
+/* ── Linha de frase ───────────────────────────────────────────────────────
+   Checkbox, texto com a Palavra grifada, Contexto (Fonte · Título ·
+   Detalhe), chip da Palavra, estado e as ações só-ícone. */
+
+.veio-frase {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 13px 14px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface);
+}
+
+.veio-frase > .veio-checkbox {
+  margin-top: 3px;
+}
+
+.veio-frase--selecionada {
+  border-color: color-mix(in srgb, var(--veio-accent) 45%, var(--veio-border));
+  background: color-mix(in srgb, var(--veio-accent) 5%, var(--veio-surface));
+}
+
+.veio-frase__texto {
+  font-family: var(--veio-fonte-frase);
+  font-size: var(--veio-tam-frase);
+  line-height: var(--veio-altura-frase);
+  overflow-wrap: anywhere;
+}
+
+.veio-frase__contexto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 8px;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-corpo);
+}
+
+.veio-frase__acoes {
+  display: flex;
+  gap: 2px;
+}
+
+/* A Palavra que o cartão ensina: uma faixa de marca-texto que cobre de 50% a
+   94% da altura da linha, atrás do texto, sem raio. */
+.veio-palavra {
+  padding: 0 1px;
+  border-radius: 0;
+  background: linear-gradient(
+    transparent 50%,
+    var(--veio-kw-bg) 50%,
+    var(--veio-kw-bg) 94%,
+    transparent 94%
+  );
+  color: var(--veio-kw-fg);
+}
+
+/* O chip diz de onde a Palavra veio: "palavra:" escolhida, "auto:" detectada. */
+.veio-chip-palavra {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 2px 9px;
+  border: 1px dashed var(--veio-border-strong);
+  border-radius: var(--veio-raio-pilula);
+  color: var(--veio-text);
+  font-size: var(--veio-tam-legenda);
+}
+
+.veio-chip-palavra__rotulo {
+  color: var(--veio-muted);
+  font-family: var(--veio-fonte-mono);
+  font-size: 10.5px;
+}
+
+.veio-cabecalho-de-data {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 8px;
+  color: var(--veio-muted);
+  font-size: 10.5px;
+  font-weight: var(--veio-peso-legenda);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.veio-cabecalho-de-data::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--veio-border);
+}
+
+/* ── Movimento reduzido ───────────────────────────────────────────────────
+   O brilho do esqueleto e a entrada do toast são sinais de estado: com
+   movimento reduzido eles aparecem parados, e o conteúdo continua legível.
+   (tokens.css já encurta toda animação; aqui elas somem de vez.) */
+
+@media (prefers-reduced-motion: reduce) {
+  .veio-esqueleto {
+    animation: none;
+    background-image: none;
+  }
+
+  .veio-toast {
+    animation: none;
+  }
+}

@@ -134,7 +134,7 @@ ${telas.map(tela => linha(`/extensao/${tela.arquivo}`, tela.titulo, tela.largura
 
   <h2>Base Veio</h2>
   <ul>
-${temVitrine ? linha('/vitrine.html', 'Vitrine: tokens, escala de tipo, raios e cirílico', 'nos dois temas') : '      <li><a><span>Vitrine ainda não existe nesta branch</span><small>e2e/vitrine</small></a></li>'}
+${temVitrine ? linha('/vitrine.html', 'Vitrine: tokens, escala de tipo, raios, cirílico e os componentes base', 'nos dois temas') : '      <li><a><span>Vitrine ainda não existe nesta branch</span><small>e2e/vitrine</small></a></li>'}
   </ul>
 
   <h2>Protótipos travados</h2>
@@ -176,14 +176,20 @@ async function montar() {
   }
   for (const pasta of ['lib']) {
     const origem = path.join(RAIZ, pasta);
-    if (await existe(origem)) await copiar(origem, path.join(DESTINO, 'extensao', pasta));
+    if (!(await existe(origem))) continue;
+    await copiar(origem, path.join(DESTINO, 'extensao', pasta));
+    // Também na raiz: a vitrine pede `/lib/…` por caminho absoluto, como pede
+    // `/veio/…`, para carregar o mesmo catálogo da Voz que as telas carregam.
+    await copiar(origem, path.join(DESTINO, pasta));
   }
   await copiar(path.join(RAIZ, 'preview', 'chrome-simulado.js'), path.join(DESTINO, 'preview-chrome-simulado.js'));
 
-  // A vitrine da Base Veio, que já pede `/veio/…` por caminho absoluto.
-  const vitrine = path.join(RAIZ, 'e2e', 'vitrine', 'vitrine.html');
-  const temVitrine = await existe(vitrine);
-  if (temVitrine) await copiar(vitrine, path.join(DESTINO, 'vitrine.html'));
+  // A vitrine da Base Veio, que já pede `/veio/…` e `/lib/…` por caminho
+  // absoluto. A pasta inteira vem junto: a galeria de componentes é montada
+  // por `componentes-da-vitrine.js`, ao lado do HTML.
+  const vitrine = path.join(RAIZ, 'e2e', 'vitrine');
+  const temVitrine = await existe(path.join(vitrine, 'vitrine.html'));
+  if (temVitrine) await copiar(vitrine, DESTINO);
 
   // Os protótipos travados.
   const prototipos = await acharPrototipos();
