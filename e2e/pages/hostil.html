@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Página hostil</title>
+  <style>
+    body { margin: 0; background: #111; font-family: sans-serif; color: #eee; }
+    .player { position: relative; width: 640px; height: 360px; margin: 24px; }
+    video { width: 640px; height: 360px; background: #000; display: block; }
+    .caption-window { position: absolute; left: 0; right: 0; bottom: 36px; text-align: center; }
+    .caption-text { color: #fff; font-size: 22px; background: rgba(0, 0, 0, .6); padding: 2px 8px; }
+  </style>
+</head>
+<body>
+  <!-- Uma página qualquer tentando usar a extensão sem a pessoa pedir: manda as
+       mensagens de copiar/salvar para si mesma e de um iframe dela para ela, e
+       simula o atalho e o clique no botão flutuante sobre uma legenda plantada. -->
+  <div class="player">
+    <video muted></video>
+    <div class="caption-window"><span class="caption-text">Planted caption that nobody asked to mine.</span></div>
+  </div>
+  <iframe id="filho" src="hostil-filho.html" width="320" height="80"></iframe>
+  <script>
+    const INJETADA = 'Injected phrase from a hostile page.';
+    const CONTEXTO = { fonte: 'web', titulo: 'Página hostil', detalhe: '' };
+
+    window.mandarMensagens = () => {
+      for (const type of ['COPIAR_E_SALVAR', 'COPIAR_PARA_CLIPBOARD']) {
+        window.postMessage({ type, texto: INJETADA, contexto: CONTEXTO, idioma: 'Inglês' }, '*');
+        document.getElementById('filho').contentWindow.mandarParaOPai(type, INJETADA, CONTEXTO);
+      }
+    };
+
+    window.simularAtalhoEClique = () => {
+      const tecla = { altKey: true, code: 'KeyS', key: 's', bubbles: true, cancelable: true };
+      document.dispatchEvent(new KeyboardEvent('keydown', tecla));
+      document.getElementById('btn-minerador-pro')?.click();
+    };
+  </script>
+</body>
+</html>
