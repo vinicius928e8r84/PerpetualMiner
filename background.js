@@ -1045,6 +1045,92 @@ function autoMinerTodayKey() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// ─── Badge da toolbar ────────────────────────────────────────────────────────
+//
+// O contador da mineração automática de hoje, somando só os idiomas ligados
+// (MIN-09). Sem badge com os dois desligados: um contador parado em 0 diria que
+// a mineração automática está funcionando e não minerou nada.
+//
+// Quem manda no badge é o armazenamento, não quem escreveu nele: o service
+// worker escuta as duas chaves da mineração automática, então ligar um idioma no
+// popup, cada frase minerada automaticamente e a virada do dia chegam todas pelo
+// mesmo caminho. A virada do dia não escreve nada sozinha — `getAutoMinerState`
+// já devolve o contador zerado quando a data guardada não é a de hoje —, então um
+// alarme diário pede o badge de novo depois da meia-noite.
+
+/** Cores do badge da identidade Veio: `accent` com `accent-ink` por cima. */
+const BADGE_COR_DE_FUNDO = '#F5B83D';
+const BADGE_COR_DO_TEXTO = '#1A1204';
+const ALARME_VIRADA_DO_DIA = 'pm-virada-do-dia';
+const UM_DIA_EM_MINUTOS = 24 * 60;
+
+/**
+ * O badge da mineração automática, ou null quando não há badge nenhum.
+ *
+ * @param {{settings: object, daily: object}} state
+ * @returns {{texto: string, titulo: string} | null}
+ */
+function badgeDaMineracaoAutomatica({ settings, daily }) {
+  const ligados = ['en', 'ru'].filter(lang => settings[lang]?.enabled);
+  if (!ligados.length) return null;
+
+  const contar = lang => Number(daily[lang]?.count || 0);
+  const total = ligados.reduce((soma, lang) => soma + contar(lang), 0);
+  const todosNoLimite = ligados.every(lang => contar(lang) >= Number(settings[lang].dailyLimit || 0));
+
+  return {
+    texto: String(total),
+    titulo: todosNoLimite
+      ? textoDaVoz('MIN-09.noLimite')
+      : textoDaVoz('MIN-09.contador', { n: total }),
+  };
+}
+
+/** Põe na toolbar o badge do estado de agora. */
+async function atualizarBadgeDaToolbar() {
+  if (!chrome.action?.setBadgeText) return;
+
+  const badge = badgeDaMineracaoAutomatica(await getAutoMinerState());
+
+  // Sem badge, o tooltip volta a ser o nome da extensão. Escrito por extenso: um
+  // título vazio deixa `getTitle` vazio, e não devolve o padrão do manifesto.
+  await chrome.action.setBadgeText({ text: badge ? badge.texto : '' });
+  await chrome.action.setTitle({ title: badge ? badge.titulo : chrome.runtime.getManifest().name });
+  if (!badge) return;
+
+  await chrome.action.setBadgeBackgroundColor({ color: BADGE_COR_DE_FUNDO });
+  await chrome.action.setBadgeTextColor?.({ color: BADGE_COR_DO_TEXTO });
+}
+
+/** Agenda o pedido de badge da próxima meia-noite, e o de cada meia-noite depois. */
+function agendarViradaDoDia() {
+  const proximaMeiaNoite = new Date();
+  proximaMeiaNoite.setHours(24, 0, 5, 0);
+  chrome.alarms?.create(ALARME_VIRADA_DO_DIA, {
+    when: proximaMeiaNoite.getTime(),
+    periodInMinutes: UM_DIA_EM_MINUTOS,
+  });
+}
+
+chrome.alarms?.onAlarm.addListener(alarme => {
+  if (alarme.name === ALARME_VIRADA_DO_DIA) atualizarBadgeDaToolbar();
+});
+
+chrome.storage.onChanged?.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if (AUTO_MINER_SETTINGS_KEY in changes || AUTO_MINER_DAILY_KEY in changes) atualizarBadgeDaToolbar();
+});
+
+chrome.runtime.onStartup?.addListener(() => {
+  agendarViradaDoDia();
+  atualizarBadgeDaToolbar();
+});
+
+// O service worker acorda e dorme o tempo todo; ao acordar, o badge que está na
+// toolbar pode ser o de ontem.
+agendarViradaDoDia();
+atualizarBadgeDaToolbar();
+
 function broadcastAutoMinerState(state) {
   chrome.tabs?.query?.({}, tabs => {
     for (const tab of tabs || []) {

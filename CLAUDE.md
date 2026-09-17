@@ -144,6 +144,14 @@ Not covered by the queue:
 - The auto-miner duplicate check reads `frases` outside the queue before calling `salvarFrase`, so two identical auto candidates arriving together can both be saved (a duplicate, never a lost phrase).
 - `painel.js` rewrites `frases` (and `pm_deleted_ids`) directly, outside the service worker, so editing or deleting in the panel during a photo save can still lose phrases.
 
+### Toolbar Badge (background.js)
+
+The badge on the extension icon is the auto-miner's counter for today (`MIN-09`): the **sum of the enabled languages only**, in the Veio colors (`#F5B83D` on `#1A1204`). Both languages off → no badge at all, and the tooltip goes back to the extension's name. Tooltip otherwise: “Mineração automática: N hoje”, or “…: limite de hoje atingido” when every enabled language has hit its own `dailyLimit` (one language at its limit and another below still shows the counter).
+
+Storage is what drives it, not the caller: the service worker watches `pm_auto_miner_settings` and `pm_auto_miner_daily` through `chrome.storage.onChanged`, so toggling a language in the popup and each automatic mining both land on the same path (`atualizarBadgeDaToolbar`).
+
+The day rollover writes nothing on its own — `getAutoMinerState` already returns zeroed counts once the stored `date` isn't today's — so a repeating `chrome.alarms` alarm (`pm-virada-do-dia`, every 24 h, first firing just after midnight) asks for the badge again. The service worker also refreshes the badge whenever it wakes, since the badge sitting in the toolbar may be yesterday's.
+
 ## Testing
 
 The extension is tested for real in Chromium via Playwright, from `e2e/` (its own `package.json`, so the unpacked root stays free of Node files):
@@ -163,7 +171,7 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - `e2e/vitrine/vitrine.html`: the Veio showcase (tokens, type scale, radii and a Russian phrase, in both themes). The fixture server also serves `/veio/…` from the extension root, so the showcase loads the same tokens and the same packaged fonts the extension pages load.
 - `HEADED=1 npm test` shows the browser.
 - Tests assert what the person sees and what ends up stored, never internal functions. Two narrow exceptions, each named in the test's own comment:
-  - Where Chromium gives Playwright no way to drive the native UI (the context menu), a test calls the function Chrome would call (`minerarSelecaoDoMenu`, `registrarMenuDeContexto`) and asserts what gets stored or what is handed to Chrome.
+  - Where Chromium gives Playwright no way to drive the native UI (the context menu, the toolbar badge), a test calls the function Chrome would call (`minerarSelecaoDoMenu`, `registrarMenuDeContexto`, `handleAutoMinerCandidate`) and asserts what gets stored or what is handed to Chrome (`chrome.action.getBadgeText`, `getTitle`).
   - Until a surface shows a catalog state, the catalog's own guarantees (every ID present, pt-BR numbers) are asserted through `PerpetualMiner.textoDaVoz`, inside an extension page. These move to the screen when the surface is rebuilt.
 
 The legacy tests keep running: `node test_sync.js`, `node test_bridge_panel.js`, `node test_auto_keyword.js`, `python test_panel_russian_style.py` and the bridge tests in `bridge/test_*.py`.
@@ -174,11 +182,13 @@ The legacy tests keep running: `node test_sync.js`, `node test_bridge_panel.js`,
 - `COR_ICONE = '#00ff88'` in `content.js` — UI highlight color
 - `SENTINEL_VAZIO = 'NENHUM_TRECHO'` in `bookreader.js` — returned by Gemini when no marked passages found
 - `FIREBASE_PROJECT = 'perpetualminer-4c219'` in `background.js`
+- `BADGE_COR_DE_FUNDO = '#F5B83D'` / `BADGE_COR_DO_TEXTO = '#1A1204'` in `background.js` — the toolbar badge's Veio colors
+- `ALARME_VIRADA_DO_DIA = 'pm-virada-do-dia'` in `background.js` — the alarm that resets the badge at midnight
 - Firestore path pattern: `usuarios/{uid}/frases/{frase.id}`
 
 ## Permissions
 
-- `storage`, `unlimitedStorage`, `activeTab`, `tabs`, `contextMenus`, `identity`
+- `alarms`, `storage`, `unlimitedStorage`, `activeTab`, `tabs`, `contextMenus`, `identity` (`alarms` is the toolbar badge's day rollover)
 - `host_permissions`: Gemini API, Firestore, Google OAuth, Firebase token endpoints
 - Content scripts inject into all URLs with `all_frames: true`
 - `painel.html`, `bookreader.html`, `veio/tokens.css` and `veio/fontes/*.woff2` declared as `web_accessible_resources`. The tokens and the fonts are exposed so the in-page overlay can load them inside its Shadow DOM; `content.js` does not read them yet — that lands with the overlay rebuild
