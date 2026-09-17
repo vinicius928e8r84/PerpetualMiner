@@ -150,6 +150,8 @@ The badge on the extension icon is the auto-miner's counter for today (`MIN-09`)
 
 Storage is what drives it, not the caller: the service worker watches `pm_auto_miner_settings` and `pm_auto_miner_daily` through `chrome.storage.onChanged`, so toggling a language in the popup and each automatic mining both land on the same path (`atualizarBadgeDaToolbar`).
 
+The two colors are the only ones written outside `veio/tokens.css` — `chrome.action` takes a color, not CSS — and that exception is registered in `veio/README.md`. They travel as a pair: `setBadgeTextColor` needs Chrome 110+, so `manifest.json` declares `minimum_chrome_version: 110` rather than letting the text color fall back and lose the 10.4:1 contrast.
+
 The day rollover writes nothing on its own — `getAutoMinerState` already returns zeroed counts once the stored `date` isn't today's — so a repeating `chrome.alarms` alarm (`pm-virada-do-dia`, every 24 h, first firing just after midnight) asks for the badge again. The service worker also refreshes the badge whenever it wakes, since the badge sitting in the toolbar may be yesterday's.
 
 ## Testing

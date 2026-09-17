@@ -3,6 +3,7 @@
   "name": "PerpetualMiner",
   "version": "5.0",
   "description": "Minerador de legendas com histórico em tempo real e painel de estudos.",
+  "minimum_chrome_version": "110",
   "permissions": [
     "alarms",
     "storage",
