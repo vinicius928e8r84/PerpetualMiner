@@ -11,9 +11,32 @@
 // script chama (`handleAutoMinerCandidate`), como o teste do menu de contexto faz
 // com o handler do Chrome. As duas exceções estão na seção de testes do CLAUDE.md.
 
+const fs = require('fs');
+const path = require('path');
+
 const { test, expect } = require('../fixtures');
 
 const FRASE_RUSSA = 'Я улыбаюсь';
+
+/**
+ * O valor de um token no tema padrão de `veio/tokens.css`.
+ *
+ * O badge não é CSS — o Chrome recebe a cor escrita —, então `background.js`
+ * guarda uma cópia das duas. Lendo o token aqui, o teste falha se a cópia e o
+ * token se separarem.
+ */
+function tokenDoTemaPadrao(nome) {
+  const css = fs.readFileSync(path.join(__dirname, '..', '..', 'veio', 'tokens.css'), 'utf8');
+  const ateOClaro = css.slice(0, css.indexOf('[data-tema="claro"]'));
+  const achado = ateOClaro.match(new RegExp(`${nome}:\\s*(#[0-9A-Fa-f]{6})`));
+  if (!achado) throw new Error(`Token ${nome} não encontrado no tema padrão de veio/tokens.css`);
+  return achado[1];
+}
+
+/** "#F5B83D" como o Chrome devolve a cor: [R, G, B, A]. */
+function comoORgba(hex) {
+  return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).concat(255);
+}
 
 /** O que a pessoa vê na toolbar: o texto do badge e o tooltip do ícone. */
 function naToolbar(extensao) {
@@ -170,6 +193,35 @@ test('na virada do dia o badge zera, e um alarme diário faz isso sem ninguém m
   expect(alarme?.periodInMinutes).toBe(24 * 60);
 });
 
+test('a vitrine mostra os três estados do badge, nas cores dos tokens', async ({ page, paginas }) => {
+  // O badge de verdade é desenhado pelo Chrome na barra do navegador, então o
+  // preview do Vercel não o alcança. A vitrine tem uma imitação dele, para
+  // conferir cor e contraste no navegador comum.
+  await page.goto(paginas.url('vitrine.html'));
+
+  const estados = page.locator('.badge-estado');
+  await expect(estados).toHaveCount(3);
+
+  const contando = estados.filter({ hasText: 'Contando' });
+  await expect(contando.locator('.icone-com-badge b')).toHaveText('12');
+  await expect(contando).toContainText('Mineração automática: 12 hoje');
+
+  const noLimite = estados.filter({ hasText: 'Todos os ligados no limite' });
+  await expect(noLimite.locator('.icone-com-badge b')).toHaveText('25');
+  await expect(noLimite).toContainText('Mineração automática: limite de hoje atingido');
+
+  // Desligado não tem badge nenhum, e o tooltip é o nome da extensão.
+  const desligado = estados.filter({ hasText: 'Os dois idiomas desligados' });
+  await expect(desligado.locator('.icone-com-badge b')).toHaveCount(0);
+  await expect(desligado).toContainText('PerpetualMiner');
+
+  // A cor sai dos tokens, não de um literal repetido na vitrine.
+  await expect(contando.locator('.icone-com-badge b')).toHaveCSS(
+    'background-color', `rgb(${comoORgba(tokenDoTemaPadrao('--veio-accent')).slice(0, 3).join(', ')})`);
+  await expect(contando.locator('.icone-com-badge b')).toHaveCSS(
+    'color', `rgb(${comoORgba(tokenDoTemaPadrao('--veio-accent-ink')).slice(0, 3).join(', ')})`);
+});
+
 test('o badge usa as cores da identidade Veio', async ({ extensao }) => {
   await semearMineracaoAutomatica(extensao, {
     en: { ligado: true, limite: 20, hoje: 3 },
@@ -185,4 +237,9 @@ test('o badge usa as cores da identidade Veio', async ({ extensao }) => {
   // #F5B83D com texto #1A1204, a dupla da spec da identidade.
   expect(cores.fundo).toEqual([0xF5, 0xB8, 0x3D, 255]);
   expect(cores.texto).toEqual([0x1A, 0x12, 0x04, 255]);
+
+  // E são as mesmas de `veio/tokens.css`: mudar o token sem mudar a cópia de
+  // `background.js` quebra aqui, em vez de sair um badge fora da identidade.
+  expect(cores.fundo).toEqual(comoORgba(tokenDoTemaPadrao('--veio-accent')));
+  expect(cores.texto).toEqual(comoORgba(tokenDoTemaPadrao('--veio-accent-ink')));
 });
