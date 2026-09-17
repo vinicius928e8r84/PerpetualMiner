@@ -5,7 +5,7 @@ A identidade compartilhada por todas as páginas da extensão. A spec travada es
 
 | Caminho | O que é |
 |---|---|
-| `tokens.css` | O único arquivo de tokens: cor, tipo, raio e movimento, mais as fontes empacotadas e o cursor da marca. Toda página o inclui antes do CSS dela. |
+| `tokens.css` | O único arquivo de tokens: cor, tipo, raio e movimento, mais as fontes empacotadas, a marca (cristal, nome e cursor) e a base de acessibilidade (foco visível e movimento reduzido). Toda página o inclui antes do CSS dela. |
 | `fontes/*.woff2` | Manrope e JetBrains Mono, subsets latin + cyrillic. Nada vem do Google Fonts em runtime. |
 | `icones/` | A marca: `icone.svg` e os PNG 16/32/48/128 que o manifest usa na toolbar. |
 
@@ -17,10 +17,12 @@ A identidade compartilhada por todas as páginas da extensão. A spec travada es
 ```
 
 - **Cor nova não se escreve fora daqui.** Se falta um valor, ele entra como token, com o nome da
-  tabela da spec.
+  tabela da spec. A exceção é `icones/icone.svg`: um SVG servido como imagem não lê variáveis
+  CSS, então as cores do cristal ficam escritas nele, iguais às do asset da spec.
 - **Tema:** o escuro é o padrão. O claro entra com `data-tema="claro"`, no `<html>` ou num trecho
   qualquer (é assim que a vitrine mostra os dois lado a lado). O seletor de tema é outro ticket.
-- **Marca:** `<span class="veio-nome">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>`.
+- **Marca:** `<img class="veio-marca" src="veio/icones/icone.svg" alt="PerpetualMiner">` e
+  `<span class="veio-nome">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>`.
   O cursor ouro pisca a cada 1,1 s e fica parado com `prefers-reduced-motion: reduce`.
 - **Fontes:** `var(--veio-fonte-ui)` para interface e frases, `var(--veio-fonte-mono)` para número,
   contador, atalho e custo. As duas cobrem cirílico.

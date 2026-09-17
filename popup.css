@@ -26,11 +26,6 @@ body {
   font-size: 1.05rem;
 }
 
-.veio-marca {
-  flex: none;
-  border-radius: var(--veio-raio-icone);
-}
-
 /* ─── Body ───────────────────────────────────────────────────────────────── */
 
 .popup-body { padding: 12px 13px 14px; }

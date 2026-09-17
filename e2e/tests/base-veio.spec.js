@@ -152,7 +152,7 @@ test('os números e atalhos têm JetBrains Mono empacotada, com cirílico', asyn
   await page.goto(extensao.url('painel.html'));
 
   const carregada = await page.evaluate(async () => {
-    document.fonts.load('400 40px "JetBrains Mono"', '12 из 20');
+    await document.fonts.load('400 40px "JetBrains Mono"', '12 из 20');
     await document.fonts.ready;
     return document.fonts.check('400 40px "JetBrains Mono"', '12 из 20');
   });
@@ -200,18 +200,38 @@ for (const pagina of PAGINAS_DA_EXTENSAO) {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto(extensao.url(pagina));
 
-    const emMovimento = await page.evaluate(() => [...document.querySelectorAll('*')]
-      .filter(no => {
-        const estilo = getComputedStyle(no);
-        return estilo.animationName !== 'none' && parseFloat(estilo.animationDuration) > 0.05;
-      })
-      .map(no => `${no.tagName.toLowerCase()}.${no.className}`));
+    // Um spinner como os das telas legadas, que só aparece depois que a
+    // página começa a trabalhar: ele também tem de ficar parado.
+    await page.evaluate(() => {
+      const estilo = document.createElement('style');
+      estilo.textContent = '@keyframes girar-teste { to { transform: rotate(360deg); } }';
+      document.head.appendChild(estilo);
+      const spinner = document.createElement('div');
+      spinner.id = 'spinner-de-teste';
+      spinner.style.cssText = 'width:20px;height:20px;animation:girar-teste .8s linear infinite';
+      document.body.appendChild(spinner);
+    });
 
-    expect(emMovimento).toEqual([]);
+    // Tudo o que anima termina logo; o que ainda roda depois disso pulsa,
+    // pisca ou gira na frente da pessoa.
+    const aindaEmMovimento = await page.evaluate(async () => {
+      const descrever = animacao => {
+        const alvo = animacao.effect && animacao.effect.target;
+        return `${animacao.animationName || animacao.id} em ${alvo ? alvo.id || alvo.className || alvo.tagName : '?'}`;
+      };
+      const terminou = animacao => animacao.finished.then(() => true, () => true);
+      const prazo = new Promise(resolve => setTimeout(resolve, 300));
+      await Promise.race([Promise.all(document.getAnimations().map(terminou)), prazo]);
+      return document.getAnimations()
+        .filter(animacao => animacao.playState === 'running')
+        .map(descrever);
+    });
+
+    expect(aindaEmMovimento).toEqual([]);
   });
 }
 
-test('o teclado vê onde está: os controles do popup mostram foco', async ({ page, extensao }) => {
+test('o teclado vê onde está: os controles do popup mostram o anel ouro', async ({ page, extensao }) => {
   await page.goto(extensao.url('popup.html'));
 
   const botao = page.locator('#btnIrPainel');
@@ -221,6 +241,59 @@ test('o teclado vê onde está: os controles do popup mostram foco', async ({ pa
   await expect(botao).toHaveCSS('outline-style', 'solid');
   await expect(botao).toHaveCSS('outline-width', '2px');
 });
+
+for (const pagina of PAGINAS_DA_EXTENSAO) {
+  test(`em ${pagina}, todo controle alcançado pelo Tab mostra onde o foco está`, async ({ page, extensao }) => {
+    await page.goto(extensao.url(pagina));
+
+    // O que desenha foco: o anel da Veio ou o foco próprio de uma superfície
+    // (borda, sombra, fundo). Um controle focado que não muda nada disso
+    // deixa a pessoa sem saber onde o teclado está.
+    await page.evaluate(() => {
+      // Lido depois que as transições de foco terminam, como a pessoa vê.
+      window.desenhoDoFoco = async no => {
+        await Promise.all(no.getAnimations().map(animacao => animacao.finished.catch(() => {})));
+        const estilo = getComputedStyle(no);
+        const anel = estilo.outlineStyle !== 'none' && parseFloat(estilo.outlineWidth) > 0
+          ? `${estilo.outlineStyle} ${estilo.outlineWidth} ${estilo.outlineColor}`
+          : 'sem anel';
+        return [anel, estilo.boxShadow, estilo.borderColor, estilo.backgroundColor].join(' | ');
+      };
+    });
+
+    // Percorre a página pelo teclado e guarda como cada controle aparece focado.
+    const focados = [];
+    for (let ordem = 0; ordem < 60; ordem += 1) {
+      await page.keyboard.press('Tab');
+      const focado = await page.evaluate(async ordem => {
+        const no = document.activeElement;
+        if (!no || no === document.body || no.dataset.focoDeTeste) return null;
+        no.dataset.focoDeTeste = String(ordem);
+        return {
+          controle: no.id || `${no.tagName.toLowerCase()}.${no.className}`,
+          desenho: await window.desenhoDoFoco(no),
+        };
+      }, ordem);
+      if (!focado) break;
+      focados.push(focado);
+    }
+
+    // Sem foco nenhum, o mesmo controle tem de parecer diferente.
+    const desfocados = await page.evaluate(() => {
+      document.activeElement.blur();
+      return Promise.all([...document.querySelectorAll('[data-foco-de-teste]')]
+        .sort((a, b) => a.dataset.focoDeTeste - b.dataset.focoDeTeste)
+        .map(no => window.desenhoDoFoco(no)));
+    });
+
+    const semFoco = focados
+      .filter((focado, i) => focado.desenho === desfocados[i])
+      .map(focado => focado.controle);
+
+    expect(focados.length).toBeGreaterThan(0);
+    expect(semFoco).toEqual([]);
+  });
+}
 
 test('a vitrine mostra os tokens e a escala de tipo nos dois temas, com uma frase em russo', async ({ page, paginas }) => {
   await page.goto(paginas.url('vitrine.html'));

@@ -22,7 +22,7 @@ const RAIZ_DA_EXTENSAO = path.resolve(__dirname, '..');
 const PASTA_DAS_PAGINAS = path.join(__dirname, 'pages');
 const PASTA_DA_VITRINE = path.join(__dirname, 'vitrine');
 
-const TIPOS = {
+const TIPOS_MIME = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.woff2': 'font/woff2',
@@ -62,7 +62,7 @@ const test = base.extend({
         res.writeHead(404).end();
         return;
       }
-      const tipo = TIPOS[path.extname(arquivo)] || 'application/octet-stream';
+      const tipo = TIPOS_MIME[path.extname(arquivo)] || 'application/octet-stream';
       res.writeHead(200, { 'Content-Type': tipo });
       fs.createReadStream(arquivo).pipe(res);
     });

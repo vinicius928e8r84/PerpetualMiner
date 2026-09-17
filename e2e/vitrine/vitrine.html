@@ -97,7 +97,6 @@
       width: 9px;
       height: 9px;
       flex: none;
-      border-radius: 2px;
       background: var(--veio-accent);
       transform: rotate(45deg);
     }
@@ -122,7 +121,7 @@
       width: 22px;
       height: 22px;
       border: 1px solid var(--veio-border-strong);
-      border-radius: 7px;
+      border-radius: var(--veio-raio-icone);
     }
 
     .token code,
@@ -220,13 +219,8 @@
       background: var(--veio-surface);
     }
 
-    .marca img {
-      flex: none;
-      border-radius: var(--veio-raio-icone);
-    }
-
     .marca .veio-nome {
-      font-size: 22px;
+      font-size: var(--veio-tam-pagina);
     }
 
     .raios {
@@ -272,7 +266,7 @@
       <div class="secao">
         <h3>Marca</h3>
         <div class="marca">
-          <img src="/veio/icones/icone.svg" width="44" height="44" alt="PerpetualMiner">
+          <img class="veio-marca" src="/veio/icones/icone.svg" width="44" height="44" alt="PerpetualMiner">
           <span class="veio-nome">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>
         </div>
       </div>
@@ -311,7 +305,7 @@
       <div class="secao">
         <h3>Marca</h3>
         <div class="marca">
-          <img src="/veio/icones/icone.svg" width="44" height="44" alt="PerpetualMiner">
+          <img class="veio-marca" src="/veio/icones/icone.svg" width="44" height="44" alt="PerpetualMiner">
           <span class="veio-nome">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>
         </div>
       </div>

@@ -31,13 +31,8 @@ body {
   padding: 2rem 1.75rem 0.75rem;
 }
 .logo-text {
-  font-size: 1.35rem;
+  font-size: var(--veio-tam-pagina);
   white-space: nowrap;
-}
-
-.veio-marca {
-  flex: none;
-  border-radius: var(--veio-raio-icone);
 }
 
 .sidebar-user {

@@ -148,8 +148,14 @@
 }
 
 /* ── A marca ──────────────────────────────────────────────────────────────
-   O nome com o cursor ouro. O cursor é a única animação ambiente da
-   identidade: pisca a cada 1,1 s e fica parado com movimento reduzido. */
+   O cristal e o nome com o cursor ouro. O cursor é a única animação
+   ambiente da identidade: pisca a cada 1,1 s e fica parado com movimento
+   reduzido. */
+
+.veio-marca {
+  flex: none;
+  border-radius: var(--veio-raio-icone);
+}
 
 .veio-nome {
   font-family: var(--veio-fonte-display);
