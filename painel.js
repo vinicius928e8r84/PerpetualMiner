@@ -21,8 +21,9 @@ const ATALHO_DE_LEGENDA = 'Alt+S';
 // frases de antes apontam para o nome de hoje.
 const APELIDOS_DE_FONTE = { amazon: 'primevideo', hbomax: 'max', disney: 'disneyplus', star: 'starplus' };
 
-// O ícone do selo de cada Fonte. Os serviços de vídeo usam o de vídeo, e uma
-// Fonte fora da lista (o nome do site) usa o da Web.
+// O ícone do selo de cada Fonte. Os serviços de vídeo usam o desenho de vídeo
+// da Base Veio (que se chama `netflix` lá), e uma Fonte fora da lista (o nome do
+// site) usa o da Web.
 const ICONES_DE_FONTE = {
   netflix: 'netflix', primevideo: 'netflix', max: 'netflix', disneyplus: 'netflix',
   starplus: 'netflix', kinopoisk: 'netflix', youtube: 'youtube',
@@ -1654,7 +1655,7 @@ function montarVazio() {
 
   if (todasFrases.length === 0) {
     // O atalho entra no meio da frase como tecla (kbd), não como texto solto.
-    const MARCA = ' ';
+    const MARCA = '\u0000';
     const [antes, depois] = textoDaVoz('PAI-02.texto', { atalho: MARCA }).split(MARCA);
     texto.append(antes, criar('kbd', 'veio-kbd', ATALHO_DE_LEGENDA), depois);
     // Até o #31 trazer o menu Minerar frases, o botão abre a adição em massa de hoje.
@@ -1755,7 +1756,7 @@ function montarLinhaDoChip(f) {
   const chip = montarChipDaPalavra(texto, { detectada: Boolean(f.autoKeyword) });
   chip.append(botaoIcone('fechar', textoDaVoz('PAI-27.remover'), 'clear-kw', f.id));
 
-  const outroGrupo = criar('button', 'frase-chip__outro', '+');
+  const outroGrupo = criar('button', 'veio-chip-palavra__outro', '+');
   outroGrupo.type = 'button';
   outroGrupo.dataset.action = 'add-sep';
   outroGrupo.dataset.id = f.id;
@@ -1773,7 +1774,7 @@ function montarContexto(f) {
   const fonte = f.contexto?.fonte || f.streaming || '';
   if (fonte) {
     const selo = criar('span', 'veio-selo');
-    selo.append(iconeVeio(ICONES_DE_FONTE[APELIDOS_DE_FONTE[fonte] || fonte] || 'web'), nomeDaFonte(fonte));
+    selo.append(iconeVeio(ICONES_DE_FONTE[chaveDaFonte(fonte)] || 'web'), nomeDaFonte(fonte));
     linha.append(selo);
   }
   const origem = [f.contexto?.titulo, f.contexto?.detalhe].filter(Boolean).join(' · ');
@@ -1788,20 +1789,26 @@ function montarContexto(f) {
   return linha;
 }
 
+/** A Fonte como o catálogo a chama: um nome antigo gravado vira o de hoje. */
+function chaveDaFonte(fonte) {
+  return APELIDOS_DE_FONTE[fonte] || fonte;
+}
+
 /** O nome da Fonte (PAI-29). Uma Fonte fora do catálogo sai com o nome gravado. */
 function nomeDaFonte(fonte) {
-  const chave = APELIDOS_DE_FONTE[fonte] || fonte;
+  const chave = chaveDaFonte(fonte);
   return Object.hasOwn(CATALOGO_DA_VOZ['PAI-29'], chave) ? textoDaVoz(`PAI-29.${chave}`) : fonte;
 }
 
-// As ações de cada cartão, como hoje, até o #30 reconstruí-las.
+// As 4 ações só-ícone do cartão (PAI-30). O que cada uma faz continua o de hoje
+// até o #30 reconstruí-las.
 function montarAcoesDeHoje(f) {
   const acoes = criar('div', 'veio-frase__acoes');
   acoes.append(
-    botaoIcone('texto', 'Editar texto', 'edit-text', f.id),
-    botaoIcone('contexto', textoDaVoz('PAI-20.umaFrase'), 'edit', f.id),
-    botaoIcone('copiar', 'Copiar frase', 'copy', f.id),
-    botaoIcone('apagar', textoDaVoz('PAI-12.confirmar'), 'delete', f.id, 'veio-botao-icone--perigo'));
+    botaoIcone('texto', textoDaVoz('PAI-30.editarTexto'), 'edit-text', f.id),
+    botaoIcone('contexto', textoDaVoz('PAI-30.editarContexto'), 'edit', f.id),
+    botaoIcone('copiar', textoDaVoz('PAI-30.copiar'), 'copy', f.id),
+    botaoIcone('apagar', textoDaVoz('PAI-30.apagar'), 'delete', f.id, 'veio-botao-icone--perigo'));
   return acoes;
 }
 

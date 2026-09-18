@@ -61,7 +61,7 @@ test('carregando (PAI-01): 5 cartões-esqueleto', async ({ page, extensao, fakes
   await extensao.semearSessao({ uid: 'uid-visual' });
   fakes.google.segurarLeituras();
   await abrirFrases(page, extensao);
-  await expect(page.locator('.frase-esqueleto')).toHaveCount(5);
+  await expect(page.locator('.veio-frase-esqueleto')).toHaveCount(5);
 
   await expect(page.locator('#frases-lista')).toHaveScreenshot('frases-carregando.png');
 });

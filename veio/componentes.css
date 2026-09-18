@@ -213,6 +213,13 @@ select.veio-campo {
   padding-right: 34px;
 }
 
+/* O ícone da lupa pode vir dentro de um lugar (um <span> que o recebe). */
+.veio-busca__lupa svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .veio-busca__limpar {
   position: absolute;
   right: 5px;
@@ -779,6 +786,57 @@ select.veio-campo {
   flex: 1;
   height: 1px;
   background: var(--veio-border);
+}
+
+/* As ações do chip da Palavra: × dentro dele remove, + ao lado começa outro
+   grupo. */
+.veio-chip-palavra .veio-botao-icone {
+  width: 20px;
+  height: 20px;
+}
+
+.veio-chip-palavra .veio-botao-icone svg {
+  width: 12px;
+  height: 12px;
+}
+
+.veio-chip-palavra__outro {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px dashed var(--veio-border-strong);
+  border-radius: var(--veio-raio-pilula);
+  background: none;
+  color: var(--veio-muted);
+  font-weight: var(--veio-peso-titulo);
+  cursor: pointer;
+}
+
+.veio-chip-palavra__outro:hover {
+  border-color: var(--veio-accent);
+  color: var(--veio-text);
+}
+
+/* A linha de frase enquanto a lista carrega: o mesmo cartão, com duas linhas
+   de esqueleto no lugar do texto e do Contexto. */
+.veio-frase-esqueleto {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 16px 14px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-bg);
+}
+
+.veio-frase-esqueleto .veio-esqueleto:first-child {
+  width: 78%;
+}
+
+.veio-frase-esqueleto .veio-esqueleto:last-child {
+  width: 42%;
 }
 
 /* ── Movimento reduzido ───────────────────────────────────────────────────

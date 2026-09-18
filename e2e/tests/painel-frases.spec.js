@@ -315,7 +315,7 @@ test('carregando: 5 cartões-esqueleto, sem texto; quando a nuvem responde, as f
   fakes.google.segurarLeituras();
   await abrirFrases(page, extensao);
 
-  const esqueletos = lista(page).locator('.frase-esqueleto');
+  const esqueletos = lista(page).locator('.veio-frase-esqueleto');
   await expect(esqueletos).toHaveCount(5);
   await expect(lista(page)).toHaveText('');
   await expect(lista(page)).toHaveAttribute('aria-busy', 'true');
@@ -434,7 +434,7 @@ test('com movimento reduzido, os cartões-esqueleto ficam parados', async ({ pag
   fakes.google.segurarLeituras();
   await abrirFrases(page, extensao);
 
-  const brilho = lista(page).locator('.frase-esqueleto .veio-esqueleto').first();
+  const brilho = lista(page).locator('.veio-frase-esqueleto .veio-esqueleto').first();
   await expect(brilho).toBeVisible();
   expect(await brilho.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
 });

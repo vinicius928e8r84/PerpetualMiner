@@ -6,7 +6,7 @@ O que está aqui:
 
 1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
 2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: 174 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
+3. **Catálogo**: 175 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
 
 Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
 
@@ -68,7 +68,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 
 ## 3. Catálogo de estados-chave
 
-São 174 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
+São 175 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 
@@ -177,6 +177,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | PAI-27 | Chip da Palavra: ações **(novo)** | status | Remover keywords · Adicionar segundo grupo | Remover a palavra · Adicionar outro grupo | × e + do chip `palavra:`/`auto:`, só-ícone; o nome vira o tooltip. |
 | PAI-28 | Selecionar uma frase **(novo)** | status | (checkbox sem nome) | Selecionar frase | Nome do checkbox de cada cartão para o leitor de tela. |
 | PAI-29 | Nomes das Fontes **(novo)** | status | Todos os Streamings · Amazon Prime Video · Físico/Livro… | Netflix · YouTube · Prime Video · Max · Disney+ · Star+ · Kinopoisk · Web · Seleção · PDF · Livro · Manual · Importado | O selo de Fonte no cartão e as opções do filtro de Fonte. Uma Fonte fora da lista aparece com o nome gravado. |
+| PAI-30 | Ações do cartão **(novo)** | status | Editar texto da frase · Editar metadados · Copiar frase · Apagar frase (só title) | Editar texto · Editar contexto · Copiar frase · Apagar frase | As 4 ações só-ícone de cada cartão; o nome é o rótulo para o leitor de tela e o tooltip. |
 
 ### Painel · Minerar frases (Colar · Arquivo .txt · Foto)
 

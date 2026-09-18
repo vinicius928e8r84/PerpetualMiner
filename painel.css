@@ -333,12 +333,6 @@ body {
   appearance: none;
 }
 
-.veio-busca__lupa svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
 /* A lista: cartões `bg` dentro da ilha `surface`. */
 .frases-lista {
   margin-top: 12px;
@@ -387,72 +381,13 @@ body {
   background: var(--veio-accent-soft);
 }
 
-.frase-palavra:focus-visible {
-  outline: 2px solid var(--veio-accent);
-  outline-offset: 1px;
-}
-
-/* O chip `palavra:`/`auto:`, com × dentro e + ao lado. */
+/* O chip `palavra:`/`auto:` e o + ao lado dele. */
 .frase-chip {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   margin-top: 6px;
-}
-
-.frase-chip .veio-botao-icone {
-  width: 20px;
-  height: 20px;
-}
-
-.frase-chip .veio-botao-icone svg {
-  width: 12px;
-  height: 12px;
-}
-
-.frase-chip__outro {
-  display: inline-grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: 1px dashed var(--veio-border-strong);
-  border-radius: var(--veio-raio-pilula);
-  background: none;
-  color: var(--veio-muted);
-  font-weight: var(--veio-peso-titulo);
-  cursor: pointer;
-}
-
-.frase-chip__outro:hover {
-  border-color: var(--veio-accent);
-  color: var(--veio-text);
-}
-
-.frases-lista .veio-botao-icone:focus-visible,
-.frase-chip__outro:focus-visible {
-  outline: 2px solid var(--veio-accent);
-  outline-offset: 2px;
-}
-
-/* PAI-01: os cartões-esqueleto, sem texto. */
-.frase-esqueleto {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 8px;
-  padding: 16px 14px;
-  border: 1px solid var(--veio-border);
-  border-radius: var(--veio-raio-card);
-  background: var(--veio-bg);
-}
-
-.frase-esqueleto .veio-esqueleto:first-child {
-  width: 78%;
-}
-
-.frase-esqueleto .veio-esqueleto:last-child {
-  width: 42%;
 }
 
 /* PAI-02 a PAI-04: o vazio com as ações dele. */
