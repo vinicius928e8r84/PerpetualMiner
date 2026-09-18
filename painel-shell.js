@@ -54,6 +54,7 @@
     }
     porId('shell-tentar-de-novo').addEventListener('click', tentarAConexaoDeNovo);
     window.addEventListener('hashchange', aplicarEndereco);
+    document.addEventListener('click', reaplicarOMesmoEndereco);
 
     aplicarEndereco();
     mostrarConexao('conectando');
@@ -109,6 +110,16 @@
     else if (entrou) window.scrollTo(0, 0);
 
     if (entrou) for (const ouvinte of ouvintesDeArea.get(area) || []) ouvinte();
+  }
+
+  /**
+   * Um link para o endereço em que a pessoa já está não dispara `hashchange`:
+   * sem isto, clicar no chip já em #configuracoes/conta não levaria de volta ao card.
+   */
+  function reaplicarOMesmoEndereco(evento) {
+    if (evento.defaultPrevented || evento.button !== 0 || evento.ctrlKey || evento.metaKey || evento.shiftKey) return;
+    const link = evento.target.closest('a[href^="#"]');
+    if (link && link.getAttribute('href') === location.hash) aplicarEndereco();
   }
 
   function mostrarAba(aba) {

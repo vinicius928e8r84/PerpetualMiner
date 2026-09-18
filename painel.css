@@ -74,7 +74,7 @@ body {
   padding: 11px 12px;
   border-radius: var(--veio-raio-card);
   color: var(--veio-muted);
-  font-weight: 600;
+  font-weight: var(--veio-peso-rotulo);
   text-decoration: none;
   transition: background var(--veio-transicao), color var(--veio-transicao);
 }

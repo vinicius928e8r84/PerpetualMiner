@@ -182,6 +182,21 @@ test('com a conta, o chip mostra o nome e “Sincronizado agora”, e leva a Con
   await expect(page.getByRole('heading', { name: 'Conta & sync' })).toBeInViewport();
 });
 
+test('já em Configurações › Conta & sync, clicar no chip de novo volta ao card', async ({ page, extensao }) => {
+  await page.setViewportSize({ width: 1280, height: 260 });
+  await abrirPainel(page, extensao, '#configuracoes/conta');
+  const conta = page.getByRole('heading', { name: 'Conta & sync' });
+  await expect(conta).toBeInViewport();
+
+  await page.mouse.move(640, 200);
+  await page.mouse.wheel(0, 2000);
+  await expect(conta).not.toBeInViewport();
+
+  await chip(page).click();
+  await expect(page).toHaveURL(/#configuracoes\/conta$/);
+  await expect(conta).toBeInViewport();
+});
+
 test('sem nome no perfil, o chip diz “Conta Google”', async ({ page, extensao }) => {
   await extensao.semearSessao({ uid: 'uid-sem-nome', displayName: '', email: '' });
   await abrirPainel(page, extensao);

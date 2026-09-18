@@ -107,7 +107,8 @@ A tabela da spec cobre a cor. O que os componentes pediram além dela entrou em
 sombra suave das ilhas do Painel, que não flutuam), `--veio-destaque` (o
 ~1,4 s da borda ouro do card aberto por endereço), `--veio-tam-tecla` e
 `--veio-tam-micro` (os dois degraus abaixo de `legenda`, para a tecla e o
-rótulo do chip), `--veio-raio-tecla` e `--veio-esqueleto`.
+rótulo do chip), `--veio-raio-tecla`, `--veio-esqueleto` e `--veio-peso-rotulo` (o peso dos
+rótulos da navegação do Painel; `peso-num` fica só para números).
 
 ### Diferenças conhecidas do protótipo
 

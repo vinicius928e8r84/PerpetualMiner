@@ -357,7 +357,7 @@ function docToObj(fields) {
 async function migrarParaFirestore() {
   const { frases = [] } = await chromeGet({ frases: [] });
   if (frases.length > 0) {
-    setSyncStatus('sincronizando');
+    Shell.mostrarSincronizacao('sincronizando');
     try {
       await firestoreBatchUpsert(frases);
       mostrarToast(`${frases.length} frase${frases.length > 1 ? 's' : ''} migrada${frases.length > 1 ? 's' : ''} para a nuvem!`);
@@ -382,7 +382,7 @@ function carregarFrasesLocal() {
 }
 
 async function carregarFrasesFirestore() {
-  setSyncStatus('sincronizando');
+  Shell.mostrarSincronizacao('sincronizando');
   try {
     let firestoreFrases = await firestoreGetAll();
 
@@ -449,7 +449,7 @@ async function carregarFrasesFirestore() {
     }
 
     if (orphans.length > 0) {
-      setSyncStatus('sincronizando');
+      Shell.mostrarSincronizacao('sincronizando');
       const resultados  = await Promise.allSettled(orphans.map(f => firestorePatch(f)));
       const sincronizados = orphans.filter((_, i) => resultados[i].status === 'fulfilled');
       const enviados      = sincronizados.map(f => String(f.id));
@@ -519,11 +519,11 @@ async function carregarFrasesFirestore() {
     }
 
     todasFrases = firestoreFrases;
-    setSyncStatus('sincronizado');
+    Shell.mostrarSincronizacao('sincronizado');
     finalizarCarregamento();
   } catch (err) {
     console.error('[Firestore] carregar:', err);
-    setSyncStatus('erro');
+    Shell.mostrarSincronizacao('erro');
     mostrarToast('Erro na nuvem — usando dados locais.');
     carregarFrasesLocal();
   }
@@ -584,7 +584,7 @@ function salvarFraseFirestore(frase, campos = null) {
   if (!usuarioLogado) return;
   firestorePatch(frase, campos).catch(err => {
     console.error('[Firestore] patch:', frase.id, err.message);
-    setSyncStatus('erro');
+    Shell.mostrarSincronizacao('erro');
   });
 }
 
@@ -696,7 +696,7 @@ async function removerFrasesFirestore(ids) {
     limparTombstone(idsStr);
   } catch (err) {
     console.error('[Firestore] delete falhou, ficará pendente:', err.message);
-    setSyncStatus('erro');
+    Shell.mostrarSincronizacao('erro');
     mostrarToast(`Erro ao deletar da nuvem: ${err.message}`);
   }
 }
@@ -713,7 +713,7 @@ async function apagarTudoFirestore() {
     limparTombstone(ids);
   } catch (e) {
     console.error('[Firestore] apagar tudo falhou:', e);
-    setSyncStatus('erro');
+    Shell.mostrarSincronizacao('erro');
   }
 }
 
@@ -802,11 +802,6 @@ function deletarSelecionadas() {
     aplicarFiltro();
     mostrarToast(`${ids.length} frase${ids.length > 1 ? 's' : ''} deletada${ids.length > 1 ? 's' : ''}!`);
   });
-}
-
-// situacao: 'sincronizando' | 'sincronizado' | 'erro' — o chip de conta mostra.
-function setSyncStatus(situacao) {
-  Shell.mostrarSincronizacao(situacao);
 }
 
 // ─── Listeners ────────────────────────────────────────────────────────────────
@@ -2352,7 +2347,7 @@ function salvarEdicaoEmMassa(fonteVal, tituloVal, detalheVal) {
   if (usuarioLogado && editadas.length > 0) {
     Promise.allSettled(editadas.map(f => firestorePatch(f))).then(resultados => {
       const falhas = resultados.filter(r => r.status === 'rejected');
-      if (falhas.length > 0) setSyncStatus('erro');
+      if (falhas.length > 0) Shell.mostrarSincronizacao('erro');
     });
   }
 }
