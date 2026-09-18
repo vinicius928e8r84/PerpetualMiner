@@ -116,9 +116,10 @@ test('no painel, a frase em cirílico sai marcada como russa e a inglesa não', 
   });
   await page.goto(extensao.url('painel.html'));
 
-  await expect(page.locator('.phrase-item')).toHaveCount(2);
-  await expect(page.locator('.phrase-item').filter({ hasText: 'улыбаюсь' })).toHaveClass(/frase-ru/);
-  await expect(page.locator('.phrase-item').filter({ hasText: 'quiet harbor' })).not.toHaveClass(/frase-ru/);
+  const texto = trecho => page.locator('#frases-lista .veio-frase__texto').filter({ hasText: trecho });
+  await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(2);
+  await expect(texto('улыбаюсь')).toHaveAttribute('lang', 'ru');
+  await expect(texto('quiet harbor')).toHaveAttribute('lang', 'en');
 });
 
 test('o menu de contexto mostra MIN-08, lido do catálogo', async ({ extensao }) => {

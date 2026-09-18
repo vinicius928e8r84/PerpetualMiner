@@ -6,7 +6,7 @@ O que está aqui:
 
 1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
 2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: 167 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
+3. **Catálogo**: 174 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
 
 Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
 
@@ -68,7 +68,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 
 ## 3. Catálogo de estados-chave
 
-São 167 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
+São 174 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 
@@ -170,6 +170,13 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | PAI-20 | Modal de contexto (título) | status | Editar Metadados · Editar 12 frase(s) selecionada(s) | Editar contexto · Editar contexto de 12 frases — Campos em branco ficam como estão | Contexto, não metadados (glossário). |
 | PAI-21 | Campos do contexto | status | Plataforma ou tipo de origem · Episódio, capítulo ou informação complementar | Fonte — de onde a frase veio (netflix, youtube, livro…) · Título · Detalhe — episódio, capítulo ou canal |  |
 | PAI-22 | Contexto em massa salvo | sucesso | Metadados atualizados! | Contexto de 12 frases atualizado | Edição individual: sem toast. |
+| PAI-23 | Campo da busca **(novo)** | status | (busca não existe) | Buscar nas frases | Procura no texto da frase e no Título. O × ao lado do texto usa o rótulo de PAI-04 (“Limpar busca”). Busca: lista fechada. |
+| PAI-24 | Ordem da lista | status | Mais novas primeiro · Mais velhas primeiro | Mais novas primeiro · Mais antigas primeiro | Select em pílula na linha dos filtros. |
+| PAI-25 | Nomes dos filtros **(novo)** | status | (sem nome) | Fonte · Idioma · Ordem | Nome de cada select para o leitor de tela. |
+| PAI-26 | Navegar entre páginas **(novo)** | status | Primeira · Anterior · 1 de 129 · Próxima · Última | Páginas — 1 de 129 · Primeira página · Página anterior · Próxima página · Última página | “Páginas” é o nome da navegação para o leitor de tela; os quatro botões são só-ícone e o nome vira o tooltip. A contagem “1–10 de 1.284” é PAI-07. |
+| PAI-27 | Chip da Palavra: ações **(novo)** | status | Remover keywords · Adicionar segundo grupo | Remover a palavra · Adicionar outro grupo | × e + do chip `palavra:`/`auto:`, só-ícone; o nome vira o tooltip. |
+| PAI-28 | Selecionar uma frase **(novo)** | status | (checkbox sem nome) | Selecionar frase | Nome do checkbox de cada cartão para o leitor de tela. |
+| PAI-29 | Nomes das Fontes **(novo)** | status | Todos os Streamings · Amazon Prime Video · Físico/Livro… | Netflix · YouTube · Prime Video · Max · Disney+ · Star+ · Kinopoisk · Web · Seleção · PDF · Livro · Manual · Importado | O selo de Fonte no cartão e as opções do filtro de Fonte. Uma Fonte fora da lista aparece com o nome gravado. |
 
 ### Painel · Minerar frases (Colar · Arquivo .txt · Foto)
 

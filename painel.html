@@ -69,6 +69,12 @@
           <h1 id="titulo-frases" data-voz="SHL-02.frases"></h1>
         </header>
 
+        <!--
+          As ações de hoje (selecionar, editar, apagar, exportar, enviar ao Anki,
+          importar e a adição em massa) continuam funcionando sobre os cartões até
+          os tickets delas as reconstruírem: #30 (seleção e ações), #31 (Minerar
+          frases) e #32 (envio ao Anki).
+        -->
         <div class="conteudo-de-hoje" data-tema="claro">
           <div class="main-header">
             <div class="header-right">
@@ -133,95 +139,48 @@
             </div>
           </div>
 
-          <div class="main-toolbar">
-            <!-- Filtro: Fonte / Streaming -->
-            <div class="dropdown-wrap">
-              <button id="dropdown-trigger" class="dropdown-trigger">
-                <span id="dropdown-label">Todas as Fontes</span>
-                <svg width="14" height="14" fill="none" stroke="#7c3aed" stroke-width="2.5" viewBox="0 0 24 24">
-                  <polyline points="6 9 12 15 18 9"/>
-                </svg>
-              </button>
-              <div id="dropdown-menu" class="dropdown-menu hidden"></div>
-            </div>
-
-            <!-- Filtro: Idioma -->
-            <div class="dropdown-wrap">
-              <button id="idioma-trigger" class="dropdown-trigger">
-                <span id="idioma-label">Todos os Idiomas</span>
-                <svg width="14" height="14" fill="none" stroke="#7c3aed" stroke-width="2.5" viewBox="0 0 24 24">
-                  <polyline points="6 9 12 15 18 9"/>
-                </svg>
-              </button>
-              <div id="idioma-menu" class="dropdown-menu hidden"></div>
-            </div>
-
-            <!-- Filtro: Ordenação -->
-            <div class="dropdown-wrap">
-              <button id="ordem-trigger" class="dropdown-trigger">
-                <span id="ordem-label">Mais novas primeiro</span>
-                <svg width="14" height="14" fill="none" stroke="#7c3aed" stroke-width="2.5" viewBox="0 0 24 24">
-                  <polyline points="6 9 12 15 18 9"/>
-                </svg>
-              </button>
-              <div id="ordem-menu" class="dropdown-menu hidden">
-                <button class="dropdown-item" data-ordem="novas">Mais novas primeiro</button>
-                <button class="dropdown-item" data-ordem="antigas">Mais velhas primeiro</button>
-              </div>
-            </div>
-
-            <!-- Toggle: Exportadas -->
-            <button id="btn-hide-exported" class="filter-toggle" title="Mostrar/ocultar frases já exportadas para o Anki">
-              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-              Esconder Exportadas
-            </button>
-            <div class="auto-miner-panel" title="Auto Miner por idioma">
-              <label><input id="panel-auto-en" type="checkbox"> EN</label>
-              <input id="panel-auto-limit-en" type="number" min="1" max="100" value="20">
-              <span id="panel-auto-count-en">0/20</span>
-              <label><input id="panel-auto-ru" type="checkbox"> RU</label>
-              <input id="panel-auto-limit-ru" type="number" min="1" max="100" value="20">
-              <span id="panel-auto-count-ru">0/20</span>
-            </div>
-          </div>
-
-          <div id="phrases-list" class="phrases-list">
-            <div class="empty-state">Carregando...</div>
-          </div>
-
-          <div class="main-footer">
-            <div class="pagination">
-              <button id="btn-first" class="page-btn" title="Primeira">
-                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                  <polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/>
-                </svg>
-              </button>
-              <button id="btn-prev" class="page-btn" title="Anterior">
-                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                  <polyline points="15 18 9 12 15 6"/>
-                </svg>
-              </button>
-              <span id="page-current" class="page-current">1</span>
-              <span class="page-sep">de</span>
-              <span id="page-total" class="page-sep-bold">1</span>
-              <button id="btn-next" class="page-btn" title="Próxima">
-                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
-              </button>
-              <button id="btn-last" class="page-btn" title="Última">
-                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                  <polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/>
-                </svg>
-              </button>
-            </div>
-            <span id="page-info" class="page-info"></span>
-          </div>
         </div>
+
+        <!-- Filtros numa linha que quebra: Fonte · idioma · ordem, a busca e o toggle. -->
+        <div class="frases-filtros">
+          <select class="veio-campo frases-filtro" id="filtro-fonte" data-voz-aria="PAI-25.fonte"></select>
+          <select class="veio-campo frases-filtro" id="filtro-idioma" data-voz-aria="PAI-25.idioma"></select>
+          <select class="veio-campo frases-filtro" id="filtro-ordem" data-voz-aria="PAI-25.ordem">
+            <option value="novas" data-voz="PAI-24.novas"></option>
+            <option value="antigas" data-voz="PAI-24.antigas"></option>
+          </select>
+          <label class="veio-busca frases-busca">
+            <span class="veio-busca__lupa"><span data-icone="busca"></span></span>
+            <input class="veio-campo" id="busca-frases" type="search" autocomplete="off"
+                   data-voz-aria="PAI-23" placeholder="">
+            <button class="veio-botao-icone veio-busca__limpar" id="btn-limpar-busca" type="button"
+                    data-voz-aria="PAI-04.acao" data-voz-title="PAI-04.acao" hidden><span data-icone="fechar"></span></button>
+          </label>
+          <label class="veio-toggle">
+            <input type="checkbox" role="switch" id="filtro-ocultar">
+            <span class="veio-toggle__trilho"></span>
+            <span data-voz="PAI-09"></span>
+          </label>
+        </div>
+
+        <!-- PAI-01: enquanto a lista carrega, 5 cartões-esqueleto sem texto. -->
+        <div id="frases-lista" class="frases-lista" aria-busy="true">
+          <div class="frase-esqueleto" aria-hidden="true"><div class="veio-esqueleto"></div><div class="veio-esqueleto"></div></div>
+          <div class="frase-esqueleto" aria-hidden="true"><div class="veio-esqueleto"></div><div class="veio-esqueleto"></div></div>
+          <div class="frase-esqueleto" aria-hidden="true"><div class="veio-esqueleto"></div><div class="veio-esqueleto"></div></div>
+          <div class="frase-esqueleto" aria-hidden="true"><div class="veio-esqueleto"></div><div class="veio-esqueleto"></div></div>
+          <div class="frase-esqueleto" aria-hidden="true"><div class="veio-esqueleto"></div><div class="veio-esqueleto"></div></div>
+        </div>
+
+        <!-- Paginação: “1–10 de 1.284” (PAI-07) à esquerda, « ‹ 1 de 129 › » à direita. -->
+        <nav class="frases-paginas" id="frases-paginas" data-voz-aria="PAI-26.rotulo" hidden>
+          <span class="frases-paginas__intervalo" id="paginas-intervalo"></span>
+          <button class="veio-botao-icone" id="btn-first" type="button" data-voz-aria="PAI-26.primeira" data-voz-title="PAI-26.primeira"><span data-icone="primeira"></span></button>
+          <button class="veio-botao-icone" id="btn-prev" type="button" data-voz-aria="PAI-26.anterior" data-voz-title="PAI-26.anterior"><span data-icone="anterior"></span></button>
+          <span class="frases-paginas__atual" id="paginas-atual"></span>
+          <button class="veio-botao-icone" id="btn-next" type="button" data-voz-aria="PAI-26.proxima" data-voz-title="PAI-26.proxima"><span data-icone="proxima"></span></button>
+          <button class="veio-botao-icone" id="btn-last" type="button" data-voz-aria="PAI-26.ultima" data-voz-title="PAI-26.ultima"><span data-icone="ultima"></span></button>
+        </nav>
       </section>
 
       <!-- ── Conexão com o Anki ─────────────────────────────── -->

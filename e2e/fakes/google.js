@@ -13,6 +13,9 @@ function criarFakeGoogle() {
   const documentos = new Map();   // 'usuarios/uid/frases/123' → fields
   const requisicoes = [];
   let recusarEscritas = false;
+  // A leitura da coleção de frases: 'normal', 'segurar' (nunca responde: a
+  // lista fica carregando) ou 'recusar' (a nuvem falha ao carregar).
+  let leituraDasFrases = 'normal';
 
   async function tratar(route) {
     const req = route.request();
@@ -50,6 +53,8 @@ function criarFakeGoogle() {
     const ehColecao = segmentos.length % 2 === 1;
 
     if (metodo === 'GET' && ehColecao) {
+      if (leituraDasFrases === 'segurar') return new Promise(() => {});
+      if (leituraDasFrases === 'recusar') return responderJson(route, 503, { error: { message: 'indisponível' } });
       const prefixo = `${caminho}/`;
       const documents = [...documentos]
         .filter(([doc]) => doc.startsWith(prefixo) && !doc.slice(prefixo.length).includes('/'))
@@ -100,6 +105,10 @@ function criarFakeGoogle() {
       return Object.keys(documentos.get(`usuarios/${uid}/meta/deleted`)?.ids?.mapValue?.fields || {});
     },
     recusarEscritas(valor = true) { recusarEscritas = valor; },
+    /** A leitura das frases da conta nunca responde. */
+    segurarLeituras() { leituraDasFrases = 'segurar'; },
+    /** A leitura das frases da conta falha com 503. */
+    recusarLeituras() { leituraDasFrases = 'recusar'; },
   };
 }
 

@@ -6,9 +6,10 @@
 //
 //   cd e2e && npx playwright test painel-shell-visual --update-snapshots
 //
-// O conteúdo de hoje (a lista de frases, custos, baralhos…) ainda vai ser
-// reconstruído, cada área no seu ticket, então fica coberto: o que a captura
-// guarda é o shell — a sidebar, os indicadores, as ilhas, a faixa F1 e o chip.
+// O conteúdo de hoje (custos, baralhos…) ainda vai ser reconstruído, cada área
+// no seu ticket, e a lista de Frases tem a referência dela em
+// painel-frases-visual.spec.js; os dois ficam cobertos. O que a captura guarda é
+// o shell — a sidebar, os indicadores, as ilhas, a faixa F1 e o chip.
 
 const { test, expect } = require('../fixtures');
 
@@ -22,7 +23,9 @@ const FRASES = [
 // no dia das frases de exemplo.
 const AGORA = new Date('2026-09-18T12:00:00');
 
-const semOConteudoDeHoje = page => ({ mask: [page.locator('.conteudo-de-hoje')] });
+const semOConteudoDeHoje = page => ({
+  mask: [page.locator('.conteudo-de-hoje, .frases-filtros, #frases-lista, #frases-paginas')],
+});
 
 async function abrirPainel(page, extensao, endereco, largura = 1280) {
   await page.clock.setFixedTime(AGORA);

@@ -81,7 +81,7 @@ function loadPanel({ confirmResult = true } = {}) {
   };
   vm.createContext(context);
   // O painel.html carrega a base compartilhada antes do painel.js.
-  for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'painel-shell.js']) {
+  for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/texto.js', 'veio/componentes.js', 'lib/idioma.js', 'painel-shell.js']) {
     vm.runInContext(fs.readFileSync(arquivo, 'utf8'), context, { filename: arquivo });
   }
   const source = `${fs.readFileSync('painel.js', 'utf8')}
