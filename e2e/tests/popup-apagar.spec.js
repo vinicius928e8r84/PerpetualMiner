@@ -30,7 +30,7 @@ async function apagarNoPopup(page, extensao, texto) {
 
 async function sincronizarNoPainel(page, extensao) {
   await page.goto(extensao.url('painel.html'));
-  await expect(page.locator('#sync-status')).toHaveText(/Sincronizado/);
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
 }
 
 test('com a conta conectada, a frase apagada no popup sai da nuvem e não volta na sincronização', async ({ page, extensao, fakes }) => {
@@ -45,7 +45,7 @@ test('com a conta conectada, a frase apagada no popup sai da nuvem e não volta 
   await expect.poll(() => fakes.google.apagadasDe('uid-popup')).toEqual([String(apagada.frase.id)]);
 
   await sincronizarNoPainel(page, extensao);
-  await expect(page.locator('#total-count')).toHaveText('1');
+  await expect(page.locator('#shell-total')).toHaveText('1');
   await expect(page.getByText(FICA)).toBeVisible();
   await expect(page.getByText(APAGAR)).toHaveCount(0);
   expect((await extensao.frases()).map(f => f.texto)).toEqual([FICA]);
@@ -66,7 +66,7 @@ test('apagada no popup, a frase não volta de outro computador que ainda a tem n
   await extensao.gravarStorage({ frases: [apagada.frase], pm_deleted_ids: [], pm_pending_sync: [] });
 
   await sincronizarNoPainel(page, extensao);
-  await expect(page.locator('#total-count')).toHaveText('0');
+  await expect(page.locator('#shell-total')).toHaveText('0');
   await expect(page.getByText(APAGAR)).toHaveCount(0);
   expect(fakes.google.frasesDe('uid-outro')).toEqual([]);
   expect(await extensao.frases()).toEqual([]);

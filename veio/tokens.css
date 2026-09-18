@@ -88,6 +88,8 @@
   /* Fundo do modal e sombra das camadas que flutuam (modal, toast, aviso). */
   --veio-scrim: rgba(0, 0, 0, .55);
   --veio-sombra: 0 18px 40px -12px rgba(0, 0, 0, .6);
+  /* A sombra suave das ilhas do Painel (sidebar e conteúdo), que não flutuam. */
+  --veio-sombra-ilha: 0 10px 30px rgba(0, 0, 0, .35);
 
   /* O fio de luz no topo do botão primário, que dá o relevo do protótipo. */
   --veio-brilho: rgba(255, 255, 255, .35);
@@ -113,6 +115,7 @@
   --veio-peso-titulo: 700;
   --veio-peso-legenda: 800;
   --veio-peso-num: 600;
+  --veio-peso-rotulo: 600;
 
   --veio-tracking-display: -0.02em;
   --veio-tracking-legenda: 0.14em;
@@ -131,6 +134,8 @@
   --veio-piscar: 1.1s;
   --veio-esqueleto: 1.2s;
   --veio-transicao: 150ms;
+  /* A borda ouro que pisca no card aberto por endereço (#configuracoes/<seção>). */
+  --veio-destaque: 1.4s;
 }
 
 /* ── Tema claro (pronto; o seletor é outro ticket) ────────────────────── */
@@ -161,6 +166,7 @@
 
   --veio-scrim: rgba(40, 30, 10, .35);
   --veio-sombra: 0 18px 40px -16px rgba(60, 40, 10, .35);
+  --veio-sombra-ilha: 0 10px 30px rgba(60, 45, 20, .12);
 
   --veio-brilho: rgba(255, 255, 255, .55);
 }

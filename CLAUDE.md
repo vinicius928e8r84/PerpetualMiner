@@ -25,9 +25,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `tombstone.js` | Tombstone of a deleted phrase (`chrome.storage.sync` keys and the Firestore `meta/deleted` PATCH), shared by `background.js` (`importScripts`) and `painel.html` |
 | `popup.html/js/css` | Quick-access popup showing last 5 phrases |
 | `painel.html/js/css` | Full dashboard to view, copy, and delete all saved phrases; Google login and Firestore sync |
+| `painel-shell.js` | The panel's “Ilhas” shell: one page, one area per address (`#frases`, `#anki/<aba>`, `#configuracoes[/<seção>]`), the sidebar indicators (phrase total, Conexão com o Anki dot, account chip), the rail below ~1000 px and the F1 strip. See “Panel shell” below |
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs and the SVG). See `veio/README.md` |
-| `lib/voz/catalogo.js` | The Voice catalog as data: the 159 approved copy states from `docs/design/voz/` |
+| `lib/voz/catalogo.js` | The Voice catalog as data: the 167 approved copy states from `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
@@ -87,6 +88,29 @@ The content script loads the whole catalog into every frame even though it only 
 `detectarIdioma` today. That is deliberate: the overlay step rebuilds its feedback component from
 `MIN-01`…`MIN-11`, and the design spec has the content script reading its copy from the catalog like
 every other surface.
+
+### Panel shell (`painel-shell.js`)
+
+`painel.html` is one page with three areas; the shell (`docs/design/painel/shell/`, variant B) only swaps the view, so
+nothing reloads when switching areas — filters, page, selection, sync and the Envio tracking in `painel.js` stay as
+they are. Addresses: `#frases` (default, and anything unknown), `#anki/custos|baralhos|vocabulario|ajustes`
+(`#anki` alone opens Custos; the sidebar link reopens the last tab seen), `#configuracoes[/conta|atalhos|chave|perigo]`
+(scrolls to the card and flashes its border). The Anki tabs are the Veio segmented control; picking one sets the hash,
+so the browser's back button walks through areas and tabs.
+
+The shell owns the sidebar and `painel.js` reports to it through `PerpetualMiner.Shell`:
+`mostrarTotalDeFrases(n)`, `mostrarConta(usuario)`, `mostrarSincronizacao('sincronizando'|'sincronizado'|'erro')`,
+`aoEntrarNaArea(area, fn)` (the Anki area refreshes its data on entry) and `areaAtual()`. The shell polls
+`/health` of the Conexão com o Anki itself every 15 s: the dot (BRG-01/BRG-02, in the tooltip and as the link's
+accessible description) and, while it is off, the F1 strip (ENV-01) with “Tentar de novo” at the top of the Anki area.
+
+The shell's fixed copy comes from the catalog through `data-voz`, `data-voz-aria` and `data-voz-title` attributes in
+`painel.html`, which `painel-shell.js` fills on load. Below 1000 px the sidebar becomes a 76 px rail: labels leave
+the screen but stay as the links' names (visually hidden, not `display: none`) and become tooltips.
+
+Until Frases and the Conexão com o Anki are rebuilt, today's content lives inside the shell in `.conteudo-de-hoje`
+blocks marked `data-tema="claro"`: its CSS was drawn for a light background. Configurações hosts what the old sidebar
+had (Entrar com Google / Sair da conta, Apagar tudo) until its own tickets rebuild the cards.
 
 ### Base components (`veio/componentes.css` + `veio/componentes.js`)
 
@@ -208,6 +232,7 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - `e2e/pages/`: local fixture pages where the content script is injected: `player.html` (fake player with a caption), `texto.html` (plain text to select), `sem-video.html`, `player-em-iframe.html?player=<url>` (embeds the player from another origin, e.g. `paginas.urlCruzada('player.html')`), `hostil.html` + `hostil-filho.html` (a page that tries to drive the extension by itself), and `player-marcacao.html` / `texto-marcacao.html` (caption, title and selectable text carrying markup as text, to prove the content script always inserts page text as text, never as HTML).
 - `e2e/vitrine/`: the Veio showcase — tokens, type scale, radii, a Russian phrase and **every base component**, in both themes and in the states each component actually has (button and field: focus and disabled, plus error on the field; a badge only has normal). `componentes-da-vitrine.js` builds the gallery once per theme with the same function, so the two columns never diverge; its sample copy comes from the Voice catalog by ID (`CATALOGO_DA_VITRINE`), and anything that is showcase scaffolding is marked `data-vitrine-chrome`. The fixture server also serves `/veio/…` and `/lib/…` from the extension root, so the showcase loads the same tokens, fonts, components and catalog the extension pages load. After the owner's review it is **the visual reference**.
 - The showcase also carries a **mock of the toolbar badge** in its three states, outside the two theme columns — Chrome draws the real badge on the browser toolbar, which no static page (and so no Vercel preview) can show. The mock reads its colors from the tokens, and the badge test asserts those tokens match what the service worker hands Chrome, so the copy in `background.js` can't drift.
+- `tests/painel-shell-visual.spec.js` holds the **visual reference of the panel shell**: its approved states (Frases wide and as a rail, first run, the Conexão off with F1, Configurações with an account) as `toHaveScreenshot` baselines in `painel-shell-visual.spec.js-snapshots/` (taken on Linux, with the clock frozen on the day of the sample phrases). A visual change to the shell fails them; after the owner approves the new look, `npx playwright test painel-shell-visual --update-snapshots` replaces the reference. The legacy content inside each area (`.conteudo-de-hoje`) is masked: it is rebuilt ticket by ticket, and the reference is the shell around it.
 - `HEADED=1 npm test` shows the browser.
 - Tests assert what the person sees and what ends up stored, never internal functions. Three narrow exceptions, each named in the test's own comment:
   - Where Chromium gives Playwright no way to drive the native UI or clock (the context menu, the toolbar badge, the midnight alarm), a test does what Chrome would do — calls the function Chrome would call (`minerarSelecaoDoMenu`, `registrarMenuDeContexto`) or fires the alarm early under its own name — and asserts what gets stored or what is handed to Chrome (`chrome.action.getBadgeText`, `getTitle`, the next alarm's time).
