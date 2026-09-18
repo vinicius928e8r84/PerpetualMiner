@@ -21,9 +21,9 @@ async function minerar(page, textos) {
   )), textos);
 }
 
-async function abrirPainelSincronizado(page, extensao) {
-  await page.goto(extensao.url('painel.html'));
-  await expect(page.locator('#sync-status')).toHaveText(/Sincronizado/);
+async function abrirPainelSincronizado(page, extensao, endereco = '') {
+  await page.goto(extensao.url(`painel.html${endereco}`));
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
 }
 
 test('com a conta conectada, a frase apagada no painel sai da nuvem e fica no tombstone', async ({ page, extensao, fakes }) => {
@@ -46,10 +46,11 @@ test('com a conta conectada, "Apagar tudo" no painel apaga todas as frases da nu
   const mineradas = await minerar(page, [PRIMEIRA, SEGUNDA]);
   await expect.poll(() => fakes.google.frasesDe('uid-tudo').length).toBe(2);
 
-  await abrirPainelSincronizado(page, extensao);
+  // “Apagar tudo” mora em Configurações › Zona de perigo.
+  await abrirPainelSincronizado(page, extensao, '#configuracoes/perigo');
   page.once('dialog', dialogo => dialogo.accept());
-  await page.locator('#btn-apagar-tudo').click();
-  await expect(page.locator('#total-count')).toHaveText('0');
+  await page.getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
+  await expect(page.locator('#shell-total')).toHaveText('0');
 
   await expect.poll(() => fakes.google.frasesDe('uid-tudo')).toEqual([]);
   expect(fakes.google.apagadasDe('uid-tudo').sort()).toEqual(mineradas.map(m => String(m.frase.id)).sort());

@@ -103,7 +103,9 @@ A tabela da spec cobre a cor. O que os componentes pediram além dela entrou em
 `tokens.css` com o nome da família a que pertence, e não como valor solto:
 `--veio-danger-ink` (o texto sobre o perigo preenchido, irmão de
 `accent-ink`), `--veio-scrim` e `--veio-sombra` (as camadas que flutuam),
-`--veio-brilho` (o fio de luz do botão primário), `--veio-tam-tecla` e
+`--veio-brilho` (o fio de luz do botão primário), `--veio-sombra-ilha` (a
+sombra suave das ilhas do Painel, que não flutuam), `--veio-destaque` (o
+~1,4 s da borda ouro do card aberto por endereço), `--veio-tam-tecla` e
 `--veio-tam-micro` (os dois degraus abaixo de `legenda`, para a tecla e o
 rótulo do chip), `--veio-raio-tecla` e `--veio-esqueleto`.
 

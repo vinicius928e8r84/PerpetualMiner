@@ -2,7 +2,10 @@
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
 // deste arquivo, pelo painel.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
-const { detectarIdioma, IDIOMAS } = PerpetualMiner;
+const { detectarIdioma, IDIOMAS, textoDaVoz } = PerpetualMiner;
+// O shell (painel-shell.js) é dono da sidebar: o total, o ponto da Conexão com o
+// Anki e o chip de conta. Este arquivo conta a ele o que muda.
+const Shell = PerpetualMiner.Shell;
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -71,6 +74,7 @@ let autoMinerState = null;
 document.addEventListener('DOMContentLoaded', () => {
   setupListeners();
   inicializarBridgeUI();
+  Shell.aoEntrarNaArea('anki', () => atualizarBridgeWorkspaceData({ includeAnki: true, launchAnki: true }));
   setupStorageSyncListener();
   carregarAutoMinerPainel();
   inicializarAuth();
@@ -192,21 +196,11 @@ async function logout() {
   carregarFrasesLocal();
 }
 
+// Configurações › Conta & sync mostra Entrar ou Sair; o chip da sidebar, quem entrou.
 function atualizarUIAuth(user) {
-  const elOut = document.getElementById('firebase-logged-out');
-  const elIn  = document.getElementById('firebase-logged-in');
-  if (!elOut || !elIn) return;
-  if (user) {
-    elOut.classList.add('hidden');
-    elIn.classList.remove('hidden');
-    document.getElementById('firebase-name').textContent = user.displayName || user.email || 'Usuário';
-    const avatar = document.getElementById('firebase-avatar');
-    if (user.photoURL) { avatar.src = user.photoURL; avatar.style.display = 'block'; }
-    else avatar.style.display = 'none';
-  } else {
-    elOut.classList.remove('hidden');
-    elIn.classList.add('hidden');
-  }
+  document.getElementById('firebase-logged-out').hidden = Boolean(user);
+  document.getElementById('firebase-logged-in').hidden = !user;
+  Shell.mostrarConta(user);
 }
 
 // Retorna um Firebase ID token válido, renovando silenciosamente via refresh token
@@ -363,7 +357,7 @@ function docToObj(fields) {
 async function migrarParaFirestore() {
   const { frases = [] } = await chromeGet({ frases: [] });
   if (frases.length > 0) {
-    setSyncStatus('Migrando…');
+    setSyncStatus('sincronizando');
     try {
       await firestoreBatchUpsert(frases);
       mostrarToast(`${frases.length} frase${frases.length > 1 ? 's' : ''} migrada${frases.length > 1 ? 's' : ''} para a nuvem!`);
@@ -388,7 +382,7 @@ function carregarFrasesLocal() {
 }
 
 async function carregarFrasesFirestore() {
-  setSyncStatus('Sincronizando…');
+  setSyncStatus('sincronizando');
   try {
     let firestoreFrases = await firestoreGetAll();
 
@@ -455,7 +449,7 @@ async function carregarFrasesFirestore() {
     }
 
     if (orphans.length > 0) {
-      setSyncStatus('Enviando frases…');
+      setSyncStatus('sincronizando');
       const resultados  = await Promise.allSettled(orphans.map(f => firestorePatch(f)));
       const sincronizados = orphans.filter((_, i) => resultados[i].status === 'fulfilled');
       const enviados      = sincronizados.map(f => String(f.id));
@@ -525,11 +519,11 @@ async function carregarFrasesFirestore() {
     }
 
     todasFrases = firestoreFrases;
-    setSyncStatus('Sincronizado');
+    setSyncStatus('sincronizado');
     finalizarCarregamento();
   } catch (err) {
     console.error('[Firestore] carregar:', err);
-    setSyncStatus('Erro de sync');
+    setSyncStatus('erro');
     mostrarToast('Erro na nuvem — usando dados locais.');
     carregarFrasesLocal();
   }
@@ -538,11 +532,22 @@ async function carregarFrasesFirestore() {
 function finalizarCarregamento() {
   Object.keys(keywords).forEach(k => delete keywords[k]);
   todasFrases.forEach(f => { if (f.keywords?.length) keywords[f.id] = f.keywords; });
-  document.getElementById('total-count').textContent = todasFrases.length;
-  construirSidebar();
+  atualizarTotal();
   construirDropdown();
   construirDropdownIdioma();
   aplicarFiltro();
+}
+
+// O total aparece no item Frases da sidebar e na entrada do Apagar tudo
+// (Configurações › Zona de perigo), que fica indisponível sem frases.
+function atualizarTotal() {
+  const n = todasFrases.length;
+  Shell.mostrarTotalDeFrases(n);
+  const apagarTudo = document.getElementById('btn-apagar-tudo');
+  apagarTudo.disabled = n === 0;
+  if (n === 0)      apagarTudo.textContent = textoDaVoz('CFG-20');
+  else if (n === 1) apagarTudo.textContent = textoDaVoz('CFG-24.uma');
+  else              apagarTudo.textContent = textoDaVoz('CFG-24.todas', { n });
 }
 
 function setupStorageSyncListener() {
@@ -579,7 +584,7 @@ function salvarFraseFirestore(frase, campos = null) {
   if (!usuarioLogado) return;
   firestorePatch(frase, campos).catch(err => {
     console.error('[Firestore] patch:', frase.id, err.message);
-    setSyncStatus('Erro de sync');
+    setSyncStatus('erro');
   });
 }
 
@@ -691,7 +696,7 @@ async function removerFrasesFirestore(ids) {
     limparTombstone(idsStr);
   } catch (err) {
     console.error('[Firestore] delete falhou, ficará pendente:', err.message);
-    setSyncStatus('Erro de sync');
+    setSyncStatus('erro');
     mostrarToast(`Erro ao deletar da nuvem: ${err.message}`);
   }
 }
@@ -708,7 +713,7 @@ async function apagarTudoFirestore() {
     limparTombstone(ids);
   } catch (e) {
     console.error('[Firestore] apagar tudo falhou:', e);
-    setSyncStatus('Erro de sync');
+    setSyncStatus('erro');
   }
 }
 
@@ -793,26 +798,21 @@ function deletarSelecionadas() {
   atualizarContadorSelecao();
   removerFrasesFirestore(ids);
   chrome.storage.local.set({ frases: todasFrases }, () => {
-    document.getElementById('total-count').textContent = todasFrases.length;
+    atualizarTotal();
     aplicarFiltro();
     mostrarToast(`${ids.length} frase${ids.length > 1 ? 's' : ''} deletada${ids.length > 1 ? 's' : ''}!`);
   });
 }
 
-function setSyncStatus(msg) {
-  const el = document.getElementById('sync-status');
-  if (!el) return;
-  const icon = msg === 'Sincronizado'
-    ? `<svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`
-    : `<svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>`;
-  el.innerHTML = `${icon} ${msg}`;
+// situacao: 'sincronizando' | 'sincronizado' | 'erro' — o chip de conta mostra.
+function setSyncStatus(situacao) {
+  Shell.mostrarSincronizacao(situacao);
 }
 
 // ─── Listeners ────────────────────────────────────────────────────────────────
 
 function setupListeners() {
   document.getElementById('btn-apagar-tudo').addEventListener('click', apagarTudo);
-  document.getElementById('btn-sair').addEventListener('click', () => window.close());
   document.getElementById('btn-export').addEventListener('click', exportarTxt);
   document.getElementById('btn-send-anki').addEventListener('click', enviarSelecionadasAoAnki);
   document.getElementById('btn-bulk-edit').addEventListener('click', abrirModalBulk);
@@ -902,11 +902,6 @@ function setupListeners() {
     document.getElementById('ordem-menu').classList.add('hidden');
   });
 
-  document.getElementById('platform-nav').addEventListener('click', (e) => {
-    const item = e.target.closest('[data-streaming]');
-    if (item) filtrarPor(item.dataset.streaming);
-  });
-
   document.getElementById('dropdown-menu').addEventListener('click', (e) => {
     e.stopPropagation();
     const item = e.target.closest('[data-streaming]');
@@ -941,10 +936,6 @@ function setupListeners() {
   });
 
   document.getElementById('btn-save-bridge-presets-main')?.addEventListener('click', salvarBridgePresets);
-  document.getElementById('btn-open-bridge-workspace')?.addEventListener('click', () => {
-    abrirBridgeWorkspace();
-  });
-  document.getElementById('btn-close-bridge-workspace')?.addEventListener('click', fecharBridgeWorkspace);
   document.getElementById('btn-bridge-progress-close').addEventListener('click', fecharBridgeProgressModal);
   document.getElementById('btn-bridge-refresh').addEventListener('click', atualizarBridgeProgress);
   document.getElementById('btn-bridge-retry-failed').addEventListener('click', retentarJobsFalhos);
@@ -1000,9 +991,7 @@ async function inicializarBridgeUI() {
   preencherBridgePresetInputs();
   aplicarDatasBridgeAnalytics();
   marcarBridgeAnalyticsRange();
-  atualizarBridgeHealth();
   atualizarBridgeWorkspaceData({ includeAnki: false });
-  setInterval(atualizarBridgeHealth, 15000);
 }
 
 function normalizarBridgePresets(raw) {
@@ -1010,22 +999,6 @@ function normalizarBridgePresets(raw) {
     en: { ...DEFAULT_BRIDGE_PRESETS.en, ...(raw?.en || {}) },
     ru: { ...DEFAULT_BRIDGE_PRESETS.ru, ...(raw?.ru || {}) },
   };
-}
-
-function abrirBridgeWorkspace() {
-  const workspace = byId('bridge-workspace');
-  if (!workspace) return;
-  workspace.classList.remove('hidden');
-  workspace.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  workspace.focus({ preventScroll: true });
-  atualizarBridgeWorkspaceData({ includeAnki: true, launchAnki: true });
-}
-
-function fecharBridgeWorkspace() {
-  const workspace = byId('bridge-workspace');
-  if (!workspace) return;
-  workspace.classList.add('hidden');
-  byId('phrases-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function byId(id) {
@@ -1098,7 +1071,6 @@ function setText(id, value) {
 
 function setBridgeStatusText(value) {
   setText('bridge-analytics-status-main', value);
-  setText('bridge-sidebar-summary', value);
 }
 
 function setBridgeHtml(id, value) {
@@ -1147,28 +1119,8 @@ async function salvarBridgePresets() {
   };
   await new Promise(resolve => chrome.storage.local.set({ [BRIDGE_PRESETS_KEY]: bridgePresets }, resolve));
   preencherBridgePresetInputs();
-  const workspace = byId('bridge-workspace');
-  if (workspace && !workspace.classList.contains('hidden')) atualizarBridgeDeckStats({ refresh: true, launch: true });
+  if (Shell.areaAtual() === 'anki') atualizarBridgeDeckStats({ refresh: true, launch: true });
   mostrarToast('Presets do Anki Bridge salvos.');
-}
-
-async function atualizarBridgeHealth() {
-  const badges = [
-    ...document.querySelectorAll('[data-bridge-health-badge]'),
-    byId('bridge-health-badge'),
-  ].filter(Boolean);
-  const setBadges = (online) => badges.forEach(badge => {
-    badge.textContent = online ? 'Online' : 'Offline';
-    badge.classList.toggle('online', online);
-    badge.classList.toggle('offline', !online);
-  });
-  try {
-    const resp = await fetch(`${BRIDGE_URL}/health`);
-    if (!resp.ok) throw new Error('bridge_offline');
-    setBadges(true);
-  } catch {
-    setBadges(false);
-  }
 }
 
 // ─── Sidebar & Dropdowns ──────────────────────────────────────────────────────
@@ -1232,11 +1184,9 @@ async function atualizarBridgeAnalytics() {
     renderizarBridgeAnalyticsJobs(jobsData.jobs || []);
     const statusText = `${summary.jobs?.total || 0} job(s) no filtro`;
     setBridgeStatusText(statusText);
-    setText('bridge-sidebar-summary', statusText);
   } catch {
     setBridgeStatusText('Analytics indisponivel. Verifique se o bridge esta online.');
     setText('bridge-cost-total', '$0.0000');
-    setText('bridge-sidebar-cost', '$0.0000');
     setBridgeHtml('bridge-analytics-metrics-main', '');
     setBridgeHtml('bridge-image-rates-main', '');
     setBridgeHtml('bridge-analytics-jobs-main', '');
@@ -1552,7 +1502,6 @@ function renderizarBridgeAnalyticsSummary(summary) {
   const images = summary.images || {};
   const total = formatUsd(costs.totalUsd);
   setText('bridge-cost-total', total);
-  setText('bridge-sidebar-cost', total);
   const metrics = [
     ['Cards', formatUsd(costs.cardUsd)],
     ['Imagem IA', formatUsd(costs.imageGenerationUsd)],
@@ -1653,20 +1602,11 @@ function getStreamingsUnicos() {
   return todasFrases.map(f => f.streaming).filter(s => s && !seen.has(s) && seen.add(s));
 }
 
-function construirSidebar() {
-  const nav = document.getElementById('platform-nav');
-  nav.innerHTML = ['all', ...getStreamingsUnicos()].map(s => {
-    const { nome, iconeHtml } = infoPlataforma(s);
-    const ativo = filtroStreaming === s ? 'active' : '';
-    return `<button class="nav-item ${ativo}" data-streaming="${s}">${iconeHtml}<span>${nome}</span></button>`;
-  }).join('');
-}
-
 function construirDropdown() {
   const menu = document.getElementById('dropdown-menu');
   menu.innerHTML = ['all', ...getStreamingsUnicos()].map(s => {
     const { nome } = infoPlataforma(s);
-    return `<button class="dropdown-item" data-streaming="${s}">${nome}</button>`;
+    return `<button class="dropdown-item" data-streaming="${esc(s)}">${esc(nome)}</button>`;
   }).join('');
 }
 
@@ -1698,26 +1638,8 @@ function filtrarOrdem(ordem) {
 }
 
 function infoPlataforma(s) {
-  if (s === 'all') {
-    return {
-      nome: 'Todos os Streamings',
-      iconeHtml: `<span class="nav-icon" style="background:rgba(255,255,255,0.12)">
-        <svg width="14" height="14" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24">
-          <rect x="3" y="3" width="7" height="7" rx="1"/>
-          <rect x="14" y="3" width="7" height="7" rx="1"/>
-          <rect x="3" y="14" width="7" height="7" rx="1"/>
-          <rect x="14" y="14" width="7" height="7" rx="1"/>
-        </svg></span>`
-    };
-  }
-  const plat  = PLATAFORMAS[s];
-  const nome  = plat?.nome  || capitalizar(s);
-  const bg    = plat?.bg    || '#666';
-  const letra = plat?.letra || nome[0].toUpperCase();
-  return {
-    nome,
-    iconeHtml: `<span class="nav-icon"><span class="platform-logo" style="background:${bg}">${letra}</span></span>`
-  };
+  if (s === 'all') return { nome: 'Todos os Streamings' };
+  return { nome: PLATAFORMAS[s]?.nome || capitalizar(s) };
 }
 
 // ─── Filtro, Ordem & Paginação ────────────────────────────────────────────────
@@ -1727,7 +1649,6 @@ function filtrarPor(streaming) {
   paginaAtual    = 1;
   document.getElementById('dropdown-label').textContent = infoPlataforma(streaming).nome;
   document.getElementById('dropdown-menu').classList.add('hidden');
-  construirSidebar();
   aplicarFiltro();
 }
 
@@ -2001,7 +1922,7 @@ function deletarFrase(id) {
   atualizarContadorSelecao();
   removerFrasesFirestore([id]);
   chrome.storage.local.set({ frases: todasFrases }, () => {
-    document.getElementById('total-count').textContent = todasFrases.length;
+    atualizarTotal();
     aplicarFiltro();
   });
 }
@@ -2014,7 +1935,7 @@ function apagarTudo() {
   atualizarContadorSelecao();
   apagarTudoFirestore();
   chrome.storage.local.set({ frases: [] }, () => {
-    document.getElementById('total-count').textContent = 0;
+    atualizarTotal();
     paginaAtual = 1;
     aplicarFiltro();
   });
@@ -2052,7 +1973,7 @@ function exportarTxt() {
   selecionadas.clear();
   atualizarContadorSelecao();
   chrome.storage.local.set({ frases: todasFrases }, () => {
-    document.getElementById('total-count').textContent = todasFrases.length;
+    atualizarTotal();
     aplicarFiltro();
   });
   if (usuarioLogado && exportadas.length > 0) firestoreBatchUpsert(exportadas);
@@ -2299,7 +2220,7 @@ async function apagarFrasesEnviadasBridge(ids) {
   atualizarContadorSelecao();
   await new Promise(resolve => chrome.storage.local.set({ frases: todasFrases }, resolve));
   await removerFrasesFirestore(ids);
-  document.getElementById('total-count').textContent = todasFrases.length;
+  atualizarTotal();
   aplicarFiltro();
 }
 
@@ -2425,13 +2346,13 @@ function salvarEdicaoEmMassa(fonteVal, tituloVal, detalheVal) {
   selecionadas.clear();
   atualizarContadorSelecao();
   chrome.storage.local.set({ frases: todasFrases }, () => {
-    construirSidebar(); construirDropdown(); construirDropdownIdioma();
+    construirDropdown(); construirDropdownIdioma();
     aplicarFiltro(); mostrarToast('Metadados atualizados!');
   });
   if (usuarioLogado && editadas.length > 0) {
     Promise.allSettled(editadas.map(f => firestorePatch(f))).then(resultados => {
       const falhas = resultados.filter(r => r.status === 'rejected');
-      if (falhas.length > 0) setSyncStatus('Erro de sync');
+      if (falhas.length > 0) setSyncStatus('erro');
     });
   }
 }
@@ -2443,7 +2364,7 @@ function salvarEdicaoIndividual(id, fonteVal, tituloVal, detalheVal) {
   const novaFonte = fonteVal || f.contexto?.fonte || f.streaming || '';
   todasFrases[idx] = { ...f, streaming: novaFonte, contexto: { fonte: novaFonte, titulo: tituloVal, detalhe: detalheVal } };
   chrome.storage.local.set({ frases: todasFrases }, () => {
-    construirSidebar(); construirDropdown(); aplicarFiltro(); mostrarToast('Frase atualizada!');
+    construirDropdown(); aplicarFiltro(); mostrarToast('Frase atualizada!');
   });
   salvarFraseFirestore(todasFrases[idx]);
 }
@@ -2567,7 +2488,7 @@ async function salvarMultiAdd() {
   }
 
   todasFrases = todas;
-  document.getElementById('total-count').textContent = todasFrases.length;
+  atualizarTotal();
   fecharModalMultiAdd();
   finalizarCarregamento();
   const n = novas.length;
@@ -2648,7 +2569,7 @@ async function importarArquivoTxt(file) {
   }
 
   todasFrases = todas;
-  document.getElementById('total-count').textContent = todasFrases.length;
+  atualizarTotal();
   finalizarCarregamento();
 
   let msg = `${novas.length} frase${novas.length !== 1 ? 's' : ''} importada${novas.length !== 1 ? 's' : ''}!`;

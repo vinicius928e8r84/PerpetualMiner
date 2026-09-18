@@ -6,7 +6,7 @@ O que está aqui:
 
 1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
 2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: 159 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
+3. **Catálogo**: 167 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
 
 Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
 
@@ -68,7 +68,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 
 ## 3. Catálogo de estados-chave
 
-São 159 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
+São 167 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 
@@ -130,6 +130,19 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 | FOT-19 | Status de cada foto na fila **(novo)** | status | (não existe) | Pronta · Na fila · Lendo… · 12 frases · Sem marcações · Falhou · Cancelada | Selo por foto. “Falhou” vem com o motivo embaixo e “Tentar de novo”: a 2ª frase do FOT-11 (“O Gemini está recebendo pedidos demais; espere um minuto e tente de novo.”, “A chave do Gemini não funciona. Confira em Configurações.”) ou “Sem conexão com a internet. Confira a rede e tente de novo.”. “Sem marcações” é a leitura que funcionou sem achar nada (FOT-10). |
 | FOT-20 | Progresso da leitura **(novo)** | status | Processando imagem 2 de 5… | 2 de 4 lidas | No topo da fila de fotos, ao lado de “Cancelar”. |
 | FOT-21 | Leitura cancelada **(novo)** | status | (não existe) | Leitura cancelada. 2 fotos ficaram sem ler; as frases das fotos já lidas continuam aqui. | Aviso informativo depois do Cancelar (lista fechada). Singular: “1 foto ficou sem ler”. |
+
+### Painel · Shell
+
+O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de conta ([spec do shell](../painel/shell/README.md)). O total de Frases usa PAI-05; o ponto da Conexão com o Anki, BRG-01 e BRG-02; a faixa da Conexão desligada, ENV-01 (F1); o chip, CFG-01, CFG-02 e CFG-10.
+
+| ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
+|---|---|---|---|---|---|
+| SHL-01 | Itens da sidebar **(novo)** | status | Todos os Streamings · Netflix · YouTube… (as Fontes) · Sair | Frases · Conexão com o Anki · Configurações | Rótulo da navegação para o leitor de tela: “Navegação do painel”. As Fontes saem da sidebar. No trilho, o rótulo vira o tooltip. |
+| SHL-02 | Títulos das áreas **(novo)** | status | Frases mineradas · Presets e custos | Frases mineradas · Conexão com o Anki · Configurações | Cabeçalho de área, 22/700. |
+| SHL-03 | Abas da Conexão com o Anki **(novo)** | status | (tudo numa página só) | Custos · Baralhos e termos · Vocabulário · Ajustes de envio | Controle segmentado; o grupo se chama “Seções da Conexão com o Anki”. |
+| SHL-04 | Cards de Configurações **(novo)** | status | (espalhados na sidebar e no Minerar de uma foto) | Conta & sync · Atalhos · Chave do Gemini · Zona de perigo | A Chave do Gemini usa CFG-15. |
+| SHL-05 | Chip de conta **(novo)** | status | Login com Google · Sincronizado · Erro de sync | Sem conta · só neste computador · Sem sincronizar | Com conta: nome + CFG-01 ou CFG-02, e “Sem sincronizar” em `danger` quando o sync falha (C11). |
+| SHL-06 | Atualizar a Conexão com o Anki **(novo)** | status | (ícone sem texto) | Atualizar | Tooltip: BRG-24. |
 
 ### Painel · Frases
 
@@ -252,6 +265,8 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 | CFG-20 | Apagar tudo sem frases **(novo)** | status | (não existe) | Nenhuma frase para apagar | O botão da Zona de perigo fica indisponível com este rótulo. |
 | CFG-21 | Restaurar atalhos padrão **(novo)** | status | (não existe) | Restaurar atalhos padrão | Botão fantasma no card Atalhos (lista fechada, item 7). Devolve os atalhos de fábrica sem confirmação: a mudança aparece na linha na hora. |
 | CFG-22 | Atalhos de fábrica (dica) **(novo)** | status | (não existe) | Padrão: Minerar legenda em Alt+S, Minerar seleção sem atalho. | Ao lado de “Restaurar atalhos padrão”. |
+| CFG-23 | Sair da conta **(novo)** | status | Sair da conta | Sair da conta | Botão fantasma no card Conta & sync. |
+| CFG-24 | Entrada do Apagar tudo **(novo)** | status | (lixeira sem texto ao lado do total) | Apagar todas as 1.284 frases | Singular: “Apagar 1 frase”. Sem frases: CFG-20. Perigo em contorno: só abre a confirmação (CFG-17). |
 
 ### Boas-vindas (primeira execução)
 

@@ -1,144 +1,361 @@
 /* ── Reset & Base ─────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+[hidden] { display: none !important; }
+
 body {
-  display: flex;
-  height: 100vh;
-  overflow: hidden;
-  background: #f9fafb;
+  min-height: 100vh;
+  background: var(--veio-bg);
+  color: var(--veio-text);
   font-family: var(--veio-fonte-ui);
-  font-size: 14px;
-  color: #111827;
+  font-size: var(--veio-tam-corpo);
+  line-height: 1.5;
 }
 
-/* ── Sidebar ─────────────────────────────────────────── */
-.sidebar {
-  width: 260px;
-  flex-shrink: 0;
+/* ── Shell “Ilhas” (docs/design/painel/shell/, variante B) ──────────────
+   A página é bg; a sidebar e o conteúdo são duas ilhas surface, com 12 px de
+   margem e de vão. Abaixo de ~1000 px a sidebar vira trilho de ícones. */
+
+.shell {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 100vh;
+  padding: 12px;
+}
+
+.shell-lateral {
+  position: sticky;
+  top: 12px;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(155deg, #7c3aed 0%, #5b21b6 55%, #3b0764 100%);
-  border-radius: 0 2.5rem 2.5rem 0;
-  box-shadow: 4px 0 28px rgba(91, 33, 182, 0.35);
-  color: white;
-  overflow: hidden;
+  gap: 6px;
+  min-width: 0;
+  height: calc(100vh - 24px);
+  padding: 18px 12px 12px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-surface);
+  box-shadow: var(--veio-sombra-ilha);
 }
 
-.sidebar-logo {
+.shell-marca {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 2rem 1.75rem 0.75rem;
+  gap: 10px;
+  padding: 2px 8px 18px;
 }
-.logo-text {
-  font-size: var(--veio-tam-pagina);
+
+.shell-marca .veio-nome {
+  font-size: 16px;
   white-space: nowrap;
 }
 
-.sidebar-user {
-  padding: 0 1.75rem 1.25rem;
-}
-.user-greeting {
-  font-size: 13px;
-  opacity: 0.82;
-}
-.user-stats {
+.shell-nav {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-  font-size: 12px;
-  opacity: 0.6;
-}
-
-.btn-ghost-sm {
-  background: none;
-  border: none;
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  opacity: 0.7;
-  transition: opacity 0.15s;
-  padding: 2px;
-}
-.btn-ghost-sm:hover { opacity: 1; }
-
-.sidebar-divider {
-  border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
-  margin: 0 1.75rem 1rem;
-}
-
-.sidebar-nav {
   flex: 1;
-  padding: 0 0.75rem;
-  overflow-y: auto;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 0;
+}
+
+.shell-topo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shell-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 11px 12px;
+  border-radius: var(--veio-raio-card);
+  color: var(--veio-muted);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background var(--veio-transicao), color var(--veio-transicao);
+}
+
+.shell-item:hover {
+  background: var(--veio-surface-2);
+  color: var(--veio-text);
+}
+
+.shell-item[aria-current="page"] {
+  background: var(--veio-surface-2);
+  box-shadow: inset 0 0 0 1px var(--veio-border-strong);
+  color: var(--veio-text);
+}
+
+.shell-item svg,
+.shell-avatar svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.shell-item .shell-rotulo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell-contador {
+  color: var(--veio-muted);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  font-weight: var(--veio-peso-num);
+}
+
+.shell-ponto {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-muted);
+}
+
+.shell-ponto[data-estado="ligada"] { background: var(--veio-success); }
+.shell-ponto[data-estado="desligada"] { background: var(--veio-danger); }
+.shell-ponto[data-estado="conectando"] {
+  animation: veio-piscar var(--veio-piscar) steps(1) infinite;
+}
+
+.shell-pe {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding: 4px;
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface-2);
 }
 
-.sidebar-footer {
-  padding: 0.5rem 0.75rem 1.75rem;
+.shell-pe .shell-item[aria-current="page"] {
+  background: var(--veio-surface);
 }
 
-/* ── Nav Items ───────────────────────────────────────── */
-.nav-item {
+.shell-chip {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 9px 12px;
-  border-radius: 12px;
-  font-size: 14px;
-  color: white;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: background 0.15s;
-  width: 100%;
-  text-align: left;
-  white-space: nowrap;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: var(--veio-raio-card);
+  color: inherit;
+  text-decoration: none;
+}
+
+.shell-chip:hover {
+  background: var(--veio-surface);
+}
+
+.shell-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
   overflow: hidden;
-  text-overflow: ellipsis;
-}
-.nav-item:hover  { background: rgba(255, 255, 255, 0.12); }
-.nav-item.active { background: rgba(255, 255, 255, 0.20); font-weight: 600; }
-
-.nav-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  flex-shrink: 0;
-}
-
-.platform-logo {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-accent-soft);
+  color: var(--veio-accent-text);
+  font-size: 12px;
   font-weight: 800;
-  color: white;
-  letter-spacing: -0.5px;
-  flex-shrink: 0;
 }
 
-/* ── Main Area ───────────────────────────────────────── */
-.main {
-  flex: 1;
+.shell-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.shell-avatar--vazio {
+  background: var(--veio-surface);
+  color: var(--veio-muted);
+}
+
+.shell-avatar--vazio svg {
+  width: 16px;
+  height: 16px;
+}
+
+.shell-chip__quem {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 2rem 2.5rem;
+}
+
+.shell-chip__nome {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.shell-chip__estado {
+  overflow: hidden;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell-chip__estado--erro {
+  color: var(--veio-danger);
+}
+
+.shell-conteudo {
+  min-width: 0;
+  padding: 24px 28px 48px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-surface);
+  box-shadow: var(--veio-sombra-ilha);
+}
+
+.shell-cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--veio-border);
+}
+
+.shell-cabecalho h1 {
+  font-size: var(--veio-tam-pagina);
+  font-weight: var(--veio-peso-titulo);
+  letter-spacing: -.01em;
+}
+
+.shell-faixa {
+  margin-bottom: 14px;
+}
+
+.shell-abas {
+  margin-bottom: 14px;
+}
+
+/* Dentro da ilha, cards e o conteúdo de hoje invertem para bg: “buracos”. */
+.shell-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 820px;
+}
+
+.shell-card {
+  padding: 16px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-bg);
+  scroll-margin-top: 20px;
+}
+
+.shell-card--perigo {
+  border-color: var(--veio-danger);
+}
+
+.shell-card--destaque {
+  animation: shell-destaque var(--veio-destaque) ease-out;
+}
+
+@keyframes shell-destaque {
+  0% { box-shadow: 0 0 0 3px var(--veio-accent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.shell-card__titulo {
+  font-size: var(--veio-tam-card);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.shell-card__corpo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.shell-card__descricao {
+  color: var(--veio-muted);
+}
+
+/* O conteúdo de hoje foi desenhado para fundo claro: ele mora num bloco com o
+   tema claro até a área dele ser reconstruída. */
+.conteudo-de-hoje {
+  padding: 16px;
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-bg);
+  color: var(--veio-text);
+  font-size: 14px;
+}
+
+/* ── Trilho (janela estreita) ─────────────────────────── */
+@media (max-width: 999px) {
+  .shell {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .shell-lateral {
+    padding: 18px 8px 8px;
+  }
+
+  .shell-marca {
+    justify-content: center;
+    padding: 2px 0 18px;
+  }
+
+  /* O rótulo sai da tela, mas continua sendo o nome do item (e o tooltip). */
+  .shell-lateral .shell-rotulo {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .shell-item {
+    justify-content: center;
+    padding: 11px 0;
+  }
+
+  .shell-contador {
+    display: none;
+  }
+
+  .shell-ponto {
+    position: absolute;
+    top: 8px;
+    right: 14px;
+    box-shadow: 0 0 0 2px var(--veio-surface);
+  }
+
+  .shell-chip {
+    justify-content: center;
+    padding: 8px 0;
+  }
+
+  .shell-conteudo {
+    padding: 22px 20px 48px;
+  }
+}
+
+/* ── Movimento reduzido ───────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .shell-ponto[data-estado="conectando"],
+  .shell-card--destaque {
+    animation: none;
+  }
 }
 
 .main-header {
@@ -154,6 +371,7 @@ body {
 }
 .header-right {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
 }
@@ -812,104 +1030,6 @@ body {
   cursor: pointer;
   flex-shrink: 0;
   margin-top: 4px;
-}
-
-/* ── Firebase Auth (sidebar) ─────────────────────────── */
-.sidebar-firebase {
-  padding: 0 1.25rem 1rem;
-}
-
-.bridge-panel {
-  background: rgba(255, 255, 255, 0.09);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 16px;
-  padding: 14px;
-  margin: 0 0.75rem 16px;
-}
-
-.bridge-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.bridge-title {
-  color: #fff;
-  font-size: 14px;
-  font-weight: 800;
-  margin: 0;
-}
-
-.bridge-health-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  padding: 5px 10px;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.bridge-health-badge.online {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.bridge-health-badge.offline {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.bridge-panel .bridge-health-badge.online {
-  background: rgba(16, 185, 129, 0.18);
-  color: #a7f3d0;
-}
-
-.bridge-panel .bridge-health-badge.offline {
-  background: rgba(239, 68, 68, 0.16);
-  color: #fecaca;
-}
-
-.bridge-compact-stat {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 0 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.66);
-  font-size: 11px;
-}
-
-.bridge-compact-stat strong {
-  color: #fff;
-  font-size: 13px;
-}
-
-.bridge-compact-status {
-  color: rgba(255, 255, 255, 0.66);
-  font-size: 11px;
-  line-height: 1.35;
-  margin-bottom: 10px;
-}
-
-.bridge-manage-btn {
-  width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 10px;
-  padding: 9px 12px;
-  background: rgba(255, 255, 255, 0.13);
-  color: #fff;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.bridge-manage-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
 }
 
 .bridge-workspace {
@@ -1768,81 +1888,6 @@ body {
   font-size: 12px;
   color: #374151;
 }
-
-.btn-google-login {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  padding: 9px 14px;
-  background: white;
-  color: #1f2937;
-  border: none;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: opacity 0.15s, transform 0.1s;
-}
-.btn-google-login:hover  { opacity: 0.92; transform: translateY(-1px); }
-.btn-google-login:active { transform: translateY(0); }
-
-.firebase-hint {
-  margin-top: 7px;
-  font-size: 11px;
-  opacity: 0.55;
-  line-height: 1.4;
-  text-align: center;
-}
-
-.firebase-user-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.firebase-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-  border: 2px solid rgba(255,255,255,0.35);
-}
-
-.firebase-user-name {
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 150px;
-}
-
-.firebase-sync-status {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  opacity: 0.65;
-  margin-top: 2px;
-}
-
-.btn-firebase-logout {
-  width: 100%;
-  padding: 6px 12px;
-  background: rgba(255,255,255,0.12);
-  color: white;
-  border: 1px solid rgba(255,255,255,0.2);
-  border-radius: 8px;
-  font-size: 12px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.btn-firebase-logout:hover { background: rgba(255,255,255,0.22); }
 
 /* ── Botões de Ação Verde (#00ff88) ─────────────────────── */
 .action-green-btn {

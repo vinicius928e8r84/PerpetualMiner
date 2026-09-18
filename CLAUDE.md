@@ -25,9 +25,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `tombstone.js` | Tombstone of a deleted phrase (`chrome.storage.sync` keys and the Firestore `meta/deleted` PATCH), shared by `background.js` (`importScripts`) and `painel.html` |
 | `popup.html/js/css` | Quick-access popup showing last 5 phrases |
 | `painel.html/js/css` | Full dashboard to view, copy, and delete all saved phrases; Google login and Firestore sync |
+| `painel-shell.js` | The panel's “Ilhas” shell: one page, one area per address (`#frases`, `#anki/<aba>`, `#configuracoes[/<seção>]`), the sidebar indicators (phrase total, Conexão com o Anki dot, account chip), the rail below ~1000 px and the F1 strip. See “Panel shell” below |
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs and the SVG). See `veio/README.md` |
-| `lib/voz/catalogo.js` | The Voice catalog as data: the 159 approved copy states from `docs/design/voz/` |
+| `lib/voz/catalogo.js` | The Voice catalog as data: the 167 approved copy states from `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
@@ -87,6 +88,29 @@ The content script loads the whole catalog into every frame even though it only 
 `detectarIdioma` today. That is deliberate: the overlay step rebuilds its feedback component from
 `MIN-01`…`MIN-11`, and the design spec has the content script reading its copy from the catalog like
 every other surface.
+
+### Panel shell (`painel-shell.js`)
+
+`painel.html` is one page with three areas; the shell (`docs/design/painel/shell/`, variant B) only swaps the view, so
+nothing reloads when switching areas — filters, page, selection, sync and the Envio tracking in `painel.js` stay as
+they are. Addresses: `#frases` (default, and anything unknown), `#anki/custos|baralhos|vocabulario|ajustes`
+(`#anki` alone opens Custos; the sidebar link reopens the last tab seen), `#configuracoes[/conta|atalhos|chave|perigo]`
+(scrolls to the card and flashes its border). The Anki tabs are the Veio segmented control; picking one sets the hash,
+so the browser's back button walks through areas and tabs.
+
+The shell owns the sidebar and `painel.js` reports to it through `PerpetualMiner.Shell`:
+`mostrarTotalDeFrases(n)`, `mostrarConta(usuario)`, `mostrarSincronizacao('sincronizando'|'sincronizado'|'erro')`,
+`aoEntrarNaArea(area, fn)` (the Anki area refreshes its data on entry) and `areaAtual()`. The shell polls
+`/health` of the Conexão com o Anki itself every 15 s: the dot (BRG-01/BRG-02, in the tooltip and as the link's
+accessible description) and, while it is off, the F1 strip (ENV-01) with “Tentar de novo” at the top of the Anki area.
+
+The shell's fixed copy comes from the catalog through `data-voz`, `data-voz-aria` and `data-voz-title` attributes in
+`painel.html`, which `painel-shell.js` fills on load. Below 1000 px the sidebar becomes a 76 px rail: labels leave
+the screen but stay as the links' names (visually hidden, not `display: none`) and become tooltips.
+
+Until Frases and the Conexão com o Anki are rebuilt, today's content lives inside the shell in `.conteudo-de-hoje`
+blocks marked `data-tema="claro"`: its CSS was drawn for a light background. Configurações hosts what the old sidebar
+had (Entrar com Google / Sair da conta, Apagar tudo) until its own tickets rebuild the cards.
 
 ### Base components (`veio/componentes.css` + `veio/componentes.js`)
 
