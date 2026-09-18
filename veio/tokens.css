@@ -72,6 +72,7 @@
   --veio-accent: #F5B83D;
   --veio-accent-ink: #1A1204;
   --veio-accent-text: #F5B83D;
+  --veio-danger-ink: #1A1204;
   --veio-kw-bg: rgba(245, 184, 61, .40);
   --veio-kw-fg: #F2EEE6;
   --veio-success: #6FCF8E;
@@ -83,6 +84,13 @@
   --veio-success-soft: rgba(111, 207, 142, .14);
   --veio-danger-soft: rgba(255, 122, 102, .14);
   --veio-info-soft: rgba(134, 189, 242, .14);
+
+  /* Fundo do modal e sombra das camadas que flutuam (modal, toast, aviso). */
+  --veio-scrim: rgba(0, 0, 0, .55);
+  --veio-sombra: 0 18px 40px -12px rgba(0, 0, 0, .6);
+
+  /* O fio de luz no topo do botão primário, que dá o relevo do protótipo. */
+  --veio-brilho: rgba(255, 255, 255, .35);
 
   /* ── Tipografia ── */
   --veio-fonte-ui: 'Manrope', system-ui, sans-serif;
@@ -98,6 +106,8 @@
   --veio-tam-frase: 15px;
   --veio-tam-corpo: 13.5px;
   --veio-tam-legenda: 11.5px;
+  --veio-tam-tecla: 11px;
+  --veio-tam-micro: 10.5px;
 
   --veio-peso-display: 800;
   --veio-peso-titulo: 700;
@@ -109,6 +119,7 @@
   --veio-altura-frase: 1.5;
 
   /* ── Forma ── */
+  --veio-raio-tecla: 5px;
   --veio-raio-icone: 10px;
   --veio-raio-input: 12px;
   --veio-raio-card: 14px;
@@ -118,6 +129,7 @@
 
   /* ── Movimento ── */
   --veio-piscar: 1.1s;
+  --veio-esqueleto: 1.2s;
   --veio-transicao: 150ms;
 }
 
@@ -135,6 +147,7 @@
   --veio-accent: #F0AE2E;
   --veio-accent-ink: #1A1204;
   --veio-accent-text: #855608;
+  --veio-danger-ink: #FFFFFF;
   --veio-kw-bg: rgba(240, 174, 46, .45);
   --veio-kw-fg: #1C1A16;
   --veio-success: #1F7A45;
@@ -145,6 +158,11 @@
   --veio-success-soft: rgba(31, 122, 69, .12);
   --veio-danger-soft: rgba(180, 35, 24, .12);
   --veio-info-soft: rgba(29, 95, 168, .12);
+
+  --veio-scrim: rgba(40, 30, 10, .35);
+  --veio-sombra: 0 18px 40px -16px rgba(60, 40, 10, .35);
+
+  --veio-brilho: rgba(255, 255, 255, .55);
 }
 
 /* ── A marca ──────────────────────────────────────────────────────────────
