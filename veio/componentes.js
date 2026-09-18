@@ -231,10 +231,12 @@
    * Mostra um toast de sucesso, que some sozinho.
    *
    * @param {string} texto   Já vindo do catálogo da Voz.
-   * @param {object} opcoes  `documento` e `aoSumir`.
+   * @param {object} opcoes  `dentroDe`, o elemento cujo tema o toast usa (o
+   *                         `body` da página, se nada for dito), e `aoSumir`.
    * @returns {HTMLElement}  O toast, já na tela.
    */
-  function mostrarToastDeSucesso(texto, { documento = document, aoSumir } = {}) {
+  function mostrarToastDeSucesso(texto, { dentroDe = document.body, aoSumir } = {}) {
+    const documento = dentroDe.ownerDocument;
     const toast = documento.createElement('div');
     toast.className = 'veio-toast';
     toast.dataset.veioToast = 'sucesso';
@@ -243,7 +245,7 @@
     ponto.className = 'veio-toast__ponto';
     toast.append(ponto, documento.createTextNode(texto));
 
-    regiaoDeToasts(documento).append(toast);
+    regiaoDeToasts(dentroDe).append(toast);
     setTimeout(() => {
       toast.remove();
       if (aoSumir) aoSumir();
@@ -252,16 +254,20 @@
     return toast;
   }
 
-  /** A região onde os toasts entram; o leitor de tela lê o que chega nela. */
-  function regiaoDeToasts(documento) {
-    let regiao = documento.querySelector('.veio-toasts');
+  /**
+   * A região onde os toasts entram; o leitor de tela lê o que chega nela.
+   *
+   * Ela mora dentro de `dentroDe`, para herdar os tokens do tema dali.
+   */
+  function regiaoDeToasts(dentroDe) {
+    let regiao = dentroDe.querySelector(':scope > .veio-toasts');
     if (regiao) return regiao;
 
-    regiao = documento.createElement('div');
+    regiao = dentroDe.ownerDocument.createElement('div');
     regiao.className = 'veio-toasts';
     regiao.setAttribute('role', 'status');
     regiao.setAttribute('aria-live', 'polite');
-    documento.body.append(regiao);
+    dentroDe.append(regiao);
     return regiao;
   }
 
@@ -279,15 +285,13 @@
    *   `rotuloDeFechar` o nome do × para o leitor de tela, do catálogo;
    *   `aoFechar`       roda quando a pessoa fecha o aviso.
    *
-   * O nome do recolhido é "Detalhes", da regra V3 da Voz, e só muda se quem
-   * chama passar outro.
+   * O nome do recolhido é "Detalhes", dado pela regra V3 da Voz.
    */
   function montarAviso({
     texto,
     acao,
     detalhes,
     rotuloDeFechar,
-    rotuloDosDetalhes = ROTULOS_DO_PADRAO.detalhes,
     aoFechar,
     documento = document,
   }) {
@@ -331,7 +335,7 @@
       const recolhido = documento.createElement('details');
       recolhido.className = 'veio-aviso__detalhes';
       const resumo = documento.createElement('summary');
-      resumo.textContent = rotuloDosDetalhes;
+      resumo.textContent = ROTULOS_DO_PADRAO.detalhes;
       const causa = documento.createElement('pre');
       causa.textContent = detalhes;
       recolhido.append(resumo, causa);
@@ -409,10 +413,8 @@
   }
 
   raiz.Veio = {
-    ROTULOS_DO_PADRAO,
     iconeVeio,
     abrirModal,
-    duracaoDoToast,
     mostrarToastDeSucesso,
     montarAviso,
     escreverFrase,

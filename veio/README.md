@@ -65,7 +65,8 @@ aqui, com o nome da spec, e passa a valer para todas as telas.
   aberto, e volta para quem abriu. Esc e o clique fora fecham. O resto da página
   fica `inert`.
 - **Toast e aviso:** o toast (`mostrarToastDeSucesso`) é **só para sucesso
-  curto**: some sozinho depois de 2,6 s mais o tempo de leitura do texto. Todo
+  curto**: some sozinho depois de 2,6 s mais o tempo de leitura do texto, e
+  aparece dentro de `dentroDe` (o `body`, se nada for dito), com o tema dali. Todo
   erro que pede ação é `montarAviso(…)`, que fica no lugar do problema até ser
   fechado, com a ação ao lado e a causa técnica num Detalhes recolhido (V3).
 - **Esqueleto:** `.veio-esqueleto` no lugar do conteúdo em espera curta, sem
@@ -84,8 +85,8 @@ Voz: `abrirModal` não conhece “Apagar 12 frases?”, a tela é que a pede por
 rótulo do × — ele não inventa um.
 
 As três únicas palavras que a base escreve sozinha estão em
-`ROTULOS_DO_PADRAO`, porque não são estado de tela nenhuma e por isso não têm
-ID: `palavra:` e `auto:`, travados no glossário (CONTEXT.md), e `Detalhes`, o
+`ROTULOS_DO_PADRAO`, uma constante interna de `componentes.js` (não
+exportada), porque não são estado de tela nenhuma e por isso não têm ID: `palavra:` e `auto:`, travados no glossário (CONTEXT.md), e `Detalhes`, o
 nome que a regra V3 da Voz dá ao recolhido.
 
 ### Tokens que a spec não nomeia
@@ -98,11 +99,21 @@ A tabela da spec cobre a cor. O que os componentes pediram além dela entrou em
 `--veio-tam-micro` (os dois degraus abaixo de `legenda`, para a tecla e o
 rótulo do chip), `--veio-raio-tecla` e `--veio-esqueleto`.
 
-### Diferença conhecida do protótipo
+### Diferenças conhecidas do protótipo
 
-No protótipo F o botão do toggle ligado para em `left: 18px` num trilho de 40 px
-com botão de 18 px, o que deixa 2 px de um lado e 4 do outro. Aqui ele para em
-`left: 20px`, centrado nos dois lados. É a única divergência proposital.
+Os espaçamentos seguem o protótipo F; os tamanhos de texto vêm da escala de
+tipo de `tokens.css`, que vale sobre os do protótipo. O que ainda difere dele, e
+por quê:
+
+- **Estado vazio sem título.** O protótipo tem um `h5` acima do texto; a Voz
+  (C2) dá ao vazio uma frase só, com a ação, e a spec da superfície vale sobre
+  o protótipo.
+- **Chip da Palavra sem ×.** O × de tirar a Palavra precisa de um rótulo para o
+  leitor de tela, e o catálogo da Voz ainda não tem esse estado. Ele entra
+  quando a cópia for aprovada.
+
+O toggle é `border-box` no próprio trilho: sem isso, uma página em `content-box`
+deixaria o botão ligado a 4 px da borda em vez de 2.
 
 ## Vitrine
 

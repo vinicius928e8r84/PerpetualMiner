@@ -146,6 +146,29 @@ test('o toggle ligado usa o ouro, e o desligado não', async ({ page, paginas })
   expect(trilhos[1]).not.toBe(ouro);
 });
 
+test('o botão do toggle fica centrado no trilho, ligado ou desligado', async ({ page, paginas }) => {
+  await abrirVitrine(page, paginas);
+
+  // Folga entre o botão e a borda de dentro do trilho, dos dois lados.
+  const folgas = await page.locator('[data-tema="escuro"] [data-grupo="Toggle e checkbox"] [data-estado="normal"] .veio-toggle__trilho')
+    .evaluateAll(nos => nos.map(trilho => {
+      const botao = getComputedStyle(trilho, '::after');
+      const esquerda = parseFloat(botao.left);
+      return {
+        ligado: trilho.previousElementSibling.checked,
+        esquerda,
+        direita: trilho.clientWidth - esquerda - parseFloat(botao.width),
+      };
+    }));
+
+  // Ligado (à direita) e desligado (à esquerda) deixam a mesma folga que o
+  // protótipo: 2 px até a borda.
+  const ligado = folgas.find(folga => folga.ligado);
+  const desligado = folgas.find(folga => !folga.ligado);
+  expect(desligado.esquerda).toBe(2);
+  expect(ligado.direita).toBe(2);
+});
+
 test('sem atalho gravado, o kbd fica tracejado', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -276,8 +299,37 @@ test('o toast de sucesso some sozinho, depois do tempo de leitura', async ({ pag
   await expect(toast).toBeHidden({ timeout: 4000 });
 });
 
+test('o toast aparece no tema da coluna que o mostrou', async ({ page, paginas }) => {
+  await abrirVitrine(page, paginas);
+
+  for (const tema of TEMAS) {
+    const coluna = page.locator(`[data-tema="${tema}"]`);
+    await coluna.locator('[data-grupo="Toast"] button').click();
+
+    const toast = coluna.locator('.veio-toast');
+    await expect(toast).toBeVisible();
+
+    // O fundo do toast é o surface do tema da coluna, não o do outro tema.
+    const surface = await coluna.evaluate(no => {
+      const medida = document.createElement('span');
+      medida.style.backgroundColor = 'var(--veio-surface)';
+      no.append(medida);
+      const cor = getComputedStyle(medida).backgroundColor;
+      medida.remove();
+      return cor;
+    });
+    await expect(toast).toHaveCSS('background-color', surface);
+    await expect(toast).toBeHidden({ timeout: 6000 });
+  }
+});
+
 test('o toast fica mais tempo quanto maior o texto', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
+
+  // Exceção do CLAUDE.md (Testing, garantias da base sem gatilho na tela): a
+  // vitrine só mostra um texto de toast, então o teste chama
+  // `mostrarToastDeSucesso` com dois tamanhos e mede quanto cada toast fica
+  // de fato na tela.
 
   /** Quanto tempo o toast deste texto fica de fato na tela. */
   const tempoNaTela = texto => page.evaluate(texto => new Promise(resolve => {
@@ -365,15 +417,20 @@ test('o chip diz se a Palavra foi escolhida ou detectada, com o rótulo em mono'
 test('a frase mostra o texto como texto, mesmo com marcação dentro', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  const injetado = await page.evaluate(() => {
-    const no = document.createElement('div');
-    PerpetualMiner.Veio.escreverFrase(no, '<img src=x onerror="window.__ok=1">Hold the line.', 'line');
-    return { html: no.innerHTML, texto: no.textContent, imagens: no.querySelectorAll('img').length };
-  });
+  // Exceção do CLAUDE.md (Testing, garantias da base sem gatilho na tela):
+  // nenhuma frase da vitrine traz marcação, então o teste chama `escreverFrase`
+  // numa linha de frase da própria vitrine e confere o que aparece nela.
+  const texto = '<img src=x onerror="window.__injetado=1">Hold the line.';
+  await page.evaluate(texto => {
+    const corpo = document.querySelector('[data-tema="escuro"] .veio-frase__texto');
+    PerpetualMiner.Veio.escreverFrase(corpo, texto, 'line');
+  }, texto);
 
-  expect(injetado.imagens).toBe(0);
-  expect(injetado.texto).toBe('<img src=x onerror="window.__ok=1">Hold the line.');
-  expect(injetado.html).toContain('<mark class="veio-palavra">line</mark>');
+  const corpo = page.locator('[data-tema="escuro"] .veio-frase__texto').first();
+  await expect(corpo).toHaveText(texto);
+  await expect(corpo.locator('img')).toHaveCount(0);
+  await expect(corpo.locator('.veio-palavra')).toHaveText('line');
+  expect(await page.evaluate(() => window.__injetado)).toBeUndefined();
 });
 
 /* ── Cópia, teclado e movimento ───────────────────────────────────────────── */
@@ -422,10 +479,10 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
   const aprovados = new Set(doCatalogo.map(([, texto]) => texto));
   const doGlossario = new Set(['Netflix', 'YouTube', 'Web', 'PDF', 'Livro', 'Manual']);
   const teclasGravadas = new Set(['Alt', 'S']);
-  // Os três nomes de padrão que a própria base escreve: o rótulo do chip da
-  // Palavra (travado no glossário) e o nome do recolhido (regra V3 da Voz).
-  const doPadrao = new Set(await page.evaluate(
-    () => Object.values(PerpetualMiner.Veio.ROTULOS_DO_PADRAO)));
+  // Os três nomes de padrão que a própria base escreve, com a fonte de cada
+  // um: o rótulo do chip da Palavra (CONTEXT.md e regra V6 da Voz) e o nome do
+  // recolhido da causa técnica (regra V3 da Voz).
+  const doPadrao = new Set(['palavra:', 'auto:', 'Detalhes']);
 
   const soltos = await page.evaluate(() => {
     const SELETORES = ['.veio-botao', '.veio-selo', '.veio-kbd', '.veio-segmentado__opcao',

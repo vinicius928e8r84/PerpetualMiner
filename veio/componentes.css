@@ -249,6 +249,7 @@ select.veio-campo {
 .veio-toggle__trilho {
   position: relative;
   flex: none;
+  box-sizing: border-box;
   width: 40px;
   height: 24px;
   border: 1px solid var(--veio-border-strong);
@@ -274,10 +275,10 @@ select.veio-campo {
   border-color: var(--veio-accent);
 }
 
-/* 20px, e não os 18px do protótipo: num trilho de 40 com botão de 18, o 18
-   deixa 2px de um lado e 4 do outro. É a única divergência proposital. */
+/* O trilho de 40 é border-box em qualquer página, então tem 38 por dentro: o
+   botão de 18 em 18px deixa 2px de cada lado, igual ao desligado. */
 .veio-toggle input:checked + .veio-toggle__trilho::after {
-  left: 20px;
+  left: 18px;
   background: var(--veio-accent-ink);
 }
 
@@ -316,7 +317,7 @@ select.veio-campo {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 9px;
+  padding: 3px 8px;
   border-radius: var(--veio-raio-pilula);
   background: var(--veio-surface-2);
   color: var(--veio-muted);
@@ -502,7 +503,7 @@ select.veio-campo {
   width: min(100%, 440px);
   max-height: 100%;
   overflow: auto;
-  padding: 22px;
+  padding: 20px;
   border: 1px solid var(--veio-border);
   border-radius: var(--veio-raio-painel);
   background: var(--veio-surface);
@@ -511,7 +512,7 @@ select.veio-campo {
 }
 
 .veio-modal__titulo {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   font-family: var(--veio-fonte-display);
   font-size: var(--veio-tam-modal);
   font-weight: var(--veio-peso-titulo);
@@ -529,7 +530,7 @@ select.veio-campo {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
-  margin-top: 18px;
+  margin-top: 16px;
 }
 
 .veio-modal__ajuda {
@@ -670,8 +671,8 @@ select.veio-campo {
 }
 
 .veio-vazio svg {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   color: var(--veio-muted);
 }
 
@@ -748,7 +749,7 @@ select.veio-campo {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 4px 2px 9px;
+  padding: 2px 4px 2px 8px;
   border: 1px dashed var(--veio-border-strong);
   border-radius: var(--veio-raio-pilula);
   color: var(--veio-text);

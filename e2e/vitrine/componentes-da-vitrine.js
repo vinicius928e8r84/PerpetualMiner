@@ -312,9 +312,10 @@
     return el('div', { class: 'amostras' }, entrada, scrim);
   }
 
-  function toast() {
+  /** O toast aparece dentro da coluna, para usar o tema dela. */
+  function toast(coluna) {
     return gatilho('Mostrar o toast', () =>
-      mostrarToastDeSucesso(textoDaVoz('PAI-14', { n: 12 })));
+      mostrarToastDeSucesso(textoDaVoz('PAI-14', { n: 12 }), { dentroDe: coluna }));
   }
 
   /**
@@ -442,7 +443,7 @@
       grupo('Modal', modal(tema)),
 
       grupo('Toast',
-        linha('normal', toast())),
+        linha('normal', toast(destino))),
 
       grupo('Aviso persistente',
         linha('erro', aviso())),
