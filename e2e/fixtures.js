@@ -6,7 +6,9 @@
 // do repositório, a rede falsificada na fronteira HTTP (Conexão com o Anki,
 // Gemini, Firestore/Google) e as páginas-fixture servidas por um servidor local.
 // Qualquer outra requisição externa é bloqueada, então nenhum teste sai para a
-// internet.
+// internet. A página de login do Google é a exceção de mecanismo, não de regra:
+// a janela do `chrome.identity` não passa pelo roteamento do Playwright, então o
+// nome accounts.google.com aponta para um servidor HTTPS local (fakes/login-google.js).
 
 const { test: base, expect, chromium } = require('@playwright/test');
 const fs = require('fs');
@@ -17,6 +19,7 @@ const path = require('path');
 const { criarFakeAnki } = require('./fakes/anki');
 const { criarFakeGemini } = require('./fakes/gemini');
 const { criarFakeGoogle } = require('./fakes/google');
+const { subirServidorDoLogin } = require('./fakes/login-google');
 
 const RAIZ_DA_EXTENSAO = path.resolve(__dirname, '..');
 const PASTA_DAS_PAGINAS = path.join(__dirname, 'pages');
@@ -86,11 +89,20 @@ const test = base.extend({
     await new Promise(resolve => servidor.close(resolve));
   }, { scope: 'worker' }],
 
+  // A página de login do Google, um servidor por worker; cada teste diz, pelo
+  // fake do Google, o que a janela de login faz.
+  servidorDoLogin: [async ({}, use) => {
+    const servidor = await subirServidorDoLogin();
+    await use(servidor);
+    await servidor.fechar();
+  }, { scope: 'worker' }],
+
   fakes: async ({}, use) => {
     await use({ anki: criarFakeAnki(), gemini: criarFakeGemini(), google: criarFakeGoogle() });
   },
 
-  context: async ({ fakes, paginas }, use) => {
+  context: async ({ fakes, paginas, servidorDoLogin }, use) => {
+    servidorDoLogin.atender(fakes.google.responderLogin);
     const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-e2e-'));
     const context = await chromium.launchPersistentContext(perfil, {
       channel: 'chromium',
@@ -98,6 +110,9 @@ const test = base.extend({
       args: [
         `--disable-extensions-except=${RAIZ_DA_EXTENSAO}`,
         `--load-extension=${RAIZ_DA_EXTENSAO}`,
+        `--host-resolver-rules=MAP accounts.google.com 127.0.0.1:${servidorDoLogin.porta}`,
+        // Só o servidor local do login usa HTTPS, com certificado autoassinado.
+        '--ignore-certificate-errors',
       ],
     });
 
@@ -128,9 +143,13 @@ const test = base.extend({
       /** O histórico de frases como está gravado (mais nova primeiro). */
       frases: async () => (await lerStorage({ frases: [] })).frases,
       /** Semeia uma sessão da conta no armazenamento, sem passar pelo login real. */
-      semearSessao: ({ uid = 'uid-teste', email = 'pessoa@teste.dev', displayName = 'Pessoa de Teste' } = {}) =>
+      /** `expirada` grava um token já vencido: o painel precisa renová-lo antes de ir à nuvem. */
+      semearSessao: ({ uid = 'uid-teste', email = 'pessoa@teste.dev', displayName = 'Pessoa de Teste', expirada = false } = {}) =>
         gravarStorage({
-          pm_firebase_auth: { uid, idToken: 'token-teste', refreshToken: 'refresh-teste', expiresAt: Date.now() + 60 * 60 * 1000 },
+          pm_firebase_auth: {
+            uid, idToken: 'token-teste', refreshToken: 'refresh-teste',
+            expiresAt: expirada ? Date.now() - 60 * 1000 : Date.now() + 60 * 60 * 1000,
+          },
           pm_user_info: { uid, email, displayName, photoURL: '' },
         }),
     });

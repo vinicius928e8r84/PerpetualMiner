@@ -352,6 +352,9 @@ test('dentro do shell, Enviar ao Anki cria o envio, e o acompanhamento continua 
 test('Configurações hospeda Entrar com Google e Apagar tudo de hoje', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(2) });
   await abrirPainel(page, extensao, '#configuracoes');
+  // Os cards começam fechados (resumo primeiro): abre-se Conta & sync e Zona de perigo.
+  await page.getByRole('button', { name: 'Conta & sync', exact: true }).click();
+  await page.getByRole('button', { name: 'Zona de perigo', exact: true }).click();
 
   await expect(page.getByRole('button', { name: 'Entrar com Google' })).toBeVisible();
 

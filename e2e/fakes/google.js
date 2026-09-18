@@ -13,6 +13,11 @@ function criarFakeGoogle() {
   const documentos = new Map();   // 'usuarios/uid/frases/123' → fields
   const requisicoes = [];
   let recusarEscritas = false;
+  let foraDoAr = false;          // todo pedido ao Firestore: 503
+  let acessoRecusado = false;    // todo pedido ao Firestore: 403 PERMISSION_DENIED
+  let sessaoExpirada = false;    // a renovação do token é recusada
+  let modoDoLogin = 'entrar';
+  let perfil = { email: 'pessoa@teste.dev', name: 'Pessoa de Teste', picture: '' };
 
   async function tratar(route) {
     const req = route.request();
@@ -21,13 +26,14 @@ function criarFakeGoogle() {
 
     if (url.hostname === 'firestore.googleapis.com') return tratarFirestore(route, req, url);
     if (url.hostname === 'securetoken.googleapis.com') {
+      if (sessaoExpirada) return responderJson(route, 400, { error: { message: 'TOKEN_EXPIRED' } });
       return responderJson(route, 200, { id_token: 'token-renovado', refresh_token: 'refresh-renovado', expires_in: '3600' });
     }
     if (url.hostname === 'identitytoolkit.googleapis.com') {
       return responderJson(route, 200, { localId: 'uid-teste', idToken: 'token-teste', refreshToken: 'refresh-teste' });
     }
     if (url.hostname === 'www.googleapis.com' && url.pathname.startsWith('/oauth2/')) {
-      return responderJson(route, 200, { email: 'pessoa@teste.dev', name: 'Pessoa de Teste', picture: '' });
+      return responderJson(route, 200, perfil);
     }
     return responderJson(route, 404, { error: { message: 'not_found' } });
   }
@@ -35,6 +41,11 @@ function criarFakeGoogle() {
   function tratarFirestore(route, req, url) {
     const caminhoCompleto = decodeURIComponent(url.origin + url.pathname).replace(URL_DOS_DOCUMENTOS, '');
     const metodo = req.method();
+
+    if (foraDoAr) return responderJson(route, 503, { error: { code: 503, status: 'UNAVAILABLE', message: 'The service is currently unavailable.' } });
+    if (acessoRecusado) {
+      return responderJson(route, 403, { error: { code: 403, status: 'PERMISSION_DENIED', message: 'Missing or insufficient permissions.' } });
+    }
 
     if (caminhoCompleto === ':batchWrite' && metodo === 'POST') {
       if (recusarEscritas) return responderJson(route, 503, { error: { message: 'indisponível' } });
@@ -84,6 +95,26 @@ function criarFakeGoogle() {
     return responderJson(route, 400, { error: { message: `não suportado: ${metodo} ${caminho}` } });
   }
 
+  /**
+   * A página de login do Google (servida pelo servidor HTTPS do fixture, porque
+   * a janela de login não passa pelo roteamento do Playwright):
+   *   'entrar'  a pessoa escolhe a conta: volta para a extensão com os tokens;
+   *   'janela'  a janela fica aberta esperando (o teste pode fechá-la: cancelar);
+   *   'falhar'  a página não carrega.
+   */
+  function responderLogin(url, req, res) {
+    if (modoDoLogin === 'falhar') {
+      req.socket.destroy();
+      return;
+    }
+    if (modoDoLogin === 'janela') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end('<h1>Escolha uma conta</h1>');
+      return;
+    }
+    const volta = `${url.searchParams.get('redirect_uri')}#id_token=id-token-teste&access_token=access-token-teste`;
+    res.writeHead(302, { Location: volta }).end();
+  }
+
   return {
     padrao: /^https:\/\/(firestore|securetoken|identitytoolkit|www)\.googleapis\.com\//,
     tratar,
@@ -100,6 +131,21 @@ function criarFakeGoogle() {
       return Object.keys(documentos.get(`usuarios/${uid}/meta/deleted`)?.ids?.mapValue?.fields || {});
     },
     recusarEscritas(valor = true) { recusarEscritas = valor; },
+    /** O Firestore fora do ar: todo pedido responde 503. */
+    ficarForaDoAr(valor = true) { foraDoAr = valor; },
+    /** As regras do Firestore recusam a conta: todo pedido responde 403. */
+    recusarAcesso(valor = true) { acessoRecusado = valor; },
+    /** O refresh token não vale mais: renovar a sessão falha. */
+    expirarSessao(valor = true) { sessaoExpirada = valor; },
+    /** Frases que já estão na nuvem da conta `uid`. */
+    gravarFrases(uid, frases) {
+      for (const frase of frases) documentos.set(`usuarios/${uid}/frases/${frase.id}`, objetoParaCampos(frase));
+    },
+    /** O que a próxima janela de login faz: 'entrar', 'janela' ou 'falhar'. */
+    proximoLogin(modo) { modoDoLogin = modo; },
+    /** O perfil que o Google devolve no login (nome, e-mail, foto). */
+    usarPerfil(novo) { perfil = { ...perfil, ...novo }; },
+    responderLogin,
   };
 }
 
@@ -145,6 +191,18 @@ function gravarCampo(fields, [primeiro, ...resto], valor) {
   if (!fields[primeiro]?.mapValue) fields[primeiro] = { mapValue: { fields: {} } };
   fields[primeiro].mapValue.fields ||= {};
   gravarCampo(fields[primeiro].mapValue.fields, resto, valor);
+}
+
+function objetoParaCampos(obj) {
+  const fields = {};
+  for (const [chave, valor] of Object.entries(obj)) {
+    if (typeof valor === 'string') fields[chave] = { stringValue: valor };
+    else if (typeof valor === 'number') fields[chave] = { integerValue: String(valor) };
+    else if (typeof valor === 'boolean') fields[chave] = { booleanValue: valor };
+    else if (Array.isArray(valor)) fields[chave] = { arrayValue: { values: valor.map(v => ({ stringValue: String(v) })) } };
+    else if (valor && typeof valor === 'object') fields[chave] = { mapValue: { fields: objetoParaCampos(valor) } };
+  }
+  return fields;
 }
 
 function camposParaObjeto(fields) {

@@ -10,11 +10,15 @@
 // Trocar de área só troca a vista: nada recarrega, então os filtros, a página, a
 // seleção, o sync e o acompanhamento de envios do painel.js continuam como estão.
 //
-// O shell é dono do que fica na sidebar: o total de frases, o ponto da Conexão
-// com o Anki (e a faixa F1 da área dela) e o chip de conta. O painel.js conta
-// ao shell o que muda (`mostrarTotalDeFrases`, `mostrarConta`,
-// `mostrarSincronizacao`) e pede para saber quando a pessoa entra numa área
-// (`aoEntrarNaArea`). Toda cópia vem do catálogo da Voz.
+// O shell é dono do que fica na sidebar: o total de frases e o ponto da Conexão
+// com o Anki (e a faixa F1 da área dela). O chip de conta mora na sidebar, mas
+// quem o desenha é painel-conta.js, junto com o card Conta & sync que ele
+// espelha. O painel.js conta ao shell o total (`mostrarTotalDeFrases`) e pede
+// para saber quando a pessoa entra numa área (`aoEntrarNaArea`).
+//
+// Em Configurações, os cards ficam fechados numa linha com o resumo e abrem no
+// lugar, vários ao mesmo tempo; #configuracoes/<seção> abre o da seção. Toda
+// cópia vem do catálogo da Voz.
 
 (function (raiz) {
   const ABAS_DA_CONEXAO = ['custos', 'baralhos', 'vocabulario', 'ajustes'];
@@ -23,18 +27,10 @@
   const ENDERECO_DA_CONEXAO = 'http://127.0.0.1:8766';
   /** De quanto em quanto tempo o ponto da Conexão com o Anki é conferido. */
   const INTERVALO_DA_CONEXAO = 15000;
-  /** “Sincronizado há N minutos” avança sozinho. */
-  const INTERVALO_DO_RELOGIO = 30000;
-
-  const QUANTO_TEMPO = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'auto' });
-
   const estado = {
     area: null,
     conexao: 'conectando',   // 'conectando' | 'ligada' | 'desligada'
     conferindoConexao: false,
-    conta: null,             // { displayName, email, photoURL } | null
-    sincronizacao: null,     // 'sincronizando' | 'sincronizado' | 'erro' | null
-    sincronizadoEm: null,
   };
   const ouvintesDeArea = new Map();
 
@@ -53,15 +49,18 @@
       radio.addEventListener('change', () => { location.hash = `#anki/${radio.value}`; });
     }
     porId('shell-tentar-de-novo').addEventListener('click', tentarAConexaoDeNovo);
+    // A linha inteira do card abre e fecha; o botão do título é quem o teclado
+    // e o leitor de tela usam, e o clique nele sobe até aqui.
+    for (const cabeca of $$('.cfg-cabeca')) {
+      cabeca.addEventListener('click', () => alternarCard(cabeca.closest('.cfg-card')));
+    }
     window.addEventListener('hashchange', aplicarEndereco);
     document.addEventListener('click', reaplicarOMesmoEndereco);
 
     aplicarEndereco();
     mostrarConexao('conectando');
-    desenharChip();
     conferirConexao();
     setInterval(conferirConexao, INTERVALO_DA_CONEXAO);
-    setInterval(() => { if (estado.sincronizacao === 'sincronizado') desenharChip(); }, INTERVALO_DO_RELOGIO);
   }
 
   /** Os textos fixos do shell, pelos atributos data-voz do painel.html. */
@@ -106,6 +105,8 @@
     }
     if (aba) mostrarAba(aba);
 
+    // #configuracoes sozinho mostra todos os cards fechados.
+    if (area === 'configuracoes' && !secao) fecharOsCards();
     if (secao) rolarAteASecao(secao);
     else if (entrou) window.scrollTo(0, 0);
 
@@ -129,9 +130,26 @@
     $('.shell-item[data-area="anki"]').setAttribute('href', `#anki/${aba}`);
   }
 
-  /** Rola até o card da seção e pisca a borda dele (parada com movimento reduzido). */
+  // ─── Cards de Configurações ────────────────────────────────────────────────
+
+  function abrirCard(card, aberto) {
+    card.classList.toggle('cfg-card--aberto', aberto);
+    card.querySelector('.cfg-alternar').setAttribute('aria-expanded', String(aberto));
+    card.querySelector('.cfg-corpo').hidden = !aberto;
+  }
+
+  function alternarCard(card) {
+    abrirCard(card, !card.classList.contains('cfg-card--aberto'));
+  }
+
+  function fecharOsCards() {
+    for (const card of $$('.cfg-card')) abrirCard(card, false);
+  }
+
+  /** Abre o card da seção, rola até ele e pisca a borda (parada com movimento reduzido). */
   function rolarAteASecao(secao) {
     const card = porId(`cfg-${secao}`);
+    abrirCard(card, true);
     card.scrollIntoView({ block: 'start' });
     card.classList.remove('shell-card--destaque');
     void card.offsetWidth;
@@ -191,83 +209,11 @@
     conferirConexao();
   }
 
-  // ─── Conta ─────────────────────────────────────────────────────────────────
-
-  function mostrarConta(usuario) {
-    estado.conta = usuario ? { ...usuario } : null;
-    if (!usuario) estado.sincronizacao = null;
-    desenharChip();
-  }
-
-  function mostrarSincronizacao(situacao) {
-    estado.sincronizacao = situacao;
-    if (situacao === 'sincronizado') estado.sincronizadoEm = Date.now();
-    desenharChip();
-  }
-
-  function desenharChip() {
-    const chip = porId('shell-chip');
-    const avatar = porId('shell-avatar');
-    const nome = porId('shell-chip-nome');
-    const situacao = porId('shell-chip-estado');
-    const { conta } = estado;
-
-    avatar.replaceChildren();
-    avatar.classList.toggle('shell-avatar--vazio', !conta);
-    situacao.classList.remove('shell-chip__estado--erro');
-
-    if (!conta) {
-      avatar.append(raiz.Veio.iconeVeio('conta'));
-      nome.textContent = textoDaVoz('SHL-05.semConta');
-      situacao.textContent = '';
-      situacao.hidden = true;
-      chip.title = nome.textContent;
-      return;
-    }
-
-    const nomeVisivel = conta.displayName || conta.email || textoDaVoz('CFG-10');
-    nome.textContent = nomeVisivel;
-    chip.title = nomeVisivel;
-    if (conta.photoURL) {
-      const foto = document.createElement('img');
-      foto.src = conta.photoURL;
-      foto.alt = '';
-      avatar.append(foto);
-    } else {
-      avatar.textContent = nomeVisivel.charAt(0).toUpperCase();
-    }
-
-    situacao.textContent = textoDaSincronizacao();
-    situacao.hidden = !situacao.textContent;
-    situacao.classList.toggle('shell-chip__estado--erro', estado.sincronizacao === 'erro');
-  }
-
-  function textoDaSincronizacao() {
-    switch (estado.sincronizacao) {
-      case 'sincronizando': return textoDaVoz('CFG-01');
-      case 'sincronizado': return textoDaVoz('CFG-02', { quando: haQuantoTempo(estado.sincronizadoEm) });
-      case 'erro': return textoDaVoz('SHL-05.semSincronizar');
-      default: return '';
-    }
-  }
-
-  /** “agora”, “há 2 minutos”, “há 3 horas”, “ontem”: o `{quando}` da CFG-02. */
-  function haQuantoTempo(momento) {
-    const minutos = Math.floor((Date.now() - momento) / 60000);
-    if (minutos < 1) return QUANTO_TEMPO.format(0, 'second');
-    if (minutos < 60) return QUANTO_TEMPO.format(-minutos, 'minute');
-    const horas = Math.floor(minutos / 60);
-    if (horas < 24) return QUANTO_TEMPO.format(-horas, 'hour');
-    return QUANTO_TEMPO.format(-Math.floor(horas / 24), 'day');
-  }
-
   document.addEventListener('DOMContentLoaded', iniciarShell);
 
   raiz.Shell = {
     aoEntrarNaArea,
     areaAtual,
     mostrarTotalDeFrases,
-    mostrarConta,
-    mostrarSincronizacao,
   };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

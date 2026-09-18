@@ -141,7 +141,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | SHL-02 | Títulos das áreas **(novo)** | status | Frases mineradas · Presets e custos | Frases mineradas · Conexão com o Anki · Configurações | Cabeçalho de área, 22/700. |
 | SHL-03 | Abas da Conexão com o Anki **(novo)** | status | (tudo numa página só) | Custos · Baralhos e termos · Vocabulário · Ajustes de envio | Controle segmentado; o grupo se chama “Seções da Conexão com o Anki”. |
 | SHL-04 | Cards de Configurações **(novo)** | status | (espalhados na sidebar e no Minerar de uma foto) | Conta & sync · Atalhos · Chave do Gemini · Zona de perigo | A Chave do Gemini usa CFG-15. |
-| SHL-05 | Chip de conta **(novo)** | status | Login com Google · Sincronizado · Erro de sync | Sem conta · só neste computador · Sem sincronizar | Com conta: nome + CFG-01 ou CFG-02, e “Sem sincronizar” em `danger` quando o sync falha (C11). |
+| SHL-05 | Chip de conta **(novo)** | status | Login com Google · Sincronizado · Erro de sync | Sem conta · só neste computador · Sem sincronizar · 8 de 10 sincronizadas · Sessão expirou | Com conta: nome + CFG-01, CFG-02 ou CFG-09; em `danger`, “Sem sincronizar” quando o sync falha ou a nuvem recusa (CFG-03, CFG-04), “8 de 10 sincronizadas” no sync parcial (CFG-05) e “Sessão expirou” (CFG-08) (C11). |
 | SHL-06 | Atualizar a Conexão com o Anki **(novo)** | status | (ícone sem texto) | Atualizar | Tooltip: BRG-24. |
 
 ### Painel · Frases
@@ -245,11 +245,11 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 |---|---|---|---|---|---|
 | CFG-01 | Sync: estado inicial | status | Sincronizado (antes de sincronizar) | Sincronizando… | Nunca o estado otimista (C8). |
 | CFG-02 | Sync OK | status | Sincronizado | Sincronizado há 2 min |  |
-| CFG-03 | Sync falhou | erro | Erro de sync (com ícone de sincronizando) · Erro na nuvem — usando dados locais. | Sem sincronizar · as frases estão só neste computador | Status persistente com “Tentar de novo” e Detalhes; ícone próprio de erro. |
+| CFG-03 | Sync falhou | erro | Erro de sync (com ícone de sincronizando) · Erro na nuvem — usando dados locais. | Sem sincronizar · as frases estão só neste computador · As mudanças deste computador ainda não subiram para a nuvem. [Tentar de novo] | Status persistente com “Tentar de novo” e Detalhes; ícone próprio de erro. |
 | CFG-04 | Nuvem recusou acesso | erro | Firestore: permissão negada — verifique as regras de segurança no console Firebase. | A nuvem recusou o acesso. Saia da conta e entre de novo. | A instrução de dev vai para Detalhes. |
-| CFG-05 | Sync parcial | erro | Sync parcial: 8/10 frases enviadas. | 8 de 10 frases sincronizadas · 2 ficaram só neste computador | “Tentar de novo”. |
-| CFG-06 | Entrar | status | Login com Google — Sincronize suas frases em qualquer dispositivo | Entrar com Google — Suas frases em qualquer computador |  |
-| CFG-07 | Login falhou / cancelado | erro | Erro no login: Login cancelado · Erro no login: <msg crua> | (cancelado: nada) · Não deu para entrar com o Google. Tente de novo. | Cancelar não é erro. |
+| CFG-05 | Sync parcial | erro | Sync parcial: 8/10 frases enviadas. | 8 de 10 frases sincronizadas · 2 ficaram só neste computador · As mudanças deste computador ainda não subiram para a nuvem. [Tentar de novo] | “Tentar de novo” e Detalhes. |
+| CFG-06 | Entrar | status | Login com Google — Sincronize suas frases em qualquer dispositivo | Entrar com Google — Suas frases em qualquer computador · Sem conta, elas ficam só neste computador. |  |
+| CFG-07 | Login falhou / cancelado | erro | Erro no login: Login cancelado · Erro no login: <msg crua> | (cancelado: nada) · Não deu para entrar com o Google. Tente de novo. [Tentar de novo] | Cancelar não é erro. Inline no card Conta & sync, com Detalhes. |
 | CFG-08 | Sessão expirou | erro | Token expirado — faça login novamente | Sua sessão expirou. Entre de novo para sincronizar. | Botão “Entrar”. |
 | CFG-09 | Primeira subida para a nuvem | loading | Migrando… · 12 frase(s) migrada(s) para a nuvem! · Migração falhou: … | Sincronizando 12 frases… · 12 frases sincronizadas · Não deu para sincronizar suas frases. Elas continuam neste computador. | “Enviar” fica reservado para o Anki. |
 | CFG-10 | Nome sem perfil | status | Usuário | Conta Google |  |
@@ -267,6 +267,9 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | CFG-22 | Atalhos de fábrica (dica) **(novo)** | status | (não existe) | Padrão: Minerar legenda em Alt+S, Minerar seleção sem atalho. | Ao lado de “Restaurar atalhos padrão”. |
 | CFG-23 | Sair da conta **(novo)** | status | Sair da conta | Sair da conta | Botão fantasma no card Conta & sync. |
 | CFG-24 | Entrada do Apagar tudo **(novo)** | status | (lixeira sem texto ao lado do total) | Apagar todas as 1.284 frases | Singular: “Apagar 1 frase”. Sem frases: CFG-20. Perigo em contorno: só abre a confirmação (CFG-17). |
+| CFG-25 | Conta & sync: descrição **(novo)** | status | (não existe) | Com a conta, suas frases ficam iguais em qualquer computador em que você entrar. | Sob o título, com o card aberto. |
+| CFG-26 | Sair da conta: nota **(novo)** | status | (não existe) | Ao sair, as frases continuam neste computador. | Sob a conta, quando o sync está em dia. |
+| CFG-27 | Conta & sync: resumo **(novo)** | status | (não existe) | Vinicius · Sincronizado há 2 min | A linha fechada: nome (ou CFG-10) + o estado do chip (SHL-05). Sem conta: “Sem conta · só neste computador”. |
 
 ### Boas-vindas (primeira execução)
 

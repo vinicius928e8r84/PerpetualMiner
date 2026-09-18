@@ -25,7 +25,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `tombstone.js` | Tombstone of a deleted phrase (`chrome.storage.sync` keys and the Firestore `meta/deleted` PATCH), shared by `background.js` (`importScripts`) and `painel.html` |
 | `popup.html/js/css` | Quick-access popup showing last 5 phrases |
 | `painel.html/js/css` | Full dashboard to view, copy, and delete all saved phrases; Google login and Firestore sync |
-| `painel-shell.js` | The panel's “Ilhas” shell: one page, one area per address (`#frases`, `#anki/<aba>`, `#configuracoes[/<seção>]`), the sidebar indicators (phrase total, Conexão com o Anki dot, account chip), the rail below ~1000 px and the F1 strip. See “Panel shell” below |
+| `painel-shell.js` | The panel's “Ilhas” shell: one page, one area per address (`#frases`, `#anki/<aba>`, `#configuracoes[/<seção>]`), the sidebar indicators (phrase total, Conexão com o Anki dot), the rail below ~1000 px, the F1 strip and the Configurações cards opening and closing. See “Panel shell” below |
+| `painel-conta.js` | The account in the panel: one state drawn in the Configurações › Conta & sync card, its closed-row summary and the sidebar chip (CFG-01…10). See “Account (Conta & sync)” below |
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs and the SVG). See `veio/README.md` |
 | `lib/voz/catalogo.js` | The Voice catalog as data: the 167 approved copy states from `docs/design/voz/` |
@@ -95,12 +96,11 @@ every other surface.
 nothing reloads when switching areas — filters, page, selection, sync and the Envio tracking in `painel.js` stay as
 they are. Addresses: `#frases` (default, and anything unknown), `#anki/custos|baralhos|vocabulario|ajustes`
 (`#anki` alone opens Custos; the sidebar link reopens the last tab seen), `#configuracoes[/conta|atalhos|chave|perigo]`
-(scrolls to the card and flashes its border). The Anki tabs are the Veio segmented control; picking one sets the hash,
+(opens the card, scrolls to it and flashes its border; bare `#configuracoes` shows every card closed). The Anki tabs are the Veio segmented control; picking one sets the hash,
 so the browser's back button walks through areas and tabs.
 
 The shell owns the sidebar and `painel.js` reports to it through `PerpetualMiner.Shell`:
-`mostrarTotalDeFrases(n)`, `mostrarConta(usuario)`, `mostrarSincronizacao('sincronizando'|'sincronizado'|'erro')`,
-`aoEntrarNaArea(area, fn)` (the Anki area refreshes its data on entry) and `areaAtual()`. The shell polls
+`mostrarTotalDeFrases(n)`, `aoEntrarNaArea(area, fn)` (the Anki area refreshes its data on entry) and `areaAtual()`. The shell polls
 `/health` of the Conexão com o Anki itself every 15 s: the dot (BRG-01/BRG-02, in the tooltip and as the link's
 accessible description) and, while it is off, the F1 strip (ENV-01) with “Tentar de novo” at the top of the Anki area.
 
@@ -109,8 +109,28 @@ The shell's fixed copy comes from the catalog through `data-voz`, `data-voz-aria
 the screen but stay as the links' names (visually hidden, not `display: none`) and become tooltips.
 
 Until Frases and the Conexão com o Anki are rebuilt, today's content lives inside the shell in `.conteudo-de-hoje`
-blocks marked `data-tema="claro"`: its CSS was drawn for a light background. Configurações hosts what the old sidebar
-had (Entrar com Google / Sair da conta, Apagar tudo) until its own tickets rebuild the cards.
+blocks marked `data-tema="claro"`: its CSS was drawn for a light background.
+
+Configurações is the “summary first” variant C (`docs/design/painel/configuracoes/`): each of the four cards (Conta & sync ·
+Atalhos · Chave do Gemini · Zona de perigo) is one closed row — icon tile, title, a summary of its state, chevron — and
+opens in place; several can be open at once. The whole row toggles, and the title's `<button aria-expanded>` inside the
+`<h2>` is the control for the keyboard and the screen reader. The cards live in a size container: below ~560 px of
+content the summary leaves the row and the body loses its 62 px indent. Atalhos, Chave do Gemini and Zona de perigo get
+their content in their own tickets (Zona de perigo still hosts today's Apagar tudo).
+
+### Account (`painel-conta.js`)
+
+One account state, drawn in three places that always agree: the open Conta & sync card, its closed-row summary
+(“Nome · <chip state>”, CFG-27) and the sidebar chip, which links to `#configuracoes/conta`. `painel.js` reports to it
+through `PerpetualMiner.Conta`: `mostrarConta(usuario)`, `mostrarSincronizacao(situacao, { n, total, detalhes })`,
+`mostrarFalhaNoLogin(detalhes)` and `aoPedir({ entrar, sair, tentarDeNovo })`. The situations are the spec's states:
+`sincronizando` (CFG-01), `primeiraSubida` (CFG-09), `sincronizado` (CFG-02), `semSincronizar` (CFG-03), `parcial`
+(CFG-05), `recusado` (CFG-04) and `expirou` (CFG-08); with no profile name the account is “Conta Google” (CFG-10).
+
+A sync problem shows **only** in the card and the chip — never a toast or a strip in another area. `painel.js` tags a
+cloud error with its situation (`erroDaResposta`: HTTP 401 → `expirou`, 403/PERMISSION_DENIED → `recusado`, the rest
+`semSincronizar`) and the raw message goes to the card's collapsed “Detalhes”. Closing Google's login window is not an
+error and shows nothing; a login that fails shows CFG-07 in the card with “Tentar de novo”.
 
 ### Base components (`veio/componentes.css` + `veio/componentes.js`)
 
@@ -133,13 +153,15 @@ The rules the components encode, so a surface does not have to re-decide them:
   lives inside `dentroDe` (the page's `body` by default), so it uses that element's theme.
   Every error that asks for an action is `montarAviso(…)` instead — it stays in the place of the
   problem until closed, with the action beside it and the technical cause in a collapsed
-  “Detalhes” (V3 of the Voice).
+  “Detalhes” (V3 of the Voice). An aviso that *is* a state (a failed sync) passes `fechavel: false`:
+  no ×, it leaves when the problem does. `montarDetalhes(causa)` is that same “Detalhes” alone, for
+  when the screen's state already says what happened (the cloud refused, the session expired).
 - **Error on a field** is said by `aria-invalid="true"`, not by a class, so the screen reader hears
   it too.
 - **The highlighted Word** is drawn by `escreverFrase(no, texto, palavra)`: a `kw-bg` band from 50%
   to 94% of the line, no radius. The phrase text always goes in as text, never as HTML.
 - **Copy does not live in the components.** The caller passes the string it already looked up:
-  `textoDaVoz('PAI-13.titulo', { n })` — `montarAviso` even refuses to build without the close
+  `textoDaVoz('PAI-13.titulo', { n })` — `montarAviso` even refuses to build a closable aviso without the close
   label. The only three words the base writes itself are in `ROTULOS_DO_PADRAO`, because they are
   no screen's state and so have no ID: `palavra:` and `auto:` (fixed by the glossary) and
   `Detalhes` (the name rule V3 of the Voice gives the collapsed cause).
@@ -228,11 +250,13 @@ npm test         # launches Chromium with the unpacked extension and runs the su
 On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx playwright install-deps chromium`, once.
 
 - `e2e/fixtures.js` launches a fresh Chromium profile per test with the repo root loaded as an unpacked extension, fakes the network at the HTTP boundary and blocks every other external request. It gives tests `extensao` (id, service worker, `url()`, `lerStorage`/`gravarStorage`, `frases()`, `semearSessao()`), `fakes` and `paginas`.
-- `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`), Gemini, and Firestore/Google (in-memory documents, token refresh). `semearSessao()` writes an account session to storage, skipping the real login.
+- `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`), Gemini, and Firestore/Google (in-memory documents, token refresh; `ficarForaDoAr()`, `recusarAcesso()`, `recusarEscritas()`, `expirarSessao()`, `gravarFrases(uid, frases)`). `semearSessao({ expirada })` writes an account session to storage, skipping the real login.
+- **The real Google login runs offline.** The `chrome.identity.launchWebAuthFlow` window loads outside Playwright's routing (a `context.route` never sees it), so the fixture maps `accounts.google.com` to a local HTTPS server (`fakes/login-google.js`, self-signed certificate made with `openssl` per worker, `--host-resolver-rules` + `--ignore-certificate-errors`). `fakes.google.proximoLogin('entrar'|'janela'|'falhar')` picks what the window does: return with tokens, stay open (the test closes it: cancelling), or fail to load. This also keeps Chromium's own background calls to that host off the internet.
 - `e2e/pages/`: local fixture pages where the content script is injected: `player.html` (fake player with a caption), `texto.html` (plain text to select), `sem-video.html`, `player-em-iframe.html?player=<url>` (embeds the player from another origin, e.g. `paginas.urlCruzada('player.html')`), `hostil.html` + `hostil-filho.html` (a page that tries to drive the extension by itself), and `player-marcacao.html` / `texto-marcacao.html` (caption, title and selectable text carrying markup as text, to prove the content script always inserts page text as text, never as HTML).
 - `e2e/vitrine/`: the Veio showcase — tokens, type scale, radii, a Russian phrase and **every base component**, in both themes and in the states each component actually has (button and field: focus and disabled, plus error on the field; a badge only has normal). `componentes-da-vitrine.js` builds the gallery once per theme with the same function, so the two columns never diverge; its sample copy comes from the Voice catalog by ID (`CATALOGO_DA_VITRINE`), and anything that is showcase scaffolding is marked `data-vitrine-chrome`. The fixture server also serves `/veio/…` and `/lib/…` from the extension root, so the showcase loads the same tokens, fonts, components and catalog the extension pages load. After the owner's review it is **the visual reference**.
 - The showcase also carries a **mock of the toolbar badge** in its three states, outside the two theme columns — Chrome draws the real badge on the browser toolbar, which no static page (and so no Vercel preview) can show. The mock reads its colors from the tokens, and the badge test asserts those tokens match what the service worker hands Chrome, so the copy in `background.js` can't drift.
 - `tests/painel-shell-visual.spec.js` holds the **visual reference of the panel shell**: its approved states (Frases wide and as a rail, first run, the Conexão off with F1, Configurações with an account) as `toHaveScreenshot` baselines in `painel-shell-visual.spec.js-snapshots/` (taken on Linux, with the clock frozen on the day of the sample phrases). A visual change to the shell fails them; after the owner approves the new look, `npx playwright test painel-shell-visual --update-snapshots` replaces the reference. The legacy content inside each area (`.conteudo-de-hoje`) is masked: it is rebuilt ticket by ticket, and the reference is the shell around it.
+- `tests/configuracoes-visual.spec.js` does the same for Configurações (cards closed; Conta & sync synced, not synced, logged out after a failed login; the narrow window), compared by the owner side by side with the locked prototype (`?variant=C`).
 - `HEADED=1 npm test` shows the browser.
 - Tests assert what the person sees and what ends up stored, never internal functions. Three narrow exceptions, each named in the test's own comment:
   - Where Chromium gives Playwright no way to drive the native UI or clock (the context menu, the toolbar badge, the midnight alarm), a test does what Chrome would do — calls the function Chrome would call (`minerarSelecaoDoMenu`, `registrarMenuDeContexto`) or fires the alarm early under its own name — and asserts what gets stored or what is handed to Chrome (`chrome.action.getBadgeText`, `getTitle`, the next alarm's time).
