@@ -28,8 +28,16 @@ const { abrirModal, mostrarToastDeSucesso, escreverFrase } = PerpetualMiner.Veio
 ```
 
 - **Cor nova não se escreve fora daqui.** Se falta um valor, ele entra como token, com o nome da
-  tabela da spec. A exceção é `icones/icone.svg`: um SVG servido como imagem não lê variáveis
-  CSS, então as cores do cristal ficam escritas nele, iguais às do asset da spec.
+  tabela da spec. As exceções são duas, as duas por não haver CSS para ler:
+  - `icones/icone.svg`: um SVG servido como imagem não lê variáveis CSS, então as cores do
+    cristal ficam escritas nele, iguais às do asset da spec.
+  - `BADGE_COR_DE_FUNDO` / `BADGE_COR_DO_TEXTO` em `background.js`: o badge da toolbar é
+    desenhado pelo Chrome, e `chrome.action.setBadgeBackgroundColor` / `setBadgeTextColor` só
+    aceitam a cor escrita. São cópias de `--veio-accent` e `--veio-accent-ink`, e andam juntas:
+    mudar um dos dois tokens aqui pede mudar a cópia lá, senão o contraste de 10,4:1 se perde.
+- **Tamanho, raio e duração novos também entram como token.** A exceção é a imitação do badge
+  da toolbar na vitrine (`.icone-com-badge b`): o tamanho da letra e o raio dela são os que o
+  Chrome desenha, não da Veio, e ficam escritos lá.
 - **Tema:** o escuro é o padrão. O claro entra com `data-tema="claro"`, no `<html>` ou num trecho
   qualquer (é assim que a vitrine mostra os dois lado a lado). O seletor de tema é outro ticket.
 - **Marca:** `<img class="veio-marca" src="veio/icones/icone.svg" alt="PerpetualMiner">` e

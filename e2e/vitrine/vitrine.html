@@ -341,6 +341,94 @@
       display: grid;
       width: 100%;
       min-width: 0;
+
+    /* O badge da toolbar fica fora das colunas: o Chrome o desenha igual nos
+       dois temas, então ele não segue o tema da página. */
+    .toolbar {
+      max-width: 1120px;
+      margin: 20px auto 0;
+      padding: 22px;
+      border: 1px solid var(--veio-border);
+      border-radius: var(--veio-raio-painel);
+      background: var(--veio-bg);
+    }
+
+    .toolbar .nota {
+      margin: -4px 0 14px;
+      font-size: var(--veio-tam-corpo);
+      color: var(--veio-muted);
+      max-width: 72ch;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .badge-estado {
+      min-width: 0;
+      flex: 1 1 260px;
+      padding: 16px;
+      border: 1px solid var(--veio-border);
+      border-radius: var(--veio-raio-card);
+      background: var(--veio-surface);
+    }
+
+    /* Um pedaço da barra do Chrome: o ícone da extensão com o badge no canto. */
+    .barra {
+      display: grid;
+      place-items: center;
+      width: 64px;
+      height: 44px;
+      margin-bottom: 12px;
+      border-radius: var(--veio-raio-input);
+      background: var(--veio-surface-2);
+    }
+
+    .icone-com-badge {
+      position: relative;
+      width: 32px;
+      height: 32px;
+    }
+
+    .icone-com-badge img {
+      display: block;
+      width: 32px;
+      height: 32px;
+    }
+
+    /* A proporção do badge do Chrome: pílula baixa, colada no canto de baixo.
+       O tamanho da letra e o raio são os que o Chrome desenha, não da Veio, então
+       ficam fora de `veio/tokens.css`; só as cores são da identidade. */
+    .icone-com-badge b {
+      position: absolute;
+      right: -3px;
+      bottom: -2px;
+      min-width: 17px;
+      padding: 0 3px;
+      border-radius: 3px;
+      font-family: var(--veio-fonte-mono);
+      font-size: 10px;
+      font-weight: var(--veio-peso-num);
+      line-height: 14px;
+      text-align: center;
+    }
+
+    .badge-estado i {
+      display: block;
+      font-style: normal;
+      font-family: var(--veio-fonte-mono);
+      font-size: var(--veio-tam-legenda);
+      color: var(--veio-muted);
+      overflow-wrap: anywhere;
+    }
+
+    .badge-estado i b {
+      display: block;
+      margin-bottom: 4px;
+      font-weight: var(--veio-peso-num);
+      color: var(--veio-text);
     }
   </style>
 </head>
@@ -448,6 +536,20 @@
 
   </main>
 
+  <!-- BADGE DA TOOLBAR ──────────────────────────────────────────────── -->
+  <section class="toolbar">
+    <div class="secao" style="margin-top:0">
+      <h3>Badge da toolbar (MIN-09)</h3>
+      <p class="nota">
+        O contador da mineração automática de hoje, somando só os idiomas ligados. Quem
+        desenha é o Chrome, em cima do ícone da extensão — aqui é uma imitação, para conferir
+        cor e contraste sem instalar nada. Por isso ele não segue o tema da página: o par
+        <code>accent</code> / <code>accent-ink</code> é o mesmo nos dois.
+      </p>
+      <div class="badges" data-badges></div>
+    </div>
+  </section>
+
   <!-- A mesma base compartilhada que as páginas da extensão carregam. -->
   <script src="/lib/voz/catalogo.js"></script>
   <script src="/lib/voz/texto.js"></script>
@@ -549,6 +651,59 @@
       // A mesma galeria nos dois temas: o que muda é só o data-tema da coluna.
       PerpetualMiner.Vitrine.montarComponentes(
         tema.querySelector('[data-componentes]'), tema.dataset.tema);
+    }
+
+    // ── Badge da toolbar ────────────────────────────────────────────────
+    //
+    // Os três estados que o service worker entrega ao Chrome: o texto do badge
+    // e o tooltip do ícone. Sem badge, o tooltip volta a ser o nome da extensão.
+    const ESTADOS_DO_BADGE = [
+      ['12', 'Mineração automática: 12 hoje', 'Contando'],
+      ['25', 'Mineração automática: limite de hoje atingido', 'Todos os ligados no limite'],
+      ['', 'PerpetualMiner', 'Os dois idiomas desligados'],
+    ];
+
+    // A cor sai dos tokens do tema escuro, que é de onde `background.js` copiou
+    // as duas: se o token mudar e a cópia de lá não mudar junto, a vitrine passa
+    // a discordar do badge de verdade. O teste do badge compara as duas.
+    const tokensDoEscuro = getComputedStyle(document.querySelector('[data-tema="escuro"]'));
+    const badgeFundo = tokensDoEscuro.getPropertyValue('--veio-accent').trim();
+    const badgeTinta = tokensDoEscuro.getPropertyValue('--veio-accent-ink').trim();
+
+    const badges = document.querySelector('[data-badges]');
+    for (const [texto, tooltip, estado] of ESTADOS_DO_BADGE) {
+      const cartao = document.createElement('div');
+      cartao.className = 'badge-estado';
+
+      const barra = document.createElement('div');
+      barra.className = 'barra';
+
+      const icone = document.createElement('span');
+      icone.className = 'icone-com-badge';
+      icone.title = tooltip;
+
+      const img = document.createElement('img');
+      img.src = '/veio/icones/icone.svg';
+      img.alt = 'PerpetualMiner';
+      icone.append(img);
+
+      if (texto) {
+        const badge = document.createElement('b');
+        badge.textContent = texto;
+        badge.style.background = badgeFundo;
+        badge.style.color = badgeTinta;
+        icone.append(badge);
+      }
+
+      barra.append(icone);
+
+      const legenda = document.createElement('i');
+      const nome = document.createElement('b');
+      nome.textContent = estado;
+      legenda.append(nome, tooltip);
+
+      cartao.append(barra, legenda);
+      badges.append(cartao);
     }
   </script>
 
