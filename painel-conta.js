@@ -121,7 +121,8 @@
 
   function nomeVisivel() {
     const { conta } = estado;
-    return conta.displayName || conta.email || textoDaVoz('CFG-10');
+    // Sem nome no perfil, a conta é “Conta Google” (CFG-10), nunca o e-mail.
+    return conta.displayName || textoDaVoz('CFG-10');
   }
 
   function situacaoAtual() {

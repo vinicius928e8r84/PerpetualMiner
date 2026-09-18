@@ -258,8 +258,9 @@ async function getValidToken() {
     body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: usuarioLogado.refreshToken }),
   });
   if (!resp.ok) {
-    const corpo = await resp.json().catch(() => ({}));
-    throw erroDaNuvem(`Renovação do token recusada: ${corpo?.error?.message || `HTTP ${resp.status}`}`, 'expirou');
+    // Qualquer recusa da renovação é a sessão que acabou (CFG-08).
+    const recusa = await erroDaResposta(resp);
+    throw erroDaNuvem(recusa.message, 'expirou');
   }
 
   const data = await resp.json();
@@ -741,7 +742,6 @@ async function removerFrasesFirestore(ids) {
   } catch (err) {
     console.error('[Firestore] delete falhou, ficará pendente:', err.message);
     mostrarFalhaNaNuvem(err);
-    mostrarToast(`Erro ao deletar da nuvem: ${err.message}`);
   }
 }
 

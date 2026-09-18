@@ -112,7 +112,10 @@ body {
   font-weight: var(--veio-peso-num);
 }
 
-.shell-ponto {
+/* O ponto de estado: o da Conexão com o Anki na sidebar e o da conta no card
+   Conta & sync. Um desenho só, com os estados de cada um. */
+.shell-ponto,
+.cfg-ponto {
   flex: none;
   width: 8px;
   height: 8px;
@@ -120,9 +123,12 @@ body {
   background: var(--veio-muted);
 }
 
-.shell-ponto[data-estado="ligada"] { background: var(--veio-success); }
-.shell-ponto[data-estado="desligada"] { background: var(--veio-danger); }
-.shell-ponto[data-estado="conectando"] {
+.shell-ponto[data-estado="ligada"],
+.cfg-ponto[data-estado="ok"] { background: var(--veio-success); }
+.shell-ponto[data-estado="desligada"],
+.cfg-ponto[data-estado="erro"] { background: var(--veio-danger); }
+.shell-ponto[data-estado="conectando"],
+.cfg-ponto[data-estado="sincronizando"] {
   animation: veio-piscar var(--veio-piscar) steps(1) infinite;
 }
 
@@ -297,7 +303,7 @@ body {
   background: color-mix(in srgb, var(--veio-surface-2) 45%, transparent);
 }
 
-.cfg-azulejo {
+.cfg-icone {
   display: grid;
   flex: none;
   place-items: center;
@@ -308,12 +314,12 @@ body {
   color: var(--veio-muted);
 }
 
-.shell-card--perigo .cfg-azulejo {
+.shell-card--perigo .cfg-icone {
   background: color-mix(in srgb, var(--veio-danger) 12%, transparent);
   color: var(--veio-danger);
 }
 
-.cfg-azulejo svg,
+.cfg-icone svg,
 .cfg-chevron svg {
   width: 18px;
   height: 18px;
@@ -452,20 +458,6 @@ body {
 
 .cfg-status--erro {
   color: var(--veio-danger);
-}
-
-.cfg-ponto {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: var(--veio-raio-pilula);
-  background: var(--veio-muted);
-}
-
-.cfg-ponto[data-estado="ok"] { background: var(--veio-success); }
-.cfg-ponto[data-estado="erro"] { background: var(--veio-danger); }
-.cfg-ponto[data-estado="sincronizando"] {
-  animation: veio-piscar var(--veio-piscar) steps(1) infinite;
 }
 
 /* Janela estreita: abaixo de ~560 px de conteúdo, o resumo sai da linha

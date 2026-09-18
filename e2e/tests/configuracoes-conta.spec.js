@@ -191,6 +191,29 @@ test('Sem sincronizar (CFG-03): só no card e no chip, com Tentar de novo e Deta
   await expect(conta(page).getByRole('alert')).toHaveCount(0);
 });
 
+test('apagar uma frase com a nuvem fora do ar: o problema aparece no chip e no card, sem toast', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: frasesDeExemplo(2) });
+  await extensao.semearSessao({ displayName: 'Ana Souza' });
+  await abrirPainel(page, extensao, '#frases');
+  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
+
+  // Anota todo toast que aparece: o de sucesso do apagar pode cobrir um de erro logo em seguida.
+  await page.evaluate(() => {
+    window.__toasts = [];
+    new MutationObserver(mudancas => {
+      for (const { addedNodes } of mudancas) for (const no of addedNodes) if (no.id === '_toast') window.__toasts.push(no.textContent);
+    }).observe(document.body, { childList: true });
+  });
+  fakes.google.ficarForaDoAr();
+  await page.locator('.phrase-item').first().locator('[data-action="delete"]').click();
+  await expect(estadoDoChip(page)).toHaveText('Sem sincronizar');
+  await expect(page.getByText(/nuvem/i).filter({ visible: true })).toHaveCount(0);
+  expect((await page.evaluate(() => window.__toasts)).filter(t => /nuvem|erro/i.test(t))).toEqual([]);
+
+  await chip(page).click();
+  await expect(conta(page).getByRole('alert')).toContainText('As mudanças deste computador ainda não subiram para a nuvem.');
+});
+
 test('Sync parcial (CFG-05): “8 de 10 frases sincronizadas · 2 ficaram só neste computador”, e o chip “8 de 10 sincronizadas”', async ({ page, extensao, fakes }) => {
   const frases = frasesDeExemplo(10);
   fakes.google.gravarFrases('uid-parcial', frases.slice(2));
