@@ -871,7 +871,7 @@ async function handleAutoMinerCandidate(request) {
     await recordAutoMinerEvent({ action: 'skip', reason: 'disabled', texto, lang, contexto: request.contexto || null });
     return { action: 'skip', reason: 'disabled', state };
   }
-  if (state.daily[lang].count >= Number(langSettings.dailyLimit || 0)) {
+  if (noLimiteDeHoje(state.settings, state.daily, lang)) {
     await recordAutoMinerEvent({ action: 'skip', reason: 'daily_limit', texto, lang, contexto: request.contexto || null });
     return { action: 'skip', reason: 'daily_limit', state };
   }
@@ -1044,6 +1044,123 @@ function autoMinerTodayKey() {
   const dd = String(now.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
 }
+
+// ─── Badge da toolbar ────────────────────────────────────────────────────────
+//
+// O contador da mineração automática de hoje, somando só os idiomas ligados
+// (MIN-09). Sem badge com os dois desligados: um contador parado em 0 diria que
+// a mineração automática está funcionando e não minerou nada.
+//
+// Quem manda no badge é o armazenamento, não quem escreveu nele: o service
+// worker escuta as duas chaves da mineração automática, então ligar um idioma no
+// popup, cada frase minerada automaticamente e a virada do dia chegam todas pelo
+// mesmo caminho. A virada do dia não escreve nada sozinha — `getAutoMinerState`
+// já devolve o contador zerado quando a data guardada não é a de hoje —, então um
+// alarme diário pede o badge de novo depois da meia-noite.
+
+// As cores do badge são as únicas cores escritas fora de `veio/tokens.css`:
+// `chrome.action` não lê CSS. São cópias de `--veio-accent` e `--veio-accent-ink`,
+// e a exceção está registrada em `veio/README.md`, junto com a do `icone.svg`.
+const BADGE_COR_DE_FUNDO = '#F5B83D';
+const BADGE_COR_DO_TEXTO = '#1A1204';
+const ALARME_VIRADA_DO_DIA = 'pm-virada-do-dia';
+
+/** Os idiomas da mineração automática, declarados uma vez só. */
+const IDIOMAS_DA_MINERACAO = Object.keys(DEFAULT_AUTO_MINER_SETTINGS);
+
+/** Quantas frases um idioma minerou automaticamente hoje. */
+function contagemDeHoje(daily, lang) {
+  return Number(daily[lang]?.count || 0);
+}
+
+/** Se um idioma já bateu o limite de hoje. */
+function noLimiteDeHoje(settings, daily, lang) {
+  return contagemDeHoje(daily, lang) >= Number(settings[lang]?.dailyLimit || 0);
+}
+
+/**
+ * O badge da mineração automática, ou null quando não há badge nenhum.
+ *
+ * @param {{settings: object, daily: object}} state
+ * @returns {{texto: string, titulo: string} | null}
+ */
+function badgeDaMineracaoAutomatica({ settings, daily }) {
+  const ligados = IDIOMAS_DA_MINERACAO.filter(lang => settings[lang]?.enabled);
+  if (!ligados.length) return null;
+
+  const total = ligados.reduce((soma, lang) => soma + contagemDeHoje(daily, lang), 0);
+  const todosNoLimite = ligados.every(lang => noLimiteDeHoje(settings, daily, lang));
+
+  // O número do badge não passa pelo catálogo: o limite de cada idioma é no
+  // máximo 100, então a soma nunca chega aos milhares onde o PT-BR poria ponto —
+  // e o badge do Chrome corta em poucos caracteres. O tooltip, esse é do catálogo.
+  return {
+    texto: String(total),
+    titulo: todosNoLimite
+      ? textoDaVoz('MIN-09.noLimite')
+      : textoDaVoz('MIN-09.contador', { n: total }),
+  };
+}
+
+/** Põe na toolbar o badge do estado de agora. */
+async function atualizarBadgeDaToolbar() {
+  if (!chrome.action?.setBadgeText) return;
+
+  const badge = badgeDaMineracaoAutomatica(await getAutoMinerState());
+
+  // Sem badge, o tooltip volta a ser o nome da extensão. Escrito por extenso: um
+  // título vazio deixa `getTitle` vazio, e não devolve o padrão do manifesto.
+  await chrome.action.setBadgeText({ text: badge ? badge.texto : '' });
+  await chrome.action.setTitle({ title: badge ? badge.titulo : chrome.runtime.getManifest().name });
+  if (!badge) return;
+
+  // O par de cores anda junto: o texto escuro sobre o ouro é o contraste de
+  // 10,4:1 da spec. `minimum_chrome_version` no manifesto garante as duas.
+  await chrome.action.setBadgeBackgroundColor({ color: BADGE_COR_DE_FUNDO });
+  await chrome.action.setBadgeTextColor({ color: BADGE_COR_DO_TEXTO });
+}
+
+/**
+ * Agenda o pedido de badge da próxima meia-noite do relógio local.
+ *
+ * O alarme dispara uma vez só e é reagendado a cada disparo, em vez de repetir a
+ * cada 24 h: um período fixo escorregaria uma hora para sempre na primeira
+ * mudança de horário de verão, e o badge de ontem ficaria na toolbar até 1h.
+ */
+async function agendarViradaDoDia() {
+  // O alarme sobrevive ao service worker, então recriá-lo a cada despertar à toa
+  // só empurraria a próxima meia-noite para longe. Depois de disparar ele some
+  // sozinho, e aí esta chamada agenda o da meia-noite seguinte.
+  if (await chrome.alarms?.get(ALARME_VIRADA_DO_DIA)) return;
+
+  const proximaMeiaNoite = new Date();
+  proximaMeiaNoite.setHours(24, 0, 5, 0);
+  await chrome.alarms?.create(ALARME_VIRADA_DO_DIA, { when: proximaMeiaNoite.getTime() });
+}
+
+// Os `?.` daqui para baixo são pelos testes Node de `test_auto_keyword.js`, que
+// rodam este arquivo com um `chrome` mínimo, sem `alarms` nem `onChanged`.
+chrome.alarms?.onAlarm.addListener(alarme => {
+  if (alarme.name !== ALARME_VIRADA_DO_DIA) return;
+  agendarViradaDoDia();
+  atualizarBadgeDaToolbar();
+});
+
+// Na partida do Chrome o badge não volta sozinho, e nada garante que outro
+// evento acorde o service worker logo. Escutar a partida é o que o acorda; o
+// trabalho é o do fim do arquivo, que roda a cada despertar.
+chrome.runtime.onStartup?.addListener(() => {});
+
+chrome.storage.onChanged?.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if (AUTO_MINER_SETTINGS_KEY in changes || AUTO_MINER_DAILY_KEY in changes) atualizarBadgeDaToolbar();
+});
+
+// O service worker acorda e dorme o tempo todo — inclusive na partida do Chrome,
+// que é quando este arquivo roda de novo. Ao acordar, o badge que está na toolbar
+// pode ser o de ontem.
+agendarViradaDoDia();
+atualizarBadgeDaToolbar();
 
 function broadcastAutoMinerState(state) {
   chrome.tabs?.query?.({}, tabs => {
