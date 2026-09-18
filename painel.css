@@ -47,7 +47,7 @@ body {
 }
 
 .shell-marca .veio-nome {
-  font-size: 16px;
+  font-size: var(--veio-tam-card);
   white-space: nowrap;
 }
 
@@ -164,8 +164,8 @@ body {
   border-radius: var(--veio-raio-pilula);
   background: var(--veio-accent-soft);
   color: var(--veio-accent-text);
-  font-size: 12px;
-  font-weight: 800;
+  font-size: var(--veio-tam-legenda);
+  font-weight: var(--veio-peso-display);
 }
 
 .shell-avatar img {
@@ -192,8 +192,8 @@ body {
 
 .shell-chip__nome {
   overflow: hidden;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-titulo);
   line-height: 1.35;
 }
 
@@ -296,7 +296,7 @@ body {
   border-radius: var(--veio-raio-card);
   background: var(--veio-bg);
   color: var(--veio-text);
-  font-size: 14px;
+  font-size: var(--veio-tam-corpo);
 }
 
 /* ── Trilho (janela estreita) ─────────────────────────── */

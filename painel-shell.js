@@ -38,7 +38,7 @@
   };
   const ouvintesDeArea = new Map();
 
-  const texto = (id, valores) => raiz.textoDaVoz(id, valores);
+  const { textoDaVoz } = raiz;
   const $ = seletor => document.querySelector(seletor);
   const $$ = seletor => [...document.querySelectorAll(seletor)];
   const porId = id => document.getElementById(id);
@@ -65,9 +65,9 @@
 
   /** Os textos fixos do shell, pelos atributos data-voz do painel.html. */
   function escreverTextosDoCatalogo() {
-    for (const no of $$('[data-voz]')) no.textContent = texto(no.dataset.voz);
-    for (const no of $$('[data-voz-aria]')) no.setAttribute('aria-label', texto(no.dataset.vozAria));
-    for (const no of $$('[data-voz-title]')) no.title = texto(no.dataset.vozTitle);
+    for (const no of $$('[data-voz]')) no.textContent = textoDaVoz(no.dataset.voz);
+    for (const no of $$('[data-voz-aria]')) no.setAttribute('aria-label', textoDaVoz(no.dataset.vozAria));
+    for (const no of $$('[data-voz-title]')) no.title = textoDaVoz(no.dataset.vozTitle);
     // No trilho só o ícone fica à vista: o rótulo vira o tooltip.
     for (const item of $$('.shell-item')) {
       if (item.dataset.area !== 'anki') item.title = item.querySelector('.shell-rotulo').textContent;
@@ -142,7 +142,7 @@
 
   function mostrarTotalDeFrases(n) {
     porId('shell-total').textContent = n.toLocaleString('pt-BR');
-    porId('shell-total-descricao').textContent = texto('PAI-05', { n });
+    porId('shell-total-descricao').textContent = textoDaVoz('PAI-05', { n });
   }
 
   // ─── Conexão com o Anki ────────────────────────────────────────────────────
@@ -162,7 +162,7 @@
 
   function mostrarConexao(situacao) {
     estado.conexao = situacao;
-    const status = situacao === 'conectando' ? texto('BRG-02') : texto(`BRG-01.${situacao}`);
+    const status = situacao === 'conectando' ? textoDaVoz('BRG-02') : textoDaVoz(`BRG-01.${situacao}`);
     $('.shell-ponto').dataset.estado = situacao;
     $('.shell-item[data-area="anki"]').title = status;
     porId('shell-conexao-descricao').textContent = status;
@@ -207,14 +207,14 @@
 
     if (!conta) {
       avatar.append(raiz.Veio.iconeVeio('conta'));
-      nome.textContent = texto('SHL-05.semConta');
+      nome.textContent = textoDaVoz('SHL-05.semConta');
       situacao.textContent = '';
       situacao.hidden = true;
       chip.title = nome.textContent;
       return;
     }
 
-    const nomeVisivel = conta.displayName || conta.email || texto('CFG-10');
+    const nomeVisivel = conta.displayName || conta.email || textoDaVoz('CFG-10');
     nome.textContent = nomeVisivel;
     chip.title = nomeVisivel;
     if (conta.photoURL) {
@@ -233,9 +233,9 @@
 
   function textoDaSincronizacao() {
     switch (estado.sincronizacao) {
-      case 'sincronizando': return texto('CFG-01');
-      case 'sincronizado': return texto('CFG-02', { quando: haQuantoTempo(estado.sincronizadoEm) });
-      case 'erro': return texto('SHL-05.semSincronizar');
+      case 'sincronizando': return textoDaVoz('CFG-01');
+      case 'sincronizado': return textoDaVoz('CFG-02', { quando: haQuantoTempo(estado.sincronizadoEm) });
+      case 'erro': return textoDaVoz('SHL-05.semSincronizar');
       default: return '';
     }
   }
