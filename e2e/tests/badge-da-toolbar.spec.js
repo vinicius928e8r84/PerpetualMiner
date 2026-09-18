@@ -18,6 +18,7 @@ const path = require('path');
 const { test, expect } = require('../fixtures');
 
 const FRASE_RUSSA = 'Я улыбаюсь';
+const ALARME_VIRADA_DO_DIA = 'pm-virada-do-dia';
 
 /**
  * O valor de um token no tema padrão de `veio/tokens.css`.
@@ -50,6 +51,19 @@ function naToolbar(extensao) {
     badge: await chrome.action.getBadgeText({}),
     tooltip: await chrome.action.getTitle({}),
   }));
+}
+
+/** O próximo disparo do alarme da virada do dia, como o Chrome o guarda. */
+async function proximoAlarme(extensao) {
+  const alarme = await extensao.serviceWorker.evaluate(
+    nome => chrome.alarms.get(nome), ALARME_VIRADA_DO_DIA);
+  if (!alarme) return null;
+  const quando = new Date(alarme.scheduledTime);
+  return {
+    dia: diaDe(quando),
+    horaEMinuto: [quando.getHours(), quando.getMinutes()],
+    periodo: alarme.periodInMinutes ?? null,
+  };
 }
 
 /** A data de um dia no formato que o contador diário usa. */
@@ -212,19 +226,17 @@ test('o alarme da meia-noite acerta o badge e se reagenda para a meia-noite segu
   // O Chrome não deixa o teste esperar a meia-noite: o teste troca o alarme por
   // um de mesmo nome que dispara já, que é o que o Chrome faria à meia-noite.
   await extensao.serviceWorker.evaluate(
-    () => chrome.alarms.create('pm-virada-do-dia', { when: Date.now() + 100 }));
+    nome => chrome.alarms.create(nome, { when: Date.now() + 100 }), ALARME_VIRADA_DO_DIA);
 
   await expect.poll(async () => (await naToolbar(extensao)).badge).toBe('12');
 
   // E o próximo é o da meia-noite seguinte no relógio local, de novo. Um período
   // fixo de 24 h escorregaria uma hora a cada mudança de horário de verão.
-  await expect.poll(() => extensao.serviceWorker.evaluate(async () => {
-    const alarme = await chrome.alarms.get('pm-virada-do-dia');
-    const meiaNoite = new Date();
-    meiaNoite.setHours(24, 0, 5, 0);
-    return alarme && { quando: alarme.scheduledTime, periodo: alarme.periodInMinutes ?? null, meiaNoite: meiaNoite.getTime() };
-  }).then(r => r && { mesmaMeiaNoite: r.quando === r.meiaNoite, periodo: r.periodo })).toEqual({
-    mesmaMeiaNoite: true,
+  const amanha = new Date();
+  amanha.setDate(amanha.getDate() + 1);
+  await expect.poll(() => proximoAlarme(extensao)).toEqual({
+    dia: diaDe(amanha),
+    horaEMinuto: [0, 0],
     periodo: null,
   });
 });

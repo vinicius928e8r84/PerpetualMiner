@@ -1127,10 +1127,11 @@ async function atualizarBadgeDaToolbar() {
  * cada 24 h: um período fixo escorregaria uma hora para sempre na primeira
  * mudança de horário de verão, e o badge de ontem ficaria na toolbar até 1h.
  */
-async function agendarViradaDoDia({ refazer = false } = {}) {
+async function agendarViradaDoDia() {
   // O alarme sobrevive ao service worker, então recriá-lo a cada despertar à toa
-  // só empurraria a próxima meia-noite para longe.
-  if (!refazer && await chrome.alarms?.get(ALARME_VIRADA_DO_DIA)) return;
+  // só empurraria a próxima meia-noite para longe. Depois de disparar ele some
+  // sozinho, e aí esta chamada agenda o da meia-noite seguinte.
+  if (await chrome.alarms?.get(ALARME_VIRADA_DO_DIA)) return;
 
   const proximaMeiaNoite = new Date();
   proximaMeiaNoite.setHours(24, 0, 5, 0);
@@ -1141,16 +1142,14 @@ async function agendarViradaDoDia({ refazer = false } = {}) {
 // rodam este arquivo com um `chrome` mínimo, sem `alarms` nem `onChanged`.
 chrome.alarms?.onAlarm.addListener(alarme => {
   if (alarme.name !== ALARME_VIRADA_DO_DIA) return;
-  agendarViradaDoDia({ refazer: true });
+  agendarViradaDoDia();
   atualizarBadgeDaToolbar();
 });
 
 // Na partida do Chrome o badge não volta sozinho, e nada garante que outro
-// evento acorde o service worker logo: escutar a partida é o que o acorda.
-chrome.runtime.onStartup?.addListener(() => {
-  agendarViradaDoDia();
-  atualizarBadgeDaToolbar();
-});
+// evento acorde o service worker logo. Escutar a partida é o que o acorda; o
+// trabalho é o do fim do arquivo, que roda a cada despertar.
+chrome.runtime.onStartup?.addListener(() => {});
 
 chrome.storage.onChanged?.addListener((changes, area) => {
   if (area !== 'local') return;
