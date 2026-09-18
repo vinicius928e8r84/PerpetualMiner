@@ -1064,14 +1064,18 @@ function autoMinerTodayKey() {
 const BADGE_COR_DE_FUNDO = '#F5B83D';
 const BADGE_COR_DO_TEXTO = '#1A1204';
 const ALARME_VIRADA_DO_DIA = 'pm-virada-do-dia';
-const UM_DIA_EM_MINUTOS = 24 * 60;
 
 /** Os idiomas da mineração automática, declarados uma vez só. */
 const IDIOMAS_DA_MINERACAO = Object.keys(DEFAULT_AUTO_MINER_SETTINGS);
 
+/** Quantas frases um idioma minerou automaticamente hoje. */
+function contagemDeHoje(daily, lang) {
+  return Number(daily[lang]?.count || 0);
+}
+
 /** Se um idioma já bateu o limite de hoje. */
 function noLimiteDeHoje(settings, daily, lang) {
-  return Number(daily[lang]?.count || 0) >= Number(settings[lang]?.dailyLimit || 0);
+  return contagemDeHoje(daily, lang) >= Number(settings[lang]?.dailyLimit || 0);
 }
 
 /**
@@ -1084,7 +1088,7 @@ function badgeDaMineracaoAutomatica({ settings, daily }) {
   const ligados = IDIOMAS_DA_MINERACAO.filter(lang => settings[lang]?.enabled);
   if (!ligados.length) return null;
 
-  const total = ligados.reduce((soma, lang) => soma + Number(daily[lang]?.count || 0), 0);
+  const total = ligados.reduce((soma, lang) => soma + contagemDeHoje(daily, lang), 0);
   const todosNoLimite = ligados.every(lang => noLimiteDeHoje(settings, daily, lang));
 
   // O número do badge não passa pelo catálogo: o limite de cada idioma é no
@@ -1116,24 +1120,36 @@ async function atualizarBadgeDaToolbar() {
   await chrome.action.setBadgeTextColor({ color: BADGE_COR_DO_TEXTO });
 }
 
-/** Agenda o pedido de badge da próxima meia-noite, e o de cada meia-noite depois. */
-async function agendarViradaDoDia() {
-  // O alarme sobrevive ao service worker, então recriá-lo a cada despertar só
-  // empurraria a próxima meia-noite para longe.
-  if (await chrome.alarms?.get(ALARME_VIRADA_DO_DIA)) return;
+/**
+ * Agenda o pedido de badge da próxima meia-noite do relógio local.
+ *
+ * O alarme dispara uma vez só e é reagendado a cada disparo, em vez de repetir a
+ * cada 24 h: um período fixo escorregaria uma hora para sempre na primeira
+ * mudança de horário de verão, e o badge de ontem ficaria na toolbar até 1h.
+ */
+async function agendarViradaDoDia({ refazer = false } = {}) {
+  // O alarme sobrevive ao service worker, então recriá-lo a cada despertar à toa
+  // só empurraria a próxima meia-noite para longe.
+  if (!refazer && await chrome.alarms?.get(ALARME_VIRADA_DO_DIA)) return;
 
   const proximaMeiaNoite = new Date();
   proximaMeiaNoite.setHours(24, 0, 5, 0);
-  chrome.alarms?.create(ALARME_VIRADA_DO_DIA, {
-    when: proximaMeiaNoite.getTime(),
-    periodInMinutes: UM_DIA_EM_MINUTOS,
-  });
+  await chrome.alarms?.create(ALARME_VIRADA_DO_DIA, { when: proximaMeiaNoite.getTime() });
 }
 
 // Os `?.` daqui para baixo são pelos testes Node de `test_auto_keyword.js`, que
 // rodam este arquivo com um `chrome` mínimo, sem `alarms` nem `onChanged`.
 chrome.alarms?.onAlarm.addListener(alarme => {
-  if (alarme.name === ALARME_VIRADA_DO_DIA) atualizarBadgeDaToolbar();
+  if (alarme.name !== ALARME_VIRADA_DO_DIA) return;
+  agendarViradaDoDia({ refazer: true });
+  atualizarBadgeDaToolbar();
+});
+
+// Na partida do Chrome o badge não volta sozinho, e nada garante que outro
+// evento acorde o service worker logo: escutar a partida é o que o acorda.
+chrome.runtime.onStartup?.addListener(() => {
+  agendarViradaDoDia();
+  atualizarBadgeDaToolbar();
 });
 
 chrome.storage.onChanged?.addListener((changes, area) => {

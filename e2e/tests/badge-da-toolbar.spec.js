@@ -7,9 +7,10 @@
 // badge e o tooltip do ícone, por `chrome.action.getBadgeText` e
 // `chrome.action.getTitle` —, que é exatamente o que a pessoa lê na toolbar.
 //
-// A mineração automática que aumenta o contador entra pelo handler que o content
-// script chama (`handleAutoMinerCandidate`), como o teste do menu de contexto faz
-// com o handler do Chrome. As duas exceções estão na seção de testes do CLAUDE.md.
+// A mineração automática que aumenta o contador entra pelo caminho de verdade:
+// o player falso tocando com uma legenda na tela. A virada do dia é do relógio
+// do Chrome, que o teste não adianta: ele dispara o alarme no lugar do Chrome.
+// As exceções estão na seção de testes do CLAUDE.md.
 
 const fs = require('fs');
 const path = require('path');
@@ -34,8 +35,13 @@ function tokenDoTemaPadrao(nome) {
 }
 
 /** "#F5B83D" como o Chrome devolve a cor: [R, G, B, A]. */
-function comoORgba(hex) {
+function comoCorDoChrome(hex) {
   return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).concat(255);
+}
+
+/** "#F5B83D" como o navegador devolve a cor calculada: "rgb(245, 184, 61)". */
+function comoRgbDoCss(hex) {
+  return `rgb(${comoCorDoChrome(hex).slice(0, 3).join(', ')})`;
 }
 
 /** O que a pessoa vê na toolbar: o texto do badge e o tooltip do ícone. */
@@ -142,7 +148,7 @@ test('ligar e desligar um idioma no popup muda o badge na hora', async ({ page, 
   });
 });
 
-test('cada mineração automática soma um no badge', async ({ extensao }) => {
+test('cada mineração automática soma um no badge', async ({ page, paginas, extensao }) => {
   await semearMineracaoAutomatica(extensao, {
     en: { ligado: false, limite: 20, hoje: 0 },
     ru: { ligado: true, limite: 20, hoje: 4 },
@@ -159,21 +165,26 @@ test('cada mineração automática soma um no badge', async ({ extensao }) => {
   });
   await expect.poll(async () => (await naToolbar(extensao)).badge).toBe('4');
 
-  const resultado = await extensao.serviceWorker.evaluate(texto => handleAutoMinerCandidate({
-    texto,
-    origem: 'auto',
-    lang: 'ru',
-    contexto: { fonte: 'netflix', titulo: 'Episódio', detalhe: '' },
-  }), FRASE_RUSSA);
+  // O player falso com a legenda russa na tela, tocando de verdade: a mineração
+  // automática só olha legenda de vídeo que não está pausado.
+  await page.goto(paginas.url('player.html'));
+  await page.evaluate(async frase => {
+    document.querySelector('#legenda').textContent = frase;
+    const tela = document.createElement('canvas');
+    tela.getContext('2d').fillRect(0, 0, 1, 1);
+    const video = document.querySelector('video');
+    video.srcObject = tela.captureStream();
+    await video.play();
+  }, FRASE_RUSSA);
 
-  expect(resultado.action).toBe('saved');
+  await expect.poll(async () => (await extensao.frases()).map(frase => frase.texto)).toContain(FRASE_RUSSA);
   await expect.poll(() => naToolbar(extensao)).toEqual({
     badge: '5',
     tooltip: 'Mineração automática: 5 hoje',
   });
 });
 
-test('na virada do dia o badge zera, e um alarme diário faz isso sem ninguém mexer', async ({ extensao }) => {
+test('na virada do dia o contador de ontem não conta como o de hoje', async ({ extensao }) => {
   const ontem = diaDe(new Date(Date.now() - 24 * 60 * 60 * 1000));
   await semearMineracaoAutomatica(extensao, {
     en: { ligado: true, limite: 20, hoje: 12 },
@@ -181,34 +192,66 @@ test('na virada do dia o badge zera, e um alarme diário faz isso sem ninguém m
     dia: ontem,
   });
 
-  // O contador de ontem não conta como o de hoje.
   await expect.poll(() => naToolbar(extensao)).toEqual({
     badge: '0',
     tooltip: 'Mineração automática: 0 hoje',
   });
-
-  // E a virada acontece sozinha: há um alarme que se repete a cada 24 h.
-  const alarme = await extensao.serviceWorker.evaluate(
-    () => chrome.alarms.get('pm-virada-do-dia'));
-  expect(alarme?.periodInMinutes).toBe(24 * 60);
 });
 
-test('a vitrine mostra os três estados do badge, nas cores dos tokens', async ({ page, paginas }) => {
+test('o alarme da meia-noite acerta o badge e se reagenda para a meia-noite seguinte', async ({ extensao }) => {
+  await semearMineracaoAutomatica(extensao, {
+    en: { ligado: true, limite: 20, hoje: 12 },
+    ru: { ligado: false, limite: 20, hoje: 0 },
+  });
+  await expect.poll(async () => (await naToolbar(extensao)).badge).toBe('12');
+
+  // Um badge velho na toolbar, como o de ontem fica depois da meia-noite: a
+  // virada do dia não escreve nada no armazenamento, então só o alarme o acerta.
+  await extensao.serviceWorker.evaluate(() => chrome.action.setBadgeText({ text: '99' }));
+
+  // O Chrome não deixa o teste esperar a meia-noite: o teste troca o alarme por
+  // um de mesmo nome que dispara já, que é o que o Chrome faria à meia-noite.
+  await extensao.serviceWorker.evaluate(
+    () => chrome.alarms.create('pm-virada-do-dia', { when: Date.now() + 100 }));
+
+  await expect.poll(async () => (await naToolbar(extensao)).badge).toBe('12');
+
+  // E o próximo é o da meia-noite seguinte no relógio local, de novo. Um período
+  // fixo de 24 h escorregaria uma hora a cada mudança de horário de verão.
+  await expect.poll(() => extensao.serviceWorker.evaluate(async () => {
+    const alarme = await chrome.alarms.get('pm-virada-do-dia');
+    const meiaNoite = new Date();
+    meiaNoite.setHours(24, 0, 5, 0);
+    return alarme && { quando: alarme.scheduledTime, periodo: alarme.periodInMinutes ?? null, meiaNoite: meiaNoite.getTime() };
+  }).then(r => r && { mesmaMeiaNoite: r.quando === r.meiaNoite, periodo: r.periodo })).toEqual({
+    mesmaMeiaNoite: true,
+    periodo: null,
+  });
+});
+
+test('a vitrine mostra os três estados do badge, nas cores dos tokens', async ({ page, paginas, extensao }) => {
   // O badge de verdade é desenhado pelo Chrome na barra do navegador, então o
   // preview do Vercel não o alcança. A vitrine tem uma imitação dele, para
   // conferir cor e contraste no navegador comum.
   await page.goto(paginas.url('vitrine.html'));
+
+  // A vitrine não carrega o catálogo da Voz; o texto dela é conferido contra o
+  // catálogo, para não ficar para trás quando o catálogo mudar.
+  const voz = await extensao.serviceWorker.evaluate(() => ({
+    contador: textoDaVoz('MIN-09.contador', { n: 12 }),
+    noLimite: textoDaVoz('MIN-09.noLimite'),
+  }));
 
   const estados = page.locator('.badge-estado');
   await expect(estados).toHaveCount(3);
 
   const contando = estados.filter({ hasText: 'Contando' });
   await expect(contando.locator('.icone-com-badge b')).toHaveText('12');
-  await expect(contando).toContainText('Mineração automática: 12 hoje');
+  await expect(contando).toContainText(voz.contador);
 
   const noLimite = estados.filter({ hasText: 'Todos os ligados no limite' });
   await expect(noLimite.locator('.icone-com-badge b')).toHaveText('25');
-  await expect(noLimite).toContainText('Mineração automática: limite de hoje atingido');
+  await expect(noLimite).toContainText(voz.noLimite);
 
   // Desligado não tem badge nenhum, e o tooltip é o nome da extensão.
   const desligado = estados.filter({ hasText: 'Os dois idiomas desligados' });
@@ -217,9 +260,9 @@ test('a vitrine mostra os três estados do badge, nas cores dos tokens', async (
 
   // A cor sai dos tokens, não de um literal repetido na vitrine.
   await expect(contando.locator('.icone-com-badge b')).toHaveCSS(
-    'background-color', `rgb(${comoORgba(tokenDoTemaPadrao('--veio-accent')).slice(0, 3).join(', ')})`);
+    'background-color', comoRgbDoCss(tokenDoTemaPadrao('--veio-accent')));
   await expect(contando.locator('.icone-com-badge b')).toHaveCSS(
-    'color', `rgb(${comoORgba(tokenDoTemaPadrao('--veio-accent-ink')).slice(0, 3).join(', ')})`);
+    'color', comoRgbDoCss(tokenDoTemaPadrao('--veio-accent-ink')));
 });
 
 test('o badge usa as cores da identidade Veio', async ({ extensao }) => {
@@ -240,6 +283,6 @@ test('o badge usa as cores da identidade Veio', async ({ extensao }) => {
 
   // E são as mesmas de `veio/tokens.css`: mudar o token sem mudar a cópia de
   // `background.js` quebra aqui, em vez de sair um badge fora da identidade.
-  expect(cores.fundo).toEqual(comoORgba(tokenDoTemaPadrao('--veio-accent')));
-  expect(cores.texto).toEqual(comoORgba(tokenDoTemaPadrao('--veio-accent-ink')));
+  expect(cores.fundo).toEqual(comoCorDoChrome(tokenDoTemaPadrao('--veio-accent')));
+  expect(cores.texto).toEqual(comoCorDoChrome(tokenDoTemaPadrao('--veio-accent-ink')));
 });
