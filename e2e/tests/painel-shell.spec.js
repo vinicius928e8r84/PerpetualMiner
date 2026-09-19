@@ -36,6 +36,12 @@ const navegacao = page => page.getByRole('navigation', { name: 'Navegação do p
 const itemDaNav = (page, nome) => page.locator('.shell-lateral').getByRole('link', { name: nome, exact: true });
 const tituloDaArea = page => page.getByRole('heading', { level: 1 });
 const chip = page => page.locator('#shell-chip');
+
+/** Sem conta, o chip diz “Sem conta” no lugar do nome e “Só neste computador” no do estado. */
+async function esperarChipSemConta(page) {
+  await expect(page.locator('#shell-chip-nome')).toHaveText('Sem conta');
+  await expect(page.locator('#shell-chip-estado')).toHaveText('Só neste computador');
+}
 const pontoDaConexao = page => page.locator('.shell-ponto');
 const faixaF1 = page => page.getByText('A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.');
 
@@ -156,7 +162,7 @@ test('o total de frases fica no item Frases, no formato PT-BR, e acompanha o que
   await expect(item.locator('.shell-contador')).toHaveText('1.285');
 });
 
-test('primeira execução: Frases 0, ponto desligado e chip “Sem conta · só neste computador”', async ({ page, extensao, fakes }) => {
+test('primeira execução: Frases 0, ponto desligado e o chip “Sem conta”, “Só neste computador”', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirPainel(page, extensao);
 
@@ -165,7 +171,7 @@ test('primeira execução: Frases 0, ponto desligado e chip “Sem conta · só 
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada');
   await expect(itemDaNav(page, 'Conexão com o Anki')).toHaveAttribute('title', 'Conexão com o Anki: desligada');
   await expect(itemDaNav(page, 'Conexão com o Anki')).toHaveAccessibleDescription('Conexão com o Anki: desligada');
-  await expect(chip(page)).toHaveText('Sem conta · só neste computador');
+  await esperarChipSemConta(page);
 });
 
 test('com a conta, o chip mostra o nome e “Sincronizado agora”, e leva a Configurações › Conta & sync', async ({ page, extensao }) => {
@@ -352,6 +358,9 @@ test('dentro do shell, Enviar ao Anki cria o envio, e o acompanhamento continua 
 test('Configurações hospeda Entrar com Google e Apagar tudo de hoje', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(2) });
   await abrirPainel(page, extensao, '#configuracoes');
+  // Os cards começam fechados (resumo primeiro): abre-se Conta & sync e Zona de perigo.
+  await page.getByRole('button', { name: 'Conta & sync', exact: true }).click();
+  await page.getByRole('button', { name: 'Zona de perigo', exact: true }).click();
 
   await expect(page.getByRole('button', { name: 'Entrar com Google' })).toBeVisible();
 

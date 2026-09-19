@@ -32,7 +32,7 @@ body {
   gap: 6px;
   min-width: 0;
   height: calc(100vh - 24px);
-  padding: 18px 12px 12px;
+  padding: 18px 12px;
   border: 1px solid var(--veio-border);
   border-radius: var(--veio-raio-painel);
   background: var(--veio-surface);
@@ -112,7 +112,10 @@ body {
   font-weight: var(--veio-peso-num);
 }
 
-.shell-ponto {
+/* O ponto de estado: o da Conexão com o Anki na sidebar e o da conta no card
+   Conta & sync. Um desenho só, com os estados de cada um. */
+.shell-ponto,
+.cfg-ponto {
   flex: none;
   width: 8px;
   height: 8px;
@@ -120,16 +123,19 @@ body {
   background: var(--veio-muted);
 }
 
-.shell-ponto[data-estado="ligada"] { background: var(--veio-success); }
-.shell-ponto[data-estado="desligada"] { background: var(--veio-danger); }
-.shell-ponto[data-estado="conectando"] {
+.shell-ponto[data-estado="ligada"],
+.cfg-ponto[data-estado="ok"] { background: var(--veio-success); }
+.shell-ponto[data-estado="desligada"],
+.cfg-ponto[data-estado="erro"] { background: var(--veio-danger); }
+.shell-ponto[data-estado="conectando"],
+.cfg-ponto[data-estado="sincronizando"] {
   animation: veio-piscar var(--veio-piscar) steps(1) infinite;
 }
 
 .shell-pe {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
   padding: 4px;
   border-radius: var(--veio-raio-card);
   background: var(--veio-surface-2);
@@ -162,8 +168,8 @@ body {
   height: 30px;
   overflow: hidden;
   border-radius: var(--veio-raio-pilula);
-  background: var(--veio-accent-soft);
-  color: var(--veio-accent-text);
+  background: var(--veio-avatar-fundo);
+  color: var(--veio-avatar-tinta);
   font-size: var(--veio-tam-legenda);
   font-weight: var(--veio-peso-display);
 }
@@ -175,13 +181,9 @@ body {
 }
 
 .shell-avatar--vazio {
-  background: var(--veio-surface);
+  border: 1px dashed var(--veio-border-strong);
+  background: var(--veio-surface-2);
   color: var(--veio-muted);
-}
-
-.shell-avatar--vazio svg {
-  width: 16px;
-  height: 16px;
 }
 
 .shell-chip__quem {
@@ -249,10 +251,11 @@ body {
   flex-direction: column;
   gap: 8px;
   max-width: 820px;
+  container-type: inline-size;
 }
 
 .shell-card {
-  padding: 16px;
+  overflow: hidden;
   border: 1px solid var(--veio-border);
   border-radius: var(--veio-raio-card);
   background: var(--veio-bg);
@@ -260,7 +263,7 @@ body {
 }
 
 .shell-card--perigo {
-  border-color: var(--veio-danger);
+  border-color: color-mix(in srgb, var(--veio-danger) 60%, var(--veio-border));
 }
 
 .shell-card--destaque {
@@ -277,16 +280,254 @@ body {
   font-weight: var(--veio-peso-titulo);
 }
 
-.shell-card__corpo {
+/* ── Cards de Configurações: resumo primeiro (variante C) ─────────────────
+   Fechado, o card é uma linha: azulejo, título, resumo do estado e chevron.
+   Aberto, o resumo dá lugar à descrição sob o título e o conteúdo entra
+   alinhado ao título (recuo de 62 px = 16 + 34 do azulejo + 12). */
+
+.cfg-cabeca {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background var(--veio-transicao);
+}
+
+.cfg-cabeca:hover {
+  background: color-mix(in srgb, var(--veio-surface-2) 45%, transparent);
+}
+
+.cfg-icone {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--veio-raio-icone);
+  background: var(--veio-surface-2);
+  color: var(--veio-muted);
+}
+
+.shell-card--perigo .cfg-icone {
+  background: color-mix(in srgb, var(--veio-danger) 12%, transparent);
+  color: var(--veio-danger);
+}
+
+.cfg-icone svg,
+.cfg-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+.cfg-titulos {
+  flex: 1;
+  min-width: 0;
+}
+
+.cfg-alternar {
+  padding: 0;
+  border: 0;
+  border-radius: var(--veio-raio-tecla);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cfg-descricao {
+  margin-top: 2px;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.cfg-resumo {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* A tecla do resumo de Atalhos segue o protótipo de Configurações: em
+   muted, um pouco maior e mais larga que o kbd base. */
+.cfg-resumo .veio-kbd {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--veio-raio-tecla-resumo);
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-tecla-resumo);
+}
+
+/* Sem atalho, o kbd tracejado fala em texto, não em tecla. */
+.cfg-resumo .veio-kbd--sem-atalho {
+  font-family: var(--veio-fonte-ui);
+}
+
+/* A chave do Gemini mascarada, na linha fechada. */
+.cfg-chave-mascarada {
+  font-family: var(--veio-fonte-mono);
+  font-weight: var(--veio-peso-num);
+}
+
+.cfg-resumo > * {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cfg-chevron {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--veio-muted);
+  transition: transform var(--veio-transicao);
+}
+
+.cfg-card:not(.cfg-card--aberto) .cfg-descricao,
+.cfg-card--aberto .cfg-resumo {
+  display: none;
+}
+
+.cfg-card--aberto .cfg-chevron {
+  transform: rotate(180deg);
+}
+
+.cfg-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 16px 16px 62px;
+}
+
+.cfg-linha {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  margin-top: 12px;
+  min-width: 0;
 }
 
-.shell-card__descricao {
+.cfg-conta {
+  display: flex;
+  flex: 1 1 220px;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cfg-avatar {
+  width: 40px;
+  height: 40px;
+  font-size: var(--veio-tam-card);
+}
+
+.cfg-quem {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* O nome da conta e, sem conta, o convite para entrar (CFG-06), no mesmo peso. */
+.cfg-nome,
+.cfg-convite {
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.cfg-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cfg-nota {
   color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.cfg-nota--linha {
+  flex-basis: 100%;
+}
+
+.cfg-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-rotulo);
+}
+
+.cfg-status--erro {
+  color: var(--veio-danger);
+}
+
+/* Dentro do card, os botões são os pequenos do protótipo: mais baixos e com a
+   letra de apoio. O Sair da conta fantasma fica em muted até o hover. */
+.cfg-corpo .veio-botao {
+  padding: 5px 12px;
+  font-size: var(--veio-tam-apoio);
+}
+
+.cfg-corpo .veio-botao--fantasma {
+  color: var(--veio-muted);
+}
+
+.cfg-corpo .veio-botao--fantasma:hover {
+  background: transparent;
+  border-color: var(--veio-border-strong);
+  color: var(--veio-text);
+}
+
+/* O erro dentro do card: vermelho mais baixo que o aviso solto, a ação em
+   contorno e o Detalhes sem o triângulo, como no protótipo. */
+.cfg-corpo .veio-aviso {
+  padding: 10px 12px;
+  border-color: color-mix(in srgb, var(--veio-danger) 50%, var(--veio-border));
+  background: color-mix(in srgb, var(--veio-danger) 9%, transparent);
+}
+
+.cfg-corpo .veio-aviso .veio-botao--secundario {
+  background: transparent;
+  border-color: var(--veio-border-strong);
+}
+
+.cfg-corpo .veio-aviso .veio-botao--secundario:hover {
+  border-color: var(--veio-accent);
+}
+
+.cfg-corpo .veio-aviso__detalhes > summary {
+  list-style: none;
+}
+
+.cfg-corpo .veio-aviso__detalhes > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Janela estreita: abaixo de ~560 px de conteúdo, o resumo sai da linha
+   fechada e o conteúdo perde o recuo. */
+@container (max-width: 559px) {
+  .cfg-resumo {
+    display: none;
+  }
+
+  .cfg-corpo {
+    padding-left: 16px;
+  }
 }
 
 /* O conteúdo de hoje foi desenhado para fundo claro: ele mora num bloco com o
@@ -306,7 +547,7 @@ body {
   }
 
   .shell-lateral {
-    padding: 18px 8px 8px;
+    padding: 18px 12px;
   }
 
   .shell-marca {
@@ -335,7 +576,7 @@ body {
 
   .shell-ponto {
     position: absolute;
-    top: 8px;
+    top: 7px;
     right: 14px;
     box-shadow: 0 0 0 2px var(--veio-surface);
   }
@@ -353,8 +594,14 @@ body {
 /* ── Movimento reduzido ───────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .shell-ponto[data-estado="conectando"],
+  .cfg-ponto[data-estado="sincronizando"],
   .shell-card--destaque {
     animation: none;
+  }
+
+  /* A borda ouro aparece parada enquanto dura o destaque. */
+  .shell-card--destaque {
+    border-color: var(--veio-accent);
   }
 }
 

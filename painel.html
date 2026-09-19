@@ -446,29 +446,67 @@
           <h1 id="titulo-configuracoes" data-voz="SHL-02.configuracoes"></h1>
         </header>
 
+        <!--
+          Resumo primeiro (variante C): cada card é uma linha fechada com o resumo
+          do estado e abre no lugar; vários podem ficar abertos. A linha inteira
+          abre e fecha (painel-shell.js); o botão do título é o controle para o
+          teclado e o leitor de tela. O card Conta & sync é desenhado por
+          painel-conta.js; Atalhos, Chave do Gemini e Zona de perigo ganham o
+          conteúdo nos tickets deles.
+        -->
         <div class="shell-cards">
-          <section class="shell-card" id="cfg-conta" aria-labelledby="cfg-conta-titulo">
-            <h2 class="shell-card__titulo" id="cfg-conta-titulo" data-voz="SHL-04.conta"></h2>
-            <div id="firebase-logged-out" class="shell-card__corpo">
-              <p class="shell-card__descricao" data-voz="CFG-06.ajuda"></p>
-              <button id="btn-login-google" class="veio-botao veio-botao--primario" type="button" data-voz="CFG-06.botao"></button>
+          <section class="shell-card cfg-card" id="cfg-conta" aria-labelledby="cfg-conta-titulo">
+            <div class="cfg-cabeca">
+              <span class="cfg-icone"><span data-icone="conta"></span></span>
+              <div class="cfg-titulos">
+                <h2 class="shell-card__titulo">
+                  <button class="cfg-alternar" id="cfg-conta-titulo" type="button" aria-expanded="false" aria-controls="cfg-conta-corpo" data-voz="SHL-04.conta"></button>
+                </h2>
+                <p class="cfg-descricao" data-voz="CFG-25"></p>
+              </div>
+              <span class="cfg-resumo" id="cfg-conta-resumo"></span>
+              <span class="cfg-chevron"><span data-icone="abrir"></span></span>
             </div>
-            <div id="firebase-logged-in" class="shell-card__corpo" hidden>
-              <button id="btn-logout" class="veio-botao veio-botao--fantasma" type="button" data-voz="CFG-23"></button>
+            <div class="cfg-corpo" id="cfg-conta-corpo" hidden></div>
+          </section>
+          <section class="shell-card cfg-card" id="cfg-atalhos" aria-labelledby="cfg-atalhos-titulo">
+            <div class="cfg-cabeca">
+              <span class="cfg-icone"><span data-icone="teclado"></span></span>
+              <div class="cfg-titulos">
+                <h2 class="shell-card__titulo">
+                  <button class="cfg-alternar" id="cfg-atalhos-titulo" type="button" aria-expanded="false" aria-controls="cfg-atalhos-corpo" data-voz="SHL-04.atalhos"></button>
+                </h2>
+              </div>
+              <span class="cfg-resumo" id="cfg-atalhos-resumo"></span>
+              <span class="cfg-chevron"><span data-icone="abrir"></span></span>
             </div>
+            <div class="cfg-corpo" id="cfg-atalhos-corpo" hidden></div>
           </section>
-
-          <section class="shell-card" id="cfg-atalhos" aria-labelledby="cfg-atalhos-titulo">
-            <h2 class="shell-card__titulo" id="cfg-atalhos-titulo" data-voz="SHL-04.atalhos"></h2>
+          <section class="shell-card cfg-card" id="cfg-chave" aria-labelledby="cfg-chave-titulo">
+            <div class="cfg-cabeca">
+              <span class="cfg-icone"><span data-icone="chave"></span></span>
+              <div class="cfg-titulos">
+                <h2 class="shell-card__titulo">
+                  <button class="cfg-alternar" id="cfg-chave-titulo" type="button" aria-expanded="false" aria-controls="cfg-chave-corpo" data-voz="CFG-15.titulo"></button>
+                </h2>
+              </div>
+              <span class="cfg-resumo" id="cfg-chave-resumo"></span>
+              <span class="cfg-chevron"><span data-icone="abrir"></span></span>
+            </div>
+            <div class="cfg-corpo" id="cfg-chave-corpo" hidden></div>
           </section>
-
-          <section class="shell-card" id="cfg-chave" aria-labelledby="cfg-chave-titulo">
-            <h2 class="shell-card__titulo" id="cfg-chave-titulo" data-voz="CFG-15.titulo"></h2>
-          </section>
-
-          <section class="shell-card shell-card--perigo" id="cfg-perigo" aria-labelledby="cfg-perigo-titulo">
-            <h2 class="shell-card__titulo" id="cfg-perigo-titulo" data-voz="SHL-04.perigo"></h2>
-            <div class="shell-card__corpo">
+          <section class="shell-card cfg-card shell-card--perigo" id="cfg-perigo" aria-labelledby="cfg-perigo-titulo">
+            <div class="cfg-cabeca">
+              <span class="cfg-icone"><span data-icone="perigo"></span></span>
+              <div class="cfg-titulos">
+                <h2 class="shell-card__titulo">
+                  <button class="cfg-alternar" id="cfg-perigo-titulo" type="button" aria-expanded="false" aria-controls="cfg-perigo-corpo" data-voz="SHL-04.perigo"></button>
+                </h2>
+              </div>
+              <span class="cfg-resumo" id="cfg-perigo-resumo"></span>
+              <span class="cfg-chevron"><span data-icone="abrir"></span></span>
+            </div>
+            <div class="cfg-corpo" id="cfg-perigo-corpo" hidden>
               <button id="btn-apagar-tudo" class="veio-botao veio-botao--perigo" type="button" disabled></button>
             </div>
           </section>
@@ -623,6 +661,7 @@
   <script src="lib/idioma.js"></script>
   <script src="tombstone.js"></script>
   <script src="painel-shell.js"></script>
+  <script src="painel-conta.js"></script>
   <script src="painel.js"></script>
 </body>
 </html>

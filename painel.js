@@ -3,9 +3,13 @@
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
 // deste arquivo, pelo painel.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
 const { detectarIdioma, IDIOMAS, textoDaVoz } = PerpetualMiner;
-// O shell (painel-shell.js) é dono da sidebar: o total, o ponto da Conexão com o
-// Anki e o chip de conta. Este arquivo conta a ele o que muda.
+// O shell (painel-shell.js) é dono da sidebar: o total e o ponto da Conexão com o
+// Anki. A conta (painel-conta.js) desenha o chip e o card Conta & sync. Este
+// arquivo conta aos dois o que muda.
 const Shell = PerpetualMiner.Shell;
+const Conta = PerpetualMiner.Conta;
+const { SITUACOES } = Conta;
+const { mostrarToastDeSucesso } = PerpetualMiner.Veio;
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -75,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupListeners();
   inicializarBridgeUI();
   Shell.aoEntrarNaArea('anki', () => atualizarBridgeWorkspaceData({ includeAnki: true, launchAnki: true }));
+  Conta.aoPedir({ entrar: loginGoogle, sair: logout, tentarDeNovo: carregarFrasesFirestore });
   setupStorageSyncListener();
   carregarAutoMinerPainel();
   inicializarAuth();
@@ -100,6 +105,7 @@ async function inicializarAuth() {
 }
 
 async function loginGoogle() {
+  Conta.mostrarFalhaNoLogin(null);
   try {
     const redirectUri = chrome.identity.getRedirectURL();
 
@@ -184,8 +190,16 @@ async function loginGoogle() {
       await carregarFrasesFirestore();
     }
   } catch (err) {
-    mostrarToast('Erro no login: ' + (err.message || 'tente novamente'));
+    // Fechar a janela do Google é desistir, não erro: nada aparece (CFG-07).
+    if (loginFoiCancelado(err)) return;
+    console.error('[Login] falhou:', err);
+    Conta.mostrarFalhaNoLogin(err.message || String(err));
   }
+}
+
+// O Chrome responde assim quando a pessoa fecha a janela de login sem escolher conta.
+function loginFoiCancelado(err) {
+  return /did not approve|cancel/i.test(err?.message || '');
 }
 
 async function logout() {
@@ -196,11 +210,40 @@ async function logout() {
   carregarFrasesLocal();
 }
 
-// Configurações › Conta & sync mostra Entrar ou Sair; o chip da sidebar, quem entrou.
+// Configurações › Conta & sync e o chip da sidebar mostram quem entrou.
 function atualizarUIAuth(user) {
-  document.getElementById('firebase-logged-out').hidden = Boolean(user);
-  document.getElementById('firebase-logged-in').hidden = !user;
-  Shell.mostrarConta(user);
+  Conta.mostrarConta(user);
+}
+
+// ─── Falhas na nuvem ─────────────────────────────────────────────────────────
+//
+// Um problema de sync aparece só no card Conta & sync e no chip (Q4 da spec de
+// Configurações), nunca num toast. A falha carrega a situação que a Conta mostra:
+// EXPIROU quando a sessão não renova, RECUSADO quando as regras do Firestore
+// recusam a conta, e SEM_SINCRONIZAR para o resto (rede, nuvem fora do ar).
+
+function erroDaNuvem(mensagem, situacao) {
+  const erro = new Error(mensagem);
+  erro.situacao = situacao;
+  return erro;
+}
+
+async function erroDaResposta(resp) {
+  const corpo = await resp.json().catch(() => ({}));
+  const mensagem = corpo?.error?.message || `HTTP ${resp.status}`;
+  if (resp.status === 401) return erroDaNuvem(mensagem, SITUACOES.EXPIROU);
+  if (resp.status === 403 || corpo?.error?.status === 'PERMISSION_DENIED') return erroDaNuvem(mensagem, SITUACOES.RECUSADO);
+  return new Error(mensagem);
+}
+
+// `semSincronizar` é o que a falha genérica mostra: depois de uma primeira
+// subida que não chegou à nuvem, é a falha dela (CFG-09).
+function situacaoDoErro(err, semSincronizar = SITUACOES.SEM_SINCRONIZAR) {
+  return err?.situacao || semSincronizar;
+}
+
+function mostrarFalhaNaNuvem(err, semSincronizar) {
+  Conta.mostrarSincronizacao(situacaoDoErro(err, semSincronizar), { detalhes: err?.message || String(err) });
 }
 
 // Retorna um Firebase ID token válido, renovando silenciosamente via refresh token
@@ -210,14 +253,18 @@ async function getValidToken() {
   const expirando = !usuarioLogado.accessToken || Date.now() > (usuarioLogado.expiresAt || 0) - 2 * 60 * 1000;
   if (!expirando) return usuarioLogado.accessToken;
 
-  if (!usuarioLogado.refreshToken) throw new Error('Token expirado — faça login novamente');
+  if (!usuarioLogado.refreshToken) throw erroDaNuvem('Sem refresh token', SITUACOES.EXPIROU);
 
   const resp = await fetch(FB_REFRESH_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: usuarioLogado.refreshToken }),
   });
-  if (!resp.ok) throw new Error('Token expirado — faça login novamente');
+  if (!resp.ok) {
+    // Qualquer recusa da renovação é a sessão que acabou (CFG-08).
+    const recusa = await erroDaResposta(resp);
+    throw erroDaNuvem(recusa.message, SITUACOES.EXPIROU);
+  }
 
   const data = await resp.json();
   usuarioLogado.accessToken  = data.id_token;
@@ -257,10 +304,7 @@ async function fsRequest(method, path, body = null, _retry = false) {
   // 404 em DELETE = documento já não existe, tudo certo
   if (resp.status === 404 && method === 'DELETE') return null;
 
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `HTTP ${resp.status}`);
-  }
+  if (!resp.ok) throw await erroDaResposta(resp);
   return resp.json().catch(() => null);
 }
 
@@ -302,10 +346,7 @@ async function firestoreBatchUpsert(frases) {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ writes }),
     });
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `HTTP ${resp.status}`);
-    }
+    if (!resp.ok) throw await erroDaResposta(resp);
   }
 }
 
@@ -357,13 +398,16 @@ function docToObj(fields) {
 async function migrarParaFirestore() {
   const { frases = [] } = await chromeGet({ frases: [] });
   if (frases.length > 0) {
-    Shell.mostrarSincronizacao('sincronizando');
+    Conta.mostrarSincronizacao(SITUACOES.PRIMEIRA_SUBIDA, { n: frases.length });
     try {
       await firestoreBatchUpsert(frases);
-      mostrarToast(`${frases.length} frase${frases.length > 1 ? 's' : ''} migrada${frases.length > 1 ? 's' : ''} para a nuvem!`);
+      mostrarToastDeSucesso(textoDaVoz('CFG-09.sucesso', { n: frases.length }));
     } catch (err) {
+      // O carregamento abaixo tenta de novo, frase a frase. Se nenhuma subir, o
+      // card e o chip mostram a falha da primeira subida (CFG-09), sem toast.
       console.error('[Firestore] migração falhou:', err);
-      mostrarToast('Migração falhou: ' + (err.message || 'verifique as regras do Firestore'));
+      await carregarFrasesFirestore({ primeiraSubidaFalhou: true });
+      return;
     }
   }
   await carregarFrasesFirestore();
@@ -381,8 +425,10 @@ function carregarFrasesLocal() {
   });
 }
 
-async function carregarFrasesFirestore() {
-  Shell.mostrarSincronizacao('sincronizando');
+async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
+  const semSincronizar = primeiraSubidaFalhou ? SITUACOES.PRIMEIRA_SUBIDA_FALHOU : SITUACOES.SEM_SINCRONIZAR;
+  Conta.mostrarSincronizacao(SITUACOES.SINCRONIZANDO);
+  let falhaNasOrfas = null;
   try {
     let firestoreFrases = await firestoreGetAll();
 
@@ -449,7 +495,6 @@ async function carregarFrasesFirestore() {
     }
 
     if (orphans.length > 0) {
-      Shell.mostrarSincronizacao('sincronizando');
       const resultados  = await Promise.allSettled(orphans.map(f => firestorePatch(f)));
       const sincronizados = orphans.filter((_, i) => resultados[i].status === 'fulfilled');
       const enviados      = sincronizados.map(f => String(f.id));
@@ -464,13 +509,8 @@ async function carregarFrasesFirestore() {
       }
 
       if (falhas.length > 0) {
-        const motivo = falhas[0].reason?.message || 'permissão negada';
-        console.error('[Firestore] orphans com falha:', falhas.length, motivo);
-        if (motivo.toLowerCase().includes('permission')) {
-          mostrarToast(`Firestore: permissão negada — verifique as regras de segurança no console Firebase.`);
-        } else {
-          mostrarToast(`Sync parcial: ${sincronizados.length}/${orphans.length} frases enviadas.`);
-        }
+        console.error('[Firestore] orphans com falha:', falhas.length, falhas[0].reason?.message);
+        falhaNasOrfas = { quantas: falhas.length, causas: falhas.map(r => r.reason) };
       }
 
       // Adiciona à lista exibida apenas os que chegaram ao Firestore com sucesso
@@ -519,14 +559,29 @@ async function carregarFrasesFirestore() {
     }
 
     todasFrases = firestoreFrases;
-    Shell.mostrarSincronizacao('sincronizado');
+    if (falhaNasOrfas) mostrarSyncIncompleto(falhaNasOrfas, localSemTombstoned.length, semSincronizar);
+    else Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
     finalizarCarregamento();
   } catch (err) {
     console.error('[Firestore] carregar:', err);
-    Shell.mostrarSincronizacao('erro');
-    mostrarToast('Erro na nuvem — usando dados locais.');
+    mostrarFalhaNaNuvem(err, semSincronizar);
     carregarFrasesLocal();
   }
+}
+
+// Frases deste computador que não subiram: “8 de 10 sincronizadas” (CFG-05)
+// quando parte chegou, ou a falha inteira quando nada chegou ou a nuvem recusou.
+// A conta é das frases deste computador (`desteComputador`), não da coleção
+// inteira na nuvem, que também tem as dos outros computadores da conta.
+function mostrarSyncIncompleto({ quantas, causas }, desteComputador, semSincronizar) {
+  const detalhes = [...new Set(causas.map(c => c?.message || String(c)))].join('\n');
+  const situacao = situacaoDoErro(causas[0], semSincronizar);
+  const naNuvem = desteComputador - quantas;
+  if (situacao !== semSincronizar || naNuvem === 0) {
+    Conta.mostrarSincronizacao(situacao, { detalhes });
+    return;
+  }
+  Conta.mostrarSincronizacao(SITUACOES.PARCIAL, { n: naNuvem, total: desteComputador, detalhes });
 }
 
 function finalizarCarregamento() {
@@ -584,7 +639,7 @@ function salvarFraseFirestore(frase, campos = null) {
   if (!usuarioLogado) return;
   firestorePatch(frase, campos).catch(err => {
     console.error('[Firestore] patch:', frase.id, err.message);
-    Shell.mostrarSincronizacao('erro');
+    mostrarFalhaNaNuvem(err);
   });
 }
 
@@ -696,8 +751,7 @@ async function removerFrasesFirestore(ids) {
     limparTombstone(idsStr);
   } catch (err) {
     console.error('[Firestore] delete falhou, ficará pendente:', err.message);
-    Shell.mostrarSincronizacao('erro');
-    mostrarToast(`Erro ao deletar da nuvem: ${err.message}`);
+    mostrarFalhaNaNuvem(err);
   }
 }
 
@@ -713,7 +767,7 @@ async function apagarTudoFirestore() {
     limparTombstone(ids);
   } catch (e) {
     console.error('[Firestore] apagar tudo falhou:', e);
-    Shell.mostrarSincronizacao('erro');
+    mostrarFalhaNaNuvem(e);
   }
 }
 
@@ -833,8 +887,6 @@ function setupListeners() {
     if (file) { importarArquivoTxt(file); e.target.value = ''; }
   });
 
-  document.getElementById('btn-login-google')?.addEventListener('click', loginGoogle);
-  document.getElementById('btn-logout')?.addEventListener('click', logout);
   document.getElementById('btn-delete-selected')?.addEventListener('click', deletarSelecionadas);
 
   document.getElementById('btn-modal-close').addEventListener('click',  fecharModal);
@@ -2347,7 +2399,7 @@ function salvarEdicaoEmMassa(fonteVal, tituloVal, detalheVal) {
   if (usuarioLogado && editadas.length > 0) {
     Promise.allSettled(editadas.map(f => firestorePatch(f))).then(resultados => {
       const falhas = resultados.filter(r => r.status === 'rejected');
-      if (falhas.length > 0) Shell.mostrarSincronizacao('erro');
+      if (falhas.length > 0) mostrarFalhaNaNuvem(falhas[0].reason);
     });
   }
 }
@@ -2479,7 +2531,7 @@ async function salvarMultiAdd() {
 
   if (usuarioLogado) {
     try { await firestoreBatchUpsert(novas); }
-    catch (err) { mostrarToast('Salvo localmente (sync falhou: ' + err.message + ')'); }
+    catch (err) { mostrarFalhaNaNuvem(err); }
   }
 
   todasFrases = todas;
