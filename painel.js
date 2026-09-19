@@ -4,7 +4,7 @@
 // deste arquivo, pelo painel.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
 const { detectarIdioma, IDIOMAS, textoDaVoz, CATALOGO_DA_VOZ } = PerpetualMiner;
 // A lista de Frases é montada com os componentes da Base Veio (veio/componentes.js).
-const { iconeVeio, montarChipDaPalavra } = PerpetualMiner.Veio;
+const { iconeVeio, montarChipDaPalavra, escreverFraseClicavel, andarEntrePalavras, focarPalavra } = PerpetualMiner.Veio;
 // O shell (painel-shell.js) é dono da sidebar: o total, o ponto da Conexão com o
 // Anki e o chip de conta. Este arquivo conta a ele o que muda.
 const Shell = PerpetualMiner.Shell;
@@ -21,12 +21,15 @@ const ATALHO_DE_LEGENDA = 'Alt+S';
 // frases de antes apontam para o nome de hoje.
 const APELIDOS_DE_FONTE = { amazon: 'primevideo', hbomax: 'max', disney: 'disneyplus', star: 'starplus' };
 
-// O ícone do selo de cada Fonte. Os serviços de vídeo usam o desenho de vídeo
-// da Base Veio (que se chama `netflix` lá), e uma Fonte fora da lista (o nome do
-// site) usa o da Web.
+// O desenho de vídeo da Base Veio, que lá se chama `netflix`: todo serviço de
+// vídeo usa ele no selo de Fonte.
+const ICONE_DE_VIDEO = 'netflix';
+
+// O ícone do selo de cada Fonte. Uma Fonte fora da lista (o nome do site) usa o
+// da Web.
 const ICONES_DE_FONTE = {
-  netflix: 'netflix', primevideo: 'netflix', max: 'netflix', disneyplus: 'netflix',
-  starplus: 'netflix', kinopoisk: 'netflix', youtube: 'youtube',
+  netflix: ICONE_DE_VIDEO, primevideo: ICONE_DE_VIDEO, max: ICONE_DE_VIDEO, disneyplus: ICONE_DE_VIDEO,
+  starplus: ICONE_DE_VIDEO, kinopoisk: ICONE_DE_VIDEO, youtube: 'youtube',
   web: 'web', selecao: 'web', pdf: 'pdf', livro: 'livro', manual: 'manual', importado: 'manual',
 };
 
@@ -48,7 +51,7 @@ const DEFAULT_BRIDGE_PRESETS = {
 let todasFrases        = [];
 let frasesVisiveis     = [];
 let paginaAtual        = 1;
-let filtroStreaming     = 'all';
+let filtroFonte         = 'all';
 let filtroIdioma       = 'all';
 let esconderExportadas = false;
 let ordemAtual         = 'novas'; // 'novas' | 'antigas'
@@ -849,7 +852,7 @@ function setupListeners() {
     const btnEditText = e.target.closest('[data-action="edit-text"]');
     const btnClear    = e.target.closest('[data-action="clear-kw"]');
     const btnAddSep   = e.target.closest('[data-action="add-sep"]');
-    const palavraEl   = e.target.closest('.frase-palavra');
+    const palavraEl   = e.target.closest('.veio-palavra-clicavel');
     if (btnCopy)     { copiarFrase(btnCopy.dataset.id);                         return; }
     if (btnDel)      { deletarFrase(Number(btnDel.dataset.id));                 return; }
     if (btnEdit)     { abrirEdicaoIndividual(Number(btnEdit.dataset.id));       return; }
@@ -1490,20 +1493,20 @@ async function baixarBridgeDebugBundle(jobId) {
 // Uma linha que quebra: Fonte · idioma · ordem em selects, a busca no texto e
 // no Título (lista fechada, item 1) e o toggle “Ocultar enviadas e exportadas”.
 
-function getStreamingsUnicos() {
-  const seen = new Set();
-  return todasFrases.map(f => f.streaming).filter(s => s && !seen.has(s) && seen.add(s));
+/** As Fontes do histórico, cada uma uma vez, na ordem em que aparecem. */
+function fontesDoHistorico() {
+  return [...new Set(todasFrases.map(fonteDaFrase).filter(Boolean))];
 }
 
 /** O select de Fonte, com as Fontes do histórico. O nome entra como texto. */
 function construirFiltroDeFonte() {
   const select = document.getElementById('filtro-fonte');
-  const fontes = getStreamingsUnicos();
-  if (filtroStreaming !== 'all' && !fontes.includes(filtroStreaming)) filtroStreaming = 'all';
+  const fontes = fontesDoHistorico();
+  if (filtroFonte !== 'all' && !fontes.includes(filtroFonte)) filtroFonte = 'all';
   select.replaceChildren(
     new Option(textoDaVoz('PAI-10.todasAsFontes'), 'all'),
     ...fontes.map(fonte => new Option(nomeDaFonte(fonte), fonte)));
-  select.value = filtroStreaming;
+  select.value = filtroFonte;
 }
 
 function configurarFiltros() {
@@ -1519,8 +1522,8 @@ function configurarFiltros() {
   construirFiltroDeFonte();
   busca.placeholder = textoDaVoz('PAI-23');
 
-  const aoMudar = (aplicar) => () => { aplicar(); paginaAtual = 1; aplicarFiltro(); };
-  fonte.addEventListener('change',   aoMudar(() => { filtroStreaming = fonte.value; }));
+  const aoMudar = (aplicar) => () => { aplicar(); voltarAPrimeiraPagina(); };
+  fonte.addEventListener('change',   aoMudar(() => { filtroFonte = fonte.value; }));
   idioma.addEventListener('change',  aoMudar(() => { filtroIdioma = idioma.value; }));
   ordem.addEventListener('change',   aoMudar(() => { ordemAtual = ordem.value; }));
   ocultar.addEventListener('change', aoMudar(() => { esconderExportadas = ocultar.checked; }));
@@ -1534,18 +1537,17 @@ function mostrarLimparBusca() {
 
 /** Fonte, idioma ou o toggle ligados. A ordem não esconde frase, então não conta. */
 function filtrosLigados() {
-  return filtroStreaming !== 'all' || filtroIdioma !== 'all' || esconderExportadas;
+  return filtroFonte !== 'all' || filtroIdioma !== 'all' || esconderExportadas;
 }
 
 function limparFiltros() {
-  filtroStreaming = 'all';
+  filtroFonte = 'all';
   filtroIdioma = 'all';
   esconderExportadas = false;
   document.getElementById('filtro-fonte').value = 'all';
   document.getElementById('filtro-idioma').value = 'all';
   document.getElementById('filtro-ocultar').checked = false;
-  paginaAtual = 1;
-  aplicarFiltro();
+  voltarAPrimeiraPagina();
 }
 
 function limparBusca() {
@@ -1553,17 +1555,22 @@ function limparBusca() {
   const busca = document.getElementById('busca-frases');
   busca.value = '';
   mostrarLimparBusca();
+  voltarAPrimeiraPagina();
+  busca.focus();
+}
+
+/** Um filtro ou a busca mudou: a lista refaz e volta para a primeira página. */
+function voltarAPrimeiraPagina() {
   paginaAtual = 1;
   aplicarFiltro();
-  busca.focus();
 }
 
 // ─── Filtro, Ordem & Paginação ────────────────────────────────────────────────
 
 function aplicarFiltro() {
-  let resultado = filtroStreaming === 'all'
+  let resultado = filtroFonte === 'all'
     ? [...todasFrases]
-    : todasFrases.filter(f => f.streaming === filtroStreaming);
+    : todasFrases.filter(f => fonteDaFrase(f) === filtroFonte);
   if (filtroIdioma !== 'all')
     resultado = resultado.filter(f => (f.idioma || IDIOMAS.INGLES) === filtroIdioma);
   if (esconderExportadas)
@@ -1696,7 +1703,7 @@ function rotuloDoDia(dataStr) {
 }
 
 function montarCartao(f) {
-  const cartao = criar('article', 'veio-frase');
+  const cartao = criar('article', 'veio-frase veio-frase--na-ilha');
   cartao.dataset.id = f.id;
   cartao.classList.toggle('veio-frase--selecionada', selecionadas.has(f.id));
 
@@ -1725,26 +1732,19 @@ function ehRussa(f) {
 }
 
 /**
- * A frase com cada palavra clicável: clicar grifa ou desgrifa. A frase é uma
- * parada só do Tab; dentro dela as setas andam e Enter ou Espaço escolhem.
+ * A frase com cada palavra clicável (`escreverFraseClicavel` da Base Veio):
+ * clicar grifa ou desgrifa a Palavra.
  */
 function escreverPalavras(no, f) {
-  const kws = keywords[f.id] || [];
-  const ativas = new Set(kws.filter(w => w !== '|'));
-  let primeira = true;
-  tokenizarFrase(f.texto || '').forEach((tok, idx) => {
-    if (!tok.isWord) { no.append(tok.text); return; }
-    const ativa = ativas.has(`${tok.clean}@${idx}`) || ativas.has(tok.clean);
-    const palavra = criar('span', `frase-palavra${ativa ? ' veio-palavra' : ''}`, tok.text);
-    palavra.setAttribute('role', 'button');
-    palavra.setAttribute('aria-pressed', String(ativa));
-    palavra.tabIndex = primeira ? 0 : -1;
-    palavra.dataset.id = f.id;
-    palavra.dataset.idx = idx;
-    palavra.dataset.word = tok.clean;
-    primeira = false;
-    no.append(palavra);
-  });
+  const ativas = new Set((keywords[f.id] || []).filter(w => w !== '|'));
+  escreverFraseClicavel(no, tokenizarFrase(f.texto || '').map((tok, idx) => tok.isWord
+    ? {
+      texto: tok.text,
+      palavra: true,
+      grifada: ativas.has(`${tok.clean}@${idx}`) || ativas.has(tok.clean),
+      dados: { id: f.id, idx, word: tok.clean },
+    }
+    : { texto: tok.text }));
 }
 
 /** O chip `palavra:`/`auto:` com × (remove) e + (outro grupo). */
@@ -1771,10 +1771,10 @@ function montarLinhaDoChip(f) {
 /** A linha de Contexto: selo de Fonte, Título · Detalhe e o estado (PAI-08). */
 function montarContexto(f) {
   const linha = criar('div', 'veio-frase__contexto');
-  const fonte = f.contexto?.fonte || f.streaming || '';
+  const fonte = fonteDaFrase(f);
   if (fonte) {
     const selo = criar('span', 'veio-selo');
-    selo.append(iconeVeio(ICONES_DE_FONTE[chaveDaFonte(fonte)] || 'web'), nomeDaFonte(fonte));
+    selo.append(iconeVeio(ICONES_DE_FONTE[fonte] || 'web'), nomeDaFonte(fonte));
     linha.append(selo);
   }
   const origem = [f.contexto?.titulo, f.contexto?.detalhe].filter(Boolean).join(' · ');
@@ -1792,6 +1792,14 @@ function montarContexto(f) {
 /** A Fonte como o catálogo a chama: um nome antigo gravado vira o de hoje. */
 function chaveDaFonte(fonte) {
   return APELIDOS_DE_FONTE[fonte] || fonte;
+}
+
+/**
+ * A Fonte da frase: a do Contexto, senão a gravada em `streaming`. O selo e o
+ * filtro de Fonte leem daqui, para o filtro achar a Fonte que o selo mostra.
+ */
+function fonteDaFrase(f) {
+  return chaveDaFonte(f.contexto?.fonte || f.streaming || '');
 }
 
 /** O nome da Fonte (PAI-29). Uma Fonte fora do catálogo sai com o nome gravado. */
@@ -1853,7 +1861,7 @@ function atualizarCartao(id) {
 
 function chaveDoFoco(no) {
   if (!no?.closest?.('#frases-lista')) return null;
-  if (no.classList.contains('frase-palavra')) return `.frase-palavra[data-id="${no.dataset.id}"][data-idx="${no.dataset.idx}"]`;
+  if (no.classList.contains('veio-palavra-clicavel')) return `.veio-palavra-clicavel[data-id="${no.dataset.id}"][data-idx="${no.dataset.idx}"]`;
   if (no.dataset.action) return `[data-action="${no.dataset.action}"][data-id="${no.dataset.id}"]`;
   if (no.classList.contains('frase-check')) return `.frase-check[data-id="${no.dataset.id}"]`;
   return null;
@@ -1863,11 +1871,8 @@ function restaurarFoco(seletor) {
   if (!seletor) return;
   const no = document.querySelector(`#frases-lista ${seletor}`);
   if (!no) return;
-  if (no.classList.contains('frase-palavra')) {
-    no.closest('.veio-frase__texto').querySelectorAll('.frase-palavra').forEach(p => { p.tabIndex = -1; });
-    no.tabIndex = 0;
-  }
-  no.focus();
+  if (no.classList.contains('veio-palavra-clicavel')) focarPalavra(no);
+  else no.focus();
 }
 
 // ─── A Palavra ────────────────────────────────────────────────────────────────
@@ -1878,22 +1883,12 @@ function escolherPalavra(palavra) {
 
 /** Setas andam entre as palavras da frase; Enter e Espaço escolhem. */
 function aoTeclarNaFrase(e) {
-  const palavra = e.target.closest('.frase-palavra');
-  if (!palavra) return;
+  const palavra = e.target.closest('.veio-palavra-clicavel');
+  if (!palavra || andarEntrePalavras(e)) return;
   if (e.key === 'Enter' || e.key === ' ') {
     e.preventDefault();
     escolherPalavra(palavra);
-    return;
   }
-  const passo = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
-  if (!passo) return;
-  e.preventDefault();
-  const todas = [...palavra.closest('.veio-frase__texto').querySelectorAll('.frase-palavra')];
-  const proxima = todas[todas.indexOf(palavra) + passo];
-  if (!proxima) return;
-  palavra.tabIndex = -1;
-  proxima.tabIndex = 0;
-  proxima.focus();
 }
 
 function gravarPalavras(id) {

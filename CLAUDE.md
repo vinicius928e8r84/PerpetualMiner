@@ -28,7 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-shell.js` | The panel's “Ilhas” shell: one page, one area per address (`#frases`, `#anki/<aba>`, `#configuracoes[/<seção>]`), the sidebar indicators (phrase total, Conexão com o Anki dot, account chip), the rail below ~1000 px and the F1 strip. See “Panel shell” below |
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs and the SVG). See `veio/README.md` |
-| `lib/voz/catalogo.js` | The Voice catalog as data: the 167 approved copy states from `docs/design/voz/` |
+| `lib/voz/catalogo.js` | The Voice catalog as data: the 175 approved copy states from `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
@@ -116,11 +116,13 @@ had (Entrar com Google / Sair da conta, Apagar tudo) until its own tickets rebui
 ### Frases list (`painel.js`, docs/design/painel/frases/, variant A)
 
 Each phrase is a `.veio-frase` card under a date header (PAI-11: hoje · ontem · há N dias), 10 per page. The card
-writes the text word by word: each word is a `role="button"` with `aria-pressed`; clicking it (or Enter/Space) picks or
+writes the text word by word with `escreverFraseClicavel` (a `.veio-frase--na-ilha` card: `bg` inside the `surface`
+island): each word is a `role="button"` with `aria-pressed`; clicking it (or Enter/Space) picks or
 unpicks the Palavra, stored as `keywords` (`word@tokenIndex`, `|` between groups) with `autoKeyword: false`. The phrase
-is a single Tab stop and the arrow keys move between its words. The chip below says `palavra:` or `auto:`
+is a single Tab stop and the arrow keys move between its words (`andarEntrePalavras`). The chip below says `palavra:` or `auto:`
 (`montarChipDaPalavra`) with × (clear) and + (another group). The Contexto line has the Fonte badge (PAI-29 names;
-an unknown Fonte shows its stored name), Título · Detalhe and the state badge (PAI-08).
+an unknown Fonte shows its stored name; `fonteDaFrase` reads `contexto.fonte`, else `streaming`, for both the badge and
+the Fonte filter), Título · Detalhe and the state badge (PAI-08).
 
 The filter row: one Fonte select (the Fontes in the history), language, order, the search (text and Título, with ×)
 and the “Ocultar enviadas e exportadas” toggle. The list states: 5 skeleton cards until the first load finishes
@@ -155,7 +157,10 @@ The rules the components encode, so a surface does not have to re-decide them:
 - **Error on a field** is said by `aria-invalid="true"`, not by a class, so the screen reader hears
   it too.
 - **The highlighted Word** is drawn by `escreverFrase(no, texto, palavra)`: a `kw-bg` band from 50%
-  to 94% of the line, no radius. The phrase text always goes in as text, never as HTML.
+  to 94% of the line, no radius. The phrase text always goes in as text, never as HTML. Where the
+  person picks the Word in the phrase itself, `escreverFraseClicavel(no, trechos)` writes each word as
+  a `role="button"` with the same band on the picked ones, one Tab stop per phrase, and
+  `andarEntrePalavras(evento)` / `focarPalavra(palavra)` move the focus with the arrow keys.
 - **Copy does not live in the components.** The caller passes the string it already looked up:
   `textoDaVoz('PAI-13.titulo', { n })` — `montarAviso` even refuses to build without the close
   label. The only three words the base writes itself are in `ROTULOS_DO_PADRAO`, because they are

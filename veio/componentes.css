@@ -696,6 +696,8 @@ select.veio-campo {
    Detalhe), chip da Palavra, estado e as ações só-ícone. */
 
 .veio-frase {
+  /* O fundo do cartão; o selecionado mistura o acento sobre ele. */
+  --veio-frase-fundo: var(--veio-surface);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 12px;
@@ -703,16 +705,27 @@ select.veio-campo {
   padding: 13px 14px;
   border: 1px solid var(--veio-border);
   border-radius: var(--veio-raio-card);
-  background: var(--veio-surface);
+  background: var(--veio-frase-fundo);
 }
 
 .veio-frase > .veio-checkbox {
   margin-top: 3px;
 }
 
-.veio-frase--selecionada {
+/* O cartão dentro de uma ilha `surface` (a lista de Frases): fundo `bg`, e a
+   borda firma ao passar o mouse. */
+.veio-frase--na-ilha {
+  --veio-frase-fundo: var(--veio-bg);
+}
+
+.veio-frase--na-ilha:hover {
+  border-color: var(--veio-border-strong);
+}
+
+.veio-frase--selecionada,
+.veio-frase--selecionada:hover {
   border-color: color-mix(in srgb, var(--veio-accent) 45%, var(--veio-border));
-  background: color-mix(in srgb, var(--veio-accent) 5%, var(--veio-surface));
+  background: color-mix(in srgb, var(--veio-accent) 5%, var(--veio-frase-fundo));
 }
 
 .veio-frase__texto {
@@ -749,6 +762,15 @@ select.veio-campo {
     transparent 94%
   );
   color: var(--veio-kw-fg);
+}
+
+/* A frase em que cada palavra é clicável: clicar grifa ou desgrifa a Palavra. */
+.veio-palavra-clicavel {
+  cursor: pointer;
+}
+
+.veio-palavra-clicavel:hover:not(.veio-palavra) {
+  background: var(--veio-accent-soft);
 }
 
 /* O chip diz de onde a Palavra veio: "palavra:" escolhida, "auto:" detectada. */

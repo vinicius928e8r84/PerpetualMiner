@@ -333,24 +333,13 @@ body {
   appearance: none;
 }
 
-/* A lista: cartões `bg` dentro da ilha `surface`. */
+/* A lista: cartões `bg` dentro da ilha `surface` (`.veio-frase--na-ilha`). */
 .frases-lista {
   margin-top: 12px;
 }
 
 .frases-lista .veio-frase {
   margin-bottom: 8px;
-  background: var(--veio-bg);
-}
-
-.frases-lista .veio-frase:hover {
-  border-color: var(--veio-border-strong);
-}
-
-.frases-lista .veio-frase--selecionada,
-.frases-lista .veio-frase--selecionada:hover {
-  border-color: color-mix(in srgb, var(--veio-accent) 45%, var(--veio-border));
-  background: color-mix(in srgb, var(--veio-accent) 5%, var(--veio-bg));
 }
 
 .frase-corpo {
@@ -370,15 +359,6 @@ body {
 
 .frases-lista .veio-frase__texto textarea {
   font: inherit;
-}
-
-/* Cada palavra da frase é clicável: clicar grifa ou desgrifa a Palavra. */
-.frase-palavra {
-  cursor: pointer;
-}
-
-.frase-palavra:hover:not(.veio-palavra) {
-  background: var(--veio-accent-soft);
 }
 
 /* O chip `palavra:`/`auto:` e o + ao lado dele. */

@@ -107,6 +107,10 @@ test('a frase em cirílico sai marcada como russa e reta; a inglesa, como ingles
   const russa = cartao(page, 'улыбаюсь').locator('.veio-frase__texto');
   await expect(russa).toHaveAttribute('lang', 'ru');
   expect(await russa.evaluate(el => getComputedStyle(el).fontStyle)).toBe('normal');
+  // Cada palavra clicável também sai reta, não só o bloco da frase.
+  const estilos = await russa.getByRole('button').evaluateAll(els => els.map(el => getComputedStyle(el).fontStyle));
+  expect(estilos).toHaveLength(6);
+  expect(new Set(estilos)).toEqual(new Set(['normal']));
   await expect(cartao(page, 'quiet harbor').locator('.veio-frase__texto')).toHaveAttribute('lang', 'en');
 });
 
@@ -283,6 +287,29 @@ test('Fonte, idioma, ordem e “Ocultar enviadas e exportadas” filtram a lista
   await expect(cartoes(page)).toHaveText([/call it a day/, /close call/]);
 });
 
+test('o filtro de Fonte escolhe pela mesma Fonte que o selo do cartão mostra', async ({ page, extensao }) => {
+  await extensao.gravarStorage({
+    frases: [
+      // Minerada por seleção: o selo diz Seleção, não o `streaming` web.
+      frase(4, 'The tide turned before noon.', { streaming: 'web', contexto: { fonte: 'selecao', titulo: 'Blog', detalhe: '' } }),
+      frase(3, 'Nothing ventured, nothing gained.', { streaming: 'web', contexto: { fonte: 'web', titulo: 'Wiki', detalhe: '' } }),
+      // O nome antigo gravado e o de hoje são a mesma Fonte.
+      frase(2, 'We are on a roll.', { streaming: 'amazon' }),
+      frase(1, 'Break a leg tonight.', { streaming: 'primevideo', contexto: { fonte: 'primevideo', titulo: 'Fleabag', detalhe: '' } }),
+    ],
+  });
+  await abrirFrases(page, extensao);
+
+  await expect(cartao(page, 'tide turned').locator('.veio-selo').first()).toHaveText('Seleção');
+  await expect(filtro(page, 'Fonte').locator('option')).toHaveText(['Todas as fontes', 'Seleção', 'Web', 'Prime Video']);
+
+  await filtro(page, 'Fonte').selectOption({ label: 'Seleção' });
+  await expect(cartoes(page)).toHaveText([/tide turned/]);
+
+  await filtro(page, 'Fonte').selectOption({ label: 'Prime Video' });
+  await expect(cartoes(page)).toHaveText([/on a roll/, /Break a leg/]);
+});
+
 test('filtros escondendo tudo mostram PAI-03, e Limpar filtros traz a lista de volta', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: [PARA_FILTRAR[2]] });
   await abrirFrases(page, extensao);
@@ -399,6 +426,36 @@ test('o cartão selecionado ganha o destaque, e “Pág.” marca a página inte
   await expect(page.locator('#selection-count')).toHaveText('10 selecionadas');
 });
 
+test('apagar a seleção tira as frases escolhidas da lista e do que fica gravado', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
+  await abrirFrases(page, extensao);
+
+  await cartao(page, 'Sentence number 3 ').getByRole('checkbox', { name: 'Selecionar frase' }).check();
+  await cartao(page, 'Sentence number 1 ').getByRole('checkbox', { name: 'Selecionar frase' }).check();
+  page.once('dialog', dialogo => dialogo.accept());
+  await page.locator('#btn-delete-selected').click();
+
+  await expect(cartoes(page)).toHaveText([/Sentence number 2 /]);
+  await expect.poll(async () => (await extensao.frases()).map(f => f.texto))
+    .toEqual(['Sentence number 2 about the harbour.']);
+});
+
+test('“Todas” marca as frases de todas as páginas, e apagar leva a lista ao primeiro uso', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: frasesDeExemplo(12) });
+  await abrirFrases(page, extensao);
+
+  await page.locator('#btn-sel-todos').click();
+  await expect(page.locator('#selection-count')).toHaveText('12 selecionadas');
+  await paginas(page).getByRole('button', { name: 'Próxima página' }).click();
+  await expect(lista(page).getByRole('checkbox', { name: 'Selecionar frase', checked: true })).toHaveCount(2);
+
+  page.once('dialog', dialogo => dialogo.accept());
+  await page.locator('#btn-delete-selected').click();
+
+  await expect(lista(page).locator('.veio-vazio')).toContainText('Alt+S');
+  await expect.poll(async () => (await extensao.frases()).length).toBe(0);
+});
+
 // ─── Teclado, leitor de tela e movimento ─────────────────────────────────────
 
 test('os controles da lista têm nome, e o foco do teclado aparece', async ({ page, extensao }) => {
@@ -425,6 +482,44 @@ test('os controles da lista têm nome, e o foco do teclado aparece', async ({ pa
   await page.keyboard.press('Tab');
   for (const controle of [filtro(page, 'Fonte'), busca(page), ocultar(page), palavra(page, 'close call', 'That')]) {
     expect(await focoAparece(controle), await controle.evaluate(el => el.outerHTML.slice(0, 80))).toBe(true);
+  }
+});
+
+test('cada controle do cartão, do chip e da paginação tem nome, e o foco do teclado aparece nele', async ({ page, extensao }) => {
+  await extensao.gravarStorage({
+    frases: [
+      frase(2_000_000_000_000, 'That was a close call.', { keywords: ['close@6'] }),
+      ...frasesDeExemplo(11),
+    ],
+  });
+  await abrirFrases(page, extensao);
+
+  const comChip = cartao(page, 'close call');
+  const controles = [
+    comChip.getByRole('checkbox', { name: 'Selecionar frase' }),
+    comChip.getByRole('button', { name: 'Remover a palavra' }),
+    comChip.getByRole('button', { name: 'Adicionar outro grupo' }),
+    comChip.getByRole('button', { name: 'Editar texto' }),
+    comChip.getByRole('button', { name: 'Editar contexto' }),
+    comChip.getByRole('button', { name: 'Copiar frase' }),
+    comChip.getByRole('button', { name: 'Apagar frase' }),
+    paginas(page).getByRole('button', { name: 'Próxima página' }),
+    paginas(page).getByRole('button', { name: 'Última página' }),
+  ];
+  // Na primeira página, voltar está desligado: fora do Tab, mas com nome.
+  await expect(paginas(page).getByRole('button', { name: 'Primeira página' })).toBeDisabled();
+  await expect(paginas(page).getByRole('button', { name: 'Página anterior' })).toBeDisabled();
+
+  // O foco pelo teclado (não o do mouse) é o que precisa aparecer.
+  await page.keyboard.press('Tab');
+  for (const controle of controles) {
+    await controle.focus();
+    const contorno = await controle.evaluate(el => {
+      const estilo = getComputedStyle(el);
+      return estilo.outlineStyle !== 'none' && parseFloat(estilo.outlineWidth) > 0;
+    });
+    expect(contorno, await controle.evaluate(el => el.outerHTML.slice(0, 80))).toBe(true);
+    await expect(controle).toBeVisible();
   }
 });
 

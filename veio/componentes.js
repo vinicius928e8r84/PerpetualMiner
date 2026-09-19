@@ -389,6 +389,64 @@
   }
 
   /**
+   * Escreve a frase em `no` com cada palavra clicável: a pessoa escolhe a
+   * Palavra na própria frase. A grifada usa a mesma faixa de `escreverFrase`.
+   *
+   * Cada palavra é um `role="button"` com `aria-pressed`. A frase é uma parada
+   * só do Tab (a primeira palavra); dentro dela, `andarEntrePalavras` leva o
+   * foco pelas setas. O texto entra sempre como texto.
+   *
+   * @param {HTMLElement} no      Onde a frase é escrita (é esvaziado antes).
+   * @param {Array<{texto: string, palavra?: boolean, grifada?: boolean, dados?: object}>} trechos
+   *   A frase em ordem. `palavra` marca o trecho clicável, `grifada` o que é a
+   *   Palavra, e `dados` vai para o `dataset` da palavra.
+   */
+  function escreverFraseClicavel(no, trechos) {
+    no.textContent = '';
+    const documento = no.ownerDocument;
+    let primeira = true;
+    for (const trecho of trechos) {
+      if (!trecho.palavra) {
+        no.append(documento.createTextNode(trecho.texto));
+        continue;
+      }
+      const palavra = documento.createElement('span');
+      palavra.className = trecho.grifada ? 'veio-palavra-clicavel veio-palavra' : 'veio-palavra-clicavel';
+      palavra.textContent = trecho.texto;
+      palavra.setAttribute('role', 'button');
+      palavra.setAttribute('aria-pressed', String(Boolean(trecho.grifada)));
+      palavra.tabIndex = primeira ? 0 : -1;
+      Object.assign(palavra.dataset, trecho.dados);
+      primeira = false;
+      no.append(palavra);
+    }
+  }
+
+  /**
+   * As setas levam o foco à palavra vizinha da mesma frase.
+   *
+   * @param {KeyboardEvent} evento Um keydown numa palavra de `escreverFraseClicavel`.
+   * @returns {boolean} Se a tecla era uma seta (e o evento foi consumido).
+   */
+  function andarEntrePalavras(evento) {
+    const passo = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[evento.key];
+    const palavra = evento.target.closest?.('.veio-palavra-clicavel');
+    if (!passo || !palavra) return false;
+    evento.preventDefault();
+    const todas = [...palavra.parentElement.querySelectorAll('.veio-palavra-clicavel')];
+    const vizinha = todas[todas.indexOf(palavra) + passo];
+    if (vizinha) focarPalavra(vizinha);
+    return true;
+  }
+
+  /** Faz de `palavra` a parada do Tab da sua frase e dá o foco a ela. */
+  function focarPalavra(palavra) {
+    palavra.parentElement.querySelectorAll('.veio-palavra-clicavel').forEach(outra => { outra.tabIndex = -1; });
+    palavra.tabIndex = 0;
+    palavra.focus();
+  }
+
+  /**
    * O chip que diz de onde a Palavra veio.
    *
    * O rótulo é `palavra:` quando a pessoa a escolheu e `auto:` quando foi
@@ -429,6 +487,9 @@
     mostrarToastDeSucesso,
     montarAviso,
     escreverFrase,
+    escreverFraseClicavel,
+    andarEntrePalavras,
+    focarPalavra,
     montarChipDaPalavra,
     refletirSelecao,
   };
