@@ -298,7 +298,7 @@ test('apagar uma frase com a nuvem fora do ar: o problema aparece no chip e no c
     }).observe(document.body, { childList: true });
   });
   fakes.google.ficarForaDoAr();
-  await page.locator('.phrase-item').first().locator('[data-action="delete"]').click();
+  await page.locator('#frases-lista .veio-frase').first().getByRole('button', { name: 'Apagar frase' }).click();
   await expect(estadoDoChip(page)).toHaveText('Sem sincronizar');
   await expect(page.getByText(/nuvem/i).filter({ visible: true })).toHaveCount(0);
   expect((await page.evaluate(() => window.__toasts)).filter(t => /nuvem|erro/i.test(t))).toEqual([]);

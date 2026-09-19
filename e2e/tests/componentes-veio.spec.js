@@ -433,6 +433,35 @@ test('a frase mostra o texto como texto, mesmo com marcação dentro', async ({ 
   expect(await page.evaluate(() => window.__injetado)).toBeUndefined();
 });
 
+test('na frase clicável, cada palavra é um botão, a escolhida é grifada e as setas andam numa parada só do Tab', async ({ page, paginas }) => {
+  await abrirVitrine(page, paginas);
+
+  const cartao = page.locator('[data-tema="escuro"] [data-estado="palavra clicável, na ilha"] .veio-frase');
+  await expect(cartao).toHaveClass(/veio-frase--na-ilha/);
+  // Dentro da ilha `surface`, o cartão é `bg`.
+  const [fundoDoCartao, fundoDaIlha, bg] = await cartao.evaluate(no => [
+    getComputedStyle(no).backgroundColor,
+    getComputedStyle(no.parentElement).backgroundColor,
+    getComputedStyle(no.closest('[data-tema]')).backgroundColor,
+  ]);
+  expect(fundoDoCartao).toBe(bg);
+  expect(fundoDaIlha).not.toBe(bg);
+
+  const palavra = nome => cartao.getByRole('button', { name: nome, exact: true });
+  await expect(palavra('fault')).toHaveAttribute('aria-pressed', 'true');
+  expect(await palavra('fault').evaluate(no => getComputedStyle(no).backgroundImage)).toContain('linear-gradient');
+  await expect(palavra('not')).toHaveAttribute('aria-pressed', 'false');
+  await expect(cartao.locator('[role="button"][tabindex="0"]')).toHaveCount(1);
+
+  await cartao.locator('[role="button"][tabindex="0"]').focus();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await expect(palavra('saying').first()).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(palavra('not')).toBeFocused();
+  await expect(cartao.locator('[role="button"][tabindex="0"]')).toHaveCount(1);
+});
+
 /* ── Cópia, teclado e movimento ───────────────────────────────────────────── */
 
 test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas }) => {

@@ -13,6 +13,9 @@ function criarFakeGoogle() {
   const documentos = new Map();   // 'usuarios/uid/frases/123' → fields
   const requisicoes = [];
   let recusarEscritas = false;
+  // A leitura da coleção de frases: 'normal', 'segurar' (nunca responde: a
+  // lista fica carregando) ou 'recusar' (a nuvem falha ao carregar).
+  let leituraDasFrases = 'normal';
   let foraDoAr = false;          // todo pedido ao Firestore: 503
   let acessoRecusado = false;    // todo pedido ao Firestore: 403 PERMISSION_DENIED
   let sessaoExpirada = false;    // a renovação do token é recusada
@@ -61,6 +64,8 @@ function criarFakeGoogle() {
     const ehColecao = segmentos.length % 2 === 1;
 
     if (metodo === 'GET' && ehColecao) {
+      if (leituraDasFrases === 'segurar') return new Promise(() => {});
+      if (leituraDasFrases === 'recusar') return responderJson(route, 503, { error: { message: 'indisponível' } });
       const prefixo = `${caminho}/`;
       const documents = [...documentos]
         .filter(([doc]) => doc.startsWith(prefixo) && !doc.slice(prefixo.length).includes('/'))
@@ -131,6 +136,10 @@ function criarFakeGoogle() {
       return Object.keys(documentos.get(`usuarios/${uid}/meta/deleted`)?.ids?.mapValue?.fields || {});
     },
     recusarEscritas(valor = true) { recusarEscritas = valor; },
+    /** A leitura das frases da conta nunca responde. */
+    segurarLeituras() { leituraDasFrases = 'segurar'; },
+    /** A leitura das frases da conta falha com 503. */
+    recusarLeituras() { leituraDasFrases = 'recusar'; },
     /** O Firestore fora do ar: todo pedido responde 503. */
     ficarForaDoAr(valor = true) { foraDoAr = valor; },
     /** As regras do Firestore recusam a conta: todo pedido responde 403. */

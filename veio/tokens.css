@@ -112,9 +112,11 @@
   --veio-tam-modal: 20px;
   --veio-tam-card: 15px;
   --veio-tam-frase: 15px;
+  --veio-tam-destaque: 16px;
   --veio-tam-corpo: 13.5px;
-  /* Resumo e textos de apoio dos cards de Configurações e os botões pequenos
-     dentro deles (o 12,5 da spec de Configurações). */
+  /* Resumo e textos de apoio dos cards de Configurações, os botões pequenos
+     dentro deles e os controles da linha de filtros de Frases (o 12,5 das
+     specs de Configurações e de Frases). */
   --veio-tam-apoio: 12.5px;
   --veio-tam-legenda: 11.5px;
   --veio-tam-tecla: 11px;
@@ -133,8 +135,9 @@
   --veio-altura-frase: 1.5;
 
   /* ── Forma ── */
+  --veio-raio-checkbox: 6px;
   --veio-raio-tecla: 5px;
-  /* A tecla no resumo fechado de Atalhos (Configurações). */
+  /* A tecla (kbd) como a desenham os protótipos de Frases e de Configurações. */
   --veio-raio-tecla-resumo: 8px;
   --veio-raio-icone: 10px;
   --veio-raio-input: 12px;

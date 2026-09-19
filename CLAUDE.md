@@ -29,7 +29,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-conta.js` | The account in the panel: one state drawn in the Configurações › Conta & sync card, its closed-row summary and the sidebar chip (CFG-01…10). See “Account (Conta & sync)” below |
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs and the SVG). See `veio/README.md` |
-| `lib/voz/catalogo.js` | The Voice catalog as data: the 171 approved copy states from `docs/design/voz/` |
+| `lib/voz/catalogo.js` | The Voice catalog as data: the 180 approved copy states from `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
@@ -105,11 +105,13 @@ The shell owns the sidebar and `painel.js` reports to it through `PerpetualMiner
 accessible description) and, while it is off, the F1 strip (ENV-01) with “Tentar de novo” at the top of the Anki area.
 
 The shell's fixed copy comes from the catalog through `data-voz`, `data-voz-aria` and `data-voz-title` attributes in
-`painel.html`, which `painel-shell.js` fills on load. Below 1000 px the sidebar becomes a 76 px rail: labels leave
+`painel.html`, which `painel-shell.js` fills on load. The sidebar and the content island are both the height of the window
+and start and end together; the content scrolls inside its island (entering an area scrolls it back to the top). Below 1000 px the sidebar becomes a 76 px rail: labels leave
 the screen but stay as the links' names (visually hidden, not `display: none`) and become tooltips.
 
-Until Frases and the Conexão com o Anki are rebuilt, today's content lives inside the shell in `.conteudo-de-hoje`
-blocks marked `data-tema="claro"`: its CSS was drawn for a light background.
+Until an area is rebuilt, today's content lives inside the shell in `.conteudo-de-hoje` blocks marked
+`data-tema="claro"`: its CSS was drawn for a light background. In Frases that block holds only today's bulk actions
+(select page/all, edit, delete, export, send to Anki, import, bulk add) until #30, #31 and #32 rebuild them.
 
 Configurações is the “summary first” variant C (`docs/design/painel/configuracoes/`): each of the four cards (Conta & sync ·
 Atalhos · Chave do Gemini · Zona de perigo) is one closed row — icon tile, title, a summary of its state, chevron — and
@@ -136,6 +138,27 @@ A sync problem shows **only** in the card and the chip — never a toast or a st
 cloud error with its situation (`erroDaResposta`: HTTP 401 → `EXPIROU`, 403/PERMISSION_DENIED → `RECUSADO`, the rest
 `SEM_SINCRONIZAR`, or `PRIMEIRA_SUBIDA_FALHOU` when the first upload reached nothing) and the raw message goes to the card's collapsed “Detalhes”. Closing Google's login window is not an
 error and shows nothing; a login that fails shows CFG-07 in the card with “Tentar de novo”.
+
+### Frases list (`painel.js`, docs/design/painel/frases/, variant A)
+
+Each phrase is a `.veio-frase` card under a date header (PAI-11: hoje · ontem · há N dias), 10 per page. The card
+writes the text word by word with `escreverFraseClicavel` (a `.veio-frase--na-ilha` card: `bg` inside the `surface`
+island): each word is a `role="button"` with `aria-pressed`; clicking it (or Enter/Space) picks or
+unpicks the Palavra, stored as `keywords` (`word@tokenIndex`, `|` between groups) with `autoKeyword: false`. The phrase
+is a single Tab stop and the arrow keys move between its words (`andarEntrePalavras`). The chip below says `palavra:` or `auto:`
+(`montarChipDaPalavra`) with × (clear) and + (another group). The Contexto line has the Fonte badge (PAI-29 names;
+an unknown Fonte shows its stored name; `fonteDaFrase` reads `contexto.fonte`, else `streaming`, for both the badge and
+the Fonte filter), Título · Detalhe and the state badge (PAI-08).
+
+The area header carries **Minerar frases** (ADD-01), which opens today's bulk add until #31 brings its menu. The filter
+row: one Fonte select (the Fontes in the history), language, order, the search (text and Título, with ×)
+and the “Ocultar enviadas e exportadas” toggle. Below it, the **Selecionar página** checkbox (PAI-31) marks the whole
+page, and shows the mixed state when part of it is selected (`refletirSelecao`). The list states: 5 skeleton cards until the first load finishes
+(PAI-01), first run (PAI-02: its `titulo` in bold above the text, with today's fixed Alt+S until #27), filters hid everything (PAI-03) and search without
+result (PAI-04, plus Limpar filtros when a filter is on). Everything is built with DOM nodes, never HTML strings.
+
+Today `exported` is written both by the Envio and by Exportar .txt, and the card shows it as Enviada ao Anki; #30
+gives Exportada its own state.
 
 ### Base components (`veio/componentes.css` + `veio/componentes.js`)
 
@@ -164,7 +187,10 @@ The rules the components encode, so a surface does not have to re-decide them:
 - **Error on a field** is said by `aria-invalid="true"`, not by a class, so the screen reader hears
   it too.
 - **The highlighted Word** is drawn by `escreverFrase(no, texto, palavra)`: a `kw-bg` band from 50%
-  to 94% of the line, no radius. The phrase text always goes in as text, never as HTML.
+  to 94% of the line, no radius. The phrase text always goes in as text, never as HTML. Where the
+  person picks the Word in the phrase itself, `escreverFraseClicavel(no, trechos)` writes each word as
+  a `role="button"` with the same band on the picked ones, one Tab stop per phrase, and
+  `andarEntrePalavras(evento)` / `focarPalavra(palavra)` move the focus with the arrow keys.
 - **Copy does not live in the components.** The caller passes the string it already looked up:
   `textoDaVoz('PAI-13.titulo', { n })` — `montarAviso` even refuses to build a closable aviso without the close
   label. The only three words the base writes itself are in `ROTULOS_DO_PADRAO`, because they are
@@ -260,7 +286,8 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - `e2e/pages/`: local fixture pages where the content script is injected: `player.html` (fake player with a caption), `texto.html` (plain text to select), `sem-video.html`, `player-em-iframe.html?player=<url>` (embeds the player from another origin, e.g. `paginas.urlCruzada('player.html')`), `hostil.html` + `hostil-filho.html` (a page that tries to drive the extension by itself), and `player-marcacao.html` / `texto-marcacao.html` (caption, title and selectable text carrying markup as text, to prove the content script always inserts page text as text, never as HTML).
 - `e2e/vitrine/`: the Veio showcase — tokens, type scale, radii, a Russian phrase and **every base component**, in both themes and in the states each component actually has (button and field: focus and disabled, plus error on the field; a badge only has normal). `componentes-da-vitrine.js` builds the gallery once per theme with the same function, so the two columns never diverge; its sample copy comes from the Voice catalog by ID (`CATALOGO_DA_VITRINE`), and anything that is showcase scaffolding is marked `data-vitrine-chrome`. The fixture server also serves `/veio/…` and `/lib/…` from the extension root, so the showcase loads the same tokens, fonts, components and catalog the extension pages load. After the owner's review it is **the visual reference**.
 - The showcase also carries a **mock of the toolbar badge** in its three states, outside the two theme columns — Chrome draws the real badge on the browser toolbar, which no static page (and so no Vercel preview) can show. The mock reads its colors from the tokens, and the badge test asserts those tokens match what the service worker hands Chrome, so the copy in `background.js` can't drift.
-- `tests/painel-shell-visual.spec.js` holds the **visual reference of the panel shell**: its approved states (Frases wide and as a rail, first run, the Conexão off with F1, Configurações with an account) as `toHaveScreenshot` baselines in `painel-shell-visual.spec.js-snapshots/` (taken on Linux, with the clock frozen on the day of the sample phrases). A visual change to the shell fails them; after the owner approves the new look, `npx playwright test painel-shell-visual --update-snapshots` replaces the reference. The legacy content inside each area (`.conteudo-de-hoje`) is masked: it is rebuilt ticket by ticket, and the reference is the shell around it.
+- `tests/painel-frases-visual.spec.js` holds the **visual reference of the Frases list** (cards wide and as a rail, each at the top and with the island scrolled to the pagination; loading, first run, filters and search with no result as the full page), in the same way: `npx playwright test painel-frases-visual --update-snapshots` after the owner approves a new look. Today's bulk actions (`.conteudo-de-hoje`) are masked.
+- `tests/painel-shell-visual.spec.js` holds the **visual reference of the panel shell**: its approved states (Frases wide and as a rail, first run, the Conexão off with F1, Configurações with an account) as `toHaveScreenshot` baselines in `painel-shell-visual.spec.js-snapshots/` (taken on Linux, with the clock frozen on the day of the sample phrases). A visual change to the shell fails them; after the owner approves the new look, `npx playwright test painel-shell-visual --update-snapshots` replaces the reference. The content inside each area (`.conteudo-de-hoje`, and the Frases list, which has its own reference) is masked: the reference is the shell around it.
 - `tests/configuracoes-visual.spec.js` does the same for Configurações (cards closed; Conta & sync synced, not synced, logged out after a failed login; the narrow window), compared by the owner side by side with the locked prototype (`?variant=C`).
 - `HEADED=1 npm test` shows the browser.
 - Tests assert what the person sees and what ends up stored, never internal functions. Three narrow exceptions, each named in the test's own comment:
@@ -268,7 +295,7 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
   - Until a surface shows a catalog state, the catalog's own guarantees (every ID present, pt-BR numbers) are asserted through `PerpetualMiner.textoDaVoz`, inside an extension page. These move to the screen when the surface is rebuilt.
   - Two guarantees of the base components have no on-screen trigger of their own, so the test calls the component's own function and still asserts the visible result: how long a toast of a given length *stays on screen* (`mostrarToastDeSucesso`), and that a phrase carrying markup is written as text (`escreverFrase`). The surfaces that call them assert the same thing through the screen once they are rebuilt.
 
-The legacy tests keep running: `node test_sync.js`, `node test_bridge_panel.js`, `node test_auto_keyword.js`, `python test_panel_russian_style.py` and the bridge tests in `bridge/test_*.py`.
+The legacy tests keep running: `node test_sync.js`, `node test_bridge_panel.js`, `node test_auto_keyword.js` and the bridge tests in `bridge/test_*.py`.
 
 ## Key Constants
 

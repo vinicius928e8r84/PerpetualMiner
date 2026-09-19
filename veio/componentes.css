@@ -58,6 +58,17 @@
   color: var(--veio-text);
 }
 
+/* O botão comum do Painel: contorno, sem fundo; o acento aparece no hover. */
+.veio-botao--contorno {
+  background: transparent;
+  border-color: var(--veio-border-strong);
+  color: var(--veio-text);
+}
+
+.veio-botao--contorno:hover {
+  border-color: var(--veio-accent);
+}
+
 .veio-botao--perigo {
   background: transparent;
   border-color: var(--veio-danger);
@@ -175,11 +186,33 @@ input[type="number"].veio-campo {
 select.veio-campo {
   appearance: none;
   padding-right: 30px;
-  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
-                    linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position: right 14px center, right 9px center;
-  background-size: 5px 5px, 5px 5px;
-  background-repeat: no-repeat;
+}
+
+/* O select mora num `.veio-select`, que desenha a seta: o chevron fino do
+   protótipo (12 px, traço 2,5 no desenho de 24), recortado por máscara e
+   pintado com `muted`, para nenhuma cor sair dos tokens. */
+.veio-select {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.veio-select::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 11px;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  background: var(--veio-muted);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  pointer-events: none;
+}
+
+.veio-select:has(select:disabled)::after {
+  opacity: .5;
 }
 
 /* A mensagem de erro do campo, logo abaixo dele. */
@@ -211,6 +244,13 @@ select.veio-campo {
 .veio-busca .veio-campo {
   padding-left: 34px;
   padding-right: 34px;
+}
+
+/* O ícone da lupa pode vir dentro de um lugar (um <span> que o recebe). */
+.veio-busca__lupa svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .veio-busca__limpar {
@@ -293,15 +333,47 @@ select.veio-campo {
 }
 
 /* ── Checkbox ─────────────────────────────────────────────────────────────
-   O estado misto (parte da lista selecionada) é o indeterminate nativo: o
-   traço que o navegador desenha já usa a cor do acento. */
+   Desenhado, não o nativo: quadrado de raio 6 com borda forte; marcado, ele
+   se enche de acento com o visto. O estado misto (parte da lista
+   selecionada) é o indeterminate, com um traço no lugar do visto. */
 
 .veio-checkbox {
+  appearance: none;
   flex: none;
-  width: 16px;
-  height: 16px;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
   margin: 0;
-  accent-color: var(--veio-accent);
+  border: 2px solid var(--veio-border-strong);
+  border-radius: var(--veio-raio-checkbox);
+  background: transparent;
+  cursor: pointer;
+}
+
+.veio-checkbox:checked,
+.veio-checkbox:indeterminate {
+  border-color: var(--veio-accent);
+  background: var(--veio-accent);
+}
+
+/* O visto: um L girado, na cor de tinta do acento. */
+.veio-checkbox:checked::after {
+  content: "";
+  width: 8px;
+  height: 4px;
+  border: 2px solid var(--veio-accent-ink);
+  border-top: 0;
+  border-right: 0;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+
+/* Parte da lista marcada: um traço. */
+.veio-checkbox:indeterminate::after {
+  content: "";
+  width: 8px;
+  height: 2px;
+  background: var(--veio-accent-ink);
 }
 
 .veio-checkbox:disabled {
@@ -317,13 +389,14 @@ select.veio-campo {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 8px;
+  padding: 1px 8px 1px 6px;
+  border: 1px solid var(--veio-border);
   border-radius: var(--veio-raio-pilula);
-  background: var(--veio-surface-2);
+  background: var(--veio-surface);
   color: var(--veio-muted);
   font-size: var(--veio-tam-legenda);
-  font-weight: 600;
-  line-height: 1.3;
+  font-weight: 700;
+  line-height: 1.4;
   white-space: nowrap;
 }
 
@@ -331,6 +404,13 @@ select.veio-campo {
   width: 12px;
   height: 12px;
   flex: none;
+}
+
+.veio-selo--ok,
+.veio-selo--info,
+.veio-selo--erro {
+  padding-inline: 8px;
+  border-color: transparent;
 }
 
 .veio-selo--ok {
@@ -362,15 +442,16 @@ select.veio-campo {
 
 .veio-kbd {
   display: inline-block;
-  padding: 2px 6px;
+  padding: 1px 7px;
   border: 1px solid var(--veio-border-strong);
   border-bottom-width: 2px;
-  border-radius: var(--veio-raio-tecla);
-  background: var(--veio-surface);
-  color: var(--veio-text);
+  border-radius: var(--veio-raio-tecla-resumo);
+  background: transparent;
+  color: inherit;
   font-family: var(--veio-fonte-mono);
   font-size: var(--veio-tam-tecla);
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 .veio-kbd--sem-atalho {
@@ -676,6 +757,13 @@ select.veio-campo {
   color: var(--veio-muted);
 }
 
+.veio-vazio__titulo {
+  margin: 0;
+  color: var(--veio-text);
+  font-size: var(--veio-tam-destaque);
+  font-weight: var(--veio-peso-titulo);
+}
+
 .veio-vazio__texto {
   margin: 0;
   max-width: 36ch;
@@ -689,6 +777,9 @@ select.veio-campo {
    Detalhe), chip da Palavra, estado e as ações só-ícone. */
 
 .veio-frase {
+  /* O fundo do cartão, uma variável só dele (não é token: guarda um token); o
+     selecionado mistura o acento sobre ela. */
+  --_fundo: var(--veio-surface);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 12px;
@@ -696,16 +787,27 @@ select.veio-campo {
   padding: 13px 14px;
   border: 1px solid var(--veio-border);
   border-radius: var(--veio-raio-card);
-  background: var(--veio-surface);
+  background: var(--_fundo);
 }
 
 .veio-frase > .veio-checkbox {
   margin-top: 3px;
 }
 
-.veio-frase--selecionada {
+/* O cartão dentro de uma ilha `surface` (a lista de Frases): fundo `bg`, e a
+   borda firma ao passar o mouse. */
+.veio-frase--na-ilha {
+  --_fundo: var(--veio-bg);
+}
+
+.veio-frase--na-ilha:hover {
+  border-color: var(--veio-border-strong);
+}
+
+.veio-frase--selecionada,
+.veio-frase--selecionada:hover {
   border-color: color-mix(in srgb, var(--veio-accent) 45%, var(--veio-border));
-  background: color-mix(in srgb, var(--veio-accent) 5%, var(--veio-surface));
+  background: color-mix(in srgb, var(--veio-accent) 5%, var(--_fundo));
 }
 
 .veio-frase__texto {
@@ -744,6 +846,15 @@ select.veio-campo {
   color: var(--veio-kw-fg);
 }
 
+/* A frase em que cada palavra é clicável: clicar grifa ou desgrifa a Palavra. */
+.veio-palavra-clicavel {
+  cursor: pointer;
+}
+
+.veio-palavra-clicavel:hover:not(.veio-palavra) {
+  background: var(--veio-accent-soft);
+}
+
 /* O chip diz de onde a Palavra veio: "palavra:" escolhida, "auto:" detectada. */
 .veio-chip-palavra {
   display: inline-flex;
@@ -779,6 +890,46 @@ select.veio-campo {
   flex: 1;
   height: 1px;
   background: var(--veio-border);
+}
+
+/* As ações do chip da Palavra: × dentro dele remove, + ao lado começa outro
+   grupo. */
+.veio-chip-palavra .veio-botao-icone {
+  width: 20px;
+  height: 20px;
+}
+
+.veio-chip-palavra .veio-botao-icone svg {
+  width: 12px;
+  height: 12px;
+}
+
+.veio-chip-palavra__outro {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px dashed var(--veio-border-strong);
+  border-radius: var(--veio-raio-pilula);
+  background: none;
+  color: var(--veio-muted);
+  font-weight: var(--veio-peso-titulo);
+  cursor: pointer;
+}
+
+.veio-chip-palavra__outro:hover {
+  border-color: var(--veio-accent);
+  color: var(--veio-text);
+}
+
+/* O cartão enquanto a lista carrega: um bloco de esqueleto do tamanho de um
+   cartão, sem texto e sem borda (o `.veio-esqueleto` traz o brilho). */
+.veio-frase-esqueleto {
+  height: 74px;
+  margin-bottom: 8px;
+  border-radius: var(--veio-raio-card);
+  opacity: .7;
 }
 
 /* ── Movimento reduzido ───────────────────────────────────────────────────

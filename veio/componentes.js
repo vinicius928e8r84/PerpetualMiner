@@ -57,17 +57,25 @@
     contexto: ['<path d="M4 20h4L19 9l-4-4L4 16z"/>'],
     apagar: ['<path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/>'],
     enviar: ['<path d="M4 12l16-8-6 16-3-6z"/>'],
-    netflix: ['<rect x="4" y="4" width="16" height="16" rx="2"/>', '<path d="M9 8l6 4-6 4z"/>'],
+    // As Fontes, no desenho do protótipo de Frases: vídeo é uma tela.
+    netflix: ['<rect x="2" y="5" width="20" height="13" rx="2"/>', '<path d="M8 21h8"/>'],
     youtube: ['<rect x="2" y="5" width="20" height="14" rx="4"/>', '<path d="M10 9l5 3-5 3z"/>'],
     web: ['<circle cx="12" cy="12" r="9"/>', '<path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/>'],
-    pdf: ['<path d="M14 3H6v18h12V7z"/>', '<path d="M14 3v4h4"/>'],
-    livro: ['<path d="M4 5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2z"/>', '<path d="M4 20a2 2 0 0 0 2 2h13v-4"/>'],
-    manual: ['<path d="M4 20h4L19 9l-4-4L4 16z"/>'],
+    pdf: ['<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>', '<path d="M14 3v6h6"/>'],
+    livro: ['<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14z"/>'],
+    manual: ['<path d="M12 5v14M5 12h14"/>'],
     // As áreas do Painel, na sidebar e no trilho.
     frases: ['<path d="M4 6h16M4 12h16M4 18h10"/>'],
     anki: ['<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0V7zM12 16v5"/>'],
     configuracoes: ['<circle cx="12" cy="12" r="3"/>', '<path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'],
     conta: ['<circle cx="12" cy="8" r="4"/>', '<path d="M4 21a8 8 0 0 1 16 0"/>'],
+    // O chevron de um botão que abre um menu.
+    abaixo: ['<path d="M6 9l6 6 6-6"/>'],
+    // A paginação: primeira, anterior, próxima e última página.
+    primeira: ['<path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>'],
+    anterior: ['<path d="M15 18l-6-6 6-6"/>'],
+    proxima: ['<path d="M9 18l6-6-6-6"/>'],
+    ultima: ['<path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>'],
     // A porta com a seta para dentro do Entrar com Google.
     entrar: ['<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>', '<path d="M10 17l5-5-5-5M15 12H3"/>'],
     atualizar: ['<path d="M20 11a8 8 0 0 0-14.7-4.4L4 8"/>', '<path d="M4 3v5h5M4 13a8 8 0 0 0 14.7 4.4L20 16"/>', '<path d="M20 21v-5h-5"/>'],
@@ -405,6 +413,64 @@
   }
 
   /**
+   * Escreve a frase em `no` com cada palavra clicável: a pessoa escolhe a
+   * Palavra na própria frase. A grifada usa a mesma faixa de `escreverFrase`.
+   *
+   * Cada palavra é um `role="button"` com `aria-pressed`. A frase é uma parada
+   * só do Tab (a primeira palavra); dentro dela, `andarEntrePalavras` leva o
+   * foco pelas setas. O texto entra sempre como texto.
+   *
+   * @param {HTMLElement} no      Onde a frase é escrita (é esvaziado antes).
+   * @param {Array<{texto: string, palavra?: boolean, grifada?: boolean, dados?: object}>} trechos
+   *   A frase em ordem. `palavra` marca o trecho clicável, `grifada` o que é a
+   *   Palavra, e `dados` vai para o `dataset` da palavra.
+   */
+  function escreverFraseClicavel(no, trechos) {
+    no.textContent = '';
+    const documento = no.ownerDocument;
+    let primeira = true;
+    for (const trecho of trechos) {
+      if (!trecho.palavra) {
+        no.append(documento.createTextNode(trecho.texto));
+        continue;
+      }
+      const palavra = documento.createElement('span');
+      palavra.className = trecho.grifada ? 'veio-palavra-clicavel veio-palavra' : 'veio-palavra-clicavel';
+      palavra.textContent = trecho.texto;
+      palavra.setAttribute('role', 'button');
+      palavra.setAttribute('aria-pressed', String(Boolean(trecho.grifada)));
+      palavra.tabIndex = primeira ? 0 : -1;
+      Object.assign(palavra.dataset, trecho.dados);
+      primeira = false;
+      no.append(palavra);
+    }
+  }
+
+  /**
+   * As setas levam o foco à palavra vizinha da mesma frase.
+   *
+   * @param {KeyboardEvent} evento Um keydown numa palavra de `escreverFraseClicavel`.
+   * @returns {boolean} Se a tecla era uma seta (e o evento foi consumido).
+   */
+  function andarEntrePalavras(evento) {
+    const passo = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[evento.key];
+    const palavra = evento.target.closest?.('.veio-palavra-clicavel');
+    if (!passo || !palavra) return false;
+    evento.preventDefault();
+    const todas = [...palavra.parentElement.querySelectorAll('.veio-palavra-clicavel')];
+    const vizinha = todas[todas.indexOf(palavra) + passo];
+    if (vizinha) focarPalavra(vizinha);
+    return true;
+  }
+
+  /** Faz de `palavra` a parada do Tab da sua frase e dá o foco a ela. */
+  function focarPalavra(palavra) {
+    palavra.parentElement.querySelectorAll('.veio-palavra-clicavel').forEach(outra => { outra.tabIndex = -1; });
+    palavra.tabIndex = 0;
+    palavra.focus();
+  }
+
+  /**
    * O chip que diz de onde a Palavra veio.
    *
    * O rótulo é `palavra:` quando a pessoa a escolheu e `auto:` quando foi
@@ -446,6 +512,9 @@
     montarAviso,
     montarDetalhes,
     escreverFrase,
+    escreverFraseClicavel,
+    andarEntrePalavras,
+    focarPalavra,
     montarChipDaPalavra,
     refletirSelecao,
   };

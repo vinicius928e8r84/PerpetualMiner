@@ -53,18 +53,22 @@ const { abrirModal, mostrarToastDeSucesso, escreverFrase } = PerpetualMiner.Veio
 aqui, com o nome da spec, e passa a valer para todas as telas.
 
 - **Botões:** `.veio-botao` com `--primario` (ouro, um por tela), `--secundario`,
-  `--fantasma`, `--perigo` (contorno: a entrada que abre o modal destrutivo) e
+  `--fantasma`, `--contorno` (o botão comum do Painel: só a borda, com o acento no
+  hover), `--perigo` (contorno: a entrada que abre o modal destrutivo) e
   `--perigo-cheio` (só o botão que confirma dentro dele). `.veio-botao-icone` é
   circular e sempre leva `aria-label`, porque não tem texto.
 - **Campos:** `.veio-campo` em `input`, `select` e `textarea`, dentro de
-  `.veio-busca` quando tem lupa e ×. O erro é dito por `aria-invalid="true"`, que
+  `.veio-busca` quando tem lupa e ×. O `select` mora num `.veio-select`, que
+  desenha o chevron fino. O erro é dito por `aria-invalid="true"`, que
   pinta a borda e o leitor de tela também ouve; a mensagem vai num
   `.veio-campo-erro` abaixo.
-- **Toggle e checkbox:** `.veio-toggle` (trilho de 40×24) e `.veio-checkbox`. O
-  estado misto do cabeçalho de uma lista é o `indeterminate` nativo:
+- **Toggle e checkbox:** `.veio-toggle` (trilho de 40×24) e `.veio-checkbox`,
+  desenhado (quadrado de raio 6, cheio de acento com o visto). O estado misto do
+  cabeçalho de uma lista é o `indeterminate`, com um traço:
   `refletirSelecao(checkbox, selecionados, total)`.
-- **Selos:** `.veio-selo` neutro para a Fonte (sem a cor de marca de terceiro) e
-  `--ok` / `--info` / `--erro` para estado.
+- **Selos:** `.veio-selo` neutro para a Fonte (contorno e ícone, sem a cor de
+  marca de terceiro) e `--ok` / `--info` / `--erro` para estado (fundo suave, só
+  o texto).
 - **`kbd`:** `.veio-kbd` para o atalho gravado e `.veio-kbd--sem-atalho`, o
   tracejado de GLB-02, quando não há nenhum.
 - **Modal:** `.veio-scrim` por fora, `[role="dialog"]` por dentro, aberto por
@@ -87,7 +91,12 @@ aqui, com o nome da spec, e passa a valer para todas as telas.
 - **Linha de frase:** `.veio-frase`, com a Palavra grifada por
   `escreverFrase(no, texto, palavra)` — uma faixa `kw-bg` de 50% a 94% da linha,
   sem raio — e o chip de `montarChipDaPalavra(palavra, { detectada })`, que diz
-  `palavra:` quando a pessoa a escolheu e `auto:` quando foi detectada.
+  `palavra:` quando a pessoa a escolheu e `auto:` quando foi detectada. Onde a
+  pessoa escolhe a Palavra na própria frase, `escreverFraseClicavel(no, trechos)`
+  escreve cada palavra como `role="button"` (`aria-pressed`), com a mesma faixa
+  na escolhida e uma parada só do Tab por frase; `andarEntrePalavras(evento)` e
+  `focarPalavra(palavra)` levam o foco pelas setas. Dentro de uma ilha `surface`,
+  o cartão é `.veio-frase--na-ilha` (fundo `bg`).
 
 **A cópia não mora aqui.** Quem chama passa o texto já buscado no catálogo da
 Voz: `abrirModal` não conhece “Apagar 12 frases?”, a tela é que a pede por

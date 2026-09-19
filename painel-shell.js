@@ -122,7 +122,7 @@
     // #configuracoes sozinho mostra todos os cards fechados.
     if (area === 'configuracoes' && !secao) fecharOsCards();
     if (secao) rolarAteASecao(secao);
-    else if (entrou) window.scrollTo(0, 0);
+    else if (entrou) $('.shell-conteudo').scrollTo(0, 0);
 
     if (entrou) for (const ouvinte of ouvintesDeArea.get(area) || []) ouvinte();
   }

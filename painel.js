@@ -2,7 +2,11 @@
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
 // deste arquivo, pelo painel.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
-const { detectarIdioma, IDIOMAS, textoDaVoz } = PerpetualMiner;
+const { detectarIdioma, IDIOMAS, textoDaVoz, CATALOGO_DA_VOZ } = PerpetualMiner;
+// A lista de Frases é montada com os componentes da Base Veio (veio/componentes.js).
+const {
+  iconeVeio, montarChipDaPalavra, escreverFraseClicavel, andarEntrePalavras, focarPalavra, refletirSelecao,
+} = PerpetualMiner.Veio;
 // O shell (painel-shell.js) é dono da sidebar: o total e o ponto da Conexão com o
 // Anki. A conta (painel-conta.js) desenha o chip e o card Conta & sync. Este
 // arquivo conta aos dois o que muda.
@@ -15,20 +19,24 @@ const { mostrarToastDeSucesso } = PerpetualMiner.Veio;
 
 const POR_PAGINA = 10;
 
-const PLATAFORMAS = {
-  primevideo: { nome: 'Amazon Prime Video', bg: '#00A8E0', letra: 'P'   },
-  amazon:     { nome: 'Amazon Prime Video', bg: '#00A8E0', letra: 'P'   },
-  youtube:    { nome: 'YouTube',            bg: '#FF0000', letra: '▶'   },
-  netflix:    { nome: 'Netflix',            bg: '#E50914', letra: 'N'   },
-  disneyplus: { nome: 'Disney+',            bg: '#0063E5', letra: 'D+'  },
-  disney:     { nome: 'Disney+',            bg: '#0063E5', letra: 'D+'  },
-  max:        { nome: 'HBO Max',            bg: '#6600FF', letra: 'HBO' },
-  hbomax:     { nome: 'HBO Max',            bg: '#6600FF', letra: 'HBO' },
-  starplus:   { nome: 'Star+',             bg: '#C8001A', letra: '★'   },
-  star:       { nome: 'Star+',             bg: '#C8001A', letra: '★'   },
-  web:        { nome: 'Web',               bg: '#6b7280', letra: 'W'   },
-  pdf:        { nome: 'PDF',               bg: '#ef4444', letra: 'PDF' },
-  livro:      { nome: 'Físico/Livro',      bg: '#b45309', letra: 'LV'  },
+// O atalho de legenda de hoje é fixo em content.js (Alt+S). O #27 o torna
+// gravável, e o vazio de Frases (PAI-02) passa a mostrar o atalho gravado.
+const ATALHO_DE_LEGENDA = 'Alt+S';
+
+// As Fontes que o catálogo nomeia (PAI-29). Os nomes antigos gravados em
+// frases de antes apontam para o nome de hoje.
+const APELIDOS_DE_FONTE = { amazon: 'primevideo', hbomax: 'max', disney: 'disneyplus', star: 'starplus' };
+
+// O desenho de vídeo da Base Veio, que lá se chama `netflix`: todo serviço de
+// vídeo usa ele no selo de Fonte.
+const ICONE_DE_VIDEO = 'netflix';
+
+// O ícone do selo de cada Fonte. Uma Fonte fora da lista (o nome do site) usa o
+// da Web.
+const ICONES_DE_FONTE = {
+  netflix: ICONE_DE_VIDEO, primevideo: ICONE_DE_VIDEO, max: ICONE_DE_VIDEO, disneyplus: ICONE_DE_VIDEO,
+  starplus: ICONE_DE_VIDEO, kinopoisk: ICONE_DE_VIDEO, youtube: 'youtube',
+  web: 'web', selecao: 'web', pdf: 'pdf', livro: 'livro', manual: 'manual', importado: 'manual',
 };
 
 // Firestore REST — sem nenhum SDK (evita violações de CSP em extensões MV3)
@@ -49,10 +57,13 @@ const DEFAULT_BRIDGE_PRESETS = {
 let todasFrases        = [];
 let frasesVisiveis     = [];
 let paginaAtual        = 1;
-let filtroStreaming     = 'all';
+let filtroFonte         = 'all';
 let filtroIdioma       = 'all';
 let esconderExportadas = false;
 let ordemAtual         = 'novas'; // 'novas' | 'antigas'
+let buscaAtual         = '';
+// Até a primeira leitura terminar, a lista mostra os cartões-esqueleto (PAI-01).
+let listaCarregada     = false;
 
 // usuarioLogado: { uid, email, displayName, photoURL, accessToken, expiresAt } | null
 let usuarioLogado = null;
@@ -71,7 +82,6 @@ const bridgeCleanupPromptedKeys = new Set();
 let bridgeAnalyticsRange = 'today';
 let bridgeVocabularyTimer = null;
 let bridgeVocabularyDeck = { lang: 'en' };
-let autoMinerState = null;
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 
@@ -81,7 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
   Shell.aoEntrarNaArea('anki', () => atualizarBridgeWorkspaceData({ includeAnki: true, launchAnki: true }));
   Conta.aoPedir({ entrar: loginGoogle, sair: logout, tentarDeNovo: carregarFrasesFirestore });
   setupStorageSyncListener();
-  carregarAutoMinerPainel();
   inicializarAuth();
 });
 
@@ -588,8 +597,8 @@ function finalizarCarregamento() {
   Object.keys(keywords).forEach(k => delete keywords[k]);
   todasFrases.forEach(f => { if (f.keywords?.length) keywords[f.id] = f.keywords; });
   atualizarTotal();
-  construirDropdown();
-  construirDropdownIdioma();
+  construirFiltroDeFonte();
+  listaCarregada = true;
   aplicarFiltro();
 }
 
@@ -607,10 +616,6 @@ function atualizarTotal() {
 
 function setupStorageSyncListener() {
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.pm_auto_miner_state_view?.newValue) {
-      autoMinerState = changes.pm_auto_miner_state_view.newValue;
-      renderizarAutoMinerPainel();
-    }
     if (area !== 'local' || !changes.frases) return;
     const novasLocais = changes.frases.newValue || [];
     if (!usuarioLogado) {
@@ -624,12 +629,6 @@ function setupStorageSyncListener() {
     if (!adicionadas.length) return;
     todasFrases = [...adicionadas, ...todasFrases];
     finalizarCarregamento();
-  });
-
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message?.type !== 'AUTO_MINER_STATE_CHANGED') return;
-    autoMinerState = message.state;
-    renderizarAutoMinerPainel();
   });
 }
 
@@ -800,11 +799,7 @@ function selecionarPagina() {
   } else {
     ids.forEach(id => selecionadas.add(id));
   }
-  // Atualiza checkboxes visíveis
-  ids.forEach(id => {
-    const chk = document.querySelector(`.frase-check[data-id="${id}"]`);
-    if (chk) chk.checked = selecionadas.has(id);
-  });
+  ids.forEach(refletirSelecaoNoCartao);
   atualizarContadorSelecao();
 }
 
@@ -816,11 +811,7 @@ function selecionarTodosVisiveis() {
   } else {
     ids.forEach(id => selecionadas.add(id));
   }
-  // Atualiza checkboxes visíveis na página atual
-  idsPaginaAtual().forEach(id => {
-    const chk = document.querySelector(`.frase-check[data-id="${id}"]`);
-    if (chk) chk.checked = selecionadas.has(id);
-  });
+  idsPaginaAtual().forEach(refletirSelecaoNoCartao);
   atualizarContadorSelecao();
 }
 
@@ -830,6 +821,9 @@ function atualizarBotoesSel() {
   if (!btnPag || !btnTodos) return;
 
   const idsPag   = idsPaginaAtual();
+  // “Selecionar página” (PAI-31): marcado com a página inteira, misto com parte.
+  document.getElementById('frases-selecao').hidden = !listaCarregada || idsPag.length === 0;
+  refletirSelecao(document.getElementById('sel-pagina'), idsPag.filter(id => selecionadas.has(id)).length, idsPag.length);
   const pagAtiva = idsPag.length > 0 && idsPag.every(id => selecionadas.has(id));
   btnPag.classList.toggle('sel-active', pagAtiva);
   btnPag.title = pagAtiva ? 'Desmarcar página atual' : 'Selecionar página atual';
@@ -866,6 +860,8 @@ function setupListeners() {
   document.getElementById('btn-send-anki').addEventListener('click', enviarSelecionadasAoAnki);
   document.getElementById('btn-bulk-edit').addEventListener('click', abrirModalBulk);
   document.getElementById('btn-sel-pagina').addEventListener('click', selecionarPagina);
+  document.getElementById('sel-pagina').addEventListener('change', selecionarPagina);
+  document.getElementById('btn-minerar-frases').addEventListener('click', abrirModalMultiAdd);
   document.getElementById('btn-sel-todos').addEventListener('click', selecionarTodosVisiveis);
 
   // Adição em Massa
@@ -900,85 +896,39 @@ function setupListeners() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); salvarModal(); }
   });
 
-  document.getElementById('btn-hide-exported').addEventListener('click', () => {
-    esconderExportadas = !esconderExportadas;
-    document.getElementById('btn-hide-exported').classList.toggle('active', esconderExportadas);
-    paginaAtual = 1;
-    aplicarFiltro();
-  });
+  configurarFiltros();
 
   document.getElementById('btn-first').addEventListener('click', () => irPagina(1));
   document.getElementById('btn-prev').addEventListener('click',  () => irPagina(paginaAtual - 1));
   document.getElementById('btn-next').addEventListener('click',  () => irPagina(paginaAtual + 1));
   document.getElementById('btn-last').addEventListener('click',  () => irPagina(totalPaginas()));
 
-  document.getElementById('dropdown-trigger').addEventListener('click', (e) => {
-    e.stopPropagation();
-    document.getElementById('dropdown-menu').classList.toggle('hidden');
-    document.getElementById('idioma-menu').classList.add('hidden');
-    document.getElementById('ordem-menu').classList.add('hidden');
-  });
-
-  document.getElementById('idioma-trigger').addEventListener('click', (e) => {
-    e.stopPropagation();
-    document.getElementById('idioma-menu').classList.toggle('hidden');
-    document.getElementById('dropdown-menu').classList.add('hidden');
-    document.getElementById('ordem-menu').classList.add('hidden');
-  });
-  document.getElementById('idioma-menu').addEventListener('click', (e) => {
-    e.stopPropagation();
-    const item = e.target.closest('[data-idioma]');
-    if (item) filtrarIdiomaPor(item.dataset.idioma);
-  });
-
-  document.getElementById('ordem-trigger').addEventListener('click', (e) => {
-    e.stopPropagation();
-    document.getElementById('ordem-menu').classList.toggle('hidden');
-    document.getElementById('dropdown-menu').classList.add('hidden');
-    document.getElementById('idioma-menu').classList.add('hidden');
-  });
-  document.getElementById('ordem-menu').addEventListener('click', (e) => {
-    e.stopPropagation();
-    const item = e.target.closest('[data-ordem]');
-    if (item) filtrarOrdem(item.dataset.ordem);
-  });
-
-  document.addEventListener('click', () => {
-    document.getElementById('dropdown-menu').classList.add('hidden');
-    document.getElementById('idioma-menu').classList.add('hidden');
-    document.getElementById('ordem-menu').classList.add('hidden');
-  });
-
-  document.getElementById('dropdown-menu').addEventListener('click', (e) => {
-    e.stopPropagation();
-    const item = e.target.closest('[data-streaming]');
-    if (item) filtrarPor(item.dataset.streaming);
-  });
-
-  document.getElementById('phrases-list').addEventListener('click', (e) => {
-    if (e.target.closest('.frase-check')) return;
+  const lista = document.getElementById('frases-lista');
+  lista.addEventListener('click', (e) => {
     const btnCopy     = e.target.closest('[data-action="copy"]');
     const btnDel      = e.target.closest('[data-action="delete"]');
     const btnEdit     = e.target.closest('[data-action="edit"]');
     const btnEditText = e.target.closest('[data-action="edit-text"]');
     const btnClear    = e.target.closest('[data-action="clear-kw"]');
     const btnAddSep   = e.target.closest('[data-action="add-sep"]');
-    const wordEl      = e.target.closest('.word');
+    const palavraEl   = e.target.closest('.veio-palavra-clicavel');
     if (btnCopy)     { copiarFrase(btnCopy.dataset.id);                         return; }
     if (btnDel)      { deletarFrase(Number(btnDel.dataset.id));                 return; }
     if (btnEdit)     { abrirEdicaoIndividual(Number(btnEdit.dataset.id));       return; }
     if (btnEditText) { editarTextoFrase(Number(btnEditText.dataset.id));        return; }
     if (btnClear)    { clearKeywords(Number(btnClear.dataset.id));              return; }
     if (btnAddSep)   { addSeparator(Number(btnAddSep.dataset.id));             return; }
-    if (wordEl)      { toggleWord(Number(wordEl.dataset.id), Number(wordEl.dataset.idx), wordEl.dataset.word); return; }
+    if (palavraEl)   { escolherPalavra(palavraEl);                              return; }
   });
+  lista.addEventListener('keydown', aoTeclarNaFrase);
 
-  document.getElementById('phrases-list').addEventListener('change', (e) => {
+  lista.addEventListener('change', (e) => {
     const chk = e.target.closest('.frase-check');
     if (!chk) return;
     const id = Number(chk.dataset.id);
     if (chk.checked) selecionadas.add(id);
     else             selecionadas.delete(id);
+    refletirSelecaoNoCartao(id);
     atualizarContadorSelecao();
   });
 
@@ -1026,10 +976,6 @@ function setupListeners() {
   byId('bridge-vocab-status')?.addEventListener('change', () => atualizarBridgeVocabulary());
   byId('bridge-vocab-type')?.addEventListener('change', () => atualizarBridgeVocabulary());
   byId('bridge-vocab-lang')?.addEventListener('change', () => atualizarBridgeVocabulary());
-  byId('panel-auto-en')?.addEventListener('change', salvarAutoMinerPainel);
-  byId('panel-auto-ru')?.addEventListener('change', salvarAutoMinerPainel);
-  byId('panel-auto-limit-en')?.addEventListener('change', salvarAutoMinerPainel);
-  byId('panel-auto-limit-ru')?.addEventListener('change', salvarAutoMinerPainel);
 }
 
 async function inicializarBridgeUI() {
@@ -1050,49 +996,6 @@ function normalizarBridgePresets(raw) {
 
 function byId(id) {
   return document.getElementById(id);
-}
-
-function carregarAutoMinerPainel() {
-  chrome.runtime.sendMessage({ type: 'AUTO_MINER_GET_STATE' }, response => {
-    if (chrome.runtime.lastError || !response?.state) return;
-    autoMinerState = response.state;
-    renderizarAutoMinerPainel();
-  });
-}
-
-function renderizarAutoMinerPainel() {
-  const state = autoMinerState;
-  if (!state) return;
-  const enToggle = byId('panel-auto-en');
-  const ruToggle = byId('panel-auto-ru');
-  const enLimit = byId('panel-auto-limit-en');
-  const ruLimit = byId('panel-auto-limit-ru');
-  if (enToggle) enToggle.checked = Boolean(state.settings?.en?.enabled);
-  if (ruToggle) ruToggle.checked = Boolean(state.settings?.ru?.enabled);
-  if (enLimit) enLimit.value = state.settings?.en?.dailyLimit || 20;
-  if (ruLimit) ruLimit.value = state.settings?.ru?.dailyLimit || 20;
-  const enCount = byId('panel-auto-count-en');
-  const ruCount = byId('panel-auto-count-ru');
-  if (enCount) enCount.textContent = `${state.daily?.en?.count || 0}/${state.settings?.en?.dailyLimit || 20}`;
-  if (ruCount) ruCount.textContent = `${state.daily?.ru?.count || 0}/${state.settings?.ru?.dailyLimit || 20}`;
-}
-
-function salvarAutoMinerPainel() {
-  const settings = {
-    en: {
-      enabled: Boolean(byId('panel-auto-en')?.checked),
-      dailyLimit: Number(byId('panel-auto-limit-en')?.value || 20),
-    },
-    ru: {
-      enabled: Boolean(byId('panel-auto-ru')?.checked),
-      dailyLimit: Number(byId('panel-auto-limit-ru')?.value || 20),
-    },
-  };
-  chrome.runtime.sendMessage({ type: 'AUTO_MINER_SET_SETTINGS', settings }, response => {
-    if (chrome.runtime.lastError || !response?.state) return;
-    autoMinerState = response.state;
-    renderizarAutoMinerPainel();
-  });
 }
 
 function bridgePresetEl(lang, field) {
@@ -1644,69 +1547,98 @@ async function baixarBridgeDebugBundle(jobId) {
   }
 }
 
-function getStreamingsUnicos() {
-  const seen = new Set();
-  return todasFrases.map(f => f.streaming).filter(s => s && !seen.has(s) && seen.add(s));
+// ─── Filtros e busca ──────────────────────────────────────────────────────────
+//
+// Uma linha que quebra: Fonte · idioma · ordem em selects, a busca no texto e
+// no Título (lista fechada, item 1) e o toggle “Ocultar enviadas e exportadas”.
+
+/** As Fontes do histórico, cada uma uma vez, na ordem em que aparecem. */
+function fontesDoHistorico() {
+  return [...new Set(todasFrases.map(fonteDaFrase).filter(Boolean))];
 }
 
-function construirDropdown() {
-  const menu = document.getElementById('dropdown-menu');
-  menu.innerHTML = ['all', ...getStreamingsUnicos()].map(s => {
-    const { nome } = infoPlataforma(s);
-    return `<button class="dropdown-item" data-streaming="${esc(s)}">${esc(nome)}</button>`;
-  }).join('');
+/** O select de Fonte, com as Fontes do histórico. O nome entra como texto. */
+function construirFiltroDeFonte() {
+  const select = document.getElementById('filtro-fonte');
+  const fontes = fontesDoHistorico();
+  if (filtroFonte !== 'all' && !fontes.includes(filtroFonte)) filtroFonte = 'all';
+  select.replaceChildren(
+    new Option(textoDaVoz('PAI-10.todasAsFontes'), 'all'),
+    ...fontes.map(fonte => new Option(nomeDaFonte(fonte), fonte)));
+  select.value = filtroFonte;
 }
 
-function construirDropdownIdioma() {
-  const idiomas  = ['all', ...new Set(todasFrases.map(f => f.idioma || 'Inglês'))];
-  const labelMap = { all: 'Todos os Idiomas', Inglês: '🇬🇧 Inglês', Russo: '🇷🇺 Russo' };
-  const menu = document.getElementById('idioma-menu');
-  menu.innerHTML = idiomas.map(i =>
-    `<button class="dropdown-item" data-idioma="${i}">${labelMap[i] || i}</button>`
-  ).join('');
+function configurarFiltros() {
+  const fonte   = document.getElementById('filtro-fonte');
+  const idioma  = document.getElementById('filtro-idioma');
+  const ordem   = document.getElementById('filtro-ordem');
+  const busca   = document.getElementById('busca-frases');
+  const ocultar = document.getElementById('filtro-ocultar');
+
+  idioma.replaceChildren(
+    new Option(textoDaVoz('PAI-10.todosOsIdiomas'), 'all'),
+    ...Object.values(IDIOMAS).map(i => new Option(textoDaVoz('PAI-10.idioma', { idioma: i }), i)));
+  construirFiltroDeFonte();
+  busca.placeholder = textoDaVoz('PAI-23');
+
+  const aoMudar = (aplicar) => () => { aplicar(); voltarAPrimeiraPagina(); };
+  fonte.addEventListener('change',   aoMudar(() => { filtroFonte = fonte.value; }));
+  idioma.addEventListener('change',  aoMudar(() => { filtroIdioma = idioma.value; }));
+  ordem.addEventListener('change',   aoMudar(() => { ordemAtual = ordem.value; }));
+  ocultar.addEventListener('change', aoMudar(() => { esconderExportadas = ocultar.checked; }));
+  busca.addEventListener('input',    aoMudar(() => { buscaAtual = busca.value; mostrarLimparBusca(); }));
+  document.getElementById('btn-limpar-busca').addEventListener('click', limparBusca);
 }
 
-function filtrarIdiomaPor(idioma) {
-  filtroIdioma = idioma;
-  paginaAtual  = 1;
-  const labelMap = { all: 'Todos os Idiomas', Inglês: '🇬🇧 Inglês', Russo: '🇷🇺 Russo' };
-  document.getElementById('idioma-label').textContent = labelMap[idioma] || idioma;
-  document.getElementById('idioma-menu').classList.add('hidden');
-  aplicarFiltro();
+function mostrarLimparBusca() {
+  document.getElementById('btn-limpar-busca').hidden = !buscaAtual;
 }
 
-function filtrarOrdem(ordem) {
-  ordemAtual = ordem;
+/** Fonte, idioma ou o toggle ligados. A ordem não esconde frase, então não conta. */
+function filtrosLigados() {
+  return filtroFonte !== 'all' || filtroIdioma !== 'all' || esconderExportadas;
+}
+
+function limparFiltros() {
+  filtroFonte = 'all';
+  filtroIdioma = 'all';
+  esconderExportadas = false;
+  document.getElementById('filtro-fonte').value = 'all';
+  document.getElementById('filtro-idioma').value = 'all';
+  document.getElementById('filtro-ocultar').checked = false;
+  voltarAPrimeiraPagina();
+}
+
+function limparBusca() {
+  buscaAtual = '';
+  const busca = document.getElementById('busca-frases');
+  busca.value = '';
+  mostrarLimparBusca();
+  voltarAPrimeiraPagina();
+  busca.focus();
+}
+
+/** Um filtro ou a busca mudou: a lista refaz e volta para a primeira página. */
+function voltarAPrimeiraPagina() {
   paginaAtual = 1;
-  const labels = { novas: 'Mais novas primeiro', antigas: 'Mais velhas primeiro' };
-  document.getElementById('ordem-label').textContent = labels[ordem] || 'Ordenar';
-  document.getElementById('ordem-menu').classList.add('hidden');
   aplicarFiltro();
-}
-
-function infoPlataforma(s) {
-  if (s === 'all') return { nome: 'Todos os Streamings' };
-  return { nome: PLATAFORMAS[s]?.nome || capitalizar(s) };
 }
 
 // ─── Filtro, Ordem & Paginação ────────────────────────────────────────────────
 
-function filtrarPor(streaming) {
-  filtroStreaming = streaming;
-  paginaAtual    = 1;
-  document.getElementById('dropdown-label').textContent = infoPlataforma(streaming).nome;
-  document.getElementById('dropdown-menu').classList.add('hidden');
-  aplicarFiltro();
-}
-
 function aplicarFiltro() {
-  let resultado = filtroStreaming === 'all'
+  let resultado = filtroFonte === 'all'
     ? [...todasFrases]
-    : todasFrases.filter(f => f.streaming === filtroStreaming);
+    : todasFrases.filter(f => fonteDaFrase(f) === filtroFonte);
   if (filtroIdioma !== 'all')
-    resultado = resultado.filter(f => (f.idioma || 'Inglês') === filtroIdioma);
+    resultado = resultado.filter(f => (f.idioma || IDIOMAS.INGLES) === filtroIdioma);
   if (esconderExportadas)
     resultado = resultado.filter(f => f.status !== 'exported');
+  const termo = buscaAtual.trim().toLocaleLowerCase();
+  if (termo)
+    resultado = resultado.filter(f =>
+      String(f.texto || '').toLocaleLowerCase().includes(termo) ||
+      String(f.contexto?.titulo || '').toLocaleLowerCase().includes(termo));
   if (ordemAtual === 'antigas')
     resultado.sort((a, b) => (a.id || 0) - (b.id || 0));
   else
@@ -1725,9 +1657,13 @@ function irPagina(p) {
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────────
+//
+// Um cartão por frase (o `.veio-frase` da Base Veio), sob o cabeçalho do seu
+// dia. Todo texto de frase e de Contexto entra como texto, nunca como HTML.
 
 function renderizar() {
-  const lista  = document.getElementById('phrases-list');
+  if (!listaCarregada) return;
+  const lista  = document.getElementById('frases-lista');
   const totPag = totalPaginas();
   if (paginaAtual > totPag) paginaAtual = totPag;
 
@@ -1736,97 +1672,289 @@ function renderizar() {
   const fim    = Math.min(inicio + POR_PAGINA, total);
   const pagina = frasesVisiveis.slice(inicio, fim);
 
-  document.getElementById('page-current').textContent = paginaAtual;
-  document.getElementById('page-total').textContent   = totPag;
-  document.getElementById('page-info').textContent    = total > 0
-    ? `${inicio + 1} a ${fim} de ${total} frases` : '0 frases';
+  lista.removeAttribute('aria-busy');
+  renderizarPaginacao(inicio, fim, total, totPag);
+
+  if (total === 0) {
+    lista.replaceChildren(montarVazio());
+    atualizarBotoesSel();
+    return;
+  }
+
+  // Redesenhar (um filtro, uma frase nova, a Palavra gravada) não pode tirar o
+  // foco de quem está no teclado.
+  const foco = chaveDoFoco(document.activeElement);
+  const nos = [];
+  let diaAnterior = null;
+  for (const f of pagina) {
+    const dia = rotuloDoDia(f.data);
+    if (dia && dia !== diaAnterior) nos.push(criar('div', 'veio-cabecalho-de-data', dia));
+    diaAnterior = dia;
+    nos.push(montarCartao(f));
+  }
+  lista.replaceChildren(...nos);
+  restaurarFoco(foco);
+  atualizarBotoesSel();
+}
+
+/** “1–10 de 1.284” (PAI-07) e « ‹ 1 de 129 › ». Sem frases, a paginação some. */
+function renderizarPaginacao(inicio, fim, total, totPag) {
+  document.getElementById('frases-paginas').hidden = total === 0;
+  if (total === 0) return;
+  document.getElementById('paginas-intervalo').textContent =
+    textoDaVoz('PAI-07', { inicio: inicio + 1, fim, total });
+  document.getElementById('paginas-atual').textContent =
+    textoDaVoz('PAI-26.pagina', { atual: paginaAtual, total: totPag });
   document.getElementById('btn-first').disabled = paginaAtual === 1;
   document.getElementById('btn-prev').disabled  = paginaAtual === 1;
   document.getElementById('btn-next').disabled  = paginaAtual >= totPag;
   document.getElementById('btn-last').disabled  = paginaAtual >= totPag;
-
-  if (total === 0) {
-    lista.innerHTML = `<div class="empty-state">
-      <svg width="48" height="48" fill="none" stroke="#d1d5db" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:8px">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-      </svg>
-      <span>Nenhuma frase encontrada.</span>
-    </div>`;
-    return;
-  }
-
-  const grupos = {};
-  pagina.forEach(f => { (grupos[f.data || 'Sem data'] ??= []).push(f); });
-
-  let html = '';
-  for (const [data, frases] of Object.entries(grupos)) {
-    html += `<div class="date-header">
-      <span class="date-label">${esc(data)}${labelDiasAtras(data)}</span>
-      <span class="date-line"></span>
-    </div>`;
-    for (const f of frases) {
-      const kwWords   = keywords[f.id] || [];
-      const activeSet = new Set(kwWords.filter(w => w !== '|'));
-      const textoHtml = tokenizarFrase(f.texto)
-        .map((tok, tokIdx) => {
-          if (!tok.isWord) return esc(tok.text);
-          const key    = `${tok.clean}@${tokIdx}`;
-          const active = (activeSet.has(key) || activeSet.has(tok.clean)) ? ' active' : '';
-          return `<span class="word${active}" data-id="${f.id}" data-idx="${tokIdx}" data-word="${esc(tok.clean)}">${esc(tok.text)}</span>`;
-        }).join('');
-      const kwDisplay = kwWords.map(w => w === '|' ? '|' : w.replace(/@\d+$/, '')).join(' ');
-      const kwLabel = f.autoKeyword ? 'auto:' : 'keyword:';
-      const kwChip = kwWords.length
-        ? `<div class="kw-row">
-            <span class="kw-chip${f.autoKeyword ? ' auto' : ''}"><span class="kw-label">${kwLabel}</span>${esc(kwDisplay)}
-              <button class="kw-clear" data-action="clear-kw" data-id="${f.id}" title="Remover keywords">×</button>
-            </span>
-            <button class="btn-add-sep" data-action="add-sep" data-id="${f.id}" title="Adicionar segundo grupo">+</button>
-          </div>` : '';
-      const checked       = selecionadas.has(f.id) ? 'checked' : '';
-      const exportedClass = f.status === 'exported' ? ' exported' : '';
-      const idiomaFraseClasse = (f.idioma === IDIOMAS.RUSSO || detectarIdioma(f.texto || '') === IDIOMAS.RUSSO) ? ' frase-ru' : '';
-      const ankiBadge     = f.status === 'exported'
-        ? `<div class="anki-badge"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> No Anki</div>` : '';
-      const ctxHtml = renderizarContexto(f);
-      html += `<div class="phrase-item${exportedClass}${idiomaFraseClasse}">
-        <input type="checkbox" class="frase-check" data-id="${f.id}" ${checked}>
-        <div class="phrase-body">
-          <div class="phrase-text">&ldquo; ${textoHtml} &rdquo;</div>
-          ${kwChip}${ankiBadge}${ctxHtml}
-        </div>
-        <div class="phrase-actions">
-          <button class="btn-icon" data-action="edit-text" data-id="${f.id}" title="Editar texto da frase">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <polyline points="4 7 4 4 20 4 20 7"/>
-              <line x1="9" y1="20" x2="15" y2="20"/>
-              <line x1="12" y1="4" x2="12" y2="20"/>
-            </svg>
-          </button>
-          <button class="btn-icon" data-action="edit" data-id="${f.id}" title="Editar metadados">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-          </button>
-          <button class="btn-icon" data-action="copy" data-id="${f.id}" title="Copiar frase">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          </button>
-          <button class="btn-icon danger" data-action="delete" data-id="${f.id}" title="Apagar frase">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-              <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-          </button>
-        </div>
-      </div>`;
-    }
-  }
-  lista.innerHTML = html;
-  atualizarBotoesSel();
 }
 
-// ─── Keyword Actions ──────────────────────────────────────────────────────────
+/**
+ * O vazio da lista: primeiro uso (PAI-02), busca sem resultado (PAI-04) ou
+ * filtros que esconderam tudo (PAI-03).
+ */
+function montarVazio() {
+  const vazio = criar('div', 'veio-vazio');
+  const acoes = criar('div', 'frases-vazio__acoes');
+
+  if (todasFrases.length === 0) {
+    const texto = criar('p', 'veio-vazio__texto');
+    // O atalho entra no meio da frase como tecla (kbd), não como texto solto.
+    const MARCA = '\u0000';
+    const [antes, depois] = textoDaVoz('PAI-02.texto', { atalho: MARCA }).split(MARCA);
+    texto.append(antes, criar('kbd', 'veio-kbd', ATALHO_DE_LEGENDA), depois);
+    // Até o #31 trazer o menu Minerar frases, o botão abre a adição em massa de hoje.
+    acoes.append(botaoDoVazio(textoDaVoz('PAI-02.acao'), abrirModalMultiAdd, 'veio-botao--primario'));
+    vazio.append(criar('p', 'veio-vazio__titulo', textoDaVoz('PAI-02.titulo')), texto);
+  } else if (buscaAtual.trim()) {
+    vazio.append(criar('p', 'veio-vazio__titulo', textoDaVoz('PAI-04.texto', { termo: buscaAtual.trim() })));
+    acoes.append(botaoDoVazio(textoDaVoz('PAI-04.acao'), limparBusca));
+    if (filtrosLigados()) acoes.append(botaoDoVazio(textoDaVoz('PAI-03.acao'), limparFiltros));
+  } else {
+    vazio.append(criar('p', 'veio-vazio__titulo', textoDaVoz('PAI-03.texto')));
+    acoes.append(botaoDoVazio(textoDaVoz('PAI-03.acao'), limparFiltros));
+  }
+
+  vazio.append(acoes);
+  return vazio;
+}
+
+function botaoDoVazio(rotulo, aoClicar, variante = 'veio-botao--contorno') {
+  const botao = criar('button', `veio-botao ${variante}`, rotulo);
+  botao.type = 'button';
+  botao.addEventListener('click', aoClicar);
+  return botao;
+}
+
+/** O cabeçalho de data (PAI-11): hoje · ontem · há 3 dias. */
+function rotuloDoDia(dataStr) {
+  const partes = String(dataStr || '').split('/');
+  if (partes.length !== 3) return dataStr || '';
+  const dia  = new Date(Number(partes[2]), Number(partes[1]) - 1, Number(partes[0]));
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const dias = Math.round((hoje - dia) / 86400000);
+  if (Number.isNaN(dias) || dias < 0) return dataStr;
+  if (dias === 0) return textoDaVoz('PAI-11.hoje');
+  if (dias === 1) return textoDaVoz('PAI-11.ontem');
+  return textoDaVoz('PAI-11.diasAtras', { n: dias });
+}
+
+function montarCartao(f) {
+  const cartao = criar('article', 'veio-frase veio-frase--na-ilha');
+  cartao.dataset.id = f.id;
+  cartao.classList.toggle('veio-frase--selecionada', selecionadas.has(f.id));
+
+  const marcar = criar('input', 'veio-checkbox frase-check');
+  marcar.type = 'checkbox';
+  marcar.dataset.id = f.id;
+  marcar.checked = selecionadas.has(f.id);
+  marcar.setAttribute('aria-label', textoDaVoz('PAI-28'));
+
+  const texto = criar('div', 'veio-frase__texto');
+  texto.lang = ehRussa(f) ? 'ru' : 'en';
+  escreverPalavras(texto, f);
+
+  const corpo = criar('div', 'frase-corpo');
+  corpo.append(texto);
+  const chip = montarLinhaDoChip(f);
+  if (chip) corpo.append(chip);
+  corpo.append(montarContexto(f));
+
+  cartao.append(marcar, corpo, montarAcoesDeHoje(f));
+  return cartao;
+}
+
+function ehRussa(f) {
+  return f.idioma === IDIOMAS.RUSSO || detectarIdioma(f.texto || '') === IDIOMAS.RUSSO;
+}
+
+/**
+ * A frase com cada palavra clicável (`escreverFraseClicavel` da Base Veio):
+ * clicar grifa ou desgrifa a Palavra.
+ */
+function escreverPalavras(no, f) {
+  const ativas = new Set((keywords[f.id] || []).filter(w => w !== '|'));
+  escreverFraseClicavel(no, tokenizarFrase(f.texto || '').map((tok, idx) => tok.isWord
+    ? {
+      texto: tok.text,
+      palavra: true,
+      grifada: ativas.has(`${tok.clean}@${idx}`) || ativas.has(tok.clean),
+      dados: { id: f.id, idx, word: tok.clean },
+    }
+    : { texto: tok.text }));
+}
+
+/** O chip `palavra:`/`auto:` com × (remove) e + (outro grupo). */
+function montarLinhaDoChip(f) {
+  const kws = keywords[f.id] || [];
+  if (!kws.length) return null;
+
+  const texto = kws.map(w => w === '|' ? '|' : w.replace(/@\d+$/, '')).join(' ');
+  const chip = montarChipDaPalavra(texto, { detectada: Boolean(f.autoKeyword) });
+  chip.append(botaoIcone('fechar', textoDaVoz('PAI-27.remover'), 'clear-kw', f.id));
+
+  const outroGrupo = criar('button', 'veio-chip-palavra__outro', '+');
+  outroGrupo.type = 'button';
+  outroGrupo.dataset.action = 'add-sep';
+  outroGrupo.dataset.id = f.id;
+  outroGrupo.setAttribute('aria-label', textoDaVoz('PAI-27.outroGrupo'));
+  outroGrupo.title = textoDaVoz('PAI-27.outroGrupo');
+
+  const linha = criar('div', 'frase-chip');
+  linha.append(chip, outroGrupo);
+  return linha;
+}
+
+/** A linha de Contexto: selo de Fonte, Título · Detalhe e o estado (PAI-08). */
+function montarContexto(f) {
+  const linha = criar('div', 'veio-frase__contexto');
+  const fonte = fonteDaFrase(f);
+  if (fonte) {
+    const selo = criar('span', 'veio-selo');
+    selo.append(iconeVeio(ICONES_DE_FONTE[fonte] || 'web'), nomeDaFonte(fonte));
+    linha.append(selo);
+  }
+  const origem = [f.contexto?.titulo, f.contexto?.detalhe].filter(Boolean).join(' · ');
+  if (origem) linha.append(criar('span', 'frase-origem', origem));
+  // Hoje o Envio e o Exportar .txt gravam o mesmo `exported`; o #30 separa o
+  // Exportada, e o selo passa a dizer qual dos dois.
+  if (f.status === 'exported') linha.append(criar('span', 'veio-selo veio-selo--ok', textoDaVoz('PAI-08.enviada')));
+  return linha;
+}
+
+/** A Fonte como o catálogo a chama: um nome antigo gravado vira o de hoje. */
+function chaveDaFonte(fonte) {
+  return APELIDOS_DE_FONTE[fonte] || fonte;
+}
+
+/**
+ * A Fonte da frase: a do Contexto, senão a gravada em `streaming`. O selo e o
+ * filtro de Fonte leem daqui, para o filtro achar a Fonte que o selo mostra.
+ */
+function fonteDaFrase(f) {
+  return chaveDaFonte(f.contexto?.fonte || f.streaming || '');
+}
+
+/** O nome da Fonte (PAI-29). Uma Fonte fora do catálogo sai com o nome gravado. */
+function nomeDaFonte(fonte) {
+  const chave = chaveDaFonte(fonte);
+  return Object.hasOwn(CATALOGO_DA_VOZ['PAI-29'], chave) ? textoDaVoz(`PAI-29.${chave}`) : fonte;
+}
+
+// As 4 ações só-ícone do cartão (PAI-30). O que cada uma faz continua o de hoje
+// até o #30 reconstruí-las.
+function montarAcoesDeHoje(f) {
+  const acoes = criar('div', 'veio-frase__acoes');
+  acoes.append(
+    botaoIcone('texto', textoDaVoz('PAI-30.editarTexto'), 'edit-text', f.id),
+    botaoIcone('contexto', textoDaVoz('PAI-30.editarContexto'), 'edit', f.id),
+    botaoIcone('copiar', textoDaVoz('PAI-30.copiar'), 'copy', f.id),
+    botaoIcone('apagar', textoDaVoz('PAI-30.apagar'), 'delete', f.id, 'veio-botao-icone--perigo'));
+  return acoes;
+}
+
+function botaoIcone(icone, rotulo, acao, id, variante = '') {
+  const botao = criar('button', `veio-botao-icone ${variante}`.trim());
+  botao.type = 'button';
+  botao.dataset.action = acao;
+  botao.dataset.id = id;
+  botao.setAttribute('aria-label', rotulo);
+  botao.title = rotulo;
+  botao.append(iconeVeio(icone));
+  return botao;
+}
+
+function criar(tag, classe, texto) {
+  const no = document.createElement(tag);
+  if (classe) no.className = classe;
+  if (texto != null) no.textContent = texto;
+  return no;
+}
+
+function cartaoNaLista(id) {
+  return document.querySelector(`#frases-lista .veio-frase[data-id="${id}"]`);
+}
+
+function refletirSelecaoNoCartao(id) {
+  const cartao = cartaoNaLista(id);
+  if (!cartao) return;
+  cartao.classList.toggle('veio-frase--selecionada', selecionadas.has(id));
+  cartao.querySelector('.frase-check').checked = selecionadas.has(id);
+}
+
+/** Redesenha um cartão só, sem tirar o foco de quem está nele. */
+function atualizarCartao(id) {
+  const antigo = cartaoNaLista(id);
+  const frase = todasFrases.find(f => f.id === id);
+  if (!antigo || !frase) return;
+  const foco = chaveDoFoco(document.activeElement);
+  antigo.replaceWith(montarCartao(frase));
+  restaurarFoco(foco);
+}
+
+function chaveDoFoco(no) {
+  if (!no?.closest?.('#frases-lista')) return null;
+  if (no.classList.contains('veio-palavra-clicavel')) return `.veio-palavra-clicavel[data-id="${no.dataset.id}"][data-idx="${no.dataset.idx}"]`;
+  if (no.dataset.action) return `[data-action="${no.dataset.action}"][data-id="${no.dataset.id}"]`;
+  if (no.classList.contains('frase-check')) return `.frase-check[data-id="${no.dataset.id}"]`;
+  return null;
+}
+
+function restaurarFoco(seletor) {
+  if (!seletor) return;
+  const no = document.querySelector(`#frases-lista ${seletor}`);
+  if (!no) return;
+  if (no.classList.contains('veio-palavra-clicavel')) focarPalavra(no);
+  else no.focus();
+}
+
+// ─── A Palavra ────────────────────────────────────────────────────────────────
+
+function escolherPalavra(palavra) {
+  toggleWord(Number(palavra.dataset.id), Number(palavra.dataset.idx), palavra.dataset.word);
+}
+
+/** Setas andam entre as palavras da frase; Enter e Espaço escolhem. */
+function aoTeclarNaFrase(e) {
+  const palavra = e.target.closest('.veio-palavra-clicavel');
+  if (!palavra || andarEntrePalavras(e)) return;
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    escolherPalavra(palavra);
+  }
+}
+
+function gravarPalavras(id) {
+  const idxFrase = todasFrases.findIndex(f => f.id === id);
+  if (idxFrase < 0) return;
+  todasFrases[idxFrase] = { ...todasFrases[idxFrase], keywords: keywords[id] || [], autoKeyword: false };
+  chrome.storage.local.set({ frases: todasFrases });
+  salvarFraseFirestore(todasFrases[idxFrase], ['keywords', 'autoKeyword']);
+  atualizarCartao(id);
+}
 
 function toggleWord(id, wordIdx, wordClean) {
   if (wordClean == null) return;
@@ -1855,72 +1983,33 @@ function toggleWord(id, wordIdx, wordClean) {
     : (prefix.length > 0 ? prefix.slice(0, -1) : []);
   if (combined.length === 0) delete keywords[id];
   else                       keywords[id] = combined;
-  const idxFrase = todasFrases.findIndex(f => f.id === id);
-  if (idxFrase >= 0) {
-    todasFrases[idxFrase] = { ...todasFrases[idxFrase], keywords: keywords[id] || [], autoKeyword: false };
-    chrome.storage.local.set({ frases: todasFrases });
-    salvarFraseFirestore(todasFrases[idxFrase], ['keywords', 'autoKeyword']);
-  }
-  // Atualiza apenas o span exato clicado
-  document.querySelectorAll(`.word[data-id="${id}"][data-idx="${wordIdx}"]`).forEach(el => {
-    el.classList.toggle('active', selected.has(key));
-  });
-  atualizarChip(id);
+  gravarPalavras(id);
 }
 
 function clearKeywords(id) {
   delete keywords[id];
-  const idxFrase = todasFrases.findIndex(f => f.id === id);
-  if (idxFrase >= 0) {
-    todasFrases[idxFrase] = { ...todasFrases[idxFrase], keywords: [], autoKeyword: false };
-    chrome.storage.local.set({ frases: todasFrases });
-    salvarFraseFirestore(todasFrases[idxFrase], ['keywords', 'autoKeyword']);
-  }
-  document.querySelectorAll(`.word[data-id="${id}"]`).forEach(el => el.classList.remove('active'));
-  document.querySelector(`.frase-check[data-id="${id}"]`)
-    ?.closest('.phrase-item')?.querySelector('.kw-row')?.remove();
+  gravarPalavras(id);
 }
 
 function addSeparator(id) {
   const all = keywords[id];
   if (!all || all.length === 0 || all[all.length - 1] === '|') return;
   keywords[id] = [...all, '|'];
-  const idxFrase = todasFrases.findIndex(f => f.id === id);
-  if (idxFrase >= 0) {
-    todasFrases[idxFrase] = { ...todasFrases[idxFrase], keywords: keywords[id], autoKeyword: false };
-    chrome.storage.local.set({ frases: todasFrases });
-    salvarFraseFirestore(todasFrases[idxFrase], ['keywords', 'autoKeyword']);
-  }
-  atualizarChip(id);
-}
-
-function atualizarChip(id) {
-  const phraseItem = document.querySelector(`.frase-check[data-id="${id}"]`)?.closest('.phrase-item');
-  if (!phraseItem) return;
-  const body    = phraseItem.querySelector('.phrase-body');
-  let kwRow     = body.querySelector('.kw-row');
-  const kwWords = keywords[id];
-  if (kwWords?.length) {
-    if (!kwRow) { kwRow = document.createElement('div'); kwRow.className = 'kw-row'; body.appendChild(kwRow); }
-    const display = kwWords.map(w => w === '|' ? '|' : w.replace(/@\d+$/, '')).join(' ');
-    kwRow.innerHTML = `<span class="kw-chip"><span class="kw-label">keyword:</span>${esc(display)}<button class="kw-clear" data-action="clear-kw" data-id="${id}" title="Remover keywords">×</button></span><button class="btn-add-sep" data-action="add-sep" data-id="${id}" title="Adicionar segundo grupo">+</button>`;
-  } else {
-    kwRow?.remove();
-  }
+  gravarPalavras(id);
 }
 
 // ─── Edição Inline de Texto ───────────────────────────────────────────────────
 
 function editarTextoFrase(id) {
-  const phraseItem = document.querySelector(`.frase-check[data-id="${id}"]`)?.closest('.phrase-item');
-  if (!phraseItem) return;
+  const cartao = cartaoNaLista(id);
+  if (!cartao) return;
   const frase = todasFrases.find(f => f.id === id);
   if (!frase) return;
-  const phraseText = phraseItem.querySelector('.phrase-text');
+  const phraseText = cartao.querySelector('.veio-frase__texto');
   if (!phraseText || phraseText.querySelector('textarea')) return; // já editando
 
   const textarea = document.createElement('textarea');
-  textarea.className = 'phrase-edit-input';
+  textarea.className = 'veio-campo';
   textarea.value = frase.texto;
   textarea.rows  = Math.max(2, Math.ceil(frase.texto.length / 55));
   phraseText.innerHTML = '';
@@ -2393,7 +2482,7 @@ function salvarEdicaoEmMassa(fonteVal, tituloVal, detalheVal) {
   selecionadas.clear();
   atualizarContadorSelecao();
   chrome.storage.local.set({ frases: todasFrases }, () => {
-    construirDropdown(); construirDropdownIdioma();
+    construirFiltroDeFonte();
     aplicarFiltro(); mostrarToast('Metadados atualizados!');
   });
   if (usuarioLogado && editadas.length > 0) {
@@ -2411,37 +2500,12 @@ function salvarEdicaoIndividual(id, fonteVal, tituloVal, detalheVal) {
   const novaFonte = fonteVal || f.contexto?.fonte || f.streaming || '';
   todasFrases[idx] = { ...f, streaming: novaFonte, contexto: { fonte: novaFonte, titulo: tituloVal, detalhe: detalheVal } };
   chrome.storage.local.set({ frases: todasFrases }, () => {
-    construirDropdown(); aplicarFiltro(); mostrarToast('Frase atualizada!');
+    construirFiltroDeFonte(); aplicarFiltro(); mostrarToast('Frase atualizada!');
   });
   salvarFraseFirestore(todasFrases[idx]);
 }
 
 // ─── Context Render ───────────────────────────────────────────────────────────
-
-function renderizarContexto(f) {
-  const c     = f.contexto;
-  const fonte = c?.fonte || f.streaming || '';
-  if (!fonte && !c) return '';
-  const plat  = PLATAFORMAS[fonte];
-  const bg    = plat?.bg    || (fonte === 'web' ? '#6b7280' : fonte === 'pdf' ? '#ef4444' : '#9ca3af');
-  const letra = plat?.letra || (fonte === 'web' ? '🌐' : fonte === 'pdf' ? 'PDF' : capitalizar(fonte)[0] || '?');
-  const nome  = plat?.nome  || capitalizar(fonte);
-  let label = '';
-  if (c) {
-    const partes = [];
-    if (c.titulo)  partes.push(esc(c.titulo));
-    if (c.detalhe) partes.push(`<span class="ctx-detail">${esc(c.detalhe)}</span>`);
-    if (fonte !== 'web' && fonte !== 'pdf') partes.push(esc(nome));
-    label = partes.join('<span class="ctx-sep"> · </span>');
-  } else {
-    label = esc(nome);
-  }
-  if (!label) return '';
-  return `<div class="phrase-ctx">
-    <span class="ctx-dot" style="background:${bg}" title="${esc(nome)}">${esc(letra)}</span>
-    ${label}
-  </div>`;
-}
 
 // ─── Tokenizer ────────────────────────────────────────────────────────────────
 
@@ -2649,19 +2713,6 @@ function parsearLinhaExportada(linha) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function labelDiasAtras(dataStr) {
-  const p = dataStr.split('/');
-  if (p.length !== 3) return '';
-  const d    = new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]));
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0); d.setHours(0, 0, 0, 0);
-  const dias = Math.round((hoje - d) / 86400000);
-  if (dias < 0)   return '';
-  if (dias === 0) return ' (hoje)';
-  if (dias === 1) return ' (ontem)';
-  return ` (${dias} dias atrás)`;
-}
-
 function sanitizarCampo(val) {
   const s = String(val ?? '').trim();
   return s && s !== 'undefined' && s !== 'null' ? s : 'Desconhecido';
@@ -2686,10 +2737,6 @@ function mostrarToast(msg) {
   });
   document.body.appendChild(t);
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 1800);
-}
-
-function capitalizar(str) {
-  return str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
 }
 
 function chromeGet(defaults) {

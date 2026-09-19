@@ -328,6 +328,14 @@
       min-width: 0;
     }
 
+    /* A ilha `surface` em volta do cartão `--na-ilha`: andaime da vitrine. */
+    .ilha-de-amostra {
+      width: 100%;
+      padding: 12px;
+      border-radius: var(--veio-raio-card);
+      background: var(--veio-surface);
+    }
+
     /* Como o foco aparece, parado ao lado dos outros estados. Não leva o
        prefixo veio- porque não é componente: é andaime da vitrine. Repete o
        anel que tokens.css desenha em :focus-visible, e o teste compara os dois

@@ -43,6 +43,10 @@ async function esperarChipSemConta(page) {
   await expect(page.locator('#shell-chip-estado')).toHaveText('Só neste computador');
 }
 const pontoDaConexao = page => page.locator('.shell-ponto');
+const filtroDeFonte = page => page.getByRole('combobox', { name: 'Fonte', exact: true });
+const paginaAtual = page => page.locator('#paginas-atual');
+const marcarFrase = page => page.locator('#frases-lista').getByRole('checkbox', { name: 'Selecionar frase' });
+const cartao = (page, texto) => page.locator('#frases-lista .veio-frase').filter({ hasText: texto });
 const faixaF1 = page => page.getByText('A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.');
 
 // ─── Endereços ───────────────────────────────────────────────────────────────
@@ -118,11 +122,10 @@ test('trocar de área e voltar mantém filtro, página e seleção; recarregar z
   await extensao.gravarStorage({ frases: frasesDeExemplo(24) });
   await abrirPainel(page, extensao);
 
-  await page.locator('#dropdown-trigger').click();
-  await page.locator('#dropdown-menu').getByText('YouTube').click();
-  await page.locator('#btn-next').click();
-  await expect(page.locator('#page-current')).toHaveText('2');
-  const primeira = page.locator('.frase-check').first();
+  await filtroDeFonte(page).selectOption({ label: 'YouTube' });
+  await page.getByRole('button', { name: 'Próxima página' }).click();
+  await expect(paginaAtual(page)).toHaveText('2 de 2');
+  const primeira = marcarFrase(page).first();
   await primeira.check();
   await expect(page.locator('#selection-count')).toHaveText('1 selecionada');
   await page.evaluate(() => { window.__semRecarregar = true; });
@@ -134,15 +137,15 @@ test('trocar de área e voltar mantém filtro, página e seleção; recarregar z
 
   await expect(tituloDaArea(page)).toHaveText('Frases mineradas');
   expect(await page.evaluate(() => window.__semRecarregar)).toBe(true);
-  await expect(page.locator('#dropdown-label')).toHaveText('YouTube');
-  await expect(page.locator('#page-current')).toHaveText('2');
+  await expect(filtroDeFonte(page)).toHaveValue('youtube');
+  await expect(paginaAtual(page)).toHaveText('2 de 2');
   await expect(primeira).toBeChecked();
   await expect(page.locator('#selection-count')).toHaveText('1 selecionada');
 
   await page.reload();
-  await expect(page.locator('#dropdown-label')).toHaveText('Todas as Fontes');
-  await expect(page.locator('#page-current')).toHaveText('1');
-  await expect(page.locator('.frase-check:checked')).toHaveCount(0);
+  await expect(filtroDeFonte(page)).toHaveValue('all');
+  await expect(paginaAtual(page)).toHaveText('1 de 3');
+  await expect(marcarFrase(page).and(page.locator(':checked'))).toHaveCount(0);
 });
 
 // ─── Indicadores colados na navegação ────────────────────────────────────────
@@ -297,14 +300,13 @@ test('uma Fonte com marcação no nome aparece literal no filtro, e a sidebar n�
   });
   await abrirPainel(page, extensao);
 
-  await page.locator('#dropdown-trigger').click();
-  const menu = page.locator('#dropdown-menu');
-  await expect(menu.getByText(fonteHostil, { exact: true })).toBeVisible();
-  await expect(menu.locator('img')).toHaveCount(0);
+  await expect(filtroDeFonte(page).locator('option', { hasText: fonteHostil })).toHaveText(fonteHostil);
+  await expect(filtroDeFonte(page).locator('img')).toHaveCount(0);
 
-  await menu.getByText(fonteHostil, { exact: true }).click();
-  await expect(page.locator('#dropdown-label')).toHaveText(fonteHostil);
+  await filtroDeFonte(page).selectOption({ label: fonteHostil });
   await expect(page.getByText('A quiet morning.')).toBeVisible();
+  // No selo de Fonte do cartão, o nome também entra como texto.
+  await expect(cartao(page, 'A quiet morning.').locator('.veio-selo')).toHaveText(fonteHostil);
 
   await expect(page.locator('.shell-lateral')).not.toContainText('fonte');
   await expect(page.locator('img[src="x"]')).toHaveCount(0);
@@ -313,13 +315,13 @@ test('uma Fonte com marcação no nome aparece literal no filtro, e a sidebar n�
 
 // ─── O conteúdo de hoje continua funcionando dentro do shell ─────────────────
 
-test('dentro do shell, Frases lista e apaga como hoje', async ({ page, extensao }) => {
+test('dentro do shell, Frases lista em cartões e apaga como hoje', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
   await abrirPainel(page, extensao);
 
-  await expect(page.locator('.phrase-item')).toHaveCount(3);
-  await page.locator('.phrase-item', { hasText: 'Sentence number 2 ' }).locator('[data-action="delete"]').click();
-  await expect(page.locator('.phrase-item')).toHaveCount(2);
+  await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(3);
+  await cartao(page, 'Sentence number 2 ').getByRole('button', { name: 'Apagar frase' }).click();
+  await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(2);
   await expect(itemDaNav(page, 'Frases').locator('.shell-contador')).toHaveText('2');
   await expect.poll(async () => (await extensao.frases()).map(f => f.texto)).toEqual([
     'Sentence number 3 about the harbour.',
@@ -339,7 +341,7 @@ test('dentro do shell, Enviar ao Anki cria o envio, e o acompanhamento continua 
   }));
   await abrirPainel(page, extensao);
 
-  await page.locator('.frase-check').first().check();
+  await marcarFrase(page).first().check();
   await page.locator('#btn-send-anki').click();
 
   await expect(page.locator('#bridge-progress-modal')).toBeVisible();
