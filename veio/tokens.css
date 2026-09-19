@@ -94,6 +94,12 @@
   /* O fio de luz no topo do botão primário, que dá o relevo do protótipo. */
   --veio-brilho: rgba(255, 255, 255, .35);
 
+  /* O avatar com a inicial do nome (chip de conta e card Conta & sync): o
+     degradê bronze e a letra clara do shell travado. São os mesmos nos dois
+     temas, então o claro não os redefine. */
+  --veio-avatar-fundo: linear-gradient(135deg, #8A6A2A, #3A2F1C);
+  --veio-avatar-tinta: #F2EEE6;
+
   /* ── Tipografia ── */
   --veio-fonte-ui: 'Manrope', system-ui, sans-serif;
   --veio-fonte-display: 'Manrope', system-ui, sans-serif;
@@ -108,9 +114,14 @@
   --veio-tam-frase: 15px;
   --veio-tam-destaque: 16px;
   --veio-tam-corpo: 13.5px;
-  --veio-tam-controle: 12.5px;
+  /* Resumo e textos de apoio dos cards de Configurações, os botões pequenos
+     dentro deles e os controles da linha de filtros de Frases (o 12,5 das
+     specs de Configurações e de Frases). */
+  --veio-tam-apoio: 12.5px;
   --veio-tam-legenda: 11.5px;
   --veio-tam-tecla: 11px;
+  /* A tecla no resumo fechado de Atalhos (Configurações), maior que a do popup. */
+  --veio-tam-tecla-resumo: 12px;
   --veio-tam-micro: 10.5px;
 
   --veio-peso-display: 800;
@@ -125,7 +136,9 @@
 
   /* ── Forma ── */
   --veio-raio-checkbox: 6px;
-  --veio-raio-tecla: 8px;
+  --veio-raio-tecla: 5px;
+  /* A tecla (kbd) como a desenham os protótipos de Frases e de Configurações. */
+  --veio-raio-tecla-resumo: 8px;
   --veio-raio-icone: 10px;
   --veio-raio-input: 12px;
   --veio-raio-card: 14px;

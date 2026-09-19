@@ -80,7 +80,9 @@ aqui, com o nome da spec, e passa a valer para todas as telas.
   curto**: some sozinho depois de 2,6 s mais o tempo de leitura do texto, e
   aparece dentro de `dentroDe` (o `body`, se nada for dito), com o tema dali. Todo
   erro que pede ação é `montarAviso(…)`, que fica no lugar do problema até ser
-  fechado, com a ação ao lado e a causa técnica num Detalhes recolhido (V3).
+  fechado, com a ação ao lado e a causa técnica num Detalhes recolhido (V3). O
+  aviso que é um estado (um sync que falhou) vai com `fechavel: false`: sem ×,
+  sai quando o problema sai. `montarDetalhes(causa)` é o mesmo Detalhes sozinho.
 - **Esqueleto:** `.veio-esqueleto` no lugar do conteúdo em espera curta, sem
   texto (C3). O brilho é sinal de estado e para com movimento reduzido.
 - **Estado vazio:** `.veio-vazio` no lugar do conteúdo quando não há o que

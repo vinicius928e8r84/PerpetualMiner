@@ -10,33 +10,42 @@
 // Trocar de área só troca a vista: nada recarrega, então os filtros, a página, a
 // seleção, o sync e o acompanhamento de envios do painel.js continuam como estão.
 //
-// O shell é dono do que fica na sidebar: o total de frases, o ponto da Conexão
-// com o Anki (e a faixa F1 da área dela) e o chip de conta. O painel.js conta
-// ao shell o que muda (`mostrarTotalDeFrases`, `mostrarConta`,
-// `mostrarSincronizacao`) e pede para saber quando a pessoa entra numa área
-// (`aoEntrarNaArea`). Toda cópia vem do catálogo da Voz.
+// O shell é dono do que fica na sidebar: o total de frases e o ponto da Conexão
+// com o Anki (e a faixa F1 da área dela). O chip de conta mora na sidebar, mas
+// quem o desenha é painel-conta.js, junto com o card Conta & sync que ele
+// espelha. O painel.js conta ao shell o total (`mostrarTotalDeFrases`) e pede
+// para saber quando a pessoa entra numa área (`aoEntrarNaArea`).
+//
+// Em Configurações, os cards ficam fechados numa linha com o resumo e abrem no
+// lugar, vários ao mesmo tempo; #configuracoes/<seção> abre o da seção. O
+// resumo da conta é do painel-conta.js; os de Atalhos, Chave do Gemini e Zona
+// de perigo saem daqui, do que já está gravado (o atalho de seleção, a chave e
+// o total de frases). Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
   const ABAS_DA_CONEXAO = ['custos', 'baralhos', 'vocabulario', 'ajustes'];
   const SECOES_DE_CONFIGURACOES = ['conta', 'atalhos', 'chave', 'perigo'];
 
+  /**
+   * O atalho de legenda ainda é o Alt+S fixo do content.js (`ATALHO_TECLA`); ele
+   * fica gravável no ticket de Atalhos, e o resumo passa a ler o que for gravado.
+   */
+  const ATALHO_DE_LEGENDA = { type: 'keyboard', code: 'KeyS', altKey: true, ctrlKey: false, shiftKey: false };
+  /** Os botões extras do mouse em PT-BR (CFG-14), pelo `button` do evento gravado. */
+  const BOTOES_DO_MOUSE = { 1: 'CFG-14.botaoDoMeio', 3: 'CFG-14.botaoVoltar', 4: 'CFG-14.botaoAvancar' };
+  /** A chave do Gemini no resumo: os 4 primeiros e os 4 últimos caracteres. */
+  const MASCARA_DA_CHAVE = '••••••••';
+
   const ENDERECO_DA_CONEXAO = 'http://127.0.0.1:8766';
   /** De quanto em quanto tempo o ponto da Conexão com o Anki é conferido. */
   const INTERVALO_DA_CONEXAO = 15000;
-  /** “Sincronizado há N minutos” avança sozinho. */
-  const INTERVALO_DO_RELOGIO = 30000;
-
-  const QUANTO_TEMPO = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'auto' });
-
   const estado = {
     area: null,
     conexao: 'conectando',   // 'conectando' | 'ligada' | 'desligada'
     conferindoConexao: false,
-    conta: null,             // { displayName, email, photoURL } | null
-    sincronizacao: null,     // 'sincronizando' | 'sincronizado' | 'erro' | null
-    sincronizadoEm: null,
   };
   const ouvintesDeArea = new Map();
+  const fimDosDestaques = new Map();   // card → o timer que tira a borda do destaque
 
   const { textoDaVoz } = raiz;
   const $ = seletor => document.querySelector(seletor);
@@ -53,15 +62,19 @@
       radio.addEventListener('change', () => { location.hash = `#anki/${radio.value}`; });
     }
     porId('shell-tentar-de-novo').addEventListener('click', tentarAConexaoDeNovo);
+    // A linha inteira do card abre e fecha; o botão do título é quem o teclado
+    // e o leitor de tela usam, e o clique nele sobe até aqui.
+    for (const cabeca of $$('.cfg-cabeca')) {
+      cabeca.addEventListener('click', () => alternarCard(cabeca.closest('.cfg-card')));
+    }
     window.addEventListener('hashchange', aplicarEndereco);
     document.addEventListener('click', reaplicarOMesmoEndereco);
 
     aplicarEndereco();
+    lerResumosGravados();
     mostrarConexao('conectando');
-    desenharChip();
     conferirConexao();
     setInterval(conferirConexao, INTERVALO_DA_CONEXAO);
-    setInterval(() => { if (estado.sincronizacao === 'sincronizado') desenharChip(); }, INTERVALO_DO_RELOGIO);
   }
 
   /** Os textos fixos do shell, pelos atributos data-voz do painel.html. */
@@ -106,6 +119,8 @@
     }
     if (aba) mostrarAba(aba);
 
+    // #configuracoes sozinho mostra todos os cards fechados.
+    if (area === 'configuracoes' && !secao) fecharOsCards();
     if (secao) rolarAteASecao(secao);
     else if (entrou) $('.shell-conteudo').scrollTo(0, 0);
 
@@ -129,13 +144,41 @@
     $('.shell-item[data-area="anki"]').setAttribute('href', `#anki/${aba}`);
   }
 
-  /** Rola até o card da seção e pisca a borda dele (parada com movimento reduzido). */
+  // ─── Cards de Configurações ────────────────────────────────────────────────
+
+  function abrirCard(card, aberto) {
+    card.classList.toggle('cfg-card--aberto', aberto);
+    card.querySelector('.cfg-alternar').setAttribute('aria-expanded', String(aberto));
+    card.querySelector('.cfg-corpo').hidden = !aberto;
+  }
+
+  function alternarCard(card) {
+    abrirCard(card, !card.classList.contains('cfg-card--aberto'));
+  }
+
+  function fecharOsCards() {
+    for (const card of $$('.cfg-card')) abrirCard(card, false);
+  }
+
+  /**
+   * Abre o card da seção, rola até ele e pisca a borda. O destaque dura o
+   * `--veio-destaque`: com movimento reduzido não há animação para acabar, e a
+   * borda parada sai quando ele termina.
+   */
   function rolarAteASecao(secao) {
     const card = porId(`cfg-${secao}`);
+    abrirCard(card, true);
     card.scrollIntoView({ block: 'start' });
     card.classList.remove('shell-card--destaque');
     void card.offsetWidth;
     card.classList.add('shell-card--destaque');
+    clearTimeout(fimDosDestaques.get(card));
+    fimDosDestaques.set(card, setTimeout(() => card.classList.remove('shell-card--destaque'), duracaoDoDestaque()));
+  }
+
+  /** O `--veio-destaque` (em segundos, nos tokens) em milissegundos. */
+  function duracaoDoDestaque() {
+    return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--veio-destaque')) * 1000;
   }
 
   /** `ouvinte` roda cada vez que a pessoa entra na `area` (inclusive ao abrir nela). */
@@ -154,6 +197,77 @@
   function mostrarTotalDeFrases(n) {
     porId('shell-total').textContent = n.toLocaleString('pt-BR');
     porId('shell-total-descricao').textContent = textoDaVoz('PAI-05', { n });
+    // A linha fechada da Zona de perigo: “1.284 frases”, “1 frase”, “Nenhuma frase”.
+    porId('cfg-perigo-resumo').replaceChildren(
+      elemento('span', null, n ? textoDaVoz('PAI-05', { n }) : textoDaVoz('CFG-28.nenhumaFrase')));
+  }
+
+  // ─── Resumos de Atalhos e da Chave do Gemini ───────────────────────────────
+
+  /** O atalho de seleção e a chave, como estão gravados, e cada mudança deles. */
+  function lerResumosGravados() {
+    chrome.storage.local.get({ pm_atalho: null, geminiApiKey: '' }, dados => {
+      mostrarResumoDosAtalhos(dados.pm_atalho);
+      mostrarResumoDaChave(dados.geminiApiKey);
+    });
+    chrome.storage.onChanged.addListener((mudancas, area) => {
+      if (area !== 'local') return;
+      if ('pm_atalho' in mudancas) mostrarResumoDosAtalhos(mudancas.pm_atalho.newValue || null);
+      if ('geminiApiKey' in mudancas) mostrarResumoDaChave(mudancas.geminiApiKey.newValue || '');
+    });
+  }
+
+  /** “Legenda [Alt+S]  Seleção [Alt+Botão voltar]”, com as teclas em `kbd`. */
+  function mostrarResumoDosAtalhos(atalhoDeSelecao) {
+    const atalho = (rotulo, gravado) => elemento('span', null, `${textoDaVoz(rotulo)} `, teclaDoAtalho(gravado));
+    porId('cfg-atalhos-resumo').replaceChildren(
+      atalho('CFG-28.legenda', ATALHO_DE_LEGENDA),
+      atalho('CFG-28.selecao', atalhoDeSelecao));
+  }
+
+  /** A tecla gravada; sem atalho, o `kbd` tracejado “Sem atalho” (CFG-12). */
+  function teclaDoAtalho(atalho) {
+    if (!atalho) return elemento('kbd', 'veio-kbd veio-kbd--sem-atalho', textoDaVoz('CFG-12.semAtalho'));
+    return elemento('kbd', 'veio-kbd', rotuloDoAtalho(atalho));
+  }
+
+  /**
+   * O rótulo do atalho refeito do que foi gravado, e não do `label` antigo (em
+   * inglês): “Ctrl+Shift+K”, “Alt+Botão voltar”.
+   */
+  function rotuloDoAtalho(atalho) {
+    const modificadores = [atalho.ctrlKey && 'Ctrl', atalho.altKey && 'Alt', atalho.shiftKey && 'Shift'].filter(Boolean);
+    let tecla;
+    if (atalho.type === 'mouse') {
+      const botao = BOTOES_DO_MOUSE[atalho.button];
+      if (!botao) return atalho.label;
+      tecla = textoDaVoz(botao);
+    } else {
+      if (!atalho.code) return atalho.label;
+      tecla = atalho.code.replace(/^(Key|Digit)/, '');
+    }
+    return [...modificadores, tecla].join('+');
+  }
+
+  /** `AIza••••••••3kQ9` em mono; vazia, o ponto `danger` e “Sem chave”. */
+  function mostrarResumoDaChave(chave) {
+    const resumo = porId('cfg-chave-resumo');
+    if (!chave) {
+      const ponto = elemento('span', 'cfg-ponto');
+      ponto.dataset.estado = 'erro';
+      ponto.setAttribute('aria-hidden', 'true');
+      resumo.replaceChildren(elemento('span', 'cfg-status cfg-status--erro', ponto, textoDaVoz('CFG-28.semChave')));
+      return;
+    }
+    const mascarada = chave.length > 8 ? chave.slice(0, 4) + MASCARA_DA_CHAVE + chave.slice(-4) : MASCARA_DA_CHAVE;
+    resumo.replaceChildren(elemento('span', 'cfg-chave-mascarada', mascarada));
+  }
+
+  function elemento(tag, classe, ...filhos) {
+    const no = document.createElement(tag);
+    if (classe) no.className = classe;
+    no.append(...filhos);
+    return no;
   }
 
   // ─── Conexão com o Anki ────────────────────────────────────────────────────
@@ -191,83 +305,11 @@
     conferirConexao();
   }
 
-  // ─── Conta ─────────────────────────────────────────────────────────────────
-
-  function mostrarConta(usuario) {
-    estado.conta = usuario ? { ...usuario } : null;
-    if (!usuario) estado.sincronizacao = null;
-    desenharChip();
-  }
-
-  function mostrarSincronizacao(situacao) {
-    estado.sincronizacao = situacao;
-    if (situacao === 'sincronizado') estado.sincronizadoEm = Date.now();
-    desenharChip();
-  }
-
-  function desenharChip() {
-    const chip = porId('shell-chip');
-    const avatar = porId('shell-avatar');
-    const nome = porId('shell-chip-nome');
-    const situacao = porId('shell-chip-estado');
-    const { conta } = estado;
-
-    avatar.replaceChildren();
-    avatar.classList.toggle('shell-avatar--vazio', !conta);
-    situacao.classList.remove('shell-chip__estado--erro');
-
-    if (!conta) {
-      avatar.append(raiz.Veio.iconeVeio('conta'));
-      nome.textContent = textoDaVoz('SHL-05.semConta');
-      situacao.textContent = '';
-      situacao.hidden = true;
-      chip.title = nome.textContent;
-      return;
-    }
-
-    const nomeVisivel = conta.displayName || conta.email || textoDaVoz('CFG-10');
-    nome.textContent = nomeVisivel;
-    chip.title = nomeVisivel;
-    if (conta.photoURL) {
-      const foto = document.createElement('img');
-      foto.src = conta.photoURL;
-      foto.alt = '';
-      avatar.append(foto);
-    } else {
-      avatar.textContent = nomeVisivel.charAt(0).toUpperCase();
-    }
-
-    situacao.textContent = textoDaSincronizacao();
-    situacao.hidden = !situacao.textContent;
-    situacao.classList.toggle('shell-chip__estado--erro', estado.sincronizacao === 'erro');
-  }
-
-  function textoDaSincronizacao() {
-    switch (estado.sincronizacao) {
-      case 'sincronizando': return textoDaVoz('CFG-01');
-      case 'sincronizado': return textoDaVoz('CFG-02', { quando: haQuantoTempo(estado.sincronizadoEm) });
-      case 'erro': return textoDaVoz('SHL-05.semSincronizar');
-      default: return '';
-    }
-  }
-
-  /** “agora”, “há 2 minutos”, “há 3 horas”, “ontem”: o `{quando}` da CFG-02. */
-  function haQuantoTempo(momento) {
-    const minutos = Math.floor((Date.now() - momento) / 60000);
-    if (minutos < 1) return QUANTO_TEMPO.format(0, 'second');
-    if (minutos < 60) return QUANTO_TEMPO.format(-minutos, 'minute');
-    const horas = Math.floor(minutos / 60);
-    if (horas < 24) return QUANTO_TEMPO.format(-horas, 'hour');
-    return QUANTO_TEMPO.format(-Math.floor(horas / 24), 'day');
-  }
-
   document.addEventListener('DOMContentLoaded', iniciarShell);
 
   raiz.Shell = {
     aoEntrarNaArea,
     areaAtual,
     mostrarTotalDeFrases,
-    mostrarConta,
-    mostrarSincronizacao,
   };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

@@ -76,7 +76,14 @@
     anterior: ['<path d="M15 18l-6-6 6-6"/>'],
     proxima: ['<path d="M9 18l6-6-6-6"/>'],
     ultima: ['<path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>'],
+    // A porta com a seta para dentro do Entrar com Google.
+    entrar: ['<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>', '<path d="M10 17l5-5-5-5M15 12H3"/>'],
     atualizar: ['<path d="M20 11a8 8 0 0 0-14.7-4.4L4 8"/>', '<path d="M4 3v5h5M4 13a8 8 0 0 0 14.7 4.4L20 16"/>', '<path d="M20 21v-5h-5"/>'],
+    // Os azulejos dos cards de Configurações e o chevron que os abre.
+    teclado: ['<rect x="2" y="6" width="20" height="12" rx="2"/>', '<path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>'],
+    chave: ['<circle cx="8" cy="15" r="4"/>', '<path d="m10.8 12.2 9.2-9.2M17 6l3 3M15 8l2 2"/>'],
+    perigo: ['<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>', '<path d="M12 9v4M12 17h.01"/>'],
+    abrir: ['<path d="m6 9 6 6 6-6"/>'],
   };
 
   /**
@@ -297,7 +304,10 @@
    *   `acao`           `{ rotulo, aoUsar }` quando existe o que fazer;
    *   `detalhes`       a causa técnica, recolhida;
    *   `rotuloDeFechar` o nome do × para o leitor de tela, do catálogo;
-   *   `aoFechar`       roda quando a pessoa fecha o aviso.
+   *   `aoFechar`       roda quando a pessoa fecha o aviso;
+   *   `fechavel`       `false` para o aviso de um estado, que só sai quando o
+   *                    problema se resolve (um sync que falhou): sem ×, e então
+   *                    sem `rotuloDeFechar`.
    *
    * O nome do recolhido é "Detalhes", dado pela regra V3 da Voz.
    */
@@ -307,9 +317,10 @@
     detalhes,
     rotuloDeFechar,
     aoFechar,
+    fechavel = true,
     documento = document,
   }) {
-    if (!rotuloDeFechar) {
+    if (fechavel && !rotuloDeFechar) {
       throw new Error('O aviso precisa do rótulo de fechar, vindo do catálogo da Voz');
     }
     const aviso = documento.createElement('div');
@@ -332,31 +343,41 @@
       acoes.append(botao);
     }
 
-    const fechar = documento.createElement('button');
-    fechar.type = 'button';
-    fechar.className = 'veio-botao-icone';
-    fechar.setAttribute('aria-label', rotuloDeFechar);
-    fechar.append(iconeVeio('fechar', documento));
-    fechar.addEventListener('click', () => {
-      aviso.remove();
-      if (aoFechar) aoFechar();
-    });
-    acoes.append(fechar);
+    if (fechavel) {
+      const fechar = documento.createElement('button');
+      fechar.type = 'button';
+      fechar.className = 'veio-botao-icone';
+      fechar.setAttribute('aria-label', rotuloDeFechar);
+      fechar.append(iconeVeio('fechar', documento));
+      fechar.addEventListener('click', () => {
+        aviso.remove();
+        if (aoFechar) aoFechar();
+      });
+      acoes.append(fechar);
+    }
 
     aviso.append(paragrafo, acoes);
 
-    if (detalhes) {
-      const recolhido = documento.createElement('details');
-      recolhido.className = 'veio-aviso__detalhes';
-      const resumo = documento.createElement('summary');
-      resumo.textContent = ROTULOS_DO_PADRAO.detalhes;
-      const causa = documento.createElement('pre');
-      causa.textContent = detalhes;
-      recolhido.append(resumo, causa);
-      aviso.append(recolhido);
-    }
+    if (detalhes) aviso.append(montarDetalhes(detalhes, documento));
 
     return aviso;
+  }
+
+  /**
+   * O “Detalhes” recolhido e copiável com a causa técnica (regra V3 da Voz).
+   *
+   * O aviso já traz o seu; este é para quando o próprio estado da tela é a
+   * mensagem e só a causa fica guardada (a nuvem recusou, a sessão expirou).
+   */
+  function montarDetalhes(causa, documento = document) {
+    const recolhido = documento.createElement('details');
+    recolhido.className = 'veio-aviso__detalhes';
+    const resumo = documento.createElement('summary');
+    resumo.textContent = ROTULOS_DO_PADRAO.detalhes;
+    const texto = documento.createElement('pre');
+    texto.textContent = causa;
+    recolhido.append(resumo, texto);
+    return recolhido;
   }
 
   /* ── Frase ────────────────────────────────────────────────────────────────
@@ -489,6 +510,7 @@
     abrirModal,
     mostrarToastDeSucesso,
     montarAviso,
+    montarDetalhes,
     escreverFrase,
     escreverFraseClicavel,
     andarEntrePalavras,

@@ -445,7 +445,7 @@ select.veio-campo {
   padding: 1px 7px;
   border: 1px solid var(--veio-border-strong);
   border-bottom-width: 2px;
-  border-radius: var(--veio-raio-tecla);
+  border-radius: var(--veio-raio-tecla-resumo);
   background: transparent;
   color: inherit;
   font-family: var(--veio-fonte-mono);
