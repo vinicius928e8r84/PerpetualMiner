@@ -357,6 +357,17 @@ body {
   white-space: nowrap;
 }
 
+/* A tecla do resumo de Atalhos segue o protótipo de Configurações: em
+   muted, um pouco maior e mais larga que o kbd base. */
+.cfg-resumo .veio-kbd {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--veio-raio-tecla-resumo);
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-tecla-resumo);
+}
+
 /* Sem atalho, o kbd tracejado fala em texto, não em tecla. */
 .cfg-resumo .veio-kbd--sem-atalho {
   font-family: var(--veio-fonte-ui);

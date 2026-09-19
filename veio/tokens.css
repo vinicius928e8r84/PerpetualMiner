@@ -118,6 +118,8 @@
   --veio-tam-apoio: 12.5px;
   --veio-tam-legenda: 11.5px;
   --veio-tam-tecla: 11px;
+  /* A tecla no resumo fechado de Atalhos (Configurações), maior que a do popup. */
+  --veio-tam-tecla-resumo: 12px;
   --veio-tam-micro: 10.5px;
 
   --veio-peso-display: 800;
@@ -132,6 +134,8 @@
 
   /* ── Forma ── */
   --veio-raio-tecla: 5px;
+  /* A tecla no resumo fechado de Atalhos (Configurações). */
+  --veio-raio-tecla-resumo: 8px;
   --veio-raio-icone: 10px;
   --veio-raio-input: 12px;
   --veio-raio-card: 14px;
