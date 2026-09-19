@@ -106,7 +106,9 @@
   --veio-tam-modal: 20px;
   --veio-tam-card: 15px;
   --veio-tam-frase: 15px;
+  --veio-tam-destaque: 16px;
   --veio-tam-corpo: 13.5px;
+  --veio-tam-controle: 12.5px;
   --veio-tam-legenda: 11.5px;
   --veio-tam-tecla: 11px;
   --veio-tam-micro: 10.5px;
@@ -122,7 +124,8 @@
   --veio-altura-frase: 1.5;
 
   /* ── Forma ── */
-  --veio-raio-tecla: 5px;
+  --veio-raio-checkbox: 6px;
+  --veio-raio-tecla: 8px;
   --veio-raio-icone: 10px;
   --veio-raio-input: 12px;
   --veio-raio-card: 14px;

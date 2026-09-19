@@ -67,6 +67,10 @@
       <section class="shell-area" data-area="frases" aria-labelledby="titulo-frases">
         <header class="shell-cabecalho">
           <h1 id="titulo-frases" data-voz="SHL-02.frases"></h1>
+          <!-- Até o #31 trazer o menu (Colar · Arquivo .txt · Foto), abre a adição em massa de hoje. -->
+          <button class="veio-botao veio-botao--primario" id="btn-minerar-frases" type="button">
+            <span data-voz="ADD-01.botao"></span><span data-icone="abaixo"></span>
+          </button>
         </header>
 
         <!--
@@ -163,13 +167,18 @@
           </label>
         </div>
 
+        <!-- A linha de seleção: sem seleção, o checkbox “Selecionar página”. -->
+        <div class="frases-selecao" id="frases-selecao" hidden>
+          <label><input type="checkbox" class="veio-checkbox" id="sel-pagina"><span data-voz="PAI-31"></span></label>
+        </div>
+
         <!-- PAI-01: enquanto a lista carrega, 5 cartões-esqueleto sem texto. -->
         <div id="frases-lista" class="frases-lista" aria-busy="true">
-          <div class="veio-frase-esqueleto" aria-hidden="true"><div class="veio-esqueleto"></div><div class="veio-esqueleto"></div></div>
-          <div class="veio-frase-esqueleto" aria-hidden="true"><div class="veio-esqueleto"></div><div class="veio-esqueleto"></div></div>
-          <div class="veio-frase-esqueleto" aria-hidden="true"><div class="veio-esqueleto"></div><div class="veio-esqueleto"></div></div>
-          <div class="veio-frase-esqueleto" aria-hidden="true"><div class="veio-esqueleto"></div><div class="veio-esqueleto"></div></div>
-          <div class="veio-frase-esqueleto" aria-hidden="true"><div class="veio-esqueleto"></div><div class="veio-esqueleto"></div></div>
+          <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
+          <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
+          <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
+          <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
+          <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
         </div>
 
         <!-- Paginação: “1–10 de 1.284” (PAI-07) à esquerda, « ‹ 1 de 129 › » à direita. -->

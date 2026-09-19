@@ -8,8 +8,10 @@
 //
 //   cd e2e && npx playwright test painel-frases-visual --update-snapshots
 //
-// As ações de hoje (.conteudo-de-hoje) ficam cobertas: elas são reconstruídas
-// no #30, no #31 e no #32.
+// Cada captura é a página inteira, como o protótipo mostra a área: o
+// cabeçalho com Minerar frases, os filtros, a linha de seleção, a lista e a
+// paginação no fim. As ações de hoje (.conteudo-de-hoje) ficam cobertas: elas
+// são reconstruídas no #30, no #31 e no #32.
 
 const { test, expect } = require('../fixtures');
 
@@ -31,7 +33,7 @@ const FRASES = [
   { id: 1, texto: 'That ship has sailed.', data: '13/09/2026', streaming: 'netflix', idioma: 'Inglês', contexto: { fonte: 'netflix', titulo: 'Succession', detalhe: 'T2E1' } },
 ];
 
-const semAsAcoesDeHoje = page => ({ mask: [page.locator('.conteudo-de-hoje')] });
+const paginaInteira = page => ({ fullPage: true, mask: [page.locator('.conteudo-de-hoje')] });
 
 async function abrirFrases(page, extensao, largura = 1280) {
   await page.clock.setFixedTime(AGORA);
@@ -46,7 +48,7 @@ test('a lista em cartões, com a sidebar larga', async ({ page, extensao }) => {
   await abrirFrases(page, extensao);
   await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(10);
 
-  await expect(page).toHaveScreenshot('frases-lista.png', semAsAcoesDeHoje(page));
+  await expect(page).toHaveScreenshot('frases-lista.png', paginaInteira(page));
 });
 
 test('a lista em cartões, com a sidebar em trilho', async ({ page, extensao }) => {
@@ -54,7 +56,7 @@ test('a lista em cartões, com a sidebar em trilho', async ({ page, extensao }) 
   await abrirFrases(page, extensao, 900);
   await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(10);
 
-  await expect(page).toHaveScreenshot('frases-lista-trilho.png', semAsAcoesDeHoje(page));
+  await expect(page).toHaveScreenshot('frases-lista-trilho.png', paginaInteira(page));
 });
 
 test('carregando (PAI-01): 5 cartões-esqueleto', async ({ page, extensao, fakes }) => {
@@ -63,14 +65,14 @@ test('carregando (PAI-01): 5 cartões-esqueleto', async ({ page, extensao, fakes
   await abrirFrases(page, extensao);
   await expect(page.locator('.veio-frase-esqueleto')).toHaveCount(5);
 
-  await expect(page.locator('#frases-lista')).toHaveScreenshot('frases-carregando.png');
+  await expect(page).toHaveScreenshot('frases-carregando.png', paginaInteira(page));
 });
 
 test('primeiro uso (PAI-02)', async ({ page, extensao }) => {
   await abrirFrases(page, extensao);
   await expect(page.locator('#frases-lista .veio-vazio')).toBeVisible();
 
-  await expect(page.locator('#frases-lista')).toHaveScreenshot('frases-primeiro-uso.png');
+  await expect(page).toHaveScreenshot('frases-primeiro-uso.png', paginaInteira(page));
 });
 
 test('filtros esconderam tudo (PAI-03)', async ({ page, extensao }) => {
@@ -79,7 +81,7 @@ test('filtros esconderam tudo (PAI-03)', async ({ page, extensao }) => {
   await page.locator('.veio-toggle').getByText('Ocultar enviadas e exportadas').click();
   await expect(page.locator('#frases-lista .veio-vazio')).toBeVisible();
 
-  await expect(page.locator('.shell-area[data-area="frases"]')).toHaveScreenshot('frases-filtros-vazios.png', semAsAcoesDeHoje(page));
+  await expect(page).toHaveScreenshot('frases-filtros-vazios.png', paginaInteira(page));
 });
 
 test('busca sem resultado com filtro ligado (PAI-04)', async ({ page, extensao }) => {
@@ -89,5 +91,5 @@ test('busca sem resultado com filtro ligado (PAI-04)', async ({ page, extensao }
   await page.getByRole('searchbox', { name: 'Buscar nas frases' }).fill('zebra');
   await expect(page.locator('#frases-lista .veio-vazio')).toBeVisible();
 
-  await expect(page.locator('.shell-area[data-area="frases"]')).toHaveScreenshot('frases-busca-vazia.png', semAsAcoesDeHoje(page));
+  await expect(page).toHaveScreenshot('frases-busca-vazia.png', paginaInteira(page));
 });

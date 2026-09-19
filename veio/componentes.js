@@ -57,17 +57,20 @@
     contexto: ['<path d="M4 20h4L19 9l-4-4L4 16z"/>'],
     apagar: ['<path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/>'],
     enviar: ['<path d="M4 12l16-8-6 16-3-6z"/>'],
-    netflix: ['<rect x="4" y="4" width="16" height="16" rx="2"/>', '<path d="M9 8l6 4-6 4z"/>'],
+    // As Fontes, no desenho do protótipo de Frases: vídeo é uma tela.
+    netflix: ['<rect x="2" y="5" width="20" height="13" rx="2"/>', '<path d="M8 21h8"/>'],
     youtube: ['<rect x="2" y="5" width="20" height="14" rx="4"/>', '<path d="M10 9l5 3-5 3z"/>'],
     web: ['<circle cx="12" cy="12" r="9"/>', '<path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/>'],
-    pdf: ['<path d="M14 3H6v18h12V7z"/>', '<path d="M14 3v4h4"/>'],
-    livro: ['<path d="M4 5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2z"/>', '<path d="M4 20a2 2 0 0 0 2 2h13v-4"/>'],
-    manual: ['<path d="M4 20h4L19 9l-4-4L4 16z"/>'],
+    pdf: ['<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>', '<path d="M14 3v6h6"/>'],
+    livro: ['<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14z"/>'],
+    manual: ['<path d="M12 5v14M5 12h14"/>'],
     // As áreas do Painel, na sidebar e no trilho.
     frases: ['<path d="M4 6h16M4 12h16M4 18h10"/>'],
     anki: ['<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0V7zM12 16v5"/>'],
     configuracoes: ['<circle cx="12" cy="12" r="3"/>', '<path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'],
     conta: ['<circle cx="12" cy="8" r="4"/>', '<path d="M4 21a8 8 0 0 1 16 0"/>'],
+    // O chevron de um botão que abre um menu.
+    abaixo: ['<path d="M6 9l6 6 6-6"/>'],
     // A paginação: primeira, anterior, próxima e última página.
     primeira: ['<path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>'],
     anterior: ['<path d="M15 18l-6-6 6-6"/>'],

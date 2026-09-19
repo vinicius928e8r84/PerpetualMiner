@@ -32,7 +32,7 @@
     ['PAI-13.titulo', { n: 12 }], ['PAI-13.corpo'],
     ['PAI-14', { n: 12 }],
     ['PAI-15.aviso'], ['PAI-15.tentarDeNovo'], ['ONB-15.ocultar'],
-    ['PAI-02.texto', { atalho: 'Alt+S' }], ['PAI-02.acao'],
+    ['PAI-02.titulo'], ['PAI-02.texto', { atalho: 'Alt+S' }], ['PAI-02.acao'], ['PAI-03.acao'],
     ['PAI-04.texto', { termo: 'gavião' }], ['PAI-04.acao'],
     ['PAI-11.hoje'],
   ];
@@ -116,6 +116,7 @@
       botao('primario', 'POP-09'),
       botao('secundario', 'ADD-01.botao'),
       botao('fantasma', 'PAI-12.cancelar'),
+      botao('contorno', 'PAI-03.acao'),
       botao('perigo', 'PAI-13.confirmar', { n: 12 }),
       botao('perigo-cheio', 'PAI-13.confirmar', { n: 12 }),
       el('button', {
@@ -341,19 +342,27 @@
      O vazio que ensina (PAI-02) e o vazio de uma busca sem resultado
      (PAI-04), que leva a ação de limpar junto. */
 
-  function vazio(idDoTexto, valores, idDaAcao, icone) {
+  /** O vazio: o título em destaque, o texto que ensina (se houver) e a ação. */
+  function vazio({ titulo, texto, acao, variante, icone }) {
     return el('div', { class: 'veio-vazio' },
       iconeVeio(icone),
-      el('p', { class: 'veio-vazio__texto', texto: textoDaVoz(idDoTexto, valores) }),
+      el('p', { class: 'veio-vazio__titulo', texto: textoDaVoz(...titulo) }),
+      texto ? el('p', { class: 'veio-vazio__texto', texto: textoDaVoz(...texto) }) : null,
       el('button', {
-        type: 'button', class: 'veio-botao veio-botao--secundario',
-        texto: textoDaVoz(idDaAcao),
+        type: 'button', class: `veio-botao veio-botao--${variante}`,
+        texto: textoDaVoz(acao),
       }));
   }
 
   const vazios = () => [
-    vazio('PAI-02.texto', { atalho: 'Alt+S' }, 'PAI-02.acao', 'enviar'),
-    vazio('PAI-04.texto', { termo: 'gavião' }, 'PAI-04.acao', 'busca'),
+    vazio({
+      titulo: ['PAI-02.titulo'], texto: ['PAI-02.texto', { atalho: 'Alt+S' }],
+      acao: 'PAI-02.acao', variante: 'primario', icone: 'enviar',
+    }),
+    vazio({
+      titulo: ['PAI-04.texto', { termo: 'gavião' }],
+      acao: 'PAI-04.acao', variante: 'contorno', icone: 'busca',
+    }),
   ];
 
   function esqueleto() {

@@ -325,8 +325,11 @@ test('primeiro uso: PAI-02 com o atalho de legenda de hoje (Alt+S) e Minerar fra
   await abrirFrases(page, extensao);
 
   const vazio = lista(page).locator('.veio-vazio');
-  await expect(vazio).toContainText(
-    'Nenhuma frase ainda. Minere de um vídeo com Alt+S ou use Minerar frases para colar, importar ou ler uma foto.');
+  // O título vem em destaque, acima do texto que ensina.
+  await expect(vazio.locator('.veio-vazio__titulo')).toHaveText('Nenhuma frase ainda.');
+  await expect(vazio.locator('.veio-vazio__texto')).toHaveText(
+    'Minere de um vídeo com Alt+S ou use Minerar frases para colar, importar ou ler uma foto.');
+  expect(await vazio.locator('.veio-vazio__titulo').evaluate(el => Number(getComputedStyle(el).fontWeight))).toBeGreaterThanOrEqual(700);
   await expect(vazio.locator('kbd')).toHaveText('Alt+S');
 
   await vazio.getByRole('button', { name: 'Minerar frases' }).click();
@@ -452,6 +455,41 @@ test('“Todas” marca as frases de todas as páginas, e apagar leva a lista ao
   await expect.poll(async () => (await extensao.frases()).length).toBe(0);
 });
 
+test('o cabeçalho traz Minerar frases, que abre a adição em massa de hoje', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
+  await abrirFrases(page, extensao);
+
+  const cabecalho = page.locator('.shell-area[data-area="frases"] .shell-cabecalho');
+  await cabecalho.getByRole('button', { name: 'Minerar frases' }).click();
+  await expect(page.locator('#bulk-add-modal')).toBeVisible();
+});
+
+test('“Selecionar página” marca a página inteira, fica misto com parte dela e desmarca', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: frasesDeExemplo(12) });
+  await abrirFrases(page, extensao);
+
+  const selecionarPagina = page.getByRole('checkbox', { name: 'Selecionar página' });
+  await expect(selecionarPagina).not.toBeChecked();
+
+  await cartoes(page).first().getByRole('checkbox', { name: 'Selecionar frase' }).check();
+  expect(await selecionarPagina.evaluate(el => el.indeterminate)).toBe(true);
+
+  await selecionarPagina.click();
+  await expect(selecionarPagina).toBeChecked();
+  await expect(lista(page).getByRole('checkbox', { name: 'Selecionar frase', checked: true })).toHaveCount(10);
+  await expect(page.locator('#selection-count')).toHaveText('10 selecionadas');
+
+  await selecionarPagina.click();
+  await expect(selecionarPagina).not.toBeChecked();
+  await expect(lista(page).getByRole('checkbox', { name: 'Selecionar frase', checked: true })).toHaveCount(0);
+});
+
+test('sem frases, a linha “Selecionar página” não aparece', async ({ page, extensao }) => {
+  await abrirFrases(page, extensao);
+  await expect(lista(page).locator('.veio-vazio')).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: 'Selecionar página' })).toBeHidden();
+});
+
 // ─── Teclado, leitor de tela e movimento ─────────────────────────────────────
 
 test('os controles da lista têm nome, e o foco do teclado aparece', async ({ page, extensao }) => {
@@ -492,6 +530,7 @@ test('cada controle do cartão, do chip e da paginação tem nome, e o foco do t
 
   const comChip = cartao(page, 'close call');
   const controles = [
+    page.getByRole('checkbox', { name: 'Selecionar página' }),
     comChip.getByRole('checkbox', { name: 'Selecionar frase' }),
     comChip.getByRole('button', { name: 'Remover a palavra' }),
     comChip.getByRole('button', { name: 'Adicionar outro grupo' }),
@@ -534,7 +573,7 @@ test('com movimento reduzido, os cartões-esqueleto ficam parados', async ({ pag
   fakes.google.segurarLeituras();
   await abrirFrases(page, extensao);
 
-  const brilho = lista(page).locator('.veio-frase-esqueleto .veio-esqueleto').first();
+  const brilho = lista(page).locator('.veio-frase-esqueleto').first();
   await expect(brilho).toBeVisible();
   expect(await brilho.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
 });

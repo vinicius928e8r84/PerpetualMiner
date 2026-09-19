@@ -116,7 +116,7 @@ Todos estão desenhados no protótipo (`?variant=F`, seção Componentes):
   - **contorno vermelho:** a entrada que abre o modal destrutivo (ex.: “Apagar tudo…”);
   - **preenchido vermelho:** só o botão que confirma dentro do modal destrutivo (ex.: “Apagar 12 frases”).
 - **Campos:** busca com ícone, select, textarea, número (limite diário).
-- **Toggle** (mineração automática EN/RU) e **checkbox** (`accent-color`).
+- **Toggle** (mineração automática EN/RU) e **checkbox** desenhado como no protótipo de Frases: quadrado de raio 6 e borda forte, cheio de acento com o visto quando marcado, e um traço no estado misto.
 - **Badges de Fonte** (Netflix, YouTube, Web, PDF, Livro, Manual): neutros, com ícone. Sem cor de marca de terceiros.
 - **Badges de estado:** Enviada ao Anki (`success`), Exportada (`info`), Bridge online/offline (ponto colorido); `kbd` para atalhos.
 - **Linha de frase:** checkbox, texto com a palavra grifada, linha de Contexto (Fonte · Título · Detalhe), chip de palavra (`palavra:` / `auto:`), estado e 4 ações só-ícone. Agrupada sob cabeçalhos de data em maiúsculas.

@@ -58,6 +58,17 @@
   color: var(--veio-text);
 }
 
+/* O botão comum do Painel: contorno, sem fundo; o acento aparece no hover. */
+.veio-botao--contorno {
+  background: transparent;
+  border-color: var(--veio-border-strong);
+  color: var(--veio-text);
+}
+
+.veio-botao--contorno:hover {
+  border-color: var(--veio-accent);
+}
+
 .veio-botao--perigo {
   background: transparent;
   border-color: var(--veio-danger);
@@ -172,13 +183,16 @@ input[type="number"].veio-campo {
   text-align: center;
 }
 
+/* A seta do select é um chevron de traço fino, na cor `muted`: dois riscos
+   de 2 px desenhados por gradiente, sem imagem e sem cor fora dos tokens. */
 select.veio-campo {
   appearance: none;
   padding-right: 30px;
-  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
-                    linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position: right 14px center, right 9px center;
-  background-size: 5px 5px, 5px 5px;
+  background-image:
+    linear-gradient(45deg, transparent calc(50% - 1px), var(--veio-muted) calc(50% - 1px), var(--veio-muted) calc(50% + 1px), transparent calc(50% + 1px)),
+    linear-gradient(-45deg, transparent calc(50% - 1px), var(--veio-muted) calc(50% - 1px), var(--veio-muted) calc(50% + 1px), transparent calc(50% + 1px));
+  background-position: right 16px center, right 11px center;
+  background-size: 6px 6px, 6px 6px;
   background-repeat: no-repeat;
 }
 
@@ -300,15 +314,47 @@ select.veio-campo {
 }
 
 /* ── Checkbox ─────────────────────────────────────────────────────────────
-   O estado misto (parte da lista selecionada) é o indeterminate nativo: o
-   traço que o navegador desenha já usa a cor do acento. */
+   Desenhado, não o nativo: quadrado de raio 6 com borda forte; marcado, ele
+   se enche de acento com o visto. O estado misto (parte da lista
+   selecionada) é o indeterminate, com um traço no lugar do visto. */
 
 .veio-checkbox {
+  appearance: none;
   flex: none;
-  width: 16px;
-  height: 16px;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
   margin: 0;
-  accent-color: var(--veio-accent);
+  border: 2px solid var(--veio-border-strong);
+  border-radius: var(--veio-raio-checkbox);
+  background: transparent;
+  cursor: pointer;
+}
+
+.veio-checkbox:checked,
+.veio-checkbox:indeterminate {
+  border-color: var(--veio-accent);
+  background: var(--veio-accent);
+}
+
+/* O visto: um L girado, na cor de tinta do acento. */
+.veio-checkbox:checked::after {
+  content: "";
+  width: 8px;
+  height: 4px;
+  border: 2px solid var(--veio-accent-ink);
+  border-top: 0;
+  border-right: 0;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+
+/* Parte da lista marcada: um traço. */
+.veio-checkbox:indeterminate::after {
+  content: "";
+  width: 8px;
+  height: 2px;
+  background: var(--veio-accent-ink);
 }
 
 .veio-checkbox:disabled {
@@ -324,13 +370,14 @@ select.veio-campo {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 8px;
+  padding: 1px 8px 1px 6px;
+  border: 1px solid var(--veio-border);
   border-radius: var(--veio-raio-pilula);
-  background: var(--veio-surface-2);
+  background: var(--veio-surface);
   color: var(--veio-muted);
   font-size: var(--veio-tam-legenda);
-  font-weight: 600;
-  line-height: 1.3;
+  font-weight: 700;
+  line-height: 1.4;
   white-space: nowrap;
 }
 
@@ -338,6 +385,13 @@ select.veio-campo {
   width: 12px;
   height: 12px;
   flex: none;
+}
+
+.veio-selo--ok,
+.veio-selo--info,
+.veio-selo--erro {
+  padding-inline: 8px;
+  border-color: transparent;
 }
 
 .veio-selo--ok {
@@ -369,15 +423,16 @@ select.veio-campo {
 
 .veio-kbd {
   display: inline-block;
-  padding: 2px 6px;
+  padding: 1px 7px;
   border: 1px solid var(--veio-border-strong);
   border-bottom-width: 2px;
   border-radius: var(--veio-raio-tecla);
-  background: var(--veio-surface);
-  color: var(--veio-text);
+  background: transparent;
+  color: inherit;
   font-family: var(--veio-fonte-mono);
   font-size: var(--veio-tam-tecla);
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 .veio-kbd--sem-atalho {
@@ -683,6 +738,13 @@ select.veio-campo {
   color: var(--veio-muted);
 }
 
+.veio-vazio__titulo {
+  margin: 0;
+  color: var(--veio-text);
+  font-size: var(--veio-tam-destaque);
+  font-weight: var(--veio-peso-titulo);
+}
+
 .veio-vazio__texto {
   margin: 0;
   max-width: 36ch;
@@ -842,24 +904,13 @@ select.veio-campo {
   color: var(--veio-text);
 }
 
-/* A linha de frase enquanto a lista carrega: o mesmo cartão, com duas linhas
-   de esqueleto no lugar do texto e do Contexto. */
+/* O cartão enquanto a lista carrega: um bloco de esqueleto do tamanho de um
+   cartão, sem texto e sem borda (o `.veio-esqueleto` traz o brilho). */
 .veio-frase-esqueleto {
-  display: grid;
-  gap: 10px;
+  height: 74px;
   margin-bottom: 8px;
-  padding: 16px 14px;
-  border: 1px solid var(--veio-border);
   border-radius: var(--veio-raio-card);
-  background: var(--veio-bg);
-}
-
-.veio-frase-esqueleto .veio-esqueleto:first-child {
-  width: 78%;
-}
-
-.veio-frase-esqueleto .veio-esqueleto:last-child {
-  width: 42%;
+  opacity: .7;
 }
 
 /* ── Movimento reduzido ───────────────────────────────────────────────────

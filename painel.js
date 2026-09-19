@@ -4,7 +4,9 @@
 // deste arquivo, pelo painel.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
 const { detectarIdioma, IDIOMAS, textoDaVoz, CATALOGO_DA_VOZ } = PerpetualMiner;
 // A lista de Frases é montada com os componentes da Base Veio (veio/componentes.js).
-const { iconeVeio, montarChipDaPalavra, escreverFraseClicavel, andarEntrePalavras, focarPalavra } = PerpetualMiner.Veio;
+const {
+  iconeVeio, montarChipDaPalavra, escreverFraseClicavel, andarEntrePalavras, focarPalavra, refletirSelecao,
+} = PerpetualMiner.Veio;
 // O shell (painel-shell.js) é dono da sidebar: o total, o ponto da Conexão com o
 // Anki e o chip de conta. Este arquivo conta a ele o que muda.
 const Shell = PerpetualMiner.Shell;
@@ -765,6 +767,9 @@ function atualizarBotoesSel() {
   if (!btnPag || !btnTodos) return;
 
   const idsPag   = idsPaginaAtual();
+  // “Selecionar página” (PAI-31): marcado com a página inteira, misto com parte.
+  document.getElementById('frases-selecao').hidden = !listaCarregada || idsPag.length === 0;
+  refletirSelecao(document.getElementById('sel-pagina'), idsPag.filter(id => selecionadas.has(id)).length, idsPag.length);
   const pagAtiva = idsPag.length > 0 && idsPag.every(id => selecionadas.has(id));
   btnPag.classList.toggle('sel-active', pagAtiva);
   btnPag.title = pagAtiva ? 'Desmarcar página atual' : 'Selecionar página atual';
@@ -801,6 +806,8 @@ function setupListeners() {
   document.getElementById('btn-send-anki').addEventListener('click', enviarSelecionadasAoAnki);
   document.getElementById('btn-bulk-edit').addEventListener('click', abrirModalBulk);
   document.getElementById('btn-sel-pagina').addEventListener('click', selecionarPagina);
+  document.getElementById('sel-pagina').addEventListener('change', selecionarPagina);
+  document.getElementById('btn-minerar-frases').addEventListener('click', abrirModalMultiAdd);
   document.getElementById('btn-sel-todos').addEventListener('click', selecionarTodosVisiveis);
 
   // Adição em Massa
@@ -1657,31 +1664,32 @@ function renderizarPaginacao(inicio, fim, total, totPag) {
  * filtros que esconderam tudo (PAI-03).
  */
 function montarVazio() {
-  const texto = criar('p', 'veio-vazio__texto');
+  const vazio = criar('div', 'veio-vazio');
   const acoes = criar('div', 'frases-vazio__acoes');
 
   if (todasFrases.length === 0) {
+    const texto = criar('p', 'veio-vazio__texto');
     // O atalho entra no meio da frase como tecla (kbd), não como texto solto.
     const MARCA = '\u0000';
     const [antes, depois] = textoDaVoz('PAI-02.texto', { atalho: MARCA }).split(MARCA);
     texto.append(antes, criar('kbd', 'veio-kbd', ATALHO_DE_LEGENDA), depois);
     // Até o #31 trazer o menu Minerar frases, o botão abre a adição em massa de hoje.
     acoes.append(botaoDoVazio(textoDaVoz('PAI-02.acao'), abrirModalMultiAdd, 'veio-botao--primario'));
+    vazio.append(criar('p', 'veio-vazio__titulo', textoDaVoz('PAI-02.titulo')), texto);
   } else if (buscaAtual.trim()) {
-    texto.textContent = textoDaVoz('PAI-04.texto', { termo: buscaAtual.trim() });
+    vazio.append(criar('p', 'veio-vazio__titulo', textoDaVoz('PAI-04.texto', { termo: buscaAtual.trim() })));
     acoes.append(botaoDoVazio(textoDaVoz('PAI-04.acao'), limparBusca));
     if (filtrosLigados()) acoes.append(botaoDoVazio(textoDaVoz('PAI-03.acao'), limparFiltros));
   } else {
-    texto.textContent = textoDaVoz('PAI-03.texto');
+    vazio.append(criar('p', 'veio-vazio__titulo', textoDaVoz('PAI-03.texto')));
     acoes.append(botaoDoVazio(textoDaVoz('PAI-03.acao'), limparFiltros));
   }
 
-  const vazio = criar('div', 'veio-vazio');
-  vazio.append(texto, acoes);
+  vazio.append(acoes);
   return vazio;
 }
 
-function botaoDoVazio(rotulo, aoClicar, variante = 'veio-botao--secundario') {
+function botaoDoVazio(rotulo, aoClicar, variante = 'veio-botao--contorno') {
   const botao = criar('button', `veio-botao ${variante}`, rotulo);
   botao.type = 'button';
   botao.addEventListener('click', aoClicar);
@@ -1781,11 +1789,7 @@ function montarContexto(f) {
   if (origem) linha.append(criar('span', 'frase-origem', origem));
   // Hoje o Envio e o Exportar .txt gravam o mesmo `exported`; o #30 separa o
   // Exportada, e o selo passa a dizer qual dos dois.
-  if (f.status === 'exported') {
-    const selo = criar('span', 'veio-selo veio-selo--ok');
-    selo.append(iconeVeio('certo'), textoDaVoz('PAI-08.enviada'));
-    linha.append(selo);
-  }
+  if (f.status === 'exported') linha.append(criar('span', 'veio-selo veio-selo--ok', textoDaVoz('PAI-08.enviada')));
   return linha;
 }
 

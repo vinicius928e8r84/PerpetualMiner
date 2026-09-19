@@ -312,8 +312,10 @@ body {
 
 .frases-filtro {
   width: auto;
+  padding: 6px 30px 6px 12px;
   border-radius: var(--veio-raio-pilula);
   background-color: var(--veio-bg);
+  font-size: var(--veio-tam-controle);
   font-weight: var(--veio-peso-rotulo);
   cursor: pointer;
 }
@@ -326,6 +328,29 @@ body {
 .frases-busca .veio-campo {
   border-radius: var(--veio-raio-pilula);
   background: var(--veio-bg);
+  font-size: var(--veio-tam-controle);
+}
+
+.frases-filtros .veio-toggle {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-controle);
+  font-weight: var(--veio-peso-rotulo);
+}
+
+/* A linha de seleção: sem seleção, o checkbox “Selecionar página” (PAI-31). */
+.frases-selecao {
+  margin-top: 10px;
+  padding: 2px 4px;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-controle);
+  font-weight: var(--veio-peso-rotulo);
+}
+
+.frases-selecao label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
 }
 
 /* O × nativo do campo de busca dá lugar ao × da busca Veio. */
