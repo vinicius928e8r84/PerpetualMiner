@@ -8,10 +8,9 @@
 //
 //   cd e2e && npx playwright test painel-frases-visual --update-snapshots
 //
-// Os estados cabem na janela e são capturados inteiros. A lista, que é maior
-// que a janela, é capturada como a pessoa a vê: o topo, e depois rolada até a
-// paginação, com a sidebar grudada ao lado (numa captura da página inteira a
-// sidebar, que tem a altura da janela, pararia no meio). As ações de hoje (.conteudo-de-hoje) ficam cobertas: elas
+// A sidebar e a ilha do conteúdo têm a altura da janela e começam e terminam
+// juntas; a lista rola dentro da ilha. Por isso a lista é capturada duas
+// vezes: o topo, e a ilha rolada até a paginação. As ações de hoje (.conteudo-de-hoje) ficam cobertas: elas
 // são reconstruídas no #30, no #31 e no #32.
 
 const { test, expect } = require('../fixtures');
@@ -40,7 +39,7 @@ const naJanela = page => ({ mask: [page.locator('.conteudo-de-hoje')] });
 /** O topo da lista e o fim dela, rolada até a paginação. */
 async function capturarTopoEFim(page, nome) {
   await expect(page).toHaveScreenshot(`${nome}.png`, naJanela(page));
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.locator('.shell-conteudo').evaluate(ilha => ilha.scrollTo(0, ilha.scrollHeight));
   await expect(page.getByRole('navigation', { name: 'Páginas' })).toBeInViewport();
   await expect(page).toHaveScreenshot(`${nome}-fim.png`, naJanela(page));
 }

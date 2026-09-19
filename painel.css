@@ -20,7 +20,7 @@ body {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
   gap: 12px;
-  min-height: 100vh;
+  height: 100vh;
   padding: 12px;
 }
 
@@ -209,8 +209,13 @@ body {
   color: var(--veio-danger);
 }
 
+/* A ilha do conteúdo tem a altura da sidebar: as duas começam e terminam
+   juntas, e o conteúdo rola dentro dela. */
 .shell-conteudo {
   min-width: 0;
+  height: calc(100vh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 24px 28px 48px;
   border: 1px solid var(--veio-border);
   border-radius: var(--veio-raio-painel);
