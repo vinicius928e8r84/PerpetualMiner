@@ -140,7 +140,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | SHL-01 | Itens da sidebar **(novo)** | status | Todos os Streamings · Netflix · YouTube… (as Fontes) · Sair | Frases · Conexão com o Anki · Configurações | Rótulo da navegação para o leitor de tela: “Navegação do painel”. As Fontes saem da sidebar. No trilho, o rótulo vira o tooltip. |
 | SHL-02 | Títulos das áreas **(novo)** | status | Frases mineradas · Presets e custos | Frases mineradas · Conexão com o Anki · Configurações | Cabeçalho de área, 22/700. |
 | SHL-03 | Abas da Conexão com o Anki **(novo)** | status | (tudo numa página só) | Custos · Baralhos e termos · Vocabulário · Ajustes de envio | Controle segmentado; o grupo se chama “Seções da Conexão com o Anki”. |
-| SHL-04 | Cards de Configurações **(novo)** | status | (espalhados na sidebar e no Minerar de uma foto) | Conta & sync · Atalhos · Chave do Gemini · Zona de perigo | A Chave do Gemini usa CFG-15. |
+| SHL-04 | Cards de Configurações **(novo)** | status | (espalhados na sidebar e no Minerar de uma foto) | Conta & sync · Atalhos · Chave do Gemini · Aparência · Zona de perigo | A Chave do Gemini usa CFG-15; a Aparência, CFG-29…31. |
 | SHL-05 | Chip de conta **(novo)** | status | Login com Google · Sincronizado · Erro de sync | Sem conta · só neste computador · Sem sincronizar · 8 de 10 sincronizadas · Sessão expirou | Sem conta, o chip mostra em duas linhas, como o nome e o estado de quem tem conta: “Sem conta” e “Só neste computador”; a frase inteira fica no tooltip. Com conta: nome + CFG-01, CFG-02 ou CFG-09; em `danger`, “Sem sincronizar” quando o sync falha ou a nuvem recusa (CFG-03, CFG-04), “8 de 10 sincronizadas” no sync parcial (CFG-05) e “Sessão expirou” (CFG-08) (C11). |
 | SHL-06 | Atualizar a Conexão com o Anki **(novo)** | status | (ícone sem texto) | Atualizar | Tooltip: BRG-24. |
 
@@ -248,7 +248,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | BRG-26 | Custo abaixo de 1 centavo | status | $0.0042 | < US$ 0,01 | Valor positivo abaixo de 1 centavo; nunca “US$ 0,00”. Com “Mostrar custos com 4 casas” ligado, mostra as 4 casas (V7). |
 | BRG-27 | Azulejo do baralho que não existe | erro | Baralho nao encontrado \| 0.0% maturidade | baralho não encontrado | Legenda do azulejo, em minúscula como “palavras”; o valor vira “—”. O detalhe mostra BRG-14 com “Abrir Ajustes de envio”. |
 
-### Configurações · Conta & sync · Atalhos · Chave · Zona de perigo
+### Configurações · Conta & sync · Atalhos · Chave · Aparência · Zona de perigo
 
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
@@ -280,6 +280,9 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | CFG-26 | Sair da conta: nota **(novo)** | status | (não existe) | Ao sair, as frases continuam neste computador. | Sob a conta, quando o sync está em dia. |
 | CFG-27 | Conta & sync: resumo **(novo)** | status | (não existe) | Vinicius · Sincronizado há 2 min | A linha fechada: nome (ou CFG-10) + o estado do chip (SHL-05). Sem conta: “Sem conta · só neste computador”. |
 | CFG-28 | Resumos da linha fechada **(novo)** | status | (não existe) | Legenda · Seleção · Sem chave · Nenhuma frase | A linha fechada de Atalhos (“Legenda [Alt+S]  Seleção [Alt+Botão voltar]”, com as teclas em `kbd`; sem atalho, CFG-12), da Chave do Gemini (a chave mascarada em mono; vazia, ponto `danger` + “Sem chave”) e da Zona de perigo (PAI-05: “1.284 frases”, “1 frase”; sem frases, “Nenhuma frase”). |
+| CFG-29 | Aparência: título e descrição **(novo)** | status | (não existe) | Aparência — Vale para o painel, o popup e Minerar de uma foto, só neste computador. O que aparece por cima dos vídeos e das páginas continua escuro. | O título do card; a descrição aparece sob ele com o card aberto. Seletor de tema: lista fechada, item 10. |
+| CFG-30 | Tema: opções **(novo)** | status | (não existe) | Tema · Escuro · Claro | “Tema” rotula o grupo para o leitor de tela; as opções são o controle segmentado. Trocar não tem toast: o tema muda na tela (C4). |
+| CFG-31 | Aparência: resumo **(novo)** | status | (não existe) | Escuro · Claro | A linha fechada mostra o tema em uso. Sem escolha gravada: “Escuro”. |
 
 ### Boas-vindas (primeira execução)
 
