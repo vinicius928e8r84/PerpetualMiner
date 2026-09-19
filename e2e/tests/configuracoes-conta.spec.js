@@ -41,6 +41,12 @@ const conta = page => card(page, 'conta');
 const chip = page => page.locator('#shell-chip');
 const estadoDoChip = page => page.locator('#shell-chip-estado');
 
+/** Sem conta, o chip diz “Sem conta” no lugar do nome e “Só neste computador” no do estado. */
+async function esperarChipSemConta(page) {
+  await expect(page.locator('#shell-chip-nome')).toHaveText('Sem conta');
+  await expect(page.locator('#shell-chip-estado')).toHaveText('Só neste computador');
+}
+
 /** Abre o card Conta & sync, se estiver fechado. */
 async function abrirConta(page) {
   const cabeca = cabecaDoCard(page, 'Conta & sync');
@@ -120,6 +126,73 @@ test('o chip de conta leva ao card Conta & sync aberto', async ({ page, extensao
   await expect(page).toHaveURL(/#configuracoes\/conta$/);
   await expect(cabecaDoCard(page, 'Conta & sync')).toHaveAttribute('aria-expanded', 'true');
   await expect(conta(page).getByRole('button', { name: 'Entrar com Google' })).toBeVisible();
+});
+
+// ─── Os resumos de Atalhos, Chave do Gemini e Zona de perigo ─────────────────
+
+const CHAVE_DO_GEMINI = 'AIzaSyD4kQ7wL2mXe9pRtB8nVfH0cJ3kQ9';
+const SELECAO_NO_BOTAO_VOLTAR = {
+  type: 'mouse', button: 3, code: null, altKey: true, ctrlKey: false, shiftKey: false, label: 'Alt+Mouse Back',
+};
+
+test('as linhas fechadas resumem os atalhos, a chave mascarada e o total de frases gravados', async ({ page, extensao }) => {
+  await extensao.gravarStorage({
+    frases: frasesDeExemplo(1245),
+    geminiApiKey: CHAVE_DO_GEMINI,
+    pm_atalho: SELECAO_NO_BOTAO_VOLTAR,
+  });
+  await abrirPainel(page, extensao);
+
+  await expect(resumo(page, 'perigo')).toHaveText('1.245 frases');
+  // O botão gravado em inglês aparece em PT-BR (CFG-14), cada tecla no seu kbd.
+  await expect(resumo(page, 'atalhos').locator('> span')).toHaveText(['Legenda Alt+S', 'Seleção Alt+Botão voltar']);
+  await expect(resumo(page, 'atalhos').locator('kbd')).toHaveText(['Alt+S', 'Alt+Botão voltar']);
+  // A chave aparece só pelas pontas: nunca inteira na tela.
+  await expect(resumo(page, 'chave')).toHaveText('AIza••••••••3kQ9');
+  await expect(page.getByText(CHAVE_DO_GEMINI)).toHaveCount(0);
+
+  // Abrir o card troca o resumo pelo conteúdo, como no card Conta & sync.
+  await cabecaDoCard(page, 'Zona de perigo').click();
+  await expect(resumo(page, 'perigo')).toBeHidden();
+  await expect(card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 1.245 frases' })).toBeVisible();
+});
+
+test('sem nada gravado: “Sem atalho” tracejado, “Sem chave” em danger e “Nenhuma frase”; os resumos acompanham o que muda', async ({ page, extensao }) => {
+  await abrirPainel(page, extensao);
+
+  await expect(resumo(page, 'perigo')).toHaveText('Nenhuma frase');
+  await expect(resumo(page, 'atalhos').locator('> span')).toHaveText(['Legenda Alt+S', 'Seleção Sem atalho']);
+  await expect(resumo(page, 'atalhos').locator('kbd').last()).toHaveClass(/veio-kbd--sem-atalho/);
+  await expect(resumo(page, 'chave')).toHaveText('Sem chave');
+  const corDoPerigo = await page.evaluate(() => {
+    const amostra = document.createElement('span');
+    amostra.style.color = 'var(--veio-danger)';
+    document.body.append(amostra);
+    return getComputedStyle(amostra).color;
+  });
+  expect(await resumo(page, 'chave').locator('.cfg-status').evaluate(el => getComputedStyle(el).color)).toBe(corDoPerigo);
+
+  // Gravar em outra página (o popup, o Minerar de uma foto) aparece aqui sem recarregar.
+  await extensao.gravarStorage({
+    frases: frasesDeExemplo(1),
+    geminiApiKey: CHAVE_DO_GEMINI,
+    pm_atalho: { type: 'keyboard', button: null, code: 'KeyK', altKey: false, ctrlKey: true, shiftKey: true, label: 'Ctrl+Shift+K' },
+  });
+  await expect(resumo(page, 'atalhos').locator('> span')).toHaveText(['Legenda Alt+S', 'Seleção Ctrl+Shift+K']);
+  await expect(resumo(page, 'chave')).toHaveText('AIza••••••••3kQ9');
+  await page.reload();
+  await expect(resumo(page, 'perigo')).toHaveText('1 frase');
+});
+
+test('abaixo de ~560 px de conteúdo, nenhuma linha fechada mostra resumo', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: frasesDeExemplo(3), geminiApiKey: CHAVE_DO_GEMINI, pm_atalho: SELECAO_NO_BOTAO_VOLTAR });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await abrirPainel(page, extensao);
+  for (const secao of ['conta', 'atalhos', 'chave', 'perigo']) await expect(resumo(page, secao)).toBeVisible();
+  await expect(resumo(page, 'perigo')).toHaveText('3 frases');
+
+  await page.setViewportSize({ width: 700, height: 800 });
+  for (const secao of ['conta', 'atalhos', 'chave', 'perigo']) await expect(resumo(page, secao)).toBeHidden();
 });
 
 // ─── Os 10 estados de conta: card, resumo e chip ─────────────────────────────
@@ -294,7 +367,7 @@ test('Nuvem recusou (CFG-04): o Sair da conta vira botão normal, e o Detalhes t
   await expect(await detalhesDoCard(page)).toContainText('Missing or insufficient permissions.');
 
   await sair.click();
-  await expect(chip(page)).toHaveText('Sem conta · só neste computador');
+  await esperarChipSemConta(page);
 });
 
 test('Sessão expirou (CFG-08): “Entrar” leva ao login e volta a sincronizar', async ({ page, extensao, fakes }) => {
@@ -332,7 +405,7 @@ test('Sem conta (CFG-06): avatar vazio, “Suas frases em qualquer computador”
   await expect(conta(page).getByText('Suas frases em qualquer computador', { exact: true })).toBeVisible();
   await expect(conta(page).getByText('Sem conta, elas ficam só neste computador.')).toBeVisible();
   await expect(conta(page).getByRole('button', { name: 'Entrar com Google' })).toHaveClass(/veio-botao--primario/);
-  await expect(chip(page)).toHaveText('Sem conta · só neste computador');
+  await esperarChipSemConta(page);
 });
 
 test('Login falhou (CFG-07): erro no card com Tentar de novo e Detalhes; o chip continua sem conta', async ({ page, extensao, fakes }) => {
@@ -343,7 +416,7 @@ test('Login falhou (CFG-07): erro no card com Tentar de novo e Detalhes; o chip 
   const aviso = conta(page).getByRole('alert');
   await expect(aviso).toContainText('Não deu para entrar com o Google. Tente de novo.');
   await expect(await detalhesDoCard(page)).toContainText('Authorization page could not be loaded.');
-  await expect(chip(page)).toHaveText('Sem conta · só neste computador');
+  await esperarChipSemConta(page);
   await expect(page.locator('#_toast')).toHaveCount(0);
 
   fakes.google.proximoLogin('entrar');
@@ -364,7 +437,7 @@ test('cancelar o login (fechar a janela do Google) não mostra nada', async ({ p
   await page.waitForTimeout(300);
   await expect(conta(page).getByRole('alert')).toHaveCount(0);
   await expect(page.locator('#_toast')).toHaveCount(0);
-  await expect(chip(page)).toHaveText('Sem conta · só neste computador');
+  await esperarChipSemConta(page);
 });
 
 // ─── O caminho feliz de hoje: entrar, sincronizar, sair ──────────────────────
@@ -384,7 +457,7 @@ test('entrar com Google sobe as frases e mostra a conta; sair deixa as frases ne
   expect(gravado.pm_firebase_auth).toMatchObject({ uid: 'uid-teste', idToken: 'token-teste' });
 
   await conta(page).getByRole('button', { name: 'Sair da conta' }).click();
-  await expect(chip(page)).toHaveText('Sem conta · só neste computador');
+  await esperarChipSemConta(page);
   await expect(conta(page).getByRole('button', { name: 'Entrar com Google' })).toBeVisible();
   expect(await extensao.lerStorage(['pm_user_info', 'pm_firebase_auth'])).toEqual({});
   expect(await extensao.frases()).toHaveLength(3);

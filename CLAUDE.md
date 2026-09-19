@@ -29,7 +29,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-conta.js` | The account in the panel: one state drawn in the Configurações › Conta & sync card, its closed-row summary and the sidebar chip (CFG-01…10). See “Account (Conta & sync)” below |
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs and the SVG). See `veio/README.md` |
-| `lib/voz/catalogo.js` | The Voice catalog as data: the 170 approved copy states from `docs/design/voz/` |
+| `lib/voz/catalogo.js` | The Voice catalog as data: the 171 approved copy states from `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
@@ -116,7 +116,10 @@ Atalhos · Chave do Gemini · Zona de perigo) is one closed row — icon tile, t
 opens in place; several can be open at once. The whole row toggles, and the title's `<button aria-expanded>` inside the
 `<h2>` is the control for the keyboard and the screen reader. The cards live in a size container: below ~560 px of
 content the summary leaves the row and the body loses its 62 px indent. Atalhos, Chave do Gemini and Zona de perigo get
-their content in their own tickets (Zona de perigo still hosts today's Apagar tudo).
+their content in their own tickets (Zona de perigo still hosts today's Apagar tudo), but their closed-row summaries
+(CFG-28) are drawn by the shell from what is already stored: the caption shortcut (still the fixed Alt+S) and
+`pm_atalho` relabelled in PT-BR, `geminiApiKey` masked to its first and last 4 characters (or “Sem chave” in
+`danger`), and the phrase total (“1.284 frases”, “Nenhuma frase”); they follow `chrome.storage.onChanged`.
 
 ### Account (`painel-conta.js`)
 

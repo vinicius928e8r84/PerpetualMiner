@@ -164,11 +164,13 @@
     desenharAvatar(porId('shell-avatar'));
     situacao.classList.remove('shell-chip__estado--erro');
 
+    // Sem conta, as duas linhas de quem tem conta: “Sem conta” no lugar do nome e
+    // “Só neste computador” no do estado. A frase inteira fica no tooltip.
     if (!estado.conta) {
-      nome.textContent = textoDaVoz('SHL-05.semConta');
-      situacao.textContent = '';
-      situacao.hidden = true;
-      chip.title = nome.textContent;
+      nome.textContent = textoDaVoz('SHL-05.semContaNome');
+      situacao.textContent = textoDaVoz('SHL-05.semContaEstado');
+      situacao.hidden = false;
+      chip.title = textoDaVoz('SHL-05.semConta');
       return;
     }
 
@@ -201,6 +203,7 @@
     const avatar = elemento('span', 'shell-avatar cfg-avatar');
     desenharAvatar(avatar);
     const entrar = botao('primario', textoDaVoz('CFG-06.botao'), () => pedidos.entrar());
+    entrar.prepend(iconeVeio('entrar'));
 
     const partes = [linha(
       elemento('div', 'cfg-conta', avatar, elemento('div', 'cfg-quem',
@@ -269,13 +272,17 @@
     return status;
   }
 
-  /** A foto, a inicial do nome ou, sem conta, o ícone vazio. */
+  /**
+   * A foto, a inicial do nome ou, sem conta, o círculo tracejado com “?”. O
+   * avatar é desenho (aria-hidden), então o “?” não é cópia: quem diz que não há
+   * conta é o texto ao lado.
+   */
   function desenharAvatar(avatar) {
     avatar.replaceChildren();
     avatar.classList.toggle('shell-avatar--vazio', !estado.conta);
     avatar.setAttribute('aria-hidden', 'true');
     if (!estado.conta) {
-      avatar.append(iconeVeio('conta'));
+      avatar.textContent = '?';
       return;
     }
     if (estado.conta.photoURL) {

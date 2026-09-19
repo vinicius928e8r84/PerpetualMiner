@@ -12,6 +12,8 @@ function createElementStub() {
     addEventListener() {},
     remove() {},
     appendChild() {},
+    append() {},
+    replaceChildren() {},
     setAttribute() {},
     style: {},
   };

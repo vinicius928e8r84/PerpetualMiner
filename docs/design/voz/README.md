@@ -6,7 +6,7 @@ O que está aqui:
 
 1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
 2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: 170 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
+3. **Catálogo**: 171 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
 
 Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
 
@@ -68,7 +68,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 
 ## 3. Catálogo de estados-chave
 
-São 170 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
+São 171 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 
@@ -141,7 +141,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | SHL-02 | Títulos das áreas **(novo)** | status | Frases mineradas · Presets e custos | Frases mineradas · Conexão com o Anki · Configurações | Cabeçalho de área, 22/700. |
 | SHL-03 | Abas da Conexão com o Anki **(novo)** | status | (tudo numa página só) | Custos · Baralhos e termos · Vocabulário · Ajustes de envio | Controle segmentado; o grupo se chama “Seções da Conexão com o Anki”. |
 | SHL-04 | Cards de Configurações **(novo)** | status | (espalhados na sidebar e no Minerar de uma foto) | Conta & sync · Atalhos · Chave do Gemini · Zona de perigo | A Chave do Gemini usa CFG-15. |
-| SHL-05 | Chip de conta **(novo)** | status | Login com Google · Sincronizado · Erro de sync | Sem conta · só neste computador · Sem sincronizar · 8 de 10 sincronizadas · Sessão expirou | Com conta: nome + CFG-01, CFG-02 ou CFG-09; em `danger`, “Sem sincronizar” quando o sync falha ou a nuvem recusa (CFG-03, CFG-04), “8 de 10 sincronizadas” no sync parcial (CFG-05) e “Sessão expirou” (CFG-08) (C11). |
+| SHL-05 | Chip de conta **(novo)** | status | Login com Google · Sincronizado · Erro de sync | Sem conta · só neste computador · Sem sincronizar · 8 de 10 sincronizadas · Sessão expirou | Sem conta, o chip mostra em duas linhas, como o nome e o estado de quem tem conta: “Sem conta” e “Só neste computador”; a frase inteira fica no tooltip. Com conta: nome + CFG-01, CFG-02 ou CFG-09; em `danger`, “Sem sincronizar” quando o sync falha ou a nuvem recusa (CFG-03, CFG-04), “8 de 10 sincronizadas” no sync parcial (CFG-05) e “Sessão expirou” (CFG-08) (C11). |
 | SHL-06 | Atualizar a Conexão com o Anki **(novo)** | status | (ícone sem texto) | Atualizar | Tooltip: BRG-24. |
 
 ### Painel · Frases
@@ -270,6 +270,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | CFG-25 | Conta & sync: descrição **(novo)** | status | (não existe) | Com a conta, suas frases ficam iguais em qualquer computador em que você entrar. | Sob o título, com o card aberto. |
 | CFG-26 | Sair da conta: nota **(novo)** | status | (não existe) | Ao sair, as frases continuam neste computador. | Sob a conta, quando o sync está em dia. |
 | CFG-27 | Conta & sync: resumo **(novo)** | status | (não existe) | Vinicius · Sincronizado há 2 min | A linha fechada: nome (ou CFG-10) + o estado do chip (SHL-05). Sem conta: “Sem conta · só neste computador”. |
+| CFG-28 | Resumos da linha fechada **(novo)** | status | (não existe) | Legenda · Seleção · Sem chave · Nenhuma frase | A linha fechada de Atalhos (“Legenda [Alt+S]  Seleção [Alt+Botão voltar]”, com as teclas em `kbd`; sem atalho, CFG-12), da Chave do Gemini (a chave mascarada em mono; vazia, ponto `danger` + “Sem chave”) e da Zona de perigo (PAI-05: “1.284 frases”, “1 frase”; sem frases, “Nenhuma frase”). |
 
 ### Boas-vindas (primeira execução)
 

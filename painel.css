@@ -32,7 +32,7 @@ body {
   gap: 6px;
   min-width: 0;
   height: calc(100vh - 24px);
-  padding: 18px 12px 12px;
+  padding: 18px 12px;
   border: 1px solid var(--veio-border);
   border-radius: var(--veio-raio-painel);
   background: var(--veio-surface);
@@ -135,7 +135,7 @@ body {
 .shell-pe {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
   padding: 4px;
   border-radius: var(--veio-raio-card);
   background: var(--veio-surface-2);
@@ -168,8 +168,8 @@ body {
   height: 30px;
   overflow: hidden;
   border-radius: var(--veio-raio-pilula);
-  background: var(--veio-accent-soft);
-  color: var(--veio-accent-text);
+  background: var(--veio-avatar-fundo);
+  color: var(--veio-avatar-tinta);
   font-size: var(--veio-tam-legenda);
   font-weight: var(--veio-peso-display);
 }
@@ -181,13 +181,9 @@ body {
 }
 
 .shell-avatar--vazio {
-  background: var(--veio-surface);
+  border: 1px dashed var(--veio-border-strong);
+  background: var(--veio-surface-2);
   color: var(--veio-muted);
-}
-
-.shell-avatar--vazio svg {
-  width: 16px;
-  height: 16px;
 }
 
 .shell-chip__quem {
@@ -267,7 +263,7 @@ body {
 }
 
 .shell-card--perigo {
-  border-color: var(--veio-danger);
+  border-color: color-mix(in srgb, var(--veio-danger) 60%, var(--veio-border));
 }
 
 .shell-card--destaque {
@@ -321,8 +317,8 @@ body {
 
 .cfg-icone svg,
 .cfg-chevron svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .cfg-titulos {
@@ -344,19 +340,32 @@ body {
 .cfg-descricao {
   margin-top: 2px;
   color: var(--veio-muted);
-  font-size: var(--veio-tam-legenda);
+  font-size: var(--veio-tam-apoio);
 }
 
 .cfg-resumo {
   display: flex;
   flex: 0 1 auto;
+  align-items: center;
   justify-content: flex-end;
+  gap: 8px;
   min-width: 0;
   overflow: hidden;
   color: var(--veio-muted);
-  font-size: var(--veio-tam-legenda);
+  font-size: var(--veio-tam-apoio);
   text-align: right;
   white-space: nowrap;
+}
+
+/* Sem atalho, o kbd tracejado fala em texto, não em tecla. */
+.cfg-resumo .veio-kbd--sem-atalho {
+  font-family: var(--veio-fonte-ui);
+}
+
+/* A chave do Gemini mascarada, na linha fechada. */
+.cfg-chave-mascarada {
+  font-family: var(--veio-fonte-mono);
+  font-weight: var(--veio-peso-num);
 }
 
 .cfg-resumo > * {
@@ -411,12 +420,7 @@ body {
 .cfg-avatar {
   width: 40px;
   height: 40px;
-  font-size: var(--veio-tam-corpo);
-}
-
-.cfg-avatar.shell-avatar--vazio {
-  border: 1px dashed var(--veio-border-strong);
-  background: var(--veio-surface-2);
+  font-size: var(--veio-tam-card);
 }
 
 .cfg-quem {
@@ -441,7 +445,7 @@ body {
 
 .cfg-nota {
   color: var(--veio-muted);
-  font-size: var(--veio-tam-legenda);
+  font-size: var(--veio-tam-apoio);
 }
 
 .cfg-nota--linha {
@@ -453,13 +457,54 @@ body {
   align-items: center;
   gap: 7px;
   min-width: 0;
-  color: var(--veio-muted);
-  font-size: var(--veio-tam-legenda);
+  font-size: var(--veio-tam-apoio);
   font-weight: var(--veio-peso-rotulo);
 }
 
 .cfg-status--erro {
   color: var(--veio-danger);
+}
+
+/* Dentro do card, os botões são os pequenos do protótipo: mais baixos e com a
+   letra de apoio. O Sair da conta fantasma fica em muted até o hover. */
+.cfg-corpo .veio-botao {
+  padding: 5px 12px;
+  font-size: var(--veio-tam-apoio);
+}
+
+.cfg-corpo .veio-botao--fantasma {
+  color: var(--veio-muted);
+}
+
+.cfg-corpo .veio-botao--fantasma:hover {
+  background: transparent;
+  border-color: var(--veio-border-strong);
+  color: var(--veio-text);
+}
+
+/* O erro dentro do card: vermelho mais baixo que o aviso solto, a ação em
+   contorno e o Detalhes sem o triângulo, como no protótipo. */
+.cfg-corpo .veio-aviso {
+  padding: 10px 12px;
+  border-color: color-mix(in srgb, var(--veio-danger) 50%, var(--veio-border));
+  background: color-mix(in srgb, var(--veio-danger) 9%, transparent);
+}
+
+.cfg-corpo .veio-aviso .veio-botao--secundario {
+  background: transparent;
+  border-color: var(--veio-border-strong);
+}
+
+.cfg-corpo .veio-aviso .veio-botao--secundario:hover {
+  border-color: var(--veio-accent);
+}
+
+.cfg-corpo .veio-aviso__detalhes > summary {
+  list-style: none;
+}
+
+.cfg-corpo .veio-aviso__detalhes > summary::-webkit-details-marker {
+  display: none;
 }
 
 /* Janela estreita: abaixo de ~560 px de conteúdo, o resumo sai da linha
@@ -491,7 +536,7 @@ body {
   }
 
   .shell-lateral {
-    padding: 18px 8px 8px;
+    padding: 18px 12px;
   }
 
   .shell-marca {
@@ -520,7 +565,7 @@ body {
 
   .shell-ponto {
     position: absolute;
-    top: 8px;
+    top: 7px;
     right: 14px;
     box-shadow: 0 0 0 2px var(--veio-surface);
   }
