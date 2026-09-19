@@ -183,7 +183,7 @@
 
     return [
       busca({ desabilitado, classeDeFoco }),
-      campoComNome('Select', selecao),
+      campoComNome('Select', el('span', { class: 'veio-select' }, selecao)),
       campoComNome('Textarea', erro
         ? el('span', { class: 'campo__pilha' }, area, el('p', { class: 'veio-campo-erro', texto: textoDaVoz('POP-06') }))
         : area),

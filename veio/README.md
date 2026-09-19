@@ -58,7 +58,8 @@ aqui, com o nome da spec, e passa a valer para todas as telas.
   `--perigo-cheio` (só o botão que confirma dentro dele). `.veio-botao-icone` é
   circular e sempre leva `aria-label`, porque não tem texto.
 - **Campos:** `.veio-campo` em `input`, `select` e `textarea`, dentro de
-  `.veio-busca` quando tem lupa e ×. O erro é dito por `aria-invalid="true"`, que
+  `.veio-busca` quando tem lupa e ×. O `select` mora num `.veio-select`, que
+  desenha o chevron fino. O erro é dito por `aria-invalid="true"`, que
   pinta a borda e o leitor de tela também ouve; a mensagem vai num
   `.veio-campo-erro` abaixo.
 - **Toggle e checkbox:** `.veio-toggle` (trilho de 40×24) e `.veio-checkbox`,

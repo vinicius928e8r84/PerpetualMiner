@@ -229,6 +229,12 @@ body {
   border-bottom: 1px solid var(--veio-border);
 }
 
+/* O chevron de um botão do cabeçalho tem 14 px, como no protótipo. */
+.shell-cabecalho .veio-botao svg {
+  width: 14px;
+  height: 14px;
+}
+
 .shell-cabecalho h1 {
   font-size: var(--veio-tam-pagina);
   font-weight: var(--veio-peso-titulo);

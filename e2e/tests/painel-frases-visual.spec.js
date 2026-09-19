@@ -8,9 +8,10 @@
 //
 //   cd e2e && npx playwright test painel-frases-visual --update-snapshots
 //
-// Cada captura é a página inteira, como o protótipo mostra a área: o
-// cabeçalho com Minerar frases, os filtros, a linha de seleção, a lista e a
-// paginação no fim. As ações de hoje (.conteudo-de-hoje) ficam cobertas: elas
+// Os estados cabem na janela e são capturados inteiros. A lista, que é maior
+// que a janela, é capturada como a pessoa a vê: o topo, e depois rolada até a
+// paginação, com a sidebar grudada ao lado (numa captura da página inteira a
+// sidebar, que tem a altura da janela, pararia no meio). As ações de hoje (.conteudo-de-hoje) ficam cobertas: elas
 // são reconstruídas no #30, no #31 e no #32.
 
 const { test, expect } = require('../fixtures');
@@ -34,6 +35,15 @@ const FRASES = [
 ];
 
 const paginaInteira = page => ({ fullPage: true, mask: [page.locator('.conteudo-de-hoje')] });
+const naJanela = page => ({ mask: [page.locator('.conteudo-de-hoje')] });
+
+/** O topo da lista e o fim dela, rolada até a paginação. */
+async function capturarTopoEFim(page, nome) {
+  await expect(page).toHaveScreenshot(`${nome}.png`, naJanela(page));
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect(page.getByRole('navigation', { name: 'Páginas' })).toBeInViewport();
+  await expect(page).toHaveScreenshot(`${nome}-fim.png`, naJanela(page));
+}
 
 async function abrirFrases(page, extensao, largura = 1280) {
   await page.clock.setFixedTime(AGORA);
@@ -43,20 +53,20 @@ async function abrirFrases(page, extensao, largura = 1280) {
   await page.evaluate(() => document.fonts.ready);
 }
 
-test('a lista em cartões, com a sidebar larga', async ({ page, extensao }) => {
+test('a lista em cartões, com a sidebar larga: o topo e o fim, com a sidebar grudada', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: FRASES });
   await abrirFrases(page, extensao);
   await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(10);
 
-  await expect(page).toHaveScreenshot('frases-lista.png', paginaInteira(page));
+  await capturarTopoEFim(page, 'frases-lista');
 });
 
-test('a lista em cartões, com a sidebar em trilho', async ({ page, extensao }) => {
+test('a lista em cartões, com a sidebar em trilho: o topo e o fim', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: FRASES });
   await abrirFrases(page, extensao, 900);
   await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(10);
 
-  await expect(page).toHaveScreenshot('frases-lista-trilho.png', paginaInteira(page));
+  await capturarTopoEFim(page, 'frases-lista-trilho');
 });
 
 test('carregando (PAI-01): 5 cartões-esqueleto', async ({ page, extensao, fakes }) => {

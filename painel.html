@@ -147,12 +147,14 @@
 
         <!-- Filtros numa linha que quebra: Fonte · idioma · ordem, a busca e o toggle. -->
         <div class="frases-filtros">
-          <select class="veio-campo frases-filtro" id="filtro-fonte" data-voz-aria="PAI-25.fonte"></select>
-          <select class="veio-campo frases-filtro" id="filtro-idioma" data-voz-aria="PAI-25.idioma"></select>
-          <select class="veio-campo frases-filtro" id="filtro-ordem" data-voz-aria="PAI-25.ordem">
-            <option value="novas" data-voz="PAI-24.novas"></option>
-            <option value="antigas" data-voz="PAI-24.antigas"></option>
-          </select>
+          <span class="veio-select"><select class="veio-campo frases-filtro" id="filtro-fonte" data-voz-aria="PAI-25.fonte"></select></span>
+          <span class="veio-select"><select class="veio-campo frases-filtro" id="filtro-idioma" data-voz-aria="PAI-25.idioma"></select></span>
+          <span class="veio-select">
+            <select class="veio-campo frases-filtro" id="filtro-ordem" data-voz-aria="PAI-25.ordem">
+              <option value="novas" data-voz="PAI-24.novas"></option>
+              <option value="antigas" data-voz="PAI-24.antigas"></option>
+            </select>
+          </span>
           <label class="veio-busca frases-busca">
             <span class="veio-busca__lupa"><span data-icone="busca"></span></span>
             <input class="veio-campo" id="busca-frases" type="search" autocomplete="off"
