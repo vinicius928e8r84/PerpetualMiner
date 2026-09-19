@@ -101,3 +101,41 @@ test('janela estreita: sem resumo na linha e sem recuo no conteúdo', async ({ p
 
   await expect(page).toHaveScreenshot('conta-estreita.png', { animations: 'disabled' });
 });
+
+// ─── Atalhos (#27) ───────────────────────────────────────────────────────────
+// Com a seleção em Alt+Botão voltar, como no protótipo: fora do padrão, então
+// “Restaurar atalhos padrão” aparece no pé do card.
+
+async function abrirAtalhos(page, extensao, fakes) {
+  await semearComoNoPrototipo(extensao, fakes);
+  await abrirConfiguracoes(page, extensao, '#configuracoes/atalhos');
+  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+}
+
+const gravarAtalho = (page, nome) =>
+  page.locator('#cfg-atalhos').getByRole('group', { name: nome }).getByRole('button', { name: 'Gravar atalho' });
+
+test('Atalhos aberto, com a seleção gravada e o Restaurar atalhos padrão', async ({ page, extensao, fakes }) => {
+  await abrirAtalhos(page, extensao, fakes);
+  await expect(page.locator('#cfg-atalhos').getByRole('button', { name: 'Restaurar atalhos padrão' })).toBeVisible();
+
+  await expect(page).toHaveScreenshot('atalhos-aberto.png', { animations: 'disabled' });
+});
+
+test('Atalhos gravando o Minerar legenda', async ({ page, extensao, fakes }) => {
+  await abrirAtalhos(page, extensao, fakes);
+  await gravarAtalho(page, 'Minerar legenda').click();
+  await page.mouse.move(0, 0);
+
+  await expect(page).toHaveScreenshot('atalhos-gravando.png', { animations: 'disabled' });
+});
+
+test('Atalhos com o atalho repetido recusado', async ({ page, extensao, fakes }) => {
+  await abrirAtalhos(page, extensao, fakes);
+  await gravarAtalho(page, 'Minerar seleção').click();
+  await page.keyboard.press('Alt+KeyS');
+  await expect(page.locator('#cfg-atalhos').getByRole('alert')).toBeVisible();
+  await page.mouse.move(0, 0);
+
+  await expect(page).toHaveScreenshot('atalhos-repetido.png', { animations: 'disabled' });
+});

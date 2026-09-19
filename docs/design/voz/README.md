@@ -6,7 +6,7 @@ O que está aqui:
 
 1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
 2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: 180 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
+3. **Catálogo**: 182 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
 
 Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
 
@@ -68,7 +68,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 
 ## 3. Catálogo de estados-chave
 
-São 180 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
+São 182 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 
@@ -265,7 +265,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | CFG-11 | Atalhos: nomes | status | Atalho de Captura · (Alt+S invisível) | Minerar legenda · Minerar seleção | V8. |
 | CFG-12 | Atalho: gravador | status | Não configurado · Clique aqui para gravar atalho · Cancelar gravação | Sem atalho · Gravar atalho · Cancelar |  |
 | CFG-13 | Atalho: gravando | loading | ⏺ Aguardando… pressione uma tecla ou clique com um botão extra do mouse | Pressione as teclas ou um botão extra do mouse… |  |
-| CFG-14 | Atalho: botões do mouse | status | Middle Click · Mouse Back · Mouse Forward · Mouse Btn 5 | Botão do meio · Botão voltar · Botão avançar · Botão 5 do mouse | V6. |
+| CFG-14 | Atalho: botões do mouse | status | Middle Click · Mouse Back · Mouse Forward · Mouse Btn 5 | Botão do meio · Botão voltar · Botão avançar · Botão 5 do mouse | V6. Os outros botões seguem o modelo “Botão N do mouse”, com o número que o evento dá ao botão. |
 | CFG-15 | Chave do Gemini | status | Gemini API Key · AIza... · Salvar Key | Chave do Gemini — usada para ler fotos · Cole a chave (começa com AIza) · Salvar chave |  |
 | CFG-16 | Chave: vazia / salva | sucesso | Digite uma API Key antes de salvar. · API Key salva! | Cole a chave antes de salvar · Chave do Gemini salva |  |
 | CFG-17 | Apagar todas as frases | confirmação | Apagar TODAS as frases? Esta ação não pode ser desfeita. | Apagar todas as 1.284 frases? — Elas somem deste computador e de todos os outros conectados à sua conta. Não dá para desfazer. [Cancelar] [Apagar 1.284 frases] | C6: sem digitar. |
@@ -280,6 +280,8 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | CFG-26 | Sair da conta: nota **(novo)** | status | (não existe) | Ao sair, as frases continuam neste computador. | Sob a conta, quando o sync está em dia. |
 | CFG-27 | Conta & sync: resumo **(novo)** | status | (não existe) | Vinicius · Sincronizado há 2 min | A linha fechada: nome (ou CFG-10) + o estado do chip (SHL-05). Sem conta: “Sem conta · só neste computador”. |
 | CFG-28 | Resumos da linha fechada **(novo)** | status | (não existe) | Legenda · Seleção · Sem chave · Nenhuma frase | A linha fechada de Atalhos (“Legenda [Alt+S]  Seleção [Alt+Botão voltar]”, com as teclas em `kbd`; sem atalho, CFG-12), da Chave do Gemini (a chave mascarada em mono; vazia, ponto `danger` + “Sem chave”) e da Zona de perigo (PAI-05: “1.284 frases”, “1 frase”; sem frases, “Nenhuma frase”). |
+| CFG-29 | Atalhos: descrição **(novo)** | status | (não existe) | Vale para qualquer página aberta no Chrome. Grave uma combinação de teclas ou um botão extra do mouse. | Sob o título, com o card aberto. |
+| CFG-30 | Atalhos: o que cada um faz **(novo)** | status | (não existe) | Minera a legenda que está na tela do vídeo. · Minera o texto que você selecionou na página. | Sob o nome de cada linha (CFG-11) do card Atalhos. |
 
 ### Boas-vindas (primeira execução)
 

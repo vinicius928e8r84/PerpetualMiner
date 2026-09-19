@@ -106,7 +106,7 @@ Decisões tomadas na consolidação:
 
 ## Pendências da construção
 
-- **`commands` do manifest:** decidir se continua como reserva, agora que o atalho é gravado no `content.js` ([Configurações](painel/configuracoes/README.md)).
+- **`commands` do manifest (fechada no #27):** o manifest não declara `commands` e não passa a declarar. O atalho gravado vale só pelo `content.js`, porque aceita botão do mouse, e o `chrome.commands` não aceita ([Configurações](painel/configuracoes/README.md)).
 - **F1 (Conexão não instalada):** é provisória até existir o instalador sem terminal, que é um esforço futuro fora deste mapa ([Boas-vindas](painel/boas-vindas/README.md)).
 - **Fontes:** Manrope e JetBrains Mono (latin + cyrillic) empacotadas como `.woff2`. No overlay, entram via `web_accessible_resources` e Shadow DOM. Os protótipos puxam do Google Fonts; a extensão não deve.
 

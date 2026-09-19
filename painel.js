@@ -19,9 +19,9 @@ const { mostrarToastDeSucesso } = PerpetualMiner.Veio;
 
 const POR_PAGINA = 10;
 
-// O atalho de legenda de hoje é fixo em content.js (Alt+S). O #27 o torna
-// gravável, e o vazio de Frases (PAI-02) passa a mostrar o atalho gravado.
-const ATALHO_DE_LEGENDA = 'Alt+S';
+// O atalho de legenda gravado em Configurações › Atalhos (lib/atalhos.js), que
+// o vazio de Frases (PAI-02) ensina. Começa no padrão até a leitura voltar.
+let atalhoDeLegenda = PerpetualMiner.Atalhos.ATALHOS_PADRAO.legenda;
 
 // As Fontes que o catálogo nomeia (PAI-29). Os nomes antigos gravados em
 // frases de antes apontam para o nome de hoje.
@@ -91,6 +91,10 @@ document.addEventListener('DOMContentLoaded', () => {
   Shell.aoEntrarNaArea('anki', () => atualizarBridgeWorkspaceData({ includeAnki: true, launchAnki: true }));
   Conta.aoPedir({ entrar: loginGoogle, sair: logout, tentarDeNovo: carregarFrasesFirestore });
   setupStorageSyncListener();
+  PerpetualMiner.Atalhos.acompanharAtalhos(({ legenda }) => {
+    atalhoDeLegenda = legenda;
+    if (todasFrases.length === 0) renderizar();
+  });
   inicializarAuth();
 });
 
@@ -1724,7 +1728,7 @@ function montarVazio() {
     // O atalho entra no meio da frase como tecla (kbd), não como texto solto.
     const MARCA = '\u0000';
     const [antes, depois] = textoDaVoz('PAI-02.texto', { atalho: MARCA }).split(MARCA);
-    texto.append(antes, criar('kbd', 'veio-kbd', ATALHO_DE_LEGENDA), depois);
+    texto.append(antes, ...atalhoDoVazio(), depois);
     // Até o #31 trazer o menu Minerar frases, o botão abre a adição em massa de hoje.
     acoes.append(botaoDoVazio(textoDaVoz('PAI-02.acao'), abrirModalMultiAdd, 'veio-botao--primario'));
     vazio.append(criar('p', 'veio-vazio__titulo', textoDaVoz('PAI-02.titulo')), texto);
@@ -1739,6 +1743,17 @@ function montarVazio() {
 
   vazio.append(acoes);
   return vazio;
+}
+
+/**
+ * O atalho de legenda gravado, em `kbd`. Sem atalho gravado (GLB-02), o `kbd`
+ * tracejado “Sem atalho” e a ação Definir atalho, que leva a Configurações › Atalhos.
+ */
+function atalhoDoVazio() {
+  if (atalhoDeLegenda) return [criar('kbd', 'veio-kbd', PerpetualMiner.Atalhos.rotuloDoAtalho(atalhoDeLegenda))];
+  const definir = criar('a', 'frases-vazio__definir-atalho', textoDaVoz('GLB-02.definir'));
+  definir.href = '#configuracoes/atalhos';
+  return [criar('kbd', 'veio-kbd veio-kbd--sem-atalho', textoDaVoz('GLB-02.semAtalho')), ' ', definir];
 }
 
 function botaoDoVazio(rotulo, aoClicar, variante = 'veio-botao--contorno') {

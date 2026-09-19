@@ -19,20 +19,14 @@
 // Em Configurações, os cards ficam fechados numa linha com o resumo e abrem no
 // lugar, vários ao mesmo tempo; #configuracoes/<seção> abre o da seção. O
 // resumo da conta é do painel-conta.js; os de Atalhos, Chave do Gemini e Zona
-// de perigo saem daqui, do que já está gravado (o atalho de seleção, a chave e
-// o total de frases). Toda cópia vem do catálogo da Voz.
+// de perigo saem daqui, do que já está gravado (os atalhos, a chave e o total
+// de frases). O conteúdo do card Atalhos é do painel-atalhos.js. Toda cópia vem
+// do catálogo da Voz.
 
 (function (raiz) {
   const ABAS_DA_CONEXAO = ['custos', 'baralhos', 'vocabulario', 'ajustes'];
   const SECOES_DE_CONFIGURACOES = ['conta', 'atalhos', 'chave', 'perigo'];
 
-  /**
-   * O atalho de legenda ainda é o Alt+S fixo do content.js (`ATALHO_TECLA`); ele
-   * fica gravável no ticket de Atalhos, e o resumo passa a ler o que for gravado.
-   */
-  const ATALHO_DE_LEGENDA = { type: 'keyboard', code: 'KeyS', altKey: true, ctrlKey: false, shiftKey: false };
-  /** Os botões extras do mouse em PT-BR (CFG-14), pelo `button` do evento gravado. */
-  const BOTOES_DO_MOUSE = { 1: 'CFG-14.botaoDoMeio', 3: 'CFG-14.botaoVoltar', 4: 'CFG-14.botaoAvancar' };
   /** A chave do Gemini no resumo: os 4 primeiros e os 4 últimos caracteres. */
   const MASCARA_DA_CHAVE = '••••••••';
 
@@ -47,7 +41,7 @@
   const ouvintesDeArea = new Map();
   const fimDosDestaques = new Map();   // card → o timer que tira a borda do destaque
 
-  const { textoDaVoz } = raiz;
+  const { textoDaVoz, Atalhos } = raiz;
   const $ = seletor => document.querySelector(seletor);
   const $$ = seletor => [...document.querySelectorAll(seletor)];
   const porId = id => document.getElementById(id);
@@ -204,49 +198,27 @@
 
   // ─── Resumos de Atalhos e da Chave do Gemini ───────────────────────────────
 
-  /** O atalho de seleção e a chave, como estão gravados, e cada mudança deles. */
+  /** Os atalhos e a chave, como estão gravados, e cada mudança deles. */
   function lerResumosGravados() {
-    chrome.storage.local.get({ pm_atalho: null, geminiApiKey: '' }, dados => {
-      mostrarResumoDosAtalhos(dados.pm_atalho);
-      mostrarResumoDaChave(dados.geminiApiKey);
-    });
+    Atalhos.acompanharAtalhos(mostrarResumoDosAtalhos);
+    chrome.storage.local.get({ geminiApiKey: '' }, dados => mostrarResumoDaChave(dados.geminiApiKey));
     chrome.storage.onChanged.addListener((mudancas, area) => {
-      if (area !== 'local') return;
-      if ('pm_atalho' in mudancas) mostrarResumoDosAtalhos(mudancas.pm_atalho.newValue || null);
-      if ('geminiApiKey' in mudancas) mostrarResumoDaChave(mudancas.geminiApiKey.newValue || '');
+      if (area === 'local' && 'geminiApiKey' in mudancas) mostrarResumoDaChave(mudancas.geminiApiKey.newValue || '');
     });
   }
 
   /** “Legenda [Alt+S]  Seleção [Alt+Botão voltar]”, com as teclas em `kbd`. */
-  function mostrarResumoDosAtalhos(atalhoDeSelecao) {
+  function mostrarResumoDosAtalhos({ legenda, selecao }) {
     const atalho = (rotulo, gravado) => elemento('span', null, `${textoDaVoz(rotulo)} `, teclaDoAtalho(gravado));
     porId('cfg-atalhos-resumo').replaceChildren(
-      atalho('CFG-28.legenda', ATALHO_DE_LEGENDA),
-      atalho('CFG-28.selecao', atalhoDeSelecao));
+      atalho('CFG-28.legenda', legenda),
+      atalho('CFG-28.selecao', selecao));
   }
 
   /** A tecla gravada; sem atalho, o `kbd` tracejado “Sem atalho” (CFG-12). */
   function teclaDoAtalho(atalho) {
     if (!atalho) return elemento('kbd', 'veio-kbd veio-kbd--sem-atalho', textoDaVoz('CFG-12.semAtalho'));
-    return elemento('kbd', 'veio-kbd', rotuloDoAtalho(atalho));
-  }
-
-  /**
-   * O rótulo do atalho refeito do que foi gravado, e não do `label` antigo (em
-   * inglês): “Ctrl+Shift+K”, “Alt+Botão voltar”.
-   */
-  function rotuloDoAtalho(atalho) {
-    const modificadores = [atalho.ctrlKey && 'Ctrl', atalho.altKey && 'Alt', atalho.shiftKey && 'Shift'].filter(Boolean);
-    let tecla;
-    if (atalho.type === 'mouse') {
-      const botao = BOTOES_DO_MOUSE[atalho.button];
-      if (!botao) return atalho.label;
-      tecla = textoDaVoz(botao);
-    } else {
-      if (!atalho.code) return atalho.label;
-      tecla = atalho.code.replace(/^(Key|Digit)/, '');
-    }
-    return [...modificadores, tecla].join('+');
+    return elemento('kbd', 'veio-kbd', Atalhos.rotuloDoAtalho(atalho));
   }
 
   /** `AIza••••••••3kQ9` em mono; vazia, o ponto `danger` e “Sem chave”. */

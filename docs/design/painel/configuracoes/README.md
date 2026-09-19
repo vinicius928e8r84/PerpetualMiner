@@ -130,7 +130,7 @@ Um problema de sync aparece **só** aqui e no chip (Q4). O chip fica sempre vis�
 
 - Troca o `confirm()` nativo de `apagarTudo()` (`painel.js`) pelo modal. O botão de lixeira ao lado do total, no topo da sidebar, some.
 - O gravador sai do popup (`popup.js iniciarGravacao`) e vem para cá; no popup fica só o rodapé “Alt+S · Mudar atalho”, com o atalho de legenda que estiver gravado; sem atalho gravado, “Sem atalho” + **Definir atalho**. **Minerar seleção** continua sendo o `pm_atalho` de hoje.
-- **Minerar legenda gravável** (lista fechada) vira um segundo atalho no mesmo motor do `content.js` (`_correspondeAtalho`), com padrão Alt+S. Isso aceita botões do mouse, ao contrário do `chrome.commands`. **Pendência:** decidir na construção se o `commands` do manifest continua como reserva.
+- **Minerar legenda gravável** (lista fechada) vira um segundo atalho no mesmo motor do `content.js` (`lib/atalhos.js`), com padrão Alt+S e gravado em `pm_atalho_legenda`. Isso aceita botões do mouse, ao contrário do `chrome.commands`. **Pendência fechada no #27:** o manifest não declara `commands` (nem declarava), então o atalho gravado vale só pelo content script; não há reserva.
 - Os rótulos dos botões do mouse passam a PT-BR (CFG-14). O que já está gravado em inglês é traduzido na exibição.
 - “Restaurar atalhos padrão” grava `{legenda: Alt+S, seleção: nenhum}`.
 - A chave do Gemini sai da barra do Minerar de uma foto (`bookreader.html` / `bookreader.js`); o `geminiApiKey` continua o mesmo.
