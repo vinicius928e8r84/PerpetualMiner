@@ -85,7 +85,12 @@ aqui, com o nome da spec, e passa a valer para todas as telas.
 - **Linha de frase:** `.veio-frase`, com a Palavra grifada por
   `escreverFrase(no, texto, palavra)` — uma faixa `kw-bg` de 50% a 94% da linha,
   sem raio — e o chip de `montarChipDaPalavra(palavra, { detectada })`, que diz
-  `palavra:` quando a pessoa a escolheu e `auto:` quando foi detectada.
+  `palavra:` quando a pessoa a escolheu e `auto:` quando foi detectada. Onde a
+  pessoa escolhe a Palavra na própria frase, `escreverFraseClicavel(no, trechos)`
+  escreve cada palavra como `role="button"` (`aria-pressed`), com a mesma faixa
+  na escolhida e uma parada só do Tab por frase; `andarEntrePalavras(evento)` e
+  `focarPalavra(palavra)` levam o foco pelas setas. Dentro de uma ilha `surface`,
+  o cartão é `.veio-frase--na-ilha` (fundo `bg`).
 
 **A cópia não mora aqui.** Quem chama passa o texto já buscado no catálogo da
 Voz: `abrirModal` não conhece “Apagar 12 frases?”, a tela é que a pede por

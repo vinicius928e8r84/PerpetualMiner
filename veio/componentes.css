@@ -696,8 +696,9 @@ select.veio-campo {
    Detalhe), chip da Palavra, estado e as ações só-ícone. */
 
 .veio-frase {
-  /* O fundo do cartão; o selecionado mistura o acento sobre ele. */
-  --veio-frase-fundo: var(--veio-surface);
+  /* O fundo do cartão, uma variável só dele (não é token: guarda um token); o
+     selecionado mistura o acento sobre ela. */
+  --_fundo: var(--veio-surface);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 12px;
@@ -705,7 +706,7 @@ select.veio-campo {
   padding: 13px 14px;
   border: 1px solid var(--veio-border);
   border-radius: var(--veio-raio-card);
-  background: var(--veio-frase-fundo);
+  background: var(--_fundo);
 }
 
 .veio-frase > .veio-checkbox {
@@ -715,7 +716,7 @@ select.veio-campo {
 /* O cartão dentro de uma ilha `surface` (a lista de Frases): fundo `bg`, e a
    borda firma ao passar o mouse. */
 .veio-frase--na-ilha {
-  --veio-frase-fundo: var(--veio-bg);
+  --_fundo: var(--veio-bg);
 }
 
 .veio-frase--na-ilha:hover {
@@ -725,7 +726,7 @@ select.veio-campo {
 .veio-frase--selecionada,
 .veio-frase--selecionada:hover {
   border-color: color-mix(in srgb, var(--veio-accent) 45%, var(--veio-border));
-  background: color-mix(in srgb, var(--veio-accent) 5%, var(--veio-frase-fundo));
+  background: color-mix(in srgb, var(--veio-accent) 5%, var(--_fundo));
 }
 
 .veio-frase__texto {

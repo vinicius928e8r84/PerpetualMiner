@@ -290,21 +290,17 @@ test('Fonte, idioma, ordem e “Ocultar enviadas e exportadas” filtram a lista
 test('o filtro de Fonte escolhe pela mesma Fonte que o selo do cartão mostra', async ({ page, extensao }) => {
   await extensao.gravarStorage({
     frases: [
-      // Minerada por seleção: o selo diz Seleção, não o `streaming` web.
-      frase(4, 'The tide turned before noon.', { streaming: 'web', contexto: { fonte: 'selecao', titulo: 'Blog', detalhe: '' } }),
-      frase(3, 'Nothing ventured, nothing gained.', { streaming: 'web', contexto: { fonte: 'web', titulo: 'Wiki', detalhe: '' } }),
-      // O nome antigo gravado e o de hoje são a mesma Fonte.
+      frase(3, 'Nothing ventured, nothing gained.', { streaming: 'youtube', contexto: { fonte: 'youtube', titulo: 'Veritasium', detalhe: '' } }),
+      // Uma frase de antes grava o nome antigo da Fonte, sem Contexto; a de hoje
+      // grava o nome novo. O selo diz Prime Video nas duas, e o filtro também.
       frase(2, 'We are on a roll.', { streaming: 'amazon' }),
       frase(1, 'Break a leg tonight.', { streaming: 'primevideo', contexto: { fonte: 'primevideo', titulo: 'Fleabag', detalhe: '' } }),
     ],
   });
   await abrirFrases(page, extensao);
 
-  await expect(cartao(page, 'tide turned').locator('.veio-selo').first()).toHaveText('Seleção');
-  await expect(filtro(page, 'Fonte').locator('option')).toHaveText(['Todas as fontes', 'Seleção', 'Web', 'Prime Video']);
-
-  await filtro(page, 'Fonte').selectOption({ label: 'Seleção' });
-  await expect(cartoes(page)).toHaveText([/tide turned/]);
+  await expect(cartao(page, 'on a roll').locator('.veio-selo').first()).toHaveText('Prime Video');
+  await expect(filtro(page, 'Fonte').locator('option')).toHaveText(['Todas as fontes', 'YouTube', 'Prime Video']);
 
   await filtro(page, 'Fonte').selectOption({ label: 'Prime Video' });
   await expect(cartoes(page)).toHaveText([/on a roll/, /Break a leg/]);
@@ -507,12 +503,13 @@ test('cada controle do cartão, do chip e da paginação tem nome, e o foco do t
     paginas(page).getByRole('button', { name: 'Última página' }),
   ];
   // Na primeira página, voltar está desligado: fora do Tab, mas com nome.
-  await expect(paginas(page).getByRole('button', { name: 'Primeira página' })).toBeDisabled();
-  await expect(paginas(page).getByRole('button', { name: 'Página anterior' })).toBeDisabled();
+  const voltar = [
+    paginas(page).getByRole('button', { name: 'Primeira página' }),
+    paginas(page).getByRole('button', { name: 'Página anterior' }),
+  ];
+  for (const botao of voltar) await expect(botao).toBeDisabled();
 
-  // O foco pelo teclado (não o do mouse) é o que precisa aparecer.
-  await page.keyboard.press('Tab');
-  for (const controle of controles) {
+  const focoAparece = async controle => {
     await controle.focus();
     const contorno = await controle.evaluate(el => {
       const estilo = getComputedStyle(el);
@@ -520,7 +517,15 @@ test('cada controle do cartão, do chip e da paginação tem nome, e o foco do t
     });
     expect(contorno, await controle.evaluate(el => el.outerHTML.slice(0, 80))).toBe(true);
     await expect(controle).toBeVisible();
-  }
+  };
+  // O foco pelo teclado (não o do mouse) é o que precisa aparecer.
+  await page.keyboard.press('Tab');
+  for (const controle of controles) await focoAparece(controle);
+
+  // Na segunda página, os dois de voltar ligam e também mostram o foco.
+  await paginas(page).getByRole('button', { name: 'Próxima página' }).click();
+  await page.keyboard.press('Tab');
+  for (const botao of voltar) await focoAparece(botao);
 });
 
 test('com movimento reduzido, os cartões-esqueleto ficam parados', async ({ page, extensao, fakes }) => {

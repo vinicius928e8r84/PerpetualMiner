@@ -17,7 +17,7 @@
 (function (raiz) {
   const { textoDaVoz, Veio } = raiz;
   const { iconeVeio, abrirModal, mostrarToastDeSucesso, montarAviso, escreverFrase,
-    montarChipDaPalavra, refletirSelecao } = Veio;
+    escreverFraseClicavel, andarEntrePalavras, montarChipDaPalavra, refletirSelecao } = Veio;
 
   /** Todo texto de produto que a galeria mostra, por ID do catálogo da Voz. */
   const CATALOGO_DA_VITRINE = [
@@ -404,6 +404,28 @@
       }));
   }
 
+  /**
+   * A frase em que a pessoa escolhe a Palavra clicando, no cartão de dentro de
+   * uma ilha (`--na-ilha`), com uma palavra escolhida e as setas vivas.
+   */
+  function fraseClicavel() {
+    const corpo = el('div', { class: 'veio-frase__texto', lang: 'en' });
+    const trechos = FRASE_EM_INGLES.match(/[\p{L}’']+|[^\p{L}’']+/gu).map(texto =>
+      /\p{L}/u.test(texto)
+        ? { texto, palavra: true, grifada: texto === 'fault' }
+        : { texto });
+    escreverFraseClicavel(corpo, trechos);
+    corpo.addEventListener('keydown', andarEntrePalavras);
+
+    const marcada = el('input', {
+      type: 'checkbox', class: 'veio-checkbox', 'aria-label': textoDaVoz('PAI-06', { n: 1 }),
+    });
+    const ilha = el('div', { class: 'ilha-de-amostra' },
+      el('div', { class: 'veio-frase veio-frase--na-ilha' },
+        marcada, el('div', { class: 'coluna-da-frase' }, corpo, montarChipDaPalavra('fault')), el('span')));
+    return ilha;
+  }
+
   /* ── A galeria ────────────────────────────────────────────────────────── */
 
   /** Monta a galeria inteira dentro de `destino`, na coluna do tema `tema`. */
@@ -454,7 +476,8 @@
       grupo('Esqueleto',
         linha('carregando', esqueleto())),
 
-      grupo('Linha de frase', frases()),
+      grupo('Linha de frase', frases(),
+        linha('palavra clicável, na ilha', fraseClicavel())),
     );
   }
 
