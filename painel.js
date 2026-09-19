@@ -8,6 +8,7 @@ const { detectarIdioma, IDIOMAS, textoDaVoz } = PerpetualMiner;
 // arquivo conta aos dois o que muda.
 const Shell = PerpetualMiner.Shell;
 const Conta = PerpetualMiner.Conta;
+const { SITUACOES } = Conta;
 const { mostrarToastDeSucesso } = PerpetualMiner.Veio;
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -218,8 +219,8 @@ function atualizarUIAuth(user) {
 //
 // Um problema de sync aparece só no card Conta & sync e no chip (Q4 da spec de
 // Configurações), nunca num toast. A falha carrega a situação que a Conta mostra:
-// 'expirou' quando a sessão não renova, 'recusado' quando as regras do Firestore
-// recusam a conta, e 'semSincronizar' para o resto (rede, nuvem fora do ar).
+// EXPIROU quando a sessão não renova, RECUSADO quando as regras do Firestore
+// recusam a conta, e SEM_SINCRONIZAR para o resto (rede, nuvem fora do ar).
 
 function erroDaNuvem(mensagem, situacao) {
   const erro = new Error(mensagem);
@@ -230,17 +231,19 @@ function erroDaNuvem(mensagem, situacao) {
 async function erroDaResposta(resp) {
   const corpo = await resp.json().catch(() => ({}));
   const mensagem = corpo?.error?.message || `HTTP ${resp.status}`;
-  if (resp.status === 401) return erroDaNuvem(mensagem, 'expirou');
-  if (resp.status === 403 || corpo?.error?.status === 'PERMISSION_DENIED') return erroDaNuvem(mensagem, 'recusado');
+  if (resp.status === 401) return erroDaNuvem(mensagem, SITUACOES.EXPIROU);
+  if (resp.status === 403 || corpo?.error?.status === 'PERMISSION_DENIED') return erroDaNuvem(mensagem, SITUACOES.RECUSADO);
   return new Error(mensagem);
 }
 
-function situacaoDoErro(err) {
-  return err?.situacao || 'semSincronizar';
+// `semSincronizar` é o que a falha genérica mostra: depois de uma primeira
+// subida que não chegou à nuvem, é a falha dela (CFG-09).
+function situacaoDoErro(err, semSincronizar = SITUACOES.SEM_SINCRONIZAR) {
+  return err?.situacao || semSincronizar;
 }
 
-function mostrarFalhaNaNuvem(err) {
-  Conta.mostrarSincronizacao(situacaoDoErro(err), { detalhes: err?.message || String(err) });
+function mostrarFalhaNaNuvem(err, semSincronizar) {
+  Conta.mostrarSincronizacao(situacaoDoErro(err, semSincronizar), { detalhes: err?.message || String(err) });
 }
 
 // Retorna um Firebase ID token válido, renovando silenciosamente via refresh token
@@ -250,7 +253,7 @@ async function getValidToken() {
   const expirando = !usuarioLogado.accessToken || Date.now() > (usuarioLogado.expiresAt || 0) - 2 * 60 * 1000;
   if (!expirando) return usuarioLogado.accessToken;
 
-  if (!usuarioLogado.refreshToken) throw erroDaNuvem('Sem refresh token', 'expirou');
+  if (!usuarioLogado.refreshToken) throw erroDaNuvem('Sem refresh token', SITUACOES.EXPIROU);
 
   const resp = await fetch(FB_REFRESH_URL, {
     method: 'POST',
@@ -260,7 +263,7 @@ async function getValidToken() {
   if (!resp.ok) {
     // Qualquer recusa da renovação é a sessão que acabou (CFG-08).
     const recusa = await erroDaResposta(resp);
-    throw erroDaNuvem(recusa.message, 'expirou');
+    throw erroDaNuvem(recusa.message, SITUACOES.EXPIROU);
   }
 
   const data = await resp.json();
@@ -395,13 +398,16 @@ function docToObj(fields) {
 async function migrarParaFirestore() {
   const { frases = [] } = await chromeGet({ frases: [] });
   if (frases.length > 0) {
-    Conta.mostrarSincronizacao('primeiraSubida', { n: frases.length });
+    Conta.mostrarSincronizacao(SITUACOES.PRIMEIRA_SUBIDA, { n: frases.length });
     try {
       await firestoreBatchUpsert(frases);
       mostrarToastDeSucesso(textoDaVoz('CFG-09.sucesso', { n: frases.length }));
     } catch (err) {
-      // O carregamento abaixo tenta de novo, frase a frase, e o card mostra o resultado.
+      // O carregamento abaixo tenta de novo, frase a frase. Se nenhuma subir, o
+      // card e o chip mostram a falha da primeira subida (CFG-09), sem toast.
       console.error('[Firestore] migração falhou:', err);
+      await carregarFrasesFirestore({ primeiraSubidaFalhou: true });
+      return;
     }
   }
   await carregarFrasesFirestore();
@@ -419,8 +425,9 @@ function carregarFrasesLocal() {
   });
 }
 
-async function carregarFrasesFirestore() {
-  Conta.mostrarSincronizacao('sincronizando');
+async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
+  const semSincronizar = primeiraSubidaFalhou ? SITUACOES.PRIMEIRA_SUBIDA_FALHOU : SITUACOES.SEM_SINCRONIZAR;
+  Conta.mostrarSincronizacao(SITUACOES.SINCRONIZANDO);
   let falhaNasOrfas = null;
   try {
     let firestoreFrases = await firestoreGetAll();
@@ -552,26 +559,29 @@ async function carregarFrasesFirestore() {
     }
 
     todasFrases = firestoreFrases;
-    if (falhaNasOrfas) mostrarSyncIncompleto(falhaNasOrfas, firestoreFrases.length);
-    else Conta.mostrarSincronizacao('sincronizado');
+    if (falhaNasOrfas) mostrarSyncIncompleto(falhaNasOrfas, localSemTombstoned.length, semSincronizar);
+    else Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
     finalizarCarregamento();
   } catch (err) {
     console.error('[Firestore] carregar:', err);
-    mostrarFalhaNaNuvem(err);
+    mostrarFalhaNaNuvem(err, semSincronizar);
     carregarFrasesLocal();
   }
 }
 
 // Frases deste computador que não subiram: “8 de 10 sincronizadas” (CFG-05)
 // quando parte chegou, ou a falha inteira quando nada chegou ou a nuvem recusou.
-function mostrarSyncIncompleto({ quantas, causas }, naNuvem) {
+// A conta é das frases deste computador (`desteComputador`), não da coleção
+// inteira na nuvem, que também tem as dos outros computadores da conta.
+function mostrarSyncIncompleto({ quantas, causas }, desteComputador, semSincronizar) {
   const detalhes = [...new Set(causas.map(c => c?.message || String(c)))].join('\n');
-  const situacao = situacaoDoErro(causas[0]);
-  if (situacao !== 'semSincronizar' || naNuvem === 0) {
+  const situacao = situacaoDoErro(causas[0], semSincronizar);
+  const naNuvem = desteComputador - quantas;
+  if (situacao !== semSincronizar || naNuvem === 0) {
     Conta.mostrarSincronizacao(situacao, { detalhes });
     return;
   }
-  Conta.mostrarSincronizacao('parcial', { n: naNuvem, total: naNuvem + quantas, detalhes });
+  Conta.mostrarSincronizacao(SITUACOES.PARCIAL, { n: naNuvem, total: desteComputador, detalhes });
 }
 
 function finalizarCarregamento() {

@@ -168,6 +168,26 @@ test('Primeira subida (CFG-09): entrar com frases neste computador mostra “Sin
   expect(fakes.google.frasesDe('uid-teste')).toHaveLength(12);
 });
 
+test('Primeira subida que falha (CFG-09): só no card e no chip, “Não deu para sincronizar suas frases”; tentar de novo sobe todas', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: frasesDeExemplo(12) });
+  fakes.google.recusarEscritas();
+  await abrirPainel(page, extensao, '#configuracoes/conta');
+
+  await conta(page).getByRole('button', { name: 'Entrar com Google' }).click();
+  await expect(estadoDoChip(page)).toHaveText('Sem sincronizar');
+  await expect(estadoDoChip(page)).toHaveClass(/shell-chip__estado--erro/);
+  const aviso = conta(page).getByRole('alert');
+  await expect(aviso).toContainText('Não deu para sincronizar suas frases. Elas continuam neste computador.');
+  await expect(await detalhesDoCard(page)).toContainText('indisponível');
+  await expect(page.locator('#_toast')).toHaveCount(0);
+  expect(await extensao.frases()).toHaveLength(12);
+
+  fakes.google.recusarEscritas(false);
+  await aviso.getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
+  expect(fakes.google.frasesDe('uid-teste')).toHaveLength(12);
+});
+
 test('Sem sincronizar (CFG-03): só no card e no chip, com Tentar de novo e Detalhes; tentar com a nuvem de volta sincroniza', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ displayName: 'Ana Souza' });
   fakes.google.ficarForaDoAr();
@@ -235,6 +255,30 @@ test('Sync parcial (CFG-05): “8 de 10 frases sincronizadas · 2 ficaram só ne
   await conta(page).getByRole('button', { name: 'Tentar de novo' }).click();
   await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
   expect(fakes.google.frasesDe('uid-parcial')).toHaveLength(10);
+});
+
+test('Sync parcial conta as frases deste computador, não as que outros computadores já têm na nuvem', async ({ page, extensao, fakes }) => {
+  const frases = frasesDeExemplo(10);
+  const deOutroComputador = frasesDeExemplo(5).map(f => ({ ...f, id: f.id + 1_000 }));
+  fakes.google.gravarFrases('uid-parcial', [...deOutroComputador, ...frases.slice(2)]);
+  fakes.google.recusarEscritas();
+  await extensao.gravarStorage({ frases });
+  await extensao.semearSessao({ uid: 'uid-parcial', displayName: 'Ana Souza' });
+  await abrirPainel(page, extensao, '#configuracoes/conta');
+
+  await expect(estadoDoChip(page)).toHaveText('8 de 10 sincronizadas');
+  await expect(conta(page).getByText('8 de 10 frases sincronizadas · 2 ficaram só neste computador')).toBeVisible();
+});
+
+test('Sincronizado há 2 min (CFG-02): o tempo avança sozinho, na forma curta', async ({ page, extensao }) => {
+  await page.clock.install();
+  await extensao.semearSessao({ displayName: 'Ana Souza' });
+  await abrirPainel(page, extensao);
+  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
+
+  await page.clock.runFor('02:30');
+  await expect(estadoDoChip(page)).toHaveText('Sincronizado há 2 min');
+  await expect(resumo(page, 'conta')).toHaveText('Ana Souza · Sincronizado há 2 min');
 });
 
 test('Nuvem recusou (CFG-04): o Sair da conta vira botão normal, e o Detalhes traz a mensagem do Firestore', async ({ page, extensao, fakes }) => {
@@ -389,6 +433,24 @@ test('com movimento reduzido, o ponto do Sincronizando fica parado', async ({ pa
   for (const ponto of await pontos.all()) {
     expect(await ponto.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
   }
+});
+
+test('com movimento reduzido, #configuracoes/conta mostra a borda ouro parada, e ela sai depois do flash', async ({ page, extensao }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await abrirPainel(page, extensao, '#configuracoes/conta');
+
+  const ouro = await page.evaluate(() => {
+    const amostra = document.createElement('i');
+    amostra.style.color = 'var(--veio-accent)';
+    document.body.append(amostra);
+    const cor = getComputedStyle(amostra).color;
+    amostra.remove();
+    return cor;
+  });
+  const borda = () => conta(page).evaluate(el => getComputedStyle(el).borderTopColor);
+  expect(await borda()).toBe(ouro);
+  expect(await conta(page).evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+  await expect.poll(borda, { timeout: 3000 }).not.toBe(ouro);
 });
 
 test('sem movimento reduzido, o ponto do Sincronizando pisca', async ({ page, extensao }) => {

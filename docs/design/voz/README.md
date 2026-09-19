@@ -6,7 +6,7 @@ O que está aqui:
 
 1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
 2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: 167 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
+3. **Catálogo**: 170 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
 
 Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
 
@@ -68,7 +68,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 
 ## 3. Catálogo de estados-chave
 
-São 167 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
+São 170 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 

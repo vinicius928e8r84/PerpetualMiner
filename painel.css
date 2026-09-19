@@ -425,7 +425,9 @@ body {
   min-width: 0;
 }
 
-.cfg-nome {
+/* O nome da conta e, sem conta, o convite para entrar (CFG-06), no mesmo peso. */
+.cfg-nome,
+.cfg-convite {
   font-size: var(--veio-tam-corpo);
   font-weight: var(--veio-peso-titulo);
 }
@@ -539,6 +541,11 @@ body {
   .cfg-ponto[data-estado="sincronizando"],
   .shell-card--destaque {
     animation: none;
+  }
+
+  /* A borda ouro aparece parada enquanto dura o destaque. */
+  .shell-card--destaque {
+    border-color: var(--veio-accent);
   }
 }
 

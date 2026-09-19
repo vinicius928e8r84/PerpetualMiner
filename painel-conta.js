@@ -11,18 +11,33 @@
 //   Conta.mostrarSincronizacao(situacao, { n, total, detalhes })
 //   Conta.mostrarFalhaNoLogin(detalhes | null)
 //   Conta.aoPedir({ entrar, sair, tentarDeNovo })
+//   Conta.SITUACOES   os nomes das situações
 //
-// As situações são os estados CFG da spec: 'sincronizando' (CFG-01),
-// 'primeiraSubida' (CFG-09), 'sincronizado' (CFG-02), 'semSincronizar'
-// (CFG-03), 'parcial' (CFG-05), 'recusado' (CFG-04) e 'expirou' (CFG-08).
+// As situações são os estados CFG da spec, com os nomes de `Conta.SITUACOES`:
+// sincronizando (CFG-01), primeira subida (CFG-09) e a falha dela, sincronizado
+// (CFG-02), sem sincronizar (CFG-03), parcial (CFG-05), a nuvem recusou (CFG-04)
+// e a sessão expirou (CFG-08).
 // Um problema de sync aparece só aqui: no card e no chip, nunca numa faixa ou
 // num toast de outra área. Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
-  /** “Sincronizado há N minutos” avança sozinho. */
+  /** “Sincronizado há N min” avança sozinho. */
   const INTERVALO_DO_RELOGIO = 30000;
 
-  const QUANTO_TEMPO = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'auto' });
+  // A forma curta: “há 2 min”, “há 3 h” (CFG-02).
+  const QUANTO_TEMPO = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'auto', style: 'short' });
+
+  // Os nomes das situações. O painel.js usa estes, e não uma string solta.
+  const SITUACOES = Object.freeze({
+    SINCRONIZANDO: 'sincronizando',
+    PRIMEIRA_SUBIDA: 'primeiraSubida',
+    PRIMEIRA_SUBIDA_FALHOU: 'primeiraSubidaFalhou',
+    SINCRONIZADO: 'sincronizado',
+    SEM_SINCRONIZAR: 'semSincronizar',
+    PARCIAL: 'parcial',
+    RECUSADO: 'recusado',
+    EXPIROU: 'expirou',
+  });
 
   const { textoDaVoz } = raiz;
   const { iconeVeio, montarAviso, montarDetalhes } = raiz.Veio;
@@ -33,44 +48,51 @@
    * `status`, a linha sob o nome no card; `aviso`, o erro com a ação ao lado;
    * `sair`, como aparece o Sair da conta ('fantasma', 'secundario' ou nenhum).
    */
-  const SITUACOES = {
-    sincronizando: {
+  const COMO_APARECE = {
+    [SITUACOES.SINCRONIZANDO]: {
       ponto: 'sincronizando',
       chip: () => textoDaVoz('CFG-01'),
       sair: 'fantasma',
     },
-    primeiraSubida: {
+    [SITUACOES.PRIMEIRA_SUBIDA]: {
       ponto: 'sincronizando',
       chip: ({ n }) => textoDaVoz('CFG-09.andamento', { n }),
       sair: 'fantasma',
     },
-    sincronizado: {
+    // A primeira subida não chegou à nuvem: nenhuma frase subiu.
+    [SITUACOES.PRIMEIRA_SUBIDA_FALHOU]: {
+      erro: true,
+      chip: () => textoDaVoz('SHL-05.semSincronizar'),
+      aviso: { texto: 'CFG-09.falha', acao: 'CFG-03.tentarDeNovo' },
+      sair: 'fantasma',
+    },
+    [SITUACOES.SINCRONIZADO]: {
       ponto: 'ok',
       chip: ({ sincronizadoEm }) => textoDaVoz('CFG-02', { quando: haQuantoTempo(sincronizadoEm) }),
       sair: 'fantasma',
     },
-    semSincronizar: {
+    [SITUACOES.SEM_SINCRONIZAR]: {
       erro: true,
       chip: () => textoDaVoz('SHL-05.semSincronizar'),
       status: () => textoDaVoz('CFG-03.aviso'),
       aviso: { texto: 'CFG-03.pendente', acao: 'CFG-03.tentarDeNovo' },
       sair: 'fantasma',
     },
-    parcial: {
+    [SITUACOES.PARCIAL]: {
       erro: true,
       chip: ({ n, total }) => textoDaVoz('SHL-05.parcial', { n, total }),
       status: ({ n, total }) => textoDaVoz('CFG-05.aviso', { n, total, faltando: total - n }),
       aviso: { texto: 'CFG-05.pendente', acao: 'CFG-05.tentarDeNovo' },
       sair: 'fantasma',
     },
-    recusado: {
+    [SITUACOES.RECUSADO]: {
       erro: true,
       chip: () => textoDaVoz('SHL-05.semSincronizar'),
       status: () => textoDaVoz('CFG-04'),
       // A saída é o que resolve: o Sair da conta deixa de ser fantasma.
       sair: 'secundario',
     },
-    expirou: {
+    [SITUACOES.EXPIROU]: {
       erro: true,
       chip: () => textoDaVoz('SHL-05.sessaoExpirou'),
       status: () => textoDaVoz('CFG-08.aviso'),
@@ -95,9 +117,9 @@
   }
 
   function mostrarSincronizacao(situacao, dados = {}) {
-    if (!SITUACOES[situacao]) throw new Error(`Situação de sincronização desconhecida: ${situacao}`);
+    if (!COMO_APARECE[situacao]) throw new Error(`Situação de sincronização desconhecida: ${situacao}`);
     estado.sincronizacao = { ...dados, situacao };
-    if (situacao === 'sincronizado') estado.sincronizacao.sincronizadoEm = Date.now();
+    if (situacao === SITUACOES.SINCRONIZADO) estado.sincronizacao.sincronizadoEm = Date.now();
     desenhar();
   }
 
@@ -127,7 +149,7 @@
 
   function situacaoAtual() {
     const sincronizacao = estado.sincronizacao;
-    return sincronizacao ? { ...SITUACOES[sincronizacao.situacao], dados: sincronizacao } : null;
+    return sincronizacao ? { ...COMO_APARECE[sincronizacao.situacao], dados: sincronizacao } : null;
   }
 
   function textoDoChip() {
@@ -182,7 +204,7 @@
 
     const partes = [linha(
       elemento('div', 'cfg-conta', avatar, elemento('div', 'cfg-quem',
-        elemento('b', 'cfg-nome', textoDaVoz('CFG-06.ajuda')),
+        elemento('b', 'cfg-convite', textoDaVoz('CFG-06.ajuda')),
         elemento('span', 'cfg-nota', textoDaVoz('CFG-06.semConta')))),
       elemento('div', 'cfg-acoes', entrar),
     )];
@@ -284,11 +306,12 @@
     return no;
   }
 
-  /** “agora”, “há 2 minutos”, “há 3 horas”, “ontem”: o `{quando}` da CFG-02. */
+  /** “agora”, “há 2 min”, “há 3 h”, “ontem”: o `{quando}` da CFG-02. */
   function haQuantoTempo(momento) {
     const minutos = Math.floor((Date.now() - momento) / 60000);
     if (minutos < 1) return QUANTO_TEMPO.format(0, 'second');
-    if (minutos < 60) return QUANTO_TEMPO.format(-minutos, 'minute');
+    // O ICU abrevia com ponto (“há 2 min.”); a cópia é “há 2 min”.
+    if (minutos < 60) return QUANTO_TEMPO.format(-minutos, 'minute').replace(/\.$/, '');
     const horas = Math.floor(minutos / 60);
     if (horas < 24) return QUANTO_TEMPO.format(-horas, 'hour');
     return QUANTO_TEMPO.format(-Math.floor(horas / 24), 'day');
@@ -297,11 +320,12 @@
   document.addEventListener('DOMContentLoaded', () => {
     desenhar();
     setInterval(() => {
-      if (estado.sincronizacao?.situacao === 'sincronizado') desenhar();
+      if (estado.sincronizacao?.situacao === SITUACOES.SINCRONIZADO) desenhar();
     }, INTERVALO_DO_RELOGIO);
   });
 
   raiz.Conta = {
+    SITUACOES,
     mostrarConta,
     mostrarSincronizacao,
     mostrarFalhaNoLogin,

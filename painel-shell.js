@@ -33,6 +33,7 @@
     conferindoConexao: false,
   };
   const ouvintesDeArea = new Map();
+  const fimDosDestaques = new Map();   // card → o timer que tira a borda do destaque
 
   const { textoDaVoz } = raiz;
   const $ = seletor => document.querySelector(seletor);
@@ -146,7 +147,11 @@
     for (const card of $$('.cfg-card')) abrirCard(card, false);
   }
 
-  /** Abre o card da seção, rola até ele e pisca a borda (parada com movimento reduzido). */
+  /**
+   * Abre o card da seção, rola até ele e pisca a borda. O destaque dura o
+   * `--veio-destaque`: com movimento reduzido não há animação para acabar, e a
+   * borda parada sai quando ele termina.
+   */
   function rolarAteASecao(secao) {
     const card = porId(`cfg-${secao}`);
     abrirCard(card, true);
@@ -154,6 +159,13 @@
     card.classList.remove('shell-card--destaque');
     void card.offsetWidth;
     card.classList.add('shell-card--destaque');
+    clearTimeout(fimDosDestaques.get(card));
+    fimDosDestaques.set(card, setTimeout(() => card.classList.remove('shell-card--destaque'), duracaoDoDestaque()));
+  }
+
+  /** O `--veio-destaque` (em segundos, nos tokens) em milissegundos. */
+  function duracaoDoDestaque() {
+    return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--veio-destaque')) * 1000;
   }
 
   /** `ouvinte` roda cada vez que a pessoa entra na `area` (inclusive ao abrir nela). */
