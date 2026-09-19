@@ -26,7 +26,7 @@ Decidido numa rodada no Lavish, em 2026-09-15. O dono escolheu a **C** e aceitou
 | Q2 | Gravador de atalho | **Grava na própria linha.** Um atalho repetido é **recusado**, com aviso na linha (parte do item 7 da lista fechada). Um **“Restaurar atalhos padrão”** único volta tudo ao padrão de fábrica. Não há um “Voltar ao Alt+S” por atalho. |
 | Q3 | Chave do Gemini salva | **Resumo mascarado + Trocar chave.** |
 | Q4 | Onde aparece um problema de sync | **No card Conta & sync e no chip da sidebar.** Nenhuma faixa nas outras áreas. |
-| Q5 | Lugar do seletor de tema ([#45](https://github.com/vinicius928e8r84/PerpetualMiner/issues/45), item 10 da lista fechada) | **Um card próprio, Aparência**, entre a Chave do Gemini e a Zona de perigo, no mesmo tratamento “resumo primeiro” da Q1. Decidido depois da rodada no Lavish, em #45. O protótipo travado é anterior a este card; aqui a spec manda. |
+| Q5 | Lugar do seletor de tema ([#45](https://github.com/vinicius928e8r84/PerpetualMiner/issues/45), item 10 da lista fechada) | **Um card próprio, Aparência**, entre a Chave do Gemini e a Zona de perigo, no mesmo tratamento “resumo primeiro” da Q1. Decidido pelo dono numa rodada no Lavish, em 2026-09-19 (#45), com a cópia CFG-29…31 aprovada como está. O protótipo travado é anterior a este card; aqui a spec manda. |
 
 ## Anatomia (variante C)
 
