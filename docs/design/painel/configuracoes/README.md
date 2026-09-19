@@ -26,7 +26,7 @@ Decidido numa rodada no Lavish, em 2026-09-15. O dono escolheu a **C** e aceitou
 | Q2 | Gravador de atalho | **Grava na própria linha.** Um atalho repetido é **recusado**, com aviso na linha (parte do item 7 da lista fechada). Um **“Restaurar atalhos padrão”** único volta tudo ao padrão de fábrica. Não há um “Voltar ao Alt+S” por atalho. |
 | Q3 | Chave do Gemini salva | **Resumo mascarado + Trocar chave.** |
 | Q4 | Onde aparece um problema de sync | **No card Conta & sync e no chip da sidebar.** Nenhuma faixa nas outras áreas. |
-| Q5 | Lugar do seletor de tema ([#45](https://github.com/vinicius928e8r84/PerpetualMiner/issues/45), item 10 da lista fechada) | **Um card próprio, Aparência**, entre a Chave do Gemini e a Zona de perigo, no mesmo tratamento “resumo primeiro” da Q1. O protótipo travado é anterior a este card; aqui a spec manda. |
+| Q5 | Lugar do seletor de tema ([#45](https://github.com/vinicius928e8r84/PerpetualMiner/issues/45), item 10 da lista fechada) | **Um card próprio, Aparência**, entre a Chave do Gemini e a Zona de perigo, no mesmo tratamento “resumo primeiro” da Q1. Decidido depois da rodada no Lavish, em #45. O protótipo travado é anterior a este card; aqui a spec manda. |
 
 ## Anatomia (variante C)
 
@@ -125,9 +125,10 @@ Um problema de sync aparece **só** aqui e no chip (Q4). O chip fica sempre vis�
 - **Trocar:** vale **na hora**, sem recarregar e sem toast (C4: a mudança já aparece na tela), no painel e em qualquer popup ou Minerar de uma foto que esteja aberto.
 - **Lembrado neste computador:** a escolha fica em `chrome.storage.local` e **não** sobe com o sync da conta. Outro computador segue com o que estiver gravado nele.
 - **Onde vale:** painel (inclusive a Boas-vindas), popup e Minerar de uma foto. O **overlay** in-page usa sempre os tokens escuros (Veio, Tema e tokens), e o seletor não muda isso.
-- **Cores:** o claro usa só os tokens claros da tabela do Veio, que passam no contraste AA. Nenhuma cor nova.
+- **Cores:** o claro usa só os tokens claros de [Tema e tokens](../../identidade-veio/README.md#tema-e-tokens), com o contraste que o Veio garante. Nenhuma cor nova.
 - **Movimento:** a troca de tema não anima.
 
+## Zona de perigo
 
 - **Descrição:** “Apagar tudo aqui não dá para desfazer, e vale para todos os computadores da sua conta.” Sem conta, fica só “Apagar tudo aqui não dá para desfazer.”
 - **Linha:** “Apagar todas as frases”, com a contagem e o alcance: “1.284 frases em todos os computadores da sua conta” (sem conta: “neste computador”). O botão de perigo **contorno** (vermelho, a entrada) diz **Apagar todas as 1.284 frases**; com 1 frase, “Apagar 1 frase”. Ele não apaga: só abre o modal.
