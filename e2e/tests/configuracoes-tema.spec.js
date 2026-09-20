@@ -13,13 +13,25 @@
 //
 // Os testes afirmam o que a pessoa vê e o que fica gravado, nunca funções internas.
 
+const fs = require('node:fs');
+const path = require('node:path');
 const { test, expect } = require('../fixtures');
 
-/** Os fundos da tabela de tokens do Veio (identidade-veio/README.md). */
-const FUNDO = {
-  escuro: 'rgb(18, 17, 16)',    // #121110
-  claro: 'rgb(247, 244, 238)',  // #F7F4EE
-};
+/**
+ * O `--veio-bg` de cada tema, lido de veio/tokens.css: a cor mora lá, e um
+ * valor repetido aqui passaria a mentir no dia em que o token mudasse.
+ */
+function fundoDoTema(tema) {
+  const css = fs.readFileSync(path.join(__dirname, '..', '..', 'veio', 'tokens.css'), 'utf8');
+  const inicioDoClaro = css.indexOf('[data-tema="claro"]');
+  const trecho = tema === 'claro' ? css.slice(inicioDoClaro) : css.slice(0, inicioDoClaro);
+  const achado = trecho.match(/--veio-bg:\s*(#[0-9A-Fa-f]{6})/);
+  if (!achado) throw new Error(`--veio-bg não encontrado no tema ${tema} de veio/tokens.css`);
+  const [, r, g, b] = achado[1].match(/#(..)(..)(..)/);
+  return `rgb(${parseInt(r, 16)}, ${parseInt(g, 16)}, ${parseInt(b, 16)})`;
+}
+
+const FUNDO = { escuro: fundoDoTema('escuro'), claro: fundoDoTema('claro') };
 
 /** O fundo que a pessoa vê: quem o pinta é o body, com o token do tema. */
 const fundoDaPagina = page => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
@@ -110,27 +122,30 @@ test('o painel já aberto em outra aba troca junto, sem recarregar', async ({ pa
 
 test('o popup e o Minerar de uma foto abrem com a escolha; o que ainda não foi refeito fica como foi desenhado',
   async ({ page, context, extensao }) => {
+    // Como as duas telas abrem hoje, no escuro padrão, antes de qualquer escolha.
+    const fundosDeHoje = {};
+    for (const tela of ['popup.html', 'bookreader.html']) {
+      const aberta = await context.newPage();
+      await aberta.goto(extensao.url(tela));
+      fundosDeHoje[tela] = await fundoDaPagina(aberta);
+      await aberta.close();
+    }
+
     await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
     await escolherTema(page, 'Claro');
     await expect.poll(() => temaGravado(extensao)).toBe('claro');
 
-    const popup = await context.newPage();
-    await popup.goto(extensao.url('popup.html'));
-    await expect(temaDaPagina(popup)).toHaveAttribute('data-tema', 'claro');
-    // O corpo do popup é o de hoje, desenhado para o escuro, e continua escuro
-    // até #38 trazer o popup para os tokens.
-    await expect(popup.locator('body')).toHaveAttribute('data-tema', 'escuro');
-    expect(await fundoDaPagina(popup)).toBe('rgb(17, 18, 20)');
+    // As duas telas continuam com o fundo que já tinham no escuro: o CSS delas
+    // é o de hoje, escrito à mão fora dos tokens, e só muda no ticket de cada
+    // uma. O teste compara com elas mesmas, para não repetir aqui uma cor.
+    for (const [tela, fundoDeHoje] of Object.entries(fundosDeHoje)) {
+      const aberta = await context.newPage();
+      await aberta.goto(extensao.url(tela));
+      await expect(temaDaPagina(aberta)).toHaveAttribute('data-tema', 'claro');
+      expect(await fundoDaPagina(aberta)).toBe(fundoDeHoje);
+      await aberta.close();
+    }
 
-    const foto = await context.newPage();
-    await foto.goto(extensao.url('bookreader.html'));
-    await expect(temaDaPagina(foto)).toHaveAttribute('data-tema', 'claro');
-    // O corpo do Minerar de uma foto é o de hoje, desenhado para o claro (#36, #37).
-    await expect(foto.locator('body')).toHaveAttribute('data-tema', 'claro');
-    expect(await fundoDaPagina(foto)).toBe('rgb(249, 250, 251)');
-
-    await popup.close();
-    await foto.close();
   });
 
 test('o que aparece por cima das páginas continua escuro', async ({ page, context, extensao, paginas }) => {
@@ -162,9 +177,38 @@ test('no claro, o texto do painel passa no contraste AA', async ({ page, extensa
   });
   expect(contraste(cores.texto, cores.fundo)).toBeGreaterThanOrEqual(4.5);
 
-  const descricao = page.locator('#cfg-aparencia .cfg-descricao');
-  const corDaDescricao = await descricao.evaluate(no => getComputedStyle(no).color);
-  expect(contraste(corDaDescricao, FUNDO.claro)).toBeGreaterThanOrEqual(4.5);
+  // O card inteiro: título, descrição, resumo e as duas opções do seletor.
+  const textos = [
+    '#cfg-aparencia-titulo', '#cfg-aparencia .cfg-descricao', '#cfg-aparencia-resumo',
+    '#cfg-tema label:nth-of-type(1)', '#cfg-tema label:nth-of-type(2)',
+  ];
+  for (const seletor of textos) {
+    const medido = await page.locator(seletor).evaluate(no => {
+      const sobre = no.closest('.shell-card, body');
+      return { texto: getComputedStyle(no).color, fundo: getComputedStyle(sobre).backgroundColor };
+    });
+    const fundo = medido.fundo === 'rgba(0, 0, 0, 0)' ? FUNDO.claro : medido.fundo;
+    expect(contraste(medido.texto, fundo), `contraste de ${seletor}`).toBeGreaterThanOrEqual(4.5);
+  }
+});
+
+test('a troca de tema não anima', async ({ page, extensao }) => {
+  await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
+
+  // Enquanto as cores novas pintam, nada transiciona: sem isso a tela inteira
+  // faria um cross-fade (spec de Configurações › Aparência). O que já estava
+  // animando por conta própria (o cursor da marca, o flash da seção) segue.
+  const transicoes = await page.evaluate(async () => {
+    const rotulo = [...document.querySelectorAll('#cfg-tema label')].find(no => no.textContent.trim() === 'Claro');
+    rotulo.click();
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    return document.getAnimations()
+      .filter(animacao => animacao.playState === 'running' && animacao.transitionProperty)
+      .map(animacao => animacao.transitionProperty);
+  });
+
+  expect(transicoes).toEqual([]);
+  await expect.poll(() => fundoDaPagina(page)).toBe(FUNDO.claro);
 });
 
 test('o seletor tem nome, é alcançável pelo teclado e as setas trocam o tema', async ({ page, extensao }) => {

@@ -219,14 +219,15 @@
       mostrarResumoDosAtalhos(dados.pm_atalho);
       mostrarResumoDaChave(dados.geminiApiKey);
     });
-    // O tema já está no <html> (veio/tema.js o aplicou antes da primeira
-    // pintura), então o card lê dali em vez de esperar o storage responder.
-    mostrarTema(tema().temaAplicado());
+    // O tema sai do que está gravado, como os outros resumos: o que está
+    // pintado ainda pode ser o espelho da primeira pintura, que veio/tema.js
+    // corrige quando o storage responde.
+    tema().lerTemaGravado().then(mostrarTema);
     chrome.storage.onChanged.addListener((mudancas, area) => {
       if (area !== 'local') return;
       if ('pm_atalho' in mudancas) mostrarResumoDosAtalhos(mudancas.pm_atalho.newValue || null);
       if ('geminiApiKey' in mudancas) mostrarResumoDaChave(mudancas.geminiApiKey.newValue || '');
-      if (tema().CHAVE in mudancas) mostrarTema(tema().temaAplicado());
+      if (tema().CHAVE in mudancas) mostrarTema(mudancas[tema().CHAVE].newValue || tema().TEMA_PADRAO);
     });
   }
 

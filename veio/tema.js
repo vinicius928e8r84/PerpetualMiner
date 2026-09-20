@@ -10,7 +10,7 @@
 // Carregado no <head> de toda página da extensão, antes do CSS da página, e
 // pendurado em `PerpetualMiner.Tema`:
 //
-//   const { aplicarTemaGravado, gravarTema, TEMAS } = PerpetualMiner.Tema;
+//   const { gravarTema, lerTemaGravado, TEMAS } = PerpetualMiner.Tema;
 //
 // Ele aplica o tema no <html>, que é onde veio/tokens.css troca os valores
 // (`[data-tema="claro"]`). Quem desenha o seletor é o painel; aqui fica só o
@@ -26,36 +26,47 @@
   /** Sem nada gravado, o app abre no escuro. */
   const TEMA_PADRAO = TEMAS.ESCURO;
 
-  /** A chave em `chrome.storage.local`. */
+  /**
+   * A chave da escolha, a mesma nos dois lugares onde ela fica.
+   *
+   * A verdade é o `chrome.storage.local`. Ele só responde depois de uma ida e
+   * volta assíncrona, e até lá a página já pintou: quem escolheu o claro veria
+   * um piscar escuro a cada abertura. Por isso a escolha é repetida em
+   * `localStorage`, que responde na hora e é lido antes do <body> existir. Esse
+   * espelho é só para a primeira pintura, e é corrigido assim que o
+   * `chrome.storage` responde.
+   */
   const CHAVE = 'pm_tema';
 
-  /**
-   * A mesma escolha repetida em `localStorage`, só para a primeira pintura.
-   *
-   * `chrome.storage` só responde depois de um ida e volta assíncrono, e até lá
-   * a página já pintou: quem escolheu o claro veria um piscar escuro a cada
-   * abertura. `localStorage` responde na hora, na mesma origem da extensão, e é
-   * lido antes do <body> existir. A verdade continua sendo o `chrome.storage`:
-   * este espelho é corrigido assim que ele responde.
-   */
-  const CHAVE_DE_PINTURA = 'pm_tema';
+  /** Enquanto o tema troca, as transições dos componentes ficam de fora. */
+  const MARCA_DA_TROCA = 'data-trocando-tema';
 
   function temaValido(valor) {
     return valor === TEMAS.ESCURO || valor === TEMAS.CLARO;
   }
 
-  /** O tema aplicado agora nesta página. */
-  function temaAplicado() {
-    const atual = document.documentElement.getAttribute('data-tema');
-    return temaValido(atual) ? atual : TEMA_PADRAO;
-  }
-
-  /** Aplica o tema no <html> e guarda o espelho da próxima pintura. */
+  /**
+   * Aplica o tema no <html> e guarda o espelho da próxima pintura.
+   *
+   * A troca não anima (spec de Configurações › Aparência): os componentes
+   * transicionam fundo, cor e borda, e sem isso a tela inteira faria um
+   * cross-fade. A marca sai no quadro seguinte, quando as cores novas já
+   * pintaram, e as transições voltam para o que a pessoa fizer depois.
+   */
   function aplicarTema(tema) {
     const escolhido = temaValido(tema) ? tema : TEMA_PADRAO;
-    document.documentElement.setAttribute('data-tema', escolhido);
+    const raizDaPagina = document.documentElement;
+    // Só a troca depois da página pronta: na primeira aplicação, ainda no
+    // <head>, nada foi pintado e não há o que cross-fadear.
+    const trocando = document.readyState !== 'loading'
+      && raizDaPagina.getAttribute('data-tema') !== escolhido;
+    if (trocando) raizDaPagina.setAttribute(MARCA_DA_TROCA, '');
+    raizDaPagina.setAttribute('data-tema', escolhido);
+    if (trocando) {
+      requestAnimationFrame(() => requestAnimationFrame(() => raizDaPagina.removeAttribute(MARCA_DA_TROCA)));
+    }
     try {
-      localStorage.setItem(CHAVE_DE_PINTURA, escolhido);
+      localStorage.setItem(CHAVE, escolhido);
     } catch {
       // Sem localStorage (modo restrito), a página abre no padrão e corrige
       // quando o chrome.storage responder. Não é motivo para parar.
@@ -88,7 +99,7 @@
    */
   function aplicarTemaGravado() {
     try {
-      const espelho = localStorage.getItem(CHAVE_DE_PINTURA);
+      const espelho = localStorage.getItem(CHAVE);
       if (temaValido(espelho)) aplicarTema(espelho);
       else aplicarTema(TEMA_PADRAO);
     } catch {
@@ -114,10 +125,7 @@
     TEMAS,
     TEMA_PADRAO,
     CHAVE,
-    aplicarTema,
-    aplicarTemaGravado,
     gravarTema,
     lerTemaGravado,
-    temaAplicado,
   };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});
