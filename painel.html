@@ -74,8 +74,8 @@
         </header>
 
         <!--
-          As ações de hoje que ainda não foram reconstruídas (BookReader, importar
-          e a adição em massa) continuam aqui até o #31 (Minerar frases).
+          O importar e a adição em massa de hoje continuam aqui até o #31
+          (Minerar frases) trazer o menu deles; o BookReader é página própria.
         -->
         <div class="conteudo-de-hoje" data-tema="claro">
           <div class="main-header">
@@ -108,7 +108,8 @@
 
         </div>
 
-        <!-- Avisos persistentes (C1): a nuvem falhou ao apagar (PAI-15). -->
+        <!-- Os avisos persistentes da área (C1): a nuvem ficou com as frases
+             apagadas (PAI-15) e o copiar que não deu (PAI-17). -->
         <div class="frases-avisos" id="frases-avisos"></div>
 
         <!-- Filtros numa linha que quebra: Fonte · idioma · ordem, a busca e o toggle. -->
@@ -143,25 +144,25 @@
         <div class="frases-selecao" id="frases-selecao" hidden>
           <label class="frases-selecao__pagina">
             <input type="checkbox" class="veio-checkbox" id="sel-pagina" data-voz-aria="PAI-31">
-            <span class="frases-selecao__rotulo" data-voz="PAI-31"></span>
+            <span class="veio-so-leitor frases-selecao__rotulo" data-voz="PAI-31"></span>
           </label>
           <div class="frases-barra" id="frases-barra" hidden>
             <button class="veio-botao-icone" id="btn-desmarcar-todas" type="button"
                     data-voz-aria="PAI-32.desmarcar" data-voz-title="PAI-32.desmarcar"><span data-icone="fechar"></span></button>
             <span class="frases-barra__contagem" id="selection-count" aria-live="polite"></span>
-            <button class="frases-barra__todas" id="btn-sel-todas" type="button" hidden></button>
+            <button class="veio-botao veio-botao--link frases-barra__todas" id="btn-sel-todas" type="button" hidden></button>
             <span class="frases-barra__acoes">
-              <button class="veio-botao veio-botao--fantasma" id="btn-bulk-edit" type="button">
+              <button class="veio-botao veio-botao--fantasma veio-botao--compacto" id="btn-bulk-edit" type="button">
                 <span data-icone="contexto"></span><span data-voz="PAI-32.editarContexto"></span>
               </button>
-              <button class="veio-botao veio-botao--fantasma" id="btn-export" type="button">
+              <button class="veio-botao veio-botao--fantasma veio-botao--compacto" id="btn-export" type="button">
                 <span data-icone="arquivo"></span><span data-voz="PAI-32.exportar"></span>
               </button>
-              <button class="veio-botao veio-botao--fantasma frases-barra__apagar" id="btn-delete-selected" type="button">
+              <button class="veio-botao veio-botao--perigo-fantasma veio-botao--compacto" id="btn-delete-selected" type="button">
                 <span data-icone="apagar"></span><span data-voz="PAI-32.apagar"></span>
               </button>
               <!-- O que o Enviar ao Anki faz continua o de hoje até o #32 reconstruir o envio. -->
-              <button class="veio-botao veio-botao--primario" id="btn-send-anki" type="button">
+              <button class="veio-botao veio-botao--primario veio-botao--compacto" id="btn-send-anki" type="button">
                 <span data-icone="enviar"></span><span data-voz="PAI-32.enviar"></span>
               </button>
             </span>
@@ -480,8 +481,8 @@
   </div>
   <!-- ── Editar contexto (PAI-20…22): 1 frase pela ação do cartão, N pela barra ── -->
   <div class="veio-scrim" id="modal-contexto" hidden>
-    <div class="veio-modal frases-modal" role="dialog" aria-labelledby="modal-contexto-titulo" aria-describedby="modal-contexto-subtitulo">
-      <button class="veio-botao-icone frases-modal__fechar" type="button" data-fechar-modal
+    <div class="veio-modal" role="dialog" aria-labelledby="modal-contexto-titulo" aria-describedby="modal-contexto-subtitulo">
+      <button class="veio-botao-icone veio-modal__fechar" type="button" data-fechar-modal
               data-voz-aria="PAI-34" data-voz-title="PAI-34"><span data-icone="fechar"></span></button>
       <h2 class="veio-modal__titulo" id="modal-contexto-titulo"></h2>
       <p class="veio-modal__corpo frases-modal__subtitulo" id="modal-contexto-subtitulo"></p>
@@ -510,8 +511,8 @@
 
   <!-- ── Apagar (PAI-12 · PAI-13): um só modal para 1 frase e para a seleção ── -->
   <div class="veio-scrim" id="modal-apagar" hidden>
-    <div class="veio-modal frases-modal" role="dialog" aria-labelledby="modal-apagar-titulo" aria-describedby="modal-apagar-corpo">
-      <button class="veio-botao-icone frases-modal__fechar" type="button" data-fechar-modal
+    <div class="veio-modal" role="dialog" aria-labelledby="modal-apagar-titulo" aria-describedby="modal-apagar-corpo">
+      <button class="veio-botao-icone veio-modal__fechar" type="button" data-fechar-modal
               data-voz-aria="PAI-34" data-voz-title="PAI-34"><span data-icone="fechar"></span></button>
       <h2 class="veio-modal__titulo" id="modal-apagar-titulo"></h2>
       <p class="veio-modal__corpo" id="modal-apagar-corpo"></p>

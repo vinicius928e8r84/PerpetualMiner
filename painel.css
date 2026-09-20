@@ -589,7 +589,7 @@ body {
   font-weight: var(--veio-peso-rotulo);
 }
 
-/* Avisos persistentes (C1) acima dos filtros: a nuvem falhou ao apagar (PAI-15). */
+/* Os avisos persistentes da área (C1), acima dos filtros: PAI-15 e PAI-17. */
 .frases-avisos {
   display: grid;
   gap: 8px;
@@ -638,15 +638,6 @@ body {
   box-shadow: var(--veio-sombra);
 }
 
-.frases-selecao--barra .frases-selecao__rotulo {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
 .frases-barra {
   display: contents;
 }
@@ -662,15 +653,6 @@ body {
 
 .frases-barra__todas {
   margin-right: auto;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--veio-accent-text);
-  font: inherit;
-  font-weight: var(--veio-peso-rotulo);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
 }
 
 .frases-barra__todas[hidden] + .frases-barra__acoes {
@@ -682,15 +664,6 @@ body {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-}
-
-.frases-barra__acoes .veio-botao {
-  padding: 6px 12px;
-  font-size: var(--veio-tam-apoio);
-}
-
-.frases-barra__apagar {
-  color: var(--veio-danger);
 }
 
 /* O × nativo do campo de busca dá lugar ao × da busca Veio. */
@@ -745,21 +718,7 @@ body {
   font-size: var(--veio-tam-apoio);
 }
 
-/* Os modais de Frases (Editar contexto e Apagar): o modal Veio com × no canto. */
-.frases-modal {
-  position: relative;
-}
-
-.frases-modal .veio-modal__titulo {
-  padding-right: 36px;
-}
-
-.frases-modal__fechar {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-}
-
+/* Os modais de Frases: o modal Veio (com o × da base) e os campos do Contexto. */
 .frases-modal__subtitulo {
   overflow-wrap: anywhere;
 }
@@ -932,125 +891,8 @@ body {
   white-space: nowrap;
 }
 
-.bulk-edit-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 7px 14px;
-  background: white;
-  color: #6d28d9;
-  border: 1px solid #c4b5fd;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-.bulk-edit-btn:hover { background: #f5f3ff; border-color: #7c3aed; }
-
-.bookreader-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  background: white;
-  color: #b45309;
-  border: 1px solid #fcd34d;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  text-decoration: none;
-  transition: background 0.15s, border-color 0.15s;
-}
 .bookreader-btn:hover { background: #fffbeb; border-color: #f59e0b; }
 
-.export-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  background: #7c3aed;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.export-btn:hover { background: #6d28d9; }
-
-.send-anki-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(135deg, #059669, #0f766e);
-  color: #fff;
-  border: 0;
-  border-radius: 12px;
-  padding: 12px 16px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 10px 26px rgba(15, 118, 110, 0.22);
-}
-
-.send-anki-btn:hover { filter: brightness(1.05); }
-
-.btn-delete-selected {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  background: white;
-  color: #ef4444;
-  border: 1px solid #fca5a5;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-.btn-delete-selected:hover { background: #fef2f2; border-color: #ef4444; }
-.btn-delete-selected.hidden { display: none; }
-
-.sel-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 7px 12px;
-  background: white;
-  color: #7c3aed;
-  border: 1px solid #c4b5fd;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  white-space: nowrap;
-}
-.sel-btn:hover       { background: #f5f3ff; border-color: #7c3aed; }
-.sel-btn.sel-active  { background: #ede9fe; border-color: #7c3aed; color: #5b21b6; }
-
-/* ── Scrollbar ───────────────────────────────────────── */
-::-webkit-scrollbar       { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #ddd6fe; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #7c3aed; }
-
-/* ── Modal de Edição ─────────────────────────────────── */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 10, 30, 0.55);
-  backdrop-filter: blur(3px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.15s ease;
-}
 .modal-overlay.hidden { display: none; }
 
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
@@ -1138,10 +980,6 @@ body {
   border-color: #7c3aed;
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
 }
-.modal-hint {
-  font-size: 11px;
-  color: #9ca3af;
-}
 
 .modal-footer {
   display: flex;
@@ -1183,25 +1021,6 @@ body {
 .btn-modal-save:hover { background: #6d28d9; }
 
 /* ── Selection Counter ───────────────────────────────── */
-.selection-count {
-  display: inline-flex;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: #00c970;
-  background: rgba(0, 255, 136, 0.08);
-  border: 1px solid rgba(0, 255, 136, 0.35);
-  border-radius: 20px;
-  padding: 5px 13px;
-  white-space: nowrap;
-  transition: opacity 0.2s, transform 0.2s;
-  animation: fadeCountIn 0.15s ease;
-}
-.selection-count.hidden { display: none; }
-@keyframes fadeCountIn {
-  from { opacity: 0; transform: scale(0.9); }
-  to   { opacity: 1; transform: scale(1);   }
-}
 
 .bridge-workspace {
   flex-shrink: 0;

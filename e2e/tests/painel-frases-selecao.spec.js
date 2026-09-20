@@ -135,6 +135,38 @@ test('trocar o filtro ou a busca limpa a seleção (bug de #9)', async ({ page, 
   await expect(marcadas(page)).toHaveCount(0);
 });
 
+test('a Fonte, o toggle de ocultar, Limpar filtros e Limpar busca também limpam a seleção', async ({ page, extensao }) => {
+  await extensao.gravarStorage({
+    frases: [
+      frase(3, 'The harbour was quiet.', { streaming: 'netflix' }),
+      frase(2, 'The lighthouse was dark.', { streaming: 'youtube' }),
+      frase(1, 'Already exported.', { streaming: 'netflix', exportadaTxt: true }),
+    ],
+  });
+  await abrirFrases(page, extensao);
+
+  await marcar(page, 'harbour').check();
+  await filtro(page, 'Fonte').selectOption({ label: 'YouTube' });
+  await expect(marcadas(page)).toHaveCount(0);
+
+  // O toggle é o que mais esconde frase selecionada: a exportada sai da lista.
+  await filtro(page, 'Fonte').selectOption({ label: 'Todas as fontes' });
+  await marcar(page, 'Already exported').check();
+  await page.locator('.veio-toggle').getByText('Ocultar enviadas e exportadas').click();
+  await expect(barra(page)).toBeHidden();
+  await expect(marcadas(page)).toHaveCount(0);
+
+  // Limpar filtros, do vazio PAI-03.
+  await filtro(page, 'Idioma').selectOption({ label: 'Russo' });
+  await expect(lista(page).locator('.veio-vazio')).toBeVisible();
+  await page.getByRole('button', { name: 'Limpar filtros' }).click();
+  await marcar(page, 'harbour').check();
+  await busca(page).fill('zebra');
+  // O “Limpar busca” do vazio PAI-04, não o × dentro do campo.
+  await lista(page).getByRole('button', { name: 'Limpar busca' }).click();
+  await expect(marcadas(page)).toHaveCount(0);
+});
+
 test('a barra gruda no topo da ilha ao rolar', async ({ page, extensao }) => {
   await page.setViewportSize({ width: 1280, height: 520 });
   await extensao.gravarStorage({ frases: frasesDeExemplo(10) });
@@ -308,6 +340,19 @@ test('se a nuvem falha ao apagar, fica o aviso PAI-15 com Tentar de novo, que ap
   await expect.poll(() => fakes.google.frasesDe('uid-falha').map(f => f.texto)).toEqual(['Sentence number 2 about the harbour.']);
 });
 
+test('a seleção de uma frase só fala como a do cartão: “Apagar esta frase?” e sem toast', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
+  await abrirFrases(page, extensao);
+
+  await marcar(page, 'Sentence number 2 ').check();
+  await naBarra(page, 'Apagar').click();
+  await expect(modal(page).getByRole('heading')).toHaveText('Apagar esta frase?');
+  await modal(page).getByRole('button', { name: 'Apagar frase' }).click();
+
+  await expect(cartoes(page)).toHaveText([/Sentence number 3 /, /Sentence number 1 /]);
+  await expect(toasts(page)).toHaveCount(0);
+});
+
 // ─── Editar texto ────────────────────────────────────────────────────────────
 
 test('Editar texto troca o texto por um campo no lugar: Enter salva, sem toast', async ({ page, extensao }) => {
@@ -426,6 +471,27 @@ test('Copiar frase põe o texto no clipboard e diz “Frase copiada”', async (
   await expect(busca(page)).toHaveValue('Sentence number 2 about the harbour.');
 });
 
+test('se o copiar não vai, fica o aviso “Não deu para copiar”, com a causa em Detalhes', async ({ page, extensao }) => {
+  // O clipboard recusado é o caso real: a permissão negada faz o write falhar.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new Error('NotAllowedError: write permission denied')) },
+    });
+  });
+  await extensao.gravarStorage({ frases: frasesDeExemplo(2) });
+  await abrirFrases(page, extensao);
+
+  await acao(page, 'Sentence number 2 ', 'Copiar frase').click();
+  const aviso = page.getByRole('alert').filter({ hasText: 'Não deu para copiar' });
+  await expect(aviso).toBeVisible();
+  await expect(aviso.getByText('Detalhes')).toBeVisible();
+  await expect(toasts(page)).toHaveCount(0);
+
+  await aviso.getByRole('button', { name: 'Fechar' }).click();
+  await expect(aviso).toHaveCount(0);
+});
+
 // ─── Teclado, leitor de tela e movimento ─────────────────────────────────────
 
 test('as ações do cartão aparecem ao focar pelo teclado, e os controles da barra e dos modais têm nome e foco visível', async ({ page, extensao }) => {
@@ -455,9 +521,9 @@ test('as ações do cartão aparecem ao focar pelo teclado, e os controles da ba
 
   await naBarra(page, 'Apagar').click();
   await expect(modal(page)).toHaveAttribute('aria-modal', 'true');
-  await expect(modal(page)).toHaveAccessibleName('Apagar 1 frase?');
+  await expect(modal(page)).toHaveAccessibleName('Apagar esta frase?');
   await page.keyboard.press('Tab');
-  await focoAparece(modal(page).getByRole('button', { name: 'Apagar 1 frase' }));
+  await focoAparece(modal(page).getByRole('button', { name: 'Apagar frase' }));
   await page.keyboard.press('Escape');
 
   await naBarra(page, 'Editar contexto').click();

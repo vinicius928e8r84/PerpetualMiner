@@ -76,8 +76,13 @@ const selecionadas = new Set();
 // A frase com o texto aberto para edição no lugar, e o rascunho: o cartão é
 // redesenhado sempre que a lista muda, e a edição tem de sobreviver a isso.
 let edicaoDeTexto      = null; // { id, rascunho }
-// As frases apagadas daqui cujo DELETE na nuvem falhou (aviso PAI-15).
-const idsForaDaNuvem   = new Set();
+// As frases apagadas daqui que continuam na nuvem porque o DELETE falhou (PAI-15).
+const idsAindaNaNuvem  = new Set();
+// O modal aberto, para o × e o Cancelar fecharem o que está na tela, e o que
+// cada um está esperando: os ids a apagar e os ids cujo Contexto está aberto.
+let modalAberto        = null;
+let pedidoDeApagar     = null; // { ids }
+let edicaoDeContexto   = null; // { ids }
 let bridgePresets      = structuredClone(DEFAULT_BRIDGE_PRESETS);
 let bridgePollingId    = null;
 let bridgeActiveJobIds = [];
@@ -538,7 +543,7 @@ async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
     {
       const MARCAS = [['status', 'exported'], ['exportadaTxt', true]];
       const localById = new Map(localFrases.map(f => [String(f.id), f]));
-      const pendingExportSync = [];
+      const pendentesNaNuvem = [];
       let   localPrecisaAtualizar = false;
       const localAtualizado = [...localSemTombstoned];
 
@@ -560,12 +565,12 @@ async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
           }
         }
 
-        if (nuvem !== f) pendingExportSync.push(nuvem);
+        if (nuvem !== f) pendentesNaNuvem.push(nuvem);
         return nuvem;
       });
 
-      if (pendingExportSync.length > 0) {
-        firestoreBatchUpsert(pendingExportSync).catch(err =>
+      if (pendentesNaNuvem.length > 0) {
+        firestoreBatchUpsert(pendentesNaNuvem).catch(err =>
           console.warn('[Firestore] retry das marcas Enviada/Exportada:', err.message)
         );
       }
@@ -852,7 +857,7 @@ function setupListeners() {
   document.getElementById('btn-export').addEventListener('click', exportarTxt);
   document.getElementById('btn-send-anki').addEventListener('click', enviarSelecionadasAoAnki);
   document.getElementById('btn-bulk-edit').addEventListener('click', () => abrirEditarContexto(idsSelecionados()));
-  document.getElementById('btn-delete-selected').addEventListener('click', () => pedirParaApagar(idsSelecionados(), { daSelecao: true }));
+  document.getElementById('btn-delete-selected').addEventListener('click', () => pedirParaApagar(idsSelecionados()));
   document.getElementById('sel-pagina').addEventListener('change', selecionarPagina);
   document.getElementById('btn-sel-todas').addEventListener('click', selecionarTodasVisiveis);
   document.getElementById('btn-desmarcar-todas').addEventListener('click', desmarcarTodas);
@@ -897,7 +902,7 @@ function setupListeners() {
     const btnAddSep   = e.target.closest('[data-action="add-sep"]');
     const palavraEl   = e.target.closest('.veio-palavra-clicavel');
     if (btnCopy)     { copiarFrase(btnCopy.dataset.id);                         return; }
-    if (btnDel)      { pedirParaApagar([Number(btnDel.dataset.id)], { daSelecao: false }); return; }
+    if (btnDel)      { pedirParaApagar([Number(btnDel.dataset.id)]);            return; }
     if (btnEdit)     { abrirEditarContexto([Number(btnEdit.dataset.id)]);       return; }
     if (btnTexto)    { terminarEdicaoDeTexto(btnTexto.dataset.action === 'salvar-texto'); return; }
     if (btnEditText) { editarTextoFrase(Number(btnEditText.dataset.id));        return; }
@@ -2084,6 +2089,9 @@ function salvarTextoFrase(id, novoTexto) {
 }
 
 // ─── Copiar (PAI-17) ─────────────────────────────────────────────────────────
+//
+// O sucesso é toast; a falha pede atenção, então vira aviso persistente na
+// área, ao lado do PAI-15 do apagar.
 
 async function copiarFrase(id) {
   const frase = todasFrases.find(f => String(f.id) === String(id));
@@ -2111,29 +2119,33 @@ async function copiarFrase(id) {
 // não há toast (o cartão some); para a seleção, “12 frases apagadas”. Se a
 // nuvem falha, fica o aviso persistente PAI-15 com Tentar de novo.
 
-let pedidoDeApagar = null; // { ids, daSelecao, modal }
-
-function pedirParaApagar(ids, { daSelecao }) {
+/**
+ * O modal do apagar, um só para a frase do cartão e para a seleção. Quem manda
+ * no texto é a contagem, não de onde veio: uma frase é “Apagar esta frase?”
+ * (PAI-12) e some da tela sem toast; várias são PAI-13, com o toast PAI-14.
+ */
+function pedirParaApagar(ids) {
   if (ids.length === 0) return;
-  const estado = daSelecao ? 'PAI-13' : 'PAI-12';
+  const umaFrase = ids.length === 1;
+  const estado = umaFrase ? 'PAI-12' : 'PAI-13';
   const valores = { n: ids.length };
   document.getElementById('modal-apagar-titulo').textContent = textoDaVoz(`${estado}.titulo`, valores);
   document.getElementById('modal-apagar-corpo').textContent =
     textoDaVoz(`${estado}.${usuarioLogado ? 'corpo' : 'corpoSemConta'}`);
   document.getElementById('btn-apagar-cancelar').textContent = textoDaVoz(`${estado}.cancelar`);
   document.getElementById('btn-apagar-confirmar').textContent = textoDaVoz(`${estado}.confirmar`, valores);
-  const modal = abrirModal(document.getElementById('modal-apagar'), { aoFechar: () => { pedidoDeApagar = null; } });
-  pedidoDeApagar = { ids, daSelecao, modal };
+  abrirModalDeFrases('modal-apagar', () => { pedidoDeApagar = null; });
+  pedidoDeApagar = { ids };
 }
 
 function confirmarApagar() {
   if (!pedidoDeApagar) return;
-  const { ids, daSelecao, modal } = pedidoDeApagar;
-  modal.fechar();
-  apagarFrases(ids, { daSelecao });
+  const { ids } = pedidoDeApagar;
+  modalAberto.fechar();
+  apagarFrases(ids);
 }
 
-async function apagarFrases(ids, { daSelecao }) {
+async function apagarFrases(ids) {
   const apagadas = new Set(ids);
   todasFrases = todasFrases.filter(f => !apagadas.has(f.id));
   ids.forEach(id => { delete keywords[id]; selecionadas.delete(id); });
@@ -2141,45 +2153,45 @@ async function apagarFrases(ids, { daSelecao }) {
   await new Promise(resolve => chrome.storage.local.set({ frases: todasFrases }, resolve));
   atualizarTotal();
   aplicarFiltro();
-  if (daSelecao) mostrarToastDeSucesso(textoDaVoz('PAI-14', { n: ids.length }));
+  // Uma frase só não precisa de toast: o cartão sumindo já é a resposta (PAI-16).
+  if (ids.length > 1) mostrarToastDeSucesso(textoDaVoz('PAI-14', { n: ids.length }));
   await apagarDaNuvem(ids);
 }
 
 async function apagarDaNuvem(ids) {
   const erro = await removerFrasesFirestore(ids);
   if (!erro) return;
-  ids.forEach(id => idsForaDaNuvem.add(id));
+  ids.forEach(id => idsAindaNaNuvem.add(id));
   // O aviso PAI-15 conta o que ficou na nuvem; o card e o chip da conta contam
   // que este computador está sem sincronizar, como em qualquer falha de nuvem.
-  mostrarAvisoForaDaNuvem(erro);
+  mostrarAvisoAindaNaNuvem(erro);
   mostrarFalhaNaNuvem(erro);
 }
 
 /** O aviso PAI-15: um só, que junta todas as frases que ficaram na nuvem. */
-function mostrarAvisoForaDaNuvem(erro) {
-  document.querySelector('#frases-avisos [data-aviso="fora-da-nuvem"]')?.remove();
+function mostrarAvisoAindaNaNuvem(erro) {
+  document.querySelector('#frases-avisos [data-aviso="ainda-na-nuvem"]')?.remove();
   const aviso = montarAviso({
     texto: textoDaVoz('PAI-15.aviso'),
     acao: { rotulo: textoDaVoz('PAI-15.tentarDeNovo'), aoUsar: tentarApagarDaNuvemDeNovo },
     detalhes: String(erro?.message || erro),
     rotuloDeFechar: textoDaVoz('PAI-34'),
     // Fechar só tira o aviso: o tombstone continua, e o próximo carregamento tenta de novo.
-    aoFechar: () => idsForaDaNuvem.clear(),
+    aoFechar: () => idsAindaNaNuvem.clear(),
   });
-  aviso.dataset.aviso = 'fora-da-nuvem';
+  aviso.dataset.aviso = 'ainda-na-nuvem';
   document.getElementById('frases-avisos').append(aviso);
 }
 
 async function tentarApagarDaNuvemDeNovo() {
-  const ids = [...idsForaDaNuvem];
+  const ids = [...idsAindaNaNuvem];
   const erro = await removerFrasesFirestore(ids);
   if (erro) {
-    mostrarAvisoForaDaNuvem(erro);
+    mostrarAvisoAindaNaNuvem(erro);
     return;
   }
-  idsForaDaNuvem.clear();
-  document.querySelector('#frases-avisos [data-aviso="fora-da-nuvem"]')?.remove();
-  if (usuarioLogado) Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
+  idsAindaNaNuvem.clear();
+  document.querySelector('#frases-avisos [data-aviso="ainda-na-nuvem"]')?.remove();
 }
 
 function apagarTudo() {
@@ -2233,6 +2245,7 @@ function exportarTxt() {
     return u;
   });
   selecionadas.clear();
+  atualizarContadorSelecao();
   chrome.storage.local.set({ frases: todasFrases }, () => {
     atualizarTotal();
     aplicarFiltro();
@@ -2563,13 +2576,9 @@ async function retentarJobsFalhos() {
 // os campos vêm em branco, campo em branco fica como está, e o toast diz
 // quantas frases mudaram.
 
-let edicaoDeContexto = null; // { ids, modal }
-
 function configurarModaisDeFrases() {
-  for (const id of ['modal-contexto', 'modal-apagar']) {
-    for (const botao of document.getElementById(id).querySelectorAll('[data-fechar-modal]')) {
-      botao.addEventListener('click', () => (id === 'modal-apagar' ? pedidoDeApagar : edicaoDeContexto)?.modal.fechar());
-    }
+  for (const botao of document.querySelectorAll('[data-fechar-modal]')) {
+    botao.addEventListener('click', () => modalAberto?.fechar());
   }
   document.getElementById('btn-apagar-confirmar').addEventListener('click', confirmarApagar);
   document.getElementById('form-contexto').addEventListener('submit', (e) => {
@@ -2591,22 +2600,31 @@ function abrirEditarContexto(ids) {
   document.getElementById('modal-titulo').value  = umaFrase?.contexto?.titulo  || '';
   document.getElementById('modal-detalhe').value = umaFrase?.contexto?.detalhe || '';
 
-  const modal = abrirModal(document.getElementById('modal-contexto'), { aoFechar: () => { edicaoDeContexto = null; } });
-  edicaoDeContexto = { ids, modal };
+  abrirModalDeFrases('modal-contexto', () => { edicaoDeContexto = null; });
+  edicaoDeContexto = { ids };
   document.getElementById('modal-fonte').focus();
+}
+
+/** Abre o modal e guarda como fechá-lo, para o × e o Cancelar acharem o dono. */
+function abrirModalDeFrases(id, aoFechar) {
+  modalAberto = abrirModal(document.getElementById(id), {
+    aoFechar: () => { modalAberto = null; aoFechar(); },
+  });
 }
 
 function salvarContexto() {
   if (!edicaoDeContexto) return;
-  const { ids, modal } = edicaoDeContexto;
+  const { ids } = edicaoDeContexto;
   const fonteVal   = document.getElementById('modal-fonte').value.trim();
   const tituloVal  = document.getElementById('modal-titulo').value.trim();
   const detalheVal = document.getElementById('modal-detalhe').value.trim();
-  modal.fechar();
+  modalAberto.fechar();
   if (ids.length === 1) salvarContextoDeUmaFrase(ids[0], fonteVal, tituloVal, detalheVal);
   else                  salvarContextoDeVarias(ids, fonteVal, tituloVal, detalheVal);
 }
 
+// A seleção fica de pé depois de salvar: quem acabou de arrumar o Contexto de
+// 12 frases quase sempre vai exportar ou enviar as mesmas 12 em seguida.
 function salvarContextoDeVarias(ids, fonteVal, tituloVal, detalheVal) {
   const alvo = new Set(ids);
   const editadas = [];
