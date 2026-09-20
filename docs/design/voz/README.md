@@ -6,7 +6,7 @@ O que está aqui:
 
 1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
 2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: 180 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
+3. **Catálogo**: 183 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
 
 Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
 
@@ -68,7 +68,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 
 ## 3. Catálogo de estados-chave
 
-São 180 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
+São 183 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 
@@ -167,7 +167,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | PAI-17 | Copiou frase | sucesso | Copiado! | Frase copiada | Falha: “Não deu para copiar”. |
 | PAI-18 | Ação sem seleção **(some)** | erro | Selecione as frases que deseja exportar. (e editar/enviar) | _(sem texto)_ | Com a barra contextual, essas ações só aparecem com seleção: a mensagem fica inalcançável. |
 | PAI-19 | Exportou .txt | sucesso | 12 frases exportadas! | 12 frases exportadas para .txt |  |
-| PAI-20 | Modal de contexto (título) | status | Editar Metadados · Editar 12 frase(s) selecionada(s) | Editar contexto · Editar contexto de 12 frases — Campos em branco ficam como estão | Contexto, não metadados (glossário). |
+| PAI-20 | Modal de contexto (título) | status | Editar Metadados · Editar 12 frase(s) selecionada(s) | Editar contexto · Editar contexto de 12 frases — Campos em branco ficam como estão · [Cancelar] [Salvar contexto] | Contexto, não metadados (glossário). |
 | PAI-21 | Campos do contexto | status | Plataforma ou tipo de origem · Episódio, capítulo ou informação complementar | Fonte — de onde a frase veio (netflix, youtube, livro…) · Título · Detalhe — episódio, capítulo ou canal |  |
 | PAI-22 | Contexto em massa salvo | sucesso | Metadados atualizados! | Contexto de 12 frases atualizado | Edição individual: sem toast. |
 | PAI-23 | Campo da busca **(novo)** | status | (busca não existe) | Buscar nas frases | Procura no texto da frase e no Título. O × ao lado do texto usa o rótulo de PAI-04 (“Limpar busca”). Busca: lista fechada. |
@@ -179,6 +179,9 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | PAI-29 | Nomes das Fontes **(novo)** | status | Todos os Streamings · Amazon Prime Video · Físico/Livro… | Netflix · YouTube · Prime Video · Max · Disney+ · Star+ · Kinopoisk · Web · Seleção · PDF · Livro · Manual · Importado | O selo de Fonte no cartão e as opções do filtro de Fonte. Uma Fonte fora da lista aparece com o nome gravado. |
 | PAI-30 | Ações do cartão **(novo)** | status | Editar texto da frase · Editar metadados · Copiar frase · Apagar frase (só title) | Editar texto · Editar contexto · Copiar frase · Apagar frase | As 4 ações só-ícone de cada cartão; o nome é o rótulo para o leitor de tela e o tooltip. |
 | PAI-31 | Selecionar a página **(novo)** | status | (Pág.) | Selecionar página | O checkbox da linha de seleção, sem seleção; marcado com a página inteira, misto com parte dela. |
+| PAI-32 | Barra contextual de seleção **(novo)** | status | Pág. · Todas (30) · Editar Selecionados · Deletar · Exportar .txt · Enviar ao Anki | Desmarcar todas · Selecionar todas as 30 frases · Editar contexto · Exportar .txt · Apagar · Enviar ao Anki | Aparece só com seleção, abaixo dos filtros. “Desmarcar todas” é o × só-ícone (rótulo e tooltip). “Selecionar todas as N frases” só com a página inteira marcada, e conta as frases dos filtros atuais. |
+| PAI-33 | Editar texto no lugar **(novo)** | status | (a textarea sem rótulo e sem botões) | Texto da frase · Enter salva · Esc cancela · [Cancelar] [Salvar texto] | “Texto da frase” é o nome do campo para o leitor de tela. Salvar não dá toast (PAI-16). |
+| PAI-34 | Fechar **(novo)** | status | Fechar (só title) | Fechar | O × dos modais e dos avisos persistentes, para o leitor de tela e o tooltip. |
 
 ### Painel · Minerar frases (Colar · Arquivo .txt · Foto)
 

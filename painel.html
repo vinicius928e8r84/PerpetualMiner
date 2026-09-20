@@ -74,10 +74,8 @@
         </header>
 
         <!--
-          As ações de hoje (selecionar, editar, apagar, exportar, enviar ao Anki,
-          importar e a adição em massa) continuam funcionando sobre os cartões até
-          os tickets delas as reconstruírem: #30 (seleção e ações), #31 (Minerar
-          frases) e #32 (envio ao Anki).
+          As ações de hoje que ainda não foram reconstruídas (BookReader, importar
+          e a adição em massa) continuam aqui até o #31 (Minerar frases).
         -->
         <div class="conteudo-de-hoje" data-tema="claro">
           <div class="main-header">
@@ -89,41 +87,6 @@
                 </svg>
                 BookReader
               </a>
-              <button id="btn-sel-pagina" class="sel-btn" title="Selecionar/desmarcar frases da página atual">Pág.</button>
-              <button id="btn-sel-todos"  class="sel-btn" title="Selecionar/desmarcar todas as frases visíveis">Todas</button>
-              <button id="btn-bulk-edit" class="bulk-edit-btn" title="Editar metadados das frases selecionadas">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                </svg>
-                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                </svg>
-                Editar Selecionados
-              </button>
-              <span id="selection-count" class="selection-count hidden"></span>
-              <button id="btn-delete-selected" class="btn-delete-selected hidden" title="Deletar frases selecionadas">
-                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <polyline points="3 6 5 6 21 6"/>
-                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                  <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                </svg>
-                Deletar
-              </button>
-              <button id="btn-export" class="export-btn" title="Exportar frases com keyword como .txt">
-                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                Exportar .txt
-              </button>
-              <button id="btn-send-anki" class="send-anki-btn" title="Enviar as frases selecionadas direto para o Anki">
-                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path d="M22 2 11 13"/>
-                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                </svg>
-                Enviar ao Anki
-              </button>
               <input type="file" id="import-file-input" accept=".txt" hidden>
               <button id="btn-import" class="action-green-btn" title="Importar frases de um arquivo .txt exportado">
                 <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -144,6 +107,9 @@
           </div>
 
         </div>
+
+        <!-- Avisos persistentes (C1): a nuvem falhou ao apagar (PAI-15). -->
+        <div class="frases-avisos" id="frases-avisos"></div>
 
         <!-- Filtros numa linha que quebra: Fonte · idioma · ordem, a busca e o toggle. -->
         <div class="frases-filtros">
@@ -169,9 +135,37 @@
           </label>
         </div>
 
-        <!-- A linha de seleção: sem seleção, o checkbox “Selecionar página”. -->
+        <!--
+          A linha de seleção: sem seleção, o checkbox “Selecionar página”. Com
+          seleção, ela vira a barra contextual (PAI-32), que gruda no topo da ilha
+          ao rolar; o checkbox fica no começo dela, marcado ou misto.
+        -->
         <div class="frases-selecao" id="frases-selecao" hidden>
-          <label><input type="checkbox" class="veio-checkbox" id="sel-pagina"><span data-voz="PAI-31"></span></label>
+          <label class="frases-selecao__pagina">
+            <input type="checkbox" class="veio-checkbox" id="sel-pagina" data-voz-aria="PAI-31">
+            <span class="frases-selecao__rotulo" data-voz="PAI-31"></span>
+          </label>
+          <div class="frases-barra" id="frases-barra" hidden>
+            <button class="veio-botao-icone" id="btn-desmarcar-todas" type="button"
+                    data-voz-aria="PAI-32.desmarcar" data-voz-title="PAI-32.desmarcar"><span data-icone="fechar"></span></button>
+            <span class="frases-barra__contagem" id="selection-count" aria-live="polite"></span>
+            <button class="frases-barra__todas" id="btn-sel-todas" type="button" hidden></button>
+            <span class="frases-barra__acoes">
+              <button class="veio-botao veio-botao--fantasma" id="btn-bulk-edit" type="button">
+                <span data-icone="contexto"></span><span data-voz="PAI-32.editarContexto"></span>
+              </button>
+              <button class="veio-botao veio-botao--fantasma" id="btn-export" type="button">
+                <span data-icone="arquivo"></span><span data-voz="PAI-32.exportar"></span>
+              </button>
+              <button class="veio-botao veio-botao--fantasma frases-barra__apagar" id="btn-delete-selected" type="button">
+                <span data-icone="apagar"></span><span data-voz="PAI-32.apagar"></span>
+              </button>
+              <!-- O que o Enviar ao Anki faz continua o de hoje até o #32 reconstruir o envio. -->
+              <button class="veio-botao veio-botao--primario" id="btn-send-anki" type="button">
+                <span data-icone="enviar"></span><span data-voz="PAI-32.enviar"></span>
+              </button>
+            </span>
+          </div>
         </div>
 
         <!-- PAI-01: enquanto a lista carrega, 5 cartões-esqueleto sem texto. -->
@@ -484,52 +478,47 @@
       </section>
     </main>
   </div>
-  <!-- ── Modal de Edição de Metadados ─────────────────────────── -->
-  <div id="edit-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal">
-
-      <div class="modal-header">
-        <div>
-          <h3 id="modal-title" class="modal-title">Editar Metadados</h3>
-          <p  id="modal-subtitle" class="modal-subtitle"></p>
+  <!-- ── Editar contexto (PAI-20…22): 1 frase pela ação do cartão, N pela barra ── -->
+  <div class="veio-scrim" id="modal-contexto" hidden>
+    <div class="veio-modal frases-modal" role="dialog" aria-labelledby="modal-contexto-titulo" aria-describedby="modal-contexto-subtitulo">
+      <button class="veio-botao-icone frases-modal__fechar" type="button" data-fechar-modal
+              data-voz-aria="PAI-34" data-voz-title="PAI-34"><span data-icone="fechar"></span></button>
+      <h2 class="veio-modal__titulo" id="modal-contexto-titulo"></h2>
+      <p class="veio-modal__corpo frases-modal__subtitulo" id="modal-contexto-subtitulo"></p>
+      <form class="frases-modal__campos" id="form-contexto">
+        <label class="frases-modal__campo">
+          <span class="frases-modal__rotulo" data-voz="PAI-21.fonte"></span>
+          <input class="veio-campo" id="modal-fonte" type="text" autocomplete="off" aria-describedby="modal-fonte-ajuda">
+          <span class="frases-modal__ajuda" id="modal-fonte-ajuda" data-voz="PAI-21.fonteAjuda"></span>
+        </label>
+        <label class="frases-modal__campo">
+          <span class="frases-modal__rotulo" data-voz="PAI-21.titulo"></span>
+          <input class="veio-campo" id="modal-titulo" type="text" autocomplete="off">
+        </label>
+        <label class="frases-modal__campo">
+          <span class="frases-modal__rotulo" data-voz="PAI-21.detalhe"></span>
+          <input class="veio-campo" id="modal-detalhe" type="text" autocomplete="off" aria-describedby="modal-detalhe-ajuda">
+          <span class="frases-modal__ajuda" id="modal-detalhe-ajuda" data-voz="PAI-21.detalheAjuda"></span>
+        </label>
+        <div class="veio-modal__acoes">
+          <button class="veio-botao veio-botao--fantasma" type="button" data-fechar-modal data-voz="PAI-20.cancelar"></button>
+          <button class="veio-botao veio-botao--primario" type="submit" data-voz="PAI-20.salvar"></button>
         </div>
-        <button id="btn-modal-close" class="modal-close" title="Fechar">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Apagar (PAI-12 · PAI-13): um só modal para 1 frase e para a seleção ── -->
+  <div class="veio-scrim" id="modal-apagar" hidden>
+    <div class="veio-modal frases-modal" role="dialog" aria-labelledby="modal-apagar-titulo" aria-describedby="modal-apagar-corpo">
+      <button class="veio-botao-icone frases-modal__fechar" type="button" data-fechar-modal
+              data-voz-aria="PAI-34" data-voz-title="PAI-34"><span data-icone="fechar"></span></button>
+      <h2 class="veio-modal__titulo" id="modal-apagar-titulo"></h2>
+      <p class="veio-modal__corpo" id="modal-apagar-corpo"></p>
+      <div class="veio-modal__acoes">
+        <button class="veio-botao veio-botao--fantasma" type="button" data-fechar-modal data-foco-seguro id="btn-apagar-cancelar"></button>
+        <button class="veio-botao veio-botao--perigo-cheio" type="button" id="btn-apagar-confirmar"></button>
       </div>
-
-      <div class="modal-body">
-        <div class="modal-field">
-          <label class="modal-label" for="modal-fonte">Fonte</label>
-          <input id="modal-fonte" class="modal-input" type="text"
-                 placeholder="Ex: netflix, youtube, web, livro">
-          <span class="modal-hint">Plataforma ou tipo de origem</span>
-        </div>
-        <div class="modal-field">
-          <label class="modal-label" for="modal-titulo">Título</label>
-          <input id="modal-titulo" class="modal-input" type="text"
-                 placeholder="Ex: Stranger Things, Atomic Habits">
-        </div>
-        <div class="modal-field">
-          <label class="modal-label" for="modal-detalhe">Detalhe</label>
-          <input id="modal-detalhe" class="modal-input" type="text"
-                 placeholder="Ex: S04E01, Cap. 3, Canal: Naval">
-          <span class="modal-hint">Episódio, capítulo ou informação complementar</span>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button id="btn-modal-cancel" class="btn-modal-cancel">Cancelar</button>
-        <button id="btn-modal-save"   class="btn-modal-save">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-          Salvar
-        </button>
-      </div>
-
     </div>
   </div>
 

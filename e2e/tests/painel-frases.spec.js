@@ -7,8 +7,9 @@
 // com a Palavra grifada e o chip `palavra:`/`auto:`, e a linha de Contexto com a
 // Fonte, Título · Detalhe e o selo do estado. Os filtros ficam numa linha, com a
 // busca no texto e no Título (item 1 da lista fechada). A lista mostra os
-// estados PAI-01 a PAI-04. As ações de hoje (selecionar, apagar, exportar,
-// enviar ao Anki) continuam funcionando sobre os cartões até #30 e #32.
+// estados PAI-01 a PAI-04. A seleção, as ações do cartão e o Apagar com
+// confirmação são do #30 (painel-frases-selecao.spec.js); o envio ao Anki
+// continua o de hoje até o #32.
 //
 // Os testes afirmam o que a pessoa vê e o que fica gravado, nunca funções
 // internas.
@@ -392,67 +393,19 @@ test('os números da paginação saem em PT-BR: “1–10 de 1.284” e “1 de 
   await expect(paginas(page)).toContainText('1 de 129');
 });
 
-// ─── As ações de hoje continuam sobre os cartões ─────────────────────────────
+// ─── Seleção sobre os cartões ────────────────────────────────────────────────
+//
+// A barra contextual, o Exportar .txt, o Apagar com confirmação e as ações do
+// cartão são do #30: `painel-frases-selecao.spec.js`.
 
-test('selecionar cartões e Exportar .txt baixa as frases escolhidas', async ({ page, extensao }) => {
-  await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
-  await abrirFrases(page, extensao);
-
-  await cartao(page, 'Sentence number 3 ').getByRole('checkbox', { name: 'Selecionar frase' }).check();
-  await cartao(page, 'Sentence number 1 ').getByRole('checkbox', { name: 'Selecionar frase' }).check();
-  await expect(page.locator('#selection-count')).toHaveText('2 selecionadas');
-
-  const [download] = await Promise.all([
-    page.waitForEvent('download'),
-    page.locator('#btn-export').click(),
-  ]);
-  const conteudo = require('fs').readFileSync(await download.path(), 'utf8');
-  expect(conteudo).toContain('Sentence number 3 about the harbour.');
-  expect(conteudo).toContain('Sentence number 1 about the harbour.');
-  expect(conteudo).not.toContain('Sentence number 2 ');
-});
-
-test('o cartão selecionado ganha o destaque, e “Pág.” marca a página inteira', async ({ page, extensao }) => {
+test('o cartão selecionado ganha o destaque', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(12) });
   await abrirFrases(page, extensao);
 
   const primeiro = cartoes(page).first();
   await primeiro.getByRole('checkbox', { name: 'Selecionar frase' }).check();
   await expect(primeiro).toHaveClass(/veio-frase--selecionada/);
-
-  await page.locator('#btn-sel-pagina').click();
-  await expect(lista(page).getByRole('checkbox', { name: 'Selecionar frase', checked: true })).toHaveCount(10);
-  await expect(page.locator('#selection-count')).toHaveText('10 selecionadas');
-});
-
-test('apagar a seleção tira as frases escolhidas da lista e do que fica gravado', async ({ page, extensao }) => {
-  await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
-  await abrirFrases(page, extensao);
-
-  await cartao(page, 'Sentence number 3 ').getByRole('checkbox', { name: 'Selecionar frase' }).check();
-  await cartao(page, 'Sentence number 1 ').getByRole('checkbox', { name: 'Selecionar frase' }).check();
-  page.once('dialog', dialogo => dialogo.accept());
-  await page.locator('#btn-delete-selected').click();
-
-  await expect(cartoes(page)).toHaveText([/Sentence number 2 /]);
-  await expect.poll(async () => (await extensao.frases()).map(f => f.texto))
-    .toEqual(['Sentence number 2 about the harbour.']);
-});
-
-test('“Todas” marca as frases de todas as páginas, e apagar leva a lista ao primeiro uso', async ({ page, extensao }) => {
-  await extensao.gravarStorage({ frases: frasesDeExemplo(12) });
-  await abrirFrases(page, extensao);
-
-  await page.locator('#btn-sel-todos').click();
-  await expect(page.locator('#selection-count')).toHaveText('12 selecionadas');
-  await paginas(page).getByRole('button', { name: 'Próxima página' }).click();
-  await expect(lista(page).getByRole('checkbox', { name: 'Selecionar frase', checked: true })).toHaveCount(2);
-
-  page.once('dialog', dialogo => dialogo.accept());
-  await page.locator('#btn-delete-selected').click();
-
-  await expect(lista(page).locator('.veio-vazio')).toContainText('Alt+S');
-  await expect.poll(async () => (await extensao.frases()).length).toBe(0);
+  await expect(cartoes(page).nth(1)).not.toHaveClass(/veio-frase--selecionada/);
 });
 
 test('o cabeçalho traz Minerar frases, que abre a adição em massa de hoje', async ({ page, extensao }) => {

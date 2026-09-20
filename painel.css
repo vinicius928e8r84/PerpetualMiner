@@ -589,6 +589,16 @@ body {
   font-weight: var(--veio-peso-rotulo);
 }
 
+/* Avisos persistentes (C1) acima dos filtros: a nuvem falhou ao apagar (PAI-15). */
+.frases-avisos {
+  display: grid;
+  gap: 8px;
+}
+
+.frases-avisos:not(:empty) {
+  margin-top: 16px;
+}
+
 /* A linha de seleção: sem seleção, o checkbox “Selecionar página” (PAI-31). */
 .frases-selecao {
   margin-top: 10px;
@@ -598,11 +608,89 @@ body {
   font-weight: var(--veio-peso-rotulo);
 }
 
-.frases-selecao label {
+.frases-selecao[hidden] {
+  display: none;
+}
+
+.frases-selecao__pagina {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
+}
+
+/* Com seleção, a linha vira a barra contextual (PAI-32): pílula com borda ouro
+   a 45%, grudada no topo da ilha ao rolar. O checkbox da página fica no começo
+   dela, só com o nome para o leitor de tela. */
+.frases-selecao--barra {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 6px 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--veio-accent) 45%, var(--veio-border));
+  border-radius: var(--veio-raio-selecao);
+  background: var(--veio-surface);
+  color: var(--veio-text);
+  box-shadow: var(--veio-sombra);
+}
+
+.frases-selecao--barra .frases-selecao__rotulo {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.frases-barra {
+  display: contents;
+}
+
+.frases-barra[hidden] {
+  display: none;
+}
+
+.frases-barra__contagem {
+  font-weight: var(--veio-peso-titulo);
+  white-space: nowrap;
+}
+
+.frases-barra__todas {
+  margin-right: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--veio-accent-text);
+  font: inherit;
+  font-weight: var(--veio-peso-rotulo);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.frases-barra__todas[hidden] + .frases-barra__acoes {
+  margin-left: auto;
+}
+
+.frases-barra__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.frases-barra__acoes .veio-botao {
+  padding: 6px 12px;
+  font-size: var(--veio-tam-apoio);
+}
+
+.frases-barra__apagar {
+  color: var(--veio-danger);
 }
 
 /* O × nativo do campo de busca dá lugar ao × da busca Veio. */
@@ -634,8 +722,71 @@ body {
   opacity: 1;
 }
 
-.frases-lista .veio-frase__texto textarea {
+/* Editar texto no lugar (PAI-33): o campo, a dica e Cancelar · Salvar texto. */
+.frase-edicao__campo {
+  min-height: 64px;
   font: inherit;
+  resize: vertical;
+}
+
+.frase-edicao__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+  font-family: var(--veio-fonte-ui);
+}
+
+.frase-edicao__dica {
+  margin-right: auto;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+/* Os modais de Frases (Editar contexto e Apagar): o modal Veio com × no canto. */
+.frases-modal {
+  position: relative;
+}
+
+.frases-modal .veio-modal__titulo {
+  padding-right: 36px;
+}
+
+.frases-modal__fechar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+}
+
+.frases-modal__subtitulo {
+  overflow-wrap: anywhere;
+}
+
+.frases-modal__campos {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.frases-modal__campo {
+  display: grid;
+  gap: 5px;
+}
+
+.frases-modal__rotulo {
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-rotulo);
+}
+
+.frases-modal__ajuda {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+}
+
+.frases-modal__campos .veio-modal__acoes {
+  margin-top: 4px;
 }
 
 /* O chip `palavra:`/`auto:` e o + ao lado dele. */

@@ -134,7 +134,9 @@ named by `Conta.SITUACOES` (never a loose string): `SINCRONIZANDO` (CFG-01), `PR
 this computer's phrases, not the whole cloud collection), `RECUSADO` (CFG-04) and `EXPIROU` (CFG-08); with no profile
 name the account is “Conta Google” (CFG-10).
 
-A sync problem shows **only** in the card and the chip — never a toast or a strip in another area. `painel.js` tags a
+A sync problem shows **only** in the card and the chip — never a toast or a strip in another area. The one exception is
+the spec's own PAI-15: when a delete reaches this computer but not the cloud, Frases also shows the persistent aviso
+saying those phrases may come back, with “Tentar de novo”; the card and the chip still say the computer is out of sync. `painel.js` tags a
 cloud error with its situation (`erroDaResposta`: HTTP 401 → `EXPIROU`, 403/PERMISSION_DENIED → `RECUSADO`, the rest
 `SEM_SINCRONIZAR`, or `PRIMEIRA_SUBIDA_FALHOU` when the first upload reached nothing) and the raw message goes to the card's collapsed “Detalhes”. Closing Google's login window is not an
 error and shows nothing; a login that fails shows CFG-07 in the card with “Tentar de novo”.
@@ -153,12 +155,27 @@ the Fonte filter), Título · Detalhe and the state badge (PAI-08).
 The area header carries **Minerar frases** (ADD-01), which opens today's bulk add until #31 brings its menu. The filter
 row: one Fonte select (the Fontes in the history), language, order, the search (text and Título, with ×)
 and the “Ocultar enviadas e exportadas” toggle. Below it, the **Selecionar página** checkbox (PAI-31) marks the whole
-page, and shows the mixed state when part of it is selected (`refletirSelecao`). The list states: 5 skeleton cards until the first load finishes
+page, and shows the mixed state when part of it is selected (`refletirSelecao`). Changing a filter or the search clears
+the selection, so no action lands on a phrase that is not on screen; reordering keeps it.
+
+With a selection, that same row becomes the **contextual bar** (PAI-32), sticky at the top of the island: × Desmarcar
+todas, the count (PAI-06), “Selecionar todas as N frases” once the whole page is marked (N is what the filters show,
+across pages), and Editar contexto · Exportar .txt · Apagar · Enviar ao Anki. The page checkbox stays at its start,
+with its label only for the screen reader.
+
+The card's four icon actions (PAI-30) appear on hover and on focus. **Editar texto** swaps the text for a field in
+place (PAI-33: Enter saves, Esc cancels, Cancelar · Salvar texto, no toast — the change is on screen, PAI-16);
+`edicaoDeTexto` holds the phrase and the draft, so a redraw does not lose it. **Editar contexto** opens the same modal
+for 1 phrase (fields filled, no toast) and for N (fields blank stay as they are, toast PAI-22). **Apagar** opens one
+modal for 1 phrase (PAI-12, no toast) and for the selection (PAI-13, toast PAI-14); the body only mentions the other
+computers when an account is connected. Both modals are the Veio modal, driven by `abrirModal`. The list states: 5 skeleton cards until the first load finishes
 (PAI-01), first run (PAI-02: its `titulo` in bold above the text, with today's fixed Alt+S until #27), filters hid everything (PAI-03) and search without
 result (PAI-04, plus Limpar filtros when a filter is on). Everything is built with DOM nodes, never HTML strings.
 
-Today `exported` is written both by the Envio and by Exportar .txt, and the card shows it as Enviada ao Anki; #30
-gives Exportada its own state.
+Two marks, never the same one: `status: 'exported'` is **Enviada ao Anki** (the phrase went into a completed Envio;
+the field keeps its pre-glossary name), and `exportadaTxt` is **Exportada** (it was written to a .txt). Exporting never
+writes the Envio's mark, a phrase that has both says Enviada ao Anki, and “Ocultar enviadas e exportadas” hides either.
+Both marks travel to the cloud and merge on load in the same place (`carregarFrasesFirestore`).
 
 ### Base components (`veio/componentes.css` + `veio/componentes.js`)
 
