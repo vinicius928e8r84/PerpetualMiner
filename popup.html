@@ -4,10 +4,17 @@
   <meta charset="UTF-8">
   <title>PerpetualMiner</title>
   <link rel="stylesheet" href="veio/tokens.css">
+  <script src="veio/tema.js"></script>
   <link rel="stylesheet" href="veio/componentes.css">
   <link rel="stylesheet" href="popup.css">
 </head>
-<body>
+<!--
+  O popup ainda é o de hoje (#38 refaz ele na Veio): o CSS foi desenhado
+  para o fundo escuro, então o corpo fica preso no escuro até lá. O <html> já
+  recebe o tema escolhido (veio/tema.js), e o popup passa a segui-lo inteiro
+  quando #38 o trouxer para os tokens.
+-->
+<body data-tema="escuro">
 
   <div class="popup-header">
     <img class="veio-marca" src="veio/icones/icone.svg" width="30" height="30" alt="PerpetualMiner">

@@ -28,7 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-shell.js` | The panel's “Ilhas” shell: one page, one area per address (`#frases`, `#anki/<aba>`, `#configuracoes[/<seção>]`), the sidebar indicators (phrase total, Conexão com o Anki dot), the rail below ~1000 px, the F1 strip and the Configurações cards opening and closing. See “Panel shell” below |
 | `painel-conta.js` | The account in the panel: one state drawn in the Configurações › Conta & sync card, its closed-row summary and the sidebar chip (CFG-01…10). See “Account (Conta & sync)” below |
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
-| `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs and the SVG). See `veio/README.md` |
+| `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `tema.js` (the chosen theme, applied before the first paint on every page), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs and the SVG). See `veio/README.md` |
 | `lib/voz/catalogo.js` | The Voice catalog as data: the 180 approved copy states from `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
@@ -95,7 +95,7 @@ every other surface.
 `painel.html` is one page with three areas; the shell (`docs/design/painel/shell/`, variant B) only swaps the view, so
 nothing reloads when switching areas — filters, page, selection, sync and the Envio tracking in `painel.js` stay as
 they are. Addresses: `#frases` (default, and anything unknown), `#anki/custos|baralhos|vocabulario|ajustes`
-(`#anki` alone opens Custos; the sidebar link reopens the last tab seen), `#configuracoes[/conta|atalhos|chave|perigo]`
+(`#anki` alone opens Custos; the sidebar link reopens the last tab seen), `#configuracoes[/conta|atalhos|chave|aparencia|perigo]`
 (opens the card, scrolls to it and flashes its border; bare `#configuracoes` shows every card closed). The Anki tabs are the Veio segmented control; picking one sets the hash,
 so the browser's back button walks through areas and tabs.
 
@@ -113,12 +113,14 @@ Until an area is rebuilt, today's content lives inside the shell in `.conteudo-d
 `data-tema="claro"`: its CSS was drawn for a light background. In Frases that block holds only today's bulk actions
 (select page/all, edit, delete, export, send to Anki, import, bulk add) until #30, #31 and #32 rebuild them.
 
-Configurações is the “summary first” variant C (`docs/design/painel/configuracoes/`): each of the four cards (Conta & sync ·
-Atalhos · Chave do Gemini · Zona de perigo) is one closed row — icon tile, title, a summary of its state, chevron — and
+Configurações is the “summary first” variant C (`docs/design/painel/configuracoes/`): each of the five cards (Conta & sync ·
+Atalhos · Chave do Gemini · Aparência · Zona de perigo) is one closed row — icon tile, title, a summary of its state, chevron — and
 opens in place; several can be open at once. The whole row toggles, and the title's `<button aria-expanded>` inside the
 `<h2>` is the control for the keyboard and the screen reader. The cards live in a size container: below ~560 px of
 content the summary leaves the row and the body loses its 62 px indent. Atalhos, Chave do Gemini and Zona de perigo get
-their content in their own tickets (Zona de perigo still hosts today's Apagar tudo), but their closed-row summaries
+their content in their own tickets (Zona de perigo still hosts today's Apagar tudo); Aparência holds the theme selector
+(CFG-29…31), a segmented control whose choice `veio/tema.js` stores and every open page follows through
+`chrome.storage.onChanged`, with no reload and no toast. The other closed-row summaries
 (CFG-28) are drawn by the shell from what is already stored: the caption shortcut (still the fixed Alt+S) and
 `pm_atalho` relabelled in PT-BR, `geminiApiKey` masked to its first and last 4 characters (or “Sem chave” in
 `danger`), and the phrase total (“1.284 frases”, “Nenhuma frase”); they follow `chrome.storage.onChanged`.
@@ -231,6 +233,7 @@ Each entry in `chrome.storage.local["frases"]` (unlimited, newest first):
 
 Other storage keys:
 - `geminiApiKey`, `bookTitleDefault` — BookReader settings
+- `pm_tema` — `'escuro'` (the default, and what an absent key means) or `'claro'`: the theme chosen on this computer. It is local on purpose and never syncs, so each computer opens in the theme picked on it. `veio/tema.js` mirrors it into `localStorage` under the same name, which is read before the first paint so a light page never flashes dark; `chrome.storage` stays the truth and corrects the mirror
 - `pm_firebase_auth` — `{ uid, idToken, refreshToken, expiresAt }` — Firebase auth session
 - `pm_user_info` — `{ uid, email, displayName, photoURL }` — Google user profile
 - `pm_pending_sync` — `string[]` of phrase IDs awaiting Firestore retry

@@ -82,6 +82,9 @@
     // Os azulejos dos cards de Configurações e o chevron que os abre.
     teclado: ['<rect x="2" y="6" width="20" height="12" rx="2"/>', '<path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>'],
     chave: ['<circle cx="8" cy="15" r="4"/>', '<path d="m10.8 12.2 9.2-9.2M17 6l3 3M15 8l2 2"/>'],
+    // O azulejo da Aparência: o círculo de contraste, metade cheia, que diz
+    // escuro e claro sem depender de sol e lua.
+    tema: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/>'],
     perigo: ['<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>', '<path d="M12 9v4M12 17h.01"/>'],
     abrir: ['<path d="m6 9 6 6 6-6"/>'],
   };

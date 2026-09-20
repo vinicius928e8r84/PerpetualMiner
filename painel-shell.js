@@ -5,7 +5,7 @@
 //
 //   #frases (padrão)                        Frases mineradas
 //   #anki/custos|baralhos|vocabulario|ajustes  a aba da Conexão com o Anki
-//   #configuracoes[/conta|atalhos|chave|perigo] Configurações, rolando até o card
+//   #configuracoes[/conta|atalhos|chave|aparencia|perigo] Configurações, rolando até o card
 //
 // Trocar de área só troca a vista: nada recarrega, então os filtros, a página, a
 // seleção, o sync e o acompanhamento de envios do painel.js continuam como estão.
@@ -18,13 +18,14 @@
 //
 // Em Configurações, os cards ficam fechados numa linha com o resumo e abrem no
 // lugar, vários ao mesmo tempo; #configuracoes/<seção> abre o da seção. O
-// resumo da conta é do painel-conta.js; os de Atalhos, Chave do Gemini e Zona
-// de perigo saem daqui, do que já está gravado (o atalho de seleção, a chave e
-// o total de frases). Toda cópia vem do catálogo da Voz.
+// resumo da conta é do painel-conta.js; os de Atalhos, Chave do Gemini,
+// Aparência e Zona de perigo saem daqui, do que já está gravado (o atalho de
+// seleção, a chave, o tema e o total de frases). Toda cópia vem do catálogo da
+// Voz.
 
 (function (raiz) {
   const ABAS_DA_CONEXAO = ['custos', 'baralhos', 'vocabulario', 'ajustes'];
-  const SECOES_DE_CONFIGURACOES = ['conta', 'atalhos', 'chave', 'perigo'];
+  const SECOES_DE_CONFIGURACOES = ['conta', 'atalhos', 'chave', 'aparencia', 'perigo'];
 
   /**
    * O atalho de legenda ainda é o Alt+S fixo do content.js (`ATALHO_TECLA`); ele
@@ -48,6 +49,7 @@
   const fimDosDestaques = new Map();   // card → o timer que tira a borda do destaque
 
   const { textoDaVoz } = raiz;
+  const { TEMAS, gravarTema, temaAplicado } = raiz.Tema;
   const $ = seletor => document.querySelector(seletor);
   const $$ = seletor => [...document.querySelectorAll(seletor)];
   const porId = id => document.getElementById(id);
@@ -62,6 +64,11 @@
       radio.addEventListener('change', () => { location.hash = `#anki/${radio.value}`; });
     }
     porId('shell-tentar-de-novo').addEventListener('click', tentarAConexaoDeNovo);
+    // O tema vale na hora: gravar é o que troca a tela, aqui e em qualquer
+    // outra página aberta (veio/tema.js escuta o mesmo storage).
+    for (const radio of $$('#cfg-tema input[name="tema"]')) {
+      radio.addEventListener('change', () => { if (radio.checked) gravarTema(radio.value); });
+    }
     // A linha inteira do card abre e fecha; o botão do título é quem o teclado
     // e o leitor de tela usam, e o clique nele sobe até aqui.
     for (const cabeca of $$('.cfg-cabeca')) {
@@ -210,10 +217,14 @@
       mostrarResumoDosAtalhos(dados.pm_atalho);
       mostrarResumoDaChave(dados.geminiApiKey);
     });
+    // O tema já está no <html> (veio/tema.js o aplicou antes da primeira
+    // pintura), então o card lê dali em vez de esperar o storage responder.
+    mostrarTema(temaAplicado());
     chrome.storage.onChanged.addListener((mudancas, area) => {
       if (area !== 'local') return;
       if ('pm_atalho' in mudancas) mostrarResumoDosAtalhos(mudancas.pm_atalho.newValue || null);
       if ('geminiApiKey' in mudancas) mostrarResumoDaChave(mudancas.geminiApiKey.newValue || '');
+      if (raiz.Tema.CHAVE in mudancas) mostrarTema(temaAplicado());
     });
   }
 
@@ -247,6 +258,16 @@
       tecla = atalho.code.replace(/^(Key|Digit)/, '');
     }
     return [...modificadores, tecla].join('+');
+  }
+
+  /**
+   * O tema em uso: a opção marcada no controle e o resumo da linha fechada
+   * (CFG-31). Sem escolha gravada, os dois dizem “Escuro”.
+   */
+  function mostrarTema(tema) {
+    for (const radio of $$('#cfg-tema input[name="tema"]')) radio.checked = radio.value === tema;
+    porId('cfg-aparencia-resumo').replaceChildren(
+      elemento('span', null, textoDaVoz(tema === TEMAS.CLARO ? 'CFG-31.claro' : 'CFG-31.escuro')));
   }
 
   /** `AIza••••••••3kQ9` em mono; vazia, o ponto `danger` e “Sem chave”. */

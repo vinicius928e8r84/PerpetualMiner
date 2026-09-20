@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>PerpetualMiner</title>
   <link rel="stylesheet" href="veio/tokens.css">
+  <script src="veio/tema.js"></script>
   <link rel="stylesheet" href="veio/componentes.css">
   <link rel="stylesheet" href="painel.css">
 </head>
@@ -464,6 +465,25 @@
               <span class="cfg-chevron"><span data-icone="abrir"></span></span>
             </div>
             <div class="cfg-corpo" id="cfg-chave-corpo" hidden></div>
+          </section>
+          <section class="shell-card cfg-card" id="cfg-aparencia" aria-labelledby="cfg-aparencia-titulo">
+            <div class="cfg-cabeca">
+              <span class="cfg-icone"><span data-icone="tema"></span></span>
+              <div class="cfg-titulos">
+                <h2 class="shell-card__titulo">
+                  <button class="cfg-alternar" id="cfg-aparencia-titulo" type="button" aria-expanded="false" aria-controls="cfg-aparencia-corpo" data-voz="CFG-29.titulo"></button>
+                </h2>
+                <p class="cfg-descricao" data-voz="CFG-29.descricao"></p>
+              </div>
+              <span class="cfg-resumo" id="cfg-aparencia-resumo"></span>
+              <span class="cfg-chevron"><span data-icone="abrir"></span></span>
+            </div>
+            <div class="cfg-corpo" id="cfg-aparencia-corpo" hidden>
+              <div class="veio-segmentado" id="cfg-tema" role="radiogroup" data-voz-aria="CFG-30.rotulo">
+                <label class="veio-segmentado__opcao"><input type="radio" name="tema" value="escuro"><span data-voz="CFG-30.escuro"></span></label>
+                <label class="veio-segmentado__opcao"><input type="radio" name="tema" value="claro"><span data-voz="CFG-30.claro"></span></label>
+              </div>
+            </div>
           </section>
           <section class="shell-card cfg-card shell-card--perigo" id="cfg-perigo" aria-labelledby="cfg-perigo-titulo">
             <div class="cfg-cabeca">

@@ -39,7 +39,12 @@ const { abrirModal, mostrarToastDeSucesso, escreverFrase } = PerpetualMiner.Veio
   da toolbar na vitrine (`.icone-com-badge b`): o tamanho da letra e o raio dela são os que o
   Chrome desenha, não da Veio, e ficam escritos lá.
 - **Tema:** o escuro é o padrão. O claro entra com `data-tema="claro"`, no `<html>` ou num trecho
-  qualquer (é assim que a vitrine mostra os dois lado a lado). O seletor de tema é outro ticket.
+  qualquer (é assim que a vitrine mostra os dois lado a lado, e como um bloco ainda desenhado para
+  um fundo fixo fica preso no tema dele). Quem escolhe é a pessoa, em Configurações › Aparência, e
+  quem aplica é `veio/tema.js`: toda página da extensão o carrega no `<head>`, antes do CSS dela, e
+  ele abre a página no tema gravado e acompanha a troca nas outras páginas abertas. A escolha fica
+  em `chrome.storage.local` (`pm_tema`), só neste computador. O que aparece por cima das páginas
+  (o overlay) não lê a escolha: ele é sempre escuro.
 - **Marca:** `<img class="veio-marca" src="veio/icones/icone.svg" alt="PerpetualMiner">` e
   `<span class="veio-nome">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>`.
   O cursor ouro pisca a cada 1,1 s e fica parado com `prefers-reduced-motion: reduce`.
