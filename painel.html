@@ -421,8 +421,8 @@
           do estado e abre no lugar; vários podem ficar abertos. A linha inteira
           abre e fecha (painel-shell.js); o botão do título é o controle para o
           teclado e o leitor de tela. O card Conta & sync é desenhado por
-          painel-conta.js; Atalhos, Chave do Gemini e Zona de perigo ganham o
-          conteúdo nos tickets deles.
+          painel-conta.js, o Chave do Gemini por painel-chave.js e o Zona de
+          perigo por painel-perigo.js; Atalhos ganha o conteúdo no ticket dele.
         -->
         <div class="shell-cards">
           <section class="shell-card cfg-card" id="cfg-conta" aria-labelledby="cfg-conta-titulo">
@@ -459,6 +459,7 @@
                 <h2 class="shell-card__titulo">
                   <button class="cfg-alternar" id="cfg-chave-titulo" type="button" aria-expanded="false" aria-controls="cfg-chave-corpo" data-voz="CFG-15.titulo"></button>
                 </h2>
+                <p class="cfg-descricao" data-voz="CFG-15.descricao"></p>
               </div>
               <span class="cfg-resumo" id="cfg-chave-resumo"></span>
               <span class="cfg-chevron"><span data-icone="abrir"></span></span>
@@ -472,13 +473,12 @@
                 <h2 class="shell-card__titulo">
                   <button class="cfg-alternar" id="cfg-perigo-titulo" type="button" aria-expanded="false" aria-controls="cfg-perigo-corpo" data-voz="SHL-04.perigo"></button>
                 </h2>
+                <p class="cfg-descricao" id="cfg-perigo-descricao"></p>
               </div>
               <span class="cfg-resumo" id="cfg-perigo-resumo"></span>
               <span class="cfg-chevron"><span data-icone="abrir"></span></span>
             </div>
-            <div class="cfg-corpo" id="cfg-perigo-corpo" hidden>
-              <button id="btn-apagar-tudo" class="veio-botao veio-botao--perigo" type="button" disabled></button>
-            </div>
+            <div class="cfg-corpo" id="cfg-perigo-corpo" hidden></div>
           </section>
         </div>
       </section>
@@ -632,6 +632,8 @@
   <script src="tombstone.js"></script>
   <script src="painel-shell.js"></script>
   <script src="painel-conta.js"></script>
+  <script src="painel-chave.js"></script>
+  <script src="painel-perigo.js"></script>
   <script src="painel.js"></script>
 </body>
 </html>

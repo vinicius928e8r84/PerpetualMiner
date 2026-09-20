@@ -27,9 +27,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel.html/js/css` | Full dashboard to view, copy, and delete all saved phrases; Google login and Firestore sync |
 | `painel-shell.js` | The panel's “Ilhas” shell: one page, one area per address (`#frases`, `#anki/<aba>`, `#configuracoes[/<seção>]`), the sidebar indicators (phrase total, Conexão com o Anki dot), the rail below ~1000 px, the F1 strip and the Configurações cards opening and closing. See “Panel shell” below |
 | `painel-conta.js` | The account in the panel: one state drawn in the Configurações › Conta & sync card, its closed-row summary and the sidebar chip (CFG-01…10). See “Account (Conta & sync)” below |
+| `painel-chave.js` | The Configurações › Chave do Gemini card: the saved key masked, with Trocar chave; the empty key's field; `geminiApiKey`. See “Chave do Gemini and Zona de perigo” below |
+| `painel-perigo.js` | The Configurações › Zona de perigo card: the Apagar tudo entry, its reach with and without an account, and the Veio confirmation modal (CFG-17). See “Chave do Gemini and Zona de perigo” below |
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs and the SVG). See `veio/README.md` |
-| `lib/voz/catalogo.js` | The Voice catalog as data: the 180 approved copy states from `docs/design/voz/` |
+| `lib/voz/catalogo.js` | The Voice catalog as data: the 181 approved copy states from `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
@@ -117,11 +119,27 @@ Configurações is the “summary first” variant C (`docs/design/painel/config
 Atalhos · Chave do Gemini · Zona de perigo) is one closed row — icon tile, title, a summary of its state, chevron — and
 opens in place; several can be open at once. The whole row toggles, and the title's `<button aria-expanded>` inside the
 `<h2>` is the control for the keyboard and the screen reader. The cards live in a size container: below ~560 px of
-content the summary leaves the row and the body loses its 62 px indent. Atalhos, Chave do Gemini and Zona de perigo get
-their content in their own tickets (Zona de perigo still hosts today's Apagar tudo), but their closed-row summaries
-(CFG-28) are drawn by the shell from what is already stored: the caption shortcut (still the fixed Alt+S) and
+content the summary leaves the row and the body loses its 62 px indent. Atalhos gets its content in its own ticket, but
+the closed-row summaries of Atalhos, Chave do Gemini and Zona de perigo (CFG-28) are drawn by the shell from what is already stored: the caption shortcut (still the fixed Alt+S) and
 `pm_atalho` relabelled in PT-BR, `geminiApiKey` masked to its first and last 4 characters (or “Sem chave” in
 `danger`), and the phrase total (“1.284 frases”, “Nenhuma frase”); they follow `chrome.storage.onChanged`.
+`#configuracoes/<seção>` also tells whoever asked through `Shell.aoAbrirASecao(secao, fn)`, with the card already open.
+
+### Chave do Gemini and Zona de perigo (`painel-chave.js`, `painel-perigo.js`)
+
+The Chave do Gemini card owns `geminiApiKey` (the same key the Minerar de uma foto reads) straight from
+`chrome.storage.local`. Saved, it shows “Chave salva” and the key masked as in the summary (`Shell.mascararChave`), with
+Trocar chave, which opens an *empty* field with Salvar chave and Cancelar, so the old key never reaches the screen.
+Empty, the field stays open with the note. The field is a `<form>`, so Enter saves like the button; an empty (or blank)
+save sets `aria-invalid` and the CFG-16 line linked by `aria-describedby`, and typing clears it. Saving trims the key,
+shows the CFG-16 toast and goes back to the summary. `#configuracoes/chave` with the key empty focuses the field. The key
+is not validated.
+
+The Zona de perigo card is drawn from what `painel.js` reports through `PerpetualMiner.Perigo`: `mostrarTotal(n)`,
+`mostrarConta(comConta)` and `aoApagarTudo(apagar)`. The outline danger button only opens the Veio modal (CFG-17:
+Cancelar has the initial focus, Esc and a click outside close it); only the filled button inside it calls
+`apagarTudo()`, which clears the history, and with an account the cloud, then shows the CFG-18 toast. The description,
+the reach line and the modal body say “all computers of your account” only with an account. No `confirm()`.
 
 ### Account (`painel-conta.js`)
 
@@ -209,7 +227,7 @@ Authentication uses `chrome.identity.launchWebAuthFlow` (OAuth2 with Google) —
 
 Pending sync queue: if a Firestore write fails (offline/error), the phrase `id` is added to `pm_pending_sync` in local storage and retried on next panel load.
 
-Deleting (panel or popup) writes a tombstone so the next panel sync doesn't bring the phrase back from the cloud or from another computer: `pm_del_{id}` in `chrome.storage.sync`, the id in local `pm_deleted_ids` (retry of the Firestore DELETE), and, when logged in, the field ``ids.`{id}` `` in `usuarios/{uid}/meta/deleted`. The popup asks the service worker to delete (`APAGAR_FRASES`); the panel does it itself (`removerFrasesFirestore`, `apagarTudoFirestore`). Both build the tombstone with `tombstone.js`: a phrase id starts with a digit, so its field path must be backquoted, and Firestore (and the e2e fake) rejects the bare `ids.{id}`.
+Deleting (panel or popup) writes a tombstone so the next panel sync doesn't bring the phrase back from the cloud or from another computer: `pm_del_{id}` in `chrome.storage.sync`, the id in local `pm_deleted_ids` (retry of the Firestore DELETE), and, when logged in, the field ``ids.`{id}` `` in `usuarios/{uid}/meta/deleted`. The popup asks the service worker to delete (`APAGAR_FRASES`); the panel does it itself (`removerFrasesFirestore`, `apagarTudoFirestore`). Apagar tudo tombstones this computer's phrases before it reads the cloud, so a cloud that is down cannot bring them back on the next sync. Both build the tombstone with `tombstone.js`: a phrase id starts with a digit, so its field path must be backquoted, and Firestore (and the e2e fake) rejects the bare `ids.{id}`.
 
 ### Storage Schema
 

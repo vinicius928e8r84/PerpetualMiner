@@ -357,7 +357,7 @@ test('dentro do shell, Enviar ao Anki cria o envio, e o acompanhamento continua 
   ).toBeGreaterThan(leiturasAntes);
 });
 
-test('Configurações hospeda Entrar com Google e Apagar tudo de hoje', async ({ page, extensao }) => {
+test('Configurações hospeda Entrar com Google e Apagar tudo', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(2) });
   await abrirPainel(page, extensao, '#configuracoes');
   // Os cards começam fechados (resumo primeiro): abre-se Conta & sync e Zona de perigo.
@@ -366,8 +366,8 @@ test('Configurações hospeda Entrar com Google e Apagar tudo de hoje', async ({
 
   await expect(page.getByRole('button', { name: 'Entrar com Google' })).toBeVisible();
 
-  page.once('dialog', dialogo => dialogo.accept());
   await page.getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 2 frases' }).click();
   await expect(itemDaNav(page, 'Frases').locator('.shell-contador')).toHaveText('0');
   await expect(page.getByRole('button', { name: 'Nenhuma frase para apagar' })).toBeDisabled();
   expect(await extensao.frases()).toEqual([]);

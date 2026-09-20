@@ -1,0 +1,294 @@
+'use strict';
+
+// Passo 2 do redesign: os cards Chave do Gemini e Zona de perigo de
+// Configurações (#28, docs/design/painel/configuracoes/).
+//
+// Chave do Gemini: salva, ela aparece só mascarada (4 primeiros + 4 últimos),
+// com Trocar chave; vazia, o campo fica aberto e salvar vazio é recusado. A
+// chave é a mesma de sempre: `geminiApiKey` no chrome.storage.local, que o
+// Minerar de uma foto lê.
+//
+// Zona de perigo: o botão de contorno só abre o modal Veio; quem apaga é o botão
+// preenchido dentro dele. O alcance muda com a conta: com conta, some também da
+// nuvem. Nenhum confirm() do navegador.
+//
+// Os testes afirmam o que a pessoa vê e o que fica gravado, nunca funções internas.
+
+const { test, expect } = require('../fixtures');
+
+const HOJE = new Date().toLocaleDateString('pt-BR');
+const CHAVE_DO_GEMINI = 'AIzaSyD4kQ7wL2mXe9pRtB8nVfH0cJ3kQ9';
+const OUTRA_CHAVE = 'AIzaSyZ0pQ1rS2tU3vW4xY5zA6bC7dE8fG9h';
+
+function frasesDeExemplo(n) {
+  return Array.from({ length: n }, (_, i) => ({
+    id: 1_700_000_000_000 + (n - i),
+    texto: `Sentence number ${n - i} about the harbour.`,
+    data: HOJE,
+    streaming: 'netflix',
+    idioma: 'Inglês',
+  }));
+}
+
+/** Abre o painel e falha o teste se algum confirm()/alert() do navegador aparecer. */
+async function abrirPainel(page, extensao, endereco) {
+  page.on('dialog', dialogo => {
+    throw new Error(`o painel abriu um diálogo nativo: ${dialogo.message()}`);
+  });
+  await page.goto(extensao.url(`painel.html${endereco}`));
+  await expect(page.getByRole('navigation', { name: 'Navegação do painel' })).toBeVisible();
+}
+
+const card = (page, secao) => page.locator(`#cfg-${secao}`);
+const resumo = (page, secao) => card(page, secao).locator('.cfg-resumo');
+const campoDaChave = page => card(page, 'chave').getByRole('textbox', { name: 'Chave do Gemini' });
+const toast = page => page.locator('.veio-toast');
+const toastCom = (page, texto) => page.locator('.veio-toast', { hasText: texto });
+const modal = page => page.getByRole('dialog');
+
+// ─── Chave do Gemini ─────────────────────────────────────────────────────────
+
+test('chave salva: “Chave salva”, a chave mascarada e Trocar chave; Cancelar volta sem mudar nada', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ geminiApiKey: CHAVE_DO_GEMINI });
+  await abrirPainel(page, extensao, '#configuracoes/chave');
+
+  const chave = card(page, 'chave');
+  await expect(chave.getByText('Usada para ler fotos em Minerar de uma foto. Fica guardada só neste computador.')).toBeVisible();
+  await expect(chave.getByText('Chave salva', { exact: true })).toBeVisible();
+  await expect(chave.locator('.cfg-corpo').getByText('AIza••••••••3kQ9')).toBeVisible();
+  await expect(page.getByText(CHAVE_DO_GEMINI)).toHaveCount(0);
+  await expect(campoDaChave(page)).toHaveCount(0);
+
+  await chave.getByRole('button', { name: 'Trocar chave' }).click();
+  // Trocar abre o campo vazio, com o foco nele: a chave antiga nunca vai para a tela.
+  await expect(campoDaChave(page)).toBeFocused();
+  await expect(campoDaChave(page)).toHaveValue('');
+  await expect(campoDaChave(page)).toHaveAttribute('placeholder', 'Cole a chave (começa com AIza)');
+  await campoDaChave(page).fill(OUTRA_CHAVE);
+  await chave.getByRole('button', { name: 'Cancelar' }).click();
+
+  await expect(campoDaChave(page)).toHaveCount(0);
+  await expect(chave.getByRole('button', { name: 'Trocar chave' })).toBeFocused();
+  await expect(chave.locator('.cfg-corpo').getByText('AIza••••••••3kQ9')).toBeVisible();
+  expect((await extensao.lerStorage('geminiApiKey')).geminiApiKey).toBe(CHAVE_DO_GEMINI);
+});
+
+test('trocar a chave com Enter grava a nova, mostra o toast CFG-16 e o card volta ao resumo', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ geminiApiKey: CHAVE_DO_GEMINI });
+  await abrirPainel(page, extensao, '#configuracoes/chave');
+
+  await card(page, 'chave').getByRole('button', { name: 'Trocar chave' }).click();
+  await campoDaChave(page).fill(`  ${OUTRA_CHAVE}  `);
+  await campoDaChave(page).press('Enter');
+
+  await expect(toast(page)).toHaveText('Chave do Gemini salva');
+  await expect(campoDaChave(page)).toHaveCount(0);
+  await expect(card(page, 'chave').locator('.cfg-corpo').getByText('AIza••••••••fG9h')).toBeVisible();
+  // A mesma chave de sempre, sem os espaços da colagem: é ela que o Minerar de uma foto lê.
+  expect((await extensao.lerStorage('geminiApiKey')).geminiApiKey).toBe(OUTRA_CHAVE);
+
+  await card(page, 'chave').getByRole('button', { name: 'Chave do Gemini', exact: true }).click();
+  await expect(resumo(page, 'chave')).toHaveText('AIza••••••••fG9h');
+});
+
+test('sem chave: o campo fica aberto; salvar vazio é recusado em danger e salvar pelo botão grava', async ({ page, extensao }) => {
+  await abrirPainel(page, extensao, '#configuracoes');
+  await card(page, 'chave').getByRole('button', { name: 'Chave do Gemini', exact: true }).click();
+
+  const chave = card(page, 'chave');
+  await expect(campoDaChave(page)).toBeVisible();
+  await expect(chave.getByText('Sem a chave, Minerar de uma foto não consegue ler as fotos.')).toBeVisible();
+  const salvar = chave.getByRole('button', { name: 'Salvar chave' });
+  await expect(salvar).toHaveClass(/veio-botao--primario/);
+  // Sem chave não há o que cancelar.
+  await expect(chave.getByRole('button', { name: 'Cancelar' })).toHaveCount(0);
+
+  // Salvar vazio (ou só espaços) não grava: borda danger e o aviso embaixo.
+  await campoDaChave(page).fill('   ');
+  await salvar.click();
+  await expect(campoDaChave(page)).toHaveAttribute('aria-invalid', 'true');
+  await expect(chave.getByText('Cole a chave antes de salvar')).toBeVisible();
+  await expect(campoDaChave(page)).toHaveAccessibleDescription('Cole a chave antes de salvar');
+  await expect(campoDaChave(page)).toBeFocused();
+  const corDoPerigo = await page.evaluate(() => {
+    const amostra = document.createElement('span');
+    amostra.style.color = 'var(--veio-danger)';
+    document.body.append(amostra);
+    return getComputedStyle(amostra).color;
+  });
+  // A borda muda com transição: a cor é conferida depois que ela termina.
+  await expect.poll(() => campoDaChave(page).evaluate(el => getComputedStyle(el).borderColor)).toBe(corDoPerigo);
+  await expect(toast(page)).toHaveCount(0);
+  expect((await extensao.lerStorage({ geminiApiKey: '' })).geminiApiKey).toBe('');
+
+  // Voltar a digitar tira o erro.
+  await campoDaChave(page).fill(CHAVE_DO_GEMINI);
+  await expect(campoDaChave(page)).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(chave.getByText('Cole a chave antes de salvar')).toBeHidden();
+
+  await salvar.click();
+  await expect(toast(page)).toHaveText('Chave do Gemini salva');
+  await expect(chave.getByText('Chave salva', { exact: true })).toBeVisible();
+  expect((await extensao.lerStorage('geminiApiKey')).geminiApiKey).toBe(CHAVE_DO_GEMINI);
+});
+
+test('#configuracoes/chave com a chave vazia foca o campo; com a chave salva, não abre campo nenhum', async ({ page, extensao }) => {
+  await abrirPainel(page, extensao, '#configuracoes/chave');
+  await expect(campoDaChave(page)).toBeFocused();
+
+  await extensao.gravarStorage({ geminiApiKey: CHAVE_DO_GEMINI });
+  await page.goto(extensao.url('painel.html#frases'));
+  await page.goto(extensao.url('painel.html#configuracoes/chave'));
+  await expect(card(page, 'chave').getByRole('button', { name: 'Trocar chave' })).toBeVisible();
+  await expect(campoDaChave(page)).toHaveCount(0);
+});
+
+test('a chave gravada em outra página aparece no card aberto sem recarregar', async ({ page, extensao }) => {
+  await abrirPainel(page, extensao, '#configuracoes/chave');
+  await expect(campoDaChave(page)).toBeVisible();
+
+  await extensao.gravarStorage({ geminiApiKey: CHAVE_DO_GEMINI });
+  await expect(card(page, 'chave').getByText('Chave salva', { exact: true })).toBeVisible();
+  await expect(campoDaChave(page)).toHaveCount(0);
+});
+
+// ─── Zona de perigo ──────────────────────────────────────────────────────────
+
+test('sem conta: o alcance é este computador; Cancelar tem o foco, Esc fecha e nada é apagado', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
+  await abrirPainel(page, extensao, '#configuracoes/perigo');
+
+  const perigo = card(page, 'perigo');
+  await expect(perigo.getByText('Apagar tudo aqui não dá para desfazer.', { exact: true })).toBeVisible();
+  await expect(perigo.getByText('Apagar todas as frases', { exact: true })).toBeVisible();
+  await expect(perigo.getByText('3 frases neste computador')).toBeVisible();
+
+  const entrada = perigo.getByRole('button', { name: 'Apagar todas as 3 frases' });
+  await expect(entrada).toHaveClass(/veio-botao--perigo(?!-)/);
+  await entrada.click();
+
+  await expect(modal(page)).toBeVisible();
+  await expect(modal(page)).toHaveAccessibleName('Apagar todas as 3 frases?');
+  await expect(modal(page).getByText('Elas somem deste computador. Não dá para desfazer.')).toBeVisible();
+  await expect(modal(page).getByRole('button', { name: 'Cancelar' })).toBeFocused();
+  await expect(modal(page).getByRole('button', { name: 'Apagar 3 frases' })).toHaveClass(/veio-botao--perigo-cheio/);
+
+  await page.keyboard.press('Escape');
+  await expect(modal(page)).toBeHidden();
+  await expect(entrada).toBeFocused();
+
+  await entrada.click();
+  await modal(page).getByRole('button', { name: 'Cancelar' }).click();
+  await expect(modal(page)).toBeHidden();
+
+  expect(await extensao.frases()).toHaveLength(3);
+  await expect(page.locator('#shell-total')).toHaveText('3');
+});
+
+test('sem conta: confirmar no modal apaga o histórico, mostra CFG-18 e zera o total da sidebar', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
+  await abrirPainel(page, extensao, '#configuracoes/perigo');
+
+  await card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 3 frases' }).click();
+  await modal(page).getByRole('button', { name: 'Apagar 3 frases' }).click();
+
+  await expect(modal(page)).toBeHidden();
+  await expect(toast(page)).toHaveText('Todas as frases foram apagadas');
+  await expect(page.locator('#shell-total')).toHaveText('0');
+  await expect.poll(() => extensao.frases()).toEqual([]);
+
+  // Sem frases, a entrada fica indisponível com CFG-20.
+  await expect(card(page, 'perigo').getByRole('button', { name: 'Nenhuma frase para apagar' })).toBeDisabled();
+  await expect(card(page, 'perigo').getByText('Nenhuma frase no histórico')).toBeVisible();
+  await expect(resumo(page, 'perigo')).toHaveText('Nenhuma frase');
+});
+
+test('com 1 frase, a entrada, o título e a confirmação falam no singular', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: frasesDeExemplo(1) });
+  await abrirPainel(page, extensao, '#configuracoes/perigo');
+
+  await expect(card(page, 'perigo').getByText('1 frase neste computador')).toBeVisible();
+  await card(page, 'perigo').getByRole('button', { name: 'Apagar 1 frase' }).click();
+  await expect(modal(page)).toHaveAccessibleName('Apagar 1 frase?');
+  await expect(modal(page).getByRole('button', { name: 'Apagar 1 frase' })).toBeVisible();
+});
+
+test('sem frases, a entrada fica indisponível com “Nenhuma frase para apagar”', async ({ page, extensao }) => {
+  await abrirPainel(page, extensao, '#configuracoes/perigo');
+  await expect(card(page, 'perigo').getByRole('button', { name: 'Nenhuma frase para apagar' })).toBeDisabled();
+  await expect(modal(page)).toHaveCount(0);
+});
+
+test('com conta: o alcance é todos os computadores, e confirmar apaga também a nuvem', async ({ page, extensao, fakes }) => {
+  const frases = frasesDeExemplo(2);
+  await extensao.semearSessao({ uid: 'uid-perigo' });
+  await extensao.gravarStorage({ frases });
+  fakes.google.gravarFrases('uid-perigo', frases);
+  await abrirPainel(page, extensao, '#configuracoes/perigo');
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
+
+  const perigo = card(page, 'perigo');
+  await expect(perigo.getByText('Apagar tudo aqui não dá para desfazer, e vale para todos os computadores da sua conta.')).toBeVisible();
+  await expect(perigo.getByText('2 frases em todos os computadores da sua conta')).toBeVisible();
+
+  await perigo.getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
+  await expect(modal(page).getByText('Elas somem deste computador e de todos os outros conectados à sua conta. Não dá para desfazer.')).toBeVisible();
+  await modal(page).getByRole('button', { name: 'Apagar 2 frases' }).click();
+
+  await expect(toast(page)).toHaveText('Todas as frases foram apagadas');
+  await expect(page.locator('#shell-total')).toHaveText('0');
+  await expect.poll(() => fakes.google.frasesDe('uid-perigo')).toEqual([]);
+  expect(await extensao.frases()).toEqual([]);
+});
+
+test('com conta e a nuvem fora do ar, as frases apagadas não voltam quando ela volta', async ({ page, extensao, fakes }) => {
+  // Antes, apagar tudo lia a nuvem para saber o que apagar: com ela fora do ar,
+  // nada ficava marcado como apagado e o sync seguinte trazia tudo de volta.
+  const frases = frasesDeExemplo(2);
+  await extensao.semearSessao({ uid: 'uid-fora' });
+  await extensao.gravarStorage({ frases });
+  fakes.google.gravarFrases('uid-fora', frases);
+  await abrirPainel(page, extensao, '#configuracoes/perigo');
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
+
+  fakes.google.ficarForaDoAr();
+  await card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
+  await modal(page).getByRole('button', { name: 'Apagar 2 frases' }).click();
+  await expect(page.locator('#shell-total')).toHaveText('0');
+  await expect(page.locator('#shell-chip')).toContainText('Sem sincronizar');
+
+  fakes.google.ficarForaDoAr(false);
+  await page.reload();
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
+  await expect.poll(() => fakes.google.frasesDe('uid-fora')).toEqual([]);
+  await expect(page.locator('#shell-total')).toHaveText('0');
+  expect(await extensao.frases()).toEqual([]);
+});
+
+// ─── Teclado e leitor de tela ────────────────────────────────────────────────
+
+test('pelo teclado: Trocar chave, digitar e Enter; abrir o modal com Enter e confirmar com Tab', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ geminiApiKey: CHAVE_DO_GEMINI, frases: frasesDeExemplo(2) });
+  await abrirPainel(page, extensao, '#configuracoes/chave');
+
+  const trocar = card(page, 'chave').getByRole('button', { name: 'Trocar chave' });
+  await trocar.focus();
+  expect(await trocar.evaluate(el => getComputedStyle(el).outlineStyle)).toBe('solid');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type(OUTRA_CHAVE);
+  // O campo Veio mostra o foco com o anel ouro (box-shadow), não com outline.
+  expect(await campoDaChave(page).evaluate(el => getComputedStyle(el).boxShadow)).not.toBe('none');
+  await page.keyboard.press('Enter');
+  await expect(toast(page)).toHaveText('Chave do Gemini salva');
+
+  await page.goto(extensao.url('painel.html#configuracoes/perigo'));
+  const entrada = card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 2 frases' });
+  await entrada.focus();
+  await page.keyboard.press('Enter');
+  await expect(modal(page).getByRole('button', { name: 'Cancelar' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(modal(page).getByRole('button', { name: 'Apagar 2 frases' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(toastCom(page, 'Todas as frases foram apagadas')).toBeVisible();
+  await expect.poll(() => extensao.frases()).toEqual([]);
+});

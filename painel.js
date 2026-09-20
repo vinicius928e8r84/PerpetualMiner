@@ -8,10 +8,12 @@ const {
   iconeVeio, montarChipDaPalavra, escreverFraseClicavel, andarEntrePalavras, focarPalavra, refletirSelecao,
 } = PerpetualMiner.Veio;
 // O shell (painel-shell.js) é dono da sidebar: o total e o ponto da Conexão com o
-// Anki. A conta (painel-conta.js) desenha o chip e o card Conta & sync. Este
-// arquivo conta aos dois o que muda.
+// Anki. A conta (painel-conta.js) desenha o chip e o card Conta & sync, e a Zona
+// de perigo (painel-perigo.js), o Apagar tudo. Este arquivo conta aos três o que
+// muda.
 const Shell = PerpetualMiner.Shell;
 const Conta = PerpetualMiner.Conta;
+const Perigo = PerpetualMiner.Perigo;
 const { SITUACOES } = Conta;
 const { mostrarToastDeSucesso } = PerpetualMiner.Veio;
 
@@ -219,9 +221,11 @@ async function logout() {
   carregarFrasesLocal();
 }
 
-// Configurações › Conta & sync e o chip da sidebar mostram quem entrou.
+// Configurações › Conta & sync e o chip da sidebar mostram quem entrou; a Zona
+// de perigo, se o Apagar tudo alcança a nuvem.
 function atualizarUIAuth(user) {
   Conta.mostrarConta(user);
+  Perigo.mostrarConta(Boolean(user));
 }
 
 // ─── Falhas na nuvem ─────────────────────────────────────────────────────────
@@ -602,16 +606,12 @@ function finalizarCarregamento() {
   aplicarFiltro();
 }
 
-// O total aparece no item Frases da sidebar e na entrada do Apagar tudo
-// (Configurações › Zona de perigo), que fica indisponível sem frases.
+// O total aparece no item Frases da sidebar e na Zona de perigo de
+// Configurações, que diz o alcance do Apagar tudo e o deixa indisponível sem frases.
 function atualizarTotal() {
   const n = todasFrases.length;
   Shell.mostrarTotalDeFrases(n);
-  const apagarTudo = document.getElementById('btn-apagar-tudo');
-  apagarTudo.disabled = n === 0;
-  if (n === 0)      apagarTudo.textContent = textoDaVoz('CFG-20');
-  else if (n === 1) apagarTudo.textContent = textoDaVoz('CFG-24.uma');
-  else              apagarTudo.textContent = textoDaVoz('CFG-24.todas', { n });
+  Perigo.mostrarTotal(n);
 }
 
 function setupStorageSyncListener() {
@@ -754,11 +754,15 @@ async function removerFrasesFirestore(ids) {
   }
 }
 
-async function apagarTudoFirestore() {
+// As frases deste computador ficam marcadas como apagadas antes de a nuvem ser
+// lida: com ela fora do ar, o sync seguinte não as traz de volta.
+async function apagarTudoFirestore(idsDesteComputador) {
   if (!usuarioLogado) return;
+  marcarParaDeletarSync(idsDesteComputador);
+  await marcarParaDeletar(idsDesteComputador);
   try {
     const frases = await firestoreGetAll();
-    const ids    = frases.map(f => String(f.id));
+    const ids    = [...new Set([...idsDesteComputador, ...frases.map(f => String(f.id))])];
     marcarParaDeletarSync(ids);
     await marcarParaDeletar(ids);
     await gravarTombstoneFirestore(ids);
@@ -855,7 +859,7 @@ function deletarSelecionadas() {
 // ─── Listeners ────────────────────────────────────────────────────────────────
 
 function setupListeners() {
-  document.getElementById('btn-apagar-tudo').addEventListener('click', apagarTudo);
+  Perigo.aoApagarTudo(apagarTudo);
   document.getElementById('btn-export').addEventListener('click', exportarTxt);
   document.getElementById('btn-send-anki').addEventListener('click', enviarSelecionadasAoAnki);
   document.getElementById('btn-bulk-edit').addEventListener('click', abrirModalBulk);
@@ -2063,17 +2067,19 @@ function deletarFrase(id) {
   });
 }
 
+// Roda depois que a pessoa confirma no modal da Zona de perigo (painel-perigo.js).
 function apagarTudo() {
-  if (!confirm('Apagar TODAS as frases?\nEsta ação não pode ser desfeita.')) return;
+  const ids = todasFrases.map(f => String(f.id));
   todasFrases = [];
   Object.keys(keywords).forEach(k => delete keywords[k]);
   selecionadas.clear();
   atualizarContadorSelecao();
-  apagarTudoFirestore();
+  apagarTudoFirestore(ids);
   chrome.storage.local.set({ frases: [] }, () => {
     atualizarTotal();
     paginaAtual = 1;
     aplicarFiltro();
+    mostrarToastDeSucesso(textoDaVoz('CFG-18'));
   });
 }
 
