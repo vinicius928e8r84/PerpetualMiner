@@ -47,7 +47,7 @@
     conferindoConexao: false,
   };
   const ouvintesDeArea = new Map();
-  const ouvintesDeSecao = new Map();
+  const ouvintesDeSecao = new Map();   // seção de Configurações → ouvintes
   const fimDosDestaques = new Map();   // card → o timer que tira a borda do destaque
 
   const { textoDaVoz } = raiz;
@@ -185,11 +185,19 @@
     return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--veio-destaque')) * 1000;
   }
 
+  /**
+   * Guarda o `ouvinte` sob a `chave` e, se ela já vale agora, roda na hora: quem
+   * se registra depois de o endereço ter sido aplicado não perde a vez.
+   */
+  function registrar(ouvintes, chave, ouvinte, jaVale) {
+    if (!ouvintes.has(chave)) ouvintes.set(chave, []);
+    ouvintes.get(chave).push(ouvinte);
+    if (jaVale) ouvinte();
+  }
+
   /** `ouvinte` roda cada vez que a pessoa entra na `area` (inclusive ao abrir nela). */
   function aoEntrarNaArea(area, ouvinte) {
-    if (!ouvintesDeArea.has(area)) ouvintesDeArea.set(area, []);
-    ouvintesDeArea.get(area).push(ouvinte);
-    if (estado.area === area) ouvinte();
+    registrar(ouvintesDeArea, area, ouvinte, estado.area === area);
   }
 
   /**
@@ -197,9 +205,8 @@
    * (inclusive ao abrir o painel nele), com o card já aberto.
    */
   function aoAbrirASecao(secao, ouvinte) {
-    if (!ouvintesDeSecao.has(secao)) ouvintesDeSecao.set(secao, []);
-    ouvintesDeSecao.get(secao).push(ouvinte);
-    if (lerEndereco(location.hash).secao === secao && estado.area === 'configuracoes') ouvinte();
+    registrar(ouvintesDeSecao, secao, ouvinte,
+      estado.area === 'configuracoes' && lerEndereco(location.hash).secao === secao);
   }
 
   function areaAtual() {

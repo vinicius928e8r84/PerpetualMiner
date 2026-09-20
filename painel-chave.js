@@ -31,14 +31,15 @@
       desenhar();
       if (estado.focarAoLer) focarOCampoSeVazia();
     });
-    // Salvar em outra página (o Minerar de uma foto) aparece aqui sem recarregar,
-    // a não ser que a pessoa esteja no meio de uma troca.
+    // Salvar em outra página (o Minerar de uma foto) aparece aqui sem recarregar.
+    // No meio de uma troca a chave nova é guardada sem redesenhar, para não
+    // derrubar o que a pessoa está digitando; Cancelar já mostra a chave nova.
     chrome.storage.onChanged.addListener((mudancas, area) => {
       if (area !== 'local' || !('geminiApiKey' in mudancas)) return;
       const nova = mudancas.geminiApiKey.newValue || '';
-      if (nova === estado.chave || estado.trocando) return;
+      if (nova === estado.chave) return;
       estado.chave = nova;
-      desenhar();
+      if (!estado.trocando) desenhar();
     });
     raiz.Shell.aoAbrirASecao('chave', focarOCampoSeVazia);
   }

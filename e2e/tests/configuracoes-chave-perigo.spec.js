@@ -169,7 +169,7 @@ test('sem conta: o alcance é este computador; Cancelar tem o foco, Esc fecha e 
 
   await expect(modal(page)).toBeVisible();
   await expect(modal(page)).toHaveAccessibleName('Apagar todas as 3 frases?');
-  await expect(modal(page).getByText('Elas somem deste computador. Não dá para desfazer.')).toBeVisible();
+  await expect(modal(page).getByText('Elas somem deste computador.', { exact: true })).toBeVisible();
   await expect(modal(page).getByRole('button', { name: 'Cancelar' })).toBeFocused();
   await expect(modal(page).getByRole('button', { name: 'Apagar 3 frases' })).toHaveClass(/veio-botao--perigo-cheio/);
 
@@ -263,6 +263,25 @@ test('com conta e a nuvem fora do ar, as frases apagadas não voltam quando ela 
   await expect.poll(() => fakes.google.frasesDe('uid-fora')).toEqual([]);
   await expect(page.locator('#shell-total')).toHaveText('0');
   expect(await extensao.frases()).toEqual([]);
+});
+
+// ─── Teclado, leitor de tela e movimento ─────────────────────────────────────
+
+test('com movimento reduzido, o flash dos cards novos e o ponto da chave ficam parados', async ({ page, extensao }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await extensao.gravarStorage({ geminiApiKey: CHAVE_DO_GEMINI, frases: frasesDeExemplo(2) });
+  await abrirPainel(page, extensao, '#configuracoes/perigo');
+
+  // A borda do destaque aparece, mas não anima; o ponto de “Chave salva” não pisca.
+  await expect(card(page, 'perigo')).toHaveClass(/shell-card--destaque/);
+  expect(await card(page, 'perigo').evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+  await card(page, 'chave').getByRole('button', { name: 'Chave do Gemini', exact: true }).click();
+  expect(await card(page, 'chave').locator('.cfg-ponto').evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+
+  // O modal abre e fecha igual, sem animação.
+  await card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
+  await expect(modal(page)).toBeVisible();
+  expect(await modal(page).evaluate(el => getComputedStyle(el).animationName)).toBe('none');
 });
 
 // ─── Teclado e leitor de tela ────────────────────────────────────────────────

@@ -390,14 +390,14 @@ body {
   font-weight: var(--veio-peso-num);
 }
 
-/* No card aberto, a chave salva fica sob o “Chave salva”, numa pílula mono. */
+/* No card aberto, a chave salva fica sob o “Chave salva”, na pílula do
+   protótipo: surface-2, raio 10, sem borda. */
 .cfg-chave-mascarada--card {
   width: fit-content;
   margin-top: 6px;
-  padding: 3px 9px;
-  border: 1px solid var(--veio-border);
-  border-radius: var(--veio-raio-tecla);
-  background: var(--veio-surface);
+  padding: 6px 10px;
+  border-radius: var(--veio-raio-icone);
+  background: var(--veio-surface-2);
   color: var(--veio-muted);
   font-size: var(--veio-tam-apoio);
 }
