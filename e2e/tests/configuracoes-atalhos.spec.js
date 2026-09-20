@@ -307,3 +307,20 @@ test('sem movimento reduzido, a pílula de gravação pulsa', async ({ page, ext
   const repeticoes = await tecla(page, 'Minerar legenda').evaluate(el => getComputedStyle(el).animationIterationCount);
   expect(repeticoes).toBe('infinite');
 });
+
+// ─── O atalho no botão do mouse, na página ───────────────────────────────────
+
+test('com o botão voltar gravado para a legenda, minerar não leva a página de volta', async ({ page, paginas, extensao }) => {
+  await extensao.gravarStorage({
+    pm_atalho_legenda: { type: 'mouse', button: 3, code: null, altKey: true, ctrlKey: false, shiftKey: false },
+  });
+  // Há para onde voltar: sem a extensão, o botão voltar sairia do player.
+  await page.goto(paginas.url('sem-video.html'));
+  await page.goto(paginas.url('player.html'));
+  await expect(page.locator('#btn-minerador-pro')).toBeVisible();
+
+  await apertarBotaoDoMouse(page, 'back', { alt: true });
+
+  await expect.poll(async () => (await extensao.frases()).map(f => f.texto)).toEqual([LEGENDA]);
+  expect(page.url()).toContain('player.html');
+});

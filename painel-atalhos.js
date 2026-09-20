@@ -30,7 +30,6 @@
     atalhos: { legenda: Atalhos.ATALHOS_PADRAO.legenda, selecao: null },
     gravando: null,        // a ação sendo gravada, ou null
     aviso: null,           // { acao, texto } do atalho repetido
-    soltarBotao: null,     // o botão do mouse gravado, cuja soltura ainda não pode navegar
   };
   const linhas = new Map();    // ação → { tecla, botao, aviso }
   let restaurar = null;
@@ -42,9 +41,6 @@
       estado.atalhos = atalhos;
       desenhar();
     });
-    // Voltar e avançar do mouse navegam na soltura: enquanto grava (e na soltura
-    // do botão que acabou de gravar), ela não chega ao navegador.
-    for (const tipo of ['mouseup', 'auxclick']) document.addEventListener(tipo, segurarASoltura, true);
   }
 
   function montarLinha(acao) {
@@ -87,7 +83,7 @@
   function desenhar() {
     for (const [acao, { tecla, botao, aviso }] of linhas) {
       const gravando = estado.gravando === acao;
-      tecla.replaceChildren(gravando ? pilulaDeGravacao() : teclaDoAtalho(estado.atalhos[acao]));
+      tecla.replaceChildren(gravando ? pilulaDeGravacao() : Atalhos.teclaDoAtalho(estado.atalhos[acao]));
       botao.textContent = textoDaVoz(gravando ? 'CFG-12.cancelar' : 'CFG-12.gravar');
       botao.disabled = !!estado.gravando && !gravando;
 
@@ -97,12 +93,6 @@
     }
     restaurar.hidden = Atalhos.estaNoPadrao(estado.atalhos);
     restaurar.querySelector('button').disabled = !!estado.gravando;
-  }
-
-  /** A tecla gravada; sem atalho, o `kbd` tracejado “Sem atalho” (CFG-12). */
-  function teclaDoAtalho(atalho) {
-    if (!atalho) return elemento('kbd', 'veio-kbd veio-kbd--sem-atalho', textoDaVoz('CFG-12.semAtalho'));
-    return elemento('kbd', 'veio-kbd', Atalhos.rotuloDoAtalho(atalho));
   }
 
   function pilulaDeGravacao() {
@@ -122,6 +112,7 @@
   function comecarAGravar(acao) {
     estado.gravando = acao;
     estado.aviso = null;
+    Atalhos.guardarTodasAsSolturas(true);
     desenhar();
     document.addEventListener('keydown', aoGravar, true);
     document.addEventListener('mousedown', aoGravar, true);
@@ -131,6 +122,7 @@
     const acao = estado.gravando;
     estado.gravando = null;
     estado.aviso = null;
+    Atalhos.guardarTodasAsSolturas(false);
     document.removeEventListener('keydown', aoGravar, true);
     document.removeEventListener('mousedown', aoGravar, true);
     desenhar();
@@ -142,7 +134,9 @@
     if (!novo) return;
     evento.preventDefault();
     evento.stopImmediatePropagation();
-    if (novo.type === 'mouse') estado.soltarBotao = novo.button;
+    // Voltar e avançar não navegam: nem o que acabou de gravar, nem os apertados
+    // enquanto grava (guardarTodasAsSolturas, abaixo).
+    if (novo.type === 'mouse') Atalhos.guardarSolturaDoBotao(novo.button);
 
     const acao = estado.gravando;
     const semModificador = !evento.altKey && !evento.ctrlKey && !evento.shiftKey && !evento.metaKey;
@@ -165,14 +159,6 @@
     piscarATecla(acao);
     linhas.get(acao).botao.focus();
     Atalhos.gravarAtalho(acao, novo);
-  }
-
-  function segurarASoltura(evento) {
-    if (evento.button === 0 || evento.button === 2) return;
-    if (!estado.gravando && evento.button !== estado.soltarBotao) return;
-    evento.preventDefault();
-    evento.stopImmediatePropagation();
-    if (evento.type === 'auxclick') estado.soltarBotao = null;
   }
 
   function restaurarOPadrao() {

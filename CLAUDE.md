@@ -132,7 +132,7 @@ Two recorded shortcuts, each recorded in its own row of the Configurações › 
 key with Ctrl/Alt/Shift or an extra mouse button (middle, back, forward, others as “Botão N do mouse”), also with
 modifiers. While recording (CFG-13) the row's key becomes a pulsing gold pill and its button Cancelar; the other
 row's button is disabled; Esc without a modifier cancels; left and right clicks do not record, so Cancelar stays
-clickable; back and forward do not navigate (their `mouseup`/`auxclick` is swallowed). A combination that already
+clickable; back and forward do not navigate. A combination that already
 belongs to the other shortcut is refused with CFG-19 in `danger` and recording goes on. A saved key flashes once, no
 toast. “Restaurar atalhos padrão” (CFG-21/22) shows only when something differs from the defaults and writes
 `{legenda: Alt+S, seleção: null}` at once, with no confirmation and no toast.
@@ -143,7 +143,9 @@ the fields, so a label stored in English shows in PT-BR) and matching (`mesmoAta
 `acompanharAtalhos`, so a new shortcut applies at once, without reloading. The manifest declares no `commands`: a
 recorded shortcut can be a mouse button, which `chrome.commands` cannot take, so it lives only in the content script.
 A mouse caption shortcut takes the button only when there is a caption to mine; elsewhere the button does what it
-always did.
+always did. Back and forward navigate on the *release*, not on `mousedown`, so `lib/atalhos.js` also holds that
+release (`guardarSolturaDoBotao` after a shortcut fires, `guardarTodasAsSolturas` while recording) — otherwise the
+page would leave while mining or recording.
 
 The popup still has its own old recorder for `pm_atalho` until the popup step (#6 of the build order) rebuilds it.
 

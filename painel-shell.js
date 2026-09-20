@@ -209,16 +209,10 @@
 
   /** “Legenda [Alt+S]  Seleção [Alt+Botão voltar]”, com as teclas em `kbd`. */
   function mostrarResumoDosAtalhos({ legenda, selecao }) {
-    const atalho = (rotulo, gravado) => elemento('span', null, `${textoDaVoz(rotulo)} `, teclaDoAtalho(gravado));
+    const atalho = (rotulo, gravado) => elemento('span', null, `${textoDaVoz(rotulo)} `, Atalhos.teclaDoAtalho(gravado));
     porId('cfg-atalhos-resumo').replaceChildren(
       atalho('CFG-28.legenda', legenda),
       atalho('CFG-28.selecao', selecao));
-  }
-
-  /** A tecla gravada; sem atalho, o `kbd` tracejado “Sem atalho” (CFG-12). */
-  function teclaDoAtalho(atalho) {
-    if (!atalho) return elemento('kbd', 'veio-kbd veio-kbd--sem-atalho', textoDaVoz('CFG-12.semAtalho'));
-    return elemento('kbd', 'veio-kbd', Atalhos.rotuloDoAtalho(atalho));
   }
 
   /** `AIza••••••••3kQ9` em mono; vazia, o ponto `danger` e “Sem chave”. */

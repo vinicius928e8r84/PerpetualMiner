@@ -69,9 +69,12 @@ document.addEventListener('mousedown', (e) => {
   _ativarCaptura(texto, e);
 }, true);
 
+// O botão é tomado inteiro: o `mousedown` e a soltura, que é quando voltar e
+// avançar navegariam.
 function _tomarOBotao(e) {
   e.preventDefault();
   e.stopImmediatePropagation();
+  Atalhos.guardarSolturaDoBotao(e.button);
 }
 
 // Teclado — o atalho de seleção ignora campos de input/textarea

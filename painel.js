@@ -2,7 +2,7 @@
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
 // deste arquivo, pelo painel.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
-const { detectarIdioma, IDIOMAS, textoDaVoz, CATALOGO_DA_VOZ } = PerpetualMiner;
+const { detectarIdioma, IDIOMAS, textoDaVoz, CATALOGO_DA_VOZ, Atalhos } = PerpetualMiner;
 // A lista de Frases é montada com os componentes da Base Veio (veio/componentes.js).
 const {
   iconeVeio, montarChipDaPalavra, escreverFraseClicavel, andarEntrePalavras, focarPalavra, refletirSelecao,
@@ -21,7 +21,7 @@ const POR_PAGINA = 10;
 
 // O atalho de legenda gravado em Configurações › Atalhos (lib/atalhos.js), que
 // o vazio de Frases (PAI-02) ensina. Começa no padrão até a leitura voltar.
-let atalhoDeLegenda = PerpetualMiner.Atalhos.ATALHOS_PADRAO.legenda;
+let atalhoDeLegenda = Atalhos.ATALHOS_PADRAO.legenda;
 
 // As Fontes que o catálogo nomeia (PAI-29). Os nomes antigos gravados em
 // frases de antes apontam para o nome de hoje.
@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
   Shell.aoEntrarNaArea('anki', () => atualizarBridgeWorkspaceData({ includeAnki: true, launchAnki: true }));
   Conta.aoPedir({ entrar: loginGoogle, sair: logout, tentarDeNovo: carregarFrasesFirestore });
   setupStorageSyncListener();
-  PerpetualMiner.Atalhos.acompanharAtalhos(({ legenda }) => {
+  Atalhos.acompanharAtalhos(({ legenda }) => {
     atalhoDeLegenda = legenda;
     if (todasFrases.length === 0) renderizar();
   });
@@ -1750,7 +1750,7 @@ function montarVazio() {
  * tracejado “Sem atalho” e a ação Definir atalho, que leva a Configurações › Atalhos.
  */
 function atalhoDoVazio() {
-  if (atalhoDeLegenda) return [criar('kbd', 'veio-kbd', PerpetualMiner.Atalhos.rotuloDoAtalho(atalhoDeLegenda))];
+  if (atalhoDeLegenda) return [Atalhos.teclaDoAtalho(atalhoDeLegenda)];
   const definir = criar('a', 'frases-vazio__definir-atalho', textoDaVoz('GLB-02.definir'));
   definir.href = '#configuracoes/atalhos';
   return [criar('kbd', 'veio-kbd veio-kbd--sem-atalho', textoDaVoz('GLB-02.semAtalho')), ' ', definir];
