@@ -21,8 +21,13 @@ const FUNDO = {
   claro: 'rgb(247, 244, 238)',  // #F7F4EE
 };
 
-const fundoDaPagina = page => page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor);
+/** O fundo que a pessoa vê: quem o pinta é o body, com o token do tema. */
+const fundoDaPagina = page => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+/** O tema que a página carrega, no <html>, onde os tokens trocam de valor. */
+const temaDaPagina = page => page.locator('html');
 const opcaoDoTema = (page, nome) => page.getByRole('radio', { name: nome, exact: true });
+/** O rádio é escondido pelo controle segmentado: quem recebe o clique é o rótulo. */
+const escolherTema = (page, nome) => page.locator('#cfg-tema label').filter({ hasText: nome }).click();
 const resumoDaAparencia = page => page.locator('#cfg-aparencia-resumo');
 
 /** O tema gravado, ou `undefined` quando ainda não há escolha. */
@@ -58,7 +63,7 @@ test('escolher Claro troca a tela na hora, sem recarregar, e fica gravado', asyn
   await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
 
   await expect(page.getByRole('radiogroup', { name: 'Tema' })).toBeVisible();
-  await opcaoDoTema(page, 'Claro').check();
+  await escolherTema(page, 'Claro');
 
   await expect.poll(() => fundoDaPagina(page)).toBe(FUNDO.claro);
   await expect(resumoDaAparencia(page)).toHaveText('Claro');
@@ -69,7 +74,7 @@ test('escolher Claro troca a tela na hora, sem recarregar, e fica gravado', asyn
 
 test('a escolha continua depois de recarregar', async ({ page, extensao }) => {
   await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
-  await opcaoDoTema(page, 'Claro').check();
+  await escolherTema(page, 'Claro');
   await expect.poll(() => temaGravado(extensao)).toBe('claro');
 
   await page.reload();
@@ -82,10 +87,10 @@ test('a escolha continua depois de recarregar', async ({ page, extensao }) => {
 
 test('voltar para Escuro devolve o padrão', async ({ page, extensao }) => {
   await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
-  await opcaoDoTema(page, 'Claro').check();
+  await escolherTema(page, 'Claro');
   await expect.poll(() => fundoDaPagina(page)).toBe(FUNDO.claro);
 
-  await opcaoDoTema(page, 'Escuro').check();
+  await escolherTema(page, 'Escuro');
 
   await expect.poll(() => fundoDaPagina(page)).toBe(FUNDO.escuro);
   await expect(resumoDaAparencia(page)).toHaveText('Escuro');
@@ -97,7 +102,7 @@ test('o painel já aberto em outra aba troca junto, sem recarregar', async ({ pa
   await abrirConfiguracoes(outra, extensao, '#frases');
   await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
 
-  await opcaoDoTema(page, 'Claro').check();
+  await escolherTema(page, 'Claro');
 
   await expect.poll(() => fundoDaPagina(outra)).toBe(FUNDO.claro);
   await outra.close();
@@ -106,20 +111,23 @@ test('o painel já aberto em outra aba troca junto, sem recarregar', async ({ pa
 test('o popup e o Minerar de uma foto abrem com a escolha; o que ainda não foi refeito fica como foi desenhado',
   async ({ page, context, extensao }) => {
     await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
-    await opcaoDoTema(page, 'Claro').check();
+    await escolherTema(page, 'Claro');
     await expect.poll(() => temaGravado(extensao)).toBe('claro');
 
     const popup = await context.newPage();
     await popup.goto(extensao.url('popup.html'));
-    expect(await fundoDaPagina(popup)).toBe(FUNDO.claro);
-    // O corpo do popup é o de hoje, desenhado para o escuro (#38 o refaz).
+    await expect(temaDaPagina(popup)).toHaveAttribute('data-tema', 'claro');
+    // O corpo do popup é o de hoje, desenhado para o escuro, e continua escuro
+    // até #38 trazer o popup para os tokens.
     await expect(popup.locator('body')).toHaveAttribute('data-tema', 'escuro');
+    expect(await fundoDaPagina(popup)).toBe('rgb(17, 18, 20)');
 
     const foto = await context.newPage();
     await foto.goto(extensao.url('bookreader.html'));
-    expect(await fundoDaPagina(foto)).toBe(FUNDO.claro);
+    await expect(temaDaPagina(foto)).toHaveAttribute('data-tema', 'claro');
     // O corpo do Minerar de uma foto é o de hoje, desenhado para o claro (#36, #37).
     await expect(foto.locator('body')).toHaveAttribute('data-tema', 'claro');
+    expect(await fundoDaPagina(foto)).toBe('rgb(249, 250, 251)');
 
     await popup.close();
     await foto.close();
@@ -134,7 +142,7 @@ test('o que aparece por cima das páginas continua escuro', async ({ page, conte
   await expect(botao).toBeVisible();
   const antes = await botao.evaluate(no => getComputedStyle(no).backgroundColor);
 
-  await opcaoDoTema(painel, 'Claro').check();
+  await escolherTema(painel, 'Claro');
   await expect.poll(() => temaGravado(extensao)).toBe('claro');
   await page.waitForTimeout(200);
 
@@ -144,13 +152,13 @@ test('o que aparece por cima das páginas continua escuro', async ({ page, conte
 
 test('no claro, o texto do painel passa no contraste AA', async ({ page, extensao }) => {
   await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
-  await opcaoDoTema(page, 'Claro').check();
+  await escolherTema(page, 'Claro');
   await expect.poll(() => fundoDaPagina(page)).toBe(FUNDO.claro);
 
   const titulo = page.getByRole('heading', { name: 'Configurações' });
   const cores = await titulo.evaluate(no => {
     const estilo = getComputedStyle(no);
-    return { texto: estilo.color, fundo: getComputedStyle(document.documentElement).backgroundColor };
+    return { texto: estilo.color, fundo: getComputedStyle(document.body).backgroundColor };
   });
   expect(contraste(cores.texto, cores.fundo)).toBeGreaterThanOrEqual(4.5);
 
