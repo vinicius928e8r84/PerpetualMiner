@@ -34,6 +34,8 @@ test('com a conta conectada, a frase apagada no painel sai da nuvem e fica no to
 
   await abrirPainelSincronizado(page, extensao);
   await page.locator('#frases-lista .veio-frase', { hasText: PRIMEIRA }).getByRole('button', { name: 'Apagar frase' }).click();
+  // Apagar 1 frase pede confirmação (PAI-12, #30).
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar frase' }).click();
   await expect(page.getByText(PRIMEIRA)).toHaveCount(0);
 
   await expect.poll(() => fakes.google.frasesDe('uid-painel').map(f => f.texto)).toEqual([SEGUNDA]);

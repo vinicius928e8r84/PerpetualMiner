@@ -84,12 +84,38 @@
   width: 100%;
 }
 
+/* Compacto: o botão dentro de uma barra ou pílula, onde a altura é apertada. */
+.veio-botao--compacto {
+  padding: 6px 12px;
+  font-size: var(--veio-tam-apoio);
+}
+
+/* Perigo sem contorno: a entrada destrutiva onde uma borda vermelha pesaria
+   demais (a barra contextual da seleção, cheia de ações lado a lado). */
+.veio-botao--perigo-fantasma {
+  background: transparent;
+  color: var(--veio-danger);
+}
+
+/* Link: a ação secundária que se oferece no meio de um texto, como o
+   “Selecionar todas as N frases” da barra contextual. */
+.veio-botao--link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--veio-accent-text);
+  font-size: var(--veio-tam-apoio);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .veio-botao--fantasma:hover,
 .veio-botao--secundario:hover {
   background: var(--veio-surface-2);
 }
 
-.veio-botao--perigo:hover {
+.veio-botao--perigo:hover,
+.veio-botao--perigo-fantasma:hover {
   background: var(--veio-danger-soft);
 }
 
@@ -592,8 +618,21 @@ select.veio-campo {
   box-shadow: var(--veio-sombra);
 }
 
+/* O × no canto: o modal é `position: relative` para ele. O rótulo vem do
+   catálogo (PAI-34), como o resto da cópia. */
+.veio-modal {
+  position: relative;
+}
+
+.veio-modal__fechar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+}
+
 .veio-modal__titulo {
   margin: 0 0 4px;
+  padding-right: 36px;
   font-family: var(--veio-fonte-display);
   font-size: var(--veio-tam-modal);
   font-weight: var(--veio-peso-titulo);
@@ -716,6 +755,17 @@ select.veio-campo {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   user-select: text;
+}
+
+/* Só para o leitor de tela: o texto continua sendo o nome do controle, mas sai
+   da tela (a sidebar do Painel ainda tem a cópia dela desta regra). */
+.veio-so-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* ── Esqueleto ────────────────────────────────────────────────────────────
