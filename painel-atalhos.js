@@ -6,7 +6,7 @@
 //
 //   Gravar atalho   a tecla da linha vira a pílula ouro (CFG-13) e o botão vira
 //                   Cancelar; o botão da outra linha fica indisponível.
-//   Esc             sem modificador, cancela.
+//   Esc             sem modificador, cancela. Sair do card também cancela.
 //   Clique          esquerdo e direito não gravam, então o Cancelar continua
 //                   clicável. Voltar e avançar do mouse não navegam enquanto grava.
 //   Repetido        a combinação que já é do outro atalho é recusada, com o
@@ -27,7 +27,7 @@
   const PARTE_DO_CATALOGO = { [ACOES.LEGENDA]: 'minerarLegenda', [ACOES.SELECAO]: 'minerarSelecao' };
 
   const estado = {
-    atalhos: { legenda: Atalhos.ATALHOS_PADRAO.legenda, selecao: null },
+    atalhos: { ...Atalhos.ATALHOS_PADRAO },
     gravando: null,        // a ação sendo gravada, ou null
     aviso: null,           // { acao, texto } do atalho repetido
   };
@@ -41,6 +41,12 @@
       estado.atalhos = atalhos;
       desenhar();
     });
+    // Sair do card (fechá-lo, ir a outra área ou outro endereço) cancela a
+    // gravação: senão a primeira tecla digitada lá fora viraria o atalho.
+    const pararAoSair = () => { if (estado.gravando) pararDeGravar(); };
+    window.addEventListener('hashchange', pararAoSair);
+    new MutationObserver(() => { if (corpo.hidden) pararAoSair(); })
+      .observe(corpo, { attributes: true, attributeFilter: ['hidden'] });
   }
 
   function montarLinha(acao) {
@@ -130,6 +136,16 @@
   }
 
   function aoGravar(evento) {
+    const acao = estado.gravando;
+    const semModificador = !evento.altKey && !evento.ctrlKey && !evento.shiftKey && !evento.metaKey;
+    if (evento.type === 'keydown' && evento.key === 'Escape' && semModificador) {
+      evento.preventDefault();
+      evento.stopImmediatePropagation();
+      pararDeGravar();
+      linhas.get(acao).botao.focus();
+      return;
+    }
+
     const novo = Atalhos.atalhoDoEvento(evento);
     if (!novo) return;
     evento.preventDefault();
@@ -137,14 +153,6 @@
     // Voltar e avançar não navegam: nem o que acabou de gravar, nem os apertados
     // enquanto grava (guardarTodasAsSolturas, abaixo).
     if (novo.type === 'mouse') Atalhos.guardarSolturaDoBotao(novo.button);
-
-    const acao = estado.gravando;
-    const semModificador = !evento.altKey && !evento.ctrlKey && !evento.shiftKey && !evento.metaKey;
-    if (evento.type === 'keydown' && evento.key === 'Escape' && semModificador) {
-      pararDeGravar();
-      linhas.get(acao).botao.focus();
-      return;
-    }
 
     const outra = acao === ACOES.LEGENDA ? ACOES.SELECAO : ACOES.LEGENDA;
     if (Atalhos.mesmoAtalho(novo, estado.atalhos[outra])) {

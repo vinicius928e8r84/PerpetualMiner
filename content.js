@@ -28,7 +28,7 @@ const SUBTITLE_UI_TEXT = [
 // estão gravados em Configurações › Atalhos (lib/atalhos.js). Um atalho novo vale
 // na hora, sem recarregar a página.
 
-let _atalhos = { legenda: Atalhos.ATALHOS_PADRAO.legenda, selecao: null };
+let _atalhos = { ...Atalhos.ATALHOS_PADRAO };
 let _autoMinerState = null;
 let _autoMinerLastText = '';
 let _autoMinerLastSentText = '';

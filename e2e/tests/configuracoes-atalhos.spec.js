@@ -133,6 +133,41 @@ test('Esc sem modificador cancela; só as teclas modificadoras não gravam', asy
   expect(await atalhosGravados(extensao)).toEqual({});
 });
 
+test('uma tecla sem Ctrl, Alt nem Shift não grava, nem com Meta: a gravação continua', async ({ page, extensao }) => {
+  await abrirAtalhos(page, extensao);
+  await gravar(page, 'Minerar legenda').click();
+
+  // Um “K” sozinho tomaria a letra de todo campo de texto de toda página.
+  await page.keyboard.press('KeyK');
+  await page.keyboard.press('F2');
+  await page.keyboard.press('Meta+KeyK');
+
+  await expect(tecla(page, 'Minerar legenda')).toHaveText('Pressione as teclas ou um botão extra do mouse…');
+  expect(await atalhosGravados(extensao)).toEqual({});
+});
+
+test('sair do card cancela a gravação: a tecla digitada lá fora não vira atalho', async ({ page, extensao }) => {
+  await abrirAtalhos(page, extensao);
+
+  // Indo a outra área.
+  await gravar(page, 'Minerar legenda').click();
+  await page.locator('a.shell-item[data-area="frases"]').click();
+  await expect(page).toHaveURL(/#frases$/);
+  await page.keyboard.press('Alt+KeyE');
+
+  // Fechando o card.
+  await abrirAtalhos(page, extensao);
+  await gravar(page, 'Minerar seleção').click();
+  await page.getByRole('button', { name: 'Atalhos', exact: true }).click();
+  await page.keyboard.press('Alt+KeyD');
+
+  expect(await atalhosGravados(extensao)).toEqual({});
+  await page.getByRole('button', { name: 'Atalhos', exact: true }).click();
+  await expect(tecla(page, 'Minerar legenda')).toHaveText('Alt+S');
+  await expect(tecla(page, 'Minerar seleção')).toHaveText('Sem atalho');
+  await expect(gravar(page, 'Minerar legenda')).toBeEnabled();
+});
+
 test('clique esquerdo e direito não gravam: a gravação continua', async ({ page, extensao }) => {
   await abrirAtalhos(page, extensao);
   await gravar(page, 'Minerar seleção').click();
@@ -296,7 +331,18 @@ test('com movimento reduzido, a pílula de gravação não pulsa', async ({ page
     const estilo = getComputedStyle(el);
     return { nome: estilo.animationName, repeticoes: estilo.animationIterationCount };
   });
-  expect(animacao.nome === 'none' || animacao.repeticoes === '1').toBe(true);
+  expect(animacao.nome).toBe('none');
+});
+
+test('com movimento reduzido, a tecla nova não pisca', async ({ page, extensao }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await abrirAtalhos(page, extensao);
+  await gravar(page, 'Minerar legenda').click();
+  await page.keyboard.press('Control+Shift+KeyK');
+
+  const kbd = tecla(page, 'Minerar legenda');
+  await expect(kbd).toHaveText('Ctrl+Shift+K');
+  expect(await kbd.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
 });
 
 test('sem movimento reduzido, a pílula de gravação pulsa', async ({ page, extensao }) => {

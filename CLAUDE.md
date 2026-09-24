@@ -129,9 +129,11 @@ their content in their own tickets (Zona de perigo still hosts today's Apagar tu
 
 Two recorded shortcuts, each recorded in its own row of the Configurações › Atalhos card: **Minerar legenda**
 (`pm_atalho_legenda`, default Alt+S) and **Minerar seleção** (today's `pm_atalho`, default none). A shortcut is a
-key with Ctrl/Alt/Shift or an extra mouse button (middle, back, forward, others as “Botão N do mouse”), also with
-modifiers. While recording (CFG-13) the row's key becomes a pulsing gold pill and its button Cancelar; the other
-row's button is disabled; Esc without a modifier cancels; left and right clicks do not record, so Cancelar stays
+key with at least one of Ctrl/Alt/Shift (a bare key would take that letter from every text field) or an extra mouse
+button (middle, back, forward, others as “Botão N do mouse”), also with modifiers. Meta is never recorded, and an
+event with Meta never matches. While recording (CFG-13) the row's key becomes a pulsing gold pill and its button Cancelar; the other
+row's button is disabled; Esc without a modifier cancels, and so does leaving the card (closing it, another address
+or area); left and right clicks do not record, so Cancelar stays
 clickable; back and forward do not navigate. A combination that already
 belongs to the other shortcut is refused with CFG-19 in `danger` and recording goes on. A saved key flashes once, no
 toast. “Restaurar atalhos padrão” (CFG-21/22) shows only when something differs from the defaults and writes
