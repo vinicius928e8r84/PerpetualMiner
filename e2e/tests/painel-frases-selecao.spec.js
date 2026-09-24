@@ -330,6 +330,7 @@ test('se a nuvem falha ao apagar, fica o aviso PAI-15 com Tentar de novo, que ap
   await expect(aviso).toContainText('Elas podem voltar na próxima sincronização.');
   await expect(aviso.getByText('Detalhes')).toBeVisible();
   await expect(cartoes(page)).toHaveText([/Sentence number 2 /]);
+  await expect(page.locator('#shell-chip')).toContainText('Sem sincronizar');
   // Continua depois de um tempo: é persistente, não um toast.
   await page.waitForTimeout(3000);
   await expect(aviso).toBeVisible();
@@ -337,6 +338,8 @@ test('se a nuvem falha ao apagar, fica o aviso PAI-15 com Tentar de novo, que ap
   fakes.google.ficarForaDoAr(false);
   await aviso.getByRole('button', { name: 'Tentar de novo' }).click();
   await expect(aviso).toBeHidden();
+  // A nuvem respondeu: o chip da conta deixa de dizer que este computador está sem sincronizar.
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
   await expect.poll(() => fakes.google.frasesDe('uid-falha').map(f => f.texto)).toEqual(['Sentence number 2 about the harbour.']);
 });
 

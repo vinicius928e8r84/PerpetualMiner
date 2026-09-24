@@ -337,6 +337,16 @@ test('primeiro uso: PAI-02 com o atalho de legenda de hoje (Alt+S) e Minerar fra
   await expect(page.locator('#bulk-add-modal')).toBeVisible();
 });
 
+test('Minerar frases abre o modal por cima da tela inteira, não no fim da página', async ({ page, extensao }) => {
+  await page.goto(extensao.url('painel.html#frases'));
+  await page.getByRole('button', { name: 'Minerar frases' }).first().click();
+  const modal = page.locator('#bulk-add-modal');
+  await expect(modal).toBeVisible();
+  const caixa = await modal.boundingBox();
+  const tela = page.viewportSize();
+  expect(caixa).toEqual({ x: 0, y: 0, width: tela.width, height: tela.height });
+});
+
 test('carregando: 5 cartões-esqueleto, sem texto; quando a nuvem responde, as frases', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-lista' });
   fakes.google.segurarLeituras();

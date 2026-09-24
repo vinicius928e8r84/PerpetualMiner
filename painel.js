@@ -52,6 +52,9 @@ const DEFAULT_BRIDGE_PRESETS = {
   ru: { deckName: 'RUSSIAN', imageSource: '1', ttsWordTld: 'ru',  ttsPhraseTld: 'ru' },
 };
 
+// Enviada ao Anki fica gravada com o nome de antes do glossário (ver foiEnviadaAoAnki).
+const STATUS_ENVIADA_AO_ANKI = 'exported';
+
 // ─── Estado global ───────────────────────────────────────────────────────────
 
 let todasFrases        = [];
@@ -59,7 +62,7 @@ let frasesVisiveis     = [];
 let paginaAtual        = 1;
 let filtroFonte         = 'all';
 let filtroIdioma       = 'all';
-let esconderExportadas = false;
+let esconderEnviadasEExportadas = false;
 let ordemAtual         = 'novas'; // 'novas' | 'antigas'
 let buscaAtual         = '';
 // Até a primeira leitura terminar, a lista mostra os cartões-esqueleto (PAI-01).
@@ -541,7 +544,7 @@ async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
     // Se o Firestore já tem a marca (outro dispositivo marcou), aplica ao local
     // storage para que ela se propague cross-device.
     {
-      const MARCAS = [['status', 'exported'], ['exportadaTxt', true]];
+      const MARCAS = [['status', STATUS_ENVIADA_AO_ANKI], ['exportadaTxt', true]];
       const localById = new Map(localFrases.map(f => [String(f.id), f]));
       const pendentesNaNuvem = [];
       let   localPrecisaAtualizar = false;
@@ -1585,7 +1588,7 @@ function configurarFiltros() {
   fonte.addEventListener('change',   aoMudar(() => { filtroFonte = fonte.value; }));
   idioma.addEventListener('change',  aoMudar(() => { filtroIdioma = idioma.value; }));
   ordem.addEventListener('change',   aoMudar(() => { ordemAtual = ordem.value; }, { limpaSelecao: false }));
-  ocultar.addEventListener('change', aoMudar(() => { esconderExportadas = ocultar.checked; }));
+  ocultar.addEventListener('change', aoMudar(() => { esconderEnviadasEExportadas = ocultar.checked; }));
   busca.addEventListener('input',    aoMudar(() => { buscaAtual = busca.value; mostrarLimparBusca(); }));
   document.getElementById('btn-limpar-busca').addEventListener('click', limparBusca);
 }
@@ -1596,13 +1599,13 @@ function mostrarLimparBusca() {
 
 /** Fonte, idioma ou o toggle ligados. A ordem não esconde frase, então não conta. */
 function filtrosLigados() {
-  return filtroFonte !== 'all' || filtroIdioma !== 'all' || esconderExportadas;
+  return filtroFonte !== 'all' || filtroIdioma !== 'all' || esconderEnviadasEExportadas;
 }
 
 function limparFiltros() {
   filtroFonte = 'all';
   filtroIdioma = 'all';
-  esconderExportadas = false;
+  esconderEnviadasEExportadas = false;
   document.getElementById('filtro-fonte').value = 'all';
   document.getElementById('filtro-idioma').value = 'all';
   document.getElementById('filtro-ocultar').checked = false;
@@ -1634,7 +1637,7 @@ function aplicarFiltro() {
     : todasFrases.filter(f => fonteDaFrase(f) === filtroFonte);
   if (filtroIdioma !== 'all')
     resultado = resultado.filter(f => (f.idioma || IDIOMAS.INGLES) === filtroIdioma);
-  if (esconderExportadas)
+  if (esconderEnviadasEExportadas)
     resultado = resultado.filter(f => !foiEnviadaAoAnki(f) && !f.exportadaTxt);
   const termo = buscaAtual.trim().toLocaleLowerCase();
   if (termo)
@@ -1856,7 +1859,7 @@ function montarContexto(f) {
  * `exportadaTxt` e nunca este.
  */
 function foiEnviadaAoAnki(f) {
-  return f.status === 'exported';
+  return f.status === STATUS_ENVIADA_AO_ANKI;
 }
 
 /** A Fonte como o catálogo a chama: um nome antigo gravado vira o de hoje. */
@@ -2101,15 +2104,24 @@ async function copiarFrase(id) {
     mostrarToastDeSucesso(textoDaVoz('PAI-17.sucesso'));
   } catch (err) {
     // Falha pede atenção, então não é toast: é o aviso, com a causa em Detalhes.
-    const aviso = montarAviso({
-      texto: textoDaVoz('PAI-17.falha'),
-      detalhes: String(err?.message || err),
-      rotuloDeFechar: textoDaVoz('PAI-34'),
-    });
-    aviso.dataset.aviso = 'copiar';
-    document.querySelector('#frases-avisos [data-aviso="copiar"]')?.remove();
-    document.getElementById('frases-avisos').append(aviso);
+    mostrarAvisoNaArea('copiar', { texto: textoDaVoz('PAI-17.falha'), erro: err });
   }
+}
+
+/** Um aviso persistente por chave na área de Frases, com a causa em Detalhes. */
+function mostrarAvisoNaArea(chave, { erro, ...opcoes }) {
+  tirarAvisoDaArea(chave);
+  const aviso = montarAviso({
+    ...opcoes,
+    detalhes: String(erro?.message || erro),
+    rotuloDeFechar: textoDaVoz('PAI-34'),
+  });
+  aviso.dataset.aviso = chave;
+  document.getElementById('frases-avisos').append(aviso);
+}
+
+function tirarAvisoDaArea(chave) {
+  document.querySelector(`#frases-avisos [data-aviso="${chave}"]`)?.remove();
 }
 
 // ─── Apagar (PAI-12 · PAI-13 · PAI-14 · PAI-15) ──────────────────────────────
@@ -2170,17 +2182,13 @@ async function apagarDaNuvem(ids) {
 
 /** O aviso PAI-15: um só, que junta todas as frases que ficaram na nuvem. */
 function mostrarAvisoAindaNaNuvem(erro) {
-  document.querySelector('#frases-avisos [data-aviso="ainda-na-nuvem"]')?.remove();
-  const aviso = montarAviso({
+  mostrarAvisoNaArea('ainda-na-nuvem', {
     texto: textoDaVoz('PAI-15.aviso'),
     acao: { rotulo: textoDaVoz('PAI-15.tentarDeNovo'), aoUsar: tentarApagarDaNuvemDeNovo },
-    detalhes: String(erro?.message || erro),
-    rotuloDeFechar: textoDaVoz('PAI-34'),
+    erro,
     // Fechar só tira o aviso: o tombstone continua, e o próximo carregamento tenta de novo.
     aoFechar: () => idsAindaNaNuvem.clear(),
   });
-  aviso.dataset.aviso = 'ainda-na-nuvem';
-  document.getElementById('frases-avisos').append(aviso);
 }
 
 async function tentarApagarDaNuvemDeNovo() {
@@ -2188,10 +2196,13 @@ async function tentarApagarDaNuvemDeNovo() {
   const erro = await removerFrasesFirestore(ids);
   if (erro) {
     mostrarAvisoAindaNaNuvem(erro);
+    mostrarFalhaNaNuvem(erro);
     return;
   }
   idsAindaNaNuvem.clear();
-  document.querySelector('#frases-avisos [data-aviso="ainda-na-nuvem"]')?.remove();
+  tirarAvisoDaArea('ainda-na-nuvem');
+  // A nuvem respondeu: o card e o chip da conta deixam de dizer “sem sincronizar”.
+  Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
 }
 
 function apagarTudo() {
@@ -2508,9 +2519,9 @@ async function marcarFrasesExportadasBridge(idsParaExportar) {
   let houveMudanca = false;
   const exportadas = [];
   todasFrases = todasFrases.map(frase => {
-    if (!idsParaExportar.has(Number(frase.id)) || frase.status === 'exported') return frase;
+    if (!idsParaExportar.has(Number(frase.id)) || foiEnviadaAoAnki(frase)) return frase;
     houveMudanca = true;
-    const atualizada = { ...frase, status: 'exported' };
+    const atualizada = { ...frase, status: STATUS_ENVIADA_AO_ANKI };
     exportadas.push(atualizada);
     return atualizada;
   });
@@ -2615,26 +2626,28 @@ function abrirModalDeFrases(id, aoFechar) {
 function salvarContexto() {
   if (!edicaoDeContexto) return;
   const { ids } = edicaoDeContexto;
-  const fonteVal   = document.getElementById('modal-fonte').value.trim();
-  const tituloVal  = document.getElementById('modal-titulo').value.trim();
-  const detalheVal = document.getElementById('modal-detalhe').value.trim();
+  const contexto = {
+    fonte:   document.getElementById('modal-fonte').value.trim(),
+    titulo:  document.getElementById('modal-titulo').value.trim(),
+    detalhe: document.getElementById('modal-detalhe').value.trim(),
+  };
   modalAberto.fechar();
-  if (ids.length === 1) salvarContextoDeUmaFrase(ids[0], fonteVal, tituloVal, detalheVal);
-  else                  salvarContextoDeVarias(ids, fonteVal, tituloVal, detalheVal);
+  if (ids.length === 1) salvarContextoDeUmaFrase(ids[0], contexto);
+  else                  salvarContextoDeVarias(ids, contexto);
 }
 
 // A seleção fica de pé depois de salvar: quem acabou de arrumar o Contexto de
 // 12 frases quase sempre vai exportar ou enviar as mesmas 12 em seguida.
-function salvarContextoDeVarias(ids, fonteVal, tituloVal, detalheVal) {
+function salvarContextoDeVarias(ids, { fonte, titulo, detalhe }) {
   const alvo = new Set(ids);
   const editadas = [];
   todasFrases = todasFrases.map(f => {
     if (!alvo.has(f.id)) return f;
     const ctx = { ...(f.contexto || { fonte: f.streaming || '', titulo: '', detalhe: '' }) };
-    if (fonteVal)   ctx.fonte   = fonteVal;
-    if (tituloVal)  ctx.titulo  = tituloVal;
-    if (detalheVal) ctx.detalhe = detalheVal;
-    const updated = { ...f, ...(fonteVal ? { streaming: fonteVal } : {}), contexto: ctx };
+    if (fonte)   ctx.fonte   = fonte;
+    if (titulo)  ctx.titulo  = titulo;
+    if (detalhe) ctx.detalhe = detalhe;
+    const updated = { ...f, ...(fonte ? { streaming: fonte } : {}), contexto: ctx };
     editadas.push(updated);
     return updated;
   });
@@ -2651,12 +2664,12 @@ function salvarContextoDeVarias(ids, fonteVal, tituloVal, detalheVal) {
   }
 }
 
-function salvarContextoDeUmaFrase(id, fonteVal, tituloVal, detalheVal) {
+function salvarContextoDeUmaFrase(id, { fonte, titulo, detalhe }) {
   const idx = todasFrases.findIndex(f => f.id === id);
   if (idx < 0) return;
   const f = todasFrases[idx];
-  const novaFonte = fonteVal || f.contexto?.fonte || f.streaming || '';
-  todasFrases[idx] = { ...f, streaming: novaFonte, contexto: { fonte: novaFonte, titulo: tituloVal, detalhe: detalheVal } };
+  const novaFonte = fonte || f.contexto?.fonte || f.streaming || '';
+  todasFrases[idx] = { ...f, streaming: novaFonte, contexto: { fonte: novaFonte, titulo, detalhe } };
   chrome.storage.local.set({ frases: todasFrases }, () => {
     construirFiltroDeFonte();
     aplicarFiltro();

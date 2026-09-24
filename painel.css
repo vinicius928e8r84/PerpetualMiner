@@ -891,8 +891,34 @@ body {
   white-space: nowrap;
 }
 
+.bookreader-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: white;
+  color: #b45309;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+}
 .bookreader-btn:hover { background: #fffbeb; border-color: #f59e0b; }
 
+/* Os modais que ainda não migraram para o .veio-modal: adicionar em massa e o progresso da ponte. */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 10, 30, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.15s ease;
+}
 .modal-overlay.hidden { display: none; }
 
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
