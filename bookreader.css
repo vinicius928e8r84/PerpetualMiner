@@ -385,6 +385,13 @@ figure {
   margin-top: 6px;
 }
 
+/* O ícone do botão continua o do botão, não o grande do estado vazio. */
+.foto-vazio .veio-botao svg {
+  width: 16px;
+  height: 16px;
+  color: inherit;
+}
+
 /* Prévia de uma foto, antes de ler. */
 .foto-previa {
   display: grid;
