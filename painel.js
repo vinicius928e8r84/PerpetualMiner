@@ -8,10 +8,12 @@ const {
   iconeVeio, montarChipDaPalavra, escreverFraseClicavel, andarEntrePalavras, focarPalavra, refletirSelecao,
 } = PerpetualMiner.Veio;
 // O shell (painel-shell.js) é dono da sidebar: o total e o ponto da Conexão com o
-// Anki. A conta (painel-conta.js) desenha o chip e o card Conta & sync. Este
-// arquivo conta aos dois o que muda.
+// Anki. A conta (painel-conta.js) desenha o chip e o card Conta & sync, e a Zona
+// de perigo (painel-perigo.js), o Apagar tudo. Este arquivo conta aos três o que
+// muda.
 const Shell = PerpetualMiner.Shell;
 const Conta = PerpetualMiner.Conta;
+const Perigo = PerpetualMiner.Perigo;
 const { SITUACOES } = Conta;
 const { mostrarToastDeSucesso, abrirModal, montarAviso } = PerpetualMiner.Veio;
 
@@ -230,9 +232,11 @@ async function logout() {
   carregarFrasesLocal();
 }
 
-// Configurações › Conta & sync e o chip da sidebar mostram quem entrou.
+// Configurações › Conta & sync e o chip da sidebar mostram quem entrou; a Zona
+// de perigo, se o Apagar tudo alcança a nuvem.
 function atualizarUIAuth(user) {
   Conta.mostrarConta(user);
+  Perigo.mostrarConta(Boolean(user));
 }
 
 // ─── Falhas na nuvem ─────────────────────────────────────────────────────────
@@ -452,6 +456,10 @@ async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
   try {
     let firestoreFrases = await firestoreGetAll();
 
+    // ── Apagar tudo que a nuvem não confirmou: sai o que foi gravado até aquela hora ──
+    const apagadasAgora = await concluirApagarTudoPendente(firestoreFrases);
+    firestoreFrases = firestoreFrases.filter(f => !apagadasAgora.has(String(f.id)));
+
     // ── Tombstone local: retry de deletes que falharam no Firestore neste dispositivo ──
     const { pm_deleted_ids = [] } = await chromeGet({ pm_deleted_ids: [] });
     if (pm_deleted_ids.length > 0) {
@@ -473,7 +481,7 @@ async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
       lerTombstoneFirestore(),
       lerTombstoneSync(),
     ]);
-    const tombstoneSet = new Set([...tombstoneFS, ...tombstoneCS]);
+    const tombstoneSet = new Set([...tombstoneFS, ...tombstoneCS, ...apagadasAgora]);
 
     if (tombstoneSet.size > 0) {
       // Retry: se ainda estão no Firestore (delete falhou), apaga agora
@@ -617,16 +625,12 @@ function finalizarCarregamento() {
   aplicarFiltro();
 }
 
-// O total aparece no item Frases da sidebar e na entrada do Apagar tudo
-// (Configurações › Zona de perigo), que fica indisponível sem frases.
+// O total aparece no item Frases da sidebar e na Zona de perigo de
+// Configurações, que diz o alcance do Apagar tudo e o deixa indisponível sem frases.
 function atualizarTotal() {
   const n = todasFrases.length;
   Shell.mostrarTotalDeFrases(n);
-  const apagarTudo = document.getElementById('btn-apagar-tudo');
-  apagarTudo.disabled = n === 0;
-  if (n === 0)      apagarTudo.textContent = textoDaVoz('CFG-20');
-  else if (n === 1) apagarTudo.textContent = textoDaVoz('CFG-24.uma');
-  else              apagarTudo.textContent = textoDaVoz('CFG-24.todas', { n });
+  Perigo.mostrarTotal(n);
 }
 
 function setupStorageSyncListener() {
@@ -746,6 +750,25 @@ function limparTombstone(ids) {
   });
 }
 
+// Um Apagar tudo com a nuvem fora do ar deixou pm_apagar_tudo ({ uid, ate }). No
+// primeiro sync desta conta que alcança a nuvem, toda frase dela gravada até `ate`
+// (o id de uma frase é a hora em que ela foi gravada) ganha tombstone e sai; o que
+// foi minerado depois, em qualquer computador, fica. Devolve os ids apagados.
+async function concluirApagarTudoPendente(firestoreFrases) {
+  const { pm_apagar_tudo: pendente } = await chromeGet({ pm_apagar_tudo: null });
+  if (!pendente || pendente.uid !== usuarioLogado.uid) return new Set();
+  const ids = firestoreFrases.filter(f => Number(f.id) <= pendente.ate).map(f => String(f.id));
+  if (ids.length > 0) {
+    marcarParaDeletarSync(ids);
+    await marcarParaDeletar(ids);
+    await gravarTombstoneFirestore(ids);
+    await firestoreBatchDelete(ids);
+    limparTombstone(ids);
+  }
+  chrome.storage.local.remove('pm_apagar_tudo');
+  return new Set(ids);
+}
+
 /**
  * Apaga as frases da nuvem, deixando o tombstone antes. Devolve o erro quando o
  * DELETE falha (a frase fica pendente em `pm_deleted_ids`), ou `null`.
@@ -774,19 +797,31 @@ async function removerFrasesFirestore(ids) {
   }
 }
 
-async function apagarTudoFirestore() {
-  if (!usuarioLogado) return;
+// As frases deste computador ficam marcadas como apagadas antes de a nuvem ser
+// lida: com ela fora do ar, o sync seguinte não as traz de volta. E até a nuvem
+// confirmar, fica lembrado “apagar tudo até agora” (pm_apagar_tudo), para o sync
+// seguinte apagar também o que outro computador gravou antes e daqui não se via.
+// Resolve com true quando não há mais nada a apagar na nuvem (ou não há conta).
+async function apagarTudoFirestore(idsDesteComputador) {
+  if (!usuarioLogado) return true;
+  marcarParaDeletarSync(idsDesteComputador);
+  await marcarParaDeletar(idsDesteComputador);
+  const ate = Math.max(Date.now(), ...idsDesteComputador.map(Number));
+  await chromeSet({ pm_apagar_tudo: { uid: usuarioLogado.uid, ate } });
   try {
     const frases = await firestoreGetAll();
-    const ids    = frases.map(f => String(f.id));
+    const ids    = [...new Set([...idsDesteComputador, ...frases.map(f => String(f.id))])];
     marcarParaDeletarSync(ids);
     await marcarParaDeletar(ids);
     await gravarTombstoneFirestore(ids);
     await firestoreBatchDelete(ids);
     limparTombstone(ids);
+    chrome.storage.local.remove('pm_apagar_tudo');
+    return true;
   } catch (e) {
     console.error('[Firestore] apagar tudo falhou:', e);
     mostrarFalhaNaNuvem(e);
+    return false;
   }
 }
 
@@ -858,7 +893,7 @@ function idsSelecionados() {
 // ─── Listeners ────────────────────────────────────────────────────────────────
 
 function setupListeners() {
-  document.getElementById('btn-apagar-tudo').addEventListener('click', apagarTudo);
+  Perigo.aoApagarTudo(apagarTudo);
   document.getElementById('btn-export').addEventListener('click', exportarTxt);
   document.getElementById('btn-send-anki').addEventListener('click', enviarSelecionadasAoAnki);
   document.getElementById('btn-bulk-edit').addEventListener('click', () => abrirEditarContexto(idsSelecionados()));
@@ -2207,17 +2242,21 @@ async function tentarApagarDaNuvemDeNovo() {
   Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
 }
 
+// Roda depois que a pessoa confirma no modal da Zona de perigo (painel-perigo.js).
 function apagarTudo() {
-  if (!confirm('Apagar TODAS as frases?\nEsta ação não pode ser desfeita.')) return;
+  const ids = todasFrases.map(f => String(f.id));
   todasFrases = [];
   Object.keys(keywords).forEach(k => delete keywords[k]);
   selecionadas.clear();
   atualizarContadorSelecao();
-  apagarTudoFirestore();
-  chrome.storage.local.set({ frases: [] }, () => {
+  const naNuvem = apagarTudoFirestore(ids);
+  chrome.storage.local.set({ frases: [] }, async () => {
     atualizarTotal();
     paginaAtual = 1;
     aplicarFiltro();
+    // CFG-18 só quando as frases sumiram de todo lugar que a Zona de perigo
+    // prometeu. Uma falha na nuvem aparece no card Conta & sync e no chip (Q4).
+    if (await naNuvem) mostrarToastDeSucesso(textoDaVoz('CFG-18'));
   });
 }
 
@@ -2915,4 +2954,8 @@ function mostrarToast(msg) {
 
 function chromeGet(defaults) {
   return new Promise(resolve => chrome.storage.local.get(defaults, resolve));
+}
+
+function chromeSet(itens) {
+  return new Promise(resolve => chrome.storage.local.set(itens, resolve));
 }

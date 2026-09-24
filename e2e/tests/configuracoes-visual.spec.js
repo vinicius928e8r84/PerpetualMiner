@@ -1,6 +1,7 @@
 'use strict';
 
-// Referência visual de Configurações · resumo primeiro + Conta & sync (#26).
+// Referência visual de Configurações · resumo primeiro + Conta & sync (#26),
+// Chave do Gemini e Zona de perigo (#28).
 //
 // O dono revisa estas telas lado a lado com o protótipo travado
 // (docs/design/painel/configuracoes/prototipo-configuracoes.html?variant=C).
@@ -100,4 +101,47 @@ test('janela estreita: sem resumo na linha e sem recuo no conteúdo', async ({ p
   await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
 
   await expect(page).toHaveScreenshot('conta-estreita.png', { animations: 'disabled' });
+});
+
+test('Chave do Gemini aberta, com a chave salva', async ({ page, extensao, fakes }) => {
+  await semearComoNoPrototipo(extensao, fakes);
+  await abrirConfiguracoes(page, extensao, '#configuracoes/chave');
+  await expect(page.locator('#cfg-chave').getByRole('button', { name: 'Trocar chave' })).toBeVisible();
+  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+
+  await expect(page).toHaveScreenshot('chave-salva.png', { animations: 'disabled' });
+});
+
+test('Chave do Gemini aberta, vazia, depois de salvar vazio', async ({ page, extensao, fakes }) => {
+  await semearComoNoPrototipo(extensao, fakes);
+  await extensao.gravarStorage({ geminiApiKey: '' });
+  await abrirConfiguracoes(page, extensao, '#configuracoes/chave');
+  await page.locator('#cfg-chave').getByRole('button', { name: 'Salvar chave' }).click();
+  await expect(page.locator('#cfg-chave').getByText('Cole a chave antes de salvar')).toBeVisible();
+  await page.locator('#cfg-chave-campo').blur();
+  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+
+  await expect(page).toHaveScreenshot('chave-vazia-recusada.png', { animations: 'disabled' });
+});
+
+test('Zona de perigo aberta, com conta', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
+  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
+  await abrirConfiguracoes(page, extensao, '#configuracoes/perigo');
+  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
+  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+
+  await expect(page).toHaveScreenshot('perigo-com-conta.png', { animations: 'disabled' });
+});
+
+test('o modal de apagar todas as frases, com conta', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
+  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
+  await abrirConfiguracoes(page, extensao, '#configuracoes/perigo');
+  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
+  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await page.getByRole('button', { name: 'Apagar todas as 1.284 frases' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  await expect(page).toHaveScreenshot('perigo-modal.png', { animations: 'disabled' });
 });

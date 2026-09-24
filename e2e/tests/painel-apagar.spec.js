@@ -50,8 +50,8 @@ test('com a conta conectada, "Apagar tudo" no painel apaga todas as frases da nu
 
   // “Apagar tudo” mora em Configurações › Zona de perigo.
   await abrirPainelSincronizado(page, extensao, '#configuracoes/perigo');
-  page.once('dialog', dialogo => dialogo.accept());
   await page.getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 2 frases' }).click();
   await expect(page.locator('#shell-total')).toHaveText('0');
 
   await expect.poll(() => fakes.google.frasesDe('uid-tudo')).toEqual([]);

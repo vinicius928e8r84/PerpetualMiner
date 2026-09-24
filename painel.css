@@ -390,6 +390,40 @@ body {
   font-weight: var(--veio-peso-num);
 }
 
+/* No card aberto, a chave salva fica sob o “Chave salva”, na pílula do
+   protótipo: surface-2, raio 10, sem borda, a chave em text. */
+.cfg-chave-mascarada--card {
+  width: fit-content;
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: var(--veio-raio-icone);
+  background: var(--veio-surface-2);
+  color: var(--veio-text);
+  font-size: var(--veio-tam-corpo);
+}
+
+/* O campo da chave com Salvar chave (e Cancelar) ao lado; estreito, eles descem. */
+.cfg-chave-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.cfg-chave-entrada {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.cfg-chave-campo {
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-apoio);
+}
+
+.cfg-chave-campo::placeholder {
+  font-family: var(--veio-fonte-ui);
+}
+
 .cfg-resumo > * {
   min-width: 0;
   overflow: hidden;
