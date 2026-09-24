@@ -52,7 +52,9 @@ const { abrirModal, mostrarToastDeSucesso, escreverFrase } = PerpetualMiner.Veio
 `.veio-botao`; ela não redesenha o botão dela. Se falta uma variante, ela entra
 aqui, com o nome da spec, e passa a valer para todas as telas.
 
-- **Botões:** `.veio-botao` com `--primario` (ouro, um por tela), `--secundario`,
+- **Botões:** `.veio-botao` com `--primario` (ouro, um por tela; a exceção aprovada
+  pelo dono no PR #62 é Frases, onde Minerar frases no cabeçalho convive com Enviar
+  ao Anki na barra contextual e Salvar texto na edição no lugar, como no protótipo), `--secundario`,
   `--fantasma`, `--contorno` (o botão comum do Painel: só a borda, com o acento no
   hover), `--perigo` (contorno: a entrada que abre o modal destrutivo) e
   `--perigo-cheio` (só o botão que confirma dentro dele), `--perigo-fantasma`
