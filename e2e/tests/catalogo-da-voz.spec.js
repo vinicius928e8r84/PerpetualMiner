@@ -130,7 +130,9 @@ test('o menu de contexto mostra MIN-08, lido do catálogo', async ({ extensao })
     const original = chrome.contextMenus.create;
     chrome.contextMenus.create = props => { registrados.push(props); };
     try { await registrarMenuDeContexto(); } finally { chrome.contextMenus.create = original; }
-    return registrados.map(item => item.title);
+    // O registro da instalação (onInstalled) pode cair dentro desta janela e
+    // criar o mesmo item de novo: conta cada item pelo id, uma vez só.
+    return [...new Map(registrados.map(item => [item.id, item.title])).values()];
   });
 
   expect(titulos).toEqual(['Minerar com PerpetualMiner']);

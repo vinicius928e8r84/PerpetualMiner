@@ -284,7 +284,7 @@ test('Sem sincronizar (CFG-03): só no card e no chip, com Tentar de novo e Deta
   await expect(conta(page).getByRole('alert')).toHaveCount(0);
 });
 
-test('apagar uma frase com a nuvem fora do ar: o problema aparece no chip e no card, sem toast', async ({ page, extensao, fakes }) => {
+test('apagar uma frase com a nuvem fora do ar: o problema aparece no chip e no card, sem toast (o aviso da própria área é PAI-15, do #30)', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(2) });
   await extensao.semearSessao({ displayName: 'Ana Souza' });
   await abrirPainel(page, extensao, '#frases');
@@ -299,8 +299,12 @@ test('apagar uma frase com a nuvem fora do ar: o problema aparece no chip e no c
   });
   fakes.google.ficarForaDoAr();
   await page.locator('#frases-lista .veio-frase').first().getByRole('button', { name: 'Apagar frase' }).click();
+  // Apagar 1 frase pede confirmação (PAI-12, #30).
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar frase' }).click();
   await expect(estadoDoChip(page)).toHaveText('Sem sincronizar');
-  await expect(page.getByText(/nuvem/i).filter({ visible: true })).toHaveCount(0);
+  // A única fala sobre a nuvem na área é o aviso PAI-15 do apagar (#30), que diz
+  // o que ficou lá e traz “Tentar de novo”. Nada disso é toast.
+  await expect(page.getByRole('alert').filter({ hasText: 'As frases foram apagadas deste computador, mas não da nuvem.' })).toBeVisible();
   expect((await page.evaluate(() => window.__toasts)).filter(t => /nuvem|erro/i.test(t))).toEqual([]);
 
   await chip(page).click();

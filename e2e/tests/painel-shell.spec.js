@@ -321,6 +321,7 @@ test('dentro do shell, Frases lista em cartões e apaga como hoje', async ({ pag
 
   await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(3);
   await cartao(page, 'Sentence number 2 ').getByRole('button', { name: 'Apagar frase' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar frase' }).click();
   await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(2);
   await expect(itemDaNav(page, 'Frases').locator('.shell-contador')).toHaveText('2');
   await expect.poll(async () => (await extensao.frases()).map(f => f.texto)).toEqual([
@@ -357,7 +358,7 @@ test('dentro do shell, Enviar ao Anki cria o envio, e o acompanhamento continua 
   ).toBeGreaterThan(leiturasAntes);
 });
 
-test('Configurações hospeda Entrar com Google e Apagar tudo de hoje', async ({ page, extensao }) => {
+test('Configurações hospeda Entrar com Google e Apagar tudo', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(2) });
   await abrirPainel(page, extensao, '#configuracoes');
   // Os cards começam fechados (resumo primeiro): abre-se Conta & sync e Zona de perigo.
@@ -366,8 +367,8 @@ test('Configurações hospeda Entrar com Google e Apagar tudo de hoje', async ({
 
   await expect(page.getByRole('button', { name: 'Entrar com Google' })).toBeVisible();
 
-  page.once('dialog', dialogo => dialogo.accept());
   await page.getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 2 frases' }).click();
   await expect(itemDaNav(page, 'Frases').locator('.shell-contador')).toHaveText('0');
   await expect(page.getByRole('button', { name: 'Nenhuma frase para apagar' })).toBeDisabled();
   expect(await extensao.frases()).toEqual([]);

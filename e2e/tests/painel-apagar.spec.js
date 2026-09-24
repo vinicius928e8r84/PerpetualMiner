@@ -34,6 +34,8 @@ test('com a conta conectada, a frase apagada no painel sai da nuvem e fica no to
 
   await abrirPainelSincronizado(page, extensao);
   await page.locator('#frases-lista .veio-frase', { hasText: PRIMEIRA }).getByRole('button', { name: 'Apagar frase' }).click();
+  // Apagar 1 frase pede confirmação (PAI-12, #30).
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar frase' }).click();
   await expect(page.getByText(PRIMEIRA)).toHaveCount(0);
 
   await expect.poll(() => fakes.google.frasesDe('uid-painel').map(f => f.texto)).toEqual([SEGUNDA]);
@@ -48,8 +50,8 @@ test('com a conta conectada, "Apagar tudo" no painel apaga todas as frases da nu
 
   // “Apagar tudo” mora em Configurações › Zona de perigo.
   await abrirPainelSincronizado(page, extensao, '#configuracoes/perigo');
-  page.once('dialog', dialogo => dialogo.accept());
   await page.getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 2 frases' }).click();
   await expect(page.locator('#shell-total')).toHaveText('0');
 
   await expect.poll(() => fakes.google.frasesDe('uid-tudo')).toEqual([]);

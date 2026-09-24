@@ -27,9 +27,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel.html/js/css` | Full dashboard to view, copy, and delete all saved phrases; Google login and Firestore sync |
 | `painel-shell.js` | The panel's “Ilhas” shell: one page, one area per address (`#frases`, `#anki/<aba>`, `#configuracoes[/<seção>]`), the sidebar indicators (phrase total, Conexão com o Anki dot), the rail below ~1000 px, the F1 strip and the Configurações cards opening and closing. See “Panel shell” below |
 | `painel-conta.js` | The account in the panel: one state drawn in the Configurações › Conta & sync card, its closed-row summary and the sidebar chip (CFG-01…10). See “Account (Conta & sync)” below |
+| `painel-chave.js` | The Configurações › Chave do Gemini card: the saved key masked, with Trocar chave; the empty key's field; `geminiApiKey`. See “Chave do Gemini and Zona de perigo” below |
+| `painel-perigo.js` | The Configurações › Zona de perigo card: the Apagar tudo entry, its reach with and without an account, and the Veio confirmation modal (CFG-17). See “Chave do Gemini and Zona de perigo” below |
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `tema.js` (the chosen theme, applied before the first paint on every page), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs, the SVG mark and `icone-claro.svg`, which `.veio-marca` swaps in on the light theme through `--veio-marca`). See `veio/README.md` |
-| `lib/voz/catalogo.js` | The Voice catalog as data: the 183 approved copy states from `docs/design/voz/` |
+| `lib/voz/catalogo.js` | The Voice catalog as data: the 187 approved copy states from `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
@@ -117,13 +119,31 @@ Configurações is the “summary first” variant C (`docs/design/painel/config
 Atalhos · Chave do Gemini · Aparência · Zona de perigo) is one closed row — icon tile, title, a summary of its state, chevron — and
 opens in place; several can be open at once. The whole row toggles, and the title's `<button aria-expanded>` inside the
 `<h2>` is the control for the keyboard and the screen reader. The cards live in a size container: below ~560 px of
-content the summary leaves the row and the body loses its 62 px indent. Atalhos, Chave do Gemini and Zona de perigo get
-their content in their own tickets (Zona de perigo still hosts today's Apagar tudo); Aparência holds the theme selector
-(CFG-29…31), a segmented control whose choice `veio/tema.js` stores and every open page follows through
-`chrome.storage.onChanged`, with no reload and no toast. The other closed-row summaries
-(CFG-28) are drawn by the shell from what is already stored: the caption shortcut (still the fixed Alt+S) and
+content the summary leaves the row and the body loses its 62 px indent. Atalhos gets its content in its own ticket;
+Aparência holds the theme selector (CFG-29…31), a segmented control whose choice `veio/tema.js` stores and every
+open page follows through `chrome.storage.onChanged`, with no reload and no toast. The closed-row summaries of
+Atalhos, Chave do Gemini and Zona de perigo (CFG-28) are drawn by the shell from what is already stored: the caption shortcut (still the fixed Alt+S) and
 `pm_atalho` relabelled in PT-BR, `geminiApiKey` masked to its first and last 4 characters (or “Sem chave” in
 `danger`), and the phrase total (“1.284 frases”, “Nenhuma frase”); they follow `chrome.storage.onChanged`.
+`#configuracoes/<seção>` also tells whoever asked through `Shell.aoAbrirASecao(secao, fn)`, with the card already open.
+
+### Chave do Gemini and Zona de perigo (`painel-chave.js`, `painel-perigo.js`)
+
+The Chave do Gemini card owns `geminiApiKey` (the same key the Minerar de uma foto reads) straight from
+`chrome.storage.local`. Saved, it shows “Chave salva” and the key masked as in the summary (`Shell.mascararChave`), with
+Trocar chave, which opens an *empty* field with Salvar chave and Cancelar, so the old key never reaches the screen.
+Empty, the field stays open with the note. The field is a `<form>`, so Enter saves like the button; an empty (or blank)
+save sets `aria-invalid` and the CFG-16 line linked by `aria-describedby`, and typing clears it. Saving trims the key,
+shows the CFG-16 toast and goes back to the summary. `#configuracoes/chave` with the key empty focuses the field. The key
+is not validated.
+
+The Zona de perigo card is drawn from what `painel.js` reports through `PerpetualMiner.Perigo`: `mostrarTotal(n)`,
+`mostrarConta(comConta)` and `aoApagarTudo(apagar)`. The outline danger button only opens the Veio modal (CFG-17:
+Cancelar has the initial focus, Esc and a click outside close it); only the filled button inside it calls
+`apagarTudo()`, which clears the history, and with an account the cloud, then shows the CFG-18 toast — only once the
+cloud is empty too; a cloud failure shows in the Conta & sync card and the chip instead (Q4). The description (CFG-32),
+the reach line and the modal body say “all computers of your account” only with an account. Until the total arrives,
+the entry row stays hidden, so it never shows “Nenhuma frase para apagar” while the list is still loading. No `confirm()`.
 
 ### Account (`painel-conta.js`)
 
@@ -136,7 +156,9 @@ named by `Conta.SITUACOES` (never a loose string): `SINCRONIZANDO` (CFG-01), `PR
 this computer's phrases, not the whole cloud collection), `RECUSADO` (CFG-04) and `EXPIROU` (CFG-08); with no profile
 name the account is “Conta Google” (CFG-10).
 
-A sync problem shows **only** in the card and the chip — never a toast or a strip in another area. `painel.js` tags a
+A sync problem shows **only** in the card and the chip — never a toast or a strip in another area. The one exception is
+the spec's own PAI-15: when a delete reaches this computer but not the cloud, Frases also shows the persistent aviso
+saying those phrases may come back, with “Tentar de novo”; the card and the chip still say the computer is out of sync. `painel.js` tags a
 cloud error with its situation (`erroDaResposta`: HTTP 401 → `EXPIROU`, 403/PERMISSION_DENIED → `RECUSADO`, the rest
 `SEM_SINCRONIZAR`, or `PRIMEIRA_SUBIDA_FALHOU` when the first upload reached nothing) and the raw message goes to the card's collapsed “Detalhes”. Closing Google's login window is not an
 error and shows nothing; a login that fails shows CFG-07 in the card with “Tentar de novo”.
@@ -155,12 +177,27 @@ the Fonte filter), Título · Detalhe and the state badge (PAI-08).
 The area header carries **Minerar frases** (ADD-01), which opens today's bulk add until #31 brings its menu. The filter
 row: one Fonte select (the Fontes in the history), language, order, the search (text and Título, with ×)
 and the “Ocultar enviadas e exportadas” toggle. Below it, the **Selecionar página** checkbox (PAI-31) marks the whole
-page, and shows the mixed state when part of it is selected (`refletirSelecao`). The list states: 5 skeleton cards until the first load finishes
+page, and shows the mixed state when part of it is selected (`refletirSelecao`). Changing a filter or the search clears
+the selection, so no action lands on a phrase that is not on screen; reordering keeps it.
+
+With a selection, that same row becomes the **contextual bar** (PAI-32), sticky at the top of the island: × Desmarcar
+todas, the count (PAI-06), “Selecionar todas as N frases” once the whole page is marked (N is what the filters show,
+across pages), and Editar contexto · Exportar .txt · Apagar · Enviar ao Anki. The page checkbox stays at its start,
+with its label only for the screen reader.
+
+The card's four icon actions (PAI-30) appear on hover and on focus. **Editar texto** swaps the text for a field in
+place (PAI-33: Enter saves, Esc cancels, Cancelar · Salvar texto, no toast — the change is on screen, PAI-16);
+`edicaoDeTexto` holds the phrase and the draft, so a redraw does not lose it. **Editar contexto** opens the same modal
+for 1 phrase (fields filled, no toast) and for N (fields blank stay as they are, toast PAI-22). **Apagar** opens one
+modal for 1 phrase (PAI-12, no toast) and for the selection (PAI-13, toast PAI-14); the body only mentions the other
+computers when an account is connected. Both modals are the Veio modal, driven by `abrirModal`. The list states: 5 skeleton cards until the first load finishes
 (PAI-01), first run (PAI-02: its `titulo` in bold above the text, with today's fixed Alt+S until #27), filters hid everything (PAI-03) and search without
 result (PAI-04, plus Limpar filtros when a filter is on). Everything is built with DOM nodes, never HTML strings.
 
-Today `exported` is written both by the Envio and by Exportar .txt, and the card shows it as Enviada ao Anki; #30
-gives Exportada its own state.
+Two marks, never the same one: `status: 'exported'` is **Enviada ao Anki** (the phrase went into a completed Envio;
+the field keeps its pre-glossary name), and `exportadaTxt` is **Exportada** (it was written to a .txt). Exporting never
+writes the Envio's mark, a phrase that has both says Enviada ao Anki, and “Ocultar enviadas e exportadas” hides either.
+Both marks travel to the cloud and merge on load in the same place (`carregarFrasesFirestore`).
 
 ### Base components (`veio/componentes.css` + `veio/componentes.js`)
 
@@ -211,7 +248,7 @@ Authentication uses `chrome.identity.launchWebAuthFlow` (OAuth2 with Google) —
 
 Pending sync queue: if a Firestore write fails (offline/error), the phrase `id` is added to `pm_pending_sync` in local storage and retried on next panel load.
 
-Deleting (panel or popup) writes a tombstone so the next panel sync doesn't bring the phrase back from the cloud or from another computer: `pm_del_{id}` in `chrome.storage.sync`, the id in local `pm_deleted_ids` (retry of the Firestore DELETE), and, when logged in, the field ``ids.`{id}` `` in `usuarios/{uid}/meta/deleted`. The popup asks the service worker to delete (`APAGAR_FRASES`); the panel does it itself (`removerFrasesFirestore`, `apagarTudoFirestore`). Both build the tombstone with `tombstone.js`: a phrase id starts with a digit, so its field path must be backquoted, and Firestore (and the e2e fake) rejects the bare `ids.{id}`.
+Deleting (panel or popup) writes a tombstone so the next panel sync doesn't bring the phrase back from the cloud or from another computer: `pm_del_{id}` in `chrome.storage.sync`, the id in local `pm_deleted_ids` (retry of the Firestore DELETE), and, when logged in, the field ``ids.`{id}` `` in `usuarios/{uid}/meta/deleted`. The popup asks the service worker to delete (`APAGAR_FRASES`); the panel does it itself (`removerFrasesFirestore`, `apagarTudoFirestore`). Apagar tudo tombstones this computer's phrases before it reads the cloud, so a cloud that is down cannot bring them back on the next sync. Until the cloud confirms, it also keeps `pm_apagar_tudo` (`{ uid, ate }`): the first sync of that account that reaches the cloud tombstones and deletes every cloud phrase whose id (its save time) is up to `ate` — phrases another computer saved before the wipe that this one never saw — and keeps what was mined after. Both build the tombstone with `tombstone.js`: a phrase id starts with a digit, so its field path must be backquoted, and Firestore (and the e2e fake) rejects the bare `ids.{id}`.
 
 ### Storage Schema
 
@@ -238,6 +275,7 @@ Other storage keys:
 - `pm_user_info` — `{ uid, email, displayName, photoURL }` — Google user profile
 - `pm_pending_sync` — `string[]` of phrase IDs awaiting Firestore retry
 - `pm_deleted_ids` — `string[]` of deleted phrase IDs whose Firestore DELETE hasn't succeeded yet
+- `pm_apagar_tudo` — `{ uid, ate }` while an Apagar tudo hasn't reached the cloud; see the tombstone paragraph above
 
 ### Platform-Specific Subtitle Selectors (content.js)
 
@@ -291,7 +329,7 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - The showcase also carries a **mock of the toolbar badge** in its three states, outside the two theme columns — Chrome draws the real badge on the browser toolbar, which no static page (and so no Vercel preview) can show. The mock reads its colors from the tokens, and the badge test asserts those tokens match what the service worker hands Chrome, so the copy in `background.js` can't drift.
 - `tests/painel-frases-visual.spec.js` holds the **visual reference of the Frases list** (cards wide and as a rail, each at the top and with the island scrolled to the pagination; loading, first run, filters and search with no result as the full page), in the same way: `npx playwright test painel-frases-visual --update-snapshots` after the owner approves a new look. Today's bulk actions (`.conteudo-de-hoje`) are masked.
 - `tests/painel-shell-visual.spec.js` holds the **visual reference of the panel shell**: its approved states (Frases wide and as a rail, first run, the Conexão off with F1, Configurações with an account) as `toHaveScreenshot` baselines in `painel-shell-visual.spec.js-snapshots/` (taken on Linux, with the clock frozen on the day of the sample phrases). A visual change to the shell fails them; after the owner approves the new look, `npx playwright test painel-shell-visual --update-snapshots` replaces the reference. The content inside each area (`.conteudo-de-hoje`, and the Frases list, which has its own reference) is masked: the reference is the shell around it.
-- `tests/configuracoes-visual.spec.js` does the same for Configurações (cards closed; Conta & sync synced, not synced, logged out after a failed login; the narrow window; Aparência open in dark and in light), compared by the owner side by side with the locked prototype (`?variant=C`).
+- `tests/configuracoes-visual.spec.js` does the same for Configurações (cards closed; Conta & sync synced, not synced, logged out after a failed login; Chave do Gemini saved and refused empty; Zona de perigo with an account and its modal; the narrow window; Aparência open in dark and in light), compared by the owner side by side with the locked prototype (`?variant=C`).
 - `HEADED=1 npm test` shows the browser.
 - Tests assert what the person sees and what ends up stored, never internal functions. Three narrow exceptions, each named in the test's own comment:
   - Where Chromium gives Playwright no way to drive the native UI or clock (the context menu, the toolbar badge, the midnight alarm), a test does what Chrome would do — calls the function Chrome would call (`minerarSelecaoDoMenu`, `registrarMenuDeContexto`) or fires the alarm early under its own name — and asserts what gets stored or what is handed to Chrome (`chrome.action.getBadgeText`, `getTitle`, the next alarm's time).
