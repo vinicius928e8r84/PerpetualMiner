@@ -808,6 +808,8 @@ function atualizarContadorSelecao() {
   linha.hidden = !listaCarregada || (idsPag.length === 0 && n === 0);
   refletirSelecao(document.getElementById('sel-pagina'), naPagina, idsPag.length);
   linha.classList.toggle('frases-selecao--barra', n > 0);
+  // Na barra, o checkbox perde o rótulo à vista: o nome continua para o leitor de tela.
+  document.getElementById('sel-pagina-rotulo').classList.toggle('veio-so-leitor', n > 0);
   document.getElementById('frases-barra').hidden = n === 0;
   if (n === 0) return;
 

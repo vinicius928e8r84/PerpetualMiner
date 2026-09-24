@@ -139,12 +139,13 @@
         <!--
           A linha de seleção: sem seleção, o checkbox “Selecionar página”. Com
           seleção, ela vira a barra contextual (PAI-32), que gruda no topo da ilha
-          ao rolar; o checkbox fica no começo dela, marcado ou misto.
+          ao rolar; o checkbox fica no começo dela, marcado ou misto, e o rótulo
+          passa a ser só do leitor de tela.
         -->
         <div class="frases-selecao" id="frases-selecao" hidden>
           <label class="frases-selecao__pagina">
             <input type="checkbox" class="veio-checkbox" id="sel-pagina" data-voz-aria="PAI-31">
-            <span class="veio-so-leitor frases-selecao__rotulo" data-voz="PAI-31"></span>
+            <span class="frases-selecao__rotulo" id="sel-pagina-rotulo" data-voz="PAI-31"></span>
           </label>
           <div class="frases-barra" id="frases-barra" hidden>
             <button class="veio-botao-icone" id="btn-desmarcar-todas" type="button"

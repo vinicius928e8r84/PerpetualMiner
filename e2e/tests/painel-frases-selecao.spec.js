@@ -62,10 +62,16 @@ test('sem seleção, só “Selecionar página”; ao marcar, a barra mostra a c
   await abrirFrases(page, extensao);
 
   await expect(selecionarPagina(page)).toBeVisible();
+  // O rótulo está escrito à vista, não só no nome do checkbox (PAI-31).
+  const rotulo = page.locator('#frases-selecao').getByText('Selecionar página', { exact: true });
+  // (O “só para o leitor de tela” conta como visível para o Playwright: 1×1 px.)
+  expect((await rotulo.boundingBox()).width).toBeGreaterThan(40);
   await expect(barra(page)).toBeHidden();
 
   await marcar(page, 'Sentence number 2 ').check();
   await expect(barra(page)).toBeVisible();
+  // Na barra, o checkbox fica só com o nome para o leitor de tela.
+  expect(await rotulo.boundingBox()).toMatchObject({ width: 1, height: 1 });
   await expect(barra(page)).toContainText('1 selecionada');
   for (const nome of ['Desmarcar todas', 'Editar contexto', 'Exportar .txt', 'Apagar', 'Enviar ao Anki']) {
     await expect(naBarra(page, nome)).toBeVisible();
