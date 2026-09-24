@@ -2,9 +2,8 @@
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
 // deste arquivo, pelo manifest: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
-const { detectarIdioma } = PerpetualMiner;
+const { detectarIdioma, Atalhos } = PerpetualMiner;
 
-const ATALHO_TECLA = 'KeyS';
 const COR_ICONE    = '#00ff88';
 // Linhas dos avisos de mineração (manual e automática): cabeçalho e texto minerado.
 const ESTILO_CABECALHO_AVISO = `font-size:9px;text-transform:uppercase;letter-spacing:1.2px;
@@ -24,27 +23,19 @@ const SUBTITLE_UI_TEXT = [
     'следующая серия', 'сезоны и серии', 'субтитры',
 ];
 
-// ─── Custom Shortcut Engine ───────────────────────────────────────────────────
-// Captura texto selecionado via atalho configurado pelo usuário (mouse ou teclado).
+// ─── Atalhos gravados ────────────────────────────────────────────────────────
+// “Minerar legenda” (padrão Alt+S) e “Minerar seleção” (padrão sem atalho), como
+// estão gravados em Configurações › Atalhos (lib/atalhos.js). Um atalho novo vale
+// na hora, sem recarregar a página.
 
-let _atalhoConfig = null;
+let _atalhos = { ...Atalhos.ATALHOS_PADRAO };
 let _autoMinerState = null;
 let _autoMinerLastText = '';
 let _autoMinerLastSentText = '';
 let _autoMinerStableSince = 0;
 let _autoMinerLastEvent = null;
 
-// Carrega configuração inicial
-chrome.storage.local.get({ pm_atalho: null }, (data) => {
-  _atalhoConfig = data.pm_atalho;
-});
-
-// Mantém configuração sincronizada em tempo real
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && 'pm_atalho' in changes) {
-    _atalhoConfig = changes.pm_atalho.newValue || null;
-  }
-});
+Atalhos.acompanharAtalhos(atalhos => { _atalhos = atalhos; });
 
 chrome.runtime.sendMessage({ type: 'AUTO_MINER_GET_STATE' }, response => {
   if (!chrome.runtime.lastError && response?.state) {
@@ -60,33 +51,35 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
-function _correspondeAtalho(cfg, e) {
-  if (!cfg) return false;
-  if (cfg.altKey   !== e.altKey)   return false;
-  if (cfg.ctrlKey  !== e.ctrlKey)  return false;
-  if (cfg.shiftKey !== e.shiftKey) return false;
-  if (cfg.type === 'mouse')    return e.button === cfg.button;
-  if (cfg.type === 'keyboard') return e.code   === cfg.code;
-  return false;
-}
-
-// Listener de mouse — captura fase capture para interceptar antes do browser navegar
+// Mouse — fase de captura, para interceptar antes de o navegador navegar (voltar
+// e avançar). O botão só é tomado quando há o que minerar: numa página sem
+// legenda ou sem seleção, ele continua fazendo o que sempre fez.
 document.addEventListener('mousedown', (e) => {
-  if (!_atalhoConfig || _atalhoConfig.type !== 'mouse') return;
-  if (!_correspondeAtalho(_atalhoConfig, e)) return;
+  if (Atalhos.correspondeAoAtalho(_atalhos.legenda, e) && obterLegendaAtual()) {
+    _tomarOBotao(e);
+    minerarLegenda(e);
+    return;
+  }
+  if (!Atalhos.correspondeAoAtalho(_atalhos.selecao, e)) return;
 
   const texto = window.getSelection()?.toString().trim();
   if (!texto) return;
 
-  e.preventDefault();
-  e.stopImmediatePropagation();
+  _tomarOBotao(e);
   _ativarCaptura(texto, e);
 }, true);
 
-// Listener de teclado — ignora campos de input/textarea
+// O botão é tomado inteiro: o `mousedown` e a soltura, que é quando voltar e
+// avançar navegariam.
+function _tomarOBotao(e) {
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  Atalhos.guardarSolturaDoBotao(e.button);
+}
+
+// Teclado — o atalho de seleção ignora campos de input/textarea
 document.addEventListener('keydown', (e) => {
-  if (!_atalhoConfig || _atalhoConfig.type !== 'keyboard') return;
-  if (!_correspondeAtalho(_atalhoConfig, e)) return;
+  if (!Atalhos.correspondeAoAtalho(_atalhos.selecao, e)) return;
 
   const tag = document.activeElement?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
@@ -169,10 +162,10 @@ chrome.runtime.onMessage.addListener((message, sender) => {
     navigator.clipboard.writeText(message.texto).catch(() => {});
 });
 
-// ─── Atalho de Teclado ───────────────────────────────────────────────────────
+// ─── Atalho de legenda (teclado) ─────────────────────────────────────────────
 
 document.addEventListener('keydown', function(event) {
-    if (event.altKey && event.code === ATALHO_TECLA) {
+    if (Atalhos.correspondeAoAtalho(_atalhos.legenda, event)) {
         event.preventDefault();
         minerarLegenda(event);
     }

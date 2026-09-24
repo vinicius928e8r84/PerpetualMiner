@@ -563,6 +563,114 @@ body {
   display: none;
 }
 
+/* ── Card Atalhos ─────────────────────────────────────────────────────────
+   Uma linha por ação: nome e o que ela faz à esquerda; a tecla e o Gravar
+   atalho à direita; o aviso de repetido embaixo, em danger. As linhas são
+   separadas por um fio, como no protótipo (variante C). */
+
+#cfg-atalhos-corpo {
+  gap: 0;
+}
+
+.cfg-atalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--veio-border);
+}
+
+.cfg-atalho:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.cfg-atalho[hidden] {
+  display: none;
+}
+
+.cfg-atalho__texto {
+  display: flex;
+  flex: 1 1 220px;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cfg-atalho__nome {
+  font-weight: var(--veio-peso-titulo);
+}
+
+.cfg-atalho__tecla {
+  display: inline-flex;
+  min-width: 0;
+}
+
+.cfg-atalho__tecla .veio-kbd {
+  padding: 2px 8px;
+  border-radius: var(--veio-raio-tecla-resumo);
+  font-size: var(--veio-tam-tecla-resumo);
+}
+
+.cfg-atalho__tecla .veio-kbd--sem-atalho {
+  font-family: var(--veio-fonte-ui);
+}
+
+/* Gravando (CFG-13): a tecla vira uma pílula ouro que pulsa. */
+.cfg-gravando {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border: 1px solid var(--veio-accent);
+  border-radius: var(--veio-raio-tecla-resumo);
+  color: var(--veio-accent-text);
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-rotulo);
+  animation: cfg-pulsar var(--veio-destaque) ease-in-out infinite;
+}
+
+@keyframes cfg-pulsar {
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--veio-accent) 22%, transparent); }
+}
+
+/* Gravou: a tecla nova pisca uma vez, como a borda do card aberto por endereço. */
+.cfg-atalho__tecla--nova {
+  animation: shell-destaque var(--veio-destaque) ease-out;
+}
+
+.cfg-atalho__aviso {
+  flex-basis: 100%;
+  color: var(--veio-danger);
+  font-size: var(--veio-tam-apoio);
+}
+
+.cfg-atalho__aviso[hidden] {
+  display: none;
+}
+
+/* O Cancelar da gravação: o contorno do Painel em danger, sem o acento, para
+   não competir com a pílula ouro ao lado. */
+.cfg-atalho__cancelar,
+.cfg-atalho__cancelar:hover {
+  border-color: var(--veio-danger);
+}
+
+.cfg-atalho__cancelar:hover {
+  background: var(--veio-danger-soft);
+}
+
+/* A região que o leitor de tela anuncia: fora da tela, a pílula é o desenho. */
+.cfg-atalho__anuncio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* Janela estreita: abaixo de ~560 px de conteúdo, o resumo sai da linha
    fechada e o conteúdo perde o recuo. */
 @container (max-width: 559px) {
@@ -800,6 +908,12 @@ body {
   max-width: 52ch;
 }
 
+/* Sem atalho de legenda gravado (GLB-02): Definir atalho, dentro da frase. */
+.frases-vazio__definir-atalho {
+  color: var(--veio-accent-text);
+  font-weight: var(--veio-peso-rotulo);
+}
+
 .frases-vazio__acoes {
   display: flex;
   flex-wrap: wrap;
@@ -891,7 +1005,9 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .shell-ponto[data-estado="conectando"],
   .cfg-ponto[data-estado="sincronizando"],
-  .shell-card--destaque {
+  .shell-card--destaque,
+  .cfg-gravando,
+  .cfg-atalho__tecla--nova {
     animation: none;
   }
 

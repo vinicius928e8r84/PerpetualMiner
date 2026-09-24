@@ -61,7 +61,7 @@
 
   const dados = {
     frases: FRASES,
-    pm_atalho: { code: 'KeyS', alt: true, ctrl: false, shift: false, label: 'Alt + S' },
+    pm_atalho: { type: 'mouse', button: 3, code: null, altKey: true, ctrlKey: false, shiftKey: false, label: 'Alt+Botão voltar' },
     pm_deleted_ids: [],
     pm_pending_sync: [],
     pm_migrated: true,
