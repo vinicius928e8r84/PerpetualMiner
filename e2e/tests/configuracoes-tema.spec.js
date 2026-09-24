@@ -158,7 +158,7 @@ test('o que aparece por cima das páginas continua escuro', async ({ page, conte
   await abrirConfiguracoes(painel, extensao, '#configuracoes/aparencia');
 
   await page.goto(paginas.url('player.html'));
-  const botao = page.locator('#btn-minerador-pro');
+  const botao = page.getByRole('button', { name: /^Minerar legenda/ });
   await expect(botao).toBeVisible();
   const antes = await botao.evaluate(no => getComputedStyle(no).backgroundColor);
 

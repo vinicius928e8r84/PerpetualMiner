@@ -34,7 +34,8 @@
     window.simularAtalhoEClique = () => {
       const tecla = { altKey: true, code: 'KeyS', key: 's', bubbles: true, cancelable: true };
       document.dispatchEvent(new KeyboardEvent('keydown', tecla));
-      document.getElementById('btn-minerador-pro')?.click();
+      // O botão mora na sombra aberta do host do overlay, que a página alcança.
+      document.querySelector('perpetualminer-overlay')?.shadowRoot?.querySelector('button')?.click();
     };
   </script>
 </body>

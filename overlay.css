@@ -1,0 +1,238 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Overlay na página (content.js): o botão flutuante e a pílula de feedback.
+
+   Carregado só dentro do Shadow DOM do overlay, depois de veio/tokens.css e
+   veio/componentes.css. Nada aqui alcança o site, e nada do site alcança
+   isto. Spec: docs/design/overlay/ (M1, a reserva C: a pílula).
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* O ponto de partida é zero: nada que o site herda até o host chega aqui. */
+.pm {
+  all: initial;
+  display: block;
+  font-family: var(--veio-fonte-ui);
+  font-size: var(--veio-tam-apoio);
+  line-height: 1.4;
+  color: var(--veio-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.pm[hidden] {
+  display: none;
+}
+
+.pm *,
+.pm *::before,
+.pm *::after {
+  box-sizing: border-box;
+}
+
+/* ── A pílula ─────────────────────────────────────────────────────────────
+   O botão é o círculo da direita; o corpo estica para a esquerda e volta. */
+
+.pm-pilula {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  min-height: 46px;
+  border-radius: var(--veio-raio-pilula);
+  background: transparent;
+  transition: background var(--veio-transicao), box-shadow var(--veio-transicao), opacity var(--veio-transicao);
+}
+
+.pm-pilula--aberta {
+  background: var(--veio-surface);
+  box-shadow: 0 0 0 1px var(--veio-border), var(--veio-sombra);
+}
+
+.pm-corpo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 0;
+  overflow: hidden;
+  transition: max-width var(--veio-transicao) ease-out;
+}
+
+.pm-pilula--aberta .pm-corpo {
+  max-width: min(460px, 70vw);
+  padding: 6px 4px 6px 8px;
+}
+
+.pm-estado {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pm-icone {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--veio-accent-soft);
+  color: var(--veio-accent-text);
+}
+
+.pm-icone svg {
+  width: 15px;
+  height: 15px;
+}
+
+.pm-pilula--erro .pm-icone {
+  background: var(--veio-danger-soft);
+  color: var(--veio-danger);
+}
+
+.pm-texto {
+  display: block;
+  min-width: 0;
+  max-width: 300px;
+}
+
+.pm-titulo {
+  display: block;
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-titulo);
+  white-space: nowrap;
+}
+
+/* Uma falha diz o que houve e o que fazer: a mensagem quebra a linha em vez de ser cortada. */
+.pm-pilula--erro .pm-titulo {
+  white-space: normal;
+}
+
+.pm-frase {
+  display: block;
+  overflow: hidden;
+  font-size: var(--veio-tam-apoio);
+  color: var(--veio-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pm-acoes {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.pm-acoes:empty {
+  display: none;
+}
+
+/* ── O botão flutuante ────────────────────────────────────────────────────
+   O azulejo Veio num círculo de 46 px. */
+
+.pm-botao {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--veio-surface);
+  box-shadow: var(--veio-sombra);
+  cursor: pointer;
+  transition: transform var(--veio-transicao);
+}
+
+.pm-pilula--aberta .pm-botao {
+  box-shadow: none;
+}
+
+.pm-botao:hover {
+  transform: scale(1.06);
+}
+
+.pm-botao:focus-visible {
+  outline: 2px solid var(--veio-accent);
+  outline-offset: 3px;
+}
+
+.pm-azulejo {
+  display: block;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+}
+
+/* Sem player (seleção numa página comum, página sem vídeo): não há botão, e a
+   pílula surge e some por inteiro. */
+.pm-pilula--livre .pm-botao {
+  display: none;
+}
+
+.pm-pilula--livre:not(.pm-pilula--aberta) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* O rótulo visível: aparece ao passar o mouse e com o foco do teclado. */
+.pm-rotulo {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 10px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-icone);
+  background: var(--veio-surface);
+  color: var(--veio-text);
+  font-size: var(--veio-tam-legenda);
+  font-weight: var(--veio-peso-rotulo);
+  white-space: nowrap;
+  transform: translateY(-50%);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--veio-transicao), visibility var(--veio-transicao);
+}
+
+.pm-botao:hover .pm-rotulo,
+.pm-botao:focus-visible .pm-rotulo {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Com a pílula aberta, o corpo já está onde o rótulo ficaria. */
+.pm-pilula--aberta .pm-rotulo {
+  display: none;
+}
+
+/* O contador da mineração automática: pílula ouro mono no canto do botão;
+   no limite, só o contorno. */
+.pm-contador {
+  position: absolute;
+  top: -7px;
+  right: -8px;
+  padding: 3px 5px;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-micro);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.pm-contador[hidden] {
+  display: none;
+}
+
+.pm-contador--limite {
+  background: var(--veio-surface);
+  color: var(--veio-accent-text);
+  box-shadow: 0 0 0 1.5px var(--veio-accent);
+}

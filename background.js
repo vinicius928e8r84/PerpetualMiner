@@ -141,14 +141,16 @@ function minerarSelecaoDoMenu(info, tab) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Um player em iframe sem permissão de clipboard pede a cópia ao frame de cima
   // da mesma aba. Só o content script desta extensão alcança este canal; uma
-  // página não, então ela não consegue sobrescrever o clipboard por aqui.
+  // página não, então ela não consegue sobrescrever o clipboard por aqui. A
+  // resposta diz se a cópia saiu, para o overlay só afirmar o que aconteceu.
   if (request.type === 'COPIAR_NO_FRAME_DE_CIMA') {
     const texto = request.texto;
     if (sender.id !== chrome.runtime.id || sender.tab?.id == null) return;
     if (typeof texto !== 'string' || !texto.trim()) return;
     chrome.tabs.sendMessage(sender.tab.id, { type: 'COPIAR_PARA_CLIPBOARD', texto }, { frameId: 0 })
-      .catch(() => {});
-    return;
+      .then(resposta => sendResponse({ ok: resposta?.ok === true }))
+      .catch(() => sendResponse({ ok: false }));
+    return true;
   }
 
   if (request.type === 'SALVAR_HISTORICO') {
@@ -1188,6 +1190,12 @@ function chromeGet(defaults) {
   return new Promise(resolve => chrome.storage.local.get(defaults, resolve));
 }
 
+// Uma gravação recusada (cota, armazenamento indisponível) rejeita: quem espera
+// por ela — o overlay, pela resposta de SALVAR_HISTORICO — precisa saber.
 function chromeSet(values) {
-  return new Promise(resolve => chrome.storage.local.set(values, resolve));
+  return new Promise((resolve, reject) => chrome.storage.local.set(values, () => {
+    const erro = chrome.runtime.lastError;
+    if (erro) reject(new Error(erro.message));
+    else resolve();
+  }));
 }
