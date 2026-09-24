@@ -220,6 +220,37 @@ test('a troca de tema não anima', async ({ page, extensao }) => {
   await expect.poll(() => fundoDaPagina(page)).toBe(FUNDO.claro);
 });
 
+/** A imagem que a marca mostra de verdade: a do `content` do CSS, ou o `src` quando não há. */
+const imagemDaMarca = locator => locator.evaluate(no => {
+  const conteudo = getComputedStyle(no).content;
+  return (conteudo.startsWith('url(') ? conteudo : no.src).match(/icones\/([^")]+)/)[1];
+});
+
+test('no claro, a marca do painel vai para o azulejo claro; o popup, ainda escuro, fica com a de sempre',
+  async ({ page, context, extensao }) => {
+    await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
+    const marca = page.locator('.veio-marca').first();
+    expect(await imagemDaMarca(marca)).toBe('icone.svg');
+
+    await escolherTema(page, 'Claro');
+    await expect.poll(() => imagemDaMarca(marca)).toBe('icone-claro.svg');
+
+    const popup = await context.newPage();
+    await popup.goto(extensao.url('popup.html'));
+    expect(await imagemDaMarca(popup.locator('.veio-marca'))).toBe('icone.svg');
+    await popup.close();
+  });
+
+test('o seletor de tema tem a largura das opções, não a do card', async ({ page, extensao }) => {
+  await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
+
+  const larguras = await page.locator('#cfg-tema').evaluate(grupo => ({
+    grupo: grupo.getBoundingClientRect().width,
+    corpo: grupo.parentElement.getBoundingClientRect().width,
+  }));
+  expect(larguras.grupo).toBeLessThan(larguras.corpo / 2);
+});
+
 test('o seletor tem nome, é alcançável pelo teclado e as setas trocam o tema', async ({ page, extensao }) => {
   await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
 

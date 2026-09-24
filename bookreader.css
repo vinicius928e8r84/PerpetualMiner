@@ -30,6 +30,11 @@ body {
   gap: 12px;
   padding: 2rem 1.75rem 1.25rem;
 }
+/* A marca fica no azulejo escuro sobre a sidebar roxa de hoje, mesmo com o
+   corpo preso no claro, até #36/#37 refazerem a página. */
+.sidebar-logo .veio-marca {
+  content: url("veio/icones/icone.svg");
+}
 .logo-title {
   font-size: 1.1rem;
   font-weight: 700;

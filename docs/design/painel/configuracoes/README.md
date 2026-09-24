@@ -118,7 +118,7 @@ Um problema de sync aparece **só** aqui e no chip (Q4). O chip fica sempre vis�
 
 ## Aparência
 
-**Descrição:** “Vale para o painel, o popup e Minerar de uma foto, só neste computador. O que aparece por cima dos vídeos e das páginas continua escuro.” (CFG-29)
+**Descrição:** “Só neste computador.” (CFG-29)
 
 - **Controle:** um controle segmentado de duas opções, **Escuro · Claro** (CFG-30), com o grupo rotulado “Tema” para o leitor de tela. É um grupo de rádio: as setas trocam a opção, e o foco visível é o do Veio.
 - **Sem escolha gravada:** o app abre no **escuro**, o padrão do Veio. O controle mostra Escuro marcado.

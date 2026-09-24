@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- PerpetualMiner · marca "Veio" no tema claro: o mesmo cristal num azulejo claro, com as faces
+       em ouro mais fundo para ler sobre o creme. Só dentro das páginas; a toolbar usa sempre o escuro. -->
+  <rect width="128" height="128" rx="28" fill="#F0EBE1"/>
+  <polygon points="64,14 64,114 38,92 38,36" fill="#F0AE2E"/>
+  <polygon points="64,14 90,36 90,92 64,114" fill="#A86A0C"/>
+  <polygon points="64,14 90,36 64,46 38,36" fill="#F7C85C"/>
+  <rect x="30" y="68" width="68" height="10" fill="#F0EBE1"/>
+</svg>

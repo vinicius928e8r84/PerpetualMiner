@@ -10,7 +10,7 @@ A identidade compartilhada por todas as páginas da extensão. A spec travada es
 | `componentes.css` | Os componentes base, uma vez só: botões, campos, toggle, checkbox, selos, `kbd`, controle segmentado, azulejo, modal, toast, aviso persistente, esqueleto e a linha de frase. Nenhuma cor é escrita aqui: tudo sai dos tokens. |
 | `componentes.js` | O que os componentes precisam de JavaScript: o modal (foco inicial, foco preso, Esc, clique fora), o toast que some sozinho, o aviso com Detalhes, o grifo da Palavra e os ícones. Pendurado em `PerpetualMiner.Veio`. |
 | `fontes/*.woff2` | Manrope e JetBrains Mono, subsets latin + cyrillic. Nada vem do Google Fonts em runtime. |
-| `icones/` | A marca: `icone.svg` e os PNG 16/32/48/128 que o manifest usa na toolbar. |
+| `icones/` | A marca: `icone.svg` e os PNG 16/32/48/128 que o manifest usa na toolbar, e `icone-claro.svg`, a marca das páginas no tema claro. |
 
 ## Como usar
 
@@ -31,8 +31,8 @@ const { abrirModal, mostrarToastDeSucesso, escreverFrase } = PerpetualMiner.Veio
 
 - **Cor nova não se escreve fora daqui.** Se falta um valor, ele entra como token, com o nome da
   tabela da spec. As exceções são duas, as duas por não haver CSS para ler:
-  - `icones/icone.svg`: um SVG servido como imagem não lê variáveis CSS, então as cores do
-    cristal ficam escritas nele, iguais às do asset da spec.
+  - `icones/icone.svg` e `icones/icone-claro.svg`: um SVG servido como imagem não lê variáveis
+    CSS, então as cores do cristal ficam escritas neles, iguais às dos assets da spec.
   - `BADGE_COR_DE_FUNDO` / `BADGE_COR_DO_TEXTO` em `background.js`: o badge da toolbar é
     desenhado pelo Chrome, e `chrome.action.setBadgeBackgroundColor` / `setBadgeTextColor` só
     aceitam a cor escrita. São cópias de `--veio-accent` e `--veio-accent-ink`, e andam juntas:
@@ -48,7 +48,9 @@ const { abrirModal, mostrarToastDeSucesso, escreverFrase } = PerpetualMiner.Veio
   em `chrome.storage.local` (`pm_tema`), só neste computador. O que aparece por cima das páginas
   (o overlay) não lê a escolha: ele é sempre escuro.
 - **Marca:** `<img class="veio-marca" src="veio/icones/icone.svg" alt="PerpetualMiner">` e
-  `<span class="veio-nome">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>`.
+  `<span class="veio-nome">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>`. No
+  claro, `.veio-marca` troca a imagem pela `icone-claro.svg` sozinha (`--veio-marca`, lida por
+  `content`), sem mudar o `src`.
   O cursor ouro pisca a cada 1,1 s e fica parado com `prefers-reduced-motion: reduce`.
 - **Fontes:** `var(--veio-fonte-ui)` para interface e frases, `var(--veio-fonte-mono)` para número,
   contador, atalho e custo. As duas cobrem cirílico.

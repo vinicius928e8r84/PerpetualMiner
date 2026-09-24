@@ -62,6 +62,7 @@
 
 :root,
 [data-tema="escuro"] {
+  --veio-marca: url("icones/icone.svg");
   --veio-bg: #121110;
   --veio-surface: #1B1A17;
   --veio-surface-2: #262420;
@@ -158,6 +159,7 @@
 
 :root[data-tema="claro"],
 [data-tema="claro"] {
+  --veio-marca: url("icones/icone-claro.svg");
   --veio-bg: #F7F4EE;
   --veio-surface: #FFFFFF;
   --veio-surface-2: #F0EBE1;
@@ -195,6 +197,9 @@
 .veio-marca {
   flex: none;
   border-radius: var(--veio-raio-icone);
+  /* No claro, o cristal vai para o azulejo claro (icones/icone-claro.svg); o
+     src do <img> continua o escuro, que é o que vale sem este CSS. */
+  content: var(--veio-marca);
 }
 
 .veio-nome {
