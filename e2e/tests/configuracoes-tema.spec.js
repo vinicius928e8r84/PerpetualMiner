@@ -6,11 +6,11 @@
 // uma foto, e fica gravado só neste computador. O que aparece por cima das
 // páginas continua escuro. A troca vale na hora, sem recarregar.
 //
-// O popup e o Minerar de uma foto ainda não foram refeitos na Veio (#38, #36 e
-// #37): o CSS deles foi desenhado para um fundo fixo, então o corpo deles fica
-// preso no tema em que foi desenhado e só a página passa a carregar a escolha.
-// A spec registra esse adiamento (Configurações › Aparência, "Onde vale"), e os
-// testes daqui afirmam essa fronteira como ela é hoje.
+// O popup foi refeito na Veio (#38) e segue o tema inteiro. O Minerar de uma
+// foto ainda não (#36 e #37): o CSS dele foi desenhado para um fundo fixo, então
+// o corpo fica preso no tema em que foi desenhado e só a página passa a carregar
+// a escolha. A spec registra esse adiamento (Configurações › Aparência, "Onde
+// vale"), e os testes daqui afirmam essa fronteira como ela é hoje.
 //
 // Os testes afirmam o que a pessoa vê e o que fica gravado, nunca funções internas.
 
@@ -125,32 +125,42 @@ test('o painel já aberto em outra aba troca junto, sem recarregar', async ({ pa
   await outra.close();
 });
 
-test('o popup e o Minerar de uma foto carregam a escolha, mas ficam como foram desenhados até serem refeitos (#38, #36/#37)',
+test('o popup segue o tema escolhido, na hora e ao abrir de novo', async ({ page, context, extensao }) => {
+  const popup = await context.newPage();
+  await popup.goto(extensao.url('popup.html'));
+  expect(await fundoDaPagina(popup)).toBe(FUNDO.escuro);
+
+  await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
+  await escolherTema(page, 'Claro');
+
+  await expect.poll(() => fundoDaPagina(popup)).toBe(FUNDO.claro);
+  await popup.reload();
+  await expect(temaDaPagina(popup)).toHaveAttribute('data-tema', 'claro');
+  expect(await fundoDaPagina(popup)).toBe(FUNDO.claro);
+  await popup.close();
+});
+
+test('o Minerar de uma foto carrega a escolha, mas fica como foi desenhado até ser refeito (#36/#37)',
   async ({ page, context, extensao }) => {
-    // Como as duas telas abrem hoje, antes de qualquer escolha: o popup escuro e
-    // o Minerar de uma foto claro, cada um com o fundo em que foi desenhado.
-    const fundosDeHoje = {};
-    for (const tela of ['popup.html', 'bookreader.html']) {
-      const aberta = await context.newPage();
-      await aberta.goto(extensao.url(tela));
-      fundosDeHoje[tela] = await fundoDaPagina(aberta);
-      await aberta.close();
-    }
+    // Como a tela abre hoje, antes de qualquer escolha: clara, no fundo em que
+    // foi desenhada.
+    const antes = await context.newPage();
+    await antes.goto(extensao.url('bookreader.html'));
+    const fundoDeHoje = await fundoDaPagina(antes);
+    await antes.close();
 
     await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
     await escolherTema(page, 'Claro');
     await expect.poll(() => temaGravado(extensao)).toBe('claro');
 
-    // As duas telas continuam com o fundo que já tinham no escuro: o CSS delas
-    // é o de hoje, escrito à mão fora dos tokens, e só muda no ticket de cada
-    // uma. O teste compara com elas mesmas, para não repetir aqui uma cor.
-    for (const [tela, fundoDeHoje] of Object.entries(fundosDeHoje)) {
-      const aberta = await context.newPage();
-      await aberta.goto(extensao.url(tela));
-      await expect(temaDaPagina(aberta)).toHaveAttribute('data-tema', 'claro');
-      expect(await fundoDaPagina(aberta)).toBe(fundoDeHoje);
-      await aberta.close();
-    }
+    // Continua com o fundo que já tinha no escuro: o CSS dela é o de hoje,
+    // escrito à mão fora dos tokens, e só muda no ticket dela. O teste compara
+    // com ela mesma, para não repetir aqui uma cor.
+    const aberta = await context.newPage();
+    await aberta.goto(extensao.url('bookreader.html'));
+    await expect(temaDaPagina(aberta)).toHaveAttribute('data-tema', 'claro');
+    expect(await fundoDaPagina(aberta)).toBe(fundoDeHoje);
+    await aberta.close();
   });
 
 test('o que aparece por cima das páginas continua escuro', async ({ page, context, extensao, paginas }) => {
@@ -226,7 +236,7 @@ const imagemDaMarca = locator => locator.evaluate(no => {
   return (conteudo.startsWith('url(') ? conteudo : no.src).match(/icones\/([^")]+)/)[1];
 });
 
-test('no claro, a marca do painel vai para o azulejo claro; o popup, ainda escuro, fica com a de sempre',
+test('no claro, a marca do painel e a do popup vão para o azulejo claro',
   async ({ page, context, extensao }) => {
     await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
     const marca = page.locator('.veio-marca').first();
@@ -237,7 +247,7 @@ test('no claro, a marca do painel vai para o azulejo claro; o popup, ainda escur
 
     const popup = await context.newPage();
     await popup.goto(extensao.url('popup.html'));
-    expect(await imagemDaMarca(popup.locator('.veio-marca'))).toBe('icone.svg');
+    expect(await imagemDaMarca(popup.locator('.veio-marca'))).toBe('icone-claro.svg');
     await popup.close();
   });
 

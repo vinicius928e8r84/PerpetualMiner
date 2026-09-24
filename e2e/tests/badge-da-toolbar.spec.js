@@ -147,14 +147,14 @@ test('ligar e desligar um idioma no popup muda o badge na hora', async ({ page, 
   await expect.poll(async () => (await naToolbar(extensao)).badge).toBe('12');
 
   await page.goto(extensao.url('popup.html'));
-  await page.locator('#autoMinerRu').check();
+  await page.locator('.popup-azulejo[data-idioma="ru"] .veio-toggle__trilho').click();
 
   await expect.poll(() => naToolbar(extensao)).toEqual({
     badge: '25',
     tooltip: 'Mineração automática: 25 hoje',
   });
 
-  await page.locator('#autoMinerEn').uncheck();
+  await page.locator('.popup-azulejo[data-idioma="en"] .veio-toggle__trilho').click();
 
   await expect.poll(() => naToolbar(extensao)).toEqual({
     badge: '13',

@@ -6,7 +6,7 @@ O que está aqui:
 
 1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
 2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: 189 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
+3. **Catálogo**: 192 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
 
 Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
 
@@ -68,7 +68,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 
 ## 3. Catálogo de estados-chave
 
-São 189 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
+São 192 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 
@@ -88,6 +88,9 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 | POP-09 | Botão que abre o Painel | status | Abrir Painel de Estudos | Abrir painel | V10. |
 | POP-11 | Rodapé do atalho | status | Configurar Atalho de Captura · Atalho atual: … (o Alt+S não aparece) | Alt+S minera a legenda do vídeo · Mudar atalho | Mostra o atalho “Minerar legenda” gravado, não um texto fixo. “Mudar atalho” abre o painel em Configurações › Atalhos. Sem atalho gravado: GLB-02. |
 | POP-12 | Subtítulo do cabeçalho **(some)** | status | Minerador de legendas | _(sem texto)_ | O popup não tem subtítulo: só a marca Veio + “PerpetualMiner”. A frase descritiva fica para a Boas-vindas (ONB-01) e a loja. |
+| POP-13 | Últimas mineradas: título e atalho para o Painel **(novo)** | status | Últimas mineradas | Últimas mineradas · Ver todas | “Ver todas” fica à direita do título, só com frase na lista, e abre o Painel em Frases. |
+| POP-14 | Mineração automática: azulejo **(novo)** | status | (limite solto, sem rótulo) | por dia · limite [20] /dia | “por dia” à direita do título (POP-10). O leitor de tela ouve o toggle como “Mineração automática em inglês” e o campo como “Limite por dia em inglês”, com o idioma em minúscula. |
+| POP-15 | Código do idioma no azulejo **(novo)** | status | EN · RU | EN · RU | Em mono, no topo do azulejo; o nome do idioma fica no rótulo do toggle (POP-14). |
 
 ### Minerar na página (componente de feedback)
 
