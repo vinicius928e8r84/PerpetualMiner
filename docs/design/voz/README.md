@@ -6,7 +6,7 @@ O que está aqui:
 
 1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
 2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: 182 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
+3. **Catálogo**: 185 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
 
 Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
 
@@ -68,7 +68,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 
 ## 3. Catálogo de estados-chave
 
-São 182 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
+São 185 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 
@@ -140,7 +140,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | SHL-01 | Itens da sidebar **(novo)** | status | Todos os Streamings · Netflix · YouTube… (as Fontes) · Sair | Frases · Conexão com o Anki · Configurações | Rótulo da navegação para o leitor de tela: “Navegação do painel”. As Fontes saem da sidebar. No trilho, o rótulo vira o tooltip. |
 | SHL-02 | Títulos das áreas **(novo)** | status | Frases mineradas · Presets e custos | Frases mineradas · Conexão com o Anki · Configurações | Cabeçalho de área, 22/700. |
 | SHL-03 | Abas da Conexão com o Anki **(novo)** | status | (tudo numa página só) | Custos · Baralhos e termos · Vocabulário · Ajustes de envio | Controle segmentado; o grupo se chama “Seções da Conexão com o Anki”. |
-| SHL-04 | Cards de Configurações **(novo)** | status | (espalhados na sidebar e no Minerar de uma foto) | Conta & sync · Atalhos · Chave do Gemini · Zona de perigo | A Chave do Gemini usa CFG-15. |
+| SHL-04 | Cards de Configurações **(novo)** | status | (espalhados na sidebar e no Minerar de uma foto) | Conta & sync · Atalhos · Chave do Gemini · Aparência · Zona de perigo | A Chave do Gemini usa CFG-15; a Aparência, CFG-29…31. |
 | SHL-05 | Chip de conta **(novo)** | status | Login com Google · Sincronizado · Erro de sync | Sem conta · só neste computador · Sem sincronizar · 8 de 10 sincronizadas · Sessão expirou | Sem conta, o chip mostra em duas linhas, como o nome e o estado de quem tem conta: “Sem conta” e “Só neste computador”; a frase inteira fica no tooltip. Com conta: nome + CFG-01, CFG-02 ou CFG-09; em `danger`, “Sem sincronizar” quando o sync falha ou a nuvem recusa (CFG-03, CFG-04), “8 de 10 sincronizadas” no sync parcial (CFG-05) e “Sessão expirou” (CFG-08) (C11). |
 | SHL-06 | Atualizar a Conexão com o Anki **(novo)** | status | (ícone sem texto) | Atualizar | Tooltip: BRG-24. |
 
@@ -167,7 +167,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | PAI-17 | Copiou frase | sucesso | Copiado! | Frase copiada | Falha: “Não deu para copiar”. |
 | PAI-18 | Ação sem seleção **(some)** | erro | Selecione as frases que deseja exportar. (e editar/enviar) | _(sem texto)_ | Com a barra contextual, essas ações só aparecem com seleção: a mensagem fica inalcançável. |
 | PAI-19 | Exportou .txt | sucesso | 12 frases exportadas! | 12 frases exportadas para .txt |  |
-| PAI-20 | Modal de contexto (título) | status | Editar Metadados · Editar 12 frase(s) selecionada(s) | Editar contexto · Editar contexto de 12 frases — Campos em branco ficam como estão | Contexto, não metadados (glossário). |
+| PAI-20 | Modal de contexto (título) | status | Editar Metadados · Editar 12 frase(s) selecionada(s) | Editar contexto · Editar contexto de 12 frases — Campos em branco ficam como estão · [Cancelar] [Salvar contexto] | Contexto, não metadados (glossário). |
 | PAI-21 | Campos do contexto | status | Plataforma ou tipo de origem · Episódio, capítulo ou informação complementar | Fonte — de onde a frase veio (netflix, youtube, livro…) · Título · Detalhe — episódio, capítulo ou canal |  |
 | PAI-22 | Contexto em massa salvo | sucesso | Metadados atualizados! | Contexto de 12 frases atualizado | Edição individual: sem toast. |
 | PAI-23 | Campo da busca **(novo)** | status | (busca não existe) | Buscar nas frases | Procura no texto da frase e no Título. O × ao lado do texto usa o rótulo de PAI-04 (“Limpar busca”). Busca: lista fechada. |
@@ -179,6 +179,9 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | PAI-29 | Nomes das Fontes **(novo)** | status | Todos os Streamings · Amazon Prime Video · Físico/Livro… | Netflix · YouTube · Prime Video · Max · Disney+ · Star+ · Kinopoisk · Web · Seleção · PDF · Livro · Manual · Importado | O selo de Fonte no cartão e as opções do filtro de Fonte. Uma Fonte fora da lista aparece com o nome gravado. |
 | PAI-30 | Ações do cartão **(novo)** | status | Editar texto da frase · Editar metadados · Copiar frase · Apagar frase (só title) | Editar texto · Editar contexto · Copiar frase · Apagar frase | As 4 ações só-ícone de cada cartão; o nome é o rótulo para o leitor de tela e o tooltip. |
 | PAI-31 | Selecionar a página **(novo)** | status | (Pág.) | Selecionar página | O checkbox da linha de seleção, sem seleção; marcado com a página inteira, misto com parte dela. |
+| PAI-32 | Barra contextual de seleção **(novo)** | status | Pág. · Todas (30) · Editar Selecionados · Deletar · Exportar .txt · Enviar ao Anki | Desmarcar todas · Selecionar todas as 30 frases · Editar contexto · Exportar .txt · Apagar · Enviar ao Anki | Aparece só com seleção, abaixo dos filtros. “Desmarcar todas” é o × só-ícone (rótulo e tooltip). “Selecionar todas as N frases” só com a página inteira marcada, e conta as frases dos filtros atuais. |
+| PAI-33 | Editar texto no lugar **(novo)** | status | (a textarea sem rótulo e sem botões) | Texto da frase · Enter salva · Esc cancela · [Cancelar] [Salvar texto] | “Texto da frase” é o nome do campo para o leitor de tela. Salvar não dá toast (PAI-16). |
+| PAI-34 | Fechar **(novo)** | status | Fechar (só title) | Fechar | O × dos modais e dos avisos persistentes, para o leitor de tela e o tooltip. |
 
 ### Painel · Minerar frases (Colar · Arquivo .txt · Foto)
 
@@ -248,7 +251,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | BRG-26 | Custo abaixo de 1 centavo | status | $0.0042 | < US$ 0,01 | Valor positivo abaixo de 1 centavo; nunca “US$ 0,00”. Com “Mostrar custos com 4 casas” ligado, mostra as 4 casas (V7). |
 | BRG-27 | Azulejo do baralho que não existe | erro | Baralho nao encontrado \| 0.0% maturidade | baralho não encontrado | Legenda do azulejo, em minúscula como “palavras”; o valor vira “—”. O detalhe mostra BRG-14 com “Abrir Ajustes de envio”. |
 
-### Configurações · Conta & sync · Atalhos · Chave · Zona de perigo
+### Configurações · Conta & sync · Atalhos · Chave · Aparência · Zona de perigo
 
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
@@ -280,8 +283,11 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | CFG-26 | Sair da conta: nota **(novo)** | status | (não existe) | Ao sair, as frases continuam neste computador. | Sob a conta, quando o sync está em dia. |
 | CFG-27 | Conta & sync: resumo **(novo)** | status | (não existe) | Vinicius · Sincronizado há 2 min | A linha fechada: nome (ou CFG-10) + o estado do chip (SHL-05). Sem conta: “Sem conta · só neste computador”. |
 | CFG-28 | Resumos da linha fechada **(novo)** | status | (não existe) | Legenda · Seleção · Sem chave · Nenhuma frase | A linha fechada de Atalhos (“Legenda [Alt+S]  Seleção [Alt+Botão voltar]”, com as teclas em `kbd`; sem atalho, CFG-12), da Chave do Gemini (a chave mascarada em mono; vazia, ponto `danger` + “Sem chave”) e da Zona de perigo (PAI-05: “1.284 frases”, “1 frase”; sem frases, “Nenhuma frase”). |
-| CFG-29 | Atalhos: descrição **(novo)** | status | (não existe) | Vale para qualquer página aberta no Chrome. Grave uma combinação de teclas ou um botão extra do mouse. | Sob o título, com o card aberto. |
-| CFG-30 | Atalhos: o que cada um faz **(novo)** | status | (não existe) | Minera a legenda que está na tela do vídeo. · Minera o texto que você selecionou na página. | Sob o nome de cada linha (CFG-11) do card Atalhos. |
+| CFG-29 | Aparência: título e descrição **(novo)** | status | (não existe) | Aparência — Vale para o painel, o popup e Minerar de uma foto, só neste computador. O que aparece por cima dos vídeos e das páginas continua escuro. | O título do card; a descrição aparece sob ele com o card aberto. Seletor de tema: lista fechada, item 10. |
+| CFG-30 | Tema: opções **(novo)** | status | (não existe) | Tema · Escuro · Claro | “Tema” rotula o grupo para o leitor de tela; as opções são o controle segmentado. Trocar não tem toast: o tema muda na tela (C4). |
+| CFG-31 | Aparência: resumo **(novo)** | status | (não existe) | Escuro · Claro | A linha fechada mostra o tema em uso. Sem escolha gravada: “Escuro”. |
+| CFG-32 | Atalhos: descrição **(novo)** | status | (não existe) | Vale para qualquer página aberta no Chrome. Grave uma combinação de teclas ou um botão extra do mouse. | Sob o título, com o card aberto. |
+| CFG-33 | Atalhos: o que cada um faz **(novo)** | status | (não existe) | Minera a legenda que está na tela do vídeo. · Minera o texto que você selecionou na página. | Sob o nome de cada linha (CFG-11) do card Atalhos. |
 
 ### Boas-vindas (primeira execução)
 

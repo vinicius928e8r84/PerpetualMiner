@@ -3,7 +3,7 @@
 Resolução do ticket [Protótipo: Painel · Configurações](https://github.com/vinicius928e8r84/PerpetualMiner/issues/14) do mapa [Redesign do front-end do PerpetualMiner](https://github.com/vinicius928e8r84/PerpetualMiner/issues/1). Ele parte de:
 - o shell [Ilhas](../shell/README.md): sidebar, cabeçalho de área e endereços;
 - a identidade [Veio](../../identidade-veio/README.md);
-- a cópia do [catálogo de voz](../../voz/README.md) (CFG-01 a CFG-18).
+- a cópia do [catálogo de voz](../../voz/README.md) (CFG-01 a CFG-31).
 
 **Protótipo:** [`prototipo-configuracoes.html`](prototipo-configuracoes.html). Abra direto no navegador.
 - `?variant=C` é o tratamento travado e o padrão. `A` (Pilha) e `B` (Rótulo à esquerda) foram as alternativas.
@@ -22,14 +22,15 @@ Decidido numa rodada no Lavish, em 2026-09-15. O dono escolheu a **C** e aceitou
 
 | # | decisão | escolha |
 |---|---|---|
-| Q1 | Tratamento dos 4 cards | **C · Resumo primeiro.** Cada card fica fechado numa linha com o estado atual e abre no lugar. |
+| Q1 | Tratamento dos cards | **C · Resumo primeiro.** Cada card fica fechado numa linha com o estado atual e abre no lugar. |
 | Q2 | Gravador de atalho | **Grava na própria linha.** Um atalho repetido é **recusado**, com aviso na linha (parte do item 7 da lista fechada). Um **“Restaurar atalhos padrão”** único volta tudo ao padrão de fábrica. Não há um “Voltar ao Alt+S” por atalho. |
 | Q3 | Chave do Gemini salva | **Resumo mascarado + Trocar chave.** |
 | Q4 | Onde aparece um problema de sync | **No card Conta & sync e no chip da sidebar.** Nenhuma faixa nas outras áreas. |
+| Q5 | Lugar do seletor de tema ([#45](https://github.com/vinicius928e8r84/PerpetualMiner/issues/45), item 10 da lista fechada) | **Um card próprio, Aparência**, entre a Chave do Gemini e a Zona de perigo, no mesmo tratamento “resumo primeiro” da Q1. Decidido pelo dono numa rodada no Lavish, em 2026-09-19 (#45), com a cópia CFG-29…31 aprovada como está. O protótipo travado é anterior a este card; aqui a spec manda. |
 
 ## Anatomia (variante C)
 
-- **Área:** cabeçalho “Configurações”, só o título. Embaixo, 4 cards de largura até ~820 px, com 8 px de vão, na ordem **Conta & sync · Atalhos · Chave do Gemini · Zona de perigo**. Os cards são “buracos” `bg` na ilha, com raio 14.
+- **Área:** cabeçalho “Configurações”, só o título. Embaixo, 5 cards de largura até ~820 px, com 8 px de vão, na ordem **Conta & sync · Atalhos · Chave do Gemini · Aparência · Zona de perigo**. Os cards são “buracos” `bg` na ilha, com raio 14.
 - **Linha fechada** (a linha inteira é clicável):
   - à esquerda, um azulejo de ícone (34 px, `surface-2`, raio 10) e o título (15/700);
   - à direita, o **resumo do estado** (12,5 px, `muted`) e um chevron.
@@ -38,7 +39,7 @@ Decidido numa rodada no Lavish, em 2026-09-15. O dono escolheu a **C** e aceitou
   - o conteúdo entra alinhado ao título (recuo de 62 px);
   - o chevron gira.
   - Vários cards podem ficar abertos ao mesmo tempo.
-- **Endereços:** `#configuracoes/conta|atalhos|chave|perigo` **abrem** o card, rolam até ele e piscam uma borda ouro por ~1,4 s. `#configuracoes` sozinho abre tudo fechado. Quem aponta para eles:
+- **Endereços:** `#configuracoes/conta|atalhos|chave|aparencia|perigo` **abrem** o card, rolam até ele e piscam uma borda ouro por ~1,4 s. `#configuracoes` sozinho abre tudo fechado. Quem aponta para eles:
   - o “Mudar atalho” do popup vai para `#configuracoes/atalhos`;
   - o “Definir atalho”, que aparece no lugar da tecla quando não há atalho de legenda gravado (PAI-02, ONB-05, rodapé do popup), também vai para `#configuracoes/atalhos`;
   - o “Abrir Configurações” do Minerar de uma foto vai para `#configuracoes/chave`, e o campo recebe o foco se a chave estiver vazia;
@@ -54,6 +55,7 @@ Decidido numa rodada no Lavish, em 2026-09-15. O dono escolheu a **C** e aceitou
 | Conta & sync | ponto de estado + `Nome · <estado do chip>` (ex.: “Vinicius · Sincronizado há 2 min”). Erro em `danger`. Sem conta: “Sem conta · só neste computador”. |
 | Atalhos | `Legenda [Alt+S]  Seleção [Alt+Botão voltar]`, com as teclas no estilo `kbd`. Sem atalho: “Sem atalho”. |
 | Chave do Gemini | `AIza••••••••3kQ9` em mono. Vazia: ponto `danger` + “Sem chave”. |
+| Aparência | O tema em uso: “Escuro” ou “Claro” (CFG-31). |
 | Zona de perigo | “1.284 frases” · “1 frase” · “Nenhuma frase”. |
 
 ## Conta & sync
@@ -114,6 +116,18 @@ Um problema de sync aparece **só** aqui e no chip (Q4). O chip fica sempre vis�
 - **Salvar:** vale também o Enter no campo. Aparece o toast “Chave do Gemini salva” (CFG-16) e o card volta ao resumo.
 - A chave **não é validada** (não há chamada de teste). Isso seria função nova.
 
+## Aparência
+
+**Descrição:** “Vale para o painel, o popup e Minerar de uma foto, só neste computador. O que aparece por cima dos vídeos e das páginas continua escuro.” (CFG-29)
+
+- **Controle:** um controle segmentado de duas opções, **Escuro · Claro** (CFG-30), com o grupo rotulado “Tema” para o leitor de tela. É um grupo de rádio: as setas trocam a opção, e o foco visível é o do Veio.
+- **Sem escolha gravada:** o app abre no **escuro**, o padrão do Veio. O controle mostra Escuro marcado.
+- **Trocar:** vale **na hora**, sem recarregar e sem toast (C4: a mudança já aparece na tela), no painel e em qualquer popup ou Minerar de uma foto que esteja aberto.
+- **Lembrado neste computador:** a escolha fica em `chrome.storage.local` e **não** sobe com o sync da conta. Outro computador segue com o que estiver gravado nele.
+- **Onde vale:** painel (inclusive a Boas-vindas), popup e Minerar de uma foto. O **overlay** in-page usa sempre os tokens escuros (Veio, Tema e tokens), e o seletor não muda isso.
+- **Cores:** o claro usa só os tokens claros de [Tema e tokens](../../identidade-veio/README.md#tema-e-tokens), com o contraste que o Veio garante. Nenhuma cor nova.
+- **Movimento:** a troca de tema não anima.
+
 ## Zona de perigo
 
 - **Descrição:** “Apagar tudo aqui não dá para desfazer, e vale para todos os computadores da sua conta.” Sem conta, fica só “Apagar tudo aqui não dá para desfazer.”
@@ -134,7 +148,10 @@ Um problema de sync aparece **só** aqui e no chip (Q4). O chip fica sempre vis�
 - Os rótulos dos botões do mouse passam a PT-BR (CFG-14). O que já está gravado em inglês é traduzido na exibição.
 - “Restaurar atalhos padrão” grava `{legenda: Alt+S, seleção: nenhum}`.
 - A chave do Gemini sai da barra do Minerar de uma foto (`bookreader.html` / `bookreader.js`); o `geminiApiKey` continua o mesmo.
+- O tema claro vive em `veio/tokens.css`, nos valores claros da tabela do Veio. Cada página (painel, popup, Minerar de uma foto) aplica o tema gravado antes de pintar, para não piscar o escuro ao abrir no claro, e escuta a mudança em `chrome.storage` para trocar na hora. O overlay não lê essa escolha.
 
 ## Lista fechada
 
 Esta área cumpre o **item 7** da lista fechada: atalho “Minerar legenda” gravável (+ botão do mouse, **recusa atalho repetido**) com **Restaurar atalhos padrão** (CFG-11…14). A observação do dono no Q2 somou o Restaurar atalhos padrão ao item, e recusar o atalho repetido faz parte dele. As outras decisões são revestimento.
+
+O card **Aparência** cumpre o **item 10**: seletor de tema (escuro, o padrão, ou claro), lembrado neste computador, valendo para o painel, o popup e Minerar de uma foto, com o overlay sempre escuro (CFG-29…31, [#45](https://github.com/vinicius928e8r84/PerpetualMiner/issues/45)).

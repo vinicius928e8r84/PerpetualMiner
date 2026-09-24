@@ -697,6 +697,16 @@ body {
   font-weight: var(--veio-peso-rotulo);
 }
 
+/* Os avisos persistentes da área (C1), acima dos filtros: PAI-15 e PAI-17. */
+.frases-avisos {
+  display: grid;
+  gap: 8px;
+}
+
+.frases-avisos:not(:empty) {
+  margin-top: 16px;
+}
+
 /* A linha de seleção: sem seleção, o checkbox “Selecionar página” (PAI-31). */
 .frases-selecao {
   margin-top: 10px;
@@ -706,11 +716,62 @@ body {
   font-weight: var(--veio-peso-rotulo);
 }
 
-.frases-selecao label {
+.frases-selecao[hidden] {
+  display: none;
+}
+
+.frases-selecao__pagina {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
+}
+
+/* Com seleção, a linha vira a barra contextual (PAI-32): pílula com borda ouro
+   a 45%, grudada no topo da ilha ao rolar. O checkbox da página fica no começo
+   dela, só com o nome para o leitor de tela. */
+.frases-selecao--barra {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 6px 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--veio-accent) 45%, var(--veio-border));
+  border-radius: var(--veio-raio-selecao);
+  background: var(--veio-surface);
+  color: var(--veio-text);
+  box-shadow: var(--veio-sombra);
+}
+
+.frases-barra {
+  display: contents;
+}
+
+.frases-barra[hidden] {
+  display: none;
+}
+
+.frases-barra__contagem {
+  font-weight: var(--veio-peso-titulo);
+  white-space: nowrap;
+}
+
+.frases-barra__todas {
+  margin-right: auto;
+}
+
+.frases-barra__todas[hidden] + .frases-barra__acoes {
+  margin-left: auto;
+}
+
+.frases-barra__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
 }
 
 /* O × nativo do campo de busca dá lugar ao × da busca Veio. */
@@ -742,8 +803,57 @@ body {
   opacity: 1;
 }
 
-.frases-lista .veio-frase__texto textarea {
+/* Editar texto no lugar (PAI-33): o campo, a dica e Cancelar · Salvar texto. */
+.frase-edicao__campo {
+  min-height: 64px;
   font: inherit;
+  resize: vertical;
+}
+
+.frase-edicao__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+  font-family: var(--veio-fonte-ui);
+}
+
+.frase-edicao__dica {
+  margin-right: auto;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+/* Os modais de Frases: o modal Veio (com o × da base) e os campos do Contexto. */
+.frases-modal__subtitulo {
+  overflow-wrap: anywhere;
+}
+
+.frases-modal__campos {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.frases-modal__campo {
+  display: grid;
+  gap: 5px;
+}
+
+.frases-modal__rotulo {
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-rotulo);
+}
+
+.frases-modal__ajuda {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+}
+
+.frases-modal__campos .veio-modal__acoes {
+  margin-top: 4px;
 }
 
 /* O chip `palavra:`/`auto:` e o + ao lado dele. */
@@ -897,23 +1007,6 @@ body {
   white-space: nowrap;
 }
 
-.bulk-edit-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 7px 14px;
-  background: white;
-  color: #6d28d9;
-  border: 1px solid #c4b5fd;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-.bulk-edit-btn:hover { background: #f5f3ff; border-color: #7c3aed; }
-
 .bookreader-btn {
   display: flex;
   align-items: center;
@@ -930,81 +1023,7 @@ body {
 }
 .bookreader-btn:hover { background: #fffbeb; border-color: #f59e0b; }
 
-.export-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  background: #7c3aed;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.export-btn:hover { background: #6d28d9; }
-
-.send-anki-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(135deg, #059669, #0f766e);
-  color: #fff;
-  border: 0;
-  border-radius: 12px;
-  padding: 12px 16px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 10px 26px rgba(15, 118, 110, 0.22);
-}
-
-.send-anki-btn:hover { filter: brightness(1.05); }
-
-.btn-delete-selected {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  background: white;
-  color: #ef4444;
-  border: 1px solid #fca5a5;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-.btn-delete-selected:hover { background: #fef2f2; border-color: #ef4444; }
-.btn-delete-selected.hidden { display: none; }
-
-.sel-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 7px 12px;
-  background: white;
-  color: #7c3aed;
-  border: 1px solid #c4b5fd;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  white-space: nowrap;
-}
-.sel-btn:hover       { background: #f5f3ff; border-color: #7c3aed; }
-.sel-btn.sel-active  { background: #ede9fe; border-color: #7c3aed; color: #5b21b6; }
-
-/* ── Scrollbar ───────────────────────────────────────── */
-::-webkit-scrollbar       { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #ddd6fe; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #7c3aed; }
-
-/* ── Modal de Edição ─────────────────────────────────── */
+/* Os modais que ainda não migraram para o .veio-modal: adicionar em massa e o progresso da ponte. */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1103,10 +1122,6 @@ body {
   border-color: #7c3aed;
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
 }
-.modal-hint {
-  font-size: 11px;
-  color: #9ca3af;
-}
 
 .modal-footer {
   display: flex;
@@ -1148,25 +1163,6 @@ body {
 .btn-modal-save:hover { background: #6d28d9; }
 
 /* ── Selection Counter ───────────────────────────────── */
-.selection-count {
-  display: inline-flex;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: #00c970;
-  background: rgba(0, 255, 136, 0.08);
-  border: 1px solid rgba(0, 255, 136, 0.35);
-  border-radius: 20px;
-  padding: 5px 13px;
-  white-space: nowrap;
-  transition: opacity 0.2s, transform 0.2s;
-  animation: fadeCountIn 0.15s ease;
-}
-.selection-count.hidden { display: none; }
-@keyframes fadeCountIn {
-  from { opacity: 0; transform: scale(0.9); }
-  to   { opacity: 1; transform: scale(1);   }
-}
 
 .bridge-workspace {
   flex-shrink: 0;

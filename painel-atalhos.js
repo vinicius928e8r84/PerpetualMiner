@@ -23,7 +23,7 @@
   const { textoDaVoz, Atalhos, Veio } = raiz;
   const { ACOES } = Atalhos;
 
-  /** O nome de cada ação (CFG-11) e o que ela faz (CFG-30), pela mesma parte do catálogo. */
+  /** O nome de cada ação (CFG-11) e o que ela faz (CFG-33), pela mesma parte do catálogo. */
   const PARTE_DO_CATALOGO = { [ACOES.LEGENDA]: 'minerarLegenda', [ACOES.SELECAO]: 'minerarSelecao' };
 
   const estado = {
@@ -56,7 +56,7 @@
     const nome = elemento('b', 'cfg-atalho__nome', textoDaVoz(`CFG-11.${parte}`));
     nome.id = idDoNome;
     const texto = elemento('div', 'cfg-atalho__texto', nome,
-      elemento('span', 'cfg-nota', textoDaVoz(`CFG-30.${parte}`)));
+      elemento('span', 'cfg-nota', textoDaVoz(`CFG-33.${parte}`)));
 
     const tecla = elemento('span', 'cfg-atalho__tecla');
     const botao = elemento('button', 'veio-botao veio-botao--contorno', textoDaVoz('CFG-12.gravar'));

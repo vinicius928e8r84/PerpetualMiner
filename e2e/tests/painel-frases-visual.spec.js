@@ -1,6 +1,7 @@
 'use strict';
 
-// Referência visual da lista de Frases (#29), no layout A · Cartões do
+// Referência visual da lista de Frases (#29) e da seleção, das ações do cartão
+// e dos modais (#30), no layout A · Cartões do
 // protótipo travado (docs/design/painel/frases/prototipo-frases.html?variant=A).
 // O dono revisa estas telas lado a lado com o protótipo; depois de aprovadas,
 // qualquer mudança visual na lista faz o teste falhar até alguém olhar e
@@ -101,4 +102,63 @@ test('busca sem resultado com filtro ligado (PAI-04)', async ({ page, extensao }
   await expect(page.locator('#frases-lista .veio-vazio')).toBeVisible();
 
   await expect(page).toHaveScreenshot('frases-busca-vazia.png', paginaInteira(page));
+});
+
+// ─── Seleção, ações do cartão e modais (#30) ─────────────────────────────────
+
+const primeiroCartao = page => page.locator('#frases-lista .veio-frase').first();
+
+test('a barra contextual da seleção, com o cartão selecionado', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: FRASES });
+  await abrirFrases(page, extensao);
+  await primeiroCartao(page).getByRole('checkbox', { name: 'Selecionar frase' }).check();
+  await expect(page.locator('#frases-barra')).toBeVisible();
+
+  await expect(page).toHaveScreenshot('frases-barra-selecao.png', naJanela(page));
+});
+
+test('a barra com a página inteira marcada, oferecendo todas as frases', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: FRASES });
+  await abrirFrases(page, extensao);
+  await page.getByRole('checkbox', { name: 'Selecionar página' }).check();
+  await expect(page.getByRole('button', { name: 'Selecionar todas as 12 frases' })).toBeVisible();
+
+  await expect(page).toHaveScreenshot('frases-barra-todas.png', naJanela(page));
+});
+
+test('as 4 ações do cartão, à vista no hover', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: FRASES });
+  await abrirFrases(page, extensao);
+  await primeiroCartao(page).hover();
+  await expect(primeiroCartao(page).getByRole('button', { name: 'Copiar frase' })).toBeVisible();
+
+  await expect(primeiroCartao(page)).toHaveScreenshot('frases-acoes-do-cartao.png');
+});
+
+test('Editar texto no lugar (PAI-33)', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: FRASES });
+  await abrirFrases(page, extensao);
+  await primeiroCartao(page).getByRole('button', { name: 'Editar texto' }).click();
+  await expect(page.getByRole('textbox', { name: 'Texto da frase' })).toBeVisible();
+
+  await expect(primeiroCartao(page)).toHaveScreenshot('frases-editar-texto.png');
+});
+
+test('o modal Apagar, para 1 frase (PAI-12)', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: FRASES });
+  await abrirFrases(page, extensao);
+  await primeiroCartao(page).getByRole('button', { name: 'Apagar frase' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  await expect(page).toHaveScreenshot('frases-modal-apagar.png', naJanela(page));
+});
+
+test('o modal Editar contexto, para a seleção (PAI-20)', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: FRASES });
+  await abrirFrases(page, extensao);
+  await page.getByRole('checkbox', { name: 'Selecionar página' }).check();
+  await page.locator('#frases-barra').getByRole('button', { name: 'Editar contexto' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  await expect(page).toHaveScreenshot('frases-modal-contexto.png', naJanela(page));
 });

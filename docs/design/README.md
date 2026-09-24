@@ -63,6 +63,7 @@ As únicas funções novas que a construção pode fazer:
 | 7 | Atalho “Minerar legenda” gravável (aceita botão do mouse, recusa atalho repetido) + “Restaurar atalhos padrão” | Configurações › Atalhos | CFG-11…14 |
 | 8 | Abrir a Boas-vindas na instalação (`onInstalled`, só `install`) | background | ONB-01 |
 | 9 | Lembrete “Configuração pela metade”, ocultável | Frases, popup | ONB-14, ONB-15 |
+| 10 | Seletor de tema (escuro, o padrão, ou claro), lembrado neste computador; vale para o painel, o popup e Minerar de uma foto, e o overlay continua sempre escuro | Configurações › Aparência | CFG-29…31 |
 
 O que **não** é função nova, e portanto pode entrar sem estar na lista:
 
@@ -119,7 +120,7 @@ Fundação primeiro, depois de dentro pra fora: cada passo só usa o que já exi
 | passo | o quê | depende de | bugs que o passo fecha |
 |---|---|---|---|
 | 1 | **Base Veio:** tokens CSS compartilhados, fontes empacotadas, ícones PNG, componentes (botões com perigo nas duas formas, campos, toggle, checkbox com estado misto, badges, `kbd`, controle segmentado, azulejo, modal, toast, aviso persistente com Detalhes, esqueleto) e o módulo de cópia do catálogo | nada | detecção de idioma em 3 cópias (tudo que não é cirílico vira Inglês) |
-| 2 | **Shell do Painel + Configurações:** endereços (`#frases`, `#anki/*`, `#configuracoes/*`, `#boas-vindas`), sidebar/trilho, chip de conta, status da Conexão, F1, resumo do envio global; Conta & sync, Chave, Atalhos (gravador), Zona de perigo | 1 | nomes de Fonte sem escape na sidebar |
+| 2 | **Shell do Painel + Configurações:** endereços (`#frases`, `#anki/*`, `#configuracoes/*`, `#boas-vindas`), sidebar/trilho, chip de conta, status da Conexão, F1, resumo do envio global; Conta & sync, Chave, Atalhos (gravador), Aparência (tema, item 10, [#45](https://github.com/vinicius928e8r84/PerpetualMiner/issues/45)), Zona de perigo | 1 | nomes de Fonte sem escape na sidebar |
 | 3 | **Frases:** linha de frase, barra de seleção, busca, modais (Editar contexto, Minerar frases, Apagar, Envio ao Anki), faixa ONB-15 | 2 | Exportar .txt marca como enviada · duplicatas do bridge contadas como enviadas · duplo clique duplica · erro de rede no envio sem mensagem · Exportar→Importar perde palavras · overlay de importação/spinner/progresso falso · seleção sobrevive à troca de filtro · pergunta “apagar enviadas” que não aparece |
 | 4 | **Conexão com o Anki:** azulejos por idioma, Custos, Baralhos e termos, Vocabulário, Ajustes de envio, Avançado, card ONB-16 | 2, 3 (envio compartilhado) | “Reparar Anki” com timeout curto · Vocabulário preso em “Aguardando…” · presets salvos em silêncio · erro com cara de carregando e total ≠ soma · nomes de baralho padrão divergentes (parte no bridge) |
 | 5 | **Minerar de uma foto** | 1, 2 (chave em Configurações), 3 (padrão de seleção) | re-salvar duplicado e Limpar/Trocar sem cancelar o Gemini (“✓ minerada”) · estado vazio que culpa as marcações · HEIC, Título esquecido e “Voltar” que abre um 2º painel |
