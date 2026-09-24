@@ -1,17 +1,36 @@
 'use strict';
 
-// A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
-// deste arquivo, pelo bookreader.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
-const { detectarIdioma } = PerpetualMiner;
+// Minerar de uma foto, no layout C · Fotos × frases (docs/design/foto/).
+//
+// À esquerda, a fila de fotos: cada uma com miniatura e status (FOT-19), o
+// progresso da leitura (FOT-20) e a área de envio. À direita, as frases que o
+// Gemini leu, agrupadas por foto, com “Selecionar todas”, a contagem (FOT-09)
+// e “Minerar N frases” (FOT-12).
+//
+// A página só afirma o que confirmou:
+//   - uma foto que o Gemini leu sem achar nada é “Sem marcações” (FOT-10); uma
+//     foto em que a API falhou é “Falhou” com o motivo (FOT-11), nunca culpa as
+//     marcações;
+//   - uma frase minerada fica “✓ minerada” e sai do botão, então clicar de novo
+//     (ou chegar outra foto) nunca grava a mesma frase duas vezes.
+//
+// A chave do Gemini mora em Configurações: sem ela, o cartão FOT-05 leva a
+// #configuracoes/chave. O Livro (o Título das frases) fica lembrado em
+// `bookTitleDefault`. Cancelar, Recomeçar e “Tentar de novo” numa foto são do
+// #37. Toda cópia vem do catálogo da Voz.
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
+(function (raiz) {
+  const { textoDaVoz, detectarIdioma } = raiz;
+  const { iconeVeio, montarAviso, mostrarToastDeSucesso, refletirSelecao } = raiz.Veio;
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
+  // ─── Constantes ─────────────────────────────────────────────────────────────
 
-// Sentinel retornado pelo modelo quando não há trechos marcados
-const SENTINEL_VAZIO = 'NENHUM_TRECHO';
+  const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
 
-const PROMPT = `Analise a foto desta página de livro ou texto impresso.
+  // Sentinel retornado pelo modelo quando não há trechos marcados
+  const SENTINEL_VAZIO = 'NENHUM_TRECHO';
+
+  const PROMPT = `Analise a foto desta página de livro ou texto impresso.
 
 TAREFA: encontre e transcreva APENAS os trechos que foram marcados manualmente pelo leitor.
 
@@ -32,550 +51,645 @@ The quick brown fox jumps over the lazy dog
 All that glitters is not gold
 To be or not to be, that is the question`;
 
-// ─── Estado Global ────────────────────────────────────────────────────────────
+  /** O Título gravado quando o Livro fica em branco: dado, não cópia de tela. */
+  const TITULO_SEM_LIVRO = 'Físico/Livro';
 
-let imageQueue        = [];   // [{ base64, mimeType, fileName }]
-let frasesEncontradas = [];   // string[] — nunca limpa ao receber novas fotos
-let processingQueue   = [];   // fila para drops durante processamento
-let isProcessing      = false;
+  /**
+   * Os formatos que a página anuncia (FOT-02) e aceita. O Chrome no Windows
+   * entrega o HEIC sem tipo, então a extensão do arquivo também vale.
+   */
+  const TIPO_POR_EXTENSAO = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    heic: 'image/heic',
+    heif: 'image/heif',
+  };
+  const TIPOS_ACEITOS = new Set(Object.values(TIPO_POR_EXTENSAO));
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
+  /** O status de cada foto; os nomes das partes de FOT-19, onde há uma. */
+  const STATUS = {
+    PRONTA: 'pronta',     // 1 foto na prévia, ainda não lida
+    NA_FILA: 'naFila',
+    LENDO: 'lendo',
+    LIDA: 'lida',         // “N frases” ou “Sem marcações”
+    FALHOU: 'falhou',
+  };
 
-document.addEventListener('DOMContentLoaded', () => {
-  carregarConfiguracoes();
-  setupDropzone();
-  setupListeners();
-});
+  const LEGENDA = ['Barras', 'Underscores', 'Sublinhado', 'Colchetes'];
 
-// Garante que o Chrome nunca abra a imagem como link, independente de onde cair
-document.addEventListener('dragover', e => e.preventDefault());
-document.addEventListener('drop',     e => e.preventDefault());
+  // ─── Estado ─────────────────────────────────────────────────────────────────
 
-// ─── Listeners ────────────────────────────────────────────────────────────────
+  const estado = {
+    chave: '',
+    fotos: [],        // { id, nome, tipo, base64, url, status, achadas, causa, chaveRecusada, detalhes }
+    frases: [],       // { id, fotoId, texto, marcada, minerada }
+    lendo: false,     // a fila está sendo lida
+    minerando: false, // um “Minerar N frases” está a caminho do service worker
+  };
+  let proximoId = 1;
 
-function setupListeners() {
-  // Sidebar
-  document.getElementById('btn-save-key').addEventListener('click', salvarApiKey);
-  document.getElementById('btn-toggle-key').addEventListener('click', alternarVisibilidadeKey);
-  document.getElementById('btn-voltar').addEventListener('click', voltarAoPainel);
+  /** O que já está desenhado, para redesenhar só o que mudou. */
+  const desenhado = {
+    estado: null,               // a chave do estado da coluna das frases
+    cartoes: new Map(),         // foto.id → <li> da fila
+    grupos: new Map(),          // foto.id → grupo de frases
+    linhas: new Map(),          // frase.id → linha da frase
+    avisoDoEnvio: null,         // o aviso de FOT-15/16, trocado a cada envio
+  };
 
-  // Preview
-  document.getElementById('btn-analisar').addEventListener('click', analisarImagem);
-  document.getElementById('btn-nova-foto').addEventListener('click', resetarParaUpload);
+  const porId = id => document.getElementById(id);
 
-  // Results
-  document.getElementById('btn-nova-foto-2').addEventListener('click', resetarParaUpload);
-  document.getElementById('btn-add-more').addEventListener('click', () => document.getElementById('file-input').click());
-  document.getElementById('btn-select-all').addEventListener('click', () => definirSelecaoResultados(true));
-  document.getElementById('btn-deselect-all').addEventListener('click', () => definirSelecaoResultados(false));
-  document.getElementById('btn-salvar').addEventListener('click', salvarNoMiner);
-  document.getElementById('results-list').addEventListener('change', (event) => {
-    if (event.target.classList.contains('result-check')) atualizarBotoesSelecao();
-  });
-}
+  // ─── Início ─────────────────────────────────────────────────────────────────
 
-function setupDropzone() {
-  const zone           = document.getElementById('upload-zone');
-  const fileInput      = document.getElementById('file-input');
-  const resultsSection = document.getElementById('results-section');
-  const addMoreZone    = document.getElementById('add-more-zone');
+  document.addEventListener('DOMContentLoaded', iniciar);
 
-  // ── Upload zone (fresh start) ─────────────────────────
-  zone.addEventListener('click',      () => fileInput.click());
-  zone.addEventListener('dragenter',  (e) => { e.preventDefault(); e.stopPropagation(); zone.classList.add('drag-over'); });
-  zone.addEventListener('dragover',   (e) => { e.preventDefault(); e.stopPropagation(); zone.classList.add('drag-over'); });
-  zone.addEventListener('dragleave',  (e) => { e.preventDefault(); e.stopPropagation(); zone.classList.remove('drag-over'); });
-  zone.addEventListener('drop',       (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    zone.classList.remove('drag-over');
-    const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
-    if (files.length > 0) carregarImagens(files);
-    else mostrarErro('Nenhum arquivo de imagem. Use JPG, PNG, WEBP ou HEIC.');
-  });
+  function iniciar() {
+    document.title = `${textoDaVoz('FOT-01.titulo')} · PerpetualMiner`;
+    preencherTextosFixos();
+    porId('foto-marcacoes').replaceWith(montarLegenda('foto-marcacoes'));
 
-  // ── Results section drop (acumulativo sem mudar de estado) ────
-  resultsSection.addEventListener('dragenter', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    addMoreZone.classList.add('drag-over');
-  });
-  resultsSection.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    addMoreZone.classList.add('drag-over');
-  });
-  resultsSection.addEventListener('dragleave', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!resultsSection.contains(e.relatedTarget)) {
-      addMoreZone.classList.remove('drag-over');
-    }
-  });
-  resultsSection.addEventListener('drop', async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    addMoreZone.classList.remove('drag-over');
-    const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
-    if (files.length > 0) {
-      const imgs = await Promise.all(files.map(lerArquivo));
-      enfileirarImagens(imgs);
-    }
-  });
-
-  // ── Preview section drop (acumula na imageQueue, não substitui) ───
-  const previewSection = document.getElementById('preview-section');
-  previewSection.addEventListener('dragenter', (e) => { e.preventDefault(); e.stopPropagation(); previewSection.classList.add('drag-over'); });
-  previewSection.addEventListener('dragover',  (e) => { e.preventDefault(); e.stopPropagation(); previewSection.classList.add('drag-over'); });
-  previewSection.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); if (!previewSection.contains(e.relatedTarget)) previewSection.classList.remove('drag-over'); });
-  previewSection.addEventListener('drop', async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    previewSection.classList.remove('drag-over');
-    const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
-    if (files.length === 0) return;
-    const imgs = await Promise.all(files.map(lerArquivo));
-    imageQueue.push(...imgs);                                        // acumula, não substitui
-    document.getElementById('queue-count-text').textContent =
-      `${imageQueue.length} fotos na fila · exibindo 1ª`;
-    document.getElementById('queue-info').classList.remove('hidden');
-  });
-
-  // ── Loading section drop (enfileira para processar após o lote atual) ──
-  const loadingSection = document.getElementById('loading-section');
-  loadingSection.addEventListener('dragenter', (e) => { e.preventDefault(); e.stopPropagation(); loadingSection.classList.add('drag-over-loading'); });
-  loadingSection.addEventListener('dragover',  (e) => { e.preventDefault(); e.stopPropagation(); loadingSection.classList.add('drag-over-loading'); });
-  loadingSection.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); if (!loadingSection.contains(e.relatedTarget)) loadingSection.classList.remove('drag-over-loading'); });
-  loadingSection.addEventListener('drop', async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    loadingSection.classList.remove('drag-over-loading');
-    const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
-    if (files.length === 0) return;
-    const imgs = await Promise.all(files.map(lerArquivo));
-    processingQueue.push(...imgs);                                   // será processado via drainQueue após loading terminar
-    atualizarHintLoading();
-  });
-
-  // ── File input: comportamento depende do estado atual ──
-  fileInput.addEventListener('change', () => {
-    if (!fileInput.files.length) return;
-    const files = [...fileInput.files];
-    const inResults = !resultsSection.classList.contains('hidden');
-    if (inResults) {
-      Promise.all(files.map(lerArquivo)).then(imgs => enfileirarImagens(imgs));
-    } else {
-      carregarImagens(files);
-    }
-    fileInput.value = '';
-  });
-}
-
-// ─── Carregar Imagens ─────────────────────────────────────────────────────────
-
-function carregarImagens(files) {
-  Promise.all(files.map(lerArquivo)).then(imgs => {
-    imageQueue = imgs;
-    if (imgs.length > 1) {
-      // Múltiplas fotos: pula preview e entra direto no processamento em fila
-      analisarImagem();
-    } else {
-      // Foto única: mostra preview para confirmar antes de analisar
-      document.getElementById('preview-img').src =
-        `data:${imgs[0].mimeType};base64,${imgs[0].base64}`;
-      document.getElementById('queue-info').classList.add('hidden');
-      mostrarSecao('preview');
-    }
-  });
-}
-
-function lerArquivo(file) {
-  return new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onload = e => resolve({
-      base64:   e.target.result.split(',')[1],
-      mimeType: file.type || 'image/jpeg',
-      fileName: file.name,
+    chrome.storage.local.get({ geminiApiKey: '', bookTitleDefault: '' }, dados => {
+      estado.chave = dados.geminiApiKey || '';
+      porId('foto-livro').value = dados.bookTitleDefault || '';
+      desenhar();
     });
-    reader.readAsDataURL(file);
-  });
-}
+    // A chave salva no painel libera a página sem recarregar.
+    chrome.storage.onChanged.addListener((mudancas, area) => {
+      if (area !== 'local' || !('geminiApiKey' in mudancas)) return;
+      estado.chave = mudancas.geminiApiKey.newValue || '';
+      desenhar();
+    });
 
-// ─── Análise via Gemini Vision — lote inicial (via botão Analisar) ───────────
+    porId('foto-livro').addEventListener('input', evento => {
+      chrome.storage.local.set({ bookTitleDefault: evento.target.value });
+    });
+    porId('foto-voltar').addEventListener('click', () => abrirPainel());
 
-async function analisarImagem() {
-  const apiKey = document.getElementById('api-key-input').value.trim();
-  if (!apiKey) { mostrarErro('Insira sua Gemini API Key nas configurações à esquerda.'); return; }
-  if (imageQueue.length === 0) { mostrarErro('Carregue ao menos uma imagem primeiro.'); return; }
+    const arquivo = porId('foto-arquivo');
+    porId('foto-escolher').addEventListener('click', evento => {
+      evento.stopPropagation();
+      arquivo.click();
+    });
+    porId('foto-envio').addEventListener('click', () => arquivo.click());
+    arquivo.addEventListener('change', () => {
+      receberArquivos([...arquivo.files]);
+      arquivo.value = '';
+    });
+    ouvirArrastar();
 
-  // Nunca limpa resultados anteriores — sempre acumula
-  const prevCount = frasesEncontradas.length;
-
-  mostrarSecao('loading');
-
-  const total   = imageQueue.length;
-  const titleEl = document.getElementById('loading-title');
-  const subEl   = document.getElementById('loading-sub');
-  const wrapEl  = document.getElementById('progress-wrap');
-  const barEl   = document.getElementById('progress-bar');
-  const labelEl = document.getElementById('progress-label');
-
-  if (total > 1) {
-    subEl.textContent = 'Processando imagens em sequência…';
-    wrapEl.classList.remove('hidden');
-  } else {
-    subEl.textContent = prevCount > 0
-      ? 'Adicionando ao histórico de frases…'
-      : 'O Gemini está identificando os trechos marcados';
-    wrapEl.classList.add('hidden');
+    porId('foto-todas').addEventListener('change', evento => {
+      for (const frase of pendentes()) frase.marcada = evento.target.checked;
+      desenharLista();
+    });
+    porId('foto-minerar').addEventListener('click', minerar);
   }
 
-  const acumuladas = [];
-
-  for (let i = 0; i < total; i++) {
-    const img = imageQueue[i];
-    titleEl.textContent = total > 1
-      ? `Processando imagem ${i + 1} de ${total}…`
-      : 'Analisando a imagem…';
-    if (total > 1) {
-      barEl.style.width   = `${Math.round((i / total) * 100)}%`;
-      labelEl.textContent = img.fileName || `Foto ${i + 1}`;
+  /** A cópia fixa da página, pelos atributos data-voz* do bookreader.html. */
+  function preencherTextosFixos() {
+    for (const no of document.querySelectorAll('[data-voz]')) no.textContent = textoDaVoz(no.dataset.voz);
+    for (const no of document.querySelectorAll('[data-voz-placeholder]')) {
+      no.placeholder = textoDaVoz(no.dataset.vozPlaceholder);
     }
+    for (const lugar of document.querySelectorAll('[data-icone]')) lugar.replaceWith(iconeVeio(lugar.dataset.icone));
+  }
+
+  /** “Marcações que o Gemini lê”: o exemplo em mono e o nome de cada uma. */
+  function montarLegenda(id) {
+    const lista = elemento('ul', 'foto-marcacoes');
+    if (id) lista.id = id;
+    for (const nome of LEGENDA) {
+      const exemplo = elemento('span', `foto-marcacao__exemplo foto-marcacao__exemplo--${nome.toLowerCase()}`,
+        textoDaVoz(`FOT-24.exemplo${nome}`));
+      lista.append(elemento('li', 'foto-marcacao', exemplo, textoDaVoz(`FOT-24.${nome.toLowerCase()}`)));
+    }
+    return lista;
+  }
+
+  /** Solto em qualquer lugar da página, a foto entra na fila; o Chrome nunca a abre. */
+  function ouvirArrastar() {
+    const envio = porId('foto-envio');
+    const sobre = ativo => envio.classList.toggle('foto-envio--sobre', ativo && !!estado.chave);
+    document.addEventListener('dragover', evento => {
+      evento.preventDefault();
+      sobre(true);
+    });
+    document.addEventListener('dragleave', evento => {
+      if (!evento.relatedTarget) sobre(false);
+    });
+    document.addEventListener('drop', evento => {
+      evento.preventDefault();
+      sobre(false);
+      receberArquivos([...evento.dataTransfer.files]);
+    });
+  }
+
+  // ─── Fotos ──────────────────────────────────────────────────────────────────
+
+  /** O tipo da foto pelo tipo do arquivo ou, sem ele, pela extensão; `null` se não é foto. */
+  function tipoDaFoto(arquivo) {
+    if (TIPOS_ACEITOS.has(arquivo.type)) return arquivo.type;
+    const extensao = arquivo.name.split('.').pop().toLowerCase();
+    return TIPO_POR_EXTENSAO[extensao] || null;
+  }
+
+  async function receberArquivos(arquivos) {
+    if (!estado.chave || !arquivos.length) return;
+
+    const recusados = arquivos.filter(arquivo => !tipoDaFoto(arquivo));
+    if (recusados.length) {
+      mostrarAviso(montarAviso({
+        texto: textoDaVoz('FOT-04'),
+        detalhes: recusados.map(arquivo => arquivo.name).join('\n'),
+        rotuloDeFechar: textoDaVoz('PAI-34'),
+      }));
+    }
+
+    const aceitos = arquivos.filter(arquivo => tipoDaFoto(arquivo));
+    if (!aceitos.length) return;
+    const novas = await Promise.all(aceitos.map(lerArquivo));
+
+    // Uma foto sozinha para na prévia, como hoje; várias vão direto para a
+    // leitura. Uma foto que chega com a prévia aberta espera junto com ela.
+    const primeiraVez = estado.fotos.length === 0;
+    const comPrevia = estado.fotos.some(foto => foto.status === STATUS.PRONTA);
+    const status = (primeiraVez && novas.length === 1) || comPrevia ? STATUS.PRONTA : STATUS.NA_FILA;
+    for (const foto of novas) estado.fotos.push({ ...foto, status });
+
+    desenhar();
+    if (status === STATUS.NA_FILA) lerAFila();
+  }
+
+  function lerArquivo(arquivo) {
+    return new Promise(resolve => {
+      const leitor = new FileReader();
+      leitor.onload = () => resolve({
+        id: proximoId++,
+        nome: arquivo.name,
+        tipo: tipoDaFoto(arquivo),
+        base64: leitor.result.split(',')[1],
+        url: URL.createObjectURL(arquivo),
+        achadas: 0,
+      });
+      leitor.readAsDataURL(arquivo);
+    });
+  }
+
+  /** “Ler marcações” na prévia: as fotos prontas entram na fila. */
+  function lerAsProntas() {
+    for (const foto of estado.fotos) if (foto.status === STATUS.PRONTA) foto.status = STATUS.NA_FILA;
+    desenhar();
+    lerAFila();
+  }
+
+  /** Lê as fotos da fila uma por vez, na ordem em que chegaram. */
+  async function lerAFila() {
+    if (estado.lendo) return;
+    estado.lendo = true;
+
+    let foto;
+    while ((foto = estado.fotos.find(f => f.status === STATUS.NA_FILA))) {
+      foto.status = STATUS.LENDO;
+      desenhar();
+      try {
+        const textos = await chamarGemini(estado.chave, foto);
+        for (const texto of textos) {
+          estado.frases.push({ id: proximoId++, fotoId: foto.id, texto, marcada: true, minerada: false });
+        }
+        foto.achadas = textos.length;
+        foto.status = STATUS.LIDA;
+      } catch (erro) {
+        foto.status = STATUS.FALHOU;
+        foto.chaveRecusada = chaveRecusada(erro);
+        foto.causa = causaDaFalha(erro);
+        foto.detalhes = erro.message;
+        mostrarFalhaDaFoto(foto);
+      }
+      desenhar();
+    }
+
+    estado.lendo = false;
+    desenhar();
+  }
+
+  // ─── Gemini ─────────────────────────────────────────────────────────────────
+
+  async function chamarGemini(chave, foto) {
+    let resposta;
     try {
-      const frases = await chamarGemini(apiKey, img.base64, img.mimeType);
-      acumuladas.push(...frases);
-    } catch (err) {
-      mostrarErro(`Imagem ${i + 1}: ${err.message}`);
-      await new Promise(r => setTimeout(r, 2000));
+      resposta = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(chave)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { inlineData: { mimeType: foto.tipo, data: foto.base64 } },
+            { text: PROMPT },
+          ] }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+        }),
+      });
+    } catch (causa) {
+      const erro = new Error(causa.message);
+      erro.semRede = true;
+      throw erro;
     }
-  }
 
-  if (total > 1) barEl.style.width = '100%';
-
-  imageQueue = [];
-  document.getElementById('loading-queue-hint')?.remove();
-  frasesEncontradas.push(...acumuladas);
-  renderizarResultados(frasesEncontradas, prevCount);
-  atualizarContador();
-  mostrarSecao('results');
-  // Drena fotos que chegaram via drop durante o loading
-  if (processingQueue.length > 0 && !isProcessing) drainQueue();
-}
-
-// ─── Fila de processamento em segundo plano (drops na tela de resultados) ────
-
-function enfileirarImagens(imgs) {
-  processingQueue.push(...imgs);
-  if (!isProcessing) drainQueue();
-}
-
-async function drainQueue() {
-  const apiKey = document.getElementById('api-key-input').value.trim();
-  if (!apiKey) { mostrarErro('Insira sua Gemini API Key nas configurações à esquerda.'); return; }
-
-  isProcessing = true;
-  atualizarStatusDropZone();
-
-  while (processingQueue.length > 0) {
-    const img        = processingQueue.shift();
-    const startIndex = frasesEncontradas.length;
-    atualizarStatusDropZone();
-    try {
-      const frases = await chamarGemini(apiKey, img.base64, img.mimeType);
-      frasesEncontradas.push(...frases);
-      renderizarResultados(frasesEncontradas, startIndex);
-      atualizarContador();
-    } catch (err) {
-      mostrarErro(`Erro ao processar foto: ${err.message}`);
-      await new Promise(r => setTimeout(r, 1500));
+    if (!resposta.ok) {
+      const corpo = await resposta.json().catch(() => ({}));
+      const erro = new Error(corpo?.error?.message || `HTTP ${resposta.status}`);
+      erro.status = resposta.status;
+      erro.estadoDaApi = corpo?.error?.status;
+      throw erro;
     }
+
+    const dados = await resposta.json();
+    const texto = dados?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    return texto
+      .split('\n')
+      .map(linha => linha.trim())
+      .filter(linha => linha.length > 0 && !linha.startsWith(SENTINEL_VAZIO));
   }
 
-  isProcessing = false;
-  atualizarStatusDropZone();
-}
-
-function atualizarHintLoading() {
-  let hint = document.getElementById('loading-queue-hint');
-  if (!hint) {
-    hint = document.createElement('p');
-    hint.id = 'loading-queue-hint';
-    hint.style.cssText = 'font-size:12px;color:#a78bfa;margin-top:2px;';
-    document.querySelector('.loading-box')?.appendChild(hint);
-  }
-  const n = processingQueue.length;
-  hint.textContent = `+${n} foto${n !== 1 ? 's' : ''} na fila aguardando`;
-}
-
-function atualizarStatusDropZone() {
-  const addMoreZone = document.getElementById('add-more-zone');
-  const span        = addMoreZone.querySelector('span');
-  const icon        = addMoreZone.querySelector('.add-more-icon');
-  const spinner     = addMoreZone.querySelector('.add-more-spinner');
-  if (!span) return;
-
-  if (isProcessing) {
-    addMoreZone.classList.add('processing');
-    icon?.classList.add('hidden');
-    spinner?.classList.remove('hidden');
-    const naFila = processingQueue.length;
-    span.textContent = naFila > 0
-      ? `Processando foto... ${naFila} na fila · pode arrastar mais!`
-      : 'Processando foto... você pode arrastar mais enquanto isso';
-  } else {
-    addMoreZone.classList.remove('processing');
-    icon?.classList.remove('hidden');
-    spinner?.classList.add('hidden');
-    span.textContent = 'Arraste mais fotos aqui para acumular resultados';
-  }
-}
-
-function atualizarContador() {
-  const n      = frasesEncontradas.length;
-  const plural = n !== 1;
-  document.getElementById('results-count').textContent =
-    `Total acumulado: ${n} trecho${plural ? 's' : ''} prontos para salvar`;
-  document.getElementById('btn-salvar').disabled = n === 0;
-}
-
-// ─── Chamada Gemini (única imagem) ───────────────────────────────────────────
-
-async function chamarGemini(apiKey, base64, mimeType) {
-  const response = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [
-        { inlineData: { mimeType, data: base64 } },
-        { text: PROMPT },
-      ]}],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
-    }),
-  });
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `HTTP ${response.status}`);
-  }
-  const data  = await response.json();
-  const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-  if (!texto) return [];
-  return texto
-    .split('\n')
-    .map(l => l.trim())
-    .filter(l => l.length > 0 && !l.startsWith(SENTINEL_VAZIO));
-}
-
-function renderizarResultados(frases, startIndex = 0) {
-  const lista     = document.getElementById('results-list');
-  const btnSalvar = document.getElementById('btn-salvar');
-
-  if (frases.length === 0) {
-    lista.innerHTML = `
-      <div class="empty-results">
-        <svg width="40" height="40" fill="none" stroke="#d1d5db" stroke-width="1.5" viewBox="0 0 24 24">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <p>Não encontrei trechos marcados nesta imagem.</p>
-        <small>
-          Certifique-se de que as marcações estão visíveis.<br>
-          Use <code>/barras/</code>, <code>_underlines_</code> ou sublinhado físico.
-        </small>
-      </div>`;
-    return;
+  function chaveRecusada(erro) {
+    return erro.status === 401 || erro.status === 403 || /api[ _]?key/i.test(erro.message);
   }
 
-  const itemHtml = (frase, i) => `
-    <div class="result-item">
-      <input type="checkbox" class="result-check" id="rc-${i}" data-index="${i}" checked>
-      <div class="result-content">
-        <span class="result-quote">&ldquo;</span><span
-          class="result-text"
-          contenteditable="true"
-          spellcheck="false"
-          data-index="${i}"
-        >${esc(frase)}</span><span class="result-quote">&rdquo;</span>
-      </div>
-    </div>`;
-
-  if (startIndex === 0) {
-    // Render completo (primeira vez ou reset)
-    btnSalvar.innerHTML = `
-      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-        <polyline points="17 21 17 13 7 13 7 21"/>
-        <polyline points="7 3 7 8 15 8"/>
-      </svg>
-      Salvar no PerpetualMiner`;
-    lista.innerHTML = frases.map(itemHtml).join('');
-  } else {
-    // Append: só adiciona os novos itens sem re-renderizar os existentes (preserva edições)
-    const novasHtml = frases.slice(startIndex).map((f, j) => itemHtml(f, startIndex + j)).join('');
-    lista.insertAdjacentHTML('beforeend', novasHtml);
+  /** A 2ª frase do FOT-11: a causa nos termos da pessoa. O original vai para Detalhes. */
+  function causaDaFalha(erro) {
+    if (erro.semRede) return textoDaVoz('FOT-11.causaRede');
+    if (erro.status === 429 || erro.estadoDaApi === 'RESOURCE_EXHAUSTED') return textoDaVoz('FOT-11.causaLimite');
+    if (chaveRecusada(erro)) return textoDaVoz('FOT-11.causaChave');
+    return textoDaVoz('GLB-01');
   }
 
-  atualizarBotoesSelecao();
-}
-
-// ─── Salvar no Storage ────────────────────────────────────────────────────────
-
-function salvarNoMiner() {
-  // Lê o texto atual do DOM (pode ter sido editado via contenteditable)
-  const items = document.querySelectorAll('.result-item');
-  const selecionadas = [];
-  items.forEach(item => {
-    const chk  = item.querySelector('.result-check');
-    const text = item.querySelector('.result-text');
-    if (chk?.checked && text) {
-      const txt = text.textContent.trim();
-      if (txt) selecionadas.push(txt);
-    }
-  });
-
-  if (selecionadas.length === 0) {
-    mostrarErro('Selecione ao menos um trecho para salvar.');
-    return;
+  function numeroDaFoto(foto) {
+    return estado.fotos.indexOf(foto) + 1;
   }
 
-  const tituloLivro = document.getElementById('book-title').value.trim() || 'Físico/Livro';
-  Promise.all(selecionadas.map(texto => salvarTrechoNoBackground(texto, tituloLivro))).then(resultados => {
-    const salvos = resultados.filter(Boolean).length;
-    if (!salvos) {
-      mostrarErro('Não foi possível salvar os trechos.');
+  function mostrarFalhaDaFoto(foto) {
+    mostrarAviso(montarAviso({
+      texto: `${textoDaVoz('FOT-11.aviso', { n: numeroDaFoto(foto) })} ${foto.causa}`,
+      acao: foto.chaveRecusada
+        ? { rotulo: textoDaVoz('FOT-05.acao'), aoUsar: () => abrirPainel('#configuracoes/chave') }
+        : undefined,
+      detalhes: foto.detalhes,
+      rotuloDeFechar: textoDaVoz('PAI-34'),
+    }));
+  }
+
+  function mostrarAviso(aviso) {
+    porId('foto-avisos').append(aviso);
+    return aviso;
+  }
+
+  // ─── Minerar ────────────────────────────────────────────────────────────────
+
+  const pendentes = () => estado.frases.filter(frase => !frase.minerada);
+  const paraMinerar = () => pendentes().filter(frase => frase.marcada && frase.texto.trim());
+
+  /**
+   * Minera as frases marcadas que ainda não foram mineradas. Um clique a mais
+   * no meio do caminho não faz nada, e o que foi minerado não volta ao botão.
+   */
+  async function minerar() {
+    if (estado.minerando) return;
+    const alvo = paraMinerar();
+    if (!alvo.length) return;
+
+    estado.minerando = true;
+    desenhado.avisoDoEnvio?.remove();
+    desenharLista();
+
+    const titulo = porId('foto-livro').value.trim() || TITULO_SEM_LIVRO;
+    const deuCerto = await Promise.all(alvo.map(frase => salvarNoHistorico(frase.texto.trim(), titulo)));
+    alvo.forEach((frase, i) => {
+      if (!deuCerto[i]) return;
+      frase.texto = frase.texto.trim();
+      frase.minerada = true;
+    });
+
+    estado.minerando = false;
+    desenharLista();
+
+    const n = deuCerto.filter(Boolean).length;
+    if (n === alvo.length) {
+      mostrarToastDeSucesso(textoDaVoz('FOT-14', { n }));
       return;
     }
-    const plural = salvos > 1;
-    const btn    = document.getElementById('btn-salvar');
-    btn.innerHTML = `
-      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-      ${salvos} trecho${plural ? 's' : ''} salvo${plural ? 's' : ''}!`;
-    btn.disabled = true;
-    btn.classList.add('btn-saved');
-    mostrarToast(`${salvos} trecho${plural ? 's' : ''} salvo${plural ? 's' : ''} no PerpetualMiner!`);
-  });
-}
+    desenhado.avisoDoEnvio = mostrarAviso(montarAviso({
+      texto: n === 0
+        ? textoDaVoz('FOT-16')
+        : textoDaVoz('FOT-15.resumo', { n, total: alvo.length, falhas: alvo.length - n }),
+      acao: { rotulo: textoDaVoz('FOT-15.tentarDeNovo'), aoUsar: minerar },
+      rotuloDeFechar: textoDaVoz('PAI-34'),
+    }));
+  }
 
-function salvarTrechoNoBackground(texto, tituloLivro) {
-  return new Promise(resolve => {
-    chrome.runtime.sendMessage({
-      type: 'SALVAR_HISTORICO',
-      texto,
-      origem: 'livro',
-      idioma: detectarIdioma(texto),
-      contexto: {
-        fonte:   'livro',
-        titulo:  tituloLivro,
-        detalhe: '',
-      },
-    }, response => {
-      resolve(!chrome.runtime.lastError && response?.ok !== false);
+  /** Grava pelo service worker, que serializa as gravações (nenhuma se perde). */
+  function salvarNoHistorico(texto, titulo) {
+    return new Promise(resolve => {
+      chrome.runtime.sendMessage({
+        type: 'SALVAR_HISTORICO',
+        texto,
+        origem: 'livro',
+        idioma: detectarIdioma(texto),
+        contexto: { fonte: 'livro', titulo, detalhe: '' },
+      }, resposta => {
+        resolve(!chrome.runtime.lastError && resposta?.ok !== false);
+      });
     });
-  });
-}
+  }
 
-// ─── Ações de UI ─────────────────────────────────────────────────────────────
+  // ─── Painel ─────────────────────────────────────────────────────────────────
 
-function definirSelecaoResultados(marcar) {
-  const checks = document.querySelectorAll('.result-check');
-  checks.forEach(c => { c.checked = marcar; });
-  atualizarBotoesSelecao();
-}
+  /**
+   * Foca a aba do painel que já estiver aberta (levando-a a `endereco`, se
+   * houver); sem nenhuma, abre uma. Nunca abre um segundo painel.
+   */
+  function abrirPainel(endereco = '') {
+    const painel = chrome.runtime.getURL('painel.html');
+    chrome.tabs.query({}, abas => {
+      const aba = abas.find(a => a.url && a.url.split('#')[0] === painel);
+      if (!aba) {
+        chrome.tabs.create({ url: painel + endereco });
+        return;
+      }
+      chrome.tabs.update(aba.id, endereco ? { active: true, url: painel + endereco } : { active: true });
+      chrome.windows.update(aba.windowId, { focused: true });
+    });
+  }
 
-function atualizarBotoesSelecao() {
-  const checks = [...document.querySelectorAll('.result-check')];
-  const btnMarcar = document.getElementById('btn-select-all');
-  const btnDesmarcar = document.getElementById('btn-deselect-all');
-  const temItens = checks.length > 0;
-  const todosMarcados = temItens && checks.every(c => c.checked);
-  const todosDesmarcados = !temItens || checks.every(c => !c.checked);
+  // ─── Desenho ────────────────────────────────────────────────────────────────
 
-  btnMarcar.disabled = todosMarcados;
-  btnDesmarcar.disabled = todosDesmarcados;
-}
+  function desenhar() {
+    desenharFila();
+    desenharEstado();
+    desenharLista();
+  }
 
-function resetarParaUpload() {
-  imageQueue        = [];
-  frasesEncontradas = [];
-  processingQueue   = [];
-  isProcessing      = false;
-  document.getElementById('file-input').value  = '';
-  document.getElementById('preview-img').src   = '';
-  document.getElementById('queue-info').classList.add('hidden');
-  document.getElementById('progress-bar').style.width = '0%';
-  document.getElementById('error-bar').classList.add('hidden');
-  mostrarSecao('upload');
-  atualizarBotoesSelecao();
-}
+  const lendoOuNaFila = () => estado.fotos.filter(f => f.status === STATUS.LENDO || f.status === STATUS.NA_FILA);
 
-function voltarAoPainel() {
-  // Tenta fechar aba; se não conseguir (aba não foi aberta por script), vai para painel.html
-  const pode = history.length > 1;
-  if (pode) history.back();
-  else window.location.href = 'painel.html';
-}
+  /** A coluna da esquerda: área de envio, progresso e um cartão por foto. */
+  function desenharFila() {
+    const comChave = !!estado.chave;
+    porId('foto-sem-chave').hidden = comChave;
+    porId('foto-envio').hidden = !comChave;
+    porId('foto-fotos-total').textContent = estado.fotos.length || '';
 
-function alternarVisibilidadeKey() {
-  const input = document.getElementById('api-key-input');
-  input.type = input.type === 'password' ? 'text' : 'password';
-}
+    const naFila = estado.fotos.filter(f => f.status === STATUS.NA_FILA).length;
+    porId('foto-envio-texto').textContent = !estado.fotos.length
+      ? textoDaVoz('FOT-02.titulo')
+      : naFila
+        ? textoDaVoz('FOT-08', { n: naFila })
+        : textoDaVoz('FOT-23.maisFotos');
+    porId('foto-envio-formatos').hidden = estado.fotos.length > 0;
+    porId('foto-envio').classList.toggle('foto-envio--lendo', estado.lendo);
 
-// ─── State Machine ────────────────────────────────────────────────────────────
+    const ocupadas = lendoOuNaFila().length;
+    const total = estado.fotos.filter(f => f.status !== STATUS.PRONTA).length;
+    porId('foto-progresso').hidden = ocupadas === 0;
+    if (ocupadas) {
+      const lidas = total - ocupadas;
+      porId('foto-progresso-texto').textContent = textoDaVoz('FOT-20', { n: lidas, total });
+      porId('foto-progresso-barra').style.width = `${Math.round((lidas / total) * 100)}%`;
+    }
 
-function mostrarSecao(secao) {
-  ['upload', 'preview', 'loading', 'results'].forEach(s => {
-    document.getElementById(`${s}-section`).classList.toggle('hidden', s !== secao);
-  });
-}
+    for (const foto of estado.fotos) {
+      let cartao = desenhado.cartoes.get(foto.id);
+      if (!cartao) {
+        cartao = montarCartaoDaFoto(foto);
+        desenhado.cartoes.set(foto.id, cartao);
+        porId('foto-fila').append(cartao);
+      }
+      atualizarCartaoDaFoto(cartao, foto);
+    }
+  }
 
-function mostrarErro(msg) {
-  const bar = document.getElementById('error-bar');
-  bar.textContent = msg;
-  bar.classList.remove('hidden');
-  setTimeout(() => bar.classList.add('hidden'), 5000);
-}
+  function montarCartaoDaFoto(foto) {
+    const nome = elemento('p', 'foto-cartao__nome', foto.nome);
+    nome.title = foto.nome;
+    return elemento('li', 'foto-cartao',
+      miniatura(foto, 'foto-cartao__miniatura'),
+      elemento('div', 'foto-cartao__info', nome,
+        elemento('div', 'foto-cartao__status'),
+        elemento('p', 'foto-cartao__causa')));
+  }
 
-function mostrarToast(msg) {
-  document.getElementById('_toast')?.remove();
-  const t = document.createElement('div');
-  t.id = '_toast';
-  t.textContent = msg;
-  Object.assign(t.style, {
-    position: 'fixed', bottom: '28px', right: '28px',
-    background: '#7c3aed', color: 'white',
-    padding: '10px 20px', borderRadius: '8px',
-    fontSize: '13px', fontFamily: 'inherit',
-    zIndex: '9999', boxShadow: '0 4px 18px rgba(124,58,237,0.45)',
-    transition: 'opacity 0.3s',
-  });
-  document.body.appendChild(t);
-  setTimeout(() => {
-    t.style.opacity = '0';
-    setTimeout(() => t.remove(), 300);
-  }, 2500);
-}
+  function atualizarCartaoDaFoto(cartao, foto) {
+    cartao.dataset.status = foto.status;
+    cartao.querySelector('.foto-cartao__status').replaceChildren(seloDaFoto(foto));
+    const causa = cartao.querySelector('.foto-cartao__causa');
+    causa.textContent = foto.status === STATUS.FALHOU ? foto.causa : '';
+    causa.hidden = foto.status !== STATUS.FALHOU;
+  }
 
-// ─── Persistência de Configurações ───────────────────────────────────────────
+  function seloDaFoto(foto) {
+    switch (foto.status) {
+      case STATUS.PRONTA: return selo('', textoDaVoz('FOT-19.pronta'));
+      case STATUS.NA_FILA: return selo('', textoDaVoz('FOT-19.naFila'));
+      case STATUS.LENDO: {
+        const lendo = selo('foto-selo--lendo', textoDaVoz('FOT-19.lendo'));
+        lendo.prepend(elemento('span', 'veio-selo__ponto'));
+        return lendo;
+      }
+      case STATUS.LIDA: return foto.achadas
+        ? selo('veio-selo--ok', textoDaVoz('FOT-19.frases', { n: foto.achadas }))
+        : selo('', textoDaVoz('FOT-19.semMarcacoes'));
+      case STATUS.FALHOU: return selo('veio-selo--erro', textoDaVoz('FOT-19.falhou'));
+      default: throw new Error(`Status de foto desconhecido: ${foto.status}`);
+    }
+  }
 
-function carregarConfiguracoes() {
-  chrome.storage.local.get({ geminiApiKey: '', bookTitleDefault: '' }, (data) => {
-    if (data.geminiApiKey)      document.getElementById('api-key-input').value = data.geminiApiKey;
-    if (data.bookTitleDefault)  document.getElementById('book-title').value    = data.bookTitleDefault;
-  });
-}
+  /** A miniatura; um HEIC que o Chrome não desenha fica com o ícone de foto. */
+  function miniatura(foto, classe) {
+    const imagem = elemento('img', classe);
+    imagem.alt = '';
+    imagem.src = foto.url;
+    imagem.addEventListener('error', () => {
+      const lugar = elemento('span', `${classe} foto-sem-miniatura`, iconeVeio('foto'));
+      lugar.setAttribute('aria-hidden', 'true');
+      imagem.replaceWith(lugar);
+    }, { once: true });
+    return imagem;
+  }
 
-function salvarApiKey() {
-  const key = document.getElementById('api-key-input').value.trim();
-  if (!key) { mostrarErro('Digite uma API Key antes de salvar.'); return; }
-  chrome.storage.local.set({ geminiApiKey: key }, () => mostrarToast('API Key salva!'));
-}
+  /**
+   * O topo da coluna das frases quando ainda não há lista: sem chave, o
+   * começo, a prévia, a leitura da 1ª foto ou a leitura sem marcações. Só é
+   * refeito quando o estado muda, para não roubar o foco de quem está nele.
+   */
+  function desenharEstado() {
+    const { chave, montar } = estadoDaColuna();
+    if (chave === desenhado.estado) return;
+    desenhado.estado = chave;
+    porId('foto-estado').replaceChildren(...(montar ? [montar()] : []));
+  }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+  function estadoDaColuna() {
+    if (!estado.chave) return { chave: 'semChave', montar: montarSemChave };
+    if (!estado.fotos.length) return { chave: 'inicio', montar: montarInicio };
 
-function esc(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+    const pronta = estado.fotos.find(f => f.status === STATUS.PRONTA);
+    if (pronta) return { chave: `previa:${pronta.id}`, montar: () => montarPrevia(pronta) };
+    if (estado.frases.length) return { chave: 'lista' };
+
+    const lendo = estado.fotos.find(f => f.status === STATUS.LENDO);
+    if (lendo || lendoOuNaFila().length) {
+      const total = estado.fotos.length;
+      const n = lendo ? numeroDaFoto(lendo) : 1;
+      return { chave: `lendo:${n}/${total}`, montar: () => montarLendo(n, total) };
+    }
+    if (estado.fotos.some(f => f.status === STATUS.LIDA)) return { chave: 'semMarcacoes', montar: montarSemMarcacoes };
+    return { chave: 'nada' };
+  }
+
+  function vazio(icone, ...partes) {
+    const caixa = elemento('div', 'veio-vazio foto-vazio', iconeVeio(icone), ...partes);
+    return caixa;
+  }
+
+  function montarSemChave() {
+    const abrir = elemento('button', 'veio-botao veio-botao--primario', iconeVeio('chave'), textoDaVoz('FOT-05.acao'));
+    abrir.type = 'button';
+    abrir.addEventListener('click', () => abrirPainel('#configuracoes/chave'));
+    const caixa = vazio('chave',
+      elemento('p', 'veio-vazio__titulo', textoDaVoz('FOT-05.titulo')),
+      elemento('p', 'veio-vazio__texto', textoDaVoz('FOT-05.aviso')),
+      abrir);
+    caixa.classList.add('foto-vazio--acento');
+    return caixa;
+  }
+
+  function montarInicio() {
+    const caixa = vazio('livro',
+      elemento('p', 'veio-vazio__titulo', textoDaVoz('FOT-01.titulo')),
+      elemento('p', 'veio-vazio__texto', textoDaVoz('FOT-01.subtitulo')),
+      elemento('p', 'veio-vazio__texto', textoDaVoz('FOT-25.comoAparecem')));
+    caixa.classList.add('foto-vazio--acento', 'foto-vazio--inicio');
+    return caixa;
+  }
+
+  function montarPrevia(foto) {
+    const ler = elemento('button', 'veio-botao veio-botao--primario', iconeVeio('ler'), textoDaVoz('FOT-25.lerMarcacoes'));
+    ler.type = 'button';
+    ler.addEventListener('click', lerAsProntas);
+    return elemento('div', 'foto-previa',
+      elemento('figure', 'foto-previa__quadro',
+        miniatura(foto, 'foto-previa__imagem'),
+        elemento('figcaption', 'foto-previa__aviso', textoDaVoz('FOT-03'))),
+      elemento('div', 'foto-previa__acoes', ler));
+  }
+
+  function montarLendo(n, total) {
+    const caixa = vazio('ler',
+      elemento('p', 'veio-vazio__titulo', total > 1 ? textoDaVoz('FOT-07', { n, total }) : textoDaVoz('FOT-06.titulo')),
+      elemento('p', 'veio-vazio__texto', textoDaVoz('FOT-06.detalhe')));
+    caixa.classList.add('foto-vazio--acento');
+    return caixa;
+  }
+
+  function montarSemMarcacoes() {
+    return vazio('busca',
+      elemento('p', 'veio-vazio__texto', textoDaVoz('FOT-10')),
+      montarLegenda());
+  }
+
+  /** As frases agrupadas por foto, a seleção, a contagem e o botão. */
+  function desenharLista() {
+    porId('foto-lista').hidden = estado.frases.length === 0;
+    if (!estado.frases.length) return;
+
+    // As fotos terminam em ordem, então um grupo novo sempre entra no fim, e
+    // os que já estão na tela (com uma edição em curso) não saem do lugar.
+    for (const foto of estado.fotos) {
+      const frasesDaFoto = estado.frases.filter(frase => frase.fotoId === foto.id);
+      if (!frasesDaFoto.length) continue;
+      let grupo = desenhado.grupos.get(foto.id);
+      if (!grupo) {
+        grupo = montarGrupo(foto);
+        desenhado.grupos.set(foto.id, grupo);
+        porId('foto-grupos').append(grupo);
+      }
+      for (const frase of frasesDaFoto) {
+        let linha = desenhado.linhas.get(frase.id);
+        if (!linha) {
+          linha = montarLinha(frase);
+          desenhado.linhas.set(frase.id, linha);
+          grupo.querySelector('.foto-grupo__frases').append(linha);
+        }
+        atualizarLinha(linha, frase);
+      }
+    }
+
+    const aindaNao = pendentes();
+    const marcadas = aindaNao.filter(frase => frase.marcada);
+    const todas = porId('foto-todas');
+    refletirSelecao(todas, marcadas.length, aindaNao.length);
+    todas.disabled = aindaNao.length === 0;
+    porId('foto-contagem').textContent = textoDaVoz('FOT-09', { n: estado.frases.length });
+
+    const n = paraMinerar().length;
+    const botao = porId('foto-minerar');
+    botao.disabled = estado.minerando || n === 0;
+    botao.replaceChildren(iconeVeio('manual'), n ? textoDaVoz('FOT-12', { n }) : textoDaVoz('FOT-13'));
+  }
+
+  function montarGrupo(foto) {
+    const titulo = elemento('p', 'foto-grupo__titulo',
+      elemento('span', 'foto-grupo__numero', textoDaVoz('FOT-25.grupo', { n: numeroDaFoto(foto) })),
+      elemento('span', 'foto-grupo__nome', foto.nome));
+    return elemento('section', 'foto-grupo', titulo, elemento('div', 'foto-grupo__frases'));
+  }
+
+  function montarLinha(frase) {
+    const marcar = elemento('input', 'veio-checkbox foto-frase__marcar');
+    marcar.type = 'checkbox';
+    marcar.addEventListener('change', () => {
+      frase.marcada = marcar.checked;
+      desenharLista();
+    });
+
+    // O texto é editável no lugar: o que estiver nele é o que vai ser minerado.
+    const texto = elemento('div', 'foto-frase__texto', frase.texto);
+    texto.setAttribute('role', 'textbox');
+    texto.setAttribute('aria-label', textoDaVoz('PAI-33.campo'));
+    texto.spellcheck = false;
+    texto.addEventListener('input', () => {
+      frase.texto = texto.textContent;
+      marcar.setAttribute('aria-label', frase.texto);
+      desenharLista();
+    });
+
+    const minerada = elemento('span', 'foto-frase__minerada', textoDaVoz('FOT-25.minerada'));
+    return elemento('div', 'foto-frase', marcar, texto, minerada);
+  }
+
+  function atualizarLinha(linha, frase) {
+    const marcar = linha.querySelector('.foto-frase__marcar');
+    const texto = linha.querySelector('.foto-frase__texto');
+    marcar.checked = frase.marcada;
+    marcar.disabled = frase.minerada;
+    marcar.setAttribute('aria-label', frase.texto);
+    texto.contentEditable = frase.minerada ? 'false' : 'plaintext-only';
+    texto.setAttribute('aria-readonly', String(frase.minerada));
+    if (frase.minerada && texto.textContent !== frase.texto) texto.textContent = frase.texto;
+    linha.classList.toggle('foto-frase--minerada', frase.minerada);
+    linha.classList.toggle('foto-frase--desmarcada', !frase.minerada && !frase.marcada);
+    linha.querySelector('.foto-frase__minerada').hidden = !frase.minerada;
+  }
+
+  // ─── Ajudantes ──────────────────────────────────────────────────────────────
+
+  /** Um elemento com classe e filhos; texto sempre entra como texto. */
+  function elemento(tag, classe, ...filhos) {
+    const no = document.createElement(tag);
+    if (classe) no.className = classe;
+    no.append(...filhos);
+    return no;
+  }
+
+  function selo(modificador, texto) {
+    return elemento('span', `veio-selo ${modificador}`.trim(), texto);
+  }
+})(globalThis.PerpetualMiner);
