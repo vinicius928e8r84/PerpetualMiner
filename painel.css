@@ -2091,7 +2091,6 @@ body {
   display: block;
   color: var(--veio-muted);
   font-size: var(--veio-tam-legenda);
-  font-weight: 500;
 }
 
 .minerar-modal {
@@ -2148,14 +2147,6 @@ body {
   font-size: var(--veio-tam-apoio);
 }
 
-.minerar-erro {
-  margin: 0;
-  color: var(--veio-danger);
-  font-size: var(--veio-tam-apoio);
-  font-weight: 600;
-}
-
-.minerar-erro[hidden],
 .minerar-resultado[hidden] {
   display: none;
 }

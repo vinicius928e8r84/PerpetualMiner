@@ -54,6 +54,11 @@ const DEFAULT_BRIDGE_PRESETS = {
   ru: { deckName: 'RUSSIAN', imageSource: '1', ttsWordTld: 'ru',  ttsPhraseTld: 'ru' },
 };
 
+// A Fonte de uma frase minerada sem Fonte: colada (Colar) ou vinda de uma
+// linha simples de um .txt (Arquivo .txt).
+const FONTE_MANUAL    = 'manual';
+const FONTE_IMPORTADO = 'importado';
+
 // Enviada ao Anki fica gravada com o nome de antes do glossário (ver foiEnviadaAoAnki).
 const STATUS_ENVIADA_AO_ANKI = 'exported';
 
@@ -2891,9 +2896,13 @@ function mostrarProgressoDeMinerar(feitas, total) {
 
 // ─── Colar ───
 
+/** As linhas com texto, sem as em branco: uma frase por linha, no Colar e no .txt. */
+function linhasDoTexto(texto) {
+  return texto.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+}
+
 function linhasColadas() {
-  return document.getElementById('minerar-frases').value
-    .split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  return linhasDoTexto(document.getElementById('minerar-frases').value);
 }
 
 /** A contagem ao vivo (“3 frases”) e o botão “Minerar 3 frases”. */
@@ -2923,7 +2932,7 @@ async function minerarColadas() {
     document.getElementById('minerar-frases').focus();
     return;
   }
-  const fonte  = document.getElementById('minerar-fonte').value.trim() || 'manual';
+  const fonte  = document.getElementById('minerar-fonte').value.trim() || FONTE_MANUAL;
   const titulo = document.getElementById('minerar-titulo').value.trim();
   const resultado = await minerarEmSequencia(linhas.map(texto => ({ texto, contexto: { fonte, titulo, detalhe: '' } })));
   concluirMineracao(resultado, n => textoDaVoz('ADD-05', { n }));
@@ -2963,7 +2972,7 @@ async function importarArquivoTxt(arquivo) {
   try { conteudo = await lerArquivoDeTexto(arquivo); }
   catch { mostrarFimDoArquivo({ erro: textoDaVoz('ADD-07') }); return; }
 
-  const linhas = conteudo.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  const linhas = linhasDoTexto(conteudo);
   if (linhas.length === 0) { mostrarFimDoArquivo({ erro: textoDaVoz('ADD-08') }); return; }
 
   const jaExistem = new Set(todasFrases.map(f => chaveDeRepetida(f.texto)));
@@ -3031,11 +3040,15 @@ async function minerarEmSequencia(frases) {
     }
   } catch (err) {
     erroLocal = err;
+  }
+  // A mineração só termina quando a nuvem também respondeu: até lá, outro
+  // clique não começa uma segunda.
+  try {
+    const erroNaNuvem = await subirMineradas(mineradas);
+    return { mineradas, erroLocal, erroNaNuvem };
   } finally {
     mineracaoEmCurso = false;
   }
-  const erroNaNuvem = await subirMineradas(mineradas);
-  return { mineradas, erroLocal, erroNaNuvem };
 }
 
 function pedirAoServiceWorker(mensagem) {
@@ -3077,14 +3090,17 @@ function concluirMineracao({ mineradas, erroLocal, erroNaNuvem }, textoDoSucesso
   if (erroNaNuvem) {
     mineradas.forEach(f => idsMineradosForaDaNuvem.add(f.id));
     mostrarAvisoForaDaNuvem(erroNaNuvem);
-    mostrarFalhaNaNuvem(erroNaNuvem);
     return;
   }
   if (!erroLocal && mineradas.length > 0) mostrarToastDeSucesso(textoDoSucesso(mineradas.length));
 }
 
-/** O aviso ADD-06: um só, que junta todas as frases mineradas que não subiram. */
+/**
+ * O aviso ADD-06: um só, que junta todas as frases mineradas que não subiram.
+ * O card e o chip da conta dizem junto que este computador está sem sincronizar.
+ */
 function mostrarAvisoForaDaNuvem(erro) {
+  mostrarFalhaNaNuvem(erro);
   mostrarAvisoNaArea('fora-da-nuvem', {
     texto: textoDaVoz('ADD-06.aviso', { n: idsMineradosForaDaNuvem.size }),
     acao: { rotulo: textoDaVoz('ADD-06.tentarDeNovo'), aoUsar: tentarSubirDeNovo },
@@ -3099,7 +3115,6 @@ async function tentarSubirDeNovo() {
   const erro = await subirMineradas(frases);
   if (erro) {
     mostrarAvisoForaDaNuvem(erro);
-    mostrarFalhaNaNuvem(erro);
     return;
   }
   idsMineradosForaDaNuvem.clear();
@@ -3171,11 +3186,13 @@ function lerLinhaDoTxt(linha) {
   }
 
   if (!texto) return null;
-  const fonte = contexto?.fonte || 'importado';
+  const fonte = contexto?.fonte || FONTE_IMPORTADO;
   return {
     texto,
     contexto: { fonte, titulo: contexto?.titulo || '', detalhe: contexto?.detalhe || '' },
-    ...(ctx ? { palavras: palavras || [] } : (palavras ? { palavras } : {})),
+    // Uma linha exportada daqui já diz a Palavra, mesmo sem nenhuma; uma
+    // linha simples só diz quando o prefixo casou com o texto.
+    ...(ctx || palavras ? { palavras: palavras || [] } : {}),
   };
 }
 
