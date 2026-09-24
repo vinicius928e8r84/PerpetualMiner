@@ -10,6 +10,7 @@ let frasesSalvas  = [];
 let selectedIds   = new Set();
 let isRecording   = false;
 let _recordHandle = null;
+let hintOriginal  = null;   // “Aguardando…”, que volta a cada gravação
 let autoMinerState = null;
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -236,7 +237,7 @@ function carregarAtalhoAtual() {
 
 function exibirAtalhoAtual(cfg) {
   const el = document.getElementById('atalhoAtual');
-  el.textContent = cfg ? cfg.label : 'Não configurado';
+  el.textContent = cfg ? PerpetualMiner.Atalhos.rotuloDoAtalho(cfg) : 'Não configurado';
   el.className = 'atalho-badge' + (cfg ? ' atalho-badge--set' : '');
 }
 
@@ -248,47 +249,31 @@ function iniciarGravacao() {
   const hint = document.getElementById('atalhoHint');
   btn.textContent = 'Cancelar gravação';
   btn.classList.add('recording');
+  hintOriginal ??= hint.textContent;
+  hint.textContent = hintOriginal;
   hint.style.display = 'block';
 
+  // Grava como Configurações › Atalhos (lib/atalhos.js): só tecla com Ctrl, Alt
+  // ou Shift, ou botão extra do mouse, e recusa o atalho que já é do Minerar
+  // legenda (CFG-19), que senão minerava duas vezes. A gravação continua.
   _recordHandle = (e) => {
-    // Ignora teclas modificadoras sozinhas
-    if (e.type === 'keydown' && ['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
-    // Ignora clique esquerdo (button 0) e direito (button 2 — contextmenu)
-    if (e.type === 'mousedown' && (e.button === 0 || e.button === 2)) return;
+    const cfg = PerpetualMiner.Atalhos.atalhoDoEvento(e);
+    if (!cfg) return;
 
     e.preventDefault();
     e.stopImmediatePropagation();
 
-    let cfg;
-    if (e.type === 'mousedown') {
-      const nomes = { 1: 'Middle Click', 3: 'Mouse Back', 4: 'Mouse Forward' };
-      const mods  = buildMods(e);
-      cfg = {
-        type:     'mouse',
-        button:   e.button,
-        code:     null,
-        altKey:   e.altKey,
-        ctrlKey:  e.ctrlKey,
-        shiftKey: e.shiftKey,
-        label:    [...mods, nomes[e.button] ?? `Mouse Btn ${e.button}`].join('+'),
-      };
-    } else {
-      const mods    = buildMods(e);
-      const keyName = e.code.replace(/^(Key|Digit)/, '');
-      cfg = {
-        type:     'keyboard',
-        button:   null,
-        code:     e.code,
-        altKey:   e.altKey,
-        ctrlKey:  e.ctrlKey,
-        shiftKey: e.shiftKey,
-        label:    [...mods, keyName].join('+'),
-      };
-    }
-
-    chrome.storage.local.set({ pm_atalho: cfg }, () => {
-      exibirAtalhoAtual(cfg);
-      pararGravacao();
+    PerpetualMiner.Atalhos.lerAtalhos(({ legenda }) => {
+      if (!isRecording) return;
+      if (PerpetualMiner.Atalhos.mesmoAtalho(cfg, legenda)) {
+        const { textoDaVoz } = PerpetualMiner;
+        hint.textContent = textoDaVoz('CFG-19', { acao: textoDaVoz('CFG-11.minerarLegenda') });
+        return;
+      }
+      chrome.storage.local.set({ pm_atalho: cfg }, () => {
+        exibirAtalhoAtual(cfg);
+        pararGravacao();
+      });
     });
   };
 
@@ -312,9 +297,6 @@ function pararGravacao() {
   }
 }
 
-function buildMods(e) {
-  return [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift'].filter(Boolean);
-}
 
 // ─── Navegação ────────────────────────────────────────────────────────────────
 

@@ -418,8 +418,8 @@
           do estado e abre no lugar; vários podem ficar abertos. A linha inteira
           abre e fecha (painel-shell.js); o botão do título é o controle para o
           teclado e o leitor de tela. O card Conta & sync é desenhado por
-          painel-conta.js, o Chave do Gemini por painel-chave.js e o Zona de
-          perigo por painel-perigo.js; Atalhos ganha o conteúdo no ticket dele.
+          painel-conta.js, o Atalhos por painel-atalhos.js, o Chave do Gemini
+          por painel-chave.js e o Zona de perigo por painel-perigo.js.
         -->
         <div class="shell-cards">
           <section class="shell-card cfg-card" id="cfg-conta" aria-labelledby="cfg-conta-titulo">
@@ -443,6 +443,7 @@
                 <h2 class="shell-card__titulo">
                   <button class="cfg-alternar" id="cfg-atalhos-titulo" type="button" aria-expanded="false" aria-controls="cfg-atalhos-corpo" data-voz="SHL-04.atalhos"></button>
                 </h2>
+                <p class="cfg-descricao" data-voz="CFG-33"></p>
               </div>
               <span class="cfg-resumo" id="cfg-atalhos-resumo"></span>
               <span class="cfg-chevron"><span data-icone="abrir"></span></span>
@@ -640,9 +641,11 @@
   <script src="lib/voz/texto.js"></script>
   <script src="veio/componentes.js"></script>
   <script src="lib/idioma.js"></script>
+  <script src="lib/atalhos.js"></script>
   <script src="tombstone.js"></script>
   <script src="painel-shell.js"></script>
   <script src="painel-conta.js"></script>
+  <script src="painel-atalhos.js"></script>
   <script src="painel-chave.js"></script>
   <script src="painel-perigo.js"></script>
   <script src="painel.js"></script>

@@ -27,11 +27,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel.html/js/css` | Full dashboard to view, copy, and delete all saved phrases; Google login and Firestore sync |
 | `painel-shell.js` | The panel's “Ilhas” shell: one page, one area per address (`#frases`, `#anki/<aba>`, `#configuracoes[/<seção>]`), the sidebar indicators (phrase total, Conexão com o Anki dot), the rail below ~1000 px, the F1 strip and the Configurações cards opening and closing. See “Panel shell” below |
 | `painel-conta.js` | The account in the panel: one state drawn in the Configurações › Conta & sync card, its closed-row summary and the sidebar chip (CFG-01…10). See “Account (Conta & sync)” below |
+| `painel-atalhos.js` | The Configurações › Atalhos card: records “Minerar legenda” and “Minerar seleção” in their own row (CFG-11…14, 19, 21, 22, 33, 34). See “Shortcuts (Atalhos)” below |
+| `lib/atalhos.js` | `PerpetualMiner.Atalhos` — the recorded shortcuts in one place: where they are stored, the defaults, the PT-BR label, “same shortcut” and event matching. Loaded by the content script and the panel |
 | `painel-chave.js` | The Configurações › Chave do Gemini card: the saved key masked, with Trocar chave; the empty key's field; `geminiApiKey`. See “Chave do Gemini and Zona de perigo” below |
 | `painel-perigo.js` | The Configurações › Zona de perigo card: the Apagar tudo entry, its reach with and without an account, and the Veio confirmation modal (CFG-17). See “Chave do Gemini and Zona de perigo” below |
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `tema.js` (the chosen theme, applied before the first paint on every page), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs, the SVG mark and `icone-claro.svg`, which `.veio-marca` swaps in on the light theme through `--veio-marca`). See `veio/README.md` |
-| `lib/voz/catalogo.js` | The Voice catalog as data: the 187 approved copy states from `docs/design/voz/` |
+| `lib/voz/catalogo.js` | The Voice catalog as data: the 189 approved copy states from `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
@@ -43,7 +45,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```
 1. Streaming subtitles
-   Video page → content.js (Alt+S) → background.js → chrome.storage.local["frases"]
+   Video page → content.js (recorded caption shortcut, default Alt+S) → background.js → chrome.storage.local["frases"]
                                                      └→ Firestore (if logged in)
 
 2. Selected text (any page/PDF)
@@ -119,11 +121,11 @@ Configurações is the “summary first” variant C (`docs/design/painel/config
 Atalhos · Chave do Gemini · Aparência · Zona de perigo) is one closed row — icon tile, title, a summary of its state, chevron — and
 opens in place; several can be open at once. The whole row toggles, and the title's `<button aria-expanded>` inside the
 `<h2>` is the control for the keyboard and the screen reader. The cards live in a size container: below ~560 px of
-content the summary leaves the row and the body loses its 62 px indent. Atalhos gets its content in its own ticket;
-Aparência holds the theme selector (CFG-29…31), a segmented control whose choice `veio/tema.js` stores and every
-open page follows through `chrome.storage.onChanged`, with no reload and no toast. The closed-row summaries of
-Atalhos, Chave do Gemini and Zona de perigo (CFG-28) are drawn by the shell from what is already stored: the caption shortcut (still the fixed Alt+S) and
-`pm_atalho` relabelled in PT-BR, `geminiApiKey` masked to its first and last 4 characters (or “Sem chave” in
+content the summary leaves the row and the body loses its 62 px indent. Aparência holds the theme selector
+(CFG-29…31), a segmented control whose choice `veio/tema.js` stores and every open page follows through
+`chrome.storage.onChanged`, with no reload and no toast. The closed-row summaries of Atalhos,
+Chave do Gemini and Zona de perigo (CFG-28) are drawn by the shell from what is already stored: both recorded
+shortcuts relabelled in PT-BR (`lib/atalhos.js`), `geminiApiKey` masked to its first and last 4 characters (or “Sem chave” in
 `danger`), and the phrase total (“1.284 frases”, “Nenhuma frase”); they follow `chrome.storage.onChanged`.
 `#configuracoes/<seção>` also tells whoever asked through `Shell.aoAbrirASecao(secao, fn)`, with the card already open.
 
@@ -144,6 +146,35 @@ Cancelar has the initial focus, Esc and a click outside close it); only the fill
 cloud is empty too; a cloud failure shows in the Conta & sync card and the chip instead (Q4). The description (CFG-32),
 the reach line and the modal body say “all computers of your account” only with an account. Until the total arrives,
 the entry row stays hidden, so it never shows “Nenhuma frase para apagar” while the list is still loading. No `confirm()`.
+
+### Shortcuts (`painel-atalhos.js`, `lib/atalhos.js`)
+
+Two recorded shortcuts, each recorded in its own row of the Configurações › Atalhos card: **Minerar legenda**
+(`pm_atalho_legenda`, default Alt+S) and **Minerar seleção** (today's `pm_atalho`, default none). A shortcut is a
+key with at least one of Ctrl/Alt/Shift (a bare key would take that letter from every text field) or an extra mouse
+button (middle, back, forward, others as “Botão N do mouse”), also with modifiers. Meta is never recorded, and an
+event with Meta never matches. While recording (CFG-13) the row's key becomes a pulsing gold pill and its button Cancelar; the other
+row's button is disabled; Esc without a modifier cancels, and so does leaving the card (closing it, another address
+or area); left and right clicks do not record, so Cancelar stays
+clickable; back and forward do not navigate. A combination that already
+belongs to the other shortcut is refused with CFG-19 in `danger` and recording goes on. A saved key flashes once, no
+toast. “Restaurar atalhos padrão” (CFG-21/22) shows only when something differs from the defaults and writes
+`{legenda: Alt+S, seleção: null}` at once, with no confirmation and no toast.
+
+`lib/atalhos.js` is the one owner of the stored shape, the defaults, the PT-BR label (`rotuloDoAtalho`, rebuilt from
+the fields, so a label stored in English shows in PT-BR) and matching (`mesmoAtalho`, `correspondeAoAtalho`).
+`content.js`, the shell's closed-row summary and the Frases empty state (PAI-02) read it through
+`acompanharAtalhos`, so a new shortcut applies at once, without reloading. The manifest declares no `commands`: a
+recorded shortcut can be a mouse button, which `chrome.commands` cannot take, so it lives only in the content script.
+A mouse caption shortcut takes the button only when there is a caption to mine; elsewhere the button does what it
+always did. Back and forward navigate on the *release*, not on `mousedown`, so `lib/atalhos.js` also holds that
+release (`guardarSolturaDoBotao` after a shortcut fires, `guardarTodasAsSolturas` while recording) — otherwise the
+page would leave while mining or recording.
+
+The popup still has its own old recorder for `pm_atalho` until the popup step (#6 of the build order) rebuilds it, but it
+records through `lib/atalhos.js` with the same rules: a key needs a modifier, and the Minerar legenda combination is
+refused with CFG-19 in its hint while recording goes on (otherwise one key would mine twice). The `kbd` itself is the
+base component `Veio.montarTecla(rotulo, { seVazia })`; the caller passes the “Sem atalho” copy (CFG-12 or GLB-02).
 
 ### Account (`painel-conta.js`)
 
@@ -191,7 +222,7 @@ place (PAI-33: Enter saves, Esc cancels, Cancelar · Salvar texto, no toast — 
 for 1 phrase (fields filled, no toast) and for N (fields blank stay as they are, toast PAI-22). **Apagar** opens one
 modal for 1 phrase (PAI-12, no toast) and for the selection (PAI-13, toast PAI-14); the body only mentions the other
 computers when an account is connected. Both modals are the Veio modal, driven by `abrirModal`. The list states: 5 skeleton cards until the first load finishes
-(PAI-01), first run (PAI-02: its `titulo` in bold above the text, with today's fixed Alt+S until #27), filters hid everything (PAI-03) and search without
+(PAI-01), first run (PAI-02: its `titulo` in bold above the text, with the recorded caption shortcut in a `kbd`, or, with none, the dashed “Sem atalho” `kbd` and a Definir atalho link to `#configuracoes/atalhos`, GLB-02), filters hid everything (PAI-03) and search without
 result (PAI-04, plus Limpar filtros when a filter is on). Everything is built with DOM nodes, never HTML strings.
 
 Two marks, never the same one: `status: 'exported'` is **Enviada ao Anki** (the phrase went into a completed Envio;
@@ -275,6 +306,8 @@ Other storage keys:
 - `pm_user_info` — `{ uid, email, displayName, photoURL }` — Google user profile
 - `pm_pending_sync` — `string[]` of phrase IDs awaiting Firestore retry
 - `pm_deleted_ids` — `string[]` of deleted phrase IDs whose Firestore DELETE hasn't succeeded yet
+- `pm_atalho_legenda` — the “Minerar legenda” shortcut. Absent → the default Alt+S; `null` → no caption shortcut
+- `pm_atalho` — the “Minerar seleção” shortcut; `null` or absent → none (the default). Both use `{ type: 'keyboard'|'mouse', code, button, altKey, ctrlKey, shiftKey, label }`
 - `pm_apagar_tudo` — `{ uid, ate }` while an Apagar tudo hasn't reached the cloud; see the tombstone paragraph above
 
 ### Platform-Specific Subtitle Selectors (content.js)
@@ -329,7 +362,7 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - The showcase also carries a **mock of the toolbar badge** in its three states, outside the two theme columns — Chrome draws the real badge on the browser toolbar, which no static page (and so no Vercel preview) can show. The mock reads its colors from the tokens, and the badge test asserts those tokens match what the service worker hands Chrome, so the copy in `background.js` can't drift.
 - `tests/painel-frases-visual.spec.js` holds the **visual reference of the Frases list** (cards wide and as a rail, each at the top and with the island scrolled to the pagination; loading, first run, filters and search with no result as the full page), in the same way: `npx playwright test painel-frases-visual --update-snapshots` after the owner approves a new look. Today's bulk actions (`.conteudo-de-hoje`) are masked.
 - `tests/painel-shell-visual.spec.js` holds the **visual reference of the panel shell**: its approved states (Frases wide and as a rail, first run, the Conexão off with F1, Configurações with an account) as `toHaveScreenshot` baselines in `painel-shell-visual.spec.js-snapshots/` (taken on Linux, with the clock frozen on the day of the sample phrases). A visual change to the shell fails them; after the owner approves the new look, `npx playwright test painel-shell-visual --update-snapshots` replaces the reference. The content inside each area (`.conteudo-de-hoje`, and the Frases list, which has its own reference) is masked: the reference is the shell around it.
-- `tests/configuracoes-visual.spec.js` does the same for Configurações (cards closed; Conta & sync synced, not synced, logged out after a failed login; Chave do Gemini saved and refused empty; Zona de perigo with an account and its modal; the narrow window; Aparência open in dark and in light), compared by the owner side by side with the locked prototype (`?variant=C`).
+- `tests/configuracoes-visual.spec.js` does the same for Configurações (cards closed; Conta & sync synced, not synced, logged out after a failed login; Chave do Gemini saved and refused empty; Zona de perigo with an account and its modal; Atalhos open, recording and with a repeated shortcut refused; the narrow window; Aparência open in dark and in light), compared by the owner side by side with the locked prototype (`?variant=C`).
 - `HEADED=1 npm test` shows the browser.
 - Tests assert what the person sees and what ends up stored, never internal functions. Three narrow exceptions, each named in the test's own comment:
   - Where Chromium gives Playwright no way to drive the native UI or clock (the context menu, the toolbar badge, the midnight alarm), a test does what Chrome would do — calls the function Chrome would call (`minerarSelecaoDoMenu`, `registrarMenuDeContexto`) or fires the alarm early under its own name — and asserts what gets stored or what is handed to Chrome (`chrome.action.getBadgeText`, `getTitle`, the next alarm's time).
@@ -340,7 +373,7 @@ The legacy tests keep running: `node test_sync.js`, `node test_bridge_panel.js`,
 
 ## Key Constants
 
-- `ATALHO_TECLA = 'KeyS'` in `content.js` — keyboard shortcut is **Alt+S**
+- `ATALHOS_PADRAO` in `lib/atalhos.js` — the factory shortcuts: Minerar legenda on **Alt+S**, Minerar seleção with none
 - `COR_ICONE = '#00ff88'` in `content.js` — UI highlight color
 - `SENTINEL_VAZIO = 'NENHUM_TRECHO'` in `bookreader.js` — returned by Gemini when no marked passages found
 - `FIREBASE_PROJECT = 'perpetualminer-4c219'` in `background.js`

@@ -322,7 +322,7 @@ test('filtros escondendo tudo mostram PAI-03, e Limpar filtros traz a lista de v
 
 // ─── Estados da lista ────────────────────────────────────────────────────────
 
-test('primeiro uso: PAI-02 com o atalho de legenda de hoje (Alt+S) e Minerar frases', async ({ page, extensao }) => {
+test('primeiro uso: PAI-02 com o atalho de legenda padrão (Alt+S) e Minerar frases', async ({ page, extensao }) => {
   await abrirFrases(page, extensao);
 
   const vazio = lista(page).locator('.veio-vazio');
@@ -335,6 +335,39 @@ test('primeiro uso: PAI-02 com o atalho de legenda de hoje (Alt+S) e Minerar fra
 
   await vazio.getByRole('button', { name: 'Minerar frases' }).click();
   await expect(page.locator('#bulk-add-modal')).toBeVisible();
+});
+
+test('primeiro uso com o atalho de legenda trocado para Ctrl+Shift+K: PAI-02 mostra Ctrl+Shift+K', async ({ page, extensao }) => {
+  await extensao.gravarStorage({
+    pm_atalho_legenda: { type: 'keyboard', code: 'KeyK', altKey: false, ctrlKey: true, shiftKey: true },
+  });
+  await abrirFrases(page, extensao);
+
+  const vazio = lista(page).locator('.veio-vazio');
+  await expect(vazio.locator('.veio-vazio__texto')).toHaveText(
+    'Minere de um vídeo com Ctrl+Shift+K ou use Minerar frases para colar, importar ou ler uma foto.');
+  await expect(vazio.locator('kbd')).toHaveText('Ctrl+Shift+K');
+
+  // Gravar outro atalho em Configurações aparece aqui sem recarregar.
+  await extensao.gravarStorage({
+    pm_atalho_legenda: { type: 'keyboard', code: 'KeyL', altKey: true, ctrlKey: false, shiftKey: false },
+  });
+  await expect(vazio.locator('kbd')).toHaveText('Alt+L');
+});
+
+test('primeiro uso sem atalho de legenda gravado: PAI-02 mostra “Sem atalho” + Definir atalho, que leva a Configurações › Atalhos', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ pm_atalho_legenda: null });
+  await abrirFrases(page, extensao);
+
+  const vazio = lista(page).locator('.veio-vazio');
+  await expect(vazio.locator('kbd')).toHaveText('Sem atalho');
+  await expect(vazio.locator('kbd')).toHaveClass(/veio-kbd--sem-atalho/);
+  await expect(vazio.locator('.veio-vazio__texto')).toHaveText(
+    'Minere de um vídeo com Sem atalho Definir atalho ou use Minerar frases para colar, importar ou ler uma foto.');
+
+  await vazio.getByRole('link', { name: 'Definir atalho' }).click();
+  await expect(page).toHaveURL(/#configuracoes\/atalhos$/);
+  await expect(page.getByRole('button', { name: 'Atalhos', exact: true })).toHaveAttribute('aria-expanded', 'true');
 });
 
 test('Minerar frases abre o modal por cima da tela inteira, não no fim da página', async ({ page, extensao }) => {

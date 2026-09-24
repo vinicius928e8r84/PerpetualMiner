@@ -2,10 +2,10 @@
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
 // deste arquivo, pelo painel.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
-const { detectarIdioma, IDIOMAS, textoDaVoz, CATALOGO_DA_VOZ } = PerpetualMiner;
+const { detectarIdioma, IDIOMAS, textoDaVoz, CATALOGO_DA_VOZ, Atalhos } = PerpetualMiner;
 // A lista de Frases é montada com os componentes da Base Veio (veio/componentes.js).
 const {
-  iconeVeio, montarChipDaPalavra, escreverFraseClicavel, andarEntrePalavras, focarPalavra, refletirSelecao,
+  iconeVeio, montarChipDaPalavra, escreverFraseClicavel, andarEntrePalavras, focarPalavra, refletirSelecao, montarTecla,
 } = PerpetualMiner.Veio;
 // O shell (painel-shell.js) é dono da sidebar: o total e o ponto da Conexão com o
 // Anki. A conta (painel-conta.js) desenha o chip e o card Conta & sync, e a Zona
@@ -21,9 +21,9 @@ const { mostrarToastDeSucesso, abrirModal, montarAviso } = PerpetualMiner.Veio;
 
 const POR_PAGINA = 10;
 
-// O atalho de legenda de hoje é fixo em content.js (Alt+S). O #27 o torna
-// gravável, e o vazio de Frases (PAI-02) passa a mostrar o atalho gravado.
-const ATALHO_DE_LEGENDA = 'Alt+S';
+// O atalho de legenda gravado em Configurações › Atalhos (lib/atalhos.js), que
+// o vazio de Frases (PAI-02) ensina. Começa no padrão até a leitura voltar.
+let atalhoDeLegenda = Atalhos.ATALHOS_PADRAO.legenda;
 
 // As Fontes que o catálogo nomeia (PAI-29). Os nomes antigos gravados em
 // frases de antes apontam para o nome de hoje.
@@ -104,6 +104,10 @@ document.addEventListener('DOMContentLoaded', () => {
   Shell.aoEntrarNaArea('anki', () => atualizarBridgeWorkspaceData({ includeAnki: true, launchAnki: true }));
   Conta.aoPedir({ entrar: loginGoogle, sair: logout, tentarDeNovo: carregarFrasesFirestore });
   setupStorageSyncListener();
+  Atalhos.acompanharAtalhos(({ legenda }) => {
+    atalhoDeLegenda = legenda;
+    if (todasFrases.length === 0) renderizar();
+  });
   inicializarAuth();
 });
 
@@ -1766,7 +1770,7 @@ function montarVazio() {
     // O atalho entra no meio da frase como tecla (kbd), não como texto solto.
     const MARCA = '\u0000';
     const [antes, depois] = textoDaVoz('PAI-02.texto', { atalho: MARCA }).split(MARCA);
-    texto.append(antes, criar('kbd', 'veio-kbd', ATALHO_DE_LEGENDA), depois);
+    texto.append(antes, ...atalhoDoVazio(), depois);
     // Até o #31 trazer o menu Minerar frases, o botão abre a adição em massa de hoje.
     acoes.append(botaoDoVazio(textoDaVoz('PAI-02.acao'), abrirModalMultiAdd, 'veio-botao--primario'));
     vazio.append(criar('p', 'veio-vazio__titulo', textoDaVoz('PAI-02.titulo')), texto);
@@ -1781,6 +1785,18 @@ function montarVazio() {
 
   vazio.append(acoes);
   return vazio;
+}
+
+/**
+ * O atalho de legenda gravado, em `kbd`. Sem atalho gravado (GLB-02), o `kbd`
+ * tracejado “Sem atalho” e a ação Definir atalho, que leva a Configurações › Atalhos.
+ */
+function atalhoDoVazio() {
+  const tecla = montarTecla(Atalhos.rotuloDoAtalho(atalhoDeLegenda), { seVazia: textoDaVoz('GLB-02.semAtalho') });
+  if (atalhoDeLegenda) return [tecla];
+  const definir = criar('a', 'frases-vazio__definir-atalho', textoDaVoz('GLB-02.definir'));
+  definir.href = '#configuracoes/atalhos';
+  return [tecla, ' ', definir];
 }
 
 function botaoDoVazio(rotulo, aoClicar, variante = 'veio-botao--contorno') {

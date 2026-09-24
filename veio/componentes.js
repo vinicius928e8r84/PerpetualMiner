@@ -508,6 +508,17 @@
     checkbox.indeterminate = selecionados > 0 && selecionados < total;
   }
 
+  /**
+   * Uma tecla em `kbd` (“Ctrl+Shift+K”). Sem `rotulo`, o `kbd` tracejado com
+   * `seVazia` (“Sem atalho”), que diz que o lugar existe e está vazio.
+   */
+  function montarTecla(rotulo, { seVazia, documento = document } = {}) {
+    const kbd = documento.createElement('kbd');
+    kbd.className = rotulo ? 'veio-kbd' : 'veio-kbd veio-kbd--sem-atalho';
+    kbd.textContent = rotulo || seVazia;
+    return kbd;
+  }
+
   raiz.Veio = {
     iconeVeio,
     abrirModal,
@@ -520,5 +531,6 @@
     focarPalavra,
     montarChipDaPalavra,
     refletirSelecao,
+    montarTecla,
   };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});
