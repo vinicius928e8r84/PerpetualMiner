@@ -616,6 +616,27 @@ body {
   display: none;
 }
 
+/* O Cancelar da gravação: o contorno do Painel em danger, sem o acento, para
+   não competir com a pílula ouro ao lado. */
+.cfg-atalho__cancelar,
+.cfg-atalho__cancelar:hover {
+  border-color: var(--veio-danger);
+}
+
+.cfg-atalho__cancelar:hover {
+  background: var(--veio-danger-soft);
+}
+
+/* A região que o leitor de tela anuncia: fora da tela, a pílula é o desenho. */
+.cfg-atalho__anuncio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* Janela estreita: abaixo de ~560 px de conteúdo, o resumo sai da linha
    fechada e o conteúdo perde o recuo. */
 @container (max-width: 559px) {

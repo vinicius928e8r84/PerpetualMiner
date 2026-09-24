@@ -149,7 +149,10 @@ always did. Back and forward navigate on the *release*, not on `mousedown`, so `
 release (`guardarSolturaDoBotao` after a shortcut fires, `guardarTodasAsSolturas` while recording) — otherwise the
 page would leave while mining or recording.
 
-The popup still has its own old recorder for `pm_atalho` until the popup step (#6 of the build order) rebuilds it.
+The popup still has its own old recorder for `pm_atalho` until the popup step (#6 of the build order) rebuilds it, but it
+records through `lib/atalhos.js` with the same rules: a key needs a modifier, and the Minerar legenda combination is
+refused with CFG-19 in its hint while recording goes on (otherwise one key would mine twice). The `kbd` itself is the
+base component `Veio.montarTecla(rotulo, { seVazia })`; the caller passes the “Sem atalho” copy (CFG-12 or GLB-02).
 
 ### Account (`painel-conta.js`)
 

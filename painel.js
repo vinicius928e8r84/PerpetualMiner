@@ -5,7 +5,7 @@
 const { detectarIdioma, IDIOMAS, textoDaVoz, CATALOGO_DA_VOZ, Atalhos } = PerpetualMiner;
 // A lista de Frases é montada com os componentes da Base Veio (veio/componentes.js).
 const {
-  iconeVeio, montarChipDaPalavra, escreverFraseClicavel, andarEntrePalavras, focarPalavra, refletirSelecao,
+  iconeVeio, montarChipDaPalavra, escreverFraseClicavel, andarEntrePalavras, focarPalavra, refletirSelecao, montarTecla,
 } = PerpetualMiner.Veio;
 // O shell (painel-shell.js) é dono da sidebar: o total e o ponto da Conexão com o
 // Anki. A conta (painel-conta.js) desenha o chip e o card Conta & sync. Este
@@ -1750,10 +1750,11 @@ function montarVazio() {
  * tracejado “Sem atalho” e a ação Definir atalho, que leva a Configurações › Atalhos.
  */
 function atalhoDoVazio() {
-  if (atalhoDeLegenda) return [Atalhos.teclaDoAtalho(atalhoDeLegenda)];
+  const tecla = montarTecla(Atalhos.rotuloDoAtalho(atalhoDeLegenda), { seVazia: textoDaVoz('GLB-02.semAtalho') });
+  if (atalhoDeLegenda) return [tecla];
   const definir = criar('a', 'frases-vazio__definir-atalho', textoDaVoz('GLB-02.definir'));
   definir.href = '#configuracoes/atalhos';
-  return [criar('kbd', 'veio-kbd veio-kbd--sem-atalho', textoDaVoz('GLB-02.semAtalho')), ' ', definir];
+  return [tecla, ' ', definir];
 }
 
 function botaoDoVazio(rotulo, aoClicar, variante = 'veio-botao--contorno') {

@@ -315,6 +315,9 @@ test('o leitor de tela ouve a gravação, o aviso de repetido e o nome da ação
 
   // Cada Gravar atalho diz de qual ação é.
   await expect(gravar(page, 'Minerar legenda')).toHaveAccessibleDescription('Minerar legenda');
+  // A região que anuncia já está na linha antes de gravar, vazia: o leitor de
+  // tela só lê o que muda numa região que já existe.
+  await expect(linha(page, 'Minerar seleção').getByRole('status')).toHaveText('');
   await gravar(page, 'Minerar seleção').click();
   await expect(linha(page, 'Minerar seleção').getByRole('status')).toHaveText('Pressione as teclas ou um botão extra do mouse…');
   await page.keyboard.press('Alt+KeyS');
@@ -369,4 +372,32 @@ test('com o botão voltar gravado para a legenda, minerar não leva a página de
 
   await expect.poll(async () => (await extensao.frases()).map(f => f.texto)).toEqual([LEGENDA]);
   expect(page.url()).toContain('player.html');
+});
+
+// ─── O gravador antigo do popup ──────────────────────────────────────────────
+// Ele continua até o passo do popup (#6), mas grava com as mesmas regras.
+
+test('no popup, o atalho que já é do Minerar legenda é recusado, e a gravação continua', async ({ page, extensao }) => {
+  await page.goto(extensao.url('popup.html'));
+  await page.locator('#btnGravarAtalho').click();
+
+  await page.keyboard.press('Alt+KeyS');
+  await expect(page.locator('#atalhoHint')).toHaveText('Esse atalho já é do Minerar legenda. Grave outro.');
+  await expect(page.locator('#btnGravarAtalho')).toHaveText('Cancelar gravação');
+  expect(await atalhosGravados(extensao)).toEqual({});
+
+  // Uma tecla sem modificador também não grava.
+  await page.keyboard.press('KeyK');
+  expect(await atalhosGravados(extensao)).toEqual({});
+
+  await page.keyboard.press('Alt+KeyD');
+  await expect(page.locator('#atalhoAtual')).toHaveText('Alt+D');
+  expect((await atalhosGravados(extensao)).pm_atalho).toMatchObject({ type: 'keyboard', code: 'KeyD', altKey: true });
+});
+
+test('no popup, um atalho gravado em inglês aparece em PT-BR', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ pm_atalho: SELECAO_NO_BOTAO_VOLTAR_EM_INGLES });
+  await page.goto(extensao.url('popup.html'));
+
+  await expect(page.locator('#atalhoAtual')).toHaveText('Alt+Botão voltar');
 });

@@ -41,7 +41,7 @@
   const ouvintesDeArea = new Map();
   const fimDosDestaques = new Map();   // card → o timer que tira a borda do destaque
 
-  const { textoDaVoz, Atalhos } = raiz;
+  const { textoDaVoz, Atalhos, Veio } = raiz;
   const $ = seletor => document.querySelector(seletor);
   const $$ = seletor => [...document.querySelectorAll(seletor)];
   const porId = id => document.getElementById(id);
@@ -209,7 +209,8 @@
 
   /** “Legenda [Alt+S]  Seleção [Alt+Botão voltar]”, com as teclas em `kbd`. */
   function mostrarResumoDosAtalhos({ legenda, selecao }) {
-    const atalho = (rotulo, gravado) => elemento('span', null, `${textoDaVoz(rotulo)} `, Atalhos.teclaDoAtalho(gravado));
+    const atalho = (rotulo, gravado) => elemento('span', null, `${textoDaVoz(rotulo)} `,
+      Veio.montarTecla(Atalhos.rotuloDoAtalho(gravado), { seVazia: textoDaVoz('CFG-12.semAtalho') }));
     porId('cfg-atalhos-resumo').replaceChildren(
       atalho('CFG-28.legenda', legenda),
       atalho('CFG-28.selecao', selecao));

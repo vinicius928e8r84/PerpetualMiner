@@ -20,7 +20,7 @@
 // catálogo da Voz.
 
 (function (raiz) {
-  const { textoDaVoz, Atalhos } = raiz;
+  const { textoDaVoz, Atalhos, Veio } = raiz;
   const { ACOES } = Atalhos;
 
   /** O nome de cada ação (CFG-11) e o que ela faz (CFG-30), pela mesma parte do catálogo. */
@@ -31,7 +31,7 @@
     gravando: null,        // a ação sendo gravada, ou null
     aviso: null,           // { acao, texto } do atalho repetido
   };
-  const linhas = new Map();    // ação → { tecla, botao, aviso }
+  const linhas = new Map();    // ação → { tecla, botao, anuncio, aviso }
   let restaurar = null;
 
   function iniciarAtalhos() {
@@ -59,19 +59,25 @@
       elemento('span', 'cfg-nota', textoDaVoz(`CFG-30.${parte}`)));
 
     const tecla = elemento('span', 'cfg-atalho__tecla');
-    const botao = elemento('button', 'veio-botao veio-botao--secundario', textoDaVoz('CFG-12.gravar'));
+    const botao = elemento('button', 'veio-botao veio-botao--contorno', textoDaVoz('CFG-12.gravar'));
     botao.type = 'button';
     botao.setAttribute('aria-describedby', idDoNome);
     botao.addEventListener('click', () => (estado.gravando === acao ? pararDeGravar() : comecarAGravar(acao)));
+
+    // O leitor de tela só anuncia o que muda numa região que já existe: esta
+    // fica na linha desde o começo, vazia, e ganha o CFG-13 quando a gravação
+    // começa. A pílula na tela é só o desenho do mesmo texto.
+    const anuncio = elemento('span', 'cfg-atalho__anuncio');
+    anuncio.setAttribute('role', 'status');
 
     const aviso = elemento('p', 'cfg-atalho__aviso');
     aviso.setAttribute('role', 'alert');
     aviso.hidden = true;
 
-    const linha = elemento('div', 'cfg-atalho', texto, elemento('div', 'cfg-acoes', tecla, botao), aviso);
+    const linha = elemento('div', 'cfg-atalho', texto, elemento('div', 'cfg-acoes', tecla, botao), anuncio, aviso);
     linha.setAttribute('role', 'group');
     linha.setAttribute('aria-labelledby', idDoNome);
-    linhas.set(acao, { tecla, botao, aviso });
+    linhas.set(acao, { tecla, botao, anuncio, aviso });
     return linha;
   }
 
@@ -87,10 +93,13 @@
   // ─── Desenho ───────────────────────────────────────────────────────────────
 
   function desenhar() {
-    for (const [acao, { tecla, botao, aviso }] of linhas) {
+    for (const [acao, { tecla, botao, anuncio, aviso }] of linhas) {
       const gravando = estado.gravando === acao;
-      tecla.replaceChildren(gravando ? pilulaDeGravacao() : Atalhos.teclaDoAtalho(estado.atalhos[acao]));
+      tecla.replaceChildren(gravando ? pilulaDeGravacao() : Veio.montarTecla(
+        Atalhos.rotuloDoAtalho(estado.atalhos[acao]), { seVazia: textoDaVoz('CFG-12.semAtalho') }));
+      anuncio.textContent = gravando ? textoDaVoz('CFG-13') : '';
       botao.textContent = textoDaVoz(gravando ? 'CFG-12.cancelar' : 'CFG-12.gravar');
+      botao.classList.toggle('cfg-atalho__cancelar', gravando);
       botao.disabled = !!estado.gravando && !gravando;
 
       const texto = estado.aviso?.acao === acao ? estado.aviso.texto : '';
@@ -103,7 +112,7 @@
 
   function pilulaDeGravacao() {
     const pilula = elemento('span', 'cfg-gravando', textoDaVoz('CFG-13'));
-    pilula.setAttribute('role', 'status');
+    pilula.setAttribute('aria-hidden', 'true');
     return pilula;
   }
 
