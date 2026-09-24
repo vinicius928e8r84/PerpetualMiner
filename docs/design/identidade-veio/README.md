@@ -3,7 +3,7 @@
 Resolução do ticket [Identidade visual própria & design system base](https://github.com/vinicius928e8r84/PerpetualMiner/issues/3) do mapa [Redesign do front-end do PerpetualMiner](https://github.com/vinicius928e8r84/PerpetualMiner/issues/1). Todo protótipo de tela deste mapa herda o que está aqui.
 
 - Protótipo: [`prototipo-identidade.html`](prototipo-identidade.html). Abra com `python3 -m http.server` nesta pasta. `?variant=F` mostra a fundação travada; `A`–`D` são as 4 direções avaliadas; `Z` mostra as quatro lado a lado. As setas ← → trocam a tela e **T** alterna o tema.
-- Assets: [`assets/icone.svg`](assets/icone.svg) e `assets/icone-{16,32,48,128}.png`, que são os ícones do manifest.
+- Assets: [`assets/icone.svg`](assets/icone.svg) e `assets/icone-{16,32,48,128}.png`, que são os ícones do manifest, e [`assets/icone-claro.svg`](assets/icone-claro.svg), a marca dentro das páginas no tema claro.
 
 ## Decisão
 
@@ -18,7 +18,8 @@ Quatro direções foram avaliadas: A Veio (grafite + ouro), B Caderno (papel + t
 ## Marca
 
 - **Símbolo:** um cristal de quartzo, cortado por um *veio* horizontal: a linha de legenda de onde a frase é minerada. Três faces em tons de ouro sobre um azulejo grafite `#1B1A17`, com raio de 28 no grid de 128.
-- **O azulejo é sempre escuro,** nos dois temas e nas duas toolbars do Chrome. É isso que faz o ícone ler em 16 px.
+- **Na toolbar, o azulejo é sempre escuro,** nas duas toolbars do Chrome. É isso que faz o ícone ler em 16 px.
+- **Dentro das páginas, a marca acompanha o tema.** No claro, o mesmo cristal fica num azulejo claro (`surface-2` do claro, `#F0EBE1`), com as faces num ouro mais fundo (`#F0AE2E`, `#A86A0C`, `#F7C85C`) para ler sobre o creme; o veio é cortado na cor do azulejo. O azulejo grafite sobre a página clara pesava demais.
 - **Nome:** `Perpetual` em peso 500 + `Miner` em 800 (Manrope), seguido de um cursor ouro que pisca (ver [Movimento](#movimento)).
 - **Some o legado:** raio ciano, bolha gradiente, balão verde, livro roxo e “P” genérico. O `icon.svg` da raiz é substituído por `assets/icone.svg`.
 - **Badge da toolbar** (contador da mineração automática): fundo `#F5B83D`, texto `#1A1204` (10,4:1). Vai em `setBadgeBackgroundColor` / `setBadgeTextColor`.

@@ -118,13 +118,14 @@ Um problema de sync aparece **só** aqui e no chip (Q4). O chip fica sempre vis�
 
 ## Aparência
 
-**Descrição:** “Vale para o painel, o popup e Minerar de uma foto, só neste computador. O que aparece por cima dos vídeos e das páginas continua escuro.” (CFG-29)
+**Descrição:** “Só neste computador.” (CFG-29)
 
 - **Controle:** um controle segmentado de duas opções, **Escuro · Claro** (CFG-30), com o grupo rotulado “Tema” para o leitor de tela. É um grupo de rádio: as setas trocam a opção, e o foco visível é o do Veio.
 - **Sem escolha gravada:** o app abre no **escuro**, o padrão do Veio. O controle mostra Escuro marcado.
 - **Trocar:** vale **na hora**, sem recarregar e sem toast (C4: a mudança já aparece na tela), no painel e em qualquer popup ou Minerar de uma foto que esteja aberto.
 - **Lembrado neste computador:** a escolha fica em `chrome.storage.local` e **não** sobe com o sync da conta. Outro computador segue com o que estiver gravado nele.
 - **Onde vale:** painel (inclusive a Boas-vindas), popup e Minerar de uma foto. O **overlay** in-page usa sempre os tokens escuros (Veio, Tema e tokens), e o seletor não muda isso.
+  - **Adiado de propósito:** o popup e o Minerar de uma foto já carregam a escolha, mas só passam a segui-la quando forem refeitos na Veio ([#38](https://github.com/vinicius928e8r84/PerpetualMiner/issues/38), passo 6; [#36](https://github.com/vinicius928e8r84/PerpetualMiner/issues/36)/[#37](https://github.com/vinicius928e8r84/PerpetualMiner/issues/37), passo 5). Até lá as cores deles estão escritas à mão, fora dos tokens, e ficam como foram desenhadas: o popup escuro e o Minerar de uma foto claro. Cada um desses tickets fecha com um teste de que a tela segue o tema escolhido.
 - **Cores:** o claro usa só os tokens claros de [Tema e tokens](../../identidade-veio/README.md#tema-e-tokens), com o contraste que o Veio garante. Nenhuma cor nova.
 - **Movimento:** a troca de tema não anima.
 

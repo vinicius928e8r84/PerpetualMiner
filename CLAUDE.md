@@ -32,8 +32,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-chave.js` | The Configurações › Chave do Gemini card: the saved key masked, with Trocar chave; the empty key's field; `geminiApiKey`. See “Chave do Gemini and Zona de perigo” below |
 | `painel-perigo.js` | The Configurações › Zona de perigo card: the Apagar tudo entry, its reach with and without an account, and the Veio confirmation modal (CFG-17). See “Chave do Gemini and Zona de perigo” below |
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
-| `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs and the SVG). See `veio/README.md` |
-| `lib/voz/catalogo.js` | The Voice catalog as data: the 186 approved copy states from `docs/design/voz/` |
+| `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `tema.js` (the chosen theme, applied before the first paint on every page), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs, the SVG mark and `icone-claro.svg`, which `.veio-marca` swaps in on the light theme through `--veio-marca`). See `veio/README.md` |
+| `lib/voz/catalogo.js` | The Voice catalog as data: the 189 approved copy states from `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
@@ -99,7 +99,7 @@ every other surface.
 `painel.html` is one page with three areas; the shell (`docs/design/painel/shell/`, variant B) only swaps the view, so
 nothing reloads when switching areas — filters, page, selection, sync and the Envio tracking in `painel.js` stay as
 they are. Addresses: `#frases` (default, and anything unknown), `#anki/custos|baralhos|vocabulario|ajustes`
-(`#anki` alone opens Custos; the sidebar link reopens the last tab seen), `#configuracoes[/conta|atalhos|chave|perigo]`
+(`#anki` alone opens Custos; the sidebar link reopens the last tab seen), `#configuracoes[/conta|atalhos|chave|aparencia|perigo]`
 (opens the card, scrolls to it and flashes its border; bare `#configuracoes` shows every card closed). The Anki tabs are the Veio segmented control; picking one sets the hash,
 so the browser's back button walks through areas and tabs.
 
@@ -117,11 +117,13 @@ Until an area is rebuilt, today's content lives inside the shell in `.conteudo-d
 `data-tema="claro"`: its CSS was drawn for a light background. In Frases that block holds only today's bulk actions
 (select page/all, edit, delete, export, send to Anki, import, bulk add) until #30, #31 and #32 rebuild them.
 
-Configurações is the “summary first” variant C (`docs/design/painel/configuracoes/`): each of the four cards (Conta & sync ·
-Atalhos · Chave do Gemini · Zona de perigo) is one closed row — icon tile, title, a summary of its state, chevron — and
+Configurações is the “summary first” variant C (`docs/design/painel/configuracoes/`): each of the five cards (Conta & sync ·
+Atalhos · Chave do Gemini · Aparência · Zona de perigo) is one closed row — icon tile, title, a summary of its state, chevron — and
 opens in place; several can be open at once. The whole row toggles, and the title's `<button aria-expanded>` inside the
 `<h2>` is the control for the keyboard and the screen reader. The cards live in a size container: below ~560 px of
-content the summary leaves the row and the body loses its 62 px indent. The closed-row summaries of Atalhos,
+content the summary leaves the row and the body loses its 62 px indent. Aparência holds the theme selector
+(CFG-29…31), a segmented control whose choice `veio/tema.js` stores and every open page follows through
+`chrome.storage.onChanged`, with no reload and no toast. The closed-row summaries of Atalhos,
 Chave do Gemini and Zona de perigo (CFG-28) are drawn by the shell from what is already stored: both recorded
 shortcuts relabelled in PT-BR (`lib/atalhos.js`), `geminiApiKey` masked to its first and last 4 characters (or “Sem chave” in
 `danger`), and the phrase total (“1.284 frases”, “Nenhuma frase”); they follow `chrome.storage.onChanged`.
@@ -299,6 +301,7 @@ Each entry in `chrome.storage.local["frases"]` (unlimited, newest first):
 
 Other storage keys:
 - `geminiApiKey`, `bookTitleDefault` — BookReader settings
+- `pm_tema` — `'escuro'` (the default, and what an absent key means) or `'claro'`: the theme chosen on this computer. It is local on purpose and never syncs, so each computer opens in the theme picked on it. `veio/tema.js` mirrors it into `localStorage` under the same name, which is read before the first paint so a light page never flashes dark; `chrome.storage` stays the truth and corrects the mirror
 - `pm_firebase_auth` — `{ uid, idToken, refreshToken, expiresAt }` — Firebase auth session
 - `pm_user_info` — `{ uid, email, displayName, photoURL }` — Google user profile
 - `pm_pending_sync` — `string[]` of phrase IDs awaiting Firestore retry
@@ -359,7 +362,7 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - The showcase also carries a **mock of the toolbar badge** in its three states, outside the two theme columns — Chrome draws the real badge on the browser toolbar, which no static page (and so no Vercel preview) can show. The mock reads its colors from the tokens, and the badge test asserts those tokens match what the service worker hands Chrome, so the copy in `background.js` can't drift.
 - `tests/painel-frases-visual.spec.js` holds the **visual reference of the Frases list** (cards wide and as a rail, each at the top and with the island scrolled to the pagination; loading, first run, filters and search with no result as the full page), in the same way: `npx playwright test painel-frases-visual --update-snapshots` after the owner approves a new look. Today's bulk actions (`.conteudo-de-hoje`) are masked.
 - `tests/painel-shell-visual.spec.js` holds the **visual reference of the panel shell**: its approved states (Frases wide and as a rail, first run, the Conexão off with F1, Configurações with an account) as `toHaveScreenshot` baselines in `painel-shell-visual.spec.js-snapshots/` (taken on Linux, with the clock frozen on the day of the sample phrases). A visual change to the shell fails them; after the owner approves the new look, `npx playwright test painel-shell-visual --update-snapshots` replaces the reference. The content inside each area (`.conteudo-de-hoje`, and the Frases list, which has its own reference) is masked: the reference is the shell around it.
-- `tests/configuracoes-visual.spec.js` does the same for Configurações (cards closed; Conta & sync synced, not synced, logged out after a failed login; Chave do Gemini saved and refused empty; Zona de perigo with an account and its modal; Atalhos open, recording and with a repeated shortcut refused; the narrow window), compared by the owner side by side with the locked prototype (`?variant=C`).
+- `tests/configuracoes-visual.spec.js` does the same for Configurações (cards closed; Conta & sync synced, not synced, logged out after a failed login; Chave do Gemini saved and refused empty; Zona de perigo with an account and its modal; Atalhos open, recording and with a repeated shortcut refused; the narrow window; Aparência open in dark and in light), compared by the owner side by side with the locked prototype (`?variant=C`).
 - `HEADED=1 npm test` shows the browser.
 - Tests assert what the person sees and what ends up stored, never internal functions. Three narrow exceptions, each named in the test's own comment:
   - Where Chromium gives Playwright no way to drive the native UI or clock (the context menu, the toolbar badge, the midnight alarm), a test does what Chrome would do — calls the function Chrome would call (`minerarSelecaoDoMenu`, `registrarMenuDeContexto`) or fires the alarm early under its own name — and asserts what gets stored or what is handed to Chrome (`chrome.action.getBadgeText`, `getTitle`, the next alarm's time).

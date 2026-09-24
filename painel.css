@@ -456,6 +456,11 @@ body {
   padding: 4px 16px 16px 62px;
 }
 
+/* O seletor de tema tem a largura das opções, não a do card. */
+.cfg-corpo > .veio-segmentado {
+  align-self: flex-start;
+}
+
 .cfg-linha {
   display: flex;
   flex-wrap: wrap;

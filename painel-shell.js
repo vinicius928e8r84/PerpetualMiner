@@ -5,7 +5,7 @@
 //
 //   #frases (padrão)                        Frases mineradas
 //   #anki/custos|baralhos|vocabulario|ajustes  a aba da Conexão com o Anki
-//   #configuracoes[/conta|atalhos|chave|perigo] Configurações, rolando até o card
+//   #configuracoes[/conta|atalhos|chave|aparencia|perigo] Configurações, rolando até o card
 //
 // Trocar de área só troca a vista: nada recarrega, então os filtros, a página, a
 // seleção, o sync e o acompanhamento de envios do painel.js continuam como estão.
@@ -19,14 +19,14 @@
 // Em Configurações, os cards ficam fechados numa linha com o resumo e abrem no
 // lugar, vários ao mesmo tempo; #configuracoes/<seção> abre o da seção e avisa
 // quem pediu (`aoAbrirASecao`). O resumo da conta é do painel-conta.js; os de
-// Atalhos, Chave do Gemini e Zona de perigo saem daqui, do que já está gravado
-// (os atalhos, a chave e o total de frases). O conteúdo dos cards Atalhos, Chave
-// do Gemini e Zona de perigo é do painel-atalhos.js, do painel-chave.js e do
-// painel-perigo.js. Toda cópia vem do catálogo da Voz.
+// Atalhos, Chave do Gemini, Aparência e Zona de perigo saem daqui, do que já
+// está gravado (os atalhos, a chave, o tema e o total de frases). O conteúdo dos
+// cards Atalhos, Chave do Gemini e Zona de perigo é do painel-atalhos.js, do
+// painel-chave.js e do painel-perigo.js. Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
   const ABAS_DA_CONEXAO = ['custos', 'baralhos', 'vocabulario', 'ajustes'];
-  const SECOES_DE_CONFIGURACOES = ['conta', 'atalhos', 'chave', 'perigo'];
+  const SECOES_DE_CONFIGURACOES = ['conta', 'atalhos', 'chave', 'aparencia', 'perigo'];
 
   /** A chave do Gemini no resumo: os 4 primeiros e os 4 últimos caracteres. */
   const MASCARA_DA_CHAVE = '••••••••';
@@ -44,6 +44,9 @@
   const fimDosDestaques = new Map();   // card → o timer que tira a borda do destaque
 
   const { textoDaVoz, Atalhos, Veio } = raiz;
+  // O tema (veio/tema.js) é pedido só na hora de usar: o shell também é
+  // carregado fora da extensão, pelos testes legados, sem a base do <head>.
+  const baseDoTema = () => raiz.Tema;
   const $ = seletor => document.querySelector(seletor);
   const $$ = seletor => [...document.querySelectorAll(seletor)];
   const porId = id => document.getElementById(id);
@@ -58,6 +61,11 @@
       radio.addEventListener('change', () => { location.hash = `#anki/${radio.value}`; });
     }
     porId('shell-tentar-de-novo').addEventListener('click', tentarAConexaoDeNovo);
+    // O tema vale na hora: gravar é o que troca a tela, aqui e em qualquer
+    // outra página aberta (veio/tema.js escuta o mesmo storage).
+    for (const radio of $$('#cfg-tema input[name="tema"]')) {
+      radio.addEventListener('change', () => { if (radio.checked) baseDoTema().gravarTema(radio.value); });
+    }
     // A linha inteira do card abre e fecha; o botão do título é quem o teclado
     // e o leitor de tela usam, e o clique nele sobe até aqui.
     for (const cabeca of $$('.cfg-cabeca')) {
@@ -218,10 +226,15 @@
 
   // ─── Resumos de Atalhos e da Chave do Gemini ───────────────────────────────
 
-  /** Os atalhos e a chave, como estão gravados, e cada mudança deles. */
+  /** Os atalhos, a chave e o tema, como estão gravados, e cada mudança deles. */
   function lerResumosGravados() {
     Atalhos.acompanharAtalhos(mostrarResumoDosAtalhos);
     chrome.storage.local.get({ geminiApiKey: '' }, dados => mostrarResumoDaChave(dados.geminiApiKey));
+    // O tema sai do que está gravado, como os outros resumos: o que está
+    // pintado ainda pode ser o espelho da primeira pintura, que veio/tema.js
+    // corrige quando o storage responde.
+    baseDoTema().lerTemaGravado().then(mostrarTema);
+    baseDoTema().aoMudarTema(mostrarTema);
     chrome.storage.onChanged.addListener((mudancas, area) => {
       if (area === 'local' && 'geminiApiKey' in mudancas) mostrarResumoDaChave(mudancas.geminiApiKey.newValue || '');
     });
@@ -234,6 +247,17 @@
     porId('cfg-atalhos-resumo').replaceChildren(
       atalho('CFG-28.legenda', legenda),
       atalho('CFG-28.selecao', selecao));
+  }
+
+  /**
+   * O tema em uso: a opção marcada no controle e o resumo da linha fechada
+   * (CFG-31). Sem escolha gravada, os dois dizem “Escuro”. Chega sempre
+   * normalizado por veio/tema.js, então é “escuro” ou “claro”.
+   */
+  function mostrarTema(escolhido) {
+    for (const radio of $$('#cfg-tema input[name="tema"]')) radio.checked = radio.value === escolhido;
+    porId('cfg-aparencia-resumo').replaceChildren(
+      elemento('span', null, textoDaVoz(`CFG-31.${escolhido}`)));
   }
 
   /** `AIza••••••••3kQ9` em mono; vazia, o ponto `danger` e “Sem chave”. */

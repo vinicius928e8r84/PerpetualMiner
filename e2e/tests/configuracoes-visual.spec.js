@@ -1,7 +1,8 @@
 'use strict';
 
 // Referência visual de Configurações · resumo primeiro + Conta & sync (#26),
-// Chave do Gemini e Zona de perigo (#28).
+// Chave do Gemini e Zona de perigo (#28), mais o card Aparência e o tema claro
+// (#45).
 //
 // O dono revisa estas telas lado a lado com o protótipo travado
 // (docs/design/painel/configuracoes/prototipo-configuracoes.html?variant=C).
@@ -91,6 +92,25 @@ test('Conta & sync aberto, sem conta e com o login que falhou', async ({ page, e
   await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
 
   await expect(page).toHaveScreenshot('conta-login-falhou.png', { animations: 'disabled' });
+});
+
+test('Aparência aberto, no escuro', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
+  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
+  await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
+  await expect(page.getByRole('radio', { name: 'Escuro' })).toBeChecked();
+
+  await expect(page).toHaveScreenshot('aparencia-escuro.png', { animations: 'disabled' });
+});
+
+test('Aparência aberto, no claro: a mesma tela com os tokens claros', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
+  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
+  await extensao.gravarStorage({ pm_tema: 'claro' });
+  await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
+  await expect(page.getByRole('radio', { name: 'Claro' })).toBeChecked();
+
+  await expect(page).toHaveScreenshot('aparencia-claro.png', { animations: 'disabled' });
 });
 
 test('janela estreita: sem resumo na linha e sem recuo no conteúdo', async ({ page, extensao, fakes }) => {

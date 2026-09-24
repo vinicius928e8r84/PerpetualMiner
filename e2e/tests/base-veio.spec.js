@@ -222,8 +222,13 @@ for (const pagina of PAGINAS_DA_EXTENSAO) {
       const terminou = animacao => animacao.finished.then(() => true, () => true);
       const prazo = new Promise(resolve => setTimeout(resolve, 300));
       await Promise.race([Promise.all(document.getAnimations().map(terminou)), prazo]);
+      // Com movimento reduzido, a base encurta toda transição para 1 ms. Uma
+      // que começa bem na hora da leitura (o ponto da Conexão quando o
+      // /health responde) ainda aparece rodando, mas não se vê: só conta o
+      // que dura mais que isso, como o spinner infinito lá de cima.
+      const seMexeNaTela = animacao => animacao.effect.getComputedTiming().activeDuration > 1;
       return document.getAnimations()
-        .filter(animacao => animacao.playState === 'running')
+        .filter(animacao => animacao.playState === 'running' && seMexeNaTela(animacao))
         .map(descrever);
     });
 

@@ -6,8 +6,8 @@
    nova é escrita fora dele. A fundação travada é a variante F do protótipo
    em docs/design/identidade-veio/.
 
-   O tema escuro é o padrão. Os tokens do claro já existem aqui e entram com
-   data-tema="claro" no <html>; o seletor de tema é outro ticket.
+   O tema escuro é o padrão. O claro entra com data-tema="claro" no <html>, que
+   é o que veio/tema.js grava a partir da escolha em Configurações › Aparência.
    ───────────────────────────────────────────────────────────────────────── */
 
 /* ── Fontes empacotadas (latin + cyrillic) ────────────────────────────────
@@ -62,6 +62,7 @@
 
 :root,
 [data-tema="escuro"] {
+  --veio-marca: url("icones/icone.svg");
   --veio-bg: #121110;
   --veio-surface: #1B1A17;
   --veio-surface-2: #262420;
@@ -154,10 +155,11 @@
   --veio-destaque: 1.4s;
 }
 
-/* ── Tema claro (pronto; o seletor é outro ticket) ────────────────────── */
+/* ── Tema claro (escolhido em Configurações › Aparência) ──────────────── */
 
 :root[data-tema="claro"],
 [data-tema="claro"] {
+  --veio-marca: url("icones/icone-claro.svg");
   --veio-bg: #F7F4EE;
   --veio-surface: #FFFFFF;
   --veio-surface-2: #F0EBE1;
@@ -195,6 +197,9 @@
 .veio-marca {
   flex: none;
   border-radius: var(--veio-raio-icone);
+  /* No claro, o cristal vai para o azulejo claro (icones/icone-claro.svg); o
+     src do <img> continua o escuro, que é o que vale sem este CSS. */
+  content: var(--veio-marca);
 }
 
 .veio-nome {
@@ -250,4 +255,18 @@
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
   }
+}
+
+/* ── Troca de tema ────────────────────────────────────────────────────────
+   A troca de tema não anima (spec de Configurações › Aparência). Os
+   componentes transicionam fundo, cor e borda, e sem esta regra a tela
+   inteira faria um cross-fade ao trocar. veio/tema.js marca o <html> só
+   enquanto as cores novas pintam, e as transições voltam logo depois, para
+   o que a pessoa fizer na tela. */
+
+[data-trocando-tema],
+[data-trocando-tema] *,
+[data-trocando-tema] *::before,
+[data-trocando-tema] *::after {
+  transition: none !important;
 }
