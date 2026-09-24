@@ -13,7 +13,7 @@ const {
 const Shell = PerpetualMiner.Shell;
 const Conta = PerpetualMiner.Conta;
 const { SITUACOES } = Conta;
-const { mostrarToastDeSucesso } = PerpetualMiner.Veio;
+const { mostrarToastDeSucesso, abrirModal, montarAviso } = PerpetualMiner.Veio;
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -52,6 +52,9 @@ const DEFAULT_BRIDGE_PRESETS = {
   ru: { deckName: 'RUSSIAN', imageSource: '1', ttsWordTld: 'ru',  ttsPhraseTld: 'ru' },
 };
 
+// Enviada ao Anki fica gravada com o nome de antes do glossário (ver foiEnviadaAoAnki).
+const STATUS_ENVIADA_AO_ANKI = 'exported';
+
 // ─── Estado global ───────────────────────────────────────────────────────────
 
 let todasFrases        = [];
@@ -59,7 +62,7 @@ let frasesVisiveis     = [];
 let paginaAtual        = 1;
 let filtroFonte         = 'all';
 let filtroIdioma       = 'all';
-let esconderExportadas = false;
+let esconderEnviadasEExportadas = false;
 let ordemAtual         = 'novas'; // 'novas' | 'antigas'
 let buscaAtual         = '';
 // Até a primeira leitura terminar, a lista mostra os cartões-esqueleto (PAI-01).
@@ -73,8 +76,16 @@ const keywords    = {};
 // Set<number>
 const selecionadas = new Set();
 
-let modoModal          = 'bulk';
-let idEdicaoIndividual = null;
+// A frase com o texto aberto para edição no lugar, e o rascunho: o cartão é
+// redesenhado sempre que a lista muda, e a edição tem de sobreviver a isso.
+let edicaoDeTexto      = null; // { id, rascunho }
+// As frases apagadas daqui que continuam na nuvem porque o DELETE falhou (PAI-15).
+const idsAindaNaNuvem  = new Set();
+// O modal aberto, para o × e o Cancelar fecharem o que está na tela, e o que
+// cada um está esperando: os ids a apagar e os ids cujo Contexto está aberto.
+let modalAberto        = null;
+let pedidoDeApagar     = null; // { ids }
+let edicaoDeContexto   = null; // { ids }
 let bridgePresets      = structuredClone(DEFAULT_BRIDGE_PRESETS);
 let bridgePollingId    = null;
 let bridgeActiveJobIds = [];
@@ -526,40 +537,44 @@ async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
       firestoreFrases.push(...sincronizados);
     }
 
-    // ── Merge status 'exported' ──────────────────────────────────────────────
-    // Se o local tem status='exported' mas o Firestore ainda não (falha de rede,
-    // serviço worker em voo), preserva o status na exibição e retenta o sync.
-    // Se o Firestore já tem status='exported' (outro dispositivo exportou), aplica
-    // ao local storage para que o status se propague cross-device.
+    // ── Merge das marcas de Enviada ao Anki (`status: 'exported'`) e Exportada
+    // (`exportadaTxt`) ──────────────────────────────────────────────────────
+    // Se o local tem a marca mas o Firestore ainda não (falha de rede, service
+    // worker em voo), preserva a marca na exibição e retenta o sync.
+    // Se o Firestore já tem a marca (outro dispositivo marcou), aplica ao local
+    // storage para que ela se propague cross-device.
     {
+      const MARCAS = [['status', STATUS_ENVIADA_AO_ANKI], ['exportadaTxt', true]];
       const localById = new Map(localFrases.map(f => [String(f.id), f]));
-      const pendingExportSync = [];
+      const pendentesNaNuvem = [];
       let   localPrecisaAtualizar = false;
       const localAtualizado = [...localSemTombstoned];
 
       firestoreFrases = firestoreFrases.map(f => {
         const idStr = String(f.id);
         const local = localById.get(idStr);
+        if (!local) return f;
+        let nuvem = f;
 
-        // Caso 1: local exportado, Firestore ainda não — aplica e retenta
-        if (local?.status === 'exported' && f.status !== 'exported') {
-          pendingExportSync.push({ ...f, status: 'exported' });
-          return { ...f, status: 'exported' };
+        for (const [campo, valor] of MARCAS) {
+          // Caso 1: local marcado, Firestore ainda não — aplica e retenta
+          if (local[campo] === valor && nuvem[campo] !== valor) nuvem = { ...nuvem, [campo]: valor };
+
+          // Caso 2: Firestore marcado, local ainda não — atualiza local
+          if (f[campo] === valor && local[campo] !== valor) {
+            const idx = localAtualizado.findIndex(lf => String(lf.id) === idStr);
+            if (idx !== -1) { localAtualizado[idx] = { ...localAtualizado[idx], [campo]: valor }; }
+            localPrecisaAtualizar = true;
+          }
         }
 
-        // Caso 2: Firestore exportado, local ainda não — atualiza local
-        if (f.status === 'exported' && local && local.status !== 'exported') {
-          const idx = localAtualizado.findIndex(lf => String(lf.id) === idStr);
-          if (idx !== -1) { localAtualizado[idx] = { ...localAtualizado[idx], status: 'exported' }; }
-          localPrecisaAtualizar = true;
-        }
-
-        return f;
+        if (nuvem !== f) pendentesNaNuvem.push(nuvem);
+        return nuvem;
       });
 
-      if (pendingExportSync.length > 0) {
-        firestoreBatchUpsert(pendingExportSync).catch(err =>
-          console.warn('[Firestore] retry status exported:', err.message)
+      if (pendentesNaNuvem.length > 0) {
+        firestoreBatchUpsert(pendentesNaNuvem).catch(err =>
+          console.warn('[Firestore] retry das marcas Enviada/Exportada:', err.message)
         );
       }
       if (localPrecisaAtualizar) {
@@ -731,15 +746,19 @@ function limparTombstone(ids) {
   });
 }
 
+/**
+ * Apaga as frases da nuvem, deixando o tombstone antes. Devolve o erro quando o
+ * DELETE falha (a frase fica pendente em `pm_deleted_ids`), ou `null`.
+ */
 async function removerFrasesFirestore(ids) {
-  if (!ids.length) return;
+  if (!ids.length) return null;
   const idsStr = ids.map(String);
   // 1. Tombstone Firestore (fonte de verdade, imediata, sem race condition)
   //    + tombstone sync (fallback para quando o Firestore estiver inacessível)
   //    + tombstone local (retry do DELETE caso falhe)
   marcarParaDeletarSync(idsStr);
   await marcarParaDeletar(idsStr);
-  if (!usuarioLogado) return;
+  if (!usuarioLogado) return null;
   // Grava tombstone no Firestore antes de deletar — garante que qualquer device
   // que abrir o painel logo após já veja a deleção, mesmo sem Chrome sync propagado
   gravarTombstoneFirestore(idsStr).catch(err =>
@@ -748,9 +767,10 @@ async function removerFrasesFirestore(ids) {
   try {
     await firestoreBatchDelete(idsStr);
     limparTombstone(idsStr);
+    return null;
   } catch (err) {
     console.error('[Firestore] delete falhou, ficará pendente:', err.message);
-    mostrarFalhaNaNuvem(err);
+    return err;
   }
 }
 
@@ -770,20 +790,34 @@ async function apagarTudoFirestore() {
   }
 }
 
+// ─── Seleção e barra contextual ──────────────────────────────────────────────
+//
+// Sem seleção, a linha mostra só “Selecionar página” (PAI-31). Com seleção, ela
+// vira a barra contextual (PAI-32): × Desmarcar todas, a contagem (PAI-06), o
+// “Selecionar todas as N frases” quando a página inteira está marcada, e as
+// ações. A barra gruda no topo da ilha ao rolar (CSS). Trocar filtro ou busca
+// limpa a seleção, para nenhuma ação cair em frase que não está à vista.
+
+/** Redesenha a linha de seleção a partir de `selecionadas`. */
 function atualizarContadorSelecao() {
-  const el     = document.getElementById('selection-count');
-  const btnDel = document.getElementById('btn-delete-selected');
-  if (!el) return;
+  const linha = document.getElementById('frases-selecao');
+  const idsPag = idsPaginaAtual();
   const n = selecionadas.size;
-  if (n === 0) {
-    el.classList.add('hidden');
-    btnDel?.classList.add('hidden');
-  } else {
-    el.textContent = `${n} selecionada${n > 1 ? 's' : ''}`;
-    el.classList.remove('hidden');
-    btnDel?.classList.remove('hidden');
-  }
-  atualizarBotoesSel();
+  const naPagina = idsPag.filter(id => selecionadas.has(id)).length;
+
+  linha.hidden = !listaCarregada || (idsPag.length === 0 && n === 0);
+  refletirSelecao(document.getElementById('sel-pagina'), naPagina, idsPag.length);
+  linha.classList.toggle('frases-selecao--barra', n > 0);
+  // Na barra, o checkbox perde o rótulo à vista: o nome continua para o leitor de tela.
+  document.getElementById('sel-pagina-rotulo').classList.toggle('veio-so-leitor', n > 0);
+  document.getElementById('frases-barra').hidden = n === 0;
+  if (n === 0) return;
+
+  document.getElementById('selection-count').textContent = textoDaVoz('PAI-06', { n });
+  const todas = document.getElementById('btn-sel-todas');
+  const paginaInteira = idsPag.length > 0 && naPagina === idsPag.length;
+  todas.hidden = !paginaInteira || frasesVisiveis.every(f => selecionadas.has(f.id));
+  if (!todas.hidden) todas.textContent = textoDaVoz('PAI-32.selecionarTodas', { n: frasesVisiveis.length });
 }
 
 function idsPaginaAtual() {
@@ -791,65 +825,34 @@ function idsPaginaAtual() {
   return frasesVisiveis.slice(inicio, inicio + POR_PAGINA).map(f => f.id);
 }
 
+/** “Selecionar página”: marca a página inteira; com ela inteira marcada, desmarca. */
 function selecionarPagina() {
   const ids = idsPaginaAtual();
   const todasMarcadas = ids.every(id => selecionadas.has(id));
-  if (todasMarcadas) {
-    ids.forEach(id => selecionadas.delete(id));
-  } else {
-    ids.forEach(id => selecionadas.add(id));
-  }
+  if (todasMarcadas) ids.forEach(id => selecionadas.delete(id));
+  else               ids.forEach(id => selecionadas.add(id));
   ids.forEach(refletirSelecaoNoCartao);
   atualizarContadorSelecao();
 }
 
-function selecionarTodosVisiveis() {
-  const ids = frasesVisiveis.map(f => f.id);
-  const todasMarcadas = ids.every(id => selecionadas.has(id));
-  if (todasMarcadas) {
-    ids.forEach(id => selecionadas.delete(id));
-  } else {
-    ids.forEach(id => selecionadas.add(id));
-  }
+/** “Selecionar todas as N frases”: as dos filtros atuais, em todas as páginas. */
+function selecionarTodasVisiveis() {
+  frasesVisiveis.forEach(f => selecionadas.add(f.id));
   idsPaginaAtual().forEach(refletirSelecaoNoCartao);
   atualizarContadorSelecao();
 }
 
-function atualizarBotoesSel() {
-  const btnPag   = document.getElementById('btn-sel-pagina');
-  const btnTodos = document.getElementById('btn-sel-todos');
-  if (!btnPag || !btnTodos) return;
-
-  const idsPag   = idsPaginaAtual();
-  // “Selecionar página” (PAI-31): marcado com a página inteira, misto com parte.
-  document.getElementById('frases-selecao').hidden = !listaCarregada || idsPag.length === 0;
-  refletirSelecao(document.getElementById('sel-pagina'), idsPag.filter(id => selecionadas.has(id)).length, idsPag.length);
-  const pagAtiva = idsPag.length > 0 && idsPag.every(id => selecionadas.has(id));
-  btnPag.classList.toggle('sel-active', pagAtiva);
-  btnPag.title = pagAtiva ? 'Desmarcar página atual' : 'Selecionar página atual';
-
-  const total      = frasesVisiveis.length;
-  const todosAtivo = total > 0 && frasesVisiveis.every(f => selecionadas.has(f.id));
-  btnTodos.classList.toggle('sel-active', todosAtivo);
-  btnTodos.textContent = `Todas (${total})`;
-  btnTodos.title = todosAtivo ? 'Desmarcar todas' : `Selecionar todas (${total})`;
+function desmarcarTodas() {
+  const ids = [...selecionadas];
+  selecionadas.clear();
+  ids.forEach(refletirSelecaoNoCartao);
+  atualizarContadorSelecao();
+  document.getElementById('sel-pagina').focus();
 }
 
-function deletarSelecionadas() {
-  const n = selecionadas.size;
-  if (n === 0) return;
-  if (!confirm(`Deseja deletar as ${n} frase${n > 1 ? 's' : ''} selecionadas?\nEsta ação não pode ser desfeita.`)) return;
-  const ids = [...selecionadas];
-  todasFrases = todasFrases.filter(f => !selecionadas.has(f.id));
-  ids.forEach(id => delete keywords[id]);
-  selecionadas.clear();
-  atualizarContadorSelecao();
-  removerFrasesFirestore(ids);
-  chrome.storage.local.set({ frases: todasFrases }, () => {
-    atualizarTotal();
-    aplicarFiltro();
-    mostrarToast(`${ids.length} frase${ids.length > 1 ? 's' : ''} deletada${ids.length > 1 ? 's' : ''}!`);
-  });
+/** Os ids selecionados, na ordem da lista. */
+function idsSelecionados() {
+  return todasFrases.filter(f => selecionadas.has(f.id)).map(f => f.id);
 }
 
 // ─── Listeners ────────────────────────────────────────────────────────────────
@@ -858,11 +861,12 @@ function setupListeners() {
   document.getElementById('btn-apagar-tudo').addEventListener('click', apagarTudo);
   document.getElementById('btn-export').addEventListener('click', exportarTxt);
   document.getElementById('btn-send-anki').addEventListener('click', enviarSelecionadasAoAnki);
-  document.getElementById('btn-bulk-edit').addEventListener('click', abrirModalBulk);
-  document.getElementById('btn-sel-pagina').addEventListener('click', selecionarPagina);
+  document.getElementById('btn-bulk-edit').addEventListener('click', () => abrirEditarContexto(idsSelecionados()));
+  document.getElementById('btn-delete-selected').addEventListener('click', () => pedirParaApagar(idsSelecionados()));
   document.getElementById('sel-pagina').addEventListener('change', selecionarPagina);
+  document.getElementById('btn-sel-todas').addEventListener('click', selecionarTodasVisiveis);
+  document.getElementById('btn-desmarcar-todas').addEventListener('click', desmarcarTodas);
   document.getElementById('btn-minerar-frases').addEventListener('click', abrirModalMultiAdd);
-  document.getElementById('btn-sel-todos').addEventListener('click', selecionarTodosVisiveis);
 
   // Adição em Massa
   document.getElementById('btn-multi-add').addEventListener('click', abrirModalMultiAdd);
@@ -883,18 +887,7 @@ function setupListeners() {
     if (file) { importarArquivoTxt(file); e.target.value = ''; }
   });
 
-  document.getElementById('btn-delete-selected')?.addEventListener('click', deletarSelecionadas);
-
-  document.getElementById('btn-modal-close').addEventListener('click',  fecharModal);
-  document.getElementById('btn-modal-cancel').addEventListener('click', fecharModal);
-  document.getElementById('btn-modal-save').addEventListener('click',   salvarModal);
-  document.getElementById('edit-modal').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('edit-modal')) fecharModal();
-  });
-  document.getElementById('edit-modal').addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') fecharModal();
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); salvarModal(); }
-  });
+  configurarModaisDeFrases();
 
   configurarFiltros();
 
@@ -909,18 +902,24 @@ function setupListeners() {
     const btnDel      = e.target.closest('[data-action="delete"]');
     const btnEdit     = e.target.closest('[data-action="edit"]');
     const btnEditText = e.target.closest('[data-action="edit-text"]');
+    const btnTexto    = e.target.closest('[data-action="salvar-texto"], [data-action="cancelar-texto"]');
     const btnClear    = e.target.closest('[data-action="clear-kw"]');
     const btnAddSep   = e.target.closest('[data-action="add-sep"]');
     const palavraEl   = e.target.closest('.veio-palavra-clicavel');
     if (btnCopy)     { copiarFrase(btnCopy.dataset.id);                         return; }
-    if (btnDel)      { deletarFrase(Number(btnDel.dataset.id));                 return; }
-    if (btnEdit)     { abrirEdicaoIndividual(Number(btnEdit.dataset.id));       return; }
+    if (btnDel)      { pedirParaApagar([Number(btnDel.dataset.id)]);            return; }
+    if (btnEdit)     { abrirEditarContexto([Number(btnEdit.dataset.id)]);       return; }
+    if (btnTexto)    { terminarEdicaoDeTexto(btnTexto.dataset.action === 'salvar-texto'); return; }
     if (btnEditText) { editarTextoFrase(Number(btnEditText.dataset.id));        return; }
     if (btnClear)    { clearKeywords(Number(btnClear.dataset.id));              return; }
     if (btnAddSep)   { addSeparator(Number(btnAddSep.dataset.id));             return; }
     if (palavraEl)   { escolherPalavra(palavraEl);                              return; }
   });
   lista.addEventListener('keydown', aoTeclarNaFrase);
+  lista.addEventListener('keydown', aoTeclarNaEdicaoDeTexto);
+  lista.addEventListener('input', (e) => {
+    if (edicaoDeTexto && e.target.matches('textarea[data-edicao]')) edicaoDeTexto.rascunho = e.target.value;
+  });
 
   lista.addEventListener('change', (e) => {
     const chk = e.target.closest('.frase-check');
@@ -1581,11 +1580,17 @@ function configurarFiltros() {
   construirFiltroDeFonte();
   busca.placeholder = textoDaVoz('PAI-23');
 
-  const aoMudar = (aplicar) => () => { aplicar(); voltarAPrimeiraPagina(); };
+  // Um filtro ou a busca trocam as frases à vista: a seleção é limpa, para
+  // nenhuma ação cair numa frase escondida. A ordem só reordena, então fica.
+  const aoMudar = (aplicar, { limpaSelecao = true } = {}) => () => {
+    aplicar();
+    if (limpaSelecao) selecionadas.clear();
+    voltarAPrimeiraPagina();
+  };
   fonte.addEventListener('change',   aoMudar(() => { filtroFonte = fonte.value; }));
   idioma.addEventListener('change',  aoMudar(() => { filtroIdioma = idioma.value; }));
-  ordem.addEventListener('change',   aoMudar(() => { ordemAtual = ordem.value; }));
-  ocultar.addEventListener('change', aoMudar(() => { esconderExportadas = ocultar.checked; }));
+  ordem.addEventListener('change',   aoMudar(() => { ordemAtual = ordem.value; }, { limpaSelecao: false }));
+  ocultar.addEventListener('change', aoMudar(() => { esconderEnviadasEExportadas = ocultar.checked; }));
   busca.addEventListener('input',    aoMudar(() => { buscaAtual = busca.value; mostrarLimparBusca(); }));
   document.getElementById('btn-limpar-busca').addEventListener('click', limparBusca);
 }
@@ -1596,16 +1601,17 @@ function mostrarLimparBusca() {
 
 /** Fonte, idioma ou o toggle ligados. A ordem não esconde frase, então não conta. */
 function filtrosLigados() {
-  return filtroFonte !== 'all' || filtroIdioma !== 'all' || esconderExportadas;
+  return filtroFonte !== 'all' || filtroIdioma !== 'all' || esconderEnviadasEExportadas;
 }
 
 function limparFiltros() {
   filtroFonte = 'all';
   filtroIdioma = 'all';
-  esconderExportadas = false;
+  esconderEnviadasEExportadas = false;
   document.getElementById('filtro-fonte').value = 'all';
   document.getElementById('filtro-idioma').value = 'all';
   document.getElementById('filtro-ocultar').checked = false;
+  selecionadas.clear();
   voltarAPrimeiraPagina();
 }
 
@@ -1614,6 +1620,7 @@ function limparBusca() {
   const busca = document.getElementById('busca-frases');
   busca.value = '';
   mostrarLimparBusca();
+  selecionadas.clear();
   voltarAPrimeiraPagina();
   busca.focus();
 }
@@ -1632,8 +1639,8 @@ function aplicarFiltro() {
     : todasFrases.filter(f => fonteDaFrase(f) === filtroFonte);
   if (filtroIdioma !== 'all')
     resultado = resultado.filter(f => (f.idioma || IDIOMAS.INGLES) === filtroIdioma);
-  if (esconderExportadas)
-    resultado = resultado.filter(f => f.status !== 'exported');
+  if (esconderEnviadasEExportadas)
+    resultado = resultado.filter(f => !foiEnviadaAoAnki(f) && !f.exportadaTxt);
   const termo = buscaAtual.trim().toLocaleLowerCase();
   if (termo)
     resultado = resultado.filter(f =>
@@ -1677,7 +1684,7 @@ function renderizar() {
 
   if (total === 0) {
     lista.replaceChildren(montarVazio());
-    atualizarBotoesSel();
+    atualizarContadorSelecao();
     return;
   }
 
@@ -1694,7 +1701,7 @@ function renderizar() {
   }
   lista.replaceChildren(...nos);
   restaurarFoco(foco);
-  atualizarBotoesSel();
+  atualizarContadorSelecao();
 }
 
 /** “1–10 de 1.284” (PAI-07) e « ‹ 1 de 129 › ». Sem frases, a paginação some. */
@@ -1775,15 +1782,17 @@ function montarCartao(f) {
 
   const texto = criar('div', 'veio-frase__texto');
   texto.lang = ehRussa(f) ? 'ru' : 'en';
-  escreverPalavras(texto, f);
+  const editando = edicaoDeTexto?.id === f.id;
+  if (editando) texto.append(montarEdicaoDeTexto(f));
+  else          escreverPalavras(texto, f);
 
   const corpo = criar('div', 'frase-corpo');
   corpo.append(texto);
-  const chip = montarLinhaDoChip(f);
+  const chip = editando ? null : montarLinhaDoChip(f);
   if (chip) corpo.append(chip);
   corpo.append(montarContexto(f));
 
-  cartao.append(marcar, corpo, montarAcoesDeHoje(f));
+  cartao.append(marcar, corpo, montarAcoesDoCartao(f));
   return cartao;
 }
 
@@ -1839,10 +1848,20 @@ function montarContexto(f) {
   }
   const origem = [f.contexto?.titulo, f.contexto?.detalhe].filter(Boolean).join(' · ');
   if (origem) linha.append(criar('span', 'frase-origem', origem));
-  // Hoje o Envio e o Exportar .txt gravam o mesmo `exported`; o #30 separa o
-  // Exportada, e o selo passa a dizer qual dos dois.
-  if (f.status === 'exported') linha.append(criar('span', 'veio-selo veio-selo--ok', textoDaVoz('PAI-08.enviada')));
+  // Enviada ao Anki vale mais que Exportada: a frase que foi para o Anki e
+  // depois para um .txt continua dizendo que está no Anki.
+  if (foiEnviadaAoAnki(f))  linha.append(criar('span', 'veio-selo veio-selo--ok', textoDaVoz('PAI-08.enviada')));
+  else if (f.exportadaTxt)  linha.append(criar('span', 'veio-selo veio-selo--info', textoDaVoz('PAI-08.exportada')));
   return linha;
+}
+
+/**
+ * Enviada ao Anki: a frase entrou num Envio concluído. O nome gravado é o
+ * `status: 'exported'` de antes do glossário; o Exportar .txt grava só o
+ * `exportadaTxt` e nunca este.
+ */
+function foiEnviadaAoAnki(f) {
+  return f.status === STATUS_ENVIADA_AO_ANKI;
 }
 
 /** A Fonte como o catálogo a chama: um nome antigo gravado vira o de hoje. */
@@ -1864,9 +1883,8 @@ function nomeDaFonte(fonte) {
   return Object.hasOwn(CATALOGO_DA_VOZ['PAI-29'], chave) ? textoDaVoz(`PAI-29.${chave}`) : fonte;
 }
 
-// As 4 ações só-ícone do cartão (PAI-30). O que cada uma faz continua o de hoje
-// até o #30 reconstruí-las.
-function montarAcoesDeHoje(f) {
+// As 4 ações só-ícone do cartão (PAI-30), que aparecem no hover e no foco.
+function montarAcoesDoCartao(f) {
   const acoes = criar('div', 'veio-frase__acoes');
   acoes.append(
     botaoIcone('texto', textoDaVoz('PAI-30.editarTexto'), 'edit-text', f.id),
@@ -1920,6 +1938,7 @@ function chaveDoFoco(no) {
   if (no.classList.contains('veio-palavra-clicavel')) return `.veio-palavra-clicavel[data-id="${no.dataset.id}"][data-idx="${no.dataset.idx}"]`;
   if (no.dataset.action) return `[data-action="${no.dataset.action}"][data-id="${no.dataset.id}"]`;
   if (no.classList.contains('frase-check')) return `.frase-check[data-id="${no.dataset.id}"]`;
+  if (no.dataset.edicao) return `textarea[data-edicao="${no.dataset.edicao}"]`;
   return null;
 }
 
@@ -1998,39 +2017,71 @@ function addSeparator(id) {
   gravarPalavras(id);
 }
 
-// ─── Edição Inline de Texto ───────────────────────────────────────────────────
+// ─── Editar texto no lugar (PAI-33) ──────────────────────────────────────────
+//
+// O texto do cartão vira um campo: Enter salva, Esc cancela, com os botões
+// Cancelar e Salvar texto. Sem toast: a mudança já está na tela (PAI-16).
 
 function editarTextoFrase(id) {
-  const cartao = cartaoNaLista(id);
-  if (!cartao) return;
   const frase = todasFrases.find(f => f.id === id);
   if (!frase) return;
-  const phraseText = cartao.querySelector('.veio-frase__texto');
-  if (!phraseText || phraseText.querySelector('textarea')) return; // já editando
+  edicaoDeTexto = { id, rascunho: frase.texto };
+  atualizarCartao(id);
+  const campo = cartaoNaLista(id)?.querySelector('textarea[data-edicao]');
+  if (!campo) return;
+  campo.focus();
+  campo.setSelectionRange(campo.value.length, campo.value.length);
+}
 
-  const textarea = document.createElement('textarea');
-  textarea.className = 'veio-campo';
-  textarea.value = frase.texto;
-  textarea.rows  = Math.max(2, Math.ceil(frase.texto.length / 55));
-  phraseText.innerHTML = '';
-  phraseText.appendChild(textarea);
-  textarea.focus();
-  textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+function montarEdicaoDeTexto(f) {
+  const edicao = criar('div', 'frase-edicao');
+  const campo = criar('textarea', 'veio-campo frase-edicao__campo');
+  campo.dataset.edicao = f.id;
+  campo.value = edicaoDeTexto.rascunho;
+  campo.rows = Math.max(2, Math.ceil(campo.value.length / 55));
+  campo.setAttribute('aria-label', textoDaVoz('PAI-33.campo'));
 
-  let committed = false;
-  const commit = () => {
-    if (committed) return;
-    committed = true;
-    const novoTexto = textarea.value.trim();
-    if (novoTexto && novoTexto !== frase.texto) salvarTextoFrase(id, novoTexto);
-    else aplicarFiltro();
-  };
+  const dica = criar('span', 'frase-edicao__dica', textoDaVoz('PAI-33.dica'));
+  dica.id = `dica-edicao-${f.id}`;
+  campo.setAttribute('aria-describedby', dica.id);
 
-  textarea.addEventListener('blur', commit);
-  textarea.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commit(); }
-    if (e.key === 'Escape') { committed = true; aplicarFiltro(); }
-  });
+  const cancelar = criar('button', 'veio-botao veio-botao--fantasma', textoDaVoz('PAI-33.cancelar'));
+  cancelar.type = 'button';
+  cancelar.dataset.action = 'cancelar-texto';
+  cancelar.dataset.id = f.id;
+  const salvar = criar('button', 'veio-botao veio-botao--primario', textoDaVoz('PAI-33.salvar'));
+  salvar.type = 'button';
+  salvar.dataset.action = 'salvar-texto';
+  salvar.dataset.id = f.id;
+
+  const acoes = criar('div', 'frase-edicao__acoes');
+  acoes.append(dica, cancelar, salvar);
+  edicao.append(campo, acoes);
+  return edicao;
+}
+
+function aoTeclarNaEdicaoDeTexto(e) {
+  if (!edicaoDeTexto || !e.target.matches('textarea[data-edicao]')) return;
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    terminarEdicaoDeTexto(true);
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    terminarEdicaoDeTexto(false);
+  }
+}
+
+/** Fecha a edição; com `salvar`, grava o rascunho se ele mudou e não está vazio. */
+function terminarEdicaoDeTexto(salvar) {
+  if (!edicaoDeTexto) return;
+  const { id, rascunho } = edicaoDeTexto;
+  edicaoDeTexto = null;
+  const frase = todasFrases.find(f => f.id === id);
+  const novoTexto = rascunho.trim();
+  if (salvar && frase && novoTexto && novoTexto !== frase.texto) salvarTextoFrase(id, novoTexto);
+  else atualizarCartao(id);
+  // O foco volta para a ação que abriu a edição.
+  cartaoNaLista(id)?.querySelector('[data-action="edit-text"]')?.focus();
 }
 
 function salvarTextoFrase(id, novoTexto) {
@@ -2040,27 +2091,120 @@ function salvarTextoFrase(id, novoTexto) {
   chrome.storage.local.set({ frases: todasFrases });
   salvarFraseFirestore(todasFrases[idx]);
   aplicarFiltro();
-  mostrarToast('Frase atualizada!');
 }
 
-// ─── Phrase Actions ───────────────────────────────────────────────────────────
+// ─── Copiar (PAI-17) ─────────────────────────────────────────────────────────
+//
+// O sucesso é toast; a falha pede atenção, então vira aviso persistente na
+// área, ao lado do PAI-15 do apagar.
 
-function copiarFrase(id) {
+async function copiarFrase(id) {
   const frase = todasFrases.find(f => String(f.id) === String(id));
   if (!frase) return;
-  navigator.clipboard.writeText(frase.texto).then(() => mostrarToast('Copiado!'));
+  try {
+    await navigator.clipboard.writeText(frase.texto);
+    mostrarToastDeSucesso(textoDaVoz('PAI-17.sucesso'));
+  } catch (err) {
+    // Falha pede atenção, então não é toast: é o aviso, com a causa em Detalhes.
+    mostrarAvisoNaArea('copiar', { texto: textoDaVoz('PAI-17.falha'), erro: err });
+  }
 }
 
-function deletarFrase(id) {
-  todasFrases = todasFrases.filter(f => f.id !== id);
-  delete keywords[id];
-  selecionadas.delete(id);
-  atualizarContadorSelecao();
-  removerFrasesFirestore([id]);
-  chrome.storage.local.set({ frases: todasFrases }, () => {
-    atualizarTotal();
-    aplicarFiltro();
+/** Um aviso persistente por chave na área de Frases, com a causa em Detalhes. */
+function mostrarAvisoNaArea(chave, { erro, ...opcoes }) {
+  tirarAvisoDaArea(chave);
+  const aviso = montarAviso({
+    ...opcoes,
+    detalhes: String(erro?.message || erro),
+    rotuloDeFechar: textoDaVoz('PAI-34'),
   });
+  aviso.dataset.aviso = chave;
+  document.getElementById('frases-avisos').append(aviso);
+}
+
+function tirarAvisoDaArea(chave) {
+  document.querySelector(`#frases-avisos [data-aviso="${chave}"]`)?.remove();
+}
+
+// ─── Apagar (PAI-12 · PAI-13 · PAI-14 · PAI-15) ──────────────────────────────
+//
+// Um só modal para 1 frase (a ação do cartão) e para a seleção (a barra). O
+// corpo fala dos outros computadores só com a conta conectada. Para 1 frase
+// não há toast (o cartão some); para a seleção, “12 frases apagadas”. Se a
+// nuvem falha, fica o aviso persistente PAI-15 com Tentar de novo.
+
+/**
+ * O modal do apagar, um só para a frase do cartão e para a seleção. Quem manda
+ * no texto é a contagem, não de onde veio: uma frase é “Apagar esta frase?”
+ * (PAI-12) e some da tela sem toast; várias são PAI-13, com o toast PAI-14.
+ */
+function pedirParaApagar(ids) {
+  if (ids.length === 0) return;
+  const umaFrase = ids.length === 1;
+  const estado = umaFrase ? 'PAI-12' : 'PAI-13';
+  const valores = { n: ids.length };
+  document.getElementById('modal-apagar-titulo').textContent = textoDaVoz(`${estado}.titulo`, valores);
+  document.getElementById('modal-apagar-corpo').textContent =
+    textoDaVoz(`${estado}.${usuarioLogado ? 'corpo' : 'corpoSemConta'}`);
+  document.getElementById('btn-apagar-cancelar').textContent = textoDaVoz(`${estado}.cancelar`);
+  document.getElementById('btn-apagar-confirmar').textContent = textoDaVoz(`${estado}.confirmar`, valores);
+  abrirModalDeFrases('modal-apagar', () => { pedidoDeApagar = null; });
+  pedidoDeApagar = { ids };
+}
+
+function confirmarApagar() {
+  if (!pedidoDeApagar) return;
+  const { ids } = pedidoDeApagar;
+  modalAberto.fechar();
+  apagarFrases(ids);
+}
+
+async function apagarFrases(ids) {
+  const apagadas = new Set(ids);
+  todasFrases = todasFrases.filter(f => !apagadas.has(f.id));
+  ids.forEach(id => { delete keywords[id]; selecionadas.delete(id); });
+  if (edicaoDeTexto && apagadas.has(edicaoDeTexto.id)) edicaoDeTexto = null;
+  await new Promise(resolve => chrome.storage.local.set({ frases: todasFrases }, resolve));
+  atualizarTotal();
+  aplicarFiltro();
+  // Uma frase só não precisa de toast: o cartão sumindo já é a resposta (PAI-16).
+  if (ids.length > 1) mostrarToastDeSucesso(textoDaVoz('PAI-14', { n: ids.length }));
+  await apagarDaNuvem(ids);
+}
+
+async function apagarDaNuvem(ids) {
+  const erro = await removerFrasesFirestore(ids);
+  if (!erro) return;
+  ids.forEach(id => idsAindaNaNuvem.add(id));
+  // O aviso PAI-15 conta o que ficou na nuvem; o card e o chip da conta contam
+  // que este computador está sem sincronizar, como em qualquer falha de nuvem.
+  mostrarAvisoAindaNaNuvem(erro);
+  mostrarFalhaNaNuvem(erro);
+}
+
+/** O aviso PAI-15: um só, que junta todas as frases que ficaram na nuvem. */
+function mostrarAvisoAindaNaNuvem(erro) {
+  mostrarAvisoNaArea('ainda-na-nuvem', {
+    texto: textoDaVoz('PAI-15.aviso'),
+    acao: { rotulo: textoDaVoz('PAI-15.tentarDeNovo'), aoUsar: tentarApagarDaNuvemDeNovo },
+    erro,
+    // Fechar só tira o aviso: o tombstone continua, e o próximo carregamento tenta de novo.
+    aoFechar: () => idsAindaNaNuvem.clear(),
+  });
+}
+
+async function tentarApagarDaNuvemDeNovo() {
+  const ids = [...idsAindaNaNuvem];
+  const erro = await removerFrasesFirestore(ids);
+  if (erro) {
+    mostrarAvisoAindaNaNuvem(erro);
+    mostrarFalhaNaNuvem(erro);
+    return;
+  }
+  idsAindaNaNuvem.clear();
+  tirarAvisoDaArea('ainda-na-nuvem');
+  // A nuvem respondeu: o card e o chip da conta deixam de dizer “sem sincronizar”.
+  Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
 }
 
 function apagarTudo() {
@@ -2077,8 +2221,13 @@ function apagarTudo() {
   });
 }
 
+// ─── Exportar .txt (PAI-19) ──────────────────────────────────────────────────
+//
+// Baixa as selecionadas e as marca Exportada (`exportadaTxt`). Nunca grava o
+// `status: 'exported'` do Envio: exportar não põe a frase no Anki (#9).
+
 function exportarTxt() {
-  if (selecionadas.size === 0) { mostrarToast('Selecione as frases que deseja exportar.'); return; }
+  if (selecionadas.size === 0) return;
   const linhas = todasFrases
     .filter(f => selecionadas.has(f.id))
     .map(f => {
@@ -2103,8 +2252,10 @@ function exportarTxt() {
 
   const exportadas = [];
   todasFrases = todasFrases.map(f => {
-    if (selecionadas.has(f.id)) { const u = { ...f, status: 'exported' }; exportadas.push(u); return u; }
-    return f;
+    if (!selecionadas.has(f.id)) return f;
+    const u = { ...f, exportadaTxt: true };
+    exportadas.push(u);
+    return u;
   });
   selecionadas.clear();
   atualizarContadorSelecao();
@@ -2112,8 +2263,13 @@ function exportarTxt() {
     atualizarTotal();
     aplicarFiltro();
   });
-  if (usuarioLogado && exportadas.length > 0) firestoreBatchUpsert(exportadas);
-  mostrarToast(`${linhas.length} frases exportadas!`);
+  if (usuarioLogado && exportadas.length > 0) {
+    Promise.allSettled(exportadas.map(f => firestorePatch(f, ['exportadaTxt']))).then(resultados => {
+      const falha = resultados.find(r => r.status === 'rejected');
+      if (falha) mostrarFalhaNaNuvem(falha.reason);
+    });
+  }
+  mostrarToastDeSucesso(textoDaVoz('PAI-19', { n: linhas.length }));
 }
 
 function montarLinhaMining(frase) {
@@ -2355,7 +2511,8 @@ async function apagarFrasesEnviadasBridge(ids) {
   });
   atualizarContadorSelecao();
   await new Promise(resolve => chrome.storage.local.set({ frases: todasFrases }, resolve));
-  await removerFrasesFirestore(ids);
+  const erro = await removerFrasesFirestore(ids);
+  if (erro) mostrarFalhaNaNuvem(erro);
   atualizarTotal();
   aplicarFiltro();
 }
@@ -2364,9 +2521,9 @@ async function marcarFrasesExportadasBridge(idsParaExportar) {
   let houveMudanca = false;
   const exportadas = [];
   todasFrases = todasFrases.map(frase => {
-    if (!idsParaExportar.has(Number(frase.id)) || frase.status === 'exported') return frase;
+    if (!idsParaExportar.has(Number(frase.id)) || foiEnviadaAoAnki(frase)) return frase;
     houveMudanca = true;
-    const atualizada = { ...frase, status: 'exported' };
+    const atualizada = { ...frase, status: STATUS_ENVIADA_AO_ANKI };
     exportadas.push(atualizada);
     return atualizada;
   });
@@ -2425,65 +2582,81 @@ async function retentarJobsFalhos() {
   mostrarToast(ok > 0 ? `${ok} job(s) reenfileirado(s).` : 'Falha ao retentar jobs.');
 }
 
-// ─── Modal de Edição ──────────────────────────────────────────────────────────
+// ─── Editar contexto (PAI-20 · PAI-21 · PAI-22) ──────────────────────────────
+//
+// Um modal para 1 frase (a ação do cartão, ou a seleção de uma só) e para N (a
+// barra). Com 1, os campos trazem o Contexto dela e salvar não dá toast. Com N,
+// os campos vêm em branco, campo em branco fica como está, e o toast diz
+// quantas frases mudaram.
 
-function abrirModalBulk() {
-  if (selecionadas.size === 0) { mostrarToast('Selecione ao menos uma frase para editar.'); return; }
-  modoModal = 'bulk'; idEdicaoIndividual = null;
-  const n = selecionadas.size;
-  document.getElementById('modal-title').textContent    = `Editar ${n} frase${n > 1 ? 's' : ''} selecionada${n > 1 ? 's' : ''}`;
-  document.getElementById('modal-subtitle').textContent = 'Campos em branco não serão alterados';
-  document.getElementById('modal-fonte').value = document.getElementById('modal-titulo').value = document.getElementById('modal-detalhe').value = '';
-  abrirModal();
+function configurarModaisDeFrases() {
+  for (const botao of document.querySelectorAll('[data-fechar-modal]')) {
+    botao.addEventListener('click', () => modalAberto?.fechar());
+  }
+  document.getElementById('btn-apagar-confirmar').addEventListener('click', confirmarApagar);
+  document.getElementById('form-contexto').addEventListener('submit', (e) => {
+    e.preventDefault();
+    salvarContexto();
+  });
 }
 
-function abrirEdicaoIndividual(id) {
-  const frase = todasFrases.find(f => f.id === id);
-  if (!frase) return;
-  modoModal = 'individual'; idEdicaoIndividual = id;
-  const preview = frase.texto.length > 65 ? frase.texto.substring(0, 65) + '…' : frase.texto;
-  document.getElementById('modal-title').textContent    = 'Editar Metadados';
-  document.getElementById('modal-subtitle').textContent = `"${preview}"`;
-  document.getElementById('modal-fonte').value   = frase.contexto?.fonte   || frase.streaming || '';
-  document.getElementById('modal-titulo').value  = frase.contexto?.titulo  || '';
-  document.getElementById('modal-detalhe').value = frase.contexto?.detalhe || '';
-  abrirModal();
-  document.getElementById('modal-titulo').focus();
+function abrirEditarContexto(ids) {
+  if (ids.length === 0) return;
+  const umaFrase = ids.length === 1 ? todasFrases.find(f => f.id === ids[0]) : null;
+  document.getElementById('modal-contexto-titulo').textContent = umaFrase
+    ? textoDaVoz('PAI-20.umaFrase')
+    : textoDaVoz('PAI-20.variasFrases', { n: ids.length });
+  document.getElementById('modal-contexto-subtitulo').textContent = umaFrase
+    ? umaFrase.texto
+    : textoDaVoz('PAI-20.ajuda');
+  document.getElementById('modal-fonte').value   = umaFrase ? (umaFrase.contexto?.fonte || umaFrase.streaming || '') : '';
+  document.getElementById('modal-titulo').value  = umaFrase?.contexto?.titulo  || '';
+  document.getElementById('modal-detalhe').value = umaFrase?.contexto?.detalhe || '';
+
+  abrirModalDeFrases('modal-contexto', () => { edicaoDeContexto = null; });
+  edicaoDeContexto = { ids };
+  document.getElementById('modal-fonte').focus();
 }
 
-function abrirModal() {
-  document.getElementById('edit-modal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('modal-fonte').focus(), 50);
+/** Abre o modal e guarda como fechá-lo, para o × e o Cancelar acharem o dono. */
+function abrirModalDeFrases(id, aoFechar) {
+  modalAberto = abrirModal(document.getElementById(id), {
+    aoFechar: () => { modalAberto = null; aoFechar(); },
+  });
 }
 
-function fecharModal() { document.getElementById('edit-modal').classList.add('hidden'); }
-
-function salvarModal() {
-  const fonteVal   = document.getElementById('modal-fonte').value.trim();
-  const tituloVal  = document.getElementById('modal-titulo').value.trim();
-  const detalheVal = document.getElementById('modal-detalhe').value.trim();
-  fecharModal();
-  if (modoModal === 'bulk') salvarEdicaoEmMassa(fonteVal, tituloVal, detalheVal);
-  else                      salvarEdicaoIndividual(idEdicaoIndividual, fonteVal, tituloVal, detalheVal);
+function salvarContexto() {
+  if (!edicaoDeContexto) return;
+  const { ids } = edicaoDeContexto;
+  const contexto = {
+    fonte:   document.getElementById('modal-fonte').value.trim(),
+    titulo:  document.getElementById('modal-titulo').value.trim(),
+    detalhe: document.getElementById('modal-detalhe').value.trim(),
+  };
+  modalAberto.fechar();
+  if (ids.length === 1) salvarContextoDeUmaFrase(ids[0], contexto);
+  else                  salvarContextoDeVarias(ids, contexto);
 }
 
-function salvarEdicaoEmMassa(fonteVal, tituloVal, detalheVal) {
+// A seleção fica de pé depois de salvar: quem acabou de arrumar o Contexto de
+// 12 frases quase sempre vai exportar ou enviar as mesmas 12 em seguida.
+function salvarContextoDeVarias(ids, { fonte, titulo, detalhe }) {
+  const alvo = new Set(ids);
   const editadas = [];
   todasFrases = todasFrases.map(f => {
-    if (!selecionadas.has(f.id)) return f;
+    if (!alvo.has(f.id)) return f;
     const ctx = { ...(f.contexto || { fonte: f.streaming || '', titulo: '', detalhe: '' }) };
-    if (fonteVal)   ctx.fonte   = fonteVal;
-    if (tituloVal)  ctx.titulo  = tituloVal;
-    if (detalheVal) ctx.detalhe = detalheVal;
-    const updated = { ...f, ...(fonteVal ? { streaming: fonteVal } : {}), contexto: ctx };
+    if (fonte)   ctx.fonte   = fonte;
+    if (titulo)  ctx.titulo  = titulo;
+    if (detalhe) ctx.detalhe = detalhe;
+    const updated = { ...f, ...(fonte ? { streaming: fonte } : {}), contexto: ctx };
     editadas.push(updated);
     return updated;
   });
-  selecionadas.clear();
-  atualizarContadorSelecao();
   chrome.storage.local.set({ frases: todasFrases }, () => {
     construirFiltroDeFonte();
-    aplicarFiltro(); mostrarToast('Metadados atualizados!');
+    aplicarFiltro();
+    mostrarToastDeSucesso(textoDaVoz('PAI-22', { n: editadas.length }));
   });
   if (usuarioLogado && editadas.length > 0) {
     Promise.allSettled(editadas.map(f => firestorePatch(f))).then(resultados => {
@@ -2493,14 +2666,15 @@ function salvarEdicaoEmMassa(fonteVal, tituloVal, detalheVal) {
   }
 }
 
-function salvarEdicaoIndividual(id, fonteVal, tituloVal, detalheVal) {
+function salvarContextoDeUmaFrase(id, { fonte, titulo, detalhe }) {
   const idx = todasFrases.findIndex(f => f.id === id);
   if (idx < 0) return;
   const f = todasFrases[idx];
-  const novaFonte = fonteVal || f.contexto?.fonte || f.streaming || '';
-  todasFrases[idx] = { ...f, streaming: novaFonte, contexto: { fonte: novaFonte, titulo: tituloVal, detalhe: detalheVal } };
+  const novaFonte = fonte || f.contexto?.fonte || f.streaming || '';
+  todasFrases[idx] = { ...f, streaming: novaFonte, contexto: { fonte: novaFonte, titulo, detalhe } };
   chrome.storage.local.set({ frases: todasFrases }, () => {
-    construirFiltroDeFonte(); aplicarFiltro(); mostrarToast('Frase atualizada!');
+    construirFiltroDeFonte();
+    aplicarFiltro();
   });
   salvarFraseFirestore(todasFrases[idx]);
 }

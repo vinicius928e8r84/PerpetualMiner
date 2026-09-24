@@ -321,6 +321,7 @@ test('dentro do shell, Frases lista em cartões e apaga como hoje', async ({ pag
 
   await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(3);
   await cartao(page, 'Sentence number 2 ').getByRole('button', { name: 'Apagar frase' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar frase' }).click();
   await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(2);
   await expect(itemDaNav(page, 'Frases').locator('.shell-contador')).toHaveText('2');
   await expect.poll(async () => (await extensao.frases()).map(f => f.texto)).toEqual([
