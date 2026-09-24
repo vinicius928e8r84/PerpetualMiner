@@ -17,11 +17,12 @@
 // para saber quando a pessoa entra numa área (`aoEntrarNaArea`).
 //
 // Em Configurações, os cards ficam fechados numa linha com o resumo e abrem no
-// lugar, vários ao mesmo tempo; #configuracoes/<seção> abre o da seção. O
-// resumo da conta é do painel-conta.js; os de Atalhos, Chave do Gemini e Zona
-// de perigo saem daqui, do que já está gravado (os atalhos, a chave e o total
-// de frases). O conteúdo do card Atalhos é do painel-atalhos.js. Toda cópia vem
-// do catálogo da Voz.
+// lugar, vários ao mesmo tempo; #configuracoes/<seção> abre o da seção e avisa
+// quem pediu (`aoAbrirASecao`). O resumo da conta é do painel-conta.js; os de
+// Atalhos, Chave do Gemini e Zona de perigo saem daqui, do que já está gravado
+// (os atalhos, a chave e o total de frases). O conteúdo dos cards Atalhos, Chave
+// do Gemini e Zona de perigo é do painel-atalhos.js, do painel-chave.js e do
+// painel-perigo.js. Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
   const ABAS_DA_CONEXAO = ['custos', 'baralhos', 'vocabulario', 'ajustes'];
@@ -39,6 +40,7 @@
     conferindoConexao: false,
   };
   const ouvintesDeArea = new Map();
+  const ouvintesDeSecao = new Map();   // seção de Configurações → ouvintes
   const fimDosDestaques = new Map();   // card → o timer que tira a borda do destaque
 
   const { textoDaVoz, Atalhos, Veio } = raiz;
@@ -168,6 +170,7 @@
     card.classList.add('shell-card--destaque');
     clearTimeout(fimDosDestaques.get(card));
     fimDosDestaques.set(card, setTimeout(() => card.classList.remove('shell-card--destaque'), duracaoDoDestaque()));
+    for (const ouvinte of ouvintesDeSecao.get(secao) || []) ouvinte();
   }
 
   /** O `--veio-destaque` (em segundos, nos tokens) em milissegundos. */
@@ -175,11 +178,28 @@
     return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--veio-destaque')) * 1000;
   }
 
+  /**
+   * Guarda o `ouvinte` sob a `chave` e, se ela já vale agora, roda na hora: quem
+   * se registra depois de o endereço ter sido aplicado não perde a vez.
+   */
+  function registrar(ouvintes, chave, ouvinte, jaVale) {
+    if (!ouvintes.has(chave)) ouvintes.set(chave, []);
+    ouvintes.get(chave).push(ouvinte);
+    if (jaVale) ouvinte();
+  }
+
   /** `ouvinte` roda cada vez que a pessoa entra na `area` (inclusive ao abrir nela). */
   function aoEntrarNaArea(area, ouvinte) {
-    if (!ouvintesDeArea.has(area)) ouvintesDeArea.set(area, []);
-    ouvintesDeArea.get(area).push(ouvinte);
-    if (estado.area === area) ouvinte();
+    registrar(ouvintesDeArea, area, ouvinte, estado.area === area);
+  }
+
+  /**
+   * `ouvinte` roda cada vez que um endereço abre a `secao` de Configurações
+   * (inclusive ao abrir o painel nele), com o card já aberto.
+   */
+  function aoAbrirASecao(secao, ouvinte) {
+    registrar(ouvintesDeSecao, secao, ouvinte,
+      estado.area === 'configuracoes' && lerEndereco(location.hash).secao === secao);
   }
 
   function areaAtual() {
@@ -226,8 +246,12 @@
       resumo.replaceChildren(elemento('span', 'cfg-status cfg-status--erro', ponto, textoDaVoz('CFG-28.semChave')));
       return;
     }
-    const mascarada = chave.length > 8 ? chave.slice(0, 4) + MASCARA_DA_CHAVE + chave.slice(-4) : MASCARA_DA_CHAVE;
-    resumo.replaceChildren(elemento('span', 'cfg-chave-mascarada', mascarada));
+    resumo.replaceChildren(elemento('span', 'cfg-chave-mascarada', mascararChave(chave)));
+  }
+
+  /** `AIza••••••••3kQ9`: a chave nunca aparece inteira na tela. */
+  function mascararChave(chave) {
+    return chave.length > 8 ? chave.slice(0, 4) + MASCARA_DA_CHAVE + chave.slice(-4) : MASCARA_DA_CHAVE;
   }
 
   function elemento(tag, classe, ...filhos) {
@@ -275,8 +299,10 @@
   document.addEventListener('DOMContentLoaded', iniciarShell);
 
   raiz.Shell = {
+    aoAbrirASecao,
     aoEntrarNaArea,
     areaAtual,
+    mascararChave,
     mostrarTotalDeFrases,
   };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});
