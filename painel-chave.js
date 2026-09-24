@@ -65,7 +65,7 @@
     const ponto = elemento('span', 'cfg-ponto');
     ponto.dataset.estado = 'ok';
     ponto.setAttribute('aria-hidden', 'true');
-    const trocar = botao('secundario', textoDaVoz('CFG-15.trocar'), () => {
+    const trocar = botao('contorno', textoDaVoz('CFG-15.trocar'), () => {
       estado.trocando = true;
       desenhar();
       porId('cfg-chave-campo').focus();

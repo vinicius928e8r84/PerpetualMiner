@@ -445,6 +445,10 @@ async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
   try {
     let firestoreFrases = await firestoreGetAll();
 
+    // ── Apagar tudo que a nuvem não confirmou: sai o que foi gravado até aquela hora ──
+    const apagadasAgora = await concluirApagarTudoPendente(firestoreFrases);
+    firestoreFrases = firestoreFrases.filter(f => !apagadasAgora.has(String(f.id)));
+
     // ── Tombstone local: retry de deletes que falharam no Firestore neste dispositivo ──
     const { pm_deleted_ids = [] } = await chromeGet({ pm_deleted_ids: [] });
     if (pm_deleted_ids.length > 0) {
@@ -466,7 +470,7 @@ async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
       lerTombstoneFirestore(),
       lerTombstoneSync(),
     ]);
-    const tombstoneSet = new Set([...tombstoneFS, ...tombstoneCS]);
+    const tombstoneSet = new Set([...tombstoneFS, ...tombstoneCS, ...apagadasAgora]);
 
     if (tombstoneSet.size > 0) {
       // Retry: se ainda estão no Firestore (delete falhou), apaga agora
@@ -731,6 +735,25 @@ function limparTombstone(ids) {
   });
 }
 
+// Um Apagar tudo com a nuvem fora do ar deixou pm_apagar_tudo ({ uid, ate }). No
+// primeiro sync desta conta que alcança a nuvem, toda frase dela gravada até `ate`
+// (o id de uma frase é a hora em que ela foi gravada) ganha tombstone e sai; o que
+// foi minerado depois, em qualquer computador, fica. Devolve os ids apagados.
+async function concluirApagarTudoPendente(firestoreFrases) {
+  const { pm_apagar_tudo: pendente } = await chromeGet({ pm_apagar_tudo: null });
+  if (!pendente || pendente.uid !== usuarioLogado.uid) return new Set();
+  const ids = firestoreFrases.filter(f => Number(f.id) <= pendente.ate).map(f => String(f.id));
+  if (ids.length > 0) {
+    marcarParaDeletarSync(ids);
+    await marcarParaDeletar(ids);
+    await gravarTombstoneFirestore(ids);
+    await firestoreBatchDelete(ids);
+    limparTombstone(ids);
+  }
+  chrome.storage.local.remove('pm_apagar_tudo');
+  return new Set(ids);
+}
+
 async function removerFrasesFirestore(ids) {
   if (!ids.length) return;
   const idsStr = ids.map(String);
@@ -755,12 +778,16 @@ async function removerFrasesFirestore(ids) {
 }
 
 // As frases deste computador ficam marcadas como apagadas antes de a nuvem ser
-// lida: com ela fora do ar, o sync seguinte não as traz de volta. Resolve com
-// true quando não há mais nada a apagar na nuvem (ou não há conta).
+// lida: com ela fora do ar, o sync seguinte não as traz de volta. E até a nuvem
+// confirmar, fica lembrado “apagar tudo até agora” (pm_apagar_tudo), para o sync
+// seguinte apagar também o que outro computador gravou antes e daqui não se via.
+// Resolve com true quando não há mais nada a apagar na nuvem (ou não há conta).
 async function apagarTudoFirestore(idsDesteComputador) {
   if (!usuarioLogado) return true;
   marcarParaDeletarSync(idsDesteComputador);
   await marcarParaDeletar(idsDesteComputador);
+  const ate = Math.max(Date.now(), ...idsDesteComputador.map(Number));
+  await chromeSet({ pm_apagar_tudo: { uid: usuarioLogado.uid, ate } });
   try {
     const frases = await firestoreGetAll();
     const ids    = [...new Set([...idsDesteComputador, ...frases.map(f => String(f.id))])];
@@ -769,6 +796,7 @@ async function apagarTudoFirestore(idsDesteComputador) {
     await gravarTombstoneFirestore(ids);
     await firestoreBatchDelete(ids);
     limparTombstone(ids);
+    chrome.storage.local.remove('pm_apagar_tudo');
     return true;
   } catch (e) {
     console.error('[Firestore] apagar tudo falhou:', e);
@@ -2752,4 +2780,8 @@ function mostrarToast(msg) {
 
 function chromeGet(defaults) {
   return new Promise(resolve => chrome.storage.local.get(defaults, resolve));
+}
+
+function chromeSet(itens) {
+  return new Promise(resolve => chrome.storage.local.set(itens, resolve));
 }

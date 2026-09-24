@@ -283,6 +283,37 @@ test('com conta e a nuvem fora do ar, as frases apagadas não voltam quando ela 
   expect(await extensao.frases()).toEqual([]);
 });
 
+test('com conta e a nuvem fora do ar, o que outro computador gravou antes também não volta; o que veio depois fica', async ({ page, extensao, fakes }) => {
+  // Antes, só as frases deste computador ficavam marcadas: uma frase que outro
+  // computador pôs na nuvem depois do último sync daqui voltava quando ela voltava.
+  const frases = frasesDeExemplo(2);
+  await extensao.semearSessao({ uid: 'uid-outro' });
+  await extensao.gravarStorage({ frases });
+  fakes.google.gravarFrases('uid-outro', frases);
+  await abrirPainel(page, extensao, '#configuracoes/perigo');
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
+
+  const doOutroComputador = { id: Date.now() - 60_000, texto: 'Written on the other computer.', data: HOJE, streaming: 'netflix', idioma: 'Inglês' };
+  fakes.google.gravarFrases('uid-outro', [doOutroComputador]);
+
+  fakes.google.ficarForaDoAr();
+  await card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
+  await modal(page).getByRole('button', { name: 'Apagar 2 frases' }).click();
+  await expect(page.locator('#shell-chip')).toContainText('Sem sincronizar');
+
+  // Minerada em qualquer computador depois de apagar tudo: essa fica.
+  const depois = { id: Date.now() + 1_000, texto: 'Mined after the wipe.', data: HOJE, streaming: 'netflix', idioma: 'Inglês' };
+  fakes.google.ficarForaDoAr(false);
+  fakes.google.gravarFrases('uid-outro', [depois]);
+  await page.reload();
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
+
+  await expect.poll(() => fakes.google.frasesDe('uid-outro').map(f => String(f.id))).toEqual([String(depois.id)]);
+  await expect(page.locator('#shell-total')).toHaveText('1');
+  // Nenhuma das apagadas volta a este computador (a nova fica na nuvem e na tela).
+  expect((await extensao.frases()).filter(f => String(f.id) !== String(depois.id))).toEqual([]);
+});
+
 // ─── Teclado, leitor de tela e movimento ─────────────────────────────────────
 
 test('com movimento reduzido, o flash dos cards novos e o ponto da chave ficam parados', async ({ page, extensao }) => {
