@@ -63,7 +63,7 @@
     if (!partes) partes = montar();
     const { n, comConta } = estado;
 
-    porId('cfg-perigo-descricao').textContent = textoDaVoz(comConta ? 'CFG-29.descricao' : 'CFG-29.descricaoSemConta');
+    porId('cfg-perigo-descricao').textContent = textoDaVoz(comConta ? 'CFG-32.descricao' : 'CFG-32.descricaoSemConta');
     partes.alcance.textContent = n === 0
       ? textoDaVoz('CFG-24.nenhuma')
       : textoDaVoz(comConta ? 'CFG-24.alcance' : 'CFG-24.alcanceSemConta', { n });
