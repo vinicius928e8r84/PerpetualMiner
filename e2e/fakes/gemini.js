@@ -29,6 +29,9 @@ function criarFakeGemini() {
       resposta = resposta.resposta;
     }
     if (resposta.semRede) return route.abort('internetdisconnected');
+    if (resposta.bloqueada) {
+      return responderJson(route, 200, { promptFeedback: { blockReason: resposta.bloqueada } });
+    }
     if (!Array.isArray(resposta)) {
       return responderJson(route, resposta.status, { error: { message: resposta.mensagem } });
     }
@@ -46,6 +49,8 @@ function criarFakeGemini() {
     falhar(status = 500, mensagem = 'erro simulado') { fila.push({ status, mensagem }); },
     /** A próxima foto lida encontra a rede fora do ar. */
     ficarSemRede() { fila.push({ semRede: true }); },
+    /** A próxima foto lida volta com 200, mas sem texto: o Gemini bloqueou o pedido. */
+    bloquear(motivo = 'OTHER') { fila.push({ bloqueada: motivo }); },
     /**
      * A próxima foto lida só recebe `frases` quando o teste chamar a função
      * devolvida: até lá, ela fica em “Lendo…”.

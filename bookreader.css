@@ -98,7 +98,6 @@ figure {
   flex: none;
   width: 8px;
   height: 8px;
-  border-radius: 2px;
   background: var(--veio-accent);
   transform: rotate(45deg);
 }
@@ -237,7 +236,7 @@ figure {
   place-items: center;
   width: 52px;
   height: 68px;
-  border-radius: 8px;
+  border-radius: var(--veio-raio-tecla-resumo);
   background: var(--veio-surface-2);
   color: var(--veio-muted);
   object-fit: cover;
@@ -276,17 +275,6 @@ figure {
   line-height: 1.35;
 }
 
-/* “Lendo…”: o selo ouro com o ponto que pisca (parado com movimento reduzido). */
-.foto-selo--lendo {
-  border-color: transparent;
-  background: var(--veio-accent-soft);
-  color: var(--veio-accent-text);
-}
-
-.foto-selo--lendo .veio-selo__ponto {
-  animation: veio-piscar var(--veio-piscar) steps(1) infinite;
-}
-
 /* A legenda das marcações, no pé da fila e no estado vazio. */
 .foto-legenda {
   display: grid;
@@ -316,7 +304,7 @@ figure {
 
 .foto-marcacao__exemplo {
   padding: 3px 8px;
-  border-radius: 8px;
+  border-radius: var(--veio-raio-tecla-resumo);
   background: var(--veio-surface-2);
   color: var(--veio-text);
   font-family: var(--veio-fonte-mono);
@@ -512,31 +500,15 @@ figure {
   gap: 8px;
 }
 
+/* A linha é a .veio-frase da base; aqui só o texto editável e os estados. */
 .foto-frase {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 12px;
-  min-width: 0;
-  padding: 12px 14px;
-  border: 1px solid var(--veio-border);
-  border-radius: var(--veio-raio-card);
-  background: var(--veio-surface);
   transition: opacity var(--veio-transicao);
-}
-
-.foto-frase .veio-checkbox {
-  margin-top: 3px;
 }
 
 .foto-frase__texto {
   margin: 0 -3px;
   padding: 0 3px;
-  border-radius: 6px;
-  font-family: var(--veio-fonte-frase);
-  font-size: var(--veio-tam-frase);
-  line-height: var(--veio-altura-frase);
-  overflow-wrap: anywhere;
+  border-radius: var(--veio-raio-checkbox);
   outline: none;
 }
 
@@ -574,11 +546,6 @@ figure {
   display: flex;
   justify-content: flex-end;
   margin-top: 8px;
-}
-
-.foto-minerar__botao {
-  padding: 12px 22px;
-  font-size: var(--veio-tam-corpo);
 }
 
 /* ── Janela estreita: a fila vai para cima das frases ───────────────────── */

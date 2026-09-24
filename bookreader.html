@@ -60,10 +60,10 @@
           <!-- O que a página anuncia (FOT-02) é o que ela aceita: o tipo e a
                extensão, porque o Chrome no Windows entrega o HEIC sem tipo. -->
           <input type="file" id="foto-arquivo" multiple hidden
-                 accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif">
+                 accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp,.heic">
         </div>
 
-        <ol class="foto-fila" id="foto-fila" aria-labelledby="foto-fotos-titulo"></ol>
+        <ol class="foto-fila" id="foto-fila" aria-labelledby="foto-fotos-titulo" aria-live="polite"></ol>
 
         <div class="foto-legenda">
           <h2 class="foto-rotulo foto-rotulo--marcado" data-voz="FOT-24.titulo"></h2>
@@ -85,7 +85,7 @@
           </div>
           <div id="foto-grupos"></div>
           <div class="foto-minerar">
-            <button class="veio-botao veio-botao--primario foto-minerar__botao" id="foto-minerar" type="button"></button>
+            <button class="veio-botao veio-botao--primario" id="foto-minerar" type="button"></button>
           </div>
         </div>
       </section>

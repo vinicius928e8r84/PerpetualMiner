@@ -244,11 +244,11 @@ the sticky “Minerar N frases” (FOT-12; nothing marked → disabled with FOT-
 The page only states what it confirmed. A reading that worked with nothing marked is “Sem marcações” and the FOT-10
 empty state; a failed API call is “Falhou” with FOT-11's cause (429 → limit, 401/403/“API key” → key, with “Abrir
 Configurações”, no network → network, else GLB-01) and a persistent aviso with the raw error in Detalhes — it never
-blames the markings. A mined phrase shows “✓ minerada”, its checkbox is disabled and it leaves the button, so a second
+blames the markings. A 200 with no text (a blocked request, a cut-off answer) is a failure too: only the `NENHUM_TRECHO` sentinel means “Sem marcações”, and FOT-10 shows only when no photo failed. A mined phrase shows “✓ minerada”, its checkbox is disabled and it leaves the button, so a second
 click or a new photo never saves it twice; the click is ignored while a save is in flight. All saved → toast FOT-14;
-part or none → aviso FOT-15/16 with “Tentar de novo” (same phrases, same action).
+part or none → aviso FOT-15/16 whose “Tentar de novo” mines again exactly the phrases that failed. Photo status changes are announced (the queue is a polite live region).
 
-Formats: the picker's `accept` and the check take JPG, PNG, WEBP, HEIC and HEIF by type or, with no type (HEIC on
+Formats: the picker's `accept` and the check take JPG, PNG, WEBP and HEIC — exactly what FOT-02 announces — by type or, with no type (HEIC on
 Windows), by extension, and send Gemini the real MIME type; a file that is not a photo gets the FOT-04 aviso. A HEIC
 thumbnail Chrome cannot draw falls back to the photo icon. The key lives only in Configurações: with none, the FOT-05
 card, whose button (like the key-refused aviso) opens `painel.html#configuracoes/chave`, and a key saved there frees

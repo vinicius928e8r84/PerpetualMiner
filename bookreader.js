@@ -64,7 +64,6 @@ To be or not to be, that is the question`;
     png: 'image/png',
     webp: 'image/webp',
     heic: 'image/heic',
-    heif: 'image/heif',
   };
   const TIPOS_ACEITOS = new Set(Object.values(TIPO_POR_EXTENSAO));
 
@@ -77,13 +76,19 @@ To be or not to be, that is the question`;
     FALHOU: 'falhou',
   };
 
-  const LEGENDA = ['Barras', 'Underscores', 'Sublinhado', 'Colchetes'];
+  /** As marcações da legenda (FOT-24): a parte do exemplo e a do nome de cada uma. */
+  const LEGENDA = [
+    { exemplo: 'FOT-24.exemploBarras', nome: 'FOT-24.barras' },
+    { exemplo: 'FOT-24.exemploUnderscores', nome: 'FOT-24.underscores' },
+    { exemplo: 'FOT-24.exemploSublinhado', nome: 'FOT-24.sublinhado', sublinhado: true },
+    { exemplo: 'FOT-24.exemploColchetes', nome: 'FOT-24.colchetes' },
+  ];
 
   // ─── Estado ─────────────────────────────────────────────────────────────────
 
   const estado = {
     chave: '',
-    fotos: [],        // { id, nome, tipo, base64, url, status, achadas, causa, chaveRecusada, detalhes }
+    fotos: [],        // { id, nome, tipo, base64, url, status, achadas, falha: { causa, chaveRecusada, detalhes } }
     frases: [],       // { id, fotoId, texto, marcada, minerada }
     lendo: false,     // a fila está sendo lida
     minerando: false, // um “Minerar N frases” está a caminho do service worker
@@ -108,7 +113,7 @@ To be or not to be, that is the question`;
   function iniciar() {
     document.title = `${textoDaVoz('FOT-01.titulo')} · PerpetualMiner`;
     preencherTextosFixos();
-    porId('foto-marcacoes').replaceWith(montarLegenda('foto-marcacoes'));
+    porId('foto-marcacoes').replaceWith(montarLegenda());
 
     chrome.storage.local.get({ geminiApiKey: '', bookTitleDefault: '' }, dados => {
       estado.chave = dados.geminiApiKey || '';
@@ -143,7 +148,7 @@ To be or not to be, that is the question`;
       for (const frase of pendentes()) frase.marcada = evento.target.checked;
       desenharLista();
     });
-    porId('foto-minerar').addEventListener('click', minerar);
+    porId('foto-minerar').addEventListener('click', () => minerar());
   }
 
   /** A cópia fixa da página, pelos atributos data-voz* do bookreader.html. */
@@ -156,13 +161,12 @@ To be or not to be, that is the question`;
   }
 
   /** “Marcações que o Gemini lê”: o exemplo em mono e o nome de cada uma. */
-  function montarLegenda(id) {
+  function montarLegenda() {
     const lista = elemento('ul', 'foto-marcacoes');
-    if (id) lista.id = id;
-    for (const nome of LEGENDA) {
-      const exemplo = elemento('span', `foto-marcacao__exemplo foto-marcacao__exemplo--${nome.toLowerCase()}`,
-        textoDaVoz(`FOT-24.exemplo${nome}`));
-      lista.append(elemento('li', 'foto-marcacao', exemplo, textoDaVoz(`FOT-24.${nome.toLowerCase()}`)));
+    for (const marcacao of LEGENDA) {
+      const exemplo = elemento('span', 'foto-marcacao__exemplo', textoDaVoz(marcacao.exemplo));
+      exemplo.classList.toggle('foto-marcacao__exemplo--sublinhado', !!marcacao.sublinhado);
+      lista.append(elemento('li', 'foto-marcacao', exemplo, textoDaVoz(marcacao.nome)));
     }
     return lista;
   }
@@ -199,11 +203,10 @@ To be or not to be, that is the question`;
 
     const recusados = arquivos.filter(arquivo => !tipoDaFoto(arquivo));
     if (recusados.length) {
-      mostrarAviso(montarAviso({
+      mostrarAviso({
         texto: textoDaVoz('FOT-04'),
         detalhes: recusados.map(arquivo => arquivo.name).join('\n'),
-        rotuloDeFechar: textoDaVoz('PAI-34'),
-      }));
+      });
     }
 
     const aceitos = arquivos.filter(arquivo => tipoDaFoto(arquivo));
@@ -261,9 +264,7 @@ To be or not to be, that is the question`;
         foto.status = STATUS.LIDA;
       } catch (erro) {
         foto.status = STATUS.FALHOU;
-        foto.chaveRecusada = chaveRecusada(erro);
-        foto.causa = causaDaFalha(erro);
-        foto.detalhes = erro.message;
+        foto.falha = classificarFalha(erro);
         mostrarFalhaDaFoto(foto);
       }
       desenhar();
@@ -303,24 +304,32 @@ To be or not to be, that is the question`;
       throw erro;
     }
 
+    // Só o sentinel diz “sem marcações”. Uma resposta sem texto (pedido
+    // bloqueado, corte por tamanho) é falha da leitura, não da página.
     const dados = await resposta.json();
     const texto = dados?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    if (!texto) {
+      const motivo = dados?.promptFeedback?.blockReason || dados?.candidates?.[0]?.finishReason || 'sem texto';
+      throw new Error(`Resposta do Gemini sem texto (${motivo})`);
+    }
     return texto
       .split('\n')
       .map(linha => linha.trim())
       .filter(linha => linha.length > 0 && !linha.startsWith(SENTINEL_VAZIO));
   }
 
-  function chaveRecusada(erro) {
-    return erro.status === 401 || erro.status === 403 || /api[ _]?key/i.test(erro.message);
-  }
-
-  /** A 2ª frase do FOT-11: a causa nos termos da pessoa. O original vai para Detalhes. */
-  function causaDaFalha(erro) {
-    if (erro.semRede) return textoDaVoz('FOT-11.causaRede');
-    if (erro.status === 429 || erro.estadoDaApi === 'RESOURCE_EXHAUSTED') return textoDaVoz('FOT-11.causaLimite');
-    if (chaveRecusada(erro)) return textoDaVoz('FOT-11.causaChave');
-    return textoDaVoz('GLB-01');
+  /**
+   * Por que a leitura falhou, nos termos da pessoa: a `causa` é a 2ª frase do
+   * FOT-11 (GLB-01 quando nada a explica), `chaveRecusada` põe “Abrir
+   * Configurações” no aviso, e o original vai para `detalhes`.
+   */
+  function classificarFalha(erro) {
+    const chaveRecusada = erro.status === 401 || erro.status === 403 || /api[ _]?key/i.test(erro.message);
+    let causa = textoDaVoz('GLB-01');
+    if (erro.semRede) causa = textoDaVoz('FOT-11.causaRede');
+    else if (erro.status === 429 || erro.estadoDaApi === 'RESOURCE_EXHAUSTED') causa = textoDaVoz('FOT-11.causaLimite');
+    else if (chaveRecusada) causa = textoDaVoz('FOT-11.causaChave');
+    return { causa, chaveRecusada, detalhes: erro.message };
   }
 
   function numeroDaFoto(foto) {
@@ -328,17 +337,19 @@ To be or not to be, that is the question`;
   }
 
   function mostrarFalhaDaFoto(foto) {
-    mostrarAviso(montarAviso({
-      texto: `${textoDaVoz('FOT-11.aviso', { n: numeroDaFoto(foto) })} ${foto.causa}`,
-      acao: foto.chaveRecusada
+    const { causa, chaveRecusada, detalhes } = foto.falha;
+    mostrarAviso({
+      texto: `${textoDaVoz('FOT-11.aviso', { n: numeroDaFoto(foto) })} ${causa}`,
+      acao: chaveRecusada
         ? { rotulo: textoDaVoz('FOT-05.acao'), aoUsar: () => abrirPainel('#configuracoes/chave') }
         : undefined,
-      detalhes: foto.detalhes,
-      rotuloDeFechar: textoDaVoz('PAI-34'),
-    }));
+      detalhes,
+    });
   }
 
-  function mostrarAviso(aviso) {
+  /** Um aviso persistente no topo da coluna das frases, com o × de PAI-34. */
+  function mostrarAviso(conteudo) {
+    const aviso = montarAviso({ ...conteudo, rotuloDeFechar: textoDaVoz('PAI-34') });
     porId('foto-avisos').append(aviso);
     return aviso;
   }
@@ -351,10 +362,12 @@ To be or not to be, that is the question`;
   /**
    * Minera as frases marcadas que ainda não foram mineradas. Um clique a mais
    * no meio do caminho não faz nada, e o que foi minerado não volta ao botão.
+   * O “Tentar de novo” do FOT-15/16 passa `alvo`: as mesmas frases que
+   * falharam, e só elas.
    */
-  async function minerar() {
+  async function minerar(alvo = paraMinerar()) {
     if (estado.minerando) return;
-    const alvo = paraMinerar();
+    alvo = alvo.filter(frase => !frase.minerada);
     if (!alvo.length) return;
 
     estado.minerando = true;
@@ -377,13 +390,13 @@ To be or not to be, that is the question`;
       mostrarToastDeSucesso(textoDaVoz('FOT-14', { n }));
       return;
     }
-    desenhado.avisoDoEnvio = mostrarAviso(montarAviso({
+    const falharam = alvo.filter(frase => !frase.minerada);
+    desenhado.avisoDoEnvio = mostrarAviso({
       texto: n === 0
         ? textoDaVoz('FOT-16')
-        : textoDaVoz('FOT-15.resumo', { n, total: alvo.length, falhas: alvo.length - n }),
-      acao: { rotulo: textoDaVoz('FOT-15.tentarDeNovo'), aoUsar: minerar },
-      rotuloDeFechar: textoDaVoz('PAI-34'),
-    }));
+        : textoDaVoz('FOT-15.resumo', { n, total: alvo.length, falhas: falharam.length }),
+      acao: { rotulo: textoDaVoz('FOT-15.tentarDeNovo'), aoUsar: () => minerar(falharam) },
+    });
   }
 
   /** Grava pelo service worker, que serializa as gravações (nenhuma se perde). */
@@ -480,7 +493,7 @@ To be or not to be, that is the question`;
     cartao.dataset.status = foto.status;
     cartao.querySelector('.foto-cartao__status').replaceChildren(seloDaFoto(foto));
     const causa = cartao.querySelector('.foto-cartao__causa');
-    causa.textContent = foto.status === STATUS.FALHOU ? foto.causa : '';
+    causa.textContent = foto.status === STATUS.FALHOU ? foto.falha.causa : '';
     causa.hidden = foto.status !== STATUS.FALHOU;
   }
 
@@ -489,7 +502,7 @@ To be or not to be, that is the question`;
       case STATUS.PRONTA: return selo('', textoDaVoz('FOT-19.pronta'));
       case STATUS.NA_FILA: return selo('', textoDaVoz('FOT-19.naFila'));
       case STATUS.LENDO: {
-        const lendo = selo('foto-selo--lendo', textoDaVoz('FOT-19.lendo'));
+        const lendo = selo('veio-selo--lendo', textoDaVoz('FOT-19.lendo'));
         lendo.prepend(elemento('span', 'veio-selo__ponto'));
         return lendo;
       }
@@ -540,13 +553,17 @@ To be or not to be, that is the question`;
       const n = lendo ? numeroDaFoto(lendo) : 1;
       return { chave: `lendo:${n}/${total}`, montar: () => montarLendo(n, total) };
     }
-    if (estado.fotos.some(f => f.status === STATUS.LIDA)) return { chave: 'semMarcacoes', montar: montarSemMarcacoes };
+    // “Sem marcações” só quando nenhuma foto falhou: com uma falha, o aviso
+    // dela é o estado, e o vazio não pode pôr a culpa nas marcações.
+    const algumaFalhou = estado.fotos.some(f => f.status === STATUS.FALHOU);
+    if (!algumaFalhou && estado.fotos.some(f => f.status === STATUS.LIDA)) {
+      return { chave: 'semMarcacoes', montar: montarSemMarcacoes };
+    }
     return { chave: 'nada' };
   }
 
   function vazio(icone, ...partes) {
-    const caixa = elemento('div', 'veio-vazio foto-vazio', iconeVeio(icone), ...partes);
-    return caixa;
+    return elemento('div', 'veio-vazio foto-vazio', iconeVeio(icone), ...partes);
   }
 
   function montarSemChave() {
@@ -651,7 +668,7 @@ To be or not to be, that is the question`;
     });
 
     // O texto é editável no lugar: o que estiver nele é o que vai ser minerado.
-    const texto = elemento('div', 'foto-frase__texto', frase.texto);
+    const texto = elemento('div', 'veio-frase__texto foto-frase__texto', frase.texto);
     texto.setAttribute('role', 'textbox');
     texto.setAttribute('aria-label', textoDaVoz('PAI-33.campo'));
     texto.spellcheck = false;
@@ -662,7 +679,7 @@ To be or not to be, that is the question`;
     });
 
     const minerada = elemento('span', 'foto-frase__minerada', textoDaVoz('FOT-25.minerada'));
-    return elemento('div', 'foto-frase', marcar, texto, minerada);
+    return elemento('div', 'veio-frase foto-frase', marcar, texto, minerada);
   }
 
   function atualizarLinha(linha, frase) {

@@ -246,6 +246,32 @@ test('sem rede, a foto falha dizendo que falta a conexão', async ({ page, exten
   await expect(page.getByRole('alert')).toContainText('Não deu para ler a foto 1.');
 });
 
+test('uma resposta do Gemini sem texto (pedido bloqueado) é falha, não “Sem marcações”', async ({ page, extensao, fakes }) => {
+  fakes.gemini.bloquear('SAFETY');
+  await abrirAPagina(page, extensao);
+  await lerUmaFoto(page);
+
+  await expect(fotoNaFila(page, 'pagina.png')).toContainText('Falhou');
+  const aviso = page.getByRole('alert');
+  await expect(aviso).toContainText('Não deu para ler a foto 1. Algo deu errado. Tente de novo.');
+  await aviso.getByText('Detalhes').click();
+  await expect(aviso).toContainText('SAFETY');
+  await expect(page.getByText('Sem marcações')).toHaveCount(0);
+});
+
+test('uma foto sem marcações e outra que falhou: o vazio não culpa as marcações', async ({ page, extensao, fakes }) => {
+  fakes.gemini.responderFrases([]);
+  fakes.gemini.falhar(500, 'Internal error encountered.');
+  await abrirAPagina(page, extensao);
+
+  await enviarFotos(page, foto('a.png'), foto('b.png'));
+
+  await expect(fotoNaFila(page, 'a.png')).toContainText('Sem marcações');
+  await expect(fotoNaFila(page, 'b.png')).toContainText('Falhou');
+  await expect(page.getByRole('alert')).toContainText('Não deu para ler a foto 2.');
+  await expect(page.getByText(/Nenhuma marcação encontrada/)).toHaveCount(0);
+});
+
 test('uma foto que falha não apaga as frases das outras', async ({ page, extensao, fakes }) => {
   fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
   fakes.gemini.falhar(500, 'Internal error encountered.');
@@ -316,6 +342,8 @@ test('o que a página anuncia de formatos é o que ela aceita: HEIC entra e vai 
   await expect(page.getByText('JPG, PNG, HEIC ou WEBP')).toBeVisible();
   const aceita = await page.locator('#foto-arquivo').getAttribute('accept');
   for (const formato of ['.jpg', '.jpeg', '.png', '.heic', '.webp']) expect(aceita).toContain(formato);
+  // Só o que a página anuncia: nada de formato a mais.
+  expect(aceita).not.toMatch(/heif/);
 
   // O Chrome no Windows entrega o HEIC sem tipo: a página reconhece pela extensão.
   await enviarFotos(page, { name: 'IMG_2041.HEIC', mimeType: '', buffer: PNG_1X1 });
@@ -391,6 +419,9 @@ test('os controles têm nome, e o teclado chega à escolha de fotos e ao Livro',
   await expect(page.getByRole('button', { name: 'Voltar ao painel' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'Escolher' })).toBeFocused();
+
+  // O status de cada foto muda sozinho: a fila avisa o leitor de tela.
+  await expect(filaDeFotos(page)).toHaveAttribute('aria-live', 'polite');
 
   await lerUmaFoto(page);
   await expect(page.getByRole('checkbox', { name: 'Selecionar todas' })).toBeVisible();

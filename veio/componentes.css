@@ -454,6 +454,18 @@ select.veio-campo {
   color: var(--veio-danger);
 }
 
+.veio-selo--lendo {
+  padding-inline: 8px;
+  border-color: transparent;
+  background: var(--veio-accent-soft);
+  color: var(--veio-accent-text);
+}
+
+/* Em andamento: o ponto pisca (parado com movimento reduzido, pela regra dos tokens). */
+.veio-selo--lendo .veio-selo__ponto {
+  animation: veio-piscar var(--veio-piscar) steps(1) infinite;
+}
+
 .veio-selo__ponto {
   width: 7px;
   height: 7px;
