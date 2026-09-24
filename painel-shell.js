@@ -51,7 +51,7 @@
   const { textoDaVoz } = raiz;
   // O tema (veio/tema.js) é pedido só na hora de usar: o shell também é
   // carregado fora da extensão, pelos testes legados, sem a base do <head>.
-  const tema = () => raiz.Tema;
+  const baseDoTema = () => raiz.Tema;
   const $ = seletor => document.querySelector(seletor);
   const $$ = seletor => [...document.querySelectorAll(seletor)];
   const porId = id => document.getElementById(id);
@@ -69,7 +69,7 @@
     // O tema vale na hora: gravar é o que troca a tela, aqui e em qualquer
     // outra página aberta (veio/tema.js escuta o mesmo storage).
     for (const radio of $$('#cfg-tema input[name="tema"]')) {
-      radio.addEventListener('change', () => { if (radio.checked) tema().gravarTema(radio.value); });
+      radio.addEventListener('change', () => { if (radio.checked) baseDoTema().gravarTema(radio.value); });
     }
     // A linha inteira do card abre e fecha; o botão do título é quem o teclado
     // e o leitor de tela usam, e o clique nele sobe até aqui.
@@ -222,12 +222,12 @@
     // O tema sai do que está gravado, como os outros resumos: o que está
     // pintado ainda pode ser o espelho da primeira pintura, que veio/tema.js
     // corrige quando o storage responde.
-    tema().lerTemaGravado().then(mostrarTema);
+    baseDoTema().lerTemaGravado().then(mostrarTema);
+    baseDoTema().aoMudarTema(mostrarTema);
     chrome.storage.onChanged.addListener((mudancas, area) => {
       if (area !== 'local') return;
       if ('pm_atalho' in mudancas) mostrarResumoDosAtalhos(mudancas.pm_atalho.newValue || null);
       if ('geminiApiKey' in mudancas) mostrarResumoDaChave(mudancas.geminiApiKey.newValue || '');
-      if (tema().CHAVE in mudancas) mostrarTema(mudancas[tema().CHAVE].newValue || tema().TEMA_PADRAO);
     });
   }
 
@@ -265,12 +265,13 @@
 
   /**
    * O tema em uso: a opção marcada no controle e o resumo da linha fechada
-   * (CFG-31). Sem escolha gravada, os dois dizem “Escuro”.
+   * (CFG-31). Sem escolha gravada, os dois dizem “Escuro”. Chega sempre
+   * normalizado por veio/tema.js, então é “escuro” ou “claro”.
    */
   function mostrarTema(escolhido) {
     for (const radio of $$('#cfg-tema input[name="tema"]')) radio.checked = radio.value === escolhido;
     porId('cfg-aparencia-resumo').replaceChildren(
-      elemento('span', null, textoDaVoz(escolhido === tema().TEMAS.CLARO ? 'CFG-31.claro' : 'CFG-31.escuro')));
+      elemento('span', null, textoDaVoz(`CFG-31.${escolhido}`)));
   }
 
   /** `AIza••••••••3kQ9` em mono; vazia, o ponto `danger` e “Sem chave”. */

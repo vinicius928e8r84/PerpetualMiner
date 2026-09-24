@@ -9,7 +9,8 @@
 // O popup e o Minerar de uma foto ainda não foram refeitos na Veio (#38, #36 e
 // #37): o CSS deles foi desenhado para um fundo fixo, então o corpo deles fica
 // preso no tema em que foi desenhado e só a página passa a carregar a escolha.
-// Os testes daqui afirmam essa fronteira como ela é hoje.
+// A spec registra esse adiamento (Configurações › Aparência, "Onde vale"), e os
+// testes daqui afirmam essa fronteira como ela é hoje.
 //
 // Os testes afirmam o que a pessoa vê e o que fica gravado, nunca funções internas.
 
@@ -50,11 +51,15 @@ async function abrirConfiguracoes(page, extensao, endereco = '#configuracoes') {
   await expect(page.getByRole('navigation', { name: 'Navegação do painel' })).toBeVisible();
 }
 
-/** O contraste entre duas cores `rgb(...)`, pela fórmula da WCAG. */
+/**
+ * O contraste entre duas cores, pela fórmula da WCAG. Aceita `rgb(...)` e o
+ * `color(srgb r g b)` (de 0 a 1) que o Chromium devolve para um `color-mix`.
+ */
 function contraste(corA, corB) {
   const luminancia = cor => {
+    const escala = cor.startsWith('color(srgb') ? 1 : 255;
     const [r, g, b] = cor.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number).map(v => {
-      const c = v / 255;
+      const c = v / escala;
       return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
     });
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;
@@ -120,9 +125,10 @@ test('o painel já aberto em outra aba troca junto, sem recarregar', async ({ pa
   await outra.close();
 });
 
-test('o popup e o Minerar de uma foto abrem com a escolha; o que ainda não foi refeito fica como foi desenhado',
+test('o popup e o Minerar de uma foto carregam a escolha, mas ficam como foram desenhados até serem refeitos (#38, #36/#37)',
   async ({ page, context, extensao }) => {
-    // Como as duas telas abrem hoje, no escuro padrão, antes de qualquer escolha.
+    // Como as duas telas abrem hoje, antes de qualquer escolha: o popup escuro e
+    // o Minerar de uma foto claro, cada um com o fundo em que foi desenhado.
     const fundosDeHoje = {};
     for (const tela of ['popup.html', 'bookreader.html']) {
       const aberta = await context.newPage();
@@ -145,7 +151,6 @@ test('o popup e o Minerar de uma foto abrem com a escolha; o que ainda não foi 
       expect(await fundoDaPagina(aberta)).toBe(fundoDeHoje);
       await aberta.close();
     }
-
   });
 
 test('o que aparece por cima das páginas continua escuro', async ({ page, context, extensao, paginas }) => {
@@ -183,12 +188,13 @@ test('no claro, o texto do painel passa no contraste AA', async ({ page, extensa
     '#cfg-tema label:nth-of-type(1)', '#cfg-tema label:nth-of-type(2)',
   ];
   for (const seletor of textos) {
+    // O fundo real atrás do texto: o primeiro ancestral que pinta um fundo.
     const medido = await page.locator(seletor).evaluate(no => {
-      const sobre = no.closest('.shell-card, body');
-      return { texto: getComputedStyle(no).color, fundo: getComputedStyle(sobre).backgroundColor };
+      let sobre = no;
+      while (sobre && getComputedStyle(sobre).backgroundColor === 'rgba(0, 0, 0, 0)') sobre = sobre.parentElement;
+      return { texto: getComputedStyle(no).color, fundo: getComputedStyle(sobre || document.body).backgroundColor };
     });
-    const fundo = medido.fundo === 'rgba(0, 0, 0, 0)' ? FUNDO.claro : medido.fundo;
-    expect(contraste(medido.texto, fundo), `contraste de ${seletor}`).toBeGreaterThanOrEqual(4.5);
+    expect(contraste(medido.texto, medido.fundo), `contraste de ${seletor}`).toBeGreaterThanOrEqual(4.5);
   }
 });
 
@@ -198,6 +204,9 @@ test('a troca de tema não anima', async ({ page, extensao }) => {
   // Enquanto as cores novas pintam, nada transiciona: sem isso a tela inteira
   // faria um cross-fade (spec de Configurações › Aparência). O que já estava
   // animando por conta própria (o cursor da marca, o flash da seção) segue.
+  // O clique e a leitura rodam no mesmo quadro, dentro da página: um clique do
+  // Playwright voltaria depois de alguns quadros, quando a marca da troca já
+  // saiu, e o teste passaria mesmo com a tela animando.
   const transicoes = await page.evaluate(async () => {
     const rotulo = [...document.querySelectorAll('#cfg-tema label')].find(no => no.textContent.trim() === 'Claro');
     rotulo.click();
@@ -221,7 +230,15 @@ test('o seletor tem nome, é alcançável pelo teclado e as setas trocam o tema'
   await expect(opcaoDoTema(page, 'Claro')).toBeChecked();
   await expect(opcaoDoTema(page, 'Claro')).toBeFocused();
   await expect.poll(() => fundoDaPagina(page)).toBe(FUNDO.claro);
-  // O foco continua visível no controle escolhido.
-  const contorno = await opcaoDoTema(page, 'Claro').evaluate(no => getComputedStyle(no.closest('label')).outlineWidth);
-  expect(contorno).not.toBe('0px');
+  // O foco continua visível no controle escolhido, com o foco do Veio: 2px
+  // sólidos na cor de destaque do tema em uso.
+  const foco = await opcaoDoTema(page, 'Claro').evaluate(no => {
+    const estilo = getComputedStyle(no.closest('label'));
+    const amostra = document.body.appendChild(document.createElement('span'));
+    amostra.style.color = 'var(--veio-accent)';
+    const destaque = getComputedStyle(amostra).color;
+    amostra.remove();
+    return { largura: estilo.outlineWidth, estilo: estilo.outlineStyle, cor: estilo.outlineColor, destaque };
+  });
+  expect(foco).toEqual({ largura: '2px', estilo: 'solid', cor: foco.destaque, destaque: foco.destaque });
 });

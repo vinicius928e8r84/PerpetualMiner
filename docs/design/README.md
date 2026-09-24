@@ -63,7 +63,7 @@ As únicas funções novas que a construção pode fazer:
 | 7 | Atalho “Minerar legenda” gravável (aceita botão do mouse, recusa atalho repetido) + “Restaurar atalhos padrão” | Configurações › Atalhos | CFG-11…14 |
 | 8 | Abrir a Boas-vindas na instalação (`onInstalled`, só `install`) | background | ONB-01 |
 | 9 | Lembrete “Configuração pela metade”, ocultável | Frases, popup | ONB-14, ONB-15 |
-| 10 | Seletor de tema (escuro, o padrão, ou claro), lembrado neste computador; vale para o painel, o popup e Minerar de uma foto, e o overlay continua sempre escuro | Configurações › Aparência | CFG-29…31 |
+| 10 | Seletor de tema (escuro, o padrão, ou claro), lembrado neste computador; vale para o painel, o popup e Minerar de uma foto, e o overlay continua sempre escuro (popup e Minerar de uma foto passam a seguir quando forem refeitos, passos 5 e 6) | Configurações › Aparência | CFG-29…31 |
 
 O que **não** é função nova, e portanto pode entrar sem estar na lista:
 

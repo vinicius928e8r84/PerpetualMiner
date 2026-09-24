@@ -10,7 +10,7 @@
 // Carregado no <head> de toda página da extensão, antes do CSS da página, e
 // pendurado em `PerpetualMiner.Tema`:
 //
-//   const { gravarTema, lerTemaGravado, TEMAS } = PerpetualMiner.Tema;
+//   const { gravarTema, lerTemaGravado, aoMudarTema, TEMAS } = PerpetualMiner.Tema;
 //
 // Ele aplica o tema no <html>, que é onde veio/tokens.css troca os valores
 // (`[data-tema="claro"]`). Quem desenha o seletor é o painel; aqui fica só o
@@ -41,8 +41,9 @@
   /** Enquanto o tema troca, as transições dos componentes ficam de fora. */
   const MARCA_DA_TROCA = 'data-trocando-tema';
 
-  function temaValido(valor) {
-    return valor === TEMAS.ESCURO || valor === TEMAS.CLARO;
+  /** Um dos dois temas; qualquer outra coisa (nada gravado, lixo) vira o padrão. */
+  function normalizarTema(valor) {
+    return valor === TEMAS.ESCURO || valor === TEMAS.CLARO ? valor : TEMA_PADRAO;
   }
 
   /**
@@ -54,7 +55,7 @@
    * pintaram, e as transições voltam para o que a pessoa fizer depois.
    */
   function aplicarTema(tema) {
-    const escolhido = temaValido(tema) ? tema : TEMA_PADRAO;
+    const escolhido = normalizarTema(tema);
     const raizDaPagina = document.documentElement;
     // Só a troca depois da página pronta: na primeira aplicação, ainda no
     // <head>, nada foi pintado e não há o que cross-fadear.
@@ -77,15 +78,25 @@
   /** O tema gravado, ou o padrão quando não há escolha. */
   async function lerTemaGravado() {
     const guardado = await chrome.storage.local.get(CHAVE);
-    return temaValido(guardado?.[CHAVE]) ? guardado[CHAVE] : TEMA_PADRAO;
+    return normalizarTema(guardado?.[CHAVE]);
   }
 
   /** Grava a escolha. A tela troca pelo mesmo caminho de qualquer outra página. */
   async function gravarTema(tema) {
-    const escolhido = temaValido(tema) ? tema : TEMA_PADRAO;
+    const escolhido = normalizarTema(tema);
     aplicarTema(escolhido);
     await chrome.storage.local.set({ [CHAVE]: escolhido });
     return escolhido;
+  }
+
+  /**
+   * Chama `fn` com o tema novo sempre que a escolha muda, nesta página ou em
+   * qualquer outra aberta. O valor já chega normalizado.
+   */
+  function aoMudarTema(fn) {
+    chrome.storage.onChanged.addListener((mudancas, area) => {
+      if (area === 'local' && CHAVE in mudancas) fn(normalizarTema(mudancas[CHAVE].newValue));
+    });
   }
 
   /**
@@ -99,19 +110,14 @@
    */
   function aplicarTemaGravado() {
     try {
-      const espelho = localStorage.getItem(CHAVE);
-      if (temaValido(espelho)) aplicarTema(espelho);
-      else aplicarTema(TEMA_PADRAO);
+      aplicarTema(localStorage.getItem(CHAVE));
     } catch {
       aplicarTema(TEMA_PADRAO);
     }
 
     lerTemaGravado().then(aplicarTema).catch(() => {});
 
-    chrome.storage.onChanged.addListener((mudancas, area) => {
-      if (area !== 'local' || !(CHAVE in mudancas)) return;
-      aplicarTema(mudancas[CHAVE].newValue);
-    });
+    aoMudarTema(aplicarTema);
   }
 
   // A página não chama nada: carregar o arquivo no <head> já a abre no tema
@@ -127,5 +133,6 @@
     CHAVE,
     gravarTema,
     lerTemaGravado,
+    aoMudarTema,
   };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});
