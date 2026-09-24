@@ -88,7 +88,7 @@
     campo.spellcheck = false;
     campo.placeholder = textoDaVoz('CFG-15.campo');
     campo.setAttribute('aria-label', textoDaVoz('CFG-15.titulo'));
-    campo.addEventListener('input', () => mostrarErro(campo, false));
+    campo.addEventListener('input', () => marcarVazia(campo, false));
 
     const erro = elemento('p', 'veio-campo-erro', textoDaVoz('CFG-16.vazia'));
     erro.id = 'cfg-chave-erro';
@@ -120,11 +120,11 @@
     return partes;
   }
 
-  /** O erro de salvar vazio: borda danger (aria-invalid) e o aviso embaixo, ligado ao campo. */
-  function mostrarErro(campo, erro) {
+  /** Liga ou desliga o erro de salvar vazio: borda danger (aria-invalid) e o aviso embaixo, ligado ao campo. */
+  function marcarVazia(campo, vazia) {
     const aviso = porId('cfg-chave-erro');
-    aviso.hidden = !erro;
-    if (erro) {
+    aviso.hidden = !vazia;
+    if (vazia) {
       campo.setAttribute('aria-invalid', 'true');
       campo.setAttribute('aria-describedby', aviso.id);
     } else {
@@ -136,7 +136,7 @@
   function salvarChave(campo) {
     const chave = campo.value.trim();
     if (!chave) {
-      mostrarErro(campo, true);
+      marcarVazia(campo, true);
       campo.focus();
       return;
     }

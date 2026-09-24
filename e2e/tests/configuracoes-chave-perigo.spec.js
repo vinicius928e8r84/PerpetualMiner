@@ -235,10 +235,23 @@ test('com conta: o alcance é todos os computadores, e confirmar apaga também a
   await expect(modal(page).getByText('Elas somem deste computador e de todos os outros conectados à sua conta. Não dá para desfazer.')).toBeVisible();
   await modal(page).getByRole('button', { name: 'Apagar 2 frases' }).click();
 
+  // O toast só vem quando a nuvem já está vazia.
   await expect(toast(page)).toHaveText('Todas as frases foram apagadas');
+  expect(fakes.google.frasesDe('uid-perigo')).toEqual([]);
   await expect(page.locator('#shell-total')).toHaveText('0');
-  await expect.poll(() => fakes.google.frasesDe('uid-perigo')).toEqual([]);
   expect(await extensao.frases()).toEqual([]);
+});
+
+test('com conta, enquanto a nuvem não responde, a Zona de perigo não finge que não há frases', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: 'uid-carregando' });
+  await extensao.gravarStorage({ frases: frasesDeExemplo(2) });
+  fakes.google.segurarLeituras();
+  await abrirPainel(page, extensao, '#configuracoes/perigo');
+
+  const perigo = card(page, 'perigo');
+  await expect(perigo.getByText('Apagar tudo aqui não dá para desfazer, e vale para todos os computadores da sua conta.')).toBeVisible();
+  await expect(perigo.getByRole('button', { name: /Apagar|Nenhuma/ })).toHaveCount(0);
+  await expect(perigo.getByText('Nenhuma frase no histórico')).toHaveCount(0);
 });
 
 test('com conta e a nuvem fora do ar, as frases apagadas não voltam quando ela volta', async ({ page, extensao, fakes }) => {
@@ -254,8 +267,13 @@ test('com conta e a nuvem fora do ar, as frases apagadas não voltam quando ela 
   fakes.google.ficarForaDoAr();
   await card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
   await modal(page).getByRole('button', { name: 'Apagar 2 frases' }).click();
+  // A falha aparece no chip; nenhum toast diz que tudo foi apagado (Q4). Conta na
+  // hora, sem esperar: o toast antigo nascia junto com o total em 0 e sumia depois.
+  const toastsDeApagado = () => toastCom(page, 'Todas as frases foram apagadas').count();
   await expect(page.locator('#shell-total')).toHaveText('0');
+  expect(await toastsDeApagado()).toBe(0);
   await expect(page.locator('#shell-chip')).toContainText('Sem sincronizar');
+  expect(await toastsDeApagado()).toBe(0);
 
   fakes.google.ficarForaDoAr(false);
   await page.reload();
@@ -283,8 +301,6 @@ test('com movimento reduzido, o flash dos cards novos e o ponto da chave ficam p
   await expect(modal(page)).toBeVisible();
   expect(await modal(page).evaluate(el => getComputedStyle(el).animationName)).toBe('none');
 });
-
-// ─── Teclado e leitor de tela ────────────────────────────────────────────────
 
 test('pelo teclado: Trocar chave, digitar e Enter; abrir o modal com Enter e confirmar com Tab', async ({ page, extensao }) => {
   await extensao.gravarStorage({ geminiApiKey: CHAVE_DO_GEMINI, frases: frasesDeExemplo(2) });

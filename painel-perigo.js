@@ -7,7 +7,8 @@
 // com o foco inicial em Cancelar, e quem apaga é o botão de perigo preenchido
 // lá dentro. Nunca o confirm() do navegador. O alcance que a tela promete muda
 // com a conta: com ela, as frases somem de todos os computadores da conta; sem
-// ela, só deste. Sem frases, a entrada fica indisponível (CFG-20).
+// ela, só deste. Sem frases, a entrada fica indisponível (CFG-20). Enquanto o
+// total não chega, a linha fica escondida: nunca um “Nenhuma frase” de mentira.
 //
 // O painel.js conta o que muda e faz o apagamento:
 //
@@ -22,7 +23,7 @@
   const { abrirModal } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
-  const estado = { n: 0, comConta: false };
+  const estado = { n: null, comConta: false };   // n: null até o painel.js contar
   let apagarTudo = () => {};
   let partes = null;   // o conteúdo do card, montado uma vez e atualizado no lugar
 
@@ -48,15 +49,15 @@
    */
   function montar() {
     const alcance = elemento('span', 'cfg-nota');
-    const entrada = elemento('button', 'veio-botao veio-botao--perigo');
-    entrada.type = 'button';
+    const entrada = botao('veio-botao--perigo');
     entrada.id = 'btn-apagar-tudo';
     entrada.addEventListener('click', abrirConfirmacao);
 
-    porId('cfg-perigo-corpo').replaceChildren(elemento('div', 'cfg-linha',
+    const linha = elemento('div', 'cfg-linha',
       elemento('div', 'cfg-quem', elemento('b', 'cfg-nome', textoDaVoz('CFG-24.rotulo')), alcance),
-      elemento('div', 'cfg-acoes', entrada)));
-    return { alcance, entrada };
+      elemento('div', 'cfg-acoes', entrada));
+    porId('cfg-perigo-corpo').replaceChildren(linha);
+    return { linha, alcance, entrada };
   }
 
   function desenhar() {
@@ -64,6 +65,9 @@
     const { n, comConta } = estado;
 
     porId('cfg-perigo-descricao').textContent = textoDaVoz(comConta ? 'CFG-32.descricao' : 'CFG-32.descricaoSemConta');
+    partes.linha.hidden = n === null;
+    if (n === null) return;
+
     partes.alcance.textContent = n === 0
       ? textoDaVoz('CFG-24.nenhuma')
       : textoDaVoz(comConta ? 'CFG-24.alcance' : 'CFG-24.alcanceSemConta', { n });
@@ -79,16 +83,14 @@
   /** “Apagar todas as 1.284 frases?”, com Cancelar (foco inicial) e o perigo preenchido. */
   function abrirConfirmacao() {
     const { n, comConta } = estado;
-    if (n === 0) return;
+    if (!estado.n) return;
 
     const titulo = elemento('h2', 'veio-modal__titulo',
       n === 1 ? textoDaVoz('CFG-17.tituloUma') : textoDaVoz('CFG-17.titulo', { n }));
     titulo.id = 'cfg-perigo-modal-titulo';
-    const cancelar = elemento('button', 'veio-botao veio-botao--fantasma', textoDaVoz('CFG-17.cancelar'));
-    cancelar.type = 'button';
+    const cancelar = botao('veio-botao--fantasma', textoDaVoz('CFG-17.cancelar'));
     cancelar.dataset.focoSeguro = '';
-    const confirmar = elemento('button', 'veio-botao veio-botao--perigo-cheio', textoDaVoz('CFG-17.confirmar', { n }));
-    confirmar.type = 'button';
+    const confirmar = botao('veio-botao--perigo-cheio', textoDaVoz('CFG-17.confirmar', { n }));
 
     const dialogo = elemento('div', 'veio-modal', titulo,
       elemento('p', 'veio-modal__corpo', textoDaVoz(comConta ? 'CFG-17.corpo' : 'CFG-17.corpoSemConta')),
@@ -106,6 +108,12 @@
       modal.fechar();
       apagarTudo();
     });
+  }
+
+  function botao(variante, ...filhos) {
+    const no = elemento('button', `veio-botao ${variante}`, ...filhos);
+    no.type = 'button';
+    return no;
   }
 
   function elemento(tag, classe, ...filhos) {

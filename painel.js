@@ -755,9 +755,10 @@ async function removerFrasesFirestore(ids) {
 }
 
 // As frases deste computador ficam marcadas como apagadas antes de a nuvem ser
-// lida: com ela fora do ar, o sync seguinte não as traz de volta.
+// lida: com ela fora do ar, o sync seguinte não as traz de volta. Resolve com
+// true quando não há mais nada a apagar na nuvem (ou não há conta).
 async function apagarTudoFirestore(idsDesteComputador) {
-  if (!usuarioLogado) return;
+  if (!usuarioLogado) return true;
   marcarParaDeletarSync(idsDesteComputador);
   await marcarParaDeletar(idsDesteComputador);
   try {
@@ -768,9 +769,11 @@ async function apagarTudoFirestore(idsDesteComputador) {
     await gravarTombstoneFirestore(ids);
     await firestoreBatchDelete(ids);
     limparTombstone(ids);
+    return true;
   } catch (e) {
     console.error('[Firestore] apagar tudo falhou:', e);
     mostrarFalhaNaNuvem(e);
+    return false;
   }
 }
 
@@ -2074,12 +2077,14 @@ function apagarTudo() {
   Object.keys(keywords).forEach(k => delete keywords[k]);
   selecionadas.clear();
   atualizarContadorSelecao();
-  apagarTudoFirestore(ids);
-  chrome.storage.local.set({ frases: [] }, () => {
+  const naNuvem = apagarTudoFirestore(ids);
+  chrome.storage.local.set({ frases: [] }, async () => {
     atualizarTotal();
     paginaAtual = 1;
     aplicarFiltro();
-    mostrarToastDeSucesso(textoDaVoz('CFG-18'));
+    // CFG-18 só quando as frases sumiram de todo lugar que a Zona de perigo
+    // prometeu. Uma falha na nuvem aparece no card Conta & sync e no chip (Q4).
+    if (await naNuvem) mostrarToastDeSucesso(textoDaVoz('CFG-18'));
   });
 }
 
