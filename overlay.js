@@ -21,6 +21,10 @@
   const ESTILOS = ['veio/tokens.css', 'veio/componentes.css', 'overlay.css'];
   /** A pílula nunca corta a Palavra: frases maiores que isto começam perto dela. */
   const PREVIA_CURTA = 48;
+  /** A Palavra até este caractere já cabe na prévia: a frase começa do começo. */
+  const PALAVRA_PERTO_DO_COMECO = 28;
+  /** Quantos caracteres antes da Palavra a prévia guarda, para ela vir com contexto. */
+  const CONTEXTO_ANTES_DA_PALAVRA = 18;
 
   let host = null;
   let partes = null;
@@ -152,6 +156,11 @@
     contador.classList.toggle('pm-contador--limite', Boolean(contagem.noLimite));
   }
 
+  /** O nó é o host do overlay: o único que ele põe no DOM do site. */
+  function ehOHost(no) {
+    return no?.localName === TAG_DO_HOST;
+  }
+
   /** O botão existe na página (há um player). */
   function temBotao() {
     return Boolean(host?.isConnected && !partes.pilula.classList.contains('pm-pilula--livre'));
@@ -172,10 +181,11 @@
    * @param {string}   feedback.titulo        A frase do catálogo.
    * @param {string}   [feedback.frase]       A frase minerada, numa linha.
    * @param {string}   [feedback.palavra]     A Palavra a grifar na frase.
+   * @param {string}   [feedback.meta]        A meta no fim da pílula, em mono (o idioma: `EN`, `RU`).
    * @param {string}   [feedback.fechar]      O rótulo do × (obrigatório num erro).
    * @param {{rotulo: string, fazer: Function}} [feedback.acao] O botão ao lado (Tentar de novo).
    */
-  function mostrar({ tipo, icone, titulo, frase = '', palavra = '', fechar, acao }) {
+  function mostrar({ tipo, icone, titulo, frase = '', palavra = '', meta = '', fechar, acao }) {
     if (!temBotao()) posicionar(null);
     const { pilula, estado, acoes } = partes;
     const { Veio } = raiz;
@@ -193,6 +203,11 @@
       texto.append(linha);
     }
     estado.replaceChildren(circulo, texto);
+    if (meta) {
+      const sigla = elemento('span', 'pm-meta');
+      sigla.textContent = meta;
+      estado.append(sigla);
+    }
 
     acoes.replaceChildren();
     if (acao) {
@@ -232,15 +247,17 @@
   function previaEmVoltaDa(frase, palavra) {
     if (!palavra || frase.length <= PREVIA_CURTA) return frase;
     const posicao = raiz.Veio.posicaoDaPalavra(frase, palavra);
-    if (posicao < 28) return frase;
-    const corte = frase.lastIndexOf(' ', posicao - 18);
-    return '…' + frase.slice(corte > 0 ? corte + 1 : posicao - 18);
+    if (posicao < PALAVRA_PERTO_DO_COMECO) return frase;
+    const inicio = posicao - CONTEXTO_ANTES_DA_PALAVRA;
+    const corte = frase.lastIndexOf(' ', inicio);
+    return '…' + frase.slice(corte > 0 ? corte + 1 : inicio);
   }
 
   // Esc fecha uma falha aberta, e esse Esc é do overlay: o site não o recebe.
-  // Sem falha, o Esc é todo do site.
+  // Sem falha, ou digitado num campo do site, o Esc é todo do site.
   document.addEventListener('keydown', evento => {
     if (evento.key !== 'Escape' || !mostrandoFalha()) return;
+    if (raiz.Atalhos.digitandoNumCampo(evento)) return;
     evento.stopImmediatePropagation();
     fecharPilula();
   }, true);
@@ -248,6 +265,7 @@
   raiz.Overlay = {
     aoClicar,
     definirRotulo,
+    ehOHost,
     mostrar,
     mostrarBotao,
     mostrarContador,

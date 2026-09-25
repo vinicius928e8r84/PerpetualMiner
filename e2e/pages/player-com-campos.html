@@ -24,6 +24,22 @@
     <input id="campo" type="text" aria-label="Comentário">
     <textarea id="area" aria-label="Resposta"></textarea>
     <div id="editavel" contenteditable="true" aria-label="Nota"></div>
+    <campo-fechado></campo-fechado>
   </div>
+  <script>
+    // Um campo dentro de uma sombra fechada, como nos web components de muitos
+    // sites: o evento chega retargetado ao host, e só a página guarda o campo.
+    customElements.define('campo-fechado', class extends HTMLElement {
+      constructor() {
+        super();
+        const sombra = this.attachShadow({ mode: 'closed' });
+        const campo = document.createElement('input');
+        campo.type = 'text';
+        campo.setAttribute('aria-label', 'Busca');
+        sombra.append(campo);
+        window.campoFechado = campo;
+      }
+    });
+  </script>
 </body>
 </html>

@@ -31,9 +31,10 @@ let _autoMinerLastEvent = null;
 Atalhos.acompanharAtalhos(atalhos => {
   _atalhos = atalhos;
   const tecla = Atalhos.rotuloDoAtalho(atalhos.legenda);
+  const nome = textoDaVoz('MIN-07.semAtalho');
   Overlay.definirRotulo({
-    nome: textoDaVoz('MIN-07.semAtalho'),
-    comAtalho: tecla ? textoDaVoz('MIN-07.comAtalho', { atalho: tecla }) : textoDaVoz('MIN-07.semAtalho'),
+    nome,
+    comAtalho: tecla ? textoDaVoz('MIN-07.comAtalho', { atalho: tecla }) : nome,
   }, tecla);
 });
 
@@ -80,34 +81,27 @@ function _tomarOBotao(e) {
 }
 
 // Teclado — os dois atalhos deixam a digitação em paz: num campo de texto, a
-// tecla é da pessoa, não da extensão.
+// tecla é da pessoa, não da extensão. Sem nada selecionado numa página sem
+// vídeo, não há o que minerar (MIN-10); com um vídeo, o atalho não diz nada.
 document.addEventListener('keydown', (e) => {
   if (!Atalhos.correspondeAoAtalho(_atalhos.selecao, e)) return;
-  if (digitandoNumCampo(e)) return;
+  if (Atalhos.digitandoNumCampo(e)) return;
 
   const texto = window.getSelection()?.toString().trim();
-  if (!texto) return;
+  if (!texto) {
+    if (e.isTrusted) dizerSeNaoHaVideo();
+    return;
+  }
 
   e.preventDefault();
   _ativarCaptura(texto, e);
 }, true);
 
-/** O evento nasceu num campo onde se digita (input de texto, textarea, contenteditable). */
-function digitandoNumCampo(evento) {
-  const alvo = evento.composedPath?.()[0] || evento.target;
-  if (!(alvo instanceof Element)) return false;
-  if (alvo.isContentEditable) return true;
-  if (alvo.localName === 'textarea' || alvo.localName === 'select') return true;
-  if (alvo.localName !== 'input') return false;
-  const QUE_NAO_SE_DIGITA = ['button', 'checkbox', 'color', 'file', 'image', 'radio', 'range', 'reset', 'submit'];
-  return !QUE_NAO_SE_DIGITA.includes(alvo.type);
-}
-
 // Só a pessoa minera: quem pede uma captura passa o evento que a disparou, e um
 // evento sintético (disparado pela página) não conta.
 function _ativarCaptura(texto, evento) {
   if (!evento?.isTrusted) return;
-  minerarSelecao({
+  minerarCaptura({
     texto,
     origem:  'selecao',
     contexto: {
@@ -123,52 +117,69 @@ function _ativarCaptura(texto, evento) {
 // A pílula espera o service worker: só diz “minerada” depois que a frase foi
 // gravada, e só diz “copiada” depois que o clipboard aceitou.
 
-async function minerarSelecao(captura) {
-  const resposta = await salvarNoHistorico(captura);
+/**
+ * Grava a captura (a legenda também vai para o clipboard) e diz na pílula só o
+ * que aconteceu: MIN-01 gravou e copiou, MIN-02 gravou sem copiar, MIN-05 a
+ * seleção gravada. Se não gravou, MIN-03 fica até o ×, o Esc ou a próxima
+ * captura, e Tentar de novo repete com o mesmo texto.
+ */
+async function minerarCaptura(captura, { copia = false } = {}) {
+  const [copiou, resposta] = await Promise.all([copia && copiar(captura.texto), salvarNoHistorico(captura)]);
   if (!resposta?.ok) {
-    mostrarFalhaAoSalvar(captura, () => minerarSelecao(captura));
+    mostrarFalha('MIN-03.aviso', {
+      frase: captura.texto,
+      acao: { rotulo: textoDaVoz('MIN-03.tentarDeNovo'), fazer: () => minerarCaptura(captura, { copia }) },
+    });
     return;
   }
-  Overlay.mostrar({
-    tipo: 'sucesso',
-    icone: 'selecao',
-    titulo: textoDaVoz('MIN-05', { idioma: captura.idioma }),
+  const { idioma } = captura;
+  let titulo = textoDaVoz('MIN-05', { idioma });
+  if (copia) titulo = copiou ? textoDaVoz('MIN-01', { idioma }) : textoDaVoz('MIN-02');
+  mostrarSucesso({
+    icone: copia ? 'legenda' : 'selecao',
+    titulo,
     frase: captura.texto,
     palavra: palavraDe(resposta.frase),
+    idioma,
   });
 }
 
-async function minerarECopiarLegenda(captura) {
-  const [copiou, resposta] = await Promise.all([copiar(captura.texto), salvarNoHistorico(captura)]);
-  if (!resposta?.ok) {
-    mostrarFalhaAoSalvar(captura, () => minerarECopiarLegenda(captura));
-    return;
-  }
-  Overlay.mostrar({
-    tipo: 'sucesso',
-    icone: 'legenda',
-    titulo: copiou ? textoDaVoz('MIN-01', { idioma: captura.idioma }) : textoDaVoz('MIN-02'),
-    frase: captura.texto,
-    palavra: palavraDe(resposta.frase),
-  });
+/** Um sucesso na pílula, com a meta do idioma da captura (`EN`, `RU`). */
+function mostrarSucesso({ idioma, ...feedback }) {
+  Overlay.mostrar({ tipo: 'sucesso', meta: codigoDoIdioma(idioma).toUpperCase(), ...feedback });
 }
 
-/** MIN-03 fica até o ×, o Esc ou a próxima captura; Tentar de novo repete com o mesmo texto. */
-function mostrarFalhaAoSalvar(captura, tentarDeNovo) {
-  mostrarFalha('MIN-03.aviso', {
-    frase: captura.texto,
-    acao: { rotulo: textoDaVoz('MIN-03.tentarDeNovo'), fazer: tentarDeNovo },
-  });
-}
-
-/** MIN-04 e MIN-10: não havia o que minerar. */
-function mostrarNadaAMinerar(id) {
-  mostrarFalha(id);
-}
-
-/** Uma falha na pílula: ícone de alerta e o × (PAI-34). */
+/** Uma falha na pílula: ícone de alerta e o × (PAI-34). MIN-03, e MIN-04/MIN-10 quando não há o que minerar. */
 function mostrarFalha(id, extras = {}) {
   Overlay.mostrar({ tipo: 'erro', icone: 'alerta', titulo: textoDaVoz(id), fechar: textoDaVoz('PAI-34'), ...extras });
+}
+
+/**
+ * MIN-10, só quando nenhum frame da página tem vídeo: um player num iframe de
+ * outra origem não aparece neste frame, então os outros são perguntados antes.
+ */
+async function dizerSeNaoHaVideo() {
+  if (obterVideoAtivo() || await haVideoEmOutroFrame()) return;
+  mostrarFalha('MIN-10');
+}
+
+/** Se algum outro frame da aba tem vídeo, perguntado pelo service worker (TEM_VIDEO_NESTE_FRAME). */
+function haVideoEmOutroFrame() {
+  if (window === window.top && window.frames.length === 0) return Promise.resolve(false);
+  return new Promise(resolve => {
+    try {
+      chrome.runtime.sendMessage({ type: 'HA_VIDEO_EM_OUTRO_FRAME' }, resposta => {
+        resolve(!chrome.runtime.lastError && resposta?.temVideo === true);
+      });
+    } catch {
+      resolve(false);
+    }
+  });
+}
+
+/** O site, como a Frase grava a origem de uma legenda (`netflix`, `youtube`…). */
+function origemDaPagina() {
+  return window.location.hostname.replace('www.', '').split('.')[0];
 }
 
 /** O código de idioma que o service worker usa na mineração automática. */
@@ -234,11 +245,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
 });
 
+// O service worker pergunta, a pedido de outro frame, se este tem vídeo. Só quem
+// tem responde: sem resposta de nenhum frame, a página não tem vídeo.
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message?.type !== 'TEM_VIDEO_NESTE_FRAME' || sender.id !== chrome.runtime.id) return;
+    if (obterVideoAtivo()) sendResponse({ temVideo: true });
+});
+
 // ─── Atalho de legenda (teclado) ─────────────────────────────────────────────
 
 document.addEventListener('keydown', function(event) {
     if (!Atalhos.correspondeAoAtalho(_atalhos.legenda, event)) return;
-    if (digitandoNumCampo(event)) return;
+    if (Atalhos.digitandoNumCampo(event)) return;
     event.preventDefault();
     minerarLegenda(event);
 });
@@ -288,7 +306,7 @@ function processarAutoMinerLegenda() {
     chrome.runtime.sendMessage({
         type: 'AUTO_MINER_CANDIDATE',
         texto: normalizado,
-        origem: contexto?.fonte || window.location.hostname.replace('www.', '').split('.')[0] || 'auto',
+        origem: contexto?.fonte || origemDaPagina() || 'auto',
         contexto,
         lang: codigoDoIdioma(idioma),
     }, response => {
@@ -398,26 +416,13 @@ function registrarAutoMinerEvento(response, texto, idioma) {
     }
 }
 
-function rotuloAutoMinerReason(reason) {
-    return ({
-        daily_limit: 'limite diário',
-        disabled: 'idioma desligado',
-        duplicate: 'duplicada',
-        empty: 'vazia',
-        low_quality_text: 'texto inválido',
-        no_new_item: 'sem item novo',
-        not_i_plus_1: 'não é i+1',
-        too_long_en: 'inglês longo',
-    })[reason] || reason || 'desconhecido';
-}
-
 // MIN-06. A mineração automática não tira da tela uma falha que espera a pessoa.
 function mostrarNotificacaoAutoMiner(texto, idioma, response) {
     if (!Overlay.temBotao() || Overlay.mostrandoFalha()) return;
     const lang = codigoDoIdioma(idioma);
     const state = response.state;
-    Overlay.mostrar({
-        tipo: 'sucesso',
+    mostrarSucesso({
+        idioma,
         icone: 'automatica',
         titulo: textoDaVoz('MIN-06', {
             idioma,
@@ -434,20 +439,20 @@ function mostrarNotificacaoAutoMiner(texto, idioma, response) {
 function minerarLegenda(evento) {
     if (!evento?.isTrusted) return;
     if (!obterVideoAtivo()) {
-        mostrarNadaAMinerar('MIN-10');
+        dizerSeNaoHaVideo();
         return;
     }
     const texto = obterLegendaAtual();
     if (!texto || texto.length <= 2) {
-        mostrarNadaAMinerar('MIN-04');
+        mostrarFalha('MIN-04');
         return;
     }
-    minerarECopiarLegenda({
+    minerarCaptura({
         texto,
-        origem:   window.location.hostname.replace('www.', '').split('.')[0],
+        origem:   origemDaPagina(),
         contexto: extrairContexto(),
         idioma:   detectarIdioma(texto),
-    });
+    }, { copia: true });
 }
 
 function obterVideoAtivo() {
@@ -531,7 +536,7 @@ function textoPareceLegenda(texto) {
 }
 
 function elementoIgnoradoParaLegenda(el) {
-    if (!el || el.localName === 'perpetualminer-overlay') return true;
+    if (!el || Overlay.ehOHost(el)) return true;
     if (el.closest('button,a,input,textarea,select,[role="button"],[contenteditable="true"]')) return true;
     const style = window.getComputedStyle(el);
     return style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) === 0;

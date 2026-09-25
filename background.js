@@ -153,6 +153,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  // Um frame sem vídeo pergunta se outro frame da aba tem um (um player num iframe
+  // de outra origem), antes de dizer que a página não tem vídeo (MIN-10). Só um
+  // frame com vídeo responde; sem resposta, não há.
+  if (request.type === 'HA_VIDEO_EM_OUTRO_FRAME') {
+    if (sender.id !== chrome.runtime.id || sender.tab?.id == null) return;
+    chrome.tabs.sendMessage(sender.tab.id, { type: 'TEM_VIDEO_NESTE_FRAME' })
+      .then(resposta => sendResponse({ temVideo: resposta?.temVideo === true }))
+      .catch(() => sendResponse({ temVideo: false }));
+    return true;
+  }
+
   if (request.type === 'SALVAR_HISTORICO') {
     salvarFrase(
       request.texto,

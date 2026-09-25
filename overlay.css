@@ -114,6 +114,16 @@
   text-overflow: ellipsis;
 }
 
+/* A meta: o idioma da captura, em mono, no fim da pílula. */
+.pm-meta {
+  flex: none;
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-micro);
+  font-weight: var(--veio-peso-titulo);
+  color: var(--veio-muted);
+  white-space: nowrap;
+}
+
 .pm-acoes {
   display: flex;
   align-items: center;
