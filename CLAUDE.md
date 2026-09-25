@@ -181,15 +181,21 @@ The popup is the “Cockpit” variant A (`docs/design/popup/`), 340 px wide wit
 components and following the chosen theme. Top to bottom: the mark with no subtitle (POP-12); **Abrir painel** (POP-09),
 which focuses the panel tab that is already open (`chrome.tabs.query` ignores the `#address`, so the tab keeps the area
 the person left it on) or opens one; the **Mineração automática** tiles, Inglês | Russo (POP-10, POP-14, POP-15): a switch,
-“12 de 20 hoje” (POP-07), a meter and the 1–100 daily limit, which gives way to “Limite de hoje atingido · 20 de 20” (POP-08)
-once an enabled language hits it, and the ONB-10 note while the Conexão com o Anki does not answer `/health`; **quick
-mining** (POP-03/04): Enter or Minerar sends `SALVAR_HISTORICO` with Fonte `manual` and an empty Título; success has no
-text (POP-05: the field clears and the phrase enters the top with a brief highlight), failure shows POP-06 under the field
-with the cause in “Detalhes” and keeps the text; the **last 5**, read-only (POP-13), each the phrase with the Palavra
-(the first `keywords` group) highlighted and the Contexto line “Fonte · Título · Detalhe · dia”; skeleton while loading
-(POP-01) and the POP-02 empty state. The footer shows the recorded Minerar legenda shortcut (POP-11) with Mudar atalho,
-or “Sem atalho” and Definir atalho (GLB-02); both, and Definir atalho in the empty state, take the panel tab to
-`#configuracoes/atalhos`, and “Ver todas” to `#frases`. The popup does not delete, select or record anything.
+“12 de 20 hoje” (POP-07), a meter and the 1–100 daily limit, which gives way to “Limite de hoje atingido · 20 de 20” (POP-08,
+also the switch's accessible description) once an enabled language hits it, even while the limit field has focus; and the
+ONB-10 note while the Conexão com o Anki does not answer `/health`. The tiles show a skeleton until the service worker
+answers `AUTO_MINER_GET_STATE` (a `pm_auto_miner_state_view` that arrives first wins). If it fails, or a save
+(`AUTO_MINER_SET_SETTINGS`) fails, GLB-01 shows as a non-closable aviso with Detalhes and Tentar de novo (asks again, or
+sends the same save again); a failed save first redraws the tiles from what is stored, so the switch or the limit goes
+back. Enter in the limit field saves and keeps focus there; a redraw puts focus back on the same control (the switch, once
+the field gave way to POP-08). **Quick mining** (POP-03/04): Enter or Minerar sends `SALVAR_HISTORICO` with Fonte `manual`
+and an empty Título; success has no text (POP-05: the field clears and the phrase enters the top with a brief highlight),
+failure shows POP-06 under the field with the cause in “Detalhes” and keeps the text; the **last 5**, read-only (POP-13),
+each the phrase with the Palavra (the first `keywords` group) highlighted and the Contexto line “Fonte · Título · Detalhe ·
+dia”; skeleton while loading (POP-01) and the POP-02 empty state (with no shortcut, `POP-02.semAtalho` and Definir
+atalho). The footer shows the recorded Minerar legenda shortcut (POP-11) with Mudar atalho, or “Sem atalho” and Definir
+atalho (GLB-02); both, and Definir atalho in the empty state, take the panel tab to `#configuracoes/atalhos`, and “Ver
+todas” to `#frases`. The popup does not delete, select or record anything.
 
 ### Account (`painel-conta.js`)
 

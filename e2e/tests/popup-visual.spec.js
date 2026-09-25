@@ -67,7 +67,8 @@ test('primeiro uso: vazio que ensina o atalho', async ({ page, extensao }) => {
 test('primeiro uso sem atalho gravado', async ({ page, extensao }) => {
   await extensao.gravarStorage({ pm_atalho_legenda: null });
   await abrirPopup(page, extensao);
-  await expect(page.locator('#ultimas kbd')).toHaveText('Sem atalho');
+  await expect(page.locator('#ultimas')).toContainText('Defina um atalho para minerar legendas de vídeo.');
+  await expect(page.getByRole('contentinfo').locator('kbd')).toHaveText('Sem atalho');
   await expect(page).toHaveScreenshot('popup-sem-atalho.png');
 });
 

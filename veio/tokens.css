@@ -136,6 +136,8 @@
   --veio-altura-frase: 1.5;
 
   /* ── Forma ── */
+  /* O losango que abre o título de seção do popup. */
+  --veio-raio-losango: 2px;
   --veio-raio-checkbox: 6px;
   --veio-raio-tecla: 5px;
   /* A tecla (kbd) como a desenham os protótipos de Frases e de Configurações. */

@@ -77,7 +77,7 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
 | POP-01 | Lista das últimas carregando **(some)** | loading | Carregando... | _(sem texto)_ | Espera curta: sem texto, só esqueleto (C3). |
-| POP-02 | Nenhuma frase (1º uso) | vazio | Nenhuma frase salva ainda. | Nenhuma frase ainda. Aperte Alt+S num vídeo com legenda para minerar a primeira. | Mostra o atalho que estiver configurado de fato. Sem atalho gravado: GLB-02. |
+| POP-02 | Nenhuma frase (1º uso) | vazio | Nenhuma frase salva ainda. | Nenhuma frase ainda. Aperte Alt+S num vídeo com legenda para minerar a primeira. | Mostra o atalho que estiver configurado de fato. Sem atalho gravado, a segunda frase vira “Defina um atalho para minerar legendas de vídeo.” (`POP-02.semAtalho`, da spec do popup), com a ação “Definir atalho” de GLB-02. |
 | POP-03 | Campo da mineração rápida | status | Cole ou escreva uma frase… | Cole ou escreva uma frase | Placeholder não é andamento: sem “…” (V7). |
 | POP-04 | Botão da mineração rápida | status | Adicionar | Minerar |  |
 | POP-05 | Mineração rápida deu certo **(novo)** | sucesso | (nada) | _(sem texto)_ | O campo limpa e a frase aparece no topo das últimas. É visível, então fica sem toast (C4). |
@@ -320,5 +320,5 @@ A página não existe hoje: todas as linhas são novas. V10 permite o nome do pr
 
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
-| GLB-01 | Erro sem tradução conhecida | erro | <err.message cru> | Algo deu errado. Tente de novo. | Último recurso, sempre com Detalhes. Todo erro conhecido tem cópia própria acima. |
-| GLB-02 | Atalho “Minerar legenda” vazio **(novo)** | status | (Alt+S fixo, não dá para esvaziar) | Sem atalho · [Definir atalho] | Onde a cópia supõe Alt+S (POP-02, POP-11, PAI-02, ONB-05), sem atalho gravado a tecla dá lugar a “Sem atalho” e à ação “Definir atalho”, que abre `#configuracoes/atalhos` (na Boas-vindas, leva ao passo 2 da própria página, onde está o gravador). |
+| GLB-01 | Erro sem tradução conhecida | erro | <err.message cru> | Algo deu errado. Tente de novo. · [Tentar de novo] | Último recurso, sempre com Detalhes. Todo erro conhecido tem cópia própria acima. |
+| GLB-02 | Atalho “Minerar legenda” vazio **(novo)** | status | (Alt+S fixo, não dá para esvaziar) | Sem atalho · [Definir atalho] | Onde a cópia supõe Alt+S (POP-11, PAI-02, ONB-05; POP-02 tem frase própria), sem atalho gravado a tecla dá lugar a “Sem atalho” e à ação “Definir atalho”, que abre `#configuracoes/atalhos` (na Boas-vindas, leva ao passo 2 da própria página, onde está o gravador). |

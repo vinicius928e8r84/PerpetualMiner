@@ -4,7 +4,7 @@
 // carregada antes pelo popup.html: o catálogo da Voz, os componentes da Veio,
 // o detector de idioma, os atalhos gravados e o Contexto da frase.
 const { detectarIdioma, IDIOMAS, textoDaVoz, Atalhos } = PerpetualMiner;
-const { iconeVeio, escreverFrase, montarTecla, montarDetalhes } = PerpetualMiner.Veio;
+const { iconeVeio, escreverFrase, montarTecla, montarDetalhes, montarAviso } = PerpetualMiner.Veio;
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
 
 const QUANTAS_ULTIMAS = 5;
@@ -52,10 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (frases) desenharUltimas();
   });
 
-  chrome.runtime.sendMessage({ type: 'AUTO_MINER_GET_STATE' }, resposta => {
-    if (chrome.runtime.lastError || !resposta?.state) return;
-    mostrarMineracaoAutomatica(resposta.state);
-  });
+  pedirEstadoDaAutomatica();
 
   chrome.storage.onChanged.addListener((mudancas, area) => {
     if (area !== 'local') return;
@@ -108,18 +105,93 @@ function abrirPainel(endereco = '') {
 
 // ─── Mineração automática ─────────────────────────────────────────────────────
 
+/** Pede o estado ao service worker, com o esqueleto (POP-01) enquanto ele não responde. */
+function pedirEstadoDaAutomatica() {
+  const azulejos = porId('azulejos');
+  azulejos.setAttribute('aria-busy', 'true');
+  azulejos.replaceChildren(...IDIOMAS_DA_MINERACAO.map(() => {
+    const esqueleto = criar('div', 'veio-azulejo popup-azulejo--esqueleto');
+    esqueleto.setAttribute('aria-hidden', 'true');
+    esqueleto.append(...linhasDeEsqueleto());
+    return esqueleto;
+  }));
+
+  chrome.runtime.sendMessage({ type: 'AUTO_MINER_GET_STATE' }, resposta => {
+    const falha = causaDaFalha(resposta);
+    // Um estado publicado enquanto isso (`pm_auto_miner_state_view`) é mais novo que esta resposta.
+    if (mineracaoAutomatica) return;
+    if (falha || !resposta.state) {
+      mostrarFalhaDaAutomatica(falha || JSON.stringify(resposta), pedirEstadoDaAutomatica);
+      return;
+    }
+    mostrarMineracaoAutomatica(resposta.state);
+  });
+}
+
+/**
+ * GLB-01 sob os azulejos (ou no lugar deles, se o estado nunca chegou), com a
+ * causa em Detalhes e Tentar de novo. É o aviso de um estado: sem ×, sai no
+ * próximo estado que o service worker publicar.
+ */
+function mostrarFalhaDaAutomatica(causa, tentarDeNovo) {
+  const azulejos = porId('azulejos');
+  azulejos.removeAttribute('aria-busy');
+  azulejos.querySelectorAll('.popup-azulejo--esqueleto, .popup-azulejos__falha').forEach(no => no.remove());
+  const aviso = montarAviso({
+    texto: textoDaVoz('GLB-01.aviso'),
+    acao: { rotulo: textoDaVoz('GLB-01.tentarDeNovo'), aoUsar: tentarDeNovo },
+    detalhes: String(causa),
+    fechavel: false,
+  });
+  aviso.classList.add('popup-azulejos__falha');
+  azulejos.append(aviso);
+}
+
 function mostrarMineracaoAutomatica(estado) {
   mineracaoAutomatica = estado;
   const azulejos = porId('azulejos');
-  // Redesenhar tiraria o foco (e o que está sendo digitado) do campo de limite.
-  const foco = document.activeElement?.closest?.('.popup-azulejo')?.dataset.idioma;
-  const focoNoLimite = document.activeElement?.classList.contains('popup-azulejo__campo');
-  if (focoNoLimite) {
-    atualizarAzulejosSemOCampo();
-    return;
-  }
-  azulejos.replaceChildren(...IDIOMAS_DA_MINERACAO.map(montarAzulejo));
-  if (foco) azulejos.querySelector(`[data-idioma="${foco}"] input[type="checkbox"]`)?.focus();
+  azulejos.removeAttribute('aria-busy');
+  const foco = ondeEstaOFoco();
+
+  trocarAzulejos(azulejos, IDIOMAS_DA_MINERACAO.map(({ chave, idioma }) => {
+    const numeros = numerosDoIdioma(chave);
+    // Redesenhar tiraria o foco (e o que está sendo digitado) do campo de limite:
+    // esse azulejo muda no lugar, a não ser que o campo dê lugar a POP-08.
+    if (foco.noCampo && foco.chave === chave && !numeros.atingiuOLimite) {
+      const atual = azulejos.querySelector(`.popup-azulejo[data-idioma="${chave}"]`);
+      preencherAzulejo(atual, numeros);
+      return atual;
+    }
+    return montarAzulejo(chave, idioma, numeros);
+  }));
+
+  devolverOFoco(azulejos, foco);
+}
+
+/** O azulejo e o controle com o foco, para devolvê-lo depois de redesenhar. */
+function ondeEstaOFoco() {
+  const ativo = document.activeElement;
+  return {
+    chave: ativo?.closest?.('.popup-azulejo')?.dataset.idioma,
+    noCampo: Boolean(ativo?.classList.contains('popup-azulejo__campo')),
+  };
+}
+
+/** Deixa em `azulejos` só os `novos`, em ordem, sem tirar do DOM o que já está lá (perderia o foco). */
+function trocarAzulejos(azulejos, novos) {
+  for (const velho of [...azulejos.children]) if (!novos.includes(velho)) velho.remove();
+  novos.forEach((azulejo, i) => {
+    if (azulejos.children[i] !== azulejo) azulejos.insertBefore(azulejo, azulejos.children[i] || null);
+  });
+}
+
+/** O foco que estava num azulejo redesenhado volta ao mesmo controle; sem o campo (agora POP-08), ao toggle. */
+function devolverOFoco(azulejos, foco) {
+  if (!foco.chave || azulejos.contains(document.activeElement)) return;
+  const azulejo = azulejos.querySelector(`.popup-azulejo[data-idioma="${foco.chave}"]`);
+  const alvo = (foco.noCampo && azulejo?.querySelector('.popup-azulejo__campo'))
+    || azulejo?.querySelector('input[type="checkbox"]');
+  alvo?.focus();
 }
 
 function numerosDoIdioma(chave) {
@@ -127,16 +199,15 @@ function numerosDoIdioma(chave) {
   // O service worker devolve o limite já normalizado (1–100, com o padrão dele).
   const limite = ajustes.dailyLimit;
   const n = mineracaoAutomatica.daily?.[chave]?.count || 0;
-  return { ligado: Boolean(ajustes.enabled), limite, n, noLimite: n >= limite };
+  const ligado = Boolean(ajustes.enabled);
+  return { ligado, limite, n, atingiuOLimite: ligado && n >= limite };
 }
 
-function montarAzulejo({ chave, idioma }) {
-  const { ligado, limite, n, noLimite } = numerosDoIdioma(chave);
+function montarAzulejo(chave, idioma, numeros) {
   const idiomaNaFrase = idioma.toLowerCase();
 
   const azulejo = criar('div', 'veio-azulejo popup-azulejo');
   azulejo.dataset.idioma = chave;
-  azulejo.classList.toggle('veio-azulejo--escolhido', ligado);
 
   const topo = criar('div', 'popup-azulejo__topo');
   const codigo = criar('b', 'popup-azulejo__codigo', textoDaVoz(`POP-15.${chave}`));
@@ -145,28 +216,39 @@ function montarAzulejo({ chave, idioma }) {
   const caixa = criar('input');
   caixa.type = 'checkbox';
   caixa.setAttribute('role', 'switch');
-  caixa.checked = ligado;
   caixa.setAttribute('aria-label', textoDaVoz('POP-14.ligar', { idioma: idiomaNaFrase }));
   caixa.addEventListener('change', () => salvarMineracaoAutomatica({ [chave]: { enabled: caixa.checked } }));
   toggle.append(caixa, criar('span', 'veio-toggle__trilho'));
   topo.append(codigo, toggle);
 
-  const contador = criar('p', 'popup-azulejo__contador', textoDaVoz('POP-07', { n, limite }));
   const medidor = criar('div', 'veio-medidor');
   medidor.setAttribute('aria-hidden', 'true');
-  const preenchido = criar('i');
-  preenchido.style.width = larguraDoMedidor(n, limite);
-  medidor.append(preenchido);
+  medidor.append(criar('i'));
 
-  azulejo.append(topo, contador, medidor);
+  azulejo.append(topo, criar('p', 'popup-azulejo__contador'), medidor);
 
-  // No limite, o campo dá lugar a POP-08: a mineração do dia acabou.
-  if (ligado && noLimite) {
-    azulejo.append(criar('p', 'popup-azulejo__no-limite', textoDaVoz('POP-08', { n, limite })));
+  // No limite, o campo dá lugar a POP-08: a mineração do dia acabou. O toggle
+  // o tem como descrição, para o leitor de tela dizê-lo quando o foco chega ali.
+  const { n, limite } = numeros;
+  if (numeros.atingiuOLimite) {
+    const noLimite = criar('p', 'popup-azulejo__no-limite', textoDaVoz('POP-08', { n, limite }));
+    noLimite.id = `no-limite-${chave}`;
+    caixa.setAttribute('aria-describedby', noLimite.id);
+    azulejo.append(noLimite);
   } else {
     azulejo.append(montarLimite(chave, idiomaNaFrase, limite));
   }
+
+  preencherAzulejo(azulejo, numeros);
   return azulejo;
+}
+
+/** O que muda com o dia: ligado, o contador POP-07 e o medidor. O campo de limite fica como está. */
+function preencherAzulejo(azulejo, { ligado, limite, n }) {
+  azulejo.classList.toggle('veio-azulejo--escolhido', ligado);
+  azulejo.querySelector('input[type="checkbox"]').checked = ligado;
+  azulejo.querySelector('.popup-azulejo__contador').textContent = textoDaVoz('POP-07', { n, limite });
+  azulejo.querySelector('.veio-medidor > i').style.width = `${Math.min(100, Math.round((n / limite) * 100))}%`;
 }
 
 function montarLimite(chave, idiomaNaFrase, limite) {
@@ -179,19 +261,33 @@ function montarLimite(chave, idiomaNaFrase, limite) {
   campo.inputMode = 'numeric';
   campo.value = String(limite);
   campo.setAttribute('aria-label', textoDaVoz('POP-14.limiteDoIdioma', { idioma: idiomaNaFrase }));
-  campo.addEventListener('change', () => {
-    const valor = Number(campo.value);
-    // O service worker prende o limite entre 1 e 100; um campo vazio volta ao que estava.
+
+  let pedido = null;
+  const gravar = () => {
+    const gravado = numerosDoIdioma(chave).limite;
+    const valor = Math.round(Number(campo.value));
+    // Um campo vazio volta ao que estava.
     if (!campo.value.trim() || Number.isNaN(valor)) {
-      campo.value = String(limite);
+      campo.value = String(gravado);
       return;
     }
-    salvarMineracaoAutomatica({ [chave]: { dailyLimit: Math.round(valor) } }, () => campo.blur());
-  });
+    // Enter e o `change` que vem depois dele pedem a mesma gravação uma vez só.
+    if (valor === gravado || valor === pedido) return;
+    pedido = valor;
+    salvarMineracaoAutomatica({ [chave]: { dailyLimit: valor } }, () => {
+      pedido = null;
+      // O service worker prende o limite entre 1 e 100: o campo mostra o que ficou gravado.
+      if (campo.isConnected) campo.value = String(numerosDoIdioma(chave).limite);
+    });
+  };
+  campo.addEventListener('change', gravar);
+  // Enter grava e o foco fica no campo, para o teclado seguir de onde estava.
   campo.addEventListener('keydown', evento => {
-    // Sair do campo dispara o `change` uma vez só, como ao clicar fora.
-    if (evento.key === 'Enter') campo.blur();
+    if (evento.key !== 'Enter') return;
+    evento.preventDefault();
+    gravar();
   });
+
   const rotuloAntes = criar('span', '', textoDaVoz('POP-14.limite'));
   const rotuloDepois = criar('span', '', textoDaVoz('POP-14.dia'));
   rotuloAntes.setAttribute('aria-hidden', 'true');
@@ -200,29 +296,18 @@ function montarLimite(chave, idiomaNaFrase, limite) {
   return linha;
 }
 
-function larguraDoMedidor(n, limite) {
-  return `${Math.min(100, Math.round((n / limite) * 100))}%`;
-}
-
-/** Enquanto a pessoa digita um limite, só o contador e o medidor mudam. */
-function atualizarAzulejosSemOCampo() {
-  for (const { chave } of IDIOMAS_DA_MINERACAO) {
-    const azulejo = porId('azulejos').querySelector(`[data-idioma="${chave}"]`);
-    if (!azulejo) continue;
-    const { ligado, limite, n } = numerosDoIdioma(chave);
-    azulejo.classList.toggle('veio-azulejo--escolhido', ligado);
-    azulejo.querySelector('input[type="checkbox"]').checked = ligado;
-    azulejo.querySelector('.popup-azulejo__contador').textContent = textoDaVoz('POP-07', { n, limite });
-    azulejo.querySelector('.veio-medidor > i').style.width = larguraDoMedidor(n, limite);
-  }
-}
-
 /** Grava só o que mudou num idioma; o service worker junta com o resto. */
 function salvarMineracaoAutomatica(mudanca, depois) {
   chrome.runtime.sendMessage({ type: 'AUTO_MINER_SET_SETTINGS', settings: mudanca }, resposta => {
+    const falha = causaDaFalha(resposta) || (resposta.state ? null : JSON.stringify(resposta));
+    if (falha) {
+      // Nada foi gravado: os azulejos voltam ao que está gravado, e o aviso grava de novo.
+      mostrarMineracaoAutomatica(mineracaoAutomatica);
+      mostrarFalhaDaAutomatica(falha, () => salvarMineracaoAutomatica(mudanca, depois));
+    } else {
+      mostrarMineracaoAutomatica(resposta.state);
+    }
     if (depois) depois();
-    if (chrome.runtime.lastError || !resposta?.state) return;
-    mostrarMineracaoAutomatica(resposta.state);
   });
 }
 
@@ -278,8 +363,7 @@ function minerarFraseRapida() {
     contexto: { fonte: 'manual', titulo: '', detalhe: '' },
   }, resposta => {
     minerando = false;
-    // A causa técnica vai para o Detalhes: a mensagem do Chrome ou a resposta crua.
-    const falha = chrome.runtime.lastError?.message || (resposta?.ok ? null : resposta?.error || JSON.stringify(resposta));
+    const falha = causaDaFalha(resposta);
     if (falha) {
       // POP-06: o texto fica no campo, para tentar de novo.
       mostrarErro(falha);
@@ -321,7 +405,7 @@ function desenharUltimas() {
     for (let i = 0; i < QUANTAS_ULTIMAS; i++) {
       const linha = criar('li', 'popup-ultima popup-ultima--esqueleto');
       linha.setAttribute('aria-hidden', 'true');
-      linha.append(criar('div', 'veio-esqueleto'), criar('div', 'veio-esqueleto popup-ultima__esqueleto-curto'));
+      linha.append(...linhasDeEsqueleto());
       lista.append(linha);
     }
     lugar.replaceChildren(lista);
@@ -384,14 +468,17 @@ function linhaDoContexto(f) {
     .join(' · ');
 }
 
-/** POP-02: o vazio ensina o atalho gravado; sem atalho, “Sem atalho” e Definir atalho (GLB-02). */
+/** POP-02: o vazio ensina o atalho gravado; sem atalho, pede um, com Definir atalho (GLB-02). */
 function montarVazio() {
   const vazio = criar('div', 'veio-vazio popup-vazio');
   const texto = criar('p', 'veio-vazio__texto');
-  const [antes, depois] = textoDaVoz('POP-02', { atalho: MARCA_DO_ATALHO }).split(MARCA_DO_ATALHO);
-  texto.append(antes, teclaDaLegenda(), depois);
   vazio.append(texto);
-  if (!atalhoDeLegenda) vazio.append(botaoDosAtalhos(textoDaVoz('GLB-02.definir'), 'veio-botao--contorno'));
+  if (atalhoDeLegenda) {
+    texto.append(...copiaComATecla('POP-02.atalho'));
+  } else {
+    texto.textContent = textoDaVoz('POP-02.semAtalho');
+    vazio.append(botaoDosAtalhos(textoDaVoz('GLB-02.definir'), 'veio-botao--contorno'));
+  }
   return vazio;
 }
 
@@ -404,10 +491,15 @@ function desenharRodape() {
     rodape.replaceChildren(teclaDaLegenda(), botaoDosAtalhos(textoDaVoz('GLB-02.definir')));
     return;
   }
-  const [antes, depois] = textoDaVoz('POP-11.atalho', { atalho: MARCA_DO_ATALHO }).split(MARCA_DO_ATALHO);
   const frase = criar('span', 'popup-rodape__texto');
-  frase.append(antes, teclaDaLegenda(), depois);
+  frase.append(...copiaComATecla('POP-11.atalho'));
   rodape.replaceChildren(frase, botaoDosAtalhos(textoDaVoz('POP-11.mudar')));
+}
+
+/** A cópia `id` com o atalho de legenda no lugar de `{atalho}`, como tecla. */
+function copiaComATecla(id) {
+  const [antes, depois] = textoDaVoz(id, { atalho: MARCA_DO_ATALHO }).split(MARCA_DO_ATALHO);
+  return [antes, teclaDaLegenda(), depois];
 }
 
 function teclaDaLegenda() {
@@ -422,6 +514,19 @@ function botaoDosAtalhos(rotulo, variante = 'veio-botao--fantasma') {
 }
 
 // ─── Utilidades ───────────────────────────────────────────────────────────────
+
+/** A causa técnica de uma resposta do service worker que falhou, para o Detalhes; null se deu certo. */
+function causaDaFalha(resposta) {
+  if (chrome.runtime.lastError) return chrome.runtime.lastError.message;
+  if (resposta?.ok) return null;
+  // Sem resposta nenhuma, `JSON.stringify(undefined)` seria `undefined` e passaria por sucesso.
+  return resposta?.error || JSON.stringify(resposta ?? null);
+}
+
+/** O esqueleto sem texto (POP-01): uma linha inteira e uma curta. */
+function linhasDeEsqueleto() {
+  return [criar('div', 'veio-esqueleto'), criar('div', 'veio-esqueleto popup-esqueleto-curto')];
+}
 
 function criar(tag, classe, texto) {
   const no = document.createElement(tag);

@@ -239,12 +239,13 @@ test('vazio (POP-02) ensina o atalho de legenda gravado', async ({ page, extensa
   await expect(page.getByRole('button', { name: 'Ver todas' })).toHaveCount(0);
 });
 
-test('vazio sem atalho gravado: “Sem atalho” e Definir atalho, que abre Configurações › Atalhos', async ({ page, context, extensao }) => {
+test('vazio sem atalho gravado: “Defina um atalho…” e Definir atalho, que abre Configurações › Atalhos', async ({ page, context, extensao }) => {
   await extensao.gravarStorage({ pm_atalho_legenda: null });
   await page.goto(extensao.url('popup.html'));
 
   const vazio = page.locator('#ultimas');
-  await expect(vazio.locator('kbd')).toHaveText('Sem atalho');
+  await expect(vazio.locator('p')).toHaveText('Nenhuma frase ainda. Defina um atalho para minerar legendas de vídeo.');
+  await expect(vazio.locator('kbd')).toHaveCount(0);
 
   const nova = context.waitForEvent('page');
   await vazio.getByRole('button', { name: 'Definir atalho' }).click();
@@ -326,6 +327,136 @@ test('os azulejos Inglês | Russo mostram o dia, e o toggle e o limite gravam', 
   await expect(limite).toHaveValue('100');
 });
 
+test('Enter no limite grava e o foco do teclado fica no campo', async ({ page, extensao }) => {
+  await semearMineracaoAutomatica(extensao, {
+    en: { ligado: true, limite: 20, hoje: 12 },
+    ru: { ligado: true, limite: 15, hoje: 0 },
+  });
+  await page.goto(extensao.url('popup.html'));
+
+  const limite = page.getByRole('spinbutton', { name: 'Limite por dia em russo' });
+  await limite.fill('30');
+  await limite.press('Enter');
+  await expect(page.locator('.popup-azulejo[data-idioma="ru"]')).toContainText('0 de 30 hoje');
+  await expect(limite).toBeFocused();
+
+  // Baixar o limite até a contagem troca o campo por POP-08 (o service worker
+  // prende a contagem no limite novo): o foco vai ao toggle do idioma.
+  const limiteEn = page.getByRole('spinbutton', { name: 'Limite por dia em inglês' });
+  await limiteEn.fill('10');
+  await limiteEn.press('Enter');
+  await expect(page.locator('.popup-azulejo[data-idioma="en"]')).toContainText('Limite de hoje atingido · 10 de 10');
+  await expect(page.getByRole('switch', { name: 'Mineração automática em inglês' })).toBeFocused();
+});
+
+test('o limite atingido enquanto a pessoa está no campo troca o campo por POP-08', async ({ page, extensao }) => {
+  await semearMineracaoAutomatica(extensao, {
+    en: { ligado: true, limite: 20, hoje: 19 },
+    ru: { ligado: true, limite: 15, hoje: 4 },
+  });
+  await page.goto(extensao.url('popup.html'));
+  const en = page.locator('.popup-azulejo[data-idioma="en"]');
+  await expect(en).toContainText('19 de 20 hoje');
+  await page.getByRole('spinbutton', { name: 'Limite por dia em russo' }).focus();
+  await page.getByRole('spinbutton', { name: 'Limite por dia em inglês' }).focus();
+
+  // A mineração automática chega ao limite do inglês com o campo em foco.
+  const estado = await extensao.serviceWorker.evaluate(async () => {
+    const { pm_auto_miner_state_view: visto } = await chrome.storage.local.get('pm_auto_miner_state_view');
+    return visto;
+  });
+  const settings = estado?.settings || { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 15 } };
+  const daily = { ...(estado?.daily || {}), en: { count: 20 }, ru: { count: 4 } };
+  await extensao.gravarStorage({ pm_auto_miner_state_view: { settings, daily, updatedAt: Date.now() } });
+
+  await expect(en).toContainText('Limite de hoje atingido · 20 de 20');
+  await expect(page.getByRole('spinbutton', { name: 'Limite por dia em inglês' })).toHaveCount(0);
+});
+
+test('mineração automática carregando: esqueleto nos azulejos, sem texto', async ({ page, extensao }) => {
+  // Segura a leitura do estado no service worker, como um disco lento. Como na
+  // falha da mineração rápida, o falso fica na fronteira de armazenamento do
+  // service worker (`chrome.storage.local.get`), não numa função da extensão.
+  await extensao.serviceWorker.evaluate(() => {
+    const ler = chrome.storage.local.get.bind(chrome.storage.local);
+    chrome.storage.local.get = (chaves, callback) => {
+      if (chaves && typeof chaves === 'object' && 'pm_auto_miner_settings' in chaves) {
+        globalThis.soltarLeitura = () => ler(chaves, callback);
+        return undefined;
+      }
+      return ler(chaves, callback);
+    };
+  });
+  await page.goto(extensao.url('popup.html'));
+
+  const azulejos = page.locator('#azulejos');
+  await expect(azulejos.locator('.veio-esqueleto')).not.toHaveCount(0);
+  await expect(azulejos).toHaveText('');
+  await expect(azulejos).toHaveAttribute('aria-busy', 'true');
+
+  await extensao.serviceWorker.evaluate(() => globalThis.soltarLeitura());
+  await expect(page.locator('.popup-azulejo')).toHaveCount(2);
+  await expect(azulejos.locator('.veio-esqueleto')).toHaveCount(0);
+  await expect(azulejos).not.toHaveAttribute('aria-busy', 'true');
+});
+
+test('mineração automática sem o estado do service worker: GLB-01 com Detalhes, e Tentar de novo traz os azulejos', async ({ page, extensao }) => {
+  await semearMineracaoAutomatica(extensao, {
+    en: { ligado: true, limite: 20, hoje: 3 },
+    ru: { ligado: false, limite: 20, hoje: 0 },
+  });
+  // O disco recusa a leitura do estado, na fronteira de armazenamento do service worker.
+  await extensao.serviceWorker.evaluate(() => {
+    globalThis.lerDeVerdade = chrome.storage.local.get.bind(chrome.storage.local);
+    chrome.storage.local.get = (chaves, callback) => {
+      if (chaves && typeof chaves === 'object' && 'pm_auto_miner_settings' in chaves) {
+        throw new Error('IO error: disco ilegível');
+      }
+      return globalThis.lerDeVerdade(chaves, callback);
+    };
+  });
+  await page.goto(extensao.url('popup.html'));
+
+  const erro = page.locator('#azulejos').getByRole('alert');
+  await expect(erro).toContainText('Algo deu errado. Tente de novo.');
+  await erro.getByText('Detalhes').click();
+  await expect(erro).toContainText('IO error: disco ilegível');
+
+  // O disco volta: Tentar de novo pede o estado outra vez e os azulejos aparecem.
+  await extensao.serviceWorker.evaluate(() => { chrome.storage.local.get = globalThis.lerDeVerdade; });
+  await erro.getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect(page.locator('.popup-azulejo[data-idioma="en"]')).toContainText('3 de 20 hoje');
+  await expect(page.locator('#azulejos').getByRole('alert')).toHaveCount(0);
+});
+
+test('gravar a mineração automática falhando: o toggle volta ao gravado, GLB-01 aparece, e Tentar de novo grava', async ({ page, extensao }) => {
+  await semearMineracaoAutomatica(extensao, {
+    en: { ligado: true, limite: 20, hoje: 3 },
+    ru: { ligado: false, limite: 15, hoje: 0 },
+  });
+  await page.goto(extensao.url('popup.html'));
+  const russo = page.getByRole('switch', { name: 'Mineração automática em russo' });
+  await expect(russo).not.toBeChecked();
+
+  // O disco recusa a gravação, na fronteira de armazenamento do service worker.
+  await extensao.serviceWorker.evaluate(() => {
+    globalThis.gravarDeVerdade = chrome.storage.local.set.bind(chrome.storage.local);
+    chrome.storage.local.set = () => { throw new Error('QUOTA_BYTES quota exceeded'); };
+  });
+  await page.locator('.popup-azulejo[data-idioma="ru"] .veio-toggle__trilho').click();
+
+  const erro = page.locator('#azulejos').getByRole('alert');
+  await expect(erro).toContainText('Algo deu errado. Tente de novo.');
+  await expect(russo).not.toBeChecked();
+  await expect(page.locator('.popup-azulejo')).toHaveCount(2);
+
+  await extensao.serviceWorker.evaluate(() => { chrome.storage.local.set = globalThis.gravarDeVerdade; });
+  await erro.getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect(russo).toBeChecked();
+  await expect(page.locator('#azulejos').getByRole('alert')).toHaveCount(0);
+  await expect.poll(async () => (await extensao.lerStorage('pm_auto_miner_settings')).pm_auto_miner_settings.ru.enabled).toBe(true);
+});
+
 test('limite de hoje atingido: “Limite de hoje atingido · 20 de 20” no lugar do campo', async ({ page, extensao }) => {
   await semearMineracaoAutomatica(extensao, {
     en: { ligado: true, limite: 20, hoje: 20 },
@@ -337,6 +468,9 @@ test('limite de hoje atingido: “Limite de hoje atingido · 20 de 20” no luga
   await expect(en).toContainText('Limite de hoje atingido · 20 de 20');
   await expect(page.getByRole('spinbutton', { name: 'Limite por dia em inglês' })).toHaveCount(0);
   await expect(page.getByRole('spinbutton', { name: 'Limite por dia em russo' })).toHaveValue('15');
+  // O leitor de tela ouve POP-08 ao chegar no toggle do idioma.
+  await expect(page.getByRole('switch', { name: 'Mineração automática em inglês' }))
+    .toHaveAccessibleDescription('Limite de hoje atingido · 20 de 20');
 });
 
 test('com a Conexão com o Anki desligada, a nota ONB-10 aparece sob os azulejos', async ({ page, extensao, fakes }) => {
@@ -393,4 +527,65 @@ test('todo controle do popup tem nome para o leitor de tela', async ({ page, ext
     })
     .map(no => no.outerHTML));
   expect(semNome).toEqual([]);
+});
+
+test('o Tab passa por todos os controles do popup, em ordem, e cada um mostra o foco', async ({ page, extensao }) => {
+  // Sem transição, o estilo lido é o final, não um quadro do meio do anel.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await semearMineracaoAutomatica(extensao, {
+    en: { ligado: true, limite: 20, hoje: 12 },
+    ru: { ligado: false, limite: 15, hoje: 0 },
+  });
+  await extensao.gravarStorage({ frases: SETE_FRASES, pm_atalho_legenda: ALT_S });
+  await page.goto(extensao.url('popup.html'));
+  await expect(ultimas(page)).toHaveCount(5);
+  await expect(page.locator('.popup-azulejo')).toHaveCount(2);
+  await campoRapido(page).fill('Break a leg');
+  // Volta pelo teclado até o primeiro controle, para cada parada chegar pelo Tab.
+  const abrir = page.getByRole('button', { name: 'Abrir painel' });
+  for (let i = 0; i < 12 && !(await abrir.evaluate(no => no === document.activeElement)); i++) {
+    await page.keyboard.press('Shift+Tab');
+  }
+
+  // O foco que se vê: o contorno ou a sombra do controle com o foco, comparados
+  // com os dele sem o foco (o botão primário já tem sombra). No toggle, o que
+  // aparece é o trilho, não o checkbox.
+  const aparencia = () => page.evaluate(() => {
+    const no = document.activeElement;
+    if (!no || no === document.body) return null;
+    const alvo = no.getAttribute('role') === 'switch' ? no.nextElementSibling : no;
+    const { outlineStyle, outlineWidth, boxShadow } = getComputedStyle(alvo);
+    return { nome: no.getAttribute('aria-label') || no.textContent.trim(), visual: `${outlineStyle} ${outlineWidth} ${boxShadow}` };
+  });
+
+  const paradas = [];
+  for (let i = 0; i < 12; i++) {
+    if (i > 0) await page.keyboard.press('Tab');
+    const parada = await aparencia();
+    if (!parada || paradas.some(p => p.nome === parada.nome)) break;
+    paradas.push(parada);
+  }
+  const semFoco = await page.evaluate(nomes => {
+    document.activeElement.blur();
+    const controles = [...document.querySelectorAll('button, input, textarea')];
+    return nomes.map(nome => {
+      const no = controles.find(c => (c.getAttribute('aria-label') || c.textContent.trim()) === nome);
+      const alvo = no.getAttribute('role') === 'switch' ? no.nextElementSibling : no;
+      const { outlineStyle, outlineWidth, boxShadow } = getComputedStyle(alvo);
+      return `${outlineStyle} ${outlineWidth} ${boxShadow}`;
+    });
+  }, paradas.map(p => p.nome));
+
+  expect(paradas.map(p => p.nome)).toEqual([
+    'Abrir painel',
+    'Mineração automática em inglês',
+    'Limite por dia em inglês',
+    'Mineração automática em russo',
+    'Limite por dia em russo',
+    'Cole ou escreva uma frase',
+    'Minerar',
+    'Ver todas',
+    'Mudar atalho',
+  ]);
+  expect(paradas.filter((p, i) => p.visual === semFoco[i]).map(p => p.nome)).toEqual([]);
 });
