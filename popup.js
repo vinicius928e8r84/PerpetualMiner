@@ -24,6 +24,7 @@ const MARCA_DO_ATALHO = '\u0000';
 
 let frases = null;                    // null enquanto a primeira leitura não volta (POP-01)
 let idsJaMostrados = null;            // o que a lista já mostrou, para realçar a frase que chega
+const idsChegando = new Set();        // as que ainda estão no realce: um redesenho não o apaga
 let atalhoDeLegenda = Atalhos.ATALHOS_PADRAO.legenda;
 let mineracaoAutomatica = null;       // { settings, daily } do service worker
 let minerando = false;
@@ -123,7 +124,8 @@ function mostrarMineracaoAutomatica(estado) {
 
 function numerosDoIdioma(chave) {
   const ajustes = mineracaoAutomatica.settings?.[chave] || {};
-  const limite = ajustes.dailyLimit || 20;
+  // O service worker devolve o limite já normalizado (1–100, com o padrão dele).
+  const limite = ajustes.dailyLimit;
   const n = mineracaoAutomatica.daily?.[chave]?.count || 0;
   return { ligado: Boolean(ajustes.enabled), limite, n, noLimite: n >= limite };
 }
@@ -153,7 +155,7 @@ function montarAzulejo({ chave, idioma }) {
   const medidor = criar('div', 'veio-medidor');
   medidor.setAttribute('aria-hidden', 'true');
   const preenchido = criar('i');
-  preenchido.style.width = `${Math.min(100, Math.round((n / limite) * 100))}%`;
+  preenchido.style.width = larguraDoMedidor(n, limite);
   medidor.append(preenchido);
 
   azulejo.append(topo, contador, medidor);
@@ -187,7 +189,8 @@ function montarLimite(chave, idiomaNaFrase, limite) {
     salvarMineracaoAutomatica({ [chave]: { dailyLimit: Math.round(valor) } }, () => campo.blur());
   });
   campo.addEventListener('keydown', evento => {
-    if (evento.key === 'Enter') campo.dispatchEvent(new Event('change'));
+    // Sair do campo dispara o `change` uma vez só, como ao clicar fora.
+    if (evento.key === 'Enter') campo.blur();
   });
   const rotuloAntes = criar('span', '', textoDaVoz('POP-14.limite'));
   const rotuloDepois = criar('span', '', textoDaVoz('POP-14.dia'));
@@ -195,6 +198,10 @@ function montarLimite(chave, idiomaNaFrase, limite) {
   rotuloDepois.setAttribute('aria-hidden', 'true');
   linha.append(rotuloAntes, campo, rotuloDepois);
   return linha;
+}
+
+function larguraDoMedidor(n, limite) {
+  return `${Math.min(100, Math.round((n / limite) * 100))}%`;
 }
 
 /** Enquanto a pessoa digita um limite, só o contador e o medidor mudam. */
@@ -206,17 +213,13 @@ function atualizarAzulejosSemOCampo() {
     azulejo.classList.toggle('veio-azulejo--escolhido', ligado);
     azulejo.querySelector('input[type="checkbox"]').checked = ligado;
     azulejo.querySelector('.popup-azulejo__contador').textContent = textoDaVoz('POP-07', { n, limite });
-    azulejo.querySelector('.veio-medidor > i').style.width = `${Math.min(100, Math.round((n / limite) * 100))}%`;
+    azulejo.querySelector('.veio-medidor > i').style.width = larguraDoMedidor(n, limite);
   }
 }
 
+/** Grava só o que mudou num idioma; o service worker junta com o resto. */
 function salvarMineracaoAutomatica(mudanca, depois) {
-  const atual = mineracaoAutomatica?.settings || {};
-  const settings = {
-    en: { ...atual.en, ...mudanca.en },
-    ru: { ...atual.ru, ...mudanca.ru },
-  };
-  chrome.runtime.sendMessage({ type: 'AUTO_MINER_SET_SETTINGS', settings }, resposta => {
+  chrome.runtime.sendMessage({ type: 'AUTO_MINER_SET_SETTINGS', settings: mudanca }, resposta => {
     if (depois) depois();
     if (chrome.runtime.lastError || !resposta?.state) return;
     mostrarMineracaoAutomatica(resposta.state);
@@ -275,7 +278,8 @@ function minerarFraseRapida() {
     contexto: { fonte: 'manual', titulo: '', detalhe: '' },
   }, resposta => {
     minerando = false;
-    const falha = chrome.runtime.lastError?.message || (resposta?.ok ? null : resposta?.error || 'sem resposta');
+    // A causa técnica vai para o Detalhes: a mensagem do Chrome ou a resposta crua.
+    const falha = chrome.runtime.lastError?.message || (resposta?.ok ? null : resposta?.error || JSON.stringify(resposta));
     if (falha) {
       // POP-06: o texto fica no campo, para tentar de novo.
       mostrarErro(falha);
@@ -339,7 +343,11 @@ function desenharUltimas() {
     const linha = montarUltima(f);
     // A frase que acabou de chegar (mineração rápida, legenda, automática)
     // pisca uma vez; na primeira leitura, nada pisca.
-    if (idsJaMostrados && !idsJaMostrados.has(f.id)) linha.classList.add('popup-ultima--nova');
+    if (idsJaMostrados && !idsJaMostrados.has(f.id)) idsChegando.add(f.id);
+    if (idsChegando.has(f.id)) {
+      linha.classList.add('popup-ultima--nova');
+      linha.addEventListener('animationend', () => idsChegando.delete(f.id), { once: true });
+    }
     lista.append(linha);
   }
   lugar.replaceChildren(lista);

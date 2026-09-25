@@ -139,8 +139,10 @@ test('mineração rápida com o service worker falhando: POP-06 com Detalhes, e 
   await page.goto(extensao.url('popup.html'));
   await expect(ultimas(page)).toHaveCount(5);
 
-  // O disco recusa a gravação: é a fronteira de armazenamento do service
-  // worker, e o que a pessoa veria com o perfil cheio ou corrompido.
+  // O disco recusa a gravação. Nenhuma rota HTTP chega a esta falha: o
+  // teste troca o `chrome.storage.local.set` do service worker, que é a
+  // fronteira de armazenamento dele, e afirma o que a pessoa vê e o que
+  // fica gravado, como veria com o perfil cheio ou corrompido.
   await extensao.serviceWorker.evaluate(() => {
     globalThis.gravarDeVerdade = chrome.storage.local.set.bind(chrome.storage.local);
     chrome.storage.local.set = () => { throw new Error('QUOTA_BYTES quota exceeded'); };
@@ -203,7 +205,9 @@ test('a frase minerada em outra aba aparece no topo na hora', async ({ page, ext
 
 test('carregando (POP-01): só esqueleto, sem texto', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: SETE_FRASES });
-  // Segura a leitura das frases, como um disco lento.
+  // Segura a leitura das frases, como um disco lento. Como na falha de
+  // gravação acima, o falso fica na fronteira de armazenamento (o
+  // `chrome.storage.local.get` da página), não numa função do popup.
   await page.addInitScript(() => {
     const ler = chrome.storage.local.get.bind(chrome.storage.local);
     chrome.storage.local.get = (chaves, callback) => {

@@ -93,7 +93,7 @@ textarea {
 .popup-titulo__lado {
   margin-left: auto;
   font-size: var(--veio-tam-legenda);
-  font-weight: 600;
+  font-weight: var(--veio-peso-rotulo);
   letter-spacing: .02em;
   text-transform: none;
 }
@@ -128,7 +128,7 @@ textarea {
 .popup-azulejo__codigo {
   font-family: var(--veio-fonte-mono);
   font-size: var(--veio-tam-corpo);
-  font-weight: 700;
+  font-weight: var(--veio-peso-titulo);
   letter-spacing: .04em;
 }
 
@@ -159,7 +159,7 @@ textarea {
   border-radius: var(--veio-raio-icone);
   font-family: var(--veio-fonte-mono);
   font-size: var(--veio-tam-apoio);
-  font-weight: 600;
+  font-weight: var(--veio-peso-rotulo);
   text-align: center;
 }
 
@@ -167,7 +167,7 @@ textarea {
   margin: 0;
   color: var(--veio-accent-text);
   font-size: var(--veio-tam-legenda);
-  font-weight: 700;
+  font-weight: var(--veio-peso-titulo);
   line-height: 1.35;
 }
 
