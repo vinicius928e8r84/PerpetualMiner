@@ -19,7 +19,7 @@ function createElementStub() {
   };
 }
 
-function loadPanel({ confirmResult = true } = {}) {
+function loadPanel() {
   const storage = { frases: [] };
   const elements = new Map();
   const getElement = (id) => {
@@ -75,29 +75,16 @@ function loadPanel({ confirmResult = true } = {}) {
     setInterval,
     clearInterval,
     structuredClone: global.structuredClone,
-    confirm() { context.__confirmCalls += 1; return confirmResult; },
     fetch: async () => ({ ok: true, json: async () => ({}) }),
     __elements: elements,
     __storage: storage,
-    __confirmCalls: 0,
   };
   vm.createContext(context);
   // O painel.html carrega a base compartilhada antes do painel.js.
-  for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/texto.js', 'veio/componentes.js', 'lib/idioma.js', 'lib/atalhos.js', 'painel-shell.js', 'painel-conta.js', 'painel-atalhos.js', 'painel-chave.js', 'painel-perigo.js']) {
+  for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/texto.js', 'veio/componentes.js', 'lib/idioma.js', 'lib/atalhos.js', 'painel-shell.js', 'painel-conta.js', 'painel-atalhos.js', 'painel-chave.js', 'painel-perigo.js', 'painel-envio.js']) {
     vm.runInContext(fs.readFileSync(arquivo, 'utf8'), context, { filename: arquivo });
   }
-  const source = `${fs.readFileSync('painel.js', 'utf8')}
-globalThis.__setPanelState = (state) => {
-  if (Object.prototype.hasOwnProperty.call(state, 'todasFrases')) todasFrases = state.todasFrases;
-  if (Object.prototype.hasOwnProperty.call(state, 'bridgeActiveJobIds')) bridgeActiveJobIds = state.bridgeActiveJobIds;
-};
-globalThis.__getPanelState = () => ({ todasFrases, bridgeActiveJobIds, keywords });
-globalThis.__setPanelHooks = (hooks) => {
-  if (hooks.removerFrasesFirestore) removerFrasesFirestore = hooks.removerFrasesFirestore;
-  if (hooks.aplicarFiltro) aplicarFiltro = hooks.aplicarFiltro;
-  if (hooks.atualizarContadorSelecao) atualizarContadorSelecao = hooks.atualizarContadorSelecao;
-  if (hooks.mostrarToast) mostrarToast = hooks.mostrarToast;
-};`;
+  const source = fs.readFileSync('painel.js', 'utf8');
   vm.runInContext(source, context, { filename: 'painel.js' });
   return context;
 }
@@ -117,63 +104,12 @@ function testContinueButtonVisibility() {
   assert.ok(!html.includes('data-retry-job="done-job"'), 'completed job should not show Continuar');
   assert.ok(!html.includes('data-retry-job="running-job"'), 'running job should not show Continuar');
 
-  context.renderizarBridgeJobs([
-    { jobId: 'failed-job', status: 'failed', lang: 'en', state: { status: 'failed', stage: 'failed' } },
-    { jobId: 'partial-job', status: 'partial', lang: 'en', state: { status: 'partial', stage: 'partial' } },
-    { jobId: 'done-job', status: 'completed', lang: 'en', state: { status: 'completed', stage: 'completed' } },
-    { jobId: 'running-job', status: 'running', lang: 'en', state: { status: 'running', stage: 'send_to_anki' } },
-  ]);
-
-  const modalHtml = context.__elements.get('bridge-progress-list').innerHTML;
-  assert.ok(modalHtml.includes('data-retry-job="failed-job"'), 'failed modal job should show Continuar');
-  assert.ok(modalHtml.includes('data-retry-job="partial-job"'), 'partial modal job should show Continuar');
-  assert.ok(!modalHtml.includes('data-retry-job="done-job"'), 'completed modal job should not show Continuar');
-  assert.ok(!modalHtml.includes('data-retry-job="running-job"'), 'running modal job should not show Continuar');
-}
-
-async function testCleanupDeletesOnlySuccessfulPhraseIds() {
-  const context = loadPanel({ confirmResult: true });
-  context.__setPanelState({
-    todasFrases: [
-      { id: 1, texto: 'sent', status: 'new', keywords: ['sent'] },
-      { id: 2, texto: 'kept', status: 'new', keywords: ['kept'] },
-      { id: 3, texto: 'sent too', status: 'new', keywords: ['sent', 'too'] },
-      { id: 4, texto: 'failed', status: 'new', keywords: ['failed'] },
-    ],
-    bridgeActiveJobIds: ['job-1'],
-  });
-  const state = context.__getPanelState();
-  state.keywords[1] = ['sent'];
-  state.keywords[2] = ['kept'];
-  state.keywords[3] = ['sent', 'too'];
-  state.keywords[4] = ['failed'];
-  context.__setPanelHooks({
-    removerFrasesFirestore: async (ids) => { context.__deletedIds = ids.map(Number); },
-    aplicarFiltro: () => {},
-    atualizarContadorSelecao: () => {},
-    mostrarToast: () => {},
-  });
-
-  await context.reconciliarExportacoesBridge([
-    {
-      jobId: 'job-1',
-      status: 'completed',
-      state: { status: 'partial', successfulPhraseIds: [1, 3, 4], failedPhraseIds: [4] },
-    },
-  ]);
-
-  const finalState = context.__getPanelState();
-  assert.deepStrictEqual(Array.from(finalState.todasFrases, f => f.id), [2, 4]);
-  assert.deepStrictEqual(Array.from(context.__deletedIds), [1, 3]);
-  assert.strictEqual(finalState.keywords[1], undefined);
-  assert.strictEqual(finalState.keywords[3], undefined);
-  assert.deepStrictEqual(Array.from(finalState.keywords[4]), ['failed']);
-  assert.strictEqual(context.__confirmCalls, 1);
 }
 
 async function run() {
+  // O modal de progresso e o apagar do fim do envio saíram daqui: estão no seam
+  // novo, e2e/tests/painel-envio.spec.js (Continuar envio, Apagar as N enviadas).
   testContinueButtonVisibility();
-  await testCleanupDeletesOnlySuccessfulPhraseIds();
 }
 
 run().then(

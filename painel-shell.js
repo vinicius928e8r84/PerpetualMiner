@@ -32,6 +32,8 @@
   const MASCARA_DA_CHAVE = '••••••••';
 
   const ENDERECO_DA_CONEXAO = 'http://127.0.0.1:8766';
+  /** As situações da Conexão com o Anki, que o shell diz a quem acompanha (aoMudarAConexao). */
+  const CONEXAO = Object.freeze({ CONECTANDO: 'conectando', LIGADA: 'ligada', DESLIGADA: 'desligada' });
   /** De quanto em quanto tempo o ponto da Conexão com o Anki é conferido. */
   const INTERVALO_DA_CONEXAO = 15000;
   const estado = {
@@ -41,6 +43,7 @@
   };
   const ouvintesDeArea = new Map();
   const ouvintesDeSecao = new Map();   // seção de Configurações → ouvintes
+  const ouvintesDaConexao = [];        // quem acompanha a Conexão com o Anki (aoMudarAConexao)
   const fimDosDestaques = new Map();   // card → o timer que tira a borda do destaque
 
   const { textoDaVoz, Atalhos, Veio } = raiz;
@@ -302,6 +305,7 @@
 
   function mostrarConexao(situacao) {
     estado.conexao = situacao;
+    for (const ouvinte of ouvintesDaConexao) ouvinte(situacao);
     const status = situacao === 'conectando' ? textoDaVoz('BRG-02') : textoDaVoz(`BRG-01.${situacao}`);
     $('.shell-ponto').dataset.estado = situacao;
     $('.shell-item[data-area="anki"]').title = status;
@@ -315,6 +319,16 @@
     tentando.disabled = situacao === 'conectando';
   }
 
+  /**
+   * Quem precisa saber se a Conexão com o Anki está ligada (o Enviar ao Anki
+   * fica indisponível com ela desligada). O ouvinte recebe a situação de agora
+   * na hora, e cada mudança depois: 'conectando' | 'ligada' | 'desligada'.
+   */
+  function aoMudarAConexao(ouvinte) {
+    ouvintesDaConexao.push(ouvinte);
+    ouvinte(estado.conexao);
+  }
+
   function tentarAConexaoDeNovo() {
     mostrarConexao('conectando');
     conferirConexao();
@@ -323,7 +337,10 @@
   document.addEventListener('DOMContentLoaded', iniciarShell);
 
   raiz.Shell = {
+    CONEXAO,
+    ENDERECO_DA_CONEXAO,
     aoAbrirASecao,
+    aoMudarAConexao,
     aoEntrarNaArea,
     areaAtual,
     mascararChave,

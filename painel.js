@@ -14,6 +14,7 @@ const {
 const Shell = PerpetualMiner.Shell;
 const Conta = PerpetualMiner.Conta;
 const Perigo = PerpetualMiner.Perigo;
+const Envio = PerpetualMiner.Envio;
 const { SITUACOES } = Conta;
 const { mostrarToastDeSucesso, abrirModal, montarAviso } = PerpetualMiner.Veio;
 
@@ -89,9 +90,6 @@ let modalAberto        = null;
 let pedidoDeApagar     = null; // { ids }
 let edicaoDeContexto   = null; // { ids }
 let bridgePresets      = structuredClone(DEFAULT_BRIDGE_PRESETS);
-let bridgePollingId    = null;
-let bridgeActiveJobIds = [];
-const bridgeCleanupPromptedKeys = new Set();
 let bridgeAnalyticsRange = 'today';
 let bridgeVocabularyTimer = null;
 let bridgeVocabularyDeck = { lang: 'en' };
@@ -627,6 +625,7 @@ function finalizarCarregamento() {
   construirFiltroDeFonte();
   listaCarregada = true;
   aplicarFiltro();
+  comecarEnvio();
 }
 
 // O total aparece no item Frases da sidebar e na Zona de perigo de
@@ -899,7 +898,6 @@ function idsSelecionados() {
 function setupListeners() {
   Perigo.aoApagarTudo(apagarTudo);
   document.getElementById('btn-export').addEventListener('click', exportarTxt);
-  document.getElementById('btn-send-anki').addEventListener('click', enviarSelecionadasAoAnki);
   document.getElementById('btn-bulk-edit').addEventListener('click', () => abrirEditarContexto(idsSelecionados()));
   document.getElementById('btn-delete-selected').addEventListener('click', () => pedirParaApagar(idsSelecionados()));
   document.getElementById('sel-pagina').addEventListener('change', selecionarPagina);
@@ -971,13 +969,6 @@ function setupListeners() {
   });
 
   document.getElementById('btn-save-bridge-presets-main')?.addEventListener('click', salvarBridgePresets);
-  document.getElementById('btn-bridge-progress-close').addEventListener('click', fecharBridgeProgressModal);
-  document.getElementById('btn-bridge-refresh').addEventListener('click', atualizarBridgeProgress);
-  document.getElementById('btn-bridge-retry-failed').addEventListener('click', retentarJobsFalhos);
-  document.getElementById('bridge-progress-list')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-retry-job]');
-    if (btn) continuarBridgeJob(btn.dataset.retryJob);
-  });
   document.getElementById('btn-bridge-analytics-refresh-main')?.addEventListener('click', () => {
     atualizarBridgeWorkspaceData({ includeAnki: true, refreshAnki: true, launchAnki: true });
   });
@@ -2210,7 +2201,7 @@ function confirmarApagar() {
   apagarFrases(ids);
 }
 
-async function apagarFrases(ids) {
+async function apagarFrases(ids, { toast = ids.length > 1 } = {}) {
   const apagadas = new Set(ids);
   todasFrases = todasFrases.filter(f => !apagadas.has(f.id));
   ids.forEach(id => { delete keywords[id]; selecionadas.delete(id); });
@@ -2219,7 +2210,7 @@ async function apagarFrases(ids) {
   atualizarTotal();
   aplicarFiltro();
   // Uma frase só não precisa de toast: o cartão sumindo já é a resposta (PAI-16).
-  if (ids.length > 1) mostrarToastDeSucesso(textoDaVoz('PAI-14', { n: ids.length }));
+  if (toast) mostrarToastDeSucesso(textoDaVoz('PAI-14', { n: ids.length }));
   await apagarDaNuvem(ids);
 }
 
@@ -2340,301 +2331,54 @@ function montarLinhaMining(frase) {
   return `${prefixoKeyword}${textoLimpo} [Contexto: ${fonte} - ${titulo} - ${detalhe}]`;
 }
 
-async function enviarSelecionadasAoAnki() {
-  if (selecionadas.size === 0) {
-    mostrarToast('Selecione as frases que deseja enviar ao Anki.');
-    return;
-  }
+// ─── Envio ao Anki (painel-envio.js) ─────────────────────────────────────────
+//
+// O Envio mora em painel-envio.js; daqui saem só as frases e o que se faz com
+// elas. Ele começa depois da primeira leitura do histórico, porque o resumo de
+// um envio que terminou com o painel fechado pode abrir na hora e gravar nelas.
 
-  await salvarBridgePresets();
-
-  let health;
-  try {
-    health = await fetch(`${BRIDGE_URL}/health`);
-  } catch {
-    mostrarToast('Anki Bridge offline. Inicie o serviço residente no PC.');
-    return;
-  }
-  if (!health.ok) {
-    mostrarToast('Anki Bridge indisponível.');
-    return;
-  }
-
-  const escolhidas = todasFrases.filter(f => selecionadas.has(f.id));
-  const porIdioma = { en: [], ru: [] };
-  for (const frase of escolhidas) {
-    const lang = (frase.idioma || 'Inglês') === 'Russo' ? 'ru' : 'en';
-    porIdioma[lang].push(frase);
-  }
-
-  const jobsCriados = [];
-  for (const lang of ['en', 'ru']) {
-    const lote = porIdioma[lang];
-    if (lote.length === 0) continue;
-    const preset = bridgePresets[lang];
-    const payload = {
-      lang,
-      deckName: preset.deckName,
-      imageSource: preset.imageSource,
-      tts: {
-        wordTld: preset.ttsWordTld,
-        phraseTld: preset.ttsPhraseTld,
-      },
-      entries: lote.map(frase => ({
-        phraseId: frase.id,
-        line: montarLinhaMining(frase),
-      })),
-    };
-    const resp = await fetch(`${BRIDGE_URL}/jobs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      mostrarToast(`Falha ao criar job ${lang.toUpperCase()}: ${err.error || resp.status}`);
-      return;
-    }
-    const data = await resp.json();
-    jobsCriados.push(data.jobId);
-  }
-
-  if (jobsCriados.length === 0) {
-    mostrarToast('Nenhum job foi criado.');
-    return;
-  }
-
-  bridgeActiveJobIds = jobsCriados;
-  abrirBridgeProgressModal();
-  mostrarToast(`${jobsCriados.length} lote(s) enviado(s) ao bridge.`);
-  iniciarBridgePolling();
-}
-
-function abrirBridgeProgressModal() {
-  document.getElementById('bridge-progress-modal').classList.remove('hidden');
-  atualizarBridgeProgress();
-}
-
-function fecharBridgeProgressModal() {
-  document.getElementById('bridge-progress-modal').classList.add('hidden');
-}
-
-function iniciarBridgePolling() {
-  if (bridgePollingId) clearInterval(bridgePollingId);
-  atualizarBridgeProgress();
-  bridgePollingId = setInterval(atualizarBridgeProgress, 3000);
-}
-
-async function atualizarBridgeProgress() {
-  try {
-    const resp = await fetch(`${BRIDGE_URL}/jobs`);
-    if (!resp.ok) throw new Error('jobs_unavailable');
-    const data = await resp.json();
-    renderizarBridgeJobs(data.jobs || []);
-    await reconciliarExportacoesBridge(data.jobs || []);
-  } catch {
-    document.getElementById('bridge-progress-subtitle').textContent = 'Não foi possível ler o status do bridge.';
-  }
-}
-
-function traduzirStage(stage) {
-  const mapa = {
-    queued: 'Na fila',
-    generate_cards: 'Gerando cards',
-    extract_prompts: 'Extraindo prompts',
-    generate_audio: 'Gerando áudio',
-    generate_images: 'Gerando imagens',
-    wait_anki: 'Aguardando Anki',
-    send_to_anki: 'Enviando ao Anki',
-    completed: 'Concluído',
-    failed: 'Falhou',
-    partial: 'Parcial',
-  };
-  return mapa[stage] || stage || 'Aguardando';
-}
-
-function bridgeJobDetail(state, progress) {
-  if (state.ankiError === 'repair_access_denied') {
-    return formatarBridgeAnkiRepairMessage(state.repairPayload || {});
-  }
-  return state.lastError || progress.label || `Stage atual: ${traduzirStage(state.stage)}`;
-}
-
-function renderizarBridgeJobs(jobs) {
-  const lista = document.getElementById('bridge-progress-list');
-  const subtitle = document.getElementById('bridge-progress-subtitle');
-  if (!Array.isArray(jobs) || jobs.length === 0) {
-    lista.innerHTML = '<div class="empty-state">Nenhum job encontrado.</div>';
-    subtitle.textContent = 'Sem jobs no bridge.';
-    return;
-  }
-
-  const ativos = bridgeActiveJobIds.length
-    ? jobs.filter(j => bridgeActiveJobIds.includes(j.jobId))
-    : jobs.slice(0, 8);
-  subtitle.textContent = `${ativos.length} job(s) acompanhados`;
-  lista.innerHTML = ativos.map(job => {
-    const state = job.state || {};
-    const progress = state.progress || {};
-    const total = Number(progress.total || 0);
-    const done = Number(progress.done || 0);
-    const status = state.status || job.status;
-    const pct = total > 0 ? Math.max(5, Math.min(100, Math.round((done / total) * 100))) : (status === 'completed' ? 100 : 12);
-    const detail = bridgeJobDetail(state, progress);
-    const retryBtn = ['failed', 'partial'].includes(status)
-      ? `<button class="bridge-debug-btn bridge-retry-job-btn" data-retry-job="${esc(job.jobId)}" title="Continuar job">Continuar</button>`
-      : '';
-    return `<div class="bridge-job-card">
-      <div class="bridge-job-top">
-        <div class="bridge-job-title">${esc(job.jobId)} • ${job.lang === 'ru' ? 'Russo' : 'Inglês'}</div>
-        <div class="bridge-job-status">${esc(traduzirStage(state.stage || status))}</div>
-      </div>
-      <div class="bridge-job-meta">Status: ${esc(status)} • Atualizado: ${esc(state.updatedAt || job.updatedAt || '')}</div>
-      <div class="bridge-job-bar"><div class="bridge-job-fill" style="width:${pct}%"></div></div>
-      <div class="bridge-job-detail">${esc(detail)}</div>
-      ${retryBtn ? `<div class="bridge-job-actions bridge-job-actions-footer">${retryBtn}</div>` : ''}
-    </div>`;
-  }).join('');
-
-  if (ativos.every(job => ['completed', 'failed', 'partial'].includes((job.state?.status || job.status)))) {
-    clearInterval(bridgePollingId);
-    bridgePollingId = null;
-  }
-}
-
-async function reconciliarExportacoesBridge(jobs) {
-  if (!Array.isArray(jobs) || jobs.length === 0) return;
-  const jobsAtivos = jobs.filter(job => bridgeActiveJobIds.includes(job.jobId));
-  if (jobsAtivos.length === 0) return;
-  const idsParaExportar = new Set();
-  const idsFalhos = new Set();
-
-  for (const job of jobsAtivos) {
-    const state = job.state || {};
-    for (const phraseId of state.successfulPhraseIds || []) {
-      idsParaExportar.add(Number(phraseId));
-    }
-    for (const phraseId of state.failedPhraseIds || []) {
-      idsFalhos.add(Number(phraseId));
-    }
-  }
-  idsFalhos.forEach(id => idsParaExportar.delete(id));
-
-  const todosFinalizados = jobsAtivos.every(job => ['completed', 'failed', 'partial'].includes(job.state?.status || job.status));
-  if (!todosFinalizados || idsParaExportar.size === 0) return;
-
-  if (todosFinalizados) {
-    const idsExistentes = idsBridgeEnviadosExistentes(idsParaExportar);
-    const promptKey = bridgeCleanupKey(jobsAtivos, idsExistentes);
-    if (idsExistentes.length > 0 && !bridgeCleanupPromptedKeys.has(promptKey)) {
-      bridgeCleanupPromptedKeys.add(promptKey);
-      if (confirm(`Apagar do Perpetual Miner as ${idsExistentes.length} frases enviadas ao Anki?`)) {
-        await apagarFrasesEnviadasBridge(idsExistentes);
-        mostrarToast(`${idsExistentes.length} frase${idsExistentes.length > 1 ? 's' : ''} apagada${idsExistentes.length > 1 ? 's' : ''} do Perpetual Miner.`);
-        return;
-      }
-    }
-  }
-
-  await marcarFrasesExportadasBridge(idsParaExportar);
-}
-
-function idsBridgeEnviadosExistentes(idsSet) {
-  const existentes = [];
-  const vistos = new Set();
-  for (const frase of todasFrases) {
-    const id = Number(frase.id);
-    if (!idsSet.has(id) || vistos.has(id)) continue;
-    existentes.push(id);
-    vistos.add(id);
-  }
-  return existentes;
-}
-
-function bridgeCleanupKey(jobs, ids) {
-  const jobKey = jobs.map(job => job.jobId).sort().join('|');
-  const idsKey = ids.map(String).sort().join('|');
-  return `${jobKey}::${idsKey}`;
-}
-
-async function apagarFrasesEnviadasBridge(ids) {
-  const idsSet = new Set(ids.map(Number));
-  todasFrases = todasFrases.filter(frase => !idsSet.has(Number(frase.id)));
-  idsSet.forEach(id => {
-    delete keywords[id];
-    selecionadas.delete(id);
+function comecarEnvio() {
+  Envio.usar({
+    selecionadas: () => todasFrases.filter(f => selecionadas.has(f.id)),
+    frasesPorId: ids => {
+      const pedidas = new Set(ids.map(Number));
+      return todasFrases.filter(f => pedidas.has(Number(f.id)));
+    },
+    linha: montarLinhaMining,
+    ajustes: () => bridgePresets,
+    apagar: ids => apagarFrases(ids, { toast: false }),
+    marcarComoEnviadas,
   });
-  atualizarContadorSelecao();
-  await new Promise(resolve => chrome.storage.local.set({ frases: todasFrases }, resolve));
-  const erro = await removerFrasesFirestore(ids);
-  if (erro) mostrarFalhaNaNuvem(erro);
-  atualizarTotal();
-  aplicarFiltro();
 }
 
-async function marcarFrasesExportadasBridge(idsParaExportar) {
-  let houveMudanca = false;
-  const exportadas = [];
+/** Enviada ao Anki (ENV-12): sem toast, e a seleção fica como está (#9). */
+async function marcarComoEnviadas(ids) {
+  const marcar = new Set(ids.map(Number));
+  const marcadas = [];
   todasFrases = todasFrases.map(frase => {
-    if (!idsParaExportar.has(Number(frase.id)) || foiEnviadaAoAnki(frase)) return frase;
-    houveMudanca = true;
+    if (!marcar.has(Number(frase.id)) || foiEnviadaAoAnki(frase)) return frase;
     const atualizada = { ...frase, status: STATUS_ENVIADA_AO_ANKI };
-    exportadas.push(atualizada);
+    marcadas.push(atualizada);
     return atualizada;
   });
-
-  if (!houveMudanca) return;
-
-  selecionadas.clear();
-  atualizarContadorSelecao();
-  await new Promise(resolve => chrome.storage.local.set({ frases: todasFrases }, resolve));
-  if (usuarioLogado && exportadas.length > 0) {
-    firestoreBatchUpsert(exportadas).catch(() => {});
-  }
+  if (marcadas.length === 0) return;
+  await chromeSet({ frases: todasFrases });
+  if (usuarioLogado) firestoreBatchUpsert(marcadas).catch(err => mostrarFalhaNaNuvem(err));
   aplicarFiltro();
-  mostrarToast(`${exportadas.length} frase${exportadas.length > 1 ? 's' : ''} enviada${exportadas.length > 1 ? 's' : ''} ao Anki.`);
 }
 
-async function continuarBridgeJob(jobId, { silent = false } = {}) {
-  if (!jobId) return false;
+/** Continuar um envio pela lista de Custos da Conexão com o Anki. */
+async function continuarBridgeJob(jobId) {
+  if (!jobId) return;
   try {
     const resp = await fetch(`${BRIDGE_URL}/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });
     if (!resp.ok) throw new Error(`retry_failed_${resp.status}`);
-    if (!bridgeActiveJobIds.includes(jobId)) {
-      bridgeActiveJobIds.push(jobId);
-    }
-    abrirBridgeProgressModal();
-    iniciarBridgePolling();
-    if (!silent) mostrarToast('Job reenfileirado para continuar.');
-    return true;
+    mostrarToastDeSucesso(textoDaVoz('ENV-14.sucesso'));
+    atualizarBridgeAnalytics();
   } catch {
-    if (!silent) mostrarToast('Falha ao continuar job.');
-    return false;
+    // A área da Conexão ainda não foi reconstruída: o erro fica no toast de hoje até lá.
+    mostrarToast(textoDaVoz('ENV-14.falha'));
   }
-}
-
-async function retentarJobsFalhos() {
-  if (bridgeActiveJobIds.length === 0) {
-    mostrarToast('Nenhum job ativo para retentar.');
-    return;
-  }
-  const resp = await fetch(`${BRIDGE_URL}/jobs`);
-  if (!resp.ok) {
-    mostrarToast('Falha ao consultar jobs do bridge.');
-    return;
-  }
-  const data = await resp.json();
-  const falhos = (data.jobs || []).filter(job =>
-    bridgeActiveJobIds.includes(job.jobId) &&
-    ['failed', 'partial'].includes(job.state?.status || job.status)
-  );
-  if (falhos.length === 0) {
-    mostrarToast('Nenhum job falho para retentar.');
-    return;
-  }
-  const resultados = await Promise.all(falhos.map(job => continuarBridgeJob(job.jobId, { silent: true })));
-  const ok = resultados.filter(Boolean).length;
-  mostrarToast(ok > 0 ? `${ok} job(s) reenfileirado(s).` : 'Falha ao retentar jobs.');
 }
 
 // ─── Editar contexto (PAI-20 · PAI-21 · PAI-22) ──────────────────────────────
