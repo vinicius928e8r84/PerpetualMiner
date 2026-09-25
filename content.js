@@ -246,10 +246,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // O service worker pergunta, a pedido de outro frame, se este tem vídeo. Só quem
-// tem responde: sem resposta de nenhum frame, a página não tem vídeo.
+// tem um player visível responde (um vídeo de anúncio escondido não conta): sem
+// resposta de nenhum frame, a página não tem vídeo.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type !== 'TEM_VIDEO_NESTE_FRAME' || sender.id !== chrome.runtime.id) return;
-    if (obterVideoAtivo()) sendResponse({ temVideo: true });
+    const video = obterVideoAtivo();
+    if (video && videoVisivel(video)) sendResponse({ temVideo: true });
 });
 
 // ─── Atalho de legenda (teclado) ─────────────────────────────────────────────
@@ -461,14 +463,19 @@ function obterVideoAtivo() {
     const ranked = videos.map(video => {
         const rect = video.getBoundingClientRect();
         const area = Math.max(0, rect.width) * Math.max(0, rect.height);
-        const visible = rect.width >= 120 && rect.height >= 80 && rect.bottom > 0 && rect.right > 0
-            && rect.top < window.innerHeight && rect.left < window.innerWidth;
-        return { video, area, visible, playing: !video.paused && !video.ended };
+        return { video, area, visible: videoVisivel(video), playing: !video.paused && !video.ended };
     });
     ranked.sort((a, b) => Number(b.visible) - Number(a.visible)
         || Number(b.playing) - Number(a.playing)
         || b.area - a.area);
     return ranked[0]?.video || videos[0] || null;
+}
+
+/** Um vídeo do tamanho de um player, dentro da janela (não um de anúncio escondido ou de 1 px). */
+function videoVisivel(video) {
+    const rect = video.getBoundingClientRect();
+    return rect.width >= 120 && rect.height >= 80 && rect.bottom > 0 && rect.right > 0
+        && rect.top < window.innerHeight && rect.left < window.innerWidth;
 }
 
 function minerarLegendaPorSeletores(selectors) {

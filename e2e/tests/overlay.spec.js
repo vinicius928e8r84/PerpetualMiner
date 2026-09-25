@@ -18,6 +18,7 @@ const MIN_04 = 'Nenhuma legenda na tela agora. Ative as legendas do vídeo e ten
 const MIN_05 = 'Frase minerada · Inglês';
 const MIN_10 = 'Esta página não tem vídeo com legenda.';
 const FRASE_RUSSA = 'Я улыбаюсь';
+const MIN_06_RUSSO_5_DE_20 = 'Mineração automática · Russo · 5 de 20 hoje';
 
 const SELECAO_EM_ALT_E = { type: 'keyboard', code: 'KeyE', altKey: true, ctrlKey: false, shiftKey: false };
 const LEGENDA_EM_SHIFT_S = { type: 'keyboard', code: 'KeyS', altKey: false, ctrlKey: false, shiftKey: true };
@@ -74,7 +75,9 @@ const textosGravados = async extensao => (await extensao.frases()).map(f => f.te
  */
 function textoDoEscuro() {
   const css = fs.readFileSync(path.join(__dirname, '..', '..', 'veio', 'tokens.css'), 'utf8');
-  const achado = css.slice(0, css.indexOf('[data-tema="claro"]')).match(/--veio-text:\s*(#[0-9A-Fa-f]{6})/);
+  const inicioDoClaro = css.indexOf('[data-tema="claro"]');
+  if (inicioDoClaro < 0) throw new Error('o tema claro não foi encontrado em veio/tokens.css');
+  const achado = css.slice(0, inicioDoClaro).match(/--veio-text:\s*(#[0-9A-Fa-f]{6})/);
   if (!achado) throw new Error('--veio-text não encontrado no tema escuro de veio/tokens.css');
   const [, r, g, b] = achado[1].match(/#(..)(..)(..)/);
   return `rgb(${parseInt(r, 16)}, ${parseInt(g, 16)}, ${parseInt(b, 16)})`;
@@ -253,6 +256,16 @@ test('uma página sem vídeo, nem nos iframes, diz MIN-10 com o foco no frame de
 
   await expect(feedback(page)).toContainText(MIN_10);
   await page.waitForTimeout(800);
+  expect(await extensao.frases()).toEqual([]);
+});
+
+test('um vídeo de anúncio escondido num iframe não conta: a página sem player diz MIN-10', async ({ page, paginas, extensao }) => {
+  await page.goto(paginas.url(`player-em-iframe.html?player=${encodeURIComponent(paginas.urlCruzada('video-escondido.html'))}`));
+  await expect(page.frameLocator('#player').getByText('Sponsored')).toBeVisible();
+
+  await page.keyboard.press('Alt+KeyS');
+
+  await expect(feedback(page)).toContainText(MIN_10);
   expect(await extensao.frases()).toEqual([]);
 });
 
@@ -519,12 +532,12 @@ test('a mineração automática minera uma linha: MIN-06 na pílula, com o conta
     await video.play();
   }, FRASE_RUSSA);
 
-  await expect(feedback(page)).toContainText('Mineração automática · Russo · 5 de 20 hoje');
+  await expect(feedback(page)).toContainText(MIN_06_RUSSO_5_DE_20);
   await expect(feedback(page)).toContainText(FRASE_RUSSA);
   await expect(metaDaPilula(page, 'RU')).toBeVisible();
   expect(await textosGravados(extensao)).toEqual([FRASE_RUSSA]);
   // Sucesso: some sozinho.
-  await expect(page.getByText('Mineração automática · Russo · 5 de 20 hoje')).toBeHidden({ timeout: 5000 });
+  await expect(page.getByText(MIN_06_RUSSO_5_DE_20)).toBeHidden({ timeout: 5000 });
 });
 
 /** O dia de hoje como a mineração automática o grava (AAAA-MM-DD, hora local). */
