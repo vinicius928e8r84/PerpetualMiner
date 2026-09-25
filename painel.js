@@ -2302,16 +2302,6 @@ function exportarTxt() {
   mostrarToastDeSucesso(textoDaVoz('PAI-19', { n: linhas.length }));
 }
 
-function montarLinhaMining(frase) {
-  const textoLimpo = frase.texto.replace(/\s+/g, ' ').trim();
-  const kw = palavrasDoTxt(frase);
-  const fonte   = sanitizarCampo(frase.contexto?.fonte || frase.streaming);
-  const titulo  = sanitizarCampo(frase.contexto?.titulo);
-  const detalhe = sanitizarCampo(frase.contexto?.detalhe);
-  const prefixoKeyword = kw ? `${kw} : ` : '';
-  return `${prefixoKeyword}${textoLimpo} [Contexto: ${fonte} - ${titulo} - ${detalhe}]`;
-}
-
 async function enviarSelecionadasAoAnki() {
   if (selecionadas.size === 0) {
     mostrarToast('Selecione as frases que deseja enviar ao Anki.');
@@ -2354,7 +2344,7 @@ async function enviarSelecionadasAoAnki() {
       },
       entries: lote.map(frase => ({
         phraseId: frase.id,
-        line: montarLinhaMining(frase),
+        line: linhaDoTxt(frase, { comPrefixoVazio: false }),
       })),
     };
     const resp = await fetch(`${BRIDGE_URL}/jobs`, {
@@ -2879,10 +2869,6 @@ function focarAbaDeMinerar(aba) {
   document.getElementById(aba === 'colar' ? 'minerar-frases' : 'btn-minerar-escolher').focus();
 }
 
-function fecharModalDeMinerar() {
-  modalDeMinerar?.fechar();
-}
-
 /** O progresso (ADD-04) toma o lugar das abas e dos campos até a última frase. */
 function mostrarProgressoDeMinerar(feitas, total) {
   document.getElementById('minerar-edicao').hidden    = true;
@@ -2924,8 +2910,19 @@ function mostrarErroDeColar(mensagem) {
   else          campo.removeAttribute('aria-invalid');
 }
 
-async function minerarColadas() {
+/** Roda `minerar` se nenhuma outra mineração está em curso; senão, não faz nada. */
+async function umaMineracaoPorVez(minerar) {
   if (mineracaoEmCurso) return;
+  mineracaoEmCurso = true;
+  try { await minerar(); }
+  finally { mineracaoEmCurso = false; }
+}
+
+function minerarColadas() {
+  return umaMineracaoPorVez(minerarColadasAgora);
+}
+
+async function minerarColadasAgora() {
   const linhas = linhasColadas();
   if (linhas.length === 0) {
     mostrarErroDeColar(textoDaVoz('ADD-03'));
@@ -2964,8 +2961,12 @@ function mostrarFimDoArquivo({ erro, resultado }) {
  * Importa ao escolher. Frases que já estão no histórico (ou repetidas no próprio
  * arquivo) ficam de fora; uma linha exportada daqui volta com o Contexto e a Palavra.
  */
-async function importarArquivoTxt(arquivo) {
-  if (mineracaoEmCurso) return;
+function importarArquivoTxt(arquivo) {
+  // Desde a escolha: enquanto o arquivo é lido, o Colar não começa outra (#9).
+  return umaMineracaoPorVez(() => importarArquivoTxtAgora(arquivo));
+}
+
+async function importarArquivoTxtAgora(arquivo) {
   mostrarArquivoEscolhido(arquivo.name);
 
   let conteudo;
@@ -3019,7 +3020,6 @@ function chaveDeRepetida(texto) {
  * (mesmo vazia) diz que a Palavra já veio com a linha, sem a detecção automática.
  */
 async function minerarEmSequencia(frases) {
-  mineracaoEmCurso = true;
   const mineradas = [];
   let erroLocal = null;
   mostrarProgressoDeMinerar(0, frases.length);
@@ -3043,12 +3043,8 @@ async function minerarEmSequencia(frases) {
   }
   // A mineração só termina quando a nuvem também respondeu: até lá, outro
   // clique não começa uma segunda.
-  try {
-    const erroNaNuvem = await subirMineradas(mineradas);
-    return { mineradas, erroLocal, erroNaNuvem };
-  } finally {
-    mineracaoEmCurso = false;
-  }
+  const erroNaNuvem = await subirMineradas(mineradas);
+  return { mineradas, erroLocal, erroNaNuvem };
 }
 
 function pedirAoServiceWorker(mensagem) {
@@ -3085,7 +3081,7 @@ async function tirarDaFilaDeSync(ids) {
  * entrou contado no resto.
  */
 function concluirMineracao({ mineradas, erroLocal, erroNaNuvem }, textoDoSucesso) {
-  fecharModalDeMinerar();
+  modalDeMinerar?.fechar();
   if (erroLocal) mostrarAvisoNaArea('minerar', { texto: textoDaVoz('GLB-01'), erro: erroLocal });
   if (erroNaNuvem) {
     mineradas.forEach(f => idsMineradosForaDaNuvem.add(f.id));
@@ -3138,10 +3134,18 @@ function palavrasDoTxt(frase) {
     .replace(/\s+\|\s+/g, ' | ').replace(/\s*\|\s*$/, '').trim();
 }
 
-function linhaDoTxt(frase) {
+/**
+ * A linha da frase. O Anki Bridge lê a mesma linha com o parser dele, que não
+ * conhece o prefixo vazio: para ele vai `{ comPrefixoVazio: false }`.
+ */
+function linhaDoTxt(frase, { comPrefixoVazio = true } = {}) {
   const texto = frase.texto.replace(/\s+/g, ' ').trim();
-  const palavra = palavrasDoTxt(frase);
-  const precisaDoPrefixoVazio = texto.includes(' : ') || texto.startsWith(':');
+  // Uma Palavra que já não está no texto (o texto foi editado depois) não volta
+  // na leitura: sairia colada no começo do texto.
+  const daFrase = palavrasDoTxt(frase);
+  const palavra = comPrefixoVazio && !palavrasNoTexto(daFrase, texto) ? '' : daFrase;
+  // Um “ : ” no texto, ou um “ :” no fim dele, seria lido como o fim da Palavra.
+  const precisaDoPrefixoVazio = comPrefixoVazio && (`${texto} `.includes(' : ') || texto.startsWith(':'));
   const prefixo = palavra ? `${palavra} : ` : (precisaDoPrefixoVazio ? ': ' : '');
   const fonte   = sanitizarCampo(frase.contexto?.fonte || frase.streaming);
   const titulo  = sanitizarCampo(frase.contexto?.titulo);

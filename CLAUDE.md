@@ -247,8 +247,8 @@ and opens `bookreader.html` in a new tab, as the menu's Foto does. The PAI-02 em
   repeated ones, ADD-05 without.
 - **Progress (ADD-04)** replaces the options and fields inside the modal. Each phrase is sent to the service worker
   (`SALVAR_HISTORICO`) one at a time, so it goes through `naFilaDeGravacao`, and the count moves only when that save
-  comes back confirmed; the list shows each one through `chrome.storage.onChanged`. `mineracaoEmCurso` makes a second
-  click (the double click of #9) do nothing.
+  comes back confirmed; the list shows each one through `chrome.storage.onChanged`. `umaMineracaoPorVez` makes a second
+  click (the double click of #9) do nothing — and so does Minerar in Colar while a chosen .txt is still being read.
 - **Cloud:** the panel sends `semNuvem: true` and uploads the new phrases in one `batchWrite` at the end, then removes
   them from `pm_pending_sync`. If that fails, the persistent aviso ADD-06 stays in Frases with Tentar de novo (which
   repeats the upload) and Detalhes, and the card and the chip say the computer is out of sync — the same exception to
@@ -256,7 +256,10 @@ and opens `bookreader.html` in a new tab, as the menu's Foto does. The PAI-02 em
 
 **The .txt line** is `palavra : texto [Contexto: fonte - título - detalhe]` (`linhaDoTxt`; empty fields as
 `Desconhecido`, Palavra groups joined by ` | `, word positions dropped). A phrase with no Palavra whose text has ` : `
-is written with an empty prefix (`: texto`), so the text comes back whole. Reading (`lerLinhaDoTxt`): a line in that
+(or ends in ` :`) is written with an empty prefix (`: texto`), so the text comes back whole. A Palavra that is no
+longer in the text (the text was edited after it was picked) is left out of the line: read back, it would stick to the
+start of the text. The Anki Bridge gets the same line (`linhaDoTxt(frase, { comPrefixoVazio: false })`) without either
+rule, because its parser does not know the empty prefix. Reading (`lerLinhaDoTxt`): a line in that
 format brings its Contexto and its Palavras back (`palavrasNoTexto` finds each word's position again; a word repeated in
 the text comes back at its first occurrence after the previous one of its group) and skips the automatic Palavra; the
 prefix before the first ` : ` only counts as the Palavra when all its words are in the text after it, which keeps

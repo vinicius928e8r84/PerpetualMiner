@@ -473,8 +473,9 @@ const PARA_EXPORTAR = [
   }),
 ];
 
-test('exportar → importar o mesmo .txt num histórico vazio devolve as mesmas frases, Palavras e Contexto, com os “ : ” inteiros (bug de #9)', async ({ page, extensao }) => {
-  await extensao.gravarStorage({ frases: PARA_EXPORTAR });
+/** Exporta `frases` pela barra de seleção e importa o .txt num histórico vazio; devolve as frases gravadas por texto. */
+async function exportarEImportar(page, extensao, frases) {
+  await extensao.gravarStorage({ frases });
   await abrirFrases(page, extensao);
   await page.getByRole('checkbox', { name: 'Selecionar página' }).check();
   const [download] = await Promise.all([
@@ -483,15 +484,18 @@ test('exportar → importar o mesmo .txt num histórico vazio devolve as mesmas 
   ]);
   const exportado = require('fs').readFileSync(await download.path());
 
-  // Histórico vazio.
   await extensao.gravarStorage({ frases: [] });
   await page.reload();
   await expect(page.locator('#frases-lista .veio-vazio')).toBeVisible();
   await abrirArquivo(page);
   await escolherArquivo(page, exportado, 'perpetualminer-export.txt');
-  await expect(toasts(page)).toHaveText('4 frases mineradas');
+  await expect(toasts(page)).toHaveText(`${frases.length} frases mineradas`);
+  return new Map((await extensao.frases()).map(f => [f.texto, f]));
+}
 
-  const porTexto = new Map((await extensao.frases()).map(f => [f.texto, f]));
+test('exportar → importar o mesmo .txt num histórico vazio devolve as mesmas frases, Palavras e Contexto, com os “ : ” inteiros (bug de #9)', async ({ page, extensao }) => {
+  const porTexto = await exportarEImportar(page, extensao, PARA_EXPORTAR);
+
   expect([...porTexto.keys()].sort()).toEqual(PARA_EXPORTAR.map(f => f.texto).sort());
   for (const original of PARA_EXPORTAR) {
     const importada = porTexto.get(original.texto);
@@ -503,6 +507,50 @@ test('exportar → importar o mesmo .txt num histórico vazio devolve as mesmas 
   await expect(cartao(page, 'The harbour : a quiet place.')).toContainText('palavra:');
   await expect(cartao(page, 'The harbour : a quiet place.').locator('.veio-chip-palavra')).toContainText('harbour');
   await expect(cartao(page, 'Note : this matters a lot.').locator('.veio-chip-palavra')).toHaveCount(0);
+});
+
+test('exportar → importar: uma frase sem Palavra que termina em “ :” volta inteira', async ({ page, extensao }) => {
+  const porTexto = await exportarEImportar(page, extensao, [
+    frase(2, 'Attention :', { contexto: { fonte: 'netflix', titulo: 'Dark', detalhe: '' } }),
+    frase(1, 'Look out.', { contexto: { fonte: 'netflix', titulo: 'Dark', detalhe: '' } }),
+  ]);
+
+  expect([...porTexto.keys()].sort()).toEqual(['Attention :', 'Look out.']);
+});
+
+test('exportar → importar: uma Palavra que já não está no texto (texto editado) não vai parar no texto', async ({ page, extensao }) => {
+  const porTexto = await exportarEImportar(page, extensao, [
+    frase(2, 'She finally made it home.', {
+      keywords: ['arrived@4'], autoKeyword: false,
+      contexto: { fonte: 'netflix', titulo: 'Dark', detalhe: '' },
+    }),
+    frase(1, 'Look out.', { contexto: { fonte: 'netflix', titulo: 'Dark', detalhe: '' } }),
+  ]);
+
+  expect([...porTexto.keys()].sort()).toEqual(['Look out.', 'She finally made it home.']);
+  expect(porTexto.get('She finally made it home.').keywords || []).toEqual([]);
+});
+
+test('enquanto o .txt ainda está sendo lido, Minerar no Colar não começa uma segunda mineração', async ({ page, extensao }) => {
+  await abrirFrases(page, extensao);
+  // Um arquivo grande num disco lento: a leitura só termina quando o teste soltar.
+  await page.evaluate(() => {
+    const ler = Blob.prototype.arrayBuffer;
+    Blob.prototype.arrayBuffer = function () {
+      return new Promise(resolve => { window.soltarLeitura = () => resolve(ler.call(this)); });
+    };
+  });
+  await abrirArquivo(page);
+  await escolherArquivo(page, 'From the file.\nAlso from the file.');
+  await page.waitForFunction(() => typeof window.soltarLeitura === 'function');
+
+  await modal(page).locator('label').filter({ hasText: 'Colar' }).click();
+  await campoDeFrases(page).fill('Pasted meanwhile.');
+  await botaoDeMinerar(page).click();
+  await page.evaluate(() => window.soltarLeitura());
+
+  await expect(toasts(page)).toHaveText('2 frases mineradas');
+  expect((await extensao.frases()).map(f => f.texto).sort()).toEqual(['Also from the file.', 'From the file.']);
 });
 
 test('um .txt exportado por uma versão antiga, com Palavra e com “ : ” no texto, volta inteiro', async ({ page, extensao }) => {
