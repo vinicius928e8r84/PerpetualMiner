@@ -188,8 +188,12 @@ test('um Envio parado porque o Windows não deixou fechar o Anki diz o que fazer
   await expect(cartaoIngles).toContainText('Não concluído', { timeout: 10_000 });
   await expect(cartaoIngles.getByRole('alert')).toHaveText(/O Windows não deixou fechar o Anki\. Feche o Anki pelo Gerenciador de Tarefas/);
   await expect(cartaoIngles.getByRole('button', { name: 'Continuar envio' })).toHaveCount(1);
+  // A próxima leitura da Conexão demora: o aviso sai na hora do Continuar envio, não nela.
+  fakes.anki.responder('GET', '/jobs', () => new Promise(() => {}));
   await cartaoIngles.getByRole('button', { name: 'Continuar envio' }).click();
   await expect.poll(() => fakes.anki.requisicoes.some(r => r.metodo === 'POST' && r.caminho === `/jobs/${ingles.jobId}/retry`)).toBe(true);
+  await expect(cartaoIngles).toContainText('Na fila');
+  await expect(cartaoIngles.getByRole('alert')).toHaveCount(0);
 });
 
 // ─── Não começou (ENV-03 · ENV-04) ───────────────────────────────────────────

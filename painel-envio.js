@@ -426,7 +426,8 @@
       if (!resposta.ok) throw new Error(`POST /jobs/${jobId}/retry → HTTP ${resposta.status}`);
       falhasAoRetomar.delete(jobId);
       const job = jobs.get(jobId);
-      jobs.set(jobId, { ...job, status: 'queued', state: { ...job?.state, status: 'queued', stage: 'queued', progress: {} } });
+      // Como a Conexão faz ao retomar: o erro da vez anterior sai junto.
+      jobs.set(jobId, { ...job, status: 'queued', state: { ...job?.state, status: 'queued', stage: 'queued', progress: {}, lastError: null, ankiError: null } });
       return true;
     } catch (erro) {
       falhasAoRetomar.set(jobId, String(erro.message || erro));

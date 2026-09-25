@@ -70,7 +70,7 @@ function criarFakeAnki() {
   function retomarEnvio(jobId) {
     const envio = envios.find(e => e.jobId === jobId);
     if (!envio) return { status: 404, json: { error: 'job_not_found' } };
-    envio.state = { ...envio.state, status: 'queued', stage: 'queued', lastError: null, updatedAt: estado.agora().toISOString() };
+    envio.state = { ...envio.state, status: 'queued', stage: 'queued', lastError: null, ankiError: null, updatedAt: estado.agora().toISOString() };
     return { status: 200, json: { jobId, status: 'queued' } };
   }
 
