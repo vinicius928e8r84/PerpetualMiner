@@ -37,6 +37,7 @@ const enviarFotos = (page, ...fotos) => page.locator('#foto-arquivo').setInputFi
 const filaDeFotos = page => page.getByRole('list', { name: 'Fotos' });
 const fotoNaFila = (page, nome) => filaDeFotos(page).getByRole('listitem').filter({ hasText: nome });
 const botaoMinerar = page => page.locator('#foto-minerar');
+const colunaDasFrases = page => page.locator('#foto-estado');
 const frase = (page, texto) => page.getByRole('checkbox', { name: texto, exact: true });
 const gravadasDoLivro = async extensao => (await extensao.frases()).filter(f => f.streaming === 'livro');
 
@@ -215,10 +216,13 @@ test('o Gemini com pedidos demais: a foto falha com o motivo, sem culpar as marc
   const cartao = fotoNaFila(page, 'pagina.png');
   await expect(cartao).toContainText('Falhou');
   await expect(cartao).toContainText('O Gemini está recebendo pedidos demais; espere um minuto e tente de novo.');
-  const aviso = page.getByRole('alert');
-  await expect(aviso).toContainText('Não deu para ler a foto 1. O Gemini está recebendo pedidos demais; espere um minuto e tente de novo.');
-  await aviso.getByText('Detalhes').click();
-  await expect(aviso).toContainText('Resource has been exhausted');
+  // Sem nenhuma frase, a coluna das frases é o estado da falha, e não há um aviso repetindo o mesmo.
+  const coluna = colunaDasFrases(page);
+  await expect(coluna.getByText('Não deu para ler a foto', { exact: true })).toBeVisible();
+  await expect(coluna).toContainText('O Gemini está recebendo pedidos demais; espere um minuto e tente de novo.');
+  await coluna.getByText('Detalhes').click();
+  await expect(coluna).toContainText('Resource has been exhausted');
+  await expect(page.getByRole('alert')).toHaveCount(0);
 
   await expect(page.getByText(/Nenhuma marcação/)).toHaveCount(0);
   await expect(page.getByText('Sem marcações')).toHaveCount(0);
@@ -229,11 +233,11 @@ test('a chave recusada pelo Gemini diz que a chave não funciona e leva a Config
   await abrirAPagina(page, extensao);
   await lerUmaFoto(page);
 
-  const aviso = page.getByRole('alert');
-  await expect(aviso).toContainText('Não deu para ler a foto 1. A chave do Gemini não funciona. Confira em Configurações.');
+  const coluna = colunaDasFrases(page);
+  await expect(coluna).toContainText('A chave do Gemini não funciona. Confira em Configurações.');
   const [painel] = await Promise.all([
     context.waitForEvent('page'),
-    aviso.getByRole('button', { name: 'Abrir Configurações' }).click(),
+    coluna.getByRole('button', { name: 'Abrir Configurações' }).click(),
   ]);
   await expect(painel).toHaveURL(/painel\.html#configuracoes\/chave$/);
 });
@@ -244,7 +248,7 @@ test('sem rede, a foto falha dizendo que falta a conexão', async ({ page, exten
   await lerUmaFoto(page);
 
   await expect(fotoNaFila(page, 'pagina.png')).toContainText('Sem conexão com a internet. Confira a rede e tente de novo.');
-  await expect(page.getByRole('alert')).toContainText('Não deu para ler a foto 1.');
+  await expect(colunaDasFrases(page)).toContainText('Não deu para ler a foto');
 });
 
 test('uma resposta do Gemini sem texto (pedido bloqueado) é falha, não “Sem marcações”', async ({ page, extensao, fakes }) => {
@@ -253,14 +257,15 @@ test('uma resposta do Gemini sem texto (pedido bloqueado) é falha, não “Sem 
   await lerUmaFoto(page);
 
   await expect(fotoNaFila(page, 'pagina.png')).toContainText('Falhou');
-  const aviso = page.getByRole('alert');
-  await expect(aviso).toContainText('Não deu para ler a foto 1. Algo deu errado. Tente de novo.');
-  await aviso.getByText('Detalhes').click();
-  await expect(aviso).toContainText('"blockReason":"SAFETY"');
+  const coluna = colunaDasFrases(page);
+  await expect(coluna).toContainText('Não deu para ler a foto');
+  await expect(coluna).toContainText('Algo deu errado. Tente de novo.');
+  await coluna.getByText('Detalhes').click();
+  await expect(coluna).toContainText('"blockReason":"SAFETY"');
   await expect(page.getByText('Sem marcações')).toHaveCount(0);
 });
 
-test('uma foto sem marcações e outra que falhou: o vazio não culpa as marcações', async ({ page, extensao, fakes }) => {
+test('uma foto sem marcações e outra que falhou: a coluna diz que a leitura falhou, sem culpar as marcações', async ({ page, extensao, fakes }) => {
   fakes.gemini.responderFrases([]);
   fakes.gemini.falhar(500, 'Internal error encountered.');
   await abrirAPagina(page, extensao);
@@ -269,7 +274,9 @@ test('uma foto sem marcações e outra que falhou: o vazio não culpa as marcaç
 
   await expect(fotoNaFila(page, 'a.png')).toContainText('Sem marcações');
   await expect(fotoNaFila(page, 'b.png')).toContainText('Falhou');
-  await expect(page.getByRole('alert')).toContainText('Não deu para ler a foto 2.');
+  const coluna = colunaDasFrases(page);
+  await expect(coluna.getByText('Não deu para ler a foto', { exact: true })).toBeVisible();
+  await expect(coluna).toContainText('Algo deu errado. Tente de novo.');
   await expect(page.getByText(/Nenhuma marcação encontrada/)).toHaveCount(0);
 });
 
@@ -314,7 +321,7 @@ test('várias fotos que falham dão um aviso só, com cada falha em Detalhes', a
   await expect(botaoMinerar(page)).toHaveText('Minerar 3 frases');
 });
 
-test('todas as fotos falharam: a coluna das frases diz que não deu para ler, mesmo depois de fechar o aviso', async ({ page, extensao, fakes }) => {
+test('todas as fotos falharam: a coluna das frases diz que não deu para ler, com a causa, Detalhes e o caminho até a chave', async ({ page, extensao, fakes }) => {
   fakes.gemini.falhar(400, 'API key not valid. Please pass a valid API key.');
   fakes.gemini.falhar(400, 'API key not valid. Please pass a valid API key.');
   await abrirAPagina(page, extensao);
@@ -322,16 +329,36 @@ test('todas as fotos falharam: a coluna das frases diz que não deu para ler, me
   await enviarFotos(page, foto('a.png'), foto('b.png'));
 
   await expect(fotoNaFila(page, 'b.png')).toContainText('Falhou');
+  const coluna = colunaDasFrases(page);
+  await expect(coluna.getByText('Não deu para ler as fotos', { exact: true })).toBeVisible();
+  await expect(coluna).toContainText('A chave do Gemini não funciona. Confira em Configurações.');
+  await expect(coluna.getByRole('button', { name: 'Abrir Configurações' })).toBeVisible();
+  await coluna.getByText('Detalhes').click();
+  await expect(coluna).toContainText('a.png: API key not valid');
+  await expect(coluna).toContainText('b.png: API key not valid');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByText(/Nenhuma marcação/)).toHaveCount(0);
+});
+
+test('fechado, o aviso das falhas não volta com uma foto lida; volta com uma falha nova', async ({ page, extensao, fakes }) => {
+  fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
+  fakes.gemini.falhar(500, 'Internal error encountered.');
+  await abrirAPagina(page, extensao);
+  await enviarFotos(page, foto('a.png'), foto('b.png'));
   const aviso = page.getByRole('alert');
-  await expect(aviso).toContainText('Não deu para ler 2 fotos. A chave do Gemini não funciona. Confira em Configurações.');
+  await expect(aviso).toContainText('Não deu para ler a foto 2.');
   await aviso.getByRole('button', { name: 'Fechar' }).click();
   await expect(aviso).toHaveCount(0);
 
-  const estado = page.locator('#foto-estado');
-  await expect(estado.getByText('Não deu para ler as fotos', { exact: true })).toBeVisible();
-  await expect(estado).toContainText('A chave do Gemini não funciona. Confira em Configurações.');
-  await expect(estado.getByRole('button', { name: 'Abrir Configurações' })).toBeVisible();
-  await expect(page.getByText(/Nenhuma marcação/)).toHaveCount(0);
+  fakes.gemini.responderFrases(FRASES_DA_PAGINA_2);
+  await enviarFotos(page, foto('c.png'));
+  await expect(fotoNaFila(page, 'c.png')).toContainText('2 frases');
+  await expect(aviso).toHaveCount(0);
+
+  fakes.gemini.falhar(500, 'Internal error encountered.');
+  await enviarFotos(page, foto('d.png'));
+  await expect(fotoNaFila(page, 'd.png')).toContainText('Falhou');
+  await expect(aviso).toContainText('Não deu para ler 2 fotos.');
 });
 
 // ─── Bug de #9: “Voltar” abria um segundo painel ──────────────────────────────

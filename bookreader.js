@@ -21,7 +21,7 @@
 
 (function (raiz) {
   const { textoDaVoz, detectarIdioma } = raiz;
-  const { iconeVeio, montarAviso, mostrarToastDeSucesso, refletirSelecao } = raiz.Veio;
+  const { iconeVeio, montarAviso, montarDetalhes, mostrarToastDeSucesso, refletirSelecao } = raiz.Veio;
 
   // ─── Constantes ─────────────────────────────────────────────────────────────
 
@@ -108,6 +108,7 @@ To be or not to be, that is the question`;
     grupos: new Map(),          // foto.id → grupo de frases
     linhas: new Map(),          // frase.id → linha da frase
     avisoDaLeitura: null,       // o aviso único das fotos que falharam (FOT-11)
+    falhasDoAviso: '',          // os ids das fotos que esse aviso conta
     avisoDoEnvio: null,         // o aviso de FOT-15/16, trocado a cada envio
   };
 
@@ -273,7 +274,6 @@ To be or not to be, that is the question`;
       } catch (erro) {
         foto.status = STATUS.FALHOU;
         foto.falha = classificarFalha(erro);
-        mostrarFalhasDaLeitura();
       }
       desenhar();
     }
@@ -345,22 +345,41 @@ To be or not to be, that is the question`;
   const abrirConfiguracoes = () => abrirPainel(ENDERECO_DA_CHAVE);
 
   /**
-   * Um aviso só para as fotos que falharam, refeito a cada falha: “Não deu
-   * para ler a foto 2.” ou “Não deu para ler 3 fotos.”, com a causa da
-   * primeira, e o erro original de cada uma em Detalhes.
+   * O que as fotos que falharam dizem juntas: a causa da primeira, se alguma
+   * teve a chave recusada, e o erro original de cada uma para Detalhes.
    */
-  function mostrarFalhasDaLeitura() {
-    desenhado.avisoDaLeitura?.remove();
+  function resumoDasFalhas(falhas) {
+    return {
+      causa: falhas[0].falha.causa,
+      chaveRecusada: falhas.some(foto => foto.falha.chaveRecusada),
+      detalhes: falhas.map(foto => `${foto.nome}: ${foto.falha.detalhes}`).join('\n'),
+    };
+  }
+
+  /**
+   * Com frases na tela, as fotos que falharam viram um aviso só no topo delas
+   * (“Não deu para ler a foto 2.” ou “Não deu para ler 3 fotos.”), como no
+   * protótipo. Sem nenhuma frase, quem diz a falha é a coluna (montarFalhas).
+   * O aviso só é refeito quando falha mais uma foto: fechado, ele não volta
+   * com uma foto lida.
+   */
+  function desenharAvisoDaLeitura() {
     const falhas = fotosCom(STATUS.FALHOU);
+    const ids = estado.frases.length ? falhas.map(foto => foto.id).join(',') : '';
+    if (ids === desenhado.falhasDoAviso) return;
+    desenhado.falhasDoAviso = ids;
+    desenhado.avisoDaLeitura?.remove();
+    desenhado.avisoDaLeitura = null;
+    if (!ids) return;
+
+    const { causa, chaveRecusada, detalhes } = resumoDasFalhas(falhas);
     const abertura = falhas.length === 1
       ? textoDaVoz('FOT-11.aviso', { n: numeroDaFoto(falhas[0]) })
       : textoDaVoz('FOT-11.avisoVarias', { n: falhas.length });
     desenhado.avisoDaLeitura = mostrarAviso({
-      texto: `${abertura} ${falhas[0].falha.causa}`,
-      acao: falhas.some(foto => foto.falha.chaveRecusada)
-        ? { rotulo: textoDaVoz('FOT-05.acao'), aoUsar: abrirConfiguracoes }
-        : undefined,
-      detalhes: falhas.map(foto => `${foto.nome}: ${foto.falha.detalhes}`).join('\n'),
+      texto: `${abertura} ${causa}`,
+      acao: chaveRecusada ? { rotulo: textoDaVoz('FOT-05.acao'), aoUsar: abrirConfiguracoes } : undefined,
+      detalhes,
     });
   }
 
@@ -460,6 +479,7 @@ To be or not to be, that is the question`;
   function desenhar() {
     desenharFila();
     desenharEstado();
+    desenharAvisoDaLeitura();
     desenharLista();
   }
 
@@ -551,8 +571,8 @@ To be or not to be, that is the question`;
 
   /**
    * O topo da coluna das frases quando ainda não há lista: sem chave, o
-   * começo, a prévia, a leitura da 1ª foto, a leitura sem marcações ou todas
-   * as fotos que falharam. Só é refeito quando o estado muda, para não roubar
+   * começo, a prévia, a leitura da 1ª foto, as fotos que falharam ou a
+   * leitura sem marcações. Só é refeito quando o estado muda, para não roubar
    * o foco de quem está nele.
    */
   function desenharEstado() {
@@ -576,15 +596,14 @@ To be or not to be, that is the question`;
       const n = lendo ? numeroDaFoto(lendo) : 1;
       return { id: `lendo:${n}/${total}`, montar: () => montarLendo(n, total) };
     }
-    // Todas falharam: a coluna diz isso, mesmo depois de fechado o aviso.
+    // Sem frases, uma falha é o estado da coluna: o vazio “Sem marcações” não
+    // pode pôr a culpa nas marcações quando alguma leitura nem aconteceu.
     const falhas = fotosCom(STATUS.FALHOU);
-    if (falhas.length === estado.fotos.length) {
-      return { id: `falharam:${falhas.length}`, montar: () => montarTodasFalharam(falhas) };
+    if (falhas.length) {
+      return { id: `falhas:${falhas.map(foto => foto.id)}`, montar: () => montarFalhas(falhas) };
     }
-    // “Sem marcações” só quando nenhuma foto falhou: com uma falha, o aviso
-    // dela é o estado, e o vazio não pode pôr a culpa nas marcações.
     const lidas = fotosCom(STATUS.LIDA).length;
-    if (!falhas.length && lidas) return { id: `semMarcacoes:${lidas}`, montar: () => montarSemMarcacoes(lidas) };
+    if (lidas) return { id: `semMarcacoes:${lidas}`, montar: () => montarSemMarcacoes(lidas) };
     return { id: 'nada' };
   }
 
@@ -645,12 +664,18 @@ To be or not to be, that is the question`;
       montarLegenda());
   }
 
-  /** Nenhuma foto foi lida: a causa da primeira e, com a chave recusada, o caminho até ela. */
-  function montarTodasFalharam(falhas) {
+  /**
+   * Nenhuma frase e alguma foto falhou (“Não deu para ler a foto” / “as
+   * fotos”, como no protótipo): a causa, o caminho até a chave quando ela foi
+   * recusada, e o erro original em Detalhes.
+   */
+  function montarFalhas(falhas) {
+    const { causa, chaveRecusada, detalhes } = resumoDasFalhas(falhas);
     const caixa = vazio('perigo',
       elemento('p', 'veio-vazio__titulo', textoDaVoz('FOT-11.titulo', { n: falhas.length })),
-      elemento('p', 'veio-vazio__texto', falhas[0].falha.causa));
-    if (falhas.some(foto => foto.falha.chaveRecusada)) caixa.append(botaoAbrirConfiguracoes('veio-botao--secundario'));
+      elemento('p', 'veio-vazio__texto', causa));
+    if (chaveRecusada) caixa.append(botaoAbrirConfiguracoes('veio-botao--secundario'));
+    caixa.append(montarDetalhes(detalhes));
     caixa.classList.add('foto-vazio--falha');
     return caixa;
   }

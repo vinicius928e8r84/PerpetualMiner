@@ -243,12 +243,14 @@ the sticky “Minerar N frases” (FOT-12; nothing marked → disabled with FOT-
 
 The page only states what it confirmed. A reading that worked with nothing marked is “Sem marcações” and the FOT-10
 empty state; a failed API call is “Falhou” with FOT-11's cause (429 → limit, 401/403/“API key” → key, with “Abrir
-Configurações”, no network → network, else GLB-01) and one persistent aviso for all failed photos (“Não deu para ler a
-foto 2.” or “…3 fotos.”, the first one's cause, each raw error in Detalhes) — it never blames the markings. A 200 with
+Configurações”, no network → network, else GLB-01) — it never blames the markings. As in the prototype, failures are
+said once: with phrases on screen, one aviso for all failed photos (“Não deu para ler a foto 2.” or “…3 fotos.”, the
+first one's cause, each raw error in Detalhes), rebuilt only when another photo fails, so once closed it does not come
+back with a photo that was read; with no phrase, the phrases column itself is the failure (FOT-11.titulo “Não deu para
+ler a foto / as fotos”, the cause, “Abrir Configurações” for a refused key, Detalhes) and there is no aviso. A 200 with
 no text (a blocked request, a cut-off answer) is a failure too, with Gemini's raw JSON in Detalhes: only the
 `NENHUM_TRECHO` sentinel means “Sem marcações”, and FOT-10 (singular or plural by the photos read) shows only when no
-photo failed. When every photo failed, the phrases column says so (FOT-11.titulo + the cause, and “Abrir
-Configurações” for a refused key), even after the aviso is closed. A mined phrase shows the `--ok` selo “Minerada”, its checkbox is disabled and it leaves the button, so a second
+photo failed. A mined phrase shows the `--ok` selo “Minerada”, its checkbox is disabled and it leaves the button, so a second
 click or a new photo never saves it twice; the click is ignored while a save is in flight. All saved → toast FOT-14;
 part or none → aviso FOT-15/16 whose “Tentar de novo” mines again exactly the phrases that failed. Photo status changes are announced (the queue is a polite live region).
 
