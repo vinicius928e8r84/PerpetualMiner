@@ -155,19 +155,25 @@ async function minerarECopiarLegenda(captura) {
 
 /** MIN-03 fica até o ×, o Esc ou a próxima captura; Tentar de novo repete com o mesmo texto. */
 function mostrarFalhaAoSalvar(captura, tentarDeNovo) {
-  Overlay.mostrar({
-    tipo: 'erro',
-    icone: 'alerta',
-    titulo: textoDaVoz('MIN-03.aviso'),
+  mostrarFalha('MIN-03.aviso', {
     frase: captura.texto,
-    fechar: textoDaVoz('PAI-34'),
     acao: { rotulo: textoDaVoz('MIN-03.tentarDeNovo'), fazer: tentarDeNovo },
   });
 }
 
 /** MIN-04 e MIN-10: não havia o que minerar. */
 function mostrarNadaAMinerar(id) {
-  Overlay.mostrar({ tipo: 'erro', icone: 'alerta', titulo: textoDaVoz(id), fechar: textoDaVoz('PAI-34') });
+  mostrarFalha(id);
+}
+
+/** Uma falha na pílula: ícone de alerta e o × (PAI-34). */
+function mostrarFalha(id, extras = {}) {
+  Overlay.mostrar({ tipo: 'erro', icone: 'alerta', titulo: textoDaVoz(id), fechar: textoDaVoz('PAI-34'), ...extras });
+}
+
+/** O código de idioma que o service worker usa na mineração automática. */
+function codigoDoIdioma(idioma) {
+  return idioma === IDIOMAS.RUSSO ? 'ru' : 'en';
 }
 
 /** A resposta do service worker, ou `{ ok: false }` se ele não respondeu. */
@@ -284,7 +290,7 @@ function processarAutoMinerLegenda() {
         texto: normalizado,
         origem: contexto?.fonte || window.location.hostname.replace('www.', '').split('.')[0] || 'auto',
         contexto,
-        lang: idioma === IDIOMAS.RUSSO ? 'ru' : 'en',
+        lang: codigoDoIdioma(idioma),
     }, response => {
         if (chrome.runtime.lastError || !response) return;
         if (response.state) {
@@ -302,7 +308,7 @@ function autoMinerAtivoNaPagina(legenda = '') {
     const video = obterVideoAtivo();
     if (!video || video.paused || video.ended) return false;
     if (!legenda) return false;
-    const lang = detectarIdioma(legenda) === IDIOMAS.RUSSO ? 'ru' : 'en';
+    const lang = codigoDoIdioma(detectarIdioma(legenda));
     const settings = _autoMinerState.settings[lang];
     const daily = _autoMinerState.daily?.[lang];
     return Boolean(settings?.enabled && (!daily || daily.count < settings.dailyLimit));
@@ -408,7 +414,7 @@ function rotuloAutoMinerReason(reason) {
 // MIN-06. A mineração automática não tira da tela uma falha que espera a pessoa.
 function mostrarNotificacaoAutoMiner(texto, idioma, response) {
     if (!Overlay.temBotao() || Overlay.mostrandoFalha()) return;
-    const lang = idioma === IDIOMAS.RUSSO ? 'ru' : 'en';
+    const lang = codigoDoIdioma(idioma);
     const state = response.state;
     Overlay.mostrar({
         tipo: 'sucesso',

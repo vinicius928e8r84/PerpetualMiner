@@ -221,7 +221,7 @@
   color: var(--veio-accent-ink);
   font-family: var(--veio-fonte-mono);
   font-size: var(--veio-tam-micro);
-  font-weight: 700;
+  font-weight: var(--veio-peso-titulo);
   line-height: 1;
   white-space: nowrap;
   pointer-events: none;

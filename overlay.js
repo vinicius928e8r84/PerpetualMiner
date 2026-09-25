@@ -32,8 +32,6 @@
   /** O host, com a sombra montada uma vez só. */
   function montar() {
     if (host) return;
-    const { Veio } = raiz;
-
     host = document.createElement(TAG_DO_HOST);
     const sombra = host.attachShadow({ mode: 'open' });
 
@@ -84,7 +82,7 @@
       pm.addEventListener(tipo, evento => evento.stopPropagation());
     }
 
-    partes = { pm, pilula, botao, contador, rotulo, nomeDoRotulo, estado, acoes, Veio };
+    partes = { pm, pilula, botao, contador, rotulo, nomeDoRotulo, estado, acoes };
     desenharRotulo();
   }
 
@@ -126,14 +124,14 @@
    * `nome` o rótulo visível ao passar o mouse, com `tecla` num kbd ao lado.
    */
   function definirRotulo({ nome, comAtalho }, tecla) {
-    const rotulo = { nome, comAtalho };
-    rotuloDoBotao = rotulo;
+    rotuloDoBotao = { nome, comAtalho };
     teclaDoBotao = tecla;
     if (partes) desenharRotulo();
   }
 
   function desenharRotulo() {
-    const { botao, rotulo, nomeDoRotulo, Veio } = partes;
+    const { botao, rotulo, nomeDoRotulo } = partes;
+    const { Veio } = raiz;
     botao.setAttribute('aria-label', rotuloDoBotao.comAtalho);
     nomeDoRotulo.textContent = rotuloDoBotao.nome;
     rotulo.querySelector('kbd')?.remove();
@@ -179,7 +177,8 @@
    */
   function mostrar({ tipo, icone, titulo, frase = '', palavra = '', fechar, acao }) {
     if (!temBotao()) posicionar(null);
-    const { pilula, estado, acoes, Veio } = partes;
+    const { pilula, estado, acoes } = partes;
+    const { Veio } = raiz;
     clearTimeout(temporizador);
 
     const circulo = elemento('span', 'pm-icone');
@@ -205,13 +204,13 @@
     }
     if (tipo === 'erro') {
       if (!fechar) throw new Error('Uma falha do overlay precisa do rótulo do ×.');
-      const x = elemento('button', 'veio-botao-icone');
-      x.type = 'button';
-      x.setAttribute('aria-label', fechar);
-      x.title = fechar;
-      x.append(Veio.iconeVeio('fechar'));
-      x.addEventListener('click', fecharPilula);
-      acoes.append(x);
+      const botaoFechar = elemento('button', 'veio-botao-icone');
+      botaoFechar.type = 'button';
+      botaoFechar.setAttribute('aria-label', fechar);
+      botaoFechar.title = fechar;
+      botaoFechar.append(Veio.iconeVeio('fechar'));
+      botaoFechar.addEventListener('click', fecharPilula);
+      acoes.append(botaoFechar);
     }
 
     pilula.classList.toggle('pm-pilula--erro', tipo === 'erro');
@@ -232,15 +231,18 @@
   /** “…saying it’s your responsibility.”: numa frase longa, a prévia começa perto da Palavra. */
   function previaEmVoltaDa(frase, palavra) {
     if (!palavra || frase.length <= PREVIA_CURTA) return frase;
-    const posicao = frase.toLowerCase().indexOf(palavra.toLowerCase());
+    const posicao = raiz.Veio.posicaoDaPalavra(frase, palavra);
     if (posicao < 28) return frase;
     const corte = frase.lastIndexOf(' ', posicao - 18);
     return '…' + frase.slice(corte > 0 ? corte + 1 : posicao - 18);
   }
 
-  // Esc fecha uma falha aberta. Sem falha, o Esc é todo do site.
+  // Esc fecha uma falha aberta, e esse Esc é do overlay: o site não o recebe.
+  // Sem falha, o Esc é todo do site.
   document.addEventListener('keydown', evento => {
-    if (evento.key === 'Escape' && mostrandoFalha()) fecharPilula();
+    if (evento.key !== 'Escape' || !mostrandoFalha()) return;
+    evento.stopImmediatePropagation();
+    fecharPilula();
   }, true);
 
   raiz.Overlay = {

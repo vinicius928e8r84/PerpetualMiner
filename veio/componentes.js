@@ -405,7 +405,7 @@
     no.textContent = '';
     const documento = no.ownerDocument;
 
-    const inicio = palavra ? texto.toLowerCase().indexOf(palavra.toLowerCase()) : -1;
+    const inicio = posicaoDaPalavra(texto, palavra);
     if (inicio < 0) {
       no.append(documento.createTextNode(texto));
       return;
@@ -418,6 +418,17 @@
 
     no.append(documento.createTextNode(texto.slice(0, inicio)), grifo,
       documento.createTextNode(texto.slice(fim)));
+  }
+
+  /**
+   * Onde a Palavra começa na frase, ou -1. Vale a palavra inteira (“it” não é o
+   * pedaço de “with”); só sem ela, o primeiro trecho igual.
+   */
+  function posicaoDaPalavra(texto, palavra) {
+    if (!palavra) return -1;
+    const escapada = palavra.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const inteira = new RegExp(`(?<![\\p{L}\\p{M}\\p{N}])${escapada}(?![\\p{L}\\p{M}\\p{N}])`, 'iu').exec(texto);
+    return inteira ? inteira.index : texto.toLowerCase().indexOf(palavra.toLowerCase());
   }
 
   /**
@@ -531,6 +542,7 @@
     montarAviso,
     montarDetalhes,
     escreverFrase,
+    posicaoDaPalavra,
     escreverFraseClicavel,
     andarEntrePalavras,
     focarPalavra,

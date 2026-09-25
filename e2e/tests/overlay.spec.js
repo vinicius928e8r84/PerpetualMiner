@@ -378,3 +378,21 @@ test('com prefers-reduced-motion, a pílula abre e fecha sem animação', async 
     }));
   expect(Math.max(...duracoes)).toBeLessThanOrEqual(0.001);
 });
+
+test('o Esc que fecha uma falha é do overlay: o site não o recebe; sem falha, o Esc é do site', async ({ page, paginas, extensao }) => {
+  await abrirPlayer(page, paginas);
+  await page.evaluate(() => {
+    window.escsDoSite = 0;
+    document.addEventListener('keydown', evento => { if (evento.key === 'Escape') window.escsDoSite += 1; });
+  });
+  await recusarGravacoes(extensao);
+
+  await page.keyboard.press('Alt+KeyS');
+  await expect(page.getByText(MIN_03)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByText(MIN_03)).toBeHidden();
+  expect(await page.evaluate(() => window.escsDoSite)).toBe(0);
+
+  await page.keyboard.press('Escape');
+  expect(await page.evaluate(() => window.escsDoSite)).toBe(1);
+});
