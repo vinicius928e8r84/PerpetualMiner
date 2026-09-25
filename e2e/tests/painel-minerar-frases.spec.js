@@ -518,8 +518,12 @@ test('exportar → importar: uma frase sem Palavra que termina em “ :” volta
   expect([...porTexto.keys()].sort()).toEqual(['Attention :', 'Look out.']);
 });
 
-test('exportar → importar: uma Palavra que já não está no texto (texto editado) não vai parar no texto', async ({ page, extensao }) => {
+test('exportar → importar: uma Palavra que já não está no texto (texto editado) não vai parar no texto, e os outros grupos voltam', async ({ page, extensao }) => {
   const porTexto = await exportarEImportar(page, extensao, [
+    frase(3, 'He got cold feet before the party.', {
+      keywords: ['cold@4', 'feet@6', '|', 'wedding@12'], autoKeyword: false,
+      contexto: { fonte: 'netflix', titulo: 'Dark', detalhe: '' },
+    }),
     frase(2, 'She finally made it home.', {
       keywords: ['arrived@4'], autoKeyword: false,
       contexto: { fonte: 'netflix', titulo: 'Dark', detalhe: '' },
@@ -527,13 +531,16 @@ test('exportar → importar: uma Palavra que já não está no texto (texto edit
     frase(1, 'Look out.', { contexto: { fonte: 'netflix', titulo: 'Dark', detalhe: '' } }),
   ]);
 
-  expect([...porTexto.keys()].sort()).toEqual(['Look out.', 'She finally made it home.']);
+  expect([...porTexto.keys()].sort()).toEqual(['He got cold feet before the party.', 'Look out.', 'She finally made it home.']);
   expect(porTexto.get('She finally made it home.').keywords || []).toEqual([]);
+  expect(porTexto.get('He got cold feet before the party.').keywords).toEqual(['cold@4', 'feet@6']);
 });
 
 test('enquanto o .txt ainda está sendo lido, Minerar no Colar não começa uma segunda mineração', async ({ page, extensao }) => {
   await abrirFrases(page, extensao);
   // Um arquivo grande num disco lento: a leitura só termina quando o teste soltar.
+  // É um fake na fronteira do navegador (como os fakes de rede), segurando a
+  // leitura do arquivo que o painel faz com `arrayBuffer()`.
   await page.evaluate(() => {
     const ler = Blob.prototype.arrayBuffer;
     Blob.prototype.arrayBuffer = function () {

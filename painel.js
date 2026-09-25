@@ -2344,7 +2344,7 @@ async function enviarSelecionadasAoAnki() {
       },
       entries: lote.map(frase => ({
         phraseId: frase.id,
-        line: linhaDoTxt(frase, { comPrefixoVazio: false }),
+        line: linhaParaOAnki(frase),
       })),
     };
     const resp = await fetch(`${BRIDGE_URL}/jobs`, {
@@ -3135,22 +3135,36 @@ function palavrasDoTxt(frase) {
 }
 
 /**
- * A linha da frase. O Anki Bridge lê a mesma linha com o parser dele, que não
- * conhece o prefixo vazio: para ele vai `{ comPrefixoVazio: false }`.
+ * A linha da frase no .txt, para voltar inteira na leitura (`lerLinhaDoTxt`).
+ * Um grupo da Palavra que já não está no texto (o texto foi editado depois)
+ * fica de fora: lido de volta, ele sairia colado no começo do texto.
  */
-function linhaDoTxt(frase, { comPrefixoVazio = true } = {}) {
+function linhaDoTxt(frase) {
   const texto = frase.texto.replace(/\s+/g, ' ').trim();
-  // Uma Palavra que já não está no texto (o texto foi editado depois) não volta
-  // na leitura: sairia colada no começo do texto.
-  const daFrase = palavrasDoTxt(frase);
-  const palavra = comPrefixoVazio && !palavrasNoTexto(daFrase, texto) ? '' : daFrase;
+  const palavra = palavrasDoTxt(frase).split(' | ')
+    .filter(grupo => palavrasNoTexto(grupo, texto))
+    .join(' | ');
   // Um “ : ” no texto, ou um “ :” no fim dele, seria lido como o fim da Palavra.
-  const precisaDoPrefixoVazio = comPrefixoVazio && (`${texto} `.includes(' : ') || texto.startsWith(':'));
+  const precisaDoPrefixoVazio = `${texto} `.includes(' : ') || texto.startsWith(':');
   const prefixo = palavra ? `${palavra} : ` : (precisaDoPrefixoVazio ? ': ' : '');
+  return `${prefixo}${texto} ${contextoDaLinha(frase)}`;
+}
+
+/**
+ * A linha que o Anki Bridge lê com o parser dele, que não conhece o prefixo
+ * vazio: a Palavra como está, sem as duas regras do .txt.
+ */
+function linhaParaOAnki(frase) {
+  const texto = frase.texto.replace(/\s+/g, ' ').trim();
+  const palavra = palavrasDoTxt(frase);
+  return `${palavra ? `${palavra} : ` : ''}${texto} ${contextoDaLinha(frase)}`;
+}
+
+function contextoDaLinha(frase) {
   const fonte   = sanitizarCampo(frase.contexto?.fonte || frase.streaming);
   const titulo  = sanitizarCampo(frase.contexto?.titulo);
   const detalhe = sanitizarCampo(frase.contexto?.detalhe);
-  return `${prefixo}${texto} [Contexto: ${fonte} - ${titulo} - ${detalhe}]`;
+  return `[Contexto: ${fonte} - ${titulo} - ${detalhe}]`;
 }
 
 /**
