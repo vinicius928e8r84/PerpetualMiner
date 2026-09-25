@@ -2,7 +2,7 @@
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
 // deste arquivo, pelo painel.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
-const { detectarIdioma, IDIOMAS, textoDaVoz, CATALOGO_DA_VOZ, Atalhos } = PerpetualMiner;
+const { detectarIdioma, ehRussa, IDIOMAS, textoDaVoz, CATALOGO_DA_VOZ, Atalhos } = PerpetualMiner;
 // A lista de Frases é montada com os componentes da Base Veio (veio/componentes.js).
 const {
   iconeVeio, montarChipDaPalavra, escreverFraseClicavel, andarEntrePalavras, focarPalavra, refletirSelecao, montarTecla,
@@ -1836,10 +1836,6 @@ function montarCartao(f) {
 
   cartao.append(marcar, corpo, montarAcoesDoCartao(f));
   return cartao;
-}
-
-function ehRussa(f) {
-  return f.idioma === IDIOMAS.RUSSO || detectarIdioma(f.texto || '') === IDIOMAS.RUSSO;
 }
 
 /**

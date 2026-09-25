@@ -34,11 +34,11 @@
   const FIM = { completed: 'concluido', partial: 'concluidoEmParte', failed: 'falhou' };
   const IDIOMA_DO_LANG = { en: 'INGLES', ru: 'RUSSO' };
 
-  const { textoDaVoz, Veio, Shell, IDIOMAS } = raiz;
+  const { textoDaVoz, Veio, Shell, IDIOMAS, ehRussa } = raiz;
   const { ENDERECO_DA_CONEXAO, CONEXAO } = Shell;
   const porId = id => document.getElementById(id);
 
-  let ops = null;
+  let doPainel = null;
   // A remessa acompanhada: { envios: [{ id, lang, ids, jobId, criadoEm, falhaAoCriar }] }.
   let remessa = null;
   const jobs = new Map();           // jobId → o último job lido de GET /jobs
@@ -59,8 +59,8 @@
   // ─── Começo ────────────────────────────────────────────────────────────────
 
   async function usar(operacoes) {
-    if (ops) return;
-    ops = operacoes;
+    if (doPainel) return;
+    doPainel = operacoes;
     porId('btn-send-anki').addEventListener('click', enviar);
     porId('modal-envio-fechar').addEventListener('click', () => progresso?.fechar());
     porId('modal-resumo-fechar').addEventListener('click', () => resumo?.fechar());
@@ -79,17 +79,17 @@
   // ─── Enviar ao Anki ────────────────────────────────────────────────────────
 
   async function enviar() {
-    if (conexaoDesligada || criando || !ops) return;
+    if (conexaoDesligada || criando || !doPainel) return;
     // Uma frase que já está na remessa não vai de novo: quem não começou tem o Tentar de novo dele.
     const acompanhadas = new Set((remessa?.envios || []).flatMap(e => e.ids));
-    const novas = ops.selecionadas().filter(f => !acompanhadas.has(f.id));
+    const novas = doPainel.selecionadas().filter(f => !acompanhadas.has(f.id));
     if (novas.length === 0) {
       if (remessa) abrirProgresso();
       return;
     }
 
     const porLang = { en: [], ru: [] };
-    for (const frase of novas) porLang[frase.idioma === IDIOMAS.RUSSO ? 'ru' : 'en'].push(frase.id);
+    for (const frase of novas) porLang[ehRussa(frase) ? 'ru' : 'en'].push(frase.id);
     const envios = ['en', 'ru']
       .filter(lang => porLang[lang].length)
       .map(lang => ({ id: crypto.randomUUID(), lang, ids: porLang[lang], jobId: null, criadoEm: Date.now(), falhaAoCriar: null }));
@@ -119,13 +119,13 @@
   async function criarEnvio(envio) {
     envio.falhaAoCriar = null;
     envio.criadoEm = Date.now();
-    const preset = ops.ajustes()[envio.lang];
+    const preset = doPainel.ajustes()[envio.lang];
     const corpo = {
       lang: envio.lang,
       deckName: preset.deckName,
       imageSource: preset.imageSource,
       tts: { wordTld: preset.ttsWordTld, phraseTld: preset.ttsPhraseTld },
-      entries: ops.frasesPorId(envio.ids).map(frase => ({ phraseId: frase.id, line: ops.linha(frase) })),
+      entries: doPainel.frasesPorId(envio.ids).map(frase => ({ phraseId: frase.id, line: doPainel.linha(frase) })),
     };
     let resposta;
     try {
@@ -151,8 +151,8 @@
 
   function acompanhar() {
     if (relogio) return;
-    rodar();
-    relogio = setInterval(rodar, INTERVALO);
+    conferirEnvios();
+    relogio = setInterval(conferirEnvios, INTERVALO);
   }
 
   function pararDeAcompanhar() {
@@ -160,7 +160,8 @@
     relogio = null;
   }
 
-  async function rodar() {
+  /** Uma volta do acompanhamento: lê os Envios na Conexão, redesenha, e abre o resumo se acabaram. */
+  async function conferirEnvios() {
     if (!remessa) return pararDeAcompanhar();
     if (remessa.envios.some(e => e.jobId && !terminou(e))) await lerJobs();
     desenharProgresso();
@@ -250,7 +251,7 @@
 
     const lista = porId('modal-envio-lista');
     for (const envio of envios) {
-      const chave = envio.id || `${envio.lang}:${envio.ids[0]}`;
+      const chave = envio.id;
       const cartao = montarCartao(envio);
       const assinatura = cartao.dataset.assinatura;
       const atual = lista.querySelector(`[data-envio="${chave}"]`);
@@ -304,7 +305,7 @@
     cartao.setAttribute('role', 'group');
 
     const titulo = elemento('h3', 'envio-cartao__titulo', textoDaVoz('ENV-08.titulo', { idioma, n: envio.ids.length }));
-    titulo.id = `envio-titulo-${envio.id || `${envio.lang}-${envio.ids[0]}`}`;
+    titulo.id = `envio-titulo-${envio.id}`;
     cartao.setAttribute('aria-labelledby', titulo.id);
     const rotuloDaEtapa = elemento('span', `envio-cartao__etapa${tom ? ` envio-cartao__etapa--${tom}` : ''}`,
       textoDaVoz(`ENV-07.${etapa}`));
@@ -330,23 +331,25 @@
         acao: { rotulo: textoDaVoz('ENV-03.tentarDeNovo'), aoUsar: () => tentarCriarDeNovo(envio) },
         detalhes: envio.falhaAoCriar.causa,
       }, 'tentar'));
-    } else if (falhaAoRetomar) {
+    } else if (falhaAoRetomar || ankiTravado(estado)) {
+      // Continuar envio fica no aviso, que diz o que fazer antes dele.
       cartao.append(avisoNoCartao({
-        texto: textoDaVoz('ENV-14.falha'),
+        texto: textoDaVoz(falhaAoRetomar ? 'ENV-14.falha' : 'BRG-18'),
         acao: { rotulo: textoDaVoz('ENV-13.continuar'), aoUsar: () => continuarEnvio(envio) },
       }, 'continuar'));
     }
 
     const meta = elemento('div', 'envio-cartao__meta',
       elemento('span', '', textoDaVoz('ENV-08.atualizado', { quando: quando(atualizadoEm) })));
-    if (!falhaAoRetomar && estado && ['partial', 'failed'].includes(estado.status)) {
+    if (!falhaAoRetomar && !ankiTravado(estado) && retomavel(estado)) {
       meta.append(botao(textoDaVoz('ENV-13.continuar'), 'continuar', () => continuarEnvio(envio)));
     }
     cartao.append(meta);
 
     const causa = envio.falhaAoCriar ? '' : [
         `${envio.jobId} · lang=${envio.lang} · stage=${estado?.stage || 'queued'}`,
-        estado?.updatedAt ? `updatedAt ${estado.updatedAt}` : '',
+        // A mesma hora do “atualizado há …”: a da Conexão, ou a de quando o Envio foi criado.
+        `updatedAt ${estado?.updatedAt || new Date(atualizadoEm).toISOString()}`,
         estado?.lastError || '',
         falhaAoRetomar || '',
       ].filter(Boolean).join('\n');
@@ -354,6 +357,16 @@
 
     cartao.dataset.assinatura = [etapa, pct, tom, meta.textContent, causa, falhaAoRetomar || ''].join('|');
     return cartao;
+  }
+
+  /** Terminou sem tudo virar cartão: Continuar envio retoma de onde parou. */
+  function retomavel(estado) {
+    return Boolean(estado) && (estado.status === 'partial' || estado.status === 'failed');
+  }
+
+  /** O Windows não deixou a Conexão fechar o Anki travado: a pessoa precisa fechá-lo antes. */
+  function ankiTravado(estado) {
+    return estado?.ankiError === 'repair_access_denied';
   }
 
   function avisoNoCartao(conteudo, foco) {
@@ -377,12 +390,17 @@
     return no;
   }
 
-  async function tentarCriarDeNovo(envio) {
+  function tentarCriarDeNovo(envio) {
     if (criando) return;
+    return recomecar(() => criarEnvio(envio));
+  }
+
+  /** Recomeça Envios: nada novo é criado no meio, e depois tudo volta a ser acompanhado. */
+  async function recomecar(passo) {
     criando = true;
     desistiuDasPendencias = false;
     try {
-      await criarEnvio(envio);
+      await passo();
     } finally {
       criando = false;
     }
@@ -439,9 +457,11 @@
     for (const envio of remessa.envios) {
       const estado = envio.jobId ? estadoDoJob(envio) || {} : {};
       const sucesso = new Set((estado.successfulPhraseIds || []).map(Number));
+      const falha = new Set((estado.failedPhraseIds || []).map(Number));
       const dup = new Set((estado.duplicatePhraseIds || []).map(Number));
       for (const id of envio.ids) {
-        if (!sucesso.has(Number(id))) falhasPorLang[envio.lang] += 1;
+        // Na dúvida, a frase fica: uma que a Conexão dá também como falha não é apagada.
+        if (!sucesso.has(Number(id)) || falha.has(Number(id))) falhasPorLang[envio.lang] += 1;
         else if (dup.has(Number(id))) duplicadas.push(id);
         else enviadas.push(id);
       }
@@ -477,14 +497,16 @@
     }
     porId('modal-resumo-falhas').hidden = falhas === 0;
 
+    // Apagar oferece só as enviadas que ainda estão no histórico: alguma pode ter sido apagada no meio.
+    const aApagar = doPainel.frasesPorId(enviadas).length;
     const apagar = porId('btn-resumo-apagar');
-    apagar.hidden = enviadas.length === 0;
-    apagar.textContent = enviadas.length === 1
+    apagar.hidden = aApagar === 0;
+    apagar.textContent = aApagar === 1
       ? textoDaVoz('ENV-10.apagarUma')
-      : textoDaVoz('ENV-10.apagar', { n: enviadas.length });
+      : textoDaVoz('ENV-10.apagar', { n: aApagar });
     // O foco entra na ação principal: Apagar as enviadas, ou Manter se não há o que apagar.
-    apagar.toggleAttribute('data-foco-seguro', enviadas.length > 0);
-    porId('btn-resumo-manter').toggleAttribute('data-foco-seguro', enviadas.length === 0);
+    apagar.toggleAttribute('data-foco-seguro', aApagar > 0);
+    porId('btn-resumo-manter').toggleAttribute('data-foco-seguro', aApagar === 0);
 
     respostaDoResumo = null;
     const escolhas = { enviadas, duplicadas };
@@ -509,35 +531,24 @@
     await esquecer();
     if (resposta === 'apagar') {
       // Conta só as que ainda estão no histórico: alguma pode ter sido apagada no meio.
-      const aindaAqui = ops.frasesPorId(enviadas).map(f => f.id);
-      await ops.marcarComoEnviadas(duplicadas);
-      await ops.apagar(aindaAqui);
-      Veio.mostrarToastDeSucesso(textoDaVoz('ENV-11', { n: aindaAqui.length }));
+      const aindaAqui = doPainel.frasesPorId(enviadas).map(f => f.id);
+      await doPainel.marcarComoEnviadas(duplicadas);
+      await doPainel.apagar(aindaAqui);
+      if (aindaAqui.length) Veio.mostrarToastDeSucesso(textoDaVoz('ENV-11', { n: aindaAqui.length }));
     } else {
-      await ops.marcarComoEnviadas([...enviadas, ...duplicadas]);
+      await doPainel.marcarComoEnviadas([...enviadas, ...duplicadas]);
     }
   }
 
   /** Tentar de novo as que falharam (ENV-13): retoma os que ficaram em parte, recria os que não começaram. */
-  async function tentarDeNovoAsQueFalharam() {
-    criando = true;
-    desistiuDasPendencias = false;
+  function tentarDeNovoAsQueFalharam() {
     abrirProgresso();
-    try {
+    return recomecar(async () => {
       for (const envio of remessa.envios) {
-        if (!envio.jobId) {
-          await criarEnvio(envio);
-          continue;
-        }
-        const estado = estadoDoJob(envio);
-        if (estado && ['partial', 'failed'].includes(estado.status)) await retomar(envio.jobId);
+        if (!envio.jobId) await criarEnvio(envio);
+        else if (retomavel(estadoDoJob(envio))) await retomar(envio.jobId);
       }
-    } finally {
-      criando = false;
-    }
-    await gravar();
-    desenharProgresso();
-    acompanhar();
+    });
   }
 
   // ─── Conexão desligada ─────────────────────────────────────────────────────

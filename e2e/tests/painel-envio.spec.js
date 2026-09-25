@@ -126,6 +126,21 @@ test('o cartão mostra a etapa com nome de gente, a barra, “atualizado há 1 m
   await expect(detalhes.locator('pre')).toContainText('2026-09-18T');
 });
 
+test('um Envio na fila sem hora da Conexão ainda mostra a hora ISO em Detalhes', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: INGLESAS });
+  await abrirPainel(page, extensao);
+  fakes.anki.responder('GET', '/jobs', () => ({
+    json: { jobs: fakes.anki.envios.map(e => ({ jobId: e.jobId, lang: e.lang, status: 'queued', state: { status: 'queued', stage: 'queued' } })) },
+  }));
+  await marcarEEnviar(page, [SACK.texto]);
+  const [job] = await enviosCriados(fakes, 1);
+
+  const detalhes = envio(page, 'Envio em inglês · 1 frase').locator('details');
+  await detalhes.getByText('Detalhes').click();
+  await expect(detalhes.locator('pre')).toContainText(job.jobId);
+  await expect(detalhes.locator('pre')).toContainText(AGORA.toISOString());
+});
+
 test('sem notícia da Conexão durante o envio, o modal diz que está tentando de novo, e volta quando ela responde', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: INGLESAS });
   await abrirPainel(page, extensao);
@@ -158,6 +173,23 @@ test('um Envio que fica em parte enquanto o outro anda mostra Continuar envio, q
   await expect(cartaoIngles).toContainText('Na fila');
   await expect(cartaoIngles.getByRole('button', { name: 'Continuar envio' })).toHaveCount(0);
   await expect(toasts(page)).toHaveText('Envio retomado');
+});
+
+test('um Envio parado porque o Windows não deixou fechar o Anki diz o que fazer, com Continuar envio', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, [SACK.texto, RUSSA.texto]);
+  const [ingles, russo] = await enviosCriados(fakes, 2);
+
+  fakes.anki.moverEnvio(russo.jobId, { stage: 'generate_cards' });
+  fakes.anki.concluirEnvio(ingles.jobId, { erro: 'AnkiRepairBlockedError', ankiError: 'repair_access_denied' });
+
+  const cartaoIngles = envio(page, 'Envio em inglês · 1 frase');
+  await expect(cartaoIngles).toContainText('Não concluído', { timeout: 10_000 });
+  await expect(cartaoIngles.getByRole('alert')).toHaveText(/O Windows não deixou fechar o Anki\. Feche o Anki pelo Gerenciador de Tarefas/);
+  await expect(cartaoIngles.getByRole('button', { name: 'Continuar envio' })).toHaveCount(1);
+  await cartaoIngles.getByRole('button', { name: 'Continuar envio' }).click();
+  await expect.poll(() => fakes.anki.requisicoes.some(r => r.metodo === 'POST' && r.caminho === `/jobs/${ingles.jobId}/retry`)).toBe(true);
 });
 
 // ─── Não começou (ENV-03 · ENV-04) ───────────────────────────────────────────
@@ -245,6 +277,19 @@ test('enviar de novo as frases de um Envio que não começou não cria um Envio 
 
 // ─── Duplo clique ────────────────────────────────────────────────────────────
 
+test('uma frase em cirílico gravada sem idioma vai no Envio em russo, como a lista a mostra', async ({ page, extensao, fakes }) => {
+  const semIdioma = { ...RUSSA, idioma: undefined };
+  await extensao.gravarStorage({ frases: [SACK, semIdioma] });
+  await abrirPainel(page, extensao);
+
+  await marcarEEnviar(page, [SACK.texto, RUSSA.texto]);
+
+  await expect(envio(page, 'Envio em russo · 1 frase')).toBeVisible();
+  const [, russo] = await enviosCriados(fakes, 2);
+  expect(russo.lang).toBe('ru');
+  expect(russo.entries.map(e => e.phraseId)).toEqual([RUSSA.id]);
+});
+
 test('bug #9: duplo clique em Enviar ao Anki cria um Envio por idioma, não dois', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
   await abrirPainel(page, extensao);
@@ -311,6 +356,56 @@ test('Apagar as N enviadas apaga só as que viraram cartão agora, marca as que 
   // Apagadas pelo caminho de sempre: o tombstone impede que voltem pela nuvem.
   const tombstones = await page.evaluate(() => new Promise(r => chrome.storage.sync.get(null, r)));
   expect(Object.keys(tombstones)).toEqual(expect.arrayContaining([`pm_del_${SACK.id}`, `pm_del_${ARM.id}`]));
+});
+
+test('uma frase que a Conexão dá como enviada e como falha conta como falha, e Apagar a deixa no histórico com as palavras', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: INGLESAS });
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, INGLESAS.map(f => f.texto));
+  const [job] = await enviosCriados(fakes, 1);
+
+  // A Conexão responde a frase nas duas listas: a falha vale, ela não é apagada.
+  fakes.anki.concluirEnvio(job.jobId);
+  fakes.anki.responder('GET', '/jobs', () => ({
+    json: {
+      jobs: fakes.anki.envios.map(e => ({
+        jobId: e.jobId,
+        lang: e.lang,
+        status: 'partial',
+        state: { ...e.state, status: 'partial', stage: 'partial', failedPhraseIds: [SACK.id] },
+      })),
+    },
+  }));
+
+  await expect(resumo(page)).toHaveAccessibleName('Envio concluído em parte', { timeout: 10_000 });
+  await expect(resumo(page)).toContainText('2 enviadas');
+  await expect(resumo(page)).toContainText('1 falhou');
+  await resumo(page).getByRole('button', { name: 'Apagar as 2 enviadas' }).click();
+
+  await expect.poll(async () => (await extensao.frases()).map(f => f.texto)).toEqual([SACK.texto]);
+  expect((await extensao.frases())[0].keywords).toEqual(['sack@3']);
+});
+
+test('uma enviada apagada no meio do envio não aparece em Apagar, e o resumo não dá toast de 0 apagadas', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: INGLESAS });
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, [SACK.texto]);
+  const [job] = await enviosCriados(fakes, 1);
+  await page.keyboard.press('Escape');
+  await expect(progresso(page)).toHaveCount(0);
+
+  await cartao(page, SACK.texto).getByRole('button', { name: 'Apagar frase', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar frase' }).click();
+  await expect(cartao(page, SACK.texto)).toHaveCount(0);
+
+  fakes.anki.concluirEnvio(job.jobId);
+  await expect(resumo(page)).toBeVisible({ timeout: 10_000 });
+  await expect(resumo(page)).toContainText('1 enviada');
+  await expect(resumo(page).getByRole('button', { name: /^Apagar/ })).toHaveCount(0);
+  await expect(resumo(page).getByRole('button', { name: 'Manter' })).toBeFocused();
+  await resumo(page).getByRole('button', { name: 'Manter' }).click();
+  await expect(resumo(page)).toHaveCount(0);
+  await expect(toasts(page)).toHaveCount(0);
 });
 
 test('Manter marca as enviadas e as que já estavam como Enviada ao Anki, sem toast, e não limpa a seleção', async ({ page, extensao, fakes }) => {

@@ -145,9 +145,10 @@ function criarFakeAnki() {
     /**
      * Termina o Envio. Todas as frases dele viram cartão, menos as `falhas`;
      * as `duplicadas` já estavam no Anki. `erro` termina sem nenhuma (o job
-     * quebrou antes de enviar).
+     * quebrou antes de enviar); `ankiError` é o código que a Conexão junta a ele
+     * (`repair_access_denied`: o Windows não deixou fechar o Anki travado).
      */
-    concluirEnvio(jobId, { duplicadas = [], falhas = [], erro } = {}) {
+    concluirEnvio(jobId, { duplicadas = [], falhas = [], erro, ankiError = null } = {}) {
       const envio = acharEnvio(jobId);
       const pedidas = envio.entries.map(e => Number(e.phraseId));
       const anteriores = envio.state.successfulPhraseIds;
@@ -162,6 +163,7 @@ function criarFakeAnki() {
         failedPhraseIds: falhou,
         duplicatePhraseIds: [...new Set([...envio.state.duplicatePhraseIds, ...duplicadas])],
         lastError: status === 'completed' ? null : (erro || 'Falha ao enviar um ou mais cards ao Anki'),
+        ankiError,
         updatedAt: estado.agora().toISOString(),
       };
     },

@@ -240,22 +240,26 @@ tombstones, no toast) and `marcarComoEnviadas(ids)` (`status: 'exported'`, no to
 **Enviar ao Anki** opens the progress modal at once (ENV-05 is silence), with one card per Envio — one per language:
 “Envio em inglês · 12 frases”, the stage in people's words (ENV-07, from the bridge `stage`), a real bar (stage index
 plus that stage's `done/total`), “atualizado há 1 min” (ENV-08) and a collapsed Detalhes with jobId, raw stage, ISO
-time and `lastError`. A card whose Envio ended partial or failed while another still runs has **Continuar envio**
-(`POST /jobs/<id>/retry`, toast ENV-14). A `POST /jobs` that fails does not hide the Envio: its card says “Não começou”
+time (the bridge's `updatedAt`, or when the Envio was created) and `lastError`. A card whose Envio ended partial or
+failed while another still runs has **Continuar envio** (`POST /jobs/<id>/retry`, toast ENV-14); when the bridge says
+Windows would not let it close a stuck Anki (`ankiError: 'repair_access_denied'`), the card shows BRG-18 as a Veio aviso
+with Continuar envio inside it. Phrases go to the Envio of their language by `ehRussa` (`lib/idioma.js`), the same rule
+the list uses: the stored `idioma`, or the text when it is missing. A `POST /jobs` that fails does not hide the Envio: its card says “Não começou”
 with ENV-03 inline — the Veio aviso, `avisoSemResposta` when the request never got an answer — and Tentar de novo, which
 re-creates only that language. While such an error is on a card (or a Continuar envio that failed, ENV-14), the summary
 waits: the progress modal comes back with it, and the summary opens once the person closes it, counting those phrases
-as failed. Phrases already in the tracked batch are never sent twice, and `pm_envio` is written after each `POST /jobs`. The footer is ENV-15. `GET /jobs` runs every 2 s while something is running; when it fails the modal says
+as failed. `pm_envio` is written after each `POST /jobs`. The footer is ENV-15. `GET /jobs` runs every 2 s while something is running; when it fails the modal says
 ENV-09 and keeps trying. Phrases already in a running Envio are not sent twice (a second click only reopens the modal),
 and the Veio modal ignores the second press of a double click, so it does not close the modal the first press opened.
 
 The tracked Envios live in `pm_envio`, so reloading the panel keeps them (without reopening the modal). When nothing is
 running and at least one Envio started, the **summary** (ENV-10) opens by itself in whatever area is on screen, once no
 other modal is open: `N enviadas` · `N já estavam no Anki` (the bridge's `duplicatePhraseIds`, never counted as sent) ·
-`N falhou` (what did not become a card, including an Envio that never started), one line per language with failures
+`N falhou` (what did not become a card, including an Envio that never started; a phrase the bridge lists both in
+`successfulPhraseIds` and `failedPhraseIds` counts as failed, so it is never deleted), one line per language with failures
 and **Tentar de novo as que falharam**. **Manter** — and ×, Esc, a click outside — marks the sent and the duplicates
 Enviada ao Anki, no toast (ENV-12). **Apagar as N enviadas** deletes only the ones sent now, marks the duplicates, and
-shows the ENV-11 toast. Either answer clears `pm_envio`. With the Conexão off (from the shell), Enviar ao Anki has
+shows the ENV-11 toast; N counts only the sent phrases still in the history, and with none left Apagar is hidden. Either answer clears `pm_envio`. With the Conexão off (from the shell), Enviar ao Anki has
 `aria-disabled` (not `disabled`), `aria-describedby` and a tooltip on hover and focus (`PAI-32.enviarIndisponivel`).
 
 ### Base components (`veio/componentes.css` + `veio/componentes.js`)
@@ -338,7 +342,7 @@ Other storage keys:
 - `pm_atalho_legenda` — the “Minerar legenda” shortcut. Absent → the default Alt+S; `null` → no caption shortcut
 - `pm_atalho` — the “Minerar seleção” shortcut; `null` or absent → none (the default). Both use `{ type: 'keyboard'|'mouse', code, button, altKey, ctrlKey, shiftKey, label }`
 - `pm_apagar_tudo` — `{ uid, ate }` while an Apagar tudo hasn't reached the cloud; see the tombstone paragraph above
-- `pm_envio` — `{ envios: [{ lang, ids, jobId, criadoEm, falhaAoCriar }] }`: the Envios the panel is tracking until the summary is answered; see “Envio ao Anki”
+- `pm_envio` — `{ envios: [{ id, lang, ids, jobId, criadoEm, falhaAoCriar }] }` (`id` is a `crypto.randomUUID()` that keys the Envio's card): the Envios the panel is tracking until the summary is answered; see “Envio ao Anki”
 
 ### Platform-Specific Subtitle Selectors (content.js)
 
