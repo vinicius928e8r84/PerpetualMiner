@@ -243,8 +243,12 @@ the sticky “Minerar N frases” (FOT-12; nothing marked → disabled with FOT-
 
 The page only states what it confirmed. A reading that worked with nothing marked is “Sem marcações” and the FOT-10
 empty state; a failed API call is “Falhou” with FOT-11's cause (429 → limit, 401/403/“API key” → key, with “Abrir
-Configurações”, no network → network, else GLB-01) and a persistent aviso with the raw error in Detalhes — it never
-blames the markings. A 200 with no text (a blocked request, a cut-off answer) is a failure too: only the `NENHUM_TRECHO` sentinel means “Sem marcações”, and FOT-10 shows only when no photo failed. A mined phrase shows “✓ minerada”, its checkbox is disabled and it leaves the button, so a second
+Configurações”, no network → network, else GLB-01) and one persistent aviso for all failed photos (“Não deu para ler a
+foto 2.” or “…3 fotos.”, the first one's cause, each raw error in Detalhes) — it never blames the markings. A 200 with
+no text (a blocked request, a cut-off answer) is a failure too, with Gemini's raw JSON in Detalhes: only the
+`NENHUM_TRECHO` sentinel means “Sem marcações”, and FOT-10 (singular or plural by the photos read) shows only when no
+photo failed. When every photo failed, the phrases column says so (FOT-11.titulo + the cause, and “Abrir
+Configurações” for a refused key), even after the aviso is closed. A mined phrase shows the `--ok` selo “Minerada”, its checkbox is disabled and it leaves the button, so a second
 click or a new photo never saves it twice; the click is ignored while a save is in flight. All saved → toast FOT-14;
 part or none → aviso FOT-15/16 whose “Tentar de novo” mines again exactly the phrases that failed. Photo status changes are announced (the queue is a polite live region).
 
@@ -253,7 +257,9 @@ Windows), by extension, and send Gemini the real MIME type; a file that is not a
 thumbnail Chrome cannot draw falls back to the photo icon. The key lives only in Configurações: with none, the FOT-05
 card, whose button (like the key-refused aviso) opens `painel.html#configuracoes/chave`, and a key saved there frees
 the page through `chrome.storage.onChanged`. “Voltar ao painel” and that button focus the panel tab already open
-(any hash), moving it to the address when there is one, and only open a new tab when there is none. Cancelar,
+(any hash), moving it to the address when there is one, and only open a new tab when there is none. A panel already
+at that address gets no `hashchange`, so the page sends `PAINEL_REAPLICAR_ENDERECO` and `painel-shell.js` applies the
+address again (focusing the key field). Cancelar,
 Recomeçar and “Tentar de novo” on one photo are #37.
 
 ### Base components (`veio/componentes.css` + `veio/componentes.js`)
@@ -382,7 +388,7 @@ npm test         # launches Chromium with the unpacked extension and runs the su
 On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx playwright install-deps chromium`, once.
 
 - `e2e/fixtures.js` launches a fresh Chromium profile per test with the repo root loaded as an unpacked extension, fakes the network at the HTTP boundary and blocks every other external request. It gives tests `extensao` (id, service worker, `url()`, `lerStorage`/`gravarStorage`, `frases()`, `semearSessao()`), `fakes` and `paginas`.
-- `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`), Gemini (`responderFrases(frases)`, `falhar(status, mensagem)`, `ficarSemRede()`, `segurarFrases(frases)` — holds the photo in “Lendo…” until the returned function is called — and `chamadas`, with the key and MIME type of each read), and Firestore/Google (in-memory documents, token refresh; `ficarForaDoAr()`, `recusarAcesso()`, `recusarEscritas()`, `expirarSessao()`, `gravarFrases(uid, frases)`, `usarPerfil({ name, email, picture })`, the profile the Google login returns). `semearSessao({ expirada })` writes an account session to storage, skipping the real login.
+- `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`), Gemini (`responderFrases(frases)`, `falhar(status, mensagem)`, `ficarSemRede()`, `bloquear(motivo)` — a 200 with no text, the `promptFeedback.blockReason` —, `segurarFrases(frases)` — holds the photo in “Lendo…” until the returned function is called — and `chamadas`, with the key and MIME type of each read), and Firestore/Google (in-memory documents, token refresh; `ficarForaDoAr()`, `recusarAcesso()`, `recusarEscritas()`, `expirarSessao()`, `gravarFrases(uid, frases)`, `usarPerfil({ name, email, picture })`, the profile the Google login returns). `semearSessao({ expirada })` writes an account session to storage, skipping the real login.
 - **The real Google login runs offline.** The `chrome.identity.launchWebAuthFlow` window loads outside Playwright's routing (a `context.route` never sees it), so the fixture maps `accounts.google.com` to a local HTTPS server (`fakes/login-google.js`, self-signed certificate made with `openssl` per worker, `--host-resolver-rules` + `--ignore-certificate-errors`). `fakes.google.proximoLogin('entrar'|'janela'|'falhar')` picks what the window does: return with tokens, stay open (the test closes it: cancelling), or fail to load. This also keeps Chromium's own background calls to that host off the internet.
 - `e2e/pages/`: local fixture pages where the content script is injected: `player.html` (fake player with a caption), `texto.html` (plain text to select), `sem-video.html`, `player-em-iframe.html?player=<url>` (embeds the player from another origin, e.g. `paginas.urlCruzada('player.html')`), `hostil.html` + `hostil-filho.html` (a page that tries to drive the extension by itself), and `player-marcacao.html` / `texto-marcacao.html` (caption, title and selectable text carrying markup as text, to prove the content script always inserts page text as text, never as HTML).
 - `e2e/vitrine/`: the Veio showcase — tokens, type scale, radii, a Russian phrase and **every base component**, in both themes and in the states each component actually has (button and field: focus and disabled, plus error on the field; a badge only has normal). `componentes-da-vitrine.js` builds the gallery once per theme with the same function, so the two columns never diverge; its sample copy comes from the Voice catalog by ID (`CATALOGO_DA_VITRINE`), and anything that is showcase scaffolding is marked `data-vitrine-chrome`. The fixture server also serves `/veio/…` and `/lib/…` from the extension root, so the showcase loads the same tokens, fonts, components and catalog the extension pages load. After the owner's review it is **the visual reference**.

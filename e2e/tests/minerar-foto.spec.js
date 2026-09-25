@@ -166,7 +166,7 @@ test('“Selecionar todas” marca e desmarca, fica misto com parte, e o botão 
 
 // ─── Bug de #9: o botão “salvo” reabilitava e salvava de novo ────────────────
 
-test('minerar e clicar de novo não grava nada duas vezes; as mineradas ficam “✓ minerada” e saem do botão', async ({ page, extensao, fakes }) => {
+test('minerar e clicar de novo não grava nada duas vezes; as mineradas ficam “Minerada” e saem do botão', async ({ page, extensao, fakes }) => {
   fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
   fakes.gemini.responderFrases(FRASES_DA_PAGINA_2);
   await abrirAPagina(page, extensao);
@@ -176,7 +176,8 @@ test('minerar e clicar de novo não grava nada duas vezes; as mineradas ficam �
   await expect(page.locator('.veio-toast')).toHaveText('3 frases mineradas');
   for (const texto of FRASES_DA_PAGINA_1) {
     const linha = page.locator('.foto-frase').filter({ has: frase(page, texto) });
-    await expect(linha).toContainText('✓ minerada');
+    await expect(linha).toContainText('Minerada');
+    await expect(linha).not.toContainText('✓');
     await expect(frase(page, texto)).toBeDisabled();
   }
   await expect(botaoMinerar(page)).toBeDisabled();
@@ -255,7 +256,7 @@ test('uma resposta do Gemini sem texto (pedido bloqueado) é falha, não “Sem 
   const aviso = page.getByRole('alert');
   await expect(aviso).toContainText('Não deu para ler a foto 1. Algo deu errado. Tente de novo.');
   await aviso.getByText('Detalhes').click();
-  await expect(aviso).toContainText('SAFETY');
+  await expect(aviso).toContainText('"blockReason":"SAFETY"');
   await expect(page.getByText('Sem marcações')).toHaveCount(0);
 });
 
@@ -282,6 +283,55 @@ test('uma foto que falha não apaga as frases das outras', async ({ page, extens
   await expect(fotoNaFila(page, 'b.png')).toContainText('Falhou');
   await expect(page.getByRole('alert')).toContainText('Não deu para ler a foto 2. Algo deu errado. Tente de novo.');
   await expect(botaoMinerar(page)).toHaveText('Minerar 3 frases');
+});
+
+test('várias fotos sem marcações: o vazio fala das fotos, no plural', async ({ page, extensao, fakes }) => {
+  fakes.gemini.responderFrases([]);
+  fakes.gemini.responderFrases([]);
+  await abrirAPagina(page, extensao);
+
+  await enviarFotos(page, foto('a.png'), foto('b.png'));
+
+  await expect(fotoNaFila(page, 'b.png')).toContainText('Sem marcações');
+  await expect(page.getByText(/^Nenhuma marcação encontrada nestas fotos\./)).toBeVisible();
+});
+
+test('várias fotos que falham dão um aviso só, com cada falha em Detalhes', async ({ page, extensao, fakes }) => {
+  fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
+  fakes.gemini.falhar(500, 'Internal error encountered.');
+  fakes.gemini.falhar(429, 'Resource has been exhausted (e.g. check quota).');
+  await abrirAPagina(page, extensao);
+
+  await enviarFotos(page, foto('a.png'), foto('b.png'), foto('c.png'));
+
+  await expect(fotoNaFila(page, 'c.png')).toContainText('Falhou');
+  const aviso = page.getByRole('alert');
+  await expect(aviso).toHaveCount(1);
+  await expect(aviso).toContainText('Não deu para ler 2 fotos. Algo deu errado. Tente de novo.');
+  await aviso.getByText('Detalhes').click();
+  await expect(aviso).toContainText('Internal error encountered.');
+  await expect(aviso).toContainText('Resource has been exhausted');
+  await expect(botaoMinerar(page)).toHaveText('Minerar 3 frases');
+});
+
+test('todas as fotos falharam: a coluna das frases diz que não deu para ler, mesmo depois de fechar o aviso', async ({ page, extensao, fakes }) => {
+  fakes.gemini.falhar(400, 'API key not valid. Please pass a valid API key.');
+  fakes.gemini.falhar(400, 'API key not valid. Please pass a valid API key.');
+  await abrirAPagina(page, extensao);
+
+  await enviarFotos(page, foto('a.png'), foto('b.png'));
+
+  await expect(fotoNaFila(page, 'b.png')).toContainText('Falhou');
+  const aviso = page.getByRole('alert');
+  await expect(aviso).toContainText('Não deu para ler 2 fotos. A chave do Gemini não funciona. Confira em Configurações.');
+  await aviso.getByRole('button', { name: 'Fechar' }).click();
+  await expect(aviso).toHaveCount(0);
+
+  const estado = page.locator('#foto-estado');
+  await expect(estado.getByText('Não deu para ler as fotos', { exact: true })).toBeVisible();
+  await expect(estado).toContainText('A chave do Gemini não funciona. Confira em Configurações.');
+  await expect(estado.getByRole('button', { name: 'Abrir Configurações' })).toBeVisible();
+  await expect(page.getByText(/Nenhuma marcação/)).toHaveCount(0);
 });
 
 // ─── Bug de #9: “Voltar” abria um segundo painel ──────────────────────────────
@@ -370,7 +420,7 @@ test('sem chave, o cartão FOT-05 no lugar do campo de chave, e “Abrir Configu
 
   await expect(page.getByText('Falta a chave do Gemini')).toBeVisible();
   await expect(page.getByText('Para ler fotos, adicione sua chave do Gemini em Configurações.')).toBeVisible();
-  await expect(page.getByText('Adicione a chave do Gemini para começar.')).toBeVisible();
+  await expect(page.getByText('Adicione a chave do Gemini para começar', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Escolher' })).toHaveCount(0);
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
 
@@ -396,6 +446,19 @@ test('sem chave e com o painel aberto, “Abrir Configurações” leva aquela a
   expect(context.pages()).toHaveLength(abasAntes);
 });
 
+test('com o painel já em #configuracoes/chave, “Abrir Configurações” põe o foco no campo de novo', async ({ page, context, extensao }) => {
+  const painel = await context.newPage();
+  await painel.goto(extensao.url('painel.html#configuracoes/chave'));
+  await expect(painel.locator('#cfg-chave-campo')).toBeFocused();
+  await painel.locator('#cfg-chave-campo').blur();
+  await abrirAPagina(page, extensao, { chave: null });
+  await page.bringToFront();
+
+  await page.getByRole('button', { name: 'Abrir Configurações' }).click();
+
+  await expect(painel.locator('#cfg-chave-campo')).toBeFocused();
+});
+
 test('a chave salva no painel libera a página sem recarregar', async ({ page, extensao }) => {
   await abrirAPagina(page, extensao, { chave: null });
   await expect(page.getByText('Falta a chave do Gemini')).toBeVisible();
@@ -404,7 +467,7 @@ test('a chave salva no painel libera a página sem recarregar', async ({ page, e
 
   await expect(page.getByText('Falta a chave do Gemini')).toBeHidden();
   await expect(page.getByRole('button', { name: 'Escolher' })).toBeVisible();
-  await expect(page.getByText('As frases aparecem aqui, agrupadas por foto.')).toBeVisible();
+  await expect(page.getByText('As frases aparecem aqui, agrupadas por foto', { exact: true })).toBeVisible();
 });
 
 // ─── Teclado, leitor de tela e movimento ─────────────────────────────────────
@@ -442,9 +505,9 @@ test('com movimento reduzido, o “Lendo…” da foto fica parado', async ({ pa
   await expect(ponto).toBeVisible();
   const animacao = await ponto.evaluate(no => {
     const estilo = getComputedStyle(no);
-    return { nome: estilo.animationName, iteracoes: estilo.animationIterationCount };
+    return { nome: estilo.animationName };
   });
-  expect(animacao.nome === 'none' || animacao.iteracoes === '1').toBe(true);
+  expect(animacao.nome).toBe('none');
   soltar();
 });
 

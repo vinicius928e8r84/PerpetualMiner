@@ -361,6 +361,11 @@ figure {
   color: var(--veio-accent-text);
 }
 
+.foto-vazio--falha > svg {
+  background: var(--veio-danger-soft);
+  color: var(--veio-danger);
+}
+
 .foto-vazio .veio-vazio__texto {
   max-width: 44ch;
 }
@@ -519,12 +524,8 @@ figure {
 }
 
 .foto-frase__minerada {
-  margin-top: 3px;
-  color: var(--veio-success);
-  font-family: var(--veio-fonte-mono);
-  font-size: var(--veio-tam-legenda);
-  font-weight: var(--veio-peso-num);
-  white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 1px;
 }
 
 .foto-frase--desmarcada {

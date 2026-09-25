@@ -11,8 +11,8 @@
 //   - uma foto que o Gemini leu sem achar nada é “Sem marcações” (FOT-10); uma
 //     foto em que a API falhou é “Falhou” com o motivo (FOT-11), nunca culpa as
 //     marcações;
-//   - uma frase minerada fica “✓ minerada” e sai do botão, então clicar de novo
-//     (ou chegar outra foto) nunca grava a mesma frase duas vezes.
+//   - uma frase minerada fica com o selo “Minerada” e sai do botão, então
+//     clicar de novo (ou chegar outra foto) nunca grava a mesma frase duas vezes.
 //
 // A chave do Gemini mora em Configurações: sem ela, o cartão FOT-05 leva a
 // #configuracoes/chave. O Livro (o Título das frases) fica lembrado em
@@ -54,6 +54,12 @@ To be or not to be, that is the question`;
   /** O Título gravado quando o Livro fica em branco: dado, não cópia de tela. */
   const TITULO_SEM_LIVRO = 'Físico/Livro';
 
+  /** A Fonte das frases mineradas daqui. */
+  const FONTE = 'livro';
+
+  /** Onde o painel pede a chave do Gemini, com o campo focado. */
+  const ENDERECO_DA_CHAVE = '#configuracoes/chave';
+
   /**
    * Os formatos que a página anuncia (FOT-02) e aceita. O Chrome no Windows
    * entrega o HEIC sem tipo, então a extensão do arquivo também vale.
@@ -87,7 +93,7 @@ To be or not to be, that is the question`;
   // ─── Estado ─────────────────────────────────────────────────────────────────
 
   const estado = {
-    chave: '',
+    chaveGemini: '',
     fotos: [],        // { id, nome, tipo, base64, url, status, achadas, falha: { causa, chaveRecusada, detalhes } }
     frases: [],       // { id, fotoId, texto, marcada, minerada }
     lendo: false,     // a fila está sendo lida
@@ -97,14 +103,16 @@ To be or not to be, that is the question`;
 
   /** O que já está desenhado, para redesenhar só o que mudou. */
   const desenhado = {
-    estado: null,               // a chave do estado da coluna das frases
+    estadoDaColuna: null,       // o id do estado da coluna das frases
     cartoes: new Map(),         // foto.id → <li> da fila
     grupos: new Map(),          // foto.id → grupo de frases
     linhas: new Map(),          // frase.id → linha da frase
+    avisoDaLeitura: null,       // o aviso único das fotos que falharam (FOT-11)
     avisoDoEnvio: null,         // o aviso de FOT-15/16, trocado a cada envio
   };
 
   const porId = id => document.getElementById(id);
+  const fotosCom = (...status) => estado.fotos.filter(foto => status.includes(foto.status));
 
   // ─── Início ─────────────────────────────────────────────────────────────────
 
@@ -116,14 +124,14 @@ To be or not to be, that is the question`;
     porId('foto-marcacoes').replaceWith(montarLegenda());
 
     chrome.storage.local.get({ geminiApiKey: '', bookTitleDefault: '' }, dados => {
-      estado.chave = dados.geminiApiKey || '';
+      estado.chaveGemini = dados.geminiApiKey || '';
       porId('foto-livro').value = dados.bookTitleDefault || '';
       desenhar();
     });
     // A chave salva no painel libera a página sem recarregar.
     chrome.storage.onChanged.addListener((mudancas, area) => {
       if (area !== 'local' || !('geminiApiKey' in mudancas)) return;
-      estado.chave = mudancas.geminiApiKey.newValue || '';
+      estado.chaveGemini = mudancas.geminiApiKey.newValue || '';
       desenhar();
     });
 
@@ -174,7 +182,7 @@ To be or not to be, that is the question`;
   /** Solto em qualquer lugar da página, a foto entra na fila; o Chrome nunca a abre. */
   function ouvirArrastar() {
     const envio = porId('foto-envio');
-    const sobre = ativo => envio.classList.toggle('foto-envio--sobre', ativo && !!estado.chave);
+    const sobre = ativo => envio.classList.toggle('foto-envio--sobre', ativo && !!estado.chaveGemini);
     document.addEventListener('dragover', evento => {
       evento.preventDefault();
       sobre(true);
@@ -199,7 +207,7 @@ To be or not to be, that is the question`;
   }
 
   async function receberArquivos(arquivos) {
-    if (!estado.chave || !arquivos.length) return;
+    if (!estado.chaveGemini || !arquivos.length) return;
 
     const recusados = arquivos.filter(arquivo => !tipoDaFoto(arquivo));
     if (recusados.length) {
@@ -216,7 +224,7 @@ To be or not to be, that is the question`;
     // Uma foto sozinha para na prévia, como hoje; várias vão direto para a
     // leitura. Uma foto que chega com a prévia aberta espera junto com ela.
     const primeiraVez = estado.fotos.length === 0;
-    const comPrevia = estado.fotos.some(foto => foto.status === STATUS.PRONTA);
+    const comPrevia = fotosCom(STATUS.PRONTA).length > 0;
     const status = (primeiraVez && novas.length === 1) || comPrevia ? STATUS.PRONTA : STATUS.NA_FILA;
     for (const foto of novas) estado.fotos.push({ ...foto, status });
 
@@ -241,7 +249,7 @@ To be or not to be, that is the question`;
 
   /** “Ler marcações” na prévia: as fotos prontas entram na fila. */
   function lerAsProntas() {
-    for (const foto of estado.fotos) if (foto.status === STATUS.PRONTA) foto.status = STATUS.NA_FILA;
+    for (const foto of fotosCom(STATUS.PRONTA)) foto.status = STATUS.NA_FILA;
     desenhar();
     lerAFila();
   }
@@ -252,11 +260,11 @@ To be or not to be, that is the question`;
     estado.lendo = true;
 
     let foto;
-    while ((foto = estado.fotos.find(f => f.status === STATUS.NA_FILA))) {
+    while ((foto = fotosCom(STATUS.NA_FILA)[0])) {
       foto.status = STATUS.LENDO;
       desenhar();
       try {
-        const textos = await chamarGemini(estado.chave, foto);
+        const textos = await chamarGemini(estado.chaveGemini, foto);
         for (const texto of textos) {
           estado.frases.push({ id: proximoId++, fotoId: foto.id, texto, marcada: true, minerada: false });
         }
@@ -265,7 +273,7 @@ To be or not to be, that is the question`;
       } catch (erro) {
         foto.status = STATUS.FALHOU;
         foto.falha = classificarFalha(erro);
-        mostrarFalhaDaFoto(foto);
+        mostrarFalhasDaLeitura();
       }
       desenhar();
     }
@@ -305,13 +313,11 @@ To be or not to be, that is the question`;
     }
 
     // Só o sentinel diz “sem marcações”. Uma resposta sem texto (pedido
-    // bloqueado, corte por tamanho) é falha da leitura, não da página.
+    // bloqueado, corte por tamanho) é falha da leitura, não da página; a
+    // resposta crua do Gemini vai para Detalhes.
     const dados = await resposta.json();
     const texto = dados?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-    if (!texto) {
-      const motivo = dados?.promptFeedback?.blockReason || dados?.candidates?.[0]?.finishReason || 'sem texto';
-      throw new Error(`Resposta do Gemini sem texto (${motivo})`);
-    }
+    if (!texto) throw new Error(JSON.stringify(dados));
     return texto
       .split('\n')
       .map(linha => linha.trim())
@@ -336,14 +342,25 @@ To be or not to be, that is the question`;
     return estado.fotos.indexOf(foto) + 1;
   }
 
-  function mostrarFalhaDaFoto(foto) {
-    const { causa, chaveRecusada, detalhes } = foto.falha;
-    mostrarAviso({
-      texto: `${textoDaVoz('FOT-11.aviso', { n: numeroDaFoto(foto) })} ${causa}`,
-      acao: chaveRecusada
-        ? { rotulo: textoDaVoz('FOT-05.acao'), aoUsar: () => abrirPainel('#configuracoes/chave') }
+  const abrirConfiguracoes = () => abrirPainel(ENDERECO_DA_CHAVE);
+
+  /**
+   * Um aviso só para as fotos que falharam, refeito a cada falha: “Não deu
+   * para ler a foto 2.” ou “Não deu para ler 3 fotos.”, com a causa da
+   * primeira, e o erro original de cada uma em Detalhes.
+   */
+  function mostrarFalhasDaLeitura() {
+    desenhado.avisoDaLeitura?.remove();
+    const falhas = fotosCom(STATUS.FALHOU);
+    const abertura = falhas.length === 1
+      ? textoDaVoz('FOT-11.aviso', { n: numeroDaFoto(falhas[0]) })
+      : textoDaVoz('FOT-11.avisoVarias', { n: falhas.length });
+    desenhado.avisoDaLeitura = mostrarAviso({
+      texto: `${abertura} ${falhas[0].falha.causa}`,
+      acao: falhas.some(foto => foto.falha.chaveRecusada)
+        ? { rotulo: textoDaVoz('FOT-05.acao'), aoUsar: abrirConfiguracoes }
         : undefined,
-      detalhes,
+      detalhes: falhas.map(foto => `${foto.nome}: ${foto.falha.detalhes}`).join('\n'),
     });
   }
 
@@ -405,9 +422,9 @@ To be or not to be, that is the question`;
       chrome.runtime.sendMessage({
         type: 'SALVAR_HISTORICO',
         texto,
-        origem: 'livro',
+        origem: FONTE,
         idioma: detectarIdioma(texto),
-        contexto: { fonte: 'livro', titulo, detalhe: '' },
+        contexto: { fonte: FONTE, titulo, detalhe: '' },
       }, resposta => {
         resolve(!chrome.runtime.lastError && resposta?.ok !== false);
       });
@@ -418,7 +435,9 @@ To be or not to be, that is the question`;
 
   /**
    * Foca a aba do painel que já estiver aberta (levando-a a `endereco`, se
-   * houver); sem nenhuma, abre uma. Nunca abre um segundo painel.
+   * houver); sem nenhuma, abre uma. Nunca abre um segundo painel. Um painel
+   * que já está em `endereco` não recebe `hashchange`, então ele é avisado
+   * para aplicar o endereço de novo (e focar o campo da chave, por exemplo).
    */
   function abrirPainel(endereco = '') {
     const painel = chrome.runtime.getURL('painel.html');
@@ -430,6 +449,9 @@ To be or not to be, that is the question`;
       }
       chrome.tabs.update(aba.id, endereco ? { active: true, url: painel + endereco } : { active: true });
       chrome.windows.update(aba.windowId, { focused: true });
+      if (endereco && aba.url === painel + endereco) {
+        chrome.runtime.sendMessage({ type: 'PAINEL_REAPLICAR_ENDERECO' }, () => void chrome.runtime.lastError);
+      }
     });
   }
 
@@ -441,16 +463,16 @@ To be or not to be, that is the question`;
     desenharLista();
   }
 
-  const lendoOuNaFila = () => estado.fotos.filter(f => f.status === STATUS.LENDO || f.status === STATUS.NA_FILA);
+  const lendoOuNaFila = () => fotosCom(STATUS.LENDO, STATUS.NA_FILA);
 
   /** A coluna da esquerda: área de envio, progresso e um cartão por foto. */
   function desenharFila() {
-    const comChave = !!estado.chave;
+    const comChave = !!estado.chaveGemini;
     porId('foto-sem-chave').hidden = comChave;
     porId('foto-envio').hidden = !comChave;
     porId('foto-fotos-total').textContent = estado.fotos.length || '';
 
-    const naFila = estado.fotos.filter(f => f.status === STATUS.NA_FILA).length;
+    const naFila = fotosCom(STATUS.NA_FILA).length;
     porId('foto-envio-texto').textContent = !estado.fotos.length
       ? textoDaVoz('FOT-02.titulo')
       : naFila
@@ -460,7 +482,7 @@ To be or not to be, that is the question`;
     porId('foto-envio').classList.toggle('foto-envio--lendo', estado.lendo);
 
     const ocupadas = lendoOuNaFila().length;
-    const total = estado.fotos.filter(f => f.status !== STATUS.PRONTA).length;
+    const total = estado.fotos.length - fotosCom(STATUS.PRONTA).length;
     porId('foto-progresso').hidden = ocupadas === 0;
     if (ocupadas) {
       const lidas = total - ocupadas;
@@ -529,61 +551,74 @@ To be or not to be, that is the question`;
 
   /**
    * O topo da coluna das frases quando ainda não há lista: sem chave, o
-   * começo, a prévia, a leitura da 1ª foto ou a leitura sem marcações. Só é
-   * refeito quando o estado muda, para não roubar o foco de quem está nele.
+   * começo, a prévia, a leitura da 1ª foto, a leitura sem marcações ou todas
+   * as fotos que falharam. Só é refeito quando o estado muda, para não roubar
+   * o foco de quem está nele.
    */
   function desenharEstado() {
-    const { chave, montar } = estadoDaColuna();
-    if (chave === desenhado.estado) return;
-    desenhado.estado = chave;
+    const { id, montar } = estadoDaColuna();
+    if (id === desenhado.estadoDaColuna) return;
+    desenhado.estadoDaColuna = id;
     porId('foto-estado').replaceChildren(...(montar ? [montar()] : []));
   }
 
   function estadoDaColuna() {
-    if (!estado.chave) return { chave: 'semChave', montar: montarSemChave };
-    if (!estado.fotos.length) return { chave: 'inicio', montar: montarInicio };
+    if (!estado.chaveGemini) return { id: 'semChave', montar: montarSemChave };
+    if (!estado.fotos.length) return { id: 'inicio', montar: montarInicio };
 
-    const pronta = estado.fotos.find(f => f.status === STATUS.PRONTA);
-    if (pronta) return { chave: `previa:${pronta.id}`, montar: () => montarPrevia(pronta) };
-    if (estado.frases.length) return { chave: 'lista' };
+    const pronta = fotosCom(STATUS.PRONTA)[0];
+    if (pronta) return { id: `previa:${pronta.id}`, montar: () => montarPrevia(pronta) };
+    if (estado.frases.length) return { id: 'lista' };
 
-    const lendo = estado.fotos.find(f => f.status === STATUS.LENDO);
+    const lendo = fotosCom(STATUS.LENDO)[0];
     if (lendo || lendoOuNaFila().length) {
       const total = estado.fotos.length;
       const n = lendo ? numeroDaFoto(lendo) : 1;
-      return { chave: `lendo:${n}/${total}`, montar: () => montarLendo(n, total) };
+      return { id: `lendo:${n}/${total}`, montar: () => montarLendo(n, total) };
+    }
+    // Todas falharam: a coluna diz isso, mesmo depois de fechado o aviso.
+    const falhas = fotosCom(STATUS.FALHOU);
+    if (falhas.length === estado.fotos.length) {
+      return { id: `falharam:${falhas.length}`, montar: () => montarTodasFalharam(falhas) };
     }
     // “Sem marcações” só quando nenhuma foto falhou: com uma falha, o aviso
     // dela é o estado, e o vazio não pode pôr a culpa nas marcações.
-    const algumaFalhou = estado.fotos.some(f => f.status === STATUS.FALHOU);
-    if (!algumaFalhou && estado.fotos.some(f => f.status === STATUS.LIDA)) {
-      return { chave: 'semMarcacoes', montar: montarSemMarcacoes };
-    }
-    return { chave: 'nada' };
+    const lidas = fotosCom(STATUS.LIDA).length;
+    if (!falhas.length && lidas) return { id: `semMarcacoes:${lidas}`, montar: () => montarSemMarcacoes(lidas) };
+    return { id: 'nada' };
   }
 
   function vazio(icone, ...partes) {
     return elemento('div', 'veio-vazio foto-vazio', iconeVeio(icone), ...partes);
   }
 
-  function montarSemChave() {
-    const abrir = elemento('button', 'veio-botao veio-botao--primario', iconeVeio('chave'), textoDaVoz('FOT-05.acao'));
-    abrir.type = 'button';
-    abrir.addEventListener('click', () => abrirPainel('#configuracoes/chave'));
-    const caixa = vazio('chave',
-      elemento('p', 'veio-vazio__titulo', textoDaVoz('FOT-05.titulo')),
-      elemento('p', 'veio-vazio__texto', textoDaVoz('FOT-05.aviso')),
-      abrir);
+  /** O vazio em ouro, dos estados em que a página espera a pessoa ou o Gemini. */
+  function vazioDeAcento(icone, ...partes) {
+    const caixa = vazio(icone, ...partes);
     caixa.classList.add('foto-vazio--acento');
     return caixa;
   }
 
+  function botaoAbrirConfiguracoes(variante) {
+    const abrir = elemento('button', `veio-botao ${variante}`, iconeVeio('chave'), textoDaVoz('FOT-05.acao'));
+    abrir.type = 'button';
+    abrir.addEventListener('click', abrirConfiguracoes);
+    return abrir;
+  }
+
+  function montarSemChave() {
+    return vazioDeAcento('chave',
+      elemento('p', 'veio-vazio__titulo', textoDaVoz('FOT-05.titulo')),
+      elemento('p', 'veio-vazio__texto', textoDaVoz('FOT-05.aviso')),
+      botaoAbrirConfiguracoes('veio-botao--primario'));
+  }
+
   function montarInicio() {
-    const caixa = vazio('livro',
+    const caixa = vazioDeAcento('livro',
       elemento('p', 'veio-vazio__titulo', textoDaVoz('FOT-01.titulo')),
       elemento('p', 'veio-vazio__texto', textoDaVoz('FOT-01.subtitulo')),
       elemento('p', 'veio-vazio__texto', textoDaVoz('FOT-25.comoAparecem')));
-    caixa.classList.add('foto-vazio--acento', 'foto-vazio--inicio');
+    caixa.classList.add('foto-vazio--inicio');
     return caixa;
   }
 
@@ -599,17 +634,25 @@ To be or not to be, that is the question`;
   }
 
   function montarLendo(n, total) {
-    const caixa = vazio('ler',
+    return vazioDeAcento('ler',
       elemento('p', 'veio-vazio__titulo', total > 1 ? textoDaVoz('FOT-07', { n, total }) : textoDaVoz('FOT-06.titulo')),
       elemento('p', 'veio-vazio__texto', textoDaVoz('FOT-06.detalhe')));
-    caixa.classList.add('foto-vazio--acento');
-    return caixa;
   }
 
-  function montarSemMarcacoes() {
+  function montarSemMarcacoes(lidas) {
     return vazio('busca',
-      elemento('p', 'veio-vazio__texto', textoDaVoz('FOT-10')),
+      elemento('p', 'veio-vazio__texto', textoDaVoz('FOT-10', { n: lidas })),
       montarLegenda());
+  }
+
+  /** Nenhuma foto foi lida: a causa da primeira e, com a chave recusada, o caminho até ela. */
+  function montarTodasFalharam(falhas) {
+    const caixa = vazio('perigo',
+      elemento('p', 'veio-vazio__titulo', textoDaVoz('FOT-11.titulo', { n: falhas.length })),
+      elemento('p', 'veio-vazio__texto', falhas[0].falha.causa));
+    if (falhas.some(foto => foto.falha.chaveRecusada)) caixa.append(botaoAbrirConfiguracoes('veio-botao--secundario'));
+    caixa.classList.add('foto-vazio--falha');
+    return caixa;
   }
 
   /** As frases agrupadas por foto, a seleção, a contagem e o botão. */
@@ -678,7 +721,7 @@ To be or not to be, that is the question`;
       desenharLista();
     });
 
-    const minerada = elemento('span', 'foto-frase__minerada', textoDaVoz('FOT-25.minerada'));
+    const minerada = selo('veio-selo--ok foto-frase__minerada', textoDaVoz('FOT-25.minerada'));
     return elemento('div', 'veio-frase foto-frase', marcar, texto, minerada);
   }
 

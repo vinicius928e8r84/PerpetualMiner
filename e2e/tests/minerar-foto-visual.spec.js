@@ -108,6 +108,15 @@ test('uma foto falhou, a outra foi lida', async ({ page, extensao, fakes }) => {
   await referencia(page, 'foto-uma-falhou');
 });
 
+test('todas as fotos falharam, com a chave recusada', async ({ page, extensao, fakes }) => {
+  await abrir(page, extensao);
+  fakes.gemini.falhar(400, 'API key not valid. Please pass a valid API key.');
+  fakes.gemini.falhar(400, 'API key not valid. Please pass a valid API key.');
+  await enviar(page, foto('IMG_2041.jpg'), foto('IMG_2042.jpg'));
+  await expect(fotoNaFila(page, 'IMG_2042.jpg')).toContainText('Falhou');
+  await referencia(page, 'foto-todas-falharam');
+});
+
 test('nenhuma marcação encontrada', async ({ page, extensao, fakes }) => {
   await abrir(page, extensao);
   fakes.gemini.responderFrases([]);
