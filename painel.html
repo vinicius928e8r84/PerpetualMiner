@@ -164,7 +164,9 @@
                 <span data-icone="apagar"></span><span data-voz="PAI-32.apagar"></span>
               </button>
               <!-- Com a Conexão desligada fica aria-disabled (não disabled, para o tooltip
-                   aparecer no hover e no foco), e o tooltip diz por quê (painel-envio.js). -->
+                   aparecer no hover e no foco), com o selo fixo ao lado e o tooltip dizendo
+                   por quê (painel-envio.js). -->
+              <span class="envio-conexao-desligada" id="envio-conexao-desligada" data-voz="PAI-32.conexaoDesligada" hidden></span>
               <span class="veio-com-dica">
                 <button class="veio-botao veio-botao--primario veio-botao--compacto" id="btn-send-anki" type="button">
                   <span data-icone="enviar"></span><span data-voz="PAI-32.enviar"></span>
@@ -637,17 +639,19 @@
       <button class="veio-botao-icone veio-modal__fechar" type="button" id="modal-resumo-fechar"
               data-voz-aria="PAI-34" data-voz-title="PAI-34"><span data-icone="fechar"></span></button>
       <h2 class="veio-modal__titulo" id="modal-resumo-titulo"></h2>
-      <div class="envio-resumo__selos" id="modal-resumo-selos"></div>
-      <div class="envio-resumo__falhas" id="modal-resumo-falhas" hidden>
-        <div class="envio-resumo__linhas" id="modal-resumo-falhas-linhas"></div>
-        <button class="veio-botao veio-botao--secundario veio-botao--compacto" type="button" id="btn-resumo-tentar"
-                data-voz="ENV-13.tentarDeNovo"></button>
+      <p class="veio-modal__corpo" id="modal-resumo-detalhe"></p>
+      <!-- Um bloco por idioma: +N cartões, o baralho, o que já estava e o que não entrou. -->
+      <div class="envio-resumo__baralhos" id="modal-resumo-baralhos"></div>
+      <div class="envio-resumo__historico">
+        <p class="envio-resumo__pergunta" id="modal-resumo-pergunta"></p>
+        <p class="envio-resumo__ajuda" id="modal-resumo-ajuda"></p>
       </div>
       <div class="veio-modal__acoes">
-        <button class="veio-botao veio-botao--secundario" type="button" id="btn-resumo-manter" data-voz="ENV-10.manter"></button>
-        <button class="veio-botao veio-botao--primario" type="button" id="btn-resumo-apagar"></button>
+        <button class="veio-botao veio-botao--secundario" type="button" id="btn-resumo-manter"></button>
+        <button class="veio-botao veio-botao--primario" type="button" id="btn-resumo-apagar">
+          <span data-icone="apagar"></span><span data-voz="ENV-10.tirar"></span>
+        </button>
       </div>
-      <p class="veio-modal__ajuda" data-voz="ENV-10.ajuda"></p>
     </div>
   </div>
 

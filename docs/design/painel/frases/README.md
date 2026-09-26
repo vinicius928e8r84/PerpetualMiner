@@ -101,19 +101,21 @@ Todos seguem o modal Veio: `surface`, raio 20, × no canto, Esc e clique fora fe
 - **Envio ao Anki** (ENV-05…14): abre na hora (ENV-05 fica sem toast).
   - **Progresso:**
     - título “Enviando ao Anki…” e subtítulo “2 envios · inglês e russo”;
-    - um cartão por envio: “Envio em inglês · 12 frases”, a etapa com nome de gente (Na fila · Criando cartões · Preparando imagens · Gerando áudio · Escolhendo imagens · Esperando o Anki · Enviando ao Anki), a barra, “atualizado há 1 min” e **Detalhes** recolhido com jobId, stage cru e ISO;
+    - um cartão por envio: “Envio em inglês · 12 frases”, a etapa com nome de gente (Na fila · Criando cartões · Preparando imagens · Gerando áudio · Escolhendo imagens · Esperando o Anki · Enviando ao Anki), as 7 etapas em segmentos (as feitas cheias, a atual enchendo), “etapa 4 de 7 · atualizado há 1 min” e **Detalhes** recolhido com jobId, stage cru e ISO;
     - quando o envio fica em parte: **Continuar envio**;
     - quando não começa (ENV-03): o erro inline “O envio em inglês não começou. A conexão com o Anki respondeu com erro.” + **Tentar de novo**;
     - no pé: “Pode fechar: o resumo abre quando o envio terminar.”;
     - sai o “Atualizar status” (M3.7).
   - **Resumo** (ENV-10), que abre sozinho em qualquer área e espera outro modal aberto fechar:
     - título “Envio concluído” ou “Envio concluído em parte”;
-    - os selos “12 enviadas” · “2 já estavam no Anki” · “1 falhou”;
-    - com falha, a linha “1 frase em russo não virou cartão.” + **Tentar de novo as que falharam**;
-    - os botões **Manter** e **Apagar as 12 enviadas** (primário);
-    - sob os botões: “Manter deixa as frases no histórico, marcadas como enviadas ao Anki.”;
+    - subtítulo “20 frases · 2 baralhos”;
+    - um bloco por idioma, lado a lado: “Inglês”, **+11 cartões**, “no baralho CIMV” (sem o `::` do Anki: níveis separados por ›), “1 já estava lá” e, com falha, “1 não entrou” + **Tentar de novo**, que refaz só aquele idioma;
+    - depois dos blocos, a pergunta “Tirar as 11 enviadas do histórico?” com “Elas já estão no Anki. Manter deixa no histórico, marcadas como enviadas.”;
+    - os botões **Manter** e **Tirar do histórico** (primário, com a lixeira);
+    - se alguma enviada foi apagada no meio: “1 enviada você já tinha apagado.”; se não sobrou nenhuma: “Nada para tirar do histórico.” e o botão **Pronto**;
     - Manter (e fechar) marca as enviadas e as já existentes como Enviada ao Anki, sem toast (ENV-12);
-    - Apagar dá o toast “12 frases apagadas” (ENV-11).
+    - Tirar do histórico dá o toast “11 frases apagadas” (ENV-11);
+    - desenho decidido pelo dono no protótipo `prototipo-envio.html` (rodada 3 do PR #64, branch `prototipo/envio-anki-rodada3`): o topo da variante B (um bloco por baralho) com o fim da A (a pergunta do histórico).
 
 **Toasts** (C1): pílula em `text`/`bg` (invertida), centrada acima do rodapé, com um ícone de sucesso. Só para sucesso curto. Duração de no mínimo 2,6 s, crescendo com o texto.
 

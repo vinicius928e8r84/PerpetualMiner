@@ -238,8 +238,9 @@ what it does with phrases: the selection, the mining line, the send settings, `a
 tombstones, no toast) and `marcarComoEnviadas(ids)` (`status: 'exported'`, no toast, the selection untouched).
 
 **Enviar ao Anki** opens the progress modal at once (ENV-05 is silence), with one card per Envio — one per language:
-“Envio em inglês · 12 frases”, the stage in people's words (ENV-07, from the bridge `stage`), a real bar (stage index
-plus that stage's `done/total`), “atualizado há 1 min” (ENV-08) and a collapsed Detalhes with jobId, raw stage, ISO
+“Envio em inglês · 12 frases”, the stage in people's words (ENV-07, from the bridge `stage`), the 7 stages as segments
+(the done ones full, the current one filling by its `done/total`; all in the outcome's color at the end), “etapa 4 de 7 ·
+atualizado há 1 min” (ENV-08) and a collapsed Detalhes with jobId, raw stage, ISO
 time (the bridge's `updatedAt`, or when the Envio was created) and `lastError`. A card whose Envio ended partial or
 failed while another still runs has **Continuar envio** (`POST /jobs/<id>/retry`, toast ENV-14); when the bridge says
 Windows would not let it close a stuck Anki (`ankiError: 'repair_access_denied'`), the card shows BRG-18 as a Veio aviso
@@ -254,13 +255,18 @@ and the Veio modal ignores the second press of a double click, so it does not cl
 
 The tracked Envios live in `pm_envio`, so reloading the panel keeps them (without reopening the modal). When nothing is
 running and at least one Envio started, the **summary** (ENV-10) opens by itself in whatever area is on screen, once no
-other modal is open: `N enviadas` · `N já estavam no Anki` (the bridge's `duplicatePhraseIds`, never counted as sent) ·
-`N falhou` (what did not become a card, including an Envio that never started; a phrase the bridge lists both in
-`successfulPhraseIds` and `failedPhraseIds` counts as failed, so it is never deleted), one line per language with failures
-and **Tentar de novo as que falharam**. **Manter** — and ×, Esc, a click outside — marks the sent and the duplicates
-Enviada ao Anki, no toast (ENV-12). **Apagar as N enviadas** deletes only the ones sent now, marks the duplicates, and
-shows the ENV-11 toast; N counts only the sent phrases still in the history, and with none left Apagar is hidden. Either answer clears `pm_envio`. With the Conexão off (from the shell), Enviar ao Anki has
-`aria-disabled` (not `disabled`), `aria-describedby` and a tooltip on hover and focus (`PAI-32.enviarIndisponivel`).
+other modal is open. It has one block per language: `+N cartões` (sent now), `no baralho <deck>` (the deck saved on the
+Envio when it was created, its `::` levels shown as ›), `N já estava lá` (the bridge's `duplicatePhraseIds`, never counted
+as sent) and `N não entrou` (what did not become a card, including an Envio that never started; a phrase the bridge lists
+both in `successfulPhraseIds` and `failedPhraseIds` counts as failed, so it is never deleted) with **Tentar de novo**,
+which redoes only that language. Below the blocks, the history question: “Tirar as N enviadas do histórico?” with
+**Manter** and **Tirar do histórico**; N counts only the sent phrases still in the history, the ones deleted meanwhile
+are named (“1 enviada você já tinha apagado.”), and with none left it says “Nada para tirar do histórico.” with **Pronto**.
+**Manter** — and Pronto, ×, Esc, a click outside — marks the sent and the duplicates Enviada ao Anki, no toast (ENV-12).
+**Tirar do histórico** deletes only the ones sent now, marks the duplicates, and shows the ENV-11 toast. Either answer
+clears `pm_envio`. With the Conexão off (from the shell), Enviar ao Anki has `aria-disabled` (not `disabled`), the fixed
+“Conexão desligada” badge beside it (`PAI-32.conexaoDesligada`), `aria-describedby` and a tooltip on hover and focus
+(`PAI-32.enviarIndisponivel`).
 
 ### Base components (`veio/componentes.css` + `veio/componentes.js`)
 
@@ -342,7 +348,7 @@ Other storage keys:
 - `pm_atalho_legenda` — the “Minerar legenda” shortcut. Absent → the default Alt+S; `null` → no caption shortcut
 - `pm_atalho` — the “Minerar seleção” shortcut; `null` or absent → none (the default). Both use `{ type: 'keyboard'|'mouse', code, button, altKey, ctrlKey, shiftKey, label }`
 - `pm_apagar_tudo` — `{ uid, ate }` while an Apagar tudo hasn't reached the cloud; see the tombstone paragraph above
-- `pm_envio` — `{ envios: [{ id, lang, ids, jobId, criadoEm, falhaAoCriar }] }` (`id` is a `crypto.randomUUID()` that keys the Envio's card): the Envios the panel is tracking until the summary is answered; see “Envio ao Anki”
+- `pm_envio` — `{ envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar }] }` (`id` is a `crypto.randomUUID()` that keys the Envio's card; `baralho` is the deck it was sent to): the Envios the panel is tracking until the summary is answered; see “Envio ao Anki”
 
 ### Platform-Specific Subtitle Selectors (content.js)
 
@@ -395,7 +401,7 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - `e2e/vitrine/`: the Veio showcase — tokens, type scale, radii, a Russian phrase and **every base component**, in both themes and in the states each component actually has (button and field: focus and disabled, plus error on the field; a badge only has normal). `componentes-da-vitrine.js` builds the gallery once per theme with the same function, so the two columns never diverge; its sample copy comes from the Voice catalog by ID (`CATALOGO_DA_VITRINE`), and anything that is showcase scaffolding is marked `data-vitrine-chrome`. The fixture server also serves `/veio/…` and `/lib/…` from the extension root, so the showcase loads the same tokens, fonts, components and catalog the extension pages load. After the owner's review it is **the visual reference**.
 - The showcase also carries a **mock of the toolbar badge** in its three states, outside the two theme columns — Chrome draws the real badge on the browser toolbar, which no static page (and so no Vercel preview) can show. The mock reads its colors from the tokens, and the badge test asserts those tokens match what the service worker hands Chrome, so the copy in `background.js` can't drift.
 - `tests/painel-frases-visual.spec.js` holds the **visual reference of the Frases list** (cards wide and as a rail, each at the top and with the island scrolled to the pagination; loading, first run, filters and search with no result as the full page), in the same way: `npx playwright test painel-frases-visual --update-snapshots` after the owner approves a new look. Today's bulk actions (`.conteudo-de-hoje`) are masked.
-- `tests/painel-envio-visual.spec.js` holds the **visual reference of the Envio ao Anki**: the progress with one Envio running and one that did not start, a partial Envio with Continuar envio, the summary partial and complete (opened in Configurações), and Enviar ao Anki unavailable with its tooltip.
+- `tests/painel-envio-visual.spec.js` holds the **visual reference of the Envio ao Anki**: the progress with one Envio running and one that did not start, a partial Envio with Continuar envio, the summary partial and complete (opened in Configurações), and Enviar ao Anki unavailable with its badge and tooltip.
 - `tests/painel-shell-visual.spec.js` holds the **visual reference of the panel shell**: its approved states (Frases wide and as a rail, first run, the Conexão off with F1, Configurações with an account) as `toHaveScreenshot` baselines in `painel-shell-visual.spec.js-snapshots/` (taken on Linux, with the clock frozen on the day of the sample phrases). A visual change to the shell fails them; after the owner approves the new look, `npx playwright test painel-shell-visual --update-snapshots` replaces the reference. The content inside each area (`.conteudo-de-hoje`, and the Frases list, which has its own reference) is masked: the reference is the shell around it.
 - `tests/configuracoes-visual.spec.js` does the same for Configurações (cards closed; Conta & sync synced, not synced, logged out after a failed login; Chave do Gemini saved and refused empty; Zona de perigo with an account and its modal; Atalhos open, recording and with a repeated shortcut refused; the narrow window; Aparência open in dark and in light), compared by the owner side by side with the locked prototype (`?variant=C`).
 - `HEADED=1 npm test` shows the browser.

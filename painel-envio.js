@@ -39,7 +39,7 @@
   const porId = id => document.getElementById(id);
 
   let doPainel = null;
-  // A remessa acompanhada: { envios: [{ id, lang, ids, jobId, criadoEm, falhaAoCriar }] }.
+  // A remessa acompanhada: { envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar }] }.
   let remessa = null;
   const jobs = new Map();           // jobId → o último job lido de GET /jobs
   const falhasAoRetomar = new Map(); // jobId → a causa, quando Continuar envio não deu
@@ -53,7 +53,7 @@
   let relogio = null;
   let progresso = null;             // o modal de progresso aberto ({ fechar })
   let resumo = null;                // o modal do resumo aberto
-  let respostaDoResumo = null;      // 'apagar' | 'tentar' | null (Manter)
+  let respostaDoResumo = null;      // 'apagar' | { tentar: lang } | null (Manter)
   const assinaturas = new Map();    // id do Envio → o que o cartão mostra agora
 
   // ─── Começo ────────────────────────────────────────────────────────────────
@@ -66,7 +66,6 @@
     porId('modal-resumo-fechar').addEventListener('click', () => resumo?.fechar());
     porId('btn-resumo-manter').addEventListener('click', () => resumo?.fechar());
     porId('btn-resumo-apagar').addEventListener('click', () => responderResumo('apagar'));
-    porId('btn-resumo-tentar').addEventListener('click', () => responderResumo('tentar'));
     Shell.aoMudarAConexao(mostrarConexao);
 
     const gravado = await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r));
@@ -120,6 +119,8 @@
     envio.falhaAoCriar = null;
     envio.criadoEm = Date.now();
     const preset = doPainel.ajustes()[envio.lang];
+    // O baralho de quando o Envio foi criado: é o que o resumo diz, mesmo se os ajustes mudarem.
+    envio.baralho = preset.deckName;
     const corpo = {
       lang: envio.lang,
       deckName: preset.deckName,
@@ -272,18 +273,20 @@
   /** O que o cartão diz: etapa, quanto da barra, se deu certo, e o técnico. */
   function situacaoDoEnvio(envio) {
     if (!envio.jobId) {
-      if (!envio.falhaAoCriar) return { etapa: 'naFila', pct: 0, tom: '', atualizadoEm: envio.criadoEm };
-      return { etapa: 'naoComecou', pct: 100, tom: 'erro', atualizadoEm: envio.criadoEm };
+      if (!envio.falhaAoCriar) return { etapa: 'naFila', indice: 0, fracao: 0, pct: 0, tom: '', atualizadoEm: envio.criadoEm };
+      return { etapa: 'naoComecou', fim: true, pct: 100, tom: 'erro', atualizadoEm: envio.criadoEm };
     }
     const estado = estadoDoJob(envio) || { status: 'queued', stage: 'queued' };
     const atualizadoEm = estado.updatedAt ? Date.parse(estado.updatedAt) : envio.criadoEm;
     const fim = FIM[estado.status];
-    if (fim) return { etapa: fim, pct: 100, tom: estado.status === 'completed' ? 'ok' : 'erro', atualizadoEm, estado };
+    if (fim) return { etapa: fim, fim: true, pct: 100, tom: estado.status === 'completed' ? 'ok' : 'erro', atualizadoEm, estado };
     const indice = Math.max(0, ETAPAS.findIndex(([stage]) => stage === estado.stage));
     const { done, total } = estado.progress || {};
     const fracao = total > 0 ? Math.min(1, Number(done || 0) / Number(total)) : 0;
     return {
       etapa: ETAPAS[indice][1],
+      indice,
+      fracao,
       pct: Math.round(((indice + fracao) / ETAPAS.length) * 100),
       tom: '',
       atualizadoEm,
@@ -299,7 +302,8 @@
   }
 
   function montarCartao(envio) {
-    const { etapa, pct, tom, atualizadoEm, estado } = situacaoDoEnvio(envio);
+    const situacao = situacaoDoEnvio(envio);
+    const { etapa, pct, tom, atualizadoEm, estado } = situacao;
     const idioma = nomeDoIdioma(envio.lang);
     const cartao = elemento('section', 'envio-cartao');
     cartao.setAttribute('role', 'group');
@@ -311,16 +315,7 @@
       textoDaVoz(`ENV-07.${etapa}`));
     const topo = elemento('div', 'envio-cartao__topo', titulo, rotuloDaEtapa);
 
-    const barra = elemento('div', `veio-medidor envio-cartao__barra${tom ? ` envio-cartao__barra--${tom}` : ''}`);
-    barra.setAttribute('role', 'progressbar');
-    barra.setAttribute('aria-labelledby', titulo.id);
-    barra.setAttribute('aria-valuemin', '0');
-    barra.setAttribute('aria-valuemax', '100');
-    barra.setAttribute('aria-valuenow', String(pct));
-    const preenchido = document.createElement('i');
-    preenchido.style.width = `${pct}%`;
-    barra.append(preenchido);
-    cartao.append(topo, barra);
+    cartao.append(topo, montarEtapas(situacao, titulo.id));
 
     // O erro que pede ação é o aviso da Veio, no próprio cartão, com a causa em Detalhes.
     const falhaAoRetomar = envio.jobId && falhasAoRetomar.get(envio.jobId);
@@ -339,8 +334,9 @@
       }, 'continuar'));
     }
 
+    const atualizado = textoDaVoz('ENV-08.atualizado', { quando: quando(atualizadoEm) });
     const meta = elemento('div', 'envio-cartao__meta',
-      elemento('span', '', textoDaVoz('ENV-08.atualizado', { quando: quando(atualizadoEm) })));
+      elemento('span', '', situacao.fim ? atualizado : `${etapaDeSete(situacao)} · ${atualizado}`));
     if (!falhaAoRetomar && !ankiTravado(estado) && retomavel(estado)) {
       meta.append(botao(textoDaVoz('ENV-13.continuar'), 'continuar', () => continuarEnvio(envio)));
     }
@@ -367,6 +363,36 @@
   /** O Windows não deixou a Conexão fechar o Anki travado: a pessoa precisa fechá-lo antes. */
   function ankiTravado(estado) {
     return estado?.ankiError === 'repair_access_denied';
+  }
+
+  function etapaDeSete({ indice }) {
+    return textoDaVoz('ENV-08.etapa', { n: indice + 1, total: ETAPAS.length });
+  }
+
+  /**
+   * As 7 etapas do caminho em segmentos: as feitas cheias, a atual enchendo pelo
+   * `done/total` dela. No fim, todas na cor do desfecho.
+   */
+  function montarEtapas(situacao, rotuladoPor) {
+    const { indice, fracao, fim, tom, pct } = situacao;
+    const etapas = elemento('div', `envio-cartao__etapas${tom ? ` envio-cartao__etapas--${tom}` : ''}`);
+    etapas.setAttribute('role', 'progressbar');
+    etapas.setAttribute('aria-labelledby', rotuladoPor);
+    etapas.setAttribute('aria-valuemin', '0');
+    etapas.setAttribute('aria-valuemax', '100');
+    etapas.setAttribute('aria-valuenow', String(pct));
+    if (!fim) etapas.setAttribute('aria-valuetext', etapaDeSete(situacao));
+    ETAPAS.forEach((_, k) => {
+      const segmento = document.createElement('i');
+      if (fim || k < indice) segmento.className = 'feito';
+      if (!fim && k === indice) {
+        const enchendo = document.createElement('b');
+        enchendo.style.width = `${Math.round(fracao * 100)}%`;
+        segmento.append(enchendo);
+      }
+      etapas.append(segmento);
+    });
+    return etapas;
   }
 
   function avisoNoCartao(conteudo, foco) {
@@ -451,23 +477,59 @@
     return scrims.length > 0 || antigos.length > 0;
   }
 
-  function contagem() {
-    const enviadas = [];
-    const duplicadas = [];
-    const falhasPorLang = { en: 0, ru: 0 };
+  /** O desfecho de cada idioma: o que virou cartão agora, o que já estava lá e o que não entrou. */
+  function contagemPorIdioma() {
+    const porLang = new Map();
     for (const envio of remessa.envios) {
+      if (!porLang.has(envio.lang)) {
+        porLang.set(envio.lang, { lang: envio.lang, baralho: envio.baralho, total: 0, enviadas: [], duplicadas: [], falhas: 0 });
+      }
+      const idioma = porLang.get(envio.lang);
+      idioma.baralho = idioma.baralho || envio.baralho;
+      idioma.total += envio.ids.length;
       const estado = envio.jobId ? estadoDoJob(envio) || {} : {};
       const sucesso = new Set((estado.successfulPhraseIds || []).map(Number));
       const falha = new Set((estado.failedPhraseIds || []).map(Number));
       const dup = new Set((estado.duplicatePhraseIds || []).map(Number));
       for (const id of envio.ids) {
         // Na dúvida, a frase fica: uma que a Conexão dá também como falha não é apagada.
-        if (!sucesso.has(Number(id)) || falha.has(Number(id))) falhasPorLang[envio.lang] += 1;
-        else if (dup.has(Number(id))) duplicadas.push(id);
-        else enviadas.push(id);
+        if (!sucesso.has(Number(id)) || falha.has(Number(id))) idioma.falhas += 1;
+        else if (dup.has(Number(id))) idioma.duplicadas.push(id);
+        else idioma.enviadas.push(id);
       }
     }
-    return { enviadas, duplicadas, falhasPorLang };
+    return ['en', 'ru'].filter(lang => porLang.has(lang)).map(lang => porLang.get(lang));
+  }
+
+  /** O nome do baralho sem o `::` do Anki: os níveis ficam separados por ›. */
+  function nomeDoBaralho({ lang, baralho }) {
+    const nome = baralho || doPainel.ajustes()[lang]?.deckName || '';
+    return nome.split('::').map(parte => parte.trim()).filter(Boolean).join(' › ');
+  }
+
+  /** Um bloco por idioma: +N cartões, o baralho, o que já estava lá, o que não entrou e Tentar de novo. */
+  function montarBlocoDoIdioma(idioma) {
+    const bloco = elemento('section', 'envio-resumo__baralho');
+    bloco.setAttribute('role', 'group');
+    const titulo = elemento('h3', 'envio-resumo__idioma', IDIOMAS[IDIOMA_DO_LANG[idioma.lang]]);
+    titulo.id = `envio-resumo-${idioma.lang}`;
+    bloco.setAttribute('aria-labelledby', titulo.id);
+    bloco.append(
+      titulo,
+      elemento('p', 'envio-resumo__cartoes', textoDaVoz('ENV-10.cartoes', { n: idioma.enviadas.length })),
+    );
+    const baralho = nomeDoBaralho(idioma);
+    if (baralho) bloco.append(elemento('p', 'envio-resumo__nome', textoDaVoz('ENV-10.noBaralho', { baralho })));
+    if (idioma.duplicadas.length) {
+      bloco.append(elemento('p', 'envio-resumo__linha', textoDaVoz('ENV-10.jaEstavam', { n: idioma.duplicadas.length })));
+    }
+    if (idioma.falhas) {
+      bloco.append(elemento('p', 'envio-resumo__linha envio-resumo__linha--erro', textoDaVoz('ENV-10.naoEntraram', { n: idioma.falhas })));
+      const tentar = botao(textoDaVoz('ENV-10.tentarDeNovo'), 'tentar', () => responderResumo({ tentar: idioma.lang }));
+      tentar.prepend(Veio.iconeVeio('atualizar'));
+      bloco.append(tentar);
+    }
+    return bloco;
   }
 
   function tentarAbrirResumo() {
@@ -479,35 +541,34 @@
     }
     if (progresso) progresso.fechar();
 
-    const { enviadas, duplicadas, falhasPorLang } = contagem();
-    const falhas = falhasPorLang.en + falhasPorLang.ru;
+    const idiomas = contagemPorIdioma();
+    const enviadas = idiomas.flatMap(i => i.enviadas);
+    const duplicadas = idiomas.flatMap(i => i.duplicadas);
+    const falhas = idiomas.reduce((soma, i) => soma + i.falhas, 0);
+    const total = idiomas.reduce((soma, i) => soma + i.total, 0);
     porId('modal-resumo-titulo').textContent = textoDaVoz(falhas ? 'ENV-10.tituloEmParte' : 'ENV-10.titulo');
+    porId('modal-resumo-detalhe').textContent = textoDaVoz('ENV-10.detalhe', { n: total, baralhos: idiomas.length });
+    porId('modal-resumo-baralhos').replaceChildren(...idiomas.map(montarBlocoDoIdioma));
 
-    const selos = porId('modal-resumo-selos');
-    selos.textContent = '';
-    const selo = (classe, texto) => selos.append(elemento('span', `veio-selo ${classe}`, texto));
-    selo('veio-selo--ok', textoDaVoz('ENV-10.enviadas', { n: enviadas.length }));
-    if (duplicadas.length) selo('veio-selo--info', textoDaVoz('ENV-10.duplicadas', { n: duplicadas.length }));
-    if (falhas) selo('veio-selo--erro', textoDaVoz('ENV-10.falhas', { n: falhas }));
+    // Tirar do histórico vale só para as enviadas que ainda estão lá: alguma pode ter sido apagada no meio.
+    const aTirar = doPainel.frasesPorId(enviadas).length;
+    const jaApagadas = enviadas.length - aTirar;
+    porId('modal-resumo-pergunta').textContent = aTirar === 0 ? textoDaVoz('ENV-10.nadaParaTirar')
+      : aTirar === 1 ? textoDaVoz('ENV-10.perguntaUma') : textoDaVoz('ENV-10.pergunta', { n: aTirar });
+    const ajuda = [
+      aTirar === 0 ? '' : textoDaVoz(aTirar === 1 ? 'ENV-10.ajudaUma' : 'ENV-10.ajuda'),
+      jaApagadas ? textoDaVoz('ENV-10.jaApagadas', { n: jaApagadas }) : '',
+    ].filter(Boolean).join(' ');
+    porId('modal-resumo-ajuda').textContent = ajuda;
+    porId('modal-resumo-ajuda').hidden = !ajuda;
 
-    const linhas = porId('modal-resumo-falhas-linhas');
-    linhas.textContent = '';
-    for (const lang of ['en', 'ru']) {
-      if (!falhasPorLang[lang]) continue;
-      linhas.append(elemento('p', '', textoDaVoz('ENV-10.falhasNoIdioma', { n: falhasPorLang[lang], idioma: nomeDoIdioma(lang) })));
-    }
-    porId('modal-resumo-falhas').hidden = falhas === 0;
-
-    // Apagar oferece só as enviadas que ainda estão no histórico: alguma pode ter sido apagada no meio.
-    const aApagar = doPainel.frasesPorId(enviadas).length;
-    const apagar = porId('btn-resumo-apagar');
-    apagar.hidden = aApagar === 0;
-    apagar.textContent = aApagar === 1
-      ? textoDaVoz('ENV-10.apagarUma')
-      : textoDaVoz('ENV-10.apagar', { n: aApagar });
-    // O foco entra na ação principal: Apagar as enviadas, ou Manter se não há o que apagar.
-    apagar.toggleAttribute('data-foco-seguro', aApagar > 0);
-    porId('btn-resumo-manter').toggleAttribute('data-foco-seguro', aApagar === 0);
+    const tirar = porId('btn-resumo-apagar');
+    const manter = porId('btn-resumo-manter');
+    tirar.hidden = aTirar === 0;
+    manter.textContent = textoDaVoz(aTirar === 0 ? 'ENV-10.pronto' : 'ENV-10.manter');
+    // O foco entra na ação principal: Tirar do histórico, ou Pronto se não há o que tirar.
+    tirar.toggleAttribute('data-foco-seguro', aTirar > 0);
+    manter.toggleAttribute('data-foco-seguro', aTirar === 0);
 
     respostaDoResumo = null;
     const escolhas = { enviadas, duplicadas };
@@ -524,11 +585,11 @@
     const resposta = respostaDoResumo;
     respostaDoResumo = null;
 
-    if (resposta === 'tentar') {
-      await tentarDeNovoAsQueFalharam();
+    if (resposta?.tentar) {
+      await tentarDeNovoOIdioma(resposta.tentar);
       return;
     }
-    // Manter, o × e o Esc: as enviadas e as que já estavam viram Enviada ao Anki (ENV-12, sem toast).
+    // Manter, Pronto, o × e o Esc: as enviadas e as que já estavam viram Enviada ao Anki (ENV-12, sem toast).
     await esquecer();
     if (resposta === 'apagar') {
       // Conta só as que ainda estão no histórico: alguma pode ter sido apagada no meio.
@@ -541,11 +602,12 @@
     }
   }
 
-  /** Tentar de novo as que falharam (ENV-13): retoma os que ficaram em parte, recria os que não começaram. */
-  function tentarDeNovoAsQueFalharam() {
+  /** Tentar de novo (ENV-10), no bloco de um idioma: retoma os Envios dele que ficaram em parte, recria os que não começaram. */
+  function tentarDeNovoOIdioma(lang) {
     abrirProgresso();
     return recomecar(async () => {
       for (const envio of remessa.envios) {
+        if (envio.lang !== lang) continue;
         if (!envio.jobId) await criarEnvio(envio);
         else if (retomavel(estadoDoJob(envio))) await retomar(envio.jobId);
       }
@@ -554,12 +616,14 @@
 
   // ─── Conexão desligada ─────────────────────────────────────────────────────
 
-  /** Com a Conexão desligada, Enviar ao Anki fica `aria-disabled` e o tooltip diz por quê. */
+  /** Com a Conexão desligada, Enviar ao Anki fica `aria-disabled`, com o selo ao lado e o tooltip dizendo por quê. */
   function mostrarConexao(situacao) {
     conexaoDesligada = situacao === CONEXAO.DESLIGADA;
     const enviarAoAnki = porId('btn-send-anki');
     const dica = porId('envio-indisponivel');
     dica.textContent = textoDaVoz('PAI-32.enviarIndisponivel');
+    // O selo fica ao lado do botão enquanto a Conexão está desligada, sem precisar do hover.
+    porId('envio-conexao-desligada').hidden = !conexaoDesligada;
     if (conexaoDesligada) {
       enviarAoAnki.setAttribute('aria-disabled', 'true');
       enviarAoAnki.setAttribute('aria-describedby', dica.id);
