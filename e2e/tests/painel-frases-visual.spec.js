@@ -1,7 +1,7 @@
 'use strict';
 
-// Referência visual da lista de Frases (#29) e da seleção, das ações do cartão
-// e dos modais (#30), no layout A · Cartões do
+// Referência visual da lista de Frases (#29), da seleção, das ações do cartão
+// e dos modais (#30) e do Minerar frases (#31), no layout A · Cartões do
 // protótipo travado (docs/design/painel/frases/prototipo-frases.html?variant=A).
 // O dono revisa estas telas lado a lado com o protótipo; depois de aprovadas,
 // qualquer mudança visual na lista faz o teste falhar até alguém olhar e
@@ -11,8 +11,8 @@
 //
 // A sidebar e a ilha do conteúdo têm a altura da janela e começam e terminam
 // juntas; a lista rola dentro da ilha. Por isso a lista é capturada duas
-// vezes: o topo, e a ilha rolada até a paginação. As ações de hoje (.conteudo-de-hoje) ficam cobertas: elas
-// são reconstruídas no #30, no #31 e no #32.
+// vezes: o topo, e a ilha rolada até a paginação. O que ainda for de hoje
+// (.conteudo-de-hoje) fica coberto; em Frases já não sobra nada dele.
 
 const { test, expect } = require('../fixtures');
 
@@ -161,4 +161,109 @@ test('o modal Editar contexto, para a seleção (PAI-20)', async ({ page, extens
   await expect(page.getByRole('dialog')).toBeVisible();
 
   await expect(page).toHaveScreenshot('frases-modal-contexto.png', naJanela(page));
+});
+
+// ─── Minerar frases (#31) ────────────────────────────────────────────────────
+
+const modalDeMinerar = page => page.getByRole('dialog', { name: 'Minerar frases' });
+
+async function abrirModoDeMinerar(page, modo) {
+  await page.getByRole('button', { name: 'Minerar frases' }).first().click();
+  await page.getByRole('menuitem', { name: modo }).click();
+  await expect(modalDeMinerar(page)).toBeVisible();
+}
+
+/** Segura a detecção da Palavra (vocabulário da Conexão com o Anki): a primeira gravação fica esperando. */
+function segurarGravacoes(fakes) {
+  let soltar;
+  const segurada = new Promise(resolve => { soltar = resolve; });
+  fakes.anki.responder('GET', '/anki/vocabulary', async () => { await segurada; return { json: { words: [] } }; });
+  return soltar;
+}
+
+async function escolherArquivo(page, conteudo) {
+  const [seletor] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    modalDeMinerar(page).getByRole('button', { name: 'Escolher arquivo' }).click(),
+  ]);
+  await seletor.setFiles({ name: 'frases.txt', mimeType: 'text/plain', buffer: Buffer.from(conteudo, 'utf8') });
+}
+
+test('o menu Minerar frases aberto: Colar · Arquivo .txt · Foto', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: FRASES });
+  await abrirFrases(page, extensao);
+  await page.getByRole('button', { name: 'Minerar frases' }).first().click();
+  await expect(page.getByRole('menu', { name: 'Minerar frases' })).toBeVisible();
+
+  await expect(page).toHaveScreenshot('frases-minerar-menu.png', naJanela(page));
+});
+
+test('o modal Minerar frases em Colar, com 3 frases, Fonte e Título', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: FRASES });
+  await abrirFrases(page, extensao);
+  await abrirModoDeMinerar(page, /^Colar/);
+  await modalDeMinerar(page).getByRole('textbox', { name: 'Frases' }).fill('Break a leg.\nKeep me posted.\nThat ship has sailed.');
+  await modalDeMinerar(page).getByRole('textbox', { name: 'Fonte' }).fill('livro');
+  await modalDeMinerar(page).getByRole('textbox', { name: 'Título' }).fill('Atomic Habits');
+
+  await expect(page).toHaveScreenshot('frases-minerar-colar.png', naJanela(page));
+});
+
+test('Colar vazio (ADD-03): o erro no campo', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: FRASES });
+  await abrirFrases(page, extensao);
+  await abrirModoDeMinerar(page, /^Colar/);
+  await modalDeMinerar(page).getByRole('button', { name: 'Minerar frases' }).click();
+  await expect(modalDeMinerar(page).getByText('Cole pelo menos uma frase.')).toBeVisible();
+
+  await expect(page).toHaveScreenshot('frases-minerar-colar-vazio.png', naJanela(page));
+});
+
+test('minerando (ADD-04): o progresso no próprio modal', async ({ page, extensao, fakes }) => {
+  const soltar = segurarGravacoes(fakes);
+  await extensao.gravarStorage({ frases: FRASES });
+  await abrirFrases(page, extensao);
+  await abrirModoDeMinerar(page, /^Colar/);
+  await modalDeMinerar(page).getByRole('textbox', { name: 'Frases' }).fill('Break a leg.\nKeep me posted.\nThat ship has sailed.');
+  await modalDeMinerar(page).getByRole('button', { name: 'Minerar 3 frases' }).click();
+  await expect(modalDeMinerar(page).getByText('Minerando 0 de 3…')).toBeVisible();
+
+  await expect(page).toHaveScreenshot('frases-minerar-progresso.png', naJanela(page));
+  soltar();
+});
+
+test('o modal Minerar frases em Arquivo .txt', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: FRASES });
+  await abrirFrases(page, extensao);
+  await abrirModoDeMinerar(page, /^Arquivo/);
+
+  await expect(page).toHaveScreenshot('frases-minerar-arquivo.png', naJanela(page));
+});
+
+test('nada novo no arquivo (ADD-09), com Fechar', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: FRASES });
+  await abrirFrases(page, extensao);
+  await abrirModoDeMinerar(page, /^Arquivo/);
+  await escolherArquivo(page, 'Keep me posted.\nThat ship has sailed.\n');
+  await expect(modalDeMinerar(page).locator('.minerar-resultado')).toBeVisible();
+
+  await expect(page).toHaveScreenshot('frases-minerar-nada-novo.png', naJanela(page));
+});
+
+test('a nuvem falhou (ADD-06): o aviso persistente no topo de Frases', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: FRASES });
+  await extensao.semearSessao({ uid: 'uid-visual' });
+  await abrirFrases(page, extensao);
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
+  fakes.google.recusarEscritas();
+  await abrirModoDeMinerar(page, /^Colar/);
+  await modalDeMinerar(page).getByRole('textbox', { name: 'Frases' }).fill('Break a leg.\nKeep me posted.');
+  await modalDeMinerar(page).getByRole('button', { name: 'Minerar 2 frases' }).click();
+  await expect(page.locator('#frases-avisos').getByRole('alert')).toBeVisible();
+
+  await expect(page).toHaveScreenshot('frases-minerar-nuvem-falhou.png', {
+    ...naJanela(page),
+    // A lista ganha as frases coladas com o id da hora: ela já tem a própria referência.
+    mask: [page.locator('#frases-lista, #frases-paginas')],
+  });
 });

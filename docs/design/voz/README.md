@@ -6,7 +6,7 @@ O que está aqui:
 
 1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
 2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: 189 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
+3. **Catálogo**: 190 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
 
 Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
 
@@ -68,7 +68,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 
 ## 3. Catálogo de estados-chave
 
-São 189 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
+São 190 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 
@@ -192,12 +192,13 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | ADD-03 | Colar: vazio | erro | Cole ao menos uma frase. | Cole pelo menos uma frase. |  |
 | ADD-04 | Colar/arquivo: progresso | loading | 3 de 12… · Importando 50 linha(s)… · Linha 3 de 50 | Minerando 3 de 12… |  |
 | ADD-05 | Colar: deu certo | sucesso | 12 frase(s) adicionada(s)! | 12 frases mineradas |  |
-| ADD-06 | Minerou local, nuvem falhou | erro | Salvo localmente (sync falhou: …) — coberto pelo sucesso | 12 frases mineradas neste computador, mas não foram para a nuvem. | Persistente, com “Tentar de novo”. Não é mais sobrescrito (C1, C9). |
+| ADD-06 | Minerou local, nuvem falhou | erro | Salvo localmente (sync falhou: …) — coberto pelo sucesso | 12 frases mineradas neste computador, mas não foram para a nuvem. | Persistente, com “Tentar de novo” e sem “Detalhes”: a causa fica no card Conta & sync. Não é mais sobrescrito (C1, C9). |
 | ADD-07 | Arquivo ilegível | erro | Não foi possível ler o arquivo. | Não deu para ler este arquivo. Use um .txt com uma frase por linha. |  |
 | ADD-08 | Arquivo vazio | erro | Arquivo vazio. | O arquivo está vazio. |  |
-| ADD-09 | Nada novo no arquivo | vazio | Nenhuma frase nova. 3 duplicata(s), 1 inválida(s). | Nenhuma frase nova: 3 já estavam no histórico e 1 linha não pôde ser lida. |  |
+| ADD-09 | Nada novo no arquivo | vazio | Nenhuma frase nova. 3 duplicata(s), 1 inválida(s). | Nenhuma frase nova: 3 já estavam no histórico e 1 linha não pôde ser lida. | Só repetidas: “Nenhuma frase nova: 3 já estavam no histórico.” Só ilegíveis: “Nenhuma frase nova: 1 linha não pôde ser lida.” Nunca fala de zero. |
 | ADD-10 | Arquivo importado | sucesso | 12 frase(s) importada(s)! (3 duplicata(s) ignorada(s)) | 12 frases mineradas · 3 já existiam |  |
 | ADD-11 | Menu Minerar frases: descrição de cada modo **(novo)** | status | (não existe) | Colar — Uma frase por linha · Arquivo .txt — Importar um .txt com uma frase por linha · Foto — Abre Minerar de uma foto numa aba nova | Uma linha de explicação sob cada modo do menu (C7). |
+| ADD-12 | O modal Minerar frases **(novo)** | status | Frases · Adicionar frases · Cancelar | Frases · livro, web, podcast · Atomic Habits · Minerar 3 frases · Escolha um arquivo .txt · Uma frase por linha. O .txt exportado daqui volta com o contexto. Frases que já estão no histórico ficam de fora. · Escolher arquivo · Escolher outro arquivo · As frases entram no topo da lista. · [Cancelar] [Fechar] | O título do modal é o ADD-01 (“Minerar frases”) e as abas são Colar · Arquivo .txt · Foto ↗ do ADD-01. Sem frases, o botão diz “Minerar frases”. “Fechar” fica no lugar de “Cancelar” depois do ADD-09. Fonte e Título usam os rótulos de PAI-21. |
 
 ### Envio ao Anki
 
