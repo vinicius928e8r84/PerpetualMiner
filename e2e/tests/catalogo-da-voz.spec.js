@@ -148,8 +148,8 @@ test('o mesmo texto minerado pelo menu, pelo popup e pela foto grava o mesmo idi
 
   // 2. Popup: a mineração rápida.
   await page.goto(extensao.url('popup.html'));
-  await page.locator('#txtManual').fill(FRASE_RUSSA);
-  await page.locator('#btnAddManual').click();
+  await page.getByRole('textbox', { name: 'Cole ou escreva uma frase' }).fill(FRASE_RUSSA);
+  await page.getByRole('button', { name: 'Minerar', exact: true }).click();
 
   // 3. Minerar de uma foto.
   await extensao.gravarStorage({ geminiApiKey: 'chave-de-teste' });

@@ -239,7 +239,7 @@ for (const pagina of PAGINAS_DA_EXTENSAO) {
 test('o teclado vê onde está: os controles do popup mostram o anel ouro', async ({ page, extensao }) => {
   await page.goto(extensao.url('popup.html'));
 
-  const botao = page.locator('#btnIrPainel');
+  const botao = page.getByRole('button', { name: 'Abrir painel' });
   await botao.focus();
 
   await expect(botao).toHaveCSS('outline-color', 'rgb(245, 184, 61)');

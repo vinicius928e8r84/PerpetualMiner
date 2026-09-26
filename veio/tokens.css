@@ -111,6 +111,7 @@
   --veio-tam-hero: 24px;
   --veio-tam-pagina: 22px;
   --veio-tam-modal: 20px;
+  --veio-tam-contador: 20px;
   --veio-tam-card: 15px;
   --veio-tam-frase: 15px;
   --veio-tam-destaque: 16px;
@@ -136,6 +137,8 @@
   --veio-altura-frase: 1.5;
 
   /* ── Forma ── */
+  /* O losango que abre o título de seção do popup. */
+  --veio-raio-losango: 2px;
   --veio-raio-checkbox: 6px;
   --veio-raio-tecla: 5px;
   /* A tecla (kbd) como a desenham os protótipos de Frases e de Configurações. */
