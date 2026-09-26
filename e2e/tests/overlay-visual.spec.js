@@ -33,11 +33,12 @@ test('o botão flutuante parado', async ({ page, paginas }) => {
   await expect(player(page)).toHaveScreenshot('botao.png');
 });
 
-test('o botão com o rótulo visível (mouse por cima)', async ({ page, paginas }) => {
+test('o botão com o mouse por cima: inteiro, sem rótulo', async ({ page, paginas }) => {
   await abrirPlayer(page, paginas);
-  await page.getByRole('button', { name: 'Minerar legenda (Alt+S)' }).hover();
-  await expect(page.getByText('Minerar legenda', { exact: true })).toBeVisible();
-  await expect(player(page)).toHaveScreenshot('botao-rotulo.png');
+  const botao = page.getByRole('button', { name: 'Minerar legenda (Alt+S)' });
+  await botao.hover();
+  await expect.poll(() => botao.evaluate(no => getComputedStyle(no).opacity)).toBe('1');
+  await expect(player(page)).toHaveScreenshot('botao-hover.png');
 });
 
 test('MIN-01: minerada e copiada, com a Palavra grifada', async ({ page, context, paginas, fakes }) => {
@@ -56,7 +57,7 @@ test('MIN-02: minerada, sem cópia', async ({ page, paginas }) => {
   });
   await abrirPlayer(page, paginas);
   await page.keyboard.press('Alt+KeyS');
-  await expect(page.getByText('Frase minerada · não deu para copiar')).toBeVisible();
+  await expect(page.getByRole('status').getByText('Frase minerada', { exact: true })).toBeVisible();
   await expect(player(page)).toHaveScreenshot('min-02.png');
 });
 
@@ -64,7 +65,7 @@ test('MIN-03: a falha ao gravar, com Tentar de novo e ×', async ({ page, pagina
   await abrirPlayer(page, paginas);
   await recusarGravacoes(extensao);
   await page.keyboard.press('Alt+KeyS');
-  await expect(page.getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
+  await expect(page.getByText('Não deu para minerar')).toBeVisible();
   await expect(player(page)).toHaveScreenshot('min-03.png');
 });
 
@@ -72,7 +73,7 @@ test('MIN-04: nenhuma legenda na tela', async ({ page, paginas }) => {
   await abrirPlayer(page, paginas);
   await page.locator('#legenda').evaluate(no => no.remove());
   await page.keyboard.press('Alt+KeyS');
-  await expect(page.getByRole('button', { name: 'Fechar' })).toBeVisible();
+  await expect(page.getByText('Ligue as legendas do player e tente de novo.')).toBeVisible();
   await expect(player(page)).toHaveScreenshot('min-04.png');
 });
 
@@ -81,7 +82,7 @@ test('MIN-10: página sem vídeo, a pílula livre no canto', async ({ page, pagi
   await page.goto(paginas.url('sem-video.html'));
   await page.evaluate(() => document.fonts.ready);
   await page.keyboard.press('Alt+KeyS');
-  await expect(page.getByRole('button', { name: 'Fechar' })).toBeVisible();
+  await expect(page.getByText('Esta página não tem vídeo com legenda.')).toBeVisible();
   await expect(page).toHaveScreenshot('min-10.png');
 });
 
@@ -92,11 +93,11 @@ test('MIN-05: seleção minerada numa página comum', async ({ page, paginas, ex
   await page.evaluate(() => document.fonts.ready);
   await page.locator('#trecho').selectText();
   await page.keyboard.press('Alt+KeyE');
-  await expect(page.getByText('Frase minerada · Inglês')).toBeVisible();
+  await expect(page.getByRole('status').getByText('Frase minerada', { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot('min-05.png');
 });
 
-test('MIN-06: a mineração automática, com o título longo e a meta do idioma', async ({ page, paginas, extensao }) => {
+test('MIN-06: a mineração automática, com o idioma e o contador do dia na meta', async ({ page, paginas, extensao }) => {
   const agora = new Date();
   const hoje = [agora.getFullYear(), String(agora.getMonth() + 1).padStart(2, '0'), String(agora.getDate()).padStart(2, '0')].join('-');
   await extensao.gravarStorage({
@@ -114,7 +115,7 @@ test('MIN-06: a mineração automática, com o título longo e a meta do idioma'
     video.srcObject = tela.captureStream();
     await video.play();
   });
-  await expect(page.getByText('Mineração automática · Russo · 5 de 20 hoje')).toBeVisible();
+  await expect(page.getByText('Mineração automática', { exact: true })).toBeVisible();
   // O vídeo toca um canvas todo preto, então o quadro não muda a foto.
   await expect(player(page)).toHaveScreenshot('min-06.png');
 });

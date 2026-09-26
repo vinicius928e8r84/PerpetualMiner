@@ -12,12 +12,12 @@
 //   tema escolhido para as páginas da extensão.
 // - A cópia vem de quem chama, já buscada no catálogo da Voz.
 //
-// Uma instância por vez: o feedback novo substitui o anterior. Sucesso some em
-// ~3,5 s; falha fica até o ×, o Esc ou o próximo feedback.
+// Uma instância por vez: o feedback novo substitui o anterior. Todo feedback,
+// sucesso ou falha, some em ~3,5 s, como no protótipo; o Esc fecha uma falha antes.
 
 (function (raiz) {
   const TAG_DO_HOST = 'perpetualminer-overlay';
-  const SUCESSO_SOME_EM_MS = 3500;
+  const FEEDBACK_SOME_EM_MS = 3500;
   const ESTILOS = ['veio/tokens.css', 'veio/componentes.css', 'overlay.css'];
   /** A pílula nunca corta a Palavra: frases maiores que isto começam perto dela. */
   const PREVIA_CURTA = 48;
@@ -30,8 +30,7 @@
   let partes = null;
   let temporizador = null;
   let aoClicarNoBotao = () => {};
-  let rotuloDoBotao = { nome: '', comAtalho: '' };
-  let teclaDoBotao = '';
+  let rotuloDoBotao = '';
 
   /** O host, com a sombra montada uma vez só. */
   function montar() {
@@ -62,20 +61,14 @@
     azulejo.alt = '';
     const contador = elemento('span', 'pm-contador');
     contador.hidden = true;
-    // O rótulo visível repete o aria-label do botão: fica fora da árvore de acessibilidade.
-    const rotulo = elemento('span', 'pm-rotulo');
-    rotulo.setAttribute('aria-hidden', 'true');
-    const nomeDoRotulo = elemento('span', 'pm-rotulo__nome');
-    rotulo.append(nomeDoRotulo);
-    botao.append(azulejo, contador, rotulo);
+    botao.append(azulejo, contador);
     botao.addEventListener('click', evento => aoClicarNoBotao(evento));
 
     const corpo = elemento('div', 'pm-corpo');
     const estado = elemento('div', 'pm-estado');
     estado.setAttribute('role', 'status');
     estado.setAttribute('aria-live', 'polite');
-    const acoes = elemento('div', 'pm-acoes');
-    corpo.append(estado, acoes);
+    corpo.append(estado);
 
     pilula.append(botao, corpo);
     pm.append(pilula);
@@ -86,8 +79,8 @@
       pm.addEventListener(tipo, evento => evento.stopPropagation());
     }
 
-    partes = { pm, pilula, botao, contador, rotulo, nomeDoRotulo, estado, acoes };
-    desenharRotulo();
+    partes = { pm, pilula, botao, contador, estado };
+    botao.setAttribute('aria-label', rotuloDoBotao);
   }
 
   function elemento(tag, classe) {
@@ -107,14 +100,19 @@
     const estilo = {
       all: 'initial',
       position: livre ? 'fixed' : 'absolute',
-      right: livre ? '24px' : '30px',
-      bottom: livre ? '24px' : '95px',
+      right: '16px',
+      bottom: '16px',
       'z-index': '2147483647',
       display: 'block',
     };
     host.removeAttribute('style');
     for (const [propriedade, valor] of Object.entries(estilo)) host.style.setProperty(propriedade, valor, 'important');
     partes.pilula.classList.toggle('pm-pilula--livre', livre);
+    // Sem player, o azulejo é só a marca na ponta da pílula: não é um botão.
+    const { botao } = partes;
+    botao.tabIndex = livre ? -1 : 0;
+    if (livre) botao.setAttribute('aria-hidden', 'true');
+    else botao.removeAttribute('aria-hidden');
   }
 
   /** O botão flutuante no container do player (fica lá também em tela cheia). */
@@ -123,23 +121,10 @@
     posicionar(container);
   }
 
-  /**
-   * O rótulo do botão (MIN-07): `comAtalho` é o aria-label (“Minerar legenda (Alt+S)”),
-   * `nome` o rótulo visível ao passar o mouse, com `tecla` num kbd ao lado.
-   */
-  function definirRotulo({ nome, comAtalho }, tecla) {
-    rotuloDoBotao = { nome, comAtalho };
-    teclaDoBotao = tecla;
-    if (partes) desenharRotulo();
-  }
-
-  function desenharRotulo() {
-    const { botao, rotulo, nomeDoRotulo } = partes;
-    const { Veio } = raiz;
-    botao.setAttribute('aria-label', rotuloDoBotao.comAtalho);
-    nomeDoRotulo.textContent = rotuloDoBotao.nome;
-    rotulo.querySelector('kbd')?.remove();
-    if (teclaDoBotao) rotulo.append(Veio.montarTecla(teclaDoBotao));
+  /** O nome do botão para o leitor de tela (MIN-07, com o atalho gravado: “Minerar legenda (Alt+S)”). */
+  function definirRotulo(rotulo) {
+    rotuloDoBotao = rotulo;
+    partes?.botao.setAttribute('aria-label', rotulo);
   }
 
   function aoClicar(fn) {
@@ -166,28 +151,27 @@
     return Boolean(host?.isConnected && !partes.pilula.classList.contains('pm-pilula--livre'));
   }
 
-  /** Uma falha está na tela, esperando o ×, o Esc ou o próximo feedback. */
+  /** Uma falha está na tela. */
   function mostrandoFalha() {
     return Boolean(partes?.pilula.classList.contains('pm-pilula--aberta')
       && partes.pilula.classList.contains('pm-pilula--erro'));
   }
 
   /**
-   * Abre a pílula com um feedback, no lugar do anterior.
+   * Abre a pílula com um feedback, no lugar do anterior. Some sozinha em ~3,5 s.
    *
    * @param {object}   feedback
-   * @param {'sucesso'|'erro'} feedback.tipo  Sucesso some sozinho; erro fica até ser fechado.
+   * @param {'sucesso'|'erro'} feedback.tipo
    * @param {string}   feedback.icone         Um ícone da Base Veio (legenda, selecao, automatica, alerta).
-   * @param {string}   feedback.titulo        A frase do catálogo.
-   * @param {string}   [feedback.frase]       A frase minerada, numa linha.
+   * @param {string}   feedback.titulo        O título do catálogo.
+   * @param {string}   [feedback.dica]        Numa falha, a 2ª linha do catálogo: o que fazer.
+   * @param {string}   [feedback.frase]       Num sucesso, a frase minerada, numa linha.
    * @param {string}   [feedback.palavra]     A Palavra a grifar na frase.
-   * @param {string}   [feedback.meta]        A meta no fim da pílula, em mono (o idioma: `EN`, `RU`).
-   * @param {string}   [feedback.fechar]      O rótulo do × (obrigatório num erro).
-   * @param {{rotulo: string, fazer: Function}} [feedback.acao] O botão ao lado (Tentar de novo).
+   * @param {string}   [feedback.meta]        A meta no fim da pílula, em mono (`EN`, `Web`, `RU 5/20`).
    */
-  function mostrar({ tipo, icone, titulo, frase = '', palavra = '', meta = '', fechar, acao }) {
+  function mostrar({ tipo, icone, titulo, dica = '', frase = '', palavra = '', meta = '' }) {
     if (!temBotao()) posicionar(null);
-    const { pilula, estado, acoes } = partes;
+    const { pilula, estado } = partes;
     const { Veio } = raiz;
     clearTimeout(temporizador);
 
@@ -201,6 +185,10 @@
       const linha = elemento('span', 'pm-frase');
       Veio.escreverFrase(linha, previaEmVoltaDa(frase, palavra), palavra);
       texto.append(linha);
+    } else if (dica) {
+      const linha = elemento('span', 'pm-frase');
+      linha.textContent = dica;
+      texto.append(linha);
     }
     estado.replaceChildren(circulo, texto);
     if (meta) {
@@ -209,38 +197,18 @@
       estado.append(sigla);
     }
 
-    acoes.replaceChildren();
-    if (acao) {
-      const botao = elemento('button', 'veio-botao veio-botao--secundario veio-botao--compacto');
-      botao.type = 'button';
-      botao.textContent = acao.rotulo;
-      botao.addEventListener('click', () => acao.fazer());
-      acoes.append(botao);
-    }
-    if (tipo === 'erro') {
-      if (!fechar) throw new Error('Uma falha do overlay precisa do rótulo do ×.');
-      const botaoFechar = elemento('button', 'veio-botao-icone');
-      botaoFechar.type = 'button';
-      botaoFechar.setAttribute('aria-label', fechar);
-      botaoFechar.title = fechar;
-      botaoFechar.append(Veio.iconeVeio('fechar'));
-      botaoFechar.addEventListener('click', fecharPilula);
-      acoes.append(botaoFechar);
-    }
-
     pilula.classList.toggle('pm-pilula--erro', tipo === 'erro');
     pilula.classList.add('pm-pilula--aberta');
-    if (tipo !== 'erro') temporizador = setTimeout(fecharPilula, SUCESSO_SOME_EM_MS);
+    temporizador = setTimeout(fecharPilula, FEEDBACK_SOME_EM_MS);
   }
 
   function fecharPilula() {
     if (!partes) return;
     clearTimeout(temporizador);
-    const { pilula, estado, acoes } = partes;
+    const { pilula, estado } = partes;
     pilula.classList.remove('pm-pilula--aberta');
     // O conteúdo sai com a pílula: nada fica escondido na região de status.
     estado.replaceChildren();
-    acoes.replaceChildren();
   }
 
   /** “…saying it’s your responsibility.”: numa frase longa, a prévia começa perto da Palavra. */

@@ -11,14 +11,18 @@ const { test, expect } = require('../fixtures');
 const LEGENDA = 'The quiet harbor woke before the gulls did.';
 const TRECHO = 'Every lantern along the pier flickered in the salt wind.';
 
-const MIN_01 = 'Frase minerada e copiada · Inglês';
-const MIN_02 = 'Frase minerada · não deu para copiar';
-const MIN_03 = 'Não deu para minerar a frase. Tente de novo.';
-const MIN_04 = 'Nenhuma legenda na tela agora. Ative as legendas do vídeo e tente de novo.';
-const MIN_05 = 'Frase minerada · Inglês';
+// A cópia da Voz. MIN-02 e MIN-05 são o começo de MIN-01, então elas se leem
+// pelo título exato; MIN-04 e MIN-10 têm o mesmo título e se leem pela dica.
+const MIN_01 = 'Frase minerada e copiada';
+const MIN_02 = 'Frase minerada';
+const MIN_03 = 'Não deu para minerar';
+const MIN_03_DICA = 'Tente de novo.';
+const MIN_04 = 'Ligue as legendas do player e tente de novo.';
+const MIN_05 = 'Frase minerada';
+const MIN_06 = 'Mineração automática';
 const MIN_10 = 'Esta página não tem vídeo com legenda.';
+const TITULO_SEM_LEGENDA = 'Nenhuma legenda na tela';
 const FRASE_RUSSA = 'Я улыбаюсь';
-const MIN_06_RUSSO_5_DE_20 = 'Mineração automática · Russo · 5 de 20 hoje';
 
 const SELECAO_EM_ALT_E = { type: 'keyboard', code: 'KeyE', altKey: true, ctrlKey: false, shiftKey: false };
 const LEGENDA_EM_SHIFT_S = { type: 'keyboard', code: 'KeyS', altKey: false, ctrlKey: false, shiftKey: true };
@@ -85,24 +89,26 @@ function textoDoEscuro() {
 
 /** A meta da pílula: o idioma da captura, em mono. */
 const metaDaPilula = (page, sigla) => feedback(page).getByText(sigla, { exact: true });
+/** O título da pílula, pelo texto exato. */
+const tituloDaPilula = (page, titulo) => feedback(page).getByText(titulo, { exact: true });
 
 // ─── O botão flutuante ───────────────────────────────────────────────────────
 
-test('o botão flutuante é o azulejo Veio num círculo de 46 px, com o rótulo MIN-07 e o atalho gravado', async ({ page, paginas }) => {
+test('o botão flutuante é o azulejo Veio num círculo de 40 px, meio apagado parado e inteiro com o mouse', async ({ page, paginas }) => {
   await abrirPlayer(page, paginas);
   const botao = botaoFlutuante(page);
 
   const caixa = await botao.boundingBox();
-  expect(Math.round(caixa.width)).toBe(46);
-  expect(Math.round(caixa.height)).toBe(46);
+  expect(Math.round(caixa.width)).toBe(40);
+  expect(Math.round(caixa.height)).toBe(40);
   expect(await botao.evaluate(no => getComputedStyle(no).borderRadius)).toBe('50%');
 
-  // O rótulo visível aparece ao passar o mouse, com o atalho num kbd.
-  const rotulo = page.getByText('Minerar legenda', { exact: true });
-  await expect(rotulo).toBeHidden();
+  const opacidade = () => botao.evaluate(no => Number(getComputedStyle(no).opacity));
+  expect(await opacidade()).toBeLessThan(1);
   await botao.hover();
-  await expect(rotulo).toBeVisible();
-  await expect(page.locator('kbd', { hasText: 'Alt+S' })).toBeVisible();
+  await expect.poll(opacidade).toBe(1);
+  // Nenhum rótulo aparece por cima do vídeo: o nome com o atalho é o do leitor de tela.
+  await expect(page.getByText('Minerar legenda', { exact: true })).toHaveCount(0);
 });
 
 test('o rótulo do botão acompanha o atalho gravado, sem recarregar', async ({ page, paginas, extensao }) => {
@@ -184,7 +190,10 @@ test('o atalho de seleção numa página sem vídeo: MIN-05 na pílula livre, no
   await page.locator('#trecho').selectText();
   await page.keyboard.press('Alt+KeyE');
 
-  await expect(feedback(page)).toContainText(MIN_05);
+  await expect(tituloDaPilula(page, MIN_05)).toBeVisible();
+  // A meta da seleção é a Fonte, “Web”, e a ponta da pílula traz a marca Veio.
+  await expect(metaDaPilula(page, 'Web')).toBeVisible();
+  await expect(page.locator('perpetualminer-overlay img')).toBeVisible();
   // A frase é longa: a prévia de uma linha começa perto da Palavra, que nunca é cortada.
   await expect(feedback(page)).toContainText('the salt wind.');
   const palavra = await feedback(page).locator('mark').textContent();
@@ -319,7 +328,8 @@ test('bug de #9: com o clipboard negado no frame de cima, a frase fica no histó
 
   await page.keyboard.press('Alt+KeyS');
 
-  await expect(feedback(page)).toContainText(MIN_02);
+  // O que importa é ter minerado: a pílula de sucesso, só sem “e copiada”.
+  await expect(tituloDaPilula(page, MIN_02)).toBeVisible();
   await expect(page.getByText(MIN_01)).toHaveCount(0);
   await page.waitForTimeout(1000);
   expect(await textosGravados(extensao)).toEqual([LEGENDA]);
@@ -327,7 +337,7 @@ test('bug de #9: com o clipboard negado no frame de cima, a frase fica no histó
 
 // ─── As falhas ───────────────────────────────────────────────────────────────
 
-test('o service worker falha ao gravar: MIN-03 fica na tela, e Tentar de novo repete com o mesmo texto', async ({ page, context, paginas, extensao }) => {
+test('o service worker falha ao gravar: MIN-03 com a dica, nada gravado, e a pílula some sozinha', async ({ page, context, paginas, extensao }) => {
   await permitirClipboard(context, paginas);
   await abrirPlayer(page, paginas);
   await recusarGravacoes(extensao);
@@ -335,30 +345,25 @@ test('o service worker falha ao gravar: MIN-03 fica na tela, e Tentar de novo re
   await page.keyboard.press('Alt+KeyS');
 
   await expect(feedback(page)).toContainText(MIN_03);
+  await expect(feedback(page)).toContainText(MIN_03_DICA);
   await expect(page.getByText(MIN_01)).toHaveCount(0);
-  // A falha não some sozinha.
-  await page.waitForTimeout(4500);
-  await expect(page.getByText(MIN_03)).toBeVisible();
+  // Sem × e sem Tentar de novo: a falha some sozinha, como o sucesso.
+  await expect(page.getByRole('button', { name: 'Fechar' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
+  await expect(page.getByText(MIN_03)).toBeHidden({ timeout: 5000 });
   expect(await extensao.frases()).toEqual([]);
 
-  // A legenda já trocou: Tentar de novo repete a mesma frase, não a da tela.
-  await page.locator('#legenda').evaluate(no => { no.textContent = 'A different line is on screen now.'; });
+  // Com o armazenamento de volta, o próximo Alt+S grava.
   await voltarGravacoes(extensao);
-  await page.getByRole('button', { name: 'Tentar de novo' }).click();
-
+  await page.keyboard.press('Alt+KeyS');
   await expect(feedback(page)).toContainText(MIN_01);
   expect(await textosGravados(extensao)).toEqual([LEGENDA]);
 });
 
-test('a falha fecha no ×, com Esc e quando a próxima captura a substitui', async ({ page, context, paginas, extensao }) => {
+test('a falha fecha com Esc e quando a próxima captura a substitui', async ({ page, context, paginas, extensao }) => {
   await permitirClipboard(context, paginas);
   await abrirPlayer(page, paginas);
   await recusarGravacoes(extensao);
-
-  await page.keyboard.press('Alt+KeyS');
-  await expect(page.getByText(MIN_03)).toBeVisible();
-  await page.getByRole('button', { name: 'Fechar' }).click();
-  await expect(page.getByText(MIN_03)).toBeHidden();
 
   await page.keyboard.press('Alt+KeyS');
   await expect(page.getByText(MIN_03)).toBeVisible();
@@ -381,6 +386,7 @@ test('no player sem legenda na tela, Alt+S diz MIN-04 e não grava nada', async 
 
   await page.keyboard.press('Alt+KeyS');
 
+  await expect(feedback(page)).toContainText(TITULO_SEM_LEGENDA);
   await expect(feedback(page)).toContainText(MIN_04);
   await page.waitForTimeout(800);
   expect(await extensao.frases()).toEqual([]);
@@ -509,7 +515,7 @@ test('com uma falha aberta, o Esc digitado num campo do site é do site e a falh
 
 // ─── A mineração automática ──────────────────────────────────────────────────
 
-test('a mineração automática minera uma linha: MIN-06 na pílula, com o contador do dia e a meta do idioma', async ({ page, paginas, extensao }) => {
+test('a mineração automática minera uma linha: MIN-06 na pílula, com o idioma e o contador do dia na meta', async ({ page, paginas, extensao }) => {
   await extensao.gravarStorage({
     pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } },
     pm_auto_miner_daily: { date: hoje(), en: { count: 0 }, ru: { count: 4 } },
@@ -532,19 +538,20 @@ test('a mineração automática minera uma linha: MIN-06 na pílula, com o conta
     await video.play();
   }, FRASE_RUSSA);
 
-  await expect(feedback(page)).toContainText(MIN_06_RUSSO_5_DE_20);
+  await expect(tituloDaPilula(page, MIN_06)).toBeVisible();
   await expect(feedback(page)).toContainText(FRASE_RUSSA);
-  await expect(metaDaPilula(page, 'RU')).toBeVisible();
+  // A meta, como no protótipo: o idioma e o contador do dia.
+  await expect(metaDaPilula(page, 'RU 5/20')).toBeVisible();
   // O título longo não passa por cima da meta: o texto dele acaba antes de ela começar.
-  const fimDoTitulo = await page.getByText(MIN_06_RUSSO_5_DE_20).evaluate(no => {
+  const fimDoTitulo = await tituloDaPilula(page, MIN_06).evaluate(no => {
     const trecho = document.createRange();
     trecho.selectNodeContents(no);
     return Math.max(...[...trecho.getClientRects()].map(caixa => caixa.right));
   });
-  expect(fimDoTitulo).toBeLessThanOrEqual((await metaDaPilula(page, 'RU').boundingBox()).x);
+  expect(fimDoTitulo).toBeLessThanOrEqual((await metaDaPilula(page, 'RU 5/20').boundingBox()).x);
   expect(await textosGravados(extensao)).toEqual([FRASE_RUSSA]);
   // Sucesso: some sozinho.
-  await expect(page.getByText(MIN_06_RUSSO_5_DE_20)).toBeHidden({ timeout: 5000 });
+  await expect(tituloDaPilula(page, MIN_06)).toBeHidden({ timeout: 5000 });
 });
 
 /** O dia de hoje como a mineração automática o grava (AAAA-MM-DD, hora local). */

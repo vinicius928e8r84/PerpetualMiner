@@ -91,7 +91,7 @@ Money (`BRG-03`, `BRG-26`) takes an already-formatted `{valor}`: how many decima
 Advanced preference that belongs to the panel, not to the catalog.
 
 The content script loads the whole catalog into every frame: the overlay reads its copy from it
-(`MIN-01`…`MIN-10`, `PAI-34` for the ×) like every other surface.
+(`MIN-01`…`MIN-10`, and `PAI-29.web` for the selection's meta) like every other surface.
 
 ### Panel shell (`painel-shell.js`)
 
@@ -282,21 +282,27 @@ packaged fonts load from the `@font-face` rules of `tokens.css` inside the shado
 the tests (and a page) can reach it; a page still cannot mine, since the shortcuts and the button only
 take trusted events.
 
-- **Button:** the Veio tile (`veio/icones/icone.svg`) in a 46 px circle, a real `<button>` whose `aria-label`
-  is MIN-07 with the recorded caption shortcut (“Minerar legenda (Alt+S)”, or “Minerar legenda” with none);
-  hovering or keyboard focus shows the same label with the shortcut in a `kbd`. It lives in the player's
-  container (so it stays in full screen) and only exists where there is a video.
-- **Pill (the reserve C of M1):** the button stretches left into icon · title · one line of the phrase with the
-  Palavra highlighted (`escreverFrase`; a long phrase starts near the Palavra, so it is never cut) · the meta, the
-  capture's language code in mono (`EN`, `RU`) on every success. Without a
-  player it appears alone in the window's bottom-right corner and disappears entirely. The content sits in a
-  `role="status"` region. One at a time: a new feedback replaces the previous one. Success (MIN-01, 02, 05,
-  06) leaves after ~3.5 s; a failure (MIN-03, 04, 10) stays until ×, Esc or the next feedback, and MIN-03
-  carries “Tentar de novo”, which repeats the same capture with the same text. The automatic mining's
-  MIN-06 never takes a failure off the screen.
+- **Button:** the Veio tile (`veio/icones/icone.svg`) in a 40 px circle, 16 px from the player's bottom-right
+  corner, a real `<button>` whose `aria-label` is MIN-07 with the recorded caption shortcut (“Minerar legenda
+  (Alt+S)”, or “Minerar legenda” with none). At rest it is half faded (opacity .55); hover, keyboard focus and
+  an open pill bring it to 100%. There is no visible label (the owner's review of PR #66): the name with the
+  shortcut is for the screen reader. It lives in the player's container (so it stays in full screen) and only
+  exists where there is a video.
+- **Pill (the reserve C of M1, kept minimal after the owner's review):** the button stretches left into icon ·
+  title · a second line · the meta in mono. On a success the second line is the phrase with the Palavra
+  highlighted (`escreverFrase`; a long phrase starts near the Palavra, so it is never cut); on a failure it is
+  the catalog's `dica`. The meta is the capture's language code on a caption (`EN`, `RU`), the Fonte “Web”
+  (`PAI-29.web`) on a selection, and the language with the day's counter on the automatic mining (`RU 5/20`),
+  as in the prototype. Without a player it appears alone in the window's bottom-right corner, with the tile
+  as a plain mark at its end (not a button: `aria-hidden`, out of the Tab order; no mark on a failure), and
+  disappears entirely. The content sits in a `role="status"` region. One at a time: a new feedback replaces
+  the previous one. Every feedback — success or failure — leaves after ~3.5 s, as in the prototype; Esc
+  closes a failure sooner. There is no × and no “Tentar de novo”. The automatic mining's MIN-06 never takes
+  a failure off the screen.
 - **Honest:** `content.js` waits for the service worker's `SALVAR_HISTORICO` answer (`{ ok, frase }`) and for
-  the clipboard before it says anything: MIN-01 only when both happened, MIN-02 when the phrase was saved but
-  not copied, MIN-03 when the save failed. `chromeSet` in `background.js` rejects on
+  the clipboard before it says anything: MIN-01 (“Frase minerada e copiada”) only when both happened, MIN-02
+  (“Frase minerada”, the same success pill) when the phrase was saved but not copied, MIN-03 when the save
+  failed. `chromeSet` in `background.js` rejects on
   `chrome.runtime.lastError`, so a refused write reaches the overlay as a failure. The phrase is saved once,
   whatever the clipboard does.
 - **Nothing to mine:** the caption shortcut on a page without a video says MIN-10 and mines nothing — without a

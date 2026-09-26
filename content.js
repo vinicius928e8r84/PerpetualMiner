@@ -31,11 +31,7 @@ let _autoMinerLastEvent = null;
 Atalhos.acompanharAtalhos(atalhos => {
   _atalhos = atalhos;
   const tecla = Atalhos.rotuloDoAtalho(atalhos.legenda);
-  const nome = textoDaVoz('MIN-07.semAtalho');
-  Overlay.definirRotulo({
-    nome,
-    comAtalho: tecla ? textoDaVoz('MIN-07.comAtalho', { atalho: tecla }) : nome,
-  }, tecla);
+  Overlay.definirRotulo(tecla ? textoDaVoz('MIN-07.comAtalho', { atalho: tecla }) : textoDaVoz('MIN-07.semAtalho'));
 });
 
 Overlay.aoClicar(evento => minerarLegenda(evento));
@@ -120,38 +116,35 @@ function _ativarCaptura(texto, evento) {
 /**
  * Grava a captura (a legenda também vai para o clipboard) e diz na pílula só o
  * que aconteceu: MIN-01 gravou e copiou, MIN-02 gravou sem copiar, MIN-05 a
- * seleção gravada. Se não gravou, MIN-03 fica até o ×, o Esc ou a próxima
- * captura, e Tentar de novo repete com o mesmo texto.
+ * seleção gravada; MIN-03 se não gravou.
  */
 async function minerarCaptura(captura, { copia = false } = {}) {
   const [copiou, resposta] = await Promise.all([copia && copiar(captura.texto), salvarNoHistorico(captura)]);
   if (!resposta?.ok) {
-    mostrarFalha('MIN-03.aviso', {
-      frase: captura.texto,
-      acao: { rotulo: textoDaVoz('MIN-03.tentarDeNovo'), fazer: () => minerarCaptura(captura, { copia }) },
-    });
+    mostrarFalha('MIN-03');
     return;
   }
-  const { idioma } = captura;
-  let titulo = textoDaVoz('MIN-05', { idioma });
-  if (copia) titulo = copiou ? textoDaVoz('MIN-01', { idioma }) : textoDaVoz('MIN-02');
-  mostrarSucesso({
+  let titulo = textoDaVoz('MIN-05');
+  if (copia) titulo = copiou ? textoDaVoz('MIN-01') : textoDaVoz('MIN-02');
+  Overlay.mostrar({
+    tipo: 'sucesso',
     icone: copia ? 'legenda' : 'selecao',
     titulo,
     frase: captura.texto,
     palavra: palavraDe(resposta.frase),
-    idioma,
+    // A meta: o idioma da legenda (`EN`); a Fonte da seleção, “Web” (PAI-29).
+    meta: copia ? siglaDoIdioma(captura.idioma) : textoDaVoz('PAI-29.web'),
   });
 }
 
-/** Um sucesso na pílula, com a meta do idioma da captura (`EN`, `RU`). */
-function mostrarSucesso({ idioma, ...feedback }) {
-  Overlay.mostrar({ tipo: 'sucesso', meta: codigoDoIdioma(idioma).toUpperCase(), ...feedback });
+/** O idioma da captura como a pílula o mostra: `EN`, `RU`. */
+function siglaDoIdioma(idioma) {
+  return codigoDoIdioma(idioma).toUpperCase();
 }
 
-/** Uma falha na pílula: ícone de alerta e o × (PAI-34). MIN-03, e MIN-04/MIN-10 quando não há o que minerar. */
-function mostrarFalha(id, extras = {}) {
-  Overlay.mostrar({ tipo: 'erro', icone: 'alerta', titulo: textoDaVoz(id), fechar: textoDaVoz('PAI-34'), ...extras });
+/** Uma falha na pílula, com o título e a dica do catálogo: MIN-03, e MIN-04/MIN-10 quando não há o que minerar. */
+function mostrarFalha(id) {
+  Overlay.mostrar({ tipo: 'erro', icone: 'alerta', titulo: textoDaVoz(`${id}.titulo`), dica: textoDaVoz(`${id}.dica`) });
 }
 
 /**
@@ -418,19 +411,19 @@ function registrarAutoMinerEvento(response, texto, idioma) {
     }
 }
 
-// MIN-06. A mineração automática não tira da tela uma falha que espera a pessoa.
+// MIN-06. A mineração automática não tira da tela uma falha que acabou de aparecer.
 function mostrarNotificacaoAutoMiner(texto, idioma, response) {
     if (!Overlay.temBotao() || Overlay.mostrandoFalha()) return;
     const lang = codigoDoIdioma(idioma);
     const state = response.state;
-    mostrarSucesso({
-        idioma,
+    const n = state?.daily?.[lang]?.count || 0;
+    const limite = state?.settings?.[lang]?.dailyLimit || 0;
+    Overlay.mostrar({
+        tipo: 'sucesso',
         icone: 'automatica',
-        titulo: textoDaVoz('MIN-06', {
-            idioma,
-            n: state?.daily?.[lang]?.count || 0,
-            limite: state?.settings?.[lang]?.dailyLimit || 0,
-        }),
+        titulo: textoDaVoz('MIN-06'),
+        // A meta, como no protótipo: o idioma e o contador do dia (`RU 5/20`).
+        meta: `${siglaDoIdioma(idioma)} ${n}/${limite}`,
         frase: texto,
         palavra: palavraDe(response.frase || { keywords: response.evaluation?.keywords }),
     });

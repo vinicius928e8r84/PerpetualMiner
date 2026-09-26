@@ -25,6 +25,24 @@ Resolução do ticket [Protótipo: Overlay in-page (content.js)](https://github.
 - **Falha vira mensagem** (pílula com ícone `danger` e ×), no lugar da borda vermelha muda de hoje. A falha ao salvar (MIN-03) traz o botão “Tentar de novo”.
 - `role="status"` / `aria-live="polite"` no conteúdo do feedback.
 
+## Revisão do dono na construção (PR #66)
+
+O dono comparou as telas lado a lado com o protótipo e pediu a pílula mais mínima e mais perto dele. Isto vale sobre o que está acima:
+
+- **Botão:** 40 px, a 16 px do canto inferior direito do player, meio apagado parado e inteiro com o mouse, o foco ou a pílula aberta. Sem rótulo visível ao passar o mouse; o nome com o atalho fica para o leitor de tela.
+- **Pílula menor:** título e 2ª linha em 11,5 px, ícone de 26 px.
+- **Título sem o idioma:** o idioma já está na meta. MIN-02 é a mesma pílula de sucesso, só sem “e copiada”: o que importa é ter minerado.
+- **Meta como no protótipo:**
+  - `EN`/`RU` na legenda;
+  - `Web` na seleção;
+  - `RU 5/20` na mineração automática, que tem o título só “Mineração automática”.
+- **Seleção sem vídeo:** a pílula livre traz a marca Veio na ponta.
+- **Falha como no protótipo:**
+  - título e dica (“Nenhuma legenda na tela” / “Esta página não tem vídeo com legenda.”);
+  - sem × e sem “Tentar de novo”;
+  - some sozinha em ~3,5 s, como o sucesso. O Esc fecha antes.
+- **Sem a linha “{Título} · {Detalhe}”** no MIN-01.
+
 ## Por que a linha é viável (e onde não é)
 
 Todo caminho de mineração do `content.js` lê a legenda **de um elemento do DOM**: achou o texto, achou o elemento, e o elemento tem retângulo. O grifo por palavra usa `Range.getClientRects()`. Verificado lendo o código, não ao vivo nos sites.
@@ -63,13 +81,13 @@ Escutar a resposta também deixa o feedback **honesto**: hoje ele diz “salvo�
 | ID | onde | texto |
 |---|---|---|
 | MIN-07 | `aria-label` e rótulo do botão flutuante | Minerar legenda (Alt+S) |
-| MIN-01 | Alt+S / botão: minerou e copiou | Frase minerada e copiada · Inglês (2ª linha “{Título} · {Detalhe}”, 3ª a frase) |
-| MIN-02 | minerou, mas não copiou | Frase minerada · não deu para copiar |
-| MIN-03 | falhou ao salvar (fica até ×/Esc/próxima captura, com “Tentar de novo”) | Não deu para minerar a frase. Tente de novo. |
-| MIN-04 | nenhuma legenda na tela | Nenhuma legenda na tela agora. Ative as legendas do vídeo e tente de novo. |
-| MIN-05 | atalho de seleção: minerou | Frase minerada · Inglês (2ª linha: começo da frase) |
-| MIN-06 | mineração automática minerou uma linha | Mineração automática · Inglês · 12 de 20 hoje |
-| MIN-10 | Alt+S numa página sem vídeo com legenda | Esta página não tem vídeo com legenda. |
+| MIN-01 | Alt+S / botão: minerou e copiou | Frase minerada e copiada (2ª linha a frase; meta `EN`) |
+| MIN-02 | minerou, mas não copiou | Frase minerada (a mesma pílula de sucesso) |
+| MIN-03 | falhou ao salvar | Não deu para minerar / Tente de novo. |
+| MIN-04 | nenhuma legenda na tela | Nenhuma legenda na tela / Ligue as legendas do player e tente de novo. |
+| MIN-05 | atalho de seleção: minerou | Frase minerada (2ª linha a frase; meta `Web`) |
+| MIN-06 | mineração automática minerou uma linha | Mineração automática (2ª linha a frase; meta `EN 12/20`) |
+| MIN-10 | Alt+S numa página sem vídeo com legenda | Nenhuma legenda na tela / Esta página não tem vídeo com legenda. |
 | `palavra:` / `auto:` | rótulo do chip (mono) | palavra: … (você escolheu) · auto: … (detectada) |
 
 Fora do overlay, na mesma seção do catálogo: MIN-08 (menu de contexto do Chrome, “Minerar com PerpetualMiner”, sem retorno visual) e MIN-09 (tooltip do badge da toolbar, “Mineração automática: N hoje” / “Mineração automática: limite de hoje atingido”).

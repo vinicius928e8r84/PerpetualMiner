@@ -93,16 +93,16 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
-| MIN-01 | Alt+S / botão: minerou e copiou | sucesso | Minerado & Copiado · Inglês | Frase minerada e copiada · Inglês | 2ª linha: “{Título} · {Detalhe}”, 3ª: a frase. Só aparece depois de salvar e copiar de verdade (V4). |
-| MIN-02 | Minerou, mas não copiou **(novo)** | sucesso | (dizia sucesso igual) | Frase minerada · não deu para copiar |  |
-| MIN-03 | Falhou ao salvar **(novo)** | erro | (dizia sucesso igual) | Não deu para minerar a frase. Tente de novo. | Fica até fechar (×), Esc ou até a próxima captura substituí-la, com “Tentar de novo” (C1). O sucesso continua sumindo em ~3,5 s. |
-| MIN-04 | Nenhuma legenda na tela **(novo)** | erro | (borda vermelha por 800 ms) | Nenhuma legenda na tela agora. Ative as legendas do vídeo e tente de novo. | C9. |
-| MIN-05 | Atalho de seleção: minerou | sucesso | ⚡ Frase Capturada! | Frase minerada · Inglês | 2ª linha: começo da frase. |
-| MIN-06 | Auto Miner minerou uma linha | sucesso | Auto Miner - Inglês - 12/20 | Mineração automática · Inglês · 12 de 20 hoje |  |
+| MIN-01 | Alt+S / botão: minerou e copiou | sucesso | Minerado & Copiado · Inglês | Frase minerada e copiada | 2ª linha: a frase; a meta diz o idioma (`EN`, `RU`). Só aparece depois de salvar e copiar de verdade (V4). Revisão do dono no PR #66: sem “· Inglês” no título (a meta já diz) e sem a linha “{Título} · {Detalhe}”. |
+| MIN-02 | Minerou, mas não copiou **(novo)** | sucesso | (dizia sucesso igual) | Frase minerada | Revisão do dono no PR #66: o que importa é ter minerado, então a pílula é a de sucesso, só sem “e copiada”. |
+| MIN-03 | Falhou ao salvar **(novo)** | erro | (dizia sucesso igual) | Não deu para minerar / Tente de novo. | Título e dica, como a falha do protótipo. Revisão do dono no PR #66: sem × e sem “Tentar de novo”; some sozinha em ~3,5 s, como no protótipo. |
+| MIN-04 | Nenhuma legenda na tela **(novo)** | erro | (borda vermelha por 800 ms) | Nenhuma legenda na tela / Ligue as legendas do player e tente de novo. | C9. Título e dica, como no protótipo. |
+| MIN-05 | Atalho de seleção: minerou | sucesso | ⚡ Frase Capturada! | Frase minerada | 2ª linha: a frase; a meta é a Fonte, “Web” (PAI-29). |
+| MIN-06 | Auto Miner minerou uma linha | sucesso | Auto Miner - Inglês - 12/20 | Mineração automática | 2ª linha: a frase; a meta é o idioma e o contador do dia (`EN 12/20`), como no protótipo. |
 | MIN-07 | Botão flutuante (title/aria) **(novo)** | status | (nenhum) | Minerar legenda (Alt+S) | Mostra o atalho configurado. Sem atalho gravado, fica só “Minerar legenda”. |
 | MIN-08 | Menu de contexto do Chrome | status | Enviar para o PerpetualMiner | Minerar com PerpetualMiner | V10: único lugar onde o nome aparece. O retorno visual continua fora (Auditoria T6). |
 | MIN-09 | Badge da toolbar (tooltip) **(novo)** | status | (não existe) | Mineração automática: 12 hoje | Contador na toolbar: lista fechada. Soma só os idiomas ligados. Quando todos os idiomas ligados bateram o limite: “Mineração automática: limite de hoje atingido”. O contador no canto do botão flutuante (n/limite) é o do idioma daquela captura, não o do badge. |
-| MIN-10 | Página sem vídeo e sem seleção **(novo)** | erro | (nada aparece) | Esta página não tem vídeo com legenda. | Alt+S ou o atalho de seleção numa página sem vídeo e sem texto selecionado. A pílula surge no canto inferior direito. C9. |
+| MIN-10 | Página sem vídeo e sem seleção **(novo)** | erro | (nada aparece) | Nenhuma legenda na tela / Esta página não tem vídeo com legenda. | Alt+S ou o atalho de seleção numa página sem vídeo e sem texto selecionado. A pílula surge no canto inferior direito. C9. |
 | MIN-11 | Contador do botão flutuante (tooltip) **(novo)** | status | Auto Miner: {n} de {limite} hoje | Mineração automática · Inglês: 9 de 15 hoje | O contador `n/limite` do botão é o do idioma daquela captura, não a soma do badge (MIN-09). No limite: “Mineração automática · Inglês: limite de hoje atingido”. |
 
 ### Minerar de uma foto
