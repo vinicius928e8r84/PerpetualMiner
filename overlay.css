@@ -90,19 +90,15 @@
 .pm-texto {
   display: block;
   min-width: 0;
-  max-width: 300px;
+  max-width: 340px;
 }
 
+/* O título nunca é cortado nem passa por cima da meta: um longo (MIN-06, ou a
+   mensagem de uma falha) quebra a linha. */
 .pm-titulo {
   display: block;
   font-size: var(--veio-tam-apoio);
   font-weight: var(--veio-peso-titulo);
-  white-space: nowrap;
-}
-
-/* Uma falha diz o que houve e o que fazer: a mensagem quebra a linha em vez de ser cortada. */
-.pm-pilula--erro .pm-titulo {
-  white-space: normal;
 }
 
 .pm-frase {

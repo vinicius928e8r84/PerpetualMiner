@@ -95,3 +95,26 @@ test('MIN-05: seleção minerada numa página comum', async ({ page, paginas, ex
   await expect(page.getByText('Frase minerada · Inglês')).toBeVisible();
   await expect(page).toHaveScreenshot('min-05.png');
 });
+
+test('MIN-06: a mineração automática, com o título longo e a meta do idioma', async ({ page, paginas, extensao }) => {
+  const agora = new Date();
+  const hoje = [agora.getFullYear(), String(agora.getMonth() + 1).padStart(2, '0'), String(agora.getDate()).padStart(2, '0')].join('-');
+  await extensao.gravarStorage({
+    pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } },
+    pm_auto_miner_daily: { date: hoje, en: { count: 0 }, ru: { count: 4 } },
+    pm_auto_keyword_vocab_ru: { cacheVersion: 2, deckName: 'RUSSIAN', createdAt: Date.now(), words: [], terms: [], wordInfo: {}, termInfo: {} },
+  });
+  await abrirPlayer(page, paginas);
+  // Um vídeo tocando de verdade: a mineração automática só olha legenda de vídeo que não está pausado.
+  await page.evaluate(async () => {
+    document.querySelector('#legenda').textContent = 'Я улыбаюсь';
+    const tela = document.createElement('canvas');
+    tela.getContext('2d').fillRect(0, 0, 1, 1);
+    const video = document.querySelector('video');
+    video.srcObject = tela.captureStream();
+    await video.play();
+  });
+  await expect(page.getByText('Mineração automática · Russo · 5 de 20 hoje')).toBeVisible();
+  // O vídeo toca um canvas todo preto, então o quadro não muda a foto.
+  await expect(player(page)).toHaveScreenshot('min-06.png');
+});

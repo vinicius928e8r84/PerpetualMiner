@@ -535,6 +535,13 @@ test('a mineração automática minera uma linha: MIN-06 na pílula, com o conta
   await expect(feedback(page)).toContainText(MIN_06_RUSSO_5_DE_20);
   await expect(feedback(page)).toContainText(FRASE_RUSSA);
   await expect(metaDaPilula(page, 'RU')).toBeVisible();
+  // O título longo não passa por cima da meta: o texto dele acaba antes de ela começar.
+  const fimDoTitulo = await page.getByText(MIN_06_RUSSO_5_DE_20).evaluate(no => {
+    const trecho = document.createRange();
+    trecho.selectNodeContents(no);
+    return Math.max(...[...trecho.getClientRects()].map(caixa => caixa.right));
+  });
+  expect(fimDoTitulo).toBeLessThanOrEqual((await metaDaPilula(page, 'RU').boundingBox()).x);
   expect(await textosGravados(extensao)).toEqual([FRASE_RUSSA]);
   // Sucesso: some sozinho.
   await expect(page.getByText(MIN_06_RUSSO_5_DE_20)).toBeHidden({ timeout: 5000 });
