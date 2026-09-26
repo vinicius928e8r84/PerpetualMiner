@@ -87,6 +87,11 @@
     tema: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/>'],
     perigo: ['<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>', '<path d="M12 9v4M12 17h.01"/>'],
     abrir: ['<path d="m6 9 6 6 6-6"/>'],
+    // O menu Minerar frases: Colar (a prancheta), Foto (a câmera) e o ↗ de
+    // “abre numa aba nova”.
+    colar: ['<rect x="8" y="2" width="8" height="4" rx="1"/>', '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>'],
+    foto: ['<path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>', '<circle cx="12" cy="13" r="3.5"/>'],
+    externo: ['<path d="M7 17 17 7M9 7h8v8"/>'],
     // A picareta do vazio do popup e o alerta de uma falha em linha, no desenho
     // do protótipo do popup.
     picareta: ['<path d="M14 10L4 20"/>', '<path d="M5 7c4-4 10-4 14 0-2-1-5-1-8 1"/>', '<path d="M17 5c4 4 4 10 0 14 1-2 1-5-1-8"/>'],
@@ -344,7 +349,7 @@
     if (acao) {
       const botao = documento.createElement('button');
       botao.type = 'button';
-      botao.className = 'veio-botao veio-botao--secundario';
+      botao.className = 'veio-botao veio-botao--contorno';
       botao.textContent = acao.rotulo;
       botao.addEventListener('click', acao.aoUsar);
       acoes.append(botao);
