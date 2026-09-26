@@ -4,7 +4,7 @@
 // carregada antes pelo popup.html: o catálogo da Voz, os componentes da Veio,
 // o detector de idioma, os atalhos gravados e o Contexto da frase.
 const { detectarIdioma, IDIOMAS, textoDaVoz, Atalhos } = PerpetualMiner;
-const { iconeVeio, escreverFrase, montarTecla, montarDetalhes, montarAviso } = PerpetualMiner.Veio;
+const { iconeVeio, escreverFrase, montarTeclas } = PerpetualMiner.Veio;
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
 
 const QUANTAS_ULTIMAS = 5;
@@ -27,6 +27,7 @@ let idsJaMostrados = null;            // o que a lista já mostrou, para realça
 const idsChegando = new Set();        // as que ainda estão no realce: um redesenho não o apaga
 let atalhoDeLegenda = Atalhos.ATALHOS_PADRAO.legenda;
 let mineracaoAutomatica = null;       // { settings, daily } do service worker
+let conexaoLigada = null;             // null até o /health da Conexão com o Anki responder
 let minerando = false;
 
 const porId = id => document.getElementById(id);
@@ -121,7 +122,7 @@ function pedirEstadoDaAutomatica() {
     // Um estado publicado enquanto isso (`pm_auto_miner_state_view`) é mais novo que esta resposta.
     if (mineracaoAutomatica) return;
     if (falha || !resposta.state) {
-      mostrarFalhaDaAutomatica(falha || JSON.stringify(resposta), pedirEstadoDaAutomatica);
+      mostrarFalhaDaAutomatica('POP-16.leitura');
       return;
     }
     mostrarMineracaoAutomatica(resposta.state);
@@ -129,22 +130,18 @@ function pedirEstadoDaAutomatica() {
 }
 
 /**
- * GLB-01 sob os azulejos (ou no lugar deles, se o estado nunca chegou), com a
- * causa em Detalhes e Tentar de novo. É o aviso de um estado: sem ×, sai no
- * próximo estado que o service worker publicar.
+ * POP-16 sob os azulejos (ou no lugar deles, se o estado nunca chegou): uma
+ * linha que diz o que fazer, sem botão e sem Detalhes. Sai no próximo estado
+ * que o service worker publicar.
  */
-function mostrarFalhaDaAutomatica(causa, tentarDeNovo) {
+function mostrarFalhaDaAutomatica(id) {
   const azulejos = porId('azulejos');
   azulejos.removeAttribute('aria-busy');
   azulejos.querySelectorAll('.popup-azulejo--esqueleto, .popup-azulejos__falha').forEach(no => no.remove());
-  const aviso = montarAviso({
-    texto: textoDaVoz('GLB-01.aviso'),
-    acao: { rotulo: textoDaVoz('GLB-01.tentarDeNovo'), aoUsar: tentarDeNovo },
-    detalhes: String(causa),
-    fechavel: false,
-  });
-  aviso.classList.add('popup-azulejos__falha');
-  azulejos.append(aviso);
+  const falha = linhaDeFalha(textoDaVoz(id));
+  falha.classList.add('popup-azulejos__falha');
+  falha.setAttribute('role', 'alert');
+  azulejos.append(falha);
 }
 
 function mostrarMineracaoAutomatica(estado) {
@@ -166,6 +163,7 @@ function mostrarMineracaoAutomatica(estado) {
   }));
 
   devolverOFoco(azulejos, foco);
+  refletirNotaDaConexao();
 }
 
 /** O azulejo e o controle com o foco, para devolvê-lo depois de redesenhar. */
@@ -225,13 +223,20 @@ function montarAzulejo(chave, idioma, numeros) {
   medidor.setAttribute('aria-hidden', 'true');
   medidor.append(criar('i'));
 
-  azulejo.append(topo, criar('p', 'popup-azulejo__contador'), medidor);
+  // POP-07: na tela, “7/20” como no protótipo; o leitor de tela ouve “7 de 20 hoje”.
+  const contador = criar('p', 'popup-azulejo__contador');
+  const visto = criar('span');
+  visto.setAttribute('aria-hidden', 'true');
+  visto.append(criar('b'), criar('small'));
+  contador.append(visto, criar('span', 'veio-so-leitor'));
+
+  azulejo.append(topo, contador, medidor);
 
   // No limite, o campo dá lugar a POP-08: a mineração do dia acabou. O toggle
   // o tem como descrição, para o leitor de tela dizê-lo quando o foco chega ali.
-  const { n, limite } = numeros;
+  const { limite } = numeros;
   if (numeros.atingiuOLimite) {
-    const noLimite = criar('p', 'popup-azulejo__no-limite', textoDaVoz('POP-08', { n, limite }));
+    const noLimite = criar('p', 'popup-azulejo__no-limite', textoDaVoz('POP-08'));
     noLimite.id = `no-limite-${chave}`;
     caixa.setAttribute('aria-describedby', noLimite.id);
     azulejo.append(noLimite);
@@ -247,7 +252,10 @@ function montarAzulejo(chave, idioma, numeros) {
 function preencherAzulejo(azulejo, { ligado, limite, n }) {
   azulejo.classList.toggle('veio-azulejo--escolhido', ligado);
   azulejo.querySelector('input[type="checkbox"]').checked = ligado;
-  azulejo.querySelector('.popup-azulejo__contador').textContent = textoDaVoz('POP-07', { n, limite });
+  const contador = azulejo.querySelector('.popup-azulejo__contador');
+  contador.querySelector('b').textContent = String(n);
+  contador.querySelector('small').textContent = textoDaVoz('POP-07.limite', { limite });
+  contador.querySelector('.veio-so-leitor').textContent = textoDaVoz('POP-07.leitor', { n, limite });
   azulejo.querySelector('.veio-medidor > i').style.width = `${Math.min(100, Math.round((n / limite) * 100))}%`;
 }
 
@@ -281,6 +289,9 @@ function montarLimite(chave, idiomaNaFrase, limite) {
     });
   };
   campo.addEventListener('change', gravar);
+  // Sem as setinhas do navegador: ao chegar no campo, o número já vem
+  // selecionado, e digitar troca o limite. As setas ↑ ↓ do teclado seguem valendo.
+  campo.addEventListener('focus', () => campo.select());
   // Enter grava e o foco fica no campo, para o teclado seguir de onde estava.
   campo.addEventListener('keydown', evento => {
     if (evento.key !== 'Enter') return;
@@ -301,9 +312,9 @@ function salvarMineracaoAutomatica(mudanca, depois) {
   chrome.runtime.sendMessage({ type: 'AUTO_MINER_SET_SETTINGS', settings: mudanca }, resposta => {
     const falha = causaDaFalha(resposta) || (resposta.state ? null : JSON.stringify(resposta));
     if (falha) {
-      // Nada foi gravado: os azulejos voltam ao que está gravado, e o aviso grava de novo.
+      // Nada foi gravado: os azulejos voltam ao que está gravado, e POP-16 diz para tentar de novo.
       mostrarMineracaoAutomatica(mineracaoAutomatica);
-      mostrarFalhaDaAutomatica(falha, () => salvarMineracaoAutomatica(mudanca, depois));
+      mostrarFalhaDaAutomatica('POP-16.gravacao');
     } else {
       mostrarMineracaoAutomatica(resposta.state);
     }
@@ -311,15 +322,24 @@ function salvarMineracaoAutomatica(mudanca, depois) {
   });
 }
 
-/** A nota ONB-10 aparece enquanto a Conexão com o Anki não responde. */
 async function conferirConexao() {
-  let ligada = false;
   try {
-    ligada = (await fetch(`${ENDERECO_DA_CONEXAO}/health`)).ok;
+    conexaoLigada = (await fetch(`${ENDERECO_DA_CONEXAO}/health`)).ok;
   } catch {
-    ligada = false;
+    conexaoLigada = false;
   }
-  porId('nota-conexao').hidden = ligada;
+  refletirNotaDaConexao();
+}
+
+/**
+ * A nota ONB-10 aparece enquanto a Conexão com o Anki não responde, a não ser
+ * que a mineração automática já tenha minerado hoje: aí a Conexão funcionou
+ * hoje, e a nota só assustaria.
+ */
+function refletirNotaDaConexao() {
+  const mineradoHoje = Boolean(mineracaoAutomatica)
+    && IDIOMAS_DA_MINERACAO.some(({ chave }) => numerosDoIdioma(chave).n > 0);
+  porId('nota-conexao').hidden = conexaoLigada !== false || mineradoHoje;
 }
 
 // ─── Mineração rápida ─────────────────────────────────────────────────────────
@@ -363,10 +383,9 @@ function minerarFraseRapida() {
     contexto: { fonte: 'manual', titulo: '', detalhe: '' },
   }, resposta => {
     minerando = false;
-    const falha = causaDaFalha(resposta);
-    if (falha) {
+    if (causaDaFalha(resposta)) {
       // POP-06: o texto fica no campo, para tentar de novo.
-      mostrarErro(falha);
+      mostrarErro();
       refletirCampo();
       return;
     }
@@ -381,11 +400,16 @@ function minerarFraseRapida() {
   });
 }
 
-function mostrarErro(causa) {
-  const erro = porId('erro-rapida');
-  const linha = criar('p', 'veio-campo-erro', textoDaVoz('POP-06'));
-  erro.replaceChildren(linha, montarDetalhes(String(causa)));
+function mostrarErro() {
+  porId('erro-rapida').replaceChildren(linhaDeFalha(textoDaVoz('POP-06')));
   porId('frase-rapida').setAttribute('aria-invalid', 'true');
+}
+
+/** Uma falha em linha, como no protótipo: o ícone de alerta e a frase que diz o que fazer. */
+function linhaDeFalha(texto) {
+  const linha = criar('p', 'popup-falha');
+  linha.append(iconeVeio('alerta'), texto);
+  return linha;
 }
 
 function limparErro() {
@@ -468,11 +492,14 @@ function linhaDoContexto(f) {
     .join(' · ');
 }
 
-/** POP-02: o vazio ensina o atalho gravado; sem atalho, pede um, com Definir atalho (GLB-02). */
+/**
+ * POP-02: a picareta, o título e o texto que ensina o atalho gravado; sem
+ * atalho, o texto pede um, com Definir atalho (GLB-02).
+ */
 function montarVazio() {
   const vazio = criar('div', 'veio-vazio popup-vazio');
   const texto = criar('p', 'veio-vazio__texto');
-  vazio.append(texto);
+  vazio.append(iconeVeio('picareta'), criar('p', 'veio-vazio__titulo', textoDaVoz('POP-02.titulo')), texto);
   if (atalhoDeLegenda) {
     texto.append(...copiaComATecla('POP-02.atalho'));
   } else {
@@ -502,8 +529,9 @@ function copiaComATecla(id) {
   return [antes, teclaDaLegenda(), depois];
 }
 
+/** O atalho de legenda com uma tecla por kbd (Alt + S), ou o kbd tracejado “Sem atalho”. */
 function teclaDaLegenda() {
-  return montarTecla(Atalhos.rotuloDoAtalho(atalhoDeLegenda), { seVazia: textoDaVoz('GLB-02.semAtalho') });
+  return montarTeclas(Atalhos.rotuloDoAtalho(atalhoDeLegenda), { seVazia: textoDaVoz('GLB-02.semAtalho') });
 }
 
 function botaoDosAtalhos(rotulo, variante = 'veio-botao--fantasma') {
@@ -515,7 +543,7 @@ function botaoDosAtalhos(rotulo, variante = 'veio-botao--fantasma') {
 
 // ─── Utilidades ───────────────────────────────────────────────────────────────
 
-/** A causa técnica de uma resposta do service worker que falhou, para o Detalhes; null se deu certo. */
+/** A causa técnica de uma resposta do service worker que falhou; null se deu certo. */
 function causaDaFalha(resposta) {
   if (chrome.runtime.lastError) return chrome.runtime.lastError.message;
   if (resposta?.ok) return null;

@@ -136,7 +136,8 @@ sombra suave das ilhas do Painel, que não flutuam), `--veio-destaque` (o
 rótulo do chip), `--veio-raio-tecla`, `--veio-esqueleto` e `--veio-peso-rotulo` (o peso dos
 rótulos da navegação do Painel; `peso-num` fica só para números) e
 `--veio-raio-losango` (o canto do losango ouro que abre o título de seção do
-popup).
+popup) e `--veio-tam-contador` (o número grande do azulejo da mineração
+automática, “7/20”).
 
 ### Diferenças conhecidas do protótipo
 

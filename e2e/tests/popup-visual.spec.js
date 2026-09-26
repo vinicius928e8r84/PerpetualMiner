@@ -60,7 +60,7 @@ test('dia normal no tema claro', async ({ page, extensao }) => {
 
 test('primeiro uso: vazio que ensina o atalho', async ({ page, extensao }) => {
   await abrirPopup(page, extensao);
-  await expect(page.locator('#ultimas kbd')).toHaveText('Alt+S');
+  await expect(page.locator('#ultimas kbd')).toHaveText(['Alt', 'S']);
   await expect(page).toHaveScreenshot('popup-primeiro-uso.png');
 });
 
@@ -72,12 +72,19 @@ test('primeiro uso sem atalho gravado', async ({ page, extensao }) => {
   await expect(page).toHaveScreenshot('popup-sem-atalho.png');
 });
 
-test('limite de hoje atingido, com a Conexão com o Anki desligada', async ({ page, extensao, fakes }) => {
-  fakes.anki.desligar();
+test('limite de hoje atingido', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: FRASES, ...mineracao({ en: [true, 20, 20], ru: [true, 15, 4] }) });
   await abrirPopup(page, extensao);
+  await expect(page.locator('.popup-azulejo__no-limite')).toHaveText('Limite de hoje atingido');
+  await expect(page).toHaveScreenshot('popup-limite.png');
+});
+
+test('Conexão com o Anki desligada, com nada minerado hoje', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await extensao.gravarStorage({ frases: FRASES, ...mineracao({ en: [true, 20, 0], ru: [false, 15, 0] }) });
+  await abrirPopup(page, extensao);
   await expect(page.getByText(/Nada é minerado com a Conexão/)).toBeVisible();
-  await expect(page).toHaveScreenshot('popup-limite-e-conexao-desligada.png');
+  await expect(page).toHaveScreenshot('popup-conexao-desligada.png');
 });
 
 test('mineração rápida que falhou', async ({ page, extensao }) => {

@@ -132,12 +132,24 @@ textarea {
   letter-spacing: .04em;
 }
 
+/* POP-07 como no protótipo: o número grande e “/20” menor, apagado. */
 .popup-azulejo__contador {
   margin: 0;
   font-family: var(--veio-fonte-mono);
-  font-size: var(--veio-tam-corpo);
+  font-size: var(--veio-tam-contador);
   font-weight: var(--veio-peso-num);
+  line-height: 1;
   white-space: nowrap;
+}
+
+.popup-azulejo__contador b {
+  font-weight: inherit;
+}
+
+.popup-azulejo__contador small {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+  font-weight: 500;
 }
 
 /* Desligado, o medidor fica apagado. */
@@ -151,6 +163,17 @@ textarea {
   gap: 6px;
   color: var(--veio-muted);
   font-size: var(--veio-tam-legenda);
+}
+
+/* Sem as setinhas do navegador: digita-se o número, ou ↑ ↓ no teclado. */
+.popup-azulejo__campo.veio-campo {
+  appearance: textfield;
+}
+
+.popup-azulejo__campo::-webkit-inner-spin-button,
+.popup-azulejo__campo::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
 }
 
 .popup-azulejo__campo.veio-campo {
@@ -223,8 +246,23 @@ textarea {
   margin-top: 5px;
 }
 
-.popup-rapida__erro .veio-campo-erro {
+/* Uma falha em linha (POP-06, POP-16): o ícone de alerta e o que fazer. */
+.popup-falha {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
   margin: 0;
+  color: var(--veio-danger);
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-rotulo);
+  line-height: 1.4;
+}
+
+.popup-falha svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
 }
 
 /* ── Últimas mineradas: só leitura ── */
@@ -290,8 +328,24 @@ textarea {
 }
 
 .popup-vazio {
+  gap: 6px;
   padding: 18px 14px;
   border-radius: var(--veio-raio-card);
+}
+
+/* A picareta do protótipo, em ouro. */
+.popup-vazio svg {
+  width: 34px;
+  height: 34px;
+  color: var(--veio-accent-text);
+}
+
+.popup-vazio .veio-vazio__titulo {
+  font-size: var(--veio-tam-corpo);
+}
+
+.popup-vazio .veio-vazio__texto {
+  font-size: var(--veio-tam-apoio);
 }
 
 /* ── Rodapé: o atalho de legenda ── */

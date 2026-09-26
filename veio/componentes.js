@@ -87,6 +87,10 @@
     tema: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/>'],
     perigo: ['<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>', '<path d="M12 9v4M12 17h.01"/>'],
     abrir: ['<path d="m6 9 6 6 6-6"/>'],
+    // A picareta do vazio do popup e o alerta de uma falha em linha, no desenho
+    // do protótipo do popup.
+    picareta: ['<path d="M14 10L4 20"/>', '<path d="M5 7c4-4 10-4 14 0-2-1-5-1-8 1"/>', '<path d="M17 5c4 4 4 10 0 14 1-2 1-5-1-8"/>'],
+    alerta: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 7v6M12 16.5v.5"/>'],
   };
 
   /**
@@ -519,6 +523,22 @@
     return kbd;
   }
 
+  /**
+   * O atalho com uma tecla por `kbd` (Alt + S), como o protótipo do popup o
+   * desenha. Sem `rotulo`, o mesmo `kbd` tracejado de `montarTecla`.
+   */
+  function montarTeclas(rotulo, { seVazia, documento = document } = {}) {
+    if (!rotulo) return montarTecla(null, { seVazia, documento });
+    const teclas = documento.createElement('span');
+    teclas.className = 'veio-teclas';
+    // “Ctrl++” é a tecla + com Ctrl: o último + nunca separa.
+    rotulo.split(/\+(?!$)/).forEach((tecla, i) => {
+      if (i > 0) teclas.append('+');
+      teclas.append(montarTecla(tecla, { documento }));
+    });
+    return teclas;
+  }
+
   raiz.Veio = {
     iconeVeio,
     abrirModal,
@@ -532,5 +552,6 @@
     montarChipDaPalavra,
     refletirSelecao,
     montarTecla,
+    montarTeclas,
   };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

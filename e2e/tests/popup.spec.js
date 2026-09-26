@@ -134,7 +134,7 @@ test('mineração rápida em russo grava o idioma pelo detector único', async (
   expect((await extensao.frases())[0]).toMatchObject({ idioma: 'Russo' });
 });
 
-test('mineração rápida com o service worker falhando: POP-06 com Detalhes, e o texto continua no campo', async ({ page, extensao }) => {
+test('mineração rápida com o service worker falhando: POP-06 com o alerta, sem Detalhes, e o texto continua no campo', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: SETE_FRASES });
   await page.goto(extensao.url('popup.html'));
   await expect(ultimas(page)).toHaveCount(5);
@@ -153,8 +153,9 @@ test('mineração rápida com o service worker falhando: POP-06 com Detalhes, e 
 
   const erro = page.getByRole('alert');
   await expect(erro).toContainText('Não deu para minerar a frase. Tente de novo.');
-  await erro.getByText('Detalhes').click();
-  await expect(erro).toContainText('QUOTA_BYTES quota exceeded');
+  await expect(erro.locator('svg')).toHaveCount(1);
+  await expect(erro).not.toContainText('Detalhes');
+  await expect(erro).not.toContainText('QUOTA_BYTES');
   await expect(campoRapido(page)).toHaveValue('Break a leg');
   await expect(campoRapido(page)).toHaveAttribute('aria-invalid', 'true');
   await expect(ultimas(page).first()).not.toContainText('Break a leg');
@@ -234,8 +235,10 @@ test('vazio (POP-02) ensina o atalho de legenda gravado', async ({ page, extensa
   await page.goto(extensao.url('popup.html'));
 
   const vazio = page.locator('#ultimas');
-  await expect(vazio).toHaveText('Nenhuma frase ainda. Aperte Ctrl+Shift+L num vídeo com legenda para minerar a primeira.');
-  await expect(vazio.locator('kbd')).toHaveText('Ctrl+Shift+L');
+  await expect(vazio.locator('.veio-vazio__titulo')).toHaveText('Nenhuma frase ainda');
+  await expect(vazio.locator('.veio-vazio__texto')).toHaveText('Aperte Ctrl+Shift+L num vídeo com legenda para minerar a primeira.');
+  await expect(vazio.locator('kbd')).toHaveText(['Ctrl', 'Shift', 'L']);
+  await expect(vazio.locator('svg')).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Ver todas' })).toHaveCount(0);
 });
 
@@ -244,7 +247,8 @@ test('vazio sem atalho gravado: “Defina um atalho…” e Definir atalho, que 
   await page.goto(extensao.url('popup.html'));
 
   const vazio = page.locator('#ultimas');
-  await expect(vazio.locator('p')).toHaveText('Nenhuma frase ainda. Defina um atalho para minerar legendas de vídeo.');
+  await expect(vazio.locator('.veio-vazio__titulo')).toHaveText('Nenhuma frase ainda');
+  await expect(vazio.locator('.veio-vazio__texto')).toHaveText('Defina um atalho para minerar legendas de vídeo.');
   await expect(vazio.locator('kbd')).toHaveCount(0);
 
   const nova = context.waitForEvent('page');
@@ -259,10 +263,10 @@ test('o rodapé mostra o atalho de legenda gravado, e acompanha a mudança feita
   await page.goto(extensao.url('popup.html'));
   const rodape = page.getByRole('contentinfo');
   await expect(rodape).toContainText('Alt+S minera a legenda do vídeo');
-  await expect(rodape.locator('kbd')).toHaveText('Alt+S');
+  await expect(rodape.locator('kbd')).toHaveText(['Alt', 'S']);
 
   await extensao.gravarStorage({ pm_atalho_legenda: CTRL_SHIFT_L });
-  await expect(rodape.locator('kbd')).toHaveText('Ctrl+Shift+L');
+  await expect(rodape.locator('kbd')).toHaveText(['Ctrl', 'Shift', 'L']);
   await expect(rodape).toContainText('Ctrl+Shift+L minera a legenda do vídeo');
 });
 
@@ -345,7 +349,7 @@ test('Enter no limite grava e o foco do teclado fica no campo', async ({ page, e
   const limiteEn = page.getByRole('spinbutton', { name: 'Limite por dia em inglês' });
   await limiteEn.fill('10');
   await limiteEn.press('Enter');
-  await expect(page.locator('.popup-azulejo[data-idioma="en"]')).toContainText('Limite de hoje atingido · 10 de 10');
+  await expect(page.locator('.popup-azulejo[data-idioma="en"] .popup-azulejo__no-limite')).toHaveText('Limite de hoje atingido');
   await expect(page.getByRole('switch', { name: 'Mineração automática em inglês' })).toBeFocused();
 });
 
@@ -369,7 +373,7 @@ test('o limite atingido enquanto a pessoa está no campo troca o campo por POP-0
   const daily = { ...(estado?.daily || {}), en: { count: 20 }, ru: { count: 4 } };
   await extensao.gravarStorage({ pm_auto_miner_state_view: { settings, daily, updatedAt: Date.now() } });
 
-  await expect(en).toContainText('Limite de hoje atingido · 20 de 20');
+  await expect(en.locator('.popup-azulejo__no-limite')).toHaveText('Limite de hoje atingido');
   await expect(page.getByRole('spinbutton', { name: 'Limite por dia em inglês' })).toHaveCount(0);
 });
 
@@ -400,7 +404,7 @@ test('mineração automática carregando: esqueleto nos azulejos, sem texto', as
   await expect(azulejos).not.toHaveAttribute('aria-busy', 'true');
 });
 
-test('mineração automática sem o estado do service worker: GLB-01 com Detalhes, e Tentar de novo traz os azulejos', async ({ page, extensao }) => {
+test('mineração automática sem o estado do service worker: POP-16 diz o que fazer, sem botão nem Detalhes', async ({ page, extensao }) => {
   await semearMineracaoAutomatica(extensao, {
     en: { ligado: true, limite: 20, hoje: 3 },
     ru: { ligado: false, limite: 20, hoje: 0 },
@@ -418,18 +422,18 @@ test('mineração automática sem o estado do service worker: GLB-01 com Detalhe
   await page.goto(extensao.url('popup.html'));
 
   const erro = page.locator('#azulejos').getByRole('alert');
-  await expect(erro).toContainText('Algo deu errado. Tente de novo.');
-  await erro.getByText('Detalhes').click();
-  await expect(erro).toContainText('IO error: disco ilegível');
+  await expect(erro).toHaveText('Não deu para carregar a mineração automática. Feche e abra o popup de novo.');
+  await expect(erro.getByRole('button')).toHaveCount(0);
+  await expect(erro).not.toContainText('IO error');
 
-  // O disco volta: Tentar de novo pede o estado outra vez e os azulejos aparecem.
+  // Fechar e abrir o popup de novo, com o disco de volta, traz os azulejos.
   await extensao.serviceWorker.evaluate(() => { chrome.storage.local.get = globalThis.lerDeVerdade; });
-  await erro.getByRole('button', { name: 'Tentar de novo' }).click();
+  await page.reload();
   await expect(page.locator('.popup-azulejo[data-idioma="en"]')).toContainText('3 de 20 hoje');
   await expect(page.locator('#azulejos').getByRole('alert')).toHaveCount(0);
 });
 
-test('gravar a mineração automática falhando: o toggle volta ao gravado, GLB-01 aparece, e Tentar de novo grava', async ({ page, extensao }) => {
+test('gravar a mineração automática falhando: o toggle volta ao gravado e POP-16 pede para tentar de novo', async ({ page, extensao }) => {
   await semearMineracaoAutomatica(extensao, {
     en: { ligado: true, limite: 20, hoje: 3 },
     ru: { ligado: false, limite: 15, hoje: 0 },
@@ -446,18 +450,20 @@ test('gravar a mineração automática falhando: o toggle volta ao gravado, GLB-
   await page.locator('.popup-azulejo[data-idioma="ru"] .veio-toggle__trilho').click();
 
   const erro = page.locator('#azulejos').getByRole('alert');
-  await expect(erro).toContainText('Algo deu errado. Tente de novo.');
+  await expect(erro).toHaveText('Não deu para salvar a mudança. Tente de novo.');
+  await expect(erro.getByRole('button')).toHaveCount(0);
   await expect(russo).not.toBeChecked();
   await expect(page.locator('.popup-azulejo')).toHaveCount(2);
 
+  // O disco volta: ligar de novo grava, e a linha sai.
   await extensao.serviceWorker.evaluate(() => { chrome.storage.local.set = globalThis.gravarDeVerdade; });
-  await erro.getByRole('button', { name: 'Tentar de novo' }).click();
+  await page.locator('.popup-azulejo[data-idioma="ru"] .veio-toggle__trilho').click();
   await expect(russo).toBeChecked();
   await expect(page.locator('#azulejos').getByRole('alert')).toHaveCount(0);
   await expect.poll(async () => (await extensao.lerStorage('pm_auto_miner_settings')).pm_auto_miner_settings.ru.enabled).toBe(true);
 });
 
-test('limite de hoje atingido: “Limite de hoje atingido · 20 de 20” no lugar do campo', async ({ page, extensao }) => {
+test('limite de hoje atingido: “Limite de hoje atingido” no lugar do campo, sem repetir a contagem', async ({ page, extensao }) => {
   await semearMineracaoAutomatica(extensao, {
     en: { ligado: true, limite: 20, hoje: 20 },
     ru: { ligado: true, limite: 15, hoje: 4 },
@@ -465,18 +471,61 @@ test('limite de hoje atingido: “Limite de hoje atingido · 20 de 20” no luga
   await page.goto(extensao.url('popup.html'));
 
   const en = page.locator('.popup-azulejo[data-idioma="en"]');
-  await expect(en).toContainText('Limite de hoje atingido · 20 de 20');
+  await expect(en.locator('.popup-azulejo__no-limite')).toHaveText('Limite de hoje atingido');
   await expect(page.getByRole('spinbutton', { name: 'Limite por dia em inglês' })).toHaveCount(0);
   await expect(page.getByRole('spinbutton', { name: 'Limite por dia em russo' })).toHaveValue('15');
   // O leitor de tela ouve POP-08 ao chegar no toggle do idioma.
   await expect(page.getByRole('switch', { name: 'Mineração automática em inglês' }))
-    .toHaveAccessibleDescription('Limite de hoje atingido · 20 de 20');
+    .toHaveAccessibleDescription('Limite de hoje atingido');
+  // A contagem fica só no contador: “20/20” na tela.
+  await expect(en.locator('.popup-azulejo__contador [aria-hidden="true"]')).toHaveText('20/20');
+});
+
+test('o contador mostra “12/20” como no protótipo, e o leitor de tela ouve “12 de 20 hoje”', async ({ page, extensao }) => {
+  await semearMineracaoAutomatica(extensao, {
+    en: { ligado: true, limite: 20, hoje: 12 },
+    ru: { ligado: false, limite: 15, hoje: 0 },
+  });
+  await page.goto(extensao.url('popup.html'));
+
+  const contador = page.locator('.popup-azulejo[data-idioma="en"] .popup-azulejo__contador');
+  await expect(contador.locator('[aria-hidden="true"]')).toHaveText('12/20');
+  await expect(contador.locator('b')).toHaveText('12');
+  await expect(contador.locator('small')).toHaveText('/20');
+  await expect(contador.locator('.veio-so-leitor')).toHaveText('12 de 20 hoje');
+});
+
+test('no campo de limite, clicar seleciona o número: digitar troca o limite inteiro', async ({ page, extensao }) => {
+  await semearMineracaoAutomatica(extensao, {
+    en: { ligado: true, limite: 20, hoje: 2 },
+    ru: { ligado: false, limite: 15, hoje: 0 },
+  });
+  await page.goto(extensao.url('popup.html'));
+
+  const limite = page.getByRole('spinbutton', { name: 'Limite por dia em inglês' });
+  await limite.click();
+  await page.keyboard.type('35');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.popup-azulejo[data-idioma="en"]')).toContainText('2 de 35 hoje');
+  await expect.poll(async () => (await extensao.lerStorage('pm_auto_miner_settings')).pm_auto_miner_settings.en.dailyLimit).toBe(35);
 });
 
 test('com a Conexão com o Anki desligada, a nota ONB-10 aparece sob os azulejos', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await page.goto(extensao.url('popup.html'));
   await expect(page.getByText('Nada é minerado com a Conexão com o Anki desligada: é ela que diz quais palavras você já conhece.')).toBeVisible();
+});
+
+test('com a Conexão desligada mas algo já minerado hoje, a nota não aparece: a Conexão funcionou hoje', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await semearMineracaoAutomatica(extensao, {
+    en: { ligado: true, limite: 20, hoje: 20 },
+    ru: { ligado: true, limite: 15, hoje: 4 },
+  });
+  await page.goto(extensao.url('popup.html'));
+  await expect(page.locator('.popup-azulejo')).toHaveCount(2);
+  await expect.poll(() => fakes.anki.requisicoes.some(r => r.caminho === '/health')).toBe(true);
+  await expect(page.getByText(/Nada é minerado com a Conexão/)).toBeHidden();
 });
 
 test('com a Conexão com o Anki ligada, não há nota', async ({ page, extensao, fakes }) => {

@@ -6,7 +6,7 @@ O que está aqui:
 
 1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
 2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: 192 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
+3. **Catálogo**: 193 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
 
 Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
 
@@ -68,7 +68,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 
 ## 3. Catálogo de estados-chave
 
-São 192 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
+São 193 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 
@@ -77,20 +77,21 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
 | POP-01 | Lista das últimas carregando **(some)** | loading | Carregando... | _(sem texto)_ | Espera curta: sem texto, só esqueleto (C3). |
-| POP-02 | Nenhuma frase (1º uso) | vazio | Nenhuma frase salva ainda. | Nenhuma frase ainda. Aperte Alt+S num vídeo com legenda para minerar a primeira. | Mostra o atalho que estiver configurado de fato. Sem atalho gravado, a segunda frase vira “Defina um atalho para minerar legendas de vídeo.” (`POP-02.semAtalho`, da spec do popup), com a ação “Definir atalho” de GLB-02. |
+| POP-02 | Nenhuma frase (1º uso) | vazio | Nenhuma frase salva ainda. | **Nenhuma frase ainda** · Aperte Alt+S num vídeo com legenda para minerar a primeira. | A picareta, o título em negrito e o texto embaixo, como no protótipo do popup. Mostra o atalho que estiver configurado de fato, uma tecla por `kbd`. Sem atalho gravado, o texto vira “Defina um atalho para minerar legendas de vídeo.” (`POP-02.semAtalho`, da spec do popup), com a ação “Definir atalho” de GLB-02. |
 | POP-03 | Campo da mineração rápida | status | Cole ou escreva uma frase… | Cole ou escreva uma frase | Placeholder não é andamento: sem “…” (V7). |
 | POP-04 | Botão da mineração rápida | status | Adicionar | Minerar |  |
 | POP-05 | Mineração rápida deu certo **(novo)** | sucesso | (nada) | _(sem texto)_ | O campo limpa e a frase aparece no topo das últimas. É visível, então fica sem toast (C4). |
-| POP-06 | Mineração rápida falhou **(novo)** | erro | (falha calada) | Não deu para minerar a frase. Tente de novo. | Inline sob o campo, com “Detalhes” (C9). |
+| POP-06 | Mineração rápida falhou **(novo)** | erro | (falha calada) | Não deu para minerar a frase. Tente de novo. | Inline sob o campo, com o ícone de alerta e sem “Detalhes”: a frase já diz o que fazer (decisão do dono na revisão do #38). |
 | POP-10 | Título da seção | status | Auto Miner | Mineração automática |  |
-| POP-07 | Contador da mineração automática | status | 0/20 | 12 de 20 hoje | Número com o que ele conta (C8). |
-| POP-08 | Mineração automática no limite | status | 20/20 (amarelo) | Limite de hoje atingido · 20 de 20 |  |
+| POP-07 | Contador da mineração automática | status | 0/20 | 12/20 · (leitor) 12 de 20 hoje | Na tela, o número grande e “/20” menor, como no protótipo (decisão do dono na revisão do #38). O leitor de tela ouve o número com o que ele conta (C8): “12 de 20 hoje”. |
+| POP-08 | Mineração automática no limite | status | 20/20 (amarelo) | Limite de hoje atingido | A contagem já está no contador acima (POP-07), então não se repete. |
 | POP-09 | Botão que abre o Painel | status | Abrir Painel de Estudos | Abrir painel | V10. |
 | POP-11 | Rodapé do atalho | status | Configurar Atalho de Captura · Atalho atual: … (o Alt+S não aparece) | Alt+S minera a legenda do vídeo · Mudar atalho | Mostra o atalho “Minerar legenda” gravado, não um texto fixo. “Mudar atalho” abre o painel em Configurações › Atalhos. Sem atalho gravado: GLB-02. |
 | POP-12 | Subtítulo do cabeçalho **(some)** | status | Minerador de legendas | _(sem texto)_ | O popup não tem subtítulo: só a marca Veio + “PerpetualMiner”. A frase descritiva fica para a Boas-vindas (ONB-01) e a loja. |
 | POP-13 | Últimas mineradas: título e atalho para o Painel **(novo)** | status | Últimas mineradas | Últimas mineradas · Ver todas | “Ver todas” fica à direita do título, só com frase na lista, e abre o Painel em Frases. |
 | POP-14 | Mineração automática: azulejo **(novo)** | status | (limite solto, sem rótulo) | por dia · limite [20] /dia | “por dia” à direita do título (POP-10). O leitor de tela ouve o toggle como “Mineração automática em inglês” e o campo como “Limite por dia em inglês”, com o idioma em minúscula. |
 | POP-15 | Código do idioma no azulejo **(novo)** | status | EN · RU | EN · RU | Em mono, no topo do azulejo; o nome do idioma fica no rótulo do toggle (POP-14). |
+| POP-16 | Mineração automática não carregou ou não salvou **(novo)** | erro | (falha calada) | Não deu para carregar a mineração automática. Feche e abra o popup de novo. · Não deu para salvar a mudança. Tente de novo. | Uma linha com o ícone de alerta, sob os azulejos, sem botão e sem “Detalhes”: diz o que fazer. Numa gravação que falhou, o toggle ou o limite voltam ao que está gravado. |
 
 ### Minerar na página (componente de feedback)
 
@@ -320,5 +321,5 @@ A página não existe hoje: todas as linhas são novas. V10 permite o nome do pr
 
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
-| GLB-01 | Erro sem tradução conhecida | erro | <err.message cru> | Algo deu errado. Tente de novo. · [Tentar de novo] | Último recurso, sempre com Detalhes. Todo erro conhecido tem cópia própria acima. |
+| GLB-01 | Erro sem tradução conhecida | erro | <err.message cru> | Algo deu errado. Tente de novo. | Último recurso, sempre com Detalhes. Todo erro conhecido tem cópia própria acima. |
 | GLB-02 | Atalho “Minerar legenda” vazio **(novo)** | status | (Alt+S fixo, não dá para esvaziar) | Sem atalho · [Definir atalho] | Onde a cópia supõe Alt+S (POP-11, PAI-02, ONB-05; POP-02 tem frase própria), sem atalho gravado a tecla dá lugar a “Sem atalho” e à ação “Definir atalho”, que abre `#configuracoes/atalhos` (na Boas-vindas, leva ao passo 2 da própria página, onde está o gravador). |

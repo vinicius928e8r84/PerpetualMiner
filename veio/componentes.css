@@ -480,6 +480,18 @@ select.veio-campo {
   line-height: 1.5;
 }
 
+/* Uma tecla por kbd, com o + entre elas (montarTeclas). */
+.veio-teclas {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.veio-teclas .veio-kbd {
+  padding: 1px 5px;
+  border-radius: var(--veio-raio-tecla);
+}
+
 .veio-kbd--sem-atalho {
   border-style: dashed;
   border-bottom-width: 1px;

@@ -33,7 +33,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-perigo.js` | The Configurações › Zona de perigo card: the Apagar tudo entry, its reach with and without an account, and the Veio confirmation modal (CFG-17). See “Chave do Gemini and Zona de perigo” below |
 | `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `tema.js` (the chosen theme, applied before the first paint on every page), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs, the SVG mark and `icone-claro.svg`, which `.veio-marca` swaps in on the light theme through `--veio-marca`). See `veio/README.md` |
-| `lib/voz/catalogo.js` | The Voice catalog as data: the 192 approved copy states from `docs/design/voz/` |
+| `lib/voz/catalogo.js` | The Voice catalog as data: the 193 approved copy states from `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/contexto.js` | `PerpetualMiner.Contexto` — the Contexto as the screen says it: the Fonte's name (PAI-29, `fonteDaFrase`, `nomeDaFonte`) and the phrase's day (PAI-11, `rotuloDoDia`). Loaded by the panel and the popup, so a phrase never has two names |
@@ -173,7 +173,8 @@ release (`guardarSolturaDoBotao` after a shortcut fires, `guardarTodasAsSolturas
 page would leave while mining or recording.
 
 Configurações › Atalhos is the only recorder: the popup only shows the Minerar legenda shortcut in its footer. The `kbd`
-itself is the base component `Veio.montarTecla(rotulo, { seVazia })`; the caller passes the “Sem atalho” copy (CFG-12 or GLB-02).
+itself is the base component `Veio.montarTecla(rotulo, { seVazia })` (or `Veio.montarTeclas`, one key per `kbd`, as the
+popup draws it); the caller passes the “Sem atalho” copy (CFG-12 or GLB-02).
 
 ### Popup (Cockpit) (`popup.html/js/css`)
 
@@ -181,21 +182,25 @@ The popup is the “Cockpit” variant A (`docs/design/popup/`), 340 px wide wit
 components and following the chosen theme. Top to bottom: the mark with no subtitle (POP-12); **Abrir painel** (POP-09),
 which focuses the panel tab that is already open (`chrome.tabs.query` ignores the `#address`, so the tab keeps the area
 the person left it on) or opens one; the **Mineração automática** tiles, Inglês | Russo (POP-10, POP-14, POP-15): a switch,
-“12 de 20 hoje” (POP-07), a meter and the 1–100 daily limit, which gives way to “Limite de hoje atingido · 20 de 20” (POP-08,
-also the switch's accessible description) once an enabled language hits it, even while the limit field has focus; and the
-ONB-10 note while the Conexão com o Anki does not answer `/health`. The tiles show a skeleton until the service worker
-answers `AUTO_MINER_GET_STATE` (a `pm_auto_miner_state_view` that arrives first wins). If it fails, or a save
-(`AUTO_MINER_SET_SETTINGS`) fails, GLB-01 shows as a non-closable aviso with Detalhes and Tentar de novo (asks again, or
-sends the same save again); a failed save first redraws the tiles from what is stored, so the switch or the limit goes
-back. Enter in the limit field saves and keeps focus there; a redraw puts focus back on the same control (the switch, once
-the field gave way to POP-08). **Quick mining** (POP-03/04): Enter or Minerar sends `SALVAR_HISTORICO` with Fonte `manual`
-and an empty Título; success has no text (POP-05: the field clears and the phrase enters the top with a brief highlight),
-failure shows POP-06 under the field with the cause in “Detalhes” and keeps the text; the **last 5**, read-only (POP-13),
-each the phrase with the Palavra (the first `keywords` group) highlighted and the Contexto line “Fonte · Título · Detalhe ·
-dia”; skeleton while loading (POP-01) and the POP-02 empty state (with no shortcut, `POP-02.semAtalho` and Definir
-atalho). The footer shows the recorded Minerar legenda shortcut (POP-11) with Mudar atalho, or “Sem atalho” and Definir
-atalho (GLB-02); both, and Definir atalho in the empty state, take the panel tab to `#configuracoes/atalhos`, and “Ver
-todas” to `#frases`. The popup does not delete, select or record anything.
+the counter as the prototype draws it (“12/20”, the number large; the screen reader hears POP-07 “12 de 20 hoje”), a meter
+and the 1–100 daily limit, which gives way to “Limite de hoje atingido” (POP-08, also the switch's accessible
+description) once an enabled language hits it, even while the limit field has focus. The limit field has no spin
+arrows: focusing it selects the number, typing replaces it, ↑ ↓ still step it, and Enter saves and keeps focus there; a
+redraw puts focus back on the same control (the switch, once the field gave way to POP-08). The ONB-10 note shows while
+the Conexão com o Anki does not answer `/health` *and* nothing was mined automatically today (a count above 0 means the
+Conexão worked today). The tiles show a skeleton until the service worker answers `AUTO_MINER_GET_STATE` (a
+`pm_auto_miner_state_view` that arrives first wins); if it fails, POP-16 says what to do in one line with the alert icon
+(close and reopen the popup), and if a save (`AUTO_MINER_SET_SETTINGS`) fails, the tiles go back to what is stored and
+POP-16 asks to try again. No button and no Detalhes: the next published state clears the line. **Quick mining**
+(POP-03/04): Enter or Minerar sends `SALVAR_HISTORICO` with Fonte `manual` and an empty Título; success has no text
+(POP-05: the field clears and the phrase enters the top with a brief highlight), failure shows POP-06 under the field
+with the alert icon and keeps the text; the **last 5**, read-only (POP-13), each the phrase with the Palavra (the first
+`keywords` group) highlighted and the Contexto line “Fonte · Título · Detalhe · dia”; skeleton while loading (POP-01) and
+the POP-02 empty state: the pickaxe, “Nenhuma frase ainda” in bold and the text below with the recorded shortcut, one key
+per `kbd` (`Veio.montarTeclas`); with no shortcut, `POP-02.semAtalho` and Definir atalho. The footer shows the recorded
+Minerar legenda shortcut (POP-11, one key per `kbd`) with Mudar atalho, or “Sem atalho” and Definir atalho (GLB-02);
+both, and Definir atalho in the empty state, take the panel tab to `#configuracoes/atalhos`, and “Ver todas” to `#frases`.
+The popup does not delete, select or record anything.
 
 ### Account (`painel-conta.js`)
 
@@ -383,7 +388,7 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - The showcase also carries a **mock of the toolbar badge** in its three states, outside the two theme columns — Chrome draws the real badge on the browser toolbar, which no static page (and so no Vercel preview) can show. The mock reads its colors from the tokens, and the badge test asserts those tokens match what the service worker hands Chrome, so the copy in `background.js` can't drift.
 - `tests/painel-frases-visual.spec.js` holds the **visual reference of the Frases list** (cards wide and as a rail, each at the top and with the island scrolled to the pagination; loading, first run, filters and search with no result as the full page), in the same way: `npx playwright test painel-frases-visual --update-snapshots` after the owner approves a new look. Today's bulk actions (`.conteudo-de-hoje`) are masked.
 - `tests/painel-shell-visual.spec.js` holds the **visual reference of the panel shell**: its approved states (Frases wide and as a rail, first run, the Conexão off with F1, Configurações with an account) as `toHaveScreenshot` baselines in `painel-shell-visual.spec.js-snapshots/` (taken on Linux, with the clock frozen on the day of the sample phrases). A visual change to the shell fails them; after the owner approves the new look, `npx playwright test painel-shell-visual --update-snapshots` replaces the reference. The content inside each area (`.conteudo-de-hoje`, and the Frases list, which has its own reference) is masked: the reference is the shell around it.
-- `tests/popup-visual.spec.js` holds the **visual reference of the popup** (a normal day, the light theme, first run with and without a shortcut, a limit reached with the Conexão off, a failed quick mining, loading), at 340×600, compared by the owner side by side with the locked prototype (`?variant=A`).
+- `tests/popup-visual.spec.js` holds the **visual reference of the popup** (a normal day, the light theme, first run with and without a shortcut, a limit reached, the Conexão off with nothing mined today, a failed quick mining, loading), at 340×600, compared by the owner side by side with the locked prototype (`?variant=A`).
 - `tests/configuracoes-visual.spec.js` does the same for Configurações (cards closed; Conta & sync synced, not synced, logged out after a failed login; Chave do Gemini saved and refused empty; Zona de perigo with an account and its modal; Atalhos open, recording and with a repeated shortcut refused; the narrow window; Aparência open in dark and in light), compared by the owner side by side with the locked prototype (`?variant=C`).
 - `HEADED=1 npm test` shows the browser.
 - Tests assert what the person sees and what ends up stored, never internal functions. Three narrow exceptions, each named in the test's own comment:
