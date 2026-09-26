@@ -282,8 +282,8 @@ packaged fonts load from the `@font-face` rules of `tokens.css` inside the shado
 the tests (and a page) can reach it; a page still cannot mine, since the shortcuts and the button only
 take trusted events.
 
-- **Button:** the Veio tile (`veio/icones/icone.svg`) in a 40 px circle, 12 px from the right and 72 px from
-  the bottom of the player (the prototype's corner), a real `<button>` whose `aria-label` is MIN-07 with the recorded caption shortcut (“Minerar legenda
+- **Button:** the Veio tile (`veio/icones/icone.svg`) in a 46 px circle (the prototype's size), 16 px from the
+  right and 96 px from the bottom of the player (the prototype's corner, a little higher and further right), a real `<button>` whose `aria-label` is MIN-07 with the recorded caption shortcut (“Minerar legenda
   (Alt+S)”, or “Minerar legenda” with none). At rest it is half faded (opacity .55); hover, keyboard focus and
   an open pill bring it to 100%. There is no visible label (the owner's review of PR #66): the name with the
   shortcut is for the screen reader. It lives in the player's container (so it stays in full screen) and only

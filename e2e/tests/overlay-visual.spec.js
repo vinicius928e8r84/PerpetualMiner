@@ -25,8 +25,11 @@ async function abrirPlayer(page, paginas) {
       no.style.width = '1118px';
       no.style.height = '630px';
     }
-    document.querySelector('.caption-window').style.bottom = '110px';
-    document.querySelector('.caption-text').style.fontSize = '28px';
+    // A legenda como a do protótipo: centrada, até ~560 px, quebrando em duas linhas.
+    Object.assign(document.querySelector('.caption-window').style, {
+      bottom: '110px', left: '50%', right: 'auto', width: '560px', transform: 'translateX(-50%)',
+    });
+    Object.assign(document.querySelector('.caption-text').style, { fontSize: '26px', lineHeight: '1.3' });
   });
   await expect(page.getByRole('button', { name: 'Minerar legenda (Alt+S)' })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);

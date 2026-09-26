@@ -29,13 +29,13 @@
 
 /* ── A pílula ─────────────────────────────────────────────────────────────
    O botão é o círculo da direita; o corpo estica para a esquerda e volta.
-   Mínima, como o protótipo pediu na revisão do dono: 40 px de altura. */
+   Do tamanho do protótipo: 46 px de altura. */
 
 .pm-pilula {
   display: flex;
   flex-direction: row-reverse;
   align-items: center;
-  min-height: 40px;
+  min-height: 46px;
   border-radius: var(--veio-raio-pilula);
   background: transparent;
   transition: background var(--veio-transicao), box-shadow var(--veio-transicao), opacity var(--veio-transicao);
@@ -56,13 +56,13 @@
 
 .pm-pilula--aberta .pm-corpo {
   max-width: min(400px, 70vw);
-  padding: 5px 2px 5px 6px;
+  padding: 6px 4px 6px 8px;
 }
 
 .pm-estado {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -70,16 +70,16 @@
   display: grid;
   place-items: center;
   flex: none;
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--veio-accent-soft);
   color: var(--veio-accent-text);
 }
 
 .pm-icone svg {
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
 }
 
 .pm-pilula--erro .pm-icone {
@@ -90,13 +90,13 @@
 .pm-texto {
   display: block;
   min-width: 0;
-  max-width: 200px;
+  max-width: 240px;
 }
 
 /* O título nunca é cortado nem passa por cima da meta: se não couber, quebra a linha. */
 .pm-titulo {
   display: block;
-  font-size: var(--veio-tam-legenda);
+  font-size: var(--veio-tam-apoio);
   font-weight: var(--veio-peso-titulo);
   line-height: 1.3;
 }
@@ -105,7 +105,7 @@
 .pm-frase {
   display: block;
   overflow: hidden;
-  font-size: var(--veio-tam-legenda);
+  font-size: var(--veio-tam-apoio);
   line-height: 1.35;
   color: var(--veio-muted);
   white-space: nowrap;
@@ -123,7 +123,7 @@
 }
 
 /* ── O botão flutuante ────────────────────────────────────────────────────
-   O azulejo Veio num círculo de 40 px. Parado, fica meio apagado para não
+   O azulejo Veio num círculo de 46 px, como no protótipo. Parado, fica meio apagado para não
    pesar sobre o vídeo; com o mouse, o foco do teclado ou a pílula aberta,
    volta a 100%. */
 
@@ -132,8 +132,8 @@
   display: grid;
   place-items: center;
   flex: none;
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -161,8 +161,8 @@
 
 .pm-azulejo {
   display: block;
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
 }
 
@@ -187,9 +187,9 @@
    no limite, só o contorno. */
 .pm-contador {
   position: absolute;
-  top: -6px;
-  right: -7px;
-  padding: 2px 4px;
+  top: -7px;
+  right: -8px;
+  padding: 3px 5px;
   border-radius: var(--veio-raio-pilula);
   background: var(--veio-accent);
   color: var(--veio-accent-ink);

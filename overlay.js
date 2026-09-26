@@ -100,8 +100,8 @@
     const estilo = {
       all: 'initial',
       position: livre ? 'fixed' : 'absolute',
-      right: livre ? '16px' : '12px',
-      bottom: livre ? '16px' : '72px',
+      right: '16px',
+      bottom: livre ? '16px' : '96px',
       'z-index': '2147483647',
       display: 'block',
     };

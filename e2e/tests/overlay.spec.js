@@ -94,13 +94,13 @@ const tituloDaPilula = (page, titulo) => feedback(page).getByText(titulo, { exac
 
 // ─── O botão flutuante ───────────────────────────────────────────────────────
 
-test('o botão flutuante é o azulejo Veio num círculo de 40 px, meio apagado parado e inteiro com o mouse', async ({ page, paginas }) => {
+test('o botão flutuante é o azulejo Veio num círculo de 46 px, meio apagado parado e inteiro com o mouse', async ({ page, paginas }) => {
   await abrirPlayer(page, paginas);
   const botao = botaoFlutuante(page);
 
   const caixa = await botao.boundingBox();
-  expect(Math.round(caixa.width)).toBe(40);
-  expect(Math.round(caixa.height)).toBe(40);
+  expect(Math.round(caixa.width)).toBe(46);
+  expect(Math.round(caixa.height)).toBe(46);
   expect(await botao.evaluate(no => getComputedStyle(no).borderRadius)).toBe('50%');
 
   const opacidade = () => botao.evaluate(no => Number(getComputedStyle(no).opacity));
