@@ -43,7 +43,8 @@ test('minerar uma seleção com marcação mostra o texto literal e não injeta 
   await page.locator('#trecho').selectText();
   await page.keyboard.press('Alt+KeyE');
 
-  await expect(page.getByRole('status')).toContainText(SELECAO);
+  // A prévia da pílula começa perto da Palavra: o trecho com a marcação aparece como texto.
+  await expect(page.getByRole('status')).toContainText('onerror="__injetado=1">Salt wind');
   await nadaFoiInjetado(page);
   await expect.poll(async () => (await extensao.frases()).map(f => f.texto)).toEqual([SELECAO]);
 });
