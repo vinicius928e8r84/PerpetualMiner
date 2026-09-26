@@ -20,11 +20,11 @@
   const FEEDBACK_SOME_EM_MS = 3500;
   const ESTILOS = ['veio/tokens.css', 'veio/componentes.css', 'overlay.css'];
   /** A pílula nunca corta a Palavra: frases maiores que isto começam perto dela. */
-  const PREVIA_CURTA = 48;
+  const PREVIA_CURTA = 32;
   /** A Palavra até este caractere já cabe na prévia: a frase começa do começo. */
-  const PALAVRA_PERTO_DO_COMECO = 28;
+  const PALAVRA_PERTO_DO_COMECO = 16;
   /** Quantos caracteres antes da Palavra a prévia guarda, para ela vir com contexto. */
-  const CONTEXTO_ANTES_DA_PALAVRA = 18;
+  const CONTEXTO_ANTES_DA_PALAVRA = 14;
 
   let host = null;
   let partes = null;
@@ -100,8 +100,8 @@
     const estilo = {
       all: 'initial',
       position: livre ? 'fixed' : 'absolute',
-      right: '16px',
-      bottom: '16px',
+      right: livre ? '16px' : '12px',
+      bottom: livre ? '16px' : '72px',
       'z-index': '2147483647',
       display: 'block',
     };

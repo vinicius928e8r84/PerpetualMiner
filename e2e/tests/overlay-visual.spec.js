@@ -13,11 +13,21 @@
 
 const { test, expect } = require('../fixtures');
 
-const JANELA = { width: 760, height: 460 };
+// O player tem o tamanho do player do protótipo (1118 × 630): lado a lado com
+// ele, a pílula aparece na mesma escala, e não maior porque o player é menor.
+const JANELA = { width: 1166, height: 678 };
 
 async function abrirPlayer(page, paginas) {
   await page.setViewportSize(JANELA);
   await page.goto(paginas.url('player.html'));
+  await page.evaluate(() => {
+    for (const no of document.querySelectorAll('.player, video')) {
+      no.style.width = '1118px';
+      no.style.height = '630px';
+    }
+    document.querySelector('.caption-window').style.bottom = '110px';
+    document.querySelector('.caption-text').style.fontSize = '28px';
+  });
   await expect(page.getByRole('button', { name: 'Minerar legenda (Alt+S)' })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
 }

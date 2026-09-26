@@ -29,8 +29,8 @@ Resolução do ticket [Protótipo: Overlay in-page (content.js)](https://github.
 
 O dono comparou as telas lado a lado com o protótipo e pediu a pílula mais mínima e mais perto dele. Isto vale sobre o que está acima:
 
-- **Botão:** 40 px, a 16 px do canto inferior direito do player, meio apagado parado e inteiro com o mouse, o foco ou a pílula aberta. Sem rótulo visível ao passar o mouse; o nome com o atalho fica para o leitor de tela.
-- **Pílula menor:** título e 2ª linha em 11,5 px, ícone de 26 px.
+- **Botão:** 40 px, no canto do protótipo (12 px da direita, 72 px de baixo), meio apagado parado e inteiro com o mouse, o foco ou a pílula aberta. Sem rótulo visível ao passar o mouse; o nome com o atalho fica para o leitor de tela.
+- **Pílula menor:** título e 2ª linha em 11,5 px, ícone de 26 px, texto até 200 px; a prévia de uma frase longa começa perto da Palavra, como no protótipo.
 - **Título sem o idioma:** o idioma já está na meta. MIN-02 é a mesma pílula de sucesso, só sem “e copiada”: o que importa é ter minerado.
 - **Meta como no protótipo:**
   - `EN`/`RU` na legenda;
