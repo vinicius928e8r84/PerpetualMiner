@@ -83,7 +83,8 @@ aqui, com o nome da spec, e passa a valer para todas as telas.
   `refletirSelecao(checkbox, selecionados, total)`.
 - **Selos:** `.veio-selo` neutro para a Fonte (contorno e ícone, sem a cor de
   marca de terceiro) e `--ok` / `--info` / `--erro` para estado (fundo suave, só
-  o texto).
+  o texto). `--lendo` é o estado em andamento, em ouro, com o `.veio-selo__ponto`
+  piscando (o “Lendo…” de cada foto em Minerar de uma foto, FOT-19).
 - **`kbd`:** `.veio-kbd` para o atalho gravado e `.veio-kbd--sem-atalho`, o
   tracejado de GLB-02, quando não há nenhum.
 - **Modal:** `.veio-scrim` por fora, `[role="dialog"]` por dentro, aberto por
@@ -134,7 +135,7 @@ sombra suave das ilhas do Painel, que não flutuam), `--veio-destaque` (o
 ~1,4 s da borda ouro do card aberto por endereço), `--veio-tam-tecla` e
 `--veio-tam-micro` (os dois degraus abaixo de `legenda`, para a tecla e o
 rótulo do chip), `--veio-raio-tecla`, `--veio-esqueleto` e `--veio-peso-rotulo` (o peso dos
-rótulos da navegação do Painel; `peso-num` fica só para números) e
+rótulos da navegação do Painel; `peso-num` fica só para números),
 `--veio-raio-losango` (o canto do losango ouro que abre o título de seção do
 popup) e `--veio-tam-contador` (o número grande do azulejo da mineração
 automática, “7/20”).

@@ -140,29 +140,6 @@ test('o popup segue o tema escolhido, na hora e ao abrir de novo', async ({ page
   await popup.close();
 });
 
-test('o Minerar de uma foto carrega a escolha, mas fica como foi desenhado até ser refeito (#36/#37)',
-  async ({ page, context, extensao }) => {
-    // Como a tela abre hoje, antes de qualquer escolha: clara, no fundo em que
-    // foi desenhada.
-    const antes = await context.newPage();
-    await antes.goto(extensao.url('bookreader.html'));
-    const fundoDeHoje = await fundoDaPagina(antes);
-    await antes.close();
-
-    await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
-    await escolherTema(page, 'Claro');
-    await expect.poll(() => temaGravado(extensao)).toBe('claro');
-
-    // Continua com o fundo que já tinha no escuro: o CSS dela é o de hoje,
-    // escrito à mão fora dos tokens, e só muda no ticket dela. O teste compara
-    // com ela mesma, para não repetir aqui uma cor.
-    const aberta = await context.newPage();
-    await aberta.goto(extensao.url('bookreader.html'));
-    await expect(temaDaPagina(aberta)).toHaveAttribute('data-tema', 'claro');
-    expect(await fundoDaPagina(aberta)).toBe(fundoDeHoje);
-    await aberta.close();
-  });
-
 test('o que aparece por cima das páginas continua escuro', async ({ page, context, extensao, paginas }) => {
   const painel = await context.newPage();
   await abrirConfiguracoes(painel, extensao, '#configuracoes/aparencia');
