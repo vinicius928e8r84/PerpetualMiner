@@ -251,7 +251,7 @@ and opens `bookreader.html` in a new tab, as the menu's Foto does. The PAI-02 em
   click (the double click of #9) do nothing — and so does Minerar in Colar while a chosen .txt is still being read.
 - **Cloud:** the panel sends `semNuvem: true` and uploads the new phrases in one `batchWrite` at the end, then removes
   them from `pm_pending_sync`. If that fails, the persistent aviso ADD-06 stays in Frases with Tentar de novo (which
-  repeats the upload) and Detalhes, and the card and the chip say the computer is out of sync — the same exception to
+  repeats the upload) and no Detalhes (the owner's call: the cause goes to the Conta & sync card's Detalhes), and the card and the chip say the computer is out of sync — the same exception to
   the “sync problems only in the card” rule as PAI-15. Closing the aviso leaves them in `pm_pending_sync` for the next load.
 
 **The .txt line** is `palavra : texto [Contexto: fonte - título - detalhe]` (`linhaDoTxt`; empty fields as

@@ -317,7 +317,7 @@ test('com a conta, as frases coladas sobem para a nuvem', async ({ page, extensa
   expect((await extensao.lerStorage({ pm_pending_sync: [] })).pm_pending_sync).toEqual([]);
 });
 
-test('a nuvem falhou: fica o aviso persistente ADD-06 com Tentar de novo e Detalhes, sem toast de sucesso', async ({ page, extensao, fakes }) => {
+test('a nuvem falhou: fica o aviso persistente ADD-06 com Tentar de novo, sem Detalhes e sem toast de sucesso', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-add06' });
   await abrirFrases(page, extensao);
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
@@ -329,7 +329,8 @@ test('a nuvem falhou: fica o aviso persistente ADD-06 com Tentar de novo e Detal
 
   const aviso = avisos(page).getByRole('alert');
   await expect(aviso).toContainText('2 frases mineradas neste computador, mas não foram para a nuvem.');
-  await expect(aviso.getByText('Detalhes')).toBeVisible();
+  // A causa técnica fica no card Conta & sync; o aviso só diz o que houve e oferece Tentar de novo.
+  await expect(aviso.getByText('Detalhes')).toHaveCount(0);
   await expect(modal(page)).toBeHidden();
   await expect(toasts(page)).toHaveCount(0);
   // As frases estão neste computador e na lista.

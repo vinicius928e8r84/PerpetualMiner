@@ -2151,7 +2151,8 @@ function mostrarAvisoNaArea(chave, { erro, ...opcoes }) {
   tirarAvisoDaArea(chave);
   const aviso = montarAviso({
     ...opcoes,
-    detalhes: String(erro?.message || erro),
+    // Sem erro, sem “Detalhes”: a causa técnica fica em outro lugar (ADD-06: o card da conta).
+    ...(erro ? { detalhes: String(erro.message || erro) } : {}),
     rotuloDeFechar: textoDaVoz('PAI-34'),
   });
   aviso.dataset.aviso = chave;
@@ -3102,7 +3103,7 @@ function mostrarAvisoForaDaNuvem(erro) {
   mostrarAvisoNaArea('fora-da-nuvem', {
     texto: textoDaVoz('ADD-06.aviso', { n: idsMineradosForaDaNuvem.size }),
     acao: { rotulo: textoDaVoz('ADD-06.tentarDeNovo'), aoUsar: tentarSubirDeNovo },
-    erro,
+    // Sem “Detalhes” aqui (decisão do dono): a causa já vai para o card Conta & sync.
     // Fechar só tira o aviso: elas seguem em pm_pending_sync, e o próximo carregamento tenta de novo.
     aoFechar: () => idsMineradosForaDaNuvem.clear(),
   });
