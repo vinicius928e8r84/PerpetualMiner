@@ -452,6 +452,23 @@ test('nada novo no arquivo: ADD-09 com o botão Fechar', async ({ page, extensao
   await expect(toasts(page)).toHaveCount(0);
 });
 
+test('nada novo só com repetidas: ADD-09 não fala de zero linhas ilegíveis', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: [frase(2, 'Keep me posted.'), frase(1, 'Break a leg.')] });
+  await abrirFrases(page, extensao);
+  await abrirArquivo(page);
+  await escolherArquivo(page, 'Break a leg.\nKeep me posted.\n');
+
+  await expect(modal(page).locator('.minerar-resultado')).toHaveText('Nenhuma frase nova: 2 já estavam no histórico.');
+});
+
+test('nada novo só com linhas ilegíveis: ADD-09 não fala de zero repetidas', async ({ page, extensao }) => {
+  await abrirFrases(page, extensao);
+  await abrirArquivo(page);
+  await escolherArquivo(page, 'palavra : [Contexto: web - Desconhecido - Desconhecido]\n');
+
+  await expect(modal(page).locator('.minerar-resultado')).toHaveText('Nenhuma frase nova: 1 linha não pôde ser lida.');
+});
+
 // ─── Exportar → Importar devolve as frases intactas (bug de #9) ──────────────
 
 // `keywords` guarda a Palavra por posição na frase (palavra@índice do token).

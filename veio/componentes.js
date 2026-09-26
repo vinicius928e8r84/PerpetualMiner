@@ -345,7 +345,7 @@
     if (acao) {
       const botao = documento.createElement('button');
       botao.type = 'button';
-      botao.className = 'veio-botao veio-botao--secundario';
+      botao.className = 'veio-botao veio-botao--contorno';
       botao.textContent = acao.rotulo;
       botao.addEventListener('click', acao.aoUsar);
       acoes.append(botao);

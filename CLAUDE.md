@@ -242,7 +242,7 @@ and opens `bookreader.html` in a new tab, as the menu's Foto does. The PAI-02 em
   “Minerar N frases” (ADD-12, “Minerar frases” with none). Empty: ADD-03 under the field, `aria-invalid`, linked by
   `aria-describedby`. No Fonte → `manual`. Pasted phrases get the detected Palavra, as before.
 - **Arquivo .txt:** imports as soon as a file is chosen. UTF-8 that does not decode (or has NUL) is ADD-07, no
-  non-blank line is ADD-08, nothing new is ADD-09 in the modal with Fechar in place of Cancelar. Repeated phrases
+  non-blank line is ADD-08, nothing new is ADD-09 in the modal with Fechar in place of Cancelar (only the part that happened: `soRepetidas`, `soIlegiveis` or `ambas`, never “0 linhas”). Repeated phrases
   (against the history and inside the file, case- and whitespace-insensitive) stay out; the toast is ADD-10 with
   repeated ones, ADD-05 without.
 - **Progress (ADD-04)** replaces the options and fields inside the modal. Each phrase is sent to the service worker

@@ -2990,7 +2990,9 @@ async function importarArquivoTxtAgora(arquivo) {
   }
 
   if (novas.length === 0) {
-    mostrarFimDoArquivo({ resultado: textoDaVoz('ADD-09', { duplicadas, invalidas }) });
+    // Só a parte que aconteceu: nunca “0 linhas não puderam ser lidas”.
+    const parte = !invalidas ? 'soRepetidas' : !duplicadas ? 'soIlegiveis' : 'ambas';
+    mostrarFimDoArquivo({ resultado: textoDaVoz(`ADD-09.${parte}`, { duplicadas, invalidas }) });
     return;
   }
 
