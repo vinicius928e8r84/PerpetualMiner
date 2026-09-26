@@ -83,7 +83,8 @@ aqui, com o nome da spec, e passa a valer para todas as telas.
   `refletirSelecao(checkbox, selecionados, total)`.
 - **Selos:** `.veio-selo` neutro para a Fonte (contorno e ícone, sem a cor de
   marca de terceiro) e `--ok` / `--info` / `--erro` para estado (fundo suave, só
-  o texto).
+  o texto). `--lendo` é o estado em andamento, em ouro, com o `.veio-selo__ponto`
+  piscando (o “Lendo…” de cada foto em Minerar de uma foto, FOT-19).
 - **`kbd`:** `.veio-kbd` para o atalho gravado e `.veio-kbd--sem-atalho`, o
   tracejado de GLB-02, quando não há nenhum.
 - **Modal:** `.veio-scrim` por fora, `[role="dialog"]` por dentro, aberto por

@@ -64,6 +64,9 @@
     pdf: ['<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>', '<path d="M14 3v6h6"/>'],
     livro: ['<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14z"/>'],
     manual: ['<path d="M12 5v14M5 12h14"/>'],
+    // Minerar de uma foto: a foto na fila e o ler das marcações.
+    foto: ['<rect x="3" y="3" width="18" height="18" rx="3"/>', '<circle cx="8.5" cy="8.5" r="1.5"/>', '<path d="m21 15-5-5L5 21"/>'],
+    ler: ['<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>', '<path d="M7 12h10"/>'],
     // As áreas do Painel, na sidebar e no trilho.
     frases: ['<path d="M4 6h16M4 12h16M4 18h10"/>'],
     anki: ['<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0V7zM12 16v5"/>'],

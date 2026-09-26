@@ -454,6 +454,18 @@ select.veio-campo {
   color: var(--veio-danger);
 }
 
+.veio-selo--lendo {
+  padding-inline: 8px;
+  border-color: transparent;
+  background: var(--veio-accent-soft);
+  color: var(--veio-accent-text);
+}
+
+/* Em andamento: o ponto pisca (parado com movimento reduzido, lá embaixo). */
+.veio-selo--lendo .veio-selo__ponto {
+  animation: veio-piscar var(--veio-piscar) steps(1) infinite;
+}
+
 .veio-selo__ponto {
   width: 7px;
   height: 7px;
@@ -983,9 +995,10 @@ select.veio-campo {
 }
 
 /* ── Movimento reduzido ───────────────────────────────────────────────────
-   O brilho do esqueleto e a entrada do toast são sinais de estado: com
-   movimento reduzido eles aparecem parados, e o conteúdo continua legível.
-   (tokens.css já encurta toda animação; aqui elas somem de vez.) */
+   O brilho do esqueleto, a entrada do toast e o ponto do selo “Lendo…” são
+   sinais de estado: com movimento reduzido eles aparecem parados, e o
+   conteúdo continua legível. (tokens.css já encurta toda animação; aqui elas
+   somem de vez.) */
 
 @media (prefers-reduced-motion: reduce) {
   .veio-esqueleto {
@@ -993,7 +1006,8 @@ select.veio-campo {
     background-image: none;
   }
 
-  .veio-toast {
+  .veio-toast,
+  .veio-selo--lendo .veio-selo__ponto {
     animation: none;
   }
 }

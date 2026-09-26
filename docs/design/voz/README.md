@@ -6,7 +6,7 @@ O que está aqui:
 
 1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
 2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: 190 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
+3. **Catálogo**: 194 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
 
 Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
 
@@ -68,7 +68,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 
 ## 3. Catálogo de estados-chave
 
-São 190 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
+São 194 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 
@@ -113,15 +113,15 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 | FOT-02 | Área de envio vazia | vazio | Arraste fotos aqui · ou clique para selecionar · múltiplas imagens suportadas · JPG, PNG, HEIC, WEBP | Arraste fotos de páginas marcadas — ou clique para escolher · JPG, PNG, HEIC ou WEBP |  |
 | FOT-03 | Aviso na prévia | status | Confira se as marcações estão visíveis na foto | Confira se as marcações aparecem na foto |  |
 | FOT-04 | Arquivo que não é foto | erro | Nenhum arquivo de imagem. Use JPG, PNG, WEBP ou HEIC. | Esse arquivo não é uma foto. Use JPG, PNG, HEIC ou WEBP. |  |
-| FOT-05 | Sem chave do Gemini | erro | Insira sua Gemini API Key nas configurações à esquerda. | Para ler fotos, adicione sua chave do Gemini em Configurações. | Botão “Abrir Configurações”. |
+| FOT-05 | Sem chave do Gemini | erro | Insira sua Gemini API Key nas configurações à esquerda. | Falta a chave do Gemini — Para ler fotos, adicione sua chave do Gemini em Configurações. | Botão “Abrir Configurações”, que abre `#configuracoes/chave` com o campo focado. A página não tem mais campo de chave. |
 | FOT-06 | Lendo 1 foto | loading | Analisando a imagem… / O Gemini está identificando os trechos marcados | Lendo a foto… — Procurando os trechos marcados | Com “Cancelar” ao lado (lista fechada). |
 | FOT-07 | Lendo várias fotos | loading | Processando imagem 2 de 5… | Lendo a foto 2 de 5… | Com “Cancelar”. “Adicionando ao histórico de frases…” (enganoso) some. |
 | FOT-08 | Fotos esperando na fila | status | +2 fotos na fila aguardando / Processando foto... 2 na fila · pode arrastar mais! | 2 fotos na fila · arraste mais para ler em seguida |  |
 | FOT-09 | Contagem de resultados | status | Total acumulado: 1 trecho prontos para salvar | 12 frases encontradas | Frase, não trecho (glossário). |
-| FOT-10 | Nenhuma marcação encontrada | vazio | Não encontrei trechos marcados nesta imagem. / Certifique-se de que as marcações estão visíveis. / Use /barras/, _underlines_ ou sublinhado físico. | Nenhuma marcação encontrada nesta foto. Marque as frases com /barras/, _sublinhado_ ou caneta e confira se aparecem na foto. | Só quando a leitura funcionou; se a API falhou, é o FOT-11 (C2). |
-| FOT-11 | Gemini falhou numa foto | erro | Imagem 2: HTTP 429 / Erro ao processar foto: <msg em inglês> | Não deu para ler a foto 2. O Gemini está recebendo pedidos demais; espere um minuto e tente de novo. | A 2ª frase traduz a causa: chave inválida → “A chave do Gemini não funciona. Confira em Configurações.” Original em Detalhes. |
+| FOT-10 | Nenhuma marcação encontrada | vazio | Não encontrei trechos marcados nesta imagem. / Certifique-se de que as marcações estão visíveis. / Use /barras/, _underlines_ ou sublinhado físico. | Nenhuma marcação encontrada nesta foto — Marque as frases com /barras/, _sublinhado_ ou caneta e confira se aparecem na foto. | Só quando a leitura funcionou; se a API falhou, é o FOT-11 (C2). Título em negrito e o texto embaixo, e com várias fotos lidas, “nestas fotos”, como no protótipo. |
+| FOT-11 | Gemini falhou numa foto | erro | Imagem 2: HTTP 429 / Erro ao processar foto: <msg em inglês> | Não deu para ler a foto 2. O Gemini está recebendo pedidos demais; espere um minuto e tente de novo. | A 2ª frase traduz a causa: chave inválida → “A chave do Gemini não funciona. Confira em Configurações.” Sem “Detalhes”, por decisão do dono (exceção à V3): a causa já está nos termos da pessoa. Como no protótipo: com frases na tela, um aviso só para as fotos que falharam (“Não deu para ler 3 fotos.”, com a causa da primeira); sem nenhuma frase, a própria coluna das frases diz “Não deu para ler a foto” / “Não deu para ler as fotos”, com a causa embaixo, e não há aviso. |
 | FOT-12 | Botão principal | status | Salvar no PerpetualMiner | Minerar 12 frases |  |
-| FOT-13 | Nenhuma frase marcada p/ minerar | erro | Selecione ao menos um trecho para salvar. | Selecione pelo menos uma frase. |  |
+| FOT-13 | Nenhuma frase marcada p/ minerar | erro | Selecione ao menos um trecho para salvar. | Selecione pelo menos uma frase | É o rótulo do botão desabilitado, então vai sem ponto final (V7), como no protótipo. |
 | FOT-14 | Minerou tudo | sucesso | 12 trecho(s) salvo(s) no PerpetualMiner! | 12 frases mineradas | O botão volta ao rótulo normal (hoje fica preso em “salvos!”). |
 | FOT-15 | Minerou parte **(novo)** | erro | (não avisa) | 10 de 12 frases mineradas · 2 falharam | Com “Tentar de novo” nas 2 (C4). |
 | FOT-16 | Falhou tudo | erro | Não foi possível salvar os trechos. | Não deu para minerar as frases. Tente de novo. |  |
@@ -130,6 +130,10 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 | FOT-19 | Status de cada foto na fila **(novo)** | status | (não existe) | Pronta · Na fila · Lendo… · 12 frases · Sem marcações · Falhou · Cancelada | Selo por foto. “Falhou” vem com o motivo embaixo e “Tentar de novo”: a 2ª frase do FOT-11 (“O Gemini está recebendo pedidos demais; espere um minuto e tente de novo.”, “A chave do Gemini não funciona. Confira em Configurações.”) ou “Sem conexão com a internet. Confira a rede e tente de novo.”. “Sem marcações” é a leitura que funcionou sem achar nada (FOT-10). |
 | FOT-20 | Progresso da leitura **(novo)** | status | Processando imagem 2 de 5… | 2 de 4 lidas | No topo da fila de fotos, ao lado de “Cancelar”. |
 | FOT-21 | Leitura cancelada **(novo)** | status | (não existe) | Leitura cancelada. 2 fotos ficaram sem ler; as frases das fotos já lidas continuam aqui. | Aviso informativo depois do Cancelar (lista fechada). Singular: “1 foto ficou sem ler”. |
+| FOT-22 | Topo da página | status | Título do Livro (opcional) · Ex: Atomic Habits · Voltar ao Painel | Livro · Ex.: Atomic Habits · Voltar ao painel | “Livro” é o rótulo do campo do Título, que fica lembrado entre visitas; em branco, a frase vai com o Título “Físico/Livro”. “Voltar ao painel” foca a aba do painel já aberta. |
+| FOT-23 | Fila de fotos | status | Arraste mais fotos aqui para acumular resultados · Selecionar | Fotos · Arraste mais páginas · Escolher · Adicione a chave do Gemini para começar | O título da coluna da esquerda, a área de envio depois da 1ª foto e o botão que abre o seletor. Sem chave, a fila mostra só “Adicione a chave do Gemini para começar”, no lugar da área de envio. |
+| FOT-24 | Marcações que o Gemini lê | status | Marcações reconhecidas · /texto/ Barras oblíquas · _texto_ Underscores · texto Sublinhado físico · Textos circulados ou com colchetes | Marcações que o Gemini lê · /texto/ entre barras · _texto_ entre underscores · texto sublinhado à mão · [texto] colchetes, círculo ou traço na margem | A legenda no pé da fila (só lá, por decisão do dono). |
+| FOT-25 | Lista de frases | status | Marcar todas · Desmarcar todas · Analisar Marcações | Selecionar todas · Foto 2 · Minerada · Ler marcações · As frases aparecem aqui, agrupadas por foto. | “Selecionar todas” é o checkbox único (misto com parte marcada), como no painel. “Foto 2” abre o grupo das frases daquela foto. Uma frase já minerada fica com o selo `--ok` “Minerada” (o ✓ do protótipo sai: V5) e sai do botão. “Ler marcações” é o botão da prévia de 1 foto. “As frases aparecem aqui…” continua o subtítulo do FOT-01 no mesmo parágrafo, por isso leva ponto (V7). |
 
 ### Painel · Shell
 
