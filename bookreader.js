@@ -661,8 +661,7 @@ To be or not to be, that is the question`;
   function montarSemMarcacoes(lidas) {
     return vazio('busca',
       elemento('p', 'veio-vazio__titulo', textoDaVoz('FOT-10.titulo', { n: lidas })),
-      elemento('p', 'veio-vazio__texto', textoDaVoz('FOT-10.texto')),
-      montarLegenda());
+      elemento('p', 'veio-vazio__texto', textoDaVoz('FOT-10.texto')));
   }
 
   /**

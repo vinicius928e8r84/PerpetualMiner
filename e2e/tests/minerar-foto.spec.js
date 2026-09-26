@@ -154,7 +154,7 @@ test('“Selecionar todas” marca e desmarca, fica misto com parte, e o botão 
   await todas.click();
   await expect(todas).not.toBeChecked();
   await expect(botaoMinerar(page)).toBeDisabled();
-  await expect(botaoMinerar(page)).toHaveText('Selecione pelo menos uma frase.');
+  await expect(botaoMinerar(page)).toHaveText('Selecione pelo menos uma frase');
 
   await todas.click();
 
@@ -205,6 +205,9 @@ test('o Gemini sem marcações diz “Sem marcações” e ensina a marcar', asy
   await expect(fotoNaFila(page, 'pagina.png')).toContainText('Sem marcações');
   await expect(page.getByText('Nenhuma marcação encontrada nesta foto', { exact: true })).toBeVisible();
   await expect(page.getByText('Marque as frases com /barras/, _sublinhado_ ou caneta e confira se aparecem na foto.', { exact: true })).toBeVisible();
+  // A legenda das marcações fica só no pé da fila, não se repete no vazio.
+  await expect(page.getByText('entre barras')).toHaveCount(1);
+  await expect(colunaDasFrases(page).getByText('entre barras')).toHaveCount(0);
   await expect(page.getByRole('alert')).toHaveCount(0);
   await expect(botaoMinerar(page)).toBeHidden();
 });
