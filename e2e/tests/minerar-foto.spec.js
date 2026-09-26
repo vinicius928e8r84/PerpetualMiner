@@ -203,12 +203,13 @@ test('o Gemini sem marcações diz “Sem marcações” e ensina a marcar', asy
   await lerUmaFoto(page);
 
   await expect(fotoNaFila(page, 'pagina.png')).toContainText('Sem marcações');
-  await expect(page.getByText(/^Nenhuma marcação encontrada nesta foto\./)).toBeVisible();
+  await expect(page.getByText('Nenhuma marcação encontrada nesta foto', { exact: true })).toBeVisible();
+  await expect(page.getByText('Marque as frases com /barras/, _sublinhado_ ou caneta e confira se aparecem na foto.', { exact: true })).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
   await expect(botaoMinerar(page)).toBeHidden();
 });
 
-test('o Gemini com pedidos demais: a foto falha com o motivo, sem culpar as marcações, e a causa fica em Detalhes', async ({ page, extensao, fakes }) => {
+test('o Gemini com pedidos demais: a foto falha com o motivo, sem culpar as marcações', async ({ page, extensao, fakes }) => {
   fakes.gemini.falhar(429, 'Resource has been exhausted (e.g. check quota).');
   await abrirAPagina(page, extensao);
   await lerUmaFoto(page);
@@ -220,8 +221,7 @@ test('o Gemini com pedidos demais: a foto falha com o motivo, sem culpar as marc
   const coluna = colunaDasFrases(page);
   await expect(coluna.getByText('Não deu para ler a foto', { exact: true })).toBeVisible();
   await expect(coluna).toContainText('O Gemini está recebendo pedidos demais; espere um minuto e tente de novo.');
-  await coluna.getByText('Detalhes').click();
-  await expect(coluna).toContainText('Resource has been exhausted');
+  await expect(coluna.getByText('Detalhes')).toHaveCount(0);
   await expect(page.getByRole('alert')).toHaveCount(0);
 
   await expect(page.getByText(/Nenhuma marcação/)).toHaveCount(0);
@@ -260,8 +260,6 @@ test('uma resposta do Gemini sem texto (pedido bloqueado) é falha, não “Sem 
   const coluna = colunaDasFrases(page);
   await expect(coluna).toContainText('Não deu para ler a foto');
   await expect(coluna).toContainText('Algo deu errado. Tente de novo.');
-  await coluna.getByText('Detalhes').click();
-  await expect(coluna).toContainText('"blockReason":"SAFETY"');
   await expect(page.getByText('Sem marcações')).toHaveCount(0);
 });
 
@@ -300,10 +298,10 @@ test('várias fotos sem marcações: o vazio fala das fotos, no plural', async (
   await enviarFotos(page, foto('a.png'), foto('b.png'));
 
   await expect(fotoNaFila(page, 'b.png')).toContainText('Sem marcações');
-  await expect(page.getByText(/^Nenhuma marcação encontrada nestas fotos\./)).toBeVisible();
+  await expect(page.getByText('Nenhuma marcação encontrada nestas fotos', { exact: true })).toBeVisible();
 });
 
-test('várias fotos que falham dão um aviso só, com cada falha em Detalhes', async ({ page, extensao, fakes }) => {
+test('várias fotos que falham dão um aviso só, com o símbolo de aviso e sem Detalhes', async ({ page, extensao, fakes }) => {
   fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
   fakes.gemini.falhar(500, 'Internal error encountered.');
   fakes.gemini.falhar(429, 'Resource has been exhausted (e.g. check quota).');
@@ -315,13 +313,13 @@ test('várias fotos que falham dão um aviso só, com cada falha em Detalhes', a
   const aviso = page.getByRole('alert');
   await expect(aviso).toHaveCount(1);
   await expect(aviso).toContainText('Não deu para ler 2 fotos. Algo deu errado. Tente de novo.');
-  await aviso.getByText('Detalhes').click();
-  await expect(aviso).toContainText('Internal error encountered.');
-  await expect(aviso).toContainText('Resource has been exhausted');
+  await expect(aviso.locator('strong')).toHaveText('Não deu para ler 2 fotos.');
+  await expect(aviso.locator('.veio-aviso__texto svg')).toHaveCount(1);
+  await expect(aviso.getByText('Detalhes')).toHaveCount(0);
   await expect(botaoMinerar(page)).toHaveText('Minerar 3 frases');
 });
 
-test('todas as fotos falharam: a coluna das frases diz que não deu para ler, com a causa, Detalhes e o caminho até a chave', async ({ page, extensao, fakes }) => {
+test('todas as fotos falharam: a coluna das frases diz que não deu para ler, com a causa e o caminho até a chave', async ({ page, extensao, fakes }) => {
   fakes.gemini.falhar(400, 'API key not valid. Please pass a valid API key.');
   fakes.gemini.falhar(400, 'API key not valid. Please pass a valid API key.');
   await abrirAPagina(page, extensao);
@@ -333,9 +331,7 @@ test('todas as fotos falharam: a coluna das frases diz que não deu para ler, co
   await expect(coluna.getByText('Não deu para ler as fotos', { exact: true })).toBeVisible();
   await expect(coluna).toContainText('A chave do Gemini não funciona. Confira em Configurações.');
   await expect(coluna.getByRole('button', { name: 'Abrir Configurações' })).toBeVisible();
-  await coluna.getByText('Detalhes').click();
-  await expect(coluna).toContainText('a.png: API key not valid');
-  await expect(coluna).toContainText('b.png: API key not valid');
+  await expect(coluna.getByText('Detalhes')).toHaveCount(0);
   await expect(page.getByRole('alert')).toHaveCount(0);
   await expect(page.getByText(/Nenhuma marcação/)).toHaveCount(0);
 });
@@ -494,7 +490,7 @@ test('a chave salva no painel libera a página sem recarregar', async ({ page, e
 
   await expect(page.getByText('Falta a chave do Gemini')).toBeHidden();
   await expect(page.getByRole('button', { name: 'Escolher' })).toBeVisible();
-  await expect(page.getByText('As frases aparecem aqui, agrupadas por foto', { exact: true })).toBeVisible();
+  await expect(page.getByText('Tire uma foto da página com os trechos marcados e escolha quais frases minerar. As frases aparecem aqui, agrupadas por foto.', { exact: true })).toBeVisible();
 });
 
 // ─── Teclado, leitor de tela e movimento ─────────────────────────────────────

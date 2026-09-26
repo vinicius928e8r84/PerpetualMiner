@@ -195,13 +195,14 @@ figure {
 }
 
 .foto-envio__texto {
-  display: flex;
   flex: 1;
-  flex-direction: column;
   min-width: 0;
 }
 
-.foto-envio__formatos {
+/* Os formatos aceitos (FOT-02) no fim da linha do título, para a área de
+   envio não ganhar uma linha a mais. Somem com a primeira foto. */
+.foto-fotos__formatos {
+  margin-left: auto;
   color: var(--veio-muted);
   font-size: var(--veio-tam-legenda);
 }
@@ -364,6 +365,29 @@ figure {
 .foto-vazio--falha > svg {
   background: var(--veio-danger-soft);
   color: var(--veio-danger);
+}
+
+/* A causa da falha cabe numa linha só, e o texto do começo em duas. */
+.foto-vazio.foto-vazio--falha .veio-vazio__texto {
+  max-width: none;
+}
+
+.foto-vazio.foto-vazio--inicio .veio-vazio__texto {
+  max-width: 58ch;
+}
+
+/* O aviso das falhas da leitura, como no protótipo: o símbolo de aviso, a
+   abertura em negrito e a causa na mesma linha. */
+.foto-avisos .veio-aviso {
+  align-items: center;
+}
+
+.foto-avisos .veio-aviso__texto > svg {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  color: var(--veio-danger);
+  vertical-align: -3px;
 }
 
 .foto-vazio .veio-vazio__texto {
