@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="pt-BR" data-tema="escuro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Envio ao Anki · protótipo</title>
+<!--
+  PROTÓTIPO (descartável) · Envio ao Anki, rodada 3 do PR #64.
+  Três variantes do progresso + resumo, trocadas por ?variant=A|B|C (barra flutuante, ← →).
+  Pergunta: como o cartão pede uma ação (Tentar de novo / Continuar envio) e como o resumo
+  fala do baralho, da falha e do que fazer com as frases, de um jeito simples e calmo?
+  Já decidido: andamento em 7 segmentos com "etapa N de 7"; Conexão desligada = selo fixo na barra.
+  Usa os tokens e componentes reais da Veio. Nada é gravado: o estado vive na memória.
+-->
+<link rel="stylesheet" href="../../../../veio/tokens.css">
+<link rel="stylesheet" href="../../../../veio/componentes.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--veio-bg); color: var(--veio-text); font: 14px/1.5 var(--veio-fonte-ui); }
+  button { font: inherit; }
+  .ico { width: 15px; height: 15px; flex: none; vertical-align: -3px; }
+
+  /* ── o painel por trás (contexto real, sem função) ── */
+  .painel { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 12px; height: 100vh; padding: 12px; }
+  .lateral { background: var(--veio-surface); border-radius: var(--veio-raio-painel); padding: 16px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .marca { font-weight: 500; padding: 4px 8px 14px; } .marca b { font-weight: 800; }
+  .nav { display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; border-radius: 12px; color: var(--veio-muted); font-weight: 600; }
+  .nav.ativo { background: var(--veio-surface-2); color: var(--veio-text); border: 1px solid var(--veio-border); }
+  .ponto { width: 8px; height: 8px; border-radius: 50%; background: var(--veio-success); }
+  .ponto.off { background: var(--veio-danger); }
+  .ilha { background: var(--veio-surface); border-radius: var(--veio-raio-painel); padding: 24px 28px; overflow: auto; min-width: 0; }
+  .ilha h1 { font: 800 var(--veio-tam-pagina) var(--veio-fonte-display); margin: 0 0 18px; }
+  .barra { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 12px; border: 1px solid var(--veio-border); border-left: 3px solid var(--veio-accent); border-radius: var(--veio-raio-input); background: var(--veio-bg); font-size: 13px; }
+  .barra .cont { font-weight: 700; margin-right: auto; }
+  .barra .fantasma { color: var(--veio-muted); }
+  .selo-con { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; font-weight: 700; color: var(--veio-danger); background: var(--veio-danger-soft); border-radius: 999px; padding: 3px 10px; }
+  .selo-con::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .desligado { opacity: .45; pointer-events: none; }
+  .frases { display: grid; gap: 8px; margin-top: 14px; }
+  .frase { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--veio-border); border-radius: var(--veio-raio-card); background: var(--veio-bg); }
+  .frase.sel { border-color: color-mix(in srgb, var(--veio-accent) 50%, var(--veio-border)); }
+  .frase .caixa { width: 16px; height: 16px; border-radius: 5px; border: 1.5px solid var(--veio-border-strong); flex: none; margin-top: 3px; }
+  .frase.sel .caixa { background: var(--veio-accent); border-color: var(--veio-accent); }
+  .frase small { display: block; color: var(--veio-muted); font-size: 12px; margin-top: 2px; }
+
+  /* ── modal ── */
+  .fundo { position: fixed; inset: 0; background: var(--veio-scrim); display: grid; place-items: center; padding: 16px; z-index: 10; }
+  .modal { position: relative; width: min(100%, 560px); max-height: calc(100vh - 32px); overflow: auto; background: var(--veio-surface); border: 1px solid var(--veio-border); border-radius: var(--veio-raio-painel); box-shadow: var(--veio-sombra); padding: 22px; }
+  .modal.estreito { width: min(100%, 480px); }
+  .fechar { position: absolute; top: 14px; right: 14px; }
+  .titulo { margin: 0 0 4px; padding-right: 36px; font: 700 var(--veio-tam-modal) var(--veio-fonte-display); }
+  .sub { color: var(--veio-muted); font-size: var(--veio-tam-corpo); margin: 0; }
+  .sub b { color: var(--veio-text); font-weight: 700; }
+  .pe { margin: 16px 0 0; color: var(--veio-muted); font-size: var(--veio-tam-apoio); }
+  .lista { display: grid; gap: 10px; margin-top: 16px; }
+
+  .cartao { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--veio-border); border-radius: var(--veio-raio-card); background: var(--veio-bg); min-width: 0; }
+  .topo { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .topo h3 { margin: 0; font-size: var(--veio-tam-card); font-weight: 700; }
+  .etapa { font-size: var(--veio-tam-apoio); font-weight: 700; color: var(--veio-accent-text); }
+  .etapa.ok { color: var(--veio-success); } .etapa.erro { color: var(--veio-danger); } .etapa.calma { color: var(--veio-muted); }
+  .meta { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--veio-muted); font-size: var(--veio-tam-apoio); }
+  .det { color: var(--veio-muted); background: none; border: 0; padding: 0; cursor: pointer; font-size: 12px; }
+  .det:hover { color: var(--veio-text); }
+
+  .seg { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .seg i { height: 6px; border-radius: 999px; background: var(--veio-surface-2); position: relative; overflow: hidden; }
+  .seg i.feito { background: var(--veio-accent); }
+  .seg i.agora::after { content: ""; position: absolute; inset: 0; width: 50%; background: var(--veio-accent); border-radius: inherit; }
+  .seg.ok i { background: var(--veio-success); }
+  .seg.erro i.feito { background: color-mix(in srgb, var(--veio-danger) 70%, var(--veio-surface-2)); }
+  .seg.erro i.parou { background: var(--veio-danger); }
+  .seg.pausa i.feito { background: color-mix(in srgb, var(--veio-accent) 45%, var(--veio-surface-2)); }
+  @media (prefers-reduced-motion: no-preference) { .seg i.agora::after { animation: encher 1.6s ease-in-out infinite alternate; } }
+  @keyframes encher { from { width: 25%; } to { width: 75%; } }
+
+  .link { background: none; border: 0; padding: 0; color: var(--veio-accent-text); font-weight: 700; cursor: pointer; font-size: var(--veio-tam-apoio); display: inline-flex; gap: 5px; align-items: center; }
+  .link:hover { text-decoration: underline; }
+  .link:focus-visible, .det:focus-visible { outline: 2px solid var(--veio-accent); outline-offset: 2px; border-radius: 4px; }
+
+  /* A */
+  .a-nota { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: var(--veio-tam-corpo); color: var(--veio-muted); }
+  .a-nota b { color: var(--veio-text); font-weight: 600; }
+  .a-baralhos { display: grid; gap: 0; margin: 18px 0 0; border-top: 1px solid var(--veio-border); }
+  .a-baralho { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 12px 0; border-bottom: 1px solid var(--veio-border); }
+  .a-baralho .nome { font-weight: 700; }
+  .a-baralho .nome small { display: block; color: var(--veio-muted); font-weight: 500; font-size: 12px; }
+  .a-baralho .num { font: 700 20px var(--veio-fonte-mono); color: var(--veio-success); text-align: right; }
+  .a-baralho .num small { display: block; font: 500 11px var(--veio-fonte-ui); color: var(--veio-muted); }
+  .a-baralho .extra { grid-column: 1 / -1; font-size: 12.5px; color: var(--veio-muted); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .a-baralho .extra .erro { color: var(--veio-danger); }
+  .a-pergunta { margin: 18px 0 0; font-weight: 600; }
+  .a-pergunta small { display: block; color: var(--veio-muted); font-weight: 500; font-size: 12.5px; margin-top: 2px; }
+  .acoes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+
+  /* B */
+  .b-cabeca { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .b-acao { display: inline-flex; gap: 6px; align-items: center; background: none; border: 1px solid var(--veio-border-strong); color: var(--veio-text); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .b-acao:hover { border-color: var(--veio-accent); color: var(--veio-accent-text); }
+  .b-motivo { font-size: var(--veio-tam-apoio); color: var(--veio-muted); }
+  .b-motivo b { color: var(--veio-danger); font-weight: 700; }
+  .b-decks { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-top: 16px; }
+  .b-deck { border: 1px solid var(--veio-border); border-radius: var(--veio-raio-card); background: var(--veio-bg); padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+  .b-deck .rotulo { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--veio-muted); }
+  .b-deck .nome { font-weight: 700; overflow-wrap: anywhere; }
+  .b-deck .grande { font: 700 26px/1 var(--veio-fonte-mono); color: var(--veio-success); }
+  .b-deck .grande small { font: 600 12px var(--veio-fonte-ui); color: var(--veio-muted); margin-left: 4px; }
+  .b-deck .linhas { font-size: 12.5px; color: var(--veio-muted); display: grid; gap: 2px; }
+  .b-deck .linhas .erro { color: var(--veio-danger); }
+  .b-escolha { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--veio-border); }
+  .b-escolha p { margin: 0 0 10px; font-weight: 600; }
+  .b-escolha p small { display: block; color: var(--veio-muted); font-weight: 500; font-size: 12.5px; }
+  .b-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--veio-bg); border: 1px solid var(--veio-border); border-radius: 14px; }
+  .b-seg button { border: 0; border-radius: 10px; padding: 10px; background: none; color: var(--veio-muted); font-weight: 700; cursor: pointer; }
+  .b-seg button[aria-pressed=true] { background: var(--veio-surface-2); color: var(--veio-text); box-shadow: 0 0 0 1px var(--veio-border-strong) inset; }
+
+  /* C */
+  .c-aviso { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 10px 12px; border-radius: var(--veio-raio-input); background: var(--veio-surface-2); border: 1px solid var(--veio-border); margin-top: 14px; font-size: var(--veio-tam-corpo); }
+  .c-aviso .marca-aviso { display: inline-flex; gap: 8px; align-items: center; }
+  .c-aviso .marca-aviso::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--veio-danger); flex: none; }
+  .c-aviso small { display: block; color: var(--veio-muted); font-size: 12px; }
+  .c-heroi { text-align: center; padding: 8px 0 4px; }
+  .c-heroi .circulo { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 10px; background: var(--veio-success-soft); color: var(--veio-success); }
+  .c-heroi .circulo.parte { background: var(--veio-accent-soft); color: var(--veio-accent-text); }
+  .c-heroi h2 { margin: 0; font: 700 22px var(--veio-fonte-display); }
+  .c-heroi p { margin: 6px 0 0; color: var(--veio-muted); }
+  .c-heroi p b { color: var(--veio-text); }
+  .c-mais { margin: 14px 0 0; border: 1px solid var(--veio-border); border-radius: var(--veio-raio-input); padding: 10px 12px; font-size: 13px; }
+  .c-mais summary { cursor: pointer; color: var(--veio-muted); font-weight: 600; }
+  .c-mais ul { margin: 8px 0 0; padding-left: 18px; color: var(--veio-muted); }
+  .c-mais li b { color: var(--veio-text); }
+  .c-passo { font: 800 11px var(--veio-fonte-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--veio-muted); margin: 0 0 6px; }
+  .c-escolhas { display: grid; gap: 10px; margin-top: 14px; }
+  .c-escolha { text-align: left; display: grid; gap: 2px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--veio-border); background: var(--veio-bg); color: var(--veio-text); cursor: pointer; }
+  .c-escolha:hover, .c-escolha:focus-visible { border-color: var(--veio-accent); outline: none; }
+  .c-escolha b { font-size: 15px; }
+  .c-escolha span { color: var(--veio-muted); font-size: 12.5px; }
+
+  /* toast */
+  .toast { position: fixed; right: 20px; bottom: 76px; background: var(--veio-surface-2); border: 1px solid var(--veio-border); border-radius: 999px; padding: 8px 14px; font-size: 13px; display: flex; gap: 8px; align-items: center; z-index: 20; }
+  .toast::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--veio-success); }
+
+  /* ── ferramentas do protótipo (fora do design) ── */
+  .lab { position: fixed; right: 12px; bottom: 12px; z-index: 30; width: 300px; background: #fff; color: #111; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.4); font: 13px/1.4 system-ui, sans-serif; }
+  .lab summary { padding: 10px 14px; font-weight: 700; cursor: pointer; }
+  .lab .corpo { padding: 0 14px 14px; display: grid; gap: 8px; }
+  .lab label { display: grid; gap: 3px; font-size: 12px; font-weight: 600; }
+  .lab select, .lab textarea, .lab button { font: inherit; font-size: 13px; }
+  .lab select, .lab textarea { width: 100%; padding: 5px; border: 1px solid #bbb; border-radius: 6px; }
+  .lab button { padding: 6px 10px; border-radius: 8px; border: 1px solid #111; background: #111; color: #fff; cursor: pointer; }
+  .lab button.claro { background: #fff; color: #111; }
+  .lab pre { margin: 0; background: #f2f2f2; border-radius: 6px; padding: 6px 8px; font: 11px/1.4 ui-monospace, monospace; white-space: pre-wrap; max-height: 150px; overflow: auto; }
+  .lab .ok { color: #0a7d32; font-weight: 700; font-size: 12px; }
+  .troca { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 10px; background: #fff; color: #111; border-radius: 999px; padding: 5px; box-shadow: 0 8px 24px rgba(0,0,0,.45); font: 700 13px system-ui, sans-serif; }
+  .troca button { width: 30px; height: 30px; border-radius: 50%; border: 0; background: #111; color: #fff; cursor: pointer; font-size: 15px; }
+  .troca span { min-width: 190px; text-align: center; }
+  @media (max-width: 800px) { .painel { grid-template-columns: 1fr; } .lateral { display: none; } .lab { width: calc(100% - 24px); } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-lixo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></symbol>
+  <symbol id="i-denovo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4l12 8-12 8z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></symbol>
+  <symbol id="i-enviar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+</svg>
+
+<div class="painel">
+  <aside class="lateral">
+    <div class="marca">Perpetual<b>Miner</b></div>
+    <div class="nav ativo"><span>Frases</span><span>21</span></div>
+    <div class="nav"><span>Conexão com o Anki</span><span class="ponto" id="ponto"></span></div>
+  </aside>
+  <section class="ilha">
+    <h1>Frases mineradas</h1>
+    <div class="barra" id="barra"></div>
+    <div class="frases" id="frases"></div>
+  </section>
+</div>
+<div id="modal"></div>
+<div id="toast"></div>
+
+<details class="lab" id="lab">
+  <summary>⚙ Estados do protótipo</summary>
+  <div class="corpo">
+    <label>Cenário<select id="cenario">
+      <option value="andando">Progresso · os dois andando</option>
+      <option value="nao">Progresso · inglês não começou</option>
+      <option value="travado">Progresso · russo parou (Anki travado)</option>
+      <option value="parte">Progresso · inglês terminou em parte</option>
+      <option value="resumo-ok">Resumo · tudo enviado</option>
+      <option value="resumo-parte">Resumo · 1 falhou</option>
+      <option value="resumo-apagada">Resumo · 1 enviada já tinha sido apagada</option>
+      <option value="desligada">Conexão desligada (barra)</option>
+    </select></label>
+    <button type="button" class="claro" id="enviar-de-novo">Enviar ao Anki de novo (do zero)</button>
+    <pre id="estado"></pre>
+    <label>O que achou desta variante?<textarea id="nota" rows="2" placeholder="ex.: gostei do resumo, mas o botão do B"></textarea></label>
+    <button type="button" id="gostei">Escolher esta variante</button>
+    <button type="button" class="claro" id="comentar">Só comentar</button>
+    <span class="ok" id="enviado" hidden>✓ guardado para enviar</span>
+  </div>
+</details>
+<div class="troca" role="toolbar" aria-label="Trocar variante"><button id="ant" aria-label="Variante anterior">←</button><span id="rotulo"></span><button id="prox" aria-label="Próxima variante">→</button></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const VARIANTES = { A: 'A · Sereno', B: 'B · Por baralho', C: 'C · Uma coisa por vez' };
+const CHAVES = Object.keys(VARIANTES);
+const ETAPAS = ['Na fila', 'Criando cartões', 'Preparando imagens', 'Gerando áudio', 'Escolhendo imagens', 'Esperando o Anki', 'Enviando ao Anki'];
+const BARALHO = { en: 'Inglês::Mineradas', ru: 'Russo::Mineradas' };
+const IDIOMA = { en: 'inglês', ru: 'russo' };
+const FRASES = ['She hit the sack early.', 'It costs an arm and a leg.', 'Better late than never.', 'Он так и не сказал спасибо.', 'Мне всё равно.', 'Break a leg!'];
+const pl = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+const ic = (id, extra = '') => `<svg class="ico" ${extra}><use href="#i-${id}"/></svg>`;
+
+const S = {
+  variante: CHAVES.includes(new URLSearchParams(location.search).get('variant')) ? new URLSearchParams(location.search).get('variant') : 'A',
+  cenario: 'andando', con: 'on', fase: 'progresso', envios: [], apagadaAntes: 0, passoC: 1, escolhaB: 'apagar', detalhes: null, toast: '',
+};
+
+function envio(lang, n, extra = {}) { return { lang, n, etapa: 0, status: 'run', fail: 0, dup: 0, ...extra }; }
+function aplicarCenario(c) {
+  S.cenario = c; S.con = 'on'; S.fase = 'progresso'; S.apagadaAntes = 0; S.passoC = 1; S.escolhaB = 'apagar'; S.detalhes = null; S.toast = '';
+  const e = {
+    andando: [envio('en', 12, { etapa: 3 }), envio('ru', 8, { etapa: 5 })],
+    nao: [envio('en', 12, { status: 'nao' }), envio('ru', 8, { etapa: 3 })],
+    travado: [envio('en', 12, { etapa: 4 }), envio('ru', 8, { status: 'travado', etapa: 5 })],
+    parte: [envio('en', 12, { status: 'parte', fail: 1, dup: 1 }), envio('ru', 8, { etapa: 6 })],
+    'resumo-ok': [envio('en', 12, { status: 'ok', dup: 1 }), envio('ru', 8, { status: 'ok' })],
+    'resumo-parte': [envio('en', 12, { status: 'ok', dup: 1 }), envio('ru', 8, { status: 'parte', fail: 1 })],
+    'resumo-apagada': [envio('en', 3, { status: 'ok' })],
+    desligada: [],
+  }[c];
+  S.envios = e;
+  if (c.startsWith('resumo')) S.fase = 'resumo';
+  if (c === 'resumo-apagada') S.apagadaAntes = 1;
+  if (c === 'desligada') { S.con = 'off'; S.fase = null; }
+  desenhar();
+}
+
+// ── o relógio: os envios andando avançam uma etapa por vez ──
+setInterval(() => {
+  if (S.fase !== 'progresso') return;
+  let mudou = false;
+  for (const e of S.envios) {
+    if (e.status !== 'run') continue;
+    mudou = true;
+    if (e.etapa < 6) e.etapa++; else e.status = e.fail ? 'parte' : 'ok';
+  }
+  if (!mudou) return;
+  if (S.envios.every(e => e.status === 'ok' || e.status === 'parte')) S.fase = 'resumo';
+  desenhar();
+}, 1400);
+
+// ── ações que os variantes chamam ──
+const acoes = {
+  tentar(i) { const e = S.envios[i]; Object.assign(e, { status: 'run', etapa: 0 }); desenhar(); },
+  continuar(i) { const e = S.envios[i]; Object.assign(e, { status: 'run', etapa: Math.min(e.etapa, 5), fail: 0 }); desenhar(); },
+  detalhes(i) { S.detalhes = S.detalhes === i ? null : i; desenhar(); },
+  fechar() {
+    if (S.fase === 'progresso' && S.envios.some(e => e.status === 'run')) { S.fase = 'fechado'; desenhar(); return; }
+    if (S.fase === 'resumo') return acoes.manter();
+    S.fase = null; desenhar();
+  },
+  tentarFalhas() { S.envios.forEach(e => { if (e.fail) Object.assign(e, { status: 'run', etapa: 5, fail: 0 }); }); S.fase = 'progresso'; S.passoC = 1; desenhar(); },
+  manter() { const t = totais(); S.fase = null; S.toast = ''; S.fim = `Manteve: ${t.enviadas + t.dup} frases marcadas como Enviada ao Anki (sem toast)`; desenhar(); },
+  apagar() { const t = totais(); const n = t.enviadas - S.apagadaAntes; S.fase = null; S.toast = pl(n, 'frase apagada', 'frases apagadas'); S.fim = `Apagou ${n} do histórico`; desenhar(); setTimeout(() => { S.toast = ''; desenhar(); }, 2600); },
+  passoC(n) { S.passoC = n; desenhar(); },
+  escolhaB(v) { S.escolhaB = v; desenhar(); },
+  confirmarB() { S.escolhaB === 'apagar' ? acoes.apagar() : acoes.manter(); },
+};
+function totais() {
+  let enviadas = 0, dup = 0, fail = 0;
+  for (const e of S.envios) { enviadas += e.n - e.fail - e.dup; dup += e.dup; fail += e.fail; }
+  return { enviadas, dup, fail, total: enviadas + dup + fail };
+}
+const aindaAqui = () => totais().enviadas - S.apagadaAntes;
+
+// ── peças comuns (as decididas) ──
+function segmentos(e) {
+  if (e.status === 'ok') return `<div class="seg ok">${'<i></i>'.repeat(7)}</div>`;
+  const cls = e.status === 'nao' || e.status === 'parte' || e.status === 'travado' ? (e.status === 'travado' ? 'pausa' : 'erro') : '';
+  const feitos = e.status === 'nao' ? 0 : e.status === 'parte' ? 7 : e.etapa;
+  const partes = ETAPAS.map((_, k) => {
+    if (e.status === 'nao') return k === 0 ? '<i class="parou"></i>' : '<i></i>';
+    if (k < feitos) return '<i class="feito"></i>';
+    if (k === feitos && e.status === 'run') return '<i class="agora"></i>';
+    if (k === feitos && e.status === 'travado') return '<i class="feito"></i>';
+    return '<i></i>';
+  }).join('');
+  return `<div class="seg ${cls}" role="progressbar" aria-valuemin="0" aria-valuemax="7" aria-valuenow="${feitos}">${partes}</div>`;
+}
+function etapaTexto(e) {
+  return { run: ETAPAS[e.etapa], ok: 'Concluído', parte: 'Concluído em parte', nao: 'Não começou', travado: 'Parado' }[e.status];
+}
+function passoTexto(e) { return e.status === 'run' ? `etapa ${e.etapa + 1} de 7 · ` : ''; }
+function detalhesDe(e, i) {
+  return S.detalhes === i ? `<pre style="margin:0;font:11.5px/1.5 var(--veio-fonte-mono);background:var(--veio-surface-2);border-radius:10px;padding:8px 10px;white-space:pre-wrap">job_${e.lang}_8f2c · lang=${e.lang} · stage=${e.status === 'run' ? 'generate_audio' : e.status}\nupdatedAt 2026-09-26T12:00:00.000Z${e.status === 'nao' ? '\nPOST /jobs → HTTP 500' : ''}${e.status === 'travado' ? '\nankiError=repair_access_denied' : ''}</pre>` : '';
+}
+const problema = e => ({
+  nao: { curto: 'A conexão com o Anki respondeu com erro.', fazer: 'Tentar de novo', acao: 'tentar', icone: 'denovo' },
+  travado: { curto: 'O Windows não deixou fechar o Anki.', longo: 'Feche o Anki pelo Gerenciador de Tarefas e continue.', fazer: 'Continuar envio', acao: 'continuar', icone: 'play' },
+  parte: { curto: `${pl(e.fail, 'frase não virou', 'frases não viraram')} cartão.`, fazer: 'Continuar envio', acao: 'continuar', icone: 'play' },
+})[e.status];
+function tituloProgresso() {
+  const idiomas = [...new Set(S.envios.map(e => IDIOMA[e.lang]))].join(' e ');
+  return `<button class="veio-botao-icone fechar" aria-label="Fechar" onclick="acoes.fechar()">${ic('x')}</button>
+    <h2 class="titulo">Enviando ao Anki…</h2><p class="sub">${pl(S.envios.length, 'envio', 'envios')} · ${idiomas}</p>`;
+}
+const PE = '<p class="pe">Pode fechar: o resumo abre quando o envio terminar.</p>';
+
+// ══════════ A · Sereno ══════════
+// Cartão limpo. O problema é uma frase curta em cinza com a ação em texto-link dourado,
+// na mesma linha. Resumo: uma lista por baralho e uma pergunta simples.
+function progressoA() {
+  const cartoes = S.envios.map((e, i) => {
+    const p = problema(e);
+    return `<div class="cartao">
+      <div class="topo"><h3>Envio em ${IDIOMA[e.lang]} · ${pl(e.n, 'frase', 'frases')}</h3><span class="etapa ${e.status === 'ok' ? 'ok' : p ? 'calma' : ''}">${etapaTexto(e)}</span></div>
+      ${segmentos(e)}
+      ${p ? `<div class="a-nota"><b>${p.curto}</b>${p.longo ? `<span>${p.longo}</span>` : ''}<button class="link" onclick="acoes.${p.acao}(${i})">${p.fazer} →</button></div>` : ''}
+      <div class="meta"><span>${passoTexto(e)}atualizado agora</span><button class="det" onclick="acoes.detalhes(${i})">Detalhes ${S.detalhes === i ? '▾' : '▸'}</button></div>
+      ${detalhesDe(e, i)}
+    </div>`;
+  }).join('');
+  return `<div class="modal">${tituloProgresso()}<div class="lista">${cartoes}</div>${PE}</div>`;
+}
+function resumoA() {
+  const t = totais(); const resta = aindaAqui();
+  const baralhos = S.envios.map((e, i) => `<div class="a-baralho">
+      <div class="nome">${BARALHO[e.lang]}<small>Baralho do ${IDIOMA[e.lang]}</small></div>
+      <div class="num">${e.n - e.fail - e.dup}<small>${e.n - e.fail - e.dup === 1 ? 'cartão novo' : 'cartões novos'}</small></div>
+      ${e.dup || e.fail ? `<div class="extra">${e.dup ? `<span>${pl(e.dup, 'já estava lá', 'já estavam lá')}</span>` : ''}${e.fail ? `<span class="erro">${pl(e.fail, 'não virou cartão', 'não viraram cartão')}</span><button class="link" onclick="acoes.tentarFalhas()">Tentar de novo →</button>` : ''}</div>` : ''}
+    </div>`).join('');
+  const titulo = t.fail ? 'Quase tudo no Anki' : 'Tudo no Anki';
+  return `<div class="modal estreito"><button class="veio-botao-icone fechar" aria-label="Fechar" onclick="acoes.fechar()">${ic('x')}</button>
+    <h2 class="titulo">${titulo}</h2><p class="sub">${pl(t.enviadas + t.dup, 'frase já está', 'frases já estão')} nos seus baralhos${t.fail ? `, ${t.fail} ficou para trás` : ''}.</p>
+    <div class="a-baralhos">${baralhos}</div>
+    ${resta > 0 ? `<p class="a-pergunta">Tirar ${resta === 1 ? 'a frase enviada' : `as ${resta} enviadas`} do histórico?<small>Elas já estão no Anki. Manter deixa no histórico, marcadas como enviadas.${S.apagadaAntes ? ` ${pl(S.apagadaAntes, 'enviada você já tinha apagado', 'enviadas você já tinha apagado')}.` : ''}</small></p>
+      <div class="acoes"><button class="veio-botao veio-botao--secundario" onclick="acoes.manter()">Manter</button><button class="veio-botao veio-botao--primario" onclick="acoes.apagar()">${ic('lixo', 'style="margin-right:6px"')}Tirar do histórico</button></div>`
+    : `<p class="a-pergunta">Nada para tirar do histórico.<small>${S.apagadaAntes ? `A enviada você já tinha apagado.` : ''}</small></p><div class="acoes"><button class="veio-botao veio-botao--primario" onclick="acoes.manter()">Pronto</button></div>`}
+  </div>`;
+}
+
+// ══════════ B · Por baralho ══════════
+// O cartão pede a ação no canto de cima (um botão fantasma pequeno, no lugar da etapa);
+// o motivo fica numa linha abaixo da barra. Resumo: um bloco por baralho e a escolha
+// num controle segmentado + um botão só para confirmar.
+function progressoB() {
+  const cartoes = S.envios.map((e, i) => {
+    const p = problema(e);
+    return `<div class="cartao">
+      <div class="b-cabeca"><h3 style="margin:0;font-size:var(--veio-tam-card)">${IDIOMA[e.lang][0].toUpperCase() + IDIOMA[e.lang].slice(1)} <span style="color:var(--veio-muted);font-weight:500">→ ${BARALHO[e.lang]}</span></h3>
+        ${p ? `<button class="b-acao" onclick="acoes.${p.acao}(${i})">${ic(p.icone, 'style="width:13px;height:13px"')}${p.fazer}</button>` : `<span class="etapa ${e.status === 'ok' ? 'ok' : ''}">${etapaTexto(e)}</span>`}</div>
+      ${segmentos(e)}
+      <div class="meta"><span>${p ? `<span class="b-motivo"><b>${etapaTexto(e)}:</b> ${p.curto}${p.longo ? ' ' + p.longo : ''}</span>` : `${pl(e.n, 'frase', 'frases')} · ${passoTexto(e)}atualizado agora`}</span><button class="det" onclick="acoes.detalhes(${i})">Detalhes ${S.detalhes === i ? '▾' : '▸'}</button></div>
+      ${detalhesDe(e, i)}
+    </div>`;
+  }).join('');
+  return `<div class="modal">${tituloProgresso()}<div class="lista">${cartoes}</div>${PE}</div>`;
+}
+function resumoB() {
+  const t = totais(); const resta = aindaAqui();
+  const decks = S.envios.map(e => `<div class="b-deck">
+      <span class="rotulo">Baralho</span><span class="nome">${BARALHO[e.lang]}</span>
+      <span class="grande">+${e.n - e.fail - e.dup}<small>${e.n - e.fail - e.dup === 1 ? 'cartão' : 'cartões'}</small></span>
+      <div class="linhas">${e.dup ? `<span>${pl(e.dup, 'já estava lá', 'já estavam lá')}</span>` : ''}${e.fail ? `<span class="erro">${pl(e.fail, 'não entrou', 'não entraram')}</span>` : ''}</div>
+      ${e.fail ? `<button class="b-acao" style="justify-self:start" onclick="acoes.tentarFalhas()">${ic('denovo', 'style="width:13px;height:13px"')}Tentar de novo</button>` : ''}
+    </div>`).join('');
+  return `<div class="modal"><button class="veio-botao-icone fechar" aria-label="Fechar" onclick="acoes.fechar()">${ic('x')}</button>
+    <h2 class="titulo">${t.fail ? 'Envio concluído em parte' : 'Envio concluído'}</h2><p class="sub">${pl(t.total, 'frase', 'frases')} · ${pl(S.envios.length, 'baralho', 'baralhos')}</p>
+    <div class="b-decks">${decks}</div>
+    <div class="b-escolha">${resta > 0 ? `<p>E no seu histórico?<small>${S.apagadaAntes ? `${pl(S.apagadaAntes, 'enviada você já tinha apagado', 'enviadas você já tinha apagado')}. ` : ''}Vale para ${resta === 1 ? 'a enviada que ainda está lá' : `as ${resta} enviadas que ainda estão lá`}.</small></p>
+      <div class="b-seg"><button aria-pressed="${S.escolhaB === 'manter'}" onclick="acoes.escolhaB('manter')">Manter, marcadas</button><button aria-pressed="${S.escolhaB === 'apagar'}" onclick="acoes.escolhaB('apagar')">Tirar do histórico</button></div>
+      <div class="acoes"><button class="veio-botao veio-botao--primario" onclick="acoes.confirmarB()">Concluir</button></div>`
+    : `<p>Nada para tirar do histórico.<small>${S.apagadaAntes ? 'A enviada você já tinha apagado.' : ''}</small></p><div class="acoes"><button class="veio-botao veio-botao--primario" onclick="acoes.manter()">Concluir</button></div>`}</div>
+  </div>`;
+}
+
+// ══════════ C · Uma coisa por vez ══════════
+// Os cartões só mostram andamento. Quando algum precisa da pessoa, aparece UM aviso
+// no topo do modal com UMA ação. Resumo em dois passos: o resultado, depois "E no histórico?".
+function progressoC() {
+  const precisa = S.envios.map((e, i) => [e, i, problema(e)]).filter(([, , p]) => p);
+  const [pe, pi, pp] = precisa[0] || [];
+  const aviso = pp ? `<div class="c-aviso"><span class="marca-aviso"><span><b>${precisa.length === 1 ? `O envio em ${IDIOMA[pe.lang]} precisa de você` : `${precisa.length} envios precisam de você`}</b><small>${pp.curto}${pp.longo ? ' ' + pp.longo : ''}</small></span></span><button class="veio-botao veio-botao--secundario veio-botao--compacto" onclick="acoes.${pp.acao}(${pi})">${ic(pp.icone, 'style="margin-right:6px"')}${pp.fazer}</button></div>` : '';
+  const cartoes = S.envios.map((e, i) => `<div class="cartao">
+      <div class="topo"><h3>${IDIOMA[e.lang][0].toUpperCase() + IDIOMA[e.lang].slice(1)} · ${pl(e.n, 'frase', 'frases')}</h3><span class="etapa ${e.status === 'ok' ? 'ok' : problema(e) ? 'erro' : ''}">${etapaTexto(e)}</span></div>
+      ${segmentos(e)}
+      <div class="meta"><span>${passoTexto(e)}${BARALHO[e.lang]}</span><button class="det" onclick="acoes.detalhes(${i})">Detalhes ${S.detalhes === i ? '▾' : '▸'}</button></div>
+      ${detalhesDe(e, i)}
+    </div>`).join('');
+  return `<div class="modal">${tituloProgresso()}${aviso}<div class="lista">${cartoes}</div>${PE}</div>`;
+}
+function resumoC() {
+  const t = totais(); const resta = aindaAqui();
+  if (S.passoC === 1) {
+    const decks = S.envios.map(e => `<li><b>${BARALHO[e.lang]}</b>: ${pl(e.n - e.fail - e.dup, 'cartão novo', 'cartões novos')}${e.dup ? `, ${pl(e.dup, 'já estava', 'já estavam')}` : ''}${e.fail ? `, <span style="color:var(--veio-danger)">${pl(e.fail, 'não entrou', 'não entraram')}</span>` : ''}</li>`).join('');
+    return `<div class="modal estreito"><button class="veio-botao-icone fechar" aria-label="Fechar" onclick="acoes.fechar()">${ic('x')}</button>
+      <p class="c-passo">1 de 2 · resultado</p>
+      <div class="c-heroi"><div class="circulo ${t.fail ? 'parte' : ''}">${ic('check', 'style="width:26px;height:26px"')}</div>
+        <h2>${t.enviadas + t.dup} de ${t.total} frases estão no Anki</h2>
+        <p>${t.fail ? `${pl(t.fail, 'frase ficou', 'frases ficaram')} para trás.` : `Nos ${pl(S.envios.length, 'baralho', 'baralhos')} de sempre.`}</p></div>
+      <details class="c-mais"><summary>Ver por baralho</summary><ul>${decks}</ul></details>
+      <div class="acoes">${t.fail ? `<button class="veio-botao veio-botao--secundario" onclick="acoes.tentarFalhas()">${ic('denovo', 'style="margin-right:6px"')}Tentar de novo ${t.fail === 1 ? 'a que ficou' : `as ${t.fail}`}</button>` : ''}<button class="veio-botao veio-botao--primario" onclick="acoes.passoC(2)">Continuar</button></div>
+    </div>`;
+  }
+  return `<div class="modal estreito"><button class="veio-botao-icone fechar" aria-label="Fechar" onclick="acoes.fechar()">${ic('x')}</button>
+    <p class="c-passo">2 de 2 · histórico</p>
+    <h2 class="titulo">E no seu histórico?</h2>
+    <p class="sub">${resta > 0 ? `${resta === 1 ? 'A frase enviada continua' : `As ${resta} enviadas continuam`} aqui no PerpetualMiner.` : 'Nada ficou no histórico para decidir.'}${S.apagadaAntes ? ` ${pl(S.apagadaAntes, 'enviada você já tinha apagado', 'enviadas você já tinha apagado')}.` : ''}</p>
+    <div class="c-escolhas">
+      ${resta > 0 ? `<button class="c-escolha" onclick="acoes.apagar()"><b>Tirar do histórico</b><span>Elas já estão no Anki. O histórico fica só com o que falta estudar.</span></button>` : ''}
+      <button class="c-escolha" onclick="acoes.manter()"><b>${resta > 0 ? 'Manter, marcadas como enviadas' : 'Pronto'}</b><span>${resta > 0 ? 'Ficam na lista com o selo Enviada ao Anki.' : 'Fechar o resumo.'}</span></button>
+    </div>
+    <div class="acoes" style="justify-content:flex-start"><button class="link" onclick="acoes.passoC(1)">← Voltar ao resultado</button></div>
+  </div>`;
+}
+
+// ── desenho ──
+function desenharFundo() {
+  const off = S.con === 'off';
+  $('#ponto').className = 'ponto' + (off ? ' off' : '');
+  $('#barra').innerHTML = `<span class="cont">5 selecionadas</span><span class="fantasma">Editar contexto</span><span class="fantasma">Exportar .txt</span><span class="fantasma">Apagar</span>
+    ${off ? '<span class="selo-con">Conexão desligada</span>' : ''}
+    <button class="veio-botao veio-botao--primario veio-botao--compacto ${off ? 'desligado' : ''}" onclick="enviarDeNovo()">${ic('enviar', 'style="margin-right:6px"')}Enviar ao Anki</button>`;
+  $('#frases').innerHTML = FRASES.map((f, i) => `<div class="frase ${i < 5 ? 'sel' : ''}"><span class="caixa"></span><div>${f}<small>${i < 3 ? 'Netflix · Dark · T1E3' : i < 5 ? 'Livro · Мастер и Маргарита' : 'YouTube · Vsauce'}</small></div></div>`).join('');
+}
+function desenhar() {
+  desenharFundo();
+  const v = S.variante;
+  let html = '';
+  if (S.fase === 'progresso') html = { A: progressoA, B: progressoB, C: progressoC }[v]();
+  if (S.fase === 'resumo') html = { A: resumoA, B: resumoB, C: resumoC }[v]();
+  $('#modal').innerHTML = html ? `<div class="fundo">${html}</div>` : '';
+  $('#toast').innerHTML = S.toast ? `<div class="toast">${S.toast}</div>` : '';
+  $('#rotulo').textContent = VARIANTES[v];
+  $('#estado').textContent = `variante  ${v}\ncenário   ${S.cenario}\nconexão   ${S.con}\nfase      ${S.fase || 'nenhuma'}\n${S.envios.map(e => `${e.lang}: ${e.status} · etapa ${e.etapa + 1}/7 · ${e.n} frases${e.fail ? ` · ${e.fail} falha` : ''}${e.dup ? ` · ${e.dup} dup` : ''}`).join('\n')}${S.fim ? `\nfim: ${S.fim}` : ''}`;
+}
+function enviarDeNovo() {
+  if (S.con === 'off') return;
+  S.envios = [envio('en', 12, { dup: 1 }), envio('ru', 8)]; S.fase = 'progresso'; S.passoC = 1; S.fim = ''; S.detalhes = null; desenhar();
+}
+
+function trocar(d) {
+  const k = CHAVES[(CHAVES.indexOf(S.variante) + d + CHAVES.length) % CHAVES.length];
+  S.variante = k; S.passoC = 1;
+  const u = new URL(location); u.searchParams.set('variant', k); history.replaceState(null, '', u);
+  $('#enviado').hidden = true;
+  desenhar();
+}
+$('#ant').onclick = () => trocar(-1); $('#prox').onclick = () => trocar(1);
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft') trocar(-1);
+  if (e.key === 'ArrowRight') trocar(1);
+  if (e.key === 'Escape' && S.fase) acoes.fechar();
+});
+$('#cenario').onchange = e => aplicarCenario(e.target.value);
+$('#enviar-de-novo').onclick = enviarDeNovo;
+
+// Feedback para o Lavish (só quando a página está numa sessão do Lavish).
+function mandar(tipo) {
+  const nota = $('#nota').value.trim();
+  const texto = tipo === 'escolha'
+    ? `Protótipo do envio · escolho a variante ${VARIANTES[S.variante]}${nota ? ' — ' + nota : ''}`
+    : `Protótipo do envio · sobre a variante ${VARIANTES[S.variante]} (cenário ${S.cenario}): ${nota}`;
+  if (tipo === 'comentario' && !nota) return;
+  window.lavish?.queuePrompt(texto, { tag: tipo === 'escolha' ? 'variante' : 'comentario', text: texto, element: $('#lab'), queueKey: tipo === 'escolha' ? 'variante' : undefined, data: { variante: S.variante, cenario: S.cenario, nota } });
+  $('#enviado').hidden = false;
+  if (tipo === 'comentario') $('#nota').value = '';
+}
+$('#gostei').onclick = () => mandar('escolha');
+$('#comentar').onclick = () => mandar('comentario');
+
+aplicarCenario('andando');
+</script>
+</body>
+</html>
