@@ -1022,47 +1022,7 @@ body {
   }
 }
 
-.main-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-}
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.header-right {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-.main-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #1f2937;
-  white-space: nowrap;
-}
-
-.bookreader-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  background: white;
-  color: #b45309;
-  border: 1px solid #fcd34d;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  text-decoration: none;
-  transition: background 0.15s, border-color 0.15s;
-}
-.bookreader-btn:hover { background: #fffbeb; border-color: #f59e0b; }
-
-/* Os modais que ainda não migraram para o .veio-modal: adicionar em massa e o progresso da ponte. */
+/* O modal que ainda não migrou para o .veio-modal: o progresso da ponte. */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -2060,153 +2020,201 @@ body {
   color: #374151;
 }
 
-/* ── Botões de Ação Verde (#00ff88) ─────────────────────── */
-.action-green-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  background: transparent;
-  color: #00c970;
-  border: 1.5px solid #00ff88;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
-  white-space: nowrap;
-}
-.action-green-btn:hover {
-  background: rgba(0, 255, 136, 0.10);
-  color: #00ff88;
-  box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.15);
-}
-
-/* ── Modal Largo (Adição em Massa) ───────────────────────── */
+/* ── Modal Largo (progresso da ponte) ───────────────────── */
 .modal-wide {
   width: min(640px, 95vw);
 }
 
-.modal-textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 13px;
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  color: #374151;
-  resize: vertical;
-  outline: none;
-  line-height: 1.6;
-  min-height: 140px;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.modal-textarea:focus {
-  border-color: #00ff88;
-  box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.15);
-}
-.modal-textarea::placeholder { color: #d1d5db; }
-
-.modal-2col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 4px;
-}
-
-/* ── Barra de Progresso Verde (Bulk Add + Import) ────────── */
-.ba-progress {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-.ba-progress.hidden { display: none; }
-
-.ba-progress-track {
-  flex: 1;
-  height: 5px;
-  background: #e5e7eb;
-  border-radius: 99px;
-  overflow: hidden;
-}
-.ba-progress-fill {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, #00c970, #00ff88);
-  border-radius: 99px;
-  transition: width 0.25s ease;
-}
-.ba-progress-label {
-  font-size: 11px;
-  color: #9ca3af;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* Botão de salvar verde no modal de bulk-add */
-.btn-green-save {
-  background: #00c970;
-  border-color: transparent;
-}
-.btn-green-save:hover { background: #00b060; }
-
-/* ── Overlay de Progresso do Importador ──────────────────── */
-.import-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-  backdrop-filter: blur(3px);
-}
-.import-overlay.hidden { display: none; }
-
-.import-overlay-box {
-  background: white;
-  border-radius: 16px;
-  padding: 2.5rem 3rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  min-width: 320px;
-  max-width: 420px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-}
-
-.import-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #e5e7eb;
-  border-top-color: #00ff88;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.import-overlay-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1f2937;
-  text-align: center;
-}
-.import-overlay-sub {
-  font-size: 13px;
-  color: #6b7280;
-  text-align: center;
-}
-.import-bar-track {
-  width: 100%;
-  margin-top: 4px;
-}
-.import-overlay-label {
-  font-size: 11px;
-  color: #9ca3af;
-  text-align: center;
-}
-
 .hidden { display: none !important; }
+
+/* ── Minerar frases (ADD-01…12) ───────────────────────────────────────────
+   O menu do cabeçalho (Colar · Arquivo .txt · Foto, cada um com a linha de
+   explicação) e o modal com o controle segmentado, a contagem ao vivo e o
+   progresso de verdade. */
+
+.minerar-menu {
+  position: relative;
+}
+
+.minerar-menu__lista {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 250px;
+  padding: 6px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface);
+  box-shadow: var(--veio-sombra);
+}
+
+.minerar-menu__lista[hidden] {
+  display: none;
+}
+
+.minerar-menu__item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--veio-raio-input);
+  background: none;
+  color: var(--veio-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.minerar-menu__item svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--veio-muted);
+}
+
+.minerar-menu__item:hover,
+.minerar-menu__item:focus-visible {
+  background: var(--veio-surface-2);
+}
+
+.minerar-menu__item b {
+  display: block;
+  font-weight: var(--veio-peso-rotulo);
+}
+
+.minerar-menu__item small {
+  display: block;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+}
+
+.minerar-modal {
+  width: min(100%, 560px);
+}
+
+.minerar-abas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.minerar-abas__foto svg {
+  width: 14px;
+  height: 14px;
+}
+
+.minerar-colar,
+.minerar-arquivo {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.minerar-arquivo[hidden],
+.minerar-colar[hidden] {
+  display: none;
+}
+
+.minerar-colar__frases {
+  min-height: 150px;
+  resize: vertical;
+  font-family: var(--veio-fonte-frase);
+}
+
+.minerar-colar__contexto {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 520px) {
+  .minerar-colar__contexto {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.minerar-contagem {
+  margin-right: auto;
+  color: var(--veio-muted);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-apoio);
+}
+
+.minerar-resultado[hidden] {
+  display: none;
+}
+
+.minerar-resultado {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-info-soft);
+  color: var(--veio-text);
+  font-size: var(--veio-tam-apoio);
+}
+
+.minerar-arquivo__area {
+  padding: 24px 16px;
+  border: 1.5px dashed var(--veio-border-strong);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-bg);
+  color: var(--veio-muted);
+  text-align: center;
+}
+
+.minerar-arquivo__nome {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--veio-text);
+  overflow-wrap: anywhere;
+}
+
+.minerar-arquivo__nota {
+  margin: 0 0 12px;
+  font-size: var(--veio-tam-apoio);
+}
+
+.minerar-progresso {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.minerar-progresso[hidden] {
+  display: none;
+}
+
+.minerar-progresso__barra {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-surface-2);
+}
+
+.minerar-progresso__barra > i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-accent);
+  transition: width var(--veio-transicao);
+}
+
+.minerar-progresso__nota {
+  margin: 0;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .minerar-progresso__barra > i {
+    transition: none !important;
+  }
+}

@@ -54,6 +54,11 @@ const DEFAULT_BRIDGE_PRESETS = {
   ru: { deckName: 'RUSSIAN', imageSource: '1', ttsWordTld: 'ru',  ttsPhraseTld: 'ru' },
 };
 
+// A Fonte de uma frase minerada sem Fonte: colada (Colar) ou vinda de uma
+// linha simples de um .txt (Arquivo .txt).
+const FONTE_MANUAL    = 'manual';
+const FONTE_IMPORTADO = 'importado';
+
 // Enviada ao Anki fica gravada com o nome de antes do glossário (ver foiEnviadaAoAnki).
 const STATUS_ENVIADA_AO_ANKI = 'exported';
 
@@ -905,26 +910,7 @@ function setupListeners() {
   document.getElementById('sel-pagina').addEventListener('change', selecionarPagina);
   document.getElementById('btn-sel-todas').addEventListener('click', selecionarTodasVisiveis);
   document.getElementById('btn-desmarcar-todas').addEventListener('click', desmarcarTodas);
-  document.getElementById('btn-minerar-frases').addEventListener('click', abrirModalMultiAdd);
-
-  // Adição em Massa
-  document.getElementById('btn-multi-add').addEventListener('click', abrirModalMultiAdd);
-  document.getElementById('btn-bulk-add-close').addEventListener('click',  fecharModalMultiAdd);
-  document.getElementById('btn-bulk-add-cancel').addEventListener('click', fecharModalMultiAdd);
-  document.getElementById('btn-bulk-add-save').addEventListener('click',   salvarMultiAdd);
-  document.getElementById('bulk-add-modal').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('bulk-add-modal')) fecharModalMultiAdd();
-  });
-  document.getElementById('bulk-add-modal').addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') fecharModalMultiAdd();
-  });
-
-  // Importador .txt
-  document.getElementById('btn-import').addEventListener('click', abrirImportador);
-  document.getElementById('import-file-input').addEventListener('change', (e) => {
-    const file = e.target.files?.[0];
-    if (file) { importarArquivoTxt(file); e.target.value = ''; }
-  });
+  configurarMinerarFrases();
 
   configurarModaisDeFrases();
 
@@ -1771,8 +1757,7 @@ function montarVazio() {
     const MARCA = '\u0000';
     const [antes, depois] = textoDaVoz('PAI-02.texto', { atalho: MARCA }).split(MARCA);
     texto.append(antes, ...atalhoDoVazio(), depois);
-    // Até o #31 trazer o menu Minerar frases, o botão abre a adição em massa de hoje.
-    acoes.append(botaoDoVazio(textoDaVoz('PAI-02.acao'), abrirModalMultiAdd, 'veio-botao--primario'));
+    acoes.append(botaoDoVazio(textoDaVoz('PAI-02.acao'), () => abrirMinerarFrases('colar'), 'veio-botao--primario'));
     vazio.append(criar('p', 'veio-vazio__titulo', textoDaVoz('PAI-02.titulo')), texto);
   } else if (buscaAtual.trim()) {
     vazio.append(criar('p', 'veio-vazio__titulo', textoDaVoz('PAI-04.texto', { termo: buscaAtual.trim() })));
@@ -2166,7 +2151,8 @@ function mostrarAvisoNaArea(chave, { erro, ...opcoes }) {
   tirarAvisoDaArea(chave);
   const aviso = montarAviso({
     ...opcoes,
-    detalhes: String(erro?.message || erro),
+    // Sem erro, sem “Detalhes”: a causa técnica fica em outro lugar (ADD-06: o card da conta).
+    ...(erro ? { detalhes: String(erro.message || erro) } : {}),
     rotuloDeFechar: textoDaVoz('PAI-34'),
   });
   aviso.dataset.aviso = chave;
@@ -2285,18 +2271,8 @@ function exportarTxt() {
   if (selecionadas.size === 0) return;
   const linhas = todasFrases
     .filter(f => selecionadas.has(f.id))
-    .map(f => {
-      const textoLimpo = f.texto.replace(/\s+/g, ' ').trim();
-      const kw = keywords[f.id]?.length
-        ? keywords[f.id].map(w => w === '|' ? '|' : w.replace(/@\d+$/, '')).join(' ')
-            .replace(/\s+\|\s+/g, ' | ').replace(/\s*\|\s*$/, '').trim()
-        : '';
-      const fonte   = sanitizarCampo(f.contexto?.fonte   || f.streaming);
-      const titulo  = sanitizarCampo(f.contexto?.titulo);
-      const detalhe = sanitizarCampo(f.contexto?.detalhe);
-      const prefixoKeyword = kw ? `${kw} : ` : '';
-      return `${prefixoKeyword}${textoLimpo} [Contexto: ${fonte} - ${titulo} - ${detalhe}]`;
-    }).filter(l => l.trim().length > 0);
+    .map(linhaDoTxt)
+    .filter(l => l.trim().length > 0);
 
   const blob = new Blob([linhas.join('\n')], { type: 'text/plain;charset=utf-8' });
   const url  = URL.createObjectURL(blob);
@@ -2325,19 +2301,6 @@ function exportarTxt() {
     });
   }
   mostrarToastDeSucesso(textoDaVoz('PAI-19', { n: linhas.length }));
-}
-
-function montarLinhaMining(frase) {
-  const textoLimpo = frase.texto.replace(/\s+/g, ' ').trim();
-  const kw = keywords[frase.id]?.length
-    ? keywords[frase.id].map(w => w === '|' ? '|' : w.replace(/@\d+$/, '')).join(' ')
-        .replace(/\s+\|\s+/g, ' | ').replace(/\s*\|\s*$/, '').trim()
-    : '';
-  const fonte   = sanitizarCampo(frase.contexto?.fonte || frase.streaming);
-  const titulo  = sanitizarCampo(frase.contexto?.titulo);
-  const detalhe = sanitizarCampo(frase.contexto?.detalhe);
-  const prefixoKeyword = kw ? `${kw} : ` : '';
-  return `${prefixoKeyword}${textoLimpo} [Contexto: ${fonte} - ${titulo} - ${detalhe}]`;
 }
 
 async function enviarSelecionadasAoAnki() {
@@ -2382,7 +2345,7 @@ async function enviarSelecionadasAoAnki() {
       },
       entries: lote.map(frase => ({
         phraseId: frase.id,
-        line: montarLinhaMining(frase),
+        line: linhaParaOAnki(frase),
       })),
     };
     const resp = await fetch(`${BRIDGE_URL}/jobs`, {
@@ -2745,199 +2708,552 @@ function tokenizarFrase(texto) {
   });
 }
 
-// ─── Multi-Add (Adição em Massa) ─────────────────────────────────────────────
+// ─── Minerar frases (ADD-01…12) ───────────────────────────────────────────────
+//
+// [Minerar frases ▾] no cabeçalho abre o menu Colar · Arquivo .txt · Foto.
+// Colar e Arquivo .txt abrem o mesmo modal, já na aba certa; Foto abre Minerar
+// de uma foto numa aba nova.
+//
+// Cada frase é gravada pelo service worker (`SALVAR_HISTORICO`), uma por vez,
+// na fila de gravação dele: o progresso “Minerando 3 de 12…” anda só quando a
+// gravação daquela frase volta confirmada, e a lista a mostra pelo
+// `chrome.storage.onChanged`. Com a conta, as frases sobem para a nuvem juntas
+// no fim; se a nuvem falha, fica o aviso persistente ADD-06 com Tentar de
+// novo, e o card e o chip da conta dizem que o computador está sem sincronizar.
 
-function autoKeywordsForPhrase(frase) {
-  return new Promise(resolve => {
-    if (!chrome.runtime?.sendMessage) {
-      resolve([]);
-      return;
-    }
-    chrome.runtime.sendMessage({ type: 'AUTO_KEYWORDS_FOR_PHRASE', frase }, response => {
-      if (chrome.runtime.lastError) {
-        resolve([]);
-        return;
-      }
-      resolve(Array.isArray(response?.keywords) ? response.keywords : []);
-    });
+// Uma mineração por vez: o duplo clique em “Minerar N frases” não grava duas vezes (#9).
+let mineracaoEmCurso = false;
+// O modal de Minerar frases aberto, para o fim da mineração fechar só ele.
+let modalDeMinerar = null;
+// As frases mineradas aqui que não chegaram à nuvem (ADD-06).
+const idsMineradosForaDaNuvem = new Set();
+
+function configurarMinerarFrases() {
+  const botao = document.getElementById('btn-minerar-frases');
+  const menu  = document.getElementById('menu-minerar');
+
+  botao.addEventListener('click', () => {
+    if (menuDeMinerarAberto()) fecharMenuDeMinerar();
+    else                       abrirMenuDeMinerar(0);
+  });
+  botao.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    abrirMenuDeMinerar(e.key === 'ArrowUp' ? -1 : 0);
+  });
+  menu.addEventListener('click', (e) => {
+    const item = e.target.closest('[data-minerar]');
+    if (!item) return;
+    // O foco volta ao botão antes: é para ele que o modal devolve o foco ao fechar.
+    fecharMenuDeMinerar();
+    escolherModoDeMinerar(item.dataset.minerar);
+  });
+  menu.addEventListener('keydown', aoTeclarNoMenuDeMinerar);
+  menu.addEventListener('focusout', (e) => {
+    if (e.relatedTarget && !e.relatedTarget.closest('.minerar-menu')) fecharMenuDeMinerar({ devolverFoco: false });
+  });
+  document.addEventListener('click', (e) => {
+    if (menuDeMinerarAberto() && !e.target.closest('.minerar-menu')) fecharMenuDeMinerar({ devolverFoco: false });
+  });
+
+  for (const radio of document.querySelectorAll('input[name="aba-minerar"]')) {
+    radio.addEventListener('change', () => mostrarAbaDeMinerar(radio.value));
+  }
+  document.getElementById('btn-minerar-foto').addEventListener('click', () => {
+    modalDeMinerar?.fechar();
+    abrirMinerarDeUmaFoto();
+  });
+
+  const campo = document.getElementById('minerar-frases');
+  campo.placeholder = textoDaVoz('ADD-02');
+  document.getElementById('minerar-fonte').placeholder  = textoDaVoz('ADD-12.exemploFonte');
+  document.getElementById('minerar-titulo').placeholder = textoDaVoz('ADD-12.exemploTitulo');
+  campo.addEventListener('input', () => {
+    atualizarContagemDeColar();
+    if (linhasColadas().length > 0) mostrarErroDeColar(null);
+  });
+  document.getElementById('minerar-colar').addEventListener('submit', (e) => {
+    e.preventDefault();
+    minerarColadas();
+  });
+
+  const escolha = document.getElementById('minerar-arquivo-escolha');
+  document.getElementById('btn-minerar-escolher').addEventListener('click', () => escolha.click());
+  escolha.addEventListener('change', () => {
+    const arquivo = escolha.files?.[0];
+    escolha.value = '';
+    if (arquivo) importarArquivoTxt(arquivo);
   });
 }
 
-async function preencherAutoKeywords(frases) {
-  for (const frase of frases) {
-    if (frase.keywords?.length) continue;
-    const idioma = String(frase.idioma || '').toLowerCase();
-    if (!idioma.includes('ingl')) continue;
-    const kws = await autoKeywordsForPhrase(frase);
-    if (kws.length > 0) {
-      frase.keywords = kws;
-      frase.autoKeyword = true;
-    }
+// ─── O menu ───
+
+function itensDoMenuDeMinerar() {
+  return [...document.querySelectorAll('#menu-minerar [role="menuitem"]')];
+}
+
+function menuDeMinerarAberto() {
+  return !document.getElementById('menu-minerar').hidden;
+}
+
+/** Abre o menu com o foco no item `indice` (-1 é o último). */
+function abrirMenuDeMinerar(indice) {
+  document.getElementById('menu-minerar').hidden = false;
+  document.getElementById('btn-minerar-frases').setAttribute('aria-expanded', 'true');
+  itensDoMenuDeMinerar().at(indice).focus();
+}
+
+function fecharMenuDeMinerar({ devolverFoco = true } = {}) {
+  document.getElementById('menu-minerar').hidden = true;
+  const botao = document.getElementById('btn-minerar-frases');
+  botao.setAttribute('aria-expanded', 'false');
+  if (devolverFoco) botao.focus();
+}
+
+/** Setas andam pelos modos (e dão a volta), Home/End vão às pontas, Esc e Tab fecham. */
+function aoTeclarNoMenuDeMinerar(e) {
+  const itens = itensDoMenuDeMinerar();
+  const atual = itens.indexOf(document.activeElement);
+  const passos = { ArrowDown: 1, ArrowUp: -1 };
+  if (e.key in passos) {
+    e.preventDefault();
+    itens[(atual + passos[e.key] + itens.length) % itens.length].focus();
+  } else if (e.key === 'Home' || e.key === 'End') {
+    e.preventDefault();
+    itens.at(e.key === 'Home' ? 0 : -1).focus();
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    fecharMenuDeMinerar();
+  } else if (e.key === 'Tab') {
+    fecharMenuDeMinerar({ devolverFoco: false });
   }
-  return frases;
 }
 
-function abrirModalMultiAdd() {
-  document.getElementById('bulk-add-textarea').value = '';
-  document.getElementById('bulk-add-fonte').value    = '';
-  document.getElementById('bulk-add-titulo').value   = '';
-  document.getElementById('bulk-add-progress-wrap').classList.add('hidden');
-  document.getElementById('bulk-add-modal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('bulk-add-textarea').focus(), 50);
+function escolherModoDeMinerar(modo) {
+  if (modo === 'foto') abrirMinerarDeUmaFoto();
+  else                 abrirMinerarFrases(modo);
 }
 
-function fecharModalMultiAdd() {
-  document.getElementById('bulk-add-modal').classList.add('hidden');
+function abrirMinerarDeUmaFoto() {
+  chrome.tabs.create({ url: chrome.runtime.getURL('bookreader.html') });
 }
 
-async function salvarMultiAdd() {
-  const raw    = document.getElementById('bulk-add-textarea').value;
-  const fonte  = document.getElementById('bulk-add-fonte').value.trim() || 'manual';
-  const titulo = document.getElementById('bulk-add-titulo').value.trim();
+// ─── O modal ───
 
-  const linhas = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  if (linhas.length === 0) { mostrarToast('Cole ao menos uma frase.'); return; }
+/** Abre o modal limpo, na aba `colar` ou `arquivo`. */
+function abrirMinerarFrases(aba) {
+  if (mineracaoEmCurso) return;
+  document.getElementById('minerar-frases').value = '';
+  document.getElementById('minerar-fonte').value  = '';
+  document.getElementById('minerar-titulo').value = '';
+  mostrarErroDeColar(null);
+  atualizarContagemDeColar();
+  mostrarArquivoEscolhido(null);
+  document.getElementById('minerar-edicao').hidden    = false;
+  document.getElementById('minerar-progresso').hidden = true;
+  mostrarAbaDeMinerar(aba);
 
-  const wrapEl  = document.getElementById('bulk-add-progress-wrap');
-  const barEl   = document.getElementById('bulk-add-progress-bar');
-  const labelEl = document.getElementById('bulk-add-progress-label');
-  wrapEl.classList.remove('hidden');
-
-  const agora = Date.now();
-  const novas = linhas.map((texto, i) => {
-    barEl.style.width   = `${Math.round(((i + 1) / linhas.length) * 100)}%`;
-    labelEl.textContent = `${i + 1} de ${linhas.length}…`;
-    return {
-      texto,
-      data:      new Date().toLocaleDateString('pt-BR'),
-      streaming: fonte,
-      id:        agora + i,
-      idioma:    detectarIdioma(texto),
-      contexto:  { fonte, titulo, detalhe: '' },
-    };
+  modalAberto = abrirModal(document.getElementById('modal-minerar'), {
+    aoFechar: () => { modalAberto = null; modalDeMinerar = null; },
   });
-  await preencherAutoKeywords(novas);
+  modalDeMinerar = modalAberto;
+  focarAbaDeMinerar(aba);
+}
 
-  const { frases: local = [] } = await chromeGet({ frases: [] });
-  const todas = [...novas, ...local];
-  await new Promise(resolve => chrome.storage.local.set({ frases: todas }, resolve));
+function mostrarAbaDeMinerar(aba) {
+  document.querySelector(`input[name="aba-minerar"][value="${aba}"]`).checked = true;
+  document.getElementById('minerar-colar').hidden   = aba !== 'colar';
+  document.getElementById('minerar-arquivo').hidden = aba !== 'arquivo';
+}
 
-  if (usuarioLogado) {
-    try { await firestoreBatchUpsert(novas); }
-    catch (err) { mostrarFalhaNaNuvem(err); }
+function focarAbaDeMinerar(aba) {
+  document.getElementById(aba === 'colar' ? 'minerar-frases' : 'btn-minerar-escolher').focus();
+}
+
+/** O progresso (ADD-04) toma o lugar das abas e dos campos até a última frase. */
+function mostrarProgressoDeMinerar(feitas, total) {
+  document.getElementById('minerar-edicao').hidden    = true;
+  document.getElementById('minerar-progresso').hidden = false;
+  document.getElementById('minerar-progresso-rotulo').textContent = textoDaVoz('ADD-04', { n: feitas, total });
+  const barra = document.querySelector('#minerar-progresso .minerar-progresso__barra');
+  barra.setAttribute('aria-valuenow', String(feitas));
+  barra.setAttribute('aria-valuemax', String(total));
+  barra.firstElementChild.style.width = `${total ? (feitas / total) * 100 : 0}%`;
+}
+
+// ─── Colar ───
+
+/** As linhas com texto, sem as em branco: uma frase por linha, no Colar e no .txt. */
+function linhasDoTexto(texto) {
+  return texto.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+}
+
+function linhasColadas() {
+  return linhasDoTexto(document.getElementById('minerar-frases').value);
+}
+
+/** A contagem ao vivo (“3 frases”) e o botão “Minerar 3 frases”. */
+function atualizarContagemDeColar() {
+  const n = linhasColadas().length;
+  document.getElementById('minerar-contagem').textContent = textoDaVoz('PAI-05', { n });
+  document.getElementById('btn-minerar-colar').textContent = n
+    ? textoDaVoz('ADD-12.minerar', { n })
+    : textoDaVoz('ADD-01.botao');
+}
+
+/** O erro do campo (ADD-03), dito por `aria-invalid` e ligado ao campo. `null` tira. */
+function mostrarErroDeColar(mensagem) {
+  const campo = document.getElementById('minerar-frases');
+  const erro  = document.getElementById('minerar-frases-erro');
+  erro.textContent = mensagem || '';
+  erro.hidden = !mensagem;
+  if (mensagem) campo.setAttribute('aria-invalid', 'true');
+  else          campo.removeAttribute('aria-invalid');
+}
+
+/** Roda `minerar` se nenhuma outra mineração está em curso; senão, não faz nada. */
+async function umaMineracaoPorVez(minerar) {
+  if (mineracaoEmCurso) return;
+  mineracaoEmCurso = true;
+  try { await minerar(); }
+  finally { mineracaoEmCurso = false; }
+}
+
+function minerarColadas() {
+  return umaMineracaoPorVez(minerarColadasAgora);
+}
+
+async function minerarColadasAgora() {
+  const linhas = linhasColadas();
+  if (linhas.length === 0) {
+    mostrarErroDeColar(textoDaVoz('ADD-03'));
+    document.getElementById('minerar-frases').focus();
+    return;
   }
-
-  todasFrases = todas;
-  atualizarTotal();
-  fecharModalMultiAdd();
-  finalizarCarregamento();
-  const n = novas.length;
-  mostrarToast(`${n} frase${n !== 1 ? 's' : ''} adicionada${n !== 1 ? 's' : ''}!`);
+  const fonte  = document.getElementById('minerar-fonte').value.trim() || FONTE_MANUAL;
+  const titulo = document.getElementById('minerar-titulo').value.trim();
+  const resultado = await minerarEmSequencia(linhas.map(texto => ({ texto, contexto: { fonte, titulo, detalhe: '' } })));
+  concluirMineracao(resultado, n => textoDaVoz('ADD-05', { n }));
 }
 
-// ─── Importador de Arquivo .txt ───────────────────────────────────────────────
+// ─── Arquivo .txt ───
 
-function abrirImportador() {
-  document.getElementById('import-file-input').click();
+/** O nome do arquivo escolhido na área (ou o convite, sem arquivo), e limpa o resultado anterior. */
+function mostrarArquivoEscolhido(nome) {
+  document.getElementById('minerar-arquivo-nome').textContent = nome || textoDaVoz('ADD-12.arquivo');
+  document.getElementById('btn-minerar-escolher').textContent =
+    textoDaVoz(nome ? 'ADD-12.escolherOutro' : 'ADD-12.escolher');
+  document.getElementById('btn-minerar-arquivo-sair').textContent = textoDaVoz('ADD-12.cancelar');
+  mostrarFimDoArquivo({});
 }
 
-async function importarArquivoTxt(file) {
-  let texto;
-  try { texto = await file.text(); }
-  catch { mostrarToast('Não foi possível ler o arquivo.'); return; }
+/** O fim que fica no modal: um erro (ADD-07, ADD-08) ou o nada novo (ADD-09), que troca Cancelar por Fechar. */
+function mostrarFimDoArquivo({ erro, resultado }) {
+  const noErro      = document.getElementById('minerar-arquivo-erro');
+  const noResultado = document.getElementById('minerar-arquivo-resultado');
+  noErro.textContent      = erro || '';
+  noErro.hidden           = !erro;
+  noResultado.textContent = resultado || '';
+  noResultado.hidden      = !resultado;
+  if (resultado) document.getElementById('btn-minerar-arquivo-sair').textContent = textoDaVoz('ADD-12.fechar');
+}
 
-  const linhas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  if (linhas.length === 0) { mostrarToast('Arquivo vazio.'); return; }
+/**
+ * Importa ao escolher. Frases que já estão no histórico (ou repetidas no próprio
+ * arquivo) ficam de fora; uma linha exportada daqui volta com o Contexto e a Palavra.
+ */
+function importarArquivoTxt(arquivo) {
+  // Desde a escolha: enquanto o arquivo é lido, o Colar não começa outra (#9).
+  return umaMineracaoPorVez(() => importarArquivoTxtAgora(arquivo));
+}
 
-  const overlay   = document.getElementById('import-overlay');
-  const barEl     = document.getElementById('import-overlay-bar');
-  const titleEl   = document.getElementById('import-overlay-title');
-  const subEl     = document.getElementById('import-overlay-sub');
-  const labelEl   = document.getElementById('import-overlay-label');
-  overlay.classList.remove('hidden');
-  titleEl.textContent = `Importando ${linhas.length} linha${linhas.length !== 1 ? 's' : ''}…`;
+async function importarArquivoTxtAgora(arquivo) {
+  mostrarArquivoEscolhido(arquivo.name);
 
-  // Textos existentes para deduplicação (compara lowercase)
-  const textosExistentes = new Set(todasFrases.map(f => f.texto.trim().toLowerCase()));
+  let conteudo;
+  try { conteudo = await lerArquivoDeTexto(arquivo); }
+  catch { mostrarFimDoArquivo({ erro: textoDaVoz('ADD-07') }); return; }
 
+  const linhas = linhasDoTexto(conteudo);
+  if (linhas.length === 0) { mostrarFimDoArquivo({ erro: textoDaVoz('ADD-08') }); return; }
+
+  const jaExistem = new Set(todasFrases.map(f => chaveDeRepetida(f.texto)));
   const novas = [];
-  const agora = Date.now();
-  let duplicatas = 0;
+  let duplicadas = 0;
   let invalidas  = 0;
-
-  for (let i = 0; i < linhas.length; i++) {
-    barEl.style.width   = `${Math.round(((i + 1) / linhas.length) * 100)}%`;
-    labelEl.textContent = `Linha ${i + 1} de ${linhas.length}`;
-
-    const parsed = parsearLinhaExportada(linhas[i]);
-    if (!parsed) { invalidas++; continue; }
-
-    const chave = parsed.texto.toLowerCase();
-    if (textosExistentes.has(chave)) { duplicatas++; continue; }
-
-    textosExistentes.add(chave);
-    novas.push({
-      texto:     parsed.texto,
-      data:      new Date().toLocaleDateString('pt-BR'),
-      streaming: parsed.fonte || 'importado',
-      id:        agora + i,
-      idioma:    detectarIdioma(parsed.texto),
-      contexto:  { fonte: parsed.fonte, titulo: parsed.titulo, detalhe: parsed.detalhe },
-    });
+  for (const linha of linhas) {
+    const lida = lerLinhaDoTxt(linha);
+    if (!lida) { invalidas++; continue; }
+    const chave = chaveDeRepetida(lida.texto);
+    if (jaExistem.has(chave)) { duplicadas++; continue; }
+    jaExistem.add(chave);
+    novas.push(lida);
   }
-
-  overlay.classList.add('hidden');
-  barEl.style.width = '0%';
 
   if (novas.length === 0) {
-    const msgs = [];
-    if (duplicatas > 0) msgs.push(`${duplicatas} duplicata${duplicatas !== 1 ? 's' : ''}`);
-    if (invalidas  > 0) msgs.push(`${invalidas} inválida${invalidas  !== 1 ? 's' : ''}`);
-    mostrarToast('Nenhuma frase nova. ' + msgs.join(', ') + '.');
+    // Só a parte que aconteceu: nunca “0 linhas não puderam ser lidas”.
+    const parte = !invalidas ? 'soRepetidas' : !duplicadas ? 'soIlegiveis' : 'ambas';
+    mostrarFimDoArquivo({ resultado: textoDaVoz(`ADD-09.${parte}`, { duplicadas, invalidas }) });
     return;
   }
 
-  await preencherAutoKeywords(novas);
-  subEl.textContent = '';
-  const { frases: local = [] } = await chromeGet({ frases: [] });
-  const todas = [...novas, ...local];
-  await new Promise(resolve => chrome.storage.local.set({ frases: todas }, resolve));
-
-  if (usuarioLogado) {
-    try { await firestoreBatchUpsert(novas); }
-    catch (e) { console.error('[Import] Firestore falhou:', e); }
-  }
-
-  todasFrases = todas;
-  atualizarTotal();
-  finalizarCarregamento();
-
-  let msg = `${novas.length} frase${novas.length !== 1 ? 's' : ''} importada${novas.length !== 1 ? 's' : ''}!`;
-  if (duplicatas > 0) msg += ` (${duplicatas} duplicata${duplicatas !== 1 ? 's' : ''} ignorada${duplicatas !== 1 ? 's' : ''})`;
-  mostrarToast(msg);
+  const resultado = await minerarEmSequencia(novas);
+  concluirMineracao(resultado, n => (duplicadas > 0
+    ? textoDaVoz('ADD-10', { n, duplicadas })
+    : textoDaVoz('ADD-05', { n })));
 }
 
-// Parser para o formato exportado: "keyword : texto [Contexto: fonte - titulo - detalhe]"
-function parsearLinhaExportada(linha) {
-  // Extrai [Contexto: ...] do final
-  const ctxMatch = linha.match(/\[Contexto:\s*(.+?)\]\s*$/);
-  let resto  = linha;
-  let fonte = '', titulo = '', detalhe = '';
+/** O texto do arquivo em UTF-8. Um binário (UTF-8 inválido ou com NUL) é ilegível (ADD-07). */
+async function lerArquivoDeTexto(arquivo) {
+  const bytes = new Uint8Array(await arquivo.arrayBuffer());
+  const texto = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  if (texto.includes('\u0000')) throw new Error('arquivo binário');
+  return texto;
+}
 
-  if (ctxMatch) {
-    resto = linha.slice(0, ctxMatch.index).trim();
-    const partes = ctxMatch[1].split(' - ');
-    fonte   = (partes[0] || '').replace(/^Desconhecido$/i, '').trim();
-    titulo  = (partes[1] || '').replace(/^Desconhecido$/i, '').trim();
-    detalhe = (partes[2] || '').replace(/^Desconhecido$/i, '').trim();
+function chaveDeRepetida(texto) {
+  return texto.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+// ─── Gravar ───
+
+/**
+ * Grava as frases uma por vez pelo service worker e anda o progresso a cada
+ * gravação confirmada. Cada uma é `{ texto, contexto, palavras? }`: `palavras`
+ * (mesmo vazia) diz que a Palavra já veio com a linha, sem a detecção automática.
+ */
+async function minerarEmSequencia(frases) {
+  const mineradas = [];
+  let erroLocal = null;
+  mostrarProgressoDeMinerar(0, frases.length);
+  try {
+    for (const { texto, contexto, palavras } of frases) {
+      const resposta = await pedirAoServiceWorker({
+        type: 'SALVAR_HISTORICO',
+        texto,
+        origem: contexto.fonte,
+        contexto,
+        idioma: detectarIdioma(texto),
+        palavras,
+        semNuvem: true,
+      });
+      if (!resposta?.ok) throw new Error(resposta?.error || 'save_failed');
+      mineradas.push(resposta.frase);
+      mostrarProgressoDeMinerar(mineradas.length, frases.length);
+    }
+  } catch (err) {
+    erroLocal = err;
+  }
+  // A mineração só termina quando a nuvem também respondeu: até lá, outro
+  // clique não começa uma segunda.
+  const erroNaNuvem = await subirMineradas(mineradas);
+  return { mineradas, erroLocal, erroNaNuvem };
+}
+
+function pedirAoServiceWorker(mensagem) {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(mensagem, (resposta) => {
+      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+      else resolve(resposta);
+    });
+  });
+}
+
+/** Sobe as frases de uma vez. Devolve o erro da nuvem, ou `null` (também sem conta). */
+async function subirMineradas(frases) {
+  if (!usuarioLogado || frases.length === 0) return null;
+  try {
+    await firestoreBatchUpsert(frases);
+  } catch (err) {
+    return err;
+  }
+  await tirarDaFilaDeSync(frases.map(f => String(f.id)));
+  return null;
+}
+
+async function tirarDaFilaDeSync(ids) {
+  const subiram = new Set(ids);
+  const { pm_pending_sync = [] } = await chromeGet({ pm_pending_sync: [] });
+  const restantes = pm_pending_sync.filter(id => !subiram.has(id));
+  if (restantes.length !== pm_pending_sync.length) await chromeSet({ pm_pending_sync: restantes });
+}
+
+/**
+ * O fim: o toast de sucesso, ou o aviso ADD-06 quando a nuvem falhou. Uma
+ * gravação que falhou neste computador fica como aviso GLB-01, com o que já
+ * entrou contado no resto.
+ */
+function concluirMineracao({ mineradas, erroLocal, erroNaNuvem }, textoDoSucesso) {
+  modalDeMinerar?.fechar();
+  if (erroLocal) mostrarAvisoNaArea('minerar', { texto: textoDaVoz('GLB-01'), erro: erroLocal });
+  if (erroNaNuvem) {
+    mineradas.forEach(f => idsMineradosForaDaNuvem.add(f.id));
+    mostrarAvisoForaDaNuvem(erroNaNuvem);
+    return;
+  }
+  if (!erroLocal && mineradas.length > 0) mostrarToastDeSucesso(textoDoSucesso(mineradas.length));
+}
+
+/**
+ * O aviso ADD-06: um só, que junta todas as frases mineradas que não subiram.
+ * O card e o chip da conta dizem junto que este computador está sem sincronizar.
+ */
+function mostrarAvisoForaDaNuvem(erro) {
+  mostrarFalhaNaNuvem(erro);
+  mostrarAvisoNaArea('fora-da-nuvem', {
+    texto: textoDaVoz('ADD-06.aviso', { n: idsMineradosForaDaNuvem.size }),
+    acao: { rotulo: textoDaVoz('ADD-06.tentarDeNovo'), aoUsar: tentarSubirDeNovo },
+    // Sem “Detalhes” aqui (decisão do dono): a causa já vai para o card Conta & sync.
+    // Fechar só tira o aviso: elas seguem em pm_pending_sync, e o próximo carregamento tenta de novo.
+    aoFechar: () => idsMineradosForaDaNuvem.clear(),
+  });
+}
+
+async function tentarSubirDeNovo() {
+  const frases = todasFrases.filter(f => idsMineradosForaDaNuvem.has(f.id));
+  const erro = await subirMineradas(frases);
+  if (erro) {
+    mostrarAvisoForaDaNuvem(erro);
+    return;
+  }
+  idsMineradosForaDaNuvem.clear();
+  tirarAvisoDaArea('fora-da-nuvem');
+  // A nuvem respondeu: o card e o chip da conta deixam de dizer “sem sincronizar”.
+  Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
+}
+
+// ─── A linha do .txt ──────────────────────────────────────────────────────────
+//
+// “palavra : texto [Contexto: fonte - título - detalhe]”, uma frase por linha.
+// A Palavra sai sem a posição (`word@3` → `word`), com os grupos separados por
+// “ | ”. Uma frase sem Palavra cujo texto tem “ : ” sai com o prefixo vazio
+// (“: texto”), para o “ : ” do texto não ser lido como o fim da Palavra (#9).
+
+/** A Palavra como vai no .txt (“cold feet | wedding”), ou '' sem Palavra. */
+function palavrasDoTxt(frase) {
+  const kws = keywords[frase.id] || [];
+  if (kws.length === 0) return '';
+  return kws.map(w => w === '|' ? '|' : w.replace(/@\d+$/, '')).join(' ')
+    .replace(/\s+\|\s+/g, ' | ').replace(/\s*\|\s*$/, '').trim();
+}
+
+/**
+ * A linha da frase no .txt, para voltar inteira na leitura (`lerLinhaDoTxt`).
+ * Um grupo da Palavra que já não está no texto (o texto foi editado depois)
+ * fica de fora: lido de volta, ele sairia colado no começo do texto.
+ */
+function linhaDoTxt(frase) {
+  const texto = frase.texto.replace(/\s+/g, ' ').trim();
+  const palavra = palavrasDoTxt(frase).split(' | ')
+    .filter(grupo => palavrasNoTexto(grupo, texto))
+    .join(' | ');
+  // Um “ : ” no texto, ou um “ :” no fim dele, seria lido como o fim da Palavra.
+  const precisaDoPrefixoVazio = `${texto} `.includes(' : ') || texto.startsWith(':');
+  const prefixo = palavra ? `${palavra} : ` : (precisaDoPrefixoVazio ? ': ' : '');
+  return `${prefixo}${texto} ${contextoDaLinha(frase)}`;
+}
+
+/**
+ * A linha que o Anki Bridge lê com o parser dele, que não conhece o prefixo
+ * vazio: a Palavra como está, sem as duas regras do .txt.
+ */
+function linhaParaOAnki(frase) {
+  const texto = frase.texto.replace(/\s+/g, ' ').trim();
+  const palavra = palavrasDoTxt(frase);
+  return `${palavra ? `${palavra} : ` : ''}${texto} ${contextoDaLinha(frase)}`;
+}
+
+function contextoDaLinha(frase) {
+  const fonte   = sanitizarCampo(frase.contexto?.fonte || frase.streaming);
+  const titulo  = sanitizarCampo(frase.contexto?.titulo);
+  const detalhe = sanitizarCampo(frase.contexto?.detalhe);
+  return `[Contexto: ${fonte} - ${titulo} - ${detalhe}]`;
+}
+
+/**
+ * Lê uma linha do .txt: `{ texto, contexto, palavras? }`, ou `null` quando não
+ * sobra texto. Uma linha no formato exportado (com “[Contexto: …]”) traz
+ * `palavras`, mesmo vazia; uma linha simples fica sem, e ganha a Palavra
+ * detectada como uma frase colada.
+ *
+ * O prefixo antes do primeiro “ : ” só é a Palavra se cada palavra dele estiver
+ * no texto depois: é o que separa “harbour : The harbour : a quiet place.” de
+ * “Note : this matters.” num .txt exportado antes do prefixo vazio existir.
+ */
+function lerLinhaDoTxt(linha) {
+  let resto = linha.trim();
+  let contexto = null;
+  const ctx = resto.match(/\s*\[Contexto:\s*(.*)\]\s*$/);
+  if (ctx) {
+    resto = resto.slice(0, ctx.index).trim();
+    contexto = lerContextoDoTxt(ctx[1]);
   }
 
-  // Remove prefixo de keyword ("palavra : texto" → "texto")
-  const sepIdx = resto.indexOf(' : ');
-  const texto  = sepIdx >= 0 ? resto.slice(sepIdx + 3).trim() : resto.trim();
+  let texto = resto;
+  let palavras = null;
+  if (resto === ':' || resto.startsWith(': ')) {
+    texto = resto.slice(1).trim();
+    palavras = [];
+  } else {
+    const separador = `${resto} `.indexOf(' : ');
+    if (separador >= 0) {
+      const prefixo = resto.slice(0, separador).trim();
+      const depois  = resto.slice(separador + 3).trim();
+      // “palavra : [Contexto: …]”: a Palavra sem frase não é uma linha que dê para ler.
+      if (ctx && !depois) return null;
+      const achadas = palavrasNoTexto(prefixo, depois);
+      if (achadas) { texto = depois; palavras = achadas; }
+    }
+  }
 
   if (!texto) return null;
-  return { texto, fonte, titulo, detalhe };
+  const fonte = contexto?.fonte || FONTE_IMPORTADO;
+  return {
+    texto,
+    contexto: { fonte, titulo: contexto?.titulo || '', detalhe: contexto?.detalhe || '' },
+    // Uma linha exportada daqui já diz a Palavra, mesmo sem nenhuma; uma
+    // linha simples só diz quando o prefixo casou com o texto.
+    ...(ctx || palavras ? { palavras: palavras || [] } : {}),
+  };
+}
+
+/**
+ * “fonte - título - detalhe”, com “Desconhecido” no lugar do vazio. Um Título
+ * com “ - ” (“Dark - Season 1”) fica inteiro: a Fonte é a primeira parte e o
+ * Detalhe, a última.
+ */
+function lerContextoDoTxt(texto) {
+  const partes = texto.split(' - ').map(p => p.trim());
+  const limpo = p => (p && !/^Desconhecido$/i.test(p) ? p : '');
+  if (partes.length <= 3) {
+    return { fonte: limpo(partes[0]), titulo: limpo(partes[1]), detalhe: limpo(partes[2]) };
+  }
+  return { fonte: limpo(partes[0]), titulo: limpo(partes.slice(1, -1).join(' - ')), detalhe: limpo(partes.at(-1)) };
+}
+
+/**
+ * As Palavras de volta com a posição na frase (`word@índice`, `|` entre os
+ * grupos), ou `null` se alguma não está no texto. Uma palavra repetida no
+ * texto volta na primeira vez que aparece depois da anterior do mesmo grupo.
+ */
+function palavrasNoTexto(prefixo, texto) {
+  const grupos = prefixo.split('|')
+    .map(g => g.trim().split(/\s+/).filter(Boolean).map(w => w.toLowerCase()))
+    .filter(g => g.length > 0);
+  if (grupos.length === 0 || !texto) return null;
+  const tokens = tokenizarFrase(texto);
+  const palavras = [];
+  for (const grupo of grupos) {
+    if (palavras.length > 0) palavras.push('|');
+    let depoisDe = 0;
+    for (const palavra of grupo) {
+      const i = tokens.findIndex((t, idx) => idx >= depoisDe && t.isWord && t.clean === palavra);
+      if (i < 0) return null;
+      palavras.push(`${palavra}@${i}`);
+      depoisDe = i + 1;
+    }
+  }
+  return palavras;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
