@@ -125,12 +125,12 @@ test('o painel já aberto em outra aba troca junto, sem recarregar', async ({ pa
   await outra.close();
 });
 
-test('o popup e o Minerar de uma foto carregam a escolha, mas ficam como foram desenhados até serem refeitos (#38, #36/#37)',
+test('o popup carrega a escolha, mas fica como foi desenhado até ser refeito (#38)',
   async ({ page, context, extensao }) => {
-    // Como as duas telas abrem hoje, antes de qualquer escolha: o popup escuro e
-    // o Minerar de uma foto claro, cada um com o fundo em que foi desenhado.
+    // Como o popup abre hoje, antes de qualquer escolha: escuro, o fundo em que
+    // foi desenhado. O Minerar de uma foto já segue o tema (minerar-foto.spec.js).
     const fundosDeHoje = {};
-    for (const tela of ['popup.html', 'bookreader.html']) {
+    for (const tela of ['popup.html']) {
       const aberta = await context.newPage();
       await aberta.goto(extensao.url(tela));
       fundosDeHoje[tela] = await fundoDaPagina(aberta);
@@ -141,9 +141,9 @@ test('o popup e o Minerar de uma foto carregam a escolha, mas ficam como foram d
     await escolherTema(page, 'Claro');
     await expect.poll(() => temaGravado(extensao)).toBe('claro');
 
-    // As duas telas continuam com o fundo que já tinham no escuro: o CSS delas
-    // é o de hoje, escrito à mão fora dos tokens, e só muda no ticket de cada
-    // uma. O teste compara com elas mesmas, para não repetir aqui uma cor.
+    // O popup continua com o fundo que já tinha no escuro: o CSS dele é o de
+    // hoje, escrito à mão fora dos tokens, e só muda no ticket dele. O teste
+    // compara com ele mesmo, para não repetir aqui uma cor.
     for (const [tela, fundoDeHoje] of Object.entries(fundosDeHoje)) {
       const aberta = await context.newPage();
       await aberta.goto(extensao.url(tela));

@@ -32,9 +32,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `lib/atalhos.js` | `PerpetualMiner.Atalhos` — the recorded shortcuts in one place: where they are stored, the defaults, the PT-BR label, “same shortcut” and event matching, and `digitandoNumCampo` (the key belongs to a text field). Loaded by the content script and the panel |
 | `painel-chave.js` | The Configurações › Chave do Gemini card: the saved key masked, with Trocar chave; the empty key's field; `geminiApiKey`. See “Chave do Gemini and Zona de perigo” below |
 | `painel-perigo.js` | The Configurações › Zona de perigo card: the Apagar tudo entry, its reach with and without an account, and the Veio confirmation modal (CFG-17). See “Chave do Gemini and Zona de perigo” below |
-| `bookreader.html/js/css` | BookReader page: upload a book photo → Gemini Vision extracts marked passages |
+| `bookreader.html/js/css` | Minerar de uma foto (ex-BookReader): photos of marked book pages → Gemini Vision reads the marked passages → the person picks which phrases to mine. See “Minerar de uma foto” below |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `tema.js` (the chosen theme, applied before the first paint on every page), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs, the SVG mark and `icone-claro.svg`, which `.veio-marca` swaps in on the light theme through `--veio-marca`). See `veio/README.md` |
-| `lib/voz/catalogo.js` | The Voice catalog as data: the 189 approved copy states from `docs/design/voz/` |
+| `lib/voz/catalogo.js` | The Voice catalog as data: the 194 approved copy states from `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
@@ -113,8 +113,8 @@ and start and end together; the content scrolls inside its island (entering an a
 the screen but stay as the links' names (visually hidden, not `display: none`) and become tooltips.
 
 Until an area is rebuilt, today's content lives inside the shell in `.conteudo-de-hoje` blocks marked
-`data-tema="claro"`: its CSS was drawn for a light background. In Frases that block holds only today's bulk actions
-(select page/all, edit, delete, export, send to Anki, import, bulk add) until #30, #31 and #32 rebuild them.
+`data-tema="claro"`: its CSS was drawn for a light background. Frases has none left: #30 and #31 rebuilt its bulk
+actions.
 
 Configurações is the “summary first” variant C (`docs/design/painel/configuracoes/`): each of the five cards (Conta & sync ·
 Atalhos · Chave do Gemini · Aparência · Zona de perigo) is one closed row — icon tile, title, a summary of its state, chevron — and
@@ -204,7 +204,7 @@ is a single Tab stop and the arrow keys move between its words (`andarEntrePalav
 an unknown Fonte shows its stored name; `fonteDaFrase` reads `contexto.fonte`, else `streaming`, for both the badge and
 the Fonte filter), Título · Detalhe and the state badge (PAI-08).
 
-The area header carries **Minerar frases** (ADD-01), which opens today's bulk add until #31 brings its menu. The filter
+The area header carries **Minerar frases ▾** (ADD-01; see “Minerar frases” below). The filter
 row: one Fonte select (the Fontes in the history), language, order, the search (text and Título, with ×)
 and the “Ocultar enviadas e exportadas” toggle. Below it, the **Selecionar página** checkbox (PAI-31) marks the whole
 page, and shows the mixed state when part of it is selected (`refletirSelecao`). Changing a filter or the search clears
@@ -228,6 +228,82 @@ Two marks, never the same one: `status: 'exported'` is **Enviada ao Anki** (the 
 the field keeps its pre-glossary name), and `exportadaTxt` is **Exportada** (it was written to a .txt). Exporting never
 writes the Envio's mark, a phrase that has both says Enviada ao Anki, and “Ocultar enviadas e exportadas” hides either.
 Both marks travel to the cloud and merge on load in the same place (`carregarFrasesFirestore`).
+
+### Minerar frases (`painel.js`, ADD-01…12)
+
+The header's **Minerar frases ▾** is a menu button (`aria-haspopup="menu"`): Colar · Arquivo .txt · Foto, each with its
+ADD-11 line. Arrows (wrapping), Home/End move inside it; Esc returns focus to the button; Tab and a click outside
+close it. Colar and Arquivo .txt open one Veio modal (`#modal-minerar`) on the right option of its segmented control
+(radios, like the Anki tabs); **Foto ↗** sits beside it as a plain button, because it is not a view: it closes the modal
+and opens `bookreader.html` in a new tab, as the menu's Foto does. The PAI-02 empty state's button opens the modal on Colar.
+
+- **Colar:** the textarea (ADD-02 as placeholder), Fonte and Título (PAI-21 labels), the live count in mono (PAI-05) and
+  “Minerar N frases” (ADD-12, “Minerar frases” with none). Empty: ADD-03 under the field, `aria-invalid`, linked by
+  `aria-describedby`. No Fonte → `manual`. Pasted phrases get the detected Palavra, as before.
+- **Arquivo .txt:** imports as soon as a file is chosen. UTF-8 that does not decode (or has NUL) is ADD-07, no
+  non-blank line is ADD-08, nothing new is ADD-09 in the modal with Fechar in place of Cancelar (only the part that happened: `soRepetidas`, `soIlegiveis` or `ambas`, never “0 linhas”). Repeated phrases
+  (against the history and inside the file, case- and whitespace-insensitive) stay out; the toast is ADD-10 with
+  repeated ones, ADD-05 without.
+- **Progress (ADD-04)** replaces the options and fields inside the modal. Each phrase is sent to the service worker
+  (`SALVAR_HISTORICO`) one at a time, so it goes through `naFilaDeGravacao`, and the count moves only when that save
+  comes back confirmed; the list shows each one through `chrome.storage.onChanged`. `umaMineracaoPorVez` makes a second
+  click (the double click of #9) do nothing — and so does Minerar in Colar while a chosen .txt is still being read.
+- **Cloud:** the panel sends `semNuvem: true` and uploads the new phrases in one `batchWrite` at the end, then removes
+  them from `pm_pending_sync`. If that fails, the persistent aviso ADD-06 stays in Frases with Tentar de novo (which
+  repeats the upload) and no Detalhes (the owner's call: the cause goes to the Conta & sync card's Detalhes), and the card and the chip say the computer is out of sync — the same exception to
+  the “sync problems only in the card” rule as PAI-15. Closing the aviso leaves them in `pm_pending_sync` for the next load.
+
+**The .txt line** is `palavra : texto [Contexto: fonte - título - detalhe]` (`linhaDoTxt`; empty fields as
+`Desconhecido`, Palavra groups joined by ` | `, word positions dropped). A phrase with no Palavra whose text has ` : `
+(or ends in ` :`) is written with an empty prefix (`: texto`), so the text comes back whole. A Palavra group that is
+no longer in the text (the text was edited after it was picked) is left out of the line, and the other groups stay:
+read back, it would stick to the start of the text. The Anki Bridge gets the same line without either rule
+(`linhaParaOAnki`), because its parser does not know the empty prefix. Reading (`lerLinhaDoTxt`): a line in that
+format brings its Contexto and its Palavras back (`palavrasNoTexto` finds each word's position again; a word repeated in
+the text comes back at its first occurrence after the previous one of its group) and skips the automatic Palavra; the
+prefix before the first ` : ` only counts as the Palavra when all its words are in the text after it, which keeps
+older exports like `Note : this matters` whole. A Título with ` - ` comes back whole (Fonte is the first part, Detalhe
+the last). A plain line is a phrase with Fonte `importado` and the detected Palavra.
+
+`SALVAR_HISTORICO` takes two optional fields for this: `palavras` (an array, possibly empty: the Palavra is stored as
+given with `autoKeyword: false`, and detection is skipped) and `semNuvem` (the service worker does not sync the phrase
+itself). Every other sender is unchanged.
+
+### Minerar de uma foto (`bookreader.*`, docs/design/foto/, variant C)
+
+Two columns under a top bar (Veio mark, FOT-01 name, the **Livro** field and “Voltar ao painel”). Left, the photo
+queue: the drop area (the whole page takes a drop; “Escolher” opens the picker), the progress (FOT-20) while reading,
+and one card per photo with its thumbnail and status (FOT-19: Pronta · Na fila · Lendo… · N frases · Sem marcações ·
+Falhou + the cause), with the “Marcações que o Gemini lê” legend (FOT-24) at the foot. Right, the phrases grouped by
+photo (“Foto N · name”), with the single “Selecionar todas” checkbox (mixed with part marked), the count (FOT-09) and
+the sticky “Minerar N frases” (FOT-12; nothing marked → disabled with FOT-13). One photo stops at the preview
+(FOT-03, “Ler marcações”); several go straight to reading, one at a time, in order. Each phrase is editable in place
+(a `role="textbox"` named PAI-33.campo); its checkbox is named by the phrase.
+
+The page only states what it confirmed. A reading that worked with nothing marked is “Sem marcações” and the FOT-10
+empty state; a failed API call is “Falhou” with FOT-11's cause (429 → limit, 401/403/“API key” → key, with “Abrir
+Configurações”, no network → network, else GLB-01) — it never blames the markings. As in the prototype, failures are
+said once: with phrases on screen, one aviso for all failed photos (the danger icon, “Não deu para ler a foto 2.” or
+“…3 fotos.” in bold and the first one's cause on one line), rebuilt only when another photo fails, so once closed it
+does not come back with a photo that was read; with no phrase, the phrases column itself is the failure
+(FOT-11.titulo “Não deu para ler a foto / as fotos”, the cause, “Abrir Configurações” for a refused key) and there is
+no aviso. By the owner's call on this page, a reading failure has no “Detalhes” (an exception to V3): the cause is
+already in the person's terms. A 200 with no text (a blocked request, a cut-off answer) is a failure too: only the
+`NENHUM_TRECHO` sentinel means “Sem marcações”, and FOT-10 (its title singular or plural by the photos read, in bold
+over the how-to-mark text) shows only when no photo failed. The formats (FOT-02) sit at the end of the “Fotos” title
+row until the first photo, so the drop area keeps its height. A mined phrase shows the `--ok` selo “Minerada”, its checkbox is disabled and it leaves the button, so a second
+click or a new photo never saves it twice; the click is ignored while a save is in flight. All saved → toast FOT-14;
+part or none → aviso FOT-15/16 whose “Tentar de novo” mines again exactly the phrases that failed. Photo status changes are announced (the queue is a polite live region).
+
+Formats: the picker's `accept` and the check take JPG, PNG, WEBP and HEIC — exactly what FOT-02 announces — by type or, with no type (HEIC on
+Windows), by extension, and send Gemini the real MIME type; a file that is not a photo gets the FOT-04 aviso. A HEIC
+thumbnail Chrome cannot draw falls back to the photo icon. The key lives only in Configurações: with none, the FOT-05
+card, whose button (like the key-refused aviso) opens `painel.html#configuracoes/chave`, and a key saved there frees
+the page through `chrome.storage.onChanged`. “Voltar ao painel” and that button focus the panel tab already open
+(any hash), moving it to the address when there is one, and only open a new tab when there is none. A panel already
+at that address gets no `hashchange`, so the page sends `PAINEL_REAPLICAR_ENDERECO` and `painel-shell.js` applies the
+address again (focusing the key field). Cancelar,
+Recomeçar and “Tentar de novo” on one photo are #37.
 
 ### Base components (`veio/componentes.css` + `veio/componentes.js`)
 
@@ -349,7 +425,8 @@ Each entry in `chrome.storage.local["frases"]` (unlimited, newest first):
 ```
 
 Other storage keys:
-- `geminiApiKey`, `bookTitleDefault` — BookReader settings
+- `geminiApiKey` — the Gemini key, written only by Configurações › Chave do Gemini and read by Minerar de uma foto
+- `bookTitleDefault` — the Livro (Título) last typed in Minerar de uma foto, filled back on the next visit
 - `pm_tema` — `'escuro'` (the default, and what an absent key means) or `'claro'`: the theme chosen on this computer. It is local on purpose and never syncs, so each computer opens in the theme picked on it. `veio/tema.js` mirrors it into `localStorage` under the same name, which is read before the first paint so a light page never flashes dark; `chrome.storage` stays the truth and corrects the mirror
 - `pm_firebase_auth` — `{ uid, idToken, refreshToken, expiresAt }` — Firebase auth session
 - `pm_user_info` — `{ uid, email, displayName, photoURL }` — Google user profile
@@ -378,7 +455,7 @@ Every read-modify-write of `frases`, `pm_pending_sync` and `pm_deleted_ids` in t
 
 Not covered by the queue:
 - The auto-miner duplicate check reads `frases` outside the queue before calling `salvarFrase`, so two identical auto candidates arriving together can both be saved (a duplicate, never a lost phrase).
-- `painel.js` rewrites `frases` (and `pm_deleted_ids`) directly, outside the service worker, so editing or deleting in the panel during a photo save can still lose phrases.
+- `painel.js` rewrites `frases` (and `pm_deleted_ids`) directly, outside the service worker, so editing or deleting in the panel during a photo save can still lose phrases. Minerar frases (Colar and Arquivo .txt) is not in this list: it saves through the service worker.
 
 ### Toolbar Badge (background.js)
 
@@ -404,15 +481,16 @@ npm test         # launches Chromium with the unpacked extension and runs the su
 On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx playwright install-deps chromium`, once.
 
 - `e2e/fixtures.js` launches a fresh Chromium profile per test with the repo root loaded as an unpacked extension, fakes the network at the HTTP boundary and blocks every other external request. It gives tests `extensao` (id, service worker, `url()`, `lerStorage`/`gravarStorage`, `frases()`, `semearSessao()`), `fakes` and `paginas`.
-- `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`), Gemini, and Firestore/Google (in-memory documents, token refresh; `ficarForaDoAr()`, `recusarAcesso()`, `recusarEscritas()`, `expirarSessao()`, `gravarFrases(uid, frases)`, `usarPerfil({ name, email, picture })`, the profile the Google login returns). `semearSessao({ expirada })` writes an account session to storage, skipping the real login.
+- `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`), Gemini (`responderFrases(frases)`, `falhar(status, mensagem)`, `ficarSemRede()`, `bloquear(motivo)` — a 200 with no text, the `promptFeedback.blockReason` —, `segurarFrases(frases)` — holds the photo in “Lendo…” until the returned function is called — and `chamadas`, with the key and MIME type of each read), and Firestore/Google (in-memory documents, token refresh; `ficarForaDoAr()`, `recusarAcesso()`, `recusarEscritas()`, `expirarSessao()`, `gravarFrases(uid, frases)`, `usarPerfil({ name, email, picture })`, the profile the Google login returns). `semearSessao({ expirada })` writes an account session to storage, skipping the real login.
 - **The real Google login runs offline.** The `chrome.identity.launchWebAuthFlow` window loads outside Playwright's routing (a `context.route` never sees it), so the fixture maps `accounts.google.com` to a local HTTPS server (`fakes/login-google.js`, self-signed certificate made with `openssl` per worker, `--host-resolver-rules` + `--ignore-certificate-errors`). `fakes.google.proximoLogin('entrar'|'janela'|'falhar')` picks what the window does: return with tokens, stay open (the test closes it: cancelling), or fail to load. This also keeps Chromium's own background calls to that host off the internet.
 - `e2e/pages/`: local fixture pages where the content script is injected: `player.html` (fake player with a caption), `texto.html` (plain text to select), `sem-video.html`, `player-em-iframe.html?player=<url>` (embeds the player from another origin, e.g. `paginas.urlCruzada('player.html')`), `hostil.html` + `hostil-filho.html` (a page that tries to drive the extension by itself), `player-marcacao.html` / `texto-marcacao.html` (caption, title and selectable text carrying markup as text, to prove the content script always inserts page text as text, never as HTML), `player-com-campos.html` (a player with an input, a textarea, a contenteditable and an input inside a closed shadow root, which the page keeps as `window.campoFechado`), `video-escondido.html` (an ad frame whose only video is 1 px, embedded through `player-em-iframe.html`), `sem-video-com-imagens.html` (image captions with the classes the generic caption selectors look for, and no video) and `player-estilos-hostis.html` (a page whose CSS paints everything, to prove the overlay's styles and the site's never cross).
 - `tests/overlay-visual.spec.js` is the **visual reference of the overlay**, taken in the fake player resized to the prototype's player (1118 × 630), so the owner compares it with `docs/design/overlay/prototipo-overlay.html?variant=M1` at the same scale.
 - `tests/overlay.spec.js` fails the service worker's storage on purpose (`chrome.storage.local.set` refuses or holds the write) — there is no network between the service worker and the storage, so the fault is injected at that boundary — and serves a page with `Permissions-Policy: clipboard-write=()` to deny the clipboard.
 - `e2e/vitrine/`: the Veio showcase — tokens, type scale, radii, a Russian phrase and **every base component**, in both themes and in the states each component actually has (button and field: focus and disabled, plus error on the field; a badge only has normal). `componentes-da-vitrine.js` builds the gallery once per theme with the same function, so the two columns never diverge; its sample copy comes from the Voice catalog by ID (`CATALOGO_DA_VITRINE`), and anything that is showcase scaffolding is marked `data-vitrine-chrome`. The fixture server also serves `/veio/…` and `/lib/…` from the extension root, so the showcase loads the same tokens, fonts, components and catalog the extension pages load. After the owner's review it is **the visual reference**.
 - The showcase also carries a **mock of the toolbar badge** in its three states, outside the two theme columns — Chrome draws the real badge on the browser toolbar, which no static page (and so no Vercel preview) can show. The mock reads its colors from the tokens, and the badge test asserts those tokens match what the service worker hands Chrome, so the copy in `background.js` can't drift.
-- `tests/painel-frases-visual.spec.js` holds the **visual reference of the Frases list** (cards wide and as a rail, each at the top and with the island scrolled to the pagination; loading, first run, filters and search with no result as the full page), in the same way: `npx playwright test painel-frases-visual --update-snapshots` after the owner approves a new look. Today's bulk actions (`.conteudo-de-hoje`) are masked.
+- `tests/painel-frases-visual.spec.js` holds the **visual reference of the Frases list** (cards wide and as a rail, each at the top and with the island scrolled to the pagination; loading, first run, filters and search with no result as the full page; the selection bar, the card actions and the modals; Minerar frases: the menu, Colar filled and empty, the progress, Arquivo .txt, ADD-09 and the ADD-06 aviso), in the same way: `npx playwright test painel-frases-visual --update-snapshots` after the owner approves a new look.
 - `tests/painel-shell-visual.spec.js` holds the **visual reference of the panel shell**: its approved states (Frases wide and as a rail, first run, the Conexão off with F1, Configurações with an account) as `toHaveScreenshot` baselines in `painel-shell-visual.spec.js-snapshots/` (taken on Linux, with the clock frozen on the day of the sample phrases). A visual change to the shell fails them; after the owner approves the new look, `npx playwright test painel-shell-visual --update-snapshots` replaces the reference. The content inside each area (`.conteudo-de-hoje`, and the Frases list, which has its own reference) is masked: the reference is the shell around it.
+- `tests/minerar-foto-visual.spec.js` does the same for Minerar de uma foto (no key, start, preview, reading a batch, phrases of two photos, mined, one photo failed, no markings, the narrow window, the light theme), with the same marked page (`pages/pagina-marcada.png`) in every photo; compared by the owner with the locked prototype (`docs/design/foto/prototipo-bookreader.html?variant=C`). The toast is masked.
 - `tests/configuracoes-visual.spec.js` does the same for Configurações (cards closed; Conta & sync synced, not synced, logged out after a failed login; Chave do Gemini saved and refused empty; Zona de perigo with an account and its modal; Atalhos open, recording and with a repeated shortcut refused; the narrow window; Aparência open in dark and in light), compared by the owner side by side with the locked prototype (`?variant=C`).
 - `HEADED=1 npm test` shows the browser.
 - Tests assert what the person sees and what ends up stored, never internal functions. Three narrow exceptions, each named in the test's own comment:
@@ -425,7 +503,7 @@ The legacy tests keep running: `node test_sync.js`, `node test_bridge_panel.js`,
 ## Key Constants
 
 - `ATALHOS_PADRAO` in `lib/atalhos.js` — the factory shortcuts: Minerar legenda on **Alt+S**, Minerar seleção with none
-- `SENTINEL_VAZIO = 'NENHUM_TRECHO'` in `bookreader.js` — returned by Gemini when no marked passages found
+- `SENTINEL_VAZIO = 'NENHUM_TRECHO'` in `bookreader.js` — returned by Gemini when no marked passages found (the photo is “Sem marcações”, FOT-10)
 - `FIREBASE_PROJECT = 'perpetualminer-4c219'` in `background.js`
 - `BADGE_COR_DE_FUNDO = '#F5B83D'` / `BADGE_COR_DO_TEXTO = '#1A1204'` in `background.js` — the toolbar badge's Veio colors
 - `ALARME_VIRADA_DO_DIA = 'pm-virada-do-dia'` in `background.js` — the alarm that resets the badge at midnight

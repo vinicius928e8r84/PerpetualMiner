@@ -43,17 +43,15 @@ test('a contagem que Minerar de uma foto mostra depois de minerar bate com o que
   await extensao.gravarStorage({ geminiApiKey: 'chave-de-teste' });
   fakes.gemini.responderFrases(FRASES);
   await page.goto(extensao.url('bookreader.html'));
-  await expect(page.locator('#api-key-input')).toHaveValue('chave-de-teste');
 
-  await page.locator('#file-input').setInputFiles({ name: 'pagina.png', mimeType: 'image/png', buffer: PNG_1X1 });
-  await page.locator('#btn-analisar').click();
-  await expect(page.locator('.result-item')).toHaveCount(FRASES.length);
-  await page.locator('#btn-salvar').click();
+  await page.locator('#foto-arquivo').setInputFiles({ name: 'pagina.png', mimeType: 'image/png', buffer: PNG_1X1 });
+  await page.getByRole('button', { name: 'Ler marcações' }).click();
+  await expect(page.locator('#foto-minerar')).toHaveText(`Minerar ${FRASES.length} frases`);
+  await page.locator('#foto-minerar').click();
 
-  // O texto da tela ainda é o antigo ("N trechos salvos"); o redesign troca pela cópia do catálogo.
-  const botao = page.locator('#btn-salvar');
-  await expect(botao).toHaveText(/\d+ trechos? salvos?/);
-  const contagemNaTela = Number((await botao.textContent()).match(/(\d+) trecho/)[1]);
+  const toast = page.locator('.veio-toast');
+  await expect(toast).toHaveText(/^\d+ frases? mineradas?$/);
+  const contagemNaTela = Number((await toast.textContent()).match(/^(\d+)/)[1]);
   const gravadas = (await extensao.frases()).filter(f => f.streaming === 'livro');
 
   expect(contagemNaTela).toBe(FRASES.length);

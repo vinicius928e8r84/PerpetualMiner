@@ -165,11 +165,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.type === 'SALVAR_HISTORICO') {
+    // O Minerar frases do painel manda `palavras` quando a linha já trazia a
+    // Palavra (um .txt exportado daqui, mesmo sem nenhuma): ela volta como está,
+    // sem a detecção automática. Ele também manda `semNuvem`, porque sobe as
+    // frases de uma vez no fim e precisa saber se a nuvem falhou (ADD-06).
+    const palavras = Array.isArray(request.palavras) ? request.palavras.map(String) : null;
     salvarFrase(
       request.texto,
       request.origem,
       request.contexto  || null,
       request.idioma    || 'Inglês',
+      palavras?.length ? { keywords: palavras, autoKeyword: false } : {},
+      { comPalavraAutomatica: !palavras, comNuvem: !request.semNuvem },
     )
       .then(frase => sendResponse({ ok: true, frase }))
       .catch(err => sendResponse({ ok: false, error: err?.message || 'save_failed' }));
@@ -250,7 +257,8 @@ function desmarcarPendenteDeSync(id) {
   });
 }
 
-async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', extras = {}) {
+async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', extras = {},
+  { comPalavraAutomatica = true, comNuvem = true } = {}) {
   const novaFrase = {
     texto,
     data:      new Date().toLocaleDateString('pt-BR'),
@@ -260,7 +268,9 @@ async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', e
     ...(contexto && { contexto }),
     ...extras,
   };
-  const autoKeywords = novaFrase.keywords?.length ? novaFrase.keywords : await autoKeywordsForPhrase(novaFrase);
+  const autoKeywords = novaFrase.keywords?.length || !comPalavraAutomatica
+    ? (novaFrase.keywords || [])
+    : await autoKeywordsForPhrase(novaFrase);
   if (autoKeywords.length > 0 && !novaFrase.keywords?.length) {
     novaFrase.keywords = autoKeywords;
     novaFrase.autoKeyword = true;
@@ -280,7 +290,7 @@ async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', e
   });
 
   // Se o usuário estiver logado, sincroniza com o Firestore em background
-  sincronizarComFirestore(novaFrase);
+  if (comNuvem) sincronizarComFirestore(novaFrase);
   return novaFrase;
 }
 

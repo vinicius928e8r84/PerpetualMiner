@@ -68,49 +68,32 @@
       <section class="shell-area" data-area="frases" aria-labelledby="titulo-frases">
         <header class="shell-cabecalho">
           <h1 id="titulo-frases" data-voz="SHL-02.frases"></h1>
-          <!-- Até o #31 trazer o menu (Colar · Arquivo .txt · Foto), abre a adição em massa de hoje. -->
-          <button class="veio-botao veio-botao--primario" id="btn-minerar-frases" type="button">
-            <span data-voz="ADD-01.botao"></span><span data-icone="abaixo"></span>
-          </button>
-        </header>
-
-        <!--
-          O importar e a adição em massa de hoje continuam aqui até o #31
-          (Minerar frases) trazer o menu deles; o BookReader é página própria.
-        -->
-        <div class="conteudo-de-hoje" data-tema="claro">
-          <div class="main-header">
-            <div class="header-right">
-              <a href="bookreader.html" target="_blank" class="bookreader-btn" title="Abrir BookReader – transcrição de livros físicos">
-                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                </svg>
-                BookReader
-              </a>
-              <input type="file" id="import-file-input" accept=".txt" hidden>
-              <button id="btn-import" class="action-green-btn" title="Importar frases de um arquivo .txt exportado">
-                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 5 17 10"/>
-                  <line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-                Importar .txt
+          <!-- Minerar frases (ADD-01 · ADD-11): Colar e Arquivo .txt abrem o modal
+               na aba certa; Foto abre Minerar de uma foto numa aba nova. -->
+          <div class="minerar-menu">
+            <button class="veio-botao veio-botao--primario" id="btn-minerar-frases" type="button"
+                    aria-haspopup="menu" aria-expanded="false" aria-controls="menu-minerar">
+              <span data-voz="ADD-01.botao"></span><span data-icone="abaixo"></span>
+            </button>
+            <div class="minerar-menu__lista" id="menu-minerar" role="menu" data-voz-aria="ADD-01.botao" hidden>
+              <button class="minerar-menu__item" type="button" role="menuitem" tabindex="-1" data-minerar="colar">
+                <span data-icone="colar"></span>
+                <span><b data-voz="ADD-11.colar"></b><small data-voz="ADD-11.colarAjuda"></small></span>
               </button>
-              <button id="btn-multi-add" class="action-green-btn" title="Adicionar várias frases de uma vez via texto">
-                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <line x1="12" y1="5" x2="12" y2="19"/>
-                  <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Adição em Massa
+              <button class="minerar-menu__item" type="button" role="menuitem" tabindex="-1" data-minerar="arquivo">
+                <span data-icone="arquivo"></span>
+                <span><b data-voz="ADD-11.arquivo"></b><small data-voz="ADD-11.arquivoAjuda"></small></span>
+              </button>
+              <button class="minerar-menu__item" type="button" role="menuitem" tabindex="-1" data-minerar="foto">
+                <span data-icone="foto"></span>
+                <span><b data-voz="ADD-11.foto"></b><small data-voz="ADD-11.fotoAjuda"></small></span>
               </button>
             </div>
           </div>
-
-        </div>
+        </header>
 
         <!-- Os avisos persistentes da área (C1): a nuvem ficou com as frases
-             apagadas (PAI-15) e o copiar que não deu (PAI-17). -->
+             apagadas (PAI-15) ou mineradas (ADD-06), e o copiar que não deu (PAI-17). -->
         <div class="frases-avisos" id="frases-avisos"></div>
 
         <!-- Filtros numa linha que quebra: Fonte · idioma · ordem, a busca e o toggle. -->
@@ -545,72 +528,73 @@
     </div>
   </div>
 
-  <!-- ── Modal de Adição em Massa ────────────────────────────── -->
-  <div id="bulk-add-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal modal-wide">
+  <!-- ── Minerar frases (ADD-01…12): Colar | Arquivo .txt | Foto ↗ ── -->
+  <div class="veio-scrim" id="modal-minerar" hidden>
+    <div class="veio-modal minerar-modal" role="dialog" aria-labelledby="modal-minerar-titulo">
+      <button class="veio-botao-icone veio-modal__fechar" type="button" data-fechar-modal
+              data-voz-aria="PAI-34" data-voz-title="PAI-34"><span data-icone="fechar"></span></button>
+      <h2 class="veio-modal__titulo" id="modal-minerar-titulo" data-voz="ADD-01.botao"></h2>
 
-      <div class="modal-header">
-        <div>
-          <h3 class="modal-title">Adição em Massa</h3>
-          <p  class="modal-subtitle">Cole as frases — uma por linha</p>
-        </div>
-        <button id="btn-bulk-add-close" class="modal-close" title="Fechar">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
-      </div>
-
-      <div class="modal-body">
-        <div class="modal-field">
-          <label class="modal-label" for="bulk-add-textarea">Frases</label>
-          <textarea id="bulk-add-textarea" class="modal-textarea"
-                    placeholder="The quick brown fox jumps over the lazy dog&#10;All that glitters is not gold&#10;To be or not to be, that is the question"
-                    rows="8" spellcheck="false"></textarea>
-        </div>
-        <div class="modal-2col">
-          <div class="modal-field">
-            <label class="modal-label" for="bulk-add-fonte">Fonte</label>
-            <input id="bulk-add-fonte" class="modal-input" type="text"
-                   placeholder="Ex: livro, web, podcast">
+      <div class="minerar-modal__edicao" id="minerar-edicao">
+        <div class="minerar-abas">
+          <div class="veio-segmentado" role="radiogroup" data-voz-aria="ADD-01.botao">
+            <label class="veio-segmentado__opcao"><input type="radio" name="aba-minerar" value="colar"><span data-voz="ADD-01.colar"></span></label>
+            <label class="veio-segmentado__opcao"><input type="radio" name="aba-minerar" value="arquivo"><span data-voz="ADD-01.arquivo"></span></label>
           </div>
-          <div class="modal-field">
-            <label class="modal-label" for="bulk-add-titulo">Título</label>
-            <input id="bulk-add-titulo" class="modal-input" type="text"
-                   placeholder="Ex: Atomic Habits">
+          <!-- Foto não é uma aba: fecha o modal e abre Minerar de uma foto numa aba nova. -->
+          <button class="veio-botao veio-botao--fantasma veio-botao--compacto minerar-abas__foto" type="button" id="btn-minerar-foto"
+                  aria-describedby="minerar-foto-ajuda">
+            <span data-voz="ADD-01.foto"></span><span data-icone="externo"></span>
+          </button>
+          <span id="minerar-foto-ajuda" data-voz="ADD-11.fotoAjuda" hidden></span>
+        </div>
+
+        <form class="minerar-colar" id="minerar-colar" novalidate>
+          <label class="frases-modal__campo">
+            <span class="frases-modal__rotulo" data-voz="ADD-12.campo"></span>
+            <textarea class="veio-campo minerar-colar__frases" id="minerar-frases" rows="7" spellcheck="false"
+                      aria-describedby="minerar-frases-erro"></textarea>
+            <span class="veio-campo-erro" id="minerar-frases-erro" hidden></span>
+          </label>
+          <div class="minerar-colar__contexto">
+            <label class="frases-modal__campo">
+              <span class="frases-modal__rotulo" data-voz="PAI-21.fonte"></span>
+              <input class="veio-campo" id="minerar-fonte" type="text" autocomplete="off">
+            </label>
+            <label class="frases-modal__campo">
+              <span class="frases-modal__rotulo" data-voz="PAI-21.titulo"></span>
+              <input class="veio-campo" id="minerar-titulo" type="text" autocomplete="off">
+            </label>
+          </div>
+          <div class="veio-modal__acoes">
+            <span class="minerar-contagem" id="minerar-contagem"></span>
+            <button class="veio-botao veio-botao--fantasma" type="button" data-fechar-modal data-voz="ADD-12.cancelar"></button>
+            <button class="veio-botao veio-botao--primario" type="submit" id="btn-minerar-colar"></button>
+          </div>
+        </form>
+
+        <div class="minerar-arquivo" id="minerar-arquivo" hidden>
+          <div class="minerar-arquivo__area">
+            <b class="minerar-arquivo__nome" id="minerar-arquivo-nome"></b>
+            <p class="minerar-arquivo__nota" data-voz="ADD-12.arquivoNota"></p>
+            <input type="file" id="minerar-arquivo-escolha" accept=".txt,text/plain" hidden>
+            <button class="veio-botao veio-botao--contorno veio-botao--compacto" type="button" id="btn-minerar-escolher"></button>
+          </div>
+          <p class="veio-campo-erro" id="minerar-arquivo-erro" role="alert" hidden></p>
+          <p class="minerar-resultado" id="minerar-arquivo-resultado" role="status" hidden></p>
+          <div class="veio-modal__acoes">
+            <button class="veio-botao veio-botao--fantasma" type="button" data-fechar-modal id="btn-minerar-arquivo-sair"></button>
           </div>
         </div>
       </div>
 
-      <div class="modal-footer">
-        <div id="bulk-add-progress-wrap" class="ba-progress hidden">
-          <div class="ba-progress-track">
-            <div id="bulk-add-progress-bar" class="ba-progress-fill"></div>
-          </div>
-          <span id="bulk-add-progress-label" class="ba-progress-label"></span>
-        </div>
-        <button id="btn-bulk-add-cancel" class="btn-modal-cancel">Cancelar</button>
-        <button id="btn-bulk-add-save" class="btn-modal-save btn-green-save">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-          Adicionar frases
-        </button>
+      <!-- ADD-04: o progresso fica no próprio modal e anda a cada frase gravada. -->
+      <div class="minerar-progresso" id="minerar-progresso" hidden>
+        <b class="minerar-progresso__rotulo" id="minerar-progresso-rotulo" aria-live="polite"></b>
+        <div class="minerar-progresso__barra" role="progressbar" aria-labelledby="minerar-progresso-rotulo"
+             aria-valuemin="0"><i></i></div>
+        <p class="minerar-progresso__nota" data-voz="ADD-12.progressoNota"></p>
       </div>
-
-    </div>
-  </div>
-
-  <!-- ── Overlay de Progresso do Importador ───────────────── -->
-  <div id="import-overlay" class="import-overlay hidden">
-    <div class="import-overlay-box">
-      <div class="import-spinner"></div>
-      <p id="import-overlay-title" class="import-overlay-title">Importando frases…</p>
-      <p id="import-overlay-sub"   class="import-overlay-sub"></p>
-      <div class="ba-progress-track import-bar-track">
-        <div id="import-overlay-bar" class="ba-progress-fill" style="width:0%"></div>
-      </div>
-      <p id="import-overlay-label" class="import-overlay-label"></p>
     </div>
   </div>
 
