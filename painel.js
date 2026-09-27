@@ -2,7 +2,9 @@
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
 // deste arquivo, pelo painel.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
-const { detectarIdioma, IDIOMAS, textoDaVoz, CATALOGO_DA_VOZ, Atalhos } = PerpetualMiner;
+const { detectarIdioma, IDIOMAS, textoDaVoz, Atalhos } = PerpetualMiner;
+// O nome da Fonte e o dia da frase, os mesmos do popup (lib/contexto.js).
+const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
 // A lista de Frases é montada com os componentes da Base Veio (veio/componentes.js).
 const {
   iconeVeio, montarChipDaPalavra, escreverFraseClicavel, andarEntrePalavras, focarPalavra, refletirSelecao, montarTecla,
@@ -24,10 +26,6 @@ const POR_PAGINA = 10;
 // O atalho de legenda gravado em Configurações › Atalhos (lib/atalhos.js), que
 // o vazio de Frases (PAI-02) ensina. Começa no padrão até a leitura voltar.
 let atalhoDeLegenda = Atalhos.ATALHOS_PADRAO.legenda;
-
-// As Fontes que o catálogo nomeia (PAI-29). Os nomes antigos gravados em
-// frases de antes apontam para o nome de hoje.
-const APELIDOS_DE_FONTE = { amazon: 'primevideo', hbomax: 'max', disney: 'disneyplus', star: 'starplus' };
 
 // O desenho de vídeo da Base Veio, que lá se chama `netflix`: todo serviço de
 // vídeo usa ele no selo de Fonte.
@@ -1791,20 +1789,6 @@ function botaoDoVazio(rotulo, aoClicar, variante = 'veio-botao--contorno') {
   return botao;
 }
 
-/** O cabeçalho de data (PAI-11): hoje · ontem · há 3 dias. */
-function rotuloDoDia(dataStr) {
-  const partes = String(dataStr || '').split('/');
-  if (partes.length !== 3) return dataStr || '';
-  const dia  = new Date(Number(partes[2]), Number(partes[1]) - 1, Number(partes[0]));
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-  const dias = Math.round((hoje - dia) / 86400000);
-  if (Number.isNaN(dias) || dias < 0) return dataStr;
-  if (dias === 0) return textoDaVoz('PAI-11.hoje');
-  if (dias === 1) return textoDaVoz('PAI-11.ontem');
-  return textoDaVoz('PAI-11.diasAtras', { n: dias });
-}
-
 function montarCartao(f) {
   const cartao = criar('article', 'veio-frase veio-frase--na-ilha');
   cartao.dataset.id = f.id;
@@ -1898,25 +1882,6 @@ function montarContexto(f) {
  */
 function foiEnviadaAoAnki(f) {
   return f.status === STATUS_ENVIADA_AO_ANKI;
-}
-
-/** A Fonte como o catálogo a chama: um nome antigo gravado vira o de hoje. */
-function chaveDaFonte(fonte) {
-  return APELIDOS_DE_FONTE[fonte] || fonte;
-}
-
-/**
- * A Fonte da frase: a do Contexto, senão a gravada em `streaming`. O selo e o
- * filtro de Fonte leem daqui, para o filtro achar a Fonte que o selo mostra.
- */
-function fonteDaFrase(f) {
-  return chaveDaFonte(f.contexto?.fonte || f.streaming || '');
-}
-
-/** O nome da Fonte (PAI-29). Uma Fonte fora do catálogo sai com o nome gravado. */
-function nomeDaFonte(fonte) {
-  const chave = chaveDaFonte(fonte);
-  return Object.hasOwn(CATALOGO_DA_VOZ['PAI-29'], chave) ? textoDaVoz(`PAI-29.${chave}`) : fonte;
 }
 
 // As 4 ações só-ícone do cartão (PAI-30), que aparecem no hover e no foco.

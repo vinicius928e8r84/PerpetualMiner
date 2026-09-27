@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html style="width:340px">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <title>PerpetualMiner</title>
@@ -9,96 +9,51 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <!--
-  O popup ainda é o de hoje (#38 refaz ele na Veio): o CSS foi desenhado
-  para o fundo escuro, então o corpo fica preso no escuro até lá. O <html> já
-  recebe o tema escolhido (veio/tema.js), e o popup passa a segui-lo inteiro
-  quando #38 o trouxer para os tokens.
+  Popup “Cockpit” (docs/design/popup/, variante A): uma pilha de 340 px, de cima
+  para baixo — marca, Abrir painel, Mineração automática, mineração rápida, as
+  5 últimas só leitura e o rodapé com o atalho de legenda. Toda a cópia vem do
+  catálogo da Voz, escrita por popup.js; aqui só mora a estrutura.
 -->
-<body data-tema="escuro">
+<body>
 
-  <div class="popup-header">
+  <header class="popup-cabecalho">
     <img class="veio-marca" src="veio/icones/icone.svg" width="30" height="30" alt="PerpetualMiner">
-    <div class="header-info">
-      <div class="popup-logo-text veio-nome" aria-hidden="true">Perpetual<b>Miner</b><span class="veio-cursor"></span></div>
-    </div>
-  </div>
+    <span class="veio-nome popup-nome" aria-hidden="true">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>
+  </header>
 
-  <div class="popup-body">
+  <main class="popup-corpo">
 
-    <!-- Botão painel -->
-    <button class="btn-painel" id="btnIrPainel">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <rect x="3" y="3" width="7" height="7" rx="1"/>
-        <rect x="14" y="3" width="7" height="7" rx="1"/>
-        <rect x="3" y="14" width="7" height="7" rx="1"/>
-        <rect x="14" y="14" width="7" height="7" rx="1"/>
-      </svg>
-      Abrir Painel de Estudos
-    </button>
+    <button type="button" class="veio-botao veio-botao--primario veio-botao--bloco" id="abrir-painel"></button>
 
-    <!-- Auto Miner -->
-    <div class="section-title">Auto Miner</div>
-    <div class="auto-miner-box">
-      <div class="auto-row">
-        <label class="auto-toggle">
-          <input type="checkbox" id="autoMinerEn">
-          <span>EN</span>
-        </label>
-        <input id="autoLimitEn" class="auto-limit" type="number" min="1" max="100" step="1" value="20">
-        <span id="autoCountEn" class="auto-count">0/20</span>
+    <section class="popup-secao" aria-labelledby="titulo-automatica">
+      <h2 class="popup-titulo" id="titulo-automatica"><span id="titulo-automatica-texto"></span><span class="popup-titulo__lado" id="automatica-por-dia"></span></h2>
+      <div class="popup-azulejos" id="azulejos"></div>
+      <p class="popup-nota" id="nota-conexao" hidden></p>
+    </section>
+
+    <form class="popup-rapida" id="mineracao-rapida" novalidate>
+      <div class="popup-rapida__campo">
+        <textarea class="veio-campo" id="frase-rapida" rows="2" aria-describedby="erro-rapida"></textarea>
+        <button type="submit" class="veio-botao veio-botao--secundario veio-botao--compacto" id="minerar-rapida" disabled></button>
       </div>
-      <div class="auto-row">
-        <label class="auto-toggle">
-          <input type="checkbox" id="autoMinerRu">
-          <span>RU</span>
-        </label>
-        <input id="autoLimitRu" class="auto-limit" type="number" min="1" max="100" step="1" value="20">
-        <span id="autoCountRu" class="auto-count">0/20</span>
-      </div>
-    </div>
+      <div class="popup-rapida__erro" id="erro-rapida" role="alert"></div>
+    </form>
 
-    <!-- Configurar Atalho -->
-    <div class="section-title">Configurar Atalho de Captura</div>
-    <div class="section-atalho">
-      <div class="atalho-status">
-        Atalho atual: <span id="atalhoAtual" class="atalho-badge">Não configurado</span>
-      </div>
-      <button class="btn-gravar" id="btnGravarAtalho">Clique aqui para gravar atalho</button>
-      <div id="atalhoHint" class="atalho-hint" style="display:none;">
-        ⏺ Aguardando… pressione uma tecla ou clique com um botão extra do mouse
-      </div>
-    </div>
+    <section class="popup-secao" aria-labelledby="titulo-ultimas">
+      <h2 class="popup-titulo" id="titulo-ultimas"><span id="titulo-ultimas-texto"></span><button type="button" class="veio-botao veio-botao--link popup-titulo__lado" id="ver-todas" hidden></button></h2>
+      <div id="ultimas" aria-live="polite"></div>
+    </section>
 
-    <!-- Adição Manual -->
-    <div class="section-title">Adição Manual</div>
-    <div class="manual-input-area">
-      <textarea id="txtManual" class="textarea-manual" placeholder="Cole ou escreva uma frase…" rows="2"></textarea>
-      <button class="btn-add" id="btnAddManual">Adicionar</button>
-    </div>
+  </main>
 
-    <!-- Últimas mineradas + controles -->
-    <div class="section-header">
-      <div class="section-title">Últimas mineradas</div>
-      <div class="bulk-controls">
-        <button class="btn-refresh" id="btnRefresh" title="Atualizar lista">↻</button>
-        <label class="check-label">
-          <input type="checkbox" id="chkSelectAll"> Tudo
-        </label>
-        <button class="btn-delete" id="btnDeleteSelected" style="display:none;">Deletar</button>
-      </div>
-    </div>
-
-    <div id="listaUltimas">
-      <div class="empty-msg">Carregando...</div>
-    </div>
-
-  </div>
+  <footer class="popup-rodape" id="rodape"></footer>
 
   <script src="lib/voz/catalogo.js"></script>
   <script src="lib/voz/texto.js"></script>
   <script src="veio/componentes.js"></script>
   <script src="lib/idioma.js"></script>
   <script src="lib/atalhos.js"></script>
+  <script src="lib/contexto.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

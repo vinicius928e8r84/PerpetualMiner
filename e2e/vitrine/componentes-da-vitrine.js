@@ -29,7 +29,7 @@
     ['FOT-19.lendo'],
     ['GLB-02.semAtalho'],
     ['ADD-11.colar'], ['ADD-11.arquivo'], ['ADD-11.foto'],
-    ['POP-07', { n: 7, limite: 20 }], ['POP-08', { n: 20, limite: 20 }],
+    ['POP-07.leitor', { n: 7, limite: 20 }], ['POP-08'],
     ['PAI-13.titulo', { n: 12 }], ['PAI-13.corpo'],
     ['PAI-14', { n: 12 }],
     ['PAI-15.aviso'], ['PAI-15.tentarDeNovo'], ['ONB-15.ocultar'],
@@ -271,8 +271,8 @@
         el('span', { class: 'veio-medidor' }, el('i', { style: `width:${proporcao}%` })));
 
     return [
-      azulejo('Inglês', 'POP-07', { n: 7, limite: 20 }, 35, true),
-      azulejo('Russo', 'POP-08', { n: 20, limite: 20 }, 100, false),
+      azulejo('Inglês', 'POP-07.leitor', { n: 7, limite: 20 }, 35, true),
+      azulejo('Russo', 'POP-08', {}, 100, false),
     ];
   }
 

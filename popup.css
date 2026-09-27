@@ -1,361 +1,370 @@
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* ─────────────────────────────────────────────────────────────────────────
+   Popup “Cockpit” (docs/design/popup/, variante A).
 
-body {
-  width: 340px;
-  min-height: 180px;
-  font-family: var(--veio-fonte-ui);
-  background: #111214;
-  color: #e2e8f0;
-  overflow-x: hidden;
+   340 px de largura, teto de 600 px de altura. Só a disposição da pilha mora
+   aqui: botão, campo, toggle, azulejo, medidor, kbd, esqueleto e vazio são
+   os componentes da Base Veio, e toda cor vem dos tokens.
+   ───────────────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-/* ─── Header ─────────────────────────────────────────────────────────────── */
+html {
+  width: 340px;
+}
 
-.popup-header {
-  background: var(--veio-surface);
-  border-bottom: 1px solid var(--veio-border);
-  padding: 13px 14px 11px;
+body {
+  display: flex;
+  flex-direction: column;
+  width: 340px;
+  max-height: 600px;
+  margin: 0;
+  background: var(--veio-bg);
+  color: var(--veio-text);
+  font-family: var(--veio-fonte-ui);
+  font-size: var(--veio-tam-corpo);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+/* ── Cabeçalho: a marca, sem subtítulo (POP-12) ── */
+
+.popup-cabecalho {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--veio-border);
+  background: var(--veio-surface);
 }
 
-.header-info { flex: 1; }
-
-.popup-logo-text {
-  font-size: 1.05rem;
+.popup-nome {
+  font-size: var(--veio-tam-card);
+  line-height: 1.2;
 }
 
-/* ─── Body ───────────────────────────────────────────────────────────────── */
+/* ── A pilha ── */
 
-.popup-body { padding: 12px 13px 14px; }
+.popup-corpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  min-height: 0;
+  padding: 12px 14px 14px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
 
-/* ─── Botão Painel ───────────────────────────────────────────────────────── */
+.popup-secao {
+  min-width: 0;
+}
 
-.btn-painel {
+.popup-titulo {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 7px;
-  width: 100%;
-  padding: 10px;
-  background: rgba(0, 255, 255, 0.07);
-  color: #00ffff;
-  border: 1px solid rgba(0, 255, 255, 0.22);
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  margin-bottom: 13px;
-  font-family: inherit;
-  letter-spacing: 0.02em;
-}
-.btn-painel:hover  { background: rgba(0, 255, 255, 0.13); border-color: rgba(0, 255, 255, 0.42); }
-.btn-painel:active { background: rgba(0, 255, 255, 0.2); }
-
-/* ─── Section titles ─────────────────────────────────────────────────────── */
-
-.section-title {
-  font-size: 9px;
-  font-weight: 700;
+  gap: 8px;
+  margin: 0 0 8px;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+  font-weight: var(--veio-peso-legenda);
+  letter-spacing: var(--veio-tracking-legenda);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: rgba(0, 255, 255, 0.45);
-  margin-bottom: 7px;
 }
 
-/* ─── Configurar Atalho ──────────────────────────────────────────────────── */
+.popup-titulo::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--veio-raio-losango);
+  background: var(--veio-accent);
+  transform: rotate(45deg);
+}
 
-.section-atalho {
-  background: #18191d;
-  border: 1px solid rgba(0, 255, 255, 0.1);
-  border-radius: 8px;
+.popup-titulo__lado {
+  margin-left: auto;
+  font-size: var(--veio-tam-legenda);
+  font-weight: var(--veio-peso-rotulo);
+  letter-spacing: .02em;
+  text-transform: none;
+}
+
+.popup-titulo__lado[hidden] {
+  display: none;
+}
+
+.popup-titulo .veio-botao--link {
+  padding: 0;
+}
+
+/* ── Mineração automática: dois azulejos EN | RU ── */
+
+.popup-azulejos {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.popup-azulejo {
+  gap: 7px;
   padding: 10px 11px;
-  margin-bottom: 13px;
 }
 
-.atalho-status {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
-  margin-bottom: 8px;
-}
-
-.atalho-badge {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 5px;
-  padding: 1px 7px;
-  letter-spacing: 0.04em;
-}
-.atalho-badge--set {
-  color: #00ffff;
-  background: rgba(0, 255, 255, 0.08);
-  border-color: rgba(0, 255, 255, 0.28);
-}
-
-.btn-gravar {
-  width: 100%;
-  padding: 8px;
-  background: transparent;
-  color: rgba(0, 255, 255, 0.7);
-  border: 1px dashed rgba(0, 255, 255, 0.3);
-  border-radius: 7px;
-  font-size: 11px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-  letter-spacing: 0.02em;
-}
-.btn-gravar:hover { background: rgba(0, 255, 255, 0.07); border-color: rgba(0, 255, 255, 0.55); color: #00ffff; }
-.btn-gravar.recording {
-  background: rgba(0, 255, 255, 0.06);
-  border-style: solid;
-  border-color: #00ffff;
-  color: #00ffff;
-  animation: pulse-border 1s ease-in-out infinite;
-}
-
-@keyframes pulse-border {
-  0%, 100% { border-color: rgba(0, 255, 255, 0.5); }
-  50%       { border-color: #00ffff; }
-}
-
-.atalho-hint {
-  margin-top: 7px;
-  font-size: 10px;
-  color: rgba(0, 255, 255, 0.6);
-  text-align: center;
-  letter-spacing: 0.02em;
-  animation: blink 1.2s ease-in-out infinite;
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
-}
-
-/* ─── Adição Manual ──────────────────────────────────────────────────────── */
-
-.manual-input-area {
-  display: flex;
-  gap: 6px;
-  align-items: flex-start;
-  margin-bottom: 13px;
-}
-
-.textarea-manual {
-  flex: 1;
-  background: #18191d;
-  border: 1px solid rgba(0, 255, 255, 0.14);
-  border-radius: 7px;
-  color: #e2e8f0;
-  font-family: inherit;
-  font-size: 11.5px;
-  line-height: 1.5;
-  padding: 7px 9px;
-  resize: none;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.textarea-manual::placeholder { color: rgba(255, 255, 255, 0.22); }
-.textarea-manual:focus { border-color: rgba(0, 255, 255, 0.38); }
-
-.btn-add {
-  background: rgba(0, 255, 255, 0.09);
-  color: #00ffff;
-  border: 1px solid rgba(0, 255, 255, 0.28);
-  border-radius: 7px;
-  font-size: 11px;
-  font-weight: 600;
-  font-family: inherit;
-  padding: 7px 11px;
-  cursor: pointer;
-  white-space: nowrap;
-  align-self: flex-end;
-  transition: background 0.15s, border-color 0.15s;
-}
-.btn-add:hover  { background: rgba(0, 255, 255, 0.17); border-color: rgba(0, 255, 255, 0.48); }
-.btn-add:active { background: rgba(0, 255, 255, 0.25); }
-
-/* ─── Section header ─────────────────────────────────────────────────────── */
-
-.section-header {
+.popup-azulejo__topo {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 7px;
 }
-.section-header .section-title { margin-bottom: 0; }
 
-.bulk-controls {
+.popup-azulejo__codigo {
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-titulo);
+  letter-spacing: .04em;
+}
+
+/* POP-07 como no protótipo: o número grande e “/20” menor, apagado. */
+.popup-azulejo__contador {
+  margin: 0;
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-contador);
+  font-weight: var(--veio-peso-num);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.popup-azulejo__contador b {
+  font-weight: inherit;
+}
+
+.popup-azulejo__contador small {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+  font-weight: 500;
+}
+
+/* Desligado, o medidor fica apagado. */
+.popup-azulejo:not(.veio-azulejo--escolhido) .veio-medidor > i {
+  background: var(--veio-border-strong);
+}
+
+.popup-azulejo__limite {
   display: flex;
   align-items: center;
   gap: 6px;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
 }
 
-/* Botão Atualizar */
-.btn-refresh {
-  background: transparent;
-  color: rgba(0, 255, 255, 0.5);
-  border: 1px solid rgba(0, 255, 255, 0.18);
-  border-radius: 5px;
-  font-size: 13px;
-  line-height: 1;
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, transform 0.15s;
-  padding: 0;
-}
-.btn-refresh:hover { color: #00ffff; border-color: rgba(0, 255, 255, 0.45); }
-.btn-refresh.spinning { animation: spin 0.4s linear; }
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+/* Sem as setinhas do navegador: digita-se o número, ou ↑ ↓ no teclado. */
+.popup-azulejo__campo.veio-campo {
+  appearance: textfield;
 }
 
-.check-label {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.38);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  user-select: none;
-}
-.check-label:hover { color: rgba(255, 255, 255, 0.65); }
-
-.check-label input[type="checkbox"],
-.chk-frase {
-  accent-color: #00ffff;
-  cursor: pointer;
-  width: 12px;
-  height: 12px;
-  flex-shrink: 0;
+.popup-azulejo__campo::-webkit-inner-spin-button,
+.popup-azulejo__campo::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
 }
 
-.btn-delete {
-  display: inline-flex;
-  align-items: center;
-  font-size: 10px;
-  font-weight: 600;
-  font-family: inherit;
-  padding: 3px 9px;
-  background: rgba(239, 68, 68, 0.09);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.28);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  white-space: nowrap;
+.popup-azulejo__campo.veio-campo {
+  width: 48px;
+  padding: 3px 4px;
+  border-radius: var(--veio-raio-icone);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-rotulo);
+  text-align: center;
 }
-.btn-delete:hover  { background: rgba(239, 68, 68, 0.2);  border-color: rgba(239, 68, 68, 0.5); }
-.btn-delete:active { background: rgba(239, 68, 68, 0.3); }
 
-/* ─── Cards ──────────────────────────────────────────────────────────────── */
+/* Carregando (POP-01): o azulejo sem texto, do tamanho do de verdade. */
+.popup-azulejo--esqueleto {
+  gap: 10px;
+  padding: 12px 11px;
+  min-height: 108px;
+  align-content: start;
+}
 
-.card-frase {
-  background: #18191d;
-  border-radius: 7px;
-  border-left: 2px solid rgba(0, 255, 255, 0.28);
-  padding: 8px 10px;
-  margin-bottom: 6px;
-  font-size: 11.5px;
+/* GLB-01 ocupa a largura dos dois azulejos. */
+.popup-azulejos__falha {
+  grid-column: 1 / -1;
+}
+
+.popup-azulejo__no-limite {
+  margin: 0;
+  color: var(--veio-accent-text);
+  font-size: var(--veio-tam-legenda);
+  font-weight: var(--veio-peso-titulo);
+  line-height: 1.35;
+}
+
+.popup-nota {
+  margin: 8px 0 0;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
   line-height: 1.45;
-  color: #b8c4d0;
+}
+
+/* ── Mineração rápida: o botão dentro do canto do campo ── */
+
+.popup-rapida {
+  margin: 0;
+}
+
+.popup-rapida__campo {
+  position: relative;
+}
+
+.popup-rapida textarea.veio-campo {
+  display: block;
+  min-height: 58px;
+  padding-right: 96px;
+  resize: none;
+  line-height: 1.45;
+}
+
+.popup-rapida__campo .veio-botao {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+}
+
+.popup-rapida__erro:empty {
+  display: none;
+}
+
+.popup-rapida__erro {
+  margin-top: 5px;
+}
+
+/* Uma falha em linha (POP-06, POP-16): o ícone de alerta e o que fazer. */
+.popup-falha {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  transition: border-color 0.15s, background 0.15s;
-}
-.card-frase:hover    { background: #1c1e23; border-left-color: rgba(0, 255, 255, 0.6); }
-.card-frase.selected { background: rgba(0, 255, 255, 0.05); border-left-color: #00ffff; }
-
-.frase-texto {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  gap: 6px;
+  margin: 0;
+  color: var(--veio-danger);
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-rotulo);
+  line-height: 1.4;
 }
 
-/* ─── Estado vazio ───────────────────────────────────────────────────────── */
-
-.empty-msg {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.28);
-  text-align: center;
-  padding: 16px 0;
-}
-.auto-miner-box {
-  background: #18191d;
-  border: 1px solid rgba(0, 255, 136, 0.13);
-  border-radius: 8px;
-  padding: 8px 9px;
-  margin-bottom: 13px;
-}
-
-.auto-row {
-  display: grid;
-  grid-template-columns: 1fr 54px 48px;
-  align-items: center;
-  gap: 8px;
-  min-height: 28px;
-}
-
-.auto-row + .auto-row {
-  border-top: 1px solid rgba(255,255,255,0.06);
-  margin-top: 6px;
-  padding-top: 6px;
-}
-
-.auto-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(255,255,255,0.7);
-  cursor: pointer;
-}
-
-.auto-toggle input {
+.popup-falha svg {
+  flex: none;
   width: 14px;
   height: 14px;
-  accent-color: #00ff88;
+  margin-top: 1px;
 }
 
-.auto-limit {
-  width: 54px;
-  background: #111214;
-  border: 1px solid rgba(0,255,136,0.2);
-  border-radius: 6px;
-  color: #e2e8f0;
-  font-size: 11px;
-  padding: 4px 6px;
-  outline: none;
+/* ── Últimas mineradas: só leitura ── */
+
+.popup-ultimas {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface);
+  overflow: hidden;
 }
 
-.auto-limit:focus { border-color: rgba(0,255,136,0.52); }
+.popup-ultima {
+  min-width: 0;
+  padding: 7px 11px;
+  border-top: 1px solid var(--veio-border);
+}
 
-.auto-count {
-  justify-self: end;
-  font-size: 10px;
-  font-weight: 700;
-  color: #00ff88;
-  background: rgba(0,255,136,0.08);
-  border: 1px solid rgba(0,255,136,0.18);
-  border-radius: 999px;
-  padding: 2px 6px;
+.popup-ultima:first-child {
+  border-top: 0;
+}
+
+.popup-ultima__texto,
+.popup-ultima__contexto {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.popup-ultima__texto {
+  font-family: var(--veio-fonte-frase);
+  font-size: var(--veio-tam-apoio);
+}
+
+.popup-ultima__contexto {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+}
+
+/* A frase que acabou de chegar ganha um realce breve; com movimento reduzido,
+   a base encurta a animação e nada pisca. */
+.popup-ultima--nova {
+  animation: popup-chegou var(--veio-destaque) ease-out;
+}
+
+@keyframes popup-chegou {
+  from { background: var(--veio-accent-soft); }
+}
+
+.popup-ultima--esqueleto {
+  display: grid;
+  gap: 6px;
+  padding: 10px 11px;
+}
+
+/* A linha curta do esqueleto, nas últimas e nos azulejos. */
+.popup-esqueleto-curto {
+  width: 55%;
+  height: 9px;
+}
+
+.popup-vazio {
+  gap: 6px;
+  padding: 18px 14px;
+  border-radius: var(--veio-raio-card);
+}
+
+/* A picareta do protótipo, em ouro. */
+.popup-vazio svg {
+  width: 34px;
+  height: 34px;
+  color: var(--veio-accent-text);
+}
+
+.popup-vazio .veio-vazio__titulo {
+  font-size: var(--veio-tam-corpo);
+}
+
+.popup-vazio .veio-vazio__texto {
+  font-size: var(--veio-tam-apoio);
+}
+
+/* ── Rodapé: o atalho de legenda ── */
+
+.popup-rodape {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: auto;
+  padding: 9px 14px;
+  border-top: 1px solid var(--veio-border);
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+}
+
+.popup-rodape .popup-atalhos {
+  margin-left: auto;
+  padding: 3px 8px;
+  color: var(--veio-accent-text);
+  font-size: var(--veio-tam-legenda);
 }
