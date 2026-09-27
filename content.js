@@ -27,6 +27,8 @@ let _autoMinerLastText = '';
 let _autoMinerLastSentText = '';
 let _autoMinerStableSince = 0;
 let _autoMinerLastEvent = null;
+/** O idioma da legenda na tela (ou da última captura), `'en'`/`'ru'`: o do contador do botão. */
+let _idiomaDaLegenda = null;
 
 Atalhos.acompanharAtalhos(atalhos => {
   _atalhos = atalhos;
@@ -106,6 +108,7 @@ function _ativarCaptura(texto, evento) {
       detalhe: '',
     },
     idioma: detectarIdioma(texto),
+    lugar:  lugarDaSelecao(texto),
   });
 }
 
@@ -131,9 +134,11 @@ async function minerarCaptura(captura, { copia = false } = {}) {
     icone: copia ? 'legenda' : 'selecao',
     titulo,
     frase: captura.texto,
-    palavra: palavraDe(resposta.frase),
+    ...palavraDe(resposta.frase),
     // A meta: o idioma da legenda (`EN`); a Fonte da seleção, “Web” (PAI-29).
     meta: copia ? siglaDoIdioma(captura.idioma) : textoDaVoz('PAI-29.web'),
+    // A marca vai sobre o texto se ele ainda estiver lá quando a resposta chega.
+    lugar: captura.lugar,
   });
 }
 
@@ -216,10 +221,21 @@ async function copiar(texto) {
   }
 }
 
-/** A Palavra da frase gravada (`palavra@índice`, grupos separados por `|`): a primeira. */
+/**
+ * A Palavra da frase gravada, como o overlay a mostra: as palavras do primeiro
+ * grupo (`palavra@índice`, grupos separados por `|`) e se ela foi detectada
+ * (`auto:`) ou escolhida (`palavra:`).
+ */
 function palavraDe(frase) {
-  const primeira = (frase?.keywords || []).find(k => k && k !== '|');
-  return primeira ? String(primeira).split('@')[0] : '';
+  const palavras = [];
+  for (const chave of frase?.keywords || []) {
+    if (chave === '|') {
+      if (palavras.length) break;
+      continue;
+    }
+    if (chave) palavras.push(String(chave).split('@')[0]);
+  }
+  return { palavras, palavraDetectada: frase?.autoKeyword !== false };
 }
 
 // ─── Ponte de Segurança (Cross-Frame) ────────────────────────────────────────
@@ -281,7 +297,9 @@ function containerDoPlayer(video) {
 // ─── Mineração ───────────────────────────────────────────────────────────────
 
 function processarAutoMinerLegenda() {
-    const texto = obterLegendaAtual();
+    const legenda = lerLegenda();
+    const texto = legenda?.texto || '';
+    acompanharIdiomaDaLegenda(texto);
     if (!autoMinerAtivoNaPagina(texto)) return;
     if (!texto) return;
     const normalizado = normalizarTextoAutoMiner(texto);
@@ -311,9 +329,17 @@ function processarAutoMinerLegenda() {
             atualizarAutoMinerBadge();
         }
         registrarAutoMinerEvento(response, normalizado, idioma);
-        if (response.action === 'saved') mostrarNotificacaoAutoMiner(normalizado, idioma, response);
-        if (response.reason === 'daily_limit') atualizarAutoMinerBadge(true);
+        if (response.action === 'saved') mostrarNotificacaoAutoMiner(normalizado, idioma, response, lugarDaLegenda(legenda));
     });
+}
+
+/** O contador do botão segue o idioma da legenda na tela, lido a cada volta da mineração automática. */
+function acompanharIdiomaDaLegenda(texto) {
+    if (!texto) return;
+    const lang = codigoDoIdioma(detectarIdioma(texto));
+    if (lang === _idiomaDaLegenda) return;
+    _idiomaDaLegenda = lang;
+    atualizarAutoMinerBadge();
 }
 
 function autoMinerAtivoNaPagina(legenda = '') {
@@ -328,18 +354,29 @@ function autoMinerAtivoNaPagina(legenda = '') {
 }
 
 function obterLegendaAtual() {
+    return lerLegenda()?.texto || '';
+}
+
+/**
+ * A legenda na tela e os elementos de onde ela foi lida (`{ texto, elementos }`),
+ * ou null. Os elementos dão o lugar da marca: a linha e o grifo vão sobre eles.
+ */
+function lerLegenda() {
     // Sem vídeo, “caption” e “subtitle” são legendas de imagem, não de fala.
-    if (!obterVideoAtivo()) return '';
+    if (!obterVideoAtivo()) return null;
     const host = window.location.hostname;
     if (host.includes('primevideo') || host.includes('amazon')) return minerarAmazon();
     if (host.includes('youtube.com')) {
-        const segs = document.querySelectorAll('.ytp-caption-segment');
-        if (segs.length) return Array.from(segs).map(s => s.innerText).join(' ');
+        const segs = Array.from(document.querySelectorAll('.ytp-caption-segment'));
+        if (segs.length) return legendaDe(segs.map(s => s.innerText).join(' '), segs);
     }
-    if (host.includes('netflix.com')) return document.querySelector('.player-timedtext-text-container')?.innerText || '';
+    if (host.includes('netflix.com')) {
+        const container = document.querySelector('.player-timedtext-text-container');
+        return legendaDe(container?.innerText || '', [container]);
+    }
     if (host.includes('kinopoisk')) {
         const root = document.querySelector('[data-tid="Subtitles"]');
-        if (root) return root.innerText.replace(/\s*\n\s*/g, ' ').trim();
+        if (root) return legendaDe(root.innerText.replace(/\s*\n\s*/g, ' ').trim(), [root]);
     }
     if (host.includes('hbomax.com') || host.includes('max.com') || host.includes('hbo.com')) {
         const maxText = minerarLegendaPorSeletores([
@@ -366,32 +403,82 @@ function obterLegendaAtual() {
     ]);
     if (generic) return generic;
     const kp = document.querySelector('[data-tid="Subtitles"]');
-    if (kp) return kp.innerText.replace(/\s*\n\s*/g, ' ').trim();
-    const visual = minerarLegendaVisual();
-    if (visual) return visual;
-    return '';
+    if (kp) return legendaDe(kp.innerText.replace(/\s*\n\s*/g, ' ').trim(), [kp]);
+    return minerarLegendaVisual();
+}
+
+/** Uma legenda lida: o texto e os elementos dele, ou null sem texto. */
+function legendaDe(texto, elementos) {
+    return texto ? { texto, elementos } : null;
+}
+
+/**
+ * Onde a legenda capturada está agora: uma faixa sobre os elementos dela, só
+ * enquanto eles ainda dizem o mesmo texto. Trocou (ou saiu da tela), null — e o
+ * feedback vai para a pílula. Isso também cobre o fallback heurístico: um
+ * elemento cujo texto não bate com o salvo nunca ganha a linha.
+ */
+function lugarDaLegenda({ texto, elementos }) {
+    const capturado = normalizarTextoAutoMiner(texto);
+    return () => {
+        if (!elementos.every(el => el?.isConnected)) return null;
+        const agora = normalizarTextoAutoMiner(elementos.map(el => el.innerText).join(' '));
+        if (agora !== capturado) return null;
+        const faixa = document.createRange();
+        faixa.setStartBefore(elementos[0]);
+        faixa.setEndAfter(elementos[elementos.length - 1]);
+        return faixa;
+    };
+}
+
+/**
+ * Onde a seleção capturada está: a faixa dela, enquanto ela ainda cobre o texto
+ * minerado. Uma seleção num `<input>`/`<textarea>` não tem faixa no texto da
+ * página (o texto está dentro do campo), então vai para a pílula.
+ */
+function lugarDaSelecao(texto) {
+    const selecao = window.getSelection();
+    if (!selecao?.rangeCount) return null;
+    const faixa = selecao.getRangeAt(0).cloneRange();
+    const capturado = normalizarTextoAutoMiner(texto);
+    return () => (normalizarTextoAutoMiner(faixa.toString()) === capturado ? faixa : null);
 }
 
 function normalizarTextoAutoMiner(texto) {
     return String(texto || '').replace(/\s+/g, ' ').trim();
 }
 
-// O contador no canto do botão. Ainda soma os idiomas ligados, como antes: o
-// contador do idioma da captura é de #41.
-function atualizarAutoMinerBadge(limitReached = false) {
-    const state = _autoMinerState;
-    const enabled = Boolean(state?.settings?.en?.enabled || state?.settings?.ru?.enabled);
-    if (!enabled) {
+// O contador no canto do botão: o do idioma da captura (`n/limite`), não a soma
+// do badge da toolbar. No limite, contorno; com a mineração automática
+// desligada para esse idioma, some. O leitor de tela o ouve como MIN-11.
+function atualizarAutoMinerBadge() {
+    const lang = idiomaDoContador();
+    const settings = lang && _autoMinerState?.settings?.[lang];
+    if (!settings?.enabled) {
         Overlay.mostrarContador(null);
         return;
     }
-    const en = state.daily?.en?.count || 0;
-    const ru = state.daily?.ru?.count || 0;
-    const enLimit = state.settings?.en?.dailyLimit || 0;
-    const ruLimit = state.settings?.ru?.dailyLimit || 0;
-    const count = en + ru;
-    const limit = (state.settings?.en?.enabled ? enLimit : 0) + (state.settings?.ru?.enabled ? ruLimit : 0);
-    Overlay.mostrarContador({ texto: `${count}/${limit}`, noLimite: limitReached || count >= limit });
+    const n = _autoMinerState.daily?.[lang]?.count || 0;
+    const limite = settings.dailyLimit || 0;
+    const noLimite = n >= limite;
+    const idioma = lang === 'ru' ? IDIOMAS.RUSSO : IDIOMAS.INGLES;
+    Overlay.mostrarContador({
+        texto: `${n}/${limite}`,
+        noLimite,
+        descricao: noLimite
+            ? textoDaVoz('MIN-11.noLimite', { idioma })
+            : textoDaVoz('MIN-11.contador', { idioma, n, limite }),
+    });
+}
+
+/**
+ * O idioma do contador: o da legenda na tela (ou da última captura). Antes de
+ * haver legenda, o único idioma ligado; com os dois ligados, nenhum ainda.
+ */
+function idiomaDoContador() {
+    if (_idiomaDaLegenda) return _idiomaDaLegenda;
+    const ligados = ['en', 'ru'].filter(lang => _autoMinerState?.settings?.[lang]?.enabled);
+    return ligados.length === 1 ? ligados[0] : null;
 }
 
 function registrarAutoMinerEvento(response, texto, idioma) {
@@ -406,13 +493,14 @@ function registrarAutoMinerEvento(response, texto, idioma) {
     if (response.action === 'saved') _autoMinerLastEvent.reason = 'saved';
     chrome.storage.local.set({ [AUTO_MINER_LAST_EVENT_KEY]: _autoMinerLastEvent });
     if (response.action === 'skip') {
-        atualizarAutoMinerBadge(response.reason === 'daily_limit');
+        atualizarAutoMinerBadge();
         console.debug('[PerpetualMiner Auto]', _autoMinerLastEvent.reason, texto);
     }
 }
 
-// MIN-06. A mineração automática não tira da tela uma falha que acabou de aparecer.
-function mostrarNotificacaoAutoMiner(texto, idioma, response) {
+// MIN-06: a mesma marca, mais apagada, ou a pílula se a legenda já trocou. A
+// mineração automática não tira da tela uma falha que acabou de aparecer.
+function mostrarNotificacaoAutoMiner(texto, idioma, response, lugar) {
     if (!Overlay.temBotao() || Overlay.mostrandoFalha()) return;
     const lang = codigoDoIdioma(idioma);
     const state = response.state;
@@ -425,7 +513,9 @@ function mostrarNotificacaoAutoMiner(texto, idioma, response) {
         // A meta, como no protótipo: o idioma e o contador do dia (`RU 5/20`).
         meta: `${siglaDoIdioma(idioma)} ${n}/${limite}`,
         frase: texto,
-        palavra: palavraDe(response.frase || { keywords: response.evaluation?.keywords }),
+        ...palavraDe(response.frase || { keywords: response.evaluation?.keywords }),
+        lugar,
+        apagada: true,
     });
 }
 
@@ -437,16 +527,20 @@ function minerarLegenda(evento) {
         dizerSeNaoHaVideo();
         return;
     }
-    const texto = obterLegendaAtual();
+    const legenda = lerLegenda();
+    const texto = legenda?.texto;
     if (!texto || texto.length <= 2) {
         mostrarFalha('MIN-04');
         return;
     }
+    const idioma = detectarIdioma(texto);
+    _idiomaDaLegenda = codigoDoIdioma(idioma);
     minerarCaptura({
         texto,
         origem:   origemDaPagina(),
         contexto: extrairContexto(),
-        idioma:   detectarIdioma(texto),
+        idioma,
+        lugar:    lugarDaLegenda(legenda),
     }, { copia: true });
 }
 
@@ -481,15 +575,15 @@ function minerarLegendaPorSeletores(selectors) {
         }
         for (const el of elementos) {
             const texto = textoLegendaDeElemento(el);
-            if (texto) return texto;
+            if (texto) return legendaDe(texto, [el]);
         }
     }
-    return '';
+    return null;
 }
 
 function minerarLegendaVisual() {
     const video = obterVideoAtivo();
-    if (!video) return '';
+    if (!video) return null;
     const rectVideo = video.getBoundingClientRect();
     const candidatos = [];
 
@@ -507,11 +601,11 @@ function minerarLegendaVisual() {
         const area = rect.width * rect.height;
         const verticalScore = Math.max(0, rect.top - rectVideo.top);
         const compactScore = texto.length <= 90 ? 30 : 0;
-        candidatos.push({ texto, score: verticalScore + compactScore + Math.min(80, area / 900) });
+        candidatos.push({ texto, el, score: verticalScore + compactScore + Math.min(80, area / 900) });
     }
 
     candidatos.sort((a, b) => b.score - a.score);
-    return candidatos[0]?.texto || '';
+    return candidatos[0] ? legendaDe(candidatos[0].texto, [candidatos[0].el]) : null;
 }
 
 function textoLegendaDeElemento(el) {
@@ -545,15 +639,15 @@ function elementoIgnoradoParaLegenda(el) {
 function minerarAmazon() {
     const alvosDiretos = ['.atvwebplayersdk-captions-text span', '.atvwebplayersdk-subtitle-text-container'];
     for (const seletor of alvosDiretos) {
-        const elementos = document.querySelectorAll(seletor);
+        const elementos = Array.from(document.querySelectorAll(seletor));
         if (elementos.length > 0) {
-            const txt = Array.from(elementos).map(s => s.innerText).join(' ').trim();
-            if (txt && txt.length < 250 && !/^[ \d\s:/]+$/.test(txt)) return txt;
+            const txt = elementos.map(s => s.innerText).join(' ').trim();
+            if (txt && txt.length < 250 && !/^[ \d\s:/]+$/.test(txt)) return legendaDe(txt, elementos);
         }
     }
 
     const video = document.querySelector('video');
-    if (!video) return '';
+    if (!video) return null;
     const rectVideo         = video.getBoundingClientRect();
     const meioDaTela        = rectVideo.top + rectVideo.height * 0.5;
     const limiteEsquerdoXray = rectVideo.left + rectVideo.width * 0.25;
@@ -562,7 +656,7 @@ function minerarAmazon() {
         'detalhes','português','english','idioma','legenda','configurações','audio',
         'coreano','korean'];
 
-    let melhorCandidato = '';
+    let melhorCandidato = null;
     for (const el of document.querySelectorAll('span, div')) {
         const txt = el.innerText?.trim();
         if (/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]/.test(txt)) continue;
@@ -574,7 +668,7 @@ function minerarAmazon() {
         const baixo = txt.toLowerCase();
         if (lixoInterface.some(p => baixo === p || baixo.includes(p))) continue;
         if (el.closest('.dv-ui-web-player-container')) continue;
-        melhorCandidato = txt;
+        melhorCandidato = legendaDe(txt, [el]);
     }
     return melhorCandidato;
 }

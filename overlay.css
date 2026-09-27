@@ -178,9 +178,10 @@
   display: none;
 }
 
-.pm-pilula--livre:not(.pm-pilula--aberta) {
+/* Fechada, a pílula livre some por inteiro: só o azulejo tinha o que mostrar.
+   (A pílula em si fica, porque a região de status dela leva o chip da marca.) */
+.pm-pilula--livre:not(.pm-pilula--aberta) .pm-botao {
   opacity: 0;
-  pointer-events: none;
 }
 
 /* O contador da mineração automática: pílula ouro mono no canto do botão;
@@ -209,4 +210,129 @@
   background: var(--veio-surface);
   color: var(--veio-accent-text);
   box-shadow: 0 0 0 1.5px var(--veio-accent);
+}
+
+/* ── A marca no texto capturado (D) ───────────────────────────────────────
+   A linha ouro de 3 px sob o texto, a faixa de marca-texto sobre a Palavra e o
+   chip acima. São elementos do overlay posicionados sobre o texto do site (o
+   host é o bloco que os contém): o DOM do site não é tocado. Nada disso pega o
+   mouse, que continua sendo do site. */
+
+.pm-marca {
+  pointer-events: none;
+}
+
+.pm-linha,
+.pm-grifo,
+.pm-chip {
+  position: absolute;
+  pointer-events: none;
+}
+
+.pm-linha {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--veio-accent);
+  box-shadow: var(--veio-brilho-da-linha);
+  transform-origin: left;
+  animation: pm-linha-entra var(--veio-transicao) ease-out;
+}
+
+/* A mesma faixa da Palavra na identidade (.veio-palavra), agora sobre o site. */
+.pm-grifo {
+  background: var(--veio-kw-bg);
+  animation: pm-surge var(--veio-transicao) ease-out;
+}
+
+/* A marca que acompanha o texto (rolagem, redimensionamento) não anima de novo. */
+.pm-marca--parada .pm-linha,
+.pm-marca--parada .pm-grifo {
+  animation: none;
+}
+
+@keyframes pm-linha-entra {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes pm-surge {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* O chip: ícone · título · auto:/palavra: · meta, numa pílula acima do texto. */
+.pm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px 5px 6px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-surface);
+  box-shadow: var(--veio-sombra);
+  white-space: nowrap;
+  animation: pm-surge var(--veio-transicao) ease-out;
+}
+
+.pm-marca--parada ~ .pm-pilula .pm-chip {
+  animation: none;
+}
+
+.pm-chip .pm-icone {
+  width: 20px;
+  height: 20px;
+}
+
+.pm-chip .pm-icone svg {
+  width: 12px;
+  height: 12px;
+}
+
+.pm-chip .pm-titulo {
+  display: inline;
+  font-size: var(--veio-tam-legenda);
+}
+
+/* O chip da Palavra (o componente da Base Veio), no desenho do protótipo: mono, em ouro. */
+.pm-chip .veio-chip-palavra {
+  gap: 4px;
+  padding: 1px 7px;
+  border: 0;
+  background: var(--veio-accent-soft);
+  color: var(--veio-accent-text);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-micro);
+  font-weight: var(--veio-peso-num);
+}
+
+.pm-chip .veio-chip-palavra__rotulo {
+  color: inherit;
+}
+
+/* A mineração automática: a mesma marca, mais apagada. */
+.pm--apagada .pm-linha {
+  opacity: .6;
+  box-shadow: none;
+}
+
+.pm--apagada .pm-grifo {
+  opacity: .75;
+}
+
+/* Só para o leitor de tela: a frase da marca, a descrição do contador. */
+.pm-so-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pm-linha,
+  .pm-grifo,
+  .pm-chip {
+    animation: none;
+  }
 }

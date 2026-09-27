@@ -91,6 +91,8 @@
   --veio-sombra: 0 18px 40px -12px rgba(0, 0, 0, .6);
   /* A sombra suave das ilhas do Painel (sidebar e conteúdo), que não flutuam. */
   --veio-sombra-ilha: 0 10px 30px rgba(0, 0, 0, .35);
+  /* O brilho ouro da linha que o overlay desenha sob o texto capturado (sempre no tema escuro). */
+  --veio-brilho-da-linha: 0 0 12px rgba(245, 184, 61, .55);
 
   /* O fio de luz no topo do botão primário, que dá o relevo do protótipo. */
   --veio-brilho: rgba(255, 255, 255, .35);
