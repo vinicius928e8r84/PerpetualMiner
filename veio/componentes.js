@@ -90,6 +90,11 @@
     tema: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/>'],
     perigo: ['<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>', '<path d="M12 9v4M12 17h.01"/>'],
     abrir: ['<path d="m6 9 6 6 6-6"/>'],
+    // O que o overlay minerou: legenda, seleção e mineração automática; e a falha.
+    legenda: ['<rect x="3" y="5" width="18" height="14" rx="2"/>', '<path d="M7 14h4M13 14h4M7 10h10"/>'],
+    selecao: ['<path d="M4 6h16M4 12h10M4 18h7"/>'],
+    automatica: ['<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>'],
+    alerta: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 7.5v5.5M12 16.5v.01"/>'],
     // O menu Minerar frases: Colar (a prancheta), Foto (a câmera) e o ↗ de
     // “abre numa aba nova”.
     colar: ['<rect x="8" y="2" width="8" height="4" rx="1"/>', '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>'],
@@ -412,7 +417,7 @@
     no.textContent = '';
     const documento = no.ownerDocument;
 
-    const inicio = palavra ? texto.toLowerCase().indexOf(palavra.toLowerCase()) : -1;
+    const inicio = posicaoDaPalavra(texto, palavra);
     if (inicio < 0) {
       no.append(documento.createTextNode(texto));
       return;
@@ -425,6 +430,17 @@
 
     no.append(documento.createTextNode(texto.slice(0, inicio)), grifo,
       documento.createTextNode(texto.slice(fim)));
+  }
+
+  /**
+   * Onde a Palavra começa na frase, ou -1. Vale a palavra inteira (“it” não é o
+   * pedaço de “with”); só sem ela, o primeiro trecho igual.
+   */
+  function posicaoDaPalavra(texto, palavra) {
+    if (!palavra) return -1;
+    const escapada = palavra.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const inteira = new RegExp(`(?<![\\p{L}\\p{M}\\p{N}])${escapada}(?![\\p{L}\\p{M}\\p{N}])`, 'iu').exec(texto);
+    return inteira ? inteira.index : texto.toLowerCase().indexOf(palavra.toLowerCase());
   }
 
   /**
@@ -554,6 +570,7 @@
     montarAviso,
     montarDetalhes,
     escreverFrase,
+    posicaoDaPalavra,
     escreverFraseClicavel,
     andarEntrePalavras,
     focarPalavra,

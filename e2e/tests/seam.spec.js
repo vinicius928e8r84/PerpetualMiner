@@ -9,7 +9,7 @@ const LEGENDA = 'The quiet harbor woke before the gulls did.';
 
 test('no player com legenda, Alt+S minera a legenda com o Contexto da página', async ({ page, paginas, extensao }) => {
   await page.goto(paginas.url('player.html'));
-  await expect(page.locator('#btn-minerador-pro')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toBeVisible();
 
   await page.keyboard.press('Alt+KeyS');
 
@@ -45,14 +45,14 @@ test('numa página sem vídeo, Alt+S não minera nada', async ({ page, paginas, 
 
   // Dá tempo ao content script de rodar os intervalos dele antes de afirmar a ausência.
   await page.waitForTimeout(1500);
-  await expect(page.locator('#btn-minerador-pro')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toHaveCount(0);
   expect(await extensao.frases()).toEqual([]);
 });
 
 test('com a sessão semeada, a frase minerada chega ao Firestore da conta', async ({ page, paginas, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-sync' });
   await page.goto(paginas.url('player.html'));
-  await expect(page.locator('#btn-minerador-pro')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toBeVisible();
 
   await page.keyboard.press('Alt+KeyS');
 
@@ -63,7 +63,7 @@ test('com a sessão semeada, a frase minerada chega ao Firestore da conta', asyn
 test('a Palavra é detectada pelo vocabulário que a Conexão com o Anki devolve', async ({ page, paginas, extensao, fakes }) => {
   fakes.anki.definirVocabulario('en', ['quiet', 'harbor', 'woke']);
   await page.goto(paginas.url('player.html'));
-  await expect(page.locator('#btn-minerador-pro')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toBeVisible();
 
   await page.keyboard.press('Alt+KeyS');
 

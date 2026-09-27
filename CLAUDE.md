@@ -20,7 +20,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | File | Role |
 |------|------|
 | `manifest.json` | Permissions, content script registration |
-| `content.js` | Injected into all pages; mines subtitles, injects floating button |
+| `content.js` | Injected into all pages; mines subtitles and selections, and drives the overlay |
+| `overlay.js` + `overlay.css` | `PerpetualMiner.Overlay` — the in-page overlay: one Veio component in an open Shadow DOM (the floating button and the feedback pill). See “Overlay” below |
 | `background.js` | Service worker; handles `SALVAR_HISTORICO` messages and context menu clicks; writes to `chrome.storage.local` and syncs to Firestore |
 | `tombstone.js` | Tombstone of a deleted phrase (`chrome.storage.sync` keys and the Firestore `meta/deleted` PATCH), loaded by `painel.html` |
 | `popup.html/js/css` | The “Cockpit” popup (docs/design/popup/, variant A): Abrir painel, the Mineração automática tiles, quick mining and the last 5 phrases, read-only. See “Popup (Cockpit)” below |
@@ -28,7 +29,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-shell.js` | The panel's “Ilhas” shell: one page, one area per address (`#frases`, `#anki/<aba>`, `#configuracoes[/<seção>]`), the sidebar indicators (phrase total, Conexão com o Anki dot), the rail below ~1000 px, the F1 strip and the Configurações cards opening and closing. See “Panel shell” below |
 | `painel-conta.js` | The account in the panel: one state drawn in the Configurações › Conta & sync card, its closed-row summary and the sidebar chip (CFG-01…10). See “Account (Conta & sync)” below |
 | `painel-atalhos.js` | The Configurações › Atalhos card: records “Minerar legenda” and “Minerar seleção” in their own row (CFG-11…14, 19, 21, 22, 33, 34). See “Shortcuts (Atalhos)” below |
-| `lib/atalhos.js` | `PerpetualMiner.Atalhos` — the recorded shortcuts in one place: where they are stored, the defaults, the PT-BR label, “same shortcut” and event matching. Loaded by the content script, the panel and the popup |
+| `lib/atalhos.js` | `PerpetualMiner.Atalhos` — the recorded shortcuts in one place: where they are stored, the defaults, the PT-BR label, “same shortcut” and event matching, and `digitandoNumCampo` (the key belongs to a text field). Loaded by the content script, the panel and the popup |
 | `painel-chave.js` | The Configurações › Chave do Gemini card: the saved key masked, with Trocar chave; the empty key's field; `geminiApiKey`. See “Chave do Gemini and Zona de perigo” below |
 | `painel-perigo.js` | The Configurações › Zona de perigo card: the Apagar tudo entry, its reach with and without an account, and the Veio confirmation modal (CFG-17). See “Chave do Gemini and Zona de perigo” below |
 | `bookreader.html/js/css` | Minerar de uma foto (ex-BookReader): photos of marked book pages → Gemini Vision reads the marked passages → the person picks which phrases to mine. See “Minerar de uma foto” below |
@@ -90,10 +91,8 @@ silence (`POP-01`, `POP-05`, `PAI-16`…) are `''`.
 Money (`BRG-03`, `BRG-26`) takes an already-formatted `{valor}`: how many decimals to show is an
 Advanced preference that belongs to the panel, not to the catalog.
 
-The content script loads the whole catalog into every frame even though it only needs
-`detectarIdioma` today. That is deliberate: the overlay step rebuilds its feedback component from
-`MIN-01`…`MIN-11`, and the design spec has the content script reading its copy from the catalog like
-every other surface.
+The content script loads the whole catalog into every frame: the overlay reads its copy from it
+(`MIN-01`…`MIN-10`, and `PAI-29.web` for the selection's meta) like every other surface.
 
 ### Panel shell (`painel-shell.js`)
 
@@ -373,6 +372,56 @@ The legacy surfaces still carry their own CSS; each redesign step moves the surf
 onto these classes. Loading the files everywhere now is deliberate — the classes are prefixed
 `veio-`, so nothing collides with what is already there.
 
+### Overlay (`overlay.js`, `overlay.css`, docs/design/overlay/, M1)
+
+The overlay is one component in Shadow DOM. The only node it adds to the site's DOM is the host,
+`<perpetualminer-overlay>` (its position rules are inline and `!important`, so the site's CSS cannot hide or
+move it); everything else — the button, the pill and the three stylesheets (`veio/tokens.css`,
+`veio/componentes.css`, `overlay.css`, loaded as `<link>`s inside the shadow and declared in
+`web_accessible_resources`) — lives in the shadow. Its root is `.pm` with `data-tema="escuro"` and `all: initial`: always the dark
+tokens, whatever theme the extension pages use, and nothing the site sets on the host reaches it. The
+packaged fonts load from the `@font-face` rules of `tokens.css` inside the shadow. The shadow is open, so
+the tests (and a page) can reach it; a page still cannot mine, since the shortcuts and the button only
+take trusted events.
+
+- **Button:** the Veio tile (`veio/icones/icone.svg`) in a 46 px circle (the prototype's size), 16 px from the
+  right and 96 px from the bottom of the player (the prototype's corner, a little higher and further right), a real `<button>` whose `aria-label` is MIN-07 with the recorded caption shortcut (“Minerar legenda
+  (Alt+S)”, or “Minerar legenda” with none). At rest it is half faded (opacity .55); hover, keyboard focus and
+  an open pill bring it to 100%. There is no visible label (the owner's review of PR #66): the name with the
+  shortcut is for the screen reader. It lives in the player's container (so it stays in full screen) and only
+  exists where there is a video.
+- **Pill (the reserve C of M1, kept minimal after the owner's review):** the button stretches left into icon ·
+  title · a second line · the meta in mono. On a success the second line is the phrase with the Palavra
+  highlighted (`escreverFrase`; a long phrase starts near the Palavra, so it is never cut); on a failure it is
+  the catalog's `dica`. The meta is the capture's language code on a caption (`EN`, `RU`), the Fonte “Web”
+  (`PAI-29.web`) on a selection, and the language with the day's counter on the automatic mining (`RU 5/20`),
+  as in the prototype. Without a player it appears alone in the window's bottom-right corner, with the tile
+  as a plain mark at its end (not a button: `aria-hidden`, out of the Tab order; no mark on a failure), and
+  disappears entirely. The content sits in a `role="status"` region. One at a time: a new feedback replaces
+  the previous one. Every feedback — success or failure — leaves after ~3.5 s, as in the prototype; Esc
+  closes a failure sooner. There is no × and no “Tentar de novo”. The automatic mining's MIN-06 never takes
+  a failure off the screen.
+- **Honest:** `content.js` waits for the service worker's `SALVAR_HISTORICO` answer (`{ ok, frase }`) and for
+  the clipboard before it says anything: MIN-01 (“Frase minerada e copiada”) only when both happened, MIN-02
+  (“Frase minerada”, the same success pill) when the phrase was saved but not copied, MIN-03 when the save
+  failed. `chromeSet` in `background.js` rejects on
+  `chrome.runtime.lastError`, so a refused write reaches the overlay as a failure. The phrase is saved once,
+  whatever the clipboard does.
+- **Nothing to mine:** the caption shortcut on a page without a video says MIN-10 and mines nothing — without a
+  video, elements named “caption”/“subtitle” are image captions, so `obterLegendaAtual` returns nothing there;
+  with a video and no caption on screen it says MIN-04. The keyboard selection shortcut with nothing selected says
+  MIN-10 on a page without a video, and nothing on a page with one; a mouse selection shortcut with nothing
+  selected leaves the button to do what it always did (back, forward), so it says nothing. “Without a video” means no frame of the tab has one:
+  a frame without a video asks the others first (`HA_VIDEO_EM_OUTRO_FRAME`, see Cross-Frame Communication), so
+  a player in a cross-origin iframe never gets a false MIN-10 from the top frame.
+- **Typing is the person's:** neither shortcut fires while typing in an `input`, `textarea`, `select` or
+  `contenteditable` (`Atalhos.digitandoNumCampo`, through the event's composed path; inside a *closed* shadow
+  root the event reaches the content script retargeted to the host, so it opens the root with
+  `chrome.dom.openOrClosedShadowRoot` and looks at the focus inside). An Esc typed in a site's field stays the
+  site's too, even with a failure open.
+- The gold line under the captured text, the highlight on the site's text and the per-language counter are
+  #41. Until then the counter in the button's corner still sums the enabled languages.
+
 ### Firebase / Firestore Sync
 
 Phrases are synced to Firestore under `usuarios/{uid}/frases/{frase.id}` when the user is logged in. Both `background.js` and `painel.js` use the **Firestore REST API directly** (no SDK) to avoid CSP violations in MV3.
@@ -422,7 +471,7 @@ Other storage keys:
 
 ### Cross-Frame Communication
 
-`content.js` never uses `window.postMessage()`: the page shares the window with the content script and sees messages between frames, so it could forge them (inject phrases, overwrite the clipboard). Each frame saves its own phrase with `SALVAR_HISTORICO`. When the clipboard write fails inside an iframe (e.g. a cross-origin player without `clipboard-write`), the frame sends `COPIAR_NO_FRAME_DE_CIMA` to the service worker, which checks the sender and the text and relays `COPIAR_PARA_CLIPBOARD` to the tab's top frame only (`frameId: 0`). Web pages cannot reach `chrome.runtime` messaging.
+`content.js` never uses `window.postMessage()`: the page shares the window with the content script and sees messages between frames, so it could forge them (inject phrases, overwrite the clipboard). Each frame saves its own phrase with `SALVAR_HISTORICO`. When the clipboard write fails inside an iframe (e.g. a cross-origin player without `clipboard-write`), the frame sends `COPIAR_NO_FRAME_DE_CIMA` to the service worker, which checks the sender and the text and relays `COPIAR_PARA_CLIPBOARD` to the tab's top frame only (`frameId: 0`); the top frame answers `{ ok }` and the service worker passes it back, so the iframe's overlay only says “copiada” when the copy happened. Before saying a page has no video (MIN-10), a frame without one sends `HA_VIDEO_EM_OUTRO_FRAME`; the service worker asks every frame of the tab (`TEM_VIDEO_NESTE_FRAME`), only a frame with a player-sized video on screen answers (a hidden 1 px ad video does not count), and no answer means no video. Web pages cannot reach `chrome.runtime` messaging.
 
 The capture shortcuts and the floating button only react to trusted events (`event.isTrusted`), so a page cannot mine by dispatching a synthetic keydown or click.
 
@@ -460,7 +509,9 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - `e2e/fixtures.js` launches a fresh Chromium profile per test with the repo root loaded as an unpacked extension, fakes the network at the HTTP boundary and blocks every other external request. It gives tests `extensao` (id, service worker, `url()`, `lerStorage`/`gravarStorage`, `frases()`, `semearSessao()`), `fakes` and `paginas`.
 - `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`), Gemini (`responderFrases(frases)`, `falhar(status, mensagem)`, `ficarSemRede()`, `bloquear(motivo)` — a 200 with no text, the `promptFeedback.blockReason` —, `segurarFrases(frases)` — holds the photo in “Lendo…” until the returned function is called — and `chamadas`, with the key and MIME type of each read), and Firestore/Google (in-memory documents, token refresh; `ficarForaDoAr()`, `recusarAcesso()`, `recusarEscritas()`, `expirarSessao()`, `gravarFrases(uid, frases)`, `usarPerfil({ name, email, picture })`, the profile the Google login returns). `semearSessao({ expirada })` writes an account session to storage, skipping the real login.
 - **The real Google login runs offline.** The `chrome.identity.launchWebAuthFlow` window loads outside Playwright's routing (a `context.route` never sees it), so the fixture maps `accounts.google.com` to a local HTTPS server (`fakes/login-google.js`, self-signed certificate made with `openssl` per worker, `--host-resolver-rules` + `--ignore-certificate-errors`). `fakes.google.proximoLogin('entrar'|'janela'|'falhar')` picks what the window does: return with tokens, stay open (the test closes it: cancelling), or fail to load. This also keeps Chromium's own background calls to that host off the internet.
-- `e2e/pages/`: local fixture pages where the content script is injected: `player.html` (fake player with a caption), `texto.html` (plain text to select), `sem-video.html`, `player-em-iframe.html?player=<url>` (embeds the player from another origin, e.g. `paginas.urlCruzada('player.html')`), `hostil.html` + `hostil-filho.html` (a page that tries to drive the extension by itself), and `player-marcacao.html` / `texto-marcacao.html` (caption, title and selectable text carrying markup as text, to prove the content script always inserts page text as text, never as HTML).
+- `e2e/pages/`: local fixture pages where the content script is injected: `player.html` (fake player with a caption), `texto.html` (plain text to select), `sem-video.html`, `player-em-iframe.html?player=<url>` (embeds the player from another origin, e.g. `paginas.urlCruzada('player.html')`), `hostil.html` + `hostil-filho.html` (a page that tries to drive the extension by itself), `player-marcacao.html` / `texto-marcacao.html` (caption, title and selectable text carrying markup as text, to prove the content script always inserts page text as text, never as HTML), `player-com-campos.html` (a player with an input, a textarea, a contenteditable and an input inside a closed shadow root, which the page keeps as `window.campoFechado`), `video-escondido.html` (an ad frame whose only video is 1 px, embedded through `player-em-iframe.html`), `sem-video-com-imagens.html` (image captions with the classes the generic caption selectors look for, and no video) and `player-estilos-hostis.html` (a page whose CSS paints everything, to prove the overlay's styles and the site's never cross).
+- `tests/overlay-visual.spec.js` is the **visual reference of the overlay**, taken in the fake player resized to the prototype's player (1118 × 630), so the owner compares it with `docs/design/overlay/prototipo-overlay.html?variant=M1` at the same scale.
+- `tests/overlay.spec.js` fails the service worker's storage on purpose (`chrome.storage.local.set` refuses or holds the write) — there is no network between the service worker and the storage, so the fault is injected at that boundary — and serves a page with `Permissions-Policy: clipboard-write=()` to deny the clipboard.
 - `e2e/vitrine/`: the Veio showcase — tokens, type scale, radii, a Russian phrase and **every base component**, in both themes and in the states each component actually has (button and field: focus and disabled, plus error on the field; a badge only has normal). `componentes-da-vitrine.js` builds the gallery once per theme with the same function, so the two columns never diverge; its sample copy comes from the Voice catalog by ID (`CATALOGO_DA_VITRINE`), and anything that is showcase scaffolding is marked `data-vitrine-chrome`. The fixture server also serves `/veio/…` and `/lib/…` from the extension root, so the showcase loads the same tokens, fonts, components and catalog the extension pages load. After the owner's review it is **the visual reference**.
 - The showcase also carries a **mock of the toolbar badge** in its three states, outside the two theme columns — Chrome draws the real badge on the browser toolbar, which no static page (and so no Vercel preview) can show. The mock reads its colors from the tokens, and the badge test asserts those tokens match what the service worker hands Chrome, so the copy in `background.js` can't drift.
 - `tests/painel-frases-visual.spec.js` holds the **visual reference of the Frases list** (cards wide and as a rail, each at the top and with the island scrolled to the pagination; loading, first run, filters and search with no result as the full page; the selection bar, the card actions and the modals; Minerar frases: the menu, Colar filled and empty, the progress, Arquivo .txt, ADD-09 and the ADD-06 aviso), in the same way: `npx playwright test painel-frases-visual --update-snapshots` after the owner approves a new look.
@@ -479,7 +530,6 @@ The legacy tests keep running: `node test_sync.js`, `node test_bridge_panel.js`,
 ## Key Constants
 
 - `ATALHOS_PADRAO` in `lib/atalhos.js` — the factory shortcuts: Minerar legenda on **Alt+S**, Minerar seleção with none
-- `COR_ICONE = '#00ff88'` in `content.js` — UI highlight color
 - `SENTINEL_VAZIO = 'NENHUM_TRECHO'` in `bookreader.js` — returned by Gemini when no marked passages found (the photo is “Sem marcações”, FOT-10)
 - `FIREBASE_PROJECT = 'perpetualminer-4c219'` in `background.js`
 - `BADGE_COR_DE_FUNDO = '#F5B83D'` / `BADGE_COR_DO_TEXTO = '#1A1204'` in `background.js` — the toolbar badge's Veio colors
@@ -491,4 +541,4 @@ The legacy tests keep running: `node test_sync.js`, `node test_bridge_panel.js`,
 - `alarms`, `storage`, `unlimitedStorage`, `activeTab`, `tabs`, `contextMenus`, `identity` (`alarms` is the toolbar badge's day rollover)
 - `host_permissions`: Gemini API, Firestore, Google OAuth, Firebase token endpoints
 - Content scripts inject into all URLs with `all_frames: true`
-- `painel.html`, `bookreader.html`, `veio/tokens.css` and `veio/fontes/*.woff2` declared as `web_accessible_resources`. The tokens and the fonts are exposed so the in-page overlay can load them inside its Shadow DOM; `content.js` does not read them yet — that lands with the overlay rebuild
+- `painel.html`, `bookreader.html`, `veio/tokens.css`, `veio/componentes.css`, `overlay.css`, `veio/icones/icone.svg` and `veio/fontes/*.woff2` declared as `web_accessible_resources`: the stylesheets, the tile and the fonts are what the in-page overlay loads inside its Shadow DOM
