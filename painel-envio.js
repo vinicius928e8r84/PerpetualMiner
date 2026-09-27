@@ -629,14 +629,12 @@
 
   // ─── Conexão desligada ─────────────────────────────────────────────────────
 
-  /** Com a Conexão desligada, Enviar ao Anki fica `aria-disabled`, com o selo ao lado e o tooltip dizendo por quê. */
+  /** Com a Conexão desligada, Enviar ao Anki fica `aria-disabled` e o tooltip diz por quê, só no hover e no foco. */
   function mostrarConexao(situacao) {
     conexaoDesligada = situacao === CONEXAO.DESLIGADA;
     const enviarAoAnki = porId('btn-send-anki');
     const dica = porId('envio-indisponivel');
     dica.textContent = textoDaVoz('PAI-32.enviarIndisponivel');
-    // O selo fica ao lado do botão enquanto a Conexão está desligada, sem precisar do hover.
-    porId('envio-conexao-desligada').hidden = !conexaoDesligada;
     if (conexaoDesligada) {
       enviarAoAnki.setAttribute('aria-disabled', 'true');
       enviarAoAnki.setAttribute('aria-describedby', dica.id);

@@ -1205,32 +1205,6 @@ body {
   display: none;
 }
 
-/* Com a Conexão desligada, o selo fica ao lado de Enviar ao Anki o tempo todo. */
-.envio-conexao-desligada {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  border-radius: var(--veio-raio-pilula);
-  background: var(--veio-danger-soft);
-  color: var(--veio-danger);
-  font-size: var(--veio-tam-legenda);
-  font-weight: var(--veio-peso-titulo);
-  white-space: nowrap;
-}
-
-.envio-conexao-desligada::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.envio-conexao-desligada[hidden] {
-  display: none;
-}
-
 /* ── Movimento reduzido ───────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .shell-ponto[data-estado="conectando"],

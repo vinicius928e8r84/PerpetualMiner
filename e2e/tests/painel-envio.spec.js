@@ -604,9 +604,9 @@ test('com a Conexão desligada, Enviar ao Anki fica indisponível e o tooltip di
 
   const botao = enviarAoAnki(page);
   await expect(botao).toHaveAttribute('aria-disabled', 'true');
-  // O selo fica na barra o tempo todo, sem precisar passar o mouse.
-  const selo = page.locator('#frases-barra').getByText('Conexão desligada', { exact: true });
-  await expect(selo).toBeVisible();
+  // Discreto: nada fica na barra o tempo todo; o porquê só aparece ao passar o mouse (ou com o foco).
+  await expect(page.getByRole('tooltip')).toBeHidden();
+  await expect(page.locator('#frases-barra')).not.toContainText('Conexão desligada');
   const porque = 'Indisponível: a conexão com o Anki está desligada. Ligue-a neste computador para enviar.';
   await expect(botao).toHaveAccessibleDescription(porque);
   await botao.hover();
@@ -628,7 +628,6 @@ test('com a Conexão desligada, Enviar ao Anki fica indisponível e o tooltip di
   await page.locator('#shell-tentar-de-novo').evaluate(el => el.click());
   await expect(botao).not.toHaveAttribute('aria-disabled', 'true');
   await expect(page.getByRole('tooltip')).toHaveCount(0);
-  await expect(selo).toBeHidden();
 });
 
 // ─── Teclado, leitor de tela e movimento ─────────────────────────────────────
