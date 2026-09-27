@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Player com estilos agressivos</title>
+  <style>
+    /* Um site que pinta tudo por cima: nenhuma destas regras pode alcançar o
+       overlay, e nada do overlay pode alcançar os elementos daqui. */
+    * { font-family: Georgia, serif !important; color: rgb(255, 0, 255) !important; letter-spacing: 3px; }
+    button, div, span, b, p, img, kbd { background: rgb(0, 255, 0) !important; border-radius: 0 !important; }
+    .pm, .pm-pilula, .pm-botao, .veio-botao, [role="status"] { display: none !important; }
+    body { margin: 0; background: #111; }
+    .player { position: relative; width: 640px; height: 360px; margin: 24px; }
+    video { width: 640px; height: 360px; background: #000; display: block; }
+    .caption-window { position: absolute; left: 0; right: 0; bottom: 36px; text-align: center; }
+    .caption-text { font-size: 22px; padding: 2px 8px; }
+  </style>
+</head>
+<body>
+  <div class="player">
+    <video muted></video>
+    <div class="caption-window"><span class="caption-text" id="legenda">The quiet harbor woke before the gulls did.</span></div>
+  </div>
+  <button id="do-site" type="button">Botão do site</button>
+</body>
+</html>

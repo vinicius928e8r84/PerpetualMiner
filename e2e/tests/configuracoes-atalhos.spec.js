@@ -80,7 +80,7 @@ test('gravar Ctrl+Shift+K para Minerar legenda: no player, Ctrl+Shift+K minera e
   // O player já está aberto: o content script segue o atalho novo sem recarregar.
   const player = await context.newPage();
   await player.goto(paginas.url('player.html'));
-  await expect(player.locator('#btn-minerador-pro')).toBeVisible();
+  await expect(player.getByRole('button', { name: /^Minerar legenda/ })).toBeVisible();
 
   await abrirAtalhos(page, extensao);
   await gravar(page, 'Minerar legenda').click();
@@ -210,7 +210,7 @@ test('o atalho de seleção gravado aqui minera o texto selecionado, como hoje',
 test('sem atalho de legenda gravado, Alt+S não minera no player', async ({ page, paginas, extensao }) => {
   await extensao.gravarStorage({ pm_atalho_legenda: null });
   await page.goto(paginas.url('player.html'));
-  await expect(page.locator('#btn-minerador-pro')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toBeVisible();
 
   await page.keyboard.press('Alt+KeyS');
   await page.waitForTimeout(800);
@@ -366,38 +366,10 @@ test('com o botão voltar gravado para a legenda, minerar não leva a página de
   // Há para onde voltar: sem a extensão, o botão voltar sairia do player.
   await page.goto(paginas.url('sem-video.html'));
   await page.goto(paginas.url('player.html'));
-  await expect(page.locator('#btn-minerador-pro')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toBeVisible();
 
   await apertarBotaoDoMouse(page, 'back', { alt: true });
 
   await expect.poll(async () => (await extensao.frases()).map(f => f.texto)).toEqual([LEGENDA]);
   expect(page.url()).toContain('player.html');
-});
-
-// ─── O gravador antigo do popup ──────────────────────────────────────────────
-// Ele continua até o passo do popup (#6), mas grava com as mesmas regras.
-
-test('no popup, o atalho que já é do Minerar legenda é recusado, e a gravação continua', async ({ page, extensao }) => {
-  await page.goto(extensao.url('popup.html'));
-  await page.locator('#btnGravarAtalho').click();
-
-  await page.keyboard.press('Alt+KeyS');
-  await expect(page.locator('#atalhoHint')).toHaveText('Esse atalho já é do Minerar legenda. Grave outro.');
-  await expect(page.locator('#btnGravarAtalho')).toHaveText('Cancelar gravação');
-  expect(await atalhosGravados(extensao)).toEqual({});
-
-  // Uma tecla sem modificador também não grava.
-  await page.keyboard.press('KeyK');
-  expect(await atalhosGravados(extensao)).toEqual({});
-
-  await page.keyboard.press('Alt+KeyD');
-  await expect(page.locator('#atalhoAtual')).toHaveText('Alt+D');
-  expect((await atalhosGravados(extensao)).pm_atalho).toMatchObject({ type: 'keyboard', code: 'KeyD', altKey: true });
-});
-
-test('no popup, um atalho gravado em inglês aparece em PT-BR', async ({ page, extensao }) => {
-  await extensao.gravarStorage({ pm_atalho: SELECAO_NO_BOTAO_VOLTAR_EM_INGLES });
-  await page.goto(extensao.url('popup.html'));
-
-  await expect(page.locator('#atalhoAtual')).toHaveText('Alt+Botão voltar');
 });

@@ -148,17 +148,17 @@ test('o mesmo texto minerado pelo menu, pelo popup e pela foto grava o mesmo idi
 
   // 2. Popup: a mineração rápida.
   await page.goto(extensao.url('popup.html'));
-  await page.locator('#txtManual').fill(FRASE_RUSSA);
-  await page.locator('#btnAddManual').click();
+  await page.getByRole('textbox', { name: 'Cole ou escreva uma frase' }).fill(FRASE_RUSSA);
+  await page.getByRole('button', { name: 'Minerar', exact: true }).click();
 
   // 3. Minerar de uma foto.
   await extensao.gravarStorage({ geminiApiKey: 'chave-de-teste' });
   fakes.gemini.responderFrases([FRASE_RUSSA]);
   await page.goto(extensao.url('bookreader.html'));
-  await page.locator('#file-input').setInputFiles({ name: 'pagina.png', mimeType: 'image/png', buffer: PNG_1X1 });
-  await page.locator('#btn-analisar').click();
-  await expect(page.locator('.result-item')).toHaveCount(1);
-  await page.locator('#btn-salvar').click();
+  await page.locator('#foto-arquivo').setInputFiles({ name: 'pagina.png', mimeType: 'image/png', buffer: PNG_1X1 });
+  await page.getByRole('button', { name: 'Ler marcações' }).click();
+  await expect(page.locator('#foto-minerar')).toHaveText('Minerar 1 frase');
+  await page.locator('#foto-minerar').click();
 
   await expect.poll(async () => (await extensao.frases()).filter(f => f.texto === FRASE_RUSSA).length).toBe(3);
   const gravadas = (await extensao.frases()).filter(f => f.texto === FRASE_RUSSA);

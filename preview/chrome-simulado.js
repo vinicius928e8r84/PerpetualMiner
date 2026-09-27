@@ -135,11 +135,6 @@
         Object.assign(ESTADO_AUTO_MINER.settings, mensagem.settings || {});
         return { ok: true, state: copiar(ESTADO_AUTO_MINER) };
       }
-      case 'APAGAR_FRASES': {
-        const ids = new Set((mensagem.ids || []).map(String));
-        dados.frases = (dados.frases || []).filter(frase => !ids.has(String(frase.id)));
-        return { ok: true, apagadas: ids.size };
-      }
       case 'AUTO_KEYWORDS_FOR_PHRASE':
         return { ok: true, keywords: [] };
       default:

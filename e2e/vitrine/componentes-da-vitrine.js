@@ -26,9 +26,10 @@
     ['PAI-04.acao'], ['PAI-10.todasAsFontes'], ['PAI-10.todosOsIdiomas'], ['POP-03'],
     ['POP-06'], ['POP-10'], ['PAI-09'], ['PAI-06', { n: 3 }],
     ['PAI-08.enviada'], ['PAI-08.exportada'], ['BRG-01.ligada'], ['BRG-01.desligada'],
+    ['FOT-19.lendo'],
     ['GLB-02.semAtalho'],
     ['ADD-11.colar'], ['ADD-11.arquivo'], ['ADD-11.foto'],
-    ['POP-07', { n: 7, limite: 20 }], ['POP-08', { n: 20, limite: 20 }],
+    ['POP-07.leitor', { n: 7, limite: 20 }], ['POP-08'],
     ['PAI-13.titulo', { n: 12 }], ['PAI-13.corpo'],
     ['PAI-14', { n: 12 }],
     ['PAI-15.aviso'], ['PAI-15.tentarDeNovo'], ['ONB-15.ocultar'],
@@ -238,6 +239,7 @@
       selo('veio-selo--info', iconeVeio('arquivo'), textoDaVoz('PAI-08.exportada')),
       selo('veio-selo--ok', ponto(), textoDaVoz('BRG-01.ligada')),
       selo('veio-selo--erro', ponto(), textoDaVoz('BRG-01.desligada')),
+      selo('veio-selo--lendo', ponto(), textoDaVoz('FOT-19.lendo')),
     ];
   }
 
@@ -269,8 +271,8 @@
         el('span', { class: 'veio-medidor' }, el('i', { style: `width:${proporcao}%` })));
 
     return [
-      azulejo('Inglês', 'POP-07', { n: 7, limite: 20 }, 35, true),
-      azulejo('Russo', 'POP-08', { n: 20, limite: 20 }, 100, false),
+      azulejo('Inglês', 'POP-07.leitor', { n: 7, limite: 20 }, 35, true),
+      azulejo('Russo', 'POP-08', {}, 100, false),
     ];
   }
 

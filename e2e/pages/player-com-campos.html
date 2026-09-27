@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Player com campos · Comentários</title>
+  <style>
+    body { margin: 0; background: #111; color: #eee; font-family: sans-serif; }
+    .player { position: relative; width: 640px; height: 360px; margin: 24px; }
+    video { width: 640px; height: 360px; background: #000; display: block; }
+    .caption-window { position: absolute; left: 0; right: 0; bottom: 36px; text-align: center; }
+    .caption-text { color: #fff; font-size: 22px; background: rgba(0, 0, 0, .6); padding: 2px 8px; }
+    .campos { margin: 24px; display: grid; gap: 8px; width: 400px; }
+    #editavel { border: 1px solid #555; min-height: 1.5em; padding: 4px; }
+  </style>
+</head>
+<body>
+  <!-- Um player com legenda e, abaixo dele, os três jeitos de digitar numa
+       página: o atalho de legenda não pode tomar a letra de nenhum deles. -->
+  <div class="player">
+    <video muted></video>
+    <div class="caption-window"><span class="caption-text" id="legenda">The quiet harbor woke before the gulls did.</span></div>
+  </div>
+  <div class="campos">
+    <input id="campo" type="text" aria-label="Comentário">
+    <textarea id="area" aria-label="Resposta"></textarea>
+    <div id="editavel" contenteditable="true" aria-label="Nota"></div>
+    <campo-fechado></campo-fechado>
+  </div>
+  <script>
+    // Um campo dentro de uma sombra fechada, como nos web components de muitos
+    // sites: o evento chega retargetado ao host, e só a página guarda o campo.
+    customElements.define('campo-fechado', class extends HTMLElement {
+      constructor() {
+        super();
+        const sombra = this.attachShadow({ mode: 'closed' });
+        const campo = document.createElement('input');
+        campo.type = 'text';
+        campo.setAttribute('aria-label', 'Busca');
+        sombra.append(campo);
+        window.campoFechado = campo;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -45,13 +45,16 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["lib/voz/catalogo.js", "lib/voz/texto.js", "lib/idioma.js", "lib/atalhos.js", "content.js"],
+      "js": ["lib/voz/catalogo.js", "lib/voz/texto.js", "lib/idioma.js", "lib/atalhos.js", "veio/componentes.js", "overlay.js", "content.js"],
       "all_frames": true
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["painel.html", "bookreader.html", "veio/tokens.css", "veio/fontes/*.woff2"],
+      "resources": [
+        "painel.html", "bookreader.html",
+        "veio/tokens.css", "veio/componentes.css", "overlay.css", "veio/icones/icone.svg", "veio/fontes/*.woff2"
+      ],
       "matches": ["<all_urls>"]
     }
   ]

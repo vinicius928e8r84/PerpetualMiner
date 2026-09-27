@@ -4,8 +4,6 @@
 importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js');
 const { textoDaVoz, detectarIdioma, IDIOMAS } = PerpetualMiner;
 
-importScripts('tombstone.js');
-
 const FIREBASE_PROJECT  = 'perpetualminer-4c219';
 const FIRESTORE_BASE    = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
 const FB_REFRESH_URL    = `https://securetoken.googleapis.com/v1/token?key=AIzaSyDrbDVUvv8wyoYqjCr5jEMBJPPsIP2k1Ak`;
@@ -141,32 +139,45 @@ function minerarSelecaoDoMenu(info, tab) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Um player em iframe sem permissão de clipboard pede a cópia ao frame de cima
   // da mesma aba. Só o content script desta extensão alcança este canal; uma
-  // página não, então ela não consegue sobrescrever o clipboard por aqui.
+  // página não, então ela não consegue sobrescrever o clipboard por aqui. A
+  // resposta diz se a cópia saiu, para o overlay só afirmar o que aconteceu.
   if (request.type === 'COPIAR_NO_FRAME_DE_CIMA') {
     const texto = request.texto;
     if (sender.id !== chrome.runtime.id || sender.tab?.id == null) return;
     if (typeof texto !== 'string' || !texto.trim()) return;
     chrome.tabs.sendMessage(sender.tab.id, { type: 'COPIAR_PARA_CLIPBOARD', texto }, { frameId: 0 })
-      .catch(() => {});
-    return;
+      .then(resposta => sendResponse({ ok: resposta?.ok === true }))
+      .catch(() => sendResponse({ ok: false }));
+    return true;
+  }
+
+  // Um frame sem vídeo pergunta se outro frame da aba tem um (um player num iframe
+  // de outra origem), antes de dizer que a página não tem vídeo (MIN-10). Só um
+  // frame com vídeo responde; sem resposta, não há.
+  if (request.type === 'HA_VIDEO_EM_OUTRO_FRAME') {
+    if (sender.id !== chrome.runtime.id || sender.tab?.id == null) return;
+    chrome.tabs.sendMessage(sender.tab.id, { type: 'TEM_VIDEO_NESTE_FRAME' })
+      .then(resposta => sendResponse({ temVideo: resposta?.temVideo === true }))
+      .catch(() => sendResponse({ temVideo: false }));
+    return true;
   }
 
   if (request.type === 'SALVAR_HISTORICO') {
+    // O Minerar frases do painel manda `palavras` quando a linha já trazia a
+    // Palavra (um .txt exportado daqui, mesmo sem nenhuma): ela volta como está,
+    // sem a detecção automática. Ele também manda `semNuvem`, porque sobe as
+    // frases de uma vez no fim e precisa saber se a nuvem falhou (ADD-06).
+    const palavras = Array.isArray(request.palavras) ? request.palavras.map(String) : null;
     salvarFrase(
       request.texto,
       request.origem,
       request.contexto  || null,
       request.idioma    || 'Inglês',
+      palavras?.length ? { keywords: palavras, autoKeyword: false } : {},
+      { comPalavraAutomatica: !palavras, comNuvem: !request.semNuvem },
     )
       .then(frase => sendResponse({ ok: true, frase }))
       .catch(err => sendResponse({ ok: false, error: err?.message || 'save_failed' }));
-    return true;
-  }
-
-  if (request.type === 'APAGAR_FRASES') {
-    apagarFrases(request.ids || [])
-      .then(() => sendResponse({ ok: true }))
-      .catch(err => sendResponse({ ok: false, error: err?.message || 'delete_failed' }));
     return true;
   }
 
@@ -237,7 +248,8 @@ function desmarcarPendenteDeSync(id) {
   });
 }
 
-async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', extras = {}) {
+async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', extras = {},
+  { comPalavraAutomatica = true, comNuvem = true } = {}) {
   const novaFrase = {
     texto,
     data:      new Date().toLocaleDateString('pt-BR'),
@@ -247,7 +259,9 @@ async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', e
     ...(contexto && { contexto }),
     ...extras,
   };
-  const autoKeywords = novaFrase.keywords?.length ? novaFrase.keywords : await autoKeywordsForPhrase(novaFrase);
+  const autoKeywords = novaFrase.keywords?.length || !comPalavraAutomatica
+    ? (novaFrase.keywords || [])
+    : await autoKeywordsForPhrase(novaFrase);
   if (autoKeywords.length > 0 && !novaFrase.keywords?.length) {
     novaFrase.keywords = autoKeywords;
     novaFrase.autoKeyword = true;
@@ -267,68 +281,8 @@ async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', e
   });
 
   // Se o usuário estiver logado, sincroniza com o Firestore em background
-  sincronizarComFirestore(novaFrase);
+  if (comNuvem) sincronizarComFirestore(novaFrase);
   return novaFrase;
-}
-
-// Apaga frases deste computador e grava o tombstone nos mesmos lugares que o
-// painel usa (chrome.storage.sync, pm_deleted_ids e, com a conta conectada,
-// meta/deleted no Firestore). Sem o tombstone, a próxima sincronização do
-// painel traz a frase de volta da nuvem ou de outro computador.
-async function apagarFrases(ids) {
-  const idsStr = ids.map(String);
-  if (!idsStr.length) return;
-  const apagadas = new Set(idsStr);
-
-  await naFilaDeGravacao(async () => {
-    const data = await chromeGet({ frases: [], pm_pending_sync: [], pm_deleted_ids: [] });
-    await chromeSet({
-      frases:          data.frases.filter(f => !apagadas.has(String(f.id))),
-      pm_pending_sync: data.pm_pending_sync.filter(id => !apagadas.has(id)),
-      pm_deleted_ids:  [...new Set([...data.pm_deleted_ids, ...idsStr])],
-    });
-  });
-
-  const apagadasEm = Date.now();
-  chrome.storage.sync.set(tombstonesSync(idsStr, apagadasEm));
-
-  // Esperar a nuvem mantém o service worker vivo até o DELETE sair; o popup já
-  // tirou a frase da tela e não depende desta resposta.
-  await apagarDoFirestore(idsStr, apagadasEm);
-}
-
-async function apagarDoFirestore(ids, apagadasEm) {
-  try {
-    const authData = await sessaoDaConta();
-    if (!authData) return;
-    const headers = { 'Authorization': `Bearer ${authData.idToken}`, 'Content-Type': 'application/json' };
-
-    await gravarTombstoneFirestore(authData.uid, headers, ids, apagadasEm);
-
-    const respostas = await Promise.all(ids.map(id =>
-      fetch(`${FIRESTORE_BASE}/usuarios/${authData.uid}/frases/${id}`, { method: 'DELETE', headers }),
-    ));
-    // 404 = já não existe na nuvem. Qualquer outra falha fica em pm_deleted_ids,
-    // e o painel tenta de novo na próxima sincronização.
-    const foraDaNuvem = new Set(ids.filter((_, i) => respostas[i].ok || respostas[i].status === 404));
-    if (!foraDaNuvem.size) return;
-    await naFilaDeGravacao(async () => {
-      const { pm_deleted_ids } = await chromeGet({ pm_deleted_ids: [] });
-      await chromeSet({ pm_deleted_ids: pm_deleted_ids.filter(id => !foraDaNuvem.has(id)) });
-    });
-  } catch (err) {
-    console.warn('[Firestore] apagar falhou, fica pendente:', err?.message);
-  }
-}
-
-async function gravarTombstoneFirestore(uid, headers, ids, apagadasEm) {
-  const { mascara, corpo } = tombstoneFirestore(ids, apagadasEm);
-  const res = await fetch(`${FIRESTORE_BASE}/usuarios/${uid}/meta/deleted?${mascara}`, {
-    method: 'PATCH',
-    headers,
-    body: JSON.stringify(corpo),
-  });
-  if (!res.ok) console.warn('[Firestore] tombstone falhou:', res.status);
 }
 
 // ─── Firestore Sync via REST API ──────────────────────────────────────────────
@@ -1188,6 +1142,12 @@ function chromeGet(defaults) {
   return new Promise(resolve => chrome.storage.local.get(defaults, resolve));
 }
 
+// Uma gravação recusada (cota, armazenamento indisponível) rejeita: quem espera
+// por ela — o overlay, pela resposta de SALVAR_HISTORICO — precisa saber.
 function chromeSet(values) {
-  return new Promise(resolve => chrome.storage.local.set(values, resolve));
+  return new Promise((resolve, reject) => chrome.storage.local.set(values, () => {
+    const erro = chrome.runtime.lastError;
+    if (erro) reject(new Error(erro.message));
+    else resolve();
+  }));
 }

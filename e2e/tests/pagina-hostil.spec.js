@@ -21,7 +21,7 @@ const lerClipboard = page => page.evaluate(() => navigator.clipboard.readText())
 // A página hostil age sozinha; nada pode ter sido gravado nem copiado.
 async function esperarQuePaginaHostilNaoMudeNada({ context, page, paginas, extensao }, agir) {
   await page.goto(paginas.url('hostil.html'));
-  await expect(page.locator('#btn-minerador-pro')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toBeVisible();
   await prepararClipboard(context, page, paginas.origem);
 
   await page.evaluate(agir);
@@ -43,7 +43,7 @@ test('uma página hostil que simula o atalho e o clique no botão sobre uma lege
 test('legenda num player em iframe de outra origem: minerar ainda grava a frase e copia', async ({ context, page, paginas, extensao }) => {
   await page.goto(paginas.url(`player-em-iframe.html?player=${encodeURIComponent(paginas.urlCruzada('player.html'))}`));
   const player = page.frameLocator('#player');
-  await expect(player.locator('#btn-minerador-pro')).toBeVisible();
+  await expect(player.getByRole('button', { name: /^Minerar legenda/ })).toBeVisible();
   await prepararClipboard(context, page, paginas.origem);
 
   // O foco fica no player, como quando a pessoa clica no vídeo antes do atalho.
@@ -56,7 +56,7 @@ test('legenda num player em iframe de outra origem: minerar ainda grava a frase 
 
 test('legenda num player no frame de cima: minerar grava a frase e copia', async ({ context, page, paginas, extensao }) => {
   await page.goto(paginas.url('player.html'));
-  await expect(page.locator('#btn-minerador-pro')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toBeVisible();
   await prepararClipboard(context, page, paginas.origem);
 
   await page.keyboard.press('Alt+KeyS');

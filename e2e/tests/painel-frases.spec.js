@@ -334,7 +334,7 @@ test('primeiro uso: PAI-02 com o atalho de legenda padrão (Alt+S) e Minerar fra
   await expect(vazio.locator('kbd')).toHaveText('Alt+S');
 
   await vazio.getByRole('button', { name: 'Minerar frases' }).click();
-  await expect(page.locator('#bulk-add-modal')).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Minerar frases' })).toBeVisible();
 });
 
 test('primeiro uso com o atalho de legenda trocado para Ctrl+Shift+K: PAI-02 mostra Ctrl+Shift+K', async ({ page, extensao }) => {
@@ -373,7 +373,9 @@ test('primeiro uso sem atalho de legenda gravado: PAI-02 mostra “Sem atalho”
 test('Minerar frases abre o modal por cima da tela inteira, não no fim da página', async ({ page, extensao }) => {
   await page.goto(extensao.url('painel.html#frases'));
   await page.getByRole('button', { name: 'Minerar frases' }).first().click();
-  const modal = page.locator('#bulk-add-modal');
+  await page.getByRole('menuitem', { name: /^Colar/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Minerar frases' })).toBeVisible();
+  const modal = page.locator('#modal-minerar');
   await expect(modal).toBeVisible();
   const caixa = await modal.boundingBox();
   const tela = page.viewportSize();
@@ -451,13 +453,13 @@ test('o cartão selecionado ganha o destaque', async ({ page, extensao }) => {
   await expect(cartoes(page).nth(1)).not.toHaveClass(/veio-frase--selecionada/);
 });
 
-test('o cabeçalho traz Minerar frases, que abre a adição em massa de hoje', async ({ page, extensao }) => {
+test('o cabeçalho traz Minerar frases, que abre o menu Colar · Arquivo .txt · Foto (#31)', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
   await abrirFrases(page, extensao);
 
   const cabecalho = page.locator('.shell-area[data-area="frases"] .shell-cabecalho');
   await cabecalho.getByRole('button', { name: 'Minerar frases' }).click();
-  await expect(page.locator('#bulk-add-modal')).toBeVisible();
+  await expect(page.getByRole('menu', { name: 'Minerar frases' }).getByRole('menuitem')).toHaveCount(3);
 });
 
 test('“Selecionar página” marca a página inteira, fica misto com parte dela e desmarca', async ({ page, extensao }) => {

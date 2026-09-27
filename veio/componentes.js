@@ -64,6 +64,9 @@
     pdf: ['<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>', '<path d="M14 3v6h6"/>'],
     livro: ['<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14z"/>'],
     manual: ['<path d="M12 5v14M5 12h14"/>'],
+    // Minerar de uma foto: a foto na fila e o ler das marcações.
+    foto: ['<rect x="3" y="3" width="18" height="18" rx="3"/>', '<circle cx="8.5" cy="8.5" r="1.5"/>', '<path d="m21 15-5-5L5 21"/>'],
+    ler: ['<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>', '<path d="M7 12h10"/>'],
     // As áreas do Painel, na sidebar e no trilho.
     frases: ['<path d="M4 6h16M4 12h16M4 18h10"/>'],
     anki: ['<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0V7zM12 16v5"/>'],
@@ -87,6 +90,20 @@
     tema: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/>'],
     perigo: ['<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>', '<path d="M12 9v4M12 17h.01"/>'],
     abrir: ['<path d="m6 9 6 6 6-6"/>'],
+    // O que o overlay minerou: legenda, seleção e mineração automática; e a falha.
+    legenda: ['<rect x="3" y="5" width="18" height="14" rx="2"/>', '<path d="M7 14h4M13 14h4M7 10h10"/>'],
+    selecao: ['<path d="M4 6h16M4 12h10M4 18h7"/>'],
+    automatica: ['<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>'],
+    alerta: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 7.5v5.5M12 16.5v.01"/>'],
+    // O menu Minerar frases: Colar (a prancheta), Foto (a câmera) e o ↗ de
+    // “abre numa aba nova”.
+    colar: ['<rect x="8" y="2" width="8" height="4" rx="1"/>', '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>'],
+    foto: ['<path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>', '<circle cx="12" cy="13" r="3.5"/>'],
+    externo: ['<path d="M7 17 17 7M9 7h8v8"/>'],
+    // A picareta do vazio do popup e o alerta de uma falha em linha, no desenho
+    // do protótipo do popup.
+    picareta: ['<path d="M14 10L4 20"/>', '<path d="M5 7c4-4 10-4 14 0-2-1-5-1-8 1"/>', '<path d="M17 5c4 4 4 10 0 14 1-2 1-5-1-8"/>'],
+    alerta: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 7v6M12 16.5v.5"/>'],
   };
 
   /**
@@ -343,7 +360,7 @@
     if (acao) {
       const botao = documento.createElement('button');
       botao.type = 'button';
-      botao.className = 'veio-botao veio-botao--secundario';
+      botao.className = 'veio-botao veio-botao--contorno';
       botao.textContent = acao.rotulo;
       botao.addEventListener('click', acao.aoUsar);
       acoes.append(botao);
@@ -403,7 +420,7 @@
     no.textContent = '';
     const documento = no.ownerDocument;
 
-    const inicio = palavra ? texto.toLowerCase().indexOf(palavra.toLowerCase()) : -1;
+    const inicio = posicaoDaPalavra(texto, palavra);
     if (inicio < 0) {
       no.append(documento.createTextNode(texto));
       return;
@@ -416,6 +433,17 @@
 
     no.append(documento.createTextNode(texto.slice(0, inicio)), grifo,
       documento.createTextNode(texto.slice(fim)));
+  }
+
+  /**
+   * Onde a Palavra começa na frase, ou -1. Vale a palavra inteira (“it” não é o
+   * pedaço de “with”); só sem ela, o primeiro trecho igual.
+   */
+  function posicaoDaPalavra(texto, palavra) {
+    if (!palavra) return -1;
+    const escapada = palavra.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const inteira = new RegExp(`(?<![\\p{L}\\p{M}\\p{N}])${escapada}(?![\\p{L}\\p{M}\\p{N}])`, 'iu').exec(texto);
+    return inteira ? inteira.index : texto.toLowerCase().indexOf(palavra.toLowerCase());
   }
 
   /**
@@ -522,6 +550,22 @@
     return kbd;
   }
 
+  /**
+   * O atalho com uma tecla por `kbd` (Alt + S), como o protótipo do popup o
+   * desenha. Sem `rotulo`, o mesmo `kbd` tracejado de `montarTecla`.
+   */
+  function montarTeclas(rotulo, { seVazia, documento = document } = {}) {
+    if (!rotulo) return montarTecla(null, { seVazia, documento });
+    const teclas = documento.createElement('span');
+    teclas.className = 'veio-teclas';
+    // “Ctrl++” é a tecla + com Ctrl: o último + nunca separa.
+    rotulo.split(/\+(?!$)/).forEach((tecla, i) => {
+      if (i > 0) teclas.append('+');
+      teclas.append(montarTecla(tecla, { documento }));
+    });
+    return teclas;
+  }
+
   raiz.Veio = {
     iconeVeio,
     abrirModal,
@@ -529,11 +573,13 @@
     montarAviso,
     montarDetalhes,
     escreverFrase,
+    posicaoDaPalavra,
     escreverFraseClicavel,
     andarEntrePalavras,
     focarPalavra,
     montarChipDaPalavra,
     refletirSelecao,
     montarTecla,
+    montarTeclas,
   };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

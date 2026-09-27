@@ -76,6 +76,11 @@
     }
     window.addEventListener('hashchange', aplicarEndereco);
     document.addEventListener('click', reaplicarOMesmoEndereco);
+    // Outra página que leva o painel ao endereço em que ele já está (o “Abrir
+    // Configurações” do Minerar de uma foto) não dispara `hashchange`: ela avisa.
+    chrome.runtime.onMessage.addListener(mensagem => {
+      if (mensagem?.type === 'PAINEL_REAPLICAR_ENDERECO') aplicarEndereco();
+    });
 
     aplicarEndereco();
     lerResumosGravados();

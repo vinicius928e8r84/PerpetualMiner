@@ -2,209 +2,94 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>BookReader – PerpetualMiner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Minerar de uma foto · PerpetualMiner</title>
   <link rel="stylesheet" href="veio/tokens.css">
   <script src="veio/tema.js"></script>
   <link rel="stylesheet" href="veio/componentes.css">
   <link rel="stylesheet" href="bookreader.css">
 </head>
 <!--
-  O Minerar de uma foto ainda é o de hoje (#36 e #37 refazem ele na Veio): o
-  CSS foi desenhado para o fundo claro, então o corpo fica preso no claro até
-  lá. O <html> já recebe o tema escolhido (veio/tema.js), e a página passa a
-  segui-lo inteira quando os tickets dela a trouxerem para os tokens.
+  Minerar de uma foto, no layout C · Fotos × frases (docs/design/foto/): à
+  esquerda a fila de fotos com o status de cada uma, à direita as frases
+  agrupadas por foto. A cópia fixa vem do catálogo da Voz pelos atributos
+  data-voz*, que o bookreader.js preenche ao carregar; o resto ele desenha.
 -->
-<body data-tema="claro">
+<body>
+  <div class="foto">
 
-  <!-- SIDEBAR ──────────────────────────────────────────────────── -->
-  <aside class="sidebar">
-
-    <div class="sidebar-logo">
-      <img class="veio-marca" src="veio/icones/icone.svg" width="36" height="36" alt="">
-      <div>
-        <div class="logo-title">BookReader</div>
-        <div class="logo-sub">PerpetualMiner</div>
+    <header class="foto-topo">
+      <img class="veio-marca" src="veio/icones/icone.svg" width="30" height="30" alt="PerpetualMiner">
+      <div class="foto-nome">
+        <h1 class="foto-titulo" data-voz="FOT-01.titulo"></h1>
+        <span class="veio-nome" aria-hidden="true">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>
       </div>
-    </div>
-
-    <hr class="sidebar-divider">
-
-    <!-- Configurações: API Key -->
-    <div class="sidebar-section">
-      <div class="section-label">
-        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
-        </svg>
-        Gemini API Key
-      </div>
-      <div class="key-row">
-        <input type="password" id="api-key-input" class="sidebar-input"
-               placeholder="AIza..." autocomplete="off" spellcheck="false">
-        <button id="btn-toggle-key" class="icon-btn" title="Mostrar/ocultar">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-        </button>
-      </div>
-      <button id="btn-save-key" class="sidebar-btn">Salvar Key</button>
-      <p class="sidebar-hint">
-        Obtenha grátis em
-        <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a>
-      </p>
-    </div>
-
-    <hr class="sidebar-divider">
-
-    <!-- Título do livro -->
-    <div class="sidebar-section">
-      <div class="section-label">
-        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-        </svg>
-        Título do Livro <span class="optional">(opcional)</span>
-      </div>
-      <input type="text" id="book-title" class="sidebar-input"
-             placeholder="Ex: Atomic Habits">
-    </div>
-
-    <hr class="sidebar-divider">
-
-    <!-- Legenda de marcações -->
-    <div class="sidebar-section">
-      <div class="section-label">Marcações reconhecidas</div>
-      <ul class="marking-list">
-        <li><code>/texto/</code> Barras oblíquas</li>
-        <li><code>_texto_</code> Underscores</li>
-        <li><span class="underline-demo">texto</span> Sublinhado físico</li>
-        <li>Textos circulados ou com colchetes</li>
-      </ul>
-    </div>
-
-    <div class="sidebar-footer">
-      <button id="btn-voltar" class="nav-back">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-          <polyline points="15 18 9 12 15 6"/>
-        </svg>
-        Voltar ao Painel
+      <label class="foto-livro">
+        <span class="foto-rotulo" data-voz="FOT-22.livro"></span>
+        <input class="veio-campo" id="foto-livro" type="text" autocomplete="off" spellcheck="false"
+               data-voz-placeholder="FOT-22.exemplo">
+      </label>
+      <button class="veio-botao veio-botao--fantasma foto-voltar" id="foto-voltar" type="button">
+        <span data-icone="anterior"></span><span data-voz="FOT-22.voltar"></span>
       </button>
-    </div>
-  </aside>
+    </header>
 
-  <!-- MAIN ─────────────────────────────────────────────────────── -->
-  <main class="main">
+    <div class="foto-corpo">
 
-    <div class="main-header">
-      <div>
-        <h1 class="main-title">Transcrição de Livro Físico</h1>
-        <p class="main-sub">Fotografe a página e extraia apenas os trechos que você marcou</p>
-      </div>
-    </div>
-
-    <!-- Erro global -->
-    <div id="error-bar" class="error-bar hidden"></div>
-
-    <!-- ── Estado 1: Upload ──────────────────────────────────── -->
-    <div id="upload-section" class="state-section">
-      <div id="upload-zone" class="upload-zone">
-        <input type="file" id="file-input" accept="image/*" hidden multiple>
-        <div class="upload-icon">
-          <svg width="48" height="48" fill="none" stroke="#a78bfa" stroke-width="1.5" viewBox="0 0 24 24">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <circle cx="8.5" cy="8.5" r="1.5"/>
-            <polyline points="21 15 16 10 5 21"/>
-          </svg>
+      <section class="foto-fotos" aria-labelledby="foto-fotos-titulo">
+        <div class="foto-fotos__cabeca">
+          <h2 class="foto-rotulo foto-rotulo--marcado" id="foto-fotos-titulo" data-voz="FOT-23.fotos"></h2>
+          <span class="foto-fotos__total" id="foto-fotos-total" aria-hidden="true"></span>
+          <span class="foto-fotos__formatos" id="foto-envio-formatos" data-voz="FOT-02.formatos"></span>
         </div>
-        <p class="upload-title">Arraste fotos aqui</p>
-        <p class="upload-sub">ou clique para selecionar · múltiplas imagens suportadas · JPG, PNG, HEIC, WEBP</p>
-      </div>
-    </div>
 
-    <!-- ── Estado 2: Preview ─────────────────────────────────── -->
-    <div id="preview-section" class="state-section hidden">
-      <div class="preview-container">
-        <img id="preview-img" class="preview-img" alt="Prévia da foto">
-        <div class="preview-overlay">
-          <span class="preview-hint">Confira se as marcações estão visíveis na foto</span>
+        <div class="foto-progresso" id="foto-progresso" hidden>
+          <div class="foto-progresso__trilho"><i id="foto-progresso-barra"></i></div>
+          <p class="foto-progresso__texto" id="foto-progresso-texto" aria-live="polite"></p>
         </div>
-      </div>
-      <div id="queue-info" class="queue-info hidden">
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-          <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-        </svg>
-        <span id="queue-count-text"></span>
-      </div>
-      <div class="preview-actions">
-        <button id="btn-analisar" class="btn-primary">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          Analisar Marcações
-        </button>
-        <button id="btn-nova-foto" class="btn-ghost">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-          </svg>
-          Trocar Foto
-        </button>
-      </div>
-    </div>
 
-    <!-- ── Estado 3: Loading ─────────────────────────────────── -->
-    <div id="loading-section" class="state-section hidden">
-      <div class="loading-box">
-        <div class="spinner"></div>
-        <p id="loading-title" class="loading-title">Analisando a imagem…</p>
-        <p id="loading-sub" class="loading-sub">O Gemini está identificando os trechos marcados</p>
-        <div id="progress-wrap" class="progress-wrap hidden">
-          <div class="progress-track">
-            <div id="progress-bar" class="progress-bar-fill"></div>
+        <p class="foto-sem-chave" id="foto-sem-chave" data-voz="FOT-23.semChave" hidden></p>
+
+        <div class="foto-envio" id="foto-envio" hidden>
+          <span data-icone="manual"></span>
+          <span class="foto-envio__texto" id="foto-envio-texto"></span>
+          <button class="veio-botao veio-botao--secundario veio-botao--compacto" id="foto-escolher" type="button"
+                  data-voz="FOT-23.escolher"></button>
+          <!-- O que a página anuncia (FOT-02) é o que ela aceita: o tipo e a
+               extensão, porque o Chrome no Windows entrega o HEIC sem tipo. -->
+          <input type="file" id="foto-arquivo" multiple hidden
+                 accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp,.heic">
+        </div>
+
+        <ol class="foto-fila" id="foto-fila" aria-labelledby="foto-fotos-titulo" aria-live="polite"></ol>
+
+        <div class="foto-legenda">
+          <h2 class="foto-rotulo foto-rotulo--marcado" data-voz="FOT-24.titulo"></h2>
+          <ul class="foto-marcacoes" id="foto-marcacoes"></ul>
+        </div>
+      </section>
+
+      <section class="foto-frases">
+        <div class="foto-avisos" id="foto-avisos"></div>
+        <div id="foto-estado"></div>
+
+        <div class="foto-lista" id="foto-lista" hidden>
+          <div class="foto-lista__cabeca">
+            <label class="foto-todas">
+              <input class="veio-checkbox" id="foto-todas" type="checkbox">
+              <span data-voz="FOT-25.selecionarTodas"></span>
+            </label>
+            <span class="foto-contagem" id="foto-contagem"></span>
           </div>
-          <p id="progress-label" class="progress-label"></p>
+          <div id="foto-grupos"></div>
+          <div class="foto-minerar">
+            <button class="veio-botao veio-botao--primario" id="foto-minerar" type="button"></button>
+          </div>
         </div>
-      </div>
+      </section>
+
     </div>
-
-    <!-- ── Estado 4: Resultados ──────────────────────────────── -->
-    <div id="results-section" class="state-section hidden">
-
-      <!-- Zona compacta para adicionar mais fotos -->
-      <div id="add-more-zone" class="add-more-zone">
-        <svg class="add-more-icon" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-          <rect x="3" y="3" width="18" height="18" rx="2"/>
-          <circle cx="8.5" cy="8.5" r="1.5"/>
-          <polyline points="21 15 16 10 5 21"/>
-        </svg>
-        <div class="add-more-spinner hidden"></div>
-        <span>Arraste mais fotos aqui para acumular resultados</span>
-        <button id="btn-add-more" class="btn-add-more">Selecionar</button>
-      </div>
-
-      <div class="results-header">
-        <span id="results-count" class="results-count"></span>
-        <div class="results-actions-top">
-          <button id="btn-select-all" class="btn-ghost-sm">Marcar todas</button>
-          <button id="btn-deselect-all" class="btn-ghost-sm">Desmarcar todas</button>
-          <button id="btn-nova-foto-2" class="btn-ghost-sm">Limpar Lista</button>
-        </div>
-      </div>
-      <div id="results-list" class="results-list"></div>
-      <div class="results-footer">
-        <button id="btn-salvar" class="btn-primary btn-salvar">
-          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-            <polyline points="17 21 17 13 7 13 7 21"/>
-            <polyline points="7 3 7 8 15 8"/>
-          </svg>
-          Salvar no PerpetualMiner
-        </button>
-      </div>
-    </div>
-
-  </main>
+  </div>
 
   <script src="lib/voz/catalogo.js"></script>
   <script src="lib/voz/texto.js"></script>

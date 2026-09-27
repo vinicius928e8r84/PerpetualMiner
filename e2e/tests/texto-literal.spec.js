@@ -21,15 +21,17 @@ async function nadaFoiInjetado(page) {
 
 test('minerar uma legenda com marcação mostra o texto literal e não injeta nada', async ({ page, paginas, extensao }) => {
   await page.goto(paginas.url('player-marcacao.html'));
-  await expect(page.locator('#btn-minerador-pro')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toBeVisible();
 
   await page.keyboard.press('Alt+KeyS');
 
-  const aviso = page.locator('#notificacao-minerador');
-  await expect(aviso).toContainText(LEGENDA);
-  await expect(aviso).toContainText(TITULO);
+  // A pílula mostra a frase numa linha (a prévia pode começar perto da Palavra);
+  // o Título não vai para o overlay, mas vai gravado no Contexto.
+  const aviso = page.getByRole('status');
+  await expect(aviso).toContainText('Hold the line.');
   await nadaFoiInjetado(page);
   await expect.poll(async () => (await extensao.frases()).map(f => f.texto)).toEqual([LEGENDA]);
+  expect((await extensao.frases())[0].contexto.titulo).toBe(TITULO);
 });
 
 test('minerar uma seleção com marcação mostra o texto literal e não injeta nada', async ({ page, paginas, extensao }) => {
@@ -41,7 +43,8 @@ test('minerar uma seleção com marcação mostra o texto literal e não injeta 
   await page.locator('#trecho').selectText();
   await page.keyboard.press('Alt+KeyE');
 
-  await expect(page.locator('#pm-capture-overlay')).toContainText(SELECAO);
+  // A prévia da pílula começa perto da Palavra: o trecho com a marcação aparece como texto.
+  await expect(page.getByRole('status')).toContainText('onerror="__injetado=1">Salt wind');
   await nadaFoiInjetado(page);
   await expect.poll(async () => (await extensao.frases()).map(f => f.texto)).toEqual([SELECAO]);
 });

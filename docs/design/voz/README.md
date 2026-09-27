@@ -6,7 +6,7 @@ O que está aqui:
 
 1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
 2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: 189 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
+3. **Catálogo**: 198 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
 
 Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
 
@@ -68,7 +68,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 
 ## 3. Catálogo de estados-chave
 
-São 189 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
+São 198 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 
@@ -77,32 +77,36 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
 | POP-01 | Lista das últimas carregando **(some)** | loading | Carregando... | _(sem texto)_ | Espera curta: sem texto, só esqueleto (C3). |
-| POP-02 | Nenhuma frase (1º uso) | vazio | Nenhuma frase salva ainda. | Nenhuma frase ainda. Aperte Alt+S num vídeo com legenda para minerar a primeira. | Mostra o atalho que estiver configurado de fato. Sem atalho gravado: GLB-02. |
+| POP-02 | Nenhuma frase (1º uso) | vazio | Nenhuma frase salva ainda. | **Nenhuma frase ainda** · Aperte Alt+S num vídeo com legenda para minerar a primeira. | A picareta, o título em negrito e o texto embaixo, como no protótipo do popup. Mostra o atalho que estiver configurado de fato, uma tecla por `kbd`. Sem atalho gravado, o texto vira “Defina um atalho para minerar legendas de vídeo.” (`POP-02.semAtalho`, da spec do popup), com a ação “Definir atalho” de GLB-02. |
 | POP-03 | Campo da mineração rápida | status | Cole ou escreva uma frase… | Cole ou escreva uma frase | Placeholder não é andamento: sem “…” (V7). |
 | POP-04 | Botão da mineração rápida | status | Adicionar | Minerar |  |
 | POP-05 | Mineração rápida deu certo **(novo)** | sucesso | (nada) | _(sem texto)_ | O campo limpa e a frase aparece no topo das últimas. É visível, então fica sem toast (C4). |
-| POP-06 | Mineração rápida falhou **(novo)** | erro | (falha calada) | Não deu para minerar a frase. Tente de novo. | Inline sob o campo, com “Detalhes” (C9). |
+| POP-06 | Mineração rápida falhou **(novo)** | erro | (falha calada) | Não deu para minerar a frase. Tente de novo. | Inline sob o campo, com o ícone de alerta e sem “Detalhes”: a frase já diz o que fazer (decisão do dono na revisão do #38). |
 | POP-10 | Título da seção | status | Auto Miner | Mineração automática |  |
-| POP-07 | Contador da mineração automática | status | 0/20 | 12 de 20 hoje | Número com o que ele conta (C8). |
-| POP-08 | Mineração automática no limite | status | 20/20 (amarelo) | Limite de hoje atingido · 20 de 20 |  |
+| POP-07 | Contador da mineração automática | status | 0/20 | 12/20 · (leitor) 12 de 20 hoje | Na tela, o número grande e “/20” menor, como no protótipo (decisão do dono na revisão do #38). O leitor de tela ouve o número com o que ele conta (C8): “12 de 20 hoje”. |
+| POP-08 | Mineração automática no limite | status | 20/20 (amarelo) | Limite de hoje atingido | A contagem já está no contador acima (POP-07), então não se repete. |
 | POP-09 | Botão que abre o Painel | status | Abrir Painel de Estudos | Abrir painel | V10. |
 | POP-11 | Rodapé do atalho | status | Configurar Atalho de Captura · Atalho atual: … (o Alt+S não aparece) | Alt+S minera a legenda do vídeo · Mudar atalho | Mostra o atalho “Minerar legenda” gravado, não um texto fixo. “Mudar atalho” abre o painel em Configurações › Atalhos. Sem atalho gravado: GLB-02. |
 | POP-12 | Subtítulo do cabeçalho **(some)** | status | Minerador de legendas | _(sem texto)_ | O popup não tem subtítulo: só a marca Veio + “PerpetualMiner”. A frase descritiva fica para a Boas-vindas (ONB-01) e a loja. |
+| POP-13 | Últimas mineradas: título e atalho para o Painel **(novo)** | status | Últimas mineradas | Últimas mineradas · Ver todas | “Ver todas” fica à direita do título, só com frase na lista, e abre o Painel em Frases. |
+| POP-14 | Mineração automática: azulejo **(novo)** | status | (limite solto, sem rótulo) | por dia · limite [20] /dia | “por dia” à direita do título (POP-10). O leitor de tela ouve o toggle como “Mineração automática em inglês” e o campo como “Limite por dia em inglês”, com o idioma em minúscula. |
+| POP-15 | Código do idioma no azulejo **(novo)** | status | EN · RU | EN · RU | Em mono, no topo do azulejo; o nome do idioma fica no rótulo do toggle (POP-14). |
+| POP-16 | Mineração automática não carregou ou não salvou **(novo)** | erro | (falha calada) | Não deu para carregar a mineração automática. Feche e abra o popup de novo. · Não deu para salvar a mudança. Tente de novo. | Uma linha com o ícone de alerta, sob os azulejos, sem botão e sem “Detalhes”: diz o que fazer. Numa gravação que falhou, o toggle ou o limite voltam ao que está gravado. |
 
 ### Minerar na página (componente de feedback)
 
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
-| MIN-01 | Alt+S / botão: minerou e copiou | sucesso | Minerado & Copiado · Inglês | Frase minerada e copiada · Inglês | 2ª linha: “{Título} · {Detalhe}”, 3ª: a frase. Só aparece depois de salvar e copiar de verdade (V4). |
-| MIN-02 | Minerou, mas não copiou **(novo)** | sucesso | (dizia sucesso igual) | Frase minerada · não deu para copiar |  |
-| MIN-03 | Falhou ao salvar **(novo)** | erro | (dizia sucesso igual) | Não deu para minerar a frase. Tente de novo. | Fica até fechar (×), Esc ou até a próxima captura substituí-la, com “Tentar de novo” (C1). O sucesso continua sumindo em ~3,5 s. |
-| MIN-04 | Nenhuma legenda na tela **(novo)** | erro | (borda vermelha por 800 ms) | Nenhuma legenda na tela agora. Ative as legendas do vídeo e tente de novo. | C9. |
-| MIN-05 | Atalho de seleção: minerou | sucesso | ⚡ Frase Capturada! | Frase minerada · Inglês | 2ª linha: começo da frase. |
-| MIN-06 | Auto Miner minerou uma linha | sucesso | Auto Miner - Inglês - 12/20 | Mineração automática · Inglês · 12 de 20 hoje |  |
+| MIN-01 | Alt+S / botão: minerou e copiou | sucesso | Minerado & Copiado · Inglês | Frase minerada e copiada | 2ª linha: a frase; a meta diz o idioma (`EN`, `RU`). Só aparece depois de salvar e copiar de verdade (V4). Revisão do dono no PR #66: sem “· Inglês” no título (a meta já diz) e sem a linha “{Título} · {Detalhe}”. |
+| MIN-02 | Minerou, mas não copiou **(novo)** | sucesso | (dizia sucesso igual) | Frase minerada | Revisão do dono no PR #66: o que importa é ter minerado, então a pílula é a de sucesso, só sem “e copiada”. |
+| MIN-03 | Falhou ao salvar **(novo)** | erro | (dizia sucesso igual) | Não deu para minerar / Tente de novo. | Título e dica, como a falha do protótipo. Revisão do dono no PR #66: sem × e sem “Tentar de novo”; some sozinha em ~3,5 s, como no protótipo. |
+| MIN-04 | Nenhuma legenda na tela **(novo)** | erro | (borda vermelha por 800 ms) | Nenhuma legenda na tela / Ligue as legendas do player e tente de novo. | C9. Título e dica, como no protótipo. |
+| MIN-05 | Atalho de seleção: minerou | sucesso | ⚡ Frase Capturada! | Frase minerada | 2ª linha: a frase; a meta é a Fonte, “Web” (PAI-29). |
+| MIN-06 | Auto Miner minerou uma linha | sucesso | Auto Miner - Inglês - 12/20 | Mineração automática | 2ª linha: a frase; a meta é o idioma e o contador do dia (`EN 12/20`), como no protótipo. |
 | MIN-07 | Botão flutuante (title/aria) **(novo)** | status | (nenhum) | Minerar legenda (Alt+S) | Mostra o atalho configurado. Sem atalho gravado, fica só “Minerar legenda”. |
 | MIN-08 | Menu de contexto do Chrome | status | Enviar para o PerpetualMiner | Minerar com PerpetualMiner | V10: único lugar onde o nome aparece. O retorno visual continua fora (Auditoria T6). |
 | MIN-09 | Badge da toolbar (tooltip) **(novo)** | status | (não existe) | Mineração automática: 12 hoje | Contador na toolbar: lista fechada. Soma só os idiomas ligados. Quando todos os idiomas ligados bateram o limite: “Mineração automática: limite de hoje atingido”. O contador no canto do botão flutuante (n/limite) é o do idioma daquela captura, não o do badge. |
-| MIN-10 | Página sem vídeo e sem seleção **(novo)** | erro | (nada aparece) | Esta página não tem vídeo com legenda. | Alt+S ou o atalho de seleção numa página sem vídeo e sem texto selecionado. A pílula surge no canto inferior direito. C9. |
+| MIN-10 | Página sem vídeo e sem seleção **(novo)** | erro | (nada aparece) | Nenhuma legenda na tela / Esta página não tem vídeo com legenda. | Alt+S ou o atalho de seleção numa página sem vídeo e sem texto selecionado. A pílula surge no canto inferior direito. C9. |
 | MIN-11 | Contador do botão flutuante (tooltip) **(novo)** | status | Auto Miner: {n} de {limite} hoje | Mineração automática · Inglês: 9 de 15 hoje | O contador `n/limite` do botão é o do idioma daquela captura, não a soma do badge (MIN-09). No limite: “Mineração automática · Inglês: limite de hoje atingido”. |
 
 ### Minerar de uma foto
@@ -113,15 +117,15 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 | FOT-02 | Área de envio vazia | vazio | Arraste fotos aqui · ou clique para selecionar · múltiplas imagens suportadas · JPG, PNG, HEIC, WEBP | Arraste fotos de páginas marcadas — ou clique para escolher · JPG, PNG, HEIC ou WEBP |  |
 | FOT-03 | Aviso na prévia | status | Confira se as marcações estão visíveis na foto | Confira se as marcações aparecem na foto |  |
 | FOT-04 | Arquivo que não é foto | erro | Nenhum arquivo de imagem. Use JPG, PNG, WEBP ou HEIC. | Esse arquivo não é uma foto. Use JPG, PNG, HEIC ou WEBP. |  |
-| FOT-05 | Sem chave do Gemini | erro | Insira sua Gemini API Key nas configurações à esquerda. | Para ler fotos, adicione sua chave do Gemini em Configurações. | Botão “Abrir Configurações”. |
+| FOT-05 | Sem chave do Gemini | erro | Insira sua Gemini API Key nas configurações à esquerda. | Falta a chave do Gemini — Para ler fotos, adicione sua chave do Gemini em Configurações. | Botão “Abrir Configurações”, que abre `#configuracoes/chave` com o campo focado. A página não tem mais campo de chave. |
 | FOT-06 | Lendo 1 foto | loading | Analisando a imagem… / O Gemini está identificando os trechos marcados | Lendo a foto… — Procurando os trechos marcados | Com “Cancelar” ao lado (lista fechada). |
 | FOT-07 | Lendo várias fotos | loading | Processando imagem 2 de 5… | Lendo a foto 2 de 5… | Com “Cancelar”. “Adicionando ao histórico de frases…” (enganoso) some. |
 | FOT-08 | Fotos esperando na fila | status | +2 fotos na fila aguardando / Processando foto... 2 na fila · pode arrastar mais! | 2 fotos na fila · arraste mais para ler em seguida |  |
 | FOT-09 | Contagem de resultados | status | Total acumulado: 1 trecho prontos para salvar | 12 frases encontradas | Frase, não trecho (glossário). |
-| FOT-10 | Nenhuma marcação encontrada | vazio | Não encontrei trechos marcados nesta imagem. / Certifique-se de que as marcações estão visíveis. / Use /barras/, _underlines_ ou sublinhado físico. | Nenhuma marcação encontrada nesta foto. Marque as frases com /barras/, _sublinhado_ ou caneta e confira se aparecem na foto. | Só quando a leitura funcionou; se a API falhou, é o FOT-11 (C2). |
-| FOT-11 | Gemini falhou numa foto | erro | Imagem 2: HTTP 429 / Erro ao processar foto: <msg em inglês> | Não deu para ler a foto 2. O Gemini está recebendo pedidos demais; espere um minuto e tente de novo. | A 2ª frase traduz a causa: chave inválida → “A chave do Gemini não funciona. Confira em Configurações.” Original em Detalhes. |
+| FOT-10 | Nenhuma marcação encontrada | vazio | Não encontrei trechos marcados nesta imagem. / Certifique-se de que as marcações estão visíveis. / Use /barras/, _underlines_ ou sublinhado físico. | Nenhuma marcação encontrada nesta foto — Marque as frases com /barras/, _sublinhado_ ou caneta e confira se aparecem na foto. | Só quando a leitura funcionou; se a API falhou, é o FOT-11 (C2). Título em negrito e o texto embaixo, e com várias fotos lidas, “nestas fotos”, como no protótipo. |
+| FOT-11 | Gemini falhou numa foto | erro | Imagem 2: HTTP 429 / Erro ao processar foto: <msg em inglês> | Não deu para ler a foto 2. O Gemini está recebendo pedidos demais; espere um minuto e tente de novo. | A 2ª frase traduz a causa: chave inválida → “A chave do Gemini não funciona. Confira em Configurações.” Sem “Detalhes”, por decisão do dono (exceção à V3): a causa já está nos termos da pessoa. Como no protótipo: com frases na tela, um aviso só para as fotos que falharam (“Não deu para ler 3 fotos.”, com a causa da primeira); sem nenhuma frase, a própria coluna das frases diz “Não deu para ler a foto” / “Não deu para ler as fotos”, com a causa embaixo, e não há aviso. |
 | FOT-12 | Botão principal | status | Salvar no PerpetualMiner | Minerar 12 frases |  |
-| FOT-13 | Nenhuma frase marcada p/ minerar | erro | Selecione ao menos um trecho para salvar. | Selecione pelo menos uma frase. |  |
+| FOT-13 | Nenhuma frase marcada p/ minerar | erro | Selecione ao menos um trecho para salvar. | Selecione pelo menos uma frase | É o rótulo do botão desabilitado, então vai sem ponto final (V7), como no protótipo. |
 | FOT-14 | Minerou tudo | sucesso | 12 trecho(s) salvo(s) no PerpetualMiner! | 12 frases mineradas | O botão volta ao rótulo normal (hoje fica preso em “salvos!”). |
 | FOT-15 | Minerou parte **(novo)** | erro | (não avisa) | 10 de 12 frases mineradas · 2 falharam | Com “Tentar de novo” nas 2 (C4). |
 | FOT-16 | Falhou tudo | erro | Não foi possível salvar os trechos. | Não deu para minerar as frases. Tente de novo. |  |
@@ -130,6 +134,10 @@ As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia pr
 | FOT-19 | Status de cada foto na fila **(novo)** | status | (não existe) | Pronta · Na fila · Lendo… · 12 frases · Sem marcações · Falhou · Cancelada | Selo por foto. “Falhou” vem com o motivo embaixo e “Tentar de novo”: a 2ª frase do FOT-11 (“O Gemini está recebendo pedidos demais; espere um minuto e tente de novo.”, “A chave do Gemini não funciona. Confira em Configurações.”) ou “Sem conexão com a internet. Confira a rede e tente de novo.”. “Sem marcações” é a leitura que funcionou sem achar nada (FOT-10). |
 | FOT-20 | Progresso da leitura **(novo)** | status | Processando imagem 2 de 5… | 2 de 4 lidas | No topo da fila de fotos, ao lado de “Cancelar”. |
 | FOT-21 | Leitura cancelada **(novo)** | status | (não existe) | Leitura cancelada. 2 fotos ficaram sem ler; as frases das fotos já lidas continuam aqui. | Aviso informativo depois do Cancelar (lista fechada). Singular: “1 foto ficou sem ler”. |
+| FOT-22 | Topo da página | status | Título do Livro (opcional) · Ex: Atomic Habits · Voltar ao Painel | Livro · Ex.: Atomic Habits · Voltar ao painel | “Livro” é o rótulo do campo do Título, que fica lembrado entre visitas; em branco, a frase vai com o Título “Físico/Livro”. “Voltar ao painel” foca a aba do painel já aberta. |
+| FOT-23 | Fila de fotos | status | Arraste mais fotos aqui para acumular resultados · Selecionar | Fotos · Arraste mais páginas · Escolher · Adicione a chave do Gemini para começar | O título da coluna da esquerda, a área de envio depois da 1ª foto e o botão que abre o seletor. Sem chave, a fila mostra só “Adicione a chave do Gemini para começar”, no lugar da área de envio. |
+| FOT-24 | Marcações que o Gemini lê | status | Marcações reconhecidas · /texto/ Barras oblíquas · _texto_ Underscores · texto Sublinhado físico · Textos circulados ou com colchetes | Marcações que o Gemini lê · /texto/ entre barras · _texto_ entre underscores · texto sublinhado à mão · [texto] colchetes, círculo ou traço na margem | A legenda no pé da fila (só lá, por decisão do dono). |
+| FOT-25 | Lista de frases | status | Marcar todas · Desmarcar todas · Analisar Marcações | Selecionar todas · Foto 2 · Minerada · Ler marcações · As frases aparecem aqui, agrupadas por foto. | “Selecionar todas” é o checkbox único (misto com parte marcada), como no painel. “Foto 2” abre o grupo das frases daquela foto. Uma frase já minerada fica com o selo `--ok` “Minerada” (o ✓ do protótipo sai: V5) e sai do botão. “Ler marcações” é o botão da prévia de 1 foto. “As frases aparecem aqui…” continua o subtítulo do FOT-01 no mesmo parágrafo, por isso leva ponto (V7). |
 
 ### Painel · Shell
 
@@ -192,12 +200,13 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | ADD-03 | Colar: vazio | erro | Cole ao menos uma frase. | Cole pelo menos uma frase. |  |
 | ADD-04 | Colar/arquivo: progresso | loading | 3 de 12… · Importando 50 linha(s)… · Linha 3 de 50 | Minerando 3 de 12… |  |
 | ADD-05 | Colar: deu certo | sucesso | 12 frase(s) adicionada(s)! | 12 frases mineradas |  |
-| ADD-06 | Minerou local, nuvem falhou | erro | Salvo localmente (sync falhou: …) — coberto pelo sucesso | 12 frases mineradas neste computador, mas não foram para a nuvem. | Persistente, com “Tentar de novo”. Não é mais sobrescrito (C1, C9). |
+| ADD-06 | Minerou local, nuvem falhou | erro | Salvo localmente (sync falhou: …) — coberto pelo sucesso | 12 frases mineradas neste computador, mas não foram para a nuvem. | Persistente, com “Tentar de novo” e sem “Detalhes”: a causa fica no card Conta & sync. Não é mais sobrescrito (C1, C9). |
 | ADD-07 | Arquivo ilegível | erro | Não foi possível ler o arquivo. | Não deu para ler este arquivo. Use um .txt com uma frase por linha. |  |
 | ADD-08 | Arquivo vazio | erro | Arquivo vazio. | O arquivo está vazio. |  |
-| ADD-09 | Nada novo no arquivo | vazio | Nenhuma frase nova. 3 duplicata(s), 1 inválida(s). | Nenhuma frase nova: 3 já estavam no histórico e 1 linha não pôde ser lida. |  |
+| ADD-09 | Nada novo no arquivo | vazio | Nenhuma frase nova. 3 duplicata(s), 1 inválida(s). | Nenhuma frase nova: 3 já estavam no histórico e 1 linha não pôde ser lida. | Só repetidas: “Nenhuma frase nova: 3 já estavam no histórico.” Só ilegíveis: “Nenhuma frase nova: 1 linha não pôde ser lida.” Nunca fala de zero. |
 | ADD-10 | Arquivo importado | sucesso | 12 frase(s) importada(s)! (3 duplicata(s) ignorada(s)) | 12 frases mineradas · 3 já existiam |  |
 | ADD-11 | Menu Minerar frases: descrição de cada modo **(novo)** | status | (não existe) | Colar — Uma frase por linha · Arquivo .txt — Importar um .txt com uma frase por linha · Foto — Abre Minerar de uma foto numa aba nova | Uma linha de explicação sob cada modo do menu (C7). |
+| ADD-12 | O modal Minerar frases **(novo)** | status | Frases · Adicionar frases · Cancelar | Frases · livro, web, podcast · Atomic Habits · Minerar 3 frases · Escolha um arquivo .txt · Uma frase por linha. O .txt exportado daqui volta com o contexto. Frases que já estão no histórico ficam de fora. · Escolher arquivo · Escolher outro arquivo · As frases entram no topo da lista. · [Cancelar] [Fechar] | O título do modal é o ADD-01 (“Minerar frases”) e as abas são Colar · Arquivo .txt · Foto ↗ do ADD-01. Sem frases, o botão diz “Minerar frases”. “Fechar” fica no lugar de “Cancelar” depois do ADD-09. Fonte e Título usam os rótulos de PAI-21. |
 
 ### Envio ao Anki
 
@@ -318,4 +327,4 @@ A página não existe hoje: todas as linhas são novas. V10 permite o nome do pr
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
 | GLB-01 | Erro sem tradução conhecida | erro | <err.message cru> | Algo deu errado. Tente de novo. | Último recurso, sempre com Detalhes. Todo erro conhecido tem cópia própria acima. |
-| GLB-02 | Atalho “Minerar legenda” vazio **(novo)** | status | (Alt+S fixo, não dá para esvaziar) | Sem atalho · [Definir atalho] | Onde a cópia supõe Alt+S (POP-02, POP-11, PAI-02, ONB-05), sem atalho gravado a tecla dá lugar a “Sem atalho” e à ação “Definir atalho”, que abre `#configuracoes/atalhos` (na Boas-vindas, leva ao passo 2 da própria página, onde está o gravador). |
+| GLB-02 | Atalho “Minerar legenda” vazio **(novo)** | status | (Alt+S fixo, não dá para esvaziar) | Sem atalho · [Definir atalho] | Onde a cópia supõe Alt+S (POP-11, PAI-02, ONB-05; POP-02 tem frase própria), sem atalho gravado a tecla dá lugar a “Sem atalho” e à ação “Definir atalho”, que abre `#configuracoes/atalhos` (na Boas-vindas, leva ao passo 2 da própria página, onde está o gravador). |
