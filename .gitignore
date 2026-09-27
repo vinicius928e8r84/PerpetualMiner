@@ -29,3 +29,6 @@ Thumbs.db
 preview/dist/
 .vercel
 .env*.local
+
+# Claude Code — worktrees locais (as skills em .claude/skills/ são versionadas)
+.claude/worktrees/
