@@ -168,6 +168,9 @@
       // Só o clique no próprio scrim é "fora": um arrasto que começa dentro
       // do modal e termina nele não fecha nada.
       if (evento.target !== scrim) return;
+      // O segundo toque de um duplo clique não é “clicar fora”: é o fim do
+      // clique que abriu o modal, que ainda cai onde o botão estava.
+      if (evento.detail > 1) return;
       // Sem isto, o navegador move o foco para o scrim depois do handler e
       // desfaz a devolução do foco a quem abriu.
       evento.preventDefault();

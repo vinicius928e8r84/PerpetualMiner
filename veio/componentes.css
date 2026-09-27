@@ -148,11 +148,46 @@
   color: var(--veio-danger);
 }
 
+/* aria-disabled: indisponível, mas ainda focável, para a dica dizer por quê. */
 .veio-botao:disabled,
-.veio-botao-icone:disabled {
+.veio-botao-icone:disabled,
+.veio-botao[aria-disabled="true"] {
   opacity: .45;
   cursor: not-allowed;
   box-shadow: none;
+}
+
+/* ── Dica ─────────────────────────────────────────────────────────────────
+   O porquê de um controle indisponível: um `role="tooltip"` irmão do botão,
+   dentro de `.veio-com-dica`, ligado a ele por aria-describedby. Aparece no
+   hover e no foco, só enquanto o botão está aria-disabled. */
+
+.veio-com-dica {
+  position: relative;
+  display: inline-flex;
+}
+
+.veio-dica {
+  display: none;
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 40;
+  width: max-content;
+  max-width: 260px;
+  padding: 7px 10px;
+  border-radius: var(--veio-raio-icone);
+  background: var(--veio-text);
+  color: var(--veio-bg);
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-rotulo);
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.veio-com-dica:has([aria-disabled="true"]:hover) > .veio-dica,
+.veio-com-dica:has([aria-disabled="true"]:focus) > .veio-dica {
+  display: block;
 }
 
 /* ── Campos ───────────────────────────────────────────────────────────────

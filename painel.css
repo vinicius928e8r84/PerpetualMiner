@@ -1006,6 +1006,205 @@ body {
   }
 }
 
+/* ── Envio ao Anki: progresso e resumo (ENV-06…15) ───── */
+.envio-modal {
+  width: min(100%, 600px);
+}
+
+.envio-modal__sem-noticia {
+  margin: 8px 0 0;
+  color: var(--veio-danger);
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-rotulo);
+}
+
+.envio-modal__envios {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.envio-modal__pe {
+  margin: 18px 0 0;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.envio-cartao {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-bg);
+}
+
+.envio-cartao__topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.envio-cartao__titulo {
+  margin: 0;
+  font-size: var(--veio-tam-card);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.envio-cartao__etapa {
+  color: var(--veio-accent-text);
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.envio-cartao__etapa--ok { color: var(--veio-success); }
+.envio-cartao__etapa--erro { color: var(--veio-danger); }
+
+/* As 7 etapas do caminho: feitas cheias, a atual enchendo pelo done/total dela. */
+.envio-cartao__etapas {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.envio-cartao__etapas > i {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-surface-2);
+}
+
+.envio-cartao__etapas > i.feito { background: var(--veio-accent); }
+
+.envio-cartao__etapas > i > b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--veio-accent);
+  transition: width var(--veio-transicao) ease-out;
+}
+
+.envio-cartao__etapas--ok > i.feito { background: var(--veio-success); }
+.envio-cartao__etapas--erro > i.feito { background: var(--veio-danger); }
+
+/* Enquanto o cartão espera a pessoa: tudo em tom calmo, quem fala é o motivo. */
+.envio-cartao__etapa--calmo { color: var(--veio-muted); }
+.envio-cartao__etapas--calmo > i.feito { background: color-mix(in srgb, var(--veio-accent) 45%, var(--veio-surface-2)); }
+
+.envio-cartao__motivo {
+  margin: 0;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-corpo);
+}
+
+/* A ação do cartão é um link dourado, com a seta no fim. */
+.envio-cartao__acao {
+  font-weight: var(--veio-peso-titulo);
+  text-decoration: none;
+}
+
+.envio-cartao__acao::after {
+  content: " →";
+}
+
+.envio-cartao__acao:hover {
+  text-decoration: underline;
+}
+
+.envio-cartao__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+/* Um bloco por idioma, lado a lado: +N cartões, o baralho e o que não entrou. */
+.envio-resumo__baralhos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.envio-resumo__baralho {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-bg);
+}
+
+.envio-resumo__baralho p {
+  margin: 0;
+}
+
+.envio-resumo__idioma {
+  margin: 0;
+  font-size: var(--veio-tam-card);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.envio-resumo__cartoes {
+  color: var(--veio-success);
+  font-family: var(--veio-fonte-display);
+  font-size: 22px;
+  font-weight: var(--veio-peso-display);
+  line-height: 1.2;
+}
+
+.envio-resumo__nome,
+.envio-resumo__linha {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+  overflow-wrap: anywhere;
+}
+
+.envio-resumo__linha--erro {
+  color: var(--veio-danger);
+}
+
+.envio-resumo__baralho .veio-botao {
+  margin-top: 6px;
+  gap: 6px;
+}
+
+.envio-resumo__baralho .veio-botao svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* A pergunta do histórico, depois dos baralhos. */
+.envio-resumo__historico {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--veio-border);
+}
+
+.envio-resumo__pergunta {
+  margin: 0;
+  font-weight: var(--veio-peso-titulo);
+}
+
+.envio-resumo__ajuda {
+  margin: 4px 0 0;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.envio-resumo__ajuda[hidden] {
+  display: none;
+}
+
 /* ── Movimento reduzido ───────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .shell-ponto[data-estado="conectando"],
@@ -1963,64 +2162,7 @@ body {
   }
 }
 
-.bridge-progress-list {
-  display: grid;
-  gap: 12px;
-}
-
-.bridge-job-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 14px;
-  background: #fafafa;
-}
-
-.bridge-job-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.bridge-job-title {
-  font-weight: 700;
-  color: #111827;
-}
-
-.bridge-job-status {
-  font-size: 12px;
-  font-weight: 700;
-  color: #6b7280;
-}
-
-.bridge-job-meta {
-  font-size: 12px;
-  color: #6b7280;
-  margin-bottom: 10px;
-}
-
-.bridge-job-bar {
-  width: 100%;
-  height: 8px;
-  background: #e5e7eb;
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.bridge-job-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #8b5cf6, #06b6d4);
-  width: 0%;
-}
-
-.bridge-job-detail {
-  margin-top: 8px;
-  font-size: 12px;
-  color: #374151;
-}
-
-/* ── Modal Largo (progresso da ponte) ───────────────────── */
+/* ── Modal Largo ─────────────────────────────────────── */
 .modal-wide {
   width: min(640px, 95vw);
 }

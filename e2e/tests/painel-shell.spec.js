@@ -345,11 +345,12 @@ test('dentro do shell, Enviar ao Anki cria o envio, e o acompanhamento continua 
   await marcarFrase(page).first().check();
   await page.locator('#btn-send-anki').click();
 
-  await expect(page.locator('#bridge-progress-modal')).toBeVisible();
-  expect(envios).toHaveLength(1);
+  const progresso = page.getByRole('dialog', { name: 'Enviando ao Anki…' });
+  await expect(progresso).toBeVisible();
+  await expect.poll(() => envios.length).toBe(1);
   expect(envios[0].entries).toHaveLength(1);
 
-  await page.locator('#btn-bridge-progress-close').click();
+  await progresso.getByRole('button', { name: 'Fechar' }).click();
   await itemDaNav(page, 'Configurações').click();
   const leiturasAntes = fakes.anki.requisicoes.filter(r => r.metodo === 'GET' && r.caminho === '/jobs').length;
   await expect.poll(
