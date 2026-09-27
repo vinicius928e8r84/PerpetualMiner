@@ -110,7 +110,18 @@ function registrarMenuDeContexto() {
   });
 }
 
-chrome.runtime.onInstalled.addListener(() => registrarMenuDeContexto());
+chrome.runtime.onInstalled.addListener(aoInstalar);
+
+/**
+ * O menu de contexto é criado como sempre; só a instalação (não a atualização)
+ * abre a Boas-vindas numa aba (item 8 da lista fechada, ONB-01).
+ */
+function aoInstalar(detalhes) {
+  registrarMenuDeContexto();
+  if (detalhes?.reason === 'install') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('painel.html#boas-vindas') });
+  }
+}
 
 chrome.contextMenus.onClicked.addListener(minerarSelecaoDoMenu);
 
