@@ -274,7 +274,7 @@
   function situacaoDoEnvio(envio) {
     if (!envio.jobId) {
       if (!envio.falhaAoCriar) return { etapa: 'naFila', indice: 0, fracao: 0, pct: 0, tom: '', atualizadoEm: envio.criadoEm };
-      return { etapa: 'naoComecou', fim: true, pct: 100, tom: 'erro', atualizadoEm: envio.criadoEm };
+      return { etapa: 'naoComecou', fim: true, semEtapas: true, pct: 0, tom: 'erro', atualizadoEm: envio.criadoEm };
     }
     const estado = estadoDoJob(envio) || { status: 'queued', stage: 'queued' };
     const atualizadoEm = estado.updatedAt ? Date.parse(estado.updatedAt) : envio.criadoEm;
@@ -303,7 +303,7 @@
 
   function montarCartao(envio) {
     const situacao = situacaoDoEnvio(envio);
-    const { etapa, pct, tom, atualizadoEm, estado } = situacao;
+    const { etapa, pct, atualizadoEm, estado } = situacao;
     const idioma = nomeDoIdioma(envio.lang);
     const cartao = elemento('section', 'envio-cartao');
     cartao.setAttribute('role', 'group');
@@ -311,38 +311,27 @@
     const titulo = elemento('h3', 'envio-cartao__titulo', textoDaVoz('ENV-08.titulo', { idioma, n: envio.ids.length }));
     titulo.id = `envio-titulo-${envio.id}`;
     cartao.setAttribute('aria-labelledby', titulo.id);
-    const rotuloDaEtapa = elemento('span', `envio-cartao__etapa${tom ? ` envio-cartao__etapa--${tom}` : ''}`,
+    // Enquanto o cartão espera a pessoa, a etapa e os segmentos ficam em tom calmo: quem fala é o motivo.
+    if (pedidoDoCartao(envio, estado)) situacao.tom = 'calmo';
+    const rotuloDaEtapa = elemento('span', `envio-cartao__etapa${situacao.tom ? ` envio-cartao__etapa--${situacao.tom}` : ''}`,
       textoDaVoz(`ENV-07.${etapa}`));
     const topo = elemento('div', 'envio-cartao__topo', titulo, rotuloDaEtapa);
 
     cartao.append(topo, montarEtapas(situacao, titulo.id));
 
-    // O erro que pede ação é o aviso da Veio, no próprio cartão, com a causa em Detalhes.
-    const falhaAoRetomar = envio.jobId && falhasAoRetomar.get(envio.jobId);
-    if (envio.falhaAoCriar) {
-      const aviso = envio.falhaAoCriar.semResposta ? 'ENV-03.avisoSemResposta' : 'ENV-03.aviso';
-      cartao.append(avisoNoCartao({
-        texto: textoDaVoz(aviso, { idioma }),
-        acao: { rotulo: textoDaVoz('ENV-03.tentarDeNovo'), aoUsar: () => tentarCriarDeNovo(envio) },
-        detalhes: envio.falhaAoCriar.causa,
-      }, 'tentar'));
-    } else if (falhaAoRetomar || ankiTravado(estado)) {
-      // Continuar envio fica no aviso, que diz o que fazer antes dele.
-      cartao.append(avisoNoCartao({
-        texto: textoDaVoz(falhaAoRetomar ? 'ENV-14.falha' : 'BRG-18'),
-        acao: { rotulo: textoDaVoz('ENV-13.continuar'), aoUsar: () => continuarEnvio(envio) },
-      }, 'continuar'));
-    }
+    // Quando o cartão precisa da pessoa: uma frase curta com o motivo e a ação como link
+    // logo embaixo (a variante A da rodada 3 do PR #64). Nada de caixa de erro.
+    const pedido = pedidoDoCartao(envio, estado);
+    if (pedido?.motivo) cartao.append(elemento('p', 'envio-cartao__motivo', pedido.motivo));
 
     const atualizado = textoDaVoz('ENV-08.atualizado', { quando: quando(atualizadoEm) });
-    const meta = elemento('div', 'envio-cartao__meta',
-      elemento('span', '', situacao.fim ? atualizado : `${etapaDeSete(situacao)} · ${atualizado}`));
-    if (!falhaAoRetomar && !ankiTravado(estado) && retomavel(estado)) {
-      meta.append(botao(textoDaVoz('ENV-13.continuar'), 'continuar', () => continuarEnvio(envio)));
-    }
+    const meta = elemento('div', 'envio-cartao__meta');
+    if (pedido) meta.append(botaoLink(pedido.rotulo, pedido.foco, pedido.aoUsar));
+    meta.append(elemento('span', '', situacao.fim ? atualizado : `${etapaDeSete(situacao)} · ${atualizado}`));
     cartao.append(meta);
 
-    const causa = envio.falhaAoCriar ? '' : [
+    const falhaAoRetomar = envio.jobId && falhasAoRetomar.get(envio.jobId);
+    const causa = envio.falhaAoCriar ? envio.falhaAoCriar.causa : [
         `${envio.jobId} · lang=${envio.lang} · stage=${estado?.stage || 'queued'}`,
         // A mesma hora do “atualizado há …”: a da Conexão, ou a de quando o Envio foi criado.
         `updatedAt ${estado?.updatedAt || new Date(atualizadoEm).toISOString()}`,
@@ -351,7 +340,7 @@
       ].filter(Boolean).join('\n');
     if (causa) cartao.append(Veio.montarDetalhes(causa));
 
-    cartao.dataset.assinatura = [etapa, pct, tom, meta.textContent, causa, falhaAoRetomar || ''].join('|');
+    cartao.dataset.assinatura = [etapa, pct, situacao.tom, pedido?.motivo || '', meta.textContent, causa].join('|');
     return cartao;
   }
 
@@ -374,7 +363,7 @@
    * `done/total` dela. No fim, todas na cor do desfecho.
    */
   function montarEtapas(situacao, rotuladoPor) {
-    const { indice, fracao, fim, tom, pct } = situacao;
+    const { indice, fracao, fim, semEtapas, tom, pct } = situacao;
     const etapas = elemento('div', `envio-cartao__etapas${tom ? ` envio-cartao__etapas--${tom}` : ''}`);
     etapas.setAttribute('role', 'progressbar');
     etapas.setAttribute('aria-labelledby', rotuladoPor);
@@ -384,7 +373,8 @@
     if (!fim) etapas.setAttribute('aria-valuetext', etapaDeSete(situacao));
     ETAPAS.forEach((_, k) => {
       const segmento = document.createElement('i');
-      if (fim || k < indice) segmento.className = 'feito';
+      // Não começou: nenhuma etapa andou.
+      if (!semEtapas && (fim || k < indice)) segmento.className = 'feito';
       if (!fim && k === indice) {
         const enchendo = document.createElement('b');
         enchendo.style.width = `${Math.round(fracao * 100)}%`;
@@ -395,10 +385,33 @@
     return etapas;
   }
 
-  function avisoNoCartao(conteudo, foco) {
-    const aviso = Veio.montarAviso({ ...conteudo, fechavel: false });
-    aviso.querySelector('button').dataset.foco = foco;
-    return aviso;
+  /**
+   * O que o cartão pede, quando pede: o motivo numa frase curta e a ação. Não começou →
+   * Tentar de novo (ENV-03); Anki travado ou Continuar que não deu → o motivo e Continuar
+   * envio; terminou em parte → só Continuar envio (a etapa já diz).
+   */
+  function pedidoDoCartao(envio, estado) {
+    if (envio.falhaAoCriar) {
+      return {
+        motivo: textoDaVoz(envio.falhaAoCriar.semResposta ? 'ENV-03.motivoSemResposta' : 'ENV-03.motivo'),
+        rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'tentar', aoUsar: () => tentarCriarDeNovo(envio),
+      };
+    }
+    const falhaAoRetomar = envio.jobId && falhasAoRetomar.get(envio.jobId);
+    const continuar = { rotulo: textoDaVoz('ENV-13.continuar'), foco: 'continuar', aoUsar: () => continuarEnvio(envio) };
+    if (falhaAoRetomar) return { motivo: textoDaVoz('ENV-14.falha'), ...continuar };
+    if (ankiTravado(estado)) return { motivo: textoDaVoz('BRG-18'), ...continuar };
+    if (retomavel(estado)) return continuar;
+    return null;
+  }
+
+  /** A ação do cartão: um link dourado, com a seta no fim. */
+  function botaoLink(rotulo, foco, aoUsar) {
+    const no = elemento('button', 'veio-botao veio-botao--link envio-cartao__acao', rotulo);
+    no.type = 'button';
+    no.dataset.foco = foco;
+    no.addEventListener('click', aoUsar);
+    return no;
   }
 
   function botao(rotulo, foco, aoUsar) {

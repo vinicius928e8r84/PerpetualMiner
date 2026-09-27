@@ -102,8 +102,10 @@ Todos seguem o modal Veio: `surface`, raio 20, × no canto, Esc e clique fora fe
   - **Progresso:**
     - título “Enviando ao Anki…” e subtítulo “2 envios · inglês e russo”;
     - um cartão por envio: “Envio em inglês · 12 frases”, a etapa com nome de gente (Na fila · Criando cartões · Preparando imagens · Gerando áudio · Escolhendo imagens · Esperando o Anki · Enviando ao Anki), as 7 etapas em segmentos (as feitas cheias, a atual enchendo), “etapa 4 de 7 · atualizado há 1 min” e **Detalhes** recolhido com jobId, stage cru e ISO;
-    - quando o envio fica em parte: **Continuar envio**;
-    - quando não começa (ENV-03): o erro inline “O envio em inglês não começou. A conexão com o Anki respondeu com erro.” + **Tentar de novo**;
+    - quando o cartão precisa da pessoa, nada de caixa de erro: a etapa e os segmentos ficam em tom calmo, o motivo vem numa frase curta e a ação é um link dourado logo embaixo (variante A da rodada 3 do PR #64):
+      - não começou (ENV-03): “A conexão com o Anki respondeu com erro.” + **Tentar de novo →**;
+      - o Windows não deixou fechar o Anki (BRG-18) ou um Continuar que não deu (ENV-14): o motivo + **Continuar envio →**;
+      - terminou em parte: só **Continuar envio →** (a etapa já diz “Concluído em parte”);
     - no pé: “Pode fechar: o resumo abre quando o envio terminar.”;
     - sai o “Atualizar status” (M3.7).
   - **Resumo** (ENV-10), que abre sozinho em qualquer área e espera outro modal aberto fechar:

@@ -57,7 +57,7 @@ test('o progresso: um Envio andando, o outro que não começou (ENV-03)', async 
     atualizadoEm: new Date(AGORA.getTime() - 60_000),
   });
   await expect(progresso(page).getByRole('group', { name: 'Envio em inglês · 3 frases' })).toContainText('Gerando áudio', { timeout: 10_000 });
-  await expect(progresso(page)).toContainText('O envio em russo não começou.');
+  await expect(progresso(page).getByRole('group', { name: 'Envio em russo · 2 frases' })).toContainText('A conexão com o Anki respondeu com erro.');
 
   await expect(page).toHaveScreenshot('envio-progresso.png', naJanela(page));
 });

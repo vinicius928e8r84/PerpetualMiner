@@ -1090,6 +1090,30 @@ body {
 .envio-cartao__etapas--ok > i.feito { background: var(--veio-success); }
 .envio-cartao__etapas--erro > i.feito { background: var(--veio-danger); }
 
+/* Enquanto o cartão espera a pessoa: tudo em tom calmo, quem fala é o motivo. */
+.envio-cartao__etapa--calmo { color: var(--veio-muted); }
+.envio-cartao__etapas--calmo > i.feito { background: color-mix(in srgb, var(--veio-accent) 45%, var(--veio-surface-2)); }
+
+.envio-cartao__motivo {
+  margin: 0;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-corpo);
+}
+
+/* A ação do cartão é um link dourado, com a seta no fim. */
+.envio-cartao__acao {
+  font-weight: var(--veio-peso-titulo);
+  text-decoration: none;
+}
+
+.envio-cartao__acao::after {
+  content: " →";
+}
+
+.envio-cartao__acao:hover {
+  text-decoration: underline;
+}
+
 .envio-cartao__meta {
   display: flex;
   flex-wrap: wrap;

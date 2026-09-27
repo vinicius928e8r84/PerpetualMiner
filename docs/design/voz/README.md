@@ -205,7 +205,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 |---|---|---|---|---|---|
 | ENV-01 | Bridge desligado ao enviar | erro | Anki Bridge offline. Inicie o serviço residente no PC. | A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo. | “Tentar de novo”. Ver F1. |
 | ENV-02 | Bridge não respondeu bem | erro | Anki Bridge indisponível. | A conexão com o Anki não respondeu. Confira se ela está ligada e tente de novo. | Detalhes: status HTTP. |
-| ENV-03 | Envio não começou | erro | Falha ao criar job EN: 500 | O envio em inglês não começou. A conexão com o Anki respondeu com erro. | “Tentar de novo” + Detalhes. Inline no cartão do envio. Quando o pedido nem chega (erro de rede): “O envio em inglês não começou. A conexão com o Anki não respondeu. Confira se ela está ligada.” |
+| ENV-03 | Envio não começou | erro | Falha ao criar job EN: 500 | A conexão com o Anki respondeu com erro. | No cartão do envio, que já diz “Não começou”: a frase curta, e embaixo o link “Tentar de novo →” + Detalhes. Sem caixa de erro. Quando o pedido nem chega (erro de rede): “A conexão com o Anki não respondeu. Confira se ela está ligada.” |
 | ENV-04 | Erro de rede ao enviar/retomar **(novo)** | erro | (nada aparece) | A conexão com o Anki não respondeu. Confira se ela está ligada. | C9. |
 | ENV-05 | Envios criados **(some)** | sucesso | 2 lote(s) enviado(s) ao bridge. + Presets do Anki Bridge salvos. | _(sem texto)_ | O modal de progresso abre na hora: é visível (C4). |
 | ENV-06 | Modal de progresso | loading | Aguardando jobs… · 2 job(s) acompanhados | Enviando ao Anki… — 2 envios · inglês e russo |  |

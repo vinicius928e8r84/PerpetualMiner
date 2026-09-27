@@ -191,14 +191,16 @@ test('um Envio parado porque o Windows não deixou fechar o Anki diz o que fazer
 
   const cartaoIngles = envio(page, 'Envio em inglês · 1 frase');
   await expect(cartaoIngles).toContainText('Não concluído', { timeout: 10_000 });
-  await expect(cartaoIngles.getByRole('alert')).toHaveText(/O Windows não deixou fechar o Anki\. Feche o Anki pelo Gerenciador de Tarefas/);
+  // O cartão diz o que fazer numa frase curta, sem caixa de erro, e a ação vem logo embaixo.
+  await expect(cartaoIngles).toContainText('O Windows não deixou fechar o Anki. Feche o Anki pelo Gerenciador de Tarefas');
+  await expect(cartaoIngles.getByRole('alert')).toHaveCount(0);
   await expect(cartaoIngles.getByRole('button', { name: 'Continuar envio' })).toHaveCount(1);
   // A próxima leitura da Conexão demora: o aviso sai na hora do Continuar envio, não nela.
   fakes.anki.responder('GET', '/jobs', () => new Promise(() => {}));
   await cartaoIngles.getByRole('button', { name: 'Continuar envio' }).click();
   await expect.poll(() => fakes.anki.requisicoes.some(r => r.metodo === 'POST' && r.caminho === `/jobs/${ingles.jobId}/retry`)).toBe(true);
   await expect(cartaoIngles).toContainText('Na fila');
-  await expect(cartaoIngles.getByRole('alert')).toHaveCount(0);
+  await expect(cartaoIngles).not.toContainText('O Windows não deixou fechar o Anki');
 });
 
 // ─── Não começou (ENV-03 · ENV-04) ───────────────────────────────────────────
@@ -214,7 +216,8 @@ test('bug #9: o POST do envio caindo na rede mostra o erro com Tentar de novo, e
   const cartaoRusso = envio(page, 'Envio em russo · 1 frase');
   await expect(cartaoIngles).toContainText('Na fila');
   await expect(cartaoRusso).toContainText('Não começou');
-  await expect(cartaoRusso).toContainText('O envio em russo não começou. A conexão com o Anki não respondeu. Confira se ela está ligada.');
+  await expect(cartaoRusso).toContainText('Não começou');
+  await expect(cartaoRusso).toContainText('A conexão com o Anki não respondeu. Confira se ela está ligada.');
   expect(fakes.anki.enviosEm('en')).toHaveLength(1);
   expect(fakes.anki.enviosEm('ru')).toHaveLength(0);
 
@@ -222,7 +225,7 @@ test('bug #9: o POST do envio caindo na rede mostra o erro com Tentar de novo, e
   await cartaoRusso.getByRole('button', { name: 'Tentar de novo' }).click();
   await expect.poll(() => fakes.anki.enviosEm('ru').length).toBe(1);
   await expect(cartaoRusso).toContainText('Na fila');
-  await expect(cartaoRusso).not.toContainText('não começou');
+  await expect(cartaoRusso).not.toContainText('Não começou');
   // O inglês não foi mandado de novo.
   expect(fakes.anki.enviosEm('en')).toHaveLength(1);
 });
@@ -234,7 +237,8 @@ test('a Conexão respondendo com erro ao criar o envio mostra ENV-03, com o stat
   await marcarEEnviar(page, [SACK.texto]);
 
   const cartaoIngles = envio(page, 'Envio em inglês · 1 frase');
-  await expect(cartaoIngles).toContainText('O envio em inglês não começou. A conexão com o Anki respondeu com erro.');
+  await expect(cartaoIngles).toContainText('Não começou');
+  await expect(cartaoIngles).toContainText('A conexão com o Anki respondeu com erro.');
   await cartaoIngles.locator('details').getByText('Detalhes').click();
   await expect(cartaoIngles.locator('details pre')).toContainText('500');
   await expect(cartaoIngles.locator('details pre')).toContainText('deck_missing');
@@ -260,7 +264,7 @@ test('EN termina com o RU sem começar: o progresso volta com o ENV-03, e o resu
 
   fakes.anki.concluirEnvio(ingles.jobId);
   // O russo que não começou não some dentro do resumo: o progresso reabre com ele.
-  await expect(envio(page, 'Envio em russo · 1 frase')).toContainText('O envio em russo não começou.', { timeout: 10_000 });
+  await expect(envio(page, 'Envio em russo · 1 frase')).toContainText('A conexão com o Anki respondeu com erro.', { timeout: 10_000 });
   await expect(envio(page, 'Envio em inglês · 1 frase')).toContainText('Concluído');
   await page.waitForTimeout(2500);
   await expect(resumo(page)).toHaveCount(0);

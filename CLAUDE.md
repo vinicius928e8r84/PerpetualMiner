@@ -241,13 +241,13 @@ tombstones, no toast) and `marcarComoEnviadas(ids)` (`status: 'exported'`, no to
 “Envio em inglês · 12 frases”, the stage in people's words (ENV-07, from the bridge `stage`), the 7 stages as segments
 (the done ones full, the current one filling by its `done/total`; all in the outcome's color at the end), “etapa 4 de 7 ·
 atualizado há 1 min” (ENV-08) and a collapsed Detalhes with jobId, raw stage, ISO
-time (the bridge's `updatedAt`, or when the Envio was created) and `lastError`. A card whose Envio ended partial or
-failed while another still runs has **Continuar envio** (`POST /jobs/<id>/retry`, toast ENV-14); when the bridge says
-Windows would not let it close a stuck Anki (`ankiError: 'repair_access_denied'`), the card shows BRG-18 as a Veio aviso
-with Continuar envio inside it. Phrases go to the Envio of their language by `ehRussa` (`lib/idioma.js`), the same rule
+time (the bridge's `updatedAt`, or when the Envio was created) and `lastError`. A card that needs the person has no error box: its stage and segments turn calm (muted), the reason is one short
+sentence and the action is a gold link below it (`pedidoDoCartao`). An Envio that ended partial or failed while another
+still runs gets **Continuar envio →** (`POST /jobs/<id>/retry`, toast ENV-14); when the bridge says Windows would not let
+it close a stuck Anki (`ankiError: 'repair_access_denied'`), the reason is BRG-18. Phrases go to the Envio of their language by `ehRussa` (`lib/idioma.js`), the same rule
 the list uses: the stored `idioma`, or the text when it is missing. A `POST /jobs` that fails does not hide the Envio: its card says “Não começou”
-with ENV-03 inline — the Veio aviso, `avisoSemResposta` when the request never got an answer — and Tentar de novo, which
-re-creates only that language. While such an error is on a card (or a Continuar envio that failed, ENV-14), the summary
+with the ENV-03 reason (`motivoSemResposta` when the request never got an answer), its cause in Detalhes, and
+**Tentar de novo →**, which re-creates only that language. While such an error is on a card (or a Continuar envio that failed, ENV-14), the summary
 waits: the progress modal comes back with it, and the summary opens once the person closes it, counting those phrases
 as failed. `pm_envio` is written after each `POST /jobs`. The footer is ENV-15. `GET /jobs` runs every 2 s while something is running; when it fails the modal says
 ENV-09 and keeps trying. Phrases already in a running Envio are not sent twice (a second click only reopens the modal),
