@@ -644,5 +644,10 @@
     }
   }
 
-  raiz.Envio = { usar };
+  /** O nome de gente (a chave de ENV-07) da etapa `stage` do bridge, ou null. */
+  function nomeDaEtapa(stage) {
+    return ETAPAS.find(([etapa]) => etapa === stage)?.[1] || null;
+  }
+
+  raiz.Envio = { usar, nomeDaEtapa };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

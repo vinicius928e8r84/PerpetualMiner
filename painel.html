@@ -196,6 +196,24 @@
           </div>
         </div>
 
+        <!-- Conectando: a primeira conferência da Conexão ainda não voltou (BRG-02). -->
+        <div class="anki-faixa-conectando" id="anki-conectando" role="status" hidden>
+          <span class="anki-ponto" aria-hidden="true"></span><span data-voz="BRG-02"></span>
+        </div>
+
+        <!-- Nunca conectada: o card ONB-16 fica no lugar das abas (Boas-vindas § F1). -->
+        <section class="anki-primeira-vez" id="anki-primeira-vez" aria-labelledby="anki-primeira-vez-titulo" hidden>
+          <h2 id="anki-primeira-vez-titulo" data-voz="ONB-16.titulo"></h2>
+          <p class="anki-apoio" data-voz="ONB-16.corpo"></p>
+          <h3 data-voz="ONB-16.passos"></h3>
+          <ol class="anki-passos">
+            <li data-voz="ONB-08.passo1"></li>
+            <li data-voz="ONB-08.passo2"></li>
+            <li data-voz="ONB-08.passo3"></li>
+          </ol>
+          <div id="anki-primeira-vez-detalhes"></div>
+        </section>
+
         <div class="veio-segmentado shell-abas" role="radiogroup" data-voz-aria="SHL-03.rotulo">
           <label class="veio-segmentado__opcao"><input type="radio" name="aba-anki" value="custos"><span data-voz="SHL-03.custos"></span></label>
           <label class="veio-segmentado__opcao"><input type="radio" name="aba-anki" value="baralhos"><span data-voz="SHL-03.baralhos"></span></label>
@@ -204,61 +222,37 @@
         </div>
 
         <div class="shell-aba" data-aba="custos">
-          <div class="conteudo-de-hoje" data-tema="claro">
-            <section class="bridge-card bridge-cost-card" aria-labelledby="bridge-costs-title">
-              <div class="bridge-section-head">
-                <div>
-                  <h3 id="bridge-costs-title">Custos</h3>
-                  <p>Gasto, origem das imagens e ultimos jobs do bridge.</p>
+          <div class="anki-custos" id="anki-custos">
+            <p class="anki-selo-antigo" id="anki-custos-antigo" hidden></p>
+            <div class="anki-barra">
+              <div class="veio-segmentado" role="radiogroup" data-voz-aria="BRG-28.periodo">
+                <label class="veio-segmentado__opcao"><input type="radio" name="periodo-custos" value="hoje"><span data-voz="BRG-28.hoje"></span></label>
+                <label class="veio-segmentado__opcao"><input type="radio" name="periodo-custos" value="mes" checked><span data-voz="BRG-28.mes"></span></label>
+                <label class="veio-segmentado__opcao"><input type="radio" name="periodo-custos" value="tudo"><span data-voz="BRG-28.tudo"></span></label>
+              </div>
+              <div class="anki-datas">
+                <label class="anki-data"><span data-voz="BRG-28.de"></span><input type="date" id="anki-custos-de"></label>
+                <label class="anki-data"><span data-voz="BRG-28.ate"></span><input type="date" id="anki-custos-ate"></label>
+              </div>
+            </div>
+            <div class="anki-azulejos" id="anki-custos-azulejos" role="group" data-voz-aria="BRG-28.idiomas" hidden></div>
+            <div id="anki-custos-corpo"></div>
+            <details class="anki-avancado" id="anki-custos-avancado" hidden>
+              <summary><span data-voz="BRG-32.titulo"></span> <small>· <span data-voz="BRG-32.resumo"></span></small></summary>
+              <div class="anki-avancado__corpo">
+                <dl class="anki-numeros" id="anki-custos-avancado-numeros"></dl>
+                <div class="anki-avancado__chaves">
+                  <label class="veio-toggle"><input type="checkbox" id="anki-quatro-casas"><span class="veio-toggle__trilho"></span><span data-voz="BRG-32.quatroCasas"></span></label>
+                  <label class="veio-toggle"><input type="checkbox" id="anki-ids-dos-envios"><span class="veio-toggle__trilho"></span><span data-voz="BRG-32.ids"></span></label>
+                </div>
+                <div class="anki-diagnostico">
+                  <h3 data-voz="BRG-32.diagnostico"></h3>
+                  <p class="anki-apoio" data-voz="BRG-32.diagnosticoTexto"></p>
+                  <table class="anki-tabela"><tbody id="anki-custos-diagnostico"></tbody></table>
+                  <p class="anki-motivo" id="anki-diagnostico-falha" role="alert" hidden></p>
                 </div>
               </div>
-
-              <div class="bridge-cost-layout">
-                <div class="bridge-cost-main">
-                  <span>Total do filtro</span>
-                  <strong id="bridge-cost-total">$0.0000</strong>
-                  <small id="bridge-analytics-status-main">Aguardando bridge...</small>
-                </div>
-                <div id="bridge-analytics-metrics-main" class="bridge-metrics-grid"></div>
-              </div>
-
-              <div class="bridge-analytics-controls">
-                <div class="bridge-range-row" aria-label="Periodo dos custos">
-                  <button class="bridge-range-btn active" data-analytics-range-main="today">Hoje</button>
-                  <button class="bridge-range-btn" data-analytics-range-main="month">Mes</button>
-                  <button class="bridge-range-btn" data-analytics-range-main="all">Tudo</button>
-                </div>
-                <div class="bridge-filter-row">
-                  <label class="bridge-field bridge-field-compact">
-                    <span>Idioma</span>
-                    <select id="bridge-analytics-lang-main" class="bridge-select bridge-analytics-select" title="Idioma">
-                      <option value="all">Todos</option>
-                      <option value="en">EN</option>
-                      <option value="ru">RU</option>
-                    </select>
-                  </label>
-                  <label class="bridge-field bridge-field-compact">
-                    <span>De</span>
-                    <input id="bridge-analytics-from-main" class="bridge-input bridge-date-input" type="date" title="Data inicial">
-                  </label>
-                  <label class="bridge-field bridge-field-compact">
-                    <span>Ate</span>
-                    <input id="bridge-analytics-to-main" class="bridge-input bridge-date-input" type="date" title="Data final">
-                  </label>
-                </div>
-              </div>
-
-              <div class="bridge-cost-columns">
-                <div>
-                  <div class="bridge-mini-title">Origem das imagens</div>
-                  <div id="bridge-image-rates-main" class="bridge-image-rates"></div>
-                </div>
-                <div>
-                  <div class="bridge-mini-title">Jobs recentes</div>
-                  <div id="bridge-analytics-jobs-main" class="bridge-analytics-jobs"></div>
-                </div>
-              </div>
-            </section>
+            </details>
           </div>
         </div>
 
@@ -270,7 +264,10 @@
                   <h3 id="bridge-anki-title">Baralhos e termos</h3>
                   <p>Progresso por idioma no Anki, separado dos custos do bridge.</p>
                 </div>
-                <button id="btn-bridge-anki-repair" class="bridge-debug-btn bridge-repair-btn" type="button" title="Fechar processos travados do Anki e reabrir o perfil configurado">Reparar Anki</button>
+                <span class="veio-com-dica">
+                  <button id="btn-bridge-anki-repair" class="bridge-debug-btn bridge-repair-btn" type="button" title="Fechar processos travados do Anki e reabrir o perfil configurado">Reparar Anki</button>
+                  <span class="veio-dica" role="tooltip" id="anki-reparar-indisponivel" data-voz="BRG-33.reparar"></span>
+                </span>
               </div>
 
               <div class="bridge-anki-stats">
@@ -650,6 +647,7 @@
   <script src="painel-chave.js"></script>
   <script src="painel-perigo.js"></script>
   <script src="painel-envio.js"></script>
+  <script src="painel-anki.js"></script>
   <script src="painel.js"></script>
 </body>
 </html>
