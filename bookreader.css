@@ -391,18 +391,10 @@ figure {
   max-width: 58ch;
 }
 
-/* O aviso das falhas da leitura, como no protótipo: o símbolo de aviso, a
-   abertura em negrito e a causa na mesma linha. */
+/* Os avisos da leitura, como no protótipo: o ícone, a abertura em negrito e
+   a causa na mesma linha, centrados com o ×. */
 .foto-avisos .veio-aviso {
   align-items: center;
-}
-
-.foto-avisos .veio-aviso__texto > svg {
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-  color: var(--veio-danger);
-  vertical-align: -3px;
 }
 
 .foto-vazio .veio-vazio__texto {
@@ -419,17 +411,6 @@ figure {
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
-}
-
-/* O aviso de Leitura cancelada (FOT-21) informa, não alarma: o fundo
-   neutro e o símbolo em ouro, como a nota “info” do protótipo. */
-.foto-avisos .foto-aviso--info {
-  border-color: var(--veio-border);
-  background: var(--veio-surface-2);
-}
-
-.foto-avisos .foto-aviso--info .veio-aviso__texto > svg {
-  color: var(--veio-accent-text);
 }
 
 /* O ícone do botão continua o do botão, não o grande do estado vazio. */

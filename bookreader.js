@@ -27,7 +27,7 @@
 
 (function (raiz) {
   const { textoDaVoz, detectarIdioma } = raiz;
-  const { iconeVeio, montarAviso, mostrarToastDeSucesso, refletirSelecao, abrirModal } = raiz.Veio;
+  const { iconeVeio, montarAviso, mostrarToastDeSucesso, refletirSelecao, abrirConfirmacao } = raiz.Veio;
 
   // ─── Constantes ─────────────────────────────────────────────────────────────
 
@@ -89,6 +89,9 @@ To be or not to be, that is the question`;
     CANCELADA: 'cancelada', // estava na fila (ou sendo lida) quando a pessoa cancelou
   };
 
+  /** O estado da coluna quando a leitura foi cancelada antes de ler qualquer foto. */
+  const ID_DA_COLUNA_CANCELADA = 'cancelada';
+
   /** As marcações da legenda (FOT-24): a parte do exemplo e a do nome de cada uma. */
   const LEGENDA = [
     { exemplo: 'FOT-24.exemploBarras', nome: 'FOT-24.barras' },
@@ -111,7 +114,7 @@ To be or not to be, that is the question`;
   let proximoId = 1;
 
   /** O que já está desenhado, para redesenhar só o que mudou. */
-  const desenhado = {
+  const nadaDesenhado = () => ({
     estadoDaColuna: null,       // o id do estado da coluna das frases
     cartoes: new Map(),         // foto.id → <li> da fila
     grupos: new Map(),          // foto.id → grupo de frases
@@ -121,7 +124,8 @@ To be or not to be, that is the question`;
     avisoDoEnvio: null,         // o aviso de FOT-15/16, trocado a cada envio
     avisoDoCancelamento: null,  // o aviso de FOT-21
     canceladasDoAviso: '',      // os ids das fotos que esse aviso conta
-  };
+  });
+  let desenhado = nadaDesenhado();
 
   const porId = id => document.getElementById(id);
   const fotosCom = (...status) => estado.fotos.filter(foto => status.includes(foto.status));
@@ -361,27 +365,13 @@ To be or not to be, that is the question`;
       return;
     }
 
-    const titulo = elemento('h2', 'veio-modal__titulo', textoDaVoz('FOT-18.titulo', { n }));
-    titulo.id = 'foto-recomecar-titulo';
-    const corpo = elemento('p', 'veio-modal__corpo', textoDaVoz('FOT-18.corpo'));
-    corpo.id = 'foto-recomecar-corpo';
-    const cancelar = botao('veio-botao--fantasma', textoDaVoz('FOT-18.cancelar'));
-    cancelar.dataset.focoSeguro = '';
-    const descartar = botao('veio-botao--perigo-cheio', textoDaVoz('FOT-18.confirmar', { n }));
-
-    const dialogo = elemento('div', 'veio-modal', titulo, corpo, elemento('div', 'veio-modal__acoes', cancelar, descartar));
-    dialogo.setAttribute('role', 'dialog');
-    dialogo.setAttribute('aria-labelledby', titulo.id);
-    dialogo.setAttribute('aria-describedby', corpo.id);
-    const scrim = elemento('div', 'veio-scrim', dialogo);
-    scrim.hidden = true;
-    document.body.append(scrim);
-
-    const modal = abrirModal(scrim, { aoFechar: () => scrim.remove() });
-    cancelar.addEventListener('click', () => modal.fechar());
-    descartar.addEventListener('click', () => {
-      modal.fechar();
-      recomecar();
+    abrirConfirmacao({
+      id: 'foto-recomecar',
+      titulo: textoDaVoz('FOT-18.titulo', { n }),
+      corpo: textoDaVoz('FOT-18.corpo'),
+      cancelar: textoDaVoz('FOT-18.cancelar'),
+      confirmar: textoDaVoz('FOT-18.confirmar', { n }),
+      aoConfirmar: recomecar,
     });
   }
 
@@ -396,16 +386,7 @@ To be or not to be, that is the question`;
     estado.fotos = [];
     estado.frases = [];
 
-    desenhado.cartoes.clear();
-    desenhado.grupos.clear();
-    desenhado.linhas.clear();
-    Object.assign(desenhado, {
-      avisoDaLeitura: null,
-      falhasDoAviso: '',
-      avisoDoEnvio: null,
-      avisoDoCancelamento: null,
-      canceladasDoAviso: '',
-    });
+    desenhado = nadaDesenhado();
     porId('foto-fila').replaceChildren();
     porId('foto-grupos').replaceChildren();
     porId('foto-avisos').replaceChildren();
@@ -508,23 +489,12 @@ To be or not to be, that is the question`;
     const abertura = falhas.length === 1
       ? textoDaVoz('FOT-11.aviso', { n: numeroDaFoto(falhas[0]) })
       : textoDaVoz('FOT-11.avisoVarias', { n: falhas.length });
-    const aviso = mostrarAviso({
-      texto: `${abertura} ${causa}`,
+    desenhado.avisoDaLeitura = mostrarAviso({
+      abertura,
+      texto: causa,
+      icone: 'perigo',
       acao: chaveRecusada ? { rotulo: textoDaVoz('FOT-05.acao'), aoUsar: abrirConfiguracoes } : undefined,
     });
-    aviso.querySelector('.veio-aviso__texto').replaceChildren(
-      iconeVeio('perigo'), elemento('strong', '', abertura), ` ${causa}`);
-    desenhado.avisoDaLeitura = aviso;
-  }
-
-  /**
-   * FOT-21 separado em abertura (“Leitura cancelada.”, em negrito, como no
-   * protótipo) e o resto.
-   */
-  function textoDoCancelamento(n) {
-    const texto = textoDaVoz('FOT-21', { n });
-    const fim = texto.indexOf('. ') + 1;
-    return { abertura: texto.slice(0, fim), resto: texto.slice(fim) };
   }
 
   /**
@@ -534,7 +504,7 @@ To be or not to be, that is the question`;
    */
   function desenharAvisoDoCancelamento() {
     const canceladas = fotosCom(STATUS.CANCELADA);
-    const colunaJaDiz = desenhado.estadoDaColuna?.startsWith('cancelada');
+    const colunaJaDiz = estadoDaColuna().id === ID_DA_COLUNA_CANCELADA;
     const ids = colunaJaDiz ? '' : canceladas.map(foto => foto.id).join(',');
     if (ids === desenhado.canceladasDoAviso) return;
     desenhado.canceladasDoAviso = ids;
@@ -542,13 +512,12 @@ To be or not to be, that is the question`;
     desenhado.avisoDoCancelamento = null;
     if (!ids) return;
 
-    const { abertura, resto } = textoDoCancelamento(canceladas.length);
-    const aviso = mostrarAviso({ texto: abertura + resto });
-    aviso.classList.add('foto-aviso--info');
-    aviso.setAttribute('role', 'status');
-    aviso.querySelector('.veio-aviso__texto').replaceChildren(
-      iconeVeio('alerta'), elemento('strong', '', abertura), resto);
-    desenhado.avisoDoCancelamento = aviso;
+    desenhado.avisoDoCancelamento = mostrarAviso({
+      tom: 'info',
+      icone: 'alerta',
+      abertura: textoDaVoz('FOT-21.abertura'),
+      texto: textoDaVoz('FOT-21.aviso', { n: canceladas.length }),
+    });
   }
 
   /** Um aviso persistente no topo da coluna das frases, com o × de PAI-34. */
@@ -797,9 +766,9 @@ To be or not to be, that is the question`;
     }
     const lidas = fotosCom(STATUS.LIDA).length;
     if (lidas) return { id: `semMarcacoes:${lidas}`, montar: () => montarSemMarcacoes(lidas) };
-    // Cancelada antes de qualquer foto ser lida: a coluna é o próprio FOT-21.
-    const canceladas = fotosCom(STATUS.CANCELADA).length;
-    if (canceladas) return { id: `cancelada:${canceladas}`, montar: () => montarCancelada(canceladas) };
+    // Cancelada antes de qualquer foto ser lida: a coluna diz isso, e o aviso
+    // FOT-21 não se repete em cima dela.
+    if (fotosCom(STATUS.CANCELADA).length) return { id: ID_DA_COLUNA_CANCELADA, montar: montarCancelada };
     return { id: 'nada' };
   }
 
@@ -867,10 +836,11 @@ To be or not to be, that is the question`;
       botaoRecomecar());
   }
 
-  function montarCancelada(canceladas) {
-    const { abertura, resto } = textoDoCancelamento(canceladas);
+  /** Cancelada antes de ler qualquer foto (FOT-21, como no protótipo). */
+  function montarCancelada() {
     return vazio('fechar',
-      elemento('p', 'veio-vazio__texto', elemento('strong', '', abertura), resto),
+      elemento('p', 'veio-vazio__titulo', textoDaVoz('FOT-21.abertura')),
+      elemento('p', 'veio-vazio__texto', textoDaVoz('FOT-21.nenhumaLida')),
       botaoRecomecar());
   }
 

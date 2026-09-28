@@ -33,6 +33,7 @@
     ['PAI-13.titulo', { n: 12 }], ['PAI-13.corpo'],
     ['PAI-14', { n: 12 }],
     ['PAI-15.aviso'], ['PAI-15.tentarDeNovo'], ['ONB-15.ocultar'],
+    ['FOT-21.abertura'], ['FOT-21.aviso', { n: 2 }],
     ['PAI-02.titulo'], ['PAI-02.texto', { atalho: 'Alt+S' }], ['PAI-02.acao'], ['PAI-03.acao'],
     ['PAI-04.texto', { termo: 'gavião' }], ['PAI-04.acao'],
     ['PAI-11.hoje'],
@@ -340,6 +341,21 @@
     return lugar;
   }
 
+  /** O aviso que só informa (FOT-21): neutro, com a abertura em negrito. */
+  function avisoInformativo() {
+    const lugar = el('div', { class: 'lugar-do-aviso' });
+    const montar = () => lugar.append(montarAviso({
+      tom: 'info',
+      icone: 'alerta',
+      abertura: textoDaVoz('FOT-21.abertura'),
+      texto: textoDaVoz('FOT-21.aviso', { n: 2 }),
+      rotuloDeFechar: textoDaVoz('ONB-15.ocultar'),
+      aoFechar: montar,
+    }));
+    montar();
+    return lugar;
+  }
+
   /* ── Estado vazio ─────────────────────────────────────────────────────────
      O vazio que ensina (PAI-02) e o vazio de uma busca sem resultado
      (PAI-04), que leva a ação de limpar junto. */
@@ -479,7 +495,8 @@
         linha('normal', toast(destino))),
 
       grupo('Aviso persistente',
-        linha('erro', aviso())),
+        linha('erro', aviso()),
+        linha('informativo', avisoInformativo())),
 
       grupo('Estado vazio',
         linha('vazio', ...vazios())),

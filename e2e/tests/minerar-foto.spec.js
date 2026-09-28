@@ -388,6 +388,8 @@ test('4 fotos, Cancelar depois da 2ª: as fotos 3 e 4 ficam “Cancelada” e as
   const aviso = page.locator('#foto-avisos .veio-aviso');
   await expect(aviso).toHaveText('Leitura cancelada. 2 fotos ficaram sem ler; as frases das fotos já lidas continuam aqui.');
   await expect(aviso.locator('strong')).toHaveText('Leitura cancelada.');
+  // Informa, não alarma: é um status, não um alerta.
+  await expect(aviso).toHaveAttribute('role', 'status');
   await expect(botaoMinerar(page)).toHaveText('Minerar 5 frases');
 
   // A resposta que chega depois de cancelar não entra, e a 4ª foto nem vai ao Gemini.
@@ -404,7 +406,7 @@ test('4 fotos, Cancelar depois da 2ª: as fotos 3 e 4 ficam “Cancelada” e as
   expect(await gravadasDoLivro(extensao)).toHaveLength(6);
 });
 
-test('lendo a 1ª foto de várias, a coluna diz “Lendo a foto 1 de 3…”, e Cancelar sem nenhuma frase diz que a leitura foi cancelada', async ({ page, extensao, fakes }) => {
+test('lendo a 1ª foto de várias, a coluna diz “Lendo a foto 1 de 3…”, e Cancelar antes de ler qualquer foto diz que nenhuma foi lida', async ({ page, extensao, fakes }) => {
   const soltar = fakes.gemini.segurarFrases(FRASES_DA_PAGINA_1);
   await abrirAPagina(page, extensao);
 
@@ -415,7 +417,10 @@ test('lendo a 1ª foto de várias, a coluna diz “Lendo a foto 1 de 3…”, e 
 
   for (const nome of ['a.png', 'b.png', 'c.png']) await expect(fotoNaFila(page, nome)).toContainText('Cancelada');
   const coluna = colunaDasFrases(page);
-  await expect(coluna).toContainText('Leitura cancelada. 3 fotos ficaram sem ler; as frases das fotos já lidas continuam aqui.');
+  // Nada foi lido: a coluna não promete frases que não existem.
+  await expect(coluna.getByText('Leitura cancelada.', { exact: true })).toBeVisible();
+  await expect(coluna.getByText('Nenhuma foto chegou a ser lida.', { exact: true })).toBeVisible();
+  await expect(page.getByText(/frases das fotos já lidas/)).toHaveCount(0);
   // Sem frases, a própria coluna é o aviso: ele não se repete no topo.
   await expect(page.locator('#foto-avisos .veio-aviso')).toHaveCount(0);
   await expect(coluna.getByRole('button', { name: 'Recomeçar' })).toBeVisible();

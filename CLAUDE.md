@@ -372,7 +372,8 @@ address again (focusing the key field).
 **Cancelar** (FOT-06, in the “Fotos” title row while a photo is being read or waits in the queue) abandons the
 Gemini request in flight (`AbortController`, and whatever still arrives is dropped), marks the photo being read
 and the queued ones **Cancelada** and keeps the phrases of the photos already read; FOT-21 says so as an info
-aviso over the phrases, or, when nothing was read, as the phrases column itself. Focus goes to Escolher.
+aviso over the phrases, or, when no photo was read, the phrases column itself says “Leitura cancelada.” and
+“Nenhuma foto chegou a ser lida.” (`FOT-21.nenhumaLida`, the prototype's copy). Focus goes to Escolher.
 **Recomeçar** (FOT-17: in the list header, the preview and the failed / no-marking / cancelled empties) clears
 the photos, the phrases and the avisos — and abandons the reading in flight, so no phantom phrase arrives later
 (bug of #9); the Livro stays. With phrases not yet mined (checked or not) it first asks in the Veio modal FOT-18
@@ -393,7 +394,10 @@ The rules the components encode, so a surface does not have to re-decide them:
 
 - **Danger has two variants:** `--perigo` (outline) is the entry that opens the destructive modal;
   `--perigo-cheio` is only the button that confirms inside it.
-- **Modal:** `abrirModal(scrim)` puts the initial focus on the *safe* button (`[data-foco-seguro]`,
+- **Modal:** `abrirConfirmacao({ id, titulo, corpo, cancelar, confirmar, aoConfirmar })` builds and opens the whole
+  destructive confirmation (the fantasma Cancelar as the safe focus, the `--perigo-cheio` button, the aria wiring),
+  removes it on close and calls `aoConfirmar` after the focus went back; Zona de perigo and Recomeçar use it.
+  `abrirModal(scrim)`, under it, puts the initial focus on the *safe* button (`[data-foco-seguro]`,
   else the first one not painted as danger), traps focus, closes on Esc and on a click outside,
   returns focus to whoever opened it, and marks the rest of the page `inert`. The second press of a
   double click is not a click outside: it is the end of the click that opened the modal.
@@ -401,7 +405,9 @@ The rules the components encode, so a surface does not have to re-decide them:
   lives inside `dentroDe` (the page's `body` by default), so it uses that element's theme.
   Every error that asks for an action is `montarAviso(…)` instead — it stays in the place of the
   problem until closed, with the action beside it and the technical cause in a collapsed
-  “Detalhes” (V3 of the Voice). An aviso that *is* a state (a failed sync) passes `fechavel: false`:
+  “Detalhes” (V3 of the Voice). `abertura` puts the state's first sentence in bold before the text, `icone` a Base
+  icon at its start, and `tom: 'info'` makes an aviso that only informs (FOT-21's cancelled reading): neutral
+  colours and `role="status"` instead of the danger `alert`. An aviso that *is* a state (a failed sync) passes `fechavel: false`:
   no ×, it leaves when the problem does. `montarDetalhes(causa)` is that same “Detalhes” alone, for
   when the screen's state already says what happened (the cloud refused, the session expired).
 - **Error on a field** is said by `aria-invalid="true"`, not by a class, so the screen reader hears
