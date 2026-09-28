@@ -132,6 +132,10 @@ figure {
   font-size: var(--veio-tam-apoio);
 }
 
+.foto-cancelar {
+  margin-left: auto;
+}
+
 .foto-sem-chave {
   color: var(--veio-muted);
   font-size: var(--veio-tam-apoio);
@@ -228,6 +232,11 @@ figure {
   background: var(--veio-surface);
 }
 
+.foto-cartao:focus-visible {
+  outline: 2px solid var(--veio-accent);
+  outline-offset: 2px;
+}
+
 .foto-cartao[data-status="lendo"] {
   border-color: color-mix(in srgb, var(--veio-accent) 45%, var(--veio-border));
 }
@@ -243,7 +252,8 @@ figure {
   object-fit: cover;
 }
 
-.foto-cartao[data-status="naFila"] .foto-cartao__miniatura {
+.foto-cartao[data-status="naFila"] .foto-cartao__miniatura,
+.foto-cartao[data-status="cancelada"] .foto-cartao__miniatura {
   opacity: .55;
 }
 
@@ -274,6 +284,11 @@ figure {
   color: var(--veio-danger);
   font-size: var(--veio-tam-legenda);
   line-height: 1.35;
+}
+
+/* “Tentar de novo” só na foto que falhou, abaixo da causa. */
+.foto-cartao__de-novo {
+  margin-top: 6px;
 }
 
 /* A legenda das marcações, no pé da fila e no estado vazio. */
@@ -398,6 +413,25 @@ figure {
   margin-top: 6px;
 }
 
+/* Mais de um botão no vazio (Abrir Configurações · Recomeçar), lado a lado. */
+.foto-vazio__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* O aviso de Leitura cancelada (FOT-21) informa, não alarma: o fundo
+   neutro e o símbolo em ouro, como a nota “info” do protótipo. */
+.foto-avisos .foto-aviso--info {
+  border-color: var(--veio-border);
+  background: var(--veio-surface-2);
+}
+
+.foto-avisos .foto-aviso--info .veio-aviso__texto > svg {
+  color: var(--veio-accent-text);
+}
+
 /* O ícone do botão continua o do botão, não o grande do estado vazio. */
 .foto-vazio .veio-botao svg {
   width: 16px;
@@ -478,6 +512,10 @@ figure {
   font-weight: var(--veio-peso-titulo);
   cursor: pointer;
   user-select: none;
+}
+
+.foto-recomecar {
+  margin-left: auto;
 }
 
 .foto-contagem {
