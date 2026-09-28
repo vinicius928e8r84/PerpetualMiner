@@ -132,6 +132,12 @@ test('cai depois de responder: a F1 e o último dado com o selo BRG-12; Continua
   await expect(custos(page)).toContainText('Mostrando dados de há 2 h. Não deu para atualizar agora.');
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(4);
   await expect(primeiraVez(page)).toBeHidden();
+  // O código fica em Detalhes; e outro período não teria de onde vir.
+  const antigo = page.locator('#anki-custos-antigo');
+  await antigo.getByText('Detalhes', { exact: true }).click();
+  await expect(antigo.locator('pre')).toContainText('/health');
+  for (const nome of ['Hoje', 'Este mês', 'Tudo']) await expect(page.getByRole('radio', { name: nome, exact: true })).toBeDisabled();
+  await expect(page.getByLabel('De', { exact: true })).toBeDisabled();
 
   await listaDeEnvios(page).getByRole('option', { name: /Envio em russo/ }).click();
   const continuar = detalheDoEnvio(page, 'Envio em russo · 4 frases').getByRole('button', { name: 'Continuar envio' });
@@ -145,6 +151,12 @@ test('cai depois de responder: a F1 e o último dado com o selo BRG-12; Continua
   const reparar = page.getByRole('button', { name: 'Reparar Anki' });
   await expect(reparar).toHaveAttribute('aria-disabled', 'true');
   await expect(reparar).toHaveAccessibleDescription(/para reparar o Anki/);
+  // O title de antes calaria a dica: sai enquanto ela vale, e volta com a Conexão.
+  await expect(reparar).not.toHaveAttribute('title');
+  fakes.anki.ligar();
+  await atualizar(page).click();
+  await expect(reparar).not.toHaveAttribute('aria-disabled');
+  await expect(reparar).toHaveAttribute('title', /Fechar processos travados/);
 });
 
 test('reabrir o painel com a Conexão desligada mostra o último dado gravado, não o card da primeira vez', async ({ page, extensao, fakes }) => {
@@ -283,6 +295,21 @@ test('lista × detalhe: o envio em parte mostra o que não entrou, Detalhes e Co
   await detalhe.getByRole('button', { name: 'Continuar envio' }).click();
   await expect(page.getByText('Envio retomado')).toBeVisible();
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/job-ru-parte/retry')).toHaveLength(1);
+});
+
+test('Continuar envio que falha: ENV-14 no detalhe, com a causa em Detalhes, sem toast', async ({ page, extensao, fakes }) => {
+  fakes.anki.responder('POST', '/jobs/job-ru-parte/retry', () => ({ status: 500, json: { error: 'retry_failed' } }));
+  await abrirAnki(page, extensao);
+  await listaDeEnvios(page).getByRole('option', { name: /Envio em russo/ }).click();
+  const detalhe = detalheDoEnvio(page, 'Envio em russo · 4 frases');
+
+  await detalhe.getByRole('button', { name: 'Continuar envio' }).click();
+
+  await expect(detalhe).toContainText('Não deu para retomar o envio. Confira se a conexão com o Anki está ligada.');
+  await detalhe.getByText('Detalhes', { exact: true }).click();
+  await expect(detalhe.locator('pre')).toContainText('HTTP 500');
+  await expect(detalhe.locator('pre')).toContainText('collection is not available');
+  await expect(page.locator('.veio-toast')).toHaveCount(0);
 });
 
 test('só o envio em parte ou que não concluiu tem Continuar envio; o em andamento diz a etapa', async ({ page, extensao }) => {

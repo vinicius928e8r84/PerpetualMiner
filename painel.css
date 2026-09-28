@@ -1309,19 +1309,28 @@ body {
   container-type: inline-size;
 }
 
-/* O último dado, com a Conexão desligada (BRG-12). */
-.anki-selo-antigo {
-  justify-self: start;
+/* O último dado, com a Conexão desligada (BRG-12), e o código em Detalhes. */
+.anki-antigo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.anki-antigo[hidden] {
+  display: none;
+}
+
+.anki-antigo .veio-aviso__detalhes {
   margin: 0;
+}
+
+.anki-selo-antigo {
   padding: 2px 10px;
   border: 1px solid var(--veio-border);
   border-radius: var(--veio-raio-pilula);
   color: var(--veio-muted);
   font-size: var(--veio-tam-legenda);
-}
-
-.anki-selo-antigo[hidden] {
-  display: none;
 }
 
 .anki-barra {
@@ -1349,6 +1358,11 @@ body {
   gap: 6px;
   color: var(--veio-muted);
   font-size: var(--veio-tam-apoio);
+}
+
+.anki-data input:disabled {
+  opacity: .5;
+  cursor: not-allowed;
 }
 
 .anki-data input {
@@ -1405,13 +1419,13 @@ body {
 
 .anki-azulejo__nome {
   display: block;
-  font-size: 14px;
+  font-size: var(--veio-tam-card);
   font-weight: var(--veio-peso-titulo);
 }
 
 .anki-azulejo__valor {
   font-family: var(--veio-fonte-mono);
-  font-size: 18px;
+  font-size: var(--veio-tam-contador);
   font-weight: var(--veio-peso-num);
 }
 
@@ -1613,15 +1627,7 @@ body {
 
 .anki-detalhe h3 {
   margin: 2px 0 8px;
-  font-size: 17px;
-}
-
-/* Concluído em parte: o acento suave, como no protótipo. */
-.anki-selo--parte {
-  padding-inline: 8px;
-  border-color: transparent;
-  background: var(--veio-accent-soft);
-  color: var(--veio-accent-text);
+  font-size: var(--veio-tam-destaque);
 }
 
 .anki-detalhe .veio-aviso__detalhes {
@@ -1677,7 +1683,7 @@ body {
   display: inline-block;
   width: 10px;
   height: 10px;
-  border-radius: 3px;
+  border-radius: var(--veio-raio-losango);
 }
 
 .anki-acao {
@@ -1708,7 +1714,7 @@ body {
 
 .anki-numero dd {
   margin: 0;
-  font-size: 19px;
+  font-size: var(--veio-tam-contador);
 }
 
 .anki-numero--indisponivel {
@@ -1746,6 +1752,13 @@ body {
   min-width: 0;
 }
 
+/* Reparar Anki ainda é o botão de hoje (Baralhos e termos tem o próprio ticket):
+   indisponível, ele tem a mesma cara de um .veio-botao aria-disabled. */
+.bridge-repair-btn[aria-disabled="true"] {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
 /* ── Avançado: recolhido no pé da aba, borda tracejada ──── */
 
 .anki-avancado {
@@ -1776,7 +1789,7 @@ body {
 .anki-avancado > summary::before {
   content: "›";
   display: inline-block;
-  font-size: 16px;
+  font-size: var(--veio-tam-destaque);
   transition: transform var(--veio-transicao);
 }
 

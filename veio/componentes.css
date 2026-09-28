@@ -469,7 +469,8 @@ select.veio-campo {
 
 .veio-selo--ok,
 .veio-selo--info,
-.veio-selo--erro {
+.veio-selo--erro,
+.veio-selo--parte {
   padding-inline: 8px;
   border-color: transparent;
 }
@@ -487,6 +488,12 @@ select.veio-campo {
 .veio-selo--erro {
   background: var(--veio-danger-soft);
   color: var(--veio-danger);
+}
+
+/* Concluído em parte: o acento suave (um Envio que ainda pode continuar). */
+.veio-selo--parte {
+  background: var(--veio-accent-soft);
+  color: var(--veio-accent-text);
 }
 
 .veio-selo--lendo {

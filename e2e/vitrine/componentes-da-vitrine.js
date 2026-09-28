@@ -21,6 +21,7 @@
 
   /** Todo texto de produto que a galeria mostra, por ID do catálogo da Voz. */
   const CATALOGO_DA_VITRINE = [
+    ['BRG-31.emParte', { n: 3, total: 4 }],
     ['POP-09'], ['ADD-01.botao'], ['PAI-12.cancelar'], ['PAI-13.confirmar', { n: 12 }],
     ['PAI-20.umaFrase'], ['PAI-12.confirmar'],
     ['PAI-04.acao'], ['PAI-10.todasAsFontes'], ['PAI-10.todosOsIdiomas'], ['POP-03'],
@@ -240,6 +241,7 @@
       selo('veio-selo--ok', ponto(), textoDaVoz('BRG-01.ligada')),
       selo('veio-selo--erro', ponto(), textoDaVoz('BRG-01.desligada')),
       selo('veio-selo--lendo', ponto(), textoDaVoz('FOT-19.lendo')),
+      selo('veio-selo--parte', null, textoDaVoz('BRG-31.emParte', { n: 3, total: 4 })),
     ];
   }
 

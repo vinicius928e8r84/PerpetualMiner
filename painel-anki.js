@@ -30,7 +30,14 @@
     { idioma: 'ru', codigo: 'RU' },
   ];
   const NOME_DO_IDIOMA = { en: 'INGLES', ru: 'RUSSO' };
-  const RETOMAVEIS = ['partial', 'failed'];
+  // O que cada `status` do bridge vira na tela: o tom do ponto na lista, o selo do
+  // detalhe e se o envio pode ser continuado. O que não está aqui está andando.
+  const STATUS_DO_ENVIO = {
+    completed: { tom: 'ok', selo: 'veio-selo--ok', retomavel: false },
+    partial: { tom: 'parte', selo: 'veio-selo--parte', retomavel: true },
+    failed: { tom: 'erro', selo: 'veio-selo--erro', retomavel: true },
+  };
+  const ANDANDO = { tom: 'andando', selo: 'veio-selo--info', retomavel: false };
   // As 4 origens das imagens, na ordem e com a cor da série (a exceção de dataviz do Veio).
   const ORIGENS = [
     { chave: 'real', rotulo: 'BRG-09.fotoReal', serie: 'real' },
@@ -58,7 +65,7 @@
     quatroCasas: false,
     ids: false,
     leitura: 0,             // só a leitura mais recente desenha
-    falhasAoRetomar: new Set(),
+    falhasAoRetomar: new Map(),  // jobId → a causa técnica, para o Detalhes
     diagnosticoFalhou: false,
   };
 
@@ -208,12 +215,16 @@
    * continua no Tab) e a dica irmã diz por quê, no hover e no foco.
    */
   function marcarIndisponivel(botao, idDaDica) {
+    // Um `title` de antes (o do Reparar Anki) calaria a dica: sai enquanto ela vale.
+    if (botao.title) botao.dataset.titulo = botao.title;
     if (desligada()) {
       botao.setAttribute('aria-disabled', 'true');
       botao.setAttribute('aria-describedby', idDaDica);
+      botao.removeAttribute('title');
     } else {
       botao.removeAttribute('aria-disabled');
       botao.removeAttribute('aria-describedby');
+      if (botao.dataset.titulo) botao.title = botao.dataset.titulo;
     }
   }
 
@@ -234,15 +245,24 @@
     const comDados = vista === 'dados' || vista === 'antiga';
     // O último dado vale para o período em que foi lido: os controles mostram esse.
     const periodo = vista === 'antiga' ? estado.dados : estado;
+    // Sem a Conexão, outro período não teria de onde vir: os controles ficam
+    // parados no do último dado até ela voltar.
     for (const radio of document.querySelectorAll('input[name="periodo-custos"]')) {
       radio.checked = radio.value === periodo.periodo;
+      radio.disabled = vista === 'antiga';
     }
-    porId('anki-custos-de').value = periodo.de || '';
-    porId('anki-custos-ate').value = periodo.ate || '';
+    for (const [campo, valor] of [[porId('anki-custos-de'), periodo.de], [porId('anki-custos-ate'), periodo.ate]]) {
+      campo.value = valor || '';
+      campo.disabled = vista === 'antiga';
+    }
 
     const antigo = porId('anki-custos-antigo');
     antigo.hidden = vista !== 'antiga';
-    if (vista === 'antiga') antigo.textContent = textoDaVoz('BRG-12', { quando: haQuanto(estado.dados.quando) });
+    if (vista === 'antiga') {
+      antigo.replaceChildren(
+        elemento('span', 'anki-selo-antigo', textoDaVoz('BRG-12', { quando: haQuanto(estado.dados.quando) })),
+        Veio.montarDetalhes(`GET ${ENDERECO_DA_CONEXAO}/health · sem resposta`));
+    }
 
     porId('anki-custos-azulejos').hidden = !comDados;
     porId('anki-custos-avancado').hidden = !comDados;
@@ -256,8 +276,9 @@
     else {
       const envios = enviosDoIdioma();
       desenharAzulejos();
-      corpo.replaceChildren(faixaDeResumo(somar(envios)), origemDasImagens(somar(envios)), listaEDetalhe(envios));
-      desenharAvancado(envios);
+      const soma = somar(envios);
+      corpo.replaceChildren(faixaDeResumo(soma), origemDasImagens(soma), listaEDetalhe(envios));
+      desenharAvancado(envios, soma);
     }
     if (foco) corpo.querySelector(`[data-foco="${CSS.escape(foco)}"]`)?.focus();
   }
@@ -361,8 +382,14 @@
     return textoDaVoz('BRG-03.valor', { valor: formatar(valor, 2) });
   }
 
+  /** A parte do total, em %, com uma casa (o número, para a largura da barra). */
+  function fracao(parte, total) {
+    return total ? Math.round((parte / total) * 1000) / 10 : 0;
+  }
+
+  /** A mesma parte como a tela diz: “75,9%”, “0%”. */
   function porcento(parte, total) {
-    const pct = total ? Math.round((parte / total) * 1000) / 10 : 0;
+    const pct = fracao(parte, total);
     return `${formatar(pct, pct % 1 ? 1 : 0)}%`;
   }
 
@@ -441,7 +468,7 @@
       elemento('p', 'anki-apoio', textoDaVoz('BRG-30.imagens', { n: soma.imagens })),
       elemento('div', 'anki-origens', ...ORIGENS.map(origem => {
         const barra = elemento('div', 'anki-barra-serie', elemento('i', `anki-serie--${origem.serie}`));
-        barra.firstChild.style.width = porcento(soma[origem.chave], soma.imagens).replace(',', '.');
+        barra.firstChild.style.width = `${fracao(soma[origem.chave], soma.imagens)}%`;
         barra.setAttribute('aria-hidden', 'true');
         return elemento('div', 'anki-origem',
           elemento('div', 'anki-origem__topo', elemento('span', null, textoDaVoz(origem.rotulo)),
@@ -478,7 +505,7 @@
     const escolhido = envio.jobId === estado.escolhido;
     const meta = [haQuanto(envio.createdAt)];
     if (estado.ids) meta.push(envio.jobId);
-    const ponto = elemento('span', `anki-ponto-status anki-ponto-status--${tomDoEnvio(envio)}`);
+    const ponto = elemento('span', `anki-ponto-status anki-ponto-status--${statusDoEnvio(envio).tom}`);
     ponto.setAttribute('aria-hidden', 'true');
     const opcao = elemento('div', 'anki-opcao',
       elemento('span', 'anki-opcao__titulo', tituloDoEnvio(envio), elemento('small', null, meta.join(' · '))),
@@ -511,22 +538,22 @@
     escolherEnvio(envios[destino].jobId);
   }
 
-  function tomDoEnvio(envio) {
-    if (envio.status === 'completed') return 'ok';
-    if (envio.status === 'partial') return 'parte';
-    if (envio.status === 'failed') return 'erro';
-    return 'andando';
+  function statusDoEnvio(envio) {
+    return STATUS_DO_ENVIO[envio.status] || ANDANDO;
+  }
+
+  function textoDoSelo(envio) {
+    if (envio.status === 'completed') return textoDaVoz('ENV-07.concluido');
+    if (envio.status === 'failed') return textoDaVoz('ENV-07.falhou');
+    if (envio.status === 'partial') {
+      return textoDaVoz('BRG-31.emParte', { n: numero(envio.successfulCards), total: numero(envio.requestedCards) });
+    }
+    const etapa = raiz.Envio?.nomeDaEtapa(envio.stage) || 'naFila';
+    return textoDaVoz('BRG-31.enviando', { etapa: textoDaVoz(`ENV-07.${etapa}`) });
   }
 
   function seloDoEnvio(envio) {
-    if (envio.status === 'completed') return elemento('span', 'veio-selo veio-selo--ok', textoDaVoz('ENV-07.concluido'));
-    if (envio.status === 'partial') {
-      return elemento('span', 'veio-selo anki-selo--parte', textoDaVoz('BRG-31.emParte',
-        { n: numero(envio.successfulCards), total: numero(envio.requestedCards) }));
-    }
-    if (envio.status === 'failed') return elemento('span', 'veio-selo veio-selo--erro', textoDaVoz('ENV-07.falhou'));
-    const etapa = raiz.Envio?.nomeDaEtapa(envio.stage) || 'naFila';
-    return elemento('span', 'veio-selo veio-selo--info', textoDaVoz('BRG-31.enviando', { etapa: textoDaVoz(`ENV-07.${etapa}`) }));
+    return elemento('span', `veio-selo ${statusDoEnvio(envio).selo}`, textoDoSelo(envio));
   }
 
   function detalheDoEnvio(envio) {
@@ -540,15 +567,17 @@
     detalhe.querySelector('h3').id = idDoTitulo;
     detalhe.setAttribute('aria-labelledby', idDoTitulo);
 
-    const retomavel = RETOMAVEIS.includes(envio.status);
+    const { retomavel } = statusDoEnvio(envio);
     if (retomavel) {
       const naoEntraram = numero(envio.failedCards) || Math.max(0, numero(envio.requestedCards) - numero(envio.successfulCards));
-      const motivo = estado.falhasAoRetomar.has(envio.jobId)
-        ? textoDaVoz('ENV-14.falha')
-        : textoDaVoz('ENV-10.naoEntraram', { n: naoEntraram });
+      const falhaAoRetomar = estado.falhasAoRetomar.get(envio.jobId);
+      const motivo = falhaAoRetomar ? textoDaVoz('ENV-14.falha') : textoDaVoz('ENV-10.naoEntraram', { n: naoEntraram });
       detalhe.append(elemento('p', 'anki-motivo', motivo));
+      const causas = [falhaAoRetomar, envio.lastError].filter(Boolean).map(String);
+      if (causas.length) detalhe.append(Veio.montarDetalhes(causas.join('\n')));
+    } else if (envio.lastError) {
+      detalhe.append(Veio.montarDetalhes(String(envio.lastError)));
     }
-    if (envio.lastError) detalhe.append(Veio.montarDetalhes(String(envio.lastError)));
 
     const p = partes(envio);
     const linhas = [
@@ -614,16 +643,15 @@
       estado.falhasAoRetomar.delete(jobId);
       Veio.mostrarToastDeSucesso(textoDaVoz('ENV-14.sucesso'));
       ler();
-    } catch {
-      estado.falhasAoRetomar.add(jobId);
+    } catch (falha) {
+      estado.falhasAoRetomar.set(jobId, `POST /jobs/${jobId}/retry · ${falha.message}`);
       desenhar();
     }
   }
 
   // ─── Avançado ──────────────────────────────────────────────────────────────
 
-  function desenharAvancado(envios) {
-    const soma = somar(envios);
+  function desenharAvancado(envios, soma) {
     const numeros = [
       [textoDaVoz('BRG-08.escolhaDeImagem'), soma.escolha],
       [textoDaVoz('BRG-08.triagemDeImagem'), soma.triagem],

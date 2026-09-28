@@ -36,7 +36,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-envio.js` | The Envio ao Anki: Enviar ao Anki in the Frases bar, the progress modal (one card per Envio), the tracking saved in `pm_envio` and the summary (ENV-03…15) that opens by itself in any area. See “Envio ao Anki” below |
 | `bookreader.html/js/css` | Minerar de uma foto (ex-BookReader): photos of marked book pages → Gemini Vision reads the marked passages → the person picks which phrases to mine. See “Minerar de uma foto” below |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `tema.js` (the chosen theme, applied before the first paint on every page), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs, the SVG mark and `icone-claro.svg`, which `.veio-marca` swaps in on the light theme through `--veio-marca`). See `veio/README.md` |
-| `lib/voz/catalogo.js` | The Voice catalog as data: the 198 approved copy states from `docs/design/voz/` |
+| `lib/voz/catalogo.js` | The Voice catalog as data: the 204 approved copy states from `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/contexto.js` | `PerpetualMiner.Contexto` — the Contexto as the screen says it: the Fonte's name (PAI-29, `fonteDaFrase`, `nomeDaFonte`) and the phrase's day (PAI-11, `rotuloDoDia`). Loaded by the panel and the popup, so a phrase never has two names |
@@ -268,9 +268,11 @@ The area follows the Conexão state the shell reports (`aoMudarAConexao`):
   place of the tabs, under the shell's F1, with the three ONB-08 steps under “Como ligar” and a collapsed, copyable
   Detalhes (install commands, port, log). The first answer from `/health` writes the key and the tabs come back.
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
-  selo (“Mostrando dados de há 2 h…”) and the controls set to the period of that reading. **Continuar envio** and
+  selo (“Mostrando dados de há 2 h…”, with the code in Detalhes) and the period controls set to that reading's
+  period and disabled (another period would have nowhere to come from). **Continuar envio** and
   **Reparar Anki** get `aria-disabled` (still in the Tab order) with a `.veio-dica` tooltip (BRG-33) on hover and focus;
-  a press does nothing.
+  a press does nothing. Reparar Anki is still today's button: it loses its old `title` while the tooltip speaks. With
+  the Conexão off and nothing stored, Custos only says “Custo indisponível”: the why and Tentar de novo are the F1's.
 
 **↻ Atualizar** asks the shell for `/health` again (`Shell.conferirConexao`) and, with the Conexão on, reads Custos again.
 
