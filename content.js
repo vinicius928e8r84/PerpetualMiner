@@ -513,7 +513,9 @@ function mostrarNotificacaoAutoMiner(texto, idioma, response, lugar) {
         // A meta, como no protótipo: o idioma e o contador do dia (`RU 5/20`).
         meta: `${siglaDoIdioma(idioma)} ${n}/${limite}`,
         frase: texto,
-        ...palavraDe(response.frase || { keywords: response.evaluation?.keywords }),
+        // A Palavra gravada com a frase; o russo é gravado sem ela, e então vale o
+        // item novo (i+1) que fez a mineração automática aceitar a frase.
+        ...palavraDe(response.frase?.keywords?.length ? response.frase : { keywords: response.evaluation?.keywords }),
         lugar,
         apagada: true,
     });

@@ -143,7 +143,8 @@ test('a legenda troca antes da resposta: a pílula fala, com a frase e a Palavra
 
   await expect(pilulaAberta(page)).toHaveCount(1);
   await expect(feedback(page)).toContainText(MIN_01);
-  await expect(feedback(page)).toContainText(LEGENDA);
+  // A prévia começa perto da Palavra, que a pílula nunca corta.
+  await expect(feedback(page)).toContainText('before the gulls did.');
   await expect(feedback(page).locator('mark')).toHaveText('gulls');
   await expect(feedback(page).getByText('EN', { exact: true })).toBeVisible();
   await expect(linhas(page)).toHaveCount(0);
@@ -182,3 +183,205 @@ test('enquanto o service worker não responde, não há marca: ela só aparece c
   await expect(linhas(page)).toHaveCount(1);
   await expect(chip(page)).toContainText(MIN_01);
 });
+
+// ─── A seleção ───────────────────────────────────────────────────────────────
+
+test('seleção numa página comum: a linha sob o trecho, o grifo na Palavra gravada e o chip com “Web”', async ({ page, paginas, extensao }) => {
+  await extensao.gravarStorage({ pm_atalho: SELECAO_EM_ALT_E });
+  await page.goto(paginas.url('texto.html'));
+
+  await page.locator('#trecho').selectText();
+  await page.keyboard.press('Alt+KeyE');
+
+  await expect(chip(page)).toBeVisible();
+  await expect(chip(page).getByText(MIN_05, { exact: true })).toBeVisible();
+  await expect(chip(page).getByText('Web', { exact: true })).toBeVisible();
+  await expect(feedback(page)).toContainText(TRECHO);
+  await expect(pilulaAberta(page)).toHaveCount(0);
+
+  // O grifo cai sobre a Palavra que ficou gravada com a frase.
+  const [gravada] = await extensao.frases();
+  expect(gravada.texto).toBe(TRECHO);
+  const palavra = String(gravada.keywords.find(k => k && k !== '|')).split('@')[0];
+  await expect(chip(page)).toContainText('auto:');
+  await expect(chip(page)).toContainText(palavra);
+  const caixa = await caixaDaPalavra(page, '#trecho', palavra);
+  const grifo = await caixaParada(grifos(page).first());
+  expect(Math.abs(grifo.x - caixa.x)).toBeLessThanOrEqual(2);
+  expect(Math.abs(grifo.width - caixa.width)).toBeLessThanOrEqual(3);
+
+  // A linha fica sob o trecho selecionado.
+  const texto = await caixaDoTexto(page, '#trecho');
+  const linha = await caixaParada(linhas(page).first());
+  expect(Math.round(linha.height)).toBe(3);
+  expect(linha.y).toBeGreaterThanOrEqual(texto.y + texto.height);
+  expect(linha.y).toBeLessThanOrEqual(texto.y + texto.height + 6);
+  expect(Math.abs(linha.x - texto.x)).toBeLessThanOrEqual(1);
+});
+
+test('seleção dentro de um textarea: sem retângulo do texto, a pílula livre fala no canto', async ({ page, paginas, extensao }) => {
+  await extensao.gravarStorage({ pm_atalho: SELECAO_NO_BOTAO_VOLTAR });
+  await page.goto(paginas.url('texto.html'));
+  const area = await page.evaluateHandle(texto => {
+    const campo = document.createElement('textarea');
+    campo.cols = 60;
+    campo.value = texto;
+    document.body.append(campo);
+    return campo;
+  }, TRECHO);
+  await area.asElement().focus();
+  await area.evaluate(campo => campo.select());
+
+  await apertarVoltar(page);
+
+  await expect(pilulaAberta(page)).toHaveCount(1);
+  await expect(feedback(page).getByText(MIN_05, { exact: true })).toBeVisible();
+  await expect(feedback(page).getByText('Web', { exact: true })).toBeVisible();
+  // A pílula nunca corta a Palavra grifada: a prévia começa perto dela.
+  const palavraNaPilula = await feedback(page).locator('mark').textContent();
+  expect(TRECHO).toContain(palavraNaPilula);
+  await expect(linhas(page)).toHaveCount(0);
+  await expect(grifos(page)).toHaveCount(0);
+  await expect(chip(page)).toHaveCount(0);
+  expect((await extensao.frases()).map(f => f.texto)).toEqual([TRECHO]);
+
+  // Sem vídeo, a pílula livre fica no canto inferior direito e some por inteiro.
+  const caixa = await feedback(page).boundingBox();
+  const janela = page.viewportSize();
+  expect(caixa.x + caixa.width).toBeGreaterThan(janela.width - 120);
+  expect(caixa.y + caixa.height).toBeGreaterThan(janela.height - 120);
+  await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toHaveCount(0);
+  await expect(pilulaAberta(page)).toHaveCount(0, { timeout: 5000 });
+});
+
+// ─── O contador do botão ─────────────────────────────────────────────────────
+
+/** Uma legenda nova no player, como a de um vídeo tocando. */
+const trocarLegenda = (page, texto) => page.locator('#legenda').evaluate((no, texto) => { no.textContent = texto; }, texto);
+const contador = page => page.locator('perpetualminer-overlay .pm-contador');
+
+test('RU desligado: o contador do botão é o do inglês da legenda, não a soma dos idiomas', async ({ page, context, paginas, extensao }) => {
+  await extensao.gravarStorage({
+    pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 15 } },
+    pm_auto_miner_daily: { date: hoje(), en: { count: 3 }, ru: { count: 7 } },
+  });
+  await abrirPlayer(page, context, paginas);
+
+  // Antes, “10/20”: EN + RU, mesmo com o RU desligado.
+  await expect(contador(page)).toHaveText('3/20');
+  await expect(botaoFlutuante(page)).toHaveAccessibleDescription('Mineração automática · Inglês: 3 de 20 hoje');
+  await expect(contador(page)).not.toHaveClass(/pm-contador--limite/);
+
+  // Uma legenda russa com o RU desligado: o contador some.
+  await trocarLegenda(page, FRASE_RUSSA);
+  await expect(contador(page)).toBeHidden();
+  await expect(botaoFlutuante(page)).toHaveAccessibleDescription('');
+});
+
+test('o contador do idioma da legenda: no limite vira contorno e o leitor de tela ouve o limite', async ({ page, context, paginas, extensao }) => {
+  await extensao.gravarStorage({
+    pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 15 } },
+    pm_auto_miner_daily: { date: hoje(), en: { count: 4 }, ru: { count: 15 } },
+  });
+  await abrirPlayer(page, context, paginas);
+
+  await expect(contador(page)).toHaveText('4/20');
+  await trocarLegenda(page, FRASE_RUSSA);
+  await expect(contador(page)).toHaveText('15/15');
+  await expect(contador(page)).toHaveClass(/pm-contador--limite/);
+  await expect(botaoFlutuante(page)).toHaveAccessibleDescription('Mineração automática · Russo: limite de hoje atingido');
+});
+
+// ─── A mineração automática ──────────────────────────────────────────────────
+
+async function tocarVideoComLegenda(page, texto) {
+  // A mineração automática só olha a legenda de um vídeo que está tocando.
+  await page.evaluate(async texto => {
+    document.querySelector('#legenda').textContent = texto;
+    const tela = document.createElement('canvas');
+    tela.getContext('2d').fillRect(0, 0, 1, 1);
+    const video = document.querySelector('video');
+    video.srcObject = tela.captureStream();
+    await video.play();
+  }, texto);
+}
+
+const MINERACAO_AUTOMATICA_EM_RU = {
+  pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } },
+  // O vocabulário do Anki em cache, sem nenhuma palavra conhecida: a frase russa
+  // tem um item novo só, então a mineração automática a aceita.
+  pm_auto_keyword_vocab_ru: {
+    cacheVersion: 2, deckName: 'RUSSIAN', createdAt: Date.now(),
+    words: [], terms: [], wordInfo: {}, termInfo: {},
+  },
+};
+
+test('a mineração automática usa a mesma marca, mais apagada, com auto: e o contador do idioma', async ({ page, context, paginas, extensao }) => {
+  await extensao.gravarStorage({ ...MINERACAO_AUTOMATICA_EM_RU, pm_auto_miner_daily: { date: hoje(), en: { count: 9 }, ru: { count: 4 } } });
+  await abrirPlayer(page, context, paginas);
+
+  await tocarVideoComLegenda(page, FRASE_RUSSA);
+
+  await expect(chip(page)).toBeVisible();
+  await expect(chip(page).getByText(MIN_06, { exact: true })).toBeVisible();
+  await expect(chip(page).getByText('RU 5/20', { exact: true })).toBeVisible();
+  await expect(chip(page)).toContainText('auto:');
+  await expect(feedback(page)).toContainText(FRASE_RUSSA);
+  await expect(pilulaAberta(page)).toHaveCount(0);
+  await expect(linhas(page)).toHaveCount(1);
+  await expect(grifos(page)).toHaveCount(1);
+
+  // Mais apagada que a marca de uma captura: a linha e o grifo ficam translúcidos.
+  const opacidade = async locator => Number(await locator.evaluate(no => getComputedStyle(no).opacity));
+  expect(await opacidade(linhas(page))).toBeLessThan(1);
+  expect(await opacidade(grifos(page))).toBeLessThan(1);
+  // O contador do botão é o do russo (o inglês está desligado e tem 9).
+  await expect(contador(page)).toHaveText('5/20');
+  expect((await extensao.frases()).map(f => f.texto)).toEqual([FRASE_RUSSA]);
+});
+
+test('a mineração automática com a legenda já trocada: a pílula, sem linha', async ({ page, context, paginas, extensao }) => {
+  await extensao.gravarStorage({ ...MINERACAO_AUTOMATICA_EM_RU, pm_auto_miner_daily: { date: hoje(), en: { count: 0 }, ru: { count: 4 } } });
+  await abrirPlayer(page, context, paginas);
+  await segurarGravacoes(extensao);
+
+  await tocarVideoComLegenda(page, FRASE_RUSSA);
+  await expect.poll(() => extensao.serviceWorker.evaluate(() => globalThis.__seguradas.length), { timeout: 5000 }).toBeGreaterThan(0);
+  await trocarLegenda(page, OUTRA_LEGENDA);
+  await voltarGravacoes(extensao);
+
+  await expect(pilulaAberta(page)).toHaveCount(1);
+  await expect(feedback(page).getByText(MIN_06, { exact: true })).toBeVisible();
+  await expect(feedback(page).getByText('RU 5/20', { exact: true })).toBeVisible();
+  await expect(linhas(page)).toHaveCount(0);
+  await expect(chip(page)).toHaveCount(0);
+});
+
+test('com prefers-reduced-motion, a linha, o grifo e o chip aparecem sem animação', async ({ page, context, paginas, fakes }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  fakes.anki.definirVocabulario('en', ['quiet', 'harbor', 'woke']);
+  await abrirPlayer(page, context, paginas);
+
+  await page.keyboard.press('Alt+KeyS');
+  await expect(chip(page)).toBeVisible();
+  await expect(linhas(page)).toHaveCount(1);
+
+  for (const desenho of [linhas(page), grifos(page), chip(page)]) {
+    expect(await desenho.evaluate(no => no.getAnimations().length)).toBe(0);
+  }
+});
+
+/** O botão “voltar” do mouse, pelo protocolo do Chromium: o Playwright só tem esquerdo, direito e do meio. */
+async function apertarVoltar(page) {
+  const cdp = await page.context().newCDPSession(page);
+  const base = { x: 5, y: 5, button: 'back', clickCount: 1 };
+  await cdp.send('Input.dispatchMouseEvent', { ...base, type: 'mousePressed', buttons: 8 });
+  await cdp.send('Input.dispatchMouseEvent', { ...base, type: 'mouseReleased', buttons: 0 });
+  await cdp.detach();
+}
+
+/** O dia de hoje como a mineração automática o grava (AAAA-MM-DD, hora local). */
+function hoje() {
+  const agora = new Date();
+  return [agora.getFullYear(), String(agora.getMonth() + 1).padStart(2, '0'), String(agora.getDate()).padStart(2, '0')].join('-');
+}

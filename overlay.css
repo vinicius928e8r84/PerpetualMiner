@@ -6,7 +6,15 @@
    isto. Spec: docs/design/overlay/ (M1, a reserva C: a pílula).
    ───────────────────────────────────────────────────────────────────────── */
 
-/* O ponto de partida é zero: nada que o site herda até o host chega aqui. */
+/* O ponto de partida é zero: nada que o site herda até o host chega aqui.
+   As fontes são as que overlay.js registra no documento com nomes só dele (o
+   @font-face dos tokens não vale dentro de uma sombra). */
+.pm[data-tema] {
+  --veio-fonte-ui: 'PerpetualMiner Manrope', system-ui, sans-serif;
+  --veio-fonte-display: 'PerpetualMiner Manrope', system-ui, sans-serif;
+  --veio-fonte-mono: 'PerpetualMiner JetBrains Mono', ui-monospace, monospace;
+}
+
 .pm {
   all: initial;
   display: block;

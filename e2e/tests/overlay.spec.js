@@ -2,7 +2,7 @@
 
 // O overlay na página (#40): um componente Veio só, em Shadow DOM — o botão
 // flutuante e a pílula de feedback, que espera a resposta do service worker e
-// só diz o que foi confirmado. A linha ouro sob o texto é de #41.
+// só diz o que foi confirmado. A marca sobre o texto (#41) está em overlay-marca.spec.js.
 
 const fs = require('fs');
 const path = require('path');
@@ -146,7 +146,7 @@ test('Alt+S minera e copia: a pílula diz MIN-01 com a frase e some sozinha em ~
   await expect(feedback(page)).toContainText(LEGENDA);
   // A meta: o idioma da captura, em mono, no fim da pílula.
   await expect(metaDaPilula(page, 'EN')).toBeVisible();
-  expect(await metaDaPilula(page, 'EN').evaluate(no => getComputedStyle(no).fontFamily)).toMatch(/^"?JetBrains Mono/);
+  expect(await metaDaPilula(page, 'EN').evaluate(no => getComputedStyle(no).fontFamily)).toMatch(/^"?PerpetualMiner JetBrains Mono/);
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(LEGENDA);
   expect(await textosGravados(extensao)).toEqual([LEGENDA]);
 
@@ -156,16 +156,6 @@ test('Alt+S minera e copia: a pílula diz MIN-01 com a frase e some sozinha em ~
   await expect(page.getByText(MIN_01)).toBeHidden({ timeout: 2500 });
   // Sem × num sucesso.
   await expect(page.getByRole('button', { name: 'Fechar' })).toHaveCount(0);
-});
-
-test('a Palavra que o service worker devolve aparece grifada na pílula', async ({ page, context, paginas, fakes }) => {
-  fakes.anki.definirVocabulario('en', ['quiet', 'harbor', 'woke']);
-  await permitirClipboard(context, paginas);
-  await abrirPlayer(page, paginas);
-
-  await page.keyboard.press('Alt+KeyS');
-
-  await expect(feedback(page).locator('mark')).toHaveText('gulls');
 });
 
 test('enquanto o service worker não responde, a pílula não afirma nada; quando ele grava, diz MIN-01', async ({ page, context, paginas, extensao }) => {
@@ -183,32 +173,8 @@ test('enquanto o service worker não responde, a pílula não afirma nada; quand
   expect(await textosGravados(extensao)).toEqual([LEGENDA]);
 });
 
-test('o atalho de seleção numa página sem vídeo: MIN-05 na pílula livre, no canto inferior direito', async ({ page, paginas, extensao }) => {
-  await extensao.gravarStorage({ pm_atalho: SELECAO_EM_ALT_E });
-  await page.goto(paginas.url('texto.html'));
-
-  await page.locator('#trecho').selectText();
-  await page.keyboard.press('Alt+KeyE');
-
-  await expect(tituloDaPilula(page, MIN_05)).toBeVisible();
-  // A meta da seleção é a Fonte, “Web”, e a ponta da pílula traz a marca Veio.
-  await expect(metaDaPilula(page, 'Web')).toBeVisible();
-  await expect(page.locator('perpetualminer-overlay img')).toBeVisible();
-  // A frase é longa: a prévia de uma linha começa perto da Palavra, que nunca é cortada.
-  await expect(feedback(page)).toContainText('the salt wind.');
-  const palavra = await feedback(page).locator('mark').textContent();
-  expect(TRECHO).toContain(palavra);
-  await expect(feedback(page).locator('mark')).toBeVisible();
-  expect(await textosGravados(extensao)).toEqual([TRECHO]);
-
-  const caixa = await feedback(page).boundingBox();
-  const janela = page.viewportSize();
-  expect(caixa.x + caixa.width).toBeGreaterThan(janela.width - 120);
-  expect(caixa.y + caixa.height).toBeGreaterThan(janela.height - 120);
-  // Sem vídeo não há botão: a pílula some por inteiro.
-  await expect(botaoFlutuante(page)).toHaveCount(0);
-  await expect(page.getByText(MIN_05)).toBeHidden({ timeout: 5000 });
-});
+// A Palavra na marca e na pílula, e a seleção (numa página comum e num campo),
+// estão em overlay-marca.spec.js.
 
 test('o atalho de seleção sem nada selecionado numa página sem vídeo diz MIN-10 e não grava nada', async ({ page, paginas, extensao }) => {
   await extensao.gravarStorage({ pm_atalho: SELECAO_EM_ALT_E });
@@ -432,18 +398,22 @@ test('nada do overlay entra no DOM do site fora do host, e os estilos não vazam
     const e = getComputedStyle(no);
     return { fonte: e.fontFamily, cor: e.color, espacamento: e.letterSpacing };
   });
-  expect(estiloDoTitulo.fonte).toMatch(/^Manrope/);
+  expect(estiloDoTitulo.fonte).toMatch(/^["']?PerpetualMiner Manrope/);
   expect(estiloDoTitulo.cor).toBe(textoDoEscuro());
   expect(estiloDoTitulo.espacamento).toBe('normal');
-  // A Manrope empacotada é a que desenha: a mesma linha na fonte de reserva tem outra largura.
+  // A Manrope empacotada é a que desenha: a mesma linha na fonte de reserva tem
+  // outra largura. As duas cópias ficam do tamanho do texto, sem caixa que as estique.
   await expect.poll(() => titulo.evaluate(no => {
-    const reserva = no.cloneNode(true);
-    reserva.style.fontFamily = 'system-ui, sans-serif';
-    reserva.style.position = 'absolute';
-    no.after(reserva);
-    const larguras = [no.getBoundingClientRect().width, reserva.getBoundingClientRect().width];
-    reserva.remove();
-    return Math.abs(larguras[0] - larguras[1]);
+    const largura = fonte => {
+      const copia = no.cloneNode(true);
+      Object.assign(copia.style, { position: 'fixed', left: '0', top: '0', width: 'max-content' });
+      if (fonte) copia.style.fontFamily = fonte;
+      no.after(copia);
+      const { width } = copia.getBoundingClientRect();
+      copia.remove();
+      return width;
+    };
+    return Math.abs(largura() - largura('system-ui, sans-serif'));
   })).toBeGreaterThan(1);
 });
 

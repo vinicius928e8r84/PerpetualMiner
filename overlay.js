@@ -39,6 +39,21 @@
   const MARGEM_DA_JANELA = 8;
   /** Uma letra de palavra, em qualquer alfabeto (a mesma regra de `posicaoDaPalavra`). */
   const LETRA = /[\p{L}\p{M}\p{N}]/u;
+  /**
+   * As fontes empacotadas, registradas no documento do site. O Chrome ignora o
+   * `@font-face` de veio/tokens.css dentro de uma sombra, então elas entram pela
+   * API `FontFace`, com nomes só do overlay: o site nunca os pede, e a Manrope
+   * que um site tiver não troca de desenho. O overlay.css aponta os tokens para eles.
+   */
+  const LATIM = 'U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, '
+    + 'U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD';
+  const CIRILICO = 'U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116';
+  const FONTES = [
+    { familia: 'PerpetualMiner Manrope', arquivo: 'manrope-latin', pesos: '400 800', unicodeRange: LATIM },
+    { familia: 'PerpetualMiner Manrope', arquivo: 'manrope-cyrillic', pesos: '400 800', unicodeRange: CIRILICO },
+    { familia: 'PerpetualMiner JetBrains Mono', arquivo: 'jetbrains-mono-latin', pesos: '400 700', unicodeRange: LATIM },
+    { familia: 'PerpetualMiner JetBrains Mono', arquivo: 'jetbrains-mono-cyrillic', pesos: '400 700', unicodeRange: CIRILICO },
+  ];
 
   let host = null;
   let partes = null;
@@ -47,6 +62,21 @@
   let rotuloDoBotao = '';
   /** A marca na tela: `{ lugar, palavras, chave, quadro }`, ou null. */
   let marca = null;
+
+  /**
+   * Põe as fontes do overlay no documento. Os arquivos vêm como bytes, lidos
+   * pelo content script: uma `url()` passaria pela CSP do site (`font-src`).
+   */
+  function registrarFontes() {
+    for (const { familia, arquivo, pesos, unicodeRange } of FONTES) {
+      fetch(chrome.runtime.getURL(`veio/fontes/${arquivo}.woff2`))
+        .then(resposta => resposta.arrayBuffer())
+        .then(bytes => new FontFace(familia, bytes, { weight: pesos, unicodeRange, display: 'swap' }).load())
+        .then(fonte => document.fonts.add(fonte))
+        // Sem a fonte, o overlay desenha na de reserva dos tokens.
+        .catch(() => {});
+    }
+  }
 
   /** O host, com a sombra montada uma vez só. */
   function montar() {
@@ -61,6 +91,8 @@
       sombra.append(link);
       return new Promise(pronto => { link.onload = link.onerror = pronto; });
     });
+
+    registrarFontes();
 
     const pm = elemento('div', 'pm');
     pm.dataset.tema = 'escuro';

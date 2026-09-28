@@ -418,8 +418,11 @@ The overlay is one component in Shadow DOM. The only node it adds to the site's 
 move it); everything else — the button, the pill and the three stylesheets (`veio/tokens.css`,
 `veio/componentes.css`, `overlay.css`, loaded as `<link>`s inside the shadow and declared in
 `web_accessible_resources`) — lives in the shadow. Its root is `.pm` with `data-tema="escuro"` and `all: initial`: always the dark
-tokens, whatever theme the extension pages use, and nothing the site sets on the host reaches it. The
-packaged fonts load from the `@font-face` rules of `tokens.css` inside the shadow. The shadow is open, so
+tokens, whatever theme the extension pages use, and nothing the site sets on the host reaches it. Chrome
+ignores `@font-face` inside a shadow root, so `overlay.js` registers the packaged fonts on the site's document
+through the `FontFace` API, as bytes it fetches itself (a `url()` would go through the site's `font-src`), under
+names only the overlay uses (`PerpetualMiner Manrope`, `PerpetualMiner JetBrains Mono`), which `overlay.css`
+points the font tokens to: the site never asks for them, and a site's own Manrope keeps its look. The shadow is open, so
 the tests (and a page) can reach it; a page still cannot mine, since the shortcuts and the button only
 take trusted events.
 
@@ -429,17 +432,37 @@ take trusted events.
   an open pill bring it to 100%. There is no visible label (the owner's review of PR #66): the name with the
   shortcut is for the screen reader. It lives in the player's container (so it stays in full screen) and only
   exists where there is a video.
+- **Mark (D of M1, #41):** one rule — the feedback marks the text where it is; when it can't, the button
+  speaks (the pill). On a success whose text is still on screen, the overlay draws, over the site's text and
+  without touching its DOM (its own elements, positioned from `Range.getClientRects()` relative to the host,
+  `pointer-events: none`): a 3 px gold line under each line of the captured text, the Palavra's `kw-bg` band
+  (50%–94% of the line) over each of its words, and the chip above the text (below it when there is no room):
+  icon · title · `auto:`/`palavra:` (`montarChipDaPalavra`, from `autoKeyword`) · meta. The scraping returns
+  `{ texto, elementos }` (`lerLegenda`; `obterLegendaAtual` is its text); `lugarDaLegenda` and
+  `lugarDaSelecao` hand the overlay a function that gives a `Range` only while those elements (or that
+  selection) still say the captured text. The mark follows it every frame and leaves at once when it changes.
+  A caption that changed before the answer, a selection inside an `input`/`textarea` (no range over the
+  page's text), a text outside the player the overlay lives in, and every failure go to the pill. The screen
+  reader hears the chip and the phrase (visually hidden) in the `role="status"` region; the line and the band
+  are `aria-hidden`. The automatic mining uses the same mark, fainter (`pm--apagada`), with the Palavra saved
+  with the phrase, or — Russian is saved without one — the i+1 item (`evaluation.keywords`) that made it
+  accept the phrase. With `prefers-reduced-motion` the mark appears with no animation.
 - **Pill (the reserve C of M1, kept minimal after the owner's review):** the button stretches left into icon ·
   title · a second line · the meta in mono. On a success the second line is the phrase with the Palavra
   highlighted (`escreverFrase`; a long phrase starts near the Palavra, so it is never cut); on a failure it is
   the catalog's `dica`. The meta is the capture's language code on a caption (`EN`, `RU`), the Fonte “Web”
   (`PAI-29.web`) on a selection, and the language with the day's counter on the automatic mining (`RU 5/20`),
-  as in the prototype. Without a player it appears alone in the window's bottom-right corner, with the tile
+  as in the prototype — the chip carries the same meta. Without a player it appears alone in the window's bottom-right corner, with the tile
   as a plain mark at its end (not a button: `aria-hidden`, out of the Tab order; no mark on a failure), and
   disappears entirely. The content sits in a `role="status"` region. One at a time: a new feedback replaces
-  the previous one. Every feedback — success or failure — leaves after ~3.5 s, as in the prototype; Esc
+  the previous one. Every feedback — success or failure, mark or pill — leaves after ~3.5 s, as in the prototype; Esc
   closes a failure sooner. There is no × and no “Tentar de novo”. The automatic mining's MIN-06 never takes
   a failure off the screen.
+- **Counter:** the gold mono pill in the button's corner is the automatic mining's `n/limite` **of the caption's
+  language** (the one on screen, read on every automatic-mining pass, or the last capture's; before any
+  caption, the only enabled language), not the toolbar badge's sum. At the limit it becomes a gold outline;
+  with that language's automatic mining off it disappears. The screen reader hears it as the button's
+  description (MIN-11).
 - **Honest:** `content.js` waits for the service worker's `SALVAR_HISTORICO` answer (`{ ok, frase }`) and for
   the clipboard before it says anything: MIN-01 (“Frase minerada e copiada”) only when both happened, MIN-02
   (“Frase minerada”, the same success pill) when the phrase was saved but not copied, MIN-03 when the save
@@ -458,8 +481,6 @@ take trusted events.
   root the event reaches the content script retargeted to the host, so it opens the root with
   `chrome.dom.openOrClosedShadowRoot` and looks at the focus inside). An Esc typed in a site's field stays the
   site's too, even with a failure open.
-- The gold line under the captured text, the highlight on the site's text and the per-language counter are
-  #41. Until then the counter in the button's corner still sums the enabled languages.
 
 ### Firebase / Firestore Sync
 
@@ -550,7 +571,8 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`, with a stateful Envio queue following `bridge/server.py`: `moverEnvio`, `concluirEnvio({ duplicadas, falhas, erro, ankiError })`, `recusarEnvios(lang, { status } | { rede: true })`), Gemini (`responderFrases(frases)`, `falhar(status, mensagem)`, `ficarSemRede()`, `bloquear(motivo)` — a 200 with no text, the `promptFeedback.blockReason` —, `segurarFrases(frases)` — holds the photo in “Lendo…” until the returned function is called — and `chamadas`, with the key and MIME type of each read), and Firestore/Google (in-memory documents, token refresh; `ficarForaDoAr()`, `recusarAcesso()`, `recusarEscritas()`, `expirarSessao()`, `gravarFrases(uid, frases)`, `usarPerfil({ name, email, picture })`, the profile the Google login returns). `semearSessao({ expirada })` writes an account session to storage, skipping the real login.
 - **The real Google login runs offline.** The `chrome.identity.launchWebAuthFlow` window loads outside Playwright's routing (a `context.route` never sees it), so the fixture maps `accounts.google.com` to a local HTTPS server (`fakes/login-google.js`, self-signed certificate made with `openssl` per worker, `--host-resolver-rules` + `--ignore-certificate-errors`). `fakes.google.proximoLogin('entrar'|'janela'|'falhar')` picks what the window does: return with tokens, stay open (the test closes it: cancelling), or fail to load. This also keeps Chromium's own background calls to that host off the internet.
 - `e2e/pages/`: local fixture pages where the content script is injected: `player.html` (fake player with a caption), `texto.html` (plain text to select), `sem-video.html`, `player-em-iframe.html?player=<url>` (embeds the player from another origin, e.g. `paginas.urlCruzada('player.html')`), `hostil.html` + `hostil-filho.html` (a page that tries to drive the extension by itself), `player-marcacao.html` / `texto-marcacao.html` (caption, title and selectable text carrying markup as text, to prove the content script always inserts page text as text, never as HTML), `player-com-campos.html` (a player with an input, a textarea, a contenteditable and an input inside a closed shadow root, which the page keeps as `window.campoFechado`), `video-escondido.html` (an ad frame whose only video is 1 px, embedded through `player-em-iframe.html`), `sem-video-com-imagens.html` (image captions with the classes the generic caption selectors look for, and no video) and `player-estilos-hostis.html` (a page whose CSS paints everything, to prove the overlay's styles and the site's never cross).
-- `tests/overlay-visual.spec.js` is the **visual reference of the overlay**, taken in the fake player resized to the prototype's player (1118 × 630), so the owner compares it with `docs/design/overlay/prototipo-overlay.html?variant=M1` at the same scale.
+- `tests/overlay-marca.spec.js` covers the mark (#41): line and band measured against the site's text, the caption changing before or after the answer, selection on a page and in a `textarea`, the per-language counter and the automatic mining's fainter mark.
+- `tests/overlay-visual.spec.js` is the **visual reference of the overlay** (the mark on a caption, a selection and the automatic mining, the pill, the counter at its limit), taken in the fake player resized to the prototype's player (1118 × 630), so the owner compares it with `docs/design/overlay/prototipo-overlay.html?variant=M1` at the same scale.
 - `tests/overlay.spec.js` fails the service worker's storage on purpose (`chrome.storage.local.set` refuses or holds the write) — there is no network between the service worker and the storage, so the fault is injected at that boundary — and serves a page with `Permissions-Policy: clipboard-write=()` to deny the clipboard.
 - `e2e/vitrine/`: the Veio showcase — tokens, type scale, radii, a Russian phrase and **every base component**, in both themes and in the states each component actually has (button and field: focus and disabled, plus error on the field; a badge only has normal). `componentes-da-vitrine.js` builds the gallery once per theme with the same function, so the two columns never diverge; its sample copy comes from the Voice catalog by ID (`CATALOGO_DA_VITRINE`), and anything that is showcase scaffolding is marked `data-vitrine-chrome`. The fixture server also serves `/veio/…` and `/lib/…` from the extension root, so the showcase loads the same tokens, fonts, components and catalog the extension pages load. After the owner's review it is **the visual reference**.
 - The showcase also carries a **mock of the toolbar badge** in its three states, outside the two theme columns — Chrome draws the real badge on the browser toolbar, which no static page (and so no Vercel preview) can show. The mock reads its colors from the tokens, and the badge test asserts those tokens match what the service worker hands Chrome, so the copy in `background.js` can't drift.
