@@ -137,8 +137,19 @@ sombra suave das ilhas do Painel, que não flutuam), `--veio-destaque` (o
 rótulo do chip), `--veio-raio-tecla`, `--veio-esqueleto` e `--veio-peso-rotulo` (o peso dos
 rótulos da navegação do Painel; `peso-num` fica só para números),
 `--veio-raio-losango` (o canto do losango ouro que abre o título de seção do
-popup) e `--veio-tam-contador` (o número grande do azulejo da mineração
-automática, “7/20”).
+popup), `--veio-tam-contador` (o número grande do azulejo da mineração
+automática, “7/20”) e `--veio-brilho-da-linha` (o brilho ouro da linha que o
+overlay desenha sob o texto capturado).
+
+### O overlay redefine as fontes
+
+O Chrome ignora o `@font-face` dentro de uma sombra, então o overlay
+(`overlay.js`) registra as fontes empacotadas no documento do site pela API
+`FontFace`, com nomes só dele (`PerpetualMiner Manrope`, `PerpetualMiner
+JetBrains Mono`), e o `overlay.css` redefine `--veio-fonte-ui`,
+`--veio-fonte-display` e `--veio-fonte-mono` no `.pm` para apontar para esses
+nomes. É a única redefinição de token fora de `tokens.css`: a família é a
+mesma, só o nome com que ela é registrada muda.
 
 ### Diferenças conhecidas do protótipo
 

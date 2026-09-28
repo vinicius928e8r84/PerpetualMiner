@@ -123,7 +123,7 @@
     const camada = elemento('div', 'pm-marca');
     camada.setAttribute('aria-hidden', 'true');
     // O contador em palavras (MIN-11): a descrição do botão para o leitor de tela.
-    const descricaoDoContador = elemento('span', 'pm-so-leitor');
+    const descricaoDoContador = elemento('span', 'veio-so-leitor');
     descricaoDoContador.id = 'pm-descricao-do-contador';
     pm.append(camada, pilula, descricaoDoContador);
     sombra.append(pm);
@@ -158,6 +158,8 @@
       bottom: livre ? '16px' : '96px',
       'z-index': '2147483647',
       display: 'block',
+      // O mouse é do site: só a pílula (overlay.css) o pega.
+      'pointer-events': 'none',
     };
     host.removeAttribute('style');
     for (const [propriedade, valor] of Object.entries(estilo)) host.style.setProperty(propriedade, valor, 'important');
@@ -292,7 +294,7 @@
     }
     if (meta) chip.append(montarMeta(meta));
     // A frase é do leitor de tela: na tela, ela é o próprio texto do site.
-    const fala = elemento('span', 'pm-so-leitor');
+    const fala = elemento('span', 'veio-so-leitor');
     fala.textContent = frase;
     estado.replaceChildren(chip, fala);
 

@@ -252,6 +252,14 @@ test('seleção dentro de um textarea: sem retângulo do texto, a pílula livre 
   expect(caixa.y + caixa.height).toBeGreaterThan(janela.height - 120);
   await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toHaveCount(0);
   await expect(pilulaAberta(page)).toHaveCount(0, { timeout: 5000 });
+  // Fechada, ela não pega o clique do site no canto em que estava (nem onde ficava o azulejo).
+  const cantos = await page.locator('perpetualminer-overlay').evaluate(host => {
+    const { left, top, right, bottom } = host.getBoundingClientRect();
+    return [[(left + right) / 2, (top + bottom) / 2], [right - 4, bottom - 4]];
+  });
+  for (const [x, y] of cantos) {
+    expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.localName, [x, y])).not.toBe('perpetualminer-overlay');
+  }
 });
 
 // ─── O contador do botão ─────────────────────────────────────────────────────
@@ -290,6 +298,14 @@ test('o contador do idioma da legenda: no limite vira contorno e o leitor de tel
   await expect(contador(page)).toHaveText('15/15');
   await expect(contador(page)).toHaveClass(/pm-contador--limite/);
   await expect(botaoFlutuante(page)).toHaveAccessibleDescription('Mineração automática · Russo: limite de hoje atingido');
+  // A pessoa desliga o russo no popup com o contador dele na tela: ele some na hora.
+  const popup = await context.newPage();
+  await popup.goto(extensao.url('popup.html'));
+  // O trilho é o que a pessoa vê e clica (como em popup.spec.js).
+  await popup.locator('.popup-azulejo[data-idioma="ru"] .veio-toggle__trilho').click();
+  await expect(popup.getByRole('switch', { name: 'Mineração automática em russo' })).not.toBeChecked();
+  await expect(contador(page)).toBeHidden();
+  await expect(botaoFlutuante(page)).toHaveAccessibleDescription('');
 });
 
 // ─── A mineração automática ──────────────────────────────────────────────────

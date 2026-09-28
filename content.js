@@ -185,6 +185,11 @@ function codigoDoIdioma(idioma) {
   return idioma === IDIOMAS.RUSSO ? 'ru' : 'en';
 }
 
+/** O inverso de `codigoDoIdioma`: `'ru'` → Russo, o resto Inglês. */
+function idiomaDoCodigo(lang) {
+  return lang === 'ru' ? IDIOMAS.RUSSO : IDIOMAS.INGLES;
+}
+
 /** A resposta do service worker, ou `{ ok: false }` se ele não respondeu. */
 function salvarNoHistorico({ texto, origem, contexto, idioma }) {
   return new Promise(resolve => {
@@ -461,7 +466,7 @@ function atualizarAutoMinerBadge() {
     const n = _autoMinerState.daily?.[lang]?.count || 0;
     const limite = settings.dailyLimit || 0;
     const noLimite = n >= limite;
-    const idioma = lang === 'ru' ? IDIOMAS.RUSSO : IDIOMAS.INGLES;
+    const idioma = idiomaDoCodigo(lang);
     Overlay.mostrarContador({
         texto: `${n}/${limite}`,
         noLimite,

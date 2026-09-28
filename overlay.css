@@ -23,6 +23,8 @@
   line-height: 1.4;
   color: var(--veio-text);
   -webkit-font-smoothing: antialiased;
+  /* O mouse é do site: só a pílula (e o botão dela) o pega. */
+  pointer-events: none;
 }
 
 .pm[hidden] {
@@ -46,6 +48,7 @@
   min-height: 46px;
   border-radius: var(--veio-raio-pilula);
   background: transparent;
+  pointer-events: auto;
   transition: background var(--veio-transicao), box-shadow var(--veio-transicao), opacity var(--veio-transicao);
 }
 
@@ -186,8 +189,13 @@
   display: none;
 }
 
-/* Fechada, a pílula livre some por inteiro: só o azulejo tinha o que mostrar.
-   (A pílula em si fica, porque a região de status dela leva o chip da marca.) */
+/* Fechada, a pílula livre some por inteiro e não pega o clique do site no
+   canto: só o azulejo tinha o que mostrar. (A pílula em si fica na árvore,
+   porque a região de status dela leva o chip da marca, que não pega clique.) */
+.pm-pilula--livre:not(.pm-pilula--aberta) {
+  pointer-events: none;
+}
+
 .pm-pilula--livre:not(.pm-pilula--aberta) .pm-botao {
   opacity: 0;
 }
@@ -325,16 +333,6 @@
 
 .pm--apagada .pm-grifo {
   opacity: .75;
-}
-
-/* Só para o leitor de tela: a frase da marca, a descrição do contador. */
-.pm-so-leitor {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 @media (prefers-reduced-motion: reduce) {

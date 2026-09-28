@@ -422,7 +422,9 @@ tokens, whatever theme the extension pages use, and nothing the site sets on the
 ignores `@font-face` inside a shadow root, so `overlay.js` registers the packaged fonts on the site's document
 through the `FontFace` API, as bytes it fetches itself (a `url()` would go through the site's `font-src`), under
 names only the overlay uses (`PerpetualMiner Manrope`, `PerpetualMiner JetBrains Mono`), which `overlay.css`
-points the font tokens to: the site never asks for them, and a site's own Manrope keeps its look. The shadow is open, so
+points the font tokens to: the site never asks for them, and a site's own Manrope keeps its look. The mouse
+is the site's: the host and the `.pm` root have `pointer-events: none`, and only the pill takes it back (not
+the free pill once closed, so the empty corner never swallows a click). The shadow is open, so
 the tests (and a page) can reach it; a page still cannot mine, since the shortcuts and the button only
 take trusted events.
 
