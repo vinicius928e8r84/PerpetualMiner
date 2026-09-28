@@ -113,6 +113,9 @@ const test = base.extend({
         `--host-resolver-rules=MAP accounts.google.com 127.0.0.1:${servidorDoLogin.porta}`,
         // Só o servidor local do login usa HTTPS, com certificado autoassinado.
         '--ignore-certificate-errors',
+        // A rede é toda falsificada ou bloqueada aqui: um proxy do ambiente
+        // (HTTPS_PROXY) levaria a janela do login para fora do servidor local.
+        '--no-proxy-server',
       ],
     });
 

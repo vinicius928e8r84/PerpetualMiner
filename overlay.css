@@ -247,7 +247,7 @@
 
 .pm-linha {
   height: 3px;
-  border-radius: 2px;
+  border-radius: var(--veio-raio-linha);
   background: var(--veio-accent);
   box-shadow: var(--veio-brilho-da-linha);
   transform-origin: left;

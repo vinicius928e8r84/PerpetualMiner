@@ -141,6 +141,8 @@
   /* ── Forma ── */
   /* O losango que abre o título de seção do popup. */
   --veio-raio-losango: 2px;
+  /* A ponta arredondada da linha ouro que o overlay desenha sob o texto capturado. */
+  --veio-raio-linha: 2px;
   --veio-raio-checkbox: 6px;
   --veio-raio-tecla: 5px;
   /* A tecla (kbd) como a desenham os protótipos de Frases e de Configurações. */

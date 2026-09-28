@@ -138,8 +138,8 @@ rótulo do chip), `--veio-raio-tecla`, `--veio-esqueleto` e `--veio-peso-rotulo`
 rótulos da navegação do Painel; `peso-num` fica só para números),
 `--veio-raio-losango` (o canto do losango ouro que abre o título de seção do
 popup), `--veio-tam-contador` (o número grande do azulejo da mineração
-automática, “7/20”) e `--veio-brilho-da-linha` (o brilho ouro da linha que o
-overlay desenha sob o texto capturado).
+automática, “7/20”), `--veio-brilho-da-linha` e `--veio-raio-linha` (o brilho ouro e a ponta da
+linha que o overlay desenha sob o texto capturado).
 
 ### O overlay redefine as fontes
 
