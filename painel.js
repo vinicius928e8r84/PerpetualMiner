@@ -952,7 +952,9 @@ function setupListeners() {
   });
 
   document.getElementById('btn-save-bridge-presets-main')?.addEventListener('click', salvarBridgePresets);
-  document.getElementById('btn-bridge-analytics-refresh-main')?.addEventListener('click', () => {
+  // ↻ Atualizar é do painel-anki.js: com a Conexão ligada, ele pede também os
+  // baralhos, que abrem o Anki se precisar (BRG-24).
+  PerpetualMiner.Anki?.aoAtualizar(() => {
     atualizarBridgeWorkspaceData({ includeAnki: true, refreshAnki: true, launchAnki: true });
   });
   document.getElementById('btn-bridge-anki-repair')?.addEventListener('click', repararBridgeAnki);

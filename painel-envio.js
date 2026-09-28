@@ -34,7 +34,7 @@
   const FIM = { completed: 'concluido', partial: 'concluidoEmParte', failed: 'falhou' };
   const IDIOMA_DO_LANG = { en: 'INGLES', ru: 'RUSSO' };
 
-  const { textoDaVoz, Veio, Shell, IDIOMAS, ehRussa } = raiz;
+  const { textoDaVoz, Veio, Shell, Contexto, IDIOMAS, ehRussa } = raiz;
   const { ENDERECO_DA_CONEXAO, CONEXAO } = Shell;
   const porId = id => document.getElementById(id);
 
@@ -294,13 +294,6 @@
     };
   }
 
-  function quando(momento) {
-    const minutos = Math.floor((Date.now() - momento) / 60000);
-    if (!(minutos >= 1)) return textoDaVoz('ENV-08.agora');
-    if (minutos < 60) return textoDaVoz('ENV-08.minutos', { n: minutos });
-    return textoDaVoz('ENV-08.horas', { n: Math.floor(minutos / 60) });
-  }
-
   function montarCartao(envio) {
     const situacao = situacaoDoEnvio(envio);
     const { etapa, pct, atualizadoEm, estado } = situacao;
@@ -324,7 +317,7 @@
     const pedido = pedidoDoCartao(envio, estado);
     if (pedido?.motivo) cartao.append(elemento('p', 'envio-cartao__motivo', pedido.motivo));
 
-    const atualizado = textoDaVoz('ENV-08.atualizado', { quando: quando(atualizadoEm) });
+    const atualizado = textoDaVoz('ENV-08.atualizado', { quando: Contexto.haQuanto(atualizadoEm) });
     const meta = elemento('div', 'envio-cartao__meta');
     if (pedido) meta.append(botaoLink(pedido.rotulo, pedido.foco, pedido.aoUsar));
     meta.append(elemento('span', '', situacao.fim ? atualizado : `${etapaDeSete(situacao)} · ${atualizado}`));

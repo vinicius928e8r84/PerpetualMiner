@@ -1301,6 +1301,35 @@ body {
   display: none;
 }
 
+/* O Detalhes com os comandos de instalação e o “Copiar” ao lado dele. */
+.anki-como-ligar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 12px;
+}
+
+.anki-como-ligar .veio-aviso__detalhes {
+  flex: 1 1 320px;
+  min-width: 0;
+  margin: 0;
+}
+
+/* Uma nota neutra no topo da aba (os Ajustes com a Conexão desligada). */
+.anki-nota {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-bg);
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.anki-nota[hidden] {
+  display: none;
+}
+
 /* ── Custos ─────────────────────────────────────────────── */
 
 .anki-custos {

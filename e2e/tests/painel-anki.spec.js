@@ -103,6 +103,40 @@ test('nunca respondeu: o card ONB-16 fica no lugar das abas, com a F1; quando re
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
 });
 
+test('nunca respondeu: “Copiar” põe os comandos de instalação no clipboard e diz “Comandos copiados”', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await abrirAnki(page, extensao, { jaConectou: false });
+
+  await primeiraVez(page).getByRole('button', { name: 'Copiar', exact: true }).click();
+  await expect(page.locator('.veio-toast')).toHaveText('Comandos copiados');
+  // O Chromium não dá permissão de ler o clipboard a uma página de extensão: a
+  // pessoa cola os comandos num campo, e é isso que o teste confere (o campo é
+  // do teste: a área não tem onde colar enquanto o card está na tela).
+  await page.evaluate(() => {
+    const campo = document.createElement('textarea');
+    campo.id = 'onde-colar';
+    document.body.append(campo);
+  });
+  await page.locator('#onde-colar').focus();
+  await page.keyboard.press('Control+V');
+  await expect(page.locator('#onde-colar')).toHaveValue(/^pip install -r bridge\/requirements\.txt\npython bridge\/install_autostart\.py/);
+});
+
+test('nunca respondeu: se o copiar não vai, a linha diz para selecionar e copiar, sem toast', async ({ page, extensao, fakes }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new Error('NotAllowedError: write permission denied')) },
+    });
+  });
+  fakes.anki.desligar();
+  await abrirAnki(page, extensao, { jaConectou: false });
+
+  await primeiraVez(page).getByRole('button', { name: 'Copiar', exact: true }).click();
+  await expect(primeiraVez(page).getByRole('alert')).toHaveText('Não deu para copiar. Selecione o texto e copie.');
+  await expect(page.locator('.veio-toast')).toHaveCount(0);
+});
+
 test('conectando: a faixa neutra “Conectando ao Anki…” e o esqueleto, até a Conexão responder', async ({ page, extensao, fakes }) => {
   let responder;
   const respondendo = new Promise(r => { responder = r; });
@@ -253,6 +287,9 @@ test('azulejos por idioma com total e envios; o escolhido filtra o resumo, as im
   const [todos, ingles, russo] = await azulejos(page).getByRole('button').all();
   await expect(todos).toHaveAttribute('aria-pressed', 'true');
   await expect(todos).toContainText('Todos os idiomas');
+  await expect(todos).toContainText('EN + RU');
+  await expect(ingles).toContainText('EN');
+  await expect(russo).toContainText('RU');
   await expect(todos).toContainText('US$ 0,15');
   await expect(todos).toContainText('4 envios');
   await expect(ingles).toContainText('US$ 0,11');
@@ -404,6 +441,49 @@ test('o Avançado mostra escolha e triagem com 4 casas e baixa o diagnóstico de
 });
 
 // ─── As outras abas, o teclado e o movimento ─────────────────────────────────
+
+test('com 4 casas, um valor abaixo de US$ 0,0001 diz “< US$ 0,0001”, nunca “US$ 0,0000”', async ({ page, extensao, fakes }) => {
+  fakes.anki.definirCustos([{
+    jobId: 'job-minimo', lang: 'en', createdAt: '2026-09-18T11:00:00', status: 'completed', pedidas: 2,
+    custos: { cartoes: 0.0200, triagem: 0.00003 },
+  }]);
+  await abrirAnki(page, extensao, { gravado: { pm_anki_quatro_casas: true } });
+
+  const detalhe = detalheDoEnvio(page, 'Envio em inglês · 2 frases');
+  await expect(detalhe.locator('dl')).toContainText('Escolha e triagem< US$ 0,0001');
+  await expect(detalhe.locator('dl')).toContainText('Imagens geradasUS$ 0,0000');
+  await expect(detalhe.locator('dl')).toContainText('TotalUS$ 0,0200');
+});
+
+test('↻ Atualizar com a Conexão desligada não pede os baralhos; ligada, pede e deixa abrir o Anki (BRG-24)', async ({ page, extensao, fakes }) => {
+  const pedidosDeBaralhos = () => fakes.anki.requisicoes.filter(r => r.caminho === '/anki/stats/decks' && r.busca.includes('refresh=1'));
+  await abrirAnki(page, extensao);
+  await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(4);
+  await expect(atualizar(page)).toHaveAttribute('title', 'Atualizar (abre o Anki se precisar)');
+
+  fakes.anki.desligar();
+  await atualizar(page).click();
+  await expect(page.getByText(F1)).toBeVisible();
+  expect(pedidosDeBaralhos()).toHaveLength(0);
+
+  fakes.anki.ligar();
+  await atualizar(page).click();
+  await expect(page.getByText(F1)).toBeHidden();
+  await expect.poll(() => pedidosDeBaralhos().length).toBe(1);
+  expect(pedidosDeBaralhos()[0].busca).toContain('launch=1');
+});
+
+test('Ajustes de envio com a Conexão desligada: continuam editáveis, com a nota de que valem no próximo envio', async ({ page, extensao, fakes }) => {
+  const nota = 'Os ajustes continuam editáveis com a conexão desligada. Valem a partir do próximo envio.';
+  await abrirAnki(page, extensao, { hash: '#anki/ajustes' });
+  await expect(page.locator('#preset-main-en-deck')).toBeVisible();
+  await expect(page.getByText(nota)).toBeHidden();
+
+  fakes.anki.desligar();
+  await atualizar(page).click();
+  await expect(page.getByText(nota)).toBeVisible();
+  await expect(page.locator('#preset-main-en-deck')).toBeEditable();
+});
 
 test('as outras abas continuam com o conteúdo de hoje', async ({ page, extensao }) => {
   await abrirAnki(page, extensao, { hash: '#anki/ajustes' });

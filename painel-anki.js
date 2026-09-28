@@ -24,11 +24,13 @@
   const CHAVE_QUATRO_CASAS = 'pm_anki_quatro_casas';
   const CHAVE_IDS = 'pm_anki_ids_dos_envios';
 
+  // Os idiomas do bridge (`lang`) e o código que cada azulejo mostra (BRG-28).
   const IDIOMAS_DOS_AZULEJOS = [
-    { idioma: 'all', codigo: 'EN + RU' },
-    { idioma: 'en', codigo: 'EN' },
-    { idioma: 'ru', codigo: 'RU' },
+    { idioma: 'all', codigo: 'BRG-28.codigoTodos' },
+    { idioma: 'en', codigo: 'BRG-28.codigoEn' },
+    { idioma: 'ru', codigo: 'BRG-28.codigoRu' },
   ];
+  const CODIGO_DO_IDIOMA = Object.fromEntries(IDIOMAS_DOS_AZULEJOS.map(({ idioma, codigo }) => [idioma, codigo]));
   const NOME_DO_IDIOMA = { en: 'INGLES', ru: 'RUSSO' };
   // O que cada `status` do bridge vira na tela: o tom do ponto na lista, o selo do
   // detalhe e se o envio pode ser continuado. O que não está aqui está andando.
@@ -47,6 +49,7 @@
   ];
 
   const { textoDaVoz, Veio, Shell, Contexto, IDIOMAS } = raiz;
+  const { haQuanto } = Contexto;
   const { ENDERECO_DA_CONEXAO, CONEXAO } = Shell;
   const porId = id => document.getElementById(id);
 
@@ -68,11 +71,12 @@
     falhasAoRetomar: new Map(),  // jobId → a causa técnica, para o Detalhes
     diagnosticoFalhou: false,
   };
+  const ouvintesDoAtualizar = [];   // quem mais responde ao ↻ Atualizar (aoAtualizar)
 
   // ─── Começo ────────────────────────────────────────────────────────────────
 
   async function iniciar() {
-    porId('anki-primeira-vez-detalhes').replaceChildren(Veio.montarDetalhes(textoDaVoz('ONB-16.detalhes')));
+    montarComoLigar();
     montarAzulejos();
     ligarControles();
 
@@ -100,6 +104,28 @@
     desenhar();
   }
 
+  /**
+   * O Detalhes do card ONB-16 (os comandos, a porta, o log), com “Copiar” ao
+   * lado. Copiou: o toast. Não copiou: a linha no lugar, até a próxima tentativa.
+   */
+  function montarComoLigar() {
+    const comandos = textoDaVoz('ONB-16.detalhes');
+    const falha = elemento('p', 'anki-motivo', textoDaVoz('ONB-16.naoCopiou'));
+    falha.setAttribute('role', 'alert');
+    falha.hidden = true;
+    const copiar = botao(textoDaVoz('ONB-16.copiar'), 'veio-botao veio-botao--secundario veio-botao--compacto', async () => {
+      try {
+        await navigator.clipboard.writeText(comandos);
+        falha.hidden = true;
+        Veio.mostrarToastDeSucesso(textoDaVoz('ONB-16.copiado'));
+      } catch {
+        falha.hidden = false;
+      }
+    });
+    porId('anki-primeira-vez-detalhes').replaceChildren(
+      elemento('div', 'anki-como-ligar', Veio.montarDetalhes(comandos), copiar), falha);
+  }
+
   function ligarControles() {
     for (const radio of document.querySelectorAll('input[name="periodo-custos"]')) {
       radio.addEventListener('change', () => { if (radio.checked) escolherPeriodo(radio.value); });
@@ -110,7 +136,7 @@
         ler();
       });
     }
-    porId('btn-bridge-analytics-refresh-main').addEventListener('click', atualizar);
+    porId('btn-bridge-analytics-refresh-main').addEventListener('click', atualizarTudo);
     porId('anki-quatro-casas').addEventListener('change', evento => {
       estado.quatroCasas = evento.target.checked;
       chrome.storage.local.set({ [CHAVE_QUATRO_CASAS]: estado.quatroCasas });
@@ -137,10 +163,25 @@
     desenhar();
   }
 
-  /** ↻ Atualizar: confere a Conexão e, ligada, lê os custos de novo. */
+  /** Confere a Conexão e, ligada, lê os custos de novo (o Tentar de novo do BRG-04). */
   async function atualizar() {
     const situacao = await Shell.conferirConexao();
     if (situacao === CONEXAO.LIGADA) ler();
+    return situacao;
+  }
+
+  /**
+   * ↻ Atualizar (BRG-24): uma ação só. Confere a Conexão e, só com ela ligada,
+   * lê os custos e pede às outras abas os dados delas (os baralhos, que abrem o
+   * Anki se precisar). Desligada, não há quem abra o Anki: a F1 já diz o porquê.
+   */
+  async function atualizarTudo() {
+    if (await atualizar() === CONEXAO.LIGADA) for (const ouvinte of ouvintesDoAtualizar) ouvinte();
+  }
+
+  /** `ouvinte` roda a cada ↻ Atualizar com a Conexão ligada. */
+  function aoAtualizar(ouvinte) {
+    ouvintesDoAtualizar.push(ouvinte);
   }
 
   // ─── Leitura ───────────────────────────────────────────────────────────────
@@ -203,6 +244,7 @@
     document.querySelector('.shell-area[data-area="anki"]').classList.toggle('anki--primeira-vez', nuncaConectou);
     porId('anki-conectando').hidden = estado.conferiu || estado.conexao !== CONEXAO.CONECTANDO;
     marcarIndisponivel(porId('btn-bridge-anki-repair'), 'anki-reparar-indisponivel');
+    porId('anki-ajustes-nota').hidden = !desligada();
     desenharCustos();
   }
 
@@ -374,12 +416,16 @@
     return valor.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
   }
 
-  /** US$ com 2 casas (V7): abaixo de 1 centavo é “< US$ 0,01”; com a chave, tudo com 4 casas. */
+  /**
+   * US$ com 2 casas (V7); com a chave, tudo com 4 casas. Um valor positivo
+   * menor que a menor casa nunca sai zerado: “< US$ 0,01” (ou “< US$ 0,0001”).
+   */
   function dinheiro(valor, { quatroCasas = estado.quatroCasas } = {}) {
     if (!Number.isFinite(valor)) return textoDaVoz('BRG-03.indisponivel');
-    if (quatroCasas) return textoDaVoz('BRG-03.valor', { valor: formatar(valor, 4) });
-    if (valor > 0 && valor < 0.01) return textoDaVoz('BRG-26');
-    return textoDaVoz('BRG-03.valor', { valor: formatar(valor, 2) });
+    const casas = quatroCasas ? 4 : 2;
+    const menor = 10 ** -casas;
+    if (valor > 0 && valor < menor) return textoDaVoz('BRG-26', { valor: formatar(menor, casas) });
+    return textoDaVoz('BRG-03.valor', { valor: formatar(valor, casas) });
   }
 
   /** A parte do total, em %, com uma casa (o número, para a largura da barra). */
@@ -391,19 +437,6 @@
   function porcento(parte, total) {
     const pct = fracao(parte, total);
     return `${formatar(pct, pct % 1 ? 1 : 0)}%`;
-  }
-
-  /** “há 5 min”, “há 2 h” no mesmo dia; “ontem”, “há 3 dias” antes (V7). */
-  function haQuanto(momento) {
-    const quando = new Date(momento);
-    const agora = new Date();
-    if (quando.toDateString() !== agora.toDateString()) {
-      return Contexto.rotuloDoDia(quando.toLocaleDateString('pt-BR'));
-    }
-    const minutos = Math.floor((agora - quando) / 60000);
-    if (!(minutos >= 1)) return textoDaVoz('ENV-08.agora');
-    if (minutos < 60) return textoDaVoz('ENV-08.minutos', { n: minutos });
-    return textoDaVoz('ENV-08.horas', { n: Math.floor(minutos / 60) });
   }
 
   function nomeDoIdioma(lang) {
@@ -431,7 +464,7 @@
       });
       azulejo.dataset.idioma = idioma;
       azulejo.append(
-        elemento('span', 'anki-azulejo__codigo', codigo),
+        elemento('span', 'anki-azulejo__codigo', textoDaVoz(codigo)),
         elemento('span', 'anki-azulejo__nome', idioma === 'all' ? textoDaVoz('BRG-28.todos') : nomeDoIdioma(idioma)),
         elemento('span', 'anki-azulejo__valor'),
         elemento('span', 'anki-azulejo__envios'));
@@ -661,7 +694,8 @@
       elemento('div', 'anki-numero', elemento('dt', null, rotulo), elemento('dd', null, dinheiro(valor, { quatroCasas: true })))));
 
     porId('anki-custos-diagnostico').replaceChildren(...envios.map(envio => {
-      const meta = [haQuanto(envio.createdAt), String(envio.lang || '').toUpperCase()];
+      const codigo = CODIGO_DO_IDIOMA[envio.lang];
+      const meta = [haQuanto(envio.createdAt), codigo ? textoDaVoz(codigo) : String(envio.lang || '')];
       if (estado.ids) meta.push(envio.jobId);
       const baixar = botao(textoDaVoz('BRG-23.baixar'), 'veio-botao veio-botao--fantasma veio-botao--compacto',
         () => baixarDiagnostico(envio.jobId));
@@ -713,5 +747,6 @@
     return no;
   }
 
+  raiz.Anki = { aoAtualizar };
   document.addEventListener('DOMContentLoaded', iniciar);
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

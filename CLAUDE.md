@@ -39,7 +39,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `lib/voz/catalogo.js` | The Voice catalog as data: the 204 approved copy states from `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
-| `lib/contexto.js` | `PerpetualMiner.Contexto` — the Contexto as the screen says it: the Fonte's name (PAI-29, `fonteDaFrase`, `nomeDaFonte`) and the phrase's day (PAI-11, `rotuloDoDia`). Loaded by the panel and the popup, so a phrase never has two names |
+| `lib/contexto.js` | `PerpetualMiner.Contexto` — the Contexto as the screen says it: the Fonte's name (PAI-29, `fonteDaFrase`, `nomeDaFonte`), the phrase's day (PAI-11, `rotuloDoDia`) and how long ago something happened (`haQuanto`: agora · há 5 min · há 2 h · ontem). Loaded by the panel and the popup, so a phrase never has two names |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
 | `test_gemini.js` | Standalone Node.js script to list available Gemini models (not part of the extension) |
 | `e2e/` | Playwright suite that runs the unpacked extension in Chromium (own `package.json`; see Testing) |
@@ -265,16 +265,24 @@ The area follows the Conexão state the shell reports (`aoMudarAConexao`):
 - **Conectando** (the first `/health` has not come back): the neutral strip “Conectando ao Anki…” (BRG-02) and a
   skeleton in place of Custos.
 - **Nunca conectada** (off, and `pm_anki_ja_conectou` was never written on this computer): the ONB-16 card takes the
-  place of the tabs, under the shell's F1, with the three ONB-08 steps under “Como ligar” and a collapsed, copyable
-  Detalhes (install commands, port, log). The first answer from `/health` writes the key and the tabs come back.
+  place of the tabs, under the shell's F1, with the three ONB-08 steps under “Como ligar” and a collapsed
+  Detalhes (install commands, port, log) with **Copiar** beside it (toast “Comandos copiados”; a refused clipboard
+  shows the ONB-16 line to select and copy instead). The first answer from `/health` writes the key and the tabs come back.
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
   selo (“Mostrando dados de há 2 h…”, with the code in Detalhes) and the period controls set to that reading's
   period and disabled (another period would have nowhere to come from). **Continuar envio** and
   **Reparar Anki** get `aria-disabled` (still in the Tab order) with a `.veio-dica` tooltip (BRG-33) on hover and focus;
   a press does nothing. Reparar Anki is still today's button: it loses its old `title` while the tooltip speaks. With
   the Conexão off and nothing stored, Custos only says “Custo indisponível”: the why and Tentar de novo are the F1's.
+  Ajustes de envio (still today's content) stays editable, with the BRG-33 note that it applies from the next Envio.
 
-**↻ Atualizar** asks the shell for `/health` again (`Shell.conferirConexao`) and, with the Conexão on, reads Custos again.
+**↻ Atualizar** (BRG-24) is one action, owned by `painel-anki.js`: it asks the shell for `/health` again
+(`Shell.conferirConexao`) and, only with the Conexão on, reads Custos again and calls whoever registered through
+`PerpetualMiner.Anki.aoAtualizar(fn)` — `painel.js` refreshes the decks there, with `launch=1` (“abre o Anki se precisar”).
+Off, nothing tries to open the Anki. BRG-04's Tentar de novo only re-reads Custos.
+
+The relative time (“agora”, “há 5 min”, “há 2 h”, then the PAI-11 day: ontem · há 3 dias) is `Contexto.haQuanto`
+(`lib/contexto.js`), shared by Custos, the Envio cards and the Conta chip (CFG-02).
 
 **Custos** reads `GET /analytics/jobs?lang=all[&from&to]` once per period and adds everything up in the panel, so every
 total on screen is the sum of the parts on screen — including `otherUsd` (“Outros custos”, shown in the detail only
@@ -289,7 +297,8 @@ per part and the total, the Envio's image bar, and Continuar envio only for `par
 loading look (#9): “Custo indisponível” (BRG-03) and the persistent BRG-04 aviso with Tentar de novo and Detalhes; empty
 is BRG-22 with “Ver tudo” (switches to Tudo).
 
-Money (V7): US$ with 2 decimals, a positive value under 1 cent is “< US$ 0,01” (BRG-26), never “US$ 0,00”. The
+Money (V7): US$ with 2 decimals, a positive value under 1 cent is “< US$ 0,01” (BRG-26, `< US$ {valor}`), never
+“US$ 0,00”; with 4 decimals, under US$ 0,0001 it is “< US$ 0,0001”. The tiles' codes (EN + RU · EN · RU) are BRG-28's. The
 **Avançado** (collapsed, dashed, at the foot) has Escolha and Triagem de imagem and the total with 4 decimals, the
 switches “Mostrar custos com 4 casas” (every value on the tab goes to 4 decimals) and “Mostrar IDs dos envios” (the
 jobId joins the list, the detail and the diagnostics), both remembered on this computer, and Baixar diagnóstico per
