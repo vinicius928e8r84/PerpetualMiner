@@ -83,7 +83,8 @@ test('a marca das páginas é a da Veio, e o icon.svg legado saiu', async ({ pag
 
   for (const pagina of PAGINAS_DA_EXTENSAO) {
     await page.goto(extensao.url(pagina));
-    const marca = page.locator('img.veio-marca');
+    // O painel tem duas: a da sidebar e a da Boas-vindas, que fica escondida fora dela.
+    const marca = page.locator('img.veio-marca').filter({ visible: true });
     await expect(marca).toBeVisible();
     await expect(marca).toHaveJSProperty('complete', true);
     expect(await marca.evaluate(img => img.naturalWidth)).toBeGreaterThan(0);
