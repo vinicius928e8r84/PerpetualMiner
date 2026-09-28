@@ -2485,6 +2485,11 @@ body {
   content: '–';
 }
 
+/* No resumo de Tudo pronto, o passo que falta leva um ponto, não o número. */
+.bv-resumo .bv-marca[data-situacao="falta"]::before {
+  content: '·';
+}
+
 .bv-card {
   min-width: 0;
   padding: 26px 28px;

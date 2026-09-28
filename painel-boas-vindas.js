@@ -414,8 +414,7 @@
     if (tela === ABERTURA) return textoDaVoz('ONB-03.abertura');
     if (tela === PRONTO) return textoDaVoz('ONB-12.sobretitulo');
     const n = PASSOS.indexOf(passo) + 1;
-    const numero = textoDaVoz('ONB-03.passo', { n, total: PASSOS.length });
-    return passo.opcional ? `${numero} · ${textoDaVoz('ONB-03.opcional')}` : numero;
+    return textoDaVoz(passo.opcional ? 'ONB-03.passoOpcional' : 'ONB-03.passo', { n, total: PASSOS.length });
   }
 
   function desenharRodape(tela, passo) {
