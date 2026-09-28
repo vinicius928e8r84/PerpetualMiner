@@ -28,32 +28,73 @@
 // cópia vem do catálogo da Voz.
 
 (function (raiz) {
-  const { textoDaVoz, Atalhos, Veio, IDIOMAS, detectarIdioma } = raiz;
+  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual } = raiz;
 
   const PROGRESSO = 'pm_boas_vindas';
   const ABERTURA = 'abertura';
   const PRONTO = 'pronto';
 
-  /** Os 6 passos, na ordem travada (valor primeiro; a Conexão antes da mineração automática). */
+  /**
+   * Os 6 passos, na ordem travada (valor primeiro; a Conexão antes da mineração
+   * automática). Cada um diz, num lugar só, quando está feito (pelo estado
+   * real), o valor que o resumo mostra e o que a tela dele monta.
+   */
   const PASSOS = [
-    { id: 'minerar', opcional: false },
-    { id: 'atalho', opcional: false },
-    { id: 'conta', opcional: true },
-    { id: 'anki', opcional: false },
-    { id: 'automatica', opcional: true },
-    { id: 'chave', opcional: true },
+    {
+      id: 'minerar',
+      opcional: false,
+      feito: () => estado.totalDeFrases > 0,
+      valor: () => textoDaVoz('PAI-05', { n: estado.totalDeFrases }),
+      montar: montarPasso1,
+    },
+    {
+      id: 'atalho',
+      opcional: false,
+      feito: () => Boolean(estado.atalhos[Atalhos.ACOES.SELECAO]),
+      valor: () => Atalhos.rotuloDoAtalho(estado.atalhos[Atalhos.ACOES.SELECAO]),
+      montar: montarPasso2,
+    },
+    {
+      id: 'conta',
+      opcional: true,
+      feito: () => Boolean(estado.conta),
+      valor: () => estado.conta.displayName || textoDaVoz('CFG-10'),
+      montar: () => montarPassoSoTexto('ONB-07'),
+    },
+    {
+      id: 'anki',
+      opcional: false,
+      feito: () => estado.conexaoLigada,
+      valor: () => textoDaVoz('ONB-13.ligada'),
+      montar: () => montarPassoSoTexto('ONB-08.corpo'),
+    },
+    {
+      id: 'automatica',
+      opcional: true,
+      feito: () => estado.automatica.en || estado.automatica.ru,
+      // Os idiomas ligados, separados pelo “·” da Voz (V5).
+      valor: () => [estado.automatica.en && IDIOMAS.INGLES, estado.automatica.ru && IDIOMAS.RUSSO]
+        .filter(Boolean).join(' · '),
+      montar: () => montarPassoSoTexto('ONB-09.corpo'),
+    },
+    {
+      id: 'chave',
+      opcional: true,
+      feito: () => Boolean(estado.chave),
+      valor: () => textoDaVoz('ONB-13.salva'),
+      montar: () => montarPassoSoTexto('ONB-11.corpo'),
+    },
   ];
   const TELAS = [ABERTURA, ...PASSOS.map(p => p.id), PRONTO];
+  const passoDa = tela => PASSOS.find(p => p.id === tela);
 
-  /** O que cada passo diz na tela: o texto dele no catálogo. */
-  const TEXTO_DO_PASSO = {
-    conta: 'ONB-07',
-    anki: 'ONB-08.corpo',
-    automatica: 'ONB-09.corpo',
-    chave: 'ONB-11.corpo',
+  /** A situação de um passo e a palavra dela no catálogo (ONB-13). */
+  const SITUACAO = Object.freeze({ FEITO: 'feito', AGORA_NAO: 'agora-nao', FALTA: 'falta' });
+  const TEXTO_DA_SITUACAO = {
+    [SITUACAO.FEITO]: 'ONB-13.feito',
+    [SITUACAO.AGORA_NAO]: 'ONB-13.agoraNao',
+    [SITUACAO.FALTA]: 'ONB-13.falta',
   };
-
-  const SITUACAO = Object.freeze({ FEITO: 'feito', AGORA_NAO: 'agoraNao', FALTA: 'falta' });
 
   const estado = {
     tela: ABERTURA,
@@ -70,8 +111,8 @@
   const porId = id => document.getElementById(id);
   const itensDaLista = new Map();   // tela → { botao, marca, situacao }
   const telas = new Map();          // tela → o corpo dela no card
-  let teclaDoPasso1 = null;
-  let assinaturaDoRodape = null;
+  let paragrafoDoVideo = null;      // o ONB-05.video do passo 1, com o atalho de legenda
+  let rodapeDesenhadoPara = null;   // a tela (e o Agora não) do rodapé na tela agora
 
   // ─── Início ────────────────────────────────────────────────────────────────
 
@@ -161,38 +202,11 @@
 
   // ─── Os passos ─────────────────────────────────────────────────────────────
 
-  function estaFeito(id) {
-    switch (id) {
-      case 'minerar': return estado.totalDeFrases > 0;
-      case 'atalho': return Boolean(estado.atalhos[Atalhos.ACOES.SELECAO]);
-      case 'conta': return Boolean(estado.conta);
-      case 'anki': return estado.conexaoLigada;
-      case 'automatica': return estado.automatica.en || estado.automatica.ru;
-      case 'chave': return Boolean(estado.chave);
-      default: return false;
-    }
-  }
-
   /** Feito vale sobre “agora não”: o que a pessoa fez depois de pular conta. */
-  function situacaoDo(id) {
-    if (estaFeito(id)) return SITUACAO.FEITO;
-    if (estado.progresso.agoraNao.includes(id)) return SITUACAO.AGORA_NAO;
+  function situacaoDo(passo) {
+    if (passo.feito()) return SITUACAO.FEITO;
+    if (estado.progresso.agoraNao.includes(passo.id)) return SITUACAO.AGORA_NAO;
     return SITUACAO.FALTA;
-  }
-
-  /** O valor de um passo feito no resumo (ONB-13): “1 frase”, “Alt+Q”, “ligada”… */
-  function valorDoPasso(id) {
-    switch (id) {
-      case 'minerar': return textoDaVoz('PAI-05', { n: estado.totalDeFrases });
-      case 'atalho': return Atalhos.rotuloDoAtalho(estado.atalhos[Atalhos.ACOES.SELECAO]);
-      case 'conta': return estado.conta.displayName || textoDaVoz('CFG-10');
-      case 'anki': return textoDaVoz('ONB-13.ligada');
-      case 'automatica':
-        return [estado.automatica.en && IDIOMAS.INGLES, estado.automatica.ru && IDIOMAS.RUSSO]
-          .filter(Boolean).join(' · ');
-      case 'chave': return textoDaVoz('ONB-13.salva');
-      default: return '';
-    }
   }
 
   const tituloDaTela = tela => (tela === PRONTO ? textoDaVoz('ONB-12.titulo') : textoDaVoz(`ONB-03.${tela}`));
@@ -204,9 +218,7 @@
     nav.setAttribute('aria-label', textoDaVoz('ONB-03.lista'));
     const ol = elemento('ol', 'bv-lista__itens');
     TELAS.forEach((tela, i) => {
-      const marca = elemento('span', 'bv-marca');
-      marca.setAttribute('aria-hidden', 'true');
-      marca.dataset.numero = tela === ABERTURA ? '·' : tela === PRONTO ? '✓' : String(i);
+      const marca = montarMarca(tela === ABERTURA ? '·' : tela === PRONTO ? '✓' : String(i));
       const situacao = elemento('span', 'veio-so-leitor');
       const botao = elemento('button', 'bv-lista__item', marca,
         elemento('span', 'bv-lista__rotulo', tela === ABERTURA ? textoDaVoz('ONB-03.abertura') : tituloDaTela(tela)),
@@ -225,18 +237,26 @@
       if (atual) botao.setAttribute('aria-current', 'step');
       else botao.removeAttribute('aria-current');
 
-      const passo = PASSOS.find(p => p.id === tela);
-      const agora = passo ? situacaoDo(tela) : null;
+      const passo = passoDa(tela);
+      const agora = passo ? situacaoDo(passo) : null;
       desenharMarca(marca, agora, atual);
       // O nome do item diz a situação ao leitor de tela: “…, feito”.
-      situacao.textContent = agora && agora !== SITUACAO.FALTA ? `, ${textoDaVoz(`ONB-13.${agora}`)}` : '';
+      situacao.textContent = agora && agora !== SITUACAO.FALTA ? `, ${textoDaVoz(TEXTO_DA_SITUACAO[agora])}` : '';
     }
   }
 
   /**
-   * O número (ou o tracejado) sai do CSS, pelo `data-numero`: a marca é só
-   * desenho, e o texto do item continua sendo o título do passo.
+   * A marca de um passo. O número (ou o tracejado) sai do CSS, pelo
+   * `data-numero`: a marca é só desenho, e o texto do item continua sendo o
+   * título do passo.
    */
+  function montarMarca(numero) {
+    const marca = elemento('span', 'bv-marca');
+    marca.setAttribute('aria-hidden', 'true');
+    marca.dataset.numero = numero;
+    return marca;
+  }
+
   function desenharMarca(marca, situacao, atual) {
     marca.dataset.situacao = situacao || '';
     marca.classList.toggle('bv-marca--atual', atual);
@@ -247,16 +267,11 @@
 
   function montarTelas() {
     const lugar = porId('bv-telas');
-    const montar = {
-      [ABERTURA]: montarAbertura,
-      minerar: montarPasso1,
-      atalho: montarPasso2,
-      [PRONTO]: () => elemento('div', null,
-        elemento('p', 'bv-texto', textoDaVoz('ONB-12.corpo')),
-        elemento('ul', 'bv-resumo')),
-    };
+    const montarPronto = () => elemento('div', null,
+      elemento('p', 'bv-texto', textoDaVoz('ONB-12.corpo')),
+      elemento('ul', 'bv-resumo'));
     for (const tela of TELAS) {
-      const corpo = (montar[tela] || montarPassoSoTexto)(tela);
+      const corpo = tela === ABERTURA ? montarAbertura() : tela === PRONTO ? montarPronto() : passoDa(tela).montar();
       corpo.hidden = true;
       telas.set(tela, corpo);
       lugar.append(corpo);
@@ -265,24 +280,22 @@
 
   function montarAbertura() {
     const lista = elemento('ul', 'bv-resumo', ...PASSOS.map(({ id, opcional }, i) => {
-      const marca = elemento('span', 'bv-marca');
-      marca.setAttribute('aria-hidden', 'true');
-      marca.dataset.numero = String(i + 1);
-      const item = elemento('li', 'bv-resumo__item', marca, elemento('span', null, tituloDaTela(id)));
+      const item = elemento('li', 'bv-resumo__item', montarMarca(String(i + 1)), elemento('span', null, tituloDaTela(id)));
       if (opcional) item.append(elemento('span', 'veio-selo bv-resumo__lado', textoDaVoz('ONB-03.opcional')));
       return item;
     }));
     return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-01.corpo')), lista);
   }
 
-  function montarPassoSoTexto(tela) {
-    return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz(TEXTO_DO_PASSO[tela])));
+  /** Os passos 3 a 6 ainda só com o texto: os controles deles são o #43. */
+  function montarPassoSoTexto(idDoTexto) {
+    return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz(idDoTexto)));
   }
 
   // ─── Passo 1: minerar a primeira frase ─────────────────────────────────────
 
   function montarPasso1() {
-    teclaDoPasso1 = elemento('p', 'bv-texto');
+    paragrafoDoVideo = elemento('p', 'bv-texto');
     const selecao = elemento('p', 'bv-texto', textoDaVoz('ONB-05.selecao'));
 
     // A legenda marcada, parada: a linha ouro, a Palavra grifada e o chip.
@@ -317,7 +330,7 @@
 
     const controle = elemento('div', 'bv-controle',
       elemento('p', 'bv-nota', textoDaVoz('ONB-05.colar')), formulario);
-    return elemento('div', null, teclaDoPasso1, selecao, ilustracao, controle);
+    return elemento('div', null, paragrafoDoVideo, selecao, ilustracao, controle);
   }
 
   /**
@@ -336,31 +349,23 @@
       definir.addEventListener('click', () => irPara('atalho'));
       partes.push(' ', definir);
     }
-    teclaDoPasso1.replaceChildren(...partes);
+    paragrafoDoVideo.replaceChildren(...partes);
   }
 
   function minerarFraseRapida(campo, erro) {
     const texto = campo.value.trim();
     if (!texto || estado.minerando) return;
     estado.minerando = true;
-    chrome.runtime.sendMessage({
-      type: 'SALVAR_HISTORICO',
-      texto,
-      origem: 'manual',
-      idioma: detectarIdioma(texto),
-      contexto: { fonte: 'manual', titulo: '', detalhe: '' },
-    }, resposta => {
-      estado.minerando = false;
-      if (chrome.runtime.lastError || !resposta?.ok) {
-        // POP-06: o texto fica no campo, para tentar de novo.
-        const linha = elemento('p', 'bv-falha', Veio.iconeVeio('alerta'), textoDaVoz('POP-06'));
-        erro.replaceChildren(linha);
-        campo.setAttribute('aria-invalid', 'true');
-        return;
-      }
+    minerarFraseManual(texto).then(() => {
       // POP-05: sem texto. O campo limpa e o passo fica feito pelo histórico.
+      estado.minerando = false;
       campo.value = '';
       limparErro(campo, erro);
+    }, () => {
+      // POP-06: o texto fica no campo, para tentar de novo.
+      estado.minerando = false;
+      erro.replaceChildren(elemento('p', 'bv-falha', Veio.iconeVeio('alerta'), textoDaVoz('POP-06')));
+      campo.setAttribute('aria-invalid', 'true');
     });
   }
 
@@ -373,24 +378,25 @@
 
   function montarPasso2() {
     const controle = elemento('div', 'bv-controle bv-controle--atalhos');
-    raiz.GravadorDeAtalhos.montar(controle, { prefixo: 'bv' });
-    return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-06')), controle);
+    const tela = elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-06')), controle);
+    // Sair do passo (a tela some) cancela a gravação, como fechar o card em Configurações.
+    raiz.GravadorDeAtalhos.montar(controle, { prefixo: 'bv', lugar: tela });
+    return tela;
   }
 
   // ─── Tudo pronto ───────────────────────────────────────────────────────────
 
   function desenharResumo() {
     const lista = telas.get(PRONTO).querySelector('.bv-resumo');
-    lista.replaceChildren(...PASSOS.map(({ id }, i) => {
-      const situacao = situacaoDo(id);
-      const marca = elemento('span', 'bv-marca');
-      marca.setAttribute('aria-hidden', 'true');
-      marca.dataset.numero = String(i + 1);
+    lista.replaceChildren(...PASSOS.map((passo, i) => {
+      const situacao = situacaoDo(passo);
+      const marca = montarMarca(String(i + 1));
       desenharMarca(marca, situacao, false);
+      // Feito mostra o valor (“Alt+Q”); o leitor de tela ouve “feito: Alt+Q”.
       const lado = situacao === SITUACAO.FEITO
-        ? elemento('span', 'bv-resumo__lado', elemento('span', 'veio-so-leitor', `${textoDaVoz('ONB-13.feito')}: `), valorDoPasso(id))
-        : elemento('span', 'bv-resumo__lado', textoDaVoz(`ONB-13.${situacao}`));
-      return elemento('li', 'bv-resumo__item', marca, elemento('span', null, tituloDaTela(id)), lado);
+        ? elemento('span', 'bv-resumo__lado', elemento('span', 'veio-so-leitor', `${textoDaVoz(TEXTO_DA_SITUACAO[situacao])}: `), passo.valor())
+        : elemento('span', 'bv-resumo__lado', textoDaVoz(TEXTO_DA_SITUACAO[situacao]));
+      return elemento('li', 'bv-resumo__item', marca, elemento('span', null, tituloDaTela(passo.id)), lado);
     }));
   }
 
@@ -398,7 +404,7 @@
 
   function desenhar() {
     const { tela } = estado;
-    const passo = PASSOS.find(p => p.id === tela);
+    const passo = passoDa(tela);
 
     porId('bv-sobretitulo').textContent = sobretituloDa(tela, passo);
     porId('bv-titulo').textContent = tela === ABERTURA ? textoDaVoz('ONB-01.titulo') : tituloDaTela(tela);
@@ -420,9 +426,10 @@
   function desenharRodape(tela, passo) {
     // Refeito só quando muda o que ele mostra: um redesenho pelo storage não
     // tira o foco do botão em que a pessoa está.
-    const assinatura = `${tela}|${Boolean(passo?.opcional && !estaFeito(passo.id))}`;
-    if (assinatura === assinaturaDoRodape) return;
-    assinaturaDoRodape = assinatura;
+    const comAgoraNao = Boolean(passo?.opcional && !passo.feito());
+    const desenhoDoRodape = `${tela}|${comAgoraNao}`;
+    if (desenhoDoRodape === rodapeDesenhadoPara) return;
+    rodapeDesenhadoPara = desenhoDoRodape;
     const rodape = porId('bv-rodape');
     const espaco = elemento('span', 'bv-rodape__espaco');
     const anterior = TELAS[TELAS.indexOf(tela) - 1];
@@ -446,7 +453,7 @@
     }
 
     const botoes = [voltar, espaco];
-    if (passo.opcional && !estaFeito(passo.id)) {
+    if (comAgoraNao) {
       botoes.push(botaoDoRodape('ONB-04.agoraNao', 'fantasma', () => {
         if (!estado.progresso.agoraNao.includes(passo.id)) {
           gravarProgresso({ agoraNao: [...estado.progresso.agoraNao, passo.id] });

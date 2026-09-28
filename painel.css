@@ -2477,11 +2477,11 @@ body {
   stroke-width: 3;
 }
 
-.bv-marca[data-situacao="agoraNao"] {
+.bv-marca[data-situacao="agora-nao"] {
   border-style: dashed;
 }
 
-.bv-marca[data-situacao="agoraNao"]::before {
+.bv-marca[data-situacao="agora-nao"]::before {
   content: '–';
 }
 

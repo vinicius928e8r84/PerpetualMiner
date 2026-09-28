@@ -40,6 +40,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/contexto.js` | `PerpetualMiner.Contexto` — the Contexto as the screen says it: the Fonte's name (PAI-29, `fonteDaFrase`, `nomeDaFonte`) and the phrase's day (PAI-11, `rotuloDoDia`). Loaded by the panel and the popup, so a phrase never has two names |
+| `lib/mineracao-rapida.js` | `PerpetualMiner.minerarFraseManual(texto)` — the quick mining (`SALVAR_HISTORICO` with Fonte `manual`), shared by the popup and step 1 of the Boas-vindas; resolves with the saved phrase, rejects when it was not saved |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
 | `test_gemini.js` | Standalone Node.js script to list available Gemini models (not part of the extension) |
 | `e2e/` | Playwright suite that runs the unpacked extension in Chromium (own `package.json`; see Testing) |
@@ -106,7 +107,7 @@ they are. Addresses: `#frases` (default, and anything unknown), `#anki/custos|ba
 so the browser's back button walks through areas and tabs.
 
 The shell owns the sidebar and `painel.js` reports to it through `PerpetualMiner.Shell`:
-`mostrarTotalDeFrases(n)`, `aoEntrarNaArea(area, fn)` (the Anki area refreshes its data on entry), `areaAtual()` and `aoMudarAConexao(fn)` (the Conexão state now and on every change: `'conectando' | 'ligada' | 'desligada'`). The shell polls
+`mostrarTotalDeFrases(n)`, `aoEntrarNaArea(area, fn)` (the Anki area refreshes its data on entry), `areaAtual()`, `AREAS_DO_PAINEL` (the three areas with the sidebar, i.e. not the Boas-vindas) and `aoMudarAConexao(fn)` (the Conexão state now and on every change: `'conectando' | 'ligada' | 'desligada'`). The shell polls
 `/health` of the Conexão com o Anki itself every 15 s: the dot (BRG-01/BRG-02, in the tooltip and as the link's
 accessible description) and, while it is off, the F1 strip (ENV-01) with “Tentar de novo” at the top of the Anki area.
 
@@ -152,10 +153,11 @@ to `#frases`.
 
 Step 1: ONB-05 with the recorded caption shortcut in a `kbd` (none → GLB-02 “Sem atalho” and Definir atalho, which goes
 to step 2 of this page), the static illustration of a marked caption (`escreverFrase` + `montarChipDaPalavra`, dark in
-both themes, `aria-hidden`) and the popup's quick mining (`SALVAR_HISTORICO` with Fonte `manual`; success is silent,
+both themes, `aria-hidden`) and the popup's quick mining (`lib/mineracao-rapida.js`; success is silent,
 POP-05; failure is POP-06 under the field, text kept). Step 2: ONB-06 and the same recorder as Configurações
-(`GravadorDeAtalhos.montar(…, { prefixo: 'bv' })`): same storage, same refusal of a repeated shortcut, and changing
-step cancels a recording. Steps 3–6 show their text only; their controls (and the reminder, item 9 of the closed list)
+(`GravadorDeAtalhos.montar(…, { prefixo: 'bv', lugar })`: `lugar` is what hides when the person leaves, which cancels
+a recording): same storage, same refusal of a repeated shortcut. Nothing of the panel opens over the page: the Envio
+summary waits and opens once the person enters one of `Shell.AREAS_DO_PAINEL`. Steps 3–6 show their text only; their controls (and the reminder, item 9 of the closed list)
 are #43.
 
 ### Chave do Gemini and Zona de perigo (`painel-chave.js`, `painel-perigo.js`)
@@ -307,7 +309,7 @@ ENV-09 and keeps trying. Phrases already in a running Envio are not sent twice (
 and the Veio modal ignores the second press of a double click, so it does not close the modal the first press opened.
 
 The tracked Envios live in `pm_envio`, so reloading the panel keeps them (without reopening the modal). When nothing is
-running and at least one Envio started, the **summary** (ENV-10) opens by itself in whatever area is on screen, once no
+running and at least one Envio started, the **summary** (ENV-10) opens by itself in whatever area of the panel is on screen (never over the Boas-vindas: it waits for the person to enter an area), once no
 other modal is open. It has one block per language: `+N cartões` (sent now), `no baralho <deck>` (the deck saved on the
 Envio when it was created, its `::` levels shown as ›), `N já estava lá` (the bridge's `duplicatePhraseIds`, never counted
 as sent) and `N não entrou` (what did not become a card, including an Envio that never started; a phrase the bridge lists

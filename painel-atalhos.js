@@ -30,9 +30,11 @@
    * Monta o gravador dentro de `corpo`: as duas linhas e o Restaurar. É o mesmo
    * em Configurações › Atalhos e no passo 2 da Boas-vindas; os dois leem e
    * gravam o mesmo storage (lib/atalhos.js), então mostram sempre o mesmo, e a
-   * recusa do repetido é a mesma. `prefixo` separa os ids das duas cópias.
+   * recusa do repetido é a mesma. `prefixo` separa os ids das duas cópias;
+   * `lugar` é o que some quando a pessoa sai dali (o corpo do card, a tela do
+   * passo), o que cancela a gravação.
    */
-  function montarGravadorDeAtalhos(corpo, { prefixo }) {
+  function montarGravadorDeAtalhos(corpo, { prefixo, lugar = corpo }) {
     const estado = {
       atalhos: { ...Atalhos.ATALHOS_PADRAO },
       gravando: null,        // a ação sendo gravada, ou null
@@ -51,8 +53,8 @@
     // digitada lá fora viraria o atalho.
     const pararAoSair = () => { if (estado.gravando) pararDeGravar(); };
     window.addEventListener('hashchange', pararAoSair);
-    new MutationObserver(() => { if (corpo.hidden) pararAoSair(); })
-      .observe(corpo, { attributes: true, attributeFilter: ['hidden'] });
+    new MutationObserver(() => { if (lugar.hidden) pararAoSair(); })
+      .observe(lugar, { attributes: true, attributeFilter: ['hidden'] });
 
     function montarLinha(acao) {
       const parte = PARTE_DO_CATALOGO[acao];

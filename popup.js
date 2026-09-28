@@ -3,7 +3,7 @@
 // O popup “Cockpit” (docs/design/popup/, variante A). A base compartilhada é
 // carregada antes pelo popup.html: o catálogo da Voz, os componentes da Veio,
 // o detector de idioma, os atalhos gravados e o Contexto da frase.
-const { detectarIdioma, IDIOMAS, textoDaVoz, Atalhos } = PerpetualMiner;
+const { IDIOMAS, textoDaVoz, Atalhos, minerarFraseManual } = PerpetualMiner;
 const { iconeVeio, escreverFrase, montarTeclas } = PerpetualMiner.Veio;
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
 
@@ -375,28 +375,21 @@ function minerarFraseRapida() {
   minerando = true;
   refletirCampo();
 
-  chrome.runtime.sendMessage({
-    type: 'SALVAR_HISTORICO',
-    texto,
-    origem: 'manual',
-    idioma: detectarIdioma(texto),
-    contexto: { fonte: 'manual', titulo: '', detalhe: '' },
-  }, resposta => {
+  minerarFraseManual(texto).then(frase => {
     minerando = false;
-    if (causaDaFalha(resposta)) {
-      // POP-06: o texto fica no campo, para tentar de novo.
-      mostrarErro();
-      refletirCampo();
-      return;
-    }
     // POP-05: sem texto. O campo limpa e a frase aparece no topo das últimas.
     campo.value = '';
     limparErro();
     refletirCampo();
-    if (resposta.frase && frases) {
-      frases = [resposta.frase, ...frases.filter(f => f.id !== resposta.frase.id)];
+    if (frase && frases) {
+      frases = [frase, ...frases.filter(f => f.id !== frase.id)];
       desenharUltimas();
     }
+  }, () => {
+    minerando = false;
+    // POP-06: o texto fica no campo, para tentar de novo.
+    mostrarErro();
+    refletirCampo();
   });
 }
 

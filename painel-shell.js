@@ -26,6 +26,8 @@
 // painel-chave.js e do painel-perigo.js. Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
+  /** As áreas do painel com a sidebar; a Boas-vindas é a página à parte. */
+  const AREAS_DO_PAINEL = Object.freeze(['frases', 'anki', 'configuracoes']);
   const ABAS_DA_CONEXAO = ['custos', 'baralhos', 'vocabulario', 'ajustes'];
   const SECOES_DE_CONFIGURACOES = ['conta', 'atalhos', 'chave', 'aparencia', 'perigo'];
 
@@ -348,6 +350,7 @@
   document.addEventListener('DOMContentLoaded', iniciarShell);
 
   raiz.Shell = {
+    AREAS_DO_PAINEL,
     CONEXAO,
     ENDERECO_DA_CONEXAO,
     aoAbrirASecao,

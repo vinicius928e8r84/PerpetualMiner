@@ -35,7 +35,7 @@
   const IDIOMA_DO_LANG = { en: 'INGLES', ru: 'RUSSO' };
 
   const { textoDaVoz, Veio, Shell, IDIOMAS, ehRussa } = raiz;
-  const { ENDERECO_DA_CONEXAO, CONEXAO } = Shell;
+  const { ENDERECO_DA_CONEXAO, CONEXAO, AREAS_DO_PAINEL } = Shell;
   const porId = id => document.getElementById(id);
 
   let doPainel = null;
@@ -67,6 +67,8 @@
     porId('btn-resumo-manter').addEventListener('click', () => resumo?.fechar());
     porId('btn-resumo-apagar').addEventListener('click', () => responderResumo('apagar'));
     Shell.aoMudarAConexao(mostrarConexao);
+    // O resumo que esperou a Boas-vindas abre quando a pessoa chega ao painel.
+    for (const area of AREAS_DO_PAINEL) Shell.aoEntrarNaArea(area, tentarAbrirResumo);
 
     const gravado = await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r));
     if (!remessa && gravado[CHAVE_GRAVADA]?.envios?.some(e => e.jobId)) {
@@ -546,6 +548,8 @@
   }
 
   function tentarAbrirResumo() {
+    // A Boas-vindas é a página da primeira configuração: nada abre por cima dela.
+    if (!AREAS_DO_PAINEL.includes(Shell.areaAtual())) return;
     if (!prontoParaResumo() || outroModalAberto()) return;
     if (remessa.envios.some(pendente) && !desistiuDasPendencias) {
       // O erro de um Envio não some dentro do resumo: o progresso volta com ele à vista.
