@@ -46,6 +46,20 @@ const detalheDoEnvio = (page, titulo) => page.getByRole('region', { name: titulo
 const primeiraVez = page => page.getByRole('region', { name: 'Ainda não houve conexão neste computador' });
 const atualizar = page => page.getByRole('button', { name: 'Atualizar', exact: true });
 const pedidosDeCustos = fakes => fakes.anki.requisicoes.filter(r => r.caminho === '/analytics/jobs');
+// A camada principal de Custos: tudo menos o Avançado, que sempre mostra 4 casas.
+const camadaPrincipal = page => page.locator('#anki-custos-azulejos, #anki-custos-corpo');
+
+/** O rádio é escondido pelo controle segmentado: quem recebe o clique é o rótulo. */
+async function escolher(page, nome) {
+  await page.locator('label.veio-segmentado__opcao').filter({ hasText: new RegExp(`^${nome}$`) }).click();
+  await expect(page.getByRole('radio', { name: nome, exact: true })).toBeChecked();
+}
+
+/** Liga ou desliga uma chave do Avançado como a pessoa faz: clicando no rótulo. */
+async function usarChave(page, nome, ligada) {
+  await page.getByText(nome, { exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: nome })).toBeChecked({ checked: ligada });
+}
 
 async function abrirAnki(page, extensao, { hash = '#anki/custos', jaConectou = true, gravado = {} } = {}) {
   if (jaConectou) await extensao.gravarStorage({ pm_anki_ja_conectou: true });
@@ -73,7 +87,7 @@ test('nunca respondeu: o card ONB-16 fica no lugar das abas, com a F1; quando re
     'Volte aqui e use Tentar de novo.',
   ]);
   // O Detalhes recolhido e copiável traz os comandos, a porta e o log.
-  await primeiraVez(page).getByText('Detalhes').click();
+  await primeiraVez(page).getByText('Detalhes', { exact: true }).click();
   await expect(primeiraVez(page).locator('pre')).toContainText('python bridge/install_autostart.py');
   await expect(primeiraVez(page).locator('pre')).toContainText('127.0.0.1:8766');
   await expect(abas(page)).toBeHidden();
@@ -123,10 +137,11 @@ test('cai depois de responder: a F1 e o último dado com o selo BRG-12; Continua
   const continuar = detalheDoEnvio(page, 'Envio em russo · 4 frases').getByRole('button', { name: 'Continuar envio' });
   await expect(continuar).toHaveAttribute('aria-disabled', 'true');
   await expect(continuar).toHaveAccessibleDescription(/Indisponível: a conexão com o Anki está desligada/);
-  await continuar.click();
+  // aria-disabled deixa o botão no Tab (a dica diz por quê), mas apertar não faz nada.
+  await continuar.click({ force: true });
   expect(fakes.anki.requisicoes.filter(r => r.caminho.endsWith('/retry'))).toHaveLength(0);
 
-  await abas(page).getByRole('radio', { name: 'Baralhos e termos' }).check();
+  await escolher(page, 'Baralhos e termos');
   const reparar = page.getByRole('button', { name: 'Reparar Anki' });
   await expect(reparar).toHaveAttribute('aria-disabled', 'true');
   await expect(reparar).toHaveAccessibleDescription(/para reparar o Anki/);
@@ -143,6 +158,18 @@ test('reabrir o painel com a Conexão desligada mostra o último dado gravado, n
   await expect(custos(page)).toContainText('Mostrando dados de agora. Não deu para atualizar agora.');
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(4);
   await expect(primeiraVez(page)).toBeHidden();
+});
+
+test('desligada sem nada gravado: “Custo indisponível”, e o Tentar de novo é só o da F1', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await abrirAnki(page, extensao);
+
+  await expect(page.getByText(F1)).toBeVisible();
+  await expect(abas(page)).toBeVisible();
+  await expect(custos(page)).toContainText('Custo indisponível');
+  await expect(custos(page).getByRole('alert')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Tentar de novo' })).toHaveCount(1);
+  expect(pedidosDeCustos(fakes)).toHaveLength(0);
 });
 
 // ─── Custos: carregando, erro, vazio ─────────────────────────────────────────
@@ -199,11 +226,11 @@ test('o período abre em Este mês; Hoje e De/Até pedem as datas certas', async
   await expect(page.getByRole('radio', { name: 'Este mês' })).toBeChecked();
   await expect.poll(() => pedidosDeCustos(fakes).at(-1)?.busca).toContain('from=2026-09-01&to=2026-09-18');
 
-  await page.getByRole('radio', { name: 'Hoje' }).check();
+  await escolher(page, 'Hoje');
   await expect.poll(() => pedidosDeCustos(fakes).at(-1).busca).toContain('from=2026-09-18&to=2026-09-18');
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(3);
 
-  await page.getByLabel('De').fill('2026-07-01');
+  await page.getByLabel('De', { exact: true }).fill('2026-07-01');
   await expect.poll(() => pedidosDeCustos(fakes).at(-1).busca).toContain('from=2026-07-01');
   await expect(page.getByRole('radio', { name: 'Hoje' })).not.toBeChecked();
 });
@@ -299,12 +326,11 @@ test('dinheiro com 2 casas e “< US$ 0,01”; a chave 4 casas passa tudo a 4 ca
   await listaDeEnvios(page).getByRole('option', { name: /Envio em russo/ }).click();
   const detalhe = detalheDoEnvio(page, 'Envio em russo · 4 frases');
   await expect(detalhe.locator('dl')).toContainText('Escolha e triagem< US$ 0,01');
-  await expect(custos(page)).not.toContainText(/US\$ \d+,\d{4}/);
+  for (const parte of await camadaPrincipal(page).all()) await expect(parte).not.toContainText(/US\$ \d+,\d{4}/);
 
   await custos(page).getByText('Avançado').click();
-  const chave = page.getByRole('checkbox', { name: 'Mostrar custos com 4 casas' });
-  await expect(chave).not.toBeChecked();
-  await chave.check({ force: true });
+  await expect(page.getByRole('checkbox', { name: 'Mostrar custos com 4 casas' })).not.toBeChecked();
+  await usarChave(page, 'Mostrar custos com 4 casas', true);
 
   await expect(azulejos(page)).toContainText('US$ 0,1545');
   await expect(detalhe.locator('dl')).toContainText('Escolha e triagemUS$ 0,0012');
@@ -316,7 +342,7 @@ test('dinheiro com 2 casas e “< US$ 0,01”; a chave 4 casas passa tudo a 4 ca
   await expect(azulejos(page)).toContainText('US$ 0,1545');
 
   await custos(page).getByText('Avançado').click();
-  await page.getByRole('checkbox', { name: 'Mostrar custos com 4 casas' }).uncheck({ force: true });
+  await usarChave(page, 'Mostrar custos com 4 casas', false);
   await expect(azulejos(page)).toContainText('US$ 0,15');
   await expect(azulejos(page)).not.toContainText('US$ 0,1545');
 });
@@ -327,7 +353,7 @@ test('os IDs dos envios só aparecem com a chave ligada, e ela fica lembrada', a
   await expect(listaDeEnvios(page)).not.toContainText('job-ru-parte');
 
   await custos(page).getByText('Avançado').click();
-  await page.getByRole('checkbox', { name: 'Mostrar IDs dos envios' }).check({ force: true });
+  await usarChave(page, 'Mostrar IDs dos envios', true);
   await expect(listaDeEnvios(page)).toContainText('job-ru-parte');
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ids_dos_envios')).pm_anki_ids_dos_envios).toBe(true);
 
@@ -355,7 +381,7 @@ test('o Avançado mostra escolha e triagem com 4 casas e baixa o diagnóstico de
 test('as outras abas continuam com o conteúdo de hoje', async ({ page, extensao }) => {
   await abrirAnki(page, extensao, { hash: '#anki/ajustes' });
   await expect(page.locator('#preset-main-en-deck')).toBeVisible();
-  await abas(page).getByRole('radio', { name: 'Baralhos e termos' }).check();
+  await escolher(page, 'Baralhos e termos');
   await expect(page.getByRole('button', { name: 'Reparar Anki' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Reparar Anki' })).not.toHaveAttribute('aria-disabled', 'true');
 });
@@ -377,7 +403,7 @@ test('os controles de Custos têm nome e foco visível; a lista anda com as seta
   const segunda = listaDeEnvios(page).getByRole('option').nth(1);
   await expect(segunda).toBeFocused();
   await expect(segunda).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByLabel('Até')).toBeVisible();
+  await expect(page.getByLabel('Até', { exact: true })).toBeVisible();
 });
 
 test('com movimento reduzido, o ponto da faixa “Conectando” e o esqueleto ficam parados', async ({ page, extensao, fakes }) => {

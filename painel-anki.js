@@ -279,15 +279,20 @@
     return linha;
   }
 
-  /** O erro de leitura: o total indisponível e o aviso BRG-04, que fica até a leitura dar certo. */
+  /**
+   * O erro de leitura: o total indisponível e o aviso BRG-04, que fica até a
+   * leitura dar certo. Com a Conexão desligada (e nada gravado para mostrar), o
+   * porquê e o Tentar de novo já estão na F1 do shell: aqui fica só o total.
+   */
   function erroDosCustos() {
     const total = elemento('dl', 'anki-numero anki-numero--indisponivel',
       elemento('dt', null, textoDaVoz('BRG-29.total')),
       elemento('dd', null, textoDaVoz('BRG-03.indisponivel')));
+    if (desligada()) return [total];
     const aviso = Veio.montarAviso({
       texto: textoDaVoz('BRG-04.aviso'),
       acao: { rotulo: textoDaVoz('BRG-04.tentarDeNovo'), aoUsar: atualizar },
-      detalhes: estado.erro || `GET ${ENDERECO_DA_CONEXAO}/health · sem resposta`,
+      detalhes: estado.erro,
       fechavel: false,
     });
     return [total, aviso];
@@ -589,9 +594,9 @@
       })));
   }
 
-  /** Continuar envio: o link dourado; com a Conexão desligada, aria-disabled com a dica. */
+  /** Continuar envio (botão pequeno, como no protótipo); com a Conexão desligada, aria-disabled com a dica. */
   function continuarEnvio(envio) {
-    const acao = botao(textoDaVoz('ENV-13.continuar'), 'veio-botao veio-botao--link envio-cartao__acao',
+    const acao = botao(textoDaVoz('ENV-13.continuar'), 'veio-botao veio-botao--secundario veio-botao--compacto',
       () => retomar(envio.jobId, acao));
     acao.dataset.foco = `continuar:${envio.jobId}`;
     const dica = elemento('span', 'veio-dica', textoDaVoz('BRG-33.continuar'));
