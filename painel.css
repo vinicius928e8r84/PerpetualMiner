@@ -1725,6 +1725,11 @@ body {
   left: 0;
 }
 
+/* Vazio de Custos (BRG-22): a ilha tem a largura toda, então o texto cabe numa linha, como no protótipo. */
+#anki-custos .veio-vazio__texto {
+  max-width: none;
+}
+
 /* Erro: o total indisponível e o aviso, sem a cara do carregando (#9). */
 .anki-numero {
   display: grid;

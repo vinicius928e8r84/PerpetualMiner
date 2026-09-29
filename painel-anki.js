@@ -113,7 +113,7 @@
     const falha = elemento('p', 'anki-motivo', textoDaVoz('ONB-16.naoCopiou'));
     falha.setAttribute('role', 'alert');
     falha.hidden = true;
-    const copiar = botao(textoDaVoz('ONB-16.copiar'), 'veio-botao veio-botao--secundario veio-botao--compacto', async () => {
+    const copiar = botao(textoDaVoz('ONB-16.copiar'), 'veio-botao veio-botao--contorno veio-botao--compacto', async () => {
       try {
         await navigator.clipboard.writeText(comandos);
         falha.hidden = true;
@@ -366,7 +366,7 @@
       elemento('p', 'veio-vazio__titulo', textoDaVoz('BRG-22')),
       elemento('p', 'veio-vazio__texto', textoDaVoz('BRG-33.vazioTexto')));
     if (estado.periodo !== 'tudo') {
-      vazio.append(botao(textoDaVoz('BRG-33.verTudo'), 'veio-botao veio-botao--secundario veio-botao--compacto',
+      vazio.append(botao(textoDaVoz('BRG-33.verTudo'), 'veio-botao veio-botao--contorno veio-botao--compacto',
         () => escolherPeriodo('tudo')));
     }
     return vazio;
@@ -658,7 +658,7 @@
 
   /** Continuar envio (botão pequeno, como no protótipo); com a Conexão desligada, aria-disabled com a dica. */
   function continuarEnvio(envio) {
-    const acao = botao(textoDaVoz('ENV-13.continuar'), 'veio-botao veio-botao--secundario veio-botao--compacto',
+    const acao = botao(textoDaVoz('ENV-13.continuar'), 'veio-botao veio-botao--contorno veio-botao--compacto',
       () => retomar(envio.jobId, acao));
     acao.dataset.foco = `continuar:${envio.jobId}`;
     const dica = elemento('span', 'veio-dica', textoDaVoz('BRG-33.continuar'));

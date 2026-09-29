@@ -160,7 +160,8 @@
 /* ── Dica ─────────────────────────────────────────────────────────────────
    O porquê de um controle indisponível: um `role="tooltip"` irmão do botão,
    dentro de `.veio-com-dica`, ligado a ele por aria-describedby. Aparece no
-   hover e no foco, só enquanto o botão está aria-disabled. */
+   hover e no foco pelo teclado (:focus-visible, para um clique não deixar a
+   dica presa), só enquanto o botão está aria-disabled. */
 
 .veio-com-dica {
   position: relative;
@@ -186,7 +187,7 @@
 }
 
 .veio-com-dica:has([aria-disabled="true"]:hover) > .veio-dica,
-.veio-com-dica:has([aria-disabled="true"]:focus) > .veio-dica {
+.veio-com-dica:has([aria-disabled="true"]:focus-visible) > .veio-dica {
   display: block;
 }
 

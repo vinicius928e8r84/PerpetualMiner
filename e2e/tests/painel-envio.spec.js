@@ -611,14 +611,17 @@ test('com a Conexão desligada, Enviar ao Anki fica indisponível e o tooltip di
   await expect(botao).toHaveAccessibleDescription(porque);
   await botao.hover();
   await expect(page.getByRole('tooltip')).toHaveText(porque);
-  // Continua focável (aria-disabled, não disabled), e o tooltip aparece no foco também.
-  await page.mouse.move(0, 0);
-  await botao.focus();
-  await expect(page.getByRole('tooltip')).toBeVisible();
-
   // aria-disabled: o Playwright esperaria o botão “habilitar”; o clique de verdade acontece.
   await botao.click({ force: true });
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  // O clique não deixa o tooltip preso: com o mouse fora, ele some.
+  await page.mouse.move(0, 0);
+  await expect(page.getByRole('tooltip')).toBeHidden();
+  // Continua focável (aria-disabled, não disabled), e o tooltip aparece no foco pelo teclado também.
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(botao).toBeFocused();
+  await expect(page.getByRole('tooltip')).toBeVisible();
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs')).toHaveLength(0);
 
   // A Conexão volta: o botão volta junto, sem recarregar.

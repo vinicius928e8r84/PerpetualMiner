@@ -271,7 +271,7 @@ The area follows the Conexão state the shell reports (`aoMudarAConexao`):
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
   selo (“Mostrando dados de há 2 h…”, with the code in Detalhes) and the period controls set to that reading's
   period and disabled (another period would have nowhere to come from). **Continuar envio** and
-  **Reparar Anki** get `aria-disabled` (still in the Tab order) with a `.veio-dica` tooltip (BRG-33) on hover and focus;
+  **Reparar Anki** get `aria-disabled` (still in the Tab order) with a `.veio-dica` tooltip (BRG-33) on hover and on keyboard focus (`:focus-visible`, so a click never leaves it open);
   a press does nothing. Reparar Anki is still today's button: it loses its old `title` while the tooltip speaks. With
   the Conexão off and nothing stored, Custos only says “Custo indisponível”: the why and Tentar de novo are the F1's.
   Ajustes de envio (still today's content) stays editable, with the BRG-33 note that it applies from the next Envio.
@@ -339,7 +339,7 @@ are named (“1 enviada você já tinha apagado.”), and with none left it says
 **Manter** — and Pronto, ×, Esc, a click outside — marks the sent and the duplicates Enviada ao Anki, no toast (ENV-12).
 **Tirar do histórico** deletes only the ones sent now, marks the duplicates, and shows the ENV-11 toast. Either answer
 clears `pm_envio`. With the Conexão off (from the shell), Enviar ao Anki has `aria-disabled` (not `disabled`), `aria-describedby` and a
-tooltip on hover and focus only (`PAI-32.enviarIndisponivel`): nothing stays on the bar while the Conexão is off, which
+tooltip on hover and keyboard focus only (`PAI-32.enviarIndisponivel`): nothing stays on the bar while the Conexão is off, which
 can be for days before the Anki is set up.
 
 ### Minerar frases (`painel.js`, ADD-01…12)

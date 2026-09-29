@@ -180,6 +180,14 @@ test('cai depois de responder: a F1 e o último dado com o selo BRG-12; Continua
   // aria-disabled deixa o botão no Tab (a dica diz por quê), mas apertar não faz nada.
   await continuar.click({ force: true });
   expect(fakes.anki.requisicoes.filter(r => r.caminho.endsWith('/retry'))).toHaveLength(0);
+  // O clique não deixa a dica presa: com o mouse fora ela some, e pelo teclado ela volta.
+  const dica = page.locator('#anki-continuar-indisponivel');
+  await page.mouse.move(0, 0);
+  await expect(dica).toBeHidden();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(continuar).toBeFocused();
+  await expect(dica).toBeVisible();
 
   await escolher(page, 'Baralhos e termos');
   const reparar = page.getByRole('button', { name: 'Reparar Anki' });

@@ -95,7 +95,7 @@ test('nunca conectada: a F1 e o card ONB-16 no lugar das abas', async ({ page, e
   await expect(ilha(page)).toHaveScreenshot('anki-nunca-conectada.png');
 });
 
-test('desligada: a F1, o último dado com o selo BRG-12 e Continuar envio indisponível com a dica', async ({ page, extensao, fakes }) => {
+test('desligada: a F1, o último dado com o selo BRG-12 e Continuar envio indisponível, sem a dica aberta', async ({ page, extensao, fakes }) => {
   await abrirAnki(page, extensao);
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(5);
   fakes.anki.desligar();
@@ -103,7 +103,6 @@ test('desligada: a F1, o último dado com o selo BRG-12 e Continuar envio indisp
   await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
   await expect(custos(page)).toContainText('Mostrando dados de há 2 h.');
   await listaDeEnvios(page).getByRole('option', { name: /Envio em russo/ }).click();
-  await custos(page).getByRole('button', { name: 'Continuar envio' }).focus();
 
   await expect(ilha(page)).toHaveScreenshot('anki-desligada.png');
 });
