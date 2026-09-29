@@ -784,6 +784,25 @@ select.veio-campo {
   line-height: 1.45;
 }
 
+/* O ícone do começo do texto, na linha: o do erro em perigo. */
+.veio-aviso__texto > svg {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  color: var(--veio-danger);
+  vertical-align: -3px;
+}
+
+/* O tom que só informa: neutro, e o ícone em ouro. */
+.veio-aviso--info {
+  border-color: var(--veio-border);
+  background: var(--veio-surface-2);
+}
+
+.veio-aviso--info .veio-aviso__texto > svg {
+  color: var(--veio-accent-text);
+}
+
 .veio-aviso__acoes {
   display: flex;
   align-items: flex-start;

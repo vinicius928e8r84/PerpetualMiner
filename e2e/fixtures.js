@@ -142,6 +142,14 @@ const test = base.extend({
     fs.rmSync(perfil, { recursive: true, force: true });
   },
 
+  // A página do teste passa pela `extensao`, que fecha a aba da instalação, e
+  // volta para a frente: um teste que nem pede a `extensao` (o overlay no
+  // player) começaria atrás da Boas-vindas, com a página em segundo plano.
+  page: async ({ page, extensao }, use) => {
+    await page.bringToFront();
+    await use(page);
+  },
+
   // A extensão chega instalada agora, então o Chrome já abriu a aba da
   // Boas-vindas (onInstalled, `install`). Ela é fechada antes do teste, que
   // começa como sempre começou; quem testa a Boas-vindas da instalação pede
