@@ -161,6 +161,45 @@ test('passo 1 sem atalho de legenda: “Sem atalho” e Definir atalho, que leva
   await expect(tituloDoCard(page)).toHaveText('Escolher o atalho de Minerar seleção');
 });
 
+test('passo 1: o foco fica no Definir atalho quando outra coisa muda no armazenamento', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ pm_atalho_legenda: null });
+  await abrirBoasVindas(page, extensao, 'minerar');
+  const definir = card(page).getByRole('button', { name: 'Definir atalho' });
+  await definir.focus();
+
+  // Uma gravação qualquer (aqui a chave) redesenha a página.
+  await extensao.gravarStorage({ geminiApiKey: 'AIzaSyExemplo1234' });
+  await expect(itemDaLista(page, 'Adicionar a chave do Gemini')).toHaveAccessibleName(/feito$/);
+
+  await expect(definir).toBeFocused();
+});
+
+test('a conta e uma frase gravadas juntas marcam os dois passos', async ({ page, extensao }) => {
+  await abrirBoasVindas(page, extensao);
+
+  // O login e o sync gravam a sessão e as frases numa escrita só.
+  await extensao.gravarStorage({
+    pm_firebase_auth: { uid: 'uid-teste', idToken: 'token-teste', refreshToken: 'refresh-teste', expiresAt: Date.now() + 60 * 60 * 1000 },
+    pm_user_info: { uid: 'uid-teste', email: 'pessoa@teste.dev', displayName: 'Pessoa de Teste', photoURL: '' },
+    frases: [{ id: 1, texto: 'Old news', data: '01/09/2026', streaming: 'web', idioma: 'Inglês' }],
+  });
+
+  await expect(itemDaLista(page, 'Entrar com Google')).toHaveAccessibleName(/feito$/);
+  await expect(itemDaLista(page, 'Minerar a primeira frase')).toHaveAccessibleName(/feito$/);
+});
+
+test('o rodapé do card fica no fundo, mesmo num passo curto', async ({ page, extensao }) => {
+  await page.setViewportSize({ width: 1100, height: 760 });
+  await abrirBoasVindas(page, extensao, 'conta');
+
+  const caixaDoCard = await card(page).boundingBox();
+  const caixaDoContinuar = await botaoDoCard(page, 'Continuar').boundingBox();
+  const caixaDaLista = await lista(page).boundingBox();
+  // O card vai até o fim da lista, e o Continuar fica perto do fundo dele.
+  expect(caixaDoCard.y + caixaDoCard.height).toBeCloseTo(caixaDaLista.y + caixaDaLista.height, 0);
+  expect(caixaDoCard.y + caixaDoCard.height - (caixaDoContinuar.y + caixaDoContinuar.height)).toBeLessThan(40);
+});
+
 test('“Continuar” num passo obrigatório segue sem marcar; o resumo mostra “falta”', async ({ page, extensao }) => {
   await abrirBoasVindas(page, extensao, 'minerar');
   await botaoDoCard(page, 'Continuar').click();

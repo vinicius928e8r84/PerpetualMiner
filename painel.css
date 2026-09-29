@@ -2491,6 +2491,8 @@ body {
 }
 
 .bv-card {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   padding: 26px 28px;
   border: 1px solid var(--veio-border);
@@ -2614,6 +2616,12 @@ body {
   margin-left: auto;
   color: var(--veio-muted);
   font-size: var(--veio-tam-apoio);
+}
+
+/* O card estica até a altura da lista; o conteúdo cresce e o rodapé fica
+   preso ao fundo, na mesma altura em todos os passos. */
+.bv-telas {
+  flex: 1 0 auto;
 }
 
 .bv-rodape {

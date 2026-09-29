@@ -142,6 +142,8 @@ Pular a configuração → `#frases` · Começar), `#boas-vindas/minerar|atalho|
 the current one `aria-current="step"`), each with its mark: the number, the gold ✓ when done, dashed for “agora não”;
 the item's name ends in “, feito” / “, agora não” for the screen reader. Right, the card: the overline (ONB-03), the
 title (focused on each step change), the step and Voltar · Agora não (optional steps only, while not done) · Continuar.
+The card is at least as tall as the list and its footer sits at the bottom, so the buttons stay in the same place on a
+short step.
 
 A step is done by the real state, read from storage: a phrase in the history, `pm_atalho` recorded, an account
 (`pm_user_info` + `pm_firebase_auth`), the Conexão com o Anki answering (`Shell.aoMudarAConexao`), a language of the

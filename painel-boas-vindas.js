@@ -112,6 +112,7 @@
   const itensDaLista = new Map();   // tela → { botao, marca, situacao }
   const telas = new Map();          // tela → o corpo dela no card
   let paragrafoDoVideo = null;      // o ONB-05.video do passo 1, com o atalho de legenda
+  let atalhoDoPasso1Desenhado;      // o rótulo que está nele, para não refazê-lo à toa
   let rodapeDesenhadoPara = null;   // a tela (e o Agora não) do rodapé na tela agora
 
   // ─── Início ────────────────────────────────────────────────────────────────
@@ -160,15 +161,19 @@
       if (area !== 'local') return;
       const novos = {};
       for (const [chave, { newValue }] of Object.entries(mudancas)) novos[chave] = newValue;
-      if ('pm_user_info' in novos || 'pm_firebase_auth' in novos) {
+      // A conta depende das duas chaves juntas, então ela é relida inteira; o
+      // resto do mesmo lote (a frase, a chave, o progresso) entra na hora.
+      const mudouAConta = 'pm_user_info' in novos || 'pm_firebase_auth' in novos;
+      delete novos.pm_user_info;
+      delete novos.pm_firebase_auth;
+      aplicarGravado(novos);
+      desenhar();
+      if (mudouAConta) {
         chrome.storage.local.get({ pm_user_info: null, pm_firebase_auth: null }, dados => {
           aplicarGravado(dados);
           desenhar();
         });
-        return;
       }
-      aplicarGravado(novos);
-      desenhar();
     });
     Atalhos.acompanharAtalhos(atalhos => {
       estado.atalhos = atalhos;
@@ -340,6 +345,10 @@
    */
   function desenharAtalhoDoPasso1() {
     const rotulo = Atalhos.rotuloDoAtalho(estado.atalhos[Atalhos.ACOES.LEGENDA]);
+    // Refazer o parágrafo tiraria o foco de quem está no Definir atalho; só
+    // refaz quando o atalho muda, não a cada gravação no storage.
+    if (rotulo === atalhoDoPasso1Desenhado) return;
+    atalhoDoPasso1Desenhado = rotulo;
     const marcador = '\u0000';
     const [antes, depois] = textoDaVoz('ONB-05.video', { atalho: marcador }).split(marcador);
     const partes = [antes, Veio.montarTecla(rotulo, { seVazia: textoDaVoz('GLB-02.semAtalho') }), depois];
