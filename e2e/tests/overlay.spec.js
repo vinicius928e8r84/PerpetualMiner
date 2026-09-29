@@ -107,8 +107,58 @@ test('o botão flutuante é o azulejo Veio num círculo de 46 px, meio apagado p
   expect(await opacidade()).toBeLessThan(1);
   await botao.hover();
   await expect.poll(opacidade).toBe(1);
-  // Nenhum rótulo aparece por cima do vídeo: o nome com o atalho é o do leitor de tela.
-  await expect(page.getByText('Minerar legenda', { exact: true })).toHaveCount(0);
+});
+
+test('com o mouse por cima, o botão mostra a etiqueta do protótipo: o nome e o atalho gravado', async ({ page, paginas, extensao }) => {
+  await abrirPlayer(page, paginas);
+  const botao = botaoFlutuante(page);
+  const etiqueta = page.locator('perpetualminer-overlay .pm-dica');
+
+  // Parado, nada por cima do vídeo.
+  await expect(etiqueta).toBeHidden();
+
+  await botao.hover();
+  await expect(etiqueta).toBeVisible();
+  await expect(etiqueta).toHaveText('Minerar legendaAlt+S');
+  await expect(etiqueta.locator('kbd')).toHaveText('Alt+S');
+  // A etiqueta fica à esquerda do botão, na altura dele.
+  const [caixaDoBotao, caixaDaEtiqueta] = [await botao.boundingBox(), await etiqueta.boundingBox()];
+  expect(caixaDaEtiqueta.x + caixaDaEtiqueta.width).toBeLessThanOrEqual(caixaDoBotao.x);
+  expect(Math.abs((caixaDaEtiqueta.y + caixaDaEtiqueta.height / 2) - (caixaDoBotao.y + caixaDoBotao.height / 2))).toBeLessThan(2);
+
+  // O atalho gravado entra sem recarregar; sem atalho, só o nome.
+  await extensao.gravarStorage({ pm_atalho_legenda: { type: 'keyboard', code: 'KeyK', altKey: false, ctrlKey: true, shiftKey: true } });
+  await expect(etiqueta.locator('kbd')).toHaveText('Ctrl+Shift+K');
+  await extensao.gravarStorage({ pm_atalho_legenda: null });
+  await expect(etiqueta).toHaveText('Minerar legenda');
+  await expect(etiqueta.locator('kbd')).toHaveCount(0);
+
+  await page.mouse.move(5, 5);
+  await expect(etiqueta).toBeHidden();
+});
+
+test('a etiqueta traz o contador do dia em palavras (MIN-11) e aparece também com o foco do teclado', async ({ page, paginas, extensao }) => {
+  const agora = new Date();
+  const hoje = [agora.getFullYear(), String(agora.getMonth() + 1).padStart(2, '0'), String(agora.getDate()).padStart(2, '0')].join('-');
+  await extensao.gravarStorage({
+    pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 15 }, ru: { enabled: false, dailyLimit: 20 } },
+    pm_auto_miner_daily: { date: hoje, en: { count: 8 }, ru: { count: 0 } },
+  });
+  await abrirPlayer(page, paginas);
+  const etiqueta = page.locator('perpetualminer-overlay .pm-dica');
+
+  await botaoFlutuante(page).focus();
+  await expect(etiqueta).toBeVisible();
+  await expect(etiqueta).toContainText('Mineração automática · Inglês: 8 de 15 hoje');
+});
+
+test('com a pílula aberta, a etiqueta não aparece por cima dela', async ({ page, paginas }) => {
+  await abrirPlayer(page, paginas);
+  await page.locator('#legenda').evaluate(no => no.remove());
+  await page.keyboard.press('Alt+KeyS');
+  await expect(page.getByText('Ligue as legendas do player e tente de novo.')).toBeVisible();
+  await botaoFlutuante(page).hover();
+  await expect(page.locator('perpetualminer-overlay .pm-dica')).toBeHidden();
 });
 
 test('o rótulo do botão acompanha o atalho gravado, sem recarregar', async ({ page, paginas, extensao }) => {

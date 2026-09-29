@@ -60,6 +60,8 @@
   let temporizador = null;
   let aoClicarNoBotao = () => {};
   let rotuloDoBotao = '';
+  /** A etiqueta que aparece com o mouse ou o foco: o nome e a tecla do atalho gravado (ou nenhuma). */
+  let etiquetaDoBotao = { nome: '', tecla: null };
   /** A marca na tela: `{ lugar, palavras, chave, quadro }`, ou null. */
   let marca = null;
 
@@ -109,7 +111,11 @@
     azulejo.alt = '';
     const contador = elemento('span', 'pm-contador');
     contador.hidden = true;
-    botao.append(azulejo, contador);
+    // A etiqueta do protótipo, à esquerda do botão, com o mouse ou o foco do
+    // teclado. O leitor de tela já ouve o mesmo pelo nome e pela descrição do botão.
+    const dica = elemento('span', 'pm-dica');
+    dica.setAttribute('aria-hidden', 'true');
+    botao.append(azulejo, contador, dica);
     botao.addEventListener('click', evento => aoClicarNoBotao(evento));
 
     const corpo = elemento('div', 'pm-corpo');
@@ -133,8 +139,9 @@
       pm.addEventListener(tipo, evento => evento.stopPropagation());
     }
 
-    partes = { pm, pilula, botao, contador, estado, camada, descricaoDoContador };
+    partes = { pm, pilula, botao, contador, dica, estado, camada, descricaoDoContador };
     botao.setAttribute('aria-label', rotuloDoBotao);
+    desenharEtiqueta();
   }
 
   function elemento(tag, classe) {
@@ -177,10 +184,32 @@
     posicionar(container);
   }
 
-  /** O nome do botão para o leitor de tela (MIN-07, com o atalho gravado: “Minerar legenda (Alt+S)”). */
-  function definirRotulo(rotulo) {
+  /**
+   * O nome do botão para o leitor de tela (MIN-07, com o atalho gravado:
+   * “Minerar legenda (Alt+S)”) e a etiqueta visível: `nome` e a `tecla` num kbd
+   * (sem atalho, `tecla` é `null` e a etiqueta traz só o nome).
+   */
+  function definirRotulo(rotulo, { nome, tecla = null } = {}) {
     rotuloDoBotao = rotulo;
+    etiquetaDoBotao = { nome: nome || rotulo, tecla };
     partes?.botao.setAttribute('aria-label', rotulo);
+    desenharEtiqueta();
+  }
+
+  /** A etiqueta: o nome e o atalho; embaixo, com a mineração automática ligada, o contador em palavras (MIN-11). */
+  function desenharEtiqueta() {
+    if (!partes) return;
+    const { dica, descricaoDoContador } = partes;
+    const linha = elemento('span', 'pm-dica-nome');
+    linha.append(etiquetaDoBotao.nome);
+    if (etiquetaDoBotao.tecla) linha.append(raiz.Veio.montarTecla(etiquetaDoBotao.tecla));
+    const conteudo = [linha];
+    if (descricaoDoContador.textContent) {
+      const contagem = elemento('span', 'pm-dica-contador');
+      contagem.textContent = descricaoDoContador.textContent;
+      conteudo.push(contagem);
+    }
+    dica.replaceChildren(...conteudo);
   }
 
   function aoClicar(fn) {
@@ -201,6 +230,7 @@
     descricaoDoContador.textContent = contagem?.descricao || '';
     if (contagem?.descricao) botao.setAttribute('aria-describedby', descricaoDoContador.id);
     else botao.removeAttribute('aria-describedby');
+    desenharEtiqueta();
     if (!contagem) return;
     contador.textContent = contagem.texto;
     contador.classList.toggle('pm-contador--limite', Boolean(contagem.noLimite));

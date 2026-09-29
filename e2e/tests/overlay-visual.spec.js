@@ -70,11 +70,19 @@ test('o botão flutuante parado', async ({ page, paginas }) => {
   await expect(player(page)).toHaveScreenshot('botao.png');
 });
 
-test('o botão com o mouse por cima: inteiro, sem rótulo', async ({ page, paginas }) => {
+test('o botão com o mouse por cima: inteiro, com a etiqueta do protótipo (o atalho e o contador do dia)', async ({ page, paginas, extensao }) => {
+  const agora = new Date();
+  const hoje = [agora.getFullYear(), String(agora.getMonth() + 1).padStart(2, '0'), String(agora.getDate()).padStart(2, '0')].join('-');
+  await extensao.gravarStorage({
+    pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 15 }, ru: { enabled: false, dailyLimit: 20 } },
+    pm_auto_miner_daily: { date: hoje, en: { count: 8 }, ru: { count: 0 } },
+  });
   await abrirPlayer(page, paginas);
   const botao = page.getByRole('button', { name: 'Minerar legenda (Alt+S)' });
+  await expect(page.locator('perpetualminer-overlay .pm-contador')).toHaveText('8/15');
   await botao.hover();
   await expect.poll(() => botao.evaluate(no => getComputedStyle(no).opacity)).toBe('1');
+  await expect(page.locator('perpetualminer-overlay .pm-dica')).toBeVisible();
   await expect(player(page)).toHaveScreenshot('botao-hover.png');
 });
 

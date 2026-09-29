@@ -431,8 +431,11 @@ take trusted events.
 - **Button:** the Veio tile (`veio/icones/icone.svg`) in a 46 px circle (the prototype's size), 16 px from the
   right and 96 px from the bottom of the player (the prototype's corner, a little higher and further right), a real `<button>` whose `aria-label` is MIN-07 with the recorded caption shortcut (“Minerar legenda
   (Alt+S)”, or “Minerar legenda” with none). At rest it is half faded (opacity .55); hover, keyboard focus and
-  an open pill bring it to 100%. There is no visible label (the owner's review of PR #66): the name with the
-  shortcut is for the screen reader. It lives in the player's container (so it stays in full screen) and only
+  an open pill bring it to 100%. Hover and keyboard focus also show the prototype's label to its left
+  (`.pm-dica`, the owner's review of PR #72, which reverses #66's “no visible label”): “Minerar legenda” with the
+  recorded shortcut in a `kbd` (`Veio.montarTecla`; no shortcut → the name alone) and, with the automatic mining on
+  for the caption's language, MIN-11 below it in `muted`. It is `aria-hidden` — the screen reader already hears the
+  same through the button's name and description — and never shows over an open pill. It lives in the player's container (so it stays in full screen) and only
   exists where there is a video.
 - **Mark (D of M1, #41):** one rule — the feedback marks the text where it is; when it can't, the button
   speaks (the pill). On a success whose text is still on screen, the overlay draws, over the site's text and

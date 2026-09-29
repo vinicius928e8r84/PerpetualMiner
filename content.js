@@ -33,7 +33,8 @@ let _idiomaDaLegenda = null;
 Atalhos.acompanharAtalhos(atalhos => {
   _atalhos = atalhos;
   const tecla = Atalhos.rotuloDoAtalho(atalhos.legenda);
-  Overlay.definirRotulo(tecla ? textoDaVoz('MIN-07.comAtalho', { atalho: tecla }) : textoDaVoz('MIN-07.semAtalho'));
+  Overlay.definirRotulo(tecla ? textoDaVoz('MIN-07.comAtalho', { atalho: tecla }) : textoDaVoz('MIN-07.semAtalho'),
+    { nome: textoDaVoz('MIN-07.semAtalho'), tecla });
 });
 
 Overlay.aoClicar(evento => minerarLegenda(evento));

@@ -170,6 +170,51 @@
   outline-offset: 3px;
 }
 
+/* A etiqueta do protótipo: à esquerda do botão, com o mouse ou o foco do
+   teclado. O nome e o atalho gravado num kbd; embaixo, com a mineração
+   automática ligada, o contador em palavras. Some com a pílula aberta, que já
+   ocupa esse lugar. */
+.pm-dica {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 10px);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 9px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-icone);
+  background: var(--veio-surface);
+  color: var(--veio-text);
+  font-family: var(--veio-fonte-ui);
+  font-size: var(--veio-tam-tecla);
+  font-weight: var(--veio-peso-rotulo);
+  line-height: 1.4;
+  white-space: nowrap;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.pm-botao:hover .pm-dica,
+.pm-botao:focus-visible .pm-dica {
+  display: flex;
+}
+
+.pm-pilula--aberta .pm-botao .pm-dica,
+.pm-pilula--livre .pm-botao .pm-dica {
+  display: none;
+}
+
+.pm-dica .veio-kbd {
+  margin-left: 5px;
+}
+
+.pm-dica-contador {
+  color: var(--veio-muted);
+  font-weight: 500;
+}
+
 .pm-azulejo {
   display: block;
   width: 46px;
