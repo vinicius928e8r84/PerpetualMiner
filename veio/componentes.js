@@ -639,6 +639,36 @@
     return teclas;
   }
 
+  /**
+   * O anel de progresso do lembrete “Configuração pela metade” (ONB-14 no
+   * popup, ONB-15 em Frases): `n` de `total` em ouro sobre o trilho. É só
+   * desenho (`aria-hidden`): quem o usa diz o número em texto ao lado.
+   */
+  function montarAnelDeProgresso(n, total, { documento = document } = {}) {
+    const svg = documento.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'veio-anel');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    const circulo = classe => {
+      const c = documento.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('class', classe);
+      c.setAttribute('cx', '12');
+      c.setAttribute('cy', '12');
+      c.setAttribute('r', String(RAIO_DO_ANEL));
+      return c;
+    };
+    const progresso = circulo('veio-anel__progresso');
+    const volta = 2 * Math.PI * RAIO_DO_ANEL;
+    const parte = total > 0 ? Math.min(Math.max(n / total, 0), 1) : 0;
+    progresso.setAttribute('stroke-dasharray', `${volta * parte} ${volta}`);
+    progresso.setAttribute('transform', 'rotate(-90 12 12)');
+    svg.append(circulo('veio-anel__trilho'));
+    // Sem nenhum passo, o anel é só o trilho (a ponta redonda seria um ponto).
+    if (parte > 0) svg.append(progresso);
+    return svg;
+  }
+  const RAIO_DO_ANEL = 9;
+
   raiz.Veio = {
     iconeVeio,
     abrirModal,
@@ -655,5 +685,6 @@
     refletirSelecao,
     montarTecla,
     montarTeclas,
+    montarAnelDeProgresso,
   };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

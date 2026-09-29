@@ -267,3 +267,28 @@ test('a nuvem falhou (ADD-06): o aviso persistente no topo de Frases', async ({ 
     mask: [page.locator('#frases-lista, #frases-paginas')],
   });
 });
+
+// O lembrete “Configuração pela metade” (ONB-15, #44): a faixa ouro no topo de
+// Frases, com o anel, Ocultar e Continuar configuração; na janela estreita ela
+// quebra em linhas. As frases e a Conexão respondendo são 2 dos 6 passos.
+test.describe('configuração pela metade (ONB-15)', () => {
+  test.use({ lembreteDaConfiguracao: true });
+
+  const faixa = page => page.getByRole('complementary', { name: /A configuração ficou pela metade: 2 de 6 passos/ });
+
+  test('a faixa no topo de Frases', async ({ page, extensao }) => {
+    await extensao.gravarStorage({ frases: FRASES });
+    await abrirFrases(page, extensao);
+    await expect(faixa(page)).toBeVisible();
+    await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(10);
+    await expect(page).toHaveScreenshot('frases-configuracao-pela-metade.png', naJanela(page));
+  });
+
+  test('a faixa na janela estreita, com a sidebar em trilho', async ({ page, extensao }) => {
+    await extensao.gravarStorage({ frases: FRASES });
+    await abrirFrases(page, extensao, 720);
+    await expect(faixa(page)).toBeVisible();
+    await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(10);
+    await expect(page).toHaveScreenshot('frases-configuracao-pela-metade-estreita.png', naJanela(page));
+  });
+});

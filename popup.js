@@ -3,8 +3,8 @@
 // O popup “Cockpit” (docs/design/popup/, variante A). A base compartilhada é
 // carregada antes pelo popup.html: o catálogo da Voz, os componentes da Veio,
 // o detector de idioma, os atalhos gravados e o Contexto da frase.
-const { IDIOMAS, textoDaVoz, Atalhos, minerarFraseManual } = PerpetualMiner;
-const { iconeVeio, escreverFrase, montarTeclas } = PerpetualMiner.Veio;
+const { IDIOMAS, textoDaVoz, Atalhos, minerarFraseManual, Configuracao } = PerpetualMiner;
+const { iconeVeio, escreverFrase, montarTeclas, montarAnelDeProgresso } = PerpetualMiner.Veio;
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
 
 const QUANTAS_ULTIMAS = 5;
@@ -28,6 +28,7 @@ const idsChegando = new Set();        // as que ainda estão no realce: um redes
 let atalhoDeLegenda = Atalhos.ATALHOS_PADRAO.legenda;
 let mineracaoAutomatica = null;       // { settings, daily } do service worker
 let conexaoLigada = null;             // null até o /health da Conexão com o Anki responder
+let configuracao = null;              // o retrato da configuração (lib/configuracao.js)
 let minerando = false;
 
 const porId = id => document.getElementById(id);
@@ -40,6 +41,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   porId('abrir-painel').addEventListener('click', () => abrirPainel());
   porId('ver-todas').addEventListener('click', () => abrirPainel('#frases'));
+  porId('lembrete').addEventListener('click', () => abrirPainel(configuracao.enderecoParaContinuar));
+  Configuracao.acompanhar(retrato => {
+    configuracao = retrato;
+    desenharLembrete();
+  });
   prepararMineracaoRapida();
 
   chrome.storage.local.get({ frases: [] }, data => {
@@ -75,6 +81,8 @@ function escreverCopiaFixa() {
   porId('titulo-automatica-texto').textContent = textoDaVoz('POP-10');
   porId('automatica-por-dia').textContent = textoDaVoz('POP-14.porDia');
   porId('nota-conexao').textContent = textoDaVoz('ONB-10');
+  porId('lembrete-corpo').textContent = textoDaVoz('ONB-14.corpo');
+  porId('lembrete-continuar').textContent = textoDaVoz('ONB-14.continuar');
   porId('titulo-ultimas-texto').textContent = textoDaVoz('POP-13.titulo');
   porId('ver-todas').textContent = textoDaVoz('POP-13.verTodas');
 
@@ -329,6 +337,8 @@ async function conferirConexao() {
     conexaoLigada = false;
   }
   refletirNotaDaConexao();
+  Configuracao.mostrarConexao(conexaoLigada);
+  desenharLembrete();
 }
 
 /**
@@ -340,6 +350,24 @@ function refletirNotaDaConexao() {
   const mineradoHoje = Boolean(mineracaoAutomatica)
     && IDIOMAS_DA_MINERACAO.some(({ chave }) => numerosDoIdioma(chave).n > 0);
   porId('nota-conexao').hidden = conexaoLigada !== false || mineradoHoje;
+}
+
+// ─── Configuração pela metade ─────────────────────────────────────────────────
+
+/**
+ * O cartão ONB-14, enquanto a Boas-vindas não chegou a Tudo pronto e o lembrete
+ * não foi ocultado (em Frases). Ele espera o /health da Conexão com o Anki,
+ * que conta um dos passos: sem isso, o número pularia com o popup já aberto.
+ * O cartão é o botão, e só o conteúdo dele é refeito: o foco fica nele.
+ */
+function desenharLembrete() {
+  const cartao = porId('lembrete');
+  const aparece = Boolean(configuracao?.lembrete) && conexaoLigada !== null;
+  cartao.hidden = !aparece;
+  if (!aparece) return;
+  const { resolvidos: n, total } = configuracao;
+  porId('lembrete-anel').replaceChildren(montarAnelDeProgresso(n, total));
+  porId('lembrete-titulo').textContent = textoDaVoz('ONB-14.titulo', { n, total });
 }
 
 // ─── Mineração rápida ─────────────────────────────────────────────────────────

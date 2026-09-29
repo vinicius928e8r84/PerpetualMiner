@@ -113,6 +113,19 @@
           </div>
         </header>
 
+        <!-- O lembrete “Configuração pela metade” (ONB-15), enquanto a Boas-vindas
+             não chegou a Tudo pronto e ele não foi ocultado (painel-lembrete.js). -->
+        <aside class="frases-lembrete" id="frases-lembrete" aria-labelledby="frases-lembrete-texto" hidden>
+          <span class="frases-lembrete__anel" id="frases-lembrete-anel"></span>
+          <p class="frases-lembrete__texto" id="frases-lembrete-texto"></p>
+          <div class="frases-lembrete__acoes">
+            <button class="veio-botao veio-botao--fantasma veio-botao--compacto" id="frases-lembrete-ocultar" type="button"
+                    data-voz="ONB-15.ocultar"></button>
+            <button class="veio-botao veio-botao--contorno veio-botao--compacto" id="frases-lembrete-continuar" type="button"
+                    data-voz="ONB-15.continuar"></button>
+          </div>
+        </aside>
+
         <!-- Os avisos persistentes da área (C1): a nuvem ficou com as frases
              apagadas (PAI-15) ou mineradas (ADD-06), e o copiar que não deu (PAI-17). -->
         <div class="frases-avisos" id="frases-avisos"></div>
@@ -665,11 +678,13 @@
   <script src="lib/mineracao-rapida.js"></script>
   <script src="lib/contexto.js"></script>
   <script src="lib/atalhos.js"></script>
+  <script src="lib/configuracao.js"></script>
   <script src="tombstone.js"></script>
   <script src="painel-shell.js"></script>
   <script src="painel-conta.js"></script>
   <script src="painel-atalhos.js"></script>
   <script src="painel-boas-vindas.js"></script>
+  <script src="painel-lembrete.js"></script>
   <script src="painel-chave.js"></script>
   <script src="painel-perigo.js"></script>
   <script src="painel-envio.js"></script>

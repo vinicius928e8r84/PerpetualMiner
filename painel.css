@@ -737,6 +737,39 @@ body {
 }
 
 /* Os avisos persistentes da área (C1), acima dos filtros: PAI-15 e PAI-17. */
+/* O lembrete “Configuração pela metade” (ONB-15): uma faixa ouro com o anel,
+   o texto, Ocultar e Continuar configuração; quebra em linhas na janela estreita. */
+.frases-lembrete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--veio-accent) 45%, var(--veio-border));
+  border-radius: var(--veio-raio-card);
+  background: color-mix(in srgb, var(--veio-accent) 6%, transparent);
+}
+
+.frases-lembrete[hidden] {
+  display: none;
+}
+
+.frases-lembrete__anel {
+  display: flex;
+}
+
+.frases-lembrete__texto {
+  flex: 1;
+  min-width: 200px;
+  margin: 0;
+}
+
+.frases-lembrete__acoes {
+  display: flex;
+  gap: 8px;
+}
+
 .frases-avisos {
   display: grid;
   gap: 8px;

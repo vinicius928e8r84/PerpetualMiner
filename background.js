@@ -114,11 +114,16 @@ chrome.runtime.onInstalled.addListener(aoInstalar);
 
 /**
  * O menu de contexto é criado como sempre; só a instalação (não a atualização)
- * abre a Boas-vindas numa aba (item 8 da lista fechada, ONB-01).
+ * abre a Boas-vindas numa aba (item 8 da lista fechada, ONB-01) e deixa a
+ * configuração começada em `pm_boas_vindas`, que põe o lembrete “Configuração
+ * pela metade” no popup e em Frases até ela chegar a Tudo pronto (item 9,
+ * lib/configuracao.js). Quem atualiza nunca passou pela Boas-vindas: sem a
+ * chave, não vê lembrete.
  */
-function aoInstalar(detalhes) {
+async function aoInstalar(detalhes) {
   registrarMenuDeContexto();
   if (detalhes?.reason === 'install') {
+    await chrome.storage.local.set({ pm_boas_vindas: { agoraNao: [], concluida: false } });
     chrome.tabs.create({ url: chrome.runtime.getURL('painel.html#boas-vindas') });
   }
 }

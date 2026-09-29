@@ -18,8 +18,10 @@
 // respondendo, um idioma da mineração automática ligado, a chave do Gemini. O
 // que a pessoa fez fora da página já aparece feito. Só o “agora não” (e se ela
 // chegou a Abrir painel) é desta página, gravado neste computador em
-// `pm_boas_vindas`. “Continuar” num passo obrigatório segue sem marcar nada:
-// ele fica “falta” no resumo.
+// `pm_boas_vindas`. Quem lê e grava tudo isso é `lib/configuracao.js`, o mesmo
+// que desenha o lembrete “Configuração pela metade” no popup e em Frases.
+// “Continuar” num passo obrigatório segue sem marcar nada: ele fica “falta” no
+// resumo.
 //
 // O passo 1 tem a mineração rápida do popup (SALVAR_HISTORICO com a Fonte
 // `manual`) e o passo 2 o gravador de Configurações › Atalhos
@@ -28,68 +30,50 @@
 // cópia vem do catálogo da Voz.
 
 (function (raiz) {
-  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual } = raiz;
+  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao } = raiz;
 
-  const PROGRESSO = 'pm_boas_vindas';
   const ABERTURA = 'abertura';
   const PRONTO = 'pronto';
 
   /**
-   * Os 6 passos, na ordem travada (valor primeiro; a Conexão antes da mineração
-   * automática). Cada um diz, num lugar só, quando está feito (pelo estado
-   * real), o valor que o resumo mostra e o que a tela dele monta.
+   * O que cada passo tem nesta página: o valor que o resumo mostra quando ele
+   * está feito e o que a tela dele monta. A ordem, o “opcional” e quando ele
+   * está feito são de `Configuracao.PASSOS`.
    */
-  const PASSOS = [
-    {
-      id: 'minerar',
-      opcional: false,
-      feito: () => estado.totalDeFrases > 0,
-      valor: () => textoDaVoz('PAI-05', { n: estado.totalDeFrases }),
+  const DESTA_PAGINA = {
+    minerar: {
+      valor: e => textoDaVoz('PAI-05', { n: e.totalDeFrases }),
       montar: montarPasso1,
     },
-    {
-      id: 'atalho',
-      opcional: false,
-      feito: () => Boolean(estado.atalhos[Atalhos.ACOES.SELECAO]),
-      valor: () => Atalhos.rotuloDoAtalho(estado.atalhos[Atalhos.ACOES.SELECAO]),
+    atalho: {
+      valor: e => Atalhos.rotuloDoAtalho(e.atalhoDeSelecao),
       montar: montarPasso2,
     },
-    {
-      id: 'conta',
-      opcional: true,
-      feito: () => Boolean(estado.conta),
-      valor: () => estado.conta.displayName || textoDaVoz('CFG-10'),
+    conta: {
+      valor: e => e.conta.displayName || textoDaVoz('CFG-10'),
       montar: () => montarPassoSoTexto('ONB-07'),
     },
-    {
-      id: 'anki',
-      opcional: false,
-      feito: () => estado.conexaoLigada,
+    anki: {
       valor: () => textoDaVoz('ONB-13.ligada'),
       montar: () => montarPassoSoTexto('ONB-08.corpo'),
     },
-    {
-      id: 'automatica',
-      opcional: true,
-      feito: () => estado.automatica.en || estado.automatica.ru,
+    automatica: {
       // Os idiomas ligados, separados pelo “·” da Voz (V5).
-      valor: () => [estado.automatica.en && IDIOMAS.INGLES, estado.automatica.ru && IDIOMAS.RUSSO]
+      valor: e => [e.automatica.en && IDIOMAS.INGLES, e.automatica.ru && IDIOMAS.RUSSO]
         .filter(Boolean).join(' · '),
       montar: () => montarPassoSoTexto('ONB-09.corpo'),
     },
-    {
-      id: 'chave',
-      opcional: true,
-      feito: () => Boolean(estado.chave),
+    chave: {
       valor: () => textoDaVoz('ONB-13.salva'),
       montar: () => montarPassoSoTexto('ONB-11.corpo'),
     },
-  ];
+  };
+  const PASSOS = Configuracao.PASSOS.map(passo => ({ ...passo, ...DESTA_PAGINA[passo.id] }));
   const TELAS = [ABERTURA, ...PASSOS.map(p => p.id), PRONTO];
   const passoDa = tela => PASSOS.find(p => p.id === tela);
 
   /** A situação de um passo e a palavra dela no catálogo (ONB-13). */
-  const SITUACAO = Object.freeze({ FEITO: 'feito', AGORA_NAO: 'agora-nao', FALTA: 'falta' });
+  const { SITUACAO } = Configuracao;
   const TEXTO_DA_SITUACAO = {
     [SITUACAO.FEITO]: 'ONB-13.feito',
     [SITUACAO.AGORA_NAO]: 'ONB-13.agoraNao',
@@ -98,13 +82,8 @@
 
   const estado = {
     tela: ABERTURA,
-    totalDeFrases: 0,
     atalhos: { ...Atalhos.ATALHOS_PADRAO },
-    conta: null,           // { displayName } com uma conta conectada
-    conexaoLigada: false,
-    automatica: { en: false, ru: false },
-    chave: '',
-    progresso: { agoraNao: [], concluida: false },
+    configuracao: null,    // o retrato de Configuracao, depois da primeira leitura
     minerando: false,
   };
 
@@ -120,9 +99,14 @@
   function iniciarBoasVindas() {
     montarLista();
     montarTelas();
-    lerEstadoGravado();
-    raiz.Shell.aoMudarAConexao(situacao => {
-      estado.conexaoLigada = situacao === raiz.Shell.CONEXAO.LIGADA;
+    Configuracao.acompanhar(retrato => {
+      estado.configuracao = retrato;
+      desenhar();
+    });
+    raiz.Shell.aoMudarAConexao(situacao => Configuracao.mostrarConexao(situacao === raiz.Shell.CONEXAO.LIGADA));
+    // O atalho de legenda do passo 1 (o de seleção vem no retrato).
+    Atalhos.acompanharAtalhos(atalhos => {
+      estado.atalhos = atalhos;
       desenhar();
     });
     window.addEventListener('hashchange', () => mostrarTelaDoEndereco({ focar: true }));
@@ -143,76 +127,10 @@
     location.hash = tela === ABERTURA ? '#boas-vindas' : `#boas-vindas/${tela}`;
   }
 
-  // ─── O que já está gravado ─────────────────────────────────────────────────
-
-  function lerEstadoGravado() {
-    chrome.storage.local.get({
-      frases: [],
-      pm_user_info: null,
-      pm_firebase_auth: null,
-      pm_auto_miner_settings: null,
-      geminiApiKey: '',
-      [PROGRESSO]: null,
-    }, dados => {
-      aplicarGravado(dados);
-      desenhar();
-    });
-    chrome.storage.onChanged.addListener((mudancas, area) => {
-      if (area !== 'local') return;
-      const novos = {};
-      for (const [chave, { newValue }] of Object.entries(mudancas)) novos[chave] = newValue;
-      // A conta depende das duas chaves juntas, então ela é relida inteira; o
-      // resto do mesmo lote (a frase, a chave, o progresso) entra na hora.
-      const mudouAConta = 'pm_user_info' in novos || 'pm_firebase_auth' in novos;
-      delete novos.pm_user_info;
-      delete novos.pm_firebase_auth;
-      aplicarGravado(novos);
-      desenhar();
-      if (mudouAConta) {
-        chrome.storage.local.get({ pm_user_info: null, pm_firebase_auth: null }, dados => {
-          aplicarGravado(dados);
-          desenhar();
-        });
-      }
-    });
-    Atalhos.acompanharAtalhos(atalhos => {
-      estado.atalhos = atalhos;
-      desenhar();
-    });
-  }
-
-  function aplicarGravado(dados) {
-    if ('frases' in dados) estado.totalDeFrases = (dados.frases || []).length;
-    if ('pm_user_info' in dados) {
-      estado.conta = dados.pm_user_info && dados.pm_firebase_auth ? dados.pm_user_info : null;
-    }
-    if ('pm_auto_miner_settings' in dados) {
-      const ajustes = dados.pm_auto_miner_settings || {};
-      estado.automatica = { en: Boolean(ajustes.en?.enabled), ru: Boolean(ajustes.ru?.enabled) };
-    }
-    if ('geminiApiKey' in dados) estado.chave = dados.geminiApiKey || '';
-    if (PROGRESSO in dados) {
-      const gravado = dados[PROGRESSO] || {};
-      estado.progresso = {
-        agoraNao: Array.isArray(gravado.agoraNao) ? gravado.agoraNao : [],
-        concluida: Boolean(gravado.concluida),
-      };
-    }
-  }
-
-  function gravarProgresso(mudanca) {
-    estado.progresso = { ...estado.progresso, ...mudanca };
-    chrome.storage.local.set({ [PROGRESSO]: estado.progresso });
-  }
-
   // ─── Os passos ─────────────────────────────────────────────────────────────
 
-  /** Feito vale sobre “agora não”: o que a pessoa fez depois de pular conta. */
-  function situacaoDo(passo) {
-    if (passo.feito()) return SITUACAO.FEITO;
-    if (estado.progresso.agoraNao.includes(passo.id)) return SITUACAO.AGORA_NAO;
-    return SITUACAO.FALTA;
-  }
+  /** Até a primeira leitura do que está gravado, todo passo falta. */
+  const situacaoDo = passo => (estado.configuracao ? estado.configuracao.situacaoDo(passo.id) : SITUACAO.FALTA);
 
   const tituloDaTela = tela => (tela === PRONTO ? textoDaVoz('ONB-12.titulo') : textoDaVoz(`ONB-03.${tela}`));
 
@@ -403,7 +321,7 @@
       desenharMarca(marca, situacao, false);
       // Feito mostra o valor (“Alt+Q”); o leitor de tela ouve “feito: Alt+Q”.
       const lado = situacao === SITUACAO.FEITO
-        ? elemento('span', 'bv-resumo__lado', elemento('span', 'veio-so-leitor', `${textoDaVoz(TEXTO_DA_SITUACAO[situacao])}: `), passo.valor())
+        ? elemento('span', 'bv-resumo__lado', elemento('span', 'veio-so-leitor', `${textoDaVoz(TEXTO_DA_SITUACAO[situacao])}: `), passo.valor(estado.configuracao.estado))
         : elemento('span', 'bv-resumo__lado', textoDaVoz(TEXTO_DA_SITUACAO[situacao]));
       return elemento('li', 'bv-resumo__item', marca, elemento('span', null, tituloDaTela(passo.id)), lado);
     }));
@@ -435,7 +353,7 @@
   function desenharRodape(tela, passo) {
     // Refeito só quando muda o que ele mostra: um redesenho pelo storage não
     // tira o foco do botão em que a pessoa está.
-    const comAgoraNao = Boolean(passo?.opcional && !passo.feito());
+    const comAgoraNao = Boolean(passo?.opcional && situacaoDo(passo) !== SITUACAO.FEITO);
     const desenhoDoRodape = `${tela}|${comAgoraNao}`;
     if (desenhoDoRodape === rodapeDesenhadoPara) return;
     rodapeDesenhadoPara = desenhoDoRodape;
@@ -455,7 +373,7 @@
     const voltar = botaoDoRodape('ONB-04.voltar', 'secundario', () => irPara(anterior));
     if (tela === PRONTO) {
       rodape.replaceChildren(voltar, espaco, botaoDoRodape('ONB-12.abrirPainel', 'primario', () => {
-        gravarProgresso({ concluida: true });
+        Configuracao.concluir();
         location.hash = '#frases';
       }));
       return;
@@ -464,9 +382,7 @@
     const botoes = [voltar, espaco];
     if (comAgoraNao) {
       botoes.push(botaoDoRodape('ONB-04.agoraNao', 'fantasma', () => {
-        if (!estado.progresso.agoraNao.includes(passo.id)) {
-          gravarProgresso({ agoraNao: [...estado.progresso.agoraNao, passo.id] });
-        }
+        Configuracao.marcarAgoraNao(passo.id);
         irPara(seguinte);
       }));
     }
