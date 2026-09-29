@@ -418,7 +418,7 @@ test('lendo a 1ª foto de várias, a coluna diz “Lendo a foto 1 de 3…”, e 
   for (const nome of ['a.png', 'b.png', 'c.png']) await expect(fotoNaFila(page, nome)).toContainText('Cancelada');
   const coluna = colunaDasFrases(page);
   // Nada foi lido: a coluna não promete frases que não existem.
-  await expect(coluna.getByText('Leitura cancelada.', { exact: true })).toBeVisible();
+  await expect(coluna.getByText('Leitura cancelada', { exact: true })).toBeVisible();
   await expect(coluna.getByText('Nenhuma foto chegou a ser lida.', { exact: true })).toBeVisible();
   await expect(page.getByText(/frases das fotos já lidas/)).toHaveCount(0);
   // Sem frases, a própria coluna é o aviso: ele não se repete no topo.

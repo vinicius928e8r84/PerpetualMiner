@@ -372,6 +372,7 @@ To be or not to be, that is the question`;
       cancelar: textoDaVoz('FOT-18.cancelar'),
       confirmar: textoDaVoz('FOT-18.confirmar', { n }),
       aoConfirmar: recomecar,
+      confirmarComContorno: true,
     });
   }
 
@@ -514,7 +515,7 @@ To be or not to be, that is the question`;
 
     desenhado.avisoDoCancelamento = mostrarAviso({
       tom: 'info',
-      icone: 'alerta',
+      icone: 'info',
       abertura: textoDaVoz('FOT-21.abertura'),
       texto: textoDaVoz('FOT-21.aviso', { n: canceladas.length }),
     });
@@ -839,7 +840,7 @@ To be or not to be, that is the question`;
   /** Cancelada antes de ler qualquer foto (FOT-21, como no protótipo). */
   function montarCancelada() {
     return vazio('fechar',
-      elemento('p', 'veio-vazio__titulo', textoDaVoz('FOT-21.abertura')),
+      elemento('p', 'veio-vazio__titulo', textoDaVoz('FOT-21.titulo')),
       elemento('p', 'veio-vazio__texto', textoDaVoz('FOT-21.nenhumaLida')),
       botaoRecomecar());
   }

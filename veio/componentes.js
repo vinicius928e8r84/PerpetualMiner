@@ -95,6 +95,8 @@
     selecao: ['<path d="M4 6h16M4 12h10M4 18h7"/>'],
     automatica: ['<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>'],
     alerta: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 7.5v5.5M12 16.5v.01"/>'],
+    // O aviso que só informa (tom `info`): o “i”, sem alarme.
+    info: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 16.5V11M12 7.5v.01"/>'],
     // O menu Minerar frases: Colar (a prancheta), Foto (a câmera) e o ↗ de
     // “abre numa aba nova”.
     colar: ['<rect x="8" y="2" width="8" height="4" rx="1"/>', '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>'],
@@ -206,10 +208,11 @@
    * @param {object} conteudo
    *   `titulo`, `corpo`, `cancelar`, `confirmar`  os textos, do catálogo;
    *   `aoConfirmar`  o que o perigo faz;
-   *   `id`           prefixo dos ids do título e do corpo (aria).
+   *   `id`           prefixo dos ids do título e do corpo (aria);
+   *   `confirmarComContorno`  o perigo em contorno em vez de preenchido.
    * @returns {{ fechar: () => void }}
    */
-  function abrirConfirmacao({ titulo, corpo, cancelar, confirmar, aoConfirmar, id, documento = document }) {
+  function abrirConfirmacao({ titulo, corpo, cancelar, confirmar, aoConfirmar, id, confirmarComContorno = false, documento = document }) {
     const no = (tag, classe, texto) => {
       const elemento = documento.createElement(tag);
       elemento.className = classe;
@@ -223,7 +226,9 @@
     const seguro = no('button', 'veio-botao veio-botao--fantasma', cancelar);
     seguro.type = 'button';
     seguro.dataset.focoSeguro = '';
-    const perigo = no('button', 'veio-botao veio-botao--perigo-cheio', confirmar);
+    // `confirmarComContorno` é a exceção que o dono aprovou para o Recomeçar
+    // da foto (FOT-18, como no protótipo): o confirmar fica em `--perigo`.
+    const perigo = no('button', `veio-botao ${confirmarComContorno ? 'veio-botao--perigo' : 'veio-botao--perigo-cheio'}`, confirmar);
     perigo.type = 'button';
     const acoes = no('div', 'veio-modal__acoes');
     acoes.append(seguro, perigo);

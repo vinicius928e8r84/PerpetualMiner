@@ -346,7 +346,7 @@
     const lugar = el('div', { class: 'lugar-do-aviso' });
     const montar = () => lugar.append(montarAviso({
       tom: 'info',
-      icone: 'alerta',
+      icone: 'info',
       abertura: textoDaVoz('FOT-21.abertura'),
       texto: textoDaVoz('FOT-21.aviso', { n: 2 }),
       rotuloDeFechar: textoDaVoz('ONB-15.ocultar'),

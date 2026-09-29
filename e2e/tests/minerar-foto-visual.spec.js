@@ -123,6 +123,18 @@ test('leitura cancelada no meio: as frases das fotos lidas ficam, as outras “C
   await soltar();
 });
 
+test('leitura cancelada antes de ler qualquer foto: a coluna é o vazio', async ({ page, extensao, fakes }) => {
+  await abrir(page, extensao);
+  const soltar = fakes.gemini.segurarFrases([]);
+  await enviar(page, foto('IMG_2041.jpg'), foto('IMG_2042.jpg'));
+  await expect(fotoNaFila(page, 'IMG_2041.jpg')).toContainText('Lendo…');
+  await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await expect(fotoNaFila(page, 'IMG_2042.jpg')).toContainText('Cancelada');
+  await page.getByRole('button', { name: 'Escolher' }).blur();
+  await referencia(page, 'foto-cancelada-vazia');
+  await soltar();
+});
+
 test('Recomeçar com frases não mineradas: o modal de confirmação', async ({ page, extensao, fakes }) => {
   await abrir(page, extensao);
   await comDuasFotosLidas(page, fakes);
@@ -152,7 +164,13 @@ test('nenhuma marcação encontrada', async ({ page, extensao, fakes }) => {
 test('janela estreita: a fila sobe para cima das frases', async ({ page, extensao, fakes }) => {
   await abrir(page, extensao, { largura: 720 });
   await comDuasFotosLidas(page, fakes);
-  await referencia(page, 'foto-estreita');
+  // A janela, não a página inteira: “Minerar N frases” é uma barra presa ao pé
+  // da janela, e num print de página inteira ela cairia no meio da lista.
+  const naJanela = { mask: [page.locator('.veio-toasts')] };
+  await expect(page).toHaveScreenshot('foto-estreita.png', naJanela);
+  // No fim da lista, a barra fica logo depois da última frase.
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(page).toHaveScreenshot('foto-estreita-fim.png', naJanela);
 });
 
 test('tema claro', async ({ page, extensao, fakes }) => {
