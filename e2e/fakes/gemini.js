@@ -25,9 +25,19 @@ function criarFakeGemini() {
 
     let resposta = fila.length ? fila.shift() : [];
     if (resposta.espera) {
-      await resposta.espera;
-      resposta = resposta.resposta;
+      const { espera, respondida } = resposta;
+      await espera;
+      // A página pode ter desistido do pedido enquanto ele esperava
+      // (Cancelar, Recomeçar): responder a um pedido cancelado falha, e isso
+      // não é erro do teste.
+      await responder(route, resposta.resposta).catch(() => {});
+      respondida();
+      return undefined;
     }
+    return responder(route, resposta);
+  }
+
+  function responder(route, resposta) {
     if (resposta.semRede) return route.abort('internetdisconnected');
     if (resposta.bloqueada) {
       return responderJson(route, 200, { promptFeedback: { blockReason: resposta.bloqueada } });
@@ -53,13 +63,19 @@ function criarFakeGemini() {
     bloquear(motivo = 'OTHER') { fila.push({ bloqueada: motivo }); },
     /**
      * A próxima foto lida só recebe `frases` quando o teste chamar a função
-     * devolvida: até lá, ela fica em “Lendo…”.
+     * devolvida: até lá, ela fica em “Lendo…”. A função devolve uma promessa
+     * que se cumpre quando a resposta saiu (ou a página já tinha desistido).
      */
     segurarFrases(frases) {
       let soltar;
+      let respondida;
       const espera = new Promise(resolve => { soltar = resolve; });
-      fila.push({ espera, resposta: frases });
-      return soltar;
+      const saiu = new Promise(resolve => { respondida = resolve; });
+      fila.push({ espera, respondida, resposta: frases });
+      return () => {
+        soltar();
+        return saiu;
+      };
     },
   };
 }

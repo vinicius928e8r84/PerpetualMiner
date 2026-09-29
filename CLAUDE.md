@@ -336,9 +336,10 @@ itself). Every other sender is unchanged.
 ### Minerar de uma foto (`bookreader.*`, docs/design/foto/, variant C)
 
 Two columns under a top bar (Veio mark, FOT-01 name, the **Livro** field and “Voltar ao painel”). Left, the photo
-queue: the drop area (the whole page takes a drop; “Escolher” opens the picker), the progress (FOT-20) while reading,
+queue: the drop area (the whole page takes a drop; “Escolher” opens the picker), the progress (FOT-20, counting
+neither the preview nor the cancelled photos) and Cancelar while reading,
 and one card per photo with its thumbnail and status (FOT-19: Pronta · Na fila · Lendo… · N frases · Sem marcações ·
-Falhou + the cause), with the “Marcações que o Gemini lê” legend (FOT-24) at the foot. Right, the phrases grouped by
+Falhou + the cause and Tentar de novo · Cancelada), with the “Marcações que o Gemini lê” legend (FOT-24) at the foot. Right, the phrases grouped by
 photo (“Foto N · name”), with the single “Selecionar todas” checkbox (mixed with part marked), the count (FOT-09) and
 the sticky “Minerar N frases” (FOT-12; nothing marked → disabled with FOT-13). One photo stops at the preview
 (FOT-03, “Ler marcações”); several go straight to reading, one at a time, in order. Each phrase is editable in place
@@ -366,8 +367,21 @@ card, whose button (like the key-refused aviso) opens `painel.html#configuracoes
 the page through `chrome.storage.onChanged`. “Voltar ao painel” and that button focus the panel tab already open
 (any hash), moving it to the address when there is one, and only open a new tab when there is none. A panel already
 at that address gets no `hashchange`, so the page sends `PAINEL_REAPLICAR_ENDERECO` and `painel-shell.js` applies the
-address again (focusing the key field). Cancelar,
-Recomeçar and “Tentar de novo” on one photo are #37.
+address again (focusing the key field).
+
+**Cancelar** (FOT-06, in the “Fotos” title row while a photo is being read or waits in the queue) abandons the
+Gemini request in flight (`AbortController`, and whatever still arrives is dropped), marks the photo being read
+and the queued ones **Cancelada** and keeps the phrases of the photos already read; FOT-21 says so as an info
+aviso over the phrases (with the Base's `info` icon), or, when no photo was read, the phrases column itself says
+“Leitura cancelada” (`FOT-21.titulo`, no period, as in the prototype) and “Nenhuma foto chegou a ser lida.”
+(`FOT-21.nenhumaLida`, the prototype's copy). Focus goes to Escolher.
+**Recomeçar** (FOT-17: in the list header, the preview and the failed / no-marking / cancelled empties) clears
+the photos, the phrases and the avisos — and abandons the reading in flight, so no phantom phrase arrives later
+(bug of #9); the Livro stays. With phrases not yet mined (checked or not) it first asks in the Veio modal FOT-18
+(Cancelar is the safe focus; by the owner's call its Descartar is the outline `--perigo`, as in the prototype —
+the one exception to the danger rule below, through `confirmarComContorno`). A failed photo's card has **Tentar de novo** (FOT-19), which puts only that photo
+back in the queue; focus stays on its card. Below 820 px, “Minerar N frases” becomes a bar at the foot of the
+phrases column (the page background, a top border), so it never floats over the phrase cards.
 
 ### Base components (`veio/componentes.css` + `veio/componentes.js`)
 
@@ -382,8 +396,12 @@ const { abrirModal, mostrarToastDeSucesso, escreverFrase } = PerpetualMiner.Veio
 The rules the components encode, so a surface does not have to re-decide them:
 
 - **Danger has two variants:** `--perigo` (outline) is the entry that opens the destructive modal;
-  `--perigo-cheio` is only the button that confirms inside it.
-- **Modal:** `abrirModal(scrim)` puts the initial focus on the *safe* button (`[data-foco-seguro]`,
+  `--perigo-cheio` is only the button that confirms inside it. The single exception is Minerar de uma foto's
+  FOT-18 (`abrirConfirmacao({ confirmarComContorno: true })`), approved by the owner to match its prototype.
+- **Modal:** `abrirConfirmacao({ id, titulo, corpo, cancelar, confirmar, aoConfirmar })` builds and opens the whole
+  destructive confirmation (the fantasma Cancelar as the safe focus, the `--perigo-cheio` button, the aria wiring),
+  removes it on close and calls `aoConfirmar` after the focus went back; Zona de perigo and Recomeçar use it.
+  `abrirModal(scrim)`, under it, puts the initial focus on the *safe* button (`[data-foco-seguro]`,
   else the first one not painted as danger), traps focus, closes on Esc and on a click outside,
   returns focus to whoever opened it, and marks the rest of the page `inert`. The second press of a
   double click is not a click outside: it is the end of the click that opened the modal.
@@ -391,7 +409,9 @@ The rules the components encode, so a surface does not have to re-decide them:
   lives inside `dentroDe` (the page's `body` by default), so it uses that element's theme.
   Every error that asks for an action is `montarAviso(…)` instead — it stays in the place of the
   problem until closed, with the action beside it and the technical cause in a collapsed
-  “Detalhes” (V3 of the Voice). An aviso that *is* a state (a failed sync) passes `fechavel: false`:
+  “Detalhes” (V3 of the Voice). `abertura` puts the state's first sentence in bold before the text, `icone` a Base
+  icon at its start (`'info'`, the “i”, for an informative aviso), and `tom: 'info'` makes an aviso that only informs (FOT-21's cancelled reading): neutral
+  colours and `role="status"` instead of the danger `alert`. An aviso that *is* a state (a failed sync) passes `fechavel: false`:
   no ×, it leaves when the problem does. `montarDetalhes(causa)` is that same “Detalhes” alone, for
   when the screen's state already says what happened (the cloud refused, the session expired).
 - **Error on a field** is said by `aria-invalid="true"`, not by a class, so the screen reader hears
@@ -547,7 +567,7 @@ npm test         # launches Chromium with the unpacked extension and runs the su
 On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx playwright install-deps chromium`, once.
 
 - `e2e/fixtures.js` launches a fresh Chromium profile per test with the repo root loaded as an unpacked extension, fakes the network at the HTTP boundary and blocks every other external request. It gives tests `extensao` (id, service worker, `url()`, `lerStorage`/`gravarStorage`, `frases()`, `semearSessao()`), `fakes` and `paginas`.
-- `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`, with a stateful Envio queue following `bridge/server.py`: `moverEnvio`, `concluirEnvio({ duplicadas, falhas, erro, ankiError })`, `recusarEnvios(lang, { status } | { rede: true })`), Gemini (`responderFrases(frases)`, `falhar(status, mensagem)`, `ficarSemRede()`, `bloquear(motivo)` — a 200 with no text, the `promptFeedback.blockReason` —, `segurarFrases(frases)` — holds the photo in “Lendo…” until the returned function is called — and `chamadas`, with the key and MIME type of each read), and Firestore/Google (in-memory documents, token refresh; `ficarForaDoAr()`, `recusarAcesso()`, `recusarEscritas()`, `expirarSessao()`, `gravarFrases(uid, frases)`, `usarPerfil({ name, email, picture })`, the profile the Google login returns). `semearSessao({ expirada })` writes an account session to storage, skipping the real login.
+- `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`, with a stateful Envio queue following `bridge/server.py`: `moverEnvio`, `concluirEnvio({ duplicadas, falhas, erro, ankiError })`, `recusarEnvios(lang, { status } | { rede: true })`), Gemini (`responderFrases(frases)`, `falhar(status, mensagem)`, `ficarSemRede()`, `bloquear(motivo)` — a 200 with no text, the `promptFeedback.blockReason` —, `segurarFrases(frases)` — holds the photo in “Lendo…” until the returned function is called, which resolves once the answer went out (or the page had already given up on the request) — and `chamadas`, with the key and MIME type of each read), and Firestore/Google (in-memory documents, token refresh; `ficarForaDoAr()`, `recusarAcesso()`, `recusarEscritas()`, `expirarSessao()`, `gravarFrases(uid, frases)`, `usarPerfil({ name, email, picture })`, the profile the Google login returns). `semearSessao({ expirada })` writes an account session to storage, skipping the real login.
 - **The real Google login runs offline.** The `chrome.identity.launchWebAuthFlow` window loads outside Playwright's routing (a `context.route` never sees it), so the fixture maps `accounts.google.com` to a local HTTPS server (`fakes/login-google.js`, self-signed certificate made with `openssl` per worker, `--host-resolver-rules` + `--ignore-certificate-errors`). `fakes.google.proximoLogin('entrar'|'janela'|'falhar')` picks what the window does: return with tokens, stay open (the test closes it: cancelling), or fail to load. This also keeps Chromium's own background calls to that host off the internet.
 - `e2e/pages/`: local fixture pages where the content script is injected: `player.html` (fake player with a caption), `texto.html` (plain text to select), `sem-video.html`, `player-em-iframe.html?player=<url>` (embeds the player from another origin, e.g. `paginas.urlCruzada('player.html')`), `hostil.html` + `hostil-filho.html` (a page that tries to drive the extension by itself), `player-marcacao.html` / `texto-marcacao.html` (caption, title and selectable text carrying markup as text, to prove the content script always inserts page text as text, never as HTML), `player-com-campos.html` (a player with an input, a textarea, a contenteditable and an input inside a closed shadow root, which the page keeps as `window.campoFechado`), `video-escondido.html` (an ad frame whose only video is 1 px, embedded through `player-em-iframe.html`), `sem-video-com-imagens.html` (image captions with the classes the generic caption selectors look for, and no video) and `player-estilos-hostis.html` (a page whose CSS paints everything, to prove the overlay's styles and the site's never cross).
 - `tests/overlay-visual.spec.js` is the **visual reference of the overlay**, taken in the fake player resized to the prototype's player (1118 × 630), so the owner compares it with `docs/design/overlay/prototipo-overlay.html?variant=M1` at the same scale.
@@ -558,7 +578,7 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - `tests/painel-envio-visual.spec.js` holds the **visual reference of the Envio ao Anki**: the progress with one Envio running and one that did not start, a partial Envio with Continuar envio, the summary partial and complete (opened in Configurações), and Enviar ao Anki unavailable with its tooltip.
 - `tests/painel-shell-visual.spec.js` holds the **visual reference of the panel shell**: its approved states (Frases wide and as a rail, first run, the Conexão off with F1, Configurações with an account) as `toHaveScreenshot` baselines in `painel-shell-visual.spec.js-snapshots/` (taken on Linux, with the clock frozen on the day of the sample phrases). A visual change to the shell fails them; after the owner approves the new look, `npx playwright test painel-shell-visual --update-snapshots` replaces the reference. The content inside each area (`.conteudo-de-hoje`, and the Frases list, which has its own reference) is masked: the reference is the shell around it.
 - `tests/popup-visual.spec.js` holds the **visual reference of the popup** (a normal day, the light theme, first run with and without a shortcut, a limit reached, the Conexão off with nothing mined today, a failed quick mining, loading), at 340×600, compared by the owner side by side with the locked prototype (`?variant=A`).
-- `tests/minerar-foto-visual.spec.js` does the same for Minerar de uma foto (no key, start, preview, reading a batch, phrases of two photos, mined, one photo failed, no markings, the narrow window, the light theme), with the same marked page (`pages/pagina-marcada.png`) in every photo; compared by the owner with the locked prototype (`docs/design/foto/prototipo-bookreader.html?variant=C`). The toast is masked.
+- `tests/minerar-foto-visual.spec.js` does the same for Minerar de uma foto (no key, start, preview, reading a batch, phrases of two photos, mined, one photo failed, cancelled halfway, cancelled before any photo was read, the Recomeçar modal, no markings, the narrow window — the window itself, at the top and at the end of the list, since the Minerar bar is pinned to it —, the light theme), with the same marked page (`pages/pagina-marcada.png`) in every photo; compared by the owner with the locked prototype (`docs/design/foto/prototipo-bookreader.html?variant=C`). The toast is masked.
 - `tests/configuracoes-visual.spec.js` does the same for Configurações (cards closed; Conta & sync synced, not synced, logged out after a failed login; Chave do Gemini saved and refused empty; Zona de perigo with an account and its modal; Atalhos open, recording and with a repeated shortcut refused; the narrow window; Aparência open in dark and in light), compared by the owner side by side with the locked prototype (`?variant=C`).
 - `HEADED=1 npm test` shows the browser.
 - Tests assert what the person sees and what ends up stored, never internal functions. Three narrow exceptions, each named in the test's own comment:

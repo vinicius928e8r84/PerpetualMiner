@@ -3,9 +3,8 @@
 // Minerar de uma foto · Página Fotos × frases (#36), o layout C travado em
 // docs/design/foto/. A página lê a foto pelo Gemini (falsificado na fronteira
 // HTTP) e mina pelo service worker de verdade: os testes olham o que a pessoa
-// vê na tela e o que fica gravado em `frases`.
-//
-// Cancelar, Recomeçar e “Tentar de novo” numa foto são do #37.
+// vê na tela e o que fica gravado em `frases`. Cancelar, Recomeçar e
+// “Tentar de novo” numa foto são do #37.
 
 const { test, expect } = require('../fixtures');
 
@@ -358,6 +357,237 @@ test('fechado, o aviso das falhas não volta com uma foto lida; volta com uma fa
   await enviarFotos(page, foto('d.png'));
   await expect(fotoNaFila(page, 'd.png')).toContainText('Falhou');
   await expect(aviso).toContainText('Não deu para ler 2 fotos.');
+});
+
+// ─── Cancelar (FOT-06, FOT-07, FOT-21) ───────────────────────────────────────
+
+const FRASES_DA_PAGINA_3 = ['The lamp flickered twice and went out.'];
+const botaoCancelar = page => page.getByRole('button', { name: 'Cancelar', exact: true });
+const botaoRecomecar = page => page.getByRole('button', { name: 'Recomeçar' });
+const dialogo = page => page.getByRole('dialog');
+
+test('4 fotos, Cancelar depois da 2ª: as fotos 3 e 4 ficam “Cancelada” e as frases das fotos 1 e 2 continuam', async ({ page, extensao, fakes }) => {
+  fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
+  fakes.gemini.responderFrases(FRASES_DA_PAGINA_2);
+  const soltarATerceira = fakes.gemini.segurarFrases(FRASES_DA_PAGINA_3);
+  await abrirAPagina(page, extensao);
+
+  await enviarFotos(page, foto('a.png'), foto('b.png'), foto('c.png'), foto('d.png'));
+  await expect(fotoNaFila(page, 'c.png')).toContainText('Lendo…');
+  await expect(page.getByText('2 de 4 lidas')).toBeVisible();
+  await expect(fotoNaFila(page, 'd.png')).toContainText('Na fila');
+
+  await botaoCancelar(page).click();
+
+  await expect(fotoNaFila(page, 'c.png')).toContainText('Cancelada');
+  await expect(fotoNaFila(page, 'd.png')).toContainText('Cancelada');
+  await expect(fotoNaFila(page, 'a.png')).toContainText('3 frases');
+  await expect(fotoNaFila(page, 'b.png')).toContainText('2 frases');
+  await expect(botaoCancelar(page)).toHaveCount(0);
+  await expect(page.getByText('2 de 4 lidas')).toBeHidden();
+  const aviso = page.locator('#foto-avisos .veio-aviso');
+  await expect(aviso).toHaveText('Leitura cancelada. 2 fotos ficaram sem ler; as frases das fotos já lidas continuam aqui.');
+  await expect(aviso.locator('strong')).toHaveText('Leitura cancelada.');
+  // Informa, não alarma: é um status, não um alerta.
+  await expect(aviso).toHaveAttribute('role', 'status');
+  await expect(botaoMinerar(page)).toHaveText('Minerar 5 frases');
+
+  // A resposta que chega depois de cancelar não entra, e a 4ª foto nem vai ao Gemini.
+  await soltarATerceira();
+  fakes.gemini.responderFrases(['A new page arrived after the cancel.']);
+  await enviarFotos(page, foto('e.png'));
+  await expect(fotoNaFila(page, 'e.png')).toContainText('1 frase');
+  await expect(frase(page, FRASES_DA_PAGINA_3[0])).toHaveCount(0);
+  await expect(fotoNaFila(page, 'c.png')).toContainText('Cancelada');
+  expect(fakes.gemini.chamadas).toHaveLength(4);
+
+  await botaoMinerar(page).click();
+  await expect(page.locator('.veio-toast')).toHaveText('6 frases mineradas');
+  expect(await gravadasDoLivro(extensao)).toHaveLength(6);
+});
+
+test('lendo a 1ª foto de várias, a coluna diz “Lendo a foto 1 de 3…”, e Cancelar antes de ler qualquer foto diz que nenhuma foi lida', async ({ page, extensao, fakes }) => {
+  const soltar = fakes.gemini.segurarFrases(FRASES_DA_PAGINA_1);
+  await abrirAPagina(page, extensao);
+
+  await enviarFotos(page, foto('a.png'), foto('b.png'), foto('c.png'));
+  await expect(colunaDasFrases(page).getByText('Lendo a foto 1 de 3…')).toBeVisible();
+  await botaoCancelar(page).focus();
+  await page.keyboard.press('Enter');
+
+  for (const nome of ['a.png', 'b.png', 'c.png']) await expect(fotoNaFila(page, nome)).toContainText('Cancelada');
+  const coluna = colunaDasFrases(page);
+  // Nada foi lido: a coluna não promete frases que não existem.
+  await expect(coluna.getByText('Leitura cancelada', { exact: true })).toBeVisible();
+  await expect(coluna.getByText('Nenhuma foto chegou a ser lida.', { exact: true })).toBeVisible();
+  await expect(page.getByText(/frases das fotos já lidas/)).toHaveCount(0);
+  // Sem frases, a própria coluna é o aviso: ele não se repete no topo.
+  await expect(page.locator('#foto-avisos .veio-aviso')).toHaveCount(0);
+  await expect(coluna.getByRole('button', { name: 'Recomeçar' })).toBeVisible();
+  // O foco não se perde quando o Cancelar some.
+  await expect(page.locator('body')).not.toBeFocused();
+
+  await soltar();
+  await expect(frase(page, FRASES_DA_PAGINA_1[0])).toHaveCount(0);
+});
+
+// ─── Recomeçar (FOT-17, FOT-18) ──────────────────────────────────────────────
+
+test('Recomeçar com a leitura em andamento: nenhuma frase chega depois (sem itens fantasma)', async ({ page, extensao, fakes }) => {
+  fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
+  const soltarASegunda = fakes.gemini.segurarFrases(FRASES_DA_PAGINA_2);
+  await abrirAPagina(page, extensao);
+  await page.getByLabel('Livro').fill('Atomic Habits');
+
+  await enviarFotos(page, foto('a.png'), foto('b.png'));
+  await expect(fotoNaFila(page, 'b.png')).toContainText('Lendo…');
+  await botaoRecomecar(page).click();
+  await dialogo(page).getByRole('button', { name: 'Descartar 3 frases' }).click();
+
+  await expect(filaDeFotos(page).getByRole('listitem')).toHaveCount(0);
+  await expect(page.getByText('Arraste fotos de páginas marcadas')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Escolher' })).toBeFocused();
+  await expect(page.getByLabel('Livro')).toHaveValue('Atomic Habits');
+
+  // A 2ª foto responde depois de Recomeçar: nada dela aparece.
+  await soltarASegunda();
+  fakes.gemini.responderFrases(FRASES_DA_PAGINA_3);
+  await lerUmaFoto(page, 'nova.png');
+  await expect(fotoNaFila(page, 'nova.png')).toContainText('1 frase');
+  await expect(filaDeFotos(page).getByRole('listitem')).toHaveCount(1);
+  await expect(page.getByText('Foto 1', { exact: true })).toBeVisible();
+  await expect(frase(page, FRASES_DA_PAGINA_2[0])).toHaveCount(0);
+  await expect(frase(page, FRASES_DA_PAGINA_1[0])).toHaveCount(0);
+  await expect(page.getByText('1 frase encontrada')).toBeVisible();
+  expect(await gravadasDoLivro(extensao)).toHaveLength(0);
+});
+
+test('Recomeçar com frases não mineradas pede confirmação no modal; Cancelar mantém tudo', async ({ page, extensao, fakes }) => {
+  fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
+  await abrirAPagina(page, extensao);
+  await lerUmaFoto(page, 'a.png');
+  await expect(frase(page, FRASES_DA_PAGINA_1[0])).toBeVisible();
+
+  await botaoRecomecar(page).click();
+
+  const modal = dialogo(page);
+  await expect(modal.getByRole('heading')).toHaveText('Descartar 3 frases não mineradas?');
+  await expect(modal).toContainText('Elas ainda não foram mineradas e vão se perder.');
+  await expect(modal.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+  await expect(modal.getByRole('button', { name: 'Descartar 3 frases' })).toBeVisible();
+
+  await modal.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(modal).toHaveCount(0);
+  await expect(botaoRecomecar(page)).toBeFocused();
+  await expect(fotoNaFila(page, 'a.png')).toContainText('3 frases');
+  await expect(botaoMinerar(page)).toHaveText('Minerar 3 frases');
+
+  // Esc também fecha sem descartar.
+  await botaoRecomecar(page).click();
+  await page.keyboard.press('Escape');
+  await expect(modal).toHaveCount(0);
+  await expect(frase(page, FRASES_DA_PAGINA_1[0])).toBeVisible();
+});
+
+test('Recomeçar conta só as frases ainda não mineradas, e sem nenhuma pendente recomeça direto', async ({ page, extensao, fakes }) => {
+  fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
+  fakes.gemini.responderFrases(FRASES_DA_PAGINA_2);
+  await abrirAPagina(page, extensao);
+  await lerUmaFoto(page, 'a.png');
+  await botaoMinerar(page).click();
+  await expect(page.locator('.veio-toast')).toHaveText('3 frases mineradas');
+
+  await enviarFotos(page, foto('b.png'));
+  await expect(fotoNaFila(page, 'b.png')).toContainText('2 frases');
+  // Uma desmarcada ainda se perde: conta também.
+  await frase(page, FRASES_DA_PAGINA_2[0]).uncheck();
+  await botaoRecomecar(page).click();
+  await expect(dialogo(page).getByRole('heading')).toHaveText('Descartar 2 frases não mineradas?');
+  await dialogo(page).getByRole('button', { name: 'Cancelar' }).click();
+
+  await botaoMinerar(page).click();
+  await expect(page.locator('.veio-toast').last()).toHaveText('1 frase minerada');
+  await frase(page, FRASES_DA_PAGINA_2[0]).check();
+  await botaoMinerar(page).click();
+  await expect(frase(page, FRASES_DA_PAGINA_2[0])).toBeDisabled();
+
+  await botaoRecomecar(page).click();
+
+  await expect(dialogo(page)).toHaveCount(0);
+  await expect(filaDeFotos(page).getByRole('listitem')).toHaveCount(0);
+  await expect(page.locator('#foto-lista')).toBeHidden();
+  await expect(page.getByText('Arraste fotos de páginas marcadas')).toBeVisible();
+  // O que foi minerado continua gravado.
+  expect(await gravadasDoLivro(extensao)).toHaveLength(5);
+});
+
+test('Recomeçar também está na prévia e nos vazios de falha e de sem marcações', async ({ page, extensao, fakes }) => {
+  await abrirAPagina(page, extensao);
+  await enviarFotos(page, foto('a.png'));
+  await colunaDasFrases(page).getByRole('button', { name: 'Recomeçar' }).click();
+  await expect(filaDeFotos(page).getByRole('listitem')).toHaveCount(0);
+
+  fakes.gemini.responderFrases([]);
+  await lerUmaFoto(page, 'b.png');
+  await expect(fotoNaFila(page, 'b.png')).toContainText('Sem marcações');
+  await colunaDasFrases(page).getByRole('button', { name: 'Recomeçar' }).click();
+  await expect(filaDeFotos(page).getByRole('listitem')).toHaveCount(0);
+
+  fakes.gemini.falhar(500, 'Internal error encountered.');
+  await lerUmaFoto(page, 'c.png');
+  await expect(fotoNaFila(page, 'c.png')).toContainText('Falhou');
+  await colunaDasFrases(page).getByRole('button', { name: 'Recomeçar' }).click();
+  await expect(filaDeFotos(page).getByRole('listitem')).toHaveCount(0);
+  await expect(page.getByText('Arraste fotos de páginas marcadas')).toBeVisible();
+});
+
+// ─── “Tentar de novo” numa foto que falhou (FOT-11, FOT-19) ─────────────────
+
+test('“Tentar de novo” numa foto que falhou lê só aquela foto', async ({ page, extensao, fakes }) => {
+  fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
+  fakes.gemini.falhar(500, 'Internal error encountered.');
+  fakes.gemini.responderFrases([]);
+  await abrirAPagina(page, extensao);
+
+  await enviarFotos(page, foto('a.png'), foto('b.png'), foto('c.png'));
+  await expect(fotoNaFila(page, 'c.png')).toContainText('Sem marcações');
+  await expect(fotoNaFila(page, 'b.png')).toContainText('Falhou');
+  // Só a foto que falhou tem “Tentar de novo”.
+  await expect(filaDeFotos(page).getByRole('button', { name: 'Tentar de novo' })).toHaveCount(1);
+  expect(fakes.gemini.chamadas).toHaveLength(3);
+
+  fakes.gemini.responderFrases(FRASES_DA_PAGINA_2);
+  await fotoNaFila(page, 'b.png').getByRole('button', { name: 'Tentar de novo' }).click();
+
+  await expect(fotoNaFila(page, 'b.png')).toContainText('2 frases');
+  await expect(fotoNaFila(page, 'b.png').getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
+  await expect(fotoNaFila(page, 'a.png')).toContainText('3 frases');
+  await expect(fotoNaFila(page, 'c.png')).toContainText('Sem marcações');
+  expect(fakes.gemini.chamadas).toHaveLength(4);
+  // A foto que falhou não falha mais: o aviso sai.
+  await expect(page.locator('#foto-avisos .veio-aviso')).toHaveCount(0);
+  await expect(page.getByText('Foto 2', { exact: true })).toBeVisible();
+  await expect(botaoMinerar(page)).toHaveText('Minerar 5 frases');
+});
+
+test('“Tentar de novo” com todas as fotos falhadas: a que volta a falhar continua com o motivo, e a outra é lida', async ({ page, extensao, fakes }) => {
+  fakes.gemini.falhar(429, 'Resource has been exhausted (e.g. check quota).');
+  fakes.gemini.ficarSemRede();
+  await abrirAPagina(page, extensao);
+
+  await enviarFotos(page, foto('a.png'), foto('b.png'));
+  await expect(fotoNaFila(page, 'b.png')).toContainText('Falhou');
+
+  fakes.gemini.falhar(429, 'Resource has been exhausted (e.g. check quota).');
+  await fotoNaFila(page, 'a.png').getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect(fotoNaFila(page, 'a.png')).toContainText('O Gemini está recebendo pedidos demais');
+  await expect(fotoNaFila(page, 'a.png').getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
+
+  fakes.gemini.responderFrases(FRASES_DA_PAGINA_2);
+  await fotoNaFila(page, 'b.png').getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect(fotoNaFila(page, 'b.png')).toContainText('2 frases');
+  await expect(page.getByRole('alert')).toContainText('Não deu para ler a foto 1.');
+  expect(fakes.gemini.chamadas).toHaveLength(4);
 });
 
 // ─── Bug de #9: “Voltar” abria um segundo painel ──────────────────────────────

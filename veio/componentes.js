@@ -95,6 +95,8 @@
     selecao: ['<path d="M4 6h16M4 12h10M4 18h7"/>'],
     automatica: ['<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>'],
     alerta: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 7.5v5.5M12 16.5v.01"/>'],
+    // O aviso que só informa (tom `info`): o “i”, sem alarme.
+    info: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 16.5V11M12 7.5v.01"/>'],
     // O menu Minerar frases: Colar (a prancheta), Foto (a câmera) e o ↗ de
     // “abre numa aba nova”.
     colar: ['<rect x="8" y="2" width="8" height="4" rx="1"/>', '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>'],
@@ -195,6 +197,59 @@
     scrim.addEventListener('mousedown', aoApontar);
 
     return { fechar };
+  }
+
+  /**
+   * A confirmação destrutiva inteira: monta o modal (título, corpo, o
+   * Cancelar seguro e o perigo preenchido), abre com `abrirModal` e o tira da
+   * página quando fecha. Só o botão de perigo chama `aoConfirmar`, depois de
+   * o modal fechar e o foco voltar a quem abriu.
+   *
+   * @param {object} conteudo
+   *   `titulo`, `corpo`, `cancelar`, `confirmar`  os textos, do catálogo;
+   *   `aoConfirmar`  o que o perigo faz;
+   *   `id`           prefixo dos ids do título e do corpo (aria);
+   *   `confirmarComContorno`  o perigo em contorno em vez de preenchido.
+   * @returns {{ fechar: () => void }}
+   */
+  function abrirConfirmacao({ titulo, corpo, cancelar, confirmar, aoConfirmar, id, confirmarComContorno = false, documento = document }) {
+    const no = (tag, classe, texto) => {
+      const elemento = documento.createElement(tag);
+      elemento.className = classe;
+      if (texto !== undefined) elemento.textContent = texto;
+      return elemento;
+    };
+    const cabeca = no('h2', 'veio-modal__titulo', titulo);
+    cabeca.id = `${id}-titulo`;
+    const texto = no('p', 'veio-modal__corpo', corpo);
+    texto.id = `${id}-corpo`;
+    const seguro = no('button', 'veio-botao veio-botao--fantasma', cancelar);
+    seguro.type = 'button';
+    seguro.dataset.focoSeguro = '';
+    // `confirmarComContorno` é a exceção que o dono aprovou para o Recomeçar
+    // da foto (FOT-18, como no protótipo): o confirmar fica em `--perigo`.
+    const perigo = no('button', `veio-botao ${confirmarComContorno ? 'veio-botao--perigo' : 'veio-botao--perigo-cheio'}`, confirmar);
+    perigo.type = 'button';
+    const acoes = no('div', 'veio-modal__acoes');
+    acoes.append(seguro, perigo);
+
+    const dialogo = no('div', 'veio-modal');
+    dialogo.setAttribute('role', 'dialog');
+    dialogo.setAttribute('aria-labelledby', cabeca.id);
+    dialogo.setAttribute('aria-describedby', texto.id);
+    dialogo.append(cabeca, texto, acoes);
+    const scrim = no('div', 'veio-scrim');
+    scrim.hidden = true;
+    scrim.append(dialogo);
+    documento.body.append(scrim);
+
+    const modal = abrirModal(scrim, { aoFechar: () => scrim.remove() });
+    seguro.addEventListener('click', () => modal.fechar());
+    perigo.addEventListener('click', () => {
+      modal.fechar();
+      aoConfirmar();
+    });
+    return modal;
   }
 
   /**
@@ -317,13 +372,19 @@
 
   /* ── Aviso persistente ────────────────────────────────────────────────────
      Todo erro que pede ação. Fica até ser resolvido ou fechado, e a causa
-     técnica vai para um Detalhes recolhido e copiável. */
+     técnica vai para um Detalhes recolhido e copiável. O tom `info` é o aviso
+     que só informa (uma leitura cancelada): neutro, sem alarme. */
 
   /**
    * Monta o aviso e devolve o elemento, para a tela pô-lo no lugar do problema.
    *
    * @param {object} conteudo
    *   `texto`          o que aconteceu, nos termos da pessoa (catálogo da Voz);
+   *   `abertura`       a 1ª frase, em negrito antes do `texto`, quando o
+   *                    estado a tem (“Leitura cancelada.”);
+   *   `icone`          o nome de um ícone da Base no começo do texto;
+   *   `tom`            `'perigo'` (o padrão: um erro, `role="alert"`) ou
+   *                    `'info'` (só informa: neutro, `role="status"`);
    *   `acao`           `{ rotulo, aoUsar }` quando existe o que fazer;
    *   `detalhes`       a causa técnica, recolhida;
    *   `rotuloDeFechar` o nome do × para o leitor de tela, do catálogo;
@@ -336,6 +397,9 @@
    */
   function montarAviso({
     texto,
+    abertura,
+    icone,
+    tom = 'perigo',
     acao,
     detalhes,
     rotuloDeFechar,
@@ -346,13 +410,20 @@
     if (fechavel && !rotuloDeFechar) {
       throw new Error('O aviso precisa do rótulo de fechar, vindo do catálogo da Voz');
     }
+    if (!TONS_DO_AVISO.includes(tom)) throw new Error(`Tom de aviso fora da Base Veio: ${tom}`);
     const aviso = documento.createElement('div');
-    aviso.className = 'veio-aviso';
-    aviso.setAttribute('role', 'alert');
+    aviso.className = tom === 'info' ? 'veio-aviso veio-aviso--info' : 'veio-aviso';
+    aviso.setAttribute('role', tom === 'info' ? 'status' : 'alert');
 
     const paragrafo = documento.createElement('p');
     paragrafo.className = 'veio-aviso__texto';
-    paragrafo.textContent = texto;
+    if (icone) paragrafo.append(iconeVeio(icone, documento));
+    if (abertura) {
+      const negrito = documento.createElement('strong');
+      negrito.textContent = abertura;
+      paragrafo.append(negrito, ' ');
+    }
+    paragrafo.append(texto);
 
     const acoes = documento.createElement('div');
     acoes.className = 'veio-aviso__acoes';
@@ -385,6 +456,8 @@
 
     return aviso;
   }
+
+  const TONS_DO_AVISO = ['perigo', 'info'];
 
   /**
    * O “Detalhes” recolhido e copiável com a causa técnica (regra V3 da Voz).
@@ -569,6 +642,7 @@
   raiz.Veio = {
     iconeVeio,
     abrirModal,
+    abrirConfirmacao,
     mostrarToastDeSucesso,
     montarAviso,
     montarDetalhes,
