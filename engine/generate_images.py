@@ -4,20 +4,61 @@ generate_images.py — Generate images via OpenAI Images API and save to Output/
 Reads keyword:prompt pairs from prompts.txt (written by extract_prompts.py).
 Output filenames: {stem}.png  (stem matches the keyword's safe filename).
 
-Model is read from config (openai.image_model). gpt-image-1 returns base64
-(b64_json); dall-e-* historically returned a URL. Both are handled.
+Model is read from config (openai.image_model). gpt-image-* models return
+base64 (b64_json); dall-e-* historically returned a URL. Both are handled.
+
+A failed generation (model retired or unavailable, rate limit, network, ...) never
+raises out of this module: the card just goes on without a generated image and the
+reason is printed and appended to log/image_generation_failures.jsonl.
 """
 
 import base64
+import json
 import requests
 import openai
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, List, Optional
 
 from config_loader import load_config
 
+FAILURES_LOG = "image_generation_failures.jsonl"
+_MODEL_GONE_HINTS = ("model_not_found", "does not exist", "deprecated", "decommission", "retired", "no access")
+
 
 # ── helpers ───────────────────────────────────────────────────────────────────
+
+def _failure_reason(exc: Exception) -> str:
+    """Short label for why a generation failed: model_unavailable or generation_error."""
+    if isinstance(exc, openai.NotFoundError):
+        return "model_unavailable"
+    text = f"{getattr(exc, 'code', '')} {exc}".lower()
+    if any(hint in text for hint in _MODEL_GONE_HINTS):
+        return "model_unavailable"
+    return "generation_error"
+
+
+def _log_failure(config: dict, stem: str, exc: Exception) -> str:
+    """Print the failure and append it to the log dir. Returns the reason label."""
+    reason = _failure_reason(exc)
+    model = config["openai"]["image_model"]
+    print(f"[ERROR] Geração de imagem falhou para '{stem}' ({reason}, modelo {model}): {exc}")
+    try:
+        log_dir = Path(config["paths"]["log_dir"])
+        log_dir.mkdir(exist_ok=True)
+        entry = {
+            "time": datetime.now().isoformat(timespec="seconds"),
+            "keyword": stem,
+            "model": model,
+            "reason": reason,
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+        with (log_dir / FAILURES_LOG).open("a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+    return reason
+
 
 def _save_from_response(item, dest: Path) -> bool:
     """Persist one image result to *dest*, handling both b64 and URL payloads."""
@@ -44,20 +85,28 @@ def _save_from_response(item, dest: Path) -> bool:
 
 
 def generate_one(config: dict, stem: str, prompt: str, dest: Optional[Path] = None) -> bool:
-    """Generate a single image for one prompt and save it to Output/{stem}.png."""
-    openai.api_key = config["openai_api_key"]
-    output_dir = Path(config["paths"]["output_dir"])
-    output_dir.mkdir(exist_ok=True)
+    """Generate a single image for one prompt and save it to Output/{stem}.png.
 
-    resp = openai.images.generate(
-        model=config["openai"]["image_model"],
-        prompt=prompt,
-        n=1,
-        size=config["openai"]["image_size"],
-    )
-    item = resp.data[0]
-    dest = dest or (output_dir / f"{stem}.png")
-    return _save_from_response(item, dest)
+    Returns False (never raises) when the generation fails, so the caller keeps the
+    card without a generated image.
+    """
+    try:
+        openai.api_key = config["openai_api_key"]
+        output_dir = Path(config["paths"]["output_dir"])
+        output_dir.mkdir(exist_ok=True)
+
+        resp = openai.images.generate(
+            model=config["openai"]["image_model"],
+            prompt=prompt,
+            n=1,
+            size=config["openai"]["image_size"],
+        )
+        item = resp.data[0]
+        dest = dest or (output_dir / f"{stem}.png")
+        return _save_from_response(item, dest)
+    except Exception as exc:
+        _log_failure(config, stem, exc)
+        return False
 
 
 # ── public API ────────────────────────────────────────────────────────────────
@@ -109,7 +158,7 @@ def run(
                 print(f"[ERROR] Não foi possível salvar imagem para '{stem}'")
         except Exception as exc:
             log_lines.append(f"{stem}: ERROR — {exc}\n")
-            print(f"[ERROR] Geração de imagem falhou para '{stem}': {exc}")
+            _log_failure(config, stem, exc)
 
         if progress_callback:
             progress_callback(i + 1, total, stem)

@@ -1,6 +1,6 @@
 # CLAUDE.md – Automatic Anki (PerpetualMiner)
 
-Python pipeline: keyword:phrase → multimedia Anki flashcards via OpenAI (chat.completions, gpt-image-1), gTTS audio, Openverse/GPT-vision images, AnkiConnect.
+Python pipeline: keyword:phrase → multimedia Anki flashcards via OpenAI (chat.completions, image model from `openai.image_model`), gTTS audio, Openverse/GPT-vision images, AnkiConnect.
 
 ## Setup & Run
 
@@ -23,7 +23,7 @@ mining.txt
 ├─ image_guard.py       → skip/real/generate decision (heuristics + GPT-4o-mini)
 ├─ google_images.py     → Openverse candidates (free, no key)
 ├─ image_judge.py       → GPT-vision rank candidates vs card context
-├─ generate_images.py   → Output/{stem}.png (gpt-image-1 if needed)
+├─ generate_images.py   → Output/{stem}.png (`openai.image_model` if needed)
 └─ send_to_anki.py      → AnkiConnect, clean Output/ on success
 ```
 
@@ -62,7 +62,9 @@ Cards: `Front: / Back: / Image:` fields (RU may add `Google Image Search Queries
 
 **Flow:**
 1. `image_guard.should_generate_image()` → skip abstract, GPT-4o-mini ambiguous
-2. **Google mode:** `google_images.search_candidates()` → Openverse (multiple queries), `image_judge.rank_candidates()` → GPT-vision score. Keep real if `real_min_score` threshold hit; else fallback to `gpt-image-1`
-3. **DALL-E mode:** always `gpt-image-1` (returns base64, decoded directly)
+2. **Google mode:** `google_images.search_candidates()` → Openverse (multiple queries), `image_judge.rank_candidates()` → GPT-vision score. Keep real if `real_min_score` threshold hit; else fallback to `openai.image_model`
+3. **DALL-E mode:** always `openai.image_model` (returns base64, decoded directly)
+
+**Failures:** `generate_images.generate_one()` never raises. A retired/unavailable model or any other generation error returns `False`, so the card goes on without a generated image (or with the real photo already picked); the reason (`model_unavailable` / `generation_error`) is printed and appended to `log/image_generation_failures.jsonl`.
 
 **Russian:** `image_guard` skipped (Cyril
