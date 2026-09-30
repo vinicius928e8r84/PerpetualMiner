@@ -335,13 +335,13 @@ The area follows the Conexão state the shell reports (`aoMudarAConexao`):
   bottom, the Conferência line and the two boxes “Continua funcionando” / “Fica indisponível sem ela”. The steps are marked by the
   real state, and the only thing the extension sees before the Conexão is the Conexão itself (the AnkiConnect is not read: no new
   permission), so step 1 says “Esperando a Conexão” and all three turn ✓ together when `/health` answers. It opens on the first step
-  that is missing, or on step 3 while connecting (BRG-02, Tentar de novo `aria-disabled`); after a Tentar de novo the card stays on step 3.
+  that is missing, or on step 3 while connecting (BRG-02, Tentar de novo `aria-disabled`); after the card's own Tentar de novo it stays on step 3 (the F1's and the Boas-vindas' do not set the person's choice).
   The install commands live in step 2's Detalhes with **Copiar** (toast “Comandos copiados”; a refused clipboard shows the ONB-16
   line to select and copy instead). The status is a `role="status"` region that stays in the DOM.
   The Conferência line (“Confere sozinho a cada 15 s · última vez há N s”, “Conferindo agora…” while a check is out) follows the
   shell's own 15 s `/health` check through `aoMudarAConexao` and `Shell.aoConferirAConexao` (a check went out / came back): the card
   makes no request of its own and its only timer is the 1 s one that rewrites “há N s”. The first answer writes the key, shows the
-  **Pronto** moment (`ONB-16.pronto`, BRG-01, `ONB-16.prontoApoio`) for 1.8 s and then the tabs come back with the BRG-01 toast.
+  **Pronto** moment (`ONB-16.pronto`, BRG-01, `ONB-16.prontoApoio`) for 1.8 s and then the tabs come back with the BRG-01 toast. Pronto and the toast only happen with the Anki area on screen: if the Conexão first answers while the person is elsewhere, the tabs are simply there on arrival. Focus never falls to `<body>`: a button that leaves at Pronto hands it to the card's title, and when the card leaves it goes to the checked tab (the tabs are shown again first).
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
   selo (“Mostrando dados de há 2 h…”, with the code in Detalhes) and the period controls set to that reading's
   period and disabled (another period would have nowhere to come from). **Continuar envio** and

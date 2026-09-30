@@ -246,8 +246,9 @@
 
   function desenhar() {
     const nuncaConectou = mostrandoAPrimeiraVez();
-    PrimeiraConexao.desenhar({ visivel: nuncaConectou, pronto: estado.pronto, conexao: estado.conexao });
+    // As abas voltam à tela antes de o card sair: é onde o foco dele vai pousar.
     document.querySelector('.shell-area[data-area="anki"]').classList.toggle('anki--primeira-vez', nuncaConectou);
+    PrimeiraConexao.desenhar({ visivel: nuncaConectou, pronto: estado.pronto, conexao: estado.conexao });
     porId('anki-conectando').hidden = estado.conferiu || estado.conexao !== CONEXAO.CONECTANDO;
     porId('anki-ajustes-nota').hidden = !desligada();
     desenharCustos();

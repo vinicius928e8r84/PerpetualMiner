@@ -23,22 +23,22 @@
   ];
   const PASSO_DOS_COMANDOS = 1;
   const PASSO_DO_TENTAR = 2;
-  const TAMANHO_DO_TIQUE = 1000;
+  const INTERVALO_DO_TIQUE = 1000;
 
-  const { textoDaVoz, Veio, Shell } = raiz;
+  const { textoDaVoz, Veio, Shell, Configuracao } = raiz;
   const { CONEXAO } = Shell;
+  const { SITUACAO } = Configuracao;
   const porId = id => document.getElementById(id);
 
   const estado = {
     conexao: CONEXAO.CONECTANDO,
     pronto: false,
     escolha: null,          // o passo que a pessoa abriu; sem ele, o primeiro que falta
-    respondeu: false,       // a conferência já voltou alguma vez nesta página
     conferindo: false,      // uma conferência está no ar
     conferiuEm: null,       // quando a última voltou
   };
-  const marcas = [];        // por passo: { botao, marca, situacao }
-  let ultimaSituacao = null; // o que o painel-anki.js pediu por último, para redesenhar ao trocar de passo
+  const marcas = [];        // por passo: { botao, marca, leitor }
+  let ultimoPedido = null;  // o que o painel-anki.js pediu por último, para redesenhar ao trocar de passo
 
   // ─── Montagem ──────────────────────────────────────────────────────────────
 
@@ -50,6 +50,8 @@
     porId('apv-tentar').addEventListener('click', () => {
       // Conectando, o botão fica indisponível sem sair do foco.
       if (porId('apv-tentar').getAttribute('aria-disabled') === 'true') return;
+      // Só o botão do card fixa o passo 3: o Tentar de novo da F1 e o da Boas-vindas não são escolha dela.
+      estado.escolha = PASSO_DO_TENTAR;
       Shell.tentarAConexaoDeNovo();
     });
 
@@ -58,7 +60,7 @@
       estado.conferindo = conferindo;
       desenharConferencia();
     });
-    setInterval(desenharConferencia, TAMANHO_DO_TIQUE);
+    setInterval(desenharConferencia, INTERVALO_DO_TIQUE);
   }
 
   function montarLista() {
@@ -67,11 +69,11 @@
       const marca = elemento('span', 'bv-marca');
       marca.setAttribute('aria-hidden', 'true');
       marca.dataset.numero = String(i + 1);
-      const situacao = elemento('span', 'veio-so-leitor');
-      const botao = elemento('button', 'bv-lista__item', marca, elemento('span', null, textoDaVoz(passo.titulo)), situacao);
+      const leitor = elemento('span', 'veio-so-leitor');
+      const botao = elemento('button', 'bv-lista__item', marca, elemento('span', null, textoDaVoz(passo.titulo)), leitor);
       botao.type = 'button';
       botao.addEventListener('click', () => abrirPasso(i));
-      marcas.push({ botao, marca, situacao });
+      marcas.push({ botao, marca, leitor });
       lista.append(elemento('li', null, botao));
     });
   }
@@ -104,13 +106,7 @@
 
   function aoMudarAConexao(situacao) {
     estado.conexao = situacao;
-    if (situacao === CONEXAO.CONECTANDO) {
-      // O Tentar de novo (o da F1 ou o do card): quem tenta olha o passo 3.
-      if (estado.respondeu) estado.escolha = PASSO_DO_TENTAR;
-    } else {
-      estado.respondeu = true;
-      estado.conferiuEm = Date.now();
-    }
+    if (situacao !== CONEXAO.CONECTANDO) estado.conferiuEm = Date.now();
   }
 
   function desenharConferencia() {
@@ -136,7 +132,7 @@
 
   function abrirPasso(i) {
     estado.escolha = Math.min(Math.max(i, 0), PASSOS.length - 1);
-    desenhar(ultimaSituacao);
+    desenhar(ultimoPedido);
     // O foco vai ao título, para o leitor de tela ler o passo novo; o botão
     // apertado pode ter saído (Voltar no 1, Continuar no 3).
     porId('apv-passo-titulo').focus();
@@ -146,20 +142,27 @@
    * `visivel`: o painel-anki.js diz se o card está no lugar das abas.
    * `pronto`: o momento Pronto, entre a primeira resposta e a volta das abas.
    */
-  function desenhar(situacao) {
-    ultimaSituacao = situacao;
-    const { visivel, pronto, conexao } = situacao;
+  function desenhar(pedido) {
+    ultimoPedido = pedido;
+    const { visivel, pronto, conexao } = pedido;
     const secao = porId('anki-primeira-vez');
-    // O card sai com o foco dentro: ele vai para a aba, em vez de cair no fim da página.
+    // O card sai com o foco dentro: ele vai para a aba, em vez de cair no fim da
+    // página. O painel-anki.js já devolveu as abas à tela, então o foco pega.
     if (!visivel && !secao.hidden && secao.contains(document.activeElement)) {
       document.querySelector('input[name="aba-anki"]:checked')?.focus();
     }
     secao.hidden = !visivel;
     if (!visivel) return;
+    // No Pronto o botão em que a pessoa estava (o do card ou o da F1, que o shell
+    // desativa ao tentar) sai da tela e o foco já não está em lugar nenhum: ele
+    // fica no título do card, e não cai no <body>.
+    const ativo = document.activeElement;
+    const focoSaindo = secao.contains(ativo) || ativo === document.body || ativo === null;
+    const entrouNoPronto = pronto && !estado.pronto;
     estado.pronto = pronto;
     estado.conexao = conexao;
 
-    const k = passoAtual();
+    const passoAberto = passoAtual();
     const feito = ligada();
     const conectando = conexao === CONEXAO.CONECTANDO;
 
@@ -167,25 +170,25 @@
     porId('apv-apoio').hidden = pronto;
     porId('apv-rodape').hidden = pronto;
 
-    marcas.forEach(({ botao, marca, situacao }, i) => {
-      if (i === k) botao.setAttribute('aria-current', 'step');
+    marcas.forEach(({ botao, marca, leitor }, i) => {
+      if (i === passoAberto) botao.setAttribute('aria-current', 'step');
       else botao.removeAttribute('aria-current');
-      marca.dataset.situacao = feito ? 'feito' : '';
-      marca.classList.toggle('bv-marca--atual', i === k);
+      marca.dataset.situacao = feito ? SITUACAO.FEITO : '';
+      marca.classList.toggle('bv-marca--atual', i === passoAberto);
       marca.replaceChildren(...(feito ? [Veio.iconeVeio('certo')] : []));
       // O nome do item diz a situação ao leitor de tela: “…, feito”.
-      situacao.textContent = feito ? `, ${textoDaVoz('ONB-13.feito')}` : '';
+      leitor.textContent = feito ? `, ${textoDaVoz('ONB-13.feito')}` : '';
     });
 
-    const passo = PASSOS[k];
+    const passo = PASSOS[passoAberto];
     porId('apv-sobretitulo').textContent = pronto
       ? textoDaVoz('ONB-16.pronto')
-      : `${textoDaVoz('ONB-16.passos')} · ${textoDaVoz('ONB-03.passo', { n: k + 1, total: PASSOS.length })}`;
+      : `${textoDaVoz('ONB-16.passos')} · ${textoDaVoz('ONB-03.passo', { n: passoAberto + 1, total: PASSOS.length })}`;
     porId('apv-passo-titulo').textContent = pronto ? textoDaVoz('BRG-01.ligada') : textoDaVoz(passo.titulo);
     porId('apv-texto').textContent = pronto ? textoDaVoz('ONB-16.prontoApoio') : textoDaVoz(passo.texto);
 
     // O status é uma região que anuncia a mudança: o ponto e o texto trocam, ela fica.
-    const esperando = k === 0 && !feito && !conectando;
+    const esperando = passoAberto === 0 && !feito && !conectando;
     porId('apv-status').classList.toggle('apv-status--espera', esperando);
     porId('apv-ponto').dataset.estado = esperando ? '' : feito ? CONEXAO.LIGADA : conexao;
     porId('apv-status-texto').textContent = esperando
@@ -193,15 +196,16 @@
       : conectando ? textoDaVoz('BRG-02') : textoDaVoz(`BRG-01.${feito ? CONEXAO.LIGADA : conexao}`);
 
     const tentar = porId('apv-tentar');
-    tentar.hidden = pronto || k !== PASSO_DO_TENTAR;
+    tentar.hidden = pronto || passoAberto !== PASSO_DO_TENTAR;
     tentar.setAttribute('aria-disabled', String(conectando));
-    porId('anki-primeira-vez-detalhes').hidden = pronto || k !== PASSO_DOS_COMANDOS;
+    porId('anki-primeira-vez-detalhes').hidden = pronto || passoAberto !== PASSO_DOS_COMANDOS;
 
     porId('apv-navegacao').hidden = pronto;
-    porId('apv-voltar').hidden = k === 0;
-    porId('apv-continuar').hidden = k >= PASSOS.length - 1;
+    porId('apv-voltar').hidden = passoAberto === 0;
+    porId('apv-continuar').hidden = passoAberto >= PASSOS.length - 1;
 
     desenharConferencia();
+    if (entrouNoPronto && focoSaindo) porId('apv-passo-titulo').focus();
   }
 
   function elemento(tag, classe, ...filhos) {
