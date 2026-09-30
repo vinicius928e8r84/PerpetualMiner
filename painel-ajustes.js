@@ -54,6 +54,7 @@
     let conexaoAnterior;
     Shell.aoMudarAConexao(situacao => {
       if (situacao === Shell.CONEXAO.LIGADA && conexaoAnterior !== situacao) lerBaralhos();
+      if (situacao === Shell.CONEXAO.DESLIGADA) esquecerOsBaralhos();
       conexaoAnterior = situacao;
     });
     Shell.aoEntrarNaArea('anki', lerBaralhos);
@@ -109,6 +110,14 @@
     if (leitura !== estado.ultimaLeituraDeBaralhos) return;
     if (JSON.stringify(baralhos) === JSON.stringify(estado.baralhos)) return;
     estado.baralhos = baralhos;
+    desenhar();
+  }
+
+  /** A Conexão caiu: a lista lida deixa de valer e o Baralho volta a ser um campo de texto. */
+  function esquecerOsBaralhos() {
+    estado.ultimaLeituraDeBaralhos++;   // uma leitura em andamento não devolve a lista
+    if (!estado.baralhos) return;
+    estado.baralhos = null;
     desenhar();
   }
 

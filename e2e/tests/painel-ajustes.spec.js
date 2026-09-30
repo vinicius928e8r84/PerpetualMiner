@@ -377,6 +377,25 @@ test('sem a lista do Anki, o Baralho é um campo de texto, e um nome com nível 
   expect((await ajustesGravados(extensao)).en.deckName).toBe('Inglês::Filmes');
 });
 
+test('se a Conexão cai depois de a lista ser lida, o Baralho volta a ser um campo de texto com o que estava escolhido', async ({ page, extensao, fakes }) => {
+  fakes.anki.definirBaralhosDoAnki(['CIMV', 'Inglês::Mineradas']);
+  await extensao.gravarStorage({ pm_anki_ja_conectou: true, [CHAVE]: AJUSTES });
+  await page.clock.setFixedTime(AGORA);
+  await page.goto(extensao.url('painel.html#anki/ajustes'));
+  await expect(escolhaDeBaralho(page)).toBeVisible();
+
+  fakes.anki.desligar();
+  await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
+
+  await expect(baralho(page)).toBeVisible();
+  await expect(escolhaDeBaralho(page)).toHaveCount(0);
+  await expect(baralho(page)).toHaveValue('Inglês::Mineradas');
+  await baralho(page).fill('Digitado offline');
+  await salvar(page).click();
+  await expect(toasts(page)).toHaveText('Ajustes de envio salvos');
+  expect((await ajustesGravados(extensao)).en.deckName).toBe('Digitado offline');
+});
+
 test('com a Conexão desligada, os ajustes continuam editáveis, com a nota BRG-33, e salvam', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirAjustes(page, extensao);
