@@ -57,5 +57,17 @@ assert(!('key' in manifestoDoZip), 'o manifest dentro do zip não pode ter "key"
 const { key, ...restoDoRepo } = manifestoDoRepo;
 assert.deepStrictEqual(manifestoDoZip, restoDoRepo, 'o manifest do zip só pode diferir pela "key"');
 
+// O guia da loja é a fonte única dos hosts: o bloco "Host permission use" cita,
+// entre crases, exatamente os hosts do manifest (nem a mais, nem a menos).
+const guiaDaLoja = fs.readFileSync('docs/publicar-chrome-web-store.md', 'utf8');
+const bloco = guiaDaLoja.match(/\*\*Campo "Host permission use"\*\*[^\n]*\n\n(> [^\n]*)/);
+assert(bloco, 'falta o bloco "Host permission use" em docs/publicar-chrome-web-store.md');
+const hostsDoBloco = [...bloco[1].matchAll(/`(https?:\/\/[^`]+)`/g)].map(m => m[1]);
+assert.deepStrictEqual(
+  [...hostsDoBloco].sort(),
+  [...manifestoDoRepo.host_permissions].sort(),
+  'os hosts do bloco "Host permission use" do guia da loja diferem dos do manifest'
+);
+
 fs.rmSync(saida, { recursive: true, force: true });
 console.log('empacotar tests passed');
