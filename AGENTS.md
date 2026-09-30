@@ -10,6 +10,7 @@ This repository contains a Chrome extension plus a local Python bridge for Anki 
 - New or rewritten UI copy comes from the Voice catalog by ID, never from a literal in the surface. The only literals are the three pattern names the base components write themselves (`palavra:`, `auto:`, `Detalhes`), fixed by the glossary and the Voice rules rather than by any screen state. The surfaces still hold their old literals; each redesign step moves the surface it rebuilds. See the shared base section of `CLAUDE.md`.
 - The local bridge lives in `bridge/`: `server.py` exposes the HTTP API, `run_bridge.py` starts it, and `install_autostart.py` / `uninstall_autostart.py` manage Windows startup.
 - Bridge tests are in `bridge/test_anki_launcher.py`; root-level tests cover panel and sync behavior.
+- `scripts/` holds the device and store tooling: `atualizar-extensao.sh` (+ launchd example) keeps a clone up to date, `empacotar-extensao.mjs` builds the Chrome Web Store zip and `arquivos-do-pacote.js` says which files are run-time; the unpacked extension reloads itself through `lib/auto-recarregar.js`. See `docs/instalar-extensao.md` and `docs/publicar-chrome-web-store.md`.
 - `e2e/` holds the Playwright suite that runs the unpacked extension in Chromium, with its own `package.json` so the extension root stays free of Node files.
 - `bridge/runtime/` contains generated logs, queues, screenshots, job state, audio, images, and card output. Treat it as runtime data, not source.
 - Design notes are under `docs/superpowers/specs/`.
@@ -25,6 +26,7 @@ This repository contains a Chrome extension plus a local Python bridge for Anki 
 - `node --check painel.js`: check panel JavaScript syntax.
 - `node test_auto_keyword.js`: run keyword extraction tests.
 - `node test_sync.js`: run local sync/tombstone tests.
+- `node test_empacotar.js`: check the Chrome Web Store package contents.
 - `cd e2e && npm test`: run the Playwright suite against the unpacked extension in Chromium (first time: `npm ci` and `npm run setup`). See the Testing section of `CLAUDE.md`.
 
 ## Coding Style & Naming Conventions

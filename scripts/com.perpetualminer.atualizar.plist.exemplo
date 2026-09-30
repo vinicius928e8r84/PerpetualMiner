@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Roda scripts/atualizar-extensao.sh a cada 10 minutos (e ao entrar na sessão).
+
+  1. Troque SEU_USUARIO pelo seu usuário do Mac e confira o caminho do clone.
+  2. Copie para ~/Library/LaunchAgents/com.perpetualminer.atualizar.plist
+  3. launchctl load ~/Library/LaunchAgents/com.perpetualminer.atualizar.plist
+  Para parar: launchctl unload ~/Library/LaunchAgents/com.perpetualminer.atualizar.plist
+  O log fica em ~/Library/Logs/perpetualminer-atualizar.log.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.perpetualminer.atualizar</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/SEU_USUARIO/PerpetualMiner-ext/scripts/atualizar-extensao.sh</string>
+  </array>
+  <key>StartInterval</key>
+  <integer>600</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardErrorPath</key>
+  <string>/Users/SEU_USUARIO/Library/Logs/perpetualminer-atualizar.err.log</string>
+</dict>
+</plist>

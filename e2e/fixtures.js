@@ -116,15 +116,21 @@ const test = base.extend({
     await use({ anki: criarFakeAnki(), gemini: criarFakeGemini(), google: criarFakeGoogle() });
   },
 
-  context: async ({ fakes, paginas, servidorDoLogin }, use) => {
+  // A pasta que o Chromium carrega como extensão: a raiz do repositório, salvo num
+  // teste que precisa mexer nos arquivos (a atualização automática usa uma cópia).
+  pastaDaExtensao: async ({}, use) => {
+    await use(RAIZ_DA_EXTENSAO);
+  },
+
+  context: async ({ fakes, paginas, servidorDoLogin, pastaDaExtensao }, use) => {
     servidorDoLogin.atender(fakes.google.responderLogin);
     const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-e2e-'));
     const context = await chromium.launchPersistentContext(perfil, {
       channel: 'chromium',
       headless: !process.env.HEADED,
       args: [
-        `--disable-extensions-except=${RAIZ_DA_EXTENSAO}`,
-        `--load-extension=${RAIZ_DA_EXTENSAO}`,
+        `--disable-extensions-except=${pastaDaExtensao}`,
+        `--load-extension=${pastaDaExtensao}`,
         `--host-resolver-rules=MAP accounts.google.com 127.0.0.1:${servidorDoLogin.porta}`,
         // Só o servidor local do login usa HTTPS, com certificado autoassinado.
         '--ignore-certificate-errors',
