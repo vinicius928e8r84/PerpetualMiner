@@ -59,7 +59,7 @@
 
   function aoMudarOGravado(ajustes) {
     estado.gravados = ajustes;
-    for (const lang of AjustesDeEnvio.IDIOMAS) {
+    for (const lang of AjustesDeEnvio.LANGS) {
       if (!temRascunho(lang)) adotarGravado(lang);
     }
     porId('ajustes-form').hidden = false;
@@ -148,7 +148,7 @@
   }
 
   function montarAzulejos() {
-    porId('ajustes-azulejos').replaceChildren(...AjustesDeEnvio.IDIOMAS.map(lang => {
+    porId('ajustes-azulejos').replaceChildren(...AjustesDeEnvio.LANGS.map(lang => {
       const azulejo = elemento('button', 'veio-azulejo anki-azulejo ajustes-azulejo');
       azulejo.type = 'button';
       azulejo.dataset.idioma = lang;

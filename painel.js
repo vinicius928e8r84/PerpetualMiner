@@ -94,10 +94,11 @@ let bridgeVocabularyDeck = { lang: 'en' };
 
 document.addEventListener('DOMContentLoaded', () => {
   setupListeners();
-  // Os ajustes mudaram (nesta aba ou em outra): Baralhos e termos pede os números dos baralhos novos.
+  // Os ajustes mudaram (nesta aba ou em outra): Baralhos e termos pede os números dos
+  // baralhos novos, sem abrir o Anki (só o ↻ Atualizar abre).
   chrome.storage.onChanged.addListener((mudancas, area) => {
     if (area === 'local' && AjustesDeEnvio.CHAVE in mudancas && Shell.areaAtual() === 'anki') {
-      atualizarBridgeDeckStats({ refresh: true, launch: true });
+      atualizarBridgeDeckStats({ refresh: true });
     }
   });
   Shell.aoEntrarNaArea('anki', () => atualizarBridgeWorkspaceData({ includeAnki: true, launchAnki: true }));
@@ -981,10 +982,9 @@ async function atualizarBridgeWorkspaceData(options = {}) {
   });
 }
 
-function queryBridgeDeckStats(options = {}) {
+function queryBridgeDeckStats(ajustes, options = {}) {
   const params = new URLSearchParams();
-  const ajustes = AjustesDeEnvio.atual();
-  AjustesDeEnvio.IDIOMAS.forEach(lang => {
+  AjustesDeEnvio.LANGS.forEach(lang => {
     params.append('deck', ajustes[lang].deckName);
     params.append('lang', lang);
   });
@@ -1012,8 +1012,8 @@ async function atualizarBridgeDeckStats(options = {}) {
   if (!el) return;
   el.innerHTML = '<div class="bridge-analytics-empty">Atualizando Anki...</div>';
   try {
-    await AjustesDeEnvio.ler();
-    const resp = await fetch(`${BRIDGE_URL}/anki/stats/decks?${queryBridgeDeckStats(options)}`);
+    const ajustes = await AjustesDeEnvio.ler();
+    const resp = await fetch(`${BRIDGE_URL}/anki/stats/decks?${queryBridgeDeckStats(ajustes, options)}`);
     if (!resp.ok) throw new Error('anki_stats_unavailable');
     const data = await resp.json();
     renderizarBridgeDeckStats(data);
@@ -1150,11 +1150,11 @@ function agendarAtualizacaoBridgeVocabulary() {
   bridgeVocabularyTimer = setTimeout(() => atualizarBridgeVocabulary(), 250);
 }
 
-function queryBridgeVocabulary() {
+function queryBridgeVocabulary(ajustes) {
   const params = new URLSearchParams();
   const lang = byId('bridge-vocab-lang')?.value || bridgeVocabularyDeck.lang || 'en';
   bridgeVocabularyDeck.lang = lang;
-  params.set('deck', AjustesDeEnvio.atual()[lang].deckName);
+  params.set('deck', ajustes[lang].deckName);
   params.set('lang', lang);
   params.set('limit', '10000');
   const q = byId('bridge-vocab-search')?.value?.trim() || '';
@@ -1173,7 +1173,7 @@ async function atualizarBridgeVocabulary() {
   listEl.innerHTML = '<div class="bridge-analytics-empty">Atualizando vocabulario...</div>';
   if (summaryEl) summaryEl.textContent = 'Calculando vocabulario da Frente...';
   try {
-    const resp = await fetch(`${BRIDGE_URL}/anki/vocabulary?${queryBridgeVocabulary()}`);
+    const resp = await fetch(`${BRIDGE_URL}/anki/vocabulary?${queryBridgeVocabulary(await AjustesDeEnvio.ler())}`);
     if (!resp.ok) throw new Error('vocabulary_unavailable');
     const data = await resp.json();
     renderizarBridgeVocabulary(data);
