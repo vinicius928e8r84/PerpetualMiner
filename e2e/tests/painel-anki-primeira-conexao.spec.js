@@ -178,6 +178,28 @@ test('a Conexão liga sozinha, sem ninguém apertar: a conferência de 15 s do s
   await expect(abas(page)).toBeVisible();
 });
 
+test('a Conexão liga com a pessoa em outra área: as abas já estão lá quando ela chega, sem Pronto nem toast', async ({ page, extensao, fakes }) => {
+  await page.clock.install({ time: AGORA });
+  await page.goto(extensao.url('painel.html#anki/custos'));
+  await expect(card(page)).toBeVisible();
+  await page.getByRole('link', { name: 'Frases' }).click();
+  await expect(card(page)).toBeHidden();
+
+  fakes.anki.ligar();
+  await page.clock.runFor(15_000);
+  await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
+
+  // O relógio anda o bastante para o Pronto acabar, se ele tivesse começado.
+  // (Lida na hora: o toast sai sozinho, então esperar por ele esconderia o erro.)
+  await page.clock.runFor(2_000);
+  expect(await page.locator('.veio-toast').count()).toBe(0);
+
+  await page.getByRole('link', { name: 'Conexão com o Anki' }).click();
+  await expect(abas(page)).toBeVisible();
+  expect(await pronto(page).count()).toBe(0);
+  await expect(card(page)).toBeHidden();
+});
+
 test('“Confere sozinho a cada 15 s” segue a conferência do shell, sem um segundo relógio de rede', async ({ page, extensao, fakes }) => {
   await page.clock.install({ time: AGORA });
   await page.goto(extensao.url('painel.html#anki/custos'));

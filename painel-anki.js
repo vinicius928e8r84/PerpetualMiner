@@ -139,13 +139,17 @@
     return estado.conferiu && (estado.pronto || (!estado.jaConectou && estado.conexao !== CONEXAO.LIGADA));
   }
 
-  /** A primeira resposta: o Pronto por um instante, e então as abas voltam. */
+  /**
+   * A primeira resposta com o card na tela: o Pronto por um instante, e então as
+   * abas voltam, com o toast. Em outra área (ou nas Boas-vindas) ninguém está
+   * olhando o card: as abas só estarão lá quando a pessoa chegar, sem toast.
+   */
   function mostrarOPronto() {
     estado.pronto = true;
     setTimeout(() => {
       estado.pronto = false;
       desenhar();
-      Veio.mostrarToastDeSucesso(textoDaVoz('BRG-01.ligada'));
+      if (Shell.areaAtual() === 'anki') Veio.mostrarToastDeSucesso(textoDaVoz('BRG-01.ligada'));
     }, MOMENTO_PRONTO_MS);
   }
 
@@ -155,7 +159,7 @@
     estado.conexao = situacao;
     if (situacao !== CONEXAO.CONECTANDO) estado.conferiu = true;
     if (situacao === CONEXAO.LIGADA) {
-      if (eraPrimeiraVez && !estado.pronto) mostrarOPronto();
+      if (eraPrimeiraVez && !estado.pronto && Shell.areaAtual() === 'anki') mostrarOPronto();
       if (!estado.jaConectou) {
         estado.jaConectou = true;
         chrome.storage.local.set({ [CHAVE_JA_CONECTOU]: true });
