@@ -38,7 +38,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-envio.js` | The Envio ao Anki: Enviar ao Anki in the Frases bar, the progress modal (one card per Envio), the tracking saved in `pm_envio` and the summary (ENV-03…15) that opens by itself in any area. See “Envio ao Anki” below |
 | `bookreader.html/js/css` | Minerar de uma foto (ex-BookReader): photos of marked book pages → Gemini Vision reads the marked passages → the person picks which phrases to mine. See “Minerar de uma foto” below |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `tema.js` (the chosen theme, applied before the first paint on every page), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs, the SVG mark and `icone-claro.svg`, which `.veio-marca` swaps in on the light theme through `--veio-marca`). See `veio/README.md` |
-| `lib/voz/catalogo.js` | The Voice catalog as data: the 207 approved copy states from `docs/design/voz/` |
+| `lib/voz/catalogo.js` | The Voice catalog as data; approved copy is in `docs/design/voz/README.md` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/contexto.js` | `PerpetualMiner.Contexto` — the Contexto as the screen says it: the Fonte's name (PAI-29, `fonteDaFrase`, `nomeDaFonte`), the phrase's day (PAI-11, `rotuloDoDia`) and how long ago something happened (`haQuanto`: agora · há 5 min · há 2 h · ontem). Loaded by the panel and the popup, so a phrase never has two names |
@@ -322,8 +322,8 @@ The area follows the Conexão state the shell reports (`aoMudarAConexao`):
   selo (“Mostrando dados de há 2 h…”, with the code in Detalhes) and the period controls set to that reading's
   period and disabled (another period would have nowhere to come from). **Continuar envio** and
   **Reparar Anki** get `aria-disabled` (still in the Tab order) with a `.veio-dica` tooltip (BRG-33) on hover and on keyboard focus (`:focus-visible`, so a click never leaves it open);
-  a press does nothing. Baralhos e termos and Vocabulário show their last reading with the same BRG-12 selo. With
-  the Conexão off and nothing stored, Custos only says “Custo indisponível”: the why and Tentar de novo are the F1's.
+  a press does nothing. With the Conexão off and nothing stored, Custos only says “Custo indisponível”:
+  the why and Tentar de novo are the F1's.
   Ajustes de envio (still today's content) stays editable, with the BRG-33 note that it applies from the next Envio.
 
 **↻ Atualizar** (BRG-24) is one action, owned by `painel-anki.js`: it asks the shell for `/health` again
@@ -370,8 +370,9 @@ fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
   (an SVG `role="img"` named “66% de maturidade”: mature over all cards, recentes = `young + learning`), the big
   number, “palavras diferentes nos cartões” and Cartões · Termos-alvo · Palavra nova por cartão (1 decimal) · Maduros ·
   Recentes · Novos. Ring, bars and legend use the maturity series (ouro · info · muted). Read from the local file
-  (`source: 'collection.anki2'`): the BRG-13 note on top; the bridge's own stale cache: the BRG-12 selo with its
-  message in Detalhes. Loading BRG-10 + skeleton; failure is the persistent BRG-11 aviso with Reparar Anki, Tentar de
+  (`source: 'collection.anki2'`): the BRG-13 note on top; the bridge's own stale cache: the BRG-12 selo (see the
+  [design states](docs/design/painel/anki/README.md#estados) for presentation by tab). Loading BRG-10 + skeleton;
+  failure is the persistent BRG-11 aviso with Reparar Anki, Tentar de
   novo and the cause in Detalhes.
 - **Vocabulário** reads `GET /anki/vocabulary` of each language whole (`limit=10000`) and filters in the panel, so
   each tile has the language's total and the search never waits for the network. Tipo (Palavras e termos · Só
@@ -385,9 +386,10 @@ fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
 - **Reparar Anki** lives in Baralhos' Avançado (dashed, collapsed, “reparar Anki”, BRG-36) and in BRG-11 and BRG-18.
   It `POST`s `/anki/repair` and **waits for the real repair** — the bridge closes the Anki and waits up to 90 s
   (~110 s in all); the old 45 s abort said a working repair had failed (#9). `LIMITE_DO_REPARO_MS` (180 s) only
-  guards against a Conexão that never answers. While it runs every Reparar button says “Reparando…” (BRG-15,
-  `aria-disabled`), the BRG-15 note sits on top and the decks are a skeleton. `ok` or `after.collectionReady` → the
-  BRG-16 toast and both tabs read again (`refresh=1`); Windows refused to close it (`accessDenied`,
+  guards against a Conexão that never answers. While it runs `#anki-reparando` receives focus; see the
+  [design states](docs/design/painel/anki/README.md#estados) for the visible repair state. `ok` or
+  `after.collectionReady` → the BRG-16 toast and both tabs read again (`refresh=1`). `devolverOFoco` and
+  `focarAzulejo` restore focus for the Avançado and BRG-11 entry points, respectively. Windows refused to close it (`accessDenied`,
   `anki_repair_access_denied`) → BRG-18, persistent, with Reparar Anki again and the PIDs in Detalhes; the repair ran
   (the answer has `after`) and the Anki did not come back, or the panel's limit ran out → BRG-17 with Atualizar
   (`Anki.atualizar()`); any other failure (already repairing, no answer) → GLB-01 with Reparar Anki. All keep the
@@ -755,7 +757,7 @@ and Vocabulário: `definirBaralho(deckName, { palavras, cartoes, termos, porCart
 - `tests/painel-anki-visual.spec.js` holds the **visual reference of the Conexão com o Anki**: Custos on (period, tiles, strip, images, list × detail), a partial Envio in the detail, the Avançado with 4 decimals and IDs, Conectando, Nunca conectada (ONB-16), Desligada with the last data and Continuar envio unavailable (its tooltip closed), the read error, loading, empty, the narrow window and the light theme; compared by the owner with the locked prototype (`docs/design/painel/anki/prototipo-anki.html?variant=C`).
 - `tests/painel-anki-baralhos-visual.spec.js` holds the **visual reference of Baralhos e termos and Vocabulário**
   (with the prototype's numbers): the decks with the Avançado open, the local file with a missing deck, BRG-11,
-  Reparando…, BRG-18, the vocabulary list × detail, its empty, error, loading and last-data states, the narrow window
+  BRG-15 with the Avançado hidden, BRG-18, the vocabulary list × detail, its empty, error, loading and last-data states, the narrow window
   and the light theme; compared by the owner with the same locked prototype. `tests/painel-anki-baralhos.spec.js`
   asserts their behaviour, including the two #9 bugs.
 - `tests/painel-envio-visual.spec.js` holds the **visual reference of the Envio ao Anki**: the progress with one Envio running and one that did not start, a partial Envio with Continuar envio, the summary partial and complete (opened in Configurações), and Enviar ao Anki unavailable with its tooltip.

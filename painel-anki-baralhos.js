@@ -290,7 +290,7 @@
     devolverOFoco(botao);
   }
 
-  /** A espera do reparo tinha o foco e sumiu: ele volta a quem apertou, se ainda está na tela. */
+  /** A espera sumiu: devolve o foco apenas ao botão que ainda permanece na tela. */
   function devolverOFoco(botao) {
     if (document.activeElement === document.body && botao.isConnected && !botao.closest('[hidden]')) botao.focus();
   }
@@ -367,8 +367,8 @@
   }
 
   /**
-   * Todo Reparar Anki: “Reparando…” e parado enquanto repara; com a Conexão
-   * desligada, aria-disabled (continua no Tab) com a dica dizendo por quê.
+   * Os botões ficam ocultos durante o reparo; enquanto isso, não aceitam outro
+   * pedido. Com a Conexão desligada, aria-disabled (continua no Tab) e dica.
    */
   function desenharBotoesDeReparar() {
     for (const acao of document.querySelectorAll('#btn-bridge-anki-repair, [data-reparar]')) {

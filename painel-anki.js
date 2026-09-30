@@ -321,8 +321,8 @@
   }
 
   /**
-   * O selo BRG-12 (o último dado, de quando) e a causa em Detalhes: por padrão,
-   * a Conexão que não respondeu. As outras abas da área usam o mesmo (`Anki.pecas`).
+   * Custos: o selo BRG-12 (o último dado, de quando) e a causa em Detalhes:
+   * por padrão, a Conexão que não respondeu. As outras abas usam só `seloDoDadoAntigo`.
    */
   function partesDoSeloAntigo(quando, causa = `GET ${ENDERECO_DA_CONEXAO}/health · sem resposta`) {
     return [seloDoDadoAntigo(quando), Veio.montarDetalhes(causa)];

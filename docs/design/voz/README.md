@@ -6,7 +6,7 @@ O que está aqui:
 
 1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
 2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: 207 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
+3. **Catálogo**: estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
 
 Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
 
@@ -68,7 +68,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 
 ## 3. Catálogo de estados-chave
 
-São 207 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
+“Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 
@@ -243,12 +243,12 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | BRG-09 | Origem das imagens | status | Google · Gerada · Pulada · Falhou · G 3 / IA 2 | Foto real · Gerada por IA · Sem imagem · Falhou · 3 fotos · 2 geradas |  |
 | BRG-10 | Lendo baralhos | loading | Aguardando Anki... · Atualizando Anki... | Lendo os baralhos do Anki… |  |
 | BRG-11 | Baralhos falharam | erro | Cards e termos por idioma indisponiveis. Use Reparar Anki e atualize novamente. | Não deu para ler os baralhos do Anki. Use Reparar Anki e tente de novo. | Botões “Reparar Anki” e “Tentar de novo”. |
-| BRG-12 | Dados antigos | status | Mostrando cache anterior. Atualizacao do Anki falhou: ankistats_refresh_in_progress | Mostrando dados de há 2 h. Não deu para atualizar agora. | Código em Detalhes. |
+| BRG-12 | Dados antigos | status | Mostrando cache anterior. Atualizacao do Anki falhou: ankistats_refresh_in_progress | Mostrando dados de há 2 h. Não deu para atualizar agora. | Exibição por aba: [Painel · Conexão com o Anki](../painel/anki/README.md#estados). |
 | BRG-13 | Lido do arquivo local | status | Stats lidos do banco local do Anki. Para enviar cards, o AnkiConnect ainda precisa abrir normalmente. | Números lidos direto do arquivo do Anki. Para enviar, o Anki precisa abrir normalmente. |  |
 | BRG-14 | Baralho não existe | erro | Baralho nao encontrado | O baralho “English Mining” não existe no Anki. Confira o nome em Ajustes de envio. |  |
-| BRG-15 | Reparar Anki: andamento | loading | Reparando... · Fechando Anki travado e reabrindo... | Reparando… · Fechando o Anki travado e abrindo de novo… |  |
+| BRG-15 | Reparar Anki: andamento | loading | Reparando... · Fechando Anki travado e reabrindo... | Reparando… · Fechando o Anki travado e abrindo de novo… | Exibição atual: [Painel · Conexão com o Anki](../painel/anki/README.md#estados). |
 | BRG-16 | Reparar Anki: OK | sucesso | Anki reparado. Atualizando cards e termos. | Anki reparado |  |
-| BRG-17 | Reparar Anki: tempo esgotado | erro | Nao foi possivel reparar o Anki: signal is aborted without reason | O reparo demorou demais e foi interrompido. O Anki pode ter reaberto mesmo assim: atualize para conferir. | “Atualizar” + Detalhes. O timeout é bug (#9). |
+| BRG-17 | Reparar Anki: tempo esgotado | erro | Nao foi possivel reparar o Anki: signal is aborted without reason | O reparo demorou demais e foi interrompido. O Anki pode ter reaberto mesmo assim: atualize para conferir. | “Atualizar” + Detalhes. |
 | BRG-18 | Reparar Anki: Windows bloqueou | erro | Windows recusou fechar o Anki invisivel (processos: 1234). Feche o Anki pelo Gerenciador de Tarefas como administrador… | O Windows não deixou fechar o Anki. Feche o Anki pelo Gerenciador de Tarefas (como administrador) ou reinicie o computador, e tente de novo. | Inline e persistente, não toast de 1,8 s (C1). PIDs em Detalhes. Também no cartão do Envio ao Anki, quando o envio para porque o Windows não deixou a Conexão fechar o Anki (`ankiError: repair_access_denied`), com Continuar envio. |
 | BRG-19 | Vocabulário | loading | Aguardando vocabulario... · Calculando vocabulario da Frente... | Lendo o vocabulário… |  |
 | BRG-20 | Vocabulário falhou | erro | Vocabulario indisponivel. · Nao foi possivel carregar o vocabulario. | Não deu para carregar o vocabulário. | “Tentar de novo”. |
