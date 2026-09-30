@@ -37,7 +37,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-envio.js` | The Envio ao Anki: Enviar ao Anki in the Frases bar, the progress modal (one card per Envio), the tracking saved in `pm_envio` and the summary (ENV-03…15) that opens by itself in any area. See “Envio ao Anki” below |
 | `bookreader.html/js/css` | Minerar de uma foto (ex-BookReader): photos of marked book pages → Gemini Vision reads the marked passages → the person picks which phrases to mine. See “Minerar de uma foto” below |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `tema.js` (the chosen theme, applied before the first paint on every page), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs, the SVG mark and `icone-claro.svg`, which `.veio-marca` swaps in on the light theme through `--veio-marca`). See `veio/README.md` |
-| `lib/voz/catalogo.js` | The Voice catalog as data: the 204 approved copy states from `docs/design/voz/` |
+| `lib/voz/catalogo.js` | The runtime Voice catalog as data; design and voice rules are in `docs/design/voz/` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/contexto.js` | `PerpetualMiner.Contexto` — the Contexto as the screen says it: the Fonte's name (PAI-29, `fonteDaFrase`, `nomeDaFonte`), the phrase's day (PAI-11, `rotuloDoDia`) and how long ago something happened (`haQuanto`: agora · há 5 min · há 2 h · ontem). Loaded by the panel and the popup, so a phrase never has two names |
@@ -79,9 +79,8 @@ the `PerpetualMiner` global, so each consumer starts with
 Code that compares a language uses `PerpetualMiner.IDIOMAS` (`IDIOMAS.RUSSO`, `IDIOMAS.INGLES`),
 not a loose `'Russo'`/`'Inglês'` string.
 
-**New or rewritten copy comes from the catalog, never from a literal.** The surfaces still hold
-their old literals; each redesign step moves the surface it rebuilds (today only the context menu
-reads from the catalog). `textoDaVoz('MIN-08')` returns the approved
+**New or rewritten copy comes from the catalog, never from a literal.** Legacy surfaces still hold
+some literals; each redesign step moves the surface it rebuilds. `textoDaVoz('MIN-08')` returns the approved
 string for that state; `textoDaVoz('PAI-12.titulo')` reaches a part of a state that has several
 (modal title, body, buttons). Templates:
 
@@ -152,7 +151,7 @@ The card is at least as tall as the list and its footer sits at the bottom, so t
 short step.
 
 A step is done by the real state, read from storage: a phrase in the history, `pm_atalho` recorded, an account
-(`pm_user_info` + `pm_firebase_auth`), the Conexão com o Anki answering (`Shell.aoMudarAConexao`), a language of the
+(`pm_user_info` + `pm_firebase_auth`), the Conexão com o Anki being on (`Shell.aoMudarAConexao`), a language of the
 automatic mining on, `geminiApiKey` saved. Done wins over “agora não”. Only “agora não” and whether the person reached
 Abrir painel belong to the page, in `pm_boas_vindas`. `lib/configuracao.js` owns these rules and that key; the page
 only adds each step's value and screen. “Continuar” on a required step moves on without marking it:
@@ -166,17 +165,13 @@ both themes, `aria-hidden`) and the popup's quick mining (`lib/mineracao-rapida.
 POP-05; failure is POP-06 under the field, text kept). Step 2: ONB-06 and the same recorder as Configurações
 (`GravadorDeAtalhos.montar(…, { prefixo: 'bv', lugar })`: `lugar` is what hides when the person leaves, which cancels
 a recording): same storage, same refusal of a repeated shortcut. Nothing of the panel opens over the page: the Envio
-summary waits and opens once the person enters one of `Shell.AREAS_DO_PAINEL`. Step 3: ONB-07 and the Conta & sync card's
-body (`Conta.montarCartao`), the same Entrar com Google, sync state and CFG-07 as Configurações. Step 4: ONB-08.corpo, the
-Conexão status (BRG-01/BRG-02 with its dot, a `role="status"` region) with Verificar de novo (ONB-08.verificarDeNovo),
-which runs the F1's own retry (`Shell.tentarAConexaoDeNovo`, `aria-disabled` while conferring, gone once on), and — while
-the last `/health` answer was off — the three steps (ONB-08.passo1, .instalar, .verificar; no Detalhes and no Copiar here,
-the owner's call on the PR review, unlike the ONB-16 card of the area, which keeps ONB-08.passo1–3).
-Step 5: ONB-09, one row per language with the popup's switch and daily limit (POP-14, through `lib/mineracao-automatica.js`
-like the popup, following `pm_auto_miner_state_view`; a failure is POP-16 under the rows), and the
-ONB-10 note while the Conexão is off — turning a language on is still allowed. Step 6: ONB-11 and the Chave do Gemini
-card (`ChaveDoGemini.montar(…, { prefixo: 'bv' })`, same key, same CFG-16), with ONB-11.detalhes under an “Onde conseguir a
-chave” (ONB-11.onde, `.bv-onde`, like the prototype) while there is no key. The reminder (item 9) is below, in “Configuração pela metade”.
+summary waits and opens once the person enters one of `Shell.AREAS_DO_PAINEL`. Step 3 mounts the Conta & sync body
+(`Conta.montarCartao`) shared with Configurações. Step 4 renders the shell's Conexão state and retries through
+`Shell.tentarAConexaoDeNovo`; its later instructions use step-specific ONB-08 keys. Step 5 shares
+the popup's automatic-mining messages and daily-limit field through `lib/mineracao-automatica.js`, following
+`pm_auto_miner_state_view`. Step 6 mounts the Chave do Gemini card with `ChaveDoGemini.montar(…, { prefixo: 'bv' })`.
+For the step-specific labels, controls and visible states, see the [Boas-vindas spec](docs/design/painel/boas-vindas/README.md#os-passos).
+The reminder (item 9) is below, in “Configuração pela metade”.
 
 ### Configuração pela metade (`lib/configuracao.js`, `painel-lembrete.js`, item 9 of the closed list)
 

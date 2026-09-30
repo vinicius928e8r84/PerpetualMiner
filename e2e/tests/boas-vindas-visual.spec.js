@@ -15,6 +15,7 @@
 // A Conexão com o Anki fica desligada, para o passo 4 sair igual (“falta”)
 // sem depender de quando o shell conferiu a /health.
 
+const path = require('path');
 const { test, expect } = require('../fixtures');
 
 const UMA_FRASE = [{ id: 1, texto: 'Old news', data: '01/09/2026', streaming: 'web', idioma: 'Inglês' }];
@@ -31,7 +32,14 @@ async function abrir(page, extensao, passo = '', { largura = 1100, tema } = {}) 
   await page.evaluate(() => document.fonts.ready);
 }
 
-const foto = (page, nome) => expect(page).toHaveScreenshot(nome, { fullPage: true, animations: 'disabled', caret: 'hide' });
+async function foto(page, nome) {
+  const opcoes = { fullPage: true, animations: 'disabled', caret: 'hide' };
+  await expect(page).toHaveScreenshot(nome, opcoes);
+  // Quando pedido na validação local, guarde também a tela renderizada desta execução.
+  if (process.env.TEST_EVIDENCE_DIR) {
+    await page.screenshot({ ...opcoes, path: path.join(process.env.TEST_EVIDENCE_DIR, nome) });
+  }
+}
 
 test('a abertura', async ({ page, extensao }) => {
   await abrir(page, extensao);
