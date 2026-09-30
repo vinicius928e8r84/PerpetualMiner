@@ -115,6 +115,55 @@ test('mexer no formulário não grava nada; Salvar ajustes grava só o idioma ab
   expect(gravado.ru).toMatchObject(AJUSTES.ru);
 });
 
+test('edição feita durante o salvamento permanece como rascunho não salvo', async ({ page, extensao }) => {
+  await abrirAjustes(page, extensao);
+  await page.evaluate(() => {
+    const gravar = chrome.storage.local.set.bind(chrome.storage.local);
+    chrome.storage.local.set = (valores, callback) => {
+      if ('ankiBridgePresets' in valores) {
+        window.soltarGravacao = () => gravar(valores, callback);
+        return;
+      }
+      return gravar(valores, callback);
+    };
+  });
+
+  await baralho(page).fill('Primeiro');
+  await salvar(page).click();
+  await page.waitForFunction(() => typeof window.soltarGravacao === 'function');
+  await baralho(page).fill('Depois');
+  await page.evaluate(() => window.soltarGravacao());
+
+  await expect(toasts(page)).toHaveText('Ajustes de envio salvos');
+  expect((await ajustesGravados(extensao)).en.deckName).toBe('Primeiro');
+  await expect(baralho(page)).toHaveValue('Depois');
+  await expect(situacao(page)).toHaveText('Alterações não salvas');
+});
+
+test('falha ao ler os ajustes antes de salvar não sobrescreve o gravado', async ({ page, extensao }) => {
+  await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });
+  await baralho(page).fill('Rascunho');
+  await page.evaluate(() => {
+    const ler = chrome.storage.local.get.bind(chrome.storage.local);
+    let falhou = false;
+    chrome.storage.local.get = (chaves, callback) => {
+      if (!falhou && chaves && typeof chaves === 'object' && 'ankiBridgePresets' in chaves) {
+        falhou = true;
+        Object.defineProperty(chrome.runtime, 'lastError', { configurable: true, value: { message: 'Falha de leitura' } });
+        try { callback(undefined); } finally { delete chrome.runtime.lastError; }
+        return;
+      }
+      return ler(chaves, callback);
+    };
+  });
+
+  await salvar(page).click();
+  await expect(page.getByRole('alert')).toContainText('Não deu para salvar os ajustes de envio. Tente de novo.');
+  await expect(page.getByRole('alert')).toContainText('Falha de leitura');
+  expect((await ajustesGravados(extensao)).en.deckName).toBe('Inglês::Mineradas');
+  await expect(baralho(page)).toHaveValue('Rascunho');
+});
+
 test('Baralho em branco volta ao padrão ao salvar', async ({ page, extensao }) => {
   await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });
 
@@ -165,6 +214,22 @@ test('o card abre e fecha com o teclado, pelo botão com o nome do idioma', asyn
   await page.keyboard.press('Space');
   await expect(cabeca(page, 'Inglês')).toHaveAttribute('aria-expanded', 'true');
   await expect(baralho(page)).toBeVisible();
+});
+
+test('abrir Configurações não fecha o card de Ajustes de envio ao voltar', async ({ page, extensao, fakes }) => {
+  fakes.anki.definirBaralhosDoAnki(['CIMV', 'RUSSIAN']);
+  await abrirAjustes(page, extensao);
+  await expect(escolhaDeBaralho(page)).toBeVisible();
+
+  await page.locator('.shell-item[data-area="configuracoes"]').click();
+  await expect(page.locator('#cfg-conta')).toBeVisible();
+  await page.locator('.shell-item[data-area="anki"]').click();
+  await expect(escolhaDeBaralho(page)).toBeVisible();
+  await expect(cabeca(page, 'Inglês')).toHaveAttribute('aria-expanded', 'true');
+
+  await cabeca(page, 'Inglês').click();
+  await expect(cabeca(page, 'Inglês')).toHaveAttribute('aria-expanded', 'false');
+  await expect(formulario(page)).toHaveCount(0);
 });
 
 // ─── O sotaque ───────────────────────────────────────────────────────────────
@@ -229,6 +294,29 @@ test('com a Conexão ligada, o Baralho é uma escolha entre os baralhos do Anki,
   await expect(toasts(page)).toHaveText('Ajustes de envio salvos');
   await expect(escolhaDeBaralho(page).locator('option:checked')).toHaveText('English Mining');
   expect((await ajustesGravados(extensao)).en.deckName).toBe('English Mining');
+});
+
+test('uma resposta antiga com erro não substitui a lista de baralhos mais recente', async ({ page, extensao, fakes }) => {
+  let liberarAntiga;
+  const antiga = new Promise(resolve => { liberarAntiga = resolve; });
+  let chamadas = 0;
+  fakes.anki.responder('GET', '/anki/decks', async () => {
+    chamadas += 1;
+    if (chamadas === 1) {
+      await antiga;
+      return { status: 503, json: { error: 'anki_decks_unavailable' } };
+    }
+    return { json: { decks: ['CIMV', 'RUSSIAN'] } };
+  });
+  await abrirAjustes(page, extensao);
+  await expect(escolhaDeBaralho(page)).toBeVisible();
+
+  const respostaAntiga = page.waitForResponse(resposta => resposta.url().endsWith('/anki/decks') && resposta.status() === 503);
+  liberarAntiga();
+  await respostaAntiga;
+  await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 0)));
+  await expect(escolhaDeBaralho(page)).toBeVisible();
+  await expect(baralho(page)).toHaveCount(0);
 });
 
 test('um baralho gravado que o Anki não tem continua na lista, dizendo que não está no Anki', async ({ page, extensao, fakes }) => {

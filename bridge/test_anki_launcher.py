@@ -530,6 +530,56 @@ class BridgeServerTests(unittest.TestCase):
         # Os níveis do arquivo local (\x1f) voltam a ser `::`.
         self.assertEqual(response.get_json(), {"decks": ["Inglês::Mineradas", "RUSSIAN"]})
 
+    def test_anki_decks_falls_back_to_local_when_live_names_fail_after_ready(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bridge = self._bridge_for_decks(tmp)
+            con = sqlite3.connect(":memory:")
+            con.row_factory = sqlite3.Row
+            con.execute("create table decks (id integer, name text)")
+            con.execute("insert into decks values (1, 'Local')")
+            with mock.patch.object(bridge.anki, "collection_ready_status", return_value=(True, "collection ready")), \
+                    mock.patch.object(bridge.anki, "invoke", side_effect=RuntimeError("AnkiConnect timeout")) as invoke, \
+                    mock.patch.object(bridge, "_open_local_anki_collection", return_value=con):
+                response = bridge.app.test_client().get("/anki/decks")
+
+        invoke.assert_called_once_with("deckNames")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"decks": ["Local"]})
+
+    def test_local_deck_from_list_has_stats_and_vocabulary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            profile = Path(tmp) / "Perfil"
+            profile.mkdir()
+            with sqlite3.connect(profile / "collection.anki2") as con:
+                con.execute("create table decks (id integer, name text)")
+                con.executemany("insert into decks values (?, ?)", [
+                    (1, "Default"), (2, "Inglês\x1fMineradas"), (3, "Inglês\x1fMineradas Extra"),
+                ])
+                con.execute("create table fields (ntid integer, ord integer, name text)")
+                con.executemany("insert into fields values (?, ?, ?)", [(9, 0, "Frente"), (9, 1, "Verso")])
+                con.execute("create table notes (id integer, mid integer, flds text)")
+                con.execute("insert into notes values (42, 9, ?)", ("mango\x1fa fruit",))
+                con.execute("create table cards (nid integer, did integer, type integer, ivl integer, mod integer)")
+                con.execute("insert into cards values (42, 2, 2, 30, 0)")
+
+            bridge = self._bridge_for_decks(tmp)
+            with mock.patch.object(bridge.anki, "collection_ready_status", return_value=(False, "offline")), \
+                    mock.patch.object(bridge.anki, "invoke", side_effect=RuntimeError("offline")), \
+                    mock.patch.object(bridge, "_deck_stats_config", return_value={"anki": {"fields": {"front": "Frente", "back": "Verso"}}}):
+                client = bridge.app.test_client()
+                names = client.get("/anki/decks")
+                deck_name = "Inglês::Mineradas"
+                stats = client.get("/anki/stats/decks", query_string={"deck": deck_name, "lang": "en"})
+                vocabulary = client.get("/anki/vocabulary", query_string={"deck": deck_name, "lang": "en"})
+
+        self.assertEqual(names.status_code, 200)
+        self.assertIn(deck_name, names.get_json()["decks"])
+        self.assertEqual(stats.status_code, 200)
+        self.assertEqual(stats.get_json()["decks"][0]["cards"], 1)
+        self.assertEqual(vocabulary.status_code, 200)
+        self.assertEqual(vocabulary.get_json()["totalCards"], 1)
+        self.assertIn("mango", [row["word"] for row in vocabulary.get_json()["words"]])
+
     def test_anki_decks_answers_503_when_neither_anki_nor_the_local_collection_can_be_read(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             bridge = self._bridge_for_decks(tmp)

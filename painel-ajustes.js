@@ -44,7 +44,8 @@
     rascunhos: { en: null, ru: null },
     erros: { en: false, ru: false },// o nome do baralho tem um nível vazio (só no campo de texto)
     baralhos: null,                 // os baralhos do Anki; null sem a lista (campo de texto)
-    salvando: false,
+    ultimaLeituraDeBaralhos: 0,
+    salvando: null,
   };
 
   function iniciar() {
@@ -76,7 +77,7 @@
   function aoMudarOGravado(ajustes) {
     estado.gravados = ajustes;
     for (const lang of AjustesDeEnvio.LANGS) {
-      if (!temRascunho(lang)) adotarGravado(lang);
+      if (!temRascunho(lang) && estado.salvando !== lang) adotarGravado(lang);
     }
     desenhar();
   }
@@ -90,6 +91,7 @@
   // ─── Os baralhos do Anki ───────────────────────────────────────────────────
 
   async function lerBaralhos() {
+    const leitura = ++estado.ultimaLeituraDeBaralhos;
     let baralhos = null;
     try {
       const resposta = await fetch(`${Shell.ENDERECO_DA_CONEXAO}/anki/decks`);
@@ -100,6 +102,7 @@
     } catch {
       // Sem a lista, o Baralho é um campo de texto.
     }
+    if (leitura !== estado.ultimaLeituraDeBaralhos) return;
     if (JSON.stringify(baralhos) === JSON.stringify(estado.baralhos)) return;
     estado.baralhos = baralhos;
     desenhar();
@@ -130,15 +133,16 @@
       return;
     }
     estado.erros[lang] = false;
-    estado.salvando = true;
+    const enviados = copia(estado.rascunhos[lang]);
+    estado.salvando = lang;
     let resultado;
     try {
-      resultado = await AjustesDeEnvio.salvar(lang, estado.rascunhos[lang], estado.lidos[lang].versao);
+      resultado = await AjustesDeEnvio.salvar(lang, enviados, estado.lidos[lang].versao);
     } catch (erro) {
       mostrarAviso({ texto: textoDaVoz('BRG-07.naoSalvou'), detalhes: String(erro?.message || erro) });
       return;
     } finally {
-      estado.salvando = false;
+      estado.salvando = null;
     }
     estado.gravados = resultado.ajustes;
     if (!resultado.ok) {
@@ -149,7 +153,9 @@
       desenhar();
       return;
     }
-    adotarGravado(lang);
+    if (CAMPOS.some(campo => estado.rascunhos[lang][campo] !== enviados[campo])) {
+      estado.lidos[lang] = estado.gravados[lang];
+    } else adotarGravado(lang);
     fecharAviso();
     desenhar();
     Veio.mostrarToastDeSucesso(textoDaVoz('BRG-07.salvo'));

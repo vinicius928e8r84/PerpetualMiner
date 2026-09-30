@@ -491,8 +491,11 @@ class BridgeApp:
         """
         ready, _detail = self.anki.collection_ready_status()
         if ready:
-            names = self.anki.invoke("deckNames") or []
-        else:
+            try:
+                names = self.anki.invoke("deckNames") or []
+            except Exception:  # noqa: BLE001
+                ready = False
+        if not ready:
             con = self._open_local_anki_collection()
             try:
                 names = [row["name"] for row in con.execute("select name from decks")]
@@ -528,7 +531,7 @@ class BridgeApp:
         return [
             int(row["id"])
             for row in rows
-            if str(row["name"] or "") == deck_name or str(row["name"] or "").startswith(prefix)
+            if (name := str(row["name"] or "").replace("\x1f", "::")) == deck_name or name.startswith(prefix)
         ]
 
     def _local_deck_term_stats(self, con: sqlite3.Connection, deck_name: str, lang: str) -> dict[str, Any]:
