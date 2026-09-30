@@ -743,6 +743,7 @@ Other storage keys:
 - **Netflix**: `.player-timedtext-text-container`
 - **YouTube**: `.ytp-caption-segment`
 - **Amazon Prime**: `.atvwebplayersdk-captions-text` (with extra filtering for non-Latin chars and UI strings)
+- **Max / HBO Max**: the visible `TextCue-Fuse-Web-Play…` cues (`lerLegendaDaMax`); the player's context block (`Title-`, `SeasonEpisode-`, `Subtitle-Fuse-Web-Play…`, where “Subtitle” is the episode name, and the hidden screen-reader label) is never a caption, and the Max branch does not fall through to the generic selectors. Classes are matched at the start of a token because the styled-components hash changes
 - **Generic**: `.jw-text-track-cue`, `.vjs-text-track-cue`
 
 ### Cross-Frame Communication
