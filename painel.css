@@ -115,7 +115,8 @@ body {
 /* O ponto de estado: o da Conexão com o Anki na sidebar e o da conta no card
    Conta & sync. Um desenho só, com os estados de cada um. */
 .shell-ponto,
-.cfg-ponto {
+.cfg-ponto,
+.bv-ponto {
   flex: none;
   width: 8px;
   height: 8px;
@@ -124,10 +125,13 @@ body {
 }
 
 .shell-ponto[data-estado="ligada"],
+.bv-ponto[data-estado="ligada"],
 .cfg-ponto[data-estado="ok"] { background: var(--veio-success); }
 .shell-ponto[data-estado="desligada"],
+.bv-ponto[data-estado="desligada"],
 .cfg-ponto[data-estado="erro"] { background: var(--veio-danger); }
 .shell-ponto[data-estado="conectando"],
+.bv-ponto[data-estado="conectando"],
 .cfg-ponto[data-estado="sincronizando"] {
   animation: veio-piscar var(--veio-piscar) steps(1) infinite;
 }
@@ -2132,6 +2136,7 @@ body {
 /* ── Movimento reduzido ───────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .shell-ponto[data-estado="conectando"],
+  .bv-ponto[data-estado="conectando"],
   .cfg-ponto[data-estado="sincronizando"],
   .shell-card--destaque,
   .cfg-gravando,
@@ -3296,6 +3301,117 @@ body {
 
 .bv-rodape__espaco {
   flex: 1;
+}
+
+/* Passos 3 e 6: o corpo do card de Configurações, sem o recuo do ícone. */
+.bv-cartao.cfg-corpo {
+  padding: 0;
+}
+
+/* Passo 6: o “Onde conseguir a chave” recolhido, numa caixa como no protótipo. */
+.bv-onde {
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-surface);
+}
+
+.bv-onde > summary {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-rotulo);
+  cursor: pointer;
+}
+
+.bv-onde > p {
+  margin: 8px 0 0;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.bv-onde[hidden] {
+  display: none;
+}
+
+/* Passo 4: o status da Conexão com o Verificar de novo ao lado; desligada, os
+   3 passos. */
+.bv-conexao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.bv-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-rotulo);
+}
+
+.bv-como-ligar {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.bv-como-ligar[hidden] {
+  display: none;
+}
+
+/* Passo 5: um idioma por linha, o switch à esquerda e o limite à direita. */
+.bv-nota--conexao {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  color: var(--veio-accent-text);
+}
+
+.bv-nota--conexao[hidden] {
+  display: none;
+}
+
+.bv-nota--depois {
+  margin: 10px 0 0;
+}
+
+.bv-automatica {
+  display: grid;
+  gap: 10px;
+}
+
+.bv-automatica__linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.bv-automatica__ligar {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-rotulo);
+}
+
+.bv-automatica__falha:empty {
+  display: none;
+}
+
+.bv-automatica__limite {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
 }
 
 @media (prefers-reduced-motion: reduce) {

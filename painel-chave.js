@@ -11,8 +11,11 @@
 // A chave não é validada: não há chamada de teste.
 //
 // #configuracoes/chave com a chave vazia põe o foco no campo: é para lá que o
-// “Abrir Configurações” do Minerar de uma foto leva. Toda cópia vem do
-// catálogo da Voz.
+// “Abrir Configurações” do Minerar de uma foto leva.
+//
+// O mesmo campo mora no passo 6 da Boas-vindas: `ChaveDoGemini.montar(corpo,
+// { prefixo })` desenha o card em outro lugar, com a mesma chave. Cada lugar
+// tem o seu Trocar chave aberto ou fechado. Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
   const { textoDaVoz } = raiz;
@@ -21,27 +24,40 @@
 
   const estado = {
     chave: null,         // null até a primeira leitura do storage
-    trocando: false,     // a pessoa abriu o campo com Trocar chave
     focarAoLer: false,   // o endereço pediu o foco antes de a chave ser lida
   };
 
+  /** Onde o card é desenhado: { corpo, prefixo, trocando }. */
+  const lugares = [];
+  let configuracoes = null;
+
   function iniciar() {
+    configuracoes = montar(porId('cfg-chave-corpo'), { prefixo: 'cfg' });
     chrome.storage.local.get({ geminiApiKey: '' }, dados => {
       estado.chave = dados.geminiApiKey || '';
-      desenhar();
+      lugares.forEach(desenhar);
       if (estado.focarAoLer) focarOCampoSeVazia();
     });
-    // Salvar em outra página (o Minerar de uma foto) aparece aqui sem recarregar.
-    // No meio de uma troca a chave nova é guardada sem redesenhar, para não
-    // derrubar o que a pessoa está digitando; Cancelar já mostra a chave nova.
+    // Salvar em outro lugar (o Minerar de uma foto, o outro card) aparece aqui
+    // sem recarregar. No meio de uma troca a chave nova é guardada sem
+    // redesenhar, para não derrubar o que a pessoa está digitando; Cancelar já
+    // mostra a chave nova.
     chrome.storage.onChanged.addListener((mudancas, area) => {
       if (area !== 'local' || !('geminiApiKey' in mudancas)) return;
       const nova = mudancas.geminiApiKey.newValue || '';
       if (nova === estado.chave) return;
       estado.chave = nova;
-      if (!estado.trocando) desenhar();
+      for (const lugar of lugares) if (!lugar.trocando) desenhar(lugar);
     });
     raiz.Shell.aoAbrirASecao('chave', focarOCampoSeVazia);
+  }
+
+  /** Desenha o card em `corpo`; `prefixo` separa os ids de cada lugar. */
+  function montar(corpo, { prefixo }) {
+    const lugar = { corpo, prefixo, trocando: false };
+    lugares.push(lugar);
+    if (estado.chave !== null) desenhar(lugar);
+    return lugar;
   }
 
   function focarOCampoSeVazia() {
@@ -49,28 +65,29 @@
       estado.focarAoLer = true;
       return;
     }
-    if (!estado.chave) porId('cfg-chave-campo')?.focus();
+    if (!estado.chave) porId(idDe(configuracoes, 'campo'))?.focus();
   }
+
+  const idDe = (lugar, parte) => `${lugar.prefixo}-chave-${parte}`;
 
   // ─── Desenho ───────────────────────────────────────────────────────────────
 
-  function desenhar() {
-    const corpo = porId('cfg-chave-corpo');
-    if (estado.chave && !estado.trocando) corpo.replaceChildren(chaveSalva());
-    else corpo.replaceChildren(...campoDaChave());
+  function desenhar(lugar) {
+    if (estado.chave && !lugar.trocando) lugar.corpo.replaceChildren(chaveSalva(lugar));
+    else lugar.corpo.replaceChildren(...campoDaChave(lugar));
   }
 
   /** Ponto verde, “Chave salva”, a chave mascarada e Trocar chave. */
-  function chaveSalva() {
+  function chaveSalva(lugar) {
     const ponto = elemento('span', 'cfg-ponto');
     ponto.dataset.estado = 'ok';
     ponto.setAttribute('aria-hidden', 'true');
     const trocar = botao('contorno', textoDaVoz('CFG-15.trocar'), () => {
-      estado.trocando = true;
-      desenhar();
-      porId('cfg-chave-campo').focus();
+      lugar.trocando = true;
+      desenhar(lugar);
+      porId(idDe(lugar, 'campo')).focus();
     });
-    trocar.id = 'cfg-chave-trocar';
+    trocar.id = idDe(lugar, 'trocar');
 
     return elemento('div', 'cfg-linha',
       elemento('div', 'cfg-quem',
@@ -80,29 +97,29 @@
   }
 
   /** O campo, Salvar chave e (trocando) Cancelar; vazia, a nota embaixo. */
-  function campoDaChave() {
+  function campoDaChave(lugar) {
     const campo = elemento('input', 'veio-campo cfg-chave-campo');
-    campo.id = 'cfg-chave-campo';
+    campo.id = idDe(lugar, 'campo');
     campo.type = 'text';
     campo.autocomplete = 'off';
     campo.spellcheck = false;
     campo.placeholder = textoDaVoz('CFG-15.campo');
     campo.setAttribute('aria-label', textoDaVoz('CFG-15.titulo'));
-    campo.addEventListener('input', () => marcarVazia(campo, false));
 
     const erro = elemento('p', 'veio-campo-erro', textoDaVoz('CFG-16.vazia'));
-    erro.id = 'cfg-chave-erro';
+    erro.id = idDe(lugar, 'erro');
     erro.hidden = true;
+    campo.addEventListener('input', () => marcarVazia(campo, erro, false));
 
     const salvar = elemento('button', `veio-botao veio-botao--${estado.chave ? 'secundario' : 'primario'}`,
       textoDaVoz('CFG-15.salvar'));
     salvar.type = 'submit';
     const acoes = elemento('div', 'cfg-acoes', salvar);
-    if (estado.trocando) {
+    if (lugar.trocando) {
       acoes.append(botao('fantasma', textoDaVoz('CFG-15.cancelar'), () => {
-        estado.trocando = false;
-        desenhar();
-        porId('cfg-chave-trocar').focus();
+        lugar.trocando = false;
+        desenhar(lugar);
+        porId(idDe(lugar, 'trocar')).focus();
       }));
     }
 
@@ -112,7 +129,7 @@
     formulario.noValidate = true;
     formulario.addEventListener('submit', evento => {
       evento.preventDefault();
-      salvarChave(campo);
+      salvarChave(lugar, campo, erro);
     });
 
     const partes = [formulario];
@@ -121,8 +138,7 @@
   }
 
   /** Liga ou desliga o erro de salvar vazio: borda danger (aria-invalid) e o aviso embaixo, ligado ao campo. */
-  function marcarVazia(campo, vazia) {
-    const aviso = porId('cfg-chave-erro');
+  function marcarVazia(campo, aviso, vazia) {
     aviso.hidden = !vazia;
     if (vazia) {
       campo.setAttribute('aria-invalid', 'true');
@@ -133,18 +149,19 @@
     }
   }
 
-  function salvarChave(campo) {
+  function salvarChave(lugar, campo, erro) {
     const chave = campo.value.trim();
     if (!chave) {
-      marcarVazia(campo, true);
+      marcarVazia(campo, erro, true);
       campo.focus();
       return;
     }
     chrome.storage.local.set({ geminiApiKey: chave }, () => {
       estado.chave = chave;
-      estado.trocando = false;
-      desenhar();
-      porId('cfg-chave-trocar').focus();
+      lugar.trocando = false;
+      // Este volta ao resumo; o outro lugar também, se não estiver no meio de uma troca.
+      for (const outro of lugares) if (!outro.trocando) desenhar(outro);
+      porId(idDe(lugar, 'trocar')).focus();
       mostrarToastDeSucesso(textoDaVoz('CFG-16.salva'));
     });
   }
@@ -164,4 +181,6 @@
   }
 
   document.addEventListener('DOMContentLoaded', iniciar);
+
+  raiz.ChaveDoGemini = { montar };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

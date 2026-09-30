@@ -232,6 +232,25 @@
   cursor: not-allowed;
 }
 
+/* O número curto do limite por dia (lib/mineracao-automatica.js): sem as
+   setinhas do navegador — digita-se o número, ou ↑ ↓ no teclado —, em mono. */
+.veio-campo.veio-campo--limite {
+  width: 48px;
+  padding: 3px 4px;
+  border-radius: var(--veio-raio-icone);
+  appearance: textfield;
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-rotulo);
+  text-align: center;
+}
+
+.veio-campo--limite::-webkit-inner-spin-button,
+.veio-campo--limite::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
 textarea.veio-campo {
   min-height: 58px;
   resize: vertical;

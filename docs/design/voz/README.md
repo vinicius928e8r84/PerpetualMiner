@@ -62,7 +62,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 | C7 | **Entrada em massa** | O botão é **“Minerar frases”**, com os modos Colar · Arquivo .txt · Foto. A foto leva à página “Minerar de uma foto”. |
 | C8 | **Status persistente** | Rótulo curto com o estado **atual verdadeiro**, nunca o estado otimista inicial. Erro usa palavra e ícone diferentes de andamento. Quando o estado impede algo, a mensagem diz o quê. Todo número vem com o que ele conta. Exemplo: “Sem sincronizar · as frases estão só neste computador”. |
 | C9 | **Silêncios** | Toda ação que o usuário inicia tem retorno visível, a menos que a mudança já apareça na tela. Estes silêncios passam a ter mensagem: legenda não encontrada; mineração rápida do popup (a falha ganha mensagem; o sucesso é a frase aparecendo no topo da lista); falha ao salvar ou copiar ao minerar; erro de rede ao criar ou retomar o Envio; importação que salvou localmente mas não subiu para a nuvem; e a confirmação ao **Recomeçar** o Minerar de uma foto com frases ainda não mineradas (**novo item da lista fechada**). O menu de contexto continua sem retorno, porque isso seria função nova (Auditoria, T6). Um **“Tentar de novo” que repete a mesma ação com o mesmo dado é revestimento**, não função nova: “Tentar de novo nas que falharam” (FOT-15) é o lote do “Tentar de novo” da foto. |
-| F1 | **Conexão desligada** | Nos erros, cópia genérica: “Ligue-a neste computador” (ENV-01). A instrução concreta de como ligar fica no passo 4 da Boas-vindas e na área Conexão com o Anki enquanto ela nunca respondeu (ONB-08, ONB-16), com o retry “Tentar de novo”. |
+| F1 | **Conexão desligada** | Nos erros, cópia genérica: “Ligue-a neste computador” (ENV-01). Para a instrução e o retry próprios do passo 4 e do card ONB-16, ver [Boas-vindas § F1](../painel/boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1). |
 
 ---
 
@@ -310,7 +310,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 
 ### Boas-vindas (primeira execução)
 
-A página não existe hoje: todas as linhas são novas. V10 permite o nome do produto aqui.
+A coluna “Hoje” registra o estado anterior à Boas-vindas. V10 permite o nome do produto aqui.
 
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
@@ -321,10 +321,10 @@ A página não existe hoje: todas as linhas são novas. V10 permite o nome do pr
 | ONB-05 | Passo 1 **(novo)** | status | (não existe) | Num vídeo com legenda, aperte Alt+S. A frase vai para o histórico e já fica copiada. / Numa página ou PDF, selecione o texto e use o botão direito › Minerar com PerpetualMiner. / Ou cole uma frase aqui, como no popup: | Mostra o atalho “Minerar legenda” gravado; sem atalho gravado: GLB-02. A ilustração estática da legenda marcada usa a frase de exemplo “I never take it for granted.” com a Palavra “take it for granted”. |
 | ONB-06 | Passo 2 **(novo)** | status | (não existe) | Escolha uma tecla ou um botão extra do mouse para minerar o texto selecionado, sem abrir o menu. | Mostra o atalho de legenda que estiver gravado (não Alt+S fixo), com os mesmos controles de Configurações › Atalhos. |
 | ONB-07 | Passo 3 **(novo)** | status | (não existe) | Entre com Google para ter suas frases em qualquer computador. Sem conta, elas ficam só neste. |  |
-| ONB-08 | Passo 4 **(novo)** | status | (não existe) | A Conexão com o Anki é um programa que roda neste computador, ao lado do Anki. É ela que cria os cartões e diz quais palavras você já conhece. Ela liga sozinha com o Windows depois de instalada uma vez. — 1. Abra o Anki neste computador, com o complemento AnkiConnect. 2. Instale a Conexão com o Anki uma vez (veja Detalhes). Depois ela liga sozinha com o Windows. 3. Volte aqui e use Tentar de novo. | Fecha a F1. Botão “Tentar de novo” (o mesmo retry do shell) + Detalhes recolhido e copiável com os comandos de instalação, a porta e o log. |
+| ONB-08 | Passo 4 **(novo)** | status | (não existe) | [`ONB-08.corpo`, `.passo1`, `.instalar`, `.verificar`, `.verificarDeNovo` em `lib/voz/catalogo.js`](../../../lib/voz/catalogo.js) | [Boas-vindas § F1](../painel/boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1) distingue este passo do card ONB-16, que continua usando `.passo1`–`.passo3`. |
 | ONB-09 | Passo 5 **(novo)** | status | (não existe) | Com ela ligada, as legendas com uma palavra que você ainda não conhece são mineradas sozinhas, até um limite por dia. Liga por idioma. / Os mesmos botões ficam no popup, pelo ícone da extensão. | A mineração automática estar no popup e aqui é deliberado. |
 | ONB-10 | Dependência da mineração automática (passo e popup) **(novo)** | status | (não existe) | Nada é minerado com a Conexão com o Anki desligada: é ela que diz quais palavras você já conhece. | C8. |
-| ONB-11 | Passo 6 **(novo)** | status | (não existe) | Só é usada em Minerar de uma foto, para ler os trechos marcados numa página de livro. Dá para adicionar depois: a página pede quando precisar. · Detalhes: No Google AI Studio, em “Get API key”. A chave fica só neste computador. |  |
+| ONB-11 | Passo 6 **(novo)** | status | (não existe) | [`ONB-11.corpo`, `.onde` e `.detalhes` em `lib/voz/catalogo.js`](../../../lib/voz/catalogo.js) | O “Onde conseguir a chave” recolhido só aparece sem chave ([Boas-vindas § passos](../painel/boas-vindas/README.md#os-passos)). |
 | ONB-12 | Tudo pronto **(novo)** | status | (não existe) | Tudo pronto — Dá para mudar qualquer coisa depois, em Configurações. A mineração automática fica no popup. [Abrir painel] | “Abrir painel” abre o Painel em Frases. O sobretítulo do card é “Pronto”. |
 | ONB-13 | Resumo (por passo) **(novo)** | status | (não existe) | feito (o valor: “Alt+Q”, “ligada”…) · agora não · falta | Os valores: a contagem de frases (PAI-05), o atalho gravado, o nome da conta (ou CFG-10), “ligada”, os idiomas ligados, “salva”. |
 | ONB-14 | Lembrete no popup **(novo)** | status | (não existe) | Configuração pela metade · 2 de 6 — Volte de onde parou [Continuar configuração] | O lembrete ocultável é item da lista fechada. |
