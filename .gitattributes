@@ -1,2 +1,5 @@
 # Scripts de shell rodam no Git Bash do Windows: com CRLF o bash falha antes do pull.
 *.sh text eol=lf
+# O empacotador tira a linha da "key" do manifest.json por regex: com CRLF o zip da loja sairia diferente do arquivo.
+*.mjs text eol=lf
+manifest.json text eol=lf

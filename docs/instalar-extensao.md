@@ -30,9 +30,15 @@ https://ohpoogiccjmdgilgegholdidgfhjkadf.chromiumapp.org/
 
 Sem esse cadastro o resto da extensão funciona; só entrar na conta e sincronizar falham.
 
-**Se você já tinha a extensão carregada antes da `key` existir:** ela tem o ID antigo (o que vinha do caminho da pasta). Antes de atualizar, **remova** o cartão do PerpetualMiner (`chrome://extensions` / `opera://extensions` → **Remover**) e **carregue a pasta de novo** (passo "Carregar sem compactação"). O ID muda uma única vez, para o fixo acima; depois disso as atualizações automáticas não o mudam. Remover apaga as frases guardadas só no navegador; as sincronizadas na conta voltam ao entrar de novo.
+**Se você já tinha a extensão carregada antes da `key` existir**, ela tem o ID antigo (o que vinha do caminho da pasta), e trocar de ID tem um custo: o `chrome.storage.local` é separado por ID, então as frases guardadas só no navegador sob o ID antigo **não aparecem** na extensão com o ID novo. As frases sincronizadas na conta voltam ao entrar de novo. Faça nesta ordem:
 
-Se o cartão mostrar outro ID depois de carregar a pasta, o `manifest.json` do clone está sem a `"key"` (clone antigo): rode `scripts/atualizar-extensao.sh` e carregue de novo.
+1. **Exporte as frases locais antes de remover nada.** No painel da extensão antiga, em Frases, marque as frases (a caixa de seleção da página, e "selecionar todas" se houver mais de uma página) e clique em **Exportar** (baixa `perpetualminer-export.txt`). Cada linha do .txt leva a Palavra, o texto e o contexto da frase, no formato que o **Arquivo .txt** de Minerar frases lê de volta; depois, importe-o por lá ou apenas minere de novo o que quiser.
+2. **Deixe o clone com a `key` antes de carregar.** Rode `scripts/atualizar-extensao.sh` (ou `git pull --ff-only` na pasta) e confira que o `manifest.json` do clone tem `"key"`. Carregar antes do pull mantém o ID antigo, e o agendador só puxa a `key` até 10 minutos depois.
+3. **Remova a extensão antiga**: `chrome://extensions` / `opera://extensions` → **Remover** no cartão do PerpetualMiner.
+4. **Carregue a pasta de novo** (passo "Carregar sem compactação" / "Carregar extensão descompactada" abaixo).
+5. **Confira o ID** no cartão: deve ser `ohpoogiccjmdgilgegholdidgfhjkadf`. Se for outro, o clone ainda está sem a `"key"`: volte ao passo 2.
+
+O ID muda uma única vez; depois disso as atualizações automáticas não o mudam.
 
 ## Chrome no Mac
 

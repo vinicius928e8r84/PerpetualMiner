@@ -1,8 +1,8 @@
 # Publicar na Chrome Web Store (item não listado)
 
-Objetivo: o PerpetualMiner instalado da loja, com link privado (visibilidade **Não listada**), para o Chrome do Mac e o Opera do desktop receberem cada versão nova sozinhos. **Nada disso foi feito ainda**: a conta, o pagamento e o envio são seus.
+Objetivo: o PerpetualMiner instalado da loja, com link privado (visibilidade **Não listada**), para o Chrome do Mac e o Opera do desktop receberem cada versão nova sozinhos. O item **não listado já existe** na loja (ID `ohpoogiccjmdgilgegholdidgfhjkadf`) e a chave dele já está fixada no `manifest.json`; o que resta é a listagem, a revisão e cada envio novo, que são seus.
 
-Enquanto a loja não aprova, use o caminho da pasta descompactada: [instalar-extensao.md](instalar-extensao.md).
+Enquanto a loja não aprova, use o caminho da pasta descompactada: [instalar-extensao.md](instalar-extensao.md). Ela tem o mesmo ID do item.
 
 ## 1. Conta de desenvolvedor (uma vez)
 
@@ -22,9 +22,9 @@ Sai `dist/perpetualminer-<versão>.zip` com só os arquivos de execução (sem `
 
 **Cada envio precisa de uma `version` maior que a publicada** (ex.: `5.0` → `5.0.1`). Altere só o `manifest.json` antes de empacotar.
 
-## 3. Criar o item (rascunho)
+## 3. O item (já criado) e o login do Google
 
-1. No painel: **Novo item** → envie o `.zip`.
+1. O item foi criado no painel (**Novo item** → `.zip`) e está com visibilidade **Não listada**. Os próximos pacotes entram por **Pacote → Fazer upload do novo pacote**.
 2. O **ID do item** é `ohpoogiccjmdgilgegholdidgfhjkadf` (fixo; é ele que o Chrome e o Opera usam para atualizar). A chave pública do item já foi fixada no `manifest.json` (campo `"key"`), então a pasta descompactada usa o mesmo ID (veja [instalar-extensao.md](instalar-extensao.md)).
 3. **Cadastre o login do Google para esse ID** (um só endereço, vale para a loja e para a pasta): no Google Cloud Console, projeto do Firebase `perpetualminer-4c219`, cliente OAuth `777592854175-o2ha6n3oqv4f9i2mavbdmfoqbh9iauio`, acrescente em *URIs de redirecionamento autorizados*:
    ```
