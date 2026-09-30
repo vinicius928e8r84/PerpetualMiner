@@ -123,7 +123,13 @@
     envio.falhaAoCriar = null;
     envio.criadoEm = Date.now();
     // Lidos na hora, não na abertura do painel: outra aba pode ter salvado no meio.
-    const preset = (await AjustesDeEnvio.ler())[envio.lang];
+    let preset;
+    try {
+      preset = (await AjustesDeEnvio.ler())[envio.lang];
+    } catch (erro) {
+      envio.falhaAoCriar = { motivo: 'ENV-03.motivoAjustes', causa: String(erro.message || erro) };
+      return;
+    }
     // O baralho de quando o Envio foi criado: é o que o resumo diz, mesmo se os ajustes mudarem.
     envio.baralho = preset.deckName;
     const corpo = {
@@ -391,7 +397,7 @@
   function pedidoDoCartao(envio, estado) {
     if (envio.falhaAoCriar) {
       return {
-        motivo: textoDaVoz(envio.falhaAoCriar.semResposta ? 'ENV-03.motivoSemResposta' : 'ENV-03.motivo'),
+        motivo: textoDaVoz(envio.falhaAoCriar.motivo || (envio.falhaAoCriar.semResposta ? 'ENV-03.motivoSemResposta' : 'ENV-03.motivo')),
         rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'tentar', aoUsar: () => tentarCriarDeNovo(envio),
       };
     }

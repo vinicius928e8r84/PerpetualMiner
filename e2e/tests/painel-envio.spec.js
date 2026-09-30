@@ -230,6 +230,39 @@ test('bug #9: o POST do envio caindo na rede mostra o erro com Tentar de novo, e
   expect(fakes.anki.enviosEm('en')).toHaveLength(1);
 });
 
+test('se a leitura dos ajustes falha, o envio não começa e Tentar de novo o cria uma vez', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: [SACK], ankiBridgePresets: { en: { deckName: 'Especial' } } });
+  await abrirPainel(page, extensao);
+  await page.evaluate(() => {
+    const ler = chrome.storage.local.get.bind(chrome.storage.local);
+    let falhou = false;
+    chrome.storage.local.get = (chaves, callback) => {
+      if (!falhou && chaves && typeof chaves === 'object' && 'ankiBridgePresets' in chaves) {
+        falhou = true;
+        Object.defineProperty(chrome.runtime, 'lastError', { configurable: true, value: { message: 'Falha de leitura' } });
+        try { callback(undefined); } finally { delete chrome.runtime.lastError; }
+        return;
+      }
+      return ler(chaves, callback);
+    };
+  });
+
+  await marcarEEnviar(page, [SACK.texto]);
+  const cartaoIngles = envio(page, 'Envio em inglês · 1 frase');
+  await expect(cartaoIngles).toContainText('Não começou');
+  await expect(cartaoIngles).toContainText('Não deu para ler os ajustes de envio. Tente de novo.');
+  await cartaoIngles.locator('details').getByText('Detalhes').click();
+  await expect(cartaoIngles.locator('details pre')).toContainText('Falha de leitura');
+  expect(fakes.anki.envios).toHaveLength(0);
+  await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio?.envios?.[0]?.falhaAoCriar?.causa).toBe('Falha de leitura');
+
+  await cartaoIngles.getByRole('button', { name: 'Tentar de novo' }).click();
+  const [job] = await enviosCriados(fakes, 1);
+  await expect(cartaoIngles).toContainText('Na fila');
+  expect(job.corpo.deckName).toBe('Especial');
+  expect(fakes.anki.requisicoes.filter(r => r.metodo === 'POST' && r.caminho === '/jobs')).toHaveLength(1);
+});
+
 test('a Conexão respondendo com erro ao criar o envio mostra ENV-03, com o status em Detalhes', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: INGLESAS });
   fakes.anki.recusarEnvios('en', { status: 500, erro: 'deck_missing' });

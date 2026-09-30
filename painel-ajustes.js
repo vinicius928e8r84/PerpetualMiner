@@ -51,7 +51,11 @@
   function iniciar() {
     montarCartoes();
     AjustesDeEnvio.acompanhar(aoMudarOGravado);
-    Shell.aoMudarAConexao(situacao => { if (situacao === Shell.CONEXAO.LIGADA) lerBaralhos(); });
+    let conexaoAnterior;
+    Shell.aoMudarAConexao(situacao => {
+      if (situacao === Shell.CONEXAO.LIGADA && conexaoAnterior !== situacao) lerBaralhos();
+      conexaoAnterior = situacao;
+    });
     Shell.aoEntrarNaArea('anki', lerBaralhos);
   }
 
