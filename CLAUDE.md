@@ -172,7 +172,7 @@ pressed) and `lembreteOculto` is not set, the popup shows the ONB-14 card above 
 strip above the avisos, each with the progress ring (`Veio.montarAnelDeProgresso`, drawing only; the number is in the
 text). Someone who updated from a version without the Boas-vindas has no `pm_boas_vindas` and never sees it. The count
 is the prototype's: steps done or answered “agora não”, of 6, the same the Boas-vindas marks. Both wait for the first
-`/health` (it counts the Anki step), so the number never jumps on screen. **Continuar configuração** (the whole popup
+`/health` (it counts the Anki step; `Configuracao.mostrarConexao(null)` means not known yet, and in the panel `painel-lembrete.js` reports the shell's Conexão for the Boas-vindas too), so the number never jumps on screen. **Continuar configuração** (the whole popup
 card is the button) goes to `#boas-vindas/<first step still missing>`, or `#boas-vindas/pronto` when none is missing;
 the popup focuses the panel tab already open, like Abrir painel. **Ocultar** is only in Frases: it writes
 `lembreteOculto: true`, both places hide at once (through `chrome.storage.onChanged`) and focus goes to Minerar

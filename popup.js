@@ -10,6 +10,7 @@ const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
 const QUANTAS_ULTIMAS = 5;
 const ENDERECO_DA_CONEXAO = 'http://127.0.0.1:8766';
 const ENDERECO_DOS_ATALHOS = '#configuracoes/atalhos';
+const TEMPO_DO_HEALTH = 3000;
 
 // Os dois idiomas da Mineração automática, na ordem dos azulejos.
 const IDIOMAS_DA_MINERACAO = [
@@ -332,13 +333,13 @@ function salvarMineracaoAutomatica(mudanca, depois) {
 
 async function conferirConexao() {
   try {
-    conexaoLigada = (await fetch(`${ENDERECO_DA_CONEXAO}/health`)).ok;
+    // Uma porta que não responde conta como desligada: nada espera para sempre.
+    conexaoLigada = (await fetch(`${ENDERECO_DA_CONEXAO}/health`, { signal: AbortSignal.timeout(TEMPO_DO_HEALTH) })).ok;
   } catch {
     conexaoLigada = false;
   }
   refletirNotaDaConexao();
   Configuracao.mostrarConexao(conexaoLigada);
-  desenharLembrete();
 }
 
 /**
@@ -356,15 +357,13 @@ function refletirNotaDaConexao() {
 
 /**
  * O cartão ONB-14, enquanto a Boas-vindas não chegou a Tudo pronto e o lembrete
- * não foi ocultado (em Frases). Ele espera o /health da Conexão com o Anki,
- * que conta um dos passos: sem isso, o número pularia com o popup já aberto.
+ * não foi ocultado (em Frases); ele espera o /health, que conta um dos passos.
  * O cartão é o botão, e só o conteúdo dele é refeito: o foco fica nele.
  */
 function desenharLembrete() {
   const cartao = porId('lembrete');
-  const aparece = Boolean(configuracao?.lembrete) && conexaoLigada !== null;
-  cartao.hidden = !aparece;
-  if (!aparece) return;
+  cartao.hidden = !configuracao.lembrete;
+  if (!configuracao.lembrete) return;
   const { resolvidos: n, total } = configuracao;
   porId('lembrete-anel').replaceChildren(montarAnelDeProgresso(n, total));
   porId('lembrete-titulo').textContent = textoDaVoz('ONB-14.titulo', { n, total });

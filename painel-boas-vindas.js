@@ -99,11 +99,11 @@
   function iniciarBoasVindas() {
     montarLista();
     montarTelas();
+    // A Conexão chega pela mesma Configuracao: quem a informa é painel-lembrete.js.
     Configuracao.acompanhar(retrato => {
       estado.configuracao = retrato;
       desenhar();
     });
-    raiz.Shell.aoMudarAConexao(situacao => Configuracao.mostrarConexao(situacao === raiz.Shell.CONEXAO.LIGADA));
     // O atalho de legenda do passo 1 (o de seleção vem no retrato).
     Atalhos.acompanharAtalhos(atalhos => {
       estado.atalhos = atalhos;

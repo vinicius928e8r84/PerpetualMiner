@@ -161,6 +161,13 @@ test('com todos os passos resolvidos e sem Abrir painel, o lembrete diz 6 de 6 e
 test.describe('quem atualizou a extensão', () => {
   test.use({ lembreteDaConfiguracao: false });
 
+  test('a atualização não deixa a configuração começada', async ({ extensao }) => {
+    // O Chromium do Playwright não sabe atualizar uma extensão desempacotada: o
+    // teste chama o ouvinte do onInstalled como o Chrome chamaria, com `update`.
+    await extensao.serviceWorker.evaluate(() => aoInstalar({ reason: 'update', previousVersion: '4.9' }));
+    expect((await extensao.lerStorage('pm_boas_vindas')).pm_boas_vindas).toBeUndefined();
+  });
+
   test('nunca começou a Boas-vindas, então não vê lembrete', async ({ page, context, extensao }) => {
     await abrirFrases(page, extensao);
     const popup = await context.newPage();

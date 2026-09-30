@@ -15,7 +15,6 @@
   const porId = id => document.getElementById(id);
 
   let retrato = null;           // o retrato da configuração, depois da primeira leitura
-  let conexaoConhecida = false; // o primeiro /health já voltou: ele conta um dos passos
 
   function iniciarLembrete() {
     porId('frases-lembrete-continuar').addEventListener('click', () => {
@@ -28,23 +27,19 @@
     });
 
     const { CONEXAO } = raiz.Shell;
-    raiz.Shell.aoMudarAConexao(situacao => {
-      conexaoConhecida = situacao !== CONEXAO.CONECTANDO;
-      Configuracao.mostrarConexao(situacao === CONEXAO.LIGADA);
-      desenhar();
-    });
+    // Conectando ainda não conta o passo: o lembrete espera o primeiro /health.
+    raiz.Shell.aoMudarAConexao(situacao => Configuracao.mostrarConexao(
+      situacao === CONEXAO.CONECTANDO ? null : situacao === CONEXAO.LIGADA));
     Configuracao.acompanhar(novo => {
       retrato = novo;
       desenhar();
     });
   }
 
-  /** A faixa espera o /health, como o popup: sem ele o número pularia na tela. */
   function desenhar() {
     const faixa = porId('frases-lembrete');
-    const aparece = Boolean(retrato?.lembrete) && conexaoConhecida;
-    faixa.hidden = !aparece;
-    if (!aparece) return;
+    faixa.hidden = !retrato.lembrete;
+    if (!retrato.lembrete) return;
     const { resolvidos: n, total } = retrato;
     porId('frases-lembrete-anel').replaceChildren(Veio.montarAnelDeProgresso(n, total));
     porId('frases-lembrete-texto').textContent = textoDaVoz('ONB-15.texto', { n, total });

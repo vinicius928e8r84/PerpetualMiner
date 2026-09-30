@@ -123,7 +123,8 @@ chrome.runtime.onInstalled.addListener(aoInstalar);
 async function aoInstalar(detalhes) {
   registrarMenuDeContexto();
   if (detalhes?.reason === 'install') {
-    await chrome.storage.local.set({ pm_boas_vindas: { agoraNao: [], concluida: false } });
+    // A aba abre mesmo com o disco recusando: sem a chave, só falta o lembrete.
+    await chrome.storage.local.set({ pm_boas_vindas: { agoraNao: [], concluida: false } }).catch(() => {});
     chrome.tabs.create({ url: chrome.runtime.getURL('painel.html#boas-vindas') });
   }
 }
