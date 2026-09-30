@@ -165,9 +165,10 @@ test('Reparar Anki espera o reparo inteiro (~100 s): “Reparando…” até o f
 
   await abrirAvancado(page);
   await baralhos(page).getByRole('button', { name: 'Reparar Anki' }).click();
-  const reparando = baralhos(page).getByRole('button', { name: 'Reparando…' });
+  // Reparando, o Avançado some: fica a nota BRG-15, e não há outro Reparar para apertar.
+  const reparando = baralhos(page).getByText('Fechando o Anki travado e abrindo de novo…');
   await expect(reparando).toBeVisible();
-  await expect(baralhos(page).getByText('Fechando o Anki travado e abrindo de novo…')).toBeVisible();
+  await expect(baralhos(page).getByRole('button', { name: 'Reparar Anki' })).toBeHidden();
 
   // O reparo fecha o Anki e espera até 90 s ele voltar: 100 s depois ainda está reparando.
   await page.clock.runFor(100_000);

@@ -847,7 +847,8 @@ body {
 }
 
 /* O × nativo do campo de busca dá lugar ao × da busca Veio. */
-.frases-busca input::-webkit-search-cancel-button {
+.frases-busca input::-webkit-search-cancel-button,
+.anki-busca input::-webkit-search-cancel-button {
   appearance: none;
 }
 
@@ -1361,6 +1362,21 @@ body {
 
 .anki-nota[hidden] {
   display: none;
+}
+
+/* A nota com o ponto do protótipo (BRG-13): o ponto fica parado e alinhado à primeira linha. */
+.anki-nota--com-ponto {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.anki-nota--com-ponto .anki-ponto {
+  margin-top: 6px;
+}
+
+.anki-ponto--parado {
+  animation: none;
 }
 
 /* ── Custos ─────────────────────────────────────────────── */

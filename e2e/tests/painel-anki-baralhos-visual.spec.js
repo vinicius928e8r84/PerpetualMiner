@@ -77,13 +77,14 @@ test('baralhos que falham: BRG-11 com Reparar Anki e Tentar de novo', async ({ p
   await expect(ilha(page)).toHaveScreenshot('baralhos-erro.png');
 });
 
-test('reparando: a nota BRG-15, o esqueleto e “Reparando…”', async ({ page, extensao, fakes }) => {
+test('reparando: a nota BRG-15 e o esqueleto, sem o Avançado', async ({ page, extensao, fakes }) => {
   fakes.anki.responder('POST', '/anki/repair', () => new Promise(() => {}));
   await abrirAnki(page, extensao, '#anki/baralhos');
   await expect(baralhos(page).getByRole('img', { name: /de maturidade/ })).toBeVisible();
   await baralhos(page).getByText('Avançado', { exact: true }).click();
   await baralhos(page).getByRole('button', { name: 'Reparar Anki' }).click();
-  await expect(baralhos(page).getByRole('button', { name: 'Reparando…' })).toBeVisible();
+  await expect(baralhos(page).getByText('Fechando o Anki travado e abrindo de novo…')).toBeVisible();
+  await expect(baralhos(page).getByText('Avançado', { exact: true })).toBeHidden();
 
   await expect(ilha(page)).toHaveScreenshot('baralhos-reparando.png', { animations: 'disabled' });
 });

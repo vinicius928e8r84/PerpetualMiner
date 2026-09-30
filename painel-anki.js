@@ -325,10 +325,12 @@
    * a Conexão que não respondeu. As outras abas da área usam o mesmo (`Anki.pecas`).
    */
   function partesDoSeloAntigo(quando, causa = `GET ${ENDERECO_DA_CONEXAO}/health · sem resposta`) {
-    return [
-      elemento('span', 'anki-selo-antigo', textoDaVoz('BRG-12', { quando: haQuanto(quando) })),
-      Veio.montarDetalhes(causa),
-    ];
+    return [seloDoDadoAntigo(quando), Veio.montarDetalhes(causa)];
+  }
+
+  /** Só o selo BRG-12, sem o Detalhes: Baralhos e termos e Vocabulário. */
+  function seloDoDadoAntigo(quando) {
+    return elemento('span', 'anki-selo-antigo', textoDaVoz('BRG-12', { quando: haQuanto(quando) }));
   }
 
   function esqueleto(alturas = [96, 44, 200]) {
@@ -759,7 +761,7 @@
     aoAtualizar,
     atualizar: atualizarTudo,
     // Os pedaços da área que Baralhos e termos e o Vocabulário também desenham.
-    pecas: { esqueleto, linhaDeEspera, partesDoSeloAntigo },
+    pecas: { esqueleto, linhaDeEspera, partesDoSeloAntigo, seloDoDadoAntigo },
   };
   document.addEventListener('DOMContentLoaded', iniciar);
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

@@ -73,7 +73,7 @@
   ];
 
   const { textoDaVoz, Veio, Shell, IDIOMAS } = raiz;
-  const { esqueleto, linhaDeEspera, partesDoSeloAntigo } = raiz.Anki.pecas;
+  const { esqueleto, linhaDeEspera, seloDoDadoAntigo } = raiz.Anki.pecas;
   const { ENDERECO_DA_CONEXAO, CONEXAO } = Shell;
   const porId = id => document.getElementById(id);
 
@@ -247,8 +247,8 @@
     estado.reparando = true;
     estado.fimDoReparo = null;
     desenhar();
-    // Quem apertou pode ter saído da tela (o Reparar do BRG-11): o foco vai para a espera.
-    if (!botao.isConnected) porId('anki-reparando')?.focus();
+    // Quem apertou saiu da tela (o Reparar do BRG-11 ou o do Avançado, que some no reparo): o foco vai para a espera.
+    porId('anki-reparando')?.focus();
 
     const limite = new AbortController();
     const relogio = setTimeout(() => limite.abort(), LIMITE_DO_REPARO_MS);
@@ -275,6 +275,7 @@
     if (fim.ok) {
       Veio.mostrarToastDeSucesso(textoDaVoz('BRG-16'));
       desenhar();
+      devolverOFoco(botao);
       lerTudo({ deNovo: true });
       return;
     }
@@ -282,6 +283,12 @@
     else if (fim.demorou) estado.fimDoReparo = avisoDeDemora(fim.causa);
     else estado.fimDoReparo = avisoDeFalha(fim.causa);
     desenhar();
+    devolverOFoco(botao);
+  }
+
+  /** A espera do reparo tinha o foco e sumiu: ele volta a quem apertou, se ainda está na tela. */
+  function devolverOFoco(botao) {
+    if (document.activeElement === document.body && botao.isConnected && !botao.closest('[hidden]')) botao.focus();
   }
 
   function windowsBloqueou(dados) {
@@ -394,8 +401,8 @@
     if (!iguais) lugar.replaceChildren(...nos);
   }
 
-  function seloAntigo(quando, causa) {
-    return elemento('div', 'anki-antigo', ...partesDoSeloAntigo(quando, causa));
+  function seloAntigo(quando) {
+    return elemento('div', 'anki-antigo', seloDoDadoAntigo(quando));
   }
 
   // Cada lugar da tela guarda o último nó que desenhou e com o quê: enquanto
@@ -433,7 +440,7 @@
     mostrar(porId('anki-baralhos-topo'), topo);
 
     porId('anki-baralhos-azulejos').hidden = !comDados;
-    porId('anki-baralhos-avancado').hidden = qual === 'esqueleto';
+    porId('anki-baralhos-avancado').hidden = qual === 'esqueleto' || qual === 'reparando';
     const corpo = porId('anki-baralhos-corpo');
     if (qual === 'esqueleto') mostrar(corpo, [esqueleto([120, 120])]);
     else if (qual === 'carregando' || qual === 'reparando') mostrar(corpo, [linhaDeEspera(textoDaVoz('BRG-10')), esqueleto([120, 120])]);
@@ -455,12 +462,14 @@
   }
 
   function notaDoArquivoLocal() {
-    return elemento('p', 'anki-nota', textoDaVoz('BRG-13'));
+    const ponto = elemento('span', 'anki-ponto anki-ponto--parado');
+    ponto.setAttribute('aria-hidden', 'true');
+    return elemento('p', 'anki-nota anki-nota--com-ponto', ponto, textoDaVoz('BRG-13'));
   }
 
   /** A Conexão mandou o que tinha guardado, porque o Anki não respondeu agora. */
   function seloDoCache(dados) {
-    return seloAntigo(dados.generatedAt || estado.baralhos.quando, String(dados.message || dados.sourceDetail || 'stale'));
+    return seloAntigo(dados.generatedAt || estado.baralhos.quando);
   }
 
   /** BRG-11: persistente, com Reparar Anki e Tentar de novo, e a causa em Detalhes. */
