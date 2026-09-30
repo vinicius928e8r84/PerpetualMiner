@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Shameless | Max</title>
+  <style>
+    body { margin: 0; background: #111; font-family: sans-serif; color: #fff; }
+    .player { position: relative; width: 640px; height: 360px; margin: 24px; }
+    video { width: 640px; height: 360px; background: #000; display: block; }
+    .metadados { position: absolute; left: 12px; top: 12px; }
+    .metadados span { margin-right: 8px; }
+    .legenda { position: absolute; left: 0; right: 0; bottom: 36px; text-align: center; font-size: 22px; }
+    .oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  </style>
+</head>
+<body>
+  <!-- O player da Max, só com o que importa para ler a legenda: os nomes de classe
+       são os do player real (styled-components: o prefixo fica, o hash muda). Servida
+       pelo teste no endereço www.max.com, sem rede. -->
+  <div class="player">
+    <video muted></video>
+    <div class="metadados">
+      <span class="Title-Fuse-Web-Play__sc-k9fw09-5 aBcDeF">Shameless</span>
+      <span class="SeasonEpisode-Fuse-Web-Play__sc-k9fw09-6 gHiJkL">T11 Ep.10</span>
+      <span class="Subtitle-Fuse-Web-Play__sc-k9fw09-7 mNoPqR">DNR</span>
+    </div>
+    <div class="legenda">
+      <p class="StyledVisiblyHiddenLabel-Fuse-Web-Play__sc-1a2b3c-0 oculto">It's got a heated pool, gym,</p>
+      <div class="TextCue-Fuse-Web-Play__sc-1wvp621-4 sTuVwX" id="cue">It's got a heated pool, gym,</div>
+    </div>
+  </div>
+</body>
+</html>

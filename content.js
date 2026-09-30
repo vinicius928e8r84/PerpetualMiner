@@ -385,6 +385,8 @@ function lerLegenda() {
         if (root) return legendaDe(root.innerText.replace(/\s*\n\s*/g, ' ').trim(), [root]);
     }
     if (host.includes('hbomax.com') || host.includes('max.com') || host.includes('hbo.com')) {
+        const cue = minerarCueDaMax();
+        if (cue) return cue;
         const maxText = minerarLegendaPorSeletores([
             '[data-testid*="caption" i]',
             '[data-testid*="subtitle" i]',
@@ -585,11 +587,35 @@ function minerarLegendaPorSeletores(selectors) {
             continue;
         }
         for (const el of elementos) {
+            if (ehMetadadoDoPlayerDaMax(el)) continue;
             const texto = textoLegendaDeElemento(el);
             if (texto) return legendaDe(texto, [el]);
         }
     }
     return null;
+}
+
+// O player da Max escreve o título, a temporada/episódio e o nome do episódio em
+// `Title-`, `SeasonEpisode-` e `Subtitle-Fuse-Web-Play…`: o “Subtitle” ali é o
+// subtítulo do título, não a legenda do vídeo. O rótulo oculto repete a fala
+// só para leitor de tela. Os prefixos ficam; o hash de styled-components muda.
+const METADADO_DO_PLAYER_DA_MAX = [
+    '[class*="Title-Fuse-"]',
+    '[class*="SeasonEpisode-Fuse-"]',
+    '[class*="Subtitle-Fuse-"]',
+    '[class*="StyledVisiblyHiddenLabel"]',
+].join(',');
+
+function ehMetadadoDoPlayerDaMax(el) {
+    return Boolean(el?.closest?.(METADADO_DO_PLAYER_DA_MAX));
+}
+
+/** A fala que a Max mostra agora: os `TextCue-Fuse-Web-Play…` visíveis, ou null. */
+function minerarCueDaMax() {
+    const cues = Array.from(document.querySelectorAll('[class*="TextCue-Fuse-Web-Play"]'))
+        .filter(el => !ehMetadadoDoPlayerDaMax(el) && !elementoIgnoradoParaLegenda(el));
+    const texto = normalizarTextoAutoMiner(cues.map(el => el.innerText).join(' '));
+    return textoPareceLegenda(texto) ? legendaDe(texto, cues) : null;
 }
 
 function minerarLegendaVisual() {
@@ -641,7 +667,7 @@ function textoPareceLegenda(texto) {
 }
 
 function elementoIgnoradoParaLegenda(el) {
-    if (!el || Overlay.ehOHost(el)) return true;
+    if (!el || Overlay.ehOHost(el) || ehMetadadoDoPlayerDaMax(el)) return true;
     if (el.closest('button,a,input,textarea,select,[role="button"],[contenteditable="true"]')) return true;
     const style = window.getComputedStyle(el);
     return style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) === 0;
