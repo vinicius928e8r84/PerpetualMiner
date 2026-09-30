@@ -3,7 +3,7 @@
 // O popup “Cockpit” (docs/design/popup/, variante A). A base compartilhada é
 // carregada antes pelo popup.html: o catálogo da Voz, os componentes da Veio,
 // o detector de idioma, os atalhos gravados e o Contexto da frase.
-const { IDIOMAS, textoDaVoz, Atalhos, minerarFraseManual, Configuracao } = PerpetualMiner;
+const { IDIOMAS, textoDaVoz, Atalhos, minerarFraseManual, Configuracao, MineracaoAutomatica } = PerpetualMiner;
 const { iconeVeio, escreverFrase, montarTeclas, montarAnelDeProgresso } = PerpetualMiner.Veio;
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
 
@@ -126,16 +126,10 @@ function pedirEstadoDaAutomatica() {
     return esqueleto;
   }));
 
-  chrome.runtime.sendMessage({ type: 'AUTO_MINER_GET_STATE' }, resposta => {
-    const falha = causaDaFalha(resposta);
-    // Um estado publicado enquanto isso (`pm_auto_miner_state_view`) é mais novo que esta resposta.
-    if (mineracaoAutomatica) return;
-    if (falha || !resposta.state) {
-      mostrarFalhaDaAutomatica('POP-16.leitura');
-      return;
-    }
-    mostrarMineracaoAutomatica(resposta.state);
-  });
+  // Um estado publicado enquanto isso (`pm_auto_miner_state_view`) é mais novo que esta resposta.
+  MineracaoAutomatica.lerEstado().then(
+    estado => { if (!mineracaoAutomatica) mostrarMineracaoAutomatica(estado); },
+    () => { if (!mineracaoAutomatica) mostrarFalhaDaAutomatica('POP-16.leitura'); });
 }
 
 /**
@@ -270,43 +264,13 @@ function preencherAzulejo(azulejo, { ligado, limite, n }) {
 
 function montarLimite(chave, idiomaNaFrase, limite) {
   const linha = criar('div', 'popup-azulejo__limite');
-  const campo = criar('input', 'veio-campo popup-azulejo__campo');
-  campo.type = 'number';
-  campo.min = '1';
-  campo.max = '100';
-  campo.step = '1';
-  campo.inputMode = 'numeric';
+  const campo = criar('input', 'popup-azulejo__campo');
+  MineracaoAutomatica.ligarCampoDoLimite(campo, {
+    limiteGravado: () => numerosDoIdioma(chave).limite,
+    gravar: valor => salvarMineracaoAutomatica({ [chave]: { dailyLimit: valor } }),
+  });
   campo.value = String(limite);
   campo.setAttribute('aria-label', textoDaVoz('POP-14.limiteDoIdioma', { idioma: idiomaNaFrase }));
-
-  let pedido = null;
-  const gravar = () => {
-    const gravado = numerosDoIdioma(chave).limite;
-    const valor = Math.round(Number(campo.value));
-    // Um campo vazio volta ao que estava.
-    if (!campo.value.trim() || Number.isNaN(valor)) {
-      campo.value = String(gravado);
-      return;
-    }
-    // Enter e o `change` que vem depois dele pedem a mesma gravação uma vez só.
-    if (valor === gravado || valor === pedido) return;
-    pedido = valor;
-    salvarMineracaoAutomatica({ [chave]: { dailyLimit: valor } }, () => {
-      pedido = null;
-      // O service worker prende o limite entre 1 e 100: o campo mostra o que ficou gravado.
-      if (campo.isConnected) campo.value = String(numerosDoIdioma(chave).limite);
-    });
-  };
-  campo.addEventListener('change', gravar);
-  // Sem as setinhas do navegador: ao chegar no campo, o número já vem
-  // selecionado, e digitar troca o limite. As setas ↑ ↓ do teclado seguem valendo.
-  campo.addEventListener('focus', () => campo.select());
-  // Enter grava e o foco fica no campo, para o teclado seguir de onde estava.
-  campo.addEventListener('keydown', evento => {
-    if (evento.key !== 'Enter') return;
-    evento.preventDefault();
-    gravar();
-  });
 
   const rotuloAntes = criar('span', '', textoDaVoz('POP-14.limite'));
   const rotuloDepois = criar('span', '', textoDaVoz('POP-14.dia'));
@@ -316,18 +280,12 @@ function montarLimite(chave, idiomaNaFrase, limite) {
   return linha;
 }
 
-/** Grava só o que mudou num idioma; o service worker junta com o resto. */
-function salvarMineracaoAutomatica(mudanca, depois) {
-  chrome.runtime.sendMessage({ type: 'AUTO_MINER_SET_SETTINGS', settings: mudanca }, resposta => {
-    const falha = causaDaFalha(resposta) || (resposta.state ? null : JSON.stringify(resposta));
-    if (falha) {
-      // Nada foi gravado: os azulejos voltam ao que está gravado, e POP-16 diz para tentar de novo.
-      mostrarMineracaoAutomatica(mineracaoAutomatica);
-      mostrarFalhaDaAutomatica('POP-16.gravacao');
-    } else {
-      mostrarMineracaoAutomatica(resposta.state);
-    }
-    if (depois) depois();
+/** Grava só o que mudou num idioma; a promessa termina depois de os azulejos mostrarem o resultado. */
+function salvarMineracaoAutomatica(mudanca) {
+  return MineracaoAutomatica.salvarAjustes(mudanca).then(mostrarMineracaoAutomatica, () => {
+    // Nada foi gravado: os azulejos voltam ao que está gravado, e POP-16 diz para tentar de novo.
+    mostrarMineracaoAutomatica(mineracaoAutomatica);
+    mostrarFalhaDaAutomatica('POP-16.gravacao');
   });
 }
 
@@ -562,14 +520,6 @@ function botaoDosAtalhos(rotulo, variante = 'veio-botao--fantasma') {
 }
 
 // ─── Utilidades ───────────────────────────────────────────────────────────────
-
-/** A causa técnica de uma resposta do service worker que falhou; null se deu certo. */
-function causaDaFalha(resposta) {
-  if (chrome.runtime.lastError) return chrome.runtime.lastError.message;
-  if (resposta?.ok) return null;
-  // Sem resposta nenhuma, `JSON.stringify(undefined)` seria `undefined` e passaria por sucesso.
-  return resposta?.error || JSON.stringify(resposta ?? null);
-}
 
 /** O esqueleto sem texto (POP-01): uma linha inteira e uma curta. */
 function linhasDeEsqueleto() {

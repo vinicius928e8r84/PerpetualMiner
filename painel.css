@@ -3452,30 +3452,16 @@ body {
   font-weight: var(--veio-peso-rotulo);
 }
 
+.bv-automatica__falha:empty {
+  display: none;
+}
+
 .bv-automatica__limite {
   display: flex;
   align-items: center;
   gap: 6px;
   color: var(--veio-muted);
   font-size: var(--veio-tam-legenda);
-}
-
-/* O campo do limite do popup: sem as setinhas, o número em mono. */
-.bv-automatica__campo.veio-campo {
-  width: 48px;
-  padding: 3px 4px;
-  border-radius: var(--veio-raio-icone);
-  appearance: textfield;
-  font-family: var(--veio-fonte-mono);
-  font-size: var(--veio-tam-apoio);
-  font-weight: var(--veio-peso-rotulo);
-  text-align: center;
-}
-
-.bv-automatica__campo::-webkit-inner-spin-button,
-.bv-automatica__campo::-webkit-outer-spin-button {
-  appearance: none;
-  margin: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

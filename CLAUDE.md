@@ -44,6 +44,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `lib/configuracao.js` | `PerpetualMiner.Configuracao` — the first-run setup in one place: the 6 steps of the Boas-vindas, when each is done (from what is stored, plus the Conexão the page reports), “agora não”, `pm_boas_vindas`, and the “Configuração pela metade” reminder (ONB-14, ONB-15). Loaded by the panel and the popup. See “Configuração pela metade” below |
 | `painel-lembrete.js` | The ONB-15 strip at the top of Frases: the progress ring, “N de 6 passos”, Ocultar and Continuar configuração. See “Configuração pela metade” below |
 | `lib/mineracao-rapida.js` | `PerpetualMiner.minerarFraseManual(texto)` — the quick mining (`SALVAR_HISTORICO` with Fonte `manual`), shared by the popup and step 1 of the Boas-vindas; resolves with the saved phrase, rejects when it was not saved |
+| `lib/mineracao-automatica.js` | `PerpetualMiner.MineracaoAutomatica` — the automatic mining seen from a page: `lerEstado()` / `salvarAjustes(mudanca)` (the `AUTO_MINER_GET_STATE` / `AUTO_MINER_SET_SETTINGS` messages, as promises that reject with the cause) and `ligarCampoDoLimite(campo, { limiteGravado, gravar })`, the 1–100 daily-limit field (`.veio-campo--limite`). Shared by the popup's tiles and step 5 of the Boas-vindas |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
 | `test_gemini.js` | Standalone Node.js script to list available Gemini models (not part of the extension) |
 | `e2e/` | Playwright suite that runs the unpacked extension in Chromium (own `package.json`; see Testing) |
@@ -170,8 +171,8 @@ body (`Conta.montarCartao`), the same Entrar com Google, sync state and CFG-07 a
 Conexão status (BRG-01/BRG-02 with its dot, a `role="status"` region) with Tentar de novo, which is the F1's own retry
 (`Shell.tentarAConexaoDeNovo`, `aria-disabled` while conferring, gone once on), and — while the last `/health` answer
 was off — the three ONB-08 steps and the ONB-16 Detalhes with Copiar (`Anki.montarComoLigar`, shared with the area).
-Step 5: ONB-09, one row per language with the popup's switch and daily limit (POP-14, same `AUTO_MINER_GET_STATE` /
-`AUTO_MINER_SET_SETTINGS` messages, following `pm_auto_miner_state_view`; a failure is POP-16 under the rows), and the
+Step 5: ONB-09, one row per language with the popup's switch and daily limit (POP-14, through `lib/mineracao-automatica.js`
+like the popup, following `pm_auto_miner_state_view`; a failure is POP-16 under the rows), and the
 ONB-10 note while the Conexão is off — turning a language on is still allowed. Step 6: ONB-11 and the Chave do Gemini
 card (`ChaveDoGemini.montar(…, { prefixo: 'bv' })`, same key, same CFG-16), with ONB-11.detalhes in a Detalhes while
 there is no key. The reminder (item 9) is below, in “Configuração pela metade”.

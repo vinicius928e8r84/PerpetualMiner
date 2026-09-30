@@ -140,7 +140,7 @@
    */
   function montarCartao(lugar) {
     outrosLugares.push(lugar);
-    lugar.replaceChildren(...(estado.conta ? cardComConta() : cardSemConta()));
+    desenharCorpo(lugar);
   }
 
   // ─── Desenho ───────────────────────────────────────────────────────────────
@@ -204,9 +204,18 @@
   }
 
   function desenharCard() {
-    for (const corpo of [porId('cfg-conta-corpo'), ...outrosLugares]) {
-      corpo.replaceChildren(...(estado.conta ? cardComConta() : cardSemConta()));
-    }
+    for (const corpo of [porId('cfg-conta-corpo'), ...outrosLugares]) desenharCorpo(corpo);
+  }
+
+  /**
+   * Refaz o corpo do card. O botão que tinha o foco (o Entrar com Google que
+   * acabou de entrar) sai com o corpo velho: o foco vai para o primeiro botão
+   * do novo, em vez de cair no fim da página.
+   */
+  function desenharCorpo(corpo) {
+    const tinhaOFoco = corpo.contains(document.activeElement);
+    corpo.replaceChildren(...(estado.conta ? cardComConta() : cardSemConta()));
+    if (tinhaOFoco) corpo.querySelector('button')?.focus();
   }
 
   /** Sem conta (CFG-06) e, se o login falhou, o erro dele (CFG-07). */

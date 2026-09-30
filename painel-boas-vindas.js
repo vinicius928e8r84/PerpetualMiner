@@ -35,7 +35,7 @@
 // Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
-  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao, Shell, Conta } = raiz;
+  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao, Shell, Conta, MineracaoAutomatica } = raiz;
   const { CONEXAO } = Shell;
 
   const ABERTURA = 'abertura';
@@ -132,7 +132,8 @@
     Shell.aoMudarAConexao(situacao => {
       estado.conexao = situacao;
       if (situacao !== CONEXAO.CONECTANDO) estado.conexaoRespondida = situacao;
-      desenharConexao();
+      desenharPasso4();
+      desenharPasso5();
     });
     lerMineracaoAutomatica();
     window.addEventListener('hashchange', () => mostrarTelaDoEndereco({ focar: true }));
@@ -373,7 +374,7 @@
     return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-08.corpo')), controle);
   }
 
-  function desenharConexao() {
+  function desenharPasso4() {
     const { conexao, conexaoRespondida } = estado;
     const ligada = conexao === CONEXAO.LIGADA;
 
@@ -385,8 +386,6 @@
     passo4.tentar.hidden = ligada;
     passo4.tentar.setAttribute('aria-disabled', String(conexao === CONEXAO.CONECTANDO));
     passo4.comoLigar.hidden = conexaoRespondida !== CONEXAO.DESLIGADA;
-
-    passo5.nota.hidden = conexaoRespondida !== CONEXAO.DESLIGADA;
   }
 
   // ─── Passo 5: Ligar a mineração automática ─────────────────────────────────
@@ -403,7 +402,7 @@
     nota.hidden = true;
 
     const linhas = new Map(IDIOMAS_DA_MINERACAO.map(({ chave, idioma }) => [chave, montarLinhaDaAutomatica(chave, idioma)]));
-    const falha = elemento('div', 'bv-rapida__erro');
+    const falha = elemento('div', 'bv-automatica__falha');
     falha.setAttribute('role', 'alert');
     const controle = elemento('div', 'bv-controle bv-automatica', ...linhas.values(), falha);
     controle.setAttribute('aria-busy', 'true');
@@ -430,15 +429,13 @@
     const ligar = elemento('label', 'bv-automatica__ligar',
       elemento('span', 'veio-toggle', caixa, elemento('span', 'veio-toggle__trilho')), nome);
 
-    const campo = elemento('input', 'veio-campo bv-automatica__campo');
-    campo.type = 'number';
-    campo.min = '1';
-    campo.max = '100';
-    campo.step = '1';
-    campo.inputMode = 'numeric';
+    const campo = elemento('input');
+    MineracaoAutomatica.ligarCampoDoLimite(campo, {
+      limiteGravado: () => estado.automatica?.settings?.[chave]?.dailyLimit,
+      gravar: valor => salvarMineracaoAutomatica({ [chave]: { dailyLimit: valor } }),
+    });
     campo.disabled = true;
     campo.setAttribute('aria-label', textoDaVoz('POP-14.limiteDoIdioma', { idioma: idiomaNaFrase }));
-    ligarCampoDoLimite(campo, chave);
     const antes = elemento('span', null, textoDaVoz('POP-14.limite'));
     const depois = elemento('span', null, textoDaVoz('POP-14.dia'));
     antes.setAttribute('aria-hidden', 'true');
@@ -447,53 +444,11 @@
     return elemento('div', 'bv-automatica__linha', ligar, elemento('div', 'bv-automatica__limite', antes, campo, depois));
   }
 
-  /**
-   * O limite como no popup: o número já vem selecionado ao focar, Enter (ou
-   * sair do campo) grava e o foco fica ali, vazio volta ao que estava, e o
-   * campo mostra o que o service worker gravou (ele prende entre 1 e 100).
-   */
-  function ligarCampoDoLimite(campo, chave) {
-    let pedido = null;
-    const gravar = () => {
-      const gravado = limiteGravado(chave);
-      const valor = Math.round(Number(campo.value));
-      if (!campo.value.trim() || Number.isNaN(valor)) {
-        campo.value = String(gravado);
-        return;
-      }
-      // Enter e o `change` que vem depois dele pedem a mesma gravação uma vez só.
-      if (valor === gravado || valor === pedido) return;
-      pedido = valor;
-      salvarMineracaoAutomatica({ [chave]: { dailyLimit: valor } }).then(() => {
-        pedido = null;
-        campo.value = String(limiteGravado(chave));
-      });
-    };
-    campo.addEventListener('change', gravar);
-    campo.addEventListener('focus', () => campo.select());
-    campo.addEventListener('keydown', evento => {
-      if (evento.key !== 'Enter') return;
-      evento.preventDefault();
-      gravar();
-    });
-  }
-
-  const limiteGravado = chave => estado.automatica?.settings?.[chave]?.dailyLimit;
-
-  /** A causa técnica de uma resposta do service worker que falhou; null se deu certo. */
-  function causaDaFalha(resposta) {
-    if (chrome.runtime.lastError) return chrome.runtime.lastError.message;
-    if (resposta?.ok && resposta.state) return null;
-    return resposta?.error || JSON.stringify(resposta ?? null);
-  }
-
   function lerMineracaoAutomatica() {
-    chrome.runtime.sendMessage({ type: 'AUTO_MINER_GET_STATE' }, resposta => {
-      // Um estado publicado enquanto isso é mais novo que esta resposta.
-      if (estado.automatica) return;
-      if (causaDaFalha(resposta)) mostrarFalhaDaAutomatica('POP-16.leitura');
-      else mostrarMineracaoAutomatica(resposta.state);
-    });
+    // Um estado publicado enquanto isso é mais novo que esta resposta.
+    MineracaoAutomatica.lerEstado().then(
+      novo => { if (!estado.automatica) mostrarMineracaoAutomatica(novo); },
+      () => { if (!estado.automatica) mostrarFalhaDaAutomatica('POP-16.leitura'); });
     // O que o popup (ou a própria mineração) muda aparece aqui sem recarregar.
     chrome.storage.onChanged.addListener((mudancas, area) => {
       const publicado = area === 'local' && mudancas.pm_auto_miner_state_view?.newValue;
@@ -501,19 +456,12 @@
     });
   }
 
-  /** Grava só o que mudou num idioma; o service worker junta com o resto. */
+  /** Grava só o que mudou num idioma; a promessa termina com os controles no que ficou gravado. */
   function salvarMineracaoAutomatica(mudanca) {
-    return new Promise(resolve => {
-      chrome.runtime.sendMessage({ type: 'AUTO_MINER_SET_SETTINGS', settings: mudanca }, resposta => {
-        if (causaDaFalha(resposta)) {
-          // Nada foi gravado: os controles voltam ao que está gravado, e POP-16 pede para tentar de novo.
-          if (estado.automatica) mostrarMineracaoAutomatica(estado.automatica);
-          mostrarFalhaDaAutomatica('POP-16.gravacao');
-        } else {
-          mostrarMineracaoAutomatica(resposta.state);
-        }
-        resolve();
-      });
+    return MineracaoAutomatica.salvarAjustes(mudanca).then(mostrarMineracaoAutomatica, () => {
+      // Nada foi gravado: os controles voltam ao que está gravado, e POP-16 pede para tentar de novo.
+      if (estado.automatica) mostrarMineracaoAutomatica(estado.automatica);
+      mostrarFalhaDaAutomatica('POP-16.gravacao');
     });
   }
 
@@ -534,6 +482,11 @@
     // Um idioma ligado marca o passo pelo storage (lib/configuracao.js).
   }
 
+  /** A nota ONB-10 enquanto a última resposta da Conexão foi “desligada”. */
+  function desenharPasso5() {
+    passo5.nota.hidden = estado.conexaoRespondida !== CONEXAO.DESLIGADA;
+  }
+
   function mostrarFalhaDaAutomatica(id) {
     passo5.controle.removeAttribute('aria-busy');
     passo5.falha.replaceChildren(elemento('p', 'bv-falha', Veio.iconeVeio('alerta'), textoDaVoz(id)));
@@ -546,6 +499,7 @@
     const cartao = elemento('div', 'cfg-corpo bv-cartao');
     raiz.ChaveDoGemini.montar(cartao, { prefixo: 'bv' });
     detalhesDaChave = Veio.montarDetalhes(textoDaVoz('ONB-11.detalhes'));
+    detalhesDaChave.hidden = true;
     const controle = elemento('div', 'bv-controle', cartao, detalhesDaChave);
     return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-11.corpo')), controle);
   }
@@ -578,7 +532,8 @@
 
     desenharLista();
     desenharAtalhoDoPasso1();
-    detalhesDaChave.hidden = Boolean(estado.configuracao?.estado.chave);
+    // Até a primeira leitura não se sabe se há chave: o Detalhes espera, para não piscar.
+    detalhesDaChave.hidden = !estado.configuracao || Boolean(estado.configuracao.estado.chave);
     desenharResumo();
     desenharRodape(tela, passo);
   }

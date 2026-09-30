@@ -282,6 +282,8 @@ test('passo 3: o Entrar com Google de Configurações; entrar marca o passo e o 
 
   await expect(card(page)).toContainText('Pessoa de Teste');
   await expect(botaoDoCard(page, 'Sair da conta')).toBeVisible();
+  // O botão que tinha o foco saiu com o card antigo: o foco fica no card, não cai no fim da página.
+  await expect(botaoDoCard(page, 'Sair da conta')).toBeFocused();
   await expect(itemDaLista(page, 'Entrar com Google')).toHaveAccessibleName(/feito$/);
   // Feito, o “Agora não” sai do rodapé.
   await expect(botaoDoCard(page, 'Agora não')).toHaveCount(0);
@@ -339,14 +341,14 @@ test('passo 4: Copiar põe os comandos no clipboard e diz “Comandos copiados�
 test('passo 5: os switches EN/RU e o limite por dia gravam o mesmo que o popup', async ({ page, extensao, fakes }) => {
   fakes.anki.ligar();
   await abrirBoasVindas(page, extensao, 'automatica');
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await expect(card(page).getByText('Conexão com o Anki: ligada')).toBeAttached();
   // Ligada, a nota de dependência não aparece.
   await expect(card(page).getByText(/Nada é minerado com a Conexão com o Anki desligada/)).toBeHidden();
 
   const ingles = card(page).getByRole('switch', { name: 'Mineração automática em inglês' });
   await expect(ingles).not.toBeChecked();
   // A pessoa clica no desenho do switch (ou no nome do idioma, que é o rótulo dele).
-  await card(page).locator('.bv-automatica__ligar', { hasText: 'Inglês' }).click();
+  await card(page).getByText('Inglês', { exact: true }).click();
 
   await expect(ingles).toBeChecked();
   await expect(itemDaLista(page, 'Ligar a mineração automática')).toHaveAccessibleName(/feito$/);
@@ -366,9 +368,27 @@ test('passo 5: com a Conexão desligada, a nota de dependência (ONB-10)', async
 
   await expect(card(page)).toContainText('Nada é minerado com a Conexão com o Anki desligada: é ela que diz quais palavras você já conhece.');
   // Dá para ligar mesmo assim, com o status honesto.
-  await card(page).locator('.bv-automatica__ligar', { hasText: 'Russo' }).click();
+  await card(page).getByText('Russo', { exact: true }).click();
   await expect(card(page).getByRole('switch', { name: 'Mineração automática em russo' })).toBeChecked();
   await expect(itemDaLista(page, 'Ligar a mineração automática')).toHaveAccessibleName(/feito$/);
+});
+
+test('passo 5: com o disco recusando, POP-16 pede para tentar de novo e o switch volta ao gravado', async ({ page, extensao }) => {
+  await abrirBoasVindas(page, extensao, 'automatica');
+  const ingles = card(page).getByRole('switch', { name: 'Mineração automática em inglês' });
+  await expect(ingles).toBeEnabled();
+  // O disco recusa a gravação, na fronteira de armazenamento do service worker (como no popup).
+  await extensao.serviceWorker.evaluate(() => {
+    globalThis.gravarDeVerdade = chrome.storage.local.set.bind(chrome.storage.local);
+    chrome.storage.local.set = () => { throw new Error('QUOTA_BYTES quota exceeded'); };
+  });
+
+  await card(page).getByText('Inglês', { exact: true }).click();
+
+  await expect(card(page).getByRole('alert')).toHaveText('Não deu para salvar a mudança. Tente de novo.');
+  await expect(ingles).not.toBeChecked();
+  await expect(itemDaLista(page, 'Ligar a mineração automática')).not.toHaveAccessibleName(/feito/);
+  await extensao.serviceWorker.evaluate(() => { chrome.storage.local.set = globalThis.gravarDeVerdade; });
 });
 
 // ─── Passo 6: Adicionar a chave do Gemini ────────────────────────────────────
