@@ -186,6 +186,7 @@
 
     // O status é uma região que anuncia a mudança: o ponto e o texto trocam, ela fica.
     const esperando = k === 0 && !feito && !conectando;
+    porId('apv-status').classList.toggle('apv-status--espera', esperando);
     porId('apv-ponto').dataset.estado = esperando ? '' : feito ? CONEXAO.LIGADA : conexao;
     porId('apv-status-texto').textContent = esperando
       ? textoDaVoz('ONB-16.esperando')

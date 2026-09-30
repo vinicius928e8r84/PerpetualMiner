@@ -1394,6 +1394,16 @@ body {
   margin-top: 12px;
 }
 
+/* Os comandos ficam num bloco surface-2, como no desenho: o controle já é surface. */
+.apv-comandos .veio-aviso__detalhes > pre {
+  background: var(--veio-surface-2);
+}
+
+/* Esperando a Conexão: o passo 1 ainda não tem o que dizer, então fala baixo. */
+.apv-status--espera {
+  color: var(--veio-muted);
+}
+
 .apv-comandos[hidden] {
   display: none;
 }
