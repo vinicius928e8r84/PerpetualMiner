@@ -146,6 +146,7 @@ test('o tema claro', async ({ page, extensao }) => {
 });
 
 // ─── Ajustes de envio (#35) ──────────────────────────────────────────────────
+// Os cards por idioma da variante A do protótipo (docs/design/painel/anki/prototipo-ajustes-envio.html).
 
 const AJUSTES = {
   ankiBridgePresets: {
@@ -153,37 +154,52 @@ const AJUSTES = {
     ru: { deckName: 'RUSSIAN', imageSource: '2', ttsWordTld: 'ru', ttsPhraseTld: 'ru' },
   },
 };
-const campoDoBaralho = page => page.getByRole('textbox', { name: 'Baralho' });
+const BARALHOS_DO_ANKI = ['CIMV', 'English Mining', 'Inglês::Mineradas', 'RUSSIAN'];
+const formularioDeAjustes = page => page.getByRole('form', { name: /^Ajustes de envio · / });
+const campoDoBaralho = page => formularioDeAjustes(page).getByRole('textbox', { name: 'Baralho' });
+const escolhaDeBaralho = page => formularioDeAjustes(page).getByRole('combobox', { name: 'Baralho' });
+const cabecaDoCard = (page, idioma) => page.locator('#ajustes-cards').getByRole('button', { name: idioma, exact: true });
 
-async function abrirAjustes(page, extensao, opcoes = {}) {
+/** Com a lista de baralhos do Anki (a escolha), ou sem ela (o campo de texto). */
+async function abrirAjustes(page, extensao, fakes, { comLista = true, ...opcoes } = {}) {
+  if (comLista) fakes.anki.definirBaralhosDoAnki(BARALHOS_DO_ANKI);
   await abrirAnki(page, extensao, { hash: '#anki/ajustes', ...opcoes, gravado: { ...AJUSTES, ...opcoes.gravado } });
-  await expect(campoDoBaralho(page)).toBeVisible();
+  await expect(comLista ? escolhaDeBaralho(page) : campoDoBaralho(page)).toBeVisible();
 }
 
-test('Ajustes de envio: os azulejos e o formulário do inglês', async ({ page, extensao }) => {
-  await abrirAjustes(page, extensao);
+test('Ajustes de envio: os cards e o formulário do inglês, com a escolha de baralho', async ({ page, extensao, fakes }) => {
+  await abrirAjustes(page, extensao, fakes);
 
   await expect(ilha(page)).toHaveScreenshot('anki-ajustes.png');
 });
 
-test('Ajustes de envio: o russo com Gerada por IA e o Avançado aberto', async ({ page, extensao }) => {
-  await abrirAjustes(page, extensao);
-  await page.getByRole('group', { name: 'Idioma dos ajustes' }).getByRole('button', { name: /^RU Russo/ }).click();
-  await page.locator('#ajustes-avancado summary').click();
+test('Ajustes de envio: o russo com Gerada por IA e o Avançado aberto', async ({ page, extensao, fakes }) => {
+  await abrirAjustes(page, extensao, fakes);
+  await cabecaDoCard(page, 'Russo').click();
+  await formularioDeAjustes(page).locator('summary').click();
 
   await expect(ilha(page)).toHaveScreenshot('anki-ajustes-russo-avancado.png');
 });
 
+test('Ajustes de envio: sem a lista do Anki, o campo de texto recusa um nível vazio', async ({ page, extensao, fakes }) => {
+  await abrirAjustes(page, extensao, fakes, { comLista: false });
+  await campoDoBaralho(page).fill('Inglês::');
+  await page.getByRole('button', { name: 'Salvar ajustes' }).click();
+  await expect(campoDoBaralho(page)).toHaveAttribute('aria-invalid', 'true');
+
+  await expect(ilha(page)).toHaveScreenshot('anki-ajustes-invalido.png');
+});
+
 test('Ajustes de envio com a Conexão desligada: a F1 e a nota BRG-33', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
-  await abrirAjustes(page, extensao);
+  await abrirAjustes(page, extensao, fakes, { comLista: false });
   await expect(page.locator('#anki-ajustes-nota')).toBeVisible();
 
   await expect(ilha(page)).toHaveScreenshot('anki-ajustes-desligada.png');
 });
 
-test('Ajustes de envio: a aba desatualizada não salva e avisa', async ({ page, extensao }) => {
-  await abrirAjustes(page, extensao);
+test('Ajustes de envio: a aba desatualizada não salva e avisa', async ({ page, extensao, fakes }) => {
+  await abrirAjustes(page, extensao, fakes, { comLista: false });
   await campoDoBaralho(page).fill('Da primeira aba');
   // Outra aba salvou o inglês no meio.
   await extensao.gravarStorage({ ankiBridgePresets: { ...AJUSTES.ankiBridgePresets, en: { ...AJUSTES.ankiBridgePresets.en, deckName: 'Da segunda aba', versao: 1 } } });
@@ -193,14 +209,14 @@ test('Ajustes de envio: a aba desatualizada não salva e avisa', async ({ page, 
   await expect(ilha(page)).toHaveScreenshot('anki-ajustes-desatualizada.png');
 });
 
-test('Ajustes de envio na janela estreita', async ({ page, extensao }) => {
-  await abrirAjustes(page, extensao, { largura: 760 });
+test('Ajustes de envio na janela estreita', async ({ page, extensao, fakes }) => {
+  await abrirAjustes(page, extensao, fakes, { largura: 760 });
 
   await expect(page).toHaveScreenshot('anki-ajustes-estreita.png', { fullPage: false });
 });
 
-test('Ajustes de envio no tema claro', async ({ page, extensao }) => {
-  await abrirAjustes(page, extensao, { gravado: { pm_tema: 'claro' } });
+test('Ajustes de envio no tema claro', async ({ page, extensao, fakes }) => {
+  await abrirAjustes(page, extensao, fakes, { gravado: { pm_tema: 'claro' } });
 
   await expect(ilha(page)).toHaveScreenshot('anki-ajustes-claro.png');
 });

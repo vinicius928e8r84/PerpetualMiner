@@ -41,7 +41,7 @@ Recolhida no pé da aba, com borda tracejada e um resumo do que tem dentro:
   - chaves “Mostrar custos com 4 casas” e “Mostrar IDs dos envios”. São **poda**: escondem o que hoje aparece sempre, então são revestimento, não função nova;
   - a lista de envios com **Baixar diagnóstico** em cada um (BRG-23).
 - **Baralhos e termos:** **Reparar Anki**, com uma frase dizendo o que ele faz. O botão também aparece no erro BRG-11.
-- **Ajustes de envio:** o sotaque do áudio (TLD da palavra e da frase) do idioma escolhido, com exemplos de domínio.
+- **Ajustes de envio:** o sotaque do áudio (palavra e frase) do idioma, escolhido pelo nome do lugar. A aba foi redesenhada em [`prototipo-ajustes-envio.html`](prototipo-ajustes-envio.html) (variante A · Cartões, escolhida pelo dono; B e C ficam de registro): um card por idioma, como os de Configurações, e o Baralho escolhido entre os do Anki.
 - **Vocabulário:** não tem Avançado.
 
 ## Estados

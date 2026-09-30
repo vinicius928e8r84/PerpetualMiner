@@ -497,6 +497,19 @@ class BridgeServerTests(unittest.TestCase):
             "all(send_mod.is_present(status) for status in results.values())", process_fn
         )
 
+    def test_anki_decks_route_lists_live_deck_names_or_reads_the_local_collection(self) -> None:
+        route_fn = _function_source("anki_decks")
+        names_fn = _function_source("_anki_deck_names")
+
+        self.assertIn('@self.app.get("/anki/decks")', _source())
+        self.assertIn('jsonify({"decks": self._anki_deck_names()})', route_fn)
+        self.assertIn('"anki_decks_unavailable"', route_fn)
+        self.assertIn('self.anki.invoke("deckNames")', names_fn)
+        self.assertIn("self._open_local_anki_collection()", names_fn)
+        # Os níveis do arquivo local voltam a ser `::`, e o "Default" do Anki não é oferecido.
+        self.assertIn('.replace("\\x1f", "::")', names_fn)
+        self.assertIn('name != "Default"', names_fn)
+
     def test_health_exposes_loaded_module_fingerprint(self) -> None:
         health_fn = _function_source("health")
 

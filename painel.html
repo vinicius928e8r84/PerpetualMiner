@@ -337,55 +337,13 @@
           <!-- Com a Conexão desligada, os ajustes continuam editáveis (BRG-33). -->
           <p class="anki-nota" id="anki-ajustes-nota" data-voz="BRG-33.ajustes" hidden></p>
           <!--
-            Ajustes de envio (painel-ajustes.js): os azulejos mostram o que está
-            gravado; o formulário é do idioma escolhido e só grava em Salvar ajustes.
+            Ajustes de envio (painel-ajustes.js): um card por idioma, recolhível como os de
+            Configurações; o card fechado mostra o que está gravado e o formulário só grava
+            em Salvar ajustes.
           -->
           <div class="ajustes" id="ajustes">
-            <div class="anki-azulejos ajustes-azulejos" id="ajustes-azulejos" role="group" data-voz-aria="BRG-07.idiomas"></div>
             <div class="ajustes-aviso" id="ajustes-aviso"></div>
-            <form class="ajustes-cartao" id="ajustes-form" novalidate hidden>
-              <h2 class="ajustes-cartao__titulo" id="ajustes-titulo"></h2>
-              <p class="anki-apoio" id="ajustes-descricao"></p>
-              <label class="ajustes-campo">
-                <span class="ajustes-campo__rotulo" data-voz="BRG-07.baralho"></span>
-                <input class="veio-campo" id="ajustes-baralho" type="text" autocomplete="off" spellcheck="false" aria-describedby="ajustes-baralho-ajuda">
-                <span class="ajustes-campo__ajuda" id="ajustes-baralho-ajuda"></span>
-              </label>
-              <label class="ajustes-campo">
-                <span class="ajustes-campo__rotulo" data-voz="BRG-07.imagens"></span>
-                <span class="veio-select">
-                  <select class="veio-campo" id="ajustes-imagens" aria-describedby="ajustes-imagens-ajuda">
-                    <option value="1" data-voz="BRG-07.fotoReal"></option>
-                    <option value="2" data-voz="BRG-07.geradaPorIa"></option>
-                  </select>
-                </span>
-                <span class="ajustes-campo__ajuda" id="ajustes-imagens-ajuda"></span>
-              </label>
-              <div class="ajustes-cartao__acoes">
-                <button class="veio-botao veio-botao--primario" type="submit" data-voz="BRG-07.salvar"></button>
-              </div>
-              <details class="anki-avancado" id="ajustes-avancado">
-                <summary><span data-voz="BRG-32.titulo"></span> <small>· <span data-voz="BRG-07.avancado"></span></small></summary>
-                <div class="anki-avancado__corpo">
-                  <p class="ajustes-sotaque-idioma" id="ajustes-sotaque-idioma"></p>
-                  <p class="anki-apoio" data-voz="BRG-07.sotaque"></p>
-                  <div class="ajustes-sotaques">
-                    <label class="ajustes-campo">
-                      <span class="ajustes-campo__rotulo" data-voz="BRG-07.sotaquePalavra"></span>
-                      <span class="veio-select">
-                        <select class="veio-campo" id="ajustes-sotaque-palavra"></select>
-                      </span>
-                    </label>
-                    <label class="ajustes-campo">
-                      <span class="ajustes-campo__rotulo" data-voz="BRG-07.sotaqueFrase"></span>
-                      <span class="veio-select">
-                        <select class="veio-campo" id="ajustes-sotaque-frase"></select>
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              </details>
-            </form>
+            <div class="shell-cards ajustes-cards" id="ajustes-cards" role="group" data-voz-aria="BRG-07.idiomas"></div>
           </div>
         </div>
       </section>

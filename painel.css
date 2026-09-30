@@ -1419,41 +1419,18 @@ body {
   gap: 12px;
 }
 
-.ajustes-azulejo__baralho {
-  overflow-wrap: anywhere;
-}
-
 .ajustes-aviso:empty {
   display: none;
 }
 
-.ajustes-aviso {
-  max-width: 520px;
+.ajustes-codigo {
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  font-weight: var(--veio-peso-num);
 }
 
-.ajustes-cartao {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  max-width: 520px;
-  padding: 18px 20px;
-  border: 1px solid var(--veio-border);
-  border-radius: var(--veio-raio-card);
-  background: var(--veio-bg);
-}
-
-.ajustes-cartao[hidden] {
+.ajustes-form[hidden] {
   display: none;
-}
-
-.ajustes-cartao__titulo {
-  margin: 0;
-  font-size: var(--veio-tam-card);
-  font-weight: var(--veio-peso-titulo);
-}
-
-.ajustes-cartao__titulo + .anki-apoio {
-  margin-top: -8px;
 }
 
 .ajustes-campo {
@@ -1461,6 +1438,10 @@ body {
   flex-direction: column;
   gap: 6px;
   min-width: 0;
+}
+
+.ajustes-campo .veio-segmentado {
+  align-self: flex-start;
 }
 
 .ajustes-campo__rotulo {
@@ -1473,19 +1454,26 @@ body {
   font-size: var(--veio-tam-legenda);
 }
 
+.ajustes-campo .veio-campo-erro {
+  margin: 0;
+}
+
 .ajustes-sotaque-idioma {
   margin: 0;
   font-weight: var(--veio-peso-titulo);
-}
-
-.ajustes-cartao__acoes {
-  display: flex;
 }
 
 .ajustes-sotaques {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
   gap: 10px;
+}
+
+.ajustes-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
 }
 
 /* ── Custos ─────────────────────────────────────────────── */
