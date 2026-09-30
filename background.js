@@ -1,14 +1,13 @@
 'use strict';
 
 // A base compartilhada: o catálogo da Voz e a detecção de idioma.
-importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js');
+importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/ajustes-de-envio.js');
 const { textoDaVoz, detectarIdioma, IDIOMAS } = PerpetualMiner;
 
 const FIREBASE_PROJECT  = 'perpetualminer-4c219';
 const FIRESTORE_BASE    = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
 const FB_REFRESH_URL    = `https://securetoken.googleapis.com/v1/token?key=AIzaSyDrbDVUvv8wyoYqjCr5jEMBJPPsIP2k1Ak`;
 const BRIDGE_URL        = 'http://127.0.0.1:8766';
-const BRIDGE_PRESETS_KEY = 'ankiBridgePresets';
 const AUTO_MINER_SETTINGS_KEY = 'pm_auto_miner_settings';
 const AUTO_MINER_DAILY_KEY = 'pm_auto_miner_daily';
 const AUTO_MINER_LAST_EVENT_KEY = 'pm_auto_miner_last_event';
@@ -17,10 +16,6 @@ const AUTO_KEYWORD_CACHE_PREFIX = 'pm_auto_keyword_vocab_';
 const AUTO_KEYWORD_CACHE_VERSION = 2;
 const AUTO_KEYWORD_CACHE_TTL_MS = 15 * 60 * 1000;
 const AUTO_KEYWORD_MIN_SCORE = 70;
-const AUTO_KEYWORD_FALLBACK_DECKS = {
-  en: ['CIMV', 'English Mining'],
-  ru: ['RUSSIAN', 'Russian Mining'],
-};
 const DEFAULT_AUTO_MINER_SETTINGS = {
   en: { enabled: false, dailyLimit: 20 },
   ru: { enabled: false, dailyLimit: 20 },
@@ -752,8 +747,9 @@ async function getAutoKeywordVocabulary(lang = 'en') {
   }
 
   let data = null;
-  const fallbackDecks = AUTO_KEYWORD_FALLBACK_DECKS[normalizedLang] || [];
-  for (const deck of [deckName, ...fallbackDecks].filter(Boolean)) {
+  // O Baralho dos Ajustes de envio e, se ele não responde, o padrão (o mesmo do painel).
+  const baralhoPadrao = PerpetualMiner.AjustesDeEnvio.baralhoPadrao(normalizedLang);
+  for (const deck of [...new Set([deckName, baralhoPadrao])].filter(Boolean)) {
     try {
       const resp = await fetch(`${BRIDGE_URL}/anki/vocabulary?deck=${encodeURIComponent(deck)}&lang=${normalizedLang}&limit=10000`);
       if (!resp.ok) continue;
@@ -1150,8 +1146,7 @@ function broadcastAutoMinerState(state) {
 
 async function getAutoKeywordDeckName(lang = 'en') {
   const normalizedLang = lang === 'ru' ? 'ru' : 'en';
-  const data = await chromeGet({ [BRIDGE_PRESETS_KEY]: null });
-  return data[BRIDGE_PRESETS_KEY]?.[normalizedLang]?.deckName || AUTO_KEYWORD_FALLBACK_DECKS[normalizedLang]?.[0];
+  return (await PerpetualMiner.AjustesDeEnvio.ler())[normalizedLang].deckName;
 }
 
 /** Wrapper de chrome.storage.local.get que retorna Promise */

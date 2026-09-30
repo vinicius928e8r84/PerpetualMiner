@@ -483,6 +483,27 @@ class BridgeApp:
             raise RuntimeError(f"collection_anki2_not_found: {candidates[0]}")
         raise RuntimeError("collection_anki2_not_found")
 
+    def _anki_deck_names(self) -> list[str]:
+        """Os baralhos que o Anki tem, para a aba Ajustes de envio oferecer a escolha.
+
+        Ao vivo pelo AnkiConnect; sem ele, lidos do arquivo local (os níveis vêm
+        separados por \x1f, que aqui voltam a ser `::`). O "Default" do Anki não entra.
+        """
+        ready, _detail = self.anki.collection_ready_status()
+        if ready:
+            try:
+                names = self.anki.invoke("deckNames") or []
+            except Exception:  # noqa: BLE001
+                ready = False
+        if not ready:
+            con = self._open_local_anki_collection()
+            try:
+                names = [row["name"] for row in con.execute("select name from decks")]
+            finally:
+                con.close()
+        cleaned = {str(name or "").replace("\x1f", "::").strip() for name in names}
+        return sorted((name for name in cleaned if name and name != "Default"), key=str.casefold)
+
     def _open_local_anki_collection(self) -> sqlite3.Connection:
         collection_path = self._anki_collection_db_path()
         uri = f"file:{pathname2url(str(collection_path))}?mode=ro&immutable=1"
@@ -510,7 +531,7 @@ class BridgeApp:
         return [
             int(row["id"])
             for row in rows
-            if str(row["name"] or "") == deck_name or str(row["name"] or "").startswith(prefix)
+            if (name := str(row["name"] or "").replace("\x1f", "::")) == deck_name or name.startswith(prefix)
         ]
 
     def _local_deck_term_stats(self, con: sqlite3.Connection, deck_name: str, lang: str) -> dict[str, Any]:
@@ -917,6 +938,14 @@ class BridgeApp:
             except Exception as exc:  # noqa: BLE001
                 LOGGER.exception("Anki repair failed")
                 return jsonify({"error": "anki_repair_failed", "detail": str(exc)}), 503
+
+        @self.app.get("/anki/decks")
+        def anki_decks():
+            try:
+                return jsonify({"decks": self._anki_deck_names()})
+            except Exception as exc:  # noqa: BLE001
+                LOGGER.warning("Anki deck names unavailable: %s", exc)
+                return jsonify({"error": "anki_decks_unavailable", "detail": str(exc)}), 503
 
         def _requested_anki_stat_decks() -> list[dict[str, str]]:
             deck_names = request.args.getlist("deck")

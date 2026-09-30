@@ -12,9 +12,11 @@
 //   selecionadas()            as frases que a barra manda enviar;
 //   frasesPorId(ids)          as frases do histórico, para (re)criar um Envio;
 //   linha(frase)              a linha de mineração que a Conexão recebe;
-//   ajustes()                 os ajustes de envio de cada idioma ({ en, ru });
 //   apagar(ids)               apaga pelo caminho de sempre (tombstone, nuvem), sem toast;
 //   marcarComoEnviadas(ids)   grava Enviada ao Anki, sem toast e sem mexer na seleção.
+//
+// Os Ajustes de envio (baralho, imagens, sotaque) vêm de `AjustesDeEnvio`, lidos
+// na hora de criar cada Envio.
 
 (function (raiz) {
   const CHAVE_GRAVADA = 'pm_envio';
@@ -34,7 +36,7 @@
   const FIM = { completed: 'concluido', partial: 'concluidoEmParte', failed: 'falhou' };
   const IDIOMA_DO_LANG = { en: 'INGLES', ru: 'RUSSO' };
 
-  const { textoDaVoz, Veio, Shell, Contexto, IDIOMAS, ehRussa } = raiz;
+  const { textoDaVoz, Veio, Shell, Contexto, IDIOMAS, ehRussa, AjustesDeEnvio } = raiz;
   const { ENDERECO_DA_CONEXAO, CONEXAO, AREAS_DO_PAINEL } = Shell;
   const porId = id => document.getElementById(id);
 
@@ -120,7 +122,14 @@
   async function criarEnvio(envio) {
     envio.falhaAoCriar = null;
     envio.criadoEm = Date.now();
-    const preset = doPainel.ajustes()[envio.lang];
+    // Lidos na hora, não na abertura do painel: outra aba pode ter salvado no meio.
+    let preset;
+    try {
+      preset = (await AjustesDeEnvio.ler())[envio.lang];
+    } catch (erro) {
+      envio.falhaAoCriar = { motivo: 'ENV-03.motivoAjustes', causa: String(erro.message || erro) };
+      return;
+    }
     // O baralho de quando o Envio foi criado: é o que o resumo diz, mesmo se os ajustes mudarem.
     envio.baralho = preset.deckName;
     const corpo = {
@@ -388,7 +397,7 @@
   function pedidoDoCartao(envio, estado) {
     if (envio.falhaAoCriar) {
       return {
-        motivo: textoDaVoz(envio.falhaAoCriar.semResposta ? 'ENV-03.motivoSemResposta' : 'ENV-03.motivo'),
+        motivo: textoDaVoz(envio.falhaAoCriar.motivo || (envio.falhaAoCriar.semResposta ? 'ENV-03.motivoSemResposta' : 'ENV-03.motivo')),
         rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'tentar', aoUsar: () => tentarCriarDeNovo(envio),
       };
     }
@@ -511,8 +520,7 @@
 
   /** O nome do baralho sem o `::` do Anki: os níveis ficam separados por ›. */
   function nomeDoBaralho({ lang, baralho }) {
-    const nome = baralho || doPainel.ajustes()[lang]?.deckName || '';
-    return nome.split('::').map(parte => parte.trim()).filter(Boolean).join(' › ');
+    return AjustesDeEnvio.nomeDoBaralho(baralho || AjustesDeEnvio.atual()[lang].deckName);
   }
 
   /** Um bloco por idioma: +N cartões, o baralho, o que já estava lá, o que não entrou e Tentar de novo. */

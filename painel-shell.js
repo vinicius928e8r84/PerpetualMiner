@@ -74,7 +74,7 @@
     }
     // A linha inteira do card abre e fecha; o botão do título é quem o teclado
     // e o leitor de tela usam, e o clique nele sobe até aqui.
-    for (const cabeca of $$('.cfg-cabeca')) {
+    for (const cabeca of $$('.shell-area[data-area="configuracoes"] .cfg-cabeca')) {
       cabeca.addEventListener('click', () => alternarCard(cabeca.closest('.cfg-card')));
     }
     window.addEventListener('hashchange', aplicarEndereco);
@@ -177,7 +177,7 @@
   }
 
   function fecharOsCards() {
-    for (const card of $$('.cfg-card')) abrirCard(card, false);
+    for (const card of $$('.shell-area[data-area="configuracoes"] .cfg-card')) abrirCard(card, false);
   }
 
   /**

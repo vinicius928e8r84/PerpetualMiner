@@ -12,6 +12,10 @@ const { responderJson } = require('./http');
 // baralho que não existe no Anki volta `missing`, e o vocabulário do baralho vem
 // inteiro, com os filtros (`status`, `type`, `q`) aplicados como lá.
 //
+// Ajustes de envio (`GET /anki/decks`) lista os nomes dos baralhos que o Anki tem
+// (`{ decks: [...] }`); sem `definirBaralhosDoAnki` a lista não vem (503), como
+// com o Anki sem responder, e a aba oferece o campo de texto.
+//
 // Os Envios seguem o contrato de `bridge/server.py`: `POST /jobs` cria um
 // (`{ jobId }`, 201), `GET /jobs` lista cada um com o `state` dele, e
 // `POST /jobs/<id>/retry` o põe na fila de novo. O teste move cada Envio
@@ -32,6 +36,7 @@ function criarFakeAnki() {
     fonteDosBaralhos: 'ankiconnect', // 'collection.anki2': lidos do arquivo local (BRG-13)
     falhaDosBaralhos: null,     // { status } | { rede: true }: GET /anki/stats/decks falha
     falhaDoVocabulario: null,   // { status } | { rede: true }: GET /anki/vocabulary falha
+    baralhosDoAnki: null,       // os nomes de GET /anki/decks; null: a lista não vem (definirBaralhosDoAnki)
   };
   const requisicoes = [];
   const envios = [];    // { jobId, lang, entries, deckName, state }
@@ -172,6 +177,10 @@ function criarFakeAnki() {
       if (falha) return responderJson(route, falha.status, { error: 'anki_vocabulary_unavailable', detail: 'AnkiConnect timeout' });
       return responderJson(route, 200, vocabulario(url));
     }
+    if (url.pathname === '/anki/decks') {
+      if (!estado.baralhosDoAnki) return responderJson(route, 503, { error: 'anki_decks_unavailable', detail: 'AnkiConnect timeout' });
+      return responderJson(route, 200, { decks: estado.baralhosDoAnki });
+    }
     if (url.pathname === '/anki/stats/decks') {
       const falha = estado.falhaDosBaralhos;
       if (falha?.rede) return route.abort('connectionrefused');
@@ -229,6 +238,8 @@ function criarFakeAnki() {
      * que não foi definido não existe no Anki (`missing`).
      */
     definirBaralho(deckName, numeros) { estado.baralhos[deckName] = numeros; },
+    /** Os baralhos que o Anki tem, como GET /anki/decks os lista (Ajustes de envio). */
+    definirBaralhosDoAnki(nomes) { estado.baralhosDoAnki = nomes; },
     /** Os baralhos passam a vir do arquivo local do Anki (BRG-13), e não do AnkiConnect. */
     lerBaralhosDoArquivo() { estado.fonteDosBaralhos = 'collection.anki2'; },
     /** GET /anki/stats/decks falha: `{ status: 503 }` responde com erro, `{ rede: true }` derruba. */

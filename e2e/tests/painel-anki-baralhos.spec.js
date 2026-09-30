@@ -397,8 +397,8 @@ test('cai depois de responder: baralhos e vocabulário mostram o último dado co
 test('salvar outro baralho nos Ajustes de envio lê os baralhos e o vocabulário dele', async ({ page, extensao, fakes }) => {
   fakes.anki.definirBaralho('Mining EN', { ...BARALHO_EN, palavras: 99 });
   await abrirAnki(page, extensao, '#anki/ajustes');
-  await page.locator('#preset-main-en-deck').fill('Mining EN');
-  await page.locator('#btn-save-bridge-presets-main').click();
+  await page.getByRole('textbox', { name: 'Baralho' }).fill('Mining EN');
+  await page.getByRole('button', { name: 'Salvar ajustes' }).click();
 
   await aba(page, 'Baralhos e termos').click();
   await expect(azulejosDosBaralhos(page).getByRole('button').nth(0)).toContainText('EN · Mining EN');

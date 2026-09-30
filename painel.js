@@ -2,7 +2,7 @@
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
 // deste arquivo, pelo painel.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
-const { detectarIdioma, ehRussa, IDIOMAS, textoDaVoz, Atalhos } = PerpetualMiner;
+const { detectarIdioma, ehRussa, IDIOMAS, textoDaVoz, Atalhos, AjustesDeEnvio } = PerpetualMiner;
 // O nome da Fonte e o dia da frase, os mesmos do popup (lib/contexto.js).
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
 // A lista de Frases é montada com os componentes da Base Veio (veio/componentes.js).
@@ -47,11 +47,6 @@ const FIREBASE_API_KEY  = 'AIzaSyDrbDVUvv8wyoYqjCr5jEMBJPPsIP2k1Ak';
 const FB_SIGNIN_URL     = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${FIREBASE_API_KEY}`;
 const FB_REFRESH_URL    = `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`;
 const BRIDGE_URL        = 'http://127.0.0.1:8766';
-const BRIDGE_PRESETS_KEY = 'ankiBridgePresets';
-const DEFAULT_BRIDGE_PRESETS = {
-  en: { deckName: 'CIMV', imageSource: '1', ttsWordTld: 'com', ttsPhraseTld: 'co.uk' },
-  ru: { deckName: 'RUSSIAN', imageSource: '1', ttsWordTld: 'ru',  ttsPhraseTld: 'ru' },
-};
 
 // A Fonte de uma frase minerada sem Fonte: colada (Colar) ou vinda de uma
 // linha simples de um .txt (Arquivo .txt).
@@ -92,13 +87,16 @@ const idsAindaNaNuvem  = new Set();
 let modalAberto        = null;
 let pedidoDeApagar     = null; // { ids }
 let edicaoDeContexto   = null; // { ids }
-let bridgePresets      = structuredClone(DEFAULT_BRIDGE_PRESETS);
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
   setupListeners();
-  inicializarBridgeUI();
+  // Baralhos e termos e o Vocabulário leem os baralhos dos Ajustes de envio (painel-anki-baralhos.js),
+  // ao abrir e a cada Salvar ajustes, nesta aba ou em outra.
+  AjustesDeEnvio.acompanhar(ajustes => {
+    PerpetualMiner.Baralhos.usarBaralhos({ en: ajustes.en.deckName, ru: ajustes.ru.deckName });
+  });
   Conta.aoPedir({ entrar: loginGoogle, sair: logout, tentarDeNovo: carregarFrasesFirestore });
   setupStorageSyncListener();
   Atalhos.acompanharAtalhos(({ legenda }) => {
@@ -948,38 +946,11 @@ function setupListeners() {
     atualizarContadorSelecao();
   });
 
-  document.getElementById('btn-save-bridge-presets-main')?.addEventListener('click', salvarBridgePresets);
-}
-
-async function inicializarBridgeUI() {
-  const data = await chromeGet({ [BRIDGE_PRESETS_KEY]: DEFAULT_BRIDGE_PRESETS });
-  bridgePresets = normalizarBridgePresets(data[BRIDGE_PRESETS_KEY]);
-  preencherBridgePresetInputs();
-  mostrarBaralhosDosAjustes();
-}
-
-/** Baralhos e termos e o Vocabulário leem os baralhos dos Ajustes de envio (painel-anki-baralhos.js). */
-function mostrarBaralhosDosAjustes() {
-  PerpetualMiner.Baralhos.usarBaralhos({ en: bridgePresets.en.deckName, ru: bridgePresets.ru.deckName });
-}
-
-function normalizarBridgePresets(raw) {
-  return {
-    en: { ...DEFAULT_BRIDGE_PRESETS.en, ...(raw?.en || {}) },
-    ru: { ...DEFAULT_BRIDGE_PRESETS.ru, ...(raw?.ru || {}) },
-  };
 }
 
 function byId(id) {
   return document.getElementById(id);
 }
-
-function bridgePresetEl(lang, field) {
-  return byId(`preset-main-${lang}-${field}`) || byId(`preset-${lang}-${field}`);
-}
-
-
-
 
 function setText(id, value) {
   const el = byId(id);
@@ -987,49 +958,6 @@ function setText(id, value) {
 }
 
 
-
-function readBridgePresetValue(lang, field, fallback) {
-  const el = bridgePresetEl(lang, field);
-  return el?.value?.trim() || fallback;
-}
-
-function setBridgePresetValue(lang, field, value) {
-  [byId(`preset-main-${lang}-${field}`), byId(`preset-${lang}-${field}`)]
-    .filter(Boolean)
-    .forEach(el => { el.value = value; });
-}
-
-function preencherBridgePresetInputs() {
-  setBridgePresetValue('en', 'deck', bridgePresets.en.deckName);
-  setBridgePresetValue('en', 'image', bridgePresets.en.imageSource);
-  setBridgePresetValue('en', 'word-tld', bridgePresets.en.ttsWordTld);
-  setBridgePresetValue('en', 'phrase-tld', bridgePresets.en.ttsPhraseTld);
-  setBridgePresetValue('ru', 'deck', bridgePresets.ru.deckName);
-  setBridgePresetValue('ru', 'image', bridgePresets.ru.imageSource);
-  setBridgePresetValue('ru', 'word-tld', bridgePresets.ru.ttsWordTld);
-  setBridgePresetValue('ru', 'phrase-tld', bridgePresets.ru.ttsPhraseTld);
-}
-
-async function salvarBridgePresets() {
-  bridgePresets = {
-    en: {
-      deckName: readBridgePresetValue('en', 'deck', DEFAULT_BRIDGE_PRESETS.en.deckName),
-      imageSource: bridgePresetEl('en', 'image')?.value || DEFAULT_BRIDGE_PRESETS.en.imageSource,
-      ttsWordTld: readBridgePresetValue('en', 'word-tld', DEFAULT_BRIDGE_PRESETS.en.ttsWordTld),
-      ttsPhraseTld: readBridgePresetValue('en', 'phrase-tld', DEFAULT_BRIDGE_PRESETS.en.ttsPhraseTld),
-    },
-    ru: {
-      deckName: readBridgePresetValue('ru', 'deck', DEFAULT_BRIDGE_PRESETS.ru.deckName),
-      imageSource: bridgePresetEl('ru', 'image')?.value || DEFAULT_BRIDGE_PRESETS.ru.imageSource,
-      ttsWordTld: readBridgePresetValue('ru', 'word-tld', DEFAULT_BRIDGE_PRESETS.ru.ttsWordTld),
-      ttsPhraseTld: readBridgePresetValue('ru', 'phrase-tld', DEFAULT_BRIDGE_PRESETS.ru.ttsPhraseTld),
-    },
-  };
-  await new Promise(resolve => chrome.storage.local.set({ [BRIDGE_PRESETS_KEY]: bridgePresets }, resolve));
-  preencherBridgePresetInputs();
-  mostrarBaralhosDosAjustes();
-  mostrarToast('Presets do Anki Bridge salvos.');
-}
 
 // ─── Sidebar & Dropdowns ──────────────────────────────────────────────────────
 
@@ -1747,7 +1675,6 @@ function comecarEnvio() {
       return todasFrases.filter(f => pedidas.has(Number(f.id)));
     },
     linha: linhaParaOAnki,
-    ajustes: () => bridgePresets,
     apagar: ids => apagarFrases(ids, { toast: false }),
     marcarComoEnviadas,
   });

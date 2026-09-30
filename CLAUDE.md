@@ -35,6 +35,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-perigo.js` | The Configurações › Zona de perigo card: the Apagar tudo entry, its reach with and without an account, and the Veio confirmation modal (CFG-17). See “Chave do Gemini and Zona de perigo” below |
 | `painel-anki.js` | The Conexão com o Anki area: its connection states (Conectando, Nunca conectada with the ONB-16 card, Desligada with the last data) and the Custos tab (BRG-03…04, 12, 22, 25…33). See “Conexão com o Anki” below |
 | `painel-anki-baralhos.js` | `PerpetualMiner.Baralhos` — Baralhos e termos, Vocabulário and Reparar Anki in the Conexão com o Anki area (BRG-10…21, 27, 34…36, GLB-01). See “Baralhos e termos, Vocabulário and Reparar Anki” below |
+| `painel-ajustes.js` | The Conexão com o Anki › Ajustes de envio tab: one card per language whose form saves only on Salvar ajustes, the Baralho picked from the Anki's decks, and the stale-tab refusal (#35). See “Ajustes de envio” below |
 | `painel-envio.js` | The Envio ao Anki: Enviar ao Anki in the Frases bar, the progress modal (one card per Envio), the tracking saved in `pm_envio` and the summary (ENV-03…15) that opens by itself in any area. See “Envio ao Anki” below |
 | `bookreader.html/js/css` | Minerar de uma foto (ex-BookReader): photos of marked book pages → Gemini Vision reads the marked passages → the person picks which phrases to mine. See “Minerar de uma foto” below |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `tema.js` (the chosen theme, applied before the first paint on every page), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs, the SVG mark and `icone-claro.svg`, which `.veio-marca` swaps in on the light theme through `--veio-marca`). See `veio/README.md` |
@@ -44,6 +45,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `lib/contexto.js` | `PerpetualMiner.Contexto` — the Contexto as the screen says it: the Fonte's name (PAI-29, `fonteDaFrase`, `nomeDaFonte`), the phrase's day (PAI-11, `rotuloDoDia`) and how long ago something happened (`haQuanto`: agora · há 5 min · há 2 h · ontem). Loaded by the panel and the popup, so a phrase never has two names |
 | `lib/configuracao.js` | `PerpetualMiner.Configuracao` — the first-run setup in one place: the 6 steps of the Boas-vindas, when each is done (from what is stored, plus the Conexão the page reports), “agora não”, `pm_boas_vindas`, and the “Configuração pela metade” reminder (ONB-14, ONB-15). Loaded by the panel and the popup. See “Configuração pela metade” below |
 | `painel-lembrete.js` | The ONB-15 strip at the top of Frases: the progress ring, “N de 6 passos”, Ocultar and Continuar configuração. See “Configuração pela metade” below |
+| `lib/ajustes-de-envio.js` | `PerpetualMiner.AjustesDeEnvio` — the Ajustes de envio in one place: the Baralho padrão of each language (CIMV · RUSSIAN), the stored shape of `ankiBridgePresets`, the per-language save that refuses a stale version, and `acompanhar`. Loaded by the panel and the service worker, so the default deck is the same everywhere in the front |
 | `lib/mineracao-rapida.js` | `PerpetualMiner.minerarFraseManual(texto)` — the quick mining (`SALVAR_HISTORICO` with Fonte `manual`), shared by the popup and step 1 of the Boas-vindas; resolves with the saved phrase, rejects when it was not saved |
 | `lib/mineracao-automatica.js` | `PerpetualMiner.MineracaoAutomatica` — the automatic mining seen from a page: `lerEstado()` / `salvarAjustes(mudanca)` (the `AUTO_MINER_GET_STATE` / `AUTO_MINER_SET_SETTINGS` messages, as promises that reject with the cause) and `ligarCampoDoLimite(campo, { limiteGravado, gravar })`, the 1–100 daily-limit field (`.veio-campo--limite`). Shared by the popup's tiles and step 5 of the Boas-vindas |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
@@ -123,8 +125,7 @@ the screen but stay as the links' names (visually hidden, not `display: none`) a
 
 Until an area is rebuilt, today's content lives inside the shell in `.conteudo-de-hoje` blocks marked
 `data-tema="claro"`: its CSS was drawn for a light background. Frases has none left: #30 and #31 rebuilt its bulk
-actions. In the Anki area Custos (#33), Baralhos e termos and Vocabulário (#34) are rebuilt; Ajustes de envio is still
-today's content until its own ticket.
+actions. In the Anki area Custos (#33), Baralhos e termos and Vocabulário (#34), and Ajustes de envio (#35) are rebuilt.
 
 Configurações is the “summary first” variant C (`docs/design/painel/configuracoes/`): each of the five cards (Conta & sync ·
 Atalhos · Chave do Gemini · Aparência · Zona de perigo) is one closed row — icon tile, title, a summary of its state, chevron — and
@@ -332,7 +333,7 @@ The area follows the Conexão state the shell reports (`aoMudarAConexao`):
   **Reparar Anki** get `aria-disabled` (still in the Tab order) with a `.veio-dica` tooltip (BRG-33) on hover and on keyboard focus (`:focus-visible`, so a click never leaves it open);
   a press does nothing. With the Conexão off and nothing stored, Custos only says “Custo indisponível”:
   the why and Tentar de novo are the F1's.
-  Ajustes de envio (still today's content) stays editable, with the BRG-33 note that it applies from the next Envio.
+  Ajustes de envio stays editable, with the BRG-33 note that it applies from the next Envio.
 
 **↻ Atualizar** (BRG-24) is one action, owned by `painel-anki.js`: it asks the shell for `/health` again
 (`Shell.conferirConexao`) and, only with the Conexão on, reads Custos again and calls whoever registered through
@@ -406,10 +407,38 @@ fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
 A node that stays on screen across redraws (an aviso, the selo, the deck's detail) is reused while its input is the
 same (`oMesmo`), so focus and an open Detalhes survive the other tab's reading.
 
+### Ajustes de envio (`painel-ajustes.js`, `lib/ajustes-de-envio.js`)
+
+The `#anki/ajustes` tab is variant A · Cartões of `docs/design/painel/anki/prototipo-ajustes-envio.html` (the owner
+picked it over the locked C): one card per language, closed or open like the Configurações cards (one open at a time,
+the English one first; the header button `aria-expanded` is the control). A closed card says what is *stored* — the deck,
+its `::` levels as ›, and “· foto real” / “· gerada por IA”. Open, it holds the language's form: **Baralho**, **Imagens**
+(a segmented control, Foto real (Google) · Gerada por IA, with the cost note under it), the dashed Avançado with the audio
+accents, and **Salvar ajustes** with a status beside it (“Salvo”, or “Alterações não salvas” with Salvar in gold).
+Nothing is written until Salvar ajustes; saving writes only the language of that card and shows the BRG-07 toast. Each
+language's draft survives opening and closing the cards. With the Conexão off the tab stays editable, with the BRG-33
+note (drawn by `painel-anki.js`).
+
+The Baralho is a choice among the decks the Anki has: `GET /anki/decks` (the bridge asks AnkiConnect, or reads the local
+collection when it is down) is read when the Conexão comes on and on entering the Anki area, and the names show with ›
+for the `::` levels. A stored deck the Anki does not have (and the Baralho padrão when missing) stays in the list as
+“… · não está no Anki”. Without the list (Conexão off, Anki not answering) the Baralho is a text field: blank goes back
+to the Baralho padrão (said under it) and a name with an empty level (`Inglês::`) is refused in the field. The audio
+accents (Sotaque da palavra · Sotaque da frase) are selects by place name (Estados Unidos, Reino Unido, Austrália…; the
+Google domain stays behind them, and a stored domain outside the list is kept as its own option).
+
+Each language in `ankiBridgePresets` carries a `versao`. The form remembers the version it read; `AjustesDeEnvio.salvar`
+refuses when the stored one moved (another tab saved that language meanwhile): nothing is written, and the persistent
+aviso (BRG-07.desatualizada, “Mudou em outra aba. Nada foi salvo aqui.”) offers **Ver os novos**, which swaps the draft
+for what was saved. A tab without a draft follows another tab's save at once (`acompanhar`). The Envio reads the stored
+ajustes when it creates each Envio (never an in-memory copy from when the panel opened) and never writes them; Baralhos e
+termos and Vocabulário ask for the same decks (`painel.js` reports them to `Baralhos.usarBaralhos`), and the service
+worker's automatic Palavra falls back to the same Baralho padrão. The bridge keeps its own defaults (out of this step).
+
 ### Envio ao Anki (`painel-envio.js`)
 
 The Envio is its own module; `painel.js` hands it, once the first read of the history finishes (`Envio.usar`), only
-what it does with phrases: the selection, the mining line, the send settings, `apagar(ids)` (the usual delete, with
+what it does with phrases: the selection, the mining line, `apagar(ids)` (the usual delete, with
 tombstones, no toast) and `marcarComoEnviadas(ids)` (`status: 'exported'`, no toast, the selection untouched).
 
 **Enviar ao Anki** opens the progress modal at once (ENV-05 is silence), with one card per Envio — one per language:
@@ -687,6 +716,7 @@ Each entry in `chrome.storage.local["frases"]` (unlimited, newest first):
 ```
 
 Other storage keys:
+- `ankiBridgePresets` — the Ajustes de envio: `{ en, ru }`, each `{ deckName, imageSource: '1' (Foto real) | '2' (Gerada por IA), ttsWordTld, ttsPhraseTld, versao }`; written only by Salvar ajustes (`lib/ajustes-de-envio.js`), a missing or blank field reads as the language's default
 - `geminiApiKey` — the Gemini key, written only by Configurações › Chave do Gemini and read by Minerar de uma foto
 - `bookTitleDefault` — the Livro (Título) last typed in Minerar de uma foto, filled back on the next visit
 - `pm_tema` — `'escuro'` (the default, and what an absent key means) or `'claro'`: the theme chosen on this computer. It is local on purpose and never syncs, so each computer opens in the theme picked on it. `veio/tema.js` mirrors it into `localStorage` under the same name, which is read before the first paint so a light page never flashes dark; `chrome.storage` stays the truth and corrects the mirror
@@ -762,7 +792,7 @@ and Vocabulário: `definirBaralho(deckName, { palavras, cartoes, termos, porCart
 - `e2e/vitrine/`: the Veio showcase — tokens, type scale, radii, a Russian phrase and **every base component**, in both themes and in the states each component actually has (button and field: focus and disabled, plus error on the field; a badge only has normal). `componentes-da-vitrine.js` builds the gallery once per theme with the same function, so the two columns never diverge; its sample copy comes from the Voice catalog by ID (`CATALOGO_DA_VITRINE`), and anything that is showcase scaffolding is marked `data-vitrine-chrome`. The fixture server also serves `/veio/…` and `/lib/…` from the extension root, so the showcase loads the same tokens, fonts, components and catalog the extension pages load. After the owner's review it is **the visual reference**.
 - The showcase also carries a **mock of the toolbar badge** in its three states, outside the two theme columns — Chrome draws the real badge on the browser toolbar, which no static page (and so no Vercel preview) can show. The mock reads its colors from the tokens, and the badge test asserts those tokens match what the service worker hands Chrome, so the copy in `background.js` can't drift.
 - `tests/painel-frases-visual.spec.js` holds the **visual reference of the Frases list** (cards wide and as a rail, each at the top and with the island scrolled to the pagination; loading, first run, filters and search with no result as the full page; the selection bar, the card actions and the modals; Minerar frases: the menu, Colar filled and empty, the progress, Arquivo .txt, ADD-09 and the ADD-06 aviso; the ONB-15 “Configuração pela metade” strip, wide and narrow), in the same way: `npx playwright test painel-frases-visual --update-snapshots` after the owner approves a new look.
-- `tests/painel-anki-visual.spec.js` holds the **visual reference of the Conexão com o Anki**: Custos on (period, tiles, strip, images, list × detail), a partial Envio in the detail, the Avançado with 4 decimals and IDs, Conectando, Nunca conectada (ONB-16), Desligada with the last data and Continuar envio unavailable (its tooltip closed), the read error, loading, empty, the narrow window and the light theme; compared by the owner with the locked prototype (`docs/design/painel/anki/prototipo-anki.html?variant=C`).
+- `tests/painel-anki-visual.spec.js` holds the **visual reference of the Conexão com o Anki**: Custos on (period, tiles, strip, images, list × detail), a partial Envio in the detail, the Avançado with 4 decimals and IDs, Conectando, Nunca conectada (ONB-16), Desligada with the last data and Continuar envio unavailable (its tooltip closed), the read error, loading, empty, the narrow window and the light theme; and Ajustes de envio (English with the deck choice, Russian with Gerada por IA and the Avançado open, the text field refusing an empty level, the Conexão off, the stale-tab aviso, narrow, light); compared by the owner with the locked prototype (`docs/design/painel/anki/prototipo-anki.html?variant=C`) and, for Ajustes, with `prototipo-ajustes-envio.html?variant=A`.
 - `tests/painel-anki-baralhos-visual.spec.js` holds the **visual reference of Baralhos e termos and Vocabulário**
   (with the prototype's numbers): the decks with the Avançado open, the local file with a missing deck, BRG-11,
   BRG-15 with the Avançado hidden, BRG-18, the vocabulary list × detail, its empty, error, loading and last-data states, the narrow window
