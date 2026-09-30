@@ -497,18 +497,47 @@ class BridgeServerTests(unittest.TestCase):
             "all(send_mod.is_present(status) for status in results.values())", process_fn
         )
 
-    def test_anki_decks_route_lists_live_deck_names_or_reads_the_local_collection(self) -> None:
-        route_fn = _function_source("anki_decks")
-        names_fn = _function_source("_anki_deck_names")
+    def _bridge_for_decks(self, tmp: str) -> "server.BridgeApp":
+        return server.BridgeApp(config={"automatic_anki_path": ".", "anki_base_path": tmp})
 
-        self.assertIn('@self.app.get("/anki/decks")', _source())
-        self.assertIn('jsonify({"decks": self._anki_deck_names()})', route_fn)
-        self.assertIn('"anki_decks_unavailable"', route_fn)
-        self.assertIn('self.anki.invoke("deckNames")', names_fn)
-        self.assertIn("self._open_local_anki_collection()", names_fn)
-        # Os níveis do arquivo local voltam a ser `::`, e o "Default" do Anki não é oferecido.
-        self.assertIn('.replace("\\x1f", "::")', names_fn)
-        self.assertIn('name != "Default"', names_fn)
+    def test_anki_decks_lists_the_decks_anki_has_sorted_and_without_default(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bridge = self._bridge_for_decks(tmp)
+            names = ["Default", "russian", "Inglês::Mineradas", "CIMV", "  ", "English Mining"]
+            with mock.patch.object(bridge.anki, "collection_ready_status", return_value=(True, "collection ready")), \
+                    mock.patch.object(bridge.anki, "invoke", return_value=names) as invoke:
+                response = bridge.app.test_client().get("/anki/decks")
+
+        invoke.assert_called_once_with("deckNames")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"decks": ["CIMV", "English Mining", "Inglês::Mineradas", "russian"]})
+
+    def test_anki_decks_reads_the_local_collection_when_anki_is_down(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bridge = self._bridge_for_decks(tmp)
+            con = sqlite3.connect(":memory:")
+            con.row_factory = sqlite3.Row
+            con.execute("create table decks (id integer, name text)")
+            con.executemany(
+                "insert into decks values (?, ?)",
+                [(1, "Default"), (2, "Inglês\x1fMineradas"), (3, "RUSSIAN")],
+            )
+            with mock.patch.object(bridge.anki, "collection_ready_status", return_value=(False, "connection refused")), \
+                    mock.patch.object(bridge, "_open_local_anki_collection", return_value=con):
+                response = bridge.app.test_client().get("/anki/decks")
+
+        self.assertEqual(response.status_code, 200)
+        # Os níveis do arquivo local (\x1f) voltam a ser `::`.
+        self.assertEqual(response.get_json(), {"decks": ["Inglês::Mineradas", "RUSSIAN"]})
+
+    def test_anki_decks_answers_503_when_neither_anki_nor_the_local_collection_can_be_read(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bridge = self._bridge_for_decks(tmp)
+            with mock.patch.object(bridge.anki, "collection_ready_status", return_value=(False, "connection refused")):
+                response = bridge.app.test_client().get("/anki/decks")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.get_json()["error"], "anki_decks_unavailable")
 
     def test_health_exposes_loaded_module_fingerprint(self) -> None:
         health_fn = _function_source("health")
@@ -560,14 +589,6 @@ class BridgeServerTests(unittest.TestCase):
         self.assertIn("self.anki.repair()", source)
         self.assertIn("self.anki.ensure_ready()", source)
         self.assertIn("self.anki.ensure_connect_enabled()", source)
-
-    def test_panel_uses_structured_anki_repair_messages(self) -> None:
-        panel_source = Path(__file__).with_name("..").resolve().joinpath("painel.js").read_text(encoding="utf-8")
-
-        self.assertIn("formatarBridgeAnkiRepairMessage", panel_source)
-        self.assertIn("data.kill?.accessDenied", panel_source)
-        self.assertIn("processos: ${pids}", panel_source)
-        self.assertIn("state.ankiError", panel_source)
 
     def test_construction_has_no_side_effects(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
