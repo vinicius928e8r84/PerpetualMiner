@@ -68,6 +68,8 @@ Suas frases ficam no seu navegador. Se você entrar com o Google, elas também s
 
 As telas do painel podem sair do Playwright (`e2e/tests/*-visual.spec.js`) ou de um print direto do Chrome com a janela em 1280×800. Use frases de exemplo, nunca dados pessoais.
 
+As imagens prontas (capturas, promocional e ícone) estão em [`docs/loja/`](loja/LEIA-ME.md), com a tabela de qual arquivo vai em qual campo.
+
 **Ícone da loja:** `veio/icones/icone-128.png` (128×128). **Imagem promocional pequena** (440×280): recomendada; a tela de envio pode pedir. Com item não listado, a imagem grande (1400×560) é dispensável.
 
 ## 5. Aba "Práticas de privacidade"
