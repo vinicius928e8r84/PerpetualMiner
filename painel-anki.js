@@ -9,8 +9,10 @@
 //   Nunca conectada  desligada e nunca respondeu neste computador (`pm_anki_ja_conectou`):
 //                    o card ONB-16 fica no lugar das abas, com a F1 do shell em cima.
 //   Desligada        a F1 do shell, e Custos mostra o último dado (`pm_anki_custos`)
-//                    com o selo BRG-12; Continuar envio e Reparar Anki ficam
-//                    aria-disabled, com o porquê na dica (C8).
+//                    com o selo BRG-12; Continuar envio fica aria-disabled, com o
+//                    porquê na dica (C8).
+//
+// Baralhos e termos, Vocabulário e Reparar Anki são do painel-anki-baralhos.js.
 //
 // Custos lê GET /analytics/jobs do período (todos os idiomas numa leitura só) e
 // soma aqui o que cada azulejo, a faixa e o detalhe mostram, então o total é
@@ -179,7 +181,7 @@
     if (await atualizar() === CONEXAO.LIGADA) for (const ouvinte of ouvintesDoAtualizar) ouvinte();
   }
 
-  /** `ouvinte` roda a cada ↻ Atualizar com a Conexão ligada. */
+  /** `ouvinte` roda a cada ↻ Atualizar com a Conexão ligada (e no `atualizar` de quem o pede). */
   function aoAtualizar(ouvinte) {
     ouvintesDoAtualizar.push(ouvinte);
   }
@@ -243,7 +245,6 @@
     porId('anki-primeira-vez').hidden = !nuncaConectou;
     document.querySelector('.shell-area[data-area="anki"]').classList.toggle('anki--primeira-vez', nuncaConectou);
     porId('anki-conectando').hidden = estado.conferiu || estado.conexao !== CONEXAO.CONECTANDO;
-    marcarIndisponivel(porId('btn-bridge-anki-repair'), 'anki-reparar-indisponivel');
     porId('anki-ajustes-nota').hidden = !desligada();
     desenharCustos();
   }
@@ -257,16 +258,12 @@
    * continua no Tab) e a dica irmã diz por quê, no hover e no foco.
    */
   function marcarIndisponivel(botao, idDaDica) {
-    // Um `title` de antes (o do Reparar Anki) calaria a dica: sai enquanto ela vale.
-    if (botao.title) botao.dataset.titulo = botao.title;
     if (desligada()) {
       botao.setAttribute('aria-disabled', 'true');
       botao.setAttribute('aria-describedby', idDaDica);
-      botao.removeAttribute('title');
     } else {
       botao.removeAttribute('aria-disabled');
       botao.removeAttribute('aria-describedby');
-      if (botao.dataset.titulo) botao.title = botao.dataset.titulo;
     }
   }
 
@@ -301,9 +298,7 @@
     const antigo = porId('anki-custos-antigo');
     antigo.hidden = vista !== 'antiga';
     if (vista === 'antiga') {
-      antigo.replaceChildren(
-        elemento('span', 'anki-selo-antigo', textoDaVoz('BRG-12', { quando: haQuanto(estado.dados.quando) })),
-        Veio.montarDetalhes(`GET ${ENDERECO_DA_CONEXAO}/health · sem resposta`));
+      antigo.replaceChildren(...partesDoSeloAntigo(estado.dados.quando));
     }
 
     porId('anki-custos-azulejos').hidden = !comDados;
@@ -325,10 +320,21 @@
     if (foco) corpo.querySelector(`[data-foco="${CSS.escape(foco)}"]`)?.focus();
   }
 
-  function esqueleto() {
+  /**
+   * O selo BRG-12 (o último dado, de quando) e a causa em Detalhes: por padrão,
+   * a Conexão que não respondeu. As outras abas da área usam o mesmo (`Anki.pecas`).
+   */
+  function partesDoSeloAntigo(quando, causa = `GET ${ENDERECO_DA_CONEXAO}/health · sem resposta`) {
+    return [
+      elemento('span', 'anki-selo-antigo', textoDaVoz('BRG-12', { quando: haQuanto(quando) })),
+      Veio.montarDetalhes(causa),
+    ];
+  }
+
+  function esqueleto(alturas = [96, 44, 200]) {
     const bloco = elemento('div', 'anki-esqueleto');
     bloco.setAttribute('aria-hidden', 'true');
-    for (const altura of [96, 44, 200]) {
+    for (const altura of alturas) {
       const linha = elemento('div', 'veio-esqueleto');
       linha.style.height = `${altura}px`;
       bloco.append(linha);
@@ -337,7 +343,9 @@
   }
 
   function linhaDeEspera(texto) {
-    const linha = elemento('p', 'anki-espera', elemento('span', 'anki-ponto'), texto);
+    const ponto = elemento('span', 'anki-ponto');
+    ponto.setAttribute('aria-hidden', 'true');
+    const linha = elemento('p', 'anki-espera', ponto, texto);
     linha.setAttribute('role', 'status');
     return linha;
   }
@@ -747,6 +755,11 @@
     return no;
   }
 
-  raiz.Anki = { aoAtualizar };
+  raiz.Anki = {
+    aoAtualizar,
+    atualizar: atualizarTudo,
+    // Os pedaços da área que Baralhos e termos e o Vocabulário também desenham.
+    pecas: { esqueleto, linhaDeEspera, partesDoSeloAntigo },
+  };
   document.addEventListener('DOMContentLoaded', iniciar);
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

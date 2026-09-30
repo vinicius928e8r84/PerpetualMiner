@@ -6,7 +6,7 @@ O que está aqui:
 
 1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
 2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: 204 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
+3. **Catálogo**: 207 estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
 
 Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
 
@@ -68,7 +68,7 @@ Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do 
 
 ## 3. Catálogo de estados-chave
 
-São 204 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
+São 207 estados. “Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 
@@ -242,7 +242,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | BRG-08 | Métricas de custo | status | Cards · Imagem IA · Judge · Guard · Economia | Criação de cartões · Imagens geradas · Escolha de imagem · Triagem de imagem · Economia com fotos reais | Escolha e Triagem ficam no Avançado. |
 | BRG-09 | Origem das imagens | status | Google · Gerada · Pulada · Falhou · G 3 / IA 2 | Foto real · Gerada por IA · Sem imagem · Falhou · 3 fotos · 2 geradas |  |
 | BRG-10 | Lendo baralhos | loading | Aguardando Anki... · Atualizando Anki... | Lendo os baralhos do Anki… |  |
-| BRG-11 | Baralhos falharam | erro | Cards e termos por idioma indisponiveis. Use Reparar Anki e atualize novamente. | Não deu para ler os baralhos do Anki. Use Reparar Anki e tente de novo. | Botão “Reparar Anki”. |
+| BRG-11 | Baralhos falharam | erro | Cards e termos por idioma indisponiveis. Use Reparar Anki e atualize novamente. | Não deu para ler os baralhos do Anki. Use Reparar Anki e tente de novo. | Botões “Reparar Anki” e “Tentar de novo”. |
 | BRG-12 | Dados antigos | status | Mostrando cache anterior. Atualizacao do Anki falhou: ankistats_refresh_in_progress | Mostrando dados de há 2 h. Não deu para atualizar agora. | Código em Detalhes. |
 | BRG-13 | Lido do arquivo local | status | Stats lidos do banco local do Anki. Para enviar cards, o AnkiConnect ainda precisa abrir normalmente. | Números lidos direto do arquivo do Anki. Para enviar, o Anki precisa abrir normalmente. |  |
 | BRG-14 | Baralho não existe | erro | Baralho nao encontrado | O baralho “English Mining” não existe no Anki. Confira o nome em Ajustes de envio. |  |
@@ -265,6 +265,9 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | BRG-31 | Custos: Envios recentes **(novo)** | status | Jobs recentes · OK · Parcial · Rodando | Envios recentes · Concluído em parte · 3 de 4 frases · Enviando… · Escolhendo imagens · Imagens · 11 fotos reais · 1 sem imagem · 1 falhou | Lista × detalhe. A etapa em andamento vem de ENV-07. |
 | BRG-32 | Custos: Avançado **(novo)** | status | (não existe) | Avançado · escolha e triagem de imagem, IDs, 4 casas, diagnóstico · Total com 4 casas · Mostrar custos com 4 casas · Mostrar IDs dos envios · Pacote de diagnóstico · Um arquivo por envio, com etapas, erros e caminhos. Serve para investigar um envio que falhou. | Recolhido no pé da aba. As duas chaves ficam lembradas neste computador. |
 | BRG-33 | Conexão desligada e vazio de Custos **(novo)** | status | (não existe) | Indisponível: a conexão com o Anki está desligada. Ligue-a neste computador para continuar o envio. · …para reparar o Anki. · Os custos aparecem aqui depois do primeiro envio ao Anki. · Ver tudo · Os ajustes continuam editáveis com a conexão desligada. Valem a partir do próximo envio. | As dicas são o tooltip de Continuar envio e de Reparar Anki (C8), no hover e no foco. O texto e “Ver tudo” completam o vazio BRG-22. A última é a nota no topo de Ajustes de envio enquanto a conexão está desligada. |
+| BRG-34 | Baralhos e termos: azulejos e detalhe **(novo)** | status | Ingles \| English Mining · 3412 palavras · 2140 cards · 1870 termos alvo · 1.62 novos/card · 310 novos · 420 recentes · 1410 maduros · 66.0% maturidade | Idioma dos baralhos · 3.412 palavras · palavras diferentes nos cartões · Cartões · Termos-alvo · Palavra nova por cartão · Maduros · Recentes · Novos · 66% maduros · 66% de maturidade · Abrir Ajustes de envio | Azulejos Inglês · Russo com o nº de palavras; o baralho escolhido tem o anel de maturidade (maduros · recentes · novos) e a lista de números. “Idioma dos baralhos” rotula o grupo para o leitor de tela; “66% de maturidade” é o nome do anel. “Abrir Ajustes de envio” é a ação de BRG-14. |
+| BRG-35 | Vocabulário: filtros, lista e detalhe **(novo)** | status | Palavras + termos · Todas · Novas · Recentes · Maduras · Mistas · Buscar · Palavra · Termo · Cards · Visto | Idioma do vocabulário · 1.200 itens · Tipo · Palavras e termos · Status · Todos · Novos · Recentes · Maduros · Mistos · Buscar no vocabulário · palavra · termo · Palavra · Termo · 4 cartões · Novo · Recente · Maduro · Misto · Visto · Aparece em · Mude os filtros ou limpe a busca. · Limpar busca | Azulejos Inglês · Russo com o total de itens; filtros tipo e status, a busca e lista × detalhe. O texto e “Limpar busca” completam o vazio BRG-21. |
+| BRG-36 | Reparar Anki no Avançado **(novo)** | status | Fechar processos travados do Anki e reabrir o perfil configurado | reparar Anki · Fecha o Anki travado neste computador e abre de novo no perfil configurado. Use quando os baralhos não carregam. | O resumo do Avançado de Baralhos e termos e a frase ao lado do botão. |
 
 ### Configurações · Conta & sync · Atalhos · Chave · Aparência · Zona de perigo
 

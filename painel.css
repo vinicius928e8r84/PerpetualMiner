@@ -1365,7 +1365,9 @@ body {
 
 /* ── Custos ─────────────────────────────────────────────── */
 
-.anki-custos {
+.anki-custos,
+.anki-baralhos,
+.anki-vocabulario {
   display: grid;
   gap: 12px;
   container-type: inline-size;
@@ -1819,11 +1821,187 @@ body {
   min-width: 0;
 }
 
-/* Reparar Anki ainda é o botão de hoje (Baralhos e termos tem o próprio ticket):
-   indisponível, ele tem a mesma cara de um .veio-botao aria-disabled. */
-.bridge-repair-btn[aria-disabled="true"] {
-  opacity: .45;
-  cursor: not-allowed;
+/* ── Baralhos e termos e Vocabulário ─────────────────────
+   Os mesmos azulejos, lista × detalhe e Avançado de Custos. As séries de
+   maturidade seguem a exceção de dataviz: ouro = maduros, info = recentes,
+   muted = novos, iguais no anel, na barra e na legenda. */
+
+.anki-topo,
+.anki-corpo {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.anki-topo:empty,
+.anki-corpo:empty {
+  display: none;
+}
+
+.anki-topo .anki-nota,
+.anki-topo .anki-espera,
+.anki-corpo .anki-espera {
+  margin: 0;
+}
+
+.anki-espera:focus-visible {
+  outline: 2px solid var(--veio-accent);
+  outline-offset: 2px;
+}
+
+.anki-serie--maduros { background: var(--veio-accent); }
+.anki-serie--recentes { background: var(--veio-info); }
+.anki-serie--novos { background: var(--veio-muted); }
+
+.anki-baralho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+}
+
+.anki-baralho--sem {
+  display: grid;
+  gap: 10px;
+}
+
+.anki-baralho--sem h3 {
+  margin: 0;
+}
+
+.anki-anel {
+  flex: none;
+  width: 132px;
+  height: 132px;
+}
+
+.anki-anel circle {
+  fill: none;
+  stroke-width: 14;
+}
+
+.anki-anel .anki-anel__fundo { stroke: var(--veio-surface-2); }
+.anki-anel .anki-serie--maduros { stroke: var(--veio-accent); }
+.anki-anel .anki-serie--recentes { stroke: var(--veio-info); }
+.anki-anel .anki-serie--novos { stroke: var(--veio-muted); }
+
+.anki-anel__pct {
+  fill: var(--veio-text);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-contador);
+  font-weight: var(--veio-peso-num);
+}
+
+.anki-anel__rotulo {
+  fill: var(--veio-muted);
+  font-size: var(--veio-tam-micro);
+  font-weight: 500;
+}
+
+.anki-baralho__numeros {
+  flex: 1;
+  min-width: min(100%, 220px);
+}
+
+.anki-baralho__palavras {
+  margin: 0;
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-display);
+  font-weight: var(--veio-peso-num);
+  letter-spacing: -.02em;
+  line-height: 1.2;
+}
+
+.anki-baralho .anki-partes {
+  max-width: 340px;
+  margin-bottom: 0;
+}
+
+.anki-com-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.anki-com-marca i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+/* Reparar Anki no Avançado: a frase do que ele faz e o botão ao lado. */
+.anki-reparar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.anki-reparar__texto {
+  flex: 1;
+  min-width: min(100%, 240px);
+}
+
+.anki-reparar__texto .anki-apoio {
+  margin-top: 2px;
+}
+
+.anki-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.anki-filtros[hidden],
+.anki-resumo[hidden] {
+  display: none;
+}
+
+.anki-filtros .veio-campo {
+  width: auto;
+  padding: 6px 30px 6px 12px;
+  border-radius: var(--veio-raio-pilula);
+  background-color: var(--veio-bg);
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-rotulo);
+  cursor: pointer;
+}
+
+.anki-busca {
+  flex: 1;
+  min-width: 180px;
+  max-width: 280px;
+}
+
+.anki-filtros .anki-busca .veio-campo {
+  width: 100%;
+  padding: 6px 34px;
+  font-weight: 500;
+  cursor: text;
+}
+
+.anki-resumo {
+  margin: 0;
+}
+
+.anki-item h3 {
+  margin: 2px 0 10px;
+  font-size: var(--veio-tam-hero);
+  font-weight: var(--veio-peso-titulo);
+  overflow-wrap: anywhere;
+}
+
+.anki-opcao__valor .veio-selo {
+  font-family: var(--veio-fonte-ui);
+}
+
+.anki-partes .anki-partes__texto {
+  font-family: var(--veio-fonte-ui);
+}
+
+.anki-vocabulario .veio-vazio__texto {
+  max-width: none;
 }
 
 /* ── Avançado: recolhido no pé da aba, borda tracejada ──── */
@@ -2129,8 +2307,7 @@ body {
   margin-bottom: 16px;
 }
 
-.bridge-kicker,
-.bridge-mini-title {
+.bridge-kicker {
   color: #6d28d9;
   font-size: 11px;
   font-weight: 800;
@@ -2176,10 +2353,6 @@ body {
   grid-column: 2;
 }
 
-.bridge-anki-card {
-  grid-column: 1 / -1;
-  background: #fcfdff;
-}
 
 .bridge-section-head {
   justify-content: space-between;
@@ -2289,8 +2462,7 @@ body {
   background: #4c1d95;
 }
 
-.bridge-icon-btn,
-.bridge-debug-btn {
+.bridge-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2308,8 +2480,7 @@ body {
   white-space: nowrap;
 }
 
-.bridge-icon-btn:hover,
-.bridge-debug-btn:hover {
+.bridge-icon-btn:hover {
   background: #f5f3ff;
   border-color: #a78bfa;
 }
@@ -2355,263 +2526,44 @@ body {
   margin-bottom: 12px;
 }
 
-.bridge-anki-stats {
-  margin-bottom: 0;
-}
 
-.bridge-anki-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
 
-.bridge-anki-total,
-.bridge-anki-deck {
-  min-width: 0;
-  min-height: 124px;
-  border: 1px solid #eef0f5;
-  border-radius: 11px;
-  padding: 12px;
-  background: #fbfcff;
-}
 
-.bridge-anki-total {
-  background: #111827;
-  color: #fff;
-}
 
-.bridge-anki-total span,
-.bridge-anki-deck span {
-  display: block;
-  color: #6b7280;
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1.3;
-}
 
-.bridge-anki-total span {
-  color: rgba(255, 255, 255, 0.68);
-}
 
-.bridge-anki-total strong,
-.bridge-anki-deck strong {
-  display: block;
-  margin-top: 6px;
-  color: inherit;
-  font-size: 24px;
-  font-weight: 900;
-  line-height: 1.05;
-  overflow-wrap: anywhere;
-}
 
-.bridge-anki-deck strong {
-  color: #111827;
-}
 
-.bridge-anki-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
 
-.bridge-anki-meta span {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 4px 8px;
-  background: #f3f4f6;
-  color: #4b5563;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.2;
-}
 
-.bridge-anki-total .bridge-anki-meta span {
-  background: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.78);
-}
 
-.bridge-anki-bar {
-  height: 6px;
-  margin-top: 10px;
-  border-radius: 999px;
-  background: #e5e7eb;
-  overflow: hidden;
-}
 
-.bridge-anki-bar div {
-  height: 100%;
-  min-width: 2px;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #2563eb, #16a34a);
-}
 
-.bridge-anki-missing {
-  border-style: dashed;
-  background: #fff7ed;
-}
 
-.bridge-vocab-panel {
-  min-width: 0;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid #eef0f5;
-}
 
-.bridge-vocab-toolbar {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-}
 
-.bridge-vocab-summary {
-  margin: -3px 0 0;
-  color: #6b7280;
-  font-size: 11px;
-  line-height: 1.35;
-}
 
-.bridge-vocab-controls {
-  display: grid;
-  grid-template-columns: 88px 150px minmax(150px, 1fr) 132px;
-  align-items: center;
-  gap: 8px;
-  min-width: min(100%, 620px);
-}
 
-.bridge-vocab-search {
-  min-width: 0;
-}
 
-.bridge-vocab-lang {
-  width: 88px;
-}
 
-.bridge-vocab-type {
-  width: 150px;
-}
 
-.bridge-vocab-status {
-  width: 132px;
-}
 
-.bridge-vocab-list {
-  min-width: 0;
-  max-height: 360px;
-  overflow: auto;
-  border: 1px solid #e7eaf1;
-  border-radius: 10px;
-  background: #fff;
-}
 
-.bridge-vocab-table {
-  width: 100%;
-  min-width: 760px;
-  border-collapse: separate;
-  border-spacing: 0;
-  color: #1f2937;
-  font-size: 12px;
-  table-layout: fixed;
-}
 
-.bridge-vocab-table th,
-.bridge-vocab-table td {
-  padding: 9px 10px;
-  border-bottom: 1px solid #f0f2f7;
-  text-align: left;
-  vertical-align: middle;
-}
 
-.bridge-vocab-table th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: #f8fafc;
-  color: #6b7280;
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1.2;
-  text-transform: uppercase;
-}
 
-.bridge-vocab-table th:not(:first-child),
-.bridge-vocab-table td:not(:first-child) {
-  width: 92px;
-}
 
-.bridge-vocab-table th:nth-child(2),
-.bridge-vocab-table td:nth-child(2) {
-  width: 86px;
-}
 
-.bridge-vocab-table tr:last-child td {
-  border-bottom: 0;
-}
 
-.bridge-vocab-word {
-  color: #111827;
-  font-weight: 800;
-  overflow-wrap: anywhere;
-}
 
-.bridge-vocab-type-pill,
-.bridge-vocab-status-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 64px;
-  border-radius: 999px;
-  padding: 4px 8px;
-  background: #f3f4f6;
-  color: #4b5563;
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1.1;
-}
 
-.bridge-vocab-type-pill.word {
-  background: #e0f2fe;
-  color: #0369a1;
-}
 
-.bridge-vocab-type-pill.term {
-  background: #fce7f3;
-  color: #be185d;
-}
 
-.bridge-vocab-status-pill.new {
-  background: #fef3c7;
-  color: #92400e;
-}
 
-.bridge-vocab-status-pill.recent {
-  background: #dbeafe;
-  color: #1d4ed8;
-}
 
-.bridge-vocab-status-pill.mature {
-  background: #d1fae5;
-  color: #047857;
-}
 
-.bridge-vocab-status-pill.mixed {
-  background: #ede9fe;
-  color: #6d28d9;
-}
 
-.bridge-vocab-status-pill.seen {
-  background: #e5e7eb;
-  color: #374151;
-}
 
-.bridge-repair-btn {
-  width: auto;
-  height: auto;
-  padding: 8px 10px;
-}
 
 .bridge-cost-main {
   min-width: 0;
@@ -2660,8 +2612,7 @@ body {
 }
 
 .bridge-metric span,
-.bridge-rate small,
-.bridge-analytics-job-meta {
+.bridge-rate small {
   display: block;
   color: #6b7280;
   font-size: 11px;
@@ -2731,16 +2682,7 @@ body {
   gap: 14px;
 }
 
-.bridge-mini-title {
-  margin-bottom: 8px;
-}
 
-.bridge-mini-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
 
 .bridge-image-rates {
   display: grid;
@@ -2825,8 +2767,7 @@ body {
   line-height: 1.2;
 }
 
-.bridge-job-error,
-.bridge-analytics-empty {
+.bridge-job-error {
   margin-top: 8px;
   color: #b91c1c;
   font-size: 11px;
@@ -2834,28 +2775,15 @@ body {
   overflow-wrap: anywhere;
 }
 
-.bridge-analytics-empty {
-  display: flex;
-  align-items: center;
-  min-height: 64px;
-  margin-top: 0;
-  color: #6b7280;
-  border: 1px dashed #dfe3ec;
-  border-radius: 11px;
-  padding: 12px;
-  background: #fbfcff;
-}
 
 @media (max-width: 1240px) {
   .bridge-workspace-grid,
-  .bridge-anki-stats-grid,
   .bridge-cost-layout,
   .bridge-analytics-controls,
   .bridge-cost-columns {
     grid-template-columns: 1fr;
   }
 
-  .bridge-anki-card,
   .bridge-cost-card {
     grid-column: auto;
   }
@@ -2869,29 +2797,13 @@ body {
 
   .bridge-workspace-header,
   .bridge-filter-row,
-  .bridge-section-head,
-  .bridge-vocab-toolbar {
+  .bridge-section-head {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .bridge-vocab-controls {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    min-width: 0;
-  }
 
-  .bridge-vocab-search,
-  .bridge-vocab-lang,
-  .bridge-vocab-type,
-  .bridge-vocab-status {
-    width: 100%;
-    min-width: 0;
-  }
 
-  .bridge-repair-btn {
-    width: 100%;
-  }
 }
 
 /* ── Modal Largo ─────────────────────────────────────── */

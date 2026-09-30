@@ -7,6 +7,11 @@ const { responderJson } = require('./http');
 // (conexão recusada, como quando o programa não está rodando) ou responder
 // uma rota específica com `responder`.
 //
+// Baralhos e termos (`GET /anki/stats/decks`) e Vocabulário (`GET /anki/vocabulary`)
+// seguem `bridge/server.py`: os baralhos pedidos voltam na ordem pedida, um
+// baralho que não existe no Anki volta `missing`, e o vocabulário do baralho vem
+// inteiro, com os filtros (`status`, `type`, `q`) aplicados como lá.
+//
 // Os Envios seguem o contrato de `bridge/server.py`: `POST /jobs` cria um
 // (`{ jobId }`, 201), `GET /jobs` lista cada um com o `state` dele, e
 // `POST /jobs/<id>/retry` o põe na fila de novo. O teste move cada Envio
@@ -23,6 +28,10 @@ function criarFakeAnki() {
     agora: () => new Date(),
     custos: [],         // as linhas de GET /analytics/jobs (o contrato de bridge/analytics.py)
     falhaDosCustos: null, // { status } | { rede: true }: GET /analytics/jobs falha
+    baralhos: {},       // deckName → os números do baralho (definirBaralho)
+    fonteDosBaralhos: 'ankiconnect', // 'collection.anki2': lidos do arquivo local (BRG-13)
+    falhaDosBaralhos: null,     // { status } | { rede: true }: GET /anki/stats/decks falha
+    falhaDoVocabulario: null,   // { status } | { rede: true }: GET /anki/vocabulary falha
   };
   const requisicoes = [];
   const envios = [];    // { jobId, lang, entries, deckName, state }
@@ -80,6 +89,57 @@ function criarFakeAnki() {
     });
   }
 
+  /** Uma linha do vocabulário como `front_vocabulary_rows_from_cards` (card_normalization.py). */
+  function linhaDoVocabulario(item) {
+    if (typeof item === 'string') return { word: item, type: 'word', cards: 1, new: 0, recent: 0, mature: 1, status: 'mature' };
+    const { word, type = 'word', maduros = 0, recentes = 0, novos = 0 } = item;
+    const cards = maduros + recentes + novos;
+    const status = item.status
+      || (maduros === cards ? 'mature' : recentes === cards ? 'recent' : novos === cards ? 'new' : 'mixed');
+    return { word, type, cards, new: novos, recent: recentes, mature: maduros, status };
+  }
+
+  function vocabulario(url) {
+    const lang = url.searchParams.get('lang') === 'ru' ? 'ru' : 'en';
+    const status = url.searchParams.get('status') || 'all';
+    const tipo = url.searchParams.get('type') || 'all';
+    const busca = (url.searchParams.get('q') || '').toLowerCase();
+    const words = estado.vocabulario[lang].map(linhaDoVocabulario)
+      .filter(w => (status === 'all' || w.status === status) && (tipo === 'all' || w.type === tipo)
+        && (!busca || w.word.toLowerCase().includes(busca)));
+    return {
+      generatedAt: estado.agora().toISOString(),
+      deckName: url.searchParams.get('deck') || '',
+      lang,
+      source: 'ankiconnect',
+      totalCards: words.reduce((soma, w) => soma + w.cards, 0),
+      totalWords: words.length,
+      words,
+    };
+  }
+
+  /** Os baralhos pedidos (`deck` e `lang` repetidos, na ordem), como `_anki_deck_stats`. */
+  function numerosDosBaralhos(url) {
+    const nomes = url.searchParams.getAll('deck');
+    const langs = url.searchParams.getAll('lang');
+    const decks = nomes.map((deckName, i) => {
+      const lang = langs[i] || 'en';
+      const baralho = estado.baralhos[deckName];
+      if (!baralho) return { deckName, lang, missing: true, notes: 0, cards: 0, uniqueTerms: 0, new: 0, learning: 0, young: 0, mature: 0, reviewed: 0, maturePct: 0, vocabulary: { targetTerms: 0, phraseVocabulary: 0, avgNewPhraseVocabularyPerCard: 0 } };
+      const { palavras = 0, cartoes = 0, termos = 0, porCartao = 0, novos = 0, aprendendo = 0, recentes = 0, maduros = 0 } = baralho;
+      const reviewed = aprendendo + recentes + maduros;
+      return {
+        deckName, lang, notes: cartoes, cards: cartoes, uniqueTerms: termos, uniqueTermTokens: palavras,
+        vocabulary: { targetTerms: termos, phraseVocabulary: palavras, avgNewPhraseVocabularyPerCard: porCartao },
+        new: novos, learning: aprendendo, young: recentes, mature: maduros, reviewed,
+        maturePct: reviewed ? Math.round((maduros / reviewed) * 1000) / 10 : 0,
+      };
+    });
+    const dados = { generatedAt: estado.agora().toISOString(), decks, totals: {}, source: estado.fonteDosBaralhos };
+    if (estado.fonteDosBaralhos === 'collection.anki2') dados.sourceDetail = 'AnkiConnect indisponivel; lendo collection.anki2';
+    return dados;
+  }
+
   function retomarEnvio(jobId) {
     const linha = estado.custos.find(l => l.jobId === jobId);
     if (linha) {
@@ -107,9 +167,19 @@ function criarFakeAnki() {
     }
     if (url.pathname === '/health') return responderJson(route, 200, { ok: true });
     if (url.pathname === '/anki/vocabulary') {
-      const lang = url.searchParams.get('lang') === 'ru' ? 'ru' : 'en';
-      const words = estado.vocabulario[lang].map(word => (typeof word === 'string' ? { word, status: 'mature' } : word));
-      return responderJson(route, 200, { words });
+      const falha = estado.falhaDoVocabulario;
+      if (falha?.rede) return route.abort('connectionrefused');
+      if (falha) return responderJson(route, falha.status, { error: 'anki_vocabulary_unavailable', detail: 'AnkiConnect timeout' });
+      return responderJson(route, 200, vocabulario(url));
+    }
+    if (url.pathname === '/anki/stats/decks') {
+      const falha = estado.falhaDosBaralhos;
+      if (falha?.rede) return route.abort('connectionrefused');
+      if (falha) return responderJson(route, falha.status, { error: 'anki_stats_unavailable', detail: 'AnkiConnect timeout' });
+      return responderJson(route, 200, numerosDosBaralhos(url));
+    }
+    if (url.pathname === '/anki/repair' && req.method() === 'POST') {
+      return responderJson(route, 200, { ok: true, after: { collectionReady: true, connectAvailable: true } });
     }
     if (url.pathname === '/analytics/jobs') {
       const falha = estado.falhaDosCustos;
@@ -144,7 +214,26 @@ function criarFakeAnki() {
     envios,
     desligar() { estado.ligada = false; },
     ligar() { estado.ligada = true; },
+    /**
+     * O vocabulário do baralho de um idioma: cada item é uma string (uma palavra
+     * madura num cartão) ou `{ word, type: 'word'|'term', maduros, recentes, novos }`
+     * (os cartões em que o item aparece, por maturidade).
+     */
     definirVocabulario(lang, palavras) { estado.vocabulario[lang] = palavras; },
+    /** GET /anki/vocabulary falha: `{ status: 503 }` responde com erro, `{ rede: true }` derruba. */
+    falharVocabulario(falha = { status: 503 }) { estado.falhaDoVocabulario = falha; },
+    voltarVocabulario() { estado.falhaDoVocabulario = null; },
+
+    /**
+     * Os números de um baralho do Anki, em termos de gente; um baralho pedido
+     * que não foi definido não existe no Anki (`missing`).
+     */
+    definirBaralho(deckName, numeros) { estado.baralhos[deckName] = numeros; },
+    /** Os baralhos passam a vir do arquivo local do Anki (BRG-13), e não do AnkiConnect. */
+    lerBaralhosDoArquivo() { estado.fonteDosBaralhos = 'collection.anki2'; },
+    /** GET /anki/stats/decks falha: `{ status: 503 }` responde com erro, `{ rede: true }` derruba. */
+    falharBaralhos(falha = { status: 503 }) { estado.falhaDosBaralhos = falha; },
+    voltarBaralhos() { estado.falhaDosBaralhos = null; },
     responder(metodo, caminho, gerar) { estado.rotas.set(`${metodo} ${caminho}`, gerar); },
     pararDeResponder(metodo, caminho) { estado.rotas.delete(`${metodo} ${caminho}`); },
 
