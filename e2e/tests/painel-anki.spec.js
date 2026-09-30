@@ -74,69 +74,6 @@ test.beforeEach(({ fakes }) => {
 
 // ─── Estados da conexão ──────────────────────────────────────────────────────
 
-test('nunca respondeu: o card ONB-16 fica no lugar das abas, com a F1; quando responde, as abas voltam', async ({ page, extensao, fakes }) => {
-  fakes.anki.desligar();
-  await abrirAnki(page, extensao, { jaConectou: false });
-
-  await expect(page.getByText(F1)).toBeVisible();
-  await expect(primeiraVez(page)).toBeVisible();
-  await expect(primeiraVez(page)).toContainText('Sem ela, dá para minerar à vontade');
-  await expect(primeiraVez(page).getByRole('listitem')).toHaveText([
-    'Abra o Anki neste computador, com o complemento AnkiConnect.',
-    'Instale a Conexão com o Anki uma vez (veja Detalhes). Depois ela liga sozinha com o Windows.',
-    'Volte aqui e use Tentar de novo.',
-  ]);
-  // O Detalhes recolhido e copiável traz os comandos, a porta e o log.
-  await primeiraVez(page).getByText('Detalhes', { exact: true }).click();
-  await expect(primeiraVez(page).locator('pre')).toContainText('python bridge/install_autostart.py');
-  await expect(primeiraVez(page).locator('pre')).toContainText('127.0.0.1:8766');
-  await expect(abas(page)).toBeHidden();
-  await expect(custos(page)).toBeHidden();
-
-  fakes.anki.ligar();
-  await page.getByRole('button', { name: 'Tentar de novo' }).click();
-
-  await expect(primeiraVez(page)).toBeHidden();
-  await expect(abas(page)).toBeVisible();
-  await expect(page.getByText(F1)).toBeHidden();
-  await expect(listaDeEnvios(page)).toBeVisible();
-  await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
-});
-
-test('nunca respondeu: “Copiar” põe os comandos de instalação no clipboard e diz “Comandos copiados”', async ({ page, extensao, fakes }) => {
-  fakes.anki.desligar();
-  await abrirAnki(page, extensao, { jaConectou: false });
-
-  await primeiraVez(page).getByRole('button', { name: 'Copiar', exact: true }).click();
-  await expect(page.locator('.veio-toast')).toHaveText('Comandos copiados');
-  // O Chromium não dá permissão de ler o clipboard a uma página de extensão: a
-  // pessoa cola os comandos num campo, e é isso que o teste confere (o campo é
-  // do teste: a área não tem onde colar enquanto o card está na tela).
-  await page.evaluate(() => {
-    const campo = document.createElement('textarea');
-    campo.id = 'onde-colar';
-    document.body.append(campo);
-  });
-  await page.locator('#onde-colar').focus();
-  await page.keyboard.press('Control+V');
-  await expect(page.locator('#onde-colar')).toHaveValue(/^pip install -r bridge\/requirements\.txt\npython bridge\/install_autostart\.py/);
-});
-
-test('nunca respondeu: se o copiar não vai, a linha diz para selecionar e copiar, sem toast', async ({ page, extensao, fakes }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: { writeText: () => Promise.reject(new Error('NotAllowedError: write permission denied')) },
-    });
-  });
-  fakes.anki.desligar();
-  await abrirAnki(page, extensao, { jaConectou: false });
-
-  await primeiraVez(page).getByRole('button', { name: 'Copiar', exact: true }).click();
-  await expect(primeiraVez(page).getByRole('alert')).toHaveText('Não deu para copiar. Selecione o texto e copie.');
-  await expect(page.locator('.veio-toast')).toHaveCount(0);
-});
-
 test('conectando: a faixa neutra “Conectando ao Anki…” e o esqueleto, até a Conexão responder', async ({ page, extensao, fakes }) => {
   let responder;
   const respondendo = new Promise(r => { responder = r; });

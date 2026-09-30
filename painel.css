@@ -1315,30 +1315,152 @@ body {
   display: none;
 }
 
+/* O card tem a largura do desenho B (a das Boas-vindas), não a da ilha toda. */
 .anki-primeira-vez {
   display: grid;
-  gap: 10px;
-  max-width: 680px;
-  padding: 20px 22px;
-  border: 1px solid var(--veio-border);
-  border-radius: var(--veio-raio-card);
-  background: var(--veio-bg);
+  gap: 16px;
+  max-width: 900px;
 }
 
 .anki-primeira-vez[hidden] {
   display: none;
 }
 
-.anki-primeira-vez h2 {
+.apv-topo {
+  display: grid;
+  gap: 6px;
+}
+
+.apv-titulo {
   margin: 0;
-  font-size: var(--veio-tam-destaque);
+  font-size: var(--veio-tam-modal);
+  font-weight: var(--veio-peso-display);
+  letter-spacing: var(--veio-tracking-display);
+}
+
+.apv-apoio {
+  margin: 0;
+  color: var(--veio-muted);
+}
+
+.apv-apoio[hidden] {
+  display: none;
+}
+
+/* A lista dos passos ao lado do card do passo; na janela estreita (o trilho) a
+   lista fica em cima. */
+.apv-grade {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 999px) {
+  .apv-grade {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.apv-lista,
+.apv-card {
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-bg);
+}
+
+.apv-lista {
+  align-self: start;
+  padding: 12px;
+}
+
+.apv-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 26px 28px;
+  box-shadow: var(--veio-sombra-ilha);
+}
+
+/* O controle real do passo: um bloco surface de raio 14, sobre o card bg. */
+.apv-controle {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface);
+}
+
+.apv-comandos {
+  margin-top: 12px;
+}
+
+.apv-comandos[hidden] {
+  display: none;
+}
+
+.apv-passos-rodape {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--veio-border);
+}
+
+.apv-passos-rodape[hidden] {
+  display: none;
+}
+
+.apv-passos-rodape .veio-botao[hidden] {
+  display: none;
+}
+
+.apv-passos-rodape #apv-voltar {
+  margin-right: auto;
+}
+
+/* Embaixo, na largura toda: a conferência sozinha e os dois quadros. */
+.apv-rodape {
+  display: grid;
+  gap: 12px;
+}
+
+.apv-rodape[hidden] {
+  display: none;
+}
+
+.apv-confere {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 2px;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.apv-quadros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 10px;
+}
+
+.apv-quadro {
+  padding: 10px 14px;
+  border: 1px dashed var(--veio-border-strong);
+  border-radius: var(--veio-raio-card);
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.apv-quadro h3 {
+  margin: 0 0 2px;
+  color: var(--veio-text);
+  font-size: var(--veio-tam-corpo);
   font-weight: var(--veio-peso-titulo);
 }
 
-.anki-primeira-vez h3 {
-  margin: 6px 0 0;
-  font-size: var(--veio-tam-corpo);
-  font-weight: var(--veio-peso-titulo);
+.apv-quadro p {
+  margin: 0;
 }
 
 .anki-passos {

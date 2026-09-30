@@ -31,7 +31,7 @@ const TELAS = [
 ];
 
 /** O que cada tela carrega além dela mesma. */
-const APOIO = ['popup.css', 'popup.js', 'painel.css', 'painel-shell.js', 'painel-conta.js', 'painel-atalhos.js', 'painel-chave.js', 'painel-perigo.js', 'painel-envio.js', 'painel-boas-vindas.js', 'painel-lembrete.js', 'painel-anki.js', 'painel-anki-baralhos.js', 'painel-ajustes.js', 'painel.js', 'bookreader.css', 'bookreader.js', 'tombstone.js'];
+const APOIO = ['popup.css', 'popup.js', 'painel.css', 'painel-shell.js', 'painel-conta.js', 'painel-atalhos.js', 'painel-chave.js', 'painel-perigo.js', 'painel-envio.js', 'painel-boas-vindas.js', 'painel-lembrete.js', 'painel-anki-primeira-conexao.js', 'painel-anki.js', 'painel-anki-baralhos.js', 'painel-ajustes.js', 'painel.js', 'bookreader.css', 'bookreader.js', 'tombstone.js'];
 
 const existe = async alvo => fs.access(alvo).then(() => true, () => false);
 
