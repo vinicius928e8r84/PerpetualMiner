@@ -23,14 +23,20 @@
 // “Continuar” num passo obrigatório segue sem marcar nada: ele fica “falta” no
 // resumo.
 //
-// O passo 1 tem a mineração rápida do popup (SALVAR_HISTORICO com a Fonte
-// `manual`) e o passo 2 o gravador de Configurações › Atalhos
-// (painel-atalhos.js), o mesmo, com o mesmo storage. Os controles dos passos 3
-// a 6 entram no #43; aqui eles já aparecem na lista com o estado real. Toda
-// cópia vem do catálogo da Voz.
+// Cada passo tem o controle real, o mesmo de onde ele mora no dia a dia:
+//   1  a mineração rápida do popup (SALVAR_HISTORICO com a Fonte `manual`);
+//   2  o gravador de Configurações › Atalhos (painel-atalhos.js);
+//   3  o card Conta & sync (painel-conta.js), com o Entrar com Google;
+//   4  o status da Conexão com o Anki, os 3 passos e o Verificar de novo
+//      (a conferência da F1 do shell);
+//   5  os switches EN/RU e o limite por dia do popup, pelas mesmas mensagens ao
+//      service worker, com a nota ONB-10 enquanto a Conexão está desligada;
+//   6  o card Chave do Gemini (painel-chave.js), com o Onde conseguir a chave.
+// Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
-  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao } = raiz;
+  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao, Shell, Conta, MineracaoAutomatica } = raiz;
+  const { CONEXAO } = Shell;
 
   const ABERTURA = 'abertura';
   const PRONTO = 'pronto';
@@ -51,21 +57,21 @@
     },
     conta: {
       valor: e => e.conta.displayName || textoDaVoz('CFG-10'),
-      montar: () => montarPassoSoTexto('ONB-07'),
+      montar: montarPasso3,
     },
     anki: {
       valor: () => textoDaVoz('ONB-13.ligada'),
-      montar: () => montarPassoSoTexto('ONB-08.corpo'),
+      montar: montarPasso4,
     },
     automatica: {
       // Os idiomas ligados, separados pelo “·” da Voz (V5).
       valor: e => [e.automatica.en && IDIOMAS.INGLES, e.automatica.ru && IDIOMAS.RUSSO]
         .filter(Boolean).join(' · '),
-      montar: () => montarPassoSoTexto('ONB-09.corpo'),
+      montar: montarPasso5,
     },
     chave: {
       valor: () => textoDaVoz('ONB-13.salva'),
-      montar: () => montarPassoSoTexto('ONB-11.corpo'),
+      montar: montarPasso6,
     },
   };
   const PASSOS = Configuracao.PASSOS.map(passo => ({ ...passo, ...DESTA_PAGINA[passo.id] }));
@@ -85,7 +91,18 @@
     atalhos: { ...Atalhos.ATALHOS_PADRAO },
     configuracao: null,    // o retrato de Configuracao, depois da primeira leitura
     minerando: false,
+    conexao: CONEXAO.CONECTANDO,
+    // A última resposta da /health (ligada ou desligada); null antes da primeira.
+    // Conferindo de novo, os passos e a nota ficam como estavam: nada pisca.
+    conexaoRespondida: null,
+    automatica: null,      // o estado da mineração automática, do service worker
   };
+
+  /** Os idiomas da mineração automática, como no popup. */
+  const IDIOMAS_DA_MINERACAO = [
+    { chave: 'en', idioma: IDIOMAS.INGLES },
+    { chave: 'ru', idioma: IDIOMAS.RUSSO },
+  ];
 
   const porId = id => document.getElementById(id);
   const itensDaLista = new Map();   // tela → { botao, marca, situacao }
@@ -93,6 +110,9 @@
   let paragrafoDoVideo = null;      // o ONB-05.video do passo 1, com o atalho de legenda
   let atalhoDoPasso1Desenhado;      // o rótulo que está nele, para não refazê-lo à toa
   let rodapeDesenhadoPara = null;   // a tela (e o Agora não) do rodapé na tela agora
+  let passo4 = null;                // as partes do passo 4 que seguem a Conexão
+  let passo5 = null;                // as do passo 5: a nota, as linhas dos idiomas, a falha
+  let ondeConseguirAChave = null;   // o “Onde conseguir a chave” (ONB-11) do passo 6, só sem chave
 
   // ─── Início ────────────────────────────────────────────────────────────────
 
@@ -109,6 +129,13 @@
       estado.atalhos = atalhos;
       desenhar();
     });
+    Shell.aoMudarAConexao(situacao => {
+      estado.conexao = situacao;
+      if (situacao !== CONEXAO.CONECTANDO) estado.conexaoRespondida = situacao;
+      desenharPasso4();
+      desenharPasso5();
+    });
+    lerMineracaoAutomatica();
     window.addEventListener('hashchange', () => mostrarTelaDoEndereco({ focar: true }));
     mostrarTelaDoEndereco({ focar: false });
   }
@@ -210,11 +237,6 @@
     return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-01.corpo')), lista);
   }
 
-  /** Os passos 3 a 6 ainda só com o texto: os controles deles são o #43. */
-  function montarPassoSoTexto(idDoTexto) {
-    return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz(idDoTexto)));
-  }
-
   // ─── Passo 1: minerar a primeira frase ─────────────────────────────────────
 
   function montarPasso1() {
@@ -311,6 +333,179 @@
     return tela;
   }
 
+  // ─── Passo 3: Entrar com Google ────────────────────────────────────────────
+
+  /** O corpo do card Conta & sync, o mesmo de Configurações (painel-conta.js). */
+  function montarPasso3() {
+    const cartao = elemento('div', 'cfg-corpo bv-cartao');
+    Conta.montarCartao(cartao);
+    return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-07')), elemento('div', 'bv-controle', cartao));
+  }
+
+  // ─── Passo 4: Ligar a Conexão com o Anki ───────────────────────────────────
+
+  /**
+   * O status da Conexão (BRG-01/BRG-02, numa região que anuncia a mudança) com o
+   * Verificar de novo (a conferência da F1 do shell) ao lado, e, enquanto ela
+   * não responde, os 3 passos.
+   */
+  function montarPasso4() {
+    const ponto = elemento('span', 'bv-ponto');
+    ponto.setAttribute('aria-hidden', 'true');
+    const texto = elemento('span');
+    const status = elemento('p', 'bv-status', ponto, texto);
+    status.setAttribute('role', 'status');
+
+    const tentar = elemento('button', 'veio-botao veio-botao--primario veio-botao--compacto', textoDaVoz('ONB-08.verificarDeNovo'));
+    tentar.type = 'button';
+    tentar.addEventListener('click', () => {
+      // Conferindo, o botão fica indisponível sem sair do foco.
+      if (tentar.getAttribute('aria-disabled') === 'true') return;
+      Shell.tentarAConexaoDeNovo();
+    });
+
+    const passos = elemento('ol', 'anki-passos',
+      ...['passo1', 'instalar', 'verificar'].map(parte => elemento('li', null, textoDaVoz(`ONB-08.${parte}`))));
+    const comoLigar = elemento('div', 'bv-como-ligar', passos);
+    comoLigar.hidden = true;
+
+    passo4 = { ponto, texto, tentar, comoLigar };
+    const controle = elemento('div', 'bv-controle', elemento('div', 'bv-conexao', status, tentar), comoLigar);
+    return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-08.corpo')), controle);
+  }
+
+  function desenharPasso4() {
+    const { conexao, conexaoRespondida } = estado;
+    const ligada = conexao === CONEXAO.LIGADA;
+
+    passo4.ponto.dataset.estado = conexao;
+    passo4.texto.textContent = conexao === CONEXAO.CONECTANDO ? textoDaVoz('BRG-02') : textoDaVoz(`BRG-01.${conexao}`);
+    // Ligada, não há o que tentar: o botão sai, e o foco que estava nele vai
+    // para o título do passo, em vez de cair no fim da página.
+    if (ligada && passo4.tentar.contains(document.activeElement)) porId('bv-titulo').focus();
+    passo4.tentar.hidden = ligada;
+    passo4.tentar.setAttribute('aria-disabled', String(conexao === CONEXAO.CONECTANDO));
+    passo4.comoLigar.hidden = conexaoRespondida !== CONEXAO.DESLIGADA;
+  }
+
+  // ─── Passo 5: Ligar a mineração automática ─────────────────────────────────
+
+  /**
+   * Os switches EN/RU do popup, cada um com o limite por dia, e a nota ONB-10
+   * enquanto a Conexão está desligada: dá para ligar mesmo assim (o status é
+   * honesto). O estado é o do service worker, o mesmo que o popup lê e grava.
+   */
+  function montarPasso5() {
+    const nota = elemento('p', 'bv-nota bv-nota--conexao', elemento('span', 'bv-ponto'), textoDaVoz('ONB-10'));
+    nota.firstChild.dataset.estado = CONEXAO.DESLIGADA;
+    nota.firstChild.setAttribute('aria-hidden', 'true');
+    nota.hidden = true;
+
+    const linhas = new Map(IDIOMAS_DA_MINERACAO.map(({ chave, idioma }) => [chave, montarLinhaDaAutomatica(chave, idioma)]));
+    const falha = elemento('div', 'bv-automatica__falha');
+    falha.setAttribute('role', 'alert');
+    const controle = elemento('div', 'bv-controle bv-automatica', ...linhas.values(), falha);
+    controle.setAttribute('aria-busy', 'true');
+
+    passo5 = { nota, linhas, falha, controle };
+    return elemento('div', null,
+      elemento('p', 'bv-texto', textoDaVoz('ONB-09.corpo')),
+      nota,
+      controle,
+      elemento('p', 'bv-nota bv-nota--depois', textoDaVoz('ONB-09.popup')));
+  }
+
+  function montarLinhaDaAutomatica(chave, idioma) {
+    const idiomaNaFrase = idioma.toLowerCase();
+
+    const caixa = elemento('input');
+    caixa.type = 'checkbox';
+    caixa.disabled = true;
+    caixa.setAttribute('role', 'switch');
+    caixa.setAttribute('aria-label', textoDaVoz('POP-14.ligar', { idioma: idiomaNaFrase }));
+    caixa.addEventListener('change', () => salvarMineracaoAutomatica({ [chave]: { enabled: caixa.checked } }));
+    const nome = elemento('span', 'bv-automatica__idioma', idioma);
+    nome.setAttribute('aria-hidden', 'true');
+    const ligar = elemento('label', 'bv-automatica__ligar',
+      elemento('span', 'veio-toggle', caixa, elemento('span', 'veio-toggle__trilho')), nome);
+
+    const campo = elemento('input');
+    MineracaoAutomatica.ligarCampoDoLimite(campo, {
+      limiteGravado: () => estado.automatica?.settings?.[chave]?.dailyLimit,
+      gravar: valor => salvarMineracaoAutomatica({ [chave]: { dailyLimit: valor } }),
+    });
+    campo.disabled = true;
+    campo.setAttribute('aria-label', textoDaVoz('POP-14.limiteDoIdioma', { idioma: idiomaNaFrase }));
+    const antes = elemento('span', null, textoDaVoz('POP-14.limite'));
+    const depois = elemento('span', null, textoDaVoz('POP-14.dia'));
+    antes.setAttribute('aria-hidden', 'true');
+    depois.setAttribute('aria-hidden', 'true');
+
+    return elemento('div', 'bv-automatica__linha', ligar, elemento('div', 'bv-automatica__limite', antes, campo, depois));
+  }
+
+  function lerMineracaoAutomatica() {
+    // Um estado publicado enquanto isso é mais novo que esta resposta.
+    MineracaoAutomatica.lerEstado().then(
+      novo => { if (!estado.automatica) mostrarMineracaoAutomatica(novo); },
+      () => { if (!estado.automatica) mostrarFalhaDaAutomatica('POP-16.leitura'); });
+    // O que o popup (ou a própria mineração) muda aparece aqui sem recarregar.
+    chrome.storage.onChanged.addListener((mudancas, area) => {
+      const publicado = area === 'local' && mudancas.pm_auto_miner_state_view?.newValue;
+      if (publicado) mostrarMineracaoAutomatica(publicado);
+    });
+  }
+
+  /** Grava só o que mudou num idioma; a promessa termina com os controles no que ficou gravado. */
+  function salvarMineracaoAutomatica(mudanca) {
+    return MineracaoAutomatica.salvarAjustes(mudanca).then(mostrarMineracaoAutomatica, () => {
+      // Nada foi gravado: os controles voltam ao que está gravado, e POP-16 pede para tentar de novo.
+      if (estado.automatica) mostrarMineracaoAutomatica(estado.automatica);
+      mostrarFalhaDaAutomatica('POP-16.gravacao');
+    });
+  }
+
+  function mostrarMineracaoAutomatica(novo) {
+    estado.automatica = novo;
+    passo5.controle.removeAttribute('aria-busy');
+    passo5.falha.replaceChildren();
+    for (const [chave, linha] of passo5.linhas) {
+      const ajustes = novo.settings?.[chave] || {};
+      const caixa = linha.querySelector('input[type="checkbox"]');
+      const campo = linha.querySelector('input[type="number"]');
+      caixa.disabled = false;
+      campo.disabled = false;
+      caixa.checked = Boolean(ajustes.enabled);
+      // O que está sendo digitado no campo fica: ele grava ao sair ou com Enter.
+      if (document.activeElement !== campo) campo.value = String(ajustes.dailyLimit);
+    }
+    // Um idioma ligado marca o passo pelo storage (lib/configuracao.js).
+  }
+
+  /** A nota ONB-10 enquanto a última resposta da Conexão foi “desligada”. */
+  function desenharPasso5() {
+    passo5.nota.hidden = estado.conexaoRespondida !== CONEXAO.DESLIGADA;
+  }
+
+  function mostrarFalhaDaAutomatica(id) {
+    passo5.controle.removeAttribute('aria-busy');
+    passo5.falha.replaceChildren(elemento('p', 'bv-falha', Veio.iconeVeio('alerta'), textoDaVoz(id)));
+  }
+
+  // ─── Passo 6: Adicionar a chave do Gemini ──────────────────────────────────
+
+  /** O card Chave do Gemini de Configurações (painel-chave.js) e, sem chave, onde consegui-la. */
+  function montarPasso6() {
+    const cartao = elemento('div', 'cfg-corpo bv-cartao');
+    raiz.ChaveDoGemini.montar(cartao, { prefixo: 'bv' });
+    ondeConseguirAChave = elemento('details', 'bv-onde',
+      elemento('summary', null, textoDaVoz('ONB-11.onde')),
+      elemento('p', null, textoDaVoz('ONB-11.detalhes')));
+    ondeConseguirAChave.hidden = true;
+    const controle = elemento('div', 'bv-controle', cartao, ondeConseguirAChave);
+    return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-11.corpo')), controle);
+  }
+
   // ─── Tudo pronto ───────────────────────────────────────────────────────────
 
   function desenharResumo() {
@@ -339,6 +534,8 @@
 
     desenharLista();
     desenharAtalhoDoPasso1();
+    // Até a primeira leitura não se sabe se há chave: o Onde conseguir a chave espera, para não piscar.
+    ondeConseguirAChave.hidden = !estado.configuracao || Boolean(estado.configuracao.estado.chave);
     desenharResumo();
     desenharRodape(tela, passo);
   }

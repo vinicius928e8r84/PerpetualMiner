@@ -272,6 +272,144 @@ test('os passos 3 a 6 se marcam pelo estado real', async ({ page, extensao, fake
   await expect(resumo.filter({ hasText: 'chave do Gemini' })).toContainText('salva');
 });
 
+// ─── Passo 3: Entrar com Google ──────────────────────────────────────────────
+
+test('passo 3: o Entrar com Google de Configurações; entrar marca o passo e o card mostra a conta', async ({ page, extensao }) => {
+  await abrirBoasVindas(page, extensao, 'conta');
+  await expect(card(page)).toContainText('Sem conta, elas ficam só neste computador.');
+
+  await botaoDoCard(page, 'Entrar com Google').click();
+
+  await expect(card(page)).toContainText('Pessoa de Teste');
+  await expect(botaoDoCard(page, 'Sair da conta')).toBeVisible();
+  // O botão que tinha o foco saiu com o card antigo: o foco fica no card, não cai no fim da página.
+  await expect(botaoDoCard(page, 'Sair da conta')).toBeFocused();
+  await expect(itemDaLista(page, 'Entrar com Google')).toHaveAccessibleName(/feito$/);
+  // Feito, o “Agora não” sai do rodapé.
+  await expect(botaoDoCard(page, 'Agora não')).toHaveCount(0);
+  expect((await extensao.lerStorage('pm_user_info')).pm_user_info.displayName).toBe('Pessoa de Teste');
+});
+
+test('passo 3: um login que falha diz CFG-07 no próprio passo', async ({ page, extensao, fakes }) => {
+  fakes.google.proximoLogin('falhar');
+  await abrirBoasVindas(page, extensao, 'conta');
+
+  await botaoDoCard(page, 'Entrar com Google').click();
+
+  await expect(card(page).getByText('Não deu para entrar com o Google. Tente de novo.')).toBeVisible();
+  await expect(itemDaLista(page, 'Entrar com Google')).not.toHaveAccessibleName(/feito/);
+});
+
+// ─── Passo 4: Ligar a Conexão com o Anki ─────────────────────────────────────
+
+test('passo 4: desligada, o status, os 3 passos e Verificar de novo; ligar e verificar de novo marca o passo', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await abrirBoasVindas(page, extensao, 'anki');
+
+  const status = card(page).getByRole('status');
+  await expect(status).toHaveText('Conexão com o Anki: desligada');
+  await expect(card(page).getByRole('listitem')).toHaveText([
+    'Abra o Anki neste computador, com o complemento AnkiConnect.',
+    'Instale a Conexão com o Anki uma vez. Depois ela liga sozinha com o Windows.',
+    'Volte aqui e use Verificar de novo.',
+  ]);
+  // Sem Detalhes nem Copiar: o dono tirou os comandos deste passo.
+  await expect(card(page).getByText('Detalhes', { exact: true })).toHaveCount(0);
+  await expect(botaoDoCard(page, 'Copiar')).toHaveCount(0);
+
+  await botaoDoCard(page, 'Verificar de novo').click();
+  await expect(status).toHaveText('Conexão com o Anki: desligada');
+
+  fakes.anki.ligar();
+  await botaoDoCard(page, 'Verificar de novo').click();
+  await expect(status).toHaveText('Conexão com o Anki: ligada');
+  await expect(itemDaLista(page, 'Ligar a Conexão com o Anki')).toHaveAccessibleName(/feito$/);
+  // Ligada, os passos e o Verificar de novo saem: não há mais o que fazer.
+  await expect(card(page).getByRole('listitem')).toHaveCount(0);
+  await expect(botaoDoCard(page, 'Verificar de novo')).toHaveCount(0);
+});
+
+// ─── Passo 5: Ligar a mineração automática ───────────────────────────────────
+
+test('passo 5: os switches EN/RU e o limite por dia gravam o mesmo que o popup', async ({ page, extensao, fakes }) => {
+  fakes.anki.ligar();
+  await abrirBoasVindas(page, extensao, 'automatica');
+  await expect(card(page).getByText('Conexão com o Anki: ligada')).toBeAttached();
+  // Ligada, a nota de dependência não aparece.
+  await expect(card(page).getByText(/Nada é minerado com a Conexão com o Anki desligada/)).toBeHidden();
+
+  const ingles = card(page).getByRole('switch', { name: 'Mineração automática em inglês' });
+  await expect(ingles).not.toBeChecked();
+  // A pessoa clica no desenho do switch (ou no nome do idioma, que é o rótulo dele).
+  await card(page).getByText('Inglês', { exact: true }).click();
+
+  await expect(ingles).toBeChecked();
+  await expect(itemDaLista(page, 'Ligar a mineração automática')).toHaveAccessibleName(/feito$/);
+  await expect.poll(async () => (await extensao.lerStorage('pm_auto_miner_settings')).pm_auto_miner_settings?.en?.enabled).toBe(true);
+
+  const limite = card(page).getByRole('spinbutton', { name: 'Limite por dia em russo' });
+  await limite.fill('35');
+  await limite.press('Enter');
+  await expect.poll(async () => (await extensao.lerStorage('pm_auto_miner_settings')).pm_auto_miner_settings?.ru?.dailyLimit).toBe(35);
+  await expect(limite).toBeFocused();
+  await expect(card(page)).toContainText('Os mesmos botões ficam no popup, pelo ícone da extensão.');
+});
+
+test('passo 5: com a Conexão desligada, a nota de dependência (ONB-10)', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await abrirBoasVindas(page, extensao, 'automatica');
+
+  await expect(card(page)).toContainText('Nada é minerado com a Conexão com o Anki desligada: é ela que diz quais palavras você já conhece.');
+  // Dá para ligar mesmo assim, com o status honesto.
+  await card(page).getByText('Russo', { exact: true }).click();
+  await expect(card(page).getByRole('switch', { name: 'Mineração automática em russo' })).toBeChecked();
+  await expect(itemDaLista(page, 'Ligar a mineração automática')).toHaveAccessibleName(/feito$/);
+});
+
+test('passo 5: com o disco recusando, POP-16 pede para tentar de novo e o switch volta ao gravado', async ({ page, extensao }) => {
+  await abrirBoasVindas(page, extensao, 'automatica');
+  const ingles = card(page).getByRole('switch', { name: 'Mineração automática em inglês' });
+  await expect(ingles).toBeEnabled();
+  // O disco recusa a gravação, na fronteira de armazenamento do service worker (como no popup).
+  await extensao.serviceWorker.evaluate(() => {
+    globalThis.gravarDeVerdade = chrome.storage.local.set.bind(chrome.storage.local);
+    chrome.storage.local.set = () => { throw new Error('QUOTA_BYTES quota exceeded'); };
+  });
+
+  await card(page).getByText('Inglês', { exact: true }).click();
+
+  await expect(card(page).getByRole('alert')).toHaveText('Não deu para salvar a mudança. Tente de novo.');
+  await expect(ingles).not.toBeChecked();
+  await expect(itemDaLista(page, 'Ligar a mineração automática')).not.toHaveAccessibleName(/feito/);
+  await extensao.serviceWorker.evaluate(() => { chrome.storage.local.set = globalThis.gravarDeVerdade; });
+});
+
+// ─── Passo 6: Adicionar a chave do Gemini ────────────────────────────────────
+
+test('passo 6: o campo de Configurações › Chave do Gemini; salvar grava a chave e marca o passo', async ({ page, extensao }) => {
+  await abrirBoasVindas(page, extensao, 'chave');
+  const campo = card(page).getByRole('textbox', { name: 'Chave do Gemini' });
+
+  await botaoDoCard(page, 'Salvar chave').click();
+  await expect(campo).toHaveAttribute('aria-invalid', 'true');
+  await expect(card(page)).toContainText('Cole a chave antes de salvar');
+
+  await card(page).getByText('Onde conseguir a chave', { exact: true }).filter({ visible: true }).click();
+  await expect(card(page)).toContainText('No Google AI Studio, em “Get API key”.');
+
+  await campo.fill('  AIzaSyExemplo1234  ');
+  await campo.press('Enter');
+
+  await expect(card(page)).toContainText('Chave salva');
+  await expect(page.locator('.veio-toast')).toHaveText('Chave do Gemini salva');
+  await expect(itemDaLista(page, 'Adicionar a chave do Gemini')).toHaveAccessibleName(/feito$/);
+  expect((await extensao.lerStorage('geminiApiKey')).geminiApiKey).toBe('AIzaSyExemplo1234');
+
+  // Configurações mostra a mesma chave, mascarada.
+  await page.goto(extensao.url('painel.html#configuracoes/chave'));
+  await expect(page.locator('#cfg-chave-corpo')).toContainText('Chave salva');
+});
+
 test('“Agora não” num opcional fica gravado neste computador e aparece no resumo', async ({ page, extensao }) => {
   await abrirBoasVindas(page, extensao, 'conta');
   await botaoDoCard(page, 'Agora não').click();

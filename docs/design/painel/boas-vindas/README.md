@@ -6,7 +6,7 @@ Resolução do ticket [Protótipo: onboarding & primeira execução](https://git
 - os nomes e a cópia do [guia de voz & catálogo](../../voz/README.md) (regras V1–V10 e C1–C9).
 
 **Protótipo:** [`prototipo-onboarding.html`](prototipo-onboarding.html). Abra direto no navegador.
-- `?variant=C` é a estrutura travada (padrão). `A` (Vazios que ensinam) e `B` (Primeiros passos) foram as alternativas.
+- `?variant=C` é a estrutura travada (padrão). `A` (Vazios que ensinam) e `B` (Primeiros passos) foram as alternativas. O protótipo registra a decisão de layout, mas os controles dos passos 3–6 foram revisados depois: para esses estados, valem [Os passos](#os-passos) e a [F1](#conexão-com-o-anki-como-ligar-f1), não as ações antigas do protótipo.
 - É uma janela do Chrome falsa: o ícone da extensão abre o popup, e o Painel roda no shell Ilhas.
 - O painel “Estados do protótipo” simula a instalação nova, Alt+S num vídeo, a mineração automática, a Conexão com o Anki instalada ou não, a conta, o atalho e a chave.
 - As setas ← → trocam a variante, e **T** alterna o tema.
@@ -20,7 +20,7 @@ Avaliado no Lavish em 2026-09-15, numa rodada de 5 perguntas.
 | Estrutura | **C · Boas-vindas**: uma página própria, um passo por vez, com o controle real dentro de cada passo. A (vazios que ensinam, sem guia) e B (checklist no topo de Frases) ficaram de fora. |
 | Ordem dos passos | **Valor primeiro** (ver [Os passos](#os-passos)). |
 | Na instalação | **Abre a página Boas-vindas sozinha.** Isso é comportamento novo e **entra na lista fechada** (item 8). |
-| Como ligar a Conexão com o Anki | **Explicação + 3 passos + comandos num “Detalhes”.** Isso fecha a F1 da Voz. Vale por enquanto; ver [Instalador da Conexão](#instalador-da-conexão-com-o-anki). |
+| Como ligar a Conexão com o Anki | O passo 4 e o card ONB-16 da área têm [instruções e ações distintas](#conexão-com-o-anki-como-ligar-f1). A orientação é provisória; ver [Instalador da Conexão](#instalador-da-conexão-com-o-anki). |
 | Mineração automática com a Conexão desligada | **Deixa ligar, com status honesto**: o azulejo do popup e o passo dizem que nada é minerado assim (C8). Não muda comportamento. |
 
 ### Achado que decidiu a ordem
@@ -29,7 +29,7 @@ A mineração automática **não minera nada com a Conexão com o Anki desligada
 - `background.js:333`: inglês, com `requireVocabulary`, devolve `[]` quando não há vocabulário;
 - `background.js:345`: russo, mesma coisa.
 
-Hoje isso acontece em silêncio: o toggle liga e nada aparece. Por isso a Conexão vem antes da mineração automática, e o status honesto (Q5) cobre esse silêncio.
+Por isso a Conexão vem antes da mineração automática, e o status honesto (Q5) explica por que um idioma ligado ainda não minera.
 
 ## Na instalação
 
@@ -68,10 +68,10 @@ A ordem é travada. Cada passo reusa uma função que já existe; nenhum cria fu
 |---|---|---|---|
 | 1 | **Minerar a primeira frase** | Texto sobre o atalho de legenda gravado e o menu de contexto, uma ilustração estática da legenda marcada (linha ouro + palavra grifada + chip `palavra:`/`auto:`, como no [overlay](../../overlay/README.md)) e o campo de mineração rápida do popup. Sem atalho de legenda gravado, no lugar da tecla aparece “Sem atalho” + **Definir atalho**, que leva ao passo 2 desta página (o gravador; fora da Boas-vindas, a mesma ação leva a `#configuracoes/atalhos`). | há ≥ 1 frase |
 | 2 | **Escolher o atalho de Minerar seleção** | O gravador de atalho de Configurações › Atalhos, com as mesmas linhas e controles de lá. “Minerar legenda” mostra o atalho que estiver gravado (de fábrica, `Alt+S`), não um `Alt+S` fixo; sem atalho gravado, mostra “Sem atalho” (`kbd` tracejado), com o mesmo “Gravar atalho” ao lado para defini-lo. | `pm_atalho` gravado |
-| 3 | **Entrar com Google** · opcional | O “Entrar com Google” de Configurações › Conta & sync. | conta conectada |
-| 4 | **Ligar a Conexão com o Anki** | O status da conexão, os 3 passos, “Detalhes” e “Tentar de novo” (o mesmo retry do shell e da área Conexão com o Anki). | a conexão responde |
-| 5 | **Ligar a mineração automática** · opcional | Os toggles EN/RU do popup, com o limite por dia. Com a conexão desligada, a nota de dependência aparece. | um idioma ligado |
-| 6 | **Adicionar a chave do Gemini** · opcional | O campo de Configurações › Chave do Gemini. | chave salva |
+| 3 | **Entrar com Google** · opcional | O corpo do card Conta & sync de Configurações: login, estado da sincronização e falha no login. | conta conectada |
+| 4 | **Ligar a Conexão com o Anki** | Status e instruções da [F1](#conexão-com-o-anki-como-ligar-f1) para este passo. | a conexão está ligada |
+| 5 | **Ligar a mineração automática** · opcional | Os toggles EN/RU do popup, com o limite por dia editável (1–100). Com a conexão desligada, a nota de dependência aparece; ainda dá para ligar um idioma. | um idioma ligado |
+| 6 | **Adicionar a chave do Gemini** · opcional | O card Chave do Gemini de Configurações: sem chave, campo e “Onde conseguir a chave” recolhido; com chave, valor mascarado e “Trocar chave”. | chave salva |
 
 - Os passos se marcam **pelo estado real**. Se a pessoa já fez algo fora da página, o passo já aparece feito.
 - **Pular:**
@@ -92,19 +92,14 @@ A ordem é travada. Cada passo reusa uma função que já existe; nenhum cria fu
 
 ## Conexão com o Anki: como ligar (F1)
 
-Aparece igual no passo 4 e na área Conexão com o Anki quando ela ainda nunca respondeu:
-- **O que é:** “A Conexão com o Anki é um programa que roda neste computador, ao lado do Anki. É ela que cria os cartões e diz quais palavras você já conhece. Ela liga sozinha com o Windows depois de instalada uma vez.”
-- **O que falta sem ela** (na área): “Sem ela, dá para minerar à vontade; o que fica indisponível é Enviar ao Anki e a mineração automática.”
-- **3 passos:**
-  1. Abra o Anki neste computador, com o complemento AnkiConnect.
-  2. Instale a Conexão com o Anki uma vez (veja Detalhes). Depois ela liga sozinha com o Windows.
-  3. Volte aqui e use Tentar de novo.
-- **Detalhes** (recolhido e copiável):
+O passo 4 (`ONB-08.corpo`) e o card ONB-16 da área Conexão com o Anki (`ONB-16.corpo`) dão a mesma explicação inicial e usam o primeiro passo (`ONB-08.passo1`), mas não as ações seguintes. A cópia de cada variante está em [`lib/voz/catalogo.js`](../../../../lib/voz/catalogo.js).
+
+- **Passo 4 da Boas-vindas:** mostra o status da Conexão e, enquanto a última resposta foi “desligada”, três instruções (`ONB-08.passo1`, `.instalar`, `.verificar`). O botão e o terceiro item dizem **“Verificar de novo”** (`ONB-08.verificarDeNovo`); o botão confere de novo pela F1 do shell. Neste passo **não há Detalhes nem Copiar**. Com a conexão ligada, as instruções e o botão saem.
+- **Área Conexão com o Anki, nunca conectada:** a faixa ENV-01/F1 continua em cima, com **“Tentar de novo”**. Sem dado antigo, as abas dão lugar ao card ONB-16 com “O que falta sem ela”, os três passos antigos (`ONB-08.passo1`–`.passo3`) e os comandos em **Detalhes** recolhido e copiável (botão **Copiar**):
   - `pip install -r bridge/requirements.txt`
   - `python bridge/install_autostart.py`
   - `OPENAI_API_KEY` em `engine/.env`
   - a porta `127.0.0.1:8766` e o log `bridge/runtime/bridge.log`.
-- Na área Conexão com o Anki, a faixa ENV-01/F1 continua em cima. Na primeira execução não há dado antigo, então as abas dão lugar ao card “Ainda não houve conexão neste computador”.
 
 ## Cópia nova
 
@@ -119,10 +114,10 @@ Tudo segue V1–V10 e C1–C9. V10 permite o nome do produto no onboarding. Este
 | ONB-05 | Passo 1 | Num vídeo com legenda, aperte Alt+S. A frase vai para o histórico e já fica copiada. / Numa página ou PDF, selecione o texto e use o botão direito › Minerar com PerpetualMiner. / Ou cole uma frase aqui, como no popup: |
 | ONB-06 | Passo 2 | Escolha uma tecla ou um botão extra do mouse para minerar o texto selecionado, sem abrir o menu. |
 | ONB-07 | Passo 3 | Entre com Google para ter suas frases em qualquer computador. Sem conta, elas ficam só neste. |
-| ONB-08 | Passo 4 | ver [F1](#conexão-com-o-anki-como-ligar-f1) |
+| ONB-08 | Passo 4 | ver [F1](#conexão-com-o-anki-como-ligar-f1) e as chaves de [`lib/voz/catalogo.js`](../../../../lib/voz/catalogo.js) |
 | ONB-09 | Passo 5 | Com ela ligada, as legendas com uma palavra que você ainda não conhece são mineradas sozinhas, até um limite por dia. Liga por idioma. / Os mesmos botões ficam no popup, pelo ícone da extensão. |
 | ONB-10 | Dependência da mineração automática (passo e popup) | Nada é minerado com a Conexão com o Anki desligada: é ela que diz quais palavras você já conhece. |
-| ONB-11 | Passo 6 | Só é usada em Minerar de uma foto, para ler os trechos marcados numa página de livro. Dá para adicionar depois: a página pede quando precisar. · Detalhes: No Google AI Studio, em “Get API key”. A chave fica só neste computador. |
+| ONB-11 | Passo 6 | `corpo`, `onde` e `detalhes` em [`lib/voz/catalogo.js`](../../../../lib/voz/catalogo.js) |
 | ONB-12 | Tudo pronto | Tudo pronto — Dá para mudar qualquer coisa depois, em Configurações. A mineração automática fica no popup. [Abrir painel] |
 | ONB-13 | Resumo (por passo) | feito (o valor: “Alt+Q”, “ligada”…) · agora não · falta |
 | ONB-14 | Lembrete no popup | Configuração pela metade · 2 de 6 — Volte de onde parou [Continuar configuração] |
@@ -150,7 +145,7 @@ Isso fica **fora deste mapa**, dentro do esforço futuro “bridge instalável�
 2. que se conserte sozinho quando der erro;
 3. ou que se conserte com um botão só.
 
-Quando ele existir, o passo 4 e a área trocam os 3 passos + Detalhes por esse botão.
+Quando ele existir, o passo 4 troca as instruções e a área troca as instruções com Detalhes por esse botão.
 
 ## Onde isso mora nas outras specs
 

@@ -213,27 +213,6 @@ textarea {
   font-size: var(--veio-tam-legenda);
 }
 
-/* Sem as setinhas do navegador: digita-se o número, ou ↑ ↓ no teclado. */
-.popup-azulejo__campo.veio-campo {
-  appearance: textfield;
-}
-
-.popup-azulejo__campo::-webkit-inner-spin-button,
-.popup-azulejo__campo::-webkit-outer-spin-button {
-  appearance: none;
-  margin: 0;
-}
-
-.popup-azulejo__campo.veio-campo {
-  width: 48px;
-  padding: 3px 4px;
-  border-radius: var(--veio-raio-icone);
-  font-family: var(--veio-fonte-mono);
-  font-size: var(--veio-tam-apoio);
-  font-weight: var(--veio-peso-rotulo);
-  text-align: center;
-}
-
 /* Carregando (POP-01): o azulejo sem texto, do tamanho do de verdade. */
 .popup-azulejo--esqueleto {
   gap: 10px;

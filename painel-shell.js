@@ -351,6 +351,10 @@
     ouvinte(estado.conexao);
   }
 
+  /**
+   * O Tentar de novo da F1: “Conectando ao Anki…” na hora e a conferência. O
+   * passo 4 da Boas-vindas usa este mesmo.
+   */
   function tentarAConexaoDeNovo() {
     mostrarConexao(CONEXAO.CONECTANDO);
     conferirConexao();
@@ -369,5 +373,6 @@
     areaAtual,
     mascararChave,
     mostrarTotalDeFrases,
+    tentarAConexaoDeNovo,
   };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});
