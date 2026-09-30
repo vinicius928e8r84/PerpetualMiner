@@ -205,4 +205,18 @@ const test = base.extend({
   },
 });
 
-module.exports = { test, expect };
+/** O botão flutuante de minerar a legenda, sobre o player. */
+const botaoFlutuante = page => page.getByRole('button', { name: /^Minerar legenda/ });
+
+/** Põe o vídeo da página para tocar: a mineração automática só olha a legenda de um vídeo que está tocando. */
+async function tocarVideo(page) {
+  await page.evaluate(async () => {
+    const tela = document.createElement('canvas');
+    tela.getContext('2d').fillRect(0, 0, 1, 1);
+    const video = document.querySelector('video');
+    video.srcObject = tela.captureStream();
+    await video.play();
+  });
+}
+
+module.exports = { test, expect, botaoFlutuante, tocarVideo };

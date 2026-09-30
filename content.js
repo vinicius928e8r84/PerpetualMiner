@@ -385,17 +385,19 @@ function lerLegenda() {
         if (root) return legendaDe(root.innerText.replace(/\s*\n\s*/g, ' ').trim(), [root]);
     }
     if (host.includes('hbomax.com') || host.includes('max.com') || host.includes('hbo.com')) {
-        const maxText = minerarLegendaPorSeletores([
-            '[data-testid*="caption" i]',
-            '[data-testid*="subtitle" i]',
-            '[data-testid*="timed" i]',
-            '[data-testid*="cue" i]',
-            '[class*="caption" i]',
-            '[class*="subtitle" i]',
-            '[class*="timedtext" i]',
-            '[class*="texttrack" i]',
-        ]);
-        if (maxText) return maxText;
+        // Na Max, a leitura para aqui: o fallback genérico casaria o nome do episódio.
+        return lerLegendaDaMax()
+            || minerarLegendaPorSeletores([
+                '[data-testid*="caption" i]',
+                '[data-testid*="subtitle" i]',
+                '[data-testid*="timed" i]',
+                '[data-testid*="cue" i]',
+                '[class*="caption" i]',
+                '[class*="subtitle" i]',
+                '[class*="timedtext" i]',
+                '[class*="texttrack" i]',
+            ], ehContextoDoPlayerDaMax)
+            || minerarLegendaVisual(ehContextoDoPlayerDaMax);
     }
     const generic = minerarLegendaPorSeletores([
         '[data-testid="caption_renderer_overlay"]',
@@ -576,7 +578,7 @@ function videoVisivel(video) {
         && rect.top < window.innerHeight && rect.left < window.innerWidth;
 }
 
-function minerarLegendaPorSeletores(selectors) {
+function minerarLegendaPorSeletores(selectors, ignorar = () => false) {
     for (const selector of selectors) {
         let elementos = [];
         try {
@@ -585,6 +587,7 @@ function minerarLegendaPorSeletores(selectors) {
             continue;
         }
         for (const el of elementos) {
+            if (ignorar(el)) continue;
             const texto = textoLegendaDeElemento(el);
             if (texto) return legendaDe(texto, [el]);
         }
@@ -592,14 +595,44 @@ function minerarLegendaPorSeletores(selectors) {
     return null;
 }
 
-function minerarLegendaVisual() {
+// O player da Max escreve o título, a temporada/episódio e o nome do episódio em
+// `Title-`, `SeasonEpisode-` e `Subtitle-Fuse-Web-Play…`: o “Subtitle” ali é o
+// subtítulo do título, não a legenda do vídeo. O rótulo oculto repete a fala
+// só para leitor de tela. O prefixo fica e o hash de styled-components muda, então
+// a classe casa no começo de um token (`EpisodeTitle-Fuse-…` não é `Title-Fuse-…`).
+const CONTEXTO_DO_PLAYER_DA_MAX = ['Title', 'SeasonEpisode', 'Subtitle', 'StyledVisiblyHiddenLabel']
+    .flatMap(nome => [`[class^="${nome}-Fuse-"]`, `[class*=" ${nome}-Fuse-"]`])
+    .join(',');
+const CUE_DA_MAX = '[class^="TextCue-Fuse-Web-Play"],[class*=" TextCue-Fuse-Web-Play"]';
+
+/** Um elemento do bloco de contexto do player da Max, ou que carrega um. */
+function ehContextoDoPlayerDaMax(el) {
+    return Boolean(el.closest(CONTEXTO_DO_PLAYER_DA_MAX) || el.querySelector(CONTEXTO_DO_PLAYER_DA_MAX));
+}
+
+/**
+ * A fala que a Max mostra agora: os `TextCue-Fuse-Web-Play…` na tela, ou null.
+ * Um cue sob um ancestral escondido (faixa antiga, legenda desligada) não conta;
+ * um cue que embrulha outro cue fica de fora, para a fala não vir duas vezes, e
+ * as linhas irmãs de uma fala de duas linhas se juntam.
+ */
+function lerLegendaDaMax() {
+    const cues = Array.from(document.querySelectorAll(CUE_DA_MAX)).filter(el =>
+        !el.querySelector(CUE_DA_MAX)
+        && el.checkVisibility({ opacityProperty: true, visibilityProperty: true })
+        && el.getClientRects().length > 0);
+    const texto = normalizarTextoAutoMiner(cues.map(el => el.innerText).join(' '));
+    return textoPareceLegenda(texto) ? legendaDe(texto, cues) : null;
+}
+
+function minerarLegendaVisual(ignorar = () => false) {
     const video = obterVideoAtivo();
     if (!video) return null;
     const rectVideo = video.getBoundingClientRect();
     const candidatos = [];
 
     for (const el of document.querySelectorAll('span, div, p')) {
-        if (elementoIgnoradoParaLegenda(el)) continue;
+        if (elementoIgnoradoParaLegenda(el) || ignorar(el)) continue;
         const texto = textoLegendaDeElemento(el);
         if (!texto) continue;
 
