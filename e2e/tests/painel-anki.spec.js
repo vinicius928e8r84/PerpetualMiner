@@ -189,16 +189,16 @@ test('cai depois de responder: a F1 e o último dado com o selo BRG-12; Continua
   await expect(continuar).toBeFocused();
   await expect(dica).toBeVisible();
 
+  // Reparar Anki mora no Avançado de Baralhos e termos (painel-anki-baralhos.spec.js).
   await escolher(page, 'Baralhos e termos');
+  await page.locator('#anki-baralhos-avancado').getByText('Avançado', { exact: true }).click();
   const reparar = page.getByRole('button', { name: 'Reparar Anki' });
   await expect(reparar).toHaveAttribute('aria-disabled', 'true');
   await expect(reparar).toHaveAccessibleDescription(/para reparar o Anki/);
-  // O title de antes calaria a dica: sai enquanto ela vale, e volta com a Conexão.
-  await expect(reparar).not.toHaveAttribute('title');
   fakes.anki.ligar();
   await atualizar(page).click();
   await expect(reparar).not.toHaveAttribute('aria-disabled');
-  await expect(reparar).toHaveAttribute('title', /Fechar processos travados/);
+  await expect(reparar).not.toHaveAttribute('aria-describedby');
 });
 
 test('reabrir o painel com a Conexão desligada mostra o último dado gravado, não o card da primeira vez', async ({ page, extensao, fakes }) => {
@@ -491,14 +491,6 @@ test('Ajustes de envio com a Conexão desligada: continuam editáveis, com a not
   await atualizar(page).click();
   await expect(page.getByText(nota)).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Baralho' })).toBeEditable();
-});
-
-test('Baralhos e termos continua com o conteúdo de hoje', async ({ page, extensao }) => {
-  await abrirAnki(page, extensao, { hash: '#anki/ajustes' });
-  await expect(page.getByRole('textbox', { name: 'Baralho' })).toBeVisible();
-  await escolher(page, 'Baralhos e termos');
-  await expect(page.getByRole('button', { name: 'Reparar Anki' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Reparar Anki' })).not.toHaveAttribute('aria-disabled', 'true');
 });
 
 test('os controles de Custos têm nome e foco visível; a lista anda com as setas', async ({ page, extensao }) => {

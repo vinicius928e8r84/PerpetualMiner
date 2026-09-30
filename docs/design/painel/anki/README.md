@@ -30,7 +30,7 @@ Avaliado no Lavish em 2026-09-15. O dono escolheu a **C · Por idioma** (“gost
 |---|---|
 | **Custos** | De cima para baixo:<br>1. Período em controle segmentado (Hoje · Este mês · Tudo) e De/Até à direita.<br>2. Azulejos **Todos os idiomas · Inglês · Russo**, cada um com o total e o nº de envios. O azulejo escolhido filtra tudo abaixo.<br>3. **Faixa de resumo**: criação de cartões, imagens geradas, economia com fotos reais, frases (N de M), envios concluídos (N de M).<br>4. **Origem das imagens do período** (vindo da A): as 4 barras (Foto real · Gerada por IA · Sem imagem · Falhou), com % e contagem, lado a lado.<br>5. **Envios recentes × detalhe**. À esquerda, a lista (título ENV-08, quando, ponto de status e custo). À direita, o envio escolhido: status, erro legível com Detalhes (V3), custo por parte (cartões · imagens geradas · escolha e triagem · total), imagens daquele envio e **Continuar envio** quando concluiu em parte ou falhou. |
 | **Baralhos e termos** | Azulejos **Inglês · Russo** com o nº de palavras. Abaixo, o baralho escolhido: um **anel de maturidade** (maduros · recentes · novos) ao lado do número grande de “palavras diferentes nos cartões” e da lista cartões · termos-alvo · palavra nova por cartão · maduros · recentes · novos. |
-| **Vocabulário** | Azulejos **Inglês · Russo** com o total de itens. Filtros tipo e status e a busca. Abaixo, **lista × detalhe**: cada item com tipo, nº de cartões e selo de status; o detalhe mostra a barra maduros/recentes/novos e os números. |
+| **Vocabulário** | Azulejos **Inglês · Russo** com o total de itens. Filtros tipo e status e a busca com lupa e um único × (Veio) para limpar. Abaixo, **lista × detalhe**: cada item com tipo, nº de cartões e selo de status; o detalhe mostra a barra maduros/recentes/novos e os números. |
 | **Ajustes de envio** | Azulejos **Inglês · Russo** mostrando o baralho e a fonte de imagem atuais. Um formulário só, do idioma escolhido: Baralho (em branco volta ao padrão) e Imagens (Foto real (Google) · Gerada por IA, com a nota de custo) + **Salvar ajustes**. |
 
 ## Camada Avançado
@@ -50,13 +50,13 @@ Recolhida no pé da aba, com borda tracejada e um resumo do que tem dentro:
 |---|---|
 | Conectando | Faixa neutra “Conectando ao Anki…” (BRG-02) e esqueleto no lugar do conteúdo. |
 | Nunca conectada (primeira vez) | Faixa ENV-01/F1 + **Tentar de novo** em cima. Como não há dado antigo, **as abas dão lugar ao card ONB-16** “Ainda não houve conexão neste computador”, com o O que é e o O que falta sem ela da F1, os 3 passos e o **Detalhes** recolhido e copiável (ver [Boas-vindas § Conexão com o Anki: como ligar](../boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1)). Quando a conexão responde pela primeira vez, as abas voltam. |
-| Desligada | Faixa F1 + **Tentar de novo**. As abas mostram o último dado com o selo BRG-12. **Continuar envio** e **Reparar Anki** ficam indisponíveis, e o tooltip diz por quê (C8). Os Ajustes de envio continuam editáveis, com uma nota de que valem a partir do próximo envio. |
+| Desligada | Faixa F1 + **Tentar de novo**. As abas mostram o último dado com o selo BRG-12: em Baralhos e termos e Vocabulário, sem “Detalhes”; em Custos, com o código em “Detalhes”. **Continuar envio** e **Reparar Anki** ficam indisponíveis, e o tooltip diz por quê (C8). Os Ajustes de envio continuam editáveis, com uma nota de que valem a partir do próximo envio. |
 | Carregando | Linha com o gerúndio + esqueleto (C3): “Somando os custos…”, “Lendo os baralhos do Anki…” (BRG-10), “Lendo o vocabulário…” (BRG-19). |
 | Erro | Inline e persistente, com **Tentar de novo** e Detalhes: BRG-04 (com “Custo indisponível”, BRG-03), BRG-11 (com Reparar Anki) e BRG-20. |
 | Vazio | Custos: BRG-22 + “Ver tudo”. Vocabulário: BRG-21 + “Limpar busca”. |
-| Arquivo local | Nota BRG-13 no topo de Baralhos e termos. |
+| Arquivo local | Nota BRG-13 no topo de Baralhos e termos, com ponto parado. |
 | Baralho não existe | O azulejo mostra “—” e “baralho não encontrado”, e o detalhe mostra BRG-14 com **Abrir Ajustes de envio**. |
-| Reparar Anki | Botão “Reparando…” e nota BRG-15. Termina em toast “Anki reparado” (BRG-16) ou em erro inline BRG-17 (com ↻ Atualizar) ou BRG-18. |
+| Reparar Anki | Enquanto repara, foco na espera BRG-15 e esqueleto; o Avançado desaparece, sem botão “Reparando…” na tela. Depois do sucesso, o foco volta ao botão do Avançado ou, se acionado pelo aviso BRG-11 (cujo botão some), vai ao azulejo do idioma escolhido após a releitura. Termina em toast “Anki reparado” (BRG-16) ou em erro inline BRG-17 (com ↻ Atualizar) ou BRG-18. |
 | Envio em andamento | Selo “Enviando… · <etapa>” (ENV-07) na lista e no detalhe. |
 
 ## Convenções
@@ -68,4 +68,3 @@ Recolhida no pé da aba, com borda tracejada e um resumo do que tem dentro:
 ## Fica para outros tickets
 
 - **Construção:** esforço separado depois da spec travada (fora do mapa).
-- **Timeout do Reparar Anki (45 s vs 110 s):** é bug, fica em [Bugs encontrados na auditoria do front](https://github.com/vinicius928e8r84/PerpetualMiner/issues/9).

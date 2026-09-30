@@ -87,21 +87,16 @@ const idsAindaNaNuvem  = new Set();
 let modalAberto        = null;
 let pedidoDeApagar     = null; // { ids }
 let edicaoDeContexto   = null; // { ids }
-let bridgeVocabularyTimer = null;
-let bridgeVocabularyDeck = { lang: 'en' };
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
   setupListeners();
-  // Os ajustes mudaram (nesta aba ou em outra): Baralhos e termos pede os números dos
-  // baralhos novos, sem abrir o Anki (só o ↻ Atualizar abre).
-  chrome.storage.onChanged.addListener((mudancas, area) => {
-    if (area === 'local' && AjustesDeEnvio.CHAVE in mudancas && Shell.areaAtual() === 'anki') {
-      atualizarBridgeDeckStats({ refresh: true });
-    }
+  // Baralhos e termos e o Vocabulário leem os baralhos dos Ajustes de envio (painel-anki-baralhos.js),
+  // ao abrir e a cada Salvar ajustes, nesta aba ou em outra.
+  AjustesDeEnvio.acompanhar(ajustes => {
+    PerpetualMiner.Baralhos.usarBaralhos({ en: ajustes.en.deckName, ru: ajustes.ru.deckName });
   });
-  Shell.aoEntrarNaArea('anki', () => atualizarBridgeWorkspaceData({ includeAnki: true, launchAnki: true }));
   Conta.aoPedir({ entrar: loginGoogle, sair: logout, tentarDeNovo: carregarFrasesFirestore });
   setupStorageSyncListener();
   Atalhos.acompanharAtalhos(({ legenda }) => {
@@ -951,302 +946,20 @@ function setupListeners() {
     atualizarContadorSelecao();
   });
 
-  // ↻ Atualizar é do painel-anki.js: com a Conexão ligada, ele pede também os
-  // baralhos, que abrem o Anki se precisar (BRG-24).
-  PerpetualMiner.Anki?.aoAtualizar(() => {
-    atualizarBridgeWorkspaceData({ includeAnki: true, refreshAnki: true, launchAnki: true });
-  });
-  document.getElementById('btn-bridge-anki-repair')?.addEventListener('click', repararBridgeAnki);
-  byId('bridge-vocab-search')?.addEventListener('input', agendarAtualizacaoBridgeVocabulary);
-  byId('bridge-vocab-status')?.addEventListener('change', () => atualizarBridgeVocabulary());
-  byId('bridge-vocab-type')?.addEventListener('change', () => atualizarBridgeVocabulary());
-  byId('bridge-vocab-lang')?.addEventListener('change', () => atualizarBridgeVocabulary());
 }
 
 function byId(id) {
   return document.getElementById(id);
 }
 
+function setText(id, value) {
+  const el = byId(id);
+  if (el) el.textContent = value;
+}
+
+
+
 // ─── Sidebar & Dropdowns ──────────────────────────────────────────────────────
-
-
-
-
-
-
-/** Os Baralhos e termos de hoje; a aba Custos é do painel-anki.js. */
-async function atualizarBridgeWorkspaceData(options = {}) {
-  await atualizarBridgeDeckStats({
-    refresh: Boolean(options.refreshAnki),
-    launch: Boolean(options.launchAnki),
-  });
-}
-
-function queryBridgeDeckStats(ajustes, options = {}) {
-  const params = new URLSearchParams();
-  AjustesDeEnvio.LANGS.forEach(lang => {
-    params.append('deck', ajustes[lang].deckName);
-    params.append('lang', lang);
-  });
-  if (options.refresh) params.set('refresh', '1');
-  if (options.launch) params.set('launch', '1');
-  return params.toString();
-}
-
-function formatarBridgeAnkiRepairMessage(data = {}) {
-  const processRows = [
-    ...(Array.isArray(data.pids) ? data.pids.map(pid => ({ pid })) : []),
-    ...(Array.isArray(data.processes) ? data.processes : []),
-    ...(Array.isArray(data.kill?.remaining) ? data.kill.remaining : []),
-    ...(Array.isArray(data.kill?.processes) ? data.kill.processes : []),
-  ];
-  const pids = [...new Set(processRows.map(row => Number(row?.pid || row)).filter(Boolean))].join(', ') || 'desconhecidos';
-  if (data.accessDenied || data.kill?.accessDenied || data.code === 'anki_repair_access_denied') {
-    return `Windows recusou fechar o Anki invisivel (processos: ${pids}). Feche o Anki pelo Gerenciador de Tarefas como administrador ou reinicie o Windows; depois retente o job.`;
-  }
-  return data.detail || data.after?.collectionDetail || 'anki_repair_failed';
-}
-
-async function atualizarBridgeDeckStats(options = {}) {
-  const el = byId('bridge-anki-stats-main');
-  if (!el) return;
-  el.innerHTML = '<div class="bridge-analytics-empty">Atualizando Anki...</div>';
-  try {
-    const ajustes = await AjustesDeEnvio.ler();
-    const resp = await fetch(`${BRIDGE_URL}/anki/stats/decks?${queryBridgeDeckStats(ajustes, options)}`);
-    if (!resp.ok) throw new Error('anki_stats_unavailable');
-    const data = await resp.json();
-    renderizarBridgeDeckStats(data);
-    await atualizarBridgeVocabulary();
-  } catch (err) {
-    el.innerHTML = '<div class="bridge-analytics-empty">Cards e termos por idioma indisponiveis. Use Reparar Anki e atualize novamente.</div>';
-  }
-}
-
-async function repararBridgeAnki() {
-  const btn = byId('btn-bridge-anki-repair');
-  // Com a Conexão desligada o botão fica aria-disabled, com o porquê na dica (painel-anki.js).
-  if (btn?.getAttribute('aria-disabled') === 'true') return;
-  const el = byId('bridge-anki-stats-main');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Reparando...';
-  }
-  if (el) {
-    el.innerHTML = '<div class="bridge-analytics-empty">Fechando Anki travado e reabrindo...</div>';
-  }
-  let timeout = null;
-  try {
-    const controller = new AbortController();
-    timeout = setTimeout(() => controller.abort(), 45000);
-    const resp = await fetch(`${BRIDGE_URL}/anki/repair`, { method: 'POST', signal: controller.signal });
-    clearTimeout(timeout);
-    timeout = null;
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok || !data.ok) {
-      const message = formatarBridgeAnkiRepairMessage(data);
-      if (data.after?.collectionReady || data.after?.connectAvailable) {
-        mostrarToast(message);
-        await atualizarBridgeDeckStats({ refresh: true });
-        return;
-      }
-      throw new Error(message);
-    }
-    mostrarToast('Anki reparado. Atualizando cards e termos.');
-    await atualizarBridgeDeckStats({ refresh: true });
-  } catch (err) {
-    if (el) {
-      el.innerHTML = `<div class="bridge-analytics-empty">Nao foi possivel reparar o Anki: ${esc(err.message || err)}</div>`;
-    }
-    mostrarToast('Nao foi possivel reparar o Anki.');
-  } finally {
-    if (timeout) clearTimeout(timeout);
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Reparar Anki';
-    }
-  }
-}
-
-function formatInt(value) {
-  return Number(value || 0).toLocaleString('pt-BR');
-}
-
-function ankiVocabularyCount(stats) {
-  if (!stats) return 0;
-  if (stats.vocabulary?.phraseVocabulary != null) return Number(stats.vocabulary.phraseVocabulary);
-  return Number(stats.uniqueTermTokens ?? stats.uniqueTerms ?? stats.uniqueFronts ?? 0);
-}
-
-function ankiTargetTermCount(stats) {
-  if (!stats) return 0;
-  if (stats.vocabulary?.targetTerms != null) return Number(stats.vocabulary.targetTerms);
-  return Number(stats.uniqueTerms ?? stats.uniqueFronts ?? 0);
-}
-
-function ankiAvgNewVocabulary(stats) {
-  return Number(stats?.vocabulary?.avgNewPhraseVocabularyPerCard || 0).toFixed(2);
-}
-
-function renderizarBridgeDeckStats(data) {
-  const el = byId('bridge-anki-stats-main');
-  if (!el) return;
-  const decks = Array.isArray(data?.decks) ? data.decks : [];
-  const totals = data?.totals || {};
-  if (!decks.length) {
-    el.innerHTML = '<div class="bridge-analytics-empty">Nenhum baralho configurado.</div>';
-    return;
-  }
-
-  const totalReviewed = Number(totals.reviewed || 0);
-  const totalMature = Number(totals.mature || 0);
-  const totalMaturePct = totalReviewed ? Math.min(100, Math.max(0, (totalMature / totalReviewed) * 100)) : 0;
-  const staleNotice = data?.stale
-    ? `<div class="bridge-analytics-empty">Mostrando cache anterior. Atualizacao do Anki falhou: ${esc(data.message || 'AnkiConnect indisponivel')}</div>`
-    : '';
-  const sourceNotice = data?.source === 'collection.anki2'
-    ? '<div class="bridge-analytics-empty">Stats lidos do banco local do Anki. Para enviar cards, o AnkiConnect ainda precisa abrir normalmente.</div>'
-    : '';
-  const totalCard = `<article class="bridge-anki-total">
-    <span>Vocabulario na Frente</span>
-    <strong>${formatInt(ankiVocabularyCount(totals))} palavras</strong>
-    <div class="bridge-anki-meta">
-      <span>${formatInt(totals.cards)} cards</span>
-      <span>${formatInt(ankiTargetTermCount(totals))} termos alvo</span>
-      <span>${ankiAvgNewVocabulary(totals)} novos/card</span>
-      <span>${formatInt(totals.mature)} maduros</span>
-    </div>
-    <div class="bridge-anki-bar"><div style="width:${totalMaturePct}%"></div></div>
-  </article>`;
-
-  const deckCards = decks.map(deck => {
-    const label = deck.lang === 'ru' ? 'Russo' : 'Ingles';
-    const reviewed = Number(deck.reviewed || 0);
-    const mature = Number(deck.mature || 0);
-    const maturePct = reviewed ? Math.min(100, Math.max(0, (mature / reviewed) * 100)) : 0;
-    const missing = deck.missing ? ' bridge-anki-missing' : '';
-    const subtitle = deck.missing ? 'Baralho nao encontrado' : `${formatInt(deck.notes)} notas`;
-    return `<article class="bridge-anki-deck${missing}">
-      <span>${esc(label)} | ${esc(deck.deckName || '')}</span>
-      <strong>${formatInt(ankiVocabularyCount(deck))} palavras</strong>
-      <div class="bridge-anki-meta">
-        <span>${formatInt(deck.cards)} cards</span>
-        <span>${formatInt(ankiTargetTermCount(deck))} termos alvo</span>
-        <span>${ankiAvgNewVocabulary(deck)} novos/card</span>
-        <span>${formatInt(deck.new)} novos</span>
-        <span>${formatInt(deck.young + deck.learning)} recentes</span>
-        <span>${formatInt(deck.mature)} maduros</span>
-      </div>
-      <div class="bridge-anki-bar"><div style="width:${maturePct}%"></div></div>
-      <div class="bridge-analytics-job-meta">${esc(subtitle)} | ${formatPct(deck.maturePct)} maturidade</div>
-    </article>`;
-  }).join('');
-
-  el.innerHTML = staleNotice + sourceNotice + totalCard + deckCards;
-}
-
-function agendarAtualizacaoBridgeVocabulary() {
-  clearTimeout(bridgeVocabularyTimer);
-  bridgeVocabularyTimer = setTimeout(() => atualizarBridgeVocabulary(), 250);
-}
-
-function queryBridgeVocabulary(ajustes) {
-  const params = new URLSearchParams();
-  const lang = byId('bridge-vocab-lang')?.value || bridgeVocabularyDeck.lang || 'en';
-  bridgeVocabularyDeck.lang = lang;
-  params.set('deck', ajustes[lang].deckName);
-  params.set('lang', lang);
-  params.set('limit', '10000');
-  const q = byId('bridge-vocab-search')?.value?.trim() || '';
-  const status = byId('bridge-vocab-status')?.value || 'all';
-  const type = byId('bridge-vocab-type')?.value || 'all';
-  if (q) params.set('q', q);
-  if (status !== 'all') params.set('status', status);
-  if (type !== 'all') params.set('type', type);
-  return params.toString();
-}
-
-async function atualizarBridgeVocabulary() {
-  const listEl = byId('bridge-vocab-list');
-  const summaryEl = byId('bridge-vocab-summary');
-  if (!listEl) return;
-  listEl.innerHTML = '<div class="bridge-analytics-empty">Atualizando vocabulario...</div>';
-  if (summaryEl) summaryEl.textContent = 'Calculando vocabulario da Frente...';
-  try {
-    const resp = await fetch(`${BRIDGE_URL}/anki/vocabulary?${queryBridgeVocabulary(await AjustesDeEnvio.ler())}`);
-    if (!resp.ok) throw new Error('vocabulary_unavailable');
-    const data = await resp.json();
-    renderizarBridgeVocabulary(data);
-  } catch {
-    if (summaryEl) summaryEl.textContent = 'Vocabulario indisponivel.';
-    listEl.innerHTML = '<div class="bridge-analytics-empty">Nao foi possivel carregar o vocabulario.</div>';
-  }
-}
-
-function statusVocabLabel(status) {
-  const labels = {
-    new: 'Novo',
-    recent: 'Recente',
-    mature: 'Maduro',
-    mixed: 'Misto',
-    seen: 'Visto',
-  };
-  return labels[status] || status || 'Visto';
-}
-
-function typeVocabLabel(type) {
-  const labels = {
-    word: 'Palavra',
-    term: 'Termo',
-  };
-  return labels[type] || 'Item';
-}
-
-function renderizarBridgeVocabulary(data) {
-  const listEl = byId('bridge-vocab-list');
-  const summaryEl = byId('bridge-vocab-summary');
-  if (!listEl) return;
-  const words = Array.isArray(data?.words) ? data.words : [];
-  const totalWords = Number(data?.totalWords || 0);
-  if (summaryEl) {
-    const shown = words.length;
-    const langLabel = data?.lang === 'ru' ? 'Russo' : 'Ingles';
-    summaryEl.textContent = `${formatInt(totalWords)} item${totalWords === 1 ? '' : 's'} em ${langLabel} | mostrando ${formatInt(shown)}`;
-  }
-  if (!words.length) {
-    listEl.innerHTML = '<div class="bridge-analytics-empty">Nenhum item encontrado.</div>';
-    return;
-  }
-  listEl.innerHTML = `<table class="bridge-vocab-table">
-    <thead>
-      <tr>
-        <th>Item</th>
-        <th>Tipo</th>
-        <th>Cards</th>
-        <th>Status</th>
-        <th>Maduros</th>
-        <th>Recentes</th>
-        <th>Novos</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${words.map(word => `<tr>
-        <td class="bridge-vocab-word">${esc(word.word || '')}</td>
-        <td><span class="bridge-vocab-type-pill ${esc(word.type || 'word')}">${esc(typeVocabLabel(word.type))}</span></td>
-        <td>${formatInt(word.cards)}</td>
-        <td><span class="bridge-vocab-status-pill ${esc(word.status || 'seen')}">${esc(statusVocabLabel(word.status))}</span></td>
-        <td>${formatInt(word.mature)}</td>
-        <td>${formatInt(word.recent)}</td>
-        <td>${formatInt(word.new)}</td>
-      </tr>`).join('')}
-    </tbody>
-  </table>`;
-}
-
-
-function formatPct(value) {
-  return `${Number(value || 0).toFixed(1)}%`;
-}
 
 
 
