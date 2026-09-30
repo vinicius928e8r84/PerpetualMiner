@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "PerpetualMiner",
   "version": "5.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3HX6Gv0cWlZgd4s5Klwsh4Gcl84AyeaaM+0uHJEbN2wCUif5fsTniPXAwdCfGrZeGPRx8a1mT9PizznlBZXgfxi1jt1o+llLPbBFt5l9hwzItT+Bg7Ltq5Nl1Hzb3+RnBvaCOW2vphmFh+30yZPN/V+7YJFv7VGuIwpB8RCRo8elr6DnsRBkZUFIdwJUm5eIbC6KzuzPTIW7icRmZTbpndBpYyatchCsaPSU6oSmrFvgKVYScVaIKStpiBpC62JpkVJBC9jXMNWv8tGucdDVF/PmGebqPA+oMf3tupup7vaXZBRZtv1EjfbhpI30Zde85J+UTfG+OO9tfyLMJCWu5QIDAQAB",
   "description": "Minerador de legendas com histórico em tempo real e painel de estudos.",
   "minimum_chrome_version": "110",
   "permissions": [
