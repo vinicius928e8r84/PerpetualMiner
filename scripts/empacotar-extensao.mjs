@@ -11,69 +11,17 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-// Na raiz entram os .js/.html/.css da extensão (menos os test_*.js); das pastas
-// entram só as de runtime. `lib/firebase/` fica de fora: nenhuma página carrega
-// esses bundles, e código minificado sem uso só atrai pergunta na revisão.
-const PASTAS_DE_RUNTIME = ['lib', 'veio'];
-const FORA_DO_PACOTE = [/^lib\/firebase\//, /^veio\/README\.md$/, /^test_.*\.js$/];
+const require = createRequire(import.meta.url);
+const { arquivosDoPacote, PASTAS_QUE_NAO_SAO_RUNTIME } = require('./arquivos-do-pacote.js');
+require('../lib/arquivos-da-extensao.js');
+const { arquivosDaExtensao } = globalThis.PerpetualMiner;
 
-function listar(pasta, prefixo = '') {
-  return fs.readdirSync(path.join(RAIZ, pasta), { withFileTypes: true }).flatMap(entrada => {
-    const relativo = prefixo + entrada.name;
-    return entrada.isDirectory() ? listar(path.join(pasta, entrada.name), `${relativo}/`) : [relativo];
-  });
-}
-
-function arquivosDoPacote() {
-  const naRaiz = fs.readdirSync(RAIZ, { withFileTypes: true })
-    .filter(e => e.isFile() && /\.(js|html|css)$/.test(e.name))
-    .map(e => e.name);
-  const dasPastas = PASTAS_DE_RUNTIME.flatMap(pasta => listar(pasta, `${pasta}/`));
-  return [...naRaiz, 'manifest.json', ...dasPastas]
-    .filter(arquivo => !FORA_DO_PACOTE.some(regra => regra.test(arquivo)))
-    .sort();
-}
-
-// Os arquivos que o manifest, as páginas e o service worker apontam, para
-// conferir que nenhum ficou de fora do pacote.
-function referenciados(manifesto) {
-  const lidos = new Set(['manifest.json']);
-  const paginas = [];
-  const ler = caminho => fs.readFileSync(path.join(RAIZ, caminho), 'utf8');
-
-  const servico = manifesto.background?.service_worker;
-  if (servico) {
-    lidos.add(servico);
-    for (const [, lista] of ler(servico).matchAll(/importScripts\(([^)]*)\)/g)) {
-      for (const [, arquivo] of lista.matchAll(/'([^']+)'/g)) lidos.add(arquivo);
-    }
-  }
-  for (const script of manifesto.content_scripts ?? []) {
-    for (const arquivo of [...(script.js ?? []), ...(script.css ?? [])]) lidos.add(arquivo);
-  }
-  if (manifesto.action?.default_popup) paginas.push(manifesto.action.default_popup);
-  for (const icone of Object.values({ ...manifesto.icons, ...manifesto.action?.default_icon })) lidos.add(icone);
-  for (const grupo of manifesto.web_accessible_resources ?? []) {
-    for (const recurso of grupo.resources) {
-      if (recurso.includes('*')) continue;
-      lidos.add(recurso);
-      if (recurso.endsWith('.html')) paginas.push(recurso);
-    }
-  }
-  for (const pagina of paginas) {
-    lidos.add(pagina);
-    for (const [, valor] of ler(pagina).matchAll(/\b(?:src|href)="([^"#?]+)"/g)) {
-      if (!/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(valor)) lidos.add(valor);
-    }
-  }
-  return [...lidos];
-}
-
-function validarManifesto(manifesto, arquivos) {
+async function validarManifesto(manifesto, arquivos) {
   const erros = [];
   if (manifesto.manifest_version !== 3) erros.push('manifest_version deve ser 3');
   if (!manifesto.name || manifesto.name.length > 75) erros.push('name é obrigatório e tem no máximo 75 caracteres');
@@ -87,8 +35,12 @@ function validarManifesto(manifesto, arquivos) {
   if (!manifesto.icons?.['128']) erros.push('falta o ícone de 128 px em icons');
 
   const noPacote = new Set(arquivos);
-  for (const arquivo of referenciados(manifesto)) {
+  const lerTexto = async caminho => fs.readFileSync(path.join(RAIZ, caminho), 'utf8');
+  for (const arquivo of await arquivosDaExtensao(lerTexto)) {
     if (!noPacote.has(arquivo)) erros.push(`referenciado mas fora do pacote (ou inexistente): ${arquivo}`);
+  }
+  for (const arquivo of arquivos) {
+    if (PASTAS_QUE_NAO_SAO_RUNTIME.includes(arquivo.split('/')[0])) erros.push(`não é de runtime: ${arquivo}`);
   }
   return erros;
 }
@@ -107,6 +59,17 @@ function crc32(bytes) {
   return (c ^ 0xffffffff) >>> 0;
 }
 
+// Um cabeçalho do zip: `campos` são [deslocamento, bytes, valor] (2 ou 4 bytes,
+// little-endian) sobre um buffer zerado do tamanho fixo do cabeçalho.
+function cabecalho(tamanho, campos) {
+  const buffer = Buffer.alloc(tamanho);
+  for (const [deslocamento, bytes, valor] of campos) {
+    if (bytes === 4) buffer.writeUInt32LE(valor, deslocamento);
+    else buffer.writeUInt16LE(valor, deslocamento);
+  }
+  return buffer;
+}
+
 function montarZip(arquivos) {
   // Data fixa (2020-01-01): o mesmo conteúdo gera o mesmo zip.
   const hora = 0;
@@ -121,44 +84,27 @@ function montarZip(arquivos) {
     const comprimido = zlib.deflateRawSync(conteudo, { level: 9 });
     const crc = crc32(conteudo);
 
-    const local = Buffer.alloc(30);
-    local.writeUInt32LE(0x04034b50, 0);
-    local.writeUInt16LE(20, 4);
-    local.writeUInt16LE(0x0800, 6); // nomes em UTF-8
-    local.writeUInt16LE(8, 8);
-    local.writeUInt16LE(hora, 10);
-    local.writeUInt16LE(data, 12);
-    local.writeUInt32LE(crc, 14);
-    local.writeUInt32LE(comprimido.length, 18);
-    local.writeUInt32LE(conteudo.length, 22);
-    local.writeUInt16LE(nome.length, 26);
+    const local = cabecalho(30, [
+      [0, 4, 0x04034b50], [4, 2, 20], [6, 2, 0x0800], [8, 2, 8], [10, 2, hora], [12, 2, data],
+      [14, 4, crc], [18, 4, comprimido.length], [22, 4, conteudo.length], [26, 2, nome.length],
+    ]);
     partes.push(local, nome, comprimido);
 
-    const central = Buffer.alloc(46);
-    central.writeUInt32LE(0x02014b50, 0);
-    central.writeUInt16LE(20, 4);
-    central.writeUInt16LE(20, 6);
-    central.writeUInt16LE(0x0800, 8);
-    central.writeUInt16LE(8, 10);
-    central.writeUInt16LE(hora, 12);
-    central.writeUInt16LE(data, 14);
-    central.writeUInt32LE(crc, 16);
-    central.writeUInt32LE(comprimido.length, 20);
-    central.writeUInt32LE(conteudo.length, 24);
-    central.writeUInt16LE(nome.length, 28);
-    central.writeUInt32LE(deslocamento, 42);
+    const central = cabecalho(46, [
+      [0, 4, 0x02014b50], [4, 2, 20], [6, 2, 20], [8, 2, 0x0800], [10, 2, 8], [12, 2, hora], [14, 2, data],
+      [16, 4, crc], [20, 4, comprimido.length], [24, 4, conteudo.length], [28, 2, nome.length],
+      [42, 4, deslocamento],
+    ]);
     diretorio.push(central, nome);
 
     deslocamento += local.length + nome.length + comprimido.length;
   }
 
   const tamanhoDoDiretorio = diretorio.reduce((soma, parte) => soma + parte.length, 0);
-  const fim = Buffer.alloc(22);
-  fim.writeUInt32LE(0x06054b50, 0);
-  fim.writeUInt16LE(arquivos.length, 8);
-  fim.writeUInt16LE(arquivos.length, 10);
-  fim.writeUInt32LE(tamanhoDoDiretorio, 12);
-  fim.writeUInt32LE(deslocamento, 16);
+  const fim = cabecalho(22, [
+    [0, 4, 0x06054b50], [8, 2, arquivos.length], [10, 2, arquivos.length],
+    [12, 4, tamanhoDoDiretorio], [16, 4, deslocamento],
+  ]);
   return Buffer.concat([...partes, ...diretorio, fim]);
 }
 
@@ -174,8 +120,8 @@ function formatarTamanho(bytes) {
 }
 
 const manifesto = JSON.parse(fs.readFileSync(path.join(RAIZ, 'manifest.json'), 'utf8'));
-const arquivos = arquivosDoPacote();
-const erros = validarManifesto(manifesto, arquivos);
+const arquivos = arquivosDoPacote(RAIZ);
+const erros = await validarManifesto(manifesto, arquivos);
 if (erros.length) {
   console.error('Manifest inválido para a loja:');
   for (const erro of erros) console.error(`  - ${erro}`);

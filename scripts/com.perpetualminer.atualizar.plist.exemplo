@@ -16,7 +16,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/SEU_USUARIO/PerpetualMiner/scripts/atualizar-extensao.sh</string>
+    <string>/Users/SEU_USUARIO/PerpetualMiner-ext/scripts/atualizar-extensao.sh</string>
   </array>
   <key>StartInterval</key>
   <integer>600</integer>

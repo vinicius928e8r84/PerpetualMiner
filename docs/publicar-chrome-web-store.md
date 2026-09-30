@@ -18,7 +18,7 @@ Na raiz do repositório:
 node scripts/empacotar-extensao.mjs
 ```
 
-Sai `dist/perpetualminer-<versão>.zip` com só os arquivos de execução (sem `e2e`, `docs`, `preview`, `bridge`, `engine`, testes, `.git`, `node_modules`, nem os bundles `lib/firebase/`, que nenhuma página carrega), a lista dos arquivos e o tamanho. O script recusa gerar se o `manifest.json` estiver inválido para a loja (versão fora do formato, descrição acima de 132 caracteres, ícone de 128 px ou arquivo referenciado faltando, campo `key`). `dist/` não vai para o git.
+Sai `dist/perpetualminer-<versão>.zip` com só os arquivos de execução (sem `e2e`, `docs`, `preview`, `scripts`, `bridge`, `engine`, testes, `.git`, `node_modules`, nem os bundles `lib/firebase/`, que nenhuma página carrega), a lista dos arquivos e o tamanho. O script recusa gerar se o `manifest.json` estiver inválido para a loja (versão fora do formato, descrição acima de 132 caracteres, ícone de 128 px ou arquivo referenciado faltando, campo `key`). `dist/` não vai para o git.
 
 **Cada envio precisa de uma `version` maior que a publicada** (ex.: `5.0` → `5.0.1`). Altere só o `manifest.json` antes de empacotar.
 
@@ -48,16 +48,16 @@ O PerpetualMiner transforma o que você assiste e lê em material de estudo de i
 • Minere a legenda de um vídeo com um atalho (padrão: Alt+S) ou selecione qualquer trecho de texto na página e minere a seleção. A frase é guardada com o nome do vídeo ou da página e o dia.
 • O painel de estudos reúne todas as frases, com busca, filtros por idioma e por fonte, e a lista do dia.
 • Minerar de uma foto: fotografe uma página de livro com trechos marcados (/assim/, _assim_ ou sublinhados) e a extensão lê só os trechos marcados, usando o Gemini com a sua própria chave de API.
-• Palavra automática: opcionalmente, a extensão separa sozinha as palavras que valem estudo, com limite diário por idioma.
-• Envio ao Anki: com o programa auxiliar que roda no seu computador, as frases viram cartões do Anki com áudio e imagem.
+• Mineração automática (desligada até você ligar): a extensão minera sozinha as linhas de legenda de um idioma enquanto o vídeo roda, até um limite diário que você define, e destaca a Palavra de cada frase.
+• Envio ao Anki: com a Conexão com o Anki, um programa que roda no seu computador, as frases viram cartões do Anki com áudio e imagem.
 • Conta opcional: entre com o Google para sincronizar as frases entre computadores.
 • Idiomas: inglês e russo.
 
-Suas frases ficam no seu navegador. Nada é enviado para servidores do PerpetualMiner. Detalhes na política de privacidade.
+Suas frases ficam no seu navegador. Se você entrar com o Google, elas também são sincronizadas com a sua conta na nuvem (Firebase/Firestore). O PerpetualMiner não tem servidor próprio nem análise de uso. Detalhes na política de privacidade.
 ```
 
 **Finalidade única** (campo "Single purpose"):
-> Capturar frases de legendas de vídeo, de texto selecionado e de fotos de páginas para estudo de idiomas, guardá-las num painel e enviá-las ao Anki.
+> Minerar frases de legendas de vídeo, de texto selecionado e de fotos de páginas para estudo de idiomas, guardá-las num painel e enviá-las ao Anki.
 
 **Capturas de tela** (obrigatório ao menos 1; até 5; 1280×800 ou 640×400, PNG ou JPEG sem transparência):
 1. Legenda de um vídeo com o overlay do PerpetualMiner e o aviso "minerada".
@@ -78,17 +78,17 @@ Cole nos campos correspondentes (a loja pede uma por permissão).
 
 | Permissão | Justificativa |
 |---|---|
-| `storage` | Guarda no navegador as frases mineradas, as configurações, os atalhos, a chave do Gemini informada pela pessoa e a sessão da conta. |
+| `storage` | Guarda no navegador (`storage.local`) as frases mineradas, as configurações, os atalhos, a chave do Gemini informada pela pessoa e a sessão da conta. Usa também o `storage.sync` para as marcas de exclusão de frases (só o identificador da frase e a data), que o próprio navegador sincroniza entre os computadores da pessoa. |
 | `unlimitedStorage` | O histórico de frases e os caches de vocabulário crescem com o uso contínuo e passam do limite padrão de 10 MB do armazenamento local. |
 | `alarms` | Um alarme por dia, à meia-noite, para zerar o contador do ícone na barra (frases mineradas hoje). |
-| `contextMenus` | Cria o item "Minerar seleção" no menu de clique direito sobre texto selecionado. |
+| `contextMenus` | Cria o item "Minerar com PerpetualMiner" no menu de clique direito sobre texto selecionado. |
 | `identity` | Login opcional com a conta Google (`launchWebAuthFlow`) para sincronizar as frases entre computadores. |
 | `tabs` | Encontra e foca a aba do painel da própria extensão em vez de abrir outra, lê o título da aba para nomear a fonte da frase minerada pelo menu de contexto e avisa as abas abertas quando o estado da mineração automática muda. |
-| `activeTab` | Acesso à aba atual quando a pessoa aciona o menu de contexto ou o atalho. |
-| Scripts de conteúdo em todos os sites (`<all_urls>`, todos os frames) | O overlay que lê a legenda do player e marca o trecho minerado precisa rodar no site do vídeo, que pode ser qualquer um (YouTube, Netflix, players de terceiros dentro de iframes). O script só lê a legenda e o texto que a pessoa seleciona, quando ela aciona a captura; não envia nada da página para fora do navegador. |
-| `http://127.0.0.1:8766/*`, `http://localhost:8766/*` | Conversa com o programa auxiliar local (bridge) que envia os cartões ao Anki instalado no mesmo computador. É opcional e nunca sai da máquina. |
+| `activeTab` | Acesso temporário à aba atual quando a pessoa clica no ícone da extensão ou no item do menu de contexto. (A extensão não declara `commands`; o atalho Alt+S é tratado pelo script de conteúdo na própria página.) |
+| Scripts de conteúdo em todos os sites (`<all_urls>`, todos os frames) | O overlay que lê a legenda do player e marca o trecho minerado precisa rodar no site do vídeo, que pode ser qualquer um (YouTube, Netflix, players de terceiros dentro de iframes). O script lê a legenda e o texto que a pessoa seleciona: ao acionar o atalho ou o menu, e, só se a pessoa ligar a Mineração automática (desligada por padrão), a cada ~0,7 s enquanto houver um player com legenda, guardando as linhas até o limite diário. O que é minerado fica no navegador e, se a pessoa entrou com a conta, vai também ao Firestore dela; nada da página é enviado a mais ninguém. |
+| `http://127.0.0.1:8766/*`, `http://localhost:8766/*` | Conversa com a Conexão com o Anki, o programa local que envia os cartões ao Anki instalado no mesmo computador. É opcional; a conversa não sai da máquina. |
 | `https://generativelanguage.googleapis.com/*` | "Minerar de uma foto": envia a foto escolhida ao Gemini com a chave de API da própria pessoa. |
-| `https://firestore.googleapis.com/*`, `https://securetoken.googleapis.com/*`, `https://identitytoolkit.googleapis.com/*`, `https://www.googleapis.com/*` | Login com Google via Firebase e sincronização das frases da conta (Firestore); `www.googleapis.com` devolve nome, e-mail e foto do perfil. |
+| `https://firestore.googleapis.com/*`, `https://securetoken.googleapis.com/*`, `https://identitytoolkit.googleapis.com/*`, `https://www.googleapis.com/*` | Login com Google via Firebase e sincronização das frases da conta (Firestore), inclusive as mineradas automaticamente; `www.googleapis.com` devolve nome, e-mail e foto do perfil. |
 | `https://*.firebaseio.com/*`, `https://*.firebaseapp.com/*` | Ver o item 4 da lista de riscos abaixo: não são usados pelo código atual e devem sair do manifest. |
 
 **Código remoto:** "Não, não uso código remoto". Todo o JavaScript está no pacote (sem `eval`, sem `<script>` externo). A verificação de atualização automática incluída (`lib/auto-recarregar.js`) só age em instalação descompactada e apenas lê os próprios arquivos.
@@ -114,19 +114,19 @@ Política de Privacidade — PerpetualMiner
 O PerpetualMiner é uma extensão de navegador para estudo de idiomas. Esta política descreve quais dados ela trata.
 
 O que a extensão guarda
-As frases que você minera (texto da legenda ou da seleção, o idioma, o nome do vídeo ou da página de onde veio, e a data), suas configurações, seus atalhos e, se você informar, a sua chave da API do Gemini. Tudo isso fica no armazenamento local do seu navegador.
+As frases que você minera (texto da legenda ou da seleção, o idioma, o nome do vídeo ou da página de onde veio, e a data), suas configurações, seus atalhos e, se você informar, a sua chave da API do Gemini. Tudo isso fica no armazenamento local do seu navegador. Ao apagar uma frase, o identificador dela e a data da exclusão ficam também no armazenamento sincronizado do navegador (Chrome Sync ou Opera Sync, se você o usa), para a exclusão valer nos seus outros computadores.
 
 Conta Google (opcional)
-Se você entrar com o Google, a extensão recebe seu nome, e-mail e foto de perfil e guarda um identificador de conta. As suas frases passam a ser sincronizadas com um banco de dados Firestore do projeto Firebase do PerpetualMiner, vinculado à sua conta, para que você as veja em outros computadores. "Apagar tudo" nas configurações remove as frases da nuvem. Sem entrar na conta, nada é enviado à nuvem.
+Se você entrar com o Google, a extensão recebe seu nome, e-mail e foto de perfil e guarda um identificador de conta. Cada frase que você minera a partir daí, inclusive as da Mineração automática, é enviada a um banco de dados Firestore do projeto Firebase do PerpetualMiner, vinculado à sua conta, para que você as veja em outros computadores. "Apagar tudo" nas configurações remove as frases da nuvem. Sem entrar na conta, nada é enviado à nuvem.
 
 Minerar de uma foto (opcional)
 A foto que você escolhe é enviada à API do Gemini (Google), com a chave que você informou, para ler os trechos marcados. Nada é guardado em servidores do PerpetualMiner. O tratamento pelo Google segue os termos da API do Gemini.
 
 Envio ao Anki (opcional)
-Se você instalar o programa auxiliar, a extensão conversa com ele em 127.0.0.1 (o seu próprio computador) para criar cartões no Anki. Esses dados não saem da sua máquina, exceto o que o programa auxiliar consultar por conta própria (por exemplo, serviços de voz e de imagem configurados por você).
+Se você instalar a Conexão com o Anki, a extensão conversa com ela em 127.0.0.1 (o seu próprio computador) para criar cartões no Anki. Essa conversa não sai da sua máquina; o que a Conexão com o Anki consultar por conta própria (por exemplo, serviços de voz e de imagem configurados por você) é responsabilidade dela e não da extensão.
 
 O que a extensão NÃO faz
-Não vende nem compartilha dados com terceiros, não usa dados para publicidade, não coleta histórico de navegação e não tem análise de uso nem rastreadores. Nos sites, os scripts da extensão só leem a legenda do player e o texto que você seleciona quando aciona a captura.
+Não vende nem compartilha dados com terceiros, não usa dados para publicidade, não coleta histórico de navegação e não tem análise de uso nem rastreadores. Nos sites, os scripts da extensão leem só a legenda do player e o texto que você seleciona: quando você aciona a mineração e, se você ligar a Mineração automática (vem desligada), continuamente enquanto o vídeo roda, até o limite diário. Não leem nem guardam nenhum outro conteúdo da página.
 
 Seus controles
 Você pode apagar as frases a qualquer momento no painel (individualmente ou "Apagar tudo"), sair da conta e remover a chave do Gemini. Desinstalar a extensão apaga os dados locais.
@@ -135,13 +135,13 @@ Contato
 <e-mail de contato>
 ```
 
-Confira o texto contra o que o programa auxiliar (bridge/engine) faz no seu computador antes de publicar: ele chama serviços de terceiros (voz e imagens) que não são da extensão, e a política acima só os cita de passagem.
+Confira o texto contra o que a Conexão com o Anki faz no seu computador antes de publicar: ela chama serviços de terceiros (voz e imagens) que não são da extensão, e a política acima só os cita de passagem.
 
 ## 6. Aba "Distribuição" e envio
 
 1. **Visibilidade: Não listada** (só quem tem o link instala; não aparece na busca). Regiões: todas, ou só o Brasil.
 2. **Instruções para teste** (campo para o revisor):
-   > O recurso principal funciona sem login: abra um vídeo com legenda (ex.: YouTube com legendas ligadas), pressione Alt+S para minerar a legenda atual e abra o painel pelo ícone da extensão. Login com Google, Gemini e Anki são opcionais; o Anki depende de um programa local que o revisor não precisa instalar.
+   > O recurso principal funciona sem login: abra um vídeo com legenda (ex.: YouTube com legendas ligadas), pressione Alt+S para minerar a legenda atual e abra o painel pelo ícone da extensão. Login com Google, Gemini e Anki são opcionais; o Anki depende da Conexão com o Anki, um programa local que o revisor não precisa instalar. A Mineração automática vem desligada.
 3. **Enviar para revisão**. Como há script de conteúdo em todos os sites, a primeira revisão costuma ser mais demorada (de dias a algumas semanas). Depois de aprovado o item, publique (ou escolha "publicar automaticamente" ao enviar).
 4. Guarde o **link do item** (`https://chromewebstore.google.com/detail/<ID>`).
 
@@ -167,8 +167,8 @@ Resultado da revisão do `manifest.json` atual, do mais provável de dar problem
 3. **`activeTab` junto com `tabs` e os scripts em todos os sites.** É redundante com as duas; a loja costuma pedir para remover permissão desnecessária. Fique com a justificativa curta acima ou tire a `activeTab` (o código não usa nada que só ela dê, fora o título da aba no menu de contexto, que o clique no menu já concede).
 4. **Hosts sem uso.** `https://*.firebaseio.com/*` e `https://*.firebaseapp.com/*` não são chamados por nenhum código (o Firestore é usado por `firestore.googleapis.com`), e `http://localhost:8766/*` repete `127.0.0.1:8766`. Permissão de host sem uso é o motivo mais comum de "Purple Potassium" (permissão não usada): **tire as duas primeiras do `manifest.json` antes do envio** (é uma mudança de manifest que eu não fiz aqui, para não mexer no que os testes esperam) e mantenha só o `127.0.0.1` se o `localhost` não for usado.
 5. **`web_accessible_resources` com `<all_urls>` incluindo `painel.html` e `bookreader.html`.** Qualquer site pode embutir essas páginas por `iframe` e identificar que a extensão está instalada (fingerprinting). O overlay só precisa das folhas de estilo, fontes e do SVG; as páginas do painel não precisam ser públicas se ninguém as abre de dentro de um site. Vale restringir antes do envio.
-6. **Servidor local na porta 8766.** Explique na descrição e nas instruções de teste que ele é um programa auxiliar opcional do próprio usuário; revisores olham com atenção qualquer conexão a `localhost`.
+6. **Servidor local na porta 8766.** Explique na descrição e nas instruções de teste que ele é a Conexão com o Anki, um programa opcional do próprio usuário; revisores olham com atenção qualquer conexão a `localhost`.
 7. **Login com Google exige o ID do item cadastrado no OAuth** (seção 3), e o cliente OAuth e a chave web do Firebase ficam expostos no código da extensão. A chave web do Firebase é pública por desenho; o que protege os dados são as regras do Firestore, então confirme que só o dono de `usuarios/{uid}` lê e escreve o próprio caminho.
 8. **Política de privacidade em URL pública e formulário de dados coerentes com o que o código faz.** Divergência (por exemplo não declarar o e-mail do Google) é motivo de recusa.
-9. **Finalidade única.** A extensão faz várias coisas (legenda, seleção, foto, Anki, sincronização); a redação acima as apresenta como um único propósito (estudo de idiomas por captura de frases). Se o revisor questionar, o Anki e a foto são as funções mais fáceis de defender como parte do mesmo fluxo.
-10. **Chave `key` no manifest.** Não deve constar no pacote da loja (o script recusa). Para manter o mesmo ID nas cópias descompactadas, use a chave pública que o painel do item mostra em *Pacote → Ver chave pública*, colocada só nas cópias de teste.
+9. **Finalidade única.** A extensão faz várias coisas (legenda, seleção, foto, Anki, sincronização); a redação acima as apresenta como um único propósito (estudo de idiomas por mineração de frases). Se o revisor questionar, o Anki e a foto são as funções mais fáceis de defender como parte do mesmo fluxo.
+10. **Chave `key` no manifest.** Não deve constar no pacote da loja (o script hoje recusa um manifest com `key`; ao adotá-la, ensine o empacotador a omiti-la do zip). Para manter o mesmo ID nas cópias descompactadas, depois que o item existir copie a chave pública de *Pacote → Ver chave pública* e mande-a para o `manifest.json` por um PR normal (e remova-a antes de cada envio ao store, ou ajuste o empacotador para omiti-la). **Não edite o `manifest.json` só na sua máquina**: com o arquivo alterado, o `git pull --ff-only` da atualização automática falha a cada versão nova e só o log mostra.

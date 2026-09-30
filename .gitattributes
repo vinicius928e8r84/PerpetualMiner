@@ -1,0 +1,2 @@
+# Scripts de shell rodam no Git Bash do Windows: com CRLF o bash falha antes do pull.
+*.sh text eol=lf

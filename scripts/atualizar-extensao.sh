@@ -17,13 +17,13 @@ set -u
 # O launchd começa com um PATH mínimo, sem o Homebrew.
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
-RAMO="${PM_RAMO:-main}"
+RAMO=main
 CLONE="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 if [ "$(uname)" = "Darwin" ]; then
-  LOG="${PM_LOG:-$HOME/Library/Logs/perpetualminer-atualizar.log}"
+  LOG="$HOME/Library/Logs/perpetualminer-atualizar.log"
 else
-  LOG="${PM_LOG:-${XDG_STATE_HOME:-$HOME/.local/state}/perpetualminer-atualizar.log}"
+  LOG="$HOME/.local/state/perpetualminer-atualizar.log"
 fi
 mkdir -p "$(dirname "$LOG")"
 
