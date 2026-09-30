@@ -1,7 +1,7 @@
 'use strict';
 
-// Referência visual da Conexão com o Anki (#33): os estados da conexão e a aba
-// Custos na arrumação C · Por idioma do protótipo travado
+// Referência visual da Conexão com o Anki (#33, #35): os estados da conexão e as
+// abas Custos e Ajustes de envio na arrumação C · Por idioma do protótipo travado
 // (docs/design/painel/anki/prototipo-anki.html?variant=C, “⚙ Estados do
 // protótipo”). O dono revisa estas telas lado a lado com o protótipo; depois de
 // aprovadas, uma mudança visual faz o teste falhar até alguém olhar e atualizar
@@ -46,11 +46,11 @@ test.beforeEach(({ fakes }) => {
   fakes.anki.definirCustos(ENVIOS);
 });
 
-async function abrirAnki(page, extensao, { largura = 1280, jaConectou = true, gravado = {} } = {}) {
+async function abrirAnki(page, extensao, { largura = 1280, jaConectou = true, gravado = {}, hash = '#anki/custos' } = {}) {
   await extensao.gravarStorage({ pm_anki_ja_conectou: jaConectou, ...gravado });
   await page.clock.setFixedTime(AGORA);
   await page.setViewportSize({ width: largura, height: 1100 });
-  await page.goto(extensao.url('painel.html#anki/custos'));
+  await page.goto(extensao.url(`painel.html${hash}`));
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -143,4 +143,64 @@ test('o tema claro', async ({ page, extensao }) => {
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(5);
 
   await expect(ilha(page)).toHaveScreenshot('anki-claro.png');
+});
+
+// ─── Ajustes de envio (#35) ──────────────────────────────────────────────────
+
+const AJUSTES = {
+  ankiBridgePresets: {
+    en: { deckName: 'Inglês::Mineradas', imageSource: '1', ttsWordTld: 'com', ttsPhraseTld: 'co.uk' },
+    ru: { deckName: 'RUSSIAN', imageSource: '2', ttsWordTld: 'ru', ttsPhraseTld: 'ru' },
+  },
+};
+const campoDoBaralho = page => page.getByRole('textbox', { name: 'Baralho' });
+
+async function abrirAjustes(page, extensao, opcoes = {}) {
+  await abrirAnki(page, extensao, { hash: '#anki/ajustes', ...opcoes, gravado: { ...AJUSTES, ...opcoes.gravado } });
+  await expect(campoDoBaralho(page)).toBeVisible();
+}
+
+test('Ajustes de envio: os azulejos e o formulário do inglês', async ({ page, extensao }) => {
+  await abrirAjustes(page, extensao);
+
+  await expect(ilha(page)).toHaveScreenshot('anki-ajustes.png');
+});
+
+test('Ajustes de envio: o russo com Gerada por IA e o Avançado aberto', async ({ page, extensao }) => {
+  await abrirAjustes(page, extensao);
+  await page.getByRole('group', { name: 'Idioma dos ajustes' }).getByRole('button', { name: /^RU Russo/ }).click();
+  await page.locator('#ajustes-avancado summary').click();
+
+  await expect(ilha(page)).toHaveScreenshot('anki-ajustes-russo-avancado.png');
+});
+
+test('Ajustes de envio com a Conexão desligada: a F1 e a nota BRG-33', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await abrirAjustes(page, extensao);
+  await expect(page.locator('#anki-ajustes-nota')).toBeVisible();
+
+  await expect(ilha(page)).toHaveScreenshot('anki-ajustes-desligada.png');
+});
+
+test('Ajustes de envio: a aba desatualizada não salva e avisa', async ({ page, extensao }) => {
+  await abrirAjustes(page, extensao);
+  await campoDoBaralho(page).fill('Da primeira aba');
+  // Outra aba salvou o inglês no meio.
+  await extensao.gravarStorage({ ankiBridgePresets: { ...AJUSTES.ankiBridgePresets, en: { ...AJUSTES.ankiBridgePresets.en, deckName: 'Da segunda aba', versao: 1 } } });
+  await page.getByRole('button', { name: 'Salvar ajustes' }).click();
+  await expect(page.locator('#ajustes-aviso').getByRole('alert')).toBeVisible();
+
+  await expect(ilha(page)).toHaveScreenshot('anki-ajustes-desatualizada.png');
+});
+
+test('Ajustes de envio na janela estreita', async ({ page, extensao }) => {
+  await abrirAjustes(page, extensao, { largura: 760 });
+
+  await expect(page).toHaveScreenshot('anki-ajustes-estreita.png', { fullPage: false });
+});
+
+test('Ajustes de envio no tema claro', async ({ page, extensao }) => {
+  await abrirAjustes(page, extensao, { gravado: { pm_tema: 'claro' } });
+
+  await expect(ilha(page)).toHaveScreenshot('anki-ajustes-claro.png');
 });

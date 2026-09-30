@@ -484,18 +484,18 @@ test('↻ Atualizar com a Conexão desligada não pede os baralhos; ligada, pede
 test('Ajustes de envio com a Conexão desligada: continuam editáveis, com a nota de que valem no próximo envio', async ({ page, extensao, fakes }) => {
   const nota = 'Os ajustes continuam editáveis com a conexão desligada. Valem a partir do próximo envio.';
   await abrirAnki(page, extensao, { hash: '#anki/ajustes' });
-  await expect(page.locator('#preset-main-en-deck')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Baralho' })).toBeVisible();
   await expect(page.getByText(nota)).toBeHidden();
 
   fakes.anki.desligar();
   await atualizar(page).click();
   await expect(page.getByText(nota)).toBeVisible();
-  await expect(page.locator('#preset-main-en-deck')).toBeEditable();
+  await expect(page.getByRole('textbox', { name: 'Baralho' })).toBeEditable();
 });
 
-test('as outras abas continuam com o conteúdo de hoje', async ({ page, extensao }) => {
+test('Baralhos e termos continua com o conteúdo de hoje', async ({ page, extensao }) => {
   await abrirAnki(page, extensao, { hash: '#anki/ajustes' });
-  await expect(page.locator('#preset-main-en-deck')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Baralho' })).toBeVisible();
   await escolher(page, 'Baralhos e termos');
   await expect(page.getByRole('button', { name: 'Reparar Anki' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Reparar Anki' })).not.toHaveAttribute('aria-disabled', 'true');

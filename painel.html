@@ -354,75 +354,51 @@
         <div class="shell-aba" data-aba="ajustes" hidden>
           <!-- Com a Conexão desligada, os ajustes continuam editáveis (BRG-33). -->
           <p class="anki-nota" id="anki-ajustes-nota" data-voz="BRG-33.ajustes" hidden></p>
-          <div class="conteudo-de-hoje" data-tema="claro">
-            <section class="bridge-card bridge-presets-card" aria-labelledby="bridge-presets-title">
-              <div class="bridge-section-head">
-                <div>
-                  <h3 id="bridge-presets-title">Presets</h3>
-                  <p>Decks, imagem e TLDs usados ao enviar frases para o Anki.</p>
+          <!--
+            Ajustes de envio (painel-ajustes.js): os azulejos mostram o que está
+            gravado; o formulário é do idioma escolhido e só grava em Salvar ajustes.
+          -->
+          <div class="ajustes" id="ajustes">
+            <div class="anki-azulejos ajustes-azulejos" id="ajustes-azulejos" role="group" data-voz-aria="BRG-07.idiomas"></div>
+            <div class="ajustes-aviso" id="ajustes-aviso"></div>
+            <form class="ajustes-cartao" id="ajustes-form" novalidate hidden>
+              <h2 class="ajustes-cartao__titulo" id="ajustes-titulo"></h2>
+              <p class="anki-apoio" id="ajustes-descricao"></p>
+              <label class="ajustes-campo">
+                <span class="ajustes-campo__rotulo" data-voz="BRG-07.baralho"></span>
+                <input class="veio-campo" id="ajustes-baralho" type="text" autocomplete="off" spellcheck="false" aria-describedby="ajustes-baralho-ajuda">
+                <span class="ajustes-campo__ajuda" id="ajustes-baralho-ajuda"></span>
+              </label>
+              <label class="ajustes-campo">
+                <span class="ajustes-campo__rotulo" data-voz="BRG-07.imagens"></span>
+                <span class="veio-select">
+                  <select class="veio-campo" id="ajustes-imagens" aria-describedby="ajustes-imagens-ajuda">
+                    <option value="1" data-voz="BRG-07.fotoReal"></option>
+                    <option value="2" data-voz="BRG-07.geradaPorIa"></option>
+                  </select>
+                </span>
+                <span class="ajustes-campo__ajuda" id="ajustes-imagens-ajuda"></span>
+              </label>
+              <div class="ajustes-cartao__acoes">
+                <button class="veio-botao veio-botao--primario" type="submit" data-voz="BRG-07.salvar"></button>
+              </div>
+              <details class="anki-avancado" id="ajustes-avancado">
+                <summary><span data-voz="BRG-32.titulo"></span> <small>· <span data-voz="BRG-07.avancado"></span></small></summary>
+                <div class="anki-avancado__corpo">
+                  <p class="anki-apoio ajustes-sotaque" id="ajustes-sotaque"></p>
+                  <div class="ajustes-sotaques">
+                    <label class="ajustes-campo">
+                      <span class="ajustes-campo__rotulo" data-voz="BRG-07.sotaquePalavra"></span>
+                      <input class="veio-campo ajustes-campo--mono" id="ajustes-sotaque-palavra" type="text" autocomplete="off" spellcheck="false">
+                    </label>
+                    <label class="ajustes-campo">
+                      <span class="ajustes-campo__rotulo" data-voz="BRG-07.sotaqueFrase"></span>
+                      <input class="veio-campo ajustes-campo--mono" id="ajustes-sotaque-frase" type="text" autocomplete="off" spellcheck="false">
+                    </label>
+                  </div>
                 </div>
-              </div>
-
-              <div class="bridge-preset-grid">
-                <article class="bridge-preset-card">
-                  <div class="bridge-preset-header">
-                    <span class="bridge-lang-pill">EN</span>
-                    <strong>Ingles</strong>
-                  </div>
-                  <label class="bridge-field">
-                    <span>Deck</span>
-                    <input id="preset-main-en-deck" class="bridge-input" type="text" placeholder="CIMV">
-                  </label>
-                  <label class="bridge-field">
-                    <span>Fonte de imagem</span>
-                    <select id="preset-main-en-image" class="bridge-select">
-                      <option value="1">Google Images</option>
-                      <option value="2">DALL-E</option>
-                    </select>
-                  </label>
-                  <div class="bridge-grid">
-                    <label class="bridge-field">
-                      <span>TLD palavra</span>
-                      <input id="preset-main-en-word-tld" class="bridge-input" type="text" placeholder="com">
-                    </label>
-                    <label class="bridge-field">
-                      <span>TLD frase</span>
-                      <input id="preset-main-en-phrase-tld" class="bridge-input" type="text" placeholder="co.uk">
-                    </label>
-                  </div>
-                </article>
-
-                <article class="bridge-preset-card">
-                  <div class="bridge-preset-header">
-                    <span class="bridge-lang-pill">RU</span>
-                    <strong>Russo</strong>
-                  </div>
-                  <label class="bridge-field">
-                    <span>Deck</span>
-                    <input id="preset-main-ru-deck" class="bridge-input" type="text" placeholder="RUSSIAN">
-                  </label>
-                  <label class="bridge-field">
-                    <span>Fonte de imagem</span>
-                    <select id="preset-main-ru-image" class="bridge-select">
-                      <option value="1">Google Images</option>
-                      <option value="2">DALL-E</option>
-                    </select>
-                  </label>
-                  <div class="bridge-grid">
-                    <label class="bridge-field">
-                      <span>TLD palavra</span>
-                      <input id="preset-main-ru-word-tld" class="bridge-input" type="text" placeholder="ru">
-                    </label>
-                    <label class="bridge-field">
-                      <span>TLD frase</span>
-                      <input id="preset-main-ru-phrase-tld" class="bridge-input" type="text" placeholder="ru">
-                    </label>
-                  </div>
-                </article>
-              </div>
-
-              <button id="btn-save-bridge-presets-main" class="bridge-save-btn" type="button">Salvar presets</button>
-            </section>
+              </details>
+            </form>
           </div>
         </div>
       </section>
@@ -678,6 +654,7 @@
   <script src="lib/contexto.js"></script>
   <script src="lib/atalhos.js"></script>
   <script src="lib/configuracao.js"></script>
+  <script src="lib/ajustes-de-envio.js"></script>
   <script src="tombstone.js"></script>
   <script src="painel-shell.js"></script>
   <script src="painel-conta.js"></script>
@@ -688,6 +665,7 @@
   <script src="painel-perigo.js"></script>
   <script src="painel-envio.js"></script>
   <script src="painel-anki.js"></script>
+  <script src="painel-ajustes.js"></script>
   <script src="painel.js"></script>
 </body>
 </html>

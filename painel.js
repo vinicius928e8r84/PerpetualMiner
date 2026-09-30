@@ -2,7 +2,7 @@
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
 // deste arquivo, pelo painel.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
-const { detectarIdioma, ehRussa, IDIOMAS, textoDaVoz, Atalhos } = PerpetualMiner;
+const { detectarIdioma, ehRussa, IDIOMAS, textoDaVoz, Atalhos, AjustesDeEnvio } = PerpetualMiner;
 // O nome da Fonte e o dia da frase, os mesmos do popup (lib/contexto.js).
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
 // A lista de Frases é montada com os componentes da Base Veio (veio/componentes.js).
@@ -47,11 +47,6 @@ const FIREBASE_API_KEY  = 'AIzaSyDrbDVUvv8wyoYqjCr5jEMBJPPsIP2k1Ak';
 const FB_SIGNIN_URL     = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${FIREBASE_API_KEY}`;
 const FB_REFRESH_URL    = `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`;
 const BRIDGE_URL        = 'http://127.0.0.1:8766';
-const BRIDGE_PRESETS_KEY = 'ankiBridgePresets';
-const DEFAULT_BRIDGE_PRESETS = {
-  en: { deckName: 'CIMV', imageSource: '1', ttsWordTld: 'com', ttsPhraseTld: 'co.uk' },
-  ru: { deckName: 'RUSSIAN', imageSource: '1', ttsWordTld: 'ru',  ttsPhraseTld: 'ru' },
-};
 
 // A Fonte de uma frase minerada sem Fonte: colada (Colar) ou vinda de uma
 // linha simples de um .txt (Arquivo .txt).
@@ -92,7 +87,6 @@ const idsAindaNaNuvem  = new Set();
 let modalAberto        = null;
 let pedidoDeApagar     = null; // { ids }
 let edicaoDeContexto   = null; // { ids }
-let bridgePresets      = structuredClone(DEFAULT_BRIDGE_PRESETS);
 let bridgeVocabularyTimer = null;
 let bridgeVocabularyDeck = { lang: 'en' };
 
@@ -100,7 +94,12 @@ let bridgeVocabularyDeck = { lang: 'en' };
 
 document.addEventListener('DOMContentLoaded', () => {
   setupListeners();
-  inicializarBridgeUI();
+  // Os ajustes mudaram (nesta aba ou em outra): Baralhos e termos pede os números dos baralhos novos.
+  chrome.storage.onChanged.addListener((mudancas, area) => {
+    if (area === 'local' && AjustesDeEnvio.CHAVE in mudancas && Shell.areaAtual() === 'anki') {
+      atualizarBridgeDeckStats({ refresh: true, launch: true });
+    }
+  });
   Shell.aoEntrarNaArea('anki', () => atualizarBridgeWorkspaceData({ includeAnki: true, launchAnki: true }));
   Conta.aoPedir({ entrar: loginGoogle, sair: logout, tentarDeNovo: carregarFrasesFirestore });
   setupStorageSyncListener();
@@ -951,7 +950,6 @@ function setupListeners() {
     atualizarContadorSelecao();
   });
 
-  document.getElementById('btn-save-bridge-presets-main')?.addEventListener('click', salvarBridgePresets);
   // ↻ Atualizar é do painel-anki.js: com a Conexão ligada, ele pede também os
   // baralhos, que abrem o Anki se precisar (BRG-24).
   PerpetualMiner.Anki?.aoAtualizar(() => {
@@ -964,80 +962,8 @@ function setupListeners() {
   byId('bridge-vocab-lang')?.addEventListener('change', () => atualizarBridgeVocabulary());
 }
 
-async function inicializarBridgeUI() {
-  const data = await chromeGet({ [BRIDGE_PRESETS_KEY]: DEFAULT_BRIDGE_PRESETS });
-  bridgePresets = normalizarBridgePresets(data[BRIDGE_PRESETS_KEY]);
-  preencherBridgePresetInputs();
-}
-
-function normalizarBridgePresets(raw) {
-  return {
-    en: { ...DEFAULT_BRIDGE_PRESETS.en, ...(raw?.en || {}) },
-    ru: { ...DEFAULT_BRIDGE_PRESETS.ru, ...(raw?.ru || {}) },
-  };
-}
-
 function byId(id) {
   return document.getElementById(id);
-}
-
-function bridgePresetEl(lang, field) {
-  return byId(`preset-main-${lang}-${field}`) || byId(`preset-${lang}-${field}`);
-}
-
-
-
-
-function setText(id, value) {
-  const el = byId(id);
-  if (el) el.textContent = value;
-}
-
-
-
-function readBridgePresetValue(lang, field, fallback) {
-  const el = bridgePresetEl(lang, field);
-  return el?.value?.trim() || fallback;
-}
-
-function setBridgePresetValue(lang, field, value) {
-  [byId(`preset-main-${lang}-${field}`), byId(`preset-${lang}-${field}`)]
-    .filter(Boolean)
-    .forEach(el => { el.value = value; });
-}
-
-function preencherBridgePresetInputs() {
-  setBridgePresetValue('en', 'deck', bridgePresets.en.deckName);
-  setBridgePresetValue('en', 'image', bridgePresets.en.imageSource);
-  setBridgePresetValue('en', 'word-tld', bridgePresets.en.ttsWordTld);
-  setBridgePresetValue('en', 'phrase-tld', bridgePresets.en.ttsPhraseTld);
-  setBridgePresetValue('ru', 'deck', bridgePresets.ru.deckName);
-  setBridgePresetValue('ru', 'image', bridgePresets.ru.imageSource);
-  setBridgePresetValue('ru', 'word-tld', bridgePresets.ru.ttsWordTld);
-  setBridgePresetValue('ru', 'phrase-tld', bridgePresets.ru.ttsPhraseTld);
-  const vocabLang = byId('bridge-vocab-lang');
-  if (vocabLang) vocabLang.value = bridgeVocabularyDeck.lang || 'en';
-}
-
-async function salvarBridgePresets() {
-  bridgePresets = {
-    en: {
-      deckName: readBridgePresetValue('en', 'deck', DEFAULT_BRIDGE_PRESETS.en.deckName),
-      imageSource: bridgePresetEl('en', 'image')?.value || DEFAULT_BRIDGE_PRESETS.en.imageSource,
-      ttsWordTld: readBridgePresetValue('en', 'word-tld', DEFAULT_BRIDGE_PRESETS.en.ttsWordTld),
-      ttsPhraseTld: readBridgePresetValue('en', 'phrase-tld', DEFAULT_BRIDGE_PRESETS.en.ttsPhraseTld),
-    },
-    ru: {
-      deckName: readBridgePresetValue('ru', 'deck', DEFAULT_BRIDGE_PRESETS.ru.deckName),
-      imageSource: bridgePresetEl('ru', 'image')?.value || DEFAULT_BRIDGE_PRESETS.ru.imageSource,
-      ttsWordTld: readBridgePresetValue('ru', 'word-tld', DEFAULT_BRIDGE_PRESETS.ru.ttsWordTld),
-      ttsPhraseTld: readBridgePresetValue('ru', 'phrase-tld', DEFAULT_BRIDGE_PRESETS.ru.ttsPhraseTld),
-    },
-  };
-  await new Promise(resolve => chrome.storage.local.set({ [BRIDGE_PRESETS_KEY]: bridgePresets }, resolve));
-  preencherBridgePresetInputs();
-  if (Shell.areaAtual() === 'anki') atualizarBridgeDeckStats({ refresh: true, launch: true });
-  mostrarToast('Presets do Anki Bridge salvos.');
 }
 
 // ─── Sidebar & Dropdowns ──────────────────────────────────────────────────────
@@ -1057,11 +983,9 @@ async function atualizarBridgeWorkspaceData(options = {}) {
 
 function queryBridgeDeckStats(options = {}) {
   const params = new URLSearchParams();
-  [
-    ['en', bridgePresets.en?.deckName || DEFAULT_BRIDGE_PRESETS.en.deckName],
-    ['ru', bridgePresets.ru?.deckName || DEFAULT_BRIDGE_PRESETS.ru.deckName],
-  ].forEach(([lang, deckName]) => {
-    params.append('deck', deckName);
+  const ajustes = AjustesDeEnvio.atual();
+  AjustesDeEnvio.IDIOMAS.forEach(lang => {
+    params.append('deck', ajustes[lang].deckName);
     params.append('lang', lang);
   });
   if (options.refresh) params.set('refresh', '1');
@@ -1088,6 +1012,7 @@ async function atualizarBridgeDeckStats(options = {}) {
   if (!el) return;
   el.innerHTML = '<div class="bridge-analytics-empty">Atualizando Anki...</div>';
   try {
+    await AjustesDeEnvio.ler();
     const resp = await fetch(`${BRIDGE_URL}/anki/stats/decks?${queryBridgeDeckStats(options)}`);
     if (!resp.ok) throw new Error('anki_stats_unavailable');
     const data = await resp.json();
@@ -1229,8 +1154,7 @@ function queryBridgeVocabulary() {
   const params = new URLSearchParams();
   const lang = byId('bridge-vocab-lang')?.value || bridgeVocabularyDeck.lang || 'en';
   bridgeVocabularyDeck.lang = lang;
-  const deckName = bridgePresets[lang]?.deckName || DEFAULT_BRIDGE_PRESETS[lang]?.deckName;
-  params.set('deck', deckName);
+  params.set('deck', AjustesDeEnvio.atual()[lang].deckName);
   params.set('lang', lang);
   params.set('limit', '10000');
   const q = byId('bridge-vocab-search')?.value?.trim() || '';
@@ -2038,7 +1962,6 @@ function comecarEnvio() {
       return todasFrases.filter(f => pedidas.has(Number(f.id)));
     },
     linha: linhaParaOAnki,
-    ajustes: () => bridgePresets,
     apagar: ids => apagarFrases(ids, { toast: false }),
     marcarComoEnviadas,
   });
