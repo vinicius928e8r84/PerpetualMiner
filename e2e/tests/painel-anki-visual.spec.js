@@ -86,13 +86,58 @@ test('conectando: a faixa neutra e o esqueleto', async ({ page, extensao, fakes 
   await expect(ilha(page)).toHaveScreenshot('anki-conectando.png', { animations: 'disabled' });
 });
 
-test('nunca conectada: a F1 e o card ONB-16 no lugar das abas', async ({ page, extensao, fakes }) => {
+// A primeira conexão (ONB-16, desenho B), comparada pelo dono com o protótipo travado
+// (`prototipo-primeira-conexao.html?variant=B`). Substitui `anki-nunca-conectada`.
+test('nunca conectada: a F1 e o card do passo 1, com a lista, a conferência e os dois quadros', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirAnki(page, extensao, { jaConectou: false });
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
-  await page.locator('#anki-primeira-vez').getByText('Detalhes', { exact: true }).click();
 
-  await expect(ilha(page)).toHaveScreenshot('anki-nunca-conectada.png');
+  await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-escura.png');
+});
+
+test('nunca conectada no tema claro', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await abrirAnki(page, extensao, { jaConectou: false, gravado: { pm_tema: 'claro' } });
+  await expect(page.locator('#anki-primeira-vez')).toBeVisible();
+
+  await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-clara.png');
+});
+
+test('nunca conectada, conectando depois de Tentar de novo: o passo 3 com o botão indisponível', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await abrirAnki(page, extensao, { jaConectou: false });
+  await expect(page.locator('#anki-primeira-vez')).toBeVisible();
+  fakes.anki.ligar();
+  fakes.anki.responder('GET', '/health', () => new Promise(() => {}));
+  await page.locator('#shell-tentar-de-novo').click();
+  await expect(page.locator('#apv-status')).toHaveText('Conectando ao Anki…');
+
+  await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-conectando.png', { animations: 'disabled' });
+});
+
+test('nunca conectada, na primeira resposta: o momento Pronto, com as abas ainda de fora', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  // O relógio da página é do teste: o Pronto fica na tela até ele andar.
+  await page.clock.install({ time: AGORA });
+  await extensao.gravarStorage({ pm_anki_ja_conectou: false });
+  await page.setViewportSize({ width: 1280, height: 1100 });
+  await page.goto(extensao.url('painel.html#anki/custos'));
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page.locator('#anki-primeira-vez')).toBeVisible();
+  fakes.anki.ligar();
+  await page.locator('#shell-tentar-de-novo').click();
+  await expect(page.locator('#apv-status')).toHaveText('Conexão com o Anki: ligada');
+
+  await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-pronto.png');
+});
+
+test('nunca conectada na janela estreita: a lista em cima do card', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await abrirAnki(page, extensao, { jaConectou: false, largura: 760 });
+  await expect(page.locator('#anki-primeira-vez')).toBeVisible();
+
+  await expect(page).toHaveScreenshot('anki-primeira-conexao-estreita.png', { fullPage: false });
 });
 
 test('desligada: a F1, o último dado com o selo BRG-12 e Continuar envio indisponível, sem a dica aberta', async ({ page, extensao, fakes }) => {

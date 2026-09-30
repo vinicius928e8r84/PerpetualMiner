@@ -47,6 +47,7 @@
   const ouvintesDeArea = new Map();
   const ouvintesDeSecao = new Map();   // seção de Configurações → ouvintes
   const ouvintesDaConexao = [];        // quem acompanha a Conexão com o Anki (aoMudarAConexao)
+  const ouvintesDaConferencia = [];    // quem mostra a conferência andando (aoConferirAConexao)
   const fimDosDestaques = new Map();   // card → o timer que tira a borda do destaque
 
   const { textoDaVoz, Atalhos, Veio } = raiz;
@@ -311,6 +312,7 @@
   function conferirConexao() {
     if (!estado.conferencia) {
       estado.conferencia = (async () => {
+        for (const ouvinte of ouvintesDaConferencia) ouvinte(true);
         let ligada = false;
         try {
           ligada = (await fetch(`${ENDERECO_DA_CONEXAO}/health`)).ok;
@@ -318,6 +320,7 @@
           ligada = false;
         }
         estado.conferencia = null;
+        for (const ouvinte of ouvintesDaConferencia) ouvinte(false);
         mostrarConexao(ligada ? CONEXAO.LIGADA : CONEXAO.DESLIGADA);
         return estado.conexao;
       })();
@@ -352,6 +355,16 @@
   }
 
   /**
+   * Quem mostra a conferência andando (a linha “Confere sozinho…” do card
+   * ONB-16): `true` quando a conferência sai e `false` quando a resposta volta,
+   * logo antes de `aoMudarAConexao` ouvir a situação. É a mesma conferência de
+   * 15 s do shell, sem relógio de rede de ninguém mais.
+   */
+  function aoConferirAConexao(ouvinte) {
+    ouvintesDaConferencia.push(ouvinte);
+  }
+
+  /**
    * O Tentar de novo da F1: “Conectando ao Anki…” na hora e a conferência. O
    * passo 4 da Boas-vindas usa este mesmo.
    */
@@ -369,6 +382,7 @@
     aoAbrirASecao,
     conferirConexao,
     aoMudarAConexao,
+    aoConferirAConexao,
     aoEntrarNaArea,
     areaAtual,
     mascararChave,

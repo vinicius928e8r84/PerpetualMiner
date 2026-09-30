@@ -235,17 +235,49 @@
           <span class="anki-ponto" aria-hidden="true"></span><span data-voz="BRG-02"></span>
         </div>
 
-        <!-- Nunca conectada: o card ONB-16 fica no lugar das abas (Boas-vindas § F1). -->
+        <!-- Nunca conectada: o card ONB-16 fica no lugar das abas (desenho B, painel-anki-primeira-conexao.js). -->
         <section class="anki-primeira-vez" id="anki-primeira-vez" aria-labelledby="anki-primeira-vez-titulo" hidden>
-          <h2 id="anki-primeira-vez-titulo" data-voz="ONB-16.titulo"></h2>
-          <p class="anki-apoio" data-voz="ONB-16.corpo"></p>
-          <h3 data-voz="ONB-16.passos"></h3>
-          <ol class="anki-passos">
-            <li data-voz="ONB-08.passo1"></li>
-            <li data-voz="ONB-08.passo2"></li>
-            <li data-voz="ONB-08.passo3"></li>
-          </ol>
-          <div id="anki-primeira-vez-detalhes"></div>
+          <div class="apv-topo">
+            <h2 class="apv-titulo" id="anki-primeira-vez-titulo"></h2>
+            <p class="apv-apoio" id="apv-apoio" data-voz="ONB-16.apoio"></p>
+          </div>
+
+          <div class="apv-grade">
+            <nav class="apv-lista" data-voz-aria="ONB-16.passos">
+              <ol class="bv-lista__itens" id="apv-lista"></ol>
+            </nav>
+
+            <div class="apv-card">
+              <p class="bv-sobretitulo" id="apv-sobretitulo"></p>
+              <h3 class="bv-titulo" id="apv-passo-titulo" tabindex="-1"></h3>
+              <p class="bv-texto" id="apv-texto"></p>
+              <div class="apv-controle">
+                <div class="bv-conexao">
+                  <p class="bv-status" id="apv-status" role="status"><span class="bv-ponto" id="apv-ponto" aria-hidden="true"></span><span id="apv-status-texto"></span></p>
+                  <button class="veio-botao veio-botao--primario veio-botao--compacto" id="apv-tentar" type="button" data-voz="ENV-01.tentarDeNovo" hidden></button>
+                </div>
+                <div class="apv-comandos" id="anki-primeira-vez-detalhes" hidden></div>
+              </div>
+              <div class="apv-passos-rodape" id="apv-navegacao">
+                <button class="veio-botao veio-botao--contorno" id="apv-voltar" type="button" data-voz="ONB-04.voltar"></button>
+                <button class="veio-botao veio-botao--primario" id="apv-continuar" type="button" data-voz="ONB-04.continuar"></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="apv-rodape" id="apv-rodape">
+            <p class="apv-confere"><span class="anki-ponto" aria-hidden="true"></span><span id="apv-confere"></span></p>
+            <div class="apv-quadros">
+              <div class="apv-quadro">
+                <h3 data-voz="ONB-16.continuaTitulo"></h3>
+                <p data-voz="ONB-16.continua"></p>
+              </div>
+              <div class="apv-quadro">
+                <h3 data-voz="ONB-16.indisponivelTitulo"></h3>
+                <p data-voz="ONB-16.indisponivel"></p>
+              </div>
+            </div>
+          </div>
         </section>
 
         <div class="veio-segmentado shell-abas" role="radiogroup" data-voz-aria="SHL-03.rotulo">
@@ -610,6 +642,7 @@
   <script src="painel-chave.js"></script>
   <script src="painel-perigo.js"></script>
   <script src="painel-envio.js"></script>
+  <script src="painel-anki-primeira-conexao.js"></script>
   <script src="painel-anki.js"></script>
   <script src="painel-anki-baralhos.js"></script>
   <script src="painel-ajustes.js"></script>

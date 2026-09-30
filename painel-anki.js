@@ -7,7 +7,9 @@
 //   Conectando       a primeira conferência ainda não voltou: faixa neutra BRG-02
 //                    e esqueleto no lugar dos custos.
 //   Nunca conectada  desligada e nunca respondeu neste computador (`pm_anki_ja_conectou`):
-//                    o card ONB-16 fica no lugar das abas, com a F1 do shell em cima.
+//                    o card ONB-16 (painel-anki-primeira-conexao.js) fica no lugar das
+//                    abas, com a F1 do shell em cima. Na primeira resposta ele mostra o
+//                    momento Pronto por um instante e as abas voltam, com o toast BRG-01.
 //   Desligada        a F1 do shell, e Custos mostra o último dado (`pm_anki_custos`)
 //                    com o selo BRG-12; Continuar envio fica aria-disabled, com o
 //                    porquê na dica (C8).
@@ -25,6 +27,8 @@
   const CHAVE_CUSTOS = 'pm_anki_custos';
   const CHAVE_QUATRO_CASAS = 'pm_anki_quatro_casas';
   const CHAVE_IDS = 'pm_anki_ids_dos_envios';
+  // Quanto o momento Pronto fica na tela antes de as abas voltarem.
+  const MOMENTO_PRONTO_MS = 1800;
 
   // Os idiomas do bridge (`lang`) e o código que cada azulejo mostra (BRG-28).
   const IDIOMAS_DOS_AZULEJOS = [
@@ -50,7 +54,7 @@
     { chave: 'failed', rotulo: 'BRG-09.falhou', serie: 'falhou' },
   ];
 
-  const { textoDaVoz, Veio, Shell, Contexto, IDIOMAS } = raiz;
+  const { textoDaVoz, Veio, Shell, Contexto, IDIOMAS, PrimeiraConexao } = raiz;
   const { haQuanto } = Contexto;
   const { ENDERECO_DA_CONEXAO, CONEXAO } = Shell;
   const porId = id => document.getElementById(id);
@@ -63,6 +67,7 @@
     de: '',
     ate: '',
     idioma: 'all',
+    pronto: false,          // o momento Pronto do card ONB-16 está na tela
     dados: null,            // a última leitura: { quando, periodo, de, ate, envios }
     carregando: false,
     erro: null,             // a causa técnica da leitura que falhou, para o Detalhes
@@ -78,7 +83,7 @@
   // ─── Começo ────────────────────────────────────────────────────────────────
 
   async function iniciar() {
-    montarComoLigar();
+    PrimeiraConexao.montar();
     montarAzulejos();
     ligarControles();
 
@@ -106,28 +111,6 @@
     desenhar();
   }
 
-  /**
-   * O Detalhes do card ONB-16 (os comandos, a porta, o log), com “Copiar” ao
-   * lado. Copiou: o toast. Não copiou: a linha no lugar, até a próxima tentativa.
-   */
-  function montarComoLigar() {
-    const comandos = textoDaVoz('ONB-16.detalhes');
-    const falha = elemento('p', 'anki-motivo', textoDaVoz('ONB-16.naoCopiou'));
-    falha.setAttribute('role', 'alert');
-    falha.hidden = true;
-    const copiar = botao(textoDaVoz('ONB-16.copiar'), 'veio-botao veio-botao--contorno veio-botao--compacto', async () => {
-      try {
-        await navigator.clipboard.writeText(comandos);
-        falha.hidden = true;
-        Veio.mostrarToastDeSucesso(textoDaVoz('ONB-16.copiado'));
-      } catch {
-        falha.hidden = false;
-      }
-    });
-    porId('anki-primeira-vez-detalhes').replaceChildren(
-      elemento('div', 'anki-como-ligar', Veio.montarDetalhes(comandos), copiar), falha);
-  }
-
   function ligarControles() {
     for (const radio of document.querySelectorAll('input[name="periodo-custos"]')) {
       radio.addEventListener('change', () => { if (radio.checked) escolherPeriodo(radio.value); });
@@ -151,11 +134,32 @@
     });
   }
 
+  /** O card ONB-16 está no lugar das abas (inclusive no momento Pronto). */
+  function mostrandoAPrimeiraVez() {
+    return estado.conferiu && (estado.pronto || (!estado.jaConectou && estado.conexao !== CONEXAO.LIGADA));
+  }
+
+  /**
+   * A primeira resposta com o card na tela: o Pronto por um instante, e então as
+   * abas voltam, com o toast. Em outra área (ou nas Boas-vindas) ninguém está
+   * olhando o card: as abas só estarão lá quando a pessoa chegar, sem toast.
+   */
+  function mostrarOPronto() {
+    estado.pronto = true;
+    setTimeout(() => {
+      estado.pronto = false;
+      desenhar();
+      if (Shell.areaAtual() === 'anki') Veio.mostrarToastDeSucesso(textoDaVoz('BRG-01.ligada'));
+    }, MOMENTO_PRONTO_MS);
+  }
+
   function aoMudarAConexao(situacao) {
     const antes = estado.conexao;
+    const eraPrimeiraVez = mostrandoAPrimeiraVez();
     estado.conexao = situacao;
     if (situacao !== CONEXAO.CONECTANDO) estado.conferiu = true;
     if (situacao === CONEXAO.LIGADA) {
+      if (eraPrimeiraVez && !estado.pronto && Shell.areaAtual() === 'anki') mostrarOPronto();
       if (!estado.jaConectou) {
         estado.jaConectou = true;
         chrome.storage.local.set({ [CHAVE_JA_CONECTOU]: true });
@@ -241,9 +245,10 @@
   // ─── Estados da área ───────────────────────────────────────────────────────
 
   function desenhar() {
-    const nuncaConectou = estado.conferiu && !estado.jaConectou && estado.conexao !== CONEXAO.LIGADA;
-    porId('anki-primeira-vez').hidden = !nuncaConectou;
+    const nuncaConectou = mostrandoAPrimeiraVez();
+    // As abas voltam à tela antes de o card sair: é onde o foco dele vai pousar.
     document.querySelector('.shell-area[data-area="anki"]').classList.toggle('anki--primeira-vez', nuncaConectou);
+    PrimeiraConexao.desenhar({ visivel: nuncaConectou, pronto: estado.pronto, conexao: estado.conexao });
     porId('anki-conectando').hidden = estado.conferiu || estado.conexao !== CONEXAO.CONECTANDO;
     porId('anki-ajustes-nota').hidden = !desligada();
     desenharCustos();
