@@ -18,6 +18,12 @@
   conexão responde pela primeira vez.
   Cópia: catálogo da Voz (ONB-16, ONB-08, ONB-04, ENV-01, BRG-01/02/10/22). Cópia NOVA fica
   sublinhada em pontilhado com a etiqueta “rascunho” (desliga no painel do protótipo).
+  VEREDITO (2026-09-29): B · Igual às Boas-vindas, travada, com o rodapé de A (confere sozinho +
+  continua funcionando / fica indisponível) e menos texto; sem ler o AnkiConnect antes da Conexão.
+  Abre em ?variant=B. A e C ficam só como registro das alternativas. A cópia nova da B entrou no
+  catálogo como partes do ONB-16 (apoio, passo1Titulo…3, esperando, conferindo, conferindoAgora,
+  continuaTitulo, continua, indisponivelTitulo, indisponivel, pronto, prontoApoio) e não é mais
+  marcada como rascunho.
   Sem persistência: tudo em memória. Teclas: ← → trocam a variante · T alterna o tema.
 -->
 <html lang="pt-BR">
@@ -168,6 +174,8 @@ details.det[open] summary::before{transform:rotate(90deg)}
 .B-card .wfoot{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:22px;border-top:1px solid var(--border);padding-top:16px}
 .B-card .wfoot .grow{flex:1}
 .status{display:inline-flex;align-items:center;gap:8px;font-weight:600}
+.B-foot{max-width:900px;margin-top:14px}
+.B-foot .A-why{margin-top:12px}
 .B-unl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .B-unl li{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted);padding:2px 8px}
 @media (max-width:760px){.B-grid{grid-template-columns:minmax(0,1fr)}}
@@ -280,7 +288,6 @@ details.det[open] summary::before{transform:rotate(90deg)}
   <div class="body">
     <label>Cenário<select id="s-cen">
       <option value="nunca">nunca conectada (nada pronto)</option>
-      <option value="anki">Anki aberto, Conexão desligada</option>
       <option value="wait">conectando (depois de Tentar de novo)</option>
       <option value="on">a conexão responde → as abas voltam</option>
     </select></label>
@@ -290,7 +297,7 @@ details.det[open] summary::before{transform:rotate(90deg)}
     <hr>
     <label class="ck"><input type="checkbox" id="s-drafts" checked> Marcar cópia nova (rascunho)</label>
     <label>Janela<select id="s-win"><option value="auto">automática (&lt; 1000 px = trilho)</option><option value="rail">forçar trilho</option><option value="wide">forçar larga</option></select></label>
-    <div class="note">⚠ A (e o passo 1 da B/C) saber que o Anki está aberto <b>sem</b> a Conexão exige ler o AnkiConnect (127.0.0.1:8765): permissão nova no manifest e o <span style="font-family:ui-monospace">webCorsOriginList</span> do AnkiConnect. Sem isso, a primeira conferência só vira ✓ junto com a Conexão.</div>
+    <div class="note">Decidido: o AnkiConnect não é lido antes da Conexão (sem permissão nova); o passo 1 espera a Conexão e vira ✓ junto com ela.</div>
     <pre id="readout"></pre>
   </div>
 </details>
@@ -314,19 +321,27 @@ const VOZ={
   'ENV-01.aviso':'A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.',
   'ENV-01.tentarDeNovo':'Tentar de novo',
   'BRG-01.ligada':'Conexão com o Anki: ligada','BRG-01.desligada':'Conexão com o Anki: desligada',
+  'ONB-16.apoio':'A Conexão com o Anki roda neste computador, ao lado do Anki, e é ela que cria os cartões.',
+  'ONB-16.passo1Titulo':'Abrir o Anki','ONB-16.passo2Titulo':'Instalar a Conexão com o Anki','ONB-16.passo3Titulo':'Tentar de novo',
+  'ONB-16.esperando':'Esperando a Conexão',
+  'ONB-16.conferindo':'Confere sozinho a cada 15 s · última vez há {segundos} s','ONB-16.conferindoAgora':'Conferindo agora…',
+  'ONB-16.continuaTitulo':'Continua funcionando','ONB-16.continua':'Minerar de vídeos, páginas e fotos.',
+  'ONB-16.indisponivelTitulo':'Fica indisponível sem ela','ONB-16.indisponivel':'Enviar ao Anki e a mineração automática.',
+  'ONB-16.pronto':'Pronto','ONB-16.prontoApoio':'As abas voltam em seguida.',
+  'ONB-03.passo':'Passo {n} de {total}',
   'BRG-02':'Conectando ao Anki…','BRG-10':'Lendo os baralhos do Anki…','BRG-22':'Nenhum envio neste período.',
 };
-const v=id=>VOZ[id];
+const v=(id,val={})=>VOZ[id].replace(/\{(\w+)\}/g,(_,k)=>val[k]);
 // “Sem ela…”: a segunda metade do ONB-16.corpo (o que falta sem ela, da F1)
 const SEM_ELA=v('ONB-16.corpo').slice(v('ONB-08.corpo').length+1);
 // cópia nova: sublinhado pontilhado + etiqueta “rascunho”
 const r=(t,tag=false)=>`<span class="rasc" title="Rascunho: cópia nova, ainda fora do catálogo da Voz">${t}</span>${tag?'<span class="rasc-tag">rascunho</span>':''}`;
 
-const VARIANTS={A:'Checklist vivo',B:'Igual às Boas-vindas',C:'Caminho ilustrado'};
+const VARIANTS={A:'Checklist vivo',B:'Igual às Boas-vindas · TRAVADA',C:'Caminho ilustrado'};
 const KEYS=Object.keys(VARIANTS);
 const $=s=>document.querySelector(s);
 let qs=null;try{qs=new URLSearchParams(location.search);}catch(e){}
-const S={variant:VARIANTS[qs?.get('variant')]?qs.get('variant'):'A',theme:qs?.get('theme')==='light'?'light':'dark',
+const S={variant:VARIANTS[qs?.get('variant')]?qs.get('variant'):'B',theme:qs?.get('theme')==='light'?'light':'dark',
   anki:false,con:'off',phase:'first',retry:'off',win:'auto',drafts:true,bStep:null,poll:4,checking:false,det:{}};
 
 /* ---------------- ícones ---------------- */
@@ -368,7 +383,7 @@ function A(){
     const label=st==='ok'?`<span class="A-state ok">${r('pronto')}</span>`:st==='run'?`<span class="A-state">${c.id==='deck'?v('BRG-10'):r('conferindo…')}</span>`:st==='now'?`<span class="A-state now">${c.miss}</span>`:`<span class="A-state">${c.miss}</span>`;
     return `<li class="A-row${c.ok?' done':''}"><div class="A-head">${ic}<span class="A-name">${c.name}</span>${label}</div>${st==='now'?`<div class="A-body">${c.body}</div>`:''}</li>`;
   }).join('');
-  const poll=conOn()?'':`<div class="A-poll">${S.checking||w?'<span class="spinner" style="width:12px;height:12px"></span>':'<span class="dot wait"></span>'}<span id="A-poll-t">${pollText()}</span></div>`;
+  const poll=conOn()?'':`<div class="A-poll">${S.checking||w?'<span class="spinner" style="width:12px;height:12px"></span>':'<span class="dot wait"></span>'}<span id="poll-t">${pollText()}</span></div>`;
   return `<div class="first A"><h2 class="t">${celebrating()?v('BRG-01.ligada'):v('ONB-16.titulo')}</h2>
     <p class="lead">${celebrating()?r('Tudo pronto. As abas voltam em seguida.',true):v('ONB-08.corpo')}</p>
     <ol class="A-list" aria-label="${v('ONB-16.passos')}">${rows}</ol>${poll}
@@ -380,37 +395,46 @@ function pollText(){
   return r(`Confere sozinho a cada 15 s · última vez há ${S.poll} s`,true);
 }
 
-/* ================= B · IGUAL ÀS BOAS-VINDAS ================= */
+/* ================= B · IGUAL ÀS BOAS-VINDAS (TRAVADA) ================= */
+// Toda a cópia da B vem do catálogo (ONB-16, ONB-08, ONB-04, ONB-03, ENV-01, BRG-01/02).
+// O Anki não é lido antes da Conexão: o passo 1 espera por ela e vira ✓ junto.
 const B_STEPS=[
-  {t:'Abrir o Anki',lead:'ONB-08.passo1',done:()=>S.anki||conOn()},
-  {t:'Instalar a Conexão com o Anki',lead:'ONB-08.passo2',done:()=>conOn()},
-  {t:'Tentar de novo',lead:'ONB-08.passo3',done:()=>conOn()},
+  {t:'ONB-16.passo1Titulo',lead:'ONB-08.passo1',done:()=>conOn()},
+  {t:'ONB-16.passo2Titulo',lead:'ONB-08.passo2',done:()=>conOn()},
+  {t:'ONB-16.passo3Titulo',lead:'ONB-08.passo3',done:()=>conOn()},
 ];
 function bCurrent(){ const i=B_STEPS.findIndex(s=>!s.done()); return i<0?B_STEPS.length:i; }
+function pollTextB(){
+  if(S.con==='wait'||S.checking) return v('ONB-16.conferindoAgora');
+  return v('ONB-16.conferindo',{segundos:S.poll});
+}
 function B(){
   const k=S.bStep??(S.con==='wait'?2:bCurrent());
+  const wait=S.con==='wait';
   const list=B_STEPS.map((s,i)=>{
     const mk=s.done()?`<span class="mark ok">${IC.check}</span>`:`<span class="mark${i===k?' cur2':''}">${i+1}</span>`;
-    return `<li><button data-bgo="${i}" ${i===k?'aria-current="step"':''}>${mk}${r(s.t)}</button></li>`;
-  }).join('')+`<li class="sep" aria-hidden="true"></li><li><div class="cap">${r('Com ela ligada')}</div>
-    <ul class="B-unl">${['Enviar ao Anki','Mineração automática','Custos, baralhos e vocabulário'].map(t=>`<li>${conOn()?`<span class="mark ok">${IC.check}</span>`:'<span class="mark skip"></span>'}${r(t)}</li>`).join('')}</ul></li>`;
+    return `<li><button data-bgo="${i}" ${i===k?'aria-current="step"':''}>${mk}${v(s.t)}</button></li>`;
+  }).join('');
+  const conStatus=wait?`<span class="dot wait"></span>${v('BRG-02')}`:conOn()?`<span class="dot"></span>${v('BRG-01.ligada')}`:`<span class="dot off"></span>${v('BRG-01.desligada')}`;
   let card;
   if(k>=B_STEPS.length||celebrating()){
-    card=`<div class="kicker">${r('Pronto')}</div><h2>${v('BRG-01.ligada')}</h2><p class="lead">${r('As abas voltam em seguida.',true)}</p>
+    card=`<div class="kicker">${v('ONB-16.pronto')}</div><h2>${v('BRG-01.ligada')}</h2><p class="lead">${v('ONB-16.prontoApoio')}</p>
       <div class="ctrl"><span class="status"><span class="dot"></span>${v('BRG-01.ligada')}</span></div>`;
   } else {
     const s=B_STEPS[k];
     const status={
-      0:`<span class="status">${S.anki||conOn()?`<span class="dot"></span>${r('Anki aberto')}`:`<span class="dot off"></span>${r('Anki não encontrado')}`}</span>`,
-      1:`<span class="status">${S.con==='wait'?`<span class="dot wait"></span>${v('BRG-02')}`:conOn()?`<span class="dot"></span>${v('BRG-01.ligada')}`:`<span class="dot off"></span>${v('BRG-01.desligada')}`}</span>${comandos()}`,
-      2:`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span class="status">${S.con==='wait'?`<span class="dot wait"></span>${v('BRG-02')}`:`<span class="dot off"></span>${v('BRG-01.desligada')}`}</span><button class="btn sm primary" data-retry style="margin-left:auto" ${S.con==='wait'?'disabled':''}>${v('ENV-01.tentarDeNovo')}</button></div>`,
+      0:`<span class="status muted">${wait?`<span class="dot wait"></span>${v('BRG-02')}`:`<span class="dot wait" style="animation:none"></span>${v('ONB-16.esperando')}`}</span>`,
+      1:`<span class="status">${conStatus}</span>${comandos()}`,
+      2:`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span class="status">${conStatus}</span><button class="btn sm primary" data-retry style="margin-left:auto" ${wait?'disabled':''}>${v('ENV-01.tentarDeNovo')}</button></div>`,
     }[k];
-    card=`<div class="kicker">${v('ONB-16.passos')} · ${r(`passo ${k+1} de 3`)}</div><h2>${r(s.t)}</h2>
+    card=`<div class="kicker">${v('ONB-16.passos')} · ${v('ONB-03.passo',{n:k+1,total:3})}</div><h2>${v(s.t)}</h2>
       <p class="lead">${v(s.lead)}</p><div class="ctrl">${status}</div>
       <div class="wfoot">${k>0?`<button class="btn" data-bgo="${k-1}">${v('ONB-04.voltar')}</button>`:''}<span class="grow"></span>${k<2?`<button class="btn primary" data-bgo="${k+1}">${v('ONB-04.continuar')}</button>`:''}</div>`;
   }
-  return `<div class="first"><div class="B-top"><h2 class="t">${conOn()?v('BRG-01.ligada'):v('ONB-16.titulo')}</h2><p class="lead" style="margin:0">${conOn()?r('Suas frases já podem virar cartões.',true):v('ONB-16.corpo')}</p></div>
-    <div class="B-grid"><ol class="B-list" aria-label="${v('ONB-16.passos')}">${list}</ol><div class="B-card">${card}</div></div></div>`;
+  const foot=conOn()?'':`<div class="B-foot"><div class="A-poll">${S.checking||wait?'<span class="spinner" style="width:12px;height:12px"></span>':'<span class="dot wait"></span>'}<span id="poll-t">${pollTextB()}</span></div>
+    <div class="A-why"><div><b>${v('ONB-16.continuaTitulo')}</b>${v('ONB-16.continua')}</div><div><b>${v('ONB-16.indisponivelTitulo')}</b>${v('ONB-16.indisponivel')}</div></div></div>`;
+  return `<div class="first"><div class="B-top"><h2 class="t">${conOn()?v('BRG-01.ligada'):v('ONB-16.titulo')}</h2>${conOn()?'':`<p class="lead" style="margin:0">${v('ONB-16.apoio')}</p>`}</div>
+    <div class="B-grid"><ol class="B-list" aria-label="${v('ONB-16.passos')}">${list}</ol><div class="B-card">${card}</div></div>${foot}</div>`;
 }
 
 /* ================= C · CAMINHO ILUSTRADO ================= */
@@ -459,13 +483,12 @@ function render(){
   $('#anki-body').innerHTML=conOn()&&S.phase==='tabs'?Tabs():R[S.variant]();
   const rail=S.win==='rail'||(S.win==='auto'&&innerWidth<1000);
   $('#app').classList.toggle('rail',rail);
-  $('#s-cen').value=S.con==='on'?'on':S.con==='wait'?'wait':S.anki?'anki':'nunca';
+  $('#s-cen').value=S.con==='on'?'on':S.con==='wait'?'wait':'nunca';
   readout();
 }
 function readout(){
   $('#readout').textContent=
 `variante  ${S.variant} · ${VARIANTS[S.variant]}   tema ${S.theme}
-anki      ${S.anki?'aberto (AnkiConnect responde)':'fechado'}
 conexão   ${S.con}   fase ${S.phase}
 tentar    termina em: ${S.retry==='on'?'responde':'continua desligada'}
 B passo   ${S.bStep??'(o primeiro que falta)'}`;
@@ -528,8 +551,8 @@ $('#s-win').onchange=e=>{S.win=e.target.value;render();};
 setInterval(()=>{
   if(S.con!=='off'||S.checking)return;
   S.poll=(S.poll+1)%15;
-  if(S.poll===0&&S.variant==='A'){S.checking=true;render();later(()=>{S.checking=false;render();},900);return;}
-  const t=document.getElementById('A-poll-t');if(t)t.innerHTML=pollText();
+  if(S.poll===0&&S.variant!=='C'){S.checking=true;render();later(()=>{S.checking=false;render();},900);return;}
+  const t=document.getElementById('poll-t');if(t)t.innerHTML=S.variant==='B'?pollTextB():pollText();
 },1000);
 
 if(qs?.get('cen')) setCen(qs.get('cen'),true);
