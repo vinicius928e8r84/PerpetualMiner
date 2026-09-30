@@ -1,9 +1,9 @@
 'use strict';
 
-// Referência visual da Boas-vindas (#42): a abertura, os passos 1 e 2 (com e
-// sem atalho de legenda, e o gravador gravando), um passo opcional ainda sem
-// controle (#43), Tudo pronto com cada situação do resumo e a janela estreita,
-// nos dois temas.
+// Referência visual da Boas-vindas (#42, #43): a abertura, os passos 1 e 2
+// (com e sem atalho de legenda, e o gravador gravando), os controles dos
+// passos 3 a 6 nos seus estados, Tudo pronto com cada situação do resumo e a
+// janela estreita, nos dois temas.
 //
 // O dono revisa estas telas lado a lado com o protótipo travado
 // (docs/design/painel/boas-vindas/prototipo-onboarding.html?variant=C). Depois
@@ -68,9 +68,49 @@ test('passo 2, gravando Minerar seleção', async ({ page, extensao }) => {
   await foto(page, 'passo-2-gravando.png');
 });
 
-test('um passo opcional, com Agora não', async ({ page, extensao }) => {
+test('passo 3 sem conta: o Entrar com Google de Configurações, com Agora não', async ({ page, extensao }) => {
   await abrir(page, extensao, 'conta');
   await foto(page, 'passo-3.png');
+});
+
+test('passo 3 com a conta: o nome e Sair da conta', async ({ page, extensao }) => {
+  await extensao.semearSessao();
+  await abrir(page, extensao, 'conta');
+  await expect(page.locator('.bv-card')).toContainText('Pessoa de Teste');
+  await foto(page, 'passo-3-com-conta.png');
+});
+
+test('passo 4 com a Conexão desligada: o status, os 3 passos, Detalhes e Tentar de novo', async ({ page, extensao }) => {
+  await abrir(page, extensao, 'anki');
+  await foto(page, 'passo-4-desligada.png');
+});
+
+test('passo 4 com a Conexão ligada', async ({ page, extensao, fakes }) => {
+  fakes.anki.ligar();
+  await page.setViewportSize({ width: 1100, height: 760 });
+  await page.goto(extensao.url('painel.html#boas-vindas/anki'));
+  await expect(page.locator('.bv-card').getByRole('status')).toHaveText('Conexão com o Anki: ligada');
+  await page.evaluate(() => document.fonts.ready);
+  await foto(page, 'passo-4-ligada.png');
+});
+
+test('passo 5 com a Conexão desligada: os switches, o limite e a nota ONB-10', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 15 } } });
+  await abrir(page, extensao, 'automatica');
+  await expect(page.locator('.bv-card').getByRole('switch', { name: 'Mineração automática em inglês' })).toBeChecked();
+  await foto(page, 'passo-5.png');
+});
+
+test('passo 6 sem chave: o campo e onde conseguir a chave', async ({ page, extensao }) => {
+  await abrir(page, extensao, 'chave');
+  await page.locator('.bv-card summary').filter({ visible: true }).click();
+  await foto(page, 'passo-6.png');
+});
+
+test('passo 6 com a chave salva', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ geminiApiKey: 'AIzaSyExemplo1234' });
+  await abrir(page, extensao, 'chave');
+  await foto(page, 'passo-6-salva.png');
 });
 
 test('Tudo pronto com feito, agora não e falta', async ({ page, extensao }) => {

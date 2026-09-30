@@ -76,7 +76,7 @@
   // ─── Começo ────────────────────────────────────────────────────────────────
 
   async function iniciar() {
-    montarComoLigar();
+    porId('anki-primeira-vez-detalhes').replaceChildren(montarComoLigar());
     montarAzulejos();
     ligarControles();
 
@@ -107,6 +107,7 @@
   /**
    * O Detalhes do card ONB-16 (os comandos, a porta, o log), com “Copiar” ao
    * lado. Copiou: o toast. Não copiou: a linha no lugar, até a próxima tentativa.
+   * O passo 4 da Boas-vindas monta o mesmo (`Anki.montarComoLigar`).
    */
   function montarComoLigar() {
     const comandos = textoDaVoz('ONB-16.detalhes');
@@ -122,8 +123,7 @@
         falha.hidden = false;
       }
     });
-    porId('anki-primeira-vez-detalhes').replaceChildren(
-      elemento('div', 'anki-como-ligar', Veio.montarDetalhes(comandos), copiar), falha);
+    return elemento('div', null, elemento('div', 'anki-como-ligar', Veio.montarDetalhes(comandos), copiar), falha);
   }
 
   function ligarControles() {
@@ -747,6 +747,6 @@
     return no;
   }
 
-  raiz.Anki = { aoAtualizar };
+  raiz.Anki = { aoAtualizar, montarComoLigar };
   document.addEventListener('DOMContentLoaded', iniciar);
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

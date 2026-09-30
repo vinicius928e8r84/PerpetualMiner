@@ -11,6 +11,7 @@
 //   Conta.mostrarSincronizacao(situacao, { n, total, detalhes })
 //   Conta.mostrarFalhaNoLogin(detalhes | null)
 //   Conta.aoPedir({ entrar, sair, tentarDeNovo })
+//   Conta.montarCartao(lugar)   o mesmo corpo do card em outro lugar (o passo 3 da Boas-vindas)
 //   Conta.SITUACOES   os nomes das situações
 //
 // As situações são os estados CFG da spec, com os nomes de `Conta.SITUACOES`:
@@ -103,6 +104,8 @@
     falhaNoLogin: null,   // a causa técnica, para o Detalhes | null
   };
   const pedidos = { entrar() {}, sair() {}, tentarDeNovo() {} };
+  // Onde o corpo do card é desenhado, além de Configurações.
+  const outrosLugares = [];
 
   // ─── O que o painel.js conta ───────────────────────────────────────────────
 
@@ -128,6 +131,16 @@
 
   function aoPedir(novos) {
     Object.assign(pedidos, novos);
+  }
+
+  /**
+   * Desenha o corpo do card Conta & sync também em `lugar`, e o mantém igual
+   * ao de Configurações dali em diante: o mesmo Entrar com Google, o mesmo
+   * estado da sincronização.
+   */
+  function montarCartao(lugar) {
+    outrosLugares.push(lugar);
+    lugar.replaceChildren(...(estado.conta ? cardComConta() : cardSemConta()));
   }
 
   // ─── Desenho ───────────────────────────────────────────────────────────────
@@ -191,8 +204,9 @@
   }
 
   function desenharCard() {
-    const corpo = porId('cfg-conta-corpo');
-    corpo.replaceChildren(...(estado.conta ? cardComConta() : cardSemConta()));
+    for (const corpo of [porId('cfg-conta-corpo'), ...outrosLugares]) {
+      corpo.replaceChildren(...(estado.conta ? cardComConta() : cardSemConta()));
+    }
   }
 
   /** Sem conta (CFG-06) e, se o login falhou, o erro dele (CFG-07). */
@@ -323,5 +337,6 @@
     mostrarSincronizacao,
     mostrarFalhaNoLogin,
     aoPedir,
+    montarCartao,
   };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

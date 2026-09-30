@@ -110,7 +110,8 @@ they are. Addresses: `#frases` (default, and anything unknown), `#anki/custos|ba
 so the browser's back button walks through areas and tabs.
 
 The shell owns the sidebar and `painel.js` reports to it through `PerpetualMiner.Shell`:
-`mostrarTotalDeFrases(n)`, `aoEntrarNaArea(area, fn)` (the Anki area refreshes its data on entry), `areaAtual()`, `AREAS_DO_PAINEL` (the three areas with the sidebar, i.e. not the Boas-vindas), `aoMudarAConexao(fn)` (the Conexão state now and on every change: `'conectando' | 'ligada' | 'desligada'`) and `conferirConexao()` (asks `/health` now; two calls at once share one request and resolve with the situation). The shell polls
+`mostrarTotalDeFrases(n)`, `aoEntrarNaArea(area, fn)` (the Anki area refreshes its data on entry), `areaAtual()`, `AREAS_DO_PAINEL` (the three areas with the sidebar, i.e. not the Boas-vindas), `aoMudarAConexao(fn)` (the Conexão state now and on every change: `'conectando' | 'ligada' | 'desligada'`) and `conferirConexao()` (asks `/health` now; two calls at once share one request and resolve with the situation) and
+`tentarAConexaoDeNovo()` (the F1's Tentar de novo: “Conectando…” at once, then the check; step 4 of the Boas-vindas uses it). The shell polls
 `/health` of the Conexão com o Anki itself every 15 s: the dot (BRG-01/BRG-02, in the tooltip and as the link's
 accessible description) and, while it is off, the F1 strip (ENV-01) with “Tentar de novo” at the top of the Anki area.
 
@@ -164,8 +165,16 @@ both themes, `aria-hidden`) and the popup's quick mining (`lib/mineracao-rapida.
 POP-05; failure is POP-06 under the field, text kept). Step 2: ONB-06 and the same recorder as Configurações
 (`GravadorDeAtalhos.montar(…, { prefixo: 'bv', lugar })`: `lugar` is what hides when the person leaves, which cancels
 a recording): same storage, same refusal of a repeated shortcut. Nothing of the panel opens over the page: the Envio
-summary waits and opens once the person enters one of `Shell.AREAS_DO_PAINEL`. Steps 3–6 show their text only; their controls
-are #43. The reminder (item 9) is below, in “Configuração pela metade”.
+summary waits and opens once the person enters one of `Shell.AREAS_DO_PAINEL`. Step 3: ONB-07 and the Conta & sync card's
+body (`Conta.montarCartao`), the same Entrar com Google, sync state and CFG-07 as Configurações. Step 4: ONB-08.corpo, the
+Conexão status (BRG-01/BRG-02 with its dot, a `role="status"` region) with Tentar de novo, which is the F1's own retry
+(`Shell.tentarAConexaoDeNovo`, `aria-disabled` while conferring, gone once on), and — while the last `/health` answer
+was off — the three ONB-08 steps and the ONB-16 Detalhes with Copiar (`Anki.montarComoLigar`, shared with the area).
+Step 5: ONB-09, one row per language with the popup's switch and daily limit (POP-14, same `AUTO_MINER_GET_STATE` /
+`AUTO_MINER_SET_SETTINGS` messages, following `pm_auto_miner_state_view`; a failure is POP-16 under the rows), and the
+ONB-10 note while the Conexão is off — turning a language on is still allowed. Step 6: ONB-11 and the Chave do Gemini
+card (`ChaveDoGemini.montar(…, { prefixo: 'bv' })`, same key, same CFG-16), with ONB-11.detalhes in a Detalhes while
+there is no key. The reminder (item 9) is below, in “Configuração pela metade”.
 
 ### Configuração pela metade (`lib/configuracao.js`, `painel-lembrete.js`, item 9 of the closed list)
 
@@ -184,7 +193,8 @@ frases. The e2e fixture removes `pm_boas_vindas` after the install, so every tes
 ### Chave do Gemini and Zona de perigo (`painel-chave.js`, `painel-perigo.js`)
 
 The Chave do Gemini card owns `geminiApiKey` (the same key the Minerar de uma foto reads) straight from
-`chrome.storage.local`. Saved, it shows “Chave salva” and the key masked as in the summary (`Shell.mascararChave`), with
+`chrome.storage.local`. It is mountable (`ChaveDoGemini.montar(corpo, { prefixo })`): Configurações and step 6 of the
+Boas-vindas draw the same card, each with its own Trocar chave state. Saved, it shows “Chave salva” and the key masked as in the summary (`Shell.mascararChave`), with
 Trocar chave, which opens an *empty* field with Salvar chave and Cancelar, so the old key never reaches the screen.
 Empty, the field stays open with the note. The field is a `<form>`, so Enter saves like the button; an empty (or blank)
 save sets `aria-invalid` and the CFG-16 line linked by `aria-describedby`, and typing clears it. Saving trims the key,
@@ -258,7 +268,8 @@ The popup does not delete, select or record anything.
 One account state, drawn in three places that always agree: the open Conta & sync card, its closed-row summary
 (“Nome · <chip state>”, CFG-27) and the sidebar chip, which links to `#configuracoes/conta`. `painel.js` reports to it
 through `PerpetualMiner.Conta`: `mostrarConta(usuario)`, `mostrarSincronizacao(situacao, { n, total, detalhes })`,
-`mostrarFalhaNoLogin(detalhes)` and `aoPedir({ entrar, sair, tentarDeNovo })`. The situations are the spec's states,
+`mostrarFalhaNoLogin(detalhes)` and `aoPedir({ entrar, sair, tentarDeNovo })`; `montarCartao(lugar)` draws the card's body in
+one more place (step 3 of the Boas-vindas), kept in step with Configurações. The situations are the spec's states,
 named by `Conta.SITUACOES` (never a loose string): `SINCRONIZANDO` (CFG-01), `PRIMEIRA_SUBIDA` and
 `PRIMEIRA_SUBIDA_FALHOU` (CFG-09), `SINCRONIZADO` (CFG-02), `SEM_SINCRONIZAR` (CFG-03), `PARCIAL` (CFG-05, counting
 this computer's phrases, not the whole cloud collection), `RECUSADO` (CFG-04) and `EXPIROU` (CFG-08); with no profile
@@ -710,7 +721,7 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - `tests/painel-shell-visual.spec.js` holds the **visual reference of the panel shell**: its approved states (Frases wide and as a rail, first run, the Conexão off with F1, Configurações with an account) as `toHaveScreenshot` baselines in `painel-shell-visual.spec.js-snapshots/` (taken on Linux, with the clock frozen on the day of the sample phrases). A visual change to the shell fails them; after the owner approves the new look, `npx playwright test painel-shell-visual --update-snapshots` replaces the reference. The content inside each area (`.conteudo-de-hoje`, and the Frases list, which has its own reference) is masked: the reference is the shell around it.
 - `tests/popup-visual.spec.js` holds the **visual reference of the popup** (a normal day, the light theme, first run with and without a shortcut, a limit reached, the Conexão off with nothing mined today, a failed quick mining, loading, the ONB-14 “Configuração pela metade” card in both themes), at 340×600, compared by the owner side by side with the locked prototype (`?variant=A`).
 - `tests/minerar-foto-visual.spec.js` does the same for Minerar de uma foto (no key, start, preview, reading a batch, phrases of two photos, mined, one photo failed, cancelled halfway, cancelled before any photo was read, the Recomeçar modal, no markings, the narrow window — the window itself, at the top and at the end of the list, since the Minerar bar is pinned to it —, the light theme), with the same marked page (`pages/pagina-marcada.png`) in every photo; compared by the owner with the locked prototype (`docs/design/foto/prototipo-bookreader.html?variant=C`). The toast is masked.
-- `tests/boas-vindas-visual.spec.js` does the same for the Boas-vindas (the opening, step 1 with and without a caption shortcut and with POP-06, step 2 recording, an optional step, Tudo pronto with feito · agora não · falta, the narrow window, the light theme), compared by the owner with the locked prototype (`docs/design/painel/boas-vindas/prototipo-onboarding.html?variant=C`).
+- `tests/boas-vindas-visual.spec.js` does the same for the Boas-vindas (the opening, step 1 with and without a caption shortcut and with POP-06, step 2 recording, step 3 with and without an account, step 4 off and on, step 5 with the ONB-10 note, step 6 empty and saved, Tudo pronto with feito · agora não · falta, the narrow window, the light theme), compared by the owner with the locked prototype (`docs/design/painel/boas-vindas/prototipo-onboarding.html?variant=C`).
 - `tests/configuracoes-visual.spec.js` does the same for Configurações (cards closed; Conta & sync synced, not synced, logged out after a failed login; Chave do Gemini saved and refused empty; Zona de perigo with an account and its modal; Atalhos open, recording and with a repeated shortcut refused; the narrow window; Aparência open in dark and in light), compared by the owner side by side with the locked prototype (`?variant=C`).
 - `HEADED=1 npm test` shows the browser.
 - Tests assert what the person sees and what ends up stored, never internal functions. Three narrow exceptions, each named in the test's own comment:
