@@ -24,7 +24,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `overlay.js` + `overlay.css` | `PerpetualMiner.Overlay` — the in-page overlay: one Veio component in an open Shadow DOM (the floating button and the feedback pill). See “Overlay” below |
 | `background.js` | Service worker; handles `SALVAR_HISTORICO` messages and context menu clicks; writes to `chrome.storage.local` and syncs to Firestore |
 | `tombstone.js` | Tombstone of a deleted phrase (`chrome.storage.sync` keys and the Firestore `meta/deleted` PATCH), loaded by `painel.html` |
-| `popup.html/js/css` | The “Cockpit” popup (docs/design/popup/, variant A): Abrir painel, the Mineração automática tiles, quick mining and the last 5 phrases, read-only. See “Popup (Cockpit)” below |
+| `popup.html/js/css` | The “Cockpit” popup (docs/design/popup/, variant A): the “Configuração pela metade” card (ONB-14), Abrir painel, the Mineração automática tiles, quick mining and the last 5 phrases, read-only. See “Popup (Cockpit)” below |
 | `painel.html/js/css` | Full dashboard to view, copy, and delete all saved phrases; Google login and Firestore sync |
 | `painel-shell.js` | The panel's “Ilhas” shell: one page, one area per address (`#frases`, `#anki/<aba>`, `#configuracoes[/<seção>]`), the sidebar indicators (phrase total, Conexão com o Anki dot), the rail below ~1000 px, the F1 strip and the Configurações cards opening and closing. See “Panel shell” below |
 | `painel-conta.js` | The account in the panel: one state drawn in the Configurações › Conta & sync card, its closed-row summary and the sidebar chip (CFG-01…10). See “Account (Conta & sync)” below |
@@ -40,6 +40,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/contexto.js` | `PerpetualMiner.Contexto` — the Contexto as the screen says it: the Fonte's name (PAI-29, `fonteDaFrase`, `nomeDaFonte`) and the phrase's day (PAI-11, `rotuloDoDia`). Loaded by the panel and the popup, so a phrase never has two names |
+| `lib/configuracao.js` | `PerpetualMiner.Configuracao` — the first-run setup in one place: the 6 steps of the Boas-vindas, when each is done (from what is stored, plus the Conexão the page reports), “agora não”, `pm_boas_vindas`, and the “Configuração pela metade” reminder (ONB-14, ONB-15). Loaded by the panel and the popup. See “Configuração pela metade” below |
+| `painel-lembrete.js` | The ONB-15 strip at the top of Frases: the progress ring, “N de 6 passos”, Ocultar and Continuar configuração. See “Configuração pela metade” below |
 | `lib/mineracao-rapida.js` | `PerpetualMiner.minerarFraseManual(texto)` — the quick mining (`SALVAR_HISTORICO` with Fonte `manual`), shared by the popup and step 1 of the Boas-vindas; resolves with the saved phrase, rejects when it was not saved |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — loaded only by painel.html |
 | `test_gemini.js` | Standalone Node.js script to list available Gemini models (not part of the extension) |
@@ -134,8 +136,8 @@ shortcuts relabelled in PT-BR (`lib/atalhos.js`), `geminiApiKey` masked to its f
 
 ### Boas-vindas (`painel-boas-vindas.js`, docs/design/painel/boas-vindas/, variant C)
 
-`chrome.runtime.onInstalled` with `reason === 'install'` opens a tab at `painel.html#boas-vindas` (an update opens
-nothing; the context menu is created as always). `#boas-vindas` is a page of the panel without the sidebar: the shell
+`chrome.runtime.onInstalled` with `reason === 'install'` writes `pm_boas_vindas` (the setup has started) and opens a
+tab at `painel.html#boas-vindas` (an update does neither; the context menu is created as always). `#boas-vindas` is a page of the panel without the sidebar: the shell
 hides `.shell` and shows `#boas-vindas`. Addresses: `#boas-vindas` (the opening: ONB-01, the 6 steps with “opcional”,
 Pular a configuração → `#frases` · Começar), `#boas-vindas/minerar|atalho|conta|anki|automatica|chave` and
 `#boas-vindas/pronto` (Tudo pronto). Left, the list of the 8 items (`nav` named ONB-03.lista; every item a button,
@@ -148,7 +150,8 @@ short step.
 A step is done by the real state, read from storage: a phrase in the history, `pm_atalho` recorded, an account
 (`pm_user_info` + `pm_firebase_auth`), the Conexão com o Anki answering (`Shell.aoMudarAConexao`), a language of the
 automatic mining on, `geminiApiKey` saved. Done wins over “agora não”. Only “agora não” and whether the person reached
-Abrir painel belong to the page, in `pm_boas_vindas`. “Continuar” on a required step moves on without marking it:
+Abrir painel belong to the page, in `pm_boas_vindas`. `lib/configuracao.js` owns these rules and that key; the page
+only adds each step's value and screen. “Continuar” on a required step moves on without marking it:
 Tudo pronto says “falta”. Tudo pronto lists each step with its value when done (ONB-13: “1 frase”, “Alt+Q”, the
 account's name, “ligada”, “Inglês · Russo”, “salva”), “agora não” or “falta”; Abrir painel stores `concluida` and goes
 to `#frases`.
@@ -159,8 +162,22 @@ both themes, `aria-hidden`) and the popup's quick mining (`lib/mineracao-rapida.
 POP-05; failure is POP-06 under the field, text kept). Step 2: ONB-06 and the same recorder as Configurações
 (`GravadorDeAtalhos.montar(…, { prefixo: 'bv', lugar })`: `lugar` is what hides when the person leaves, which cancels
 a recording): same storage, same refusal of a repeated shortcut. Nothing of the panel opens over the page: the Envio
-summary waits and opens once the person enters one of `Shell.AREAS_DO_PAINEL`. Steps 3–6 show their text only; their controls (and the reminder, item 9 of the closed list)
-are #43.
+summary waits and opens once the person enters one of `Shell.AREAS_DO_PAINEL`. Steps 3–6 show their text only; their controls
+are #43. The reminder (item 9) is below, in “Configuração pela metade”.
+
+### Configuração pela metade (`lib/configuracao.js`, `painel-lembrete.js`, item 9 of the closed list)
+
+While `pm_boas_vindas` exists (the install wrote it), `concluida` is false (Abrir painel in Tudo pronto was never
+pressed) and `lembreteOculto` is not set, the popup shows the ONB-14 card above Abrir painel and Frases the ONB-15
+strip above the avisos, each with the progress ring (`Veio.montarAnelDeProgresso`, drawing only; the number is in the
+text). Someone who updated from a version without the Boas-vindas has no `pm_boas_vindas` and never sees it. The count
+is the prototype's: steps done or answered “agora não”, of 6, the same the Boas-vindas marks. Both wait for the first
+`/health` (it counts the Anki step; `Configuracao.mostrarConexao(null)` means not known yet, and in the panel `painel-lembrete.js` reports the shell's Conexão for the Boas-vindas too), so the number never jumps on screen. **Continuar configuração** (the whole popup
+card is the button) goes to `#boas-vindas/<first step still missing>`, or `#boas-vindas/pronto` when none is missing;
+the popup focuses the panel tab already open, like Abrir painel. **Ocultar** is only in Frases: it writes
+`lembreteOculto: true`, both places hide at once (through `chrome.storage.onChanged`) and focus goes to Minerar
+frases. The e2e fixture removes `pm_boas_vindas` after the install, so every test starts without the reminder;
+`test.use({ lembreteDaConfiguracao: true })` keeps it.
 
 ### Chave do Gemini and Zona de perigo (`painel-chave.js`, `painel-perigo.js`)
 
@@ -211,7 +228,7 @@ popup draws it); the caller passes the “Sem atalho” copy (CFG-12 or GLB-02).
 ### Popup (Cockpit) (`popup.html/js/css`)
 
 The popup is the “Cockpit” variant A (`docs/design/popup/`), 340 px wide with a 600 px ceiling, built on the Veio
-components and following the chosen theme. Top to bottom: the mark with no subtitle (POP-12); **Abrir painel** (POP-09),
+components and following the chosen theme. Top to bottom: the mark with no subtitle (POP-12); the ONB-14 card while the setup is half done (see “Configuração pela metade”); **Abrir painel** (POP-09),
 which focuses the panel tab that is already open (`chrome.tabs.query` ignores the `#address`, so the tab keeps the area
 the person left it on) or opens one; the **Mineração automática** tiles, Inglês | Russo (POP-10, POP-14, POP-15): a switch,
 the counter as the prototype draws it (“12/20”, the number large; the screen reader hears POP-07 “12 de 20 hoje”), a meter
@@ -579,7 +596,7 @@ Other storage keys:
 - `pm_atalho_legenda` — the “Minerar legenda” shortcut. Absent → the default Alt+S; `null` → no caption shortcut
 - `pm_atalho` — the “Minerar seleção” shortcut; `null` or absent → none (the default). Both use `{ type: 'keyboard'|'mouse', code, button, altKey, ctrlKey, shiftKey, label }`
 - `pm_apagar_tudo` — `{ uid, ate }` while an Apagar tudo hasn't reached the cloud; see the tombstone paragraph above
-- `pm_boas_vindas` — `{ agoraNao: string[], concluida: boolean }`: the steps the person answered “Agora não” to and whether they reached Abrir painel in the Boas-vindas; everything else about a step is read from its real state
+- `pm_boas_vindas` — `{ agoraNao: string[], concluida: boolean, lembreteOculto?: true }`: written by the install; the steps the person answered “Agora não” to, whether they reached Abrir painel in the Boas-vindas and whether they hid the “Configuração pela metade” reminder; everything else about a step is read from its real state. Absent (an update, not an install) → no reminder
 - `pm_envio` — `{ envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar }] }` (`id` is a `crypto.randomUUID()` that keys the Envio's card; `baralho` is the deck it was sent to): the Envios the panel is tracking until the summary is answered; see “Envio ao Anki”
 
 ### Platform-Specific Subtitle Selectors (content.js)
@@ -635,10 +652,10 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - `tests/overlay.spec.js` fails the service worker's storage on purpose (`chrome.storage.local.set` refuses or holds the write) — there is no network between the service worker and the storage, so the fault is injected at that boundary — and serves a page with `Permissions-Policy: clipboard-write=()` to deny the clipboard.
 - `e2e/vitrine/`: the Veio showcase — tokens, type scale, radii, a Russian phrase and **every base component**, in both themes and in the states each component actually has (button and field: focus and disabled, plus error on the field; a badge only has normal). `componentes-da-vitrine.js` builds the gallery once per theme with the same function, so the two columns never diverge; its sample copy comes from the Voice catalog by ID (`CATALOGO_DA_VITRINE`), and anything that is showcase scaffolding is marked `data-vitrine-chrome`. The fixture server also serves `/veio/…` and `/lib/…` from the extension root, so the showcase loads the same tokens, fonts, components and catalog the extension pages load. After the owner's review it is **the visual reference**.
 - The showcase also carries a **mock of the toolbar badge** in its three states, outside the two theme columns — Chrome draws the real badge on the browser toolbar, which no static page (and so no Vercel preview) can show. The mock reads its colors from the tokens, and the badge test asserts those tokens match what the service worker hands Chrome, so the copy in `background.js` can't drift.
-- `tests/painel-frases-visual.spec.js` holds the **visual reference of the Frases list** (cards wide and as a rail, each at the top and with the island scrolled to the pagination; loading, first run, filters and search with no result as the full page; the selection bar, the card actions and the modals; Minerar frases: the menu, Colar filled and empty, the progress, Arquivo .txt, ADD-09 and the ADD-06 aviso), in the same way: `npx playwright test painel-frases-visual --update-snapshots` after the owner approves a new look.
+- `tests/painel-frases-visual.spec.js` holds the **visual reference of the Frases list** (cards wide and as a rail, each at the top and with the island scrolled to the pagination; loading, first run, filters and search with no result as the full page; the selection bar, the card actions and the modals; Minerar frases: the menu, Colar filled and empty, the progress, Arquivo .txt, ADD-09 and the ADD-06 aviso; the ONB-15 “Configuração pela metade” strip, wide and narrow), in the same way: `npx playwright test painel-frases-visual --update-snapshots` after the owner approves a new look.
 - `tests/painel-envio-visual.spec.js` holds the **visual reference of the Envio ao Anki**: the progress with one Envio running and one that did not start, a partial Envio with Continuar envio, the summary partial and complete (opened in Configurações), and Enviar ao Anki unavailable with its tooltip.
 - `tests/painel-shell-visual.spec.js` holds the **visual reference of the panel shell**: its approved states (Frases wide and as a rail, first run, the Conexão off with F1, Configurações with an account) as `toHaveScreenshot` baselines in `painel-shell-visual.spec.js-snapshots/` (taken on Linux, with the clock frozen on the day of the sample phrases). A visual change to the shell fails them; after the owner approves the new look, `npx playwright test painel-shell-visual --update-snapshots` replaces the reference. The content inside each area (`.conteudo-de-hoje`, and the Frases list, which has its own reference) is masked: the reference is the shell around it.
-- `tests/popup-visual.spec.js` holds the **visual reference of the popup** (a normal day, the light theme, first run with and without a shortcut, a limit reached, the Conexão off with nothing mined today, a failed quick mining, loading), at 340×600, compared by the owner side by side with the locked prototype (`?variant=A`).
+- `tests/popup-visual.spec.js` holds the **visual reference of the popup** (a normal day, the light theme, first run with and without a shortcut, a limit reached, the Conexão off with nothing mined today, a failed quick mining, loading, the ONB-14 “Configuração pela metade” card in both themes), at 340×600, compared by the owner side by side with the locked prototype (`?variant=A`).
 - `tests/minerar-foto-visual.spec.js` does the same for Minerar de uma foto (no key, start, preview, reading a batch, phrases of two photos, mined, one photo failed, cancelled halfway, cancelled before any photo was read, the Recomeçar modal, no markings, the narrow window — the window itself, at the top and at the end of the list, since the Minerar bar is pinned to it —, the light theme), with the same marked page (`pages/pagina-marcada.png`) in every photo; compared by the owner with the locked prototype (`docs/design/foto/prototipo-bookreader.html?variant=C`). The toast is masked.
 - `tests/boas-vindas-visual.spec.js` does the same for the Boas-vindas (the opening, step 1 with and without a caption shortcut and with POP-06, step 2 recording, an optional step, Tudo pronto with feito · agora não · falta, the narrow window, the light theme), compared by the owner with the locked prototype (`docs/design/painel/boas-vindas/prototipo-onboarding.html?variant=C`).
 - `tests/configuracoes-visual.spec.js` does the same for Configurações (cards closed; Conta & sync synced, not synced, logged out after a failed login; Chave do Gemini saved and refused empty; Zona de perigo with an account and its modal; Atalhos open, recording and with a repeated shortcut refused; the narrow window; Aparência open in dark and in light), compared by the owner side by side with the locked prototype (`?variant=C`).

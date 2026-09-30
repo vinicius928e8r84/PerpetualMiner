@@ -22,7 +22,8 @@ As páginas da extensão só rodam dentro do Chrome, com as APIs da extensão. F
 quebrariam na primeira chamada de `chrome.*` e não mostrariam nada. Por isso o preview injeta
 `chrome-simulado.js` **nas cópias** dentro de `dist/` — os arquivos da extensão não mudam — com
 um armazenamento de mentira já semeado: seis frases de exemplo (inglês e russo, com fonte,
-palavra-chave e uma já exportada), o Auto Miner com contagem do dia e o atalho `Alt + S`.
+palavra-chave e uma já exportada), o Auto Miner com contagem do dia, o atalho `Alt + S` e a
+configuração da Boas-vindas pela metade (o lembrete ONB-14 no popup e ONB-15 em Frases).
 
 O preview mostra:
 

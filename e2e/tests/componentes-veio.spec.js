@@ -11,7 +11,7 @@ const { test, expect } = require('../fixtures');
 /** Os componentes que a vitrine mostra, na ordem em que ela os monta. */
 const COMPONENTES = [
   'Botões', 'Campos', 'Toggle e checkbox', 'Selos', 'Atalhos',
-  'Controle segmentado', 'Azulejo', 'Modal', 'Toast', 'Aviso persistente',
+  'Controle segmentado', 'Azulejo', 'Anel de progresso', 'Modal', 'Toast', 'Aviso persistente',
   'Estado vazio', 'Esqueleto', 'Linha de frase',
 ];
 

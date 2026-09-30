@@ -1060,6 +1060,30 @@ select.veio-campo {
   opacity: .7;
 }
 
+/* ── Anel de progresso ─────────────────────────────────────────────────────
+   O “N de 6” do lembrete da configuração (ONB-14, ONB-15), em ouro sobre o
+   trilho. Só desenho: o número está no texto ao lado. */
+
+.veio-anel {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+
+.veio-anel circle {
+  fill: none;
+  stroke-width: 3;
+}
+
+.veio-anel__trilho {
+  stroke: var(--veio-surface-2);
+}
+
+.veio-anel__progresso {
+  stroke: var(--veio-accent);
+  stroke-linecap: round;
+}
+
 /* ── Movimento reduzido ───────────────────────────────────────────────────
    O brilho do esqueleto, a entrada do toast e o ponto do selo “Lendo…” são
    sinais de estado: com movimento reduzido eles aparecem parados, e o

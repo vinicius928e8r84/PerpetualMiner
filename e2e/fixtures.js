@@ -159,7 +159,13 @@ const test = base.extend({
   // `test.use({ manterAbaDaInstalacao: true })` e a recebe em `extensao.abaDaInstalacao`.
   manterAbaDaInstalacao: [false, { option: true }],
 
-  extensao: async ({ context, manterAbaDaInstalacao }, use) => {
+  // A instalação também deixa a configuração começada (`pm_boas_vindas`), o que
+  // põe o lembrete “Configuração pela metade” no popup e em Frases. O teste
+  // começa como quem já passou por ela, sem o lembrete; quem testa o lembrete
+  // pede `test.use({ lembreteDaConfiguracao: true })`.
+  lembreteDaConfiguracao: [false, { option: true }],
+
+  extensao: async ({ context, manterAbaDaInstalacao, lembreteDaConfiguracao }, use) => {
     const sw = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
     const id = new URL(sw.url()).host;
 
@@ -168,6 +174,7 @@ const test = base.extend({
 
     const lerStorage = (chaves = null) => sw.evaluate(c => chrome.storage.local.get(c), chaves);
     const gravarStorage = valores => sw.evaluate(v => chrome.storage.local.set(v), valores);
+    if (!lembreteDaConfiguracao) await sw.evaluate(() => chrome.storage.local.remove('pm_boas_vindas'));
 
     await use({
       id,
