@@ -178,6 +178,7 @@ test('Reparar Anki espera o reparo inteiro (~100 s): “Reparando…” até o f
   terminar();
   await expect(page.locator('.veio-toast')).toHaveText('Anki reparado');
   await expect(baralhos(page).getByRole('button', { name: 'Reparar Anki' })).toBeVisible();
+  await expect(baralhos(page).getByRole('button', { name: 'Reparar Anki' })).toBeFocused();
   await expect(baralhos(page).getByRole('alert')).toHaveCount(0);
   expect(pedidos(fakes, '/anki/repair')).toHaveLength(1);
   // Reparado, os baralhos são lidos de novo, sem o cache da Conexão.
@@ -185,18 +186,30 @@ test('Reparar Anki espera o reparo inteiro (~100 s): “Reparando…” até o f
   expect(pedidos(fakes, '/anki/stats/decks').at(-1).busca).toContain('refresh=1');
 });
 
-test('Reparar Anki pelo erro BRG-11: o reparo que dá certo lê os baralhos de novo', async ({ page, extensao, fakes }) => {
-  fakes.anki.falharBaralhos({ status: 503 });
+test('Reparar Anki pelo erro BRG-11: após o reparo o foco vai para o idioma escolhido', async ({ page, extensao, fakes }) => {
+  let terminar;
+  const reparo = new Promise(resolve => { terminar = resolve; });
   fakes.anki.responder('POST', '/anki/repair', async () => {
+    await reparo;
     fakes.anki.voltarBaralhos();
     return { json: { ok: true, after: { collectionReady: true } } };
   });
   await abrirAnki(page, extensao, '#anki/baralhos');
+  const russo = azulejosDosBaralhos(page).getByRole('button').nth(1);
+  await expect(russo).toContainText('612 palavras');
+  await russo.click();
+  fakes.anki.falharBaralhos({ status: 503 });
+  await atualizar(page).click();
+  const aviso = baralhos(page).getByRole('alert').filter({ hasText: 'Não deu para ler os baralhos do Anki.' });
+  await expect(aviso).toBeVisible();
+  await aviso.getByRole('button', { name: 'Reparar Anki' }).click();
+  await expect(baralhos(page).getByRole('status').filter({ hasText: 'Fechando o Anki travado e abrindo de novo…' })).toBeFocused();
 
-  await baralhos(page).getByRole('alert').getByRole('button', { name: 'Reparar Anki' }).click();
-
+  terminar();
   await expect(page.locator('.veio-toast')).toHaveText('Anki reparado');
-  await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
+  await expect(russo).toContainText('612 palavras');
+  await expect(russo).toHaveAttribute('aria-pressed', 'true');
+  await expect(russo).toBeFocused();
 });
 
 test('Reparar Anki que o Windows bloqueia: BRG-18 persistente, com os processos em Detalhes', async ({ page, extensao, fakes }) => {

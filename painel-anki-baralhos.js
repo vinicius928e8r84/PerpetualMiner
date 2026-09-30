@@ -164,7 +164,7 @@
    * GET /anki/stats/decks com os dois baralhos numa leitura só. `deNovo` passa
    * por cima do cache da Conexão; `abrirOAnki` a deixa abrir o Anki (BRG-24).
    */
-  async function lerBaralhos({ deNovo = false, abrirOAnki = false } = {}) {
+  async function lerBaralhos({ deNovo = false, abrirOAnki = false, focarAzulejo = false } = {}) {
     const baralhos = estado.baralhos;
     const leitura = ++baralhos.leitura;
     baralhos.carregando = true;
@@ -194,6 +194,9 @@
       chrome.storage.local.set({ [CHAVE_BARALHOS]: { dados, quando: baralhos.quando } });
     }
     desenhar();
+    if (focarAzulejo && dados && document.activeElement === document.body) {
+      porId('anki-baralhos-azulejos').querySelector('[aria-pressed="true"]')?.focus();
+    }
   }
 
   /** O vocabulário inteiro do baralho de cada idioma; os filtros são aplicados aqui. */
@@ -244,6 +247,7 @@
 
   async function pedirReparo(botao) {
     if (botao.getAttribute('aria-disabled') === 'true') return;
+    const reparoDoErro = Boolean(botao.closest('#anki-baralhos-corpo'));
     estado.reparando = true;
     estado.fimDoReparo = null;
     desenhar();
@@ -275,8 +279,8 @@
     if (fim.ok) {
       Veio.mostrarToastDeSucesso(textoDaVoz('BRG-16'));
       desenhar();
-      devolverOFoco(botao);
-      lerTudo({ deNovo: true });
+      if (!reparoDoErro) devolverOFoco(botao);
+      lerTudo({ deNovo: true, focarAzulejo: reparoDoErro });
       return;
     }
     if (fim.bloqueado) estado.fimDoReparo = avisoDeBloqueio(fim.causa);
