@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Captura do popup da loja</title>
+  <link rel="stylesheet" href="/veio/tokens.css">
+  <style>
+    html, body { margin: 0; width: 1280px; height: 800px; background: var(--veio-bg); color: var(--veio-text); font-family: var(--veio-fonte-ui); overflow: hidden; }
+    body { display: flex; align-items: center; justify-content: center; gap: 96px; }
+    p { width: 420px; margin: 0; font-family: var(--veio-fonte-display); font-size: var(--veio-tam-hero); font-weight: var(--veio-peso-titulo); line-height: var(--veio-altura-frase); }
+    /* O popup tem 340 px: a captura é em dobro de resolução, exibida a 1,25×. */
+    img { width: 425px; height: 750px; border-radius: var(--veio-raio-card); border: 1px solid var(--veio-border); box-shadow: var(--veio-sombra); }
+  </style>
+</head>
+<body>
+  <p>O popup da barra mostra a mineração automática do dia.</p>
+  <img id="popup" alt="">
+</body>
+</html>

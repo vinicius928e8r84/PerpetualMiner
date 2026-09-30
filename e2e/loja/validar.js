@@ -1,26 +1,19 @@
 'use strict';
 
-// Confere as imagens de `docs/loja/`: PNG de 24 bits (RGB, 8 bits por canal),
-// sem canal alfa nem chunk tRNS, no tamanho que a loja pede.
+// Confere as imagens de `docs/loja/` (a lista está em `imagens.js`): PNG de 24
+// bits (RGB, 8 bits por canal), sem canal alfa nem chunk tRNS, no tamanho que a
+// loja pede, e a linha de cada uma na tabela do LEIA-ME.
 //
 //   node e2e/loja/validar.js
 
 const fs = require('fs');
 const path = require('path');
 
+const { IMAGENS, linhaDaTabela } = require('./imagens');
+
 const PASTA = path.resolve(__dirname, '..', '..', 'docs', 'loja');
 const ASSINATURA = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-const RGB = 2;
-
-const ESPERADO = {
-  'captura-1.png': [1280, 800],
-  'captura-2.png': [1280, 800],
-  'captura-3.png': [1280, 800],
-  'captura-4.png': [1280, 800],
-  'captura-5.png': [1280, 800],
-  'promo-pequena-440x280.png': [440, 280],
-  'icone-128.png': [128, 128],
-};
+const TIPO_DE_COR_RGB = 2;
 
 /** Largura, altura, tipo de cor e se há tRNS, lidos dos chunks do PNG. */
 function lerPng(arquivo) {
@@ -39,17 +32,21 @@ function lerPng(arquivo) {
   return png;
 }
 
+const leiaMe = fs.readFileSync(path.join(PASTA, 'LEIA-ME.md'), 'utf8');
+
 let falhas = 0;
-for (const [nome, [largura, altura]] of Object.entries(ESPERADO)) {
+for (const imagem of Object.values(IMAGENS)) {
+  const { arquivo, largura, altura } = imagem;
   const problemas = [];
   let png = null;
-  try { png = lerPng(path.join(PASTA, nome)); } catch (erro) { problemas.push(erro.code === 'ENOENT' ? 'arquivo não existe' : erro.message); }
+  try { png = lerPng(path.join(PASTA, arquivo)); } catch (erro) { problemas.push(erro.code === 'ENOENT' ? 'arquivo não existe' : erro.message); }
   if (png) {
     if (png.largura !== largura || png.altura !== altura) problemas.push(`tamanho ${png.largura}x${png.altura}, esperado ${largura}x${altura}`);
-    if (png.tipoDeCor !== RGB || png.profundidade !== 8) problemas.push(`tipo de cor ${png.tipoDeCor}/${png.profundidade} bits, esperado RGB de 8 bits (24 bits, sem alfa)`);
+    if (png.tipoDeCor !== TIPO_DE_COR_RGB || png.profundidade !== 8) problemas.push(`tipo de cor ${png.tipoDeCor}/${png.profundidade} bits, esperado RGB de 8 bits (24 bits, sem alfa)`);
     if (png.tRNS) problemas.push('tem transparência (tRNS)');
   }
+  if (!leiaMe.includes(linhaDaTabela(imagem))) problemas.push('a linha do LEIA-ME.md não bate com imagens.js');
   if (problemas.length) falhas++;
-  console.log(`${problemas.length ? 'FALHOU' : 'ok    '}  ${nome.padEnd(28)} ${png ? `${png.largura}x${png.altura} RGB 24 bits, sem alfa` : ''}${problemas.length ? ` · ${problemas.join('; ')}` : ''}`);
+  console.log(`${problemas.length ? 'FALHOU' : 'ok    '}  ${arquivo.padEnd(28)} ${png ? `${png.largura}x${png.altura} RGB 24 bits, sem alfa` : ''}${problemas.length ? ` · ${problemas.join('; ')}` : ''}`);
 }
 process.exit(falhas ? 1 : 0);
