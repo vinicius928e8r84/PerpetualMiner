@@ -2360,3 +2360,286 @@ body {
     transition: none !important;
   }
 }
+
+/* ── Boas-vindas (docs/design/painel/boas-vindas/, variante C) ──────────
+   Uma página sem sidebar: a marca de 40 px no topo, centralizada, e uma grade
+   de duas colunas (máx. 900 px) que empilha abaixo de ~760 px — a lista dos 8
+   itens (230 px) e o card do passo, as duas ilhas surface de raio 20. */
+
+.bv {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 28px 16px 48px;
+}
+
+.bv-topo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
+.bv-nome {
+  font-size: var(--veio-tam-pagina);
+}
+
+.bv-grade {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 900px;
+}
+
+@media (max-width: 760px) {
+  .bv-grade {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.bv-lista {
+  align-self: start;
+  padding: 12px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-surface);
+}
+
+.bv-lista__itens {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  list-style: none;
+}
+
+.bv-lista__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--veio-raio-input);
+  background: none;
+  color: var(--veio-muted);
+  font: inherit;
+  font-weight: var(--veio-peso-rotulo);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--veio-transicao), color var(--veio-transicao);
+}
+
+.bv-lista__item:hover {
+  color: var(--veio-text);
+}
+
+/* O item atual, como a nav do shell: surface-2 com o contorno forte. */
+.bv-lista__item[aria-current="step"] {
+  background: var(--veio-surface-2);
+  box-shadow: inset 0 0 0 1px var(--veio-border-strong);
+  color: var(--veio-text);
+}
+
+/* A marca do passo: o número; o ✓ ouro quando feito; tracejada quando
+   “agora não”. O número sai do data-numero, então não entra no texto. */
+.bv-marca {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--veio-border-strong);
+  border-radius: var(--veio-raio-pilula);
+  color: var(--veio-muted);
+  font: 700 var(--veio-tam-tecla) var(--veio-fonte-mono);
+}
+
+.bv-marca:empty::before {
+  content: attr(data-numero);
+}
+
+.bv-marca--atual {
+  border-color: var(--veio-accent);
+  color: var(--veio-accent-text);
+}
+
+.bv-marca[data-situacao="feito"] {
+  border-color: var(--veio-accent);
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+}
+
+.bv-marca[data-situacao="feito"] svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 3;
+}
+
+.bv-marca[data-situacao="agora-nao"] {
+  border-style: dashed;
+}
+
+.bv-marca[data-situacao="agora-nao"]::before {
+  content: '–';
+}
+
+/* No resumo de Tudo pronto, o passo que falta leva um ponto, não o número. */
+.bv-resumo .bv-marca[data-situacao="falta"]::before {
+  content: '·';
+}
+
+.bv-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 26px 28px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-surface);
+  box-shadow: var(--veio-sombra-ilha);
+}
+
+.bv-sobretitulo {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+  font-weight: var(--veio-peso-legenda);
+  letter-spacing: var(--veio-tracking-legenda);
+  text-transform: uppercase;
+}
+
+.bv-titulo {
+  margin: 6px 0 8px;
+  font-family: var(--veio-fonte-display);
+  font-size: var(--veio-tam-hero);
+  font-weight: var(--veio-peso-display);
+  letter-spacing: var(--veio-tracking-display);
+}
+
+/* O título recebe o foco ao trocar de passo, para o leitor de tela ler o
+   passo novo; não é um controle, então não desenha o anel. */
+.bv-titulo:focus,
+.bv-titulo:focus-visible {
+  outline: none;
+}
+
+.bv-texto {
+  max-width: 560px;
+  margin-bottom: 12px;
+  color: var(--veio-muted);
+}
+
+.bv-texto .veio-kbd {
+  margin: 0 2px;
+}
+
+/* O controle real do passo: um bloco bg de raio 14. */
+.bv-controle {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-bg);
+}
+
+.bv-nota {
+  margin-bottom: 8px;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.bv-rapida__campo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bv-rapida__campo .veio-campo {
+  flex: 1;
+  min-width: 180px;
+}
+
+.bv-falha {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  color: var(--veio-danger);
+  font-size: var(--veio-tam-apoio);
+}
+
+.bv-falha svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+/* A legenda marcada, parada: uma tela de vídeo com a linha ouro, a Palavra
+   grifada e o chip, como o overlay a desenha. */
+.bv-ilustracao {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 34px 16px 18px;
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-bg);
+  color: var(--veio-text);
+}
+
+.bv-ilustracao__legenda {
+  padding: 3px 10px;
+  border-bottom: 2px solid var(--veio-accent);
+  font-family: var(--veio-fonte-frase);
+  font-size: var(--veio-tam-destaque);
+}
+
+.bv-resumo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+}
+
+.bv-resumo__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-bg);
+}
+
+.bv-resumo__lado {
+  margin-left: auto;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+/* O card estica até a altura da lista; o conteúdo cresce e o rodapé fica
+   preso ao fundo, na mesma altura em todos os passos. */
+.bv-telas {
+  flex: 1 0 auto;
+}
+
+.bv-rodape {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--veio-border);
+}
+
+.bv-rodape__espaco {
+  flex: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bv-lista__item {
+    transition: none;
+  }
+}

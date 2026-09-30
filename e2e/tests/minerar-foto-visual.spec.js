@@ -1,6 +1,7 @@
 'use strict';
 
-// Referência visual de Minerar de uma foto · Fotos × frases (#36).
+// Referência visual de Minerar de uma foto · Fotos × frases (#36), com
+// Cancelar, Recomeçar e “Tentar de novo” numa foto (#37).
 //
 // O dono revisa estas telas lado a lado com o protótipo travado
 // (docs/design/foto/prototipo-bookreader.html?variant=C). Depois de aprovadas,
@@ -108,6 +109,40 @@ test('uma foto falhou, a outra foi lida', async ({ page, extensao, fakes }) => {
   await referencia(page, 'foto-uma-falhou');
 });
 
+test('leitura cancelada no meio: as frases das fotos lidas ficam, as outras “Cancelada”', async ({ page, extensao, fakes }) => {
+  await abrir(page, extensao);
+  fakes.gemini.responderFrases(FRASES_1);
+  fakes.gemini.responderFrases(FRASES_2);
+  const soltar = fakes.gemini.segurarFrases([]);
+  await enviar(page, foto('IMG_2041.jpg'), foto('IMG_2042.jpg'), foto('IMG_2043.jpg'), foto('IMG_2044.jpg'));
+  await expect(fotoNaFila(page, 'IMG_2043.jpg')).toContainText('Lendo…');
+  await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await expect(fotoNaFila(page, 'IMG_2044.jpg')).toContainText('Cancelada');
+  await page.getByRole('button', { name: 'Escolher' }).blur();
+  await referencia(page, 'foto-cancelada');
+  await soltar();
+});
+
+test('leitura cancelada antes de ler qualquer foto: a coluna é o vazio', async ({ page, extensao, fakes }) => {
+  await abrir(page, extensao);
+  const soltar = fakes.gemini.segurarFrases([]);
+  await enviar(page, foto('IMG_2041.jpg'), foto('IMG_2042.jpg'));
+  await expect(fotoNaFila(page, 'IMG_2041.jpg')).toContainText('Lendo…');
+  await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await expect(fotoNaFila(page, 'IMG_2042.jpg')).toContainText('Cancelada');
+  await page.getByRole('button', { name: 'Escolher' }).blur();
+  await referencia(page, 'foto-cancelada-vazia');
+  await soltar();
+});
+
+test('Recomeçar com frases não mineradas: o modal de confirmação', async ({ page, extensao, fakes }) => {
+  await abrir(page, extensao);
+  await comDuasFotosLidas(page, fakes);
+  await page.getByRole('button', { name: 'Recomeçar' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await referencia(page, 'foto-recomecar');
+});
+
 test('todas as fotos falharam, com a chave recusada', async ({ page, extensao, fakes }) => {
   await abrir(page, extensao);
   fakes.gemini.falhar(400, 'API key not valid. Please pass a valid API key.');
@@ -129,7 +164,13 @@ test('nenhuma marcação encontrada', async ({ page, extensao, fakes }) => {
 test('janela estreita: a fila sobe para cima das frases', async ({ page, extensao, fakes }) => {
   await abrir(page, extensao, { largura: 720 });
   await comDuasFotosLidas(page, fakes);
-  await referencia(page, 'foto-estreita');
+  // A janela, não a página inteira: “Minerar N frases” é uma barra presa ao pé
+  // da janela, e num print de página inteira ela cairia no meio da lista.
+  const naJanela = { mask: [page.locator('.veio-toasts')] };
+  await expect(page).toHaveScreenshot('foto-estreita.png', naJanela);
+  // No fim da lista, a barra fica logo depois da última frase.
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(page).toHaveScreenshot('foto-estreita-fim.png', naJanela);
 });
 
 test('tema claro', async ({ page, extensao, fakes }) => {

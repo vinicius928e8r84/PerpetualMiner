@@ -26,164 +26,172 @@
   /** O nome de cada ação (CFG-11) e o que ela faz (CFG-34), pela mesma parte do catálogo. */
   const PARTE_DO_CATALOGO = { [ACOES.LEGENDA]: 'minerarLegenda', [ACOES.SELECAO]: 'minerarSelecao' };
 
-  const estado = {
-    atalhos: { ...Atalhos.ATALHOS_PADRAO },
-    gravando: null,        // a ação sendo gravada, ou null
-    aviso: null,           // { acao, texto } do atalho repetido
-  };
-  const linhas = new Map();    // ação → { tecla, botao, anuncio, aviso }
-  let restaurar = null;
+  /**
+   * Monta o gravador dentro de `corpo`: as duas linhas e o Restaurar. É o mesmo
+   * em Configurações › Atalhos e no passo 2 da Boas-vindas; os dois leem e
+   * gravam o mesmo storage (lib/atalhos.js), então mostram sempre o mesmo, e a
+   * recusa do repetido é a mesma. `prefixo` separa os ids das duas cópias;
+   * `lugar` é o que some quando a pessoa sai dali (o corpo do card, a tela do
+   * passo), o que cancela a gravação.
+   */
+  function montarGravadorDeAtalhos(corpo, { prefixo, lugar = corpo }) {
+    const estado = {
+      atalhos: { ...Atalhos.ATALHOS_PADRAO },
+      gravando: null,        // a ação sendo gravada, ou null
+      aviso: null,           // { acao, texto } do atalho repetido
+    };
+    const linhas = new Map();    // ação → { tecla, botao, anuncio, aviso }
+    let restaurar = null;
 
-  function iniciarAtalhos() {
-    const corpo = document.getElementById('cfg-atalhos-corpo');
     corpo.append(...Object.values(ACOES).map(montarLinha), montarRestaurar());
     Atalhos.acompanharAtalhos(atalhos => {
       estado.atalhos = atalhos;
       desenhar();
     });
-    // Sair do card (fechá-lo, ir a outra área ou outro endereço) cancela a
-    // gravação: senão a primeira tecla digitada lá fora viraria o atalho.
+    // Sair do lugar do gravador (fechar o card, ir a outra área, outro endereço
+    // ou outro passo da Boas-vindas) cancela a gravação: senão a primeira tecla
+    // digitada lá fora viraria o atalho.
     const pararAoSair = () => { if (estado.gravando) pararDeGravar(); };
     window.addEventListener('hashchange', pararAoSair);
-    new MutationObserver(() => { if (corpo.hidden) pararAoSair(); })
-      .observe(corpo, { attributes: true, attributeFilter: ['hidden'] });
-  }
+    new MutationObserver(() => { if (lugar.hidden) pararAoSair(); })
+      .observe(lugar, { attributes: true, attributeFilter: ['hidden'] });
 
-  function montarLinha(acao) {
-    const parte = PARTE_DO_CATALOGO[acao];
-    const idDoNome = `cfg-atalho-${acao}-nome`;
+    function montarLinha(acao) {
+      const parte = PARTE_DO_CATALOGO[acao];
+      const idDoNome = `${prefixo}-atalho-${acao}-nome`;
 
-    const nome = elemento('b', 'cfg-atalho__nome', textoDaVoz(`CFG-11.${parte}`));
-    nome.id = idDoNome;
-    const texto = elemento('div', 'cfg-atalho__texto', nome,
-      elemento('span', 'cfg-nota', textoDaVoz(`CFG-34.${parte}`)));
+      const nome = elemento('b', 'cfg-atalho__nome', textoDaVoz(`CFG-11.${parte}`));
+      nome.id = idDoNome;
+      const texto = elemento('div', 'cfg-atalho__texto', nome,
+        elemento('span', 'cfg-nota', textoDaVoz(`CFG-34.${parte}`)));
 
-    const tecla = elemento('span', 'cfg-atalho__tecla');
-    const botao = elemento('button', 'veio-botao veio-botao--contorno', textoDaVoz('CFG-12.gravar'));
-    botao.type = 'button';
-    botao.setAttribute('aria-describedby', idDoNome);
-    botao.addEventListener('click', () => (estado.gravando === acao ? pararDeGravar() : comecarAGravar(acao)));
+      const tecla = elemento('span', 'cfg-atalho__tecla');
+      const botao = elemento('button', 'veio-botao veio-botao--contorno', textoDaVoz('CFG-12.gravar'));
+      botao.type = 'button';
+      botao.setAttribute('aria-describedby', idDoNome);
+      botao.addEventListener('click', () => (estado.gravando === acao ? pararDeGravar() : comecarAGravar(acao)));
 
-    // O leitor de tela só anuncia o que muda numa região que já existe: esta
-    // fica na linha desde o começo, vazia, e ganha o CFG-13 quando a gravação
-    // começa. A pílula na tela é só o desenho do mesmo texto.
-    const anuncio = elemento('span', 'cfg-atalho__anuncio');
-    anuncio.setAttribute('role', 'status');
+      // O leitor de tela só anuncia o que muda numa região que já existe: esta
+      // fica na linha desde o começo, vazia, e ganha o CFG-13 quando a gravação
+      // começa. A pílula na tela é só o desenho do mesmo texto.
+      const anuncio = elemento('span', 'cfg-atalho__anuncio');
+      anuncio.setAttribute('role', 'status');
 
-    const aviso = elemento('p', 'cfg-atalho__aviso');
-    aviso.setAttribute('role', 'alert');
-    aviso.hidden = true;
+      const aviso = elemento('p', 'cfg-atalho__aviso');
+      aviso.setAttribute('role', 'alert');
+      aviso.hidden = true;
 
-    const linha = elemento('div', 'cfg-atalho', texto, elemento('div', 'cfg-acoes', tecla, botao), anuncio, aviso);
-    linha.setAttribute('role', 'group');
-    linha.setAttribute('aria-labelledby', idDoNome);
-    linhas.set(acao, { tecla, botao, anuncio, aviso });
-    return linha;
-  }
-
-  function montarRestaurar() {
-    const botao = elemento('button', 'veio-botao veio-botao--fantasma', textoDaVoz('CFG-21'));
-    botao.type = 'button';
-    botao.addEventListener('click', restaurarOPadrao);
-    restaurar = elemento('div', 'cfg-atalho cfg-atalho--restaurar',
-      elemento('span', 'cfg-nota', textoDaVoz('CFG-22')), botao);
-    return restaurar;
-  }
-
-  // ─── Desenho ───────────────────────────────────────────────────────────────
-
-  function desenhar() {
-    for (const [acao, { tecla, botao, anuncio, aviso }] of linhas) {
-      const gravando = estado.gravando === acao;
-      tecla.replaceChildren(gravando ? pilulaDeGravacao() : Veio.montarTecla(
-        Atalhos.rotuloDoAtalho(estado.atalhos[acao]), { seVazia: textoDaVoz('CFG-12.semAtalho') }));
-      anuncio.textContent = gravando ? textoDaVoz('CFG-13') : '';
-      botao.textContent = textoDaVoz(gravando ? 'CFG-12.cancelar' : 'CFG-12.gravar');
-      botao.classList.toggle('cfg-atalho__cancelar', gravando);
-      botao.disabled = !!estado.gravando && !gravando;
-
-      const texto = estado.aviso?.acao === acao ? estado.aviso.texto : '';
-      aviso.hidden = !texto;
-      aviso.textContent = texto;
+      const linha = elemento('div', 'cfg-atalho', texto, elemento('div', 'cfg-acoes', tecla, botao), anuncio, aviso);
+      linha.setAttribute('role', 'group');
+      linha.setAttribute('aria-labelledby', idDoNome);
+      linhas.set(acao, { tecla, botao, anuncio, aviso });
+      return linha;
     }
-    restaurar.hidden = Atalhos.estaNoPadrao(estado.atalhos);
-    restaurar.querySelector('button').disabled = !!estado.gravando;
-  }
 
-  function pilulaDeGravacao() {
-    const pilula = elemento('span', 'cfg-gravando', textoDaVoz('CFG-13'));
-    pilula.setAttribute('aria-hidden', 'true');
-    return pilula;
-  }
+    function montarRestaurar() {
+      const botao = elemento('button', 'veio-botao veio-botao--fantasma', textoDaVoz('CFG-21'));
+      botao.type = 'button';
+      botao.addEventListener('click', restaurarOPadrao);
+      restaurar = elemento('div', 'cfg-atalho cfg-atalho--restaurar',
+        elemento('span', 'cfg-nota', textoDaVoz('CFG-22')), botao);
+      return restaurar;
+    }
 
-  /** A tecla nova pisca uma vez (com movimento reduzido, fica parada). */
-  function piscarATecla(acao) {
-    const kbd = linhas.get(acao).tecla.querySelector('kbd');
-    kbd?.classList.add('cfg-atalho__tecla--nova');
-  }
+    // ─── Desenho ───────────────────────────────────────────────────────────────
 
-  // ─── Gravação ──────────────────────────────────────────────────────────────
+    function desenhar() {
+      for (const [acao, { tecla, botao, anuncio, aviso }] of linhas) {
+        const gravando = estado.gravando === acao;
+        tecla.replaceChildren(gravando ? pilulaDeGravacao() : Veio.montarTecla(
+          Atalhos.rotuloDoAtalho(estado.atalhos[acao]), { seVazia: textoDaVoz('CFG-12.semAtalho') }));
+        anuncio.textContent = gravando ? textoDaVoz('CFG-13') : '';
+        botao.textContent = textoDaVoz(gravando ? 'CFG-12.cancelar' : 'CFG-12.gravar');
+        botao.classList.toggle('cfg-atalho__cancelar', gravando);
+        botao.disabled = !!estado.gravando && !gravando;
 
-  function comecarAGravar(acao) {
-    estado.gravando = acao;
-    estado.aviso = null;
-    Atalhos.guardarTodasAsSolturas(true);
-    desenhar();
-    document.addEventListener('keydown', aoGravar, true);
-    document.addEventListener('mousedown', aoGravar, true);
-  }
+        const texto = estado.aviso?.acao === acao ? estado.aviso.texto : '';
+        aviso.hidden = !texto;
+        aviso.textContent = texto;
+      }
+      restaurar.hidden = Atalhos.estaNoPadrao(estado.atalhos);
+      restaurar.querySelector('button').disabled = !!estado.gravando;
+    }
 
-  function pararDeGravar() {
-    const acao = estado.gravando;
-    estado.gravando = null;
-    estado.aviso = null;
-    Atalhos.guardarTodasAsSolturas(false);
-    document.removeEventListener('keydown', aoGravar, true);
-    document.removeEventListener('mousedown', aoGravar, true);
-    desenhar();
-    return acao;
-  }
+    function pilulaDeGravacao() {
+      const pilula = elemento('span', 'cfg-gravando', textoDaVoz('CFG-13'));
+      pilula.setAttribute('aria-hidden', 'true');
+      return pilula;
+    }
 
-  function aoGravar(evento) {
-    const acao = estado.gravando;
-    const semModificador = !evento.altKey && !evento.ctrlKey && !evento.shiftKey && !evento.metaKey;
-    if (evento.type === 'keydown' && evento.key === 'Escape' && semModificador) {
+    /** A tecla nova pisca uma vez (com movimento reduzido, fica parada). */
+    function piscarATecla(acao) {
+      const kbd = linhas.get(acao).tecla.querySelector('kbd');
+      kbd?.classList.add('cfg-atalho__tecla--nova');
+    }
+
+    // ─── Gravação ──────────────────────────────────────────────────────────────
+
+    function comecarAGravar(acao) {
+      estado.gravando = acao;
+      estado.aviso = null;
+      Atalhos.guardarTodasAsSolturas(true);
+      desenhar();
+      document.addEventListener('keydown', aoGravar, true);
+      document.addEventListener('mousedown', aoGravar, true);
+    }
+
+    function pararDeGravar() {
+      const acao = estado.gravando;
+      estado.gravando = null;
+      estado.aviso = null;
+      Atalhos.guardarTodasAsSolturas(false);
+      document.removeEventListener('keydown', aoGravar, true);
+      document.removeEventListener('mousedown', aoGravar, true);
+      desenhar();
+      return acao;
+    }
+
+    function aoGravar(evento) {
+      const acao = estado.gravando;
+      const semModificador = !evento.altKey && !evento.ctrlKey && !evento.shiftKey && !evento.metaKey;
+      if (evento.type === 'keydown' && evento.key === 'Escape' && semModificador) {
+        evento.preventDefault();
+        evento.stopImmediatePropagation();
+        pararDeGravar();
+        linhas.get(acao).botao.focus();
+        return;
+      }
+
+      const novo = Atalhos.atalhoDoEvento(evento);
+      if (!novo) return;
       evento.preventDefault();
       evento.stopImmediatePropagation();
+      // Voltar e avançar não navegam: nem o que acabou de gravar, nem os apertados
+      // enquanto grava (guardarTodasAsSolturas, abaixo).
+      if (novo.type === 'mouse') Atalhos.guardarSolturaDoBotao(novo.button);
+
+      const outra = acao === ACOES.LEGENDA ? ACOES.SELECAO : ACOES.LEGENDA;
+      if (Atalhos.mesmoAtalho(novo, estado.atalhos[outra])) {
+        estado.aviso = { acao, texto: textoDaVoz('CFG-19', { acao: textoDaVoz(`CFG-11.${PARTE_DO_CATALOGO[outra]}`) }) };
+        desenhar();
+        return;
+      }
+
       pararDeGravar();
-      linhas.get(acao).botao.focus();
-      return;
-    }
-
-    const novo = Atalhos.atalhoDoEvento(evento);
-    if (!novo) return;
-    evento.preventDefault();
-    evento.stopImmediatePropagation();
-    // Voltar e avançar não navegam: nem o que acabou de gravar, nem os apertados
-    // enquanto grava (guardarTodasAsSolturas, abaixo).
-    if (novo.type === 'mouse') Atalhos.guardarSolturaDoBotao(novo.button);
-
-    const outra = acao === ACOES.LEGENDA ? ACOES.SELECAO : ACOES.LEGENDA;
-    if (Atalhos.mesmoAtalho(novo, estado.atalhos[outra])) {
-      estado.aviso = { acao, texto: textoDaVoz('CFG-19', { acao: textoDaVoz(`CFG-11.${PARTE_DO_CATALOGO[outra]}`) }) };
+      estado.atalhos = { ...estado.atalhos, [acao]: novo };
       desenhar();
-      return;
+      piscarATecla(acao);
+      linhas.get(acao).botao.focus();
+      Atalhos.gravarAtalho(acao, novo);
     }
 
-    pararDeGravar();
-    estado.atalhos = { ...estado.atalhos, [acao]: novo };
-    desenhar();
-    piscarATecla(acao);
-    linhas.get(acao).botao.focus();
-    Atalhos.gravarAtalho(acao, novo);
-  }
-
-  function restaurarOPadrao() {
-    estado.atalhos = { ...Atalhos.ATALHOS_PADRAO };
-    desenhar();
-    // O botão sumiu com o padrão: o foco vai para o começo do card, não se perde.
-    linhas.get(ACOES.LEGENDA).botao.focus();
-    Atalhos.restaurarAtalhosPadrao();
+    function restaurarOPadrao() {
+      estado.atalhos = { ...Atalhos.ATALHOS_PADRAO };
+      desenhar();
+      // O botão sumiu com o padrão: o foco vai para o começo do card, não se perde.
+      linhas.get(ACOES.LEGENDA).botao.focus();
+      Atalhos.restaurarAtalhosPadrao();
+    }
   }
 
   function elemento(tag, classe, ...filhos) {
@@ -193,5 +201,9 @@
     return no;
   }
 
-  document.addEventListener('DOMContentLoaded', iniciarAtalhos);
+  document.addEventListener('DOMContentLoaded', () => {
+    montarGravadorDeAtalhos(document.getElementById('cfg-atalhos-corpo'), { prefixo: 'cfg' });
+  });
+
+  raiz.GravadorDeAtalhos = { montar: montarGravadorDeAtalhos };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});
