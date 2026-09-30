@@ -582,6 +582,29 @@ test('bug #9: recarregar com um Envio em andamento não o perde, e o resumo abre
   await expect.poll(async () => (await extensao.frases()).filter(f => f.status === 'exported').length).toBe(2);
 });
 
+test('na Boas-vindas o resumo espera: ele abre quando a pessoa vai ao painel', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: INGLESAS });
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, [SACK.texto]);
+  const [job] = await enviosCriados(fakes, 1);
+  await progresso(page).getByRole('button', { name: 'Fechar' }).click();
+
+  await page.goto(extensao.url('painel.html#boas-vindas'));
+  await expect(page.locator('.bv-card h2')).toHaveText('Boas-vindas ao PerpetualMiner');
+  const leiturasDosEnvios = () => fakes.anki.requisicoes.filter(r => r.caminho === '/jobs').length;
+  const antes = leiturasDosEnvios();
+  fakes.anki.concluirEnvio(job.jobId);
+  // A volta do acompanhamento que vê o Envio terminado, e a seguinte, sem o
+  // resumo por cima da página.
+  await expect.poll(leiturasDosEnvios, { timeout: 10_000 }).toBeGreaterThan(antes);
+  await page.waitForTimeout(2500);
+  await expect(resumo(page)).toHaveCount(0);
+  await expect(progresso(page)).toHaveCount(0);
+
+  await page.locator('.bv-card').getByRole('button', { name: 'Pular a configuração' }).click();
+  await expect(resumo(page)).toBeVisible({ timeout: 10_000 });
+});
+
 test('o resumo abre na área da Conexão com o Anki também', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: INGLESAS });
   await abrirPainel(page, extensao);

@@ -34,6 +34,8 @@
     ['PAI-13.titulo', { n: 12 }], ['PAI-13.corpo'],
     ['PAI-14', { n: 12 }],
     ['PAI-15.aviso'], ['PAI-15.tentarDeNovo'], ['ONB-15.ocultar'],
+    ['ONB-15.texto', { n: 0, total: 6 }], ['ONB-15.texto', { n: 2, total: 6 }], ['ONB-15.texto', { n: 6, total: 6 }],
+    ['FOT-21.abertura'], ['FOT-21.aviso', { n: 2 }],
     ['PAI-02.titulo'], ['PAI-02.texto', { atalho: 'Alt+S' }], ['PAI-02.acao'], ['PAI-03.acao'],
     ['PAI-04.texto', { termo: 'gavião' }], ['PAI-04.acao'],
     ['PAI-11.hoje'],
@@ -265,6 +267,13 @@
     return el('div', { class: 'veio-segmentado', role: 'radiogroup', 'aria-label': textoDaVoz('ADD-01.botao') }, ...opcoes);
   }
 
+  /** O anel do lembrete da configuração: vazio, pela metade e cheio, com o texto ao lado. */
+  function aneis() {
+    return [0, 2, 6].map(n => el('span', { class: 'anel' },
+      Veio.montarAnelDeProgresso(n, 6),
+      el('span', { texto: textoDaVoz('ONB-15.texto', { n, total: 6 }) })));
+  }
+
   function azulejos() {
     const azulejo = (idioma, id, valores, proporcao, escolhido) =>
       el('div', { class: `veio-azulejo ${escolhido ? 'veio-azulejo--escolhido' : ''}`.trim() },
@@ -335,6 +344,21 @@
       texto: textoDaVoz('PAI-15.aviso'),
       acao: { rotulo: textoDaVoz('PAI-15.tentarDeNovo'), aoUsar: () => {} },
       detalhes: 'HTTP 403 · PERMISSION_DENIED',
+      rotuloDeFechar: textoDaVoz('ONB-15.ocultar'),
+      aoFechar: montar,
+    }));
+    montar();
+    return lugar;
+  }
+
+  /** O aviso que só informa (FOT-21): neutro, com a abertura em negrito. */
+  function avisoInformativo() {
+    const lugar = el('div', { class: 'lugar-do-aviso' });
+    const montar = () => lugar.append(montarAviso({
+      tom: 'info',
+      icone: 'info',
+      abertura: textoDaVoz('FOT-21.abertura'),
+      texto: textoDaVoz('FOT-21.aviso', { n: 2 }),
       rotuloDeFechar: textoDaVoz('ONB-15.ocultar'),
       aoFechar: montar,
     }));
@@ -475,13 +499,17 @@
       grupo('Azulejo',
         linha('normal', ...azulejos())),
 
+      grupo('Anel de progresso',
+        linha('normal', ...aneis())),
+
       grupo('Modal', modal(tema)),
 
       grupo('Toast',
         linha('normal', toast(destino))),
 
       grupo('Aviso persistente',
-        linha('erro', aviso())),
+        linha('erro', aviso()),
+        linha('informativo', avisoInformativo())),
 
       grupo('Estado vazio',
         linha('vazio', ...vazios())),

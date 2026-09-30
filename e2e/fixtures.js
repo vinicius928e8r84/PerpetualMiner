@@ -61,6 +61,21 @@ function arquivoDoPedido(caminhoPedido) {
     .find(fs.existsSync) || null;
 }
 
+/**
+ * A aba que o Chrome abre ao instalar a extensão. Ela nasce em branco e só
+ * depois navega, então o endereço é conferido até aparecer.
+ */
+async function esperarAbaDaInstalacao(context, id) {
+  const painel = `chrome-extension://${id}/painel.html`;
+  const limite = Date.now() + 10_000;
+  while (Date.now() < limite) {
+    const aba = context.pages().find(p => p.url().startsWith(painel));
+    if (aba) return aba;
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  throw new Error('A instalação não abriu a aba da Boas-vindas');
+}
+
 const test = base.extend({
   // Servidor das páginas-fixture (player falso, página com texto, página sem
   // vídeo), da vitrine da Base Veio e dos arquivos de `veio/`.
@@ -113,6 +128,9 @@ const test = base.extend({
         `--host-resolver-rules=MAP accounts.google.com 127.0.0.1:${servidorDoLogin.porta}`,
         // Só o servidor local do login usa HTTPS, com certificado autoassinado.
         '--ignore-certificate-errors',
+        // A rede é toda falsificada ou bloqueada aqui: um proxy do ambiente
+        // (HTTPS_PROXY) levaria a janela do login para fora do servidor local.
+        '--no-proxy-server',
       ],
     });
 
@@ -127,16 +145,41 @@ const test = base.extend({
     fs.rmSync(perfil, { recursive: true, force: true });
   },
 
-  extensao: async ({ context }, use) => {
+  // A página do teste passa pela `extensao`, que fecha a aba da instalação, e
+  // volta para a frente: um teste que nem pede a `extensao` (o overlay no
+  // player) começaria atrás da Boas-vindas, com a página em segundo plano.
+  page: async ({ page, extensao }, use) => {
+    await page.bringToFront();
+    await use(page);
+  },
+
+  // A extensão chega instalada agora, então o Chrome já abriu a aba da
+  // Boas-vindas (onInstalled, `install`). Ela é fechada antes do teste, que
+  // começa como sempre começou; quem testa a Boas-vindas da instalação pede
+  // `test.use({ manterAbaDaInstalacao: true })` e a recebe em `extensao.abaDaInstalacao`.
+  manterAbaDaInstalacao: [false, { option: true }],
+
+  // A instalação também deixa a configuração começada (`pm_boas_vindas`), o que
+  // põe o lembrete “Configuração pela metade” no popup e em Frases. O teste
+  // começa como quem já passou por ela, sem o lembrete; quem testa o lembrete
+  // pede `test.use({ lembreteDaConfiguracao: true })`.
+  lembreteDaConfiguracao: [false, { option: true }],
+
+  extensao: async ({ context, manterAbaDaInstalacao, lembreteDaConfiguracao }, use) => {
     const sw = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
     const id = new URL(sw.url()).host;
 
+    const abaDaInstalacao = await esperarAbaDaInstalacao(context, id);
+    if (!manterAbaDaInstalacao) await abaDaInstalacao.close();
+
     const lerStorage = (chaves = null) => sw.evaluate(c => chrome.storage.local.get(c), chaves);
     const gravarStorage = valores => sw.evaluate(v => chrome.storage.local.set(v), valores);
+    if (!lembreteDaConfiguracao) await sw.evaluate(() => chrome.storage.local.remove('pm_boas_vindas'));
 
     await use({
       id,
       serviceWorker: sw,
+      abaDaInstalacao: manterAbaDaInstalacao ? abaDaInstalacao : null,
       url: caminho => `chrome-extension://${id}/${caminho}`,
       lerStorage,
       gravarStorage,

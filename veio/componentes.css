@@ -792,6 +792,25 @@ select.veio-campo {
   line-height: 1.45;
 }
 
+/* O ícone do começo do texto, na linha: o do erro em perigo. */
+.veio-aviso__texto > svg {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  color: var(--veio-danger);
+  vertical-align: -3px;
+}
+
+/* O tom que só informa: neutro, e o ícone em ouro. */
+.veio-aviso--info {
+  border-color: var(--veio-border);
+  background: var(--veio-surface-2);
+}
+
+.veio-aviso--info .veio-aviso__texto > svg {
+  color: var(--veio-accent-text);
+}
+
 .veio-aviso__acoes {
   display: flex;
   align-items: flex-start;
@@ -1047,6 +1066,30 @@ select.veio-campo {
   margin-bottom: 8px;
   border-radius: var(--veio-raio-card);
   opacity: .7;
+}
+
+/* ── Anel de progresso ─────────────────────────────────────────────────────
+   O “N de 6” do lembrete da configuração (ONB-14, ONB-15), em ouro sobre o
+   trilho. Só desenho: o número está no texto ao lado. */
+
+.veio-anel {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+
+.veio-anel circle {
+  fill: none;
+  stroke-width: 3;
+}
+
+.veio-anel__trilho {
+  stroke: var(--veio-surface-2);
+}
+
+.veio-anel__progresso {
+  stroke: var(--veio-accent);
+  stroke-linecap: round;
 }
 
 /* ── Movimento reduzido ───────────────────────────────────────────────────

@@ -20,6 +20,27 @@
     hoje mora dentro do shell, em blocos .conteudo-de-hoje com o tema claro
     (o CSS de hoje foi desenhado para fundo claro).
   -->
+  <!--
+    Boas-vindas (docs/design/painel/boas-vindas/, variante C): #boas-vindas[/<passo>],
+    uma página sem a sidebar, que a instalação abre sozinha. A lista dos 8 itens
+    e o card do passo são montados por painel-boas-vindas.js.
+  -->
+  <div class="bv" id="boas-vindas" hidden>
+    <div class="bv-topo">
+      <img class="veio-marca" src="veio/icones/icone.svg" width="40" height="40" alt="PerpetualMiner">
+      <span class="veio-nome bv-nome" aria-hidden="true">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>
+    </div>
+    <div class="bv-grade">
+      <nav class="bv-lista" id="bv-lista"></nav>
+      <main class="bv-card" aria-labelledby="bv-titulo">
+        <p class="bv-sobretitulo" id="bv-sobretitulo"></p>
+        <h2 class="bv-titulo" id="bv-titulo" tabindex="-1"></h2>
+        <div class="bv-telas" id="bv-telas"></div>
+        <div class="bv-rodape" id="bv-rodape"></div>
+      </main>
+    </div>
+  </div>
+
   <div class="shell">
 
     <aside class="shell-lateral">
@@ -91,6 +112,19 @@
             </div>
           </div>
         </header>
+
+        <!-- O lembrete “Configuração pela metade” (ONB-15), enquanto a Boas-vindas
+             não chegou a Tudo pronto e ele não foi ocultado (painel-lembrete.js). -->
+        <aside class="frases-lembrete" id="frases-lembrete" aria-labelledby="frases-lembrete-texto" hidden>
+          <span class="frases-lembrete__anel" id="frases-lembrete-anel"></span>
+          <p class="frases-lembrete__texto" id="frases-lembrete-texto"></p>
+          <div class="frases-lembrete__acoes">
+            <button class="veio-botao veio-botao--fantasma veio-botao--compacto" id="frases-lembrete-ocultar" type="button"
+                    data-voz="ONB-15.ocultar"></button>
+            <button class="veio-botao veio-botao--contorno veio-botao--compacto" id="frases-lembrete-continuar" type="button"
+                    data-voz="ONB-15.continuar"></button>
+          </div>
+        </aside>
 
         <!-- Os avisos persistentes da área (C1): a nuvem ficou com as frases
              apagadas (PAI-15) ou mineradas (ADD-06), e o copiar que não deu (PAI-17). -->
@@ -640,12 +674,16 @@
   <script src="lib/voz/texto.js"></script>
   <script src="veio/componentes.js"></script>
   <script src="lib/idioma.js"></script>
+  <script src="lib/mineracao-rapida.js"></script>
   <script src="lib/contexto.js"></script>
   <script src="lib/atalhos.js"></script>
+  <script src="lib/configuracao.js"></script>
   <script src="tombstone.js"></script>
   <script src="painel-shell.js"></script>
   <script src="painel-conta.js"></script>
   <script src="painel-atalhos.js"></script>
+  <script src="painel-boas-vindas.js"></script>
+  <script src="painel-lembrete.js"></script>
   <script src="painel-chave.js"></script>
   <script src="painel-perigo.js"></script>
   <script src="painel-envio.js"></script>

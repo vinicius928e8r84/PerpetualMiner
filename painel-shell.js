@@ -6,6 +6,7 @@
 //   #frases (padrão)                        Frases mineradas
 //   #anki/custos|baralhos|vocabulario|ajustes  a aba da Conexão com o Anki
 //   #configuracoes[/conta|atalhos|chave|aparencia|perigo] Configurações, rolando até o card
+//   #boas-vindas[/<passo>]                  a Boas-vindas, sem a sidebar (painel-boas-vindas.js)
 //
 // Trocar de área só troca a vista: nada recarrega, então os filtros, a página, a
 // seleção, o sync e o acompanhamento de envios do painel.js continuam como estão.
@@ -25,6 +26,8 @@
 // painel-chave.js e do painel-perigo.js. Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
+  /** As áreas do painel com a sidebar; a Boas-vindas é a página à parte. */
+  const AREAS_DO_PAINEL = Object.freeze(['frases', 'anki', 'configuracoes']);
   const ABAS_DA_CONEXAO = ['custos', 'baralhos', 'vocabulario', 'ajustes'];
   const SECOES_DE_CONFIGURACOES = ['conta', 'atalhos', 'chave', 'aparencia', 'perigo'];
 
@@ -116,6 +119,8 @@
     if (area === 'configuracoes') {
       return { area, secao: SECOES_DE_CONFIGURACOES.includes(parte) ? parte : null };
     }
+    // O passo da Boas-vindas é de painel-boas-vindas.js.
+    if (area === 'boas-vindas') return { area };
     return { area: 'frases' };
   }
 
@@ -124,6 +129,9 @@
     const entrou = area !== estado.area;
     estado.area = area;
 
+    // A Boas-vindas é uma página sem a sidebar: o shell inteiro sai da tela.
+    $('.shell').hidden = area === 'boas-vindas';
+    porId('boas-vindas').hidden = area !== 'boas-vindas';
     for (const vista of $$('.shell-area')) vista.hidden = vista.dataset.area !== area;
     for (const item of $$('.shell-item')) {
       if (item.dataset.area === area) item.setAttribute('aria-current', 'page');
@@ -351,6 +359,7 @@
   document.addEventListener('DOMContentLoaded', iniciarShell);
 
   raiz.Shell = {
+    AREAS_DO_PAINEL,
     CONEXAO,
     ENDERECO_DA_CONEXAO,
     aoAbrirASecao,

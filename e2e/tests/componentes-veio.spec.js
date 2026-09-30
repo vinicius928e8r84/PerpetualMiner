@@ -11,7 +11,7 @@ const { test, expect } = require('../fixtures');
 /** Os componentes que a vitrine mostra, na ordem em que ela os monta. */
 const COMPONENTES = [
   'Botões', 'Campos', 'Toggle e checkbox', 'Selos', 'Atalhos',
-  'Controle segmentado', 'Azulejo', 'Modal', 'Toast', 'Aviso persistente',
+  'Controle segmentado', 'Azulejo', 'Anel de progresso', 'Modal', 'Toast', 'Aviso persistente',
   'Estado vazio', 'Esqueleto', 'Linha de frase',
 ];
 
@@ -349,7 +349,7 @@ test('o toast fica mais tempo quanto maior o texto', async ({ page, paginas }) =
 test('o aviso persistente fica até ser fechado e tem Detalhes recolhido', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  const aviso = page.locator('[data-tema="escuro"] .veio-aviso');
+  const aviso = page.locator('[data-tema="escuro"] .veio-aviso[role="alert"]');
   await expect(aviso).toBeVisible();
   await expect(aviso).toHaveAttribute('role', 'alert');
   await expect(aviso).toContainText('As frases foram apagadas deste computador');
@@ -373,7 +373,27 @@ test('o aviso persistente fica até ser fechado e tem Detalhes recolhido', async
   await expect(detalhesAbertos).toBeVisible();
   await aviso.getByRole('button', { name: 'Ocultar' }).click();
   await expect(aviso.locator('.veio-aviso__detalhes pre')).toBeHidden();
-  await expect(page.locator('[data-tema="escuro"] .veio-aviso')).toBeVisible();
+  await expect(page.locator('[data-tema="escuro"] .veio-aviso[role="alert"]')).toBeVisible();
+});
+
+test('o aviso que só informa é neutro, fala sem alarme e abre com a 1ª frase em negrito', async ({ page, paginas }) => {
+  await abrirVitrine(page, paginas);
+
+  const info = page.locator('[data-tema="escuro"] .veio-aviso--info');
+  await expect(info).toBeVisible();
+  await expect(info).toHaveAttribute('role', 'status');
+  await expect(info.locator('strong')).toHaveText('Leitura cancelada.');
+  await expect(info).toContainText('Leitura cancelada. 2 fotos ficaram sem ler; as frases das fotos já lidas continuam aqui.');
+  await expect(info.locator('.veio-aviso__texto svg')).toHaveCount(1);
+
+  // Neutro: nem a borda nem o fundo são os do erro.
+  const cores = await page.locator('[data-tema="escuro"]').evaluate(coluna => {
+    const erro = getComputedStyle(coluna.querySelector('.veio-aviso[role="alert"]'));
+    const neutro = getComputedStyle(coluna.querySelector('.veio-aviso--info'));
+    return { erro: [erro.borderColor, erro.backgroundColor], neutro: [neutro.borderColor, neutro.backgroundColor] };
+  });
+  expect(cores.neutro[0]).not.toBe(cores.erro[0]);
+  expect(cores.neutro[1]).not.toBe(cores.erro[1]);
 });
 
 /* ── Palavra grifada ──────────────────────────────────────────────────────── */
@@ -523,7 +543,14 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
       // textContent, e não innerText: o cabeçalho de data é escrito "hoje" e
       // só aparece em maiúsculas por causa do text-transform. O que se compara
       // com o catálogo é a cópia escrita, não a caixa que o CSS dá a ela.
-      .map(no => no.textContent.trim())
+      // A abertura em negrito de um aviso é uma parte do estado, e o resto é
+      // outra: cada uma é conferida sozinha.
+      .flatMap(no => {
+        const abertura = no.matches('.veio-aviso__texto') && no.querySelector(':scope > strong');
+        if (!abertura) return [no.textContent];
+        return [abertura.textContent, no.textContent.slice(no.textContent.indexOf(abertura.textContent) + abertura.textContent.length)];
+      })
+      .map(texto => texto.trim())
       .filter(texto => texto !== '');
   });
 

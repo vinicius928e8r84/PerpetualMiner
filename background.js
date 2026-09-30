@@ -110,7 +110,24 @@ function registrarMenuDeContexto() {
   });
 }
 
-chrome.runtime.onInstalled.addListener(() => registrarMenuDeContexto());
+chrome.runtime.onInstalled.addListener(aoInstalar);
+
+/**
+ * O menu de contexto é criado como sempre; só a instalação (não a atualização)
+ * abre a Boas-vindas numa aba (item 8 da lista fechada, ONB-01) e deixa a
+ * configuração começada em `pm_boas_vindas`, que põe o lembrete “Configuração
+ * pela metade” no popup e em Frases até ela chegar a Tudo pronto (item 9,
+ * lib/configuracao.js). Quem atualiza nunca passou pela Boas-vindas: sem a
+ * chave, não vê lembrete.
+ */
+async function aoInstalar(detalhes) {
+  registrarMenuDeContexto();
+  if (detalhes?.reason === 'install') {
+    // A aba abre mesmo com o disco recusando: sem a chave, só falta o lembrete.
+    await chrome.storage.local.set({ pm_boas_vindas: { agoraNao: [], concluida: false } }).catch(() => {});
+    chrome.tabs.create({ url: chrome.runtime.getURL('painel.html#boas-vindas') });
+  }
+}
 
 chrome.contextMenus.onClicked.addListener(minerarSelecaoDoMenu);
 

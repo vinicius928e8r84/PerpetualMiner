@@ -106,6 +106,54 @@ textarea {
   padding: 0;
 }
 
+/* ── O lembrete “Configuração pela metade” (ONB-14): o cartão é o botão ── */
+
+.popup-lembrete {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid color-mix(in srgb, var(--veio-accent) 45%, var(--veio-border));
+  border-radius: var(--veio-raio-card);
+  background: color-mix(in srgb, var(--veio-accent) 5%, var(--veio-surface));
+  color: var(--veio-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.popup-lembrete[hidden] {
+  display: none;
+}
+
+.popup-lembrete__anel {
+  display: flex;
+}
+
+.popup-lembrete__texto {
+  min-width: 0;
+}
+
+.popup-lembrete__texto > b {
+  display: block;
+  font-size: var(--veio-tam-apoio);
+}
+
+.popup-lembrete__texto > span {
+  display: block;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+}
+
+.popup-lembrete__continuar {
+  margin-left: auto;
+  color: var(--veio-accent-text);
+  font-size: var(--veio-tam-tecla-resumo);
+  font-weight: var(--veio-peso-titulo);
+  white-space: nowrap;
+}
+
 /* ── Mineração automática: dois azulejos EN | RU ── */
 
 .popup-azulejos {

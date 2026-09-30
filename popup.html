@@ -10,7 +10,8 @@
 </head>
 <!--
   Popup “Cockpit” (docs/design/popup/, variante A): uma pilha de 340 px, de cima
-  para baixo — marca, Abrir painel, Mineração automática, mineração rápida, as
+  para baixo — marca, o lembrete da configuração (só enquanto ela está pela
+  metade), Abrir painel, Mineração automática, mineração rápida, as
   5 últimas só leitura e o rodapé com o atalho de legenda. Toda a cópia vem do
   catálogo da Voz, escrita por popup.js; aqui só mora a estrutura.
 -->
@@ -22,6 +23,13 @@
   </header>
 
   <main class="popup-corpo">
+
+    <!-- O lembrete “Configuração pela metade” (ONB-14): o cartão inteiro é o botão. -->
+    <button type="button" class="popup-lembrete" id="lembrete" hidden>
+      <span class="popup-lembrete__anel" id="lembrete-anel"></span>
+      <span class="popup-lembrete__texto"><b id="lembrete-titulo"></b><span id="lembrete-corpo"></span></span>
+      <span class="popup-lembrete__continuar" id="lembrete-continuar"></span>
+    </button>
 
     <button type="button" class="veio-botao veio-botao--primario veio-botao--bloco" id="abrir-painel"></button>
 
@@ -52,7 +60,9 @@
   <script src="lib/voz/texto.js"></script>
   <script src="veio/componentes.js"></script>
   <script src="lib/idioma.js"></script>
+  <script src="lib/mineracao-rapida.js"></script>
   <script src="lib/atalhos.js"></script>
+  <script src="lib/configuracao.js"></script>
   <script src="lib/contexto.js"></script>
   <script src="popup.js"></script>
 </body>

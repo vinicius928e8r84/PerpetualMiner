@@ -7,7 +7,7 @@ A identidade compartilhada por todas as páginas da extensão. A spec travada es
 |---|---|
 | `tokens.css` | O único arquivo de tokens: cor, tipo, raio e movimento, mais as fontes empacotadas, a marca (cristal, nome e cursor) e a base de acessibilidade (foco visível e movimento reduzido). Toda página o inclui antes do CSS dela. |
 | `tema.js` | O tema escolhido em Configurações › Aparência: abre cada página no tema gravado antes da primeira pintura e acompanha a troca nas outras páginas abertas. Pendurado em `PerpetualMiner.Tema`. |
-| `componentes.css` | Os componentes base, uma vez só: botões, campos, toggle, checkbox, selos, `kbd`, controle segmentado, azulejo, modal, toast, aviso persistente, esqueleto e a linha de frase. Nenhuma cor é escrita aqui: tudo sai dos tokens. |
+| `componentes.css` | Os componentes base, uma vez só: botões, campos, toggle, checkbox, selos, `kbd`, controle segmentado, azulejo, anel de progresso, modal, toast, aviso persistente, esqueleto e a linha de frase. Nenhuma cor é escrita aqui: tudo sai dos tokens. |
 | `componentes.js` | O que os componentes precisam de JavaScript: o modal (foco inicial, foco preso, Esc, clique fora), o toast que some sozinho, o aviso com Detalhes, o grifo da Palavra e os ícones. Pendurado em `PerpetualMiner.Veio`. |
 | `fontes/*.woff2` | Manrope e JetBrains Mono, subsets latin + cyrillic. Nada vem do Google Fonts em runtime. |
 | `icones/` | A marca: `icone.svg` e os PNG 16/32/48/128 que o manifest usa na toolbar, e `icone-claro.svg`, a marca das páginas no tema claro. |
@@ -139,8 +139,19 @@ sombra suave das ilhas do Painel, que não flutuam), `--veio-destaque` (o
 rótulo do chip), `--veio-raio-tecla`, `--veio-esqueleto` e `--veio-peso-rotulo` (o peso dos
 rótulos da navegação do Painel; `peso-num` fica só para números),
 `--veio-raio-losango` (o canto do losango ouro que abre o título de seção do
-popup) e `--veio-tam-contador` (o número grande do azulejo da mineração
-automática, “7/20”).
+popup), `--veio-tam-contador` (o número grande do azulejo da mineração
+automática, “7/20”), `--veio-brilho-da-linha` e `--veio-raio-linha` (o brilho ouro e a ponta da
+linha que o overlay desenha sob o texto capturado).
+
+### O overlay redefine as fontes
+
+O Chrome ignora o `@font-face` dentro de uma sombra, então o overlay
+(`overlay.js`) registra as fontes empacotadas no documento do site pela API
+`FontFace`, com nomes só dele (`PerpetualMiner Manrope`, `PerpetualMiner
+JetBrains Mono`), e o `overlay.css` redefine `--veio-fonte-ui`,
+`--veio-fonte-display` e `--veio-fonte-mono` no `.pm` para apontar para esses
+nomes. É a única redefinição de token fora de `tokens.css`: a família é a
+mesma, só o nome com que ela é registrada muda.
 
 ### Diferenças conhecidas do protótipo
 

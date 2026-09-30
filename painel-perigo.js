@@ -20,7 +20,7 @@
 
 (function (raiz) {
   const { textoDaVoz } = raiz;
-  const { abrirModal } = raiz.Veio;
+  const { abrirConfirmacao } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
   const estado = { n: null, comConta: false };   // n: null até o painel.js contar
@@ -51,7 +51,7 @@
     const alcance = elemento('span', 'cfg-nota');
     const entrada = botao('veio-botao--perigo');
     entrada.id = 'btn-apagar-tudo';
-    entrada.addEventListener('click', abrirConfirmacao);
+    entrada.addEventListener('click', confirmarApagarTudo);
 
     const linha = elemento('div', 'cfg-linha',
       elemento('div', 'cfg-quem', elemento('b', 'cfg-nome', textoDaVoz('CFG-24.rotulo')), alcance),
@@ -81,32 +81,17 @@
   // ─── Modal ─────────────────────────────────────────────────────────────────
 
   /** “Apagar todas as 1.284 frases?”, com Cancelar (foco inicial) e o perigo preenchido. */
-  function abrirConfirmacao() {
+  function confirmarApagarTudo() {
     const { n, comConta } = estado;
     if (!estado.n) return;
 
-    const titulo = elemento('h2', 'veio-modal__titulo',
-      n === 1 ? textoDaVoz('CFG-17.tituloUma') : textoDaVoz('CFG-17.titulo', { n }));
-    titulo.id = 'cfg-perigo-modal-titulo';
-    const cancelar = botao('veio-botao--fantasma', textoDaVoz('CFG-17.cancelar'));
-    cancelar.dataset.focoSeguro = '';
-    const confirmar = botao('veio-botao--perigo-cheio', textoDaVoz('CFG-17.confirmar', { n }));
-
-    const dialogo = elemento('div', 'veio-modal', titulo,
-      elemento('p', 'veio-modal__corpo', textoDaVoz(comConta ? 'CFG-17.corpo' : 'CFG-17.corpoSemConta')),
-      elemento('div', 'veio-modal__acoes', cancelar, confirmar));
-    dialogo.setAttribute('role', 'dialog');
-    dialogo.setAttribute('aria-labelledby', titulo.id);
-
-    const scrim = elemento('div', 'veio-scrim', dialogo);
-    scrim.hidden = true;
-    document.body.append(scrim);
-
-    const modal = abrirModal(scrim, { aoFechar: () => scrim.remove() });
-    cancelar.addEventListener('click', () => modal.fechar());
-    confirmar.addEventListener('click', () => {
-      modal.fechar();
-      apagarTudo();
+    abrirConfirmacao({
+      id: 'cfg-perigo-modal',
+      titulo: n === 1 ? textoDaVoz('CFG-17.tituloUma') : textoDaVoz('CFG-17.titulo', { n }),
+      corpo: textoDaVoz(comConta ? 'CFG-17.corpo' : 'CFG-17.corpoSemConta'),
+      cancelar: textoDaVoz('CFG-17.cancelar'),
+      confirmar: textoDaVoz('CFG-17.confirmar', { n }),
+      aoConfirmar: () => apagarTudo(),
     });
   }
 

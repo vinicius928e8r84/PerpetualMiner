@@ -71,6 +71,9 @@
     // e ficaria em "Carregando…" para sempre. Deslogado, ele lê as locais daqui.
     geminiApiKey: '',
     ankiBridgePresets: [],
+    // A configuração começada na instalação e ainda não em Tudo pronto: o popup
+    // e Frases mostram o lembrete “Configuração pela metade” (ONB-14, ONB-15).
+    pm_boas_vindas: { agoraNao: [], concluida: false },
   };
 
   /** Copia o valor, como o storage do Chrome faz ao devolver o que guardou. */
