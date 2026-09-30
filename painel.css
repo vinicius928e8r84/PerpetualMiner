@@ -3380,12 +3380,34 @@ body {
   padding: 0;
 }
 
-.bv-controle > .veio-aviso__detalhes {
+/* Passo 6: o “Onde conseguir a chave” recolhido, numa caixa como no protótipo. */
+.bv-onde {
   margin: 12px 0 0;
+  padding: 8px 12px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-surface);
 }
 
-/* Passo 4: o status da Conexão com o Tentar de novo ao lado; desligada, os
-   3 passos e o Detalhes com Copiar. */
+.bv-onde > summary {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-rotulo);
+  cursor: pointer;
+}
+
+.bv-onde > p {
+  margin: 8px 0 0;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.bv-onde[hidden] {
+  display: none;
+}
+
+/* Passo 4: o status da Conexão com o Verificar de novo ao lado; desligada, os
+   3 passos. */
 .bv-conexao {
   display: flex;
   flex-wrap: wrap;

@@ -168,14 +168,15 @@ POP-05; failure is POP-06 under the field, text kept). Step 2: ONB-06 and the sa
 a recording): same storage, same refusal of a repeated shortcut. Nothing of the panel opens over the page: the Envio
 summary waits and opens once the person enters one of `Shell.AREAS_DO_PAINEL`. Step 3: ONB-07 and the Conta & sync card's
 body (`Conta.montarCartao`), the same Entrar com Google, sync state and CFG-07 as Configurações. Step 4: ONB-08.corpo, the
-Conexão status (BRG-01/BRG-02 with its dot, a `role="status"` region) with Tentar de novo, which is the F1's own retry
-(`Shell.tentarAConexaoDeNovo`, `aria-disabled` while conferring, gone once on), and — while the last `/health` answer
-was off — the three ONB-08 steps and the ONB-16 Detalhes with Copiar (`Anki.montarComoLigar`, shared with the area).
+Conexão status (BRG-01/BRG-02 with its dot, a `role="status"` region) with Verificar de novo (ONB-08.verificarDeNovo),
+which runs the F1's own retry (`Shell.tentarAConexaoDeNovo`, `aria-disabled` while conferring, gone once on), and — while
+the last `/health` answer was off — the three steps (ONB-08.passo1, .instalar, .verificar; no Detalhes and no Copiar here,
+the owner's call on the PR review, unlike the ONB-16 card of the area, which keeps ONB-08.passo1–3).
 Step 5: ONB-09, one row per language with the popup's switch and daily limit (POP-14, through `lib/mineracao-automatica.js`
 like the popup, following `pm_auto_miner_state_view`; a failure is POP-16 under the rows), and the
 ONB-10 note while the Conexão is off — turning a language on is still allowed. Step 6: ONB-11 and the Chave do Gemini
-card (`ChaveDoGemini.montar(…, { prefixo: 'bv' })`, same key, same CFG-16), with ONB-11.detalhes in a Detalhes while
-there is no key. The reminder (item 9) is below, in “Configuração pela metade”.
+card (`ChaveDoGemini.montar(…, { prefixo: 'bv' })`, same key, same CFG-16), with ONB-11.detalhes under an “Onde conseguir a
+chave” (ONB-11.onde, `.bv-onde`, like the prototype) while there is no key. The reminder (item 9) is below, in “Configuração pela metade”.
 
 ### Configuração pela metade (`lib/configuracao.js`, `painel-lembrete.js`, item 9 of the closed list)
 

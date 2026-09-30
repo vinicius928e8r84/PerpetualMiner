@@ -80,7 +80,7 @@ test('passo 3 com a conta: o nome e Sair da conta', async ({ page, extensao }) =
   await foto(page, 'passo-3-com-conta.png');
 });
 
-test('passo 4 com a Conexão desligada: o status, os 3 passos, Detalhes e Tentar de novo', async ({ page, extensao }) => {
+test('passo 4 com a Conexão desligada: o status, os 3 passos e Verificar de novo', async ({ page, extensao }) => {
   await abrir(page, extensao, 'anki');
   await foto(page, 'passo-4-desligada.png');
 });

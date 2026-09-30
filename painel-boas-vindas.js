@@ -27,11 +27,11 @@
 //   1  a mineração rápida do popup (SALVAR_HISTORICO com a Fonte `manual`);
 //   2  o gravador de Configurações › Atalhos (painel-atalhos.js);
 //   3  o card Conta & sync (painel-conta.js), com o Entrar com Google;
-//   4  o status da Conexão com o Anki, os 3 passos, o Detalhes com Copiar
-//      (painel-anki.js) e o Tentar de novo da F1 do shell;
+//   4  o status da Conexão com o Anki, os 3 passos e o Verificar de novo
+//      (a conferência da F1 do shell);
 //   5  os switches EN/RU e o limite por dia do popup, pelas mesmas mensagens ao
 //      service worker, com a nota ONB-10 enquanto a Conexão está desligada;
-//   6  o card Chave do Gemini (painel-chave.js).
+//   6  o card Chave do Gemini (painel-chave.js), com o Onde conseguir a chave.
 // Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
@@ -112,7 +112,7 @@
   let rodapeDesenhadoPara = null;   // a tela (e o Agora não) do rodapé na tela agora
   let passo4 = null;                // as partes do passo 4 que seguem a Conexão
   let passo5 = null;                // as do passo 5: a nota, as linhas dos idiomas, a falha
-  let detalhesDaChave = null;       // o ONB-11.detalhes do passo 6, só sem chave
+  let ondeConseguirAChave = null;   // o “Onde conseguir a chave” (ONB-11) do passo 6, só sem chave
 
   // ─── Início ────────────────────────────────────────────────────────────────
 
@@ -346,8 +346,8 @@
 
   /**
    * O status da Conexão (BRG-01/BRG-02, numa região que anuncia a mudança) com o
-   * Tentar de novo da F1 do shell ao lado, e, enquanto ela não responde, os 3
-   * passos e o Detalhes com Copiar da área Conexão com o Anki.
+   * Verificar de novo (a conferência da F1 do shell) ao lado, e, enquanto ela
+   * não responde, os 3 passos.
    */
   function montarPasso4() {
     const ponto = elemento('span', 'bv-ponto');
@@ -356,7 +356,7 @@
     const status = elemento('p', 'bv-status', ponto, texto);
     status.setAttribute('role', 'status');
 
-    const tentar = elemento('button', 'veio-botao veio-botao--primario veio-botao--compacto', textoDaVoz('ONB-08.tentarDeNovo'));
+    const tentar = elemento('button', 'veio-botao veio-botao--primario veio-botao--compacto', textoDaVoz('ONB-08.verificarDeNovo'));
     tentar.type = 'button';
     tentar.addEventListener('click', () => {
       // Conferindo, o botão fica indisponível sem sair do foco.
@@ -365,8 +365,8 @@
     });
 
     const passos = elemento('ol', 'anki-passos',
-      ...['passo1', 'passo2', 'passo3'].map(parte => elemento('li', null, textoDaVoz(`ONB-08.${parte}`))));
-    const comoLigar = elemento('div', 'bv-como-ligar', passos, raiz.Anki.montarComoLigar());
+      ...['passo1', 'instalar', 'verificar'].map(parte => elemento('li', null, textoDaVoz(`ONB-08.${parte}`))));
+    const comoLigar = elemento('div', 'bv-como-ligar', passos);
     comoLigar.hidden = true;
 
     passo4 = { ponto, texto, tentar, comoLigar };
@@ -498,9 +498,11 @@
   function montarPasso6() {
     const cartao = elemento('div', 'cfg-corpo bv-cartao');
     raiz.ChaveDoGemini.montar(cartao, { prefixo: 'bv' });
-    detalhesDaChave = Veio.montarDetalhes(textoDaVoz('ONB-11.detalhes'));
-    detalhesDaChave.hidden = true;
-    const controle = elemento('div', 'bv-controle', cartao, detalhesDaChave);
+    ondeConseguirAChave = elemento('details', 'bv-onde',
+      elemento('summary', null, textoDaVoz('ONB-11.onde')),
+      elemento('p', null, textoDaVoz('ONB-11.detalhes')));
+    ondeConseguirAChave.hidden = true;
+    const controle = elemento('div', 'bv-controle', cartao, ondeConseguirAChave);
     return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-11.corpo')), controle);
   }
 
@@ -532,8 +534,8 @@
 
     desenharLista();
     desenharAtalhoDoPasso1();
-    // Até a primeira leitura não se sabe se há chave: o Detalhes espera, para não piscar.
-    detalhesDaChave.hidden = !estado.configuracao || Boolean(estado.configuracao.estado.chave);
+    // Até a primeira leitura não se sabe se há chave: o Onde conseguir a chave espera, para não piscar.
+    ondeConseguirAChave.hidden = !estado.configuracao || Boolean(estado.configuracao.estado.chave);
     desenharResumo();
     desenharRodape(tela, passo);
   }

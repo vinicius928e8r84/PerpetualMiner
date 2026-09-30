@@ -302,7 +302,7 @@ test('passo 3: um login que falha diz CFG-07 no próprio passo', async ({ page, 
 
 // ─── Passo 4: Ligar a Conexão com o Anki ─────────────────────────────────────
 
-test('passo 4: desligada, o status, os 3 passos, Detalhes e Tentar de novo; ligar e tentar de novo marca o passo', async ({ page, extensao, fakes }) => {
+test('passo 4: desligada, o status, os 3 passos e Verificar de novo; ligar e verificar de novo marca o passo', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirBoasVindas(page, extensao, 'anki');
 
@@ -310,30 +310,23 @@ test('passo 4: desligada, o status, os 3 passos, Detalhes e Tentar de novo; liga
   await expect(status).toHaveText('Conexão com o Anki: desligada');
   await expect(card(page).getByRole('listitem')).toHaveText([
     'Abra o Anki neste computador, com o complemento AnkiConnect.',
-    'Instale a Conexão com o Anki uma vez (veja Detalhes). Depois ela liga sozinha com o Windows.',
-    'Volte aqui e use Tentar de novo.',
+    'Instale a Conexão com o Anki uma vez. Depois ela liga sozinha com o Windows.',
+    'Volte aqui e use Verificar de novo.',
   ]);
-  await card(page).getByText('Detalhes', { exact: true }).filter({ visible: true }).click();
-  await expect(card(page)).toContainText('pip install -r bridge/requirements.txt');
+  // Sem Detalhes nem Copiar: o dono tirou os comandos deste passo.
+  await expect(card(page).getByText('Detalhes', { exact: true })).toHaveCount(0);
+  await expect(botaoDoCard(page, 'Copiar')).toHaveCount(0);
 
-  await botaoDoCard(page, 'Tentar de novo').click();
+  await botaoDoCard(page, 'Verificar de novo').click();
   await expect(status).toHaveText('Conexão com o Anki: desligada');
 
   fakes.anki.ligar();
-  await botaoDoCard(page, 'Tentar de novo').click();
+  await botaoDoCard(page, 'Verificar de novo').click();
   await expect(status).toHaveText('Conexão com o Anki: ligada');
   await expect(itemDaLista(page, 'Ligar a Conexão com o Anki')).toHaveAccessibleName(/feito$/);
-  // Ligada, os passos e o Tentar de novo saem: não há mais o que fazer.
+  // Ligada, os passos e o Verificar de novo saem: não há mais o que fazer.
   await expect(card(page).getByRole('listitem')).toHaveCount(0);
-  await expect(botaoDoCard(page, 'Tentar de novo')).toHaveCount(0);
-});
-
-test('passo 4: Copiar põe os comandos no clipboard e diz “Comandos copiados”', async ({ page, extensao, fakes }) => {
-  fakes.anki.desligar();
-  await abrirBoasVindas(page, extensao, 'anki');
-
-  await botaoDoCard(page, 'Copiar').click();
-  await expect(page.locator('.veio-toast')).toHaveText('Comandos copiados');
+  await expect(botaoDoCard(page, 'Verificar de novo')).toHaveCount(0);
 });
 
 // ─── Passo 5: Ligar a mineração automática ───────────────────────────────────
@@ -401,7 +394,7 @@ test('passo 6: o campo de Configurações › Chave do Gemini; salvar grava a ch
   await expect(campo).toHaveAttribute('aria-invalid', 'true');
   await expect(card(page)).toContainText('Cole a chave antes de salvar');
 
-  await card(page).getByText('Detalhes', { exact: true }).filter({ visible: true }).click();
+  await card(page).getByText('Onde conseguir a chave', { exact: true }).filter({ visible: true }).click();
   await expect(card(page)).toContainText('No Google AI Studio, em “Get API key”.');
 
   await campo.fill('  AIzaSyExemplo1234  ');
