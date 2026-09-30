@@ -362,13 +362,14 @@ The `#anki/ajustes` tab (variant C): the Inglês · Russo tiles (`aria-pressed`)
 `::` levels as ›, and “· foto real” / “· gerada por IA”; the form below is the chosen language's: Baralho (blank goes back
 to the Baralho padrão, said under the field), Imagens (Foto real (Google) · Gerada por IA, with the cost note under it),
 **Salvar ajustes** (Enter in a field saves too) and, in the dashed Avançado, the audio accents (Sotaque da palavra ·
-Sotaque da frase; blank goes back to the language's default). Nothing is written until Salvar ajustes; saving writes only
+Sotaque da frase), chosen by place name in a select (Estados Unidos, Reino Unido, Austrália…; the Google domain stays
+behind it, and a stored domain outside the list is kept as its own option). Nothing is written until Salvar ajustes; saving writes only
 the language on screen and shows the BRG-07 toast. Each language's draft survives switching tiles. With the Conexão off
 the tab stays editable, with the BRG-33 note (drawn by `painel-anki.js`).
 
 Each language in `ankiBridgePresets` carries a `versao`. The form remembers the version it read; `AjustesDeEnvio.salvar`
 refuses when the stored one moved (another tab saved that language meanwhile): nothing is written, and the persistent
-aviso (BRG-07.desatualizada) offers **Mostrar os ajustes novos**, which swaps the draft for what was saved. A tab without
+aviso (BRG-07.desatualizada) offers **Ver os novos**, which swaps the draft for what was saved. A tab without
 a draft follows another tab's save at once (`acompanhar`). The Envio reads the stored ajustes when it creates each Envio
 (never an in-memory copy from when the panel opened) and never writes them; Baralhos e termos and Vocabulário ask for the
 same decks, and the service worker's automatic Palavra falls back to the same Baralho padrão. The bridge keeps its own

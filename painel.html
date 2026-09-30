@@ -226,7 +226,7 @@
         <div class="veio-aviso shell-faixa" id="shell-faixa-conexao" role="status" hidden>
           <p class="veio-aviso__texto" data-voz="ENV-01.aviso"></p>
           <div class="veio-aviso__acoes">
-            <button id="shell-tentar-de-novo" class="veio-botao veio-botao--contorno" type="button" data-voz="ENV-01.tentarDeNovo"></button>
+            <button id="shell-tentar-de-novo" class="veio-botao veio-botao--contorno veio-botao--compacto" type="button" data-voz="ENV-01.tentarDeNovo"></button>
           </div>
         </div>
 
@@ -385,15 +385,20 @@
               <details class="anki-avancado" id="ajustes-avancado">
                 <summary><span data-voz="BRG-32.titulo"></span> <small>· <span data-voz="BRG-07.avancado"></span></small></summary>
                 <div class="anki-avancado__corpo">
-                  <p class="anki-apoio ajustes-sotaque" id="ajustes-sotaque"></p>
+                  <p class="ajustes-sotaque-idioma" id="ajustes-sotaque-idioma"></p>
+                  <p class="anki-apoio" data-voz="BRG-07.sotaque"></p>
                   <div class="ajustes-sotaques">
                     <label class="ajustes-campo">
                       <span class="ajustes-campo__rotulo" data-voz="BRG-07.sotaquePalavra"></span>
-                      <input class="veio-campo ajustes-campo--mono" id="ajustes-sotaque-palavra" type="text" autocomplete="off" spellcheck="false">
+                      <span class="veio-select">
+                        <select class="veio-campo" id="ajustes-sotaque-palavra"></select>
+                      </span>
                     </label>
                     <label class="ajustes-campo">
                       <span class="ajustes-campo__rotulo" data-voz="BRG-07.sotaqueFrase"></span>
-                      <input class="veio-campo ajustes-campo--mono" id="ajustes-sotaque-frase" type="text" autocomplete="off" spellcheck="false">
+                      <span class="veio-select">
+                        <select class="veio-campo" id="ajustes-sotaque-frase"></select>
+                      </span>
                     </label>
                   </div>
                 </div>

@@ -252,6 +252,39 @@ body {
   margin-bottom: 14px;
 }
 
+/* A faixa da Conexão desligada e o aviso dos Ajustes: baixos, com a ação ao
+   lado; a da Conexão abre com o ponto vermelho, como o do item da sidebar. */
+.shell-faixa,
+.ajustes-aviso .veio-aviso {
+  align-items: center;
+  padding: 8px 12px;
+}
+
+.shell-faixa .veio-aviso__acoes,
+.ajustes-aviso .veio-aviso__acoes {
+  align-items: center;
+}
+
+.ajustes-aviso .veio-botao:not(.veio-botao-icone) {
+  padding: 6px 12px;
+  font-size: var(--veio-tam-apoio);
+}
+
+.shell-faixa .veio-aviso__texto {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.shell-faixa .veio-aviso__texto::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--veio-danger);
+}
+
 .shell-abas {
   margin-bottom: 14px;
 }
@@ -1424,9 +1457,9 @@ body {
   font-size: var(--veio-tam-legenda);
 }
 
-.ajustes-campo--mono,
-.ajustes-dominio {
-  font-family: var(--veio-fonte-mono);
+.ajustes-sotaque-idioma {
+  margin: 0;
+  font-weight: var(--veio-peso-titulo);
 }
 
 .ajustes-cartao__acoes {

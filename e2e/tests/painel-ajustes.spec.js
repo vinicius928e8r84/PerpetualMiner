@@ -142,25 +142,43 @@ test('o rascunho de um idioma sobrevive à troca de azulejo, e Salvar grava só 
   expect(gravado.en.deckName).toBe('Inglês::Mineradas');
 });
 
-test('o sotaque do áudio fica no Avançado, recolhido, e é salvo com o resto', async ({ page, extensao }) => {
+test('o sotaque do áudio fica no Avançado, recolhido, escolhido pelo nome do lugar, e é salvo com o resto', async ({ page, extensao }) => {
   await abrirAjustes(page, extensao);
 
-  const palavra = page.getByRole('textbox', { name: 'Sotaque da palavra' });
+  const palavra = page.getByRole('combobox', { name: 'Sotaque da palavra' });
+  const frase = page.getByRole('combobox', { name: 'Sotaque da frase' });
   await expect(palavra).toBeHidden();
   await expect(avancado(page)).toContainText('Avançado');
   await expect(avancado(page)).toContainText('sotaque do áudio');
   await avancado(page).locator('summary').click();
 
-  await expect(avancado(page)).toContainText('Sotaque do áudio: o domínio do Google usado na voz.');
-  await expect(palavra).toHaveValue('com');
-  await expect(page.getByRole('textbox', { name: 'Sotaque da frase' })).toHaveValue('co.uk');
-  await palavra.fill('com.au');
-  await page.getByRole('textbox', { name: 'Sotaque da frase' }).fill('');
+  await expect(avancado(page)).toContainText('Escolha o sotaque da voz que fala a palavra e a frase.');
+  await expect(avancado(page).getByText('Inglês', { exact: true })).toBeVisible();
+  // O gravado aparece pelo nome do lugar, sem o domínio do Google.
+  await expect(palavra.locator('option:checked')).toHaveText('Estados Unidos');
+  await expect(frase.locator('option:checked')).toHaveText('Reino Unido');
+  await expect(avancado(page)).not.toContainText('co.uk');
+  await palavra.selectOption({ label: 'Austrália' });
+  await frase.selectOption({ label: 'Índia' });
   await salvar(page).click();
 
   await expect(toasts(page)).toHaveText('Ajustes de envio salvos');
-  // Em branco, o sotaque também volta ao padrão.
-  expect((await ajustesGravados(extensao)).en).toMatchObject({ ttsWordTld: 'com.au', ttsPhraseTld: 'co.uk' });
+  expect((await ajustesGravados(extensao)).en).toMatchObject({ ttsWordTld: 'com.au', ttsPhraseTld: 'co.in' });
+});
+
+test('um sotaque gravado fora da lista continua escolhido e não se perde ao salvar', async ({ page, extensao }) => {
+  await abrirAjustes(page, extensao, {
+    gravado: { [CHAVE]: { ...AJUSTES, en: { ...AJUSTES.en, ttsWordTld: 'com.ng' } } },
+  });
+  await avancado(page).locator('summary').click();
+
+  const palavra = page.getByRole('combobox', { name: 'Sotaque da palavra' });
+  await expect(palavra.locator('option:checked')).toHaveText('com.ng');
+  await baralho(page).fill('Outro baralho');
+  await salvar(page).click();
+
+  await expect(toasts(page)).toHaveText('Ajustes de envio salvos');
+  expect((await ajustesGravados(extensao)).en).toMatchObject({ deckName: 'Outro baralho', ttsWordTld: 'com.ng' });
 });
 
 test('com a Conexão desligada, os ajustes continuam editáveis, com a nota BRG-33, e salvam', async ({ page, extensao, fakes }) => {
@@ -210,14 +228,14 @@ test('bug #9: a aba desatualizada não sobrescreve os ajustes que outra aba salv
 
   await salvar(page).click();
 
-  const aviso = page.getByRole('alert').filter({ hasText: 'Os ajustes de envio mudaram em outra aba do painel.' });
+  const aviso = page.getByRole('alert').filter({ hasText: 'Mudou em outra aba. Nada foi salvo aqui.' });
   await expect(aviso).toBeVisible();
   await expect(toasts(page)).toHaveCount(0);
   expect((await ajustesGravados(extensao)).en.deckName).toBe('Da segunda aba');
   // O rascunho fica na tela até a pessoa escolher trazer o que foi salvo.
   await expect(baralho(page)).toHaveValue('Da primeira aba');
 
-  await aviso.getByRole('button', { name: 'Mostrar os ajustes novos' }).click();
+  await aviso.getByRole('button', { name: 'Ver os novos' }).click();
   await expect(baralho(page)).toHaveValue('Da segunda aba');
   await expect(aviso).toBeHidden();
   await expect(baralho(page)).toBeFocused();

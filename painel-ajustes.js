@@ -3,7 +3,8 @@
 // A aba Ajustes de envio da Conexão com o Anki (docs/design/painel/anki/,
 // variante C): os azulejos Inglês · Russo mostram o baralho e a fonte de imagem
 // gravados; o formulário é do idioma escolhido (Baralho, em branco volta ao
-// padrão; Imagens, com a nota de custo; o sotaque do áudio no Avançado) e só
+// padrão; Imagens, com a nota de custo; o sotaque do áudio no Avançado, escolhido
+// por nome de lugar) e só
 // grava em Salvar ajustes.
 //
 // O rascunho de cada idioma sobrevive à troca de azulejo. O que outra aba salva
@@ -19,6 +20,20 @@
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
   const CODIGO_DO_IDIOMA = { en: 'BRG-28.codigoEn', ru: 'BRG-28.codigoRu' };
   const CAMPOS = ['deckName', 'imageSource', 'ttsWordTld', 'ttsPhraseTld'];
+  // Os sotaques da voz do Google, por nome de lugar: o domínio é o que o bridge
+  // recebe, e a pessoa não precisa saber qual é qual.
+  const SOTAQUES = {
+    en: [
+      ['com', 'BRG-07.sotaqueEstadosUnidos'],
+      ['co.uk', 'BRG-07.sotaqueReinoUnido'],
+      ['com.au', 'BRG-07.sotaqueAustralia'],
+      ['co.in', 'BRG-07.sotaqueIndia'],
+      ['ca', 'BRG-07.sotaqueCanada'],
+      ['ie', 'BRG-07.sotaqueIrlanda'],
+      ['co.za', 'BRG-07.sotaqueAfricaDoSul'],
+    ],
+    ru: [['ru', 'BRG-07.sotaqueRussia']],
+  };
   const porId = id => document.getElementById(id);
 
   const estado = {
@@ -31,7 +46,6 @@
 
   function iniciar() {
     montarAzulejos();
-    montarSotaque();
     const form = porId('ajustes-form');
     form.addEventListener('submit', salvar);
     form.addEventListener('input', lerFormulario);
@@ -186,10 +200,9 @@
     porId('ajustes-baralho').value = rascunho.deckName;
     porId('ajustes-baralho-ajuda').textContent = textoDaVoz('BRG-07.baralhoEmBranco', { baralho: AjustesDeEnvio.baralhoPadrao(lang) });
     porId('ajustes-imagens').value = rascunho.imageSource;
-    porId('ajustes-sotaque-palavra').value = rascunho.ttsWordTld;
-    porId('ajustes-sotaque-palavra').placeholder = AjustesDeEnvio.PADRAO[lang].ttsWordTld;
-    porId('ajustes-sotaque-frase').value = rascunho.ttsPhraseTld;
-    porId('ajustes-sotaque-frase').placeholder = AjustesDeEnvio.PADRAO[lang].ttsPhraseTld;
+    porId('ajustes-sotaque-idioma').textContent = nome;
+    preencherSotaque(porId('ajustes-sotaque-palavra'), lang, rascunho.ttsWordTld);
+    preencherSotaque(porId('ajustes-sotaque-frase'), lang, rascunho.ttsPhraseTld);
     desenharNotaDasImagens();
   }
 
@@ -198,16 +211,18 @@
     porId('ajustes-imagens-ajuda').textContent = textoDaVoz(gerada ? 'BRG-07.notaGeradaPorIa' : 'BRG-07.notaFotoReal');
   }
 
-  /** “Sotaque do áudio: … Exemplos: com (Estados Unidos), …”, com o domínio em mono. */
-  function montarSotaque() {
-    const exemplos = ['exemploEstadosUnidos', 'exemploReinoUnido', 'exemploAustralia'].map(parte => {
-      const texto = textoDaVoz(`BRG-07.${parte}`);
-      const espaco = texto.indexOf(' ');
-      return [elemento('span', 'ajustes-dominio', texto.slice(0, espaco)), texto.slice(espaco)];
-    });
-    const partes = [textoDaVoz('BRG-07.sotaque'), ' '];
-    exemplos.forEach((exemplo, i) => partes.push(...exemplo, i < exemplos.length - 1 ? ', ' : '.'));
-    porId('ajustes-sotaque').replaceChildren(...partes);
+  /** As opções do idioma; um domínio gravado que não está na lista continua lá, com o próprio nome. */
+  function preencherSotaque(select, lang, dominio) {
+    const opcoes = SOTAQUES[lang].map(([valor, id]) => opcao(valor, textoDaVoz(id)));
+    if (!SOTAQUES[lang].some(([valor]) => valor === dominio)) opcoes.push(opcao(dominio, dominio));
+    select.replaceChildren(...opcoes);
+    select.value = dominio;
+  }
+
+  function opcao(valor, texto) {
+    const no = elemento('option', '', texto);
+    no.value = valor;
+    return no;
   }
 
   function elemento(tag, classe, ...filhos) {
