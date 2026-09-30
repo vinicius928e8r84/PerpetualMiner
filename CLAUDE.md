@@ -823,10 +823,16 @@ The legacy tests keep running: `node test_sync.js`, `node test_auto_keyword.js` 
 
 ## Permissions
 
-- `alarms`, `storage`, `unlimitedStorage`, `activeTab`, `tabs`, `contextMenus`, `identity` (`alarms` is the toolbar badge's day rollover)
+- `alarms`, `storage`, `unlimitedStorage`, `activeTab`, `tabs`, `contextMenus`, `identity` (`alarms` is the toolbar badge's day rollover, and the unpacked-folder auto-reload below; no permission was added for it)
 - `host_permissions`: Gemini API, Firestore, Google OAuth, Firebase token endpoints
 - Content scripts inject into all URLs with `all_frames: true`
 - `painel.html`, `bookreader.html`, `veio/tokens.css`, `veio/componentes.css`, `overlay.css`, `veio/icones/icone.svg` and `veio/fontes/*.woff2` declared as `web_accessible_resources`: the stylesheets, the tile and the fonts are what the in-page overlay loads inside its Shadow DOM
+
+## Testing on devices and the Chrome Web Store
+
+- `lib/auto-recarregar.js` (loaded by `background.js`): only when `chrome.management.getSelf()` says `installType === "development"`, a 1-minute alarm hashes the manifest, pages and scripts of the extension folder and calls `chrome.runtime.reload()` when they change (confirmed after 4 s, so a half-finished `git pull` never reloads). Store installs do nothing. Test: `e2e/tests/atualizacao-automatica.spec.js` (runs on a temp copy of the extension).
+- `scripts/atualizar-extensao.sh` (+ `scripts/com.perpetualminer.atualizar.plist.exemplo`) keeps a clone on `main` up to date with `git pull --ff-only`; see `docs/instalar-extensao.md`.
+- `node scripts/empacotar-extensao.mjs` writes `dist/perpetualminer-<version>.zip` (runtime files only, manifest validated; `node test_empacotar.js` checks it); see `docs/publicar-chrome-web-store.md`, which ends with the manifest permissions the store may question.
 
 ## Agent skills
 

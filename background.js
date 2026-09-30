@@ -4,6 +4,9 @@
 importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/ajustes-de-envio.js');
 const { textoDaVoz, detectarIdioma, IDIOMAS } = PerpetualMiner;
 
+// Em pasta descompactada, recarrega a extensão quando os arquivos mudam.
+importScripts('lib/auto-recarregar.js');
+
 const FIREBASE_PROJECT  = 'perpetualminer-4c219';
 const FIRESTORE_BASE    = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
 const FB_REFRESH_URL    = `https://securetoken.googleapis.com/v1/token?key=AIzaSyDrbDVUvv8wyoYqjCr5jEMBJPPsIP2k1Ak`;
