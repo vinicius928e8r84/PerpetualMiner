@@ -57,31 +57,17 @@ assert(!('key' in manifestoDoZip), 'o manifest dentro do zip não pode ter "key"
 const { key, ...restoDoRepo } = manifestoDoRepo;
 assert.deepStrictEqual(manifestoDoZip, restoDoRepo, 'o manifest do zip só pode diferir pela "key"');
 
-// Todo host declarado tem justificativa em docs/publicar-chrome-web-store.md.
-// Os do Firebase (`*.firebaseio.com`, `*.firebaseapp.com`) nunca foram chamados
-// por nenhum código e saíram do manifest; quem precisar de um host novo o
-// acrescenta aqui junto com a justificativa da loja.
-const HOSTS_JUSTIFICADOS = [
-  'http://127.0.0.1:8766/*',
-  'http://localhost:8766/*',
-  'https://generativelanguage.googleapis.com/*',
-  'https://firestore.googleapis.com/*',
-  'https://www.googleapis.com/*',
-  'https://securetoken.googleapis.com/*',
-  'https://identitytoolkit.googleapis.com/*',
-];
-const hostsDeclarados = manifestoDoRepo.host_permissions;
-for (const host of ['https://*.firebaseio.com/*', 'https://*.firebaseapp.com/*']) {
-  assert(!hostsDeclarados.includes(host), `host sem uso no manifest: ${host}`);
-}
-for (const host of hostsDeclarados) {
-  assert(HOSTS_JUSTIFICADOS.includes(host), `host sem justificativa conhecida: ${host}`);
-}
-assert.deepStrictEqual(manifestoDoZip.host_permissions, hostsDeclarados, 'o zip declara outros hosts que o repositório');
-const justificativas = fs.readFileSync('docs/publicar-chrome-web-store.md', 'utf8');
-for (const host of hostsDeclarados) {
-  assert(justificativas.includes(`\`${host}\``), `falta a justificativa de ${host} em docs/publicar-chrome-web-store.md`);
-}
+// O guia da loja é a fonte única dos hosts: o bloco "Host permission use" cita,
+// entre crases, exatamente os hosts do manifest (nem a mais, nem a menos).
+const guiaDaLoja = fs.readFileSync('docs/publicar-chrome-web-store.md', 'utf8');
+const bloco = guiaDaLoja.match(/\*\*Campo "Host permission use"\*\*[^\n]*\n\n(> [^\n]*)/);
+assert(bloco, 'falta o bloco "Host permission use" em docs/publicar-chrome-web-store.md');
+const hostsDoBloco = [...bloco[1].matchAll(/`(https?:\/\/[^`]+)`/g)].map(m => m[1]);
+assert.deepStrictEqual(
+  [...hostsDoBloco].sort(),
+  [...manifestoDoRepo.host_permissions].sort(),
+  'os hosts do bloco "Host permission use" do guia da loja diferem dos do manifest'
+);
 
 fs.rmSync(saida, { recursive: true, force: true });
 console.log('empacotar tests passed');

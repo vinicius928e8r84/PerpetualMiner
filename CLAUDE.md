@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**PerpetualMiner** (v5.0.1) is a Chrome browser extension (Manifest V3) that captures text from multiple sources — streaming subtitles, selected text on any page, and physical book photos — into a study history. No build step required — pure vanilla JavaScript.
+**PerpetualMiner** is a Chrome browser extension (Manifest V3) that captures text from multiple sources — streaming subtitles, selected text on any page, and physical book photos — into a study history. No build step required — pure vanilla JavaScript.
 
 ## Loading the Extension
 
@@ -52,7 +52,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `lib/arquivos-da-extensao.js` | `PerpetualMiner.arquivosDaExtensao(lerTexto)` — the files the extension uses at run time, found from `manifest.json` (service worker and its `importScripts`, content scripts, icons, pages and what they load). Read by `lib/auto-recarregar.js` and by `scripts/empacotar-extensao.mjs`, so the two never disagree |
 | `lib/auto-recarregar.js` | `PerpetualMiner.AutoRecarregar.iniciar()` — called at the top of `background.js`; reloads an unpacked (`development`) extension when its files change. See “Testing on devices and the Chrome Web Store” below |
 | `scripts/` | `atualizar-extensao.sh` (+ the launchd `.plist` example) keeps a clone on `main` up to date; `empacotar-extensao.mjs` builds the Web Store zip; `arquivos-do-pacote.js` says which repository files are run-time and which never ship (shared by the packager, `test_empacotar.js` and the auto-update e2e). See `docs/instalar-extensao.md` and `docs/publicar-chrome-web-store.md` |
-| `test_empacotar.js` | Node test of the Web Store package contents |
+| `test_empacotar.js` | Node test of the Web Store package contents; also checks that the store guide's "Host permission use" block matches the manifest hosts |
 | `test_gemini.js` | Standalone Node.js script to list available Gemini models (not part of the extension) |
 | `e2e/` | Playwright suite that runs the unpacked extension in Chromium (own `package.json`; see Testing) |
 | `preview/` | The static site Vercel publishes per branch, so a visual change can be looked at in a browser: `montar.mjs` assembles it, `chrome-simulado.js` fakes `chrome.*` with sample data inside the copied pages. See `preview/README.md` |
@@ -828,7 +828,7 @@ The legacy tests keep running: `node test_sync.js`, `node test_auto_keyword.js` 
 ## Permissions
 
 - `alarms`, `storage`, `unlimitedStorage`, `activeTab`, `tabs`, `contextMenus`, `identity` (`alarms` is the toolbar badge's day rollover, and the unpacked-folder auto-reload below; no permission was added for it)
-- `host_permissions`: the local Anki connection (127.0.0.1/localhost:8766), Gemini API, Firestore, Google OAuth, Firebase token endpoints. No `*.firebaseio.com`/`*.firebaseapp.com` (nothing calls them); `test_empacotar.js` pins the list
+- `host_permissions`: the Conexão com o Anki (127.0.0.1/localhost:8766), Gemini API, Firestore, Google OAuth, Firebase token endpoints. No `*.firebaseio.com`/`*.firebaseapp.com` (nothing calls them); `test_empacotar.js` checks that the "Host permission use" block of `docs/publicar-chrome-web-store.md` lists exactly these
 - Content scripts inject into all URLs with `all_frames: true`
 - `painel.html`, `bookreader.html`, `veio/tokens.css`, `veio/componentes.css`, `overlay.css`, `veio/icones/icone.svg` and `veio/fontes/*.woff2` declared as `web_accessible_resources`: the stylesheets, the tile and the fonts are what the in-page overlay loads inside its Shadow DOM
 
