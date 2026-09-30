@@ -34,10 +34,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-chave.js` | The Configurações › Chave do Gemini card: the saved key masked, with Trocar chave; the empty key's field; `geminiApiKey`. See “Chave do Gemini and Zona de perigo” below |
 | `painel-perigo.js` | The Configurações › Zona de perigo card: the Apagar tudo entry, its reach with and without an account, and the Veio confirmation modal (CFG-17). See “Chave do Gemini and Zona de perigo” below |
 | `painel-anki.js` | The Conexão com o Anki area: its connection states (Conectando, Nunca conectada with the ONB-16 card, Desligada with the last data) and the Custos tab (BRG-03…04, 12, 22, 25…33). See “Conexão com o Anki” below |
+| `painel-anki-baralhos.js` | `PerpetualMiner.Baralhos` — Baralhos e termos, Vocabulário and Reparar Anki in the Conexão com o Anki area (BRG-10…21, 27, 34…36, GLB-01). See “Baralhos e termos, Vocabulário and Reparar Anki” below |
 | `painel-envio.js` | The Envio ao Anki: Enviar ao Anki in the Frases bar, the progress modal (one card per Envio), the tracking saved in `pm_envio` and the summary (ENV-03…15) that opens by itself in any area. See “Envio ao Anki” below |
 | `bookreader.html/js/css` | Minerar de uma foto (ex-BookReader): photos of marked book pages → Gemini Vision reads the marked passages → the person picks which phrases to mine. See “Minerar de uma foto” below |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens + the mark's blinking cursor), `tema.js` (the chosen theme, applied before the first paint on every page), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (packaged Manrope and JetBrains Mono `.woff2`, latin + cyrillic), `icones/` (the toolbar PNGs, the SVG mark and `icone-claro.svg`, which `.veio-marca` swaps in on the light theme through `--veio-marca`). See `veio/README.md` |
-| `lib/voz/catalogo.js` | The runtime Voice catalog as data; design and voice rules are in `docs/design/voz/` |
+| `lib/voz/catalogo.js` | The runtime Voice catalog as data; approved copy and voice rules are in `docs/design/voz/README.md` |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — looks a state up by ID and fills its templates |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/contexto.js` | `PerpetualMiner.Contexto` — the Contexto as the screen says it: the Fonte's name (PAI-29, `fonteDaFrase`, `nomeDaFonte`), the phrase's day (PAI-11, `rotuloDoDia`) and how long ago something happened (`haQuanto`: agora · há 5 min · há 2 h · ontem). Loaded by the panel and the popup, so a phrase never has two names |
@@ -122,8 +123,8 @@ the screen but stay as the links' names (visually hidden, not `display: none`) a
 
 Until an area is rebuilt, today's content lives inside the shell in `.conteudo-de-hoje` blocks marked
 `data-tema="claro"`: its CSS was drawn for a light background. Frases has none left: #30 and #31 rebuilt its bulk
-actions. In the Anki area only Custos is rebuilt (#33); Baralhos e termos, Vocabulário and Ajustes de envio are still
-today's content until their own tickets.
+actions. In the Anki area Custos (#33), Baralhos e termos and Vocabulário (#34) are rebuilt; Ajustes de envio is still
+today's content until its own ticket.
 
 Configurações is the “summary first” variant C (`docs/design/painel/configuracoes/`): each of the five cards (Conta & sync ·
 Atalhos · Chave do Gemini · Aparência · Zona de perigo) is one closed row — icon tile, title, a summary of its state, chevron — and
@@ -329,13 +330,14 @@ The area follows the Conexão state the shell reports (`aoMudarAConexao`):
   selo (“Mostrando dados de há 2 h…”, with the code in Detalhes) and the period controls set to that reading's
   period and disabled (another period would have nowhere to come from). **Continuar envio** and
   **Reparar Anki** get `aria-disabled` (still in the Tab order) with a `.veio-dica` tooltip (BRG-33) on hover and on keyboard focus (`:focus-visible`, so a click never leaves it open);
-  a press does nothing. Reparar Anki is still today's button: it loses its old `title` while the tooltip speaks. With
-  the Conexão off and nothing stored, Custos only says “Custo indisponível”: the why and Tentar de novo are the F1's.
+  a press does nothing. With the Conexão off and nothing stored, Custos only says “Custo indisponível”:
+  the why and Tentar de novo are the F1's.
   Ajustes de envio (still today's content) stays editable, with the BRG-33 note that it applies from the next Envio.
 
 **↻ Atualizar** (BRG-24) is one action, owned by `painel-anki.js`: it asks the shell for `/health` again
 (`Shell.conferirConexao`) and, only with the Conexão on, reads Custos again and calls whoever registered through
-`PerpetualMiner.Anki.aoAtualizar(fn)` — `painel.js` refreshes the decks there, with `launch=1` (“abre o Anki se precisar”).
+`PerpetualMiner.Anki.aoAtualizar(fn)` — `painel-anki-baralhos.js` re-reads the decks there, with `launch=1` (“abre o Anki se precisar”),
+and the vocabulary. `Anki.atualizar()` is the same action for whoever needs it (BRG-17's Atualizar).
 Off, nothing tries to open the Anki. BRG-04's Tentar de novo only re-reads Custos.
 
 The relative time (“agora”, “há 5 min”, “há 2 h”, then the PAI-11 day: ontem · há 3 dias) is `Contexto.haQuanto`
@@ -361,6 +363,48 @@ switches “Mostrar custos com 4 casas” (every value on the tab goes to 4 deci
 jobId joins the list, the detail and the diagnostics), both remembered on this computer, and Baixar diagnóstico per
 Envio (`GET /jobs/<id>/debug-bundle` saved as `diagnostico-<jobId>.json`; the download is the feedback, no toast;
 failure is BRG-23 inline).
+
+### Baralhos e termos, Vocabulário and Reparar Anki (`painel-anki-baralhos.js`)
+
+The two tabs read the decks of the Ajustes de envio, which `painel.js` reports through
+`PerpetualMiner.Baralhos.usarBaralhos({ en, ru })` on load and on every save (a new deck is read again). Both read on
+entering the Anki area with the Conexão on, when it comes back, and on ↻ Atualizar, **each on its own**: decks that
+fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
+
+- **Baralhos e termos** reads `GET /anki/stats/decks` with both decks at once (`deck`/`lang` repeated; `launch=1` on
+  entry, `refresh=1` on ↻ and after a repair). The tiles Inglês · Russo (`aria-pressed`, group BRG-34.idiomas) say
+  “EN · <deck>” and the words (`vocabulary.phraseVocabulary`); a deck the Anki does not have (`missing`) says “—” and
+  BRG-27, and its detail is BRG-14 with Abrir Ajustes de envio (→ `#anki/ajustes`). The chosen deck: the maturity ring
+  (an SVG `role="img"` named “66% de maturidade”: mature over all cards, recentes = `young + learning`), the big
+  number, “palavras diferentes nos cartões” and Cartões · Termos-alvo · Palavra nova por cartão (1 decimal) · Maduros ·
+  Recentes · Novos. Ring, bars and legend use the maturity series (ouro · info · muted). Read from the local file
+  (`source: 'collection.anki2'`): the BRG-13 note on top; the bridge's own stale cache: the BRG-12 selo (see the
+  [design states](docs/design/painel/anki/README.md#estados) for presentation by tab). Loading BRG-10 + skeleton;
+  failure is the persistent BRG-11 aviso with Reparar Anki, Tentar de
+  novo and the cause in Detalhes.
+- **Vocabulário** reads `GET /anki/vocabulary` of each language whole (`limit=10000`) and filters in the panel, so
+  each tile has the language's total and the search never waits for the network. Tipo (Palavras e termos · Só
+  palavras · Só termos), Status (Todos · Novos · Recentes · Maduros · Mistos) and the search (with ×), then BRG-21's
+  “N itens em inglês · mostrando N” (a polite live region) and the list × detail: a `listbox` (↑ ↓ Home End, at most
+  200 items; the filters narrow; the tile's total is the bridge's `totalWords`, which the 10.000 cap does not cut) whose options say “palavra · 4 cartões” and the status selo, and the item's detail
+  (Palavra/Termo · language, the maturity bar, Aparece em · Maduros · Recentes · Novos · Status). Nothing matches:
+  BRG-21's empty with Limpar busca (clears the search and both filters, focus to the search; only when there is
+  something to clear — a language with no items shows the same empty without it). Loading BRG-19 +
+  skeleton; failure is the persistent BRG-20 aviso with Tentar de novo.
+- **Reparar Anki** lives in Baralhos' Avançado (dashed, collapsed, “reparar Anki”, BRG-36) and in BRG-11 and BRG-18.
+  It `POST`s `/anki/repair` and **waits for the real repair** — the bridge closes the Anki and waits up to 90 s
+  (~110 s in all); the old 45 s abort said a working repair had failed (#9). `LIMITE_DO_REPARO_MS` (180 s) only
+  guards against a Conexão that never answers. While it runs `#anki-reparando` receives focus; see the
+  [design states](docs/design/painel/anki/README.md#estados) for the visible repair state. `ok` or
+  `after.collectionReady` → the BRG-16 toast and both tabs read again (`refresh=1`). `devolverOFoco` and
+  `focarAzulejo` restore focus for the Avançado and BRG-11 entry points, respectively. Windows refused to close it (`accessDenied`,
+  `anki_repair_access_denied`) → BRG-18, persistent, with Reparar Anki again and the PIDs in Detalhes; the repair ran
+  (the answer has `after`) and the Anki did not come back, or the panel's limit ran out → BRG-17 with Atualizar
+  (`Anki.atualizar()`); any other failure (already repairing, no answer) → GLB-01 with Reparar Anki. All keep the
+  cause in Detalhes and close with ×.
+
+A node that stays on screen across redraws (an aviso, the selo, the deck's detail) is reused while its input is the
+same (`oMesmo`), so focus and an open Detalhes survive the other tab's reading.
 
 ### Envio ao Anki (`painel-envio.js`)
 
@@ -655,6 +699,7 @@ Other storage keys:
 - `pm_apagar_tudo` — `{ uid, ate }` while an Apagar tudo hasn't reached the cloud; see the tombstone paragraph above
 - `pm_anki_ja_conectou` — `true` once the Conexão com o Anki answered `/health` on this computer (never written back to false): without it, an off Conexão shows the ONB-16 card instead of the tabs
 - `pm_anki_custos` — `{ quando, periodo, de, ate, envios }`, the last Custos reading (the `/analytics/jobs` rows), shown with BRG-12 while the Conexão is off
+- `pm_anki_baralhos` — `{ quando, dados }`, the last `GET /anki/stats/decks`; `pm_anki_vocabulario` — `{ quando, dados: { en, ru } }` (each `{ deckName, itens }`), the last vocabulary. Both are shown with BRG-12 while the Conexão is off
 - `pm_anki_quatro_casas` / `pm_anki_ids_dos_envios` — the Avançado switches “Mostrar custos com 4 casas” and “Mostrar IDs dos envios” (local on purpose: remembered on this computer)
 - `pm_boas_vindas` — `{ agoraNao: string[], concluida: boolean, lembreteOculto?: true }`: written by the install; the steps the person answered “Agora não” to, whether they reached Abrir painel in the Boas-vindas and whether they hid the “Configuração pela metade” reminder; everything else about a step is read from its real state. Absent (an update, not an install) → no reminder
 - `pm_envio` — `{ envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar }] }` (`id` is a `crypto.randomUUID()` that keys the Envio's card; `baralho` is the deck it was sent to): the Envios the panel is tracking until the summary is answered; see “Envio ao Anki”
@@ -704,7 +749,11 @@ npm test         # launches Chromium with the unpacked extension and runs the su
 On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx playwright install-deps chromium`, once.
 
 - `e2e/fixtures.js` launches a fresh Chromium profile per test with the repo root loaded as an unpacked extension (the extension arrives freshly installed, so the fixture waits for the Boas-vindas tab it opens and closes it; `test.use({ manterAbaDaInstalacao: true })` keeps it as `extensao.abaDaInstalacao`), fakes the network at the HTTP boundary and blocks every other external request. It gives tests `extensao` (id, service worker, `url()`, `lerStorage`/`gravarStorage`, `frases()`, `semearSessao()`), `fakes` and `paginas`.
-- `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`, with a stateful Envio queue following `bridge/server.py`: `moverEnvio`, `concluirEnvio({ duplicadas, falhas, erro, ankiError })`, `recusarEnvios(lang, { status } | { rede: true })`; the Custos rows of `GET /analytics/jobs`: `definirCustos(envios)`, `falharCustos({ status } | { rede: true })`, `voltarCustos()`, and `GET /jobs/<id>/debug-bundle`), Gemini (`responderFrases(frases)`, `falhar(status, mensagem)`, `ficarSemRede()`, `bloquear(motivo)` — a 200 with no text, the `promptFeedback.blockReason` —, `segurarFrases(frases)` — holds the photo in “Lendo…” until the returned function is called, which resolves once the answer went out (or the page had already given up on the request) — and `chamadas`, with the key and MIME type of each read), and Firestore/Google (in-memory documents, token refresh; `ficarForaDoAr()`, `recusarAcesso()`, `recusarEscritas()`, `expirarSessao()`, `gravarFrases(uid, frases)`, `usarPerfil({ name, email, picture })`, the profile the Google login returns). `semearSessao({ expirada })` writes an account session to storage, skipping the real login.
+- `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`, with a stateful Envio queue following `bridge/server.py`: `moverEnvio`, `concluirEnvio({ duplicadas, falhas, erro, ankiError })`, `recusarEnvios(lang, { status } | { rede: true })`; the Custos rows of `GET /analytics/jobs`: `definirCustos(envios)`, `falharCustos({ status } | { rede: true })`, `voltarCustos()`, and `GET /jobs/<id>/debug-bundle`; Baralhos e termos
+and Vocabulário: `definirBaralho(deckName, { palavras, cartoes, termos, porCartao, novos, aprendendo, recentes, maduros })`
+(an undefined deck is `missing`), `lerBaralhosDoArquivo()`, `falharBaralhos()`/`voltarBaralhos()`,
+`definirVocabulario(lang, [string | { word, type, maduros, recentes, novos }])`, `falharVocabulario()`/`voltarVocabulario()`;
+`POST /anki/repair` answers ok, and `responder('POST', '/anki/repair', …)` holds or fails it), Gemini (`responderFrases(frases)`, `falhar(status, mensagem)`, `ficarSemRede()`, `bloquear(motivo)` — a 200 with no text, the `promptFeedback.blockReason` —, `segurarFrases(frases)` — holds the photo in “Lendo…” until the returned function is called, which resolves once the answer went out (or the page had already given up on the request) — and `chamadas`, with the key and MIME type of each read), and Firestore/Google (in-memory documents, token refresh; `ficarForaDoAr()`, `recusarAcesso()`, `recusarEscritas()`, `expirarSessao()`, `gravarFrases(uid, frases)`, `usarPerfil({ name, email, picture })`, the profile the Google login returns). `semearSessao({ expirada })` writes an account session to storage, skipping the real login.
 - **The real Google login runs offline.** The `chrome.identity.launchWebAuthFlow` window loads outside Playwright's routing (a `context.route` never sees it), so the fixture maps `accounts.google.com` to a local HTTPS server (`fakes/login-google.js`, self-signed certificate made with `openssl` per worker, `--host-resolver-rules` + `--ignore-certificate-errors`). `fakes.google.proximoLogin('entrar'|'janela'|'falhar')` picks what the window does: return with tokens, stay open (the test closes it: cancelling), or fail to load. This also keeps Chromium's own background calls to that host off the internet.
 - `e2e/pages/`: local fixture pages where the content script is injected: `player.html` (fake player with a caption), `texto.html` (plain text to select), `sem-video.html`, `player-em-iframe.html?player=<url>` (embeds the player from another origin, e.g. `paginas.urlCruzada('player.html')`), `hostil.html` + `hostil-filho.html` (a page that tries to drive the extension by itself), `player-marcacao.html` / `texto-marcacao.html` (caption, title and selectable text carrying markup as text, to prove the content script always inserts page text as text, never as HTML), `player-com-campos.html` (a player with an input, a textarea, a contenteditable and an input inside a closed shadow root, which the page keeps as `window.campoFechado`), `video-escondido.html` (an ad frame whose only video is 1 px, embedded through `player-em-iframe.html`), `sem-video-com-imagens.html` (image captions with the classes the generic caption selectors look for, and no video) and `player-estilos-hostis.html` (a page whose CSS paints everything, to prove the overlay's styles and the site's never cross).
 - `tests/overlay-marca.spec.js` covers the mark (#41): line and band measured against the site's text, the caption changing before or after the answer, selection on a page and in a `textarea`, the per-language counter and the automatic mining's fainter mark.
@@ -714,6 +763,11 @@ On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx pla
 - The showcase also carries a **mock of the toolbar badge** in its three states, outside the two theme columns — Chrome draws the real badge on the browser toolbar, which no static page (and so no Vercel preview) can show. The mock reads its colors from the tokens, and the badge test asserts those tokens match what the service worker hands Chrome, so the copy in `background.js` can't drift.
 - `tests/painel-frases-visual.spec.js` holds the **visual reference of the Frases list** (cards wide and as a rail, each at the top and with the island scrolled to the pagination; loading, first run, filters and search with no result as the full page; the selection bar, the card actions and the modals; Minerar frases: the menu, Colar filled and empty, the progress, Arquivo .txt, ADD-09 and the ADD-06 aviso; the ONB-15 “Configuração pela metade” strip, wide and narrow), in the same way: `npx playwright test painel-frases-visual --update-snapshots` after the owner approves a new look.
 - `tests/painel-anki-visual.spec.js` holds the **visual reference of the Conexão com o Anki**: Custos on (period, tiles, strip, images, list × detail), a partial Envio in the detail, the Avançado with 4 decimals and IDs, Conectando, Nunca conectada (ONB-16), Desligada with the last data and Continuar envio unavailable (its tooltip closed), the read error, loading, empty, the narrow window and the light theme; compared by the owner with the locked prototype (`docs/design/painel/anki/prototipo-anki.html?variant=C`).
+- `tests/painel-anki-baralhos-visual.spec.js` holds the **visual reference of Baralhos e termos and Vocabulário**
+  (with the prototype's numbers): the decks with the Avançado open, the local file with a missing deck, BRG-11,
+  BRG-15 with the Avançado hidden, BRG-18, the vocabulary list × detail, its empty, error, loading and last-data states, the narrow window
+  and the light theme; compared by the owner with the same locked prototype. `tests/painel-anki-baralhos.spec.js`
+  asserts their behaviour, including the two #9 bugs.
 - `tests/painel-envio-visual.spec.js` holds the **visual reference of the Envio ao Anki**: the progress with one Envio running and one that did not start, a partial Envio with Continuar envio, the summary partial and complete (opened in Configurações), and Enviar ao Anki unavailable with its tooltip.
 - `tests/painel-shell-visual.spec.js` holds the **visual reference of the panel shell**: its approved states (Frases wide and as a rail, first run, the Conexão off with F1, Configurações with an account) as `toHaveScreenshot` baselines in `painel-shell-visual.spec.js-snapshots/` (taken on Linux, with the clock frozen on the day of the sample phrases). A visual change to the shell fails them; after the owner approves the new look, `npx playwright test painel-shell-visual --update-snapshots` replaces the reference. The content inside each area (`.conteudo-de-hoje`, and the Frases list, which has its own reference) is masked: the reference is the shell around it.
 - `tests/popup-visual.spec.js` holds the **visual reference of the popup** (a normal day, the light theme, first run with and without a shortcut, a limit reached, the Conexão off with nothing mined today, a failed quick mining, loading, the ONB-14 “Configuração pela metade” card in both themes), at 340×600, compared by the owner side by side with the locked prototype (`?variant=A`).
