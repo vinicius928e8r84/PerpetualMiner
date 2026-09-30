@@ -434,7 +434,8 @@ take trusted events.
   an open pill bring it to 100%. Hover and keyboard focus also show the prototype's label to its left
   (`.pm-dica`, the owner's review of PR #72, which reverses #66's “no visible label”): “Minerar legenda” with the
   recorded shortcut in a `kbd` (`Veio.montarTecla`; no shortcut → the name alone) and, with the automatic mining on
-  for the caption's language, MIN-11 below it in `muted`. It is `aria-hidden` — the screen reader already hears the
+  for the caption's language, the day's count below it in `muted` without the language (`MIN-11.etiqueta`, “Mineração
+  automática: 8 de 15 hoje”; the screen reader still hears MIN-11 with it). It is `aria-hidden` — the screen reader already hears the
   same through the button's name and description — and never shows over an open pill. It lives in the player's container (so it stays in full screen) and only
   exists where there is a video.
 - **Mark (D of M1, #41):** one rule — the feedback marks the text where it is; when it can't, the button

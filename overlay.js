@@ -62,6 +62,8 @@
   let rotuloDoBotao = '';
   /** A etiqueta que aparece com o mouse ou o foco: o nome e a tecla do atalho gravado (ou nenhuma). */
   let etiquetaDoBotao = { nome: '', tecla: null };
+  /** A 2ª linha da etiqueta: o contador do dia sem o idioma (a meta e o leitor de tela já o dizem). */
+  let etiquetaDoContador = '';
   /** A marca na tela: `{ lugar, palavras, chave, quadro }`, ou null. */
   let marca = null;
 
@@ -196,17 +198,17 @@
     desenharEtiqueta();
   }
 
-  /** A etiqueta: o nome e o atalho; embaixo, com a mineração automática ligada, o contador em palavras (MIN-11). */
+  /** A etiqueta: o nome e o atalho; embaixo, com a mineração automática ligada, o contador do dia (MIN-11). */
   function desenharEtiqueta() {
     if (!partes) return;
-    const { dica, descricaoDoContador } = partes;
+    const { dica } = partes;
     const linha = elemento('span', 'pm-dica-nome');
     linha.append(etiquetaDoBotao.nome);
     if (etiquetaDoBotao.tecla) linha.append(raiz.Veio.montarTecla(etiquetaDoBotao.tecla));
     const conteudo = [linha];
-    if (descricaoDoContador.textContent) {
+    if (etiquetaDoContador) {
       const contagem = elemento('span', 'pm-dica-contador');
-      contagem.textContent = descricaoDoContador.textContent;
+      contagem.textContent = etiquetaDoContador;
       conteudo.push(contagem);
     }
     dica.replaceChildren(...conteudo);
@@ -219,11 +221,13 @@
   /**
    * O contador da mineração automática no canto do botão; `null` o esconde.
    *
-   * @param {{texto: string, noLimite: boolean, descricao: string}|null} contagem
+   * @param {{texto: string, noLimite: boolean, descricao: string, etiqueta: string}|null} contagem
    *   `texto` é o que a pílula ouro mostra (`9/15`); `descricao`, o que o leitor
-   *   de tela ouve junto com o nome do botão (MIN-11).
+   *   de tela ouve junto com o nome do botão (MIN-11); `etiqueta`, a 2ª linha da
+   *   etiqueta visível, sem o idioma.
    */
   function mostrarContador(contagem) {
+    etiquetaDoContador = contagem?.etiqueta || '';
     if (!partes) return;
     const { contador, botao, descricaoDoContador } = partes;
     contador.hidden = !contagem;

@@ -474,6 +474,9 @@ function atualizarAutoMinerBadge() {
         descricao: noLimite
             ? textoDaVoz('MIN-11.noLimite', { idioma })
             : textoDaVoz('MIN-11.contador', { idioma, n, limite }),
+        etiqueta: noLimite
+            ? textoDaVoz('MIN-11.etiquetaNoLimite')
+            : textoDaVoz('MIN-11.etiqueta', { n, limite }),
     });
 }
 

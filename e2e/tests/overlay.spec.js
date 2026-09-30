@@ -137,7 +137,7 @@ test('com o mouse por cima, o botão mostra a etiqueta do protótipo: o nome e o
   await expect(etiqueta).toBeHidden();
 });
 
-test('a etiqueta traz o contador do dia em palavras (MIN-11) e aparece também com o foco do teclado', async ({ page, paginas, extensao }) => {
+test('a etiqueta traz o contador do dia, sem o idioma (MIN-11), e aparece também com o foco do teclado', async ({ page, paginas, extensao }) => {
   const agora = new Date();
   const hoje = [agora.getFullYear(), String(agora.getMonth() + 1).padStart(2, '0'), String(agora.getDate()).padStart(2, '0')].join('-');
   await extensao.gravarStorage({
@@ -149,7 +149,10 @@ test('a etiqueta traz o contador do dia em palavras (MIN-11) e aparece também c
 
   await botaoFlutuante(page).focus();
   await expect(etiqueta).toBeVisible();
-  await expect(etiqueta).toContainText('Mineração automática · Inglês: 8 de 15 hoje');
+  await expect(etiqueta).toContainText('Mineração automática: 8 de 15 hoje');
+  await expect(etiqueta).not.toContainText('Inglês');
+  // O leitor de tela continua ouvindo o idioma, pela descrição do botão.
+  await expect(botaoFlutuante(page)).toHaveAccessibleDescription('Mineração automática · Inglês: 8 de 15 hoje');
 });
 
 test('com a pílula aberta, a etiqueta não aparece por cima dela', async ({ page, paginas }) => {
