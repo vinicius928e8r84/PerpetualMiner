@@ -6,7 +6,7 @@ Resolução do ticket [Protótipo: onboarding & primeira execução](https://git
 - os nomes e a cópia do [guia de voz & catálogo](../../voz/README.md) (regras V1–V10 e C1–C9).
 
 **Protótipo:** [`prototipo-onboarding.html`](prototipo-onboarding.html). Abra direto no navegador.
-- `?variant=C` é a estrutura travada (padrão). `A` (Vazios que ensinam) e `B` (Primeiros passos) foram as alternativas.
+- `?variant=C` é a estrutura travada (padrão). `A` (Vazios que ensinam) e `B` (Primeiros passos) foram as alternativas. O protótipo registra a decisão de layout, mas os controles dos passos 3–6 foram revisados depois: para esses estados, valem [Os passos](#os-passos) e a [F1](#conexão-com-o-anki-como-ligar-f1), não as ações antigas do protótipo.
 - É uma janela do Chrome falsa: o ícone da extensão abre o popup, e o Painel roda no shell Ilhas.
 - O painel “Estados do protótipo” simula a instalação nova, Alt+S num vídeo, a mineração automática, a Conexão com o Anki instalada ou não, a conta, o atalho e a chave.
 - As setas ← → trocam a variante, e **T** alterna o tema.

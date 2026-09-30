@@ -5,10 +5,10 @@
 // passos 3 a 6 nos seus estados, Tudo pronto com cada situação do resumo e a
 // janela estreita, nos dois temas.
 //
-// O dono revisa estas telas lado a lado com o protótipo travado
-// (docs/design/painel/boas-vindas/prototipo-onboarding.html?variant=C). Depois
-// de aprovadas, elas são a referência: uma mudança visual faz o teste falhar
-// até alguém olhar e atualizar:
+// O protótipo travado é referência de layout; para os controles dos passos
+// 3–6, vale docs/design/painel/boas-vindas/README.md (§ Os passos). Depois
+// de aprovadas, as telas são a referência: uma mudança visual faz o teste
+// falhar até alguém olhar e atualizar:
 //
 //   cd e2e && npx playwright test boas-vindas-visual --update-snapshots
 //

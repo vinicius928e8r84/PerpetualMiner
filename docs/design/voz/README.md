@@ -307,7 +307,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 
 ### Boas-vindas (primeira execução)
 
-A página não existe hoje: todas as linhas são novas. V10 permite o nome do produto aqui.
+A coluna “Hoje” registra o estado anterior à Boas-vindas. V10 permite o nome do produto aqui.
 
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
