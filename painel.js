@@ -93,7 +93,6 @@ let modalAberto        = null;
 let pedidoDeApagar     = null; // { ids }
 let edicaoDeContexto   = null; // { ids }
 let bridgePresets      = structuredClone(DEFAULT_BRIDGE_PRESETS);
-let bridgeAnalyticsRange = 'today';
 let bridgeVocabularyTimer = null;
 let bridgeVocabularyDeck = { lang: 'en' };
 
@@ -953,38 +952,12 @@ function setupListeners() {
   });
 
   document.getElementById('btn-save-bridge-presets-main')?.addEventListener('click', salvarBridgePresets);
-  document.getElementById('btn-bridge-analytics-refresh-main')?.addEventListener('click', () => {
+  // ↻ Atualizar é do painel-anki.js: com a Conexão ligada, ele pede também os
+  // baralhos, que abrem o Anki se precisar (BRG-24).
+  PerpetualMiner.Anki?.aoAtualizar(() => {
     atualizarBridgeWorkspaceData({ includeAnki: true, refreshAnki: true, launchAnki: true });
   });
   document.getElementById('btn-bridge-anki-repair')?.addEventListener('click', repararBridgeAnki);
-  bridgeAnalyticsLangEl()?.addEventListener('change', atualizarBridgeAnalytics);
-  bridgeAnalyticsFromEl()?.addEventListener('change', () => {
-    bridgeAnalyticsRange = 'custom';
-    marcarBridgeAnalyticsRange();
-    atualizarBridgeAnalytics();
-  });
-  bridgeAnalyticsToEl()?.addEventListener('change', () => {
-    bridgeAnalyticsRange = 'custom';
-    marcarBridgeAnalyticsRange();
-    atualizarBridgeAnalytics();
-  });
-  document.querySelectorAll('[data-analytics-range], [data-analytics-range-main]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      bridgeAnalyticsRange = btn.dataset.analyticsRange || btn.dataset.analyticsRangeMain;
-      aplicarDatasBridgeAnalytics();
-      marcarBridgeAnalyticsRange();
-      atualizarBridgeAnalytics();
-    });
-  });
-  document.getElementById('bridge-analytics-jobs-main')?.addEventListener('click', (e) => {
-    const retryBtn = e.target.closest('[data-retry-job]');
-    const debugBtn = e.target.closest('[data-debug-job]');
-    if (retryBtn) {
-      continuarBridgeJob(retryBtn.dataset.retryJob);
-      return;
-    }
-    if (debugBtn) baixarBridgeDebugBundle(debugBtn.dataset.debugJob);
-  });
   byId('bridge-vocab-search')?.addEventListener('input', agendarAtualizacaoBridgeVocabulary);
   byId('bridge-vocab-status')?.addEventListener('change', () => atualizarBridgeVocabulary());
   byId('bridge-vocab-type')?.addEventListener('change', () => atualizarBridgeVocabulary());
@@ -995,9 +968,6 @@ async function inicializarBridgeUI() {
   const data = await chromeGet({ [BRIDGE_PRESETS_KEY]: DEFAULT_BRIDGE_PRESETS });
   bridgePresets = normalizarBridgePresets(data[BRIDGE_PRESETS_KEY]);
   preencherBridgePresetInputs();
-  aplicarDatasBridgeAnalytics();
-  marcarBridgeAnalyticsRange();
-  atualizarBridgeWorkspaceData({ includeAnki: false });
 }
 
 function normalizarBridgePresets(raw) {
@@ -1015,31 +985,15 @@ function bridgePresetEl(lang, field) {
   return byId(`preset-main-${lang}-${field}`) || byId(`preset-${lang}-${field}`);
 }
 
-function bridgeAnalyticsLangEl() {
-  return byId('bridge-analytics-lang-main') || byId('bridge-analytics-lang');
-}
 
-function bridgeAnalyticsFromEl() {
-  return byId('bridge-analytics-from-main') || byId('bridge-analytics-from');
-}
 
-function bridgeAnalyticsToEl() {
-  return byId('bridge-analytics-to-main') || byId('bridge-analytics-to');
-}
 
 function setText(id, value) {
   const el = byId(id);
   if (el) el.textContent = value;
 }
 
-function setBridgeStatusText(value) {
-  setText('bridge-analytics-status-main', value);
-}
 
-function setBridgeHtml(id, value) {
-  const el = byId(id);
-  if (el) el.innerHTML = value;
-}
 
 function readBridgePresetValue(lang, field, fallback) {
   const el = bridgePresetEl(lang, field);
@@ -1088,83 +1042,17 @@ async function salvarBridgePresets() {
 
 // ─── Sidebar & Dropdowns ──────────────────────────────────────────────────────
 
-function dataIsoLocal(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
 
-function aplicarDatasBridgeAnalytics() {
-  const fromEl = bridgeAnalyticsFromEl();
-  const toEl = bridgeAnalyticsToEl();
-  if (!fromEl || !toEl) return;
-  const hoje = new Date();
-  if (bridgeAnalyticsRange === 'today') {
-    const iso = dataIsoLocal(hoje);
-    fromEl.value = iso;
-    toEl.value = iso;
-  } else if (bridgeAnalyticsRange === 'month') {
-    fromEl.value = dataIsoLocal(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
-    toEl.value = dataIsoLocal(hoje);
-  } else if (bridgeAnalyticsRange === 'all') {
-    fromEl.value = '';
-    toEl.value = '';
-  }
-}
 
-function marcarBridgeAnalyticsRange() {
-  document.querySelectorAll('[data-analytics-range], [data-analytics-range-main]').forEach(btn => {
-    const value = btn.dataset.analyticsRange || btn.dataset.analyticsRangeMain;
-    btn.classList.toggle('active', value === bridgeAnalyticsRange);
-  });
-}
 
-function filtrosBridgeAnalytics() {
-  const params = new URLSearchParams();
-  const lang = bridgeAnalyticsLangEl()?.value || 'all';
-  const from = bridgeAnalyticsFromEl()?.value || '';
-  const to = bridgeAnalyticsToEl()?.value || '';
-  params.set('lang', lang);
-  if (from) params.set('from', from);
-  if (to) params.set('to', to);
-  return params.toString();
-}
 
-async function atualizarBridgeAnalytics() {
-  if (!byId('bridge-analytics-status-main')) return;
-  setBridgeStatusText('Atualizando...');
-  try {
-    const query = filtrosBridgeAnalytics();
-    const [summaryResp, jobsResp] = await Promise.all([
-      fetch(`${BRIDGE_URL}/analytics/summary?${query}`),
-      fetch(`${BRIDGE_URL}/analytics/jobs?${query}`),
-    ]);
-    if (!summaryResp.ok || !jobsResp.ok) throw new Error('analytics_unavailable');
-    const summary = await summaryResp.json();
-    const jobsData = await jobsResp.json();
-    renderizarBridgeAnalyticsSummary(summary);
-    renderizarBridgeAnalyticsJobs(jobsData.jobs || []);
-    const statusText = `${summary.jobs?.total || 0} job(s) no filtro`;
-    setBridgeStatusText(statusText);
-  } catch {
-    setBridgeStatusText('Analytics indisponivel. Verifique se o bridge esta online.');
-    setText('bridge-cost-total', '$0.0000');
-    setBridgeHtml('bridge-analytics-metrics-main', '');
-    setBridgeHtml('bridge-image-rates-main', '');
-    setBridgeHtml('bridge-analytics-jobs-main', '');
-  }
-}
 
+/** Os Baralhos e termos de hoje; a aba Custos é do painel-anki.js. */
 async function atualizarBridgeWorkspaceData(options = {}) {
-  const tasks = [atualizarBridgeAnalytics()];
-  if (options.includeAnki !== false) {
-    tasks.push(atualizarBridgeDeckStats({
-      refresh: Boolean(options.refreshAnki),
-      launch: Boolean(options.launchAnki),
-    }));
-  }
-  await Promise.allSettled(tasks);
+  await atualizarBridgeDeckStats({
+    refresh: Boolean(options.refreshAnki),
+    launch: Boolean(options.launchAnki),
+  });
 }
 
 function queryBridgeDeckStats(options = {}) {
@@ -1212,6 +1100,8 @@ async function atualizarBridgeDeckStats(options = {}) {
 
 async function repararBridgeAnki() {
   const btn = byId('btn-bridge-anki-repair');
+  // Com a Conexão desligada o botão fica aria-disabled, com o porquê na dica (painel-anki.js).
+  if (btn?.getAttribute('aria-disabled') === 'true') return;
   const el = byId('bridge-anki-stats-main');
   if (btn) {
     btn.disabled = true;
@@ -1429,136 +1319,15 @@ function renderizarBridgeVocabulary(data) {
   </table>`;
 }
 
-function formatUsd(value) {
-  return `$${Number(value || 0).toFixed(4)}`;
-}
 
 function formatPct(value) {
   return `${Number(value || 0).toFixed(1)}%`;
 }
 
-function formatDataCurta(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
-  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-}
 
-function statusLabelBridge(status) {
-  const mapa = {
-    completed: 'OK',
-    failed: 'Falhou',
-    partial: 'Parcial',
-    running: 'Rodando',
-    queued: 'Fila',
-  };
-  return mapa[status] || status || 'N/D';
-}
 
-function renderizarBridgeAnalyticsSummary(summary) {
-  const metricsEl = byId('bridge-analytics-metrics-main');
-  const ratesEl = byId('bridge-image-rates-main');
-  if (!metricsEl || !ratesEl) return;
-  const costs = summary.costs || {};
-  const jobs = summary.jobs || {};
-  const cards = summary.cards || {};
-  const images = summary.images || {};
-  const total = formatUsd(costs.totalUsd);
-  setText('bridge-cost-total', total);
-  const metrics = [
-    ['Cards', formatUsd(costs.cardUsd)],
-    ['Imagem IA', formatUsd(costs.imageGenerationUsd)],
-    ['Judge', formatUsd(costs.imageJudgeUsd)],
-    ['Guard', formatUsd(costs.imageGuardUsd)],
-    ['Frases OK', `${cards.successful || 0}/${cards.requested || 0}`],
-    ['Jobs OK', `${jobs.completed || 0}/${jobs.total || 0}`],
-    ['Economia', formatUsd(images.savingsUsd)],
-  ];
-  metricsEl.innerHTML = metrics.map(([label, value]) => `
-    <div class="bridge-metric">
-      <span>${esc(label)}</span>
-      <strong>${esc(value)}</strong>
-    </div>
-  `).join('');
 
-  const rates = [
-    ['Google', images.realPct, images.real],
-    ['Gerada', images.generatedPct, images.generated],
-    ['Pulada', images.skippedPct, images.skipped],
-    ['Falhou', images.failedPct, images.failed],
-  ];
-  ratesEl.innerHTML = rates.map(([label, pct, count]) => {
-    const width = Math.max(0, Math.min(100, Number(pct || 0)));
-    return `<div class="bridge-rate">
-      <div class="bridge-rate-top"><span>${esc(label)}</span><strong>${formatPct(pct)}</strong></div>
-      <div class="bridge-rate-bar"><div style="width:${width}%"></div></div>
-      <small>${Number(count || 0)} imagem(ns)</small>
-    </div>`;
-  }).join('');
-}
 
-function renderizarBridgeAnalyticsJobs(jobs) {
-  const el = byId('bridge-analytics-jobs-main');
-  if (!el) return;
-  if (!Array.isArray(jobs) || jobs.length === 0) {
-    el.innerHTML = '<div class="bridge-analytics-empty">Sem jobs nesse filtro.</div>';
-    return;
-  }
-  el.innerHTML = jobs.slice(0, 12).map(job => {
-    const costs = job.costs || {};
-    const images = job.images || {};
-    const erro = job.lastError ? `<div class="bridge-job-error">${esc(job.lastError)}</div>` : '';
-    const canRetry = ['failed', 'partial'].includes(job.status);
-    const retryBtn = canRetry
-      ? `<button class="bridge-debug-btn bridge-retry-job-btn" data-retry-job="${esc(job.jobId)}" title="Continuar job" aria-label="Continuar job">Continuar</button>`
-      : '';
-    return `<div class="bridge-analytics-job">
-      <div class="bridge-analytics-job-main">
-        <div>
-          <div class="bridge-analytics-job-id">${esc(job.jobId)}</div>
-          <div class="bridge-analytics-job-meta">${esc(formatDataCurta(job.createdAt))} | ${esc((job.lang || '').toUpperCase())} | ${esc(statusLabelBridge(job.status))}</div>
-        </div>
-        <div class="bridge-job-actions">
-          ${retryBtn}
-          <button class="bridge-debug-btn" data-debug-job="${esc(job.jobId)}" title="Baixar debug bundle" aria-label="Baixar debug bundle">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div class="bridge-analytics-job-stats">
-        <span>${formatUsd(costs.totalUsd)}</span>
-        <span>Frases ${Number(job.successfulCards || 0)}/${Number(job.requestedCards || 0)}</span>
-        <span>G ${Number(images.real || 0)} / IA ${Number(images.generated || 0)}</span>
-      </div>
-      ${erro}
-    </div>`;
-  }).join('');
-}
-
-async function baixarBridgeDebugBundle(jobId) {
-  if (!jobId) return;
-  try {
-    const resp = await fetch(`${BRIDGE_URL}/jobs/${encodeURIComponent(jobId)}/debug-bundle`);
-    if (!resp.ok) throw new Error('debug_bundle_unavailable');
-    const data = await resp.json();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `anki-bridge-debug-${jobId}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    mostrarToast('Debug bundle baixado.');
-  } catch {
-    mostrarToast('Falha ao baixar debug bundle.');
-  }
-}
 
 // ─── Filtros e busca ──────────────────────────────────────────────────────────
 //
@@ -2291,19 +2060,6 @@ async function marcarComoEnviadas(ids) {
   aplicarFiltro();
 }
 
-/** Continuar um envio pela lista de Custos da Conexão com o Anki. */
-async function continuarBridgeJob(jobId) {
-  if (!jobId) return;
-  try {
-    const resp = await fetch(`${BRIDGE_URL}/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });
-    if (!resp.ok) throw new Error(`retry_failed_${resp.status}`);
-    mostrarToastDeSucesso(textoDaVoz('ENV-14.sucesso'));
-    atualizarBridgeAnalytics();
-  } catch {
-    // A área da Conexão ainda não foi reconstruída: o erro fica no toast de hoje até lá.
-    mostrarToast(textoDaVoz('ENV-14.falha'));
-  }
-}
 
 // ─── Editar contexto (PAI-20 · PAI-21 · PAI-22) ──────────────────────────────
 //

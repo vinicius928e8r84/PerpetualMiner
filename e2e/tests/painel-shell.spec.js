@@ -248,6 +248,9 @@ test('enquanto a Conexão não responde, o ponto diz “Conectando ao Anki…”
 
 test('com a Conexão desligada, a área dela mostra a faixa F1; “Tentar de novo” com ela ligada tira a faixa', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
+  // Um computador onde a Conexão já respondeu: sem isso, as abas dão lugar ao card
+  // da primeira vez (ONB-16, painel-anki.spec.js).
+  await extensao.gravarStorage({ pm_anki_ja_conectou: true });
   await abrirPainel(page, extensao, '#anki/custos');
 
   await expect(faixaF1(page)).toBeVisible();

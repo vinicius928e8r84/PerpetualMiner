@@ -1238,13 +1238,712 @@ body {
   display: none;
 }
 
+/* ── Conexão com o Anki (docs/design/painel/anki/, variante C · Por idioma) ──
+   O idioma é o eixo: azulejos Todos · Inglês · Russo escolhem o recorte, e
+   Envios recentes é lista × detalhe. Cards dentro da ilha são “buracos” (bg).
+   As séries das barras (foto real · gerada por IA · sem imagem · falhou) são
+   ouro · info · muted · danger: a exceção de dataviz do Veio, que vale só
+   dentro do gráfico e da legenda dele. */
+
+.anki-faixa-conectando {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface-2);
+  font-size: var(--veio-tam-corpo);
+}
+
+.anki-faixa-conectando[hidden] {
+  display: none;
+}
+
+/* O ponto “em espera”: pisca enquanto a Conexão não respondeu. */
+.anki-ponto {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--veio-muted);
+  animation: veio-piscar var(--veio-piscar) steps(1) infinite;
+}
+
+/* Nunca conectada: o card ONB-16 fica no lugar das abas. */
+.anki--primeira-vez .shell-abas,
+.anki--primeira-vez .shell-aba {
+  display: none;
+}
+
+.anki-primeira-vez {
+  display: grid;
+  gap: 10px;
+  max-width: 680px;
+  padding: 20px 22px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-bg);
+}
+
+.anki-primeira-vez[hidden] {
+  display: none;
+}
+
+.anki-primeira-vez h2 {
+  margin: 0;
+  font-size: var(--veio-tam-destaque);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.anki-primeira-vez h3 {
+  margin: 6px 0 0;
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.anki-passos {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 22px;
+  font-size: var(--veio-tam-corpo);
+  line-height: 1.5;
+}
+
+.anki-passos li::marker {
+  color: var(--veio-accent-text);
+  font-family: var(--veio-fonte-mono);
+  font-weight: var(--veio-peso-num);
+}
+
+.anki-apoio {
+  margin: 0;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+  line-height: 1.5;
+}
+
+.anki-motivo {
+  margin: 10px 0 0;
+  font-size: var(--veio-tam-corpo);
+}
+
+.anki-motivo[hidden] {
+  display: none;
+}
+
+/* O Detalhes com os comandos de instalação e o “Copiar” ao lado dele. */
+.anki-como-ligar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 12px;
+}
+
+.anki-como-ligar .veio-aviso__detalhes {
+  flex: 1 1 320px;
+  min-width: 0;
+  margin: 0;
+}
+
+/* Uma nota neutra no topo da aba (os Ajustes com a Conexão desligada). */
+.anki-nota {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-bg);
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.anki-nota[hidden] {
+  display: none;
+}
+
+/* ── Custos ─────────────────────────────────────────────── */
+
+.anki-custos {
+  display: grid;
+  gap: 12px;
+  container-type: inline-size;
+}
+
+/* O último dado, com a Conexão desligada (BRG-12), e o código em Detalhes. */
+.anki-antigo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.anki-antigo[hidden] {
+  display: none;
+}
+
+.anki-antigo .veio-aviso__detalhes {
+  margin: 0;
+}
+
+.anki-selo-antigo {
+  padding: 2px 10px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-pilula);
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+}
+
+.anki-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.anki-barra .veio-segmentado__opcao {
+  padding: 4px 11px;
+  font-size: var(--veio-tam-apoio);
+}
+
+.anki-datas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.anki-data {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.anki-data input:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.anki-data input {
+  padding: 4px 10px;
+  border: 1px solid var(--veio-border-strong);
+  border-radius: var(--veio-raio-pilula);
+  background: transparent;
+  color: var(--veio-text);
+  font: inherit;
+  color-scheme: dark;
+}
+
+[data-tema="claro"] .anki-data input {
+  color-scheme: light;
+}
+
+.anki-azulejos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 10px;
+}
+
+.anki-azulejos[hidden] {
+  display: none;
+}
+
+.anki-azulejo {
+  display: block;
+  gap: 0;
+  padding: 12px 14px;
+  background: var(--veio-bg);
+  color: var(--veio-text);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color var(--veio-transicao), background var(--veio-transicao);
+}
+
+.anki-azulejo:hover {
+  border-color: var(--veio-border-strong);
+}
+
+.anki-azulejo.veio-azulejo--escolhido {
+  border-color: var(--veio-accent);
+  box-shadow: inset 0 0 0 1px var(--veio-accent);
+  background: var(--veio-bg);
+}
+
+.anki-azulejo__codigo {
+  display: block;
+  color: var(--veio-muted);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-tecla);
+}
+
+.anki-azulejo__nome {
+  display: block;
+  font-size: var(--veio-tam-card);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.anki-azulejo__valor {
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-contador);
+  font-weight: var(--veio-peso-num);
+}
+
+.anki-azulejo__envios {
+  margin-left: 6px;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+}
+
+.anki-faixa-resumo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface-2);
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.anki-faixa-resumo b {
+  color: var(--veio-text);
+  font-family: var(--veio-fonte-mono);
+  font-weight: var(--veio-peso-num);
+}
+
+.anki-cartao {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-bg);
+}
+
+.anki-cartao h3 {
+  margin: 0 0 4px;
+  font-size: var(--veio-tam-card);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.anki-cartao h3 small {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+  font-weight: 500;
+}
+
+.anki-cartao > .anki-apoio {
+  margin-bottom: 12px;
+}
+
+.anki-origens {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 4px 18px;
+}
+
+.anki-origem {
+  margin-bottom: 4px;
+}
+
+.anki-origem__topo {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+  font-size: var(--veio-tam-apoio);
+}
+
+.anki-origem__topo b,
+.anki-partes dd,
+.anki-numero dd,
+.anki-opcao__valor {
+  font-family: var(--veio-fonte-mono);
+  font-weight: var(--veio-peso-num);
+}
+
+.anki-origem small {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+}
+
+.anki-barra-serie {
+  display: flex;
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-surface-2);
+}
+
+.anki-barra-serie > i {
+  display: block;
+  height: 100%;
+}
+
+.anki-barra-serie--grossa {
+  height: 14px;
+}
+
+.anki-serie--real { background: var(--veio-accent); }
+.anki-serie--gerada { background: var(--veio-info); }
+.anki-serie--sem { background: var(--veio-muted); }
+.anki-serie--falhou { background: var(--veio-danger); }
+
+.anki-lista-e-detalhe {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.anki-cartao--lista {
+  padding: 10px;
+}
+
+.anki-cartao--lista h3 {
+  padding: 4px 6px 8px;
+}
+
+.anki-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.anki-opcao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--veio-raio-input);
+  cursor: pointer;
+}
+
+.anki-opcao:hover {
+  background: var(--veio-surface-2);
+}
+
+.anki-opcao[aria-selected="true"] {
+  border-color: var(--veio-border-strong);
+  background: var(--veio-surface-2);
+}
+
+.anki-opcao:focus-visible {
+  outline: 2px solid var(--veio-accent);
+  outline-offset: 2px;
+}
+
+.anki-opcao__titulo {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: var(--veio-peso-rotulo);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.anki-opcao__titulo small {
+  display: block;
+  overflow: hidden;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+  font-weight: 500;
+  text-overflow: ellipsis;
+}
+
+.anki-opcao__valor {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.anki-ponto-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.anki-ponto-status--ok { background: var(--veio-success); }
+.anki-ponto-status--parte { background: var(--veio-accent); }
+.anki-ponto-status--erro { background: var(--veio-danger); }
+.anki-ponto-status--andando {
+  background: var(--veio-info);
+  animation: veio-piscar var(--veio-piscar) steps(1) infinite;
+}
+
+.anki-detalhe {
+  position: sticky;
+  top: 0;
+}
+
+.anki-detalhe > .anki-apoio {
+  margin: 0;
+}
+
+.anki-detalhe h3 {
+  margin: 2px 0 8px;
+  font-size: var(--veio-tam-destaque);
+}
+
+.anki-detalhe .veio-aviso__detalhes {
+  margin-top: 6px;
+}
+
+.anki-partes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 0;
+  margin: 12px 0;
+  font-size: var(--veio-tam-corpo);
+}
+
+.anki-partes dt {
+  color: var(--veio-muted);
+}
+
+.anki-partes dd {
+  margin: 0;
+  padding-left: 12px;
+  text-align: right;
+}
+
+.anki-partes .anki-partes__total {
+  padding-top: 6px;
+  border-top: 1px solid var(--veio-border);
+  color: var(--veio-text);
+}
+
+.anki-imagens-do-envio h4 {
+  margin: 12px 0 6px;
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.anki-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 8px 0 0;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+}
+
+.anki-legenda span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.anki-legenda i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--veio-raio-losango);
+}
+
+.anki-acao {
+  margin-top: 14px;
+}
+
+/* A dica do Continuar envio abre para a direita: o botão fica no começo. */
+.anki-acao .veio-dica {
+  right: auto;
+  left: 0;
+}
+
+/* Vazio de Custos (BRG-22): a ilha tem a largura toda, então o texto cabe numa linha, como no protótipo. */
+#anki-custos .veio-vazio__texto {
+  max-width: none;
+}
+
+/* Erro: o total indisponível e o aviso, sem a cara do carregando (#9). */
+.anki-numero {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface-2);
+}
+
+.anki-numero dt {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+}
+
+.anki-numero dd {
+  margin: 0;
+  font-size: var(--veio-tam-contador);
+}
+
+.anki-numero--indisponivel {
+  justify-self: start;
+  margin-bottom: 12px;
+}
+
+.anki-numero--indisponivel dd {
+  font-family: var(--veio-fonte-ui);
+  font-size: var(--veio-tam-destaque);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.anki-espera {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.anki-esqueleto {
+  display: grid;
+  gap: 10px;
+}
+
+.anki-esqueleto .veio-esqueleto {
+  border-radius: var(--veio-raio-input);
+}
+
+#anki-custos-corpo {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Reparar Anki ainda é o botão de hoje (Baralhos e termos tem o próprio ticket):
+   indisponível, ele tem a mesma cara de um .veio-botao aria-disabled. */
+.bridge-repair-btn[aria-disabled="true"] {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+/* ── Avançado: recolhido no pé da aba, borda tracejada ──── */
+
+.anki-avancado {
+  padding: 10px 14px;
+  border: 1px dashed var(--veio-border-strong);
+  border-radius: var(--veio-raio-card);
+}
+
+.anki-avancado[hidden] {
+  display: none;
+}
+
+.anki-avancado > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  color: var(--veio-muted);
+  font-weight: var(--veio-peso-titulo);
+  list-style: none;
+  cursor: pointer;
+}
+
+.anki-avancado > summary::-webkit-details-marker {
+  display: none;
+}
+
+.anki-avancado > summary::before {
+  content: "›";
+  display: inline-block;
+  font-size: var(--veio-tam-destaque);
+  transition: transform var(--veio-transicao);
+}
+
+.anki-avancado[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.anki-avancado > summary small {
+  font-size: var(--veio-tam-apoio);
+  font-weight: 500;
+}
+
+.anki-avancado__corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.anki-numeros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.anki-avancado__chaves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  padding-top: 10px;
+  border-top: 1px solid var(--veio-border);
+  font-size: var(--veio-tam-apoio);
+}
+
+.anki-diagnostico h3 {
+  margin: 0 0 6px;
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.anki-diagnostico .anki-apoio {
+  margin-bottom: 8px;
+}
+
+.anki-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--veio-tam-corpo);
+}
+
+.anki-tabela td {
+  padding: 8px;
+  border-bottom: 1px solid var(--veio-border);
+  text-align: left;
+}
+
+.anki-tabela .anki-tabela__acao {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Janela estreita: a faixa quebra em linhas, os azulejos só empilham quando
+   não cabem lado a lado (como no protótipo), e o detalhe cai para baixo da lista. */
+@container (max-width: 640px) {
+  .anki-lista-e-detalhe {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .anki-detalhe {
+    position: static;
+  }
+
+  .anki-tabela td.anki-apoio {
+    display: none;
+  }
+}
+
 /* ── Movimento reduzido ───────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .shell-ponto[data-estado="conectando"],
   .cfg-ponto[data-estado="sincronizando"],
   .shell-card--destaque,
   .cfg-gravando,
-  .cfg-atalho__tecla--nova {
+  .cfg-atalho__tecla--nova,
+  .anki-ponto,
+  .anki-ponto-status--andando {
     animation: none;
   }
 

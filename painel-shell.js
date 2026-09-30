@@ -42,7 +42,7 @@
   const estado = {
     area: null,
     conexao: CONEXAO.CONECTANDO,
-    conferindoConexao: false,
+    conferencia: null,           // a conferência do /health em andamento (uma promessa)
   };
   const ouvintesDeArea = new Map();
   const ouvintesDeSecao = new Map();   // seção de Configurações → ouvintes
@@ -303,17 +303,26 @@
 
   // ─── Conexão com o Anki ────────────────────────────────────────────────────
 
-  async function conferirConexao() {
-    if (estado.conferindoConexao) return;
-    estado.conferindoConexao = true;
-    let ligada = false;
-    try {
-      ligada = (await fetch(`${ENDERECO_DA_CONEXAO}/health`)).ok;
-    } catch {
-      ligada = false;
+  /**
+   * Pergunta ao /health se a Conexão está ligada e mostra a resposta. Duas
+   * conferências ao mesmo tempo são uma só: quem chama recebe a mesma
+   * promessa, que termina com a situação (um dos valores de CONEXAO).
+   */
+  function conferirConexao() {
+    if (!estado.conferencia) {
+      estado.conferencia = (async () => {
+        let ligada = false;
+        try {
+          ligada = (await fetch(`${ENDERECO_DA_CONEXAO}/health`)).ok;
+        } catch {
+          ligada = false;
+        }
+        estado.conferencia = null;
+        mostrarConexao(ligada ? CONEXAO.LIGADA : CONEXAO.DESLIGADA);
+        return estado.conexao;
+      })();
     }
-    estado.conferindoConexao = false;
-    mostrarConexao(ligada ? CONEXAO.LIGADA : CONEXAO.DESLIGADA);
+    return estado.conferencia;
   }
 
   function mostrarConexao(situacao) {
@@ -354,6 +363,7 @@
     CONEXAO,
     ENDERECO_DA_CONEXAO,
     aoAbrirASecao,
+    conferirConexao,
     aoMudarAConexao,
     aoEntrarNaArea,
     areaAtual,

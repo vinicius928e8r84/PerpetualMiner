@@ -24,9 +24,6 @@
   /** “Sincronizado há N min” avança sozinho. */
   const INTERVALO_DO_RELOGIO = 30000;
 
-  // A forma curta: “há 2 min”, “há 3 h” (CFG-02).
-  const QUANTO_TEMPO = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'auto', style: 'short' });
-
   // Os nomes das situações. O painel.js usa estes, e não uma string solta.
   const SITUACOES = Object.freeze({
     SINCRONIZANDO: 'sincronizando',
@@ -39,7 +36,7 @@
     EXPIROU: 'expirou',
   });
 
-  const { textoDaVoz } = raiz;
+  const { textoDaVoz, Contexto } = raiz;
   const { iconeVeio, montarAviso, montarDetalhes } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
@@ -68,7 +65,7 @@
     },
     [SITUACOES.SINCRONIZADO]: {
       ponto: 'ok',
-      chip: ({ sincronizadoEm }) => textoDaVoz('CFG-02', { quando: haQuantoTempo(sincronizadoEm) }),
+      chip: ({ sincronizadoEm }) => textoDaVoz('CFG-02', { quando: Contexto.haQuanto(sincronizadoEm) }),
       sair: 'fantasma',
     },
     [SITUACOES.SEM_SINCRONIZAR]: {
@@ -311,17 +308,6 @@
     no.className = classe;
     no.append(...filhos.filter(filho => filho !== null && filho !== undefined));
     return no;
-  }
-
-  /** “agora”, “há 2 min”, “há 3 h”, “ontem”: o `{quando}` da CFG-02. */
-  function haQuantoTempo(momento) {
-    const minutos = Math.floor((Date.now() - momento) / 60000);
-    if (minutos < 1) return QUANTO_TEMPO.format(0, 'second');
-    // O ICU abrevia com ponto (“há 2 min.”); a cópia é “há 2 min”.
-    if (minutos < 60) return QUANTO_TEMPO.format(-minutos, 'minute').replace(/\.$/, '');
-    const horas = Math.floor(minutos / 60);
-    if (horas < 24) return QUANTO_TEMPO.format(-horas, 'hour');
-    return QUANTO_TEMPO.format(-Math.floor(horas / 24), 'day');
   }
 
   document.addEventListener('DOMContentLoaded', () => {
