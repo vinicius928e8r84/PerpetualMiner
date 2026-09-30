@@ -18,19 +18,19 @@ Na raiz do repositório:
 node scripts/empacotar-extensao.mjs
 ```
 
-Sai `dist/perpetualminer-<versão>.zip` com só os arquivos de execução (sem `e2e`, `docs`, `preview`, `scripts`, `bridge`, `engine`, testes, `.git`, `node_modules`, nem os bundles `lib/firebase/`, que nenhuma página carrega), a lista dos arquivos e o tamanho. O script recusa gerar se o `manifest.json` estiver inválido para a loja (versão fora do formato, descrição acima de 132 caracteres, ícone de 128 px ou arquivo referenciado faltando, campo `key`). `dist/` não vai para o git.
+Sai `dist/perpetualminer-<versão>.zip` com só os arquivos de execução (sem `e2e`, `docs`, `preview`, `scripts`, `bridge`, `engine`, testes, `.git`, `node_modules`, nem os bundles `lib/firebase/`, que nenhuma página carrega), a lista dos arquivos e o tamanho. O script recusa gerar se o `manifest.json` estiver inválido para a loja (versão fora do formato, descrição acima de 132 caracteres, ícone de 128 px ou arquivo referenciado faltando). O `manifest.json` do repositório tem o campo `key`; o empacotador o **remove do manifest dentro do zip** (a loja atribui a chave dela e pode recusar o campo) sem mexer no arquivo do repositório, e `node test_empacotar.js` confere isso. `dist/` não vai para o git.
 
 **Cada envio precisa de uma `version` maior que a publicada** (ex.: `5.0` → `5.0.1`). Altere só o `manifest.json` antes de empacotar.
 
 ## 3. Criar o item (rascunho)
 
 1. No painel: **Novo item** → envie o `.zip`.
-2. Anote o **ID do item** (32 letras, aparece na página do item). Ele é fixo daqui em diante e é ele que o Chrome e o Opera usam para atualizar.
-3. **Cadastre o login do Google para esse ID**: no Google Cloud Console, projeto do Firebase `perpetualminer-4c219`, cliente OAuth `777592854175-o2ha6n3oqv4f9i2mavbdmfoqbh9iauio`, acrescente em *URIs de redirecionamento autorizados*:
+2. O **ID do item** é `ohpoogiccjmdgilgegholdidgfhjkadf` (fixo; é ele que o Chrome e o Opera usam para atualizar). A chave pública do item já foi fixada no `manifest.json` (campo `"key"`), então a pasta descompactada usa o mesmo ID (veja [instalar-extensao.md](instalar-extensao.md)).
+3. **Cadastre o login do Google para esse ID** (um só endereço, vale para a loja e para a pasta): no Google Cloud Console, projeto do Firebase `perpetualminer-4c219`, cliente OAuth `777592854175-o2ha6n3oqv4f9i2mavbdmfoqbh9iauio`, acrescente em *URIs de redirecionamento autorizados*:
    ```
-   https://<ID-DO-ITEM>.chromiumapp.org/
+   https://ohpoogiccjmdgilgegholdidgfhjkadf.chromiumapp.org/
    ```
-   Sem isso, entrar na conta e sincronizar não funcionam na versão da loja (o restante funciona). O mesmo vale para o ID de qualquer pasta descompactada que você use.
+   Sem isso, entrar na conta e sincronizar não funcionam (o restante funciona).
 
 ## 4. Aba "Listagem" (Store listing)
 
@@ -147,7 +147,7 @@ Confira o texto contra o que a Conexão com o Anki faz no seu computador antes d
 
 ## 7. Como a atualização chega aos navegadores
 
-**Chrome no Mac:** abra o link do item e clique **Adicionar ao Chrome**. Depois disso o Chrome checa atualizações sozinho, a cada poucas horas. Para forçar: `chrome://extensions` → Modo do desenvolvedor → **Atualizar**. Se você já carregou a pasta descompactada, **remova** essa cópia antes (são duas extensões diferentes, com IDs diferentes).
+**Chrome no Mac:** abra o link do item e clique **Adicionar ao Chrome**. Depois disso o Chrome checa atualizações sozinho, a cada poucas horas. Para forçar: `chrome://extensions` → Modo do desenvolvedor → **Atualizar**. Se você já carregou a pasta descompactada, **remova** essa cópia antes: as duas têm o mesmo ID (a `key` do manifest), então o Chrome não deixa as duas instaladas ao mesmo tempo.
 
 **Opera no Windows:** o Opera não tem loja própria para extensões do Chrome, mas instala as da Chrome Web Store:
 1. Instale o complemento **Install Chrome Extensions** em <https://addons.opera.com/en/extensions/details/install-chrome-extensions/>.
@@ -156,7 +156,7 @@ Confira o texto contra o que a Conexão com o Anki faz no seu computador antes d
 
 **Publicar uma versão nova:** aumente a `version` no `manifest.json`, `node scripts/empacotar-extensao.mjs`, no painel do item vá em **Pacote → Fazer upload do novo pacote** e envie para revisão. Cada versão passa por nova revisão (em geral de horas a poucos dias); quando aprovada, o Chrome e o Opera a recebem sozinhos.
 
-O login com Google da versão da loja usa o ID do item (etapa 3 da seção "Criar o item"), não o da pasta descompactada.
+O login com Google usa o mesmo endereço de retorno na versão da loja e na pasta descompactada (etapa 3 da seção "Criar o item").
 
 ## 8. O que a loja tende a rejeitar ou pedir justificativa
 
@@ -171,4 +171,4 @@ Resultado da revisão do `manifest.json` atual, do mais provável de dar problem
 7. **Login com Google exige o ID do item cadastrado no OAuth** (seção 3), e o cliente OAuth e a chave web do Firebase ficam expostos no código da extensão. A chave web do Firebase é pública por desenho; o que protege os dados são as regras do Firestore, então confirme que só o dono de `usuarios/{uid}` lê e escreve o próprio caminho.
 8. **Política de privacidade em URL pública e formulário de dados coerentes com o que o código faz.** Divergência (por exemplo não declarar o e-mail do Google) é motivo de recusa.
 9. **Finalidade única.** A extensão faz várias coisas (legenda, seleção, foto, Anki, sincronização); a redação acima as apresenta como um único propósito (estudo de idiomas por mineração de frases). Se o revisor questionar, o Anki e a foto são as funções mais fáceis de defender como parte do mesmo fluxo.
-10. **Chave `key` no manifest.** Não deve constar no pacote da loja (o script hoje recusa um manifest com `key`; ao adotá-la, ensine o empacotador a omiti-la do zip). Para manter o mesmo ID nas cópias descompactadas, depois que o item existir copie a chave pública de *Pacote → Ver chave pública* e mande-a para o `manifest.json` por um PR normal (e remova-a antes de cada envio ao store, ou ajuste o empacotador para omiti-la). **Não edite o `manifest.json` só na sua máquina**: com o arquivo alterado, o `git pull --ff-only` da atualização automática falha a cada versão nova e só o log mostra.
+10. **Chave `key` no manifest.** Já fixada: o `manifest.json` do repositório tem a chave pública do item (para a pasta descompactada ter o mesmo ID) e o empacotador a tira do manifest dentro do zip, porque a loja atribui a chave dela e pode recusar o campo. Não a remova do repositório (o ID das cópias descompactadas mudaria e o login deixaria de bater com o endereço cadastrado) e não edite o `manifest.json` só na sua máquina: com o arquivo alterado, o `git pull --ff-only` da atualização automática falha a cada versão nova e só o log mostra.

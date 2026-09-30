@@ -31,7 +31,6 @@ async function validarManifesto(manifesto, arquivos) {
   if (!/^\d{1,5}(\.\d{1,5}){0,3}$/.test(manifesto.version ?? '')) {
     erros.push('version deve ter de 1 a 4 números separados por ponto (ex.: 5.0.1)');
   }
-  if (manifesto.key) erros.push('o manifest não pode ter "key" no pacote da loja (a loja escolhe o ID)');
   if (!manifesto.icons?.['128']) erros.push('falta o ícone de 128 px em icons');
 
   const noPacote = new Set(arquivos);
@@ -70,6 +69,21 @@ function cabecalho(tamanho, campos) {
   return buffer;
 }
 
+// O manifest do repositório leva `key` (fixa o ID da extensão carregada da
+// pasta no mesmo ID do item da loja); o do zip não, porque a loja atribui a
+// chave dela e pode recusar o campo. Tira só a linha, para o resto do arquivo
+// sair idêntico.
+function manifestoSemChave(texto) {
+  const semChave = texto.replace(/^[ \t]*"key"[ \t]*:[ \t]*"[^"\n]*",?[ \t]*\r?\n/m, '');
+  if ('key' in JSON.parse(semChave)) throw new Error('não consegui tirar "key" do manifest do pacote');
+  return Buffer.from(semChave, 'utf8');
+}
+
+function lerParaOZip(arquivo) {
+  const bytes = fs.readFileSync(path.join(RAIZ, arquivo));
+  return arquivo === 'manifest.json' ? manifestoSemChave(bytes.toString('utf8')) : bytes;
+}
+
 function montarZip(arquivos) {
   // Data fixa (2020-01-01): o mesmo conteúdo gera o mesmo zip.
   const hora = 0;
@@ -80,7 +94,7 @@ function montarZip(arquivos) {
 
   for (const arquivo of arquivos) {
     const nome = Buffer.from(arquivo, 'utf8');
-    const conteudo = fs.readFileSync(path.join(RAIZ, arquivo));
+    const conteudo = lerParaOZip(arquivo);
     const comprimido = zlib.deflateRawSync(conteudo, { level: 9 });
     const crc = crc32(conteudo);
 

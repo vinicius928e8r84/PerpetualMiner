@@ -12,9 +12,27 @@ Este guia carrega o PerpetualMiner como **pasta descompactada** no Chrome do Mac
 
 Tempo até a nova versão aparecer: até ~10 min (o pull) + ~1 min (o reload).
 
-## Aviso sobre o login com Google
+## ID fixo e login com Google
 
-A extensão faz login por `chrome.identity`, e o endereço de retorno do Google (`https://<id-da-extensão>.chromiumapp.org/`) depende do **ID** da extensão. Uma pasta descompactada tem um ID que muda de aparelho para aparelho (vem do caminho da pasta), e a versão da loja terá outro. O login só funciona depois que esse endereço é cadastrado no cliente OAuth do Google Cloud (projeto do Firebase `perpetualminer-4c219`, "URIs de redirecionamento autorizados"). Sem isso, o resto da extensão funciona; só entrar na conta e sincronizar falham. Anote o ID de cada instalação (aparece no cartão da extensão em `chrome://extensions`).
+O `manifest.json` leva o campo `"key"` (a chave pública do item da Chrome Web Store). Por causa dela, a extensão carregada da pasta (Chrome do Mac, Opera do desktop) e a versão da loja têm **o mesmo ID**, em qualquer aparelho e de qualquer pasta:
+
+```
+ohpoogiccjmdgilgegholdidgfhjkadf
+```
+
+O ID não é segredo. Você o vê no cartão da extensão em `chrome://extensions` (Chrome) ou `opera://extensions` (Opera), na linha **ID** (com o Modo do desenvolvedor ligado).
+
+O login por `chrome.identity` usa o endereço de retorno `https://<id>.chromiumapp.org/`. Com o ID fixo, existe um só endereço para cadastrar no cliente OAuth do Google Cloud (projeto do Firebase `perpetualminer-4c219`, "URIs de redirecionamento autorizados"):
+
+```
+https://ohpoogiccjmdgilgegholdidgfhjkadf.chromiumapp.org/
+```
+
+Sem esse cadastro o resto da extensão funciona; só entrar na conta e sincronizar falham.
+
+**Se você já tinha a extensão carregada antes da `key` existir:** ela tem o ID antigo (o que vinha do caminho da pasta). Antes de atualizar, **remova** o cartão do PerpetualMiner (`chrome://extensions` / `opera://extensions` → **Remover**) e **carregue a pasta de novo** (passo "Carregar sem compactação"). O ID muda uma única vez, para o fixo acima; depois disso as atualizações automáticas não o mudam. Remover apaga as frases guardadas só no navegador; as sincronizadas na conta voltam ao entrar de novo.
+
+Se o cartão mostrar outro ID depois de carregar a pasta, o `manifest.json` do clone está sem a `"key"` (clone antigo): rode `scripts/atualizar-extensao.sh` e carregue de novo.
 
 ## Chrome no Mac
 
