@@ -1,18 +1,18 @@
 'use strict';
 
-// O card ONB-16 da Conexão com o Anki, quando ela nunca respondeu neste computador
-// (docs/design/painel/anki/prototipo-primeira-conexao.html, variante B “Igual às
-// Boas-vindas”): a lista dos 3 passos ao lado do card do passo e, embaixo, a
-// conferência sozinha e os dois quadros. O markup fixo é do painel.html; aqui se
-// desenha o que muda.
+// O card ONB-16 da Conexão com o Anki, quando ela nunca respondeu ligada
+// neste computador (docs/design/painel/anki/prototipo-primeira-conexao.html,
+// variante B “Igual às Boas-vindas”): a lista dos 3 passos ao lado do card e,
+// embaixo, a conferência sozinha e os dois quadros. O markup fixo é do
+// painel.html; aqui se desenha o que muda.
 //
 // Os passos se marcam pelo estado real, e o único que a extensão enxerga antes da
 // Conexão é ela mesma (o AnkiConnect não é lido: sem permissão nova). Por isso
-// os três esperam a Conexão e viram ✓ juntos, quando ela responde: é o momento
-// Pronto, que o painel-anki.js segura por um instante antes de devolver as abas.
+// os três esperam a Conexão e viram ✓ juntos quando ela responde ligada: é o
+// momento Pronto, que o painel-anki.js segura antes de devolver as abas.
 //
 // A linha “Confere sozinho a cada 15 s” segue a conferência de /health que o
-// shell já faz (`aoMudarAConexao`, `aoConferirAConexao`): este arquivo não
+// shell inicia em `ConexaoAnki` (`acompanhar`, `aoConferir`): este arquivo não
 // pergunta nada à rede. O único relógio é o de 1 s que reescreve “há N s”.
 
 (function (raiz) {
@@ -101,7 +101,7 @@
       elemento('div', 'anki-como-ligar', Veio.montarDetalhes(comandos), copiar), falha);
   }
 
-  // ─── A conferência de 15 s do shell ────────────────────────────────────────
+  // ─── A conferência de 15 s do ConexaoAnki ───────────────────────────────────
 
   function aoMudarAConexao(situacao) {
     if (situacao !== CONEXAO.CONECTANDO) estado.conferiuEm = Date.now();

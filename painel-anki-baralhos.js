@@ -1,8 +1,8 @@
 'use strict';
 
 // Baralhos e termos, Vocabulário e Reparar Anki, na área Conexão com o Anki
-// (docs/design/painel/anki/, variante C “Por idioma”). Custos e os estados da
-// Conexão são do painel-anki.js.
+// (docs/design/painel/anki/, variante C “Por idioma”). Custos é de
+// painel-anki.js; a situação da Conexão vem de lib/conexao-anki.js.
 //
 // Baralhos e termos: azulejos Inglês · Russo com o nº de palavras; o baralho
 // escolhido tem o anel de maturidade (maduros · recentes · novos) e a lista de

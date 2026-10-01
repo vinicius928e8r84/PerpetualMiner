@@ -16,6 +16,13 @@
 // chama o ouvinte do `onInstalled` como o Chrome chamaria, com `update`.
 
 const { test, expect } = require('../fixtures');
+const path = require('path');
+
+const fotografarPasso4 = async (page, nome) => {
+  if (process.env.PM_EVIDENCE_DIR) {
+    await page.screenshot({ path: path.join(process.env.PM_EVIDENCE_DIR, nome), fullPage: true });
+  }
+};
 
 const lista = page => page.getByRole('navigation', { name: 'Passos da configuração' });
 const itemDaLista = (page, nome) => lista(page).getByRole('button', { name: new RegExp(`^${nome}`) });
@@ -316,6 +323,7 @@ test('passo 4: desligada, o status, os 3 passos e Verificar de novo; ligar e ver
   // Sem Detalhes nem Copiar: o dono tirou os comandos deste passo.
   await expect(card(page).getByText('Detalhes', { exact: true })).toHaveCount(0);
   await expect(botaoDoCard(page, 'Copiar')).toHaveCount(0);
+  await fotografarPasso4(page, 'boas-vindas-conexao-desligada.png');
 
   await botaoDoCard(page, 'Verificar de novo').click();
   await expect(status).toHaveText('Conexão com o Anki: desligada');
@@ -327,6 +335,7 @@ test('passo 4: desligada, o status, os 3 passos e Verificar de novo; ligar e ver
   // Ligada, os passos e o Verificar de novo saem: não há mais o que fazer.
   await expect(card(page).getByRole('listitem')).toHaveCount(0);
   await expect(botaoDoCard(page, 'Verificar de novo')).toHaveCount(0);
+  await fotografarPasso4(page, 'boas-vindas-conexao-ligada.png');
 });
 
 // ─── Passo 5: Ligar a mineração automática ───────────────────────────────────

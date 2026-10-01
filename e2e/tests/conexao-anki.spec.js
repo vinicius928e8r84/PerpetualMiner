@@ -9,6 +9,15 @@
 // vê e o que fica gravado, nunca funções internas.
 
 const { test, expect } = require('../fixtures');
+const path = require('path');
+
+// Quando solicitado, guarda a tela real do painel e do popup como evidência da
+// transição, sem fazer dos pixels um requisito frágil da suíte regular.
+const fotografar = async (page, nome) => {
+  if (process.env.PM_EVIDENCE_DIR) {
+    await page.screenshot({ path: path.join(process.env.PM_EVIDENCE_DIR, nome), fullPage: true });
+  }
+};
 
 const pontoDaConexao = page => page.locator('.shell-ponto');
 const faixaF1 = page => page.getByText('A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.');
@@ -32,6 +41,7 @@ test('painel: uma porta que aceita e não responde conta como desligada em 3 s, 
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada', { timeout: ateTresSegundos(instante) });
   await expect(faixaF1(page)).toBeVisible();
   expect(await lerJaConectou(extensao)).toBe(true);
+  await fotografar(page, 'painel-porta-muda-desligada.png');
 });
 
 test('painel: a porta muda é detectada mesmo se a leitura do fato não termina', async ({ page, extensao, fakes }) => {
@@ -43,7 +53,9 @@ test('painel: a porta muda é detectada mesmo se a leitura do fato não termina'
       return ler(...args);
     };
   });
-  const inicio = inicioDoHealth(page);
+  // A inicialização do Chromium pode demorar; os 3 s são medidos só a partir
+  // do pedido HTTP, não a partir da navegação.
+  const inicio = page.waitForRequest('http://127.0.0.1:8766/health', { timeout: 10000 }).then(() => Date.now());
   await page.goto(extensao.url('painel.html#anki/custos'));
   const instante = await inicio;
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada', { timeout: ateTresSegundos(instante) });
@@ -74,12 +86,14 @@ test('painel: com a porta muda, o Tentar de novo volta a Conectando e termina de
   fakes.anki.silenciar();
   await page.getByRole('button', { name: 'Tentar de novo' }).click();
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'conectando');
+  await fotografar(page, 'painel-tentando-conectar.png');
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada', { timeout: 4000 });
 
   fakes.anki.voltarAFalar();
   await page.getByRole('button', { name: 'Tentar de novo' }).click();
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'ligada');
   await expect(faixaF1(page)).toBeHidden();
+  await fotografar(page, 'painel-conexao-ligada.png');
 });
 
 test('painel: a primeira resposta ligada grava “já respondeu neste computador”; desligada, nunca respondeu', async ({ page, extensao, fakes }) => {
@@ -105,6 +119,28 @@ test('popup: uma porta muda conta como desligada em 3 s e a nota aparece', async
   await expect(notaDoPopup(page)).toBeVisible({ timeout: 4000 });
 });
 
+test('popup: confere só ao abrir, não a cada 15 s; ao reabrir percebe que a Conexão caiu', async ({ page, extensao, fakes }) => {
+  test.setTimeout(45_000); // É preciso atravessar o intervalo de 15 s do painel.
+  await page.setViewportSize({ width: 340, height: 600 });
+  const numeroDeConferencias = () => fakes.anki.requisicoes.filter(r => r.caminho === '/health').length;
+  const antes = numeroDeConferencias();
+  const resposta = page.waitForResponse('http://127.0.0.1:8766/health');
+  await page.goto(extensao.url('popup.html'));
+  await resposta;
+  await expect(notaDoPopup(page)).toBeHidden();
+  expect(numeroDeConferencias()).toBe(antes + 1);
+
+  fakes.anki.desligar();
+  await page.waitForTimeout(16_000);
+  expect(numeroDeConferencias()).toBe(antes + 1);
+  await expect(notaDoPopup(page)).toBeHidden();
+
+  await page.reload();
+  await expect(notaDoPopup(page)).toBeVisible();
+  expect(numeroDeConferencias()).toBe(antes + 2);
+  await fotografar(page, 'popup-desligada-ao-reabrir.png');
+});
+
 test('popup: quem confere grava o fato; o painel aberto depois já sabe que a Conexão respondeu', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await extensao.gravarStorage({ pm_anki_ja_conectou: false });
@@ -128,15 +164,19 @@ test('painel aberto percebe quando o popup grava a primeira resposta, sem mostra
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada');
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
+  await fotografar(page, 'painel-primeira-conexao.png');
 
   fakes.anki.ligar();
   const popup = await page.context().newPage();
+  await popup.setViewportSize({ width: 340, height: 600 });
   await popup.goto(extensao.url('popup.html'));
   await expect.poll(() => lerJaConectou(extensao)).toBe(true);
+  await fotografar(popup, 'popup-conexao-respondendo.png');
   fakes.anki.desligar();
 
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada');
   await expect(page.locator('#anki-primeira-vez')).toBeHidden();
   await expect(page.getByRole('radiogroup', { name: 'Seções da Conexão com o Anki' })).toBeVisible();
   await expect(page.getByText('Pronto', { exact: true })).toBeHidden();
+  await fotografar(page, 'painel-popup-respondeu-sem-pronto.png');
 });
