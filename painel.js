@@ -540,8 +540,10 @@ async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
         falhaNasOrfas = { quantas: falhas.length, causas: falhas.map(r => r.reason) };
       }
 
-      // Adiciona à lista exibida apenas os que chegaram ao Firestore com sucesso
-      firestoreFrases.push(...sincronizados);
+      // Todas as órfãs ficam na lista, também as que não subiram: `todasFrases`
+      // é gravada por inteiro no storage a cada edição, então uma frase que
+      // sumisse daqui sumiria do computador sem nunca ter chegado à nuvem.
+      firestoreFrases.push(...orphans);
     }
 
     // ── Merge das marcas de Enviada ao Anki (`status: 'exported'`) e Exportada

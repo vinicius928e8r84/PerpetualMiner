@@ -334,6 +334,21 @@ test('Sync parcial (CFG-05): “8 de 10 frases sincronizadas · 2 ficaram só ne
   expect(fakes.google.frasesDe('uid-parcial')).toHaveLength(10);
 });
 
+test('Sync parcial: editar uma frase não apaga as que ainda não subiram', async ({ page, extensao, fakes }) => {
+  const frases = frasesDeExemplo(10);
+  fakes.google.gravarFrases('uid-parcial', frases.slice(2));
+  fakes.google.recusarEscritas();
+  await extensao.gravarStorage({ frases });
+  await extensao.semearSessao({ uid: 'uid-parcial', displayName: 'Ana Souza' });
+  await abrirPainel(page, extensao, '#frases');
+  await expect(estadoDoChip(page)).toHaveText('8 de 10 sincronizadas');
+
+  await page.locator('#frases-lista .veio-frase').first().locator('.veio-palavra-clicavel').first().click();
+
+  await expect.poll(async () => (await extensao.frases()).some(f => f.keywords?.length)).toBe(true);
+  expect((await extensao.frases()).map(f => f.id).sort()).toEqual(frases.map(f => f.id).sort());
+});
+
 test('Sync parcial conta as frases deste computador, não as que outros computadores já têm na nuvem', async ({ page, extensao, fakes }) => {
   const frases = frasesDeExemplo(10);
   const deOutroComputador = frasesDeExemplo(5).map(f => ({ ...f, id: f.id + 1_000 }));
