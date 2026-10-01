@@ -597,9 +597,18 @@ async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
       }
     }
 
+    const idsOrfas = new Set(orphans.map(f => String(f.id)));
+    const { frases: locaisAgora = [] } = await chromeGet({ frases: [] });
+    const locaisPorId = new Map(locaisAgora.map(f => [String(f.id), f]));
+    const atuaisPorId = new Map(todasFrases.map(f => [String(f.id), f]));
+    firestoreFrases = firestoreFrases
+      .filter(f => !idsOrfas.has(String(f.id)) || locaisPorId.has(String(f.id)))
+      .map(f => idsOrfas.has(String(f.id))
+        ? atuaisPorId.get(String(f.id)) || locaisPorId.get(String(f.id))
+        : f);
     const idsCarregados = new Set(firestoreFrases.map(f => String(f.id)));
     todasFrases = [...firestoreFrases, ...todasFrases.filter(f =>
-      !idsCarregados.has(String(f.id)) && !tombstoneSet.has(String(f.id))
+      !idsCarregados.has(String(f.id)) && locaisPorId.has(String(f.id)) && !tombstoneSet.has(String(f.id))
     )];
     if (falhaNasOrfas) mostrarSyncIncompleto(falhaNasOrfas, localSemTombstoned.length, semSincronizar);
     else Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);

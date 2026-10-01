@@ -398,6 +398,49 @@ test('Sync parcial: uma frase minerada durante a subida sobrevive à próxima ed
   expect((await extensao.frases()).map(f => f.id).sort()).toEqual([...frases, novaFrase].map(f => f.id).sort());
 });
 
+test('Sync parcial: retry não desfaz edições nem restaura frases apagadas durante a subida', async ({ page, extensao, fakes }) => {
+  const frases = frasesDeExemplo(3);
+  fakes.google.gravarFrases('uid-em-voo', frases.slice(2));
+  fakes.google.recusarEscritas();
+  await extensao.gravarStorage({ frases });
+  await extensao.semearSessao({ uid: 'uid-em-voo' });
+  await abrirPainel(page, extensao, '#frases');
+  await expect(estadoDoChip(page)).toHaveText('1 de 3 sincronizadas');
+
+  let liberar;
+  const liberada = new Promise(resolve => { liberar = resolve; });
+  const subidas = new Set();
+  await page.route(/\/usuarios\/uid-em-voo\/frases\//, async route => {
+    const req = route.request();
+    const url = new URL(req.url());
+    if (req.method() === 'PATCH' && !url.searchParams.has('updateMask.fieldPaths')) {
+      subidas.add(url.pathname.split('/').pop());
+      await liberada;
+    }
+    await route.fallback();
+  });
+  await chip(page).click();
+  await conta(page).getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect.poll(() => subidas.size).toBe(2);
+  await page.evaluate(() => { location.hash = '#frases'; });
+
+  const cartao = frase => page.locator('#frases-lista .veio-frase').filter({ hasText: frase.texto });
+  await cartao(frases[0]).locator('.veio-palavra-clicavel').first().click();
+  await expect.poll(async () => (await extensao.frases()).find(f => f.id === frases[0].id)?.keywords?.length).toBe(1);
+  await cartao(frases[1]).getByRole('button', { name: 'Apagar frase' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar frase' }).click();
+  await expect.poll(async () => (await extensao.frases()).map(f => f.id)).not.toContain(frases[1].id);
+
+  liberar();
+  await expect(estadoDoChip(page)).toHaveText('1 de 3 sincronizadas');
+  await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(2);
+  await cartao(frases[2]).locator('.veio-palavra-clicavel').first().click();
+  await expect.poll(async () => (await extensao.frases()).find(f => f.id === frases[2].id)?.keywords?.length).toBe(1);
+  const salvas = await extensao.frases();
+  expect(salvas.map(f => f.id).sort()).toEqual([frases[0].id, frases[2].id].sort());
+  expect(salvas.find(f => f.id === frases[0].id).keywords).toHaveLength(1);
+});
+
 test('Sync parcial conta as frases deste computador, não as que outros computadores já têm na nuvem', async ({ page, extensao, fakes }) => {
   const frases = frasesDeExemplo(10);
   const deOutroComputador = frasesDeExemplo(5).map(f => ({ ...f, id: f.id + 1_000 }));
