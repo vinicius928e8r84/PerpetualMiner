@@ -78,6 +78,9 @@ function criarFakeGoogle() {
     }
     if (metodo === 'PATCH') {
       if (recusarEscritas) return responderJson(route, 503, { error: { message: 'indisponível' } });
+      if (url.searchParams.get('currentDocument.exists') === 'true' && !documentos.has(caminho)) {
+        return responderJson(route, 404, { error: { status: 'NOT_FOUND', message: 'NOT_FOUND' } });
+      }
       const fields = req.postDataJSON().fields || {};
       let mascara;
       try {

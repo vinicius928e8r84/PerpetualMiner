@@ -349,6 +349,55 @@ test('Sync parcial: editar uma frase não apaga as que ainda não subiram', asyn
   expect((await extensao.frases()).map(f => f.id).sort()).toEqual(frases.map(f => f.id).sort());
 });
 
+test('Sync parcial: editar uma frase que ainda não subiu grava o documento completo', async ({ page, extensao, fakes }) => {
+  const frases = frasesDeExemplo(2);
+  fakes.google.gravarFrases('uid-edicao', frases.slice(1));
+  fakes.google.recusarEscritas();
+  await extensao.gravarStorage({ frases });
+  await extensao.semearSessao({ uid: 'uid-edicao' });
+  await abrirPainel(page, extensao, '#frases');
+  await expect(estadoDoChip(page)).toHaveText('1 de 2 sincronizadas');
+
+  fakes.google.recusarEscritas(false);
+  await page.locator('#frases-lista .veio-frase').filter({ hasText: frases[0].texto })
+    .locator('.veio-palavra-clicavel').first().click();
+
+  await expect.poll(() => fakes.google.frasesDe('uid-edicao').find(f => f.id === frases[0].id))
+    .toMatchObject({ id: frases[0].id, texto: frases[0].texto, keywords: [expect.any(String)], autoKeyword: false });
+});
+
+test('Sync parcial: uma frase minerada durante a subida sobrevive à próxima edição', async ({ page, extensao, fakes }) => {
+  const frases = frasesDeExemplo(2);
+  const novaFrase = frasesDeExemplo(3)[0];
+  fakes.google.gravarFrases('uid-concorrente', frases.slice(1));
+  fakes.google.recusarEscritas();
+  await extensao.gravarStorage({ frases });
+  await extensao.semearSessao({ uid: 'uid-concorrente' });
+
+  let sinalizarSubida;
+  const subidaIniciada = new Promise(resolve => { sinalizarSubida = resolve; });
+  let liberar;
+  const liberada = new Promise(resolve => { liberar = resolve; });
+  await page.route(/\/usuarios\/uid-concorrente\/frases\//, async route => {
+    if (route.request().method() === 'PATCH') {
+      sinalizarSubida();
+      await liberada;
+    }
+    await route.fallback();
+  });
+  await abrirPainel(page, extensao, '#frases');
+  await subidaIniciada;
+  await extensao.gravarStorage({ frases: [...frases, novaFrase] });
+  await expect(page.locator('#shell-total')).toHaveText('3');
+
+  liberar();
+  await expect(estadoDoChip(page)).toHaveText('1 de 2 sincronizadas');
+  await page.locator('#frases-lista .veio-frase').first().locator('.veio-palavra-clicavel').first().click();
+
+  await expect.poll(async () => (await extensao.frases()).some(f => f.keywords?.length)).toBe(true);
+  expect((await extensao.frases()).map(f => f.id).sort()).toEqual([...frases, novaFrase].map(f => f.id).sort());
+});
+
 test('Sync parcial conta as frases deste computador, não as que outros computadores já têm na nuvem', async ({ page, extensao, fakes }) => {
   const frases = frasesDeExemplo(10);
   const deOutroComputador = frasesDeExemplo(5).map(f => ({ ...f, id: f.id + 1_000 }));

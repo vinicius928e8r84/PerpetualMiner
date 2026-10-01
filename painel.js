@@ -256,7 +256,9 @@ async function erroDaResposta(resp) {
   const mensagem = corpo?.error?.message || `HTTP ${resp.status}`;
   if (resp.status === 401) return erroDaNuvem(mensagem, SITUACOES.EXPIROU);
   if (resp.status === 403 || corpo?.error?.status === 'PERMISSION_DENIED') return erroDaNuvem(mensagem, SITUACOES.RECUSADO);
-  return new Error(mensagem);
+  const erro = new Error(mensagem);
+  erro.status = resp.status;
+  return erro;
 }
 
 // `semSincronizar` é o que a falha genérica mostra: depois de uma primeira
@@ -347,12 +349,16 @@ async function firestoreGetAll() {
 // Se null, envia todos os campos. Retorna Promise para poder ser aguardada.
 async function firestorePatch(frase, campos = null) {
   if (!usuarioLogado) return;
-  let path = `usuarios/${usuarioLogado.uid}/frases/${frase.id}`;
-  if (campos?.length) {
-    // updateMask garante que SOMENTE esses campos são escritos — o resto é preservado
-    path += '?' + campos.map(c => `updateMask.fieldPaths=${encodeURIComponent(c)}`).join('&');
+  const path = `usuarios/${usuarioLogado.uid}/frases/${frase.id}`;
+  const corpo = { fields: objToFields(frase) };
+  if (!campos?.length) return fsRequest('PATCH', path, corpo);
+  const mascara = campos.map(c => `updateMask.fieldPaths=${encodeURIComponent(c)}`).join('&');
+  try {
+    return await fsRequest('PATCH', `${path}?${mascara}&currentDocument.exists=true`, corpo);
+  } catch (err) {
+    if (err.status !== 404) throw err;
+    return fsRequest('PATCH', path, corpo);
   }
-  return fsRequest('PATCH', path, { fields: objToFields(frase) });
 }
 
 async function firestoreBatchUpsert(frases) {
@@ -591,7 +597,10 @@ async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
       }
     }
 
-    todasFrases = firestoreFrases;
+    const idsCarregados = new Set(firestoreFrases.map(f => String(f.id)));
+    todasFrases = [...firestoreFrases, ...todasFrases.filter(f =>
+      !idsCarregados.has(String(f.id)) && !tombstoneSet.has(String(f.id))
+    )];
     if (falhaNasOrfas) mostrarSyncIncompleto(falhaNasOrfas, localSemTombstoned.length, semSincronizar);
     else Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
     finalizarCarregamento();
