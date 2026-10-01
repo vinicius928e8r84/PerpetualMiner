@@ -36,8 +36,9 @@
   const FIM = { completed: 'concluido', partial: 'concluidoEmParte', failed: 'falhou' };
   const IDIOMA_DO_LANG = { en: 'INGLES', ru: 'RUSSO' };
 
-  const { textoDaVoz, Veio, Shell, Contexto, IDIOMAS, ehRussa, AjustesDeEnvio } = raiz;
-  const { ENDERECO_DA_CONEXAO, CONEXAO, AREAS_DO_PAINEL } = Shell;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, Contexto, IDIOMAS, ehRussa, AjustesDeEnvio } = raiz;
+  const { AREAS_DO_PAINEL } = Shell;
+  const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
 
   let doPainel = null;
@@ -68,7 +69,7 @@
     porId('modal-resumo-fechar').addEventListener('click', () => resumo?.fechar());
     porId('btn-resumo-manter').addEventListener('click', () => resumo?.fechar());
     porId('btn-resumo-apagar').addEventListener('click', () => responderResumo('apagar'));
-    Shell.aoMudarAConexao(mostrarConexao);
+    ConexaoAnki.acompanhar(mostrarConexao);
     // O resumo que esperou a Boas-vindas abre quando a pessoa chega ao painel.
     for (const area of AREAS_DO_PAINEL) Shell.aoEntrarNaArea(area, tentarAbrirResumo);
 

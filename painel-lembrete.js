@@ -26,10 +26,6 @@
       porId('btn-minerar-frases').focus();
     });
 
-    const { CONEXAO } = raiz.Shell;
-    // Conectando ainda não conta o passo: o lembrete espera o primeiro /health.
-    raiz.Shell.aoMudarAConexao(situacao => Configuracao.mostrarConexao(
-      situacao === CONEXAO.CONECTANDO ? null : situacao === CONEXAO.LIGADA));
     Configuracao.acompanhar(novo => {
       retrato = novo;
       desenhar();

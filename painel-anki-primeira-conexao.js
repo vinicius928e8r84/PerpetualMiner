@@ -25,13 +25,12 @@
   const PASSO_DO_TENTAR = 2;
   const INTERVALO_DO_TIQUE = 1000;
 
-  const { textoDaVoz, Veio, Shell, Configuracao } = raiz;
-  const { CONEXAO } = Shell;
+  const { textoDaVoz, Veio, ConexaoAnki, Configuracao } = raiz;
+  const { SITUACAO: CONEXAO } = ConexaoAnki;
   const { SITUACAO } = Configuracao;
   const porId = id => document.getElementById(id);
 
   const estado = {
-    conexao: CONEXAO.CONECTANDO,
     pronto: false,
     escolha: null,          // o passo que a pessoa abriu; sem ele, o primeiro que falta
     conferindo: false,      // uma conferência está no ar
@@ -52,11 +51,11 @@
       if (porId('apv-tentar').getAttribute('aria-disabled') === 'true') return;
       // Só o botão do card fixa o passo 3: o Tentar de novo da F1 e o da Boas-vindas não são escolha dela.
       estado.escolha = PASSO_DO_TENTAR;
-      Shell.tentarAConexaoDeNovo();
+      ConexaoAnki.tentarDeNovo();
     });
 
-    Shell.aoMudarAConexao(aoMudarAConexao);
-    Shell.aoConferirAConexao(conferindo => {
+    ConexaoAnki.acompanhar(aoMudarAConexao);
+    ConexaoAnki.aoConferir(conferindo => {
       estado.conferindo = conferindo;
       desenharConferencia();
     });
@@ -105,13 +104,12 @@
   // ─── A conferência de 15 s do shell ────────────────────────────────────────
 
   function aoMudarAConexao(situacao) {
-    estado.conexao = situacao;
     if (situacao !== CONEXAO.CONECTANDO) estado.conferiuEm = Date.now();
   }
 
   function desenharConferencia() {
     if (porId('anki-primeira-vez').hidden) return;
-    const agora = estado.conferindo || estado.conexao === CONEXAO.CONECTANDO;
+    const agora = estado.conferindo || ConexaoAnki.situacao() === CONEXAO.CONECTANDO;
     const segundos = Math.max(0, Math.floor((Date.now() - (estado.conferiuEm ?? Date.now())) / 1000));
     porId('apv-confere').textContent = agora
       ? textoDaVoz('ONB-16.conferindoAgora')
@@ -120,13 +118,13 @@
 
   // ─── O card ────────────────────────────────────────────────────────────────
 
-  const ligada = () => estado.pronto || estado.conexao === CONEXAO.LIGADA;
+  const ligada = () => estado.pronto || ConexaoAnki.situacao() === CONEXAO.LIGADA;
 
   /** O passo aberto: o que a pessoa escolheu ou, sem escolha, o primeiro que falta. */
   function passoAtual() {
     if (estado.pronto) return PASSOS.length;
     if (estado.escolha !== null) return estado.escolha;
-    if (estado.conexao === CONEXAO.CONECTANDO) return PASSO_DO_TENTAR;
+    if (ConexaoAnki.situacao() === CONEXAO.CONECTANDO) return PASSO_DO_TENTAR;
     return ligada() ? PASSOS.length : 0;
   }
 
@@ -144,7 +142,8 @@
    */
   function desenhar(pedido) {
     ultimoPedido = pedido;
-    const { visivel, pronto, conexao } = pedido;
+    const { visivel, pronto } = pedido;
+    const conexao = ConexaoAnki.situacao();
     const secao = porId('anki-primeira-vez');
     // O card sai com o foco dentro: ele vai para a aba, em vez de cair no fim da
     // página. O painel-anki.js já devolveu as abas à tela, então o foco pega.
@@ -160,7 +159,6 @@
     const focoSaindo = secao.contains(ativo) || ativo === document.body || ativo === null;
     const entrouNoPronto = pronto && !estado.pronto;
     estado.pronto = pronto;
-    estado.conexao = conexao;
 
     const passoAberto = passoAtual();
     const feito = ligada();

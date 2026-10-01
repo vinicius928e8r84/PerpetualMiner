@@ -164,6 +164,8 @@ function criarFakeAnki() {
     requisicoes.push({ metodo: req.method(), caminho: url.pathname, busca: url.search, corpo: req.postData() });
 
     if (!estado.ligada) return route.abort('connectionrefused');
+    // A porta aceita e não responde: o pedido fica no ar até a página desistir.
+    if (estado.muda) return new Promise(() => {});
 
     const personalizada = estado.rotas.get(`${req.method()} ${url.pathname}`);
     if (personalizada) {
@@ -223,6 +225,9 @@ function criarFakeAnki() {
     envios,
     desligar() { estado.ligada = false; },
     ligar() { estado.ligada = true; },
+    /** A porta aceita a conexão e nunca responde (o /health do bridge travado). */
+    silenciar() { estado.muda = true; },
+    voltarAFalar() { estado.muda = false; },
     /**
      * O vocabulário do baralho de um idioma: cada item é uma string (uma palavra
      * madura num cartão) ou `{ word, type: 'word'|'term', maduros, recentes, novos }`

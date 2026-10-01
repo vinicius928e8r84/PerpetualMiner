@@ -72,14 +72,12 @@
     { chave: 'novos', rotulo: 'BRG-34.novos' },
   ];
 
-  const { textoDaVoz, Veio, Shell, IDIOMAS } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, IDIOMAS } = raiz;
   const { esqueleto, linhaDeEspera, seloDoDadoAntigo } = raiz.Anki.pecas;
-  const { ENDERECO_DA_CONEXAO, CONEXAO } = Shell;
+  const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
 
   const estado = {
-    conexao: CONEXAO.CONECTANDO,
-    conferiu: false,        // a Conexão já respondeu ou falhou alguma vez nesta página
     nomes: null,            // { en, ru }: os baralhos dos Ajustes de envio
     baralhos: {
       dados: null,          // a última leitura de GET /anki/stats/decks
@@ -120,7 +118,7 @@
     const vocabulario = gravado[CHAVE_VOCABULARIO];
     if (vocabulario?.dados && !estado.vocabulario.dados) Object.assign(estado.vocabulario, vocabulario);
 
-    Shell.aoMudarAConexao(aoMudarAConexao);
+    ConexaoAnki.acompanhar(aoMudarAConexao);
     Shell.aoEntrarNaArea('anki', () => lerTudo({ abrirOAnki: true }));
     raiz.Anki.aoAtualizar(() => lerTudo({ deNovo: true, abrirOAnki: true }));
     desenhar();
@@ -137,10 +135,11 @@
     if ((!antes || mudou) && Shell.areaAtual() === 'anki') lerTudo({ deNovo: mudou, abrirOAnki: true });
   }
 
+  let anterior = CONEXAO.CONECTANDO;   // a situação da notificação anterior: ligar é decidido contra ela
+
   function aoMudarAConexao(situacao) {
-    const antes = estado.conexao;
-    estado.conexao = situacao;
-    if (situacao !== CONEXAO.CONECTANDO) estado.conferiu = true;
+    const antes = anterior;
+    anterior = situacao;
     if (situacao === CONEXAO.LIGADA && antes !== CONEXAO.LIGADA && Shell.areaAtual() === 'anki') {
       lerTudo({ abrirOAnki: true });
     }
@@ -148,14 +147,14 @@
   }
 
   function desligada() {
-    return estado.conexao === CONEXAO.DESLIGADA;
+    return ConexaoAnki.situacao() === CONEXAO.DESLIGADA;
   }
 
   // ─── Leituras ──────────────────────────────────────────────────────────────
 
   /** Lê as duas abas, cada uma por si; sem a Conexão (ou sem os baralhos) não há de onde. */
   function lerTudo(opcoes = {}) {
-    if (estado.conexao !== CONEXAO.LIGADA || !estado.nomes) return;
+    if (ConexaoAnki.situacao() !== CONEXAO.LIGADA || !estado.nomes) return;
     lerBaralhos(opcoes);
     lerVocabulario();
   }
@@ -392,7 +391,7 @@
   /** O que a aba mostra agora: a mesma regra nas duas abas. */
   function vista({ dados, carregando, erro }) {
     if (desligada() && dados) return 'antiga';
-    if (!estado.conferiu) return 'esqueleto';
+    if (ConexaoAnki.ultimaResposta() === null) return 'esqueleto';
     if (desligada()) return 'nada';
     if (carregando || (!dados && !erro)) return 'carregando';
     if (erro) return 'erro';
