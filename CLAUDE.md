@@ -49,7 +49,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `lib/configuracao.js` | `PerpetualMiner.Configuracao` — the first-run setup in one place: the 6 steps of the Boas-vindas, when each is done (from what is stored, plus the Conexão it follows from `ConexaoAnki`), “agora não”, `pm_boas_vindas`, and the “Configuração pela metade” reminder (ONB-14, ONB-15). Loaded by the panel and the popup. See “Configuração pela metade” below |
 | `painel-lembrete.js` | The ONB-15 strip at the top of Frases: the progress ring, “N de 6 passos”, Ocultar and Continuar configuração. See “Configuração pela metade” below |
 | `lib/ajustes-de-envio.js` | `PerpetualMiner.AjustesDeEnvio` — the Ajustes de envio in one place: the Baralho padrão of each language (CIMV · RUSSIAN), the stored shape of `ankiBridgePresets`, the per-language save that refuses a stale version, and `acompanhar`. Loaded by the panel and the service worker, so the default deck is the same everywhere in the front |
-| `lib/mineracao.js` | `PerpetualMiner.Mineracao` — mining one Frase through one path: `gravar({ texto, contexto, origem?, idioma?, palavras?, semNuvem? })` sends `SALVAR_HISTORICO` and resolves `{ ok: true, frase }` or `{ ok: false, error }` (never rejects; only an explicit `ok: true` from the service worker means saved), and `contextoDaSelecao({ url, titulo, preservarTitulo? })` is the Fonte (`pdf` for a PDF, else `web`) and Contexto of a selection, shared by the shortcut and the context menu. The menu strips the viewer suffix and falls back to the URL; the shortcut passes `preservarTitulo: true` to keep the page's trimmed title, including an empty one. Also `PerpetualMiner.minerarFraseManual(texto)`, the quick mining (Fonte `manual`) shared by the popup and step 1 of the Boas-vindas: resolves with the saved phrase, rejects when it was not saved. Loaded by the content script, the service worker, the popup, the panel and Minerar de uma foto, after `lib/idioma.js` |
+| `lib/mineracao.js` | `PerpetualMiner.Mineracao` and `PerpetualMiner.minerarFraseManual` — shared mining requests and selection context. See the module's doc comments for the API, confirmation and title-compatibility contracts |
 | `lib/mineracao-do-dia.js` | `PerpetualMiner.MineracaoDoDia` — shared automatic-mining day rules and storage/message channel names. See the module's doc comments for normalization and the day-query API; see `publicarEstadoDaAutomatica` in `background.js` for state publication |
 | `lib/mineracao-automatica.js` | `PerpetualMiner.MineracaoAutomatica` — the automatic mining seen from a page: `lerEstado()` / `salvarAjustes(mudanca)` (the `AUTO_MINER_GET_STATE` / `AUTO_MINER_SET_SETTINGS` messages, as promises that reject with the cause) and `ligarCampoDoLimite(campo, { limiteGravado, gravar })`, the 1–100 daily-limit field (`.veio-campo--limite`). Shared by the popup's tiles and step 5 of the Boas-vindas |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — no page loads them today (the panel talks to Firestore over REST), so the Web Store package leaves them out |
@@ -66,18 +66,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```
 1. Streaming subtitles
-   Video page → content.js (recorded caption shortcut, default Alt+S) → background.js → chrome.storage.local["frases"]
-                                                     └→ Firestore (if logged in)
+   Video page → content.js (recorded caption shortcut, default Alt+S)
+   → Mineracao.gravar → SALVAR_HISTORICO
 
 2. Selected text (any page/PDF)
+   Recorded selection shortcut → content.js → Mineracao.gravar → SALVAR_HISTORICO
    User right-clicks → context menu "Minerar com PerpetualMiner" (MIN-08, from the catalog)
-   → background.js (contextMenus listener) → chrome.storage.local["frases"]
-                                           └→ Firestore (if logged in)
+   → background.js (contextMenus listener) → salvarFrase
 
 3. Physical book photos
    bookreader.html → user uploads photo → Gemini Vision API (gemini-3-flash-preview)
-   → parsed passages → chrome.storage.local["frases"]
-                     └→ Firestore (if logged in)
+   → parsed passages → Mineracao.gravar → SALVAR_HISTORICO
+
+SALVAR_HISTORICO → background.js → salvarFrase → chrome.storage.local["frases"]
+                                             └→ Firestore (if logged in)
 ```
 
 ### Shared base (`lib/`)

@@ -18,6 +18,7 @@
 // internas.
 
 const { test, expect } = require('../fixtures');
+const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 
 const AGORA = new Date('2026-09-18T12:00:00');
 const HOJE = '18/09/2026';
@@ -195,6 +196,8 @@ test('Minerar 3 frases grava as três com a Fonte e o Título, fecha o modal e d
   }
   expect(gravadas.find(f => f.texto.startsWith('Он')).idioma).toBe('Russo');
   expect(new Set(gravadas.map(f => f.id)).size).toBe(3);
+  await fotografar(page, 'c1-painel-mineradas.png');
+  await registrarEstado(extensao, 'c1-painel-mineradas.json');
 });
 
 test('sem Fonte, a frase colada fica com a Fonte Manual', async ({ page, extensao }) => {

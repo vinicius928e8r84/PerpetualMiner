@@ -7,6 +7,7 @@
 // no balão do ícone. Os testes afirmam o que a pessoa vê e o que fica gravado.
 
 const { test, expect } = require('../fixtures');
+const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 
 const HOJE = new Date().toLocaleDateString('pt-BR');
 
@@ -123,6 +124,8 @@ test('mineração rápida: Minerar só com texto; Enter minera, o campo limpa e 
 
   const [gravada] = await extensao.frases();
   expect(gravada).toMatchObject({ texto: 'Break a leg', streaming: 'manual', idioma: 'Inglês', contexto: { fonte: 'manual', titulo: '', detalhe: '' } });
+  await fotografar(page.locator('body'), 'c1-popup-minerada.png');
+  await registrarEstado(extensao, 'c1-popup-minerada.json');
 });
 
 test('mineração rápida em russo grava o idioma pelo detector único', async ({ page, extensao }) => {

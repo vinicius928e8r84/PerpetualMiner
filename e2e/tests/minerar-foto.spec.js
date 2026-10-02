@@ -7,6 +7,7 @@
 // “Tentar de novo” numa foto são do #37.
 
 const { test, expect } = require('../fixtures');
+const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 
 const CHAVE = 'chave-de-teste';
 
@@ -76,6 +77,8 @@ test('uma foto: prévia, leitura, frases agrupadas pela foto e “Minerar N fras
     expect(gravada.contexto).toEqual({ fonte: 'livro', titulo: 'Atomic Habits', detalhe: '' });
     expect(gravada.idioma).toBe('Inglês');
   }
+  await fotografar(page, 'c1-foto-minerada.png');
+  await registrarEstado(extensao, 'c1-foto-minerada.json');
 });
 
 test('várias fotos pulam a prévia e são lidas em sequência, com o status de cada uma e o progresso', async ({ page, extensao, fakes }) => {
@@ -166,28 +169,54 @@ test('“Selecionar todas” marca e desmarca, fica misto com parte, e o botão 
 
 // ─── Gravou ou não gravou: só um “ok” do service worker conta ────────────────
 
-test('um service worker que responde sem confirmar a gravação não deixa a frase “Minerada”', async ({ page, extensao, fakes }) => {
-  fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
-  await abrirAPagina(page, extensao);
-  await lerUmaFoto(page);
-  await expect(botaoMinerar(page)).toHaveText('Minerar 3 frases');
+for (const caso of [
+  { nome: 'sem resposta', resposta: undefined },
+  { nome: 'objeto sem ok', resposta: {} },
+  { nome: 'ok não booleano', resposta: { ok: 'true' } },
+  { nome: 'ok falso', resposta: { ok: false, error: 'save_failed' } },
+  { nome: 'contexto invalidado', falha: 'invalidado' },
+  { nome: 'canal sem receptor', falha: 'semReceptor' },
+]) {
+  test(`um service worker que responde sem confirmar a gravação não deixa a frase “Minerada” (${caso.nome})`, async ({ page, extensao, fakes }) => {
+    fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
+    await abrirAPagina(page, extensao);
+    await lerUmaFoto(page);
+    await expect(botaoMinerar(page)).toHaveText('Minerar 3 frases');
 
-  // O service worker "responde", mas sem confirmar nada (nem erro): sem `ok`, não gravou.
-  await page.evaluate(() => {
-    const original = chrome.runtime.sendMessage.bind(chrome.runtime);
-    chrome.runtime.sendMessage = (mensagem, retorno) => {
-      if (mensagem?.type !== 'SALVAR_HISTORICO') return original(mensagem, retorno);
-      setTimeout(() => retorno(undefined));
-    };
+    // Falha na fronteira de mensagens; a tela deve continuar permitindo tentar
+    // de novo. O canal sem receptor produz um runtime.lastError real do Chrome.
+    await page.evaluate(({ resposta, falha }) => {
+      window.enviarDeVerdade = chrome.runtime.sendMessage.bind(chrome.runtime);
+      chrome.runtime.sendMessage = (mensagem, retorno) => {
+        if (mensagem?.type !== 'SALVAR_HISTORICO') return window.enviarDeVerdade(mensagem, retorno);
+        if (falha === 'invalidado') throw new Error('Extension context invalidated.');
+        if (falha === 'semReceptor') return window.enviarDeVerdade('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', mensagem, retorno);
+        setTimeout(() => retorno(resposta));
+      };
+    }, caso);
+    await botaoMinerar(page).click();
+
+    await expect(page.locator('#foto-avisos')).toContainText('Não deu para minerar as frases. Tente de novo.');
+    await expect(page.locator('.foto-frase__minerada:visible')).toHaveCount(0);
+    await expect(frase(page, FRASES_DA_PAGINA_1[0])).toBeEnabled();
+    await expect(page.locator('.veio-toast')).toHaveCount(0);
+    expect(await gravadasDoLivro(extensao)).toEqual([]);
+    if (caso.nome === 'objeto sem ok') {
+      await fotografar(page, 'c1-foto-sem-ok.png');
+      await registrarEstado(extensao, 'c1-foto-sem-ok.json');
+    }
+
+    await page.evaluate(() => { chrome.runtime.sendMessage = window.enviarDeVerdade; });
+    await botaoMinerar(page).click();
+    await expect(page.locator('.veio-toast')).toHaveText('3 frases mineradas');
+    await expect(page.locator('.foto-frase__minerada:visible')).toHaveCount(3);
+    expect((await gravadasDoLivro(extensao)).map(f => f.texto).sort()).toEqual([...FRASES_DA_PAGINA_1].sort());
+    if (caso.nome === 'objeto sem ok') {
+      await fotografar(page, 'c1-foto-apos-tentar-de-novo.png');
+      await registrarEstado(extensao, 'c1-foto-apos-tentar-de-novo.json');
+    }
   });
-  await botaoMinerar(page).click();
-
-  await expect(page.locator('#foto-avisos')).toContainText('Não deu para minerar as frases. Tente de novo.');
-  await expect(page.locator('.foto-frase__minerada:visible')).toHaveCount(0);
-  await expect(frase(page, FRASES_DA_PAGINA_1[0])).toBeEnabled();
-  await expect(page.locator('.veio-toast')).toHaveCount(0);
-  expect(await gravadasDoLivro(extensao)).toEqual([]);
-});
+}
 
 // ─── Bug de #9: o botão “salvo” reabilitava e salvava de novo ────────────────
 
