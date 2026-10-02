@@ -74,6 +74,7 @@ let listaCarregada     = false;
 let usuarioLogado = null;
 // A nuvem da conta (null sem conta) e a sincronização que a usa; sem conta, a
 // sincronização só grava os tombstones daqui.
+let sessao         = null;
 let nuvem          = null;
 let sincronizacao  = novaSincronizacao();
 
@@ -253,7 +254,7 @@ function novaSincronizacao() {
 }
 
 function conectarNuvem(credenciais) {
-  const sessao = Sincronizacao.criarSessao({
+  sessao = Sincronizacao.criarSessao({
     credenciais,
     aoRenovar: renovadas => chromeSet({ pm_firebase_auth: renovadas }),
   });
@@ -262,6 +263,8 @@ function conectarNuvem(credenciais) {
 }
 
 function desconectarNuvem() {
+  sessao?.revogar();
+  sessao = null;
   nuvem = null;
   sincronizacao = novaSincronizacao();
 }

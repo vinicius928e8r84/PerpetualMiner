@@ -746,7 +746,7 @@ function nuvemDeTeste(responder, credenciais = {}) {
     aoRenovar: c => renovadas.push(c),
     buscar: fetch.buscar,
   });
-  return { nuvem: nuvemHttp({ sessao, buscar: fetch.buscar }), pedidos: fetch.pedidos, renovadas };
+  return { sessao, nuvem: nuvemHttp({ sessao, buscar: fetch.buscar }), pedidos: fetch.pedidos, renovadas };
 }
 
 head('HTTP 1 — Codec: ida e volta, com mapas e listas');
@@ -880,6 +880,77 @@ await (async () => {
   assert(!('a' in dados),                                                                  'remove também');
 })();
 
+head('HTTP 10 — Revogar a sessão impede pedidos e uma renovação em voo');
+sep();
+await (async () => {
+  let responder;
+  const resposta = new Promise(resolve => { responder = resolve; });
+  const a = nuvemDeTeste(() => resposta, { expiresAt: 0 });
+  const pedido = a.nuvem.listarFrases();
+  assert(a.pedidos.length === 1 && a.pedidos[0].url.includes('securetoken'), 'a renovação está em voo');
+  a.sessao.revogar();
+  responder({ corpo: { id_token: 'token-tardio', refresh_token: 'refresh-tardio' } });
+  const [resultado] = await Promise.allSettled([pedido]);
+  assert(resultado.status === 'rejected' && resultado.reason?.motivo === MOTIVO.EXPIROU, 'o pedido rejeita com EXPIROU após a revogação');
+  assert(a.renovadas.length === 0, 'a renovação tardia não chama aoRenovar');
+  assert(a.pedidos.length === 1, 'nenhum pedido chega ao Firestore após a renovação tardia');
+
+  const b = nuvemDeTeste(() => ({}));
+  b.sessao.revogar();
+  b.sessao.revogar();
+  const pedidosRevogados = [
+    ['token', () => b.sessao.token()],
+    ['listar frases', () => b.nuvem.listarFrases()],
+    ['gravar frase', () => b.nuvem.gravarFrase({ id: 1, texto: 'x' })],
+    ['gravar lote', () => b.nuvem.gravarFrases([{ id: 1, texto: 'x' }])],
+    ['apagar frases', () => b.nuvem.apagarFrases(['1'])],
+    ['ler tombstones', () => b.nuvem.lerTombstones()],
+    ['gravar tombstones', () => b.nuvem.gravarTombstones(['1'], 1000)],
+  ];
+  for (const [nome, pedir] of pedidosRevogados) {
+    const [r] = await Promise.allSettled([pedir()]);
+    assert(r.status === 'rejected' && r.reason?.motivo === MOTIVO.EXPIROU, `${nome} rejeita com EXPIROU numa sessão revogada`);
+  }
+  assert(b.pedidos.length === 0 && b.renovadas.length === 0, 'a sessão revogada não faz pedidos nem persiste credenciais');
+  b.sessao.invalidar();
+  const [aindaRevogada] = await Promise.allSettled([b.sessao.token()]);
+  assert(aindaRevogada.status === 'rejected' && aindaRevogada.reason?.motivo === MOTIVO.EXPIROU && b.pedidos.length === 0,
+    'invalidar o token não reativa a sessão revogada');
+
+  const c = nuvemDeTeste(() => ({}));
+  const comTokenValido = c.nuvem.listarFrases();
+  c.sessao.revogar();
+  const [semPedido] = await Promise.allSettled([comTokenValido]);
+  assert(semPedido.status === 'rejected' && semPedido.reason?.motivo === MOTIVO.EXPIROU && c.pedidos.length === 0,
+    'a revogação antes do envio impede usar um token já obtido');
+
+  for (const [nome, pedir] of [
+    ['leitura', nuvem => nuvem.listarFrases()],
+    ['lotes', nuvem => nuvem.gravarFrases(Array.from({ length: 501 }, (_, id) => ({ id, texto: 'x' })))],
+  ]) {
+    const d = nuvemDeTeste(() => { d.sessao.revogar(); return {}; });
+    const [emVoo] = await Promise.allSettled([pedir(d.nuvem)]);
+    assert(emVoo.status === 'rejected' && emVoo.reason?.motivo === MOTIVO.EXPIROU && d.pedidos.length === 1,
+      `${nome}: a resposta em voo rejeita após revogar, sem continuar os pedidos`);
+  }
+
+  let entregarCorpo, avisarLeitura;
+  const corpo = new Promise(resolve => { entregarCorpo = resolve; });
+  const lendoCorpo = new Promise(resolve => { avisarLeitura = resolve; });
+  const renovadas = [];
+  const sessao = criarSessao({
+    credenciais: { uid: 'u1', refreshToken: 'refresh', expiresAt: 0 },
+    aoRenovar: c => renovadas.push(c),
+    buscar: async () => ({ ok: true, status: 200, json: () => { avisarLeitura(); return corpo; } }),
+  });
+  const token = sessao.token();
+  await lendoCorpo;
+  sessao.revogar();
+  entregarCorpo({ id_token: 'token-tardio', refresh_token: 'refresh-tardio' });
+  const [semRenovar] = await Promise.allSettled([token]);
+  assert(semRenovar.status === 'rejected' && semRenovar.reason?.motivo === MOTIVO.EXPIROU && renovadas.length === 0,
+    'revogar durante a leitura da resposta também impede aoRenovar');
+})();
 
 // ─── Resultado final ──────────────────────────────────────────────────────────
 
