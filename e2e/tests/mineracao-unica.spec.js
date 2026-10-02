@@ -9,6 +9,10 @@ const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 
 const TRECHO = 'Every lantern along the pier flickered in the salt wind.';
 
+// O Playwright não abre o menu de contexto nativo do Chrome. É a exceção
+// documentada em CLAUDE.md (Testing): o teste chama o callback que o Chrome
+// chamaria, com o mesmo `info` e a mesma `tab`; o que ele grava é conferido
+// depois na tela do painel, como a pessoa vê.
 const minerarPeloMenu = (extensao, { selecao, pageUrl, titulo }) => extensao.serviceWorker.evaluate(
   ({ selecao, pageUrl, titulo }) => minerarSelecaoDoMenu(
     { menuItemId: 'minerar-perpetualminer', selectionText: selecao, pageUrl },
@@ -16,6 +20,18 @@ const minerarPeloMenu = (extensao, { selecao, pageUrl, titulo }) => extensao.ser
   ),
   { selecao, pageUrl, titulo },
 );
+
+/**
+ * Abre o painel e confere a linha de Contexto da frase como a pessoa a vê: o
+ * selo da Fonte e o Título (sem o Título, a linha não tem a origem).
+ */
+async function conferirContextoNaTela(page, extensao, texto, { selo, origem }) {
+  if (page.url() !== extensao.url('painel.html#frases')) await page.goto(extensao.url('painel.html#frases'));
+  const contexto = page.locator('.veio-frase').filter({ hasText: texto }).locator('.veio-frase__contexto');
+  await expect(contexto.locator('.veio-selo').first()).toHaveText(selo);
+  if (origem) await expect(contexto.locator('.frase-origem')).toHaveText(origem);
+  else await expect(contexto.locator('.frase-origem')).toHaveCount(0);
+}
 
 test('a seleção minerada pelo atalho e pelo menu numa página web grava a mesma Fonte', async ({ page, paginas, extensao }) => {
   await extensao.gravarStorage({
@@ -70,18 +86,17 @@ for (const { titulo, tituloDoMenu } of [
     ]);
 
     const selecaoDoMenu = 'The tide came in at dusk.';
-    await minerarPeloMenu(extensao, { selecao: selecaoDoMenu, pageUrl: page.url(), titulo: await page.title() });
+    const url = page.url();
+    await minerarPeloMenu(extensao, { selecao: selecaoDoMenu, pageUrl: url, titulo: await page.title() });
     await expect.poll(async () => (await extensao.frases()).find(f => f.texto === selecaoDoMenu)).toMatchObject({
       streaming: 'web',
-      contexto: { fonte: 'web', titulo: tituloDoMenu || page.url(), detalhe: '' },
+      contexto: { fonte: 'web', titulo: tituloDoMenu || url, detalhe: '' },
     });
 
+    await conferirContextoNaTela(page, extensao, TRECHO, { selo: 'Web', origem: titulo });
+    await conferirContextoNaTela(page, extensao, selecaoDoMenu, { selo: 'Web', origem: tituloDoMenu || url });
+    await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(2);
     if (titulo === 'Working with PDF') {
-      await page.goto(extensao.url('painel.html#frases'));
-      await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(2);
-      const doAtalho = page.locator('.veio-frase').filter({ hasText: TRECHO });
-      await expect(doAtalho.locator('.veio-frase__contexto .veio-selo')).toHaveText('Web');
-      await expect(doAtalho.locator('.frase-origem')).toHaveText('Working with PDF');
       await fotografar(page, 'c1-titulo-literal.png');
       await registrarEstado(extensao, 'c1-titulo-literal.json');
     }
@@ -132,6 +147,10 @@ for (const sufixo of ['', '?download=1#page=2']) {
     for (const frase of frases) {
       expect(frase.streaming).toBe('pdf');
       expect(frase.contexto).toEqual({ fonte: 'pdf', titulo: 'Página comum · Artigo de teste', detalhe: '' });
+    }
+
+    for (const texto of [TRECHO, 'The tide came in at dusk.']) {
+      await conferirContextoNaTela(page, extensao, texto, { selo: 'PDF', origem: 'Página comum · Artigo de teste' });
     }
   });
 }
