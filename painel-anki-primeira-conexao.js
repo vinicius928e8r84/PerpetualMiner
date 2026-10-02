@@ -236,7 +236,7 @@
     porId('apv-status').classList.toggle('apv-status--espera', esperando);
     const mostrada = pronto ? CONEXAO.LIGADA : conexao;
     ConexaoNaTela.pintarPonto(porId('apv-ponto'), esperando ? '' : mostrada);
-    porId('apv-status-texto').textContent = esperando ? textoDaVoz('ONB-16.esperando') : ConexaoNaTela.texto(mostrada);
+    porId('apv-status-texto').textContent = esperando ? textoDaVoz('ONB-16.esperando') : ConexaoNaTela.texto(conectando ? conexao : mostrada);
 
     ConexaoNaTela.pintarTentarDeNovo(porId('apv-tentar'), conexao, {
       sai: pronto || passoAberto !== PASSO_DO_TENTAR,

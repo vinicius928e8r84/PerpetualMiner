@@ -80,6 +80,44 @@ test.describe('a mesma situação, a mesma tela', () => {
     liberarDeNovo();
     await expect(statusDoPasso4(outraAba)).toHaveText(TEXTO.desligada);
   });
+
+  test('ONB-16: tentar de novo durante o Pronto anuncia Conectando sem desfazer o marco', async ({ page, extensao, fakes }) => {
+    fakes.anki.desligar();
+    const agora = new Date('2026-09-18T12:00:00');
+    await page.clock.install({ time: agora });
+    await page.clock.pauseAt(new Date(agora.getTime() + 1_000));
+    await page.goto(extensao.url('painel.html#anki/custos'));
+    await expect(cardDaPrimeiraConexao(page)).toBeVisible();
+
+    fakes.anki.ligar();
+    await tentarDaF1(page).click();
+    await expect(cardDaPrimeiraConexao(page)).toContainText('Pronto');
+    await expect(statusDoCard(page)).toHaveText(TEXTO.ligada);
+
+    fakes.anki.desligar();
+    await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
+    await expect(sidebar(page)).toHaveText(TEXTO.desligada);
+    await expect(tentarDaF1(page)).toBeVisible();
+    await expect(statusDoCard(page)).toHaveText(TEXTO.ligada);
+
+    const liberar = segurarOHealth(fakes);
+    fakes.anki.ligar();
+    await tentarDaF1(page).click();
+    await expect(sidebar(page)).toHaveText(TEXTO.conectando);
+    await expect(statusDoCard(page)).toHaveText(TEXTO.conectando);
+    await expect(cardDaPrimeiraConexao(page)).toContainText('Pronto');
+    await expect(pontoDoCard(page)).toHaveAttribute('data-estado', 'ligada');
+    await expect(page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: /feito$/ })).toHaveCount(3);
+    await expect(tentarDoCard(page)).toBeHidden();
+    await expect(tentarDaF1(page)).toHaveAttribute('aria-disabled', 'true');
+
+    liberar();
+    await expect(sidebar(page)).toHaveText(TEXTO.desligada);
+    await expect(statusDoCard(page)).toHaveText(TEXTO.ligada);
+    await page.clock.runFor(1_800);
+    await expect(cardDaPrimeiraConexao(page)).toBeHidden();
+    await expect(page.getByRole('radiogroup', { name: 'Seções da Conexão com o Anki' })).toBeVisible();
+  });
 });
 
 test.describe('Tentar de novo indisponível enquanto confere', () => {
