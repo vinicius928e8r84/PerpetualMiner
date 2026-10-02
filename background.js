@@ -276,9 +276,9 @@ async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', e
     novaFrase.autoKeyword = true;
   }
 
-  // Grava no storage local e marca como pendente de sync atomicamente.
-  // Marcar como pendente ANTES do sync evita que carregarFrasesFirestore
-  // descarte a frase do local storage enquanto o PATCH ainda está em voo.
+  // Grava a frase e o retry na mesma escrita local, antes de tentar a nuvem.
+  // Uma falha na nuvem (inclusive na renovação do token) deixa o retry
+  // registrado; apenas o upload confirmado o retira.
   await naFilaDeGravacao(async () => {
     const data = await chromeGet({ frases: [], pm_pending_sync: [] });
     novaFrase.id = proximoIdDeFrase(data.frases);

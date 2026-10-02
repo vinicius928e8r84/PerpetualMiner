@@ -23,7 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `content.js` | Injected into all pages; mines subtitles and selections, and drives the overlay |
 | `overlay.js` + `overlay.css` | `PerpetualMiner.Overlay` — the in-page overlay: one Veio component in an open Shadow DOM (the floating button and the feedback pill). See “Overlay” below |
 | `background.js` | Service worker; handles `SALVAR_HISTORICO` messages and context menu clicks; writes to `chrome.storage.local` and syncs to Firestore |
-| `lib/sincronizacao.js` | `PerpetualMiner.Sincronizacao` — the cloud sync in one place: the Firestore codec, the account session, `nuvemHttp` (Firestore REST) and `criarSincronizacao` (merge of local, cloud and tombstones; delete; the pending Apagar tudo). Loaded by the panel, the service worker (`importScripts`) and `test_sync.js`. See “Firebase / Firestore Sync” below |
+| `lib/sincronizacao.js` | `PerpetualMiner.Sincronizacao` — shared cloud sync. See “Firebase / Firestore Sync” below and the module's doc comments for its API contract |
 | `popup.html/js/css` | The “Cockpit” popup (docs/design/popup/, variant A): the “Configuração pela metade” card (ONB-14), Abrir painel, the Mineração automática tiles, quick mining and the last 5 phrases, read-only. See “Popup (Cockpit)” below |
 | `painel.html/js/css` | Full dashboard to view, copy, and delete all saved phrases; Google login and Firestore sync |
 | `painel-shell.js` | The panel's “Ilhas” shell: one page, one area per address (`#frases`, `#anki/<aba>`, `#configuracoes[/<seção>]`), the sidebar indicators (phrase total, Conexão com o Anki dot), the rail below ~1000 px, the F1 strip and the Configurações cards opening and closing. See “Panel shell” below |
@@ -281,9 +281,8 @@ name the account is “Conta Google” (CFG-10).
 
 A sync problem shows **only** in the card and the chip — never a toast or a strip in another area. The one exception is
 the spec's own PAI-15: when a delete reaches this computer but not the cloud, Frases also shows the persistent aviso
-saying those phrases may come back, with “Tentar de novo”; the card and the chip still say the computer is out of sync. `painel.js` tags a
-cloud error with its situation (`erroDaResposta`: HTTP 401 → `EXPIROU`, 403/PERMISSION_DENIED → `RECUSADO`, the rest
-`SEM_SINCRONIZAR`, or `PRIMEIRA_SUBIDA_FALHOU` when the first upload reached nothing) and the raw message goes to the card's collapsed “Detalhes”. Closing Google's login window is not an
+saying those phrases may come back, with “Tentar de novo”; the card and the chip still say the computer is out of sync. `painel.js` maps the cloud module's failure `motivo` to the account's situation through
+`situacaoDoErro` (see “Firebase / Firestore Sync”), and the raw message goes to the card's collapsed “Detalhes”. Closing Google's login window is not an
 error and shows nothing; a login that fails shows CFG-07 in the card with “Tentar de novo”.
 
 ### Frases list (`painel.js`, docs/design/painel/frases/, variant A)
@@ -320,7 +319,7 @@ result (PAI-04, plus Limpar filtros when a filter is on). Everything is built wi
 Two marks, never the same one: `status: 'exported'` is **Enviada ao Anki** (the phrase went into a completed Envio;
 the field keeps its pre-glossary name), and `exportadaTxt` is **Exportada** (it was written to a .txt). Exporting never
 writes the Envio's mark, a phrase that has both says Enviada ao Anki, and “Ocultar enviadas e exportadas” hides either.
-Both marks travel to the cloud and merge on load in the same place (`carregarFrasesFirestore`).
+For the cloud merge of these marks, see the `carregar` contract in `lib/sincronizacao.js`.
 
 ### Conexão com o Anki (`painel-anki.js`, docs/design/painel/anki/, variant C)
 
@@ -704,13 +703,13 @@ take trusted events.
 
 ### Firebase / Firestore Sync
 
-Phrases are synced to Firestore under `usuarios/{uid}/frases/{frase.id}` when the user is logged in. All of it lives in `lib/sincronizacao.js`, which both `background.js` and `painel.js` load (and `test_sync.js` runs in Node): the **Firestore REST API directly** (no SDK) to avoid CSP violations in MV3, one session (token refresh) and one codec. The seam is the `nuvem` (`uid`, `listarFrases`, `gravarFrase`, `gravarFrases`, `apagarFrases`, `lerTombstones`, `gravarTombstones`): `nuvemHttp` in the extension and the e2e (which fake Firestore on the network), a memory one in `test_sync.js`. `criarSincronizacao({ nuvem, armazenamento })` gives `carregar({ atuais })` (merge of local, cloud and tombstones — `atuais()` is read at the end, after the network answered), `apagar(ids)`, `apagarTudo(ids)` and `subirFrases(frases)`; the panel only wires the account to them (`conectarNuvem`) and draws the result.
+Phrases are synced to Firestore under `usuarios/{uid}/frases/{frase.id}` when the user is logged in. `lib/sincronizacao.js` owns the shared session implementation, Firestore codec and merge logic, using the **Firestore REST API directly** (no SDK) to avoid CSP violations in MV3. The panel loads it before `painel.js`; the service worker loads it with `importScripts`. For the `nuvem` seam and the sync API, read the module's doc comments.
 
-Authentication uses `chrome.identity.launchWebAuthFlow` (OAuth2 with Google) — **no Firebase Auth SDK**. Tokens are stored in `chrome.storage.local` under `pm_firebase_auth` and refreshed automatically via the Firebase token endpoint.
+Authentication in `painel.js` uses `chrome.identity.launchWebAuthFlow` (OAuth2 with Google) — **no Firebase Auth SDK**. Stored credentials are described under `pm_firebase_auth` in Storage Schema; see `criarSessao`'s doc comment for token renewal and revocation.
 
-Pending sync queue: if a Firestore write fails (offline/error), the phrase `id` is added to `pm_pending_sync` in local storage and retried on next panel load.
+Pending capture uploads (including token-refresh failures) are handled by `salvarFrase` / `sincronizarComFirestore` in `background.js`; see their comments for the save/queue invariant. This queue does not track every panel edit. `carregar` in `lib/sincronizacao.js` owns retries; the queue's stored shape is in Storage Schema.
 
-Deleting in the panel writes a tombstone so the next panel sync doesn't bring the phrase back from the cloud or from another computer: `pm_del_{id}` in `chrome.storage.sync`, the id in local `pm_deleted_ids` (retry of the Firestore DELETE), and, when logged in, the field ``ids.`{id}` `` in `usuarios/{uid}/meta/deleted`. The panel does it through `sincronizacao.apagar` / `apagarTudo`; the popup does not delete. Apagar tudo tombstones this computer's phrases before it reads the cloud, so a cloud that is down cannot bring them back on the next sync. Until the cloud confirms, it also keeps `pm_apagar_tudo` (`{ uid, ate }`): the first sync of that account that reaches the cloud tombstones and deletes every cloud phrase whose id (its save time) is up to `ate` — phrases another computer saved before the wipe that this one never saw — and keeps what was mined after. It builds the tombstone with `tombstoneFirestore` (`lib/sincronizacao.js`): a phrase id starts with a digit, so its field path must be backquoted, and Firestore (and the e2e fake) rejects the bare `ids.{id}`.
+`criarSincronizacao` owns deletion, tombstones and a pending Apagar tudo; the panel clears its visible/local history and delegates cloud work to the module, while the popup does not delete. For tombstone storage and the offline wipe's account/cutoff rules, read the module's doc comments. The Firestore field-path escaping requirement is documented at `tombstoneFirestore`.
 
 ### Storage Schema
 
@@ -741,7 +740,7 @@ Other storage keys:
 - `pm_deleted_ids` — `string[]` of deleted phrase IDs whose Firestore DELETE hasn't succeeded yet
 - `pm_atalho_legenda` — the “Minerar legenda” shortcut. Absent → the default Alt+S; `null` → no caption shortcut
 - `pm_atalho` — the “Minerar seleção” shortcut; `null` or absent → none (the default). Both use `{ type: 'keyboard'|'mouse', code, button, altKey, ctrlKey, shiftKey, label }`
-- `pm_apagar_tudo` — `{ uid, ate }` while an Apagar tudo hasn't reached the cloud; see the tombstone paragraph above
+- `pm_apagar_tudo` — pending Apagar tudo; shape, account matching and cutoff are documented in `lib/sincronizacao.js`
 - `pm_anki_ja_conectou` — stored first-success fact; `lib/conexao-anki.js` owns its lifecycle
 - `pm_anki_custos` — `{ quando, periodo, de, ate, envios }`, the last Custos reading (the `/analytics/jobs` rows), shown with BRG-12 while the Conexão is off
 - `pm_anki_baralhos` — `{ quando, dados }`, the last `GET /anki/stats/decks`; `pm_anki_vocabulario` — `{ quando, dados: { en, ru } }` (each `{ deckName, itens }`), the last vocabulary. Both are shown with BRG-12 while the Conexão is off
@@ -765,11 +764,11 @@ The capture shortcuts and the floating button only react to trusted events (`eve
 
 ### Write Serialization (background.js)
 
-Every read-modify-write of `frases`, `pm_pending_sync` and `pm_deleted_ids` in the service worker goes through `naFilaDeGravacao`, so concurrent saves (e.g. BookReader saving many passages at once) never overwrite each other. Phrase ids are assigned inside that queue and are unique even within the same millisecond.
+Every read-modify-write of `frases` and `pm_pending_sync` in the service worker goes through `naFilaDeGravacao`, so concurrent saves (e.g. BookReader saving many passages at once) never overwrite each other. Phrase ids are assigned inside that queue and are unique even within the same millisecond.
 
 Not covered by the queue:
 - The auto-miner duplicate check reads `frases` outside the queue before calling `salvarFrase`, so two identical auto candidates arriving together can both be saved (a duplicate, never a lost phrase).
-- `painel.js` rewrites `frases` (and `pm_deleted_ids`) directly, outside the service worker, so editing or deleting in the panel during a photo save can still lose phrases. Minerar frases (Colar and Arquivo .txt) is not in this list: it saves through the service worker.
+- `painel.js` rewrites `frases`, and `lib/sincronizacao.js` writes local sync state, outside the service worker's queue, so editing or deleting in the panel during a photo save can still lose phrases. Minerar frases (Colar and Arquivo .txt) is not in this list: it saves through the service worker.
 
 ### Toolbar Badge (background.js)
 
@@ -832,10 +831,9 @@ The legacy tests keep running: `node test_sync.js` (loads `lib/sincronizacao.js`
 
 - `ATALHOS_PADRAO` in `lib/atalhos.js` — the factory shortcuts: Minerar legenda on **Alt+S**, Minerar seleção with none
 - `SENTINEL_VAZIO = 'NENHUM_TRECHO'` in `bookreader.js` — returned by Gemini when no marked passages found (the photo is “Sem marcações”, FOT-10)
-- `FIREBASE_PROJECT = 'perpetualminer-4c219'` in `background.js`
+- Firebase configuration and Firestore paths: see `lib/sincronizacao.js`
 - `BADGE_COR_DE_FUNDO = '#F5B83D'` / `BADGE_COR_DO_TEXTO = '#1A1204'` in `background.js` — the toolbar badge's Veio colors
 - `ALARME_VIRADA_DO_DIA` in `background.js` — see `agendarViradaDoDia` for the rollover contract
-- Firestore path pattern: `usuarios/{uid}/frases/{frase.id}`
 
 ## Permissions
 

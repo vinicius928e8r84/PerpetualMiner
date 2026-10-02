@@ -14,6 +14,8 @@
 //
 // Os testes afirmam o que a pessoa vê e o que fica gravado, nunca funções internas.
 
+const fs = require('fs');
+const path = require('path');
 const { test, expect } = require('../fixtures');
 
 const HOJE = new Date().toLocaleDateString('pt-BR');
@@ -295,11 +297,22 @@ test('com conta e a nuvem fora do ar, o que outro computador gravou antes també
 
   const doOutroComputador = { id: Date.now() - 60_000, texto: 'Written on the other computer.', data: HOJE, streaming: 'netflix', idioma: 'Inglês' };
   fakes.google.gravarFrases('uid-outro', [doOutroComputador]);
+  const antes = { frasesLocais: await extensao.frases(), frasesNaNuvem: fakes.google.frasesDe('uid-outro') };
 
   fakes.google.ficarForaDoAr();
   await card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
+  if (process.env.TEST_EVIDENCE_DIR) {
+    await page.screenshot({ path: path.join(process.env.TEST_EVIDENCE_DIR, 'apagar-tudo-confirmacao.png'), fullPage: true, animations: 'disabled' });
+  }
   await modal(page).getByRole('button', { name: 'Apagar 2 frases' }).click();
   await expect(page.locator('#shell-chip')).toContainText('Sem sincronizar');
+  const offline = await extensao.lerStorage(['frases', 'pm_deleted_ids', 'pm_apagar_tudo']);
+  expect(offline.frases).toEqual([]);
+  expect(offline.pm_apagar_tudo).toMatchObject({ uid: 'uid-outro', ate: expect.any(Number) });
+  expect(doOutroComputador.id).toBeLessThanOrEqual(offline.pm_apagar_tudo.ate);
+  if (process.env.TEST_EVIDENCE_DIR) {
+    await page.screenshot({ path: path.join(process.env.TEST_EVIDENCE_DIR, 'apagar-tudo-offline.png'), fullPage: true, animations: 'disabled' });
+  }
 
   // Minerada em qualquer computador depois de apagar tudo: essa fica.
   const depois = { id: Date.now() + 1_000, texto: 'Mined after the wipe.', data: HOJE, streaming: 'netflix', idioma: 'Inglês' };
@@ -312,6 +325,24 @@ test('com conta e a nuvem fora do ar, o que outro computador gravou antes també
   await expect(page.locator('#shell-total')).toHaveText('1');
   // Nenhuma das apagadas volta a este computador (a nova fica na nuvem e na tela).
   expect((await extensao.frases()).filter(f => String(f.id) !== String(depois.id))).toEqual([]);
+  expect(await extensao.lerStorage('pm_apagar_tudo')).toEqual({});
+  expect(fakes.google.apagadasDe('uid-outro').sort()).toEqual([...frases.map(f => String(f.id)), String(doOutroComputador.id)].sort());
+  if (process.env.TEST_EVIDENCE_DIR) {
+    await page.locator('a[href="#frases"]').click();
+    await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(1);
+    await expect(page.locator('#frases-lista .veio-frase')).toContainText(depois.texto);
+    await page.screenshot({ path: path.join(process.env.TEST_EVIDENCE_DIR, 'apagar-tudo-recuperado.png'), fullPage: true, animations: 'disabled' });
+    fs.writeFileSync(path.join(process.env.TEST_EVIDENCE_DIR, 'apagar-tudo-recuperacao.json'), JSON.stringify({
+      antes,
+      offline,
+      recuperado: {
+        armazenamento: await extensao.lerStorage(['frases', 'pm_deleted_ids', 'pm_apagar_tudo']),
+        frasesNaNuvem: fakes.google.frasesDe('uid-outro'),
+        tombstonesNaNuvem: fakes.google.apagadasDe('uid-outro'),
+        conta: await page.locator('#shell-chip').innerText(),
+      },
+    }, null, 2) + '\n');
+  }
 });
 
 // ─── Teclado, leitor de tela e movimento ─────────────────────────────────────

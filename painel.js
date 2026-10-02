@@ -72,8 +72,6 @@ let listaCarregada     = false;
 
 // usuarioLogado: { uid, email, displayName, photoURL } | null
 let usuarioLogado = null;
-// A nuvem da conta (null sem conta) e a sincronização que a usa; sem conta, a
-// sincronização só grava os tombstones daqui.
 let sessao         = null;
 let nuvem          = null;
 let sincronizacao  = novaSincronizacao();
@@ -272,9 +270,8 @@ function desconectarNuvem() {
 // ─── Falhas na nuvem ─────────────────────────────────────────────────────────
 //
 // Um problema de sync aparece só no card Conta & sync e no chip (Q4 da spec de
-// Configurações), nunca num toast. A falha carrega a situação que a Conta mostra:
-// EXPIROU quando a sessão não renova, RECUSADO quando as regras do Firestore
-// recusam a conta, e SEM_SINCRONIZAR para o resto (rede, nuvem fora do ar).
+// Configurações), nunca num toast. A classificação é da Sincronizacao; aqui o
+// motivo da falha vira a situação que a Conta mostra.
 
 // `semSincronizar` é o que a falha genérica mostra: depois de uma primeira
 // subida que não chegou à nuvem, é a falha dela (CFG-09).
@@ -324,8 +321,7 @@ async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
   const semSincronizar = primeiraSubidaFalhou ? SITUACOES.PRIMEIRA_SUBIDA_FALHOU : SITUACOES.SEM_SINCRONIZAR;
   Conta.mostrarSincronizacao(SITUACOES.SINCRONIZANDO);
   try {
-    // `todasFrases` é lida no fim da sincronização, depois da rede: uma edição ou
-    // uma frase minerada enquanto a nuvem respondia entra na lista.
+    // Passa o estado vivo, não um snapshot anterior à rede (ver o contrato de carregar).
     const { frases, desteComputador, falhaNasOrfas } = await sincronizacao.carregar({ atuais: () => todasFrases });
     todasFrases = frases;
     if (falhaNasOrfas) {
