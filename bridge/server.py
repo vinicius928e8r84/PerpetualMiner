@@ -7,14 +7,12 @@ import importlib
 import json
 import logging
 import os
-import random
 import re
 import sqlite3
 import subprocess
 import sys
 import threading
 import time
-import uuid
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Callable
@@ -26,6 +24,16 @@ from flask import Flask, jsonify, request
 from anki_session import AnkiRepairBlockedError, AnkiSession
 import card_normalization as cardnorm
 from analytics import JobAnalytics
+from envio import (
+    AutomaticAnkiEngine,
+    JobRunner,
+    JobStore,
+    JobWorker,
+    job_phrase_ids,
+    now_iso as _now_iso,
+    read_json as _read_json,
+    unique_phrase_ids,
+)
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -64,29 +72,6 @@ def _log_unhandled_exception(exc_type, exc_value, exc_traceback) -> None:
 sys.excepthook = _log_unhandled_exception
 
 
-def _now_iso() -> str:
-    return datetime.now().astimezone().isoformat(timespec="seconds")
-
-
-def _read_json(path: Path, default: Any) -> Any:
-    if not path.exists():
-        return copy.deepcopy(default)
-    try:
-        text = path.read_text(encoding="utf-8").strip()
-        if not text:
-            LOGGER.warning("_read_json: arquivo vazio (corrompido?), usando default: %s", path)
-            return copy.deepcopy(default)
-        return json.loads(text)
-    except (json.JSONDecodeError, OSError) as exc:
-        LOGGER.warning("_read_json: falha ao ler %s (%s), usando default", path, exc)
-        return copy.deepcopy(default)
-
-
-def _write_json(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-
-
 def _file_fingerprint(path: Path) -> dict[str, Any]:
     result: dict[str, Any] = {"path": str(path), "exists": path.exists()}
     if not path.exists():
@@ -115,7 +100,7 @@ class BridgeApp:
         self.anki_base_path = self.config.get("anki_base_path", "")
         self.anki_profile = self.config.get("anki_profile", "")
         self.anki = AnkiSession(self.config)
-        self.lock = threading.Lock()
+        self.store = JobStore(self.jobs_root, self.queue_file)
         self.anki_stats_lock = threading.Lock()
         self.anki_stats_ttl_sec = int(self.config.get("anki_stats_ttl_sec", 60))
         self.anki_stats_cache: dict[str, Any] | None = None
@@ -126,41 +111,15 @@ class BridgeApp:
         self.server_fingerprint = _file_fingerprint(SERVER_PATH)
         self.app = Flask(__name__)
         self._register_routes()
-        self.worker = threading.Thread(target=self._worker_loop, daemon=True)
+        self.engine = AutomaticAnkiEngine(self.modules, self.automatic_anki_path)
+        self.job_worker = JobWorker(self.store, JobRunner(self.store, self.engine, self.anki), self.stop_event)
+        self.worker = threading.Thread(target=self.job_worker.loop, daemon=True)
         self.analytics = JobAnalytics(
             self.jobs_root,
             self.queue_file,
-            unique_phrase_ids=self._unique_phrase_ids,
-            job_phrase_ids=self._job_phrase_ids,
+            unique_phrase_ids=unique_phrase_ids,
+            job_phrase_ids=job_phrase_ids,
         )
-
-    def _ensure_runtime(self) -> None:
-        self.jobs_root.mkdir(parents=True, exist_ok=True)
-        if not self.queue_file.exists():
-            _write_json(self.queue_file, {"jobs": []})
-
-    def _recover_interrupted_jobs(self) -> None:
-        queue = self._queue_data()
-        recovered = 0
-        for item in queue.get("jobs", []):
-            if item.get("status") != "running":
-                continue
-            job_id = item.get("jobId")
-            if not job_id:
-                continue
-            item["status"] = "queued"
-            item["updatedAt"] = _now_iso()
-            state = self._safe_read_json(self._state_file(job_id), {})
-            if state:
-                state["status"] = "queued"
-                state["stage"] = "queued"
-                state["lastError"] = "Bridge reiniciado durante o processamento; job refileirado para retomar."
-                state["updatedAt"] = item["updatedAt"]
-                self._write_state(job_id, state)
-            recovered += 1
-        if recovered:
-            self._save_queue_data(queue)
-            LOGGER.warning("Recovered %s interrupted running job(s) back to queued", recovered)
 
     def _load_modules(self) -> None:
         path_str = str(self.automatic_anki_path)
@@ -237,9 +196,9 @@ class BridgeApp:
         }
 
     def start(self) -> None:
-        self._ensure_runtime()
+        self.store.ensure_runtime()
         self.anki.ensure_connect_enabled()
-        self._recover_interrupted_jobs()
+        self.store.recover_interrupted()
         self._load_modules()
         LOGGER.info(
             "Bridge starting. automatic_anki_path=%s anki_executable=%s anki_connect_url=%s",
@@ -248,27 +207,6 @@ class BridgeApp:
             self.anki_connect_url,
         )
         self.worker.start()
-
-    def _queue_data(self) -> dict[str, Any]:
-        return _read_json(self.queue_file, {"jobs": []})
-
-    def _save_queue_data(self, data: dict[str, Any]) -> None:
-        _write_json(self.queue_file, data)
-
-    def _job_dir(self, job_id: str) -> Path:
-        return self.jobs_root / job_id
-
-    def _job_file(self, job_id: str) -> Path:
-        return self._job_dir(job_id) / "job.json"
-
-    def _state_file(self, job_id: str) -> Path:
-        return self._job_dir(job_id) / "state.json"
-
-    def _read_job(self, job_id: str) -> dict[str, Any]:
-        return _read_json(self._job_file(job_id), {})
-
-    def _read_state(self, job_id: str) -> dict[str, Any]:
-        return _read_json(self._state_file(job_id), {})
 
     def _safe_read_json(self, path: Path, default: Any) -> Any:
         try:
@@ -810,7 +748,7 @@ class BridgeApp:
             self.anki_stats_lock.release()
 
     def _artifact_manifest(self, job_id: str) -> list[dict[str, Any]]:
-        job_dir = self._job_dir(job_id)
+        job_dir = self.store.job_dir(job_id)
         if not job_dir.exists():
             return []
         artifacts: list[dict[str, Any]] = []
@@ -829,10 +767,10 @@ class BridgeApp:
         return artifacts[:500]
 
     def _debug_bundle(self, job_id: str) -> dict[str, Any]:
-        job_data = self._safe_read_json(self._job_file(job_id), {})
-        state = self._safe_read_json(self._state_file(job_id), {})
+        job_data = self._safe_read_json(self.store.job_file(job_id), {})
+        state = self._safe_read_json(self.store.state_file(job_id), {})
         queue_item = next((item for item in self._safe_read_json(self.queue_file, {"jobs": []}).get("jobs", []) if item.get("jobId") == job_id), None)
-        costs = self._read_jsonl(self._job_dir(job_id) / "log" / "costs.jsonl")
+        costs = self._read_jsonl(self.store.job_dir(job_id) / "log" / "costs.jsonl")
         try:
             anki_connect = self.anki.connect_status()
             anki_collection = self.anki.collection_ready_status()
@@ -867,28 +805,10 @@ class BridgeApp:
             "config": self._sanitize_config(self.config),
         }
 
-    def _write_state(self, job_id: str, state: dict[str, Any]) -> None:
-        _write_json(self._state_file(job_id), state)
-
-    def _update_state(self, job_id: str, **fields: Any) -> dict[str, Any]:
-        with self.lock:
-            state = self._read_state(job_id)
-            state.update(fields)
-            state["updatedAt"] = _now_iso()
-            self._write_state(job_id, state)
-            data = self._queue_data()
-            for item in data["jobs"]:
-                if item["jobId"] == job_id:
-                    item["status"] = state.get("status", item.get("status", "queued"))
-                    item["updatedAt"] = state["updatedAt"]
-                    break
-            self._save_queue_data(data)
-            return state
-
     def _register_routes(self) -> None:
         @self.app.get("/health")
         def health():
-            queue = self._queue_data()
+            queue = self.store.queue_data()
             return jsonify({
                 "ok": True,
                 "bridge": "running",
@@ -901,14 +821,7 @@ class BridgeApp:
 
         @self.app.get("/jobs")
         def jobs():
-            data = self._queue_data()
-            result = []
-            for item in data["jobs"]:
-                result.append({
-                    **item,
-                    "state": self._read_state(item["jobId"]),
-                })
-            return jsonify({"jobs": result})
+            return jsonify({"jobs": self.store.listing()})
 
         @self.app.get("/analytics/summary")
         def analytics_summary():
@@ -1030,17 +943,17 @@ class BridgeApp:
 
         @self.app.get("/jobs/<job_id>")
         def job(job_id: str):
-            job_data = self._read_job(job_id)
+            job_data = self.store.read_job(job_id)
             if not job_data:
                 return jsonify({"error": "job_not_found"}), 404
             return jsonify({
                 "job": job_data,
-                "state": self._read_state(job_id),
+                "state": self.store.read_state(job_id),
             })
 
         @self.app.get("/jobs/<job_id>/debug-bundle")
         def debug_bundle(job_id: str):
-            if not self._job_file(job_id).exists():
+            if not self.store.exists(job_id):
                 return jsonify({"error": "job_not_found"}), 404
             return jsonify(self._debug_bundle(job_id))
 
@@ -1052,452 +965,14 @@ class BridgeApp:
             if payload.get("lang") not in ("en", "ru"):
                 return jsonify({"error": "invalid_lang"}), 400
 
-            job_id = payload.get("jobId") or f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{payload['lang']}-{uuid.uuid4().hex[:6]}"
-            created_at = _now_iso()
-            job_dir = self._job_dir(job_id)
-            job_dir.mkdir(parents=True, exist_ok=True)
-
-            job_payload = {
-                "jobId": job_id,
-                "createdAt": created_at,
-                "lang": payload["lang"],
-                "deckName": payload.get("deckName", "teste"),
-                "imageSource": payload.get("imageSource", "1"),
-                "tts": payload.get("tts", {}),
-                "entries": payload["entries"],
-                "status": "queued",
-            }
-            state = {
-                "jobId": job_id,
-                "status": "queued",
-                "stage": "queued",
-                "completedStages": [],
-                "successfulPhraseIds": [],
-                "failedPhraseIds": [],
-                "lastError": None,
-                "updatedAt": created_at,
-            }
-
-            with self.lock:
-                _write_json(self._job_file(job_id), job_payload)
-                self._write_state(job_id, state)
-                queue = self._queue_data()
-                queue["jobs"].append({
-                    "jobId": job_id,
-                    "lang": job_payload["lang"],
-                    "status": "queued",
-                    "createdAt": created_at,
-                    "updatedAt": created_at,
-                })
-                self._save_queue_data(queue)
+            job_id = self.store.create(payload)
             return jsonify({"jobId": job_id, "status": "queued"}), 201
 
         @self.app.post("/jobs/<job_id>/retry")
         def retry_job(job_id: str):
-            if not self._job_file(job_id).exists():
+            if not self.store.exists(job_id):
                 return jsonify({"error": "job_not_found"}), 404
-            state = self._read_state(job_id)
-            if state.get("status") == "running":
-                return jsonify({"jobId": job_id, "status": state.get("status")})
-            with self.lock:
-                state = self._read_state(job_id)
-                state.update({"status": "queued", "stage": "queued", "lastError": None, "ankiError": None, "repairPayload": None})
-                state["updatedAt"] = _now_iso()
-                self._write_state(job_id, state)
-                job_payload = self._read_job(job_id)
-                queue = self._queue_data()
-                queue_item = next((item for item in queue["jobs"] if item.get("jobId") == job_id), None)
-                if queue_item:
-                    queue_item["status"] = "queued"
-                    queue_item["updatedAt"] = state["updatedAt"]
-                else:
-                    queue["jobs"].append({
-                        "jobId": job_id,
-                        "lang": job_payload.get("lang", "unknown"),
-                        "status": "queued",
-                        "createdAt": job_payload.get("createdAt") or state["updatedAt"],
-                        "updatedAt": state["updatedAt"],
-                    })
-                self._save_queue_data(queue)
-            return jsonify({"jobId": job_id, "status": state["status"]})
-
-    def _worker_loop(self) -> None:
-        while not self.stop_event.is_set():
-            try:
-                next_job = None
-                with self.lock:
-                    queue = self._queue_data()
-                    for item in queue["jobs"]:
-                        if item.get("status") == "queued":
-                            item["status"] = "running"
-                            item["updatedAt"] = _now_iso()
-                            next_job = item["jobId"]
-                            self._save_queue_data(queue)
-                            break
-                if not next_job:
-                    time.sleep(1)
-                    continue
-                try:
-                    self._process_job(next_job)
-                except AnkiRepairBlockedError as exc:
-                    LOGGER.exception("Job %s blocked by Anki repair access denied", next_job)
-                    try:
-                        self._update_state(
-                            next_job,
-                            status="failed",
-                            stage="failed",
-                            lastError=str(exc),
-                            ankiError="repair_access_denied",
-                            repairPayload=exc.payload,
-                        )
-                    except Exception:  # noqa: BLE001
-                        LOGGER.exception("Job %s: falha ao salvar estado de erro (AnkiRepairBlocked)", next_job)
-                except Exception as exc:  # noqa: BLE001
-                    LOGGER.exception("Job %s failed", next_job)
-                    try:
-                        self._update_state(next_job, status="failed", stage="failed", lastError=str(exc))
-                    except Exception:  # noqa: BLE001
-                        LOGGER.exception("Job %s: falha ao salvar estado de erro", next_job)
-                time.sleep(0.2)
-            except Exception:  # noqa: BLE001
-                LOGGER.exception("_worker_loop: erro inesperado no loop principal; continuando após 2s")
-                time.sleep(2)
-
-    def _build_job_config(self, job: dict[str, Any], workspace: Path) -> dict[str, Any]:
-        base = self.modules["config_loader"].load_config()
-        base["lang"] = job["lang"]
-        base["anki"]["deck_name"] = job["deckName"]
-        lang_cfg = base.get("languages", {}).get(job["lang"], {})
-        if lang_cfg.get("note_type"):
-            base["anki"]["note_type"] = lang_cfg["note_type"]
-        if lang_cfg.get("fields"):
-            base["anki"]["fields"] = lang_cfg["fields"]
-
-        tts = job.get("tts", {})
-        profiles = base.setdefault("tts", {}).setdefault("profiles", {}).setdefault(job["lang"], {})
-        word = profiles.setdefault("word", {})
-        phrase = profiles.setdefault("phrase", {})
-        if tts.get("wordTld"):
-            word["tld"] = tts["wordTld"]
-            word.setdefault("lang", job["lang"])
-        if tts.get("phraseTld"):
-            phrase["tld"] = tts["phraseTld"]
-            phrase.setdefault("lang", job["lang"])
-
-        output_dir = workspace / "Output"
-        log_dir = workspace / "log"
-        mining_file = workspace / "mining.txt"
-        prompts_file = workspace / "prompts.txt"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        log_dir.mkdir(parents=True, exist_ok=True)
-
-        base["paths"]["output_dir"] = str(output_dir)
-        base["paths"]["log_dir"] = str(log_dir)
-        base["paths"]["mining_file"] = str(mining_file)
-        base["paths"]["prompts_file"] = str(prompts_file)
-        prompts_cfg = base["paths"].get("prompts", {})
-        base["paths"]["prompts"] = {
-            key: str((self.automatic_anki_path / rel_path).resolve())
-            for key, rel_path in prompts_cfg.items()
-        }
-        return base
-
-    def _write_mining_file(self, workspace: Path, entries: list[dict[str, Any]]) -> None:
-        lines = [entry["line"].rstrip() for entry in entries if entry.get("line")]
-        (workspace / "mining.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-    def _load_entries(self, config: dict[str, Any]) -> list[Any]:
-        parser = self.modules["parser"]
-        mining_path = Path(config["paths"]["mining_file"])
-        if config.get("lang") == "ru":
-            return parser.parse_mining_file_ru(mining_path)
-        return parser.parse_mining_file(mining_path)
-
-    def _unique_phrase_ids(self, values: list[Any]) -> list[int]:
-        ids: list[int] = []
-        seen: set[int] = set()
-        for value in values or []:
-            try:
-                phrase_id = int(value)
-            except (TypeError, ValueError):
-                continue
-            if phrase_id in seen:
-                continue
-            ids.append(phrase_id)
-            seen.add(phrase_id)
-        return ids
-
-    def _job_phrase_ids(self, entries: list[dict[str, Any]]) -> list[int]:
-        return self._unique_phrase_ids([entry.get("phraseId") for entry in entries if isinstance(entry, dict)])
-
-    def _pending_send_pairs(
-        self,
-        original_entries: list[dict[str, Any]],
-        parsed_entries: list[Any],
-        successful_phrase_ids: list[Any],
-    ) -> list[tuple[dict[str, Any], Any]]:
-        successful = set(self._unique_phrase_ids(successful_phrase_ids))
-        pairs: list[tuple[dict[str, Any], Any]] = []
-        for src_entry, parsed_entry in zip(original_entries, parsed_entries, strict=False):
-            try:
-                phrase_id = int(src_entry.get("phraseId"))
-            except (AttributeError, TypeError, ValueError):
-                phrase_id = None
-            if phrase_id is not None and phrase_id in successful:
-                continue
-            pairs.append((src_entry, parsed_entry))
-        return pairs
-
-    def _expected_stems(self, entries: list[Any]) -> list[str]:
-        parser = self.modules["parser"]
-        return [
-            card_job.filename_stem
-            for entry in entries
-            for card_job in parser.get_card_jobs(entry)
-        ]
-
-    def _files_ready(self, paths: list[Path]) -> bool:
-        return bool(paths) and all(path.exists() and path.stat().st_size > 0 for path in paths)
-
-    def _card_texts_ready(self, config: dict[str, Any], entries: list[Any]) -> bool:
-        output_dir = Path(config["paths"]["output_dir"])
-        return self._files_ready([output_dir / f"{stem}.txt" for stem in self._expected_stems(entries)])
-
-    def _audio_ready(self, config: dict[str, Any], entries: list[Any]) -> bool:
-        output_dir = Path(config["paths"]["output_dir"])
-        paths: list[Path] = []
-        for stem in self._expected_stems(entries):
-            paths.append(output_dir / f"{stem}_word.mp3")
-            paths.append(output_dir / f"{stem}_phrase.mp3")
-        return self._files_ready(paths)
-
-    def _prompts_ready(self, config: dict[str, Any]) -> bool:
-        return Path(config["paths"]["prompts_file"]).exists()
-
-    def _mark_completed(self, job_id: str, stage: str) -> None:
-        state = self._read_state(job_id)
-        completed = state.get("completedStages", [])
-        if stage not in completed:
-            completed.append(stage)
-        self._update_state(job_id, completedStages=completed)
-
-    def _set_stage(self, job_id: str, stage: str, **extra: Any) -> None:
-        self._update_state(job_id, stage=stage, status="running", **extra)
-
-    def _run_images(self, job_id: str, config: dict[str, Any], entries: list[Any], image_source: str) -> tuple[list[str], int, dict[str, str]]:
-        start_mod = self.modules["start"]
-        prompts_file = Path(config["paths"]["prompts_file"])
-        prompt_lines = [line.strip() for line in prompts_file.read_text(encoding="utf-8").splitlines() if line.strip()] if prompts_file.exists() else []
-        self._set_stage(job_id, "generate_images", progress={"done": 0, "total": len(prompt_lines)})
-        return start_mod._run_images(  # noqa: SLF001
-            config,
-            prompt_lines,
-            Path(config["paths"]["output_dir"]),
-            image_source,
-            config["openai_api_key"],
-            config["paths"]["log_dir"],
-        )
-
-    def _run_with_retry(
-        self,
-        fn: Callable[..., Any],
-        *args: Any,
-        attempts: int = 3,
-        retry_if: Callable[[Exception], bool] | None = None,
-        **kwargs: Any,
-    ) -> Any:
-        last_exc: Exception | None = None
-        for attempt in range(1, attempts + 1):
-            try:
-                return fn(*args, **kwargs)
-            except Exception as exc:  # noqa: BLE001
-                last_exc = exc
-                should_retry = retry_if(exc) if retry_if else False
-                if not should_retry or attempt >= attempts:
-                    raise
-                time.sleep(1.5 + random.random())
-        if last_exc:
-            raise last_exc
-
-    def _is_transient_audio_error(self, exc: Exception) -> bool:
-        msg = str(exc).lower()
-        return "failed to connect" in msg or "connection" in msg or "timed out" in msg
-
-    def _is_transient_anki_error(self, exc: Exception) -> bool:
-        msg = str(exc).lower()
-        return (
-            "collection is not available" in msg
-            or "failed to establish a new connection" in msg
-            or "connection refused" in msg
-            or "connection aborted" in msg
-            or "remote end closed connection" in msg
-            or "timed out" in msg
-        )
-
-    def _send_to_anki_with_ready_retry(self, job_id: str, entries: list[Any], config: dict[str, Any]) -> dict[str, str]:
-        import io
-        import contextlib
-
-        send_mod = self.modules["send_to_anki"]
-        last_exc: Exception | None = None
-        for attempt in range(1, 4):
-            self.anki.ensure_ready()
-            try:
-                buf = io.StringIO()
-                with contextlib.redirect_stdout(buf):
-                    result = send_mod.run(entries, config)
-                output = buf.getvalue().strip()
-                if output:
-                    LOGGER.info("send_to_anki stdout (job %s attempt %s):\n%s", job_id, attempt, output)
-                failed_stems = [stem for stem, status in result.items() if not send_mod.is_present(status)]
-                dup_stems = [stem for stem, status in result.items() if status == send_mod.DUPLICATE]
-                if failed_stems:
-                    LOGGER.warning("send_to_anki: %d/%d notes failed for job %s: %s", len(failed_stems), len(result), job_id, failed_stems)
-                if dup_stems:
-                    LOGGER.info("send_to_anki: %d/%d notes already existed (duplicates) for job %s: %s", len(dup_stems), len(result), job_id, dup_stems)
-                return result
-            except Exception as exc:  # noqa: BLE001
-                last_exc = exc
-                if attempt >= 3 or not self._is_transient_anki_error(exc):
-                    raise
-                LOGGER.warning(
-                    "Transient Anki send failure for job %s on attempt %s/3: %s",
-                    job_id,
-                    attempt,
-                    exc,
-                )
-                time.sleep(2)
-        if last_exc:
-            raise last_exc
-        return {}
-
-    def _process_job(self, job_id: str) -> None:
-        job = self._read_job(job_id)
-        workspace = self._job_dir(job_id)
-        self._write_mining_file(workspace, job["entries"])
-        config = self._build_job_config(job, workspace)
-        entries = self._load_entries(config)
-        parser = self.modules["parser"]
-
-        state = self._read_state(job_id)
-        completed = set(state.get("completedStages", []))
-
-        cards_ran = False
-        prompts_ran = False
-
-        if "generate_cards" not in completed or not self._card_texts_ready(config, entries):
-            self._set_stage(job_id, "generate_cards")
-            self.modules["generate_cards"].run(entries, config)
-            if not self._card_texts_ready(config, entries):
-                raise RuntimeError(
-                    "generate_cards não gerou os arquivos .txt esperados. "
-                    "Causa mais comum: erro da API OpenAI (429/cota esgotada ou chave inválida). "
-                    "Verifique os créditos em platform.openai.com e o bridge.log para o erro exato."
-                )
-            self._mark_completed(job_id, "generate_cards")
-            cards_ran = True
-
-        if cards_ran or "extract_prompts" not in completed or not self._prompts_ready(config):
-            self._set_stage(job_id, "extract_prompts")
-            self.modules["extract_prompts"].run(entries, config)
-            self._mark_completed(job_id, "extract_prompts")
-            prompts_ran = True
-
-        if cards_ran or "generate_audio" not in completed or not self._audio_ready(config, entries):
-            total_jobs = len([job_item for entry in entries for job_item in parser.get_card_jobs(entry)]) * 2
-            def audio_progress(done: int, total: int, label: str) -> None:
-                self._set_stage(job_id, "generate_audio", progress={"done": done, "total": total or total_jobs, "label": label})
-            self._set_stage(job_id, "generate_audio", progress={"done": 0, "total": total_jobs})
-            self._run_with_retry(
-                self.modules["generate_audio"].run,
-                entries,
-                config,
-                progress_callback=audio_progress,
-                attempts=3,
-                retry_if=self._is_transient_audio_error,
-            )
-            if not self._audio_ready(config, entries):
-                raise RuntimeError(
-                    "generate_audio não gerou os arquivos .mp3 esperados. "
-                    "Causa comum: erro da API de áudio (cota/limite ou chave inválida). "
-                    "Verifique o bridge.log para o erro exato."
-                )
-            self._mark_completed(job_id, "generate_audio")
-
-        if prompts_ran or "generate_images" not in completed:
-            self._run_images(job_id, config, entries, job.get("imageSource", "1"))
-            self._mark_completed(job_id, "generate_images")
-
-        if "wait_anki" not in completed:
-            self._set_stage(job_id, "wait_anki")
-            self.anki.ensure_ready()
-            self._mark_completed(job_id, "wait_anki")
-
-        previously_successful = self._unique_phrase_ids(state.get("successfulPhraseIds") or [])
-        pending_pairs = self._pending_send_pairs(job["entries"], entries, previously_successful)
-        send_entries = [parsed_entry for _, parsed_entry in pending_pairs]
-
-        self._set_stage(job_id, "send_to_anki")
-        send_mod = self.modules["send_to_anki"]
-        stem_to_phrase_id: dict[str, int] = {}
-        phrase_to_stems: dict[int, list[str]] = {}
-        for src_entry, original in pending_pairs:
-            phrase_id = int(src_entry["phraseId"])
-            phrase_to_stems.setdefault(phrase_id, [])
-            for card_job in parser.get_card_jobs(original):
-                stem_to_phrase_id[card_job.filename_stem] = phrase_id
-                phrase_to_stems[phrase_id].append(card_job.filename_stem)
-
-        try:
-            if send_entries:
-                results = self._send_to_anki_with_ready_retry(job_id, send_entries, config)
-            else:
-                results = {}
-        except Exception:
-            failed = self._unique_phrase_ids([*state.get("failedPhraseIds", []), *phrase_to_stems.keys()])
-            self._update_state(job_id, failedPhraseIds=failed)
-            raise
-
-        # A phrase is "present in Anki" when every one of its stems is present
-        # (ADDED or DUPLICATE). Duplicates are tracked separately so the job no
-        # longer reports an already-existing card as freshly sent.
-        def _all_present(stems: list[str]) -> bool:
-            return bool(stems) and all(send_mod.is_present(results.get(stem)) for stem in stems)
-
-        new_successful = [
-            phrase_id
-            for phrase_id, stems in phrase_to_stems.items()
-            if _all_present(stems)
-        ]
-        new_duplicate = [
-            phrase_id
-            for phrase_id, stems in phrase_to_stems.items()
-            if _all_present(stems) and all(results.get(stem) == send_mod.DUPLICATE for stem in stems)
-        ]
-        successful = self._unique_phrase_ids([*previously_successful, *new_successful])
-        failed = self._unique_phrase_ids([
-            phrase_id
-            for phrase_id, stems in phrase_to_stems.items()
-            if not _all_present(stems)
-        ])
-        duplicate = self._unique_phrase_ids([*state.get("duplicatePhraseIds", []), *new_duplicate])
-        if results and all(send_mod.is_present(status) for status in results.values()):
-            send_mod.cleanup_output(Path(config["paths"]["output_dir"]), results)
-        requested = set(self._job_phrase_ids(job.get("entries") or []))
-        successful_set = set(successful)
-        failed_set = set(failed)
-        pending_failed = [phrase_id for phrase_id in requested if phrase_id not in successful_set and phrase_id not in failed_set]
-        failed = self._unique_phrase_ids([*failed, *pending_failed])
-        completed = bool(requested) and successful_set >= requested and not failed
-        self._update_state(
-            job_id,
-            status="completed" if completed else ("partial" if successful else "failed"),
-            stage="completed" if completed else ("partial" if successful else "failed"),
-            successfulPhraseIds=successful,
-            failedPhraseIds=failed,
-            duplicatePhraseIds=duplicate,
-            lastError=None if completed else "Falha ao enviar um ou mais cards ao Anki",
-        )
+            return jsonify({"jobId": job_id, "status": self.store.requeue(job_id)})
 
 
 def main() -> None:

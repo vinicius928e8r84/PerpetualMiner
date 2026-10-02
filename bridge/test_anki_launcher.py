@@ -451,51 +451,52 @@ class BridgeServerTests(unittest.TestCase):
         self.assertIn('python.with_name("python.exe")', source)
         self.assertNotIn("def _hidden_python_executable", source)
 
-    def test_retry_preserves_completed_stages_for_same_job_resume(self) -> None:
-        retry_fn = _function_source("retry_job")
+    def _bridge_with_jobs(self, tmp: str) -> "server.BridgeApp":
+        return server.BridgeApp(config={
+            "automatic_anki_path": ".",
+            "jobs_root": str(Path(tmp) / "jobs"),
+            "queue_file": str(Path(tmp) / "queue.json"),
+        })
 
-        self.assertIn('def retry_job(job_id: str):', retry_fn)
-        self.assertIn('self._job_file(job_id).exists()', retry_fn)
-        self.assertIn('"status": "queued"', retry_fn)
-        self.assertIn('"stage": "queued"', retry_fn)
-        self.assertIn('"lastError": None', retry_fn)
-        self.assertIn('"ankiError": None', retry_fn)
-        self.assertIn('"repairPayload": None', retry_fn)
-        self.assertIn('queue["jobs"].append', retry_fn)
-        self.assertNotIn("completedStages", retry_fn)
-        self.assertNotIn("successfulPhraseIds", retry_fn)
-        self.assertNotIn("uuid", retry_fn)
+    def test_envio_routes_create_list_and_continue_an_envio_through_the_store(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bridge = self._bridge_with_jobs(tmp)
+            bridge.store.ensure_runtime()
+            client = bridge.app.test_client()
 
-    def test_process_job_reuses_completed_card_prompt_audio_stages(self) -> None:
-        process_fn = _function_source("_process_job")
+            created = client.post("/jobs", json={"lang": "en", "entries": [{"phraseId": 1, "line": "a"}]})
+            job_id = created.get_json()["jobId"]
 
-        self.assertIn('completed = set(state.get("completedStages", []))', process_fn)
-        self.assertIn('if "generate_cards" not in completed or not self._card_texts_ready(config, entries):', process_fn)
-        self.assertIn('if cards_ran or "extract_prompts" not in completed or not self._prompts_ready(config):', process_fn)
-        self.assertIn('if cards_ran or "generate_audio" not in completed or not self._audio_ready(config, entries):', process_fn)
-        self.assertIn('if prompts_ran or "generate_images" not in completed:', process_fn)
+            self.assertEqual(created.status_code, 201)
+            self.assertEqual(created.get_json()["status"], "queued")
+            listed = client.get("/jobs").get_json()["jobs"]
+            self.assertEqual([(j["jobId"], j["status"], j["state"]["stage"]) for j in listed], [(job_id, "queued", "queued")])
+            self.assertEqual(client.get(f"/jobs/{job_id}").get_json()["job"]["deckName"], "teste")
 
-    def test_process_job_filters_successful_phrase_ids_on_partial_retry(self) -> None:
-        process_fn = _function_source("_process_job")
+            bridge.store.claim_next()
+            bridge.store.update(job_id, status="failed", stage="failed", lastError="x")
+            retried = client.post(f"/jobs/{job_id}/retry")
 
-        self.assertIn('previously_successful = self._unique_phrase_ids(state.get("successfulPhraseIds") or [])', process_fn)
-        self.assertIn('pending_pairs = self._pending_send_pairs(job["entries"], entries, previously_successful)', process_fn)
-        self.assertIn('send_entries = [parsed_entry for _, parsed_entry in pending_pairs]', process_fn)
-        self.assertIn('self._send_to_anki_with_ready_retry(job_id, send_entries, config)', process_fn)
-        self.assertIn('successful = self._unique_phrase_ids([*previously_successful, *new_successful])', process_fn)
-        self.assertIn('failedPhraseIds=failed', process_fn)
+            self.assertEqual(retried.get_json(), {"jobId": job_id, "status": "queued"})
+            self.assertEqual(client.get("/jobs").get_json()["jobs"][0]["state"]["lastError"], None)
 
-    def test_process_job_reports_duplicates_apart_from_added(self) -> None:
-        process_fn = _function_source("_process_job")
+    def test_envio_routes_refuse_bad_requests_and_unknown_envios(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            client = self._bridge_with_jobs(tmp).app.test_client()
 
-        # Duplicates must be tracked as their own outcome, never conflated with
-        # freshly added cards, and cleanup must key off "present in Anki".
-        self.assertIn("send_mod.is_present(results.get(stem))", process_fn)
-        self.assertIn("results.get(stem) == send_mod.DUPLICATE", process_fn)
-        self.assertIn("duplicatePhraseIds=duplicate", process_fn)
-        self.assertIn(
-            "all(send_mod.is_present(status) for status in results.values())", process_fn
-        )
+            self.assertEqual(client.post("/jobs", json={"lang": "en", "entries": []}).get_json()["error"], "entries_required")
+            self.assertEqual(client.post("/jobs", json={"lang": "fr", "entries": [{"phraseId": 1}]}).get_json()["error"], "invalid_lang")
+            self.assertEqual(client.post("/jobs/nao-existe/retry").status_code, 404)
+            self.assertEqual(client.get("/jobs/nao-existe").status_code, 404)
+            self.assertEqual(client.get("/jobs/nao-existe/debug-bundle").status_code, 404)
+
+    def test_the_bridge_hands_the_queue_to_the_envio_worker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bridge = self._bridge_with_jobs(tmp)
+
+            self.assertIs(bridge.job_worker.store, bridge.store)
+            self.assertIs(bridge.job_worker.runner.anki, bridge.anki)
+            self.assertIs(bridge.job_worker.runner.engine.modules, bridge.modules)
 
     def _bridge_for_decks(self, tmp: str) -> "server.BridgeApp":
         return server.BridgeApp(config={"automatic_anki_path": ".", "anki_base_path": tmp})
@@ -621,15 +622,22 @@ class BridgeServerTests(unittest.TestCase):
         self.assertIn('"download_candidate"', fingerprint_fn)
         self.assertIn('"_is_invalid_image_format_error"', fingerprint_fn)
 
-    def test_access_denied_repair_is_wired_through_worker_and_route(self) -> None:
-        worker_fn = _function_source("_worker_loop")
-        route_fn = _function_source("anki_repair")
+    def test_access_denied_repair_route_answers_503_with_the_payload(self) -> None:
+        payload = {
+            "ok": False,
+            "error": "repair_access_denied",
+            "code": "anki_repair_access_denied",
+            "detail": "Feche o Anki pelo Gerenciador de Tarefas",
+            "pids": [1234],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            bridge = self._bridge_with_jobs(tmp)
+            with mock.patch.object(bridge.anki, "repair", side_effect=AnkiRepairBlockedError(payload)) as repair:
+                response = bridge.app.test_client().post("/anki/repair")
 
-        self.assertIn("except AnkiRepairBlockedError as exc", worker_fn)
-        self.assertIn("except AnkiRepairBlockedError as exc", route_fn)
-        self.assertIn("return jsonify(exc.payload), 503", route_fn)
-        self.assertIn("ankiError", worker_fn)
-        self.assertIn("repairPayload", worker_fn)
+        repair.assert_called_once_with()
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.get_json(), payload)
 
     def test_anki_routes_delegate_to_the_session_seam(self) -> None:
         source = _source()
