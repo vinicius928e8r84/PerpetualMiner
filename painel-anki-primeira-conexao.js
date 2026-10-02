@@ -233,9 +233,9 @@
     // O status é uma região que anuncia a mudança: o ponto e o texto trocam, ela fica.
     const esperando = vista === 'esperando';
     porId('apv-status').classList.toggle('apv-status--espera', esperando);
-    const mostrada = pronto ? CONEXAO.LIGADA : conexao;
+    const mostrada = pronto && !conectando ? CONEXAO.LIGADA : conexao;
     ConexaoNaTela.pintarPonto(porId('apv-ponto'), esperando ? '' : mostrada);
-    porId('apv-status-texto').textContent = esperando ? textoDaVoz('ONB-16.esperando') : ConexaoNaTela.texto(conectando ? conexao : mostrada);
+    porId('apv-status-texto').textContent = esperando ? textoDaVoz('ONB-16.esperando') : ConexaoNaTela.texto(mostrada);
 
     ConexaoNaTela.pintarTentarDeNovo(porId('apv-tentar'), conexao, {
       sai: pronto || passoAberto !== PASSO_DO_TENTAR,

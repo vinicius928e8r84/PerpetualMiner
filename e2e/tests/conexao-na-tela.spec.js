@@ -114,7 +114,6 @@ test.describe('a mesma situação, a mesma tela', () => {
     await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
     await expect(sidebar(page)).toHaveText(TEXTO.desligada);
     await expect(tentarDaF1(page)).toBeVisible();
-    await expect(statusDoCard(page)).toHaveText(TEXTO.ligada);
 
     const liberar = segurarOHealth(fakes);
     fakes.anki.ligar();
@@ -122,7 +121,7 @@ test.describe('a mesma situação, a mesma tela', () => {
     await expect(sidebar(page)).toHaveText(TEXTO.conectando);
     await expect(statusDoCard(page)).toHaveText(TEXTO.conectando);
     await expect(cardDaPrimeiraConexao(page)).toContainText('Pronto');
-    await expect(pontoDoCard(page)).toHaveAttribute('data-estado', 'ligada');
+    await expect(pontoDoCard(page)).toHaveAttribute('data-estado', 'conectando');
     await expect(page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: /feito$/ })).toHaveCount(3);
     await expect(tentarDoCard(page)).toBeHidden();
     await expect(tentarDaF1(page)).toHaveAttribute('aria-disabled', 'true');
@@ -130,7 +129,6 @@ test.describe('a mesma situação, a mesma tela', () => {
 
     liberar();
     await expect(sidebar(page)).toHaveText(TEXTO.desligada);
-    await expect(statusDoCard(page)).toHaveText(TEXTO.ligada);
     await page.clock.runFor(1_800);
     await expect(cardDaPrimeiraConexao(page)).toBeHidden();
     await expect(page.getByRole('radiogroup', { name: 'Seções da Conexão com o Anki' })).toBeVisible();

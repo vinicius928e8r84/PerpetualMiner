@@ -61,7 +61,7 @@ Recolhida no pé da aba, com borda tracejada e um resumo do que tem dentro:
 
 O retry do card segue o [tratamento comum à F1 e ao passo 4](../boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1).
 
-**Pronto no ONB-16:** o momento dura 1,8 s antes de as abas voltarem com o toast BRG-01. Uma nova tentativa nesse intervalo anuncia BRG-02 na linha de status, sem desfazer o marco: os títulos, o ponto ligado e os três ✓ continuam, e o botão do card fica oculto. Ao terminar a conferência, o status volta ao marco de ligada até o Pronto acabar, mesmo se a resposta foi desligada. Se o foco estava num controle que sai ao entrar em Pronto, vai para o título do passo no card; quando o card sai com foco dentro, vai para a aba escolhida, já visível. A prioridade do status no Pronto tem cobertura em [`e2e/tests/conexao-na-tela.spec.js`](../../../../e2e/tests/conexao-na-tela.spec.js).
+**Pronto no ONB-16:** o momento dura 1,8 s antes de as abas voltarem com o toast BRG-01. Uma nova tentativa nesse intervalo anuncia BRG-02 (texto e ponto) na linha de status, sem desfazer o marco: os títulos e os três ✓ continuam, e o botão do card fica oculto. Se o foco estava num controle que sai ao entrar em Pronto, vai para o título do passo no card; quando o card sai com foco dentro, vai para a aba escolhida, já visível. A precedência de Conectando no Pronto tem cobertura em [`e2e/tests/conexao-na-tela.spec.js`](../../../../e2e/tests/conexao-na-tela.spec.js).
 
 ## Convenções
 

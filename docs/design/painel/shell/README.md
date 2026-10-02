@@ -53,7 +53,7 @@ Quem aponta para eles:
 - **Trocar de área e voltar:** filtros, busca, página e seleção continuam como estavam, e a barra contextual de seleção volta aberta. Recarregar a página zera tudo, como hoje.
 - **Envio termina com o modal fechado:** o resumo (ENV-10: “Envio concluído — 12 enviadas · 2 já estavam no Anki · 1 falhou [Apagar as 12 enviadas] [Manter]”, com a nota “Manter deixa as frases no histórico, marcadas como enviadas ao Anki.” sob os botões) **abre sozinho, em qualquer área**.
 - **Conexão com o Anki desligada:** a área abre normalmente.
-  - No topo, a faixa F1 (ENV-01) com **Tentar de novo**, seguindo o [retry comum](../boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1). A faixa continua durante a tentativa e sai quando a resposta é ligada. Se o foco estava no botão e as abas estão à mostra, vai para a aba escolhida; na primeira conexão, segue o [Pronto do card ONB-16](../anki/README.md#estados).
+  - No topo, a faixa F1 (ENV-01) com **Tentar de novo**, seguindo o [retry comum](../boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1). As abas mostram o último dado conhecido, marcado como tal (BRG-12). A faixa continua durante a tentativa e sai quando a resposta é ligada. Se o foco estava no botão e as abas estão à mostra, vai para a aba escolhida; na primeira conexão, segue o [Pronto do card ONB-16](../anki/README.md#estados).
   - Para o conteúdo das abas e o card da primeira conexão, ver [Conexão com o Anki § Estados](../anki/README.md#estados).
   - Os Ajustes de envio continuam editáveis.
   - Em Frases, “Enviar ao Anki” fica indisponível e o tooltip diz por quê.
