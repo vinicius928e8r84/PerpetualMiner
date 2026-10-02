@@ -13,13 +13,13 @@
 // não”. À direita, o card do passo atual, com Voltar · Agora não (só nos
 // opcionais) · Continuar.
 //
-// Um passo está feito pelo estado real, lido do que já está gravado: a frase
+// Um passo está feito pelo estado real, do storage e da Conexão: a frase
 // no histórico, o atalho de Minerar seleção, a conta, a Conexão com o Anki
-// respondendo, um idioma da mineração automática ligado, a chave do Gemini. O
+// ligada, um idioma da mineração automática ligado, a chave do Gemini. O
 // que a pessoa fez fora da página já aparece feito. Só o “agora não” (e se ela
 // chegou a Abrir painel) é desta página, gravado neste computador em
-// `pm_boas_vindas`. Quem lê e grava tudo isso é `lib/configuracao.js`, o mesmo
-// que desenha o lembrete “Configuração pela metade” no popup e em Frases.
+// `pm_boas_vindas`. Quem lê e grava esse progresso é `lib/configuracao.js`,
+// que também informa o lembrete “Configuração pela metade” ao popup e a Frases.
 // “Continuar” num passo obrigatório segue sem marcar nada: ele fica “falta” no
 // resumo.
 //
@@ -28,15 +28,15 @@
 //   2  o gravador de Configurações › Atalhos (painel-atalhos.js);
 //   3  o card Conta & sync (painel-conta.js), com o Entrar com Google;
 //   4  o status da Conexão com o Anki, os 3 passos e o Verificar de novo
-//      (a conferência da F1 do shell);
+//      (a mesma conferência da F1, via ConexaoAnki);
 //   5  os switches EN/RU e o limite por dia do popup, pelas mesmas mensagens ao
 //      service worker, com a nota ONB-10 enquanto a Conexão está desligada;
 //   6  o card Chave do Gemini (painel-chave.js), com o Onde conseguir a chave.
 // Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
-  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao, Shell, Conta, MineracaoAutomatica } = raiz;
-  const { CONEXAO } = Shell;
+  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao, ConexaoAnki, Conta, MineracaoAutomatica } = raiz;
+  const { SITUACAO: CONEXAO } = ConexaoAnki;
 
   const ABERTURA = 'abertura';
   const PRONTO = 'pronto';
@@ -91,10 +91,6 @@
     atalhos: { ...Atalhos.ATALHOS_PADRAO },
     configuracao: null,    // o retrato de Configuracao, depois da primeira leitura
     minerando: false,
-    conexao: CONEXAO.CONECTANDO,
-    // A última resposta da /health (ligada ou desligada); null antes da primeira.
-    // Conferindo de novo, os passos e a nota ficam como estavam: nada pisca.
-    conexaoRespondida: null,
     automatica: null,      // o estado da mineração automática, do service worker
   };
 
@@ -119,7 +115,7 @@
   function iniciarBoasVindas() {
     montarLista();
     montarTelas();
-    // A Conexão chega pela mesma Configuracao: quem a informa é painel-lembrete.js.
+    // A Conexão chega à Configuracao pelo ConexaoAnki, sem depender de outra página do painel.
     Configuracao.acompanhar(retrato => {
       estado.configuracao = retrato;
       desenhar();
@@ -129,9 +125,7 @@
       estado.atalhos = atalhos;
       desenhar();
     });
-    Shell.aoMudarAConexao(situacao => {
-      estado.conexao = situacao;
-      if (situacao !== CONEXAO.CONECTANDO) estado.conexaoRespondida = situacao;
+    ConexaoAnki.acompanhar(() => {
       desenharPasso4();
       desenharPasso5();
     });
@@ -346,8 +340,8 @@
 
   /**
    * O status da Conexão (BRG-01/BRG-02, numa região que anuncia a mudança) com o
-   * Verificar de novo (a conferência da F1 do shell) ao lado, e, enquanto ela
-   * não responde, os 3 passos.
+   * Verificar de novo (a mesma conferência da F1, via ConexaoAnki) ao lado;
+   * enquanto a última resposta foi desligada, os 3 passos.
    */
   function montarPasso4() {
     const ponto = elemento('span', 'bv-ponto');
@@ -361,7 +355,7 @@
     tentar.addEventListener('click', () => {
       // Conferindo, o botão fica indisponível sem sair do foco.
       if (tentar.getAttribute('aria-disabled') === 'true') return;
-      Shell.tentarAConexaoDeNovo();
+      ConexaoAnki.tentarDeNovo();
     });
 
     const passos = elemento('ol', 'anki-passos',
@@ -375,7 +369,7 @@
   }
 
   function desenharPasso4() {
-    const { conexao, conexaoRespondida } = estado;
+    const conexao = ConexaoAnki.situacao();
     const ligada = conexao === CONEXAO.LIGADA;
 
     passo4.ponto.dataset.estado = conexao;
@@ -385,7 +379,7 @@
     if (ligada && passo4.tentar.contains(document.activeElement)) porId('bv-titulo').focus();
     passo4.tentar.hidden = ligada;
     passo4.tentar.setAttribute('aria-disabled', String(conexao === CONEXAO.CONECTANDO));
-    passo4.comoLigar.hidden = conexaoRespondida !== CONEXAO.DESLIGADA;
+    passo4.comoLigar.hidden = ConexaoAnki.ultimaResposta() !== CONEXAO.DESLIGADA;
   }
 
   // ─── Passo 5: Ligar a mineração automática ─────────────────────────────────
@@ -484,7 +478,7 @@
 
   /** A nota ONB-10 enquanto a última resposta da Conexão foi “desligada”. */
   function desenharPasso5() {
-    passo5.nota.hidden = estado.conexaoRespondida !== CONEXAO.DESLIGADA;
+    passo5.nota.hidden = ConexaoAnki.ultimaResposta() !== CONEXAO.DESLIGADA;
   }
 
   function mostrarFalhaDaAutomatica(id) {

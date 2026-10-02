@@ -3,14 +3,12 @@
 // O popup “Cockpit” (docs/design/popup/, variante A). A base compartilhada é
 // carregada antes pelo popup.html: o catálogo da Voz, os componentes da Veio,
 // o detector de idioma, os atalhos gravados e o Contexto da frase.
-const { IDIOMAS, textoDaVoz, Atalhos, minerarFraseManual, Configuracao, MineracaoAutomatica } = PerpetualMiner;
+const { IDIOMAS, textoDaVoz, Atalhos, minerarFraseManual, Configuracao, ConexaoAnki, MineracaoAutomatica } = PerpetualMiner;
 const { iconeVeio, escreverFrase, montarTeclas, montarAnelDeProgresso } = PerpetualMiner.Veio;
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
 
 const QUANTAS_ULTIMAS = 5;
-const ENDERECO_DA_CONEXAO = 'http://127.0.0.1:8766';
 const ENDERECO_DOS_ATALHOS = '#configuracoes/atalhos';
-const TEMPO_DO_HEALTH = 3000;
 
 // Os dois idiomas da Mineração automática, na ordem dos azulejos.
 const IDIOMAS_DA_MINERACAO = [
@@ -28,7 +26,6 @@ let idsJaMostrados = null;            // o que a lista já mostrou, para realça
 const idsChegando = new Set();        // as que ainda estão no realce: um redesenho não o apaga
 let atalhoDeLegenda = Atalhos.ATALHOS_PADRAO.legenda;
 let mineracaoAutomatica = null;       // { settings, daily } do service worker
-let conexaoLigada = null;             // null até o /health da Conexão com o Anki responder
 let configuracao = null;              // o retrato da configuração (lib/configuracao.js)
 let minerando = false;
 
@@ -73,7 +70,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  conferirConexao();
+  // A nota espera a Conexão responder; o Configuracao a acompanha por conta própria.
+  ConexaoAnki.acompanhar(refletirNotaDaConexao);
+  ConexaoAnki.iniciar();
 });
 
 function escreverCopiaFixa() {
@@ -289,17 +288,6 @@ function salvarMineracaoAutomatica(mudanca) {
   });
 }
 
-async function conferirConexao() {
-  try {
-    // Uma porta que não responde conta como desligada: nada espera para sempre.
-    conexaoLigada = (await fetch(`${ENDERECO_DA_CONEXAO}/health`, { signal: AbortSignal.timeout(TEMPO_DO_HEALTH) })).ok;
-  } catch {
-    conexaoLigada = false;
-  }
-  refletirNotaDaConexao();
-  Configuracao.mostrarConexao(conexaoLigada);
-}
-
 /**
  * A nota ONB-10 aparece enquanto a Conexão com o Anki não responde, a não ser
  * que a mineração automática já tenha minerado hoje: aí a Conexão funcionou
@@ -308,7 +296,7 @@ async function conferirConexao() {
 function refletirNotaDaConexao() {
   const mineradoHoje = Boolean(mineracaoAutomatica)
     && IDIOMAS_DA_MINERACAO.some(({ chave }) => numerosDoIdioma(chave).n > 0);
-  porId('nota-conexao').hidden = conexaoLigada !== false || mineradoHoje;
+  porId('nota-conexao').hidden = ConexaoAnki.situacao() !== ConexaoAnki.SITUACAO.DESLIGADA || mineradoHoje;
 }
 
 // ─── Configuração pela metade ─────────────────────────────────────────────────

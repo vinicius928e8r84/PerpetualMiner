@@ -94,7 +94,7 @@ A ordem é travada. Cada passo reusa uma função que já existe; nenhum cria fu
 
 O passo 4 (`ONB-08.corpo`) e o card ONB-16 da área Conexão com o Anki (`ONB-16.corpo`) dão a mesma explicação inicial e usam o primeiro passo (`ONB-08.passo1`), mas não as ações seguintes. A cópia de cada variante está em [`lib/voz/catalogo.js`](../../../../lib/voz/catalogo.js).
 
-- **Passo 4 da Boas-vindas:** mostra o status da Conexão e, enquanto a última resposta foi “desligada”, três instruções (`ONB-08.passo1`, `.instalar`, `.verificar`). O botão e o terceiro item dizem **“Verificar de novo”** (`ONB-08.verificarDeNovo`); o botão confere de novo pela F1 do shell. Neste passo **não há Detalhes nem Copiar**. Com a conexão ligada, as instruções e o botão saem.
+- **Passo 4 da Boas-vindas:** mostra o status da Conexão e, enquanto a última resposta foi “desligada”, três instruções (`ONB-08.passo1`, `.instalar`, `.verificar`). O botão e o terceiro item dizem **“Verificar de novo”** (`ONB-08.verificarDeNovo`); o botão pede a mesma conferência da F1 pelo módulo compartilhado [`lib/conexao-anki.js`](../../../../lib/conexao-anki.js). Neste passo **não há Detalhes nem Copiar**. Com a conexão ligada, as instruções e o botão saem.
 - **Área Conexão com o Anki, nunca conectada:** a faixa ENV-01/F1 continua em cima, com **“Tentar de novo”**. Sem dado antigo, as abas dão lugar ao card ONB-16 com “O que falta sem ela”, os três passos antigos (`ONB-08.passo1`–`.passo3`) e os comandos em **Detalhes** recolhido e copiável (botão **Copiar**):
   - `pip install -r bridge/requirements.txt`
   - `python bridge/install_autostart.py`

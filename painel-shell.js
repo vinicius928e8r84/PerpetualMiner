@@ -34,23 +34,13 @@
   /** A chave do Gemini no resumo: os 4 primeiros e os 4 últimos caracteres. */
   const MASCARA_DA_CHAVE = '••••••••';
 
-  const ENDERECO_DA_CONEXAO = 'http://127.0.0.1:8766';
-  /** As situações da Conexão com o Anki, que o shell diz a quem acompanha (aoMudarAConexao). */
-  const CONEXAO = Object.freeze({ CONECTANDO: 'conectando', LIGADA: 'ligada', DESLIGADA: 'desligada' });
-  /** De quanto em quanto tempo o ponto da Conexão com o Anki é conferido. */
-  const INTERVALO_DA_CONEXAO = 15000;
-  const estado = {
-    area: null,
-    conexao: CONEXAO.CONECTANDO,
-    conferencia: null,           // a conferência do /health em andamento (uma promessa)
-  };
+  const estado = { area: null };
   const ouvintesDeArea = new Map();
   const ouvintesDeSecao = new Map();   // seção de Configurações → ouvintes
-  const ouvintesDaConexao = [];        // quem acompanha a Conexão com o Anki (aoMudarAConexao)
-  const ouvintesDaConferencia = [];    // quem mostra a conferência andando (aoConferirAConexao)
   const fimDosDestaques = new Map();   // card → o timer que tira a borda do destaque
 
-  const { textoDaVoz, Atalhos, Veio } = raiz;
+  const { textoDaVoz, Atalhos, Veio, ConexaoAnki } = raiz;
+  const { SITUACAO } = ConexaoAnki;
   // O tema (veio/tema.js) é pedido só na hora de usar: o shell também é
   // carregado fora da extensão, pelos testes legados, sem a base do <head>.
   const baseDoTema = () => raiz.Tema;
@@ -67,7 +57,7 @@
     for (const radio of $$('input[name="aba-anki"]')) {
       radio.addEventListener('change', () => { location.hash = `#anki/${radio.value}`; });
     }
-    porId('shell-tentar-de-novo').addEventListener('click', tentarAConexaoDeNovo);
+    porId('shell-tentar-de-novo').addEventListener('click', () => ConexaoAnki.tentarDeNovo());
     // O tema vale na hora: gravar é o que troca a tela, aqui e em qualquer
     // outra página aberta (veio/tema.js escuta o mesmo storage).
     for (const radio of $$('#cfg-tema input[name="tema"]')) {
@@ -88,9 +78,8 @@
 
     aplicarEndereco();
     lerResumosGravados();
-    mostrarConexao(CONEXAO.CONECTANDO);
-    conferirConexao();
-    setInterval(conferirConexao, INTERVALO_DA_CONEXAO);
+    ConexaoAnki.acompanhar(mostrarConexao);
+    ConexaoAnki.iniciar({ aCada: ConexaoAnki.INTERVALO });
   }
 
   /** Os textos fixos do shell, pelos atributos data-voz do painel.html. */
@@ -304,34 +293,9 @@
 
   // ─── Conexão com o Anki ────────────────────────────────────────────────────
 
-  /**
-   * Pergunta ao /health se a Conexão está ligada e mostra a resposta. Duas
-   * conferências ao mesmo tempo são uma só: quem chama recebe a mesma
-   * promessa, que termina com a situação (um dos valores de CONEXAO).
-   */
-  function conferirConexao() {
-    if (!estado.conferencia) {
-      estado.conferencia = (async () => {
-        for (const ouvinte of ouvintesDaConferencia) ouvinte(true);
-        let ligada = false;
-        try {
-          ligada = (await fetch(`${ENDERECO_DA_CONEXAO}/health`)).ok;
-        } catch {
-          ligada = false;
-        }
-        estado.conferencia = null;
-        for (const ouvinte of ouvintesDaConferencia) ouvinte(false);
-        mostrarConexao(ligada ? CONEXAO.LIGADA : CONEXAO.DESLIGADA);
-        return estado.conexao;
-      })();
-    }
-    return estado.conferencia;
-  }
-
+  /** O ponto, o texto e a faixa F1 da sidebar mostram a situação que o ConexaoAnki diz. */
   function mostrarConexao(situacao) {
-    estado.conexao = situacao;
-    for (const ouvinte of ouvintesDaConexao) ouvinte(situacao);
-    const status = situacao === CONEXAO.CONECTANDO ? textoDaVoz('BRG-02') : textoDaVoz(`BRG-01.${situacao}`);
+    const status = situacao === SITUACAO.CONECTANDO ? textoDaVoz('BRG-02') : textoDaVoz(`BRG-01.${situacao}`);
     $('.shell-ponto').dataset.estado = situacao;
     $('.shell-item[data-area="anki"]').title = status;
     porId('shell-conexao-descricao').textContent = status;
@@ -339,54 +303,19 @@
     // A faixa F1 fica enquanto a Conexão está desligada, inclusive durante o
     // “Tentar de novo”: ela só sai quando a Conexão responde.
     const tentando = porId('shell-tentar-de-novo');
-    if (situacao === CONEXAO.DESLIGADA) porId('shell-faixa-conexao').hidden = false;
-    if (situacao === CONEXAO.LIGADA) porId('shell-faixa-conexao').hidden = true;
-    tentando.disabled = situacao === CONEXAO.CONECTANDO;
-  }
-
-  /**
-   * Quem precisa saber se a Conexão com o Anki está ligada (o Enviar ao Anki
-   * fica indisponível com ela desligada). O ouvinte recebe a situação de agora
-   * na hora, e cada mudança depois: um dos valores de CONEXAO.
-   */
-  function aoMudarAConexao(ouvinte) {
-    ouvintesDaConexao.push(ouvinte);
-    ouvinte(estado.conexao);
-  }
-
-  /**
-   * Quem mostra a conferência andando (a linha “Confere sozinho…” do card
-   * ONB-16): `true` quando a conferência sai e `false` quando a resposta volta,
-   * logo antes de `aoMudarAConexao` ouvir a situação. É a mesma conferência de
-   * 15 s do shell, sem relógio de rede de ninguém mais.
-   */
-  function aoConferirAConexao(ouvinte) {
-    ouvintesDaConferencia.push(ouvinte);
-  }
-
-  /**
-   * O Tentar de novo da F1: “Conectando ao Anki…” na hora e a conferência. O
-   * passo 4 da Boas-vindas usa este mesmo.
-   */
-  function tentarAConexaoDeNovo() {
-    mostrarConexao(CONEXAO.CONECTANDO);
-    conferirConexao();
+    if (situacao === SITUACAO.DESLIGADA) porId('shell-faixa-conexao').hidden = false;
+    if (situacao === SITUACAO.LIGADA) porId('shell-faixa-conexao').hidden = true;
+    tentando.disabled = situacao === SITUACAO.CONECTANDO;
   }
 
   document.addEventListener('DOMContentLoaded', iniciarShell);
 
   raiz.Shell = {
     AREAS_DO_PAINEL,
-    CONEXAO,
-    ENDERECO_DA_CONEXAO,
     aoAbrirASecao,
-    conferirConexao,
-    aoMudarAConexao,
-    aoConferirAConexao,
     aoEntrarNaArea,
     areaAtual,
     mascararChave,
     mostrarTotalDeFrases,
-    tentarAConexaoDeNovo,
   };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

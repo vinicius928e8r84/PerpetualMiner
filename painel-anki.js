@@ -3,7 +3,7 @@
 // A área Conexão com o Anki (docs/design/painel/anki/, variante C “Por idioma”):
 // os estados da conexão na área e a aba Custos.
 //
-// Estados (o shell diz a situação por `aoMudarAConexao`):
+// Estados (o ConexaoAnki, lib/conexao-anki.js, diz a situação):
 //   Conectando       a primeira conferência ainda não voltou: faixa neutra BRG-02
 //                    e esqueleto no lugar dos custos.
 //   Nunca conectada  desligada e nunca respondeu neste computador (`pm_anki_ja_conectou`):
@@ -23,7 +23,6 @@
 // lembradas neste computador. Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
-  const CHAVE_JA_CONECTOU = 'pm_anki_ja_conectou';
   const CHAVE_CUSTOS = 'pm_anki_custos';
   const CHAVE_QUATRO_CASAS = 'pm_anki_quatro_casas';
   const CHAVE_IDS = 'pm_anki_ids_dos_envios';
@@ -54,15 +53,12 @@
     { chave: 'failed', rotulo: 'BRG-09.falhou', serie: 'falhou' },
   ];
 
-  const { textoDaVoz, Veio, Shell, Contexto, IDIOMAS, PrimeiraConexao } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, Contexto, IDIOMAS, PrimeiraConexao } = raiz;
   const { haQuanto } = Contexto;
-  const { ENDERECO_DA_CONEXAO, CONEXAO } = Shell;
+  const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
 
   const estado = {
-    conexao: CONEXAO.CONECTANDO,
-    conferiu: false,        // a Conexão já respondeu ou falhou alguma vez nesta página
-    jaConectou: false,      // gravado: a Conexão já respondeu neste computador
     periodo: 'mes',         // 'hoje' | 'mes' | 'tudo' | 'datas' (De/Até escolhidos)
     de: '',
     ate: '',
@@ -88,12 +84,10 @@
     ligarControles();
 
     const gravado = await chrome.storage.local.get({
-      [CHAVE_JA_CONECTOU]: false,
       [CHAVE_CUSTOS]: null,
       [CHAVE_QUATRO_CASAS]: false,
       [CHAVE_IDS]: false,
     });
-    estado.jaConectou = gravado[CHAVE_JA_CONECTOU] === true;
     estado.quatroCasas = gravado[CHAVE_QUATRO_CASAS] === true;
     estado.ids = gravado[CHAVE_IDS] === true;
     porId('anki-quatro-casas').checked = estado.quatroCasas;
@@ -106,8 +100,9 @@
       Object.assign(estado, datasDoPeriodo('mes'));
     }
 
-    Shell.aoMudarAConexao(aoMudarAConexao);
-    Shell.aoEntrarNaArea('anki', () => { if (estado.conexao === CONEXAO.LIGADA) ler(); });
+    await ConexaoAnki.pronta;
+    ConexaoAnki.acompanhar(aoMudarAConexao);
+    Shell.aoEntrarNaArea('anki', () => { if (situacaoDaConexao() === CONEXAO.LIGADA) ler(); });
     desenhar();
   }
 
@@ -135,9 +130,13 @@
   }
 
   /** O card ONB-16 está no lugar das abas (inclusive no momento Pronto). */
-  function mostrandoAPrimeiraVez() {
-    return estado.conferiu && (estado.pronto || (!estado.jaConectou && estado.conexao !== CONEXAO.LIGADA));
+  function mostrandoAPrimeiraVez(situacao = situacaoDaConexao(), respondeu = jaRespondeu()) {
+    return respondeu && (estado.pronto || (!ConexaoAnki.jaConectou() && situacao !== CONEXAO.LIGADA));
   }
+
+  const situacaoDaConexao = () => ConexaoAnki.situacao();
+  /** A Conexão já respondeu, ligada ou desligada, nesta página. */
+  const jaRespondeu = () => ConexaoAnki.ultimaResposta() !== null;
 
   /**
    * A primeira resposta com o card na tela: o Pronto por um instante, e então as
@@ -153,17 +152,15 @@
     }, MOMENTO_PRONTO_MS);
   }
 
+  // O que a última notificação já tinha dito: a primeira resposta e a mudança são decididas contra ele.
+  let visto = { situacao: CONEXAO.CONECTANDO, respondeu: false };
+
   function aoMudarAConexao(situacao) {
-    const antes = estado.conexao;
-    const eraPrimeiraVez = mostrandoAPrimeiraVez();
-    estado.conexao = situacao;
-    if (situacao !== CONEXAO.CONECTANDO) estado.conferiu = true;
+    const { situacao: antes, respondeu } = visto;
+    const eraPrimeiraVez = mostrandoAPrimeiraVez(antes, respondeu);
+    visto = { situacao, respondeu: respondeu || situacao !== CONEXAO.CONECTANDO };
     if (situacao === CONEXAO.LIGADA) {
       if (eraPrimeiraVez && !estado.pronto && Shell.areaAtual() === 'anki') mostrarOPronto();
-      if (!estado.jaConectou) {
-        estado.jaConectou = true;
-        chrome.storage.local.set({ [CHAVE_JA_CONECTOU]: true });
-      }
       if (antes !== CONEXAO.LIGADA && Shell.areaAtual() === 'anki') ler();
     }
     desenhar();
@@ -171,7 +168,7 @@
 
   /** Confere a Conexão e, ligada, lê os custos de novo (o Tentar de novo do BRG-04). */
   async function atualizar() {
-    const situacao = await Shell.conferirConexao();
+    const situacao = await ConexaoAnki.conferir();
     if (situacao === CONEXAO.LIGADA) ler();
     return situacao;
   }
@@ -248,14 +245,14 @@
     const nuncaConectou = mostrandoAPrimeiraVez();
     // As abas voltam à tela antes de o card sair: é onde o foco dele vai pousar.
     document.querySelector('.shell-area[data-area="anki"]').classList.toggle('anki--primeira-vez', nuncaConectou);
-    PrimeiraConexao.desenhar({ visivel: nuncaConectou, pronto: estado.pronto, conexao: estado.conexao });
-    porId('anki-conectando').hidden = estado.conferiu || estado.conexao !== CONEXAO.CONECTANDO;
+    PrimeiraConexao.desenhar({ visivel: nuncaConectou, pronto: estado.pronto });
+    porId('anki-conectando').hidden = jaRespondeu() || situacaoDaConexao() !== CONEXAO.CONECTANDO;
     porId('anki-ajustes-nota').hidden = !desligada();
     desenharCustos();
   }
 
   function desligada() {
-    return estado.conexao === CONEXAO.DESLIGADA;
+    return situacaoDaConexao() === CONEXAO.DESLIGADA;
   }
 
   /**
@@ -277,7 +274,7 @@
   /** Qual vista a aba mostra agora. */
   function vistaDosCustos() {
     if (desligada() && estado.dados) return 'antiga';
-    if (!estado.conferiu) return 'esqueleto';
+    if (!jaRespondeu()) return 'esqueleto';
     if (estado.carregando) return 'carregando';
     if (estado.erro || desligada()) return 'erro';
     if (!estado.dados) return 'carregando';

@@ -16,7 +16,7 @@
 // é do painel-anki.js). Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
-  const { textoDaVoz, Veio, AjustesDeEnvio, IDIOMAS, Shell } = raiz;
+  const { textoDaVoz, Veio, AjustesDeEnvio, IDIOMAS, Shell, ConexaoAnki } = raiz;
   const { IMAGENS } = AjustesDeEnvio;
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
   const CODIGO_DO_IDIOMA = { en: 'BRG-28.codigoEn', ru: 'BRG-28.codigoRu' };
@@ -52,9 +52,9 @@
     montarCartoes();
     AjustesDeEnvio.acompanhar(aoMudarOGravado);
     let conexaoAnterior;
-    Shell.aoMudarAConexao(situacao => {
-      if (situacao === Shell.CONEXAO.LIGADA && conexaoAnterior !== situacao) lerBaralhos();
-      if (situacao === Shell.CONEXAO.DESLIGADA) esquecerOsBaralhos();
+    ConexaoAnki.acompanhar(situacao => {
+      if (situacao === ConexaoAnki.SITUACAO.LIGADA && conexaoAnterior !== situacao) lerBaralhos();
+      if (situacao === ConexaoAnki.SITUACAO.DESLIGADA) esquecerOsBaralhos();
       conexaoAnterior = situacao;
     });
     Shell.aoEntrarNaArea('anki', lerBaralhos);
@@ -99,7 +99,7 @@
     const leitura = ++estado.ultimaLeituraDeBaralhos;
     let baralhos = null;
     try {
-      const resposta = await fetch(`${Shell.ENDERECO_DA_CONEXAO}/anki/decks`);
+      const resposta = await fetch(`${ConexaoAnki.ENDERECO}/anki/decks`);
       if (resposta.ok) {
         const dados = await resposta.json();
         if (Array.isArray(dados.decks)) baralhos = dados.decks.map(String);
