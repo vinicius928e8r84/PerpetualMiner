@@ -102,7 +102,11 @@ function _ativarCaptura(texto, evento) {
   if (!evento?.isTrusted) return;
   minerarCaptura({
     texto,
-    contexto: Mineracao.contextoDaSelecao({ url: window.location.href, titulo: document.title }),
+    contexto: Mineracao.contextoDaSelecao({
+      url: window.location.href,
+      titulo: document.title,
+      preservarTitulo: true,
+    }),
     idioma: detectarIdioma(texto),
     lugar:  lugarDaSelecao(texto),
   });

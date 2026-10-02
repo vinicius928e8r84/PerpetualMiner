@@ -36,6 +36,38 @@ test('a seleção minerada pelo atalho e pelo menu numa página web grava a mesm
   expect(doAtalho.contexto).toEqual({ fonte: 'web', titulo: 'Página comum · Artigo de teste', detalhe: '' });
 });
 
+for (const { titulo, tituloDoMenu } of [
+  { titulo: 'Working with PDF', tituloDoMenu: 'Working with' },
+  { titulo: 'jsPDF', tituloDoMenu: 'js' },
+  { titulo: 'Working with Google Chrome', tituloDoMenu: 'Working with' },
+  { titulo: '', tituloDoMenu: '' },
+]) {
+  test(`o atalho preserva o título ${JSON.stringify(titulo)} sem mudar a limpeza do menu`, async ({ page, paginas, extensao }) => {
+    await extensao.gravarStorage({
+      pm_atalho: { type: 'keyboard', code: 'KeyE', altKey: true, ctrlKey: false, shiftKey: false },
+    });
+    await page.goto(paginas.url('texto.html'));
+    await page.evaluate(titulo => { document.title = titulo; }, titulo);
+    await page.locator('#trecho').selectText();
+    await page.keyboard.press('Alt+KeyE');
+
+    await expect.poll(extensao.frases).toEqual([
+      expect.objectContaining({
+        texto: TRECHO,
+        streaming: 'web',
+        contexto: { fonte: 'web', titulo, detalhe: '' },
+      }),
+    ]);
+
+    const selecaoDoMenu = 'The tide came in at dusk.';
+    await minerarPeloMenu(extensao, { selecao: selecaoDoMenu, pageUrl: page.url(), titulo: await page.title() });
+    await expect.poll(async () => (await extensao.frases()).find(f => f.texto === selecaoDoMenu)).toMatchObject({
+      streaming: 'web',
+      contexto: { fonte: 'web', titulo: tituloDoMenu || page.url(), detalhe: '' },
+    });
+  });
+}
+
 test('a seleção de um PDF grava a Fonte PDF, com o título sem o sufixo do visualizador', async ({ extensao }) => {
   await minerarPeloMenu(extensao, {
     selecao: 'The ferry left without a single passenger.',
