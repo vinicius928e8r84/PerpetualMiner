@@ -329,6 +329,11 @@ test('os azulejos Inglês | Russo mostram o dia, e o toggle e o limite gravam', 
   await limite.press('Enter');
   await expect(ru).toContainText('0 de 100 hoje');
   await expect(limite).toHaveValue('100');
+  await limite.fill('-5');
+  await limite.press('Enter');
+  await expect(ru).toContainText('0 de 1 hoje');
+  await expect(limite).toHaveValue('1');
+  expect((await extensao.lerStorage('pm_auto_miner_settings')).pm_auto_miner_settings.ru.dailyLimit).toBe(1);
 });
 
 test('Enter no limite grava e o foco do teclado fica no campo', async ({ page, extensao }) => {

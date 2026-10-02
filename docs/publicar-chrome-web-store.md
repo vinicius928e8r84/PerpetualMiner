@@ -82,7 +82,7 @@ Cole nos campos correspondentes (a loja pede uma por permissão).
 |---|---|
 | `storage` | Guarda no navegador (`storage.local`) as frases mineradas, as configurações, os atalhos, a chave do Gemini informada pela pessoa e a sessão da conta. Usa também o `storage.sync` para as marcas de exclusão de frases (só o identificador da frase e a data), que o próprio navegador sincroniza entre os computadores da pessoa. |
 | `unlimitedStorage` | O histórico de frases e os caches de vocabulário crescem com o uso contínuo e passam do limite padrão de 10 MB do armazenamento local. |
-| `alarms` | Um alarme por dia, à meia-noite, para zerar o contador do ícone na barra (frases mineradas hoje). |
+| `alarms` | Mantém a mineração automática e seus contadores atualizados na virada do dia, inclusive nas páginas já abertas. |
 | `contextMenus` | Cria o item "Minerar com PerpetualMiner" no menu de clique direito sobre texto selecionado. |
 | `identity` | Login opcional com a conta Google (`launchWebAuthFlow`) para sincronizar as frases entre computadores. |
 | `tabs` | Encontra e foca a aba do painel da própria extensão em vez de abrir outra, lê o título da aba para nomear a fonte da frase minerada pelo menu de contexto e avisa as abas abertas quando o estado da mineração automática muda. |

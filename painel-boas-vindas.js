@@ -35,7 +35,7 @@
 // Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
-  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao, ConexaoAnki, Conta, MineracaoAutomatica } = raiz;
+  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao, ConexaoAnki, Conta, MineracaoAutomatica, MineracaoDoDia } = raiz;
   const { SITUACAO: CONEXAO } = ConexaoAnki;
 
   const ABERTURA = 'abertura';
@@ -445,7 +445,7 @@
       () => { if (!estado.automatica) mostrarFalhaDaAutomatica('POP-16.leitura'); });
     // O que o popup (ou a própria mineração) muda aparece aqui sem recarregar.
     chrome.storage.onChanged.addListener((mudancas, area) => {
-      const publicado = area === 'local' && mudancas.pm_auto_miner_state_view?.newValue;
+      const publicado = area === 'local' && mudancas[MineracaoDoDia.CHAVES.estadoPublicado]?.newValue;
       if (publicado) mostrarMineracaoAutomatica(publicado);
     });
   }

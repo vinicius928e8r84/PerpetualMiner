@@ -3,7 +3,7 @@
 // O popup “Cockpit” (docs/design/popup/, variante A). A base compartilhada é
 // carregada antes pelo popup.html: o catálogo da Voz, os componentes da Veio,
 // o detector de idioma, os atalhos gravados e o Contexto da frase.
-const { IDIOMAS, textoDaVoz, Atalhos, minerarFraseManual, Configuracao, ConexaoAnki, MineracaoAutomatica } = PerpetualMiner;
+const { IDIOMAS, textoDaVoz, Atalhos, minerarFraseManual, Configuracao, ConexaoAnki, MineracaoAutomatica, MineracaoDoDia } = PerpetualMiner;
 const { iconeVeio, escreverFrase, montarTeclas, montarAnelDeProgresso } = PerpetualMiner.Veio;
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
 
@@ -65,8 +65,8 @@ document.addEventListener('DOMContentLoaded', () => {
       frases = mudancas.frases.newValue || [];
       desenharUltimas();
     }
-    if (mudancas.pm_auto_miner_state_view?.newValue) {
-      mostrarMineracaoAutomatica(mudancas.pm_auto_miner_state_view.newValue);
+    if (mudancas[MineracaoDoDia.CHAVES.estadoPublicado]?.newValue) {
+      mostrarMineracaoAutomatica(mudancas[MineracaoDoDia.CHAVES.estadoPublicado].newValue);
     }
   });
 
@@ -125,7 +125,7 @@ function pedirEstadoDaAutomatica() {
     return esqueleto;
   }));
 
-  // Um estado publicado enquanto isso (`pm_auto_miner_state_view`) é mais novo que esta resposta.
+  // Um estado publicado enquanto isso (`MineracaoDoDia.CHAVES.estadoPublicado`) é mais novo que esta resposta.
   MineracaoAutomatica.lerEstado().then(
     estado => { if (!mineracaoAutomatica) mostrarMineracaoAutomatica(estado); },
     () => { if (!mineracaoAutomatica) mostrarFalhaDaAutomatica('POP-16.leitura'); });
@@ -196,8 +196,11 @@ function devolverOFoco(azulejos, foco) {
 
 function numerosDoIdioma(chave) {
   const ajustes = mineracaoAutomatica.settings?.[chave] || {};
-  // O service worker devolve o limite já normalizado (1–100, com o padrão dele).
+  // O service worker devolve o limite normalizado por `MineracaoDoDia`.
   const limite = ajustes.dailyLimit;
+  // O popup mostra o retrato do service worker sem reinterpretar `daily.date`
+  // pelo relógio da página. A virada chega pela publicação de
+  // `agendarViradaDoDia` em background.js.
   const n = mineracaoAutomatica.daily?.[chave]?.count || 0;
   const ligado = Boolean(ajustes.enabled);
   return { ligado, limite, n, atingiuOLimite: ligado && n >= limite };
