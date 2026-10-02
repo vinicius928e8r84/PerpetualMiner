@@ -130,6 +130,8 @@ test('passo 1: minerar a primeira frase pelo campo grava a frase e o passo fica 
   const [frase] = await extensao.frases();
   expect(frase.texto).toBe('Break a leg');
   expect(frase.contexto).toEqual({ fonte: 'manual', titulo: '', detalhe: '' });
+  await fotografar(page, 'c1-boas-vindas-minerada.png');
+  await registrarEstado(extensao, 'c1-boas-vindas-minerada.json');
 });
 
 test('passo 1: com uma frase já no histórico, ele já aparece feito', async ({ page, extensao }) => {

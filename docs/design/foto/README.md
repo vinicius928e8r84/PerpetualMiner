@@ -22,7 +22,7 @@ Três layouts foram avaliados: **A · Fiel** (a página de hoje com sidebar), **
 - **“Tentar de novo” numa foto que falhou**, no card da foto (FOT-11). O dono pediu: “só poderia ter opção de retentar a imagem que deu erro”. É um item da lista fechada.
 - Quando parte do envio falha, “Tentar de novo” nas frases que falharam (FOT-15) repete a mesma ação com o mesmo dado, então é revestimento (regra da Voz), não função nova.
 - **A chave do Gemini sai da página.** Sem chave, aparece um cartão que leva a Configurações (FOT-05 → `#configuracoes/chave`).
-- Frases já mineradas ficam marcadas **“✓ minerada”** e não entram de novo no botão. Isso faz parte da correção do bug “Botão salvo reabilita e re-salva duplicado” em [Bugs encontrados na auditoria do front](https://github.com/vinicius928e8r84/PerpetualMiner/issues/9), assim como a corrida do salvamento em paralelo.
+- Uma frase só fica **“Minerada”** depois da gravação confirmada no histórico; então sai do botão e não entra nele de novo. Sem confirmação, continua selecionável para **tentar de novo**. Isso faz parte da correção do bug “Botão salvo reabilita e re-salva duplicado” em [Bugs encontrados na auditoria do front](https://github.com/vinicius928e8r84/PerpetualMiner/issues/9), assim como a corrida do salvamento em paralelo.
 
 ## Cópia
 

@@ -59,6 +59,8 @@ Decidido numa rodada no Lavish em 2026-09-15. O dono aceitou as 5 recomendaçõe
    - a **linha de Contexto**: badge neutro de Fonte com ícone (Netflix, YouTube, Web, PDF, Livro, Manual), Título · Detalhe e o selo **Enviada ao Anki** (`success`) ou **Exportada** (`info`);
    - as **4 ações** à direita, no hover ou no foco.
 
+   Seleções novas, mineradas pelo atalho ou pelo menu do Chrome, aparecem com Fonte **Web** ou **PDF**, conforme o endereço da página. Frases já guardadas com Fonte **Seleção** não são alteradas.
+
    O cartão é `bg` dentro da ilha `surface`, com raio 14. Selecionado, ganha borda ouro a 45% e fundo com 5% de acento, sem barra lateral. **Editar texto** troca o texto por uma textarea no lugar: Enter salva, Esc cancela, e os botões são “Cancelar” e “Salvar texto”. Não há toast, porque a mudança está na tela (PAI-16).
 7. **Paginação**: 10 por página, com “1–10 de 1.284” em mono à esquerda (PAI-07) e **« ‹ 1 de 129 › »** à direita, só-ícone e com tooltip.
 

@@ -33,8 +33,8 @@ test('numa página comum, o atalho gravado minera o texto selecionado', async ({
   await expect.poll(extensao.frases).toEqual([
     expect.objectContaining({
       texto: 'Every lantern along the pier flickered in the salt wind.',
-      streaming: 'selecao',
-      contexto: expect.objectContaining({ fonte: 'selecao', titulo: 'Página comum · Artigo de teste' }),
+      streaming: 'web',
+      contexto: expect.objectContaining({ fonte: 'web', titulo: 'Página comum · Artigo de teste' }),
     }),
   ]);
 });

@@ -2,7 +2,7 @@
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
 // deste arquivo, pelo painel.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
-const { detectarIdioma, ehRussa, IDIOMAS, textoDaVoz, Atalhos, AjustesDeEnvio } = PerpetualMiner;
+const { ehRussa, IDIOMAS, textoDaVoz, Atalhos, AjustesDeEnvio, Mineracao } = PerpetualMiner;
 // O nome da Fonte e o dia da frase, os mesmos do popup (lib/contexto.js).
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
 // A lista de Frases é montada com os componentes da Base Veio (veio/componentes.js).
@@ -1705,16 +1705,8 @@ async function minerarEmSequencia(frases) {
   mostrarProgressoDeMinerar(0, frases.length);
   try {
     for (const { texto, contexto, palavras } of frases) {
-      const resposta = await pedirAoServiceWorker({
-        type: 'SALVAR_HISTORICO',
-        texto,
-        origem: contexto.fonte,
-        contexto,
-        idioma: detectarIdioma(texto),
-        palavras,
-        semNuvem: true,
-      });
-      if (!resposta?.ok) throw new Error(resposta?.error || 'save_failed');
+      const resposta = await Mineracao.gravar({ texto, contexto, palavras, semNuvem: true });
+      if (!resposta.ok) throw new Error(resposta.error);
       mineradas.push(resposta.frase);
       mostrarProgressoDeMinerar(mineradas.length, frases.length);
     }
@@ -1725,15 +1717,6 @@ async function minerarEmSequencia(frases) {
   // clique não começa uma segunda.
   const erroNaNuvem = await sincronizacao.subirFrases(mineradas);
   return { mineradas, erroLocal, erroNaNuvem };
-}
-
-function pedirAoServiceWorker(mensagem) {
-  return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage(mensagem, (resposta) => {
-      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
-      else resolve(resposta);
-    });
-  });
 }
 
 /**
