@@ -26,7 +26,7 @@
 // Voz.
 
 (function (raiz) {
-  const { textoDaVoz, detectarIdioma } = raiz;
+  const { textoDaVoz, Mineracao } = raiz;
   const { iconeVeio, montarAviso, mostrarToastDeSucesso, refletirSelecao, abrirConfirmacao } = raiz.Veio;
 
   // ─── Constantes ─────────────────────────────────────────────────────────────
@@ -581,18 +581,9 @@ To be or not to be, that is the question`;
   }
 
   /** Grava pelo service worker, que serializa as gravações (nenhuma se perde). */
-  function salvarNoHistorico(texto, titulo) {
-    return new Promise(resolve => {
-      chrome.runtime.sendMessage({
-        type: 'SALVAR_HISTORICO',
-        texto,
-        origem: FONTE,
-        idioma: detectarIdioma(texto),
-        contexto: { fonte: FONTE, titulo, detalhe: '' },
-      }, resposta => {
-        resolve(!chrome.runtime.lastError && resposta?.ok !== false);
-      });
-    });
+  async function salvarNoHistorico(texto, titulo) {
+    const { ok } = await Mineracao.gravar({ texto, contexto: { fonte: FONTE, titulo, detalhe: '' } });
+    return ok;
   }
 
   // ─── Painel ─────────────────────────────────────────────────────────────────

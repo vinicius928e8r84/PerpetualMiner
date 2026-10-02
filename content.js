@@ -2,7 +2,7 @@
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
 // deste arquivo, pelo manifest: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
-const { detectarIdioma, Atalhos, Overlay, textoDaVoz, IDIOMAS, MineracaoDoDia } = PerpetualMiner;
+const { detectarIdioma, Atalhos, Overlay, textoDaVoz, IDIOMAS, MineracaoDoDia, Mineracao } = PerpetualMiner;
 
 const AUTO_MINER_POLL_MS = 700;
 const AUTO_MINER_LAST_EVENT_KEY = MineracaoDoDia.CHAVES.ultimoEvento;
@@ -102,12 +102,7 @@ function _ativarCaptura(texto, evento) {
   if (!evento?.isTrusted) return;
   minerarCaptura({
     texto,
-    origem:  'selecao',
-    contexto: {
-      fonte:   'selecao',
-      titulo:  document.title.trim(),
-      detalhe: '',
-    },
+    contexto: Mineracao.contextoDaSelecao({ url: window.location.href, titulo: document.title }),
     idioma: detectarIdioma(texto),
     lugar:  lugarDaSelecao(texto),
   });
@@ -123,7 +118,7 @@ function _ativarCaptura(texto, evento) {
  * seleção gravada; MIN-03 se não gravou.
  */
 async function minerarCaptura(captura, { copia = false } = {}) {
-  const [copiou, resposta] = await Promise.all([copia && copiar(captura.texto), salvarNoHistorico(captura)]);
+  const [copiou, resposta] = await Promise.all([copia && copiar(captura.texto), Mineracao.gravar(captura)]);
   if (!resposta?.ok) {
     mostrarFalha('MIN-03');
     return;
@@ -189,20 +184,6 @@ function codigoDoIdioma(idioma) {
 /** O inverso de `codigoDoIdioma`: `'ru'` → Russo, o resto Inglês. */
 function idiomaDoCodigo(lang) {
   return lang === 'ru' ? IDIOMAS.RUSSO : IDIOMAS.INGLES;
-}
-
-/** A resposta do service worker, ou `{ ok: false }` se ele não respondeu. */
-function salvarNoHistorico({ texto, origem, contexto, idioma }) {
-  return new Promise(resolve => {
-    try {
-      chrome.runtime.sendMessage({ type: 'SALVAR_HISTORICO', texto, origem, contexto, idioma }, resposta => {
-        resolve(chrome.runtime.lastError ? { ok: false } : resposta);
-      });
-    } catch {
-      // A extensão foi recarregada e este content script ficou órfão.
-      resolve({ ok: false });
-    }
-  });
 }
 
 /**

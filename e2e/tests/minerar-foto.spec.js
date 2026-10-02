@@ -164,6 +164,31 @@ test('“Selecionar todas” marca e desmarca, fica misto com parte, e o botão 
     .toEqual([FRASES_DA_PAGINA_1[0], FRASES_DA_PAGINA_1[2]].sort());
 });
 
+// ─── Gravou ou não gravou: só um “ok” do service worker conta ────────────────
+
+test('um service worker que responde sem confirmar a gravação não deixa a frase “Minerada”', async ({ page, extensao, fakes }) => {
+  fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
+  await abrirAPagina(page, extensao);
+  await lerUmaFoto(page);
+  await expect(botaoMinerar(page)).toHaveText('Minerar 3 frases');
+
+  // O service worker "responde", mas sem confirmar nada (nem erro): sem `ok`, não gravou.
+  await page.evaluate(() => {
+    const original = chrome.runtime.sendMessage.bind(chrome.runtime);
+    chrome.runtime.sendMessage = (mensagem, retorno) => {
+      if (mensagem?.type !== 'SALVAR_HISTORICO') return original(mensagem, retorno);
+      setTimeout(() => retorno(undefined));
+    };
+  });
+  await botaoMinerar(page).click();
+
+  await expect(page.locator('#foto-avisos')).toContainText('Não deu para minerar as frases. Tente de novo.');
+  await expect(page.locator('.foto-frase__minerada:visible')).toHaveCount(0);
+  await expect(frase(page, FRASES_DA_PAGINA_1[0])).toBeEnabled();
+  await expect(page.locator('.veio-toast')).toHaveCount(0);
+  expect(await gravadasDoLivro(extensao)).toEqual([]);
+});
+
 // ─── Bug de #9: o botão “salvo” reabilitava e salvava de novo ────────────────
 
 test('minerar e clicar de novo não grava nada duas vezes; as mineradas ficam “Minerada” e saem do botão', async ({ page, extensao, fakes }) => {

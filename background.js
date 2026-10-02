@@ -1,8 +1,8 @@
 'use strict';
 
 // A base compartilhada: o catálogo da Voz e a detecção de idioma.
-importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/sincronizacao.js');
-const { textoDaVoz, detectarIdioma, IDIOMAS, MineracaoDoDia } = PerpetualMiner;
+importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/sincronizacao.js');
+const { textoDaVoz, detectarIdioma, IDIOMAS, MineracaoDoDia, Mineracao } = PerpetualMiner;
 
 // Em pasta descompactada, recarrega a extensão quando os arquivos mudam.
 importScripts('lib/arquivos-da-extensao.js', 'lib/auto-recarregar.js');
@@ -129,18 +129,9 @@ function minerarSelecaoDoMenu(info, tab) {
   const selecao = info.selectionText?.trim();
   if (!selecao) return;
 
-  const url   = info.pageUrl || tab?.url || '';
-  const isPdf = /\.pdf(\?|#|$)/i.test(url)
-             || /^chrome-extension:\/\/[a-z]+\/.*pdf/i.test(url);
-  const fonte = isPdf ? 'pdf' : 'web';
+  const contexto = Mineracao.contextoDaSelecao({ url: info.pageUrl || tab?.url, titulo: tab?.title });
 
-  const contexto = {
-    fonte,
-    titulo:  tab?.title?.replace(/\s*[-–|]?\s*(PDF|Google Chrome)$/i, '').trim() || url,
-    detalhe: '',
-  };
-
-  salvarFrase(selecao, fonte, contexto, detectarIdioma(selecao));
+  salvarFrase(selecao, contexto.fonte, contexto, detectarIdioma(selecao));
 }
 
 // ─── Mensagens do content.js ─────────────────────────────────────────────────
