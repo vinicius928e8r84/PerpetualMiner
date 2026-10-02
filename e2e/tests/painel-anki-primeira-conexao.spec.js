@@ -232,6 +232,23 @@ test('só o Tentar de novo do card fixa o passo 3: o da F1 deixa o card voltar a
   await expect(card(page)).toContainText('Como ligar · Passo 3 de 3');
 });
 
+test('o passo que a pessoa abriu continua aberto depois de uma conferência que não achou a Conexão e de uma volta por outra área', async ({ page, extensao }) => {
+  await page.clock.install({ time: AGORA });
+  await page.goto(extensao.url('painel.html#anki/custos'));
+  await expect(card(page)).toBeVisible();
+
+  await card(page).getByRole('button', { name: 'Continuar' }).click();
+  await expect(card(page)).toContainText('Como ligar · Passo 2 de 3');
+
+  await page.clock.runFor(15_000);
+  await expect(status(page)).toHaveText('Conexão com o Anki: desligada');
+  await expect(card(page)).toContainText('Como ligar · Passo 2 de 3');
+
+  await page.getByRole('link', { name: 'Frases' }).click();
+  await page.getByRole('link', { name: 'Conexão com o Anki' }).click();
+  await expect(card(page)).toContainText('Como ligar · Passo 2 de 3');
+});
+
 test('a Conexão liga com a pessoa em outra área: as abas já estão lá quando ela chega, sem Pronto nem toast', async ({ page, extensao, fakes }) => {
   await page.clock.install({ time: AGORA });
   await page.goto(extensao.url('painel.html#anki/custos'));

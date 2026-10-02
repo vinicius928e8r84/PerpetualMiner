@@ -229,6 +229,8 @@ test('o período abre em Este mês; Hoje e De/Até pedem as datas certas', async
 test('azulejos por idioma com total e envios; o escolhido filtra o resumo, as imagens e a lista', async ({ page, extensao }) => {
   await abrirAnki(page, extensao);
 
+  // Os azulejos só aparecem com os dados lidos: esperar por eles antes de pegar os botões.
+  await expect(azulejos(page).getByRole('button')).toHaveCount(3);
   const [todos, ingles, russo] = await azulejos(page).getByRole('button').all();
   await expect(todos).toHaveAttribute('aria-pressed', 'true');
   await expect(todos).toContainText('Todos os idiomas');
