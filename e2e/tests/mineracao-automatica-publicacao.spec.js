@@ -1,6 +1,7 @@
 'use strict';
 
 const { test, expect, botaoFlutuante, tocarVideo } = require('../fixtures');
+const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 
 const FRASE_RUSSA = 'Я улыбаюсь';
 const ERRO_DE_GRAVACAO = 'QUOTA_BYTES quota exceeded';
@@ -23,10 +24,12 @@ test('a frase no limite atualiza o popup e a aba mesmo com a gravação do diagn
   await expect(contadorDaAba).toHaveText('2/3');
 
   const popup = await context.newPage();
+  await popup.setViewportSize({ width: 340, height: 600 });
   await popup.goto(extensao.url('popup.html'));
   const russo = popup.locator('.popup-azulejo[data-idioma="ru"]');
   const contadorDoPopup = russo.locator('.popup-azulejo__contador [aria-hidden="true"]');
   await expect(contadorDoPopup).toHaveText('2/3');
+  await fotografar(popup, 'publicacao-popup-antes.png');
 
   await extensao.serviceWorker.evaluate(erro => {
     const gravar = chrome.storage.local.set.bind(chrome.storage.local);
@@ -47,4 +50,7 @@ test('a frase no limite atualiza o popup e a aba mesmo com a gravação do diagn
   await expect(contadorDaAba).toHaveText('3/3');
   await expect(botaoFlutuante(page)).toHaveAccessibleDescription('Mineração automática · Russo: limite de hoje atingido');
   expect((await extensao.lerStorage('pm_auto_miner_state_view')).pm_auto_miner_state_view.daily.ru.count).toBe(3);
+  await fotografar(page.locator('.player'), 'publicacao-aba-depois.png');
+  await fotografar(popup, 'publicacao-popup-depois.png');
+  await registrarEstado(extensao, 'publicacao-diagnostico-falhou.json');
 });

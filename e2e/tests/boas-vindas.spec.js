@@ -16,6 +16,7 @@
 // chama o ouvinte do `onInstalled` como o Chrome chamaria, com `update`.
 
 const { test, expect } = require('../fixtures');
+const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 const path = require('path');
 
 const fotografarPasso4 = async (page, nome) => {
@@ -362,6 +363,8 @@ test('passo 5: os switches EN/RU e o limite por dia gravam o mesmo que o popup',
   await expect.poll(async () => (await extensao.lerStorage('pm_auto_miner_settings')).pm_auto_miner_settings?.ru?.dailyLimit).toBe(35);
   await expect(limite).toBeFocused();
   await expect(card(page)).toContainText('Os mesmos botões ficam no popup, pelo ícone da extensão.');
+  await fotografar(page, 'boas-vindas-automatica.png');
+  await registrarEstado(extensao, 'ajustes-boas-vindas.json');
 });
 
 test('passo 5: com a Conexão desligada, a nota de dependência (ONB-10)', async ({ page, extensao, fakes }) => {
