@@ -1,29 +1,26 @@
 """O Envio ao Anki como maquina de estados.
 
-Extraido de bridge/server.py. Um Envio (job) vive em duas pecas no disco:
-``jobs_root/<id>/job.json`` (o pedido) e ``jobs_root/<id>/state.json`` (onde ele
-esta). ``queue.json`` guarda so a ordem de chegada e espelha o status para o
-worker achar o proximo; quem escreve nos dois e unicamente o ``JobStore``.
+Um Envio (job) guarda o pedido em ``jobs_root/<id>/job.json`` e o estado em
+``jobs_root/<id>/state.json``. ``queue.json`` preserva a ordem de chegada e
+espelha o status para o worker achar o proximo. ``JobStore`` e o unico escritor
+desses arquivos. ``JobRunner`` percorre as etapas e ``JobWorker`` drena a fila;
+``server.py`` monta os adapters e expoe o Envio pela API ``/jobs``.
 
-Status do Envio (``state.json``):
+As transicoes de status ficam em ``TRANSITIONS`` e sua validacao em
+``JobStore._check_transition`` (``InvalidTransition`` para mudancas proibidas
+a partir de um status conhecido). ``JobStore.recover_interrupted`` refileira
+Envios interrompidos quando o bridge inicia.
 
-    queued -> running -> completed | partial | failed
-    completed | partial | failed -> queued        (Continuar envio: retry)
-    running -> queued                             (bridge reiniciou no meio)
+A ordem e as regras de retomada ficam em ``STAGES`` e ``Stage``, incluindo as
+dependencias entre etapas e quais produtos sao verificados no disco.
+``_pending_send_pairs`` decide o que ainda precisa ser enviado; ``settle``
+define os resultados por frase.
 
-Etapas (``stage``): ``queued`` -> ``generate_cards`` -> ``extract_prompts`` ->
-``generate_audio`` -> ``generate_images`` -> ``wait_anki`` -> ``send_to_anki`` e
-o fim (``completed`` / ``partial`` / ``failed``). Ao retomar, as etapas ja
-concluidas (``completedStages``) e cujo produto ainda esta no disco nao rodam de
-novo (ver ``STAGES``). Cada frase termina em um de tres resultados: ``added``,
-``duplicate`` ou ``failed``.
+Os adapters entram por injecao e sao trocaveis no teste:
 
-Tres adapters entram por injecao e sao trocaveis no teste:
-
-  - ``JobStore``: fila e estado (arquivos) — o unico dono do status;
-  - ``Engine``: o Automatic Anki (cartoes, prompts, audio, imagens, envio);
-    ``AutomaticAnkiEngine`` e o de producao;
-  - ``anki``: o ``AnkiSession`` (``ensure_ready``).
+  - ``store``: ``JobStore`` (fila e estado);
+  - ``engine``: protocolo ``Engine``, implementado por ``AutomaticAnkiEngine``;
+  - ``anki``: ``AnkiSession`` (``ensure_ready``).
 """
 from __future__ import annotations
 
@@ -219,8 +216,11 @@ class JobStore:
         return job_id
 
     def requeue(self, job_id: str) -> str:
-        """Continuar envio: volta o mesmo Envio para a fila, mantendo as etapas
-        concluidas e as frases ja enviadas. Um Envio rodando fica como esta."""
+        """Continuar envio: preserva as etapas concluidas e as frases ja enviadas.
+
+        A verificacao de RUNNING compartilha o lock com a escrita, para que um
+        retry atrasado nao troque running por queued durante uma etapa.
+        """
         with self.lock:
             state = self.read_state(job_id)
             if state.get("status") == RUNNING:
@@ -247,7 +247,11 @@ class JobStore:
         return state["status"]
 
     def claim_next(self) -> str | None:
-        """O worker pega o proximo Envio da fila e o marca como rodando."""
+        """Reserva o proximo Envio marcando primeiro apenas a fila como rodando.
+
+        O estado muda ao entrar numa etapa; falhas antes dela sao registradas
+        pelo worker. Essa janela entre os dois arquivos preserva o contrato.
+        """
         with self.lock:
             queue = self.queue_data()
             for item in queue["jobs"]:
@@ -284,8 +288,12 @@ class JobStore:
         return recovered
 
     def update(self, job_id: str, **fields: Any) -> dict[str, Any]:
-        """Grava campos no estado do Envio e espelha o status na fila. Mudar o
-        ``status`` so vale por uma das ``TRANSITIONS``."""
+        """Grava campos no estado do Envio e espelha o status na fila.
+
+        Um status atual conhecido segue ``TRANSITIONS`` ou permanece igual;
+        mudancas proibidas levantam ``InvalidTransition``. Estados antigos
+        sem status conhecido sao tolerados.
+        """
         with self.lock:
             state = self.read_state(job_id)
             if "status" in fields:
