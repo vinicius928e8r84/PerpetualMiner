@@ -19,8 +19,8 @@
 // O fluxo é todo daqui: quando o card cobre as abas, o momento Pronto (o toast
 // e o foco que o acompanham) e o passo que a pessoa abriu. O painel-anki.js não
 // pergunta nada: o card põe e tira `anki--primeira-vez` na área, e o CSS troca
-// as abas pelo card. A única assinatura da Conexão é a de `montar`, então o
-// fluxo não depende da ordem em que outros ouvintes entram.
+// as abas pelo card. A assinatura de situação em `montar` é a única do fluxo
+// ONB-16, que não depende da ordem em que outros ouvintes entram.
 
 (function (raiz) {
   const PASSOS = [
@@ -62,9 +62,11 @@
   // ─── Montagem ──────────────────────────────────────────────────────────────
 
   /**
-   * Desenha a lista e o resto do card, e passa a seguir a Conexão assim que o
-   * fato “já respondeu” é lido: antes disso o card não sabe se uma resposta
-   * ligada é a primeira. A promessa termina com a assinatura feita.
+   * Monta o card e espera `ConexaoAnki.pronta` antes de acompanhar a situação,
+   * para conhecer o fato “já respondeu ligada neste computador”. Uma resposta
+   * recebida antes da assinatura continua contando durante uma tentativa.
+   * Devolve uma promessa que resolve com a função que retira só esse ouvinte
+   * de situação; não desmonta o card nem encerra a Conferência.
    */
   function montar() {
     montarLista();

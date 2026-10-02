@@ -6,10 +6,7 @@
 // Estados (o ConexaoAnki, lib/conexao-anki.js, diz a situação):
 //   Conectando       a primeira conferência ainda não voltou: faixa neutra BRG-02
 //                    e esqueleto no lugar dos custos.
-//   Nunca conectada  desligada e nunca respondeu neste computador (`pm_anki_ja_conectou`):
-//                    o card ONB-16 (painel-anki-primeira-conexao.js) fica no lugar das
-//                    abas, com a F1 do shell em cima. O card cuida de si: quando cobre as
-//                    abas, o momento Pronto da primeira resposta e o toast BRG-01.
+//   Nunca conectada  ver painel-anki-primeira-conexao.js, dono do fluxo ONB-16.
 //   Desligada        a F1 do shell, e Custos mostra o último dado (`pm_anki_custos`)
 //                    com o selo BRG-12; Continuar envio fica aria-disabled, com o
 //                    porquê na dica (C8).

@@ -7,6 +7,7 @@
 // pessoa vê e o que fica gravado.
 
 const { test, expect } = require('../fixtures');
+const { fotografar } = require('../evidencias-mineracao');
 
 const AGORA = new Date('2026-09-18T12:00:00');
 const F1 = 'A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.';
@@ -25,6 +26,11 @@ const pedidosDeHealth = fakes => fakes.anki.requisicoes.filter(r => r.caminho ==
 async function abrir(page, extensao) {
   await page.clock.setFixedTime(AGORA);
   await page.goto(extensao.url('painel.html#anki/custos'));
+}
+
+async function pararRelogio(page) {
+  await page.clock.install({ time: new Date(AGORA.getTime() - 60_000) });
+  await page.clock.pauseAt(AGORA);
 }
 
 const listaDeEnvios = page => page.getByRole('listbox', { name: 'Envios recentes' });
@@ -152,8 +158,9 @@ test('conectando (depois de Tentar de novo): abre no passo 3 com “Conectando a
 });
 
 test('a resposta anterior mantém o card visível ao terminar a leitura do fato durante uma tentativa da F1', async ({ page, extensao, fakes }) => {
+  await page.setViewportSize({ width: 1280, height: 1100 });
   await extensao.gravarStorage({ pm_anki_ja_conectou: false });
-  await page.clock.install({ time: AGORA });
+  await pararRelogio(page);
   await page.addInitScript(() => {
     const ler = chrome.storage.local.get.bind(chrome.storage.local);
     const segurada = new Promise(resolve => { globalThis.liberarLeituraDaConexao = resolve; });
@@ -180,6 +187,8 @@ test('a resposta anterior mantém o card visível ao terminar a leitura do fato 
   await expect(tentarDoCard(page)).toHaveAttribute('aria-disabled', 'true');
   await expect(page.locator('#apv-confere')).toHaveText('Conferindo agora…');
   await expect(abas(page)).toBeHidden();
+  await page.evaluate(() => document.fonts.ready);
+  await fotografar(page, 'anki-conectando-leitura-tardia.png');
 
   liberarResposta();
   await expect(status(page)).toHaveText('Esperando a Conexão');
@@ -187,7 +196,10 @@ test('a resposta anterior mantém o card visível ao terminar a leitura do fato 
 });
 
 test('a Conexão passa a responder: o momento Pronto, e depois as abas voltam com o toast', async ({ page, extensao, fakes }) => {
-  await abrir(page, extensao);
+  await page.setViewportSize({ width: 1280, height: 1100 });
+  await pararRelogio(page);
+  await page.goto(extensao.url('painel.html#anki/custos'));
+  await page.evaluate(() => document.fonts.ready);
   await expect(card(page)).toBeVisible();
 
   fakes.anki.ligar();
@@ -201,13 +213,23 @@ test('a Conexão passa a responder: o momento Pronto, e depois as abas voltam co
   await expect(abas(page)).toBeHidden();
   // A chave fica gravada já na primeira resposta.
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
+  await expect(tituloDoPasso(page)).toBeFocused();
+  await fotografar(page, 'anki-pronto.png');
 
+  // O card cobre as abas pelos 1,8 s inteiros; o relógio parado não depende da carga do host.
+  await page.clock.runFor(1799);
+  await expect(pronto(page)).toBeVisible();
+  await expect(abas(page)).toBeHidden();
+  await expect(page.locator('.veio-toast')).toHaveCount(0);
+  await page.clock.runFor(1);
   await expect(abas(page)).toBeVisible();
   await expect(pronto(page)).toBeHidden();
   await expect(page.getByText(F1)).toBeHidden();
   await expect(page.locator('.veio-toast')).toHaveText('Conexão com o Anki: ligada');
   // Custos carrega sozinha, como se a Conexão sempre tivesse estado ali.
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(1);
+  await expect(page.getByRole('radio', { name: 'Custos' })).toBeFocused();
+  await fotografar(page, 'anki-abas-toast.png');
 });
 
 test('a Conexão liga sozinha, sem ninguém apertar: a conferência de 15 s do shell a encontra', async ({ page, extensao, fakes }) => {
@@ -268,7 +290,8 @@ test('só o Tentar de novo do card fixa o passo 3: o da F1 deixa o card voltar a
 });
 
 test('o passo que a pessoa abriu continua aberto depois de uma conferência que não achou a Conexão e de uma volta por outra área', async ({ page, extensao, fakes }) => {
-  await page.clock.install({ time: AGORA });
+  await page.setViewportSize({ width: 1280, height: 1100 });
+  await pararRelogio(page);
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();
   const linha = page.locator('#apv-confere');
@@ -277,16 +300,30 @@ test('o passo que a pessoa abriu continua aberto depois de uma conferência que 
 
   await card(page).getByRole('button', { name: 'Continuar' }).click();
   await expect(card(page)).toContainText('Como ligar · Passo 2 de 3');
+  await page.evaluate(() => document.fonts.ready);
+  await fotografar(page, 'anki-passo2-antes-da-conferencia.png');
 
+  let liberar;
+  const segurada = new Promise(resolve => { liberar = resolve; });
+  fakes.anki.responder('GET', '/health', async () => { await segurada; return { status: 503, json: {} }; });
+  fakes.anki.ligar();
   await page.clock.runFor(15_000);
   await expect.poll(() => pedidosDeHealth(fakes)).toHaveLength(2);
+  await expect(linha).toHaveText('Conferindo agora…');
+  await fotografar(page, 'anki-passo2-conferindo.png');
+  liberar();
   await expect(linha).toHaveText('Confere sozinho a cada 15 s · última vez há 0 s');
   await expect(status(page)).toHaveText('Conexão com o Anki: desligada');
   await expect(card(page)).toContainText('Como ligar · Passo 2 de 3');
+  await expect(abas(page)).toBeHidden();
+  await fotografar(page, 'anki-passo2-conferencia-concluida.png');
 
   await page.getByRole('link', { name: 'Frases' }).click();
+  await expect(card(page)).toBeHidden();
   await page.getByRole('link', { name: 'Conexão com o Anki' }).click();
   await expect(card(page)).toContainText('Como ligar · Passo 2 de 3');
+  await expect(abas(page)).toBeHidden();
+  await fotografar(page, 'anki-passo2-apos-voltar.png');
 });
 
 test('a Conexão liga com a pessoa em outra área: as abas já estão lá quando ela chega, sem Pronto nem toast', async ({ page, extensao, fakes }) => {

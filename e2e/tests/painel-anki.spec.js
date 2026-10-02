@@ -7,6 +7,7 @@
 // que fica gravado.
 
 const { test, expect } = require('../fixtures');
+const { fotografar } = require('../evidencias-mineracao');
 
 const AGORA = new Date('2026-09-18T12:00:00');
 
@@ -227,6 +228,12 @@ test('o período abre em Este mês; Hoje e De/Até pedem as datas certas', async
 });
 
 test('azulejos por idioma com total e envios; o escolhido filtra o resumo, as imagens e a lista', async ({ page, extensao }) => {
+  await page.setViewportSize({ width: 1280, height: 1100 });
+  // Atrasa a leitura na fronteira HTTP: pegar os botões cedo não pode passar por sorte.
+  await page.route('http://127.0.0.1:8766/analytics/jobs?**', async route => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    await route.fallback();
+  });
   await abrirAnki(page, extensao);
 
   // Os azulejos só aparecem com os dados lidos: esperar por eles antes de pegar os botões.
@@ -251,6 +258,8 @@ test('azulejos por idioma com total e envios; o escolhido filtra o resumo, as im
   await expect(faixa).toContainText('Frases 15 de 25');
   await expect(faixa).toContainText('Envios concluídos 1 de 4');
   await expect(page.locator('#anki-custos-imagens')).toContainText('18 imagens');
+  await page.evaluate(() => document.fonts.ready);
+  await fotografar(page, 'anki-azulejos-todos.png');
 
   await russo.click();
   await expect(russo).toHaveAttribute('aria-pressed', 'true');
@@ -259,6 +268,7 @@ test('azulejos por idioma com total e envios; o escolhido filtra o resumo, as im
   await expect(faixa).toContainText('Frases 3 de 4');
   await expect(page.locator('#anki-custos-imagens')).toContainText('4 imagens');
   await expect(page.locator('#anki-custos-imagens')).toContainText('Gerada por IA');
+  await fotografar(page, 'anki-azulejos-russo.png');
 });
 
 test('lista × detalhe: o envio em parte mostra o que não entrou, Detalhes e Continuar envio, que retoma', async ({ page, extensao, fakes }) => {
