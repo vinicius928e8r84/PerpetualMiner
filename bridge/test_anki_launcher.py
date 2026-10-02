@@ -623,10 +623,21 @@ class BridgeServerTests(unittest.TestCase):
         self.assertIn('"_is_invalid_image_format_error"', fingerprint_fn)
 
     def test_access_denied_repair_route_answers_503_with_the_payload(self) -> None:
-        route_fn = _function_source("anki_repair")
+        payload = {
+            "ok": False,
+            "error": "repair_access_denied",
+            "code": "anki_repair_access_denied",
+            "detail": "Feche o Anki pelo Gerenciador de Tarefas",
+            "pids": [1234],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            bridge = self._bridge_with_jobs(tmp)
+            with mock.patch.object(bridge.anki, "repair", side_effect=AnkiRepairBlockedError(payload)) as repair:
+                response = bridge.app.test_client().post("/anki/repair")
 
-        self.assertIn("except AnkiRepairBlockedError as exc", route_fn)
-        self.assertIn("return jsonify(exc.payload), 503", route_fn)
+        repair.assert_called_once_with()
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.get_json(), payload)
 
     def test_anki_routes_delegate_to_the_session_seam(self) -> None:
         source = _source()

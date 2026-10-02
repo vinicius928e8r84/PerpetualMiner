@@ -240,6 +240,31 @@ class JobStoreTests(EnvioTestCase):
         self.assertEqual(self.queue_status(job_id), "queued")
         self.assertEqual(self.store.claim_next(), job_id)
 
+    def test_running_envio_with_invalid_utf8_state_is_recovered(self) -> None:
+        job_id = self.envio(1)
+        self.store.claim_next()
+        self.store.set_stage(job_id, "generate_audio")
+        self.store.state_file(job_id).write_bytes(b'{"progress": {"label": "\xd0"}}')
+
+        self.assertEqual(self.store.recover_interrupted(), 1)
+
+        self.assertEqual(self.queue_status(job_id), "queued")
+        self.assertEqual(self.store.read_state(job_id), {})
+        self.assertEqual(self.store.listing()[0]["state"], {})
+        self.assertEqual(self.store.claim_next(), job_id)
+
+    def test_corrupt_json_reads_return_their_defaults(self) -> None:
+        job_id = self.envio(1)
+        for content in (b"", b'{"status":', b'{"progress": {"label": "\xd0"}}'):
+            with self.subTest(content=content):
+                self.store.job_file(job_id).write_bytes(content)
+                self.store.state_file(job_id).write_bytes(content)
+                self.store.queue_file.write_bytes(content)
+
+                self.assertEqual(self.store.read_job(job_id), {})
+                self.assertEqual(self.store.read_state(job_id), {})
+                self.assertEqual(self.store.queue_data(), {"jobs": []})
+
 
 # ---------------------------------------------------------------------------
 # As etapas

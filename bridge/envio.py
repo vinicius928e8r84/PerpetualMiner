@@ -79,15 +79,15 @@ def now_iso() -> str:
 
 
 def read_json(path: Path, default: Any) -> Any:
-    if not path.exists():
-        return copy.deepcopy(default)
     try:
+        if not path.exists():
+            return copy.deepcopy(default)
         text = path.read_text(encoding="utf-8").strip()
         if not text:
             LOGGER.warning("read_json: arquivo vazio (corrompido?), usando default: %s", path)
             return copy.deepcopy(default)
         return json.loads(text)
-    except (json.JSONDecodeError, OSError) as exc:
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
         LOGGER.warning("read_json: falha ao ler %s (%s), usando default", path, exc)
         return copy.deepcopy(default)
 
