@@ -39,7 +39,7 @@
   const ouvintesDeSecao = new Map();   // seção de Configurações → ouvintes
   const fimDosDestaques = new Map();   // card → o timer que tira a borda do destaque
 
-  const { textoDaVoz, Atalhos, Veio, ConexaoAnki } = raiz;
+  const { textoDaVoz, Atalhos, Veio, ConexaoAnki, ConexaoNaTela } = raiz;
   const { SITUACAO } = ConexaoAnki;
   // O tema (veio/tema.js) é pedido só na hora de usar: o shell também é
   // carregado fora da extensão, pelos testes legados, sem a base do <head>.
@@ -57,7 +57,7 @@
     for (const radio of $$('input[name="aba-anki"]')) {
       radio.addEventListener('change', () => { location.hash = `#anki/${radio.value}`; });
     }
-    porId('shell-tentar-de-novo').addEventListener('click', () => ConexaoAnki.tentarDeNovo());
+    ConexaoNaTela.ligarTentarDeNovo(porId('shell-tentar-de-novo'));
     // O tema vale na hora: gravar é o que troca a tela, aqui e em qualquer
     // outra página aberta (veio/tema.js escuta o mesmo storage).
     for (const radio of $$('#cfg-tema input[name="tema"]')) {
@@ -295,17 +295,19 @@
 
   /** O ponto, o texto e a faixa F1 da sidebar mostram a situação que o ConexaoAnki diz. */
   function mostrarConexao(situacao) {
-    const status = situacao === SITUACAO.CONECTANDO ? textoDaVoz('BRG-02') : textoDaVoz(`BRG-01.${situacao}`);
-    $('.shell-ponto').dataset.estado = situacao;
+    const status = ConexaoNaTela.texto(situacao);
+    ConexaoNaTela.pintarPonto($('.shell-ponto'), situacao);
     $('.shell-item[data-area="anki"]').title = status;
     porId('shell-conexao-descricao').textContent = status;
 
     // A faixa F1 fica enquanto a Conexão está desligada, inclusive durante o
     // “Tentar de novo”: ela só sai quando a Conexão responde.
-    const tentando = porId('shell-tentar-de-novo');
+    ConexaoNaTela.pintarTentarDeNovo(porId('shell-tentar-de-novo'), situacao, {
+      sai: situacao === SITUACAO.LIGADA,
+      focoPara: () => document.querySelector('input[name="aba-anki"]:checked'),
+    });
     if (situacao === SITUACAO.DESLIGADA) porId('shell-faixa-conexao').hidden = false;
     if (situacao === SITUACAO.LIGADA) porId('shell-faixa-conexao').hidden = true;
-    tentando.disabled = situacao === SITUACAO.CONECTANDO;
   }
 
   document.addEventListener('DOMContentLoaded', iniciarShell);
