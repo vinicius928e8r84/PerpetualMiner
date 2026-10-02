@@ -980,13 +980,8 @@ function autoMinerTextKey(value) {
 // (MIN-09). Sem badge com os dois desligados: um contador parado em 0 diria que
 // a mineração automática está funcionando e não minerou nada.
 //
-// Quem manda no badge é o armazenamento, não quem escreveu nele: o service
-// worker escuta as duas chaves da mineração automática, então ligar um idioma no
-// popup, cada frase minerada automaticamente e a virada do dia chegam todas pelo
-// mesmo caminho. A virada do dia não escreve nada sozinha — `getAutoMinerState`
-// já devolve o contador zerado quando a data guardada não é a de hoje —, então um
-// alarme diário pede o badge de novo depois da meia-noite, e publica o estado
-// de hoje para as abas e o popup, que ainda guardam o contador de ontem.
+// Quem manda no badge é o armazenamento, não quem escreveu nele. Para a
+// passagem do tempo, que não gera `storage.onChanged`, veja `agendarViradaDoDia`.
 
 // As cores do badge são as únicas cores escritas fora de `veio/tokens.css`:
 // `chrome.action` não lê CSS. São cópias de `--veio-accent` e `--veio-accent-ink`,
@@ -1038,11 +1033,16 @@ async function atualizarBadgeDaToolbar() {
 }
 
 /**
- * Agenda o pedido de badge da próxima meia-noite do relógio local.
+ * Agenda a virada da mineração automática após a próxima meia-noite local.
  *
  * O alarme dispara uma vez só e é reagendado a cada disparo, em vez de repetir a
  * cada 24 h: um período fixo escorregaria uma hora para sempre na primeira
  * mudança de horário de verão, e o badge de ontem ficaria na toolbar até 1h.
+ *
+ * A virada não regrava o diário: `getAutoMinerState` o normaliza pelas regras
+ * de `MineracaoDoDia`. O listener renova o badge e chama
+ * `publicarEstadoDaAutomatica` mesmo sem uma nova frase ou um ajuste gravado.
+ * Regressão: `e2e/tests/mineracao-automatica-virada.spec.js`.
  */
 async function agendarViradaDoDia() {
   // O alarme sobrevive ao service worker, então recriá-lo a cada despertar à toa
@@ -1061,8 +1061,6 @@ chrome.alarms?.onAlarm.addListener(alarme => {
   if (alarme.name !== ALARME_VIRADA_DO_DIA) return;
   agendarViradaDoDia();
   atualizarBadgeDaToolbar();
-  // O contador de ontem não é o de hoje: as abas e o popup precisam saber, e
-  // uma aba que parou no limite de ontem volta a minerar.
   getAutoMinerState().then(publicarEstadoDaAutomatica);
 });
 
@@ -1083,11 +1081,12 @@ agendarViradaDoDia();
 atualizarBadgeDaToolbar();
 
 /**
- * Entrega o estado da mineração automática a quem o mostra: o retrato no
- * storage, que o popup e o painel acompanham, e o aviso a cada aba, que decide
- * ali se pede mais uma frase. É o único caminho do estado para fora do service
- * worker; o que o motivou (um ajuste, uma frase minerada, a virada do dia) não
- * muda o que sai.
+ * Centraliza a publicação espontânea do estado pelos canais de `MineracaoDoDia`.
+ * As respostas aos pedidos de leitura e de ajuste continuam diretas ao solicitante.
+ *
+ * Depois de confirmar a gravação do contador, publicar antes do diagnóstico:
+ * uma falha ao gravar o último evento não pode reter o estado já confirmado.
+ * Regressão: `e2e/tests/mineracao-automatica-publicacao.spec.js`.
  */
 function publicarEstadoDaAutomatica(state) {
   chrome.storage.local.set({ [MineracaoDoDia.CHAVES.estadoPublicado]: { settings: state.settings, daily: state.daily, updatedAt: Date.now() } });
