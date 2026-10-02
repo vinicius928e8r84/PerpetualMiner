@@ -23,7 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `content.js` | Injected into all pages; mines subtitles and selections, and drives the overlay |
 | `overlay.js` + `overlay.css` | `PerpetualMiner.Overlay` — the in-page overlay: one Veio component in an open Shadow DOM (the floating button and the feedback pill). See “Overlay” below |
 | `background.js` | Service worker; handles `SALVAR_HISTORICO` messages and context menu clicks; writes to `chrome.storage.local` and syncs to Firestore |
-| `tombstone.js` | Tombstone of a deleted phrase (`chrome.storage.sync` keys and the Firestore `meta/deleted` PATCH), loaded by `painel.html` |
+| `lib/sincronizacao.js` | `PerpetualMiner.Sincronizacao` — the cloud sync in one place: the Firestore codec, the account session, `nuvemHttp` (Firestore REST) and `criarSincronizacao` (merge of local, cloud and tombstones; delete; the pending Apagar tudo). Loaded by the panel, the service worker (`importScripts`) and `test_sync.js`. See “Firebase / Firestore Sync” below |
 | `popup.html/js/css` | The “Cockpit” popup (docs/design/popup/, variant A): the “Configuração pela metade” card (ONB-14), Abrir painel, the Mineração automática tiles, quick mining and the last 5 phrases, read-only. See “Popup (Cockpit)” below |
 | `painel.html/js/css` | Full dashboard to view, copy, and delete all saved phrases; Google login and Firestore sync |
 | `painel-shell.js` | The panel's “Ilhas” shell: one page, one area per address (`#frases`, `#anki/<aba>`, `#configuracoes[/<seção>]`), the sidebar indicators (phrase total, Conexão com o Anki dot), the rail below ~1000 px, the F1 strip and the Configurações cards opening and closing. See “Panel shell” below |
@@ -704,13 +704,13 @@ take trusted events.
 
 ### Firebase / Firestore Sync
 
-Phrases are synced to Firestore under `usuarios/{uid}/frases/{frase.id}` when the user is logged in. Both `background.js` and `painel.js` use the **Firestore REST API directly** (no SDK) to avoid CSP violations in MV3.
+Phrases are synced to Firestore under `usuarios/{uid}/frases/{frase.id}` when the user is logged in. All of it lives in `lib/sincronizacao.js`, which both `background.js` and `painel.js` load (and `test_sync.js` runs in Node): the **Firestore REST API directly** (no SDK) to avoid CSP violations in MV3, one session (token refresh) and one codec. The seam is the `nuvem` (`uid`, `listarFrases`, `gravarFrase`, `gravarFrases`, `apagarFrases`, `lerTombstones`, `gravarTombstones`): `nuvemHttp` in the extension and the e2e (which fake Firestore on the network), a memory one in `test_sync.js`. `criarSincronizacao({ nuvem, armazenamento })` gives `carregar({ atuais })` (merge of local, cloud and tombstones — `atuais()` is read at the end, after the network answered), `apagar(ids)`, `apagarTudo(ids)` and `subirFrases(frases)`; the panel only wires the account to them (`conectarNuvem`) and draws the result.
 
 Authentication uses `chrome.identity.launchWebAuthFlow` (OAuth2 with Google) — **no Firebase Auth SDK**. Tokens are stored in `chrome.storage.local` under `pm_firebase_auth` and refreshed automatically via the Firebase token endpoint.
 
 Pending sync queue: if a Firestore write fails (offline/error), the phrase `id` is added to `pm_pending_sync` in local storage and retried on next panel load.
 
-Deleting in the panel writes a tombstone so the next panel sync doesn't bring the phrase back from the cloud or from another computer: `pm_del_{id}` in `chrome.storage.sync`, the id in local `pm_deleted_ids` (retry of the Firestore DELETE), and, when logged in, the field ``ids.`{id}` `` in `usuarios/{uid}/meta/deleted`. The panel does it itself (`removerFrasesFirestore`, `apagarTudoFirestore`); the popup does not delete. Apagar tudo tombstones this computer's phrases before it reads the cloud, so a cloud that is down cannot bring them back on the next sync. Until the cloud confirms, it also keeps `pm_apagar_tudo` (`{ uid, ate }`): the first sync of that account that reaches the cloud tombstones and deletes every cloud phrase whose id (its save time) is up to `ate` — phrases another computer saved before the wipe that this one never saw — and keeps what was mined after. It builds the tombstone with `tombstone.js`: a phrase id starts with a digit, so its field path must be backquoted, and Firestore (and the e2e fake) rejects the bare `ids.{id}`.
+Deleting in the panel writes a tombstone so the next panel sync doesn't bring the phrase back from the cloud or from another computer: `pm_del_{id}` in `chrome.storage.sync`, the id in local `pm_deleted_ids` (retry of the Firestore DELETE), and, when logged in, the field ``ids.`{id}` `` in `usuarios/{uid}/meta/deleted`. The panel does it through `sincronizacao.apagar` / `apagarTudo`; the popup does not delete. Apagar tudo tombstones this computer's phrases before it reads the cloud, so a cloud that is down cannot bring them back on the next sync. Until the cloud confirms, it also keeps `pm_apagar_tudo` (`{ uid, ate }`): the first sync of that account that reaches the cloud tombstones and deletes every cloud phrase whose id (its save time) is up to `ate` — phrases another computer saved before the wipe that this one never saw — and keeps what was mined after. It builds the tombstone with `tombstoneFirestore` (`lib/sincronizacao.js`): a phrase id starts with a digit, so its field path must be backquoted, and Firestore (and the e2e fake) rejects the bare `ids.{id}`.
 
 ### Storage Schema
 
@@ -826,7 +826,7 @@ and Vocabulário: `definirBaralho(deckName, { palavras, cartoes, termos, porCart
   - Until a surface shows a catalog state, the catalog's own guarantees (every ID present, pt-BR numbers) are asserted through `PerpetualMiner.textoDaVoz`, inside an extension page. These move to the screen when the surface is rebuilt.
   - Two guarantees of the base components have no on-screen trigger of their own, so the test calls the component's own function and still asserts the visible result: how long a toast of a given length *stays on screen* (`mostrarToastDeSucesso`), and that a phrase carrying markup is written as text (`escreverFrase`). The surfaces that call them assert the same thing through the screen once they are rebuilt.
 
-The legacy tests keep running: `node test_sync.js`, `node test_auto_keyword.js` and the bridge tests in `bridge/test_*.py`.
+The legacy tests keep running: `node test_sync.js` (loads `lib/sincronizacao.js` for real, two computers over a memory cloud, plus the HTTP adapter over a fake `fetch`), `node test_auto_keyword.js` and the bridge tests in `bridge/test_*.py`.
 
 ## Key Constants
 

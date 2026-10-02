@@ -18,6 +18,8 @@ const Conta = PerpetualMiner.Conta;
 const Perigo = PerpetualMiner.Perigo;
 const Envio = PerpetualMiner.Envio;
 const { SITUACOES } = Conta;
+// A sincronização com a nuvem: o codec, a sessão, o merge e os tombstones (lib/sincronizacao.js).
+const { Sincronizacao } = PerpetualMiner;
 const { mostrarToastDeSucesso, abrirModal, montarAviso } = PerpetualMiner.Veio;
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -40,12 +42,11 @@ const ICONES_DE_FONTE = {
   web: 'web', selecao: 'web', pdf: 'pdf', livro: 'livro', manual: 'manual', importado: 'manual',
 };
 
-// Firestore REST — sem nenhum SDK (evita violações de CSP em extensões MV3)
-const FIRESTORE_BASE    = 'https://firestore.googleapis.com/v1/projects/perpetualminer-4c219/databases/(default)/documents';
+// O login com o Google. A nuvem (Firestore REST, sem nenhum SDK: evita violações de CSP
+// em extensões MV3) é de lib/sincronizacao.js.
 const GOOGLE_USERINFO   = 'https://www.googleapis.com/oauth2/v1/userinfo?alt=json';
-const FIREBASE_API_KEY  = 'AIzaSyDrbDVUvv8wyoYqjCr5jEMBJPPsIP2k1Ak';
+const FIREBASE_API_KEY  = Sincronizacao.CHAVE_DA_API;
 const FB_SIGNIN_URL     = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${FIREBASE_API_KEY}`;
-const FB_REFRESH_URL    = `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`;
 const BRIDGE_URL        = 'http://127.0.0.1:8766';
 
 // A Fonte de uma frase minerada sem Fonte: colada (Colar) ou vinda de uma
@@ -69,8 +70,12 @@ let buscaAtual         = '';
 // Até a primeira leitura terminar, a lista mostra os cartões-esqueleto (PAI-01).
 let listaCarregada     = false;
 
-// usuarioLogado: { uid, email, displayName, photoURL, accessToken, expiresAt } | null
+// usuarioLogado: { uid, email, displayName, photoURL } | null
 let usuarioLogado = null;
+// A nuvem da conta (null sem conta) e a sincronização que a usa; sem conta, a
+// sincronização só grava os tombstones daqui.
+let nuvem          = null;
+let sincronizacao  = novaSincronizacao();
 
 // { [phraseId]: string[] }
 const keywords    = {};
@@ -112,12 +117,8 @@ async function inicializarAuth() {
   // Tenta restaurar sessão anterior salva no storage
   const data = await chromeGet({ pm_user_info: null, pm_firebase_auth: null });
   if (data.pm_user_info && data.pm_firebase_auth) {
-    usuarioLogado = {
-      ...data.pm_user_info,
-      accessToken:  data.pm_firebase_auth.idToken,
-      refreshToken: data.pm_firebase_auth.refreshToken || null,
-      expiresAt:    data.pm_firebase_auth.expiresAt,
-    };
+    usuarioLogado = { ...data.pm_user_info };
+    conectarNuvem(data.pm_firebase_auth);
     atualizarUIAuth(usuarioLogado);
     await carregarFrasesFirestore();
   } else {
@@ -186,17 +187,16 @@ async function loginGoogle() {
       email:        info.email,
       displayName:  info.name,
       photoURL:     info.picture,
-      accessToken:  fbData.idToken,
+    };
+    const credenciais = {
+      uid:          usuarioLogado.uid,
+      idToken:      fbData.idToken,
       refreshToken: fbData.refreshToken,
       expiresAt:    Date.now() + 55 * 60 * 1000,
     };
+    conectarNuvem(credenciais);
     chrome.storage.local.set({
-      pm_firebase_auth: {
-        uid:          usuarioLogado.uid,
-        idToken:      fbData.idToken,
-        refreshToken: fbData.refreshToken,
-        expiresAt:    usuarioLogado.expiresAt,
-      },
+      pm_firebase_auth: credenciais,
       pm_user_info: { uid: usuarioLogado.uid, email: usuarioLogado.email, displayName: usuarioLogado.displayName, photoURL: usuarioLogado.photoURL },
     });
 
@@ -226,6 +226,7 @@ function loginFoiCancelado(err) {
 async function logout() {
   if (!usuarioLogado) return;
   usuarioLogado = null;
+  desconectarNuvem();
   chrome.storage.local.remove(['pm_firebase_auth', 'pm_user_info']);
   atualizarUIAuth(null);
   carregarFrasesLocal();
@@ -238,6 +239,33 @@ function atualizarUIAuth(user) {
   Perigo.mostrarConta(Boolean(user));
 }
 
+// ─── A nuvem ─────────────────────────────────────────────────────────────────
+//
+// A sessão, o REST do Firestore e a sincronização são de lib/sincronizacao.js;
+// aqui só se liga a conta a elas.
+
+function novaSincronizacao() {
+  return Sincronizacao.criarSincronizacao({
+    nuvem,
+    armazenamento: Sincronizacao.armazenamentoDoChrome(chrome.storage),
+    aviso: (mensagem, erro) => console.warn('[Firestore]', mensagem + ':', erro?.message),
+  });
+}
+
+function conectarNuvem(credenciais) {
+  const sessao = Sincronizacao.criarSessao({
+    credenciais,
+    aoRenovar: renovadas => chromeSet({ pm_firebase_auth: renovadas }),
+  });
+  nuvem = Sincronizacao.nuvemHttp({ sessao });
+  sincronizacao = novaSincronizacao();
+}
+
+function desconectarNuvem() {
+  nuvem = null;
+  sincronizacao = novaSincronizacao();
+}
+
 // ─── Falhas na nuvem ─────────────────────────────────────────────────────────
 //
 // Um problema de sync aparece só no card Conta & sync e no chip (Q4 da spec de
@@ -245,181 +273,16 @@ function atualizarUIAuth(user) {
 // EXPIROU quando a sessão não renova, RECUSADO quando as regras do Firestore
 // recusam a conta, e SEM_SINCRONIZAR para o resto (rede, nuvem fora do ar).
 
-function erroDaNuvem(mensagem, situacao) {
-  const erro = new Error(mensagem);
-  erro.situacao = situacao;
-  return erro;
-}
-
-async function erroDaResposta(resp) {
-  const corpo = await resp.json().catch(() => ({}));
-  const mensagem = corpo?.error?.message || `HTTP ${resp.status}`;
-  if (resp.status === 401) return erroDaNuvem(mensagem, SITUACOES.EXPIROU);
-  if (resp.status === 403 || corpo?.error?.status === 'PERMISSION_DENIED') return erroDaNuvem(mensagem, SITUACOES.RECUSADO);
-  const erro = new Error(mensagem);
-  erro.status = resp.status;
-  return erro;
-}
-
 // `semSincronizar` é o que a falha genérica mostra: depois de uma primeira
 // subida que não chegou à nuvem, é a falha dela (CFG-09).
 function situacaoDoErro(err, semSincronizar = SITUACOES.SEM_SINCRONIZAR) {
-  return err?.situacao || semSincronizar;
+  if (err?.motivo === Sincronizacao.MOTIVO.EXPIROU) return SITUACOES.EXPIROU;
+  if (err?.motivo === Sincronizacao.MOTIVO.RECUSADO) return SITUACOES.RECUSADO;
+  return semSincronizar;
 }
 
 function mostrarFalhaNaNuvem(err, semSincronizar) {
   Conta.mostrarSincronizacao(situacaoDoErro(err, semSincronizar), { detalhes: err?.message || String(err) });
-}
-
-// Retorna um Firebase ID token válido, renovando silenciosamente via refresh token
-async function getValidToken() {
-  if (!usuarioLogado) throw new Error('Não autenticado');
-
-  const expirando = !usuarioLogado.accessToken || Date.now() > (usuarioLogado.expiresAt || 0) - 2 * 60 * 1000;
-  if (!expirando) return usuarioLogado.accessToken;
-
-  if (!usuarioLogado.refreshToken) throw erroDaNuvem('Sem refresh token', SITUACOES.EXPIROU);
-
-  const resp = await fetch(FB_REFRESH_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: usuarioLogado.refreshToken }),
-  });
-  if (!resp.ok) {
-    // Qualquer recusa da renovação é a sessão que acabou (CFG-08).
-    const recusa = await erroDaResposta(resp);
-    throw erroDaNuvem(recusa.message, SITUACOES.EXPIROU);
-  }
-
-  const data = await resp.json();
-  usuarioLogado.accessToken  = data.id_token;
-  usuarioLogado.refreshToken = data.refresh_token;
-  usuarioLogado.expiresAt    = Date.now() + 55 * 60 * 1000;
-  chrome.storage.local.set({
-    pm_firebase_auth: {
-      uid:          usuarioLogado.uid,
-      idToken:      data.id_token,
-      refreshToken: data.refresh_token,
-      expiresAt:    usuarioLogado.expiresAt,
-    },
-  });
-  return data.id_token;
-}
-
-// ─── Firestore REST API ───────────────────────────────────────────────────────
-
-async function fsRequest(method, path, body = null, _retry = false) {
-  const token = await getValidToken();
-  const url   = `${FIRESTORE_BASE}/${path}`;
-  const opts  = { method, headers: { Authorization: `Bearer ${token}` } };
-  if (body) {
-    opts.headers['Content-Type'] = 'application/json';
-    opts.body = JSON.stringify(body);
-  }
-
-  const resp = await fetch(url, opts);
-
-  if (resp.status === 401 && !_retry) {
-    // Token recusado — força renovação e tenta uma vez mais
-    usuarioLogado.accessToken = null;
-    usuarioLogado.expiresAt   = 0;
-    return fsRequest(method, path, body, true);
-  }
-
-  // 404 em DELETE = documento já não existe, tudo certo
-  if (resp.status === 404 && method === 'DELETE') return null;
-
-  if (!resp.ok) throw await erroDaResposta(resp);
-  return resp.json().catch(() => null);
-}
-
-async function firestoreGetAll() {
-  const frases = [];
-  let pageToken = '';
-  do {
-    const path = `usuarios/${usuarioLogado.uid}/frases?pageSize=300${pageToken ? '&pageToken=' + encodeURIComponent(pageToken) : ''}`;
-    const data = await fsRequest('GET', path);
-    (data?.documents || []).forEach(doc => frases.push(docToObj(doc.fields)));
-    pageToken = data?.nextPageToken || '';
-  } while (pageToken);
-  return frases;
-}
-
-// campos: array de strings com os campos a atualizar (ex: ['keywords']).
-// Se null, envia todos os campos. Retorna Promise para poder ser aguardada.
-async function firestorePatch(frase, campos = null) {
-  if (!usuarioLogado) return;
-  const path = `usuarios/${usuarioLogado.uid}/frases/${frase.id}`;
-  const corpo = { fields: objToFields(frase) };
-  if (!campos?.length) return fsRequest('PATCH', path, corpo);
-  const mascara = campos.map(c => `updateMask.fieldPaths=${encodeURIComponent(c)}`).join('&');
-  try {
-    return await fsRequest('PATCH', `${path}?${mascara}&currentDocument.exists=true`, corpo);
-  } catch (err) {
-    if (err.status !== 404) throw err;
-    return fsRequest('PATCH', path, corpo);
-  }
-}
-
-async function firestoreBatchUpsert(frases) {
-  if (!usuarioLogado || frases.length === 0) return;
-  const token = await getValidToken();
-  const ROOT  = `projects/perpetualminer-4c219/databases/(default)/documents`;
-  const LOTE  = 500;
-  for (let i = 0; i < frases.length; i += LOTE) {
-    const writes = frases.slice(i, i + LOTE).map(f => ({
-      update: { name: `${ROOT}/usuarios/${usuarioLogado.uid}/frases/${f.id}`, fields: objToFields(f) },
-    }));
-    const resp = await fetch(`${FIRESTORE_BASE}:batchWrite`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ writes }),
-    });
-    if (!resp.ok) throw await erroDaResposta(resp);
-  }
-}
-
-async function firestoreBatchDelete(ids) {
-  if (!usuarioLogado || ids.length === 0) return;
-  // Usa DELETE individual por documento (mesmo endpoint que leitura/escrita já funcionam)
-  const resultados = await Promise.allSettled(ids.map(id =>
-    fsRequest('DELETE', `usuarios/${usuarioLogado.uid}/frases/${id}`)
-  ));
-  const falha = resultados.find(r => r.status === 'rejected');
-  if (falha) throw falha.reason;
-}
-
-// JS Object → Firestore fields
-function objToFields(obj) {
-  const fields = {};
-  for (const [key, val] of Object.entries(obj)) {
-    if (val === null || val === undefined) continue;
-    if (typeof val === 'string')       fields[key] = { stringValue: val };
-    else if (typeof val === 'number')  fields[key] = { integerValue: String(val) };
-    else if (typeof val === 'boolean') fields[key] = { booleanValue: val };
-    else if (Array.isArray(val))       fields[key] = {
-      arrayValue: { values: val.map(v => ({ stringValue: String(v) })) },
-    };
-    else if (typeof val === 'object')  fields[key] = {
-      mapValue: { fields: objToFields(val) },
-    };
-  }
-  return fields;
-}
-
-// Firestore fields → JS Object
-function docToObj(fields) {
-  const obj = {};
-  for (const [key, val] of Object.entries(fields || {})) {
-    if      ('stringValue'  in val) obj[key] = val.stringValue;
-    else if ('integerValue' in val) obj[key] = Number(val.integerValue);
-    else if ('booleanValue' in val) obj[key] = val.booleanValue;
-    else if ('arrayValue'   in val) obj[key] = (val.arrayValue.values || [])
-      .map(v => v.stringValue ?? String(v.integerValue ?? ''));
-    else if ('mapValue'     in val) obj[key] = docToObj(val.mapValue.fields);
-    else obj[key] = null;
-  }
-  return obj;
 }
 
 // ─── Migração e Sync ──────────────────────────────────────────────────────────
@@ -429,7 +292,7 @@ async function migrarParaFirestore() {
   if (frases.length > 0) {
     Conta.mostrarSincronizacao(SITUACOES.PRIMEIRA_SUBIDA, { n: frases.length });
     try {
-      await firestoreBatchUpsert(frases);
+      await nuvem.gravarFrases(frases);
       mostrarToastDeSucesso(textoDaVoz('CFG-09.sucesso', { n: frases.length }));
     } catch (err) {
       // O carregamento abaixo tenta de novo, frase a frase. Se nenhuma subir, o
@@ -457,161 +320,17 @@ function carregarFrasesLocal() {
 async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
   const semSincronizar = primeiraSubidaFalhou ? SITUACOES.PRIMEIRA_SUBIDA_FALHOU : SITUACOES.SEM_SINCRONIZAR;
   Conta.mostrarSincronizacao(SITUACOES.SINCRONIZANDO);
-  let falhaNasOrfas = null;
   try {
-    let firestoreFrases = await firestoreGetAll();
-
-    // ── Apagar tudo que a nuvem não confirmou: sai o que foi gravado até aquela hora ──
-    const apagadasAgora = await concluirApagarTudoPendente(firestoreFrases);
-    firestoreFrases = firestoreFrases.filter(f => !apagadasAgora.has(String(f.id)));
-
-    // ── Tombstone local: retry de deletes que falharam no Firestore neste dispositivo ──
-    const { pm_deleted_ids = [] } = await chromeGet({ pm_deleted_ids: [] });
-    if (pm_deleted_ids.length > 0) {
-      const deletedSet  = new Set(pm_deleted_ids.map(String));
-      const paraApagar  = firestoreFrases.filter(f => deletedSet.has(String(f.id))).map(f => String(f.id));
-      firestoreFrases   = firestoreFrases.filter(f => !deletedSet.has(String(f.id)));
-      if (paraApagar.length > 0) {
-        // Retry silencioso: tenta deletar do Firestore o que ficou pendente
-        firestoreBatchDelete(paraApagar)
-          .then(() => limparTombstone(paraApagar))
-          .catch(err => console.warn('[Firestore] retry delete pendente falhou:', err.message));
-      }
+    // `todasFrases` é lida no fim da sincronização, depois da rede: uma edição ou
+    // uma frase minerada enquanto a nuvem respondia entra na lista.
+    const { frases, desteComputador, falhaNasOrfas } = await sincronizacao.carregar({ atuais: () => todasFrases });
+    todasFrases = frases;
+    if (falhaNasOrfas) {
+      console.error('[Firestore] orphans com falha:', falhaNasOrfas.quantas, falhaNasOrfas.causas[0]?.message);
+      mostrarSyncIncompleto(falhaNasOrfas, desteComputador, semSincronizar);
+    } else {
+      Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
     }
-
-    // ── Tombstone cross-device: Firestore (fonte de verdade) + sync (fallback offline) ──
-    // Lê ambos em paralelo e faz a união — garante que deleções recentes (ainda não
-    // propagadas pelo Chrome sync) e deleções offline (sem Firestore) são cobertas.
-    const [tombstoneFS, tombstoneCS] = await Promise.all([
-      lerTombstoneFirestore(),
-      lerTombstoneSync(),
-    ]);
-    const tombstoneSet = new Set([...tombstoneFS, ...tombstoneCS, ...apagadasAgora]);
-
-    if (tombstoneSet.size > 0) {
-      // Retry: se ainda estão no Firestore (delete falhou), apaga agora
-      const paraApagar = firestoreFrases.filter(f => tombstoneSet.has(String(f.id))).map(f => String(f.id));
-      firestoreFrases  = firestoreFrases.filter(f => !tombstoneSet.has(String(f.id)));
-      if (paraApagar.length > 0) {
-        firestoreBatchDelete(paraApagar)
-          .then(() => limparTombstoneSync(paraApagar))
-          .catch(err => console.warn('[Firestore] retry delete cross-device falhou:', err.message));
-      }
-    }
-
-    const firestoreIds = new Set(firestoreFrases.map(f => f.id));
-    const { frases: localFrases = [] } = await chromeGet({ frases: [] });
-
-    // ── Regra fundamental: o tombstone é a ÚNICA razão para descartar uma frase local.
-    // Qualquer frase no local storage que não foi explicitamente deletada (tombstone)
-    // é válida e deve ser enviada ao Firestore se ainda não chegou lá.
-    // Isso cobre: sync em voo, sync falhou, adição manual, importação, etc.
-
-    // Orphans: frases locais ausentes do Firestore que não foram deletadas intencionalmente
-    const orphans = localFrases.filter(f =>
-      !firestoreIds.has(f.id) && !tombstoneSet.has(String(f.id))
-    );
-
-    // Limpa local: remove apenas frases tombstoned (deletadas intencionalmente)
-    const localSemTombstoned = localFrases.filter(f => !tombstoneSet.has(String(f.id)));
-    if (localSemTombstoned.length !== localFrases.length) {
-      chrome.storage.local.set({ frases: localSemTombstoned });
-    }
-
-    // Limpa pm_pending_sync de entradas tombstoned (evita crescimento indefinido)
-    if (tombstoneSet.size > 0) {
-      chromeGet({ pm_pending_sync: [] }).then(({ pm_pending_sync = [] }) => {
-        const filtrado = pm_pending_sync.filter(id => !tombstoneSet.has(id));
-        if (filtrado.length !== pm_pending_sync.length)
-          chrome.storage.local.set({ pm_pending_sync: filtrado });
-      });
-    }
-
-    if (orphans.length > 0) {
-      const resultados  = await Promise.allSettled(orphans.map(f => firestorePatch(f)));
-      const sincronizados = orphans.filter((_, i) => resultados[i].status === 'fulfilled');
-      const enviados      = sincronizados.map(f => String(f.id));
-      const falhas        = resultados.filter(r => r.status === 'rejected');
-
-      // Remove do pm_pending_sync os enviados com sucesso
-      if (enviados.length > 0) {
-        const enviadosSet = new Set(enviados);
-        chromeGet({ pm_pending_sync: [] }).then(({ pm_pending_sync }) => {
-          chrome.storage.local.set({ pm_pending_sync: pm_pending_sync.filter(id => !enviadosSet.has(id)) });
-        });
-      }
-
-      if (falhas.length > 0) {
-        console.error('[Firestore] orphans com falha:', falhas.length, falhas[0].reason?.message);
-        falhaNasOrfas = { quantas: falhas.length, causas: falhas.map(r => r.reason) };
-      }
-
-      // Todas as órfãs ficam na lista, também as que não subiram: `todasFrases`
-      // é gravada por inteiro no storage a cada edição, então uma frase que
-      // sumisse daqui sumiria do computador sem nunca ter chegado à nuvem.
-      firestoreFrases.push(...orphans);
-    }
-
-    // ── Merge das marcas de Enviada ao Anki (`status: 'exported'`) e Exportada
-    // (`exportadaTxt`) ──────────────────────────────────────────────────────
-    // Se o local tem a marca mas o Firestore ainda não (falha de rede, service
-    // worker em voo), preserva a marca na exibição e retenta o sync.
-    // Se o Firestore já tem a marca (outro dispositivo marcou), aplica ao local
-    // storage para que ela se propague cross-device.
-    {
-      const MARCAS = [['status', STATUS_ENVIADA_AO_ANKI], ['exportadaTxt', true]];
-      const localById = new Map(localFrases.map(f => [String(f.id), f]));
-      const pendentesNaNuvem = [];
-      let   localPrecisaAtualizar = false;
-      const localAtualizado = [...localSemTombstoned];
-
-      firestoreFrases = firestoreFrases.map(f => {
-        const idStr = String(f.id);
-        const local = localById.get(idStr);
-        if (!local) return f;
-        let nuvem = f;
-
-        for (const [campo, valor] of MARCAS) {
-          // Caso 1: local marcado, Firestore ainda não — aplica e retenta
-          if (local[campo] === valor && nuvem[campo] !== valor) nuvem = { ...nuvem, [campo]: valor };
-
-          // Caso 2: Firestore marcado, local ainda não — atualiza local
-          if (f[campo] === valor && local[campo] !== valor) {
-            const idx = localAtualizado.findIndex(lf => String(lf.id) === idStr);
-            if (idx !== -1) { localAtualizado[idx] = { ...localAtualizado[idx], [campo]: valor }; }
-            localPrecisaAtualizar = true;
-          }
-        }
-
-        if (nuvem !== f) pendentesNaNuvem.push(nuvem);
-        return nuvem;
-      });
-
-      if (pendentesNaNuvem.length > 0) {
-        firestoreBatchUpsert(pendentesNaNuvem).catch(err =>
-          console.warn('[Firestore] retry das marcas Enviada/Exportada:', err.message)
-        );
-      }
-      if (localPrecisaAtualizar) {
-        chrome.storage.local.set({ frases: localAtualizado });
-      }
-    }
-
-    const idsOrfas = new Set(orphans.map(f => String(f.id)));
-    const { frases: locaisAgora = [] } = await chromeGet({ frases: [] });
-    const locaisPorId = new Map(locaisAgora.map(f => [String(f.id), f]));
-    const atuaisPorId = new Map(todasFrases.map(f => [String(f.id), f]));
-    firestoreFrases = firestoreFrases
-      .filter(f => !idsOrfas.has(String(f.id)) || locaisPorId.has(String(f.id)))
-      .map(f => idsOrfas.has(String(f.id))
-        ? atuaisPorId.get(String(f.id)) || locaisPorId.get(String(f.id))
-        : f);
-    const idsCarregados = new Set(firestoreFrases.map(f => String(f.id)));
-    todasFrases = [...firestoreFrases, ...todasFrases.filter(f =>
-      !idsCarregados.has(String(f.id)) && locaisPorId.has(String(f.id)) && !tombstoneSet.has(String(f.id))
-    )];
-    if (falhaNasOrfas) mostrarSyncIncompleto(falhaNasOrfas, localSemTombstoned.length, semSincronizar);
-    else Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
     finalizarCarregamento();
   } catch (err) {
     console.error('[Firestore] carregar:', err);
@@ -672,177 +391,13 @@ function setupStorageSyncListener() {
 }
 
 // Wrappers chamados pelas ações do painel
-// campos opcional: ['keywords'], ['texto'], etc. — passa direto para firestorePatch.
+// campos opcional: ['keywords'], ['texto'], etc. — passa direto para a nuvem.
 function salvarFraseFirestore(frase, campos = null) {
-  if (!usuarioLogado) return;
-  firestorePatch(frase, campos).catch(err => {
+  if (!nuvem) return;
+  nuvem.gravarFrase(frase, campos).catch(err => {
     console.error('[Firestore] patch:', frase.id, err.message);
     mostrarFalhaNaNuvem(err);
   });
-}
-
-// ─── Tombstone cross-device ───────────────────────────────────────────────────
-//
-// FONTE DE VERDADE: Firestore  →  usuarios/{uid}/meta/deleted
-//   Cada deleção é um campo independente no mapa "ids": { phraseId: deletedAt }
-//   Usando updateMask por campo, dois dispositivos escrevem simultaneamente
-//   sem conflito (Firestore mescla os campos automaticamente).
-//
-// FALLBACK OFFLINE: chrome.storage.sync  →  uma chave por frase: pm_del_{phraseId}
-//   Cobre o caso em que o Firestore está inacessível. O sync do Chrome propaga
-//   com delay, então não é suficiente sozinho como fonte de verdade.
-
-const TOMBSTONE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
-const TOMB_FS_PATH     = () => `usuarios/${usuarioLogado.uid}/meta/deleted`;
-
-// ── Tombstone Firestore ───────────────────────────────────────────────────────
-
-/** Lê o tombstone do Firestore. Retorna Set<string> de phraseIds ainda no TTL. */
-async function lerTombstoneFirestore() {
-  try {
-    const data = await fsRequest('GET', TOMB_FS_PATH());
-    const fields = data?.fields?.ids?.mapValue?.fields;
-    if (!fields) return new Set();
-    const agora = Date.now();
-    const ids   = new Set();
-    for (const [phraseId, val] of Object.entries(fields)) {
-      const deletedAt = Number(val.integerValue ?? val.stringValue ?? 0);
-      if (agora - deletedAt < TOMBSTONE_TTL_MS) ids.add(phraseId);
-    }
-    return ids;
-  } catch {
-    return new Set(); // Firestore inacessível → fallback para sync
-  }
-}
-
-/** Grava cada id como campo independente no documento meta/deleted (tombstone.js). */
-async function gravarTombstoneFirestore(ids) {
-  if (!usuarioLogado || ids.length === 0) return;
-  const { mascara, corpo } = tombstoneFirestore(ids, Date.now());
-  return fsRequest('PATCH', `${TOMB_FS_PATH()}?${mascara}`, corpo);
-}
-
-// ── Tombstone chrome.storage.sync (fallback offline) ─────────────────────────
-
-/** Retorna Set de phraseIds deletados via sync e ainda dentro do TTL. */
-function lerTombstoneSync() {
-  return new Promise(resolve => {
-    chrome.storage.sync.get(null, (items) => {
-      const agora     = Date.now();
-      const ids       = new Set();
-      const expirados = [];
-      for (const [key, deletedAt] of Object.entries(items || {})) {
-        if (!key.startsWith(TOMB_PREFIX)) continue;
-        const phraseId = key.slice(TOMB_PREFIX.length);
-        if (agora - Number(deletedAt) < TOMBSTONE_TTL_MS) {
-          ids.add(phraseId);
-        } else {
-          expirados.push(key);
-        }
-      }
-      if (expirados.length > 0) chrome.storage.sync.remove(expirados);
-      resolve(ids);
-    });
-  });
-}
-
-/** Grava cada id como chave independente no sync — sem conflito entre devices. */
-function marcarParaDeletarSync(ids) {
-  chrome.storage.sync.set(tombstonesSync(ids, Date.now()));
-}
-
-function limparTombstoneSync(ids) {
-  chrome.storage.sync.remove(ids.map(id => `${TOMB_PREFIX}${id}`));
-}
-
-// ─── Tombstone local: retry de deletes que falharam no Firestore ──────────────
-
-async function marcarParaDeletar(ids) {
-  const { pm_deleted_ids = [] } = await chromeGet({ pm_deleted_ids: [] });
-  const conjunto = new Set([...pm_deleted_ids, ...ids]);
-  chrome.storage.local.set({ pm_deleted_ids: [...conjunto] });
-}
-
-function limparTombstone(ids) {
-  chromeGet({ pm_deleted_ids: [] }).then(({ pm_deleted_ids = [] }) => {
-    const removidos = new Set(ids);
-    chrome.storage.local.set({ pm_deleted_ids: pm_deleted_ids.filter(id => !removidos.has(id)) });
-  });
-}
-
-// Um Apagar tudo com a nuvem fora do ar deixou pm_apagar_tudo ({ uid, ate }). No
-// primeiro sync desta conta que alcança a nuvem, toda frase dela gravada até `ate`
-// (o id de uma frase é a hora em que ela foi gravada) ganha tombstone e sai; o que
-// foi minerado depois, em qualquer computador, fica. Devolve os ids apagados.
-async function concluirApagarTudoPendente(firestoreFrases) {
-  const { pm_apagar_tudo: pendente } = await chromeGet({ pm_apagar_tudo: null });
-  if (!pendente || pendente.uid !== usuarioLogado.uid) return new Set();
-  const ids = firestoreFrases.filter(f => Number(f.id) <= pendente.ate).map(f => String(f.id));
-  if (ids.length > 0) {
-    marcarParaDeletarSync(ids);
-    await marcarParaDeletar(ids);
-    await gravarTombstoneFirestore(ids);
-    await firestoreBatchDelete(ids);
-    limparTombstone(ids);
-  }
-  chrome.storage.local.remove('pm_apagar_tudo');
-  return new Set(ids);
-}
-
-/**
- * Apaga as frases da nuvem, deixando o tombstone antes. Devolve o erro quando o
- * DELETE falha (a frase fica pendente em `pm_deleted_ids`), ou `null`.
- */
-async function removerFrasesFirestore(ids) {
-  if (!ids.length) return null;
-  const idsStr = ids.map(String);
-  // 1. Tombstone Firestore (fonte de verdade, imediata, sem race condition)
-  //    + tombstone sync (fallback para quando o Firestore estiver inacessível)
-  //    + tombstone local (retry do DELETE caso falhe)
-  marcarParaDeletarSync(idsStr);
-  await marcarParaDeletar(idsStr);
-  if (!usuarioLogado) return null;
-  // Grava tombstone no Firestore antes de deletar — garante que qualquer device
-  // que abrir o painel logo após já veja a deleção, mesmo sem Chrome sync propagado
-  gravarTombstoneFirestore(idsStr).catch(err =>
-    console.warn('[Firestore] tombstone write falhou:', err.message)
-  );
-  try {
-    await firestoreBatchDelete(idsStr);
-    limparTombstone(idsStr);
-    return null;
-  } catch (err) {
-    console.error('[Firestore] delete falhou, ficará pendente:', err.message);
-    return err;
-  }
-}
-
-// As frases deste computador ficam marcadas como apagadas antes de a nuvem ser
-// lida: com ela fora do ar, o sync seguinte não as traz de volta. E até a nuvem
-// confirmar, fica lembrado “apagar tudo até agora” (pm_apagar_tudo), para o sync
-// seguinte apagar também o que outro computador gravou antes e daqui não se via.
-// Resolve com true quando não há mais nada a apagar na nuvem (ou não há conta).
-async function apagarTudoFirestore(idsDesteComputador) {
-  if (!usuarioLogado) return true;
-  marcarParaDeletarSync(idsDesteComputador);
-  await marcarParaDeletar(idsDesteComputador);
-  const ate = Math.max(Date.now(), ...idsDesteComputador.map(Number));
-  await chromeSet({ pm_apagar_tudo: { uid: usuarioLogado.uid, ate } });
-  try {
-    const frases = await firestoreGetAll();
-    const ids    = [...new Set([...idsDesteComputador, ...frases.map(f => String(f.id))])];
-    marcarParaDeletarSync(ids);
-    await marcarParaDeletar(ids);
-    await gravarTombstoneFirestore(ids);
-    await firestoreBatchDelete(ids);
-    limparTombstone(ids);
-    chrome.storage.local.remove('pm_apagar_tudo');
-    return true;
-  } catch (e) {
-    console.error('[Firestore] apagar tudo falhou:', e);
-    mostrarFalhaNaNuvem(e);
-    return false;
-  }
 }
 
 // ─── Seleção e barra contextual ──────────────────────────────────────────────
@@ -1588,7 +1143,7 @@ async function apagarFrases(ids, { toast = ids.length > 1 } = {}) {
 }
 
 async function apagarDaNuvem(ids) {
-  const erro = await removerFrasesFirestore(ids);
+  const erro = await sincronizacao.apagar(ids);
   if (!erro) return;
   ids.forEach(id => idsAindaNaNuvem.add(id));
   // O aviso PAI-15 conta o que ficou na nuvem; o card e o chip da conta contam
@@ -1610,7 +1165,7 @@ function mostrarAvisoAindaNaNuvem(erro) {
 
 async function tentarApagarDaNuvemDeNovo() {
   const ids = [...idsAindaNaNuvem];
-  const erro = await removerFrasesFirestore(ids);
+  const erro = await sincronizacao.apagar(ids);
   if (erro) {
     mostrarAvisoAindaNaNuvem(erro);
     mostrarFalhaNaNuvem(erro);
@@ -1629,7 +1184,13 @@ function apagarTudo() {
   Object.keys(keywords).forEach(k => delete keywords[k]);
   selecionadas.clear();
   atualizarContadorSelecao();
-  const naNuvem = apagarTudoFirestore(ids);
+  const naNuvem = sincronizacao.apagarTudo(ids).then(({ ok, erro }) => {
+    if (!ok) {
+      console.error('[Firestore] apagar tudo falhou:', erro);
+      mostrarFalhaNaNuvem(erro);
+    }
+    return ok;
+  });
   chrome.storage.local.set({ frases: [] }, async () => {
     atualizarTotal();
     paginaAtual = 1;
@@ -1672,8 +1233,8 @@ function exportarTxt() {
     atualizarTotal();
     aplicarFiltro();
   });
-  if (usuarioLogado && exportadas.length > 0) {
-    Promise.allSettled(exportadas.map(f => firestorePatch(f, ['exportadaTxt']))).then(resultados => {
+  if (nuvem && exportadas.length > 0) {
+    Promise.allSettled(exportadas.map(f => nuvem.gravarFrase(f, ['exportadaTxt']))).then(resultados => {
       const falha = resultados.find(r => r.status === 'rejected');
       if (falha) mostrarFalhaNaNuvem(falha.reason);
     });
@@ -1712,7 +1273,7 @@ async function marcarComoEnviadas(ids) {
   });
   if (marcadas.length === 0) return;
   await chromeSet({ frases: todasFrases });
-  if (usuarioLogado) firestoreBatchUpsert(marcadas).catch(err => mostrarFalhaNaNuvem(err));
+  if (nuvem) nuvem.gravarFrases(marcadas).catch(err => mostrarFalhaNaNuvem(err));
   aplicarFiltro();
 }
 
@@ -1793,8 +1354,8 @@ function salvarContextoDeVarias(ids, { fonte, titulo, detalhe }) {
     aplicarFiltro();
     mostrarToastDeSucesso(textoDaVoz('PAI-22', { n: editadas.length }));
   });
-  if (usuarioLogado && editadas.length > 0) {
-    Promise.allSettled(editadas.map(f => firestorePatch(f))).then(resultados => {
+  if (nuvem && editadas.length > 0) {
+    Promise.allSettled(editadas.map(f => nuvem.gravarFrase(f))).then(resultados => {
       const falhas = resultados.filter(r => r.status === 'rejected');
       if (falhas.length > 0) mostrarFalhaNaNuvem(falhas[0].reason);
     });
@@ -2163,7 +1724,7 @@ async function minerarEmSequencia(frases) {
   }
   // A mineração só termina quando a nuvem também respondeu: até lá, outro
   // clique não começa uma segunda.
-  const erroNaNuvem = await subirMineradas(mineradas);
+  const erroNaNuvem = await sincronizacao.subirFrases(mineradas);
   return { mineradas, erroLocal, erroNaNuvem };
 }
 
@@ -2174,25 +1735,6 @@ function pedirAoServiceWorker(mensagem) {
       else resolve(resposta);
     });
   });
-}
-
-/** Sobe as frases de uma vez. Devolve o erro da nuvem, ou `null` (também sem conta). */
-async function subirMineradas(frases) {
-  if (!usuarioLogado || frases.length === 0) return null;
-  try {
-    await firestoreBatchUpsert(frases);
-  } catch (err) {
-    return err;
-  }
-  await tirarDaFilaDeSync(frases.map(f => String(f.id)));
-  return null;
-}
-
-async function tirarDaFilaDeSync(ids) {
-  const subiram = new Set(ids);
-  const { pm_pending_sync = [] } = await chromeGet({ pm_pending_sync: [] });
-  const restantes = pm_pending_sync.filter(id => !subiram.has(id));
-  if (restantes.length !== pm_pending_sync.length) await chromeSet({ pm_pending_sync: restantes });
 }
 
 /**
@@ -2228,7 +1770,7 @@ function mostrarAvisoForaDaNuvem(erro) {
 
 async function tentarSubirDeNovo() {
   const frases = todasFrases.filter(f => idsMineradosForaDaNuvem.has(f.id));
-  const erro = await subirMineradas(frases);
+  const erro = await sincronizacao.subirFrases(frases);
   if (erro) {
     mostrarAvisoForaDaNuvem(erro);
     return;

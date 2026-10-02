@@ -1,16 +1,13 @@
 'use strict';
 
 // A base compartilhada: o catálogo da Voz e a detecção de idioma.
-importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js');
+importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/sincronizacao.js');
 const { textoDaVoz, detectarIdioma, IDIOMAS, MineracaoDoDia } = PerpetualMiner;
 
 // Em pasta descompactada, recarrega a extensão quando os arquivos mudam.
 importScripts('lib/arquivos-da-extensao.js', 'lib/auto-recarregar.js');
 PerpetualMiner.AutoRecarregar.iniciar();
 
-const FIREBASE_PROJECT  = 'perpetualminer-4c219';
-const FIRESTORE_BASE    = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
-const FB_REFRESH_URL    = `https://securetoken.googleapis.com/v1/token?key=AIzaSyDrbDVUvv8wyoYqjCr5jEMBJPPsIP2k1Ak`;
 const BRIDGE_URL        = 'http://127.0.0.1:8766';
 const AUTO_MINER_SETTINGS_KEY = MineracaoDoDia.CHAVES.ajustes;
 const AUTO_MINER_DAILY_KEY = MineracaoDoDia.CHAVES.diario;
@@ -299,77 +296,30 @@ async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', e
 
 // ─── Firestore Sync via REST API ──────────────────────────────────────────────
 
-// Sessão da conta com o token válido (renovado pelo refresh token do Firebase
-// se expirou), ou null sem conta conectada.
-async function sessaoDaConta() {
-  const stored = await chromeGet({ pm_firebase_auth: null });
-  let authData = stored.pm_firebase_auth;
-  if (!authData?.uid) return null;
-
-  if (!authData.idToken || (authData.expiresAt && Date.now() > authData.expiresAt - 60_000)) {
-    if (!authData.refreshToken) return null;
-    const r = await fetch(FB_REFRESH_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: authData.refreshToken }),
-    });
-    if (!r.ok) return null;
-    const d = await r.json();
-    authData = { ...authData, idToken: d.id_token, refreshToken: d.refresh_token, expiresAt: Date.now() + 55 * 60 * 1000 };
-    chrome.storage.local.set({ pm_firebase_auth: authData });
-  }
-  return authData;
+// A nuvem da conta conectada (a sessão renova o token pelo refresh token do
+// Firebase se expirou), ou null sem conta. O REST do Firestore é de lib/sincronizacao.js.
+async function nuvemDaConta() {
+  const { pm_firebase_auth: credenciais } = await chromeGet({ pm_firebase_auth: null });
+  if (!credenciais?.uid) return null;
+  const sessao = PerpetualMiner.Sincronizacao.criarSessao({
+    credenciais,
+    aoRenovar: renovadas => chromeSet({ pm_firebase_auth: renovadas }),
+  });
+  return PerpetualMiner.Sincronizacao.nuvemHttp({ sessao });
 }
 
 async function sincronizarComFirestore(frase) {
   try {
-    const authData = await sessaoDaConta();
-    if (!authData) return;
-
-    const url = `${FIRESTORE_BASE}/usuarios/${authData.uid}/frases/${frase.id}`;
-    const res = await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${authData.idToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ fields: fraseParaFields(frase) }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      console.warn('[Firestore] Sync falhou:', err?.error?.message || res.status);
-      // Marca para retry no próximo carregamento do painel
-      marcarPendenteDeSync(frase.id);
-      return;
-    }
-
+    const nuvem = await nuvemDaConta();
+    if (!nuvem) return;
+    await nuvem.gravarFrase(frase);
     // Sucesso: garante que não está na fila de pending
     desmarcarPendenteDeSync(frase.id);
-  } catch {
-    // Offline ou erro de rede: marca para retry
+  } catch (err) {
+    console.warn('[Firestore] Sync falhou:', err?.message);
+    // Offline ou erro de rede: marca para retry no próximo carregamento do painel
     marcarPendenteDeSync(frase.id);
   }
-}
-
-/** Converte um objeto JS no formato de campos do Firestore REST API */
-function fraseParaFields(obj) {
-  const fields = {};
-  for (const [key, val] of Object.entries(obj)) {
-    if (val === null || val === undefined) continue;
-    if (typeof val === 'string')       fields[key] = { stringValue: val };
-    else if (typeof val === 'number')  fields[key] = { integerValue: String(val) };
-    else if (typeof val === 'boolean') fields[key] = { booleanValue: val };
-    else if (Array.isArray(val))       fields[key] = {
-      arrayValue: { values: val.map(v => ({ stringValue: String(v) })) },
-    };
-    else if (typeof val === 'object')  fields[key] = {
-      mapValue: { fields: Object.fromEntries(
-        Object.entries(val).map(([k, v]) => [k, { stringValue: String(v ?? '') }])
-      )},
-    };
-  }
-  return fields;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
