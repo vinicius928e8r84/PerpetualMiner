@@ -45,7 +45,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `lib/idioma.js` | `detectarIdioma(texto)` — the single language detector (Cyrillic → Russo, else Inglês) |
 | `lib/contexto.js` | `PerpetualMiner.Contexto` — the Contexto as the screen says it: the Fonte's name (PAI-29, `fonteDaFrase`, `nomeDaFonte`), the phrase's day (PAI-11, `rotuloDoDia`) and how long ago something happened (`haQuanto`: agora · há 5 min · há 2 h · ontem). Loaded by the panel and the popup, so a phrase never has two names |
 | `lib/conexao-anki.js` | `PerpetualMiner.ConexaoAnki` — the shared owner of `/health`, the connection state and the stored first-success fact across panel and popup. See the module's doc comments for its lifecycle and API contract |
-| `lib/conexao-na-tela.js` | `PerpetualMiner.ConexaoNaTela` — how the Conexão shows on screen, decided once for the F1 strip, the ONB-16 card and step 4 of the Boas-vindas: `texto(situacao)` (BRG-02 / BRG-01.<situação>), `pintarPonto`, `ligarTentarDeNovo` and `pintarTentarDeNovo` (unavailable is `aria-disabled`, never `disabled`, and a button that leaves hands its focus to `focoPara`). Loaded by the panel after `ConexaoAnki` |
+| `lib/conexao-na-tela.js` | `PerpetualMiner.ConexaoNaTela` — the shared presentation of the Conexão in the F1 strip, the ONB-16 card and step 4 of the Boas-vindas. See the module's doc comments for its API and caller responsibilities |
 | `lib/configuracao.js` | `PerpetualMiner.Configuracao` — the first-run setup in one place: the 6 steps of the Boas-vindas, when each is done (from what is stored, plus the Conexão it follows from `ConexaoAnki`), “agora não”, `pm_boas_vindas`, and the “Configuração pela metade” reminder (ONB-14, ONB-15). Loaded by the panel and the popup. See “Configuração pela metade” below |
 | `painel-lembrete.js` | The ONB-15 strip at the top of Frases: the progress ring, “N de 6 passos”, Ocultar and Continuar configuração. See “Configuração pela metade” below |
 | `lib/ajustes-de-envio.js` | `PerpetualMiner.AjustesDeEnvio` — the Ajustes de envio in one place: the Baralho padrão of each language (CIMV · RUSSIAN), the stored shape of `ankiBridgePresets`, the per-language save that refuses a stale version, and `acompanhar`. Loaded by the panel and the service worker, so the default deck is the same everywhere in the front |
@@ -122,7 +122,7 @@ they are. Addresses: `#frases` (default, and anything unknown), `#anki/custos|ba
 so the browser's back button walks through areas and tabs.
 
 The shell owns the sidebar and `painel.js` reports to it through `PerpetualMiner.Shell`:
-`mostrarTotalDeFrases(n)`, `aoEntrarNaArea(area, fn)` (the Anki area refreshes its data on entry), `areaAtual()`, `AREAS_DO_PAINEL` (the three areas with the sidebar, i.e. not the Boas-vindas). The shell starts `ConexaoAnki`'s 15 s `/health` checks and paints their status in the dot (BRG-01/BRG-02, tooltip and accessible description) and, while off, the F1 strip (ENV-01) with “Tentar de novo” at the top of the Anki area. The F1 and step 4 of the Boas-vindas retry through `ConexaoAnki.tentarDeNovo()`, and the three places that draw the Conexão (the F1, the ONB-16 card, step 4) take its text, dot, unavailable retry and focus from `ConexaoNaTela`, so a new surface never picks them by itself. Other surfaces listen to `ConexaoAnki` directly.
+`mostrarTotalDeFrases(n)`, `aoEntrarNaArea(area, fn)` (the Anki area refreshes its data on entry), `areaAtual()`, `AREAS_DO_PAINEL` (the three areas with the sidebar, i.e. not the Boas-vindas). The shell starts `ConexaoAnki`'s 15 s `/health` checks and uses `ConexaoNaTela` for the sidebar indicator (tooltip and accessible description) and the F1 retry at the top of the Anki area. For the strip's visibility and focus destinations, see the [shell's edge cases](docs/design/painel/shell/README.md#casos-de-borda); the [Boas-vindas § F1](docs/design/painel/boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1) owns the common retry behavior. Other surfaces listen to `ConexaoAnki` directly.
 
 The shell's fixed copy comes from the catalog through `data-voz`, `data-voz-aria` and `data-voz-title` attributes in
 `painel.html`, which `painel-shell.js` fills on load. The sidebar and the content island are both the height of the window
@@ -174,8 +174,8 @@ POP-05; failure is POP-06 under the field, text kept). Step 2: ONB-06 and the sa
 (`GravadorDeAtalhos.montar(…, { prefixo: 'bv', lugar })`: `lugar` is what hides when the person leaves, which cancels
 a recording): same storage, same refusal of a repeated shortcut. Nothing of the panel opens over the page: the Envio
 summary waits and opens once the person enters one of `Shell.AREAS_DO_PAINEL`. Step 3 mounts the Conta & sync body
-(`Conta.montarCartao`) shared with Configurações. Step 4 renders `ConexaoAnki`'s state and retries through
-`ConexaoAnki.tentarDeNovo`; its later instructions use step-specific ONB-08 keys. Step 5 shares
+(`Conta.montarCartao`) shared with Configurações. Step 4's status, retry and instructions are described in
+[Boas-vindas § F1](docs/design/painel/boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1). Step 5 shares
 the popup's automatic-mining messages and daily-limit field through `lib/mineracao-automatica.js`, following
 `pm_auto_miner_state_view`. Step 6 mounts the Chave do Gemini card with `ChaveDoGemini.montar(…, { prefixo: 'bv' })`.
 For the step-specific labels, controls and visible states, see the [Boas-vindas spec](docs/design/painel/boas-vindas/README.md#os-passos).
@@ -335,12 +335,12 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   bottom, the Conferência line and the two boxes “Continua funcionando” / “Fica indisponível sem ela”. The steps are marked by the
   real state, and the only thing the extension sees before the Conexão is the Conexão itself (the AnkiConnect is not read: no new
   permission), so step 1 says “Esperando a Conexão” and all three turn ✓ together when `/health` answers successfully. Without a person's choice, it opens on the first step
-  that is missing, or on step 3 while connecting (BRG-02, Tentar de novo `aria-disabled`); after the card's own Tentar de novo it stays on step 3 (the F1's and the Boas-vindas' do not set the person's choice).
+  that is missing, or on step 3 while connecting; after the card's own Tentar de novo it stays on step 3 (the F1's and the Boas-vindas' do not set the person's choice).
   The install commands live in step 2's Detalhes with **Copiar** (toast “Comandos copiados”; a refused clipboard shows the ONB-16
   line to select and copy instead). The status is a `role="status"` region that stays in the DOM.
   The Conferência line (“Confere sozinho a cada 15 s · última vez há N s”, “Conferindo agora…” while a check is out) follows the
-  shared checks; see the doc comments in `painel-anki-primeira-conexao.js` for its subscription and timer lifecycle. The
-  **Pronto** moment (`ONB-16.pronto`, BRG-01, `ONB-16.prontoApoio`) lasts 1.8 s before the tabs return with the BRG-01 toast; see the [Anki area states](docs/design/painel/anki/README.md#estados) for when it appears across pages. Focus never falls to `<body>`: a button that leaves at Pronto hands it to the card's title, and when the card leaves it goes to the checked tab (the tabs are shown again first).
+  shared checks; see the doc comments in `painel-anki-primeira-conexao.js` for its subscription and timer lifecycle. See the
+  [Anki area states](docs/design/painel/anki/README.md#estados) for the **Pronto** moment, its status during a new check and focus when the controls or card leave.
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
   selo (“Mostrando dados de há 2 h…”, with the code in Detalhes) and the period controls set to that reading's
   period and disabled (another period would have nowhere to come from). **Continuar envio** and

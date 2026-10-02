@@ -48,7 +48,7 @@ Recolhida no pé da aba, com borda tracejada e um resumo do que tem dentro:
 
 | estado | como aparece |
 |---|---|
-| Conectando | Faixa neutra “Conectando ao Anki…” (BRG-02) e esqueleto no lugar do conteúdo. Uma porta que aceita mas não responde passa a Desligada em até 3 s da conferência, mesmo se a leitura do histórico de conexão demorar. |
+| Conectando | Na primeira conferência, faixa neutra “Conectando ao Anki…” (BRG-02) e esqueleto no lugar do conteúdo. Uma porta que aceita mas não responde passa a Desligada em até 3 s da conferência, mesmo se a leitura do histórico de conexão demorar. |
 | Nunca conectada (primeira vez) | Faixa ENV-01/F1 + **Tentar de novo** em cima. Enquanto nenhuma página deste computador recebeu `/health` ligado, **as abas dão lugar ao card ONB-16** “Ainda não houve conexão neste computador”, no desenho B (`prototipo-primeira-conexao.html?variant=B`, #74/#77): a lista dos 3 passos ao lado do card do passo, a linha “Confere sozinho a cada 15 s” e os quadros “Continua funcionando” / “Fica indisponível sem ela”; os comandos ficam no **Detalhes** do passo 2, recolhido e copiável (ver [Boas-vindas § Conexão com o Anki: como ligar](../boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1)). O passo escolhido pela pessoa permanece aberto após uma conferência sem sucesso e ao sair e voltar à área na mesma página. Se o painel recebe a primeira resposta ligada com o card visível, mostra Pronto antes de devolver as abas. Se o popup recebe a primeira resposta, mesmo com o painel aberto, o card sai sem Pronto; ao abrir o painel depois, as abas já estão lá. |
 | Desligada | Faixa F1 + **Tentar de novo**. As abas mostram o último dado com o selo BRG-12: em Baralhos e termos e Vocabulário, sem “Detalhes”; em Custos, com o código em “Detalhes”. **Continuar envio** e **Reparar Anki** ficam indisponíveis, e o tooltip diz por quê (C8). Os Ajustes de envio continuam editáveis, com uma nota de que valem a partir do próximo envio. |
 | Carregando | Linha com o gerúndio + esqueleto (C3): “Somando os custos…”, “Lendo os baralhos do Anki…” (BRG-10), “Lendo o vocabulário…” (BRG-19). |
@@ -58,6 +58,10 @@ Recolhida no pé da aba, com borda tracejada e um resumo do que tem dentro:
 | Baralho não existe | O azulejo mostra “—” e “baralho não encontrado”, e o detalhe mostra BRG-14 com **Abrir Ajustes de envio**. |
 | Reparar Anki | Enquanto repara, foco na espera BRG-15 e esqueleto; o Avançado desaparece, sem botão “Reparando…” na tela. Depois do sucesso, o foco volta ao botão do Avançado ou, se acionado pelo aviso BRG-11 (cujo botão some), vai ao azulejo do idioma escolhido após a releitura. Termina em toast “Anki reparado” (BRG-16) ou em erro inline BRG-17 (com ↻ Atualizar) ou BRG-18. |
 | Envio em andamento | Selo “Enviando… · <etapa>” (ENV-07) na lista e no detalhe. |
+
+O retry do card segue o [tratamento comum à F1 e ao passo 4](../boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1).
+
+**Pronto no ONB-16:** o momento dura 1,8 s antes de as abas voltarem com o toast BRG-01. Uma nova tentativa nesse intervalo anuncia BRG-02 na linha de status, sem desfazer o marco: os títulos, o ponto ligado e os três ✓ continuam, e o botão do card fica oculto. Ao terminar a conferência, o status volta ao marco de ligada até o Pronto acabar, mesmo se a resposta foi desligada. Se o foco estava num controle que sai ao entrar em Pronto, vai para o título do passo no card; quando o card sai com foco dentro, vai para a aba escolhida, já visível. A prioridade do status no Pronto tem cobertura em [`e2e/tests/conexao-na-tela.spec.js`](../../../../e2e/tests/conexao-na-tela.spec.js).
 
 ## Convenções
 

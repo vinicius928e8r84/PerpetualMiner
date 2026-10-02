@@ -9,6 +9,19 @@
 // fake da fronteira HTTP (fakes/anki.js); os testes afirmam o que a pessoa vê.
 
 const { test, expect } = require('../fixtures');
+const path = require('path');
+
+// Evidência opcional da extensão real, sem tornar pixels um requisito da suíte.
+const fotografar = async (page, nome) => {
+  if (process.env.PM_EVIDENCE_DIR) {
+    await page.evaluate(() => document.fonts.ready);
+    await page.screenshot({ path: path.join(process.env.PM_EVIDENCE_DIR, nome), fullPage: true });
+  }
+};
+
+test.beforeEach(async ({ page }) => {
+  if (process.env.PM_EVIDENCE_DIR) await page.setViewportSize({ width: 1280, height: 1000 });
+});
 
 const TEXTO = {
   conectando: 'Conectando ao Anki…',
@@ -51,10 +64,12 @@ test.describe('a mesma situação, a mesma tela', () => {
     await page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: 'Tentar de novo' }).click();
     await expect(statusDoCard(page)).toHaveText(TEXTO.desligada);
     await expect(pontoDoCard(page)).toHaveAttribute('data-estado', 'desligada');
+    await fotografar(page, 'a3-onb16-desligada.png');
 
     await page.goto(extensao.url('painel.html#boas-vindas/anki'));
     await expect(statusDoPasso4(page)).toHaveText(TEXTO.desligada);
     await expect(pontoDoPasso4(page)).toHaveAttribute('data-estado', 'desligada');
+    await fotografar(page, 'a3-passo4-desligada.png');
   });
 
   test('conectando: as três superfícies dizem BRG-02 e pintam o ponto de conectando', async ({ page, extensao, fakes }) => {
@@ -69,6 +84,7 @@ test.describe('a mesma situação, a mesma tela', () => {
     await expect(pontoDaSidebar(page)).toHaveAttribute('data-estado', 'conectando');
     await expect(statusDoCard(page)).toHaveText(TEXTO.conectando);
     await expect(pontoDoCard(page)).toHaveAttribute('data-estado', 'conectando');
+    await fotografar(page, 'a3-onb16-conectando.png');
     liberar();
     await expect(sidebar(page)).toHaveText(TEXTO.desligada);
 
@@ -110,6 +126,7 @@ test.describe('a mesma situação, a mesma tela', () => {
     await expect(page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: /feito$/ })).toHaveCount(3);
     await expect(tentarDoCard(page)).toBeHidden();
     await expect(tentarDaF1(page)).toHaveAttribute('aria-disabled', 'true');
+    await fotografar(page, 'a3-onb16-pronto-conectando.png');
 
     liberar();
     await expect(sidebar(page)).toHaveText(TEXTO.desligada);
@@ -141,10 +158,39 @@ test.describe('Tentar de novo indisponível enquanto confere', () => {
     await page.keyboard.press('Enter');
     await tentarDaF1(page).click({ force: true });
     expect(pedidosDeHealth(fakes)).toHaveLength(antes);
+    await fotografar(page, 'a3-f1-indisponivel-foco.png');
 
     liberar();
     await expect(sidebar(page)).toHaveText(TEXTO.desligada);
     await expect(tentarDaF1(page)).not.toHaveAttribute('aria-disabled', 'true');
+  });
+
+  test('ONB-16: o retry do card fica aria-disabled sem perder o foco nem repetir a conferência', async ({ page, extensao, fakes }) => {
+    fakes.anki.desligar();
+    await page.goto(extensao.url('painel.html#anki/custos'));
+    await expect(cardDaPrimeiraConexao(page)).toBeVisible();
+    await page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: 'Tentar de novo' }).click();
+
+    const liberar = segurarOHealth(fakes);
+    fakes.anki.ligar();
+    await tentarDoCard(page).focus();
+    await page.keyboard.press('Enter');
+    await expect(statusDoCard(page)).toHaveText(TEXTO.conectando);
+    await expect(tentarDoCard(page)).toHaveAttribute('aria-disabled', 'true');
+    await expect(tentarDoCard(page)).not.toHaveAttribute('disabled');
+    await expect(tentarDoCard(page)).toBeFocused();
+
+    const antes = pedidosDeHealth(fakes).length;
+    await page.keyboard.press('Enter');
+    await tentarDoCard(page).click({ force: true });
+    expect(pedidosDeHealth(fakes)).toHaveLength(antes);
+    await fotografar(page, 'a3-onb16-indisponivel-foco.png');
+
+    liberar();
+    await expect(statusDoCard(page)).toHaveText(TEXTO.desligada);
+    await expect(tentarDoCard(page)).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(tentarDoCard(page)).toBeFocused();
+    await expect(cardDaPrimeiraConexao(page)).toContainText('Como ligar · Passo 3 de 3');
   });
 
   test('passo 4 da Boas-vindas: aria-disabled com o foco nele; apertar de novo não pergunta de novo', async ({ page, extensao, fakes }) => {
@@ -164,6 +210,7 @@ test.describe('Tentar de novo indisponível enquanto confere', () => {
     const antes = pedidosDeHealth(fakes).length;
     await page.keyboard.press('Enter');
     expect(pedidosDeHealth(fakes)).toHaveLength(antes);
+    await fotografar(page, 'a3-passo4-indisponivel-foco.png');
     liberar();
     await expect(statusDoPasso4(page)).toHaveText(TEXTO.desligada);
   });
@@ -182,6 +229,7 @@ test.describe('o foco ao ligar não cai no <body>', () => {
 
     await expect(tentarDaF1(page)).toBeHidden();
     await expect(page.getByRole('radio', { name: 'Custos' })).toBeFocused();
+    await fotografar(page, 'a3-f1-ligada-foco.png');
   });
 
   test('passo 4: o botão sai e o foco vai para o título do passo', async ({ page, extensao, fakes }) => {
@@ -196,5 +244,6 @@ test.describe('o foco ao ligar não cai no <body>', () => {
     await expect(statusDoPasso4(page)).toHaveText(TEXTO.ligada);
     await expect(tentarDoPasso4(page)).toHaveCount(0);
     await expect(page.locator('#bv-titulo')).toBeFocused();
+    await fotografar(page, 'a3-passo4-ligada-foco.png');
   });
 });

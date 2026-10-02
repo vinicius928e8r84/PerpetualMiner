@@ -25,7 +25,7 @@ Decidido em duas rodadas no Lavish e avaliado em 2026-09-14. O dono aceitou toda
 | Áreas | **Frases** e **Conexão com o Anki** no topo da sidebar; **Configurações** sozinha no pé. O Painel abre em Frases. “Minerar de uma foto” não entra na sidebar: só se chega a ela por “Minerar frases → Foto”. |
 | Navegação | **Uma página só** (`painel.html`), trocando só a vista. Cada área tem endereço, e o voltar do navegador funciona. Trocar de área não recarrega: o sync e o acompanhamento de envios não reiniciam. |
 | Conexão com o Anki por dentro | **Abas em pílula**, uma sub-área por vez, na ordem **Custos · Baralhos e termos · Vocabulário · Ajustes de envio**. Abre em Custos. |
-| Indicadores fixos | Ficam colados na navegação. O total vai no item Frases (`1.284`, PAI-05). O ponto ligada/desligada vai no item Conexão com o Anki (BRG-01, com o texto no tooltip e no aria). O **chip de conta** fica no pé: avatar, nome e status de sync. Clicar nele leva a Configurações › Conta & sync. |
+| Indicadores fixos | Ficam colados na navegação. O total vai no item Frases (`1.284`, PAI-05). O ponto vai no item Conexão com o Anki, com o status no tooltip e no aria (ver o [tratamento comum da Conexão](../boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1)). O **chip de conta** fica no pé: avatar, nome e status de sync. Clicar nele leva a Configurações › Conta & sync. |
 | Sidebar | Fixa e sempre expandida. Abaixo de ~1000 px vira **trilho de ícones** sozinha, sem botão de recolher. No trilho, o ponto do Anki e o avatar continuam visíveis. |
 | Configurações por dentro | Uma rolagem com 5 cards: **Conta & sync · Atalhos · Chave do Gemini · Aparência · Zona de perigo**. A Zona de perigo vem por último, com borda `danger`. `#configuracoes/<seção>` rola até o card. |
 | Camada Avançado | Fica **recolhida no pé de cada aba**, com o que é daquela aba:<br>• Ajustes de envio: sotaque do áudio (TLDs).<br>• Custos: Escolha e Triagem de imagem, IDs dos envios, 4 casas, pacote de diagnóstico.<br>• Baralhos e termos: Reparar Anki. |
@@ -53,8 +53,8 @@ Quem aponta para eles:
 - **Trocar de área e voltar:** filtros, busca, página e seleção continuam como estavam, e a barra contextual de seleção volta aberta. Recarregar a página zera tudo, como hoje.
 - **Envio termina com o modal fechado:** o resumo (ENV-10: “Envio concluído — 12 enviadas · 2 já estavam no Anki · 1 falhou [Apagar as 12 enviadas] [Manter]”, com a nota “Manter deixa as frases no histórico, marcadas como enviadas ao Anki.” sob os botões) **abre sozinho, em qualquer área**.
 - **Conexão com o Anki desligada:** a área abre normalmente.
-  - No topo, uma faixa com a F1 (“A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.”) e o botão **Tentar de novo**.
-  - As abas mostram o último dado conhecido, marcado como tal (BRG-12).
+  - No topo, a faixa F1 (ENV-01) com **Tentar de novo**, seguindo o [retry comum](../boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1). A faixa continua durante a tentativa e sai quando a resposta é ligada. Se o foco estava no botão e as abas estão à mostra, vai para a aba escolhida; na primeira conexão, segue o [Pronto do card ONB-16](../anki/README.md#estados).
+  - Para o conteúdo das abas e o card da primeira conexão, ver [Conexão com o Anki § Estados](../anki/README.md#estados).
   - Os Ajustes de envio continuam editáveis.
   - Em Frases, “Enviar ao Anki” fica indisponível e o tooltip diz por quê.
 - **Primeira execução:** o shell não muda. Mostra `Frases 0`, o ponto desligado e o chip “Sem conta · só neste computador”, e o vazio de Frases é o da PAI-02. O guia é a página [Boas-vindas](../boas-vindas/README.md) (`#boas-vindas`, sem sidebar), que abre sozinha na instalação.

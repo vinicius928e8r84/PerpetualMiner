@@ -92,10 +92,12 @@ A ordem é travada. Cada passo reusa uma função que já existe; nenhum cria fu
 
 ## Conexão com o Anki: como ligar (F1)
 
-O passo 4 (`ONB-08.corpo`) e o card ONB-16 da área Conexão com o Anki (`ONB-16.corpo`) dão a mesma explicação inicial e usam o primeiro passo (`ONB-08.passo1`), mas não as ações seguintes. A cópia de cada variante está em [`lib/voz/catalogo.js`](../../../../lib/voz/catalogo.js).
+O passo 4 da Boas-vindas e o card ONB-16 da área Conexão com o Anki compartilham o tratamento do status e do retry, mas têm instruções e ações distintas. A cópia de cada variante está em [`lib/voz/catalogo.js`](../../../../lib/voz/catalogo.js).
 
-- **Passo 4 da Boas-vindas:** mostra o status da Conexão e, enquanto a última resposta foi “desligada”, três instruções (`ONB-08.passo1`, `.instalar`, `.verificar`). O botão e o terceiro item dizem **“Verificar de novo”** (`ONB-08.verificarDeNovo`); o botão pede a mesma conferência da F1 pelo módulo compartilhado [`lib/conexao-anki.js`](../../../../lib/conexao-anki.js). Neste passo **não há Detalhes nem Copiar**. Com a conexão ligada, as instruções e o botão saem.
-- **Área Conexão com o Anki, nunca conectada:** a faixa ENV-01/F1 continua em cima, com **“Tentar de novo”**. Sem dado antigo, as abas dão lugar ao card ONB-16 com “O que falta sem ela”, os três passos antigos (`ONB-08.passo1`–`.passo3`) e os comandos em **Detalhes** recolhido e copiável (botão **Copiar**):
+**Retry comum à F1, ao passo 4 e ao ONB-16:** enquanto a Conexão diz “Conectando”, o botão que está à mostra fica indisponível, mas continua no percurso do Tab e conserva o foco; apertá-lo de novo não repete a conferência. O contrato de implementação está nos comentários de [`lib/conexao-na-tela.js`](../../../../lib/conexao-na-tela.js).
+
+- **Passo 4 da Boas-vindas:** mostra o status da Conexão e, enquanto a última resposta foi “desligada”, três instruções (`ONB-08.passo1`, `.instalar`, `.verificar`). O botão e o terceiro item dizem **“Verificar de novo”** (`ONB-08.verificarDeNovo`); o botão pede a mesma conferência da F1. Neste passo **não há Detalhes nem Copiar**. Com a conexão ligada, as instruções e o botão saem; se o foco estava no botão, vai para o título do passo.
+- **Área Conexão com o Anki, nunca conectada:** o desenho e os estados do card ONB-16 estão em [Conexão com o Anki § Estados](../anki/README.md#estados). Os comandos de instalação aparecem no **Detalhes** recolhido e copiável (botão **Copiar**):
   - `pip install -r bridge/requirements.txt`
   - `python bridge/install_autostart.py`
   - `OPENAI_API_KEY` em `engine/.env`

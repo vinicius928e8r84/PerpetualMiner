@@ -196,9 +196,8 @@
     secao.hidden = !cobre;
     estado.prontoDesenhado = estado.prontoDesenhado && cobre;
     if (!cobre) return;
-    // No Pronto o botão em que a pessoa estava (o do card ou o da F1, que o shell
-    // desativa ao tentar) sai da tela e o foco já não está em lugar nenhum: ele
-    // fica no título do card, e não cai no <body>.
+    // Entrar em Pronto tira os controles do card. A F1 também pode ter saído
+    // com as abas ainda ocultas: nestes casos, o título acolhe o foco.
     const ativo = document.activeElement;
     const focoSaindo = secao.contains(ativo) || ativo === document.body || ativo === null;
     const entrouNoPronto = estado.pronto && !estado.prontoDesenhado;
