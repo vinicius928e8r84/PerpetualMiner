@@ -6,10 +6,7 @@
 // Estados (o ConexaoAnki, lib/conexao-anki.js, diz a situação):
 //   Conectando       a primeira conferência ainda não voltou: faixa neutra BRG-02
 //                    e esqueleto no lugar dos custos.
-//   Nunca conectada  desligada e nunca respondeu neste computador (`pm_anki_ja_conectou`):
-//                    o card ONB-16 (painel-anki-primeira-conexao.js) fica no lugar das
-//                    abas, com a F1 do shell em cima. Na primeira resposta ele mostra o
-//                    momento Pronto por um instante e as abas voltam, com o toast BRG-01.
+//   Nunca conectada  ver painel-anki-primeira-conexao.js, dono do fluxo ONB-16.
 //   Desligada        a F1 do shell, e Custos mostra o último dado (`pm_anki_custos`)
 //                    com o selo BRG-12; Continuar envio fica aria-disabled, com o
 //                    porquê na dica (C8).
@@ -26,8 +23,6 @@
   const CHAVE_CUSTOS = 'pm_anki_custos';
   const CHAVE_QUATRO_CASAS = 'pm_anki_quatro_casas';
   const CHAVE_IDS = 'pm_anki_ids_dos_envios';
-  // Quanto o momento Pronto fica na tela antes de as abas voltarem.
-  const MOMENTO_PRONTO_MS = 1800;
 
   // Os idiomas do bridge (`lang`) e o código que cada azulejo mostra (BRG-28).
   const IDIOMAS_DOS_AZULEJOS = [
@@ -63,7 +58,6 @@
     de: '',
     ate: '',
     idioma: 'all',
-    pronto: false,          // o momento Pronto do card ONB-16 está na tela
     dados: null,            // a última leitura: { quando, periodo, de, ate, envios }
     carregando: false,
     erro: null,             // a causa técnica da leitura que falhou, para o Detalhes
@@ -129,40 +123,17 @@
     });
   }
 
-  /** O card ONB-16 está no lugar das abas (inclusive no momento Pronto). */
-  function mostrandoAPrimeiraVez(situacao = situacaoDaConexao(), respondeu = jaRespondeu()) {
-    return respondeu && (estado.pronto || (!ConexaoAnki.jaConectou() && situacao !== CONEXAO.LIGADA));
-  }
-
   const situacaoDaConexao = () => ConexaoAnki.situacao();
   /** A Conexão já respondeu, ligada ou desligada, nesta página. */
   const jaRespondeu = () => ConexaoAnki.ultimaResposta() !== null;
 
-  /**
-   * A primeira resposta com o card na tela: o Pronto por um instante, e então as
-   * abas voltam, com o toast. Em outra área (ou nas Boas-vindas) ninguém está
-   * olhando o card: as abas só estarão lá quando a pessoa chegar, sem toast.
-   */
-  function mostrarOPronto() {
-    estado.pronto = true;
-    setTimeout(() => {
-      estado.pronto = false;
-      desenhar();
-      if (Shell.areaAtual() === 'anki') Veio.mostrarToastDeSucesso(textoDaVoz('BRG-01.ligada'));
-    }, MOMENTO_PRONTO_MS);
-  }
-
-  // O que a última notificação já tinha dito: a primeira resposta e a mudança são decididas contra ele.
-  let visto = { situacao: CONEXAO.CONECTANDO, respondeu: false };
+  // A situação que a última notificação já tinha dito: ler os custos é decidido contra ela.
+  let anterior = CONEXAO.CONECTANDO;
 
   function aoMudarAConexao(situacao) {
-    const { situacao: antes, respondeu } = visto;
-    const eraPrimeiraVez = mostrandoAPrimeiraVez(antes, respondeu);
-    visto = { situacao, respondeu: respondeu || situacao !== CONEXAO.CONECTANDO };
-    if (situacao === CONEXAO.LIGADA) {
-      if (eraPrimeiraVez && !estado.pronto && Shell.areaAtual() === 'anki') mostrarOPronto();
-      if (antes !== CONEXAO.LIGADA && Shell.areaAtual() === 'anki') ler();
-    }
+    const antes = anterior;
+    anterior = situacao;
+    if (situacao === CONEXAO.LIGADA && antes !== CONEXAO.LIGADA && Shell.areaAtual() === 'anki') ler();
     desenhar();
   }
 
@@ -242,10 +213,6 @@
   // ─── Estados da área ───────────────────────────────────────────────────────
 
   function desenhar() {
-    const nuncaConectou = mostrandoAPrimeiraVez();
-    // As abas voltam à tela antes de o card sair: é onde o foco dele vai pousar.
-    document.querySelector('.shell-area[data-area="anki"]').classList.toggle('anki--primeira-vez', nuncaConectou);
-    PrimeiraConexao.desenhar({ visivel: nuncaConectou, pronto: estado.pronto });
     porId('anki-conectando').hidden = jaRespondeu() || situacaoDaConexao() !== CONEXAO.CONECTANDO;
     porId('anki-ajustes-nota').hidden = !desligada();
     desenharCustos();
