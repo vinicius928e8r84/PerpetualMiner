@@ -591,7 +591,7 @@ def _run_images(config, prompt_lines, output_dir, img_source, api_key, log_dir):
     }
     judge_cfg = config.get("image_judge", {})
     judge_enabled = bool(judge_cfg.get("enabled", True) and img_source == "1")
-    image_model = config["openai"].get("image_model", "gpt-image-1")
+    image_model = config["openai"]["image_model"]
     generated_image_cost = float(cost_tracker.PRICES.get(image_model, 0.040))
     real_candidate_limit = int(judge_cfg.get("real_candidate_limit", 8) or 8)
     real_total_candidate_limit = int(judge_cfg.get("real_total_candidate_limit", 24) or 24)

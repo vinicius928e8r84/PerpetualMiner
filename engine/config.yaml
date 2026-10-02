@@ -43,7 +43,7 @@ tts:
 
 openai:
   chat_model: "gpt-4o"
-  image_model: "gpt-image-1"      # dall-e-3 was retired on this account
+  image_model: "gpt-image-2.5-flare"      # gpt-image-1 is removed on 2026-10-23; see developers.openai.com deprecations
   image_size: "1024x1024"
   image_judge_model: "gpt-4.1-mini"
 
