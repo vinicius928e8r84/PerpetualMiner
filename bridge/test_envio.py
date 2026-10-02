@@ -10,6 +10,7 @@ import threading
 import unittest
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -601,6 +602,72 @@ class JobWorkerTests(EnvioTestCase):
         self.worker.run_next()
 
         self.assertEqual(self.store.read_state(job_id)["status"], "completed")
+
+    def test_a_delayed_second_retry_leaves_the_envio_running_and_preserves_send_outcomes(self) -> None:
+        job_id = self.envio(1, 2)
+        self.engine.send_plan = {"s2b": CARD_FAILED}
+        self.worker.run_next()
+        self.assertEqual(self.store.read_state(job_id)["status"], "partial")
+        self.engine.send_plan.clear()
+        retry_waiting = threading.Event()
+        resume_retry = threading.Event()
+        retry_results: list[str] = []
+        retry_errors: list[Exception] = []
+        snapshots: list[tuple[dict[str, Any], dict[str, Any]]] = []
+        real_lock = self.store.lock
+
+        class DelayedRetryLock:
+            def __enter__(self) -> None:
+                if threading.current_thread() is retry_thread:
+                    retry_waiting.set()
+                    if not resume_retry.wait(5):
+                        raise TimeoutError("Retry was not resumed")
+                real_lock.acquire()
+
+            def __exit__(self, *args: Any) -> None:
+                real_lock.release()
+
+        def retry_envio() -> None:
+            try:
+                retry_results.append(self.store.requeue(job_id))
+            except Exception as exc:
+                retry_errors.append(exc)
+
+        retry_thread = threading.Thread(target=retry_envio)
+        original_send = self.engine.send
+
+        def send_while_retry_is_waiting(entries: list[str], config: Any) -> dict[str, Any]:
+            snapshots.append((self.store.read_state(job_id), self.store.queue_data()))
+            resume_retry.set()
+            retry_thread.join(5)
+            snapshots.append((self.store.read_state(job_id), self.store.queue_data()))
+            return original_send(entries, config)
+
+        with mock.patch.object(self.store, "lock", DelayedRetryLock()):
+            retry_thread.start()
+            try:
+                self.assertTrue(retry_waiting.wait(5))
+                self.assertEqual(self.store.requeue(job_id), "queued")
+                with mock.patch.object(self.engine, "send", side_effect=send_while_retry_is_waiting):
+                    self.assertTrue(self.worker.run_next())
+            finally:
+                resume_retry.set()
+                retry_thread.join(5)
+
+        self.assertFalse(retry_thread.is_alive())
+        self.assertEqual(retry_errors, [])
+        self.assertEqual(retry_results, ["running"])
+        self.assertEqual(len(snapshots), 2)
+        self.assertEqual((snapshots[0][0]["status"], snapshots[0][0]["stage"]), ("running", "send_to_anki"))
+        self.assertEqual(snapshots[1], snapshots[0])
+        state = self.store.read_state(job_id)
+        self.assertEqual((state["status"], state["stage"]), ("completed", "completed"))
+        self.assertEqual(state["successfulPhraseIds"], [1, 2])
+        self.assertEqual(state["failedPhraseIds"], [])
+        self.assertIsNone(state["lastError"])
+        self.assertEqual(self.queue_status(job_id), "completed")
+        self.assertEqual(self.engine.sent, [["s1", "s2"], ["s2"]])
+        self.assertFalse(self.worker.run_next())
 
     def test_the_loop_idles_when_empty_runs_what_arrives_and_stops_on_the_event(self) -> None:
         job_id = self.envio(1)

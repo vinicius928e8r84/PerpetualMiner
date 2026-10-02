@@ -221,11 +221,10 @@ class JobStore:
     def requeue(self, job_id: str) -> str:
         """Continuar envio: volta o mesmo Envio para a fila, mantendo as etapas
         concluidas e as frases ja enviadas. Um Envio rodando fica como esta."""
-        state = self.read_state(job_id)
-        if state.get("status") == RUNNING:
-            return state["status"]
         with self.lock:
             state = self.read_state(job_id)
+            if state.get("status") == RUNNING:
+                return state["status"]
             self._check_transition(state, QUEUED)
             state.update({"status": QUEUED, "stage": "queued", "lastError": None, "ankiError": None, "repairPayload": None})
             state["updatedAt"] = now_iso()
