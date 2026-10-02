@@ -84,7 +84,10 @@
       desenharConferencia();
     });
     setInterval(desenharConferencia, INTERVALO_DO_TIQUE);
-    return ConexaoAnki.pronta.then(() => ConexaoAnki.acompanhar(aoMudarAConexao));
+    return ConexaoAnki.pronta.then(() => {
+      estado.visto.respondeu = ConexaoAnki.ultimaResposta() !== null;
+      return ConexaoAnki.acompanhar(aoMudarAConexao);
+    });
   }
 
   function montarLista() {
