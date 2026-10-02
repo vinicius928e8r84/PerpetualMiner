@@ -34,17 +34,7 @@
   // Quanto o momento Pronto fica na tela antes de as abas voltarem.
   const MOMENTO_PRONTO_MS = 1800;
 
-  // A vista do card por estado: o status (texto e ponto do ponto, se é a espera).
-  // O Pronto é a Conexão ligada; “esperando” é o primeiro passo com a Conexão
-  // desligada, que espera em vez de dizer “desligada”.
-  const STATUS = {
-    pronto: { texto: 'BRG-01.ligada', ponto: 'ligada', espera: false },
-    conectando: { texto: 'BRG-02', ponto: 'conectando', espera: false },
-    esperando: { texto: 'ONB-16.esperando', ponto: '', espera: true },
-    desligada: { texto: 'BRG-01.desligada', ponto: 'desligada', espera: false },
-  };
-
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, Configuracao } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, ConexaoNaTela, Configuracao } = raiz;
   const { SITUACAO: CONEXAO } = ConexaoAnki;
   const { SITUACAO } = Configuracao;
   const porId = id => document.getElementById(id);
@@ -73,9 +63,7 @@
     montarComoLigar();
     porId('apv-voltar').addEventListener('click', () => abrirPasso(passoAtual() - 1));
     porId('apv-continuar').addEventListener('click', () => abrirPasso(passoAtual() + 1));
-    porId('apv-tentar').addEventListener('click', () => {
-      // Conectando, o botão fica indisponível sem sair do foco.
-      if (porId('apv-tentar').getAttribute('aria-disabled') === 'true') return;
+    ConexaoNaTela.ligarTentarDeNovo(porId('apv-tentar'), () => {
       // Só o botão do card fixa o passo 3: o Tentar de novo da F1 e o da Boas-vindas não são escolha dela.
       estado.escolha = PASSO_DO_TENTAR;
       ConexaoAnki.tentarDeNovo();
@@ -157,7 +145,7 @@
     setTimeout(() => {
       estado.pronto = false;
       desenhar();
-      if (Shell.areaAtual() === 'anki') Veio.mostrarToastDeSucesso(textoDaVoz('BRG-01.ligada'));
+      if (Shell.areaAtual() === 'anki') Veio.mostrarToastDeSucesso(ConexaoNaTela.texto(CONEXAO.LIGADA));
     }, MOMENTO_PRONTO_MS);
   }
 
@@ -181,7 +169,7 @@
     return ConexaoAnki.situacao() === CONEXAO.CONECTANDO ? PASSO_DO_TENTAR : 0;
   }
 
-  /** Qual das vistas de STATUS o card mostra agora. */
+  /** Qual vista o card mostra agora. */
   function vistaDoCard() {
     if (estado.pronto) return 'pronto';
     if (ConexaoAnki.situacao() === CONEXAO.CONECTANDO) return 'conectando';
@@ -219,9 +207,10 @@
     const vista = vistaDoCard();
     const pronto = vista === 'pronto';
     const passoAberto = passoAtual();
-    const conectando = vista === 'conectando';
+    const conexao = ConexaoAnki.situacao();
+    const conectando = conexao === CONEXAO.CONECTANDO;
 
-    porId('anki-primeira-vez-titulo').textContent = textoDaVoz(pronto ? 'BRG-01.ligada' : 'ONB-16.titulo');
+    porId('anki-primeira-vez-titulo').textContent = pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA) : textoDaVoz('ONB-16.titulo');
     porId('apv-apoio').hidden = pronto;
     porId('apv-rodape').hidden = pronto;
 
@@ -239,18 +228,20 @@
     porId('apv-sobretitulo').textContent = pronto
       ? textoDaVoz('ONB-16.pronto')
       : `${textoDaVoz('ONB-16.passos')} · ${textoDaVoz('ONB-03.passo', { n: passoAberto + 1, total: PASSOS.length })}`;
-    porId('apv-passo-titulo').textContent = textoDaVoz(pronto ? 'BRG-01.ligada' : passo.titulo);
+    porId('apv-passo-titulo').textContent = pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA) : textoDaVoz(passo.titulo);
     porId('apv-texto').textContent = textoDaVoz(pronto ? 'ONB-16.prontoApoio' : passo.texto);
 
     // O status é uma região que anuncia a mudança: o ponto e o texto trocam, ela fica.
-    const { texto, ponto, espera } = STATUS[vista];
-    porId('apv-status').classList.toggle('apv-status--espera', espera);
-    porId('apv-ponto').dataset.estado = ponto;
-    porId('apv-status-texto').textContent = textoDaVoz(texto);
+    const esperando = vista === 'esperando';
+    porId('apv-status').classList.toggle('apv-status--espera', esperando);
+    const mostrada = pronto ? CONEXAO.LIGADA : conexao;
+    ConexaoNaTela.pintarPonto(porId('apv-ponto'), esperando ? '' : mostrada);
+    porId('apv-status-texto').textContent = esperando ? textoDaVoz('ONB-16.esperando') : ConexaoNaTela.texto(mostrada);
 
-    const tentar = porId('apv-tentar');
-    tentar.hidden = pronto || passoAberto !== PASSO_DO_TENTAR;
-    tentar.setAttribute('aria-disabled', String(conectando));
+    ConexaoNaTela.pintarTentarDeNovo(porId('apv-tentar'), conexao, {
+      sai: pronto || passoAberto !== PASSO_DO_TENTAR,
+      focoPara: () => porId('apv-passo-titulo'),
+    });
     porId('anki-primeira-vez-detalhes').hidden = pronto || passoAberto !== PASSO_DOS_COMANDOS;
 
     porId('apv-navegacao').hidden = pronto;

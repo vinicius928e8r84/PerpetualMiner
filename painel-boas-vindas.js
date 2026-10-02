@@ -35,7 +35,7 @@
 // Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
-  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao, ConexaoAnki, Conta, MineracaoAutomatica, MineracaoDoDia } = raiz;
+  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao, ConexaoAnki, ConexaoNaTela, Conta, MineracaoAutomatica, MineracaoDoDia } = raiz;
   const { SITUACAO: CONEXAO } = ConexaoAnki;
 
   const ABERTURA = 'abertura';
@@ -352,11 +352,7 @@
 
     const tentar = elemento('button', 'veio-botao veio-botao--primario veio-botao--compacto', textoDaVoz('ONB-08.verificarDeNovo'));
     tentar.type = 'button';
-    tentar.addEventListener('click', () => {
-      // Conferindo, o botão fica indisponível sem sair do foco.
-      if (tentar.getAttribute('aria-disabled') === 'true') return;
-      ConexaoAnki.tentarDeNovo();
-    });
+    ConexaoNaTela.ligarTentarDeNovo(tentar);
 
     const passos = elemento('ol', 'anki-passos',
       ...['passo1', 'instalar', 'verificar'].map(parte => elemento('li', null, textoDaVoz(`ONB-08.${parte}`))));
@@ -372,13 +368,11 @@
     const conexao = ConexaoAnki.situacao();
     const ligada = conexao === CONEXAO.LIGADA;
 
-    passo4.ponto.dataset.estado = conexao;
-    passo4.texto.textContent = conexao === CONEXAO.CONECTANDO ? textoDaVoz('BRG-02') : textoDaVoz(`BRG-01.${conexao}`);
+    ConexaoNaTela.pintarPonto(passo4.ponto, conexao);
+    passo4.texto.textContent = ConexaoNaTela.texto(conexao);
     // Ligada, não há o que tentar: o botão sai, e o foco que estava nele vai
     // para o título do passo, em vez de cair no fim da página.
-    if (ligada && passo4.tentar.contains(document.activeElement)) porId('bv-titulo').focus();
-    passo4.tentar.hidden = ligada;
-    passo4.tentar.setAttribute('aria-disabled', String(conexao === CONEXAO.CONECTANDO));
+    ConexaoNaTela.pintarTentarDeNovo(passo4.tentar, conexao, { sai: ligada, focoPara: () => porId('bv-titulo') });
     passo4.comoLigar.hidden = ConexaoAnki.ultimaResposta() !== CONEXAO.DESLIGADA;
   }
 
