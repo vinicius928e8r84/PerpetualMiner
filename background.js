@@ -863,8 +863,8 @@ async function handleAutoMinerCandidate(request) {
   };
   const frase = await salvarFrase(texto, request.origem || 'auto', request.contexto || null, lang === 'ru' ? 'Russo' : 'Inglês', saveExtras);
   const updatedState = await incrementAutoMinerDaily(lang);
-  await recordAutoMinerEvent({ action: 'saved', reason: evaluation.reason || 'accepted', texto, lang, contexto: request.contexto || null, evaluation, phraseId: frase.id });
   publicarEstadoDaAutomatica(updatedState);
+  await recordAutoMinerEvent({ action: 'saved', reason: evaluation.reason || 'accepted', texto, lang, contexto: request.contexto || null, evaluation, phraseId: frase.id });
   return { action: 'saved', frase, evaluation, state: updatedState };
 }
 
