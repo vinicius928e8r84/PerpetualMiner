@@ -1,8 +1,8 @@
 'use strict';
 
 // A base compartilhada: o catálogo da Voz e a detecção de idioma.
-importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/ajustes-de-envio.js');
-const { textoDaVoz, detectarIdioma, IDIOMAS } = PerpetualMiner;
+importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js');
+const { textoDaVoz, detectarIdioma, IDIOMAS, MineracaoDoDia } = PerpetualMiner;
 
 // Em pasta descompactada, recarrega a extensão quando os arquivos mudam.
 importScripts('lib/arquivos-da-extensao.js', 'lib/auto-recarregar.js');
@@ -12,18 +12,14 @@ const FIREBASE_PROJECT  = 'perpetualminer-4c219';
 const FIRESTORE_BASE    = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
 const FB_REFRESH_URL    = `https://securetoken.googleapis.com/v1/token?key=AIzaSyDrbDVUvv8wyoYqjCr5jEMBJPPsIP2k1Ak`;
 const BRIDGE_URL        = 'http://127.0.0.1:8766';
-const AUTO_MINER_SETTINGS_KEY = 'pm_auto_miner_settings';
-const AUTO_MINER_DAILY_KEY = 'pm_auto_miner_daily';
-const AUTO_MINER_LAST_EVENT_KEY = 'pm_auto_miner_last_event';
+const AUTO_MINER_SETTINGS_KEY = MineracaoDoDia.CHAVES.ajustes;
+const AUTO_MINER_DAILY_KEY = MineracaoDoDia.CHAVES.diario;
+const AUTO_MINER_LAST_EVENT_KEY = MineracaoDoDia.CHAVES.ultimoEvento;
 const AUTO_KEYWORD_CACHE_KEY = 'pm_auto_keyword_vocab_en';
 const AUTO_KEYWORD_CACHE_PREFIX = 'pm_auto_keyword_vocab_';
 const AUTO_KEYWORD_CACHE_VERSION = 2;
 const AUTO_KEYWORD_CACHE_TTL_MS = 15 * 60 * 1000;
 const AUTO_KEYWORD_MIN_SCORE = 70;
-const DEFAULT_AUTO_MINER_SETTINGS = {
-  en: { enabled: false, dailyLimit: 20 },
-  ru: { enabled: false, dailyLimit: 20 },
-};
 const AUTO_KEYWORD_MAX_EN_GROUPS = 2;
 const AUTO_MINER_MAX_EN_KEYWORDS = AUTO_KEYWORD_MAX_EN_GROUPS;
 
@@ -214,7 +210,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'AUTO_MINER_SET_SETTINGS') {
     setAutoMinerSettings(request.settings || {})
       .then(state => {
-        broadcastAutoMinerState(state);
+        publicarEstadoDaAutomatica(state);
         sendResponse({ ok: true, state });
       })
       .catch(err => sendResponse({ ok: false, error: err?.message || 'auto_miner_settings_failed' }));
@@ -842,7 +838,7 @@ async function handleAutoMinerCandidate(request) {
     await recordAutoMinerEvent({ action: 'skip', reason: 'disabled', texto, lang, contexto: request.contexto || null });
     return { action: 'skip', reason: 'disabled', state };
   }
-  if (noLimiteDeHoje(state.settings, state.daily, lang)) {
+  if (MineracaoDoDia.noLimiteDeHoje(state, lang)) {
     await recordAutoMinerEvent({ action: 'skip', reason: 'daily_limit', texto, lang, contexto: request.contexto || null });
     return { action: 'skip', reason: 'daily_limit', state };
   }
@@ -868,7 +864,7 @@ async function handleAutoMinerCandidate(request) {
   const frase = await salvarFrase(texto, request.origem || 'auto', request.contexto || null, lang === 'ru' ? 'Russo' : 'Inglês', saveExtras);
   const updatedState = await incrementAutoMinerDaily(lang);
   await recordAutoMinerEvent({ action: 'saved', reason: evaluation.reason || 'accepted', texto, lang, contexto: request.contexto || null, evaluation, phraseId: frase.id });
-  broadcastAutoMinerState(updatedState);
+  publicarEstadoDaAutomatica(updatedState);
   return { action: 'saved', frase, evaluation, state: updatedState };
 }
 
@@ -936,63 +932,33 @@ function keywordGroups(keywords) {
 
 async function getAutoMinerState() {
   const data = await chromeGet({
-    [AUTO_MINER_SETTINGS_KEY]: DEFAULT_AUTO_MINER_SETTINGS,
+    [AUTO_MINER_SETTINGS_KEY]: MineracaoDoDia.ajustesPadrao(),
     [AUTO_MINER_DAILY_KEY]: null,
   });
-  const settings = normalizeAutoMinerSettings(data[AUTO_MINER_SETTINGS_KEY]);
-  const daily = normalizeAutoMinerDaily(data[AUTO_MINER_DAILY_KEY], settings);
+  const settings = MineracaoDoDia.normalizarAjustes(data[AUTO_MINER_SETTINGS_KEY]);
+  const daily = MineracaoDoDia.normalizarDiario(data[AUTO_MINER_DAILY_KEY], settings);
   return { settings, daily };
 }
 
 async function setAutoMinerSettings(partial) {
   const current = await getAutoMinerState();
-  const settings = normalizeAutoMinerSettings({
+  const settings = MineracaoDoDia.normalizarAjustes({
     ...current.settings,
     ...(partial || {}),
     en: { ...current.settings.en, ...(partial.en || {}) },
     ru: { ...current.settings.ru, ...(partial.ru || {}) },
   });
-  const daily = normalizeAutoMinerDaily(current.daily, settings);
+  const daily = MineracaoDoDia.normalizarDiario(current.daily, settings);
   await chromeSet({ [AUTO_MINER_SETTINGS_KEY]: settings, [AUTO_MINER_DAILY_KEY]: daily });
-  chrome.storage.local.set({ pm_auto_miner_state_view: { settings, daily, updatedAt: Date.now() } });
   return { settings, daily };
 }
 
 async function incrementAutoMinerDaily(lang) {
   const state = await getAutoMinerState();
-  const daily = normalizeAutoMinerDaily(state.daily, state.settings);
+  const daily = MineracaoDoDia.normalizarDiario(state.daily, state.settings);
   daily[lang].count += 1;
   await chromeSet({ [AUTO_MINER_DAILY_KEY]: daily });
-  chrome.storage.local.set({ pm_auto_miner_state_view: { settings: state.settings, daily, updatedAt: Date.now() } });
   return { settings: state.settings, daily };
-}
-
-function normalizeAutoMinerSettings(raw) {
-  const source = raw || {};
-  return {
-    en: {
-      enabled: Boolean(source.en?.enabled),
-      dailyLimit: clampAutoMinerLimit(source.en?.dailyLimit ?? DEFAULT_AUTO_MINER_SETTINGS.en.dailyLimit),
-    },
-    ru: {
-      enabled: Boolean(source.ru?.enabled),
-      dailyLimit: clampAutoMinerLimit(source.ru?.dailyLimit ?? DEFAULT_AUTO_MINER_SETTINGS.ru.dailyLimit),
-    },
-  };
-}
-
-function normalizeAutoMinerDaily(raw, settings) {
-  const today = autoMinerTodayKey();
-  const daily = raw && raw.date === today ? raw : { date: today, en: { count: 0 }, ru: { count: 0 } };
-  return {
-    date: today,
-    en: { count: Math.min(Number(daily.en?.count || 0), settings.en.dailyLimit) },
-    ru: { count: Math.min(Number(daily.ru?.count || 0), settings.ru.dailyLimit) },
-  };
-}
-
-function clampAutoMinerLimit(value) {
-  return Math.max(1, Math.min(100, Number(value || 20)));
 }
 
 function normalizeAutoMinerLang(value) {
@@ -1008,14 +974,6 @@ function autoMinerTextKey(value) {
   return normalizeAutoMinerText(value).toLowerCase();
 }
 
-function autoMinerTodayKey() {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
 // ─── Badge da toolbar ────────────────────────────────────────────────────────
 //
 // O contador da mineração automática de hoje, somando só os idiomas ligados
@@ -1027,7 +985,8 @@ function autoMinerTodayKey() {
 // popup, cada frase minerada automaticamente e a virada do dia chegam todas pelo
 // mesmo caminho. A virada do dia não escreve nada sozinha — `getAutoMinerState`
 // já devolve o contador zerado quando a data guardada não é a de hoje —, então um
-// alarme diário pede o badge de novo depois da meia-noite.
+// alarme diário pede o badge de novo depois da meia-noite, e publica o estado
+// de hoje para as abas e o popup, que ainda guardam o contador de ontem.
 
 // As cores do badge são as únicas cores escritas fora de `veio/tokens.css`:
 // `chrome.action` não lê CSS. São cópias de `--veio-accent` e `--veio-accent-ink`,
@@ -1036,31 +995,18 @@ const BADGE_COR_DE_FUNDO = '#F5B83D';
 const BADGE_COR_DO_TEXTO = '#1A1204';
 const ALARME_VIRADA_DO_DIA = 'pm-virada-do-dia';
 
-/** Os idiomas da mineração automática, declarados uma vez só. */
-const IDIOMAS_DA_MINERACAO = Object.keys(DEFAULT_AUTO_MINER_SETTINGS);
-
-/** Quantas frases um idioma minerou automaticamente hoje. */
-function contagemDeHoje(daily, lang) {
-  return Number(daily[lang]?.count || 0);
-}
-
-/** Se um idioma já bateu o limite de hoje. */
-function noLimiteDeHoje(settings, daily, lang) {
-  return contagemDeHoje(daily, lang) >= Number(settings[lang]?.dailyLimit || 0);
-}
-
 /**
  * O badge da mineração automática, ou null quando não há badge nenhum.
  *
  * @param {{settings: object, daily: object}} state
  * @returns {{texto: string, titulo: string} | null}
  */
-function badgeDaMineracaoAutomatica({ settings, daily }) {
-  const ligados = IDIOMAS_DA_MINERACAO.filter(lang => settings[lang]?.enabled);
+function badgeDaMineracaoAutomatica(state) {
+  const ligados = MineracaoDoDia.idiomasLigados(state);
   if (!ligados.length) return null;
 
-  const total = ligados.reduce((soma, lang) => soma + contagemDeHoje(daily, lang), 0);
-  const todosNoLimite = ligados.every(lang => noLimiteDeHoje(settings, daily, lang));
+  const total = ligados.reduce((soma, lang) => soma + MineracaoDoDia.contagemDeHoje(state, lang), 0);
+  const todosNoLimite = ligados.every(lang => MineracaoDoDia.noLimiteDeHoje(state, lang));
 
   // O número do badge não passa pelo catálogo: o limite de cada idioma é no
   // máximo 100, então a soma nunca chega aos milhares onde o PT-BR poria ponto —
@@ -1115,6 +1061,9 @@ chrome.alarms?.onAlarm.addListener(alarme => {
   if (alarme.name !== ALARME_VIRADA_DO_DIA) return;
   agendarViradaDoDia();
   atualizarBadgeDaToolbar();
+  // O contador de ontem não é o de hoje: as abas e o popup precisam saber, e
+  // uma aba que parou no limite de ontem volta a minerar.
+  getAutoMinerState().then(publicarEstadoDaAutomatica);
 });
 
 // Na partida do Chrome o badge não volta sozinho, e nada garante que outro
@@ -1133,12 +1082,20 @@ chrome.storage.onChanged?.addListener((changes, area) => {
 agendarViradaDoDia();
 atualizarBadgeDaToolbar();
 
-function broadcastAutoMinerState(state) {
+/**
+ * Entrega o estado da mineração automática a quem o mostra: o retrato no
+ * storage, que o popup e o painel acompanham, e o aviso a cada aba, que decide
+ * ali se pede mais uma frase. É o único caminho do estado para fora do service
+ * worker; o que o motivou (um ajuste, uma frase minerada, a virada do dia) não
+ * muda o que sai.
+ */
+function publicarEstadoDaAutomatica(state) {
+  chrome.storage.local.set({ [MineracaoDoDia.CHAVES.estadoPublicado]: { settings: state.settings, daily: state.daily, updatedAt: Date.now() } });
   chrome.tabs?.query?.({}, tabs => {
     for (const tab of tabs || []) {
       if (!tab.id) continue;
       try {
-        chrome.tabs.sendMessage(tab.id, { type: 'AUTO_MINER_STATE_CHANGED', state }, () => {
+        chrome.tabs.sendMessage(tab.id, { type: MineracaoDoDia.MENSAGEM_ESTADO_MUDOU, state }, () => {
           void chrome.runtime.lastError;
         });
       } catch {

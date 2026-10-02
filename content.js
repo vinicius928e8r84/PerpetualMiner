@@ -2,10 +2,10 @@
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
 // deste arquivo, pelo manifest: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
-const { detectarIdioma, Atalhos, Overlay, textoDaVoz, IDIOMAS } = PerpetualMiner;
+const { detectarIdioma, Atalhos, Overlay, textoDaVoz, IDIOMAS, MineracaoDoDia } = PerpetualMiner;
 
 const AUTO_MINER_POLL_MS = 700;
-const AUTO_MINER_LAST_EVENT_KEY = 'pm_auto_miner_last_event';
+const AUTO_MINER_LAST_EVENT_KEY = MineracaoDoDia.CHAVES.ultimoEvento;
 const SUBTITLE_UI_TEXT = [
     'audio', 'áudio', 'caption', 'captions', 'configurações', 'detalhes',
     'episódio', 'episode', 'episodes', 'fullscreen', 'idioma', 'legenda',
@@ -47,7 +47,7 @@ chrome.runtime.sendMessage({ type: 'AUTO_MINER_GET_STATE' }, response => {
 });
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type === 'AUTO_MINER_STATE_CHANGED') {
+  if (message?.type === MineracaoDoDia.MENSAGEM_ESTADO_MUDOU) {
     _autoMinerState = message.state;
     atualizarAutoMinerBadge();
   }
@@ -354,9 +354,7 @@ function autoMinerAtivoNaPagina(legenda = '') {
     if (!video || video.paused || video.ended) return false;
     if (!legenda) return false;
     const lang = codigoDoIdioma(detectarIdioma(legenda));
-    const settings = _autoMinerState.settings[lang];
-    const daily = _autoMinerState.daily?.[lang];
-    return Boolean(settings?.enabled && (!daily || daily.count < settings.dailyLimit));
+    return MineracaoDoDia.podeMinerarAgora(_autoMinerState, lang);
 }
 
 function obterLegendaAtual() {
@@ -466,9 +464,9 @@ function atualizarAutoMinerBadge() {
         Overlay.mostrarContador(null);
         return;
     }
-    const n = _autoMinerState.daily?.[lang]?.count || 0;
+    const n = MineracaoDoDia.contagemDeHoje(_autoMinerState, lang);
     const limite = settings.dailyLimit || 0;
-    const noLimite = n >= limite;
+    const noLimite = MineracaoDoDia.noLimiteDeHoje(_autoMinerState, lang);
     const idioma = idiomaDoCodigo(lang);
     Overlay.mostrarContador({
         texto: `${n}/${limite}`,
@@ -488,7 +486,7 @@ function atualizarAutoMinerBadge() {
  */
 function idiomaDoContador() {
     if (_idiomaDaLegenda) return _idiomaDaLegenda;
-    const ligados = ['en', 'ru'].filter(lang => _autoMinerState?.settings?.[lang]?.enabled);
+    const ligados = MineracaoDoDia.idiomasLigados(_autoMinerState);
     return ligados.length === 1 ? ligados[0] : null;
 }
 
@@ -515,7 +513,7 @@ function mostrarNotificacaoAutoMiner(texto, idioma, response, lugar) {
     if (!Overlay.temBotao() || Overlay.mostrandoFalha()) return;
     const lang = codigoDoIdioma(idioma);
     const state = response.state;
-    const n = state?.daily?.[lang]?.count || 0;
+    const n = MineracaoDoDia.contagemDeHoje(state, lang);
     const limite = state?.settings?.[lang]?.dailyLimit || 0;
     Overlay.mostrar({
         tipo: 'sucesso',
