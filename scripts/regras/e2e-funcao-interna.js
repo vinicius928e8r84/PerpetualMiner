@@ -10,7 +10,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { ehJsDaExtensao, fechamento, linhaDe, semComentariosJs } = require('./comum');
+const { comentariosPorLinha, ehJsDaExtensao, fechamento, linhaDe, semComentariosJs } = require('./comum');
 
 const id = 'e2e-funcao-interna';
 
@@ -44,15 +44,17 @@ function funcoesDaExtensao(raiz) {
 const MARCA = new RegExp(`Exceção de teste:\\s*(${EXCECOES.join('|')})\\b`);
 
 // O comentário que nomeia a exceção vale se estiver no próprio evaluate ou nas
-// linhas de comentário logo acima da instrução que o contém.
-function anotado(linhas, primeira, ultima) {
-  if (linhas.slice(primeira - 1, ultima).some(l => MARCA.test(l))) return true;
-  for (let i = primeira - 2, vistas = 0; i >= 0 && vistas < 12; i--, vistas++) {
-    const linha = linhas[i].trim();
-    if (MARCA.test(linha)) return true;
-    if (linha === '' || /^(\/\/|\*|\/\*)/.test(linha)) continue;
-    // Uma linha de código acima pode ser o começo da mesma instrução (um `const x = await`).
-    if (/[=(,]\s*$|^(const|let|await|return)\b/.test(linha) && vistas < 3) continue;
+// linhas de comentário logo acima da instrução que o contém. Só comentário de
+// verdade conta: uma string com as mesmas palavras não nomeia exceção nenhuma.
+function anotado(comentarios, codigo, primeira, ultima) {
+  const marcada = linha => MARCA.test(comentarios.get(linha) || '');
+  for (let linha = primeira; linha <= ultima; linha++) if (marcada(linha)) return true;
+  for (let linha = primeira - 1, vistas = 0; linha >= 1 && vistas < 12; linha--, vistas++) {
+    if (marcada(linha)) return true;
+    const instrucao = (codigo[linha - 1] || '').trim();
+    if (instrucao === '') continue; // linha em branco ou só de comentário
+    // Uma linha de código logo acima pode ser o começo da mesma instrução (um `const x = await`).
+    if (/[=(,]\s*$|^(const|let|await|return)\b/.test(instrucao) && vistas < 3) continue;
     break;
   }
   return false;
@@ -61,7 +63,8 @@ function anotado(linhas, primeira, ultima) {
 function verificar(arquivo, fonte, raiz = process.cwd()) {
   const nomes = funcoesDaExtensao(raiz);
   const codigo = semComentariosJs(fonte);
-  const linhas = fonte.split('\n');
+  const linhasDeCodigo = codigo.split('\n');
+  const comentarios = comentariosPorLinha(arquivo, fonte);
   const achados = [];
   for (const m of codigo.matchAll(/\.evaluate(?:Handle)?\s*\(/g)) {
     const abre = m.index + m[0].length - 1;
@@ -73,7 +76,7 @@ function verificar(arquivo, fonte, raiz = process.cwd()) {
     for (const c of corpo.matchAll(/\bPerpetualMiner((?:\.[A-Za-z_$][\w$]*)+)/g)) usadas.add(`PerpetualMiner${c[1]}`);
     if (usadas.size === 0) continue;
     const primeira = linhaDe(codigo, m.index);
-    if (anotado(linhas, primeira, linhaDe(codigo, fecha))) continue;
+    if (anotado(comentarios, linhasDeCodigo, primeira, linhaDe(codigo, fecha))) continue;
     achados.push({ linha: primeira, detalhe: `evaluate chama o código da extensão: ${[...usadas].join(', ')}` });
   }
   return achados;
