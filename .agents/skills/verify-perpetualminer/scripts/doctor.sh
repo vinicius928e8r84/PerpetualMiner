@@ -11,7 +11,7 @@ nok() { printf 'FAIL  %s\n' "$*"; falhas=$((falhas + 1)); }
 
 printf 'repo     %s\n' "$RAIZ"
 printf 'commit   %s%s\n' "$(git -C "$RAIZ" rev-parse --short HEAD)" \
-  "$([ -n "$(git -C "$RAIZ" status --porcelain -- . ':!.agents' ':!.claude')" ] && echo ' (+ uncommitted changes)')"
+  "$([ -n "$(git -C "$RAIZ" status --porcelain)" ] && echo ' (+ uncommitted changes)')"
 printf 'version  %s (manifest.json)\n' "$(node -p "require('$RAIZ/manifest.json').version")"
 
 command -v node >/dev/null && ok "node $(node --version)" || nok 'node not on PATH'

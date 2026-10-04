@@ -24,12 +24,12 @@ Preconditions:
 
 - `doctor.sh` green. The specs seed `frases` with `extensao.gravarStorage({ frases })` and freeze the clock at `2026-09-18T12:00:00`.
 
-- **Search (`frases-search`).** Run `drive.sh frases-busca painel-frases -g "a busca acha pelo texto"`. The spec fills the `Buscar nas frases` searchbox with `CALL` (cards `close call`, `call it a day`), then `ted lasso` (Título match), then clicks `Limpar busca`. Observable: card counts 2 → 1 → 4 and the searchbox empty.
-- **Filters (`frases-filters`).** Run `drive.sh frases-filtros painel-frases -g "filtram a lista"`. Observable: the Fonte/idioma/ordem comboboxes and the `Ocultar enviadas e exportadas` switch change the visible cards.
-- **Paging (`frases-paging`).** Run `drive.sh frases-pag painel-frases -g "10 por página"`. Observable: `1–10 de 24`, ‹ › walk the pages.
-- **Cards and Palavra (`frases-cards`, `frases-word`).** Run `drive.sh frases-cartoes painel-frases -g "cada frase é um cartão"` and `-g "clicar numa palavra grava a Palavra"`. Observable: day headings and, after the click, `palavra:` chip and a highlighted word that survives `page.reload()`.
-- **Selection and delete (`frases-select`, `frases-delete`).** Run `drive.sh frases-selecao painel-frases-selecao -g "Apagar 1 frase pede confirmação"` and `-g "sem seleção, só"`. Observable: modal `Apagar esta frase?` with Cancelar focused and no mention of "outros computadores" (no account); Cancelar leaves 3 cards; confirming leaves 2 and `frases()` has exactly those 2 texts; no `.veio-toast`.
-- **Empty (`frases-empty`).** Run `drive.sh frases-vazio painel-frases -g "primeiro uso: PAI-02"`. Observable: the empty state shows `Alt+S` and Minerar frases.
+- **Search (`frases-search`).** Run `drive.sh frases-busca painel-frases.spec -g "a busca acha pelo texto"`. The spec fills the `Buscar nas frases` searchbox with `CALL` (cards `close call`, `call it a day`), then `ted lasso` (Título match), then clicks `Limpar busca`. Observable: card counts 2 → 1 → 4 and the searchbox empty.
+- **Filters (`frases-filters`).** Run `drive.sh frases-filtros painel-frases.spec -g "filtram a lista"`. Observable: the Fonte/idioma/ordem comboboxes and the `Ocultar enviadas e exportadas` switch change the visible cards.
+- **Paging (`frases-paging`).** Run `drive.sh frases-pag painel-frases.spec -g "10 por página"`. Observable: `1–10 de 24`, ‹ › walk the pages.
+- **Cards and Palavra (`frases-cards`, `frases-word`).** Run `drive.sh frases-cartoes painel-frases.spec -g "cada frase é um cartão"` and `-g "clicar numa palavra grava a Palavra"`. Observable: day headings and, after the click, `palavra:` chip and a highlighted word that survives `page.reload()`.
+- **Selection and delete (`frases-select`, `frases-delete`).** Run `drive.sh frases-selecao painel-frases-selecao.spec -g "Apagar 1 frase pede confirmação"` and `-g "sem seleção, só"`. Observable: modal `Apagar esta frase?` with Cancelar focused and no mention of "outros computadores" (no account); Cancelar leaves 3 cards; confirming leaves 2 and `frases()` has exactly those 2 texts; no `.veio-toast`.
+- **Empty (`frases-empty`).** Run `drive.sh frases-vazio painel-frases.spec -g "primeiro uso: PAI-02"`. Observable: the empty state shows `Alt+S` and Minerar frases.
 - **Proof.** These specs write no PNG. For a screenshot, copy the spec to `e2e/tests/zz-scratch-<run-id>.spec.js`, add `await fotografar(page, 'frases-<state>.png')` before the final assertion and run it with `drive.sh`. The approved pictures are the committed baselines of `painel-frases-visual.spec.js`.
 
 ## Gotchas
