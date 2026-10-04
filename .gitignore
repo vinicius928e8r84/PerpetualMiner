@@ -39,3 +39,10 @@ complemento/user_files/
 
 # Venv Python (scripts/preparar-python.sh)
 .venv/
+
+# Saída do Playwright rodado na raiz (e2e/.gitignore cobre só e2e/test-results)
+test-results/
+
+# Scratch de agentes: páginas de protótipo (Lavish) e mapa do Wayfinder
+.lavish/
+.wayfinder/

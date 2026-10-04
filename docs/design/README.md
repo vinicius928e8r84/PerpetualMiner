@@ -99,7 +99,7 @@ As specs abaixo foram corrigidas no lugar. O histórico está no git e no [ticke
 Decisões tomadas na consolidação:
 
 - **Palavra:** o termo entrou no glossário. Na tela, o chip é `palavra: …` quando você escolheu e `auto: …` quando foi detectada, igual no Painel e no overlay. “keyword” fica só no código.
-- **Falha no overlay:** fica até fechar (× ou Esc) ou até a próxima captura substituí-la, com “Tentar de novo”. O sucesso some em cerca de 3,5 s.
+- **Falha no overlay:** como o sucesso, some sozinha em ~3,5 s; o Esc fecha antes. Sem × e sem “Tentar de novo” (revisão do dono, PR #66).
 - **Botão de perigo:** contorno na entrada que abre o modal; preenchido só no botão que confirma dentro do modal destrutivo.
 - **A Veio absorveu a deriva:** títulos 22/700 (página), 24/800 (hero) e 15/700 (card), além do 20/700; raio 22; a exceção de dataviz (ouro e `info` marcam séries em gráficos); e pulsar/piscar só sem `prefers-reduced-motion`.
 - **Popup sem subtítulo:** só a marca Veio + “PerpetualMiner”. A descrição fica para a Boas-vindas e a loja.
@@ -111,9 +111,9 @@ Decisões tomadas na consolidação:
 - **F1 (Conexão não instalada):** é provisória até existir o instalador sem terminal, que é um esforço futuro fora deste mapa ([Boas-vindas](painel/boas-vindas/README.md)).
 - **Fontes:** Manrope e JetBrains Mono (latin + cyrillic) empacotadas como `.woff2`. No overlay, entram via `web_accessible_resources` e Shadow DOM. Os protótipos puxam do Google Fonts; a extensão não deve.
 
-## Ordem sugerida de construção
+## Histórico: a ordem em que a construção foi feita (concluída)
 
-Fundação primeiro, depois de dentro pra fora: cada passo só usa o que já existe. É uma sugestão, não um plano.
+Fundação primeiro, depois de dentro pra fora: cada passo só usava o que já existia. Os 8 passos estão no código; o que cada superfície reconstruída faz hoje está no `CLAUDE.md` § Architecture.
 
 **Antes de tudo: os 4 bugs altos** de [Bugs encontrados na auditoria do front](https://github.com/vinicius928e8r84/PerpetualMiner/issues/9), corrigidos no código atual. Dois perdem dados (o salvamento em paralelo do BookReader, `bookreader.js:436 · background.js:167`, e o Deletar do popup que ressuscita no sync, `popup.js:184`). Dois são de segurança (o `postMessage` sem checar a origem, `content.js:148`, e o `innerHTML` sem escape, `content.js:134, 733, 765`).
 
@@ -130,4 +130,4 @@ Fundação primeiro, depois de dentro pra fora: cada passo só usa o que já exi
 
 ## Próximo passo
 
-A construção é um esforço separado. A spec dela é [Construção do redesign do front-end (Veio)](https://github.com/vinicius928e8r84/PerpetualMiner/issues/17): histórias de uso, decisões de implementação e o seam de teste (a extensão desempacotada no Chromium, com a rede falsificada na fronteira HTTP). Dela saem as issues de construção, guiadas pela ordem acima.
+Não há: a construção terminou. O estado atual de cada superfície está em `CLAUDE.md` § Architecture; a spec que guiou a construção é [Construção do redesign do front-end (Veio)](https://github.com/vinicius928e8r84/PerpetualMiner/issues/17).

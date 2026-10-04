@@ -19,10 +19,10 @@ Resolução do ticket [Protótipo: Overlay in-page (content.js)](https://github.
 - **Tokens escuros sempre** e Shadow DOM, porque o overlay vive sobre sites de terceiros. Nada é injetado no DOM do site: a linha e o grifo são elementos do overlay posicionados sobre o texto.
 - **Botão:** o azulejo Veio num círculo de 46 px; `<button>` com `aria-label` MIN-07 “Minerar legenda (Alt+S)” (com o atalho gravável atual no lugar de Alt+S) e o rótulo visível ao passar o mouse.
 - **Contador da mineração automática:** pílula ouro mono `n/limite` no canto do botão. É o contador **do idioma daquela captura**, não a soma do badge da toolbar (o badge soma os idiomas ligados). No limite vira contorno ouro. Some com a mineração automática desligada para esse idioma.
-- **Uma instância por vez:** uma captura nova substitui a anterior. **Sucesso** some em ~3,5 s. **Falha** fica até você fechar (×), apertar Esc ou a próxima captura substituí-la. Transições ≤ 150 ms. Com `prefers-reduced-motion`, sem animação.
+- **Uma instância por vez:** uma captura nova substitui a anterior. **Sucesso** some em ~3,5 s. ~~**Falha** fica até você fechar (×), apertar Esc ou a próxima captura substituí-la.~~ (revisto no PR #66, abaixo: a falha some sozinha em ~3,5 s; o Esc fecha antes.) Transições ≤ 150 ms. Com `prefers-reduced-motion`, sem animação.
 - **A linha só existe enquanto o mesmo texto está na tela.** Se a legenda troca, a linha some na hora; se já tinha trocado quando a resposta chegou, vai direto pra pílula.
 - **A pílula nunca corta a palavra grifada:** se a frase é longa, a prévia começa perto dela (“…saying it’s your **responsibility**.”).
-- **Falha vira mensagem** (pílula com ícone `danger` e ×), no lugar da borda vermelha muda de hoje. A falha ao salvar (MIN-03) traz o botão “Tentar de novo”.
+- **Falha vira mensagem** (pílula com ícone `danger`), no lugar da borda vermelha muda de hoje. ~~A falha ao salvar (MIN-03) traz o botão “Tentar de novo”.~~ (revisto no PR #66, abaixo: sem “Tentar de novo”.)
 - `role="status"` / `aria-live="polite"` no conteúdo do feedback.
 
 ## Revisão do dono na construção (PR #66)
