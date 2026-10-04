@@ -63,8 +63,10 @@ class _Atendente(BaseHTTPRequestHandler):
     def _pedido_aceito(self, caminho):
         """Só a extensão pode pedir, pela origem dela. A exceção é a saúde: o Chrome manda o GET de uma
         página da extensão sem `Origin` e nada diferencia uma extensão da outra, então `GET /health`
-        fica aberto a quem pedir (só diz a versão e o perfil). Tudo o mais exige a origem da extensão,
-        que o navegador põe em todo POST e ninguém falsifica."""
+        fica aberto a quem pedir (só diz a versão e o perfil). Tudo o mais exige a origem da extensão.
+        O `Origin` não é autenticação: o `fetch` de uma página comum não escolhe esse cabeçalho, mas uma
+        extensão com `webRequest` e `extraHeaders` pode pô-lo, e um programa local também. Antes da primeira
+        rota que usa a chave ou lê dado privado, isso tem de ser testado e reforçado (ver contrato/LEIA-ME.md)."""
         origem = self.headers.get("Origin")
         if origem is not None:
             return origem in self.conexao.origens_aceitas

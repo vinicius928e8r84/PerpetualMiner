@@ -12,10 +12,6 @@ except ImportError:
     mw = None
 
 if mw is not None:
-    from . import inicio
+    from . import no_anki
 
-    def _perfil_aberto():
-        gerente = getattr(mw, "pm", None)
-        return getattr(gerente, "name", None)
-
-    CONEXAO = inicio.iniciar(os.path.dirname(os.path.abspath(__file__)), _perfil_aberto)
+    CONEXAO = no_anki.ao_carregar(mw, os.path.dirname(os.path.abspath(__file__)))

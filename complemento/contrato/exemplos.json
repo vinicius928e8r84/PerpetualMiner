@@ -62,6 +62,24 @@
       }
     },
     {
+      "nome": "POST na saúde, com a origem da extensão, não existe",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/health",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf"
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "not_found"
+        }
+      }
+    },
+    {
       "nome": "POST de uma rota que a Conexão não tem, com a origem da extensão",
       "daExtensao": true,
       "contexto": {

@@ -18,7 +18,7 @@ What the reviewer enforces (Voice catalog copy, Veio tokens, base components, st
 ## Commands
 
 - Fast checks: `node test_auto_keyword.js && node test_sync.js && node test_empacotar.js && node test_fake_anki.js`.
-- Add-on: `python3.9 complemento/test_servidor.py`, `test_inicio.py` and `test_pacote.py`, also with `python3.13` (`uv python install 3.9 3.13` if missing).
+- Add-on: `python3.9 complemento/test_servidor.py`, `test_inicio.py`, `test_no_anki.py` and `test_pacote.py`, also with `python3.13` (`uv python install 3.9 3.13` if missing).
 - Bridge: `python3 bridge/test_envio.py` (no Flask needed); `bridge/test_anki_launcher.py` and `bridge/test_envio_api.py` need `pip install -r bridge/requirements.txt`. Engine: `cd engine && python3 -m unittest discover -p "test_*.py"` (needs `engine/requirements.txt`).
 - e2e: `cd e2e && npx playwright test <specs> --workers=2`; the whole suite with `npm test` (first time: `npm ci` and `npm run setup`; see `CLAUDE.md` § Testing).
 - Running and installing the bridge on Windows, and its routes: `bridge/README.md`. When debugging Anki, try `/health`, `/anki/status` and `/anki/repair` before killing processes.

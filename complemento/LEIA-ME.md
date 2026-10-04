@@ -7,6 +7,7 @@ Nesta fatia ela sobe em `127.0.0.1:8766`, numa thread, e responde só a saúde
 | Arquivo | O que faz |
 |---|---|
 | `__init__.py` | O que o Anki importa. Fora do Anki (nos testes) não há `aqt` e nada acontece |
+| `no_anki.py` | A ligação com o `mw` do Anki: `perfil_aberto` (só com a coleção aberta; selecionado na janela de perfis é `null`) e `ao_carregar` |
 | `inicio.py` | Ao carregar: prepara `user_files`, o log e sobe a Conexão. Nunca levanta erro |
 | `servidor.py` | O servidor HTTP e as rotas (`ROTAS`); só a extensão é atendida |
 | `registro.py` | O logger do complemento: todo erro vai para `user_files/logs/complemento.log` |
@@ -20,10 +21,11 @@ Nesta fatia ela sobe em `127.0.0.1:8766`, numa thread, e responde só a saúde
 ```bash
 python3.9 complemento/test_servidor.py   # o servidor real, o contrato, o processo do Anki intacto
 python3.9 complemento/test_inicio.py     # a pasta de dados, a Conexão no ar, a porta ocupada
+python3.9 complemento/test_no_anki.py    # o adaptador do Anki (um mw de mentira), pelo HTTP
 python3.9 complemento/test_pacote.py     # o conteúdo do .ankiaddon
 ```
 
-Rode os três também com `python3.13`. Sem os interpretadores: `uv python install 3.9 3.13`.
+Rode todos também com `python3.12` e `python3.13`. Sem os interpretadores: `uv python install 3.9 3.13`.
 
 ## Ensaio do dono, no Mac
 

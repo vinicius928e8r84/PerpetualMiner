@@ -120,12 +120,13 @@ class OrigemDosPedidos(unittest.TestCase):
         self.assertEqual(sorted(json.loads(corpo)), ["ok", "perfil", "versao"])
         self.assertNotIn("Access-Control-Allow-Origin", cabecalhos)
 
-    def test_sem_origem_nada_alem_da_saude_e_atendido(self):
+    def test_sem_origem_nada_alem_da_saude_e_atendido_com_ou_sem_sec_fetch_site(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            for metodo, caminho in (("GET", "/jobs"), ("GET", "/health/"), ("POST", "/health"), ("POST", "/jobs"), ("OPTIONS", "/health")):
-                with self.subTest("%s %s" % (metodo, caminho)):
-                    status, _, corpo = conexao.pedir(metodo, caminho, origem=None)
-                    self.assertEqual((status, json.loads(corpo) if corpo else None), (403, {"error": "origin_not_allowed"}))
+            for cabecalhos in ({}, {"Sec-Fetch-Site": "none"}):
+                for metodo, caminho in (("GET", "/jobs"), ("GET", "/health/"), ("POST", "/health"), ("POST", "/jobs"), ("OPTIONS", "/health")):
+                    with self.subTest("%s %s %s" % (metodo, caminho, cabecalhos)):
+                        status, _, corpo = conexao.pedir(metodo, caminho, origem=None, cabecalhos=cabecalhos)
+                        self.assertEqual((status, json.loads(corpo) if corpo else None), (403, {"error": "origin_not_allowed"}))
 
     def test_com_a_origem_de_outra_extensao_nada_e_atendido_nem_a_saude(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:

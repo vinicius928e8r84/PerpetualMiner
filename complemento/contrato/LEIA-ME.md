@@ -36,7 +36,7 @@ Mudar só um lado quebra um teste, e a mensagem diz o exemplo e os dois arquivos
 O complemento gasta a chave da OpenAI, então a regra é a da origem da extensão
 (`chrome-extension://<id>`), e o que o Chrome manda de verdade (visto numa extensão real contra o servidor real) decide o resto:
 
-- o **POST** (e o PUT) de uma página da extensão leva `Origin: chrome-extension://<id>`, que ninguém falsifica;
+- o **POST** (e o PUT) de uma página da extensão leva `Origin: chrome-extension://<id>`, que o `fetch` de uma página comum não consegue escolher;
 - o **GET** de uma página da extensão, com permissão de host, vai **sem** `Origin`, e é igual ao GET de
   qualquer outra extensão com a mesma permissão (credenciais, cabeçalho próprio e `mode: cors` não mudam isso).
 
@@ -47,7 +47,10 @@ Por isso (decisão do dono, opção B):
 2. **Todo o resto exige a origem da extensão.** Sem `Origin`, ou com a de outra extensão ou site, é 403
    (`origin_not_allowed`). Por isso rota que gasta a chave ou lê dado da pessoa (a chave, os custos, o
    vocabulário, os Envios) é **POST**, nunca GET.
-3. Fica para a primeira rota de leitura sensível decidir entre POST para as leituras autenticadas
+3. **O `Origin` não é autenticação.** Uma extensão com a permissão `webRequest` e `extraHeaders` pode pôr esse
+   cabeçalho, e um programa local também. Antes da primeira rota que usa a chave ou lê dado privado, isso tem
+   de ser testado e reforçado; a escolha de como (POST ou token de pareamento) segue adiada.
+4. Fica para a primeira rota de leitura sensível decidir entre POST para as leituras autenticadas
    e um token de pareamento (a extensão o recebe por um POST e o manda nos GET).
 
 Rota nova que deva responder sem origem entra em `ROTAS_ABERTAS` (`servidor.py`) só com essa decisão.

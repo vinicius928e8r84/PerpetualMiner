@@ -203,7 +203,7 @@ function criarFakeAnki() {
       return responderJson(route, status, json);
     }
     if (url.pathname === '/health') {
-      const { status, json } = respostaDoContrato('GET', '/health');
+      const { status, json } = respostaDoContrato(req.method(), '/health');
       return responderJson(route, status, json);
     }
     if (url.pathname === '/anki/vocabulary') {
