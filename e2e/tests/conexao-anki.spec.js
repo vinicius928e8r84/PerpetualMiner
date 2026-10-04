@@ -27,7 +27,8 @@ const lerJaConectou = async extensao => (await extensao.lerStorage('pm_anki_ja_c
 // A inicialização do Chromium pode demorar: os 3 s são medidos só a partir do
 // pedido HTTP, não da navegação, então o pedido tem folga para chegar.
 const inicioDoHealth = page => page.waitForRequest('http://127.0.0.1:8766/health', { timeout: 10000 }).then(() => Date.now());
-const ateTresSegundos = inicio => Math.max(1, 3200 - (Date.now() - inicio));
+// Os 3 s do limite mais a folga que a tela leva para mostrar a mudança; num runner de 2 núcleos a padrão (200 ms) pode não bastar, e o teste que não mede o limite em si passa uma maior.
+const ateTresSegundos = (inicio, folga = 200) => Math.max(1, 3000 + folga - (Date.now() - inicio));
 
 test('painel: uma porta que aceita e não responde conta como desligada em 3 s, e antes disso é Conectando', async ({ page, extensao, fakes }) => {
   fakes.anki.silenciar();
@@ -60,7 +61,7 @@ test('painel: a porta muda é detectada mesmo se a leitura do fato não termina'
   const inicio = page.waitForRequest('http://127.0.0.1:8766/health', { timeout: 10000 }).then(() => Date.now());
   await page.goto(extensao.url('painel.html#anki/custos'));
   const instante = await inicio;
-  await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada', { timeout: ateTresSegundos(instante) });
+  await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada', { timeout: ateTresSegundos(instante, 1000) });
   await expect(faixaF1(page)).toBeVisible();
 });
 
