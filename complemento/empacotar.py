@@ -17,8 +17,8 @@ PASTA = os.path.dirname(os.path.abspath(__file__))
 FORA_DO_PACOTE = ("test_", "empacotar.py", "__pycache__", "user_files", "contrato")
 
 
-def _entra(relativo):
-    return not any(parte.startswith(FORA_DO_PACOTE) or parte in FORA_DO_PACOTE for parte in relativo.split(os.sep))
+def _entra_no_pacote(relativo):
+    return not any(parte.startswith(FORA_DO_PACOTE) for parte in relativo.split(os.sep))
 
 
 def arquivos_do_pacote():
@@ -26,7 +26,7 @@ def arquivos_do_pacote():
     for pasta, subpastas, arquivos in os.walk(PASTA):
         for nome in arquivos:
             relativo = os.path.relpath(os.path.join(pasta, nome), PASTA)
-            if _entra(relativo):
+            if _entra_no_pacote(relativo):
                 achados.append(relativo)
     return sorted(achados)
 

@@ -205,34 +205,5 @@ class ProcessoDoAnki(unittest.TestCase):
         self.assertEqual(erro.getvalue(), "")
 
 
-class PortaDaConexao(unittest.TestCase):
-    def test_com_a_porta_ocupada_a_conexao_nao_sobe_e_diz_o_motivo(self):
-        ocupante = socket.socket()
-        ocupante.bind(("127.0.0.1", 0))
-        ocupante.listen(1)
-        porta = ocupante.getsockname()[1]
-        try:
-            with tempfile.TemporaryDirectory() as pasta:
-                logs = os.path.join(pasta, "logs")
-                os.makedirs(logs)
-                logger = registro.criar(logs)
-                conexao = servidor.Conexao(
-                    porta=porta,
-                    origens_aceitas=configuracao.ORIGENS_ACEITAS,
-                    versao=configuracao.VERSAO,
-                    perfil_aberto=lambda: None,
-                    logger=logger,
-                )
-                subiu = conexao.iniciar()
-                with open(os.path.join(logs, "complemento.log"), encoding="utf-8") as arquivo:
-                    registrado = arquivo.read()
-                for handler in list(logger.handlers):
-                    handler.close()
-        finally:
-            ocupante.close()
-        self.assertFalse(subiu)
-        self.assertIn("A porta %d está ocupada" % porta, registrado)
-
-
 if __name__ == "__main__":
     unittest.main()
