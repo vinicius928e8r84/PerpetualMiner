@@ -28,21 +28,21 @@ const PROPRIEDADE_DE_COR = /^(?:color|background(?:-color|-image)?|border(?:-(?:
 const PROPRIEDADE_DE_RAIO = /^border(?:-(?:top|bottom|start|end)-(?:left|right|start|end))?-radius$/;
 const PROPRIEDADE_DE_TEMPO = /^(?:transition|animation)(?:-duration|-delay)?$/;
 
-// O valor sem o que está dentro de var(): o reserva de `var(--x, 12px)` é do token.
+// O valor sem os nomes dos tokens: `var(--x)` some, e de `var(--x, 12px)` fica só o
+// reserva, que é literal e conta como qualquer outro.
 function semVar(valor) {
-  let saida = valor;
-  for (let antes = ''; antes !== saida;) {
-    antes = saida;
-    saida = saida.replace(/var\([^()]*\)/g, 'var()');
-  }
-  return saida;
+  return valor
+    .replace(/var\(\s*--[\w-]+\s*\)/g, 'var()')
+    .replace(/var\(\s*--[\w-]+\s*,/g, '(');
 }
 
 /** O que há de errado com `propriedade: valor`, ou null. */
 function literal(propriedade, valorBruto) {
   const p = propriedade.trim().toLowerCase();
-  if (p.startsWith('--')) return null;
   const valor = semVar(valorBruto).replace(/url\([^)]*\)/g, 'url()');
+  // Uma propriedade customizada fora de veio/tokens.css é um token paralelo: a cor
+  // literal nela conta. Tamanhos e espaçamentos em variáveis locais não são regra.
+  if (p.startsWith('--')) return COR.test(valor) ? `cor literal na variável \`${p}\`` : null;
   if (PROPRIEDADE_DE_COR.test(p) && COR.test(valor)) return `cor literal em \`${p}\``;
   if (p === 'font-size' && /(?:^|[\s(])\d*\.?\d+(?:px|rem|pt)\b/.test(valor)) return 'tamanho de letra literal';
   if (p === 'font' && /(?:^|\s)\d*\.?\d+(?:px|rem|pt)\b/.test(valor)) return 'tamanho de letra literal em `font`';
