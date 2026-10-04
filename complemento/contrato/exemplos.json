@@ -3,14 +3,14 @@
   "exemplos": [
     {
       "nome": "saúde com um perfil aberto",
+      "daExtensao": true,
       "contexto": {
         "perfil": "Usuário 1"
       },
       "pedido": {
         "metodo": "GET",
         "caminho": "/health",
-        "origem": null,
-        "secFetchSite": "none"
+        "origem": null
       },
       "resposta": {
         "status": 200,
@@ -23,14 +23,14 @@
     },
     {
       "nome": "saúde com o Anki na tela de perfis",
+      "daExtensao": true,
       "contexto": {
         "perfil": null
       },
       "pedido": {
         "metodo": "GET",
         "caminho": "/health",
-        "origem": null,
-        "secFetchSite": "none"
+        "origem": null
       },
       "resposta": {
         "status": 200,
@@ -43,14 +43,14 @@
     },
     {
       "nome": "saúde pedida com a origem da extensão",
+      "daExtensao": false,
       "contexto": {
         "perfil": "Usuário 1"
       },
       "pedido": {
         "metodo": "GET",
         "caminho": "/health",
-        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
-        "secFetchSite": "none"
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf"
       },
       "resposta": {
         "status": 200,
@@ -62,15 +62,15 @@
       }
     },
     {
-      "nome": "rota que a Conexão não tem",
+      "nome": "POST de uma rota que a Conexão não tem, com a origem da extensão",
+      "daExtensao": true,
       "contexto": {
         "perfil": "Usuário 1"
       },
       "pedido": {
-        "metodo": "GET",
+        "metodo": "POST",
         "caminho": "/nao-existe",
-        "origem": null,
-        "secFetchSite": "none"
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf"
       },
       "resposta": {
         "status": 404,
@@ -80,15 +80,15 @@
       }
     },
     {
-      "nome": "origem de outro site é recusada",
+      "nome": "saúde com a origem de outro site é recusada",
+      "daExtensao": false,
       "contexto": {
         "perfil": "Usuário 1"
       },
       "pedido": {
         "metodo": "GET",
         "caminho": "/health",
-        "origem": "https://exemplo.com",
-        "secFetchSite": "cross-site"
+        "origem": "https://exemplo.com"
       },
       "resposta": {
         "status": 403,
@@ -98,15 +98,15 @@
       }
     },
     {
-      "nome": "origem de outra extensão é recusada",
+      "nome": "saúde com a origem de outra extensão é recusada",
+      "daExtensao": false,
       "contexto": {
         "perfil": "Usuário 1"
       },
       "pedido": {
         "metodo": "GET",
         "caminho": "/health",
-        "origem": "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "secFetchSite": "none"
+        "origem": "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       },
       "resposta": {
         "status": 403,
@@ -116,15 +116,15 @@
       }
     },
     {
-      "nome": "pedido sem origem vindo de uma página de outro site é recusado",
+      "nome": "GET de qualquer outra rota sem origem é recusado",
+      "daExtensao": false,
       "contexto": {
         "perfil": "Usuário 1"
       },
       "pedido": {
         "metodo": "GET",
-        "caminho": "/health",
-        "origem": null,
-        "secFetchSite": "cross-site"
+        "caminho": "/nao-existe",
+        "origem": null
       },
       "resposta": {
         "status": 403,
@@ -134,15 +134,33 @@
       }
     },
     {
-      "nome": "pedido sem origem e sem cabeçalhos do navegador é recusado",
+      "nome": "POST sem origem é recusado",
+      "daExtensao": false,
       "contexto": {
         "perfil": "Usuário 1"
       },
       "pedido": {
-        "metodo": "GET",
-        "caminho": "/health",
-        "origem": null,
-        "secFetchSite": null
+        "metodo": "POST",
+        "caminho": "/nao-existe",
+        "origem": null
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    },
+    {
+      "nome": "POST com a origem de outra extensão é recusado",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/nao-existe",
+        "origem": "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       },
       "resposta": {
         "status": 403,

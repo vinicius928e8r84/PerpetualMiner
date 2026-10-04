@@ -24,6 +24,10 @@ ROTAS = {
     ("GET", "/health"): _saude,
 }
 
+# As rotas que respondem sem a origem da extensão. Rota nova não entra aqui sem decisão do dono:
+# o que gasta a chave ou lê dado da pessoa é POST e exige a origem.
+ROTAS_ABERTAS = frozenset([("GET", "/health")])
+
 
 class _Atendente(BaseHTTPRequestHandler):
     server_version = "PerpetualMiner"
@@ -56,21 +60,21 @@ class _Atendente(BaseHTTPRequestHandler):
         if self.command != "HEAD":
             self.wfile.write(corpo)
 
-    def _pedido_aceito(self):
-        """Só a extensão pode pedir. O Chrome não manda `Origin` no GET que uma página da extensão faz
-        com permissão de host (só `Sec-Fetch-Site: none`), mas manda no POST; uma página de outro
-        site, mesmo sem `Origin`, vem como cross-site ou same-site, e um programa sem esses
-        cabeçalhos não é o navegador da pessoa."""
+    def _pedido_aceito(self, caminho):
+        """Só a extensão pode pedir, pela origem dela. A exceção é a saúde: o Chrome manda o GET de uma
+        página da extensão sem `Origin` e nada diferencia uma extensão da outra, então `GET /health`
+        fica aberto a quem pedir (só diz a versão e o perfil). Tudo o mais exige a origem da extensão,
+        que o navegador põe em todo POST e ninguém falsifica."""
         origem = self.headers.get("Origin")
         if origem is not None:
             return origem in self.conexao.origens_aceitas
-        return self.headers.get("Sec-Fetch-Site") == "none"
+        return (self.command, caminho) in ROTAS_ABERTAS
 
     def _atender(self):
-        if not self._pedido_aceito():
+        caminho = self.path.split("?", 1)[0]
+        if not self._pedido_aceito(caminho):
             return self._responder(403, {"error": "origin_not_allowed"})
         origem = self.headers.get("Origin")
-        caminho = self.path.split("?", 1)[0]
         if self.command == "OPTIONS":
             extras = {
                 "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",

@@ -31,12 +31,12 @@ const contrato = require('../../complemento/contrato/exemplos.json');
 // `duplicatePhraseIds`, e o que não virou cartão vai em `failedPhraseIds`.
 
 /**
- * O pedido que a extensão faz de verdade: o GET de uma página dela, com permissão de
- * host, vai sem `Origin` e com `Sec-Fetch-Site: none`; o POST leva a origem dela.
- * Os outros exemplos (outro site, outra extensão) só o lado do complemento confere.
+ * O exemplo é um pedido que a extensão faz de verdade (`daExtensao`): o GET de uma página dela
+ * vai sem `Origin` e só a saúde o aceita; o POST leva a origem dela. Os outros exemplos (outro
+ * site, outra extensão, uma rota sem origem) só o lado do complemento confere.
  */
-function pedidoDaExtensao(pedido) {
-  return pedido.secFetchSite === 'none' && [null, contrato.origemDaExtensao].includes(pedido.origem);
+function exemploDaExtensao(exemplo) {
+  return exemplo.daExtensao === true;
 }
 
 function criarFakeAnki() {
@@ -178,7 +178,7 @@ function criarFakeAnki() {
   /** A resposta que o contrato dá ao pedido da extensão, no contexto de agora. */
   function respostaDoContrato(metodo, caminho) {
     const exemplo = contrato.exemplos.find(e =>
-      pedidoDaExtensao(e.pedido)
+      exemploDaExtensao(e)
       && e.pedido.metodo === metodo && e.pedido.caminho === caminho
       && JSON.stringify(e.contexto) === JSON.stringify(estado.contexto));
     if (!exemplo) {
@@ -262,7 +262,7 @@ function criarFakeAnki() {
     abrirPerfil(perfil) { estado.contexto = { ...estado.contexto, perfil }; },
     /** As respostas do contrato a um pedido, para o teste que confere o fake contra os exemplos. */
     respostaDoContrato,
-    pedidoDaExtensao,
+    exemploDaExtensao,
     /** A porta aceita a conexão e nunca responde (o /health do bridge travado). */
     silenciar() { estado.muda = true; },
     voltarAFalar() { estado.muda = false; },

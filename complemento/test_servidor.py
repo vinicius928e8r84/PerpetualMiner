@@ -55,13 +55,11 @@ class ConexaoNoTeste:
         for handler in list(self.logger.handlers):
             handler.close()
 
-    def pedir(self, metodo, caminho, origem=ORIGEM, cabecalhos=None, sec_fetch_site="none"):
+    def pedir(self, metodo, caminho, origem=ORIGEM, cabecalhos=None):
         pedido = http.client.HTTPConnection("127.0.0.1", self.conexao.porta, timeout=5)
         enviados = dict(cabecalhos or {})
         if origem is not None:
             enviados["Origin"] = origem
-        if sec_fetch_site is not None:
-            enviados["Sec-Fetch-Site"] = sec_fetch_site
         try:
             pedido.request(metodo, caminho, headers=enviados)
             resposta = pedido.getresponse()
@@ -80,7 +78,7 @@ class ContratoDaConexao(unittest.TestCase):
             with self.subTest(exemplo["nome"]), tempfile.TemporaryDirectory() as pasta:
                 with ConexaoNoTeste(pasta, perfil=exemplo["contexto"]["perfil"]) as conexao:
                     pedido = exemplo["pedido"]
-                    status, _, corpo = conexao.pedir(pedido["metodo"], pedido["caminho"], pedido["origem"], sec_fetch_site=pedido["secFetchSite"])
+                    status, _, corpo = conexao.pedir(pedido["metodo"], pedido["caminho"], pedido["origem"])
                 self.assertEqual(
                     (status, json.loads(corpo)),
                     (exemplo["resposta"]["status"], exemplo["resposta"]["json"]),
@@ -115,11 +113,25 @@ class OrigemDosPedidos(unittest.TestCase):
             _, cabecalhos, _ = conexao.pedir("GET", "/health")
         self.assertEqual(cabecalhos.get("Access-Control-Allow-Origin"), ORIGEM)
 
-    def test_o_get_da_extensao_sem_origem_so_com_sec_fetch_site_none_e_atendido(self):
+    def test_saude_sem_origem_responde_so_a_versao_e_o_perfil(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            status, cabecalhos, _ = conexao.pedir("GET", "/health", origem=None)
+            status, cabecalhos, corpo = conexao.pedir("GET", "/health", origem=None)
         self.assertEqual(status, 200)
+        self.assertEqual(sorted(json.loads(corpo)), ["ok", "perfil", "versao"])
         self.assertNotIn("Access-Control-Allow-Origin", cabecalhos)
+
+    def test_sem_origem_nada_alem_da_saude_e_atendido(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            for metodo, caminho in (("GET", "/jobs"), ("GET", "/health/"), ("POST", "/health"), ("POST", "/jobs"), ("OPTIONS", "/health")):
+                with self.subTest("%s %s" % (metodo, caminho)):
+                    status, _, corpo = conexao.pedir(metodo, caminho, origem=None)
+                    self.assertEqual((status, json.loads(corpo) if corpo else None), (403, {"error": "origin_not_allowed"}))
+
+    def test_com_a_origem_de_outra_extensao_nada_e_atendido_nem_a_saude(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            outra = "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            respostas = [conexao.pedir(m, c, origem=outra)[0] for m, c in (("GET", "/health"), ("GET", "/jobs"), ("POST", "/jobs"))]
+        self.assertEqual(respostas, [403, 403, 403])
 
     def test_origem_de_outro_site_nao_recebe_a_origem_liberada_nem_dado_algum(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:

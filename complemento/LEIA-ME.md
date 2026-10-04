@@ -2,7 +2,7 @@
 
 Python só com a biblioteca padrão (o Anki do Mac roda o 3.9, sem Flask, waitress nem requests).
 Nesta fatia ela sobe em `127.0.0.1:8766`, numa thread, e responde só a saúde
-(`GET /health`: `{ ok, versao, perfil }`). A Conexão de hoje (`bridge/`) não é tocada.
+(`GET /health`: `{ ok, versao, perfil }`, aberta a qualquer cliente local; o resto exige a origem da extensão e será POST: `contrato/LEIA-ME.md`). A Conexão de hoje (`bridge/`) não é tocada.
 
 | Arquivo | O que faz |
 |---|---|

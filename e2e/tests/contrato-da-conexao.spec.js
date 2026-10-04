@@ -8,14 +8,14 @@
 //
 // Os exemplos de outra origem ou de outra página só valem no lado do complemento:
 // uma página da extensão não consegue mandar o pedido como se fosse de outro site.
-// O que o Chrome manda de verdade (o GET da extensão sem `Origin`, com
-// `Sec-Fetch-Site: none`) está em `complemento/contrato/LEIA-ME.md`.
+// O que o Chrome manda de verdade (o GET da extensão sem `Origin`, o POST com ela)
+// está em `complemento/contrato/LEIA-ME.md`.
 
 const { test, expect } = require('../fixtures');
 const contrato = require('../../complemento/contrato/exemplos.json');
 const { criarFakeAnki } = require('../fakes/anki');
 
-const daExtensao = contrato.exemplos.filter(e => criarFakeAnki().pedidoDaExtensao(e.pedido));
+const daExtensao = contrato.exemplos.filter(e => criarFakeAnki().exemploDaExtensao(e));
 
 test('o contrato fala da origem da extensão que o Chromium carregou', async ({ extensao }) => {
   expect(contrato.origemDaExtensao).toBe(`chrome-extension://${extensao.id}`);
