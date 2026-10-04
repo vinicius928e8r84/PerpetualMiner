@@ -24,7 +24,9 @@ const faixaF1 = page => page.getByText('A conexão com o Anki está desligada. L
 const notaDoPopup = page => page.getByText(/Nada é minerado com a Conexão com o Anki desligada/);
 
 const lerJaConectou = async extensao => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false;
-const inicioDoHealth = page => page.waitForRequest('http://127.0.0.1:8766/health', { timeout: 2500 }).then(() => Date.now());
+// A inicialização do Chromium pode demorar: os 3 s são medidos só a partir do
+// pedido HTTP, não da navegação, então o pedido tem folga para chegar.
+const inicioDoHealth = page => page.waitForRequest('http://127.0.0.1:8766/health', { timeout: 10000 }).then(() => Date.now());
 const ateTresSegundos = inicio => Math.max(1, 3200 - (Date.now() - inicio));
 
 test('painel: uma porta que aceita e não responde conta como desligada em 3 s, e antes disso é Conectando', async ({ page, extensao, fakes }) => {

@@ -646,6 +646,8 @@ test('com movimento reduzido, o ponto do Sincronizando fica parado', async ({ pa
 
 test('com movimento reduzido, #configuracoes/conta mostra a borda ouro parada, e ela sai depois do flash', async ({ page, extensao }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
+  // O relógio parado segura o destaque de 1,4 s: sob carga, a leitura da borda não o perde.
+  await page.clock.install();
   await abrirPainel(page, extensao, '#configuracoes/conta');
 
   const ouro = await page.evaluate(() => {
@@ -659,6 +661,7 @@ test('com movimento reduzido, #configuracoes/conta mostra a borda ouro parada, e
   const borda = () => conta(page).evaluate(el => getComputedStyle(el).borderTopColor);
   expect(await borda()).toBe(ouro);
   expect(await conta(page).evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+  await page.clock.runFor(1500);
   await expect.poll(borda, { timeout: 3000 }).not.toBe(ouro);
 });
 
