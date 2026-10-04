@@ -47,6 +47,35 @@ acusa('tokens-veio', 'painel.css', [
   '/* font-size: 22px no comentário não conta */',
 ].join('\n'), 0, 'tokens, 50%, 0 e comentários');
 
+// ─── gravacao-de-frases ──────────────────────────────────────────────────────
+
+// b2188a1 (#126) lib/sincronizacao.js: escritas de `frases` e `pm_pending_sync` fora da fila.
+acusa('gravacao-de-frases', 'lib/sincronizacao.js', [
+  'async function sincronizar(local) {',
+  '  if (restantes.length !== pm_pending_sync.length) await local.set({ pm_pending_sync: restantes });',
+  '  if (localPrecisaAtualizar) await local.set({ frases: localAtualizado });',
+  '}',
+].join('\n'), 2, 'as escritas que a B2 levou para fora da fila (b2188a1)');
+// 0ade3d1 painel.js: a página regravando `pm_pending_sync` com uma cópia lida antes.
+acusa('gravacao-de-frases', 'painel.js',
+  'if (restantes.length !== pm_pending_sync.length) await chromeSet({ pm_pending_sync: restantes });\n', 1, 'chromeSet da página (0ade3d1)');
+acusa('gravacao-de-frases', 'painel.js', "chrome.storage.local.set({\n  frases: todasFrases,\n}, () => {});\nchrome.storage.local.remove('frases');\n", 2,
+  'objeto em várias linhas e remove');
+// Dentro da fila, e outras chaves, passam.
+acusa('gravacao-de-frases', 'background.js', [
+  'function naFilaDeGravacao(tarefa) { return fila.then(tarefa); }',
+  'async function salvarFrase(nova) {',
+  '  await naFilaDeGravacao(async () => {',
+  '    const data = await chromeGet({ frases: [], pm_pending_sync: [] });',
+  '    await chromeSet({',
+  '      frases: [nova, ...data.frases],',
+  '      pm_pending_sync: [...data.pm_pending_sync, String(nova.id)],',
+  '    });',
+  '  });',
+  "  chrome.storage.local.set({ pm_tema: 'claro', frasesDoDia: 3 });",
+  '}',
+].join('\n'), 0, 'a escrita dentro de naFilaDeGravacao e outra chave');
+
 // ─── exceções na linha ───────────────────────────────────────────────────────
 
 const HOJE = '2026-10-04';

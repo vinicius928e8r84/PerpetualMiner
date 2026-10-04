@@ -4,5 +4,9 @@
     "e2e/vitrine/vitrine.html": 2,
     "painel.css": 123,
     "painel.js": 6
+  },
+  "gravacao-de-frases": {
+    "lib/sincronizacao.js": 4,
+    "painel.js": 8
   }
 }
