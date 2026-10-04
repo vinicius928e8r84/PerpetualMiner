@@ -867,4 +867,4 @@ The five default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready
 
 ### Domain docs
 
-Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context: `CONTEXT.md` at the repo root; `docs/adr/` does not exist yet (created with the first recorded decision). See `docs/agents/domain.md`.

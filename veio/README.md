@@ -55,6 +55,10 @@ const { abrirModal, mostrarToastDeSucesso, escreverFrase } = PerpetualMiner.Veio
 - **Fontes:** `var(--veio-fonte-ui)` para interface e frases, `var(--veio-fonte-mono)` para número,
   contador, atalho e custo. As duas cobrem cirílico.
 
+### Página avulsa (protótipo, Lavish)
+
+Copie `veio/tokens.css`, `veio/componentes.css`, `veio/fontes/` e `veio/icones/` para a pasta da página e use `<html data-tema="escuro">` com `<link rel="stylesheet" href="tokens.css">` e `<link rel="stylesheet" href="componentes.css">`: as `@font-face` de `tokens.css` acham `fontes/` ao lado, e a marca acha `icones/`. Fonte de interface: `var(--veio-fonte-ui)`; números e atalhos: `var(--veio-fonte-mono)`.
+
 ## Os componentes
 
 **Um componente existe uma vez.** Uma tela que precisa de um botão usa
