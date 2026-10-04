@@ -1,0 +1,33 @@
+name: Regras
+
+# As regras de revisão que uma máquina confere (scripts/regras/, AGENTS.md § Rules and what enforces them).
+# É o mesmo comando que se roda localmente. O histórico inteiro vem para a
+# verificação comparar a linha de base com a da main e mostrar as linhas novas.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: regras-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regras:
+    name: Regras de revisão
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/regras/test_regras.js
+      - run: node scripts/regras/verificar.js
+        env:
+          REGRAS_BASE: origin/${{ github.base_ref || 'main' }}
