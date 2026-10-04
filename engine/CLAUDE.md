@@ -58,7 +58,7 @@ Cards: `Front: / Back: / Image:` fields (RU may add `Google Image Search Queries
 
 ## Image Generation
 
-**User choice at start:** Google Images (real photos, default) or DALL-E.
+**User choice at start:** Google Images (real photos, default) or an AI image (`openai.image_model`).
 
 **Flow:**
 1. `image_guard.should_generate_image()` → skip abstract, GPT-4o-mini ambiguous

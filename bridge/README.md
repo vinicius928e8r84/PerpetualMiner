@@ -1,6 +1,6 @@
 # Anki Bridge
 
-Bridge local residente para integrar o painel do PerpetualMiner com o pipeline do Automatic Anki.
+Bridge local residente para integrar o painel do PerpetualMiner com o pipeline de cartões (a pasta `engine/` deste repo).
 
 ## O que faz
 
@@ -13,15 +13,14 @@ Bridge local residente para integrar o painel do PerpetualMiner com o pipeline d
 
 ## Instalacao
 
-1. Crie um ambiente Python com as dependencias deste projeto e do `Automatic Anki`.
-2. Instale as dependencias do bridge:
+1. Instale as dependencias (o pipeline de cartoes e a pasta `engine/` deste repo):
 
 ```powershell
-pip install -r bridge/requirements.txt
+pip install -r bridge/requirements.txt -r engine/requirements.txt
 ```
 
-3. Ajuste `bridge/config.json` se o caminho do `Automatic Anki` ou do Anki Desktop for diferente.
-4. Rode uma vez:
+2. Ajuste `bridge/config.json` se o caminho do Anki Desktop for diferente (`automatic_anki_path` ja aponta para `engine`).
+3. Rode uma vez:
 
 ```powershell
 python bridge/install_autostart.py

@@ -33,3 +33,10 @@ preview/dist/
 # Claude Code — worktrees locais (as skills em .claude/skills/ são versionadas)
 .claude/worktrees/
 dist/
+
+# Saída do Playwright rodado na raiz (e2e/.gitignore cobre só e2e/test-results)
+test-results/
+
+# Scratch de agentes: páginas de protótipo (Lavish) e mapa do Wayfinder
+.lavish/
+.wayfinder/
