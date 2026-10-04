@@ -13,5 +13,8 @@
     "background.js": 8,
     "content.js": 1
   },
-  "e2e-funcao-interna": {}
+  "e2e-funcao-interna": {},
+  "teste-le-codigo": {
+    "bridge/test_anki_launcher.py": 14
+  }
 }

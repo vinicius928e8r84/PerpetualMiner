@@ -27,6 +27,7 @@ const REGRAS = [
   require('./tokens-veio'),
   require('./gravacao-de-frases'),
   require('./idioma-solto'),
+  require('./teste-le-codigo'),
   require('./e2e-funcao-interna'),
 ];
 

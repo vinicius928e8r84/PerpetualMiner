@@ -41,7 +41,7 @@ Keep local paths and Anki settings in `bridge/config.json`. Do not commit secret
 | 6 True status (C8) | review |
 | 7 `frases` / `pm_pending_sync` writes | `gravacao-de-frases` (a new write outside `naFilaDeGravacao`); a stale copy written by an existing site: review |
 | 8 e2e checks screen and storage | `e2e-funcao-interna` (an `evaluate` that calls extension code names its exception); screen check in every variant: review |
-| 9 Python tests exercise behavior | review |
+| 9 Python tests exercise behavior | `teste-le-codigo` |
 | 10 Visual reference after the owner approves | review |
 | 11 New file: Files row, loaded, packaged | review; `test_empacotar.js` for the package |
 

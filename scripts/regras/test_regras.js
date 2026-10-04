@@ -93,6 +93,32 @@ acusa('idioma-solto', 'painel.js', [
 ].join('\n'), 0, 'o jeito de lib/idioma.js');
 assert.strictEqual(regras['idioma-solto'].seAplica('lib/idioma.js'), false, 'lib/idioma.js é o dono');
 
+// ─── teste-le-codigo ─────────────────────────────────────────────────────────
+
+const LEITOR = [
+  'SERVER_PATH = Path(__file__).with_name("server.py")',
+  'CONFIG_PATH = Path(__file__).with_name("config.json")',
+  '',
+  'def _function_source(name: str) -> str:',
+  '    source = SERVER_PATH.read_text(encoding="utf-8")',
+  '    return source',
+  '',
+  'class T(unittest.TestCase):',
+].join('\n');
+// 656690d bridge/test_anki_launcher.py: o teste da duplicata lendo o texto de _process_job.
+acusa('teste-le-codigo', 'bridge/test_anki_launcher.py', `${LEITOR}
+    def test_duplicate_is_reported(self) -> None:
+        process_fn = _function_source("_process_job")
+        self.assertIn("results.get(stem) == send_mod.DUPLICATE", process_fn)
+`, 1, 'o teste que lê o código (656690d)');
+acusa('teste-le-codigo', 'engine/test_qualquer.py', 'import inspect\n\ndef test_x():\n    assert "foo" in inspect.getsource(bar)\n', 1, 'getsource direto');
+acusa('teste-le-codigo', 'bridge/test_anki_launcher.py', `${LEITOR}
+    def test_repair_route(self) -> None:
+        response = bridge.app.test_client().post("/anki/repair")
+        config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(response.status_code, 503)
+`, 0, 'o teste pela rota e a leitura de um .json');
+
 // ─── e2e-funcao-interna ──────────────────────────────────────────────────────
 
 // 86b8bff (#129, achado S2): o callback do menu chamado sem dizer qual exceção usa.
