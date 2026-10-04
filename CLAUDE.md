@@ -854,6 +854,8 @@ The legacy tests keep running: `node test_sync.js` (loads `lib/sincronizacao.js`
 
 The engineering skills (`/implement`, `/tdd`, `/code-review`, `/to-spec`, `/to-tickets`, `/triage`, `/wayfinder`, …) live in `.claude/skills/`, so they also run in Claude Code on the web.
 
+`/verify-perpetualminer` (canonical copy in `.agents/skills/verify-perpetualminer/`, symlinked from `.claude/skills/`) drives the extension through the e2e harness and keeps the feature map in `features/`.
+
 ### Issue tracker
 
 Issues and specs are GitHub issues on this repo, handled with `gh`. See `docs/agents/issue-tracker.md`.
