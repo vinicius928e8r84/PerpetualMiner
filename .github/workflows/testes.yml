@@ -71,6 +71,8 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
       - run: npx playwright install --with-deps chromium
         working-directory: e2e
+      # A DejaVu é a única fonte que o Chromium dos testes enxerga (e2e/fontconfig).
+      - run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
       - run: xvfb-run --auto-servernum npx playwright test --workers=2 --shard=${{ matrix.fatia }}/4
         working-directory: e2e
       - uses: actions/upload-artifact@v4
