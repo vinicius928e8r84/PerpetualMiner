@@ -12,5 +12,6 @@
   "idioma-solto": {
     "background.js": 8,
     "content.js": 1
-  }
+  },
+  "e2e-funcao-interna": {}
 }

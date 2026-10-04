@@ -93,6 +93,29 @@ acusa('idioma-solto', 'painel.js', [
 ].join('\n'), 0, 'o jeito de lib/idioma.js');
 assert.strictEqual(regras['idioma-solto'].seAplica('lib/idioma.js'), false, 'lib/idioma.js é o dono');
 
+// ─── e2e-funcao-interna ──────────────────────────────────────────────────────
+
+// 86b8bff (#129, achado S2): o callback do menu chamado sem dizer qual exceção usa.
+const MENU = [
+  'const minerarPeloMenu = (extensao, { selecao, pageUrl, titulo }) => extensao.serviceWorker.evaluate(',
+  '  ({ selecao, pageUrl, titulo }) => minerarSelecaoDoMenu(',
+  "    { menuItemId: 'minerar-perpetualminer', selectionText: selecao, pageUrl },",
+  '    { title: titulo },',
+  '  ),',
+  '  { selecao, pageUrl, titulo },',
+  ');',
+].join('\n');
+acusa('e2e-funcao-interna', 'e2e/tests/mineracao-unica.spec.js', MENU, 1, 'o callback do menu sem a exceção nomeada (86b8bff)');
+// d2ab0da^ componentes-veio.spec.js: o teste lendo uma constante interna.
+acusa('e2e-funcao-interna', 'e2e/tests/componentes-veio.spec.js',
+  'const rotulos = await page.evaluate(() => PerpetualMiner.Veio.ROTULOS_DO_PADRAO);\n', 1, 'constante interna (d2ab0da)');
+acusa('e2e-funcao-interna', 'e2e/tests/mineracao-unica.spec.js',
+  `// Exceção de teste: chrome-nativo (CLAUDE.md § Testing).\n// O Playwright não abre o menu de contexto nativo do Chrome.\n${MENU}`, 0, 'a exceção nomeada');
+acusa('e2e-funcao-interna', 'e2e/tests/popup.spec.js', [
+  "const texto = await extensao.serviceWorker.evaluate(() => chrome.action.getBadgeText({}));",
+  "const frases = await page.evaluate(() => document.querySelectorAll('.veio-frase').length);",
+].join('\n'), 0, 'chrome.* e o DOM não são código da extensão');
+
 // ─── exceções na linha ───────────────────────────────────────────────────────
 
 const HOJE = '2026-10-04';
