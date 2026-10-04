@@ -116,6 +116,6 @@ Env knobs: `PM_VERIFY_ROOT` (default `/tmp/pm-verify`), `PM_HEAVY_RUN` (limiter 
 - The harness fakes Anki, Gemini and Google; nothing here talks to a real bridge, Anki Desktop, Gemini or Firestore.
 - The context menu, toolbar badge, midnight alarm and extension update are simulated by calling the function Chrome would call.
 - Evidence screenshots exist only where a spec calls `fotografar`; other specs leave `run.log` and `report.json`.
-- Windows is the owner's runtime for the bridge; this skill was proven on Linux headless Chromium.
+- Windows is the owner's runtime for the bridge; this skill was proven on Linux headless Chromium. `.claude/skills/verify-perpetualminer` is a symlink to this directory (one canonical copy); a Windows checkout without symlink support sees a plain file there, so open `.agents/skills/verify-perpetualminer/` directly.
 - The Anki add-on (`complemento/`) is not on this branch and is not mapped yet.
 - The upkeep rule above is a documented convention, not enforced in CI: the default branch has no CI workflow and no rule runner (`scripts/regras/` exists only on the unmerged branch `origin/fm/correct-pm`). When a rule runner lands on the default branch, add one check there: fail when a PR touches `manifest.json`, `popup.*`, `painel*.{html,js}`, `bookreader.*`, `overlay.*`, `content.js`, `background.js` or `bridge/server.py` without touching `.agents/skills/verify-perpetualminer/features/` or saying "feature map unchanged" in the PR body.
