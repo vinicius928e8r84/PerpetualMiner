@@ -52,7 +52,7 @@ Os testes do bridge e do engine rodam em Linux e macOS, sem Anki e sem Windows. 
 scripts/preparar-python.sh
 ```
 
-O script cria o venv `.venv` e instala `bridge/requirements.txt` e `engine/requirements.txt`. Sem sudo e sem escrever fora do repositorio. Em hosts Debian/Ubuntu sem `python3-venv`, o `python3 -m venv` nao traz o pip; o script cria o venv com `--without-pip` e instala o pip com o `get-pip.py` oficial. A mao, o equivalente e:
+O script cria o venv `.venv` e instala `bridge/requirements.txt` e `engine/requirements.txt`. Sem sudo, e sem alterar o Python do sistema: as dependencias ficam so no venv (o pip mantem o cache dele fora do repositorio, em `~/.cache/pip`). Em hosts Debian/Ubuntu sem `python3-venv`, o `python3 -m venv` nao traz o pip; o script cria o venv com `--without-pip` e instala o pip com o `get-pip.py` oficial. A mao, o equivalente e:
 
 ```bash
 python3 -m venv .venv
@@ -66,7 +66,7 @@ Os testes (rode da raiz; o `python` nao existe em todo host, use `python3` ou o 
 .venv/bin/python -m unittest discover -s engine -p "test_*.py"
 ```
 
-Para um arquivo so: `python3 bridge/test_envio.py` (nao precisa do Flask nem do venv). Apenas `test_anki_launcher.py` e `test_envio_api.py` precisam do Flask, ou seja, do venv.
+Para um arquivo so, use o venv: `.venv/bin/python bridge/test_envio.py`. Esse arquivo nao precisa do Flask, mas importa `requests` (via `envio` e `anki_session`); com `python3` do sistema ele so roda se o `requests` ja estiver instalado la. `test_anki_launcher.py` e `test_envio_api.py` precisam do Flask.
 
 ## Logs
 
