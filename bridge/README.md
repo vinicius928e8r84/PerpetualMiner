@@ -1,6 +1,6 @@
 # Anki Bridge
 
-Bridge local residente para integrar o painel do PerpetualMiner com o pipeline do Automatic Anki.
+Bridge local residente para integrar o painel do PerpetualMiner com o pipeline de cards em `engine/` (o Automatic Anki, que vive neste repositorio).
 
 ## O que faz
 
@@ -13,15 +13,14 @@ Bridge local residente para integrar o painel do PerpetualMiner com o pipeline d
 
 ## Instalacao
 
-1. Crie um ambiente Python com as dependencias deste projeto e do `Automatic Anki`.
-2. Instale as dependencias do bridge:
+1. Instale as dependencias do bridge e do engine (o pipeline de cards e a pasta `engine/` deste repo):
 
 ```powershell
-pip install -r bridge/requirements.txt
+pip install -r bridge/requirements.txt -r engine/requirements.txt
 ```
 
-3. Ajuste `bridge/config.json` se o caminho do `Automatic Anki` ou do Anki Desktop for diferente.
-4. Rode uma vez:
+2. Ajuste `bridge/config.json` se o caminho do Anki Desktop for diferente (`automatic_anki_path` ja aponta para `engine`).
+3. Rode uma vez:
 
 ```powershell
 python bridge/install_autostart.py
@@ -44,6 +43,30 @@ Use apenas para debug:
 ```powershell
 python bridge/server.py
 ```
+
+## Ambiente Python e testes (Linux e macOS)
+
+Os testes do bridge e do engine rodam em Linux e macOS, sem Anki e sem Windows. Na raiz do repositorio:
+
+```bash
+scripts/preparar-python.sh
+```
+
+O script cria o venv `.venv` e instala `bridge/requirements.txt` e `engine/requirements.txt`. Sem sudo e sem escrever fora do repositorio. Em hosts Debian/Ubuntu sem `python3-venv`, o `python3 -m venv` nao traz o pip; o script cria o venv com `--without-pip` e instala o pip com o `get-pip.py` oficial. A mao, o equivalente e:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r bridge/requirements.txt -r engine/requirements.txt
+```
+
+Os testes (rode da raiz; o `python` nao existe em todo host, use `python3` ou o do venv):
+
+```bash
+.venv/bin/python -m unittest discover -s bridge -p "test_*.py"
+.venv/bin/python -m unittest discover -s engine -p "test_*.py"
+```
+
+Para um arquivo so: `python3 bridge/test_envio.py` (nao precisa do Flask nem do venv). Apenas `test_anki_launcher.py` e `test_envio_api.py` precisam do Flask, ou seja, do venv.
 
 ## Logs
 
