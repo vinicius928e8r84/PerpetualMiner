@@ -1,0 +1,72 @@
+"""O `.ankiaddon`: o que o Anki encontra ao instalar o arquivo.
+
+    python3.9 complemento/test_pacote.py
+"""
+
+import importlib
+import json
+import os
+import shutil
+import sys
+import tempfile
+import unittest
+import zipfile
+
+AQUI = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(AQUI))
+
+from complemento import empacotar  # noqa: E402
+
+
+class ArquivoDoComplemento(unittest.TestCase):
+    def empacotado(self, pasta, mod=1700000000):
+        destino = empacotar.empacotar(os.path.join(pasta, "perpetualminer.ankiaddon"), mod=mod)
+        return zipfile.ZipFile(destino)
+
+    def test_o_manifesto_fica_na_raiz_com_o_pacote_o_nome_e_a_hora_do_empacotamento(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            pacote = self.empacotado(pasta)
+            manifesto = json.loads(pacote.read("manifest.json"))
+            pacote.close()
+        self.assertEqual(manifesto["package"], "perpetualminer")
+        self.assertEqual(manifesto["name"], "PerpetualMiner")
+        self.assertEqual(manifesto["mod"], 1700000000)
+        self.assertEqual(manifesto["min_point_version"], 50)
+
+    def test_o_arquivo_leva_o_codigo_e_deixa_de_fora_testes_exemplos_dados_e_cache(self):
+        dados = os.path.join(AQUI, "user_files")
+        existia = os.path.isdir(dados)
+        os.makedirs(os.path.join(dados, "logs"), exist_ok=True)
+        try:
+            with tempfile.TemporaryDirectory() as pasta:
+                pacote = self.empacotado(pasta)
+                nomes = pacote.namelist()
+                pacote.close()
+        finally:
+            if not existia:
+                shutil.rmtree(dados)
+        self.assertIn("__init__.py", nomes)
+        self.assertIn("servidor.py", nomes)
+        for nome in nomes:
+            self.assertFalse(nome.startswith(("test_", "contrato/", "user_files/")), "não devia entrar: " + nome)
+            self.assertNotIn("__pycache__", nome)
+            self.assertNotEqual(nome, "empacotar.py")
+
+    def test_o_codigo_instalado_carrega_pelo_nome_da_pasta_que_o_anki_der_a_ele(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            pacote = self.empacotado(pasta)
+            instalado = os.path.join(pasta, "addons21", "123456789")
+            pacote.extractall(instalado)
+            pacote.close()
+            sys.path.insert(0, os.path.dirname(instalado))
+            try:
+                inicio = importlib.import_module("123456789.inicio")
+                self.assertTrue(callable(inicio.iniciar))
+            finally:
+                sys.path.remove(os.path.dirname(instalado))
+                for nome in [n for n in sys.modules if n == "123456789" or n.startswith("123456789.")]:
+                    del sys.modules[nome]
+
+
+if __name__ == "__main__":
+    unittest.main()

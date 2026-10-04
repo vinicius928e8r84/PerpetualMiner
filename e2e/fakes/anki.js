@@ -1,6 +1,7 @@
 'use strict';
 
 const { responderJson } = require('./http');
+const contrato = require('../../complemento/contrato/exemplos.json');
 
 // Fake da Conexão com o Anki: responde na porta local dela (127.0.0.1:8766).
 // Por padrão está ligada, com vocabulário vazio. Um teste pode desligá-la
@@ -16,12 +17,27 @@ const { responderJson } = require('./http');
 // (`{ decks: [...] }`); sem `definirBaralhosDoAnki` a lista não vem (503), como
 // com o Anki sem responder, e a aba oferece o campo de texto.
 //
+// O que o complemento do Anki responde (hoje, só a saúde) vem de
+// `complemento/contrato/exemplos.json`, o mesmo arquivo que os testes do
+// complemento leem: o fake responde o exemplo do pedido no contexto em que a
+// Conexão está (`abrirPerfil`). Uma rota nova do complemento entra nesse arquivo
+// (veja `complemento/contrato/LEIA-ME.md`) e o fake passa a respondê-la daqui.
+//
 // Os Envios seguem o contrato de `bridge/server.py`: `POST /jobs` cria um
 // (`{ jobId }`, 201), `GET /jobs` lista cada um com o `state` dele, e
 // `POST /jobs/<id>/retry` o põe na fila de novo. O teste move cada Envio
 // (`moverEnvio`) e o termina (`concluirEnvio`) como a Conexão faria:
 // `successfulPhraseIds` inclui as duplicadas, que também vão em
 // `duplicatePhraseIds`, e o que não virou cartão vai em `failedPhraseIds`.
+
+/**
+ * O pedido que a extensão faz de verdade: o GET de uma página dela, com permissão de
+ * host, vai sem `Origin` e com `Sec-Fetch-Site: none`; o POST leva a origem dela.
+ * Os outros exemplos (outro site, outra extensão) só o lado do complemento confere.
+ */
+function pedidoDaExtensao(pedido) {
+  return pedido.secFetchSite === 'none' && [null, contrato.origemDaExtensao].includes(pedido.origem);
+}
 
 function criarFakeAnki() {
   const estado = {
@@ -37,6 +53,7 @@ function criarFakeAnki() {
     falhaDosBaralhos: null,     // { status } | { rede: true }: GET /anki/stats/decks falha
     falhaDoVocabulario: null,   // { status } | { rede: true }: GET /anki/vocabulary falha
     baralhosDoAnki: null,       // os nomes de GET /anki/decks; null: a lista não vem (definirBaralhosDoAnki)
+    contexto: { perfil: 'Usuário 1' }, // em que situação o complemento está (os `contexto` dos exemplos)
   };
   const requisicoes = [];
   const envios = [];    // { jobId, lang, entries, deckName, state }
@@ -158,6 +175,19 @@ function criarFakeAnki() {
     return { status: 200, json: { jobId, status: 'queued' } };
   }
 
+  /** A resposta que o contrato dá ao pedido da extensão, no contexto de agora. */
+  function respostaDoContrato(metodo, caminho) {
+    const exemplo = contrato.exemplos.find(e =>
+      pedidoDaExtensao(e.pedido)
+      && e.pedido.metodo === metodo && e.pedido.caminho === caminho
+      && JSON.stringify(e.contexto) === JSON.stringify(estado.contexto));
+    if (!exemplo) {
+      throw new Error(`O contrato (complemento/contrato/exemplos.json) não tem exemplo de ${metodo} ${caminho} `
+        + `com o contexto ${JSON.stringify(estado.contexto)}; escreva-o lá antes de o fake responder.`);
+    }
+    return { status: exemplo.resposta.status, json: exemplo.resposta.json };
+  }
+
   async function tratar(route) {
     const req = route.request();
     const url = new URL(req.url());
@@ -172,7 +202,10 @@ function criarFakeAnki() {
       const { status = 200, json = {} } = await personalizada(req, url);
       return responderJson(route, status, json);
     }
-    if (url.pathname === '/health') return responderJson(route, 200, { ok: true });
+    if (url.pathname === '/health') {
+      const { status, json } = respostaDoContrato('GET', '/health');
+      return responderJson(route, status, json);
+    }
     if (url.pathname === '/anki/vocabulary') {
       const falha = estado.falhaDoVocabulario;
       if (falha?.rede) return route.abort('connectionrefused');
@@ -225,6 +258,11 @@ function criarFakeAnki() {
     envios,
     desligar() { estado.ligada = false; },
     ligar() { estado.ligada = true; },
+    /** O perfil que o Anki tem aberto (`null`: a tela de perfis); precisa de exemplo no contrato. */
+    abrirPerfil(perfil) { estado.contexto = { ...estado.contexto, perfil }; },
+    /** As respostas do contrato a um pedido, para o teste que confere o fake contra os exemplos. */
+    respostaDoContrato,
+    pedidoDaExtensao,
     /** A porta aceita a conexão e nunca responde (o /health do bridge travado). */
     silenciar() { estado.muda = true; },
     voltarAFalar() { estado.muda = false; },

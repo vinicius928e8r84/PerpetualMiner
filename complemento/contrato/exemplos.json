@@ -1,0 +1,155 @@
+{
+  "origemDaExtensao": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+  "exemplos": [
+    {
+      "nome": "saúde com um perfil aberto",
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": null,
+        "secFetchSite": "none"
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "versao": "0.1.0",
+          "perfil": "Usuário 1"
+        }
+      }
+    },
+    {
+      "nome": "saúde com o Anki na tela de perfis",
+      "contexto": {
+        "perfil": null
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": null,
+        "secFetchSite": "none"
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "versao": "0.1.0",
+          "perfil": null
+        }
+      }
+    },
+    {
+      "nome": "saúde pedida com a origem da extensão",
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "secFetchSite": "none"
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "versao": "0.1.0",
+          "perfil": "Usuário 1"
+        }
+      }
+    },
+    {
+      "nome": "rota que a Conexão não tem",
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/nao-existe",
+        "origem": null,
+        "secFetchSite": "none"
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "not_found"
+        }
+      }
+    },
+    {
+      "nome": "origem de outro site é recusada",
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": "https://exemplo.com",
+        "secFetchSite": "cross-site"
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    },
+    {
+      "nome": "origem de outra extensão é recusada",
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "secFetchSite": "none"
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    },
+    {
+      "nome": "pedido sem origem vindo de uma página de outro site é recusado",
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": null,
+        "secFetchSite": "cross-site"
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    },
+    {
+      "nome": "pedido sem origem e sem cabeçalhos do navegador é recusado",
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": null,
+        "secFetchSite": null
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+"""O complemento ao carregar: a pasta de dados, a Conexão no ar e a porta ocupada.
+
+    python3.9 complemento/test_inicio.py
+"""
+
+import contextlib
+import http.client
+import io
+import json
+import os
+import socket
+import sys
+import tempfile
+import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from complemento import configuracao, inicio  # noqa: E402
+
+ORIGEM = configuracao.ORIGENS_ACEITAS[0]
+
+
+def saude(porta):
+    pedido = http.client.HTTPConnection("127.0.0.1", porta, timeout=5)
+    try:
+        pedido.request("GET", "/health", headers={"Origin": ORIGEM})
+        resposta = pedido.getresponse()
+        return resposta.status, json.loads(resposta.read())
+    finally:
+        pedido.close()
+
+
+def parar(conexao):
+    if conexao is not None:
+        conexao.parar()
+
+
+class AoCarregarNoAnki(unittest.TestCase):
+    def test_a_conexao_sobe_e_responde_a_saude_com_o_perfil_aberto(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            conexao = inicio.iniciar(pasta, lambda: "Usuário 1", porta=0)
+            try:
+                status, corpo = saude(conexao.porta)
+            finally:
+                parar(conexao)
+        self.assertEqual(status, 200)
+        self.assertEqual(corpo, {"ok": True, "versao": configuracao.VERSAO, "perfil": "Usuário 1"})
+
+    def test_user_files_ganha_as_pastas_da_fila_do_estado_dos_custos_e_dos_logs(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            parar(inicio.iniciar(pasta, lambda: None, porta=0))
+            criadas = sorted(os.listdir(os.path.join(pasta, "user_files")))
+        self.assertEqual(criadas, ["custos", "estado", "fila", "logs"])
+
+    def test_o_que_ja_estava_em_user_files_fica_como_estava(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            fila = os.path.join(pasta, "user_files", "fila")
+            os.makedirs(fila)
+            with open(os.path.join(fila, "envio.json"), "w", encoding="utf-8") as arquivo:
+                arquivo.write('{"jobId": "job-1"}')
+            parar(inicio.iniciar(pasta, lambda: None, porta=0))
+            with open(os.path.join(fila, "envio.json"), encoding="utf-8") as arquivo:
+                guardado = arquivo.read()
+        self.assertEqual(guardado, '{"jobId": "job-1"}')
+
+    def test_com_a_porta_ocupada_o_complemento_fica_quieto_e_registra_o_motivo(self):
+        ocupante = socket.socket()
+        ocupante.bind(("127.0.0.1", 0))
+        ocupante.listen(1)
+        porta = ocupante.getsockname()[1]
+        saida, erro = io.StringIO(), io.StringIO()
+        try:
+            with tempfile.TemporaryDirectory() as pasta:
+                with contextlib.redirect_stdout(saida), contextlib.redirect_stderr(erro):
+                    conexao = inicio.iniciar(pasta, lambda: None, porta=porta)
+                with open(os.path.join(pasta, "user_files", "logs", "complemento.log"), encoding="utf-8") as arquivo:
+                    registrado = arquivo.read()
+        finally:
+            ocupante.close()
+        self.assertIsNone(conexao)
+        self.assertIn("A porta %d está ocupada" % porta, registrado)
+        self.assertEqual((saida.getvalue(), erro.getvalue()), ("", ""))
+
+    def test_falha_ao_preparar_a_pasta_de_dados_nao_levanta_erro(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            arquivo_no_lugar_da_pasta = os.path.join(pasta, "user_files")
+            with open(arquivo_no_lugar_da_pasta, "w", encoding="utf-8") as arquivo:
+                arquivo.write("não sou uma pasta")
+            erro = io.StringIO()
+            with contextlib.redirect_stderr(erro):
+                conexao = inicio.iniciar(pasta, lambda: None, porta=0)
+        self.assertIsNone(conexao)
+        self.assertEqual(erro.getvalue(), "")
+
+
+if __name__ == "__main__":
+    unittest.main()
