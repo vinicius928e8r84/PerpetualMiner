@@ -795,6 +795,8 @@ npm test         # launches Chromium with the unpacked extension and runs the su
 
 On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx playwright install-deps chromium`, once.
 
+The browser sees only the DejaVu fonts (`e2e/fontconfig/fonts.conf`, set as `FONTCONFIG_FILE` by `e2e/fixtures.js`; Debian/Ubuntu package `fonts-dejavu-core`), so the host pages' fallback fonts and symbol glyphs are the same on a dev machine and on the CI runner, and the `-linux` visual references hold on both. A reference taken on a machine without that file would only hold there.
+
 - `e2e/fixtures.js` launches a fresh Chromium profile per test with the repo root loaded as an unpacked extension (or the folder a test gives through the `pastaDaExtensao` fixture; the extension arrives freshly installed, so the fixture waits for the Boas-vindas tab it opens and closes it; `test.use({ manterAbaDaInstalacao: true })` keeps it as `extensao.abaDaInstalacao`), fakes the network at the HTTP boundary and blocks every other external request. It gives tests `extensao` (id, service worker, `url()`, `lerStorage`/`gravarStorage`, `frases()`, `semearSessao()`), `fakes` and `paginas`.
 - `e2e/fakes/`: the Anki connection (`127.0.0.1:8766`, with a stateful Envio queue following the contract in `bridge/envio.py`: `moverEnvio`, `concluirEnvio({ duplicadas, falhas, erro, ankiError })`, `recusarEnvios(lang, { status } | { rede: true })`; the Custos rows of `GET /analytics/jobs`: `definirCustos(envios)`, `falharCustos({ status } | { rede: true })`, `voltarCustos()`, and `GET /jobs/<id>/debug-bundle`; Baralhos e termos
 and Vocabulário: `definirBaralho(deckName, { palavras, cartoes, termos, porCartao, novos, aprendendo, recentes, maduros })`
