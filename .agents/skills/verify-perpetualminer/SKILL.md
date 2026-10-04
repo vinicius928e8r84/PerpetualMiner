@@ -24,12 +24,14 @@ There is no long-lived server. The fixture (`e2e/fixtures.js`) starts a fresh Ch
 One-time setup per checkout (skip if the Doctor is green):
 
 ```bash
-cd e2e && npm ci && npm run setup     # npm run setup = playwright install chromium
+(cd e2e && npm ci && npm run setup)    # npm run setup = playwright install chromium
 # Linux/WSL only, if Chromium fails to start for missing libraries:
-sudo npx playwright install-deps chromium
+(cd e2e && sudo npx playwright install-deps chromium)
 ```
 
 Ready = Doctor prints `doctor: worth driving`. Teardown = Cleanup below (nothing else stays running).
+
+Every command in this file is meant to run from the repository root, and each snippet that changes directory does it in a subshell, so the next step starts from the root again.
 
 Runs are isolated: every `drive.sh` run gets its own `TMPDIR` (so its Chromium profiles and the fake Google login's certificate never mix with another run's) and its own evidence directory. Two runs side by side are fine with distinct run IDs; the host's heavy-run limit applies (at most 3 heavy runs per host: `drive.sh` uses `/tmp/fm-heavy-run.sh` automatically when it exists, or whatever `PM_HEAVY_RUN` names).
 
@@ -93,7 +95,9 @@ For the PR body, quote the `drive.sh` command, the `run.log` summary line (`N pa
 .agents/skills/verify-perpetualminer/scripts/cleanup.sh <run-id>
 ```
 
-Stops what `drive.sh` started for that run (the pid it recorded and that pid's descendants; never by process name, other agents' Chromiums run on this host) and removes the run's scratch (`tmp/`, `pw-output/`). It **keeps `evidence/`** and prints how many files remain; confirm they are still there (`ls <run-dir>/evidence`). A normal finished run leaves nothing running; the fixture already removes each test's profile. Also delete any `zz-scratch-*.spec.js` you made and leave `git status` showing only intended changes (`e2e/test-results/` is git-ignored). Run Cleanup after a failed or interrupted run too.
+Stops what `drive.sh` started for that run and removes the run's scratch (`tmp/`, `pw-output/`). It **keeps `evidence/`** and prints how many files remain; confirm they are still there (`ls <run-dir>/evidence`). A normal finished run leaves nothing running; the fixture already removes each test's profile. Also delete any `zz-scratch-*.spec.js` you made and leave `git status` showing only intended changes (`e2e/test-results/` is git-ignored). Run Cleanup after a failed or interrupted run too.
+
+Safety rules the script enforces, so you can rely on them: the run ID must be one plain segment (letters, digits, `. _ -`, starting with a letter or digit); the run directory must be a real directory directly under the verification root, with no symlink among `evidence`, `tmp`, `pw-output`, `drive.pid`; otherwise it refuses (exit 2) and deletes nothing. A process is signalled only when `drive.pid` holds its pid **and** the start time recorded with it **and** its command line is this run's `drive.sh`; a stale or reused pid is reported and left alone, never killed by pid alone and never by name. Cleanup is safe to run again: if it was interrupted (or the run is already clean), run the same command; it re-checks, finishes the removal and reports the evidence it kept.
 
 To throw the evidence away as well when you no longer need it: `rm -rf "${PM_VERIFY_ROOT:-/tmp/pm-verify}/<run-id>"`.
 
@@ -103,7 +107,9 @@ To throw the evidence away as well when you no longer need it: `rm -rf "${PM_VER
 |---|---|---|
 | `scripts/doctor.sh` | `.agents/skills/verify-perpetualminer/scripts/doctor.sh` | Read-only readiness check, exit 0/1 |
 | `scripts/drive.sh` | `…/drive.sh <run-id> <playwright test args…>` | Runs specs isolated, writes evidence, records its pid |
-| `scripts/cleanup.sh` | `…/cleanup.sh <run-id>` | Stops that run's processes, removes scratch, keeps evidence |
+| `scripts/cleanup.sh` | `…/cleanup.sh <run-id>` | Stops that run's processes (identity-checked), removes scratch, keeps evidence; re-runnable |
+| `scripts/lib.sh` | sourced by the two above | Run-id and path-containment checks, process identity |
+| `scripts/test_helpers.sh` | `.agents/skills/verify-perpetualminer/scripts/test_helpers.sh` | Tests the safety rules above (refusals, symlinks, stale pids, re-run); no browser, a few seconds. Run it after touching any script |
 
 Env knobs: `PM_VERIFY_ROOT` (default `/tmp/pm-verify`), `PM_HEAVY_RUN` (limiter command prefix), `HEADED=1` (show the browser; needs a display).
 

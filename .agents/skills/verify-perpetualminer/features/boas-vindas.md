@@ -26,10 +26,13 @@ Preconditions:
 - `doctor.sh` green. The fixture normally closes the install tab; the install specs set `test.use({ manterAbaDaInstalacao: true })` to keep it.
 
 - **Install (`bv-install`).** Run `drive.sh bv-instalar boas-vindas.spec -g "instalar a extensão abre uma aba"`. Observable: a tab whose URL starts `…/painel.html#boas-vindas` with no sidebar. `-g "atualizar a extensão não abre aba nenhuma"` proves the update case.
-- **Opening (`bv-list`, `bv-skip`).** `drive.sh bv-abertura boas-vindas.spec -g "a abertura lista os 6 passos"`. Observable: overline `Boas-vindas`, the six items in order (`Minerar a primeira frase`, `Escolher o atalho de Minerar seleção`, `Entrar com Google` + `opcional`, `Ligar a Conexão com o Anki`, `Ligar a mineração automática` + `opcional`, `Adicionar a chave do Gemini` + `opcional`); Começar leads to `#boas-vindas/minerar`, overline `Passo 1 de 6`, the title focused.
+- **Opening (`bv-list`).** `drive.sh bv-abertura boas-vindas.spec -g "a abertura lista os 6 passos"`. Observable: overline `Boas-vindas`, the six items in order (`Minerar a primeira frase`, `Escolher o atalho de Minerar seleção`, `Entrar com Google` + `opcional`, `Ligar a Conexão com o Anki`, `Ligar a mineração automática` + `opcional`, `Adicionar a chave do Gemini` + `opcional`); Começar leads to `#boas-vindas/minerar`, overline `Passo 1 de 6`, the title focused.
 - **Step 1 (`bv-step1`).** `drive.sh bv-passo1 boas-vindas.spec -g "passo 1: minerar a primeira frase pelo campo"`. Observable: card shows `Num vídeo com legenda, aperte Alt+S.` and the `Alt+S` kbd; after typing `Break a leg` + Enter the field is empty, the list item's accessible name ends `feito`, storage has the phrase with `contexto { fonte: 'manual' }`. Evidence: `c1-boas-vindas-minerada.png`, `c1-boas-vindas-minerada.json`.
+- **Skip (`bv-skip`).** `drive.sh bv-pular boas-vindas.spec -g "Pular a configuração abre o painel"`. Observable: `#frases` with the sidebar.
+- **Entry from the popup.** `drive.sh bv-popup lembrete-configuracao.spec -g "Continuar configuração no popup abre o painel"`; strip in Frases: `-g "Continuar configuração em Frases cai no primeiro passo"`. Observable: the panel opens at the first missing step.
+- **Entry by address.** Every recipe here opens `#boas-vindas[/<step>]` directly; that is the address entry.
 - **Shortcut (`bv-step2`).** `drive.sh bv-passo2 boas-vindas.spec -g "passo 2: o gravador é o de Configurações"`.
-- **Steps 3–6 (`bv-steps3-6`).** `-g "passo 4: desligada"` (Anki off › Verificar de novo; turn the fake on and verify again marks the step), `-g "passo 5: os switches EN/RU"`, `-g "passo 6: o campo de Configurações"`.
+- **Steps 3–6 (`bv-steps3-6`).** `-g "passo 3: o Entrar com Google"` (sign in marks the step, the card shows the account), `-g "passo 4: desligada"` (Anki off › Verificar de novo; turn the fake on and verify again marks the step), `-g "passo 5: os switches EN/RU"`, `-g "passo 6: o campo de Configurações"`.
 - **Finish (`bv-done`, `bv-agora-nao`).** `-g "Tudo pronto resume cada passo"`, `-g "num opcional fica gravado"`.
 
 ## Gotchas

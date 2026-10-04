@@ -17,7 +17,7 @@ The panel talks to the local Anki Connection (bridge today, add-on later) on `12
 
 - Sidebar › **Conexão com o Anki** (Custos, Baralhos e termos, Vocabulário, Ajustes de envio tabs).
 - In **Frases**: tick phrases › **Enviar ao Anki** in the selection bar.
-- Boas-vindas step 4 (see [boas-vindas](./boas-vindas.md)).
+- Boas-vindas step 4 (recipe `bv-steps3-6` in [boas-vindas](./boas-vindas.md)).
 
 ## Driving it with the Playwright e2e harness
 
@@ -30,6 +30,9 @@ Preconditions:
 - **Keep or remove (`anki-send-summary`).** `drive.sh anki-manter painel-envio.spec -g "Manter marca as enviadas"`. Observable: after `Manter`, `frases()` has `status: 'exported'` on exactly the sent and already-there phrases; the failed one has no status; no toast; the bar still says `4 selecionadas`.
 - **Status (`anki-status`).** Run `drive.sh anki-status conexao-anki.spec -g "com a porta muda"`. The spec turns the fake off, opens `painel.html#anki/custos` (sidebar dot `data-estado="desligada"`), turns it on but silent (`fakes.anki.silenciar()`), clicks `Tentar de novo`. Observable: the dot goes `conectando`, then `desligada` within 3 s, then `ligada` after `voltarAFalar()` and another `Tentar de novo`, with the F1 strip hidden. Evidence: `painel-tentando-conectar.png`, `painel-conexao-ligada.png`.
 - **Offline with last data (`anki-offline`).** `drive.sh anki-offline painel-anki.spec -g "cai depois de responder"`. Observable: F1 text `A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.`, `Mostrando dados de há 2 h. Não deu para atualizar agora.`, the 4 Envios still listed, `Continuar envio` with `aria-disabled="true"` and its description; after `fakes.anki.ligar()` + `Atualizar` the Reparar Anki button is enabled again.
+- **Custos (`anki-custos`).** `drive.sh anki-custos painel-anki.spec -g "azulejos por idioma"`. Observable: one tile per language with total and Envios; picking one filters the summary, images and list.
+- **Retry one Envio (`anki-send-retry`).** `drive.sh anki-retry painel-envio.spec -g "Tentar de novo no bloco do idioma"`. Observable: only that language's Envio is retried and the next summary counts what became a card.
+- **Settings (`anki-settings`).** `drive.sh anki-ajustes painel-ajustes.spec -g "mexer no formulário não grava nada"`. Observable: editing writes nothing; `Salvar ajustes` stores only the open language and shows toast BRG-07.
 - **First connection (`anki-first-connection`).** `drive.sh anki-primeira painel-anki-primeira-conexao.spec`. Observable: the first-connection card replaces the tabs until the fake answers `/health`, then the Pronto moment.
 - **Proof.** `painel-anki.spec.js` calls `fotografar` in some tests (`c1-…` files); `painel-envio.spec.js` does not. For a send, the strongest evidence is the assertions on `fakes.anki.envios` plus a `fotografar(page, 'anki-envio-resumo.png')` you add in a scratch copy right after the summary appears.
 

@@ -2,24 +2,29 @@
 # Runs Playwright specs from e2e/ in an isolated run directory and keeps the evidence.
 #   <run-dir>/evidence/   screenshots + state JSON the specs write (PM_EVIDENCE_DIR), report.json, run.log, exit-code
 #   <run-dir>/tmp/        TMPDIR for the run: the Chromium profiles and the fake login's certificate live here
-#   <run-dir>/drive.pid   this script's pid, so cleanup.sh stops only what this run started
+#   <run-dir>/drive.pid   this script's pid and start time, so cleanup.sh stops only what this run started
 # <run-dir> = ${PM_VERIFY_ROOT:-/tmp/pm-verify}/<run-id>.
 #
 # Usage: drive.sh <run-id> <playwright test args...>
-#   drive.sh c1-selecao mineracao-unica -g "mesma Fonte"
-#   HEADED=1 drive.sh c1-foto minerar-foto -g "uma foto: prévia"
+#   drive.sh c1-selecao mineracao-unica.spec -g "mesma Fonte"
+#   HEADED=1 drive.sh c1-foto minerar-foto.spec -g "uma foto: prévia"
 # Heavy: use PM_HEAVY_RUN=<limiter> to prefix it (default: /tmp/fm-heavy-run.sh when that file is executable).
-# Exit code = Playwright's (also written to evidence/exit-code).
+# Exit code = Playwright's (also written to evidence/exit-code). Refuses a bad or symlinked run-id/run dir.
 set -u
 [ $# -ge 2 ] || { echo 'usage: drive.sh <run-id> <playwright test args...>' >&2; exit 2; }
 ID="$1"; shift
-case "$ID" in *[!A-Za-z0-9._-]*|'') echo 'run-id: letters, digits, . _ - only' >&2; exit 2;; esac
 
-RAIZ="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
-RUN="${PM_VERIFY_ROOT:-/tmp/pm-verify}/$ID"
-[ -e "$RUN/drive.pid" ] && kill -0 "$(cat "$RUN/drive.pid")" 2>/dev/null && { echo "run $ID is still running (pid $(cat "$RUN/drive.pid"))" >&2; exit 2; }
+AQUI="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib.sh
+. "$AQUI/lib.sh"
+RUN="$(pm_pasta_da_execucao "$ID")" || exit 2
+RAIZ="$(git -C "$AQUI" rev-parse --show-toplevel)"
+
+if pm_dono_confere "$RUN" "$ID"; then
+  echo "run $ID is still running (pid $(sed -n 1p "$RUN/drive.pid"))" >&2; exit 2
+fi
 mkdir -p "$RUN/evidence" "$RUN/tmp"
-echo $$ > "$RUN/drive.pid"
+pm_registrar_dono "$RUN" $$
 
 LIMITADOR="${PM_HEAVY_RUN:-}"
 [ -z "$LIMITADOR" ] && [ -x /tmp/fm-heavy-run.sh ] && LIMITADOR=/tmp/fm-heavy-run.sh

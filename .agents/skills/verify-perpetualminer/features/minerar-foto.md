@@ -14,7 +14,8 @@
 
 ## How to get to it (user POV)
 
-- Panel › Frases › **Minerar frases** menu › **Foto**, or open `chrome-extension://<id>/bookreader.html`.
+- Panel › Frases › **Minerar frases** menu › **Foto** (opens a new tab), or the **Foto ↗** button beside the tabs of the Colar/Arquivo modal.
+- Open `chrome-extension://<id>/bookreader.html` (every recipe below does).
 - Needs a Gemini key (Configurações › Chave do Gemini, or Boas-vindas step 6).
 
 ## Driving it with the Playwright e2e harness
@@ -24,8 +25,11 @@ Preconditions:
 - `doctor.sh` green. The specs write `geminiApiKey: 'chave-de-teste'`, load `bookreader.html`, upload a 1×1 PNG with `page.locator('#foto-arquivo').setInputFiles(...)` and set what Gemini answers with `fakes.gemini.responderFrases([...])`. Gemini is faked at HTTP; no real vision runs.
 
 - **One photo, read and mine (`foto-read-one`, `foto-mine`, `foto-book`).** Run `drive.sh foto-uma minerar-foto.spec -g "uma foto: prévia, leitura"`. Observable: after typing `Atomic Habits` in the `Livro` field and uploading `pagina.png`, the preview text `Confira se as marcações aparecem na foto` shows and Gemini was not called yet; `Ler marcações` leaves the item `3 frases`, three checked checkboxes named by their text, button `Minerar 3 frases`; the Gemini fake saw the key `chave-de-teste`; clicking it shows toast `3 frases mineradas`, and `frases()` has 3 entries with `contexto { fonte: 'livro', titulo: 'Atomic Habits', detalhe: '' }`, `idioma 'Inglês'`. Evidence: `c1-foto-minerada.png`, `c1-foto-minerada.json`.
+- **Entry from the panel.** `drive.sh foto-menu painel-minerar-frases.spec -g "Foto abre Minerar de uma foto numa aba nova"` and `-g "Foto ↗, ao lado das abas"`. Observable: a new tab at `…/bookreader.html`, the menu or modal closed.
+- **Edit and select (`foto-edit-select`).** `-g "a frase editada na lista"` (the edited text is what is stored) and `-g "Selecionar todas” marca e desmarca"` (tri-state, button counts only the checked).
+- **Book title (`foto-book`).** `-g "o Livro digitado volta preenchido"` and `-g "com o Livro em branco"` (Título `Físico/Livro`).
 - **Several photos (`foto-read-many`).** `-g "várias fotos pulam a prévia"`.
-- **Errors (`foto-errors`).** `-g "o Gemini sem marcações"`, `-g "a chave recusada pelo Gemini"`, `-g "sem rede, a foto falha"`.
+- **Errors (`foto-errors`).** `-g "o Gemini sem marcações"`, `-g "o Gemini com pedidos demais"` (rate limit), `-g "a chave recusada pelo Gemini"`, `-g "sem rede, a foto falha"`.
 - **Cancel and restart (`foto-cancel-restart`).** `-g "4 fotos, Cancelar depois da 2ª"`, `-g "Recomeçar com frases não mineradas"`.
 
 ## Gotchas
