@@ -713,7 +713,9 @@ async function getAutoKeywordVocabulary(lang = 'en') {
     }
   }
 
-  const payload = { cacheVersion: VocabularioDaMineracao.VERSAO, deckName, createdAt: Date.now(), words, terms, wordInfo, termInfo };
+  const createdAt = Date.now();
+  const marca = VocabularioDaMineracao.marcaDaLeitura(ultimaLeitura, data.source, createdAt);
+  const payload = { cacheVersion: VocabularioDaMineracao.VERSAO, deckName, createdAt, ...marca, words, terms, wordInfo, termInfo };
   chrome.storage.local.set({ [cacheKey]: payload });
   return autoVocabularyFromCache(payload);
 }

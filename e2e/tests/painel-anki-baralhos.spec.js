@@ -416,6 +416,36 @@ test('com a Conexão desligada, entrar na área e a Conexão voltar não pedem p
   expect(pedidos(fakes, '/anki/stats/decks').every(r => !r.busca.includes('launch'))).toBe(true);
 });
 
+test('Conexão ligada mas o Anki fechado: baralhos e vocabulário vêm do arquivo, com “Anki fechado” e os dados de antes de ele fechar; abrir o Anki tira o selo', async ({ page, extensao, fakes }) => {
+  await abrirAnki(page, extensao, '#anki/baralhos');
+  await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
+  await aba(page, 'Vocabulário').click();
+  await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
+  await expect(page.getByText(/Anki fechado/)).toHaveCount(0);
+
+  // Duas horas depois o Anki está fechado e a Conexão segue ligada: ela lê o arquivo, que ainda é o de 12:00.
+  fakes.anki.fecharOAnki();
+  await page.clock.setFixedTime(new Date(AGORA.getTime() + 2 * 3600_000));
+  await page.reload();
+
+  await expect(page.getByText(F1)).toBeHidden();
+  await expect(vocabulario(page)).toContainText('Anki fechado. Mostrando dados de há 2 h.');
+  await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
+  await aba(page, 'Baralhos e termos').click();
+  await expect(baralhos(page)).toContainText('Números lidos direto do arquivo do Anki.');
+  await expect(baralhos(page)).toContainText('Anki fechado. Mostrando dados de há 2 h.');
+  await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
+  // A leitura não pediu para abrir o Anki.
+  expect(pedidos(fakes, '/anki/stats/decks').slice(1).every(r => !r.busca.includes('launch'))).toBe(true);
+
+  // O Anki abre e a pessoa aperta Atualizar: a leitura volta a ser do Anki, sem o selo.
+  fakes.anki.abrirOAnki();
+  await atualizar(page).click();
+  await expect(baralhos(page)).not.toContainText('Anki fechado');
+  await aba(page, 'Vocabulário').click();
+  await expect(vocabulario(page)).not.toContainText('Anki fechado');
+});
+
 test('o último dado que a própria Conexão guardou (stale) segue com “Não deu para atualizar agora”, sem o Anki fechado', async ({ page, extensao, fakes }) => {
   fakes.anki.responder('GET', '/anki/stats/decks', () => ({
     json: {

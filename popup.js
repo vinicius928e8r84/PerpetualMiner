@@ -26,7 +26,7 @@ let idsJaMostrados = null;            // o que a lista já mostrou, para realça
 const idsChegando = new Set();        // as que ainda estão no realce: um redesenho não o apaga
 let atalhoDeLegenda = Atalhos.ATALHOS_PADRAO.legenda;
 let mineracaoAutomatica = null;       // { settings, daily } do service worker
-let quandosDoVocabulario = null;      // { en, ru }: quando foi a última leitura de cada Baralho (null: nenhuma); null até ler
+let leiturasDoVocabulario = null;     // { en, ru }: a última leitura de cada Baralho, ou null (nenhuma); null até ler
 let configuracao = null;              // o retrato da configuração (lib/configuracao.js)
 let minerando = false;
 
@@ -299,10 +299,10 @@ function salvarMineracaoAutomatica(mudanca) {
   });
 }
 
-/** Lê quando foi a última leitura do vocabulário de cada Baralho, e mostra o que isso muda. */
+/** Lê a última leitura do vocabulário de cada Baralho (quando são os dados e se vieram do arquivo), e mostra o que isso muda. */
 function lerAIdadeDoVocabulario() {
-  VocabularioDaMineracao.lerQuandos().then(quandos => {
-    quandosDoVocabulario = quandos;
+  VocabularioDaMineracao.lerLeituras().then(leituras => {
+    leiturasDoVocabulario = leituras;
     refletirOVocabularioDoAnkiFechado();
   }, () => {
     // Sem poder ler o storage o popup não sabe a idade: não mostra o selo nem o esperando.
@@ -310,22 +310,27 @@ function lerAIdadeDoVocabulario() {
 }
 
 /**
- * Com a Conexão com o Anki desligada, a Mineração automática segue pela última
- * leitura do vocabulário, e o popup diz a idade dela (POP-17): a mais antiga
- * entre os idiomas ligados. O idioma ligado que nunca foi lido espera o Anki
- * abrir uma vez (BRG-37). Com a Conexão respondendo não há nada a dizer.
+ * Com o Anki fechado, a Mineração automática segue pela última leitura do
+ * vocabulário, e o popup diz a idade dos dados (POP-17): a mais antiga entre os
+ * idiomas ligados. O Anki está fechado para um idioma quando a Conexão não
+ * responde ou quando ela só conseguiu ler o arquivo do Anki (a Conexão de hoje
+ * no Windows). O idioma ligado que nunca foi lido, com a Conexão desligada,
+ * espera o Anki abrir uma vez (BRG-37). Com o Anki respondendo não há nada a dizer.
  */
 function refletirOVocabularioDoAnkiFechado() {
   const selo = porId('selo-vocabulario');
-  const fechado = quandosDoVocabulario && ConexaoAnki.situacao() === ConexaoAnki.SITUACAO.DESLIGADA;
+  const leituras = leiturasDoVocabulario;
+  const desligada = ConexaoAnki.situacao() === ConexaoAnki.SITUACAO.DESLIGADA;
   const ligados = IDIOMAS_DA_MINERACAO.filter(({ chave }) => mineracaoAutomatica?.settings?.[chave]?.enabled);
-  const lidos = fechado ? ligados.map(({ chave }) => quandosDoVocabulario[chave]).filter(Boolean) : [];
+  const semOAnki = leituras
+    ? ligados.map(({ chave }) => leituras[chave]).filter(leitura => leitura && (desligada || leitura.doArquivo))
+    : [];
 
-  selo.hidden = !lidos.length;
-  if (lidos.length) selo.textContent = textoDaVoz('POP-17.selo', { quando: diaEHora(Math.min(...lidos)) });
+  selo.hidden = !semOAnki.length;
+  if (semOAnki.length) selo.textContent = textoDaVoz('POP-17.selo', { quando: diaEHora(Math.min(...semOAnki.map(leitura => leitura.dadosDe))) });
   for (const { chave } of IDIOMAS_DA_MINERACAO) {
     const espera = document.querySelector(`.popup-azulejo[data-idioma="${chave}"] .popup-azulejo__espera`);
-    if (espera) espera.hidden = !(fechado && ligados.some(l => l.chave === chave) && !quandosDoVocabulario[chave]);
+    if (espera) espera.hidden = !(leituras && desligada && ligados.some(l => l.chave === chave) && !leituras[chave]);
   }
 }
 

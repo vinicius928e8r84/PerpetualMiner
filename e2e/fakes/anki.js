@@ -34,6 +34,7 @@ function criarFakeAnki() {
     falhaDosCustos: null, // { status } | { rede: true }: GET /analytics/jobs falha
     baralhos: {},       // deckName → os números do baralho (definirBaralho)
     fonteDosBaralhos: 'ankiconnect', // 'collection.anki2': lidos do arquivo local (BRG-13)
+    ankiFechado: false,         // a Conexão responde, mas o Anki está fechado: baralhos e vocabulário vêm do arquivo
     falhaDosBaralhos: null,     // { status } | { rede: true }: GET /anki/stats/decks falha
     falhaDoVocabulario: null,   // { status } | { rede: true }: GET /anki/vocabulary falha
     baralhosDoAnki: null,       // os nomes de GET /anki/decks; null: a lista não vem (definirBaralhosDoAnki)
@@ -116,7 +117,9 @@ function criarFakeAnki() {
       generatedAt: estado.agora().toISOString(),
       deckName: url.searchParams.get('deck') || '',
       lang,
-      source: 'ankiconnect',
+      // Com o Anki fechado a Conexão responde lendo o arquivo (`_local_vocabulary`, bridge/server.py).
+      source: estado.ankiFechado ? 'collection.anki2' : 'ankiconnect',
+      ...(estado.ankiFechado && { sourceDetail: 'AnkiConnect indisponivel; lendo collection.anki2' }),
       totalCards: words.reduce((soma, w) => soma + w.cards, 0),
       totalWords: words.length,
       words,
@@ -247,6 +250,9 @@ function criarFakeAnki() {
     definirBaralhosDoAnki(nomes) { estado.baralhosDoAnki = nomes; },
     /** Os baralhos passam a vir do arquivo local do Anki (BRG-13), e não do AnkiConnect. */
     lerBaralhosDoArquivo() { estado.fonteDosBaralhos = 'collection.anki2'; },
+    /** O Anki fecha com a Conexão ligada: baralhos e vocabulário passam a vir do arquivo, como no bridge. */
+    fecharOAnki() { estado.ankiFechado = true; estado.fonteDosBaralhos = 'collection.anki2'; },
+    abrirOAnki() { estado.ankiFechado = false; estado.fonteDosBaralhos = 'ankiconnect'; },
     /** GET /anki/stats/decks falha: `{ status: 503 }` responde com erro, `{ rede: true }` derruba. */
     falharBaralhos(falha = { status: 503 }) { estado.falhaDosBaralhos = falha; },
     voltarBaralhos() { estado.falhaDosBaralhos = null; },

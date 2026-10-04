@@ -635,6 +635,27 @@ test('com a Conexão respondendo, a leitura vencida (15 min) é lida de novo e a
   expect(leitura.words).toEqual(['привет']);
 });
 
+test('com a Conexão respondendo mas o Anki fechado, a mineração automática minera pelo arquivo, guarda os dados como os de antes e não pede para abrir o Anki', async ({ page, paginas, extensao, fakes }) => {
+  fakes.anki.fecharOAnki();
+  const TRES_HORAS = 3 * 3600_000;
+  await extensao.gravarStorage(mineracaoEmRussoComVocabulario(TRES_HORAS));
+  const leituraDeAntes = (await extensao.lerStorage('pm_auto_keyword_vocab_ru')).pm_auto_keyword_vocab_ru.createdAt;
+  await abrirPlayer(page, paginas);
+
+  await tocarALegenda(page, FRASE_RUSSA);
+
+  await expect(tituloDaPilula(page, MIN_06)).toBeVisible();
+  expect(await textosGravados(extensao)).toEqual([FRASE_RUSSA]);
+  const pedidosDoVocabulario = fakes.anki.requisicoes.filter(r => r.caminho === '/anki/vocabulary');
+  expect(pedidosDoVocabulario).toHaveLength(1);
+  expect(pedidosDoVocabulario[0].busca).not.toContain('launch');
+  // A leitura é de agora, mas os dados são os da última vez que o Anki respondeu.
+  const { pm_auto_keyword_vocab_ru: leitura } = await extensao.lerStorage('pm_auto_keyword_vocab_ru');
+  expect(leitura.createdAt).toBeGreaterThan(leituraDeAntes + 3600_000);
+  expect(leitura.source).toBe('collection.anki2');
+  expect(leitura.dadosDe).toBe(leituraDeAntes);
+});
+
 test('com a Conexão respondendo, a leitura de menos de 15 min não pergunta nada à Conexão', async ({ page, paginas, extensao, fakes }) => {
   await extensao.gravarStorage(mineracaoEmRussoComVocabulario(60_000));
   await abrirPlayer(page, paginas);
