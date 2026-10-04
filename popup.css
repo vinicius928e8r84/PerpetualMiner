@@ -234,6 +234,25 @@ textarea {
   line-height: 1.35;
 }
 
+/* BRG-37: o idioma ligado que nunca foi lido espera o Anki abrir uma vez. */
+.popup-azulejo__espera {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+  line-height: 1.35;
+}
+
+.popup-azulejo__espera[hidden] {
+  display: none;
+}
+
+.popup-azulejo__espera b {
+  color: var(--veio-text);
+  font-weight: var(--veio-peso-titulo);
+}
+
 .popup-nota {
   margin: 8px 0 0;
   color: var(--veio-muted);

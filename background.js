@@ -1,8 +1,8 @@
 'use strict';
 
 // A base compartilhada: o catálogo da Voz e a detecção de idioma.
-importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/sincronizacao.js');
-const { textoDaVoz, detectarIdioma, IDIOMAS, MineracaoDoDia, Mineracao } = PerpetualMiner;
+importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/sincronizacao.js');
+const { textoDaVoz, detectarIdioma, IDIOMAS, MineracaoDoDia, Mineracao, VocabularioDaMineracao } = PerpetualMiner;
 
 // Em pasta descompactada, recarrega a extensão quando os arquivos mudam.
 importScripts('lib/arquivos-da-extensao.js', 'lib/auto-recarregar.js');
@@ -12,10 +12,8 @@ const BRIDGE_URL        = 'http://127.0.0.1:8766';
 const AUTO_MINER_SETTINGS_KEY = MineracaoDoDia.CHAVES.ajustes;
 const AUTO_MINER_DAILY_KEY = MineracaoDoDia.CHAVES.diario;
 const AUTO_MINER_LAST_EVENT_KEY = MineracaoDoDia.CHAVES.ultimoEvento;
-const AUTO_KEYWORD_CACHE_KEY = 'pm_auto_keyword_vocab_en';
-const AUTO_KEYWORD_CACHE_PREFIX = 'pm_auto_keyword_vocab_';
-const AUTO_KEYWORD_CACHE_VERSION = 2;
-const AUTO_KEYWORD_CACHE_TTL_MS = 15 * 60 * 1000;
+// Com uma leitura guardada para cair de volta, a Conexão muda não segura a Mineração automática por mais que isto.
+const AUTO_KEYWORD_RENEW_TIMEOUT_MS = 8000;
 const AUTO_KEYWORD_MIN_SCORE = 70;
 const AUTO_KEYWORD_MAX_EN_GROUPS = 2;
 const AUTO_MINER_MAX_EN_KEYWORDS = AUTO_KEYWORD_MAX_EN_GROUPS;
@@ -675,24 +673,21 @@ function isAutoKeywordRussianWord(word) {
 async function getAutoKeywordVocabulary(lang = 'en') {
   const normalizedLang = lang === 'ru' ? 'ru' : 'en';
   const deckName = await getAutoKeywordDeckName(normalizedLang);
-  const cacheKey = normalizedLang === 'en' ? AUTO_KEYWORD_CACHE_KEY : `${AUTO_KEYWORD_CACHE_PREFIX}${normalizedLang}`;
+  const cacheKey = VocabularioDaMineracao.chaveDoIdioma(normalizedLang);
   const cached = await chromeGet({ [cacheKey]: null });
-  const value = cached[cacheKey];
-  if (
-    value
-    && value.cacheVersion === AUTO_KEYWORD_CACHE_VERSION
-    && value.deckName === deckName
-    && Date.now() - Number(value.createdAt || 0) < AUTO_KEYWORD_CACHE_TTL_MS
-  ) {
-    return autoVocabularyFromCache(value);
-  }
+  // A última leitura daquele Baralho não tem prazo: com ela em dia, nem pergunta à Conexão;
+  // vencida, tenta renovar e, se a Conexão não responde, é ela que continua valendo.
+  const ultimaLeitura = VocabularioDaMineracao.doBaralho(cached[cacheKey], deckName);
+  if (ultimaLeitura && VocabularioDaMineracao.estaEmDia(ultimaLeitura)) return autoVocabularyFromCache(ultimaLeitura);
 
   let data = null;
   // O Baralho dos Ajustes de envio e, se ele não responde, o padrão (o mesmo do painel).
   const baralhoPadrao = PerpetualMiner.AjustesDeEnvio.baralhoPadrao(normalizedLang);
   for (const deck of [...new Set([deckName, baralhoPadrao])].filter(Boolean)) {
     try {
-      const resp = await fetch(`${BRIDGE_URL}/anki/vocabulary?deck=${encodeURIComponent(deck)}&lang=${normalizedLang}&limit=10000`);
+      const resp = await fetch(`${BRIDGE_URL}/anki/vocabulary?deck=${encodeURIComponent(deck)}&lang=${normalizedLang}&limit=10000`, {
+        signal: ultimaLeitura ? AbortSignal.timeout(AUTO_KEYWORD_RENEW_TIMEOUT_MS) : undefined,
+      });
       if (!resp.ok) continue;
       data = await resp.json();
       break;
@@ -700,7 +695,7 @@ async function getAutoKeywordVocabulary(lang = 'en') {
       continue;
     }
   }
-  if (!data) return autoEmptyVocabulary(false);
+  if (!data) return ultimaLeitura ? autoVocabularyFromCache(ultimaLeitura) : autoEmptyVocabulary(false);
 
   const words = [];
   const terms = [];
@@ -718,7 +713,7 @@ async function getAutoKeywordVocabulary(lang = 'en') {
     }
   }
 
-  const payload = { cacheVersion: AUTO_KEYWORD_CACHE_VERSION, deckName, createdAt: Date.now(), words, terms, wordInfo, termInfo };
+  const payload = { cacheVersion: VocabularioDaMineracao.VERSAO, deckName, createdAt: Date.now(), words, terms, wordInfo, termInfo };
   chrome.storage.local.set({ [cacheKey]: payload });
   return autoVocabularyFromCache(payload);
 }

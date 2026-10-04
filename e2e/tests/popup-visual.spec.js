@@ -79,12 +79,29 @@ test('limite de hoje atingido', async ({ page, extensao }) => {
   await expect(page).toHaveScreenshot('popup-limite.png');
 });
 
-test('Conexão com o Anki desligada, com nada minerado hoje', async ({ page, extensao, fakes }) => {
+// A última leitura do vocabulário, como a Mineração automática a guarda.
+const leitura = (deckName, createdAt) => ({
+  cacheVersion: 2, deckName, createdAt, words: [], terms: [], wordInfo: {}, termInfo: {},
+});
+
+test('Conexão com o Anki desligada, com a leitura de ontem: o azulejo segue contando e o selo diz a idade', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await extensao.gravarStorage({
+    frases: FRASES,
+    ...DIA_NORMAL,
+    pm_auto_keyword_vocab_en: leitura('CIMV', new Date('2026-09-17T14:02:00').getTime()),
+  });
+  await abrirPopup(page, extensao);
+  await expect(page.getByText('Vocabulário de ontem, 14:02')).toBeVisible();
+  await expect(page).toHaveScreenshot('popup-vocabulario-de-ontem.png');
+});
+
+test('Conexão com o Anki desligada, sem nenhuma leitura: o azulejo ligado espera o Anki', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await extensao.gravarStorage({ frases: FRASES, ...mineracao({ en: [true, 20, 0], ru: [false, 15, 0] }) });
   await abrirPopup(page, extensao);
-  await expect(page.getByText(/Nada é minerado com a Conexão/)).toBeVisible();
-  await expect(page).toHaveScreenshot('popup-conexao-desligada.png');
+  await expect(page.locator('.popup-azulejo__espera:visible')).toHaveText('— esperando o AnkiComeça depois que o Anki abrir uma vez.');
+  await expect(page).toHaveScreenshot('popup-esperando-o-anki.png');
 });
 
 test('mineração rápida que falhou', async ({ page, extensao }) => {

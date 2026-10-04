@@ -518,28 +518,102 @@ test('no campo de limite, clicar seleciona o número: digitar troca o limite int
   await expect.poll(async () => (await extensao.lerStorage('pm_auto_miner_settings')).pm_auto_miner_settings.en.dailyLimit).toBe(35);
 });
 
-test('com a Conexão com o Anki desligada, a nota ONB-10 aparece sob os azulejos', async ({ page, extensao, fakes }) => {
-  fakes.anki.desligar();
-  await page.goto(extensao.url('popup.html'));
-  await expect(page.getByText('Nada é minerado com a Conexão com o Anki desligada: é ela que diz quais palavras você já conhece.')).toBeVisible();
+// ─── Com o Anki fechado: a idade do vocabulário (POP-17) e o esperando (BRG-37) ──
+
+/** Um momento de ontem às 14:02, a hora local: o selo diz “Vocabulário de ontem, 14:02”. */
+function ontemAs1402() {
+  const quando = new Date();
+  quando.setDate(quando.getDate() - 1);
+  quando.setHours(14, 2, 0, 0);
+  return quando.getTime();
+}
+
+/** A última leitura do vocabulário de um idioma, como a Mineração automática a guarda. */
+const leitura = (deckName, createdAt) => ({
+  cacheVersion: 2, deckName, createdAt, words: [], terms: [], wordInfo: {}, termInfo: {},
 });
 
-test('com a Conexão desligada mas algo já minerado hoje, a nota não aparece: a Conexão funcionou hoje', async ({ page, extensao, fakes }) => {
+const selo = page => page.getByText(/^Vocabulário de /);
+const esperando = (page, chave) => page.locator(`.popup-azulejo[data-idioma="${chave}"]`).getByText('— esperando o Anki');
+
+test('com a Conexão desligada e uma leitura de ontem, o azulejo segue contando e o selo diz “Vocabulário de ontem, 14:02”', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await semearMineracaoAutomatica(extensao, {
-    en: { ligado: true, limite: 20, hoje: 20 },
-    ru: { ligado: true, limite: 15, hoje: 4 },
+    en: { ligado: true, limite: 20, hoje: 12 },
+    ru: { ligado: false, limite: 15, hoje: 0 },
   });
+  await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura('CIMV', ontemAs1402()) });
   await page.goto(extensao.url('popup.html'));
-  await expect(page.locator('.popup-azulejo')).toHaveCount(2);
-  await expect.poll(() => fakes.anki.requisicoes.some(r => r.caminho === '/health')).toBe(true);
+
+  await expect(selo(page)).toHaveText('Vocabulário de ontem, 14:02');
+  await expect(page.locator('.popup-azulejo[data-idioma="en"]')).toContainText('12 de 20 hoje');
+  await expect(page.locator('.popup-azulejo__espera:visible')).toHaveCount(0);
   await expect(page.getByText(/Nada é minerado com a Conexão/)).toBeHidden();
 });
 
-test('com a Conexão com o Anki ligada, não há nota', async ({ page, extensao, fakes }) => {
+test('o selo do popup diz o dia e a hora da leitura mais antiga entre os idiomas ligados', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await semearMineracaoAutomatica(extensao, {
+    en: { ligado: true, limite: 20, hoje: 1 },
+    ru: { ligado: true, limite: 15, hoje: 1 },
+  });
+  await extensao.gravarStorage({
+    pm_auto_keyword_vocab_en: leitura('CIMV', Date.now() - 60_000),
+    pm_auto_keyword_vocab_ru: leitura('RUSSIAN', ontemAs1402()),
+  });
+  await page.goto(extensao.url('popup.html'));
+  await expect(selo(page)).toHaveText('Vocabulário de ontem, 14:02');
+
+  // A leitura de um idioma desligado não conta: ele não mineraria com ela.
+  await extensao.gravarStorage({ pm_auto_miner_settings: {
+    en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 15 },
+  } });
+  await page.reload();
+  await expect(selo(page)).toHaveText(/^Vocabulário de hoje, \d{2}:\d{2}$/);
+});
+
+test('com a Conexão respondendo, nem o selo nem o esperando aparecem', async ({ page, extensao, fakes }) => {
+  await semearMineracaoAutomatica(extensao, {
+    en: { ligado: true, limite: 20, hoje: 2 },
+    ru: { ligado: true, limite: 15, hoje: 0 },
+  });
+  await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura('CIMV', ontemAs1402()) });
   await page.goto(extensao.url('popup.html'));
   await expect.poll(() => fakes.anki.requisicoes.some(r => r.caminho === '/health')).toBe(true);
-  await expect(page.getByText(/Nada é minerado com a Conexão/)).toBeHidden();
+  await expect(page.locator('.popup-azulejo')).toHaveCount(2);
+
+  await expect(selo(page)).toBeHidden();
+  await expect(page.locator('.popup-azulejo__espera:visible')).toHaveCount(0);
+});
+
+test('com a Conexão desligada e nenhuma leitura, o azulejo ligado diz “— esperando o Anki” e quando começa; o desligado, nada', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await semearMineracaoAutomatica(extensao, {
+    en: { ligado: true, limite: 20, hoje: 0 },
+    ru: { ligado: false, limite: 15, hoje: 0 },
+  });
+  await page.goto(extensao.url('popup.html'));
+
+  await expect(esperando(page, 'en')).toBeVisible();
+  await expect(page.locator('.popup-azulejo[data-idioma="en"]')).toContainText('Começa depois que o Anki abrir uma vez.');
+  await expect(esperando(page, 'ru')).toBeHidden();
+  await expect(selo(page)).toBeHidden();
+});
+
+test('uma leitura de outro Baralho não vale: o azulejo espera o Anki, e a leitura do Baralho certo faz o selo aparecer', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await semearMineracaoAutomatica(extensao, {
+    en: { ligado: true, limite: 20, hoje: 3 },
+    ru: { ligado: false, limite: 15, hoje: 0 },
+  });
+  await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura('Outro baralho', ontemAs1402()) });
+  await page.goto(extensao.url('popup.html'));
+  await expect(esperando(page, 'en')).toBeVisible();
+  await expect(selo(page)).toBeHidden();
+
+  await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura('CIMV', ontemAs1402()) });
+  await expect(selo(page)).toHaveText('Vocabulário de ontem, 14:02');
+  await expect(esperando(page, 'en')).toBeHidden();
 });
 
 // ─── Acessibilidade e movimento ───────────────────────────────────────────────

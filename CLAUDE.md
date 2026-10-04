@@ -51,6 +51,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `lib/ajustes-de-envio.js` | `PerpetualMiner.AjustesDeEnvio` — the Ajustes de envio in one place: the Baralho padrão of each language (CIMV · RUSSIAN), the stored shape of `ankiBridgePresets`, the per-language save that refuses a stale version, and `acompanhar`. Loaded by the panel and the service worker, so the default deck is the same everywhere in the front |
 | `lib/mineracao.js` | `PerpetualMiner.Mineracao` and `PerpetualMiner.minerarFraseManual` — shared mining requests and selection context. See the module's doc comments for the API, confirmation and title-compatibility contracts |
 | `lib/mineracao-do-dia.js` | `PerpetualMiner.MineracaoDoDia` — shared automatic-mining day rules and storage/message channel names. See the module's doc comments for normalization and the day-query API; see `publicarEstadoDaAutomatica` in `background.js` for state publication |
+| `lib/vocabulario-da-mineracao.js` | `PerpetualMiner.VocabularioDaMineracao` — the last vocabulary reading the Mineração automática uses (`pm_auto_keyword_vocab_en` / `_ru`): the key, the format version, whether it is for the Baralho the Ajustes de envio have now, and `lerQuandos()`. **It has no expiry**; `RENOVAR_A_CADA_MS` (15 min) is only how often the service worker tries to read it again while the Conexão answers. Loaded by the service worker and the popup |
 | `lib/mineracao-automatica.js` | `PerpetualMiner.MineracaoAutomatica` — the automatic mining seen from a page: `lerEstado()` / `salvarAjustes(mudanca)` (the `AUTO_MINER_GET_STATE` / `AUTO_MINER_SET_SETTINGS` messages, as promises that reject with the cause) and `ligarCampoDoLimite(campo, { limiteGravado, gravar })`, the 1–100 daily-limit field (`.veio-campo--limite`). Shared by the popup's tiles and step 5 of the Boas-vindas |
 | `lib/firebase/` | Firebase compat SDK bundles (app, auth, firestore) — no page loads them today (the panel talks to Firestore over REST), so the Web Store package leaves them out |
 | `lib/arquivos-da-extensao.js` | `PerpetualMiner.arquivosDaExtensao(lerTexto)` — the files the extension uses at run time, found from `manifest.json` (service worker and its `importScripts`, content scripts, icons, pages and what they load). Read by `lib/auto-recarregar.js` and by `scripts/empacotar-extensao.mjs`, so the two never disagree |
@@ -254,9 +255,7 @@ the counter as the prototype draws it (“12/20”, the number large; the screen
 and the 1–100 daily limit, which gives way to “Limite de hoje atingido” (POP-08, also the switch's accessible
 description) once an enabled language hits it, even while the limit field has focus. The limit field has no spin
 arrows: focusing it selects the number, typing replaces it, ↑ ↓ still step it, and Enter saves and keeps focus there; a
-redraw puts focus back on the same control (the switch, once the field gave way to POP-08). The ONB-10 note shows while
-the popup's single `/health` check on opening fails *and* nothing was mined automatically today (a count above 0 means the
-Conexão worked today). The tiles show a skeleton until the service worker answers `AUTO_MINER_GET_STATE` (a
+redraw puts focus back on the same control (the switch, once the field gave way to POP-08). With the Conexão off (the popup's single `/health` check on opening fails) the Mineração automática keeps going from the last vocabulary reading of the Baralho (`VocabularioDaMineracao`, no expiry), so the tiles and the toolbar badge keep counting and the popup says how old the data is: the POP-17 selo under the tiles, “Vocabulário de ontem, 14:02” (`Contexto.diaEHora`), from the *oldest* reading among the enabled languages. An enabled language with no reading of its Baralho at all shows BRG-37 inside its tile (“— esperando o Anki”, “Começa depois que o Anki abrir uma vez.”). With the Conexão answering neither shows. (ONB-10 is no longer in the popup; step 5 of the Boas-vindas still shows it.) Abrir o Anki is #150's. The tiles show a skeleton until the service worker answers `AUTO_MINER_GET_STATE` (a
 `pm_auto_miner_state_view` that arrives first wins); if it fails, POP-16 says what to do in one line with the alert icon
 (close and reopen the popup), and if a save (`AUTO_MINER_SET_SETTINGS`) fails, the tiles go back to what is stored and
 POP-16 asks to try again. No button and no Detalhes: the next published state clears the line. **Quick mining**
@@ -344,7 +343,7 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   shared checks; see the doc comments in `painel-anki-primeira-conexao.js` for its subscription and timer lifecycle. See the
   [Anki area states](docs/design/painel/anki/README.md#estados) for the **Pronto** moment, its status during a new check and focus when the controls or card leave.
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
-  selo (“Mostrando dados de há 2 h…”, with the code in Detalhes) and the period controls set to that reading's
+  selo (“Anki fechado. Mostrando dados de há 2 h.”, with the code in Detalhes) and the period controls set to that reading's
   period and disabled (another period would have nowhere to come from). **Continuar envio** and
   **Reparar Anki** get `aria-disabled` (still in the Tab order) with a `.veio-dica` tooltip (BRG-33) on hover and on keyboard focus (`:focus-visible`, so a click never leaves it open);
   a press does nothing. With the Conexão off and nothing stored, Custos only says “Custo indisponível”:
@@ -354,7 +353,7 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
 **↻ Atualizar** (BRG-24) is one action, owned by `painel-anki.js`: it asks `ConexaoAnki` for `/health` again
 (`ConexaoAnki.conferir`) and, only with the Conexão on, reads Custos again and calls whoever registered through
 `PerpetualMiner.Anki.aoAtualizar(fn)` — `painel-anki-baralhos.js` re-reads the decks there, with `launch=1` (“abre o Anki se precisar”),
-and the vocabulary. `Anki.atualizar()` is the same action for whoever needs it (BRG-17's Atualizar).
+and the vocabulary. Only a click asks the Conexão to open the Anki (↻ Atualizar, Tentar de novo): entering the area, a new Baralho or the Conexão coming back read without `launch`. `Anki.atualizar()` is the same action for whoever needs it (BRG-17's Atualizar).
 Off, nothing tries to open the Anki. BRG-04's Tentar de novo only re-reads Custos.
 
 The relative time (“agora”, “há 5 min”, “há 2 h”, then the PAI-11 day: ontem · há 3 dias) is `Contexto.haQuanto`
@@ -389,13 +388,13 @@ entering the Anki area with the Conexão on, when it comes back, and on ↻ Atua
 fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
 
 - **Baralhos e termos** reads `GET /anki/stats/decks` with both decks at once (`deck`/`lang` repeated; `launch=1` on
-  entry, `refresh=1` on ↻ and after a repair). The tiles Inglês · Russo (`aria-pressed`, group BRG-34.idiomas) say
+  ↻ and Tentar de novo only, `refresh=1` on ↻ and after a repair). The tiles Inglês · Russo (`aria-pressed`, group BRG-34.idiomas) say
   “EN · <deck>” and the words (`vocabulary.phraseVocabulary`); a deck the Anki does not have (`missing`) says “—” and
   BRG-27, and its detail is BRG-14 with Abrir Ajustes de envio (→ `#anki/ajustes`). The chosen deck: the maturity ring
   (an SVG `role="img"` named “66% de maturidade”: mature over all cards, recentes = `young + learning`), the big
   number, “palavras diferentes nos cartões” and Cartões · Termos-alvo · Palavra nova por cartão (1 decimal) · Maduros ·
   Recentes · Novos. Ring, bars and legend use the maturity series (ouro · info · muted). Read from the local file
-  (`source: 'collection.anki2'`): the BRG-13 note on top; the bridge's own stale cache: the BRG-12 selo (see the
+  (`source: 'collection.anki2'`): the BRG-13 note on top; the bridge's own stale cache: the BRG-12 selo “Mostrando dados de … Não deu para atualizar agora.” (`BRG-12.atualizacao`; with the Conexão off it is `BRG-12.anki`, “Anki fechado. Mostrando dados de {quando}.”, in all three tabs; with the Conexão off and nothing stored the two tabs say BRG-37 instead of staying empty) (see the
   [design states](docs/design/painel/anki/README.md#estados) for presentation by tab). Loading BRG-10 + skeleton;
   failure is the persistent BRG-11 aviso with Reparar Anki, Tentar de
   novo and the cause in Detalhes.
@@ -744,6 +743,7 @@ Other storage keys:
 - `pm_atalho` — the “Minerar seleção” shortcut; `null` or absent → none (the default). Both use `{ type: 'keyboard'|'mouse', code, button, altKey, ctrlKey, shiftKey, label }`
 - `pm_apagar_tudo` — pending Apagar tudo; shape, account matching and cutoff are documented in `lib/sincronizacao.js`
 - `pm_anki_ja_conectou` — stored first-success fact; `lib/conexao-anki.js` owns its lifecycle
+- `pm_auto_keyword_vocab_en` / `pm_auto_keyword_vocab_ru` — the last vocabulary reading the Mineração automática uses `{ cacheVersion, deckName, createdAt, words, terms, wordInfo, termInfo }`; no expiry, owned by `lib/vocabulario-da-mineracao.js` (the popup says its age with the Conexão off)
 - `pm_anki_custos` — `{ quando, periodo, de, ate, envios }`, the last Custos reading (the `/analytics/jobs` rows), shown with BRG-12 while the Conexão is off
 - `pm_anki_baralhos` — `{ quando, dados }`, the last `GET /anki/stats/decks`; `pm_anki_vocabulario` — `{ quando, dados: { en, ru } }` (each `{ deckName, itens }`), the last vocabulary. Both are shown with BRG-12 while the Conexão is off
 - `pm_anki_quatro_casas` / `pm_anki_ids_dos_envios` — the Avançado switches “Mostrar custos com 4 casas” and “Mostrar IDs dos envios” (local on purpose: remembered on this computer)

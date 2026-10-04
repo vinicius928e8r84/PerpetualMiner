@@ -3,9 +3,9 @@
 // O popup “Cockpit” (docs/design/popup/, variante A). A base compartilhada é
 // carregada antes pelo popup.html: o catálogo da Voz, os componentes da Veio,
 // o detector de idioma, os atalhos gravados e o Contexto da frase.
-const { IDIOMAS, textoDaVoz, Atalhos, minerarFraseManual, Configuracao, ConexaoAnki, MineracaoAutomatica, MineracaoDoDia } = PerpetualMiner;
+const { IDIOMAS, textoDaVoz, Atalhos, minerarFraseManual, Configuracao, ConexaoAnki, MineracaoAutomatica, MineracaoDoDia, AjustesDeEnvio, VocabularioDaMineracao } = PerpetualMiner;
 const { iconeVeio, escreverFrase, montarTeclas, montarAnelDeProgresso } = PerpetualMiner.Veio;
-const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
+const { fonteDaFrase, nomeDaFonte, rotuloDoDia, diaEHora } = PerpetualMiner.Contexto;
 
 const QUANTAS_ULTIMAS = 5;
 const ENDERECO_DOS_ATALHOS = '#configuracoes/atalhos';
@@ -26,6 +26,7 @@ let idsJaMostrados = null;            // o que a lista já mostrou, para realça
 const idsChegando = new Set();        // as que ainda estão no realce: um redesenho não o apaga
 let atalhoDeLegenda = Atalhos.ATALHOS_PADRAO.legenda;
 let mineracaoAutomatica = null;       // { settings, daily } do service worker
+let quandosDoVocabulario = null;      // { en, ru }: quando foi a última leitura de cada Baralho (null: nenhuma); null até ler
 let configuracao = null;              // o retrato da configuração (lib/configuracao.js)
 let minerando = false;
 
@@ -68,11 +69,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mudancas[MineracaoDoDia.CHAVES.estadoPublicado]?.newValue) {
       mostrarMineracaoAutomatica(mudancas[MineracaoDoDia.CHAVES.estadoPublicado].newValue);
     }
+    const mudouOVocabulario = Object.values(VocabularioDaMineracao.CHAVES).some(chave => chave in mudancas);
+    if (mudouOVocabulario || AjustesDeEnvio.CHAVE in mudancas) lerAIdadeDoVocabulario();
   });
 
-  // A nota espera a Conexão responder; o Configuracao a acompanha por conta própria.
-  ConexaoAnki.acompanhar(refletirNotaDaConexao);
+  // O selo e o esperando só aparecem com a Conexão desligada; o Configuracao a acompanha por conta própria.
+  ConexaoAnki.acompanhar(refletirOVocabularioDoAnkiFechado);
   ConexaoAnki.iniciar();
+  lerAIdadeDoVocabulario();
 });
 
 function escreverCopiaFixa() {
@@ -80,7 +84,6 @@ function escreverCopiaFixa() {
   abrir.append(iconeVeio('frases'), textoDaVoz('POP-09'));
   porId('titulo-automatica-texto').textContent = textoDaVoz('POP-10');
   porId('automatica-por-dia').textContent = textoDaVoz('POP-14.porDia');
-  porId('nota-conexao').textContent = textoDaVoz('ONB-10');
   porId('lembrete-corpo').textContent = textoDaVoz('ONB-14.corpo');
   porId('lembrete-continuar').textContent = textoDaVoz('ONB-14.continuar');
   porId('titulo-ultimas-texto').textContent = textoDaVoz('POP-13.titulo');
@@ -165,7 +168,7 @@ function mostrarMineracaoAutomatica(estado) {
   }));
 
   devolverOFoco(azulejos, foco);
-  refletirNotaDaConexao();
+  refletirOVocabularioDoAnkiFechado();
 }
 
 /** O azulejo e o controle com o foco, para devolvê-lo depois de redesenhar. */
@@ -235,7 +238,12 @@ function montarAzulejo(chave, idioma, numeros) {
   visto.append(criar('b'), criar('small'));
   contador.append(visto, criar('span', 'veio-so-leitor'));
 
-  azulejo.append(topo, contador, medidor);
+  // BRG-37: sem nenhuma leitura do vocabulário, a Mineração automática espera o Anki abrir uma vez.
+  const espera = criar('p', 'popup-azulejo__espera');
+  espera.hidden = true;
+  espera.append(criar('b', null, textoDaVoz('BRG-37.esperando')), criar('span', null, textoDaVoz('BRG-37.comeca')));
+
+  azulejo.append(topo, contador, medidor, espera);
 
   // No limite, o campo dá lugar a POP-08: a mineração do dia acabou. O toggle
   // o tem como descrição, para o leitor de tela dizê-lo quando o foco chega ali.
@@ -291,15 +299,32 @@ function salvarMineracaoAutomatica(mudanca) {
   });
 }
 
+/** Lê quando foi a última leitura do vocabulário de cada Baralho, e mostra o que isso muda. */
+function lerAIdadeDoVocabulario() {
+  VocabularioDaMineracao.lerQuandos().then(quandos => {
+    quandosDoVocabulario = quandos;
+    refletirOVocabularioDoAnkiFechado();
+  }, () => {});
+}
+
 /**
- * A nota ONB-10 aparece enquanto a Conexão com o Anki não responde, a não ser
- * que a mineração automática já tenha minerado hoje: aí a Conexão funcionou
- * hoje, e a nota só assustaria.
+ * Com a Conexão com o Anki desligada, a Mineração automática segue pela última
+ * leitura do vocabulário, e o popup diz a idade dela (POP-17): a mais antiga
+ * entre os idiomas ligados. O idioma ligado que nunca foi lido espera o Anki
+ * abrir uma vez (BRG-37). Com a Conexão respondendo não há nada a dizer.
  */
-function refletirNotaDaConexao() {
-  const mineradoHoje = Boolean(mineracaoAutomatica)
-    && IDIOMAS_DA_MINERACAO.some(({ chave }) => numerosDoIdioma(chave).n > 0);
-  porId('nota-conexao').hidden = ConexaoAnki.situacao() !== ConexaoAnki.SITUACAO.DESLIGADA || mineradoHoje;
+function refletirOVocabularioDoAnkiFechado() {
+  const selo = porId('selo-vocabulario');
+  const fechado = quandosDoVocabulario && ConexaoAnki.situacao() === ConexaoAnki.SITUACAO.DESLIGADA;
+  const ligados = IDIOMAS_DA_MINERACAO.filter(({ chave }) => mineracaoAutomatica?.settings?.[chave]?.enabled);
+  const lidos = fechado ? ligados.map(({ chave }) => quandosDoVocabulario[chave]).filter(Boolean) : [];
+
+  selo.hidden = !lidos.length;
+  if (lidos.length) selo.textContent = textoDaVoz('POP-17.selo', { quando: diaEHora(Math.min(...lidos)) });
+  for (const { chave } of IDIOMAS_DA_MINERACAO) {
+    const espera = document.querySelector(`.popup-azulejo[data-idioma="${chave}"] .popup-azulejo__espera`);
+    if (espera) espera.hidden = !(fechado && ligados.some(l => l.chave === chave) && !quandosDoVocabulario[chave]);
+  }
 }
 
 // ─── Configuração pela metade ─────────────────────────────────────────────────
