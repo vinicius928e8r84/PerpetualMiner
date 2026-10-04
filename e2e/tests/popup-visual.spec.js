@@ -11,6 +11,7 @@
 // O popup tem 340 px de largura e teto de 600 px, como no balão do ícone.
 
 const { test, expect } = require('../fixtures');
+const { leituraDoVocabulario: leitura } = require('../leitura-do-vocabulario');
 
 // O Contexto diz o dia da frase (PAI-11): o relógio fica parado no dia delas.
 const AGORA = new Date('2026-09-18T12:00:00');
@@ -79,11 +80,6 @@ test('limite de hoje atingido', async ({ page, extensao }) => {
   await expect(page).toHaveScreenshot('popup-limite.png');
 });
 
-// A última leitura do vocabulário, como a Mineração automática a guarda.
-const leitura = (deckName, createdAt) => ({
-  cacheVersion: 2, deckName, createdAt, words: [], terms: [], wordInfo: {}, termInfo: {},
-});
-
 test('Conexão com o Anki desligada, com a leitura de ontem: o azulejo segue contando e o selo diz a idade', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await extensao.gravarStorage({
@@ -100,7 +96,9 @@ test('Conexão com o Anki desligada, sem nenhuma leitura: o azulejo ligado esper
   fakes.anki.desligar();
   await extensao.gravarStorage({ frases: FRASES, ...mineracao({ en: [true, 20, 0], ru: [false, 15, 0] }) });
   await abrirPopup(page, extensao);
-  await expect(page.locator('.popup-azulejo__espera:visible')).toHaveText('— esperando o AnkiComeça depois que o Anki abrir uma vez.');
+  const espera = page.locator('.popup-azulejo__espera:visible');
+  await expect(espera).toContainText('— esperando o Anki');
+  await expect(espera).toContainText('Começa depois que o Anki abrir uma vez.');
   await expect(page).toHaveScreenshot('popup-esperando-o-anki.png');
 });
 

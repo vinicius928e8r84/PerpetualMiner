@@ -304,7 +304,9 @@ function lerAIdadeDoVocabulario() {
   VocabularioDaMineracao.lerQuandos().then(quandos => {
     quandosDoVocabulario = quandos;
     refletirOVocabularioDoAnkiFechado();
-  }, () => {});
+  }, () => {
+    // Sem poder ler o storage o popup não sabe a idade: não mostra o selo nem o esperando.
+  });
 }
 
 /**

@@ -8,6 +8,7 @@
 
 const { test, expect } = require('../fixtures');
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
+const { leituraDoVocabulario: leitura } = require('../leitura-do-vocabulario');
 
 const HOJE = new Date().toLocaleDateString('pt-BR');
 
@@ -527,11 +528,6 @@ function ontemAs1402() {
   quando.setHours(14, 2, 0, 0);
   return quando.getTime();
 }
-
-/** A última leitura do vocabulário de um idioma, como a Mineração automática a guarda. */
-const leitura = (deckName, createdAt) => ({
-  cacheVersion: 2, deckName, createdAt, words: [], terms: [], wordInfo: {}, termInfo: {},
-});
 
 const selo = page => page.getByText(/^Vocabulário de /);
 const esperando = (page, chave) => page.locator(`.popup-azulejo[data-idioma="${chave}"]`).getByText('— esperando o Anki');

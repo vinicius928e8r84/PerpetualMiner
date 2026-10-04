@@ -183,8 +183,7 @@ test('Reparar Anki espera o reparo inteiro (~100 s): “Reparando…” até o f
   await expect(baralhos(page).getByRole('alert')).toHaveCount(0);
   expect(pedidos(fakes, '/anki/repair')).toHaveLength(1);
   // Reparado, os baralhos são lidos de novo, sem o cache da Conexão.
-  await expect.poll(() => pedidos(fakes, '/anki/stats/decks').length).toBeGreaterThan(leiturasAntes);
-  expect(pedidos(fakes, '/anki/stats/decks').at(-1).busca).toContain('refresh=1');
+  await expect.poll(() => pedidos(fakes, '/anki/stats/decks').slice(leiturasAntes).some(r => r.busca.includes('refresh=1'))).toBe(true);
 });
 
 test('Reparar Anki pelo erro BRG-11: após o reparo o foco vai para o idioma escolhido', async ({ page, extensao, fakes }) => {

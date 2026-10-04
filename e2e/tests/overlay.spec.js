@@ -7,6 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../fixtures');
+const { leituraDoVocabulario } = require('../leitura-do-vocabulario');
 
 const LEGENDA = 'The quiet harbor woke before the gulls did.';
 const TRECHO = 'Every lantern along the pier flickered in the salt wind.';
@@ -587,10 +588,7 @@ const DOIS_DIAS = 2 * 24 * 3600_000;
 const mineracaoEmRussoComVocabulario = idadeMs => ({
   pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } },
   pm_auto_miner_daily: { date: hoje(), en: { count: 0 }, ru: { count: 0 } },
-  pm_auto_keyword_vocab_ru: {
-    cacheVersion: 2, deckName: 'RUSSIAN', createdAt: Date.now() - idadeMs,
-    words: [], terms: [], wordInfo: {}, termInfo: {},
-  },
+  pm_auto_keyword_vocab_ru: leituraDoVocabulario('RUSSIAN', Date.now() - idadeMs),
 });
 
 test('com a Conexão desligada, a mineração automática minera pela última leitura do vocabulário, de dois dias atrás', async ({ page, paginas, extensao, fakes }) => {
