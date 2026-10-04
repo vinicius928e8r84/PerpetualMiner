@@ -34,6 +34,9 @@ preview/dist/
 .claude/worktrees/
 dist/
 
+# Venv Python (scripts/preparar-python.sh)
+.venv/
+
 # Saída do Playwright rodado na raiz (e2e/.gitignore cobre só e2e/test-results)
 test-results/
 

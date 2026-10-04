@@ -1,6 +1,6 @@
 # Anki Bridge
 
-Bridge local residente para integrar o painel do PerpetualMiner com o pipeline de cartões (a pasta `engine/` deste repo).
+Bridge local residente para integrar o painel do PerpetualMiner com o pipeline de cards em `engine/` (o Automatic Anki, que vive neste repositorio).
 
 ## O que faz
 
@@ -13,7 +13,7 @@ Bridge local residente para integrar o painel do PerpetualMiner com o pipeline d
 
 ## Instalacao
 
-1. Instale as dependencias (o pipeline de cartoes e a pasta `engine/` deste repo):
+1. Instale as dependencias do bridge e do engine (o pipeline de cards e a pasta `engine/` deste repo):
 
 ```powershell
 pip install -r bridge/requirements.txt -r engine/requirements.txt
@@ -43,6 +43,30 @@ Use apenas para debug:
 ```powershell
 python bridge/server.py
 ```
+
+## Ambiente Python e testes (Linux e macOS)
+
+Os testes do bridge e do engine rodam em Linux e macOS, sem Anki e sem Windows. Na raiz do repositorio:
+
+```bash
+scripts/preparar-python.sh
+```
+
+O script cria o venv `.venv` e instala `bridge/requirements.txt` e `engine/requirements.txt`. Sem sudo, e sem alterar o Python do sistema: as dependencias ficam so no venv (o pip mantem o cache dele fora do repositorio, em `~/.cache/pip`). Em hosts Debian/Ubuntu sem `python3-venv`, o `python3 -m venv` nao traz o pip; o script cria o venv com `--without-pip` e instala o pip com o `get-pip.py` oficial. A mao, o equivalente e:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r bridge/requirements.txt -r engine/requirements.txt
+```
+
+Os testes (rode da raiz; o `python` nao existe em todo host, use `python3` ou o do venv):
+
+```bash
+.venv/bin/python -m unittest discover -s bridge -p "test_*.py"
+.venv/bin/python -m unittest discover -s engine -p "test_*.py"
+```
+
+Para um arquivo so, use o venv: `.venv/bin/python bridge/test_envio.py`. Esse arquivo nao precisa do Flask, mas importa `requests` (via `envio` e `anki_session`); com `python3` do sistema ele so roda se o `requests` ja estiver instalado la. `test_anki_launcher.py` e `test_envio_api.py` precisam do Flask.
 
 ## Logs
 
