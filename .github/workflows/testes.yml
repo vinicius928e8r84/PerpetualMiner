@@ -41,12 +41,7 @@ jobs:
           cache: pip
           cache-dependency-path: bridge/requirements.txt
       - run: pip install -r bridge/requirements.txt
-      - run: |
-          for teste in bridge/test_*.py; do
-            echo "::group::$teste"
-            python "$teste"
-            echo "::endgroup::"
-          done
+      - run: python -m unittest discover -s bridge -p "test_*.py"
 
   e2e:
     name: e2e (${{ matrix.fatia }}/4)
