@@ -2,26 +2,13 @@
 'use strict';
 
 // As regras que a revisão cobrava à mão, conferidas por máquina. O mesmo comando
-// roda aqui e no CI (.github/workflows/regras.yml):
-//
-//   node scripts/regras/verificar.js              confere o repositório
-//   node scripts/regras/verificar.js --atualizar  baixa a linha de base depois de um conserto
-//   node scripts/regras/test_regras.js            prova cada regra com os erros reais que ela pega
-//
-// O que já existia antes de cada regra está em linha-de-base.json, contado por
-// arquivo: a verificação só falha quando um arquivo passa a ter MAIS ocorrências
-// do que lá (catraca). A linha de base só desce: comparada com a da main, o total
-// de uma regra nunca pode subir. A saída de emergência é uma exceção na própria
-// linha, num comentário, com motivo, validade e quem aprovou:
-//
-//   exceção <regra> até AAAA-MM-DD, aprovada por <pessoa>: <motivo>
-//
-// Uma exceção vencida ou mal escrita também falha.
+// roda aqui e no CI (.github/workflows/regras.yml); o uso e o funcionamento
+// estão em AJUDA, logo abaixo (`node scripts/regras/verificar.js --help`).
 
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { arquivosDoRepositorio } = require('./comum');
+const { arquivosDoRepositorio, comentariosPorLinha } = require('./comum');
 
 const REGRAS = [
   require('./tokens-veio'),
@@ -32,6 +19,54 @@ const REGRAS = [
 ];
 
 const ARQUIVO_DA_LINHA_DE_BASE = 'scripts/regras/linha-de-base.json';
+
+const AJUDA = `uso: node scripts/regras/verificar.js [--raiz <pasta>] [--base <ref>] [--atualizar | --criar-linha-de-base]
+
+Confere as regras de revisão de scripts/regras/ (uma por arquivo; a tabela regra → quem confere
+está em AGENTS.md § Rules and what enforces them).
+
+  (sem bandeira)          confere o repositório; sai com 1 se alguma regra falhar
+  --atualizar             depois de um conserto, baixa scripts/regras/linha-de-base.json (nunca sobe)
+  --criar-linha-de-base   cria a linha de base quando ela ainda não existe
+  --raiz <pasta>          confere outro repositório (os testes usam)
+  --base <ref>            o commit cuja linha de base é o teto (padrão: $REGRAS_BASE, senão origin/main)
+  --help                  esta ajuda
+
+Catraca: cada arquivo pode ter no máximo as ocorrências que a linha de base registra; uma a mais falha,
+com as linhas novas e o que usar no lugar. O total de cada regra não pode passar o da linha de base da
+--base (no PR, a ponta da branch-alvo; no push, o commit anterior), então a linha de base só desce.
+Uma ocorrência que precisa ficar leva, num comentário na própria linha:
+  exceção <regra> até AAAA-MM-DD, aprovada por <pessoa>: <motivo>
+Uma exceção vencida, mal escrita ou numa linha que a regra não acusa também falha.
+
+Prova de cada regra com os erros reais que ela pega: node scripts/regras/test_regras.js`;
+
+// Erros de uso (bandeira desconhecida, valor faltando): stdout, código 2.
+class ErroDeUso extends Error {}
+
+function lerArgumentos(argv) {
+  const opcoes = { atualizar: false, criar: false, raiz: null, base: null, ajuda: false };
+  const comValor = { '--raiz': 'raiz', '--base': 'base' };
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--help' || arg === '-h') opcoes.ajuda = true;
+    else if (arg === '--atualizar') opcoes.atualizar = true;
+    else if (arg === '--criar-linha-de-base') opcoes.criar = true;
+    else if (comValor[arg]) {
+      const valor = argv[i + 1];
+      if (valor === undefined || valor.startsWith('--')) throw new ErroDeUso(`${arg} precisa de um valor`);
+      opcoes[comValor[arg]] = valor;
+      i++;
+    } else {
+      throw new ErroDeUso(`bandeira desconhecida: ${arg}`);
+    }
+  }
+  if (opcoes.atualizar && opcoes.criar) throw new ErroDeUso('--atualizar e --criar-linha-de-base não andam juntas');
+  if (opcoes.raiz !== null && !(fs.existsSync(opcoes.raiz) && fs.statSync(opcoes.raiz).isDirectory())) {
+    throw new ErroDeUso(`--raiz ${opcoes.raiz}: não é uma pasta`);
+  }
+  return opcoes;
+}
 
 const EXCECAO = /exce[çc][ãa]o\s+([a-z0-9-]+)\b(.*)$/i;
 const EXCECAO_COMPLETA = /^\s+at[ée]\s+(\d{4}-\d{2}-\d{2})\s*,\s*aprovad[ao]\s+por\s+([^:]+?)\s*:\s*(.+)$/i;
@@ -71,29 +106,33 @@ function coletar(raiz, hoje) {
     if (!textos.has(arquivo)) textos.set(arquivo, fs.readFileSync(path.join(raiz, arquivo), 'utf8'));
     return textos.get(arquivo);
   };
+  const comentarios = new Map();
+  const comentariosDe = arquivo => {
+    if (!comentarios.has(arquivo)) comentarios.set(arquivo, comentariosPorLinha(arquivo, ler(arquivo)));
+    return comentarios.get(arquivo);
+  };
   for (const regra of REGRAS) {
     porRegra[regra.id] = {};
     for (const arquivo of arquivos.filter(regra.seAplica)) {
-      const linhas = ler(arquivo).split('\n');
       const achados = regra.verificar(arquivo, ler(arquivo), raiz).filter(achado => {
         acusadas.add(`${regra.id} ${arquivo}:${achado.linha}`);
-        const excecao = excecaoNaLinha(linhas[achado.linha - 1] || '', hoje);
+        const excecao = excecaoNaLinha(comentariosDe(arquivo).get(achado.linha) || '', hoje);
         return !(excecao && excecao.regra === regra.id && excecao.valida);
       });
       if (achados.length) porRegra[regra.id][arquivo] = achados;
     }
   }
-  // Toda exceção escrita é conferida: mal escrita, vencida, ou numa linha que a
-  // regra não acusa (ficou para trás depois de um conserto).
+  // Toda exceção escrita num comentário é conferida: mal escrita, vencida, ou numa
+  // linha que a regra não acusa (ficou para trás depois de um conserto).
   for (const arquivo of arquivos.filter(a => /\.(js|mjs|css|html|py)$/.test(a))) {
-    ler(arquivo).split('\n').forEach((texto, i) => {
+    for (const [linha, texto] of comentariosDe(arquivo)) {
       const excecao = excecaoNaLinha(texto, hoje);
-      if (!excecao || !REGRAS.find(regra => regra.id === excecao.regra).seAplica(arquivo)) return;
-      if (!excecao.valida) errosDeExcecao.push(`${arquivo}:${i + 1}: ${excecao.erro}`);
-      else if (!acusadas.has(`${excecao.regra} ${arquivo}:${i + 1}`)) {
-        errosDeExcecao.push(`${arquivo}:${i + 1}: exceção de ${excecao.regra} numa linha que a regra não acusa; tire-a`);
+      if (!excecao || !REGRAS.find(regra => regra.id === excecao.regra).seAplica(arquivo)) continue;
+      if (!excecao.valida) errosDeExcecao.push(`${arquivo}:${linha}: ${excecao.erro}`);
+      else if (!acusadas.has(`${excecao.regra} ${arquivo}:${linha}`)) {
+        errosDeExcecao.push(`${arquivo}:${linha}: exceção de ${excecao.regra} numa linha que a regra não acusa; tire-a`);
       }
-    });
+    }
   }
   return { porRegra, errosDeExcecao };
 }
@@ -124,42 +163,59 @@ function linhasNovas(raiz, base, arquivo) {
   return novas;
 }
 
-// A base de comparação: REGRAS_BASE, ou onde este ramo saiu da origin/main.
-function baseDeComparacao(raiz) {
-  const pedida = process.env.REGRAS_BASE || 'origin/main';
-  if (git(raiz, ['rev-parse', '--verify', '--quiet', `${pedida}^{commit}`]) === null) return null;
-  return git(raiz, ['merge-base', 'HEAD', pedida]);
+const COMMIT_VAZIO = /^0+$/;
+
+// O teto da linha de base: a ponta da --base (REGRAS_BASE no CI: no PR, a branch-alvo;
+// no push, o commit anterior), sem passar pelo merge-base, para uma permissão que a
+// main já tirou não voltar por um ramo antigo. O merge-base só serve para achar as
+// linhas que a mudança acrescentou. null quando não há base (primeiro push, sem origin/main).
+function baseDeComparacao(raiz, pedida) {
+  const ref = pedida || process.env.REGRAS_BASE || 'origin/main';
+  if (COMMIT_VAZIO.test(ref)) return null;
+  const teto = git(raiz, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]);
+  if (!teto) return null;
+  return { ref, teto, desde: git(raiz, ['merge-base', 'HEAD', teto]) };
 }
 
-function main() {
-  const pedida = process.argv.indexOf('--raiz');
-  const raiz = pedida > 0 ? path.resolve(process.argv[pedida + 1]) : path.resolve(__dirname, '..', '..');
-  const atualizar = process.argv.includes('--atualizar');
-  const criar = process.argv.includes('--criar-linha-de-base');
+const lerJson = (texto, origem) => {
+  try {
+    return JSON.parse(texto);
+  } catch (erro) {
+    throw new Error(`${origem} não é um JSON válido (${erro.message}); conserte o arquivo ou restaure-o da main`);
+  }
+};
+
+function main(argv) {
+  const opcoes = lerArgumentos(argv);
+  if (opcoes.ajuda) {
+    console.log(AJUDA);
+    return 0;
+  }
+  const raiz = opcoes.raiz ? path.resolve(opcoes.raiz) : path.resolve(__dirname, '..', '..');
+  if (git(raiz, ['rev-parse', '--show-toplevel']) === null) throw new Error(`${raiz} não é um repositório git`);
   const hoje = new Date().toISOString().slice(0, 10);
   const caminhoDaBase = path.join(raiz, ARQUIVO_DA_LINHA_DE_BASE);
 
   const { porRegra, errosDeExcecao } = coletar(raiz, hoje);
   const agora = contagens(porRegra);
 
-  if (criar) {
+  if (opcoes.criar) {
     if (fs.existsSync(caminhoDaBase)) {
-      console.error(`${ARQUIVO_DA_LINHA_DE_BASE} já existe; a linha de base só desce (--atualizar).`);
-      process.exit(1);
+      throw new Error(`${ARQUIVO_DA_LINHA_DE_BASE} já existe; a linha de base só desce (--atualizar)`);
     }
     fs.writeFileSync(caminhoDaBase, `${JSON.stringify(agora, null, 2)}\n`);
-    console.log(`Linha de base criada em ${ARQUIVO_DA_LINHA_DE_BASE}.`);
-    return;
+    console.log(`linha de base criada em ${ARQUIVO_DA_LINHA_DE_BASE}`);
+    return 0;
   }
 
   if (!fs.existsSync(caminhoDaBase)) {
-    console.error(`Falta ${ARQUIVO_DA_LINHA_DE_BASE}; ela é versionada com as regras.`);
-    process.exit(1);
+    throw new Error(`falta ${ARQUIVO_DA_LINHA_DE_BASE}; ela é versionada com as regras (crie com --criar-linha-de-base)`);
   }
-  const linhaDeBase = JSON.parse(fs.readFileSync(caminhoDaBase, 'utf8'));
+  const linhaDeBase = lerJson(fs.readFileSync(caminhoDaBase, 'utf8'), ARQUIVO_DA_LINHA_DE_BASE);
   const erros = [...errosDeExcecao];
+  const avisos = [];
   const podeBaixar = [];
-  const base = baseDeComparacao(raiz);
+  const base = baseDeComparacao(raiz, opcoes.base);
 
   for (const regra of REGRAS) {
     const permitido = linhaDeBase[regra.id] || {};
@@ -170,7 +226,7 @@ function main() {
       if (tem < pode) podeBaixar.push(`${regra.id} ${arquivo}: ${pode} → ${tem}`);
       if (tem <= pode) continue;
       const achados = porRegra[regra.id][arquivo];
-      const novas = linhasNovas(raiz, base, arquivo);
+      const novas = base && base.desde ? linhasNovas(raiz, base.desde, arquivo) : null;
       const nasNovas = novas ? achados.filter(a => novas.has(a.linha)) : [];
       const mostrar = (nasNovas.length ? nasNovas : achados).slice(0, 12);
       erros.push([
@@ -182,25 +238,30 @@ function main() {
     }
   }
 
-  // A linha de base só desce: o total de cada regra não passa o da base de comparação.
-  if (base) {
-    const anterior = git(raiz, ['show', `${base}:${ARQUIVO_DA_LINHA_DE_BASE}`]);
-    if (anterior) {
-      const antes = JSON.parse(anterior);
+  // A linha de base só desce: o total de cada regra não passa o da linha de base do teto.
+  if (!base) {
+    avisos.push('sem base de comparação (nem --base, nem REGRAS_BASE, nem origin/main): a linha de base não foi comparada');
+  } else {
+    const anterior = git(raiz, ['show', `${base.teto}:${ARQUIVO_DA_LINHA_DE_BASE}`]);
+    if (anterior === null) {
+      avisos.push(`${base.ref} ainda não tem ${ARQUIVO_DA_LINHA_DE_BASE}: esta é a primeira linha de base, nada a comparar`);
+    } else {
+      const antes = lerJson(anterior, `${base.ref}:${ARQUIVO_DA_LINHA_DE_BASE}`);
       for (const regra of REGRAS) {
         if (total(linhaDeBase[regra.id]) > total(antes[regra.id])) {
-          erros.push(`✗ ${ARQUIVO_DA_LINHA_DE_BASE}: ${regra.id} subiu de ${total(antes[regra.id])} para `
-            + `${total(linhaDeBase[regra.id])}. A linha de base só desce; um caso que precisa ficar leva uma exceção `
-            + 'na própria linha (`exceção <regra> até AAAA-MM-DD, aprovada por <pessoa>: <motivo>`).');
+          erros.push(`✗ ${ARQUIVO_DA_LINHA_DE_BASE}: ${regra.id} tem ${total(linhaDeBase[regra.id])}, mais que os `
+            + `${total(antes[regra.id])} de ${base.ref}. A linha de base só desce: se ${base.ref} baixou depois que este ramo `
+            + 'saiu dele, traga-o para cá (merge); um caso que precisa ficar leva uma exceção na própria linha '
+            + '(`exceção <regra> até AAAA-MM-DD, aprovada por <pessoa>: <motivo>`).');
         }
       }
     }
   }
 
-  if (atualizar) {
+  if (opcoes.atualizar) {
     if (erros.length) {
-      console.error(`${erros.join('\n\n')}\n\nNada atualizado: --atualizar só baixa a linha de base, e há erros acima.`);
-      process.exit(1);
+      console.log(`${erros.join('\n\n')}\n\nerror: nada atualizado; --atualizar só baixa a linha de base, e há erros acima`);
+      return 1;
     }
     const nova = {};
     for (const regra of REGRAS) {
@@ -208,21 +269,37 @@ function main() {
       for (const [arquivo, n] of Object.entries(agora[regra.id]).sort()) nova[regra.id][arquivo] = n;
     }
     fs.writeFileSync(caminhoDaBase, `${JSON.stringify(nova, null, 2)}\n`);
-    console.log(podeBaixar.length ? `Linha de base baixada:\n  ${podeBaixar.join('\n  ')}` : 'A linha de base já estava em dia.');
-    return;
+    console.log(podeBaixar.length ? `linha de base baixada:\n  ${podeBaixar.join('\n  ')}` : 'a linha de base já estava em dia');
+    return 0;
   }
 
+  for (const aviso of avisos) console.log(`aviso: ${aviso}`);
   if (erros.length) {
-    console.error(`${erros.join('\n\n')}\n\nRegras: ${erros.length} problema(s). As regras e o que as confere: AGENTS.md § Rules and what enforces them.`);
-    process.exit(1);
+    console.log(`${erros.join('\n\n')}\n\nerror: ${erros.length} problema(s) nas regras`
+      + '\nhelp: conserte como cada "Conserto" diz; as regras e quem as confere: AGENTS.md § Rules and what enforces them');
+    return 1;
   }
   const resumo = REGRAS.map(regra => `${regra.id} ${total(agora[regra.id])}`).join(', ');
   console.log(`regras ok (na linha de base: ${resumo})`);
   if (podeBaixar.length) {
-    console.log(`A linha de base pode descer (rode com --atualizar e versione):\n  ${podeBaixar.join('\n  ')}`);
+    console.log(`a linha de base pode descer (rode com --atualizar e versione):\n  ${podeBaixar.join('\n  ')}`);
+  }
+  return 0;
+}
+
+function rodar(argv) {
+  try {
+    return main(argv);
+  } catch (erro) {
+    if (erro instanceof ErroDeUso) {
+      console.log(`error: ${erro.message}\nhelp: node scripts/regras/verificar.js --help\n\n${AJUDA}`);
+      return 2;
+    }
+    console.log(`error: ${erro.message}\nhelp: node scripts/regras/verificar.js --help`);
+    return 1;
   }
 }
 
-if (require.main === module) main();
+if (require.main === module) process.exitCode = rodar(process.argv.slice(2));
 
 module.exports = { REGRAS, coletar, excecaoNaLinha };
