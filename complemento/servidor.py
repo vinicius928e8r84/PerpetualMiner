@@ -96,7 +96,12 @@ class _Atendente(BaseHTTPRequestHandler):
             return self._responder(500, {"error": "internal_error"}, origem=origem)
         return self._responder(status, dados, origem=origem)
 
-    do_GET = do_POST = do_DELETE = do_OPTIONS = _atender
+    def __getattr__(self, nome):
+        # Todo verbo passa pela mesma autorização: sem isto o `http.server` responderia 501
+        # (HTML) a HEAD, PUT, PATCH e verbos desconhecidos antes de olhar a origem.
+        if nome.startswith("do_"):
+            return self._atender
+        raise AttributeError(nome)
 
 
 class _Servidor(ThreadingHTTPServer):

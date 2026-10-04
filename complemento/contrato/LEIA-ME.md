@@ -44,7 +44,8 @@ Por isso (decisão do dono, opção B):
 
 1. **`GET /health` é aberto**, sem `Origin`: só diz a versão e o perfil, a quem pedir (qualquer cliente local).
    Com um `Origin` que não é o da extensão, até a saúde é recusada.
-2. **Todo o resto exige a origem da extensão.** Sem `Origin`, ou com a de outra extensão ou site, é 403
+2. **Todo o resto exige a origem da extensão**, em qualquer método (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS ou um verbo desconhecido: todos passam pela mesma
+   autorização). Sem `Origin`, ou com a de outra extensão ou site, é 403
    (`origin_not_allowed`). Por isso rota que gasta a chave ou lê dado da pessoa (a chave, os custos, o
    vocabulário, os Envios) é **POST**, nunca GET.
 3. **O `Origin` não é autenticação.** Uma extensão com a permissão `webRequest` e `extraHeaders` pode pôr esse
