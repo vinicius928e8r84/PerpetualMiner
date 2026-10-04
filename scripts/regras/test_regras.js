@@ -76,6 +76,23 @@ acusa('gravacao-de-frases', 'background.js', [
   '}',
 ].join('\n'), 0, 'a escrita dentro de naFilaDeGravacao e outra chave');
 
+// ─── idioma-solto ────────────────────────────────────────────────────────────
+
+// bf640d9^ popup.js: uma das cinco cópias do detector que divergiram.
+acusa('idioma-solto', 'popup.js', "  const idioma = /[\\u0400-\\u04FF]/.test(texto) ? 'Russo' : 'Inglês';\n", 3, 'o detector copiado (bf640d9)');
+// 25e0b21 painel.js: a revisão do passo 1 ainda achou o nome solto.
+acusa('idioma-solto', 'painel.js', "const classe = (f.idioma === 'Russo' || detectarIdioma(f.texto || '') === 'Russo') ? ' frase-ru' : '';\n", 2,
+  'o nome solto que a segunda revisão tirou (73163ce)');
+// f9a8821^ painel-anki-baralhos.js: o nome já divergido, sem acento.
+acusa('idioma-solto', 'painel-anki-baralhos.js', "const label = deck.lang === 'ru' ? 'Russo' : 'Ingles';\n", 2, "'Ingles' sem acento (f9a8821)");
+acusa('idioma-solto', 'painel.js', [
+  "const { IDIOMAS, detectarIdioma, ehRussa } = PerpetualMiner;",
+  'const lang = ehRussa(frase) ? "ru" : "en";',
+  "// 'Russo' no comentário não conta",
+  'const rotulo = "Frases em russo";',
+].join('\n'), 0, 'o jeito de lib/idioma.js');
+assert.strictEqual(regras['idioma-solto'].seAplica('lib/idioma.js'), false, 'lib/idioma.js é o dono');
+
 // ─── exceções na linha ───────────────────────────────────────────────────────
 
 const HOJE = '2026-10-04';

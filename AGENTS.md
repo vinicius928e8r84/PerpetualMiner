@@ -37,7 +37,7 @@ Keep local paths and Anki settings in `bridge/config.json`. Do not commit secret
 | 2 Veio tokens | `tokens-veio` |
 | 3 Each component once | review |
 | 4 Page text as text | `e2e/tests/texto-literal.spec.js` for the surfaces it covers; review |
-| 5 Language through `lib/idioma.js` | review |
+| 5 Language through `lib/idioma.js` | `idioma-solto` |
 | 6 True status (C8) | review |
 | 7 `frases` / `pm_pending_sync` writes | `gravacao-de-frases` (a new write outside `naFilaDeGravacao`); a stale copy written by an existing site: review |
 | 8 e2e checks screen and storage | review |

@@ -26,6 +26,7 @@ const { arquivosDoRepositorio } = require('./comum');
 const REGRAS = [
   require('./tokens-veio'),
   require('./gravacao-de-frases'),
+  require('./idioma-solto'),
 ];
 
 const ARQUIVO_DA_LINHA_DE_BASE = 'scripts/regras/linha-de-base.json';

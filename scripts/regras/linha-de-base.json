@@ -8,5 +8,9 @@
   "gravacao-de-frases": {
     "lib/sincronizacao.js": 4,
     "painel.js": 8
+  },
+  "idioma-solto": {
+    "background.js": 8,
+    "content.js": 1
   }
 }
