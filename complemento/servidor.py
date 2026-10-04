@@ -34,8 +34,12 @@ class _Atendente(BaseHTTPRequestHandler):
         return self.server.conexao
 
     def log_message(self, formato, *args):
-        # O padrão escreve no stderr.
+        # O padrão escreve no stderr. O acesso comum fica em DEBUG, abaixo do nível do log.
         self.conexao.logger.debug("http: " + formato, *args)
+
+    def log_error(self, formato, *args):
+        # Pedido que o protocolo recusou (sintaxe, cabeçalho grande demais): isso o log mostra.
+        self.conexao.logger.warning("http: " + formato, *args)
 
     def _responder(self, status, dados=None, origem=None, extras=None):
         corpo = b"" if dados is None else json.dumps(dados, ensure_ascii=False).encode("utf-8")

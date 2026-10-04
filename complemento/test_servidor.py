@@ -193,7 +193,7 @@ class ProcessoDoAnki(unittest.TestCase):
         self.assertIn("perfil ilegível", registrado)
         self.assertEqual((saida.getvalue(), erro.getvalue(), chamadas_do_excepthook), ("", "", []))
 
-    def test_pedido_quebrado_nao_escreve_no_stderr(self):
+    def test_pedido_quebrado_vai_ao_log_e_nao_ao_stderr(self):
         erro = io.StringIO()
         with tempfile.TemporaryDirectory() as pasta, contextlib.redirect_stderr(erro):
             with ConexaoNoTeste(pasta) as conexao:
@@ -202,7 +202,9 @@ class ProcessoDoAnki(unittest.TestCase):
                 bruto.recv(4096)
                 bruto.close()
                 conexao.pedir("GET", "/health")
+                registrado = conexao.log()
         self.assertEqual(erro.getvalue(), "")
+        self.assertIn("Bad request", registrado)
 
 
 if __name__ == "__main__":

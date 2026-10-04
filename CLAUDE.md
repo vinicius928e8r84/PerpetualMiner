@@ -828,7 +828,7 @@ and Vocabulário: `definirBaralho(deckName, { palavras, cartoes, termos, porCart
   - Until a surface shows a catalog state, the catalog's own guarantees (every ID present, pt-BR numbers) are asserted through `PerpetualMiner.textoDaVoz`, inside an extension page. These move to the screen when the surface is rebuilt.
   - Two guarantees of the base components have no on-screen trigger of their own, so the test calls the component's own function and still asserts the visible result: how long a toast of a given length *stays on screen* (`mostrarToastDeSucesso`), and that a phrase carrying markup is written as text (`escreverFrase`). The surfaces that call them assert the same thing through the screen once they are rebuilt.
 
-The add-on's contract with the extension is tested from both sides on the same examples: `complemento/test_servidor.py` (the real server in the test process) and `e2e/tests/contrato-da-conexao.spec.js` (the fake, whose `/health` answers from `complemento/contrato/exemplos.json`; `fakes.anki.abrirPerfil(perfil)` needs an example for that profile).
+The add-on's contract with the extension is tested from both sides on the same examples: `complemento/test_servidor.py` (the real server in the test process) and `e2e/tests/contrato-da-conexao.spec.js` (the fake, whose `/health` answers from `complemento/contrato/exemplos.json`; `fakes.anki.abrirPerfil(perfil)` needs an example for that profile, which `node test_fake_anki.js` checks).
 
 The legacy tests keep running: `node test_sync.js` (loads `lib/sincronizacao.js` for real, two computers over a memory cloud, plus the HTTP adapter over a fake `fetch`), `node test_auto_keyword.js` and the bridge tests in `bridge/test_*.py`.
 

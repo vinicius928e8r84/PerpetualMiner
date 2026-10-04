@@ -7,6 +7,7 @@ import importlib
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -51,6 +52,17 @@ class ArquivoDoComplemento(unittest.TestCase):
             self.assertFalse(nome.startswith(("test_", "contrato/", "user_files/")), "não devia entrar: " + nome)
             self.assertNotIn("__pycache__", nome)
             self.assertNotEqual(nome, "empacotar.py")
+
+    def test_empacotar_numa_copia_limpa_cria_a_pasta_dist_e_o_arquivo(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            copia = os.path.join(pasta, "complemento")
+            shutil.copytree(AQUI, copia, ignore=shutil.ignore_patterns("__pycache__", "user_files"))
+            resultado = subprocess.run(
+                [sys.executable, os.path.join(copia, "empacotar.py")], cwd=pasta, capture_output=True, text=True
+            )
+            arquivo = os.path.join(pasta, "dist", "perpetualminer.ankiaddon")
+            self.assertEqual(resultado.returncode, 0, resultado.stderr)
+            self.assertTrue(zipfile.is_zipfile(arquivo))
 
     def test_o_codigo_instalado_carrega_pelo_nome_da_pasta_que_o_anki_der_a_ele(self):
         with tempfile.TemporaryDirectory() as pasta:

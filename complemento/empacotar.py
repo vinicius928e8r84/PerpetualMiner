@@ -36,6 +36,7 @@ def empacotar(destino, mod=None):
     with open(os.path.join(PASTA, "manifest.json"), encoding="utf-8") as arquivo:
         manifesto = json.load(arquivo)
     manifesto["mod"] = int(time.time() if mod is None else mod)
+    os.makedirs(os.path.dirname(os.path.abspath(destino)), exist_ok=True)
     with zipfile.ZipFile(destino, "w", zipfile.ZIP_DEFLATED) as pacote:
         for relativo in arquivos_do_pacote():
             if relativo != "manifest.json":

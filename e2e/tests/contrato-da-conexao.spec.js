@@ -42,8 +42,3 @@ test('com a Conexão respondendo a saúde do contrato, a área Conexão com o An
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
 });
-
-test('pedir ao fake um perfil que o contrato não tem diz para escrever o exemplo antes', async ({ fakes }) => {
-  fakes.anki.abrirPerfil('Perfil sem exemplo');
-  expect(() => fakes.anki.respostaDoContrato('GET', '/health')).toThrow(/não tem exemplo de GET \/health/);
-});

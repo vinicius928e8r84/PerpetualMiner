@@ -81,6 +81,20 @@ class AoCarregarNoAnki(unittest.TestCase):
         self.assertIn("A porta %d está ocupada" % porta, registrado)
         self.assertEqual((saida.getvalue(), erro.getvalue()), ("", ""))
 
+    def test_com_o_arquivo_de_log_indisponivel_a_conexao_sobe_e_nada_vai_ao_stderr(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            os.makedirs(os.path.join(pasta, "user_files", "logs", "complemento.log"))  # uma pasta no lugar do arquivo
+            erro = io.StringIO()
+            with contextlib.redirect_stderr(erro):
+                conexao = inicio.iniciar(pasta, lambda: "Usuário 1", porta=0)
+                try:
+                    status, corpo = saude(conexao.porta)
+                    conexao.logger.error("um erro que não tem para onde ir")
+                finally:
+                    parar(conexao)
+        self.assertEqual((status, corpo["perfil"]), (200, "Usuário 1"))
+        self.assertEqual(erro.getvalue(), "")
+
     def test_falha_ao_preparar_a_pasta_de_dados_nao_levanta_erro(self):
         with tempfile.TemporaryDirectory() as pasta:
             arquivo_no_lugar_da_pasta = os.path.join(pasta, "user_files")
