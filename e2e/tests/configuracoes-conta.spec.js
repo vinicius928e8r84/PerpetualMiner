@@ -646,8 +646,11 @@ test('com movimento reduzido, o ponto do Sincronizando fica parado', async ({ pa
 
 test('com movimento reduzido, #configuracoes/conta mostra a borda ouro parada, e ela sai depois do flash', async ({ page, extensao }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  // O relógio parado segura o destaque de 1,4 s: sob carga, a leitura da borda não o perde.
-  await page.clock.install();
+  // `install` sozinho deixa o relógio andar em tempo real. Pausado antes de abrir o painel, ele segura o
+  // destaque de 1,4 s até o `runFor`: sob carga, a leitura da borda não o perde.
+  const INSTANTE = new Date('2026-09-18T12:00:00');
+  await page.clock.install({ time: INSTANTE });
+  await page.clock.pauseAt(new Date(INSTANTE.getTime() + 1000));
   await abrirPainel(page, extensao, '#configuracoes/conta');
 
   const ouro = await page.evaluate(() => {

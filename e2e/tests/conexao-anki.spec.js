@@ -59,7 +59,7 @@ test('painel: a porta muda é detectada mesmo se a leitura do fato não termina'
   });
   // A inicialização do Chromium pode demorar; os 3 s são medidos só a partir
   // do pedido HTTP, não a partir da navegação.
-  const inicio = page.waitForRequest('http://127.0.0.1:8766/health', { timeout: 10000 }).then(() => Date.now());
+  const inicio = inicioDoHealth(page);
   await page.goto(extensao.url('painel.html#anki/custos'));
   const instante = await inicio;
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada', { timeout: ateTresSegundos(instante, 1000) });
