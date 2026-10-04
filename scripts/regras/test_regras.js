@@ -38,6 +38,10 @@ acusa('tokens-veio', 'painel.css', '.ilha h2 { font-size: 16px; }\n.ilha p { fon
 acusa('tokens-veio', 'painel.js', "Object.assign(toast.style, {\n  background: '#7c3aed', borderRadius: '8px',\n  fontSize: '13px', transition: 'opacity 0.3s',\n});\n", 4,
   'objeto de estilo com cor, raio, letra e duração soltos');
 acusa('tokens-veio', 'popup.js', "el.style.color = '#F5B83D';\n", 1, 'cor solta no JS');
+// Achados da revisão do #186: a cor num token paralelo e a cor no reserva do var().
+acusa('tokens-veio', 'painel.css', '.x { --red: #f00; color: var(--red); }\n', 1, 'cor numa variável fora de veio/tokens.css');
+acusa('tokens-veio', 'painel.css', '.y { color: var(--veio-missing, #f00); }\n', 1, 'cor no reserva do var()');
+acusa('tokens-veio', 'painel.css', '.z { --largura: 240px; gap: var(--veio-espaco, 8px); }\n', 0, 'variável local de tamanho não é regra');
 // O jeito certo passa.
 acusa('tokens-veio', 'painel.css', [
   '.pm-linha { border-radius: var(--veio-raio-linha); font-size: var(--veio-tam-pagina); }',
@@ -83,7 +87,7 @@ acusa('idioma-solto', 'popup.js', "  const idioma = /[\\u0400-\\u04FF]/.test(tex
 // 25e0b21 painel.js: a revisão do passo 1 ainda achou o nome solto.
 acusa('idioma-solto', 'painel.js', "const classe = (f.idioma === 'Russo' || detectarIdioma(f.texto || '') === 'Russo') ? ' frase-ru' : '';\n", 2,
   'o nome solto que a segunda revisão tirou (73163ce)');
-// f9a8821^ painel-anki-baralhos.js: o nome já divergido, sem acento.
+// f9a8821^:painel.js:1198, transplantada para o módulo de hoje: o nome já divergido, sem acento.
 acusa('idioma-solto', 'painel-anki-baralhos.js', "const label = deck.lang === 'ru' ? 'Russo' : 'Ingles';\n", 2, "'Ingles' sem acento (f9a8821)");
 acusa('idioma-solto', 'painel.js', [
   "const { IDIOMAS, detectarIdioma, ehRussa } = PerpetualMiner;",
@@ -137,6 +141,13 @@ acusa('e2e-funcao-interna', 'e2e/tests/componentes-veio.spec.js',
   'const rotulos = await page.evaluate(() => PerpetualMiner.Veio.ROTULOS_DO_PADRAO);\n', 1, 'constante interna (d2ab0da)');
 acusa('e2e-funcao-interna', 'e2e/tests/mineracao-unica.spec.js',
   `// Exceção de teste: chrome-nativo (CLAUDE.md § Testing).\n// O Playwright não abre o menu de contexto nativo do Chrome.\n${MENU}`, 0, 'a exceção nomeada');
+// Achado da revisão do #186: a marca dentro de uma string não nomeia exceção.
+acusa('e2e-funcao-interna', 'e2e/tests/review-probe.spec.js',
+  'const texto = await page.evaluate(() => { const nota = "Exceção de teste: catálogo"; return PerpetualMiner.textoDaVoz("PAI-05", { n: 2 }); });\n',
+  1, 'a marca numa string');
+acusa('e2e-funcao-interna', 'e2e/tests/review-probe.spec.js',
+  'const nota = "// Exceção de teste: catálogo";\nconst texto = await page.evaluate(() => PerpetualMiner.textoDaVoz("PAI-05"));\n',
+  1, 'a marca numa string da linha de cima');
 acusa('e2e-funcao-interna', 'e2e/tests/popup.spec.js', [
   "const texto = await extensao.serviceWorker.evaluate(() => chrome.action.getBadgeText({}));",
   "const frases = await page.evaluate(() => document.querySelectorAll('.veio-frase').length);",
@@ -155,59 +166,117 @@ total += 4;
 // ─── a catraca, de ponta a ponta ─────────────────────────────────────────────
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-regras-'));
-const git = (...args) => execFileSync('git', args, { cwd: tmp, stdio: 'pipe' });
+const git = (...args) => execFileSync('git', args, { cwd: tmp, encoding: 'utf8', stdio: 'pipe' }).trim();
 const escrever = (arquivo, texto) => {
   fs.mkdirSync(path.dirname(path.join(tmp, arquivo)), { recursive: true });
   fs.writeFileSync(path.join(tmp, arquivo), texto);
 };
-const rodar = () => spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz', tmp], {
-  cwd: tmp, encoding: 'utf8', env: { ...process.env, REGRAS_BASE: 'main' },
+const linhaDeBase = permitido => escrever('scripts/regras/linha-de-base.json', `${JSON.stringify({ 'tokens-veio': permitido }, null, 2)}\n`);
+const commit = mensagem => { git('add', '.'); git('commit', '-q', '-m', mensagem); return git('rev-parse', 'HEAD'); };
+const rodar = (base, ...args) => spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz', tmp, ...args], {
+  cwd: tmp, encoding: 'utf8', env: { ...process.env, REGRAS_BASE: base },
 });
+const RAIO_TOKEN = '.pm-linha {\n  border-radius: var(--veio-raio-linha);\n}\n';
+const RAIO_SOLTO = '.pm-linha {\n  border-radius: 2px;\n}\n';
 
 git('init', '-q', '-b', 'main');
 git('config', 'user.email', 'regras@teste');
 git('config', 'user.name', 'regras');
-escrever('overlay.css', '.pm-linha {\n  border-radius: var(--veio-raio-linha);\n}\n');
+escrever('overlay.css', RAIO_TOKEN);
 escrever('painel.css', '.velho { color: #374151; }\n');
-escrever('scripts/regras/linha-de-base.json', `${JSON.stringify({ 'tokens-veio': { 'painel.css': 1 } }, null, 2)}\n`);
-git('add', '.');
-git('commit', '-q', '-m', 'base');
+commit('antes das regras');
+linhaDeBase({ 'painel.css': 1 });
+const inicial = commit('base');
 git('checkout', '-q', '-b', 'mudanca');
 
-let r = rodar();
+let r = rodar('main');
 assert.strictEqual(r.status, 0, `a base passa:\n${r.stdout}${r.stderr}`);
 
-escrever('overlay.css', '.pm-linha {\n  border-radius: 2px;\n}\n');
-r = rodar();
+// A primeira linha de base: a base ainda não tem uma, e isso é dito, não escondido.
+r = rodar(git('rev-parse', 'HEAD~1'));
+assert.strictEqual(r.status, 0, r.stdout);
+assert.match(r.stdout, /primeira linha de base/);
+
+escrever('overlay.css', RAIO_SOLTO);
+r = rodar('main');
 assert.strictEqual(r.status, 1, 'o raio solto novo falha');
-assert.match(r.stderr, /overlay\.css:2: raio literal/);
-assert.match(r.stderr, /var\(--veio-…\)/, 'a mensagem diz o que usar');
+assert.match(r.stdout, /overlay\.css:2: raio literal/, 'o erro sai no stdout');
+assert.match(r.stdout, /var\(--veio-…\)/, 'a mensagem diz o que usar');
 
 const valida = '.pm-linha {\n  border-radius: 2px; /* exceção tokens-veio até 2099-01-01, aprovada por Vinicius: teste */\n}\n';
 escrever('overlay.css', valida);
-assert.strictEqual(rodar().status, 0, 'a exceção válida na linha passa');
+assert.strictEqual(rodar('main').status, 0, 'a exceção válida na linha passa');
 
 escrever('overlay.css', valida.replace('2099-01-01', '2026-01-01'));
-r = rodar();
+r = rodar('main');
 assert.strictEqual(r.status, 1, 'a exceção vencida falha');
-assert.match(r.stderr, /vencida/);
+assert.match(r.stdout, /vencida/);
 
-escrever('overlay.css', '.pm-linha {\n  border-radius: 2px;\n}\n');
-escrever('scripts/regras/linha-de-base.json', `${JSON.stringify({ 'tokens-veio': { 'painel.css': 1, 'overlay.css': 1 } }, null, 2)}\n`);
-r = rodar();
+// Achado da revisão do #186: a exceção escrita numa string não vale.
+escrever('overlay.js', 'const idioma = "Russo"; const nota = "exceção idioma-solto até 2099-01-01, aprovada por Vinicius: teste";\n');
+escrever('overlay.css', RAIO_TOKEN);
+r = rodar('main');
+assert.strictEqual(r.status, 1, 'a exceção dentro de uma string não vale');
+assert.match(r.stdout, /idioma-solto — overlay\.js/);
+fs.rmSync(path.join(tmp, 'overlay.js'));
+
+escrever('overlay.css', RAIO_SOLTO);
+linhaDeBase({ 'painel.css': 1, 'overlay.css': 1 });
+r = rodar('main');
 assert.strictEqual(r.status, 1, 'subir a linha de base falha');
-assert.match(r.stderr, /só desce/);
+assert.match(r.stdout, /só desce/);
+assert.strictEqual(rodar('main', '--base', 'main').status, 1, '--base faz o mesmo que REGRAS_BASE');
 
-escrever('scripts/regras/linha-de-base.json', `${JSON.stringify({ 'tokens-veio': { 'painel.css': 1 } }, null, 2)}\n`);
-escrever('overlay.css', '.pm-linha {\n  border-radius: var(--veio-raio-linha);\n}\n');
+// Achado da revisão do #186, a receita do push na main: o CI compara com o commit
+// anterior (github.event.before), não com o próprio commit.
+git('checkout', '-q', 'main');
+const antes = git('rev-parse', 'HEAD');
+commit('sobe a linha de base direto na main');
+git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+r = rodar(antes);
+assert.strictEqual(r.status, 1, 'no push, subir a linha de base falha');
+assert.match(r.stdout, /só desce/);
+assert.strictEqual(rodar('0000000000000000000000000000000000000000').status, 0, 'o primeiro push de um ramo não tem base');
+git('reset', '-q', '--hard', antes);
+git('update-ref', '-d', 'refs/remotes/origin/main');
+
+// Achado da revisão do #186: um ramo antigo não ressuscita a permissão que a main tirou.
+git('checkout', '-q', '-b', 'antigo', inicial);
+escrever('painel.css', '.velho { color: #374151; }\n.outro { color: #111827; }\n');
+linhaDeBase({ 'painel.css': 2 });
+commit('ramo que ainda permite 2');
+git('checkout', '-q', 'main');
+git('reset', '-q', '--hard', inicial);
 escrever('painel.css', '.velho { color: var(--veio-text); }\n');
-r = rodar();
-assert.strictEqual(r.status, 0, 'consertar passa');
-assert.match(r.stdout, /pode descer/, 'e avisa que a linha de base pode descer');
-r = spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz', tmp, '--atualizar'], { cwd: tmp, encoding: 'utf8' });
-assert.strictEqual(r.status, 0, r.stderr);
+linhaDeBase({});
+commit('a main conserta e baixa a linha de base');
+git('checkout', '-q', 'antigo');
+r = rodar('main');
+assert.strictEqual(r.status, 1, 'o ramo antigo é comparado com a ponta da main, não com o merge-base');
+assert.match(r.stdout, /traga-o para cá/);
+
+git('checkout', '-q', 'main');
+r = rodar('main');
+assert.strictEqual(r.status, 0, r.stdout);
+escrever('painel.css', '.velho { color: var(--veio-text); }\n');
+r = rodar('main', '--atualizar');
+assert.strictEqual(r.status, 0, r.stdout);
 assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(tmp, 'scripts/regras/linha-de-base.json'), 'utf8'))['tokens-veio'], {});
-total += 7;
+total += 12;
+
+// ─── a linha de comando ──────────────────────────────────────────────────────
+
+r = rodar('main', '--raizz', tmp);
+assert.strictEqual(r.status, 2, 'bandeira desconhecida é erro de uso');
+assert.match(r.stdout, /error: bandeira desconhecida: --raizz/);
+r = spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz'], { encoding: 'utf8' });
+assert.strictEqual(r.status, 2);
+assert.match(r.stdout, /--raiz precisa de um valor/);
+assert.strictEqual(rodar('main', '--atualizar', '--criar-linha-de-base').status, 2, 'as duas não andam juntas');
+r = rodar('main', '--help');
+assert.strictEqual(r.status, 0);
+assert.match(r.stdout, /exceção <regra> até AAAA-MM-DD/);
+total += 4;
 
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(`regras: ${total} provas passaram`);

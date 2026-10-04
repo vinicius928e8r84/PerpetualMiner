@@ -29,23 +29,23 @@ Keep local paths and Anki settings in `bridge/config.json`. Do not commit secret
 
 ## Rules and what enforces them
 
-`node scripts/regras/verificar.js` checks what a script can see (same command in CI, `.github/workflows/regras.yml`; its proofs: `node scripts/regras/test_regras.js`). It fails only when a file gets more hits than `scripts/regras/linha-de-base.json` allows, and the error names what to use instead. The baseline only goes down (`--atualizar` after a fix); a hit that must stay takes, on its own line, `exceção <regra> até AAAA-MM-DD, aprovada por <pessoa>: <motivo>`.
+`node scripts/regras/verificar.js` checks what a script can see, the same in CI; how its baseline and line exceptions work: `--help`.
 
 | Rule (`CODING_STANDARDS.md`) | Enforced by |
 |---|---|
-| 1 Copy from the Voice catalog | review; `e2e/tests/catalogo-da-voz.spec.js` keeps the catalog equal to the Voice spec |
+| 1 Voice catalog | review; `e2e/tests/catalogo-da-voz.spec.js` |
 | 2 Veio tokens | `tokens-veio` |
-| 3 Each component once | review |
-| 4 Page text as text | `e2e/tests/texto-literal.spec.js` for the surfaces it covers; review |
-| 5 Language through `lib/idioma.js` | `idioma-solto` |
-| 6 True status (C8) | review |
-| 7 `frases` / `pm_pending_sync` writes | `gravacao-de-frases` (a new write outside `naFilaDeGravacao`); a stale copy written by an existing site: review |
-| 8 e2e checks screen and storage | `e2e-funcao-interna` (an `evaluate` that calls extension code names its exception); screen check in every variant: review |
-| 9 Python tests exercise behavior | `teste-le-codigo` |
-| 10 Visual reference after the owner approves | review |
-| 11 New file: Files row, loaded, packaged | review; `test_empacotar.js` for the package |
+| 3 Components | review |
+| 4 Page text as text | `e2e/tests/texto-literal.spec.js`; review |
+| 5 Language | `idioma-solto` |
+| 6 True status | review |
+| 7 Storage writes | `gravacao-de-frases` (new write sites); a stale copy in an existing one: review |
+| 8 e2e tests | `e2e-funcao-interna` (unnamed exceptions); screen check per variant: review |
+| 9 Python tests | `teste-le-codigo` |
+| 10 Visual references | review |
+| 11 New files | review; `test_empacotar.js` |
 
-When the same correction comes up twice, add its rule to `CODING_STANDARDS.md` and this table, enforced at the highest level that works (a rule in `scripts/regras/` for a pattern a script can see).
+When the same correction comes up twice, add its rule to `CODING_STANDARDS.md` and this table, enforced at the highest level that works.
 
 ## Maintaining this file
 
