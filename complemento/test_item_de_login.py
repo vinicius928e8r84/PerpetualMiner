@@ -149,6 +149,15 @@ class NoWindows(unittest.TestCase):
         self.assertEqual(alvo, alvo_com_acento)
         self.assertEqual(textos["pasta"], r"C:\Users\João\AppData\Local\Programs\Anki")
 
+    def test_o_alvo_com_caractere_fora_do_plano_basico_do_unicode_chega_inteiro_e_o_atalho_fica_bem_formado(self):
+        alvo_com_emoji = "C:\\Users\\Ana\U0001F600\\AppData\\Local\\Programs\\Anki\\anki.exe"
+        with tempfile.TemporaryDirectory() as pasta:
+            self.item(pasta, alvo_com_emoji).ligar()
+            with open(os.path.join(pasta, os.listdir(pasta)[0]), "rb") as arquivo:
+                alvo, _, textos = ler_atalho(arquivo.read())
+        self.assertEqual(alvo, alvo_com_emoji)
+        self.assertEqual(textos["pasta"], "C:\\Users\\Ana\U0001F600\\AppData\\Local\\Programs\\Anki")
+
     def test_desligar_apaga_o_atalho_e_nao_deixa_nada_na_pasta(self):
         with tempfile.TemporaryDirectory() as pasta:
             item = self.item(pasta)
@@ -169,6 +178,12 @@ class NoWindows(unittest.TestCase):
             item.desligar()
             restou = os.listdir(pasta)
         self.assertEqual(restou, ["Anki.lnk"])
+
+
+class SistemaDoItem(unittest.TestCase):
+    def test_um_sistema_que_nao_e_o_mac_nem_o_windows_e_recusado_em_vez_de_virar_windows(self):
+        with self.assertRaises(ValueError):
+            item_de_login.ItemDeLogin(sistema="linux", pasta="/tmp", comando=None)
 
 
 class SemComoAbrirOAnki(unittest.TestCase):

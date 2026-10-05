@@ -36,14 +36,16 @@ class ItemDeLogin:
     """
 
     def __init__(self, *, sistema, pasta, comando):
+        if sistema not in _FORMATOS:
+            raise ValueError("sistema sem item de login: %r" % (sistema,))
         self.sistema = sistema
         self.pasta = pasta
         self.comando = comando
+        self._nome, self._serializar = _FORMATOS[sistema]
 
     @property
     def caminho(self):
-        nome = ROTULO_DO_MAC + ".plist" if self.sistema == "mac" else NOME_DO_ATALHO
-        return os.path.join(self.pasta, nome)
+        return os.path.join(self.pasta, self._nome)
 
     def ligado(self):
         return os.path.isfile(self.caminho)
@@ -52,7 +54,7 @@ class ItemDeLogin:
         """Escreve o item (troca o que já havia). Levanta `AnkiNaoEncontrado` ou o `OSError` da escrita."""
         if not self.comando:
             raise AnkiNaoEncontrado("não se sabe como abrir o Anki neste computador")
-        conteudo = _plist_do_mac(self.comando) if self.sistema == "mac" else _atalho_do_windows(self.comando)
+        conteudo = self._serializar(self.comando)
         os.makedirs(self.pasta, exist_ok=True)
         # Escreve ao lado e troca de uma vez: um item pela metade, no login, abriria nada ou algo errado.
         descritor, provisorio = tempfile.mkstemp(dir=self.pasta, suffix=".tmp")
@@ -157,4 +159,13 @@ def _link_info(alvo):
 
 
 def _texto_do_atalho(texto):
-    return struct.pack("<H", len(texto)) + texto.encode("utf-16-le")
+    """Um texto de `StringData`: o tamanho é em unidades de UTF-16 (um caractere fora do plano básico vale duas)."""
+    codificado = texto.encode("utf-16-le")
+    return struct.pack("<H", len(codificado) // 2) + codificado
+
+
+# O nome do item e como o escrever, por sistema.
+_FORMATOS = {
+    "mac": (ROTULO_DO_MAC + ".plist", _plist_do_mac),
+    "windows": (NOME_DO_ATALHO, _atalho_do_windows),
+}
