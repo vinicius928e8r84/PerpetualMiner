@@ -143,7 +143,7 @@ test('Continuar configuração no popup abre o painel no primeiro passo que falt
   await expect(tituloDaBoasVindas(painel)).toHaveText('Minerar a primeira frase');
 });
 
-test('com todos os passos resolvidos e sem Abrir painel, o lembrete diz 6 de 7 e Continuar leva a Tudo pronto', async ({ page, extensao }) => {
+test('com todos os passos resolvidos e sem Abrir painel, o lembrete diz 7 de 7 e Continuar leva a Tudo pronto', async ({ page, extensao }) => {
   await extensao.gravarStorage({
     frases: UMA_FRASE,
     pm_atalho: CTRL_SHIFT_L,
@@ -151,7 +151,7 @@ test('com todos os passos resolvidos e sem Abrir painel, o lembrete diz 6 de 7 e
   });
 
   await abrirFrases(page, extensao);
-  await expect(faixa(page)).toContainText('6 de 7 passos.');
+  await expect(faixa(page)).toContainText('7 de 7 passos.');
   await faixa(page).getByRole('button', { name: 'Continuar configuração' }).click();
 
   await expect(page).toHaveURL(/#boas-vindas\/pronto$/);
