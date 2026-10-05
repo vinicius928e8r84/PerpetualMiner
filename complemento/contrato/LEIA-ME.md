@@ -26,8 +26,10 @@ Mudar só um lado quebra um teste, e a mensagem diz o exemplo e os dois arquivos
   outros (outro site, outra extensão, sem origem) só o lado do complemento confere, porque uma
   página da extensão não consegue pedir como outro cliente.
 - `contexto`: em que situação o complemento está (hoje, o `perfil` aberto, `null` na tela de perfis, e
-  `falhaNoPerfil` quando ler o perfil quebra). O fake muda de contexto por `fakes.anki.abrirPerfil(...)` e
-  `falharLeituraDoPerfil()`.
+  `falhaNoPerfil` quando ler o perfil quebra; e `itemDeLogin`, a situação do item de “Abrir o Anki com o
+  computador”: `desligado`, `ligado`, `sem_anki`, `falha` ou `indisponivel`). O fake muda de contexto por
+  `fakes.anki.abrirPerfil(...)`, `falharLeituraDoPerfil()` e `definirItemDeLogin(...)`. Uma parte do contexto
+  só vale para os exemplos que a declaram: a saúde não diz do item, e o item não diz do perfil.
 - `pedido`: o que chega, com `origem` (o cabeçalho `Origin`; `null` é que ele não veio). Rotas com corpo
   ganham `corpo`.
 - `resposta`: o status e o JSON.

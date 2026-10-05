@@ -493,6 +493,11 @@ body {
   padding: 4px 16px 16px 62px;
 }
 
+/* O lugar do aviso do card Conexão com o Anki: vazio, não ocupa vão. */
+.cfg-anki-aviso:empty {
+  display: none;
+}
+
 /* O seletor de tema tem a largura das opções, não a do card. */
 .cfg-corpo > .veio-segmentado {
   align-self: flex-start;

@@ -210,7 +210,7 @@
       "nome": "o item de login ainda não escrito",
       "daExtensao": true,
       "contexto": {
-        "perfil": "Usuário 1"
+        "itemDeLogin": "desligado"
       },
       "pedido": {
         "metodo": "POST",
@@ -230,7 +230,6 @@
       "nome": "o item de login já escrito",
       "daExtensao": true,
       "contexto": {
-        "perfil": "Usuário 1",
         "itemDeLogin": "ligado"
       },
       "pedido": {
@@ -251,8 +250,47 @@
       "nome": "o item de login num sistema que não tem item",
       "daExtensao": true,
       "contexto": {
-        "perfil": "Usuário 1",
         "itemDeLogin": "indisponivel"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/abrir-com-o-computador/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "ligado": false
+        }
+      }
+    },
+    {
+      "nome": "o item de login quando a Conexão não sabe onde o Anki está",
+      "daExtensao": true,
+      "contexto": {
+        "itemDeLogin": "sem_anki"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/abrir-com-o-computador/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "ligado": false
+        }
+      }
+    },
+    {
+      "nome": "o item de login quando a pasta dele não aceita escrita",
+      "daExtensao": true,
+      "contexto": {
+        "itemDeLogin": "falha"
       },
       "pedido": {
         "metodo": "POST",
@@ -272,7 +310,7 @@
       "nome": "ligar o Anki com o computador escreve o item",
       "daExtensao": true,
       "contexto": {
-        "perfil": "Usuário 1"
+        "itemDeLogin": "desligado"
       },
       "pedido": {
         "metodo": "POST",
@@ -294,7 +332,6 @@
       "nome": "ligar de novo com o item já escrito",
       "daExtensao": true,
       "contexto": {
-        "perfil": "Usuário 1",
         "itemDeLogin": "ligado"
       },
       "pedido": {
@@ -317,7 +354,6 @@
       "nome": "desligar o Anki com o computador apaga o item",
       "daExtensao": true,
       "contexto": {
-        "perfil": "Usuário 1",
         "itemDeLogin": "ligado"
       },
       "pedido": {
@@ -340,7 +376,7 @@
       "nome": "desligar sem item não falha",
       "daExtensao": true,
       "contexto": {
-        "perfil": "Usuário 1"
+        "itemDeLogin": "desligado"
       },
       "pedido": {
         "metodo": "POST",
@@ -362,7 +398,6 @@
       "nome": "ligar sem saber onde o Anki está",
       "daExtensao": true,
       "contexto": {
-        "perfil": "Usuário 1",
         "itemDeLogin": "sem_anki"
       },
       "pedido": {
@@ -384,7 +419,6 @@
       "nome": "ligar quando o item não pôde ser escrito",
       "daExtensao": true,
       "contexto": {
-        "perfil": "Usuário 1",
         "itemDeLogin": "falha"
       },
       "pedido": {
@@ -406,7 +440,6 @@
       "nome": "ligar num sistema que não tem item de login",
       "daExtensao": true,
       "contexto": {
-        "perfil": "Usuário 1",
         "itemDeLogin": "indisponivel"
       },
       "pedido": {
@@ -428,7 +461,7 @@
       "nome": "ligar com um valor que não é verdadeiro nem falso",
       "daExtensao": false,
       "contexto": {
-        "perfil": "Usuário 1"
+        "itemDeLogin": "desligado"
       },
       "pedido": {
         "metodo": "POST",

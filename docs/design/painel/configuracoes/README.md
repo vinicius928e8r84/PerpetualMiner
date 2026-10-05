@@ -30,7 +30,7 @@ Decidido numa rodada no Lavish, em 2026-09-15. O dono escolheu a **C** e aceitou
 
 ## Anatomia (variante C)
 
-- **Área:** cabeçalho “Configurações”, só o título. Embaixo, 5 cards de largura até ~820 px, com 8 px de vão, na ordem **Conta & sync · Atalhos · Chave do Gemini · Aparência · Zona de perigo**. Os cards são “buracos” `bg` na ilha, com raio 14.
+- **Área:** cabeçalho “Configurações”, só o título. Embaixo, 6 cards de largura até ~820 px, com 8 px de vão, na ordem **Conta & sync · Atalhos · Chave do Gemini · Conexão com o Anki · Aparência · Zona de perigo**. Os cards são “buracos” `bg` na ilha, com raio 14.
 - **Linha fechada** (a linha inteira é clicável):
   - à esquerda, um azulejo de ícone (34 px, `surface-2`, raio 10) e o título (15/700);
   - à direita, o **resumo do estado** (12,5 px, `muted`) e um chevron.
@@ -55,6 +55,7 @@ Decidido numa rodada no Lavish, em 2026-09-15. O dono escolheu a **C** e aceitou
 | Conta & sync | ponto de estado + `Nome · <estado do chip>` (ex.: “Vinicius · Sincronizado há 2 min”). Erro em `danger`. Sem conta: “Sem conta · só neste computador”. |
 | Atalhos | `Legenda [Alt+S]  Seleção [Alt+Botão voltar]`, com as teclas no estilo `kbd`. Sem atalho: “Sem atalho”. |
 | Chave do Gemini | `AIza••••••••3kQ9` em mono. Vazia: ponto `danger` + “Sem chave”. |
+| Conexão com o Anki | O que o interruptor faz agora: “Abre com o computador” ou “Não abre com o computador”; sem a Conexão, “Indisponível agora” (CFG-37). |
 | Aparência | O tema em uso: “Escuro” ou “Claro” (CFG-31). |
 | Zona de perigo | “1.284 frases” · “1 frase” · “Nenhuma frase”. |
 
@@ -115,6 +116,17 @@ Um problema de sync aparece **só** aqui e no chip (Q4). O chip fica sempre vis�
 - **Salvar vazio** (CFG-16): o campo ganha borda `danger`, com “Cole a chave antes de salvar” embaixo.
 - **Salvar:** vale também o Enter no campo. Aparece o toast “Chave do Gemini salva” (CFG-16) e o card volta ao resumo.
 - A chave **não é validada** (não há chamada de teste). Isso seria função nova.
+
+## Conexão com o Anki
+
+**Descrição:** “Só vale neste computador.” (CFG-35). Hoje o card tem um controle só, o interruptor da história 101 ([#106](https://github.com/vinicius928e8r84/PerpetualMiner/issues/106), opção 1, “só quando você clica”); o “Perfil do Anki ▾” (história 20) entra neste mesmo card.
+
+- **Interruptor “Abrir o Anki com o computador”** (CFG-36), **desligado por padrão**, com a nota: “O Anki abre quando você liga o computador, e a Conexão com o Anki já fica pronta. A janela dele aparece na tela.” O custo (a janela do Anki abrindo no login) está dito na nota.
+- **Ligar** pede à Conexão que escreva o item de login (um LaunchAgent no Mac, um atalho na pasta Inicializar no Windows); **desligar** pede que o apague. O item mora na Conexão, não na extensão: nada fica em `chrome.storage`, e o interruptor mostra o que a Conexão diz e só muda depois da resposta dela (C8). Enquanto ela escreve, o interruptor fica indisponível, ainda no estado de verdade.
+- **Sem a Conexão** o estado não se sabe: o interruptor fica indisponível e a nota diz por quê (CFG-38); o resumo da linha fechada, “Indisponível agora”.
+- **Não mudou** (CFG-39): aviso persistente do Veio, com Detalhes (o código da Conexão) e o interruptor onde está de verdade. A Conexão separa três causas: não sabe onde o Anki está instalado, não conseguiu escrever o item, ou o computador não tem item de login (só o Mac e o Windows têm).
+- **Nunca abre o Anki por aqui:** esta tela só escreve ou apaga o item. Quem abre o Anki quando a pessoa aperta Enviar ou Abrir o Anki é o abridor (#150).
+- **Sem protótipo próprio:** o desenho segue o card “resumo primeiro” (Q1) com o interruptor do Veio (o da Boas-vindas e do popup); a referência visual está em `e2e/tests/configuracoes-visual.spec.js`, para o dono aprovar.
 
 ## Aparência
 

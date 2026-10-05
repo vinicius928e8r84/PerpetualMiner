@@ -19,11 +19,12 @@ const contrato = require('./complemento/contrato/exemplos.json');
 async function conferirOsExemplos() {
   for (const exemplo of contrato.exemplos.filter(exemploDaExtensao)) {
     const fakeDoExemplo = criarFakeAnki();
-    fakeDoExemplo.abrirPerfil(exemplo.contexto.perfil);
+    if (exemplo.contexto.perfil !== undefined) fakeDoExemplo.abrirPerfil(exemplo.contexto.perfil);
     if (exemplo.contexto.falhaNoPerfil) fakeDoExemplo.falharLeituraDoPerfil();
+    if (exemplo.contexto.itemDeLogin) fakeDoExemplo.definirItemDeLogin(exemplo.contexto.itemDeLogin);
     let entregue = null;
     await fakeDoExemplo.tratar({
-      request: () => ({ method: () => exemplo.pedido.metodo, url: () => `http://127.0.0.1:8766${exemplo.pedido.caminho}`, postData: () => null }),
+      request: () => ({ method: () => exemplo.pedido.metodo, url: () => `http://127.0.0.1:8766${exemplo.pedido.caminho}`, postData: () => (exemplo.pedido.corpo === undefined ? null : JSON.stringify(exemplo.pedido.corpo)) }),
       fulfill: resposta => { entregue = { status: resposta.status, json: JSON.parse(resposta.body) }; },
       abort: () => { entregue = { abortado: true }; },
     });

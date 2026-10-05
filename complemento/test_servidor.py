@@ -108,7 +108,7 @@ class ContratoDaConexao(unittest.TestCase):
                 contexto = exemplo["contexto"]
                 with ConexaoNoTeste(
                     pasta,
-                    perfil=contexto["perfil"],
+                    perfil=contexto.get("perfil", "Usuário 1"),
                     falha_no_perfil=contexto.get("falhaNoPerfil", False),
                     item=contexto.get("itemDeLogin", "desligado"),
                 ) as conexao:
