@@ -605,6 +605,65 @@ body {
   display: none;
 }
 
+/* ── Card IA dos cartões ──────────────────────────────────────────────────
+   As duas entradas (a Chave da OpenAI e a Conta do ChatGPT) em colunas do mesmo
+   tamanho, como no desenho A do #101; abaixo de ~620 px de largura do card elas
+   viram linhas. O erro atravessa o card, abaixo das colunas. */
+
+.ia-cartao {
+  container-type: inline-size;
+}
+
+.ia-colunas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ia-coluna {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-surface);
+}
+
+.ia-coluna__titulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.ia-coluna .cfg-nota {
+  margin: 0;
+}
+
+.ia-coluna .cfg-chave-entrada {
+  flex-basis: 100%;
+}
+
+.ia-coluna .veio-botao--link {
+  padding: 0;
+  font-size: inherit;
+}
+
+.ia-imagem {
+  margin: 0;
+}
+
+@container (max-width: 619px) {
+  .ia-colunas {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── Card Atalhos ─────────────────────────────────────────────────────────
    Uma linha por ação: nome e o que ela faz à esquerda; a tecla e o Gravar
    atalho à direita; o aviso de repetido embaixo, em danger. As linhas são

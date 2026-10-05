@@ -84,6 +84,8 @@
     atualizar: ['<path d="M20 11a8 8 0 0 0-14.7-4.4L4 8"/>', '<path d="M4 3v5h5M4 13a8 8 0 0 0 14.7 4.4L20 16"/>', '<path d="M20 21v-5h-5"/>'],
     // Os azulejos dos cards de Configurações e o chevron que os abre.
     teclado: ['<rect x="2" y="6" width="20" height="12" rx="2"/>', '<path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>'],
+    // O azulejo da IA dos cartões: a faísca grande e a pequena.
+    ia: ['<path d="M11 3l1.9 5.1L18 10l-5.1 1.9L11 17l-1.9-5.1L4 10l5.1-1.9z"/>', '<path d="M19 15v5M16.5 17.5h5"/>'],
     chave: ['<circle cx="8" cy="15" r="4"/>', '<path d="m10.8 12.2 9.2-9.2M17 6l3 3M15 8l2 2"/>'],
     // O azulejo da Aparência: o círculo de contraste, metade cheia, que diz
     // escuro e claro sem depender de sol e lua.

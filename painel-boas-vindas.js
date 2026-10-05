@@ -4,8 +4,8 @@
 // fechada): uma página do Painel sem a sidebar, em #boas-vindas, que a
 // instalação abre sozinha (background.js, onInstalled com `install`).
 //
-//   #boas-vindas                 a abertura: o que é o produto e os 6 passos
-//   #boas-vindas/<passo>         minerar · atalho · conta · anki · automatica · chave
+//   #boas-vindas                 a abertura: o que é o produto e os 7 passos
+//   #boas-vindas/<passo>         minerar · atalho · conta · anki · ia · automatica · chave
 //   #boas-vindas/pronto          Tudo pronto: o resumo de cada passo e Abrir painel
 //
 // À esquerda, a lista dos 8 itens (dá para clicar em qualquer um), com a marca
@@ -15,7 +15,7 @@
 //
 // Um passo está feito pelo estado real, do storage e da Conexão: a frase
 // no histórico, o atalho de Minerar seleção, a conta, a Conexão com o Anki
-// ligada, um idioma da mineração automática ligado, a chave do Gemini. O
+// ligada, a chave da OpenAI conferida, um idioma da mineração automática ligado, a chave do Gemini. O
 // que a pessoa fez fora da página já aparece feito. Só o “agora não” (e se ela
 // chegou a Abrir painel) é desta página, gravado neste computador em
 // `pm_boas_vindas`. Quem lê e grava esse progresso é `lib/configuracao.js`,
@@ -29,9 +29,10 @@
 //   3  o card Conta & sync (painel-conta.js), com o Entrar com Google;
 //   4  o status da Conexão com o Anki, os 3 passos e o Verificar de novo
 //      (a mesma conferência da F1, via ConexaoAnki);
-//   5  os switches EN/RU e o limite por dia do popup, pelas mesmas mensagens ao
+//   5  o card IA dos cartões (painel-ia.js): a Chave da OpenAI e a Conta do ChatGPT;
+//   6  os switches EN/RU e o limite por dia do popup, pelas mesmas mensagens ao
 //      service worker, com a nota ONB-10 enquanto a Conexão está desligada;
-//   6  o card Chave do Gemini (painel-chave.js), com o Onde conseguir a chave.
+//   7  o card Chave do Gemini (painel-chave.js), com o Onde conseguir a chave.
 // Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
@@ -63,15 +64,19 @@
       valor: () => textoDaVoz('ONB-13.ligada'),
       montar: montarPasso4,
     },
+    ia: {
+      valor: () => textoDaVoz('ONB-13.salva'),
+      montar: montarPassoDaIA,
+    },
     automatica: {
       // Os idiomas ligados, separados pelo “·” da Voz (V5).
       valor: e => [e.automatica.en && IDIOMAS.INGLES, e.automatica.ru && IDIOMAS.RUSSO]
         .filter(Boolean).join(' · '),
-      montar: montarPasso5,
+      montar: montarPasso6,
     },
     chave: {
       valor: () => textoDaVoz('ONB-13.salva'),
-      montar: montarPasso6,
+      montar: montarPasso7,
     },
   };
   const PASSOS = Configuracao.PASSOS.map(passo => ({ ...passo, ...DESTA_PAGINA[passo.id] }));
@@ -107,8 +112,8 @@
   let atalhoDoPasso1Desenhado;      // o rótulo que está nele, para não refazê-lo à toa
   let rodapeDesenhadoPara = null;   // a tela (e o Agora não) do rodapé na tela agora
   let passo4 = null;                // as partes do passo 4 que seguem a Conexão
-  let passo5 = null;                // as do passo 5: a nota, as linhas dos idiomas, a falha
-  let ondeConseguirAChave = null;   // o “Onde conseguir a chave” (ONB-11) do passo 6, só sem chave
+  let passo6 = null;                // as do passo 6: a nota, as linhas dos idiomas, a falha
+  let ondeConseguirAChave = null;   // o “Onde conseguir a chave” (ONB-11) do passo 7, só sem chave
 
   // ─── Início ────────────────────────────────────────────────────────────────
 
@@ -127,7 +132,7 @@
     });
     ConexaoAnki.acompanhar(() => {
       desenharPasso4();
-      desenharPasso5();
+      desenharPasso6();
     });
     lerMineracaoAutomatica();
     window.addEventListener('hashchange', () => mostrarTelaDoEndereco({ focar: true }));
@@ -376,14 +381,14 @@
     passo4.comoLigar.hidden = ConexaoAnki.ultimaResposta() !== CONEXAO.DESLIGADA;
   }
 
-  // ─── Passo 5: Ligar a mineração automática ─────────────────────────────────
+  // ─── Passo 6: Ligar a mineração automática ─────────────────────────────────
 
   /**
    * Os switches EN/RU do popup, cada um com o limite por dia, e a nota ONB-10
    * enquanto a Conexão está desligada: dá para ligar mesmo assim (o status é
    * honesto). O estado é o do service worker, o mesmo que o popup lê e grava.
    */
-  function montarPasso5() {
+  function montarPasso6() {
     const nota = elemento('p', 'bv-nota bv-nota--conexao', elemento('span', 'bv-ponto'), textoDaVoz('ONB-10'));
     nota.firstChild.dataset.estado = CONEXAO.DESLIGADA;
     nota.firstChild.setAttribute('aria-hidden', 'true');
@@ -395,7 +400,7 @@
     const controle = elemento('div', 'bv-controle bv-automatica', ...linhas.values(), falha);
     controle.setAttribute('aria-busy', 'true');
 
-    passo5 = { nota, linhas, falha, controle };
+    passo6 = { nota, linhas, falha, controle };
     return elemento('div', null,
       elemento('p', 'bv-texto', textoDaVoz('ONB-09.corpo')),
       nota,
@@ -455,9 +460,9 @@
 
   function mostrarMineracaoAutomatica(novo) {
     estado.automatica = novo;
-    passo5.controle.removeAttribute('aria-busy');
-    passo5.falha.replaceChildren();
-    for (const [chave, linha] of passo5.linhas) {
+    passo6.controle.removeAttribute('aria-busy');
+    passo6.falha.replaceChildren();
+    for (const [chave, linha] of passo6.linhas) {
       const ajustes = novo.settings?.[chave] || {};
       const caixa = linha.querySelector('input[type="checkbox"]');
       const campo = linha.querySelector('input[type="number"]');
@@ -471,19 +476,19 @@
   }
 
   /** A nota ONB-10 enquanto a última resposta da Conexão foi “desligada”. */
-  function desenharPasso5() {
-    passo5.nota.hidden = ConexaoAnki.ultimaResposta() !== CONEXAO.DESLIGADA;
+  function desenharPasso6() {
+    passo6.nota.hidden = ConexaoAnki.ultimaResposta() !== CONEXAO.DESLIGADA;
   }
 
   function mostrarFalhaDaAutomatica(id) {
-    passo5.controle.removeAttribute('aria-busy');
-    passo5.falha.replaceChildren(elemento('p', 'bv-falha', Veio.iconeVeio('alerta'), textoDaVoz(id)));
+    passo6.controle.removeAttribute('aria-busy');
+    passo6.falha.replaceChildren(elemento('p', 'bv-falha', Veio.iconeVeio('alerta'), textoDaVoz(id)));
   }
 
-  // ─── Passo 6: Adicionar a chave do Gemini ──────────────────────────────────
+  // ─── Passo 7: Adicionar a chave do Gemini ──────────────────────────────────
 
   /** O card Chave do Gemini de Configurações (painel-chave.js) e, sem chave, onde consegui-la. */
-  function montarPasso6() {
+  function montarPasso7() {
     const cartao = elemento('div', 'cfg-corpo bv-cartao');
     raiz.ChaveDoGemini.montar(cartao, { prefixo: 'bv' });
     ondeConseguirAChave = elemento('details', 'bv-onde',
@@ -492,6 +497,14 @@
     ondeConseguirAChave.hidden = true;
     const controle = elemento('div', 'bv-controle', cartao, ondeConseguirAChave);
     return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-11.corpo')), controle);
+  }
+
+  // ─── Passo da IA: o card IA dos cartões ────────────────────────────────────
+
+  function montarPassoDaIA() {
+    const cartao = elemento('div', 'cfg-corpo bv-cartao');
+    raiz.CartaoDaIA.montar(cartao, { prefixo: 'bv' });
+    return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('CFG-35.passo')), elemento('div', 'bv-controle', cartao));
   }
 
   // ─── Tudo pronto ───────────────────────────────────────────────────────────

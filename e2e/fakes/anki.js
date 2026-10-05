@@ -328,6 +328,8 @@ function criarFakeAnki() {
     responderOpenAI(comportamento) { estado.contexto = { ...estado.contexto, openai: comportamento }; },
     /** A Conexão já guardava uma chave (os 4 últimos caracteres dos exemplos), de antes de o teste começar. */
     guardarChaveNaConexao(finalDaChave) { estado.chaveDaOpenAI = `sk-proj-guardada-antes-${finalDaChave}`; },
+    /** A Conexão voltou sem a chave (o Anki foi reinstalado, a pasta de dados foi apagada). */
+    esquecerAChave() { estado.chaveDaOpenAI = null; },
     /** A cópia da chave da OpenAI que a Conexão guarda, ou null: o que o teste confere que chegou. */
     chaveNaConexao() { return estado.chaveDaOpenAI; },
     /** As respostas do contrato a um pedido (com o corpo, se tiver), para o teste que confere o fake contra os exemplos. */
