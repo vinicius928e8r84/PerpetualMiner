@@ -13,9 +13,9 @@
 
 const { test, expect } = require('../fixtures');
 const contrato = require('../../complemento/contrato/exemplos.json');
-const { criarFakeAnki } = require('../fakes/anki');
+const { exemploDaExtensao } = require('../fakes/anki');
 
-const daExtensao = contrato.exemplos.filter(e => criarFakeAnki().exemploDaExtensao(e));
+const daExtensao = contrato.exemplos.filter(exemploDaExtensao);
 
 test('o contrato fala da origem da extensão que o Chromium carregou', async ({ extensao }) => {
   expect(contrato.origemDaExtensao).toBe(`chrome-extension://${extensao.id}`);

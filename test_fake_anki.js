@@ -5,7 +5,7 @@
 // não inventa uma resposta: diz para escrever o exemplo antes.
 
 const assert = require('assert');
-const { criarFakeAnki } = require('./e2e/fakes/anki');
+const { criarFakeAnki, exemploDaExtensao } = require('./e2e/fakes/anki');
 
 const fake = criarFakeAnki();
 assert.deepStrictEqual(fake.respostaDoContrato('GET', '/health').json.perfil, 'Usuário 1');
@@ -17,7 +17,7 @@ assert.throws(() => fake.respostaDoContrato('GET', '/health'), /não tem exemplo
 const contrato = require('./complemento/contrato/exemplos.json');
 
 async function conferirOsExemplos() {
-  for (const exemplo of contrato.exemplos.filter(e => e.daExtensao)) {
+  for (const exemplo of contrato.exemplos.filter(exemploDaExtensao)) {
     const fakeDoExemplo = criarFakeAnki();
     fakeDoExemplo.abrirPerfil(exemplo.contexto.perfil);
     if (exemplo.contexto.falhaNoPerfil) fakeDoExemplo.falharLeituraDoPerfil();

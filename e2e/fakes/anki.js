@@ -276,7 +276,6 @@ function criarFakeAnki() {
     falharLeituraDoPerfil() { estado.contexto = { ...estado.contexto, falhaNoPerfil: true }; },
     /** As respostas do contrato a um pedido, para o teste que confere o fake contra os exemplos. */
     respostaDoContrato,
-    exemploDaExtensao,
     /** A porta aceita a conexão e nunca responde (o /health do bridge travado). */
     silenciar() { estado.muda = true; },
     voltarAFalar() { estado.muda = false; },
@@ -416,4 +415,4 @@ function linhaDeCustos({
   };
 }
 
-module.exports = { criarFakeAnki };
+module.exports = { criarFakeAnki, exemploDaExtensao };
