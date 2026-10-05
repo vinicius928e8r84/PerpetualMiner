@@ -313,8 +313,8 @@ function lerAIdadeDoVocabulario() {
  * Com o Anki fechado, a Mineração automática segue pela última leitura do
  * vocabulário, e o popup diz a idade dos dados (POP-17): a mais antiga entre os
  * idiomas ligados. O Anki está fechado para um idioma quando a Conexão não
- * responde ou quando ela só conseguiu ler o arquivo do Anki (a Conexão de hoje
- * no Windows). O idioma ligado que nunca foi lido, com a Conexão desligada,
+ * responde ou quando ela leu o arquivo do Anki e confirmou que não há processo
+ * dele (a Conexão de hoje no Windows). O idioma ligado que nunca foi lido, com a Conexão desligada,
  * espera o Anki abrir uma vez (BRG-37). Com o Anki respondendo não há nada a dizer.
  */
 function refletirOVocabularioDoAnkiFechado() {
@@ -322,12 +322,12 @@ function refletirOVocabularioDoAnkiFechado() {
   const leituras = leiturasDoVocabulario;
   const desligada = ConexaoAnki.situacao() === ConexaoAnki.SITUACAO.DESLIGADA;
   const ligados = IDIOMAS_DA_MINERACAO.filter(({ chave }) => mineracaoAutomatica?.settings?.[chave]?.enabled);
-  const semOAnki = leituras
-    ? ligados.map(({ chave }) => leituras[chave]).filter(leitura => leitura && (desligada || leitura.doArquivo))
-    : [];
+  const lidos = leituras ? ligados.map(({ chave }) => leituras[chave]).filter(Boolean) : [];
+  // O selo aparece se algum idioma ligado está sem o Anki; a idade é a da leitura mais antiga de todos eles.
+  const semOAnki = lidos.some(leitura => desligada || leitura.ankiFechado);
 
-  selo.hidden = !semOAnki.length;
-  if (semOAnki.length) selo.textContent = textoDaVoz('POP-17.selo', { quando: diaEHora(Math.min(...semOAnki.map(leitura => leitura.dadosDe))) });
+  selo.hidden = !semOAnki;
+  if (semOAnki) selo.textContent = textoDaVoz('POP-17.selo', { quando: diaEHora(Math.min(...lidos.map(leitura => leitura.dadosDe))) });
   for (const { chave } of IDIOMAS_DA_MINERACAO) {
     const espera = document.querySelector(`.popup-azulejo[data-idioma="${chave}"] .popup-azulejo__espera`);
     if (espera) espera.hidden = !(leituras && desligada && ligados.some(l => l.chave === chave) && !leituras[chave]);

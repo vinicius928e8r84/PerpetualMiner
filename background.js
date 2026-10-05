@@ -714,7 +714,7 @@ async function getAutoKeywordVocabulary(lang = 'en') {
   }
 
   const createdAt = Date.now();
-  const marca = VocabularioDaMineracao.marcaDaLeitura(ultimaLeitura, data.source, createdAt);
+  const marca = await VocabularioDaMineracao.marcaDaLeitura(ultimaLeitura, data.source, BRIDGE_URL, createdAt);
   const payload = { cacheVersion: VocabularioDaMineracao.VERSAO, deckName, createdAt, ...marca, words, terms, wordInfo, termInfo };
   chrome.storage.local.set({ [cacheKey]: payload });
   return autoVocabularyFromCache(payload);

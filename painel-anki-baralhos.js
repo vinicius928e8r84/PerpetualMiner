@@ -74,6 +74,7 @@
   ];
 
   const { textoDaVoz, Veio, Shell, ConexaoAnki, IDIOMAS, VocabularioDaMineracao } = raiz;
+  const { haQuanto } = raiz.Contexto;
   const { esqueleto, linhaDeEspera, seloDoDadoAntigo } = raiz.Anki.pecas;
   const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
@@ -83,6 +84,9 @@
     baralhos: {
       dados: null,          // a última leitura de GET /anki/stats/decks
       quando: 0,
+      dadosDe: 0,           // o momento dos dados (lib/vocabulario-da-mineracao.js): o de `quando`, ou o de antes de o Anki fechar
+      ankiFechado: false,   // a Conexão leu o arquivo e confirmou que o Anki está fechado
+      nomes: null,          // os baralhos (`{ en, ru }`) a que esta leitura se refere
       carregando: false,
       erro: null,           // a causa técnica, para o Detalhes
       leitura: 0,           // só a leitura mais recente desenha
@@ -91,6 +95,9 @@
     vocabulario: {
       dados: null,          // { en: { deckName, itens }, ru: { … } }
       quando: 0,
+      dadosDe: 0,
+      ankiFechado: false,
+      nomes: null,
       carregando: false,
       erro: null,
       leitura: 0,
@@ -172,6 +179,7 @@
     baralhos.erro = null;
     desenhar();
 
+    const nomes = { ...estado.nomes };
     const busca = new URLSearchParams();
     for (const { idioma } of IDIOMAS_DOS_AZULEJOS) {
       busca.append('deck', estado.nomes[idioma]);
@@ -186,16 +194,15 @@
     } catch (falha) {
       erro = `GET /anki/stats/decks · ${falha.message}`;
     }
+    const quando = Date.now();
+    const marca = dados && await marcaDaLeitura(baralhos, nomes, dados.source, quando);
     if (leitura !== baralhos.leitura) return;
 
     baralhos.carregando = false;
     baralhos.erro = erro;
     if (dados) {
-      const quando = Date.now();
-      const { dadosDe } = VocabularioDaMineracao.marcaDaLeitura(
-        { dadosDe: baralhos.dadosDe, createdAt: baralhos.quando }, dados.source, quando);
-      Object.assign(baralhos, { dados, quando, dadosDe });
-      chrome.storage.local.set({ [CHAVE_BARALHOS]: { dados, quando, dadosDe } });
+      Object.assign(baralhos, { dados, quando, nomes, dadosDe: marca.dadosDe, ankiFechado: marca.ankiFechado });
+      chrome.storage.local.set({ [CHAVE_BARALHOS]: { dados, quando, nomes, dadosDe: marca.dadosDe, ankiFechado: marca.ankiFechado } });
     }
     desenhar();
     if (focarAzulejo && dados && document.activeElement === document.body) {
@@ -211,6 +218,7 @@
     vocabulario.erro = null;
     desenhar();
 
+    const nomes = { ...estado.nomes };
     const lerIdioma = async idioma => {
       const deckName = estado.nomes[idioma];
       const resposta = await pedirJson(`/anki/vocabulary?${new URLSearchParams({ deck: deckName, lang: idioma, limit: '10000' })}`);
@@ -226,19 +234,28 @@
     } catch (falha) {
       erro = `GET /anki/vocabulary · ${falha.message}`;
     }
+    const quando = Date.now();
+    const doArquivo = dados && Object.values(dados).some(doIdioma => doIdioma.source === FONTE_ARQUIVO);
+    const marca = dados && await marcaDaLeitura(vocabulario, nomes, doArquivo ? FONTE_ARQUIVO : null, quando);
     if (leitura !== vocabulario.leitura) return;
 
     vocabulario.carregando = false;
     vocabulario.erro = erro;
     if (dados) {
-      const quando = Date.now();
-      const doArquivo = Object.values(dados).some(doIdioma => doIdioma.source === FONTE_ARQUIVO);
-      const { dadosDe } = VocabularioDaMineracao.marcaDaLeitura(
-        { dadosDe: vocabulario.dadosDe, createdAt: vocabulario.quando }, doArquivo ? FONTE_ARQUIVO : null, quando);
-      Object.assign(vocabulario, { dados, quando, dadosDe });
-      chrome.storage.local.set({ [CHAVE_VOCABULARIO]: { dados, quando, dadosDe } });
+      Object.assign(vocabulario, { dados, quando, nomes, dadosDe: marca.dadosDe, ankiFechado: marca.ankiFechado });
+      chrome.storage.local.set({ [CHAVE_VOCABULARIO]: { dados, quando, nomes, dadosDe: marca.dadosDe, ankiFechado: marca.ankiFechado } });
     }
     desenhar();
+  }
+
+  /**
+   * O `dadosDe` e o `ankiFechado` de uma leitura nova da aba. A idade só vem da
+   * leitura anterior dos mesmos baralhos: outro Baralho começa a sua agora.
+   */
+  function marcaDaLeitura(aba, nomes, source, quando) {
+    const mesmosBaralhos = aba.nomes?.en === nomes.en && aba.nomes?.ru === nomes.ru;
+    const anterior = mesmosBaralhos ? { dadosDe: aba.dadosDe, createdAt: aba.quando } : null;
+    return VocabularioDaMineracao.marcaDaLeitura(anterior, source, ENDERECO_DA_CONEXAO, quando);
   }
 
   /** Um GET à Conexão; um HTTP de erro vira a causa, com o `detail` que ela mandar. */
@@ -449,11 +466,10 @@
     if (estado.reparando) topo.push(esperaDoReparo);
     if (estado.fimDoReparo) topo.push(estado.fimDoReparo);
     const comDados = qual === 'dados' || qual === 'antiga';
-    const doArquivo = comDados && baralhos.dados.source === FONTE_ARQUIVO;
-    if (doArquivo) topo.push(oMesmo('baralhos:arquivo', true, notaDoArquivoLocal));
-    if (qual === 'antiga' || (qual === 'dados' && doArquivo)) {
-      const dadosDe = momentoDosDados(baralhos);
-      topo.push(oMesmo('baralhos:selo', dadosDe, () => seloAntigo(dadosDe)));
+    if (comDados && baralhos.dados.source === FONTE_ARQUIVO) topo.push(oMesmo('baralhos:arquivo', true, notaDoArquivoLocal));
+    if (qual === 'antiga' || (qual === 'dados' && baralhos.ankiFechado)) {
+      const idade = haQuanto(momentoDosDados(baralhos));
+      topo.push(oMesmo('baralhos:selo', idade, () => seloAntigo(momentoDosDados(baralhos))));
     } else if (qual === 'dados' && baralhos.dados.stale) topo.push(oMesmo('baralhos:cache', baralhos.dados, () => seloDoCache(baralhos.dados)));
     mostrar(porId('anki-baralhos-topo'), topo);
 
@@ -657,10 +673,12 @@
     const vocabulario = estado.vocabulario;
     const qual = vista(vocabulario);
     const comDados = qual === 'dados' || qual === 'antiga';
-    const doArquivo = qual === 'dados' && Object.values(vocabulario.dados).some(doIdioma => doIdioma.source === FONTE_ARQUIVO);
-    const dadosDe = momentoDosDados(vocabulario);
+    // A chave do selo é a idade dita, e não o momento: renovada a leitura, “há 2 h” vira “há 4 h”.
+    const idade = haQuanto(momentoDosDados(vocabulario));
     mostrar(porId('anki-vocabulario-topo'),
-      qual === 'antiga' || doArquivo ? [oMesmo('vocabulario:selo', dadosDe, () => seloAntigo(dadosDe))] : []);
+      qual === 'antiga' || (qual === 'dados' && vocabulario.ankiFechado)
+        ? [oMesmo('vocabulario:selo', idade, () => seloAntigo(momentoDosDados(vocabulario)))]
+        : []);
 
     porId('anki-vocabulario-azulejos').hidden = !comDados;
     porId('anki-vocabulario-filtros').hidden = !comDados;

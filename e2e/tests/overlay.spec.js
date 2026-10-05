@@ -654,6 +654,20 @@ test('com a Conexão respondendo mas o Anki fechado, a mineração automática m
   expect(leitura.createdAt).toBeGreaterThan(leituraDeAntes + 3600_000);
   expect(leitura.source).toBe('collection.anki2');
   expect(leitura.dadosDe).toBe(leituraDeAntes);
+  expect(leitura.ankiFechado).toBe(true);
+});
+
+test('com a Conexão respondendo pelo arquivo mas o Anki aberto (sem o AnkiConnect), a leitura não é dada como de Anki fechado', async ({ page, paginas, extensao, fakes }) => {
+  fakes.anki.ankiAbertoSemAnkiConnect();
+  await extensao.gravarStorage(mineracaoEmRussoComVocabulario(3 * 3600_000));
+  await abrirPlayer(page, paginas);
+
+  await tocarALegenda(page, FRASE_RUSSA);
+
+  await expect(tituloDaPilula(page, MIN_06)).toBeVisible();
+  const { pm_auto_keyword_vocab_ru: leitura } = await extensao.lerStorage('pm_auto_keyword_vocab_ru');
+  expect(leitura.source).toBe('collection.anki2');
+  expect(leitura.ankiFechado).toBe(false);
 });
 
 test('com a Conexão respondendo, a leitura de menos de 15 min não pergunta nada à Conexão', async ({ page, paginas, extensao, fakes }) => {
