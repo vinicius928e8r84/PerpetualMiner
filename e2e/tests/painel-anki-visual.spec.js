@@ -11,6 +11,12 @@
 
 const { test, expect } = require('../fixtures');
 
+// #145: a primeira conexão ganhou os passos do arquivo (sem terminal). As telas abaixo marcadas `test.fixme` são PROPOSTAS de
+// referência, não referências: o dono ainda não aprovou o novo visual (CODING_STANDARDS regra 10), então as imagens novas
+// não estão na árvore e as antigas (do card de 3 passos com comandos) ficam sem uso. Elas estão no commit 59d3d04
+// (e2e/tests/painel-anki-visual.spec.js-snapshots/anki-primeira-conexao-*-linux.png). Aprovando: tirar o `fixme` e
+// `npx playwright test painel-anki-visual --update-snapshots -g "nunca conectada"`.
+
 const AGORA = new Date('2026-09-18T12:00:00');
 
 const ENVIOS = [
@@ -88,7 +94,7 @@ test('conectando: a faixa neutra e o esqueleto', async ({ page, extensao, fakes 
 
 // A primeira conexão (ONB-16, desenho B), comparada pelo dono com o protótipo travado
 // (`prototipo-primeira-conexao.html?variant=B`). Substitui `anki-nunca-conectada`.
-test('nunca conectada: a F1 e o card do passo 1 (pôr a Conexão no Anki), com a lista, a conferência e os dois quadros', async ({ page, extensao, fakes }) => {
+test.fixme('nunca conectada: a F1 e o card do passo 1 (pôr a Conexão no Anki), com a lista, a conferência e os dois quadros', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirAnki(page, extensao, { jaConectou: false });
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
@@ -96,7 +102,7 @@ test('nunca conectada: a F1 e o card do passo 1 (pôr a Conexão no Anki), com a
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-escura.png');
 });
 
-test('nunca conectada no tema claro', async ({ page, extensao, fakes }) => {
+test.fixme('nunca conectada no tema claro', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirAnki(page, extensao, { jaConectou: false, gravado: { pm_tema: 'claro' } });
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
@@ -104,7 +110,7 @@ test('nunca conectada no tema claro', async ({ page, extensao, fakes }) => {
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-clara.png');
 });
 
-test('nunca conectada, conectando depois de Tentar de novo: o passo 2 com o botão indisponível', async ({ page, extensao, fakes }) => {
+test.fixme('nunca conectada, conectando depois de Tentar de novo: o passo 2 com o botão indisponível', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirAnki(page, extensao, { jaConectou: false });
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
@@ -116,7 +122,7 @@ test('nunca conectada, conectando depois de Tentar de novo: o passo 2 com o bot�
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-conectando.png', { animations: 'disabled' });
 });
 
-test('nunca conectada, na primeira resposta: o momento Pronto, com as abas ainda de fora', async ({ page, extensao, fakes }) => {
+test.fixme('nunca conectada, na primeira resposta: o momento Pronto, com as abas ainda de fora', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   // O relógio da página é do teste: o Pronto fica na tela até ele andar.
   await page.clock.install({ time: AGORA });
@@ -132,7 +138,7 @@ test('nunca conectada, na primeira resposta: o momento Pronto, com as abas ainda
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-pronto.png');
 });
 
-test('nunca conectada: o Detalhes “O arquivo não abriu?” aberto, com o código do AnkiWeb que vem em breve', async ({ page, extensao, fakes }) => {
+test.fixme('nunca conectada: o Detalhes “O arquivo não abriu?” aberto, com o código do AnkiWeb que vem em breve', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirAnki(page, extensao, { jaConectou: false });
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
@@ -141,7 +147,7 @@ test('nunca conectada: o Detalhes “O arquivo não abriu?” aberto, com o cód
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-detalhes.png');
 });
 
-test('nunca conectada, dois minutos sem resposta: o passo 2 com o checklist e Baixar de novo', async ({ page, extensao, fakes }) => {
+test.fixme('nunca conectada, dois minutos sem resposta: o passo 2 com o checklist e Baixar de novo', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   // O relógio da página é do teste: os 2 minutos passam quando ele anda.
   await page.clock.install({ time: AGORA });
@@ -157,7 +163,7 @@ test('nunca conectada, dois minutos sem resposta: o passo 2 com o checklist e Ba
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-sem-resposta.png', { animations: 'disabled' });
 });
 
-test('nunca conectada na janela estreita: a lista em cima do card', async ({ page, extensao, fakes }) => {
+test.fixme('nunca conectada na janela estreita: a lista em cima do card', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirAnki(page, extensao, { jaConectou: false, largura: 760 });
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
