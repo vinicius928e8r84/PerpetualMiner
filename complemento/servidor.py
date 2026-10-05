@@ -4,7 +4,8 @@ O Anki do Mac roda o Python 3.9, sem Flask, waitress nem requests. Aqui dentro n
 mexe no processo do Anki (proxy, stdout, stderr, `excepthook`, avisos): todo erro
 vai ao logger do complemento e vira uma resposta 500, nunca o diálogo de erro do Anki.
 
-Cada rota é uma função `(conexao) -> (status, json)` em `ROTAS`. Uma rota nova entra
+Cada rota é uma função `(conexao, corpo) -> (status, json)` em `ROTAS`; `corpo` é o JSON do pedido,
+ou None quando ele não trouxe corpo. Uma rota nova entra
 junto com seus exemplos em `contrato/exemplos.json` (veja `contrato/LEIA-ME.md`).
 """
 
@@ -14,19 +15,57 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .configuracao import ENDERECO
+from .item_de_login import AnkiNaoEncontrado
+
+# O maior corpo que um pedido pode trazer: os de hoje têm dezenas de bytes.
+LIMITE_DO_CORPO = 1024 * 1024
 
 
-def _saude(conexao):
+def _saude(conexao, corpo):
     return 200, {"ok": True, "versao": conexao.versao, "perfil": conexao.perfil_aberto()}
+
+
+def _estado_do_item_de_login(conexao, corpo):
+    item = conexao.item_de_login
+    return 200, {"ok": True, "ligado": item is not None and item.ligado()}
+
+
+def _abrir_com_o_computador(conexao, corpo):
+    """Escreve (`ligado: true`) ou apaga (`ligado: false`) o item de login que abre o Anki com o computador."""
+    ligado = corpo.get("ligado") if isinstance(corpo, dict) else None
+    if not isinstance(ligado, bool):
+        return 400, {"error": "invalid_request"}
+    item = conexao.item_de_login
+    if item is None:
+        return 501, {"error": "login_item_unsupported"}
+    try:
+        item.ligar() if ligado else item.desligar()
+    except AnkiNaoEncontrado:
+        conexao.logger.warning("Abrir o Anki com o computador: não se sabe onde o Anki está")
+        return 500, {"error": "anki_not_found"}
+    except OSError:
+        conexao.logger.exception("Abrir o Anki com o computador: não deu para %s o item de login", "escrever" if ligado else "apagar")
+        return 500, {"error": "login_item_failed"}
+    conexao.logger.info("Abrir o Anki com o computador: %s", "ligado" if item.ligado() else "desligado")
+    return 200, {"ok": True, "ligado": item.ligado()}
 
 
 ROTAS = {
     ("GET", "/health"): _saude,
+    ("POST", "/abrir-com-o-computador/estado"): _estado_do_item_de_login,
+    ("POST", "/abrir-com-o-computador"): _abrir_com_o_computador,
 }
 
 # As rotas que respondem sem a origem da extensão. Rota nova não entra aqui sem decisão do dono:
 # o que gasta a chave ou lê dado da pessoa é POST e exige a origem.
 ROTAS_ABERTAS = frozenset([("GET", "/health")])
+
+
+class _CorpoRecusado(Exception):
+    def __init__(self, status, erro):
+        super().__init__(erro)
+        self.status = status
+        self.erro = erro
 
 
 class _Atendente(BaseHTTPRequestHandler):
@@ -90,11 +129,30 @@ class _Atendente(BaseHTTPRequestHandler):
         if rota is None:
             return self._responder(404, {"error": "not_found"}, origem=origem)
         try:
-            status, dados = rota(self.conexao)
+            corpo = self._ler_o_corpo()
+        except _CorpoRecusado as recusa:
+            return self._responder(recusa.status, {"error": recusa.erro}, origem=origem)
+        try:
+            status, dados = rota(self.conexao, corpo)
         except Exception:
             self.conexao.logger.exception("Erro na rota %s %s", self.command, caminho)
             return self._responder(500, {"error": "internal_error"}, origem=origem)
         return self._responder(status, dados, origem=origem)
+
+    def _ler_o_corpo(self):
+        """O JSON do pedido, ou None sem corpo."""
+        try:
+            tamanho = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            raise _CorpoRecusado(400, "invalid_json")
+        if tamanho > LIMITE_DO_CORPO:
+            raise _CorpoRecusado(413, "body_too_large")
+        if tamanho <= 0:
+            return None
+        try:
+            return json.loads(self.rfile.read(tamanho).decode("utf-8"))
+        except ValueError:
+            raise _CorpoRecusado(400, "invalid_json")
 
     def __getattr__(self, nome):
         # Todo verbo passa pela mesma autorização: sem isto o `http.server` responderia 501
@@ -119,12 +177,14 @@ class _Servidor(ThreadingHTTPServer):
 class Conexao:
     """O servidor da Conexão: `iniciar()` sobe numa thread, `parar()` encerra."""
 
-    def __init__(self, *, porta, origens_aceitas, versao, perfil_aberto, logger):
+    def __init__(self, *, porta, origens_aceitas, versao, perfil_aberto, logger, item_de_login=None):
         self.porta = porta
         self.origens_aceitas = tuple(origens_aceitas)
         self.versao = versao
         self.perfil_aberto = perfil_aberto
         self.logger = logger
+        # O item de login de “Abrir o Anki com o computador”; None onde o sistema não tem (nem Mac nem Windows).
+        self.item_de_login = item_de_login
         self._servidor = None
         self._thread = None
 
@@ -145,7 +205,7 @@ class Conexao:
 
     def _servir(self):
         try:
-            self._servidor.serve_forever()
+            self._servidor.serve_forever(poll_interval=0.05)
         except Exception:
             self.logger.exception("O servidor da Conexão parou")
 

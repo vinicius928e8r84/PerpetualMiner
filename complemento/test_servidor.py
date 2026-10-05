@@ -18,7 +18,7 @@ import warnings
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import configuracao, registro, servidor  # noqa: E402
+from complemento import configuracao, item_de_login, registro, servidor  # noqa: E402
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
@@ -30,12 +30,31 @@ def exemplos_do_contrato():
         return json.load(arquivo)["exemplos"]
 
 
+def _item_de_login_do_contexto(pasta, situacao):
+    """O item de login na situação que o contrato diz (`itemDeLogin`): numa pasta do teste, nunca na do computador."""
+    comando = ["/usr/bin/open", "/Applications/Anki.app"]
+    if situacao == "indisponivel":
+        return None
+    if situacao == "sem_anki":
+        return item_de_login.ItemDeLogin(sistema="mac", pasta=os.path.join(pasta, "agentes"), comando=None)
+    if situacao == "falha":
+        ocupada = os.path.join(pasta, "ocupada")
+        with open(ocupada, "wb") as arquivo:
+            arquivo.write(b"x")
+        return item_de_login.ItemDeLogin(sistema="mac", pasta=os.path.join(ocupada, "agentes"), comando=comando)
+    item = item_de_login.ItemDeLogin(sistema="mac", pasta=os.path.join(pasta, "agentes"), comando=comando)
+    if situacao == "ligado":
+        item.ligar()
+    return item
+
+
 class ConexaoNoTeste:
     """A Conexão real numa porta livre, com o perfil que o teste escolher."""
 
-    def __init__(self, pasta, perfil="Usuário 1", origens=None, falha_no_perfil=False):
+    def __init__(self, pasta, perfil="Usuário 1", origens=None, falha_no_perfil=False, item="desligado"):
         self.perfil = perfil
         self.falha_no_perfil = falha_no_perfil
+        self.item = _item_de_login_do_contexto(pasta, item)
         self.logs = os.path.join(pasta, "logs")
         os.makedirs(self.logs)
         self.logger = registro.criar(self.logs)
@@ -45,6 +64,7 @@ class ConexaoNoTeste:
             versao=configuracao.VERSAO,
             perfil_aberto=self._ler_o_perfil,
             logger=self.logger,
+            item_de_login=self.item,
         )
 
     def _ler_o_perfil(self):
@@ -61,13 +81,16 @@ class ConexaoNoTeste:
         for handler in list(self.logger.handlers):
             handler.close()
 
-    def pedir(self, metodo, caminho, origem=ORIGEM, cabecalhos=None):
+    def pedir(self, metodo, caminho, origem=ORIGEM, cabecalhos=None, corpo=None):
         pedido = http.client.HTTPConnection("127.0.0.1", self.conexao.porta, timeout=5)
         enviados = dict(cabecalhos or {})
         if origem is not None:
             enviados["Origin"] = origem
+        if corpo is not None and not isinstance(corpo, bytes):
+            corpo = json.dumps(corpo).encode("utf-8")
+            enviados["Content-Type"] = "application/json"
         try:
-            pedido.request(metodo, caminho, headers=enviados)
+            pedido.request(metodo, caminho, body=corpo, headers=enviados)
             resposta = pedido.getresponse()
             return resposta.status, dict(resposta.getheaders()), resposta.read()
         finally:
@@ -83,9 +106,14 @@ class ContratoDaConexao(unittest.TestCase):
         for exemplo in exemplos_do_contrato():
             with self.subTest(exemplo["nome"]), tempfile.TemporaryDirectory() as pasta:
                 contexto = exemplo["contexto"]
-                with ConexaoNoTeste(pasta, perfil=contexto["perfil"], falha_no_perfil=contexto.get("falhaNoPerfil", False)) as conexao:
+                with ConexaoNoTeste(
+                    pasta,
+                    perfil=contexto["perfil"],
+                    falha_no_perfil=contexto.get("falhaNoPerfil", False),
+                    item=contexto.get("itemDeLogin", "desligado"),
+                ) as conexao:
                     pedido = exemplo["pedido"]
-                    status, _, corpo = conexao.pedir(pedido["metodo"], pedido["caminho"], pedido["origem"])
+                    status, _, corpo = conexao.pedir(pedido["metodo"], pedido["caminho"], pedido["origem"], corpo=pedido.get("corpo"))
                 self.assertEqual(
                     (status, json.loads(corpo)),
                     (exemplo["resposta"]["status"], exemplo["resposta"]["json"]),
@@ -112,6 +140,66 @@ class SaudeDaConexao(unittest.TestCase):
             conexao.perfil = "Maria"
             depois = json.loads(conexao.pedir("GET", "/health")[2])["perfil"]
         self.assertEqual((antes, depois), (None, "Maria"))
+
+
+class AbrirOAnkiComOComputador(unittest.TestCase):
+    """O que o pedido deixa no disco: o item de login escrito ou apagado, e só a extensão o pede."""
+
+    ROTA = "/abrir-com-o-computador"
+
+    def itens(self, conexao):
+        pasta = conexao.item.pasta
+        return sorted(os.listdir(pasta)) if os.path.isdir(pasta) else []
+
+    def test_ligar_escreve_o_item_e_desligar_o_apaga(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            antes = self.itens(conexao)
+            conexao.pedir("POST", self.ROTA, corpo={"ligado": True})
+            ligado = self.itens(conexao)
+            estado = json.loads(conexao.pedir("POST", self.ROTA + "/estado", corpo={})[2])
+            conexao.pedir("POST", self.ROTA, corpo={"ligado": False})
+            depois = self.itens(conexao)
+        self.assertEqual((antes, ligado, depois), ([], ["com.perpetualminer.abrir-o-anki.plist"], []))
+        self.assertEqual(estado, {"ok": True, "ligado": True})
+
+    def test_a_pergunta_pelo_estado_nao_escreve_nem_apaga_nada(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, item="ligado") as conexao:
+            conexao.pedir("POST", self.ROTA + "/estado", corpo={})
+            ainda = self.itens(conexao)
+        self.assertEqual(ainda, ["com.perpetualminer.abrir-o-anki.plist"])
+
+    def test_outro_site_ou_outra_extensao_nao_liga_nada(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            for origem in (None, "https://exemplo.com", "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"):
+                with self.subTest(origem):
+                    status, _, _ = conexao.pedir("POST", self.ROTA, origem=origem, corpo={"ligado": True})
+                    self.assertEqual(status, 403)
+            self.assertEqual(self.itens(conexao), [])
+
+    def test_ler_o_estado_exige_a_origem_da_extensao(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            status, _, _ = conexao.pedir("GET", self.ROTA + "/estado", origem=None)
+        self.assertEqual(status, 403)
+
+    def test_corpo_que_nao_e_json_e_recusado_sem_escrever_nada(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            status, _, corpo = conexao.pedir("POST", self.ROTA, corpo=b"isto nao e json")
+            itens = self.itens(conexao)
+        self.assertEqual((status, json.loads(corpo), itens), (400, {"error": "invalid_json"}, []))
+
+    def test_corpo_sem_ligado_e_recusado_sem_escrever_nada(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            for corpo in ({}, [True], {"ligado": 1}, {"ligado": None}):
+                with self.subTest(corpo):
+                    status, _, resposta = conexao.pedir("POST", self.ROTA, corpo=corpo)
+                    self.assertEqual((status, json.loads(resposta)), (400, {"error": "invalid_request"}))
+            self.assertEqual(self.itens(conexao), [])
+
+    def test_a_falha_ao_escrever_vai_ao_log_do_complemento(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, item="falha") as conexao:
+            conexao.pedir("POST", self.ROTA, corpo={"ligado": True})
+            registrado = conexao.log()
+        self.assertIn("Abrir o Anki com o computador", registrado)
 
 
 class OrigemDosPedidos(unittest.TestCase):
