@@ -54,12 +54,14 @@ Por isso (decisão do dono, opção B):
    autorização). Sem `Origin`, ou com a de outra extensão ou site, é 403
    (`origin_not_allowed`). Por isso rota que gasta a chave ou lê dado da pessoa (a chave, os custos, o
    vocabulário, os Envios) é **POST**, nunca GET.
-3. **O `Origin` não é autenticação** (`test_servidor.py` documenta: um cliente fora do navegador que declara a origem da extensão lê o vocabulário; o reforço segue sendo decisão do dono). Uma extensão com a permissão `webRequest` e `extraHeaders` pode pôr esse
-   cabeçalho, e um programa local também. Antes da primeira rota que usa a chave ou lê dado privado, isso tem
-   de ser testado e reforçado; a escolha de como (POST ou token de pareamento) segue adiada.
+3. **O `Origin` não é autenticação.** Uma extensão com a permissão `webRequest` e `extraHeaders` pode pôr esse
+   cabeçalho, e um programa local também. **Limite aceito pelo dono no PR #190, a ser reforçado pelo ticket #192
+   (credencial de pareamento, confirmada no Anki) antes do lançamento:** hoje um processo local que declara a
+   origem da extensão lê o vocabulário pelas rotas privadas. `test_servidor.py` mostra isso com um cliente fora do navegador
+   e passa a exigir a credencial quando o #192 entrar.
 4. A primeira rota de leitura sensível (os Baralhos, os números e o vocabulário) seguiu a regra do 2: são POST
-   com a origem da extensão, e o limite do 3 está nomeado em um teste. Reforçar com um token de pareamento (a
-   extensão o recebe por um POST e o manda nos pedidos) está com o dono e não foi feito.
+   com a origem da extensão, e o limite do 3 está nomeado em um teste. O reforço com um token de pareamento (a
+   extensão o recebe por um POST e o manda nos pedidos) é o #192 e não foi feito.
 
 Rota nova que deva responder sem origem entra em `ROTAS_ABERTAS` (`servidor.py`) só com essa decisão.
 

@@ -190,7 +190,7 @@ class LeituraDaColecao(unittest.TestCase):
         """Documenta o que o contrato (LEIA-ME, “Quem o complemento atende”, item 3) já diz: o `Origin` não é
         autenticação. Um programa local, ou uma extensão que consiga pôr esse cabeçalho, lê os Baralhos como a extensão.
         Sem a origem, ou com a de outro site ou de outra extensão, nada é lido (os exemplos do contrato). O reforço
-        (um pareamento) é uma decisão do dono; quando vier, este teste passa a exigir a credencial."""
+        (uma credencial de pareamento) é o ticket #192, antes do lançamento; quando entrar, este teste passa a exigir a credencial."""
         with tempfile.TemporaryDirectory() as pasta, self.com_a_colecao(pasta) as conexao:
             status, _, corpo = conexao.pedir("POST", "/anki/vocabulary", origem=ORIGEM, corpo={"deck": "Inglês", "lang": "en"})
             sem_a_origem = conexao.pedir("POST", "/anki/vocabulary", origem=None, corpo={"deck": "Inglês", "lang": "en"})[0]
