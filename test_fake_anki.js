@@ -21,9 +21,12 @@ async function conferirOsExemplos() {
     const fakeDoExemplo = criarFakeAnki();
     fakeDoExemplo.abrirPerfil(exemplo.contexto.perfil);
     if (exemplo.contexto.falhaNoPerfil) fakeDoExemplo.falharLeituraDoPerfil();
+    if (exemplo.contexto.openai) fakeDoExemplo.responderOpenAI(exemplo.contexto.openai);
+    if (exemplo.contexto.chaveNaConexao) fakeDoExemplo.guardarChaveNaConexao(exemplo.contexto.chaveNaConexao);
     let entregue = null;
+    const corpo = exemplo.pedido.corpo ? JSON.stringify(exemplo.pedido.corpo) : null;
     await fakeDoExemplo.tratar({
-      request: () => ({ method: () => exemplo.pedido.metodo, url: () => `http://127.0.0.1:8766${exemplo.pedido.caminho}`, postData: () => null }),
+      request: () => ({ method: () => exemplo.pedido.metodo, url: () => `http://127.0.0.1:8766${exemplo.pedido.caminho}`, postData: () => corpo }),
       fulfill: resposta => { entregue = { status: resposta.status, json: JSON.parse(resposta.body) }; },
       abort: () => { entregue = { abortado: true }; },
     });
@@ -33,4 +36,30 @@ async function conferirOsExemplos() {
   console.log('fake anki tests passed');
 }
 
-conferirOsExemplos().catch(erro => { console.error(erro); process.exit(1); });
+// A chave que a Conexão aceita fica como cópia dela; a que a OpenAI recusa não fica; o estado só diz os 4 últimos.
+async function conferirACopiaDaChave() {
+  const pedir = async (fakeDaChave, caminho, corpo) => {
+    let entregue = null;
+    await fakeDaChave.tratar({
+      request: () => ({ method: () => 'POST', url: () => `http://127.0.0.1:8766${caminho}`, postData: () => JSON.stringify(corpo) }),
+      fulfill: resposta => { entregue = { status: resposta.status, json: JSON.parse(resposta.body) }; },
+      abort: () => { entregue = { abortado: true }; },
+    });
+    return entregue;
+  };
+  const chave = 'sk-proj-outra-chave-do-teste-7c2e';
+
+  const aceita = criarFakeAnki();
+  assert.deepStrictEqual((await pedir(aceita, '/ia/openai/chave', { chave })).json, { ok: true, ultimos4: '7c2e' });
+  assert.strictEqual(aceita.chaveNaConexao(), chave);
+  const estado = await pedir(aceita, '/ia/estado', {});
+  assert.deepStrictEqual(estado.json, { openai: { configurada: true, ultimos4: '7c2e' } });
+  assert.ok(!JSON.stringify(estado).includes(chave));
+
+  const recusada = criarFakeAnki();
+  recusada.responderOpenAI('recusa');
+  assert.strictEqual((await pedir(recusada, '/ia/openai/chave', { chave })).status, 401);
+  assert.strictEqual(recusada.chaveNaConexao(), null);
+}
+
+conferirOsExemplos().then(conferirACopiaDaChave).then(() => console.log('fake anki key tests passed')).catch(erro => { console.error(erro); process.exit(1); });
