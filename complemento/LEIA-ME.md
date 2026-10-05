@@ -55,6 +55,6 @@ python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon
    o vocabulário do Baralho, não minerava nada).
 6. Confira `user_files` do complemento (Ferramentas › Complementos › Ver arquivos): as pastas `fila`,
    `estado`, `custos` e `logs` existem, e o log diz “Conexão ouvindo em 127.0.0.1:8766”.
-5. Sem resposta em 2 minutos, a tela mostra o checklist de 3 itens e Baixar de novo.
+7. Sem resposta em 2 minutos (tente com o Anki fechado), a tela mostra o checklist de 3 itens e Baixar de novo.
 
 O `package` do manifesto (`perpetualminer`) é provisório: vira o id do AnkiWeb quando o complemento for publicado.
