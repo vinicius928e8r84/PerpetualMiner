@@ -5,7 +5,7 @@
 // não inventa uma resposta: diz para escrever o exemplo antes.
 
 const assert = require('assert');
-const { criarFakeAnki, exemploDaExtensao } = require('./e2e/fakes/anki');
+const { criarFakeAnki, exemploDaExtensao, diferencaDoContrato } = require('./e2e/fakes/anki');
 
 const fake = criarFakeAnki();
 assert.deepStrictEqual(fake.respostaDoContrato('GET', '/health').json.perfil, 'Usuário 1');
@@ -20,7 +20,7 @@ const contrato = require('./complemento/contrato/exemplos.json');
 async function pedirAoFake(fakeDaConexao, metodo, caminho, corpo = null) {
   let entregue = null;
   await fakeDaConexao.tratar({
-    request: () => ({ method: () => metodo, url: () => `http://127.0.0.1:8766${caminho}`, postData: () => (corpo ? JSON.stringify(corpo) : null) }),
+    request: () => ({ method: () => metodo, url: () => `http://127.0.0.1:8766${caminho}`, postData: () => (corpo === undefined || corpo === null ? null : JSON.stringify(corpo)) }),
     fulfill: resposta => { entregue = { status: resposta.status, json: JSON.parse(resposta.body) }; },
     abort: () => { entregue = { abortado: true }; },
   });
@@ -34,10 +34,41 @@ async function conferirOsExemplos() {
     if (exemplo.contexto.falhaNoPerfil) fakeDoExemplo.falharLeituraDoPerfil();
     if (exemplo.contexto.openai) fakeDoExemplo.responderOpenAI(exemplo.contexto.openai);
     if (exemplo.contexto.chaveNaConexao) fakeDoExemplo.guardarChaveNaConexao(exemplo.contexto.chaveNaConexao);
+    if ('colecao' in exemplo.contexto) fakeDoExemplo.abrirColecao(exemplo.contexto.colecao);
     const entregue = await pedirAoFake(fakeDoExemplo, exemplo.pedido.metodo, exemplo.pedido.caminho, exemplo.pedido.corpo);
-    assert.deepStrictEqual(entregue, exemplo.resposta,
-      `O fake e o contrato se separaram no exemplo "${exemplo.nome}" (complemento/contrato/exemplos.json).`);
+    assert.strictEqual(entregue.status, exemplo.resposta.status, `O fake e o contrato se separaram no exemplo "${exemplo.nome}" (complemento/contrato/exemplos.json).`);
+    assert.strictEqual(diferencaDoContrato(entregue.json, exemplo.resposta.json), null,
+      `O fake e o contrato se separaram no exemplo "${exemplo.nome}" (complemento/contrato/exemplos.json): ${diferencaDoContrato(entregue.json, exemplo.resposta.json)}`);
   }
+
+  // Os três corpos que Baralhos e termos pede de verdade, com os dois Baralhos dos Ajustes de envio
+  // (painel-anki-baralhos.js: a primeira leitura; depois de um reparo ou de salvar outro Baralho, `refresh`;
+  // Atualizar e Tentar de novo, `refresh` e `launch`), todos com resposta no contrato.
+  const baralhosDosAjustes = [{ deckName: 'Inglês', lang: 'en' }, { deckName: 'Alemão', lang: 'ru' }];
+  for (const extra of [{}, { refresh: true }, { refresh: true, launch: true }]) {
+    const doPainel = criarFakeAnki();
+    doPainel.abrirColecao('inglês com subbaralho');
+    assert.strictEqual(doPainel.respostaDoContrato('POST', '/anki/stats/decks', { decks: baralhosDosAjustes, ...extra }).status, 200,
+      `o contrato não tem o pedido de Baralhos e termos com ${JSON.stringify(extra)}`);
+  }
+
+  // O vocabulário, os Baralhos e os números que o teste de tela monta (sem coleção do contrato) seguem a mesma forma.
+  const dosTestes = criarFakeAnki();
+  dosTestes.definirVocabulario('en', [{ word: 'gave up', type: 'term', maduros: 1 }, 'smoking']);
+  dosTestes.definirBaralho('Inglês', { cartoes: 4, termos: 3, palavras: 11, porCartao: 2.75, novos: 1, aprendendo: 1, recentes: 1, maduros: 1 });
+  const lido = async (caminho, corpo) => (await pedirAoFake(dosTestes, 'POST', caminho, corpo)).json;
+  const exemploDe = nome => contrato.exemplos.find(e => e.nome === nome).resposta.json;
+  const formas = (obtido, esperado, caminho = '') => {
+    // As chaves de cada objeto são as do contrato, nos objetos que o fake monta (`sourceDetail` é do Anki fechado).
+    if (Array.isArray(esperado)) return esperado.length ? formas(obtido[0], esperado[0], `${caminho}[]`) : null;
+    if (!esperado || typeof esperado !== 'object') return null;
+    assert.deepStrictEqual(Object.keys(obtido).sort(), Object.keys(esperado).sort(), `a forma do fake não é a do contrato em ${caminho || '/'}`);
+    for (const chave of Object.keys(esperado)) formas(obtido[chave], esperado[chave], `${caminho}/${chave}`);
+    return null;
+  };
+  formas(await lido('/anki/vocabulary', { deck: 'Inglês', lang: 'en', limit: 10000 }), exemploDe('Vocabulário de um Baralho'));
+  formas(await lido('/anki/stats/decks', { decks: [{ deckName: 'Inglês', lang: 'en' }, { deckName: 'Alemão', lang: 'en' }] }),
+    exemploDe('Números de um Baralho que existe e de um que não existe'));
   console.log('fake anki tests passed');
 }
 

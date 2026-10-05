@@ -177,7 +177,7 @@ async function abrirModoDeMinerar(page, modo) {
 function segurarGravacoes(fakes) {
   let soltar;
   const segurada = new Promise(resolve => { soltar = resolve; });
-  fakes.anki.responder('GET', '/anki/vocabulary', async () => { await segurada; return { json: { words: [] } }; });
+  fakes.anki.responder('POST', '/anki/vocabulary', async () => { await segurada; return { json: { words: [] } }; });
   return soltar;
 }
 

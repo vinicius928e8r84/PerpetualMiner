@@ -16,7 +16,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import configuracao, inicio  # noqa: E402
-from test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
+from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
 
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
 

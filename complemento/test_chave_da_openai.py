@@ -129,7 +129,7 @@ class ChaveRecebida(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             status, _, _ = enviar(conexao, "sk-" + "a" * 100000)
             pedidos = list(conexao.openai.pedidos)
-        self.assertEqual((status, pedidos), (413, []))
+        self.assertEqual((status, pedidos), (400, []))
 
 
 class QuemPodeEnviarAChave(unittest.TestCase):

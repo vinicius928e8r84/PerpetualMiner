@@ -13,7 +13,7 @@
 
 const { test, expect } = require('../fixtures');
 const contrato = require('../../complemento/contrato/exemplos.json');
-const { exemploDaExtensao } = require('../fakes/anki');
+const { exemploDaExtensao, diferencaDoContrato } = require('../fakes/anki');
 
 const daExtensao = contrato.exemplos.filter(exemploDaExtensao);
 
@@ -27,20 +27,21 @@ for (const exemplo of daExtensao) {
     if (exemplo.contexto.falhaNoPerfil) fakes.anki.falharLeituraDoPerfil();
     if (exemplo.contexto.openai) fakes.anki.responderOpenAI(exemplo.contexto.openai);
     if (exemplo.contexto.chaveNaConexao) fakes.anki.guardarChaveNaConexao(exemplo.contexto.chaveNaConexao);
+    if ('colecao' in exemplo.contexto) fakes.anki.abrirColecao(exemplo.contexto.colecao);
     await page.goto(extensao.url('painel.html'));
 
     const resposta = await page.evaluate(async ({ metodo, caminho, corpo }) => {
       const r = await fetch(`http://127.0.0.1:8766${caminho}`, {
         method: metodo,
-        ...(corpo ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) } : {}),
+        ...(corpo !== undefined && { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }),
       });
       return { status: r.status, json: await r.json() };
     }, exemplo.pedido);
 
-    expect(resposta,
-      `O fake (e2e/fakes/anki.js) e o contrato (complemento/contrato/exemplos.json) se separaram no exemplo "${exemplo.nome}". `
-      + 'Se a mudança é de propósito, atualize o exemplo; os testes do complemento leem o mesmo arquivo.')
-      .toEqual(exemplo.resposta);
+    const mensagem = `O fake (e2e/fakes/anki.js) e o contrato (complemento/contrato/exemplos.json) se separaram no exemplo "${exemplo.nome}". `
+      + 'Se a mudança é de propósito, atualize o exemplo; os testes do complemento leem o mesmo arquivo.';
+    expect(resposta.status, mensagem).toBe(exemplo.resposta.status);
+    expect(diferencaDoContrato(resposta.json, exemplo.resposta.json), mensagem).toBeNull();
   });
 }
 
