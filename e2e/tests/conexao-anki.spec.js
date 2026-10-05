@@ -2,7 +2,8 @@
 
 // O ciclo de vida da Conexão com o Anki (lib/conexao-anki.js), visto de quem o
 // acompanha: o ponto do painel, a faixa F1, a nota do popup e o fato gravado
-// “já respondeu neste computador” (`pm_anki_ja_conectou`).
+// “já respondeu neste computador” (`pm_anki_ja_conectou`). No popup, o que muda com
+// a Conexão é o “— esperando o Anki” do idioma ligado que nunca foi lido (BRG-37).
 //
 // Três situações (Conectando, Ligada, Desligada) e uma porta que aceita e não
 // responde, que conta como desligada em 3 s. Os testes afirmam o que a pessoa
@@ -21,7 +22,12 @@ const fotografar = async (page, nome) => {
 
 const pontoDaConexao = page => page.locator('.shell-ponto');
 const faixaF1 = page => page.getByText('A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.');
-const notaDoPopup = page => page.getByText(/Nada é minerado com a Conexão com o Anki desligada/);
+const esperaDoPopup = page => page.locator('.popup-azulejo__espera:visible');
+
+/** O inglês ligado e nenhuma leitura do vocabulário: o popup, com a Conexão desligada, espera o Anki. */
+const ligarOIngles = extensao => extensao.gravarStorage({
+  pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 20 } },
+});
 
 const lerJaConectou = async extensao => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false;
 // A inicialização do Chromium pode demorar: os 3 s são medidos só a partir do
@@ -115,32 +121,34 @@ test('painel: a primeira resposta ligada grava “já respondeu neste computador
   await expect.poll(() => lerJaConectou(extensao)).toBe(true);
 });
 
-test('popup: uma porta muda conta como desligada em 3 s e a nota aparece', async ({ page, extensao, fakes }) => {
+test('popup: uma porta muda conta como desligada em 3 s e o azulejo passa a esperar o Anki', async ({ page, extensao, fakes }) => {
+  await ligarOIngles(extensao);
   fakes.anki.silenciar();
   await page.goto(extensao.url('popup.html'));
   await expect(page.locator('.popup-azulejo')).toHaveCount(2);
-  await expect(notaDoPopup(page)).toBeHidden();
-  await expect(notaDoPopup(page)).toBeVisible({ timeout: 4000 });
+  await expect(esperaDoPopup(page)).toBeHidden();
+  await expect(esperaDoPopup(page)).toBeVisible({ timeout: 4000 });
 });
 
 test('popup: confere só ao abrir, não a cada 15 s; ao reabrir percebe que a Conexão caiu', async ({ page, extensao, fakes }) => {
   test.setTimeout(45_000); // É preciso atravessar o intervalo de 15 s do painel.
+  await ligarOIngles(extensao);
   await page.setViewportSize({ width: 340, height: 600 });
   const numeroDeConferencias = () => fakes.anki.requisicoes.filter(r => r.caminho === '/health').length;
   const antes = numeroDeConferencias();
   const resposta = page.waitForResponse('http://127.0.0.1:8766/health');
   await page.goto(extensao.url('popup.html'));
   await resposta;
-  await expect(notaDoPopup(page)).toBeHidden();
+  await expect(esperaDoPopup(page)).toBeHidden();
   expect(numeroDeConferencias()).toBe(antes + 1);
 
   fakes.anki.desligar();
   await page.waitForTimeout(16_000);
   expect(numeroDeConferencias()).toBe(antes + 1);
-  await expect(notaDoPopup(page)).toBeHidden();
+  await expect(esperaDoPopup(page)).toBeHidden();
 
   await page.reload();
-  await expect(notaDoPopup(page)).toBeVisible();
+  await expect(esperaDoPopup(page)).toBeVisible();
   expect(numeroDeConferencias()).toBe(antes + 2);
   await fotografar(page, 'popup-desligada-ao-reabrir.png');
 });

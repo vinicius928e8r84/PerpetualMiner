@@ -50,6 +50,8 @@ function criarFakeAnki() {
     falhaDosCustos: null, // { status } | { rede: true }: GET /analytics/jobs falha
     baralhos: {},       // deckName → os números do baralho (definirBaralho)
     fonteDosBaralhos: 'ankiconnect', // 'collection.anki2': lidos do arquivo local (BRG-13)
+    lidoDoArquivo: false,       // a Conexão responde lendo o arquivo do Anki: baralhos e vocabulário vêm de `collection.anki2`
+    processosDoAnki: 1,         // GET /anki/status: quantos processos do Anki a Conexão vê (0: o Anki está fechado)
     falhaDosBaralhos: null,     // { status } | { rede: true }: GET /anki/stats/decks falha
     falhaDoVocabulario: null,   // { status } | { rede: true }: GET /anki/vocabulary falha
     baralhosDoAnki: null,       // os nomes de GET /anki/decks; null: a lista não vem (definirBaralhosDoAnki)
@@ -133,7 +135,9 @@ function criarFakeAnki() {
       generatedAt: estado.agora().toISOString(),
       deckName: url.searchParams.get('deck') || '',
       lang,
-      source: 'ankiconnect',
+      // Com o Anki fechado a Conexão responde lendo o arquivo (`_local_vocabulary`, bridge/server.py).
+      source: estado.lidoDoArquivo ? 'collection.anki2' : 'ankiconnect',
+      ...(estado.lidoDoArquivo && { sourceDetail: 'AnkiConnect indisponivel; lendo collection.anki2' }),
       totalCards: words.reduce((soma, w) => soma + w.cards, 0),
       totalWords: words.length,
       words,
@@ -206,6 +210,13 @@ function criarFakeAnki() {
     if (url.pathname === '/health') {
       const { status, json } = respostaDoContrato(req.method(), '/health');
       return responderJson(route, status, json);
+    }
+    if (url.pathname === '/anki/status') {
+      const processos = Array.from({ length: estado.processosDoAnki }, (_, i) => ({ pid: 4000 + i, visibleWindow: true }));
+      return responderJson(route, 200, {
+        generatedAt: estado.agora().toISOString(), connectAvailable: !estado.lidoDoArquivo, collectionReady: true,
+        processes: processos, processCount: processos.length, visibleWindow: processos.length > 0, healthy: true,
+      });
     }
     if (url.pathname === '/anki/vocabulary') {
       const falha = estado.falhaDoVocabulario;
@@ -288,6 +299,11 @@ function criarFakeAnki() {
     definirBaralhosDoAnki(nomes) { estado.baralhosDoAnki = nomes; },
     /** Os baralhos passam a vir do arquivo local do Anki (BRG-13), e não do AnkiConnect. */
     lerBaralhosDoArquivo() { estado.fonteDosBaralhos = 'collection.anki2'; },
+    /** O Anki fecha com a Conexão ligada: baralhos e vocabulário passam a vir do arquivo, como no bridge, e não há processo do Anki. */
+    fecharOAnki() { estado.lidoDoArquivo = true; estado.processosDoAnki = 0; estado.fonteDosBaralhos = 'collection.anki2'; },
+    /** O Anki está aberto, mas o AnkiConnect não responde: a Conexão também lê o arquivo, e o processo do Anki existe. */
+    ankiAbertoSemAnkiConnect() { estado.lidoDoArquivo = true; estado.processosDoAnki = 1; estado.fonteDosBaralhos = 'collection.anki2'; },
+    abrirOAnki() { estado.lidoDoArquivo = false; estado.processosDoAnki = 1; estado.fonteDosBaralhos = 'ankiconnect'; },
     /** GET /anki/stats/decks falha: `{ status: 503 }` responde com erro, `{ rede: true }` derruba. */
     falharBaralhos(falha = { status: 503 }) { estado.falhaDosBaralhos = falha; },
     voltarBaralhos() { estado.falhaDosBaralhos = null; },
