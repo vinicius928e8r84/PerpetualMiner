@@ -53,7 +53,7 @@ function criarFakeAnki() {
     falhaDosBaralhos: null,     // { status } | { rede: true }: GET /anki/stats/decks falha
     falhaDoVocabulario: null,   // { status } | { rede: true }: GET /anki/vocabulary falha
     baralhosDoAnki: null,       // os nomes de GET /anki/decks; null: a lista não vem (definirBaralhosDoAnki)
-    contexto: { perfil: 'Usuário 1' }, // em que situação o complemento está (os `contexto` dos exemplos)
+    contexto: { perfil: 'Usuário 1', falhaNoPerfil: false }, // em que situação o complemento está (os `contexto` dos exemplos)
   };
   const requisicoes = [];
   const envios = [];    // { jobId, lang, entries, deckName, state }
@@ -180,7 +180,8 @@ function criarFakeAnki() {
     const exemplo = contrato.exemplos.find(e =>
       exemploDaExtensao(e)
       && e.pedido.metodo === metodo && e.pedido.caminho === caminho
-      && JSON.stringify(e.contexto) === JSON.stringify(estado.contexto));
+      && e.contexto.perfil === estado.contexto.perfil
+      && Boolean(e.contexto.falhaNoPerfil) === estado.contexto.falhaNoPerfil);
     if (!exemplo) {
       throw new Error(`O contrato (complemento/contrato/exemplos.json) não tem exemplo de ${metodo} ${caminho} `
         + `com o contexto ${JSON.stringify(estado.contexto)}; escreva-o lá antes de o fake responder.`);
@@ -260,6 +261,8 @@ function criarFakeAnki() {
     ligar() { estado.ligada = true; },
     /** O perfil que o Anki tem aberto (`null`: a tela de perfis); precisa de exemplo no contrato. */
     abrirPerfil(perfil) { estado.contexto = { ...estado.contexto, perfil }; },
+    /** O complemento não consegue ler o perfil: a saúde responde o erro interno do contrato. */
+    falharLeituraDoPerfil() { estado.contexto = { ...estado.contexto, falhaNoPerfil: true }; },
     /** As respostas do contrato a um pedido, para o teste que confere o fake contra os exemplos. */
     respostaDoContrato,
     exemploDaExtensao,

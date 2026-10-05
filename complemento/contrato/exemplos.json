@@ -42,6 +42,25 @@
       }
     },
     {
+      "nome": "saúde quando a Conexão não consegue ler o perfil",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "falhaNoPerfil": true
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": null
+      },
+      "resposta": {
+        "status": 500,
+        "json": {
+          "error": "internal_error"
+        }
+      }
+    },
+    {
       "nome": "saúde pedida com a origem da extensão",
       "daExtensao": false,
       "contexto": {

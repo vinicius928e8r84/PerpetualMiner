@@ -33,8 +33,9 @@ def exemplos_do_contrato():
 class ConexaoNoTeste:
     """A Conexão real numa porta livre, com o perfil que o teste escolher."""
 
-    def __init__(self, pasta, perfil="Usuário 1", origens=None):
+    def __init__(self, pasta, perfil="Usuário 1", origens=None, falha_no_perfil=False):
         self.perfil = perfil
+        self.falha_no_perfil = falha_no_perfil
         self.logs = os.path.join(pasta, "logs")
         os.makedirs(self.logs)
         self.logger = registro.criar(self.logs)
@@ -42,9 +43,14 @@ class ConexaoNoTeste:
             porta=0,
             origens_aceitas=origens or configuracao.ORIGENS_ACEITAS,
             versao=configuracao.VERSAO,
-            perfil_aberto=lambda: self.perfil,
+            perfil_aberto=self._ler_o_perfil,
             logger=self.logger,
         )
+
+    def _ler_o_perfil(self):
+        if self.falha_no_perfil:
+            raise RuntimeError("perfil ilegível")
+        return self.perfil
 
     def __enter__(self):
         assert self.conexao.iniciar(), "a porta de teste devia estar livre"
@@ -76,7 +82,8 @@ class ContratoDaConexao(unittest.TestCase):
     def test_cada_exemplo_do_contrato_tem_a_resposta_combinada(self):
         for exemplo in exemplos_do_contrato():
             with self.subTest(exemplo["nome"]), tempfile.TemporaryDirectory() as pasta:
-                with ConexaoNoTeste(pasta, perfil=exemplo["contexto"]["perfil"]) as conexao:
+                contexto = exemplo["contexto"]
+                with ConexaoNoTeste(pasta, perfil=contexto["perfil"], falha_no_perfil=contexto.get("falhaNoPerfil", False)) as conexao:
                     pedido = exemplo["pedido"]
                     status, _, corpo = conexao.pedir(pedido["metodo"], pedido["caminho"], pedido["origem"])
                 self.assertEqual(
@@ -206,17 +213,11 @@ class ProcessoDoAnki(unittest.TestCase):
         try:
             with tempfile.TemporaryDirectory() as pasta:
                 with contextlib.redirect_stdout(saida), contextlib.redirect_stderr(erro):
-                    with ConexaoNoTeste(pasta) as conexao:
-                        def quebrar():
-                            raise RuntimeError("perfil ilegível")
-
-                        conexao.conexao.perfil_aberto = quebrar
-                        status, _, corpo = conexao.pedir("GET", "/health")
+                    with ConexaoNoTeste(pasta, falha_no_perfil=True) as conexao:
+                        conexao.pedir("GET", "/health")  # a resposta 500 é o exemplo do contrato
                         registrado = conexao.log()
         finally:
             sys.excepthook = original
-        self.assertEqual(status, 500)
-        self.assertEqual(json.loads(corpo), {"error": "internal_error"})
         self.assertIn("perfil ilegível", registrado)
         self.assertEqual((saida.getvalue(), erro.getvalue(), chamadas_do_excepthook), ("", "", []))
 

@@ -25,8 +25,9 @@ Mudar só um lado quebra um teste, e a mensagem diz o exemplo e os dois arquivos
 - `daExtensao`: o pedido é um que a extensão faz de verdade. O e2e confere o fake contra esses; os
   outros (outro site, outra extensão, sem origem) só o lado do complemento confere, porque uma
   página da extensão não consegue pedir como outro cliente.
-- `contexto`: em que situação o complemento está (hoje, o `perfil` aberto; `null` é a tela
-  de perfis). O fake muda de contexto por `fakes.anki.abrirPerfil(...)`.
+- `contexto`: em que situação o complemento está (hoje, o `perfil` aberto, `null` na tela de perfis, e
+  `falhaNoPerfil` quando ler o perfil quebra). O fake muda de contexto por `fakes.anki.abrirPerfil(...)` e
+  `falharLeituraDoPerfil()`.
 - `pedido`: o que chega, com `origem` (o cabeçalho `Origin`; `null` é que ele não veio). Rotas com corpo
   ganham `corpo`.
 - `resposta`: o status e o JSON.
