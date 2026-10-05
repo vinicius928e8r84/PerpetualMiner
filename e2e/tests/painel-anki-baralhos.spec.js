@@ -11,6 +11,7 @@
 //   - O Vocabulário ficava preso em “Aguardando…” quando as estatísticas falhavam.
 
 const { test, expect } = require('../fixtures');
+const { fotografar } = require('../evidencias-mineracao');
 
 const AGORA = new Date('2026-09-18T12:00:00');
 const F1 = 'A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.';
@@ -561,11 +562,13 @@ test('com a coleção do contrato aberta, Baralhos e termos e Vocabulário mostr
   await expect(numeros).toContainText('Novos1');
   // O Baralho que o Anki não tem.
   await expect(azulejos.nth(1)).toContainText('baralho não encontrado');
+  await fotografar(page, 'baralhos-da-colecao-do-contrato.png');
 
   await aba(page, 'Vocabulário').click();
   await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(12);
   await expect(listaDoVocabulario(page).getByRole('option', { name: /^gave up/ })).toBeVisible();
   await expect(vocabulario(page).locator('.shell-aviso')).toHaveCount(0);
+  await fotografar(page, 'vocabulario-da-colecao-do-contrato.png');
 });
 
 // ─── Ajustes de envio, ↻ Atualizar e acessibilidade ──────────────────────────
