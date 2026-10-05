@@ -29,7 +29,8 @@ está em AGENTS.md § Rules and what enforces them).
   --atualizar             depois de um conserto, baixa scripts/regras/linha-de-base.json (nunca sobe)
   --criar-linha-de-base   cria a linha de base quando ela ainda não existe
   --raiz <pasta>          confere outro repositório (os testes usam)
-  --base <ref>            o commit cuja linha de base é o teto (padrão: $REGRAS_BASE, senão origin/main)
+  --base <ref>            o commit cuja linha de base é o teto (padrão: $REGRAS_BASE, senão origin/main);
+                          uma base pedida que não existe é erro
   --help                  esta ajuda
 
 Catraca: cada arquivo pode ter no máximo as ocorrências que a linha de base registra; uma a mais falha,
@@ -46,16 +47,16 @@ class ErroDeUso extends Error {}
 
 function lerArgumentos(argv) {
   const opcoes = { atualizar: false, criar: false, raiz: null, base: null, ajuda: false };
-  const comValor = { '--raiz': 'raiz', '--base': 'base' };
+  const comValor = new Map([['--raiz', 'raiz'], ['--base', 'base']]);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--help' || arg === '-h') opcoes.ajuda = true;
     else if (arg === '--atualizar') opcoes.atualizar = true;
     else if (arg === '--criar-linha-de-base') opcoes.criar = true;
-    else if (comValor[arg]) {
+    else if (comValor.has(arg)) {
       const valor = argv[i + 1];
       if (valor === undefined || valor.startsWith('--')) throw new ErroDeUso(`${arg} precisa de um valor`);
-      opcoes[comValor[arg]] = valor;
+      opcoes[comValor.get(arg)] = valor;
       i++;
     } else {
       throw new ErroDeUso(`bandeira desconhecida: ${arg}`);
@@ -168,13 +169,21 @@ const COMMIT_VAZIO = /^0+$/;
 // O teto da linha de base: a ponta da --base (REGRAS_BASE no CI: no PR, a branch-alvo;
 // no push, o commit anterior), sem passar pelo merge-base, para uma permissão que a
 // main já tirou não voltar por um ramo antigo. O merge-base só serve para achar as
-// linhas que a mudança acrescentou. null quando não há base (primeiro push, sem origin/main).
+// linhas que a mudança acrescentou. null quando não há base: o primeiro push de um
+// ramo (commit vazio) ou, sem --base nem REGRAS_BASE, um clone sem origin/main. Uma
+// base pedida que não resolve é erro, não um verde sem comparação.
 function baseDeComparacao(raiz, pedida) {
-  const ref = pedida || process.env.REGRAS_BASE || 'origin/main';
+  const doAmbiente = process.env.REGRAS_BASE || null;
+  const ref = pedida || doAmbiente || 'origin/main';
   if (COMMIT_VAZIO.test(ref)) return null;
   const teto = git(raiz, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]);
-  if (!teto) return null;
-  return { ref, teto, desde: git(raiz, ['merge-base', 'HEAD', teto]) };
+  if (teto) return { ref, teto, desde: git(raiz, ['merge-base', 'HEAD', teto]) };
+  if (pedida) throw new ErroDeUso(`--base ${pedida}: não é um commit deste repositório`);
+  if (doAmbiente) {
+    throw new Error(`REGRAS_BASE=${doAmbiente} não é um commit deste repositório; no CI, confira o fetch-depth `
+      + 'e o REGRAS_BASE de .github/workflows/regras.yml');
+  }
+  return null;
 }
 
 const lerJson = (texto, origem) => {
@@ -193,6 +202,7 @@ function main(argv) {
   }
   const raiz = opcoes.raiz ? path.resolve(opcoes.raiz) : path.resolve(__dirname, '..', '..');
   if (git(raiz, ['rev-parse', '--show-toplevel']) === null) throw new Error(`${raiz} não é um repositório git`);
+  const base = baseDeComparacao(raiz, opcoes.base);
   const hoje = new Date().toISOString().slice(0, 10);
   const caminhoDaBase = path.join(raiz, ARQUIVO_DA_LINHA_DE_BASE);
 
@@ -215,7 +225,6 @@ function main(argv) {
   const erros = [...errosDeExcecao];
   const avisos = [];
   const podeBaixar = [];
-  const base = baseDeComparacao(raiz, opcoes.base);
 
   for (const regra of REGRAS) {
     const permitido = linhaDeBase[regra.id] || {};
@@ -240,7 +249,8 @@ function main(argv) {
 
   // A linha de base só desce: o total de cada regra não passa o da linha de base do teto.
   if (!base) {
-    avisos.push('sem base de comparação (nem --base, nem REGRAS_BASE, nem origin/main): a linha de base não foi comparada');
+    avisos.push('sem base de comparação (primeiro push, ou nem --base, nem REGRAS_BASE, nem origin/main): '
+      + 'a linha de base não foi comparada');
   } else {
     const anterior = git(raiz, ['show', `${base.teto}:${ARQUIVO_DA_LINHA_DE_BASE}`]);
     if (anterior === null) {

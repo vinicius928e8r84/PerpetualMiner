@@ -4,7 +4,7 @@
 // regra 2). A revisão pediu "token, não px solto" em 0510e37, d2ab0da, b1a3664,
 // 8d13cc7 e 1378e3f; esta regra acusa o literal antes da revisão.
 
-const { ehJsDaExtensao, linhaDe, semComentariosCss, semComentariosJs } = require('./comum');
+const { ehJsDaExtensao, linhaDe, semComentariosCss, semComentariosHtml, semComentariosJs } = require('./comum');
 
 const id = 'tokens-veio';
 
@@ -23,7 +23,25 @@ function seAplica(arquivo) {
   return ehJsDaExtensao(arquivo);
 }
 
-const COR = /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?)\(|\b(?:white|black)\b/;
+// As 148 cores com nome do CSS (CSS Color 4); `transparent` e `currentColor` não são cor literal.
+const CORES_COM_NOME = `
+  aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown
+  burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan
+  darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta darkolivegreen darkorange darkorchid darkred
+  darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink
+  deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro ghostwhite gold
+  goldenrod gray green greenyellow grey honeydew hotpink indianred indigo ivory khaki lavender lavenderblush
+  lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow lightgray lightgreen lightgrey
+  lightpink lightsalmon lightseagreen lightskyblue lightslategray lightslategrey lightsteelblue lightyellow
+  lime limegreen linen magenta maroon mediumaquamarine mediumblue mediumorchid mediumpurple mediumseagreen
+  mediumslateblue mediumspringgreen mediumturquoise mediumvioletred midnightblue mintcream mistyrose moccasin
+  navajowhite navy oldlace olive olivedrab orange orangered orchid palegoldenrod palegreen paleturquoise
+  palevioletred papayawhip peachpuff peru pink plum powderblue purple rebeccapurple red rosybrown royalblue
+  saddlebrown salmon sandybrown seagreen seashell sienna silver skyblue slateblue slategray slategrey snow
+  springgreen steelblue tan teal thistle tomato turquoise violet wheat white whitesmoke yellow yellowgreen
+`.trim().split(/\s+/);
+
+const COR = new RegExp(`#[0-9a-fA-F]{3,8}\\b|\\b(?:rgba?|hsla?)\\(|(?<![\\w-])(?:${CORES_COM_NOME.join('|')})(?![\\w-])`, 'i');
 const PROPRIEDADE_DE_COR = /^(?:color|background(?:-color|-image)?|border(?:-(?:top|right|bottom|left|block|inline))?(?:-color)?|outline(?:-color)?|fill|stroke|box-shadow|text-shadow|caret-color|accent-color|text-decoration(?:-color)?|column-rule(?:-color)?)$/;
 const PROPRIEDADE_DE_RAIO = /^border(?:-(?:top|bottom|start|end)-(?:left|right|start|end))?-radius$/;
 const PROPRIEDADE_DE_TEMPO = /^(?:transition|animation)(?:-duration|-delay)?$/;
@@ -93,10 +111,9 @@ function verificar(arquivo, fonte) {
   if (arquivo.endsWith('.js')) return achadosNoJs(fonte);
   if (arquivo.endsWith('.css')) return achadosNoCss(semComentariosCss(fonte), { inicio: 0 }, fonte);
   const achados = [];
-  const html = fonte.replace(/<!--[\s\S]*?-->/g, t => t.replace(/[^\n]/g, ' '));
+  const html = semComentariosHtml(fonte);
   for (const m of html.matchAll(/(<style[^>]*>)([\s\S]*?)<\/style>/g)) {
-    const inicio = m.index + m[1].length;
-    achados.push(...achadosNoCss(semComentariosCss(m[2]), { inicio }, fonte));
+    achados.push(...achadosNoCss(m[2], { inicio: m.index + m[1].length }, fonte));
   }
   for (const m of html.matchAll(/\sstyle\s*=\s*(["'])([^"']*)\1/g)) {
     const inicio = m.index + m[0].indexOf(m[2]);

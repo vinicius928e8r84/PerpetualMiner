@@ -108,15 +108,78 @@ function semComentariosJs(fonte) {
   return separarJs(fonte).codigo;
 }
 
-const COMENTARIO_CSS = /\/\*[\s\S]*?\*\//g;
-
-/** CSS sem comentários, com as mesmas linhas. */
-function semComentariosCss(fonte) {
-  return fonte.replace(COMENTARIO_CSS, apagar);
+// Os trechos de comentário ([início, fim)) do CSS: `/* */` fora de string.
+function comentariosCss(fonte) {
+  const comentarios = [];
+  let i = 0;
+  while (i < fonte.length) {
+    const c = fonte[i];
+    if (c === '/' && fonte[i + 1] === '*') {
+      const fim = fonte.indexOf('*/', i + 2);
+      const ate = fim < 0 ? fonte.length : fim + 2;
+      comentarios.push([i, ate]);
+      i = ate;
+    } else if (c === '"' || c === "'") i = fimDaString(fonte, i) + 1;
+    else i++;
+  }
+  return comentarios;
 }
 
-const trechos = (texto, regex, deslocamento = 0) =>
-  [...texto.matchAll(regex)].map(m => [deslocamento + m.index, deslocamento + m.index + m[0].length]);
+// O texto com os trechos apagados (mesmas linhas e índices).
+function semTrechos(fonte, trechos) {
+  let saida = '';
+  let ondeEstou = 0;
+  for (const [de, ate] of trechos) {
+    saida += fonte.slice(ondeEstou, de) + apagar(fonte.slice(de, ate));
+    ondeEstou = ate;
+  }
+  return saida + fonte.slice(ondeEstou);
+}
+
+/** CSS sem comentários, com as mesmas linhas; um `/*` dentro de uma string fica. */
+function semComentariosCss(fonte) {
+  return semTrechos(fonte, comentariosCss(fonte));
+}
+
+const mover = (trechos, deslocamento) => trechos.map(([de, ate]) => [de + deslocamento, ate + deslocamento]);
+
+// Os comentários do HTML: `<!-- -->` no texto (não dentro de um atributo entre
+// aspas) e os comentários de CSS e de JavaScript dos blocos <style> e <script>.
+function comentariosHtml(fonte) {
+  const comentarios = [];
+  let i = 0;
+  while (i < fonte.length) {
+    if (fonte.startsWith('<!--', i)) {
+      const fim = fonte.indexOf('-->', i + 4);
+      const ate = fim < 0 ? fonte.length : fim + 3;
+      comentarios.push([i, ate]);
+      i = ate;
+      continue;
+    }
+    const tag = fonte[i] === '<' && /^<([a-zA-Z][\w-]*)/.exec(fonte.slice(i, i + 40));
+    if (!tag) { i++; continue; }
+    // A tag vai até o `>` fora das aspas: um `<!--` num atributo não é comentário.
+    let j = i + tag[0].length;
+    while (j < fonte.length && fonte[j] !== '>') {
+      const aspa = fonte[j] === '"' || fonte[j] === "'" ? fonte.indexOf(fonte[j], j + 1) : -2;
+      j = aspa === -1 ? fonte.length : aspa === -2 ? j + 1 : aspa + 1;
+    }
+    i = j + 1;
+    const nome = tag[1].toLowerCase();
+    if (nome !== 'style' && nome !== 'script') continue;
+    const fecha = fonte.slice(i).search(new RegExp(`</${nome}\\s*>`, 'i'));
+    const ate = fecha < 0 ? fonte.length : i + fecha;
+    const miolo = fonte.slice(i, ate);
+    comentarios.push(...mover(nome === 'style' ? comentariosCss(miolo) : separarJs(miolo).comentarios, i));
+    i = ate;
+  }
+  return comentarios;
+}
+
+/** HTML sem comentários (também os do <style> e do <script>), com as mesmas linhas. */
+function semComentariosHtml(fonte) {
+  return semTrechos(fonte, comentariosHtml(fonte));
+}
 
 // Os comentários de Python: `#` fora de string, de uma linha ou de três aspas.
 function comentariosPy(fonte) {
@@ -152,17 +215,9 @@ function comentariosPy(fonte) {
 function comentariosPorLinha(arquivo, fonte) {
   let comentarios = [];
   if (/\.(js|mjs|cjs)$/.test(arquivo)) comentarios = separarJs(fonte).comentarios;
-  else if (arquivo.endsWith('.css')) comentarios = trechos(fonte, COMENTARIO_CSS);
+  else if (arquivo.endsWith('.css')) comentarios = comentariosCss(fonte);
   else if (arquivo.endsWith('.py')) comentarios = comentariosPy(fonte);
-  else if (arquivo.endsWith('.html')) {
-    comentarios = trechos(fonte, /<!--[\s\S]*?-->/g);
-    for (const m of fonte.matchAll(/(<style[^>]*>)([\s\S]*?)<\/style>/g)) {
-      comentarios.push(...trechos(m[2], COMENTARIO_CSS, m.index + m[1].length));
-    }
-    for (const m of fonte.matchAll(/(<script[^>]*>)([\s\S]*?)<\/script>/g)) {
-      comentarios.push(...separarJs(m[2]).comentarios.map(([de, ate]) => [de + m.index + m[1].length, ate + m.index + m[1].length]));
-    }
-  }
+  else if (arquivo.endsWith('.html')) comentarios = comentariosHtml(fonte);
   const porLinha = new Map();
   let linha = 1;
   let ondeEstou = 0;
@@ -198,5 +253,6 @@ function fechamento(texto, abre) {
 }
 
 module.exports = {
-  arquivosDoRepositorio, ehJsDaExtensao, linhaDe, semComentariosJs, semComentariosCss, comentariosPorLinha, fechamento,
+  arquivosDoRepositorio, ehJsDaExtensao, linhaDe, semComentariosJs, semComentariosCss, semComentariosHtml,
+  comentariosPorLinha, fechamento,
 };

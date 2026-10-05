@@ -438,10 +438,10 @@ test('o chip diz se a Palavra foi escolhida ou detectada, com o rótulo em mono'
 test('a frase mostra o texto como texto, mesmo com marcação dentro', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
+  const texto = '<img src=x onerror="window.__injetado=1">Hold the line.';
   // Exceção de teste: componente-base (CLAUDE.md § Testing, garantias da base sem gatilho na tela):
   // nenhuma frase da vitrine traz marcação, então o teste chama `escreverFrase`
   // numa linha de frase da própria vitrine e confere o que aparece nela.
-  const texto = '<img src=x onerror="window.__injetado=1">Hold the line.';
   await page.evaluate(texto => {
     const corpo = document.querySelector('[data-tema="escuro"] .veio-frase__texto');
     PerpetualMiner.Veio.escreverFrase(corpo, texto, 'line');

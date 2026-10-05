@@ -42,6 +42,14 @@ acusa('tokens-veio', 'popup.js', "el.style.color = '#F5B83D';\n", 1, 'cor solta 
 acusa('tokens-veio', 'painel.css', '.x { --red: #f00; color: var(--red); }\n', 1, 'cor numa variável fora de veio/tokens.css');
 acusa('tokens-veio', 'painel.css', '.y { color: var(--veio-missing, #f00); }\n', 1, 'cor no reserva do var()');
 acusa('tokens-veio', 'painel.css', '.z { --largura: 240px; gap: var(--veio-espaco, 8px); }\n', 0, 'variável local de tamanho não é regra');
+// Achado SP-4 da revisão final do #186: a cor com nome é a mesma cor literal que #f00.
+acusa('tokens-veio', 'overlay.css', '.x { color: red; background: rebeccapurple; }\n', 2, 'cores com nome');
+acusa('tokens-veio', 'overlay.css', '.x { --alerta: red; }\n.y { color: var(--veio-missing, Red); }\n', 2, 'cor com nome numa variável e no reserva');
+acusa('tokens-veio', 'popup.js', "el.style.color = 'tomato';\n", 1, 'cor com nome no JS');
+acusa('tokens-veio', 'overlay.css', [
+  '.red-text { color: currentColor; background: transparent; border-color: inherit; }',
+  '.x { --tom-red: var(--veio-accent); animation: piscar-red var(--veio-piscar) steps(2); }',
+].join('\n'), 0, 'currentColor, transparent, inherit e nomes que só contêm uma cor');
 // O jeito certo passa.
 acusa('tokens-veio', 'painel.css', [
   '.pm-linha { border-radius: var(--veio-raio-linha); font-size: var(--veio-tam-pagina); }',
@@ -148,6 +156,25 @@ acusa('e2e-funcao-interna', 'e2e/tests/review-probe.spec.js',
 acusa('e2e-funcao-interna', 'e2e/tests/review-probe.spec.js',
   'const nota = "// Exceção de teste: catálogo";\nconst texto = await page.evaluate(() => PerpetualMiner.textoDaVoz("PAI-05"));\n',
   1, 'a marca numa string da linha de cima');
+// Achado SP-2 da revisão final do #186: a instrução anterior, já fechada, não empresta o comentário.
+const [segunda] = acusa('e2e-funcao-interna', 'e2e/tests/review-probe.spec.js', [
+  '// Exceção de teste: catálogo (CLAUDE.md § Testing).',
+  'const texto = await page.evaluate(() => PerpetualMiner.textoDaVoz("PAI-05"));',
+  'const ligado = await page.evaluate(() => PerpetualMiner.ConexaoAnki.conferir());',
+].join('\n'), 1, 'a chamada seguinte, sem exceção própria');
+assert.strictEqual(segunda.linha, 3);
+total++;
+// O formato que componentes-veio.spec.js:441 tinha: a marca acima de um `const` preparatório.
+acusa('e2e-funcao-interna', 'e2e/tests/componentes-veio.spec.js', [
+  '// Exceção de teste: componente-base (CLAUDE.md § Testing).',
+  "const texto = '<b>Hold</b> the line.';",
+  'await page.evaluate(texto => PerpetualMiner.Veio.escreverFrase(corpo, texto), texto);',
+].join('\n'), 1, 'a marca acima de outra instrução');
+acusa('e2e-funcao-interna', 'e2e/tests/componentes-veio.spec.js', [
+  '// Exceção de teste: componente-base (CLAUDE.md § Testing).',
+  'const texto = await page',
+  '  .evaluate(() => PerpetualMiner.Veio.escreverFrase(corpo, "x"));',
+].join('\n'), 0, 'a marca acima da mesma instrução, quebrada em linhas');
 acusa('e2e-funcao-interna', 'e2e/tests/popup.spec.js', [
   "const texto = await extensao.serviceWorker.evaluate(() => chrome.action.getBadgeText({}));",
   "const frases = await page.evaluate(() => document.querySelectorAll('.veio-frase').length);",
@@ -220,12 +247,39 @@ assert.strictEqual(r.status, 1, 'a exceção dentro de uma string não vale');
 assert.match(r.stdout, /idioma-solto — overlay\.js/);
 fs.rmSync(path.join(tmp, 'overlay.js'));
 
+// Achado SP-1 da revisão final do #186: uma string de CSS e um atributo de HTML também não são comentário.
+const EXCECAO_FALSA = 'exceção tokens-veio até 2099-01-01, aprovada por Vinicius: teste';
+escrever('overlay.css', `.x { content: "/* ${EXCECAO_FALSA} */"; color: #f00; }\n`);
+r = rodar('main');
+assert.strictEqual(r.status, 1, `a exceção dentro de uma string de CSS não vale:\n${r.stdout}`);
+assert.match(r.stdout, /tokens-veio — overlay\.css/);
+escrever('overlay.css', RAIO_TOKEN);
+escrever('probe.html', `<div data-note="<!-- ${EXCECAO_FALSA} -->" style="color:#f00">x</div>\n`);
+r = rodar('main');
+assert.strictEqual(r.status, 1, `a exceção dentro de um atributo de HTML não vale:\n${r.stdout}`);
+assert.match(r.stdout, /tokens-veio — probe\.html/);
+escrever('probe.html', `<div style="color:#f00">x</div> <!-- ${EXCECAO_FALSA} -->\n`
+  + `<style>\n  .y { content: "/*"; color: #0f0; } /* ${EXCECAO_FALSA} */\n</style>\n`);
+r = rodar('main');
+assert.strictEqual(r.status, 0, `os comentários de verdade, no HTML e no <style>, valem:\n${r.stdout}`);
+fs.rmSync(path.join(tmp, 'probe.html'));
+
 escrever('overlay.css', RAIO_SOLTO);
 linhaDeBase({ 'painel.css': 1, 'overlay.css': 1 });
 r = rodar('main');
 assert.strictEqual(r.status, 1, 'subir a linha de base falha');
 assert.match(r.stdout, /só desce/);
 assert.strictEqual(rodar('main', '--base', 'main').status, 1, '--base faz o mesmo que REGRAS_BASE');
+// Achado ST-1/SP-3 da revisão final do #186: uma base pedida que não resolve é erro, não um verde sem teto.
+r = rodar('main', '--base', 'maim');
+assert.strictEqual(r.status, 2, `--base com erro de digitação:\n${r.stdout}`);
+assert.match(r.stdout, /error: --base maim: não é um commit/);
+r = rodar('missing-ref');
+assert.strictEqual(r.status, 1, `REGRAS_BASE que não resolve:\n${r.stdout}`);
+assert.match(r.stdout, /error: REGRAS_BASE=missing-ref não é um commit/);
+r = rodar('');
+assert.strictEqual(r.status, 0, 'sem base pedida e sem origin/main, a comparação fica de fora, com aviso');
+assert.match(r.stdout, /aviso: sem base de comparação/);
 
 // Achado da revisão do #186, a receita do push na main: o CI compara com o commit
 // anterior (github.event.before), não com o próprio commit.
@@ -262,7 +316,7 @@ escrever('painel.css', '.velho { color: var(--veio-text); }\n');
 r = rodar('main', '--atualizar');
 assert.strictEqual(r.status, 0, r.stdout);
 assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(tmp, 'scripts/regras/linha-de-base.json'), 'utf8'))['tokens-veio'], {});
-total += 12;
+total += 18;
 
 // ─── a linha de comando ──────────────────────────────────────────────────────
 
@@ -273,10 +327,19 @@ r = spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz'], { encodi
 assert.strictEqual(r.status, 2);
 assert.match(r.stdout, /--raiz precisa de um valor/);
 assert.strictEqual(rodar('main', '--atualizar', '--criar-linha-de-base').status, 2, 'as duas não andam juntas');
+// Achado ST-2 da revisão final do #186: nomes que todo objeto herda não são bandeiras.
+const linhaDeBaseAntes = fs.readFileSync(path.join(tmp, 'scripts/regras/linha-de-base.json'), 'utf8');
+for (const herdado of ['constructor', 'toString', '__proto__']) {
+  r = rodar('main', '--atualizar', herdado, 'lixo');
+  assert.strictEqual(r.status, 2, `${herdado} não é bandeira:\n${r.stdout}`);
+  assert.match(r.stdout, new RegExp(`bandeira desconhecida: ${herdado}`));
+}
+assert.strictEqual(fs.readFileSync(path.join(tmp, 'scripts/regras/linha-de-base.json'), 'utf8'), linhaDeBaseAntes,
+  'o erro de uso não toca a linha de base');
 r = rodar('main', '--help');
 assert.strictEqual(r.status, 0);
 assert.match(r.stdout, /exceção <regra> até AAAA-MM-DD/);
-total += 4;
+total += 8;
 
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(`regras: ${total} provas passaram`);

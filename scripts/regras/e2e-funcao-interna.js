@@ -46,6 +46,9 @@ const MARCA = new RegExp(`Exceção de teste:\\s*(${EXCECOES.join('|')})\\b`);
 // O comentário que nomeia a exceção vale se estiver no próprio evaluate ou nas
 // linhas de comentário logo acima da instrução que o contém. Só comentário de
 // verdade conta: uma string com as mesmas palavras não nomeia exceção nenhuma.
+// Subindo, uma linha de código é o começo da mesma instrução (um `const x = await`)
+// só se não terminar uma instrução ou um bloco: a instrução anterior, já fechada
+// com `;`, não empresta o seu comentário.
 function anotado(comentarios, codigo, primeira, ultima) {
   const marcada = linha => MARCA.test(comentarios.get(linha) || '');
   for (let linha = primeira; linha <= ultima; linha++) if (marcada(linha)) return true;
@@ -53,9 +56,7 @@ function anotado(comentarios, codigo, primeira, ultima) {
     if (marcada(linha)) return true;
     const instrucao = (codigo[linha - 1] || '').trim();
     if (instrucao === '') continue; // linha em branco ou só de comentário
-    // Uma linha de código logo acima pode ser o começo da mesma instrução (um `const x = await`).
-    if (/[=(,]\s*$|^(const|let|await|return)\b/.test(instrucao) && vistas < 3) continue;
-    break;
+    if (/[;{}]$/.test(instrucao)) break;
   }
   return false;
 }
