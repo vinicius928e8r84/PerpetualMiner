@@ -30,6 +30,8 @@ Preconditions:
 - **Book title (`foto-book`).** `-g "o Livro digitado volta preenchido"` and `-g "com o Livro em branco"` (Título `Físico/Livro`).
 - **Several photos (`foto-read-many`).** `-g "várias fotos pulam a prévia"`.
 - **Errors (`foto-errors`).** `-g "o Gemini sem marcações"`, `-g "o Gemini com pedidos demais"` (rate limit), `-g "a chave recusada pelo Gemini"`, `-g "sem rede, a foto falha"`.
+- **Blocked answer (`foto-errors`).** `drive.sh foto-bloqueada minerar-foto.spec -g "uma resposta do Gemini sem texto"`. The fake answers as a request blocked for `SAFETY`. Observable: the photo shows `Falhou`, the column says `Não deu para ler a foto` and `Algo deu errado. Tente de novo.`, and `Sem marcações` appears nowhere.
+- **Reread one photo (`foto-cancel-restart`).** `drive.sh foto-reler minerar-foto.spec -g "lê só aquela foto"`. Three photos: the 2nd fails, the 3rd has no marks. Observable: only `b.png` has `Tentar de novo` (3 Gemini calls so far); after clicking it `b.png` shows `2 frases`, `a.png` still `3 frases`, `c.png` still `Sem marcações`, exactly 4 Gemini calls in all, no failure warning, and the button says `Minerar 5 frases`.
 - **Cancel and restart (`foto-cancel-restart`).** `-g "4 fotos, Cancelar depois da 2ª"`, `-g "Recomeçar com frases não mineradas"`.
 
 ## Gotchas

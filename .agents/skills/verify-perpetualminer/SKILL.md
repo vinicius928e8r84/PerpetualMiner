@@ -54,6 +54,8 @@ Always through a run directory, so the evidence survives:
 HEADED=1 .agents/skills/verify-perpetualminer/scripts/drive.sh c1-foto minerar-foto -g "uma foto: prévia"   # needs a display
 ```
 
+**A run ID is single-use.** `drive.sh` refuses an ID whose `evidence/` already holds files (exit 2), so earlier proof is never overwritten, and evidence is only ever written into a directory it just verified is empty. Give every drive its own ID (`c1-selecao`, then `c1-selecao-2`), including after a failure or a Cleanup.
+
 `<playwright test args>` are the normal ones (spec file name filter, `-g "<title substring>"`, `--list`). `-g` is a regex: escape `+`, `(`, `?` (`-g "Alt\+S num player"`); the positional arguments are regexes on the file path, so `painel-anki` also selects `painel-anki-baralhos`; write `painel-anki.spec` to pin one file. The script runs from `e2e/`, with 2 workers, the `list` + `json` reporters, and exports `PM_EVIDENCE_DIR` for the specs. Exit code = Playwright's.
 
 Which spec and which `-g` prove which feature is in `features/<feature>.md`; the index is `features/README.md`. **Read the matching feature file before driving.** Rules of the road:
@@ -97,7 +99,12 @@ For the PR body, quote the `drive.sh` command, the `run.log` summary line (`N pa
 
 Stops what `drive.sh` started for that run and removes the run's scratch (`tmp/`, `pw-output/`). It **keeps `evidence/`** and prints how many files remain; confirm they are still there (`ls <run-dir>/evidence`). A normal finished run leaves nothing running; the fixture already removes each test's profile. Also delete any `zz-scratch-*.spec.js` you made and leave `git status` showing only intended changes (`e2e/test-results/` is git-ignored). Run Cleanup after a failed or interrupted run too.
 
-Safety rules the script enforces, so you can rely on them: the run ID must be one plain segment (letters, digits, `. _ -`, starting with a letter or digit); the run directory must be a real directory directly under the verification root, with no symlink among `evidence`, `tmp`, `pw-output`, `drive.pid`; otherwise it refuses (exit 2) and deletes nothing. A process is signalled only when `drive.pid` holds its pid **and** the start time recorded with it **and** its command line is this run's `drive.sh`; a stale or reused pid is reported and left alone, never killed by pid alone and never by name. Cleanup is safe to run again: if it was interrupted (or the run is already clean), run the same command; it re-checks, finishes the removal and reports the evidence it kept.
+Safety rules the script enforces, so you can rely on them:
+
+- **Paths.** The run ID must be one plain segment (letters, digits, `. _ -`, starting with a letter or digit); the run directory must be a real directory directly under the verification root, with no symlink among `evidence`, `tmp`, `pw-output`, `drive.pid`; otherwise it refuses (exit 2) and deletes nothing.
+- **What gets stopped.** `drive.sh` runs Playwright as a job in its own process group and records the group in `drive.pid`. Cleanup stops drive.sh (only when pid, start time, exact command line and this checkout's `drive.sh` path all match the record, and the command is shaped `<interpreter> …/drive.sh <run-id> …`; a command that merely mentions `drive.sh` does not count), every process of that group, and their descendants, so it still works after drive.sh was killed or the terminal closed and the browser was left behind. Each process is signalled only while it is still the one that was collected (same start time); TERM first, then KILL for what ignores it. A stale or reused pid is reported and left alone, never killed by pid alone and never by name. A run recorded by another checkout's `drive.sh` is refused (exit 2) with nothing touched: use that checkout's `cleanup.sh`.
+- **Survivors fail loudly.** If anything is still alive after KILL, Cleanup exits 1, names it, and keeps `drive.pid` and the scratch so a re-run retries.
+- **Re-runnable.** If Cleanup was interrupted (or the run is already clean), run the same command; it re-checks, finishes the removal and reports the evidence it kept.
 
 To throw the evidence away as well when you no longer need it: `rm -rf "${PM_VERIFY_ROOT:-/tmp/pm-verify}/<run-id>"`.
 
@@ -106,10 +113,10 @@ To throw the evidence away as well when you no longer need it: `rm -rf "${PM_VER
 | Script | Invocation | Does |
 |---|---|---|
 | `scripts/doctor.sh` | `.agents/skills/verify-perpetualminer/scripts/doctor.sh` | Read-only readiness check, exit 0/1 |
-| `scripts/drive.sh` | `…/drive.sh <run-id> <playwright test args…>` | Runs specs isolated, writes evidence, records its pid |
-| `scripts/cleanup.sh` | `…/cleanup.sh <run-id>` | Stops that run's processes (identity-checked), removes scratch, keeps evidence; re-runnable |
-| `scripts/lib.sh` | sourced by the two above | Run-id and path-containment checks, process identity |
-| `scripts/test_helpers.sh` | `.agents/skills/verify-perpetualminer/scripts/test_helpers.sh` | Tests the safety rules above (refusals, symlinks, stale pids, re-run); no browser, a few seconds. Run it after touching any script |
+| `scripts/drive.sh` | `…/drive.sh <run-id> <playwright test args…>` | Runs specs isolated (own process group), writes evidence, refuses a used run ID, records its identity |
+| `scripts/cleanup.sh` | `…/cleanup.sh <run-id>` | Stops that run's processes (drive.sh, its job's group, descendants; identity-checked), removes scratch, keeps evidence; re-runnable; exit 1 if something survives |
+| `scripts/lib.sh` | sourced by the two above | Run-id and path-containment checks, process and process-group identity |
+| `scripts/test_helpers.sh` | `.agents/skills/verify-perpetualminer/scripts/test_helpers.sh` | Tests the safety rules above (refusals, symlinks, forged records, evidence reuse, a TERM-resistant child, an orphaned child, another checkout's run, re-run) with the real scripts and a stand-in for `npx`; no browser, ~40 s. Run it after touching any script |
 
 Env knobs: `PM_VERIFY_ROOT` (default `/tmp/pm-verify`), `PM_HEAVY_RUN` (limiter command prefix), `HEADED=1` (show the browser; needs a display).
 
@@ -124,4 +131,9 @@ Env knobs: `PM_VERIFY_ROOT` (default `/tmp/pm-verify`), `PM_HEAVY_RUN` (limiter 
 - Evidence screenshots exist only where a spec calls `fotografar`; other specs leave `run.log` and `report.json`.
 - Windows is the owner's runtime for the bridge; this skill was proven on Linux headless Chromium. `.claude/skills/verify-perpetualminer` is a symlink to this directory (one canonical copy); a Windows checkout without symlink support sees a plain file there, so open `.agents/skills/verify-perpetualminer/` directly.
 - The Anki add-on (`complemento/`) is not on this branch and is not mapped yet.
+- The helpers have no `--help`/`--version` of their own and no machine-readable output: usage is in each script's header comment and `drive.sh`'s Playwright output goes to the terminal as is (an AXI-style polish, not a safety issue).
+- Process ownership is proven by pid + start time + command line + process group, not by a secret token; a record forged by hand with a real process's own identity would pass. The threat model is stale or reused pids and mistakes, not an adversary writing `drive.pid`. Reuse of a pid by an unrelated process is not simulated in the tests.
+- Several checkouts sharing one `PM_VERIFY_ROOT` and one run ID collide by design (the second is refused); use distinct IDs.
+- `drive.sh` does not stop a Playwright job that moved itself out of its process group (`setsid`); Cleanup still reaches it as a descendant while a parent is alive.
+- The `--update-snapshots` rule is stated in the Drive section and in `features/README.md`; `CODING_STANDARDS.md` rule 10 owns it.
 - The upkeep rule above is a documented convention, not enforced in CI: the default branch has no CI workflow and no rule runner (`scripts/regras/` exists only on the unmerged branch `origin/fm/correct-pm`). When a rule runner lands on the default branch, add one check there: fail when a PR touches `manifest.json`, `popup.*`, `painel*.{html,js}`, `bookreader.*`, `overlay.*`, `content.js`, `background.js` or `bridge/server.py` without touching `.agents/skills/verify-perpetualminer/features/` or saying "feature map unchanged" in the PR body.

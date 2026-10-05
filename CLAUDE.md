@@ -60,6 +60,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `test_empacotar.js` | Node test of the Web Store package contents; also checks that the store guide's "Host permission use" block matches the manifest hosts |
 | `test_gemini.js` | Standalone Node.js script to list available Gemini models (not part of the extension) |
 | `e2e/` | Playwright suite that runs the unpacked extension in Chromium (own `package.json`; see Testing) |
+| `.agents/skills/verify-perpetualminer/` | The `/verify-perpetualminer` skill: how an agent drives and proves the extension through the e2e harness. `SKILL.md`, the feature map in `features/`, and `scripts/` (`doctor.sh`, `drive.sh`, `cleanup.sh`, `lib.sh`, `test_helpers.sh`). Dev tooling, never part of the extension package (`test_empacotar.js` checks it). `.claude/skills/verify-perpetualminer` is a symlink to it |
 | `preview/` | The static site Vercel publishes per branch, so a visual change can be looked at in a browser: `montar.mjs` assembles it, `chrome-simulado.js` fakes `chrome.*` with sample data inside the copied pages. See `preview/README.md` |
 
 ### Data Flow
