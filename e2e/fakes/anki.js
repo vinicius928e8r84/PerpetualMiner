@@ -229,6 +229,12 @@ function criarFakeAnki() {
       return responderJson(route, status, json);
     }
     if (req.method() === 'POST' && (url.pathname === '/abrir-com-o-computador' || url.pathname === '/abrir-com-o-computador/estado')) {
+      const perda = estado.perdaDaRespostaDoItem;
+      if (perda && url.pathname === '/abrir-com-o-computador') {
+        estado.perdaDaRespostaDoItem = null;
+        if (perda.aplicada) itemDeLogin(req, url);
+        return route.abort('connectionreset');
+      }
       const { status, json } = itemDeLogin(req, url);
       return responderJson(route, status, json);
     }
@@ -301,6 +307,13 @@ function criarFakeAnki() {
      * (o sistema não tem item). Pedir ligar ou desligar o muda, como a Conexão faria.
      */
     definirItemDeLogin(situacao) { estado.contexto = { ...estado.contexto, itemDeLogin: situacao }; },
+    /**
+     * O próximo pedido de ligar ou desligar o item perde a resposta (a conexão cai): com `aplicada` a Conexão chegou a
+     * escrever ou apagar o item antes, sem `aplicada` não mexeu em nada. A extensão não tem como saber qual dos dois.
+     */
+    perderARespostaDoItemDeLogin({ aplicada }) { estado.perdaDaRespostaDoItem = { aplicada }; },
+    /** O item de login está escrito de verdade (só a situação `ligado`): o que a Conexão deixou no computador. */
+    itemInstalado() { return estado.contexto.itemDeLogin === 'ligado'; },
     /** O item de login agora: `ligado` ou `desligado` (ou a situação que o teste pôs). */
     itemDeLogin() { return estado.contexto.itemDeLogin; },
     /** As respostas do contrato a um pedido, para o teste que confere o fake contra os exemplos. */

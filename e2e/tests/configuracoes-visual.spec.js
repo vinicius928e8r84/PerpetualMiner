@@ -205,9 +205,13 @@ test('o modal de apagar todas as frases, com conta', async ({ page, extensao, fa
 });
 
 // Conexão com o Anki › Abrir o Anki com o computador (#153). Não há protótipo próprio dele (o #106 o decidiu em
-// texto): o card segue o “resumo primeiro” e o interruptor é o do Veio. O dono aprova estas referências.
+// texto): o card segue o “resumo primeiro” e o interruptor é o do Veio. Uma referência nova só entra depois de o
+// dono aprovar o visual (CODING_STANDARDS, regra 10), então estas quatro ficam em `test.fixme` até lá. Para
+// aprovar: tire o `fixme`, rode `npx playwright test configuracoes-visual -g "Conexão com o Anki aberta" --update-snapshots`
+// e olhe os quatro PNGs (as imagens de proposta estão no corpo do PR #189). Os cards fechados das outras referências
+// já mostram a linha do card.
 
-test('Conexão com o Anki aberta, com o interruptor desligado', async ({ page, extensao, fakes }) => {
+test.fixme('Conexão com o Anki aberta, com o interruptor desligado', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
   await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
   await abrirConfiguracoes(page, extensao, '#configuracoes/anki');
@@ -217,7 +221,7 @@ test('Conexão com o Anki aberta, com o interruptor desligado', async ({ page, e
   await expect(page).toHaveScreenshot('anki-desligado.png', { animations: 'disabled' });
 });
 
-test('Conexão com o Anki aberta, com o interruptor ligado', async ({ page, extensao, fakes }) => {
+test.fixme('Conexão com o Anki aberta, com o interruptor ligado', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
   await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
   fakes.anki.definirItemDeLogin('ligado');
@@ -228,7 +232,7 @@ test('Conexão com o Anki aberta, com o interruptor ligado', async ({ page, exte
   await expect(page).toHaveScreenshot('anki-ligado.png', { animations: 'disabled' });
 });
 
-test('Conexão com o Anki aberta, com a Conexão desligada', async ({ page, extensao, fakes }) => {
+test.fixme('Conexão com o Anki aberta, com a Conexão desligada', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
   await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
   fakes.anki.desligar();
@@ -239,7 +243,7 @@ test('Conexão com o Anki aberta, com a Conexão desligada', async ({ page, exte
   await expect(page).toHaveScreenshot('anki-indisponivel.png', { animations: 'disabled' });
 });
 
-test('Conexão com o Anki aberta, com o item que não pôde ser escrito', async ({ page, extensao, fakes }) => {
+test.fixme('Conexão com o Anki aberta, com o item que não pôde ser escrito', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
   await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
   fakes.anki.definirItemDeLogin('falha');
