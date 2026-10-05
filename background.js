@@ -1,7 +1,7 @@
 'use strict';
 
 // A base compartilhada: o catálogo da Voz e a detecção de idioma.
-importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/sincronizacao.js');
+importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/pedido-ao-anki.js', 'lib/sincronizacao.js');
 const { textoDaVoz, detectarIdioma, IDIOMAS, MineracaoDoDia, Mineracao, VocabularioDaMineracao } = PerpetualMiner;
 
 // Em pasta descompactada, recarrega a extensão quando os arquivos mudam.
@@ -685,10 +685,7 @@ async function getAutoKeywordVocabulary(lang = 'en') {
   const baralhoPadrao = PerpetualMiner.AjustesDeEnvio.baralhoPadrao(normalizedLang);
   for (const deck of [...new Set([deckName, baralhoPadrao])].filter(Boolean)) {
     try {
-      const resp = await fetch(`${BRIDGE_URL}/anki/vocabulary`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deck, lang: normalizedLang, limit: 10000 }),
+      const resp = await PerpetualMiner.PedidoAoAnki.postarJson(BRIDGE_URL, '/anki/vocabulary', { deck, lang: normalizedLang, limit: 10000 }, {
         signal: ultimaLeitura ? AbortSignal.timeout(AUTO_KEYWORD_RENEW_TIMEOUT_MS) : undefined,
       });
       if (!resp.ok) continue;

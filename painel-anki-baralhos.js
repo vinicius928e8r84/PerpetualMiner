@@ -256,11 +256,7 @@
 
   /** Um POST à Conexão (o que lê o Anki da pessoa é POST: contrato/LEIA-ME.md); um HTTP de erro vira a causa, com o `detail` que ela mandar. */
   async function pedirJson(caminho, corpo) {
-    const resposta = await fetch(`${ENDERECO_DA_CONEXAO}${caminho}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(corpo),
-    });
+    const resposta = await raiz.PedidoAoAnki.postarJson(ENDERECO_DA_CONEXAO, caminho, corpo);
     if (!resposta.ok) {
       const corpo = await resposta.json().catch(() => ({}));
       throw new Error([`HTTP ${resposta.status}`, corpo.error, corpo.detail].filter(Boolean).join(' · '));

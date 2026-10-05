@@ -569,6 +569,29 @@ test('com a coleção do contrato aberta, Baralhos e termos e Vocabulário mostr
   await expect(listaDoVocabulario(page).getByRole('option', { name: /^gave up/ })).toBeVisible();
   await expect(vocabulario(page).locator('.shell-aviso')).toHaveCount(0);
   await fotografar(page, 'vocabulario-da-colecao-do-contrato.png');
+
+  // O que fica gravado para as abas seguirem mostrando os dados com a Conexão desligada (BRG-12).
+  const gravado = await extensao.lerStorage(['pm_anki_baralhos', 'pm_anki_vocabulario']);
+  expect(gravado.pm_anki_baralhos.nomes).toEqual({ en: 'Inglês', ru: 'Alemão' });
+  expect(gravado.pm_anki_baralhos.dados.source).toBe('colecao');
+  expect(gravado.pm_anki_baralhos.dados.decks.map(({ deckName, cards, missing }) => ({ deckName, cards, missing }))).toEqual([
+    { deckName: 'Inglês', cards: 4, missing: undefined },
+    { deckName: 'Alemão', cards: 0, missing: true },
+  ]);
+  expect(gravado.pm_anki_vocabulario.nomes).toEqual({ en: 'Inglês', ru: 'Alemão' });
+  expect(gravado.pm_anki_vocabulario.dados.en).toMatchObject({ deckName: 'Inglês', total: 12, source: 'colecao' });
+  expect(gravado.pm_anki_vocabulario.dados.en.itens[0]).toMatchObject({ word: 'gave up', type: 'term', status: 'mature' });
+  expect(gravado.pm_anki_vocabulario.dados.ru).toMatchObject({ deckName: 'Alemão', total: 0, itens: [] });
+
+  // Atualizar pede de novo os dois Baralhos, com refresh e launch, e a Conexão os lê do mesmo jeito.
+  await atualizar(page).click();
+  await expect.poll(() => pedidos(fakes, '/anki/stats/decks').at(-1).dados.launch).toBe(true);
+  expect(pedidos(fakes, '/anki/stats/decks').at(-1).dados).toEqual({
+    decks: [{ deckName: 'Inglês', lang: 'en' }, { deckName: 'Alemão', lang: 'ru' }], refresh: true, launch: true,
+  });
+  await aba(page, 'Baralhos e termos').click();
+  await expect(baralhos(page).locator('.anki-baralho dl')).toContainText('Cartões4');
+  await expect(baralhos(page).locator('.shell-aviso')).toHaveCount(0);
 });
 
 // ─── Ajustes de envio, ↻ Atualizar e acessibilidade ──────────────────────────

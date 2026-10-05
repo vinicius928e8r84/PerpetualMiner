@@ -428,7 +428,7 @@
       }
     },
     {
-      "nome": "Números pedidos por ↻ Atualizar, com refresh e launch que a Conexão ignora",
+      "nome": "Números depois de um reparo ou de salvar outro Baralho, com refresh",
       "daExtensao": true,
       "contexto": {
         "perfil": "Usuário 1",
@@ -443,6 +443,131 @@
             {
               "deckName": "Inglês",
               "lang": "en"
+            },
+            {
+              "deckName": "Alemão",
+              "lang": "ru"
+            }
+          ],
+          "refresh": true
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "generatedAt": "<agora>",
+          "decks": [
+            {
+              "deckName": "Inglês",
+              "lang": "en",
+              "frontField": "Frente",
+              "notes": 3,
+              "cards": 4,
+              "uniqueTerms": 3,
+              "uniqueFronts": 3,
+              "uniqueTermTokens": 11,
+              "vocabulary": {
+                "targetTerms": 3,
+                "phraseVocabulary": 11,
+                "newPhraseVocabulary": 11,
+                "avgNewPhraseVocabularyPerCard": 2.75,
+                "singleNewVocabularyCards": 0,
+                "zeroNewVocabularyCards": 1,
+                "catalogedCards": 4,
+                "targetMetric": "anki_target_terms",
+                "phraseMetric": "front_literal_words",
+                "usesAiCatalog": false
+              },
+              "termMetric": "anki_target_terms",
+              "new": 1,
+              "learning": 1,
+              "young": 1,
+              "mature": 1,
+              "reviewed": 3,
+              "maturePct": 33.3
+            },
+            {
+              "deckName": "Alemão",
+              "lang": "ru",
+              "frontField": "Frente",
+              "missing": true,
+              "notes": 0,
+              "cards": 0,
+              "uniqueTerms": 0,
+              "uniqueFronts": 0,
+              "uniqueTermTokens": 0,
+              "vocabulary": {
+                "targetTerms": 0,
+                "phraseVocabulary": 0,
+                "newPhraseVocabulary": 0,
+                "avgNewPhraseVocabularyPerCard": 0.0,
+                "singleNewVocabularyCards": 0,
+                "zeroNewVocabularyCards": 0,
+                "catalogedCards": 0,
+                "targetMetric": "anki_target_terms",
+                "phraseMetric": "front_literal_words",
+                "usesAiCatalog": false
+              },
+              "termMetric": "anki_target_terms",
+              "new": 0,
+              "learning": 0,
+              "young": 0,
+              "mature": 0,
+              "reviewed": 0,
+              "maturePct": 0.0
+            }
+          ],
+          "totals": {
+            "decks": 2,
+            "notes": 3,
+            "cards": 4,
+            "uniqueTerms": 3,
+            "uniqueFronts": 3,
+            "uniqueTermTokens": 11,
+            "vocabulary": {
+              "targetTerms": 3,
+              "phraseVocabulary": 11,
+              "newPhraseVocabulary": 11,
+              "avgNewPhraseVocabularyPerCard": 2.75,
+              "singleNewVocabularyCards": 0,
+              "zeroNewVocabularyCards": 1,
+              "catalogedCards": 4,
+              "targetMetric": "anki_target_terms",
+              "phraseMetric": "front_literal_words",
+              "usesAiCatalog": false
+            },
+            "termMetric": "anki_target_terms",
+            "new": 1,
+            "learning": 1,
+            "young": 1,
+            "mature": 1,
+            "reviewed": 3,
+            "maturePct": 33.3
+          },
+          "source": "colecao"
+        }
+      }
+    },
+    {
+      "nome": "Números pedidos por Atualizar e Tentar de novo, com refresh e launch que a Conexão ignora",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/stats/decks",
+        "corpo": {
+          "decks": [
+            {
+              "deckName": "Inglês",
+              "lang": "en"
+            },
+            {
+              "deckName": "Alemão",
+              "lang": "ru"
             }
           ],
           "refresh": true,
@@ -482,10 +607,40 @@
               "mature": 1,
               "reviewed": 3,
               "maturePct": 33.3
+            },
+            {
+              "deckName": "Alemão",
+              "lang": "ru",
+              "frontField": "Frente",
+              "missing": true,
+              "notes": 0,
+              "cards": 0,
+              "uniqueTerms": 0,
+              "uniqueFronts": 0,
+              "uniqueTermTokens": 0,
+              "vocabulary": {
+                "targetTerms": 0,
+                "phraseVocabulary": 0,
+                "newPhraseVocabulary": 0,
+                "avgNewPhraseVocabularyPerCard": 0.0,
+                "singleNewVocabularyCards": 0,
+                "zeroNewVocabularyCards": 0,
+                "catalogedCards": 0,
+                "targetMetric": "anki_target_terms",
+                "phraseMetric": "front_literal_words",
+                "usesAiCatalog": false
+              },
+              "termMetric": "anki_target_terms",
+              "new": 0,
+              "learning": 0,
+              "young": 0,
+              "mature": 0,
+              "reviewed": 0,
+              "maturePct": 0.0
             }
           ],
           "totals": {
-            "decks": 1,
+            "decks": 2,
             "notes": 3,
             "cards": 4,
             "uniqueTerms": 3,

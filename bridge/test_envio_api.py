@@ -301,6 +301,12 @@ class LeiturasDoAnkiPorPostTests(unittest.TestCase):
         response = self.client.post("/anki/vocabulary", json={"lang": "en"})
         self.assertEqual((response.status_code, response.get_json()), (400, {"error": "deck_required"}))
 
+    def test_um_limite_e_um_deslocamento_que_nao_sao_numeros_voltam_ao_padrao_em_vez_de_quebrar(self) -> None:
+        for bad in ({"a": 1}, [3], "muitos"):
+            response = self.client.post("/anki/vocabulary", json={"deck": "Inglês", "lang": "en", "limit": bad, "offset": bad})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual((response.get_json()["filters"]["limit"], response.get_json()["filters"]["offset"]), (1000, 0))
+
     def test_os_numeros_dos_baralhos_pedidos_por_post_voltam_na_ordem_pedida_e_o_que_nao_existe_vem_missing(self) -> None:
         decks = [{"deckName": "Alemão", "lang": "en"}, {"deckName": "Inglês", "lang": "en"}]
         rows = self.client.post("/anki/stats/decks", json={"decks": decks, "refresh": True}).get_json()["decks"]

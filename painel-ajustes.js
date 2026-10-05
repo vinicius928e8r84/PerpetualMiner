@@ -99,11 +99,7 @@
     const leitura = ++estado.ultimaLeituraDeBaralhos;
     let baralhos = null;
     try {
-      const resposta = await fetch(`${ConexaoAnki.ENDERECO}/anki/decks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
-      });
+      const resposta = await raiz.PedidoAoAnki.postarJson(ConexaoAnki.ENDERECO, '/anki/decks', {});
       if (resposta.ok) {
         const dados = await resposta.json();
         if (Array.isArray(dados.decks)) baralhos = dados.decks.map(String);

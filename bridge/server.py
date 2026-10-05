@@ -924,11 +924,11 @@ class BridgeApp:
             search = str(params.get("q") or "").strip().casefold()
             try:
                 limit = max(1, min(10000, int(params.get("limit") or 1000)))
-            except ValueError:
+            except (ValueError, TypeError):
                 limit = 1000
             try:
                 offset = max(0, int(params.get("offset") or 0))
-            except ValueError:
+            except (ValueError, TypeError):
                 offset = 0
 
             try:

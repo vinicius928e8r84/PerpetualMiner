@@ -37,6 +37,17 @@ async function conferirOsExemplos() {
       `O fake e o contrato se separaram no exemplo "${exemplo.nome}" (complemento/contrato/exemplos.json): ${diferencaDoContrato(entregue.json, exemplo.resposta.json)}`);
   }
 
+  // Os três corpos que Baralhos e termos pede de verdade, com os dois Baralhos dos Ajustes de envio
+  // (painel-anki-baralhos.js: a primeira leitura; depois de um reparo ou de salvar outro Baralho, `refresh`;
+  // Atualizar e Tentar de novo, `refresh` e `launch`), todos com resposta no contrato.
+  const baralhosDosAjustes = [{ deckName: 'Inglês', lang: 'en' }, { deckName: 'Alemão', lang: 'ru' }];
+  for (const extra of [{}, { refresh: true }, { refresh: true, launch: true }]) {
+    const doPainel = criarFakeAnki();
+    doPainel.abrirColecao('inglês com subbaralho');
+    assert.strictEqual(doPainel.respostaDoContrato('POST', '/anki/stats/decks', { decks: baralhosDosAjustes, ...extra }).status, 200,
+      `o contrato não tem o pedido de Baralhos e termos com ${JSON.stringify(extra)}`);
+  }
+
   // O vocabulário, os Baralhos e os números que o teste de tela monta (sem coleção do contrato) seguem a mesma forma.
   const dosTestes = criarFakeAnki();
   dosTestes.definirVocabulario('en', [{ word: 'gave up', type: 'term', maduros: 1 }, 'smoking']);

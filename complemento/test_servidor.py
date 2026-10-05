@@ -19,7 +19,7 @@ import warnings
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import configuracao, registro, servidor  # noqa: E402
+from complemento import baralhos, configuracao, registro, servidor  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
@@ -177,6 +177,14 @@ class LeituraDaColecao(unittest.TestCase):
         todas = json.loads(inteiro)["words"]
         self.assertEqual(json.loads(pagina)["words"], todas[2:5])
         self.assertEqual(json.loads(pagina)["totalWords"], len(todas))
+
+    def test_um_limite_e_um_deslocamento_que_nao_sao_numeros_voltam_ao_padrao(self):
+        with tempfile.TemporaryDirectory() as pasta, self.com_a_colecao(pasta) as conexao:
+            for ruim in ({"a": 1}, [3], "muitos"):
+                with self.subTest(ruim):
+                    status, _, corpo = conexao.pedir("POST", "/anki/vocabulary", corpo={"deck": "Inglês", "lang": "en", "limit": ruim, "offset": ruim})
+                    filtros = json.loads(corpo)["filters"]
+                    self.assertEqual((status, filtros["limit"], filtros["offset"]), (200, baralhos.LIMITE_PADRAO, 0))
 
     def test_o_vocabulario_filtra_pela_situacao_do_cartao(self):
         with tempfile.TemporaryDirectory() as pasta, self.com_a_colecao(pasta) as conexao:
