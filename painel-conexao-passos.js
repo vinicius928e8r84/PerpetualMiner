@@ -109,9 +109,13 @@
     const texto = elemento('p', 'bv-texto');
 
     // O arquivo: um link de download do próprio pacote da extensão (o Chrome não pede permissão).
-    const baixar = elemento('a', 'veio-botao veio-botao--primario', textoDaVoz('ONB-16.baixar'));
-    baixar.href = chrome.runtime.getURL(ARQUIVO_DA_CONEXAO);
-    baixar.download = NOME_DO_ARQUIVO;
+    const linkDoArquivo = (classe, rotulo) => {
+      const link = elemento('a', classe, rotulo);
+      link.href = chrome.runtime.getURL(ARQUIVO_DA_CONEXAO);
+      link.download = NOME_DO_ARQUIVO;
+      return link;
+    };
+    const baixar = linkDoArquivo('veio-botao veio-botao--primario', textoDaVoz('ONB-16.baixar'));
     baixar.addEventListener('click', () => { if (estado.esperandoDesde === null) estado.esperandoDesde = Date.now(); });
 
     const codigo = raiz.CODIGO_DO_ANKIWEB ?? null;
@@ -138,9 +142,7 @@
     });
     const conexao = elemento('div', 'bv-conexao', status, tentar);
 
-    const baixarDeNovo = elemento('a', 'veio-botao veio-botao--contorno veio-botao--compacto', textoDaVoz('ONB-16.baixarDeNovo'));
-    baixarDeNovo.href = baixar.href;
-    baixarDeNovo.download = NOME_DO_ARQUIVO;
+    const baixarDeNovo = linkDoArquivo('veio-botao veio-botao--contorno veio-botao--compacto', textoDaVoz('ONB-16.baixarDeNovo'));
     const checklist = elemento('ul', 'pc-checklist', ...ITENS_DO_CHECKLIST.map(item => elemento('li', null, textoDaVoz(item))));
     const semResposta = elemento('div', 'pc-sem-resposta',
       elemento('p', 'pc-sem-resposta__texto', textoDaVoz('ONB-16.semResposta')), checklist, baixarDeNovo);
