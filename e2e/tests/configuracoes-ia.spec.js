@@ -318,6 +318,38 @@ test('o content script e o overlay não alcançam a chave: ela não está no sto
   expect(result.value.bancos).not.toContain('pm-segredos');
 });
 
+test('a chave colada num lugar do card e confirmada no outro nunca volta à tela em Trocar chave', async ({ page, extensao }) => {
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  // Colada em Configurações, sem conferir: fica como rascunho do card daqui.
+  await campo(page).fill(CHAVE);
+
+  // Conferida no passo da Boas-vindas, que é o mesmo card em outro lugar.
+  await page.goto(extensao.url('painel.html#boas-vindas/ia'));
+  const passo = page.locator('.bv-card');
+  await passo.getByRole('textbox', { name: 'Chave da OpenAI' }).fill(OUTRA_CHAVE);
+  await passo.getByRole('button', { name: 'Conferir e salvar' }).click();
+  await expect(passo.getByText('Chave conferida', { exact: true })).toBeVisible();
+
+  await page.goto(extensao.url('painel.html#configuracoes/ia'));
+  await expect(corpo(page).getByText('••••••••wxyz')).toBeVisible();
+  await card(page).getByRole('button', { name: 'Trocar chave' }).click();
+
+  await expect(campo(page)).toHaveValue('');
+  await expect(page.getByText(CHAVE)).toHaveCount(0);
+});
+
+test('com a Conexão desligada depois de conferir, o card deixa de dizer que ela tem a cópia, sem recarregar', async ({ page, extensao, fakes }) => {
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await colarEConferir(page);
+  await expect(corpo(page)).toContainText('A Conexão com o Anki tem uma cópia da chave.');
+
+  fakes.anki.desligar();
+
+  // A Conexão é conferida a cada 15 s.
+  await expect(corpo(page)).not.toContainText('cópia da chave', { timeout: 25_000 });
+  await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+});
+
 test('abaixo de ~620 px de largura do card, as colunas viram linhas', async ({ page, extensao }) => {
   await page.setViewportSize({ width: 1100, height: 900 });
   await abrirPainel(page, extensao, '#configuracoes/ia');

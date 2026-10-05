@@ -340,6 +340,28 @@
       }
     },
     {
+      "nome": "chave da OpenAI quando a OpenAI só responde limite de uso: nada foi conferido, nada é guardado",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "openai": "limite_de_uso"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "chave": "sk-proj-chave-de-exemplo-9f3a"
+        }
+      },
+      "resposta": {
+        "status": 502,
+        "json": {
+          "error": "openai_unreachable"
+        }
+      }
+    },
+    {
       "nome": "chave da OpenAI em branco",
       "daExtensao": false,
       "contexto": {

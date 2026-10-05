@@ -61,10 +61,17 @@
     });
     // Quando a Conexão volta a responder, ela pode estar sem a cópia da chave que a extensão guarda.
     ConexaoAnki.acompanhar(situacao => {
+      if (situacao === ConexaoAnki.SITUACAO.CONECTANDO) return;
       const ligada = situacao === ConexaoAnki.SITUACAO.LIGADA;
       const voltou = ligada && !conexaoLigada;
       conexaoLigada = ligada;
-      if (voltou) conferirACopia();
+      if (ligada) {
+        if (voltou) conferirACopia();
+      } else {
+        // Sem resposta da Conexão o card não afirma nada sobre a cópia (C8): o que ficou na tela era de antes.
+        rodada += 1;
+        mudarACopia(null);
+      }
     });
     raiz.Shell.aoAbrirASecao('ia', focarOCampoSeVazio);
   }
@@ -87,8 +94,16 @@
     if (!estado.ultimos4) porId(idDe(configuracoes, 'campo'))?.focus();
   }
 
+  /** A resposta de uma conferência da cópia que a Conexão desligou no meio do caminho já não vale. */
+  let rodada = 0;
+
   async function conferirACopia() {
+    const minha = ++rodada;
     const tem = await ChaveDaOpenAI.conferirACopia();
+    if (minha === rodada) mudarACopia(tem);
+  }
+
+  function mudarACopia(tem) {
     if (tem === estado.copia) return;
     estado.copia = tem;
     for (const lugar of lugares) if (!lugar.trocando && !lugar.conferindo) desenhar(lugar);
@@ -140,6 +155,7 @@
     const trocar = botao('contorno', textoDaVoz('CFG-35.chaveTrocar'), () => {
       lugar.trocando = true;
       lugar.erro = null;
+      lugar.digitado = '';   // a chave colada em outro momento nunca volta à tela: o campo abre vazio
       desenhar(lugar);
       porId(idDe(lugar, 'campo')).focus();
     });
@@ -311,7 +327,8 @@
     lugar.conferindo = false;
     if (resultado.ok) {
       lugar.trocando = false;
-      lugar.digitado = '';
+      // Conferida a chave, nenhum rascunho dela fica na tela: nem o daqui, nem o do outro lugar do card.
+      for (const outro of lugares) outro.digitado = '';
       estado.ultimos4 = resultado.ultimos4;
       estado.copia = true;
       desenharResumo();

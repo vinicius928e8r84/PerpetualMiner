@@ -34,8 +34,9 @@ IndexedDB is the site's; `chrome.storage.local` would not do: the content script
 close all of it); `{ ultimos4 }` in `chrome.storage.local` as `pm_chave_openai`, which the summary, the Boas-vindas step and the
 reminder read; and the Conexão's own copy in `user_files/chaves` (see `complemento/`). When the Conexão answers again after being
 off, the card asks `POST /ia/estado` and, if the copy is missing or has another ending, delivers the key again by itself;
-“A Conexão com o Anki tem uma cópia da chave” / “…ainda não tem a cópia” says the true state, and with the Conexão off the card
-says nothing about the copy. “Fica neste computador” is the true text of today: following the Google account is #154, and that
+“A Conexão com o Anki tem uma cópia da chave” / “…ainda não tem a cópia” says the true state, and with the Conexão off (also when it goes off while the card is open) the card
+says nothing about the copy, and a late answer from before it went off is dropped. A pasted draft never survives a confirmation
+and Trocar chave always opens empty, so the whole key is never put back on screen. “Fica neste computador” is the true text of today: following the Google account is #154, and that
 text changes with it. Tests: `e2e/tests/configuracoes-ia.spec.js` (including a CDP check from the content script's isolated
 world), the visual references `ia-*.png` in `configuracoes-visual.spec.js`, `complemento/test_chave_da_openai.py` for the
 Conexão's side, and the contract examples both read (`complemento/contrato/exemplos.json`).

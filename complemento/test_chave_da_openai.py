@@ -85,6 +85,18 @@ class ChaveRecebida(unittest.TestCase):
             self.assertEqual((status, json.loads(corpo)), (status_esperado, {"error": erro}))
             self.assertEqual(sem_chave, (200, {"openai": {"configurada": False}}))
 
+    def test_sem_a_autenticacao_explicita_da_openai_nada_e_guardado_e_a_chave_anterior_fica(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, openai="limite_de_uso", chave_na_conexao="wxyz") as conexao:
+            status, _, corpo = enviar(conexao, OUTRA_CHAVE)
+            depois = estado(conexao)
+        self.assertEqual((status, json.loads(corpo)), (502, {"error": "openai_unreachable"}))
+        self.assertEqual(depois, (200, {"openai": {"configurada": True, "ultimos4": "wxyz"}}))
+
+    def test_a_chave_autenticada_vale_mesmo_se_so_o_pedido_pago_bateu_no_limite(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, openai="limite_so_no_pago") as conexao:
+            status, _, corpo = enviar(conexao)
+        self.assertEqual((status, json.loads(corpo)), (200, {"ok": True, "ultimos4": "abcd"}))
+
     def test_trocar_a_chave_guarda_a_nova(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             enviar(conexao, CHAVE)

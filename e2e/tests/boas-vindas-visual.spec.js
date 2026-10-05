@@ -102,13 +102,19 @@ test('passo 4 com a Conexão ligada', async ({ page, extensao, fakes }) => {
   await foto(page, 'passo-4-ligada.png');
 });
 
+// AGUARDANDO A APROVAÇÃO DO DONO (CODING_STANDARDS regra 10): o passo 5 (o card IA dos cartões) é tela nova; a
+// referência só entra depois que ele aprova. Aprovado: tire o `test.fixme` dos dois e rode com --update-snapshots.
+const AGUARDA_O_DONO = 'a referência visual do passo da IA espera a aprovação do dono (regra 10)';
+
 test('passo 5 sem chave: o card IA dos cartões, com as duas entradas lado a lado', async ({ page, extensao }) => {
+  test.fixme(true, AGUARDA_O_DONO);
   await abrir(page, extensao, 'ia');
   await expect(page.locator('.bv-card').getByRole('region', { name: 'Chave da OpenAI' })).toBeVisible();
   await foto(page, 'passo-5-ia.png');
 });
 
 test('passo 5 com a chave conferida: a máscara e Trocar chave', async ({ page, extensao }) => {
+  test.fixme(true, AGUARDA_O_DONO);
   await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
   await abrir(page, extensao, 'ia');
   await expect(page.locator('.bv-card').getByText('Chave conferida', { exact: true })).toBeVisible();

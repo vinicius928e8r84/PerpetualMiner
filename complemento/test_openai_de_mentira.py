@@ -32,6 +32,16 @@ COMPORTAMENTOS = {
         MODELOS_OK,
         _erro(403, "Your organization must be verified to use this feature.", "invalid_request_error", None),
     ),
+    # O limite de uso (429 que não é falta de crédito): nada foi conferido.
+    "limite_de_uso": (
+        _erro(429, "Rate limit reached for requests.", "requests", "rate_limit_exceeded"),
+        _erro(429, "Rate limit reached for requests.", "requests", "rate_limit_exceeded"),
+    ),
+    # A chave vale (os modelos responderam), mas o pedido pago bateu no limite: a autenticação foi explícita.
+    "limite_so_no_pago": (
+        MODELOS_OK,
+        _erro(429, "Rate limit reached for requests.", "requests", "rate_limit_exceeded"),
+    ),
     "fora_do_ar": (
         _erro(503, "The server is overloaded.", "server_error", None),
         _erro(503, "The server is overloaded.", "server_error", None),

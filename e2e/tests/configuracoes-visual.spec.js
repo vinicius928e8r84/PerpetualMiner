@@ -184,7 +184,15 @@ test('Chave do Gemini aberta, vazia, depois de salvar vazio', async ({ page, ext
 
 // O card IA dos cartões (#140): o desenho A do #101, duas entradas em colunas do mesmo tamanho.
 // A chave do protótipo termina em 9f3a, como o exemplo do contrato da Conexão.
+//
+// AGUARDANDO A APROVAÇÃO DO DONO (CODING_STANDARDS regra 10): estas cinco telas são novas e a referência só
+// entra depois que ele aprova o visual implementado. Até lá ficam como `fixme` e sem PNG. Aprovado: tire o
+// `test.fixme` de cada uma, rode `npx playwright test configuracoes-visual -g "IA dos cartões" --update-snapshots`
+// e confira que nenhuma captura tem a chave inteira (o campo é sempre mascarado: regra 9).
+const AGUARDA_O_DONO = 'a referência visual do card IA dos cartões espera a aprovação do dono (regra 10)';
+const campoDaChave = page => page.locator('#cfg-ia .cfg-chave-campo');
 test('IA dos cartões aberta, sem chave: as duas entradas lado a lado', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
   await semearComoNoPrototipo(extensao, fakes);
   await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
   await expect(page.locator('#cfg-ia').getByRole('textbox', { name: 'Chave da OpenAI' })).toBeFocused();
@@ -194,6 +202,7 @@ test('IA dos cartões aberta, sem chave: as duas entradas lado a lado', async ({
 });
 
 test('IA dos cartões aberta, com a chave conferida e a cópia na Conexão', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
   await semearComoNoPrototipo(extensao, fakes);
   await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
   fakes.anki.guardarChaveNaConexao('9f3a');
@@ -205,6 +214,7 @@ test('IA dos cartões aberta, com a chave conferida e a cópia na Conexão', asy
 });
 
 test('IA dos cartões com a chave recusada: a faixa diz a qual entrada pertence', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
   await semearComoNoPrototipo(extensao, fakes);
   fakes.anki.responderOpenAI('recusa');
   await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
@@ -214,10 +224,11 @@ test('IA dos cartões com a chave recusada: a faixa diz a qual entrada pertence'
   await page.locator('#cfg-ia').getByText('Detalhes').click();
   await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
 
-  await expect(page).toHaveScreenshot('ia-recusada.png', { animations: 'disabled' });
+  await expect(page).toHaveScreenshot('ia-recusada.png', { animations: 'disabled', mask: [campoDaChave(page)] });
 });
 
 test('IA dos cartões com a chave sem crédito, no tema claro', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
   await semearComoNoPrototipo(extensao, fakes);
   await extensao.gravarStorage({ pm_tema: 'claro' });
   fakes.anki.responderOpenAI('sem_credito');
@@ -227,10 +238,11 @@ test('IA dos cartões com a chave sem crédito, no tema claro', async ({ page, e
   await expect(page.locator('#cfg-ia').getByRole('alert')).toContainText('sem crédito');
   await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
 
-  await expect(page).toHaveScreenshot('ia-sem-credito-claro.png', { animations: 'disabled' });
+  await expect(page).toHaveScreenshot('ia-sem-credito-claro.png', { animations: 'disabled', mask: [campoDaChave(page)] });
 });
 
 test('IA dos cartões em janela estreita: as colunas viram linhas', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
   await semearComoNoPrototipo(extensao, fakes);
   await abrirConfiguracoes(page, extensao, '#configuracoes/ia', 760);
   await expect(page.locator('#cfg-ia').getByRole('region', { name: /Conta do ChatGPT/ })).toBeVisible();

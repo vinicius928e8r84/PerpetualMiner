@@ -71,6 +71,27 @@ class AoCarregarNoAnki(unittest.TestCase):
             criadas = sorted(os.listdir(os.path.join(pasta, "user_files")))
         self.assertEqual(criadas, ["chaves", "custos", "estado", "fila", "logs"])
 
+    @unittest.skipIf(os.name == "nt", "as permissões do Windows não são as do Unix")
+    def test_a_pasta_das_chaves_nasce_so_do_dono_mesmo_com_umask_aberta(self):
+        antes = os.umask(0o000)
+        try:
+            with tempfile.TemporaryDirectory() as pasta:
+                parar(inicio.iniciar(pasta, lambda: None, porta=0))
+                modo = os.stat(os.path.join(pasta, "user_files", "chaves")).st_mode & 0o777
+        finally:
+            os.umask(antes)
+        self.assertEqual(modo, 0o700)
+
+    @unittest.skipIf(os.name == "nt", "as permissões do Windows não são as do Unix")
+    def test_uma_pasta_das_chaves_que_ja_existia_aberta_passa_a_ser_so_do_dono(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            antiga = os.path.join(pasta, "user_files", "chaves")
+            os.makedirs(antiga)
+            os.chmod(antiga, 0o755)
+            parar(inicio.iniciar(pasta, lambda: None, porta=0))
+            modo = os.stat(antiga).st_mode & 0o777
+        self.assertEqual(modo, 0o700)
+
     def test_a_chave_que_a_extensao_manda_fica_em_user_files_chaves_e_a_conexao_a_reconhece_ao_reiniciar(self):
         chave = "sk-proj-DeTesteDoInicio0123456789-f00d"
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira("aceita") as openai:

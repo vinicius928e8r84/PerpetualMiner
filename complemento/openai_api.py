@@ -4,7 +4,8 @@ A extensão não fala com a OpenAI (não tem a permissão de host, e é a Conex�
 confere é a Conexão, e responde só um código. O que a OpenAI diz ao recusar nunca é copiado para o log nem para
 a resposta, porque a mensagem de uma chave recusada repete pedaços dela.
 
-1. `GET /v1/models`: a chave vale? (401 → recusada)
+1. `GET /v1/models`: a chave vale? Só um 200 é a OpenAI dizendo que sim (401 → recusada; qualquer outra
+   resposta, como um limite de uso, é “não deu para conferir” e nada é guardado)
 2. `POST /v1/embeddings` com uma palavra: a conta tem crédito? É o pedido pago mais barato que existe, e só
    ele diz “sem crédito” (429 `insufficient_quota`) antes do primeiro Cartão. Um modelo que a OpenAI tire
    do ar (404) ou uma chave restrita sem esta permissão não reprova a chave.
@@ -82,6 +83,9 @@ def conferir(base, chave, logger):
         codigo = _classificar(status, erro)
         if codigo is None and status == 403:
             codigo = RECUSADA  # uma chave que nem lista os modelos não serve
+        if codigo is None and status != 200:
+            # Um limite de uso (429), um 404 ou qualquer outra coisa: a OpenAI não disse que a chave vale.
+            codigo = FORA_DO_AR
         if codigo is None:
             status, erro = _pedir(base, "POST", "/v1/embeddings", chave, {"model": "text-embedding-3-small", "input": "ok"})
             codigo = _classificar(status, erro)

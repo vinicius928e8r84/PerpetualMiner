@@ -20,7 +20,7 @@ The card that sets up who writes the card text. Two entries side by side in equa
 
 Preconditions:
 
-- `doctor.sh` green. The Conexão is the Anki fake: `fakes.anki.responderOpenAI('aceita' | 'recusa' | 'sem_credito' | 'org_nao_verificada' | 'fora_do_ar')` says how OpenAI answers the check, `fakes.anki.chaveNaConexao()` is the copy the Conexão kept (null: none), `fakes.anki.desligar()` makes it unreachable. It answers from `complemento/contrato/exemplos.json`, the same file the add-on's own tests read. Real OpenAI is never reached.
+- `doctor.sh` green. The Conexão is the Anki fake: `fakes.anki.responderOpenAI('aceita' | 'recusa' | 'sem_credito' | 'org_nao_verificada' | 'limite_de_uso' | 'fora_do_ar')` says how OpenAI answers the check, `fakes.anki.chaveNaConexao()` is the copy the Conexão kept (null: none), `fakes.anki.desligar()` makes it unreachable. It answers from `complemento/contrato/exemplos.json`, the same file the add-on's own tests read. Real OpenAI is never reached.
 
 - **Card (`ia-card`).** `drive.sh ia-card configuracoes-ia.spec -g "sem chave: as duas entradas"`. Observable: both columns with equal width and top, the `Plus ou Pro` badge, the disabled `Continuar com o ChatGPT`, the closed-row summary `Sem chave`. Narrow: `-g "abaixo de ~620 px"`.
 - **Paste (`ia-paste`).** `-g "colar a chave: a Conexão a confere"`. Observable: `Chave conferida`, `••••••••9f3a`, the toast, the Conexão's copy equal to the pasted key, `pm_chave_openai` = `{ ultimos4: '9f3a' }`, and the whole `chrome.storage.local` dump without the key.
@@ -35,4 +35,4 @@ Preconditions:
 - The key shown is only its end: the screen never knows more than `ultimos4`, so a "key is on screen" assertion should look for the 4 characters, not the whole key.
 - A rejected key never replaces the one already stored; Cancelar in Trocar chave keeps it too.
 - The fake keeps the copy in memory per test; a new test starts with no copy. Seed one with `fakes.anki.guardarChaveNaConexao('9f3a')`.
-- The visual references are `configuracoes-visual.spec.js` (`ia-*.png`) and `boas-vindas-visual.spec.js` (`passo-5-ia*.png`); never `--update-snapshots` without the owner's approval of the look.
+- The visual references for the card (`configuracoes-visual.spec.js` `ia-*`, `boas-vindas-visual.spec.js` `passo-5-ia*`) are `test.fixme` until the owner approves the look; do not freeze them (never `--update-snapshots` without that approval) and keep the key field masked in any capture.
