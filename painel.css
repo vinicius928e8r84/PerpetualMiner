@@ -607,8 +607,10 @@ body {
 
 /* ── Card IA dos cartões ──────────────────────────────────────────────────
    As duas entradas (a Chave da OpenAI e a Conta do ChatGPT) em colunas do mesmo
-   tamanho, como no desenho A do #101; abaixo de ~620 px de largura do card elas
-   viram linhas. O erro atravessa o card, abaixo das colunas. */
+   tamanho, como no desenho A do #101; abaixo de ~620 px de largura do card (560 px
+   de conteúdo, sem o recuo do azulejo) elas viram linhas. O conteúdo do passo da
+   Boas-vindas tem cerca de 595 px, e ali o desenho A também são duas colunas.
+   O erro atravessa o card, abaixo das colunas. */
 
 .ia-cartao {
   container-type: inline-size;
@@ -658,7 +660,7 @@ body {
   margin: 0;
 }
 
-@container (max-width: 619px) {
+@container (max-width: 559px) {
   .ia-colunas {
     grid-template-columns: 1fr;
   }

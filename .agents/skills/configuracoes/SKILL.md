@@ -11,8 +11,9 @@ Notes moved unchanged from `CLAUDE.md` § Architecture. `CLAUDE.md` keeps the fi
 
 Ticket #140, design A of #101: the two entries of the AI in **two equal columns**, the **Chave da OpenAI** (works) and
 the **Conta do ChatGPT** (the “Plus ou Pro” badge, a disabled “Continuar com o ChatGPT” and “Ainda não dá para entrar…”;
-the login is #155), then the line that generated images always go through the key. Below ~620 px of card width the columns
-become rows (a container query on `.ia-cartao`, the worker's proposal). The card is mountable
+the login is #155), then the line that generated images always go through the key. Below ~620 px of card width (560 px of body)
+the columns become rows (a container query on `.ia-cartao`, the worker's proposal); the Boas-vindas step body is ~595 px, so
+there design A is two columns too. The card is mountable
 (`CartaoDaIA.montar(corpo, { prefixo })`): Configurações and step 5 of the Boas-vindas draw the same card, each with its own
 Trocar chave, typed text and error. The closed-row summary (`••••••••9f3a`, or “Sem chave” in `danger`) is drawn by the card,
 from `pm_chave_openai`. `#configuracoes/ia` with no key focuses the field. Copy: CFG-35.
