@@ -60,8 +60,8 @@ pm_dono_confere() {
   return 1
 }
 
-# pm_membros_do_grupo <pgid>: pids in that process group.
-pm_membros_do_grupo() { ps -axo pid=,pgid= 2>/dev/null | awk -v g="$1" -v eu="$$" '$2 == g && $1 != eu { print $1 }'; }
+# pm_membros_do_grupo <pgid>: pids still running in that process group (zombies are not running).
+pm_membros_do_grupo() { ps -axo pid=,pgid=,stat= 2>/dev/null | awk -v g="$1" -v eu="$$" '$2 == g && $1 != eu && $3 !~ /^Z/ { print $1 }'; }
 
 # pm_grupo_confere <run-dir> <canonical drive.sh path of this checkout>: true when drive.pid was written by this
 # checkout's drive.sh and records a group that still has members and is still the recorded one. A group id cannot be reused while any member lives; if its leader pid is alive again with another start time,
@@ -117,4 +117,17 @@ pm_sobreviventes() {
   for alvo in "$@"; do
     pm_vivo "${alvo%%|*}" && [ "$(pm_inicio_do_processo "${alvo%%|*}")" = "${alvo#*|}" ] && echo "$alvo"
   done
+}
+
+# pm_encerrar_grupo <run-dir> <canonical drive.sh path>: stops what is left of the recorded job group (TERM, then KILL
+# for what ignores it). Returns 0 when nothing of it is alive any more, 1 when something survived.
+pm_encerrar_grupo() {
+  local pgid i
+  pm_grupo_confere "$1" "$2" || return 0
+  pgid="$(sed -n 5p "$1/drive.pid")"
+  kill -TERM -- "-$pgid" 2>/dev/null
+  for i in 1 2 3 4 5 6; do [ -z "$(pm_membros_do_grupo "$pgid")" ] && return 0; sleep 0.5; done
+  pm_grupo_confere "$1" "$2" && kill -KILL -- "-$pgid" 2>/dev/null
+  sleep 0.5
+  [ -z "$(pm_membros_do_grupo "$pgid")" ]
 }

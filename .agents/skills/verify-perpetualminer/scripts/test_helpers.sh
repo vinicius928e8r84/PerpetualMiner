@@ -17,6 +17,7 @@ cat > "$TMP/bin/npx" <<'STUB'
 trap '' TERM
 touch "$PM_STUB_MARCA"
 [ "${PM_STUB:-}" = rapido ] && { echo hi; exit 0; }
+[ "${PM_STUB:-}" = falha-com-filho ] && { ( trap '' TERM; for _ in $(seq 100); do sleep 1; done ) >/dev/null 2>&1 & echo "job failed"; exit 1; }
 for _ in $(seq "${PM_STUB_SEGUNDOS:-120}"); do sleep 1; done
 STUB
 chmod +x "$TMP/bin/npx"
@@ -122,6 +123,31 @@ filhos="$(pgrep -f "$TMP/bin/npx" | tr '\n' ' ')"
 [ -n "$filhos" ] && vivo "$dono" && vivo "${filhos%% *}" && passou "another checkout's run survives this checkout's cleanup" || falhou "cleanup stopped another checkout's run"
 "$outro/cleanup.sh" alheio >/dev/null 2>&1; sleep 0.3
 vivo "$dono" && ! [ "$(ps -o stat= -p "$dono" | cut -c1)" = Z ] && falhou "the owning checkout's cleanup did not stop its run" || passou "the owning checkout's cleanup stops it"
+
+# 9. A job that fails but leaves a TERM-resistant child in its group: drive.sh itself stops it before it returns (exit 1),
+#    and never deletes drive.pid while something of the run is alive.
+rm -f "$PM_STUB_MARCA"
+PM_STUB=falha-com-filho "$SCRIPTS/drive.sh" vazou --list >/dev/null 2>&1; rc=$?
+sleep 0.5
+restantes="$(pgrep -f "$TMP/bin/npx" | tr '\n' ' ')"
+[ "$rc" -eq 1 ] && [ "$(cat "$PM_VERIFY_ROOT/vazou/evidence/exit-code")" = 1 ] && passou "drive reports the failed job's exit code" || falhou "drive exit code after a failing job: $rc"
+[ -z "$restantes" ] && passou "drive stopped the child the failed job left behind" || falhou "child of a failed job still running: $restantes"
+[ ! -e "$PM_VERIFY_ROOT/vazou/drive.pid" ] && passou "record removed only after the group is empty" || falhou "drive.pid kept although the group is empty"
+"$SCRIPTS/cleanup.sh" vazou >/dev/null 2>&1 && passou "cleanup after the failed run exits 0" || falhou "cleanup after the failed run failed"
+
+# 10. Cleanup interrupted halfway (SIGKILL after it sent TERM), then run again: the second run finishes the job.
+rm -f "$PM_STUB_MARCA"
+"$SCRIPTS/drive.sh" meio --list >/dev/null 2>&1 & dono=$!; extras+=("$dono")
+esperar '[ -f "$PM_STUB_MARCA" ] && [ "$(wc -l < "$PM_VERIFY_ROOT/meio/drive.pid" 2>/dev/null)" -ge 6 ]' || falhou "drive.sh did not start the stub"
+echo proof > "$PM_VERIFY_ROOT/meio/evidence/proof.txt"
+"$SCRIPTS/cleanup.sh" meio >/dev/null 2>&1 & limpeza=$!
+sleep 0.8; kill -9 "$limpeza" 2>/dev/null; wait "$limpeza" 2>/dev/null
+filhos="$(pgrep -f "$TMP/bin/npx" | tr '\n' ' ')"
+[ -n "$filhos" ] && [ -f "$PM_VERIFY_ROOT/meio/drive.pid" ] && passou "an interrupted cleanup leaves the record and the resistant child for the next run" || falhou "no interrupted state to test with (child '$filhos')"
+"$SCRIPTS/cleanup.sh" meio >/dev/null 2>&1; rc=$?
+sleep 0.3
+[ "$rc" -eq 0 ] && [ -z "$(pgrep -f "$TMP/bin/npx" | tr '\n' ' ')" ] && passou "the repeated cleanup stops everything" || falhou "after the repeated cleanup: rc $rc, still running: $(pgrep -f "$TMP/bin/npx" | tr '\n' ' ')"
+[ -f "$PM_VERIFY_ROOT/meio/evidence/proof.txt" ] && [ ! -e "$PM_VERIFY_ROOT/meio/drive.pid" ] && passou "evidence kept, record gone" || falhou "state wrong after the repeated cleanup"
 
 [ "$falhas" -eq 0 ] && echo "test_helpers: all passed" || echo "test_helpers: $falhas failed"
 exit $([ "$falhas" -eq 0 ] && echo 0 || echo 1)
