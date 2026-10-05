@@ -7,6 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../fixtures');
+const { leituraDoVocabulario } = require('../leitura-do-vocabulario');
 
 const LEGENDA = 'The quiet harbor woke before the gulls did.';
 const TRECHO = 'Every lantern along the pier flickered in the salt wind.';
@@ -551,15 +552,7 @@ test('a mineração automática minera uma linha: MIN-06 na pílula, com o idiom
   });
   await abrirPlayer(page, paginas);
 
-  // A mineração automática só olha a legenda de um vídeo que está tocando.
-  await page.evaluate(async frase => {
-    document.querySelector('#legenda').textContent = frase;
-    const tela = document.createElement('canvas');
-    tela.getContext('2d').fillRect(0, 0, 1, 1);
-    const video = document.querySelector('video');
-    video.srcObject = tela.captureStream();
-    await video.play();
-  }, FRASE_RUSSA);
+  await tocarALegenda(page, FRASE_RUSSA);
 
   await expect(tituloDaPilula(page, MIN_06)).toBeVisible();
   await expect(feedback(page)).toContainText(FRASE_RUSSA);
@@ -575,6 +568,116 @@ test('a mineração automática minera uma linha: MIN-06 na pílula, com o idiom
   expect(await textosGravados(extensao)).toEqual([FRASE_RUSSA]);
   // Sucesso: some sozinho.
   await expect(tituloDaPilula(page, MIN_06)).toBeHidden({ timeout: 5000 });
+});
+
+/** Põe `frase` na legenda e faz o vídeo tocar: a mineração automática só olha a legenda de um vídeo que está tocando. */
+async function tocarALegenda(page, frase) {
+  await page.evaluate(async texto => {
+    document.querySelector('#legenda').textContent = texto;
+    const tela = document.createElement('canvas');
+    tela.getContext('2d').fillRect(0, 0, 1, 1);
+    const video = document.querySelector('video');
+    video.srcObject = tela.captureStream();
+    await video.play();
+  }, frase);
+}
+
+const DOIS_DIAS = 2 * 24 * 3600_000;
+
+/** O ajuste e o vocabulário (vazio, do Baralho padrão) de uma mineração automática em russo, lido há `idadeMs`. */
+const mineracaoEmRussoComVocabulario = idadeMs => ({
+  pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } },
+  pm_auto_miner_daily: { date: hoje(), en: { count: 0 }, ru: { count: 0 } },
+  pm_auto_keyword_vocab_ru: leituraDoVocabulario('RUSSIAN', Date.now() - idadeMs),
+});
+
+test('com a Conexão desligada, a mineração automática minera pela última leitura do vocabulário, de dois dias atrás', async ({ page, paginas, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await extensao.gravarStorage(mineracaoEmRussoComVocabulario(DOIS_DIAS));
+  await abrirPlayer(page, paginas);
+
+  await tocarALegenda(page, FRASE_RUSSA);
+
+  await expect(tituloDaPilula(page, MIN_06)).toBeVisible();
+  expect(await textosGravados(extensao)).toEqual([FRASE_RUSSA]);
+  // A leitura guardada segue como estava: com a Conexão muda não há outra para pôr no lugar.
+  const { pm_auto_keyword_vocab_ru: leitura } = await extensao.lerStorage('pm_auto_keyword_vocab_ru');
+  expect(leitura.createdAt).toBeLessThan(Date.now() - DOIS_DIAS + 60_000);
+});
+
+test('com a Conexão desligada e a última leitura de outro Baralho, a mineração automática não minera', async ({ page, paginas, extensao, fakes }) => {
+  fakes.anki.desligar();
+  const gravado = mineracaoEmRussoComVocabulario(DOIS_DIAS);
+  gravado.pm_auto_keyword_vocab_ru.deckName = 'Outro baralho';
+  await extensao.gravarStorage(gravado);
+  await abrirPlayer(page, paginas);
+
+  await tocarALegenda(page, FRASE_RUSSA);
+
+  await expect.poll(() => fakes.anki.requisicoes.some(r => r.caminho === '/anki/vocabulary')).toBe(true);
+  await page.waitForTimeout(1000);
+  await expect(tituloDaPilula(page, MIN_06)).toBeHidden();
+  expect(await textosGravados(extensao)).toEqual([]);
+});
+
+test('com a Conexão respondendo, a leitura vencida (15 min) é lida de novo e a gravada se atualiza', async ({ page, paginas, extensao, fakes }) => {
+  fakes.anki.definirVocabulario('ru', [{ word: 'привет', type: 'word', status: 'mature' }]);
+  await extensao.gravarStorage(mineracaoEmRussoComVocabulario(16 * 60_000));
+  await abrirPlayer(page, paginas);
+  const antes = Date.now();
+
+  await tocarALegenda(page, FRASE_RUSSA);
+
+  await expect(tituloDaPilula(page, MIN_06)).toBeVisible();
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/anki/vocabulary')).toHaveLength(1);
+  const { pm_auto_keyword_vocab_ru: leitura } = await extensao.lerStorage('pm_auto_keyword_vocab_ru');
+  expect(leitura.createdAt).toBeGreaterThanOrEqual(antes);
+  expect(leitura.words).toEqual(['привет']);
+});
+
+test('com a Conexão respondendo mas o Anki fechado, a mineração automática minera pelo arquivo, guarda os dados como os de antes e não pede para abrir o Anki', async ({ page, paginas, extensao, fakes }) => {
+  fakes.anki.fecharOAnki();
+  const TRES_HORAS = 3 * 3600_000;
+  await extensao.gravarStorage(mineracaoEmRussoComVocabulario(TRES_HORAS));
+  const leituraDeAntes = (await extensao.lerStorage('pm_auto_keyword_vocab_ru')).pm_auto_keyword_vocab_ru.createdAt;
+  await abrirPlayer(page, paginas);
+
+  await tocarALegenda(page, FRASE_RUSSA);
+
+  await expect(tituloDaPilula(page, MIN_06)).toBeVisible();
+  expect(await textosGravados(extensao)).toEqual([FRASE_RUSSA]);
+  const pedidosDoVocabulario = fakes.anki.requisicoes.filter(r => r.caminho === '/anki/vocabulary');
+  expect(pedidosDoVocabulario).toHaveLength(1);
+  expect(pedidosDoVocabulario[0].busca).not.toContain('launch');
+  // A leitura é de agora, mas os dados são os da última vez que o Anki respondeu.
+  const { pm_auto_keyword_vocab_ru: leitura } = await extensao.lerStorage('pm_auto_keyword_vocab_ru');
+  expect(leitura.createdAt).toBeGreaterThan(leituraDeAntes + 3600_000);
+  expect(leitura.source).toBe('collection.anki2');
+  expect(leitura.dadosDe).toBe(leituraDeAntes);
+  expect(leitura.ankiFechado).toBe(true);
+});
+
+test('com a Conexão respondendo pelo arquivo mas o Anki aberto (sem o AnkiConnect), a leitura não é dada como de Anki fechado', async ({ page, paginas, extensao, fakes }) => {
+  fakes.anki.ankiAbertoSemAnkiConnect();
+  await extensao.gravarStorage(mineracaoEmRussoComVocabulario(3 * 3600_000));
+  await abrirPlayer(page, paginas);
+
+  await tocarALegenda(page, FRASE_RUSSA);
+
+  await expect(tituloDaPilula(page, MIN_06)).toBeVisible();
+  const { pm_auto_keyword_vocab_ru: leitura } = await extensao.lerStorage('pm_auto_keyword_vocab_ru');
+  expect(leitura.source).toBe('collection.anki2');
+  expect(leitura.ankiFechado).toBe(false);
+});
+
+test('com a Conexão respondendo, a leitura de menos de 15 min não pergunta nada à Conexão', async ({ page, paginas, extensao, fakes }) => {
+  await extensao.gravarStorage(mineracaoEmRussoComVocabulario(60_000));
+  await abrirPlayer(page, paginas);
+
+  await tocarALegenda(page, FRASE_RUSSA);
+
+  await expect(tituloDaPilula(page, MIN_06)).toBeVisible();
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/anki/vocabulary')).toHaveLength(0);
 });
 
 /** O dia de hoje como a mineração automática o grava (AAAA-MM-DD, hora local). */
