@@ -24,6 +24,7 @@ test('o contrato fala da origem da extensão que o Chromium carregou', async ({ 
 for (const exemplo of daExtensao) {
   test(`o fake da Conexão responde o exemplo do contrato: ${exemplo.nome}`, async ({ page, extensao, fakes }) => {
     fakes.anki.abrirPerfil(exemplo.contexto.perfil);
+    if (exemplo.contexto.falhaNoPerfil) fakes.anki.falharLeituraDoPerfil();
     await page.goto(extensao.url('painel.html'));
 
     const resposta = await page.evaluate(async ({ metodo, caminho }) => {
