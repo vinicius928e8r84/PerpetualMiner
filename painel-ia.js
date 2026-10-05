@@ -328,12 +328,19 @@
     if (resultado.ok) {
       lugar.trocando = false;
       // Conferida a chave, nenhum rascunho dela fica na tela: nem o daqui, nem o do outro lugar do card.
-      for (const outro of lugares) outro.digitado = '';
+      // O outro lugar, mesmo no meio de uma troca (com a chave colada ou uma faixa de erro), volta ao resumo:
+      // o que ele tinha a tentar de novo já não existe, e um Tentar de novo sem chave não mandaria nada.
+      for (const outro of lugares) {
+        outro.digitado = '';
+        if (outro !== lugar && !outro.conferindo) {
+          outro.trocando = false;
+          outro.erro = null;
+        }
+      }
       estado.ultimos4 = resultado.ultimos4;
       estado.copia = true;
       desenharResumo();
-      // Este volta ao resumo; o outro lugar também, se não estiver no meio de uma troca.
-      for (const outro of lugares) if (!outro.trocando && !outro.conferindo) desenhar(outro);
+      for (const outro of lugares) if (!outro.conferindo) desenhar(outro);
       porId(idDe(lugar, 'trocar'))?.focus();
       mostrarToastDeSucesso(textoDaVoz('CFG-35.chaveToast'));
       return;

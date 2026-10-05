@@ -286,6 +286,9 @@ test('com a Conexão desligada o card não afirma nada sobre a cópia', async ({
 
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
   await expect(corpo(page)).not.toContainText('cópia da chave');
+  expect(await chaveNoBancoDaExtensao(page)).toBe(CHAVE);
+  expect(await extensao.lerStorage('pm_chave_openai')).toEqual({ pm_chave_openai: { ultimos4: '9f3a' } });
+  expect(JSON.stringify(await extensao.lerStorage(null))).not.toContain('sk-proj-chave-de-exemplo');
 });
 
 test('o content script e o overlay não alcançam a chave: ela não está no storage que eles leem nem no banco que eles abrem', async ({ page, extensao, context, paginas }) => {
@@ -318,7 +321,7 @@ test('o content script e o overlay não alcançam a chave: ela não está no sto
   expect(result.value.bancos).not.toContain('pm-segredos');
 });
 
-test('a chave colada num lugar do card e confirmada no outro nunca volta à tela em Trocar chave', async ({ page, extensao }) => {
+test('a chave colada num lugar do card e confirmada no outro nunca volta à tela em Trocar chave', async ({ page, extensao, fakes }) => {
   await abrirPainel(page, extensao, '#configuracoes/ia');
   // Colada em Configurações, sem conferir: fica como rascunho do card daqui.
   await campo(page).fill(CHAVE);
@@ -336,6 +339,43 @@ test('a chave colada num lugar do card e confirmada no outro nunca volta à tela
 
   await expect(campo(page)).toHaveValue('');
   await expect(page.getByText(CHAVE)).toHaveCount(0);
+
+  // O que ficou guardado: a chave confirmada, inteira só no banco da extensão e na cópia da Conexão.
+  expect(await chaveNoBancoDaExtensao(page)).toBe(OUTRA_CHAVE);
+  expect(fakes.anki.chaveNaConexao()).toBe(OUTRA_CHAVE);
+  expect(await extensao.lerStorage('pm_chave_openai')).toEqual({ pm_chave_openai: { ultimos4: 'wxyz' } });
+  const tudo = JSON.stringify(await extensao.lerStorage(null));
+  expect(tudo).not.toContain(CHAVE);
+  expect(tudo).not.toContain(OUTRA_CHAVE);
+});
+
+test('Trocar chave aberto num lugar, com um erro e a chave colada, é reposto quando o outro lugar confirma uma chave', async ({ page, extensao, fakes }) => {
+  const TERCEIRA_CHAVE = 'sk-proj-TerceiraChaveDoTeste5555-mnop';
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await colarEConferir(page);
+  await card(page).getByRole('button', { name: 'Trocar chave' }).click();
+  fakes.anki.responderOpenAI('fora_do_ar');
+  await colarEConferir(page, OUTRA_CHAVE);
+  await expect(erro(page).getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
+
+  // No passo da Boas-vindas, o mesmo card confirma outra chave.
+  fakes.anki.responderOpenAI('aceita');
+  await page.goto(extensao.url('painel.html#boas-vindas/ia'));
+  const passo = page.locator('.bv-card');
+  await passo.getByRole('button', { name: 'Trocar chave' }).click();
+  await passo.getByRole('textbox', { name: 'Chave da OpenAI' }).fill(TERCEIRA_CHAVE);
+  await passo.getByRole('button', { name: 'Conferir e salvar' }).click();
+  await expect(passo.getByText('••••••••mnop')).toBeVisible();
+
+  // De volta a Configurações o card mostra a chave confirmada, sem campo, sem faixa e sem um Tentar de novo que não manda nada.
+  await page.goto(extensao.url('painel.html#configuracoes/ia'));
+  await expect(corpo(page).getByText('••••••••mnop')).toBeVisible();
+  await expect(campo(page)).toHaveCount(0);
+  await expect(erro(page)).toHaveCount(0);
+
+  expect(await chaveNoBancoDaExtensao(page)).toBe(TERCEIRA_CHAVE);
+  expect(fakes.anki.chaveNaConexao()).toBe(TERCEIRA_CHAVE);
+  expect(await extensao.lerStorage('pm_chave_openai')).toEqual({ pm_chave_openai: { ultimos4: 'mnop' } });
 });
 
 test('com a Conexão desligada depois de conferir, o card deixa de dizer que ela tem a cópia, sem recarregar', async ({ page, extensao, fakes }) => {
@@ -348,6 +388,11 @@ test('com a Conexão desligada depois de conferir, o card deixa de dizer que ela
   // A Conexão é conferida a cada 15 s.
   await expect(corpo(page)).not.toContainText('cópia da chave', { timeout: 25_000 });
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+
+  // Desligar a Conexão não mexe no que está guardado: a mesma chave, e nenhuma chave inteira no storage.
+  expect(await chaveNoBancoDaExtensao(page)).toBe(CHAVE);
+  expect(await extensao.lerStorage('pm_chave_openai')).toEqual({ pm_chave_openai: { ultimos4: '9f3a' } });
+  expect(JSON.stringify(await extensao.lerStorage(null))).not.toContain('sk-proj-chave-de-exemplo');
 });
 
 test('abaixo de ~620 px de largura do card, as colunas viram linhas', async ({ page, extensao }) => {
