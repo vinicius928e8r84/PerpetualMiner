@@ -9,6 +9,7 @@ const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 
 const TRECHO = 'Every lantern along the pier flickered in the salt wind.';
 
+// Exceção de teste: chrome-nativo (CLAUDE.md § Testing).
 // O Playwright não abre o menu de contexto nativo do Chrome. É a exceção
 // documentada em CLAUDE.md (Testing): o teste chama o callback que o Chrome
 // chamaria, com o mesmo `info` e a mesma `tab`; o que ele grava é conferido
