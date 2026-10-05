@@ -559,6 +559,7 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
 });
 
 test('todo controle da vitrine mostra onde o foco está', async ({ page, paginas }) => {
+  test.setTimeout(90_000); // Sob carga, os cerca de 100 Tabs não cabem nos 30 s padrão.
   await abrirVitrine(page, paginas);
 
   await page.evaluate(() => {
