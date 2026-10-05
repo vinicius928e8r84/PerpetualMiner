@@ -1,6 +1,6 @@
 ---
 name: popup
-description: Use when changing or reviewing the toolbar popup (`popup.html/js/css`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests).
+description: "Use when changing or reviewing the toolbar popup (`popup.html/js/css`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
 ---
 
 # Popup (Cockpit)

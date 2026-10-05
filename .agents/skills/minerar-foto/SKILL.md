@@ -1,6 +1,6 @@
 ---
 name: minerar-foto
-description: Use when changing or reviewing Minerar de uma foto (`bookreader.html/js/css`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests).
+description: "Use when changing or reviewing Minerar de uma foto (`bookreader.html/js/css`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
 ---
 
 # Minerar de uma foto
@@ -53,6 +53,6 @@ aviso over the phrases (with the Base's `info` icon), or, when no photo was read
 the photos, the phrases and the avisos — and abandons the reading in flight, so no phantom phrase arrives later
 (bug of #9); the Livro stays. With phrases not yet mined (checked or not) it first asks in the Veio modal FOT-18
 (Cancelar is the safe focus; by the owner's call its Descartar is the outline `--perigo`, as in the prototype —
-the one exception to the danger rule below, through `confirmarComContorno`). A failed photo's card has **Tentar de novo** (FOT-19), which puts only that photo
+the one exception to the danger rule in the `veio-componentes` skill, through `confirmarComContorno`). A failed photo's card has **Tentar de novo** (FOT-19), which puts only that photo
 back in the queue; focus stays on its card. Below 820 px, “Minerar N frases” becomes a bar at the foot of the
 phrases column (the page background, a top border), so it never floats over the phrase cards.

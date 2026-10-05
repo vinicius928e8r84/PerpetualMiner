@@ -1,6 +1,6 @@
 ---
 name: overlay
-description: Use when changing or reviewing the in-page overlay (`overlay.js`, `overlay.css`: the floating button and the feedback pill). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests).
+description: "Use when changing or reviewing the in-page overlay (`overlay.js`, `overlay.css`: the floating button and the feedback pill). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
 ---
 
 # Overlay
@@ -76,7 +76,7 @@ take trusted events.
   with a video and no caption on screen it says MIN-04. The keyboard selection shortcut with nothing selected says
   MIN-10 on a page without a video, and nothing on a page with one; a mouse selection shortcut with nothing
   selected leaves the button to do what it always did (back, forward), so it says nothing. “Without a video” means no frame of the tab has one:
-  a frame without a video asks the others first (`HA_VIDEO_EM_OUTRO_FRAME`, see Cross-Frame Communication), so
+  a frame without a video asks the others first (`HA_VIDEO_EM_OUTRO_FRAME`, see Cross-Frame Communication in `CLAUDE.md`), so
   a player in a cross-origin iframe never gets a false MIN-10 from the top frame.
 - **Typing is the person's:** neither shortcut fires while typing in an `input`, `textarea`, `select` or
   `contenteditable` (`Atalhos.digitandoNumCampo`, through the event's composed path; inside a *closed* shadow

@@ -1,6 +1,6 @@
 ---
 name: veio-componentes
-description: Use when changing or reviewing the Veio base components (`veio/componentes.css`, `veio/componentes.js`) or any surface that uses them. Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests).
+description: "Use when changing or reviewing the Veio base components (`veio/componentes.css`, `veio/componentes.js`) or any surface that uses them. Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
 ---
 
 # Veio base components

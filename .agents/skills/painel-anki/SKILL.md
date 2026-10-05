@@ -1,6 +1,6 @@
 ---
 name: painel-anki
-description: Use when changing or reviewing the Conexão com o Anki area of the panel: Custos, first connection, Baralhos e termos, Vocabulário, Reparar Anki, Ajustes de envio and the Envio ao Anki (`painel-anki*.js`, `painel-ajustes.js`, `painel-envio.js`, `lib/ajustes-de-envio.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests).
+description: "Use when changing or reviewing the Conexão com o Anki area of the panel: Custos, first connection, Baralhos e termos, Vocabulário, Reparar Anki, Ajustes de envio and the Envio ao Anki (`painel-anki*.js`, `painel-ajustes.js`, `painel-envio.js`, `lib/ajustes-de-envio.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
 ---
 
 # Conexão com o Anki area
@@ -25,7 +25,7 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   line to select and copy instead). The status is a `role="status"` region that stays in the DOM.
   The Conferência line (“Confere sozinho a cada 15 s · última vez há N s”, “Conferindo agora…” while a check is out) follows the
   shared checks; see the doc comments in `painel-anki-primeira-conexao.js` for its subscription and timer lifecycle. See the
-  [Anki area states](docs/design/painel/anki/README.md#estados) for the **Pronto** moment, its status during a new check and focus when the controls or card leave.
+  [Anki area states](../../../docs/design/painel/anki/README.md#estados) for the **Pronto** moment, its status during a new check and focus when the controls or card leave.
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
   selo (“Mostrando dados de há 2 h…”, with the code in Detalhes) and the period controls set to that reading's
   period and disabled (another period would have nowhere to come from). **Continuar envio** and
@@ -79,7 +79,7 @@ fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
   number, “palavras diferentes nos cartões” and Cartões · Termos-alvo · Palavra nova por cartão (1 decimal) · Maduros ·
   Recentes · Novos. Ring, bars and legend use the maturity series (ouro · info · muted). Read from the local file
   (`source: 'collection.anki2'`): the BRG-13 note on top; the bridge's own stale cache: the BRG-12 selo (see the
-  [design states](docs/design/painel/anki/README.md#estados) for presentation by tab). Loading BRG-10 + skeleton;
+  [design states](../../../docs/design/painel/anki/README.md#estados) for presentation by tab). Loading BRG-10 + skeleton;
   failure is the persistent BRG-11 aviso with Reparar Anki, Tentar de
   novo and the cause in Detalhes.
 - **Vocabulário** reads `GET /anki/vocabulary` of each language whole (`limit=10000`) and filters in the panel, so
@@ -95,7 +95,7 @@ fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
   It `POST`s `/anki/repair` and **waits for the real repair** — the bridge closes the Anki and waits up to 90 s
   (~110 s in all); the old 45 s abort said a working repair had failed (#9). `LIMITE_DO_REPARO_MS` (180 s) only
   guards against a Conexão that never answers. While it runs `#anki-reparando` receives focus; see the
-  [design states](docs/design/painel/anki/README.md#estados) for the visible repair state. `ok` or
+  [design states](../../../docs/design/painel/anki/README.md#estados) for the visible repair state. `ok` or
   `after.collectionReady` → the BRG-16 toast and both tabs read again (`refresh=1`). `devolverOFoco` and
   `focarAzulejo` restore focus for the Avançado and BRG-11 entry points, respectively. Windows refused to close it (`accessDenied`,
   `anki_repair_access_denied`) → BRG-18, persistent, with Reparar Anki again and the PIDs in Detalhes; the repair ran

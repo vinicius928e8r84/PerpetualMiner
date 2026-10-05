@@ -1,6 +1,6 @@
 ---
 name: boas-vindas
-description: Use when changing or reviewing the Boas-vindas (`painel-boas-vindas.js`) or the “Configuração pela metade” reminder (`lib/configuracao.js`, `painel-lembrete.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests).
+description: "Use when changing or reviewing the Boas-vindas (`painel-boas-vindas.js`) or the “Configuração pela metade” reminder (`lib/configuracao.js`, `painel-lembrete.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
 ---
 
 # Boas-vindas and Configuração pela metade
@@ -37,10 +37,10 @@ POP-05; failure is POP-06 under the field, text kept). Step 2: ONB-06 and the sa
 a recording): same storage, same refusal of a repeated shortcut. Nothing of the panel opens over the page: the Envio
 summary waits and opens once the person enters one of `Shell.AREAS_DO_PAINEL`. Step 3 mounts the Conta & sync body
 (`Conta.montarCartao`) shared with Configurações. Step 4's status, retry and instructions are described in
-[Boas-vindas § F1](docs/design/painel/boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1). Step 5 shares
+[Boas-vindas § F1](../../../docs/design/painel/boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1). Step 5 shares
 the popup's automatic-mining messages and daily-limit field through `lib/mineracao-automatica.js`, following
 `pm_auto_miner_state_view`. Step 6 mounts the Chave do Gemini card with `ChaveDoGemini.montar(…, { prefixo: 'bv' })`.
-For the step-specific labels, controls and visible states, see the [Boas-vindas spec](docs/design/painel/boas-vindas/README.md#os-passos).
+For the step-specific labels, controls and visible states, see the [Boas-vindas spec](../../../docs/design/painel/boas-vindas/README.md#os-passos).
 The reminder (item 9) is below, in “Configuração pela metade”.
 
 ### Configuração pela metade (`lib/configuracao.js`, `painel-lembrete.js`, item 9 of the closed list)

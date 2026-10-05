@@ -1,6 +1,6 @@
 ---
 name: configuracoes
-description: Use when changing or reviewing the Configurações area of the panel: Chave do Gemini, Zona de perigo, Atalhos and Conta & sync (`painel-chave.js`, `painel-perigo.js`, `painel-atalhos.js`, `lib/atalhos.js`, `painel-conta.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests).
+description: "Use when changing or reviewing the Configurações area of the panel: Chave do Gemini, Zona de perigo, Atalhos and Conta & sync (`painel-chave.js`, `painel-perigo.js`, `painel-atalhos.js`, `lib/atalhos.js`, `painel-conta.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
 ---
 
 # Configurações
@@ -69,5 +69,5 @@ name the account is “Conta Google” (CFG-10).
 A sync problem shows **only** in the card and the chip — never a toast or a strip in another area. The one exception is
 the spec's own PAI-15: when a delete reaches this computer but not the cloud, Frases also shows the persistent aviso
 saying those phrases may come back, with “Tentar de novo”; the card and the chip still say the computer is out of sync. `painel.js` maps the cloud module's failure `motivo` to the account's situation through
-`situacaoDoErro` (see “Firebase / Firestore Sync”), and the raw message goes to the card's collapsed “Detalhes”. Closing Google's login window is not an
+`situacaoDoErro` (see “Firebase / Firestore Sync” in `CLAUDE.md`), and the raw message goes to the card's collapsed “Detalhes”. Closing Google's login window is not an
 error and shows nothing; a login that fails shows CFG-07 in the card with “Tentar de novo”.
