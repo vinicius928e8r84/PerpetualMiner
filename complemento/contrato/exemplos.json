@@ -1,5 +1,61 @@
 {
   "origemDaExtensao": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+  "colecoes": {
+    "inglês com subbaralho": {
+      "baralhos": [
+        {
+          "nome": "Default"
+        },
+        {
+          "nome": "Inglês",
+          "notas": [
+            {
+              "frente": "She <b>gave up</b> smoking",
+              "verso": "<b>give up</b> /ɡɪv ʌp/",
+              "cartoes": [
+                {
+                  "tipo": 2,
+                  "intervalo": 40
+                }
+              ]
+            },
+            {
+              "frente": "I gave her the book",
+              "verso": "give /ɡɪv/",
+              "cartoes": [
+                {
+                  "tipo": 0,
+                  "intervalo": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "nome": "Inglês::Séries",
+          "notas": [
+            {
+              "frente": "They keep running",
+              "verso": "run /rʌn/",
+              "cartoes": [
+                {
+                  "tipo": 1,
+                  "intervalo": 0
+                },
+                {
+                  "tipo": 2,
+                  "intervalo": 5
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "nome": "Vazio"
+        }
+      ]
+    }
+  },
   "exemplos": [
     {
       "nome": "saúde com um perfil aberto",
@@ -203,6 +259,891 @@
         "status": 403,
         "json": {
           "error": "origin_not_allowed"
+        }
+      }
+    },
+    {
+      "nome": "Baralhos que o Anki tem, sem o Default e com os subbaralhos",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/decks",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "decks": [
+            "Inglês",
+            "Inglês::Séries",
+            "Vazio"
+          ]
+        }
+      }
+    },
+    {
+      "nome": "Baralhos com o Anki na tela de perfis",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": null,
+        "colecao": null
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/decks",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 503,
+        "json": {
+          "error": "anki_decks_unavailable",
+          "detail": "collection_not_open"
+        }
+      }
+    },
+    {
+      "nome": "Números de um Baralho que existe e de um que não existe",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/stats/decks",
+        "corpo": {
+          "decks": [
+            {
+              "deckName": "Inglês",
+              "lang": "en"
+            },
+            {
+              "deckName": "Alemão",
+              "lang": "ru"
+            }
+          ]
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "generatedAt": "<agora>",
+          "decks": [
+            {
+              "deckName": "Inglês",
+              "lang": "en",
+              "frontField": "Frente",
+              "notes": 3,
+              "cards": 4,
+              "uniqueTerms": 3,
+              "uniqueFronts": 3,
+              "uniqueTermTokens": 11,
+              "vocabulary": {
+                "targetTerms": 3,
+                "phraseVocabulary": 11,
+                "newPhraseVocabulary": 11,
+                "avgNewPhraseVocabularyPerCard": 2.75,
+                "singleNewVocabularyCards": 0,
+                "zeroNewVocabularyCards": 1,
+                "catalogedCards": 4,
+                "targetMetric": "anki_target_terms",
+                "phraseMetric": "front_literal_words",
+                "usesAiCatalog": false
+              },
+              "termMetric": "anki_target_terms",
+              "new": 1,
+              "learning": 1,
+              "young": 1,
+              "mature": 1,
+              "reviewed": 3,
+              "maturePct": 33.3
+            },
+            {
+              "deckName": "Alemão",
+              "lang": "ru",
+              "frontField": "Frente",
+              "missing": true,
+              "notes": 0,
+              "cards": 0,
+              "uniqueTerms": 0,
+              "uniqueFronts": 0,
+              "uniqueTermTokens": 0,
+              "vocabulary": {
+                "targetTerms": 0,
+                "phraseVocabulary": 0,
+                "newPhraseVocabulary": 0,
+                "avgNewPhraseVocabularyPerCard": 0.0,
+                "singleNewVocabularyCards": 0,
+                "zeroNewVocabularyCards": 0,
+                "catalogedCards": 0,
+                "targetMetric": "anki_target_terms",
+                "phraseMetric": "front_literal_words",
+                "usesAiCatalog": false
+              },
+              "termMetric": "anki_target_terms",
+              "new": 0,
+              "learning": 0,
+              "young": 0,
+              "mature": 0,
+              "reviewed": 0,
+              "maturePct": 0.0
+            }
+          ],
+          "totals": {
+            "decks": 2,
+            "notes": 3,
+            "cards": 4,
+            "uniqueTerms": 3,
+            "uniqueFronts": 3,
+            "uniqueTermTokens": 11,
+            "vocabulary": {
+              "targetTerms": 3,
+              "phraseVocabulary": 11,
+              "newPhraseVocabulary": 11,
+              "avgNewPhraseVocabularyPerCard": 2.75,
+              "singleNewVocabularyCards": 0,
+              "zeroNewVocabularyCards": 1,
+              "catalogedCards": 4,
+              "targetMetric": "anki_target_terms",
+              "phraseMetric": "front_literal_words",
+              "usesAiCatalog": false
+            },
+            "termMetric": "anki_target_terms",
+            "new": 1,
+            "learning": 1,
+            "young": 1,
+            "mature": 1,
+            "reviewed": 3,
+            "maturePct": 33.3
+          },
+          "source": "colecao"
+        }
+      }
+    },
+    {
+      "nome": "Números depois de um reparo ou de salvar outro Baralho, com refresh",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/stats/decks",
+        "corpo": {
+          "decks": [
+            {
+              "deckName": "Inglês",
+              "lang": "en"
+            },
+            {
+              "deckName": "Alemão",
+              "lang": "ru"
+            }
+          ],
+          "refresh": true
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "generatedAt": "<agora>",
+          "decks": [
+            {
+              "deckName": "Inglês",
+              "lang": "en",
+              "frontField": "Frente",
+              "notes": 3,
+              "cards": 4,
+              "uniqueTerms": 3,
+              "uniqueFronts": 3,
+              "uniqueTermTokens": 11,
+              "vocabulary": {
+                "targetTerms": 3,
+                "phraseVocabulary": 11,
+                "newPhraseVocabulary": 11,
+                "avgNewPhraseVocabularyPerCard": 2.75,
+                "singleNewVocabularyCards": 0,
+                "zeroNewVocabularyCards": 1,
+                "catalogedCards": 4,
+                "targetMetric": "anki_target_terms",
+                "phraseMetric": "front_literal_words",
+                "usesAiCatalog": false
+              },
+              "termMetric": "anki_target_terms",
+              "new": 1,
+              "learning": 1,
+              "young": 1,
+              "mature": 1,
+              "reviewed": 3,
+              "maturePct": 33.3
+            },
+            {
+              "deckName": "Alemão",
+              "lang": "ru",
+              "frontField": "Frente",
+              "missing": true,
+              "notes": 0,
+              "cards": 0,
+              "uniqueTerms": 0,
+              "uniqueFronts": 0,
+              "uniqueTermTokens": 0,
+              "vocabulary": {
+                "targetTerms": 0,
+                "phraseVocabulary": 0,
+                "newPhraseVocabulary": 0,
+                "avgNewPhraseVocabularyPerCard": 0.0,
+                "singleNewVocabularyCards": 0,
+                "zeroNewVocabularyCards": 0,
+                "catalogedCards": 0,
+                "targetMetric": "anki_target_terms",
+                "phraseMetric": "front_literal_words",
+                "usesAiCatalog": false
+              },
+              "termMetric": "anki_target_terms",
+              "new": 0,
+              "learning": 0,
+              "young": 0,
+              "mature": 0,
+              "reviewed": 0,
+              "maturePct": 0.0
+            }
+          ],
+          "totals": {
+            "decks": 2,
+            "notes": 3,
+            "cards": 4,
+            "uniqueTerms": 3,
+            "uniqueFronts": 3,
+            "uniqueTermTokens": 11,
+            "vocabulary": {
+              "targetTerms": 3,
+              "phraseVocabulary": 11,
+              "newPhraseVocabulary": 11,
+              "avgNewPhraseVocabularyPerCard": 2.75,
+              "singleNewVocabularyCards": 0,
+              "zeroNewVocabularyCards": 1,
+              "catalogedCards": 4,
+              "targetMetric": "anki_target_terms",
+              "phraseMetric": "front_literal_words",
+              "usesAiCatalog": false
+            },
+            "termMetric": "anki_target_terms",
+            "new": 1,
+            "learning": 1,
+            "young": 1,
+            "mature": 1,
+            "reviewed": 3,
+            "maturePct": 33.3
+          },
+          "source": "colecao"
+        }
+      }
+    },
+    {
+      "nome": "Números pedidos por Atualizar e Tentar de novo, com refresh e launch que a Conexão ignora",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/stats/decks",
+        "corpo": {
+          "decks": [
+            {
+              "deckName": "Inglês",
+              "lang": "en"
+            },
+            {
+              "deckName": "Alemão",
+              "lang": "ru"
+            }
+          ],
+          "refresh": true,
+          "launch": true
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "generatedAt": "<agora>",
+          "decks": [
+            {
+              "deckName": "Inglês",
+              "lang": "en",
+              "frontField": "Frente",
+              "notes": 3,
+              "cards": 4,
+              "uniqueTerms": 3,
+              "uniqueFronts": 3,
+              "uniqueTermTokens": 11,
+              "vocabulary": {
+                "targetTerms": 3,
+                "phraseVocabulary": 11,
+                "newPhraseVocabulary": 11,
+                "avgNewPhraseVocabularyPerCard": 2.75,
+                "singleNewVocabularyCards": 0,
+                "zeroNewVocabularyCards": 1,
+                "catalogedCards": 4,
+                "targetMetric": "anki_target_terms",
+                "phraseMetric": "front_literal_words",
+                "usesAiCatalog": false
+              },
+              "termMetric": "anki_target_terms",
+              "new": 1,
+              "learning": 1,
+              "young": 1,
+              "mature": 1,
+              "reviewed": 3,
+              "maturePct": 33.3
+            },
+            {
+              "deckName": "Alemão",
+              "lang": "ru",
+              "frontField": "Frente",
+              "missing": true,
+              "notes": 0,
+              "cards": 0,
+              "uniqueTerms": 0,
+              "uniqueFronts": 0,
+              "uniqueTermTokens": 0,
+              "vocabulary": {
+                "targetTerms": 0,
+                "phraseVocabulary": 0,
+                "newPhraseVocabulary": 0,
+                "avgNewPhraseVocabularyPerCard": 0.0,
+                "singleNewVocabularyCards": 0,
+                "zeroNewVocabularyCards": 0,
+                "catalogedCards": 0,
+                "targetMetric": "anki_target_terms",
+                "phraseMetric": "front_literal_words",
+                "usesAiCatalog": false
+              },
+              "termMetric": "anki_target_terms",
+              "new": 0,
+              "learning": 0,
+              "young": 0,
+              "mature": 0,
+              "reviewed": 0,
+              "maturePct": 0.0
+            }
+          ],
+          "totals": {
+            "decks": 2,
+            "notes": 3,
+            "cards": 4,
+            "uniqueTerms": 3,
+            "uniqueFronts": 3,
+            "uniqueTermTokens": 11,
+            "vocabulary": {
+              "targetTerms": 3,
+              "phraseVocabulary": 11,
+              "newPhraseVocabulary": 11,
+              "avgNewPhraseVocabularyPerCard": 2.75,
+              "singleNewVocabularyCards": 0,
+              "zeroNewVocabularyCards": 1,
+              "catalogedCards": 4,
+              "targetMetric": "anki_target_terms",
+              "phraseMetric": "front_literal_words",
+              "usesAiCatalog": false
+            },
+            "termMetric": "anki_target_terms",
+            "new": 1,
+            "learning": 1,
+            "young": 1,
+            "mature": 1,
+            "reviewed": 3,
+            "maturePct": 33.3
+          },
+          "source": "colecao"
+        }
+      }
+    },
+    {
+      "nome": "Números de um Baralho vazio",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/stats/decks",
+        "corpo": {
+          "decks": [
+            {
+              "deckName": "Vazio",
+              "lang": "ru"
+            }
+          ]
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "generatedAt": "<agora>",
+          "decks": [
+            {
+              "deckName": "Vazio",
+              "lang": "ru",
+              "frontField": "Frente",
+              "notes": 0,
+              "cards": 0,
+              "uniqueTerms": 0,
+              "uniqueFronts": 0,
+              "uniqueTermTokens": 0,
+              "vocabulary": {
+                "targetTerms": 0,
+                "phraseVocabulary": 0,
+                "newPhraseVocabulary": 0,
+                "avgNewPhraseVocabularyPerCard": 0.0,
+                "singleNewVocabularyCards": 0,
+                "zeroNewVocabularyCards": 0,
+                "catalogedCards": 0,
+                "targetMetric": "anki_target_terms",
+                "phraseMetric": "front_literal_words",
+                "usesAiCatalog": false
+              },
+              "termMetric": "anki_target_terms",
+              "new": 0,
+              "learning": 0,
+              "young": 0,
+              "mature": 0,
+              "reviewed": 0,
+              "maturePct": 0.0
+            }
+          ],
+          "totals": {
+            "decks": 1,
+            "notes": 0,
+            "cards": 0,
+            "uniqueTerms": 0,
+            "uniqueFronts": 0,
+            "uniqueTermTokens": 0,
+            "vocabulary": {
+              "targetTerms": 0,
+              "phraseVocabulary": 0,
+              "newPhraseVocabulary": 0,
+              "avgNewPhraseVocabularyPerCard": 0.0,
+              "singleNewVocabularyCards": 0,
+              "zeroNewVocabularyCards": 0,
+              "catalogedCards": 0,
+              "targetMetric": "anki_target_terms",
+              "phraseMetric": "front_literal_words",
+              "usesAiCatalog": false
+            },
+            "termMetric": "anki_target_terms",
+            "new": 0,
+            "learning": 0,
+            "young": 0,
+            "mature": 0,
+            "reviewed": 0,
+            "maturePct": 0.0
+          },
+          "source": "colecao"
+        }
+      }
+    },
+    {
+      "nome": "Números sem dizer os Baralhos",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/stats/decks",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "decks_required"
+        }
+      }
+    },
+    {
+      "nome": "Números com o Anki na tela de perfis",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": null,
+        "colecao": null
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/stats/decks",
+        "corpo": {
+          "decks": [
+            {
+              "deckName": "Inglês",
+              "lang": "en"
+            }
+          ]
+        }
+      },
+      "resposta": {
+        "status": 503,
+        "json": {
+          "error": "anki_stats_unavailable",
+          "detail": "collection_not_open"
+        }
+      }
+    },
+    {
+      "nome": "Vocabulário de um Baralho",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/vocabulary",
+        "corpo": {
+          "deck": "Inglês",
+          "lang": "en",
+          "limit": 10000
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "generatedAt": "<agora>",
+          "deckName": "Inglês",
+          "lang": "en",
+          "source": "colecao",
+          "totalCards": 4,
+          "filters": {
+            "status": "all",
+            "type": "all",
+            "q": "",
+            "limit": 10000,
+            "offset": 0
+          },
+          "totalWords": 12,
+          "words": [
+            {
+              "word": "gave up",
+              "type": "term",
+              "cards": 1,
+              "new": 0,
+              "recent": 0,
+              "mature": 1,
+              "status": "mature"
+            },
+            {
+              "word": "gave",
+              "type": "word",
+              "cards": 2,
+              "new": 1,
+              "recent": 0,
+              "mature": 1,
+              "status": "mixed"
+            },
+            {
+              "word": "keep",
+              "type": "word",
+              "cards": 2,
+              "new": 0,
+              "recent": 2,
+              "mature": 0,
+              "status": "recent"
+            },
+            {
+              "word": "running",
+              "type": "word",
+              "cards": 2,
+              "new": 0,
+              "recent": 2,
+              "mature": 0,
+              "status": "recent"
+            },
+            {
+              "word": "they",
+              "type": "word",
+              "cards": 2,
+              "new": 0,
+              "recent": 2,
+              "mature": 0,
+              "status": "recent"
+            },
+            {
+              "word": "book",
+              "type": "word",
+              "cards": 1,
+              "new": 1,
+              "recent": 0,
+              "mature": 0,
+              "status": "new"
+            },
+            {
+              "word": "her",
+              "type": "word",
+              "cards": 1,
+              "new": 1,
+              "recent": 0,
+              "mature": 0,
+              "status": "new"
+            },
+            {
+              "word": "i",
+              "type": "word",
+              "cards": 1,
+              "new": 1,
+              "recent": 0,
+              "mature": 0,
+              "status": "new"
+            },
+            {
+              "word": "she",
+              "type": "word",
+              "cards": 1,
+              "new": 0,
+              "recent": 0,
+              "mature": 1,
+              "status": "mature"
+            },
+            {
+              "word": "smoking",
+              "type": "word",
+              "cards": 1,
+              "new": 0,
+              "recent": 0,
+              "mature": 1,
+              "status": "mature"
+            },
+            {
+              "word": "the",
+              "type": "word",
+              "cards": 1,
+              "new": 1,
+              "recent": 0,
+              "mature": 0,
+              "status": "new"
+            },
+            {
+              "word": "up",
+              "type": "word",
+              "cards": 1,
+              "new": 0,
+              "recent": 0,
+              "mature": 1,
+              "status": "mature"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nome": "Vocabulário só dos Termos, pela busca",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/vocabulary",
+        "corpo": {
+          "deck": "Inglês",
+          "lang": "en",
+          "type": "term",
+          "q": "up",
+          "limit": 10000
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "generatedAt": "<agora>",
+          "deckName": "Inglês",
+          "lang": "en",
+          "source": "colecao",
+          "totalCards": 4,
+          "filters": {
+            "status": "all",
+            "type": "term",
+            "q": "up",
+            "limit": 10000,
+            "offset": 0
+          },
+          "totalWords": 1,
+          "words": [
+            {
+              "word": "gave up",
+              "type": "term",
+              "cards": 1,
+              "new": 0,
+              "recent": 0,
+              "mature": 1,
+              "status": "mature"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nome": "Vocabulário de um Baralho que não existe",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/vocabulary",
+        "corpo": {
+          "deck": "Alemão",
+          "lang": "ru",
+          "limit": 10000
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "generatedAt": "<agora>",
+          "deckName": "Alemão",
+          "lang": "ru",
+          "source": "colecao",
+          "totalCards": 0,
+          "filters": {
+            "status": "all",
+            "type": "all",
+            "q": "",
+            "limit": 10000,
+            "offset": 0
+          },
+          "totalWords": 0,
+          "words": []
+        }
+      }
+    },
+    {
+      "nome": "Vocabulário sem dizer o Baralho",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/vocabulary",
+        "corpo": {
+          "lang": "en"
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "deck_required"
+        }
+      }
+    },
+    {
+      "nome": "Vocabulário de um idioma que a Conexão não lê",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/vocabulary",
+        "corpo": {
+          "deck": "Inglês",
+          "lang": "fr"
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_lang"
+        }
+      }
+    },
+    {
+      "nome": "Vocabulário com o Anki na tela de perfis",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": null,
+        "colecao": null
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/vocabulary",
+        "corpo": {
+          "deck": "Inglês",
+          "lang": "en"
+        }
+      },
+      "resposta": {
+        "status": 503,
+        "json": {
+          "error": "anki_vocabulary_unavailable",
+          "detail": "collection_not_open"
+        }
+      }
+    },
+    {
+      "nome": "Vocabulário pedido sem a origem da extensão é recusado",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/vocabulary",
+        "origem": null,
+        "corpo": {
+          "deck": "Inglês",
+          "lang": "en"
+        }
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    },
+    {
+      "nome": "Baralhos pedidos por GET, que a extensão não usa, não existem",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/anki/decks",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf"
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "not_found"
         }
       }
     },

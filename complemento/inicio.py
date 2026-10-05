@@ -12,8 +12,8 @@ from .configuracao import ORIGENS_ACEITAS, PORTA, VERSAO
 from .servidor import Conexao
 
 
-def iniciar(pasta_do_complemento, perfil_aberto, *, porta=PORTA, origens_aceitas=ORIGENS_ACEITAS, item_de_login=None):
-    """Prepara `user_files` e sobe a Conexão. Devolve a Conexão, ou None se ela não subiu.
+def iniciar(pasta_do_complemento, perfil_aberto, *, porta=PORTA, origens_aceitas=ORIGENS_ACEITAS, colecao=None, item_de_login=None):
+    """Prepara `user_files` e sobe a Conexão, com o adaptador da coleção que ela lê. Devolve a Conexão, ou None se ela não subiu.
 
     O `item_de_login` é o de “Abrir o Anki com o computador”; sem ele, o deste computador (None onde não há).
     """
@@ -29,6 +29,7 @@ def iniciar(pasta_do_complemento, perfil_aberto, *, porta=PORTA, origens_aceitas
             versao=VERSAO,
             perfil_aberto=perfil_aberto,
             logger=logger,
+            colecao=colecao,
             item_de_login=item_de_login,
         )
         return conexao if conexao.iniciar() else None

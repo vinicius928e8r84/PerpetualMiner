@@ -1,5 +1,6 @@
 'use strict';
 
+const { isDeepStrictEqual } = require('util');
 const { responderJson } = require('./http');
 const contrato = require('../../complemento/contrato/exemplos.json');
 
@@ -8,19 +9,22 @@ const contrato = require('../../complemento/contrato/exemplos.json');
 // (conexão recusada, como quando o programa não está rodando) ou responder
 // uma rota específica com `responder`.
 //
-// Baralhos e termos (`GET /anki/stats/decks`) e Vocabulário (`GET /anki/vocabulary`)
-// seguem `bridge/server.py`: os baralhos pedidos voltam na ordem pedida, um
+// Baralhos e termos (`POST /anki/stats/decks`) e Vocabulário (`POST /anki/vocabulary`)
+// seguem o contrato do complemento: os baralhos pedidos voltam na ordem pedida, um
 // baralho que não existe no Anki volta `missing`, e o vocabulário do baralho vem
 // inteiro, com os filtros (`status`, `type`, `q`) aplicados como lá.
 //
-// Ajustes de envio (`GET /anki/decks`) lista os nomes dos baralhos que o Anki tem
+// Ajustes de envio (`POST /anki/decks`) lista os nomes dos baralhos que o Anki tem
 // (`{ decks: [...] }`); sem `definirBaralhosDoAnki` a lista não vem (503), como
 // com o Anki sem responder, e a aba oferece o campo de texto.
 //
-// O que o complemento do Anki responde (a saúde e o item de login de “Abrir o Anki com o computador”) vem de
+// O que o complemento do Anki responde (a saúde, os Baralhos, os números, o vocabulário e o item de login de “Abrir o Anki com o computador”) vem de
 // `complemento/contrato/exemplos.json`, o mesmo arquivo que os testes do
 // complemento leem: o fake responde o exemplo do pedido no contexto em que a
-// Conexão está (`abrirPerfil`). Uma rota nova do complemento entra nesse arquivo
+// Conexão está (`abrirPerfil`, `abrirColecao`). Os testes de tela montam os Baralhos
+// em termos de gente (`definirVocabulario`, `definirBaralho`) e o fake os entrega no
+// formato do contrato; `abrirColecao(nome)` passa a responder o contrato inteiro, para quem confere o
+// fake contra ele. Uma rota nova do complemento entra nesse arquivo
 // (veja `complemento/contrato/LEIA-ME.md`) e o fake passa a respondê-la daqui.
 //
 // Os Envios seguem o contrato de `bridge/server.py`: `POST /jobs` cria um
@@ -30,6 +34,9 @@ const contrato = require('../../complemento/contrato/exemplos.json');
 // `successfulPhraseIds` inclui as duplicadas, que também vão em
 // `duplicatePhraseIds`, e o que não virou cartão vai em `failedPhraseIds`.
 
+// O exemplo do contrato de onde o fake tira a linha de um Baralho que o Anki não tem.
+const EXEMPLO_DO_BARALHO_QUE_NAO_EXISTE = 'Números de um Baralho que existe e de um que não existe';
+
 /**
  * O exemplo é um pedido que a extensão faz de verdade (`daExtensao`): o GET de uma página dela
  * vai sem `Origin` e só a saúde o aceita; o POST leva a origem dela. Os outros exemplos (outro
@@ -37,6 +44,14 @@ const contrato = require('../../complemento/contrato/exemplos.json');
  */
 function exemploDaExtensao(exemplo) {
   return exemplo.daExtensao === true;
+}
+
+function dadosDoCorpo(corpo) {
+  try {
+    return corpo ? JSON.parse(corpo) : null;
+  } catch {
+    return null;
+  }
 }
 
 function criarFakeAnki() {
@@ -49,13 +64,13 @@ function criarFakeAnki() {
     custos: [],         // as linhas de GET /analytics/jobs (o contrato de bridge/analytics.py)
     falhaDosCustos: null, // { status } | { rede: true }: GET /analytics/jobs falha
     baralhos: {},       // deckName → os números do baralho (definirBaralho)
-    fonteDosBaralhos: 'ankiconnect', // 'collection.anki2': lidos do arquivo local (BRG-13)
+    fonteDosBaralhos: 'colecao',        // 'collection.anki2': lidos do arquivo local (BRG-13)
     lidoDoArquivo: false,       // a Conexão responde lendo o arquivo do Anki: baralhos e vocabulário vêm de `collection.anki2`
     processosDoAnki: 1,         // GET /anki/status: quantos processos do Anki a Conexão vê (0: o Anki está fechado)
-    falhaDosBaralhos: null,     // { status } | { rede: true }: GET /anki/stats/decks falha
-    falhaDoVocabulario: null,   // { status } | { rede: true }: GET /anki/vocabulary falha
-    baralhosDoAnki: null,       // os nomes de GET /anki/decks; null: a lista não vem (definirBaralhosDoAnki)
-    contexto: { perfil: 'Usuário 1', falhaNoPerfil: false, itemDeLogin: 'desligado' }, // em que situação o complemento está (os `contexto` dos exemplos)
+    falhaDosBaralhos: null,     // { status } | { rede: true }: POST /anki/stats/decks falha
+    falhaDoVocabulario: null,   // { status } | { rede: true }: POST /anki/vocabulary falha
+    baralhosDoAnki: null,       // os nomes de POST /anki/decks; null: a lista não vem (definirBaralhosDoAnki)
+    contexto: { perfil: 'Usuário 1', falhaNoPerfil: false, itemDeLogin: 'desligado' }, // em que situação o complemento está (os `contexto` dos exemplos); `colecao` só existe depois de `abrirColecao`
   };
   const requisicoes = [];
   const envios = [];    // { jobId, lang, entries, deckName, state }
@@ -123,45 +138,75 @@ function criarFakeAnki() {
     return { word, type, cards, new: novos, recent: recentes, mature: maduros, status };
   }
 
-  function vocabulario(url) {
-    const lang = url.searchParams.get('lang') === 'ru' ? 'ru' : 'en';
-    const status = url.searchParams.get('status') || 'all';
-    const tipo = url.searchParams.get('type') || 'all';
-    const busca = (url.searchParams.get('q') || '').toLowerCase();
+  function vocabulario(corpo) {
+    const lang = corpo.lang === 'ru' ? 'ru' : 'en';
+    const status = corpo.status || 'all';
+    const tipo = corpo.type || 'all';
+    const busca = (corpo.q || '').toLowerCase();
     const words = estado.vocabulario[lang].map(linhaDoVocabulario)
       .filter(w => (status === 'all' || w.status === status) && (tipo === 'all' || w.type === tipo)
         && (!busca || w.word.toLowerCase().includes(busca)));
     return {
       generatedAt: estado.agora().toISOString(),
-      deckName: url.searchParams.get('deck') || '',
+      deckName: corpo.deck || '',
       lang,
       // Com o Anki fechado a Conexão responde lendo o arquivo (`_local_vocabulary`, bridge/server.py).
-      source: estado.lidoDoArquivo ? 'collection.anki2' : 'ankiconnect',
+      source: estado.lidoDoArquivo ? 'collection.anki2' : 'colecao',
       ...(estado.lidoDoArquivo && { sourceDetail: 'AnkiConnect indisponivel; lendo collection.anki2' }),
       totalCards: words.reduce((soma, w) => soma + w.cards, 0),
+      filters: { status, type: tipo, q: busca, limit: corpo.limit || 1000, offset: corpo.offset || 0 },
       totalWords: words.length,
       words,
     };
   }
 
-  /** Os baralhos pedidos (`deck` e `lang` repetidos, na ordem), como `_anki_deck_stats`. */
-  function numerosDosBaralhos(url) {
-    const nomes = url.searchParams.getAll('deck');
-    const langs = url.searchParams.getAll('lang');
-    const decks = nomes.map((deckName, i) => {
-      const lang = langs[i] || 'en';
+  /** Os totais de uma leitura de Baralhos, como `deck_stats_totals` (complemento/normalizacao.py). */
+  function totaisDosBaralhos(linhas) {
+    const soma = campo => linhas.reduce((total, linha) => total + (linha[campo] || 0), 0);
+    const somaDoVocabulario = campo => linhas.reduce((total, linha) => total + (linha.vocabulary[campo] || 0), 0);
+    const catalogados = somaDoVocabulario('catalogedCards');
+    const novasPalavras = somaDoVocabulario('newPhraseVocabulary');
+    const revisados = soma('learning') + soma('young') + soma('mature');
+    return {
+      decks: linhas.length, notes: soma('notes'), cards: soma('cards'), uniqueTerms: somaDoVocabulario('targetTerms'),
+      uniqueFronts: soma('uniqueFronts'), uniqueTermTokens: somaDoVocabulario('phraseVocabulary'),
+      vocabulary: {
+        targetTerms: somaDoVocabulario('targetTerms'), phraseVocabulary: somaDoVocabulario('phraseVocabulary'),
+        newPhraseVocabulary: novasPalavras, avgNewPhraseVocabularyPerCard: catalogados ? Math.round((novasPalavras / catalogados) * 100) / 100 : 0,
+        singleNewVocabularyCards: somaDoVocabulario('singleNewVocabularyCards'), zeroNewVocabularyCards: somaDoVocabulario('zeroNewVocabularyCards'),
+        catalogedCards: catalogados, targetMetric: 'anki_target_terms', phraseMetric: 'front_literal_words', usesAiCatalog: false,
+      },
+      termMetric: 'anki_target_terms', new: soma('new'), learning: soma('learning'), young: soma('young'), mature: soma('mature'),
+      reviewed: revisados, maturePct: revisados ? Math.round((soma('mature') / revisados) * 1000) / 10 : 0,
+    };
+  }
+
+  /** A linha de um Baralho que o Anki não tem: a que o contrato dá (`missing`, tudo zerado). */
+  function linhaDoBaralhoQueNaoExiste(deckName, lang) {
+    const exemplo = contrato.exemplos.find(e => e.nome === EXEMPLO_DO_BARALHO_QUE_NAO_EXISTE);
+    return { ...exemplo.resposta.json.decks.find(baralho => baralho.missing), deckName, lang };
+  }
+
+  /** Os baralhos pedidos (`decks`, na ordem), como `numeros_dos_baralhos` do complemento. */
+  function numerosDosBaralhos(corpo) {
+    const decks = (corpo.decks || []).map(({ deckName, lang = 'en' }) => {
       const baralho = estado.baralhos[deckName];
-      if (!baralho) return { deckName, lang, missing: true, notes: 0, cards: 0, uniqueTerms: 0, new: 0, learning: 0, young: 0, mature: 0, reviewed: 0, maturePct: 0, vocabulary: { targetTerms: 0, phraseVocabulary: 0, avgNewPhraseVocabularyPerCard: 0 } };
+      if (!baralho) return linhaDoBaralhoQueNaoExiste(deckName, lang);
       const { palavras = 0, cartoes = 0, termos = 0, porCartao = 0, novos = 0, aprendendo = 0, recentes = 0, maduros = 0 } = baralho;
       const reviewed = aprendendo + recentes + maduros;
       return {
-        deckName, lang, notes: cartoes, cards: cartoes, uniqueTerms: termos, uniqueTermTokens: palavras,
-        vocabulary: { targetTerms: termos, phraseVocabulary: palavras, avgNewPhraseVocabularyPerCard: porCartao },
+        deckName, lang, frontField: 'Frente', notes: cartoes, cards: cartoes, uniqueTerms: termos, uniqueFronts: cartoes, uniqueTermTokens: palavras,
+        vocabulary: {
+          targetTerms: termos, phraseVocabulary: palavras, newPhraseVocabulary: palavras, avgNewPhraseVocabularyPerCard: porCartao,
+          singleNewVocabularyCards: 0, zeroNewVocabularyCards: 0, catalogedCards: cartoes,
+          targetMetric: 'anki_target_terms', phraseMetric: 'front_literal_words', usesAiCatalog: false,
+        },
+        termMetric: 'anki_target_terms',
         new: novos, learning: aprendendo, young: recentes, mature: maduros, reviewed,
         maturePct: reviewed ? Math.round((maduros / reviewed) * 1000) / 10 : 0,
       };
     });
-    const dados = { generatedAt: estado.agora().toISOString(), decks, totals: {}, source: estado.fonteDosBaralhos };
+    const dados = { generatedAt: estado.agora().toISOString(), decks, totals: totaisDosBaralhos(decks), source: estado.fonteDosBaralhos };
     if (estado.fonteDosBaralhos === 'collection.anki2') dados.sourceDetail = 'AnkiConnect indisponivel; lendo collection.anki2';
     return dados;
   }
@@ -179,25 +224,35 @@ function criarFakeAnki() {
     return { status: 200, json: { jobId, status: 'queued' } };
   }
 
+  /** `"<agora>"` no contrato é o instante em que a Conexão responde: o relógio do fake. */
+  function comOAgora(valor) {
+    if (valor === '<agora>') return estado.agora().toISOString();
+    if (Array.isArray(valor)) return valor.map(comOAgora);
+    if (valor && typeof valor === 'object') return Object.fromEntries(Object.entries(valor).map(([chave, item]) => [chave, comOAgora(item)]));
+    return valor;
+  }
+
   /**
-   * A resposta que o contrato dá ao pedido da extensão (com o `corpo` que ele leva, se levar), no contexto de agora.
-   * Cada parte do contexto só conta para os exemplos que a declaram (`perfil` com `falhaNoPerfil`, `itemDeLogin`):
-   * a saúde responde com o item em qualquer situação, e o item responde com o Anki em qualquer perfil.
+   * A resposta que o contrato dá ao pedido da extensão, no contexto de agora. O exemplo que cita `corpo` só
+   * vale para esse corpo; o que cita `colecao` só vale com essa coleção aberta (`abrirColecao`). `perfil` (com
+   * `falhaNoPerfil`) e `itemDeLogin` só contam para os exemplos que os declaram: a saúde responde com o item em
+   * qualquer situação, e o item responde com o Anki em qualquer perfil.
    */
   function respostaDoContrato(metodo, caminho, corpo) {
     const exemplo = contrato.exemplos.find(e =>
       exemploDaExtensao(e)
       && e.pedido.metodo === metodo && e.pedido.caminho === caminho
-      && JSON.stringify(e.pedido.corpo ?? null) === JSON.stringify(corpo ?? null)
+      && (e.pedido.corpo === undefined || isDeepStrictEqual(e.pedido.corpo, corpo))
       && (e.contexto.perfil === undefined
         || (e.contexto.perfil === estado.contexto.perfil && Boolean(e.contexto.falhaNoPerfil) === estado.contexto.falhaNoPerfil))
-      && (e.contexto.itemDeLogin === undefined || e.contexto.itemDeLogin === estado.contexto.itemDeLogin));
+      && (e.contexto.itemDeLogin === undefined || e.contexto.itemDeLogin === estado.contexto.itemDeLogin)
+      && (!('colecao' in e.contexto) || e.contexto.colecao === estado.contexto.colecao));
     if (!exemplo) {
       throw new Error(`O contrato (complemento/contrato/exemplos.json) não tem exemplo de ${metodo} ${caminho}`
         + `${corpo === undefined ? '' : ` com o corpo ${JSON.stringify(corpo)}`} `
         + `com o contexto ${JSON.stringify(estado.contexto)}; escreva-o lá antes de o fake responder.`);
     }
-    return { status: exemplo.resposta.status, json: exemplo.resposta.json };
+    return { status: exemplo.resposta.status, json: comOAgora(exemplo.resposta.json) };
   }
 
   /** “Abrir o Anki com o computador”: o item de login, como a Conexão o escreve e o apaga. */
@@ -213,7 +268,9 @@ function criarFakeAnki() {
   async function tratar(route) {
     const req = route.request();
     const url = new URL(req.url());
-    requisicoes.push({ metodo: req.method(), caminho: url.pathname, busca: url.search, corpo: req.postData() });
+    const corpoDoPedido = req.postData();
+    // `dados`: o corpo JSON que a extensão mandou (null sem corpo ou se não é JSON).
+    requisicoes.push({ metodo: req.method(), caminho: url.pathname, busca: url.search, corpo: corpoDoPedido, dados: dadosDoCorpo(corpoDoPedido) });
 
     if (!estado.ligada) return route.abort('connectionrefused');
     // A porta aceita e não responde: o pedido fica no ar até a página desistir.
@@ -238,6 +295,14 @@ function criarFakeAnki() {
       const { status, json } = itemDeLogin(req, url);
       return responderJson(route, status, json);
     }
+    // O que lê o Anki da pessoa é POST (contrato/LEIA-ME.md): por GET a Conexão não tem a rota.
+    const leituraDoAnki = ['/anki/vocabulary', '/anki/decks', '/anki/stats/decks'].includes(url.pathname);
+    if (leituraDoAnki && req.method() !== 'POST') return responderJson(route, 404, { error: 'not_found' });
+    const corpo = leituraDoAnki ? JSON.parse(req.postData() || '{}') : undefined;
+    if (leituraDoAnki && estado.contexto.colecao !== undefined) {
+      const { status, json } = respostaDoContrato('POST', url.pathname, corpo);
+      return responderJson(route, status, json);
+    }
     if (url.pathname === '/anki/status') {
       const processos = Array.from({ length: estado.processosDoAnki }, (_, i) => ({ pid: 4000 + i, visibleWindow: true }));
       return responderJson(route, 200, {
@@ -249,7 +314,7 @@ function criarFakeAnki() {
       const falha = estado.falhaDoVocabulario;
       if (falha?.rede) return route.abort('connectionrefused');
       if (falha) return responderJson(route, falha.status, { error: 'anki_vocabulary_unavailable', detail: 'AnkiConnect timeout' });
-      return responderJson(route, 200, vocabulario(url));
+      return responderJson(route, 200, vocabulario(corpo));
     }
     if (url.pathname === '/anki/decks') {
       if (!estado.baralhosDoAnki) return responderJson(route, 503, { error: 'anki_decks_unavailable', detail: 'AnkiConnect timeout' });
@@ -259,7 +324,7 @@ function criarFakeAnki() {
       const falha = estado.falhaDosBaralhos;
       if (falha?.rede) return route.abort('connectionrefused');
       if (falha) return responderJson(route, falha.status, { error: 'anki_stats_unavailable', detail: 'AnkiConnect timeout' });
-      return responderJson(route, 200, numerosDosBaralhos(url));
+      return responderJson(route, 200, numerosDosBaralhos(corpo));
     }
     if (url.pathname === '/anki/repair' && req.method() === 'POST') {
       return responderJson(route, 200, { ok: true, after: { collectionReady: true, connectAvailable: true } });
@@ -299,23 +364,28 @@ function criarFakeAnki() {
     ligar() { estado.ligada = true; },
     /** O perfil que o Anki tem aberto (`null`: a tela de perfis); precisa de exemplo no contrato. */
     abrirPerfil(perfil) { estado.contexto = { ...estado.contexto, perfil }; },
+    /**
+     * A coleção que o Anki tem aberta, por nome em `colecoes` do contrato (`null`: nenhuma, o Anki na tela de
+     * perfis): os Baralhos, os números e o vocabulário passam a vir dos exemplos do contrato.
+     */
+    abrirColecao(nome) { estado.contexto = { ...estado.contexto, colecao: nome }; },
     /** O complemento não consegue ler o perfil: a saúde responde o erro interno do contrato. */
-    falharLeituraDoPerfil() { estado.contexto = { ...estado.contexto, falhaNoPerfil: true }; },
     /**
      * O item de login de “Abrir o Anki com o computador” (`itemDeLogin` dos exemplos): `desligado` (o padrão), `ligado`,
      * `sem_anki` (a Conexão não sabe onde o Anki está), `falha` (não deu para escrever o item) ou `indisponivel`
      * (o sistema não tem item). Pedir ligar ou desligar o muda, como a Conexão faria.
      */
     definirItemDeLogin(situacao) { estado.contexto = { ...estado.contexto, itemDeLogin: situacao }; },
+    /** O item de login está escrito de verdade (só a situação `ligado`): o que a Conexão deixou no computador. */
+    itemInstalado() { return estado.contexto.itemDeLogin === 'ligado'; },
+    /** O item de login agora: `ligado` ou `desligado` (ou a situação que o teste pôs). */
+    itemDeLogin() { return estado.contexto.itemDeLogin; },
     /**
      * O próximo pedido de ligar ou desligar o item perde a resposta (a conexão cai): com `aplicada` a Conexão chegou a
      * escrever ou apagar o item antes, sem `aplicada` não mexeu em nada. A extensão não tem como saber qual dos dois.
      */
     perderARespostaDoItemDeLogin({ aplicada }) { estado.perdaDaRespostaDoItem = { aplicada }; },
-    /** O item de login está escrito de verdade (só a situação `ligado`): o que a Conexão deixou no computador. */
-    itemInstalado() { return estado.contexto.itemDeLogin === 'ligado'; },
-    /** O item de login agora: `ligado` ou `desligado` (ou a situação que o teste pôs). */
-    itemDeLogin() { return estado.contexto.itemDeLogin; },
+    falharLeituraDoPerfil() { estado.contexto = { ...estado.contexto, falhaNoPerfil: true }; },
     /** As respostas do contrato a um pedido, para o teste que confere o fake contra os exemplos. */
     respostaDoContrato,
     /** A porta aceita a conexão e nunca responde (o /health do bridge travado). */
@@ -327,7 +397,7 @@ function criarFakeAnki() {
      * (os cartões em que o item aparece, por maturidade).
      */
     definirVocabulario(lang, palavras) { estado.vocabulario[lang] = palavras; },
-    /** GET /anki/vocabulary falha: `{ status: 503 }` responde com erro, `{ rede: true }` derruba. */
+    /** POST /anki/vocabulary falha: `{ status: 503 }` responde com erro, `{ rede: true }` derruba. */
     falharVocabulario(falha = { status: 503 }) { estado.falhaDoVocabulario = falha; },
     voltarVocabulario() { estado.falhaDoVocabulario = null; },
 
@@ -336,7 +406,7 @@ function criarFakeAnki() {
      * que não foi definido não existe no Anki (`missing`).
      */
     definirBaralho(deckName, numeros) { estado.baralhos[deckName] = numeros; },
-    /** Os baralhos que o Anki tem, como GET /anki/decks os lista (Ajustes de envio). */
+    /** Os baralhos que o Anki tem, como POST /anki/decks os lista (Ajustes de envio). */
     definirBaralhosDoAnki(nomes) { estado.baralhosDoAnki = nomes; },
     /** Os baralhos passam a vir do arquivo local do Anki (BRG-13), e não do AnkiConnect. */
     lerBaralhosDoArquivo() { estado.fonteDosBaralhos = 'collection.anki2'; },
@@ -344,8 +414,8 @@ function criarFakeAnki() {
     fecharOAnki() { estado.lidoDoArquivo = true; estado.processosDoAnki = 0; estado.fonteDosBaralhos = 'collection.anki2'; },
     /** O Anki está aberto, mas o AnkiConnect não responde: a Conexão também lê o arquivo, e o processo do Anki existe. */
     ankiAbertoSemAnkiConnect() { estado.lidoDoArquivo = true; estado.processosDoAnki = 1; estado.fonteDosBaralhos = 'collection.anki2'; },
-    abrirOAnki() { estado.lidoDoArquivo = false; estado.processosDoAnki = 1; estado.fonteDosBaralhos = 'ankiconnect'; },
-    /** GET /anki/stats/decks falha: `{ status: 503 }` responde com erro, `{ rede: true }` derruba. */
+    abrirOAnki() { estado.lidoDoArquivo = false; estado.processosDoAnki = 1; estado.fonteDosBaralhos = 'colecao'; },
+    /** POST /anki/stats/decks falha: `{ status: 503 }` responde com erro, `{ rede: true }` derruba. */
     falharBaralhos(falha = { status: 503 }) { estado.falhaDosBaralhos = falha; },
     voltarBaralhos() { estado.falhaDosBaralhos = null; },
     responder(metodo, caminho, gerar) { estado.rotas.set(`${metodo} ${caminho}`, gerar); },
@@ -457,4 +527,25 @@ function linhaDeCustos({
   };
 }
 
-module.exports = { criarFakeAnki, exemploDaExtensao };
+/**
+ * O JSON obtido é o do contrato; `"<agora>"` no contrato é qualquer instante ISO 8601 (o que o complemento
+ * escreve é UTC com `Z`). Devolve o que difere, para a mensagem do teste, ou null se iguais.
+ */
+function diferencaDoContrato(obtido, esperado, caminho = '') {
+  if (esperado === '<agora>') {
+    return typeof obtido === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z$/.test(obtido) ? null : `${caminho || '/'}: ${JSON.stringify(obtido)} não é um instante`;
+  }
+  if (Array.isArray(esperado) || (esperado && typeof esperado === 'object')) {
+    if (!obtido || typeof obtido !== 'object' || Array.isArray(obtido) !== Array.isArray(esperado)) return `${caminho || '/'}: ${JSON.stringify(obtido)} não é ${JSON.stringify(esperado)}`;
+    const chaves = new Set([...Object.keys(esperado), ...Object.keys(obtido)]);
+    for (const chave of chaves) {
+      if (!(chave in esperado) || !(chave in obtido)) return `${caminho}/${chave}: ${chave in obtido ? 'sobra' : 'falta'}`;
+      const diferenca = diferencaDoContrato(obtido[chave], esperado[chave], `${caminho}/${chave}`);
+      if (diferenca) return diferenca;
+    }
+    return null;
+  }
+  return obtido === esperado ? null : `${caminho || '/'}: ${JSON.stringify(obtido)} em vez de ${JSON.stringify(esperado)}`;
+}
+
+module.exports = { criarFakeAnki, exemploDaExtensao, diferencaDoContrato };

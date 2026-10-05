@@ -169,7 +169,7 @@
   }
 
   /**
-   * GET /anki/stats/decks com os dois baralhos numa leitura só. `deNovo` passa
+   * POST /anki/stats/decks com os dois baralhos numa leitura só. `deNovo` passa
    * por cima do cache da Conexão; `abrirOAnki` a deixa abrir o Anki (BRG-24): só um clique pede isso.
    */
   async function lerBaralhos({ deNovo = false, abrirOAnki = false, focarAzulejo = false } = {}) {
@@ -180,19 +180,15 @@
     desenhar();
 
     const nomes = { ...estado.nomes };
-    const busca = new URLSearchParams();
-    for (const { idioma } of IDIOMAS_DOS_AZULEJOS) {
-      busca.append('deck', estado.nomes[idioma]);
-      busca.append('lang', idioma);
-    }
-    if (deNovo) busca.set('refresh', '1');
-    if (abrirOAnki) busca.set('launch', '1');
+    const pedido = { decks: IDIOMAS_DOS_AZULEJOS.map(({ idioma }) => ({ deckName: estado.nomes[idioma], lang: idioma })) };
+    if (deNovo) pedido.refresh = true;
+    if (abrirOAnki) pedido.launch = true;
     let dados = null;
     let erro = null;
     try {
-      dados = await pedirJson(`/anki/stats/decks?${busca}`);
+      dados = await pedirJson('/anki/stats/decks', pedido);
     } catch (falha) {
-      erro = `GET /anki/stats/decks · ${falha.message}`;
+      erro = `POST /anki/stats/decks · ${falha.message}`;
     }
     const quando = Date.now();
     const marca = dados && await marcaDaLeitura(baralhos, nomes, dados.source, quando);
@@ -221,7 +217,7 @@
     const nomes = { ...estado.nomes };
     const lerIdioma = async idioma => {
       const deckName = estado.nomes[idioma];
-      const resposta = await pedirJson(`/anki/vocabulary?${new URLSearchParams({ deck: deckName, lang: idioma, limit: '10000' })}`);
+      const resposta = await pedirJson('/anki/vocabulary', { deck: deckName, lang: idioma, limit: 10000 });
       const itens = Array.isArray(resposta.words) ? resposta.words : [];
       // O bridge entrega até 10.000 itens; o total do idioma é o `totalWords` dele.
       return { deckName: resposta.deckName || deckName, itens, total: numero(resposta.totalWords ?? itens.length), source: resposta.source };
@@ -232,7 +228,7 @@
       const [en, ru] = await Promise.all(IDIOMAS_DOS_AZULEJOS.map(({ idioma }) => lerIdioma(idioma)));
       dados = { en, ru };
     } catch (falha) {
-      erro = `GET /anki/vocabulary · ${falha.message}`;
+      erro = `POST /anki/vocabulary · ${falha.message}`;
     }
     const quando = Date.now();
     const doArquivo = dados && Object.values(dados).some(doIdioma => doIdioma.source === FONTE_ARQUIVO);
@@ -258,9 +254,9 @@
     return VocabularioDaMineracao.marcaDaLeitura(anterior, source, ENDERECO_DA_CONEXAO, quando);
   }
 
-  /** Um GET à Conexão; um HTTP de erro vira a causa, com o `detail` que ela mandar. */
-  async function pedirJson(caminho) {
-    const resposta = await fetch(`${ENDERECO_DA_CONEXAO}${caminho}`);
+  /** Um POST à Conexão (o que lê o Anki da pessoa é POST: contrato/LEIA-ME.md); um HTTP de erro vira a causa, com o `detail` que ela mandar. */
+  async function pedirJson(caminho, corpo) {
+    const resposta = await raiz.PedidoAoAnki.postarJson(ENDERECO_DA_CONEXAO, caminho, corpo);
     if (!resposta.ok) {
       const corpo = await resposta.json().catch(() => ({}));
       throw new Error([`HTTP ${resposta.status}`, corpo.error, corpo.detail].filter(Boolean).join(' · '));

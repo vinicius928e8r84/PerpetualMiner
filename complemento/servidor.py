@@ -4,9 +4,9 @@ O Anki do Mac roda o Python 3.9, sem Flask, waitress nem requests. Aqui dentro n
 mexe no processo do Anki (proxy, stdout, stderr, `excepthook`, avisos): todo erro
 vai ao logger do complemento e vira uma resposta 500, nunca o diálogo de erro do Anki.
 
-Cada rota é uma função `(conexao, corpo) -> (status, json)` em `ROTAS`; `corpo` é o JSON do pedido,
-ou None quando ele não trouxe corpo. Uma rota nova entra
-junto com seus exemplos em `contrato/exemplos.json` (veja `contrato/LEIA-ME.md`).
+Cada rota é uma função `(conexao, corpo) -> (status, json)` em `ROTAS`; `corpo` é o JSON do pedido
+(`{}` sem corpo). Uma rota nova entra junto com seus exemplos em `contrato/exemplos.json`
+(veja `contrato/LEIA-ME.md`).
 """
 
 import json
@@ -14,15 +14,47 @@ import os
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from . import baralhos
 from .configuracao import ENDERECO
 from .item_de_login import AnkiNaoEncontrado
 
-# O maior corpo que um pedido pode trazer: os de hoje têm dezenas de bytes.
-LIMITE_DO_CORPO = 1024 * 1024
+# Um pedido maior que isto não é da extensão: a leitura mais pesada (os Baralhos pedidos) cabe em poucos KB.
+LIMITE_DO_CORPO = 64 * 1024
 
 
 def _saude(conexao, corpo):
     return 200, {"ok": True, "versao": conexao.versao, "perfil": conexao.perfil_aberto()}
+
+
+def _lendo_a_colecao(erro_do_contrato, leitura):
+    """Roda a leitura da coleção; sem coleção aberta (ou com o Anki sem responder) é 503 com o `erro_do_contrato`."""
+    try:
+        return 200, leitura()
+    except baralhos.ColecaoIndisponivel as motivo:
+        return 503, {"error": erro_do_contrato, "detail": str(motivo)}
+
+
+def _baralhos_do_anki(conexao, corpo):
+    return _lendo_a_colecao("anki_decks_unavailable", lambda: {"decks": baralhos.nomes_dos_baralhos(conexao.colecao)})
+
+
+def _numeros_dos_baralhos(conexao, corpo):
+    pedidos = corpo.get("decks")
+    if not isinstance(pedidos, list) or not pedidos or not all(isinstance(pedido, dict) for pedido in pedidos):
+        return 400, {"error": "decks_required"}
+    return _lendo_a_colecao("anki_stats_unavailable", lambda: baralhos.numeros_dos_baralhos(conexao.colecao, pedidos))
+
+
+def _vocabulario(conexao, corpo):
+    nome = str(corpo.get("deck") or "").strip()
+    idioma = str(corpo.get("lang") or "en").strip().lower()
+    if not nome:
+        return 400, {"error": "deck_required"}
+    if idioma not in baralhos.IDIOMAS:
+        return 400, {"error": "invalid_lang"}
+    return _lendo_a_colecao(
+        "anki_vocabulary_unavailable", lambda: baralhos.vocabulario(conexao.colecao, nome, idioma, corpo)
+    )
 
 
 def _estado_do_item_de_login(conexao, corpo):
@@ -32,7 +64,7 @@ def _estado_do_item_de_login(conexao, corpo):
 
 def _abrir_com_o_computador(conexao, corpo):
     """Escreve (`ligado: true`) ou apaga (`ligado: false`) o item de login que abre o Anki com o computador."""
-    ligado = corpo.get("ligado") if isinstance(corpo, dict) else None
+    ligado = corpo.get("ligado")
     if not isinstance(ligado, bool):
         return 400, {"error": "invalid_request"}
     item = conexao.item_de_login
@@ -55,6 +87,10 @@ def _abrir_com_o_computador(conexao, corpo):
 
 ROTAS = {
     ("GET", "/health"): _saude,
+    # O que lê o Anki da pessoa é POST: o GET de uma página da extensão vai sem `Origin` (contrato/LEIA-ME.md).
+    ("POST", "/anki/decks"): _baralhos_do_anki,
+    ("POST", "/anki/stats/decks"): _numeros_dos_baralhos,
+    ("POST", "/anki/vocabulary"): _vocabulario,
     ("POST", "/abrir-com-o-computador/estado"): _estado_do_item_de_login,
     ("POST", "/abrir-com-o-computador"): _abrir_com_o_computador,
 }
@@ -62,13 +98,6 @@ ROTAS = {
 # As rotas que respondem sem a origem da extensão. Rota nova não entra aqui sem decisão do dono:
 # o que gasta a chave ou lê dado da pessoa é POST e exige a origem.
 ROTAS_ABERTAS = frozenset([("GET", "/health")])
-
-
-class _CorpoRecusado(Exception):
-    def __init__(self, status, erro):
-        super().__init__(erro)
-        self.status = status
-        self.erro = erro
 
 
 class _Atendente(BaseHTTPRequestHandler):
@@ -114,6 +143,22 @@ class _Atendente(BaseHTTPRequestHandler):
             return origem in self.conexao.origens_aceitas
         return (self.command, caminho) in ROTAS_ABERTAS
 
+    def _ler_o_corpo(self):
+        """O JSON do pedido (`{}` sem corpo), ou None se o corpo não é um objeto JSON ou passa do limite."""
+        try:
+            tamanho = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return None
+        if tamanho <= 0:
+            return {}
+        if tamanho > LIMITE_DO_CORPO:
+            return None
+        try:
+            corpo = json.loads(self.rfile.read(tamanho).decode("utf-8"))
+        except (UnicodeDecodeError, ValueError):
+            return None
+        return corpo if isinstance(corpo, dict) else None
+
     def _atender(self):
         caminho = self.path.split("?", 1)[0]
         if not self._pedido_aceito(caminho):
@@ -131,31 +176,15 @@ class _Atendente(BaseHTTPRequestHandler):
         rota = ROTAS.get((self.command, caminho))
         if rota is None:
             return self._responder(404, {"error": "not_found"}, origem=origem)
-        try:
-            corpo = self._ler_o_corpo()
-        except _CorpoRecusado as recusa:
-            return self._responder(recusa.status, {"error": recusa.erro}, origem=origem)
+        corpo = self._ler_o_corpo()
+        if corpo is None:
+            return self._responder(400, {"error": "invalid_json"}, origem=origem)
         try:
             status, dados = rota(self.conexao, corpo)
         except Exception:
             self.conexao.logger.exception("Erro na rota %s %s", self.command, caminho)
             return self._responder(500, {"error": "internal_error"}, origem=origem)
         return self._responder(status, dados, origem=origem)
-
-    def _ler_o_corpo(self):
-        """O JSON do pedido, ou None sem corpo."""
-        try:
-            tamanho = int(self.headers.get("Content-Length") or 0)
-        except ValueError:
-            raise _CorpoRecusado(400, "invalid_json")
-        if tamanho > LIMITE_DO_CORPO:
-            raise _CorpoRecusado(413, "body_too_large")
-        if tamanho <= 0:
-            return None
-        try:
-            return json.loads(self.rfile.read(tamanho).decode("utf-8"))
-        except ValueError:
-            raise _CorpoRecusado(400, "invalid_json")
 
     def __getattr__(self, nome):
         # Todo verbo passa pela mesma autorização: sem isto o `http.server` responderia 501
@@ -177,14 +206,27 @@ class _Servidor(ThreadingHTTPServer):
         self.conexao.logger.exception("Erro ao atender %s", client_address)
 
 
+class _SemColecao:
+    """A coleção de uma Conexão que nasceu sem adaptador: nada a ler."""
+
+    def perfis(self):
+        return []
+
+    def nomes_dos_baralhos(self):
+        raise baralhos.ColecaoIndisponivel("collection_unavailable")
+
+    cartoes_do_baralho = nomes_dos_baralhos
+
+
 class Conexao:
     """O servidor da Conexão: `iniciar()` sobe numa thread, `parar()` encerra."""
 
-    def __init__(self, *, porta, origens_aceitas, versao, perfil_aberto, logger, item_de_login=None):
+    def __init__(self, *, porta, origens_aceitas, versao, perfil_aberto, logger, colecao=None, item_de_login=None):
         self.porta = porta
         self.origens_aceitas = tuple(origens_aceitas)
         self.versao = versao
         self.perfil_aberto = perfil_aberto
+        self.colecao = colecao or _SemColecao()
         self.logger = logger
         # O item de login de “Abrir o Anki com o computador”; None onde o sistema não tem (nem Mac nem Windows).
         self.item_de_login = item_de_login
@@ -208,7 +250,7 @@ class Conexao:
 
     def _servir(self):
         try:
-            self._servidor.serve_forever(poll_interval=0.05)
+            self._servidor.serve_forever(poll_interval=0.1)
         except Exception:
             self.logger.exception("O servidor da Conexão parou")
 
