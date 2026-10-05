@@ -113,7 +113,7 @@ Decisões tomadas na consolidação:
 
 ## Histórico: a ordem em que a construção foi feita (concluída)
 
-Fundação primeiro, depois de dentro pra fora: cada passo só usava o que já existia. Os 8 passos estão no código; o que cada superfície reconstruída faz hoje está no `CLAUDE.md` § Architecture.
+Fundação primeiro, depois de dentro pra fora: cada passo só usava o que já existia. Os 8 passos estão no código; o que cada superfície reconstruída faz hoje está nas skills de superfície em `.claude/skills/` (índice em `CLAUDE.md` § Architecture › Surfaces).
 
 **Antes de tudo: os 4 bugs altos** de [Bugs encontrados na auditoria do front](https://github.com/vinicius928e8r84/PerpetualMiner/issues/9), corrigidos no código atual. Dois perdem dados (o salvamento em paralelo do BookReader, `bookreader.js:436 · background.js:167`, e o Deletar do popup que ressuscita no sync, `popup.js:184`). Dois são de segurança (o `postMessage` sem checar a origem, `content.js:148`, e o `innerHTML` sem escape, `content.js:134, 733, 765`).
 
@@ -130,4 +130,4 @@ Fundação primeiro, depois de dentro pra fora: cada passo só usava o que já e
 
 ## Próximo passo
 
-Não há: a construção terminou. O estado atual de cada superfície está em `CLAUDE.md` § Architecture; a spec que guiou a construção é [Construção do redesign do front-end (Veio)](https://github.com/vinicius928e8r84/PerpetualMiner/issues/17).
+Não há: a construção terminou. O estado atual de cada superfície está nas skills de superfície em `.claude/skills/` (índice em `CLAUDE.md` § Architecture › Surfaces); a spec que guiou a construção é [Construção do redesign do front-end (Veio)](https://github.com/vinicius928e8r84/PerpetualMiner/issues/17).
