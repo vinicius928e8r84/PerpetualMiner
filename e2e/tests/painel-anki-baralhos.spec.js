@@ -538,6 +538,36 @@ test('o último dado que a própria Conexão guardou (stale) segue com “Não d
   await expect(baralhos(page)).not.toContainText('Anki fechado');
 });
 
+// ─── A coleção do contrato ───────────────────────────────────────────────────
+
+// O que o complemento do Anki responde (os exemplos de complemento/contrato/exemplos.json, lidos também
+// pelos testes do complemento) mostra os dados nas duas abas, sem passar pelos números que os outros testes montam.
+test('com a coleção do contrato aberta, Baralhos e termos e Vocabulário mostram o que o complemento leu', async ({ page, extensao, fakes }) => {
+  fakes.anki.abrirColecao('inglês com subbaralho');
+  await extensao.gravarStorage({ ankiBridgePresets: {
+    en: { deckName: 'Inglês', imageSource: '1', ttsWordTld: 'com', ttsPhraseTld: 'co.uk' },
+    ru: { deckName: 'Alemão', imageSource: '1', ttsWordTld: 'ru', ttsPhraseTld: 'ru' },
+  } });
+  await abrirAnki(page, extensao, '#anki/baralhos');
+
+  const azulejos = azulejosDosBaralhos(page).getByRole('button');
+  await expect(azulejos.nth(0)).toContainText('EN · Inglês');
+  await expect(azulejos.nth(0)).toContainText('11 palavras');
+  const numeros = baralhos(page).locator('.anki-baralho dl');
+  await expect(numeros).toContainText('Cartões4');
+  await expect(numeros).toContainText('Termos-alvo3');
+  await expect(numeros).toContainText('Maduros1');
+  await expect(numeros).toContainText('Recentes2');
+  await expect(numeros).toContainText('Novos1');
+  // O Baralho que o Anki não tem.
+  await expect(azulejos.nth(1)).toContainText('baralho não encontrado');
+
+  await aba(page, 'Vocabulário').click();
+  await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(12);
+  await expect(listaDoVocabulario(page).getByRole('option', { name: /^gave up/ })).toBeVisible();
+  await expect(vocabulario(page).locator('.shell-aviso')).toHaveCount(0);
+});
+
 // ─── Ajustes de envio, ↻ Atualizar e acessibilidade ──────────────────────────
 
 test('salvar outro baralho nos Ajustes de envio lê os baralhos e o vocabulário dele', async ({ page, extensao, fakes }) => {
