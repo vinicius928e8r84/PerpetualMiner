@@ -97,7 +97,7 @@ const bytesDepois = Buffer.byteLength(depois);
 const bytesDescricoes = skills.reduce((soma, s) => soma + Buffer.byteLength(`name: ${s.nome}\ndescription: ${s.descricao}\n`), 0);
 console.log(`base: ${base}`);
 console.log(`skills read through .claude/skills: ${nomes.join(', ')}`);
-console.log(`lines removed from CLAUDE.md: ${linhasQueSairam} (${triviais} are code fences / table rules)`);
+console.log(`lines removed from CLAUDE.md: ${linhasQueSairam} (${triviais} of them code-fence or table-rule lines)`);
 console.log(`lines in the skills' bodies:   ${linhasNasSkills}`);
 console.log(`pointers fixed (${corrigidas.length}):`);
 for (const l of corrigidas) console.log(`  ${l.trim().slice(0, 150)}`);
