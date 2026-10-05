@@ -64,6 +64,7 @@ test('todo ID do catálogo tem texto, e um ID que não existe falha na hora', as
     if (modelo !== '') expect(resultado, `${id} veio vazio`).not.toBe('');
   }
 
+  // Exceção de teste: catálogo (CLAUDE.md § Testing).
   const erro = await page.evaluate(() => {
     try {
       PerpetualMiner.textoDaVoz('POP-99');
@@ -123,6 +124,7 @@ test('no painel, a frase em cirílico sai marcada como russa e a inglesa não', 
 });
 
 test('o menu de contexto mostra MIN-08, lido do catálogo', async ({ extensao }) => {
+  // Exceção de teste: chrome-nativo (CLAUDE.md § Testing).
   // O Chromium não abre o menu de contexto nativo para o Playwright, então o teste
   // olha o título que a extensão entrega ao Chrome ao registrar o item.
   const titulos = await extensao.serviceWorker.evaluate(async () => {
@@ -139,6 +141,7 @@ test('o menu de contexto mostra MIN-08, lido do catálogo', async ({ extensao })
 });
 
 test('o mesmo texto minerado pelo menu, pelo popup e pela foto grava o mesmo idioma', async ({ page, extensao, fakes }) => {
+  // Exceção de teste: chrome-nativo (CLAUDE.md § Testing).
   // 1. Menu de contexto, no service worker. O Playwright não abre o menu nativo,
   //    então o teste entrega ao handler o mesmo `info` que o Chrome entregaria.
   await extensao.serviceWorker.evaluate(frase => minerarSelecaoDoMenu(

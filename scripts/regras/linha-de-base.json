@@ -1,0 +1,20 @@
+{
+  "tokens-veio": {
+    "background.js": 2,
+    "e2e/vitrine/vitrine.html": 2,
+    "painel.css": 123,
+    "painel.js": 6
+  },
+  "gravacao-de-frases": {
+    "lib/sincronizacao.js": 4,
+    "painel.js": 8
+  },
+  "idioma-solto": {
+    "background.js": 8,
+    "content.js": 1
+  },
+  "e2e-funcao-interna": {},
+  "teste-le-codigo": {
+    "bridge/test_anki_launcher.py": 14
+  }
+}
