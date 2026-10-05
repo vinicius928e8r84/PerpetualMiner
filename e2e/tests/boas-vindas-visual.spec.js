@@ -2,7 +2,7 @@
 
 // Referência visual da Boas-vindas (#42, #43): a abertura, os passos 1 e 2
 // (com e sem atalho de legenda, e o gravador gravando), os controles dos
-// passos 3 a 6 nos seus estados, Tudo pronto com cada situação do resumo e a
+// passos 3 a 7 nos seus estados, Tudo pronto com cada situação do resumo e a
 // janela estreita, nos dois temas.
 //
 // O protótipo travado é referência de layout; para os controles dos passos
@@ -102,23 +102,36 @@ test('passo 4 com a Conexão ligada', async ({ page, extensao, fakes }) => {
   await foto(page, 'passo-4-ligada.png');
 });
 
-test('passo 5 com a Conexão desligada: os switches, o limite e a nota ONB-10', async ({ page, extensao }) => {
+test('passo 5 sem chave: o card IA dos cartões, com as duas entradas lado a lado', async ({ page, extensao }) => {
+  await abrir(page, extensao, 'ia');
+  await expect(page.locator('.bv-card').getByRole('region', { name: 'Chave da OpenAI' })).toBeVisible();
+  await foto(page, 'passo-5-ia.png');
+});
+
+test('passo 5 com a chave conferida: a máscara e Trocar chave', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
+  await abrir(page, extensao, 'ia');
+  await expect(page.locator('.bv-card').getByText('Chave conferida', { exact: true })).toBeVisible();
+  await foto(page, 'passo-5-ia-conferida.png');
+});
+
+test('passo 6 com a Conexão desligada: os switches, o limite e a nota ONB-10', async ({ page, extensao }) => {
   await extensao.gravarStorage({ pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 15 } } });
   await abrir(page, extensao, 'automatica');
   await expect(page.locator('.bv-card').getByRole('switch', { name: 'Mineração automática em inglês' })).toBeChecked();
-  await foto(page, 'passo-5.png');
-});
-
-test('passo 6 sem chave: o campo e onde conseguir a chave', async ({ page, extensao }) => {
-  await abrir(page, extensao, 'chave');
-  await page.locator('.bv-card summary').filter({ visible: true }).click();
   await foto(page, 'passo-6.png');
 });
 
-test('passo 6 com a chave salva', async ({ page, extensao }) => {
+test('passo 7 sem chave: o campo e onde conseguir a chave', async ({ page, extensao }) => {
+  await abrir(page, extensao, 'chave');
+  await page.locator('.bv-card summary').filter({ visible: true }).click();
+  await foto(page, 'passo-7.png');
+});
+
+test('passo 7 com a chave salva', async ({ page, extensao }) => {
   await extensao.gravarStorage({ geminiApiKey: 'AIzaSyExemplo1234' });
   await abrir(page, extensao, 'chave');
-  await foto(page, 'passo-6-salva.png');
+  await foto(page, 'passo-7-salva.png');
 });
 
 test('Tudo pronto com feito, agora não e falta', async ({ page, extensao }) => {

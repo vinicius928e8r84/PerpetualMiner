@@ -182,6 +182,63 @@ test('Chave do Gemini aberta, vazia, depois de salvar vazio', async ({ page, ext
   await expect(page).toHaveScreenshot('chave-vazia-recusada.png', { animations: 'disabled' });
 });
 
+// O card IA dos cartões (#140): o desenho A do #101, duas entradas em colunas do mesmo tamanho.
+// A chave do protótipo termina em 9f3a, como o exemplo do contrato da Conexão.
+test('IA dos cartões aberta, sem chave: as duas entradas lado a lado', async ({ page, extensao, fakes }) => {
+  await semearComoNoPrototipo(extensao, fakes);
+  await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
+  await expect(page.locator('#cfg-ia').getByRole('textbox', { name: 'Chave da OpenAI' })).toBeFocused();
+  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+
+  await expect(page).toHaveScreenshot('ia-sem-chave.png', { animations: 'disabled' });
+});
+
+test('IA dos cartões aberta, com a chave conferida e a cópia na Conexão', async ({ page, extensao, fakes }) => {
+  await semearComoNoPrototipo(extensao, fakes);
+  await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
+  fakes.anki.guardarChaveNaConexao('9f3a');
+  await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
+  await expect(page.locator('#cfg-ia').getByText('A Conexão com o Anki tem uma cópia da chave.')).toBeVisible();
+  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+
+  await expect(page).toHaveScreenshot('ia-conferida.png', { animations: 'disabled' });
+});
+
+test('IA dos cartões com a chave recusada: a faixa diz a qual entrada pertence', async ({ page, extensao, fakes }) => {
+  await semearComoNoPrototipo(extensao, fakes);
+  fakes.anki.responderOpenAI('recusa');
+  await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
+  await page.locator('#cfg-ia').getByRole('textbox', { name: 'Chave da OpenAI' }).fill('sk-proj-chave-de-exemplo-9f3a');
+  await page.locator('#cfg-ia').getByRole('button', { name: 'Conferir e salvar' }).click();
+  await expect(page.locator('#cfg-ia').getByRole('alert')).toContainText('A OpenAI recusou a chave.');
+  await page.locator('#cfg-ia').getByText('Detalhes').click();
+  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+
+  await expect(page).toHaveScreenshot('ia-recusada.png', { animations: 'disabled' });
+});
+
+test('IA dos cartões com a chave sem crédito, no tema claro', async ({ page, extensao, fakes }) => {
+  await semearComoNoPrototipo(extensao, fakes);
+  await extensao.gravarStorage({ pm_tema: 'claro' });
+  fakes.anki.responderOpenAI('sem_credito');
+  await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
+  await page.locator('#cfg-ia').getByRole('textbox', { name: 'Chave da OpenAI' }).fill('sk-proj-chave-de-exemplo-9f3a');
+  await page.locator('#cfg-ia').getByRole('button', { name: 'Conferir e salvar' }).click();
+  await expect(page.locator('#cfg-ia').getByRole('alert')).toContainText('sem crédito');
+  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+
+  await expect(page).toHaveScreenshot('ia-sem-credito-claro.png', { animations: 'disabled' });
+});
+
+test('IA dos cartões em janela estreita: as colunas viram linhas', async ({ page, extensao, fakes }) => {
+  await semearComoNoPrototipo(extensao, fakes);
+  await abrirConfiguracoes(page, extensao, '#configuracoes/ia', 760);
+  await expect(page.locator('#cfg-ia').getByRole('region', { name: /Conta do ChatGPT/ })).toBeVisible();
+  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+
+  await expect(page).toHaveScreenshot('ia-estreita.png', { animations: 'disabled' });
+});
+
 test('Zona de perigo aberta, com conta', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
   await semearComoNoPrototipo(extensao, fakes, 'uid-visual');

@@ -20,7 +20,7 @@ Três estruturas foram avaliadas: **A · Cockpit** (pilha), **B · Abas** (Adici
 ## A tela, de cima para baixo (340 px, teto 600 px)
 
 1. **Cabeçalho** (`surface`): ícone Veio 30 px + nome “PerpetualMiner” com cursor piscando. **Sem subtítulo**: a frase descritiva fica para a Boas-vindas e a loja.
-   - **Lembrete da configuração** (ONB-14; item 9 da lista fechada): enquanto a [Boas-vindas](../painel/boas-vindas/README.md) não chega a “Tudo pronto” e o lembrete não foi ocultado, um cartão entre o cabeçalho e “Abrir painel” (acento a 45% + fundo com 5% de acento, anel de progresso): “Configuração pela metade · 2 de 6 — Volte de onde parou” e o botão “Continuar configuração” → `painel.html#boas-vindas`.
+   - **Lembrete da configuração** (ONB-14; item 9 da lista fechada): enquanto a [Boas-vindas](../painel/boas-vindas/README.md) não chega a “Tudo pronto” e o lembrete não foi ocultado, um cartão entre o cabeçalho e “Abrir painel” (acento a 45% + fundo com 5% de acento, anel de progresso): “Configuração pela metade · 2 de 7 — Volte de onde parou” e o botão “Continuar configuração” → `painel.html#boas-vindas`.
 2. **Abrir painel** (POP-09): botão primário largo. Foca a aba do painel se já existe; senão abre uma nova (comportamento de hoje).
 3. **Mineração automática** (POP-10; título de seção + “por dia” à direita): dois azulejos em grade 1fr 1fr.
    - Cada azulejo: código do idioma em mono, toggle Veio, contador grande em mono (POP-07; formato no [catálogo da Voz](../voz/README.md)), medidor ouro com a proporção do dia e o campo “limite [20] /dia” (1–100).

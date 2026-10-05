@@ -6,7 +6,7 @@ Resolução do ticket [Protótipo: onboarding & primeira execução](https://git
 - os nomes e a cópia do [guia de voz & catálogo](../../voz/README.md) (regras V1–V10 e C1–C9).
 
 **Protótipo:** [`prototipo-onboarding.html`](prototipo-onboarding.html). Abra direto no navegador.
-- `?variant=C` é a estrutura travada (padrão). `A` (Vazios que ensinam) e `B` (Primeiros passos) foram as alternativas. O protótipo registra a decisão de layout, mas os controles dos passos 3–6 foram revisados depois: para esses estados, valem [Os passos](#os-passos) e a [F1](#conexão-com-o-anki-como-ligar-f1), não as ações antigas do protótipo.
+- `?variant=C` é a estrutura travada (padrão). `A` (Vazios que ensinam) e `B` (Primeiros passos) foram as alternativas. O protótipo registra a decisão de layout, mas os controles dos passos 3–7 foram revisados depois: para esses estados, valem [Os passos](#os-passos) e a [F1](#conexão-com-o-anki-como-ligar-f1), não as ações antigas do protótipo.
 - É uma janela do Chrome falsa: o ícone da extensão abre o popup, e o Painel roda no shell Ilhas.
 - O painel “Estados do protótipo” simula a instalação nova, Alt+S num vídeo, a mineração automática, a Conexão com o Anki instalada ou não, a conta, o atalho e a chave.
 - As setas ← → trocam a variante, e **T** alterna o tema.
@@ -43,21 +43,21 @@ Por isso a Conexão vem antes da mineração automática, e o status honesto (Q5
 **Layout:**
 - Fundo `bg`, marca Veio de 40 px com o cursor piscando no topo, centralizada.
 - Uma grade de duas colunas (máx. 900 px), que empilha em uma coluna abaixo de ~760 px:
-  - **Coluna da lista (230 px):** ilha `surface` de raio 20 com os 8 itens:
-    - Boas-vindas, os 6 passos e Tudo pronto;
+  - **Coluna da lista (230 px):** ilha `surface` de raio 20 com os 9 itens:
+    - Boas-vindas, os 7 passos e Tudo pronto;
     - cada passo tem uma marca: número, ✓ ouro quando feito, tracejado quando pulado;
     - o item atual usa `surface-2` com contorno `border-strong`, igual à nav do shell;
     - dá para clicar em qualquer item.
   - **Card do passo:** ilha `surface` de raio 20 com sombra.
-    - Linha de sobretítulo em maiúsculas: “Passo 4 de 6 · opcional”.
+    - Linha de sobretítulo em maiúsculas: “Passo 4 de 7 · opcional”.
     - Título 24/800.
     - O texto do passo.
     - O **controle real** num bloco `bg` de raio 14.
     - Rodapé com “Voltar” · “Agora não” (só nos opcionais) · “Continuar” (primário).
 
 **Telas:**
-1. **Abertura:** “Boas-vindas ao PerpetualMiner”, uma linha sobre o produto (a frase descritiva mora aqui e na loja; o popup não tem subtítulo) e a lista dos 6 passos com a etiqueta “opcional”. Botões “Pular a configuração” (fantasma) e “Começar” (primário).
-2. **Os 6 passos**, abaixo.
+1. **Abertura:** “Boas-vindas ao PerpetualMiner”, uma linha sobre o produto (a frase descritiva mora aqui e na loja; o popup não tem subtítulo) e a lista dos 7 passos com a etiqueta “opcional”. Botões “Pular a configuração” (fantasma) e “Começar” (primário).
+2. **Os 7 passos**, abaixo.
 3. **Tudo pronto:** o resumo de cada passo (feito · agora não · falta) e o botão “Abrir painel”, que abre o Painel em `#frases`.
 
 ## Os passos
@@ -70,8 +70,9 @@ A ordem é travada. Cada passo reusa uma função que já existe; nenhum cria fu
 | 2 | **Escolher o atalho de Minerar seleção** | O gravador de atalho de Configurações › Atalhos, com as mesmas linhas e controles de lá. “Minerar legenda” mostra o atalho que estiver gravado (de fábrica, `Alt+S`), não um `Alt+S` fixo; sem atalho gravado, mostra “Sem atalho” (`kbd` tracejado), com o mesmo “Gravar atalho” ao lado para defini-lo. | `pm_atalho` gravado |
 | 3 | **Entrar com Google** · opcional | O corpo do card Conta & sync de Configurações: login, estado da sincronização e falha no login. | conta conectada |
 | 4 | **Ligar a Conexão com o Anki** | Status e instruções da [F1](#conexão-com-o-anki-como-ligar-f1) para este passo. | a conexão está ligada |
-| 5 | **Ligar a mineração automática** · opcional | Os toggles EN/RU do popup, com o limite por dia editável (1–100). Com a conexão desligada, a nota de dependência aparece; ainda dá para ligar um idioma. | um idioma ligado |
-| 6 | **Adicionar a chave do Gemini** · opcional | O card Chave do Gemini de Configurações: sem chave, campo e “Onde conseguir a chave” recolhido; com chave, valor mascarado e “Trocar chave”. | chave salva |
+| 5 | **Configurar a IA dos cartões** · opcional | O card IA dos cartões de Configurações ([CFG-35](../../voz/README.md), [Configurações § IA dos cartões](../configuracoes/README.md#ia-dos-cartões)): as duas entradas em colunas do mesmo tamanho; a coluna da chave funciona, a do ChatGPT chega no #155. | chave da OpenAI conferida |
+| 6 | **Ligar a mineração automática** · opcional | Os toggles EN/RU do popup, com o limite por dia editável (1–100). Com a conexão desligada, a nota de dependência aparece; ainda dá para ligar um idioma. | um idioma ligado |
+| 7 | **Adicionar a chave do Gemini** · opcional | O card Chave do Gemini de Configurações: sem chave, campo e “Onde conseguir a chave” recolhido; com chave, valor mascarado e “Trocar chave”. | chave salva |
 
 - Os passos se marcam **pelo estado real**. Se a pessoa já fez algo fora da página, o passo já aparece feito.
 - **Pular:**
@@ -83,8 +84,8 @@ A ordem é travada. Cada passo reusa uma função que já existe; nenhum cria fu
 
 - Enquanto a pessoa não chegar a **Tudo pronto**, aparece um lembrete. Isso inclui quem usou “Pular a configuração” ou fechou a aba.
 - O lembrete aparece em dois lugares:
-  - **no popup:** um cartão entre o cabeçalho e “Abrir painel” (acento a 45% + fundo com 5% de acento, com um anel de progresso): “Configuração pela metade · 2 de 6”, “Volte de onde parou” e o botão “Continuar configuração”;
-  - **em Frases:** uma faixa ouro no topo, “A configuração ficou pela metade: 2 de 6 passos.”, com os botões “Ocultar” e “Continuar configuração”.
+  - **no popup:** um cartão entre o cabeçalho e “Abrir painel” (acento a 45% + fundo com 5% de acento, com um anel de progresso): “Configuração pela metade · 2 de 7”, “Volte de onde parou” e o botão “Continuar configuração”;
+  - **em Frases:** uma faixa ouro no topo, “A configuração ficou pela metade: 2 de 7 passos.”, com os botões “Ocultar” e “Continuar configuração”.
 - “Continuar configuração” abre `#boas-vindas` no primeiro passo que falta.
 - “Ocultar” esconde o lembrete **de vez**, nos dois lugares.
 - Esse lembrete ocultável é o **item 9 da lista fechada** (“Configuração pela metade”).
@@ -109,9 +110,9 @@ Tudo segue V1–V10 e C1–C9. V10 permite o nome do produto no onboarding. Este
 
 | ID | estado | cópia |
 |---|---|---|
-| ONB-01 | Abertura (título + corpo) | Boas-vindas ao PerpetualMiner — Minere frases de vídeos, páginas e fotos de livros, e envie ao Anki como cartões. Seis passos rápidos deixam tudo pronto; os opcionais dá para pular. |
+| ONB-01 | Abertura (título + corpo) | Boas-vindas ao PerpetualMiner — Minere frases de vídeos, páginas e fotos de livros, e envie ao Anki como cartões. Sete passos rápidos deixam tudo pronto; os opcionais dá para pular. |
 | ONB-02 | Botões da abertura | Pular a configuração · Começar |
-| ONB-03 | Sobretítulo do passo | Passo 4 de 6 · opcional |
+| ONB-03 | Sobretítulo do passo | Passo 4 de 7 · opcional |
 | ONB-04 | Botões do passo | Voltar · Agora não · Continuar |
 | ONB-05 | Passo 1 | Num vídeo com legenda, aperte Alt+S. A frase vai para o histórico e já fica copiada. / Numa página ou PDF, selecione o texto e use o botão direito › Minerar com PerpetualMiner. / Ou cole uma frase aqui, como no popup: |
 | ONB-06 | Passo 2 | Escolha uma tecla ou um botão extra do mouse para minerar o texto selecionado, sem abrir o menu. |
@@ -122,8 +123,8 @@ Tudo segue V1–V10 e C1–C9. V10 permite o nome do produto no onboarding. Este
 | ONB-11 | Passo 6 | `corpo`, `onde` e `detalhes` em [`lib/voz/catalogo.js`](../../../../lib/voz/catalogo.js) |
 | ONB-12 | Tudo pronto | Tudo pronto — Dá para mudar qualquer coisa depois, em Configurações. A mineração automática fica no popup. [Abrir painel] |
 | ONB-13 | Resumo (por passo) | feito (o valor: “Alt+Q”, “ligada”…) · agora não · falta |
-| ONB-14 | Lembrete no popup | Configuração pela metade · 2 de 6 — Volte de onde parou [Continuar configuração] |
-| ONB-15 | Lembrete em Frases | A configuração ficou pela metade: 2 de 6 passos. [Ocultar] [Continuar configuração] |
+| ONB-14 | Lembrete no popup | Configuração pela metade · 2 de 7 — Volte de onde parou [Continuar configuração] |
+| ONB-15 | Lembrete em Frases | A configuração ficou pela metade: 2 de 7 passos. [Ocultar] [Continuar configuração] |
 | ONB-16 | Área Conexão com o Anki, nunca conectada | Ainda não houve conexão neste computador — (O que é + O que falta sem ela, da F1) |
 
 Em ONB-05, o `Alt+S` é o atalho de legenda que estiver gravado. Sem atalho gravado, no lugar da tecla aparece “Sem atalho” + a ação **Definir atalho**. Na Boas-vindas, ela leva ao passo 2 desta página, onde está o gravador; na PAI-02 e no rodapé do popup, leva a `#configuracoes/atalhos`.

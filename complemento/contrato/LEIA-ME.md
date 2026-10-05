@@ -25,11 +25,15 @@ Mudar só um lado quebra um teste, e a mensagem diz o exemplo e os dois arquivos
 - `daExtensao`: o pedido é um que a extensão faz de verdade. O e2e confere o fake contra esses; os
   outros (outro site, outra extensão, sem origem) só o lado do complemento confere, porque uma
   página da extensão não consegue pedir como outro cliente.
-- `contexto`: em que situação o complemento está (hoje, o `perfil` aberto, `null` na tela de perfis, e
-  `falhaNoPerfil` quando ler o perfil quebra). O fake muda de contexto por `fakes.anki.abrirPerfil(...)` e
-  `falharLeituraDoPerfil()`.
+- `contexto`: em que situação o complemento está: o `perfil` aberto (`null` na tela de perfis), `falhaNoPerfil`
+  quando ler o perfil quebra, `openai` (como a OpenAI responde à conferência de uma chave: `aceita`, `recusa`,
+  `sem_credito`, `org_nao_verificada` ou `fora_do_ar`) e `chaveNaConexao` (os 4 últimos caracteres da chave que a
+  Conexão já guarda, ou `null`). O fake muda de contexto por `fakes.anki.abrirPerfil(...)`, `falharLeituraDoPerfil()`,
+  `responderOpenAI(...)` e `guardarChaveNaConexao(...)`; um exemplo só conta no fake pelos campos que ele diz
+  (a saúde responde igual com qualquer chave). Da chave só conta ter ou não ter: a resposta leva os 4 últimos da chave
+  que o teste mandou, não os do exemplo.
 - `pedido`: o que chega, com `origem` (o cabeçalho `Origin`; `null` é que ele não veio). Rotas com corpo
-  ganham `corpo`.
+  ganham `corpo` (um JSON) ou `corpoBruto` (os bytes como vierem, para o que não é JSON).
 - `resposta`: o status e o JSON.
 
 ## Quem o complemento atende
@@ -50,9 +54,12 @@ Por isso (decisão do dono, opção B):
    (`origin_not_allowed`). Por isso rota que gasta a chave ou lê dado da pessoa (a chave, os custos, o
    vocabulário, os Envios) é **POST**, nunca GET.
 3. **O `Origin` não é autenticação.** Uma extensão com a permissão `webRequest` e `extraHeaders` pode pôr esse
-   cabeçalho, e um programa local também. Antes da primeira rota que usa a chave ou lê dado privado, isso tem
-   de ser testado e reforçado; a escolha de como (POST ou token de pareamento) segue adiada.
-4. Fica para a primeira rota de leitura sensível decidir entre POST para as leituras autenticadas
+   cabeçalho, e um programa local também. As primeiras rotas sensíveis são as da chave da OpenAI
+   (`POST /ia/openai/chave`, `POST /ia/estado`): são POST e exigem a origem, e **nenhuma devolve a chave inteira**
+   (só os 4 últimos caracteres), então o que um cliente local que forjasse a origem consegue é gravar uma chave
+   (que a OpenAI confere) ou saber se há uma e como ela termina. O token de pareamento segue adiado até uma rota
+   que devolva dado privado de verdade (os custos, o vocabulário, os Envios).
+4. Fica para a primeira rota que devolva dado privado decidir entre POST para as leituras autenticadas
    e um token de pareamento (a extensão o recebe por um POST e o manda nos GET).
 
 Rota nova que deva responder sem origem entra em `ROTAS_ABERTAS` (`servidor.py`) só com essa decisão.

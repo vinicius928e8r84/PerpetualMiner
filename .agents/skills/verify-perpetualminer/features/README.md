@@ -34,12 +34,13 @@ Each feature file starts with an H1 and one paragraph of user-visible behavior, 
 - [Mine a phrase](./mineracao.md): caption shortcut and floating button, selection shortcut, context menu, popup quick mining.
 - [Frases list in the panel](./frases.md): cards, search and filters, selection bar, delete/edit.
 - [Anki connection and send](./anki.md): the Conexão com o Anki area and the Envio ao Anki with its summary.
-- [Boas-vindas (first run)](./boas-vindas.md): the 6-step setup opened by installing the extension.
+- [Boas-vindas (first run)](./boas-vindas.md): the 7-step setup opened by installing the extension.
+- [The AI card: the OpenAI key](./ia.md): Configurações › IA dos cartões and Boas-vindas step 5; the key checked by the Conexão, masked, stored out of the content scripts' reach.
 - [Mine from a photo](./minerar-foto.md): `bookreader.html`, Gemini reading marked book pages.
 
 ## Other surfaces (not driven through the browser)
 
 - **Python bridge** (`bridge/`): `python3 bridge/test_envio.py` (43 tests, no Flask). `bridge/test_anki_launcher.py` and `bridge/test_envio_api.py` need Flask: `scripts/preparar-python.sh`, then `.venv/bin/python -m unittest discover -s bridge -p "test_*.py"`. The routes the panel uses (`GET /health`, `/jobs`, `/analytics/jobs`, `/anki/…`) are described in `bridge/README.md`; the e2e Anki fake follows the same contract (`bridge/envio.py` docstring). Starting the real bridge launches Anki Desktop: not part of this skill.
 - **Engine** (`engine/`, the card pipeline): `(cd engine && python3 -m unittest discover -p "test_*.py")` (needs `engine/requirements.txt`; see `engine/CLAUDE.md`).
-- **Anki add-on Connection server** (`complemento/`): not on the default branch yet (source on `origin/fm/pm-i139`; its `LEIA-ME.md` lists `python3.9 complemento/test_servidor.py` and three sibling test files, plain stdlib HTTP, `GET /health` open to any local client and everything else requiring the extension's origin). Add a feature file when it merges.
-- **Not mapped yet** (specs exist in `e2e/tests/`): Configurações (Conta & sync, Atalhos, Chave do Gemini, Aparência, Zona de perigo: `configuracoes-*.spec.js`), automatic mining (`mineracao-automatica-*.spec.js`), popup cards (`popup.spec.js`), Baralhos e Vocabulário (`painel-anki-baralhos.spec.js`), Web Store packaging (`node test_empacotar.js`).
+- **Anki add-on Connection server** (`complemento/`): its `LEIA-ME.md` lists `python3.9 complemento/test_servidor.py` and the sibling test files (`test_chave_da_openai.py` for the key), plain stdlib HTTP, `GET /health` open to any local client and everything else (a POST) requiring the extension's origin. The key routes are driven through the AI card ([ia.md](./ia.md)); the rest has no feature file yet.
+- **Not mapped yet** (specs exist in `e2e/tests/`): Configurações (Conta & sync, Atalhos, Chave do Gemini, Aparência, Zona de perigo: `configuracoes-*.spec.js`; the AI card is mapped in [ia.md](./ia.md)), automatic mining (`mineracao-automatica-*.spec.js`), popup cards (`popup.spec.js`), Baralhos e Vocabulário (`painel-anki-baralhos.spec.js`), Web Store packaging (`node test_empacotar.js`).

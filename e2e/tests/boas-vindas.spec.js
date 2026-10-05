@@ -68,7 +68,7 @@ test('atualizar a extensão não abre aba nenhuma', async ({ context, extensao }
 
 // ─── A abertura ──────────────────────────────────────────────────────────────
 
-test('a abertura lista os 6 passos com “opcional” e leva ao passo 1 com Começar', async ({ page, extensao }) => {
+test('a abertura lista os 7 passos com “opcional” e leva ao passo 1 com Começar', async ({ page, extensao }) => {
   await abrirBoasVindas(page, extensao);
 
   await expect(sobretitulo(page)).toHaveText('Boas-vindas');
@@ -79,16 +79,17 @@ test('a abertura lista os 6 passos com “opcional” e leva ao passo 1 com Come
     'Escolher o atalho de Minerar seleção',
     /^Entrar com Google\s*opcional$/,
     'Ligar a Conexão com o Anki',
+    /^Configurar a IA dos cartões\s*opcional$/,
     /^Ligar a mineração automática\s*opcional$/,
     /^Adicionar a chave do Gemini\s*opcional$/,
   ]);
-  // A lista ao lado: os 8 itens, o atual marcado.
-  await expect(lista(page).getByRole('button')).toHaveCount(8);
+  // A lista ao lado: os 9 itens, o atual marcado.
+  await expect(lista(page).getByRole('button')).toHaveCount(9);
   await expect(itemDaLista(page, 'Boas-vindas')).toHaveAttribute('aria-current', 'step');
 
   await botaoDoCard(page, 'Começar').click();
   await expect(page).toHaveURL(/#boas-vindas\/minerar$/);
-  await expect(sobretitulo(page)).toHaveText('Passo 1 de 6');
+  await expect(sobretitulo(page)).toHaveText('Passo 1 de 7');
   await expect(tituloDoCard(page)).toHaveText('Minerar a primeira frase');
   await expect(tituloDoCard(page)).toBeFocused();
   await expect(itemDaLista(page, 'Minerar a primeira frase')).toHaveAttribute('aria-current', 'step');
@@ -109,7 +110,7 @@ test('qualquer item da lista abre o seu passo; o opcional diz “opcional” no 
   await itemDaLista(page, 'Ligar a mineração automática').click();
 
   await expect(page).toHaveURL(/#boas-vindas\/automatica$/);
-  await expect(sobretitulo(page)).toHaveText('Passo 5 de 6 · opcional');
+  await expect(sobretitulo(page)).toHaveText('Passo 6 de 7 · opcional');
   await expect(tituloDoCard(page)).toHaveText('Ligar a mineração automática');
   await expect(botaoDoCard(page, 'Agora não')).toBeVisible();
 });
@@ -342,9 +343,52 @@ test('passo 4: desligada, o status, os 3 passos e Verificar de novo; ligar e ver
   await fotografarPasso4(page, 'boas-vindas-conexao-ligada.png');
 });
 
-// ─── Passo 5: Ligar a mineração automática ───────────────────────────────────
+// ─── Passo 5: Configurar a IA dos cartões ────────────────────────────────────
 
-test('passo 5: os switches EN/RU e o limite por dia gravam o mesmo que o popup', async ({ page, extensao, fakes }) => {
+test('passo 5: o card IA dos cartões de Configurações; conferir a chave a guarda e marca o passo', async ({ page, extensao, fakes }) => {
+  fakes.anki.ligar();
+  await abrirBoasVindas(page, extensao, 'ia');
+
+  await expect(sobretitulo(page)).toHaveText('Passo 5 de 7 · opcional');
+  await expect(tituloDoCard(page)).toHaveText('Configurar a IA dos cartões');
+  await expect(card(page)).toContainText('É ela que escreve o texto dos cartões. Dá para configurar depois, em Configurações.');
+  await expect(card(page).getByRole('region', { name: 'Chave da OpenAI' })).toBeVisible();
+  await expect(card(page).getByRole('region', { name: /Conta do ChatGPT/ })).toBeVisible();
+  await expect(botaoDoCard(page, 'Agora não')).toBeVisible();
+  await expect(itemDaLista(page, 'Configurar a IA dos cartões')).not.toHaveAccessibleName(/feito/);
+
+  await card(page).getByRole('textbox', { name: 'Chave da OpenAI' }).fill('  sk-proj-chave-de-exemplo-9f3a  ');
+  await botaoDoCard(page, 'Conferir e salvar').click();
+
+  await expect(card(page)).toContainText('Chave conferida');
+  await expect(card(page)).toContainText('••••••••9f3a');
+  await expect(card(page)).not.toContainText('sk-proj-chave-de-exemplo');
+  await expect(itemDaLista(page, 'Configurar a IA dos cartões')).toHaveAccessibleName(/feito$/);
+  expect(fakes.anki.chaveNaConexao()).toBe('sk-proj-chave-de-exemplo-9f3a');
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai).toEqual({ ultimos4: '9f3a' });
+
+  // Configurações mostra a mesma chave, mascarada.
+  await page.goto(extensao.url('painel.html#configuracoes/ia'));
+  await expect(page.locator('#cfg-ia-corpo')).toContainText('••••••••9f3a');
+});
+
+test('passo 5: a chave recusada mostra a faixa da entrada e o passo continua faltando', async ({ page, extensao, fakes }) => {
+  fakes.anki.ligar();
+  fakes.anki.responderOpenAI('recusa');
+  await abrirBoasVindas(page, extensao, 'ia');
+
+  await card(page).getByRole('textbox', { name: 'Chave da OpenAI' }).fill('sk-proj-chave-de-exemplo-9f3a');
+  await botaoDoCard(page, 'Conferir e salvar').click();
+
+  await expect(card(page).getByRole('alert')).toContainText('Chave da OpenAI');
+  await expect(card(page).getByRole('alert')).toContainText('A OpenAI recusou a chave.');
+  await expect(itemDaLista(page, 'Configurar a IA dos cartões')).not.toHaveAccessibleName(/feito/);
+  expect((await extensao.lerStorage('pm_chave_openai'))).toEqual({});
+});
+
+// ─── Passo 6: Ligar a mineração automática ───────────────────────────────────
+
+test('passo 6: os switches EN/RU e o limite por dia gravam o mesmo que o popup', async ({ page, extensao, fakes }) => {
   fakes.anki.ligar();
   await abrirBoasVindas(page, extensao, 'automatica');
   await expect(card(page).getByText('Conexão com o Anki: ligada')).toBeAttached();
@@ -370,7 +414,7 @@ test('passo 5: os switches EN/RU e o limite por dia gravam o mesmo que o popup',
   await registrarEstado(extensao, 'ajustes-boas-vindas.json');
 });
 
-test('passo 5: com a Conexão desligada, a nota de dependência (ONB-10)', async ({ page, extensao, fakes }) => {
+test('passo 6: com a Conexão desligada, a nota de dependência (ONB-10)', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirBoasVindas(page, extensao, 'automatica');
 
@@ -381,7 +425,7 @@ test('passo 5: com a Conexão desligada, a nota de dependência (ONB-10)', async
   await expect(itemDaLista(page, 'Ligar a mineração automática')).toHaveAccessibleName(/feito$/);
 });
 
-test('passo 5: com o disco recusando, POP-16 pede para tentar de novo e o switch volta ao gravado', async ({ page, extensao }) => {
+test('passo 6: com o disco recusando, POP-16 pede para tentar de novo e o switch volta ao gravado', async ({ page, extensao }) => {
   await abrirBoasVindas(page, extensao, 'automatica');
   const ingles = card(page).getByRole('switch', { name: 'Mineração automática em inglês' });
   await expect(ingles).toBeEnabled();
@@ -399,9 +443,9 @@ test('passo 5: com o disco recusando, POP-16 pede para tentar de novo e o switch
   await extensao.serviceWorker.evaluate(() => { chrome.storage.local.set = globalThis.gravarDeVerdade; });
 });
 
-// ─── Passo 6: Adicionar a chave do Gemini ────────────────────────────────────
+// ─── Passo 7: Adicionar a chave do Gemini ────────────────────────────────────
 
-test('passo 6: o campo de Configurações › Chave do Gemini; salvar grava a chave e marca o passo', async ({ page, extensao }) => {
+test('passo 7: o campo de Configurações › Chave do Gemini; salvar grava a chave e marca o passo', async ({ page, extensao }) => {
   await abrirBoasVindas(page, extensao, 'chave');
   const campo = card(page).getByRole('textbox', { name: 'Chave do Gemini' });
 
@@ -452,7 +496,7 @@ test('Tudo pronto resume cada passo e Abrir painel leva a Frases', async ({ page
   await expect(sobretitulo(page)).toHaveText('Pronto');
   await expect(tituloDoCard(page)).toHaveText('Tudo pronto');
   const resumo = card(page).getByRole('listitem');
-  await expect(resumo).toHaveCount(6);
+  await expect(resumo).toHaveCount(7);
   await expect(resumo.nth(0)).toContainText('1 frase');
   await expect(resumo.nth(1)).toContainText('Alt+Q');
   await expect(resumo.nth(3)).toContainText('falta');

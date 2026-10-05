@@ -76,12 +76,12 @@ async function detalhesDoCard(page) {
 
 // ─── Os cards fechados, resumo primeiro ──────────────────────────────────────
 
-test('#configuracoes mostra os 5 cards fechados em linha, na ordem, com o resumo da conta', async ({ page, extensao }) => {
+test('#configuracoes mostra os 6 cards fechados em linha, na ordem, com o resumo da conta', async ({ page, extensao }) => {
   await abrirPainel(page, extensao);
 
   const cabecas = page.locator('.shell-cards').getByRole('button', { expanded: false });
-  await expect(cabecas).toHaveCount(5);
-  for (const [i, nome] of ['Conta & sync', 'Atalhos', 'Chave do Gemini', 'Aparência', 'Zona de perigo'].entries()) {
+  await expect(cabecas).toHaveCount(6);
+  for (const [i, nome] of ['Conta & sync', 'Atalhos', 'IA dos cartões', 'Chave do Gemini', 'Aparência', 'Zona de perigo'].entries()) {
     await expect(cabecas.nth(i)).toHaveAccessibleName(nome);
   }
   await expect(resumo(page, 'conta')).toHaveText('Sem conta · só neste computador');
