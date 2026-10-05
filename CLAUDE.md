@@ -60,7 +60,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `bridge/envio.py` | The bridge's Envio state machine; read its module docstring for persistence, adapters and resume, and `bridge/test_envio.py` for interface tests |
 | `test_empacotar.js` | Node test of the Web Store package contents; also checks that the store guide's "Host permission use" block matches the manifest hosts |
 | `test_gemini.js` | Standalone Node.js script to list available Gemini models (not part of the extension) |
+| `scripts/regras/` | The review rules a script can check (`verificar.js`, one file per rule, `linha-de-base.json`, proofs in `test_regras.js`), run locally and by `.github/workflows/regras.yml`. See `AGENTS.md` § Rules and what enforces them |
 | `e2e/` | Playwright suite that runs the unpacked extension in Chromium (own `package.json`; see Testing) |
+| `e2e/fontconfig/fonts.conf` | The fonts the test Chromium sees: only the DejaVu files, no user or local font config, so the visual references render the same on every machine (loaded by the e2e fixture; see Testing) |
+| `.github/workflows/testes.yml` | The PR gate: Node tests, bridge tests and the whole e2e suite (xvfb, sharded) on every PR and on `main`; see Testing |
 | `preview/` | The static site Vercel publishes per branch, so a visual change can be looked at in a browser: `montar.mjs` assembles it, `chrome-simulado.js` fakes `chrome.*` with sample data inside the copied pages. See `preview/README.md` |
 
 ### Data Flow
@@ -254,8 +257,11 @@ npm test         # launches Chromium with the unpacked extension and runs the su
 
 On Linux/WSL, Chromium also needs system libraries (NSS, ALSA…): `sudo npx playwright install-deps chromium`, once.
 
+The browser sees only the DejaVu fonts (`e2e/fontconfig/fonts.conf`, set as `FONTCONFIG_FILE` by `e2e/fixtures.js`; Debian/Ubuntu package `fonts-dejavu-core`; the user's and the machine's own fontconfig, `50-user.conf` and `51-local.conf`, are left out on purpose), so the host pages' fallback fonts and symbol glyphs are the same on a dev machine and on the CI runner, and the `-linux` visual references hold on both. A reference taken on a machine without that file would only hold there.
+
 - The fixtures (`e2e/fixtures.js`), the fakes (`e2e/fakes/`), the local test pages (`e2e/pages/`), the Veio showcase (`e2e/vitrine/`) and the list of visual references (`tests/*-visual.spec.js`) are described in the `e2e-suite` skill: `.claude/skills/e2e-suite/SKILL.md`. Open it before adding or changing an e2e test.
 - `HEADED=1 npm test` shows the browser.
+- While working, run only the specs of the area you changed (`npx playwright test <specs> --workers=2`); the whole suite (about 700 tests) runs in CI (`.github/workflows/testes.yml`, with the Node and bridge tests), not on your machine. A test that also fails on `main` has an open issue: do not prove it again.
 - Tests assert what the person sees and what ends up stored, never internal functions. Three narrow exceptions, each named in the test's own comment:
   - Where Chromium gives Playwright no way to drive the native UI or clock (the context menu, the toolbar badge, the midnight alarm, an extension update), a test does what Chrome would do — calls the function Chrome would call (`minerarSelecaoDoMenu`, `registrarMenuDeContexto`, `aoInstalar({ reason: 'update' })`) or fires the alarm early under its own name — and asserts what gets stored or what is handed to Chrome (`chrome.action.getBadgeText`, `getTitle`, the next alarm's time).
   - Until a surface shows a catalog state, the catalog's own guarantees (every ID present, pt-BR numbers) are asserted through `PerpetualMiner.textoDaVoz`, inside an extension page. These move to the screen when the surface is rebuilt.

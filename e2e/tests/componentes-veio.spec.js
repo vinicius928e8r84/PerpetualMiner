@@ -17,6 +17,7 @@ const COMPONENTES = [
 
 const TEMAS = ['escuro', 'claro'];
 
+// Exceção de teste: catálogo (CLAUDE.md § Testing).
 /** O texto aprovado de cada estado que a vitrine mostra, lido do catálogo. */
 const copiaDaVitrine = page => page.evaluate(() =>
   PerpetualMiner.Vitrine.CATALOGO_DA_VITRINE.map(([id, valores]) =>
@@ -326,7 +327,7 @@ test('o toast aparece no tema da coluna que o mostrou', async ({ page, paginas }
 test('o toast fica mais tempo quanto maior o texto', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  // Exceção do CLAUDE.md (Testing, garantias da base sem gatilho na tela): a
+  // Exceção de teste: componente-base (CLAUDE.md § Testing, garantias da base sem gatilho na tela): a
   // vitrine só mostra um texto de toast, então o teste chama
   // `mostrarToastDeSucesso` com dois tamanhos e mede quanto cada toast fica
   // de fato na tela.
@@ -437,10 +438,10 @@ test('o chip diz se a Palavra foi escolhida ou detectada, com o rótulo em mono'
 test('a frase mostra o texto como texto, mesmo com marcação dentro', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  // Exceção do CLAUDE.md (Testing, garantias da base sem gatilho na tela):
+  const texto = '<img src=x onerror="window.__injetado=1">Hold the line.';
+  // Exceção de teste: componente-base (CLAUDE.md § Testing, garantias da base sem gatilho na tela):
   // nenhuma frase da vitrine traz marcação, então o teste chama `escreverFrase`
   // numa linha de frase da própria vitrine e confere o que aparece nela.
-  const texto = '<img src=x onerror="window.__injetado=1">Hold the line.';
   await page.evaluate(texto => {
     const corpo = document.querySelector('[data-tema="escuro"] .veio-frase__texto');
     PerpetualMiner.Veio.escreverFrase(corpo, texto, 'line');
@@ -559,6 +560,7 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
 });
 
 test('todo controle da vitrine mostra onde o foco está', async ({ page, paginas }) => {
+  test.setTimeout(90_000); // Sob carga, os cerca de 100 Tabs não cabem nos 30 s padrão.
   await abrirVitrine(page, paginas);
 
   await page.evaluate(() => {
