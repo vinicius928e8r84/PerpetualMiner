@@ -19,6 +19,7 @@ import warnings
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import configuracao, registro, servidor  # noqa: E402
+from test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
@@ -31,13 +32,23 @@ def exemplos_do_contrato():
 
 
 class ConexaoNoTeste:
-    """A Conexão real numa porta livre, com o perfil que o teste escolher."""
+    """A Conexão real numa porta livre, com o perfil que o teste escolher e uma OpenAI de mentira no lugar da de verdade.
 
-    def __init__(self, pasta, perfil="Usuário 1", origens=None, falha_no_perfil=False):
+    `chave_na_conexao`: os 4 últimos caracteres de uma chave que a Conexão já guardava antes de o teste começar.
+    """
+
+    def __init__(self, pasta, perfil="Usuário 1", origens=None, falha_no_perfil=False, openai="aceita", chave_na_conexao=None):
         self.perfil = perfil
         self.falha_no_perfil = falha_no_perfil
+        self.pasta = pasta
         self.logs = os.path.join(pasta, "logs")
-        os.makedirs(self.logs)
+        self.chaves = os.path.join(pasta, "chaves")
+        os.makedirs(self.logs, exist_ok=True)
+        os.makedirs(self.chaves, exist_ok=True)
+        if chave_na_conexao is not None:
+            with open(os.path.join(self.chaves, "openai.json"), "w", encoding="utf-8") as arquivo:
+                json.dump({"chave": "sk-proj-guardada-antes-" + chave_na_conexao}, arquivo)
+        self.openai = OpenAIDeMentira(openai)
         self.logger = registro.criar(self.logs)
         self.conexao = servidor.Conexao(
             porta=0,
@@ -45,6 +56,8 @@ class ConexaoNoTeste:
             versao=configuracao.VERSAO,
             perfil_aberto=self._ler_o_perfil,
             logger=self.logger,
+            pasta_das_chaves=self.chaves,
+            openai_base=self.openai.base,
         )
 
     def _ler_o_perfil(self):
@@ -53,21 +66,29 @@ class ConexaoNoTeste:
         return self.perfil
 
     def __enter__(self):
+        self.openai.__enter__()
         assert self.conexao.iniciar(), "a porta de teste devia estar livre"
         return self
 
     def __exit__(self, *erro):
         self.conexao.parar()
+        self.openai.__exit__(*erro)
         for handler in list(self.logger.handlers):
             handler.close()
 
-    def pedir(self, metodo, caminho, origem=ORIGEM, cabecalhos=None):
+    def pedir(self, metodo, caminho, origem=ORIGEM, cabecalhos=None, corpo=None, corpo_bruto=None):
+        """`corpo` é um JSON (um dict); `corpo_bruto`, os bytes como vierem."""
         pedido = http.client.HTTPConnection("127.0.0.1", self.conexao.porta, timeout=5)
         enviados = dict(cabecalhos or {})
         if origem is not None:
             enviados["Origin"] = origem
+        if corpo is not None:
+            corpo_bruto = json.dumps(corpo)
+        if corpo_bruto is not None:
+            enviados["Content-Type"] = "application/json"
+            corpo_bruto = corpo_bruto.encode("utf-8") if isinstance(corpo_bruto, str) else corpo_bruto
         try:
-            pedido.request(metodo, caminho, headers=enviados)
+            pedido.request(metodo, caminho, body=corpo_bruto, headers=enviados)
             resposta = pedido.getresponse()
             return resposta.status, dict(resposta.getheaders()), resposta.read()
         finally:
@@ -83,9 +104,18 @@ class ContratoDaConexao(unittest.TestCase):
         for exemplo in exemplos_do_contrato():
             with self.subTest(exemplo["nome"]), tempfile.TemporaryDirectory() as pasta:
                 contexto = exemplo["contexto"]
-                with ConexaoNoTeste(pasta, perfil=contexto["perfil"], falha_no_perfil=contexto.get("falhaNoPerfil", False)) as conexao:
+                with ConexaoNoTeste(
+                    pasta,
+                    perfil=contexto["perfil"],
+                    falha_no_perfil=contexto.get("falhaNoPerfil", False),
+                    openai=contexto.get("openai", "aceita"),
+                    chave_na_conexao=contexto.get("chaveNaConexao"),
+                ) as conexao:
                     pedido = exemplo["pedido"]
-                    status, _, corpo = conexao.pedir(pedido["metodo"], pedido["caminho"], pedido["origem"])
+                    status, _, corpo = conexao.pedir(
+                        pedido["metodo"], pedido["caminho"], pedido["origem"],
+                        corpo=pedido.get("corpo"), corpo_bruto=pedido.get("corpoBruto"),
+                    )
                 self.assertEqual(
                     (status, json.loads(corpo)),
                     (exemplo["resposta"]["status"], exemplo["resposta"]["json"]),

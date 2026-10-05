@@ -4,24 +4,66 @@ O Anki do Mac roda o Python 3.9, sem Flask, waitress nem requests. Aqui dentro n
 mexe no processo do Anki (proxy, stdout, stderr, `excepthook`, avisos): todo erro
 vai ao logger do complemento e vira uma resposta 500, nunca o diálogo de erro do Anki.
 
-Cada rota é uma função `(conexao) -> (status, json)` em `ROTAS`. Uma rota nova entra
-junto com seus exemplos em `contrato/exemplos.json` (veja `contrato/LEIA-ME.md`).
+Cada rota é uma função `(conexao, corpo) -> (status, json)` em `ROTAS`; `corpo` é o JSON do pedido
+(um objeto) nas rotas POST, e None nas outras. Uma rota nova entra junto com seus exemplos em
+`contrato/exemplos.json` (veja `contrato/LEIA-ME.md`).
 """
 
 import json
 import os
+import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from .configuracao import ENDERECO
+from . import openai_api
+from .chaves import Cofre
+from .configuracao import ENDERECO, OPENAI_BASE
+
+# Um pedido da extensão cabe em poucos KB; o que passa disso não é dela.
+LIMITE_DO_CORPO = 16 * 1024
+
+# Uma chave da OpenAI é uma palavra só, de caracteres que cabem num cabeçalho HTTP. O que não tem essa
+# forma nem sai da Conexão: não vale gastar um pedido para a OpenAI dizer o que já se vê.
+_FORMA_DA_CHAVE = re.compile(r"^[A-Za-z0-9._\-]{8,256}$")
+
+_STATUS_DO_ERRO_DA_CHAVE = {
+    openai_api.RECUSADA: 401,
+    openai_api.SEM_CREDITO: 402,
+    openai_api.ORGANIZACAO_NAO_VERIFICADA: 403,
+    openai_api.FORA_DO_AR: 502,
+}
 
 
-def _saude(conexao):
+def _saude(conexao, corpo):
     return 200, {"ok": True, "versao": conexao.versao, "perfil": conexao.perfil_aberto()}
+
+
+def _guardar_chave_da_openai(conexao, corpo):
+    chave = corpo.get("chave")
+    if not isinstance(chave, str) or not chave.strip():
+        return 400, {"error": "invalid_request"}
+    chave = chave.strip()
+    if not _FORMA_DA_CHAVE.match(chave):
+        return 401, {"error": openai_api.RECUSADA}
+    try:
+        openai_api.conferir(conexao.openai_base, chave, conexao.logger)
+    except openai_api.ErroDaChave as erro:
+        return _STATUS_DO_ERRO_DA_CHAVE[erro.codigo], {"error": erro.codigo}
+    conexao.cofre.guardar("openai", chave)
+    return 200, {"ok": True, "ultimos4": chave[-4:]}
+
+
+def _estado_da_ia(conexao, corpo):
+    ultimos4 = conexao.cofre.ultimos4("openai")
+    if ultimos4 is None:
+        return 200, {"openai": {"configurada": False}}
+    return 200, {"openai": {"configurada": True, "ultimos4": ultimos4}}
 
 
 ROTAS = {
     ("GET", "/health"): _saude,
+    ("POST", "/ia/openai/chave"): _guardar_chave_da_openai,
+    ("POST", "/ia/estado"): _estado_da_ia,
 }
 
 # As rotas que respondem sem a origem da extensão. Rota nova não entra aqui sem decisão do dono:
@@ -72,6 +114,26 @@ class _Atendente(BaseHTTPRequestHandler):
             return origem in self.conexao.origens_aceitas
         return (self.command, caminho) in ROTAS_ABERTAS
 
+    def _ler_o_corpo(self):
+        """(corpo, None), o objeto JSON do pedido, ou (None, (status, json)) com a recusa."""
+        try:
+            tamanho = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return None, (400, {"error": "invalid_request"})
+        if tamanho > LIMITE_DO_CORPO:
+            self.close_connection = True  # o que sobrou do corpo não é lido: a conexão acaba com a resposta
+            return None, (413, {"error": "payload_too_large"})
+        bruto = self.rfile.read(tamanho) if tamanho else b""
+        if not bruto:
+            return {}, None  # um POST sem corpo (o estado da IA); a rota que precisa de campo recusa
+        try:
+            corpo = json.loads(bruto.decode("utf-8"))
+        except ValueError:
+            return None, (400, {"error": "invalid_request"})
+        if not isinstance(corpo, dict):
+            return None, (400, {"error": "invalid_request"})
+        return corpo, None
+
     def _atender(self):
         caminho = self.path.split("?", 1)[0]
         if not self._pedido_aceito(caminho):
@@ -89,8 +151,13 @@ class _Atendente(BaseHTTPRequestHandler):
         rota = ROTAS.get((self.command, caminho))
         if rota is None:
             return self._responder(404, {"error": "not_found"}, origem=origem)
+        corpo = None
+        if self.command == "POST":
+            corpo, erro = self._ler_o_corpo()
+            if erro is not None:
+                return self._responder(*erro, origem=origem)
         try:
-            status, dados = rota(self.conexao)
+            status, dados = rota(self.conexao, corpo)
         except Exception:
             self.conexao.logger.exception("Erro na rota %s %s", self.command, caminho)
             return self._responder(500, {"error": "internal_error"}, origem=origem)
@@ -119,12 +186,14 @@ class _Servidor(ThreadingHTTPServer):
 class Conexao:
     """O servidor da Conexão: `iniciar()` sobe numa thread, `parar()` encerra."""
 
-    def __init__(self, *, porta, origens_aceitas, versao, perfil_aberto, logger):
+    def __init__(self, *, porta, origens_aceitas, versao, perfil_aberto, logger, pasta_das_chaves, openai_base=OPENAI_BASE):
         self.porta = porta
         self.origens_aceitas = tuple(origens_aceitas)
         self.versao = versao
         self.perfil_aberto = perfil_aberto
         self.logger = logger
+        self.cofre = Cofre(pasta_das_chaves)
+        self.openai_base = openai_base
         self._servidor = None
         self._thread = None
 
@@ -145,7 +214,7 @@ class Conexao:
 
     def _servir(self):
         try:
-            self._servidor.serve_forever()
+            self._servidor.serve_forever(poll_interval=0.05)
         except Exception:
             self.logger.exception("O servidor da Conexão parou")
 

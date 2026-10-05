@@ -205,6 +205,306 @@
           "error": "origin_not_allowed"
         }
       }
+    },
+    {
+      "nome": "chave da OpenAI aceita: a Conexão guarda a cópia e devolve só os 4 últimos caracteres",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "openai": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "chave": "sk-proj-chave-de-exemplo-9f3a"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "ultimos4": "9f3a"
+        }
+      }
+    },
+    {
+      "nome": "chave da OpenAI recusada pela OpenAI",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "openai": "recusa"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "chave": "sk-proj-chave-de-exemplo-9f3a"
+        }
+      },
+      "resposta": {
+        "status": 401,
+        "json": {
+          "error": "openai_key_rejected"
+        }
+      }
+    },
+    {
+      "nome": "chave da OpenAI que não tem a forma de uma chave nem chega à OpenAI",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "openai": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "chave": "isto não é uma chave"
+        }
+      },
+      "resposta": {
+        "status": 401,
+        "json": {
+          "error": "openai_key_rejected"
+        }
+      }
+    },
+    {
+      "nome": "chave da OpenAI de uma conta sem crédito",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "openai": "sem_credito"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "chave": "sk-proj-chave-de-exemplo-9f3a"
+        }
+      },
+      "resposta": {
+        "status": 402,
+        "json": {
+          "error": "openai_no_credit"
+        }
+      }
+    },
+    {
+      "nome": "chave da OpenAI de uma organização não verificada",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "openai": "org_nao_verificada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "chave": "sk-proj-chave-de-exemplo-9f3a"
+        }
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "openai_org_not_verified"
+        }
+      }
+    },
+    {
+      "nome": "chave da OpenAI com a OpenAI fora do ar",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "openai": "fora_do_ar"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "chave": "sk-proj-chave-de-exemplo-9f3a"
+        }
+      },
+      "resposta": {
+        "status": 502,
+        "json": {
+          "error": "openai_unreachable"
+        }
+      }
+    },
+    {
+      "nome": "chave da OpenAI em branco",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "openai": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "chave": "   "
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "chave da OpenAI com um corpo que não é JSON",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "openai": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "isto não é json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "chave da OpenAI pedida por outra extensão é recusada",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "openai": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave",
+        "origem": "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "corpo": {
+          "chave": "sk-proj-chave-de-exemplo-9f3a"
+        }
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    },
+    {
+      "nome": "chave da OpenAI pedida sem origem é recusada",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "openai": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave",
+        "origem": null,
+        "corpo": {
+          "chave": "sk-proj-chave-de-exemplo-9f3a"
+        }
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    },
+    {
+      "nome": "estado da IA com a Conexão sem chave",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "chaveNaConexao": null
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf"
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "openai": {
+            "configurada": false
+          }
+        }
+      }
+    },
+    {
+      "nome": "estado da IA com a chave na Conexão: só os 4 últimos caracteres",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "chaveNaConexao": "9f3a"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf"
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "openai": {
+            "configurada": true,
+            "ultimos4": "9f3a"
+          }
+        }
+      }
+    },
+    {
+      "nome": "estado da IA pedido sem origem é recusado",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "chaveNaConexao": "9f3a"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/estado",
+        "origem": null
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    },
+    {
+      "nome": "estado da IA pedido por GET sem origem é recusado",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "chaveNaConexao": "9f3a"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/ia/estado",
+        "origem": null
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
     }
   ]
 }

@@ -11,3 +11,7 @@ PORTA = 8766
 # é ele quem gasta a chave da OpenAI.
 ID_DA_EXTENSAO = "ohpoogiccjmdgilgegholdidgfhjkadf"
 ORIGENS_ACEITAS = ("chrome-extension://" + ID_DA_EXTENSAO,)
+
+# Onde a Conexão confere uma chave da OpenAI. Só o código muda isto (a Conexão recebe o endereço de
+# `inicio.iniciar`): nada no ambiente, na configuração ou num pedido pode desviar a chave para outro lugar.
+OPENAI_BASE = "https://api.openai.com"
