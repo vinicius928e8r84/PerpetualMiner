@@ -180,6 +180,103 @@ acusa('e2e-funcao-interna', 'e2e/tests/popup.spec.js', [
   "const frases = await page.evaluate(() => document.querySelectorAll('.veio-frase').length);",
 ].join('\n'), 0, 'chrome.* e o DOM não são código da extensão');
 
+// ─── e2e-estado-final ────────────────────────────────────────────────────────
+
+// 7996b48 (#190) painel-anki-baralhos.spec.js:546: o cenário da coleção terminava nas fotos, sem conferir pm_anki_baralhos nem pm_anki_vocabulario.
+const SO_AS_FOTOS = [
+  "test('com a coleção do contrato aberta, Baralhos e termos e Vocabulário mostram o que o complemento leu', async ({ page, extensao, fakes }) => {",
+  "  fakes.anki.abrirColecao('inglês com subbaralho');",
+  "  await abrirAnki(page, extensao, '#anki/baralhos');",
+  '  const azulejos = azulejosDosBaralhos(page).getByRole(\'button\');',
+  "  await expect(azulejos.nth(0)).toContainText('EN · Inglês');",
+  "  await fotografar(page, 'baralhos-da-colecao-do-contrato.png');",
+  "  await aba(page, 'Vocabulário').click();",
+  "  await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(12);",
+  "  await fotografar(page, 'vocabulario-da-colecao-do-contrato.png');",
+  '});',
+].join('\n');
+const [semEstado] = acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js', SO_AS_FOTOS, 1, 'o cenário que termina na foto (7996b48)');
+assert.strictEqual(semEstado.linha, 1);
+total++;
+// O conserto de 05b7eb8: depois da foto, lê os dois caches e compara com o que a tela mostrou.
+acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js', SO_AS_FOTOS.replace(/\n\}\);$/, [
+  '',
+  "  const gravado = await extensao.lerStorage(['pm_anki_baralhos', 'pm_anki_vocabulario']);",
+  "  expect(gravado.pm_anki_baralhos.nomes).toEqual({ en: 'Inglês', ru: 'Alemão' });",
+  "  expect(gravado.pm_anki_vocabulario.dados.en).toMatchObject({ deckName: 'Inglês', total: 12, source: 'colecao' });",
+  '});',
+].join('\n')), 0, 'o mesmo cenário conferindo os dois caches (05b7eb8)');
+// A leitura sem comparar, e a leitura antes de agir, não bastam.
+acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js', SO_AS_FOTOS.replace(/\n\}\);$/, "\n  await extensao.lerStorage(['pm_anki_baralhos']);\n});"), 1,
+  'a leitura sem comparar com nada');
+acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js',
+  SO_AS_FOTOS.replace("  const azulejos", "  expect((await extensao.lerStorage(['pm_anki_baralhos'])).pm_anki_baralhos).toBeUndefined();\n  const azulejos").replace("await aba(page, 'Vocabulário').click();", "await aba(page, 'Vocabulário').hover();"),
+  0, 'sem ação nenhuma o teste só mostra: não é um cenário que grava');
+// 5c391cb (#189) configuracoes-abrir-anki.spec.js: o interruptor confere a tela, não o item que a Conexão tem.
+const SO_O_INTERRUPTOR = [
+  "test('ao reabrir o painel o interruptor mostra o que a Conexão tem, não o que ficou na tela', async ({ page, extensao }) => {",
+  '  await abrirCard(page, extensao);',
+  '  await expect(interruptor(page)).toBeEnabled();',
+  '  await trilho(page).click();',
+  '  await expect(interruptor(page)).toBeChecked();',
+  '',
+  '  await page.reload();',
+  '',
+  "  await expect(resumo(page)).toHaveText('Abre com o computador');",
+  '  await expect(interruptor(page)).toBeChecked();',
+  '});',
+].join('\n');
+acusa('e2e-estado-final', 'e2e/tests/configuracoes-abrir-anki.spec.js', SO_O_INTERRUPTOR, 1, 'o interruptor sem o item que a Conexão tem (5c391cb)');
+acusa('e2e-estado-final', 'e2e/tests/configuracoes-abrir-anki.spec.js',
+  SO_O_INTERRUPTOR.replace(/\n\}\);$/, '\n  expect(fakes.anki.itemInstalado()).toBe(true);\n});').replace('{ page, extensao }', '{ page, extensao, fakes }'), 0,
+  'o mesmo teste conferindo o item no fake (fc0f416)');
+acusa('e2e-estado-final', 'e2e/tests/configuracoes-abrir-anki.spec.js',
+  SO_O_INTERRUPTOR.replace(/\n\}\);$/, '\n  await estadoFinalEm(\'o item de login\', () => fakes.anki.itemInstalado(), true);\n});'), 0, 'o helper estadoFinalEm');
+// Um helper do próprio arquivo que lê o storage conta como leitura.
+acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js', [
+  "const lerGravado = async (extensao, chave) => (await extensao.lerStorage(chave))[chave];",
+  "test('salvar grava o baralho', async ({ page, extensao }) => {",
+  "  await page.getByRole('button', { name: 'Salvar ajustes' }).click();",
+  "  expect((await lerGravado(extensao, 'pm_anki_baralhos')).nomes).toEqual({ en: 'Mining EN' });",
+  '});',
+].join('\n'), 0, 'uma função do arquivo que lê o storage');
+// A exceção nomeada, para o que não guarda nada, e o spec de aparência, que a regra não olha.
+acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js',
+  `// Exceção de teste: sem-estado-guardado — a aba só muda o que a tela mostra.\n${SO_AS_FOTOS}`, 0, 'a exceção nomeada');
+assert.strictEqual(regras['e2e-estado-final'].seAplica('e2e/tests/painel-anki-baralhos-visual.spec.js'), false);
+total++;
+
+// ─── contrato-fechado ────────────────────────────────────────────────────────
+
+// 7996b48 (#190) painel-anki-baralhos.js: o pedido da Conexão com o caminho e o corpo montados à mão, que o contrato
+// não tinha como conferir (o corpo de Atualizar tinha os dois Baralhos e o exemplo só o de Inglês).
+acusa('contrato-fechado', 'painel-anki-baralhos.js', [
+  '  async function pedirJson(caminho, corpo) {',
+  '    const resposta = await fetch(`${ENDERECO_DA_CONEXAO}${caminho}`, {',
+  "      method: 'POST',",
+  "      headers: { 'Content-Type': 'application/json' },",
+  '      body: JSON.stringify(corpo),',
+  '    });',
+  '    return resposta.json();',
+  '  }',
+].join('\n'), 1, 'o POST com o caminho numa variável (7996b48)');
+// A saúde pedida por um fetch direto, que o contrato tem (conexao-anki.js antes do construtor): o conserto é o construtor.
+const [saude] = acusa('contrato-fechado', 'lib/conexao-anki.js',
+  "const resposta = await fetch(`${ENDERECO}/health`, { signal: AbortSignal.timeout(TEMPO_DA_RESPOSTA) });\n", 1, 'a saúde por fetch direto');
+assert.match(saude.detalhe, /fetch direto a GET \/health, que o contrato tem: peça por PedidoAoAnki\.pedir/);
+total++;
+// Uma rota que o contrato não tem (as do bridge de hoje): a extensão não a pede antes do exemplo.
+const [retomar] = acusa('contrato-fechado', 'painel-envio.js',
+  "const resposta = await fetch(`${ENDERECO_DA_CONEXAO}/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });\n", 1, 'rota fora do contrato');
+assert.match(retomar.detalhe, /POST \/jobs\/:id\/retry: a rota não tem exemplo no contrato/);
+total++;
+acusa('contrato-fechado', 'background.js', "await fetch('http://127.0.0.1:8766/anki/status');\n", 1, 'o endereço por extenso');
+// O jeito certo, e o que não é da Conexão, passam.
+acusa('contrato-fechado', 'painel-ajustes.js',
+  'const resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, raiz.PedidoAoAnki.baralhos());\n', 0, 'o construtor');
+acusa('contrato-fechado', 'lib/sincronizacao.js', "const r = await fetch(`${URL_DO_FIRESTORE}/documents/frases`, { method: 'POST' });\n", 0, 'outro servidor');
+acusa('contrato-fechado', 'background.js', "// fetch(`${BRIDGE_URL}/jobs`)\n", 0, 'um comentário');
+
 // ─── testes-no-portao ────────────────────────────────────────────────────────
 
 // Um repositório mínimo (só o que a regra lê: o cadastro, os arquivos e os workflows).

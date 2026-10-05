@@ -27,6 +27,36 @@ ORIGEM = configuracao.ORIGENS_ACEITAS[0]
 VARIAVEIS_DE_PROXY = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy")
 
 
+# Tudo o que o servidor real respondeu, neste arquivo, a uma rota que ele tem: (método, caminho, status, `error`).
+# `tearDownModule` exige um exemplo do contrato para cada um. A recusa de origem (403) é a mesma em toda rota e
+# o que não é rota (404, OPTIONS) é do contrato de origem, não de uma rota; ficam de fora.
+RESPONDIDOS = set()
+
+
+def registrar_a_resposta(metodo, caminho, status, corpo):
+    if (metodo, caminho.split("?", 1)[0]) not in servidor.ROTAS or status == 403:
+        return
+    try:
+        erro = json.loads(corpo).get("error")
+    except (ValueError, AttributeError):
+        erro = None
+    RESPONDIDOS.add((metodo, caminho.split("?", 1)[0], status, erro))
+
+
+def tearDownModule():
+    exemplos = exemplos_do_contrato()
+    cobertos = {
+        (e["pedido"]["metodo"], e["pedido"]["caminho"], e["resposta"]["status"], (e["resposta"]["json"] or {}).get("error")) for e in exemplos
+    }
+    sem_exemplo = sorted(RESPONDIDOS - cobertos, key=str)
+    if sem_exemplo:
+        raise AssertionError(
+            "O complemento respondeu o que o contrato (complemento/contrato/exemplos.json) não tem exemplo: %s. "
+            "Escreva o exemplo de cada um (o contexto em que acontece e o pedido) e rode de novo; o fake do e2e e o "
+            "teste do contrato leem o mesmo arquivo." % "; ".join("%s %s -> %s %s" % estado for estado in sem_exemplo)
+        )
+
+
 def ler_o_contrato():
     with open(CONTRATO, encoding="utf-8") as arquivo:
         return json.load(arquivo)
@@ -96,7 +126,9 @@ class ConexaoNoTeste:
         try:
             pedido.request(metodo, caminho, body=corpo if isinstance(corpo, (bytes, type(None))) else json.dumps(corpo).encode("utf-8"), headers=enviados)
             resposta = pedido.getresponse()
-            return resposta.status, dict(resposta.getheaders()), resposta.read()
+            lido = resposta.read()
+            registrar_a_resposta(metodo, caminho, resposta.status, lido)
+            return resposta.status, dict(resposta.getheaders()), lido
         finally:
             pedido.close()
 
@@ -114,7 +146,9 @@ class ContratoDaConexao(unittest.TestCase):
                     pasta, perfil=contexto["perfil"], falha_no_perfil=contexto.get("falhaNoPerfil", False), colecao=colecao_do_exemplo(contexto)
                 ) as conexao:
                     pedido = exemplo["pedido"]
-                    status, _, corpo = conexao.pedir(pedido["metodo"], pedido["caminho"], pedido["origem"], corpo=pedido.get("corpo"))
+                    # `corpoBruto`: o que chega não é um objeto JSON (o 400 `invalid_json`), então vai como está.
+                    enviado = pedido["corpoBruto"].encode("utf-8") if "corpoBruto" in pedido else pedido.get("corpo")
+                    status, _, corpo = conexao.pedir(pedido["metodo"], pedido["caminho"], pedido["origem"], corpo=enviado)
                 self.assertEqual(status, exemplo["resposta"]["status"])
                 self.assertTrue(
                     igual_ao_do_contrato(json.loads(corpo), exemplo["resposta"]["json"]),

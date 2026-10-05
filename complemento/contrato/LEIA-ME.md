@@ -10,6 +10,17 @@ com o Anki (o complemento do Anki, em `127.0.0.1:8766`). Dois lados leem o mesmo
 
 Mudar só um lado quebra um teste, e a mensagem diz o exemplo e os dois arquivos.
 
+O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede nem que o complemento responde fica sem exemplo.
+
+- **Os pedidos da extensão**: todo pedido nasce de um construtor de `PerpetualMiner.PedidoAoAnki` (`lib/pedido-ao-anki.js`:
+  `saude`, `baralhos`, `estatisticas`, `vocabulario`), e `PedidoAoAnki.variantes` os lista. `node test_contrato_fechado.js`
+  pede ao construtor cada variante (com os dois Baralhos, as três leituras dos números…) e exige um exemplo `daExtensao`
+  de cada uma, que o fake do e2e então responde. O nome do Baralho não conta para achar o exemplo; quantos Baralhos, `refresh` e
+  `launch` contam. A regra `contrato-fechado` (`node scripts/regras/verificar.js`) acusa um `fetch` direto a uma rota da Conexão.
+- **As respostas do complemento**: `complemento/test_servidor.py` guarda o que o servidor real respondeu a uma rota que ele
+  tem (método, caminho, status e `error`) e, no fim, exige um exemplo para cada um. Um estado novo do servidor
+  sem exemplo (foi o `500` da saúde, no #185) quebra o teste dizendo qual.
+
 ## Um exemplo
 
 ```json
@@ -31,9 +42,11 @@ Mudar só um lado quebra um teste, e a mensagem diz o exemplo e os dois arquivos
   `fakes.anki.abrirPerfil(...)`, `falharLeituraDoPerfil()` e `abrirColecao(nome)`; o teste do complemento monta
   um adaptador de coleção em memória (`test_colecao_em_memoria.py`) com a coleção que o exemplo nomeia.
 - `colecoes` (no alto do arquivo): as coleções que os exemplos nomeiam, com os Baralhos, as notas e os Cartões
-  (`tipo` e `intervalo` do Anki: 0 novo, 1 aprendendo, 2 revisão, 3 reaprendendo).
+  (`tipo` e `intervalo` do Anki: 0 novo, 1 aprendendo, 2 revisão, 3 reaprendendo). `"quebra": true` é uma coleção que
+  levanta um erro inesperado ao ler: o `500` (`internal_error`) de cada rota de leitura.
 - `pedido`: o que chega, com `origem` (o cabeçalho `Origin`; `null` é que ele não veio). Rotas com corpo
-  ganham `corpo`, o JSON do pedido; no fake, o exemplo que cita `corpo` só vale para esse corpo.
+  ganham `corpo`, o JSON do pedido; no fake, o exemplo que cita `corpo` só vale para esse corpo. `corpoBruto` é o corpo
+  como texto, para o que não é um objeto JSON (o `400` `invalid_json`; a extensão nunca o manda, então não é `daExtensao`).
 - `resposta`: o status e o JSON. `"<agora>"` no JSON é o instante em que a Conexão respondeu: o complemento confere
   qualquer instante ISO 8601 em UTC, e o fake escreve o do relógio dele.
 
@@ -83,7 +96,8 @@ o complemento só existe com o Anki aberto. A Conexão de hoje (`bridge/`) atend
 ## Como uma rota nova entra
 
 1. Escreva os exemplos dela aqui (o caso feliz, cada erro que a extensão trata e, se muda
-   com a situação do Anki, um por `contexto`), **antes** de escrever a rota.
+   com a situação do Anki, um por `contexto`), **antes** de escrever a rota. Se a extensão a pede, dê-lhe um construtor em
+   `lib/pedido-ao-anki.js` (e as variantes dele em `variantes`): `node test_contrato_fechado.js` exige um exemplo de cada.
 2. Rode `python3 complemento/test_servidor.py`: o exemplo novo falha até a rota existir
    (`ROTAS` em `servidor.py`).
 3. Rode `cd e2e && npx playwright test contrato-da-conexao`: ele falha até o fake responder.

@@ -180,13 +180,11 @@
     desenhar();
 
     const nomes = { ...estado.nomes };
-    const pedido = { decks: IDIOMAS_DOS_AZULEJOS.map(({ idioma }) => ({ deckName: estado.nomes[idioma], lang: idioma })) };
-    if (deNovo) pedido.refresh = true;
-    if (abrirOAnki) pedido.launch = true;
+    const baralhosPedidos = IDIOMAS_DOS_AZULEJOS.map(({ idioma }) => ({ deckName: estado.nomes[idioma], lang: idioma }));
     let dados = null;
     let erro = null;
     try {
-      dados = await pedirJson('/anki/stats/decks', pedido);
+      dados = await pedirJson(raiz.PedidoAoAnki.estatisticas(baralhosPedidos, { deNovo, abrirOAnki }));
     } catch (falha) {
       erro = `POST /anki/stats/decks · ${falha.message}`;
     }
@@ -217,7 +215,7 @@
     const nomes = { ...estado.nomes };
     const lerIdioma = async idioma => {
       const deckName = estado.nomes[idioma];
-      const resposta = await pedirJson('/anki/vocabulary', { deck: deckName, lang: idioma, limit: 10000 });
+      const resposta = await pedirJson(raiz.PedidoAoAnki.vocabulario(deckName, idioma));
       const itens = Array.isArray(resposta.words) ? resposta.words : [];
       // O bridge entrega até 10.000 itens; o total do idioma é o `totalWords` dele.
       return { deckName: resposta.deckName || deckName, itens, total: numero(resposta.totalWords ?? itens.length), source: resposta.source };
@@ -254,9 +252,9 @@
     return VocabularioDaMineracao.marcaDaLeitura(anterior, source, ENDERECO_DA_CONEXAO, quando);
   }
 
-  /** Um POST à Conexão (o que lê o Anki da pessoa é POST: contrato/LEIA-ME.md); um HTTP de erro vira a causa, com o `detail` que ela mandar. */
-  async function pedirJson(caminho, corpo) {
-    const resposta = await raiz.PedidoAoAnki.postarJson(ENDERECO_DA_CONEXAO, caminho, corpo);
+  /** Envia um pedido de `PedidoAoAnki` à Conexão (o que lê o Anki da pessoa é POST: contrato/LEIA-ME.md); um HTTP de erro vira a causa, com o `detail` que ela mandar. */
+  async function pedirJson(pedido) {
+    const resposta = await raiz.PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, pedido);
     if (!resposta.ok) {
       const corpo = await resposta.json().catch(() => ({}));
       throw new Error([`HTTP ${resposta.status}`, corpo.error, corpo.detail].filter(Boolean).join(' · '));

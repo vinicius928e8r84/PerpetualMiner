@@ -19,5 +19,38 @@
   },
   "testes-no-portao": {
     ".agents/skills/verify-perpetualminer/scripts/test_helpers.sh": 1
+  },
+  "contrato-fechado": {
+    "lib/vocabulario-da-mineracao.js": 1,
+    "painel-anki-baralhos.js": 1,
+    "painel-anki.js": 3,
+    "painel-envio.js": 3
+  },
+  "e2e-estado-final": {
+    "e2e/tests/badge-da-toolbar.spec.js": 1,
+    "e2e/tests/base-veio.spec.js": 4,
+    "e2e/tests/boas-vindas.spec.js": 10,
+    "e2e/tests/componentes-veio.spec.js": 11,
+    "e2e/tests/conexao-anki.spec.js": 1,
+    "e2e/tests/conexao-na-tela.spec.js": 5,
+    "e2e/tests/configuracoes-atalhos.spec.js": 6,
+    "e2e/tests/configuracoes-chave-perigo.spec.js": 2,
+    "e2e/tests/configuracoes-conta.spec.js": 13,
+    "e2e/tests/configuracoes-tema.spec.js": 6,
+    "e2e/tests/lembrete-configuracao.spec.js": 3,
+    "e2e/tests/minerar-foto.spec.js": 24,
+    "e2e/tests/overlay-marca.spec.js": 4,
+    "e2e/tests/overlay.spec.js": 6,
+    "e2e/tests/painel-ajustes.spec.js": 4,
+    "e2e/tests/painel-anki-baralhos.spec.js": 11,
+    "e2e/tests/painel-anki-primeira-conexao.spec.js": 8,
+    "e2e/tests/painel-anki.spec.js": 8,
+    "e2e/tests/painel-envio.spec.js": 1,
+    "e2e/tests/painel-frases-selecao.spec.js": 12,
+    "e2e/tests/painel-frases.spec.js": 14,
+    "e2e/tests/painel-minerar-frases.spec.js": 15,
+    "e2e/tests/painel-shell.spec.js": 8,
+    "e2e/tests/popup.spec.js": 10,
+    "e2e/tests/seam.spec.js": 1
   }
 }

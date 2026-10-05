@@ -35,7 +35,7 @@ A surface not in this table (the panel shell, sync, storage, the service worker)
 
 ## Tests
 
-8. **e2e tests check the screen and what ends up stored**, in every variant the test adds. The three exceptions (native Chrome UI or clock, catalog states no surface shows yet, base-component guarantees with no on-screen trigger) carry a comment that names them. Source: `CLAUDE.md` § Testing.
+8. **e2e tests check the screen and what ends up stored**, in every variant the test adds. The three exceptions (native Chrome UI or clock, catalog states no surface shows yet, base-component guarantees with no on-screen trigger) carry a comment that names them. What ends up stored is read after the test acts and compared with a concrete value (`estadoFinal` in `e2e/estado-final.js`, `extensao.lerStorage`, `extensao.frases()`, what the fake kept); a photo or a text on screen is not enough (#189, #190). A test that stores nothing (a filter, a tab) says so: `// Exceção de teste: sem-estado-guardado — <reason>`. Source: `CLAUDE.md` § Testing.
 9. **A new Python test exercises the route or the function**, never the source text of the code (`_function_source` in `bridge/test_anki_launcher.py` is the old way; `bridge/test_envio.py` is the model).
 10. **A new visual reference** (`--update-snapshots`) only goes in after the owner approves the look. Source: the header comment of each `e2e/tests/*-visual.spec.js`, the `e2e-suite` skill (the list of visual references) and `CLAUDE.md` § Testing.
 
@@ -46,3 +46,4 @@ A surface not in this table (the panel shell, sync, storage, the service worker)
 ## The gate
 
 12. **Every test file belongs to a group in `scripts/testes.json`, and CI runs the groups only through `node scripts/testar.mjs <group>`**: a test that no job runs proves nothing on the PR (#185 left the add-on and fake tests out; #188 left the tooling tests out). A file that has a test's name and is not one goes in `fora` with the reason. Source: `CLAUDE.md` § Testing.
+13. **The extension asks the Conexão com o Anki only through `PedidoAoAnki`, and `complemento/contrato/exemplos.json` has an example of every request it builds and every status the add-on answers to a route**: a request typed by hand, or a state with no example, is how #190's Atualizar (two Baralhos, the contract only had one) and #185's health `500` got through. A new route gets its builder and its examples before the extension asks for it. Source: `complemento/contrato/LEIA-ME.md`.

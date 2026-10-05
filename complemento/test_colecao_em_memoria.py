@@ -23,11 +23,13 @@ class ColecaoEmMemoria:
 
     Uma nota pode trazer `campos` ({ "Front": ..., "Back": ... }) no lugar de `frente` e `verso`.
     `ColecaoEmMemoria.fechada()` é o Anki na tela de perfis: só os perfis se leem.
+    `"quebra": true` na descrição é uma coleção que levanta um erro inesperado ao ler (o `500` do contrato).
     """
 
     def __init__(self, descricao=None, perfis=("Usuário 1",), aberta=True):
         self._perfis = list(perfis)
         self._aberta = aberta
+        self._quebra = bool((descricao or {}).get("quebra"))
         self._baralhos = {}
         proxima = 1700000000000
         for baralho in (descricao or {}).get("baralhos", []):
@@ -44,6 +46,8 @@ class ColecaoEmMemoria:
         return cls(perfis=perfis, aberta=False)
 
     def _exigir_aberta(self):
+        if self._quebra:
+            raise RuntimeError("coleção ilegível")
         if not self._aberta:
             raise baralhos.ColecaoIndisponivel("collection_not_open")
 

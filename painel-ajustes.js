@@ -99,7 +99,7 @@
     const leitura = ++estado.ultimaLeituraDeBaralhos;
     let baralhos = null;
     try {
-      const resposta = await raiz.PedidoAoAnki.postarJson(ConexaoAnki.ENDERECO, '/anki/decks', {});
+      const resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, raiz.PedidoAoAnki.baralhos());
       if (resposta.ok) {
         const dados = await resposta.json();
         if (Array.isArray(dados.decks)) baralhos = dados.decks.map(String);

@@ -54,6 +54,10 @@
           "nome": "Vazio"
         }
       ]
+    },
+    "coleção que quebra ao ler": {
+      "quebra": true,
+      "baralhos": []
     }
   },
   "exemplos": [
@@ -1144,6 +1148,136 @@
         "status": 404,
         "json": {
           "error": "not_found"
+        }
+      }
+    },
+    {
+      "nome": "Baralhos com a coleção que quebra ao ler",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "coleção que quebra ao ler"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/decks",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 500,
+        "json": {
+          "error": "internal_error"
+        }
+      }
+    },
+    {
+      "nome": "Números com a coleção que quebra ao ler",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "coleção que quebra ao ler"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/stats/decks",
+        "corpo": {
+          "decks": [
+            {
+              "deckName": "Inglês",
+              "lang": "en"
+            }
+          ]
+        }
+      },
+      "resposta": {
+        "status": 500,
+        "json": {
+          "error": "internal_error"
+        }
+      }
+    },
+    {
+      "nome": "Vocabulário com a coleção que quebra ao ler",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "coleção que quebra ao ler"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/vocabulary",
+        "corpo": {
+          "deck": "Inglês",
+          "lang": "en"
+        }
+      },
+      "resposta": {
+        "status": 500,
+        "json": {
+          "error": "internal_error"
+        }
+      }
+    },
+    {
+      "nome": "Baralhos pedidos com um corpo que não é um objeto JSON",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/decks",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "Números pedidos com um corpo que não é um objeto JSON",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/stats/decks",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "Vocabulário pedidos com um corpo que não é um objeto JSON",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/vocabulary",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
         }
       }
     }

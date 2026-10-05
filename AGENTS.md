@@ -44,9 +44,10 @@ Keep local paths and Anki settings in `bridge/config.json`. Do not commit secret
 | 5 Language | `idioma-solto` |
 | 6 True status | review |
 | 7 Storage writes | `gravacao-de-frases` (new write sites); a stale copy in an existing one: review |
-| 8 e2e tests | `e2e-funcao-interna` (unnamed exceptions); screen check per variant: review |
+| 8 e2e tests | `e2e-funcao-interna` (unnamed exceptions; direct internals only, the stored state is the next rule); `e2e-estado-final` (a test that acts reads what was stored after acting and compares it); screen check per variant: review |
 | 9 Python tests | `teste-le-codigo` |
 | 12 Every test runs in CI | `testes-no-portao` |
+| 13 The contract has every request and answer | `contrato-fechado` (a `fetch` straight to the Conexão); `test_contrato_fechado.js` and the end of `complemento/test_servidor.py` (an example for each request the extension builds and each status the server answers) |
 | 10 Visual references | review |
 | 11 New files | review; `test_empacotar.js` |
 

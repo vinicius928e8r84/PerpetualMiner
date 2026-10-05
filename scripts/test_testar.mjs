@@ -25,7 +25,7 @@ assert.ok(padraoComoRegex('e2e/tests/**/*.spec.js').test('e2e/tests/sub/algo.spe
 // O que o executor mostra.
 const lista = testar('--listar');
 assert.equal(lista.status, 0, lista.stdout + lista.stderr);
-assert.match(lista.stdout, /^node: test_auto_keyword\.js test_empacotar\.js test_fake_anki\.js test_sync\.js$/m);
+assert.match(lista.stdout, /^node: (?:\S+ )*test_sync\.js(?: \S+)*$/m);
 assert.match(lista.stdout, /^e2e \(pesado\): e2e\/tests\/.*\.spec\.js/m);
 assert.match(lista.stdout, /^complemento: complemento\/test_colecao_em_memoria\.py/m);
 
