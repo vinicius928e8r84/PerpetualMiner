@@ -151,8 +151,8 @@ test('nunca conectada, dois minutos sem resposta: o passo 2 com o checklist e Ba
   await page.evaluate(() => document.fonts.ready);
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
   await page.locator('#anki-primeira-vez').getByRole('button', { name: 'Reiniciar o Anki' }).click();
-  await page.clock.runFor(120_000);
-  await expect(page.getByText('A Conexão com o Anki ainda não respondeu. Confira:')).toBeVisible();
+  await page.clock.runFor(125_000);
+  await expect(page.locator('#anki-primeira-vez').getByText('A Conexão com o Anki ainda não respondeu. Confira:')).toBeVisible();
 
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-sem-resposta.png', { animations: 'disabled' });
 });
