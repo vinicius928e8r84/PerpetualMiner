@@ -149,5 +149,23 @@ sleep 0.3
 [ "$rc" -eq 0 ] && [ -z "$(pgrep -f "$TMP/bin/npx" | tr '\n' ' ')" ] && passou "the repeated cleanup stops everything" || falhou "after the repeated cleanup: rc $rc, still running: $(pgrep -f "$TMP/bin/npx" | tr '\n' ' ')"
 [ -f "$PM_VERIFY_ROOT/meio/evidence/proof.txt" ] && [ ! -e "$PM_VERIFY_ROOT/meio/drive.pid" ] && passou "evidence kept, record gone" || falhou "state wrong after the repeated cleanup"
 
+# 11. The feature-map ratchet (mapa-de-features.sh): a surface change needs features/ or the declaration in the PR body.
+repo="$TMP/mapa"; mkdir -p "$repo/.agents/skills/verify-perpetualminer/features"
+(cd "$repo" && git init -q -b main && git config user.email t@t && git config user.name t && echo a > popup.js && echo a > popup.css && echo a > README.md \
+  && echo a > .agents/skills/verify-perpetualminer/features/x.md && git add -A && git commit -qm base)
+mapa() { (cd "$repo" && git checkout -q main && git checkout -q -B pr main && "$@"); }
+muda() { (cd "$repo" && for f in "$@"; do echo "$RANDOM" >> "$f"; done && git add -A && git commit -qm change); }
+confere() { (cd "$repo" && PR_BODY="${PR_BODY:-}" "$AQUI/mapa-de-features.sh" main >/dev/null 2>&1); }
+mapa true; muda popup.js
+confere && falhou "ratchet passed a popup.js change with no features/ and no declaration" || passou "ratchet fails a surface change with no features/ and no declaration"
+PR_BODY='Feature map unchanged: copy only.' confere && passou "ratchet accepts the declaration in the PR body" || falhou "ratchet ignored the declaration"
+mapa true; muda popup.js .agents/skills/verify-perpetualminer/features/x.md
+confere && passou "ratchet accepts a change that updates features/" || falhou "ratchet failed although features/ was updated"
+mapa true; muda popup.css README.md
+confere && passou "ratchet ignores files that are not surfaces (popup.css, README.md)" || falhou "ratchet flagged a non-surface change"
+mapa true; muda bridge-server-lookalike.py 2>/dev/null; muda painel-shell.js
+confere && falhou "ratchet passed painel-shell.js with nothing" || passou "ratchet fails a painel*.js change"
+(cd "$repo" && "$AQUI/mapa-de-features.sh" nao-existe >/dev/null 2>&1); [ $? -eq 2 ] && passou "ratchet refuses a base ref that does not exist" || falhou "ratchet accepted an unknown base ref"
+
 [ "$falhas" -eq 0 ] && echo "test_helpers: all passed" || echo "test_helpers: $falhas failed"
 exit $([ "$falhas" -eq 0 ] && echo 0 || echo 1)

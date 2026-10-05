@@ -45,9 +45,12 @@ export PM_EVIDENCE_DIR="$RUN/evidence" TMPDIR="$RUN/tmp" PLAYWRIGHT_JSON_OUTPUT_
 # The job runs in its own process group (job control), so cleanup.sh can stop it even if this script dies first.
 # --output is outside evidence/: Playwright empties it at the start of every run.
 set -m
-( $LIMITADOR npx --no-install playwright test "$@" --workers=2 --reporter=list,json --output="$RUN/pw-output" 2>&1
+# The job writes its own group id first thing: asking ps about the pipeline afterwards races with a job that ends at once.
+( ps -o pgid= -p "$BASHPID" | tr -d ' ' > "$RUN/tmp/pgid"
+  $LIMITADOR npx --no-install playwright test "$@" --workers=2 --reporter=list,json --output="$RUN/pw-output" 2>&1
   echo $? > "$RUN/tmp/exit-code" ) < /dev/null | tee -a "$RUN/evidence/run.log" &
-GRUPO="$(ps -o pgid= -p $! | tr -d ' ')"
+for _ in $(seq 100); do [ -s "$RUN/tmp/pgid" ] && break; sleep 0.05; done
+GRUPO="$(cat "$RUN/tmp/pgid" 2>/dev/null)"
 pm_registrar_grupo "$RUN" "$GRUPO"
 parar() { kill -TERM -- "-$GRUPO" 2>/dev/null; exit "$1"; }
 trap 'parar 130' INT
