@@ -124,10 +124,10 @@
   }
 
   function colunaDaChave(lugar, ...filhos) {
-    const titulo = elemento('h3', 'ia-coluna__titulo', textoDaVoz('CFG-35.chave.titulo'));
+    const titulo = elemento('h3', 'ia-coluna__titulo', textoDaVoz('CFG-35.chaveTitulo'));
     titulo.id = idDe(lugar, 'chave-titulo');
     const coluna = elemento('section', 'ia-coluna', titulo,
-      elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chave.corpo')), ...filhos);
+      elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chaveCorpo')), ...filhos);
     coluna.setAttribute('aria-labelledby', titulo.id);
     return coluna;
   }
@@ -137,7 +137,7 @@
     const ponto = elemento('span', 'cfg-ponto');
     ponto.dataset.estado = 'ok';
     ponto.setAttribute('aria-hidden', 'true');
-    const trocar = botao('contorno', textoDaVoz('CFG-35.chave.trocar'), () => {
+    const trocar = botao('contorno', textoDaVoz('CFG-35.chaveTrocar'), () => {
       lugar.trocando = true;
       lugar.erro = null;
       desenhar(lugar);
@@ -147,7 +147,7 @@
 
     const linha = elemento('div', 'cfg-linha',
       elemento('div', 'cfg-quem',
-        elemento('span', 'cfg-status', ponto, textoDaVoz('CFG-35.chave.salva')),
+        elemento('span', 'cfg-status', ponto, textoDaVoz('CFG-35.chaveSalva')),
         elemento('span', 'cfg-chave-mascarada cfg-chave-mascarada--card', mascarada())),
       elemento('div', 'cfg-acoes', trocar));
     return colunaDaChave(lugar, linha, ...notasDaChave(lugar, true));
@@ -160,12 +160,12 @@
     campo.type = 'text';
     campo.autocomplete = 'off';
     campo.spellcheck = false;
-    campo.placeholder = textoDaVoz('CFG-35.chave.campo');
-    campo.setAttribute('aria-label', textoDaVoz('CFG-35.chave.titulo'));
+    campo.placeholder = textoDaVoz('CFG-35.chaveCampo');
+    campo.setAttribute('aria-label', textoDaVoz('CFG-35.chaveTitulo'));
     campo.value = lugar.digitado;
     campo.disabled = lugar.conferindo;
 
-    const vazia = elemento('p', 'veio-campo-erro', textoDaVoz('CFG-35.chave.vazia'));
+    const vazia = elemento('p', 'veio-campo-erro', textoDaVoz('CFG-35.chaveVazia'));
     vazia.id = idDe(lugar, 'vazia');
     vazia.hidden = true;
     campo.addEventListener('input', () => {
@@ -178,14 +178,14 @@
     });
 
     const conferir = elemento('button', `veio-botao veio-botao--${estado.ultimos4 ? 'secundario' : 'primario'}`,
-      textoDaVoz(lugar.conferindo ? 'CFG-35.chave.conferindo' : 'CFG-35.chave.conferir'));
+      textoDaVoz(lugar.conferindo ? 'CFG-35.chaveConferindo' : 'CFG-35.chaveConferir'));
     conferir.type = 'submit';
     conferir.id = idDe(lugar, 'conferir');
     // O botão fica no Tab e no foco, mas não repete o pedido enquanto a conferência anda.
     if (lugar.conferindo) conferir.setAttribute('aria-disabled', 'true');
     const acoes = elemento('div', 'cfg-acoes', conferir);
     if (lugar.trocando) {
-      const cancelar = botao('fantasma', textoDaVoz('CFG-35.chave.cancelar'), () => {
+      const cancelar = botao('fantasma', textoDaVoz('CFG-35.chaveCancelar'), () => {
         lugar.trocando = false;
         lugar.erro = null;
         lugar.digitado = '';
@@ -213,33 +213,33 @@
   function notasDaChave(lugar, salva) {
     const notas = [];
     if (salva) {
-      notas.push(elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chave.guardada')));
+      notas.push(elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chaveGuardada')));
       if (estado.copia !== null) {
-        const copia = elemento('p', 'cfg-nota', textoDaVoz(estado.copia ? 'CFG-35.chave.copiaNaConexao' : 'CFG-35.chave.semCopia'));
+        const copia = elemento('p', 'cfg-nota', textoDaVoz(estado.copia ? 'CFG-35.chaveCopiaNaConexao' : 'CFG-35.chaveSemCopia'));
         copia.dataset.copia = estado.copia ? 'tem' : 'falta';
         notas.push(copia);
       }
     }
-    const onde = elemento('a', 'veio-botao veio-botao--link', textoDaVoz('CFG-35.chave.onde'));
+    const onde = elemento('a', 'veio-botao veio-botao--link', textoDaVoz('CFG-35.chaveOnde'));
     onde.href = ONDE_CRIAR_A_CHAVE;
     onde.target = '_blank';
     onde.rel = 'noopener noreferrer';
-    notas.push(elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chave.dica'), ' ', onde));
+    notas.push(elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chaveDica'), ' ', onde));
     return notas;
   }
 
   /** A outra entrada: a do ChatGPT, do mesmo tamanho, ainda sem login (o plano chega no #155). */
   function colunaDoChatGPT(lugar) {
-    const titulo = elemento('h3', 'ia-coluna__titulo', textoDaVoz('CFG-35.chatgpt.titulo'),
-      elemento('span', 'veio-selo', textoDaVoz('CFG-35.chatgpt.selo')));
+    const titulo = elemento('h3', 'ia-coluna__titulo', textoDaVoz('CFG-35.chatgptTitulo'),
+      elemento('span', 'veio-selo', textoDaVoz('CFG-35.chatgptSelo')));
     titulo.id = idDe(lugar, 'chatgpt-titulo');
-    const continuar = elemento('button', 'veio-botao veio-botao--secundario', textoDaVoz('CFG-35.chatgpt.botao'));
+    const continuar = elemento('button', 'veio-botao veio-botao--secundario', textoDaVoz('CFG-35.chatgptBotao'));
     continuar.type = 'button';
     continuar.disabled = true;
     const coluna = elemento('section', 'ia-coluna ia-coluna--chatgpt', titulo,
-      elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chatgpt.corpo')),
+      elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chatgptCorpo')),
       elemento('div', 'cfg-acoes', continuar),
-      elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chatgpt.indisponivel')));
+      elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chatgptIndisponivel')));
     coluna.setAttribute('aria-labelledby', titulo.id);
     return coluna;
   }
@@ -248,17 +248,17 @@
   function faixaDoErro(lugar) {
     const { motivo, detalhes } = lugar.erro;
     const abrir = url => () => window.open(url, '_blank', 'noopener,noreferrer');
-    const tentar = { rotulo: textoDaVoz('CFG-35.erro.tentarDeNovo'), aoUsar: () => reenviar(lugar) };
+    const tentar = { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: () => reenviar(lugar) };
     const cada = {
-      recusada: { texto: 'CFG-35.erro.recusada', acao: { rotulo: textoDaVoz('CFG-35.erro.trocar'), aoUsar: () => trocarDeNovo(lugar) } },
-      sem_credito: { texto: 'CFG-35.erro.semCredito', acao: { rotulo: textoDaVoz('CFG-35.erro.adicionarCredito'), aoUsar: abrir(ONDE_ADICIONAR_CREDITO) } },
-      organizacao_nao_verificada: { texto: 'CFG-35.erro.organizacao', acao: { rotulo: textoDaVoz('CFG-35.erro.verificarOrganizacao'), aoUsar: abrir(ONDE_VERIFICAR_A_ORGANIZACAO) } },
-      openai_fora_do_ar: { texto: 'CFG-35.erro.foraDoAr', acao: tentar },
-      sem_conexao: { texto: 'CFG-35.erro.semConexao', acao: tentar },
-      conexao_com_erro: { texto: 'CFG-35.erro.conexaoComErro', acao: tentar },
+      recusada: { texto: 'CFG-35.erroRecusada', acao: { rotulo: textoDaVoz('CFG-35.erroTrocar'), aoUsar: () => trocarDeNovo(lugar) } },
+      sem_credito: { texto: 'CFG-35.erroSemCredito', acao: { rotulo: textoDaVoz('CFG-35.erroAdicionarCredito'), aoUsar: abrir(ONDE_ADICIONAR_CREDITO) } },
+      organizacao_nao_verificada: { texto: 'CFG-35.erroOrganizacao', acao: { rotulo: textoDaVoz('CFG-35.erroVerificarOrganizacao'), aoUsar: abrir(ONDE_VERIFICAR_A_ORGANIZACAO) } },
+      openai_fora_do_ar: { texto: 'CFG-35.erroForaDoAr', acao: tentar },
+      sem_conexao: { texto: 'CFG-35.erroSemConexao', acao: tentar },
+      conexao_com_erro: { texto: 'CFG-35.erroConexaoComErro', acao: tentar },
     }[motivo];
     const aviso = montarAviso({
-      abertura: textoDaVoz('CFG-35.erro.entrada'),
+      abertura: textoDaVoz('CFG-35.erroEntrada'),
       texto: textoDaVoz(cada.texto),
       icone: 'alerta',
       acao: cada.acao,
@@ -318,7 +318,7 @@
       // Este volta ao resumo; o outro lugar também, se não estiver no meio de uma troca.
       for (const outro of lugares) if (!outro.trocando && !outro.conferindo) desenhar(outro);
       porId(idDe(lugar, 'trocar'))?.focus();
-      mostrarToastDeSucesso(textoDaVoz('CFG-35.chave.toast'));
+      mostrarToastDeSucesso(textoDaVoz('CFG-35.chaveToast'));
       return;
     }
     // O campo volta com o que a pessoa colou, para ela corrigir ou tentar de novo.
