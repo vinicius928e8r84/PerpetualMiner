@@ -258,5 +258,55 @@ class EnvioApiTests(unittest.TestCase):
         self.assert_persisted(job_id)
 
 
+class LeiturasDoAnkiPorPostTests(unittest.TestCase):
+    """A extensão lê os Baralhos por POST com corpo JSON, como na Conexão do complemento do Anki
+    (complemento/contrato/exemplos.json); o GET segue respondendo o mesmo."""
+
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.bridge, self.modules = offline_bridge(Path(temporary.name))
+        self.modules.modules["config_loader"].yaml = SimpleNamespace(safe_load=lambda _file: OfflineModules.config())
+        self.bridge.anki.collection_ready_status = lambda: (True, "")
+        self.bridge.anki.invoke = self.ankiconnect
+        self.client = self.bridge.app.test_client()
+
+    @staticmethod
+    def ankiconnect(action: str, params: dict[str, Any] | None = None, timeout: int = 20) -> Any:
+        notes = {
+            1: {"noteId": 1, "fields": {"Front": {"value": "She <b>gave up</b> smoking"}, "Back": {"value": "give up /ɡɪv ʌp/"}}},
+            2: {"noteId": 2, "fields": {"Front": {"value": "I gave her the book"}, "Back": {"value": "give /ɡɪv/"}}},
+        }
+        cards = {10: {"cardId": 10, "note": 1, "type": 2, "interval": 40}, 11: {"cardId": 11, "note": 2, "type": 0, "interval": 0}}
+        return {
+            "deckNames": ["Default", "Inglês", "Inglês::Séries"],
+            "findNotes": list(notes),
+            "findCards": list(cards),
+            "notesInfo": [notes[i] for i in (params or {}).get("notes", [])],
+            "cardsInfo": [cards[i] for i in (params or {}).get("cards", [])],
+        }[action]
+
+    def test_os_baralhos_lidos_por_post_sao_os_mesmos_do_get(self) -> None:
+        self.assertEqual(self.client.post("/anki/decks", json={}).get_json(), self.client.get("/anki/decks").get_json())
+        self.assertEqual(self.client.post("/anki/decks", json={}).get_json(), {"decks": ["Inglês", "Inglês::Séries"]})
+
+    def test_o_vocabulario_pedido_por_post_traz_os_filtros_do_corpo(self) -> None:
+        body = {"deck": "Inglês", "lang": "en", "type": "term", "limit": 10000}
+        post = self.client.post("/anki/vocabulary", json=body).get_json()
+        get = self.client.get("/anki/vocabulary?deck=Inglês&lang=en&type=term&limit=10000").get_json()
+        self.assertEqual([(w["word"], w["type"]) for w in post["words"]], [("gave up", "term")])
+        self.assertEqual((post["words"], post["filters"]), (get["words"], get["filters"]))
+
+    def test_o_vocabulario_por_post_sem_baralho_e_recusado_como_no_get(self) -> None:
+        response = self.client.post("/anki/vocabulary", json={"lang": "en"})
+        self.assertEqual((response.status_code, response.get_json()), (400, {"error": "deck_required"}))
+
+    def test_os_numeros_dos_baralhos_pedidos_por_post_voltam_na_ordem_pedida_e_o_que_nao_existe_vem_missing(self) -> None:
+        decks = [{"deckName": "Alemão", "lang": "en"}, {"deckName": "Inglês", "lang": "en"}]
+        rows = self.client.post("/anki/stats/decks", json={"decks": decks, "refresh": True}).get_json()["decks"]
+        self.assertEqual([(row["deckName"], bool(row.get("missing")), row["cards"]) for row in rows],
+                         [("Alemão", True, 0), ("Inglês", False, 2)])
+
+
 if __name__ == "__main__":
     unittest.main()

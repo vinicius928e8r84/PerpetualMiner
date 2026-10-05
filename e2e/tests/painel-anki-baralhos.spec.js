@@ -90,11 +90,10 @@ test('baralhos: azulejos Inglês · Russo com as palavras; o escolhido mostra o 
   await expect(numeros).toContainText('Cartões480');
 
   // O caminho de hoje: os dois baralhos dos Ajustes de envio numa leitura só. Entrar na área não pede à Conexão que abra o Anki.
-  const busca = new URLSearchParams(pedidos(fakes, '/anki/stats/decks')[0].busca);
-  expect(busca.getAll('deck')).toEqual(['CIMV', 'RUSSIAN']);
-  expect(busca.getAll('lang')).toEqual(['en', 'ru']);
-  expect(busca.has('launch')).toBe(false);
-  expect(pedidos(fakes, '/anki/vocabulary').every(r => !new URLSearchParams(r.busca).has('launch'))).toBe(true);
+  const leitura = pedidos(fakes, '/anki/stats/decks')[0].dados;
+  expect(leitura.decks).toEqual([{ deckName: 'CIMV', lang: 'en' }, { deckName: 'RUSSIAN', lang: 'ru' }]);
+  expect(leitura).not.toHaveProperty('launch');
+  expect(pedidos(fakes, '/anki/vocabulary').every(r => !('launch' in r.dados))).toBe(true);
 });
 
 test('baralhos lidos do arquivo local: a nota BRG-13 no topo', async ({ page, extensao, fakes }) => {
@@ -124,7 +123,7 @@ test('baralho que não existe: “—” e “baralho não encontrado” no azul
 test('baralhos carregando: BRG-10 com o esqueleto', async ({ page, extensao, fakes }) => {
   let responder;
   const segurada = new Promise(r => { responder = r; });
-  fakes.anki.responder('GET', '/anki/stats/decks', async (req, url) => { await segurada; return { json: { decks: [], totals: {} } }; });
+  fakes.anki.responder('POST', '/anki/stats/decks', async (req, url) => { await segurada; return { json: { decks: [], totals: {} } }; });
   await abrirAnki(page, extensao, '#anki/baralhos');
 
   await expect(baralhos(page).getByRole('status').filter({ hasText: 'Lendo os baralhos do Anki…' })).toBeVisible();
@@ -140,7 +139,7 @@ test('baralhos que falham: BRG-11 com Reparar Anki, Tentar de novo e a causa em 
   await expect(aviso).toBeVisible();
   await expect(aviso.getByRole('button', { name: 'Reparar Anki' })).toBeVisible();
   await aviso.getByText('Detalhes', { exact: true }).click();
-  await expect(aviso.locator('pre')).toContainText('GET /anki/stats/decks · HTTP 503');
+  await expect(aviso.locator('pre')).toContainText('POST /anki/stats/decks · HTTP 503');
   await expect(azulejosDosBaralhos(page)).toBeHidden();
 
   fakes.anki.voltarBaralhos();
@@ -188,7 +187,7 @@ test('Reparar Anki espera o reparo inteiro (~100 s): “Reparando…” até o f
   expect(pedidos(fakes, '/anki/repair')).toHaveLength(1);
   // Reparado, os baralhos são lidos de novo, sem o cache da Conexão.
   await expect.poll(() => pedidos(fakes, '/anki/stats/decks').length).toBeGreaterThan(leiturasAntesDoFim);
-  expect(pedidos(fakes, '/anki/stats/decks').at(-1).busca).toContain('refresh=1');
+  expect(pedidos(fakes, '/anki/stats/decks').at(-1).dados.refresh).toBe(true);
 });
 
 test('Reparar Anki pelo erro BRG-11: após o reparo o foco vai para o idioma escolhido', async ({ page, extensao, fakes }) => {
@@ -334,7 +333,7 @@ test('vocabulário: tipo, status e busca filtram a lista; sem resultado, BRG-21 
 test('vocabulário carregando: BRG-19 com o esqueleto', async ({ page, extensao, fakes }) => {
   let responder;
   const segurada = new Promise(r => { responder = r; });
-  fakes.anki.responder('GET', '/anki/vocabulary', async () => { await segurada; return { json: { words: [] } }; });
+  fakes.anki.responder('POST', '/anki/vocabulary', async () => { await segurada; return { json: { words: [] } }; });
   await abrirAnki(page, extensao, '#anki/vocabulario');
 
   await expect(vocabulario(page).getByRole('status').filter({ hasText: 'Lendo o vocabulário…' })).toBeVisible();
@@ -359,7 +358,7 @@ test('vocabulário que falha: BRG-20 com Tentar de novo, em vez de ficar em “A
   await expect(aviso).toBeVisible();
   await expect(vocabulario(page)).not.toContainText('Aguardando');
   await aviso.getByText('Detalhes', { exact: true }).click();
-  await expect(aviso.locator('pre')).toContainText('GET /anki/vocabulary · HTTP 503');
+  await expect(aviso.locator('pre')).toContainText('POST /anki/vocabulary · HTTP 503');
 
   fakes.anki.voltarVocabulario();
   await aviso.getByRole('button', { name: 'Tentar de novo' }).click();
@@ -418,7 +417,7 @@ test('com a Conexão desligada, entrar na área e a Conexão voltar não pedem p
   await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
   await expect(vocabulario(page)).not.toContainText('esperando o Anki');
   await expect.poll(() => pedidos(fakes, '/anki/stats/decks').length).toBeGreaterThan(0);
-  expect(pedidos(fakes, '/anki/stats/decks').every(r => !r.busca.includes('launch'))).toBe(true);
+  expect(pedidos(fakes, '/anki/stats/decks').every(r => !('launch' in r.dados))).toBe(true);
 });
 
 test('Conexão ligada mas o Anki fechado: baralhos e vocabulário vêm do arquivo, com “Anki fechado” e os dados de antes de ele fechar; abrir o Anki tira o selo', async ({ page, extensao, fakes }) => {
@@ -441,7 +440,7 @@ test('Conexão ligada mas o Anki fechado: baralhos e vocabulário vêm do arquiv
   await expect(baralhos(page)).toContainText('Anki fechado. Mostrando dados de há 2 h.');
   await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
   // A leitura não pediu para abrir o Anki.
-  expect(pedidos(fakes, '/anki/stats/decks').slice(1).every(r => !r.busca.includes('launch'))).toBe(true);
+  expect(pedidos(fakes, '/anki/stats/decks').slice(1).every(r => !('launch' in r.dados))).toBe(true);
 
   // O Anki abre e a pessoa aperta Atualizar: a leitura volta a ser do Anki, sem o selo.
   fakes.anki.abrirOAnki();
@@ -521,7 +520,7 @@ test('trocar o Baralho com o Anki fechado: o Baralho novo não herda a idade do 
 });
 
 test('o último dado que a própria Conexão guardou (stale) segue com “Não deu para atualizar agora”, sem o Anki fechado', async ({ page, extensao, fakes }) => {
-  fakes.anki.responder('GET', '/anki/stats/decks', () => ({
+  fakes.anki.responder('POST', '/anki/stats/decks', () => ({
     json: {
       generatedAt: new Date(AGORA.getTime() - 3 * 3600_000).toISOString(),
       stale: true,
@@ -552,7 +551,7 @@ test('salvar outro baralho nos Ajustes de envio lê os baralhos e o vocabulário
   await expect(azulejosDosBaralhos(page).getByRole('button').nth(0)).toContainText('99 palavras');
   await aba(page, 'Vocabulário').click();
   await expect(azulejosDoVocabulario(page).getByRole('button').nth(0)).toContainText('EN · Mining EN');
-  expect(pedidos(fakes, '/anki/vocabulary').some(r => new URLSearchParams(r.busca).get('deck') === 'Mining EN')).toBe(true);
+  expect(pedidos(fakes, '/anki/vocabulary').some(r => r.dados.deck === 'Mining EN')).toBe(true);
 });
 
 test('↻ Atualizar lê de novo os baralhos (abrindo o Anki se precisar) e o vocabulário', async ({ page, extensao, fakes }) => {
@@ -563,9 +562,9 @@ test('↻ Atualizar lê de novo os baralhos (abrindo o Anki se precisar) e o voc
   await atualizar(page).click();
 
   await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(6);
-  const ultima = pedidos(fakes, '/anki/stats/decks').at(-1).busca;
-  expect(ultima).toContain('refresh=1');
-  expect(ultima).toContain('launch=1');
+  const ultima = pedidos(fakes, '/anki/stats/decks').at(-1).dados;
+  expect(ultima.refresh).toBe(true);
+  expect(ultima.launch).toBe(true);
 });
 
 test('azulejos, filtros e lista têm nome e foco visível', async ({ page, extensao }) => {

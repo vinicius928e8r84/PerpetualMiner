@@ -5,7 +5,7 @@
 // diz o baralho e a fonte de imagem gravados; aberto, traz o formulário do idioma (Baralho, Imagens,
 // o sotaque do áudio no Avançado) e só grava em Salvar ajustes.
 //
-// O Baralho é uma escolha entre os baralhos que o Anki tem (`GET /anki/decks`, com o nome legível:
+// O Baralho é uma escolha entre os baralhos que o Anki tem (`POST /anki/decks`, com o nome legível:
 // os níveis `::` viram ›). Sem a lista (a Conexão desligada, o Anki sem responder), é um campo de
 // texto, em branco volta ao padrão, e um nome com nível vazio (`Inglês::`) é recusado no campo.
 //
@@ -99,7 +99,11 @@
     const leitura = ++estado.ultimaLeituraDeBaralhos;
     let baralhos = null;
     try {
-      const resposta = await fetch(`${ConexaoAnki.ENDERECO}/anki/decks`);
+      const resposta = await fetch(`${ConexaoAnki.ENDERECO}/anki/decks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
       if (resposta.ok) {
         const dados = await resposta.json();
         if (Array.isArray(dados.decks)) baralhos = dados.decks.map(String);

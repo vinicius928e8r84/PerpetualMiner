@@ -9,6 +9,7 @@ import http.client
 import io
 import json
 import os
+import re
 import socket
 import sys
 import tempfile
@@ -19,21 +20,43 @@ import warnings
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import configuracao, registro, servidor  # noqa: E402
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
 VARIAVEIS_DE_PROXY = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy")
 
 
-def exemplos_do_contrato():
+def ler_o_contrato():
     with open(CONTRATO, encoding="utf-8") as arquivo:
-        return json.load(arquivo)["exemplos"]
+        return json.load(arquivo)
+
+
+def exemplos_do_contrato():
+    return ler_o_contrato()["exemplos"]
+
+
+def colecao_do_exemplo(contexto):
+    """A coleção do contexto do exemplo: a que ele nomeia em `colecoes`, ou o Anki sem coleção aberta."""
+    nome = contexto.get("colecao")
+    return ColecaoEmMemoria(ler_o_contrato()["colecoes"][nome]) if nome else ColecaoEmMemoria.fechada()
+
+
+def igual_ao_do_contrato(obtido, esperado):
+    """O JSON obtido é o do contrato; `"<agora>"` no contrato é qualquer instante ISO 8601 (Z)."""
+    if esperado == "<agora>":
+        return isinstance(obtido, str) and bool(re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z", obtido))
+    if isinstance(esperado, dict):
+        return isinstance(obtido, dict) and obtido.keys() == esperado.keys() and all(igual_ao_do_contrato(obtido[k], v) for k, v in esperado.items())
+    if isinstance(esperado, list):
+        return isinstance(obtido, list) and len(obtido) == len(esperado) and all(igual_ao_do_contrato(o, e) for o, e in zip(obtido, esperado))
+    return obtido == esperado
 
 
 class ConexaoNoTeste:
     """A Conexão real numa porta livre, com o perfil que o teste escolher."""
 
-    def __init__(self, pasta, perfil="Usuário 1", origens=None, falha_no_perfil=False):
+    def __init__(self, pasta, perfil="Usuário 1", origens=None, falha_no_perfil=False, colecao=None):
         self.perfil = perfil
         self.falha_no_perfil = falha_no_perfil
         self.logs = os.path.join(pasta, "logs")
@@ -45,6 +68,7 @@ class ConexaoNoTeste:
             versao=configuracao.VERSAO,
             perfil_aberto=self._ler_o_perfil,
             logger=self.logger,
+            colecao=colecao,
         )
 
     def _ler_o_perfil(self):
@@ -61,13 +85,16 @@ class ConexaoNoTeste:
         for handler in list(self.logger.handlers):
             handler.close()
 
-    def pedir(self, metodo, caminho, origem=ORIGEM, cabecalhos=None):
+    def pedir(self, metodo, caminho, origem=ORIGEM, cabecalhos=None, corpo=None):
+        """`corpo` é um JSON (dict) ou, para o pedido quebrado, os bytes que seguem."""
         pedido = http.client.HTTPConnection("127.0.0.1", self.conexao.porta, timeout=5)
         enviados = dict(cabecalhos or {})
         if origem is not None:
             enviados["Origin"] = origem
+        if corpo is not None:
+            enviados["Content-Type"] = "application/json"
         try:
-            pedido.request(metodo, caminho, headers=enviados)
+            pedido.request(metodo, caminho, body=corpo if isinstance(corpo, (bytes, type(None))) else json.dumps(corpo).encode("utf-8"), headers=enviados)
             resposta = pedido.getresponse()
             return resposta.status, dict(resposta.getheaders()), resposta.read()
         finally:
@@ -83,15 +110,17 @@ class ContratoDaConexao(unittest.TestCase):
         for exemplo in exemplos_do_contrato():
             with self.subTest(exemplo["nome"]), tempfile.TemporaryDirectory() as pasta:
                 contexto = exemplo["contexto"]
-                with ConexaoNoTeste(pasta, perfil=contexto["perfil"], falha_no_perfil=contexto.get("falhaNoPerfil", False)) as conexao:
+                with ConexaoNoTeste(
+                    pasta, perfil=contexto["perfil"], falha_no_perfil=contexto.get("falhaNoPerfil", False), colecao=colecao_do_exemplo(contexto)
+                ) as conexao:
                     pedido = exemplo["pedido"]
-                    status, _, corpo = conexao.pedir(pedido["metodo"], pedido["caminho"], pedido["origem"])
-                self.assertEqual(
-                    (status, json.loads(corpo)),
-                    (exemplo["resposta"]["status"], exemplo["resposta"]["json"]),
+                    status, _, corpo = conexao.pedir(pedido["metodo"], pedido["caminho"], pedido["origem"], corpo=pedido.get("corpo"))
+                self.assertEqual(status, exemplo["resposta"]["status"])
+                self.assertTrue(
+                    igual_ao_do_contrato(json.loads(corpo), exemplo["resposta"]["json"]),
                     'O complemento e o contrato (complemento/contrato/exemplos.json) se separaram no exemplo "%s". '
                     "Se a mudança é de propósito, atualize o exemplo; o fake da Conexão do e2e lê o mesmo arquivo."
-                    % exemplo["nome"],
+                    % exemplo["nome"] + " Obtido: %s" % corpo.decode("utf-8"),
                 )
 
     def test_o_contrato_tem_a_origem_da_extensao_que_o_complemento_aceita(self):
@@ -112,6 +141,75 @@ class SaudeDaConexao(unittest.TestCase):
             conexao.perfil = "Maria"
             depois = json.loads(conexao.pedir("GET", "/health")[2])["perfil"]
         self.assertEqual((antes, depois), (None, "Maria"))
+
+
+class LeituraDaColecao(unittest.TestCase):
+    """O que a extensão lê dos Baralhos, além dos exemplos do contrato."""
+
+    DECKS = {"decks": [{"deckName": "Inglês", "lang": "en"}]}
+
+    def com_a_colecao(self, pasta, **argumentos):
+        return ConexaoNoTeste(pasta, colecao=ColecaoEmMemoria(ler_o_contrato()["colecoes"]["inglês com subbaralho"]), **argumentos)
+
+    def test_um_corpo_que_nao_e_um_objeto_json_e_recusado(self):
+        with tempfile.TemporaryDirectory() as pasta, self.com_a_colecao(pasta) as conexao:
+            respostas = [conexao.pedir("POST", "/anki/vocabulary", corpo=corpo) for corpo in (b"{isto nao e json", b"[1, 2]", b"\xff\xfe")]
+        for status, _, corpo in respostas:
+            self.assertEqual((status, json.loads(corpo)), (400, {"error": "invalid_json"}))
+
+    def test_um_corpo_maior_que_o_limite_e_recusado(self):
+        with tempfile.TemporaryDirectory() as pasta, self.com_a_colecao(pasta) as conexao:
+            status, _, corpo = conexao.pedir(
+                "POST", "/anki/stats/decks", corpo=json.dumps({"decks": [{"deckName": "x" * (servidor.LIMITE_DO_CORPO + 1), "lang": "en"}]}).encode("utf-8")
+            )
+        self.assertEqual((status, json.loads(corpo)), (400, {"error": "invalid_json"}))
+
+    def test_os_numeros_pedidos_voltam_na_ordem_pedida_sem_repetir(self):
+        pedidos = [{"deckName": "Vazio", "lang": "en"}, {"deckName": "Inglês", "lang": "en"}, {"deckName": "vazio", "lang": "en"}]
+        with tempfile.TemporaryDirectory() as pasta, self.com_a_colecao(pasta) as conexao:
+            _, _, corpo = conexao.pedir("POST", "/anki/stats/decks", corpo={"decks": pedidos})
+        self.assertEqual([baralho["deckName"] for baralho in json.loads(corpo)["decks"]], ["Vazio", "Inglês"])
+
+    def test_o_vocabulario_vem_paginado_pelo_limite_e_pelo_deslocamento(self):
+        with tempfile.TemporaryDirectory() as pasta, self.com_a_colecao(pasta) as conexao:
+            _, _, inteiro = conexao.pedir("POST", "/anki/vocabulary", corpo={"deck": "Inglês", "lang": "en"})
+            _, _, pagina = conexao.pedir("POST", "/anki/vocabulary", corpo={"deck": "Inglês", "lang": "en", "limit": 3, "offset": 2})
+        todas = json.loads(inteiro)["words"]
+        self.assertEqual(json.loads(pagina)["words"], todas[2:5])
+        self.assertEqual(json.loads(pagina)["totalWords"], len(todas))
+
+    def test_o_vocabulario_filtra_pela_situacao_do_cartao(self):
+        with tempfile.TemporaryDirectory() as pasta, self.com_a_colecao(pasta) as conexao:
+            _, _, corpo = conexao.pedir("POST", "/anki/vocabulary", corpo={"deck": "Inglês", "lang": "en", "status": "new"})
+        self.assertEqual({palavra["status"] for palavra in json.loads(corpo)["words"]}, {"new"})
+
+    def test_o_vocabulario_do_russo_ignora_o_contexto_entre_colchetes_e_o_yo(self):
+        russo = {"baralhos": [{"nome": "Русский", "notas": [{"frente": "Ёлка стоит [Context: série]", "verso": "", "cartoes": [{"tipo": 2, "intervalo": 30}]}]}]}
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, colecao=ColecaoEmMemoria(russo)) as conexao:
+            _, _, corpo = conexao.pedir("POST", "/anki/vocabulary", corpo={"deck": "Русский", "lang": "ru"})
+        self.assertEqual(
+            [(palavra["word"], palavra["type"]) for palavra in json.loads(corpo)["words"]],
+            [("елка стоит", "term"), ("елка", "word"), ("стоит", "word")],
+        )
+
+    def test_a_colecao_que_quebra_vira_erro_interno_no_log_e_nao_no_anki(self):
+        class Quebrada(ColecaoEmMemoria):
+            def nomes_dos_baralhos(self):
+                raise RuntimeError("coleção ilegível")
+
+        saida, erro = io.StringIO(), io.StringIO()
+        with tempfile.TemporaryDirectory() as pasta, contextlib.redirect_stdout(saida), contextlib.redirect_stderr(erro):
+            with ConexaoNoTeste(pasta, colecao=Quebrada()) as conexao:
+                status, _, corpo = conexao.pedir("POST", "/anki/decks", corpo={})
+                registrado = conexao.log()
+        self.assertEqual((status, json.loads(corpo)), (500, {"error": "internal_error"}))
+        self.assertIn("coleção ilegível", registrado)
+        self.assertEqual((saida.getvalue(), erro.getvalue()), ("", ""))
+
+    def test_uma_conexao_sem_adaptador_da_colecao_diz_que_nao_ha_o_que_ler(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            status, _, corpo = conexao.pedir("POST", "/anki/decks", corpo={})
+        self.assertEqual((status, json.loads(corpo)["error"]), (503, "anki_decks_unavailable"))
 
 
 class OrigemDosPedidos(unittest.TestCase):

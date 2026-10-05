@@ -685,7 +685,10 @@ async function getAutoKeywordVocabulary(lang = 'en') {
   const baralhoPadrao = PerpetualMiner.AjustesDeEnvio.baralhoPadrao(normalizedLang);
   for (const deck of [...new Set([deckName, baralhoPadrao])].filter(Boolean)) {
     try {
-      const resp = await fetch(`${BRIDGE_URL}/anki/vocabulary?deck=${encodeURIComponent(deck)}&lang=${normalizedLang}&limit=10000`, {
+      const resp = await fetch(`${BRIDGE_URL}/anki/vocabulary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deck, lang: normalizedLang, limit: 10000 }),
         signal: ultimaLeitura ? AbortSignal.timeout(AUTO_KEYWORD_RENEW_TIMEOUT_MS) : undefined,
       });
       if (!resp.ok) continue;

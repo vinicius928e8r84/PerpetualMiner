@@ -125,7 +125,7 @@ test('vocabulário que falha: BRG-20 com Tentar de novo', async ({ page, extensa
 });
 
 test('vocabulário carregando: “Lendo o vocabulário…” e o esqueleto', async ({ page, extensao, fakes }) => {
-  fakes.anki.responder('GET', '/anki/vocabulary', () => new Promise(() => {}));
+  fakes.anki.responder('POST', '/anki/vocabulary', () => new Promise(() => {}));
   await abrirAnki(page, extensao, '#anki/vocabulario');
   await expect(vocabulario(page).getByText('Lendo o vocabulário…')).toBeVisible();
 

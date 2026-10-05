@@ -413,7 +413,7 @@ test('com 4 casas, um valor abaixo de US$ 0,0001 diz “< US$ 0,0001”, nunca �
 });
 
 test('↻ Atualizar com a Conexão desligada não pede os baralhos; ligada, pede e deixa abrir o Anki (BRG-24)', async ({ page, extensao, fakes }) => {
-  const pedidosDeBaralhos = () => fakes.anki.requisicoes.filter(r => r.caminho === '/anki/stats/decks' && r.busca.includes('refresh=1'));
+  const pedidosDeBaralhos = () => fakes.anki.requisicoes.filter(r => r.caminho === '/anki/stats/decks' && r.dados.refresh === true);
   await abrirAnki(page, extensao);
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(4);
   await expect(atualizar(page)).toHaveAttribute('title', 'Atualizar (abre o Anki se precisar)');
@@ -427,7 +427,7 @@ test('↻ Atualizar com a Conexão desligada não pede os baralhos; ligada, pede
   await atualizar(page).click();
   await expect(page.getByText(F1)).toBeHidden();
   await expect.poll(() => pedidosDeBaralhos().length).toBe(1);
-  expect(pedidosDeBaralhos()[0].busca).toContain('launch=1');
+  expect(pedidosDeBaralhos()[0].dados.launch).toBe(true);
 });
 
 test('Ajustes de envio com a Conexão desligada: continuam editáveis, com a nota de que valem no próximo envio', async ({ page, extensao, fakes }) => {
