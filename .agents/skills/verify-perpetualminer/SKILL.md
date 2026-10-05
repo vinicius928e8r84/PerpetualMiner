@@ -13,7 +13,7 @@ Read cold, mid-task. Everything here was run on this repo; if a command disagree
 |---|---|---|---|
 | **Chrome extension** (root: `manifest.json`, `background.js`, `content.js`, `popup.*`, `painel.*`, `bookreader.*`) | The popup, the panel (`painel.html#frases`, `#anki/…`, `#configuracoes/…`, `#boas-vindas/…`), the in-page overlay on video/text pages, `bookreader.html` | Playwright specs in `e2e/tests/` against real Chromium with the repo root loaded unpacked | **Primary.** Launch/Doctor/Drive/Evidence/Cleanup below |
 | **Python bridge** (`bridge/`, Flask on `127.0.0.1:8766`) and **engine** (`engine/`) | Nothing directly; the panel talks to the bridge's HTTP routes | `python3 bridge/test_envio.py` (43 tests, no Flask needed), the other `bridge/test_*.py` and `engine/test_*.py` (need `scripts/preparar-python.sh` → `.venv`) | Listed in `features/README.md` § Other surfaces. Do not start the real bridge: it launches Anki Desktop and reads `bridge/config.json` (Windows paths) |
-| **Anki add-on "Conexão" (`complemento/`)** | Runs inside Anki; plain stdlib HTTP on `127.0.0.1:8766` | Its own `python3 complemento/test_*.py` | **Not on the default branch yet** (this checkout's `complemento/` holds only ignored `__pycache__`; the source is on `origin/fm/pm-i139`). Map it when it merges |
+| **Anki add-on "Conexão" (`complemento/`)** | Runs inside Anki; plain stdlib HTTP on `127.0.0.1:8766`. A skeleton for now: it answers only `GET /health` (the bridge in `bridge/` still does the real work) | Its own `python3.9 complemento/test_servidor.py` (also `test_inicio.py`, `test_no_anki.py`, `test_pacote.py`; each also with `python3.13`), and the extension side of the same contract, `e2e/tests/contrato-da-conexao.spec.js` | Listed in `features/README.md` § Other surfaces. Do not install it into a real Anki from here |
 
 The extension never reaches a real Anki, Gemini or Google in the harness: the fixture fakes those at the HTTP boundary and blocks every other external request. So a pass proves the extension's behavior against the documented contracts, **not** the real bridge or a real Anki. Say so in any proof.
 
@@ -56,7 +56,7 @@ HEADED=1 .agents/skills/verify-perpetualminer/scripts/drive.sh c1-foto minerar-f
 
 **A run ID is single-use.** `drive.sh` refuses an ID whose `evidence/` already holds files (exit 2), so earlier proof is never overwritten, and evidence is only ever written into a directory it just verified is empty. Give every drive its own ID (`c1-selecao`, then `c1-selecao-2`), including after a failure or a Cleanup.
 
-`<playwright test args>` are the normal ones (spec file name filter, `-g "<title substring>"`, `--list`). `-g` is a regex: escape `+`, `(`, `?` (`-g "Alt\+S num player"`); the positional arguments are regexes on the file path, so `painel-anki` also selects `painel-anki-baralhos`; write `painel-anki.spec` to pin one file. The script runs from `e2e/`, with 2 workers, the `list` + `json` reporters, and exports `PM_EVIDENCE_DIR` for the specs. Exit code = Playwright's.
+`<playwright test args>` are the normal ones (spec file name filter, `-g "<title substring>"`, `--list`). `-g` is a regex: escape `+`, `(`, `?` (`-g "Alt\+S num player"`); the positional arguments are regexes on the file path, so `painel-anki` also selects `painel-anki-baralhos`; write `painel-anki.spec` to pin one file. The script runs from `e2e/`, with 2 workers (`PM_WORKERS=1` for one: a `--workers=1` among the arguments loses, the script's own flag comes last), the `list` + `json` reporters, and exports `PM_EVIDENCE_DIR` for the specs. Exit code = Playwright's.
 
 Which spec and which `-g` prove which feature is in `features/<feature>.md`; the index is `features/README.md`. **Read the matching feature file before driving.** Rules of the road:
 
@@ -67,7 +67,7 @@ Which spec and which `-g` prove which feature is in `features/<feature>.md`; the
 - **Time-dependent screens** (Frases dates, "há 5 min"): the specs freeze the clock with `page.clock.setFixedTime(new Date('2026-09-18T12:00:00'))` and `fakes.anki.usarRelogio(() => AGORA)`. Do the same.
 - **Native Chrome UI** the harness cannot click (context menu, toolbar badge, alarms): the documented exception in `CLAUDE.md` § Testing. Call the function Chrome would call from the service worker (`minerarSelecaoDoMenu`) and assert what is stored or shown. Say in the proof that the native part was simulated.
 - **Visual specs** (`*-visual.spec.js`) compare against committed Linux baselines. Run them to check for regressions, but never pass `--update-snapshots`: a new baseline needs the owner's approval (`CODING_STANDARDS.md` rule 10).
-- **Fast, non-browser checks** worth running alongside: `node test_auto_keyword.js && node test_sync.js && node test_empacotar.js` (from the repo root).
+- **Fast, non-browser checks** worth running alongside: `node test_auto_keyword.js && node test_sync.js && node test_empacotar.js && node test_fake_anki.js` (from the repo root).
 
 ## Evidence
 
@@ -118,9 +118,9 @@ To throw the evidence away as well when you no longer need it: `rm -rf "${PM_VER
 | `scripts/cleanup.sh` | `…/cleanup.sh <run-id>` | Stops that run's processes (drive.sh, its job's group, descendants; identity-checked), removes scratch, keeps evidence; re-runnable; exit 1 if something survives |
 | `scripts/mapa-de-features.sh` | `PR_BODY=… …/mapa-de-features.sh origin/main` | The CI ratchet described below (§ Keeping the feature map honest); run it locally before opening a PR (exit 1 names the surfaces) |
 | `scripts/lib.sh` | sourced by `drive.sh` and `cleanup.sh` | Run-id and path-containment checks, process and process-group identity |
-| `scripts/test_helpers.sh` | `.agents/skills/verify-perpetualminer/scripts/test_helpers.sh` | Tests the safety rules above (refusals, symlinks, forged records, evidence reuse, a TERM-resistant child, a failed job that leaves a child, the feature-map ratchet, an orphaned child after `kill -9` of drive.sh, an interrupted cleanup run again, another checkout's run, re-run) with the real scripts and a stand-in for `npx`; no browser, ~60 s. Run it after touching any script |
+| `scripts/test_helpers.sh` | `.agents/skills/verify-perpetualminer/scripts/test_helpers.sh` | Tests the safety rules above and the `PM_WORKERS` count (refusals, symlinks, forged records, evidence reuse, a TERM-resistant child, a failed job that leaves a child, the feature-map ratchet, an orphaned child after `kill -9` of drive.sh, an interrupted cleanup run again, another checkout's run, re-run) with the real scripts and a stand-in for `npx`; no browser, ~60 s. Run it after touching any script |
 
-Env knobs: `PM_VERIFY_ROOT` (default `/tmp/pm-verify`), `PM_HEAVY_RUN` (limiter command prefix), `HEADED=1` (show the browser; needs a display).
+Env knobs: `PM_VERIFY_ROOT` (default `/tmp/pm-verify`), `PM_HEAVY_RUN` (limiter command prefix), `PM_WORKERS` (Playwright workers, default 2; use 1 on a loaded host), `HEADED=1` (show the browser; needs a display).
 
 ## Keeping the feature map honest
 
@@ -132,7 +132,7 @@ Env knobs: `PM_VERIFY_ROOT` (default `/tmp/pm-verify`), `PM_HEAVY_RUN` (limiter 
 - The context menu, toolbar badge, midnight alarm and extension update are simulated by calling the function Chrome would call.
 - Evidence screenshots exist only where a spec calls `fotografar`; other specs leave `run.log` and `report.json`.
 - Windows is the owner's runtime for the bridge; this skill was proven on Linux headless Chromium. `.claude/skills/verify-perpetualminer` is a symlink to this directory (one canonical copy); a Windows checkout without symlink support sees a plain file there, so open `.agents/skills/verify-perpetualminer/` directly.
-- The Anki add-on (`complemento/`) is not on this branch and is not mapped yet.
+- The Anki add-on (`complemento/`) has no feature file yet: only its tests and the contract spec are listed in `features/README.md`.
 - The helpers have no `--help`/`--version` of their own and no machine-readable output: usage is in each script's header comment and `drive.sh`'s Playwright output goes to the terminal as is (an AXI-style polish, not a safety issue).
 - Process ownership is proven by pid + start time + command line + process group, not by a secret token; a record forged by hand with a real process's own identity would pass. The threat model is stale or reused pids and mistakes, not an adversary writing `drive.pid`. Reuse of a pid by an unrelated process is not simulated in the tests.
 - Several checkouts sharing one `PM_VERIFY_ROOT` and one run ID collide by design (the second is refused); use distinct IDs.
