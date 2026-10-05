@@ -14,7 +14,7 @@ Nesta fatia ela sobe em `127.0.0.1:8766`, numa thread, e responde só a saúde
 | `pasta_de_dados.py` | `user_files/{fila,estado,custos,logs}`, que o Anki preserva nas atualizações |
 | `configuracao.py` | Versão, porta e o ID da extensão |
 | `contrato/` | Os exemplos que o complemento e o fake do e2e leem, e como uma rota nova entra |
-| `empacotar.py` | Monta o `.ankiaddon` |
+| `empacotar.py` | Monta o `.ankiaddon` (e `conexao/perpetualminer.ankiaddon`, o que a extensão entrega no botão Baixar a Conexão com o Anki) |
 
 ## Testes
 
@@ -27,12 +27,25 @@ python3.9 complemento/test_pacote.py     # o conteúdo do .ankiaddon
 
 Rode todos também com `python3.12` e `python3.13`. Sem os interpretadores: `uv python install 3.9 3.13`.
 
+## O arquivo que a extensão entrega
+
+A primeira conexão (passo “Pôr a Conexão no Anki”, #145) é um link de download de `conexao/perpetualminer.ankiaddon`, que vai
+dentro do pacote da loja (sem permissão nova). Mudou o código do complemento? Refaça o arquivo:
+
+```bash
+python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon
+```
+
+`test_pacote.py` falha enquanto o arquivo da extensão estiver para trás do código (o `LEIA-ME.md` e os testes não entram nele).
+
 ## Ensaio do dono, no Mac
 
-1. `python3 complemento/empacotar.py` gera `dist/perpetualminer.ankiaddon`.
-2. Abra o arquivo (o Anki mostra o aviso de complementos; Sim) e reinicie o Anki.
-3. Com a extensão carregada, abra o painel › Conexão com o Anki: a área aparece ligada.
+1. Com a extensão carregada, abra o painel › Conexão com o Anki (ou a Boas-vindas, passo 4): **Baixar a Conexão com o Anki**.
+   (Sem a extensão: `python3 complemento/empacotar.py` gera `dist/perpetualminer.ankiaddon`.)
+2. Abra o arquivo baixado, com o Anki **fechado** de propósito: o Anki abre sozinho e pergunta se você quer instalar; responda Sim.
+3. Reinicie o Anki. A tela confere sozinha e diz “Achei o Anki · perfil · versão”.
 4. Confira `user_files` do complemento (Ferramentas › Complementos › Ver arquivos): as pastas `fila`,
    `estado`, `custos` e `logs` existem, e o log diz “Conexão ouvindo em 127.0.0.1:8766”.
+5. Sem resposta em 2 minutos, a tela mostra o checklist de 3 itens e Baixar de novo.
 
 O `package` do manifesto (`perpetualminer`) é provisório: vira o id do AnkiWeb quando o complemento for publicado.

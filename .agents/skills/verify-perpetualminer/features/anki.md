@@ -10,7 +10,7 @@ The panel talks to the local Anki Connection (bridge today, add-on later) on `12
 - `anki-send-progress` Enviar ao Anki opens the progress modal at once, one card per language Envio, no toast.
 - `anki-send-summary` when Envios finish, the summary (`Envio concluído` / `… em parte`) opens in any area: `+N cartões`, the deck, "já estava lá", "não entrou", Tirar do histórico / Manter.
 - `anki-send-retry` Tentar de novo / Continuar envio resumes one Envio.
-- `anki-first-connection` ONB-16: the "Ainda não houve conexão neste computador" card with its three steps until the first answer.
+- `anki-first-connection` ONB-16: the "Ainda não houve conexão neste computador" card with its two steps (Pôr a Conexão no Anki: Baixar a Conexão com o Anki, the "O arquivo não abriu?" Detalhes; Reiniciar o Anki: Conectando › "Achei o Anki · perfil · versão") until the first answer; two minutes without one show the 3-item checklist and Baixar de novo. No terminal command anywhere.
 - `anki-settings` Ajustes de envio: default deck per language, saved only on Salvar ajustes.
 
 ## How to get to it (user POV)
@@ -35,7 +35,7 @@ Preconditions:
 - **Custos list × detail, Continuar envio (`anki-custos`).** `drive.sh anki-detalhe painel-anki.spec -g "lista × detalhe"`. Observable: the first Envio selected, `Envio em inglês · 6 frases` with `há 10 min`; picking `Envio em russo` shows `Concluído em parte · 3 de 4 frases` and `1 não entrou`, `Detalhes` shows `collection is not available`, and `Continuar envio` shows `Envio retomado` and makes exactly one `POST /jobs/job-ru-parte/retry` reach the fake.
 - **Retry one Envio (`anki-send-retry`).** `drive.sh anki-retry painel-envio.spec -g "Tentar de novo no bloco do idioma"`. Observable: only that language's Envio is retried and the next summary counts what became a card.
 - **Settings (`anki-settings`).** `drive.sh anki-ajustes painel-ajustes.spec -g "mexer no formulário não grava nada"`. Observable: editing writes nothing; `Salvar ajustes` stores only the open language and shows toast BRG-07.
-- **First connection (`anki-first-connection`).** `drive.sh anki-primeira painel-anki-primeira-conexao.spec`. Observable: the first-connection card replaces the tabs until the fake answers `/health`, then the Pronto moment.
+- **First connection (`anki-first-connection`).** `drive.sh anki-primeira painel-anki-primeira-conexao.spec`. Observable: the first-connection card replaces the tabs until the fake answers `/health`, then the Pronto moment. `-g "Baixar a Conexão com o Anki entrega"` clicks the link and checks the downloaded `perpetualminer.ankiaddon` is the file in `conexao/`; `-g "dois minutos sem resposta"` runs the page clock 2 min and shows the checklist (the fake never opens Anki, so what happens when the person opens the file in a real Anki is the owner's rehearsal).
 - **Proof.** `painel-anki.spec.js` calls `fotografar` in some tests (`c1-…` files); `painel-envio.spec.js` does not. For a send, the strongest evidence is the assertions on `fakes.anki.envios` plus a `fotografar(page, 'anki-envio-resumo.png')` you add in a scratch copy right after the summary appears.
 
 ## Gotchas

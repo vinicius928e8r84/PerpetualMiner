@@ -464,12 +464,15 @@
    *
    * O aviso já traz o seu; este é para quando o próprio estado da tela é a
    * mensagem e só a causa fica guardada (a nuvem recusou, a sessão expirou).
+   *
+   * O nome do recolhido é “Detalhes”; uma tela cujo recolhido tem nome próprio
+   * na Voz (“O arquivo não abriu?”) o passa em `rotulo`.
    */
-  function montarDetalhes(causa, documento = document) {
+  function montarDetalhes(causa, documento = document, rotulo = ROTULOS_DO_PADRAO.detalhes) {
     const recolhido = documento.createElement('details');
     recolhido.className = 'veio-aviso__detalhes';
     const resumo = documento.createElement('summary');
-    resumo.textContent = ROTULOS_DO_PADRAO.detalhes;
+    resumo.textContent = rotulo;
     const texto = documento.createElement('pre');
     texto.textContent = causa;
     recolhido.append(resumo, texto);

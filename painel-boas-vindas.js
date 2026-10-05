@@ -27,15 +27,15 @@
 //   1  a mineração rápida do popup (SALVAR_HISTORICO com a Fonte `manual`);
 //   2  o gravador de Configurações › Atalhos (painel-atalhos.js);
 //   3  o card Conta & sync (painel-conta.js), com o Entrar com Google;
-//   4  o status da Conexão com o Anki, os 3 passos e o Verificar de novo
-//      (a mesma conferência da F1, via ConexaoAnki);
+//   4  os passos de pôr a Conexão com o Anki no Anki e a conferência sozinha,
+//      o mesmo componente do card ONB-16 (painel-conexao-passos.js);
 //   5  os switches EN/RU e o limite por dia do popup, pelas mesmas mensagens ao
 //      service worker, com a nota ONB-10 enquanto a Conexão está desligada;
 //   6  o card Chave do Gemini (painel-chave.js), com o Onde conseguir a chave.
 // Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
-  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao, ConexaoAnki, ConexaoNaTela, Conta, MineracaoAutomatica, MineracaoDoDia } = raiz;
+  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao, ConexaoAnki, Conta, PassosDaConexao, MineracaoAutomatica, MineracaoDoDia } = raiz;
   const { SITUACAO: CONEXAO } = ConexaoAnki;
 
   const ABERTURA = 'abertura';
@@ -106,7 +106,7 @@
   let paragrafoDoVideo = null;      // o ONB-05.video do passo 1, com o atalho de legenda
   let atalhoDoPasso1Desenhado;      // o rótulo que está nele, para não refazê-lo à toa
   let rodapeDesenhadoPara = null;   // a tela (e o Agora não) do rodapé na tela agora
-  let passo4 = null;                // as partes do passo 4 que seguem a Conexão
+  let passo4 = null;                // os passos da Conexão do passo 4 (painel-conexao-passos.js)
   let passo5 = null;                // as do passo 5: a nota, as linhas dos idiomas, a falha
   let ondeConseguirAChave = null;   // o “Onde conseguir a chave” (ONB-11) do passo 6, só sem chave
 
@@ -125,10 +125,7 @@
       estado.atalhos = atalhos;
       desenhar();
     });
-    ConexaoAnki.acompanhar(() => {
-      desenharPasso4();
-      desenharPasso5();
-    });
+    ConexaoAnki.acompanhar(desenharPasso5);
     lerMineracaoAutomatica();
     window.addEventListener('hashchange', () => mostrarTelaDoEndereco({ focar: true }));
     mostrarTelaDoEndereco({ focar: false });
@@ -339,41 +336,17 @@
   // ─── Passo 4: Ligar a Conexão com o Anki ───────────────────────────────────
 
   /**
-   * O status da Conexão (BRG-01/BRG-02, numa região que anuncia a mudança) com o
-   * Verificar de novo (a mesma conferência da F1, via ConexaoAnki) ao lado;
-   * enquanto a última resposta foi desligada, os 3 passos.
+   * Os passos de pôr a Conexão no Anki: o mesmo componente do card ONB-16 da área
+   * Conexão com o Anki (painel-conexao-passos.js), com a lista acima do card do passo
+   * e sem Voltar · Continuar próprios (o card da Boas-vindas tem os seus). Ligada, o
+   * botão sai e o foco vai para o título deste passo.
    */
   function montarPasso4() {
-    const ponto = elemento('span', 'bv-ponto');
-    ponto.setAttribute('aria-hidden', 'true');
-    const texto = elemento('span');
-    const status = elemento('p', 'bv-status', ponto, texto);
-    status.setAttribute('role', 'status');
-
-    const tentar = elemento('button', 'veio-botao veio-botao--primario veio-botao--compacto', textoDaVoz('ONB-08.verificarDeNovo'));
-    tentar.type = 'button';
-    ConexaoNaTela.ligarTentarDeNovo(tentar);
-
-    const passos = elemento('ol', 'anki-passos',
-      ...['passo1', 'instalar', 'verificar'].map(parte => elemento('li', null, textoDaVoz(`ONB-08.${parte}`))));
-    const comoLigar = elemento('div', 'bv-como-ligar', passos);
-    comoLigar.hidden = true;
-
-    passo4 = { ponto, texto, tentar, comoLigar };
-    const controle = elemento('div', 'bv-controle', elemento('div', 'bv-conexao', status, tentar), comoLigar);
-    return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-08.corpo')), controle);
-  }
-
-  function desenharPasso4() {
-    const conexao = ConexaoAnki.situacao();
-    const ligada = conexao === CONEXAO.LIGADA;
-
-    ConexaoNaTela.pintarPonto(passo4.ponto, conexao);
-    passo4.texto.textContent = ConexaoNaTela.texto(conexao);
-    // Ligada, não há o que tentar: o botão sai, e o foco que estava nele vai
-    // para o título do passo, em vez de cair no fim da página.
-    ConexaoNaTela.pintarTentarDeNovo(passo4.tentar, conexao, { sai: ligada, focoPara: () => porId('bv-titulo') });
-    passo4.comoLigar.hidden = ConexaoAnki.ultimaResposta() !== CONEXAO.DESLIGADA;
+    const lugar = elemento('div', 'bv-controle');
+    passo4 = PassosDaConexao.montar(lugar, {
+      prefixo: 'bv4', navegacao: false, empilhado: true, aoSairOBotao: () => porId('bv-titulo'),
+    });
+    return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-08.corpo')), lugar);
   }
 
   // ─── Passo 5: Ligar a mineração automática ─────────────────────────────────
@@ -521,6 +494,7 @@
     for (const [nome, corpo] of telas) corpo.hidden = nome !== tela;
 
     desenharLista();
+    passo4.mostrar(tela === 'anki');
     desenharAtalhoDoPasso1();
     // Até a primeira leitura não se sabe se há chave: o Onde conseguir a chave espera, para não piscar.
     ondeConseguirAChave.hidden = !estado.configuracao || Boolean(estado.configuracao.estado.chave);

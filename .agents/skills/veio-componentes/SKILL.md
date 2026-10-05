@@ -36,7 +36,7 @@ The rules the components encode, so a surface does not have to re-decide them:
   “Detalhes” (V3 of the Voice). `abertura` puts the state's first sentence in bold before the text, `icone` a Base
   icon at its start (`'info'`, the “i”, for an informative aviso), and `tom: 'info'` makes an aviso that only informs (FOT-21's cancelled reading): neutral
   colours and `role="status"` instead of the danger `alert`. An aviso that *is* a state (a failed sync) passes `fechavel: false`:
-  no ×, it leaves when the problem does. `montarDetalhes(causa)` is that same “Detalhes” alone, for
+  no ×, it leaves when the problem does. `montarDetalhes(causa, documento, rotulo)` is that same “Detalhes” alone (a screen whose collapsed block has its own name in the Voz, like “O arquivo não abriu?”, passes it as `rotulo`), for
   when the screen's state already says what happened (the cloud refused, the session expired).
 - **Error on a field** is said by `aria-invalid="true"`, not by a class, so the screen reader hears
   it too.

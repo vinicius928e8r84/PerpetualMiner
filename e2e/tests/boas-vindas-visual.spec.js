@@ -88,16 +88,26 @@ test('passo 3 com a conta: o nome e Sair da conta', async ({ page, extensao }) =
   await foto(page, 'passo-3-com-conta.png');
 });
 
-test('passo 4 com a Conexão desligada: o status, os 3 passos e Verificar de novo', async ({ page, extensao }) => {
+test('passo 4 com a Conexão desligada: pôr a Conexão no Anki, com o arquivo e o Detalhes', async ({ page, extensao }) => {
   await abrir(page, extensao, 'anki');
   await foto(page, 'passo-4-desligada.png');
 });
 
-test('passo 4 com a Conexão ligada', async ({ page, extensao, fakes }) => {
+test('passo 4, dois minutos sem resposta: reiniciar o Anki com o checklist e Baixar de novo', async ({ page, extensao }) => {
+  // O relógio da página é do teste: os 2 minutos passam quando ele anda.
+  await page.clock.install({ time: new Date('2026-09-18T12:00:00') });
+  await abrir(page, extensao, 'anki');
+  await page.locator('.bv-card').getByRole('button', { name: 'Reiniciar o Anki' }).click();
+  await page.clock.runFor(120_000);
+  await expect(page.locator('.bv-card').getByText('A Conexão com o Anki ainda não respondeu. Confira:')).toBeVisible();
+  await foto(page, 'passo-4-sem-resposta.png');
+});
+
+test('passo 4 com a Conexão ligada: Achei o Anki, com o perfil e a versão', async ({ page, extensao, fakes }) => {
   fakes.anki.ligar();
   await page.setViewportSize({ width: 1100, height: 760 });
   await page.goto(extensao.url('painel.html#boas-vindas/anki'));
-  await expect(page.locator('.bv-card').getByRole('status')).toHaveText('Conexão com o Anki: ligada');
+  await expect(page.locator('.bv-card').getByRole('status')).toHaveText(/^Achei o Anki · Usuário 1 · versão /);
   await page.evaluate(() => document.fonts.ready);
   await foto(page, 'passo-4-ligada.png');
 });

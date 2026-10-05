@@ -242,28 +242,8 @@
             <p class="apv-apoio" id="apv-apoio" data-voz="ONB-16.apoio"></p>
           </div>
 
-          <div class="apv-grade">
-            <nav class="apv-lista" data-voz-aria="ONB-16.passos">
-              <ol class="bv-lista__itens" id="apv-lista"></ol>
-            </nav>
-
-            <div class="apv-card">
-              <p class="bv-sobretitulo" id="apv-sobretitulo"></p>
-              <h3 class="bv-titulo" id="apv-passo-titulo" tabindex="-1"></h3>
-              <p class="bv-texto" id="apv-texto"></p>
-              <div class="apv-controle">
-                <div class="bv-conexao">
-                  <p class="bv-status" id="apv-status" role="status"><span class="bv-ponto" id="apv-ponto" aria-hidden="true"></span><span id="apv-status-texto"></span></p>
-                  <button class="veio-botao veio-botao--primario veio-botao--compacto" id="apv-tentar" type="button" data-voz="ENV-01.tentarDeNovo" hidden></button>
-                </div>
-                <div class="apv-comandos" id="anki-primeira-vez-detalhes" hidden></div>
-              </div>
-              <div class="apv-passos-rodape" id="apv-navegacao">
-                <button class="veio-botao veio-botao--contorno" id="apv-voltar" type="button" data-voz="ONB-04.voltar"></button>
-                <button class="veio-botao veio-botao--primario" id="apv-continuar" type="button" data-voz="ONB-04.continuar"></button>
-              </div>
-            </div>
-          </div>
+          <!-- A lista de passos e o card do passo: o componente de painel-conexao-passos.js, o mesmo do passo 4 da Boas-vindas. -->
+          <div id="apv-passos"></div>
 
           <div class="apv-rodape" id="apv-rodape">
             <p class="apv-confere"><span class="anki-ponto" aria-hidden="true"></span><span id="apv-confere"></span></p>
@@ -641,6 +621,7 @@
   <script src="painel-shell.js"></script>
   <script src="painel-conta.js"></script>
   <script src="painel-atalhos.js"></script>
+  <script src="painel-conexao-passos.js"></script>
   <script src="painel-boas-vindas.js"></script>
   <script src="painel-lembrete.js"></script>
   <script src="painel-chave.js"></script>

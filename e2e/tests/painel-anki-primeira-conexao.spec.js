@@ -2,12 +2,16 @@
 
 // Conexão com o Anki · primeira conexão no desenho B (#77, ONB-16): o card que
 // fica no lugar das abas enquanto a Conexão nunca respondeu neste computador
-// (docs/design/painel/anki/prototipo-primeira-conexao.html, variante B). A
-// Conexão é o fake da fronteira HTTP (fakes/anki.js). Os testes afirmam o que a
-// pessoa vê e o que fica gravado.
+// (docs/design/painel/anki/prototipo-primeira-conexao.html, variante B), com os
+// passos de pôr a Conexão no Anki por um arquivo, sem terminal (#145; o componente
+// é o de painel-conexao-passos.js, o mesmo do passo 4 da Boas-vindas, que
+// boas-vindas.spec.js confere). A Conexão é o fake da fronteira HTTP
+// (fakes/anki.js). Os testes afirmam o que a pessoa vê e o que fica gravado.
 
 const { test, expect } = require('../fixtures');
+const fs = require('fs');
 const { fotografar } = require('../evidencias-mineracao');
+const contrato = require('../../complemento/contrato/exemplos.json');
 
 const AGORA = new Date('2026-09-18T12:00:00');
 const F1 = 'A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.';
@@ -18,6 +22,14 @@ const lista = page => page.getByRole('navigation', { name: 'Como ligar' });
 const itemDaLista = (page, nome) => lista(page).getByRole('button', { name: nome });
 const tituloDoPasso = page => page.locator('#apv-passo-titulo');
 const status = page => page.locator('#apv-status');
+const baixar = page => card(page).getByRole('link', { name: 'Baixar a Conexão com o Anki' });
+const baixarDeNovo = page => card(page).getByRole('link', { name: 'Baixar de novo' });
+const naoRespondeu = page => card(page).getByText('A Conexão com o Anki ainda não respondeu. Confira:');
+
+// O que o /health do complemento diz de si no exemplo do contrato (a versão e o perfil), para o teste
+// não repetir o número que o contrato já tem.
+const saude = contexto => contrato.exemplos.find(e => e.pedido.caminho === '/health' && e.daExtensao
+  && e.resposta.status === 200 && e.contexto.perfil === contexto).resposta.json;
 const abas = page => page.getByRole('radiogroup', { name: 'Seções da Conexão com o Anki' });
 const tentarDoCard = page => card(page).locator('#apv-tentar');
 const tentarDaF1 = page => page.locator('#shell-tentar-de-novo');
@@ -47,21 +59,25 @@ test('nunca conectada: abre no passo 1 esperando a Conexão, com os dois quadros
 
   await expect(page.getByText(F1)).toBeVisible();
   await expect(card(page)).toBeVisible();
-  await expect(card(page)).toContainText('A Conexão com o Anki roda neste computador, ao lado do Anki, e é ela que cria os cartões.');
+  await expect(card(page)).toContainText('A Conexão com o Anki fica dentro do Anki, neste computador, e é ela que cria os cartões.');
   await expect(abas(page)).toBeHidden();
 
-  // A lista tem os 3 passos, o primeiro é o atual e nenhum está feito.
-  await expect(lista(page).getByRole('button')).toHaveText(['Abrir o Anki', 'Instalar a Conexão com o Anki', 'Tentar de novo']);
-  await expect(itemDaLista(page, 'Abrir o Anki')).toHaveAttribute('aria-current', 'step');
+  // A lista tem os 2 passos, o primeiro é o atual e nenhum está feito.
+  await expect(lista(page).getByRole('button')).toHaveText(['Pôr a Conexão no Anki', 'Reiniciar o Anki']);
+  await expect(itemDaLista(page, 'Pôr a Conexão no Anki')).toHaveAttribute('aria-current', 'step');
   await expect(lista(page).locator('[aria-current="step"]')).toHaveCount(1);
   await expect(lista(page).getByRole('button', { name: /feito/ })).toHaveCount(0);
 
-  await expect(card(page)).toContainText('Como ligar · Passo 1 de 3');
-  await expect(tituloDoPasso(page)).toHaveText('Abrir o Anki');
-  await expect(card(page)).toContainText('Abra o Anki neste computador, com o complemento AnkiConnect.');
-  // O AnkiConnect não é lido antes da Conexão: o passo espera, nunca diz “não encontrado”.
+  await expect(card(page)).toContainText('Como ligar · Passo 1 de 2');
+  await expect(tituloDoPasso(page)).toHaveText('Pôr a Conexão no Anki');
+  await expect(card(page)).toContainText('Baixe o arquivo e abra-o. Se o Anki estiver fechado, ele abre sozinho. Quando o Anki perguntar se você quer instalar, responda Sim.');
+  // O Anki não é lido antes da Conexão: o passo espera, nunca diz “não encontrado”.
   await expect(status(page)).toHaveText('Esperando a Conexão');
   await expect(card(page)).not.toContainText('não encontrado');
+  // Sem terminal: nenhum comando de pip ou python, nenhum Detalhes de comandos, nenhum Copiar.
+  await expect(card(page)).not.toContainText(/pip|python|install_autostart/i);
+  await expect(card(page).getByRole('button', { name: 'Copiar' })).toHaveCount(0);
+  await expect(baixar(page)).toBeVisible();
 
   await expect(card(page).getByRole('heading', { name: 'Continua funcionando' })).toBeVisible();
   await expect(card(page)).toContainText('Minerar de vídeos, páginas e fotos.');
@@ -75,31 +91,33 @@ test('os passos: Continuar, Voltar e a lista andam pelo card, e o foco vai ao t�
   await expect(card(page).getByRole('button', { name: 'Voltar' })).toBeHidden();
 
   await card(page).getByRole('button', { name: 'Continuar' }).click();
-  await expect(itemDaLista(page, 'Instalar a Conexão com o Anki')).toHaveAttribute('aria-current', 'step');
-  await expect(card(page)).toContainText('Como ligar · Passo 2 de 3');
-  await expect(tituloDoPasso(page)).toHaveText('Instalar a Conexão com o Anki');
+  await expect(itemDaLista(page, 'Reiniciar o Anki')).toHaveAttribute('aria-current', 'step');
+  await expect(card(page)).toContainText('Como ligar · Passo 2 de 2');
+  await expect(tituloDoPasso(page)).toHaveText('Reiniciar o Anki');
   await expect(tituloDoPasso(page)).toBeFocused();
+  await expect(card(page)).toContainText('Feche o Anki e abra-o de novo. A Conexão liga quando o Anki abre, e esta tela confere sozinha.');
   await expect(status(page)).toHaveText('Conexão com o Anki: desligada');
-
-  await lista(page).getByRole('button', { name: 'Tentar de novo' }).click();
-  await expect(card(page)).toContainText('Como ligar · Passo 3 de 3');
   await expect(tentarDoCard(page)).toBeVisible();
   await expect(card(page).getByRole('button', { name: 'Continuar' })).toBeHidden();
+  await expect(baixar(page)).toBeHidden();
 
   await card(page).getByRole('button', { name: 'Voltar' }).click();
-  await expect(tituloDoPasso(page)).toHaveText('Instalar a Conexão com o Anki');
+  await expect(tituloDoPasso(page)).toHaveText('Pôr a Conexão no Anki');
   await expect(tituloDoPasso(page)).toBeFocused();
+
+  await lista(page).getByRole('button', { name: 'Reiniciar o Anki' }).click();
+  await expect(card(page)).toContainText('Como ligar · Passo 2 de 2');
 });
 
 test('a lista se anda pelo teclado: Tab chega ao passo e Enter o abre', async ({ page, extensao }) => {
   await abrir(page, extensao);
   await expect(card(page)).toBeVisible();
 
-  await itemDaLista(page, 'Abrir o Anki').focus();
+  await itemDaLista(page, 'Pôr a Conexão no Anki').focus();
   await page.keyboard.press('Tab');
-  await expect(itemDaLista(page, 'Instalar a Conexão com o Anki')).toBeFocused();
+  await expect(itemDaLista(page, 'Reiniciar o Anki')).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(itemDaLista(page, 'Instalar a Conexão com o Anki')).toHaveAttribute('aria-current', 'step');
+  await expect(itemDaLista(page, 'Reiniciar o Anki')).toHaveAttribute('aria-current', 'step');
   await expect(tituloDoPasso(page)).toBeFocused();
 });
 
@@ -111,14 +129,14 @@ test('o status é uma região que anuncia a mudança', async ({ page, extensao }
   await expect(status(page)).toHaveAttribute('role', 'status');
 });
 
-test('Tentar de novo sem resposta: a Conexão continua desligada e o card fica no passo 3', async ({ page, extensao }) => {
+test('Tentar de novo sem resposta: a Conexão continua desligada e o card fica no passo 2', async ({ page, extensao }) => {
   await abrir(page, extensao);
   await expect(card(page)).toBeVisible();
 
-  await lista(page).getByRole('button', { name: 'Tentar de novo' }).click();
+  await lista(page).getByRole('button', { name: 'Reiniciar o Anki' }).click();
   await tentarDoCard(page).click();
   await expect(status(page)).toHaveText('Conexão com o Anki: desligada');
-  await expect(card(page)).toContainText('Como ligar · Passo 3 de 3');
+  await expect(card(page)).toContainText('Como ligar · Passo 2 de 2');
   await expect(page.getByText(F1)).toBeVisible();
   await expect(card(page)).toBeVisible();
   await expect(abas(page)).toBeHidden();
@@ -131,10 +149,10 @@ test('Tentar de novo sem resposta: a Conexão continua desligada e o card fica n
   await expect(abas(page)).toBeHidden();
 });
 
-test('conectando (depois de Tentar de novo): abre no passo 3 com “Conectando ao Anki…” e o botão indisponível', async ({ page, extensao, fakes }) => {
+test('conectando (depois de Tentar de novo): abre no passo 2 com “Conectando ao Anki…” e o botão indisponível', async ({ page, extensao, fakes }) => {
   await abrir(page, extensao);
   await expect(card(page)).toBeVisible();
-  await expect(card(page)).toContainText('Como ligar · Passo 1 de 3');
+  await expect(card(page)).toContainText('Como ligar · Passo 1 de 2');
 
   let liberar;
   const segurada = new Promise(r => { liberar = r; });
@@ -142,7 +160,7 @@ test('conectando (depois de Tentar de novo): abre no passo 3 com “Conectando a
   fakes.anki.ligar();
   await tentarDaF1(page).click();
 
-  await expect(card(page)).toContainText('Como ligar · Passo 3 de 3');
+  await expect(card(page)).toContainText('Como ligar · Passo 2 de 2');
   await expect(status(page)).toHaveText('Conectando ao Anki…');
   await expect(tentarDoCard(page)).toHaveAttribute('aria-disabled', 'true');
   await expect(page.locator('#apv-confere')).toHaveText('Conferindo agora…');
@@ -153,7 +171,7 @@ test('conectando (depois de Tentar de novo): abre no passo 3 com “Conectando a
 
   // Sem resposta, e sem escolha da pessoa, o card volta ao primeiro passo que falta.
   liberar();
-  await expect(card(page)).toContainText('Como ligar · Passo 1 de 3');
+  await expect(card(page)).toContainText('Como ligar · Passo 1 de 2');
   await expect(status(page)).toHaveText('Esperando a Conexão');
 });
 
@@ -182,7 +200,7 @@ test('a resposta anterior mantém o card visível ao terminar a leitura do fato 
 
   await page.evaluate(() => globalThis.liberarLeituraDaConexao());
   await expect(card(page)).toBeVisible();
-  await expect(card(page)).toContainText('Como ligar · Passo 3 de 3');
+  await expect(card(page)).toContainText('Como ligar · Passo 2 de 2');
   await expect(status(page)).toHaveText('Conectando ao Anki…');
   await expect(tentarDoCard(page)).toHaveAttribute('aria-disabled', 'true');
   await expect(page.locator('#apv-confere')).toHaveText('Conferindo agora…');
@@ -192,7 +210,7 @@ test('a resposta anterior mantém o card visível ao terminar a leitura do fato 
 
   liberarResposta();
   await expect(status(page)).toHaveText('Esperando a Conexão');
-  await expect(card(page)).toContainText('Como ligar · Passo 1 de 3');
+  await expect(card(page)).toContainText('Como ligar · Passo 1 de 2');
 });
 
 test('a Conexão passa a responder: o momento Pronto, e depois as abas voltam com o toast', async ({ page, extensao, fakes }) => {
@@ -208,8 +226,8 @@ test('a Conexão passa a responder: o momento Pronto, e depois as abas voltam co
   await expect(pronto(page)).toBeVisible();
   await expect(pronto(page)).toContainText('Pronto');
   await expect(pronto(page)).toContainText('As abas voltam em seguida.');
-  await expect(status(page)).toHaveText('Conexão com o Anki: ligada');
-  await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(3);
+  await expect(status(page)).toHaveText(`Achei o Anki · ${saude('Usuário 1').perfil} · versão ${saude('Usuário 1').versao}`);
+  await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(2);
   await expect(abas(page)).toBeHidden();
   // A chave fica gravada já na primeira resposta.
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
@@ -266,7 +284,7 @@ test('o Tentar de novo do próprio card também deixa o foco no título do Pront
   await page.clock.install({ time: AGORA });
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();
-  await lista(page).getByRole('button', { name: 'Tentar de novo' }).click();
+  await lista(page).getByRole('button', { name: 'Reiniciar o Anki' }).click();
 
   fakes.anki.ligar();
   await tentarDoCard(page).focus();
@@ -275,18 +293,18 @@ test('o Tentar de novo do próprio card também deixa o foco no título do Pront
   await expect(tituloDoPasso(page)).toBeFocused();
 });
 
-test('só o Tentar de novo do card fixa o passo 3: o da F1 deixa o card voltar ao passo 1', async ({ page, extensao }) => {
+test('só o Tentar de novo do card fixa o passo 2: o da F1 deixa o card voltar ao passo 1', async ({ page, extensao }) => {
   await abrir(page, extensao);
   await expect(card(page)).toBeVisible();
 
   await tentarDaF1(page).click();
   await expect(status(page)).toHaveText('Esperando a Conexão');
-  await expect(card(page)).toContainText('Como ligar · Passo 1 de 3');
+  await expect(card(page)).toContainText('Como ligar · Passo 1 de 2');
 
-  await lista(page).getByRole('button', { name: 'Tentar de novo' }).click();
+  await lista(page).getByRole('button', { name: 'Reiniciar o Anki' }).click();
   await tentarDoCard(page).click();
   await expect(status(page)).toHaveText('Conexão com o Anki: desligada');
-  await expect(card(page)).toContainText('Como ligar · Passo 3 de 3');
+  await expect(card(page)).toContainText('Como ligar · Passo 2 de 2');
 });
 
 test('o passo que a pessoa abriu continua aberto depois de uma conferência que não achou a Conexão e de uma volta por outra área', async ({ page, extensao, fakes }) => {
@@ -299,7 +317,7 @@ test('o passo que a pessoa abriu continua aberto depois de uma conferência que 
   expect(pedidosDeHealth(fakes)).toHaveLength(1);
 
   await card(page).getByRole('button', { name: 'Continuar' }).click();
-  await expect(card(page)).toContainText('Como ligar · Passo 2 de 3');
+  await expect(card(page)).toContainText('Como ligar · Passo 2 de 2');
   await page.evaluate(() => document.fonts.ready);
   await fotografar(page, 'anki-passo2-antes-da-conferencia.png');
 
@@ -314,14 +332,14 @@ test('o passo que a pessoa abriu continua aberto depois de uma conferência que 
   liberar();
   await expect(linha).toHaveText('Confere sozinho a cada 15 s · última vez há 0 s');
   await expect(status(page)).toHaveText('Conexão com o Anki: desligada');
-  await expect(card(page)).toContainText('Como ligar · Passo 2 de 3');
+  await expect(card(page)).toContainText('Como ligar · Passo 2 de 2');
   await expect(abas(page)).toBeHidden();
   await fotografar(page, 'anki-passo2-conferencia-concluida.png');
 
   await page.getByRole('link', { name: 'Frases' }).click();
   await expect(card(page)).toBeHidden();
   await page.getByRole('link', { name: 'Conexão com o Anki' }).click();
-  await expect(card(page)).toContainText('Como ligar · Passo 2 de 3');
+  await expect(card(page)).toContainText('Como ligar · Passo 2 de 2');
   await expect(abas(page)).toBeHidden();
   await fotografar(page, 'anki-passo2-apos-voltar.png');
 });
@@ -375,44 +393,120 @@ test('“Confere sozinho a cada 15 s” segue a conferência do shell, sem um se
   expect(pedidosDeHealth(fakes)).toHaveLength(2);
 });
 
-test('Copiar põe os comandos de instalação no clipboard e diz “Comandos copiados”', async ({ page, extensao }) => {
+test('Baixar a Conexão com o Anki entrega o arquivo que vai dentro do pacote da extensão', async ({ page, extensao }) => {
   await abrir(page, extensao);
-  await card(page).getByRole('button', { name: 'Continuar' }).click();
+  await expect(card(page)).toBeVisible();
 
-  // Os comandos moram no Detalhes do passo 2, recolhido.
-  await card(page).getByText('Detalhes', { exact: true }).click();
-  await expect(card(page).locator('pre')).toContainText('python bridge/install_autostart.py');
-  await expect(card(page).locator('pre')).toContainText('127.0.0.1:8766');
+  const [arquivo] = await Promise.all([page.waitForEvent('download'), baixar(page).click()]);
 
-  await card(page).getByRole('button', { name: 'Copiar', exact: true }).click();
-  await expect(page.locator('.veio-toast')).toHaveText('Comandos copiados');
-  // O Chromium não dá permissão de ler o clipboard a uma página de extensão: a
-  // pessoa cola os comandos num campo, e é isso que o teste confere (o campo é
-  // do teste: a área não tem onde colar enquanto o card está na tela).
-  await page.evaluate(() => {
-    const campo = document.createElement('textarea');
-    campo.id = 'onde-colar';
-    document.body.append(campo);
-  });
-  await page.locator('#onde-colar').focus();
-  await page.keyboard.press('Control+V');
-  await expect(page.locator('#onde-colar')).toHaveValue(/^pip install -r bridge\/requirements\.txt\npython bridge\/install_autostart\.py/);
+  expect(arquivo.suggestedFilename()).toBe('perpetualminer.ankiaddon');
+  const baixado = fs.readFileSync(await arquivo.path());
+  expect(baixado.equals(fs.readFileSync(require('path').join(__dirname, '..', '..', 'conexao', 'perpetualminer.ankiaddon')))).toBe(true);
+  // É um zip: o Anki instala o `.ankiaddon` pelo `manifest.json` dentro dele.
+  expect(baixado.subarray(0, 2).toString()).toBe('PK');
+  expect(baixado.includes(Buffer.from('manifest.json'))).toBe(true);
 });
 
-test('se o copiar não vai, a linha diz para selecionar e copiar, sem toast', async ({ page, extensao }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: { writeText: () => Promise.reject(new Error('NotAllowedError: write permission denied')) },
-    });
-  });
+test('o Detalhes “O arquivo não abriu?” diz que o código do AnkiWeb vem em breve, sem inventar um número', async ({ page, extensao }) => {
   await abrir(page, extensao);
-  await card(page).getByRole('button', { name: 'Continuar' }).click();
+  await expect(card(page)).toBeVisible();
 
-  await card(page).getByRole('button', { name: 'Copiar', exact: true }).click();
-  await expect(card(page).getByRole('alert')).toHaveText('Não deu para copiar. Selecione o texto e copie.');
-  await expect(page.locator('.veio-toast')).toHaveCount(0);
+  await card(page).getByText('O arquivo não abriu?', { exact: true }).click();
+  await expect(card(page).locator('pre')).toHaveText('O código para colar em Ferramentas › Complementos › Obter complementos vem em breve.');
+  await expect(card(page).locator('pre')).not.toContainText(/\d/);
+
+  // O Detalhes é do passo do arquivo: no passo de reiniciar, ele sai.
+  await card(page).getByRole('button', { name: 'Continuar' }).click();
+  await expect(card(page).getByText('O arquivo não abriu?', { exact: true })).toBeHidden();
 });
+
+test('com o código do AnkiWeb publicado, o Detalhes o mostra para colar em Obter complementos', async ({ page, extensao }) => {
+  // O código só existe depois do primeiro upload (#176): quem o publicar o define em PerpetualMiner.CODIGO_DO_ANKIWEB.
+  await page.addInitScript(() => { globalThis.PerpetualMiner = { CODIGO_DO_ANKIWEB: '123456789' }; });
+  await abrir(page, extensao);
+  await expect(card(page)).toBeVisible();
+
+  await card(page).getByText('O arquivo não abriu?', { exact: true }).click();
+  await expect(card(page).locator('pre')).toHaveText('No Anki, abra Ferramentas › Complementos › Obter complementos, cole o código 123456789 e reinicie o Anki.');
+});
+
+test('reiniciar o Anki: a conferência mostra Conectando e depois “Achei o Anki · perfil · versão”', async ({ page, extensao, fakes }) => {
+  await abrir(page, extensao);
+  await expect(card(page)).toBeVisible();
+  await lista(page).getByRole('button', { name: 'Reiniciar o Anki' }).click();
+  await expect(status(page)).toHaveText('Conexão com o Anki: desligada');
+
+  let liberar;
+  const segurada = new Promise(r => { liberar = r; });
+  fakes.anki.responder('GET', '/health', async () => { await segurada; return fakes.anki.respostaDoContrato('GET', '/health'); });
+  fakes.anki.ligar();
+  await tentarDoCard(page).click();
+  await expect(status(page)).toHaveText('Conectando ao Anki…');
+
+  liberar();
+  await expect(status(page)).toHaveText(`Achei o Anki · ${saude('Usuário 1').perfil} · versão ${saude('Usuário 1').versao}`);
+  await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(2);
+});
+
+test('o Anki na tela de perfis: “Achei o Anki · versão”, sem perfil', async ({ page, extensao, fakes }) => {
+  fakes.anki.abrirPerfil(null);
+  await abrir(page, extensao);
+  await expect(card(page)).toBeVisible();
+
+  fakes.anki.ligar();
+  await tentarDaF1(page).click();
+
+  await expect(status(page)).toHaveText(`Achei o Anki · versão ${saude(null).versao}`);
+});
+
+test('dois minutos sem resposta: o checklist de 3 itens e “Baixar de novo”, e a conferência segue sozinha', async ({ page, extensao, fakes }) => {
+  await page.clock.install({ time: AGORA });
+  await page.goto(extensao.url('painel.html#anki/custos'));
+  await expect(card(page)).toBeVisible();
+  await expect(naoRespondeu(page)).toBeHidden();
+
+  await page.clock.runFor(119_000);
+  await expect(naoRespondeu(page)).toBeHidden();
+  await page.clock.runFor(1_000);
+
+  await expect(naoRespondeu(page)).toBeVisible();
+  await expect(card(page).locator('.pc-checklist li')).toHaveText([
+    'O Anki está aberto?',
+    'Você fechou o Anki e abriu de novo?',
+    'A Conexão com o Anki está ativada em Ferramentas › Complementos?',
+  ]);
+  // Baixar de novo entrega o mesmo arquivo.
+  const [arquivo] = await Promise.all([page.waitForEvent('download'), baixarDeNovo(page).click()]);
+  expect(arquivo.suggestedFilename()).toBe('perpetualminer.ankiaddon');
+  // O checklist vale em qualquer passo que a pessoa esteja olhando.
+  await card(page).getByRole('button', { name: 'Continuar' }).click();
+  await expect(naoRespondeu(page)).toBeVisible();
+
+  // A conferência continua: uma pergunta nova ao /health a cada 15 s, e quando a Conexão responde o checklist sai.
+  const antes = pedidosDeHealth(fakes).length;
+  await page.clock.runFor(15_000);
+  await expect.poll(() => pedidosDeHealth(fakes).length).toBeGreaterThan(antes);
+  await expect(naoRespondeu(page)).toBeVisible();
+  fakes.anki.ligar();
+  await page.clock.runFor(15_000);
+  await expect(pronto(page)).toBeVisible();
+  await expect(naoRespondeu(page)).toBeHidden();
+});
+
+test('os dois minutos contam desde que a pessoa vê os passos: quem chega depois não vê o checklist de cara', async ({ page, extensao, fakes }) => {
+  await page.clock.install({ time: AGORA });
+  fakes.anki.ligar();
+  await extensao.gravarStorage({ pm_anki_ja_conectou: true });
+  await page.goto(extensao.url('painel.html#anki/custos'));
+  await expect(abas(page)).toBeVisible();
+
+  // A Conexão cai e o card nunca foi mostrado antes (a pessoa já tinha conectado: sem card, sem relógio).
+  fakes.anki.desligar();
+  await page.clock.runFor(150_000);
+  await expect(card(page)).toBeHidden();
+  await expect(naoRespondeu(page)).toBeHidden();
+});
+
 
 test('com a janela estreita (o trilho), a lista fica em cima do card', async ({ page, extensao }) => {
   await page.setViewportSize({ width: 800, height: 900 });
@@ -420,7 +514,7 @@ test('com a janela estreita (o trilho), a lista fica em cima do card', async ({ 
   await expect(card(page)).toBeVisible();
 
   const daLista = await lista(page).boundingBox();
-  const doCard = await page.locator('.apv-card').boundingBox();
+  const doCard = await card(page).locator('.pc-card').boundingBox();
   expect(daLista.y + daLista.height).toBeLessThanOrEqual(doCard.y);
 });
 
@@ -430,7 +524,7 @@ test('com a janela larga, a lista fica ao lado do card', async ({ page, extensao
   await expect(card(page)).toBeVisible();
 
   const daLista = await lista(page).boundingBox();
-  const doCard = await page.locator('.apv-card').boundingBox();
+  const doCard = await card(page).locator('.pc-card').boundingBox();
   expect(daLista.x + daLista.width).toBeLessThanOrEqual(doCard.x);
 });
 
@@ -439,10 +533,10 @@ test('o foco é visível na lista e nos botões, e piscar e pulsar ficam estáti
   await abrir(page, extensao);
   await expect(card(page)).toBeVisible();
 
-  await itemDaLista(page, 'Abrir o Anki').focus();
+  await itemDaLista(page, 'Pôr a Conexão no Anki').focus();
   await page.keyboard.press('Tab');
-  await expect(itemDaLista(page, 'Instalar a Conexão com o Anki')).toBeFocused();
-  await expect(itemDaLista(page, 'Instalar a Conexão com o Anki')).toHaveCSS('outline-style', 'solid');
+  await expect(itemDaLista(page, 'Reiniciar o Anki')).toBeFocused();
+  await expect(itemDaLista(page, 'Reiniciar o Anki')).toHaveCSS('outline-style', 'solid');
 
   // O ponto que pisca da linha da conferência dura 1 ms, uma volta só.
   await expect(page.locator('.apv-confere .anki-ponto')).toHaveCSS('animation-duration', '0.001s');
@@ -453,8 +547,8 @@ test('nos dois temas o card usa os tokens Veio: o fundo do card e o do controle 
   await expect(card(page)).toBeVisible();
 
   const cores = () => page.evaluate(() => {
-    const cor = seletor => getComputedStyle(document.querySelector(seletor)).backgroundColor;
-    return { card: cor('.apv-card'), controle: cor('.apv-controle') };
+    const cor = seletor => getComputedStyle(document.querySelector(`#anki-primeira-vez ${seletor}`)).backgroundColor;
+    return { card: cor('.pc-card'), controle: cor('.pc-controle') };
   });
   const escuro = await cores();
   await page.evaluate(() => { document.documentElement.dataset.tema = 'claro'; });
