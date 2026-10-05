@@ -1,0 +1,53 @@
+{
+  "grupos": {
+    "node": {
+      "descricao": "Os testes de Node da raiz: mineração automática, sincronização, pacote da loja e o fake da Conexão com o Anki",
+      "executor": "node",
+      "arquivos": ["test_auto_keyword.js", "test_sync.js", "test_empacotar.js", "test_fake_anki.js"]
+    },
+    "regras": {
+      "descricao": "As provas das regras de revisão (scripts/regras/); quem as confere no repositório é `node scripts/regras/verificar.js`",
+      "executor": "node",
+      "arquivos": ["scripts/regras/test_regras.js"]
+    },
+    "ferramentas": {
+      "descricao": "As ferramentas de scripts/: o executor dos grupos, a divisão do CLAUDE.md em skills",
+      "executor": "node",
+      "precisa": "python3 com PyYAML (`pip install pyyaml`), para a divisão do CLAUDE.md",
+      "arquivos": ["scripts/test_testar.mjs", "scripts/test_divisao_do_claude_md.mjs"]
+    },
+    "bridge": {
+      "descricao": "A Conexão de hoje (Flask) e o Envio ao Anki",
+      "executor": "unittest",
+      "pasta": "bridge",
+      "padrao": "test_*.py",
+      "precisa": "pip install -r bridge/requirements.txt"
+    },
+    "complemento": {
+      "descricao": "O complemento do Anki; na biblioteca padrão, e o CI roda no Python 3.9 (o do Anki do Mac) e no 3.13",
+      "executor": "unittest",
+      "pasta": "complemento",
+      "padrao": "test_*.py"
+    },
+    "engine": {
+      "descricao": "O motor que gera os cartões",
+      "executor": "unittest",
+      "pasta": "engine",
+      "padrao": "test_*.py",
+      "precisa": "pip install -r engine/requirements.txt"
+    },
+    "e2e": {
+      "descricao": "A extensão desempacotada no Chromium (Playwright); o CI roda em 8 fatias: -- --shard=N/8",
+      "executor": "playwright",
+      "pasta": "e2e",
+      "pesado": true,
+      "precisa": "cd e2e && npm ci && npm run setup"
+    }
+  },
+  "fora": [
+    {
+      "arquivo": "test_gemini.js",
+      "motivo": "não é um teste: um script avulso que lista os modelos da Gemini e precisa da chave da pessoa (CLAUDE.md § Architecture › Files)"
+    }
+  ]
+}

@@ -1,9 +1,13 @@
 name: Testes
 
-# O portão de cada PR: os testes de Node, os do bridge, os do complemento do Anki
-# (Python 3.9, o do Anki do Mac, e 3.13) e a suíte e2e inteira
+# O portão de cada PR: os testes de Node, os das ferramentas, os do bridge, os do motor,
+# os do complemento do Anki (Python 3.9, o do Anki do Mac, e 3.13) e a suíte e2e inteira
 # (a extensão desempacotada no Chromium). Quem trabalha roda só os specs da
 # área que mudou; a suíte inteira roda aqui. Ver "Testing" no CLAUDE.md.
+#
+# Cada job chama só `node scripts/testar.mjs <grupo>`, o mesmo comando que se roda aqui: o que cada
+# grupo roda está em scripts/testes.json, e a regra `testes-no-portao` (node scripts/regras/verificar.js)
+# falha quando um teste fica sem grupo, um grupo sem job aqui ou um teste roda por fora do executor.
 on:
   pull_request:
   push:
@@ -26,10 +30,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: node test_auto_keyword.js
-      - run: node test_sync.js
-      - run: node test_empacotar.js
-      - run: node test_fake_anki.js
+      - run: node scripts/testar.mjs node
+
+  ferramentas:
+    name: Testes das ferramentas
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # A divisão do CLAUDE.md em skills confere o YAML dos cabeçalhos com o PyYAML.
+      - run: pip install pyyaml
+      - run: node scripts/testar.mjs ferramentas
 
   bridge:
     name: Testes do bridge
@@ -37,13 +54,37 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: bridge/requirements.txt
       - run: pip install -r bridge/requirements.txt
-      - run: python -m unittest discover -s bridge -p "test_*.py"
+      - run: node scripts/testar.mjs bridge
+        env:
+          PYTHON: python
+
+  engine:
+    name: Testes do motor
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: engine/requirements.txt
+      - run: pip install -r engine/requirements.txt
+      - run: node scripts/testar.mjs engine
+        env:
+          PYTHON: python
 
   complemento:
     name: Testes do complemento (Python ${{ matrix.python }})
@@ -55,11 +96,16 @@ jobs:
         python: ['3.9', '3.13']
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
       # O complemento usa só a biblioteca padrão: nada a instalar.
-      - run: python -m unittest discover -s complemento -p "test_*.py"
+      - run: node scripts/testar.mjs complemento
+        env:
+          PYTHON: python
 
   e2e:
     name: e2e (${{ matrix.fatia }}/8)
@@ -88,8 +134,7 @@ jobs:
         working-directory: e2e
       # A DejaVu é a única fonte que o Chromium dos testes enxerga (e2e/fontconfig).
       - run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
-      - run: xvfb-run --auto-servernum npx playwright test --workers=1 --shard=${{ matrix.fatia }}/8
-        working-directory: e2e
+      - run: xvfb-run --auto-servernum node scripts/testar.mjs e2e -- --workers=1 --shard=${{ matrix.fatia }}/8
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

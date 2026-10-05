@@ -180,6 +180,80 @@ acusa('e2e-funcao-interna', 'e2e/tests/popup.spec.js', [
   "const frases = await page.evaluate(() => document.querySelectorAll('.veio-frase').length);",
 ].join('\n'), 0, 'chrome.* e o DOM não são código da extensão');
 
+// ─── testes-no-portao ────────────────────────────────────────────────────────
+
+// Um repositório mínimo (só o que a regra lê: o cadastro, os arquivos e os workflows).
+function repositorioDeTestes(arquivos) {
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-portao-'));
+  execFileSync('git', ['init', '-q'], { cwd: pasta });
+  for (const [arquivo, texto] of Object.entries(arquivos)) {
+    fs.mkdirSync(path.dirname(path.join(pasta, arquivo)), { recursive: true });
+    fs.writeFileSync(path.join(pasta, arquivo), texto);
+  }
+  return pasta;
+}
+function achadosDoPortao(arquivos, arquivo) {
+  const pasta = repositorioDeTestes(arquivos);
+  try {
+    return regras['testes-no-portao'].verificar(arquivo, arquivos[arquivo], pasta);
+  } finally {
+    fs.rmSync(pasta, { recursive: true, force: true });
+  }
+}
+const CADASTRO = JSON.stringify({
+  grupos: {
+    node: { executor: 'node', arquivos: ['test_sync.js', 'test_fake_anki.js'] },
+    complemento: { executor: 'unittest', pasta: 'complemento', padrao: 'test_*.py' },
+  },
+  fora: [{ arquivo: 'test_gemini.js', motivo: 'um script avulso, não um teste' }],
+}, null, 2);
+const TESTES = { 'test_sync.js': '', 'test_fake_anki.js': '', 'test_gemini.js': '', 'complemento/test_servidor.py': '' };
+const CHAMA_TUDO = 'on:\n  pull_request:\njobs:\n  a:\n    steps:\n      - run: node scripts/testar.mjs node\n      - run: node scripts/testar.mjs complemento\n';
+const comOPortao = (extra = {}) => ({ 'scripts/testes.json': CADASTRO, ...TESTES, '.github/workflows/testes.yml': CHAMA_TUDO, ...extra });
+const achadosDe = (arquivos, arquivo) => achadosDoPortao(arquivos, arquivo);
+const nulo = (achados, quantas, porque) => { assert.strictEqual(achados.length, quantas, `${porque}\n${JSON.stringify(achados, null, 2)}`); total++; return achados; };
+
+// O jeito certo passa: todo teste num grupo (ou em `fora`), todo grupo num workflow de PR.
+nulo(achadosDe(comOPortao(), 'scripts/testes.json'), 0, 'o cadastro em dia');
+nulo(achadosDe(comOPortao(), '.github/workflows/testes.yml'), 0, 'o workflow que só chama o executor');
+nulo(achadosDe(comOPortao(), 'test_gemini.js'), 0, 'um arquivo em `fora`, com o motivo');
+nulo(achadosDe(comOPortao(), 'complemento/test_servidor.py'), 0, 'um teste descoberto pela pasta do grupo');
+
+// #188 (0de5d66): os testes da divisão do CLAUDE.md existiam e o CI não os rodava.
+nulo(achadosDe(comOPortao({ 'scripts/test_divisao_do_claude_md.mjs': '' }), 'scripts/test_divisao_do_claude_md.mjs'), 1,
+  'um teste sem grupo (0de5d66)');
+// Um teste novo na pasta do grupo de Python entra sozinho; um .mjs novo só entra cadastrado.
+nulo(achadosDe(comOPortao({ 'complemento/test_novo.py': '' }), 'complemento/test_novo.py'), 0, 'um teste novo da pasta de um grupo');
+
+// #185 (83fda05, o testes.yml de antes do complemento e do fake): os mesmos testes, rodados à mão no workflow.
+const WORKFLOW_DO_83FDA05 = [
+  'on:', '  pull_request:', 'jobs:', '  node:', '    steps:',
+  '      - run: node test_auto_keyword.js', '      - run: node test_sync.js', '      - run: node test_empacotar.js',
+  '  bridge:', '    steps:', '      - run: python -m unittest discover -s bridge -p "test_*.py"', '',
+].join('\n');
+const doWorkflow = nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': WORKFLOW_DO_83FDA05 }), '.github/workflows/testes.yml'), 4,
+  'os testes rodados por fora do executor (83fda05)');
+assert.match(doWorkflow[0].detalhe, /roda um teste por fora do executor.*node scripts\/testar\.mjs <grupo>/);
+total++;
+// O mesmo workflow, sem o job do complemento: o cadastro acusa o grupo que ninguém chama.
+const semOComplemento = nulo(achadosDe(comOPortao({
+  '.github/workflows/testes.yml': CHAMA_TUDO.replace('      - run: node scripts/testar.mjs complemento\n', ''),
+}), 'scripts/testes.json'), 1, 'um grupo que nenhum workflow chama (o job do complemento que faltava)');
+assert.match(semOComplemento[0].detalhe, /grupo complemento: nenhum workflow de PR chama `node scripts\/testar\.mjs complemento`/);
+total++;
+// Um workflow que não roda em PR não é portão.
+nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': CHAMA_TUDO.replace('pull_request', 'workflow_dispatch') }), 'scripts/testes.json'), 2,
+  'workflow que não roda em PR não conta');
+// Um comentário não conta como chamada.
+nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': 'on:\n  pull_request:\n# node scripts/testar.mjs node\n# node scripts/testar.mjs complemento\n' }), 'scripts/testes.json'), 2,
+  'o comentário não chama grupo');
+// O cadastro que mente.
+nulo(achadosDe(comOPortao({ 'scripts/testes.json': CADASTRO.replace('"test_gemini.js"', '"test_inexistente.js"') }), 'scripts/testes.json'), 1, 'fora com um arquivo que não existe');
+nulo(achadosDe(comOPortao({ 'scripts/testes.json': CADASTRO.replace('um script avulso, não um teste', ' ') }), 'scripts/testes.json'), 1, 'fora sem motivo');
+nulo(achadosDe(comOPortao({ 'scripts/testes.json': CADASTRO.replace('test_*.py', 'prova_*.py') }), 'scripts/testes.json'), 1, 'grupo cujo padrão não casa com nada');
+nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': `${CHAMA_TUDO}      - run: node scripts/testar.mjs engine\n` }), '.github/workflows/testes.yml'), 1,
+  'workflow que chama um grupo que o cadastro não tem');
+
 // ─── exceções na linha ───────────────────────────────────────────────────────
 
 const HOJE = '2026-10-04';
@@ -218,6 +292,7 @@ git('checkout', '-q', '-b', 'mudanca');
 
 let r = rodar('main');
 assert.strictEqual(r.status, 0, `a base passa:\n${r.stdout}${r.stderr}`);
+assert.match(r.stdout, /ainda não tem a regra testes-no-portao/, 'uma regra que a base não tem entra com a primeira linha de base, dita no aviso');
 
 // A primeira linha de base: a base ainda não tem uma, e isso é dito, não escondido.
 r = rodar(git('rev-parse', 'HEAD~1'));

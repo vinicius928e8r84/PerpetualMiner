@@ -16,5 +16,8 @@
   "e2e-funcao-interna": {},
   "teste-le-codigo": {
     "bridge/test_anki_launcher.py": 14
+  },
+  "testes-no-portao": {
+    ".agents/skills/verify-perpetualminer/scripts/test_helpers.sh": 1
   }
 }

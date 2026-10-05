@@ -17,10 +17,11 @@ What the reviewer enforces (Voice catalog copy, Veio tokens, base components, st
 
 ## Commands
 
-- Fast checks: `node test_auto_keyword.js && node test_sync.js && node test_empacotar.js && node test_fake_anki.js`.
-- Add-on: `python3.9 complemento/test_servidor.py`, `test_inicio.py`, `test_no_anki.py` and `test_pacote.py`, also with `python3.13` (`uv python install 3.9 3.13` if missing).
-- Bridge: `python3 bridge/test_envio.py` (no Flask needed); `bridge/test_anki_launcher.py` and `bridge/test_envio_api.py` need `pip install -r bridge/requirements.txt`. Engine: `cd engine && python3 -m unittest discover -p "test_*.py"` (needs `engine/requirements.txt`).
-- e2e: `cd e2e && npx playwright test <specs> --workers=2`; the whole suite with `npm test` (first time: `npm ci` and `npm run setup`; see `CLAUDE.md` § Testing).
+- All tests: `node scripts/testar.mjs [<grupo>]` is the command CI runs for every job; the groups, and which files each one runs, are in `scripts/testes.json` (`--listar` shows them; no group runs the light ones; `-- <args>` reaches unittest/Playwright, e.g. `node scripts/testar.mjs e2e -- popup --workers=2`; `PYTHON=` picks the interpreter). A new test file joins a group there, or `testes-no-portao` fails.
+- Fast checks: `node scripts/testar.mjs node regras ferramentas` (the Node tests, the rule proofs, the tooling).
+- Add-on: `PYTHON=python3.9 node scripts/testar.mjs complemento`, also with `python3.13` (`uv python install 3.9 3.13` if missing).
+- Bridge: `node scripts/testar.mjs bridge` (needs `pip install -r bridge/requirements.txt`; `python3 bridge/test_envio.py` alone needs no Flask); engine: `node scripts/testar.mjs engine` (needs `engine/requirements.txt`). `scripts/preparar-python.sh` makes the venv.
+- e2e: `node scripts/testar.mjs e2e -- <specs> --workers=2` (the same as `cd e2e && npx playwright test <specs> --workers=2`); the whole suite with `npm test` in `e2e/` (first time: `npm ci` and `npm run setup`; see `CLAUDE.md` § Testing).
 - Proving a change by driving the extension (launch, doctor, evidence, cleanup, feature map): `.agents/skills/verify-perpetualminer/SKILL.md` (also linked from `.claude/skills/`).
 - Running and installing the bridge on Windows, and its routes: `bridge/README.md`. When debugging Anki, try `/health`, `/anki/status` and `/anki/repair` before killing processes.
 
@@ -45,6 +46,7 @@ Keep local paths and Anki settings in `bridge/config.json`. Do not commit secret
 | 7 Storage writes | `gravacao-de-frases` (new write sites); a stale copy in an existing one: review |
 | 8 e2e tests | `e2e-funcao-interna` (unnamed exceptions); screen check per variant: review |
 | 9 Python tests | `teste-le-codigo` |
+| 12 Every test runs in CI | `testes-no-portao` |
 | 10 Visual references | review |
 | 11 New files | review; `test_empacotar.js` |
 

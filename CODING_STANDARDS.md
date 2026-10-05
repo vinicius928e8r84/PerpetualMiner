@@ -42,3 +42,7 @@ A surface not in this table (the panel shell, sync, storage, the service worker)
 ## New files
 
 11. **A new file gets its row in `CLAUDE.md` § Architecture › Files and is loaded where it is used**: `content_scripts` in `manifest.json`, `importScripts` in `background.js`, and a `<script>` in each page. `scripts/arquivos-do-pacote.js` and `lib/arquivos-da-extensao.js` decide what ships in the Chrome Web Store package. Source: `CLAUDE.md` § Files and § Shared base.
+
+## The gate
+
+12. **Every test file belongs to a group in `scripts/testes.json`, and CI runs the groups only through `node scripts/testar.mjs <group>`**: a test that no job runs proves nothing on the PR (#185 left the add-on and fake tests out; #188 left the tooling tests out). A file that has a test's name and is not one goes in `fora` with the reason. Source: `CLAUDE.md` § Testing.

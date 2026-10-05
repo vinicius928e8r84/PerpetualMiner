@@ -65,10 +65,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `test_empacotar.js` | Node test of the Web Store package contents; also checks that the store guide's "Host permission use" block matches the manifest hosts |
 | `test_gemini.js` | Standalone Node.js script to list available Gemini models (not part of the extension) |
 | `scripts/regras/` | The review rules a script can check (`verificar.js`, one file per rule, `linha-de-base.json`, proofs in `test_regras.js`), run locally and by `.github/workflows/regras.yml`. See `AGENTS.md` § Rules and what enforces them |
+| `scripts/testes.json`, `scripts/testar.mjs`, `scripts/grupos-de-teste.js`, `scripts/test_testar.mjs` | The test groups: `testes.json` says which files each group runs (`node`, `unittest` and `playwright` executors; `fora` lists the test-named files that are not tests, with the reason), `testar.mjs` runs a group (`node scripts/testar.mjs <group> [-- args]`, `--listar`) and is the only command the workflows call, `grupos-de-teste.js` resolves a group to its files (shared with the `testes-no-portao` rule), `test_testar.mjs` tests the executor |
 | `e2e/` | Playwright suite that runs the unpacked extension in Chromium (own `package.json`; see Testing) |
 | `.agents/skills/verify-perpetualminer/` | The `/verify-perpetualminer` skill: how an agent drives and proves the extension through the e2e harness. `SKILL.md`, the feature map in `features/`, and `scripts/` (`doctor.sh`, `drive.sh`, `cleanup.sh`, `lib.sh`, `mapa-de-features.sh`, `test_helpers.sh`). Dev tooling, never part of the extension package (`test_empacotar.js` checks it). `.claude/skills/verify-perpetualminer` is a symlink to it |
 | `e2e/fontconfig/fonts.conf` | The fonts the test Chromium sees: only the DejaVu files, no user or local font config, so the visual references render the same on every machine (loaded by the e2e fixture; see Testing) |
-| `.github/workflows/testes.yml` | The PR gate: Node tests (including the e2e fake's), bridge tests, the add-on tests (Python 3.9 and 3.13) and the whole e2e suite (xvfb, sharded) on every PR and on `main`; see Testing |
+| `.github/workflows/testes.yml` | The PR gate, one job per group of `scripts/testes.json` (`node scripts/testar.mjs <group>`): Node tests (including the e2e fake's), tooling, bridge, engine, the add-on (Python 3.9 and 3.13) and the whole e2e suite (xvfb, sharded) on every PR and on `main`; see Testing |
 | `preview/` | The static site Vercel publishes per branch, so a visual change can be looked at in a browser: `montar.mjs` assembles it, `chrome-simulado.js` fakes `chrome.*` with sample data inside the copied pages. See `preview/README.md` |
 
 ### Data Flow
@@ -276,6 +277,8 @@ The browser sees only the DejaVu fonts (`e2e/fontconfig/fonts.conf`, set as `FON
 The add-on's contract with the extension is tested from both sides on the same examples: `complemento/test_servidor.py` (the real server in the test process, over an in-memory collection) and `e2e/tests/contrato-da-conexao.spec.js` (the fake, whose `/health` and, after `fakes.anki.abrirColecao(nome)`, Baralhos/numbers/vocabulary answer from `complemento/contrato/exemplos.json`; `fakes.anki.abrirPerfil(perfil)` needs an example for that profile, which `node test_fake_anki.js` checks, along with the shape of what the screen tests build with `definirVocabulario`/`definirBaralho`).
 
 The legacy tests keep running: `node test_sync.js` (loads `lib/sincronizacao.js` for real, two computers over a memory cloud, plus the HTTP adapter over a fake `fetch`), `node test_auto_keyword.js` and the bridge tests in `bridge/test_*.py`.
+
+**Every test runs in the gate.** The groups of `scripts/testes.json` are the one list of what runs: a workflow job only calls `node scripts/testar.mjs <group>`, and you run the same command here. `node scripts/regras/verificar.js` (rule `testes-no-portao`) fails on a test file no group runs, a group no PR workflow calls, and a workflow that runs a test by hand. Still outside the gate, on the rule's baseline (it only goes down): `.agents/skills/verify-perpetualminer/scripts/test_helpers.sh` (minutes long, sends signals; it needs its own isolated job). `test_gemini.js` is not a test (`fora`).
 
 ## Key Constants
 
