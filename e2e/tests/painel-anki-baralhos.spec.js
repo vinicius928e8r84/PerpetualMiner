@@ -89,11 +89,12 @@ test('baralhos: azulejos Inglês · Russo com as palavras; o escolhido mostra o 
   await expect(baralhos(page).locator('.anki-baralho')).toContainText('Russo · RUSSIAN');
   await expect(numeros).toContainText('Cartões480');
 
-  // O caminho de hoje: os dois baralhos dos Ajustes de envio numa leitura só, que abre o Anki se precisar.
+  // O caminho de hoje: os dois baralhos dos Ajustes de envio numa leitura só. Entrar na área não pede à Conexão que abra o Anki.
   const busca = new URLSearchParams(pedidos(fakes, '/anki/stats/decks')[0].busca);
   expect(busca.getAll('deck')).toEqual(['CIMV', 'RUSSIAN']);
   expect(busca.getAll('lang')).toEqual(['en', 'ru']);
-  expect(busca.get('launch')).toBe('1');
+  expect(busca.has('launch')).toBe(false);
+  expect(pedidos(fakes, '/anki/vocabulary').every(r => !new URLSearchParams(r.busca).has('launch'))).toBe(true);
 });
 
 test('baralhos lidos do arquivo local: a nota BRG-13 no topo', async ({ page, extensao, fakes }) => {
@@ -379,7 +380,8 @@ test('cai depois de responder: baralhos e vocabulário mostram o último dado co
   await page.reload();
 
   await expect(page.getByText(F1)).toBeVisible();
-  await expect(baralhos(page)).toContainText('Mostrando dados de há 2 h. Não deu para atualizar agora.');
+  await expect(baralhos(page)).toContainText('Anki fechado. Mostrando dados de há 2 h.');
+  await expect(baralhos(page)).not.toContainText('Não deu para atualizar agora');
   await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
   await abrirAvancado(page);
   const reparar = baralhos(page).getByRole('button', { name: 'Reparar Anki' });
@@ -389,11 +391,152 @@ test('cai depois de responder: baralhos e vocabulário mostram o último dado co
   expect(pedidos(fakes, '/anki/repair')).toHaveLength(0);
 
   await aba(page, 'Vocabulário').click();
-  await expect(vocabulario(page)).toContainText('Mostrando dados de há 2 h. Não deu para atualizar agora.');
+  await expect(vocabulario(page)).toContainText('Anki fechado. Mostrando dados de há 2 h.');
   await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
   // A busca continua valendo sobre o último dado.
   await page.getByRole('searchbox', { name: 'Buscar no vocabulário' }).fill('eerie');
   await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(1);
+});
+
+test('com a Conexão desligada, entrar na área e a Conexão voltar não pedem para abrir o Anki; sem nenhuma leitura, as duas abas esperam o Anki', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await abrirAnki(page, extensao, '#anki/baralhos');
+
+  await expect(page.getByText(F1)).toBeVisible();
+  await expect(baralhos(page)).toContainText('— esperando o Anki');
+  await expect(baralhos(page)).toContainText('Começa depois que o Anki abrir uma vez.');
+  await expect(baralhos(page)).not.toContainText('Mostrando dados');
+  await aba(page, 'Vocabulário').click();
+  await expect(vocabulario(page)).toContainText('— esperando o Anki');
+  await expect(vocabulario(page)).toContainText('Começa depois que o Anki abrir uma vez.');
+  await expect(vocabulario(page).getByRole('listbox')).toHaveCount(0);
+  expect(pedidos(fakes, '/anki/stats/decks')).toHaveLength(0);
+
+  // A Conexão volta (a F1, Tentar de novo): os dados chegam, e a leitura não pediu para abrir o Anki.
+  fakes.anki.ligar();
+  await page.getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
+  await expect(vocabulario(page)).not.toContainText('esperando o Anki');
+  await expect.poll(() => pedidos(fakes, '/anki/stats/decks').length).toBeGreaterThan(0);
+  expect(pedidos(fakes, '/anki/stats/decks').every(r => !r.busca.includes('launch'))).toBe(true);
+});
+
+test('Conexão ligada mas o Anki fechado: baralhos e vocabulário vêm do arquivo, com “Anki fechado” e os dados de antes de ele fechar; abrir o Anki tira o selo', async ({ page, extensao, fakes }) => {
+  await abrirAnki(page, extensao, '#anki/baralhos');
+  await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
+  await aba(page, 'Vocabulário').click();
+  await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
+  await expect(page.getByText(/Anki fechado/)).toHaveCount(0);
+
+  // Duas horas depois o Anki está fechado e a Conexão segue ligada: ela lê o arquivo, que ainda é o de 12:00.
+  fakes.anki.fecharOAnki();
+  await page.clock.setFixedTime(new Date(AGORA.getTime() + 2 * 3600_000));
+  await page.reload();
+
+  await expect(page.getByText(F1)).toBeHidden();
+  await expect(vocabulario(page)).toContainText('Anki fechado. Mostrando dados de há 2 h.');
+  await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
+  await aba(page, 'Baralhos e termos').click();
+  await expect(baralhos(page)).toContainText('Números lidos direto do arquivo do Anki.');
+  await expect(baralhos(page)).toContainText('Anki fechado. Mostrando dados de há 2 h.');
+  await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
+  // A leitura não pediu para abrir o Anki.
+  expect(pedidos(fakes, '/anki/stats/decks').slice(1).every(r => !r.busca.includes('launch'))).toBe(true);
+
+  // O Anki abre e a pessoa aperta Atualizar: a leitura volta a ser do Anki, sem o selo.
+  fakes.anki.abrirOAnki();
+  await atualizar(page).click();
+  await expect(baralhos(page)).not.toContainText('Anki fechado');
+  await aba(page, 'Vocabulário').click();
+  await expect(vocabulario(page)).not.toContainText('Anki fechado');
+});
+
+const lerGravado = async (extensao, chave) => (await extensao.lerStorage(chave))[chave];
+
+test('Conexão ligada com o Anki aberto mas sem o AnkiConnect: o arquivo é lido (BRG-13) e a tela não diz que o Anki está fechado', async ({ page, extensao, fakes }) => {
+  fakes.anki.ankiAbertoSemAnkiConnect();
+  await abrirAnki(page, extensao, '#anki/baralhos');
+
+  await expect(baralhos(page)).toContainText('Números lidos direto do arquivo do Anki.');
+  await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
+  await aba(page, 'Vocabulário').click();
+  await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
+  await expect(page.getByText(/Anki fechado/)).toHaveCount(0);
+  // O que fica guardado diz de onde veio e que o Anki não foi dado como fechado.
+  for (const chave of ['pm_anki_baralhos', 'pm_anki_vocabulario']) {
+    expect(await lerGravado(extensao, chave)).toMatchObject({ ankiFechado: false });
+  }
+});
+
+test('Atualizar com o Anki fechado renova a idade dos dados na tela: a leitura de 2 h depois diz “há 2 h” e a de 4 h, “há 4 h”, sem recarregar', async ({ page, extensao, fakes }) => {
+  await abrirAnki(page, extensao, '#anki/baralhos');
+  await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
+  await aba(page, 'Vocabulário').click();
+  await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
+
+  fakes.anki.fecharOAnki();
+  await page.clock.setFixedTime(new Date(AGORA.getTime() + 2 * 3600_000));
+  await page.reload();
+  await expect(vocabulario(page)).toContainText('Anki fechado. Mostrando dados de há 2 h.');
+  await aba(page, 'Baralhos e termos').click();
+  await expect(baralhos(page)).toContainText('Anki fechado. Mostrando dados de há 2 h.');
+
+  await page.clock.setFixedTime(new Date(AGORA.getTime() + 4 * 3600_000));
+  await atualizar(page).click();
+  await expect(baralhos(page)).toContainText('Anki fechado. Mostrando dados de há 4 h.');
+  await aba(page, 'Vocabulário').click();
+  await expect(vocabulario(page)).toContainText('Anki fechado. Mostrando dados de há 4 h.');
+  // Lido de novo quatro horas depois, os dados seguem sendo os de 12:00, antes de o Anki fechar.
+  for (const chave of ['pm_anki_baralhos', 'pm_anki_vocabulario']) {
+    expect(await lerGravado(extensao, chave)).toMatchObject({
+      quando: AGORA.getTime() + 4 * 3600_000, dadosDe: AGORA.getTime(), ankiFechado: true,
+    });
+  }
+});
+
+test('trocar o Baralho com o Anki fechado: o Baralho novo não herda a idade do antigo', async ({ page, extensao, fakes }) => {
+  fakes.anki.definirBaralho('Mining EN', { ...BARALHO_EN, palavras: 99 });
+  await abrirAnki(page, extensao, '#anki/baralhos');
+  await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
+  await aba(page, 'Vocabulário').click();
+  await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
+
+  fakes.anki.fecharOAnki();
+  const duasHorasDepois = new Date(AGORA.getTime() + 2 * 3600_000);
+  await page.clock.setFixedTime(duasHorasDepois);
+  await page.goto(extensao.url('painel.html#anki/ajustes'));
+  await page.getByRole('textbox', { name: 'Baralho' }).fill('Mining EN');
+  await page.getByRole('button', { name: 'Salvar ajustes' }).click();
+
+  await aba(page, 'Baralhos e termos').click();
+  await expect(azulejosDosBaralhos(page).getByRole('button').nth(0)).toContainText('99 palavras');
+  // Nenhuma leitura de “Mining EN” existia: a referência é a deste momento, não a das 12:00 do CIMV.
+  await expect(baralhos(page)).toContainText('Anki fechado. Mostrando dados de agora.');
+  await aba(page, 'Vocabulário').click();
+  await expect(vocabulario(page)).toContainText('Anki fechado. Mostrando dados de agora.');
+  for (const chave of ['pm_anki_baralhos', 'pm_anki_vocabulario']) {
+    expect(await lerGravado(extensao, chave)).toMatchObject({ dadosDe: duasHorasDepois.getTime(), ankiFechado: true });
+  }
+  expect((await lerGravado(extensao, 'pm_anki_baralhos')).nomes).toEqual({ en: 'Mining EN', ru: 'RUSSIAN' });
+});
+
+test('o último dado que a própria Conexão guardou (stale) segue com “Não deu para atualizar agora”, sem o Anki fechado', async ({ page, extensao, fakes }) => {
+  fakes.anki.responder('GET', '/anki/stats/decks', () => ({
+    json: {
+      generatedAt: new Date(AGORA.getTime() - 3 * 3600_000).toISOString(),
+      stale: true,
+      source: 'ankiconnect',
+      decks: [
+        { deckName: 'CIMV', lang: 'en', cards: 10, uniqueTermTokens: 77, vocabulary: { phraseVocabulary: 77 }, new: 1, learning: 0, young: 2, mature: 7 },
+        { deckName: 'RUSSIAN', lang: 'ru', cards: 5, uniqueTermTokens: 12, vocabulary: { phraseVocabulary: 12 }, new: 1, learning: 0, young: 1, mature: 3 },
+      ],
+    },
+  }));
+  await abrirAnki(page, extensao, '#anki/baralhos');
+
+  await expect(azulejosDosBaralhos(page)).toContainText('77 palavras');
+  await expect(baralhos(page)).toContainText('Mostrando dados de há 3 h. Não deu para atualizar agora.');
+  await expect(baralhos(page)).not.toContainText('Anki fechado');
 });
 
 // ─── Ajustes de envio, ↻ Atualizar e acessibilidade ──────────────────────────

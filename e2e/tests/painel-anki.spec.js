@@ -101,7 +101,7 @@ test('cai depois de responder: a F1 e o último dado com o selo BRG-12; Continua
   await atualizar(page).click();
 
   await expect(page.getByText(F1)).toBeVisible();
-  await expect(custos(page)).toContainText('Mostrando dados de há 2 h. Não deu para atualizar agora.');
+  await expect(custos(page)).toContainText('Anki fechado. Mostrando dados de há 2 h.');
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(4);
   await expect(primeiraVez(page)).toBeHidden();
   // O código fica em Detalhes; e outro período não teria de onde vir.
@@ -147,7 +147,7 @@ test('reabrir o painel com a Conexão desligada mostra o último dado gravado, n
   await page.reload();
 
   await expect(page.getByText(F1)).toBeVisible();
-  await expect(custos(page)).toContainText('Mostrando dados de agora. Não deu para atualizar agora.');
+  await expect(custos(page)).toContainText('Anki fechado. Mostrando dados de agora.');
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(4);
   await expect(primeiraVez(page)).toBeHidden();
 });

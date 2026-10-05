@@ -11,6 +11,7 @@
 // O popup tem 340 px de largura e teto de 600 px, como no balão do ícone.
 
 const { test, expect } = require('../fixtures');
+const { leituraDoVocabulario: leitura } = require('../leitura-do-vocabulario');
 
 // O Contexto diz o dia da frase (PAI-11): o relógio fica parado no dia delas.
 const AGORA = new Date('2026-09-18T12:00:00');
@@ -79,12 +80,26 @@ test('limite de hoje atingido', async ({ page, extensao }) => {
   await expect(page).toHaveScreenshot('popup-limite.png');
 });
 
-test('Conexão com o Anki desligada, com nada minerado hoje', async ({ page, extensao, fakes }) => {
+test('Conexão com o Anki desligada, com a leitura de ontem: o azulejo segue contando e o selo diz a idade', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await extensao.gravarStorage({
+    frases: FRASES,
+    ...DIA_NORMAL,
+    pm_auto_keyword_vocab_en: leitura('CIMV', new Date('2026-09-17T14:02:00').getTime()),
+  });
+  await abrirPopup(page, extensao);
+  await expect(page.getByText('Vocabulário de ontem, 14:02')).toBeVisible();
+  await expect(page).toHaveScreenshot('popup-vocabulario-de-ontem.png');
+});
+
+test('Conexão com o Anki desligada, sem nenhuma leitura: o azulejo ligado espera o Anki', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await extensao.gravarStorage({ frases: FRASES, ...mineracao({ en: [true, 20, 0], ru: [false, 15, 0] }) });
   await abrirPopup(page, extensao);
-  await expect(page.getByText(/Nada é minerado com a Conexão/)).toBeVisible();
-  await expect(page).toHaveScreenshot('popup-conexao-desligada.png');
+  const espera = page.locator('.popup-azulejo__espera:visible');
+  await expect(espera).toContainText('— esperando o Anki');
+  await expect(espera).toContainText('Começa depois que o Anki abrir uma vez.');
+  await expect(page).toHaveScreenshot('popup-esperando-o-anki.png');
 });
 
 test('mineração rápida que falhou', async ({ page, extensao }) => {

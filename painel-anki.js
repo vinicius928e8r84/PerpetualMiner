@@ -297,9 +297,13 @@
     return [seloDoDadoAntigo(quando), Veio.montarDetalhes(causa)];
   }
 
-  /** Só o selo BRG-12, sem o Detalhes: Baralhos e termos e Vocabulário. */
-  function seloDoDadoAntigo(quando) {
-    return elemento('span', 'anki-selo-antigo', textoDaVoz('BRG-12', { quando: haQuanto(quando) }));
+  /**
+   * Só o selo BRG-12, sem o Detalhes: Baralhos e termos e Vocabulário. O motivo
+   * é o Anki fechado (a Conexão não responde); `'atualizacao'` é a Conexão que
+   * responde com o último dado que tinha, porque não deu para atualizar.
+   */
+  function seloDoDadoAntigo(quando, motivo = 'anki') {
+    return elemento('span', 'anki-selo-antigo', textoDaVoz(`BRG-12.${motivo}`, { quando: haQuanto(quando) }));
   }
 
   function esqueleto(alturas = [96, 44, 200]) {

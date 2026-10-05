@@ -143,6 +143,17 @@ test('desligada: o último vocabulário com o selo BRG-12', async ({ page, exten
   await expect(ilha(page)).toHaveScreenshot('vocabulario-desligada.png');
 });
 
+test('desligada, sem nenhuma leitura: “— esperando o Anki” em Baralhos e termos e em Vocabulário', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await abrirAnki(page, extensao, '#anki/baralhos');
+  await expect(baralhos(page)).toContainText('— esperando o Anki');
+  await expect(ilha(page)).toHaveScreenshot('baralhos-esperando.png');
+
+  await page.locator('label.veio-segmentado__opcao').filter({ hasText: /^Vocabulário$/ }).click();
+  await expect(vocabulario(page)).toContainText('Começa depois que o Anki abrir uma vez.');
+  await expect(ilha(page)).toHaveScreenshot('vocabulario-esperando.png');
+});
+
 test('janela estreita: baralhos e vocabulário numa coluna', async ({ page, extensao }) => {
   await abrirAnki(page, extensao, '#anki/baralhos', { largura: 760 });
   await expect(baralhos(page).getByRole('img', { name: /de maturidade/ })).toBeVisible();
