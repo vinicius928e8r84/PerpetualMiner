@@ -3,7 +3,8 @@
 Vem de `bridge/card_normalization.py`, que a Conexão de hoje (Windows) segue usando até o complemento
 a substituir; o comportamento é o mesmo, só a biblioteca padrão e o Python 3.9. Quando o motor entrar
 no complemento, este é o único lugar. O normalizador da frase russa (que no motor é `parser.normalize_ru_phrase`)
-vem embutido em `normalizar_frase_ru`.
+vem embutido em `normalizar_frase_ru`. Só entra aqui o que as leituras usam (o resto de `card_normalization.py`
+fica no bridge).
 """
 
 from __future__ import annotations
@@ -12,22 +13,6 @@ import re
 from typing import Any, Callable
 
 NormalizeRu = Callable[[str], str]
-
-EN_STOP_WORDS = {
-    "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are", "as", "at",
-    "be", "because", "been", "before", "being", "below", "between", "both", "but", "by",
-    "can", "could", "did", "do", "does", "doing", "down", "during",
-    "each", "few", "for", "from", "further",
-    "had", "has", "have", "having", "he", "her", "here", "hers", "herself", "him", "himself", "his", "how",
-    "i", "if", "in", "into", "is", "it", "its", "itself",
-    "just", "me", "more", "most", "my", "myself",
-    "no", "nor", "not", "now", "of", "off", "on", "once", "only", "or", "other", "our", "ours", "ourselves",
-    "out", "over", "own", "same", "she", "should", "so", "some", "such",
-    "than", "that", "the", "their", "theirs", "them", "themselves", "then", "there", "these", "they", "this",
-    "those", "through", "to", "too", "under", "until", "up", "very",
-    "was", "we", "were", "what", "when", "where", "which", "while", "who", "whom", "why", "will", "with",
-    "you", "your", "yours", "yourself", "yourselves",
-}
 
 EN_LEMMA_EXCEPTIONS = {
     "children": "child",
@@ -97,33 +82,6 @@ def normalize_en_word(value: str) -> str:
     return word
 
 
-def term_words(value: str, lang: str, normalize_ru: NormalizeRu | None = None) -> list[str]:
-    text = strip_anki_field(value)
-    if lang == "ru":
-        try:
-            text = _apply_normalize_ru(normalize_ru, text)
-        except Exception:  # noqa: BLE001
-            text = re.sub(r"\s+", " ", text).strip()
-        text = text.replace("ё", "е").replace("Ё", "е").casefold()
-        return [match.group(0) for match in re.finditer(r"[а-я]+(?:-[а-я]+)?", text, flags=re.IGNORECASE)]
-
-    text = text.casefold()
-    text = re.sub(r"'s\b", "", text)
-    words: list[str] = []
-    for match in re.finditer(r"[a-z]+(?:[-'][a-z]+)*", text):
-        normalized = normalize_en_word(match.group(0))
-        if normalized and normalized not in EN_STOP_WORDS:
-            words.append(normalized)
-    return words
-
-
-def normalize_vocabulary_item(value: str, lang: str, normalize_ru: NormalizeRu | None = None) -> str:
-    words = term_words(value, lang, normalize_ru)
-    if not words:
-        return normalize_term_identity(value, lang, normalize_ru)
-    return " ".join(words)
-
-
 def normalize_target_item(value: str, lang: str, normalize_ru: NormalizeRu | None = None) -> str:
     if lang == "ru":
         return normalize_term_identity(value, lang, normalize_ru)
@@ -160,10 +118,6 @@ def extract_target_term(front: str, back: str, lang: str, normalize_ru: Normaliz
             return normalized
 
     return ""
-
-
-def vocabulary_tokens_from_front(front: str, lang: str, normalize_ru: NormalizeRu | None = None) -> set[str]:
-    return set(term_words(front, lang, normalize_ru))
 
 
 def literal_front_words(front: str, lang: str) -> set[str]:
@@ -269,30 +223,6 @@ def front_vocabulary_rows_from_cards(cards: list[dict[str, Any]], lang: str, nor
     return sorted(rows.values(), key=lambda item: (str(item["type"]) != "term", -int(item["cards"]), item["word"]))
 
 
-def front_word_rows_from_cards(cards: list[dict[str, Any]], lang: str) -> list[dict[str, Any]]:
-    rows: dict[str, dict[str, Any]] = {}
-    for card in cards:
-        bucket = str(card.get("bucket") or "new")
-        status_bucket = "recent" if bucket in {"learning", "young"} else bucket
-        if status_bucket not in {"new", "recent", "mature"}:
-            status_bucket = "new"
-        for word in literal_front_words(str(card.get("front") or ""), lang):
-            item = rows.setdefault(word, {
-                "word": word,
-                "cards": 0,
-                "new": 0,
-                "recent": 0,
-                "mature": 0,
-                "status": "seen",
-            })
-            item["cards"] += 1
-            item[status_bucket] += 1
-
-    for item in rows.values():
-        item["status"] = vocabulary_word_status(item)
-    return sorted(rows.values(), key=lambda item: (-int(item["cards"]), item["word"]))
-
-
 def empty_vocab_stats() -> dict[str, Any]:
     return {
         "targetTerms": 0,
@@ -361,21 +291,6 @@ def normalize_term_identity(value: str, lang: str, normalize_ru: NormalizeRu | N
     return text.casefold()
 
 
-def front_term_identities(value: str, lang: str, normalize_ru: NormalizeRu | None = None) -> set[str]:
-    text = strip_anki_field(value)
-    if lang == "ru":
-        try:
-            text = _apply_normalize_ru(normalize_ru, text)
-        except Exception:  # noqa: BLE001
-            text = re.sub(r"\s+", " ", text).strip()
-        text = text.replace("ё", "е").replace("Ё", "е").casefold()
-        return {match.group(0) for match in re.finditer(r"[а-я]+(?:-[а-я]+)?", text, flags=re.IGNORECASE)}
-
-    text = text.casefold()
-    text = re.sub(r"'s\b", "", text)
-    return {match.group(0).strip("-'") for match in re.finditer(r"[a-z]+(?:[-'][a-z]+)*", text) if match.group(0).strip("-'")}
-
-
 def card_bucket_from_values(card_type: int, interval: int) -> str:
     if card_type == 0:
         return "new"
@@ -384,12 +299,6 @@ def card_bucket_from_values(card_type: int, interval: int) -> str:
     if interval >= 21:
         return "mature"
     return "young"
-
-
-def card_bucket(card: dict[str, Any]) -> str:
-    card_type = int(card.get("type") or 0)
-    interval = int(card.get("interval") or 0)
-    return card_bucket_from_values(card_type, interval)
 
 
 def empty_deck_stats(deck_name: str, lang: str, front_field: str = "Frente") -> dict[str, Any]:

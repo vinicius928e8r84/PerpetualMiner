@@ -29,20 +29,23 @@ class LeitorDaColecaoDoAnki:
 
     A coleção do Anki não é para outras threads: toda leitura roda na thread principal (`mw.taskman.run_on_main`)
     e só volta com o que leu; o que se faz com os Cartões (normalizar, contar) fica na thread da Conexão.
-    A lista de perfis vem do gerente de perfis (`mw.pm`), que a conhece mesmo sem coleção aberta.
+    A lista de perfis vem do gerente de perfis (`mw.pm`), que a conhece mesmo sem coleção aberta, mas também
+    guarda um sqlite da thread principal: ela é lida lá, sem exigir coleção.
     """
 
     def __init__(self, mw, limite_s=LIMITE_DA_LEITURA_S):
         self._mw = mw
         self._limite_s = limite_s
 
-    def _na_thread_principal(self, leitura):
+    def _na_thread_principal(self, leitura, com_colecao=True):
+        """Roda `leitura` na thread principal do Anki e devolve o que ela leu. Com `com_colecao`, `leitura`
+        recebe a coleção aberta (sem ela, `ColecaoIndisponivel`); sem, recebe só o `mw`."""
         resultado = {}
         pronto = threading.Event()
 
         def ler():
             try:
-                resultado["valor"] = leitura(self._colecao())
+                resultado["valor"] = leitura(self._colecao() if com_colecao else self._mw)
             except Exception as erro:  # a leitura volta à thread da Conexão, que decide a resposta
                 resultado["erro"] = erro
             finally:
@@ -62,7 +65,7 @@ class LeitorDaColecaoDoAnki:
         return colecao
 
     def perfis(self):
-        return list(self._mw.pm.profiles())
+        return self._na_thread_principal(lambda mw: list(mw.pm.profiles()), com_colecao=False)
 
     def nomes_dos_baralhos(self):
         return self._na_thread_principal(lambda colecao: [baralho.name for baralho in colecao.decks.all_names_and_ids()])

@@ -111,12 +111,33 @@ class AnkiComColecaoDeMentira(AnkiDeMentira):
     def __init__(self, descricao=None, perfis=("Usuário 1",)):
         super().__init__()
         self.taskman = ThreadPrincipalDeMentira()
-        self.pm.profiles = lambda: list(perfis)
+        self._perfis = list(perfis)
+        self.pm.profiles = self._perfis_do_gerente
         self.descricao = descricao
         if descricao is not None:
             self.abrir(perfis[0])
 
+    def encerrar(self):
+        """Desliga a thread principal de mentira e fecha o sqlite da coleção."""
+        self.taskman.encerrar()
+        self._fechar_o_sqlite()
+
+    def _perfis_do_gerente(self):
+        """O gerente de perfis do Anki lê um sqlite criado na thread principal: de outra thread, ele recusa."""
+        if threading.current_thread() is not self.taskman.thread:
+            raise sqlite3.ProgrammingError("SQLite objects created in a thread can only be used in that same thread")
+        return list(self._perfis)
+
+    def fechar_o_perfil(self):
+        self._fechar_o_sqlite()
+        super().fechar_o_perfil()
+
+    def _fechar_o_sqlite(self):
+        if hasattr(self.col, "_sqlite"):
+            self.col._sqlite.close()
+
     def abrir(self, nome):
+        self._fechar_o_sqlite()
         super().abrir(nome)
         self.col = ColecaoDoAnkiDeMentira(self.descricao, self.taskman) if self.descricao is not None else object()
 
@@ -126,7 +147,7 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, unittest.TestCase):
 
     def setUp(self):
         self.anki = None
-        self.addCleanup(lambda: self.anki and self.anki.taskman.encerrar())
+        self.addCleanup(lambda: self.anki and self.anki.encerrar())
 
     def adaptador(self, descricao, perfis=("Usuário 1",)):
         self.anki = AnkiComColecaoDeMentira(descricao, perfis)
@@ -192,7 +213,7 @@ class BaralhosLidosDoAnki(unittest.TestCase):
         self.addCleanup(pasta.cleanup)
         conexao = no_anki.ao_carregar(anki, pasta.name, porta=0)
         self.addCleanup(conexao.parar)
-        self.addCleanup(anki.taskman.encerrar)
+        self.addCleanup(anki.encerrar)
         return conexao
 
     def test_com_o_perfil_aberto_a_extensao_le_os_baralhos_e_o_vocabulario_da_colecao(self):
