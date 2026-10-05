@@ -146,6 +146,26 @@ test.describe('com a Conexão desligada', () => {
   });
 });
 
+test.describe('com uma Conexão que não sabe responder', () => {
+  test('a Conexão de antes do complemento, sem a rota, deixa o interruptor indisponível e diz o motivo', async ({ page, extensao, fakes }) => {
+    fakes.anki.responder('POST', '/abrir-com-o-computador/estado', () => ({ status: 404, json: { error: 'not_found' } }));
+    await abrirCard(page, extensao);
+
+    await expect(nota(page)).toHaveText('Indisponível: esta versão da Conexão com o Anki ainda não abre o Anki com o computador.');
+    await expect(interruptor(page)).toBeDisabled();
+    await expect(resumo(page)).toHaveText('Indisponível agora');
+  });
+
+  test('uma leitura que falha deixa o interruptor indisponível em vez de ficar conferindo para sempre', async ({ page, extensao, fakes }) => {
+    fakes.anki.responder('POST', '/abrir-com-o-computador/estado', () => ({ status: 500, json: { error: 'internal_error' } }));
+    await abrirCard(page, extensao);
+
+    await expect(nota(page)).toHaveText('Indisponível: não deu para conferir como está. Abra Configurações de novo para tentar.');
+    await expect(interruptor(page)).toBeDisabled();
+    await expect(resumo(page)).toHaveText('Indisponível agora');
+  });
+});
+
 test.describe('quando o item não muda', () => {
   test('sem poder escrever o item, o interruptor continua desligado e o aviso diz o que aconteceu', async ({ page, extensao, fakes }) => {
     fakes.anki.definirItemDeLogin('falha');

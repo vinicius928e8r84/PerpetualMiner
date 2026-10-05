@@ -25,6 +25,7 @@
   const estado = {
     situacao: SITUACAO.CONECTANDO,
     ligado: null,        // null até a Conexão dizer
+    semResposta: null,   // por que ela não disse: 'antiga' (não tem esta rota) ou 'falhou'; null enquanto não se sabe
     gravando: false,     // um pedido de ligar ou desligar no ar
     falha: null,         // { ligar, erro }: o que não mudou, e a causa
     leitura: 0,          // só a leitura mais recente vale
@@ -55,7 +56,10 @@
     });
     const dados = await resposta.json().catch(() => ({}));
     if (!resposta.ok) {
-      throw Object.assign(new Error(`HTTP ${resposta.status}${dados.error ? ` · ${dados.error}` : ''}`), { codigo: dados.error || null });
+      throw Object.assign(new Error(`HTTP ${resposta.status}${dados.error ? ` · ${dados.error}` : ''}`), {
+        codigo: dados.error || null,
+        status: resposta.status,
+      });
     }
     return dados;
   }
@@ -64,9 +68,14 @@
     const leitura = ++estado.leitura;
     try {
       const { ligado } = await pedir('/estado', {});
-      if (leitura === estado.leitura && !estado.gravando) estado.ligado = ligado === true;
-    } catch {
-      // Sem resposta o estado fica como estava; a conferência da Conexão diz se ela caiu.
+      if (leitura === estado.leitura && !estado.gravando) {
+        estado.ligado = ligado === true;
+        estado.semResposta = null;
+      }
+    } catch (erro) {
+      // Um estado já lido fica como estava (a conferência da Conexão diz se ela caiu); sem nenhum, a tela diz o motivo.
+      // 404 é uma Conexão que não tem a rota: o bridge de hoje, antes do complemento.
+      if (estado.ligado === null) estado.semResposta = erro.status === 404 ? 'antiga' : 'falhou';
     }
     desenhar();
   }
@@ -113,15 +122,17 @@
   function desenhar() {
     if (!partes) partes = montar();
     const ligada = estado.situacao === SITUACAO.LIGADA;
-    const lendo = ligada && estado.ligado === null;
+    const lendo = ligada && estado.ligado === null && !estado.semResposta;
 
     partes.interruptor.checked = estado.ligado === true;
-    partes.interruptor.disabled = !ligada || lendo || estado.gravando;
     partes.interruptor.setAttribute('aria-busy', String(estado.gravando || lendo));
+    const sabe = ligada && estado.ligado !== null;
+    partes.interruptor.disabled = !sabe || estado.gravando;
     partes.nota.textContent = !ligada ? textoDaVoz('CFG-38.indisponivel')
       : lendo ? textoDaVoz('CFG-38.lendo')
-        : textoDaVoz('CFG-36.nota');
-    desenharOResumo(ligada && !lendo);
+        : !sabe ? textoDaVoz(`CFG-38.${estado.semResposta}`)
+          : textoDaVoz('CFG-36.nota');
+    desenharOResumo(sabe);
     desenharOAviso();
   }
 
