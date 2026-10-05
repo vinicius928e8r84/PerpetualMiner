@@ -34,6 +34,9 @@ preview/dist/
 .claude/worktrees/
 dist/
 
+# Complemento do Anki: dados que o Anki guarda ao rodar o complemento
+complemento/user_files/
+
 # Venv Python (scripts/preparar-python.sh)
 .venv/
 

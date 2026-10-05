@@ -27,7 +27,7 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   shared checks; see the doc comments in `painel-anki-primeira-conexao.js` for its subscription and timer lifecycle. See the
   [Anki area states](../../../docs/design/painel/anki/README.md#estados) for the **Pronto** moment, its status during a new check and focus when the controls or card leave.
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
-  selo (“Mostrando dados de há 2 h…”, with the code in Detalhes) and the period controls set to that reading's
+  selo (“Anki fechado. Mostrando dados de há 2 h.”, with the code in Detalhes) and the period controls set to that reading's
   period and disabled (another period would have nowhere to come from). **Continuar envio** and
   **Reparar Anki** get `aria-disabled` (still in the Tab order) with a `.veio-dica` tooltip (BRG-33) on hover and on keyboard focus (`:focus-visible`, so a click never leaves it open);
   a press does nothing. With the Conexão off and nothing stored, Custos only says “Custo indisponível”:
@@ -37,7 +37,7 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
 **↻ Atualizar** (BRG-24) is one action, owned by `painel-anki.js`: it asks `ConexaoAnki` for `/health` again
 (`ConexaoAnki.conferir`) and, only with the Conexão on, reads Custos again and calls whoever registered through
 `PerpetualMiner.Anki.aoAtualizar(fn)` — `painel-anki-baralhos.js` re-reads the decks there, with `launch=1` (“abre o Anki se precisar”),
-and the vocabulary. `Anki.atualizar()` is the same action for whoever needs it (BRG-17's Atualizar).
+and the vocabulary. Only a click asks the Conexão to open the Anki (↻ Atualizar, Tentar de novo): entering the area, a new Baralho or the Conexão coming back read without `launch`. `Anki.atualizar()` is the same action for whoever needs it (BRG-17's Atualizar).
 Off, nothing tries to open the Anki. BRG-04's Tentar de novo only re-reads Custos.
 
 The relative time (“agora”, “há 5 min”, “há 2 h”, then the PAI-11 day: ontem · há 3 dias) is `Contexto.haQuanto`
@@ -72,13 +72,13 @@ entering the Anki area with the Conexão on, when it comes back, and on ↻ Atua
 fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
 
 - **Baralhos e termos** reads `GET /anki/stats/decks` with both decks at once (`deck`/`lang` repeated; `launch=1` on
-  entry, `refresh=1` on ↻ and after a repair). The tiles Inglês · Russo (`aria-pressed`, group BRG-34.idiomas) say
+  ↻ and Tentar de novo only, `refresh=1` on ↻ and after a repair). The tiles Inglês · Russo (`aria-pressed`, group BRG-34.idiomas) say
   “EN · <deck>” and the words (`vocabulary.phraseVocabulary`); a deck the Anki does not have (`missing`) says “—” and
   BRG-27, and its detail is BRG-14 with Abrir Ajustes de envio (→ `#anki/ajustes`). The chosen deck: the maturity ring
   (an SVG `role="img"` named “66% de maturidade”: mature over all cards, recentes = `young + learning`), the big
   number, “palavras diferentes nos cartões” and Cartões · Termos-alvo · Palavra nova por cartão (1 decimal) · Maduros ·
   Recentes · Novos. Ring, bars and legend use the maturity series (ouro · info · muted). Read from the local file
-  (`source: 'collection.anki2'`): the BRG-13 note on top; the bridge's own stale cache: the BRG-12 selo (see the
+  (`source: 'collection.anki2'`): the BRG-13 note on top; the bridge's own stale cache: the BRG-12 selo “Mostrando dados de … Não deu para atualizar agora.” (`BRG-12.atualizacao`; with the Conexão off, or answering from the file with the Anki confirmed closed (`ankiFechado`), it is `BRG-12.anki`, “Anki fechado. Mostrando dados de {quando}.”, with `{quando}` the stored `dadosDe` (never another Baralho's; the selo's text is redrawn on every read); with the Conexão off and nothing stored the two tabs say BRG-37 instead of staying empty) (see the
   [design states](../../../docs/design/painel/anki/README.md#estados) for presentation by tab). Loading BRG-10 + skeleton;
   failure is the persistent BRG-11 aviso with Reparar Anki, Tentar de
   novo and the cause in Detalhes.

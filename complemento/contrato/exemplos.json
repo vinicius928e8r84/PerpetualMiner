@@ -1,0 +1,210 @@
+{
+  "origemDaExtensao": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+  "exemplos": [
+    {
+      "nome": "saúde com um perfil aberto",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": null
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "versao": "0.1.0",
+          "perfil": "Usuário 1"
+        }
+      }
+    },
+    {
+      "nome": "saúde com o Anki na tela de perfis",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": null
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": null
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "versao": "0.1.0",
+          "perfil": null
+        }
+      }
+    },
+    {
+      "nome": "saúde quando a Conexão não consegue ler o perfil",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "falhaNoPerfil": true
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": null
+      },
+      "resposta": {
+        "status": 500,
+        "json": {
+          "error": "internal_error"
+        }
+      }
+    },
+    {
+      "nome": "saúde pedida com a origem da extensão",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf"
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "versao": "0.1.0",
+          "perfil": "Usuário 1"
+        }
+      }
+    },
+    {
+      "nome": "POST na saúde, com a origem da extensão, não existe",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/health",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf"
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "not_found"
+        }
+      }
+    },
+    {
+      "nome": "POST de uma rota que a Conexão não tem, com a origem da extensão",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/nao-existe",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf"
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "not_found"
+        }
+      }
+    },
+    {
+      "nome": "saúde com a origem de outro site é recusada",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": "https://exemplo.com"
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    },
+    {
+      "nome": "saúde com a origem de outra extensão é recusada",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    },
+    {
+      "nome": "GET de qualquer outra rota sem origem é recusado",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/nao-existe",
+        "origem": null
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    },
+    {
+      "nome": "POST sem origem é recusado",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/nao-existe",
+        "origem": null
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    },
+    {
+      "nome": "POST com a origem de outra extensão é recusado",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/nao-existe",
+        "origem": "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    }
+  ]
+}

@@ -9,6 +9,7 @@ A Chrome extension (Manifest V3, plain JavaScript, no build) plus a local Python
 - **Veio identity:** `veio/README.md`. **Envio state machine:** `bridge/envio.py`'s docstring. **Engine:** `engine/CLAUDE.md`. **Device and store tooling:** `scripts/`, `docs/instalar-extensao.md`, `docs/publicar-chrome-web-store.md`.
 - **Tests:** `e2e/` (see `CLAUDE.md` § Testing), root `test_*.js`, `bridge/test_*.py`, `engine/test_*.py`.
 - `bridge/runtime/` is runtime data, not source. `preview/` only copies files into `preview/dist`; never edit an extension file to make the preview work.
+- **Conexão com o Anki as an Anki add-on:** `complemento/` (standard library only, Python 3.9 and 3.13); its HTTP contract with the extension is `complemento/contrato/exemplos.json`, and `complemento/contrato/LEIA-ME.md` says how a new route enters. The bridge in `bridge/` stays until the add-on replaces it.
 
 ## Standards
 
@@ -16,9 +17,11 @@ What the reviewer enforces (Voice catalog copy, Veio tokens, base components, st
 
 ## Commands
 
-- Fast checks: `node test_auto_keyword.js && node test_sync.js && node test_empacotar.js`.
+- Fast checks: `node test_auto_keyword.js && node test_sync.js && node test_empacotar.js && node test_fake_anki.js`.
+- Add-on: `python3.9 complemento/test_servidor.py`, `test_inicio.py`, `test_no_anki.py` and `test_pacote.py`, also with `python3.13` (`uv python install 3.9 3.13` if missing).
 - Bridge: `python3 bridge/test_envio.py` (no Flask needed); `bridge/test_anki_launcher.py` and `bridge/test_envio_api.py` need `pip install -r bridge/requirements.txt`. Engine: `cd engine && python3 -m unittest discover -p "test_*.py"` (needs `engine/requirements.txt`).
 - e2e: `cd e2e && npx playwright test <specs> --workers=2`; the whole suite with `npm test` (first time: `npm ci` and `npm run setup`; see `CLAUDE.md` § Testing).
+- Proving a change by driving the extension (launch, doctor, evidence, cleanup, feature map): `.agents/skills/verify-perpetualminer/SKILL.md` (also linked from `.claude/skills/`).
 - Running and installing the bridge on Windows, and its routes: `bridge/README.md`. When debugging Anki, try `/health`, `/anki/status` and `/anki/repair` before killing processes.
 
 Add or update focused tests when touching bridge launch, Anki repair, sync, or panel logic. New extension behavior is tested in `e2e/`. Name Python tests by behavior, for example `test_anki_launch_omits_profile_when_last_loaded_matches_config`.
@@ -44,6 +47,8 @@ Keep local paths and Anki settings in `bridge/config.json`. Do not commit secret
 | 9 Python tests | `teste-le-codigo` |
 | 10 Visual references | review |
 | 11 New files | review; `test_empacotar.js` |
+
+A PR that changes a user-facing file (`popup.*`, `painel*`, `manifest.json`, `bridge/server.py`, …) also needs `.agents/skills/verify-perpetualminer/features/` updated or "feature map unchanged" in its body: the `Mapa de features` step of `.github/workflows/regras.yml` (PRs only).
 
 When the same correction comes up twice, add its rule to `CODING_STANDARDS.md` and this table, enforced at the highest level that works.
 

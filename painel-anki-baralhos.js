@@ -29,6 +29,7 @@
 (function (raiz) {
   const CHAVE_BARALHOS = 'pm_anki_baralhos';
   const CHAVE_VOCABULARIO = 'pm_anki_vocabulario';
+  const FONTE_ARQUIVO = raiz.VocabularioDaMineracao.FONTE_ARQUIVO;
   // O reparo leva até ~110 s (fechar o Anki + os 90 s de espera da Conexão). Este
   // limite não é o do reparo: só evita esperar para sempre uma Conexão muda.
   const LIMITE_DO_REPARO_MS = 180_000;
@@ -72,7 +73,8 @@
     { chave: 'novos', rotulo: 'BRG-34.novos' },
   ];
 
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, IDIOMAS } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, IDIOMAS, VocabularioDaMineracao } = raiz;
+  const { haQuanto } = raiz.Contexto;
   const { esqueleto, linhaDeEspera, seloDoDadoAntigo } = raiz.Anki.pecas;
   const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
@@ -82,6 +84,9 @@
     baralhos: {
       dados: null,          // a última leitura de GET /anki/stats/decks
       quando: 0,
+      dadosDe: 0,           // o momento dos dados (lib/vocabulario-da-mineracao.js): o de `quando`, ou o de antes de o Anki fechar
+      ankiFechado: false,   // a Conexão leu o arquivo e confirmou que o Anki está fechado
+      nomes: null,          // os baralhos (`{ en, ru }`) a que esta leitura se refere
       carregando: false,
       erro: null,           // a causa técnica, para o Detalhes
       leitura: 0,           // só a leitura mais recente desenha
@@ -90,6 +95,9 @@
     vocabulario: {
       dados: null,          // { en: { deckName, itens }, ru: { … } }
       quando: 0,
+      dadosDe: 0,
+      ankiFechado: false,
+      nomes: null,
       carregando: false,
       erro: null,
       leitura: 0,
@@ -119,20 +127,21 @@
     if (vocabulario?.dados && !estado.vocabulario.dados) Object.assign(estado.vocabulario, vocabulario);
 
     ConexaoAnki.acompanhar(aoMudarAConexao);
-    Shell.aoEntrarNaArea('anki', () => lerTudo({ abrirOAnki: true }));
+    Shell.aoEntrarNaArea('anki', () => lerTudo());
     raiz.Anki.aoAtualizar(() => lerTudo({ deNovo: true, abrirOAnki: true }));
     desenhar();
   }
 
   /**
    * O painel.js informa os baralhos dos Ajustes de envio, ao abrir e a cada
-   * Salvar ajustes; um baralho novo é lido de novo, abrindo o Anki se precisar.
+   * Salvar ajustes; um baralho novo é lido de novo. Ler nunca abre o Anki: só
+   * Atualizar e Tentar de novo, que a pessoa aperta, pedem à Conexão que o abra.
    */
   function usarBaralhos(nomes) {
     const antes = estado.nomes;
     estado.nomes = { en: nomes.en, ru: nomes.ru };
     const mudou = antes && (antes.en !== nomes.en || antes.ru !== nomes.ru);
-    if ((!antes || mudou) && Shell.areaAtual() === 'anki') lerTudo({ deNovo: mudou, abrirOAnki: true });
+    if ((!antes || mudou) && Shell.areaAtual() === 'anki') lerTudo({ deNovo: mudou });
   }
 
   let anterior = CONEXAO.CONECTANDO;   // a situação da notificação anterior: ligar é decidido contra ela
@@ -141,7 +150,7 @@
     const antes = anterior;
     anterior = situacao;
     if (situacao === CONEXAO.LIGADA && antes !== CONEXAO.LIGADA && Shell.areaAtual() === 'anki') {
-      lerTudo({ abrirOAnki: true });
+      lerTudo();
     }
     desenhar();
   }
@@ -161,7 +170,7 @@
 
   /**
    * GET /anki/stats/decks com os dois baralhos numa leitura só. `deNovo` passa
-   * por cima do cache da Conexão; `abrirOAnki` a deixa abrir o Anki (BRG-24).
+   * por cima do cache da Conexão; `abrirOAnki` a deixa abrir o Anki (BRG-24): só um clique pede isso.
    */
   async function lerBaralhos({ deNovo = false, abrirOAnki = false, focarAzulejo = false } = {}) {
     const baralhos = estado.baralhos;
@@ -170,6 +179,7 @@
     baralhos.erro = null;
     desenhar();
 
+    const nomes = { ...estado.nomes };
     const busca = new URLSearchParams();
     for (const { idioma } of IDIOMAS_DOS_AZULEJOS) {
       busca.append('deck', estado.nomes[idioma]);
@@ -184,13 +194,15 @@
     } catch (falha) {
       erro = `GET /anki/stats/decks · ${falha.message}`;
     }
+    const quando = Date.now();
+    const marca = dados && await marcaDaLeitura(baralhos, nomes, dados.source, quando);
     if (leitura !== baralhos.leitura) return;
 
     baralhos.carregando = false;
     baralhos.erro = erro;
     if (dados) {
-      Object.assign(baralhos, { dados, quando: Date.now() });
-      chrome.storage.local.set({ [CHAVE_BARALHOS]: { dados, quando: baralhos.quando } });
+      Object.assign(baralhos, { dados, quando, nomes, dadosDe: marca.dadosDe, ankiFechado: marca.ankiFechado });
+      chrome.storage.local.set({ [CHAVE_BARALHOS]: { dados, quando, nomes, dadosDe: marca.dadosDe, ankiFechado: marca.ankiFechado } });
     }
     desenhar();
     if (focarAzulejo && dados && document.activeElement === document.body) {
@@ -206,12 +218,13 @@
     vocabulario.erro = null;
     desenhar();
 
+    const nomes = { ...estado.nomes };
     const lerIdioma = async idioma => {
       const deckName = estado.nomes[idioma];
       const resposta = await pedirJson(`/anki/vocabulary?${new URLSearchParams({ deck: deckName, lang: idioma, limit: '10000' })}`);
       const itens = Array.isArray(resposta.words) ? resposta.words : [];
       // O bridge entrega até 10.000 itens; o total do idioma é o `totalWords` dele.
-      return { deckName: resposta.deckName || deckName, itens, total: numero(resposta.totalWords ?? itens.length) };
+      return { deckName: resposta.deckName || deckName, itens, total: numero(resposta.totalWords ?? itens.length), source: resposta.source };
     };
     let dados = null;
     let erro = null;
@@ -221,15 +234,28 @@
     } catch (falha) {
       erro = `GET /anki/vocabulary · ${falha.message}`;
     }
+    const quando = Date.now();
+    const doArquivo = dados && Object.values(dados).some(doIdioma => doIdioma.source === FONTE_ARQUIVO);
+    const marca = dados && await marcaDaLeitura(vocabulario, nomes, doArquivo ? FONTE_ARQUIVO : null, quando);
     if (leitura !== vocabulario.leitura) return;
 
     vocabulario.carregando = false;
     vocabulario.erro = erro;
     if (dados) {
-      Object.assign(vocabulario, { dados, quando: Date.now() });
-      chrome.storage.local.set({ [CHAVE_VOCABULARIO]: { dados, quando: vocabulario.quando } });
+      Object.assign(vocabulario, { dados, quando, nomes, dadosDe: marca.dadosDe, ankiFechado: marca.ankiFechado });
+      chrome.storage.local.set({ [CHAVE_VOCABULARIO]: { dados, quando, nomes, dadosDe: marca.dadosDe, ankiFechado: marca.ankiFechado } });
     }
     desenhar();
+  }
+
+  /**
+   * O `dadosDe` e o `ankiFechado` de uma leitura nova da aba. A idade só vem da
+   * leitura anterior dos mesmos baralhos: outro Baralho começa a sua agora.
+   */
+  function marcaDaLeitura(aba, nomes, source, quando) {
+    const mesmosBaralhos = aba.nomes?.en === nomes.en && aba.nomes?.ru === nomes.ru;
+    const anterior = mesmosBaralhos ? { dadosDe: aba.dadosDe, createdAt: aba.quando } : null;
+    return VocabularioDaMineracao.marcaDaLeitura(anterior, source, ENDERECO_DA_CONEXAO, quando);
   }
 
   /** Um GET à Conexão; um HTTP de erro vira a causa, com o `detail` que ela mandar. */
@@ -404,8 +430,11 @@
     if (!iguais) lugar.replaceChildren(...nos);
   }
 
-  function seloAntigo(quando) {
-    return elemento('div', 'anki-antigo', seloDoDadoAntigo(quando));
+  /** O momento dos dados de uma leitura gravada; as de antes de `dadosDe` valem o momento em que foram lidas. */
+  const momentoDosDados = leitura => leitura.dadosDe || leitura.quando;
+
+  function seloAntigo(quando, motivo) {
+    return elemento('div', 'anki-antigo', seloDoDadoAntigo(quando, motivo));
   }
 
   // Cada lugar da tela guarda o último nó que desenhou e com o quê: enquanto
@@ -437,9 +466,11 @@
     if (estado.reparando) topo.push(esperaDoReparo);
     if (estado.fimDoReparo) topo.push(estado.fimDoReparo);
     const comDados = qual === 'dados' || qual === 'antiga';
-    if (comDados && baralhos.dados.source === 'collection.anki2') topo.push(oMesmo('baralhos:arquivo', true, notaDoArquivoLocal));
-    if (qual === 'antiga') topo.push(oMesmo('baralhos:selo', baralhos.quando, () => seloAntigo(baralhos.quando)));
-    else if (qual === 'dados' && baralhos.dados.stale) topo.push(oMesmo('baralhos:cache', baralhos.dados, () => seloDoCache(baralhos.dados)));
+    if (comDados && baralhos.dados.source === FONTE_ARQUIVO) topo.push(oMesmo('baralhos:arquivo', true, notaDoArquivoLocal));
+    if (qual === 'antiga' || (qual === 'dados' && baralhos.ankiFechado)) {
+      const idade = haQuanto(momentoDosDados(baralhos));
+      topo.push(oMesmo('baralhos:selo', idade, () => seloAntigo(momentoDosDados(baralhos))));
+    } else if (qual === 'dados' && baralhos.dados.stale) topo.push(oMesmo('baralhos:cache', baralhos.dados, () => seloDoCache(baralhos.dados)));
     mostrar(porId('anki-baralhos-topo'), topo);
 
     porId('anki-baralhos-azulejos').hidden = !comDados;
@@ -448,7 +479,7 @@
     if (qual === 'esqueleto') mostrar(corpo, [esqueleto([120, 120])]);
     else if (qual === 'carregando' || qual === 'reparando') mostrar(corpo, [linhaDeEspera(textoDaVoz('BRG-10')), esqueleto([120, 120])]);
     else if (qual === 'erro') mostrar(corpo, [oMesmo('baralhos:erro', baralhos.erro, erroDosBaralhos)]);
-    else if (qual === 'nada') mostrar(corpo, []);
+    else if (qual === 'nada') mostrar(corpo, [oMesmo('baralhos:esperando', true, esperandoOAnki)]);
     else {
       const decks = decksPorIdioma(baralhos.dados);
       desenharAzulejos('anki-baralhos-azulejos', baralhos, idioma => {
@@ -464,6 +495,13 @@
     }
   }
 
+  /** BRG-37: o Anki fechado e nenhuma leitura guardada; o primeiro Anki aberto traz os dados. */
+  function esperandoOAnki() {
+    return elemento('div', 'veio-vazio',
+      elemento('p', 'veio-vazio__titulo', textoDaVoz('BRG-37.esperando')),
+      elemento('p', 'veio-vazio__texto', textoDaVoz('BRG-37.comeca')));
+  }
+
   function notaDoArquivoLocal() {
     const ponto = elemento('span', 'anki-ponto anki-ponto--parado');
     ponto.setAttribute('aria-hidden', 'true');
@@ -472,7 +510,7 @@
 
   /** A Conexão mandou o que tinha guardado, porque o Anki não respondeu agora. */
   function seloDoCache(dados) {
-    return seloAntigo(dados.generatedAt || estado.baralhos.quando);
+    return seloAntigo(dados.generatedAt || estado.baralhos.quando, 'atualizacao');
   }
 
   /** BRG-11: persistente, com Reparar Anki e Tentar de novo, e a causa em Detalhes. */
@@ -635,8 +673,12 @@
     const vocabulario = estado.vocabulario;
     const qual = vista(vocabulario);
     const comDados = qual === 'dados' || qual === 'antiga';
+    // A chave do selo é a idade dita, e não o momento: renovada a leitura, “há 2 h” vira “há 4 h”.
+    const idade = haQuanto(momentoDosDados(vocabulario));
     mostrar(porId('anki-vocabulario-topo'),
-      qual === 'antiga' ? [oMesmo('vocabulario:selo', vocabulario.quando, () => seloAntigo(vocabulario.quando))] : []);
+      qual === 'antiga' || (qual === 'dados' && vocabulario.ankiFechado)
+        ? [oMesmo('vocabulario:selo', idade, () => seloAntigo(momentoDosDados(vocabulario)))]
+        : []);
 
     porId('anki-vocabulario-azulejos').hidden = !comDados;
     porId('anki-vocabulario-filtros').hidden = !comDados;
@@ -651,7 +693,7 @@
     if (qual === 'esqueleto') return mostrar(corpo, [esqueleto([40, 300])]);
     if (qual === 'carregando') return mostrar(corpo, [linhaDeEspera(textoDaVoz('BRG-19')), esqueleto([40, 300])]);
     if (qual === 'erro') return mostrar(corpo, [oMesmo('vocabulario:erro', vocabulario.erro, erroDoVocabulario)]);
-    if (qual === 'nada') return mostrar(corpo, []);
+    if (qual === 'nada') return mostrar(corpo, [oMesmo('vocabulario:esperando', true, esperandoOAnki)]);
 
     desenharAzulejos('anki-vocabulario-azulejos', vocabulario, idioma => {
       const doIdioma = vocabulario.dados[idioma] || { deckName: estado.nomes?.[idioma] || '', itens: [] };

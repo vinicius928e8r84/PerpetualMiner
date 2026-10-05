@@ -1,6 +1,7 @@
 name: Testes
 
-# O portão de cada PR: os testes de Node, os do bridge e a suíte e2e inteira
+# O portão de cada PR: os testes de Node, os do bridge, os do complemento do Anki
+# (Python 3.9, o do Anki do Mac, e 3.13) e a suíte e2e inteira
 # (a extensão desempacotada no Chromium). Quem trabalha roda só os specs da
 # área que mudou; a suíte inteira roda aqui. Ver "Testing" no CLAUDE.md.
 on:
@@ -28,6 +29,7 @@ jobs:
       - run: node test_auto_keyword.js
       - run: node test_sync.js
       - run: node test_empacotar.js
+      - run: node test_fake_anki.js
 
   bridge:
     name: Testes do bridge
@@ -42,6 +44,22 @@ jobs:
           cache-dependency-path: bridge/requirements.txt
       - run: pip install -r bridge/requirements.txt
       - run: python -m unittest discover -s bridge -p "test_*.py"
+
+  complemento:
+    name: Testes do complemento (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.9', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      # O complemento usa só a biblioteca padrão: nada a instalar.
+      - run: python -m unittest discover -s complemento -p "test_*.py"
 
   e2e:
     name: e2e (${{ matrix.fatia }}/8)
