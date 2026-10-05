@@ -9,14 +9,19 @@ from .configuracao import ORIGENS_ACEITAS, PORTA, VERSAO
 from .servidor import Conexao
 
 
-def iniciar(pasta_do_complemento, perfil_aberto, *, porta=PORTA, origens_aceitas=ORIGENS_ACEITAS):
-    """Prepara `user_files` e sobe a Conexão. Devolve a Conexão, ou None se ela não subiu."""
+def iniciar(pasta_do_complemento, perfil_aberto, *, porta=PORTA, origens_aceitas=ORIGENS_ACEITAS, colecao=None):
+    """Prepara `user_files` e sobe a Conexão, com o adaptador da coleção que ela lê. Devolve a Conexão, ou None se ela não subiu."""
     logger = registro.silencioso()
     try:
         dados = pasta_de_dados.preparar(pasta_do_complemento)
         logger = registro.criar(dados.logs)
         conexao = Conexao(
-            porta=porta, origens_aceitas=origens_aceitas, versao=VERSAO, perfil_aberto=perfil_aberto, logger=logger
+            porta=porta,
+            origens_aceitas=origens_aceitas,
+            versao=VERSAO,
+            perfil_aberto=perfil_aberto,
+            logger=logger,
+            colecao=colecao,
         )
         return conexao if conexao.iniciar() else None
     except Exception:

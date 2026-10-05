@@ -242,7 +242,7 @@ test('carregando (ADD-04): “Minerando N de M…” no próprio modal, sem camp
   // a resposta segura a primeira gravação.
   let soltar;
   const segurada = new Promise(resolve => { soltar = resolve; });
-  fakes.anki.responder('GET', '/anki/vocabulary', async () => { await segurada; return { json: { words: [] } }; });
+  fakes.anki.responder('POST', '/anki/vocabulary', async () => { await segurada; return { json: { words: [] } }; });
 
   await abrirFrases(page, extensao);
   await abrirColar(page);
@@ -610,7 +610,7 @@ test('com movimento reduzido, a barra de progresso não anima', async ({ page, e
   await page.emulateMedia({ reducedMotion: 'reduce' });
   let soltar;
   const segurada = new Promise(resolve => { soltar = resolve; });
-  fakes.anki.responder('GET', '/anki/vocabulary', async () => { await segurada; return { json: { words: [] } }; });
+  fakes.anki.responder('POST', '/anki/vocabulary', async () => { await segurada; return { json: { words: [] } }; });
 
   await abrirFrases(page, extensao);
   await abrirColar(page);
