@@ -27,6 +27,26 @@ Add or update focused tests when touching bridge launch, Anki repair, sync, or p
 
 Keep local paths and Anki settings in `bridge/config.json`. Do not commit secrets, API keys, browser profile data, or generated job artifacts.
 
+## Rules and what enforces them
+
+`node scripts/regras/verificar.js` checks what a script can see, the same in CI; how its baseline and line exceptions work: `--help`.
+
+| Rule (`CODING_STANDARDS.md`) | Enforced by |
+|---|---|
+| 1 Voice catalog | review; `e2e/tests/catalogo-da-voz.spec.js` |
+| 2 Veio tokens | `tokens-veio` |
+| 3 Components | review |
+| 4 Page text as text | `e2e/tests/texto-literal.spec.js`; review |
+| 5 Language | `idioma-solto` |
+| 6 True status | review |
+| 7 Storage writes | `gravacao-de-frases` (new write sites); a stale copy in an existing one: review |
+| 8 e2e tests | `e2e-funcao-interna` (unnamed exceptions); screen check per variant: review |
+| 9 Python tests | `teste-le-codigo` |
+| 10 Visual references | review |
+| 11 New files | review; `test_empacotar.js` |
+
+When the same correction comes up twice, add its rule to `CODING_STANDARDS.md` and this table, enforced at the highest level that works.
+
 ## Maintaining this file
 
 Keep this file for knowledge useful to almost every future agent session in this project.

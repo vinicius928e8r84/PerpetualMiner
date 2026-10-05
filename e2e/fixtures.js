@@ -128,6 +128,7 @@ const test = base.extend({
     const context = await chromium.launchPersistentContext(perfil, {
       channel: 'chromium',
       headless: !process.env.HEADED,
+      env: { ...process.env, FONTCONFIG_FILE: path.join(__dirname, 'fontconfig', 'fonts.conf') },
       args: [
         `--disable-extensions-except=${pastaDaExtensao}`,
         `--load-extension=${pastaDaExtensao}`,

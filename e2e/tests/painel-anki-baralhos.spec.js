@@ -162,7 +162,6 @@ test('Reparar Anki espera o reparo inteiro (~100 s): “Reparando…” até o f
   await page.clock.install({ time: AGORA });
   await page.goto(extensao.url('painel.html#anki/baralhos'));
   await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
-  const leiturasAntes = pedidos(fakes, '/anki/stats/decks').length;
 
   await abrirAvancado(page);
   await baralhos(page).getByRole('button', { name: 'Reparar Anki' }).click();
@@ -176,6 +175,11 @@ test('Reparar Anki espera o reparo inteiro (~100 s): “Reparando…” até o f
   await expect(reparando).toBeVisible();
   await expect(baralhos(page).getByRole('alert')).toHaveCount(0);
 
+  // Os 100 s do relógio vencem os 3 s de cada conferência da Conexão antes de a resposta chegar, e sob
+  // carga ela fica fora do ar até a resposta atrasada voltar. Com ela desligada ao fim do reparo, não há
+  // leitura com `refresh`: a Conexão que volta a ligar lê sozinha, pelo cache.
+  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  const leiturasAntesDoFim = pedidos(fakes, '/anki/stats/decks').length;
   terminar();
   await expect(page.locator('.veio-toast')).toHaveText('Anki reparado');
   await expect(baralhos(page).getByRole('button', { name: 'Reparar Anki' })).toBeVisible();
@@ -183,7 +187,8 @@ test('Reparar Anki espera o reparo inteiro (~100 s): “Reparando…” até o f
   await expect(baralhos(page).getByRole('alert')).toHaveCount(0);
   expect(pedidos(fakes, '/anki/repair')).toHaveLength(1);
   // Reparado, os baralhos são lidos de novo, sem o cache da Conexão.
-  await expect.poll(() => pedidos(fakes, '/anki/stats/decks').slice(leiturasAntes).some(r => r.busca.includes('refresh=1'))).toBe(true);
+  await expect.poll(() => pedidos(fakes, '/anki/stats/decks').length).toBeGreaterThan(leiturasAntesDoFim);
+  expect(pedidos(fakes, '/anki/stats/decks').at(-1).busca).toContain('refresh=1');
 });
 
 test('Reparar Anki pelo erro BRG-11: após o reparo o foco vai para o idioma escolhido', async ({ page, extensao, fakes }) => {
