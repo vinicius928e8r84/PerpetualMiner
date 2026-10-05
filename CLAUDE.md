@@ -59,6 +59,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `bridge/envio.py` | The bridge's Envio state machine; read its module docstring for persistence, adapters and resume, and `bridge/test_envio.py` for interface tests |
 | `test_empacotar.js` | Node test of the Web Store package contents; also checks that the store guide's "Host permission use" block matches the manifest hosts |
 | `test_gemini.js` | Standalone Node.js script to list available Gemini models (not part of the extension) |
+| `scripts/regras/` | The review rules a script can check (`verificar.js`, one file per rule, `linha-de-base.json`, proofs in `test_regras.js`), run locally and by `.github/workflows/regras.yml`. See `AGENTS.md` § Rules and what enforces them |
 | `e2e/` | Playwright suite that runs the unpacked extension in Chromium (own `package.json`; see Testing) |
 | `e2e/fontconfig/fonts.conf` | The fonts the test Chromium sees: only the DejaVu files, no user or local font config, so the visual references render the same on every machine (loaded by the e2e fixture; see Testing) |
 | `.github/workflows/testes.yml` | The PR gate: Node tests, bridge tests and the whole e2e suite (xvfb, sharded) on every PR and on `main`; see Testing |
