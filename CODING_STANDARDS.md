@@ -2,12 +2,30 @@
 
 What the reviewer enforces on a change. Each rule points to where it is explained; read that section only if the rule is not enough. Anything not listed here follows the surrounding code.
 
+## Open the surface's skill first
+
+`CLAUDE.md` keeps the file table and the rules that cross surfaces; the architecture of each surface lives in a project skill (`.claude/skills/<name>/SKILL.md`). When the diff touches a surface, open its skill before you review or change it, even if you are not "changing" the surface itself (a rename in a shared file, a copy edit, a test): the skill says what the surface shows, the IDs it implements, what it stores and which test holds its visual reference.
+
+| The diff touches | Open |
+|------|------|
+| `painel-boas-vindas.js`, `lib/configuracao.js`, `painel-lembrete.js` | `boas-vindas` |
+| `painel-chave.js`, `painel-perigo.js`, `painel-atalhos.js`, `lib/atalhos.js`, `painel-conta.js` | `configuracoes` |
+| `popup.html/js/css` | `popup` |
+| `painel.js` (Frases list, Minerar frases) | `painel-frases` |
+| `painel-anki*.js`, `painel-ajustes.js`, `painel-envio.js`, `lib/ajustes-de-envio.js` | `painel-anki` |
+| `bookreader.html/js/css` | `minerar-foto` |
+| `veio/componentes.css`, `veio/componentes.js` | `veio-componentes` |
+| `overlay.js`, `overlay.css` | `overlay` |
+| `e2e/fixtures.js`, `e2e/fakes/`, `e2e/pages/`, `e2e/vitrine/`, `e2e/tests/*-visual.spec.js` | `e2e-suite` |
+
+A surface not in this table (the panel shell, sync, storage, the service worker) is still described in `CLAUDE.md` itself.
+
 ## UI copy and look
 
-1. **UI copy comes from the Voice catalog by ID** (`textoDaVoz('MIN-08')`), for new or rewritten copy. The only literals a surface may write are `palavra:`, `auto:` and `Detalhes`, which the base components write themselves. Source: `CLAUDE.md` § Shared base and § Base components ("Copy does not live in the components").
+1. **UI copy comes from the Voice catalog by ID** (`textoDaVoz('MIN-08')`), for new or rewritten copy. The only literals a surface may write are `palavra:`, `auto:` and `Detalhes`, which the base components write themselves. Source: `CLAUDE.md` § Shared base and the `veio-componentes` skill ("Copy does not live in the components").
 2. **Colors, font sizes, radii and durations are tokens**, used as `var(--veio-…)` from `veio/tokens.css`; a new value becomes a token there. The exceptions (the icon SVGs, the badge colors in `background.js`, and the size and radius of the toolbar-badge imitation in the showcase) are the ones documented in `veio/README.md` § Como usar; no others.
-3. **Each component exists once** (`veio/componentes.css` + `veio/componentes.js`): the toast is for success only; an error that asks for an action is `montarAviso` with Detalhes; danger has two variants (`--perigo` opens the modal, `--perigo-cheio` confirms inside it); no `confirm()`. Two approved exceptions stay: FOT-18 in Minerar de uma foto (Descartar confirms inside the modal with contour, `confirmarComContorno: true`) and ADD-06 (an aviso with an action and no Detalhes, by the owner's decision; the cause is in the Conta & sync card). Source: `CLAUDE.md` § Base components (danger variants) and § Minerar frases (ADD-06).
-4. **The DOM is built with nodes, and text from the page or the phrase goes in as text, never as HTML** (`escreverFrase`, `textContent`; no `innerHTML` with that text). Source: `CLAUDE.md` § Base components ("The highlighted Word").
+3. **Each component exists once** (`veio/componentes.css` + `veio/componentes.js`): the toast is for success only; an error that asks for an action is `montarAviso` with Detalhes; danger has two variants (`--perigo` opens the modal, `--perigo-cheio` confirms inside it); no `confirm()`. Two approved exceptions stay: FOT-18 in Minerar de uma foto (Descartar confirms inside the modal with contour, `confirmarComContorno: true`) and ADD-06 (an aviso with an action and no Detalhes, by the owner's decision; the cause is in the Conta & sync card). Source: the `veio-componentes` skill (danger variants) and the `painel-frases` skill (§ Minerar frases, ADD-06).
+4. **The DOM is built with nodes, and text from the page or the phrase goes in as text, never as HTML** (`escreverFrase`, `textContent`; no `innerHTML` with that text). Source: the `veio-componentes` skill ("The highlighted Word").
 5. **Language is compared with `PerpetualMiner.IDIOMAS` and detected with `detectarIdioma`**, never with a loose `'Russo'`/`'Inglês'` string or a new detector. Source: `CLAUDE.md` § Shared base.
 6. **Status on screen says the true current state** (rule C8 of the Voice); a doc or a test must not pin a state that contradicts it. Source: `docs/design/voz/README.md` (C8).
 
@@ -19,7 +37,7 @@ What the reviewer enforces on a change. Each rule points to where it is explaine
 
 8. **e2e tests check the screen and what ends up stored**, in every variant the test adds. The three exceptions (native Chrome UI or clock, catalog states no surface shows yet, base-component guarantees with no on-screen trigger) carry a comment that names them. Source: `CLAUDE.md` § Testing.
 9. **A new Python test exercises the route or the function**, never the source text of the code (`_function_source` in `bridge/test_anki_launcher.py` is the old way; `bridge/test_envio.py` is the model).
-10. **A new visual reference** (`--update-snapshots`) only goes in after the owner approves the look. Source: the header comment of each `e2e/tests/*-visual.spec.js` and `CLAUDE.md` § Testing.
+10. **A new visual reference** (`--update-snapshots`) only goes in after the owner approves the look. Source: the header comment of each `e2e/tests/*-visual.spec.js`, the `e2e-suite` skill (the list of visual references) and `CLAUDE.md` § Testing.
 
 ## New files
 
