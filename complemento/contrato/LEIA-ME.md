@@ -25,12 +25,17 @@ Mudar só um lado quebra um teste, e a mensagem diz o exemplo e os dois arquivos
 - `daExtensao`: o pedido é um que a extensão faz de verdade. O e2e confere o fake contra esses; os
   outros (outro site, outra extensão, sem origem) só o lado do complemento confere, porque uma
   página da extensão não consegue pedir como outro cliente.
-- `contexto`: em que situação o complemento está (hoje, o `perfil` aberto, `null` na tela de perfis, e
-  `falhaNoPerfil` quando ler o perfil quebra). O fake muda de contexto por `fakes.anki.abrirPerfil(...)` e
-  `falharLeituraDoPerfil()`.
+- `contexto`: em que situação o complemento está: o `perfil` aberto (`null` na tela de perfis), `falhaNoPerfil`
+  quando ler o perfil quebra e `colecao`, o nome de uma coleção de `colecoes` (a que o Anki tem aberta; `null`: nenhuma,
+  e a leitura dos Baralhos responde `503`). Um exemplo que não cita `colecao` vale com qualquer uma. O fake muda de contexto por
+  `fakes.anki.abrirPerfil(...)`, `falharLeituraDoPerfil()` e `abrirColecao(nome)`; o teste do complemento monta
+  um adaptador de coleção em memória (`test_colecao_em_memoria.py`) com a coleção que o exemplo nomeia.
+- `colecoes` (no alto do arquivo): as coleções que os exemplos nomeiam, com os Baralhos, as notas e os Cartões
+  (`tipo` e `intervalo` do Anki: 0 novo, 1 aprendendo, 2 revisão, 3 reaprendendo).
 - `pedido`: o que chega, com `origem` (o cabeçalho `Origin`; `null` é que ele não veio). Rotas com corpo
-  ganham `corpo`.
-- `resposta`: o status e o JSON.
+  ganham `corpo`, o JSON do pedido; no fake, o exemplo que cita `corpo` só vale para esse corpo.
+- `resposta`: o status e o JSON. `"<agora>"` no JSON é o instante em que a Conexão respondeu: o complemento confere
+  qualquer instante ISO 8601 em UTC, e o fake escreve o do relógio dele.
 
 A saúde (`GET /health`) é lida pela primeira conexão: a extensão mostra “Achei o Anki · perfil · versão” com o `perfil` e a `versao`
 que ela diz (`ConexaoAnki.saude()`, `e2e/tests/painel-anki-primeira-conexao.spec.js`, que lê os valores destes exemplos). Sem perfil (a tela de
@@ -54,12 +59,30 @@ Por isso (decisão do dono, opção B):
    (`origin_not_allowed`). Por isso rota que gasta a chave ou lê dado da pessoa (a chave, os custos, o
    vocabulário, os Envios) é **POST**, nunca GET.
 3. **O `Origin` não é autenticação.** Uma extensão com a permissão `webRequest` e `extraHeaders` pode pôr esse
-   cabeçalho, e um programa local também. Antes da primeira rota que usa a chave ou lê dado privado, isso tem
-   de ser testado e reforçado; a escolha de como (POST ou token de pareamento) segue adiada.
-4. Fica para a primeira rota de leitura sensível decidir entre POST para as leituras autenticadas
-   e um token de pareamento (a extensão o recebe por um POST e o manda nos GET).
+   cabeçalho, e um programa local também. **Limite aceito pelo dono no PR #190, a ser reforçado pelo ticket #192
+   (credencial de pareamento, confirmada no Anki) antes do lançamento:** hoje um processo local que declara a
+   origem da extensão lê o vocabulário pelas rotas privadas. `test_servidor.py` mostra isso com um cliente fora do navegador
+   e passa a exigir a credencial quando o #192 entrar.
+4. A primeira rota de leitura sensível (os Baralhos, os números e o vocabulário) seguiu a regra do 2: são POST
+   com a origem da extensão, e o limite do 3 está nomeado em um teste. O reforço com um token de pareamento (a
+   extensão o recebe por um POST e o manda nos pedidos) é o #192 e não foi feito.
 
 Rota nova que deva responder sem origem entra em `ROTAS_ABERTAS` (`servidor.py`) só com essa decisão.
+
+## As rotas de leitura da coleção
+
+Todas POST, com `Content-Type: application/json`, e só a extensão é atendida. Um corpo que não é um objeto JSON,
+ou maior que 64 KB, é `400` (`invalid_json`). Sem coleção aberta (o Anki na tela de perfis) ou com o Anki
+sem responder, é `503` com o `error` da rota e o `detail` (`collection_not_open`, `anki_busy`).
+
+| Rota | Corpo | Resposta |
+|---|---|---|
+| `POST /anki/decks` | `{}` | `{ decks: [nome, …] }`: os Baralhos, com `::` entre os níveis, em ordem alfabética, sem o “Default”. `error`: `anki_decks_unavailable` |
+| `POST /anki/stats/decks` | `{ decks: [{ deckName, lang }, …], refresh?, launch? }` | `{ generatedAt, decks: [linha por Baralho, na ordem pedida], totals, source }`. Um Baralho que o Anki não tem volta com `missing: true` e tudo zerado. Sem `decks`, `400` (`decks_required`). `refresh` e `launch` são aceitos e ignorados: a Conexão lê sempre ao vivo e nunca abre o Anki. `error`: `anki_stats_unavailable` |
+| `POST /anki/vocabulary` | `{ deck, lang, status?, type?, q?, limit?, offset? }` | `{ generatedAt, deckName, lang, source, totalCards, filters, totalWords, words }`. Um Baralho que o Anki não tem tem `words: []`. `400`: `deck_required`, `invalid_lang` (só `en` e `ru`). `error`: `anki_vocabulary_unavailable` |
+
+`source` é `"colecao"` (lida do Anki aberto). `"collection.anki2"` é só da Conexão de hoje, lendo o arquivo com o Anki fechado:
+o complemento só existe com o Anki aberto. A Conexão de hoje (`bridge/`) atende o mesmo POST, além do GET que já tinha.
 
 ## Como uma rota nova entra
 

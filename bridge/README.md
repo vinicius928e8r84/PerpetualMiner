@@ -84,7 +84,8 @@ Para um arquivo so, use o venv: `.venv/bin/python bridge/test_envio.py`. Esse ar
 - `GET /analytics/jobs`
 - `GET /anki/status`
 - `POST /anki/repair`
-- `GET /anki/stats/decks`
+- `GET` ou `POST /anki/stats/decks` (o `POST` leva `{ decks: [{ deckName, lang }], refresh?, launch? }`, o contrato do complemento)
+- `GET` ou `POST /anki/decks` e `GET` ou `POST /anki/vocabulary` (o `POST` leva o corpo JSON no lugar da query string)
 - `GET /anki/deck-stats` (alias legado)
 
 `/anki/stats/decks` tenta usar AnkiConnect primeiro. Se o Anki estiver fechado, invisivel ou sem

@@ -82,8 +82,9 @@ The two tabs read the decks of the Ajustes de envio, which `painel.js` reports t
 entering the Anki area with the Conexão on, when it comes back, and on ↻ Atualizar, **each on its own**: decks that
 fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
 
-- **Baralhos e termos** reads `GET /anki/stats/decks` with both decks at once (`deck`/`lang` repeated; `launch=1` on
-  ↻ and Tentar de novo only, `refresh=1` on ↻ and after a repair). The tiles Inglês · Russo (`aria-pressed`, group BRG-34.idiomas) say
+- **Baralhos e termos** reads `POST /anki/stats/decks` with both decks at once (body `{ decks: [{ deckName, lang }, …] }`; `launch: true` on
+  ↻ and Tentar de novo only, `refresh: true` on ↻ and after a repair; the add-on ignores both, it never opens the Anki). Reads of the
+  person's Anki are POST because the extension's GET carries no `Origin` (`complemento/contrato/LEIA-ME.md`). The tiles Inglês · Russo (`aria-pressed`, group BRG-34.idiomas) say
   “EN · <deck>” and the words (`vocabulary.phraseVocabulary`); a deck the Anki does not have (`missing`) says “—” and
   BRG-27, and its detail is BRG-14 with Abrir Ajustes de envio (→ `#anki/ajustes`). The chosen deck: the maturity ring
   (an SVG `role="img"` named “66% de maturidade”: mature over all cards, recentes = `young + learning`), the big
@@ -93,7 +94,7 @@ fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
   [design states](../../../docs/design/painel/anki/README.md#estados) for presentation by tab). Loading BRG-10 + skeleton;
   failure is the persistent BRG-11 aviso with Reparar Anki, Tentar de
   novo and the cause in Detalhes.
-- **Vocabulário** reads `GET /anki/vocabulary` of each language whole (`limit=10000`) and filters in the panel, so
+- **Vocabulário** reads `POST /anki/vocabulary` (`{ deck, lang, limit: 10000 }`) of each language whole and filters in the panel, so
   each tile has the language's total and the search never waits for the network. Tipo (Palavras e termos · Só
   palavras · Só termos), Status (Todos · Novos · Recentes · Maduros · Mistos) and the search (with ×), then BRG-21's
   “N itens em inglês · mostrando N” (a polite live region) and the list × detail: a `listbox` (↑ ↓ Home End, at most
@@ -129,7 +130,7 @@ Nothing is written until Salvar ajustes; saving writes only the language of that
 language's draft survives opening and closing the cards. With the Conexão off the tab stays editable, with the BRG-33
 note (drawn by `painel-anki.js`).
 
-The Baralho is a choice among the decks the Anki has: `GET /anki/decks` (the bridge asks AnkiConnect, or reads the local
+The Baralho is a choice among the decks the Anki has: `POST /anki/decks` (the add-on reads the open collection; the Windows bridge asks AnkiConnect, or reads the local
 collection when it is down) is read when the Conexão comes on and on entering the Anki area, and the names show with ›
 for the `::` levels. A stored deck the Anki does not have (and the Baralho padrão when missing) stays in the list as
 “… · não está no Anki”. Without the list (Conexão off, Anki not answering) the Baralho is a text field: blank goes back
