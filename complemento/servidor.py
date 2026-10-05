@@ -39,7 +39,10 @@ def _abrir_com_o_computador(conexao, corpo):
     if item is None:
         return 501, {"error": "login_item_unsupported"}
     try:
-        item.ligar() if ligado else item.desligar()
+        if ligado:
+            item.ligar()
+        else:
+            item.desligar()
     except AnkiNaoEncontrado:
         conexao.logger.warning("Abrir o Anki com o computador: não se sabe onde o Anki está")
         return 500, {"error": "anki_not_found"}
