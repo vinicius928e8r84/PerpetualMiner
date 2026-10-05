@@ -178,10 +178,13 @@ class _Servidor(ThreadingHTTPServer):
 class _SemColecao:
     """A coleção de uma Conexão que nasceu sem adaptador: nada a ler."""
 
-    def _indisponivel(self, *args):
+    def perfis(self):
+        return []
+
+    def nomes_dos_baralhos(self):
         raise baralhos.ColecaoIndisponivel("collection_unavailable")
 
-    perfis = nomes_dos_baralhos = cartoes_do_baralho = _indisponivel
+    cartoes_do_baralho = nomes_dos_baralhos
 
 
 class Conexao:
