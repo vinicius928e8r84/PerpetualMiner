@@ -53,7 +53,8 @@ pm_dono_confere() {
   [ "$(pm_inicio_do_processo "$pid")" = "$inicio" ] || return 1
   comando="$(pm_comando_do_processo "$pid")"
   [ "$comando" = "$gravado" ] || return 1
-  read -r -a palavras <<< "$comando"
+  # IFS is reset here: pm_alvos is called from a caller that sets IFS to newline, which would leave the command in one word.
+  IFS=$' \t\n' read -r -a palavras <<< "$comando"
   for i in 0 1 2; do
     [ "$(basename "${palavras[$i]:-}")" = drive.sh ] && [ "${palavras[$((i + 1))]:-}" = "$2" ] && return 0
   done

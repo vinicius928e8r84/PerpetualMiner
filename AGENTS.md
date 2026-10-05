@@ -46,6 +46,8 @@ Keep local paths and Anki settings in `bridge/config.json`. Do not commit secret
 | 10 Visual references | review |
 | 11 New files | review; `test_empacotar.js` |
 
+A PR that changes a user-facing file (`popup.*`, `painel*`, `manifest.json`, `bridge/server.py`, …) also needs `.agents/skills/verify-perpetualminer/features/` updated or "feature map unchanged" in its body: the `Mapa de features` step of `.github/workflows/regras.yml` (PRs only).
+
 When the same correction comes up twice, add its rule to `CODING_STANDARDS.md` and this table, enforced at the highest level that works.
 
 ## Maintaining this file

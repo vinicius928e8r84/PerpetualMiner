@@ -91,8 +91,9 @@ esperar '[ -f "$PM_STUB_MARCA" ] && [ "$(wc -l < "$PM_VERIFY_ROOT/preso/drive.pi
 filhos="$(pgrep -f "$TMP/bin/npx" | tr '\n' ' ')"
 [ -n "$filhos" ] && passou "stub child is running ($filhos)" || falhou "no stub child to test with"
 echo proof > "$PM_VERIFY_ROOT/preso/evidence/proof.txt"
-"$SCRIPTS/cleanup.sh" preso >/dev/null 2>&1; rc=$?
+saida="$("$SCRIPTS/cleanup.sh" preso 2>&1)"; rc=$?
 sleep 0.3
+case " $saida " in *" $dono "*) passou "cleanup recognises drive.sh as the owner and stops it (pid $dono listed)";; *) falhou "cleanup did not list drive.sh ($dono) among what it stopped: $saida";; esac
 vivos=""; for p in $filhos "$dono"; do vivo "$p" && ! [ "$(ps -o stat= -p "$p" | cut -c1)" = Z ] && vivos="$vivos $p"; done
 [ -z "$vivos" ] && [ "$rc" -eq 0 ] && passou "cleanup stops drive.sh and a child that ignores TERM" || falhou "still running after cleanup:$vivos (rc $rc)"
 [ -f "$PM_VERIFY_ROOT/preso/evidence/proof.txt" ] && [ ! -e "$PM_VERIFY_ROOT/preso/tmp" ] && [ ! -e "$PM_VERIFY_ROOT/preso/drive.pid" ] && passou "scratch and record removed, evidence kept" || falhou "scratch/evidence state wrong after cleanup"
@@ -121,7 +122,8 @@ esperar '[ -f "$PM_STUB_MARCA" ] && [ "$(wc -l < "$PM_VERIFY_ROOT/alheio/drive.p
 filhos="$(pgrep -f "$TMP/bin/npx" | tr '\n' ' ')"
 "$SCRIPTS/cleanup.sh" alheio >/dev/null 2>&1 && falhou "cleanup accepted another checkout's run" || passou "cleanup refuses another checkout's run"
 [ -n "$filhos" ] && vivo "$dono" && vivo "${filhos%% *}" && passou "another checkout's run survives this checkout's cleanup" || falhou "cleanup stopped another checkout's run"
-"$outro/cleanup.sh" alheio >/dev/null 2>&1; sleep 0.3
+saida="$("$outro/cleanup.sh" alheio 2>&1)"; sleep 0.3
+case " $saida " in *" $dono "*) passou "the owning checkout's cleanup lists its drive.sh ($dono) as stopped";; *) falhou "the owning checkout's cleanup did not list its drive.sh: $saida";; esac
 vivo "$dono" && ! [ "$(ps -o stat= -p "$dono" | cut -c1)" = Z ] && falhou "the owning checkout's cleanup did not stop its run" || passou "the owning checkout's cleanup stops it"
 
 # 9. A job that fails but leaves a TERM-resistant child in its group: drive.sh itself stops it before it returns (exit 1),
