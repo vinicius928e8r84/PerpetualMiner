@@ -1,6 +1,6 @@
 ---
 name: overlay
-description: "Use when changing or reviewing the in-page overlay (`overlay.js`, `overlay.css`: the floating button and the feedback pill). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
+description: "Use when changing or reviewing the in-page overlay and what drives it from the page: `overlay.js`, `overlay.css` (the floating button and the feedback pill) and `content.js` (reading the caption and the selection, and the answer on screen). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
 ---
 
 # Overlay

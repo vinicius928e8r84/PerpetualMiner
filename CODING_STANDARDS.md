@@ -11,11 +11,11 @@ What the reviewer enforces on a change. Each rule points to where it is explaine
 | `painel-boas-vindas.js`, `lib/configuracao.js`, `painel-lembrete.js` | `boas-vindas` |
 | `painel-chave.js`, `painel-perigo.js`, `painel-atalhos.js`, `lib/atalhos.js`, `painel-conta.js` | `configuracoes` |
 | `popup.html/js/css` | `popup` |
-| `painel.js` (Frases list, Minerar frases) | `painel-frases` |
+| `painel.js`, `painel.css` (Frases list, Minerar frases) | `painel-frases` |
 | `painel-anki*.js`, `painel-ajustes.js`, `painel-envio.js`, `lib/ajustes-de-envio.js` | `painel-anki` |
 | `bookreader.html/js/css` | `minerar-foto` |
 | `veio/componentes.css`, `veio/componentes.js` | `veio-componentes` |
-| `overlay.js`, `overlay.css` | `overlay` |
+| `overlay.js`, `overlay.css`, `content.js` (the caption and selection capture and the answer on screen) | `overlay` |
 | `e2e/fixtures.js`, `e2e/fakes/`, `e2e/pages/`, `e2e/vitrine/`, `e2e/tests/*-visual.spec.js` | `e2e-suite` |
 
 A surface not in this table (the panel shell, sync, storage, the service worker) is still described in `CLAUDE.md` itself.

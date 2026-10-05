@@ -20,7 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | File | Role |
 |------|------|
 | `manifest.json` | Permissions, content script registration |
-| `content.js` | Injected into all pages; mines subtitles and selections, and drives the overlay |
+| `content.js` | Injected into all pages; mines subtitles and selections, and drives the overlay. See “Overlay” in the `overlay` skill |
 | `overlay.js` + `overlay.css` | `PerpetualMiner.Overlay` — the in-page overlay: one Veio component in an open Shadow DOM (the floating button and the feedback pill). See “Overlay” in the `overlay` skill |
 | `background.js` | Service worker; handles `SALVAR_HISTORICO` messages and context menu clicks; writes to `chrome.storage.local` and syncs to Firestore |
 | `lib/sincronizacao.js` | `PerpetualMiner.Sincronizacao` — shared cloud sync. See “Firebase / Firestore Sync” below and the module's doc comments for its API contract |

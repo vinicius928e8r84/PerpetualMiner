@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SKILLS } from './divisao-do-claude-md.mjs';
+import { E2E, SKILLS } from './divisao-do-claude-md.mjs';
 
 const aqui = path.dirname(fileURLToPath(import.meta.url));
 const DIVIDIR = path.join(aqui, 'dividir-claude-md.mjs');
@@ -27,6 +27,7 @@ function inteiro({ naSecao = {}, bulletE2e = '', secaoSolta = '', trocar = [] } 
     '| File | Role |', '|------|------|',
     '| `overlay.js` | A sobreposição. See “Overlay” below |',
     '| `popup.html` | O popup. See “Popup (Cockpit)” below |',
+    '| `content.js` | Injected into all pages; mines subtitles and selections, and drives the overlay |',
     '| `scripts/` | As ferramentas |', '',
     '### Data Flow', '', 'O caminho do texto.', '',
     ...secoes.flatMap(s => [s]),
@@ -150,6 +151,29 @@ teste('as referências a outra seção ganham destino explícito', () => {
   assert.match(ler(m.raiz, '.agents/skills/overlay/SKILL.md'), /see Cross-Frame Communication in `CLAUDE\.md`\)/);
   assert.match(ler(m.raiz, 'CLAUDE.md'), /See “Overlay” in the `overlay` skill \|/);
   assert.equal(verificar(m).status, 0, 'the verifier must accept these pointer fixes');
+});
+
+teste('o arquivo que dirige uma superfície aponta para a skill: content.js -> overlay', () => {
+  const m = montarRaiz();
+  dividirEm(m);
+  assert.match(ler(m.raiz, 'CLAUDE.md'), /^\| `content\.js` \| .*drives the overlay\. See “Overlay” in the `overlay` skill \|$/m);
+  assert.match(ler(m.raiz, '.agents/skills/overlay/SKILL.md'), /^description: ".*`content\.js` \(reading the caption and the selection/m);
+  assert.equal(verificar(m).status, 0, 'the verifier must accept this pointer fix');
+  const mudou = montarRaiz({ trocar: [['and drives the overlay |', 'and shows the overlay |']] });
+  const r = dividirEm(mudou);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /update REESCRITAS_NO_CLAUDE/);
+});
+
+teste('CODING_STANDARDS.md manda abrir cada skill para todo arquivo que a descrição dela cita', () => {
+  const padroes = fs.readFileSync(path.join(aqui, '..', 'CODING_STANDARDS.md'), 'utf8');
+  for (const s of [...SKILLS, E2E]) {
+    const linha = padroes.split('\n').find(l => l.startsWith('|') && l.trimEnd().endsWith(`\`${s.nome}\` |`));
+    assert.ok(linha, `CODING_STANDARDS.md has no table row for the ${s.nome} skill`);
+    const arquivos = [...s.superficie.matchAll(/`([^`]+)`/g)].map(m => m[1]).filter(t => /\.(js|css|html)/.test(t));
+    assert.ok(arquivos.length > 0, `${s.nome}: no file named in its description`);
+    for (const arquivo of arquivos) assert.ok(linha.includes(`\`${arquivo}\``), `the ${s.nome} row does not name ${arquivo}`);
+  }
 });
 
 teste('os links Markdown relativos das skills apontam para a raiz e existem; um link quebrado é recusado', () => {

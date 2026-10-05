@@ -55,7 +55,7 @@ export const SKILLS = [
   {
     nome: 'overlay',
     titulo: 'Overlay',
-    superficie: 'the in-page overlay (`overlay.js`, `overlay.css`: the floating button and the feedback pill)',
+    superficie: 'the in-page overlay and what drives it from the page: `overlay.js`, `overlay.css` (the floating button and the feedback pill) and `content.js` (reading the caption and the selection, and the answer on screen)',
     secoes: ['### Overlay'],
   },
 ];
@@ -88,6 +88,11 @@ export const REESCRITAS_FIXAS = [
   { antes: 'see Cross-Frame Communication)', depois: 'see Cross-Frame Communication in `CLAUDE.md`)' },
 ];
 
+// O mesmo, para as linhas que ficam no CLAUDE.md: o arquivo que dirige uma superfície aponta para a skill.
+export const REESCRITAS_NO_CLAUDE = [
+  { antes: 'mines subtitles and selections, and drives the overlay |', depois: 'mines subtitles and selections, and drives the overlay. See “Overlay” in the `overlay` skill |' },
+];
+
 const EM_SKILL = / in the `[a-z0-9-]+` skill/g;
 const LINK_RELATIVO = /\]\((?!https?:|mailto:|#|\.\.\/|\/)([^)\s]+)\)/g;
 
@@ -97,7 +102,7 @@ export function corrigirLinha(linha, nomeDaSkill) {
     const alvo = SECAO_PARA_SKILL[nome];
     return !alvo || alvo === nomeDaSkill ? m : `${ver}“${nome}” in the \`${alvo}\` skill`;
   });
-  for (const { antes, depois } of REESCRITAS_FIXAS) if (nomeDaSkill) nova = nova.replaceAll(antes, depois);
+  for (const { antes, depois } of nomeDaSkill ? REESCRITAS_FIXAS : REESCRITAS_NO_CLAUDE) nova = nova.replaceAll(antes, depois);
   if (nomeDaSkill) nova = nova.replace(LINK_RELATIVO, (m, alvo) => `](${PREFIXO_DOS_LINKS}${alvo})`);
   return nova;
 }
@@ -105,7 +110,7 @@ export function corrigirLinha(linha, nomeDaSkill) {
 /** A linha sem as correções de ponteiro: o que a verificação compara. */
 export function normalizar(linha) {
   let l = linha.trim().replace(/\s+/g, ' ');
-  for (const { antes, depois } of REESCRITAS_FIXAS) l = l.replaceAll(depois, antes);
+  for (const { antes, depois } of [...REESCRITAS_FIXAS, ...REESCRITAS_NO_CLAUDE]) l = l.replaceAll(depois, antes);
   return l
     .replace(EM_SKILL, '')
     .replace(/([Ss]ee “[^”]+”) below/g, '$1')
@@ -164,6 +169,11 @@ export function dividir(original) {
   const textoDasSkills = [...blocos.values()].flat(2).concat(blocoE2e).join('\n');
   for (const { antes } of REESCRITAS_FIXAS) {
     if (!textoDasSkills.includes(antes)) throw new Error(`pointer not found, update REESCRITAS_FIXAS: ${antes}`);
+  }
+
+  const textoQueFica = linhas.filter((_, i) => !removidas.has(i)).join('\n');
+  for (const { antes } of REESCRITAS_NO_CLAUDE) {
+    if (!textoQueFica.includes(antes)) throw new Error(`pointer not found, update REESCRITAS_NO_CLAUDE: ${antes}`);
   }
 
   // o que fica no CLAUDE.md: tudo menos o que saiu, com os ponteiros da tabela corrigidos
