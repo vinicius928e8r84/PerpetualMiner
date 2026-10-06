@@ -9,6 +9,7 @@
 #   drive.sh c1-selecao mineracao-unica.spec -g "mesma Fonte"
 #   HEADED=1 drive.sh c1-foto minerar-foto.spec -g "uma foto: prévia"
 # Heavy: use PM_HEAVY_RUN=<limiter> to prefix it (default: /tmp/fm-heavy-run.sh when that file is executable).
+# Workers: 2 unless PM_WORKERS says otherwise (a --workers in the arguments loses: the script's own comes last).
 # Exit code = Playwright's (also written to evidence/exit-code); 1 if the job left processes that could not be stopped.
 # Whatever the job leaves running in its process group is stopped when it ends. Refuses a bad or symlinked run-id/run dir.
 # A run ID is single-use: one whose evidence/ already holds files is refused, so proof is never overwritten.
@@ -47,7 +48,7 @@ export PM_EVIDENCE_DIR="$RUN/evidence" TMPDIR="$RUN/tmp" PLAYWRIGHT_JSON_OUTPUT_
 set -m
 # The job writes its own group id first thing: asking ps about the pipeline afterwards races with a job that ends at once.
 ( ps -o pgid= -p "$BASHPID" | tr -d ' ' > "$RUN/tmp/pgid"
-  $LIMITADOR npx --no-install playwright test "$@" --workers=2 --reporter=list,json --output="$RUN/pw-output" 2>&1
+  $LIMITADOR npx --no-install playwright test "$@" --workers="${PM_WORKERS:-2}" --reporter=list,json --output="$RUN/pw-output" 2>&1
   echo $? > "$RUN/tmp/exit-code" ) < /dev/null | tee -a "$RUN/evidence/run.log" &
 for _ in $(seq 100); do [ -s "$RUN/tmp/pgid" ] && break; sleep 0.05; done
 GRUPO="$(cat "$RUN/tmp/pgid" 2>/dev/null)"
