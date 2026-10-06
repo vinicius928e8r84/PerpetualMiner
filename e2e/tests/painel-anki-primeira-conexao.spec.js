@@ -83,6 +83,7 @@ test('nunca conectada: abre no passo 1 esperando a Conexão, com os dois quadros
   await expect(card(page)).toContainText('Minerar de vídeos, páginas e fotos.');
   await expect(card(page).getByRole('heading', { name: 'Fica indisponível sem ela' })).toBeVisible();
   await expect(card(page)).toContainText('Enviar ao Anki e a mineração automática.');
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
 test('os passos: Continuar, Voltar e a lista andam pelo card, e o foco vai ao título do passo', async ({ page, extensao }) => {
@@ -107,6 +108,7 @@ test('os passos: Continuar, Voltar e a lista andam pelo card, e o foco vai ao t�
 
   await lista(page).getByRole('button', { name: 'Reiniciar o Anki' }).click();
   await expect(card(page)).toContainText('Como ligar · Passo 2 de 2');
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
 test('a lista se anda pelo teclado: Tab chega ao passo e Enter o abre', async ({ page, extensao }) => {
@@ -119,6 +121,7 @@ test('a lista se anda pelo teclado: Tab chega ao passo e Enter o abre', async ({
   await page.keyboard.press('Enter');
   await expect(itemDaLista(page, 'Reiniciar o Anki')).toHaveAttribute('aria-current', 'step');
   await expect(tituloDoPasso(page)).toBeFocused();
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
 test('o status é uma região que anuncia a mudança', async ({ page, extensao }) => {
@@ -127,6 +130,7 @@ test('o status é uma região que anuncia a mudança', async ({ page, extensao }
 
   await expect(page.getByRole('status').filter({ hasText: 'Esperando a Conexão' })).toHaveCount(1);
   await expect(status(page)).toHaveAttribute('role', 'status');
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
 test('Tentar de novo sem resposta: a Conexão continua desligada e o card fica no passo 2', async ({ page, extensao }) => {
@@ -310,6 +314,7 @@ test('um destaque só por tela: no passo 1 é Baixar a Conexão com o Anki, no p
   await card(page).getByRole('button', { name: 'Continuar' }).click();
   await expect(card(page)).toContainText('Como ligar · Passo 2 de 2');
   await expect(page.locator('.veio-botao--primario:visible')).toHaveText(['Tentar de novo']);
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
 test('a Conexão liga sozinha, sem ninguém apertar: a conferência de 15 s do shell a encontra', async ({ page, extensao, fakes }) => {
@@ -461,6 +466,7 @@ test('“Confere sozinho a cada 15 s” segue a conferência do shell, sem um se
   await page.clock.runFor(7_000);
   await expect(linha).toHaveText('Confere sozinho a cada 15 s · última vez há 7 s');
   expect(pedidosDeHealth(fakes)).toHaveLength(2);
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
 test('Baixar a Conexão com o Anki entrega o arquivo que vai dentro do pacote da extensão', async ({ page, extensao }) => {
@@ -490,6 +496,7 @@ test('o Detalhes “O arquivo não abriu?” diz que o código do AnkiWeb vem em
   // O Detalhes é do passo do arquivo: no passo de reiniciar, ele sai.
   await card(page).getByRole('button', { name: 'Continuar' }).click();
   await expect(card(page).getByText('O arquivo não abriu?', { exact: true })).toBeHidden();
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
 test('com o código do AnkiWeb publicado, o Detalhes o mostra para colar em Obter complementos', async ({ page, extensao }) => {
@@ -500,6 +507,7 @@ test('com o código do AnkiWeb publicado, o Detalhes o mostra para colar em Obte
 
   await card(page).getByText('O arquivo não abriu?', { exact: true }).click();
   await expect(card(page).locator('pre')).toHaveText('No Anki, abra Ferramentas › Complementos › Obter complementos, cole o código 123456789 e reinicie o Anki.');
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
 test('reiniciar o Anki: a conferência mostra Conectando e depois “Achei o Anki · perfil · versão”', async ({ page, extensao, fakes }) => {
@@ -600,6 +608,7 @@ test('com a janela estreita (o trilho), a lista fica em cima do card', async ({ 
   const daLista = await lista(page).boundingBox();
   const doCard = await card(page).locator('.pc-card').boundingBox();
   expect(daLista.y + daLista.height).toBeLessThanOrEqual(doCard.y);
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
 test('com a janela larga, a lista fica ao lado do card', async ({ page, extensao }) => {
@@ -610,6 +619,7 @@ test('com a janela larga, a lista fica ao lado do card', async ({ page, extensao
   const daLista = await lista(page).boundingBox();
   const doCard = await card(page).locator('.pc-card').boundingBox();
   expect(daLista.x + daLista.width).toBeLessThanOrEqual(doCard.x);
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
 test('o foco é visível na lista e nos botões, e piscar e pulsar ficam estáticos com movimento reduzido', async ({ page, extensao }) => {
@@ -624,6 +634,7 @@ test('o foco é visível na lista e nos botões, e piscar e pulsar ficam estáti
 
   // O ponto que pisca da linha da conferência dura 1 ms, uma volta só.
   await expect(page.locator('.apv-confere .anki-ponto')).toHaveCSS('animation-duration', '0.001s');
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
 test('nos dois temas o card usa os tokens Veio: o fundo do card e o do controle são os do tema', async ({ page, extensao }) => {
@@ -635,8 +646,15 @@ test('nos dois temas o card usa os tokens Veio: o fundo do card e o do controle 
     return { card: cor('.pc-card'), controle: cor('.pc-controle') };
   });
   const escuro = await cores();
-  await page.evaluate(() => { document.documentElement.dataset.tema = 'claro'; });
+
+  // O tema muda pela escolha da pessoa em Configurações › Aparência, e fica gravado.
+  await page.goto(extensao.url('painel.html#configuracoes/aparencia'));
+  await page.locator('#cfg-tema label').filter({ hasText: 'Claro' }).click();
+  await expect.poll(async () => (await extensao.lerStorage('pm_tema')).pm_tema).toBe('claro');
+  await page.getByRole('link', { name: 'Conexão com o Anki' }).click();
+  await expect(card(page)).toBeVisible();
   const claro = await cores();
   expect(claro.card).not.toBe(escuro.card);
   expect(claro.controle).not.toBe(escuro.controle);
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });

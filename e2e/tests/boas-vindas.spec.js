@@ -396,6 +396,7 @@ test('passo 4: o destaque da tela é o Continuar da Boas-vindas, nos dois passos
   await passosDaConexao(page).getByRole('button', { name: 'Reiniciar o Anki' }).click();
   await expect(botaoDoCard(page, 'Tentar de novo')).toBeVisible();
   await expect(page.locator('.veio-botao--primario:visible')).toHaveText(['Continuar']);
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
 test('quem já tinha a área Conexão com o Anki aberta sem conexão vê o mesmo passo da Boas-vindas', async ({ page, extensao, fakes }) => {
