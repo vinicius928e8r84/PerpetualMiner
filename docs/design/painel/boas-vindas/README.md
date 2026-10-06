@@ -20,7 +20,7 @@ Avaliado no Lavish em 2026-09-15, numa rodada de 5 perguntas.
 | Estrutura | **C · Boas-vindas**: uma página própria, um passo por vez, com o controle real dentro de cada passo. A (vazios que ensinam, sem guia) e B (checklist no topo de Frases) ficaram de fora. |
 | Ordem dos passos | **Valor primeiro** (ver [Os passos](#os-passos)). |
 | Na instalação | **Abre a página Boas-vindas sozinha.** Isso é comportamento novo e **entra na lista fechada** (item 8). |
-| Como ligar a Conexão com o Anki | O passo 4 e o card ONB-16 da área têm [instruções e ações distintas](#conexão-com-o-anki-como-ligar-f1). A orientação é provisória; ver [Instalador da Conexão](#instalador-da-conexão-com-o-anki). |
+| Como ligar a Conexão com o Anki | O passo 4 e o card ONB-16 da área montam [o mesmo componente](#conexão-com-o-anki-como-ligar-f1) (#99, #145): pôr a Conexão no Anki por um arquivo e reiniciar o Anki, sem terminal. |
 | Mineração automática com a Conexão desligada | **Deixa ligar, com status honesto**: o azulejo do popup e o passo dizem que nada é minerado assim (C8). Não muda comportamento. |
 
 ### Achado que decidiu a ordem
@@ -69,7 +69,7 @@ A ordem é travada. Cada passo reusa uma função que já existe; nenhum cria fu
 | 1 | **Minerar a primeira frase** | Texto sobre o atalho de legenda gravado e o menu de contexto, uma ilustração estática da legenda marcada (linha ouro + palavra grifada + chip `palavra:`/`auto:`, como no [overlay](../../overlay/README.md)) e o campo de mineração rápida do popup. Sem atalho de legenda gravado, no lugar da tecla aparece “Sem atalho” + **Definir atalho**, que leva ao passo 2 desta página (o gravador; fora da Boas-vindas, a mesma ação leva a `#configuracoes/atalhos`). | há ≥ 1 frase |
 | 2 | **Escolher o atalho de Minerar seleção** | O gravador de atalho de Configurações › Atalhos, com as mesmas linhas e controles de lá. “Minerar legenda” mostra o atalho que estiver gravado (de fábrica, `Alt+S`), não um `Alt+S` fixo; sem atalho gravado, mostra “Sem atalho” (`kbd` tracejado), com o mesmo “Gravar atalho” ao lado para defini-lo. | `pm_atalho` gravado |
 | 3 | **Entrar com Google** · opcional | O corpo do card Conta & sync de Configurações: login, estado da sincronização e falha no login. | conta conectada |
-| 4 | **Ligar a Conexão com o Anki** | Status e instruções da [F1](#conexão-com-o-anki-como-ligar-f1) para este passo. | a conexão está ligada |
+| 4 | **Ligar a Conexão com o Anki** | Os passos da [F1](#conexão-com-o-anki-como-ligar-f1): pôr a Conexão no Anki (baixar o arquivo, abrir, responder Sim) e reiniciar o Anki, com a conferência sozinha. | a conexão está ligada |
 | 5 | **Configurar a IA dos cartões** · opcional | O card IA dos cartões de Configurações ([CFG-35](../../voz/README.md), [Configurações § IA dos cartões](../configuracoes/README.md#ia-dos-cartões)): as duas entradas em colunas do mesmo tamanho; a coluna da chave funciona, a do ChatGPT chega no #155. | chave da OpenAI conferida |
 | 6 | **Ligar a mineração automática** · opcional | Os toggles EN/RU do popup, com o limite por dia editável (1–100). Com a conexão desligada, a nota de dependência aparece; ainda dá para ligar um idioma. | um idioma ligado |
 | 7 | **Adicionar a chave do Gemini** · opcional | O card Chave do Gemini de Configurações: sem chave, campo e “Onde conseguir a chave” recolhido; com chave, valor mascarado e “Trocar chave”. | chave salva |
@@ -93,16 +93,20 @@ A ordem é travada. Cada passo reusa uma função que já existe; nenhum cria fu
 
 ## Conexão com o Anki: como ligar (F1)
 
-O passo 4 da Boas-vindas e o card ONB-16 da área Conexão com o Anki compartilham o tratamento do status e do retry, mas têm instruções e ações distintas. A cópia de cada variante está em [`lib/voz/catalogo.js`](../../../../lib/voz/catalogo.js).
+O passo 4 da Boas-vindas e o card ONB-16 da área Conexão com o Anki montam **o mesmo componente** (`painel-conexao-passos.js`, o desenho B do #99 com os passos de #145): uma lista de passos e o card do passo. A cópia está em [`lib/voz/catalogo.js`](../../../../lib/voz/catalogo.js) (`ONB-16.*`; `ONB-08.corpo` é só o texto de abertura do passo 4). Na tela o nome é **Conexão com o Anki**; “complemento” só aparece onde o próprio Anki usa a palavra (Ferramentas › Complementos).
 
-**Retry comum à F1, ao passo 4 e ao ONB-16:** enquanto a Conexão diz “Conectando”, o botão que está à mostra fica indisponível, mas continua no percurso do Tab e conserva o foco; apertá-lo de novo não repete a conferência. O contrato de implementação está nos comentários de [`lib/conexao-na-tela.js`](../../../../lib/conexao-na-tela.js).
+**Retry comum à F1, ao passo 4 e ao ONB-16:** enquanto a Conexão diz “Conectando”, o botão que está à mostra fica indisponível, mas continua no percurso do Tab e conserva o foco; apertá-lo de novo não repete a conferência. O contrato de implementação está nos comentários de [`lib/conexao-na-tela.js`](../../../../lib/conexao-na-tela.js). O botão é **Tentar de novo** (`ENV-01.tentarDeNovo`) nos dois lugares.
 
-- **Passo 4 da Boas-vindas:** mostra o status da Conexão e, enquanto a última resposta foi “desligada”, três instruções (`ONB-08.passo1`, `.instalar`, `.verificar`). O botão e o terceiro item dizem **“Verificar de novo”** (`ONB-08.verificarDeNovo`); o botão pede a mesma conferência da F1. Neste passo **não há Detalhes nem Copiar**. Com a conexão ligada, as instruções e o botão saem; se o foco estava no botão, vai para o título do passo.
-- **Área Conexão com o Anki, nunca conectada:** o desenho e os estados do card ONB-16 estão em [Conexão com o Anki § Estados](../anki/README.md#estados). Os comandos de instalação aparecem no **Detalhes** recolhido e copiável (botão **Copiar**):
-  - `pip install -r bridge/requirements.txt`
-  - `python bridge/install_autostart.py`
-  - `OPENAI_API_KEY` em `engine/.env`
-  - a porta `127.0.0.1:8766` e o log `bridge/runtime/bridge.log`.
+Os passos, na ordem (o número na tela é a posição na lista; “Ter o Anki”, #146, e “Abrir o Anki sozinho”, #147, entram nela):
+
+1. **Pôr a Conexão no Anki** (`ONB-16.passo1Titulo`): baixar › abrir › **Sim** › reiniciar. O botão **Baixar a Conexão com o Anki** é um link de download do `.ankiaddon` que vai dentro do pacote da extensão (`conexao/perpetualminer.ankiaddon`; sem permissão nova). Abrir o arquivo com o Anki fechado abre o Anki e instala (ensaio do dono). O Detalhes **O arquivo não abriu?** é a reserva: com o código do AnkiWeb (`PerpetualMiner.CODIGO_DO_ANKIWEB`, só depois do primeiro upload, #176), diz para colá-lo em Ferramentas › Complementos › Obter complementos; sem ele, diz que o código vem em breve. Nunca um número inventado.
+2. **Reiniciar o Anki** (`ONB-16.passo2Titulo`): este passo sempre existe (no Anki do Mac, o arquivo pediu reinício até com o Anki fechado). A extensão confere sozinha (a conferência de 15 s do `ConexaoAnki`); a linha de status diz **Conectando ao Anki…** e, quando a Conexão responde, **Achei o Anki · perfil · versão** (o perfil e a versão vêm do `/health` do complemento; sem perfil, ou sem versão, a parte falta). O Tentar de novo vive neste passo.
+
+Enquanto a Conexão não respondeu, o status do passo 1 diz **Esperando a Conexão**: antes dela a extensão não enxerga o Anki, e “não instalado”, “fechado” e “aberto sem a Conexão” dão o mesmo silêncio. Sem resposta **2 minutos** depois de a pessoa ver os passos pela primeira vez (ou de baixar o arquivo), o card mostra o checklist de 3 itens (**O Anki está aberto?** · **Você fechou o Anki e abriu de novo?** · **A Conexão com o Anki está ativada em Ferramentas › Complementos?**) e **Baixar de novo**, em qualquer passo; a conferência continua sozinha e o checklist sai quando a Conexão responde. Ligada, os dois passos viram ✓, o Tentar de novo sai e o foco, se estava nele, vai para o título (do passo 4 da Boas-vindas, o do passo).
+
+- **Passo 4 da Boas-vindas:** `ONB-08.corpo`, e o componente com a lista de passos **acima** do card do passo, sem Voltar · Continuar próprios (o card da Boas-vindas tem os seus).
+- **Área Conexão com o Anki, nunca conectada:** o card ONB-16, com a lista ao lado do card do passo; o desenho e os estados estão em [Conexão com o Anki § Estados](../anki/README.md#estados). Quem já tinha a área aberta sem conexão vê o mesmo passo da Boas-vindas.
+- **Sem terminal:** os comandos `pip` e `python`, o Detalhes de comandos e o Copiar saíram (ONB-08.passo1…, ONB-16.detalhes, `.copiar`, `.copiado`, `.naoCopiou`).
 
 ## Cópia nova
 
@@ -117,7 +121,7 @@ Tudo segue V1–V10 e C1–C9. V10 permite o nome do produto no onboarding. Este
 | ONB-05 | Passo 1 | Num vídeo com legenda, aperte Alt+S. A frase vai para o histórico e já fica copiada. / Numa página ou PDF, selecione o texto e use o botão direito › Minerar com PerpetualMiner. / Ou cole uma frase aqui, como no popup: |
 | ONB-06 | Passo 2 | Escolha uma tecla ou um botão extra do mouse para minerar o texto selecionado, sem abrir o menu. |
 | ONB-07 | Passo 3 | Entre com Google para ter suas frases em qualquer computador. Sem conta, elas ficam só neste. |
-| ONB-08 | Passo 4 | ver [F1](#conexão-com-o-anki-como-ligar-f1) e as chaves de [`lib/voz/catalogo.js`](../../../../lib/voz/catalogo.js) |
+| ONB-08 | Passo 4 | A Conexão com o Anki fica dentro do Anki, neste computador. É ela que cria os cartões e diz quais palavras você já conhece. (depois, o componente da [F1](#conexão-com-o-anki-como-ligar-f1))  |
 | ONB-09 | Passo 5 | Com ela ligada, as legendas com uma palavra que você ainda não conhece são mineradas sozinhas, até um limite por dia. Liga por idioma. / Os mesmos botões ficam no popup, pelo ícone da extensão. |
 | ONB-10 | Dependência da mineração automática (passo e popup) | Nada é minerado com a Conexão com o Anki desligada: é ela que diz quais palavras você já conhece. |
 | ONB-11 | Passo 6 | `corpo`, `onde` e `detalhes` em [`lib/voz/catalogo.js`](../../../../lib/voz/catalogo.js) |
@@ -125,7 +129,7 @@ Tudo segue V1–V10 e C1–C9. V10 permite o nome do produto no onboarding. Este
 | ONB-13 | Resumo (por passo) | feito (o valor: “Alt+Q”, “ligada”…) · agora não · falta |
 | ONB-14 | Lembrete no popup | Configuração pela metade · 2 de 7 — Volte de onde parou [Continuar configuração] |
 | ONB-15 | Lembrete em Frases | A configuração ficou pela metade: 2 de 7 passos. [Ocultar] [Continuar configuração] |
-| ONB-16 | Área Conexão com o Anki, nunca conectada | Ainda não houve conexão neste computador — (O que é + O que falta sem ela, da F1) |
+| ONB-16 | Área Conexão com o Anki, nunca conectada, e os passos da F1 | Ainda não houve conexão neste computador — (O que é + O que falta sem ela, da F1); os passos, o arquivo, o checklist e o “Achei o Anki” em [`lib/voz/catalogo.js`](../../../../lib/voz/catalogo.js) |
 
 Em ONB-05, o `Alt+S` é o atalho de legenda que estiver gravado. Sem atalho gravado, no lugar da tecla aparece “Sem atalho” + a ação **Definir atalho**. Na Boas-vindas, ela leva ao passo 2 desta página, onde está o gravador; na PAI-02 e no rodapé do popup, leva a `#configuracoes/atalhos`.
 

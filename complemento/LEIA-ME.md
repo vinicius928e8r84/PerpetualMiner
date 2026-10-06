@@ -22,7 +22,7 @@ A Conexão de hoje (`bridge/`) só ganhou o mesmo POST nas três rotas da coleç
 | `pasta_de_dados.py` | `user_files/{fila,estado,custos,logs,chaves}`, que o Anki preserva nas atualizações |
 | `configuracao.py` | Versão, porta e o ID da extensão |
 | `contrato/` | Os exemplos que o complemento e o fake do e2e leem, e como uma rota nova entra |
-| `empacotar.py` | Monta o `.ankiaddon` |
+| `empacotar.py` | Monta o `.ankiaddon` (e `conexao/perpetualminer.ankiaddon`, o que a extensão entrega no botão Baixar a Conexão com o Anki) |
 
 ## Testes
 
@@ -38,11 +38,23 @@ python3.9 complemento/test_chave_da_openai.py  # a chave: o que atravessa o HTTP
 
 Rode todos também com `python3.12` e `python3.13`. Sem os interpretadores: `uv python install 3.9 3.13`.
 
+## O arquivo que a extensão entrega
+
+A primeira conexão (passo “Pôr a Conexão no Anki”, #145) é um link de download de `conexao/perpetualminer.ankiaddon`, que vai
+dentro do pacote da loja (sem permissão nova). Mudou o código do complemento? Refaça o arquivo:
+
+```bash
+python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon
+```
+
+`test_pacote.py` falha enquanto o arquivo da extensão estiver para trás do código (o `LEIA-ME.md` e os testes não entram nele).
+
 ## Ensaio do dono, no Mac
 
-1. `python3 complemento/empacotar.py` gera `dist/perpetualminer.ankiaddon`.
-2. Abra o arquivo (o Anki mostra o aviso de complementos; Sim) e reinicie o Anki.
-3. Com a extensão carregada, abra o painel › Conexão com o Anki: a área aparece ligada.
+1. Com a extensão carregada, abra o painel › Conexão com o Anki (ou a Boas-vindas, passo 4): **Baixar a Conexão com o Anki**.
+   (Sem a extensão: `python3 complemento/empacotar.py` gera `dist/perpetualminer.ankiaddon`.)
+2. Abra o arquivo baixado, com o Anki **fechado** de propósito: o Anki abre sozinho e pergunta se você quer instalar; responda Sim.
+3. Reinicie o Anki. A tela confere sozinha e diz “Achei o Anki · perfil · versão”.
 4. Com um perfil aberto, abra o painel › Conexão com o Anki: **Baralhos e termos** e **Vocabulário** mostram os
    números e as palavras dos Baralhos dos Ajustes de envio, e **Ajustes de envio** lista os Baralhos do Anki.
 5. Com a Mineração automática ligada, toque uma legenda num vídeo: ela é minerada e aparece em Frases (antes, sem
@@ -55,6 +67,7 @@ Rode todos também com `python3.12` e `python3.13`. Sem os interpretadores: `uv 
    ter a chave. Depois cole uma chave inventada (`sk-proj-` e letras): a faixa deve dizer que a OpenAI a recusou.
    Se o Anki do Mac não achar os certificados do sistema, a conferência volta “Não deu para falar com a OpenAI”:
    anote o texto do Detalhes.
+8. Sem resposta em 2 minutos (tente com o Anki fechado), a tela mostra o checklist de 3 itens e Baixar de novo.
 
 `test_openai_de_mentira.py` não é teste: é a OpenAI de mentira (um servidor local) que os testes põem no lugar da de verdade.
 

@@ -19,6 +19,10 @@ sys.path.insert(0, os.path.dirname(AQUI))
 from complemento import empacotar  # noqa: E402
 
 
+RAIZ = os.path.dirname(AQUI)
+ARQUIVO_NO_PACOTE_DA_EXTENSAO = os.path.join(RAIZ, "conexao", "perpetualminer.ankiaddon")
+
+
 class ArquivoDoComplemento(unittest.TestCase):
     def empacotado(self, pasta, mod=1700000000):
         destino = empacotar.empacotar(os.path.join(pasta, "perpetualminer.ankiaddon"), mod=mod)
@@ -97,6 +101,37 @@ class ArquivoDoComplemento(unittest.TestCase):
                 sys.path.remove(os.path.dirname(instalado))
                 for nome in [n for n in sys.modules if n == "123456789" or n.startswith("123456789.")]:
                     del sys.modules[nome]
+
+
+class ArquivoQueVaiNoPacoteDaExtensao(unittest.TestCase):
+    """A extensão entrega o `.ankiaddon` num link de download (`conexao/perpetualminer.ankiaddon`, sem
+    permissão nova). Ele não pode ficar para trás do código do complemento: quem mexe aqui o refaz com
+    `python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon`."""
+
+    def test_o_arquivo_da_extensao_instala_o_complemento_de_hoje(self):
+        self.assertTrue(
+            os.path.isfile(ARQUIVO_NO_PACOTE_DA_EXTENSAO),
+            "falta conexao/perpetualminer.ankiaddon: python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon",
+        )
+        with zipfile.ZipFile(ARQUIVO_NO_PACOTE_DA_EXTENSAO) as entregue, tempfile.TemporaryDirectory() as pasta:
+            de_hoje = zipfile.ZipFile(empacotar.empacotar(os.path.join(pasta, "hoje.ankiaddon")))
+            self.assertEqual(
+                sorted(entregue.namelist()), sorted(de_hoje.namelist()),
+                "o arquivo da extensão tem outros arquivos: python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon",
+            )
+            for nome in entregue.namelist():
+                if nome == "manifest.json":
+                    continue
+                self.assertEqual(
+                    entregue.read(nome), de_hoje.read(nome),
+                    nome + " mudou: python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon",
+                )
+            manifesto = json.loads(entregue.read("manifest.json"))
+            esperado = json.loads(de_hoje.read("manifest.json"))
+            for campo in ("package", "name", "min_point_version"):
+                self.assertEqual(manifesto[campo], esperado[campo])
+            self.assertGreater(manifesto["mod"], 0)
+            de_hoje.close()
 
 
 if __name__ == "__main__":

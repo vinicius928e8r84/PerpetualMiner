@@ -4,7 +4,11 @@
 
 O Anki instala o arquivo pelo `manifest.json` na raiz do zip. O `mod` é a hora do
 empacotamento: é ele que põe a cópia instalada por arquivo no caminho de atualização
-do AnkiWeb. Ficam de fora os testes, os exemplos do contrato, `user_files` e o cache.
+do AnkiWeb. Ficam de fora os testes, os exemplos do contrato, `user_files`, o cache e o LEIA-ME.
+
+A extensão entrega este arquivo num link de download (`conexao/perpetualminer.ankiaddon`, no pacote da loja):
+mudou o código do complemento, refaça-o com `python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon`
+(`test_pacote.py` falha enquanto ele estiver para trás).
 """
 
 import json
@@ -14,7 +18,7 @@ import time
 import zipfile
 
 PASTA = os.path.dirname(os.path.abspath(__file__))
-FORA_DO_PACOTE = ("test_", "empacotar.py", "__pycache__", "user_files", "contrato")
+FORA_DO_PACOTE = ("test_", "empacotar.py", "__pycache__", "user_files", "contrato", "LEIA-ME.md")
 
 
 def _entra_no_pacote(relativo):
