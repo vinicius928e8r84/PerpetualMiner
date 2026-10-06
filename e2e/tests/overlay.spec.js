@@ -648,7 +648,7 @@ test('com a Conexão respondendo mas o Anki fechado, a mineração automática m
   expect(await textosGravados(extensao)).toEqual([FRASE_RUSSA]);
   const pedidosDoVocabulario = fakes.anki.requisicoes.filter(r => r.caminho === '/anki/vocabulary');
   expect(pedidosDoVocabulario).toHaveLength(1);
-  expect(pedidosDoVocabulario[0].busca).not.toContain('launch');
+  expect(pedidosDoVocabulario[0].dados).not.toHaveProperty('launch');
   // A leitura é de agora, mas os dados são os da última vez que o Anki respondeu.
   const { pm_auto_keyword_vocab_ru: leitura } = await extensao.lerStorage('pm_auto_keyword_vocab_ru');
   expect(leitura.createdAt).toBeGreaterThan(leituraDeAntes + 3600_000);

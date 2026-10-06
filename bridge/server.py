@@ -852,7 +852,16 @@ class BridgeApp:
                 LOGGER.exception("Anki repair failed")
                 return jsonify({"error": "anki_repair_failed", "detail": str(exc)}), 503
 
-        @self.app.get("/anki/decks")
+        # As leituras do Anki também atendem POST com corpo JSON: é o contrato da Conexão como complemento do
+        # Anki (complemento/contrato/exemplos.json), que a extensão fala. O GET fica para quem ainda o usa.
+        def _read_params() -> Any:
+            """Os parâmetros do pedido: a query string (GET) ou o corpo JSON (POST)."""
+            if request.method == "POST":
+                body = request.get_json(silent=True)
+                return body if isinstance(body, dict) else {}
+            return request.args
+
+        @self.app.route("/anki/decks", methods=["GET", "POST"])
         def anki_decks():
             try:
                 return jsonify({"decks": self._anki_deck_names()})
@@ -861,6 +870,9 @@ class BridgeApp:
                 return jsonify({"error": "anki_decks_unavailable", "detail": str(exc)}), 503
 
         def _requested_anki_stat_decks() -> list[dict[str, str]]:
+            if request.method == "POST":
+                requested = _read_params().get("decks")
+                return [item for item in requested if isinstance(item, dict)] if isinstance(requested, list) else []
             deck_names = request.args.getlist("deck")
             langs = request.args.getlist("lang")
             decks = [
@@ -878,12 +890,13 @@ class BridgeApp:
             return decks
 
         @self.app.get("/anki/deck-stats")
-        @self.app.get("/anki/stats/decks")
+        @self.app.route("/anki/stats/decks", methods=["GET", "POST"])
         def anki_deck_stats():
             decks = _requested_anki_stat_decks()
+            params = _read_params()
             try:
-                refresh = request.args.get("refresh") in {"1", "true", "yes"}
-                launch = request.args.get("launch") in {"1", "true", "yes"}
+                refresh = str(params.get("refresh")).lower() in {"1", "true", "yes"}
+                launch = str(params.get("launch")).lower() in {"1", "true", "yes"}
                 return jsonify(self._cached_anki_deck_stats(decks, refresh=refresh, launch=launch))
             except RuntimeError as exc:
                 LOGGER.warning("Anki deck stats unavailable: %s", exc)
@@ -892,29 +905,30 @@ class BridgeApp:
                 LOGGER.exception("Failed to compute Anki deck stats")
                 return jsonify({"error": "anki_stats_unavailable", "detail": str(exc)}), 503
 
-        @self.app.get("/anki/vocabulary")
+        @self.app.route("/anki/vocabulary", methods=["GET", "POST"])
         def anki_vocabulary():
-            deck_name = (request.args.get("deck") or "").strip()
-            lang = (request.args.get("lang") or "en").strip().lower()
+            params = _read_params()
+            deck_name = str(params.get("deck") or "").strip()
+            lang = str(params.get("lang") or "en").strip().lower()
             if not deck_name:
                 return jsonify({"error": "deck_required"}), 400
             if lang not in {"en", "ru"}:
                 return jsonify({"error": "invalid_lang"}), 400
 
-            status = (request.args.get("status") or "all").strip().lower()
+            status = str(params.get("status") or "all").strip().lower()
             if status not in {"all", "new", "recent", "mature", "mixed", "seen"}:
                 status = "all"
-            item_type = (request.args.get("type") or "all").strip().lower()
+            item_type = str(params.get("type") or "all").strip().lower()
             if item_type not in {"all", "word", "term"}:
                 item_type = "all"
-            search = (request.args.get("q") or "").strip().casefold()
+            search = str(params.get("q") or "").strip().casefold()
             try:
-                limit = max(1, min(10000, int(request.args.get("limit") or 1000)))
-            except ValueError:
+                limit = max(1, min(10000, int(params.get("limit") or 1000)))
+            except (ValueError, TypeError):
                 limit = 1000
             try:
-                offset = max(0, int(request.args.get("offset") or 0))
-            except ValueError:
+                offset = max(0, int(params.get("offset") or 0))
+            except (ValueError, TypeError):
                 offset = 0
 
             try:

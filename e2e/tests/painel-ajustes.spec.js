@@ -327,7 +327,7 @@ test('uma resposta antiga com erro não substitui a lista de baralhos mais recen
   let liberarAntiga;
   const antiga = new Promise(resolve => { liberarAntiga = resolve; });
   let chamadas = 0;
-  fakes.anki.responder('GET', '/anki/decks', async () => {
+  fakes.anki.responder('POST', '/anki/decks', async () => {
     chamadas += 1;
     if (chamadas === 1) {
       await antiga;
@@ -491,8 +491,8 @@ test('o Baralho padrão é o mesmo em Ajustes, em Baralhos e termos e no envio',
   // Baralhos e termos pede os números dos mesmos baralhos.
   await page.goto(extensao.url('painel.html#anki/baralhos'));
   await expect.poll(() => fakes.anki.requisicoes.filter(r => r.caminho === '/anki/stats/decks').length).toBeGreaterThan(0);
-  const busca = new URLSearchParams(fakes.anki.requisicoes.find(r => r.caminho === '/anki/stats/decks').busca);
-  expect(busca.getAll('deck')).toEqual(['CIMV', 'RUSSIAN']);
+  const leitura = fakes.anki.requisicoes.find(r => r.caminho === '/anki/stats/decks').dados;
+  expect(leitura.decks.map(baralho => baralho.deckName)).toEqual(['CIMV', 'RUSSIAN']);
 
   // E o envio vai para ele.
   await page.goto(extensao.url('painel.html#frases'));
