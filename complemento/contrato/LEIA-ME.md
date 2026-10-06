@@ -39,6 +39,10 @@ Mudar só um lado quebra um teste, e a mensagem diz o exemplo e os dois arquivos
 - `resposta`: o status e o JSON. `"<agora>"` no JSON é o instante em que a Conexão respondeu: o complemento confere
   qualquer instante ISO 8601 em UTC, e o fake escreve o do relógio dele.
 
+A saúde (`GET /health`) é lida pela primeira conexão: a extensão mostra “Achei o Anki · perfil · versão” com o `perfil` e a `versao`
+que ela diz (`ConexaoAnki.saude()`, `e2e/tests/painel-anki-primeira-conexao.spec.js`, que lê os valores destes exemplos). Sem perfil (a tela de
+perfis do Anki) a parte do perfil não aparece.
+
 ## Quem o complemento atende
 
 O complemento gasta a chave da OpenAI, então a regra é a da origem da extensão

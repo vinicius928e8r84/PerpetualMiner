@@ -83,7 +83,7 @@ As specs abaixo foram corrigidas no lugar. O histórico está no git e no [ticke
 | C3 | O badge soma só os idiomas ligados: “Mineração automática: N hoje”. O contador do overlay é o do idioma. | Voz (MIN-09), popup, overlay |
 | C4 | A cópia do overlay é MIN-01…10 (o MIN-10, `erro_web`, é novo) | overlay, Voz |
 | C5 | Faixa ONB-15 em Frases e card ONB-16 na Conexão com o Anki | Frases, Anki |
-| C6 | O retry da Conexão tem rótulos distintos no [passo 4 da Boas-vindas e na área Anki](painel/boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1) | Boas-vindas, Anki |
+| C6 | O retry da Conexão é o mesmo componente no [passo 4 da Boas-vindas e na área Anki](painel/boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1): “Tentar de novo” (#145) | Boas-vindas, Anki |
 | C7 | Com “4 casas” ligado no Avançado, todos os valores ficam com 4 casas | Voz (V7) |
 | C8 | O passo 2 da Boas-vindas mostra o atalho gravado | Boas-vindas |
 | C9 | Nomes e lugares da auditoria refinados depois (Minerar frases, Foto, Minerar seleção, Ajustes de envio, Exportar na barra) | auditoria (avisos “Superada em”), Frases |

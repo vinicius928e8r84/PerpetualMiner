@@ -1352,33 +1352,34 @@ body {
   display: none;
 }
 
-/* A lista dos passos ao lado do card do passo; na janela estreita (o trilho) a
-   lista fica em cima. */
-.apv-grade {
+/* Os passos da Conexão (painel-conexao-passos.js): a lista ao lado do card do passo; na
+   janela estreita (o trilho) a lista fica em cima. Dentro de outro card (o passo 4 da
+   Boas-vindas), `pc--empilhado` põe a lista em fila acima do card, sem moldura própria. */
+.pc {
   display: grid;
   grid-template-columns: 230px minmax(0, 1fr);
   gap: 16px;
 }
 
 @media (max-width: 999px) {
-  .apv-grade {
+  .pc {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-.apv-lista,
-.apv-card {
+.pc-lista,
+.pc-card {
   border: 1px solid var(--veio-border);
   border-radius: var(--veio-raio-painel);
   background: var(--veio-bg);
 }
 
-.apv-lista {
+.pc-lista {
   align-self: start;
   padding: 12px;
 }
 
-.apv-card {
+.pc-card {
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -1386,8 +1387,36 @@ body {
   box-shadow: var(--veio-sombra-ilha);
 }
 
+.pc--empilhado {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pc--empilhado .pc-lista,
+.pc--empilhado .pc-card {
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.pc--empilhado .bv-lista__itens {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.pc--empilhado .bv-lista__item {
+  width: auto;
+  padding-right: 14px;
+}
+
+.pc--empilhado .bv-titulo {
+  font-size: var(--veio-tam-modal);
+}
+
 /* O controle real do passo: um bloco surface de raio 14, sobre o card bg. */
-.apv-controle {
+.pc-controle {
+  display: grid;
+  gap: 14px;
   margin-top: 12px;
   padding: 14px 16px;
   border: 1px solid var(--veio-border);
@@ -1395,25 +1424,67 @@ body {
   background: var(--veio-surface);
 }
 
-.apv-comandos {
-  margin-top: 12px;
+.pc--empilhado .pc-controle {
+  background: var(--veio-bg);
 }
 
-/* Os comandos ficam num bloco surface-2, como no desenho: o controle já é surface. */
-.apv-comandos .veio-aviso__detalhes > pre {
-  background: var(--veio-surface-2);
+.pc-arquivo {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
 }
 
-/* Esperando a Conexão: o passo 1 ainda não tem o que dizer, então fala baixo. */
-.apv-status--espera {
-  color: var(--veio-muted);
-}
-
-.apv-comandos[hidden] {
+.pc-arquivo[hidden] {
   display: none;
 }
 
-.apv-passos-rodape {
+.pc-arquivo .veio-aviso__detalhes {
+  margin: 0;
+}
+
+/* O Detalhes de reserva fica num bloco surface-2: o controle já é surface. */
+.pc-arquivo .veio-aviso__detalhes > pre {
+  background: var(--veio-surface-2);
+}
+
+/* Esperando a Conexão: o primeiro passo ainda não tem o que dizer, então fala baixo. */
+.pc-status--espera {
+  color: var(--veio-muted);
+}
+
+/* Dois minutos sem resposta: o checklist de 3 itens e Baixar de novo. */
+.pc-sem-resposta {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--veio-border);
+}
+
+.pc-sem-resposta[hidden] {
+  display: none;
+}
+
+.pc-sem-resposta__texto {
+  margin: 0;
+  font-weight: var(--veio-peso-rotulo);
+}
+
+.pc-checklist {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 22px;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-corpo);
+  line-height: 1.5;
+}
+
+.pc-checklist li::marker {
+  color: var(--veio-accent-text);
+}
+
+.pc-navegacao {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -1422,15 +1493,15 @@ body {
   border-top: 1px solid var(--veio-border);
 }
 
-.apv-passos-rodape[hidden] {
+.pc-navegacao[hidden] {
   display: none;
 }
 
-.apv-passos-rodape .veio-botao[hidden] {
+.pc-navegacao .veio-botao[hidden] {
   display: none;
 }
 
-.apv-passos-rodape #apv-voltar {
+.pc-navegacao > :first-child {
   margin-right: auto;
 }
 
@@ -1478,21 +1549,6 @@ body {
   margin: 0;
 }
 
-.anki-passos {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding-left: 22px;
-  font-size: var(--veio-tam-corpo);
-  line-height: 1.5;
-}
-
-.anki-passos li::marker {
-  color: var(--veio-accent-text);
-  font-family: var(--veio-fonte-mono);
-  font-weight: var(--veio-peso-num);
-}
-
 .anki-apoio {
   margin: 0;
   color: var(--veio-muted);
@@ -1507,20 +1563,6 @@ body {
 
 .anki-motivo[hidden] {
   display: none;
-}
-
-/* O Detalhes com os comandos de instalação e o “Copiar” ao lado dele. */
-.anki-como-ligar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 8px 12px;
-}
-
-.anki-como-ligar .veio-aviso__detalhes {
-  flex: 1 1 320px;
-  min-width: 0;
-  margin: 0;
 }
 
 /* Uma nota neutra no topo da aba (os Ajustes com a Conexão desligada). */
@@ -3499,8 +3541,7 @@ body {
   display: none;
 }
 
-/* Passo 4: o status da Conexão com o Verificar de novo ao lado; desligada, os
-   3 passos. */
+/* A linha de status da Conexão com o Tentar de novo ao lado (painel-conexao-passos.js). */
 .bv-conexao {
   display: flex;
   flex-wrap: wrap;
@@ -3516,16 +3557,6 @@ body {
   margin: 0;
   font-size: var(--veio-tam-corpo);
   font-weight: var(--veio-peso-rotulo);
-}
-
-.bv-como-ligar {
-  display: grid;
-  gap: 12px;
-  margin-top: 14px;
-}
-
-.bv-como-ligar[hidden] {
-  display: none;
 }
 
 /* Passo 5: um idioma por linha, o switch à esquerda e o limite à direita. */

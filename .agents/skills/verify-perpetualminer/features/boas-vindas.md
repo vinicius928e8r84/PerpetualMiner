@@ -32,7 +32,7 @@ Preconditions:
 - **Entry from the popup.** `drive.sh bv-popup lembrete-configuracao.spec -g "Continuar configuração no popup abre o painel"`; strip in Frases: `-g "Continuar configuração em Frases cai no primeiro passo"`. Observable: the panel opens at the first missing step.
 - **Entry by address.** Every recipe here opens `#boas-vindas[/<step>]` directly; that is the address entry.
 - **Shortcut (`bv-step2`).** `drive.sh bv-passo2 boas-vindas.spec -g "passo 2: o gravador é o de Configurações"`.
-- **Steps 3–6 (`bv-steps3-6`).** `-g "passo 3: o Entrar com Google"` (sign in marks the step, the card shows the account), `-g "passo 4: desligada"` (Anki off › Verificar de novo; turn the fake on and verify again marks the step), `-g "passo 5: os switches EN/RU"`, `-g "passo 6: o campo de Configurações"`.
+- **Steps 3–6 (`bv-steps3-6`).** `-g "passo 3: o Entrar com Google"` (sign in marks the step, the card shows the account), `-g "passo 4: abre em pôr a Conexão"` (Anki off: Baixar a Conexão com o Anki, no terminal command), `-g "passo 4: reiniciar"` (Reiniciar o Anki › Tentar de novo; turn the fake on and it says "Achei o Anki · perfil · versão" and marks the step), `-g "passo 4: dois minutos"` (the checklist and Baixar de novo), `-g "passo 5: os switches EN/RU"`, `-g "passo 6: o campo de Configurações"`.
 - **Finish (`bv-done`, `bv-agora-nao`).** `-g "Tudo pronto resume cada passo"`, `-g "num opcional fica gravado"`.
 
 ## Gotchas

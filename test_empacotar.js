@@ -31,7 +31,7 @@ assert.strictEqual(zip.readUInt16LE(zip.length - 22 + 10), arquivos.length, 'o z
 
 // O manifest do repositório tem `key` (fixa o ID da extensão carregada da pasta;
 // o ID em si é conferido em e2e/tests/id-fixo.spec.js) e o zip da loja não tem.
-function lerDoZip(bytes, nome) {
+function lerBytesDoZip(bytes, nome) {
   const fim = bytes.length - 22;
   const total = bytes.readUInt16LE(fim + 10);
   let posicao = bytes.readUInt32LE(fim + 16);
@@ -42,12 +42,14 @@ function lerDoZip(bytes, nome) {
       const local = bytes.readUInt32LE(posicao + 42);
       const comprimido = bytes.readUInt32LE(posicao + 20);
       const inicio = local + 30 + bytes.readUInt16LE(local + 26) + bytes.readUInt16LE(local + 28);
-      return zlib.inflateRawSync(bytes.subarray(inicio, inicio + comprimido)).toString('utf8');
+      return zlib.inflateRawSync(bytes.subarray(inicio, inicio + comprimido));
     }
     posicao += 46 + tamanhoDoNome + bytes.readUInt16LE(posicao + 30) + bytes.readUInt16LE(posicao + 32);
   }
   throw new Error(`${nome} não está no zip`);
 }
+
+const lerDoZip = (bytes, nome) => lerBytesDoZip(bytes, nome).toString('utf8');
 
 const manifestoDoRepo = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
 assert(manifestoDoRepo.key, 'o manifest do repositório precisa da "key" que fixa o ID');
@@ -56,6 +58,18 @@ const manifestoDoZip = JSON.parse(lerDoZip(zip, 'manifest.json'));
 assert(!('key' in manifestoDoZip), 'o manifest dentro do zip não pode ter "key"');
 const { key, ...restoDoRepo } = manifestoDoRepo;
 assert.deepStrictEqual(manifestoDoZip, restoDoRepo, 'o manifest do zip só pode diferir pela "key"');
+
+// A Conexão com o Anki chega ao Anki por um arquivo que a extensão entrega num link de download:
+// o `.ankiaddon` vai dentro do pacote da loja, igual ao do repositório, e é um complemento que o Anki instala
+// (`manifest.json` na raiz, com o `package` e o nome, e o código ao lado).
+const ARQUIVO_DA_CONEXAO = 'conexao/perpetualminer.ankiaddon';
+assert(arquivos.includes(ARQUIVO_DA_CONEXAO), `falta ${ARQUIVO_DA_CONEXAO} no pacote da loja`);
+const arquivoDaConexao = lerBytesDoZip(zip, ARQUIVO_DA_CONEXAO);
+assert(arquivoDaConexao.equals(fs.readFileSync(ARQUIVO_DA_CONEXAO)), 'o .ankiaddon do pacote difere do do repositório');
+const manifestoDoComplemento = JSON.parse(lerBytesDoZip(arquivoDaConexao, 'manifest.json').toString('utf8'));
+assert.strictEqual(manifestoDoComplemento.name, 'PerpetualMiner');
+assert(manifestoDoComplemento.package, 'o manifesto do .ankiaddon precisa do `package`');
+assert(lerBytesDoZip(arquivoDaConexao, '__init__.py').length > 0, 'o .ankiaddon não leva o código do complemento');
 
 // O guia da loja é a fonte única dos hosts: o bloco "Host permission use" cita,
 // entre crases, exatamente os hosts do manifest (nem a mais, nem a menos).
