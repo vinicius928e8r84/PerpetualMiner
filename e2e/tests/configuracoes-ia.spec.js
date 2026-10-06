@@ -115,6 +115,10 @@ test('conferir com o campo vazio é recusado no campo e nada vai à Conexão', a
   await campo(page).fill('s');
   await expect(campo(page)).not.toHaveAttribute('aria-invalid', 'true');
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/ia/openai/chave')).toEqual([]);
+  // Nada foi guardado: nem no banco da extensão, nem no storage, nem na cópia da Conexão.
+  expect(await chaveNoBancoDaExtensao(page)).toBe('');
+  expect(await extensao.lerStorage('pm_chave_openai')).toEqual({});
+  expect(fakes.anki.chaveNaConexao()).toBeNull();
 });
 
 test('enquanto a Conexão confere, o campo guarda o que foi colado e o botão não repete o pedido', async ({ page, extensao, fakes }) => {
@@ -133,6 +137,10 @@ test('enquanto a Conexão confere, o campo guarda o que foi colado e o botão n�
   liberar();
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/ia/openai/chave')).toHaveLength(1);
+  // Depois da resposta, a chave inteira só no banco da extensão e, no storage, só o fim dela.
+  expect(await chaveNoBancoDaExtensao(page)).toBe(CHAVE);
+  expect(await extensao.lerStorage('pm_chave_openai')).toEqual({ pm_chave_openai: { ultimos4: '9f3a' } });
+  expect(JSON.stringify(await extensao.lerStorage(null))).not.toContain('sk-proj-chave-de-exemplo');
 });
 
 for (const { comportamento, texto, acao, detalhes } of [
@@ -194,6 +202,10 @@ test('chave sem crédito: Adicionar crédito abre a OpenAI numa aba nova', async
   ]);
 
   expect(pedido.url()).toBe('https://platform.openai.com/settings/organization/billing/overview');
+  // A chave sem crédito não foi guardada em lugar nenhum, nem depois de abrir a OpenAI.
+  expect(await chaveNoBancoDaExtensao(page)).toBe('');
+  expect(await extensao.lerStorage('pm_chave_openai')).toEqual({});
+  expect(fakes.anki.chaveNaConexao()).toBeNull();
 });
 
 test('a OpenAI fora do ar: Tentar de novo manda a mesma chave e, aceita, a faixa some', async ({ page, extensao, fakes }) => {
