@@ -18,7 +18,7 @@ const contrato = require('../../complemento/contrato/exemplos.json');
 // (`{ decks: [...] }`); sem `definirBaralhosDoAnki` a lista não vem (503), como
 // com o Anki sem responder, e a aba oferece o campo de texto.
 //
-// O que o complemento do Anki responde (a saúde, os Baralhos, os números e o vocabulário) vem de
+// O que o complemento do Anki responde (a saúde, os Baralhos, os números, o vocabulário e o item de login de “Abrir o Anki com o computador”) vem de
 // `complemento/contrato/exemplos.json`, o mesmo arquivo que os testes do
 // complemento leem: o fake responde o exemplo do pedido no contexto em que a
 // Conexão está (`abrirPerfil`, `abrirColecao`). Os testes de tela montam os Baralhos
@@ -70,7 +70,7 @@ function criarFakeAnki() {
     falhaDosBaralhos: null,     // { status } | { rede: true }: POST /anki/stats/decks falha
     falhaDoVocabulario: null,   // { status } | { rede: true }: POST /anki/vocabulary falha
     baralhosDoAnki: null,       // os nomes de POST /anki/decks; null: a lista não vem (definirBaralhosDoAnki)
-    contexto: { perfil: 'Usuário 1', falhaNoPerfil: false }, // em que situação o complemento está (os `contexto` dos exemplos); `colecao` só existe depois de `abrirColecao`
+    contexto: { perfil: 'Usuário 1', falhaNoPerfil: false, itemDeLogin: 'desligado' }, // em que situação o complemento está (os `contexto` dos exemplos); `colecao` só existe depois de `abrirColecao`
   };
   const requisicoes = [];
   const envios = [];    // { jobId, lang, entries, deckName, state }
@@ -234,15 +234,18 @@ function criarFakeAnki() {
 
   /**
    * A resposta que o contrato dá ao pedido da extensão, no contexto de agora. O exemplo que cita `corpo` só
-   * vale para esse corpo; o que cita `colecao` só vale com essa coleção aberta (`abrirColecao`).
+   * vale para esse corpo; o que cita `colecao` só vale com essa coleção aberta (`abrirColecao`). `perfil` (com
+   * `falhaNoPerfil`) e `itemDeLogin` só contam para os exemplos que os declaram: a saúde responde com o item em
+   * qualquer situação, e o item responde com o Anki em qualquer perfil.
    */
   function respostaDoContrato(metodo, caminho, corpo) {
     const exemplo = contrato.exemplos.find(e =>
       exemploDaExtensao(e)
       && e.pedido.metodo === metodo && e.pedido.caminho === caminho
       && (e.pedido.corpo === undefined || isDeepStrictEqual(e.pedido.corpo, corpo))
-      && e.contexto.perfil === estado.contexto.perfil
-      && Boolean(e.contexto.falhaNoPerfil) === estado.contexto.falhaNoPerfil
+      && (e.contexto.perfil === undefined
+        || (e.contexto.perfil === estado.contexto.perfil && Boolean(e.contexto.falhaNoPerfil) === estado.contexto.falhaNoPerfil))
+      && (e.contexto.itemDeLogin === undefined || e.contexto.itemDeLogin === estado.contexto.itemDeLogin)
       && (!('colecao' in e.contexto) || e.contexto.colecao === estado.contexto.colecao));
     if (!exemplo) {
       throw new Error(`O contrato (complemento/contrato/exemplos.json) não tem exemplo de ${metodo} ${caminho}`
@@ -250,6 +253,16 @@ function criarFakeAnki() {
         + `com o contexto ${JSON.stringify(estado.contexto)}; escreva-o lá antes de o fake responder.`);
     }
     return { status: exemplo.resposta.status, json: comOAgora(exemplo.resposta.json) };
+  }
+
+  /** “Abrir o Anki com o computador”: o item de login, como a Conexão o escreve e o apaga. */
+  function itemDeLogin(req, url) {
+    const corpo = req.postData() ? JSON.parse(req.postData()) : undefined;
+    const resposta = respostaDoContrato(req.method(), url.pathname, corpo);
+    if (url.pathname === '/abrir-com-o-computador' && resposta.status === 200) {
+      estado.contexto = { ...estado.contexto, itemDeLogin: resposta.json.ligado ? 'ligado' : 'desligado' };
+    }
+    return resposta;
   }
 
   async function tratar(route) {
@@ -270,6 +283,16 @@ function criarFakeAnki() {
     }
     if (url.pathname === '/health') {
       const { status, json } = respostaDoContrato(req.method(), '/health');
+      return responderJson(route, status, json);
+    }
+    if (req.method() === 'POST' && (url.pathname === '/abrir-com-o-computador' || url.pathname === '/abrir-com-o-computador/estado')) {
+      const perda = estado.perdaDaRespostaDoItem;
+      if (perda && url.pathname === '/abrir-com-o-computador') {
+        estado.perdaDaRespostaDoItem = null;
+        if (perda.aplicada) itemDeLogin(req, url);
+        return route.abort('connectionreset');
+      }
+      const { status, json } = itemDeLogin(req, url);
       return responderJson(route, status, json);
     }
     // O que lê o Anki da pessoa é POST (contrato/LEIA-ME.md): por GET a Conexão não tem a rota.
@@ -347,6 +370,21 @@ function criarFakeAnki() {
      */
     abrirColecao(nome) { estado.contexto = { ...estado.contexto, colecao: nome }; },
     /** O complemento não consegue ler o perfil: a saúde responde o erro interno do contrato. */
+    /**
+     * O item de login de “Abrir o Anki com o computador” (`itemDeLogin` dos exemplos): `desligado` (o padrão), `ligado`,
+     * `sem_anki` (a Conexão não sabe onde o Anki está), `falha` (não deu para escrever o item) ou `indisponivel`
+     * (o sistema não tem item). Pedir ligar ou desligar o muda, como a Conexão faria.
+     */
+    definirItemDeLogin(situacao) { estado.contexto = { ...estado.contexto, itemDeLogin: situacao }; },
+    /** O item de login está escrito de verdade (só a situação `ligado`): o que a Conexão deixou no computador. */
+    itemInstalado() { return estado.contexto.itemDeLogin === 'ligado'; },
+    /** O item de login agora: `ligado` ou `desligado` (ou a situação que o teste pôs). */
+    itemDeLogin() { return estado.contexto.itemDeLogin; },
+    /**
+     * O próximo pedido de ligar ou desligar o item perde a resposta (a conexão cai): com `aplicada` a Conexão chegou a
+     * escrever ou apagar o item antes, sem `aplicada` não mexeu em nada. A extensão não tem como saber qual dos dois.
+     */
+    perderARespostaDoItemDeLogin({ aplicada }) { estado.perdaDaRespostaDoItem = { aplicada }; },
     falharLeituraDoPerfil() { estado.contexto = { ...estado.contexto, falhaNoPerfil: true }; },
     /** As respostas do contrato a um pedido, para o teste que confere o fake contra os exemplos. */
     respostaDoContrato,

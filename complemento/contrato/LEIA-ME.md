@@ -27,8 +27,10 @@ Mudar só um lado quebra um teste, e a mensagem diz o exemplo e os dois arquivos
   página da extensão não consegue pedir como outro cliente.
 - `contexto`: em que situação o complemento está: o `perfil` aberto (`null` na tela de perfis), `falhaNoPerfil`
   quando ler o perfil quebra e `colecao`, o nome de uma coleção de `colecoes` (a que o Anki tem aberta; `null`: nenhuma,
-  e a leitura dos Baralhos responde `503`). Um exemplo que não cita `colecao` vale com qualquer uma. O fake muda de contexto por
-  `fakes.anki.abrirPerfil(...)`, `falharLeituraDoPerfil()` e `abrirColecao(nome)`; o teste do complemento monta
+  e a leitura dos Baralhos responde `503`) e `itemDeLogin`, a situação do item de “Abrir o Anki com o computador” (`desligado`,
+  `ligado`, `sem_anki`, `falha` ou `indisponivel`). Uma parte do contexto só vale para os exemplos que a citam: um exemplo que não cita
+  `colecao` vale com qualquer uma, a saúde não diz do item e o item não diz do perfil. O fake muda de contexto por
+  `fakes.anki.abrirPerfil(...)`, `falharLeituraDoPerfil()`, `abrirColecao(nome)` e `definirItemDeLogin(...)`; o teste do complemento monta
   um adaptador de coleção em memória (`test_colecao_em_memoria.py`) com a coleção que o exemplo nomeia.
 - `colecoes` (no alto do arquivo): as coleções que os exemplos nomeiam, com os Baralhos, as notas e os Cartões
   (`tipo` e `intervalo` do Anki: 0 novo, 1 aprendendo, 2 revisão, 3 reaprendendo).
