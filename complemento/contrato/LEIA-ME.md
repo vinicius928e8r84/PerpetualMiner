@@ -21,7 +21,8 @@ O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede 
   tem (método, caminho, status e `error`) e, no fim, exige um exemplo para cada um. Um estado novo do servidor
   sem exemplo (foi o `500` da saúde, no #185) quebra o teste dizendo qual. Quem pede cada rota em cada estado do Anki
   (coleção que quebra, sem coleção, perfil ilegível, corpo inválido) é a matriz `EstadosDeCadaRota`, que não lê os exemplos:
-  uma rota nova precisa do corpo mínimo dela em `CORPO_MINIMO` e entra na matriz sozinha.
+  uma rota nova se declara em `MATRIZ` (corpo mínimo, se lê a coleção, se lê o perfil e as recusas de validação dela; uma
+  rota que não lê a coleção, como a chave da IA, responde o mesmo `status` em todos os estados) e sem isso o teste quebra dizendo o que declarar.
 
 ## Um exemplo
 

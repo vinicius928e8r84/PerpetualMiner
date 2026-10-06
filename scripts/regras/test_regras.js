@@ -285,6 +285,23 @@ nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  expect(fakes.anki.re
   'o pedido e, depois, o que ficou guardado');
 nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', '  await outro.click();', "  await estadoFinal(extensao, { pm_tema: 'claro' });")), 0, 'a conferência do helper depois da última ação');
 
+// Delta do #194: a leitura descartada dentro do poll, o `expect` sem matcher, o valor sobrescrito e o helper de estado inalterado.
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', '  await expect.poll(async () => {', "    await extensao.lerStorage(['pm_tema']);", '    return true;', '  }).toBe(true);')), 1,
+  'o poll que lê e devolve outra coisa');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  await expect.poll(async () => (await extensao.lerStorage(['pm_tema'])).pm_tema).toBe('claro');")), 0,
+  'o poll que devolve o valor lido');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', '  await expect.poll(async () => {', "    const gravado = await extensao.lerStorage(['pm_tema']);", '    return gravado.pm_tema;', "  }).toBe('claro');")), 0,
+  'o poll que devolve o valor lido por uma variável');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  expect(await extensao.lerStorage(['pm_tema']));")), 1, 'o expect sem matcher não compara nada');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  expect(await extensao.lerStorage(['pm_tema'])).not.toEqual({});")), 0, 'o expect com .not.toEqual');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  let gravado = await extensao.lerStorage(['pm_tema']);", "  gravado = { pm_tema: 'claro' };", "  expect(gravado.pm_tema).toBe('claro');")), 1,
+  'o valor lido sobrescrito por uma constante antes de comparar');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  let gravado = await extensao.lerStorage(['pm_tema']);", "  expect(gravado.pm_tema).toBe('claro');", "  gravado = null;")), 0,
+  'o valor lido comparado antes de ser reaproveitado');
+nulo(achadosDoEstado(NO_ESTADO("  await estadoFinalInalterado(extensao, ['pm_tema'], async () => { await botao.click(); });")), 0,
+  'o helper de estado inalterado lê e compara depois da ação que ele executa');
+nulo(achadosDoEstado(NO_ESTADO("  await estadoFinalInalterado(extensao, ['pm_tema'], async () => {});", '  await botao.click();')), 1,
+  'o helper antes da ação não é o estado final');
 // A exceção nomeada, para o que não guarda nada, e o spec de aparência, que a regra não olha.
 acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js',
   `// Exceção de teste: sem-estado-guardado — a aba só muda o que a tela mostra.\n${SO_AS_FOTOS}`, 0, 'a exceção nomeada');
@@ -406,6 +423,18 @@ semOComplementoNoPortao(JOB('', '      - run: node scripts/testar.mjs complement
 semOComplementoNoPortao(JOB('', "      - if: github.event_name == 'pull_request'\n        run: node scripts/testar.mjs complemento\n"), 0, 'um if que vale no pull request');
 semOComplementoNoPortao(JOB('', '      - run: |\n          echo preparando\n          node scripts/testar.mjs complemento\n'), 0, 'o comando numa linha de um bloco');
 semOComplementoNoPortao(JOB('', '      - run: xvfb-run --auto-servernum node scripts/testar.mjs complemento -- --workers=1\n'), 0, 'o executor atrás do xvfb-run');
+// Delta do #194: o `if` é lido pelo operador, não pelo nome do evento; o YAML dobrado (`>`) é uma linha só.
+semOComplementoNoPortao(JOB('    if: github.event_name != \'pull_request\'\n'), 1, 'job que só roda fora do pull request (!=)');
+semOComplementoNoPortao(JOB('    if: github.event_name != \'push\'\n'), 0, 'job que roda no pull request (!= push)');
+semOComplementoNoPortao(JOB('    if: github.event_name == \'pull_request\'\n'), 0, 'job que roda no pull request (==)');
+semOComplementoNoPortao(JOB('    if: ${{ github.event_name == \'push\' }}\n'), 1, 'job que só roda no push');
+semOComplementoNoPortao(JOB('    if: github.event_name == \'push\' || github.event_name == \'pull_request\'\n'), 0, 'job que roda no push ou no PR');
+semOComplementoNoPortao(JOB('    if: github.event_name == \'push\' && false\n'), 1, 'condição composta que nunca é verdade');
+semOComplementoNoPortao(JOB('    if: always()\n'), 0, 'always() roda no PR');
+semOComplementoNoPortao(JOB('    if: contains(github.ref, \'main\')\n'), 1, 'uma condição que o leitor não sabe interpretar não conta como portão');
+semOComplementoNoPortao(JOB('', '      - run: >\n          echo preparando\n          node scripts/testar.mjs complemento\n'), 1, 'o bloco dobrado vira um echo só');
+semOComplementoNoPortao(JOB('', '      - run: >\n          node scripts/testar.mjs\n          complemento\n'), 0, 'o bloco dobrado que junta o comando e o grupo');
+semOComplementoNoPortao(JOB('', '      - run: |\n          node scripts/testar.mjs complemento\n'), 0, 'o bloco literal');
 // E o workflow acusa a linha: o passo que cita o executor e não o executa.
 const doEcho = nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': JOB('', '      - run: echo node scripts/testar.mjs complemento\n') }), '.github/workflows/testes.yml'), 1,
   'o passo que só cita o executor');

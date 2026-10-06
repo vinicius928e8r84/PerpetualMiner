@@ -33,7 +33,6 @@ const ACAO = /\.(?:click|dblclick|fill|press|pressSequentially|check|uncheck|sel
 // De onde o teste lê o que ficou guardado: o storage da extensão e as conferências do helper. O que o fake guardou
 // entra pelos leitores que ele marca com `@estado-guardado` (`leitoresDosFakes`).
 const LEITURA_FIXA = /\b(?:lerStorage|estadoFinal\w*)\s*\(|\.frases\s*\(|\bchrome\.storage\.local\.get\b/g;
-const CONFERENCIA = /\bexpect(?:\.poll)?\s*\(/g;
 const ASSERCAO_PROPRIA = /\bestadoFinal\w*\s*\(/g;
 
 const leitoresPorRaiz = new Map();
@@ -107,29 +106,80 @@ const posicoes = (texto, padrao, nomes = new Set()) => {
 
 const identificadores = texto => texto.match(/[A-Za-z_$][\w$]*/g) || [];
 
-/**
- * A leitura que começa em `p` chega a uma conferência: está dentro de um `expect(…)`, é uma conferência do helper, ou
- * o valor lido vai para uma variável (`const x = await …`) que um `expect` depois usa, direta ou por outra variável.
- * Uma leitura que ninguém compara não conta.
- */
-function leituraConferida(corpo, p, conferencias) {
-  if (/^estadoFinal\w*\s*\(/.test(corpo.slice(p))) return true;
-  if (conferencias.some(c => c.de < p && p < c.fim)) return true;
-  // O começo da instrução: sobe enquanto a linha de cima não termina uma instrução ou um bloco.
+// O `expect(…)` que de fato compara: o que vem depois do parêntese é um matcher (`.toBe(…)`, `.not.toEqual(…)`…).
+const MATCHER = /^\s*\.\s*(?:(?:not|resolves)\s*\.\s*)*to[A-Z]\w*\s*\(/;
+
+/** Os `expect(…)` e `expect.poll(…)` do corpo que executam um matcher: { de, fim, poll }; um `expect(x)` sem matcher não compara nada. */
+function conferenciasDe(corpo) {
+  const lista = [];
+  for (const m of corpo.matchAll(/\bexpect(\.poll)?\s*\(/g)) {
+    const abre = m.index + m[0].length - 1;
+    const fim = fechamento(corpo, abre);
+    if (fim >= 0 && MATCHER.test(corpo.slice(fim + 1))) lista.push({ de: m.index, fim, poll: Boolean(m[1]) });
+  }
+  return lista;
+}
+
+/** O começo da instrução que contém `p`: sobe enquanto a linha de cima não termina uma instrução ou um bloco. */
+function inicioDaInstrucao(corpo, p) {
   const linhas = corpo.slice(0, p).split('\n');
   let de = linhas.length - 1;
   while (de > 0 && !/[;{}]\s*$/.test(linhas[de - 1].trim() === '' ? ';' : linhas[de - 1])) de--;
-  const instrucao = linhas.slice(de).join('\n');
-  const m = /(?:\b(?:const|let|var)\s+)?(\{[^}]*\}|\[[^\]]*\]|[A-Za-z_$][\w$]*)\s*=(?!=)[^;]*$/.exec(instrucao);
-  if (!m) return false;
-  const nomes = new Set(identificadores(m[1]));
-  // O que vem depois: uma variável feita a partir de uma já seguida também é seguida.
-  const resto = corpo.slice(p);
-  for (const parte of resto.split(';')) {
-    const derivada = /(?:\b(?:const|let|var)\s+)?([A-Za-z_$][\w$]*)\s*=(?!=)([^]*)$/.exec(parte);
-    if (derivada && identificadores(derivada[2]).some(nome => nomes.has(nome))) nomes.add(derivada[1]);
+  return linhas.slice(0, de).join('\n').length + (de > 0 ? 1 : 0);
+}
+
+const ATRIBUICAO = /^\s*(?:(const|let|var)\s+)?(\{[^}]*\}|\[[^\]]*\]|[A-Za-z_$][\w$]*)\s*=(?!=)([^]*)$/;
+
+/**
+ * Os nomes que ainda carregam o valor lido em `p` quando o texto chega a `ate`: a variável que recebeu a leitura e as
+ * que se fizeram a partir dela; uma atribuição sem o valor lido (`gravado = { … }`) a tira da lista.
+ */
+function nomesVivos(corpo, p, ate) {
+  const inicio = inicioDaInstrucao(corpo, p);
+  const m = ATRIBUICAO.exec(corpo.slice(inicio, p));
+  if (!m) return new Set();
+  const nomes = new Set(identificadores(m[2]));
+  let deslocamento = p;
+  for (const parte of corpo.slice(p).split(';')) {
+    const comeco = deslocamento;
+    deslocamento += parte.length + 1;
+    if (comeco >= ate) break;
+    const a = ATRIBUICAO.exec(parte);
+    if (!a || a[1] === undefined && !/^[A-Za-z_$][\w$]*$/.test(a[2])) continue;
+    if (identificadores(a[3]).some(nome => nomes.has(nome))) identificadores(a[2]).forEach(nome => nomes.add(nome));
+    else if (!a[1]) nomes.delete(a[2]);
   }
-  return conferencias.some(c => c.de > p && identificadores(corpo.slice(c.de, c.fim)).some(nome => nomes.has(nome)));
+  return nomes;
+}
+
+/** O valor devolvido de um poll: a leitura em `p` está no corpo de seta ou num `return`, direta ou por uma variável. */
+function leituraDevolvida(corpo, p, poll) {
+  const funcao = corpo.slice(poll.de, poll.fim);
+  const relativo = p - poll.de;
+  const seta = funcao.search(/=>/);
+  if (seta < 0 || relativo < seta) return false;
+  const depois = funcao.slice(seta + 2);
+  if (!/^\s*\{/.test(depois)) return true; // corpo de expressão: o que se lê é o que se devolve
+  for (const r of funcao.matchAll(/\breturn\b([^;}]*)/g)) {
+    const posicaoDoReturn = poll.de + r.index;
+    if (posicaoDoReturn > p) {
+      if (identificadores(r[1]).some(nome => nomesVivos(corpo, p, posicaoDoReturn).has(nome))) return true;
+    } else if (posicaoDoReturn < p && p < posicaoDoReturn + r[0].length) return true; // a leitura está no próprio `return`
+  }
+  return false;
+}
+
+/**
+ * A leitura que começa em `p` chega a uma comparação que executa: o valor está dentro de um `expect(…)` com matcher, é uma
+ * conferência do helper, vai para uma variável que um `expect` com matcher usa depois (direta ou por outra variável, sem
+ * ser sobrescrita antes) ou é o que um `expect.poll` devolve. Uma leitura que ninguém compara não conta.
+ */
+function leituraConferida(corpo, p, conferencias) {
+  if (/^estadoFinal\w*\s*\(/.test(corpo.slice(p))) return true;
+  for (const c of conferencias.filter(c => c.de < p && p < c.fim)) {
+    if (!c.poll || leituraDevolvida(corpo, p, c)) return true;
+  }
+  return conferencias.some(c => c.de > p && !c.poll && identificadores(corpo.slice(c.de, c.fim)).some(nome => nomesVivos(corpo, p, c.de).has(nome)));
 }
 
 // A exceção vale no próprio teste ou nas linhas de comentário logo acima da instrução que o abre.
@@ -160,8 +210,10 @@ function verificar(arquivo, fonte, raiz = process.cwd()) {
     const corpo = codigo.slice(abre + 1, fecha);
     const acoes = posicoes(corpo, ACAO, quemAge);
     if (acoes.length === 0) continue;
-    const conferencias = posicoes(corpo, CONFERENCIA).map(de => ({ de, fim: fechamento(corpo, corpo.indexOf('(', de)) }));
-    const leituras = posicoes(corpo, LEITURA, quemLe).filter(p => p > acoes[acoes.length - 1]);
+    const conferencias = conferenciasDe(corpo);
+    // O helper de estado inalterado lê e compara DEPOIS da ação que ele executa: a leitura dele vale no fim da chamada.
+    const efetiva = p => (/^estadoFinalInalterado\s*\(/.test(corpo.slice(p)) ? fechamento(corpo, corpo.indexOf('(', p)) : p);
+    const leituras = posicoes(corpo, LEITURA, quemLe).filter(p => efetiva(p) > acoes[acoes.length - 1]);
     if (leituras.some(p => leituraConferida(corpo, p, conferencias))) continue;
     const primeira = linhaDe(codigo, m.index);
     if (anotado(comentarios, linhas, primeira, linhaDe(codigo, fecha))) continue;

@@ -162,11 +162,29 @@ class ContratoDaConexao(unittest.TestCase):
             self.assertEqual(json.load(arquivo)["origemDaExtensao"], ORIGEM)
 
 
-# O corpo mínimo que cada rota de POST aceita, para a matriz de estados abaixo pedir a rota de verdade.
-CORPO_MINIMO = {
-    ("POST", "/anki/decks"): {},
-    ("POST", "/anki/stats/decks"): {"decks": [{"deckName": "Inglês", "lang": "en"}]},
-    ("POST", "/anki/vocabulary"): {"deck": "Inglês", "lang": "en"},
+# Cada rota do servidor, declarada à parte dos exemplos, para a matriz de estados pedir a rota de verdade:
+#   corpo         o corpo mínimo que ela aceita (None: sem corpo);
+#   status        o que ela responde a esse corpo com o Anki saudável (200 se não disser);
+#   le_a_colecao  lê a coleção do Anki: com a coleção que quebra responde 500, sem coleção aberta responde 503;
+#   le_o_perfil   lê o perfil aberto: com o perfil ilegível responde 500;
+#   recusas       cada validação do pedido: (corpo, status, `error`), com a coleção aberta.
+# Uma rota nova entra aqui dizendo o que faz: uma que não lê a coleção nem o perfil (a chave da IA, por exemplo)
+# responde o mesmo `status` em todos os estados do Anki.
+MATRIZ = {
+    ("GET", "/health"): {"corpo": None, "le_a_colecao": False, "le_o_perfil": True, "recusas": []},
+    ("POST", "/anki/decks"): {"corpo": {}, "le_a_colecao": True, "le_o_perfil": False, "recusas": []},
+    ("POST", "/anki/stats/decks"): {
+        "corpo": {"decks": [{"deckName": "Inglês", "lang": "en"}]},
+        "le_a_colecao": True,
+        "le_o_perfil": False,
+        "recusas": [({}, 400, "decks_required")],
+    },
+    ("POST", "/anki/vocabulary"): {
+        "corpo": {"deck": "Inglês", "lang": "en"},
+        "le_a_colecao": True,
+        "le_o_perfil": False,
+        "recusas": [({"lang": "en"}, 400, "deck_required"), ({"deck": "Inglês", "lang": "fr"}, 400, "invalid_lang")],
+    },
 }
 
 
@@ -182,49 +200,89 @@ class EstadosDeCadaRota(unittest.TestCase):
 
     Não depende dos exemplos do contrato: o que o servidor responde fica registrado (`registrar_a_resposta`) e,
     no fim do arquivo, `tearDownModule` exige um exemplo para cada resposta. Tirar um exemplo, ou uma rota
-    nova que responde um estado que ninguém escreveu, quebra por aqui, dizendo o estado."""
+    nova que responde um estado que ninguém escreveu, quebra por aqui, dizendo o estado.
+    Os métodos `conferir_*` recebem a matriz e as rotas, para o teste da própria matriz usar uma rota inventada."""
 
-    def test_toda_rota_de_post_tem_o_corpo_minimo_desta_matriz(self):
-        sem_corpo = sorted(rota for rota in servidor.ROTAS if rota[0] == "POST" and rota not in CORPO_MINIMO)
-        self.assertEqual(sem_corpo, [], "rota nova sem o corpo mínimo em CORPO_MINIMO (complemento/test_servidor.py): entra na matriz de estados")
+    def conferir_que_toda_rota_esta_na_matriz(self, rotas, matriz):
+        sem_entrada = sorted(rota for rota in rotas if rota not in matriz)
+        self.assertEqual(sem_entrada, [], "rota nova sem entrada em MATRIZ (complemento/test_servidor.py): diga o corpo, se lê a coleção e o perfil, e as recusas dela")
 
-    def pedir_cada_rota(self, conexao):
-        respostas = {}
-        for metodo, caminho in sorted(servidor.ROTAS):
-            respostas[(metodo, caminho)] = conexao.pedir(metodo, caminho, corpo=CORPO_MINIMO.get((metodo, caminho)))
-        return respostas
+    def pedir_cada_rota(self, conexao, rotas, matriz):
+        return {rota: conexao.pedir(rota[0], rota[1], corpo=matriz[rota]["corpo"]) for rota in sorted(rotas)}
 
-    def test_com_a_colecao_que_quebra_cada_rota_de_leitura_vira_erro_interno(self):
+    def conferir_a_colecao_que_quebra(self, rotas, matriz):
         with tempfile.TemporaryDirectory() as pasta, contextlib.redirect_stderr(io.StringIO()), ConexaoNoTeste(pasta, colecao=QuebradaAoLer()) as conexao:
-            respostas = self.pedir_cada_rota(conexao)
+            respostas = self.pedir_cada_rota(conexao, rotas, matriz)
         for rota, (status, _, corpo) in respostas.items():
-            if rota in CORPO_MINIMO:
+            if matriz[rota]["le_a_colecao"]:
                 self.assertEqual((status, json.loads(corpo)), (500, {"error": "internal_error"}), rota)
             else:
-                self.assertEqual(status, 200, rota)
+                self.assertEqual(status, matriz[rota].get("status", 200), rota)
 
-    def test_sem_a_colecao_aberta_cada_rota_de_leitura_diz_que_nao_ha_o_que_ler(self):
+    def conferir_sem_a_colecao_aberta(self, rotas, matriz):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            respostas = self.pedir_cada_rota(conexao)
+            respostas = self.pedir_cada_rota(conexao, rotas, matriz)
         for rota, (status, _, corpo) in respostas.items():
-            if rota in CORPO_MINIMO:
+            if matriz[rota]["le_a_colecao"]:
                 self.assertEqual(status, 503, rota)
                 self.assertTrue(json.loads(corpo)["error"].endswith("_unavailable"), rota)
             else:
-                self.assertEqual(status, 200, rota)
+                self.assertEqual(status, matriz[rota].get("status", 200), rota)
 
-    def test_com_o_perfil_que_nao_se_le_a_saude_vira_erro_interno_e_as_leituras_seguem(self):
+    def conferir_o_perfil_que_nao_se_le(self, rotas, matriz):
         with tempfile.TemporaryDirectory() as pasta, contextlib.redirect_stderr(io.StringIO()), ConexaoNoTeste(pasta, falha_no_perfil=True) as conexao:
-            respostas = self.pedir_cada_rota(conexao)
-        self.assertEqual(respostas[("GET", "/health")][0], 500)
-        for rota in CORPO_MINIMO:
-            self.assertEqual(respostas[rota][0], 503, rota)
+            respostas = self.pedir_cada_rota(conexao, rotas, matriz)
+        for rota, (status, _, corpo) in respostas.items():
+            if matriz[rota]["le_o_perfil"]:
+                self.assertEqual((status, json.loads(corpo)), (500, {"error": "internal_error"}), rota)
+            elif matriz[rota]["le_a_colecao"]:
+                self.assertEqual(status, 503, rota)
+            else:
+                self.assertEqual(status, matriz[rota].get("status", 200), rota)
 
-    def test_um_corpo_que_nao_e_um_objeto_json_e_recusado_em_toda_rota(self):
+    def conferir_as_recusas_de_cada_rota(self, rotas, matriz):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, colecao=ColecaoEmMemoria(ler_o_contrato()["colecoes"]["inglês com subbaralho"])) as conexao:
+            for rota in sorted(rotas):
+                for corpo, status_esperado, erro_esperado in matriz[rota]["recusas"]:
+                    status, _, resposta = conexao.pedir(rota[0], rota[1], corpo=corpo)
+                    self.assertEqual((status, json.loads(resposta)), (status_esperado, {"error": erro_esperado}), (rota, corpo))
+
+    def conferir_o_corpo_que_nao_e_um_objeto_json(self, rotas, matriz):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            for metodo, caminho in sorted(servidor.ROTAS):
+            for metodo, caminho in sorted(rotas):
                 status, _, corpo = conexao.pedir(metodo, caminho, corpo=b"{isto nao e json")
                 self.assertEqual((status, json.loads(corpo)), (400, {"error": "invalid_json"}), (metodo, caminho))
+
+    def conferir_tudo(self, rotas, matriz):
+        self.conferir_que_toda_rota_esta_na_matriz(rotas, matriz)
+        self.conferir_a_colecao_que_quebra(rotas, matriz)
+        self.conferir_sem_a_colecao_aberta(rotas, matriz)
+        self.conferir_o_perfil_que_nao_se_le(rotas, matriz)
+        self.conferir_as_recusas_de_cada_rota(rotas, matriz)
+        self.conferir_o_corpo_que_nao_e_um_objeto_json(rotas, matriz)
+
+    def test_cada_rota_do_servidor_em_cada_estado_do_anki(self):
+        self.conferir_tudo(servidor.ROTAS, MATRIZ)
+
+    def test_uma_rota_nova_sem_entrada_na_matriz_quebra_dizendo_o_que_declarar(self):
+        rotas = dict(servidor.ROTAS)
+        rotas[("POST", "/rota/inventada")] = lambda conexao, corpo: (200, {"ok": True})
+        with self.assertRaisesRegex(AssertionError, r"rota nova sem entrada em MATRIZ.*se lê a coleção"):
+            self.conferir_que_toda_rota_esta_na_matriz(rotas, MATRIZ)
+
+    def test_uma_rota_que_nao_le_a_colecao_responde_200_em_todos_os_estados_dela(self):
+        # Como a de estado da chave de IA (PR 191): não toca a coleção nem o perfil, e o corpo `{}` basta.
+        rota = ("POST", "/rota/inventada")
+        original, respondidos = dict(servidor.ROTAS), set(RESPONDIDOS)
+        servidor.ROTAS[rota] = lambda conexao, corpo: (200, {"configurada": False})
+        try:
+            matriz = dict(MATRIZ)
+            matriz[rota] = {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []}
+            self.conferir_tudo(servidor.ROTAS, matriz)
+        finally:
+            servidor.ROTAS.clear()
+            servidor.ROTAS.update(original)
+            RESPONDIDOS.intersection_update(respondidos)  # a rota inventada não é do contrato
 
 
 class SaudeDaConexao(unittest.TestCase):

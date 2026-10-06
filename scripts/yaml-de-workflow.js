@@ -31,7 +31,8 @@ function lerYaml(texto) {
     return posicao < linhas.length ? linhas[posicao] : null;
   };
 
-  function blocoDeTexto(recuoDaChave) {
+  // Um bloco `|` guarda as linhas como estão; um `>` as dobra: linhas seguidas viram uma só, separadas por espaço.
+  function blocoDeTexto(recuoDaChave, dobrado) {
     const pedacos = [];
     while (posicao < linhas.length) {
       const linha = linhas[posicao];
@@ -39,7 +40,16 @@ function lerYaml(texto) {
       pedacos.push(linha);
       posicao++;
     }
-    return { texto: pedacos.map(l => l.conteudo.trim()).join('\n'), linhas: pedacos.map(l => l.numero) };
+    if (!dobrado) return { texto: pedacos.map(l => l.conteudo.trim()).join('\n'), linhas: pedacos.map(l => l.numero) };
+    const grupos = [];
+    let aberto = false;
+    for (const linha of pedacos) {
+      if (linha.conteudo.trim() === '') { aberto = false; continue; }
+      if (aberto) grupos[grupos.length - 1].texto += ` ${linha.conteudo.trim()}`;
+      else grupos.push({ texto: linha.conteudo.trim(), numero: linha.numero });
+      aberto = true;
+    }
+    return { texto: grupos.map(g => g.texto).join('\n'), linhas: grupos.map(g => g.numero) };
   }
 
   function mapa(nivel) {
@@ -53,7 +63,7 @@ function lerYaml(texto) {
       objeto[LINHAS_DAS_CHAVES][chave] = linha.numero;
       const valor = (m[3] || '').trim();
       if (/^[|>][+-]?$/.test(valor)) {
-        const bloco = blocoDeTexto(nivel);
+        const bloco = blocoDeTexto(nivel, valor.startsWith('>'));
         objeto[chave] = bloco.texto;
         objeto[`${chave}$linhas`] = bloco.linhas;
       } else if (valor === '' || valor.startsWith('#')) {
@@ -95,15 +105,36 @@ function lerYaml(texto) {
   return primeira ? bloco(recuo(primeira.conteudo)) : {};
 }
 
-const FALSO = /^(?:\$\{\{\s*)?(?:false|0|''|"")(?:\s*\}\})?$/i;
+// O valor de uma condição `if:` num pull request: true, false, ou null quando o leitor não sabe interpretá-la.
+// Entendidas: true/false, always(), success(), `github.event_name ==|!= 'evento'`, e `&&` / `||` entre elas.
+function valorDoIf(condicao) {
+  const texto = String(condicao).trim().replace(/^\$\{\{\s*([^]*?)\s*\}\}$/, '$1').trim();
+  const atomo = parte => {
+    const a = parte.trim();
+    if (/^true$|^always\(\)$|^success\(\)$/i.test(a)) return true;
+    if (/^false$|^0$|^''$|^""$/i.test(a)) return false;
+    const evento = /^github\.event_name\s*(==|!=)\s*['"]([a-z_]+)['"]$/.exec(a);
+    if (evento) return (evento[2] === 'pull_request') === (evento[1] === '==');
+    return null;
+  };
+  const ou = texto.split('||').map(termo => {
+    const valores = termo.split('&&').map(atomo);
+    if (valores.includes(false)) return false;
+    return valores.includes(null) ? null : true;
+  });
+  if (ou.includes(true)) return true;
+  return ou.includes(null) ? null : false;
+}
 
-/** Por que um `if:` impede de rodar num pull request (ou null se pode rodar). */
+/** Por que um `if:` impede de contar como portão do pull request (ou null se roda nele). */
 function motivoDoIf(condicao) {
   if (condicao === undefined || condicao === null) return null;
+  const valor = valorDoIf(condicao);
+  if (valor === true) return null;
   const texto = String(condicao).trim();
-  if (FALSO.test(texto)) return `if: ${texto} nunca é verdade`;
-  if (/github\.event_name/.test(texto) && !/pull_request/.test(texto)) return `if: ${texto} não vale no pull request`;
-  return null;
+  return valor === false
+    ? `if: ${texto} não é verdade no pull request`
+    : `if: ${texto} é uma condição que o leitor não sabe interpretar (use true/false ou github.event_name ==/!= 'evento'); não conta como portão`;
 }
 
 const verdadeiro = valor => /^(?:\$\{\{\s*)?true(?:\s*\}\})?$/i.test(String(valor ?? '').trim());
