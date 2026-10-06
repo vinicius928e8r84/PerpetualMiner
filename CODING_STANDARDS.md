@@ -9,7 +9,7 @@ What the reviewer enforces on a change. Each rule points to where it is explaine
 | The diff touches | Open |
 |------|------|
 | `painel-boas-vindas.js`, `lib/configuracao.js`, `painel-lembrete.js` | `boas-vindas` |
-| `painel-chave.js`, `painel-perigo.js`, `painel-atalhos.js`, `lib/atalhos.js`, `painel-conta.js` | `configuracoes` |
+| `painel-chave.js`, `painel-perigo.js`, `painel-atalhos.js`, `lib/atalhos.js`, `painel-conta.js`, `painel-abrir-anki.js` | `configuracoes` |
 | `popup.html/js/css` | `popup` |
 | `painel.js`, `painel.css` (Frases list, Minerar frases) | `painel-frases` |
 | `painel-anki*.js`, `painel-ajustes.js`, `painel-envio.js`, `lib/ajustes-de-envio.js` | `painel-anki` |
