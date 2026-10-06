@@ -19,7 +19,9 @@ O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede 
   `launch` contam. A regra `contrato-fechado` (`node scripts/regras/verificar.js`) acusa um `fetch` direto a uma rota da Conexão.
 - **As respostas do complemento**: `complemento/test_servidor.py` guarda o que o servidor real respondeu a uma rota que ele
   tem (método, caminho, status e `error`) e, no fim, exige um exemplo para cada um. Um estado novo do servidor
-  sem exemplo (foi o `500` da saúde, no #185) quebra o teste dizendo qual.
+  sem exemplo (foi o `500` da saúde, no #185) quebra o teste dizendo qual. Quem pede cada rota em cada estado do Anki
+  (coleção que quebra, sem coleção, perfil ilegível, corpo inválido) é a matriz `EstadosDeCadaRota`, que não lê os exemplos:
+  uma rota nova precisa do corpo mínimo dela em `CORPO_MINIMO` e entra na matriz sozinha.
 
 ## Um exemplo
 

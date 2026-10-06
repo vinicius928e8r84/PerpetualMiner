@@ -100,6 +100,6 @@ function main(argv) {
 try {
   process.exitCode = main(process.argv.slice(2));
 } catch (erro) {
-  console.log(`error: ${erro.message}`);
+  console.log(`error: ${erro.message}\nhelp: node scripts/testar.mjs --help; os grupos estão em scripts/testes.json`);
   process.exitCode = 1;
 }

@@ -127,14 +127,14 @@ function criarFakeGoogle() {
     padrao: /^https:\/\/(firestore|securetoken|identitytoolkit|www)\.googleapis\.com\//,
     tratar,
     requisicoes,
-    /** Frases do usuário no Firestore, já convertidas de campos para objetos. */
+    /** @estado-guardado Frases do usuário no Firestore, já convertidas de campos para objetos. */
     frasesDe(uid) {
       const prefixo = `usuarios/${uid}/frases/`;
       return [...documentos]
         .filter(([doc]) => doc.startsWith(prefixo))
         .map(([, fields]) => camposParaObjeto(fields));
     },
-    /** Ids com tombstone no Firestore do usuário (`usuarios/{uid}/meta/deleted`). */
+    /** @estado-guardado Ids com tombstone no Firestore do usuário (`usuarios/{uid}/meta/deleted`). */
     apagadasDe(uid) {
       return Object.keys(documentos.get(`usuarios/${uid}/meta/deleted`)?.ids?.mapValue?.fields || {});
     },

@@ -40,4 +40,18 @@ assert.equal(ferramentas.status, 0, ferramentas.stdout + ferramentas.stderr);
 assert.match(ferramentas.stdout, /▶ node: node test_sync\.js/);
 assert.match(ferramentas.stdout, /testes ok: node/);
 
+// O cadastro ausente ou quebrado diz como consertar, em português, com a posição do erro.
+const { lerRegistro } = require('./grupos-de-teste.js');
+const fs = await import('node:fs');
+const os = await import('node:os');
+const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-cadastro-'));
+fs.mkdirSync(path.join(pasta, 'scripts'));
+assert.throws(() => lerRegistro(pasta), /falta scripts\/testes\.json.*git checkout origin\/main -- scripts\/testes\.json/);
+fs.writeFileSync(path.join(pasta, 'scripts', 'testes.json'), '{\n  "grupos": {\n    node: {}\n  }\n}\n');
+assert.throws(() => lerRegistro(pasta), erro => /não é um JSON válido \(erro perto da linha 3, coluna 5: vírgula, aspas ou chave fora do lugar\)/.test(erro.message)
+  && /node scripts\/testar\.mjs --listar/.test(erro.message) && !/Expected/.test(erro.message));
+fs.writeFileSync(path.join(pasta, 'scripts', 'testes.json'), '{ "fora": [] }');
+assert.throws(() => lerRegistro(pasta), /não tem o objeto "grupos"/);
+fs.rmSync(pasta, { recursive: true, force: true });
+
 console.log('testar tests passed');

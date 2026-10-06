@@ -336,6 +336,7 @@ function criarFakeAnki() {
     padrao: /^http:\/\/(127\.0\.0\.1|localhost):8766\//,
     tratar,
     requisicoes,
+    /** @estado-guardado Os Envios que a Conexão guardou (um por `POST /jobs`): o que ficou do lado dela, não o pedido que chegou. */
     envios,
     desligar() { estado.ligada = false; },
     ligar() { estado.ligada = true; },
@@ -405,7 +406,7 @@ function criarFakeAnki() {
     recusarEnvios(lang, recusa = { status: 500 }) { estado.recusas.set(lang, recusa); },
     aceitarEnvios(lang) { estado.recusas.delete(lang); },
 
-    /** Os Envios criados de um idioma, na ordem. */
+    /** @estado-guardado Os Envios criados de um idioma, na ordem. */
     enviosEm(lang) { return envios.filter(e => e.lang === lang); },
 
     /** Põe o Envio numa etapa do bridge (`generate_cards`, `send_to_anki`…). */

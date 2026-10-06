@@ -162,6 +162,71 @@ class ContratoDaConexao(unittest.TestCase):
             self.assertEqual(json.load(arquivo)["origemDaExtensao"], ORIGEM)
 
 
+# O corpo mínimo que cada rota de POST aceita, para a matriz de estados abaixo pedir a rota de verdade.
+CORPO_MINIMO = {
+    ("POST", "/anki/decks"): {},
+    ("POST", "/anki/stats/decks"): {"decks": [{"deckName": "Inglês", "lang": "en"}]},
+    ("POST", "/anki/vocabulary"): {"deck": "Inglês", "lang": "en"},
+}
+
+
+class QuebradaAoLer(ColecaoEmMemoria):
+    """O Anki que levanta um erro inesperado ao ler a coleção."""
+
+    def __init__(self):
+        super().__init__({"quebra": True, "baralhos": []})
+
+
+class EstadosDeCadaRota(unittest.TestCase):
+    """Cada rota que o servidor tem é pedida de verdade, por HTTP, em cada estado em que o Anki pode estar.
+
+    Não depende dos exemplos do contrato: o que o servidor responde fica registrado (`registrar_a_resposta`) e,
+    no fim do arquivo, `tearDownModule` exige um exemplo para cada resposta. Tirar um exemplo, ou uma rota
+    nova que responde um estado que ninguém escreveu, quebra por aqui, dizendo o estado."""
+
+    def test_toda_rota_de_post_tem_o_corpo_minimo_desta_matriz(self):
+        sem_corpo = sorted(rota for rota in servidor.ROTAS if rota[0] == "POST" and rota not in CORPO_MINIMO)
+        self.assertEqual(sem_corpo, [], "rota nova sem o corpo mínimo em CORPO_MINIMO (complemento/test_servidor.py): entra na matriz de estados")
+
+    def pedir_cada_rota(self, conexao):
+        respostas = {}
+        for metodo, caminho in sorted(servidor.ROTAS):
+            respostas[(metodo, caminho)] = conexao.pedir(metodo, caminho, corpo=CORPO_MINIMO.get((metodo, caminho)))
+        return respostas
+
+    def test_com_a_colecao_que_quebra_cada_rota_de_leitura_vira_erro_interno(self):
+        with tempfile.TemporaryDirectory() as pasta, contextlib.redirect_stderr(io.StringIO()), ConexaoNoTeste(pasta, colecao=QuebradaAoLer()) as conexao:
+            respostas = self.pedir_cada_rota(conexao)
+        for rota, (status, _, corpo) in respostas.items():
+            if rota in CORPO_MINIMO:
+                self.assertEqual((status, json.loads(corpo)), (500, {"error": "internal_error"}), rota)
+            else:
+                self.assertEqual(status, 200, rota)
+
+    def test_sem_a_colecao_aberta_cada_rota_de_leitura_diz_que_nao_ha_o_que_ler(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            respostas = self.pedir_cada_rota(conexao)
+        for rota, (status, _, corpo) in respostas.items():
+            if rota in CORPO_MINIMO:
+                self.assertEqual(status, 503, rota)
+                self.assertTrue(json.loads(corpo)["error"].endswith("_unavailable"), rota)
+            else:
+                self.assertEqual(status, 200, rota)
+
+    def test_com_o_perfil_que_nao_se_le_a_saude_vira_erro_interno_e_as_leituras_seguem(self):
+        with tempfile.TemporaryDirectory() as pasta, contextlib.redirect_stderr(io.StringIO()), ConexaoNoTeste(pasta, falha_no_perfil=True) as conexao:
+            respostas = self.pedir_cada_rota(conexao)
+        self.assertEqual(respostas[("GET", "/health")][0], 500)
+        for rota in CORPO_MINIMO:
+            self.assertEqual(respostas[rota][0], 503, rota)
+
+    def test_um_corpo_que_nao_e_um_objeto_json_e_recusado_em_toda_rota(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            for metodo, caminho in sorted(servidor.ROTAS):
+                status, _, corpo = conexao.pedir(metodo, caminho, corpo=b"{isto nao e json")
+                self.assertEqual((status, json.loads(corpo)), (400, {"error": "invalid_json"}), (metodo, caminho))
+
+
 class SaudeDaConexao(unittest.TestCase):
     def test_saude_traz_a_versao_do_complemento_e_o_perfil_aberto(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, perfil="Maria") as conexao:

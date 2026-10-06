@@ -140,7 +140,7 @@
   function usarBaralhos(nomes) {
     const antes = estado.nomes;
     estado.nomes = { en: nomes.en, ru: nomes.ru };
-    const mudou = antes && (antes.en !== nomes.en || antes.ru !== nomes.ru);
+    const mudou = Boolean(antes) && (antes.en !== nomes.en || antes.ru !== nomes.ru);
     if ((!antes || mudou) && Shell.areaAtual() === 'anki') lerTudo({ deNovo: mudou });
   }
 

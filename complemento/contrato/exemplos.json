@@ -1280,6 +1280,25 @@
           "error": "invalid_json"
         }
       }
+    },
+    {
+      "nome": "Saúde pedida com um corpo que não é um objeto JSON",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "origem": null,
+        "metodo": "GET",
+        "caminho": "/health",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
     }
   ]
 }

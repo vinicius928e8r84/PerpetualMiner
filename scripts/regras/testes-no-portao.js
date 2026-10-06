@@ -6,13 +6,15 @@
 // scripts/testes.json (grupos e arquivos), o executor é scripts/testar.mjs, e cada workflow só
 // chama `node scripts/testar.mjs <grupo>`. Esta regra acusa:
 //   - um arquivo de teste que nenhum grupo roda (nem está em `fora`, com o motivo);
-//   - um grupo que nenhum workflow de PR chama;
+//   - um grupo que nenhum workflow de PR executa de verdade (a chamada num `echo`, num job com `if: false` ou num
+//     passo com `continue-on-error` não conta: o workflow é lido como YAML, scripts/yaml-de-workflow.js);
 //   - um workflow que roda um teste por fora do executor (a lista dele diverge do cadastro);
 //   - um cadastro com um padrão que não casa com nada ou um `fora` sem motivo.
 
 const fs = require('fs');
 const path = require('path');
 const { arquivosDoRepositorio } = require('./comum');
+const { comandos, lerYaml, rodaNoPR } = require('../yaml-de-workflow');
 const { ARQUIVO_DO_REGISTRO, arquivosDoGrupo, ehArquivoDeTeste, grupoDoArquivo, lerRegistro } = require('../grupos-de-teste');
 
 const id = 'testes-no-portao';
@@ -35,7 +37,10 @@ const TESTE_POR_FORA = [
   /\bplaywright\s+test\b/,
   /\bbash\s+\S*test_\S+\.sh\b/,
 ];
-const CHAMADA_DO_EXECUTOR = /scripts\/testar\.mjs\s+([a-z0-9-]+)/g;
+const CHAMADA_DO_EXECUTOR = /scripts\/testar\.mjs\s+((?:(?!-)[a-z0-9][a-z0-9-]*\s*)+)/g;
+// O comando que de fato roda o executor: só prefixos que não mudam o que roda (xvfb-run, env, nice, sudo, VAR=valor).
+const EXECUTA_O_EXECUTOR = /^\s*(?:(?:xvfb-run(?:\s+-{1,2}[\w-]+(?:=\S+)?)*|env|nice(?:\s+-n\s*\d+)?|sudo|[A-Za-z_][A-Za-z0-9_]*=\S+)\s+)*node\s+scripts\/testar\.mjs\s+((?:(?!-)[a-z0-9][a-z0-9-]*\s*)+)/;
+const gruposDe = texto => texto.trim().split(/\s+/).filter(Boolean);
 
 const emCache = new Map();
 /** Tudo que a regra olha fora do arquivo acusado: o cadastro, os arquivos do repositório e os workflows de PR. */
@@ -46,8 +51,13 @@ function contexto(raiz) {
   const workflows = arquivos.filter(arquivo => new RegExp(`^${DIRETORIO_DOS_WORKFLOWS.replace('.', '\\.')}/[^/]+\\.ya?ml$`).test(arquivo))
     .map(arquivo => ({ arquivo, texto: fs.readFileSync(path.join(raiz, arquivo), 'utf8') }));
   const chamados = new Set();
-  for (const { texto } of workflows.filter(w => /^\s*pull_request\s*:/m.test(w.texto))) {
-    for (const linha of linhasDeComando(texto)) for (const m of linha.texto.matchAll(CHAMADA_DO_EXECUTOR)) chamados.add(m[1]);
+  for (const { texto } of workflows) {
+    const yaml = lerYaml(texto);
+    if (!rodaNoPR(yaml)) continue;
+    for (const comando of comandos(yaml).filter(c => c.executa)) {
+      const chamada = EXECUTA_O_EXECUTOR.exec(comando.texto);
+      if (chamada) for (const grupo of gruposDe(chamada[1])) chamados.add(grupo);
+    }
   }
   const resultado = { arquivos, registro, chamados };
   emCache.set(raiz, resultado);
@@ -100,7 +110,19 @@ function verificar(arquivo, fonte, raiz = process.cwd()) {
       achados.push({ linha, detalhe: `roda um teste por fora do executor: ${texto.trim().slice(0, 100)}; chame \`node scripts/testar.mjs <grupo>\`` });
     }
     for (const m of texto.matchAll(CHAMADA_DO_EXECUTOR)) {
-      if (!registro.grupos[m[1]]) achados.push({ linha, detalhe: `chama o grupo ${m[1]}, que ${ARQUIVO_DO_REGISTRO} não tem` });
+      for (const grupo of gruposDe(m[1])) {
+        if (!registro.grupos[grupo]) achados.push({ linha, detalhe: `chama o grupo ${grupo}, que ${ARQUIVO_DO_REGISTRO} não tem` });
+      }
+    }
+  }
+  // O que menciona o executor tem de executá-lo: um `echo`, um job desligado ou um passo que pode falhar não é o portão.
+  const yaml = lerYaml(fonte);
+  for (const comando of comandos(yaml)) {
+    if (!/scripts\/testar\.mjs/.test(comando.texto)) continue;
+    if (!comando.executa) {
+      achados.push({ linha: comando.linha, detalhe: `${comando.texto.trim().slice(0, 100)} não executa o grupo (${comando.motivo}); o passo precisa rodar \`node scripts/testar.mjs <grupo>\` e poder barrar o PR` });
+    } else if (!EXECUTA_O_EXECUTOR.test(comando.texto)) {
+      achados.push({ linha: comando.linha, detalhe: `${comando.texto.trim().slice(0, 100)} cita o executor mas não o roda como comando; escreva \`node scripts/testar.mjs <grupo>\` (com xvfb-run, env ou nice na frente, se precisar)` });
     }
   }
   return achados;
