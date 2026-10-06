@@ -27,11 +27,13 @@ Mudar só um lado quebra um teste, e a mensagem diz o exemplo e os dois arquivos
   página da extensão não consegue pedir como outro cliente.
 - `contexto`: em que situação o complemento está: o `perfil` aberto (`null` na tela de perfis), `falhaNoPerfil`
   quando ler o perfil quebra, `colecao` (o nome de uma coleção de `colecoes`, a que o Anki tem aberta; `null`: nenhuma,
-  e a leitura dos Baralhos responde `503`; um exemplo que não cita `colecao` vale com qualquer uma), `openai` (como a OpenAI
+  e a leitura dos Baralhos responde `503`; um exemplo que não cita `colecao` vale com qualquer uma), `itemDeLogin`, a situação do
+  item de “Abrir o Anki com o computador” (`desligado`, `ligado`, `sem_anki`, `falha` ou `indisponivel`), `openai` (como a OpenAI
   responde à conferência de uma chave: `aceita`, `recusa`, `sem_credito`, `org_nao_verificada`, `limite_de_uso` ou
-  `fora_do_ar`) e `chaveNaConexao` (os 4 últimos caracteres da chave que a Conexão já guarda, ou `null`). O fake muda de
-  contexto por `fakes.anki.abrirPerfil(...)`, `falharLeituraDoPerfil()`, `abrirColecao(nome)`, `responderOpenAI(...)` e
-  `guardarChaveNaConexao(...)`; um exemplo só conta no fake pelos campos que ele diz (a saúde responde igual com qualquer
+  `fora_do_ar`) e `chaveNaConexao` (os 4 últimos caracteres da chave que a Conexão já guarda, ou `null`). Uma parte do contexto só
+  vale para os exemplos que a citam: a saúde não diz do item e o item não diz do perfil. O fake muda de
+  contexto por `fakes.anki.abrirPerfil(...)`, `falharLeituraDoPerfil()`, `abrirColecao(nome)`, `definirItemDeLogin(...)`,
+  `responderOpenAI(...)` e `guardarChaveNaConexao(...)`; um exemplo só conta no fake pelos campos que ele diz (a saúde responde igual com qualquer
   chave). Da chave só conta ter ou não ter: a resposta leva os 4 últimos da chave que o teste mandou, não os do exemplo. O teste
   do complemento monta um adaptador de coleção em memória (`test_colecao_em_memoria.py`) com a coleção que o exemplo nomeia.
 - `colecoes` (no alto do arquivo): as coleções que os exemplos nomeiam, com os Baralhos, as notas e os Cartões

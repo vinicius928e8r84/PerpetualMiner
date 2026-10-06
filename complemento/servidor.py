@@ -18,6 +18,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from . import baralhos, openai_api
 from .chaves import Cofre
 from .configuracao import ENDERECO, OPENAI_BASE
+from .item_de_login import AnkiNaoEncontrado
 
 # Um pedido maior que isto não é da extensão: a leitura mais pesada (os Baralhos pedidos) cabe em poucos KB.
 LIMITE_DO_CORPO = 64 * 1024
@@ -92,6 +93,34 @@ def _estado_da_ia(conexao, corpo):
     return 200, {"openai": {"configurada": True, "ultimos4": ultimos4}}
 
 
+def _estado_do_item_de_login(conexao, corpo):
+    item = conexao.item_de_login
+    return 200, {"ok": True, "ligado": item is not None and item.ligado()}
+
+
+def _abrir_com_o_computador(conexao, corpo):
+    """Escreve (`ligado: true`) ou apaga (`ligado: false`) o item de login que abre o Anki com o computador."""
+    ligado = corpo.get("ligado")
+    if not isinstance(ligado, bool):
+        return 400, {"error": "invalid_request"}
+    item = conexao.item_de_login
+    if item is None:
+        return 501, {"error": "login_item_unsupported"}
+    try:
+        if ligado:
+            item.ligar()
+        else:
+            item.desligar()
+    except AnkiNaoEncontrado:
+        conexao.logger.warning("Abrir o Anki com o computador: não se sabe onde o Anki está")
+        return 500, {"error": "anki_not_found"}
+    except OSError:
+        conexao.logger.exception("Abrir o Anki com o computador: não deu para %s o item de login", "escrever" if ligado else "apagar")
+        return 500, {"error": "login_item_failed"}
+    conexao.logger.info("Abrir o Anki com o computador: %s", "ligado" if item.ligado() else "desligado")
+    return 200, {"ok": True, "ligado": item.ligado()}
+
+
 ROTAS = {
     ("GET", "/health"): _saude,
     # O que lê o Anki da pessoa é POST: o GET de uma página da extensão vai sem `Origin` (contrato/LEIA-ME.md).
@@ -101,6 +130,8 @@ ROTAS = {
     # A chave da OpenAI: POST com a origem da extensão, e nenhuma resposta devolve a chave inteira.
     ("POST", "/ia/openai/chave"): _guardar_chave_da_openai,
     ("POST", "/ia/estado"): _estado_da_ia,
+    ("POST", "/abrir-com-o-computador/estado"): _estado_do_item_de_login,
+    ("POST", "/abrir-com-o-computador"): _abrir_com_o_computador,
 }
 
 # As rotas que respondem sem a origem da extensão. Rota nova não entra aqui sem decisão do dono:
@@ -230,7 +261,17 @@ class Conexao:
     """O servidor da Conexão: `iniciar()` sobe numa thread, `parar()` encerra."""
 
     def __init__(
-        self, *, porta, origens_aceitas, versao, perfil_aberto, logger, pasta_das_chaves, colecao=None, openai_base=OPENAI_BASE
+        self,
+        *,
+        porta,
+        origens_aceitas,
+        versao,
+        perfil_aberto,
+        logger,
+        pasta_das_chaves,
+        colecao=None,
+        item_de_login=None,
+        openai_base=OPENAI_BASE,
     ):
         self.porta = porta
         self.origens_aceitas = tuple(origens_aceitas)
@@ -240,6 +281,8 @@ class Conexao:
         self.logger = logger
         self.cofre = Cofre(pasta_das_chaves)
         self.openai_base = openai_base
+        # O item de login de “Abrir o Anki com o computador”; None onde o sistema não tem (nem Mac nem Windows).
+        self.item_de_login = item_de_login
         self._servidor = None
         self._thread = None
 

@@ -15,7 +15,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import configuracao, inicio  # noqa: E402
+from complemento import configuracao, inicio, item_de_login  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
 
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
@@ -120,6 +120,21 @@ class AoCarregarNoAnki(unittest.TestCase):
             with open(os.path.join(fila, "envio.json"), encoding="utf-8") as arquivo:
                 guardado = arquivo.read()
         self.assertEqual(guardado, '{"jobId": "job-1"}')
+
+    def test_a_conexao_que_sobe_escreve_o_item_de_login_no_lugar_que_o_inicio_deu_a_ela(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            agentes = os.path.join(pasta, "agentes")
+            item = item_de_login.ItemDeLogin(sistema="mac", pasta=agentes, comando=["/usr/bin/open", "-a", "Anki"])
+            conexao = inicio.iniciar(pasta, lambda: None, porta=0, item_de_login=item)
+            try:
+                pedido = http.client.HTTPConnection("127.0.0.1", conexao.porta, timeout=5)
+                pedido.request("POST", "/abrir-com-o-computador", body='{"ligado": true}', headers={"Origin": ORIGEM})
+                status = pedido.getresponse().status
+                pedido.close()
+            finally:
+                parar(conexao)
+            escritos = os.listdir(agentes)
+        self.assertEqual((status, escritos), (200, ["com.perpetualminer.abrir-o-anki.plist"]))
 
     def test_com_a_porta_ocupada_o_complemento_fica_quieto_e_registra_o_motivo(self):
         ocupante = socket.socket()

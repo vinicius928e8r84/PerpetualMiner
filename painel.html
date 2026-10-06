@@ -392,7 +392,8 @@
           abre e fecha (painel-shell.js); o botão do título é o controle para o
           teclado e o leitor de tela. O card Conta & sync é desenhado por
           painel-conta.js, o Atalhos por painel-atalhos.js, o Chave do Gemini
-          por painel-chave.js e o Zona de perigo por painel-perigo.js.
+          por painel-chave.js, o Conexão com o Anki por painel-abrir-anki.js e o
+          Zona de perigo por painel-perigo.js.
         -->
         <div class="shell-cards">
           <section class="shell-card cfg-card" id="cfg-conta" aria-labelledby="cfg-conta-titulo">
@@ -450,6 +451,20 @@
               <span class="cfg-chevron"><span data-icone="abrir"></span></span>
             </div>
             <div class="cfg-corpo" id="cfg-chave-corpo" hidden></div>
+          </section>
+          <section class="shell-card cfg-card" id="cfg-anki" aria-labelledby="cfg-anki-titulo">
+            <div class="cfg-cabeca">
+              <span class="cfg-icone"><span data-icone="anki"></span></span>
+              <div class="cfg-titulos">
+                <h2 class="shell-card__titulo">
+                  <button class="cfg-alternar" id="cfg-anki-titulo" type="button" aria-expanded="false" aria-controls="cfg-anki-corpo" data-voz="SHL-04.anki"></button>
+                </h2>
+                <p class="cfg-descricao" data-voz="CFG-40"></p>
+              </div>
+              <span class="cfg-resumo" id="cfg-anki-resumo"></span>
+              <span class="cfg-chevron"><span data-icone="abrir"></span></span>
+            </div>
+            <div class="cfg-corpo" id="cfg-anki-corpo" hidden></div>
           </section>
           <section class="shell-card cfg-card" id="cfg-aparencia" aria-labelledby="cfg-aparencia-titulo">
             <div class="cfg-cabeca">
@@ -661,6 +676,7 @@
   <script src="painel-lembrete.js"></script>
   <script src="painel-chave.js"></script>
   <script src="painel-ia.js"></script>
+  <script src="painel-abrir-anki.js"></script>
   <script src="painel-perigo.js"></script>
   <script src="painel-envio.js"></script>
   <script src="painel-anki-primeira-conexao.js"></script>

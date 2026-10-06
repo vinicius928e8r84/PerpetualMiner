@@ -18,10 +18,10 @@ const contrato = require('../../complemento/contrato/exemplos.json');
 // (`{ decks: [...] }`); sem `definirBaralhosDoAnki` a lista não vem (503), como
 // com o Anki sem responder, e a aba oferece o campo de texto.
 //
-// O que o complemento do Anki responde (a saúde, os Baralhos, os números, o vocabulário e a chave da OpenAI) vem de
+// O que o complemento do Anki responde (a saúde, os Baralhos, os números, o vocabulário, a chave da OpenAI e o item de login de “Abrir o Anki com o computador”) vem de
 // `complemento/contrato/exemplos.json`, o mesmo arquivo que os testes do
 // complemento leem: o fake responde o exemplo do pedido no contexto em que a
-// Conexão está (`abrirPerfil`, `abrirColecao`, `responderOpenAI`, `guardarChaveNaConexao`). Os testes de tela montam os Baralhos
+// Conexão está (`abrirPerfil`, `abrirColecao`, `responderOpenAI`, `guardarChaveNaConexao`, `definirItemDeLogin`). Os testes de tela montam os Baralhos
 // em termos de gente (`definirVocabulario`, `definirBaralho`) e o fake os entrega no
 // formato do contrato; `abrirColecao(nome)` passa a responder o contrato inteiro, para quem confere o
 // fake contra ele. Uma rota nova do complemento entra nesse arquivo
@@ -75,7 +75,7 @@ function criarFakeAnki() {
     falhaDosBaralhos: null,     // { status } | { rede: true }: POST /anki/stats/decks falha
     falhaDoVocabulario: null,   // { status } | { rede: true }: POST /anki/vocabulary falha
     baralhosDoAnki: null,       // os nomes de POST /anki/decks; null: a lista não vem (definirBaralhosDoAnki)
-    contexto: { perfil: 'Usuário 1', falhaNoPerfil: false, openai: 'aceita' }, // em que situação o complemento está (os `contexto` dos exemplos); `colecao` só existe depois de `abrirColecao`
+    contexto: { perfil: 'Usuário 1', falhaNoPerfil: false, openai: 'aceita', itemDeLogin: 'desligado' }, // em que situação o complemento está (os `contexto` dos exemplos); `colecao` só existe depois de `abrirColecao`
     chaveDaOpenAI: null,        // a cópia da chave que a Conexão guarda (a inteira: só o teste a vê)
   };
   const requisicoes = [];
@@ -246,14 +246,16 @@ function criarFakeAnki() {
   }
 
   /**
-   * Perfil e falha no perfil sempre contam (um exemplo que não diz `falhaNoPerfil` é o da saúde sem falha);
-   * `colecao`, `openai` e `chaveNaConexao` só contam nos exemplos que os dizem, para a saúde responder igual com qualquer coleção ou chave.
+   * `perfil` (com `falhaNoPerfil`: um exemplo que não o diz é o da saúde sem falha), `itemDeLogin`, `colecao`, `openai` e
+   * `chaveNaConexao` só contam nos exemplos que os dizem: a saúde responde igual com qualquer coleção, chave ou item, e o item
+   * responde com o Anki em qualquer perfil.
    * Da chave só conta ter ou não ter: os 4 últimos caracteres do exemplo são os da chave do exemplo, e a resposta leva os da guardada.
    */
   function exemploServe(exemplo, contexto) {
     const doExemplo = exemplo.contexto;
-    return doExemplo.perfil === contexto.perfil
-      && Boolean(doExemplo.falhaNoPerfil) === Boolean(contexto.falhaNoPerfil)
+    return (doExemplo.perfil === undefined
+        || (doExemplo.perfil === contexto.perfil && Boolean(doExemplo.falhaNoPerfil) === Boolean(contexto.falhaNoPerfil)))
+      && (doExemplo.itemDeLogin === undefined || doExemplo.itemDeLogin === contexto.itemDeLogin)
       && (!('colecao' in doExemplo) || doExemplo.colecao === contexto.colecao)
       && (!('openai' in doExemplo) || doExemplo.openai === contexto.openai)
       && (!('chaveNaConexao' in doExemplo) || (doExemplo.chaveNaConexao === null) === (contexto.chaveNaConexao === null));
@@ -291,6 +293,16 @@ function criarFakeAnki() {
     return resposta;
   }
 
+  /** “Abrir o Anki com o computador”: o item de login, como a Conexão o escreve e o apaga. */
+  function itemDeLogin(req, url) {
+    const corpo = req.postData() ? JSON.parse(req.postData()) : undefined;
+    const resposta = respostaDoContrato(req.method(), url.pathname, corpo);
+    if (url.pathname === '/abrir-com-o-computador' && resposta.status === 200) {
+      estado.contexto = { ...estado.contexto, itemDeLogin: resposta.json.ligado ? 'ligado' : 'desligado' };
+    }
+    return resposta;
+  }
+
   async function tratar(route) {
     const req = route.request();
     const url = new URL(req.url());
@@ -317,6 +329,16 @@ function criarFakeAnki() {
     }
     if (url.pathname === '/ia/estado' && req.method() === 'POST') {
       const { status, json } = respostaDoContrato('POST', '/ia/estado', {});
+      return responderJson(route, status, json);
+    }
+    if (req.method() === 'POST' && (url.pathname === '/abrir-com-o-computador' || url.pathname === '/abrir-com-o-computador/estado')) {
+      const perda = estado.perdaDaRespostaDoItem;
+      if (perda && url.pathname === '/abrir-com-o-computador') {
+        estado.perdaDaRespostaDoItem = null;
+        if (perda.aplicada) itemDeLogin(req, url);
+        return route.abort('connectionreset');
+      }
+      const { status, json } = itemDeLogin(req, url);
       return responderJson(route, status, json);
     }
     // O que lê o Anki da pessoa é POST (contrato/LEIA-ME.md): por GET a Conexão não tem a rota.
@@ -394,6 +416,21 @@ function criarFakeAnki() {
      */
     abrirColecao(nome) { estado.contexto = { ...estado.contexto, colecao: nome }; },
     /** O complemento não consegue ler o perfil: a saúde responde o erro interno do contrato. */
+    /**
+     * O item de login de “Abrir o Anki com o computador” (`itemDeLogin` dos exemplos): `desligado` (o padrão), `ligado`,
+     * `sem_anki` (a Conexão não sabe onde o Anki está), `falha` (não deu para escrever o item) ou `indisponivel`
+     * (o sistema não tem item). Pedir ligar ou desligar o muda, como a Conexão faria.
+     */
+    definirItemDeLogin(situacao) { estado.contexto = { ...estado.contexto, itemDeLogin: situacao }; },
+    /** O item de login está escrito de verdade (só a situação `ligado`): o que a Conexão deixou no computador. */
+    itemInstalado() { return estado.contexto.itemDeLogin === 'ligado'; },
+    /** O item de login agora: `ligado` ou `desligado` (ou a situação que o teste pôs). */
+    itemDeLogin() { return estado.contexto.itemDeLogin; },
+    /**
+     * O próximo pedido de ligar ou desligar o item perde a resposta (a conexão cai): com `aplicada` a Conexão chegou a
+     * escrever ou apagar o item antes, sem `aplicada` não mexeu em nada. A extensão não tem como saber qual dos dois.
+     */
+    perderARespostaDoItemDeLogin({ aplicada }) { estado.perdaDaRespostaDoItem = { aplicada }; },
     falharLeituraDoPerfil() { estado.contexto = { ...estado.contexto, falhaNoPerfil: true }; },
     /** Como a OpenAI responde à conferência de uma chave: o `openai` dos exemplos (aceita, recusa, sem_credito, org_nao_verificada, fora_do_ar). */
     responderOpenAI(comportamento) { estado.contexto = { ...estado.contexto, openai: comportamento }; },

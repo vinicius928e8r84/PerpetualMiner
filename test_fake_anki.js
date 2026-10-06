@@ -30,11 +30,12 @@ async function pedirAoFake(fakeDaConexao, metodo, caminho, corpo = null) {
 async function conferirOsExemplos() {
   for (const exemplo of contrato.exemplos.filter(exemploDaExtensao)) {
     const fakeDoExemplo = criarFakeAnki();
-    fakeDoExemplo.abrirPerfil(exemplo.contexto.perfil);
+    if (exemplo.contexto.perfil !== undefined) fakeDoExemplo.abrirPerfil(exemplo.contexto.perfil);
     if (exemplo.contexto.falhaNoPerfil) fakeDoExemplo.falharLeituraDoPerfil();
     if (exemplo.contexto.openai) fakeDoExemplo.responderOpenAI(exemplo.contexto.openai);
     if (exemplo.contexto.chaveNaConexao) fakeDoExemplo.guardarChaveNaConexao(exemplo.contexto.chaveNaConexao);
     if ('colecao' in exemplo.contexto) fakeDoExemplo.abrirColecao(exemplo.contexto.colecao);
+    if (exemplo.contexto.itemDeLogin) fakeDoExemplo.definirItemDeLogin(exemplo.contexto.itemDeLogin);
     const entregue = await pedirAoFake(fakeDoExemplo, exemplo.pedido.metodo, exemplo.pedido.caminho, exemplo.pedido.corpo);
     assert.strictEqual(entregue.status, exemplo.resposta.status, `O fake e o contrato se separaram no exemplo "${exemplo.nome}" (complemento/contrato/exemplos.json).`);
     assert.strictEqual(diferencaDoContrato(entregue.json, exemplo.resposta.json), null,

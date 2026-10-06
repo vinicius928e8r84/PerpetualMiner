@@ -1,6 +1,6 @@
 ---
 name: configuracoes
-description: "Use when changing or reviewing the Configurações area of the panel: IA dos cartões (the OpenAI key), Chave do Gemini, Zona de perigo, Atalhos and Conta & sync (`painel-ia.js`, `lib/chave-da-openai.js`, `painel-chave.js`, `painel-perigo.js`, `painel-atalhos.js`, `lib/atalhos.js`, `painel-conta.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
+description: "Use when changing or reviewing the Configurações area of the panel: IA dos cartões (the OpenAI key), Chave do Gemini, Zona de perigo, Atalhos, Conta & sync and Conexão com o Anki (`painel-ia.js`, `lib/chave-da-openai.js`, `painel-chave.js`, `painel-perigo.js`, `painel-atalhos.js`, `lib/atalhos.js`, `painel-conta.js`, `painel-abrir-anki.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
 ---
 
 # Configurações
@@ -59,6 +59,19 @@ Cancelar has the initial focus, Esc and a click outside close it); only the fill
 cloud is empty too; a cloud failure shows in the Conta & sync card and the chip instead (Q4). The description (CFG-32),
 the reach line and the modal body say “all computers of your account” only with an account. Until the total arrives,
 the entry row stays hidden, so it never shows “Nenhuma frase para apagar” while the list is still loading. No `confirm()`.
+
+### Conexão com o Anki: Abrir o Anki com o computador (`painel-abrir-anki.js`)
+
+One switch (CFG-36…40), off by default. The login item lives in the Conexão (a LaunchAgent on the Mac, a shortcut in the Startup
+folder on Windows; `complemento/item_de_login.py`), so nothing is stored in `chrome.storage`: the switch shows what
+`POST /abrir-com-o-computador/estado` says (read when the Conexão comes on and on entering Configurações) and changes only after
+`POST /abrir-com-o-computador` `{ ligado }` answers. While it works the switch is disabled and still shows the real state. With
+the Conexão off it is unavailable (the note CFG-38 and the row “Indisponível agora”); so it is when the Conexão answers the read with 404 (today's bridge has no such route: `CFG-38.antiga`) or fails it (`CFG-38.falhou`), never an endless “Conferindo…”. A refused write (`anki_not_found`, `login_item_failed`, `login_item_unsupported`) leaves the item as it was and shows the persistent
+aviso CFG-39 with the code in Detalhes; a write with no usable answer (connection lost, the 3 s limit, a body with no boolean `ligado`) is *uncertain*:
+the aviso says so (`CFG-39.incerta`), the switch is unavailable, and `/estado` is read until it confirms (then the aviso goes, or says what
+happened). Only what the Conexão confirmed is shown: any failed or invalid read, even after a good one, makes the switch unavailable. It never
+opens the Anki, only writes or deletes the item. `#configuracoes/anki` opens the card. Tests: `e2e/tests/configuracoes-abrir-anki.spec.js`
+(the fake follows `complemento/contrato/exemplos.json`), the visual reference in `configuracoes-visual.spec.js`.
 
 ### Shortcuts (`painel-atalhos.js`, `lib/atalhos.js`)
 

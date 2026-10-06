@@ -1148,6 +1148,278 @@
       }
     },
     {
+      "nome": "o item de login ainda não escrito",
+      "daExtensao": true,
+      "contexto": {
+        "itemDeLogin": "desligado"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/abrir-com-o-computador/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "ligado": false
+        }
+      }
+    },
+    {
+      "nome": "o item de login já escrito",
+      "daExtensao": true,
+      "contexto": {
+        "itemDeLogin": "ligado"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/abrir-com-o-computador/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "ligado": true
+        }
+      }
+    },
+    {
+      "nome": "o item de login num sistema que não tem item",
+      "daExtensao": true,
+      "contexto": {
+        "itemDeLogin": "indisponivel"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/abrir-com-o-computador/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "ligado": false
+        }
+      }
+    },
+    {
+      "nome": "o item de login quando a Conexão não sabe onde o Anki está",
+      "daExtensao": true,
+      "contexto": {
+        "itemDeLogin": "sem_anki"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/abrir-com-o-computador/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "ligado": false
+        }
+      }
+    },
+    {
+      "nome": "o item de login quando a pasta dele não aceita escrita",
+      "daExtensao": true,
+      "contexto": {
+        "itemDeLogin": "falha"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/abrir-com-o-computador/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "ligado": false
+        }
+      }
+    },
+    {
+      "nome": "ligar o Anki com o computador escreve o item",
+      "daExtensao": true,
+      "contexto": {
+        "itemDeLogin": "desligado"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/abrir-com-o-computador",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "ligado": true
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "ligado": true
+        }
+      }
+    },
+    {
+      "nome": "ligar de novo com o item já escrito",
+      "daExtensao": true,
+      "contexto": {
+        "itemDeLogin": "ligado"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/abrir-com-o-computador",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "ligado": true
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "ligado": true
+        }
+      }
+    },
+    {
+      "nome": "desligar o Anki com o computador apaga o item",
+      "daExtensao": true,
+      "contexto": {
+        "itemDeLogin": "ligado"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/abrir-com-o-computador",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "ligado": false
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "ligado": false
+        }
+      }
+    },
+    {
+      "nome": "desligar sem item não falha",
+      "daExtensao": true,
+      "contexto": {
+        "itemDeLogin": "desligado"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/abrir-com-o-computador",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "ligado": false
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "ligado": false
+        }
+      }
+    },
+    {
+      "nome": "ligar sem saber onde o Anki está",
+      "daExtensao": true,
+      "contexto": {
+        "itemDeLogin": "sem_anki"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/abrir-com-o-computador",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "ligado": true
+        }
+      },
+      "resposta": {
+        "status": 500,
+        "json": {
+          "error": "anki_not_found"
+        }
+      }
+    },
+    {
+      "nome": "ligar quando o item não pôde ser escrito",
+      "daExtensao": true,
+      "contexto": {
+        "itemDeLogin": "falha"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/abrir-com-o-computador",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "ligado": true
+        }
+      },
+      "resposta": {
+        "status": 500,
+        "json": {
+          "error": "login_item_failed"
+        }
+      }
+    },
+    {
+      "nome": "ligar num sistema que não tem item de login",
+      "daExtensao": true,
+      "contexto": {
+        "itemDeLogin": "indisponivel"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/abrir-com-o-computador",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "ligado": true
+        }
+      },
+      "resposta": {
+        "status": 501,
+        "json": {
+          "error": "login_item_unsupported"
+        }
+      }
+    },
+    {
+      "nome": "ligar com um valor que não é verdadeiro nem falso",
+      "daExtensao": false,
+      "contexto": {
+        "itemDeLogin": "desligado"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/abrir-com-o-computador",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "ligado": "sim"
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
       "nome": "chave da OpenAI aceita: a Conexão guarda a cópia e devolve só os 4 últimos caracteres",
       "daExtensao": true,
       "contexto": {
