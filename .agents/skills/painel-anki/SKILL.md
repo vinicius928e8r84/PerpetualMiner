@@ -30,7 +30,10 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   AnkiConnect is not read: no new permission), so the first step says “Esperando a Conexão” and every step turns ✓ together when `/health`
   answers successfully. Without a person's choice, the card opens on the first step, or on the last while connecting; after the card's own Tentar de novo
   it stays on step 2 (the F1's and the Boas-vindas' do not set the person's choice). **2 minutes without an answer** (counted from the first time the person
-  sees the steps, or from Baixar) show the 3-item checklist and **Baixar de novo** in whatever step is open, while the check keeps going alone; it leaves when the Conexão answers.
+  really sees the steps — the host passes the real visibility to `mostrar`: the Anki area is the current one, the Boas-vindas page is on screen — or from Baixar) show the 3-item checklist and **Baixar de novo** in whatever step is open, while the check keeps going alone; it leaves when the Conexão answers.
+  On step 2 an automatic check in flight over a Conexão that was off shows “Conectando” with no click (`ConexaoAnki.conferindo()`, `aoConferir`); a
+  Conexão that was on stays on, and the failure goes back to “desligada”. One primary control per screen: with the card's own Voltar · Continuar the
+  primary is the step's action (Baixar, Tentar de novo) and Continuar is an outline; inside the Boas-vindas the card has only outlines and the host's Continuar is the primary.
   The status is a `role="status"` region that stays in the DOM (the 1 s clock only redraws the checklist, never the status).
   The Conferência line (“Confere sozinho a cada 15 s · última vez há N s”, “Conferindo agora…” while a check is out) follows the
   shared checks; see the doc comments in `painel-anki-primeira-conexao.js` for its subscription and timer lifecycle. See the

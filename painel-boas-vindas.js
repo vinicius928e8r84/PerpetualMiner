@@ -494,7 +494,8 @@
     for (const [nome, corpo] of telas) corpo.hidden = nome !== tela;
 
     desenharLista();
-    passo4.mostrar(tela === 'anki');
+    // À vista é a tela aberta numa página que está na tela: o shell esconde a Boas-vindas em outras áreas.
+    passo4.mostrar(tela === 'anki' && !porId('boas-vindas').hidden);
     desenharAtalhoDoPasso1();
     // Até a primeira leitura não se sabe se há chave: o Onde conseguir a chave espera, para não piscar.
     ondeConseguirAChave.hidden = !estado.configuracao || Boolean(estado.configuracao.estado.chave);

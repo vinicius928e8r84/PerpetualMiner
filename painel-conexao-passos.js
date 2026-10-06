@@ -13,7 +13,10 @@
 //      AnkiWeb (para colar em Ferramentas › Complementos › Obter complementos) ou, até o
 //      primeiro upload (#176), diz que ele vem em breve: nunca um número inventado.
 //   2  Reiniciar o Anki: este passo sempre existe. A extensão confere sozinha e a linha de
-//      status mostra Conectando e, quando a Conexão responde, “Achei o Anki · perfil · versão”.
+//      status mostra Conectando enquanto a conferência está no ar (a de 15 s também, sem
+//      ninguém apertar nada) e, quando a Conexão responde, “Achei o Anki · perfil · versão”.
+//      Uma conferência no ar não apaga o último resultado: ligada continua ligada até uma
+//      resposta dizer o contrário, e a falha volta a “desligada”.
 //
 // A lista é dado (`PASSOS`): os passos “Ter o Anki” (#146) e “Abrir o Anki sozinho” (#147)
 // entram nela sem mexer no resto. O número do passo na tela é a posição na lista.
@@ -26,6 +29,10 @@
 // rede). Os 2 minutos contam desde que a pessoa vê os passos pela primeira vez ou baixa
 // o arquivo, o que vier primeiro; o checklist, uma vez na tela, fica até a Conexão responder.
 //
+// Um destaque (`--primario`) só por tela (veio/README.md): com a navegação do card, o
+// destaque é a ação do passo (Baixar, Tentar de novo) e Voltar · Continuar são contorno;
+// sem ela, o destaque é o Continuar do anfitrião e o card só tem contornos.
+//
 //   montar(lugar, { prefixo, navegacao, aoSairOBotao })
 //     `prefixo`        dá os ids (`<prefixo>-passo-titulo`, `-status`, `-tentar`…)
 //     `navegacao`      Voltar · Continuar no card (padrão true; a Boas-vindas tem os seus)
@@ -34,7 +41,8 @@
 //   devolve { desenhar({ pronto }), mostrar(visivel), focarTitulo() }
 //     `desenhar`  redesenha pelo estado da Conexão. O anfitrião chama com `pronto` quando
 //                 mostra o momento Pronto (todos os passos feitos, sem botões);
-//     `mostrar`   o anfitrião diz se o componente está à vista: é daí que contam os 2 minutos.
+//     `mostrar`   o anfitrião diz se o componente está à vista de verdade (a área ou a tela
+//                 aberta, não só montada em um lugar escondido): é daí que contam os 2 minutos.
 //
 // O código do AnkiWeb vem de `PerpetualMiner.CODIGO_DO_ANKIWEB` (nenhum até o primeiro
 // upload); quem o publicar define esse valor em `lib/` e nada mais muda aqui.
@@ -80,6 +88,7 @@
       escolha: null,        // o passo que a pessoa abriu; sem ele, o primeiro que falta
       pronto: false,        // o anfitrião mostra o momento Pronto
       visivel: false,
+      conferindo: ConexaoAnki.conferindo(),   // uma conferência do /health está no ar
       esperandoDesde: null, // quando a espera da Conexão começou (ms); null: ainda não
       semResposta: false,   // o checklist está na tela (fica até a Conexão responder)
     };
@@ -115,7 +124,8 @@
       link.download = NOME_DO_ARQUIVO;
       return link;
     };
-    const baixar = linkDoArquivo('veio-botao veio-botao--primario', textoDaVoz('ONB-16.baixar'));
+    const destaque = navegacao ? 'veio-botao--primario' : 'veio-botao--contorno';
+    const baixar = linkDoArquivo(`veio-botao ${destaque}`, textoDaVoz('ONB-16.baixar'));
     baixar.addEventListener('click', () => { if (estado.esperandoDesde === null) estado.esperandoDesde = Date.now(); });
 
     const codigo = raiz.CODIGO_DO_ANKIWEB ?? null;
@@ -132,7 +142,7 @@
     const status = elemento('p', 'bv-status', ponto, textoDoStatus);
     status.id = id('status');
     status.setAttribute('role', 'status');
-    const tentar = elemento('button', 'veio-botao veio-botao--primario veio-botao--compacto', textoDaVoz('ENV-01.tentarDeNovo'));
+    const tentar = elemento('button', `veio-botao ${destaque} veio-botao--compacto`, textoDaVoz('ENV-01.tentarDeNovo'));
     tentar.id = id('tentar');
     tentar.type = 'button';
     ConexaoNaTela.ligarTentarDeNovo(tentar, () => {
@@ -154,7 +164,7 @@
     voltar.id = id('voltar');
     voltar.type = 'button';
     voltar.addEventListener('click', () => abrirPasso(PASSOS[indiceAberto() - 1].id));
-    const continuar = elemento('button', 'veio-botao veio-botao--primario', textoDaVoz('ONB-04.continuar'));
+    const continuar = elemento('button', 'veio-botao veio-botao--contorno', textoDaVoz('ONB-04.continuar'));
     continuar.id = id('continuar');
     continuar.type = 'button';
     continuar.addEventListener('click', () => abrirPasso(PASSOS[indiceAberto() + 1].id));
@@ -204,6 +214,10 @@
       const passoDoCard = PASSOS[Math.max(aberto, 0)];
       const situacao = ConexaoAnki.situacao();
       const conectando = situacao === CONEXAO.CONECTANDO;
+      // No passo de reiniciar, uma conferência no ar sobre uma Conexão desligada é “Conectando”, sem
+      // clique nenhum; o último resultado só volta quando a resposta chega. Ligada, ela segue ligada.
+      const exibida = estado.conferindo && situacao === CONEXAO.DESLIGADA && passoDoCard.id === PASSO_DO_TENTAR
+        ? CONEXAO.CONECTANDO : situacao;
       const feito = pronto || situacao === CONEXAO.LIGADA;
 
       marcas.forEach(({ botao, marca, leitor }, i) => {
@@ -228,12 +242,12 @@
       // diz “não encontrado”).
       const esperando = !pronto && passoDoCard.id === PASSO_DO_ARQUIVO && situacao === CONEXAO.DESLIGADA;
       status.classList.toggle('pc-status--espera', esperando);
-      const mostrada = pronto && !conectando ? CONEXAO.LIGADA : situacao;
+      const mostrada = pronto && !conectando ? CONEXAO.LIGADA : exibida;
       ConexaoNaTela.pintarPonto(ponto, esperando ? '' : mostrada);
       textoDoStatus.textContent = esperando ? textoDaVoz('ONB-16.esperando')
         : mostrada === CONEXAO.LIGADA ? textoDeAchei() : ConexaoNaTela.texto(mostrada);
 
-      ConexaoNaTela.pintarTentarDeNovo(tentar, situacao, {
+      ConexaoNaTela.pintarTentarDeNovo(tentar, exibida, {
         sai: pronto || situacao === CONEXAO.LIGADA || passoDoCard.id !== PASSO_DO_TENTAR,
         focoPara: () => aoSairOBotao?.() ?? titulo,
       });
@@ -245,6 +259,11 @@
     }
 
     ConexaoAnki.acompanhar(() => desenhar());
+    // A conferência que sai se vê na hora; a que volta chega logo em seguida pela situação.
+    ConexaoAnki.aoConferir(conferindo => {
+      estado.conferindo = conferindo;
+      if (conferindo) desenhar();
+    });
     // O relógio só reescreve o que muda com o tempo (o checklist): o status é uma região viva e não se refaz à toa.
     setInterval(() => { if (estado.visivel) desenharAEspera(); }, INTERVALO_DO_TIQUE);
 

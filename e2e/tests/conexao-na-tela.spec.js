@@ -75,6 +75,7 @@ test.describe('a mesma situação, a mesma tela', () => {
     await expect(statusDoPasso4(page)).toHaveText(TEXTO.desligada);
     await expect(pontoDoPasso4(page)).toHaveAttribute('data-estado', 'desligada');
     await fotografar(page, 'a3-passo4-desligada.png');
+    expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
   });
 
   test('conectando: as três superfícies dizem BRG-02 e pintam o ponto de conectando', async ({ page, extensao, fakes }) => {
@@ -102,6 +103,7 @@ test.describe('a mesma situação, a mesma tela', () => {
     await irParaReiniciar(outraAba);
     liberarDeNovo();
     await expect(statusDoPasso4(outraAba)).toHaveText(TEXTO.desligada);
+    expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
   });
 
   test('ONB-16: tentar de novo durante o Pronto anuncia Conectando sem desfazer o marco', async ({ page, extensao, fakes }) => {
@@ -139,6 +141,8 @@ test.describe('a mesma situação, a mesma tela', () => {
     await page.clock.runFor(1_800);
     await expect(cardDaPrimeiraConexao(page)).toBeHidden();
     await expect(page.getByRole('radiogroup', { name: 'Seções da Conexão com o Anki' })).toBeVisible();
+    // A primeira resposta ligada ficou gravada, e a falha de depois não a desfaz.
+    await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
   });
 });
 
@@ -196,6 +200,7 @@ test.describe('Tentar de novo indisponível enquanto confere', () => {
     await expect(tentarDoCard(page)).not.toHaveAttribute('aria-disabled', 'true');
     await expect(tentarDoCard(page)).toBeFocused();
     await expect(cardDaPrimeiraConexao(page)).toContainText('Como ligar · Passo 2 de 2');
+    expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
   });
 
   test('passo 4 da Boas-vindas: aria-disabled com o foco nele; apertar de novo não pergunta de novo', async ({ page, extensao, fakes }) => {
@@ -219,6 +224,7 @@ test.describe('Tentar de novo indisponível enquanto confere', () => {
     await fotografar(page, 'a3-passo4-indisponivel-foco.png');
     liberar();
     await expect(statusDoPasso4(page)).toHaveText(TEXTO.desligada);
+    expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
   });
 });
 
@@ -251,6 +257,7 @@ test.describe('o foco ao ligar não cai no <body>', () => {
     await expect(statusDoPasso4(page)).toHaveText(ACHEI);
     await expect(tentarDoPasso4(page)).toHaveCount(0);
     await expect(page.locator('#bv-titulo')).toBeFocused();
+    await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
     await fotografar(page, 'a3-passo4-ligada-foco.png');
   });
 });

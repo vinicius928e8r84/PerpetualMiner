@@ -59,6 +59,9 @@
     setInterval(desenharConferencia, INTERVALO_DO_TIQUE);
     return ConexaoAnki.pronta.then(() => {
       estado.visto.respondeu = ConexaoAnki.ultimaResposta() !== null;
+      // Os 2 minutos do componente contam da primeira vez que a área está à vista: quem chega depois
+      // (de outra área) precisa de um desenho na entrada, que é quando o card passa a ser visto.
+      Shell.aoEntrarNaArea('anki', desenhar);
       return ConexaoAnki.acompanhar(aoMudarAConexao);
     });
   }
@@ -117,7 +120,7 @@
     }
     secao.hidden = !cobre;
     estado.prontoDesenhado = estado.prontoDesenhado && cobre;
-    passos.mostrar(cobre);
+    passos.mostrar(cobre && Shell.areaAtual() === 'anki');
     if (!cobre) return;
     // Entrar em Pronto tira os controles do card. A F1 também pode ter saído
     // com as abas ainda ocultas: nestes casos, o título acolhe o foco.

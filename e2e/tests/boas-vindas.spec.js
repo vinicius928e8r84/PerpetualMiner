@@ -334,6 +334,8 @@ test('passo 4: abre em pôr a Conexão no Anki, com o arquivo para baixar e nenh
   // O arquivo é o do pacote da extensão, entregue por um link de download.
   const [arquivo] = await Promise.all([page.waitForEvent('download'), baixarDoPasso4(page).click()]);
   expect(arquivo.suggestedFilename()).toBe('perpetualminer.ankiaddon');
+  // Baixar o arquivo não é conectar: nada fica gravado como Conexão ligada.
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
 test('passo 4: reiniciar o Anki; ligar e Tentar de novo diz “Achei o Anki” e marca o passo', async ({ page, extensao, fakes }) => {
@@ -346,6 +348,7 @@ test('passo 4: reiniciar o Anki; ligar e Tentar de novo diz “Achei o Anki” e
   await expect(status).toHaveText('Conexão com o Anki: desligada');
   await botaoDoCard(page, 'Tentar de novo').click();
   await expect(status).toHaveText('Conexão com o Anki: desligada');
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 
   fakes.anki.ligar();
   await botaoDoCard(page, 'Tentar de novo').click();
@@ -355,6 +358,7 @@ test('passo 4: reiniciar o Anki; ligar e Tentar de novo diz “Achei o Anki” e
   // Ligada, o Tentar de novo sai e o foco vai para o título do passo: não há mais o que fazer.
   await expect(botaoDoCard(page, 'Tentar de novo')).toHaveCount(0);
   await expect(page.locator('#bv-titulo')).toBeFocused();
+  await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
   await fotografarPasso4(page, 'boas-vindas-conexao-ligada.png');
 });
 
@@ -373,12 +377,25 @@ test('passo 4: dois minutos sem resposta mostram o checklist e Baixar de novo, e
     'A Conexão com o Anki está ativada em Ferramentas › Complementos?',
   ]);
   await expect(card(page).getByRole('link', { name: 'Baixar de novo' })).toBeVisible();
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
   await fotografarPasso4(page, 'boas-vindas-conexao-sem-resposta.png');
 
   fakes.anki.ligar();
   await page.clock.runFor(15_000);
   await expect(card(page).getByRole('status')).toHaveText(/^Achei o Anki/);
   await expect(card(page).getByText('A Conexão com o Anki ainda não respondeu. Confira:')).toBeHidden();
+  await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
+});
+
+test('passo 4: o destaque da tela é o Continuar da Boas-vindas, nos dois passos dos passos da Conexão', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await abrirBoasVindas(page, extensao, 'anki');
+  await expect(baixarDoPasso4(page)).toBeVisible();
+  await expect(page.locator('.veio-botao--primario:visible')).toHaveText(['Continuar']);
+
+  await passosDaConexao(page).getByRole('button', { name: 'Reiniciar o Anki' }).click();
+  await expect(botaoDoCard(page, 'Tentar de novo')).toBeVisible();
+  await expect(page.locator('.veio-botao--primario:visible')).toHaveText(['Continuar']);
 });
 
 test('quem já tinha a área Conexão com o Anki aberta sem conexão vê o mesmo passo da Boas-vindas', async ({ page, extensao, fakes }) => {
@@ -398,6 +415,8 @@ test('quem já tinha a área Conexão com o Anki aberta sem conexão vê o mesmo
   expect(await card(page).locator('.pc-card .bv-texto').textContent()).toBe(daArea.texto);
   expect(await card(page).locator('.pc-card .bv-sobretitulo').textContent()).toBe(daArea.sobretitulo);
   await expect(baixarDoPasso4(page)).toHaveAttribute('href', daArea.arquivo);
+  // Nenhum dos dois lugares guardou uma Conexão que nunca respondeu.
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
 // ─── Passo 5: Ligar a mineração automática ───────────────────────────────────
@@ -422,6 +441,7 @@ test('passo 5: os switches EN/RU e o limite por dia gravam o mesmo que o popup',
   await limite.fill('35');
   await limite.press('Enter');
   await expect.poll(async () => (await extensao.lerStorage('pm_auto_miner_settings')).pm_auto_miner_settings?.ru?.dailyLimit).toBe(35);
+  await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
   await expect(limite).toBeFocused();
   await expect(card(page)).toContainText('Os mesmos botões ficam no popup, pelo ícone da extensão.');
   await fotografar(page, 'boas-vindas-automatica.png');
