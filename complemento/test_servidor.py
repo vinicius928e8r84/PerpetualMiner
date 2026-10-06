@@ -19,7 +19,7 @@ import warnings
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import baralhos, configuracao, registro, servidor  # noqa: E402
+from complemento import baralhos, configuracao, item_de_login, registro, servidor  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
@@ -83,12 +83,31 @@ def igual_ao_do_contrato(obtido, esperado):
     return obtido == esperado
 
 
+def _item_de_login_do_contexto(pasta, situacao):
+    """O item de login na situação que o contrato diz (`itemDeLogin`): numa pasta do teste, nunca na do computador."""
+    comando = ["/usr/bin/open", "/Applications/Anki.app"]
+    if situacao == "indisponivel":
+        return None
+    if situacao == "sem_anki":
+        return item_de_login.ItemDeLogin(sistema="mac", pasta=os.path.join(pasta, "agentes"), comando=None)
+    if situacao == "falha":
+        ocupada = os.path.join(pasta, "ocupada")
+        with open(ocupada, "wb") as arquivo:
+            arquivo.write(b"x")
+        return item_de_login.ItemDeLogin(sistema="mac", pasta=os.path.join(ocupada, "agentes"), comando=comando)
+    item = item_de_login.ItemDeLogin(sistema="mac", pasta=os.path.join(pasta, "agentes"), comando=comando)
+    if situacao == "ligado":
+        item.ligar()
+    return item
+
+
 class ConexaoNoTeste:
     """A Conexão real numa porta livre, com o perfil que o teste escolher."""
 
-    def __init__(self, pasta, perfil="Usuário 1", origens=None, falha_no_perfil=False, colecao=None):
+    def __init__(self, pasta, perfil="Usuário 1", origens=None, falha_no_perfil=False, colecao=None, item="desligado"):
         self.perfil = perfil
         self.falha_no_perfil = falha_no_perfil
+        self.item = _item_de_login_do_contexto(pasta, item)
         self.logs = os.path.join(pasta, "logs")
         os.makedirs(self.logs)
         self.logger = registro.criar(self.logs)
@@ -99,6 +118,7 @@ class ConexaoNoTeste:
             perfil_aberto=self._ler_o_perfil,
             logger=self.logger,
             colecao=colecao,
+            item_de_login=self.item,
         )
 
     def _ler_o_perfil(self):
@@ -143,7 +163,11 @@ class ContratoDaConexao(unittest.TestCase):
             with self.subTest(exemplo["nome"]), tempfile.TemporaryDirectory() as pasta:
                 contexto = exemplo["contexto"]
                 with ConexaoNoTeste(
-                    pasta, perfil=contexto["perfil"], falha_no_perfil=contexto.get("falhaNoPerfil", False), colecao=colecao_do_exemplo(contexto)
+                    pasta, perfil=contexto.get("perfil", "Usuário 1"),
+                    falha_no_perfil=contexto.get("falhaNoPerfil", False),
+                    colecao=colecao_do_exemplo(contexto),
+                    item=contexto.get("itemDeLogin", "desligado"),
+                
                 ) as conexao:
                     pedido = exemplo["pedido"]
                     # `corpoBruto`: o que chega não é um objeto JSON (o 400 `invalid_json`), então vai como está.
@@ -178,6 +202,14 @@ MATRIZ = {
         "le_a_colecao": True,
         "le_o_perfil": False,
         "recusas": [({}, 400, "decks_required")],
+    },
+    # O item de login de “Abrir o Anki com o computador” (PR 189): não lê a coleção nem o perfil, e escreve só na pasta do teste.
+    ("POST", "/abrir-com-o-computador/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/abrir-com-o-computador"): {
+        "corpo": {"ligado": True},
+        "le_a_colecao": False,
+        "le_o_perfil": False,
+        "recusas": [({"ligado": "sim"}, 400, "invalid_request")],
     },
     ("POST", "/anki/vocabulary"): {
         "corpo": {"deck": "Inglês", "lang": "en"},
@@ -385,6 +417,66 @@ class LeituraDaColecao(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             status, _, corpo = conexao.pedir("POST", "/anki/decks", corpo={})
         self.assertEqual((status, json.loads(corpo)["error"]), (503, "anki_decks_unavailable"))
+
+
+class AbrirOAnkiComOComputador(unittest.TestCase):
+    """O que o pedido deixa no disco: o item de login escrito ou apagado, e só a extensão o pede."""
+
+    ROTA = "/abrir-com-o-computador"
+
+    def itens(self, conexao):
+        pasta = conexao.item.pasta
+        return sorted(os.listdir(pasta)) if os.path.isdir(pasta) else []
+
+    def test_ligar_escreve_o_item_e_desligar_o_apaga(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            antes = self.itens(conexao)
+            conexao.pedir("POST", self.ROTA, corpo={"ligado": True})
+            ligado = self.itens(conexao)
+            estado = json.loads(conexao.pedir("POST", self.ROTA + "/estado", corpo={})[2])
+            conexao.pedir("POST", self.ROTA, corpo={"ligado": False})
+            depois = self.itens(conexao)
+        self.assertEqual((antes, ligado, depois), ([], ["com.perpetualminer.abrir-o-anki.plist"], []))
+        self.assertEqual(estado, {"ok": True, "ligado": True})
+
+    def test_a_pergunta_pelo_estado_nao_escreve_nem_apaga_nada(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, item="ligado") as conexao:
+            conexao.pedir("POST", self.ROTA + "/estado", corpo={})
+            ainda = self.itens(conexao)
+        self.assertEqual(ainda, ["com.perpetualminer.abrir-o-anki.plist"])
+
+    def test_outro_site_ou_outra_extensao_nao_liga_nada(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            for origem in (None, "https://exemplo.com", "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"):
+                with self.subTest(origem):
+                    status, _, _ = conexao.pedir("POST", self.ROTA, origem=origem, corpo={"ligado": True})
+                    self.assertEqual(status, 403)
+            self.assertEqual(self.itens(conexao), [])
+
+    def test_ler_o_estado_exige_a_origem_da_extensao(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            status, _, _ = conexao.pedir("GET", self.ROTA + "/estado", origem=None)
+        self.assertEqual(status, 403)
+
+    def test_corpo_que_nao_e_json_e_recusado_sem_escrever_nada(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            status, _, corpo = conexao.pedir("POST", self.ROTA, corpo=b"isto nao e json")
+            itens = self.itens(conexao)
+        self.assertEqual((status, json.loads(corpo), itens), (400, {"error": "invalid_json"}, []))
+
+    def test_corpo_sem_ligado_e_recusado_sem_escrever_nada(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            for corpo in ({}, {"ligado": 1}, {"ligado": None}):
+                with self.subTest(corpo):
+                    status, _, resposta = conexao.pedir("POST", self.ROTA, corpo=corpo)
+                    self.assertEqual((status, json.loads(resposta)), (400, {"error": "invalid_request"}))
+            self.assertEqual(self.itens(conexao), [])
+
+    def test_a_falha_ao_escrever_vai_ao_log_do_complemento(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, item="falha") as conexao:
+            conexao.pedir("POST", self.ROTA, corpo={"ligado": True})
+            registrado = conexao.log()
+        self.assertIn("Abrir o Anki com o computador", registrado)
 
 
 class OrigemDosPedidos(unittest.TestCase):

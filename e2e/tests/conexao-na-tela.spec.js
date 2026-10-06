@@ -28,6 +28,8 @@ const TEXTO = {
   desligada: 'Conexão com o Anki: desligada',
   ligada: 'Conexão com o Anki: ligada',
 };
+// Ligada, os passos da Conexão dizem o que a Conexão respondeu (o perfil e a versão do contrato).
+const ACHEI = /^Achei o Anki · .+ · versão .+$/;
 
 const pedidosDeHealth = fakes => fakes.anki.requisicoes.filter(r => r.caminho === '/health');
 
@@ -41,7 +43,9 @@ const pontoDoCard = page => page.locator('#apv-ponto');
 const cardDaBoasVindas = page => page.locator('.bv-card');
 const statusDoPasso4 = page => cardDaBoasVindas(page).getByRole('status');
 const pontoDoPasso4 = page => cardDaBoasVindas(page).locator('.bv-status .bv-ponto');
-const tentarDoPasso4 = page => cardDaBoasVindas(page).getByRole('button', { name: 'Verificar de novo', exact: true });
+const tentarDoPasso4 = page => cardDaBoasVindas(page).getByRole('button', { name: 'Tentar de novo', exact: true });
+// O passo 4 abre no passo de pôr a Conexão, que espera sem dizer “desligada”: o status da Conexão está no de reiniciar.
+const irParaReiniciar = page => cardDaBoasVindas(page).getByRole('button', { name: 'Reiniciar o Anki', exact: true }).click();
 
 /** Segura o /health: a Conexão fica Conectando até `liberar()`, que responde com `status`. */
 function segurarOHealth(fakes, status = 503) {
@@ -60,16 +64,18 @@ test.describe('a mesma situação, a mesma tela', () => {
     await expect(sidebar(page)).toHaveText(TEXTO.desligada);
     await expect(pontoDaSidebar(page)).toHaveAttribute('data-estado', 'desligada');
 
-    // O passo 3 do card é o que mostra o status; o 1º espera a Conexão sem dizer “desligada”.
-    await page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: 'Tentar de novo' }).click();
+    // O passo 2 do card é o que mostra a Conexão desligada; o 1º espera a Conexão sem dizer “desligada”.
+    await page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: 'Reiniciar o Anki' }).click();
     await expect(statusDoCard(page)).toHaveText(TEXTO.desligada);
     await expect(pontoDoCard(page)).toHaveAttribute('data-estado', 'desligada');
     await fotografar(page, 'a3-onb16-desligada.png');
 
     await page.goto(extensao.url('painel.html#boas-vindas/anki'));
+    await irParaReiniciar(page);
     await expect(statusDoPasso4(page)).toHaveText(TEXTO.desligada);
     await expect(pontoDoPasso4(page)).toHaveAttribute('data-estado', 'desligada');
     await fotografar(page, 'a3-passo4-desligada.png');
+    expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
   });
 
   test('conectando: as três superfícies dizem BRG-02 e pintam o ponto de conectando', async ({ page, extensao, fakes }) => {
@@ -93,8 +99,11 @@ test.describe('a mesma situação, a mesma tela', () => {
     await outraAba.goto(extensao.url('painel.html#boas-vindas/anki'));
     await expect(statusDoPasso4(outraAba)).toHaveText(TEXTO.conectando);
     await expect(pontoDoPasso4(outraAba)).toHaveAttribute('data-estado', 'conectando');
+    // Sem escolha da pessoa, o passo volta ao primeiro quando a Conexão não responde: ela fixa o de reiniciar.
+    await irParaReiniciar(outraAba);
     liberarDeNovo();
     await expect(statusDoPasso4(outraAba)).toHaveText(TEXTO.desligada);
+    expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
   });
 
   test('ONB-16: tentar de novo durante o Pronto anuncia Conectando sem desfazer o marco', async ({ page, extensao, fakes }) => {
@@ -108,7 +117,7 @@ test.describe('a mesma situação, a mesma tela', () => {
     fakes.anki.ligar();
     await tentarDaF1(page).click();
     await expect(cardDaPrimeiraConexao(page)).toContainText('Pronto');
-    await expect(statusDoCard(page)).toHaveText(TEXTO.ligada);
+    await expect(statusDoCard(page)).toHaveText(ACHEI);
 
     fakes.anki.desligar();
     await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
@@ -122,7 +131,7 @@ test.describe('a mesma situação, a mesma tela', () => {
     await expect(statusDoCard(page)).toHaveText(TEXTO.conectando);
     await expect(cardDaPrimeiraConexao(page)).toContainText('Pronto');
     await expect(pontoDoCard(page)).toHaveAttribute('data-estado', 'conectando');
-    await expect(page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: /feito$/ })).toHaveCount(3);
+    await expect(page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: /feito$/ })).toHaveCount(2);
     await expect(tentarDoCard(page)).toBeHidden();
     await expect(tentarDaF1(page)).toHaveAttribute('aria-disabled', 'true');
     await fotografar(page, 'a3-onb16-pronto-conectando.png');
@@ -132,6 +141,8 @@ test.describe('a mesma situação, a mesma tela', () => {
     await page.clock.runFor(1_800);
     await expect(cardDaPrimeiraConexao(page)).toBeHidden();
     await expect(page.getByRole('radiogroup', { name: 'Seções da Conexão com o Anki' })).toBeVisible();
+    // A primeira resposta ligada ficou gravada, e a falha de depois não a desfaz.
+    await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
   });
 });
 
@@ -167,7 +178,7 @@ test.describe('Tentar de novo indisponível enquanto confere', () => {
     fakes.anki.desligar();
     await page.goto(extensao.url('painel.html#anki/custos'));
     await expect(cardDaPrimeiraConexao(page)).toBeVisible();
-    await page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: 'Tentar de novo' }).click();
+    await page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: 'Reiniciar o Anki' }).click();
 
     const liberar = segurarOHealth(fakes);
     fakes.anki.ligar();
@@ -188,12 +199,14 @@ test.describe('Tentar de novo indisponível enquanto confere', () => {
     await expect(statusDoCard(page)).toHaveText(TEXTO.desligada);
     await expect(tentarDoCard(page)).not.toHaveAttribute('aria-disabled', 'true');
     await expect(tentarDoCard(page)).toBeFocused();
-    await expect(cardDaPrimeiraConexao(page)).toContainText('Como ligar · Passo 3 de 3');
+    await expect(cardDaPrimeiraConexao(page)).toContainText('Como ligar · Passo 2 de 2');
+    expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
   });
 
   test('passo 4 da Boas-vindas: aria-disabled com o foco nele; apertar de novo não pergunta de novo', async ({ page, extensao, fakes }) => {
     fakes.anki.desligar();
     await page.goto(extensao.url('painel.html#boas-vindas/anki'));
+    await irParaReiniciar(page);
     await expect(statusDoPasso4(page)).toHaveText(TEXTO.desligada);
 
     const liberar = segurarOHealth(fakes);
@@ -211,6 +224,7 @@ test.describe('Tentar de novo indisponível enquanto confere', () => {
     await fotografar(page, 'a3-passo4-indisponivel-foco.png');
     liberar();
     await expect(statusDoPasso4(page)).toHaveText(TEXTO.desligada);
+    expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
   });
 });
 
@@ -233,15 +247,17 @@ test.describe('o foco ao ligar não cai no <body>', () => {
   test('passo 4: o botão sai e o foco vai para o título do passo', async ({ page, extensao, fakes }) => {
     fakes.anki.desligar();
     await page.goto(extensao.url('painel.html#boas-vindas/anki'));
+    await irParaReiniciar(page);
     await expect(statusDoPasso4(page)).toHaveText(TEXTO.desligada);
 
     fakes.anki.ligar();
     await tentarDoPasso4(page).focus();
     await page.keyboard.press('Enter');
 
-    await expect(statusDoPasso4(page)).toHaveText(TEXTO.ligada);
+    await expect(statusDoPasso4(page)).toHaveText(ACHEI);
     await expect(tentarDoPasso4(page)).toHaveCount(0);
     await expect(page.locator('#bv-titulo')).toBeFocused();
+    await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
     await fotografar(page, 'a3-passo4-ligada-foco.png');
   });
 });

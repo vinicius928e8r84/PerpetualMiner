@@ -18,6 +18,12 @@
 const path = require('path');
 const { test, expect } = require('../fixtures');
 
+// #145: o passo 4 ganhou os passos do arquivo (sem terminal). Os três testes do passo 4 `test.fixme` são PROPOSTAS de
+// referência, não referências: o dono ainda não aprovou o novo visual (CODING_STANDARDS regra 10), então as imagens novas
+// não estão na árvore e as antigas do passo 4 ficam sem uso. Elas estão no commit 59d3d04
+// (e2e/tests/boas-vindas-visual.spec.js-snapshots/passo-4-*-linux.png). Aprovando: tirar o `fixme` e
+// `npx playwright test boas-vindas-visual --update-snapshots -g "passo 4"`.
+
 const UMA_FRASE = [{ id: 1, texto: 'Old news', data: '01/09/2026', streaming: 'web', idioma: 'Inglês' }];
 const SELECAO_EM_ALT_Q = { type: 'keyboard', code: 'KeyQ', button: null, altKey: true, ctrlKey: false, shiftKey: false, label: 'Alt+Q' };
 
@@ -88,16 +94,26 @@ test('passo 3 com a conta: o nome e Sair da conta', async ({ page, extensao }) =
   await foto(page, 'passo-3-com-conta.png');
 });
 
-test('passo 4 com a Conexão desligada: o status, os 3 passos e Verificar de novo', async ({ page, extensao }) => {
+test.fixme('passo 4 com a Conexão desligada: pôr a Conexão no Anki, com o arquivo e o Detalhes', async ({ page, extensao }) => {
   await abrir(page, extensao, 'anki');
   await foto(page, 'passo-4-desligada.png');
 });
 
-test('passo 4 com a Conexão ligada', async ({ page, extensao, fakes }) => {
+test.fixme('passo 4, dois minutos sem resposta: reiniciar o Anki com o checklist e Baixar de novo', async ({ page, extensao }) => {
+  // O relógio da página é do teste: os 2 minutos passam quando ele anda.
+  await page.clock.install({ time: new Date('2026-09-18T12:00:00') });
+  await abrir(page, extensao, 'anki');
+  await page.locator('.bv-card').getByRole('button', { name: 'Reiniciar o Anki' }).click();
+  await page.clock.runFor(120_000);
+  await expect(page.locator('.bv-card').getByText('A Conexão com o Anki ainda não respondeu. Confira:')).toBeVisible();
+  await foto(page, 'passo-4-sem-resposta.png');
+});
+
+test.fixme('passo 4 com a Conexão ligada: Achei o Anki, com o perfil e a versão', async ({ page, extensao, fakes }) => {
   fakes.anki.ligar();
   await page.setViewportSize({ width: 1100, height: 760 });
   await page.goto(extensao.url('painel.html#boas-vindas/anki'));
-  await expect(page.locator('.bv-card').getByRole('status')).toHaveText('Conexão com o Anki: ligada');
+  await expect(page.locator('.bv-card').getByRole('status')).toHaveText(/^Achei o Anki · Usuário 1 · versão /);
   await page.evaluate(() => document.fonts.ready);
   await foto(page, 'passo-4-ligada.png');
 });

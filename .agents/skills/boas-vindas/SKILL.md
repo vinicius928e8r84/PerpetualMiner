@@ -36,7 +36,7 @@ POP-05; failure is POP-06 under the field, text kept). Step 2: ONB-06 and the sa
 (`GravadorDeAtalhos.montar(…, { prefixo: 'bv', lugar })`: `lugar` is what hides when the person leaves, which cancels
 a recording): same storage, same refusal of a repeated shortcut. Nothing of the panel opens over the page: the Envio
 summary waits and opens once the person enters one of `Shell.AREAS_DO_PAINEL`. Step 3 mounts the Conta & sync body
-(`Conta.montarCartao`) shared with Configurações. Step 4's status, retry and instructions are described in
+(`Conta.montarCartao`) shared with Configurações. Step 4 is `ONB-08.corpo` and the steps component of `painel-conexao-passos.js` (`PassosDaConexao`, the same one as the ONB-16 card, with the list above the step card and no Voltar · Continuar of its own; see “Conexão com o Anki” in the `painel-anki` skill), described in
 [Boas-vindas § F1](../../../docs/design/painel/boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1). Step 5 shares
 the popup's automatic-mining messages and daily-limit field through `lib/mineracao-automatica.js`, following
 `pm_auto_miner_state_view`. Step 6 mounts the Chave do Gemini card with `ChaveDoGemini.montar(…, { prefixo: 'bv' })`.

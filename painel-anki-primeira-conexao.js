@@ -2,13 +2,14 @@
 
 // O card ONB-16 da Conexão com o Anki, quando ela nunca respondeu ligada
 // neste computador (docs/design/painel/anki/prototipo-primeira-conexao.html,
-// variante B “Igual às Boas-vindas”): a lista dos 3 passos ao lado do card e,
-// embaixo, a conferência sozinha e os dois quadros. O markup fixo é do
+// variante B “Igual às Boas-vindas”): a lista dos passos ao lado do card do passo
+// (o componente de `painel-conexao-passos.js`, o mesmo do passo 4 da Boas-vindas)
+// e, embaixo, a conferência sozinha e os dois quadros. O markup fixo é do
 // painel.html; aqui se desenha o que muda.
 //
 // Os passos se marcam pelo estado real, e o único que a extensão enxerga antes da
 // Conexão é ela mesma (o AnkiConnect não é lido: sem permissão nova). Por isso
-// os três esperam a Conexão e viram ✓ juntos quando ela responde ligada: é o
+// eles esperam a Conexão e viram ✓ juntos quando ela responde ligada: é o
 // momento Pronto, que o card segura antes de devolver as abas.
 //
 // A linha “Confere sozinho a cada 15 s” segue a conferência de /health que o
@@ -16,38 +17,29 @@
 // pergunta nada à rede. Os relógios são o de 1 s que reescreve “há N s” e o
 // de 1,8 s do Pronto.
 //
-// O fluxo é todo daqui: quando o card cobre as abas, o momento Pronto (o toast
-// e o foco que o acompanham) e o passo que a pessoa abriu. O painel-anki.js não
+// O fluxo é todo daqui: quando o card cobre as abas e o momento Pronto (o toast
+// e o foco que o acompanham); o passo aberto é do componente. O painel-anki.js não
 // pergunta nada: o card põe e tira `anki--primeira-vez` na área, e o CSS troca
 // as abas pelo card. A assinatura de situação em `montar` é a única do fluxo
 // ONB-16, que não depende da ordem em que outros ouvintes entram.
 
 (function (raiz) {
-  const PASSOS = [
-    { titulo: 'ONB-16.passo1Titulo', texto: 'ONB-08.passo1' },
-    { titulo: 'ONB-16.passo2Titulo', texto: 'ONB-08.passo2' },
-    { titulo: 'ONB-16.passo3Titulo', texto: 'ONB-08.passo3' },
-  ];
-  const PASSO_DOS_COMANDOS = 1;
-  const PASSO_DO_TENTAR = 2;
   const INTERVALO_DO_TIQUE = 1000;
   // Quanto o momento Pronto fica na tela antes de as abas voltarem.
   const MOMENTO_PRONTO_MS = 1800;
 
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, ConexaoNaTela, Configuracao } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, ConexaoNaTela, PassosDaConexao } = raiz;
   const { SITUACAO: CONEXAO } = ConexaoAnki;
-  const { SITUACAO } = Configuracao;
   const porId = id => document.getElementById(id);
 
   const estado = {
     pronto: false,          // o momento Pronto está na tela
     prontoDesenhado: false, // o Pronto que o último desenho já mostrou (para o foco)
-    escolha: null,          // o passo que a pessoa abriu; sem ele, o primeiro que falta
     conferindo: false,      // uma conferência está no ar
     conferiuEm: null,       // quando a última voltou
     visto: { situacao: CONEXAO.CONECTANDO, respondeu: false },  // o que a última notificação disse
   };
-  const marcas = [];        // por passo: { botao, marca, leitor }
+  let passos = null;        // o componente dos passos (painel-conexao-passos.js)
 
   // ─── Montagem ──────────────────────────────────────────────────────────────
 
@@ -59,16 +51,7 @@
    * de situação; não desmonta o card nem encerra a Conferência.
    */
   function montar() {
-    montarLista();
-    montarComoLigar();
-    porId('apv-voltar').addEventListener('click', () => abrirPasso(passoAtual() - 1));
-    porId('apv-continuar').addEventListener('click', () => abrirPasso(passoAtual() + 1));
-    ConexaoNaTela.ligarTentarDeNovo(porId('apv-tentar'), () => {
-      // Só o botão do card fixa o passo 3: o Tentar de novo da F1 e o da Boas-vindas não são escolha dela.
-      estado.escolha = PASSO_DO_TENTAR;
-      ConexaoAnki.tentarDeNovo();
-    });
-
+    passos = PassosDaConexao.montar(porId('apv-passos'), { prefixo: 'apv' });
     ConexaoAnki.aoConferir(conferindo => {
       estado.conferindo = conferindo;
       desenharConferencia();
@@ -76,47 +59,11 @@
     setInterval(desenharConferencia, INTERVALO_DO_TIQUE);
     return ConexaoAnki.pronta.then(() => {
       estado.visto.respondeu = ConexaoAnki.ultimaResposta() !== null;
+      // Os 2 minutos do componente contam da primeira vez que a área está à vista: quem chega depois
+      // (de outra área) precisa de um desenho na entrada, que é quando o card passa a ser visto.
+      Shell.aoEntrarNaArea('anki', desenhar);
       return ConexaoAnki.acompanhar(aoMudarAConexao);
     });
-  }
-
-  function montarLista() {
-    const lista = porId('apv-lista');
-    PASSOS.forEach((passo, i) => {
-      const marca = elemento('span', 'bv-marca');
-      marca.setAttribute('aria-hidden', 'true');
-      marca.dataset.numero = String(i + 1);
-      const leitor = elemento('span', 'veio-so-leitor');
-      const botao = elemento('button', 'bv-lista__item', marca, elemento('span', null, textoDaVoz(passo.titulo)), leitor);
-      botao.type = 'button';
-      botao.addEventListener('click', () => abrirPasso(i));
-      marcas.push({ botao, marca, leitor });
-      lista.append(elemento('li', null, botao));
-    });
-  }
-
-  /**
-   * O Detalhes do passo 2 (os comandos, a porta, o log), com “Copiar” ao lado.
-   * Copiou: o toast. Não copiou: a linha no lugar, até a próxima tentativa.
-   */
-  function montarComoLigar() {
-    const comandos = textoDaVoz('ONB-16.detalhes');
-    const falha = elemento('p', 'anki-motivo', textoDaVoz('ONB-16.naoCopiou'));
-    falha.setAttribute('role', 'alert');
-    falha.hidden = true;
-    const copiar = elemento('button', 'veio-botao veio-botao--contorno veio-botao--compacto', textoDaVoz('ONB-16.copiar'));
-    copiar.type = 'button';
-    copiar.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(comandos);
-        falha.hidden = true;
-        Veio.mostrarToastDeSucesso(textoDaVoz('ONB-16.copiado'));
-      } catch {
-        falha.hidden = false;
-      }
-    });
-    porId('anki-primeira-vez-detalhes').replaceChildren(
-      elemento('div', 'anki-como-ligar', Veio.montarDetalhes(comandos), copiar), falha);
   }
 
   // ─── A Conexão ─────────────────────────────────────────────────────────────
@@ -162,28 +109,6 @@
 
   // ─── O card ────────────────────────────────────────────────────────────────
 
-  /** O passo aberto: o que a pessoa escolheu ou, sem escolha, o primeiro que falta. */
-  function passoAtual() {
-    if (estado.pronto) return PASSOS.length;
-    if (estado.escolha !== null) return estado.escolha;
-    return ConexaoAnki.situacao() === CONEXAO.CONECTANDO ? PASSO_DO_TENTAR : 0;
-  }
-
-  /** Qual vista o card mostra agora. */
-  function vistaDoCard() {
-    if (estado.pronto) return 'pronto';
-    if (ConexaoAnki.situacao() === CONEXAO.CONECTANDO) return 'conectando';
-    return passoAtual() === 0 ? 'esperando' : 'desligada';
-  }
-
-  function abrirPasso(i) {
-    estado.escolha = Math.min(Math.max(i, 0), PASSOS.length - 1);
-    desenhar();
-    // O foco vai ao título, para o leitor de tela ler o passo novo; o botão
-    // apertado pode ter saído (Voltar no 1, Continuar no 3).
-    porId('apv-passo-titulo').focus();
-  }
-
   function desenhar() {
     const cobre = cobreAsAbas();
     const secao = porId('anki-primeira-vez');
@@ -195,6 +120,7 @@
     }
     secao.hidden = !cobre;
     estado.prontoDesenhado = estado.prontoDesenhado && cobre;
+    passos.mostrar(cobre && Shell.areaAtual() === 'anki');
     if (!cobre) return;
     // Entrar em Pronto tira os controles do card. A F1 também pode ter saído
     // com as abas ainda ocultas: nestes casos, o título acolhe o foco.
@@ -203,59 +129,13 @@
     const entrouNoPronto = estado.pronto && !estado.prontoDesenhado;
     estado.prontoDesenhado = estado.pronto;
 
-    const vista = vistaDoCard();
-    const pronto = vista === 'pronto';
-    const passoAberto = passoAtual();
-    const conexao = ConexaoAnki.situacao();
-    const conectando = conexao === CONEXAO.CONECTANDO;
-
-    porId('anki-primeira-vez-titulo').textContent = pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA) : textoDaVoz('ONB-16.titulo');
-    porId('apv-apoio').hidden = pronto;
-    porId('apv-rodape').hidden = pronto;
-
-    marcas.forEach(({ botao, marca, leitor }, i) => {
-      if (i === passoAberto) botao.setAttribute('aria-current', 'step');
-      else botao.removeAttribute('aria-current');
-      marca.dataset.situacao = pronto ? SITUACAO.FEITO : '';
-      marca.classList.toggle('bv-marca--atual', i === passoAberto);
-      marca.replaceChildren(...(pronto ? [Veio.iconeVeio('certo')] : []));
-      // O nome do item diz a situação ao leitor de tela: “…, feito”.
-      leitor.textContent = pronto ? `, ${textoDaVoz('ONB-13.feito')}` : '';
-    });
-
-    const passo = PASSOS[passoAberto];
-    porId('apv-sobretitulo').textContent = pronto
-      ? textoDaVoz('ONB-16.pronto')
-      : `${textoDaVoz('ONB-16.passos')} · ${textoDaVoz('ONB-03.passo', { n: passoAberto + 1, total: PASSOS.length })}`;
-    porId('apv-passo-titulo').textContent = pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA) : textoDaVoz(passo.titulo);
-    porId('apv-texto').textContent = textoDaVoz(pronto ? 'ONB-16.prontoApoio' : passo.texto);
-
-    // O status é uma região que anuncia a mudança: o ponto e o texto trocam, ela fica.
-    const esperando = vista === 'esperando';
-    porId('apv-status').classList.toggle('apv-status--espera', esperando);
-    const mostrada = pronto && !conectando ? CONEXAO.LIGADA : conexao;
-    ConexaoNaTela.pintarPonto(porId('apv-ponto'), esperando ? '' : mostrada);
-    porId('apv-status-texto').textContent = esperando ? textoDaVoz('ONB-16.esperando') : ConexaoNaTela.texto(mostrada);
-
-    ConexaoNaTela.pintarTentarDeNovo(porId('apv-tentar'), conexao, {
-      sai: pronto || passoAberto !== PASSO_DO_TENTAR,
-      focoPara: () => porId('apv-passo-titulo'),
-    });
-    porId('anki-primeira-vez-detalhes').hidden = pronto || passoAberto !== PASSO_DOS_COMANDOS;
-
-    porId('apv-navegacao').hidden = pronto;
-    porId('apv-voltar').hidden = passoAberto === 0;
-    porId('apv-continuar').hidden = passoAberto >= PASSOS.length - 1;
+    porId('anki-primeira-vez-titulo').textContent = estado.pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA) : textoDaVoz('ONB-16.titulo');
+    porId('apv-apoio').hidden = estado.pronto;
+    porId('apv-rodape').hidden = estado.pronto;
+    passos.desenhar({ pronto: estado.pronto });
 
     desenharConferencia();
-    if (entrouNoPronto && focoSaindo) porId('apv-passo-titulo').focus();
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
+    if (entrouNoPronto && focoSaindo) passos.focarTitulo();
   }
 
   raiz.PrimeiraConexao = { montar };

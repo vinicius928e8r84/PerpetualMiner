@@ -16,6 +16,7 @@ cat > "$TMP/bin/npx" <<'STUB'
 #!/usr/bin/env bash
 trap '' TERM
 touch "$PM_STUB_MARCA"
+[ -n "${PM_STUB_ARGS:-}" ] && echo "$*" > "$PM_STUB_ARGS"
 [ "${PM_STUB:-}" = rapido ] && { echo hi; exit 0; }
 [ "${PM_STUB:-}" = falha-com-filho ] && { ( trap '' TERM; for _ in $(seq 100); do sleep 1; done ) >/dev/null 2>&1 & echo "job failed"; exit 1; }
 for _ in $(seq "${PM_STUB_SEGUNDOS:-120}"); do sleep 1; done
@@ -168,6 +169,12 @@ confere && passou "ratchet ignores files that are not surfaces (popup.css, READM
 mapa true; muda bridge-server-lookalike.py 2>/dev/null; muda painel-shell.js
 confere && falhou "ratchet passed painel-shell.js with nothing" || passou "ratchet fails a painel*.js change"
 (cd "$repo" && "$AQUI/mapa-de-features.sh" nao-existe >/dev/null 2>&1); [ $? -eq 2 ] && passou "ratchet refuses a base ref that does not exist" || falhou "ratchet accepted an unknown base ref"
+
+# 12. Playwright's worker count: 2 by default (an inherited PM_WORKERS is removed for that case), PM_WORKERS overrides it (a --workers argument comes before drive.sh's own and loses).
+PM_STUB=rapido PM_STUB_ARGS="$TMP/args-padrao" env -u PM_WORKERS "$SCRIPTS/drive.sh" trabalhadores-1 --list >/dev/null 2>&1
+PM_STUB=rapido PM_STUB_ARGS="$TMP/args-um" PM_WORKERS=1 "$SCRIPTS/drive.sh" trabalhadores-2 --list >/dev/null 2>&1
+grep -q -- '--workers=2' "$TMP/args-padrao" 2>/dev/null && passou "drive passes 2 workers by default" || falhou "default worker count is not 2: $(cat "$TMP/args-padrao" 2>/dev/null)"
+grep -q -- '--workers=1' "$TMP/args-um" 2>/dev/null && ! grep -q -- '--workers=2' "$TMP/args-um" && passou "PM_WORKERS=1 gives 1 worker" || falhou "PM_WORKERS ignored: $(cat "$TMP/args-um" 2>/dev/null)"
 
 [ "$falhas" -eq 0 ] && echo "test_helpers: all passed" || echo "test_helpers: $falhas failed"
 exit $([ "$falhas" -eq 0 ] && echo 0 || echo 1)

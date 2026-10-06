@@ -3,7 +3,7 @@
 // Passo 2 do redesign: Configurações com os cards “resumo primeiro” e o card
 // Conta & sync (#26, docs/design/painel/configuracoes/).
 //
-// #configuracoes mostra os cinco cards fechados, cada um numa linha com o
+// #configuracoes mostra os seis cards fechados, cada um numa linha com o
 // resumo do estado, e eles abrem no lugar (vários ao mesmo tempo).
 // #configuracoes/<seção> abre o card, rola até ele e pisca a borda. O card
 // Conta & sync cobre os 10 estados de conta (CFG-01…10), e o chip da sidebar
@@ -76,12 +76,12 @@ async function detalhesDoCard(page) {
 
 // ─── Os cards fechados, resumo primeiro ──────────────────────────────────────
 
-test('#configuracoes mostra os 5 cards fechados em linha, na ordem, com o resumo da conta', async ({ page, extensao }) => {
+test('#configuracoes mostra os 6 cards fechados em linha, na ordem, com o resumo da conta', async ({ page, extensao }) => {
   await abrirPainel(page, extensao);
 
   const cabecas = page.locator('.shell-cards').getByRole('button', { expanded: false });
-  await expect(cabecas).toHaveCount(5);
-  for (const [i, nome] of ['Conta & sync', 'Atalhos', 'Chave do Gemini', 'Aparência', 'Zona de perigo'].entries()) {
+  await expect(cabecas).toHaveCount(6);
+  for (const [i, nome] of ['Conta & sync', 'Atalhos', 'Chave do Gemini', 'Conexão com o Anki', 'Aparência', 'Zona de perigo'].entries()) {
     await expect(cabecas.nth(i)).toHaveAccessibleName(nome);
   }
   await expect(resumo(page, 'conta')).toHaveText('Sem conta · só neste computador');

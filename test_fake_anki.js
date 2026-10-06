@@ -19,9 +19,10 @@ const contrato = require('./complemento/contrato/exemplos.json');
 async function conferirOsExemplos() {
   for (const exemplo of contrato.exemplos.filter(exemploDaExtensao)) {
     const fakeDoExemplo = criarFakeAnki();
-    fakeDoExemplo.abrirPerfil(exemplo.contexto.perfil);
+    if (exemplo.contexto.perfil !== undefined) fakeDoExemplo.abrirPerfil(exemplo.contexto.perfil);
     if (exemplo.contexto.falhaNoPerfil) fakeDoExemplo.falharLeituraDoPerfil();
     if ('colecao' in exemplo.contexto) fakeDoExemplo.abrirColecao(exemplo.contexto.colecao);
+    if (exemplo.contexto.itemDeLogin) fakeDoExemplo.definirItemDeLogin(exemplo.contexto.itemDeLogin);
     let entregue = null;
     await fakeDoExemplo.tratar({
       request: () => ({

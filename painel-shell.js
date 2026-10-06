@@ -5,7 +5,7 @@
 //
 //   #frases (padrão)                        Frases mineradas
 //   #anki/custos|baralhos|vocabulario|ajustes  a aba da Conexão com o Anki
-//   #configuracoes[/conta|atalhos|chave|aparencia|perigo] Configurações, rolando até o card
+//   #configuracoes[/conta|atalhos|chave|anki|aparencia|perigo] Configurações, rolando até o card
 //   #boas-vindas[/<passo>]                  a Boas-vindas, sem a sidebar (painel-boas-vindas.js)
 //
 // Trocar de área só troca a vista: nada recarrega, então os filtros, a página, a
@@ -22,14 +22,15 @@
 // quem pediu (`aoAbrirASecao`). O resumo da conta é do painel-conta.js; os de
 // Atalhos, Chave do Gemini, Aparência e Zona de perigo saem daqui, do que já
 // está gravado (os atalhos, a chave, o tema e o total de frases). O conteúdo dos
-// cards Atalhos, Chave do Gemini e Zona de perigo é do painel-atalhos.js, do
-// painel-chave.js e do painel-perigo.js. Toda cópia vem do catálogo da Voz.
+// cards Atalhos, Chave do Gemini, Conexão com o Anki (o resumo também) e Zona de
+// perigo é do painel-atalhos.js, do painel-chave.js, do painel-abrir-anki.js e do
+// painel-perigo.js. Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
   /** As áreas do painel com a sidebar; a Boas-vindas é a página à parte. */
   const AREAS_DO_PAINEL = Object.freeze(['frases', 'anki', 'configuracoes']);
   const ABAS_DA_CONEXAO = ['custos', 'baralhos', 'vocabulario', 'ajustes'];
-  const SECOES_DE_CONFIGURACOES = ['conta', 'atalhos', 'chave', 'aparencia', 'perigo'];
+  const SECOES_DE_CONFIGURACOES = ['conta', 'atalhos', 'chave', 'anki', 'aparencia', 'perigo'];
 
   /** A chave do Gemini no resumo: os 4 primeiros e os 4 últimos caracteres. */
   const MASCARA_DA_CHAVE = '••••••••';
