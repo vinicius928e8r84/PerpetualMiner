@@ -32,15 +32,24 @@ COMPORTAMENTOS = {
         MODELOS_OK,
         _erro(403, "Your organization must be verified to use this feature.", "invalid_request_error", None),
     ),
-    # O limite de uso (429 que não é falta de crédito): nada foi conferido.
+    # O limite de uso (429 que não diz “quota”) nos dois pedidos: nada foi conferido.
     "limite_de_uso": (
         _erro(429, "Rate limit reached for requests.", "requests", "rate_limit_exceeded"),
         _erro(429, "Rate limit reached for requests.", "requests", "rate_limit_exceeded"),
     ),
-    # A chave vale (os modelos responderam), mas o pedido pago bateu no limite: a autenticação foi explícita.
+    # Os modelos responderam, mas o pedido pago bateu no limite: a conta não tem como pagar o uso agora.
     "limite_so_no_pago": (
         MODELOS_OK,
         _erro(429, "Rate limit reached for requests.", "requests", "rate_limit_exceeded"),
+    ),
+    # O pagamento recusado por um 402, direto, em cada um dos dois pedidos.
+    "pagamento_402_nos_modelos": (
+        _erro(402, "Payment required.", "billing_error", None),
+        EMBEDDINGS_OK,
+    ),
+    "pagamento_402_no_pago": (
+        MODELOS_OK,
+        _erro(402, "Payment required.", "billing_error", None),
     ),
     "fora_do_ar": (
         _erro(503, "The server is overloaded.", "server_error", None),

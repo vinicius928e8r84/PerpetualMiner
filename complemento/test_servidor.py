@@ -470,7 +470,8 @@ class ProcessoDoAnki(unittest.TestCase):
                 conexao.pedir("GET", "/health")
                 registrado = conexao.log()
         self.assertEqual(erro.getvalue(), "")
-        self.assertIn("Bad request", registrado)
+        self.assertIn("http: code 400, message Bad Request", registrado)  # o texto da biblioteca, sem a linha do pedido
+        self.assertNotIn("isto nao e http", registrado)
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ Roda no Python 3.9 (o do Anki do Mac) e no 3.13:
 
 import json
 import os
+import socket
 import stat
 import sys
 import tempfile
@@ -77,6 +78,10 @@ class ChaveRecebida(unittest.TestCase):
             "sem_credito": (402, "openai_no_credit"),
             "org_nao_verificada": (403, "openai_org_not_verified"),
             "fora_do_ar": (502, "openai_unreachable"),
+            "limite_de_uso": (402, "openai_no_credit"),
+            "limite_so_no_pago": (402, "openai_no_credit"),
+            "pagamento_402_nos_modelos": (402, "openai_no_credit"),
+            "pagamento_402_no_pago": (402, "openai_no_credit"),
         }
         for comportamento, (status_esperado, erro) in esperado.items():
             with self.subTest(comportamento), tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, openai=comportamento) as conexao:
@@ -85,17 +90,25 @@ class ChaveRecebida(unittest.TestCase):
             self.assertEqual((status, json.loads(corpo)), (status_esperado, {"error": erro}))
             self.assertEqual(sem_chave, (200, {"openai": {"configurada": False}}))
 
-    def test_sem_a_autenticacao_explicita_da_openai_nada_e_guardado_e_a_chave_anterior_fica(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, openai="limite_de_uso", chave_na_conexao="wxyz") as conexao:
-            status, _, corpo = enviar(conexao, OUTRA_CHAVE)
-            depois = estado(conexao)
-        self.assertEqual((status, json.loads(corpo)), (502, {"error": "openai_unreachable"}))
-        self.assertEqual(depois, (200, {"openai": {"configurada": True, "ultimos4": "wxyz"}}))
+    def test_limite_de_uso_e_pagamento_recusado_nos_dois_pedidos_sao_sem_credito_e_nada_e_guardado(self):
+        for comportamento in ("limite_de_uso", "limite_so_no_pago", "pagamento_402_nos_modelos", "pagamento_402_no_pago"):
+            with self.subTest(comportamento), tempfile.TemporaryDirectory() as pasta:
+                with ConexaoNoTeste(pasta, openai=comportamento, chave_na_conexao="wxyz") as conexao:
+                    status, _, corpo = enviar(conexao, OUTRA_CHAVE)
+                    depois = estado(conexao)
+                    arquivos = tudo_em_disco(conexao.chaves)
+                self.assertEqual((status, json.loads(corpo)), (402, {"error": "openai_no_credit"}))
+                self.assertEqual(depois, (200, {"openai": {"configurada": True, "ultimos4": "wxyz"}}))
+                self.assertFalse([nome for nome, dados in arquivos if OUTRA_CHAVE.encode() in dados])
 
-    def test_a_chave_autenticada_vale_mesmo_se_so_o_pedido_pago_bateu_no_limite(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, openai="limite_so_no_pago") as conexao:
-            status, _, corpo = enviar(conexao)
-        self.assertEqual((status, json.loads(corpo)), (200, {"ok": True, "ultimos4": "abcd"}))
+    def test_limite_de_uso_sem_chave_antes_nao_deixa_chave_nenhuma(self):
+        for comportamento in ("limite_de_uso", "limite_so_no_pago", "pagamento_402_nos_modelos", "pagamento_402_no_pago"):
+            with self.subTest(comportamento), tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, openai=comportamento) as conexao:
+                enviar(conexao)
+                depois = estado(conexao)
+                arquivos = tudo_em_disco(conexao.chaves)
+            self.assertEqual(depois, (200, {"openai": {"configurada": False}}))
+            self.assertEqual(arquivos, [])
 
     def test_trocar_a_chave_guarda_a_nova(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
@@ -213,6 +226,50 @@ class CorpoDoPedido(unittest.TestCase):
             status, _, _ = conexao.pedir("POST", "/ia/estado")
             saude = conexao.pedir("GET", "/health")[0]
         self.assertEqual((status, saude), (200, 200))
+
+
+class PedidoQueOProtocoloRecusa(unittest.TestCase):
+    """A linha de um pedido malformado nunca volta na resposta de erro nem vai ao log, nem se ela for a chave."""
+
+    LINHAS = (
+        "%s\r\n\r\n",                    # uma palavra só: sintaxe ruim
+        "GET /x %s\r\n\r\n",             # a “versão” é a chave
+        "GET /%s HTTP/9.9\r\n\r\n",       # versão que o servidor não fala
+        "%s /x HTTP/1.1\r\n\r\n",         # método que o servidor não tem
+        "GET /x HTTP/1.1 %s\r\n\r\n",     # palavras demais
+        "GET /x HTTP/1.1\r\n%s\r\n\r\n",  # linha de cabeçalho sem “:”
+    )
+
+    @staticmethod
+    def _cru(conexao, texto):
+        with socket.create_connection(("127.0.0.1", conexao.conexao.porta), timeout=5) as ligacao:
+            ligacao.sendall(texto.encode("utf-8"))
+            recebido = b""
+            while True:
+                try:
+                    pedaco = ligacao.recv(4096)
+                except socket.timeout:
+                    break
+                if not pedaco:
+                    break
+                recebido += pedaco
+        return recebido
+
+    def test_a_linha_recusada_nao_volta_na_resposta_nem_vai_ao_log(self):
+        for modelo in self.LINHAS:
+            with self.subTest(modelo), tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+                resposta = self._cru(conexao, modelo % CHAVE)
+                registrado = conexao.log()
+            self.assertTrue(resposta, "o servidor devia responder o erro")
+            for pedaco in (CHAVE, CHAVE[:12]):
+                self.assertNotIn(pedaco.encode(), resposta)
+                self.assertNotIn(pedaco, registrado)
+
+    def test_o_erro_de_protocolo_fica_registrado_sem_o_conteudo_do_pedido(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            self._cru(conexao, CHAVE + "\r\n\r\n")
+            registrado = conexao.log()
+        self.assertIn("http: code 400, message Bad Request", registrado)
 
 
 if __name__ == "__main__":

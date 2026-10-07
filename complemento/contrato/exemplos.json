@@ -1553,7 +1553,7 @@
       }
     },
     {
-      "nome": "chave da OpenAI quando a OpenAI só responde limite de uso: nada foi conferido, nada é guardado",
+      "nome": "chave da OpenAI quando a OpenAI só responde limite de uso: é o mesmo aviso de sem crédito, nada é guardado",
       "daExtensao": true,
       "contexto": {
         "perfil": "Usuário 1",
@@ -1568,9 +1568,31 @@
         }
       },
       "resposta": {
-        "status": 502,
+        "status": 402,
         "json": {
-          "error": "openai_unreachable"
+          "error": "openai_no_credit"
+        }
+      }
+    },
+    {
+      "nome": "chave da OpenAI cujo pedido pago bate no limite de uso: é o mesmo aviso de sem crédito, nada é guardado",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "openai": "limite_so_no_pago"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "chave": "sk-proj-chave-de-exemplo-9f3a"
+        }
+      },
+      "resposta": {
+        "status": 402,
+        "json": {
+          "error": "openai_no_credit"
         }
       }
     },

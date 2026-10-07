@@ -29,7 +29,7 @@ Mudar só um lado quebra um teste, e a mensagem diz o exemplo e os dois arquivos
   quando ler o perfil quebra, `colecao` (o nome de uma coleção de `colecoes`, a que o Anki tem aberta; `null`: nenhuma,
   e a leitura dos Baralhos responde `503`; um exemplo que não cita `colecao` vale com qualquer uma), `itemDeLogin`, a situação do
   item de “Abrir o Anki com o computador” (`desligado`, `ligado`, `sem_anki`, `falha` ou `indisponivel`), `openai` (como a OpenAI
-  responde à conferência de uma chave: `aceita`, `recusa`, `sem_credito`, `org_nao_verificada`, `limite_de_uso` ou
+  responde à conferência de uma chave: `aceita`, `recusa`, `sem_credito`, `org_nao_verificada`, `limite_de_uso`, `limite_so_no_pago` ou
   `fora_do_ar`) e `chaveNaConexao` (os 4 últimos caracteres da chave que a Conexão já guarda, ou `null`). Uma parte do contexto só
   vale para os exemplos que a citam: a saúde não diz do item e o item não diz do perfil. O fake muda de
   contexto por `fakes.anki.abrirPerfil(...)`, `falharLeituraDoPerfil()`, `abrirColecao(nome)`, `definirItemDeLogin(...)`,

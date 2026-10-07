@@ -152,8 +152,20 @@ class _Atendente(BaseHTTPRequestHandler):
         self.conexao.logger.debug("http: " + formato, *args)
 
     def log_error(self, formato, *args):
-        # Pedido que o protocolo recusou (sintaxe, cabeçalho grande demais): isso o log mostra.
+        # Erro do próprio servidor (um pedido que estourou o tempo, por exemplo); o texto é o da biblioteca.
         self.conexao.logger.warning("http: " + formato, *args)
+
+    def log_request(self, code="-", size="-"):
+        # A linha do pedido é do cliente e pode ser qualquer coisa, a chave colada inclusive: o log só leva a resposta.
+        self.conexao.logger.debug("http: resposta %s", code)
+
+    def send_error(self, code, message=None, explain=None):
+        """Pedido que o protocolo recusou (sintaxe, versão, método, cabeçalho grande demais).
+
+        A biblioteca repete a linha do pedido na página de erro e no log (`Bad request syntax ('...')`); o que o
+        cliente mandou nunca volta nem é escrito, então aqui a resposta e o log são os mesmos para qualquer pedido.
+        """
+        super().send_error(code)
 
     def _responder(self, status, dados=None, origem=None, extras=None):
         corpo = b"" if dados is None else json.dumps(dados, ensure_ascii=False).encode("utf-8")

@@ -146,6 +146,8 @@ test('enquanto a Conexão confere, o campo guarda o que foi colado e o botão n�
 for (const { comportamento, texto, acao, detalhes } of [
   { comportamento: 'recusa', texto: 'A OpenAI recusou a chave. Confira se ela está inteira e cole de novo.', acao: 'Trocar chave', detalhes: 'HTTP 401 · openai_key_rejected' },
   { comportamento: 'sem_credito', texto: 'A conta da OpenAI está sem crédito. Adicione crédito e confira de novo.', acao: 'Adicionar crédito', detalhes: 'HTTP 402 · openai_no_credit' },
+  { comportamento: 'limite_de_uso', texto: 'A conta da OpenAI está sem crédito. Adicione crédito e confira de novo.', acao: 'Adicionar crédito', detalhes: 'HTTP 402 · openai_no_credit' },
+  { comportamento: 'limite_so_no_pago', texto: 'A conta da OpenAI está sem crédito. Adicione crédito e confira de novo.', acao: 'Adicionar crédito', detalhes: 'HTTP 402 · openai_no_credit' },
   { comportamento: 'org_nao_verificada', texto: 'A OpenAI pede para verificar a sua organização antes de gerar imagens. Verifique-a e confira de novo.', acao: 'Verificar organização', detalhes: 'HTTP 403 · openai_org_not_verified' },
   { comportamento: 'fora_do_ar', texto: 'Não deu para falar com a OpenAI. Tente de novo daqui a pouco.', acao: 'Tentar de novo', detalhes: 'HTTP 502 · openai_unreachable' },
 ]) {

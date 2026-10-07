@@ -432,7 +432,7 @@ function criarFakeAnki() {
      */
     perderARespostaDoItemDeLogin({ aplicada }) { estado.perdaDaRespostaDoItem = { aplicada }; },
     falharLeituraDoPerfil() { estado.contexto = { ...estado.contexto, falhaNoPerfil: true }; },
-    /** Como a OpenAI responde à conferência de uma chave: o `openai` dos exemplos (aceita, recusa, sem_credito, org_nao_verificada, fora_do_ar). */
+    /** Como a OpenAI responde à conferência de uma chave: o `openai` dos exemplos (aceita, recusa, sem_credito, org_nao_verificada, limite_de_uso, limite_so_no_pago, fora_do_ar). */
     responderOpenAI(comportamento) { estado.contexto = { ...estado.contexto, openai: comportamento }; },
     /** A Conexão já guardava uma chave (os 4 últimos caracteres dos exemplos), de antes de o teste começar. */
     guardarChaveNaConexao(finalDaChave) { estado.chaveDaOpenAI = `sk-proj-guardada-antes-${finalDaChave}`; },

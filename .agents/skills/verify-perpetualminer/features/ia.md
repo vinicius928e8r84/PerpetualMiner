@@ -20,11 +20,11 @@ The card that sets up who writes the card text. Two entries side by side in equa
 
 Preconditions:
 
-- `doctor.sh` green. The Conexão is the Anki fake: `fakes.anki.responderOpenAI('aceita' | 'recusa' | 'sem_credito' | 'org_nao_verificada' | 'limite_de_uso' | 'fora_do_ar')` says how OpenAI answers the check, `fakes.anki.chaveNaConexao()` is the copy the Conexão kept (null: none), `fakes.anki.desligar()` makes it unreachable. It answers from `complemento/contrato/exemplos.json`, the same file the add-on's own tests read. Real OpenAI is never reached.
+- `doctor.sh` green. The Conexão is the Anki fake: `fakes.anki.responderOpenAI('aceita' | 'recusa' | 'sem_credito' | 'org_nao_verificada' | 'limite_de_uso' | 'limite_so_no_pago' | 'fora_do_ar')` says how OpenAI answers the check, `fakes.anki.chaveNaConexao()` is the copy the Conexão kept (null: none), `fakes.anki.desligar()` makes it unreachable. It answers from `complemento/contrato/exemplos.json`, the same file the add-on's own tests read. Real OpenAI is never reached.
 
 - **Card (`ia-card`).** `drive.sh ia-card configuracoes-ia.spec -g "sem chave: as duas entradas"`. Observable: both columns with equal width and top, the `Plus ou Pro` badge, the disabled `Continuar com o ChatGPT`, the closed-row summary `Sem chave`. Narrow: `-g "abaixo de ~620 px"`.
 - **Paste (`ia-paste`).** `-g "colar a chave: a Conexão a confere"`. Observable: `Chave conferida`, `••••••••9f3a`, the toast, the Conexão's copy equal to the pasted key, `pm_chave_openai` = `{ ultimos4: '9f3a' }`, and the whole `chrome.storage.local` dump without the key.
-- **Errors (`ia-errors`).** `-g "a OpenAI responde"` runs the four OpenAI answers; `-g "com a Conexão desligada, a faixa"` the unreachable Conexão. Observable: the strip (`role=alert`) naming `Chave da OpenAI`, the action button, Detalhes (`HTTP 402 · openai_no_credit`), the pasted text kept in the field, nothing stored.
+- **Errors (`ia-errors`).** `-g "a OpenAI responde"` runs the OpenAI answers (key refused, no credit, usage limit on either call, organization not verified, unreachable); `-g "com a Conexão desligada, a faixa"` the unreachable Conexão. Observable: the strip (`role=alert`) naming `Chave da OpenAI`, the action button, Detalhes (`HTTP 402 · openai_no_credit`), the pasted text kept in the field, nothing stored.
 - **Copy (`ia-copy`).** `-g "a chave guardada na extensão volta à Conexão"`, `-g "se a Conexão sem a cópia recusa a chave"`.
 - **Storage (`ia-storage`).** `-g "o content script e o overlay não alcançam a chave"`: reads the content script's isolated world over CDP.
 - **Boas-vindas (`ia-boas-vindas`).** `drive.sh ia-bv boas-vindas.spec -g "passo 5: o card IA dos cartões"`.

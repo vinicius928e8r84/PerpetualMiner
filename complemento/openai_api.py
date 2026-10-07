@@ -4,11 +4,13 @@ A extensão não fala com a OpenAI (não tem a permissão de host, e é a Conex�
 confere é a Conexão, e responde só um código. O que a OpenAI diz ao recusar nunca é copiado para o log nem para
 a resposta, porque a mensagem de uma chave recusada repete pedaços dela.
 
-1. `GET /v1/models`: a chave vale? Só um 200 é a OpenAI dizendo que sim (401 → recusada; qualquer outra
-   resposta, como um limite de uso, é “não deu para conferir” e nada é guardado)
-2. `POST /v1/embeddings` com uma palavra: a conta tem crédito? É o pedido pago mais barato que existe, e só
-   ele diz “sem crédito” (429 `insufficient_quota`) antes do primeiro Cartão. Um modelo que a OpenAI tire
-   do ar (404) ou uma chave restrita sem esta permissão não reprova a chave.
+1. `GET /v1/models`: a chave vale? Só um 200 é a OpenAI dizendo que sim (401 → recusada; 402 ou 429 → a conta
+   não tem como pagar o uso agora, “sem crédito”; qualquer outra resposta é “não deu para conferir” e nada é guardado)
+2. `POST /v1/embeddings` com uma palavra: a conta tem crédito? É o pedido pago mais barato que existe, e é ele que
+   diz “sem crédito” (402 ou 429, de falta de crédito ou de limite de uso) antes do primeiro Cartão. Um modelo que
+   a OpenAI tire do ar (404) ou uma chave restrita sem esta permissão não reprova a chave.
+
+Em qualquer dos dois, 402 e 429 são o mesmo aviso e nada é guardado: a pessoa precisa de crédito ou de limite.
 """
 
 import json
@@ -71,7 +73,7 @@ def _classificar(status, erro):
     mensagem = str(erro.get("message") or "").lower()
     if status == 403 and "organization" in mensagem and "verif" in mensagem:
         return ORGANIZACAO_NAO_VERIFICADA
-    if status == 429 and "insufficient_quota" in (str(erro.get("code")), str(erro.get("type"))):
+    if status in (402, 429):
         return SEM_CREDITO
     return None
 
