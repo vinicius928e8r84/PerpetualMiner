@@ -4,6 +4,11 @@ name: Testes
 # (Python 3.9, o do Anki do Mac, e 3.13) e a suíte e2e inteira
 # (a extensão desempacotada no Chromium). Quem trabalha roda só os specs da
 # área que mudou; a suíte inteira roda aqui. Ver "Testing" no CLAUDE.md.
+#
+# Para gastar menos minutos sem perder proteção: uma nova execução na mesma PR cancela a
+# anterior; a e2e (91% dos minutos) só começa depois que Node, bridge e complemento passam; e
+# numa PR que mexe só em documentação as fatias e2e terminam sem rodar nada (os passos são
+# pulados, não os jobs, para o nome e o resultado de cada fatia continuarem aparecendo).
 on:
   pull_request:
   push:
@@ -12,9 +17,11 @@ on:
 permissions:
   contents: read
 
+# Só a PR cancela a execução anterior (ela é substituída pela do próximo commit). Cada push
+# na main tem a sua, para nenhum commit dela ficar sem conferência.
 concurrency:
-  group: testes-${{ github.ref }}
-  cancel-in-progress: true
+  group: testes-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   node:
@@ -30,6 +37,30 @@ jobs:
       - run: node test_sync.js
       - run: node test_empacotar.js
       - run: node test_fake_anki.js
+      - run: node scripts/ci/test_ci.js
+
+  # Olha o que a PR muda para as fatias e2e saberem se há o que rodar. No push na main roda tudo.
+  mudancas:
+    name: Mudanças da PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      so_documentacao: ${{ steps.classificar.outputs.so_documentacao }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # O commit de merge da PR e os dois pais: HEAD^1 é a ponta da branch-alvo.
+          fetch-depth: 2
+      - id: classificar
+        run: |
+          if [ "${{ github.event_name }}" = pull_request ]; then
+            # Se não der para ver o que mudou, a suíte roda.
+            resultado=$(node scripts/ci/so-documentacao.js HEAD^1 HEAD) || resultado=false
+          else
+            resultado=false
+          fi
+          echo "so_documentacao=$resultado" >> "$GITHUB_OUTPUT"
+          echo "so_documentacao=$resultado"
 
   bridge:
     name: Testes do bridge
@@ -63,35 +94,51 @@ jobs:
 
   e2e:
     name: e2e (${{ matrix.fatia }}/8)
+    # Só depois que os testes rápidos passam: um erro de Node não gasta ~35 minutos de e2e.
+    needs: [node, bridge, complemento, mudancas]
     runs-on: ubuntu-latest
     # Um worker por runner de 2 núcleos: com dois, o Chromium de cada teste disputa o
     # processador e os testes sensíveis a tempo (relógios, transições) falham sem motivo.
     timeout-minutes: 45
+    env:
+      RODAR: ${{ needs.mudancas.outputs.so_documentacao != 'true' }}
     strategy:
       fail-fast: false
       matrix:
         fatia: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v4
+        if: env.RODAR == 'true'
       - uses: actions/setup-node@v4
+        if: env.RODAR == 'true'
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: e2e/package-lock.json
       - run: npm ci
+        if: env.RODAR == 'true'
         working-directory: e2e
       - uses: actions/cache@v4
+        if: env.RODAR == 'true'
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
       - run: npx playwright install --with-deps chromium
+        if: env.RODAR == 'true'
         working-directory: e2e
       # A DejaVu é a única fonte que o Chromium dos testes enxerga (e2e/fontconfig).
-      - run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
-      - run: xvfb-run --auto-servernum npx playwright test --workers=1 --shard=${{ matrix.fatia }}/8
+      - if: env.RODAR == 'true'
+        run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+      - if: env.RODAR == 'true'
+        run: xvfb-run --auto-servernum npx playwright test --workers=1 --shard=${{ matrix.fatia }}/8
         working-directory: e2e
+      # Quem falhou e passou na repetição (retries em e2e/playwright.config.js) aparece
+      # como aviso e no resumo do job, para a repetição não esconder a instabilidade.
+      - name: Testes instáveis
+        if: ${{ !cancelled() && env.RODAR == 'true' }}
+        run: node scripts/ci/instaveis.js e2e/test-results/relatorio.json
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() && env.RODAR == 'true'
         with:
           name: e2e-${{ matrix.fatia }}-resultados
           path: e2e/test-results

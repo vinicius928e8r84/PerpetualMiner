@@ -9,5 +9,10 @@ module.exports = defineConfig({
   timeout: 30_000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  reporter: 'list',
+  // No CI um teste que falha roda mais uma vez. Se passar, o Playwright o marca "flaky" e
+  // `scripts/ci/instaveis.js` o lista no resumo do job (o relatório JSON); se cair de novo, é falha.
+  retries: process.env.CI ? 1 : 0,
+  reporter: process.env.CI
+    ? [['list'], ['json', { outputFile: 'test-results/relatorio.json' }]]
+    : 'list',
 });
