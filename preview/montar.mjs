@@ -11,17 +11,26 @@
 //
 // Nada aqui altera os arquivos da extensão: tudo é cópia para `dist/`.
 //
-//   node preview/montar.mjs            # monta em preview/dist
-//   node preview/montar.mjs --servir   # monta e serve em http://127.0.0.1:4173
+//   node preview/montar.mjs                    # monta em preview/dist
+//   node preview/montar.mjs --servir           # monta e serve em http://127.0.0.1:4173
+//   node preview/montar.mjs --saida <pasta>    # monta noutra pasta (test_preview.js)
 
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DESTINO = path.join(RAIZ, 'preview', 'dist');
+const SAIDA = process.argv.indexOf('--saida');
+const DESTINO = SAIDA > 0 ? path.resolve(process.argv[SAIDA + 1]) : path.join(RAIZ, 'preview', 'dist');
+
+// O que as telas carregam vem do manifest e das páginas, pela mesma lista que o
+// pacote da loja e a atualização automática usam, e não de uma lista escrita aqui.
+const require = createRequire(import.meta.url);
+require('../lib/arquivos-da-extensao.js');
+const { arquivosDaExtensao } = globalThis.PerpetualMiner;
 
 /** As telas da extensão que o preview mostra, com o simulador injetado. */
 const TELAS = [
@@ -30,8 +39,11 @@ const TELAS = [
   { arquivo: 'bookreader.html', titulo: 'Minerar de uma foto', largura: 'tela cheia' },
 ];
 
-/** O que cada tela carrega além dela mesma. */
-const APOIO = ['popup.css', 'popup.js', 'painel.css', 'painel-shell.js', 'painel-conta.js', 'painel-atalhos.js', 'painel-chave.js', 'painel-perigo.js', 'painel-envio.js', 'painel-conexao-passos.js', 'conexao/perpetualminer.ankiaddon', 'painel-boas-vindas.js', 'painel-lembrete.js', 'painel-anki-primeira-conexao.js', 'painel-anki.js', 'painel-anki-baralhos.js', 'painel-ajustes.js', 'painel.js', 'bookreader.css', 'bookreader.js'];
+/**
+ * O que não está no manifest nem nas páginas, mas a tela entrega: o arquivo da
+ * Conexão, que `PassosDaConexao` oferece num link de download.
+ */
+const PASTAS_DE_APOIO = ['conexao'];
 
 const existe = async alvo => fs.access(alvo).then(() => true, () => false);
 
@@ -170,9 +182,16 @@ async function montar() {
     await fs.writeFile(path.join(DESTINO, 'extensao', tela.arquivo), injetarSimulador(html));
     telas.push(tela);
   }
-  for (const nome of APOIO) {
+  const daTela = new Set(TELAS.map(tela => tela.arquivo));
+  const lerTexto = caminho => fs.readFile(path.join(RAIZ, caminho), 'utf8');
+  for (const nome of await arquivosDaExtensao(lerTexto)) {
+    if (daTela.has(nome)) continue; // já foi, com o simulador injetado
     const origem = path.join(RAIZ, nome);
     if (await existe(origem)) await copiar(origem, path.join(DESTINO, 'extensao', nome));
+  }
+  for (const pasta of PASTAS_DE_APOIO) {
+    const origem = path.join(RAIZ, pasta);
+    if (await existe(origem)) await copiar(origem, path.join(DESTINO, 'extensao', pasta));
   }
   for (const pasta of ['lib']) {
     const origem = path.join(RAIZ, pasta);

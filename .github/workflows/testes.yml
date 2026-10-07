@@ -37,6 +37,8 @@ jobs:
       - run: node test_sync.js
       - run: node test_empacotar.js
       - run: node test_fake_anki.js
+      - run: node test_voz.js
+      - run: node test_preview.js
       - run: node scripts/ci/test_ci.js
 
   # Olha o que a PR muda para as fatias e2e saberem se há o que rodar. No push na main roda tudo.
@@ -91,6 +93,8 @@ jobs:
           python-version: ${{ matrix.python }}
       # O complemento usa só a biblioteca padrão: nada a instalar.
       - run: python -m unittest discover -s complemento -p "test_*.py"
+      # A normalização repetida no bridge e no complemento, também no Python 3.9 do Anki.
+      - run: python -m unittest discover -s bridge -p "test_paridade_da_normalizacao.py"
 
   e2e:
     name: e2e (${{ matrix.fatia }}/8)
