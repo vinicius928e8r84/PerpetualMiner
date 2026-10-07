@@ -54,7 +54,8 @@ jobs:
       - id: classificar
         run: |
           if [ "${{ github.event_name }}" = pull_request ]; then
-            resultado=$(git diff --name-only HEAD^1 HEAD | node scripts/ci/so-documentacao.js)
+            # Se não der para ver o que mudou, a suíte roda.
+            resultado=$(node scripts/ci/so-documentacao.js HEAD^1 HEAD) || resultado=false
           else
             resultado=false
           fi
