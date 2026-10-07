@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos, configuracao, item_de_login, registro, servidor  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
+from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
@@ -72,14 +73,36 @@ def _item_de_login_do_contexto(pasta, situacao):
 
 
 class ConexaoNoTeste:
-    """A Conexão real numa porta livre, com o perfil que o teste escolher."""
+    """A Conexão real numa porta livre, com o perfil que o teste escolher e uma OpenAI de mentira no lugar da de verdade.
 
-    def __init__(self, pasta, perfil="Usuário 1", origens=None, falha_no_perfil=False, colecao=None, item="desligado"):
+    `chave_na_conexao`: os 4 últimos caracteres de uma chave que a Conexão já guardava antes de o teste começar.
+    `colecao`: o adaptador da coleção do Anki que a Conexão lê (sem ele, não há o que ler).
+    `item`: a situação do item de login de “Abrir o Anki com o computador” (ver `_item_de_login_do_contexto`).
+    """
+
+    def __init__(
+        self,
+        pasta,
+        perfil="Usuário 1",
+        origens=None,
+        falha_no_perfil=False,
+        colecao=None,
+        item="desligado",
+        openai="aceita",
+        chave_na_conexao=None,
+    ):
         self.perfil = perfil
         self.falha_no_perfil = falha_no_perfil
+        self.pasta = pasta
         self.item = _item_de_login_do_contexto(pasta, item)
         self.logs = os.path.join(pasta, "logs")
-        os.makedirs(self.logs)
+        self.chaves = os.path.join(pasta, "chaves")
+        os.makedirs(self.logs, exist_ok=True)
+        os.makedirs(self.chaves, exist_ok=True)
+        if chave_na_conexao is not None:
+            with open(os.path.join(self.chaves, "openai.json"), "w", encoding="utf-8") as arquivo:
+                json.dump({"chave": "sk-proj-guardada-antes-" + chave_na_conexao}, arquivo)
+        self.openai = OpenAIDeMentira(openai)
         self.logger = registro.criar(self.logs)
         self.conexao = servidor.Conexao(
             porta=0,
@@ -87,8 +110,10 @@ class ConexaoNoTeste:
             versao=configuracao.VERSAO,
             perfil_aberto=self._ler_o_perfil,
             logger=self.logger,
+            pasta_das_chaves=self.chaves,
             colecao=colecao,
             item_de_login=self.item,
+            openai_base=self.openai.base,
         )
 
     def _ler_o_perfil(self):
@@ -97,24 +122,32 @@ class ConexaoNoTeste:
         return self.perfil
 
     def __enter__(self):
+        self.openai.__enter__()
         assert self.conexao.iniciar(), "a porta de teste devia estar livre"
         return self
 
     def __exit__(self, *erro):
         self.conexao.parar()
+        self.openai.__exit__(*erro)
         for handler in list(self.logger.handlers):
             handler.close()
 
-    def pedir(self, metodo, caminho, origem=ORIGEM, cabecalhos=None, corpo=None):
-        """`corpo` é um JSON (dict) ou, para o pedido quebrado, os bytes que seguem."""
+    def pedir(self, metodo, caminho, origem=ORIGEM, cabecalhos=None, corpo=None, corpo_bruto=None):
+        """`corpo` é um JSON (dict) ou, para o pedido quebrado, os bytes que seguem; `corpo_bruto` é o texto ou os bytes como vierem."""
         pedido = http.client.HTTPConnection("127.0.0.1", self.conexao.porta, timeout=5)
         enviados = dict(cabecalhos or {})
         if origem is not None:
             enviados["Origin"] = origem
         if corpo is not None:
+            if isinstance(corpo, bytes):
+                corpo_bruto = corpo
+            else:
+                corpo_bruto = json.dumps(corpo)
+        if corpo_bruto is not None:
             enviados["Content-Type"] = "application/json"
+            corpo_bruto = corpo_bruto.encode("utf-8") if isinstance(corpo_bruto, str) else corpo_bruto
         try:
-            pedido.request(metodo, caminho, body=corpo if isinstance(corpo, (bytes, type(None))) else json.dumps(corpo).encode("utf-8"), headers=enviados)
+            pedido.request(metodo, caminho, body=corpo_bruto, headers=enviados)
             resposta = pedido.getresponse()
             return resposta.status, dict(resposta.getheaders()), resposta.read()
         finally:
@@ -131,14 +164,19 @@ class ContratoDaConexao(unittest.TestCase):
             with self.subTest(exemplo["nome"]), tempfile.TemporaryDirectory() as pasta:
                 contexto = exemplo["contexto"]
                 with ConexaoNoTeste(
-                    pasta, perfil=contexto.get("perfil", "Usuário 1"),
+                    pasta,
+                    perfil=contexto.get("perfil", "Usuário 1"),
                     falha_no_perfil=contexto.get("falhaNoPerfil", False),
                     colecao=colecao_do_exemplo(contexto),
                     item=contexto.get("itemDeLogin", "desligado"),
-                
+                    openai=contexto.get("openai", "aceita"),
+                    chave_na_conexao=contexto.get("chaveNaConexao"),
                 ) as conexao:
                     pedido = exemplo["pedido"]
-                    status, _, corpo = conexao.pedir(pedido["metodo"], pedido["caminho"], pedido["origem"], corpo=pedido.get("corpo"))
+                    status, _, corpo = conexao.pedir(
+                        pedido["metodo"], pedido["caminho"], pedido["origem"],
+                        corpo=pedido.get("corpo"), corpo_bruto=pedido.get("corpoBruto"),
+                    )
                 self.assertEqual(status, exemplo["resposta"]["status"])
                 self.assertTrue(
                     igual_ao_do_contrato(json.loads(corpo), exemplo["resposta"]["json"]),
@@ -432,7 +470,8 @@ class ProcessoDoAnki(unittest.TestCase):
                 conexao.pedir("GET", "/health")
                 registrado = conexao.log()
         self.assertEqual(erro.getvalue(), "")
-        self.assertIn("Bad request", registrado)
+        self.assertIn("http: code 400, message Bad Request", registrado)  # o texto da biblioteca, sem a linha do pedido
+        self.assertNotIn("isto nao e http", registrado)
 
 
 if __name__ == "__main__":

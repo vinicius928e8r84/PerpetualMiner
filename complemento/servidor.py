@@ -11,15 +11,29 @@ Cada rota é uma função `(conexao, corpo) -> (status, json)` em `ROTAS`; `corp
 
 import json
 import os
+import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import baralhos
-from .configuracao import ENDERECO
+from . import baralhos, openai_api
+from .chaves import Cofre
+from .configuracao import ENDERECO, OPENAI_BASE
 from .item_de_login import AnkiNaoEncontrado
 
 # Um pedido maior que isto não é da extensão: a leitura mais pesada (os Baralhos pedidos) cabe em poucos KB.
 LIMITE_DO_CORPO = 64 * 1024
+
+
+# Uma chave da OpenAI é uma palavra só, de caracteres que cabem num cabeçalho HTTP. O que não tem essa
+# forma nem sai da Conexão: não vale gastar um pedido para a OpenAI dizer o que já se vê.
+_FORMA_DA_CHAVE = re.compile(r"^[A-Za-z0-9._\-]{8,256}$")
+
+_STATUS_DO_ERRO_DA_CHAVE = {
+    openai_api.RECUSADA: 401,
+    openai_api.SEM_CREDITO: 402,
+    openai_api.ORGANIZACAO_NAO_VERIFICADA: 403,
+    openai_api.FORA_DO_AR: 502,
+}
 
 
 def _saude(conexao, corpo):
@@ -57,6 +71,28 @@ def _vocabulario(conexao, corpo):
     )
 
 
+def _guardar_chave_da_openai(conexao, corpo):
+    chave = corpo.get("chave")
+    if not isinstance(chave, str) or not chave.strip():
+        return 400, {"error": "invalid_request"}
+    chave = chave.strip()
+    if not _FORMA_DA_CHAVE.match(chave):
+        return 401, {"error": openai_api.RECUSADA}
+    try:
+        openai_api.conferir(conexao.openai_base, chave, conexao.logger)
+    except openai_api.ErroDaChave as erro:
+        return _STATUS_DO_ERRO_DA_CHAVE[erro.codigo], {"error": erro.codigo}
+    conexao.cofre.guardar("openai", chave)
+    return 200, {"ok": True, "ultimos4": chave[-4:]}
+
+
+def _estado_da_ia(conexao, corpo):
+    ultimos4 = conexao.cofre.ultimos4("openai")
+    if ultimos4 is None:
+        return 200, {"openai": {"configurada": False}}
+    return 200, {"openai": {"configurada": True, "ultimos4": ultimos4}}
+
+
 def _estado_do_item_de_login(conexao, corpo):
     item = conexao.item_de_login
     return 200, {"ok": True, "ligado": item is not None and item.ligado()}
@@ -91,6 +127,9 @@ ROTAS = {
     ("POST", "/anki/decks"): _baralhos_do_anki,
     ("POST", "/anki/stats/decks"): _numeros_dos_baralhos,
     ("POST", "/anki/vocabulary"): _vocabulario,
+    # A chave da OpenAI: POST com a origem da extensão, e nenhuma resposta devolve a chave inteira.
+    ("POST", "/ia/openai/chave"): _guardar_chave_da_openai,
+    ("POST", "/ia/estado"): _estado_da_ia,
     ("POST", "/abrir-com-o-computador/estado"): _estado_do_item_de_login,
     ("POST", "/abrir-com-o-computador"): _abrir_com_o_computador,
 }
@@ -113,8 +152,20 @@ class _Atendente(BaseHTTPRequestHandler):
         self.conexao.logger.debug("http: " + formato, *args)
 
     def log_error(self, formato, *args):
-        # Pedido que o protocolo recusou (sintaxe, cabeçalho grande demais): isso o log mostra.
+        # Erro do próprio servidor (um pedido que estourou o tempo, por exemplo); o texto é o da biblioteca.
         self.conexao.logger.warning("http: " + formato, *args)
+
+    def log_request(self, code="-", size="-"):
+        # A linha do pedido é do cliente e pode ser qualquer coisa, a chave colada inclusive: o log só leva a resposta.
+        self.conexao.logger.debug("http: resposta %s", code)
+
+    def send_error(self, code, message=None, explain=None):
+        """Pedido que o protocolo recusou (sintaxe, versão, método, cabeçalho grande demais).
+
+        A biblioteca repete a linha do pedido na página de erro e no log (`Bad request syntax ('...')`); o que o
+        cliente mandou nunca volta nem é escrito, então aqui a resposta e o log são os mesmos para qualquer pedido.
+        """
+        super().send_error(code)
 
     def _responder(self, status, dados=None, origem=None, extras=None):
         corpo = b"" if dados is None else json.dumps(dados, ensure_ascii=False).encode("utf-8")
@@ -221,13 +272,27 @@ class _SemColecao:
 class Conexao:
     """O servidor da Conexão: `iniciar()` sobe numa thread, `parar()` encerra."""
 
-    def __init__(self, *, porta, origens_aceitas, versao, perfil_aberto, logger, colecao=None, item_de_login=None):
+    def __init__(
+        self,
+        *,
+        porta,
+        origens_aceitas,
+        versao,
+        perfil_aberto,
+        logger,
+        pasta_das_chaves,
+        colecao=None,
+        item_de_login=None,
+        openai_base=OPENAI_BASE,
+    ):
         self.porta = porta
         self.origens_aceitas = tuple(origens_aceitas)
         self.versao = versao
         self.perfil_aberto = perfil_aberto
         self.colecao = colecao or _SemColecao()
         self.logger = logger
+        self.cofre = Cofre(pasta_das_chaves)
+        self.openai_base = openai_base
         # O item de login de “Abrir o Anki com o computador”; None onde o sistema não tem (nem Mac nem Windows).
         self.item_de_login = item_de_login
         self._servidor = None
