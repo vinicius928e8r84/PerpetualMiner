@@ -80,7 +80,7 @@ Cole nos campos correspondentes (a loja pede uma por permissão).
 
 | Permissão | Justificativa |
 |---|---|
-| `storage` | Guarda no navegador (`storage.local`) as frases mineradas, as configurações, os atalhos, a chave do Gemini informada pela pessoa e a sessão da conta. Usa também o `storage.sync` para as marcas de exclusão de frases (só o identificador da frase e a data), que o próprio navegador sincroniza entre os computadores da pessoa. |
+| `storage` | Guarda no navegador (`storage.local`) as frases mineradas, as configurações, os atalhos, a chave do Gemini informada pela pessoa, os 4 últimos caracteres da chave da OpenAI informada pela pessoa (a chave inteira fica no IndexedDB da extensão, que os scripts de conteúdo não alcançam, e numa cópia da Conexão com o Anki do próprio computador) e a sessão da conta. Usa também o `storage.sync` para as marcas de exclusão de frases (só o identificador da frase e a data), que o próprio navegador sincroniza entre os computadores da pessoa. |
 | `unlimitedStorage` | O histórico de frases e os caches de vocabulário crescem com o uso contínuo e passam do limite padrão de 10 MB do armazenamento local. |
 | `alarms` | Mantém a mineração automática e seus contadores atualizados na virada do dia, inclusive nas páginas já abertas. |
 | `contextMenus` | Cria o item "Minerar com PerpetualMiner" no menu de clique direito sobre texto selecionado. |
@@ -103,7 +103,7 @@ Cole nos campos correspondentes (a loja pede uma por permissão).
 Marque como **coletados**:
 - **Informações de identificação pessoal** (nome, e-mail, foto do perfil Google): só se a pessoa entrar na conta.
 - **Conteúdo do site** (texto de legendas e de seleções, título da página): as frases que a pessoa minera.
-- **Informações de autenticação**: tokens da sessão do Google/Firebase, guardados no navegador.
+- **Informações de autenticação**: tokens da sessão do Google/Firebase e a chave da OpenAI informada pela pessoa, guardados no navegador (a chave também numa cópia da Conexão com o Anki do computador, que a usa para fazer os cartões).
 
 Não marque histórico de navegação, localização, atividade do usuário nem dados financeiros/de saúde. Marque as três declarações: não vendo dados; não uso para fins alheios à finalidade única; não uso para avaliar crédito.
 
@@ -119,7 +119,7 @@ Política de Privacidade — PerpetualMiner
 O PerpetualMiner é uma extensão de navegador para estudo de idiomas. Esta política descreve quais dados ela trata.
 
 O que a extensão guarda
-As frases que você minera (texto da legenda ou da seleção, o idioma, o nome do vídeo ou da página de onde veio, e a data), suas configurações, seus atalhos e, se você informar, a sua chave da API do Gemini. Tudo isso fica no armazenamento local do seu navegador. Ao apagar uma frase, o identificador dela e a data da exclusão ficam também no armazenamento sincronizado do navegador (Chrome Sync ou Opera Sync, se você o usa), para a exclusão valer nos seus outros computadores.
+As frases que você minera (texto da legenda ou da seleção, o idioma, o nome do vídeo ou da página de onde veio, e a data), suas configurações, seus atalhos e, se você informar, a sua chave da API do Gemini e a da OpenAI. Tudo isso fica no armazenamento local do seu navegador (a chave da OpenAI também numa cópia da Conexão com o Anki, no seu computador). Ao apagar uma frase, o identificador dela e a data da exclusão ficam também no armazenamento sincronizado do navegador (Chrome Sync ou Opera Sync, se você o usa), para a exclusão valer nos seus outros computadores.
 
 Conta Google (opcional)
 Se você entrar com o Google, a extensão recebe seu nome, e-mail e foto de perfil e guarda um identificador de conta. Cada frase que você minera a partir daí, inclusive as da Mineração automática, é enviada a um banco de dados Firestore do projeto Firebase do PerpetualMiner, vinculado à sua conta, para que você as veja em outros computadores. "Apagar tudo" nas configurações remove as frases da nuvem. Sem entrar na conta, nada é enviado à nuvem.

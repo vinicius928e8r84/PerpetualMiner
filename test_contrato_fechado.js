@@ -24,18 +24,20 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, 'lib', 'pedido-ao-anki.js')
 const { PedidoAoAnki } = contexto.PerpetualMiner;
 
 // Os dois Baralhos dos Ajustes de envio, um por idioma, como a tela de Baralhos e termos os pede.
+// A chave que o exemplo do contrato entrega (o fake compara o corpo inteiro).
+const CHAVE_DE_EXEMPLO = contrato.exemplos.find(e => e.pedido.caminho === '/ia/openai/chave').pedido.corpo.chave;
 const BARALHOS = [{ deckName: 'Inglês', lang: 'en' }, { deckName: 'Alemão', lang: 'ru' }];
 
 // Um pedido é o mesmo para o contrato quando só o nome do Baralho muda: o resto do corpo (quantos Baralhos, `refresh`, `launch`) conta.
 const formaDoCorpo = corpo => JSON.parse(JSON.stringify(corpo ?? null), function (chave, valor) {
-  return chave === 'deckName' || chave === 'deck' ? '<baralho>' : valor;
+  return chave === 'deckName' || chave === 'deck' ? '<baralho>' : chave === 'chave' ? '<chave>' : valor;
 });
 const exemplosDa = pedido => contrato.exemplos.filter(e => exemploDaExtensao(e)
   && e.pedido.metodo === pedido.metodo && e.pedido.caminho === pedido.caminho
   && isDeepStrictEqual(formaDoCorpo(e.pedido.corpo), formaDoCorpo(pedido.corpo)));
 
 async function main() {
-  const variantes = PedidoAoAnki.variantes(BARALHOS);
+  const variantes = PedidoAoAnki.variantes(BARALHOS, CHAVE_DE_EXEMPLO);
   assert.ok(variantes.length >= 7, 'os construtores montam os pedidos de saúde, Baralhos, números (3 leituras) e vocabulário');
 
   for (const { nome, pedido: doContexto } of variantes) {

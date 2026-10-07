@@ -274,7 +274,7 @@ test('a nuvem falhou (ADD-06): o aviso persistente no topo de Frases', async ({ 
 test.describe('configuração pela metade (ONB-15)', () => {
   test.use({ lembreteDaConfiguracao: true });
 
-  const faixa = page => page.getByRole('complementary', { name: /A configuração ficou pela metade: 2 de 6 passos/ });
+  const faixa = page => page.getByRole('complementary', { name: /A configuração ficou pela metade: 2 de 7 passos/ });
 
   test('a faixa no topo de Frases', async ({ page, extensao }) => {
     await extensao.gravarStorage({ frases: FRASES });

@@ -435,6 +435,13 @@ semOComplementoNoPortao(JOB('    if: contains(github.ref, \'main\')\n'), 1, 'uma
 semOComplementoNoPortao(JOB('', '      - run: >\n          echo preparando\n          node scripts/testar.mjs complemento\n'), 1, 'o bloco dobrado vira um echo só');
 semOComplementoNoPortao(JOB('', '      - run: >\n          node scripts/testar.mjs\n          complemento\n'), 0, 'o bloco dobrado que junta o comando e o grupo');
 semOComplementoNoPortao(JOB('', '      - run: |\n          node scripts/testar.mjs complemento\n'), 0, 'o bloco literal');
+// A e2e do #198: o passo só roda quando `env.RODAR` é verdadeiro, e o job o define pela saída do job `mudancas` (a PR que só muda documentação a pula).
+const PASSO_RODAR = "      - if: env.RODAR == 'true'\n        run: node scripts/testar.mjs complemento\n";
+semOComplementoNoPortao(JOB("    env:\n      RODAR: ${{ needs.mudancas.outputs.so_documentacao != 'true' }}\n", PASSO_RODAR), 0, 'o passo decidido pela saída de outro job do workflow');
+semOComplementoNoPortao(JOB('    env:\n      RODAR: false\n', PASSO_RODAR), 1, 'o env fixo em false');
+semOComplementoNoPortao(JOB('    env:\n      RODAR: true\n', PASSO_RODAR), 0, 'o env fixo em true');
+semOComplementoNoPortao(JOB('', PASSO_RODAR), 1, 'um env que o job não define não conta');
+semOComplementoNoPortao(JOB("    env:\n      RODAR: ${{ github.ref == 'refs/heads/main' }}\n", PASSO_RODAR), 1, 'um env decidido por outra coisa que não o resultado de um job não conta');
 // E o workflow acusa a linha: o passo que cita o executor e não o executa.
 const doEcho = nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': JOB('', '      - run: echo node scripts/testar.mjs complemento\n') }), '.github/workflows/testes.yml'), 1,
   'o passo que só cita o executor');

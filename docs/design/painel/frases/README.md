@@ -36,7 +36,7 @@ Decidido numa rodada no Lavish em 2026-09-15. O dono aceitou as 5 recomendaçõe
    - Colar: “Uma frase por linha”;
    - Arquivo .txt: “Importar um .txt com uma frase por linha”;
    - Foto: “Abre Minerar de uma foto numa aba nova”.
-2. **Lembrete da configuração** (ONB-15), enquanto a [Boas-vindas](../boas-vindas/README.md) não chegou a Tudo pronto e o lembrete não foi ocultado (ver §Retomada de lá). É uma faixa **ouro** no topo: “A configuração ficou pela metade: 2 de 6 passos.”, com os botões **Ocultar** e **Continuar configuração**.
+2. **Lembrete da configuração** (ONB-15), enquanto a [Boas-vindas](../boas-vindas/README.md) não chegou a Tudo pronto e o lembrete não foi ocultado (ver §Retomada de lá). É uma faixa **ouro** no topo: “A configuração ficou pela metade: 2 de 7 passos.”, com os botões **Ocultar** e **Continuar configuração**.
    - “Continuar configuração” abre `#boas-vindas` no primeiro passo que falta.
    - “Ocultar” esconde o lembrete de vez, aqui e no popup.
    - É o item 9 da lista fechada (lembrete “Configuração pela metade” ocultável).

@@ -106,8 +106,10 @@ function lerYaml(texto) {
 }
 
 // O valor de uma condição `if:` num pull request: true, false, ou null quando o leitor não sabe interpretá-la.
-// Entendidas: true/false, always(), success(), `github.event_name ==|!= 'evento'`, e `&&` / `||` entre elas.
-function valorDoIf(condicao) {
+// Entendidas: true/false, always(), success(), `github.event_name ==|!= 'evento'`, `env.NOME ==|!= 'true'|'false'` e `&&` / `||`
+// entre elas. Um `env.NOME` que o job define com uma saída de outro job (`${{ needs.x.outputs.y … }}`) é decidido por esse job
+// (a e2e que só roda quando a PR não é só documentação): no pull request conta como verdadeiro; o valor fixo vale pelo que é.
+function valorDoIf(condicao, env = {}) {
   const texto = String(condicao).trim().replace(/^\$\{\{\s*([^]*?)\s*\}\}$/, '$1').trim();
   const atomo = parte => {
     const a = parte.trim();
@@ -115,6 +117,12 @@ function valorDoIf(condicao) {
     if (/^false$|^0$|^''$|^""$/i.test(a)) return false;
     const evento = /^github\.event_name\s*(==|!=)\s*['"]([a-z_]+)['"]$/.exec(a);
     if (evento) return (evento[2] === 'pull_request') === (evento[1] === '==');
+    const variavel = /^env\.([A-Za-z_][A-Za-z0-9_]*)\s*(==|!=)\s*['"](true|false)['"]$/.exec(a);
+    if (variavel && env[variavel[1]] !== undefined) {
+      const definicao = String(env[variavel[1]]).trim();
+      if (/\$\{\{[^}]*\bneeds\./.test(definicao)) return variavel[2] === '==' ? variavel[3] === 'true' : variavel[3] === 'false';
+      if (/^(true|false)$/i.test(definicao)) return (definicao.toLowerCase() === variavel[3]) === (variavel[2] === '==');
+    }
     return null;
   };
   const ou = texto.split('||').map(termo => {
@@ -127,14 +135,14 @@ function valorDoIf(condicao) {
 }
 
 /** Por que um `if:` impede de contar como portão do pull request (ou null se roda nele). */
-function motivoDoIf(condicao) {
+function motivoDoIf(condicao, env) {
   if (condicao === undefined || condicao === null) return null;
-  const valor = valorDoIf(condicao);
+  const valor = valorDoIf(condicao, env);
   if (valor === true) return null;
   const texto = String(condicao).trim();
   return valor === false
     ? `if: ${texto} não é verdade no pull request`
-    : `if: ${texto} é uma condição que o leitor não sabe interpretar (use true/false ou github.event_name ==/!= 'evento'); não conta como portão`;
+    : `if: ${texto} é uma condição que o leitor não sabe interpretar (use true/false, github.event_name ==/!= 'evento' ou env.NOME ==/!= 'true' com NOME definido no job); não conta como portão`;
 }
 
 const verdadeiro = valor => /^(?:\$\{\{\s*)?true(?:\s*\}\})?$/i.test(String(valor ?? '').trim());
@@ -158,10 +166,11 @@ function comandos(workflow) {
   const saida = [];
   for (const [nomeDoJob, job] of Object.entries((workflow && workflow.jobs) || {})) {
     if (!job || typeof job !== 'object') continue;
-    const doJob = motivoDoIf(job.if) || (verdadeiro(job['continue-on-error']) ? 'continue-on-error: true no job: a falha não barra' : null);
+    const env = { ...((workflow && workflow.env) || {}), ...(job.env || {}) };
+    const doJob = motivoDoIf(job.if, env) || (verdadeiro(job['continue-on-error']) ? 'continue-on-error: true no job: a falha não barra' : null);
     for (const passo of Array.isArray(job.steps) ? job.steps : []) {
       if (!passo || typeof passo !== 'object' || passo.run === undefined || passo.run === null) continue;
-      const doPasso = doJob || motivoDoIf(passo.if) || (verdadeiro(passo['continue-on-error']) ? 'continue-on-error: true no passo: a falha não barra' : null);
+      const doPasso = doJob || motivoDoIf(passo.if, env) || (verdadeiro(passo['continue-on-error']) ? 'continue-on-error: true no passo: a falha não barra' : null);
       const textos = String(passo.run).split('\n');
       const numeros = passo['run$linhas'] || textos.map(() => (passo[LINHAS_DAS_CHAVES] || {}).run || passo[LINHA]);
       textos.forEach((texto, i) => {

@@ -120,12 +120,21 @@ function conferenciasDe(corpo) {
   return lista;
 }
 
-/** O começo da instrução que contém `p`: sobe enquanto a linha de cima não termina uma instrução ou um bloco. */
+/**
+ * O começo da instrução que contém `p`: anda para trás pelos colchetes até um `;` ou até a chave de um bloco (uma `{` depois de
+ * `)` ou `=>`); a `{` de um objeto ou o `(` de uma chamada que envolve `p` não começam instrução, a atribuição está antes deles.
+ */
 function inicioDaInstrucao(corpo, p) {
-  const linhas = corpo.slice(0, p).split('\n');
-  let de = linhas.length - 1;
-  while (de > 0 && !/[;{}]\s*$/.test(linhas[de - 1].trim() === '' ? ';' : linhas[de - 1])) de--;
-  return linhas.slice(0, de).join('\n').length + (de > 0 ? 1 : 0);
+  let fundura = 0;
+  for (let i = p - 1; i >= 0; i--) {
+    const c = corpo[i];
+    if (')]}'.includes(c)) fundura++;
+    else if ('([{'.includes(c)) {
+      if (fundura > 0) { fundura--; continue; }
+      if (c === '{' && /(?:\)|=>|\belse|\btry|\bdo)\s*$/.test(corpo.slice(Math.max(0, i - 8), i))) return i + 1;
+    } else if (c === ';' && fundura === 0) return i + 1;
+  }
+  return 0;
 }
 
 const ATRIBUICAO = /^\s*(?:(const|let|var)\s+)?(\{[^}]*\}|\[[^\]]*\]|[A-Za-z_$][\w$]*)\s*=(?!=)([^]*)$/;

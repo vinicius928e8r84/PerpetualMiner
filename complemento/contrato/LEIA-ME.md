@@ -40,18 +40,21 @@ O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede 
   outros (outro site, outra extensão, sem origem) só o lado do complemento confere, porque uma
   página da extensão não consegue pedir como outro cliente.
 - `contexto`: em que situação o complemento está: o `perfil` aberto (`null` na tela de perfis), `falhaNoPerfil`
-  quando ler o perfil quebra e `colecao`, o nome de uma coleção de `colecoes` (a que o Anki tem aberta; `null`: nenhuma,
-  e a leitura dos Baralhos responde `503`) e `itemDeLogin`, a situação do item de “Abrir o Anki com o computador” (`desligado`,
-  `ligado`, `sem_anki`, `falha` ou `indisponivel`). Uma parte do contexto só vale para os exemplos que a citam: um exemplo que não cita
-  `colecao` vale com qualquer uma, a saúde não diz do item e o item não diz do perfil. O fake muda de contexto por
-  `fakes.anki.abrirPerfil(...)`, `falharLeituraDoPerfil()`, `abrirColecao(nome)` e `definirItemDeLogin(...)`; o teste do complemento monta
-  um adaptador de coleção em memória (`test_colecao_em_memoria.py`) com a coleção que o exemplo nomeia.
+  quando ler o perfil quebra, `colecao` (o nome de uma coleção de `colecoes`, a que o Anki tem aberta; `null`: nenhuma,
+  e a leitura dos Baralhos responde `503`; um exemplo que não cita `colecao` vale com qualquer uma), `itemDeLogin`, a situação do
+  item de “Abrir o Anki com o computador” (`desligado`, `ligado`, `sem_anki`, `falha` ou `indisponivel`), `openai` (como a OpenAI
+  responde à conferência de uma chave: `aceita`, `recusa`, `sem_credito`, `org_nao_verificada`, `limite_de_uso`, `limite_so_no_pago` ou
+  `fora_do_ar`) e `chaveNaConexao` (os 4 últimos caracteres da chave que a Conexão já guarda, ou `null`). Uma parte do contexto só
+  vale para os exemplos que a citam: a saúde não diz do item e o item não diz do perfil. O fake muda de
+  contexto por `fakes.anki.abrirPerfil(...)`, `falharLeituraDoPerfil()`, `abrirColecao(nome)`, `definirItemDeLogin(...)`,
+  `responderOpenAI(...)` e `guardarChaveNaConexao(...)`; um exemplo só conta no fake pelos campos que ele diz (a saúde responde igual com qualquer
+  chave). Da chave só conta ter ou não ter: a resposta leva os 4 últimos da chave que o teste mandou, não os do exemplo. O teste
+  do complemento monta um adaptador de coleção em memória (`test_colecao_em_memoria.py`) com a coleção que o exemplo nomeia.
 - `colecoes` (no alto do arquivo): as coleções que os exemplos nomeiam, com os Baralhos, as notas e os Cartões
   (`tipo` e `intervalo` do Anki: 0 novo, 1 aprendendo, 2 revisão, 3 reaprendendo). `"quebra": true` é uma coleção que
   levanta um erro inesperado ao ler: o `500` (`internal_error`) de cada rota de leitura.
 - `pedido`: o que chega, com `origem` (o cabeçalho `Origin`; `null` é que ele não veio). Rotas com corpo
-  ganham `corpo`, o JSON do pedido; no fake, o exemplo que cita `corpo` só vale para esse corpo. `corpoBruto` é o corpo
-  como texto, para o que não é um objeto JSON (o `400` `invalid_json`; a extensão nunca o manda, então não é `daExtensao`).
+  ganham `corpo`, o JSON do pedido (no fake, o exemplo que cita `corpo` só vale para esse corpo), ou `corpoBruto` (os bytes como vierem, para o que não é JSON: o `400` `invalid_json`; a extensão nunca o manda, então esse exemplo não é `daExtensao`).
 - `resposta`: o status e o JSON. `"<agora>"` no JSON é o instante em que a Conexão respondeu: o complemento confere
   qualquer instante ISO 8601 em UTC, e o fake escreve o do relógio dele.
 
@@ -80,7 +83,10 @@ Por isso (decisão do dono, opção B):
    cabeçalho, e um programa local também. **Limite aceito pelo dono no PR #190, a ser reforçado pelo ticket #192
    (credencial de pareamento, confirmada no Anki) antes do lançamento:** hoje um processo local que declara a
    origem da extensão lê o vocabulário pelas rotas privadas. `test_servidor.py` mostra isso com um cliente fora do navegador
-   e passa a exigir a credencial quando o #192 entrar.
+   e passa a exigir a credencial quando o #192 entrar. As rotas da chave da OpenAI (`POST /ia/openai/chave`,
+   `POST /ia/estado`) têm o mesmo limite, com o dano menor: **nenhuma devolve a chave inteira** (só os 4 últimos
+   caracteres), então um processo local que forjasse a origem consegue gravar uma chave (que a OpenAI confere) ou saber
+   se há uma e como ela termina, nunca lê-la.
 4. A primeira rota de leitura sensível (os Baralhos, os números e o vocabulário) seguiu a regra do 2: são POST
    com a origem da extensão, e o limite do 3 está nomeado em um teste. O reforço com um token de pareamento (a
    extensão o recebe por um POST e o manda nos pedidos) é o #192 e não foi feito.

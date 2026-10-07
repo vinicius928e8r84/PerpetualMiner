@@ -27,7 +27,7 @@ const lista = testar('--listar');
 assert.equal(lista.status, 0, lista.stdout + lista.stderr);
 assert.match(lista.stdout, /^node: (?:\S+ )*test_sync\.js(?: \S+)*$/m);
 assert.match(lista.stdout, /^e2e \(pesado\): e2e\/tests\/.*\.spec\.js/m);
-assert.match(lista.stdout, /^complemento: complemento\/test_colecao_em_memoria\.py/m);
+assert.match(lista.stdout, /^complemento: (?:\S+ )*complemento\/test_servidor\.py(?: \S+)*$/m);
 
 // Um grupo que não existe é erro de uso, e a mensagem diz quais existem.
 const desconhecido = testar('inexistente');

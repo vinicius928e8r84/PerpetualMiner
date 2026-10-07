@@ -3,7 +3,7 @@
 Resolução do ticket [Protótipo: Painel · Configurações](https://github.com/vinicius928e8r84/PerpetualMiner/issues/14) do mapa [Redesign do front-end do PerpetualMiner](https://github.com/vinicius928e8r84/PerpetualMiner/issues/1). Ele parte de:
 - o shell [Ilhas](../shell/README.md): sidebar, cabeçalho de área e endereços;
 - a identidade [Veio](../../identidade-veio/README.md);
-- a cópia do [catálogo de voz](../../voz/README.md) (CFG-01 a CFG-31).
+- a cópia do [catálogo de voz](../../voz/README.md) (CFG-01 a CFG-40).
 
 **Protótipo:** [`prototipo-configuracoes.html`](prototipo-configuracoes.html). Abra direto no navegador.
 - `?variant=C` é o tratamento travado e o padrão. `A` (Pilha) e `B` (Rótulo à esquerda) foram as alternativas.
@@ -30,7 +30,7 @@ Decidido numa rodada no Lavish, em 2026-09-15. O dono escolheu a **C** e aceitou
 
 ## Anatomia (variante C)
 
-- **Área:** cabeçalho “Configurações”, só o título. Embaixo, 6 cards de largura até ~820 px, com 8 px de vão, na ordem **Conta & sync · Atalhos · Chave do Gemini · Conexão com o Anki · Aparência · Zona de perigo**. Os cards são “buracos” `bg` na ilha, com raio 14.
+- **Área:** cabeçalho “Configurações”, só o título. Embaixo, 7 cards de largura até ~820 px, com 8 px de vão, na ordem **Conta & sync · Atalhos · IA dos cartões · Chave do Gemini · Conexão com o Anki · Aparência · Zona de perigo**. Os cards são “buracos” `bg` na ilha, com raio 14.
 - **Linha fechada** (a linha inteira é clicável):
   - à esquerda, um azulejo de ícone (34 px, `surface-2`, raio 10) e o título (15/700);
   - à direita, o **resumo do estado** (12,5 px, `muted`) e um chevron.
@@ -39,7 +39,7 @@ Decidido numa rodada no Lavish, em 2026-09-15. O dono escolheu a **C** e aceitou
   - o conteúdo entra alinhado ao título (recuo de 62 px);
   - o chevron gira.
   - Vários cards podem ficar abertos ao mesmo tempo.
-- **Endereços:** `#configuracoes/conta|atalhos|chave|aparencia|perigo` **abrem** o card, rolam até ele e piscam uma borda ouro por ~1,4 s. `#configuracoes` sozinho abre tudo fechado. Quem aponta para eles:
+- **Endereços:** `#configuracoes/conta|atalhos|ia|chave|aparencia|perigo` **abrem** o card, rolam até ele e piscam uma borda ouro por ~1,4 s. `#configuracoes` sozinho abre tudo fechado. Quem aponta para eles:
   - o “Mudar atalho” do popup vai para `#configuracoes/atalhos`;
   - o “Definir atalho”, que aparece no lugar da tecla quando não há atalho de legenda gravado (PAI-02, ONB-05, rodapé do popup), também vai para `#configuracoes/atalhos`;
   - o “Abrir Configurações” do Minerar de uma foto vai para `#configuracoes/chave`, e o campo recebe o foco se a chave estiver vazia;
@@ -54,6 +54,7 @@ Decidido numa rodada no Lavish, em 2026-09-15. O dono escolheu a **C** e aceitou
 |---|---|
 | Conta & sync | ponto de estado + `Nome · <estado do chip>` (ex.: “Vinicius · Sincronizado há 2 min”). Erro em `danger`. Sem conta: “Sem conta · só neste computador”. |
 | Atalhos | `Legenda [Alt+S]  Seleção [Alt+Botão voltar]`, com as teclas no estilo `kbd`. Sem atalho: “Sem atalho”. |
+| IA dos cartões | `••••••••9f3a` em mono (só o fim da chave da OpenAI). Sem chave: ponto `danger` + “Sem chave”. |
 | Chave do Gemini | `AIza••••••••3kQ9` em mono. Vazia: ponto `danger` + “Sem chave”. |
 | Conexão com o Anki | O que o interruptor faz agora: “Abre com o computador” ou “Não abre com o computador”; sem a Conexão, “Indisponível agora” (CFG-37). |
 | Aparência | O tema em uso: “Escuro” ou “Claro” (CFG-31). |
@@ -105,6 +106,20 @@ Um problema de sync aparece **só** aqui e no chip (Q4). O chip fica sempre vis�
   - **só aparece quando algum atalho difere do padrão**;
   - aplica na hora, sem confirmação e sem toast.
 
+## IA dos cartões
+
+Ticket [#140](https://github.com/vinicius928e8r84/PerpetualMiner/issues/140) da [spec #138](https://github.com/vinicius928e8r84/PerpetualMiner/issues/138); o desenho é o **A** do [#101](https://github.com/vinicius928e8r84/PerpetualMiner/issues/101) (o dono escolheu, em 2026-10-01, as duas entradas **em duas colunas do mesmo tamanho**). O mesmo card mora no passo “Configurar a IA dos cartões” da [Boas-vindas](../boas-vindas/README.md#os-passos). A cópia é o CFG-35 do [catálogo da Voz](../../voz/README.md).
+
+**Descrição:** “Quem escreve o texto dos cartões: a sua chave da OpenAI ou a sua conta do ChatGPT.” O azulejo é a faísca (`ia`, na base Veio).
+
+- **Duas colunas do mesmo tamanho**, cada uma uma ilha `surface` de raio 12: **Chave da OpenAI** à esquerda e **Conta do ChatGPT** (com o selo “Plus ou Pro”) à direita. Abaixo de ~620 px de largura do card (560 px de conteúdo), as colunas viram linhas (proposta do worker no #101, não decisão do dono); o conteúdo do passo da Boas-vindas tem cerca de 595 px e fica em duas colunas. O card termina com a linha da imagem gerada por IA, que sempre sai pela chave.
+- **Chave da OpenAI, sem chave:** o campo “Cole a chave (começa com sk-)” e **Conferir e salvar** (primário); embaixo, a sugestão de criar a chave num projeto próprio da OpenAI com limite de gasto mensal, a frase de que o desligamento de verdade é revogar a chave, e o link “Onde criar a chave”. Conferir vazio dá a borda `danger` e “Cole a chave antes de conferir” (como o CFG-16 do Gemini).
+- **Conferindo:** o botão diz “Conferindo a chave…”, fica no Tab e no foco e não repete o pedido; o campo guarda o que foi colado, desabilitado.
+- **Chave conferida:** ponto verde, “Chave conferida”, a chave mascarada (`••••••••9f3a`: a tela só sabe o fim dela) e **Trocar chave**, que abre o campo *vazio* com Conferir e salvar e Cancelar. Embaixo: “Fica neste computador: na extensão e numa cópia da Conexão com o Anki.” (estado verdadeiro de hoje; quando a chave acompanhar a conta Google, #154, o texto muda) e, quando a Conexão responde, “A Conexão com o Anki tem uma cópia da chave.” ou “…ainda não tem a cópia da chave. Ela a recebe quando responder.” Com a Conexão sem responder, o card não afirma nada sobre a cópia.
+- **Erros:** uma faixa `danger` que atravessa o card, abaixo das colunas, com a entrada a que pertence em negrito (“Chave da OpenAI”), o que fazer e o Detalhes (`HTTP 402 · openai_no_credit`). Chave recusada → **Trocar chave**; sem crédito → **Adicionar crédito** (abre a OpenAI numa aba nova); organização não verificada → **Verificar organização**; a OpenAI fora do ar, ou a Conexão sem responder, ou a Conexão com erro → **Tentar de novo** (manda a mesma chave). O campo volta com o que foi colado, e a faixa some ao digitar. Uma chave recusada nunca troca a que já estava guardada.
+- **Conta do ChatGPT:** o botão “Continuar com o ChatGPT” fica desabilitado e a coluna diz “Ainda não dá para entrar com o ChatGPT. Por enquanto, use a chave.” O login chega no ticket do plano (#155).
+- **Onde a chave mora:** a Conexão com o Anki (o complemento) confere a chave na OpenAI e guarda uma cópia própria em `user_files/chaves`, fora da configuração, dos logs e do pacote do AnkiWeb, e só devolve os 4 últimos caracteres (`complemento/contrato/exemplos.json`). A extensão guarda a chave inteira no IndexedDB da extensão (o content script e o overlay não o alcançam) e, no `chrome.storage.local`, só os 4 últimos (`pm_chave_openai`). Se a Conexão voltar sem a cópia, a extensão a entrega de novo sozinha.
+
 ## Chave do Gemini
 
 **Descrição:** “Usada para ler fotos em Minerar de uma foto. Fica guardada só neste computador.” Hoje fica em `chrome.storage.local`.
@@ -119,7 +134,7 @@ Um problema de sync aparece **só** aqui e no chip (Q4). O chip fica sempre vis�
 
 ## Conexão com o Anki
 
-**Descrição:** “Só vale neste computador.” (CFG-35). Hoje o card tem um controle só, o interruptor da história 101 ([#106](https://github.com/vinicius928e8r84/PerpetualMiner/issues/106), opção 1, “só quando você clica”); o “Perfil do Anki ▾” (história 20) entra neste mesmo card.
+**Descrição:** “Só vale neste computador.” (CFG-40). Hoje o card tem um controle só, o interruptor da história 101 ([#106](https://github.com/vinicius928e8r84/PerpetualMiner/issues/106), opção 1, “só quando você clica”); o “Perfil do Anki ▾” (história 20) entra neste mesmo card.
 
 - **Interruptor “Abrir o Anki com o computador”** (CFG-36), **desligado por padrão**, com a nota: “O Anki abre quando você liga o computador, e a Conexão com o Anki já fica pronta. A janela dele aparece na tela.” O custo (a janela do Anki abrindo no login) está dito na nota.
 - **Ligar** pede à Conexão que escreva o item de login (um LaunchAgent no Mac, um atalho na pasta Inicializar no Windows); **desligar** pede que o apague. O item mora na Conexão, não na extensão: nada fica em `chrome.storage`, e o interruptor mostra o que a Conexão diz e só muda depois da resposta dela (C8). Enquanto ela escreve, o interruptor fica indisponível, ainda no estado de verdade.

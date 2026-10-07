@@ -18,14 +18,19 @@ const contrato = require('../../complemento/contrato/exemplos.json');
 // (`{ decks: [...] }`); sem `definirBaralhosDoAnki` a lista não vem (503), como
 // com o Anki sem responder, e a aba oferece o campo de texto.
 //
-// O que o complemento do Anki responde (a saúde, os Baralhos, os números, o vocabulário e o item de login de “Abrir o Anki com o computador”) vem de
+// O que o complemento do Anki responde (a saúde, os Baralhos, os números, o vocabulário, a chave da OpenAI e o item de login de “Abrir o Anki com o computador”) vem de
 // `complemento/contrato/exemplos.json`, o mesmo arquivo que os testes do
 // complemento leem: o fake responde o exemplo do pedido no contexto em que a
-// Conexão está (`abrirPerfil`, `abrirColecao`). Os testes de tela montam os Baralhos
+// Conexão está (`abrirPerfil`, `abrirColecao`, `responderOpenAI`, `guardarChaveNaConexao`, `definirItemDeLogin`). Os testes de tela montam os Baralhos
 // em termos de gente (`definirVocabulario`, `definirBaralho`) e o fake os entrega no
 // formato do contrato; `abrirColecao(nome)` passa a responder o contrato inteiro, para quem confere o
 // fake contra ele. Uma rota nova do complemento entra nesse arquivo
 // (veja `complemento/contrato/LEIA-ME.md`) e o fake passa a respondê-la daqui.
+//
+// A chave da OpenAI: `POST /ia/openai/chave` responde pelo exemplo do contexto em que a
+// OpenAI está (`responderOpenAI('aceita' | 'recusa' | …`) e, aceita, o fake guarda a cópia
+// como a Conexão faria: `chaveNaConexao()` é o que o teste confere, e `POST /ia/estado`
+// devolve só os 4 últimos caracteres dela. A chave inteira nunca sai numa resposta.
 //
 // Os Envios seguem o contrato de `bridge/server.py`: `POST /jobs` cria um
 // (`{ jobId }`, 201), `GET /jobs` lista cada um com o `state` dele, e
@@ -70,7 +75,8 @@ function criarFakeAnki() {
     falhaDosBaralhos: null,     // { status } | { rede: true }: POST /anki/stats/decks falha
     falhaDoVocabulario: null,   // { status } | { rede: true }: POST /anki/vocabulary falha
     baralhosDoAnki: null,       // os nomes de POST /anki/decks; null: a lista não vem (definirBaralhosDoAnki)
-    contexto: { perfil: 'Usuário 1', falhaNoPerfil: false, itemDeLogin: 'desligado' }, // em que situação o complemento está (os `contexto` dos exemplos); `colecao` só existe depois de `abrirColecao`
+    contexto: { perfil: 'Usuário 1', falhaNoPerfil: false, openai: 'aceita', itemDeLogin: 'desligado' }, // em que situação o complemento está (os `contexto` dos exemplos); `colecao` só existe depois de `abrirColecao`
+    chaveDaOpenAI: null,        // a cópia da chave que a Conexão guarda (a inteira: só o teste a vê)
   };
   const requisicoes = [];
   const envios = [];    // { jobId, lang, entries, deckName, state }
@@ -224,6 +230,8 @@ function criarFakeAnki() {
     return { status: 200, json: { jobId, status: 'queued' } };
   }
 
+  const ultimos4 = chave => (chave ? chave.slice(-4) : null);
+
   /** `"<agora>"` no contrato é o instante em que a Conexão responde: o relógio do fake. */
   function comOAgora(valor) {
     if (valor === '<agora>') return estado.agora().toISOString();
@@ -232,27 +240,57 @@ function criarFakeAnki() {
     return valor;
   }
 
+  /** O contexto de agora como os exemplos o descrevem: a chave guardada aparece só pelos 4 últimos. */
+  function contextoDeAgora() {
+    return { ...estado.contexto, chaveNaConexao: ultimos4(estado.chaveDaOpenAI) };
+  }
+
+  /**
+   * `perfil` (com `falhaNoPerfil`: um exemplo que não o diz é o da saúde sem falha), `itemDeLogin`, `colecao`, `openai` e
+   * `chaveNaConexao` só contam nos exemplos que os dizem: a saúde responde igual com qualquer coleção, chave ou item, e o item
+   * responde com o Anki em qualquer perfil.
+   * Da chave só conta ter ou não ter: os 4 últimos caracteres do exemplo são os da chave do exemplo, e a resposta leva os da guardada.
+   */
+  function exemploServe(exemplo, contexto) {
+    const doExemplo = exemplo.contexto;
+    return (doExemplo.perfil === undefined
+        || (doExemplo.perfil === contexto.perfil && Boolean(doExemplo.falhaNoPerfil) === Boolean(contexto.falhaNoPerfil)))
+      && (doExemplo.itemDeLogin === undefined || doExemplo.itemDeLogin === contexto.itemDeLogin)
+      && (!('colecao' in doExemplo) || doExemplo.colecao === contexto.colecao)
+      && (!('openai' in doExemplo) || doExemplo.openai === contexto.openai)
+      && (!('chaveNaConexao' in doExemplo) || (doExemplo.chaveNaConexao === null) === (contexto.chaveNaConexao === null));
+  }
+
   /**
    * A resposta que o contrato dá ao pedido da extensão, no contexto de agora. O exemplo que cita `corpo` só
-   * vale para esse corpo; o que cita `colecao` só vale com essa coleção aberta (`abrirColecao`). `perfil` (com
-   * `falhaNoPerfil`) e `itemDeLogin` só contam para os exemplos que os declaram: a saúde responde com o item em
-   * qualquer situação, e o item responde com o Anki em qualquer perfil.
+   * vale para esse corpo, salvo na chave da OpenAI, onde o exemplo do contexto vale para qualquer chave
+   * (a resposta leva os 4 últimos da que o teste mandou); o que cita `colecao` só vale com essa coleção aberta (`abrirColecao`).
    */
   function respostaDoContrato(metodo, caminho, corpo) {
-    const exemplo = contrato.exemplos.find(e =>
-      exemploDaExtensao(e)
-      && e.pedido.metodo === metodo && e.pedido.caminho === caminho
-      && (e.pedido.corpo === undefined || isDeepStrictEqual(e.pedido.corpo, corpo))
-      && (e.contexto.perfil === undefined
-        || (e.contexto.perfil === estado.contexto.perfil && Boolean(e.contexto.falhaNoPerfil) === estado.contexto.falhaNoPerfil))
-      && (e.contexto.itemDeLogin === undefined || e.contexto.itemDeLogin === estado.contexto.itemDeLogin)
-      && (!('colecao' in e.contexto) || e.contexto.colecao === estado.contexto.colecao));
+    const contexto = contextoDeAgora();
+    const candidatos = contrato.exemplos.filter(e =>
+      exemploDaExtensao(e) && e.pedido.metodo === metodo && e.pedido.caminho === caminho && exemploServe(e, contexto));
+    const exato = candidatos.find(e => e.pedido.corpo === undefined || isDeepStrictEqual(e.pedido.corpo, corpo));
+    const exemplo = exato || (caminho === '/ia/openai/chave' ? candidatos[0] : undefined);
     if (!exemplo) {
       throw new Error(`O contrato (complemento/contrato/exemplos.json) não tem exemplo de ${metodo} ${caminho}`
         + `${corpo === undefined ? '' : ` com o corpo ${JSON.stringify(corpo)}`} `
-        + `com o contexto ${JSON.stringify(estado.contexto)}; escreva-o lá antes de o fake responder.`);
+        + `com o contexto ${JSON.stringify(contexto)}; escreva-o lá antes de o fake responder.`);
     }
-    return { status: exemplo.resposta.status, json: comOAgora(exemplo.resposta.json) };
+    const json = comOAgora(exemplo.resposta.json);
+    // Os exemplos dizem os 4 últimos da chave deles; a resposta leva os da chave que o teste mandou ou que a Conexão guarda.
+    if (json.ultimos4 && typeof corpo?.chave === 'string') json.ultimos4 = ultimos4(corpo.chave.trim());
+    if (json.openai?.ultimos4) json.openai.ultimos4 = contexto.chaveNaConexao;
+    return { status: exemplo.resposta.status, json };
+  }
+
+  /** `POST /ia/openai/chave`: a resposta do contrato e, aceita a chave, a cópia que a Conexão passa a ter. */
+  function guardarChave(req) {
+    let corpo = null;
+    try { corpo = JSON.parse(req.postData() || 'null'); } catch { /* o contrato diz o que responder */ }
+    const resposta = respostaDoContrato('POST', '/ia/openai/chave', corpo);
+    if (resposta.status === 200) estado.chaveDaOpenAI = corpo.chave.trim();
+    return resposta;
   }
 
   /** “Abrir o Anki com o computador”: o item de login, como a Conexão o escreve e o apaga. */
@@ -283,6 +321,14 @@ function criarFakeAnki() {
     }
     if (url.pathname === '/health') {
       const { status, json } = respostaDoContrato(req.method(), '/health');
+      return responderJson(route, status, json);
+    }
+    if (url.pathname === '/ia/openai/chave' && req.method() === 'POST') {
+      const { status, json } = guardarChave(req);
+      return responderJson(route, status, json);
+    }
+    if (url.pathname === '/ia/estado' && req.method() === 'POST') {
+      const { status, json } = respostaDoContrato('POST', '/ia/estado', {});
       return responderJson(route, status, json);
     }
     if (req.method() === 'POST' && (url.pathname === '/abrir-com-o-computador' || url.pathname === '/abrir-com-o-computador/estado')) {
@@ -387,7 +433,15 @@ function criarFakeAnki() {
      */
     perderARespostaDoItemDeLogin({ aplicada }) { estado.perdaDaRespostaDoItem = { aplicada }; },
     falharLeituraDoPerfil() { estado.contexto = { ...estado.contexto, falhaNoPerfil: true }; },
-    /** As respostas do contrato a um pedido, para o teste que confere o fake contra os exemplos. */
+    /** Como a OpenAI responde à conferência de uma chave: o `openai` dos exemplos (aceita, recusa, sem_credito, org_nao_verificada, limite_de_uso, limite_so_no_pago, fora_do_ar). */
+    responderOpenAI(comportamento) { estado.contexto = { ...estado.contexto, openai: comportamento }; },
+    /** A Conexão já guardava uma chave (os 4 últimos caracteres dos exemplos), de antes de o teste começar. */
+    guardarChaveNaConexao(finalDaChave) { estado.chaveDaOpenAI = `sk-proj-guardada-antes-${finalDaChave}`; },
+    /** A Conexão voltou sem a chave (o Anki foi reinstalado, a pasta de dados foi apagada). */
+    esquecerAChave() { estado.chaveDaOpenAI = null; },
+    /** @estado-guardado A cópia da chave da OpenAI que a Conexão guarda, ou null: o que o teste confere que chegou. */
+    chaveNaConexao() { return estado.chaveDaOpenAI; },
+    /** As respostas do contrato a um pedido (com o corpo, se tiver), para o teste que confere o fake contra os exemplos. */
     respostaDoContrato,
     /** A porta aceita a conexão e nunca responde (o /health do bridge travado). */
     silenciar() { estado.muda = true; },

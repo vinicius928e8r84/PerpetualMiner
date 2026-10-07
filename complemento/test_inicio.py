@@ -16,6 +16,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import configuracao, inicio, item_de_login  # noqa: E402
+from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
 
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
 
@@ -28,6 +29,24 @@ def saude(porta):
         return resposta.status, json.loads(resposta.read())
     finally:
         pedido.close()
+
+
+def _post(porta, caminho, corpo):
+    pedido = http.client.HTTPConnection("127.0.0.1", porta, timeout=5)
+    try:
+        pedido.request("POST", caminho, body=json.dumps(corpo), headers={"Origin": ORIGEM, "Content-Type": "application/json"})
+        resposta = pedido.getresponse()
+        return resposta.status, json.loads(resposta.read())
+    finally:
+        pedido.close()
+
+
+def pedir_a_chave(porta, chave):
+    return _post(porta, "/ia/openai/chave", {"chave": chave})
+
+
+def estado_da_ia(porta):
+    return _post(porta, "/ia/estado", {})[1]
 
 
 def parar(conexao):
@@ -46,11 +65,50 @@ class AoCarregarNoAnki(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(corpo, {"ok": True, "versao": configuracao.VERSAO, "perfil": "Usuário 1"})
 
-    def test_user_files_ganha_as_pastas_da_fila_do_estado_dos_custos_e_dos_logs(self):
+    def test_user_files_ganha_as_pastas_da_fila_do_estado_dos_custos_dos_logs_e_das_chaves(self):
         with tempfile.TemporaryDirectory() as pasta:
             parar(inicio.iniciar(pasta, lambda: None, porta=0))
             criadas = sorted(os.listdir(os.path.join(pasta, "user_files")))
-        self.assertEqual(criadas, ["custos", "estado", "fila", "logs"])
+        self.assertEqual(criadas, ["chaves", "custos", "estado", "fila", "logs"])
+
+    @unittest.skipIf(os.name == "nt", "as permissões do Windows não são as do Unix")
+    def test_a_pasta_das_chaves_nasce_so_do_dono_mesmo_com_umask_aberta(self):
+        antes = os.umask(0o000)
+        try:
+            with tempfile.TemporaryDirectory() as pasta:
+                parar(inicio.iniciar(pasta, lambda: None, porta=0))
+                modo = os.stat(os.path.join(pasta, "user_files", "chaves")).st_mode & 0o777
+        finally:
+            os.umask(antes)
+        self.assertEqual(modo, 0o700)
+
+    @unittest.skipIf(os.name == "nt", "as permissões do Windows não são as do Unix")
+    def test_uma_pasta_das_chaves_que_ja_existia_aberta_passa_a_ser_so_do_dono(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            antiga = os.path.join(pasta, "user_files", "chaves")
+            os.makedirs(antiga)
+            os.chmod(antiga, 0o755)
+            parar(inicio.iniciar(pasta, lambda: None, porta=0))
+            modo = os.stat(antiga).st_mode & 0o777
+        self.assertEqual(modo, 0o700)
+
+    def test_a_chave_que_a_extensao_manda_fica_em_user_files_chaves_e_a_conexao_a_reconhece_ao_reiniciar(self):
+        chave = "sk-proj-DeTesteDoInicio0123456789-f00d"
+        with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira("aceita") as openai:
+            conexao = inicio.iniciar(pasta, lambda: None, porta=0, openai_base=openai.base)
+            try:
+                enviada = pedir_a_chave(conexao.porta, chave)
+            finally:
+                parar(conexao)
+            conexao = inicio.iniciar(pasta, lambda: None, porta=0, openai_base=openai.base)
+            try:
+                estado = estado_da_ia(conexao.porta)
+            finally:
+                parar(conexao)
+            guardada = os.path.exists(os.path.join(pasta, "user_files", "chaves", "openai.json"))
+        self.assertEqual(enviada, (200, {"ok": True, "ultimos4": "f00d"}))
+        self.assertEqual(estado, {"openai": {"configurada": True, "ultimos4": "f00d"}})
+        self.assertTrue(guardada)
 
     def test_o_que_ja_estava_em_user_files_fica_como_estava(self):
         with tempfile.TemporaryDirectory() as pasta:

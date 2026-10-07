@@ -13,9 +13,10 @@ on:
 permissions:
   contents: read
 
+# Só a PR cancela a execução anterior; cada push na main tem a sua.
 concurrency:
-  group: regras-${{ github.ref }}
-  cancel-in-progress: true
+  group: regras-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   regras:
