@@ -1,11 +1,45 @@
 ---
 name: configuracoes
-description: "Use when changing or reviewing the Configurações area of the panel: Chave do Gemini, Zona de perigo, Atalhos, Conta & sync and Conexão com o Anki (`painel-chave.js`, `painel-perigo.js`, `painel-atalhos.js`, `lib/atalhos.js`, `painel-conta.js`, `painel-abrir-anki.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
+description: "Use when changing or reviewing the Configurações area of the panel: IA dos cartões (the OpenAI key), Chave do Gemini, Zona de perigo, Atalhos, Conta & sync and Conexão com o Anki (`painel-ia.js`, `lib/chave-da-openai.js`, `painel-chave.js`, `painel-perigo.js`, `painel-atalhos.js`, `lib/atalhos.js`, `painel-conta.js`, `painel-abrir-anki.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
 ---
 
 # Configurações
 
 Notes moved unchanged from `CLAUDE.md` § Architecture. `CLAUDE.md` keeps the file table and the rules that cross surfaces.
+
+### IA dos cartões (`painel-ia.js`, `lib/chave-da-openai.js`)
+
+Ticket #140, design A of #101: the two entries of the AI in **two equal columns**, the **Chave da OpenAI** (works) and
+the **Conta do ChatGPT** (the “Plus ou Pro” badge, a disabled “Continuar com o ChatGPT” and “Ainda não dá para entrar…”;
+the login is #155), then the line that generated images always go through the key. Below ~620 px of card width (560 px of body)
+the columns become rows (a container query on `.ia-cartao`, the worker's proposal); the Boas-vindas step body is ~595 px, so
+there design A is two columns too. The card is mountable
+(`CartaoDaIA.montar(corpo, { prefixo })`): Configurações and step 5 of the Boas-vindas draw the same card, each with its own
+Trocar chave, typed text and error. The closed-row summary (`••••••••9f3a`, or “Sem chave” in `danger`) is drawn by the card,
+from `pm_chave_openai`. `#configuracoes/ia` with no key focuses the field. Copy: CFG-35.
+
+The key is pasted, **checked by the Conexão com o Anki** (the extension has no host permission for OpenAI, and the Conexão is
+who spends the key) and only then stored. While it checks, the button says “Conferindo a chave…” and stays focusable without
+repeating the request, and the field keeps what was pasted. Saved, the card shows “Chave conferida” with the key masked: the
+screen only knows `ultimos4` (it never reads the key, which is why a stale screen cannot leak it), and Trocar chave opens an
+*empty* field. A rejected key never replaces the stored one. Errors are one strip across the card, under the columns, with
+“Chave da OpenAI” in bold (which entry it belongs to), what to do and Detalhes (`HTTP 402 · openai_no_credit`): chave recusada
+(Trocar chave), sem crédito (Adicionar crédito, new tab), organização não verificada (Verificar organização), the OpenAI
+fora do ar, the Conexão sem responder or answering something outside the contract (Tentar de novo, which sends what is still in
+the field). The strip leaves when the person types.
+
+Where the key lives (`lib/chave-da-openai.js`; `confirmar` is the only way in): the whole key in the **extension's IndexedDB**
+(`pm-segredos` › `chaves` › `openai`), which a content script and the overlay cannot open (they run in the page, whose
+IndexedDB is the site's; `chrome.storage.local` would not do: the content script reads that area and `setAccessLevel` would
+close all of it); `{ ultimos4 }` in `chrome.storage.local` as `pm_chave_openai`, which the summary, the Boas-vindas step and the
+reminder read; and the Conexão's own copy in `user_files/chaves` (see `complemento/`). When the Conexão answers again after being
+off, the card asks `POST /ia/estado` and, if the copy is missing or has another ending, delivers the key again by itself;
+“A Conexão com o Anki tem uma cópia da chave” / “…ainda não tem a cópia” says the true state, and with the Conexão off (also when it goes off while the card is open) the card
+says nothing about the copy, and a late answer from before it went off is dropped. A pasted draft never survives a confirmation
+and Trocar chave always opens empty, so the whole key is never put back on screen. “Fica neste computador” is the true text of today: following the Google account is #154, and that
+text changes with it. Tests: `e2e/tests/configuracoes-ia.spec.js` (including a CDP check from the content script's isolated
+world), the visual references `ia-*.png` in `configuracoes-visual.spec.js`, `complemento/test_chave_da_openai.py` for the
+Conexão's side, and the contract examples both read (`complemento/contrato/exemplos.json`).
 
 ### Chave do Gemini and Zona de perigo (`painel-chave.js`, `painel-perigo.js`)
 
@@ -28,7 +62,7 @@ the entry row stays hidden, so it never shows “Nenhuma frase para apagar” wh
 
 ### Conexão com o Anki: Abrir o Anki com o computador (`painel-abrir-anki.js`)
 
-One switch (CFG-35…39), off by default. The login item lives in the Conexão (a LaunchAgent on the Mac, a shortcut in the Startup
+One switch (CFG-36…40), off by default. The login item lives in the Conexão (a LaunchAgent on the Mac, a shortcut in the Startup
 folder on Windows; `complemento/item_de_login.py`), so nothing is stored in `chrome.storage`: the switch shows what
 `POST /abrir-com-o-computador/estado` says (read when the Conexão comes on and on entering Configurações) and changes only after
 `POST /abrir-com-o-computador` `{ ligado }` answers. While it works the switch is disabled and still shows the real state. With

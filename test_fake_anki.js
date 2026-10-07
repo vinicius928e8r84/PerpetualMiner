@@ -16,23 +16,27 @@ assert.throws(() => fake.respostaDoContrato('GET', '/health'), /não tem exemplo
 // Cada pedido que a extensão faz de verdade, pelo mesmo ponto em que o Playwright entrega o pedido ao fake.
 const contrato = require('./complemento/contrato/exemplos.json');
 
+/** Entrega ao fake o pedido `metodo caminho` (com `corpo`, se tiver) como o Playwright o entregaria; devolve `{ status, json }` ou `{ abortado }`. */
+async function pedirAoFake(fakeDaConexao, metodo, caminho, corpo = null) {
+  let entregue = null;
+  await fakeDaConexao.tratar({
+    request: () => ({ method: () => metodo, url: () => `http://127.0.0.1:8766${caminho}`, postData: () => (corpo === undefined || corpo === null ? null : JSON.stringify(corpo)) }),
+    fulfill: resposta => { entregue = { status: resposta.status, json: JSON.parse(resposta.body) }; },
+    abort: () => { entregue = { abortado: true }; },
+  });
+  return entregue;
+}
+
 async function conferirOsExemplos() {
   for (const exemplo of contrato.exemplos.filter(exemploDaExtensao)) {
     const fakeDoExemplo = criarFakeAnki();
     if (exemplo.contexto.perfil !== undefined) fakeDoExemplo.abrirPerfil(exemplo.contexto.perfil);
     if (exemplo.contexto.falhaNoPerfil) fakeDoExemplo.falharLeituraDoPerfil();
+    if (exemplo.contexto.openai) fakeDoExemplo.responderOpenAI(exemplo.contexto.openai);
+    if (exemplo.contexto.chaveNaConexao) fakeDoExemplo.guardarChaveNaConexao(exemplo.contexto.chaveNaConexao);
     if ('colecao' in exemplo.contexto) fakeDoExemplo.abrirColecao(exemplo.contexto.colecao);
     if (exemplo.contexto.itemDeLogin) fakeDoExemplo.definirItemDeLogin(exemplo.contexto.itemDeLogin);
-    let entregue = null;
-    await fakeDoExemplo.tratar({
-      request: () => ({
-        method: () => exemplo.pedido.metodo,
-        url: () => `http://127.0.0.1:8766${exemplo.pedido.caminho}`,
-        postData: () => (exemplo.pedido.corpo === undefined ? null : JSON.stringify(exemplo.pedido.corpo)),
-      }),
-      fulfill: resposta => { entregue = { status: resposta.status, json: JSON.parse(resposta.body) }; },
-      abort: () => { entregue = { abortado: true }; },
-    });
+    const entregue = await pedirAoFake(fakeDoExemplo, exemplo.pedido.metodo, exemplo.pedido.caminho, exemplo.pedido.corpo);
     assert.strictEqual(entregue.status, exemplo.resposta.status, `O fake e o contrato se separaram no exemplo "${exemplo.nome}" (complemento/contrato/exemplos.json).`);
     assert.strictEqual(diferencaDoContrato(entregue.json, exemplo.resposta.json), null,
       `O fake e o contrato se separaram no exemplo "${exemplo.nome}" (complemento/contrato/exemplos.json): ${diferencaDoContrato(entregue.json, exemplo.resposta.json)}`);
@@ -53,15 +57,7 @@ async function conferirOsExemplos() {
   const dosTestes = criarFakeAnki();
   dosTestes.definirVocabulario('en', [{ word: 'gave up', type: 'term', maduros: 1 }, 'smoking']);
   dosTestes.definirBaralho('Inglês', { cartoes: 4, termos: 3, palavras: 11, porCartao: 2.75, novos: 1, aprendendo: 1, recentes: 1, maduros: 1 });
-  const lido = async (caminho, corpo) => {
-    let entregue = null;
-    await dosTestes.tratar({
-      request: () => ({ method: () => 'POST', url: () => `http://127.0.0.1:8766${caminho}`, postData: () => JSON.stringify(corpo) }),
-      fulfill: resposta => { entregue = JSON.parse(resposta.body); },
-      abort: () => {},
-    });
-    return entregue;
-  };
+  const lido = async (caminho, corpo) => (await pedirAoFake(dosTestes, 'POST', caminho, corpo)).json;
   const exemploDe = nome => contrato.exemplos.find(e => e.nome === nome).resposta.json;
   const formas = (obtido, esperado, caminho = '') => {
     // As chaves de cada objeto são as do contrato, nos objetos que o fake monta (`sourceDetail` é do Anki fechado).
@@ -77,4 +73,22 @@ async function conferirOsExemplos() {
   console.log('fake anki tests passed');
 }
 
-conferirOsExemplos().catch(erro => { console.error(erro); process.exit(1); });
+// A chave que a Conexão aceita fica como cópia dela; a que a OpenAI recusa não fica; o estado só diz os 4 últimos.
+async function conferirACopiaDaChave() {
+  const pedir = (fakeDaChave, caminho, corpo) => pedirAoFake(fakeDaChave, 'POST', caminho, corpo);
+  const chave = 'sk-proj-outra-chave-do-teste-7c2e';
+
+  const aceita = criarFakeAnki();
+  assert.deepStrictEqual((await pedir(aceita, '/ia/openai/chave', { chave })).json, { ok: true, ultimos4: '7c2e' });
+  assert.strictEqual(aceita.chaveNaConexao(), chave);
+  const estado = await pedir(aceita, '/ia/estado', {});
+  assert.deepStrictEqual(estado.json, { openai: { configurada: true, ultimos4: '7c2e' } });
+  assert.ok(!JSON.stringify(estado).includes(chave));
+
+  const recusada = criarFakeAnki();
+  recusada.responderOpenAI('recusa');
+  assert.strictEqual((await pedir(recusada, '/ia/openai/chave', { chave })).status, 401);
+  assert.strictEqual(recusada.chaveNaConexao(), null);
+}
+
+conferirOsExemplos().then(conferirACopiaDaChave).then(() => console.log('fake anki key tests passed')).catch(erro => { console.error(erro); process.exit(1); });

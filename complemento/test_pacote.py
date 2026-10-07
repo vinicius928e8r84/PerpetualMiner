@@ -57,6 +57,25 @@ class ArquivoDoComplemento(unittest.TestCase):
             self.assertNotIn("__pycache__", nome)
             self.assertNotEqual(nome, "empacotar.py")
 
+    def test_a_chave_guardada_no_computador_nao_vai_no_arquivo_que_sobe_ao_ankiweb(self):
+        chave = "sk-proj-GuardadaNoComputador-1234"
+        chaves = os.path.join(AQUI, "user_files", "chaves")
+        existia = os.path.isdir(os.path.join(AQUI, "user_files"))
+        os.makedirs(chaves, exist_ok=True)
+        arquivo_da_chave = os.path.join(chaves, "openai.json")
+        with open(arquivo_da_chave, "w", encoding="utf-8") as arquivo:
+            json.dump({"chave": chave}, arquivo)
+        try:
+            with tempfile.TemporaryDirectory() as pasta:
+                pacote = self.empacotado(pasta)
+                conteudo = b"".join(pacote.read(nome) for nome in pacote.namelist())
+                pacote.close()
+        finally:
+            os.remove(arquivo_da_chave)
+            if not existia:
+                shutil.rmtree(os.path.join(AQUI, "user_files"))
+        self.assertNotIn(chave.encode(), conteudo)
+
     def test_empacotar_numa_copia_limpa_cria_a_pasta_dist_e_o_arquivo(self):
         with tempfile.TemporaryDirectory() as pasta:
             copia = os.path.join(pasta, "complemento")

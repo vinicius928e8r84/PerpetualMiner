@@ -153,12 +153,16 @@ test('sair do card cancela a gravação: a tecla digitada lá fora não vira ata
   await gravar(page, 'Minerar legenda').click();
   await page.locator('a.shell-item[data-area="frases"]').click();
   await expect(page).toHaveURL(/#frases$/);
+  // O endereço muda antes de o painel reagir a ele (o hashchange vem depois, e uma tecla pode passar na frente):
+  // só com a área de Frases na tela a gravação já foi cancelada.
+  await expect(page.getByRole('heading', { name: 'Frases mineradas' })).toBeVisible();
   await page.keyboard.press('Alt+KeyE');
 
   // Fechando o card.
   await abrirAtalhos(page, extensao);
   await gravar(page, 'Minerar seleção').click();
   await page.getByRole('button', { name: 'Atalhos', exact: true }).click();
+  await expect(page.locator('#cfg-atalhos-corpo')).toBeHidden();
   await page.keyboard.press('Alt+KeyD');
 
   expect(await atalhosGravados(extensao)).toEqual({});
