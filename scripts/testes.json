@@ -3,7 +3,7 @@
     "node": {
       "descricao": "Os testes de Node da raiz: mineração automática, sincronização, pacote da loja e o fake da Conexão com o Anki",
       "executor": "node",
-      "arquivos": ["test_auto_keyword.js", "test_sync.js", "test_empacotar.js", "test_contrato_fechado.js", "test_fake_anki.js", "scripts/ci/test_ci.js"]
+      "arquivos": ["test_auto_keyword.js", "test_sync.js", "test_empacotar.js", "test_contrato_fechado.js", "test_fake_anki.js", "test_voz.js", "test_preview.js", "scripts/ci/test_ci.js"]
     },
     "regras": {
       "descricao": "As provas das regras de revisão (scripts/regras/); quem as confere no repositório é `node scripts/regras/verificar.js`",
@@ -28,6 +28,12 @@
       "executor": "unittest",
       "pasta": "complemento",
       "padrao": "test_*.py"
+    },
+    "paridade": {
+      "descricao": "A normalização repetida no bridge e no complemento, rodada também no Python 3.9 do Anki (o job do complemento)",
+      "executor": "unittest",
+      "pasta": "bridge",
+      "padrao": "test_paridade_da_normalizacao.py"
     },
     "engine": {
       "descricao": "O motor que gera os cartões",
