@@ -12,6 +12,7 @@
 
 const { test, expect } = require('../fixtures');
 const { fotografar } = require('../evidencias-mineracao');
+const { estadoFinal } = require('../estado-final');
 
 const AGORA = new Date('2026-09-18T12:00:00');
 const F1 = 'A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.';
@@ -592,6 +593,33 @@ test('com a coleção do contrato aberta, Baralhos e termos e Vocabulário mostr
   await aba(page, 'Baralhos e termos').click();
   await expect(baralhos(page).locator('.anki-baralho dl')).toContainText('Cartões4');
   await expect(baralhos(page).locator('.shell-aviso')).toHaveCount(0);
+  // Depois de Atualizar, o que fica gravado segue sendo a leitura da coleção, com os mesmos Baralhos.
+  await estadoFinal(extensao, {
+    pm_anki_baralhos: { nomes: { en: 'Inglês', ru: 'Alemão' }, dados: { source: 'colecao', decks: [{ deckName: 'Inglês', cards: 4 }, { deckName: 'Alemão', cards: 0, missing: true }] } },
+    pm_anki_vocabulario: { nomes: { en: 'Inglês', ru: 'Alemão' }, dados: { en: { deckName: 'Inglês', total: 12, source: 'colecao' }, ru: { deckName: 'Alemão', total: 0 } } },
+  });
+});
+
+// A Conexão (o /health) pode responder antes de os Ajustes de envio chegarem do storage: o primeiro
+// `usarBaralhos` faz então a primeira leitura. Ela é a leitura comum, sem `refresh` nem `launch`, e não vira BRG-11.
+test('a Conexão que responde antes dos Ajustes de envio não impede a primeira leitura dos Baralhos', async ({ page, extensao, fakes }) => {
+  // Exceção de teste: chrome-nativo (CLAUDE.md § Testing). A ordem das respostas do storage não tem como ser pedida pela tela.
+  await page.addInitScript(() => {
+    const ler = chrome.storage.local.get.bind(chrome.storage.local);
+    chrome.storage.local.get = (chaves, chamar) => {
+      const atrasar = chaves && typeof chaves === 'object' && 'ankiBridgePresets' in chaves;
+      const resposta = new Promise(resolve => setTimeout(() => ler(chaves, resolve), atrasar ? 1500 : 0));
+      if (typeof chamar === 'function') { resposta.then(chamar); return undefined; }
+      return resposta;
+    };
+  });
+  await abrirAnki(page, extensao, '#anki/baralhos');
+
+  await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
+  await expect(baralhos(page).locator('.shell-aviso')).toHaveCount(0);
+  const leituras = pedidos(fakes, '/anki/stats/decks');
+  expect(leituras.map(r => r.dados)).toEqual([{ decks: [{ deckName: 'CIMV', lang: 'en' }, { deckName: 'RUSSIAN', lang: 'ru' }] }]);
+  await estadoFinal(extensao, { pm_anki_baralhos: { nomes: { en: 'CIMV', ru: 'RUSSIAN' }, dados: { decks: [{ deckName: 'CIMV', cards: 2140 }, { deckName: 'RUSSIAN', cards: 480 }] } } });
 });
 
 // ─── Ajustes de envio, ↻ Atualizar e acessibilidade ──────────────────────────
@@ -608,6 +636,12 @@ test('salvar outro baralho nos Ajustes de envio lê os baralhos e o vocabulário
   await aba(page, 'Vocabulário').click();
   await expect(azulejosDoVocabulario(page).getByRole('button').nth(0)).toContainText('EN · Mining EN');
   expect(pedidos(fakes, '/anki/vocabulary').some(r => r.dados.deck === 'Mining EN')).toBe(true);
+  // O Baralho novo ficou gravado nos Ajustes e nas duas leituras que as abas guardam.
+  await estadoFinal(extensao, {
+    ankiBridgePresets: { en: { deckName: 'Mining EN' } },
+    pm_anki_baralhos: { nomes: { en: 'Mining EN', ru: 'RUSSIAN' }, dados: { decks: [{ deckName: 'Mining EN', cards: 2140, uniqueTermTokens: 99 }, { deckName: 'RUSSIAN', cards: 480 }] } },
+    pm_anki_vocabulario: { nomes: { en: 'Mining EN', ru: 'RUSSIAN' } },
+  });
 });
 
 test('↻ Atualizar lê de novo os baralhos (abrindo o Anki se precisar) e o vocabulário', async ({ page, extensao, fakes }) => {
@@ -621,6 +655,8 @@ test('↻ Atualizar lê de novo os baralhos (abrindo o Anki se precisar) e o voc
   const ultima = pedidos(fakes, '/anki/stats/decks').at(-1).dados;
   expect(ultima.refresh).toBe(true);
   expect(ultima.launch).toBe(true);
+  // A leitura de depois de Atualizar é a que fica gravada: o vocabulário novo, com o baralho de sempre.
+  await estadoFinal(extensao, { pm_anki_vocabulario: { nomes: { en: 'CIMV', ru: 'RUSSIAN' }, dados: { en: { deckName: 'CIMV', total: 6 } } } });
 });
 
 test('azulejos, filtros e lista têm nome e foco visível', async ({ page, extensao }) => {

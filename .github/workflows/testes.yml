@@ -1,9 +1,13 @@
 name: Testes
 
-# O portão de cada PR: os testes de Node, os do bridge, os do complemento do Anki
-# (Python 3.9, o do Anki do Mac, e 3.13) e a suíte e2e inteira
+# O portão de cada PR: os testes de Node, os das ferramentas, os do bridge, os do motor,
+# os do complemento do Anki (Python 3.9, o do Anki do Mac, e 3.13) e a suíte e2e inteira
 # (a extensão desempacotada no Chromium). Quem trabalha roda só os specs da
 # área que mudou; a suíte inteira roda aqui. Ver "Testing" no CLAUDE.md.
+#
+# Cada job chama só `node scripts/testar.mjs <grupo>`, o mesmo comando que se roda aqui: o que cada
+# grupo roda está em scripts/testes.json, e a regra `testes-no-portao` (node scripts/regras/verificar.js)
+# falha quando um teste fica sem grupo, um grupo sem job aqui ou um teste roda por fora do executor.
 #
 # Para gastar menos minutos sem perder proteção: uma nova execução na mesma PR cancela a
 # anterior; a e2e (91% dos minutos) só começa depois que Node, bridge e complemento passam; e
@@ -33,13 +37,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: node test_auto_keyword.js
-      - run: node test_sync.js
-      - run: node test_empacotar.js
-      - run: node test_fake_anki.js
-      - run: node test_voz.js
-      - run: node test_preview.js
-      - run: node scripts/ci/test_ci.js
+      - run: node scripts/testar.mjs node
+
+  ferramentas:
+    name: Testes das ferramentas
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # A divisão do CLAUDE.md em skills confere o YAML dos cabeçalhos com o PyYAML.
+      - run: pip install pyyaml
+      - run: node scripts/testar.mjs ferramentas
 
   # Olha o que a PR muda para as fatias e2e saberem se há o que rodar. No push na main roda tudo.
   mudancas:
@@ -70,13 +84,37 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: bridge/requirements.txt
       - run: pip install -r bridge/requirements.txt
-      - run: python -m unittest discover -s bridge -p "test_*.py"
+      - run: node scripts/testar.mjs bridge
+        env:
+          PYTHON: python
+
+  engine:
+    name: Testes do motor
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: engine/requirements.txt
+      - run: pip install -r engine/requirements.txt
+      - run: node scripts/testar.mjs engine
+        env:
+          PYTHON: python
 
   complemento:
     name: Testes do complemento (Python ${{ matrix.python }})
@@ -88,18 +126,25 @@ jobs:
         python: ['3.9', '3.13']
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
       # O complemento usa só a biblioteca padrão: nada a instalar.
-      - run: python -m unittest discover -s complemento -p "test_*.py"
+      - run: node scripts/testar.mjs complemento
+        env:
+          PYTHON: python
       # A normalização repetida no bridge e no complemento, também no Python 3.9 do Anki.
-      - run: python -m unittest discover -s bridge -p "test_paridade_da_normalizacao.py"
+      - run: node scripts/testar.mjs paridade
+        env:
+          PYTHON: python
 
   e2e:
     name: e2e (${{ matrix.fatia }}/8)
     # Só depois que os testes rápidos passam: um erro de Node não gasta ~35 minutos de e2e.
-    needs: [node, bridge, complemento, mudancas]
+    needs: [node, ferramentas, bridge, engine, complemento, mudancas]
     runs-on: ubuntu-latest
     # Um worker por runner de 2 núcleos: com dois, o Chromium de cada teste disputa o
     # processador e os testes sensíveis a tempo (relógios, transições) falham sem motivo.
@@ -134,8 +179,7 @@ jobs:
       - if: env.RODAR == 'true'
         run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
       - if: env.RODAR == 'true'
-        run: xvfb-run --auto-servernum npx playwright test --workers=1 --shard=${{ matrix.fatia }}/8
-        working-directory: e2e
+        run: xvfb-run --auto-servernum node scripts/testar.mjs e2e -- --workers=1 --shard=${{ matrix.fatia }}/8
       # Quem falhou e passou na repetição (retries em e2e/playwright.config.js) aparece
       # como aviso e no resumo do job, para a repetição não esconder a instabilidade.
       - name: Testes instáveis

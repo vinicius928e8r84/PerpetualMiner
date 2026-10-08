@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: node scripts/regras/test_regras.js
+      - run: node scripts/testar.mjs regras
       - run: node scripts/regras/verificar.js
         env:
           REGRAS_BASE: ${{ github.event_name == 'push' && github.event.before || format('origin/{0}', github.base_ref) }}

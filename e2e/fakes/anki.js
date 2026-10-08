@@ -405,6 +405,7 @@ function criarFakeAnki() {
     padrao: /^http:\/\/(127\.0\.0\.1|localhost):8766\//,
     tratar,
     requisicoes,
+    /** @estado-guardado Os Envios que a Conexão guardou (um por `POST /jobs`): o que ficou do lado dela, não o pedido que chegou. */
     envios,
     desligar() { estado.ligada = false; },
     ligar() { estado.ligada = true; },
@@ -422,9 +423,9 @@ function criarFakeAnki() {
      * (o sistema não tem item). Pedir ligar ou desligar o muda, como a Conexão faria.
      */
     definirItemDeLogin(situacao) { estado.contexto = { ...estado.contexto, itemDeLogin: situacao }; },
-    /** O item de login está escrito de verdade (só a situação `ligado`): o que a Conexão deixou no computador. */
+    /** @estado-guardado O item de login está escrito de verdade (só a situação `ligado`): o que a Conexão deixou no computador. */
     itemInstalado() { return estado.contexto.itemDeLogin === 'ligado'; },
-    /** O item de login agora: `ligado` ou `desligado` (ou a situação que o teste pôs). */
+    /** @estado-guardado O item de login agora: `ligado` ou `desligado` (ou a situação que o teste pôs). */
     itemDeLogin() { return estado.contexto.itemDeLogin; },
     /**
      * O próximo pedido de ligar ou desligar o item perde a resposta (a conexão cai): com `aplicada` a Conexão chegou a
@@ -438,7 +439,7 @@ function criarFakeAnki() {
     guardarChaveNaConexao(finalDaChave) { estado.chaveDaOpenAI = `sk-proj-guardada-antes-${finalDaChave}`; },
     /** A Conexão voltou sem a chave (o Anki foi reinstalado, a pasta de dados foi apagada). */
     esquecerAChave() { estado.chaveDaOpenAI = null; },
-    /** A cópia da chave da OpenAI que a Conexão guarda, ou null: o que o teste confere que chegou. */
+    /** @estado-guardado A cópia da chave da OpenAI que a Conexão guarda, ou null: o que o teste confere que chegou. */
     chaveNaConexao() { return estado.chaveDaOpenAI; },
     /** As respostas do contrato a um pedido (com o corpo, se tiver), para o teste que confere o fake contra os exemplos. */
     respostaDoContrato,
@@ -497,7 +498,7 @@ function criarFakeAnki() {
     recusarEnvios(lang, recusa = { status: 500 }) { estado.recusas.set(lang, recusa); },
     aceitarEnvios(lang) { estado.recusas.delete(lang); },
 
-    /** Os Envios criados de um idioma, na ordem. */
+    /** @estado-guardado Os Envios criados de um idioma, na ordem. */
     enviosEm(lang) { return envios.filter(e => e.lang === lang); },
 
     /** Põe o Envio numa etapa do bridge (`generate_cards`, `send_to_anki`…). */

@@ -23,7 +23,6 @@
 (function (raiz) {
   const { textoDaVoz, Veio, ConexaoAnki, Shell } = raiz;
   const { SITUACAO } = ConexaoAnki;
-  const ROTA = `${ConexaoAnki.ENDERECO}/abrir-com-o-computador`;
   const porId = id => document.getElementById(id);
 
   /** O que a Conexão responde quando recusa de propósito: o item não foi mexido. Qualquer outra falha deixa o resultado incerto. */
@@ -57,14 +56,9 @@
 
   // ─── A Conexão ─────────────────────────────────────────────────────────────
 
-  /** `POST` com `corpo`; devolve o `ligado` da resposta, ou levanta o erro (com o `codigo` e o `status`, se a Conexão respondeu). */
-  async function pedir(caminho, corpo) {
-    const resposta = await fetch(`${ROTA}${caminho}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(corpo),
-      signal: AbortSignal.timeout(ConexaoAnki.TEMPO_DA_RESPOSTA),
-    });
+  /** Envia o `pedido` (de `PedidoAoAnki`); devolve o `ligado` da resposta, ou levanta o erro (com o `codigo` e o `status`, se a Conexão respondeu). */
+  async function pedir(pedido) {
+    const resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, pedido, { signal: AbortSignal.timeout(ConexaoAnki.TEMPO_DA_RESPOSTA) });
     const dados = await resposta.json().catch(() => null);
     if (!resposta.ok) {
       throw Object.assign(new Error(`HTTP ${resposta.status}${dados?.error ? ` · ${dados.error}` : ''}`), {
@@ -83,7 +77,7 @@
     let ligado = null;
     let erro = null;
     try {
-      ligado = await pedir('/estado', {});
+      ligado = await pedir(raiz.PedidoAoAnki.estadoDoItemDeLogin());
     } catch (causa) {
       erro = causa;
     }
@@ -114,7 +108,7 @@
     desenhar();
     let erro = null;
     try {
-      Object.assign(estado, { ligado: await pedir('', { ligado: ligar }), confirmado: true, semResposta: null });
+      Object.assign(estado, { ligado: await pedir(raiz.PedidoAoAnki.abrirComOComputador(ligar)), confirmado: true, semResposta: null });
     } catch (causa) {
       erro = causa;
     }

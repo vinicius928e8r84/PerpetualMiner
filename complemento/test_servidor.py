@@ -28,6 +28,36 @@ ORIGEM = configuracao.ORIGENS_ACEITAS[0]
 VARIAVEIS_DE_PROXY = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy")
 
 
+# Tudo o que o servidor real respondeu, neste arquivo, a uma rota que ele tem: (método, caminho, status, `error`).
+# `tearDownModule` exige um exemplo do contrato para cada um. A recusa de origem (403) é a mesma em toda rota e
+# o que não é rota (404, OPTIONS) é do contrato de origem, não de uma rota; ficam de fora.
+RESPONDIDOS = set()
+
+
+def registrar_a_resposta(metodo, caminho, status, corpo):
+    if (metodo, caminho.split("?", 1)[0]) not in servidor.ROTAS or status == 403:
+        return
+    try:
+        erro = json.loads(corpo).get("error")
+    except (ValueError, AttributeError):
+        erro = None
+    RESPONDIDOS.add((metodo, caminho.split("?", 1)[0], status, erro))
+
+
+def tearDownModule():
+    exemplos = exemplos_do_contrato()
+    cobertos = {
+        (e["pedido"]["metodo"], e["pedido"]["caminho"], e["resposta"]["status"], (e["resposta"]["json"] or {}).get("error")) for e in exemplos
+    }
+    sem_exemplo = sorted(RESPONDIDOS - cobertos, key=str)
+    if sem_exemplo:
+        raise AssertionError(
+            "O complemento respondeu o que o contrato (complemento/contrato/exemplos.json) não tem exemplo: %s. "
+            "Escreva o exemplo de cada um (o contexto em que acontece e o pedido) e rode de novo; o fake do e2e e o "
+            "teste do contrato leem o mesmo arquivo." % "; ".join("%s %s -> %s %s" % estado for estado in sem_exemplo)
+        )
+
+
 def ler_o_contrato():
     with open(CONTRATO, encoding="utf-8") as arquivo:
         return json.load(arquivo)
@@ -90,6 +120,7 @@ class ConexaoNoTeste:
         item="desligado",
         openai="aceita",
         chave_na_conexao=None,
+        cofre_sem_escrita=False,
     ):
         self.perfil = perfil
         self.falha_no_perfil = falha_no_perfil
@@ -103,6 +134,7 @@ class ConexaoNoTeste:
             with open(os.path.join(self.chaves, "openai.json"), "w", encoding="utf-8") as arquivo:
                 json.dump({"chave": "sk-proj-guardada-antes-" + chave_na_conexao}, arquivo)
         self.openai = OpenAIDeMentira(openai)
+        self.cofre_sem_escrita = cofre_sem_escrita
         self.logger = registro.criar(self.logs)
         self.conexao = servidor.Conexao(
             porta=0,
@@ -123,10 +155,14 @@ class ConexaoNoTeste:
 
     def __enter__(self):
         self.openai.__enter__()
+        if self.cofre_sem_escrita:
+            os.chmod(self.chaves, 0o500)  # gravar a cópia da chave falha: a Conexão responde o erro interno
         assert self.conexao.iniciar(), "a porta de teste devia estar livre"
         return self
 
     def __exit__(self, *erro):
+        if self.cofre_sem_escrita:
+            os.chmod(self.chaves, 0o700)
         self.conexao.parar()
         self.openai.__exit__(*erro)
         for handler in list(self.logger.handlers):
@@ -149,7 +185,9 @@ class ConexaoNoTeste:
         try:
             pedido.request(metodo, caminho, body=corpo_bruto, headers=enviados)
             resposta = pedido.getresponse()
-            return resposta.status, dict(resposta.getheaders()), resposta.read()
+            lido = resposta.read()
+            registrar_a_resposta(metodo, caminho, resposta.status, lido)
+            return resposta.status, dict(resposta.getheaders()), lido
         finally:
             pedido.close()
 
@@ -163,6 +201,8 @@ class ContratoDaConexao(unittest.TestCase):
         for exemplo in exemplos_do_contrato():
             with self.subTest(exemplo["nome"]), tempfile.TemporaryDirectory() as pasta:
                 contexto = exemplo["contexto"]
+                if contexto.get("cofre") == "sem_escrita" and (os.name == "nt" or os.geteuid() == 0):
+                    self.skipTest("quem é root, ou o Windows, grava onde a pasta é só de leitura")
                 with ConexaoNoTeste(
                     pasta,
                     perfil=contexto.get("perfil", "Usuário 1"),
@@ -171,6 +211,7 @@ class ContratoDaConexao(unittest.TestCase):
                     item=contexto.get("itemDeLogin", "desligado"),
                     openai=contexto.get("openai", "aceita"),
                     chave_na_conexao=contexto.get("chaveNaConexao"),
+                    cofre_sem_escrita=contexto.get("cofre") == "sem_escrita",
                 ) as conexao:
                     pedido = exemplo["pedido"]
                     status, _, corpo = conexao.pedir(
@@ -188,6 +229,146 @@ class ContratoDaConexao(unittest.TestCase):
     def test_o_contrato_tem_a_origem_da_extensao_que_o_complemento_aceita(self):
         with open(CONTRATO, encoding="utf-8") as arquivo:
             self.assertEqual(json.load(arquivo)["origemDaExtensao"], ORIGEM)
+
+
+# Cada rota do servidor, declarada à parte dos exemplos, para a matriz de estados pedir a rota de verdade:
+#   corpo         o corpo mínimo que ela aceita (None: sem corpo);
+#   status        o que ela responde a esse corpo com o Anki saudável (200 se não disser);
+#   le_a_colecao  lê a coleção do Anki: com a coleção que quebra responde 500, sem coleção aberta responde 503;
+#   le_o_perfil   lê o perfil aberto: com o perfil ilegível responde 500;
+#   recusas       cada validação do pedido: (corpo, status, `error`), com a coleção aberta.
+# Uma rota nova entra aqui dizendo o que faz: uma que não lê a coleção nem o perfil (a chave da IA, por exemplo)
+# responde o mesmo `status` em todos os estados do Anki.
+MATRIZ = {
+    ("GET", "/health"): {"corpo": None, "le_a_colecao": False, "le_o_perfil": True, "recusas": []},
+    ("POST", "/anki/decks"): {"corpo": {}, "le_a_colecao": True, "le_o_perfil": False, "recusas": []},
+    ("POST", "/anki/stats/decks"): {
+        "corpo": {"decks": [{"deckName": "Inglês", "lang": "en"}]},
+        "le_a_colecao": True,
+        "le_o_perfil": False,
+        "recusas": [({}, 400, "decks_required")],
+    },
+    # A chave da IA (PR 191): não lê a coleção nem o perfil. O corpo mínimo não traz a `chave`, então o pedido é recusado em todo estado.
+    ("POST", "/ia/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/ia/openai/chave"): {
+        "corpo": {},
+        "status": 400,
+        "le_a_colecao": False,
+        "le_o_perfil": False,
+        "recusas": [({"chave": "x"}, 401, "openai_key_rejected")],
+    },
+    # O item de login de “Abrir o Anki com o computador” (PR 189): não lê a coleção nem o perfil, e escreve só na pasta do teste.
+    ("POST", "/abrir-com-o-computador/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/abrir-com-o-computador"): {
+        "corpo": {"ligado": True},
+        "le_a_colecao": False,
+        "le_o_perfil": False,
+        "recusas": [({"ligado": "sim"}, 400, "invalid_request")],
+    },
+    ("POST", "/anki/vocabulary"): {
+        "corpo": {"deck": "Inglês", "lang": "en"},
+        "le_a_colecao": True,
+        "le_o_perfil": False,
+        "recusas": [({"lang": "en"}, 400, "deck_required"), ({"deck": "Inglês", "lang": "fr"}, 400, "invalid_lang")],
+    },
+}
+
+
+class QuebradaAoLer(ColecaoEmMemoria):
+    """O Anki que levanta um erro inesperado ao ler a coleção."""
+
+    def __init__(self):
+        super().__init__({"quebra": True, "baralhos": []})
+
+
+class EstadosDeCadaRota(unittest.TestCase):
+    """Cada rota que o servidor tem é pedida de verdade, por HTTP, em cada estado em que o Anki pode estar.
+
+    Não depende dos exemplos do contrato: o que o servidor responde fica registrado (`registrar_a_resposta`) e,
+    no fim do arquivo, `tearDownModule` exige um exemplo para cada resposta. Tirar um exemplo, ou uma rota
+    nova que responde um estado que ninguém escreveu, quebra por aqui, dizendo o estado.
+    Os métodos `conferir_*` recebem a matriz e as rotas, para o teste da própria matriz usar uma rota inventada."""
+
+    def conferir_que_toda_rota_esta_na_matriz(self, rotas, matriz):
+        sem_entrada = sorted(rota for rota in rotas if rota not in matriz)
+        self.assertEqual(sem_entrada, [], "rota nova sem entrada em MATRIZ (complemento/test_servidor.py): diga o corpo, se lê a coleção e o perfil, e as recusas dela")
+
+    def pedir_cada_rota(self, conexao, rotas, matriz):
+        return {rota: conexao.pedir(rota[0], rota[1], corpo=matriz[rota]["corpo"]) for rota in sorted(rotas)}
+
+    def conferir_a_colecao_que_quebra(self, rotas, matriz):
+        with tempfile.TemporaryDirectory() as pasta, contextlib.redirect_stderr(io.StringIO()), ConexaoNoTeste(pasta, colecao=QuebradaAoLer()) as conexao:
+            respostas = self.pedir_cada_rota(conexao, rotas, matriz)
+        for rota, (status, _, corpo) in respostas.items():
+            if matriz[rota]["le_a_colecao"]:
+                self.assertEqual((status, json.loads(corpo)), (500, {"error": "internal_error"}), rota)
+            else:
+                self.assertEqual(status, matriz[rota].get("status", 200), rota)
+
+    def conferir_sem_a_colecao_aberta(self, rotas, matriz):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            respostas = self.pedir_cada_rota(conexao, rotas, matriz)
+        for rota, (status, _, corpo) in respostas.items():
+            if matriz[rota]["le_a_colecao"]:
+                self.assertEqual(status, 503, rota)
+                self.assertTrue(json.loads(corpo)["error"].endswith("_unavailable"), rota)
+            else:
+                self.assertEqual(status, matriz[rota].get("status", 200), rota)
+
+    def conferir_o_perfil_que_nao_se_le(self, rotas, matriz):
+        with tempfile.TemporaryDirectory() as pasta, contextlib.redirect_stderr(io.StringIO()), ConexaoNoTeste(pasta, falha_no_perfil=True) as conexao:
+            respostas = self.pedir_cada_rota(conexao, rotas, matriz)
+        for rota, (status, _, corpo) in respostas.items():
+            if matriz[rota]["le_o_perfil"]:
+                self.assertEqual((status, json.loads(corpo)), (500, {"error": "internal_error"}), rota)
+            elif matriz[rota]["le_a_colecao"]:
+                self.assertEqual(status, 503, rota)
+            else:
+                self.assertEqual(status, matriz[rota].get("status", 200), rota)
+
+    def conferir_as_recusas_de_cada_rota(self, rotas, matriz):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, colecao=ColecaoEmMemoria(ler_o_contrato()["colecoes"]["inglês com subbaralho"])) as conexao:
+            for rota in sorted(rotas):
+                for corpo, status_esperado, erro_esperado in matriz[rota]["recusas"]:
+                    status, _, resposta = conexao.pedir(rota[0], rota[1], corpo=corpo)
+                    self.assertEqual((status, json.loads(resposta)), (status_esperado, {"error": erro_esperado}), (rota, corpo))
+
+    def conferir_o_corpo_que_nao_e_um_objeto_json(self, rotas, matriz):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            for metodo, caminho in sorted(rotas):
+                status, _, corpo = conexao.pedir(metodo, caminho, corpo=b"{isto nao e json")
+                self.assertEqual((status, json.loads(corpo)), (400, {"error": "invalid_json"}), (metodo, caminho))
+
+    def conferir_tudo(self, rotas, matriz):
+        self.conferir_que_toda_rota_esta_na_matriz(rotas, matriz)
+        self.conferir_a_colecao_que_quebra(rotas, matriz)
+        self.conferir_sem_a_colecao_aberta(rotas, matriz)
+        self.conferir_o_perfil_que_nao_se_le(rotas, matriz)
+        self.conferir_as_recusas_de_cada_rota(rotas, matriz)
+        self.conferir_o_corpo_que_nao_e_um_objeto_json(rotas, matriz)
+
+    def test_cada_rota_do_servidor_em_cada_estado_do_anki(self):
+        self.conferir_tudo(servidor.ROTAS, MATRIZ)
+
+    def test_uma_rota_nova_sem_entrada_na_matriz_quebra_dizendo_o_que_declarar(self):
+        rotas = dict(servidor.ROTAS)
+        rotas[("POST", "/rota/inventada")] = lambda conexao, corpo: (200, {"ok": True})
+        with self.assertRaisesRegex(AssertionError, r"rota nova sem entrada em MATRIZ.*se lê a coleção"):
+            self.conferir_que_toda_rota_esta_na_matriz(rotas, MATRIZ)
+
+    def test_uma_rota_que_nao_le_a_colecao_responde_200_em_todos_os_estados_dela(self):
+        # Como a de estado da chave de IA (PR 191): não toca a coleção nem o perfil, e o corpo `{}` basta.
+        rota = ("POST", "/rota/inventada")
+        original, respondidos = dict(servidor.ROTAS), set(RESPONDIDOS)
+        servidor.ROTAS[rota] = lambda conexao, corpo: (200, {"configurada": False})
+        try:
+            matriz = dict(MATRIZ)
+            matriz[rota] = {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []}
+            self.conferir_tudo(servidor.ROTAS, matriz)
+        finally:
+            servidor.ROTAS.clear()
+            servidor.ROTAS.update(original)
+            RESPONDIDOS.intersection_update(respondidos)  # a rota inventada não é do contrato
 
 
 class SaudeDaConexao(unittest.TestCase):

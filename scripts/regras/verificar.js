@@ -16,6 +16,9 @@ const REGRAS = [
   require('./idioma-solto'),
   require('./teste-le-codigo'),
   require('./e2e-funcao-interna'),
+  require('./testes-no-portao'),
+  require('./contrato-fechado'),
+  require('./e2e-estado-final'),
 ];
 
 const ARQUIVO_DA_LINHA_DE_BASE = 'scripts/regras/linha-de-base.json';
@@ -258,6 +261,11 @@ function main(argv) {
     } else {
       const antes = lerJson(anterior, `${base.ref}:${ARQUIVO_DA_LINHA_DE_BASE}`);
       for (const regra of REGRAS) {
+        // Uma regra que a base ainda não tem entra com a primeira linha de base dela: não há teto a comparar.
+        if (!(regra.id in antes)) {
+          avisos.push(`${base.ref} ainda não tem a regra ${regra.id}: esta é a primeira linha de base dela (${total(linhaDeBase[regra.id])})`);
+          continue;
+        }
         if (total(linhaDeBase[regra.id]) > total(antes[regra.id])) {
           erros.push(`✗ ${ARQUIVO_DA_LINHA_DE_BASE}: ${regra.id} tem ${total(linhaDeBase[regra.id])}, mais que os `
             + `${total(antes[regra.id])} de ${base.ref}. A linha de base só desce: se ${base.ref} baixou depois que este ramo `

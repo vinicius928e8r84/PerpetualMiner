@@ -23,6 +23,8 @@ function acusa(id, arquivo, fonte, quantas, porque) {
   return achados;
 }
 
+const nulo = (achados, quantas, porque) => { assert.strictEqual(achados.length, quantas, `${porque}\n${JSON.stringify(achados, null, 2)}`); total++; return achados; };
+
 // ─── tokens-veio ─────────────────────────────────────────────────────────────
 
 // 8d13cc7^ overlay.css: o raio da linha do overlay solto, que a revisão do #41 tirou.
@@ -180,6 +182,280 @@ acusa('e2e-funcao-interna', 'e2e/tests/popup.spec.js', [
   "const frases = await page.evaluate(() => document.querySelectorAll('.veio-frase').length);",
 ].join('\n'), 0, 'chrome.* e o DOM não são código da extensão');
 
+// ─── e2e-estado-final ────────────────────────────────────────────────────────
+
+const achadosDoEstado = fonte => regras['e2e-estado-final'].verificar('e2e/tests/probe.spec.js', fonte, RAIZ);
+
+// 7996b48 (#190) painel-anki-baralhos.spec.js:546: o cenário da coleção terminava nas fotos, sem conferir pm_anki_baralhos nem pm_anki_vocabulario.
+const SO_AS_FOTOS = [
+  "test('com a coleção do contrato aberta, Baralhos e termos e Vocabulário mostram o que o complemento leu', async ({ page, extensao, fakes }) => {",
+  "  fakes.anki.abrirColecao('inglês com subbaralho');",
+  "  await abrirAnki(page, extensao, '#anki/baralhos');",
+  '  const azulejos = azulejosDosBaralhos(page).getByRole(\'button\');',
+  "  await expect(azulejos.nth(0)).toContainText('EN · Inglês');",
+  "  await fotografar(page, 'baralhos-da-colecao-do-contrato.png');",
+  "  await aba(page, 'Vocabulário').click();",
+  "  await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(12);",
+  "  await fotografar(page, 'vocabulario-da-colecao-do-contrato.png');",
+  '});',
+].join('\n');
+const [semEstado] = acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js', SO_AS_FOTOS, 1, 'o cenário que termina na foto (7996b48)');
+assert.strictEqual(semEstado.linha, 1);
+total++;
+// O conserto de 05b7eb8: depois da foto, lê os dois caches e compara com o que a tela mostrou.
+acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js', SO_AS_FOTOS.replace(/\n\}\);$/, [
+  '',
+  "  const gravado = await extensao.lerStorage(['pm_anki_baralhos', 'pm_anki_vocabulario']);",
+  "  expect(gravado.pm_anki_baralhos.nomes).toEqual({ en: 'Inglês', ru: 'Alemão' });",
+  "  expect(gravado.pm_anki_vocabulario.dados.en).toMatchObject({ deckName: 'Inglês', total: 12, source: 'colecao' });",
+  '});',
+].join('\n')), 0, 'o mesmo cenário conferindo os dois caches (05b7eb8)');
+// A leitura sem comparar, e a leitura antes de agir, não bastam.
+acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js', SO_AS_FOTOS.replace(/\n\}\);$/, "\n  await extensao.lerStorage(['pm_anki_baralhos']);\n});"), 1,
+  'a leitura sem comparar com nada');
+acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js',
+  SO_AS_FOTOS.replace("  const azulejos", "  expect((await extensao.lerStorage(['pm_anki_baralhos'])).pm_anki_baralhos).toBeUndefined();\n  const azulejos").replace("await aba(page, 'Vocabulário').click();", "await aba(page, 'Vocabulário').hover();"),
+  0, 'sem ação nenhuma o teste só mostra: não é um cenário que grava');
+// 5c391cb (#189) configuracoes-abrir-anki.spec.js: o interruptor confere a tela, não o item que a Conexão tem.
+const SO_O_INTERRUPTOR = [
+  "test('ao reabrir o painel o interruptor mostra o que a Conexão tem, não o que ficou na tela', async ({ page, extensao }) => {",
+  '  await abrirCard(page, extensao);',
+  '  await expect(interruptor(page)).toBeEnabled();',
+  '  await trilho(page).click();',
+  '  await expect(interruptor(page)).toBeChecked();',
+  '',
+  '  await page.reload();',
+  '',
+  "  await expect(resumo(page)).toHaveText('Abre com o computador');",
+  '  await expect(interruptor(page)).toBeChecked();',
+  '});',
+].join('\n');
+acusa('e2e-estado-final', 'e2e/tests/configuracoes-abrir-anki.spec.js', SO_O_INTERRUPTOR, 1, 'o interruptor sem o item que a Conexão tem (5c391cb)');
+// O fake declara o leitor com `@estado-guardado` (fc0f416: o item de login que a Conexão tem); sem a marca, o leitor não conta.
+const raizComFake = marcado => {
+  const pasta = repositorioDeTestes({
+    'e2e/fakes/anki.js': `return {\n  ${marcado ? '/** @estado-guardado O item de login que a Conexão tem. */\n  ' : ''}itemInstalado() { return item; },\n  /** @estado-guardado A chave da OpenAI que a Conexão guardou. */\n  chaveNaConexao() { return chave; },\n};\n`,
+  });
+  return pasta;
+};
+const comOFake = (marcado, arquivo, fonte) => {
+  const pasta = raizComFake(marcado);
+  try {
+    return regras['e2e-estado-final'].verificar(arquivo, fonte, pasta);
+  } finally {
+    fs.rmSync(pasta, { recursive: true, force: true });
+  }
+};
+const DEPOIS_DO_ITEM = SO_O_INTERRUPTOR.replace(/\n\}\);$/, '\n  expect(fakes.anki.itemInstalado()).toBe(true);\n});').replace('{ page, extensao }', '{ page, extensao, fakes }');
+nulo(comOFake(true, 'e2e/tests/configuracoes-abrir-anki.spec.js', DEPOIS_DO_ITEM), 0, 'o mesmo teste conferindo o item que o fake marca como guardado (fc0f416)');
+nulo(comOFake(false, 'e2e/tests/configuracoes-abrir-anki.spec.js', DEPOIS_DO_ITEM), 1, 'o mesmo leitor sem a marca @estado-guardado no fake não conta');
+// #191: o leitor da chave que a Conexão guardou, declarado pelo fake, é a fonte certa depois de agir.
+nulo(comOFake(true, 'e2e/tests/configuracoes-ia.spec.js', [
+  "test('conferir e salvar entrega a chave à Conexão', async ({ page, extensao, fakes }) => {",
+  "  await page.getByRole('button', { name: 'Conferir e salvar' }).click();",
+  "  expect(fakes.anki.chaveNaConexao()).toBe('sk-teste');",
+  '});',
+].join('\n')), 0, 'o leitor da PR 191, declarado pelo fake');
+acusa('e2e-estado-final', 'e2e/tests/configuracoes-abrir-anki.spec.js',
+  SO_O_INTERRUPTOR.replace(/\n\}\);$/, '\n  await estadoFinalEm(\'o item de login\', () => fakes.anki.itemInstalado(), true);\n});'), 0, 'o helper estadoFinalEm');
+// Um helper do próprio arquivo que lê o storage conta como leitura.
+acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js', [
+  "const lerGravado = async (extensao, chave) => (await extensao.lerStorage(chave))[chave];",
+  "test('salvar grava o baralho', async ({ page, extensao }) => {",
+  "  await page.getByRole('button', { name: 'Salvar ajustes' }).click();",
+  "  expect((await lerGravado(extensao, 'pm_anki_baralhos')).nomes).toEqual({ en: 'Mining EN' });",
+  '});',
+].join('\n'), 0, 'uma função do arquivo que lê o storage');
+// Achados da revisão do #194: a leitura descartada, a conferência antes da última ação e o pedido que chegou ao fake não são o estado final.
+const NO_ESTADO = (...meio) => ["test('guarda o tema', async ({ page, extensao, fakes }) => {", ...meio, '});'].join('\n');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  await extensao.lerStorage(['pm_tema']);", '  await expect(botao).toBeVisible();')), 1,
+  'a leitura cujo resultado ninguém usa');
+nulo(achadosDoEstado(NO_ESTADO(
+  '  await botao.click();', "  expect((await extensao.lerStorage(['pm_tema'])).pm_tema).toBe('claro');", '  await outro.click();', '  await expect(outro).toBeVisible();')), 1,
+  'a conferência certa antes de uma segunda ação que grava');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  expect(fakes.anki.requisicoes).toHaveLength(1);")), 1, 'o pedido que chegou ao fake não é o que ficou guardado');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  expect(fakes.gemini.chamadas).toHaveLength(1);")), 1, 'as chamadas ao fake do Gemini também são transporte');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  const gravado = await extensao.lerStorage(['pm_tema']);", "  expect(gravado.pm_tema).toBe('claro');")), 0,
+  'a leitura guardada numa variável que o expect usa');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  const { pm_tema: tema } = await extensao.lerStorage(['pm_tema']);", "  const claro = tema === 'claro';", '  expect(claro).toBe(true);')), 0,
+  'a leitura que passa por outra variável até o expect');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  const gravado = await extensao.lerStorage(['pm_tema']);", '  await expect(botao).toBeVisible();')), 1,
+  'a leitura guardada numa variável que nenhum expect usa');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  expect(fakes.anki.requisicoes).toHaveLength(1);", "  expect(await extensao.frases()).toHaveLength(1);")), 0,
+  'o pedido e, depois, o que ficou guardado');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', '  await outro.click();', "  await estadoFinal(extensao, { pm_tema: 'claro' });")), 0, 'a conferência do helper depois da última ação');
+
+// Delta do #194: a leitura descartada dentro do poll, o `expect` sem matcher, o valor sobrescrito e o helper de estado inalterado.
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', '  await expect.poll(async () => {', "    await extensao.lerStorage(['pm_tema']);", '    return true;', '  }).toBe(true);')), 1,
+  'o poll que lê e devolve outra coisa');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  await expect.poll(async () => (await extensao.lerStorage(['pm_tema'])).pm_tema).toBe('claro');")), 0,
+  'o poll que devolve o valor lido');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', '  await expect.poll(async () => {', "    const gravado = await extensao.lerStorage(['pm_tema']);", '    return gravado.pm_tema;', "  }).toBe('claro');")), 0,
+  'o poll que devolve o valor lido por uma variável');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  expect(await extensao.lerStorage(['pm_tema']));")), 1, 'o expect sem matcher não compara nada');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  expect(await extensao.lerStorage(['pm_tema'])).not.toEqual({});")), 0, 'o expect com .not.toEqual');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  let gravado = await extensao.lerStorage(['pm_tema']);", "  gravado = { pm_tema: 'claro' };", "  expect(gravado.pm_tema).toBe('claro');")), 1,
+  'o valor lido sobrescrito por uma constante antes de comparar');
+nulo(achadosDoEstado(NO_ESTADO('  await botao.click();', "  let gravado = await extensao.lerStorage(['pm_tema']);", "  expect(gravado.pm_tema).toBe('claro');", "  gravado = null;")), 0,
+  'o valor lido comparado antes de ser reaproveitado');
+nulo(achadosDoEstado(NO_ESTADO("  await estadoFinalInalterado(extensao, ['pm_tema'], async () => { await botao.click(); });")), 0,
+  'o helper de estado inalterado lê e compara depois da ação que ele executa');
+nulo(achadosDoEstado(NO_ESTADO("  await estadoFinalInalterado(extensao, ['pm_tema'], async () => {});", '  await botao.click();')), 1,
+  'o helper antes da ação não é o estado final');
+// A exceção nomeada, para o que não guarda nada, e o spec de aparência, que a regra não olha.
+acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js',
+  `// Exceção de teste: sem-estado-guardado — a aba só muda o que a tela mostra.\n${SO_AS_FOTOS}`, 0, 'a exceção nomeada');
+assert.strictEqual(regras['e2e-estado-final'].seAplica('e2e/tests/painel-anki-baralhos-visual.spec.js'), false);
+total++;
+
+// ─── contrato-fechado ────────────────────────────────────────────────────────
+
+// 7996b48 (#190) painel-anki-baralhos.js: o pedido da Conexão com o caminho e o corpo montados à mão, que o contrato
+// não tinha como conferir (o corpo de Atualizar tinha os dois Baralhos e o exemplo só o de Inglês).
+acusa('contrato-fechado', 'painel-anki-baralhos.js', [
+  '  async function pedirJson(caminho, corpo) {',
+  '    const resposta = await fetch(`${ENDERECO_DA_CONEXAO}${caminho}`, {',
+  "      method: 'POST',",
+  "      headers: { 'Content-Type': 'application/json' },",
+  '      body: JSON.stringify(corpo),',
+  '    });',
+  '    return resposta.json();',
+  '  }',
+].join('\n'), 1, 'o POST com o caminho numa variável (7996b48)');
+// A saúde pedida por um fetch direto, que o contrato tem (conexao-anki.js antes do construtor): o conserto é o construtor.
+const [saude] = acusa('contrato-fechado', 'lib/conexao-anki.js',
+  "const resposta = await fetch(`${ENDERECO}/health`, { signal: AbortSignal.timeout(TEMPO_DA_RESPOSTA) });\n", 1, 'a saúde por fetch direto');
+assert.match(saude.detalhe, /fetch direto a GET \/health, que o contrato tem: peça por PedidoAoAnki\.pedir/);
+total++;
+// Uma rota que o contrato não tem (as do bridge de hoje): a extensão não a pede antes do exemplo.
+const [retomar] = acusa('contrato-fechado', 'painel-envio.js',
+  "const resposta = await fetch(`${ENDERECO_DA_CONEXAO}/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });\n", 1, 'rota fora do contrato');
+assert.match(retomar.detalhe, /POST \/jobs\/:id\/retry: a rota não tem exemplo no contrato/);
+total++;
+acusa('contrato-fechado', 'background.js', "await fetch('http://127.0.0.1:8766/anki/status');\n", 1, 'o endereço por extenso');
+// O jeito certo, e o que não é da Conexão, passam.
+acusa('contrato-fechado', 'painel-ajustes.js',
+  'const resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, raiz.PedidoAoAnki.baralhos());\n', 0, 'o construtor');
+acusa('contrato-fechado', 'lib/sincronizacao.js', "const r = await fetch(`${URL_DO_FIRESTORE}/documents/frases`, { method: 'POST' });\n", 0, 'outro servidor');
+acusa('contrato-fechado', 'background.js', "// fetch(`${BRIDGE_URL}/jobs`)\n", 0, 'um comentário');
+
+// ─── testes-no-portao ────────────────────────────────────────────────────────
+
+// Um repositório mínimo (só o que a regra lê: o cadastro, os arquivos e os workflows).
+function repositorioDeTestes(arquivos) {
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-portao-'));
+  execFileSync('git', ['init', '-q'], { cwd: pasta });
+  for (const [arquivo, texto] of Object.entries(arquivos)) {
+    fs.mkdirSync(path.dirname(path.join(pasta, arquivo)), { recursive: true });
+    fs.writeFileSync(path.join(pasta, arquivo), texto);
+  }
+  return pasta;
+}
+function achadosDoPortao(arquivos, arquivo) {
+  const pasta = repositorioDeTestes(arquivos);
+  try {
+    return regras['testes-no-portao'].verificar(arquivo, arquivos[arquivo], pasta);
+  } finally {
+    fs.rmSync(pasta, { recursive: true, force: true });
+  }
+}
+const CADASTRO = JSON.stringify({
+  grupos: {
+    node: { executor: 'node', arquivos: ['test_sync.js', 'test_fake_anki.js'] },
+    complemento: { executor: 'unittest', pasta: 'complemento', padrao: 'test_*.py' },
+  },
+  fora: [{ arquivo: 'test_gemini.js', motivo: 'um script avulso, não um teste' }],
+}, null, 2);
+const TESTES = { 'test_sync.js': '', 'test_fake_anki.js': '', 'test_gemini.js': '', 'complemento/test_servidor.py': '' };
+const CHAMA_TUDO = 'on:\n  pull_request:\njobs:\n  a:\n    steps:\n      - run: node scripts/testar.mjs node\n      - run: node scripts/testar.mjs complemento\n';
+const comOPortao = (extra = {}) => ({ 'scripts/testes.json': CADASTRO, ...TESTES, '.github/workflows/testes.yml': CHAMA_TUDO, ...extra });
+const achadosDe = (arquivos, arquivo) => achadosDoPortao(arquivos, arquivo);
+
+// O jeito certo passa: todo teste num grupo (ou em `fora`), todo grupo num workflow de PR.
+nulo(achadosDe(comOPortao(), 'scripts/testes.json'), 0, 'o cadastro em dia');
+nulo(achadosDe(comOPortao(), '.github/workflows/testes.yml'), 0, 'o workflow que só chama o executor');
+nulo(achadosDe(comOPortao(), 'test_gemini.js'), 0, 'um arquivo em `fora`, com o motivo');
+nulo(achadosDe(comOPortao(), 'complemento/test_servidor.py'), 0, 'um teste descoberto pela pasta do grupo');
+
+// #188 (0de5d66): os testes da divisão do CLAUDE.md existiam e o CI não os rodava.
+nulo(achadosDe(comOPortao({ 'scripts/test_divisao_do_claude_md.mjs': '' }), 'scripts/test_divisao_do_claude_md.mjs'), 1,
+  'um teste sem grupo (0de5d66)');
+// Um teste novo na pasta do grupo de Python entra sozinho; um .mjs novo só entra cadastrado.
+nulo(achadosDe(comOPortao({ 'complemento/test_novo.py': '' }), 'complemento/test_novo.py'), 0, 'um teste novo da pasta de um grupo');
+
+// #185 (83fda05, o testes.yml de antes do complemento e do fake): os mesmos testes, rodados à mão no workflow.
+const WORKFLOW_DO_83FDA05 = [
+  'on:', '  pull_request:', 'jobs:', '  node:', '    steps:',
+  '      - run: node test_auto_keyword.js', '      - run: node test_sync.js', '      - run: node test_empacotar.js',
+  '  bridge:', '    steps:', '      - run: python -m unittest discover -s bridge -p "test_*.py"', '',
+].join('\n');
+const doWorkflow = nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': WORKFLOW_DO_83FDA05 }), '.github/workflows/testes.yml'), 4,
+  'os testes rodados por fora do executor (83fda05)');
+assert.match(doWorkflow[0].detalhe, /roda um teste por fora do executor.*node scripts\/testar\.mjs <grupo>/);
+total++;
+// O mesmo workflow, sem o job do complemento: o cadastro acusa o grupo que ninguém chama.
+const semOComplemento = nulo(achadosDe(comOPortao({
+  '.github/workflows/testes.yml': CHAMA_TUDO.replace('      - run: node scripts/testar.mjs complemento\n', ''),
+}), 'scripts/testes.json'), 1, 'um grupo que nenhum workflow chama (o job do complemento que faltava)');
+assert.match(semOComplemento[0].detalhe, /grupo complemento: nenhum workflow de PR chama `node scripts\/testar\.mjs complemento`/);
+total++;
+// Um workflow que não roda em PR não é portão.
+nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': CHAMA_TUDO.replace('pull_request', 'workflow_dispatch') }), 'scripts/testes.json'), 2,
+  'workflow que não roda em PR não conta');
+// Um comentário não conta como chamada.
+nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': 'on:\n  pull_request:\n# node scripts/testar.mjs node\n# node scripts/testar.mjs complemento\n' }), 'scripts/testes.json'), 2,
+  'o comentário não chama grupo');
+// Achados da revisão do #194: citar o comando não é executá-lo. O workflow é lido como YAML.
+const JOB = (extra = '', passo = '      - run: node scripts/testar.mjs complemento\n') => `on:\n  pull_request:\njobs:\n  node:\n    steps:\n      - run: node scripts/testar.mjs node\n  complemento:\n${extra}    steps:\n${passo}`;
+const semOComplementoNoPortao = (workflow, quantos, porque) => {
+  const achados = achadosDe(comOPortao({ '.github/workflows/testes.yml': workflow }), 'scripts/testes.json');
+  nulo(achados.filter(a => /grupo complemento/.test(a.detalhe)), quantos, porque);
+};
+semOComplementoNoPortao(JOB(), 0, 'o job que executa o grupo');
+semOComplementoNoPortao(JOB('', '      - run: echo node scripts/testar.mjs complemento\n'), 1, 'um echo não executa o grupo');
+semOComplementoNoPortao(JOB('    if: false\n'), 1, 'job com if: false');
+semOComplementoNoPortao(JOB("    if: ${{ false }}\n"), 1, 'job com if: ${{ false }}');
+semOComplementoNoPortao(JOB('', '      - if: false\n        run: node scripts/testar.mjs complemento\n'), 1, 'passo com if: false');
+semOComplementoNoPortao(JOB('', "      - if: github.event_name == 'push'\n        run: node scripts/testar.mjs complemento\n"), 1, 'passo que só roda no push');
+semOComplementoNoPortao(JOB('    continue-on-error: true\n'), 1, 'job que pode falhar sem barrar');
+semOComplementoNoPortao(JOB('', '      - continue-on-error: true\n        run: node scripts/testar.mjs complemento\n'), 1, 'passo que pode falhar sem barrar');
+semOComplementoNoPortao(JOB('', '      - run: node scripts/testar.mjs complemento || true\n'), 1, 'a falha engolida por || true');
+semOComplementoNoPortao(JOB('', "      - if: github.event_name == 'pull_request'\n        run: node scripts/testar.mjs complemento\n"), 0, 'um if que vale no pull request');
+semOComplementoNoPortao(JOB('', '      - run: |\n          echo preparando\n          node scripts/testar.mjs complemento\n'), 0, 'o comando numa linha de um bloco');
+semOComplementoNoPortao(JOB('', '      - run: xvfb-run --auto-servernum node scripts/testar.mjs complemento -- --workers=1\n'), 0, 'o executor atrás do xvfb-run');
+// Delta do #194: o `if` é lido pelo operador, não pelo nome do evento; o YAML dobrado (`>`) é uma linha só.
+semOComplementoNoPortao(JOB('    if: github.event_name != \'pull_request\'\n'), 1, 'job que só roda fora do pull request (!=)');
+semOComplementoNoPortao(JOB('    if: github.event_name != \'push\'\n'), 0, 'job que roda no pull request (!= push)');
+semOComplementoNoPortao(JOB('    if: github.event_name == \'pull_request\'\n'), 0, 'job que roda no pull request (==)');
+semOComplementoNoPortao(JOB('    if: ${{ github.event_name == \'push\' }}\n'), 1, 'job que só roda no push');
+semOComplementoNoPortao(JOB('    if: github.event_name == \'push\' || github.event_name == \'pull_request\'\n'), 0, 'job que roda no push ou no PR');
+semOComplementoNoPortao(JOB('    if: github.event_name == \'push\' && false\n'), 1, 'condição composta que nunca é verdade');
+semOComplementoNoPortao(JOB('    if: always()\n'), 0, 'always() roda no PR');
+semOComplementoNoPortao(JOB('    if: contains(github.ref, \'main\')\n'), 1, 'uma condição que o leitor não sabe interpretar não conta como portão');
+semOComplementoNoPortao(JOB('', '      - run: >\n          echo preparando\n          node scripts/testar.mjs complemento\n'), 1, 'o bloco dobrado vira um echo só');
+semOComplementoNoPortao(JOB('', '      - run: >\n          node scripts/testar.mjs\n          complemento\n'), 0, 'o bloco dobrado que junta o comando e o grupo');
+semOComplementoNoPortao(JOB('', '      - run: |\n          node scripts/testar.mjs complemento\n'), 0, 'o bloco literal');
+// A e2e do #198: o passo só roda quando `env.RODAR` é verdadeiro, e o job o define pela saída do job `mudancas` (a PR que só muda documentação a pula).
+const PASSO_RODAR = "      - if: env.RODAR == 'true'\n        run: node scripts/testar.mjs complemento\n";
+semOComplementoNoPortao(JOB("    env:\n      RODAR: ${{ needs.mudancas.outputs.so_documentacao != 'true' }}\n", PASSO_RODAR), 0, 'o passo decidido pela saída de outro job do workflow');
+semOComplementoNoPortao(JOB('    env:\n      RODAR: false\n', PASSO_RODAR), 1, 'o env fixo em false');
+semOComplementoNoPortao(JOB('    env:\n      RODAR: true\n', PASSO_RODAR), 0, 'o env fixo em true');
+semOComplementoNoPortao(JOB('', PASSO_RODAR), 1, 'um env que o job não define não conta');
+semOComplementoNoPortao(JOB("    env:\n      RODAR: ${{ github.ref == 'refs/heads/main' }}\n", PASSO_RODAR), 1, 'um env decidido por outra coisa que não o resultado de um job não conta');
+// E o workflow acusa a linha: o passo que cita o executor e não o executa.
+const doEcho = nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': JOB('', '      - run: echo node scripts/testar.mjs complemento\n') }), '.github/workflows/testes.yml'), 1,
+  'o passo que só cita o executor');
+assert.match(doEcho[0].detalhe, /não executa o grupo \(só imprime, não executa\)/);
+total++;
+nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': JOB('    if: false\n') }), '.github/workflows/testes.yml'), 1, 'o job desligado que chama o executor');
+
+// O cadastro que mente.
+nulo(achadosDe(comOPortao({ 'scripts/testes.json': CADASTRO.replace('"test_gemini.js"', '"test_inexistente.js"') }), 'scripts/testes.json'), 1, 'fora com um arquivo que não existe');
+nulo(achadosDe(comOPortao({ 'scripts/testes.json': CADASTRO.replace('um script avulso, não um teste', ' ') }), 'scripts/testes.json'), 1, 'fora sem motivo');
+nulo(achadosDe(comOPortao({ 'scripts/testes.json': CADASTRO.replace('test_*.py', 'prova_*.py') }), 'scripts/testes.json'), 1, 'grupo cujo padrão não casa com nada');
+nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': `${CHAMA_TUDO}      - run: node scripts/testar.mjs engine\n` }), '.github/workflows/testes.yml'), 1,
+  'workflow que chama um grupo que o cadastro não tem');
+
 // ─── exceções na linha ───────────────────────────────────────────────────────
 
 const HOJE = '2026-10-04';
@@ -218,6 +494,7 @@ git('checkout', '-q', '-b', 'mudanca');
 
 let r = rodar('main');
 assert.strictEqual(r.status, 0, `a base passa:\n${r.stdout}${r.stderr}`);
+assert.match(r.stdout, /ainda não tem a regra testes-no-portao/, 'uma regra que a base não tem entra com a primeira linha de base, dita no aviso');
 
 // A primeira linha de base: a base ainda não tem uma, e isso é dito, não escondido.
 r = rodar(git('rev-parse', 'HEAD~1'));
