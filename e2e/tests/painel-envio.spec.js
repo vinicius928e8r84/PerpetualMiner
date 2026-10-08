@@ -736,7 +736,9 @@ test('com movimento reduzido, as etapas do envio andam sem animação', async ({
 
   const preenchimento = envio(page, 'Envio em inglês · 1 frase').locator('.envio-cartao__etapas > i > b');
   await expect(preenchimento).toBeAttached();
-  // veio/tokens.css leva toda transição a 1 ms com movimento reduzido.
-  const duracao = await preenchimento.evaluate(el => parseFloat(getComputedStyle(el).transitionDuration));
-  expect(duracao).toBeLessThanOrEqual(0.01);
+  // veio/tokens.css leva toda transição a 1 ms com movimento reduzido. O cartão é
+  // desenhado de novo assim que o Envio ganha o jobId; num elemento que já saiu da
+  // página o estilo calculado vem vazio (NaN), então se espera o valor, não o elemento.
+  await expect.poll(() => preenchimento.evaluate(el => parseFloat(getComputedStyle(el).transitionDuration)))
+    .toBeLessThanOrEqual(0.01);
 });
