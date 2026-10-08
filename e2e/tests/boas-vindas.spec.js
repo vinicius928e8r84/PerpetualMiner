@@ -316,15 +316,19 @@ test('passo 3: um login que falha diz CFG-07 no próprio passo', async ({ page, 
 const passosDaConexao = page => card(page).getByRole('navigation', { name: 'Como ligar' });
 const baixarDoPasso4 = page => card(page).getByRole('link', { name: 'Baixar a Conexão com o Anki' });
 
-test('passo 4: abre em pôr a Conexão no Anki, com o arquivo para baixar e nenhum comando de terminal', async ({ page, extensao, fakes }) => {
+test('passo 4: abre na pergunta do Anki, e o arquivo para baixar está no passo de baixo, sem comando de terminal', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirBoasVindas(page, extensao, 'anki');
 
   await expect(card(page)).toContainText('A Conexão com o Anki fica dentro do Anki, neste computador. É ela que cria os cartões e diz quais palavras você já conhece.');
-  await expect(passosDaConexao(page).getByRole('button')).toHaveText(['Pôr a Conexão no Anki', 'Reiniciar o Anki']);
-  await expect(passosDaConexao(page).getByRole('button', { name: /^Pôr a Conexão no Anki/ })).toHaveAttribute('aria-current', 'step');
-  await expect(card(page)).toContainText('Baixe o arquivo e abra-o. Se o Anki estiver fechado, ele abre sozinho. Quando o Anki perguntar se você quer instalar, responda Sim.');
+  await expect(passosDaConexao(page).getByRole('button')).toHaveText(['Você já tem o Anki?', 'Pôr a Conexão no Anki', 'Reiniciar o Anki']);
+  await expect(passosDaConexao(page).getByRole('button', { name: /^Você já tem o Anki/ })).toHaveAttribute('aria-current', 'step');
+  await expect(card(page)).toContainText('Os cartões ficam no Anki, um programa que roda neste computador.');
   await expect(card(page).getByRole('status')).toHaveText('Esperando a Conexão');
+  // O arquivo é do passo de baixo; a pergunta abre primeiro.
+  await expect(baixarDoPasso4(page)).toBeHidden();
+  await passosDaConexao(page).getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
+  await expect(card(page)).toContainText('Baixe o arquivo e abra-o. Se o Anki estiver fechado, ele abre sozinho. Quando o Anki perguntar se você quer instalar, responda Sim.');
   await expect(baixarDoPasso4(page)).toBeVisible();
   // Sem terminal: nem pip, nem python, nem Copiar.
   await expect(card(page)).not.toContainText(/pip|python|install_autostart/i);
@@ -354,7 +358,7 @@ test('passo 4: reiniciar o Anki; ligar e Tentar de novo diz “Achei o Anki” e
   await botaoDoCard(page, 'Tentar de novo').click();
   await expect(status).toHaveText(/^Achei o Anki · Usuário 1 · versão \d/);
   await expect(itemDaLista(page, 'Ligar a Conexão com o Anki')).toHaveAccessibleName(/feito$/);
-  await expect(passosDaConexao(page).getByRole('button', { name: /feito$/ })).toHaveCount(2);
+  await expect(passosDaConexao(page).getByRole('button', { name: /feito$/ })).toHaveCount(3);
   // Ligada, o Tentar de novo sai e o foco vai para o título do passo: não há mais o que fazer.
   await expect(botaoDoCard(page, 'Tentar de novo')).toHaveCount(0);
   await expect(page.locator('#bv-titulo')).toBeFocused();
@@ -387,9 +391,13 @@ test('passo 4: dois minutos sem resposta mostram o checklist e Baixar de novo, e
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
 });
 
-test('passo 4: o destaque da tela é o Continuar da Boas-vindas, nos dois passos dos passos da Conexão', async ({ page, extensao, fakes }) => {
+test('passo 4: o destaque da tela é o Continuar da Boas-vindas, nos três passos dos passos da Conexão', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirBoasVindas(page, extensao, 'anki');
+  await expect(page.locator('.veio-botao--primario:visible')).toHaveText(['Continuar']);
+  await expect(botaoDoCard(page, 'Já tenho o Anki')).toBeVisible();
+
+  await passosDaConexao(page).getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
   await expect(baixarDoPasso4(page)).toBeVisible();
   await expect(page.locator('.veio-botao--primario:visible')).toHaveText(['Continuar']);
 
@@ -404,6 +412,8 @@ test('quem já tinha a área Conexão com o Anki aberta sem conexão vê o mesmo
   await page.goto(extensao.url('painel.html#anki/custos'));
   const naArea = page.getByRole('region', { name: 'Ainda não houve conexão neste computador' });
   await expect(naArea).toBeVisible();
+  // A comparação é no passo do arquivo: a pergunta abre nos dois lugares.
+  await naArea.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
   const daArea = {
     lista: await naArea.getByRole('navigation', { name: 'Como ligar' }).getByRole('button').allTextContents(),
     texto: await naArea.locator('.pc-card .bv-texto').textContent(),
@@ -412,6 +422,7 @@ test('quem já tinha a área Conexão com o Anki aberta sem conexão vê o mesmo
   };
 
   await abrirBoasVindas(page, extensao, 'anki');
+  await passosDaConexao(page).getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
   expect(await passosDaConexao(page).getByRole('button').allTextContents()).toEqual(daArea.lista);
   expect(await card(page).locator('.pc-card .bv-texto').textContent()).toBe(daArea.texto);
   expect(await card(page).locator('.pc-card .bv-sobretitulo').textContent()).toBe(daArea.sobretitulo);

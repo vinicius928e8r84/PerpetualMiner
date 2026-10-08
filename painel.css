@@ -1438,6 +1438,19 @@ body {
   display: none;
 }
 
+/* O passo “Você já tem o Anki?” (#146): as duas respostas lado a lado; o aviso do Anki
+   (o site dele e o instalar) entra por baixo, com a animação do componente. */
+.pc-anki {
+  display: grid;
+  gap: 12px;
+}
+
+.pc-anki__respostas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .pc-arquivo .veio-aviso__detalhes {
   margin: 0;
 }

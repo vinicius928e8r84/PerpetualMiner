@@ -805,6 +805,13 @@ select.veio-campo {
   background: var(--veio-danger-soft);
   color: var(--veio-text);
   font-size: var(--veio-tam-corpo);
+  /* Entra quando aparece (o `hidden` sai, o nó entra): o mesmo passo curto do
+     toast, para o aviso não surgir de repente no meio do que a pessoa lia. */
+  animation: veio-aviso-entra var(--veio-transicao) ease-out;
+}
+
+@keyframes veio-aviso-entra {
+  from { opacity: 0; transform: translateY(6px); }
 }
 
 .veio-aviso__texto {

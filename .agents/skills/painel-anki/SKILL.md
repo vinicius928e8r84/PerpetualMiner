@@ -17,18 +17,23 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   (`painel-anki-primeira-conexao.js`, design B “Igual às Boas-vindas”, docs/design/painel/anki/prototipo-primeira-conexao.html)
   takes the place of the tabs, under the shell's F1: the title and `ONB-16.apoio`; the **steps component**
   (`painel-conexao-passos.js`, `PerpetualMiner.PassosDaConexao`, the same one step 4 of the Boas-vindas mounts: #99, #145) with the list of steps beside the step
-  card (“Como ligar · Passo N de 2”, the Boas-vindas marks, `aria-current="step"`, Voltar · Continuar); and, across the
+  card (“Como ligar · Passo N de 3”, the Boas-vindas marks, `aria-current="step"`, Voltar · Continuar); and, across the
   bottom, the Conferência line and the two boxes “Continua funcionando” / “Fica indisponível sem ela”.
   The steps, with no terminal command (`pip`, `python`, Detalhes with commands and Copiar are gone):
-  1. **Pôr a Conexão no Anki**: baixar › abrir › Sim › reiniciar. **Baixar a Conexão com o Anki** is an `<a download>` of
+  1. **Você já tem o Anki?** (#146): the question comes before putting the Conexão in, because none of the steps works
+     without the Anki. **Já tenho o Anki** follows to the download step; **Ainda não tenho o Anki** brings the aviso do
+     Anki (the Anki is free and runs on this computer), whose action **Baixar o Anki** opens `apps.ankiweb.net` in a new
+     tab. The answer lives only in the page's memory: the steps are still marked by the real state, and what the
+     extension sees does not change until the Conexão answers.
+  2. **Pôr a Conexão no Anki**: baixar › abrir › Sim › reiniciar. **Baixar a Conexão com o Anki** is an `<a download>` of
      `conexao/perpetualminer.ankiaddon` (the add-on file inside the extension package, no permission); the Detalhes
      “O arquivo não abriu?” (`Veio.montarDetalhes(…, rotulo)`) says the AnkiWeb code to paste in Ferramentas › Complementos ›
      Obter complementos (`PerpetualMiner.CODIGO_DO_ANKIWEB`, none until the first upload, #176) or that it comes soon: never an invented number.
-  2. **Reiniciar o Anki**: always there. The extension checks by itself (the shared 15 s `/health`); the status line says Conectando
+  3. **Reiniciar o Anki**: always there. The extension checks by itself (the shared 15 s `/health`); the status line says Conectando
      and then “Achei o Anki · perfil · versão” from `ConexaoAnki.saude()`; **Tentar de novo** lives here.
   The steps are marked by the real state, and the only thing the extension sees before the Conexão is the Conexão itself (the
-  AnkiConnect is not read: no new permission), so the first step says “Esperando a Conexão” and every step turns ✓ together when `/health`
-  answers successfully. Without a person's choice, the card opens on the first step, or on the last while connecting; after the card's own Tentar de novo
+  AnkiConnect is not read: no new permission), so the question and the download step say “Esperando a Conexão” and every step turns ✓ together when `/health`
+  answers successfully. Without a person's choice, the card opens on the first step (the question), or on the last while connecting; after the card's own Tentar de novo
   it stays on step 2 (the F1's and the Boas-vindas' do not set the person's choice). **2 minutes without an answer** (counted from the first time the person
   really sees the steps — the host passes the real visibility to `mostrar`: the Anki area is the current one, the Boas-vindas page is on screen — or from Baixar) show the 3-item checklist and **Baixar de novo** in whatever step is open, while the check keeps going alone; it leaves when the Conexão answers.
   On step 2 an automatic check in flight over a Conexão that was off shows “Conectando” with no click (`ConexaoAnki.conferindo()`, `aoConferir`); a

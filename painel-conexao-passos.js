@@ -7,22 +7,27 @@
 // (`painel-anki-primeira-conexao.js`) montam este mesmo componente, sem comando de
 // terminal nenhum:
 //
-//   1  Pôr a Conexão no Anki: baixar › abrir › Sim › reiniciar. O arquivo vai dentro do
+//   1  Você já tem o Anki? (#146): a pergunta que vem antes de pôr a Conexão, porque nada
+//      dela funciona sem o Anki. “Já tenho o Anki” segue para o passo de baixar; “Ainda não
+//      tenho o Anki” traz o aviso do Anki, com o site dele numa aba nova. O que a pessoa
+//      respondeu fica só na memória da página: o estado real que a extensão conhece não muda
+//      até a Conexão responder.
+//   2  Pôr a Conexão no Anki: baixar › abrir › Sim › reiniciar. O arquivo vai dentro do
 //      pacote da extensão (`conexao/perpetualminer.ankiaddon`) e sai por um link de
 //      download, sem permissão nova. O Detalhes “O arquivo não abriu?” leva o código do
 //      AnkiWeb (para colar em Ferramentas › Complementos › Obter complementos) ou, até o
 //      primeiro upload (#176), diz que ele vem em breve: nunca um número inventado.
-//   2  Reiniciar o Anki: este passo sempre existe. A extensão confere sozinha e a linha de
+//   3  Reiniciar o Anki: este passo sempre existe. A extensão confere sozinha e a linha de
 //      status mostra Conectando enquanto a conferência está no ar (a de 15 s também, sem
 //      ninguém apertar nada) e, quando a Conexão responde, “Achei o Anki · perfil · versão”.
 //      Uma conferência no ar não apaga o último resultado: ligada continua ligada até uma
 //      resposta dizer o contrário, e a falha volta a “desligada”.
 //
-// A lista é dado (`PASSOS`): os passos “Ter o Anki” (#146) e “Abrir o Anki sozinho” (#147)
-// entram nela sem mexer no resto. O número do passo na tela é a posição na lista.
+// A lista é dado (`PASSOS`): o passo “Abrir o Anki sozinho” (#147) entra nela sem mexer no
+// resto. O número do passo na tela é a posição na lista.
 //
 // Os passos se marcam pelo estado real, e a única coisa que a extensão enxerga antes
-// da Conexão é ela mesma: os dois viram ✓ juntos quando ela responde ligada.
+// da Conexão é ela mesma: os três viram ✓ juntos quando ela responde ligada.
 //
 // Sem resposta em 2 minutos, o card mostra o checklist de 3 itens e “Baixar de novo”,
 // e a conferência segue sozinha (ela é do `ConexaoAnki`; aqui não se pergunta nada à
@@ -30,8 +35,8 @@
 // o arquivo, o que vier primeiro; o checklist, uma vez na tela, fica até a Conexão responder.
 //
 // Um destaque (`--primario`) só por tela (veio/README.md): com a navegação do card, o
-// destaque é a ação do passo (Baixar, Tentar de novo) e Voltar · Continuar são contorno;
-// sem ela, o destaque é o Continuar do anfitrião e o card só tem contornos.
+// destaque é a ação do passo (Já tenho o Anki, Baixar, Tentar de novo) e Voltar · Continuar
+// são contorno; sem ela, o destaque é o Continuar do anfitrião e o card só tem contornos.
 //
 //   montar(lugar, { prefixo, navegacao, aoSairOBotao })
 //     `prefixo`        dá os ids (`<prefixo>-passo-titulo`, `-status`, `-tentar`…)
@@ -49,13 +54,16 @@
 
 (function (raiz) {
   const PASSOS = [
-    { id: 'colocar', titulo: 'ONB-16.passo1Titulo', texto: 'ONB-16.passo1Texto' },
-    { id: 'reiniciar', titulo: 'ONB-16.passo2Titulo', texto: 'ONB-16.passo2Texto' },
+    { id: 'ter', titulo: 'ONB-16.passo1Titulo', texto: 'ONB-16.passo1Texto' },
+    { id: 'colocar', titulo: 'ONB-16.passo2Titulo', texto: 'ONB-16.passo2Texto' },
+    { id: 'reiniciar', titulo: 'ONB-16.passo3Titulo', texto: 'ONB-16.passo3Texto' },
   ];
+  const PASSO_DA_PERGUNTA = 'ter';
   const PASSO_DO_ARQUIVO = 'colocar';
   const PASSO_DO_TENTAR = 'reiniciar';
   const ARQUIVO_DA_CONEXAO = 'conexao/perpetualminer.ankiaddon';
   const NOME_DO_ARQUIVO = 'perpetualminer.ankiaddon';
+  const SITE_DO_ANKI = 'https://apps.ankiweb.net/';
   /** Sem resposta depois disto, o checklist e “Baixar de novo”. */
   const SEM_RESPOSTA_MS = 2 * 60 * 1000;
   const INTERVALO_DO_TIQUE = 1000;
@@ -91,6 +99,7 @@
       conferindo: ConexaoAnki.conferindo(),   // uma conferência do /health está no ar
       esperandoDesde: null, // quando a espera da Conexão começou (ms); null: ainda não
       semResposta: false,   // o checklist está na tela (fica até a Conexão responder)
+      semOAnki: false,      // a pessoa disse que ainda não tem o Anki (o aviso do Anki fica)
     };
     const marcas = [];
 
@@ -125,6 +134,35 @@
       return link;
     };
     const destaque = navegacao ? 'veio-botao--primario' : 'veio-botao--contorno';
+
+    // O passo da pergunta: as duas respostas e, para quem ainda não tem o Anki, o aviso
+    // do Anki — ele entra com a animação do componente e sai quando a pessoa diz que tem.
+    const tenho = elemento('button', `veio-botao ${destaque}`, textoDaVoz('ONB-16.tenhoOAnki'));
+    tenho.type = 'button';
+    tenho.id = id('tenho');
+    tenho.addEventListener('click', () => {
+      estado.semOAnki = false;
+      abrirPasso(PASSO_DO_ARQUIVO);
+    });
+    const naoTenho = elemento('button', 'veio-botao veio-botao--contorno', textoDaVoz('ONB-16.naoTenhoOAnki'));
+    naoTenho.type = 'button';
+    naoTenho.id = id('nao-tenho');
+    naoTenho.addEventListener('click', () => {
+      estado.semOAnki = true;
+      desenhar();
+    });
+    const avisoDoAnki = Veio.montarAviso({
+      texto: textoDaVoz('ONB-16.avisoDoAnki'),
+      tom: 'info',
+      fechavel: false,
+      acao: {
+        rotulo: textoDaVoz('ONB-16.baixarOAnki'),
+        aoUsar: () => chrome.tabs.create({ url: SITE_DO_ANKI }),
+      },
+    });
+    const respostas = elemento('div', 'pc-anki__respostas', tenho, naoTenho);
+    const oTer = elemento('div', 'pc-anki', respostas, avisoDoAnki);
+
     const baixar = linkDoArquivo(`veio-botao ${destaque}`, textoDaVoz('ONB-16.baixar'));
     baixar.addEventListener('click', () => { if (estado.esperandoDesde === null) estado.esperandoDesde = Date.now(); });
 
@@ -146,7 +184,7 @@
     tentar.id = id('tentar');
     tentar.type = 'button';
     ConexaoNaTela.ligarTentarDeNovo(tentar, () => {
-      // Só o botão do passo fixa o passo 2: o Tentar de novo da F1 não é escolha da pessoa.
+      // Só o botão do passo fixa o passo de reiniciar: o Tentar de novo da F1 não é escolha da pessoa.
       estado.escolha = PASSO_DO_TENTAR;
       ConexaoAnki.tentarDeNovo();
     });
@@ -158,7 +196,7 @@
       elemento('p', 'pc-sem-resposta__texto', textoDaVoz('ONB-16.semResposta')), checklist, baixarDeNovo);
     semResposta.hidden = true;
 
-    const controle = elemento('div', 'pc-controle', doArquivo, conexao, semResposta);
+    const controle = elemento('div', 'pc-controle', oTer, doArquivo, conexao, semResposta);
 
     const voltar = elemento('button', 'veio-botao veio-botao--contorno', textoDaVoz('ONB-04.voltar'));
     voltar.id = id('voltar');
@@ -235,12 +273,15 @@
         : `${textoDaVoz('ONB-16.passos')} · ${textoDaVoz('ONB-03.passo', { n: aberto + 1, total: PASSOS.length })}`;
       titulo.textContent = pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA) : textoDaVoz(passoDoCard.titulo);
       texto.textContent = pronto ? textoDaVoz('ONB-16.prontoApoio') : textoDaVoz(passoDoCard.texto);
+      oTer.hidden = pronto || passoDoCard.id !== PASSO_DA_PERGUNTA;
+      // O aviso do Anki fica enquanto a pessoa disse que não tem o Anki e este passo está aberto.
+      avisoDoAnki.hidden = !estado.semOAnki || pronto || passoDoCard.id !== PASSO_DA_PERGUNTA;
       doArquivo.hidden = pronto || passoDoCard.id !== PASSO_DO_ARQUIVO;
 
-      // O status é uma região que anuncia a mudança: o ponto e o texto trocam, ela fica. No passo do
-      // arquivo, enquanto a Conexão não respondeu, ele espera (o Anki não é lido antes dela: nunca
-      // diz “não encontrado”).
-      const esperando = !pronto && passoDoCard.id === PASSO_DO_ARQUIVO && situacao === CONEXAO.DESLIGADA;
+      // O status é uma região que anuncia a mudança: o ponto e o texto trocam, ela fica. Nos passos
+      // que não enxergam nada antes da Conexão (a pergunta e o arquivo), enquanto ela não respondeu,
+      // ele espera (o Anki não é lido antes dela: nunca diz “não encontrado”).
+      const esperando = !pronto && passoDoCard.id !== PASSO_DO_TENTAR && situacao === CONEXAO.DESLIGADA;
       status.classList.toggle('pc-status--espera', esperando);
       const mostrada = pronto && !conectando ? CONEXAO.LIGADA : exibida;
       ConexaoNaTela.pintarPonto(ponto, esperando ? '' : mostrada);

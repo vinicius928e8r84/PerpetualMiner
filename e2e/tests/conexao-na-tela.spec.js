@@ -44,7 +44,7 @@ const cardDaBoasVindas = page => page.locator('.bv-card');
 const statusDoPasso4 = page => cardDaBoasVindas(page).getByRole('status');
 const pontoDoPasso4 = page => cardDaBoasVindas(page).locator('.bv-status .bv-ponto');
 const tentarDoPasso4 = page => cardDaBoasVindas(page).getByRole('button', { name: 'Tentar de novo', exact: true });
-// O passo 4 abre no passo de pôr a Conexão, que espera sem dizer “desligada”: o status da Conexão está no de reiniciar.
+// O passo 4 abre na pergunta do Anki, que espera sem dizer “desligada”: o status da Conexão está no de reiniciar.
 const irParaReiniciar = page => cardDaBoasVindas(page).getByRole('button', { name: 'Reiniciar o Anki', exact: true }).click();
 
 /** Segura o /health: a Conexão fica Conectando até `liberar()`, que responde com `status`. */
@@ -64,7 +64,8 @@ test.describe('a mesma situação, a mesma tela', () => {
     await expect(sidebar(page)).toHaveText(TEXTO.desligada);
     await expect(pontoDaSidebar(page)).toHaveAttribute('data-estado', 'desligada');
 
-    // O passo 2 do card é o que mostra a Conexão desligada; o 1º espera a Conexão sem dizer “desligada”.
+    // O passo de reiniciar do card é o que mostra a Conexão desligada; a pergunta e o de baixar
+    // esperam a Conexão sem dizer “desligada”.
     await page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: 'Reiniciar o Anki' }).click();
     await expect(statusDoCard(page)).toHaveText(TEXTO.desligada);
     await expect(pontoDoCard(page)).toHaveAttribute('data-estado', 'desligada');
@@ -131,7 +132,7 @@ test.describe('a mesma situação, a mesma tela', () => {
     await expect(statusDoCard(page)).toHaveText(TEXTO.conectando);
     await expect(cardDaPrimeiraConexao(page)).toContainText('Pronto');
     await expect(pontoDoCard(page)).toHaveAttribute('data-estado', 'conectando');
-    await expect(page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: /feito$/ })).toHaveCount(2);
+    await expect(page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: /feito$/ })).toHaveCount(3);
     await expect(tentarDoCard(page)).toBeHidden();
     await expect(tentarDaF1(page)).toHaveAttribute('aria-disabled', 'true');
     await fotografar(page, 'a3-onb16-pronto-conectando.png');
@@ -199,7 +200,7 @@ test.describe('Tentar de novo indisponível enquanto confere', () => {
     await expect(statusDoCard(page)).toHaveText(TEXTO.desligada);
     await expect(tentarDoCard(page)).not.toHaveAttribute('aria-disabled', 'true');
     await expect(tentarDoCard(page)).toBeFocused();
-    await expect(cardDaPrimeiraConexao(page)).toContainText('Como ligar · Passo 2 de 2');
+    await expect(cardDaPrimeiraConexao(page)).toContainText('Como ligar · Passo 3 de 3');
     expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
   });
 
