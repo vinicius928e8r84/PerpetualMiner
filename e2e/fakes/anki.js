@@ -18,7 +18,7 @@ const contrato = require('../../complemento/contrato/exemplos.json');
 // (`{ decks: [...] }`); sem `definirBaralhosDoAnki` a lista não vem (503), como
 // com o Anki sem responder, e a aba oferece o campo de texto.
 //
-// O que o complemento do Anki responde (a saúde, os Baralhos, os números, o vocabulário, a chave da OpenAI e o item de login de “Abrir o Anki com o computador”) vem de
+// O que o complemento do Anki responde (a saúde, os Baralhos, os números, o vocabulário, a chave da OpenAI (guardar, apagar e o estado) e o item de login de “Abrir o Anki com o computador”) vem de
 // `complemento/contrato/exemplos.json`, o mesmo arquivo que os testes do
 // complemento leem: o fake responde o exemplo do pedido no contexto em que a
 // Conexão está (`abrirPerfil`, `abrirColecao`, `responderOpenAI`, `guardarChaveNaConexao`, `definirItemDeLogin`). Os testes de tela montam os Baralhos
@@ -325,6 +325,11 @@ function criarFakeAnki() {
     }
     if (url.pathname === '/ia/openai/chave' && req.method() === 'POST') {
       const { status, json } = guardarChave(req);
+      return responderJson(route, status, json);
+    }
+    if (url.pathname === '/ia/openai/chave/apagar' && req.method() === 'POST') {
+      const { status, json } = respostaDoContrato('POST', '/ia/openai/chave/apagar', {});
+      if (status === 200) estado.chaveDaOpenAI = null;
       return responderJson(route, status, json);
     }
     if (url.pathname === '/ia/estado' && req.method() === 'POST') {

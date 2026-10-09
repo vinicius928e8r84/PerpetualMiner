@@ -1981,6 +1981,86 @@
       }
     },
     {
+      "nome": "apagar a chave da OpenAI: a Conexão tira a cópia dela (Trocar, Apagar e Apagar tudo, #154)",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "chaveNaConexao": "9f3a"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave/apagar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "nome": "apagar a chave da OpenAI que a Conexão não tem: responde igual, já está apagada",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "chaveNaConexao": null
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave/apagar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "nome": "apagar a chave da OpenAI pedido sem origem é recusado, e a cópia fica",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "chaveNaConexao": "9f3a"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave/apagar",
+        "origem": null,
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    },
+    {
+      "nome": "apagar a chave da OpenAI com um corpo que não é um objeto JSON",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "chaveNaConexao": "9f3a"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave/apagar",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
       "nome": "chave da OpenAI aceita, mas a Conexão não consegue gravar a cópia",
       "daExtensao": false,
       "contexto": {

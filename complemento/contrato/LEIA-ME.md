@@ -13,7 +13,7 @@ Mudar só um lado quebra um teste, e a mensagem diz o exemplo e os dois arquivos
 O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede nem que o complemento responde fica sem exemplo.
 
 - **Os pedidos da extensão**: todo pedido nasce de um construtor de `PerpetualMiner.PedidoAoAnki` (`lib/pedido-ao-anki.js`:
-  `saude`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`), e `PedidoAoAnki.variantes` os lista. `node test_contrato_fechado.js`
+  `saude`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`, `chaveDaOpenAI`, `apagarChaveDaOpenAI`, `estadoDaIA`), e `PedidoAoAnki.variantes` os lista. `node test_contrato_fechado.js`
   pede ao construtor cada variante (com os dois Baralhos, as três leituras dos números…) e exige um exemplo `daExtensao`
   de cada uma, que o fake do e2e então responde. O nome do Baralho não conta para achar o exemplo; quantos Baralhos, `refresh` e
   `launch` contam. A regra `contrato-fechado` (`node scripts/regras/verificar.js`) acusa um `fetch` direto a uma rota da Conexão.
@@ -84,9 +84,9 @@ Por isso (decisão do dono, opção B):
    (credencial de pareamento, confirmada no Anki) antes do lançamento:** hoje um processo local que declara a
    origem da extensão lê o vocabulário pelas rotas privadas. `test_servidor.py` mostra isso com um cliente fora do navegador
    e passa a exigir a credencial quando o #192 entrar. As rotas da chave da OpenAI (`POST /ia/openai/chave`,
-   `POST /ia/estado`) têm o mesmo limite, com o dano menor: **nenhuma devolve a chave inteira** (só os 4 últimos
-   caracteres), então um processo local que forjasse a origem consegue gravar uma chave (que a OpenAI confere) ou saber
-   se há uma e como ela termina, nunca lê-la.
+   `POST /ia/openai/chave/apagar`, `POST /ia/estado`) têm o mesmo limite, com o dano menor: **nenhuma devolve a chave inteira** (só os 4 últimos
+   caracteres), então um processo local que forjasse a origem consegue gravar uma chave (que a OpenAI confere), apagar a cópia
+   da Conexão (a extensão a entrega de novo quando confere a cópia) ou saber se há uma e como ela termina, nunca lê-la.
 4. A primeira rota de leitura sensível (os Baralhos, os números e o vocabulário) seguiu a regra do 2: são POST
    com a origem da extensão, e o limite do 3 está nomeado em um teste. O reforço com um token de pareamento (a
    extensão o recebe por um POST e o manda nos pedidos) é o #192 e não foi feito.

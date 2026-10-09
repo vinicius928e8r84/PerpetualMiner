@@ -86,6 +86,12 @@ def _guardar_chave_da_openai(conexao, corpo):
     return 200, {"ok": True, "ultimos4": chave[-4:]}
 
 
+def _apagar_chave_da_openai(conexao, corpo):
+    """Trocar, Apagar e Apagar tudo na extensão tiram a cópia daqui também (#154)."""
+    conexao.cofre.apagar("openai")
+    return 200, {"ok": True}
+
+
 def _estado_da_ia(conexao, corpo):
     ultimos4 = conexao.cofre.ultimos4("openai")
     if ultimos4 is None:
@@ -129,6 +135,7 @@ ROTAS = {
     ("POST", "/anki/vocabulary"): _vocabulario,
     # A chave da OpenAI: POST com a origem da extensão, e nenhuma resposta devolve a chave inteira.
     ("POST", "/ia/openai/chave"): _guardar_chave_da_openai,
+    ("POST", "/ia/openai/chave/apagar"): _apagar_chave_da_openai,
     ("POST", "/ia/estado"): _estado_da_ia,
     ("POST", "/abrir-com-o-computador/estado"): _estado_do_item_de_login,
     ("POST", "/abrir-com-o-computador"): _abrir_com_o_computador,

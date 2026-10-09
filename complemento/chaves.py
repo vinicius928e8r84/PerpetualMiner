@@ -54,3 +54,11 @@ class Cofre:
                 except OSError:
                     pass
                 raise
+
+    def apagar(self, nome):
+        """Tira a chave do disco. Sem chave guardada, não há o que tirar: já está apagada."""
+        with self._tranca:
+            try:
+                os.remove(self._caminho(nome))
+            except FileNotFoundError:
+                pass

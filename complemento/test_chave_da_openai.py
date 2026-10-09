@@ -145,6 +145,48 @@ class ChaveRecebida(unittest.TestCase):
         self.assertEqual((status, pedidos), (400, []))
 
 
+def apagar(conexao, **opcoes):
+    return conexao.pedir("POST", "/ia/openai/chave/apagar", corpo={}, **opcoes)
+
+
+class ChaveApagada(unittest.TestCase):
+    """Trocar, Apagar e Apagar tudo na extensão (#154): a cópia da Conexão também sai, e do disco."""
+
+    def test_apagar_tira_a_copia_da_conexao_e_o_arquivo_do_disco(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            enviar(conexao)
+            status, _, corpo = apagar(conexao)
+            depois = estado(conexao)
+            arquivos = tudo_em_disco(pasta)
+        self.assertEqual((status, json.loads(corpo)), (200, {"ok": True}))
+        self.assertEqual(depois, (200, {"openai": {"configurada": False}}))
+        self.assertFalse([nome for nome, dados in arquivos if CHAVE.encode() in dados])
+
+    def test_apagar_sem_chave_guardada_tambem_responde_que_esta_apagada(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            status, _, corpo = apagar(conexao)
+            depois = estado(conexao)
+        self.assertEqual((status, json.loads(corpo)), (200, {"ok": True}))
+        self.assertEqual(depois, (200, {"openai": {"configurada": False}}))
+
+    def test_a_chave_apagada_nao_volta_ao_reiniciar_a_conexao(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            with ConexaoNoTeste(pasta) as primeira:
+                enviar(primeira)
+                apagar(primeira)
+            with ConexaoNoTeste(pasta) as segunda:
+                depois = estado(segunda)
+        self.assertEqual(depois, (200, {"openai": {"configurada": False}}))
+
+    def test_so_a_extensao_apaga_a_copia(self):
+        for origem in ("https://exemplo.com", OUTRA_ORIGEM, None):
+            with self.subTest(origem), tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, chave_na_conexao="wxyz") as conexao:
+                status, _, _ = apagar(conexao, origem=origem)
+                depois = estado(conexao)
+            self.assertEqual(status, 403)
+            self.assertEqual(depois, (200, {"openai": {"configurada": True, "ultimos4": "wxyz"}}))
+
+
 class QuemPodeEnviarAChave(unittest.TestCase):
     def test_de_outro_site_de_outra_extensao_ou_sem_origem_nada_e_guardado_nem_conferido(self):
         for origem in ("https://exemplo.com", OUTRA_ORIGEM, None):
