@@ -150,7 +150,7 @@ def apagar(conexao, **opcoes):
 
 
 class ChaveApagada(unittest.TestCase):
-    """Trocar, Apagar e Apagar tudo na extensão (#154): a cópia da Conexão também sai, e do disco."""
+    """Apagar chave e Apagar tudo na extensão (#154): a cópia da Conexão também sai, e do disco."""
 
     def test_apagar_tira_a_copia_da_conexao_e_o_arquivo_do_disco(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:

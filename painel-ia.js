@@ -382,9 +382,15 @@
     });
   }
 
-  /** A chave sai daqui e da Conexão (lib/chave-da-openai.js); com conta, o painel.js leva o apagamento à nuvem. */
+  /** A chave sai daqui e da Conexão (lib/chave-da-openai.js); com conta, o painel.js leva o apagamento à nuvem; sem conta, vale só aqui. */
   async function apagarAChave(lugar) {
-    await ChaveDaOpenAI.apagar();
+    try {
+      await ChaveDaOpenAI.apagar({ comConta: estado.comConta });
+    } catch (erro) {
+      // Não deu para apagar no armazenamento da extensão: a chave continua, e a tela continua dizendo isso.
+      console.error('[IA] a chave da OpenAI não foi apagada:', erro?.name || 'erro');
+      return;
+    }
     for (const cada of lugares) {
       cada.trocando = false;
       cada.erro = null;

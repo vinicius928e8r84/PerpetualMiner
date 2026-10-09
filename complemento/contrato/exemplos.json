@@ -1981,7 +1981,7 @@
       }
     },
     {
-      "nome": "apagar a chave da OpenAI: a Conexão tira a cópia dela (Trocar, Apagar e Apagar tudo, #154)",
+      "nome": "apagar a chave da OpenAI: a Conexão tira a cópia dela (Apagar chave e Apagar tudo, #154)",
       "daExtensao": true,
       "contexto": {
         "perfil": "Usuário 1",

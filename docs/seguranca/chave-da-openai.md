@@ -51,8 +51,24 @@ que alguém já tenha levado.
   Conexão nem ao `chrome.storage`. A falha da sincronização da chave registra só o status ou o motivo.
 - Trocar, Apagar chave e Apagar tudo deixam a hora da mudança; a mais nova vale entre os computadores, então uma cópia
   velha não volta pelo sync (`test_sync.js`, seção CHAVE). O tombstone na nuvem não tem campo de chave.
+- A chave de uma conta nunca sobe para outra: a extensão lembra com que conta ela subiu ou chegou, e entrar com outra
+  conta Google no mesmo computador não a leva para lá (CHAVE 10 e o e2e da troca de conta).
+- Sem conta, Apagar chave vale só para este computador, como o modal diz: não deixa hora, e a chave da conta volta se a
+  pessoa entrar nela.
+- Uma mudança aqui durante o sync não é desfeita pela chave que vinha da nuvem: a gravação só acontece se a hora
+  guardada ainda é a que foi lida, na mesma transação do IndexedDB (CHAVE 9).
 - Uma Conexão que estava desligada quando a chave foi apagada perde a cópia quando volta a responder.
 - Os testes usam só chaves de mentira.
+
+## Limites aceitos
+
+- **A hora é a de cada computador.** Um computador com o relógio adiantado vence uma mudança feita depois noutro. A
+  nuvem não tem hora do servidor nem pré-condição na escrita (o PATCH não confere `updateTime`), então duas mudanças
+  no mesmo segundo em dois computadores terminam com a última gravada. Para uma chave que muda raramente e a pessoa vê
+  mascarada no card, isso foi julgado suficiente; a correção seria a hora do servidor (`REQUEST_TIME`) e a pré-condição.
+- **A chave chega quando o painel abre** (ou volta a ficar visível) num computador com a conta. O service worker não a
+  busca sozinho: com o Chrome aberto e o painel fechado, a Conexão daquele computador fica com a cópia que tinha até o
+  painel ser aberto. O Envio começa no painel, então o caso comum está coberto.
 
 ## As regras do Firestore
 

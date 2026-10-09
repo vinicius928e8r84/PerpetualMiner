@@ -563,3 +563,21 @@ test('a chave apagada em outro computador da conta sai daqui também, e a cópia
   expect(await extensao.lerStorage('pm_chave_openai')).toEqual({});
   expect(fakes.google.chaveDaOpenAIDe(UID)).toEqual({ apagada: true, em: expect.any(Number) });
 });
+
+test('a chave de uma conta Google não sobe para outra conta que entra no mesmo computador', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: UID });
+  chaveDeOutroComputador(fakes, OUTRA_CHAVE, 60_000);
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await expect(card(page).locator('.cfg-resumo')).toHaveText('••••••••wxyz');
+
+  // A pessoa sai e entra com outra conta, que nunca teve chave.
+  await extensao.semearSessao({ uid: 'uid-de-outra-pessoa', email: 'outra@teste.dev', displayName: 'Outra Pessoa' });
+  await page.reload();
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
+  // O sync da chave roda ao abrir o painel; a volta à aba (visibilitychange) o roda de novo, e ele termina antes da leitura.
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await expect.poll(() => fakes.google.requisicoes.filter(r => r.url.includes('uid-de-outra-pessoa/segredos')).length).toBeGreaterThan(1);
+
+  expect(fakes.google.chaveDaOpenAIDe('uid-de-outra-pessoa')).toBeNull();
+  expect(fakes.google.chaveDaOpenAIDe(UID).chave).toBe(OUTRA_CHAVE);
+});

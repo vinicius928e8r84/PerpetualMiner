@@ -264,9 +264,9 @@ function conectarNuvem(credenciais) {
 
 // ─── A chave da OpenAI acompanha a conta (#154) ──────────────────────────────
 //
-// O cofre deste computador é de lib/chave-da-openai.js; a junção com a nuvem (a mudança mais nova vale, o
-// tombstone inclusive) é de lib/sincronizacao.js. Roda ao abrir o painel com conta, ao entrar e a cada
-// mudança da chave aqui (colar, trocar, apagar), uma de cada vez. Uma falha só fica para a próxima vez:
+// A chave deste computador é de lib/chave-da-openai.js; a junção com a nuvem (a mudança mais nova vale, o
+// tombstone inclusive) é de lib/sincronizacao.js. Roda ao abrir o painel com conta, ao entrar, quando o
+// painel volta a ficar visível e a cada mudança da chave aqui (colar, trocar, apagar), uma de cada vez. Uma falha só fica para a próxima vez:
 // a chave daqui continua valendo, e o log leva só o status ou o motivo, nunca a chave nem a mensagem da
 // nuvem (que poderia repetir o corpo do pedido).
 
@@ -276,7 +276,7 @@ function sincronizarAChave() {
   sincronizandoAChave = sincronizandoAChave.then(async () => {
     if (!nuvem) return;
     try {
-      await Sincronizacao.criarSincronizacaoDaChave({ nuvem, cofre: ChaveDaOpenAI.cofre }).sincronizar();
+      await Sincronizacao.criarSincronizacaoDaChave({ nuvem, daqui: ChaveDaOpenAI.daqui }).sincronizar();
     } catch (err) {
       console.warn('[Firestore] a chave da OpenAI não sincronizou:', err?.motivo || err?.status || 'sem resposta');
     }
@@ -493,6 +493,10 @@ function idsSelecionados() {
 function setupListeners() {
   Perigo.aoApagarTudo(apagarTudo);
   ChaveDaOpenAI.aoMudar(sincronizarAChave);
+  // Um painel que ficou aberto noutra aba recebe a chave mudada noutro computador quando a pessoa volta a ele.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') sincronizarAChave();
+  });
   document.getElementById('btn-export').addEventListener('click', exportarTxt);
   document.getElementById('btn-bulk-edit').addEventListener('click', () => abrirEditarContexto(idsSelecionados()));
   document.getElementById('btn-delete-selected').addEventListener('click', () => pedirParaApagar(idsSelecionados()));
@@ -1209,7 +1213,8 @@ function apagarTudo() {
   selecionadas.clear();
   atualizarContadorSelecao();
   // A chave da OpenAI também sai (#154): daqui, da Conexão e, com conta, da nuvem, mesmo que ainda não tenha chegado aqui.
-  ChaveDaOpenAI.apagar({ mesmoSemChave: Boolean(usuarioLogado) });
+  ChaveDaOpenAI.apagar({ comConta: Boolean(usuarioLogado), mesmoSemChave: Boolean(usuarioLogado) })
+    .catch(err => console.error('[Apagar tudo] a chave da OpenAI não foi apagada:', err?.name || 'erro'));
   const naNuvem = sincronizacao.apagarTudo(ids).then(({ ok, erro }) => {
     if (!ok) {
       console.error('[Firestore] apagar tudo falhou:', erro);

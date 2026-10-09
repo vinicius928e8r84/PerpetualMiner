@@ -66,7 +66,10 @@ function areaEmMemoria(dados) {
 let firestore     = {};   // { phraseId: phrase }
 let firestoreTomb = {};   // { phraseId: deletedAt }  (usuarios/{uid}/meta/deleted)
 let nuvemFalha    = {};   // { apagar, gravarFrases, gravarFrase, listar, chave }: true = a nuvem recusa
-let chaveNaNuvem  = null; // usuarios/{uid}/segredos/openai: { chave, em } ou null (nunca houve chave na conta)
+let chavesNaNuvem = {};   // uid → usuarios/{uid}/segredos/openai: { chave, em } (sem uid: a conta nunca teve chave)
+let segurarAChave = null; // uma promessa: a leitura da chave na nuvem espera por ela (para a corrida com uma mudança aqui)
+/** O documento da chave na nuvem da conta (a conta dos testes, sem dizer outra), ou null. */
+const chaveNaNuvem = (uid = 'uid-teste') => chavesNaNuvem[uid] ?? null;
 
 function nuvemEmMemoria(uid = 'uid-teste') {
   const recusar = (qual) => { if (nuvemFalha[qual]) throw new Error(`nuvem fora do ar (${qual})`); };
@@ -78,8 +81,13 @@ function nuvemEmMemoria(uid = 'uid-teste') {
     async apagarFrases(ids) { recusar('apagar'); for (const id of ids) delete firestore[String(id)]; },
     async lerTombstones() { return new Map(Object.entries(firestoreTomb).map(([id, em]) => [id, Number(em)])); },
     async gravarTombstones(ids, apagadaEm) { for (const id of ids) firestoreTomb[String(id)] = apagadaEm; },
-    async lerChaveDaOpenAI() { recusar('chave'); return clone(chaveNaNuvem); },
-    async gravarChaveDaOpenAI(versao) { recusar('chave'); chaveNaNuvem = clone(versao); },
+    async lerChaveDaOpenAI() {
+      recusar('chave');
+      const lida = clone(chaveNaNuvem(uid));
+      if (segurarAChave) await segurarAChave;
+      return lida;
+    },
+    async gravarChaveDaOpenAI(documento) { recusar('chave'); chavesNaNuvem[uid] = clone(documento); },
   };
 }
 
@@ -88,39 +96,41 @@ function nuvemEmMemoria(uid = 'uid-teste') {
 let storageSync   = {};   // chrome.storage.sync   — compartilhado entre A e B
 let storageLocalA = {};   // chrome.storage.local do computador A
 let storageLocalB = {};   // chrome.storage.local do computador B
-let computadores  = new Map();   // storage local → { sinc, nuvem, cofre, sincDaChave }
+let computadores  = new Map();   // storage local → { sinc, nuvem, daqui, sincDaChave }
 let _phraseCounter = 0;
 
 /**
- * O cofre da chave de um computador, como a extensão o tem (lib/chave-da-openai.js): a chave na extensão,
- * a hora da última mudança e a cópia da Conexão com o Anki daquele computador.
+ * A chave de um computador, como a extensão a tem (lib/chave-da-openai.js): a chave na extensão, a hora da
+ * última mudança, a conta com que ela foi sincronizada por último e a cópia da Conexão com o Anki dele.
  */
-function cofreEmMemoria() {
-  const cofre = {
-    chave: '', em: 0, copiaNaConexao: null,
-    async ler() { return { chave: cofre.chave, em: cofre.em }; },
-    async aplicar({ chave, em }) {
-      cofre.chave = chave;
-      cofre.em = em;
-      cofre.copiaNaConexao = chave || null;
+function chaveDoComputadorEmMemoria() {
+  const daqui = {
+    chave: '', em: 0, conta: '', copiaNaConexao: null,
+    async ler() { return { chave: daqui.chave, em: daqui.em, conta: daqui.conta }; },
+    async aplicar({ chave, em, conta }, { se }) {
+      if (daqui.em !== se) return false;
+      Object.assign(daqui, { chave, em, conta, copiaNaConexao: chave || null });
+      return true;
+    },
+    async marcarConta(conta, { se }) {
+      if (daqui.em === se) daqui.conta = conta;
     },
   };
-  return cofre;
+  return daqui;
 }
 
-function ligar(storageLocal, { semConta = false } = {}) {
-  const nuvem = semConta ? null : nuvemEmMemoria();
+function ligar(storageLocal, { semConta = false, uid = 'uid-teste', daqui = chaveDoComputadorEmMemoria() } = {}) {
+  const nuvem = semConta ? null : nuvemEmMemoria(uid);
   const sinc = criarSincronizacao({
     nuvem,
     armazenamento: { local: areaEmMemoria(storageLocal), sync: areaEmMemoria(storageSync) },
   });
-  const cofre = cofreEmMemoria();
-  const sincDaChave = nuvem && criarSincronizacaoDaChave({ nuvem, cofre });
-  computadores.set(storageLocal, { sinc, nuvem, cofre, sincDaChave });
+  const sincDaChave = nuvem && criarSincronizacaoDaChave({ nuvem, daqui });
+  computadores.set(storageLocal, { sinc, nuvem, daqui, sincDaChave });
 }
 
 function resetState() {
-  firestore = {}; firestoreTomb = {}; nuvemFalha = {}; chaveNaNuvem = null;
+  firestore = {}; firestoreTomb = {}; nuvemFalha = {}; chavesNaNuvem = {}; segurarAChave = null;
   storageSync = {}; storageLocalA = {}; storageLocalB = {};
   computadores = new Map();
   _phraseCounter = 0;
@@ -211,12 +221,12 @@ function idNoPendingSync(storage, id) {
 /** Os ids marcados em pm_del_{id} no chrome.storage.sync. */
 /** A pessoa cola (ou troca) a chave neste computador: a Conexão dele a confere e guarda a cópia. */
 async function colarChave(storage, chave, em) {
-  await de(storage).cofre.aplicar({ chave, em });
+  Object.assign(de(storage).daqui, { chave, em, conta: '', copiaNaConexao: chave });
 }
 
-/** Apagar a chave, ou Apagar tudo, neste computador: sai daqui e da cópia da Conexão, e fica a hora. */
+/** Apagar a chave, ou Apagar tudo, neste computador: sai daqui e da cópia da Conexão, e fica a hora (0 sem conta). */
 async function apagarChave(storage, em) {
-  await de(storage).cofre.aplicar({ chave: '', em });
+  Object.assign(de(storage).daqui, { chave: '', em, copiaNaConexao: null });
 }
 
 /** O painel deste computador sincroniza a chave com a nuvem da conta. */
@@ -757,10 +767,10 @@ await (async () => {
   resetState();
   await colarChave(storageLocalA, 'sk-proj-falsa-do-teste-aaaa', 1000);
   assert(await sincronizarChave(storageLocalA) === 'subiu', 'A sobe a chave para a nuvem da conta');
-  assert(chaveNaNuvem?.chave === 'sk-proj-falsa-do-teste-aaaa' && chaveNaNuvem.em === 1000, 'a nuvem guarda a chave e a hora');
+  assert(chaveNaNuvem()?.chave === 'sk-proj-falsa-do-teste-aaaa' && chaveNaNuvem().em === 1000, 'a nuvem guarda a chave e a hora');
 
   assert(await sincronizarChave(storageLocalB) === 'chegou', 'B sincroniza: a chave chegou');
-  const b = de(storageLocalB).cofre;
+  const b = de(storageLocalB).daqui;
   assert(b.chave === 'sk-proj-falsa-do-teste-aaaa' && b.em === 1000, 'B tem a chave na extensão, com a hora de A');
   assert(b.copiaNaConexao === 'sk-proj-falsa-do-teste-aaaa', 'e a Conexão de B recebeu a cópia');
   assert(await sincronizarChave(storageLocalB) === null, 'sincronizar de novo não muda nada');
@@ -776,9 +786,9 @@ await (async () => {
   await colarChave(storageLocalB, 'sk-proj-falsa-do-teste-bbbb', 2000);
   assert(await sincronizarChave(storageLocalB) === 'subiu', 'B sobe a chave nova');
   assert(await sincronizarChave(storageLocalA) === 'chegou', 'A recebe a chave nova');
-  const a = de(storageLocalA).cofre;
+  const a = de(storageLocalA).daqui;
   assert(a.chave === 'sk-proj-falsa-do-teste-bbbb' && a.copiaNaConexao === 'sk-proj-falsa-do-teste-bbbb', 'em A, a velha saiu da extensão e da Conexão');
-  assert(chaveNaNuvem.chave === 'sk-proj-falsa-do-teste-bbbb', 'a nuvem tem só a nova');
+  assert(chaveNaNuvem().chave === 'sk-proj-falsa-do-teste-bbbb', 'a nuvem tem só a nova');
 })();
 
 head('CHAVE 3 — Apagar em A deixa o tombstone: a cópia velha de B sai e não volta pelo sync');
@@ -790,13 +800,13 @@ await (async () => {
   await sincronizarChave(storageLocalB);
   await apagarChave(storageLocalA, 3000);
   assert(await sincronizarChave(storageLocalA) === 'subiu', 'A sobe o apagamento');
-  assert(chaveNaNuvem.chave === '' && chaveNaNuvem.em === 3000, 'na nuvem fica o tombstone: sem a chave, com a hora');
+  assert(chaveNaNuvem().chave === '' && chaveNaNuvem().em === 3000, 'na nuvem fica o tombstone: sem a chave, com a hora');
 
   assert(await sincronizarChave(storageLocalB) === 'apagada', 'B sincroniza: a chave foi apagada');
-  const b = de(storageLocalB).cofre;
+  const b = de(storageLocalB).daqui;
   assert(b.chave === '' && b.copiaNaConexao === null, 'B não tem mais a chave, nem na extensão nem na Conexão');
-  assert(await sincronizarChave(storageLocalB) === null && chaveNaNuvem.chave === '', 'B não devolve a chave velha à nuvem');
-  assert(await sincronizarChave(storageLocalA) === null && de(storageLocalA).cofre.chave === '', 'e A continua sem ela');
+  assert(await sincronizarChave(storageLocalB) === null && chaveNaNuvem().chave === '', 'B não devolve a chave velha à nuvem');
+  assert(await sincronizarChave(storageLocalA) === null && de(storageLocalA).daqui.chave === '', 'e A continua sem ela');
 })();
 
 head('CHAVE 4 — B, que ainda não tinha sincronizado, não ressuscita a chave apagada');
@@ -808,7 +818,7 @@ await (async () => {
   await sincronizarChave(storageLocalA);
   await apagarChave(storageLocalA, 3000);
   await sincronizarChave(storageLocalA);
-  assert(await sincronizarChave(storageLocalB) === 'apagada' && chaveNaNuvem.chave === '', 'o tombstone vence a cópia mais velha de B');
+  assert(await sincronizarChave(storageLocalB) === 'apagada' && chaveNaNuvem().chave === '', 'o tombstone vence a cópia mais velha de B');
 })();
 
 head('CHAVE 5 — Uma chave colada depois do apagamento vence o tombstone');
@@ -821,7 +831,7 @@ await (async () => {
   await sincronizarChave(storageLocalA);
   await colarChave(storageLocalB, 'sk-proj-falsa-do-teste-cccc', 4000);
   assert(await sincronizarChave(storageLocalB) === 'subiu', 'a chave nova de B sobe por cima do tombstone');
-  assert(await sincronizarChave(storageLocalA) === 'chegou' && de(storageLocalA).cofre.chave === 'sk-proj-falsa-do-teste-cccc', 'e chega a A');
+  assert(await sincronizarChave(storageLocalA) === 'chegou' && de(storageLocalA).daqui.chave === 'sk-proj-falsa-do-teste-cccc', 'e chega a A');
 })();
 
 head('CHAVE 6 — Apagar tudo num computador sem a chave apaga a da nuvem');
@@ -831,8 +841,8 @@ await (async () => {
   await colarChave(storageLocalA, 'sk-proj-falsa-do-teste-aaaa', 1000);
   await sincronizarChave(storageLocalA);
   await apagarChave(storageLocalB, 5000);   // Apagar tudo em B, antes de B ter recebido a chave
-  assert(await sincronizarChave(storageLocalB) === 'subiu' && chaveNaNuvem.chave === '', 'o tombstone de B sobe');
-  assert(await sincronizarChave(storageLocalA) === 'apagada' && de(storageLocalA).cofre.copiaNaConexao === null, 'e a chave sai de A e da Conexão de A');
+  assert(await sincronizarChave(storageLocalB) === 'subiu' && chaveNaNuvem().chave === '', 'o tombstone de B sobe');
+  assert(await sincronizarChave(storageLocalA) === 'apagada' && de(storageLocalA).daqui.copiaNaConexao === null, 'e a chave sai de A e da Conexão de A');
 })();
 
 head('CHAVE 7 — Uma chave de antes do #154 (sem hora) sobe e chega a um computador sem chave');
@@ -841,23 +851,72 @@ await (async () => {
   resetState();
   await colarChave(storageLocalA, 'sk-proj-falsa-do-teste-velh', 0);
   assert(await sincronizarChave(storageLocalA) === 'subiu', 'a chave sem hora sobe');
-  assert(await sincronizarChave(storageLocalB) === 'chegou' && de(storageLocalB).cofre.chave === 'sk-proj-falsa-do-teste-velh', 'e chega a B');
+  assert(await sincronizarChave(storageLocalB) === 'chegou' && de(storageLocalB).daqui.chave === 'sk-proj-falsa-do-teste-velh', 'e chega a B');
   await colarChave(storageLocalB, 'sk-proj-falsa-do-teste-nova', 2000);
   await sincronizarChave(storageLocalB);
-  assert(await sincronizarChave(storageLocalA) === 'chegou' && de(storageLocalA).cofre.chave === 'sk-proj-falsa-do-teste-nova', 'qualquer chave com hora vence a sem hora');
+  assert(await sincronizarChave(storageLocalA) === 'chegou' && de(storageLocalA).daqui.chave === 'sk-proj-falsa-do-teste-nova', 'qualquer chave com hora vence a sem hora');
 })();
 
 head('CHAVE 8 — Sem chave em lugar nenhum, nada sobe; com a nuvem fora do ar, nada muda aqui');
 sep();
 await (async () => {
   resetState();
-  assert(await sincronizarChave(storageLocalA) === null && chaveNaNuvem === null, 'nenhum documento de chave é criado à toa');
+  assert(await sincronizarChave(storageLocalA) === null && chaveNaNuvem() === null, 'nenhum documento de chave é criado à toa');
   await colarChave(storageLocalA, 'sk-proj-falsa-do-teste-aaaa', 1000);
   nuvemFalha.chave = true;
   const [r] = await Promise.allSettled([sincronizarChave(storageLocalA)]);
   nuvemFalha.chave = false;
-  assert(r.status === 'rejected' && de(storageLocalA).cofre.chave === 'sk-proj-falsa-do-teste-aaaa', 'a falha da nuvem é devolvida e a chave daqui fica');
+  assert(r.status === 'rejected' && de(storageLocalA).daqui.chave === 'sk-proj-falsa-do-teste-aaaa', 'a falha da nuvem é devolvida e a chave daqui fica');
   assert(await sincronizarChave(storageLocalA) === 'subiu', 'na próxima vez, sobe');
+})();
+
+head('CHAVE 9 — Uma mudança aqui durante o sync não é desfeita pela chave que vinha da nuvem');
+sep();
+await (async () => {
+  resetState();
+  await colarChave(storageLocalA, 'sk-proj-falsa-do-teste-aaaa', 1000);
+  await sincronizarChave(storageLocalA);
+  let liberar;
+  segurarAChave = new Promise(resolver => { liberar = resolver; });
+  const emVoo = sincronizarChave(storageLocalB);              // B abre o painel: a leitura da nuvem está em voo
+  await apagarChave(storageLocalB, 2000);                     // e a pessoa apaga a chave em B nesse meio tempo
+  liberar();
+  segurarAChave = null;
+  assert(await emVoo === null && de(storageLocalB).daqui.chave === '', 'a chave que vinha da nuvem não passa por cima do apagamento');
+  assert(await sincronizarChave(storageLocalB) === 'subiu' && chaveNaNuvem().chave === '', 'o sync seguinte leva o apagamento à nuvem');
+})();
+
+head('CHAVE 10 — A chave de uma conta nunca sobe para outra conta Google no mesmo computador');
+sep();
+await (async () => {
+  resetState();
+  await colarChave(storageLocalA, 'sk-proj-falsa-do-teste-aaaa', 1000);
+  await sincronizarChave(storageLocalA);                      // A está na conta uid-teste
+  assert(de(storageLocalA).daqui.conta === 'uid-teste', 'a chave fica marcada com a conta com que subiu');
+  ligar(storageLocalA, { uid: 'uid-outra', daqui: de(storageLocalA).daqui });   // sai e entra noutra conta
+  assert(await sincronizarChave(storageLocalA) === null && chaveNaNuvem('uid-outra') === null, 'a conta nova, sem chave, não recebe a da outra conta');
+  chavesNaNuvem['uid-outra'] = { chave: 'sk-proj-falsa-do-teste-outr', em: 10 };
+  assert(await sincronizarChave(storageLocalA) === 'chegou' && de(storageLocalA).daqui.chave === 'sk-proj-falsa-do-teste-outr',
+    'a chave da conta nova vale aqui, mesmo mais velha');
+  assert(chaveNaNuvem('uid-teste').chave === 'sk-proj-falsa-do-teste-aaaa', 'e a conta de antes continua com a dela');
+})();
+
+head('CHAVE 11 — Colada sem conta, a chave sobe para a conta com que a pessoa entrar');
+sep();
+await (async () => {
+  resetState();
+  await colarChave(storageLocalA, 'sk-proj-falsa-do-teste-aaaa', 1000);
+  assert(await sincronizarChave(storageLocalA) === 'subiu' && chaveNaNuvem().chave === 'sk-proj-falsa-do-teste-aaaa', 'sem conta marcada, ela sobe');
+})();
+
+head('CHAVE 12 — Apagar sem conta (sem hora) não apaga a chave da conta: ela volta ao entrar');
+sep();
+await (async () => {
+  resetState();
+  await colarChave(storageLocalA, 'sk-proj-falsa-do-teste-aaaa', 1000);
+  await sincronizarChave(storageLocalA);
+  await apagarChave(storageLocalA, 0);                        // fora da conta, Apagar chave vale só para este computador
+  assert(await sincronizarChave(storageLocalA) === 'chegou' && chaveNaNuvem().chave === 'sk-proj-falsa-do-teste-aaaa', 'ao entrar de novo, a chave da conta volta');
 })();
 
 head('CENÁRIO 27 — Subir frases de uma vez: tira da fila de retry; a falha é devolvida');

@@ -87,7 +87,7 @@ def _guardar_chave_da_openai(conexao, corpo):
 
 
 def _apagar_chave_da_openai(conexao, corpo):
-    """Trocar, Apagar e Apagar tudo na extensão tiram a cópia daqui também (#154)."""
+    """Apagar chave e Apagar tudo na extensão tiram a cópia daqui também (#154). Trocar a chave a substitui pelo POST /ia/openai/chave."""
     conexao.cofre.apagar("openai")
     return 200, {"ok": True}
 
