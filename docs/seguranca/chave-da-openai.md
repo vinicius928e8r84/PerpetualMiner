@@ -9,7 +9,8 @@ Esta nota diz quem pode ler a chave, por onde ela anda e quais riscos foram acei
 |---|---|---|
 | A nuvem da conta: Firestore `usuarios/{uid}/segredos/openai` | `{ chave, em }`, ou o tombstone `{ apagada: true, em }` | o dono da conta (as regras abaixo) e quem administra o projeto Firebase |
 | A extensão: IndexedDB `pm-segredos` › `chaves` | `openai` (a chave), `openai-em` (a hora da última mudança), `openai-apagar-na-conexao` | as páginas da extensão; **não** o content script nem o overlay, que abrem o IndexedDB do site |
-| `chrome.storage.local` › `pm_chave_openai` | só `{ ultimos4 }` | toda a extensão, o content script inclusive: por isso só os 4 últimos |
+| Sessão Firebase: IndexedDB `pm-sessao` › `sessao` › `firebase` | UID, tokens de acesso e renovação; a sessão legada é migrada e removida do `chrome.storage.local` | só páginas e service worker da extensão; não o content script (um token legível permitiria buscar a chave na nuvem) |
+| `chrome.storage.local` › `pm_chave_openai` | só `{ ultimos4 }`; `pm_chave_openai_versao` guarda `{ em, conta }`, sem segredo | toda a extensão, o content script inclusive: por isso só os 4 últimos |
 | A Conexão com o Anki: `user_files/chaves/openai.json` | a chave, modo 0600 | o usuário do sistema; fora do `.ankiaddon`, da configuração do complemento, dos logs e do pacote de diagnóstico |
 
 A extensão nunca fala com a OpenAI: quem confere e gasta a chave é a Conexão. Uma chave que chega da nuvem já foi
@@ -48,16 +49,17 @@ que alguém já tenha levado.
 ## O que o código garante
 
 - A chave inteira nunca vai à tela (a tela só conhece `ultimos4`), a um log, a uma mensagem de erro, à resposta da
-  Conexão nem ao `chrome.storage`. A falha da sincronização da chave registra só o status ou o motivo.
+  Conexão nem ao `chrome.storage`. A falha da sincronização da chave mostra só códigos no Detalhes da Conta & sync e mantém “Sem sincronizar”; Tentar de novo repete também a chave e o tombstone.
 - Trocar, Apagar chave e Apagar tudo deixam a hora da mudança; a mais nova vale entre os computadores, então uma cópia
   velha não volta pelo sync (`test_sync.js`, seção CHAVE). O tombstone na nuvem não tem campo de chave.
-- A chave de uma conta nunca sobe para outra: a extensão lembra com que conta ela subiu ou chegou, e entrar com outra
+- A chave de uma conta nunca sobe para outra: a extensão vincula a alteração ao UID antes do primeiro pedido, mesmo quando o PATCH falha, preserva versões pendentes por UID,  e entrar com outra
   conta Google no mesmo computador não a leva para lá (CHAVE 10 e o e2e da troca de conta).
-- Sem conta, Apagar chave vale só para este computador, como o modal diz: não deixa hora, e a chave da conta volta se a
-  pessoa entrar nela.
+- Sem conta, Apagar chave vale só para este computador: o tombstone local não sobe a nenhuma conta. A versão local ainda ordena a remoção na Conexão; uma chave da conta pode chegar quando a pessoa entrar nela.
 - Uma mudança aqui durante o sync não é desfeita pela chave que vinha da nuvem: a gravação só acontece se a hora
   guardada ainda é a que foi lida, na mesma transação do IndexedDB (CHAVE 9).
-- Uma Conexão que estava desligada quando a chave foi apagada perde a cópia quando volta a responder.
+- Uma Conexão que estava desligada quando a chave foi apagada perde a cópia quando volta a responder. O POST e a remoção levam uma versão não secreta; a Conexão grava um tombstone persistente e recusa HTTP 409 para versões antigas (inclusive reentregas após reiniciar). Dois sufixos iguais nunca são prova de que a cópia corresponde à versão atual.
+- Chave, hora e UID são lidos numa transação IndexedDB única, e a versão é relida antes de subir. Não há garantia de CAS no Firestore para um PATCH já em trânsito (limite abaixo).
+- Falha local ao apagar mostra aviso persistente com repetição e Detalhes; Apagar tudo comunica o resultado parcial, sem toast de sucesso total.
 - Os testes usam só chaves de mentira.
 
 ## Limites aceitos
@@ -74,7 +76,7 @@ que alguém já tenha levado.
 
 As regras moram no console do Firebase, não neste repositório. A chave precisa de que só o dono da conta leia e
 escreva `usuarios/{uid}/segredos/openai`. Se as regras de hoje listam as coleções uma a uma (`frases`, `meta`), elas
-recusam `segredos`, e a chave simplesmente não sincroniza (a falha fica no console). O mínimo:
+recusam `segredos`, e a chave não sincroniza (Conta & sync informa a falha e permite repetir). O mínimo:
 
 ```
 rules_version = '2';
@@ -87,4 +89,4 @@ service cloud.firestore {
 }
 ```
 
-Publicar e conferir estas regras é do dono.
+**P6 — PENDING OWNER.** Publicar e conferir estas regras é do dono; nenhuma credencial foi criada e nenhum deploy foi feito nesta correção. Antes de integrar: comprovar leitura/escrita pelo próprio UID, recusa entre dois UIDs e recusa sem autenticação. Os testes locais usam Firebase falso, não comprovam as regras implantadas.

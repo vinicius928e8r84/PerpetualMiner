@@ -300,6 +300,51 @@ test('o modal de apagar todas as frases, com conta', async ({ page, extensao, fa
   await expect(page).toHaveScreenshot('perigo-modal.png', { animations: 'disabled' });
 });
 
+// Security-review states await owner approval; no PNG baseline is approved here.
+for (const variante of ['outra-conta', 'apagar-falhou', 'apagar-tudo-parcial']) {
+  test.fixme(`IA: ${variante} — aprovação visual pendente`, async ({ page, extensao, fakes }) => {
+    await extensao.semearSessao({ uid: 'uid-visual' });
+    await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
+    await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
+    const ia = page.locator('#cfg-ia');
+    await campoDaChave(page).fill('sk-fake-visual-9f3a');
+    await ia.getByRole('button', { name: 'Conferir e salvar' }).click();
+    await expect(ia.locator('.cfg-resumo')).toHaveText('••••••••9f3a');
+    await expect.poll(() => Boolean(fakes.google.chaveDaOpenAIDe('uid-visual'))).toBe(true);
+    if (variante === 'outra-conta') {
+      await extensao.semearSessao({ uid: 'uid-outra-conta' });
+      await page.reload();
+      await expect(ia).toContainText('Esta chave é de outra conta Google.');
+    } else {
+      await page.evaluate(() => {
+        const abrir = indexedDB.open.bind(indexedDB);
+        indexedDB.open = (...args) => {
+          if (args[0] === 'pm-segredos') throw new DOMException('fake storage failure', 'StorageUnavailable');
+          return abrir(...args);
+        };
+      });
+      if (variante === 'apagar-falhou') {
+        await ia.getByRole('button', { name: 'Apagar chave' }).click();
+        await page.getByRole('dialog').getByRole('button', { name: 'Apagar chave' }).click();
+      } else {
+        await page.goto(extensao.url('painel.html#configuracoes/perigo'));
+        await page.evaluate(() => {
+          const abrir = indexedDB.open.bind(indexedDB);
+          indexedDB.open = (...args) => {
+            if (args[0] === 'pm-segredos') throw new DOMException('fake storage failure', 'StorageUnavailable');
+            return abrir(...args);
+          };
+        });
+        await page.locator('#btn-apagar-tudo').click();
+        await page.getByRole('dialog').locator('.veio-botao--perigo-cheio').click();
+      }
+      await expect(page.getByRole('alert')).toContainText(variante === 'apagar-falhou'
+        ? 'Não deu para apagar a chave neste computador.' : 'As frases foram apagadas, mas a chave da OpenAI continua');
+    }
+    await expect(page).toHaveScreenshot(`ia-${variante}.png`, { animations: 'disabled', mask: [campoDaChave(page)] });
+  });
+}
+
 // Conexão com o Anki › Abrir o Anki com o computador (#153). Não há protótipo próprio dele (o #106 o decidiu em
 // texto): o card segue o “resumo primeiro” e o interruptor é o do Veio. Uma referência nova só entra depois de o
 // dono aprovar o visual (CODING_STANDARDS, regra 10), então estas quatro ficam em `test.fixme` até lá. Para

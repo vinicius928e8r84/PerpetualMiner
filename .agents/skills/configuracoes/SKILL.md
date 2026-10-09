@@ -33,14 +33,14 @@ Where the key lives (`lib/chave-da-openai.js`; `confirmar` is the only way in): 
 IndexedDB is the site's; `chrome.storage.local` would not do: the content script reads that area and `setAccessLevel` would
 close all of it); `{ ultimos4 }` in `chrome.storage.local` as `pm_chave_openai`, which the summary, the Boas-vindas step and the
 reminder read; and the Conexão's own copy in `user_files/chaves` (see `complemento/`). When the Conexão answers again after being
-off, the card asks `POST /ia/estado` and, if the copy is missing or has another ending, delivers the key again by itself;
+off, the card asks `POST /ia/estado` and, if the copy is missing or has another non-secret version (`em`), delivers the key again by itself;
 “A Conexão com o Anki tem uma cópia da chave” / “…ainda não tem a cópia” says the true state, and with the Conexão off (also when it goes off while the card is open) the card
 says nothing about the copy, and a late answer from before it went off is dropped. A pasted draft never survives a confirmation
-and Trocar chave always opens empty, so the whole key is never put back on screen. With an account the key follows the Google account (#154): the note says “Vai junto com a sua conta Google…”, a key or a deletion
-from another computer arrives through `pm_chave_openai` and the card then re-checks the Conexão's copy; without an account the note says it stays on this
+and Trocar chave always opens empty, so the whole key is never put back on screen. With an account the key follows its bound UID (#154): changes bind before the first request (failed uploads stay pending for that UID), and the note says “Vai junto com a sua conta Google…” only for the current account; another account's key stays local and is named as such, a key or a deletion
+from another computer arrives through `pm_chave_openai` and the card invalidates the old copy confirmation before re-checking it (also with an unchanged suffix); without an account the note says it stays on this
 computer (C8). Apagar chave (danger outline) opens the Veio confirmation; confirmed, `ChaveDaOpenAI.apagar()` takes it out of the extension
 and the Conexão (now, or when the Conexão answers again), and `painel.js` takes the tombstone to the cloud. Apagar tudo deletes it too, and its
-modal says so only when a key is stored. Threat note: `docs/seguranca/chave-da-openai.md`. Tests: `e2e/tests/configuracoes-ia.spec.js` (including a CDP check from the content script's isolated
+modal says so only when a key is stored. Local deletion failures show a persistent aviso with retry and Detalhes; Apagar tudo names a partial result. The Conta & sync retry also retries key/tombstone sync, and never reports successful sync while that fails. Firebase tokens live in extension-origin IndexedDB `pm-sessao`, not readable Chrome storage. Threat note: `docs/seguranca/chave-da-openai.md`. Tests: `e2e/tests/configuracoes-ia.spec.js` (including a CDP check from the content script's isolated
 world), the visual references `ia-*.png` in `configuracoes-visual.spec.js`, `complemento/test_chave_da_openai.py` for the
 Conexão's side, and the contract examples both read (`complemento/contrato/exemplos.json`).
 

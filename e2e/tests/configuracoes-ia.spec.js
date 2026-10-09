@@ -311,9 +311,11 @@ test('com a Conexão desligada o card não afirma nada sobre a cópia', async ({
 });
 
 test('o content script e o overlay não alcançam a chave: ela não está no storage que eles leem nem no banco que eles abrem', async ({ page, extensao, context, paginas, fakes }) => {
-  await extensao.semearSessao({ uid: 'uid-isolamento' });
-  // Upgrade from the old readable storage must remove both bearer and refresh tokens.
-  await extensao.gravarStorage({ pm_firebase_auth: await extensao.lerSessao() });
+  // Upgrade from the old readable storage must migrate both tokens to restricted origin storage.
+  await extensao.gravarStorage({
+    pm_user_info: { uid: 'uid-isolamento', displayName: 'Pessoa de Teste' },
+    pm_firebase_auth: { uid: 'uid-isolamento', idToken: 'token-teste', refreshToken: 'refresh-teste', expiresAt: Date.now() + 3600000 },
+  });
   await abrirPainel(page, extensao, '#configuracoes/ia');
   await colarEConferir(page);
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
@@ -583,6 +585,7 @@ test('sem conta, Apagar chave tira a chave da extensão e da Conexão, e nada va
 test('apagada com a Conexão desligada, a cópia dela sai quando ela volta a responder', async ({ page, extensao, fakes }) => {
   await abrirPainel(page, extensao, '#configuracoes/ia');
   await colarEConferir(page);
+  await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
   fakes.anki.desligar();
 
   await card(page).getByRole('button', { name: 'Apagar chave' }).click();
@@ -625,7 +628,8 @@ test('S1: falha ao sincronizar apagamento permanece na Conta e Tentar de novo en
   await expect(card(page).locator('.cfg-resumo')).toHaveText('Sem chave');
   await page.reload();
   await expect(page.locator('#shell-chip')).toContainText('Sem sincronizar');
-  await page.goto(extensao.url('painel.html#configuracoes/conta'));
+  await page.locator('#shell-chip').click();
+  await expect(page.locator('#cfg-conta').getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
   fakes.google.recusarEscritas(false);
   await page.locator('#cfg-conta').getByRole('button', { name: 'Tentar de novo' }).click();
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
@@ -637,7 +641,7 @@ async function falharBanco(page) {
   await page.evaluate(() => {
     window.abrirBancoAntesDoTeste = indexedDB.open.bind(indexedDB);
     indexedDB.open = (...args) => {
-      if (args[0] === 'pm-segredos') throw new Error('storage_unavailable');
+      if (args[0] === 'pm-segredos') throw new DOMException('storage_unavailable', 'StorageUnavailable');
       return window.abrirBancoAntesDoTeste(...args);
     };
   });
@@ -655,13 +659,13 @@ test('S4: apagar chave com falha local mostra aviso persistente, Detalhes e repe
   await modal(page).getByRole('button', { name: 'Apagar chave' }).click();
   await expect(erro(page)).toContainText('Não deu para apagar a chave neste computador.');
   await erro(page).getByText('Detalhes').click();
-  await expect(erro(page)).toContainText('storage_unavailable');
+  await expect(erro(page)).toContainText('StorageUnavailable');
   await restaurarBanco(page);
   expect((await chaveNoBancoDaExtensao(page)) === CHAVE).toBe(true);
   await erro(page).getByRole('button', { name: 'Tentar de novo' }).click();
   await expect(card(page).locator('.cfg-resumo')).toHaveText('Sem chave');
   expect(await chaveNoBancoDaExtensao(page)).toBe('');
-  expect(fakes.anki.chaveNaConexao()).toBeNull();
+  await expect.poll(() => fakes.anki.chaveNaConexao() === null).toBe(true);
 });
 
 test('S4: Apagar tudo comunica resultado parcial se o cofre local falha', async ({ page, extensao, fakes }) => {
@@ -670,8 +674,8 @@ test('S4: Apagar tudo comunica resultado parcial se o cofre local falha', async 
   await extensao.gravarStorage({ frases: [{ id: 1, texto: 'fake phrase', data: '01/01/2026', idioma: 'Inglês', streaming: 'web' }] });
   await page.goto(extensao.url('painel.html#configuracoes/perigo'));
   await falharBanco(page);
-  await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar tudo' }).click();
-  await modal(page).getByRole('button', { name: 'Apagar tudo' }).click();
+  await page.locator('#btn-apagar-tudo').click();
+  await modal(page).locator('.veio-botao--perigo-cheio').click();
   await expect(page.getByRole('alert')).toContainText('As frases foram apagadas, mas a chave da OpenAI continua neste computador.');
   await restaurarBanco(page);
   expect((await chaveNoBancoDaExtensao(page)) === CHAVE).toBe(true);

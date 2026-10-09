@@ -2,7 +2,16 @@
 
 // A base compartilhada: o catálogo da Voz e a detecção de idioma.
 importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/pedido-ao-anki.js', 'lib/sincronizacao.js');
-const { textoDaVoz, detectarIdioma, IDIOMAS, MineracaoDoDia, Mineracao, VocabularioDaMineracao } = PerpetualMiner;
+const { textoDaVoz, detectarIdioma, IDIOMAS, MineracaoDoDia, Mineracao, VocabularioDaMineracao, Sincronizacao } = PerpetualMiner;
+
+// During an upgrade, close the old readable area before migrating bearer tokens.
+// A failed migration leaves it restricted rather than exposing the credentials.
+if (chrome.storage.local.setAccessLevel) {
+  chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })
+    .then(() => Sincronizacao.lerCredenciais())
+    .then(() => chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' }))
+    .catch(() => console.warn('[Auth] session migration failed'));
+}
 
 // Em pasta descompactada, recarrega a extensão quando os arquivos mudam.
 importScripts('lib/arquivos-da-extensao.js', 'lib/auto-recarregar.js');
@@ -288,8 +297,10 @@ async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', e
 // A nuvem da conta conectada (a sessão renova o token pelo refresh token do
 // Firebase se expirou), ou null sem conta. O REST do Firestore é de lib/sincronizacao.js.
 async function nuvemDaConta() {
+  const { pm_user_info: perfil } = await chromeGet({ pm_user_info: null });
+  if (!perfil) return null;
   const credenciais = await Sincronizacao.lerCredenciais();
-  if (!credenciais?.uid) return null;
+  if (!credenciais?.uid || credenciais.uid !== perfil.uid) return null;
   const sessao = PerpetualMiner.Sincronizacao.criarSessao({
     credenciais,
     aoRenovar: Sincronizacao.guardarCredenciais,

@@ -116,13 +116,14 @@ async function inicializarAuth() {
   // Tenta restaurar sessão anterior salva no storage
   const data = await chromeGet({ pm_user_info: null });
   const credenciais = await Sincronizacao.lerCredenciais();
-  if (data.pm_user_info && credenciais) {
+  if (data.pm_user_info && credenciais?.uid === data.pm_user_info.uid) {
     usuarioLogado = { ...data.pm_user_info };
     conectarNuvem(credenciais);
     atualizarUIAuth(usuarioLogado);
     sincronizarAChave();
     await carregarFrasesFirestore();
   } else {
+    if (data.pm_user_info) await chrome.storage.local.remove('pm_user_info');
     carregarFrasesLocal();
   }
 }
@@ -273,20 +274,32 @@ function conectarNuvem(credenciais) {
 // nuvem (que poderia repetir o corpo do pedido).
 
 let sincronizandoAChave = Promise.resolve();
+let erroDaChave = null;
+
+function mostrarSincronizado() {
+  if (erroDaChave) mostrarFalhaNaNuvem(erroDaChave);
+  else Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
+}
 
 function sincronizarAChave() {
   sincronizandoAChave = sincronizandoAChave.then(async () => {
-    if (!nuvem) return;
+    const estaNuvem = nuvem;
+    if (!estaNuvem) return;
     try {
-      await Sincronizacao.criarSincronizacaoDaChave({ nuvem, daqui: ChaveDaOpenAI.daqui }).sincronizar();
+      await Sincronizacao.criarSincronizacaoDaChave({ nuvem: estaNuvem, daqui: ChaveDaOpenAI.daqui }).sincronizar();
+      if (nuvem === estaNuvem) erroDaChave = null;
     } catch (err) {
-      console.warn('[Firestore] a chave da OpenAI não sincronizou:', err?.motivo || err?.status || 'sem resposta');
+      if (nuvem !== estaNuvem) return;
+      // A mensagem da API pode repetir o corpo secreto: só códigos chegam ao Detalhes.
+      erroDaChave = Object.assign(new Error(`OpenAI sync · ${err?.status || err?.motivo || 'sem resposta'}`), { motivo: err?.motivo });
+      mostrarFalhaNaNuvem(erroDaChave);
     }
   });
   return sincronizandoAChave;
 }
 
 function desconectarNuvem() {
+  erroDaChave = null;
   sessao?.revogar();
   sessao = null;
   nuvem = null;
@@ -346,6 +359,7 @@ function carregarFrasesLocal() {
 async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
   const semSincronizar = primeiraSubidaFalhou ? SITUACOES.PRIMEIRA_SUBIDA_FALHOU : SITUACOES.SEM_SINCRONIZAR;
   Conta.mostrarSincronizacao(SITUACOES.SINCRONIZANDO);
+  await sincronizarAChave();
   try {
     // Passa o estado vivo, não um snapshot anterior à rede (ver o contrato de carregar).
     const { frases, desteComputador, falhaNasOrfas } = await sincronizacao.carregar({ atuais: () => todasFrases });
@@ -354,7 +368,7 @@ async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
       console.error('[Firestore] orphans com falha:', falhaNasOrfas.quantas, falhaNasOrfas.causas[0]?.message);
       mostrarSyncIncompleto(falhaNasOrfas, desteComputador, semSincronizar);
     } else {
-      Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
+      mostrarSincronizado();
     }
     finalizarCarregamento();
   } catch (err) {
@@ -494,7 +508,7 @@ function idsSelecionados() {
 
 function setupListeners() {
   Perigo.aoApagarTudo(apagarTudo);
-  ChaveDaOpenAI.aoMudar(sincronizarAChave);
+  ChaveDaOpenAI.aoMudar(() => { if (nuvem) carregarFrasesFirestore(); });
   // Um painel que ficou aberto noutra aba recebe a chave mudada noutro computador quando a pessoa volta a ele.
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') sincronizarAChave();
@@ -1204,7 +1218,27 @@ async function tentarApagarDaNuvemDeNovo() {
   idsAindaNaNuvem.clear();
   tirarAvisoDaArea('ainda-na-nuvem');
   // A nuvem respondeu: o card e o chip da conta deixam de dizer “sem sincronizar”.
-  Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
+  mostrarSincronizado();
+}
+
+let avisoDaChaveNoApagarTudo = null;
+async function apagarChaveNoApagarTudo() {
+  try {
+    await ChaveDaOpenAI.apagar({ comConta: Boolean(usuarioLogado), mesmoSemChave: Boolean(usuarioLogado) });
+    await sincronizarAChave();
+    avisoDaChaveNoApagarTudo?.remove();
+    avisoDaChaveNoApagarTudo = null;
+    return !erroDaChave;
+  } catch (erro) {
+    avisoDaChaveNoApagarTudo?.remove();
+    avisoDaChaveNoApagarTudo = montarAviso({
+      texto: textoDaVoz('CFG-17.chaveNaoApagada'),
+      acao: { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: apagarChaveNoApagarTudo },
+      detalhes: erro?.name || 'storage_error', fechavel: false,
+    });
+    document.getElementById('cfg-perigo-corpo').append(avisoDaChaveNoApagarTudo);
+    return false;
+  }
 }
 
 // Roda depois que a pessoa confirma no modal da Zona de perigo (painel-perigo.js).
@@ -1215,8 +1249,7 @@ function apagarTudo() {
   selecionadas.clear();
   atualizarContadorSelecao();
   // A chave da OpenAI também sai (#154): daqui, da Conexão e, com conta, da nuvem, mesmo que ainda não tenha chegado aqui.
-  ChaveDaOpenAI.apagar({ comConta: Boolean(usuarioLogado), mesmoSemChave: Boolean(usuarioLogado) })
-    .catch(err => console.error('[Apagar tudo] a chave da OpenAI não foi apagada:', err?.name || 'erro'));
+  const chaveApagada = apagarChaveNoApagarTudo();
   const naNuvem = sincronizacao.apagarTudo(ids).then(({ ok, erro }) => {
     if (!ok) {
       console.error('[Firestore] apagar tudo falhou:', erro);
@@ -1230,7 +1263,8 @@ function apagarTudo() {
     aplicarFiltro();
     // CFG-18 só quando as frases sumiram de todo lugar que a Zona de perigo
     // prometeu. Uma falha na nuvem aparece no card Conta & sync e no chip (Q4).
-    if (await naNuvem) mostrarToastDeSucesso(textoDaVoz('CFG-18'));
+    const [frasesApagadas, apagouChave] = await Promise.all([naNuvem, chaveApagada]);
+    if (frasesApagadas && apagouChave) mostrarToastDeSucesso(textoDaVoz('CFG-18'));
   });
 }
 
@@ -1794,7 +1828,7 @@ async function tentarSubirDeNovo() {
   idsMineradosForaDaNuvem.clear();
   tirarAvisoDaArea('fora-da-nuvem');
   // A nuvem respondeu: o card e o chip da conta deixam de dizer “sem sincronizar”.
-  Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
+  mostrarSincronizado();
 }
 
 // ─── A linha do .txt ──────────────────────────────────────────────────────────

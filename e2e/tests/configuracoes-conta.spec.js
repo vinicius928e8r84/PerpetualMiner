@@ -523,6 +523,7 @@ test('Sessão expirou (CFG-08): “Entrar” leva ao login e volta a sincronizar
   await conta(page).getByRole('button', { name: 'Entrar', exact: true }).click();
   await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
   expect((await extensao.lerSessao()).expiresAt).toBeGreaterThan(Date.now());
+  expect(await extensao.lerStorage('pm_firebase_auth')).toEqual({});
 });
 
 test('Perfil sem nome (CFG-10): o card, o resumo e o chip dizem “Conta Google”', async ({ page, extensao }) => {

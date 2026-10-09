@@ -26,7 +26,7 @@ for (const exemplo of daExtensao) {
     if (exemplo.contexto.perfil !== undefined) fakes.anki.abrirPerfil(exemplo.contexto.perfil);
     if (exemplo.contexto.falhaNoPerfil) fakes.anki.falharLeituraDoPerfil();
     if (exemplo.contexto.openai) fakes.anki.responderOpenAI(exemplo.contexto.openai);
-    if (exemplo.contexto.chaveNaConexao) fakes.anki.guardarChaveNaConexao(exemplo.contexto.chaveNaConexao);
+    if (exemplo.contexto.chaveNaConexao) fakes.anki.guardarChaveNaConexao(exemplo.contexto.chaveNaConexao, exemplo.contexto.versaoNaConexao || 0);
     if ('colecao' in exemplo.contexto) fakes.anki.abrirColecao(exemplo.contexto.colecao);
     if (exemplo.contexto.itemDeLogin) fakes.anki.definirItemDeLogin(exemplo.contexto.itemDeLogin);
     await page.goto(extensao.url('painel.html'));

@@ -176,7 +176,14 @@ class ChaveApagada(unittest.TestCase):
                 self.assertEqual(estado(conexao), (200, {'openai': {'configurada': False}}))
                 self.assertFalse(any(CHAVE.encode() in dados for _, dados in tudo_em_disco(pasta)))
 
-    def test_apagar_tira_a_copia_da_conexao_e_o_arquivo_do_disco(self):
+    def test_remocao_antiga_nao_apaga_uma_chave_de_versao_mais_nova(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 200})
+            status, _, corpo = conexao.pedir('POST', '/ia/openai/chave/apagar', corpo={'versao': 100})
+            self.assertEqual((status, json.loads(corpo)), (409, {'error': 'stale_key_version'}))
+            self.assertEqual(estado(conexao), (200, {'openai': {'configurada': True, 'ultimos4': 'abcd', 'versao': 200}}))
+
+    def test_apagar_tira_o_segredo_do_disco_e_mantem_tombstone_sem_chave(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             enviar(conexao)
             status, _, corpo = apagar(conexao)

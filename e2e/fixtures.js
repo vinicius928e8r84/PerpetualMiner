@@ -192,6 +192,7 @@ const test = base.extend({
         const db = req.result;
         const tx = db.transaction('sessao', valor === null ? 'readonly' : 'readwrite');
         const loja = tx.objectStore('sessao');
+        if (valor !== null) loja.put(true, 'migrada');
         const pedido = valor === null ? loja.get('firebase') : loja.put(valor, 'firebase');
         tx.oncomplete = () => { db.close(); resolve(pedido.result || null); };
         tx.onerror = () => { db.close(); reject(tx.error); };
@@ -205,6 +206,7 @@ const test = base.extend({
       url: caminho => `chrome-extension://${id}/${caminho}`,
       lerStorage,
       lerSessao: () => sessaoNoBanco(null),
+      gravarSessao: sessaoNoBanco,
       gravarStorage,
       /** O histórico de frases como está gravado (mais nova primeiro). */
       frases: async () => (await lerStorage({ frases: [] })).frases,

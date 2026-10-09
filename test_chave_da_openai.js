@@ -64,6 +64,27 @@ function computador() {
 }
 const FAKE = 'sk-fake-canario-zz99';
 
+test('P1: PATCH recusado preserva a pendência de A quando B tem outra chave', async () => {
+  const pc = computador();
+  pc.local.pm_user_info = { uid: 'A' };
+  await pc.chave.confirmar(FAKE);
+  const emA = (await pc.chave.daqui.ler()).em;
+  const documentos = { B: { chave: 'sk-fake-conta-B-aaaa', em: emA + 10 } };
+  let recusar = true;
+  const sync = uid => criarSincronizacaoDaChave({ daqui: pc.chave.daqui, nuvem: {
+    uid, async lerChaveDaOpenAI() { return documentos[uid] || null; },
+    async gravarChaveDaOpenAI(valor) { if (recusar) throw new Error('503'); documentos[uid] = valor; },
+  } }).sincronizar();
+  await assert.rejects(sync('A'));
+  pc.local.pm_user_info = { uid: 'B' };
+  recusar = false;
+  await sync('B');
+  pc.local.pm_user_info = { uid: 'A' };
+  await sync('A');
+  assert.equal(documentos.A?.chave === FAKE, true);
+  assert.equal(documentos.B.chave === FAKE, false);
+});
+
 test('P2: a leitura da versão abre uma única transação, sem combinar chave antiga com tombstone', async () => {
   const pc = computador();
   await pc.chave.confirmar(FAKE);

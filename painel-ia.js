@@ -301,6 +301,7 @@
       openai_fora_do_ar: { texto: 'CFG-35.erroForaDoAr', acao: tentar },
       sem_conexao: { texto: 'CFG-35.erroSemConexao', acao: tentar },
       conexao_com_erro: { texto: 'CFG-35.erroConexaoComErro', acao: tentar },
+      apagar_local: { texto: 'CFG-35.erroAoApagar', acao: { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: () => apagarAChave(lugar) } },
     }[motivo];
     const aviso = montarAviso({
       abertura: textoDaVoz('CFG-35.erroEntrada'),
@@ -398,7 +399,8 @@
       await ChaveDaOpenAI.apagar({ comConta: estado.comConta });
     } catch (erro) {
       // Não deu para apagar no armazenamento da extensão: a chave continua, e a tela continua dizendo isso.
-      console.error('[IA] a chave da OpenAI não foi apagada:', erro?.name || 'erro');
+      lugar.erro = { motivo: 'apagar_local', detalhes: erro?.name || 'storage_error' };
+      desenhar(lugar);
       return;
     }
     for (const cada of lugares) {
