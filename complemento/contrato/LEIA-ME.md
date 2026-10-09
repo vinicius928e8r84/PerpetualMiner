@@ -120,3 +120,15 @@ o complemento só existe com o Anki aberto. A Conexão de hoje (`bridge/`) atend
    (um `contexto` novo, uma fila) pedem código no fake.
 4. Uma rota que já existe na Conexão de hoje (`bridge/server.py`) entra com o formato que a
    extensão já lê; a regra é a de “o mesmo contrato HTTP”, e o exemplo é a prova.
+
+## O abridor (Native Messaging)
+
+O abridor (#147, `complemento/abridor.py`) não fala HTTP: a extensão o chama por `chrome.runtime.sendNativeMessage`
+(`com.perpetualminer.abridor`), com a permissão opcional `nativeMessaging`. O contrato é o mesmo arquivo, na seção `abridor`:
+cada exemplo tem o `contexto` (`anki`: `no_lugar` ou `sumiu`, o Anki no lugar que a Conexão anotou ou não), a `mensagem` que o
+Chrome entrega e a `resposta` do script. Os três lados leem os mesmos exemplos:
+
+- **o script de verdade**: `complemento/test_abridor.py` roda o `.sh` do Mac com cada exemplo (e o `.ps1` do Windows, onde houver `pwsh`);
+- **o fake do e2e**: `e2e/fakes/abridor.js` responde pelos exemplos (`node test_fake_abridor.js` o confere);
+- **a extensão**: cada mensagem nasce de `PerpetualMiner.Abridor` (`lib/abridor.js`), e `node test_contrato_fechado.js` exige um exemplo
+  `daExtensao` de cada uma de `Abridor.variantes()`. Hoje a extensão só manda `conferir`; o `abrir` é do Envio (#150).

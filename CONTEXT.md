@@ -34,6 +34,10 @@ _Avoid_: Keyword (na tela), palavra-chave, nova
 O programa que roda no computador do usuário e leva as frases ao Anki, transformando-as em cartões.
 _Avoid_: Anki Bridge, Bridge, AnkiConnect, serviço residente
 
+**Abridor**:
+O script pequeno que a Conexão com o Anki deixa no computador para a extensão abrir o Anki fechado; a extensão só o chama com a permissão que a pessoa deu em “Abrir o Anki sozinho”.
+_Avoid_: host, native host, launcher
+
 **Envio**:
 Uma remessa de frases de um único idioma ao Anki pela Conexão com o Anki; enviar frases de dois idiomas gera dois envios.
 _Avoid_: Job, lote
