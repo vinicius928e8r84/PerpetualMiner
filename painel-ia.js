@@ -11,6 +11,11 @@
 // e como chega à Conexão: lib/chave-da-openai.js. O que o card lê do storage é `pm_chave_openai`
 // (os 4 últimos), nunca a chave.
 //
+// Com conta, a chave acompanha a conta Google (#154): a nota diz que ela vai junto, e uma chave que
+// chega de outro computador (ou um apagamento) aparece aqui pelo storage. Apagar chave (perigo em
+// contorno) só abre a confirmação Veio; confirmada, a chave sai daqui, da Conexão e, com conta, da nuvem.
+// A cópia da Conexão acompanha cada mudança da chave: o card a confere quando `pm_chave_openai` muda.
+//
 // Os erros (chave recusada, sem crédito, organização não verificada, a OpenAI fora do ar, a Conexão
 // sem responder) atravessam o card, abaixo das duas colunas, e a abertura em negrito diz a qual
 // entrada pertencem. Abaixo de ~620 px de largura do card, as colunas viram linhas.
@@ -21,7 +26,7 @@
 
 (function (raiz) {
   const { textoDaVoz, ChaveDaOpenAI, ConexaoAnki } = raiz;
-  const { mostrarToastDeSucesso, montarAviso } = raiz.Veio;
+  const { mostrarToastDeSucesso, montarAviso, abrirConfirmacao } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
   // Onde a pessoa resolve o que a OpenAI pede (links, não cópia).
@@ -36,6 +41,7 @@
     ultimos4: null,    // null até a primeira leitura do storage; '' sem chave
     copia: null,       // a Conexão tem a cópia da chave? true · false · null (não se sabe: ela não respondeu)
     focarAoLer: false, // o endereço pediu o foco antes de o storage responder
+    comConta: false,   // há uma conta Google: a chave vai junto com ela (#154)
   };
 
   /** Onde o card é desenhado: { corpo, prefixo, trocando, conferindo, erro, digitado }. `digitado` é o que a pessoa colou no campo. */
@@ -45,19 +51,29 @@
 
   function iniciar() {
     configuracoes = montar(porId('cfg-ia-corpo'), { prefixo: 'cfg' });
-    chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null }, dados => {
+    chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null, pm_user_info: null }, dados => {
       estado.ultimos4 = dados[ChaveDaOpenAI.MARCA]?.ultimos4 || '';
+      estado.comConta = Boolean(dados.pm_user_info);
       desenharResumo();
       lugares.forEach(desenhar);
       if (estado.focarAoLer) focarOCampoSeVazio();
     });
     // Outra página (ou o outro lugar do card) guardou a chave: aparece aqui sem recarregar. No meio de uma
     // troca ou de uma conferência o que a pessoa faz não é derrubado.
+    // A chave que chega de outro computador da conta (ou o apagamento dele) chega assim também, e a cópia da
+    // Conexão a acompanha.
     chrome.storage.onChanged.addListener((mudancas, area) => {
-      if (area !== 'local' || !(ChaveDaOpenAI.MARCA in mudancas)) return;
+      if (area !== 'local') return;
+      if ('pm_user_info' in mudancas) {
+        estado.comConta = Boolean(mudancas.pm_user_info.newValue);
+        for (const lugar of lugares) if (!lugar.trocando && !lugar.conferindo) desenhar(lugar);
+      }
+      if (!(ChaveDaOpenAI.MARCA in mudancas)) return;
       estado.ultimos4 = mudancas[ChaveDaOpenAI.MARCA].newValue?.ultimos4 || '';
+      if (!estado.ultimos4) estado.copia = null;
       desenharResumo();
       for (const lugar of lugares) if (!lugar.trocando && !lugar.conferindo) desenhar(lugar);
+      if (conexaoLigada) conferirACopia();
     });
     // Quando a Conexão volta a responder, ela pode estar sem a cópia da chave que a extensão guarda.
     ConexaoAnki.acompanhar(situacao => {
@@ -160,12 +176,15 @@
       porId(idDe(lugar, 'campo')).focus();
     });
     trocar.id = idDe(lugar, 'trocar');
+    // Perigo em contorno: só abre a confirmação (CODING_STANDARDS, regra 3).
+    const apagar = botao('perigo', textoDaVoz('CFG-35.chaveApagar'), () => confirmarApagar(lugar));
+    apagar.id = idDe(lugar, 'apagar');
 
     const linha = elemento('div', 'cfg-linha',
       elemento('div', 'cfg-quem',
         elemento('span', 'cfg-status', ponto, textoDaVoz('CFG-35.chaveSalva')),
         elemento('span', 'cfg-chave-mascarada cfg-chave-mascarada--card', mascarada())),
-      elemento('div', 'cfg-acoes', trocar));
+      elemento('div', 'cfg-acoes', trocar, apagar));
     return colunaDaChave(lugar, linha, ...notasDaChave(lugar, true));
   }
 
@@ -229,7 +248,7 @@
   function notasDaChave(lugar, salva) {
     const notas = [];
     if (salva) {
-      notas.push(elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chaveGuardada')));
+      notas.push(elemento('p', 'cfg-nota', textoDaVoz(estado.comConta ? 'CFG-35.chaveNaConta' : 'CFG-35.chaveSemConta')));
       if (estado.copia !== null) {
         const copia = elemento('p', 'cfg-nota', textoDaVoz(estado.copia ? 'CFG-35.chaveCopiaNaConexao' : 'CFG-35.chaveSemCopia'));
         copia.dataset.copia = estado.copia ? 'tem' : 'falta';
@@ -349,6 +368,34 @@
     lugar.erro = { motivo: resultado.motivo, detalhes: resultado.detalhes };
     desenhar(lugar);
     porId(idDe(lugar, 'campo'))?.focus();
+  }
+
+  /** Apagar chave: a confirmação Veio, com Cancelar no foco inicial; o corpo diz de onde ela sai. */
+  function confirmarApagar(lugar) {
+    abrirConfirmacao({
+      id: idDe(lugar, 'apagar-modal'),
+      titulo: textoDaVoz('CFG-35.apagarTitulo'),
+      corpo: textoDaVoz(estado.comConta ? 'CFG-35.apagarCorpo' : 'CFG-35.apagarCorpoSemConta'),
+      cancelar: textoDaVoz('CFG-35.apagarCancelar'),
+      confirmar: textoDaVoz('CFG-35.apagarConfirmar'),
+      aoConfirmar: () => apagarAChave(lugar),
+    });
+  }
+
+  /** A chave sai daqui e da Conexão (lib/chave-da-openai.js); com conta, o painel.js leva o apagamento à nuvem. */
+  async function apagarAChave(lugar) {
+    await ChaveDaOpenAI.apagar();
+    for (const cada of lugares) {
+      cada.trocando = false;
+      cada.erro = null;
+      cada.digitado = '';
+    }
+    estado.ultimos4 = '';
+    estado.copia = null;
+    desenharResumo();
+    for (const cada of lugares) if (!cada.conferindo) desenhar(cada);
+    porId(idDe(lugar, 'campo'))?.focus();
+    mostrarToastDeSucesso(textoDaVoz('CFG-35.apagarToast'));
   }
 
   /** Tentar de novo: manda a chave que a pessoa tinha colado (ainda no campo). */

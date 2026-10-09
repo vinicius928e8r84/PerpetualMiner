@@ -9,6 +9,8 @@
 // com a conta: com ela, as frases somem de todos os computadores da conta; sem
 // ela, só deste. Sem frases, a entrada fica indisponível (CFG-20). Enquanto o
 // total não chega, a linha fica escondida: nunca um “Nenhuma frase” de mentira.
+// Com uma chave da OpenAI guardada, o modal diz que ela também sai (#154): quem
+// a apaga é o painel.js, pelo lib/chave-da-openai.js.
 //
 // O painel.js conta o que muda e faz o apagamento:
 //
@@ -19,11 +21,19 @@
 // Toda cópia vem do catálogo da Voz.
 
 (function (raiz) {
-  const { textoDaVoz } = raiz;
+  const { textoDaVoz, ChaveDaOpenAI } = raiz;
   const { abrirConfirmacao } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
-  const estado = { n: null, comConta: false };   // n: null até o painel.js contar
+  const estado = { n: null, comConta: false, temChave: false };   // n: null até o painel.js contar
+
+  // A chave da OpenAI só pelos 4 últimos caracteres (`pm_chave_openai`): basta saber se há uma.
+  chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null }, dados => {
+    estado.temChave = Boolean(dados[ChaveDaOpenAI.MARCA]?.ultimos4);
+  });
+  chrome.storage.onChanged.addListener((mudancas, area) => {
+    if (area === 'local' && ChaveDaOpenAI.MARCA in mudancas) estado.temChave = Boolean(mudancas[ChaveDaOpenAI.MARCA].newValue?.ultimos4);
+  });
   let apagarTudo = () => {};
   let partes = null;   // o conteúdo do card, montado uma vez e atualizado no lugar
 
@@ -88,7 +98,10 @@
     abrirConfirmacao({
       id: 'cfg-perigo-modal',
       titulo: n === 1 ? textoDaVoz('CFG-17.tituloUma') : textoDaVoz('CFG-17.titulo', { n }),
-      corpo: textoDaVoz(comConta ? 'CFG-17.corpo' : 'CFG-17.corpoSemConta'),
+      corpo: [
+        textoDaVoz(comConta ? 'CFG-17.corpo' : 'CFG-17.corpoSemConta'),
+        ...(estado.temChave ? [textoDaVoz(comConta ? 'CFG-17.chave' : 'CFG-17.chaveSemConta')] : []),
+      ].join(' '),
       cancelar: textoDaVoz('CFG-17.cancelar'),
       confirmar: textoDaVoz('CFG-17.confirmar', { n }),
       aoConfirmar: () => apagarTudo(),

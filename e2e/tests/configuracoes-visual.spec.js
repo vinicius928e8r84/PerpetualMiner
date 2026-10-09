@@ -213,6 +213,33 @@ test('IA dos cartões aberta, com a chave conferida e a cópia na Conexão', asy
   await expect(page).toHaveScreenshot('ia-conferida.png', { animations: 'disabled' });
 });
 
+// #154: a chave acompanha a conta Google. Também à espera do dono (regra 10): `fixme` e sem PNG, como as de cima.
+test('IA dos cartões com conta: a chave vai junto com a conta Google, com Trocar chave e Apagar chave', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
+  await semearComoNoPrototipo(extensao, fakes, 'uid-ia');
+  await extensao.semearSessao({ uid: 'uid-ia', displayName: 'Vinicius' });
+  await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
+  fakes.anki.guardarChaveNaConexao('9f3a');
+  await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
+  await expect(page.locator('#cfg-ia').getByText('Vai junto com a sua conta Google', { exact: false })).toBeVisible();
+  await expect(page.locator('#cfg-ia').getByText('A Conexão com o Anki tem uma cópia da chave.')).toBeVisible();
+
+  await expect(page).toHaveScreenshot('ia-conferida-com-conta.png', { animations: 'disabled' });
+});
+
+test('o modal de apagar a chave da OpenAI, com conta', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
+  await semearComoNoPrototipo(extensao, fakes, 'uid-ia');
+  await extensao.semearSessao({ uid: 'uid-ia', displayName: 'Vinicius' });
+  await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
+  fakes.anki.guardarChaveNaConexao('9f3a');
+  await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
+  await page.locator('#cfg-ia').getByRole('button', { name: 'Apagar chave' }).click();
+  await expect(page.getByRole('dialog')).toHaveAccessibleName('Apagar a chave da OpenAI?');
+
+  await expect(page).toHaveScreenshot('ia-apagar-modal.png', { animations: 'disabled' });
+});
+
 test('IA dos cartões com a chave recusada: a faixa diz a qual entrada pertence', async ({ page, extensao, fakes }) => {
   test.fixme(true, AGUARDA_O_DONO);
   await semearComoNoPrototipo(extensao, fakes);

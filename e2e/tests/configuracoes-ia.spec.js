@@ -80,7 +80,9 @@ test('colar a chave: a Conexão a confere e guarda a cópia, a tela mostra só a
   await expect(corpo(page).getByText('Chave conferida', { exact: true })).toBeVisible();
   await expect(corpo(page).getByText(MASCARADA)).toBeVisible();
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
-  await expect(corpo(page)).toContainText('Fica neste computador: na extensão e numa cópia da Conexão com o Anki.');
+  // Sem conta, a chave fica neste computador: a tela diz o estado verdadeiro (C8).
+  await expect(corpo(page)).toContainText('Fica neste computador, na extensão e numa cópia da Conexão com o Anki. Com a conta Google, ela vai junto para os seus outros computadores.');
+  await expect(corpo(page)).not.toContainText('vai junto com a sua conta Google');
   await expect(corpo(page)).toContainText('A Conexão com o Anki tem uma cópia da chave.');
   await expect(campo(page)).toHaveCount(0);
   await expect(page.getByText(CHAVE)).toHaveCount(0);
@@ -425,4 +427,139 @@ test('abaixo de ~620 px de largura do card, as colunas viram linhas', async ({ p
   expect(Math.abs(estreita.chatgpt.x - estreita.chave.x)).toBeLessThan(1);
   expect(estreita.chatgpt.y).toBeGreaterThan(estreita.chave.y + estreita.chave.height - 1);
   expect(Math.abs(estreita.chatgpt.width - estreita.chave.width)).toBeLessThan(1);
+});
+
+// ─── A chave acompanha a conta Google (#154) ───────────────────────────────────
+//
+// A chave vive em três lugares: na nuvem da conta (o Firestore falso, `usuarios/{uid}/segredos/openai`), na
+// extensão (o IndexedDB) e na cópia da Conexão de cada computador. Trocar, Apagar e Apagar tudo limpam os três
+// e deixam o tombstone na nuvem, para a cópia velha não voltar. As chaves são de mentira.
+
+const UID = 'uid-da-chave';
+const modal = page => page.getByRole('dialog');
+
+/** Outro computador da conta já deixou esta chave na nuvem, `atrasMs` atrás. */
+const chaveDeOutroComputador = (fakes, chave, atrasMs = 0) =>
+  fakes.google.gravarChaveDaOpenAI(UID, { chave, em: Date.now() - atrasMs });
+
+test('com conta, colar a chave a leva à nuvem da conta, e o card diz que ela vai junto com a conta Google', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: UID });
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
+
+  await colarEConferir(page);
+
+  await expect(corpo(page)).toContainText('Vai junto com a sua conta Google: chega sozinha aos seus outros computadores, na extensão e numa cópia da Conexão com o Anki de cada um.');
+  await expect(corpo(page)).not.toContainText('Fica neste computador');
+  await expect.poll(() => fakes.google.chaveDaOpenAIDe(UID)?.chave).toBe(CHAVE);
+  expect(fakes.google.chaveDaOpenAIDe(UID)).toEqual({ chave: CHAVE, em: expect.any(Number) });
+  expect(fakes.anki.chaveNaConexao()).toBe(CHAVE);
+  expect(await chaveNoBancoDaExtensao(page)).toBe(CHAVE);
+});
+
+test('a chave colada em outro computador da conta chega sozinha: na extensão e na cópia da Conexão daqui', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: UID });
+  chaveDeOutroComputador(fakes, OUTRA_CHAVE, 60_000);
+
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+
+  await expect(card(page).locator('.cfg-resumo')).toHaveText('••••••••wxyz');
+  await expect(corpo(page).getByText('Chave conferida', { exact: true })).toBeVisible();
+  await expect(corpo(page)).toContainText('A Conexão com o Anki tem uma cópia da chave.');
+  await expect(page.getByText(OUTRA_CHAVE)).toHaveCount(0);
+  expect(fakes.anki.chaveNaConexao()).toBe(OUTRA_CHAVE);
+  expect(await chaveNoBancoDaExtensao(page)).toBe(OUTRA_CHAVE);
+  expect(await extensao.lerStorage('pm_chave_openai')).toEqual({ pm_chave_openai: { ultimos4: 'wxyz' } });
+  expect(JSON.stringify(await extensao.lerStorage(null))).not.toContain(OUTRA_CHAVE);
+  expect(fakes.google.chaveDaOpenAIDe(UID).chave).toBe(OUTRA_CHAVE);
+});
+
+test('com conta, Trocar chave troca nos três lugares: a velha sai da nuvem, da extensão e da Conexão', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: UID });
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await colarEConferir(page);
+  await expect.poll(() => fakes.google.chaveDaOpenAIDe(UID)?.chave).toBe(CHAVE);
+
+  await card(page).getByRole('button', { name: 'Trocar chave' }).click();
+  await colarEConferir(page, OUTRA_CHAVE);
+
+  await expect(card(page).locator('.cfg-resumo')).toHaveText('••••••••wxyz');
+  await expect.poll(() => fakes.google.chaveDaOpenAIDe(UID)?.chave).toBe(OUTRA_CHAVE);
+  expect(fakes.anki.chaveNaConexao()).toBe(OUTRA_CHAVE);
+  expect(await chaveNoBancoDaExtensao(page)).toBe(OUTRA_CHAVE);
+});
+
+test('com conta, Apagar chave pede confirmação e tira a chave dos três lugares, deixando o tombstone na nuvem', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: UID });
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await colarEConferir(page);
+  await expect.poll(() => fakes.google.chaveDaOpenAIDe(UID)?.chave).toBe(CHAVE);
+
+  await card(page).getByRole('button', { name: 'Apagar chave' }).click();
+  await expect(modal(page)).toHaveAccessibleName('Apagar a chave da OpenAI?');
+  await expect(modal(page)).toContainText('Ela sai da extensão, da Conexão com o Anki e da sua conta Google, em todos os seus computadores. Para desligar de verdade, revogue a chave na OpenAI.');
+  await expect(modal(page).getByRole('button', { name: 'Cancelar' })).toBeFocused();
+  await modal(page).getByRole('button', { name: 'Cancelar' }).click();
+  await expect(modal(page)).toHaveCount(0);
+  expect(await chaveNoBancoDaExtensao(page)).toBe(CHAVE);
+
+  await card(page).getByRole('button', { name: 'Apagar chave' }).click();
+  await modal(page).getByRole('button', { name: 'Apagar chave' }).click();
+
+  await expect(page.locator('.veio-toast', { hasText: 'Chave da OpenAI apagada' })).toBeVisible();
+  await expect(card(page).locator('.cfg-resumo')).toHaveText('Sem chave');
+  await expect(campo(page)).toHaveValue('');
+  await expect.poll(() => fakes.google.chaveDaOpenAIDe(UID)).toEqual({ apagada: true, em: expect.any(Number) });
+  expect(fakes.anki.chaveNaConexao()).toBeNull();
+  expect(await chaveNoBancoDaExtensao(page)).toBe('');
+  expect(await extensao.lerStorage('pm_chave_openai')).toEqual({});
+});
+
+test('sem conta, Apagar chave tira a chave da extensão e da Conexão, e nada vai à nuvem', async ({ page, extensao, fakes }) => {
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await colarEConferir(page);
+
+  await card(page).getByRole('button', { name: 'Apagar chave' }).click();
+  await expect(modal(page)).toContainText('Ela sai da extensão e da Conexão com o Anki deste computador. Para desligar de verdade, revogue a chave na OpenAI.');
+  await modal(page).getByRole('button', { name: 'Apagar chave' }).click();
+
+  await expect(card(page).locator('.cfg-resumo')).toHaveText('Sem chave');
+  await expect.poll(() => fakes.anki.chaveNaConexao()).toBeNull();
+  expect(await chaveNoBancoDaExtensao(page)).toBe('');
+  expect(await extensao.lerStorage('pm_chave_openai')).toEqual({});
+  expect(fakes.google.requisicoes.filter(r => r.url.includes('segredos'))).toEqual([]);
+});
+
+test('apagada com a Conexão desligada, a cópia dela sai quando ela volta a responder', async ({ page, extensao, fakes }) => {
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await colarEConferir(page);
+  fakes.anki.desligar();
+
+  await card(page).getByRole('button', { name: 'Apagar chave' }).click();
+  await modal(page).getByRole('button', { name: 'Apagar chave' }).click();
+  await expect(card(page).locator('.cfg-resumo')).toHaveText('Sem chave');
+  expect(fakes.anki.chaveNaConexao()).toBe(CHAVE);
+
+  fakes.anki.ligar();
+  await page.reload();
+
+  await expect.poll(() => fakes.anki.chaveNaConexao()).toBeNull();
+  expect(await chaveNoBancoDaExtensao(page)).toBe('');
+});
+
+test('a chave apagada em outro computador da conta sai daqui também, e a cópia velha não volta à nuvem', async ({ page, extensao, fakes }) => {
+  // Este computador tinha a chave (colada antes de entrar na conta); outro computador a apagou depois.
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await colarEConferir(page);
+  await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+  fakes.google.gravarChaveDaOpenAI(UID, { apagada: true, em: Date.now() + 1000 });
+  await extensao.semearSessao({ uid: UID });
+
+  await page.reload();
+
+  await expect(card(page).locator('.cfg-resumo')).toHaveText('Sem chave');
+  await expect.poll(() => fakes.anki.chaveNaConexao()).toBeNull();
+  expect(await chaveNoBancoDaExtensao(page)).toBe('');
+  expect(await extensao.lerStorage('pm_chave_openai')).toEqual({});
+  expect(fakes.google.chaveDaOpenAIDe(UID)).toEqual({ apagada: true, em: expect.any(Number) });
 });

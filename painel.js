@@ -19,7 +19,7 @@ const Perigo = PerpetualMiner.Perigo;
 const Envio = PerpetualMiner.Envio;
 const { SITUACOES } = Conta;
 // A sincronização com a nuvem: o codec, a sessão, o merge e os tombstones (lib/sincronizacao.js).
-const { Sincronizacao } = PerpetualMiner;
+const { Sincronizacao, ChaveDaOpenAI } = PerpetualMiner;
 const { mostrarToastDeSucesso, abrirModal, montarAviso } = PerpetualMiner.Veio;
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -119,6 +119,7 @@ async function inicializarAuth() {
     usuarioLogado = { ...data.pm_user_info };
     conectarNuvem(data.pm_firebase_auth);
     atualizarUIAuth(usuarioLogado);
+    sincronizarAChave();
     await carregarFrasesFirestore();
   } else {
     carregarFrasesLocal();
@@ -200,6 +201,7 @@ async function loginGoogle() {
     });
 
     atualizarUIAuth(usuarioLogado);
+    sincronizarAChave();
 
     // 4. Migração única na primeira vez, depois só carrega
     const { pm_migrated = '' } = await chromeGet({ pm_migrated: '' });
@@ -258,6 +260,27 @@ function conectarNuvem(credenciais) {
   });
   nuvem = Sincronizacao.nuvemHttp({ sessao });
   sincronizacao = novaSincronizacao();
+}
+
+// ─── A chave da OpenAI acompanha a conta (#154) ──────────────────────────────
+//
+// O cofre deste computador é de lib/chave-da-openai.js; a junção com a nuvem (a mudança mais nova vale, o
+// tombstone inclusive) é de lib/sincronizacao.js. Roda ao abrir o painel com conta, ao entrar e a cada
+// mudança da chave aqui (colar, trocar, apagar), uma de cada vez. Uma falha só fica para a próxima vez:
+// a chave daqui continua valendo, e o log leva a mensagem da nuvem, nunca a chave.
+
+let sincronizandoAChave = Promise.resolve();
+
+function sincronizarAChave() {
+  sincronizandoAChave = sincronizandoAChave.then(async () => {
+    if (!nuvem) return;
+    try {
+      await Sincronizacao.criarSincronizacaoDaChave({ nuvem, cofre: ChaveDaOpenAI.cofre }).sincronizar();
+    } catch (err) {
+      console.warn('[Firestore] a chave da OpenAI não sincronizou:', err?.message);
+    }
+  });
+  return sincronizandoAChave;
 }
 
 function desconectarNuvem() {
@@ -468,6 +491,7 @@ function idsSelecionados() {
 
 function setupListeners() {
   Perigo.aoApagarTudo(apagarTudo);
+  ChaveDaOpenAI.aoMudar(sincronizarAChave);
   document.getElementById('btn-export').addEventListener('click', exportarTxt);
   document.getElementById('btn-bulk-edit').addEventListener('click', () => abrirEditarContexto(idsSelecionados()));
   document.getElementById('btn-delete-selected').addEventListener('click', () => pedirParaApagar(idsSelecionados()));
@@ -1183,6 +1207,8 @@ function apagarTudo() {
   Object.keys(keywords).forEach(k => delete keywords[k]);
   selecionadas.clear();
   atualizarContadorSelecao();
+  // A chave da OpenAI também sai (#154): daqui, da Conexão e, com conta, da nuvem, mesmo que ainda não tenha chegado aqui.
+  ChaveDaOpenAI.apagar({ mesmoSemChave: Boolean(usuarioLogado) });
   const naNuvem = sincronizacao.apagarTudo(ids).then(({ ok, erro }) => {
     if (!ok) {
       console.error('[Firestore] apagar tudo falhou:', erro);
