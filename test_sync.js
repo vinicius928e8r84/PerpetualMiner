@@ -8,11 +8,15 @@
  * chrome.storage.sync compartilhado, cada um com o seu chrome.storage.local.
  * A seam é a nuvem: aqui ela é a memória; na extensão e nos e2e, o REST do
  * Firestore (as últimas seções do teste cobrem esse adaptador com um fetch falso).
+ *
+ * A chave da OpenAI que acompanha a conta (#154) tem a sua parte: cada computador tem o seu
+ * cofre (a chave na extensão e a cópia da Conexão dele) e os dois dividem a mesma nuvem.
+ * As chaves aqui são de mentira.
  */
 
 'use strict';
 
-const { criarSincronizacao, criarSessao, nuvemHttp, armazenamentoDoChrome, paraCampos, deCampos,
+const { criarSincronizacao, criarSincronizacaoDaChave, criarSessao, nuvemHttp, armazenamentoDoChrome, paraCampos, deCampos,
   tombstoneFirestore, tombstonesSync, MOTIVO, TTL_DO_TOMBSTONE, PREFIXO_DO_TOMBSTONE } = require('./lib/sincronizacao.js');
 
 // ─── Cores para output ────────────────────────────────────────────────────────
@@ -61,7 +65,8 @@ function areaEmMemoria(dados) {
 // O que a nuvem guarda, compartilhado entre A e B, e o que ela está fazendo de errado.
 let firestore     = {};   // { phraseId: phrase }
 let firestoreTomb = {};   // { phraseId: deletedAt }  (usuarios/{uid}/meta/deleted)
-let nuvemFalha    = {};   // { apagar, gravarFrases, gravarFrase, listar }: true = a nuvem recusa
+let nuvemFalha    = {};   // { apagar, gravarFrases, gravarFrase, listar, chave }: true = a nuvem recusa
+let chaveNaNuvem  = null; // usuarios/{uid}/segredos/openai: { chave, em } ou null (nunca houve chave na conta)
 
 function nuvemEmMemoria(uid = 'uid-teste') {
   const recusar = (qual) => { if (nuvemFalha[qual]) throw new Error(`nuvem fora do ar (${qual})`); };
@@ -73,6 +78,8 @@ function nuvemEmMemoria(uid = 'uid-teste') {
     async apagarFrases(ids) { recusar('apagar'); for (const id of ids) delete firestore[String(id)]; },
     async lerTombstones() { return new Map(Object.entries(firestoreTomb).map(([id, em]) => [id, Number(em)])); },
     async gravarTombstones(ids, apagadaEm) { for (const id of ids) firestoreTomb[String(id)] = apagadaEm; },
+    async lerChaveDaOpenAI() { recusar('chave'); return clone(chaveNaNuvem); },
+    async gravarChaveDaOpenAI(versao) { recusar('chave'); chaveNaNuvem = clone(versao); },
   };
 }
 
@@ -81,8 +88,25 @@ function nuvemEmMemoria(uid = 'uid-teste') {
 let storageSync   = {};   // chrome.storage.sync   — compartilhado entre A e B
 let storageLocalA = {};   // chrome.storage.local do computador A
 let storageLocalB = {};   // chrome.storage.local do computador B
-let computadores  = new Map();   // storage local → { sinc, nuvem }
+let computadores  = new Map();   // storage local → { sinc, nuvem, cofre, sincDaChave }
 let _phraseCounter = 0;
+
+/**
+ * O cofre da chave de um computador, como a extensão o tem (lib/chave-da-openai.js): a chave na extensão,
+ * a hora da última mudança e a cópia da Conexão com o Anki daquele computador.
+ */
+function cofreEmMemoria() {
+  const cofre = {
+    chave: '', em: 0, copiaNaConexao: null,
+    async ler() { return { chave: cofre.chave, em: cofre.em }; },
+    async aplicar({ chave, em }) {
+      cofre.chave = chave;
+      cofre.em = em;
+      cofre.copiaNaConexao = chave || null;
+    },
+  };
+  return cofre;
+}
 
 function ligar(storageLocal, { semConta = false } = {}) {
   const nuvem = semConta ? null : nuvemEmMemoria();
@@ -90,11 +114,13 @@ function ligar(storageLocal, { semConta = false } = {}) {
     nuvem,
     armazenamento: { local: areaEmMemoria(storageLocal), sync: areaEmMemoria(storageSync) },
   });
-  computadores.set(storageLocal, { sinc, nuvem });
+  const cofre = cofreEmMemoria();
+  const sincDaChave = nuvem && criarSincronizacaoDaChave({ nuvem, cofre });
+  computadores.set(storageLocal, { sinc, nuvem, cofre, sincDaChave });
 }
 
 function resetState() {
-  firestore = {}; firestoreTomb = {}; nuvemFalha = {};
+  firestore = {}; firestoreTomb = {}; nuvemFalha = {}; chaveNaNuvem = null;
   storageSync = {}; storageLocalA = {}; storageLocalB = {};
   computadores = new Map();
   _phraseCounter = 0;
@@ -183,6 +209,19 @@ function idNoPendingSync(storage, id) {
   return pm_pending_sync.includes(String(id));
 }
 /** Os ids marcados em pm_del_{id} no chrome.storage.sync. */
+/** A pessoa cola (ou troca) a chave neste computador: a Conexão dele a confere e guarda a cópia. */
+async function colarChave(storage, chave, em) {
+  await de(storage).cofre.aplicar({ chave, em });
+}
+
+/** Apagar a chave, ou Apagar tudo, neste computador: sai daqui e da cópia da Conexão, e fica a hora. */
+async function apagarChave(storage, em) {
+  await de(storage).cofre.aplicar({ chave: '', em });
+}
+
+/** O painel deste computador sincroniza a chave com a nuvem da conta. */
+const sincronizarChave = storage => de(storage).sincDaChave.sincronizar();
+
 async function lerTombstoneSync() {
   const itens = await areaEmMemoria(storageSync).get(null);
   return new Set(Object.keys(itens).filter(k => k.startsWith(PREFIXO_DO_TOMBSTONE)).map(k => k.slice(PREFIXO_DO_TOMBSTONE.length)));
@@ -708,6 +747,119 @@ await (async () => {
   assert(getLocal(storageLocalA, { pm_deleted_ids: [] }).pm_deleted_ids.length === 0, 'e limpou pm_deleted_ids');
 })();
 
+// ═════════════════════════════════════════════════════════════════════════════
+// A CHAVE DA OPENAI QUE ACOMPANHA A CONTA (#154): dois computadores, a mesma nuvem
+// ═════════════════════════════════════════════════════════════════════════════
+
+head('CHAVE 1 — Colada em A, chega sozinha a B: na extensão e na cópia da Conexão de B');
+sep();
+await (async () => {
+  resetState();
+  await colarChave(storageLocalA, 'sk-proj-falsa-do-teste-aaaa', 1000);
+  assert(await sincronizarChave(storageLocalA) === 'subiu', 'A sobe a chave para a nuvem da conta');
+  assert(chaveNaNuvem?.chave === 'sk-proj-falsa-do-teste-aaaa' && chaveNaNuvem.em === 1000, 'a nuvem guarda a chave e a hora');
+
+  assert(await sincronizarChave(storageLocalB) === 'chegou', 'B sincroniza: a chave chegou');
+  const b = de(storageLocalB).cofre;
+  assert(b.chave === 'sk-proj-falsa-do-teste-aaaa' && b.em === 1000, 'B tem a chave na extensão, com a hora de A');
+  assert(b.copiaNaConexao === 'sk-proj-falsa-do-teste-aaaa', 'e a Conexão de B recebeu a cópia');
+  assert(await sincronizarChave(storageLocalB) === null, 'sincronizar de novo não muda nada');
+})();
+
+head('CHAVE 2 — Trocar a chave em B troca em A também: a mais nova vale');
+sep();
+await (async () => {
+  resetState();
+  await colarChave(storageLocalA, 'sk-proj-falsa-do-teste-aaaa', 1000);
+  await sincronizarChave(storageLocalA);
+  await sincronizarChave(storageLocalB);
+  await colarChave(storageLocalB, 'sk-proj-falsa-do-teste-bbbb', 2000);
+  assert(await sincronizarChave(storageLocalB) === 'subiu', 'B sobe a chave nova');
+  assert(await sincronizarChave(storageLocalA) === 'chegou', 'A recebe a chave nova');
+  const a = de(storageLocalA).cofre;
+  assert(a.chave === 'sk-proj-falsa-do-teste-bbbb' && a.copiaNaConexao === 'sk-proj-falsa-do-teste-bbbb', 'em A, a velha saiu da extensão e da Conexão');
+  assert(chaveNaNuvem.chave === 'sk-proj-falsa-do-teste-bbbb', 'a nuvem tem só a nova');
+})();
+
+head('CHAVE 3 — Apagar em A deixa o tombstone: a cópia velha de B sai e não volta pelo sync');
+sep();
+await (async () => {
+  resetState();
+  await colarChave(storageLocalA, 'sk-proj-falsa-do-teste-aaaa', 1000);
+  await sincronizarChave(storageLocalA);
+  await sincronizarChave(storageLocalB);
+  await apagarChave(storageLocalA, 3000);
+  assert(await sincronizarChave(storageLocalA) === 'subiu', 'A sobe o apagamento');
+  assert(chaveNaNuvem.chave === '' && chaveNaNuvem.em === 3000, 'na nuvem fica o tombstone: sem a chave, com a hora');
+
+  assert(await sincronizarChave(storageLocalB) === 'apagada', 'B sincroniza: a chave foi apagada');
+  const b = de(storageLocalB).cofre;
+  assert(b.chave === '' && b.copiaNaConexao === null, 'B não tem mais a chave, nem na extensão nem na Conexão');
+  assert(await sincronizarChave(storageLocalB) === null && chaveNaNuvem.chave === '', 'B não devolve a chave velha à nuvem');
+  assert(await sincronizarChave(storageLocalA) === null && de(storageLocalA).cofre.chave === '', 'e A continua sem ela');
+})();
+
+head('CHAVE 4 — B, que ainda não tinha sincronizado, não ressuscita a chave apagada');
+sep();
+await (async () => {
+  resetState();
+  await colarChave(storageLocalA, 'sk-proj-falsa-do-teste-aaaa', 1000);
+  await colarChave(storageLocalB, 'sk-proj-falsa-do-teste-aaaa', 1000);   // B a recebeu antes, ficou fora do ar
+  await sincronizarChave(storageLocalA);
+  await apagarChave(storageLocalA, 3000);
+  await sincronizarChave(storageLocalA);
+  assert(await sincronizarChave(storageLocalB) === 'apagada' && chaveNaNuvem.chave === '', 'o tombstone vence a cópia mais velha de B');
+})();
+
+head('CHAVE 5 — Uma chave colada depois do apagamento vence o tombstone');
+sep();
+await (async () => {
+  resetState();
+  await colarChave(storageLocalA, 'sk-proj-falsa-do-teste-aaaa', 1000);
+  await sincronizarChave(storageLocalA);
+  await apagarChave(storageLocalA, 3000);
+  await sincronizarChave(storageLocalA);
+  await colarChave(storageLocalB, 'sk-proj-falsa-do-teste-cccc', 4000);
+  assert(await sincronizarChave(storageLocalB) === 'subiu', 'a chave nova de B sobe por cima do tombstone');
+  assert(await sincronizarChave(storageLocalA) === 'chegou' && de(storageLocalA).cofre.chave === 'sk-proj-falsa-do-teste-cccc', 'e chega a A');
+})();
+
+head('CHAVE 6 — Apagar tudo num computador sem a chave apaga a da nuvem');
+sep();
+await (async () => {
+  resetState();
+  await colarChave(storageLocalA, 'sk-proj-falsa-do-teste-aaaa', 1000);
+  await sincronizarChave(storageLocalA);
+  await apagarChave(storageLocalB, 5000);   // Apagar tudo em B, antes de B ter recebido a chave
+  assert(await sincronizarChave(storageLocalB) === 'subiu' && chaveNaNuvem.chave === '', 'o tombstone de B sobe');
+  assert(await sincronizarChave(storageLocalA) === 'apagada' && de(storageLocalA).cofre.copiaNaConexao === null, 'e a chave sai de A e da Conexão de A');
+})();
+
+head('CHAVE 7 — Uma chave de antes do #154 (sem hora) sobe e chega a um computador sem chave');
+sep();
+await (async () => {
+  resetState();
+  await colarChave(storageLocalA, 'sk-proj-falsa-do-teste-velh', 0);
+  assert(await sincronizarChave(storageLocalA) === 'subiu', 'a chave sem hora sobe');
+  assert(await sincronizarChave(storageLocalB) === 'chegou' && de(storageLocalB).cofre.chave === 'sk-proj-falsa-do-teste-velh', 'e chega a B');
+  await colarChave(storageLocalB, 'sk-proj-falsa-do-teste-nova', 2000);
+  await sincronizarChave(storageLocalB);
+  assert(await sincronizarChave(storageLocalA) === 'chegou' && de(storageLocalA).cofre.chave === 'sk-proj-falsa-do-teste-nova', 'qualquer chave com hora vence a sem hora');
+})();
+
+head('CHAVE 8 — Sem chave em lugar nenhum, nada sobe; com a nuvem fora do ar, nada muda aqui');
+sep();
+await (async () => {
+  resetState();
+  assert(await sincronizarChave(storageLocalA) === null && chaveNaNuvem === null, 'nenhum documento de chave é criado à toa');
+  await colarChave(storageLocalA, 'sk-proj-falsa-do-teste-aaaa', 1000);
+  nuvemFalha.chave = true;
+  const [r] = await Promise.allSettled([sincronizarChave(storageLocalA)]);
+  nuvemFalha.chave = false;
+  assert(r.status === 'rejected' && de(storageLocalA).cofre.chave === 'sk-proj-falsa-do-teste-aaaa', 'a falha da nuvem é devolvida e a chave daqui fica');
+  assert(await sincronizarChave(storageLocalA) === 'subiu', 'na próxima vez, sobe');
+})();
+
 head('CENÁRIO 27 — Subir frases de uma vez: tira da fila de retry; a falha é devolvida');
 sep();
 await (async () => {
@@ -906,6 +1058,8 @@ await (async () => {
     ['apagar frases', () => b.nuvem.apagarFrases(['1'])],
     ['ler tombstones', () => b.nuvem.lerTombstones()],
     ['gravar tombstones', () => b.nuvem.gravarTombstones(['1'], 1000)],
+    ['ler a chave', () => b.nuvem.lerChaveDaOpenAI()],
+    ['gravar a chave', () => b.nuvem.gravarChaveDaOpenAI({ chave: '', em: 1 })],
   ];
   for (const [nome, pedir] of pedidosRevogados) {
     const [r] = await Promise.allSettled([pedir()]);
@@ -950,6 +1104,27 @@ await (async () => {
   const [semRenovar] = await Promise.allSettled([token]);
   assert(semRenovar.status === 'rejected' && semRenovar.reason?.motivo === MOTIVO.EXPIROU && renovadas.length === 0,
     'revogar durante a leitura da resposta também impede aoRenovar');
+})();
+
+head('HTTP 11 — A chave da OpenAI: um documento em usuarios/{uid}/segredos/openai; o tombstone não leva a chave');
+sep();
+await (async () => {
+  const docs = {};
+  const { nuvem, pedidos } = nuvemDeTeste((url, opcoes) => {
+    const caminho = url.replace(`${DOCS}/`, '');
+    if (opcoes.method === 'PATCH') { docs[caminho] = JSON.parse(opcoes.body).fields; return { corpo: {} }; }
+    return docs[caminho] ? { corpo: { fields: docs[caminho] } } : { status: 404, corpo: { error: { status: 'NOT_FOUND', message: 'NOT_FOUND' } } };
+  });
+  assert(await nuvem.lerChaveDaOpenAI() === null, 'sem documento (404): a conta nunca teve chave');
+  await nuvem.gravarChaveDaOpenAI({ chave: 'sk-proj-falsa-do-teste-aaaa', em: 1000 });
+  assert(pedidos[1].metodo === 'PATCH' && pedidos[1].url === `${DOCS}/usuarios/u1/segredos/openai`, 'PATCH do documento inteiro, sem máscara');
+  const lida = await nuvem.lerChaveDaOpenAI();
+  assert(lida.chave === 'sk-proj-falsa-do-teste-aaaa' && lida.em === 1000, 'lê a chave e a hora');
+  await nuvem.gravarChaveDaOpenAI({ chave: '', em: 2000 });
+  const tombstone = pedidos[3].corpo.fields;
+  assert(!('chave' in tombstone) && tombstone.apagada.booleanValue === true && tombstone.em.integerValue === '2000', 'o tombstone é { apagada, em }, sem campo de chave');
+  const apagada = await nuvem.lerChaveDaOpenAI();
+  assert(apagada.chave === '' && apagada.em === 2000, 'lido de volta: sem chave, com a hora');
 })();
 
 // ─── Resultado final ──────────────────────────────────────────────────────────
