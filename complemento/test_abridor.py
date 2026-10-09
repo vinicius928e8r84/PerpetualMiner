@@ -172,6 +172,13 @@ class NoMac(unittest.TestCase):
         conversar(script, {"acao": "abrir"})
         self.assertEqual(self.pastas.open.recebeu(), ["-a", self.pastas.app, "--args", "-p", perfil])
 
+    def test_um_caminho_do_anki_com_a_marca_do_perfil_chega_inteiro_ao_open(self):
+        app = os.path.join(self._raiz.name, "@PERFIL@", "Anki.app")
+        os.makedirs(app)
+        abridor_do_mac(self.pastas, programa=app).escrever("Usuário 1")
+        conversar(os.path.join(self.pastas.abridor, "abrir-o-anki.sh"), {"acao": "abrir"})
+        self.assertEqual(self.pastas.open.recebeu(), ["-a", app, "--args", "-p", "Usuário 1"])
+
     def test_sem_perfil_anotado_abre_o_anki_sem_escolher_perfil(self):
         script = self.escrever(None)
         conversar(script, {"acao": "abrir"})
@@ -295,6 +302,12 @@ class NoWindows(unittest.TestCase):
         perfil = "Ana's ‘casa’ $env:PATH"
         self.escrever(perfil)
         self.assertEqual(self.valor_do_ps1("perfil"), perfil)
+
+    def test_um_caminho_do_anki_com_a_marca_do_perfil_nao_deixa_o_perfil_virar_codigo(self):
+        caminho = r"C:\@PERFIL@\Anki\anki.exe"
+        perfil = "';calc;'"
+        self.escrever(perfil, programa=caminho)
+        self.assertEqual((self.valor_do_ps1("anki"), self.valor_do_ps1("perfil")), (caminho, perfil))
 
     def test_sem_perfil_anotado_o_ps1_nao_escolhe_perfil(self):
         self.escrever(None)

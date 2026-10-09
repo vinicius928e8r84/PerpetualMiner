@@ -6,6 +6,9 @@ chama por `chrome.runtime.sendNativeMessage` (a permissão `nativeMessaging` é 
 Abrir o Anki sozinho), e nada fica ligado em segundo plano: o navegador roda o script, ele responde uma
 vez e sai.
 
+O perfil é o do último perfil aberto neste Anki (reescrito a cada `profile_did_open`; ao carregar, nenhum, e o
+script abre o Anki sem `-p`). O perfil fixo da primeira conexão (história 19 do #138) é de outro ticket, e troca isto.
+
 O script só sabe duas coisas, pelas mensagens de `contrato/exemplos.json` › `abridor`:
 
 - `conferir`: responde se o Anki está no lugar anotado (`{"achou": …}`), sem abrir nem fechar nada;
@@ -17,7 +20,8 @@ desativado (#102) não são deste arquivo.
 Onde se registra:
 
 - **Mac**: o manifesto do host na pasta de hosts do Chrome do usuário
-  (`~/Library/Application Support/Google/Chrome/NativeMessagingHosts`); o script fica em `user_files/abridor`.
+  (`~/Library/Application Support/Google/Chrome/NativeMessagingHosts`); o script fica em `user_files/abridor`. Só o
+  Chrome: o critério do #147 pede o Opera no Windows, e onde o Opera do Mac procura não foi conferido.
 - **Windows**: o script, o `.ps1` e o manifesto em `user_files/abridor`, e o caminho do manifesto no valor
   padrão de `HKEY_CURRENT_USER\\Software\\Google\\Chrome\\NativeMessagingHosts\\<host>`. O Opera procura na
   chave do Chrome (a ajuda do Opera, “Passing Messages in Extensions”): o Opera tem a sua entrada em
@@ -31,6 +35,7 @@ import json
 import ntpath
 import os
 import posixpath
+import re
 import shlex
 import tempfile
 
@@ -205,18 +210,25 @@ esac
 """
 
 
+def _preencher(modelo, valores):
+    """Troca cada `@NOME@` do modelo numa passada só: um valor que traz `@PERFIL@` (num caminho, num perfil) nunca é trocado de novo."""
+    return re.sub(r"@([A-Z]+)@", lambda marca: valores[marca.group(1)], modelo)
+
+
 def _script_do_mac(aplicativo, perfil, abrir_com):
-    return (
-        _MODELO_DO_MAC.replace("@ANKI@", shlex.quote(aplicativo))
-        .replace("@PERFIL@", shlex.quote(perfil or ""))
-        .replace("@ABRIR@", shlex.quote(abrir_com))
-    )
+    return _preencher(_MODELO_DO_MAC, {
+        "ANKI": shlex.quote(aplicativo),
+        "PERFIL": shlex.quote(perfil or ""),
+        "ABRIR": shlex.quote(abrir_com),
+    })
 
 
 # ─── O script do Windows ───────────────────────────────────────────────────────
 
 # O `.bat` é o que o Chrome roda (pelo cmd.exe). Ele só chama o PowerShell do próprio Windows, pelo caminho
 # completo, com o `.ps1` que está ao lado: a conversa do Native Messaging tem bytes que o cmd não lê.
+# `-ExecutionPolicy Bypass` vale só para este processo: a política padrão do Windows (Restricted) não roda nenhum
+# `.ps1`, nem o nosso. Uma política de grupo da máquina ainda vence, e então o passo diz que o abridor não respondeu.
 # Só ASCII: o cmd lê o `.bat` na página de código do console, e os caminhos com acento ficam no `.ps1`.
 _BAT = "\r\n".join([
     "@echo off",
@@ -288,8 +300,7 @@ def _texto_do_powershell(texto):
 
 
 def _ps1(programa, perfil):
-    return (
-        _MODELO_DO_PS1.replace("@ANKI@", _texto_do_powershell(programa))
-        .replace("@PERFIL@", "$null" if perfil is None else _texto_do_powershell(perfil))
-        .replace("\n", "\r\n")
-    )
+    return _preencher(_MODELO_DO_PS1, {
+        "ANKI": _texto_do_powershell(programa),
+        "PERFIL": "$null" if perfil is None else _texto_do_powershell(perfil),
+    }).replace("\n", "\r\n")

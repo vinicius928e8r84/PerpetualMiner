@@ -100,6 +100,7 @@
     agoraNao: false,      // `pm_abridor.agoraNao`, como está guardado
     recusada: false,      // o Chrome não deu a permissão no último pedido
     iniciado: false,
+    lendoAPermissao: false, // a Conexão ligou e a extensão ainda pergunta ao Chrome se tem a permissão
     ouvintes: new Set(),
   };
 
@@ -115,7 +116,8 @@
   function iniciarOAbridor() {
     if (abridor.iniciado) return;
     abridor.iniciado = true;
-    Abridor.lerAgoraNao().then(agoraNao => mudarOAbridor({ agoraNao }));
+    // Sem a leitura, o passo fica como se nada tivesse sido dito: a pessoa ainda pode responder.
+    Abridor.lerAgoraNao().then(agoraNao => mudarOAbridor({ agoraNao }), () => {});
     chrome.storage.onChanged.addListener((mudancas, area) => {
       if (area === 'local' && 'pm_abridor' in mudancas) mudarOAbridor({ agoraNao: mudancas.pm_abridor.newValue?.agoraNao === true });
     });
@@ -123,9 +125,12 @@
 
   /** A Conexão respondeu: com a permissão já dada, confere sem clique; sem ela, o passo pede. Uma vez por página. */
   async function aoLigarAConexao() {
-    if (abridor.fase !== FASE.ANTES) return;
-    mudarOAbridor({ fase: FASE.PROCURANDO });
-    if (await Abridor.temPermissao()) conferirOAbridor();
+    if (abridor.fase !== FASE.ANTES || abridor.lendoAPermissao) return;
+    // C8: “Procurando o Anki…” só quando a conversa sai de verdade; até o Chrome dizer da permissão, o bloco espera.
+    abridor.lendoAPermissao = true;
+    const temPermissao = await Abridor.temPermissao().catch(() => false);
+    abridor.lendoAPermissao = false;
+    if (temPermissao) conferirOAbridor();
     else mudarOAbridor({ fase: FASE.PEDIR });
   }
 
