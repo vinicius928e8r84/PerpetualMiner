@@ -2003,5 +2003,77 @@
         }
       }
     }
-  ]
+  ],
+  "abridor": {
+    "host": "com.perpetualminer.abridor",
+    "exemplos": [
+      {
+        "nome": "conferir com o Anki no lugar que a Conexão anotou",
+        "daExtensao": true,
+        "contexto": {
+          "anki": "no_lugar"
+        },
+        "mensagem": {
+          "acao": "conferir"
+        },
+        "resposta": {
+          "achou": true
+        }
+      },
+      {
+        "nome": "conferir com o Anki fora do lugar que a Conexão anotou",
+        "daExtensao": true,
+        "contexto": {
+          "anki": "sumiu"
+        },
+        "mensagem": {
+          "acao": "conferir"
+        },
+        "resposta": {
+          "achou": false
+        }
+      },
+      {
+        "nome": "abrir o Anki no perfil anotado",
+        "daExtensao": false,
+        "contexto": {
+          "anki": "no_lugar"
+        },
+        "mensagem": {
+          "acao": "abrir"
+        },
+        "resposta": {
+          "achou": true,
+          "abriu": true
+        }
+      },
+      {
+        "nome": "abrir sem o Anki no lugar",
+        "daExtensao": false,
+        "contexto": {
+          "anki": "sumiu"
+        },
+        "mensagem": {
+          "acao": "abrir"
+        },
+        "resposta": {
+          "achou": false,
+          "abriu": false
+        }
+      },
+      {
+        "nome": "uma ação que o abridor não conhece",
+        "daExtensao": false,
+        "contexto": {
+          "anki": "no_lugar"
+        },
+        "mensagem": {
+          "acao": "fechar"
+        },
+        "resposta": {
+          "erro": "acao_desconhecida"
+        }
+      }
+    ]
+  }
 }

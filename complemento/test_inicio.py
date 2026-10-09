@@ -16,6 +16,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import configuracao, inicio, item_de_login  # noqa: E402
+from complemento.test_abridor import Pastas, abridor_do_mac, conversar  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
 
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
@@ -135,6 +136,66 @@ class AoCarregarNoAnki(unittest.TestCase):
                 parar(conexao)
             escritos = os.listdir(agentes)
         self.assertEqual((status, escritos), (200, ["com.perpetualminer.abrir-o-anki.plist"]))
+
+    @unittest.skipIf(os.name == "nt", "o script do Mac roda num sh")
+    def test_ao_carregar_escreve_o_abridor_e_o_registra_para_o_chrome(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            pastas = Pastas(raiz)
+            conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: None, porta=0, abridor=abridor_do_mac(pastas))
+            parar(conexao)
+            registrados = os.listdir(pastas.hosts_do_chrome)
+            resposta = conversar(os.path.join(pastas.abridor, "abrir-o-anki.sh"), {"acao": "conferir"})
+        self.assertEqual((registrados, resposta), (["com.perpetualminer.abridor.json"], {"achou": True}))
+
+    @unittest.skipIf(os.name == "nt", "o script do Mac roda num sh")
+    def test_quando_um_perfil_abre_o_abridor_passa_a_abrir_o_anki_nesse_perfil(self):
+        ganchos = []
+        perfil = {"aberto": None}
+        with tempfile.TemporaryDirectory() as raiz:
+            pastas = Pastas(raiz)
+            conexao = inicio.iniciar(
+                os.path.join(raiz, "complemento"), lambda: perfil["aberto"], porta=0,
+                abridor=abridor_do_mac(pastas), ao_abrir_o_perfil=ganchos.append,
+            )
+            parar(conexao)
+            perfil["aberto"] = "Maria"
+            for gancho in ganchos:
+                gancho()
+            conversar(os.path.join(pastas.abridor, "abrir-o-anki.sh"), {"acao": "abrir"})
+            recebeu = pastas.open.recebeu()
+        self.assertEqual(recebeu, ["-a", pastas.app, "--args", "-p", "Maria"])
+
+    def test_sem_saber_onde_o_anki_esta_a_conexao_sobe_assim_mesmo_e_o_log_diz_por_que_nao_ha_abridor(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            pastas = Pastas(raiz)
+            pasta = os.path.join(raiz, "complemento")
+            erro = io.StringIO()
+            with contextlib.redirect_stderr(erro):
+                conexao = inicio.iniciar(pasta, lambda: None, porta=0, abridor=abridor_do_mac(pastas, programa=""))
+                try:
+                    status, _ = saude(conexao.porta)
+                finally:
+                    parar(conexao)
+            with open(os.path.join(pasta, "user_files", "logs", "complemento.log"), encoding="utf-8") as arquivo:
+                registrado = arquivo.read()
+            registrou = os.path.exists(pastas.hosts_do_chrome)
+        self.assertEqual((status, registrou, erro.getvalue()), (200, False, ""))
+        self.assertIn("O abridor não foi escrito", registrado)
+
+    def test_um_gancho_de_perfil_que_falha_ao_registrar_nao_derruba_a_conexao(self):
+        def gancho_quebrado(_):
+            raise ImportError("sem aqt")
+
+        with tempfile.TemporaryDirectory() as raiz:
+            conexao = inicio.iniciar(
+                os.path.join(raiz, "complemento"), lambda: None, porta=0,
+                abridor=abridor_do_mac(Pastas(raiz)), ao_abrir_o_perfil=gancho_quebrado,
+            )
+            try:
+                status, _ = saude(conexao.porta)
+            finally:
+                parar(conexao)
+        self.assertEqual(status, 200)
 
     def test_com_a_porta_ocupada_o_complemento_fica_quieto_e_registra_o_motivo(self):
         ocupante = socket.socket()
