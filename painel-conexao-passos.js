@@ -53,10 +53,13 @@
 // upload); quem o publicar define esse valor em `lib/` e nada mais muda aqui.
 
 (function (raiz) {
+  // `esperaAConexao`: o passo não enxerga nada antes da Conexão responder, então o status dele
+  // espera em vez de dizer “desligada” (o Anki não é lido antes dela: nunca diz “não encontrado”).
+  // Um passo novo diz isso de si mesmo, em vez de a regra listar quem está de fora.
   const PASSOS = [
-    { id: 'ter', titulo: 'ONB-16.passo1Titulo', texto: 'ONB-16.passo1Texto' },
-    { id: 'colocar', titulo: 'ONB-16.passo2Titulo', texto: 'ONB-16.passo2Texto' },
-    { id: 'reiniciar', titulo: 'ONB-16.passo3Titulo', texto: 'ONB-16.passo3Texto' },
+    { id: 'ter', titulo: 'ONB-16.passo1Titulo', texto: 'ONB-16.passo1Texto', esperaAConexao: true },
+    { id: 'colocar', titulo: 'ONB-16.passo2Titulo', texto: 'ONB-16.passo2Texto', esperaAConexao: true },
+    { id: 'reiniciar', titulo: 'ONB-16.passo3Titulo', texto: 'ONB-16.passo3Texto', esperaAConexao: false },
   ];
   const PASSO_DA_PERGUNTA = 'ter';
   const PASSO_DO_ARQUIVO = 'colocar';
@@ -160,8 +163,8 @@
         aoUsar: () => chrome.tabs.create({ url: SITE_DO_ANKI }),
       },
     });
-    const respostas = elemento('div', 'pc-anki__respostas', tenho, naoTenho);
-    const oTer = elemento('div', 'pc-anki', respostas, avisoDoAnki);
+    const respostas = elemento('div', 'pc-pergunta__respostas', tenho, naoTenho);
+    const aPergunta = elemento('div', 'pc-pergunta', respostas, avisoDoAnki);
 
     const baixar = linkDoArquivo(`veio-botao ${destaque}`, textoDaVoz('ONB-16.baixar'));
     baixar.addEventListener('click', () => { if (estado.esperandoDesde === null) estado.esperandoDesde = Date.now(); });
@@ -196,7 +199,7 @@
       elemento('p', 'pc-sem-resposta__texto', textoDaVoz('ONB-16.semResposta')), checklist, baixarDeNovo);
     semResposta.hidden = true;
 
-    const controle = elemento('div', 'pc-controle', oTer, doArquivo, conexao, semResposta);
+    const controle = elemento('div', 'pc-controle', aPergunta, doArquivo, conexao, semResposta);
 
     const voltar = elemento('button', 'veio-botao veio-botao--contorno', textoDaVoz('ONB-04.voltar'));
     voltar.id = id('voltar');
@@ -273,15 +276,15 @@
         : `${textoDaVoz('ONB-16.passos')} · ${textoDaVoz('ONB-03.passo', { n: aberto + 1, total: PASSOS.length })}`;
       titulo.textContent = pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA) : textoDaVoz(passoDoCard.titulo);
       texto.textContent = pronto ? textoDaVoz('ONB-16.prontoApoio') : textoDaVoz(passoDoCard.texto);
-      oTer.hidden = pronto || passoDoCard.id !== PASSO_DA_PERGUNTA;
-      // O aviso do Anki fica enquanto a pessoa disse que não tem o Anki e este passo está aberto.
-      avisoDoAnki.hidden = !estado.semOAnki || pronto || passoDoCard.id !== PASSO_DA_PERGUNTA;
+      aPergunta.hidden = pronto || passoDoCard.id !== PASSO_DA_PERGUNTA;
+      // Dentro da pergunta, o aviso do Anki fica enquanto a pessoa disse que ainda não o tem.
+      avisoDoAnki.hidden = !estado.semOAnki;
       doArquivo.hidden = pronto || passoDoCard.id !== PASSO_DO_ARQUIVO;
 
       // O status é uma região que anuncia a mudança: o ponto e o texto trocam, ela fica. Nos passos
-      // que não enxergam nada antes da Conexão (a pergunta e o arquivo), enquanto ela não respondeu,
-      // ele espera (o Anki não é lido antes dela: nunca diz “não encontrado”).
-      const esperando = !pronto && passoDoCard.id !== PASSO_DO_TENTAR && situacao === CONEXAO.DESLIGADA;
+      // que não enxergam nada antes da Conexão (`esperaAConexao`), enquanto ela não respondeu, ele
+      // espera (o Anki não é lido antes dela: nunca diz “não encontrado”).
+      const esperando = !pronto && passoDoCard.esperaAConexao && situacao === CONEXAO.DESLIGADA;
       status.classList.toggle('pc-status--espera', esperando);
       const mostrada = pronto && !conectando ? CONEXAO.LIGADA : exibida;
       ConexaoNaTela.pintarPonto(ponto, esperando ? '' : mostrada);

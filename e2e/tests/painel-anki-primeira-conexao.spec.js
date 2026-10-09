@@ -60,7 +60,7 @@ test('nunca conectada: abre no passo da pergunta, com os dois quadros e a F1 em 
 
   await expect(page.getByText(F1)).toBeVisible();
   // A faixa F1 é um aviso: entra com a animação do componente (e fica estática com movimento reduzido).
-  await expect(page.locator('#shell-faixa-conexao')).toHaveCSS('animation-name', 'veio-aviso-entra');
+  await expect(page.locator('#shell-faixa-conexao')).toHaveCSS('animation-name', 'veio-entra');
   await expect(card(page)).toBeVisible();
   await expect(card(page)).toContainText('A Conexão com o Anki fica dentro do Anki, neste computador, e é ela que cria os cartões.');
   await expect(abas(page)).toBeHidden();
@@ -133,8 +133,9 @@ test('“Ainda não tenho o Anki” traz o aviso do Anki, que entra animado; diz
   const aviso = card(page).locator('.veio-aviso');
   await expect(aviso).toBeVisible();
   await expect(aviso).toContainText('O Anki é grátis e roda neste computador. Baixe-o no site dele, instale e abra-o; depois siga para pôr a Conexão.');
-  // A entrada é a animação do aviso, da Base Veio (e estática com movimento reduzido: o teste do fim confere).
-  await expect(aviso).toHaveCSS('animation-name', 'veio-aviso-entra');
+  // A entrada é o passo curto que o aviso compartilha com o toast, da Base Veio (e um quadro parado
+  // com movimento reduzido: o teste do fim confere).
+  await expect(aviso).toHaveCSS('animation-name', 'veio-entra');
 
   // A ação do aviso abre o site do Anki numa aba nova.
   const [aba] = await Promise.all([
@@ -152,6 +153,60 @@ test('“Ainda não tenho o Anki” traz o aviso do Anki, que entra animado; diz
   // De volta à pergunta, o aviso não volta sozinho: quem disse que tem, tem.
   await pergunta(page).click();
   await expect(card(page).locator('.veio-aviso')).toBeHidden();
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
+});
+
+test('o aviso do Anki é da pergunta: não vaza para os outros passos, e uma conferência não o apaga', async ({ page, extensao, fakes }) => {
+  await pararRelogio(page);
+  await abrir(page, extensao);
+  await expect(card(page)).toBeVisible();
+
+  await naoTenhoOAnki(page).click();
+  await expect(card(page).locator('.veio-aviso')).toBeVisible();
+
+  // Andando para os outros dois passos, o aviso sai da tela junto com as respostas.
+  await card(page).getByRole('button', { name: 'Continuar' }).click();
+  await expect(tituloDoPasso(page)).toHaveText('Pôr a Conexão no Anki');
+  await expect(card(page).locator('.veio-aviso')).toBeHidden();
+  await expect(tenhoOAnki(page)).toBeHidden();
+  await card(page).getByRole('button', { name: 'Continuar' }).click();
+  await expect(tituloDoPasso(page)).toHaveText('Reiniciar o Anki');
+  await expect(card(page).locator('.veio-aviso')).toBeHidden();
+
+  // Voltando à pergunta, ele está lá: a resposta é da pessoa, não do passo aberto.
+  await pergunta(page).click();
+  await expect(card(page).locator('.veio-aviso')).toBeVisible();
+
+  // A conferência de 15 s redesenha o card; sem resposta da Conexão, o aviso continua.
+  await page.clock.runFor(15_000);
+  await expect.poll(() => pedidosDeHealth(fakes).length).toBeGreaterThan(1);
+  await expect(card(page).locator('.veio-aviso')).toBeVisible();
+  await expect(status(page)).toHaveText('Esperando a Conexão');
+
+  // E quando a Conexão responde, o card vira o Pronto: a pergunta inteira sai, aviso incluído.
+  fakes.anki.ligar();
+  await page.clock.runFor(15_000);
+  await expect(pronto(page)).toBeVisible();
+  await expect(card(page).locator('.veio-aviso')).toBeHidden();
+});
+
+test('antes da Conexão, o mesmo silêncio nos dois passos que não leem o Anki', async ({ page, extensao }) => {
+  await abrir(page, extensao);
+  await expect(card(page)).toBeVisible();
+
+  // A pergunta e o passo do arquivo não enxergam o Anki: os dois esperam, sem dizer “desligada”
+  // nem “não encontrado” — é o mesmo silêncio para não instalado, fechado e aberto sem a Conexão.
+  for (const passo of ['Você já tem o Anki?', 'Pôr a Conexão no Anki']) {
+    await itemDaLista(page, passo).click();
+    await expect(tituloDoPasso(page)).toHaveText(passo);
+    await expect(status(page)).toHaveText('Esperando a Conexão');
+    await expect(page.locator('#apv-ponto')).toHaveAttribute('data-estado', '');
+    await expect(card(page)).not.toContainText('desligada');
+  }
+
+  // Só o passo de reiniciar fala da Conexão, porque é o que depende dela.
+  await itemDaLista(page, 'Reiniciar o Anki').click();
+  await expect(status(page)).toHaveText('Conexão com o Anki: desligada');
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
@@ -723,10 +778,12 @@ test('o foco é visível na lista e nos botões, e piscar e pulsar ficam estáti
   // O ponto que pisca da linha da conferência dura 1 ms, uma volta só.
   await expect(page.locator('.apv-confere .anki-ponto')).toHaveCSS('animation-duration', '0.001s');
 
-  // A entrada do aviso do Anki também: existe, e dura 1 ms com movimento reduzido.
+  // O aviso do Anki entra num quadro parado: a Base Veio apaga a entrada do aviso, como a do toast.
   await naoTenhoOAnki(page).click();
   await expect(card(page).locator('.veio-aviso')).toBeVisible();
-  await expect(card(page).locator('.veio-aviso')).toHaveCSS('animation-duration', '0.001s');
+  await expect(card(page).locator('.veio-aviso')).toHaveCSS('animation-name', 'none');
+  // A faixa F1 é o mesmo aviso, e para parada do mesmo jeito.
+  await expect(page.locator('#shell-faixa-conexao')).toHaveCSS('animation-name', 'none');
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 

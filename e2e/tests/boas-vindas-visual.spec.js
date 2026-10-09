@@ -18,7 +18,8 @@
 const path = require('path');
 const { test, expect } = require('../fixtures');
 
-// #145: o passo 4 ganhou os passos do arquivo (sem terminal). Os três testes do passo 4 `test.fixme` são PROPOSTAS de
+// #145: o passo 4 ganhou os passos do arquivo (sem terminal); #146 pôs a pergunta “Você já tem o Anki?” na frente
+// deles, com o aviso do Anki. Os testes do passo 4 marcados `test.fixme` são PROPOSTAS de
 // referência, não referências: o dono ainda não aprovou o novo visual (CODING_STANDARDS regra 10), então as imagens novas
 // não estão na árvore e as antigas do passo 4 ficam sem uso. Elas estão no commit 59d3d04
 // (e2e/tests/boas-vindas-visual.spec.js-snapshots/passo-4-*-linux.png). Aprovando: tirar o `fixme` e
@@ -94,9 +95,24 @@ test('passo 3 com a conta: o nome e Sair da conta', async ({ page, extensao }) =
   await foto(page, 'passo-3-com-conta.png');
 });
 
-test.fixme('passo 4 com a Conexão desligada: pôr a Conexão no Anki, com o arquivo e o Detalhes', async ({ page, extensao }) => {
+test.fixme('passo 4 com a Conexão desligada: a pergunta “Você já tem o Anki?”, com as duas respostas', async ({ page, extensao }) => {
   await abrir(page, extensao, 'anki');
   await foto(page, 'passo-4-desligada.png');
+});
+
+// #146: a pergunta abre o passo 4, então o arquivo e o aviso do Anki são telas próprias.
+test.fixme('passo 4 no passo do arquivo: pôr a Conexão no Anki, com o arquivo e o Detalhes', async ({ page, extensao }) => {
+  await abrir(page, extensao, 'anki');
+  await page.locator('.bv-card').getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
+  await expect(page.locator('.bv-card').getByRole('link', { name: 'Baixar a Conexão com o Anki' })).toBeVisible();
+  await foto(page, 'passo-4-arquivo.png');
+});
+
+test.fixme('passo 4 com “Ainda não tenho o Anki”: o aviso do Anki sob as respostas', async ({ page, extensao }) => {
+  await abrir(page, extensao, 'anki');
+  await page.locator('.bv-card').getByRole('button', { name: 'Ainda não tenho o Anki' }).click();
+  await expect(page.locator('.bv-card').locator('.veio-aviso')).toBeVisible();
+  await foto(page, 'passo-4-aviso-do-anki.png');
 });
 
 test.fixme('passo 4, dois minutos sem resposta: reiniciar o Anki com o checklist e Baixar de novo', async ({ page, extensao }) => {

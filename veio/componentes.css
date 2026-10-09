@@ -776,7 +776,7 @@ select.veio-campo {
   font-weight: 600;
   box-shadow: var(--veio-sombra);
   pointer-events: auto;
-  animation: veio-toast-entra var(--veio-transicao) ease-out;
+  animation: veio-entra var(--veio-transicao) ease-out;
 }
 
 .veio-toast__ponto {
@@ -787,7 +787,9 @@ select.veio-campo {
   background: var(--veio-success);
 }
 
-@keyframes veio-toast-entra {
+/* O passo curto com que um nó entra na tela, uma vez só: o toast e o aviso o
+   compartilham, para os dois surgirem do mesmo jeito. */
+@keyframes veio-entra {
   from { opacity: 0; transform: translateY(6px); }
 }
 
@@ -807,11 +809,7 @@ select.veio-campo {
   font-size: var(--veio-tam-corpo);
   /* Entra quando aparece (o `hidden` sai, o nó entra): o mesmo passo curto do
      toast, para o aviso não surgir de repente no meio do que a pessoa lia. */
-  animation: veio-aviso-entra var(--veio-transicao) ease-out;
-}
-
-@keyframes veio-aviso-entra {
-  from { opacity: 0; transform: translateY(6px); }
+  animation: veio-entra var(--veio-transicao) ease-out;
 }
 
 .veio-aviso__texto {
@@ -1120,10 +1118,10 @@ select.veio-campo {
 }
 
 /* ── Movimento reduzido ───────────────────────────────────────────────────
-   O brilho do esqueleto, a entrada do toast e o ponto do selo “Lendo…” são
-   sinais de estado: com movimento reduzido eles aparecem parados, e o
-   conteúdo continua legível. (tokens.css já encurta toda animação; aqui elas
-   somem de vez.) */
+   O brilho do esqueleto, a entrada do toast e do aviso e o ponto do selo
+   “Lendo…” são sinais de estado: com movimento reduzido eles aparecem
+   parados, e o conteúdo continua legível. (tokens.css já encurta toda
+   animação; aqui elas somem de vez.) */
 
 @media (prefers-reduced-motion: reduce) {
   .veio-esqueleto {
@@ -1132,6 +1130,7 @@ select.veio-campo {
   }
 
   .veio-toast,
+  .veio-aviso,
   .veio-selo--lendo .veio-selo__ponto {
     animation: none;
   }

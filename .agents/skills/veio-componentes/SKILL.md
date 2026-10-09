@@ -38,6 +38,10 @@ The rules the components encode, so a surface does not have to re-decide them:
   colours and `role="status"` instead of the danger `alert`. An aviso that *is* a state (a failed sync) passes `fechavel: false`:
   no ×, it leaves when the problem does. `montarDetalhes(causa, documento, rotulo)` is that same “Detalhes” alone (a screen whose collapsed block has its own name in the Voz, like “O arquivo não abriu?”, passes it as `rotulo`), for
   when the screen's state already says what happened (the cloud refused, the session expired).
+  The toast and the aviso **enter with the same short step** (the `veio-entra` keyframe, one
+  `--veio-transicao`), so an aviso that appears mid-reading — the F1 strip, the aviso do Anki of
+  ONB-16 — does not pop in. Under `prefers-reduced-motion` both are a still frame
+  (`animation: none`, next to the skeleton's shimmer and the “Lendo…” dot).
 - **Error on a field** is said by `aria-invalid="true"`, not by a class, so the screen reader hears
   it too.
 - **The highlighted Word** is drawn by `escreverFrase(no, texto, palavra)`: a `kw-bg` band from 50%

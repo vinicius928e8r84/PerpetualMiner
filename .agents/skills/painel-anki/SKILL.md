@@ -34,9 +34,9 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   The steps are marked by the real state, and the only thing the extension sees before the Conexão is the Conexão itself (the
   AnkiConnect is not read: no new permission), so the question and the download step say “Esperando a Conexão” and every step turns ✓ together when `/health`
   answers successfully. Without a person's choice, the card opens on the first step (the question), or on the last while connecting; after the card's own Tentar de novo
-  it stays on step 2 (the F1's and the Boas-vindas' do not set the person's choice). **2 minutes without an answer** (counted from the first time the person
+  it stays on the Reiniciar o Anki step (the F1's and the Boas-vindas' do not set the person's choice). **2 minutes without an answer** (counted from the first time the person
   really sees the steps — the host passes the real visibility to `mostrar`: the Anki area is the current one, the Boas-vindas page is on screen — or from Baixar) show the 3-item checklist and **Baixar de novo** in whatever step is open, while the check keeps going alone; it leaves when the Conexão answers.
-  On step 2 an automatic check in flight over a Conexão that was off shows “Conectando” with no click (`ConexaoAnki.conferindo()`, `aoConferir`); a
+  On the Reiniciar o Anki step an automatic check in flight over a Conexão that was off shows “Conectando” with no click (`ConexaoAnki.conferindo()`, `aoConferir`); a
   Conexão that was on stays on, and the failure goes back to “desligada”. One primary control per screen: with the card's own Voltar · Continuar the
   primary is the step's action (Baixar, Tentar de novo) and Continuar is an outline; inside the Boas-vindas the card has only outlines and the host's Continuar is the primary.
   The status is a `role="status"` region that stays in the DOM (the 1 s clock only redraws the checklist, never the status).
