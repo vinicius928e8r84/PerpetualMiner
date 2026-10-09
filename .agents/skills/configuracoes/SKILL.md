@@ -33,7 +33,7 @@ Where the key lives (`lib/chave-da-openai.js`; `confirmar` is the only way in): 
 IndexedDB is the site's; `chrome.storage.local` would not do: the content script reads that area and `setAccessLevel` would
 close all of it); `{ ultimos4 }` in `chrome.storage.local` as `pm_chave_openai`, which the summary, the Boas-vindas step and the
 reminder read; and the Conexão's own copy in `user_files/chaves` (see `complemento/`). When the Conexão answers again after being
-off, the card asks `POST /ia/estado` and, if the copy is missing or has another non-secret version (`em`), delivers the key again by itself;
+off, the card asks `POST /ia/estado` and, if the copy is missing or has another non-secret local HTTP generation (separate from cloud `em`, so an older key of another account can be delivered), delivers the key again by itself;
 “A Conexão com o Anki tem uma cópia da chave” / “…ainda não tem a cópia” says the true state, and with the Conexão off (also when it goes off while the card is open) the card
 says nothing about the copy, and a late answer from before it went off is dropped. A pasted draft never survives a confirmation
 and Trocar chave always opens empty, so the whole key is never put back on screen. With an account the key follows its bound UID (#154): changes bind before the first request (failed uploads stay pending for that UID), and the note says “Vai junto com a sua conta Google…” only for the current account; another account's key stays local and is named as such, a key or a deletion

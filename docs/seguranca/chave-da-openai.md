@@ -10,7 +10,7 @@ Esta nota diz quem pode ler a chave, por onde ela anda e quais riscos foram acei
 | A nuvem da conta: Firestore `usuarios/{uid}/segredos/openai` | `{ chave, em }`, ou o tombstone `{ apagada: true, em }` | o dono da conta (as regras abaixo) e quem administra o projeto Firebase |
 | A extensão: IndexedDB `pm-segredos` › `chaves` | `openai` (a chave), `openai-em` (a hora da última mudança), `openai-apagar-na-conexao` | as páginas da extensão; **não** o content script nem o overlay, que abrem o IndexedDB do site |
 | Sessão Firebase: IndexedDB `pm-sessao` › `sessao` › `firebase` | UID, tokens de acesso e renovação; a sessão legada é migrada e removida do `chrome.storage.local` | só páginas e service worker da extensão; não o content script (um token legível permitiria buscar a chave na nuvem) |
-| `chrome.storage.local` › `pm_chave_openai` | só `{ ultimos4 }`; `pm_chave_openai_versao` guarda `{ em, conta }`, sem segredo | toda a extensão, o content script inclusive: por isso só os 4 últimos |
+| `chrome.storage.local` › `pm_chave_openai` | só `{ ultimos4 }`; `pm_chave_openai_versao` guarda `{ em, conta, versao }`, sem segredo | toda a extensão, o content script inclusive: por isso só os 4 últimos |
 | A Conexão com o Anki: `user_files/chaves/openai.json` | a chave, modo 0600 | o usuário do sistema; fora do `.ankiaddon`, da configuração do complemento, dos logs e do pacote de diagnóstico |
 
 A extensão nunca fala com a OpenAI: quem confere e gasta a chave é a Conexão. Uma chave que chega da nuvem já foi
@@ -57,7 +57,7 @@ que alguém já tenha levado.
 - Sem conta, Apagar chave vale só para este computador: o tombstone local não sobe a nenhuma conta. A versão local ainda ordena a remoção na Conexão; uma chave da conta pode chegar quando a pessoa entrar nela.
 - Uma mudança aqui durante o sync não é desfeita pela chave que vinha da nuvem: a gravação só acontece se a hora
   guardada ainda é a que foi lida, na mesma transação do IndexedDB (CHAVE 9).
-- Uma Conexão que estava desligada quando a chave foi apagada perde a cópia quando volta a responder. O POST e a remoção levam uma versão não secreta; a Conexão grava um tombstone persistente e recusa HTTP 409 para versões antigas (inclusive reentregas após reiniciar). Dois sufixos iguais nunca são prova de que a cópia corresponde à versão atual.
+- Uma Conexão que estava desligada quando a chave foi apagada perde a cópia quando volta a responder. O POST e a remoção levam uma geração HTTP local não secreta (`openai-conexao-versao`), separada da hora remota `em`: trocar para outra conta com chave mais antiga ainda ordena uma operação nova na Conexão; a Conexão grava um tombstone persistente e recusa HTTP 409 para versões antigas (inclusive reentregas após reiniciar). Dois sufixos iguais nunca são prova de que a cópia corresponde à versão atual.
 - Chave, hora e UID são lidos numa transação IndexedDB única, e a versão é relida antes de subir. Não há garantia de CAS no Firestore para um PATCH já em trânsito (limite abaixo).
 - Falha local ao apagar mostra aviso persistente com repetição e Detalhes; Apagar tudo comunica o resultado parcial, sem toast de sucesso total.
 - Os testes usam só chaves de mentira.

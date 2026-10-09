@@ -707,6 +707,20 @@ test('PATCH recusado: a chave colada em A nunca sobe para B e a nota não promet
   await fotografar(page, 'ia-outra-conta.png');
 });
 
+test('trocar para B com chave mais antiga entrega a chave de B, sem reutilizar a versão HTTP de A', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: UID });
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await colarEConferir(page);
+  await expect.poll(() => Boolean(fakes.google.chaveDaOpenAIDe(UID))).toBe(true);
+  fakes.google.gravarChaveDaOpenAI('uid-B-antiga', { chave: OUTRA_CHAVE, em: Date.now() - 60000 });
+  await extensao.semearSessao({ uid: 'uid-B-antiga' });
+  await page.reload();
+  await expect(card(page).locator('.cfg-resumo')).toHaveText('••••••••wxyz');
+  await expect(corpo(page)).toContainText('A Conexão com o Anki tem uma cópia da chave.');
+  expect((await chaveNoBancoDaExtensao(page)) === OUTRA_CHAVE).toBe(true);
+  expect(fakes.anki.chaveNaConexao() === OUTRA_CHAVE).toBe(true);
+});
+
 test('a chave de uma conta Google não sobe para outra conta que entra no mesmo computador', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: UID });
   chaveDeOutroComputador(fakes, OUTRA_CHAVE, 60_000);
