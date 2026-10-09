@@ -112,7 +112,8 @@ def _ao_abrir_o_perfil(funcao):
     gui_hooks.profile_did_open.append(funcao)
 
 
-def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_abrir_o_perfil):
+def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_abrir_o_perfil,
+                abridor=inicio.ABRIDOR_DESTE_COMPUTADOR):
     """O que o Anki faz ao importar o complemento: devolve a Conexão, ou None se ela não subiu."""
     return inicio.iniciar(
         pasta_do_complemento,
@@ -120,4 +121,5 @@ def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_
         porta=porta,
         colecao=LeitorDaColecaoDoAnki(mw),
         ao_abrir_o_perfil=ao_abrir_o_perfil,
+        abridor=abridor,
     )

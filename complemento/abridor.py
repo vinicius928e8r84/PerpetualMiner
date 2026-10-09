@@ -75,7 +75,7 @@ class Abridor:
     por `registro`). `abrir_com` é o `open` do Mac (os testes trocam por um programa que anota o que recebeu).
     """
 
-    def __init__(self, *, sistema, pasta, programa, onde_registrar, registro=None, abrir_com="/usr/bin/open"):
+    def __init__(self, *, sistema, pasta, programa, onde_registrar, registro=None, abrir_com="/usr/bin/open", ler_json_com="/usr/bin/osascript"):
         if sistema not in ("mac", "windows"):
             raise ValueError("sistema sem abridor: %r" % (sistema,))
         self.sistema = sistema
@@ -84,6 +84,7 @@ class Abridor:
         self.onde_registrar = onde_registrar
         self.registro = registro
         self.abrir_com = abrir_com
+        self.ler_json_com = ler_json_com
 
     def escrever(self, perfil):
         """Escreve o script com o `perfil` (None: abre sem escolher perfil) e registra o host.
@@ -95,7 +96,7 @@ class Abridor:
         os.makedirs(self.pasta, exist_ok=True)
         if self.sistema == "mac":
             script = os.path.join(self.pasta, SCRIPT_DO_MAC)
-            _gravar(script, _script_do_mac(self.programa, perfil, self.abrir_com).encode("utf-8"), modo=0o700)
+            _gravar(script, _script_do_mac(self.programa, perfil, self.abrir_com, self.ler_json_com).encode("utf-8"), modo=0o700)
             for pasta_de_hosts in _sem_repetir(self.onde_registrar.values()):
                 os.makedirs(pasta_de_hosts, exist_ok=True)
                 _gravar(os.path.join(pasta_de_hosts, NOME_DO_HOST + ".json"), _manifesto(script))
@@ -177,12 +178,26 @@ _MODELO_DO_MAC = r"""#!/bin/sh
 ANKI=@ANKI@
 PERFIL=@PERFIL@
 ABRIR=@ABRIR@
+LER_JSON=@LERJSON@
 
 # A mensagem do Chrome: 4 bytes com o tamanho e o JSON (as nossas são curtas; o resto é ignorado).
 tamanho=$(dd bs=1 count=4 2>/dev/null | od -An -tu4 | tr -d ' \n')
 case "$tamanho" in ''|*[!0-9]*) tamanho=0 ;; esac
 [ "$tamanho" -gt 4096 ] && tamanho=0
-mensagem=$(dd bs=1 count="$tamanho" 2>/dev/null | tr -d ' \t\r\n')
+mensagem=$(dd bs=1 count="$tamanho" 2>/dev/null)
+# O JavaScript do próprio macOS lê JSON, não código. A mensagem é um argumento de run,
+# nunca interpolada no programa: só uma string na chave principal acao vale.
+acao=$("$LER_JSON" -l JavaScript - "$mensagem" 2>/dev/null <<'JSON'
+function run(argumentos) {
+  try {
+    var mensagem = JSON.parse(argumentos[0]);
+    if (mensagem && typeof mensagem === 'object' && !Array.isArray(mensagem)
+        && (mensagem.acao === 'conferir' || mensagem.acao === 'abrir')) return mensagem.acao;
+  } catch (erro) {}
+  return 'acao_desconhecida';
+}
+JSON
+)
 
 # A resposta, do mesmo jeito: o tamanho (as respostas são curtas e só ASCII: um byte basta) e o JSON.
 responder() {
@@ -191,10 +206,10 @@ responder() {
 }
 
 if [ -d "$ANKI" ]; then achou=true; else achou=false; fi
-case "$mensagem" in
-  *'"acao":"conferir"'*)
+case "$acao" in
+  conferir)
     responder "{\"achou\":$achou}" ;;
-  *'"acao":"abrir"'*)
+  abrir)
     abriu=false
     if [ "$achou" = true ]; then
       if [ -n "$PERFIL" ]; then
@@ -215,11 +230,12 @@ def _preencher(modelo, valores):
     return re.sub(r"@([A-Z]+)@", lambda marca: valores[marca.group(1)], modelo)
 
 
-def _script_do_mac(aplicativo, perfil, abrir_com):
+def _script_do_mac(aplicativo, perfil, abrir_com, ler_json_com):
     return _preencher(_MODELO_DO_MAC, {
         "ANKI": shlex.quote(aplicativo),
         "PERFIL": shlex.quote(perfil or ""),
         "ABRIR": shlex.quote(abrir_com),
+        "LERJSON": shlex.quote(ler_json_com),
     })
 
 
@@ -261,7 +277,16 @@ $corpo = New-Object byte[] $tamanho
 $lidos = 0
 while ($lidos -lt $tamanho) { $n = $entrada.Read($corpo, $lidos, $tamanho - $lidos); if ($n -le 0) { break }; $lidos += $n }
 $acao = $null
-try { $acao = ([Text.Encoding]::UTF8.GetString($corpo) | ConvertFrom-Json).acao } catch { }
+try {
+  $json = [Text.Encoding]::UTF8.GetString($corpo)
+  if ($json.TrimStart().StartsWith('{')) {
+    $mensagem = $json | ConvertFrom-Json
+    if ($mensagem -is [System.Management.Automation.PSCustomObject] -and
+        $mensagem.PSObject.Properties.Name -ccontains 'acao' -and $mensagem.acao -is [string]) {
+      $acao = $mensagem.acao
+    }
+  }
+} catch { }
 
 # A resposta, do mesmo jeito: o tamanho em 4 bytes e o JSON.
 function Responder($resposta) {
@@ -273,9 +298,9 @@ function Responder($resposta) {
 }
 
 $achou = Test-Path -LiteralPath $anki -PathType Leaf
-if ($acao -eq 'conferir') {
+if ($acao -ceq 'conferir') {
   Responder ([ordered]@{ achou = $achou })
-} elseif ($acao -eq 'abrir') {
+} elseif ($acao -ceq 'abrir') {
   $abriu = $false
   if ($achou) {
     try {

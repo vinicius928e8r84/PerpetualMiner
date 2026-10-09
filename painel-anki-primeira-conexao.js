@@ -29,6 +29,8 @@
   const INTERVALO_DO_TIQUE = 1000;
   // Quanto o momento Pronto fica na tela antes de as abas voltarem.
   const MOMENTO_PRONTO_MS = 1800;
+  // A saúde HTTP não conclui o pedido de permissão: esta espera sobrevive à recarga.
+  const CHAVE_ABRIDOR_PENDENTE = 'pm_anki_abridor_pendente';
 
   const { textoDaVoz, Veio, Shell, ConexaoAnki, ConexaoNaTela, PassosDaConexao } = raiz;
   const { SITUACAO: CONEXAO } = ConexaoAnki;
@@ -60,7 +62,8 @@
       desenharConferencia();
     });
     setInterval(desenharConferencia, INTERVALO_DO_TIQUE);
-    return ConexaoAnki.pronta.then(() => {
+    return Promise.all([ConexaoAnki.pronta, chrome.storage.local.get({ [CHAVE_ABRIDOR_PENDENTE]: false })]).then(([, gravado]) => {
+      estado.esperandoOAbridor = gravado[CHAVE_ABRIDOR_PENDENTE] === true;
       estado.visto.respondeu = ConexaoAnki.ultimaResposta() !== null;
       // Os 2 minutos do componente contam da primeira vez que a área está à vista: quem chega depois
       // (de outra área) precisa de um desenho na entrada, que é quando o card passa a ser visto.
@@ -73,7 +76,7 @@
 
   /** O card está no lugar das abas (inclusive no passo 3 logo depois de ligar, e no momento Pronto). */
   function cobreAsAbas({ situacao, respondeu } = estado.visto) {
-    return respondeu && (estado.pronto || (estado.esperandoOAbridor && situacao === CONEXAO.LIGADA)
+    return respondeu && (estado.pronto || estado.esperandoOAbridor
       || (!ConexaoAnki.jaConectou() && situacao !== CONEXAO.LIGADA));
   }
 
@@ -86,11 +89,16 @@
     // lá quando a pessoa chegar, sem Pronto nem toast.
     if (situacao === CONEXAO.LIGADA && eraPrimeiraVez && !estado.pronto && Shell.areaAtual() === 'anki') {
       // O passo 3 vem antes do Pronto, a menos que ele já esteja resolvido (um “Agora não” guardado).
-      if (passos.abridorResolvido()) comecarOPronto();
-      else estado.esperandoOAbridor = true;
+      if (passos.abridorResolvido()) {
+        estado.esperandoOAbridor = false;
+        chrome.storage.local.set({ [CHAVE_ABRIDOR_PENDENTE]: false });
+        comecarOPronto();
+      } else {
+        estado.esperandoOAbridor = true;
+        chrome.storage.local.set({ [CHAVE_ABRIDOR_PENDENTE]: true });
+      }
     }
-    // A Conexão caiu no meio do passo 3: as abas voltam com a F1, e o passo fica para o Envio pedir.
-    if (situacao !== CONEXAO.LIGADA) estado.esperandoOAbridor = false;
+    // Mesmo se a saúde cair no meio do passo 3, a escolha continua pendente.
     desenhar();
   }
 
@@ -98,6 +106,7 @@
   function aoResolverOAbridor() {
     if (!estado.esperandoOAbridor) return;
     estado.esperandoOAbridor = false;
+    chrome.storage.local.set({ [CHAVE_ABRIDOR_PENDENTE]: false });
     comecarOPronto();
     desenhar();
   }
@@ -145,7 +154,8 @@
     const entrouNoPronto = estado.pronto && !estado.prontoDesenhado;
     estado.prontoDesenhado = estado.pronto;
 
-    porId('anki-primeira-vez-titulo').textContent = estado.pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA) : textoDaVoz('ONB-16.titulo');
+    porId('anki-primeira-vez-titulo').textContent = estado.pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA)
+      : textoDaVoz(estado.visto.situacao === CONEXAO.LIGADA ? 'ONB-17.titulo' : 'ONB-16.titulo');
     porId('apv-apoio').hidden = estado.pronto;
     porId('apv-rodape').hidden = estado.pronto;
     passos.desenhar({ pronto: estado.pronto });

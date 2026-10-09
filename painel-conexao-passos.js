@@ -286,10 +286,10 @@
       return botao;
     };
     const permitir = botaoDoAbridor('permitir', destaque, textoDaVoz('ONB-17.permitir'), pedirAPermissao);
-    const tentarOAbridor = botaoDoAbridor('abridor-tentar', destaque, textoDaVoz('ENV-01.tentarDeNovo'), conferirOAbridor);
+    let tentarOAbridor = null; // A ação vive no aviso da Base, só enquanto houver erro.
     const agoraNao = botaoDoAbridor('agora-nao', 'veio-botao--contorno', textoDaVoz('ONB-04.agoraNao'), dizerAgoraNao);
-    const acoesDoAbridor = elemento('div', 'pc-abridor__acoes', permitir, tentarOAbridor, agoraNao);
-    let detalhesDoAbridor = null;
+    const acoesDoAbridor = elemento('div', 'pc-abridor__acoes', permitir, agoraNao);
+    let avisoDoAbridor = null;
     const blocoDoAbridor = elemento('div', 'pc-abridor', statusDoAbridor, acoesDoAbridor);
 
     const baixarDeNovo = linkDoArquivo('veio-botao veio-botao--contorno veio-botao--compacto', textoDaVoz('ONB-16.baixarDeNovo'));
@@ -356,7 +356,7 @@
     function desenhar({ pronto = estado.pronto } = {}) {
       estado.pronto = pronto;
       const aberto = pronto ? -1 : indiceAberto();
-      const passoDoCard = PASSOS[Math.max(aberto, 0)];
+      const passoDoCard = PASSOS[pronto ? indice(PASSO_DO_ABRIDOR) : aberto];
       const situacao = ConexaoAnki.situacao();
       const conectando = situacao === CONEXAO.CONECTANDO;
       // No passo de reiniciar, uma conferência no ar sobre uma Conexão desligada é “Conectando”, sem
@@ -423,29 +423,36 @@
       const semPermissao = fase === FASE.PEDIR && (abridor.agoraNao || abridor.recusada);
       const textoAgora = TEXTO_DA_FASE[fase] ?? (semPermissao ? 'ONB-17.semPermissao' : null);
       textoDoAbridor.textContent = textoAgora ? textoDaVoz(textoAgora) : '';
-      statusDoAbridor.hidden = !textoAgora;
+      const problema = fase === FASE.NAO_ACHOU || fase === FASE.SEM_ABRIDOR;
+      statusDoAbridor.hidden = !textoAgora || problema;
       pontoDoAbridor.dataset.estado = PONTO_DA_FASE[fase] ?? '';
 
       const pedir = fase === FASE.PEDIR || fase === FASE.PEDINDO;
-      const problema = fase === FASE.NAO_ACHOU || fase === FASE.SEM_ABRIDOR;
       const comFoco = [permitir, tentarOAbridor, agoraNao].find(botao => botao === document.activeElement);
       permitir.hidden = pronto || !pedir;
       permitir.setAttribute('aria-disabled', String(fase === FASE.PEDINDO));
-      tentarOAbridor.hidden = pronto || !problema;
+      if (tentarOAbridor) tentarOAbridor.hidden = pronto || !problema;
       agoraNao.hidden = pronto || abridor.agoraNao || !(pedir || problema);
-      acoesDoAbridor.hidden = permitir.hidden && tentarOAbridor.hidden && agoraNao.hidden;
+      acoesDoAbridor.hidden = permitir.hidden && agoraNao.hidden;
       // O botão apertado saiu (Agora não, Permitir que achou o Anki): o foco não cai no fim da página.
       if (comFoco?.hidden && !blocoDoAbridor.hidden) (aoSairOBotao?.() ?? titulo).focus();
 
-      // O Detalhes só quando o abridor não respondeu: o que o Chrome disse. Refeito só quando a causa muda.
-      const causa = fase === FASE.SEM_ABRIDOR && !pronto ? abridor.detalhe : '';
-      if (detalhesDoAbridor?.dataset.causa !== causa) {
-        detalhesDoAbridor?.remove();
-        detalhesDoAbridor = null;
+      // O erro é um aviso persistente da Base; desenhos iguais preservam o foco e o Detalhes aberto.
+      const causa = problema && !pronto
+        ? (fase === FASE.NAO_ACHOU ? '{"achou":false}' : abridor.detalhe) : '';
+      if (avisoDoAbridor?.dataset.causa !== causa) {
+        avisoDoAbridor?.remove();
+        avisoDoAbridor = null;
+        tentarOAbridor = null;
         if (causa) {
-          detalhesDoAbridor = Veio.montarDetalhes(causa);
-          detalhesDoAbridor.dataset.causa = causa;
-          blocoDoAbridor.append(detalhesDoAbridor);
+          avisoDoAbridor = Veio.montarAviso({
+            texto: textoDaVoz(textoAgora), detalhes: causa, fechavel: false,
+            acao: { rotulo: textoDaVoz('ENV-01.tentarDeNovo'), aoUsar: conferirOAbridor },
+          });
+          avisoDoAbridor.dataset.causa = causa;
+          tentarOAbridor = avisoDoAbridor.querySelector('button');
+          tentarOAbridor.id = id('abridor-tentar');
+          blocoDoAbridor.insertBefore(avisoDoAbridor, acoesDoAbridor);
         }
       }
     }

@@ -11,6 +11,8 @@ from . import abridor as abridores, item_de_login as itens_de_login, pasta_de_da
 from .configuracao import OPENAI_BASE, ORIGENS_ACEITAS, PORTA, VERSAO
 from .servidor import Conexao
 
+ABRIDOR_DESTE_COMPUTADOR = object()
+
 
 def iniciar(
     pasta_do_complemento,
@@ -21,13 +23,14 @@ def iniciar(
     colecao=None,
     item_de_login=None,
     openai_base=OPENAI_BASE,
-    abridor=None,
+    abridor=ABRIDOR_DESTE_COMPUTADOR,
     ao_abrir_o_perfil=None,
 ):
     """Prepara `user_files`, escreve o abridor e sobe a Conexão, com o adaptador da coleção que ela lê. Devolve a Conexão, ou None se ela não subiu.
 
     O `item_de_login` é o de “Abrir o Anki com o computador”; sem ele, o deste computador (None onde não há).
-    O `abridor` é o de “Abrir o Anki sozinho” (`abridor.py`); sem ele, o deste computador, em `user_files/abridor`.
+    O `abridor` é o de “Abrir o Anki sozinho” (`abridor.py`); omitido, o deste computador, em `user_files/abridor`.
+    `abridor=None` desativa a escrita e o registro (testes); um abridor injetado só usa os destinos dele.
     Ele é escrito agora, com o perfil aberto (nenhum, ao carregar), e de novo a cada perfil que abre: `ao_abrir_o_perfil`
     recebe a função que o reescreve (no Anki, o gancho `profile_did_open`).
     """
@@ -35,7 +38,7 @@ def iniciar(
     try:
         dados = pasta_de_dados.preparar(pasta_do_complemento)
         logger = registro.criar(dados.logs)
-        if abridor is None:
+        if abridor is ABRIDOR_DESTE_COMPUTADOR:
             abridor = abridores.deste_computador(
                 plataforma=sys.platform, ambiente=os.environ, executavel=sys.executable, pasta=os.path.join(dados.raiz, "abridor")
             )

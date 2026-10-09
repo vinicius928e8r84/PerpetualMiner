@@ -15,6 +15,7 @@ dono vê, no ensaio dele (`complemento/LEIA-ME.md`, riscos 1 e 2 do #138).
 import json
 import os
 import shutil
+import shlex
 import stat
 import struct
 import subprocess
@@ -93,6 +94,18 @@ class Pastas:
         self.abridor = os.path.join(raiz, "user_files", "abridor")
         self.hosts_do_chrome = os.path.join(raiz, "Library", "Application Support", "Google", "Chrome", "NativeMessagingHosts")
         self.open = OpenDeMentira(raiz)
+        self.ler_json = "/usr/bin/osascript"
+        if sys.platform != "darwin":
+            # No Linux só a CLI do JXA é adaptada: o mesmo programa JavaScript recebe a
+            # mesma mensagem e faz JSON.parse de verdade. Não substituímos o parser.
+            self.ler_json = os.path.join(raiz, "javascript-do-mac-em-node")
+            with open(self.ler_json, "w", encoding="utf-8") as arquivo:
+                arquivo.write("#!/bin/sh\nexec node -e " + shlex.quote(
+                    "const fs = require('fs'), vm = require('vm'); "
+                    "vm.runInThisContext(fs.readFileSync(0, 'utf8')); "
+                    "process.stdout.write(run([process.argv[process.argv.length - 1]]) + '\\n');"
+                ) + ' -- "$@"\n')
+            os.chmod(self.ler_json, 0o700)
 
 
 def abridor_do_mac(pastas, programa=None):
@@ -102,6 +115,7 @@ def abridor_do_mac(pastas, programa=None):
         programa=pastas.app if programa is None else programa,
         onde_registrar={"Chrome": pastas.hosts_do_chrome},
         abrir_com=pastas.open.caminho,
+        ler_json_com=pastas.ler_json,
     )
 
 
@@ -155,6 +169,19 @@ class NoMac(unittest.TestCase):
                     'O abridor e o contrato (complemento/contrato/exemplos.json › abridor) se separaram no exemplo "%s".'
                     % exemplo["nome"],
                 )
+
+    def test_so_a_acao_principal_exata_pode_abrir_o_anki(self):
+        script = self.escrever()
+        for mensagem in [
+            {"acao": "abr ir"}, {"acao": "ABRIR"},
+            {"acao": "fechar", "extra": {"acao": "abrir"}},
+            {"acao": ["abrir"]}, [{"acao": "abrir"}],
+        ]:
+            with self.subTest(mensagem=mensagem):
+                if os.path.exists(self.pastas.open.anotados):
+                    os.remove(self.pastas.open.anotados)
+                self.assertEqual(conversar(script, mensagem), {"erro": "acao_desconhecida"})
+                self.assertIsNone(self.pastas.open.recebeu())
 
     def test_conferir_nao_abre_nada(self):
         script = self.escrever()
@@ -335,7 +362,7 @@ class OPs1NoPowerShell(unittest.TestCase):
                 sistema="windows", pasta=pasta, programa=anki, onde_registrar={}, registro=RegistroDeMentira(),
             ).escrever("Usuário 1")
             for exemplo in DO_ABRIDOR["exemplos"]:
-                if exemplo["mensagem"]["acao"] == "abrir":
+                if exemplo["mensagem"] == {"acao": "abrir"}:
                     continue  # abrir rodaria um programa: só o ensaio do dono
                 with self.subTest(exemplo["nome"]):
                     if exemplo["contexto"]["anki"] == "no_lugar":

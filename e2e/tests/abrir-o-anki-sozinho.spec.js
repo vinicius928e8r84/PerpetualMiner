@@ -21,7 +21,7 @@ const contrato = require('../../complemento/contrato/exemplos.json');
 const ORIGEM = `${contrato.origemDaExtensao}/`;
 const CONFERIR = { mensagem: { acao: 'conferir' }, origem: ORIGEM };
 
-const card = page => page.getByRole('region', { name: 'Ainda não houve conexão neste computador' });
+const card = page => page.getByRole('region', { name: /^(Ainda não houve conexão neste computador|Abrir o Anki sozinho)$/ });
 const pronto = page => page.getByRole('region', { name: 'Conexão com o Anki: ligada' });
 const lista = page => page.getByRole('navigation', { name: 'Como ligar' });
 const itemDaLista = (page, nome) => lista(page).getByRole('button', { name: new RegExp(`^${nome}`) });
@@ -82,6 +82,24 @@ test('ligada, o card passa ao passo 3, Abrir o Anki sozinho, sem pedir nada ao C
   await estadoFinal(extensao, { pm_abridor: null });
 });
 
+test('recarregar retoma Abrir o Anki sozinho até Agora não, mesmo com a saúde já confirmada', async ({ page, extensao, fakes }) => {
+  await conectarPelaPrimeiraVez(page, extensao, fakes);
+  await expect(permitir(page)).toBeVisible();
+  await page.reload();
+  await expect(page.locator('#anki-primeira-vez')).toBeVisible();
+  await expect(page.locator('#anki-primeira-vez-titulo')).toHaveText('Abrir o Anki sozinho');
+  await expect(page.getByRole('button', { name: 'Permitir abrir o Anki' })).toBeVisible();
+  await expect(abas(page)).toBeHidden();
+  await estadoFinal(extensao, { pm_anki_ja_conectou: true, pm_anki_abridor_pendente: true });
+  await fotografar(page, 'abridor-retomado-apos-reload.png');
+  await page.getByRole('button', { name: 'Agora não', exact: true }).click();
+  await expect(abas(page)).toBeVisible();
+  await page.reload();
+  await expect(abas(page)).toBeVisible();
+  await expect(page.locator('#anki-primeira-vez')).toBeHidden();
+  await estadoFinal(extensao, { pm_anki_abridor_pendente: false, pm_abridor: { agoraNao: true } });
+});
+
 test('Permitir pede a permissão ao Chrome: o passo espera a resposta do aviso dele e ainda não chama o abridor', async ({ page, extensao, fakes }) => {
   await conectarPelaPrimeiraVez(page, extensao, fakes);
 
@@ -105,13 +123,14 @@ test('Agora não guarda a escolha, marca o passo “agora não” e o Pronto dev
   await expect(pronto(page)).toBeVisible();
   await expect(itemDaLista(page, 'Abrir o Anki sozinho')).toHaveAccessibleName(/agora não$/);
   await expect(statusDoAbridor(page)).toHaveText(SEM_PERMISSAO);
+  await expect(statusDoAbridor(page)).toBeVisible();
   await expect(tituloDoPasso(page)).toBeFocused();
   await fotografar(page, 'abridor-agora-nao-pronto.png');
   await page.clock.runFor(1_800);
   await expect(abas(page)).toBeVisible();
   await expect(pronto(page)).toBeHidden();
   expect(fakes.abridor.pedidos()).toEqual([]);
-  await estadoFinal(extensao, { pm_abridor: { agoraNao: true } });
+  await estadoFinal(extensao, { pm_abridor: { agoraNao: true }, pm_anki_abridor_pendente: false });
   await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), false);
 });
 
@@ -141,6 +160,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(3);
     await expect(pronto(page)).toBeVisible();
     await expect(statusDoAbridor(page)).toHaveText(ACHOU);
+    await expect(statusDoAbridor(page)).toBeVisible();
     await fotografar(page, 'abridor-achou-pronto.png');
     await page.clock.runFor(1_800);
     await expect(abas(page)).toBeVisible();
@@ -148,14 +168,19 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     // Uma conversa só, com a origem da extensão, e só para conferir: nada abriu.
     expect(fakes.abridor.pedidos()).toEqual([CONFERIR]);
     await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);
-    await estadoFinal(extensao, { pm_abridor: null });
+    await estadoFinal(extensao, { pm_abridor: null, pm_anki_abridor_pendente: false });
   });
 
   test('o abridor não acha o Anki: o passo diz o que fazer, e Tentar de novo confere de novo', async ({ page, extensao, fakes }) => {
     fakes.abridor.definir('nao_achei');
     await conectarPelaPrimeiraVez(page, extensao, fakes);
 
-    await expect(statusDoAbridor(page)).toHaveText('O abridor não achou o Anki neste computador. Feche o Anki e abra-o de novo: ao abrir, a Conexão com o Anki refaz o abridor.');
+    const aviso = card(page).getByRole('alert');
+    await expect(aviso).toBeVisible();
+    await expect(aviso.locator('.veio-aviso__texto')).toHaveText('O abridor não achou o Anki neste computador. Feche o Anki e abra-o de novo: ao abrir, a Conexão com o Anki refaz o abridor.');
+    await aviso.getByText('Detalhes', { exact: true }).click();
+    await expect(aviso.locator('pre')).toHaveText('{"achou":false}');
+    await expect(aviso.getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
     await expect(itemDaLista(page, 'Abrir o Anki sozinho')).not.toHaveAccessibleName(/feito$|agora não$/);
     await expect(tentarDoAbridor(page)).toBeVisible();
     await expect(agoraNao(page)).toBeVisible();
@@ -176,9 +201,12 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     fakes.abridor.desregistrar();
     await conectarPelaPrimeiraVez(page, extensao, fakes);
 
-    await expect(statusDoAbridor(page)).toHaveText('O abridor não respondeu. Feche o Anki e abra-o de novo: ao abrir, a Conexão com o Anki deixa o abridor neste computador.');
-    await card(page).getByText('Detalhes', { exact: true }).click();
-    await expect(card(page).locator('.pc-abridor pre')).toContainText('native messaging host not found');
+    const aviso = card(page).getByRole('alert');
+    await expect(aviso).toBeVisible();
+    await expect(aviso.locator('.veio-aviso__texto')).toHaveText('O abridor não respondeu. Feche o Anki e abra-o de novo: ao abrir, a Conexão com o Anki deixa o abridor neste computador.');
+    await aviso.getByText('Detalhes', { exact: true }).click();
+    await expect(aviso.locator('pre')).toContainText('native messaging host not found');
+    await expect(aviso.getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
     await expect(tentarDoAbridor(page)).toBeVisible();
     await expect(agoraNao(page)).toBeVisible();
     await expect(pronto(page)).toHaveCount(0);
@@ -197,7 +225,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await expect(statusDoAbridor(page)).toHaveText('Procurando o Anki…');
     await page.clock.runFor(1_000);
 
-    await expect(statusDoAbridor(page)).toHaveText(/^O abridor não respondeu\./);
+    await expect(card(page).getByRole('alert').locator('.veio-aviso__texto')).toHaveText(/^O abridor não respondeu\./);
     await expect(tentarDoAbridor(page)).toBeVisible();
     await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);
   });

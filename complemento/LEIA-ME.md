@@ -87,8 +87,19 @@ O item de login **nunca foi testado** num Mac nem num Windows de verdade: os tes
 
 ### Ensaio do dono: Abrir o Anki sozinho (riscos 1 e 2 do #138)
 
-O abridor **nunca foi testado** num Mac nem num Windows de verdade: `test_abridor.py` confere o que fica no disco (e roda o script do Mac),
-e o e2e usa um abridor de mentira. O que só o ensaio mostra:
+O abridor **nunca foi testado** num Mac nem num Windows de verdade. `test_abridor.py` escreve e registra só em pastas temporárias / registro de mentira;
+no Linux, roda o `.sh` com o mesmo parser JavaScript em Node (a CLI do JXA é adaptada), não o `/usr/bin/osascript` real. O e2e usa um abridor de mentira.
+`test_inicio.py` e `test_no_anki.py` desativam o abridor explicitamente (`abridor=None`); os ensaios de registro injetam só destinos temporários.
+Isso não confirma a aceitação do dono:
+
+| Confirmação exigida antes de fechar #147 | Estado | Prova do dono |
+|---|---|---|
+| Risco 1 — Opera no Windows encontra e chama o host registrado | **PENDING OWNER** | Ainda não registrada |
+| Risco 2 — Chrome no Mac chama o host e abre o Anki sem pergunta do macOS | **PENDING OWNER** | Ainda não registrada |
+| Comparação/aprovação visual do passo 3 e do Pronto (S4) | **PENDING OWNER** | Propostas continuam `test.fixme`, sem PNG aprovado |
+
+Não fechar #147 com base nos testes de Linux, num ✓ de `conferir`, ou na abertura pelo Terminal. Registrar sistema, navegador, resultado,
+data e confirmação do dono (ou a mudança explícita do critério de aceitação) antes do fechamento. O que só o ensaio mostra:
 
 1. Com o complemento novo no Anki (refaça o arquivo: `python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon`), abra o Anki
    e um perfil. Em `user_files/abridor` (Ferramentas › Complementos › Ver arquivos) aparece o script; o log diz “O abridor não foi escrito”
@@ -101,7 +112,8 @@ e o e2e usa um abridor de mentira. O que só o ensaio mostra:
    `printf '\x13\x00\x00\x00{"acao":"abrir"}' | sh "<o caminho do script>" | tail -c +5`: o Anki abre no perfil anotado, **sem pergunta
    do macOS**? A resposta é `{"achou":true,"abriu":true}`. Se o macOS perguntar algo (Gatekeeper, “Terminal quer controlar…”), anote o texto.
    Isto é só uma aproximação: o macOS julga o script que o Terminal roda de um jeito e o que o Chrome roda de outro, e a extensão só
-   manda `abrir` a partir do Envio (#150). O risco 2 de verdade (o Chrome chama, o Anki abre sem pergunta) se confirma lá.
+   manda `abrir` a partir do Envio (#150). O risco 2 de verdade (o Chrome chama, o Anki abre sem pergunta) continua **PENDING OWNER**:
+   se o ensaio depender do #150, #147 permanece pendente até essa confirmação ou uma mudança explícita do critério pelo dono.
 4. **Windows com o Chrome:** `reg query "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.perpetualminer.abridor"` mostra o caminho
    do manifesto em `user_files\abridor`. O passo 2 acima dá ✓? Se a política do computador bloquear o PowerShell (`-ExecutionPolicy Bypass`
    não basta), o passo diz que o abridor não respondeu, com o Detalhes: anote o texto.
