@@ -267,7 +267,8 @@ function conectarNuvem(credenciais) {
 // O cofre deste computador é de lib/chave-da-openai.js; a junção com a nuvem (a mudança mais nova vale, o
 // tombstone inclusive) é de lib/sincronizacao.js. Roda ao abrir o painel com conta, ao entrar e a cada
 // mudança da chave aqui (colar, trocar, apagar), uma de cada vez. Uma falha só fica para a próxima vez:
-// a chave daqui continua valendo, e o log leva a mensagem da nuvem, nunca a chave.
+// a chave daqui continua valendo, e o log leva só o status ou o motivo, nunca a chave nem a mensagem da
+// nuvem (que poderia repetir o corpo do pedido).
 
 let sincronizandoAChave = Promise.resolve();
 
@@ -277,7 +278,7 @@ function sincronizarAChave() {
     try {
       await Sincronizacao.criarSincronizacaoDaChave({ nuvem, cofre: ChaveDaOpenAI.cofre }).sincronizar();
     } catch (err) {
-      console.warn('[Firestore] a chave da OpenAI não sincronizou:', err?.message);
+      console.warn('[Firestore] a chave da OpenAI não sincronizou:', err?.motivo || err?.status || 'sem resposta');
     }
   });
   return sincronizandoAChave;

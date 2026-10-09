@@ -9,6 +9,8 @@ The card that sets up who writes the card text. Two entries side by side in equa
 - `ia-errors` chave recusada, sem crédito, organização não verificada, OpenAI fora do ar, Conexão sem responder: a strip across the card naming "Chave da OpenAI", what to do, and Detalhes; nothing is stored.
 - `ia-copy` the Conexão's copy: "A Conexão com o Anki tem uma cópia da chave", and re-delivery when the Conexão comes back without it.
 - `ia-storage` where the key lives: whole key only in the extension's IndexedDB (`pm-segredos`) and the Conexão's copy, only the last 4 characters in `chrome.storage.local` (`pm_chave_openai`), out of reach of the content script.
+- `ia-account` with a Google account the key follows the account (#154): pasting it writes `usuarios/{uid}/segredos/openai` in Firestore, opening the panel on another computer of the account brings it (extension and that computer's Conexão copy), Trocar chave replaces it everywhere; the note says "Vai junto com a sua conta Google…" (without an account, "Fica neste computador…").
+- `ia-delete` Apagar chave (danger outline → Veio modal, Cancelar focused) and Apagar tudo (its modal adds the key sentence only when a key is stored) take the key out of the three places and leave the tombstone `{ apagada: true, em }` in Firestore, so an older copy on another computer is removed there instead of coming back; a Conexão that was off loses its copy when it answers again.
 - `ia-boas-vindas` the same card as Boas-vindas step 5 (`#boas-vindas/ia`), done when the key is checked.
 
 ## How to get to it (user POV)
@@ -27,6 +29,8 @@ Preconditions:
 - **Errors (`ia-errors`).** `-g "a OpenAI responde"` runs the OpenAI answers (key refused, no credit, usage limit on either call, organization not verified, unreachable); `-g "com a Conexão desligada, a faixa"` the unreachable Conexão. Observable: the strip (`role=alert`) naming `Chave da OpenAI`, the action button, Detalhes (`HTTP 402 · openai_no_credit`), the pasted text kept in the field, nothing stored.
 - **Copy (`ia-copy`).** `-g "a chave guardada na extensão volta à Conexão"`, `-g "se a Conexão sem a cópia recusa a chave"`.
 - **Storage (`ia-storage`).** `-g "o content script e o overlay não alcançam a chave"`: reads the content script's isolated world over CDP.
+- **Account (`ia-account`).** `-g "com conta, colar a chave"`, `-g "a chave colada em outro computador da conta chega sozinha"`, `-g "com conta, Trocar chave troca nos três lugares"`. Seed the account with `extensao.semearSessao({ uid })`; another computer's key is `fakes.google.gravarChaveDaOpenAI(uid, { chave, em })`, and `fakes.google.chaveDaOpenAIDe(uid)` is what the account's cloud keeps. Observable: the masked key and the account note, the IndexedDB key, the Conexão copy, the Firestore document.
+- **Delete (`ia-delete`).** `-g "Apagar chave"` (with and without an account, and with the Conexão off), `-g "a chave apagada em outro computador"` (tombstone wins), and `configuracoes-chave-perigo.spec -g "chave da OpenAI"` (Apagar tudo). Observable: the modal copy, the toast `Chave da OpenAI apagada`, `Sem chave`, IndexedDB `''`, `pm_chave_openai` gone, `fakes.anki.chaveNaConexao()` null, the Firestore tombstone without a `chave` field.
 - **Boas-vindas (`ia-boas-vindas`).** `drive.sh ia-bv boas-vindas.spec -g "passo 5: o card IA dos cartões"`.
 
 ## Gotchas
@@ -34,5 +38,6 @@ Preconditions:
 - The extension never talks to OpenAI (no host permission): the Conexão checks the key, so with the Conexão off there is no way to check, and the strip says so.
 - The key shown is only its end: the screen never knows more than `ultimos4`, so a "key is on screen" assertion should look for the 4 characters, not the whole key.
 - A rejected key never replaces the one already stored; Cancelar in Trocar chave keeps it too.
+- The two-computer merge itself (arrival, swap, tombstone, a key pasted after the tombstone) is proven in Node by `node test_sync.js` (section CHAVE); the e2e side plays "the other computer" by writing the Firestore fake.
 - The fake keeps the copy in memory per test; a new test starts with no copy. Seed one with `fakes.anki.guardarChaveNaConexao('9f3a')`.
-- The visual references for the card (`configuracoes-visual.spec.js` `ia-*`, `boas-vindas-visual.spec.js` `passo-5-ia*`) are `test.fixme` until the owner approves the look; do not freeze them (never `--update-snapshots` without that approval) and keep the key field masked in any capture.
+- The visual references for the card (`configuracoes-visual.spec.js` `ia-*`, including `ia-conferida-com-conta` and `ia-apagar-modal` from #154, `boas-vindas-visual.spec.js` `passo-5-ia*`) are `test.fixme` until the owner approves the look; do not freeze them (never `--update-snapshots` without that approval) and keep the key field masked in any capture.
