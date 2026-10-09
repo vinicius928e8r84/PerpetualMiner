@@ -71,7 +71,16 @@ def _vocabulario(conexao, corpo):
     )
 
 
+def _versao_da_chave(corpo):
+    versao = corpo.get('versao', 0)
+    return versao if type(versao) is int and 0 <= versao <= 9007199254740991 else None
+
+
 def _guardar_chave_da_openai(conexao, corpo):
+    versao = _versao_da_chave(corpo)
+    if versao is None:
+        return 400, {'error': 'invalid_request'}
+    geracao = conexao.cofre.documento('openai').get('geracao', 0)
     chave = corpo.get("chave")
     if not isinstance(chave, str) or not chave.strip():
         return 400, {"error": "invalid_request"}
@@ -82,13 +91,18 @@ def _guardar_chave_da_openai(conexao, corpo):
         openai_api.conferir(conexao.openai_base, chave, conexao.logger)
     except openai_api.ErroDaChave as erro:
         return _STATUS_DO_ERRO_DA_CHAVE[erro.codigo], {"error": erro.codigo}
-    conexao.cofre.guardar("openai", chave)
+    if not conexao.cofre.guardar("openai", chave, versao=versao, se=geracao):
+        return 409, {'error': 'stale_key_version'}
     return 200, {"ok": True, "ultimos4": chave[-4:]}
 
 
 def _apagar_chave_da_openai(conexao, corpo):
     """Apagar chave e Apagar tudo na extensão tiram a cópia daqui também (#154). Trocar a chave a substitui pelo POST /ia/openai/chave."""
-    conexao.cofre.apagar("openai")
+    versao = _versao_da_chave(corpo)
+    if versao is None:
+        return 400, {'error': 'invalid_request'}
+    if not conexao.cofre.apagar("openai", versao=versao):
+        return 409, {'error': 'stale_key_version'}
     return 200, {"ok": True}
 
 
@@ -96,7 +110,11 @@ def _estado_da_ia(conexao, corpo):
     ultimos4 = conexao.cofre.ultimos4("openai")
     if ultimos4 is None:
         return 200, {"openai": {"configurada": False}}
-    return 200, {"openai": {"configurada": True, "ultimos4": ultimos4}}
+    openai = {"configurada": True, "ultimos4": ultimos4}
+    versao = conexao.cofre.documento('openai').get('versao', 0)
+    if versao:
+        openai['versao'] = versao
+    return 200, {"openai": openai}
 
 
 def _estado_do_item_de_login(conexao, corpo):

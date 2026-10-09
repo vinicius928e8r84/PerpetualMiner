@@ -183,25 +183,38 @@ const test = base.extend({
     const gravarStorage = valores => sw.evaluate(v => chrome.storage.local.set(v), valores);
     if (!lembreteDaConfiguracao) await sw.evaluate(() => chrome.storage.local.remove('pm_boas_vindas'));
 
+    // The session storage boundary, not the production auth implementation.
+    const sessaoNoBanco = valor => sw.evaluate(valor => new Promise((resolve, reject) => {
+      const req = indexedDB.open('pm-sessao', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('sessao');
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction('sessao', valor === null ? 'readonly' : 'readwrite');
+        const loja = tx.objectStore('sessao');
+        const pedido = valor === null ? loja.get('firebase') : loja.put(valor, 'firebase');
+        tx.oncomplete = () => { db.close(); resolve(pedido.result || null); };
+        tx.onerror = () => { db.close(); reject(tx.error); };
+      };
+    }), valor);
+
     await use({
       id,
       serviceWorker: sw,
       abaDaInstalacao: manterAbaDaInstalacao ? abaDaInstalacao : null,
       url: caminho => `chrome-extension://${id}/${caminho}`,
       lerStorage,
+      lerSessao: () => sessaoNoBanco(null),
       gravarStorage,
       /** O histórico de frases como está gravado (mais nova primeiro). */
       frases: async () => (await lerStorage({ frases: [] })).frases,
       /** Semeia uma sessão da conta no armazenamento, sem passar pelo login real. */
       /** `expirada` grava um token já vencido: o painel precisa renová-lo antes de ir à nuvem. */
-      semearSessao: ({ uid = 'uid-teste', email = 'pessoa@teste.dev', displayName = 'Pessoa de Teste', expirada = false } = {}) =>
-        gravarStorage({
-          pm_firebase_auth: {
-            uid, idToken: 'token-teste', refreshToken: 'refresh-teste',
-            expiresAt: expirada ? Date.now() - 60 * 1000 : Date.now() + 60 * 60 * 1000,
-          },
-          pm_user_info: { uid, email, displayName, photoURL: '' },
-        }),
+      semearSessao: async ({ uid = 'uid-teste', email = 'pessoa@teste.dev', displayName = 'Pessoa de Teste', expirada = false } = {}) => {
+        await sessaoNoBanco({ uid, idToken: 'token-teste', refreshToken: 'refresh-teste',
+          expiresAt: expirada ? Date.now() - 60 * 1000 : Date.now() + 60 * 60 * 1000 });
+        await gravarStorage({ pm_user_info: { uid, email, displayName, photoURL: '' } });
+      },
     });
   },
 });

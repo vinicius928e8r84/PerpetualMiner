@@ -76,6 +76,8 @@ function criarFakeAnki() {
     falhaDoVocabulario: null,   // { status } | { rede: true }: POST /anki/vocabulary falha
     baralhosDoAnki: null,       // os nomes de POST /anki/decks; null: a lista não vem (definirBaralhosDoAnki)
     contexto: { perfil: 'Usuário 1', falhaNoPerfil: false, openai: 'aceita', itemDeLogin: 'desligado' }, // em que situação o complemento está (os `contexto` dos exemplos); `colecao` só existe depois de `abrirColecao`
+    versaoDaChave: 0,
+    chaveApagada: false,
     chaveDaOpenAI: null,        // a cópia da chave que a Conexão guarda (a inteira: só o teste a vê)
   };
   const requisicoes = [];
@@ -271,7 +273,7 @@ function criarFakeAnki() {
     const candidatos = contrato.exemplos.filter(e =>
       exemploDaExtensao(e) && e.pedido.metodo === metodo && e.pedido.caminho === caminho && exemploServe(e, contexto));
     const exato = candidatos.find(e => e.pedido.corpo === undefined || isDeepStrictEqual(e.pedido.corpo, corpo));
-    const exemplo = exato || (caminho === '/ia/openai/chave' ? candidatos[0] : undefined);
+    const exemplo = exato || (['/ia/openai/chave', '/ia/openai/chave/apagar'].includes(caminho) ? candidatos[0] : undefined);
     if (!exemplo) {
       throw new Error(`O contrato (complemento/contrato/exemplos.json) não tem exemplo de ${metodo} ${caminho}`
         + `${corpo === undefined ? '' : ` com o corpo ${JSON.stringify(corpo)}`} `
@@ -280,7 +282,10 @@ function criarFakeAnki() {
     const json = comOAgora(exemplo.resposta.json);
     // Os exemplos dizem os 4 últimos da chave deles; a resposta leva os da chave que o teste mandou ou que a Conexão guarda.
     if (json.ultimos4 && typeof corpo?.chave === 'string') json.ultimos4 = ultimos4(corpo.chave.trim());
-    if (json.openai?.ultimos4) json.openai.ultimos4 = contexto.chaveNaConexao;
+    if (json.openai?.ultimos4) {
+      json.openai.ultimos4 = contexto.chaveNaConexao;
+      if (estado.versaoDaChave) json.openai.versao = estado.versaoDaChave;
+    }
     return { status: exemplo.resposta.status, json };
   }
 
@@ -289,7 +294,14 @@ function criarFakeAnki() {
     let corpo = null;
     try { corpo = JSON.parse(req.postData() || 'null'); } catch { /* o contrato diz o que responder */ }
     const resposta = respostaDoContrato('POST', '/ia/openai/chave', corpo);
-    if (resposta.status === 200) estado.chaveDaOpenAI = corpo.chave.trim();
+    if (corpo.versao < estado.versaoDaChave || (estado.chaveApagada && corpo.versao <= estado.versaoDaChave)) {
+      return { status: 409, json: { error: 'stale_key_version' } };
+    }
+    if (resposta.status === 200) {
+      estado.chaveDaOpenAI = corpo.chave.trim();
+      estado.versaoDaChave = corpo.versao || 0;
+      estado.chaveApagada = false;
+    }
     return resposta;
   }
 
@@ -328,8 +340,14 @@ function criarFakeAnki() {
       return responderJson(route, status, json);
     }
     if (url.pathname === '/ia/openai/chave/apagar' && req.method() === 'POST') {
-      const { status, json } = respostaDoContrato('POST', '/ia/openai/chave/apagar', {});
-      if (status === 200) estado.chaveDaOpenAI = null;
+      const dados = JSON.parse(req.postData() || '{}');
+      if (dados.versao && dados.versao < estado.versaoDaChave) return responderJson(route, 409, { error: 'stale_key_version' });
+      const { status, json } = respostaDoContrato('POST', '/ia/openai/chave/apagar', dados);
+      if (status === 200) {
+        estado.chaveDaOpenAI = null;
+        estado.versaoDaChave = Math.max(dados.versao || 0, estado.versaoDaChave);
+        estado.chaveApagada = true;
+      }
       return responderJson(route, status, json);
     }
     if (url.pathname === '/ia/estado' && req.method() === 'POST') {
@@ -441,9 +459,9 @@ function criarFakeAnki() {
     /** Como a OpenAI responde à conferência de uma chave: o `openai` dos exemplos (aceita, recusa, sem_credito, org_nao_verificada, limite_de_uso, limite_so_no_pago, fora_do_ar). */
     responderOpenAI(comportamento) { estado.contexto = { ...estado.contexto, openai: comportamento }; },
     /** A Conexão já guardava uma chave (os 4 últimos caracteres dos exemplos), de antes de o teste começar. */
-    guardarChaveNaConexao(finalDaChave) { estado.chaveDaOpenAI = `sk-proj-guardada-antes-${finalDaChave}`; },
+    guardarChaveNaConexao(finalDaChave, versao = 0) { estado.chaveDaOpenAI = `sk-proj-guardada-antes-${finalDaChave}`; estado.versaoDaChave = versao; estado.chaveApagada = false; },
     /** A Conexão voltou sem a chave (o Anki foi reinstalado, a pasta de dados foi apagada). */
-    esquecerAChave() { estado.chaveDaOpenAI = null; },
+    esquecerAChave() { estado.chaveDaOpenAI = null; estado.versaoDaChave = 0; estado.chaveApagada = false; },
     /** @estado-guardado A cópia da chave da OpenAI que a Conexão guarda, ou null: o que o teste confere que chegou. */
     chaveNaConexao() { return estado.chaveDaOpenAI; },
     /** As respostas do contrato a um pedido (com o corpo, se tiver), para o teste que confere o fake contra os exemplos. */

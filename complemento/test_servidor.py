@@ -121,6 +121,8 @@ class ConexaoNoTeste:
         openai="aceita",
         chave_na_conexao=None,
         cofre_sem_escrita=False,
+        versao_na_conexao=0,
+        chave_apagada=False,
     ):
         self.perfil = perfil
         self.falha_no_perfil = falha_no_perfil
@@ -133,6 +135,12 @@ class ConexaoNoTeste:
         if chave_na_conexao is not None:
             with open(os.path.join(self.chaves, "openai.json"), "w", encoding="utf-8") as arquivo:
                 json.dump({"chave": "sk-proj-guardada-antes-" + chave_na_conexao}, arquivo)
+        if versao_na_conexao:
+            with open(os.path.join(self.chaves, 'openai.json'), 'w', encoding='utf-8') as arquivo:
+                dados = {'versao': versao_na_conexao, 'apagada': chave_apagada}
+                if chave_na_conexao and not chave_apagada:
+                    dados['chave'] = 'sk-proj-guardada-antes-' + chave_na_conexao
+                json.dump(dados, arquivo)
         self.openai = OpenAIDeMentira(openai)
         self.cofre_sem_escrita = cofre_sem_escrita
         self.logger = registro.criar(self.logs)
@@ -212,6 +220,8 @@ class ContratoDaConexao(unittest.TestCase):
                     openai=contexto.get("openai", "aceita"),
                     chave_na_conexao=contexto.get("chaveNaConexao"),
                     cofre_sem_escrita=contexto.get("cofre") == "sem_escrita",
+                    versao_na_conexao=contexto.get('versaoNaConexao', 0),
+                    chave_apagada=contexto.get('chaveApagada', False),
                 ) as conexao:
                     pedido = exemplo["pedido"]
                     status, _, corpo = conexao.pedir(

@@ -1435,7 +1435,8 @@
         "caminho": "/ia/openai/chave",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
-          "chave": "sk-proj-chave-de-exemplo-9f3a"
+          "chave": "sk-proj-chave-de-exemplo-9f3a",
+          "versao": 0
         }
       },
       "resposta": {
@@ -1458,7 +1459,8 @@
         "caminho": "/ia/openai/chave",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
-          "chave": "sk-proj-chave-de-exemplo-9f3a"
+          "chave": "sk-proj-chave-de-exemplo-9f3a",
+          "versao": 0
         }
       },
       "resposta": {
@@ -1502,7 +1504,8 @@
         "caminho": "/ia/openai/chave",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
-          "chave": "sk-proj-chave-de-exemplo-9f3a"
+          "chave": "sk-proj-chave-de-exemplo-9f3a",
+          "versao": 0
         }
       },
       "resposta": {
@@ -1524,7 +1527,8 @@
         "caminho": "/ia/openai/chave",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
-          "chave": "sk-proj-chave-de-exemplo-9f3a"
+          "chave": "sk-proj-chave-de-exemplo-9f3a",
+          "versao": 0
         }
       },
       "resposta": {
@@ -1546,7 +1550,8 @@
         "caminho": "/ia/openai/chave",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
-          "chave": "sk-proj-chave-de-exemplo-9f3a"
+          "chave": "sk-proj-chave-de-exemplo-9f3a",
+          "versao": 0
         }
       },
       "resposta": {
@@ -1568,7 +1573,8 @@
         "caminho": "/ia/openai/chave",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
-          "chave": "sk-proj-chave-de-exemplo-9f3a"
+          "chave": "sk-proj-chave-de-exemplo-9f3a",
+          "versao": 0
         }
       },
       "resposta": {
@@ -1590,7 +1596,8 @@
         "caminho": "/ia/openai/chave",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
-          "chave": "sk-proj-chave-de-exemplo-9f3a"
+          "chave": "sk-proj-chave-de-exemplo-9f3a",
+          "versao": 0
         }
       },
       "resposta": {
@@ -1991,7 +1998,9 @@
         "metodo": "POST",
         "caminho": "/ia/openai/chave/apagar",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
-        "corpo": {}
+        "corpo": {
+          "versao": 0
+        }
       },
       "resposta": {
         "status": 200,
@@ -2011,7 +2020,9 @@
         "metodo": "POST",
         "caminho": "/ia/openai/chave/apagar",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
-        "corpo": {}
+        "corpo": {
+          "versao": 0
+        }
       },
       "resposta": {
         "status": 200,
@@ -2080,6 +2091,124 @@
         "status": 500,
         "json": {
           "error": "internal_error"
+        }
+      }
+    },
+    {
+      "nome": "Versão antiga recusada: /ia/openai/chave",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "openai": "aceita",
+        "versaoNaConexao": 200,
+        "chaveApagada": true
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "chave": "sk-proj-chave-de-exemplo-9f3a",
+          "versao": 100
+        }
+      },
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "stale_key_version"
+        }
+      }
+    },
+    {
+      "nome": "Versão antiga recusada: /ia/openai/chave/apagar",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "openai": "aceita",
+        "versaoNaConexao": 200,
+        "chaveApagada": true
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave/apagar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "versao": 100
+        }
+      },
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "stale_key_version"
+        }
+      }
+    },
+    {
+      "nome": "Versão inválida: /ia/openai/chave",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "openai": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "versao": -1
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "Versão inválida: /ia/openai/chave/apagar",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "openai": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave/apagar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "versao": -1
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "Estado da IA com versão não secreta",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "chaveNaConexao": "9f3a",
+        "versaoNaConexao": 200
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "openai": {
+            "configurada": true,
+            "ultimos4": "9f3a",
+            "versao": 200
+          }
         }
       }
     }

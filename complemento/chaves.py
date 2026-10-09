@@ -34,31 +34,51 @@ class Cofre:
         chave = self.ler(nome)
         return chave[-4:] if chave else None
 
-    def guardar(self, nome, chave):
-        """Grava de uma vez só (arquivo novo e `os.replace`), com a permissão só do dono desde o primeiro byte."""
+    def documento(self, nome):
+        try:
+            with open(self._caminho(nome), encoding="utf-8") as arquivo:
+                return json.load(arquivo)
+        except (OSError, ValueError):
+            return {}
+
+    def _gravar(self, nome, documento):
+        """Sob a tranca: substituição atômica, modo 0600 desde o primeiro byte."""
         destino = self._caminho(nome)
         temporario = destino + ".novo"
-        with self._tranca:
+        try:
+            os.remove(temporario)
+        except OSError:
+            pass
+        descritor = os.open(temporario, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            with os.fdopen(descritor, "w", encoding="utf-8") as arquivo:
+                json.dump(documento, arquivo)
+            os.replace(temporario, destino)
+        except BaseException:
             try:
                 os.remove(temporario)
             except OSError:
                 pass
-            descritor = os.open(temporario, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            try:
-                with os.fdopen(descritor, "w", encoding="utf-8") as arquivo:
-                    json.dump({"chave": chave}, arquivo)
-                os.replace(temporario, destino)
-            except BaseException:
-                try:
-                    os.remove(temporario)
-                except OSError:
-                    pass
-                raise
+            raise
 
-    def apagar(self, nome):
-        """Tira a chave do disco. Sem chave guardada, não há o que tirar: já está apagada."""
+    def guardar(self, nome, chave, versao=0, se=None):
         with self._tranca:
-            try:
-                os.remove(self._caminho(nome))
-            except FileNotFoundError:
-                pass
+            anterior = self.documento(nome)
+            if versao < anterior.get('versao', 0):
+                return False
+            if anterior.get('apagada') and versao <= anterior.get('versao', 0):
+                return False
+            if not versao and se is not None and anterior.get('geracao', 0) != se:
+                return False
+            self._gravar(nome, {'chave': chave, 'versao': versao, 'geracao': anterior.get('geracao', 0) + 1})
+            return True
+
+    def apagar(self, nome, versao=0):
+        """O tombstone persistido recusa reentregas antigas, inclusive após reiniciar."""
+        with self._tranca:
+            anterior = self.documento(nome)
+            if versao and versao < anterior.get('versao', 0):
+                return False
+            self._gravar(nome, {'apagada': True, 'versao': max(versao, anterior.get('versao', 0)),
+                                'geracao': anterior.get('geracao', 0) + 1})
+            return True

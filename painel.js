@@ -114,10 +114,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function inicializarAuth() {
   // Tenta restaurar sessão anterior salva no storage
-  const data = await chromeGet({ pm_user_info: null, pm_firebase_auth: null });
-  if (data.pm_user_info && data.pm_firebase_auth) {
+  const data = await chromeGet({ pm_user_info: null });
+  const credenciais = await Sincronizacao.lerCredenciais();
+  if (data.pm_user_info && credenciais) {
     usuarioLogado = { ...data.pm_user_info };
-    conectarNuvem(data.pm_firebase_auth);
+    conectarNuvem(credenciais);
     atualizarUIAuth(usuarioLogado);
     sincronizarAChave();
     await carregarFrasesFirestore();
@@ -194,9 +195,9 @@ async function loginGoogle() {
       refreshToken: fbData.refreshToken,
       expiresAt:    Date.now() + 55 * 60 * 1000,
     };
+    await Sincronizacao.guardarCredenciais(credenciais);
     conectarNuvem(credenciais);
-    chrome.storage.local.set({
-      pm_firebase_auth: credenciais,
+    await chrome.storage.local.set({
       pm_user_info: { uid: usuarioLogado.uid, email: usuarioLogado.email, displayName: usuarioLogado.displayName, photoURL: usuarioLogado.photoURL },
     });
 
@@ -228,7 +229,8 @@ async function logout() {
   if (!usuarioLogado) return;
   usuarioLogado = null;
   desconectarNuvem();
-  chrome.storage.local.remove(['pm_firebase_auth', 'pm_user_info']);
+  await Sincronizacao.apagarCredenciais();
+  await chrome.storage.local.remove(['pm_firebase_auth', 'pm_user_info']);
   atualizarUIAuth(null);
   carregarFrasesLocal();
 }
@@ -256,7 +258,7 @@ function novaSincronizacao() {
 function conectarNuvem(credenciais) {
   sessao = Sincronizacao.criarSessao({
     credenciais,
-    aoRenovar: renovadas => chromeSet({ pm_firebase_auth: renovadas }),
+    aoRenovar: Sincronizacao.guardarCredenciais,
   });
   nuvem = Sincronizacao.nuvemHttp({ sessao });
   sincronizacao = novaSincronizacao();

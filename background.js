@@ -288,11 +288,11 @@ async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', e
 // A nuvem da conta conectada (a sessão renova o token pelo refresh token do
 // Firebase se expirou), ou null sem conta. O REST do Firestore é de lib/sincronizacao.js.
 async function nuvemDaConta() {
-  const { pm_firebase_auth: credenciais } = await chromeGet({ pm_firebase_auth: null });
+  const credenciais = await Sincronizacao.lerCredenciais();
   if (!credenciais?.uid) return null;
   const sessao = PerpetualMiner.Sincronizacao.criarSessao({
     credenciais,
-    aoRenovar: renovadas => chromeSet({ pm_firebase_auth: renovadas }),
+    aoRenovar: Sincronizacao.guardarCredenciais,
   });
   return PerpetualMiner.Sincronizacao.nuvemHttp({ sessao });
 }

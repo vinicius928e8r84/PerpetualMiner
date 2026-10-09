@@ -11,6 +11,9 @@ import stat
 import sys
 import tempfile
 import unittest
+import threading
+from unittest.mock import patch
+from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -151,6 +154,27 @@ def apagar(conexao, **opcoes):
 
 class ChaveApagada(unittest.TestCase):
     """Apagar chave e Apagar tudo na extensão (#154): a cópia da Conexão também sai, e do disco."""
+
+    def test_post_atrasado_e_reentrega_nao_desfazem_apagamento_mesmo_apos_reinicio(self):
+        entrou, liberar = threading.Event(), threading.Event()
+        def conferir(*_args):
+            entrou.set()
+            self.assertTrue(liberar.wait(5))
+        with tempfile.TemporaryDirectory() as pasta:
+            with ConexaoNoTeste(pasta) as conexao, ThreadPoolExecutor() as pool:
+                with patch('complemento.servidor.openai_api.conferir', conferir):
+                    atrasado = pool.submit(conexao.pedir, 'POST', '/ia/openai/chave',
+                        corpo={'chave': CHAVE, 'versao': 100})
+                    self.assertTrue(entrou.wait(5))
+                    conexao.pedir('POST', '/ia/openai/chave/apagar', corpo={'versao': 200})
+                    liberar.set()
+                    self.assertEqual(atrasado.result()[0], 409)
+                self.assertEqual(estado(conexao), (200, {'openai': {'configurada': False}}))
+            with ConexaoNoTeste(pasta) as conexao:
+                resposta = conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 100})
+                self.assertEqual(resposta[0], 409)
+                self.assertEqual(estado(conexao), (200, {'openai': {'configurada': False}}))
+                self.assertFalse(any(CHAVE.encode() in dados for _, dados in tudo_em_disco(pasta)))
 
     def test_apagar_tira_a_copia_da_conexao_e_o_arquivo_do_disco(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:

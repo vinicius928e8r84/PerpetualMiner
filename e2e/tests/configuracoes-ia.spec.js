@@ -125,8 +125,11 @@ test('conferir com o campo vazio é recusado no campo e nada vai à Conexão', a
 
 test('enquanto a Conexão confere, o campo guarda o que foi colado e o botão não repete o pedido', async ({ page, extensao, fakes }) => {
   let liberar;
-  fakes.anki.responder('POST', '/ia/openai/chave', () => new Promise(resolver => {
-    liberar = () => resolver({ status: 200, json: { ok: true, ultimos4: '9f3a' } });
+  fakes.anki.responder('POST', '/ia/openai/chave', req => new Promise(resolver => {
+    liberar = () => {
+      fakes.anki.guardarChaveNaConexao('9f3a', req.postDataJSON().versao);
+      resolver({ status: 200, json: { ok: true, ultimos4: '9f3a' } });
+    };
   }));
   await abrirPainel(page, extensao, '#configuracoes/ia');
 
@@ -307,10 +310,15 @@ test('com a Conexão desligada o card não afirma nada sobre a cópia', async ({
   expect(JSON.stringify(await extensao.lerStorage(null))).not.toContain('sk-proj-chave-de-exemplo');
 });
 
-test('o content script e o overlay não alcançam a chave: ela não está no storage que eles leem nem no banco que eles abrem', async ({ page, extensao, context, paginas }) => {
+test('o content script e o overlay não alcançam a chave: ela não está no storage que eles leem nem no banco que eles abrem', async ({ page, extensao, context, paginas, fakes }) => {
+  await extensao.semearSessao({ uid: 'uid-isolamento' });
+  // Upgrade from the old readable storage must remove both bearer and refresh tokens.
+  await extensao.gravarStorage({ pm_firebase_auth: await extensao.lerSessao() });
   await abrirPainel(page, extensao, '#configuracoes/ia');
   await colarEConferir(page);
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+
+  await expect.poll(() => Boolean(fakes.google.chaveDaOpenAIDe('uid-isolamento'))).toBe(true);
 
   // O mundo isolado do content script numa página comum: é de onde o content script e o overlay leem.
   const pagina = await context.newPage();
@@ -329,12 +337,16 @@ test('o content script e o overlay não alcançam a chave: ela não está no sto
     expression: `(async () => ({
       storage: JSON.stringify(await chrome.storage.local.get(null)),
       bancos: (await indexedDB.databases()).map(banco => banco.name),
+      temToken: Boolean((await chrome.storage.local.get('pm_firebase_auth')).pm_firebase_auth),
     }))()`,
   });
 
   expect(result.value.storage).toContain('pm_chave_openai');
   expect(result.value.storage).not.toContain('sk-proj-chave-de-exemplo');
   expect(result.value.bancos).not.toContain('pm-segredos');
+  expect(result.value.temToken).toBe(false);
+  expect(await extensao.lerStorage('pm_firebase_auth')).toEqual({});
+  expect(fakes.google.chaveDaOpenAIDe('uid-isolamento').chave === CHAVE).toBe(true);
 });
 
 test('a chave colada num lugar do card e confirmada no outro nunca volta à tela em Trocar chave', async ({ page, extensao, fakes }) => {
@@ -474,6 +486,44 @@ test('a chave colada em outro computador da conta chega sozinha: na extensão e 
   expect(fakes.google.chaveDaOpenAIDe(UID).chave).toBe(OUTRA_CHAVE);
 });
 
+test('P4: uma chave remota com o mesmo final troca a cópia da Conexão por versão', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: UID });
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await colarEConferir(page);
+  await expect.poll(() => Boolean(fakes.google.chaveDaOpenAIDe(UID))).toBe(true);
+  const outra = 'sk-fake-outra-versao-9f3a';
+  chaveDeOutroComputador(fakes, outra, -1000);
+  await page.reload();
+  await expect(corpo(page)).toContainText('A Conexão com o Anki tem uma cópia da chave.');
+  await expect.poll(() => fakes.anki.chaveNaConexao() === outra).toBe(true);
+  expect((await chaveNoBancoDaExtensao(page)) === outra).toBe(true);
+});
+
+test('S3: chegada remota invalida a confirmação anterior da cópia antes de conferir', async ({ page, extensao, fakes, context }) => {
+  await extensao.semearSessao({ uid: UID });
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await colarEConferir(page);
+  await expect(corpo(page)).toContainText('A Conexão com o Anki tem uma cópia da chave.');
+  await expect.poll(() => Boolean(fakes.google.chaveDaOpenAIDe(UID))).toBe(true);
+  const liberadores = [];
+  let recusar = false;
+  const recusada = { status: 401, json: { error: 'openai_key_rejected' } };
+  fakes.anki.responder('POST', '/ia/openai/chave', () => recusar ? recusada : new Promise(resolve => {
+    liberadores.push(() => resolve(recusada));
+  }));
+  chaveDeOutroComputador(fakes, OUTRA_CHAVE, -1000);
+  const outraAba = await context.newPage();
+  await outraAba.goto(extensao.url('painel.html#configuracoes/ia'));
+  await page.bringToFront();
+  await expect(card(page).locator('.cfg-resumo')).toHaveText('••••••••wxyz');
+  await expect(corpo(page)).not.toContainText('A Conexão com o Anki tem uma cópia da chave.');
+  recusar = true;
+  for (const liberar of liberadores) liberar();
+  await expect(corpo(page)).toContainText('A Conexão com o Anki ainda não tem a cópia');
+  expect(fakes.anki.chaveNaConexao() === CHAVE).toBe(true);
+  expect((await chaveNoBancoDaExtensao(page)) === OUTRA_CHAVE).toBe(true);
+});
+
 test('com conta, Trocar chave troca nos três lugares: a velha sai da nuvem, da extensão e da Conexão', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: UID });
   await abrirPainel(page, extensao, '#configuracoes/ia');
@@ -562,6 +612,91 @@ test('a chave apagada em outro computador da conta sai daqui também, e a cópia
   expect(await chaveNoBancoDaExtensao(page)).toBe('');
   expect(await extensao.lerStorage('pm_chave_openai')).toEqual({});
   expect(fakes.google.chaveDaOpenAIDe(UID)).toEqual({ apagada: true, em: expect.any(Number) });
+});
+
+test('S1: falha ao sincronizar apagamento permanece na Conta e Tentar de novo envia o tombstone', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: UID });
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await colarEConferir(page);
+  await expect.poll(() => Boolean(fakes.google.chaveDaOpenAIDe(UID))).toBe(true);
+  fakes.google.recusarEscritas();
+  await card(page).getByRole('button', { name: 'Apagar chave' }).click();
+  await modal(page).getByRole('button', { name: 'Apagar chave' }).click();
+  await expect(card(page).locator('.cfg-resumo')).toHaveText('Sem chave');
+  await page.reload();
+  await expect(page.locator('#shell-chip')).toContainText('Sem sincronizar');
+  await page.goto(extensao.url('painel.html#configuracoes/conta'));
+  fakes.google.recusarEscritas(false);
+  await page.locator('#cfg-conta').getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
+  expect(fakes.google.chaveDaOpenAIDe(UID)?.apagada).toBe(true);
+  expect(await chaveNoBancoDaExtensao(page)).toBe('');
+});
+
+async function falharBanco(page) {
+  await page.evaluate(() => {
+    window.abrirBancoAntesDoTeste = indexedDB.open.bind(indexedDB);
+    indexedDB.open = (...args) => {
+      if (args[0] === 'pm-segredos') throw new Error('storage_unavailable');
+      return window.abrirBancoAntesDoTeste(...args);
+    };
+  });
+}
+async function restaurarBanco(page) {
+  await page.evaluate(() => { indexedDB.open = window.abrirBancoAntesDoTeste; });
+}
+
+test('S4: apagar chave com falha local mostra aviso persistente, Detalhes e repetição', async ({ page, extensao, fakes }) => {
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await colarEConferir(page);
+  await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+  await falharBanco(page);
+  await card(page).getByRole('button', { name: 'Apagar chave' }).click();
+  await modal(page).getByRole('button', { name: 'Apagar chave' }).click();
+  await expect(erro(page)).toContainText('Não deu para apagar a chave neste computador.');
+  await erro(page).getByText('Detalhes').click();
+  await expect(erro(page)).toContainText('storage_unavailable');
+  await restaurarBanco(page);
+  expect((await chaveNoBancoDaExtensao(page)) === CHAVE).toBe(true);
+  await erro(page).getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect(card(page).locator('.cfg-resumo')).toHaveText('Sem chave');
+  expect(await chaveNoBancoDaExtensao(page)).toBe('');
+  expect(fakes.anki.chaveNaConexao()).toBeNull();
+});
+
+test('S4: Apagar tudo comunica resultado parcial se o cofre local falha', async ({ page, extensao, fakes }) => {
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await colarEConferir(page);
+  await extensao.gravarStorage({ frases: [{ id: 1, texto: 'fake phrase', data: '01/01/2026', idioma: 'Inglês', streaming: 'web' }] });
+  await page.goto(extensao.url('painel.html#configuracoes/perigo'));
+  await falharBanco(page);
+  await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar tudo' }).click();
+  await modal(page).getByRole('button', { name: 'Apagar tudo' }).click();
+  await expect(page.getByRole('alert')).toContainText('As frases foram apagadas, mas a chave da OpenAI continua neste computador.');
+  await restaurarBanco(page);
+  expect((await chaveNoBancoDaExtensao(page)) === CHAVE).toBe(true);
+  expect(await extensao.frases()).toEqual([]);
+  await page.getByRole('alert').getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  expect(await chaveNoBancoDaExtensao(page)).toBe('');
+  expect(fakes.anki.chaveNaConexao()).toBeNull();
+});
+
+test('PATCH recusado: a chave colada em A nunca sobe para B e a nota não promete sync com B', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: UID });
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
+  fakes.google.recusarEscritas();
+  await colarEConferir(page);
+  await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+  await expect.poll(() => fakes.google.requisicoes.filter(r => r.metodo === 'PATCH' && r.url.includes('/segredos/')).length).toBeGreaterThan(0);
+  fakes.google.recusarEscritas(false);
+  await extensao.semearSessao({ uid: 'uid-B' });
+  await page.reload();
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
+  expect(fakes.google.chaveDaOpenAIDe('uid-B')).toBeNull();
+  expect(await chaveNoBancoDaExtensao(page)).toBe(CHAVE);
+  await expect(corpo(page)).not.toContainText('Vai junto com a sua conta Google');
 });
 
 test('a chave de uma conta Google não sobe para outra conta que entra no mesmo computador', async ({ page, extensao, fakes }) => {

@@ -522,7 +522,7 @@ test('Sessão expirou (CFG-08): “Entrar” leva ao login e volta a sincronizar
 
   await conta(page).getByRole('button', { name: 'Entrar', exact: true }).click();
   await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
-  expect((await extensao.lerStorage(['pm_firebase_auth'])).pm_firebase_auth.expiresAt).toBeGreaterThan(Date.now());
+  expect((await extensao.lerSessao()).expiresAt).toBeGreaterThan(Date.now());
 });
 
 test('Perfil sem nome (CFG-10): o card, o resumo e o chip dizem “Conta Google”', async ({ page, extensao }) => {
@@ -590,12 +590,14 @@ test('entrar com Google sobe as frases e mostra a conta; sair deixa as frases ne
   expect(fakes.google.frasesDe('uid-teste')).toHaveLength(3);
   const gravado = await extensao.lerStorage(['pm_user_info', 'pm_firebase_auth']);
   expect(gravado.pm_user_info).toMatchObject({ uid: 'uid-teste', email: 'bruno@teste.dev', displayName: 'Bruno Lima' });
-  expect(gravado.pm_firebase_auth).toMatchObject({ uid: 'uid-teste', idToken: 'token-teste' });
+  expect(gravado.pm_firebase_auth).toBeUndefined();
+  expect(await extensao.lerSessao()).toMatchObject({ uid: 'uid-teste', idToken: 'token-teste' });
 
   await conta(page).getByRole('button', { name: 'Sair da conta' }).click();
   await esperarChipSemConta(page);
   await expect(conta(page).getByRole('button', { name: 'Entrar com Google' })).toBeVisible();
   expect(await extensao.lerStorage(['pm_user_info', 'pm_firebase_auth'])).toEqual({});
+  expect(await extensao.lerSessao()).toBeNull();
   expect(await extensao.frases()).toHaveLength(3);
   await expect(page.locator('#shell-total')).toHaveText('3');
 });

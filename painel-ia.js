@@ -41,6 +41,8 @@
     ultimos4: null,    // null até a primeira leitura do storage; '' sem chave
     copia: null,       // a Conexão tem a cópia da chave? true · false · null (não se sabe: ela não respondeu)
     focarAoLer: false, // o endereço pediu o foco antes de o storage responder
+    uid: '',
+    contaDaChave: '',
     comConta: false,   // há uma conta Google: a chave vai junto com ela (#154)
   };
 
@@ -51,9 +53,11 @@
 
   function iniciar() {
     configuracoes = montar(porId('cfg-ia-corpo'), { prefixo: 'cfg' });
-    chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null, pm_user_info: null }, dados => {
+    chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null, [ChaveDaOpenAI.VERSAO]: null, pm_user_info: null }, dados => {
       estado.ultimos4 = dados[ChaveDaOpenAI.MARCA]?.ultimos4 || '';
       estado.comConta = Boolean(dados.pm_user_info);
+      estado.uid = dados.pm_user_info?.uid || '';
+      estado.contaDaChave = dados[ChaveDaOpenAI.VERSAO]?.conta || '';
       desenharResumo();
       lugares.forEach(desenhar);
       if (estado.focarAoLer) focarOCampoSeVazio();
@@ -66,11 +70,16 @@
       if (area !== 'local') return;
       if ('pm_user_info' in mudancas) {
         estado.comConta = Boolean(mudancas.pm_user_info.newValue);
+        estado.uid = mudancas.pm_user_info.newValue?.uid || '';
         for (const lugar of lugares) if (!lugar.trocando && !lugar.conferindo) desenhar(lugar);
       }
-      if (!(ChaveDaOpenAI.MARCA in mudancas)) return;
-      estado.ultimos4 = mudancas[ChaveDaOpenAI.MARCA].newValue?.ultimos4 || '';
-      if (!estado.ultimos4) estado.copia = null;
+      if (ChaveDaOpenAI.VERSAO in mudancas) {
+        estado.contaDaChave = mudancas[ChaveDaOpenAI.VERSAO].newValue?.conta || '';
+      }
+      if (!(ChaveDaOpenAI.MARCA in mudancas) && !(ChaveDaOpenAI.VERSAO in mudancas)) return;
+      if (ChaveDaOpenAI.MARCA in mudancas) estado.ultimos4 = mudancas[ChaveDaOpenAI.MARCA].newValue?.ultimos4 || '';
+      rodada += 1;
+      estado.copia = null;
       desenharResumo();
       for (const lugar of lugares) if (!lugar.trocando && !lugar.conferindo) desenhar(lugar);
       if (conexaoLigada) conferirACopia();
@@ -248,7 +257,8 @@
   function notasDaChave(lugar, salva) {
     const notas = [];
     if (salva) {
-      notas.push(elemento('p', 'cfg-nota', textoDaVoz(estado.comConta ? 'CFG-35.chaveNaConta' : 'CFG-35.chaveSemConta')));
+      notas.push(elemento('p', 'cfg-nota', textoDaVoz(estado.comConta && estado.contaDaChave && estado.contaDaChave !== estado.uid
+        ? 'CFG-35.chaveDeOutraConta' : estado.comConta ? 'CFG-35.chaveNaConta' : 'CFG-35.chaveSemConta')));
       if (estado.copia !== null) {
         const copia = elemento('p', 'cfg-nota', textoDaVoz(estado.copia ? 'CFG-35.chaveCopiaNaConexao' : 'CFG-35.chaveSemCopia'));
         copia.dataset.copia = estado.copia ? 'tem' : 'falta';

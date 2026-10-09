@@ -569,6 +569,7 @@
   "CFG-35.chaveCancelar": "Cancelar",
   "CFG-35.chaveVazia": "Cole a chave antes de conferir",
   "CFG-35.chaveToast": "Chave da OpenAI conferida e salva",
+  "CFG-35.chaveDeOutraConta": "Esta chave é de outra conta Google. Fica neste computador e não vai para a conta atual.",
   "CFG-35.chaveNaConta": "Vai junto com a sua conta Google: chega sozinha aos seus outros computadores, na extensão e numa cópia da Conexão com o Anki de cada um.",
   "CFG-35.chaveSemConta": "Fica neste computador, na extensão e numa cópia da Conexão com o Anki. Com a conta Google, ela vai junto para os seus outros computadores.",
   "CFG-35.chaveApagar": "Apagar chave",
