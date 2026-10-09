@@ -59,7 +59,10 @@ que alguém já tenha levado.
   guardada ainda é a que foi lida, na mesma transação do IndexedDB (CHAVE 9).
 - Uma Conexão que estava desligada quando a chave foi apagada perde a cópia quando volta a responder. O POST e a remoção levam uma geração HTTP local não secreta (`openai-conexao-versao`), separada da hora remota `em`: trocar para outra conta com chave mais antiga ainda ordena uma operação nova na Conexão; a Conexão grava um tombstone persistente e recusa HTTP 409 para versões antigas (inclusive reentregas após reiniciar). Dois sufixos iguais nunca são prova de que a cópia corresponde à versão atual.
 - Chave, hora e UID são lidos numa transação IndexedDB única, e a versão é relida antes de subir. Não há garantia de CAS no Firestore para um PATCH já em trânsito (limite abaixo).
-- Falha local ao apagar mostra aviso persistente com repetição e Detalhes; Apagar tudo comunica o resultado parcial, sem toast de sucesso total.
+- Falha local ao apagar mostra aviso persistente com repetição e Detalhes; Apagar tudo comunica o resultado parcial, sem toast de sucesso total. Antes de injetar a falha no teste, a conferência anterior precisa terminar: navegar só pelo hash mantém a continuação do Salvar na mesma página.
+- Apagar tudo varre a loja inteira numa transação: tira a chave ativa e TODOS os segredos em `conta:<uid>`. Só ficam marcas de remoção sem chave, vinculadas aos UIDs; uma marca de A só sobe quando A autentica, nunca usando o token de B ou C.
+- Cada confirmação reserva uma geração exclusiva numa transação readwrite ANTES do HTTP, inclusive entre duas abas no mesmo milissegundo. A confirmação só grava localmente se essa reserva ainda é a mais recente; apagar/chegada remota a invalida. Na Conexão, uma geração igual não pode substituir outra chave; reentregar a MESMA chave é idempotente.
+- Falha exclusiva da chave tem texto próprio (CFG-41), repetição e Detalhes: não afirma que as frases já sincronizadas estão só neste computador.
 - Os testes usam só chaves de mentira.
 
 ## Limites aceitos

@@ -97,6 +97,46 @@ test('colar a chave: a Conexão a confere e guarda a cópia, a tela mostra só a
   expect(JSON.stringify(await extensao.lerStorage(null))).not.toContain('sk-proj-chave-de-exemplo');
 });
 
+for (const ordem of ['primeira atrasada', 'segunda atrasada']) {
+test(`F5: duas abas confirmam no mesmo milissegundo sem compartilhar geração ou divergir da Conexão — ${ordem}`, async ({ page, extensao, fakes, context }) => {
+  const outraAba = await context.newPage();
+  const agora = new Date('2026-11-01T00:00:00Z');
+  await page.clock.setFixedTime(agora);
+  await outraAba.clock.setFixedTime(agora);
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await abrirPainel(outraAba, extensao, '#configuracoes/ia');
+  let liberar, iniciou, liberarSegunda;
+  const espera = new Promise(resolve => { liberar = resolve; });
+  const segunda = new Promise(resolve => { liberarSegunda = resolve; });
+  const primeira = new Promise(resolve => { iniciou = resolve; });
+  const geracoes = [];
+  await context.route('**/ia/openai/chave', async route => {
+    geracoes.push(route.request().postDataJSON().versao);
+    if (geracoes.length === 1) { iniciou(); await espera; }
+    else if (ordem === 'segunda atrasada') await segunda;
+    await route.fallback();
+  });
+  try {
+    await colarEConferir(page, CHAVE);
+    await primeira;
+    await colarEConferir(outraAba, OUTRA_CHAVE);
+    await expect.poll(() => geracoes.length).toBe(2);
+    if (ordem === 'segunda atrasada') {
+      liberar();
+      await expect(card(page).getByRole('button', { name: 'Conferindo a chave…' })).toHaveCount(0);
+      liberarSegunda();
+    }
+    await expect(card(outraAba).locator('.cfg-resumo')).toHaveText('••••••••wxyz');
+    liberar();
+    await expect(card(page).getByRole('button', { name: 'Conferindo a chave…' })).toHaveCount(0);
+    expect(new Set(geracoes).size).toBe(2);
+    const guardada = await chaveNoBancoDaExtensao(page);
+    expect(guardada === OUTRA_CHAVE).toBe(true);
+    expect(fakes.anki.chaveNaConexao() === guardada).toBe(true);
+  } finally { liberar(); liberarSegunda(); }
+});
+}
+
 test('Enter no campo confere, como o botão', async ({ page, extensao, fakes }) => {
   await abrirPainel(page, extensao, '#configuracoes/ia');
 
@@ -618,6 +658,79 @@ test('a chave apagada em outro computador da conta sai daqui também, e a cópia
   expect(fakes.google.chaveDaOpenAIDe(UID)).toEqual({ apagada: true, em: expect.any(Number) });
 });
 
+test('F4: Apagar tudo limpa todas as cópias locais pendentes de A/B/C antes de outra conta autenticar', async ({ page, extensao, fakes }) => {
+  fakes.google.recusarEscritas();
+  for (const [uid, final] of [['A', 'aaaa'], ['B', 'bbbb'], ['C', 'cccc']]) {
+    await extensao.semearSessao({ uid, displayName: uid });
+    await abrirPainel(page, extensao, '#configuracoes/ia');
+    // Seeding auth changes storage, not an already-running panel's session.
+    await page.reload();
+    if (await card(page).getByRole('button', { name: 'Trocar chave' }).count()) {
+      await card(page).getByRole('button', { name: 'Trocar chave' }).click();
+    }
+    await colarEConferir(page, `sk-fake-pendente-${uid}-${final}`);
+    await expect(card(page).locator('.cfg-resumo')).toHaveText(`••••••••${final}`);
+    await expect(campo(page)).toHaveCount(0);
+  }
+  await extensao.gravarStorage({ frases: [{ id: 99, texto: 'Fake local phrase.', data: '09/10/2026', idioma: 'Inglês', streaming: 'web' }] });
+  fakes.google.recusarEscritas(false);
+  await page.goto(extensao.url('painel.html#configuracoes/perigo'));
+  await page.locator('#btn-apagar-tudo').click();
+  await modal(page).locator('.veio-botao--perigo-cheio').click();
+  await expect.poll(() => fakes.google.chaveDaOpenAIDe('C')?.apagada).toBe(true);
+  const segredosRestantes = () => page.evaluate(() => new Promise((resolve, reject) => {
+    const req = indexedDB.open('pm-segredos', 1);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result, tx = db.transaction('chaves');
+      const registros = tx.objectStore('chaves').getAll();
+      tx.oncomplete = () => {
+        resolve(registros.result.some(v => typeof v === 'string' ? v.startsWith('sk-fake-') : Boolean(v?.chave)));
+        db.close();
+      };
+    };
+  }));
+  expect(await segredosRestantes()).toBe(false);
+  expect(fakes.google.chaveDaOpenAIDe('A')).toBeNull();
+  expect(fakes.google.chaveDaOpenAIDe('B')).toBeNull();
+  for (const uid of ['A', 'B']) {
+    await extensao.semearSessao({ uid });
+    await abrirPainel(page, extensao, '#configuracoes/ia');
+    await page.reload();
+    await expect(card(page).locator('.cfg-resumo')).toHaveText('Sem chave');
+    await expect.poll(() => fakes.google.chaveDaOpenAIDe(uid)?.apagada).toBe(true);
+    expect(await chaveNoBancoDaExtensao(page)).toBe('');
+    expect(await segredosRestantes()).toBe(false);
+    expect(fakes.anki.chaveNaConexao()).toBeNull();
+  }
+  expect(await extensao.frases()).toEqual([]);
+});
+
+test('F1: só a chave falha no upload; a Conta não diz que frases já sincronizadas estão só aqui', async ({ page, extensao, fakes }) => {
+  const frase = { id: 42, texto: 'The fake phrase is in the cloud.', data: '09/10/2026', idioma: 'Inglês', streaming: 'web' };
+  await extensao.semearSessao({ uid: UID });
+  await extensao.gravarStorage({ frases: [frase], pm_migrated: UID });
+  fakes.google.gravarFrases(UID, [frase]);
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
+  fakes.google.recusarEscritas();
+  await colarEConferir(page);
+  await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+  await page.locator('#shell-chip').click();
+  const conta = page.locator('#cfg-conta');
+  await expect(conta).toContainText('A chave da OpenAI ainda não sincronizou com a sua conta.');
+  await expect(conta).not.toContainText('as frases estão só neste computador');
+  await conta.getByText('Detalhes').click();
+  await expect(conta).toContainText('OpenAI sync');
+  await fotografar(conta, 'conta-chave-pendente.png');
+  expect(fakes.google.frasesDe(UID)).toEqual([frase]);
+  fakes.google.recusarEscritas(false);
+  await conta.getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
+  expect(fakes.google.chaveDaOpenAIDe(UID)?.chave === CHAVE).toBe(true);
+  expect(fakes.google.frasesDe(UID)).toEqual([frase]);
+});
+
 test('S1: falha ao sincronizar apagamento permanece na Conta e Tentar de novo envia o tombstone', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: UID });
   await abrirPainel(page, extensao, '#configuracoes/ia');
@@ -670,9 +783,18 @@ test('S4: apagar chave com falha local mostra aviso persistente, Detalhes e repe
   await expect.poll(() => fakes.anki.chaveNaConexao() === null).toBe(true);
 });
 
-test('S4: Apagar tudo comunica resultado parcial se o cofre local falha', async ({ page, extensao, fakes }) => {
+test('S4: Apagar tudo comunica resultado parcial se o cofre local falha', async ({ page, extensao, fakes, context }) => {
+  let liberar;
+  const resposta = new Promise(resolve => { liberar = resolve; });
+  await context.route('**/ia/openai/chave', async route => { await resposta; await route.fallback(); });
   await abrirPainel(page, extensao, '#configuracoes/ia');
   await colarEConferir(page);
+  // goto below changes only the hash, not the document. Without this completion
+  // barrier, the DB fault hits the PREVIOUS save continuation, not Apagar tudo.
+  liberar();
+  await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+  await expect(campo(page)).toHaveCount(0);
+  expect((await chaveNoBancoDaExtensao(page)) === CHAVE).toBe(true);
   await extensao.gravarStorage({ frases: [{ id: 1, texto: 'fake phrase', data: '01/01/2026', idioma: 'Inglês', streaming: 'web' }] });
   await page.goto(extensao.url('painel.html#configuracoes/perigo'));
   await falharBanco(page);

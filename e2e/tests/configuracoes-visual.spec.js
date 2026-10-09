@@ -300,6 +300,21 @@ test('o modal de apagar todas as frases, com conta', async ({ page, extensao, fa
   await expect(page).toHaveScreenshot('perigo-modal.png', { animations: 'disabled' });
 });
 
+test.fixme('Conta & sync: só a chave da OpenAI está pendente — aprovação visual pendente', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
+  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
+  await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
+  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
+  fakes.google.recusarEscritas();
+  await campoDaChave(page).fill('sk-fake-visual-9f3a');
+  await page.locator('#cfg-ia').getByRole('button', { name: 'Conferir e salvar' }).click();
+  await expect(page.locator('#cfg-ia-resumo')).toHaveText('••••••••9f3a');
+  await page.locator('#shell-chip').click();
+  await expect(page.locator('#cfg-conta')).toContainText('A chave da OpenAI ainda não sincronizou com a sua conta.');
+  expect(fakes.google.frasesDe('uid-visual')).toEqual(FRASES_DO_PROTOTIPO);
+  await expect(page).toHaveScreenshot('conta-chave-pendente.png', { animations: 'disabled', mask: [campoDaChave(page)] });
+});
+
 // Security-review states await owner approval; no PNG baseline is approved here.
 for (const variante of ['outra-conta', 'apagar-falhou', 'apagar-tudo-parcial']) {
   test.fixme(`IA: ${variante} — aprovação visual pendente`, async ({ page, extensao, fakes }) => {

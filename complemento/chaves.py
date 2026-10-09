@@ -66,6 +66,8 @@ class Cofre:
             anterior = self.documento(nome)
             if versao < anterior.get('versao', 0):
                 return False
+            if versao and versao == anterior.get('versao', 0) and anterior.get('chave') != chave:
+                return False
             if anterior.get('apagada') and versao <= anterior.get('versao', 0):
                 return False
             if not versao and se is not None and anterior.get('geracao', 0) != se:

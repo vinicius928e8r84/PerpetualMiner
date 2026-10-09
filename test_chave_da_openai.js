@@ -29,6 +29,16 @@ function computador() {
             queueMicrotask(() => { req.result = snapshot.get(item); req.onsuccess?.(); });
             return req;
           },
+          getAllKeys() {
+            const req = {};
+            queueMicrotask(() => { req.result = [...snapshot.keys()]; req.onsuccess?.(); });
+            return req;
+          },
+          getAll() {
+            const req = {};
+            queueMicrotask(() => { req.result = [...snapshot.values()]; req.onsuccess?.(); });
+            return req;
+          },
           put(valor, item) { snapshot.set(item, valor); },
           delete(item) { snapshot.delete(item); },
         };
@@ -83,6 +93,30 @@ test('P1: PATCH recusado preserva a pendência de A quando B tem outra chave', a
   await sync('A');
   assert.equal(documentos.A?.chave === FAKE, true);
   assert.equal(documentos.B.chave === FAKE, false);
+});
+
+test('F4: Apagar tudo remove segredos de todas as pendências e não os revive ao voltar às contas', async () => {
+  const pc = computador();
+  const docs = {};
+  const sync = uid => criarSincronizacaoDaChave({ daqui: pc.chave.daqui, nuvem: {
+    uid, async lerChaveDaOpenAI() { return docs[uid] || null; },
+    async gravarChaveDaOpenAI(valor) { docs[uid] = structuredClone(valor); },
+  } }).sincronizar();
+  for (const uid of ['A', 'B', 'C']) {
+    pc.local.pm_user_info = { uid };
+    await pc.chave.confirmar(`sk-fake-${uid}-zz99`);
+  }
+  await pc.chave.apagar({ comConta: true, mesmoSemChave: true });
+  assert.equal([...pc.itens.values()].some(v => typeof v === 'string' ? v.startsWith('sk-fake-') : Boolean(v?.chave)), false);
+  assert.equal(docs.A, undefined); // No authorization to other accounts yet.
+  for (const uid of ['C', 'A', 'B']) {
+    pc.local.pm_user_info = { uid };
+    await sync(uid);
+    await pc.chave.conferirACopia();
+    assert.equal((await pc.chave.daqui.ler()).chave, '');
+    assert.equal(pc.copia(), '');
+    assert.equal(docs[uid]?.chave, '');
+  }
 });
 
 test('P2: a leitura da versão abre uma única transação, sem combinar chave antiga com tombstone', async () => {

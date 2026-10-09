@@ -113,6 +113,15 @@ class ChaveRecebida(unittest.TestCase):
             self.assertEqual(depois, (200, {"openai": {"configurada": False}}))
             self.assertEqual(arquivos, [])
 
+    def test_mesma_geracao_nao_pode_sobrescrever_com_outra_chave(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 200})
+            status, _, corpo = conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': OUTRA_CHAVE, 'versao': 200})
+            self.assertEqual((status, json.loads(corpo)), (409, {'error': 'stale_key_version'}))
+            self.assertEqual(conexao.conexao.cofre.ler('openai') == CHAVE, True)
+            status, _, _ = conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 200})
+            self.assertEqual(status, 200) # Identical retry is idempotent, not another generation.
+
     def test_trocar_a_chave_guarda_a_nova(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             enviar(conexao, CHAVE)

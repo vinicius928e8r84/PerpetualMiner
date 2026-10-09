@@ -294,7 +294,9 @@ function criarFakeAnki() {
     let corpo = null;
     try { corpo = JSON.parse(req.postData() || 'null'); } catch { /* o contrato diz o que responder */ }
     const resposta = respostaDoContrato('POST', '/ia/openai/chave', corpo);
-    if (corpo.versao < estado.versaoDaChave || (estado.chaveApagada && corpo.versao <= estado.versaoDaChave)) {
+    if (corpo.versao < estado.versaoDaChave
+      || (corpo.versao && corpo.versao === estado.versaoDaChave && estado.chaveDaOpenAI !== corpo.chave.trim())
+      || (estado.chaveApagada && corpo.versao <= estado.versaoDaChave)) {
       return { status: 409, json: { error: 'stale_key_version' } };
     }
     if (resposta.status === 200) {

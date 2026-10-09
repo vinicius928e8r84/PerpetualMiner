@@ -277,7 +277,7 @@ let sincronizandoAChave = Promise.resolve();
 let erroDaChave = null;
 
 function mostrarSincronizado() {
-  if (erroDaChave) mostrarFalhaNaNuvem(erroDaChave);
+  if (erroDaChave) Conta.mostrarSincronizacao(SITUACOES.CHAVE_PENDENTE, { detalhes: erroDaChave.message });
   else Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
 }
 
@@ -292,7 +292,8 @@ function sincronizarAChave() {
       if (nuvem !== estaNuvem) return;
       // A mensagem da API pode repetir o corpo secreto: só códigos chegam ao Detalhes.
       erroDaChave = Object.assign(new Error(`OpenAI sync · ${err?.status || err?.motivo || 'sem resposta'}`), { motivo: err?.motivo });
-      mostrarFalhaNaNuvem(erroDaChave);
+      Conta.mostrarSincronizacao(SITUACOES.CHAVE_PENDENTE, { detalhes: erroDaChave.message });
+      // Uma falha das frases, se houver, substitui este estado ao terminar a leitura.
     }
   });
   return sincronizandoAChave;
@@ -1224,7 +1225,7 @@ async function tentarApagarDaNuvemDeNovo() {
 let avisoDaChaveNoApagarTudo = null;
 async function apagarChaveNoApagarTudo() {
   try {
-    await ChaveDaOpenAI.apagar({ comConta: Boolean(usuarioLogado), mesmoSemChave: Boolean(usuarioLogado) });
+    await ChaveDaOpenAI.apagar({ comConta: Boolean(usuarioLogado), mesmoSemChave: true, todas: true });
     await sincronizarAChave();
     avisoDaChaveNoApagarTudo?.remove();
     avisoDaChaveNoApagarTudo = null;

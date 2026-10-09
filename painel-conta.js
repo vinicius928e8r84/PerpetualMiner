@@ -32,6 +32,7 @@
     PRIMEIRA_SUBIDA_FALHOU: 'primeiraSubidaFalhou',
     SINCRONIZADO: 'sincronizado',
     SEM_SINCRONIZAR: 'semSincronizar',
+    CHAVE_PENDENTE: 'chavePendente',
     PARCIAL: 'parcial',
     RECUSADO: 'recusado',
     EXPIROU: 'expirou',
@@ -74,6 +75,13 @@
       chip: () => textoDaVoz('SHL-05.semSincronizar'),
       status: () => textoDaVoz('CFG-03.aviso'),
       aviso: { texto: 'CFG-03.pendente', acao: 'CFG-03.tentarDeNovo' },
+      sair: 'fantasma',
+    },
+    [SITUACOES.CHAVE_PENDENTE]: {
+      erro: true,
+      chip: () => textoDaVoz('SHL-05.semSincronizar'),
+      status: () => textoDaVoz('CFG-41.status'),
+      aviso: { texto: 'CFG-41.aviso', acao: 'CFG-03.tentarDeNovo' },
       sair: 'fantasma',
     },
     [SITUACOES.PARCIAL]: {
