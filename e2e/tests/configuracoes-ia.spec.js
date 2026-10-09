@@ -12,6 +12,7 @@
 // extensão é ler o que ficou guardado, como `lerStorage`.
 
 const { test, expect } = require('../fixtures');
+const { fotografar } = require('../evidencias-mineracao');
 
 const CHAVE = 'sk-proj-chave-de-exemplo-9f3a';
 const OUTRA_CHAVE = 'sk-proj-OutraChaveDoTeste0987654321-wxyz';
@@ -660,6 +661,7 @@ test('S4: apagar chave com falha local mostra aviso persistente, Detalhes e repe
   await expect(erro(page)).toContainText('Não deu para apagar a chave neste computador.');
   await erro(page).getByText('Detalhes').click();
   await expect(erro(page)).toContainText('StorageUnavailable');
+  await fotografar(card(page), 'ia-apagar-falhou.png');
   await restaurarBanco(page);
   expect((await chaveNoBancoDaExtensao(page)) === CHAVE).toBe(true);
   await erro(page).getByRole('button', { name: 'Tentar de novo' }).click();
@@ -677,6 +679,7 @@ test('S4: Apagar tudo comunica resultado parcial se o cofre local falha', async 
   await page.locator('#btn-apagar-tudo').click();
   await modal(page).locator('.veio-botao--perigo-cheio').click();
   await expect(page.getByRole('alert')).toContainText('As frases foram apagadas, mas a chave da OpenAI continua neste computador.');
+  await fotografar(page.locator('#cfg-perigo'), 'ia-apagar-tudo-parcial.png');
   await restaurarBanco(page);
   expect((await chaveNoBancoDaExtensao(page)) === CHAVE).toBe(true);
   expect(await extensao.frases()).toEqual([]);
@@ -701,6 +704,7 @@ test('PATCH recusado: a chave colada em A nunca sobe para B e a nota não promet
   expect(fakes.google.chaveDaOpenAIDe('uid-B')).toBeNull();
   expect(await chaveNoBancoDaExtensao(page)).toBe(CHAVE);
   await expect(corpo(page)).not.toContainText('Vai junto com a sua conta Google');
+  await fotografar(page, 'ia-outra-conta.png');
 });
 
 test('a chave de uma conta Google não sobe para outra conta que entra no mesmo computador', async ({ page, extensao, fakes }) => {
