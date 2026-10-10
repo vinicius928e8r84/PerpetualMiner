@@ -222,6 +222,10 @@ test('sem frases, a entrada fica indisponível com “Nenhuma frase para apagar�
 });
 
 test('com conta: o alcance é todos os computadores, e confirmar apaga também a nuvem', async ({ page, extensao, fakes }) => {
+  // Segura o toast transitório enquanto lê o estado persistido sob carga.
+  const instante = new Date();
+  await page.clock.install({ time: instante });
+  await page.clock.pauseAt(new Date(instante.getTime() + 60_000));
   const frases = frasesDeExemplo(2);
   await extensao.semearSessao({ uid: 'uid-perigo' });
   await extensao.gravarStorage({ frases });
@@ -262,9 +266,9 @@ test('com conta e a chave da OpenAI, Apagar tudo diz que a chave também sai e a
 
   await expect(toast(page)).toHaveText('Todas as frases foram apagadas');
   await expect(card(page, 'ia').locator('.cfg-resumo')).toHaveText('Sem chave');
-  await expect.poll(() => fakes.google.chaveDaOpenAIDe('uid-perigo')).toEqual({ apagada: true, em: expect.any(Number) });
+  await expect.poll(() => fakes.google.chaveDaOpenAIDe('uid-perigo')).toEqual({ chave: '', em: expect.any(Number) });
   await expect.poll(() => fakes.anki.chaveNaConexao()).toBeNull();
-  expect(await extensao.lerStorage('pm_chave_openai')).toEqual({});
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai?.ultimos4 || '').toBe('');
   expect(fakes.google.frasesDe('uid-perigo')).toEqual([]);
 });
 
@@ -384,6 +388,10 @@ test('com conta e a nuvem fora do ar, o que outro computador gravou antes també
 
 test('com movimento reduzido, o flash dos cards novos e o ponto da chave ficam parados', async ({ page, extensao }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
+  // O flash de 1,4 s não é uma barreira de carregamento: pausa antes da navegação.
+  const instante = new Date();
+  await page.clock.install({ time: instante });
+  await page.clock.pauseAt(new Date(instante.getTime() + 60_000));
   await extensao.gravarStorage({ geminiApiKey: CHAVE_DO_GEMINI, frases: frasesDeExemplo(2) });
   await abrirPainel(page, extensao, '#configuracoes/perigo');
 

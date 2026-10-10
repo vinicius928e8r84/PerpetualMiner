@@ -1,97 +1,40 @@
 # A chave da OpenAI que acompanha a conta: nota de ameaça
 
-Ticket #154 (histórias 32 e 34 da spec #138), decisão #94 do dono (opção B: a chave acompanha a conta Google).
-Esta nota diz quem pode ler a chave, por onde ela anda e quais riscos foram aceitos. Ela é **ALTA: credenciais**.
+Issue #154; correção Opção B da PR #204. **ALTA: credenciais.** A Conexão com o Anki é o único dono do valor local. A nuvem replica esse valor entre computadores; a extensão só tem seu resumo público.
 
-## Por onde a chave anda
+## Segredos e fronteiras
 
-| Lugar | O que fica | Quem lê |
+| Lugar | O que guarda | Quem alcança |
 |---|---|---|
-| A nuvem da conta: Firestore `usuarios/{uid}/segredos/openai` | `{ chave, em }`, ou o tombstone `{ apagada: true, em }` | o dono da conta (as regras abaixo) e quem administra o projeto Firebase |
-| A extensão: IndexedDB `pm-segredos` › `chaves` | `openai` (a chave), `openai-em` (a hora da última mudança), `openai-apagar-na-conexao` | as páginas da extensão; **não** o content script nem o overlay, que abrem o IndexedDB do site |
-| Sessão Firebase: IndexedDB `pm-sessao` › `sessao` › `firebase` | UID, tokens de acesso e renovação; a sessão legada é migrada e removida do `chrome.storage.local` | só páginas e service worker da extensão; não o content script (um token legível permitiria buscar a chave na nuvem) |
-| `chrome.storage.local` › `pm_chave_openai` | só `{ ultimos4 }`; `pm_chave_openai_versao` guarda `{ em, conta, versao }`, sem segredo | toda a extensão, o content script inclusive: por isso só os 4 últimos |
-| A Conexão com o Anki: `user_files/chaves/openai.json` | a chave, modo 0600 | o usuário do sistema; fora do `.ankiaddon`, da configuração do complemento, dos logs e do pacote de diagnóstico |
+| Conexão: `user_files/chaves/openai.json` | `{ chave, conta, versao, em, naoEnviada }`; vazio representa ausência | usuário do sistema; arquivo atômico 0600, fora do diagnóstico, logs e `.ankiaddon` |
+| Firestore `usuarios/{uid}/segredos/openai` | `{ chave, em }`; chave vazia representa ausência | dono da conta pelas regras abaixo; administradores Firebase |
+| Extensão: `chrome.storage.local.pm_chave_openai` | cache `{ ultimos4, conta, versao, naoEnviada }`, sem segredo | páginas da extensão e content script |
+| Extensão: IndexedDB `pm-sessao/sessao/firebase` | sessão Firebase, tokens de acesso e renovação | origem da extensão, não o content script (cujo IndexedDB é o do site) |
+| Campo/pedido transitório | chave digitada; UID/token de sincronização | página da extensão e Conexão durante o pedido; nunca URL, resposta, telemetria ou log |
 
-A extensão nunca fala com a OpenAI: quem confere e gasta a chave é a Conexão. Uma chave que chega da nuvem já foi
-conferida no computador onde foi colada e é entregue à Conexão daqui pelo mesmo `POST /ia/openai/chave`.
+A extensão não lê mais a chave inteira da nuvem, não guarda outra chave confirmada e não pode devolver uma chave antiga à Conexão. A Conexão fala com a OpenAI para conferir uma chave digitada, e com o Firestore pelo REST da biblioteca padrão. O endereço do Firestore vem do código, não do cliente HTTP. O token só vive no pedido/adapter transitório; erros externos viram códigos sanitizados. A sessão legada `pm_firebase_auth` migra para IndexedDB e sai da área legível pelo content script.
 
-## Por que o Firestore, e não o `chrome.storage.sync`
+## Invariantes e recuperação
 
-1. **A mesma conta.** A história 32 fala da conta Google com que a pessoa entra na extensão (Conta & sync, o `uid` do
-   Firebase). O `chrome.storage.sync` segue outra conta: a do perfil do Chrome, só quando a sincronização do Chrome está
-   ligada e inclui as extensões. Uma pessoa sem o Chrome sincronizado, ou com outra conta no navegador, não receberia a
-   chave, e a tela diria “vai junto com a sua conta Google” sem ser verdade (C8).
-2. **O content script lê o `chrome.storage.sync`.** É o mesmo motivo pelo qual a chave já saiu do `chrome.storage.local`
-   no #140 (`lib/chave-da-openai.js`): qualquer página com o content script injetado ficaria a um bug de distância da chave.
-3. **O Apagar tudo e o tombstone já moram no Firestore.** As frases já são apagadas lá com tombstone e o Apagar tudo com
-   conta já vai à nuvem; a chave segue o mesmo caminho (`lib/sincronizacao.js`), com o mesmo token e o mesmo login.
-4. **Nenhuma permissão nova.** O Firestore já é `host_permissions` do manifesto, falado por REST (sem SDK).
+- Só o cofre avança `versao`, após aceitar uma mudança. O pedido leva a revisão observada, não uma geração reservada pelo cliente. Uma recusa OpenAI não muda o dono; mudanças concorrentes com base antiga recebem 409 e o painel relê o dono.
+- Reentrega do mesmo valor/UID com a base da aceitação (`versao atual − 1`) é leitura idempotente: sucesso sem OpenAI, nova escrita ou revisão, inclusive após reiniciar. Depois de outra mudança, não desfaz o valor novo.
+- Resposta perdida, aba fechada ou recarregada não desfaz uma chave aceita: o painel lê `/ia/estado`. Não existem rascunho secreto, restauração de uma cópia antiga, contador reservado nem marca de remoção paralela. Leitura de cache entre abas serializa também o HTTP, para uma resposta velha não vencer uma leitura nova.
+- O sync segura a mesma tranca do cofre, confere a base e captura UID/token. A chave sem conta é vinculada antes da primeira tentativa de upload. Uma mudança de A não enviada bloqueia a troca automática para B: o único segredo continua em A; a tela pede retornar àquela conta. Depois de sincronizar A, a chave de B pode substituir o dono, mesmo sendo mais antiga.
+- O valor com `em` mais novo chega ou sobe na mesma conta; no empate de hora entre valores diferentes, a mudança ainda não replicada é entregue, ou uma cópia já replicada recebe o valor observado na nuvem. Não limpa a flag por igualdade de hora/sufixo sem entregar ou reconhecer o mesmo valor inteiro. Download não consulta novamente a OpenAI (L1). Ler uma conta sem documento sobre um dono vazio não inventa mudança/revisão nem limpa o texto digitado.
+- Apagar chave ou Apagar tudo substitui o dono por valor vazio e hora nova, vinculado apenas à conta autenticada da operação. Só esse valor segue àquela conta; não há remoções diferidas por outros UIDs (J1). Falha de remoção/cópia/sync continua visível e permite repetir; Apagar tudo não declara sucesso total se uma parte falha.
+- Apagar tudo limpa a loja legada inteira, inclusive todos os antigos `conta:<uid>`, numa transação. A migração transfere UID/hora apenas com prova exata do segredo já no dono; nunca importa pendências. Se o dono legado não tem UID provado, não é exportado à primeira conta que pedir. Uma Conexão indisponível ou prova divergente adia a migração, sem alegar que a limpeza terminou: o legado permanece até escolha explícita, mas a tela lê a máscara do dono, não o usa como outra verdade. Pendências antigas não são importadas nem declaradas enviadas; após prova do dono ativo, a loja antiga inteira é retirada.
+- O painel retém os resultados de frases e chave separadamente. CFG-41 é falha de conferência de sync, não alegação de upload perdido; CFG-42 explica outra conta/legado. Recusa de acesso e sessão expirada conservam CFG-04/08.
 
-O que o `chrome.storage.sync` faria melhor: não passaria pelo projeto Firebase (os administradores não a leriam).
-Isso não compensa os itens 1 e 2.
+Provas: `complemento/test_chave_da_openai.py` usa servidor/cofre/HTTP reais e provedores externos falsos (inclui duas Conexões com Firestore compartilhado, timeout/reinício/replay). `e2e/tests/chave-autoridade.spec.js` e `configuracoes-ia.spec.js` dirigem o Chromium nativo, conferem cache/dono/nuvem e isolamento CDP. Contrato compartilhado: `complemento/contrato/exemplos.json`. Só chaves fictícias.
 
-## Quem pode ler a chave (risco 15 da spec #138)
+## Riscos e limites
 
-- **Quem administra o projeto Firebase** (`perpetualminer-4c219`): não há criptografia ponta a ponta. As regras de
-  segurança barram os outros usuários, não o console nem uma conta de serviço do projeto.
-- **Quem tomar a conta Google da pessoa**: entra na extensão com ela e recebe a chave como qualquer outro computador.
-- **O navegador**: a chave fica no IndexedDB da extensão, e a OpenAI pede para não guardar chaves no cliente. Malware no
-  computador, ou outra extensão com acesso ao perfil, alcança o que está ali.
-- **Um processo local que forje a origem da extensão** pode gravar uma chave na Conexão ou apagar a cópia dela, nunca
-  lê-la (`complemento/contrato/LEIA-ME.md` § Quem o complemento atende; a credencial de pareamento é o #192).
+- Administradores Firebase, tomada da conta Google ou acesso ao perfil/sistema podem expor segredos; não há criptografia ponta a ponta. A integração local baseada em Origin não autentica um processo que forje esse cabeçalho, nem autentica o listener de loopback à extensão (#192, antes da publicação). A Opção B entrega o bearer Firebase transitoriamente à Conexão: um listener local impostor poderia recebê-lo e ler dados do UID. O isolamento do content script não prova essa autenticação. Um cliente local também pode forjar Origin e, com seu token válido, exportar uma configuração ainda sem Google para o UID que controla; regras own-UID não impedem isso. Nesta versão é necessário confiar em todos os processos/clientes locais: #192 precisa autenticar os dois lados antes de publicação. Esta PR não implementa nem certifica o pareamento.
+- Use projeto próprio OpenAI com limite de gasto. **Revogar na OpenAI é o desligamento de verdade**: apagar cópias não revoga cópias externas nem comprova apagamento físico de bytes antigos em disco/LevelDB.
+- `em` usa relógio dos computadores, monotônico sobre o último valor local. Firestore não usa `updateTime` CAS: relógios desviados, empate e dois uploads simultâneos ainda têm limites de ordenação. Revisões CAS são do dono local, não identidade global de duas máquinas.
+- Propagação ocorre ao abrir/voltar ao painel, entrar e mudar a chave. O service worker não faz uma busca contínua. Sem Conexão não há novo segredo confirmado nem promessa de apagamento concluído; sua disponibilidade e a da nuvem são necessárias.
+- Uma única mudança não enviada de A precisa ser concluída em A antes de troca automática para B. Isso é intencional: não descarta a única cópia nem cria outra fila secreta por UID. Trocar/apagar explicitamente substitui o único valor.
 
-**Mitigações aceitas pelo dono:** criar a chave num **projeto próprio da OpenAI, com limite de gasto por mês**, e
-**revogar a chave na OpenAI** como o desligamento de verdade. A tela diz as duas coisas no card da IA e no modal de
-Apagar chave (CFG-35). Apagar a chave na extensão tira as cópias que o PerpetualMiner controla; não desfaz uma cópia
-que alguém já tenha levado.
+## Regras Firestore: P6 PENDING OWNER
 
-## O que o código garante
-
-- A chave inteira nunca vai à tela (a tela só conhece `ultimos4`), a um log, a uma mensagem de erro, à resposta da
-  Conexão nem ao `chrome.storage`. A falha da sincronização da chave mostra só códigos no Detalhes da Conta & sync e mantém “Sem sincronizar”; Tentar de novo repete também a chave e o tombstone.
-- Trocar, Apagar chave e Apagar tudo deixam a hora da mudança; a mais nova vale entre os computadores, então uma cópia
-  velha não volta pelo sync (`test_sync.js`, seção CHAVE). O tombstone na nuvem não tem campo de chave.
-- A chave de uma conta nunca sobe para outra: a extensão vincula a alteração ao UID antes do primeiro pedido, mesmo quando o PATCH falha, preserva versões pendentes por UID,  e entrar com outra
-  conta Google no mesmo computador não a leva para lá (CHAVE 10 e o e2e da troca de conta).
-- Sem conta, Apagar chave vale só para este computador: o tombstone local não sobe a nenhuma conta. A versão local ainda ordena a remoção na Conexão; uma chave da conta pode chegar quando a pessoa entrar nela. Apagar chave simples não varre as pendências de outros UIDs; essa limpeza é do Apagar tudo.
-- Uma mudança aqui durante o sync não é desfeita pela chave que vinha da nuvem: a gravação só acontece se a hora
-  guardada ainda é a que foi lida, na mesma transação do IndexedDB (CHAVE 9).
-- Uma Conexão que estava desligada quando a chave foi apagada perde a cópia quando volta a responder. O POST e a remoção levam uma geração HTTP local não secreta (`openai-conexao-versao`), separada da hora remota `em`: trocar para outra conta com chave mais antiga ainda ordena uma operação nova na Conexão; a Conexão grava um tombstone persistente e recusa HTTP 409 para versões antigas (inclusive reentregas após reiniciar). Dois sufixos iguais nunca são prova de que a cópia corresponde à versão atual.
-- Chave, hora e UID são lidos numa transação IndexedDB única, e a versão é relida antes de subir. Não há garantia de CAS no Firestore para um PATCH já em trânsito (limite abaixo).
-- Falha local ao apagar mostra aviso persistente com repetição e Detalhes; Apagar tudo comunica o resultado parcial, sem toast de sucesso total.
-- Apagar tudo varre a loja inteira numa transação: tira a chave ativa e TODOS os segredos em `conta:<uid>`. Só ficam marcas de remoção sem chave, vinculadas aos UIDs; uma marca de A só sobe quando A autentica, nunca usando o token de B ou C. A conta ativa recebe a hora nova do apagamento; as outras mantêm a hora da própria cópia removida, para não apagar uma chave mais nova que chegou à nuvem noutro computador. No empate de hora em milissegundos, a remoção vence a chave (por exemplo, um upload cuja confirmação não voltou); não há identidade global de versão, e uma chave diferente com a mesma hora também perde. A cópia de `contaAntes` é removida inclusive se já estava sincronizada: a marca só sobe quando aquela conta autentica e pode apagar a mesma hora na nuvem/outros computadores. Sem conta, essa limpeza das pendências também acontece, mas espera cada UID autenticar.
-- Cada confirmação reserva uma geração exclusiva numa transação readwrite ANTES do HTTP, inclusive entre duas abas no mesmo milissegundo. A aceitação só grava localmente se nenhuma mudança de geração maior já foi gravada; uma reserva mais nova que falhou não invalida uma chave aceita. Apagar/chegada remota já gravados invalidam a aceitação anterior. Na Conexão, uma geração igual não pode substituir outra chave; reentregar a MESMA chave é idempotente.
-- Falha transitória exclusiva da sincronização da chave tem texto próprio (CFG-41), repetição e Detalhes, quando há chave/remoção dessa conta. O texto informa que não deu para conferir o sync, não que uma chave já enviada ainda não chegou. O painel mantém o resultado das frases separado: CFG-41 não cobre falhas/pendências delas. Acesso recusado e sessão expirada, também no sync da chave sem chave local, mantêm CFG-04/CFG-08 e pedem autenticação.
-- O cofre confirmado daqui é a única verdade para a cópia da Conexão. Se ela gravou um rascunho mas a resposta se perdeu, o painel consulta o estado real (mesmo sem chave local), avança a geração acima da Conexão e repõe a chave confirmada anterior ou remove a cópia não confirmada. Ao abrir, invalida reservas não confirmadas da página anterior ANTES de desenhar, impedindo que uma conferência antiga termine depois e deixe uma cópia órfã. A hora/conta na nuvem não mudam por essa recuperação. Se a chave anterior foi revogada/recusada e não pode ser reposta, a recuperação remove a cópia divergente, em vez de deixar o Envio gastar outra chave. Com a Conexão indisponível, a recuperação espera ela responder novamente.
-- Reentregar a MESMA chave e geração já gravadas devolve o sucesso armazenado, sem outra consulta à OpenAI nem nova gravação; vale após reiniciar e quando a OpenAI está fora do ar. Uma geração antiga/diferente ou apagada segue recusada com 409. `/ia/estado` expõe a geração não secreta também do tombstone, nunca a chave inteira.
-- Os testes usam só chaves de mentira.
-
-## Limites aceitos
-
-- **A hora é a de cada computador.** Um computador com o relógio adiantado vence uma mudança feita depois noutro. A
-  nuvem não tem hora do servidor nem pré-condição na escrita (o PATCH não confere `updateTime`), então duas mudanças
-  no mesmo segundo em dois computadores terminam com a última gravada. Para uma chave que muda raramente e a pessoa vê
-  mascarada no card, isso foi julgado suficiente; a correção seria a hora do servidor (`REQUEST_TIME`) e a pré-condição.
-- **A chave chega quando o painel abre** (ou volta a ficar visível) num computador com a conta. O service worker não a
-  busca sozinho: com o Chrome aberto e o painel fechado, a Conexão daquele computador fica com a cópia que tinha até o
-  painel ser aberto. O Envio começa no painel, então o caso comum está coberto.
-
-## As regras do Firestore
-
-As regras moram no console do Firebase, não neste repositório. A chave precisa de que só o dono da conta leia e
-escreva `usuarios/{uid}/segredos/openai`. Se as regras de hoje listam as coleções uma a uma (`frases`, `meta`), elas
-recusam `segredos`, e a chave não sincroniza (Conta & sync informa a falha e permite repetir). O mínimo:
-
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /usuarios/{uid}/{documento=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-  }
-}
-```
-
-**P6 — PENDING OWNER.** Publicar e conferir estas regras é do dono; nenhuma credencial foi criada e nenhum deploy foi feito nesta correção. Antes de integrar: comprovar leitura/escrita pelo próprio UID, recusa entre dois UIDs e recusa sem autenticação. Os testes locais usam Firebase falso, não comprovam as regras implantadas.
+As regras estão no console, não neste repositório. O proprietário deve permitir somente `request.auth != null && request.auth.uid == uid` para `usuarios/{uid}/segredos/openai`, publicar e comprovar leitura/escrita pelo próprio UID, recusa entre UIDs e recusa sem autenticação. **Nenhum deploy, credencial ou alteração de regras foi feito.** Firebase falso não prova regras implantadas; tampouco testes de fronteira provam login Google/OpenAI/Anki físicos em Mac/Windows.

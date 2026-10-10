@@ -113,7 +113,9 @@ const test = base.extend({
   }, { scope: 'worker' }],
 
   fakes: async ({}, use) => {
-    await use({ anki: criarFakeAnki(), gemini: criarFakeGemini(), google: criarFakeGoogle() });
+    const anki = criarFakeAnki(), google = criarFakeGoogle();
+    anki.sincronizarCom(google);
+    await use({ anki, gemini: criarFakeGemini(), google });
   },
 
   // A pasta que o Chromium carrega como extensão: a raiz do repositório, salvo num

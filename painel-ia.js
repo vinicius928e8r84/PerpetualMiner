@@ -56,14 +56,14 @@
     configuracoes = montar(porId('cfg-ia-corpo'), { prefixo: 'cfg' });
     // Antes do primeiro desenho, recupera a verdade do cofre e da Conexão,
     // inclusive uma conferência da página anterior cuja resposta se perdeu.
-    leituraInicial = ChaveDaOpenAI.conferirACopia({ aoAbrir: true }).catch(() => null);
+    leituraInicial = ChaveDaOpenAI.conferirACopia().catch(() => null);
     leituraInicial.then(tem => {
       estado.copia = conexaoLigada ? tem : null;
-      chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null, [ChaveDaOpenAI.VERSAO]: null, pm_user_info: null }, dados => {
+      chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null, pm_user_info: null }, dados => {
         estado.ultimos4 = dados[ChaveDaOpenAI.MARCA]?.ultimos4 || '';
         estado.comConta = Boolean(dados.pm_user_info);
         estado.uid = dados.pm_user_info?.uid || '';
-        estado.contaDaChave = dados[ChaveDaOpenAI.VERSAO]?.conta || '';
+        estado.contaDaChave = dados[ChaveDaOpenAI.MARCA]?.conta === undefined ? '' : dados[ChaveDaOpenAI.MARCA].conta;
         desenharResumo();
         lugares.forEach(desenhar);
         if (estado.focarAoLer) focarOCampoSeVazio();
@@ -80,11 +80,9 @@
         estado.uid = mudancas.pm_user_info.newValue?.uid || '';
         for (const lugar of lugares) if (!lugar.trocando && !lugar.conferindo) desenhar(lugar);
       }
-      if (ChaveDaOpenAI.VERSAO in mudancas) {
-        estado.contaDaChave = mudancas[ChaveDaOpenAI.VERSAO].newValue?.conta || '';
-      }
-      if (!(ChaveDaOpenAI.MARCA in mudancas) && !(ChaveDaOpenAI.VERSAO in mudancas)) return;
-      if (ChaveDaOpenAI.MARCA in mudancas) estado.ultimos4 = mudancas[ChaveDaOpenAI.MARCA].newValue?.ultimos4 || '';
+      if (!(ChaveDaOpenAI.MARCA in mudancas)) return;
+      estado.contaDaChave = mudancas[ChaveDaOpenAI.MARCA].newValue?.conta === undefined ? '' : mudancas[ChaveDaOpenAI.MARCA].newValue.conta;
+      estado.ultimos4 = mudancas[ChaveDaOpenAI.MARCA].newValue?.ultimos4 || '';
       rodada += 1;
       estado.copia = null;
       desenharResumo();
@@ -132,7 +130,7 @@
   async function conferirACopia() {
     await leituraInicial;
     const minha = ++rodada;
-    const tem = await ChaveDaOpenAI.conferirACopia();
+    const tem = await ChaveDaOpenAI.conferirACopia().catch(() => null);
     if (minha === rodada) mudarACopia(tem);
   }
 
@@ -265,8 +263,9 @@
   function notasDaChave(lugar, salva) {
     const notas = [];
     if (salva) {
-      notas.push(elemento('p', 'cfg-nota', textoDaVoz(estado.comConta && estado.contaDaChave && estado.contaDaChave !== estado.uid
-        ? 'CFG-35.chaveDeOutraConta' : estado.comConta ? 'CFG-35.chaveNaConta' : 'CFG-35.chaveSemConta')));
+      notas.push(elemento('p', 'cfg-nota', textoDaVoz(estado.contaDaChave === null ? 'CFG-42.legado'
+        : estado.comConta && estado.contaDaChave && estado.contaDaChave !== estado.uid
+          ? 'CFG-35.chaveDeOutraConta' : estado.comConta ? 'CFG-35.chaveNaConta' : 'CFG-35.chaveSemConta')));
       if (estado.copia !== null) {
         const copia = elemento('p', 'cfg-nota', textoDaVoz(estado.copia ? 'CFG-35.chaveCopiaNaConexao' : 'CFG-35.chaveSemCopia'));
         copia.dataset.copia = estado.copia ? 'tem' : 'falta';
@@ -350,6 +349,8 @@
 
   /** Entrega a chave à Conexão e mostra o que veio: a chave conferida ou a faixa do erro. */
   async function enviarAChave(lugar, chave) {
+    rodada += 1;
+    mudarACopia(null); // a confirmação anterior não descreve a mutação em voo
     lugar.conferindo = true;
     lugar.erro = null;
     lugar.digitado = chave;
@@ -359,8 +360,9 @@
     try {
       resultado = await ChaveDaOpenAI.confirmar(chave);
     } catch (erro) {
-      // A Conexão aceitou, mas a chave não coube no armazenamento da extensão: não está guardada aqui.
-      resultado = { ok: false, motivo: 'conexao_com_erro', detalhes: String(erro?.message || erro) };
+      // O cache pode ter falhado depois da aceitação. Não declara que o dono
+      // perdeu a chave, nem repete mensagem que pudesse conter um segredo.
+      resultado = { ok: false, motivo: 'conexao_com_erro', detalhes: erro?.name || 'storage_error' };
     }
     lugar.conferindo = false;
     if (resultado.ok) {
@@ -376,7 +378,7 @@
         }
       }
       estado.ultimos4 = resultado.ultimos4;
-      estado.copia = true;
+      estado.copia = conexaoLigada ? true : null;
       desenharResumo();
       for (const outro of lugares) if (!outro.conferindo) desenhar(outro);
       porId(idDe(lugar, 'trocar'))?.focus();
@@ -401,12 +403,15 @@
     });
   }
 
-  /** A chave sai daqui e da Conexão (lib/chave-da-openai.js); com conta, o painel.js leva o apagamento à nuvem; sem conta, vale só aqui. */
+  /** Apaga no dono e desenha sua leitura posterior, não um estado vazio inventado pela tela. */
   async function apagarAChave(lugar) {
+    rodada += 1;
+    mudarACopia(null);
+    let dono;
     try {
-      await ChaveDaOpenAI.apagar({ comConta: estado.comConta });
+      dono = await ChaveDaOpenAI.apagar();
     } catch (erro) {
-      // Não deu para apagar no armazenamento da extensão: a chave continua, e a tela continua dizendo isso.
+      // Incerto: pode ter apagado no dono e falhado apenas a escrita do cache.
       lugar.erro = { motivo: 'apagar_local', detalhes: erro?.name || 'storage_error' };
       desenhar(lugar);
       return;
@@ -416,8 +421,9 @@
       cada.erro = null;
       cada.digitado = '';
     }
-    estado.ultimos4 = '';
-    estado.copia = null;
+    estado.ultimos4 = dono.configurada ? dono.ultimos4 : '';
+    estado.contaDaChave = dono.conta;
+    estado.copia = conexaoLigada ? (dono.configurada || null) : null;
     desenharResumo();
     for (const cada of lugares) if (!cada.conferindo) desenhar(cada);
     porId(idDe(lugar, 'campo'))?.focus();

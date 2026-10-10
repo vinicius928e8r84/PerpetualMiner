@@ -167,7 +167,17 @@
 
   function situacaoAtual() {
     const sincronizacao = estado.sincronizacao;
-    return sincronizacao ? { ...COMO_APARECE[sincronizacao.situacao], dados: sincronizacao } : null;
+    if (!sincronizacao) return null;
+    const vista = { ...COMO_APARECE[sincronizacao.situacao], dados: sincronizacao };
+    if (sincronizacao.situacao === SITUACOES.CHAVE_PENDENTE) {
+      if (sincronizacao.codigo === 'other_account_unsent') {
+        vista.status = () => textoDaVoz('CFG-42.status');
+        vista.aviso = { texto: 'CFG-42.aviso', acao: 'CFG-03.tentarDeNovo' };
+      } else if (sincronizacao.codigo === 'legacy_key_unbound') {
+        vista.aviso = { texto: 'CFG-42.legado', acao: 'CFG-03.tentarDeNovo' };
+      }
+    }
+    return vista;
   }
 
   function textoDoChip() {

@@ -443,7 +443,7 @@ test('passo 5: o card IA dos cartões de Configurações; conferir a chave a gua
   await expect(card(page)).not.toContainText('sk-proj-chave-de-exemplo');
   await expect(itemDaLista(page, 'Configurar a IA dos cartões')).toHaveAccessibleName(/feito$/);
   expect(fakes.anki.chaveNaConexao()).toBe('sk-proj-chave-de-exemplo-9f3a');
-  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai).toEqual({ ultimos4: '9f3a' });
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai).toEqual({ ultimos4: '9f3a', conta: '', versao: 1, naoEnviada: true });
 
   // Configurações mostra a mesma chave, mascarada.
   await page.goto(extensao.url('painel.html#configuracoes/ia'));

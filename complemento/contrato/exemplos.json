@@ -1436,7 +1436,8 @@
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
           "chave": "sk-proj-chave-de-exemplo-9f3a",
-          "versao": 0
+          "versao": 0,
+          "conta": ""
         }
       },
       "resposta": {
@@ -1460,7 +1461,8 @@
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
           "chave": "sk-proj-chave-de-exemplo-9f3a",
-          "versao": 0
+          "versao": 0,
+          "conta": ""
         }
       },
       "resposta": {
@@ -1482,7 +1484,8 @@
         "caminho": "/ia/openai/chave",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
-          "chave": "isto não é uma chave"
+          "chave": "isto não é uma chave",
+          "conta": ""
         }
       },
       "resposta": {
@@ -1505,7 +1508,8 @@
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
           "chave": "sk-proj-chave-de-exemplo-9f3a",
-          "versao": 0
+          "versao": 0,
+          "conta": ""
         }
       },
       "resposta": {
@@ -1528,7 +1532,8 @@
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
           "chave": "sk-proj-chave-de-exemplo-9f3a",
-          "versao": 0
+          "versao": 0,
+          "conta": ""
         }
       },
       "resposta": {
@@ -1551,7 +1556,8 @@
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
           "chave": "sk-proj-chave-de-exemplo-9f3a",
-          "versao": 0
+          "versao": 0,
+          "conta": ""
         }
       },
       "resposta": {
@@ -1574,7 +1580,8 @@
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
           "chave": "sk-proj-chave-de-exemplo-9f3a",
-          "versao": 0
+          "versao": 0,
+          "conta": ""
         }
       },
       "resposta": {
@@ -1597,7 +1604,8 @@
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
           "chave": "sk-proj-chave-de-exemplo-9f3a",
-          "versao": 0
+          "versao": 0,
+          "conta": ""
         }
       },
       "resposta": {
@@ -1619,7 +1627,8 @@
         "caminho": "/ia/openai/chave",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
-          "chave": "   "
+          "chave": "   ",
+          "conta": ""
         }
       },
       "resposta": {
@@ -1661,7 +1670,8 @@
         "caminho": "/ia/openai/chave",
         "origem": "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "corpo": {
-          "chave": "sk-proj-chave-de-exemplo-9f3a"
+          "chave": "sk-proj-chave-de-exemplo-9f3a",
+          "conta": ""
         }
       },
       "resposta": {
@@ -1683,7 +1693,8 @@
         "caminho": "/ia/openai/chave",
         "origem": null,
         "corpo": {
-          "chave": "sk-proj-chave-de-exemplo-9f3a"
+          "chave": "sk-proj-chave-de-exemplo-9f3a",
+          "conta": ""
         }
       },
       "resposta": {
@@ -1710,7 +1721,10 @@
         "status": 200,
         "json": {
           "openai": {
-            "configurada": false
+            "configurada": false,
+            "conta": "",
+            "versao": 0,
+            "naoEnviada": false
           }
         }
       }
@@ -1733,7 +1747,10 @@
         "json": {
           "openai": {
             "configurada": true,
-            "ultimos4": "9f3a"
+            "ultimos4": "9f3a",
+            "conta": null,
+            "versao": 0,
+            "naoEnviada": true
           }
         }
       }
@@ -1999,7 +2016,8 @@
         "caminho": "/ia/openai/chave/apagar",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
-          "versao": 0
+          "versao": 0,
+          "conta": ""
         }
       },
       "resposta": {
@@ -2021,7 +2039,8 @@
         "caminho": "/ia/openai/chave/apagar",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
-          "versao": 0
+          "versao": 0,
+          "conta": ""
         }
       },
       "resposta": {
@@ -2042,7 +2061,9 @@
         "metodo": "POST",
         "caminho": "/ia/openai/chave/apagar",
         "origem": null,
-        "corpo": {}
+        "corpo": {
+          "conta": ""
+        }
       },
       "resposta": {
         "status": 403,
@@ -2084,7 +2105,8 @@
         "caminho": "/ia/openai/chave",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
-          "chave": "sk-proj-chave-de-exemplo-9f3a"
+          "chave": "sk-proj-chave-de-exemplo-9f3a",
+          "conta": ""
         }
       },
       "resposta": {
@@ -2095,21 +2117,32 @@
       }
     },
     {
-      "nome": "Mesma geração não sobrescreve outra chave",
+      "nome": "Uma base antiga não sobrescreve outra chave",
       "daExtensao": false,
       "contexto": {
         "perfil": "Usuário 1",
         "openai": "aceita",
-        "versaoNaConexao": 200,
-        "chaveNaConexao": "9f3a"
+        "versaoNaConexao": 2,
+        "chaveNaConexao": "9f3a",
+        "contaNaConexao": "",
+        "naoEnviada": true
       },
       "pedido": {
         "metodo": "POST",
         "caminho": "/ia/openai/chave",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
-        "corpo": { "chave": "sk-fake-outra-chave-wxyz", "versao": 200 }
+        "corpo": {
+          "chave": "sk-fake-outra-chave-wxyz",
+          "versao": 0,
+          "conta": ""
+        }
       },
-      "resposta": { "status": 409, "json": { "error": "stale_key_version" } }
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "stale_key_version"
+        }
+      }
     },
     {
       "nome": "Versão antiga recusada: /ia/openai/chave",
@@ -2117,8 +2150,10 @@
       "contexto": {
         "perfil": "Usuário 1",
         "openai": "aceita",
-        "versaoNaConexao": 200,
-        "chaveApagada": true
+        "versaoNaConexao": 2,
+        "chaveApagada": true,
+        "contaNaConexao": "",
+        "naoEnviada": true
       },
       "pedido": {
         "metodo": "POST",
@@ -2126,7 +2161,8 @@
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
           "chave": "sk-proj-chave-de-exemplo-9f3a",
-          "versao": 100
+          "versao": 0,
+          "conta": ""
         }
       },
       "resposta": {
@@ -2142,15 +2178,18 @@
       "contexto": {
         "perfil": "Usuário 1",
         "openai": "aceita",
-        "versaoNaConexao": 200,
-        "chaveApagada": true
+        "versaoNaConexao": 2,
+        "chaveApagada": true,
+        "contaNaConexao": "",
+        "naoEnviada": true
       },
       "pedido": {
         "metodo": "POST",
         "caminho": "/ia/openai/chave/apagar",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
-          "versao": 100
+          "versao": 0,
+          "conta": ""
         }
       },
       "resposta": {
@@ -2172,7 +2211,8 @@
         "caminho": "/ia/openai/chave",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
-          "versao": -1
+          "versao": -1,
+          "conta": ""
         }
       },
       "resposta": {
@@ -2194,7 +2234,8 @@
         "caminho": "/ia/openai/chave/apagar",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpo": {
-          "versao": -1
+          "versao": -1,
+          "conta": ""
         }
       },
       "resposta": {
@@ -2205,27 +2246,59 @@
       }
     },
     {
-      "nome": "Reentrega idempotente da mesma chave e geração mesmo com OpenAI fora do ar",
+      "nome": "Reentrega idempotente da mesma chave e revisão mesmo com OpenAI fora do ar",
       "daExtensao": false,
       "contexto": {
-        "perfil": "Usuário 1", "openai": "fora_do_ar", "chaveNaConexao": "9f3a", "versaoNaConexao": 200
+        "perfil": "Usuário 1",
+        "openai": "fora_do_ar",
+        "chaveNaConexao": "9f3a",
+        "versaoNaConexao": 2,
+        "contaNaConexao": "",
+        "naoEnviada": true
       },
       "pedido": {
-        "metodo": "POST", "caminho": "/ia/openai/chave",
+        "metodo": "POST",
+        "caminho": "/ia/openai/chave",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
-        "corpo": { "chave": "sk-proj-guardada-antes-9f3a", "versao": 200 }
+        "corpo": {
+          "chave": "sk-proj-guardada-antes-9f3a",
+          "versao": 1,
+          "conta": ""
+        }
       },
-      "resposta": { "status": 200, "json": { "ok": true, "ultimos4": "9f3a" } }
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "ultimos4": "9f3a"
+        }
+      }
     },
     {
       "nome": "Estado da IA apagada com versão não secreta",
       "daExtensao": true,
-      "contexto": { "perfil": "Usuário 1", "versaoNaConexao": 200, "chaveApagada": true },
-      "pedido": {
-        "metodo": "POST", "caminho": "/ia/estado",
-        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf", "corpo": {}
+      "contexto": {
+        "perfil": "Usuário 1",
+        "versaoNaConexao": 2,
+        "chaveApagada": true
       },
-      "resposta": { "status": 200, "json": { "openai": { "configurada": false, "versao": 200 } } }
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "openai": {
+            "configurada": false,
+            "versao": 2,
+            "conta": "",
+            "naoEnviada": false
+          }
+        }
+      }
     },
     {
       "nome": "Estado da IA com versão não secreta",
@@ -2233,7 +2306,7 @@
       "contexto": {
         "perfil": "Usuário 1",
         "chaveNaConexao": "9f3a",
-        "versaoNaConexao": 200
+        "versaoNaConexao": 2
       },
       "pedido": {
         "metodo": "POST",
@@ -2247,8 +2320,566 @@
           "openai": {
             "configurada": true,
             "ultimos4": "9f3a",
-            "versao": 200
+            "versao": 2,
+            "conta": null,
+            "naoEnviada": true
           }
+        }
+      }
+    },
+    {
+      "nome": "Sincronizar a chave da conta pela Conexão: conta sem chave",
+      "daExtensao": true,
+      "contexto": {
+        "firebase": 0
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "uid": "uid-teste",
+          "token": "token-ficticio",
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "resultado": null,
+          "versao": 0
+        }
+      }
+    },
+    {
+      "nome": "Sincronizar a chave sem credencial é inválido",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "Sincronizar a chave sem origem é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": null,
+        "corpo": {
+          "uid": "uid-teste",
+          "token": "token-ficticio",
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    },
+    {
+      "nome": "Sincronizar a chave: sessão recusada",
+      "daExtensao": true,
+      "contexto": {
+        "firebase": 401
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "uid": "uid-teste",
+          "token": "token-ficticio",
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 401,
+        "json": {
+          "error": "cloud_sync_failed",
+          "status": 401
+        }
+      }
+    },
+    {
+      "nome": "Sincronizar a chave: acesso recusado",
+      "daExtensao": true,
+      "contexto": {
+        "firebase": 403
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "uid": "uid-teste",
+          "token": "token-ficticio",
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "cloud_sync_failed",
+          "status": 403
+        }
+      }
+    },
+    {
+      "nome": "Sincronizar a chave: conflito na nuvem",
+      "daExtensao": true,
+      "contexto": {
+        "firebase": 409
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "uid": "uid-teste",
+          "token": "token-ficticio",
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "cloud_sync_failed",
+          "status": 409
+        }
+      }
+    },
+    {
+      "nome": "Sincronizar a chave: erro da nuvem",
+      "daExtensao": true,
+      "contexto": {
+        "firebase": 500
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "uid": "uid-teste",
+          "token": "token-ficticio",
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 500,
+        "json": {
+          "error": "cloud_sync_failed",
+          "status": 500
+        }
+      }
+    },
+    {
+      "nome": "Sincronizar a chave: resposta inválida da nuvem",
+      "daExtensao": true,
+      "contexto": {
+        "firebase": 502
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "uid": "uid-teste",
+          "token": "token-ficticio",
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 502,
+        "json": {
+          "error": "cloud_sync_failed",
+          "status": 502
+        }
+      }
+    },
+    {
+      "nome": "Sincronizar a chave: nuvem indisponível",
+      "daExtensao": true,
+      "contexto": {
+        "firebase": 503
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "uid": "uid-teste",
+          "token": "token-ficticio",
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 503,
+        "json": {
+          "error": "cloud_sync_failed",
+          "status": 503
+        }
+      }
+    },
+    {
+      "nome": "Sincronizar a chave: cofre sem escrita",
+      "daExtensao": true,
+      "contexto": {
+        "firebase": 0,
+        "cofre": "sem_escrita",
+        "contaNaConexao": "",
+        "emNaConexao": 100
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "uid": "uid-teste",
+          "token": "token-ficticio",
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 500,
+        "json": {
+          "error": "internal_error"
+        }
+      }
+    },
+    {
+      "nome": "Migrar o UID/hora do legado vazio sem inventar uma chave",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/legado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "chave": "",
+          "conta": "uid-teste",
+          "em": 100,
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "nome": "Migrar o UID/hora da chave já guardada prova a chave inteira sem a devolver",
+      "daExtensao": true,
+      "contexto": {
+        "chaveNaConexao": "9f3a",
+        "openai": "fora_do_ar"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/legado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "chave": "sk-proj-guardada-antes-9f3a",
+          "conta": "uid-teste",
+          "em": 100,
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "nome": "Legado diferente do dono atual não muda o segredo nem o UID",
+      "daExtensao": true,
+      "contexto": {
+        "chaveNaConexao": "9f3a"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/legado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "chave": "sk-fake-outro-segredo-xxxx",
+          "conta": "uid-teste",
+          "em": 100,
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "legacy_key_mismatch"
+        }
+      }
+    },
+    {
+      "nome": "Migrar legado sem metadados é inválido",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/legado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "Migrar legado sem origem é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/legado",
+        "origem": null,
+        "corpo": {
+          "chave": "",
+          "conta": "uid-teste",
+          "em": 100,
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    },
+    {
+      "nome": "Migrar legado com o cofre sem escrita",
+      "daExtensao": true,
+      "contexto": {
+        "cofre": "sem_escrita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/legado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "chave": "",
+          "conta": "uid-teste",
+          "em": 100,
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 500,
+        "json": {
+          "error": "internal_error"
+        }
+      }
+    },
+    {
+      "nome": "A outra conta não substitui a única mudança ainda não enviada",
+      "daExtensao": true,
+      "contexto": {
+        "chaveNaConexao": "9f3a",
+        "contaNaConexao": "outra-conta",
+        "naoEnviada": true
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "uid": "uid-teste",
+          "token": "token-ficticio",
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "other_account_unsent"
+        }
+      }
+    },
+    {
+      "nome": "O legado sem UID provado não é exportado para a primeira conta que pedir",
+      "daExtensao": true,
+      "contexto": {
+        "chaveNaConexao": "9f3a"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "uid": "uid-teste",
+          "token": "token-ficticio",
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "legacy_key_unbound"
+        }
+      }
+    },
+    {
+      "nome": "Sincronizar com uma revisão que já mudou",
+      "daExtensao": true,
+      "contexto": {
+        "versaoNaConexao": 2,
+        "contaNaConexao": "uid-teste"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "uid": "uid-teste",
+          "token": "token-ficticio",
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "stale_key_version"
+        }
+      }
+    },
+    {
+      "nome": "Uma chave local mais nova sobe pela Conexão",
+      "daExtensao": true,
+      "contexto": {
+        "chaveNaConexao": "9f3a",
+        "contaNaConexao": "uid-teste",
+        "emNaConexao": 200
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "uid": "uid-teste",
+          "token": "token-ficticio",
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "resultado": "subiu",
+          "versao": 0
+        }
+      }
+    },
+    {
+      "nome": "Uma chave da conta chega ao único dono",
+      "daExtensao": true,
+      "contexto": {
+        "chaveNaNuvem": "sk-fake-cloud-9f3a",
+        "emNaNuvem": 100
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "uid": "uid-teste",
+          "token": "token-ficticio",
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "resultado": "chegou",
+          "versao": 1
+        }
+      }
+    },
+    {
+      "nome": "O valor vazio mais novo chega da conta",
+      "daExtensao": true,
+      "contexto": {
+        "chaveNaConexao": "9f3a",
+        "contaNaConexao": "uid-teste",
+        "naoEnviada": false,
+        "emNaConexao": 100,
+        "chaveNaNuvem": "",
+        "emNaNuvem": 200
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "uid": "uid-teste",
+          "token": "token-ficticio",
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "resultado": "apagada",
+          "versao": 1
+        }
+      }
+    },
+    {
+      "nome": "JSON inválido: /ia/openai/legado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/legado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{ quebrado"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "JSON inválido: /ia/openai/sincronizar",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/sincronizar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{ quebrado"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
         }
       }
     }

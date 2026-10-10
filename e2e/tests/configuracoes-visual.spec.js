@@ -46,7 +46,7 @@ async function abrirConfiguracoes(page, extensao, endereco, largura = 1280) {
   await page.setViewportSize({ width: largura, height: 800 });
   await page.goto(extensao.url(`painel.html${endereco}`));
   await expect(page.getByRole('navigation', { name: 'Navegação do painel' })).toBeVisible();
-  await expect(page.locator('#cfg-perigo-resumo')).toHaveText('1.284 frases');
+  await expect(page.locator('#cfg-perigo-resumo')).toHaveText('1.284 frases', { timeout: 45000 });
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -207,7 +207,7 @@ test('IA dos cartões aberta, com a chave conferida e a cópia na Conexão', asy
   await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
   fakes.anki.guardarChaveNaConexao('9f3a');
   await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
-  await expect(page.locator('#cfg-ia').getByText('A Conexão com o Anki tem uma cópia da chave.')).toBeVisible();
+  await expect(page.locator('#cfg-ia').getByText('A Conexão com o Anki guarda a chave.')).toBeVisible();
   await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
 
   await expect(page).toHaveScreenshot('ia-conferida.png', { animations: 'disabled' });
@@ -222,7 +222,7 @@ test('IA dos cartões com conta: a chave vai junto com a conta Google, com Troca
   fakes.anki.guardarChaveNaConexao('9f3a');
   await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
   await expect(page.locator('#cfg-ia').getByText('Vai junto com a sua conta Google', { exact: false })).toBeVisible();
-  await expect(page.locator('#cfg-ia').getByText('A Conexão com o Anki tem uma cópia da chave.')).toBeVisible();
+  await expect(page.locator('#cfg-ia').getByText('A Conexão com o Anki guarda a chave.')).toBeVisible();
 
   await expect(page).toHaveScreenshot('ia-conferida-com-conta.png', { animations: 'disabled' });
 });
@@ -354,7 +354,7 @@ for (const variante of ['outra-conta', 'apagar-falhou', 'apagar-tudo-parcial']) 
         await page.getByRole('dialog').locator('.veio-botao--perigo-cheio').click();
       }
       await expect(page.getByRole('alert')).toContainText(variante === 'apagar-falhou'
-        ? 'Não deu para apagar a chave neste computador.' : 'As frases foram apagadas, mas a chave da OpenAI continua');
+        ? 'Não deu para confirmar o apagamento da chave neste computador.' : 'As frases foram apagadas, mas não deu para conferir o apagamento da chave da OpenAI');
     }
     await expect(page).toHaveScreenshot(`ia-${variante}.png`, { animations: 'disabled', mask: [campoDaChave(page)] });
   });

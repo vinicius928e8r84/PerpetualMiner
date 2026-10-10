@@ -127,6 +127,15 @@ function criarFakeGoogle() {
     padrao: /^https:\/\/(firestore|securetoken|identitytoolkit|www)\.googleapis\.com\//,
     tratar,
     requisicoes,
+    /** O seam REST que o complemento (não mais o navegador) usa para a chave. */
+    async pedidoDaConexao(metodo, uid, token, fields) {
+      let resposta;
+      const url = `${URL_DOS_DOCUMENTOS}/usuarios/${encodeURIComponent(uid)}/segredos/openai`;
+      await tratar({ request: () => ({ url: () => url, method: () => metodo,
+        headers: () => ({ authorization: `Bearer ${token}` }), postDataJSON: () => ({ fields }) }),
+      fulfill: async ({ status, body }) => { resposta = { status, json: JSON.parse(body) }; } });
+      return resposta;
+    },
     /** @estado-guardado Frases do usuário no Firestore, já convertidas de campos para objetos. */
     frasesDe(uid) {
       const prefixo = `usuarios/${uid}/frases/`;

@@ -267,11 +267,9 @@ function conectarNuvem(credenciais) {
 
 // ─── A chave da OpenAI acompanha a conta (#154) ──────────────────────────────
 //
-// A chave deste computador é de lib/chave-da-openai.js; a junção com a nuvem (a mudança mais nova vale, o
-// tombstone inclusive) é de lib/sincronizacao.js. Roda ao abrir o painel com conta, ao entrar, quando o
-// painel volta a ficar visível e a cada mudança da chave aqui (colar, trocar, apagar), uma de cada vez. Uma falha só fica para a próxima vez:
-// a chave daqui continua valendo, e o log leva só o status ou o motivo, nunca a chave nem a mensagem da
-// nuvem (que poderia repetir o corpo do pedido).
+// A Conexão é o único dono. A extensão pede a replicação com UID/token transitórios
+// e relê o resumo público; não lê uma chave do Firestore nem entrega outro segredo
+// confirmado por um cofre paralelo. Roda ao abrir, entrar, voltar e mudar a chave.
 
 let sincronizandoAChave = Promise.resolve();
 let erroDaChave = null;
@@ -290,7 +288,7 @@ function mostrarEstadoDoSync() {
       detalhes: [dados.detalhes, erroDaChave?.message].filter(Boolean).join('\n'),
     });
   } else if (erroDaChave) {
-    Conta.mostrarSincronizacao(situacaoDaChave, { detalhes: erroDaChave.message });
+    Conta.mostrarSincronizacao(situacaoDaChave, { detalhes: erroDaChave.message, codigo: erroDaChave.codigo });
   } else Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
 }
 
@@ -306,22 +304,15 @@ function mostrarSincronizado() {
 function sincronizarAChave() {
   sincronizandoAChave = sincronizandoAChave.then(async () => {
     const estaNuvem = nuvem;
-    if (!estaNuvem) return;
+    const estaSessao = sessao;
+    if (!estaNuvem || !estaSessao) return;
     try {
-      await Sincronizacao.criarSincronizacaoDaChave({ nuvem: estaNuvem, daqui: ChaveDaOpenAI.daqui }).sincronizar();
+      await ChaveDaOpenAI.sincronizar(estaSessao, estaNuvem.uid);
       if (nuvem === estaNuvem) { erroDaChave = null; mostrarEstadoDoSync(); }
     } catch (err) {
       if (nuvem !== estaNuvem) return;
       // A mensagem da API pode repetir o corpo secreto: só códigos chegam ao Detalhes.
-      let temMudanca = true;
-      try {
-        const aqui = await ChaveDaOpenAI.daqui.ler(estaNuvem.uid);
-        temMudanca = (!aqui.conta || aqui.conta === estaNuvem.uid) && Boolean(aqui.chave || aqui.em);
-      } catch { /* Falha do cofre também continua visível, sem expor seu conteúdo. */ }
-      if (nuvem !== estaNuvem) return;
-      erroDaChave = temMudanca || err?.motivo === Sincronizacao.MOTIVO.RECUSADO || err?.motivo === Sincronizacao.MOTIVO.EXPIROU
-        ? Object.assign(new Error(`OpenAI sync · ${err?.status || err?.motivo || 'sem resposta'}`), { motivo: err?.motivo })
-        : null;
+      erroDaChave = Object.assign(new Error(`OpenAI sync · ${err?.status || err?.motivo || 'sem resposta'}`), { motivo: err?.motivo, codigo: err?.codigo });
       mostrarEstadoDoSync();
     }
   });

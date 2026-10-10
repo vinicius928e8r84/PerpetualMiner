@@ -14,8 +14,6 @@ import sys
 import tempfile
 import unittest
 import threading
-from unittest.mock import patch
-from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -27,12 +25,16 @@ OUTRA_ORIGEM = "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 
 def enviar(conexao, chave=CHAVE, **opcoes):
-    return conexao.pedir("POST", "/ia/openai/chave", corpo={"chave": chave}, **opcoes)
+    revisao = json.loads(conexao.pedir('POST', '/ia/estado')[2])['openai']['versao']
+    return conexao.pedir("POST", "/ia/openai/chave", corpo={"chave": chave, "versao": revisao}, **opcoes)
 
 
 def estado(conexao):
     status, _, corpo = conexao.pedir("POST", "/ia/estado")
-    return status, json.loads(corpo)
+    # Estes testes anteriores verificam só máscara/ausência. AutoridadeVersionada
+    # verifica a revisão/conta/flag pelo HTTP completo, sem essa projeção.
+    dono = json.loads(corpo)['openai']
+    return status, {'openai': {k: v for k, v in dono.items() if k in ('configurada', 'ultimos4')}}
 
 
 def tudo_em_disco(raiz):
@@ -115,54 +117,6 @@ class ChaveRecebida(unittest.TestCase):
             self.assertEqual(depois, (200, {"openai": {"configurada": False}}))
             self.assertEqual(arquivos, [])
 
-    def test_mesma_geracao_nao_pode_sobrescrever_com_outra_chave(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 200})
-            status, _, corpo = conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': OUTRA_CHAVE, 'versao': 200})
-            self.assertEqual((status, json.loads(corpo)), (409, {'error': 'stale_key_version'}))
-            self.assertEqual(conexao.conexao.cofre.ler('openai') == CHAVE, True)
-            status, _, _ = conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 200})
-            self.assertEqual(status, 200) # Identical retry is idempotent, not another generation.
-
-    def test_resposta_perdida_reentrega_mesma_geracao_e_chave_sem_conferir_novamente(self):
-        for com_anterior in (False, True):
-            with self.subTest(com_anterior=com_anterior), tempfile.TemporaryDirectory() as pasta:
-                entrou, liberar = threading.Event(), threading.Event()
-                def conferir(*_args):
-                    entrou.set()
-                    self.assertTrue(liberar.wait(5))
-                with ConexaoNoTeste(pasta) as conexao:
-                    if com_anterior:
-                        conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': OUTRA_CHAVE, 'versao': 100})
-                    cliente = http.client.HTTPConnection('127.0.0.1', conexao.conexao.porta, timeout=0.2)
-                    with patch('complemento.servidor.openai_api.conferir', conferir):
-                        cliente.request('POST', '/ia/openai/chave', body=json.dumps({'chave': CHAVE, 'versao': 200}),
-                            headers={'Origin': ORIGEM, 'Content-Type': 'application/json'})
-                        self.assertTrue(entrou.wait(5))
-                        try:
-                            with self.assertRaises(socket.timeout):
-                                cliente.getresponse()
-                        finally:
-                            cliente.close()
-                            liberar.set()
-                        limite = time.monotonic() + 5
-                        while conexao.conexao.cofre.documento('openai').get('versao') != 200 and time.monotonic() < limite:
-                            time.sleep(0.01)
-                        self.assertEqual(conexao.conexao.cofre.ler('openai') == CHAVE, True)
-                # A resposta já perdida não precisa de outra aprovação da OpenAI;
-                # a repetição é uma leitura idempotente, inclusive após reiniciar.
-                with ConexaoNoTeste(pasta, openai='fora_do_ar') as conexao:
-                    antes = conexao.conexao.cofre.documento('openai')
-                    status, _, corpo = conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 200})
-                    self.assertEqual((status, json.loads(corpo)), (200, {'ok': True, 'ultimos4': 'abcd'}))
-                    self.assertEqual(conexao.conexao.cofre.documento('openai') == antes, True)
-                    self.assertEqual(conexao.openai.pedidos, [])
-                    self.assertEqual(estado(conexao), (200, {'openai': {'configurada': True, 'ultimos4': 'abcd', 'versao': 200}}))
-                    conexao.pedir('POST', '/ia/openai/chave/apagar', corpo={'versao': 300})
-                    status, _, _ = conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 200})
-                    self.assertEqual(status, 409)
-                    self.assertEqual(conexao.conexao.cofre.ler('openai'), None)
-
     def test_trocar_a_chave_guarda_a_nova(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             enviar(conexao, CHAVE)
@@ -199,46 +153,14 @@ class ChaveRecebida(unittest.TestCase):
 
 
 def apagar(conexao, **opcoes):
-    return conexao.pedir("POST", "/ia/openai/chave/apagar", corpo={}, **opcoes)
+    revisao = json.loads(conexao.pedir('POST', '/ia/estado')[2])['openai']['versao']
+    return conexao.pedir("POST", "/ia/openai/chave/apagar", corpo={'versao': revisao}, **opcoes)
 
 
 class ChaveApagada(unittest.TestCase):
     """Apagar chave e Apagar tudo na extensão (#154): a cópia da Conexão também sai, e do disco."""
 
-    def test_post_atrasado_e_reentrega_nao_desfazem_apagamento_mesmo_apos_reinicio(self):
-        entrou, liberar = threading.Event(), threading.Event()
-        def conferir(*_args):
-            entrou.set()
-            self.assertTrue(liberar.wait(5))
-        with tempfile.TemporaryDirectory() as pasta:
-            with ConexaoNoTeste(pasta) as conexao, ThreadPoolExecutor() as pool:
-                with patch('complemento.servidor.openai_api.conferir', conferir):
-                    atrasado = pool.submit(conexao.pedir, 'POST', '/ia/openai/chave',
-                        corpo={'chave': CHAVE, 'versao': 100})
-                    self.assertTrue(entrou.wait(5))
-                    conexao.pedir('POST', '/ia/openai/chave/apagar', corpo={'versao': 200})
-                    liberar.set()
-                    self.assertEqual(atrasado.result()[0], 409)
-                self.assertEqual(estado(conexao), (200, {'openai': {'configurada': False, 'versao': 200}}))
-            with ConexaoNoTeste(pasta) as conexao:
-                resposta = conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 100})
-                self.assertEqual(resposta[0], 409)
-                self.assertEqual(estado(conexao), (200, {'openai': {'configurada': False, 'versao': 200}}))
-                self.assertFalse(any(CHAVE.encode() in dados for _, dados in tudo_em_disco(pasta)))
-
-    def test_estado_sem_chave_informa_geracao_do_tombstone_para_reconciliar_uma_copia_antiga(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            conexao.pedir('POST', '/ia/openai/chave/apagar', corpo={'versao': 300})
-            self.assertEqual(estado(conexao), (200, {'openai': {'configurada': False, 'versao': 300}}))
-
-    def test_remocao_antiga_nao_apaga_uma_chave_de_versao_mais_nova(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 200})
-            status, _, corpo = conexao.pedir('POST', '/ia/openai/chave/apagar', corpo={'versao': 100})
-            self.assertEqual((status, json.loads(corpo)), (409, {'error': 'stale_key_version'}))
-            self.assertEqual(estado(conexao), (200, {'openai': {'configurada': True, 'ultimos4': 'abcd', 'versao': 200}}))
-
-    def test_apagar_tira_o_segredo_do_disco_e_mantem_tombstone_sem_chave(self):
+    def test_apagar_tira_o_segredo_do_disco_e_mantem_o_valor_vazio_versionado(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             enviar(conexao)
             status, _, corpo = apagar(conexao)
@@ -398,6 +320,198 @@ class PedidoQueOProtocoloRecusa(unittest.TestCase):
             self._cru(conexao, CHAVE + "\r\n\r\n")
             registrado = conexao.log()
         self.assertIn("http: code 400, message Bad Request", registrado)
+
+
+class AutoridadeVersionada(unittest.TestCase):
+    """Opção B: o cliente observa a revisão; só o cofre a muda após aceitar."""
+
+    def test_N1_falha_posterior_nao_reserva_revisao_nem_desfaz_aceitacao(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            status, _, _ = conexao.pedir('POST', '/ia/openai/chave',
+                corpo={'chave': CHAVE, 'versao': 0, 'conta': 'A'})
+            self.assertEqual(status, 200)
+            conexao.openai.comportamento = 'recusa'
+            # O adapter externo é a OpenAI: nenhuma revisão é reservada na extensão.
+            status, _, _ = conexao.pedir('POST', '/ia/openai/chave',
+                corpo={'chave': OUTRA_CHAVE, 'versao': 1, 'conta': 'A'})
+            self.assertEqual(status, 401)
+            status, _, corpo = conexao.pedir('POST', '/ia/estado')
+            atual = json.loads(corpo)['openai']
+            self.assertEqual(status, 200)
+            self.assertEqual(atual.get('versao'), 1)
+            self.assertEqual(atual.get('conta'), 'A')
+            self.assertEqual(atual['ultimos4'], 'abcd')
+            self.assertTrue(conexao.conexao.cofre.ler('openai') == CHAVE)
+
+    def test_conta_em_duas_conexoes_recebe_troca_e_apagamento_sem_outro_dono(self):
+        with tempfile.TemporaryDirectory() as pasta_a, tempfile.TemporaryDirectory() as pasta_b:
+            with ConexaoNoTeste(pasta_a) as a, ConexaoNoTeste(pasta_b) as b:
+                b.conexao.firestore_base = a.firestore.base # só a fronteira externa é compartilhada
+                def sync(conexao, versao):
+                    status, _, corpo = conexao.pedir('POST', '/ia/openai/sincronizar',
+                        corpo={'uid': 'A', 'token': 'token-ficticio-A', 'versao': versao})
+                    self.assertEqual(status, 200)
+                    return json.loads(corpo)
+                self.assertEqual(a.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 0, 'conta': 'A'})[0], 200)
+                self.assertEqual(sync(a, 1)['resultado'], 'subiu')
+                self.assertEqual(sync(b, 0), {'ok': True, 'resultado': 'chegou', 'versao': 1})
+                self.assertTrue(b.conexao.cofre.ler('openai') == CHAVE)
+                self.assertEqual(b.pedir('POST', '/ia/openai/chave', corpo={'chave': OUTRA_CHAVE, 'versao': 1, 'conta': 'A'})[0], 200)
+                self.assertEqual(sync(b, 2)['resultado'], 'subiu')
+                self.assertEqual(sync(a, 1), {'ok': True, 'resultado': 'chegou', 'versao': 2})
+                self.assertTrue(a.conexao.cofre.ler('openai') == OUTRA_CHAVE)
+                self.assertEqual(a.pedir('POST', '/ia/openai/chave/apagar', corpo={'versao': 2, 'conta': 'A'})[0], 200)
+                self.assertEqual(sync(a, 3)['resultado'], 'subiu')
+                self.assertEqual(sync(b, 2), {'ok': True, 'resultado': 'apagada', 'versao': 3})
+                for conexao in (a, b):
+                    self.assertEqual(json.loads(conexao.pedir('POST', '/ia/estado')[2])['openai'],
+                        {'configurada': False, 'conta': 'A', 'versao': 3, 'naoEnviada': False})
+                    self.assertFalse(any(k.encode() in dados for _, dados in tudo_em_disco(conexao.pasta) for k in (CHAVE, OUTRA_CHAVE)))
+                self.assertEqual(set(a.firestore.documentos['A']), {'chave', 'em'})
+                self.assertEqual(a.firestore.documentos['A']['chave']['stringValue'], '')
+                self.assertTrue(all(auth == 'Bearer token-ficticio-A' for _, _, auth in a.firestore.pedidos))
+
+    def test_sync_nao_persiste_credencial_nem_repete_segredos_da_falha_externa(self):
+        token = 'token-ficticio-nao-deve-ir-ao-disco'
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'conta': 'A', 'versao': 0})[0], 200)
+            for falha in (401, 403, 409, 500, 502, 503):
+                conexao.firestore.falha = falha
+                status, cabecalhos, corpo = conexao.pedir('POST', '/ia/openai/sincronizar',
+                    corpo={'uid': 'A', 'token': token, 'versao': 1})
+                self.assertEqual((status, json.loads(corpo)), (falha, {'error': 'cloud_sync_failed', 'status': falha}))
+                for segredo in (CHAVE, token):
+                    self.assertNotIn(segredo, conexao.log())
+                    self.assertNotIn(segredo, json.dumps(cabecalhos) + corpo.decode())
+            self.assertFalse(any(token.encode() in dados for _, dados in tudo_em_disco(pasta)))
+            self.assertTrue(conexao.conexao.cofre.ler('openai') == CHAVE)
+            self.assertTrue(conexao.conexao.cofre.documento('openai')['naoEnviada'])
+
+    def test_ler_uma_conta_sem_chave_nao_inventa_mudanca_no_dono_vazio(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            status, _, corpo = conexao.pedir('POST', '/ia/openai/sincronizar',
+                corpo={'uid': 'A', 'token': 'token-ficticio-A', 'versao': 0})
+            self.assertEqual((status, json.loads(corpo)), (200, {'ok': True, 'resultado': None, 'versao': 0}))
+            self.assertEqual(conexao.conexao.cofre.documento('openai'), {})
+            self.assertEqual(os.listdir(conexao.chaves), [])
+
+    def test_empate_de_hora_so_confirma_replicacao_depois_de_entregar_o_valor_pendente(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
+                corpo={'chave': CHAVE, 'versao': 0, 'conta': 'A'})[0], 200)
+            hora = conexao.conexao.cofre.documento('openai')['em']
+            conexao.firestore.documentos['A'] = {'chave': {'stringValue': OUTRA_CHAVE}, 'em': {'integerValue': str(hora)}}
+            status, _, corpo = conexao.pedir('POST', '/ia/openai/sincronizar',
+                corpo={'uid': 'A', 'token': 'token-ficticio-A', 'versao': 1})
+            self.assertEqual(status, 200)
+            self.assertEqual(json.loads(corpo)['resultado'], 'subiu')
+            self.assertEqual(conexao.firestore.documentos['A']['chave']['stringValue'], CHAVE)
+            self.assertEqual(conexao.conexao.cofre.documento('openai')['naoEnviada'], False)
+            self.assertTrue(conexao.conexao.cofre.ler('openai') == CHAVE)
+
+    def test_empate_de_hora_com_copia_ja_replicada_recebe_o_apagamento_observado_na_nuvem(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
+                corpo={'chave': CHAVE, 'versao': 0, 'conta': 'A'})[0], 200)
+            hora = conexao.conexao.cofre.documento('openai')['em']
+            pedido = {'uid': 'A', 'token': 'token-ficticio-A', 'versao': 1}
+            conexao.firestore.documentos['A'] = {'chave': {'stringValue': CHAVE}, 'em': {'integerValue': str(hora)}}
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/sincronizar', corpo=pedido)[0], 200)
+            conexao.firestore.documentos['A']['chave']['stringValue'] = ''
+            status, _, corpo = conexao.pedir('POST', '/ia/openai/sincronizar', corpo=pedido)
+            self.assertEqual(status, 200)
+            self.assertEqual(json.loads(corpo), {'ok': True, 'resultado': 'apagada', 'versao': 2})
+            self.assertFalse(conexao.conexao.cofre.ler('openai'))
+            self.assertEqual(conexao.conexao.cofre.documento('openai')['naoEnviada'], False)
+            self.assertFalse(any(CHAVE.encode() in dados for _, dados in tudo_em_disco(conexao.pasta)))
+
+    def test_L1_chegada_da_nuvem_nao_reserva_revisoes_nem_chama_OpenAI_fora_do_ar(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, openai='fora_do_ar') as conexao:
+            conexao.firestore.documentos['A'] = {'chave': {'stringValue': CHAVE}, 'em': {'integerValue': '100'}}
+            for revisao in (0, 1, 1):
+                status, _, corpo = conexao.pedir('POST', '/ia/openai/sincronizar',
+                    corpo={'uid': 'A', 'token': 'token-ficticio-A', 'versao': revisao})
+                self.assertEqual(status, 200)
+                self.assertEqual(json.loads(corpo)['versao'], 1)
+            self.assertEqual(conexao.openai.pedidos, [])
+            self.assertEqual(json.loads(conexao.pedir('POST', '/ia/estado')[2]),
+                {'openai': {'configurada': True, 'ultimos4': 'abcd', 'conta': 'A', 'versao': 1, 'naoEnviada': False}})
+            self.assertTrue(conexao.conexao.cofre.ler('openai') == CHAVE)
+
+    def test_R1_HTTP_perdido_aceita_tarde_e_replay_apos_reinicio_e_so_leitura(self):
+        entrou, liberar = threading.Event(), threading.Event()
+        def esperar(metodo, _auth):
+            if metodo == 'GET':
+                entrou.set()
+                self.assertTrue(liberar.wait(5))
+        with tempfile.TemporaryDirectory() as pasta:
+            with ConexaoNoTeste(pasta) as conexao:
+                conexao.openai.antes_de_responder = esperar
+                cliente = http.client.HTTPConnection('127.0.0.1', conexao.conexao.porta, timeout=0.2)
+                cliente.request('POST', '/ia/openai/chave', body=json.dumps({'chave': CHAVE, 'versao': 0, 'conta': 'A'}),
+                    headers={'Origin': ORIGEM, 'Content-Type': 'application/json'})
+                self.assertTrue(entrou.wait(5))
+                try:
+                    with self.assertRaises(socket.timeout): cliente.getresponse()
+                finally:
+                    cliente.close()
+                    liberar.set()
+                limite = time.monotonic() + 5
+                while conexao.conexao.cofre.ler('openai') != CHAVE and time.monotonic() < limite: time.sleep(0.01)
+                self.assertTrue(conexao.conexao.cofre.ler('openai') == CHAVE)
+            with ConexaoNoTeste(pasta, openai='fora_do_ar') as conexao:
+                antes = conexao.conexao.cofre.documento('openai')
+                status, _, corpo = conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 0, 'conta': 'A'})
+                self.assertEqual((status, json.loads(corpo)), (200, {'ok': True, 'ultimos4': 'abcd'}))
+                self.assertEqual(conexao.openai.pedidos, [])
+                self.assertTrue(conexao.conexao.cofre.documento('openai') == antes)
+                self.assertEqual(json.loads(conexao.pedir('POST', '/ia/estado')[2])['openai'],
+                    {'configurada': True, 'ultimos4': 'abcd', 'conta': 'A', 'versao': 1, 'naoEnviada': True})
+                self.assertEqual(conexao.pedir('POST', '/ia/openai/chave/apagar', corpo={'versao': 1, 'conta': 'A'})[0], 200)
+                self.assertEqual(conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 0, 'conta': 'A'})[0], 409)
+                self.assertFalse(any(CHAVE.encode() in dados for _, dados in tudo_em_disco(pasta)))
+
+    def test_J1_wipe_de_C_nao_marca_A_nem_apaga_sua_chave_mais_nova(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            conexao.firestore.documentos['A'] = {
+                'chave': {'stringValue': OUTRA_CHAVE}, 'em': {'integerValue': '200'}}
+            conexao.pedir('POST', '/ia/openai/chave',
+                corpo={'chave': CHAVE, 'versao': 0, 'conta': 'C'})
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/chave/apagar',
+                corpo={'versao': 1, 'conta': 'C'})[0], 200)
+            # Conclui a única mudança de C antes de trocar o dono ativo: não
+            # existe uma marca de A que possa ser reentregue quando A entrar.
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/sincronizar',
+                corpo={'uid': 'C', 'token': 'token-ficticio-C', 'versao': 2})[0], 200)
+            status, _, _ = conexao.pedir('POST', '/ia/openai/sincronizar',
+                corpo={'uid': 'A', 'token': 'token-ficticio-A', 'versao': 2})
+            self.assertEqual(status, 200)
+            self.assertTrue(conexao.conexao.cofre.ler('openai') == OUTRA_CHAVE)
+            self.assertTrue(conexao.firestore.documentos['A']['chave']['stringValue'] == OUTRA_CHAVE)
+            self.assertEqual(conexao.firestore.documentos['A']['em']['integerValue'], '200')
+            self.assertFalse(any(metodo == 'PATCH' and uid == 'A' for metodo, uid, _token in conexao.firestore.pedidos))
+            self.assertEqual(set(conexao.conexao.cofre.documento('openai')), {'chave', 'conta', 'versao', 'em', 'naoEnviada'})
+
+    def test_P1_upload_recusado_nao_transfere_nem_descarta_A_ao_entrar_em_B(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 0, 'conta': 'A'})
+            conexao.firestore.recusar_escritas = True
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/sincronizar',
+                corpo={'uid': 'A', 'token': 'token-ficticio-A', 'versao': 1})[0], 503)
+            conexao.firestore.documentos['B'] = {'chave': {'stringValue': OUTRA_CHAVE}, 'em': {'integerValue': '100'}}
+            status, _, corpo = conexao.pedir('POST', '/ia/openai/sincronizar',
+                corpo={'uid': 'B', 'token': 'token-ficticio-B', 'versao': 1})
+            self.assertEqual((status, json.loads(corpo)), (409, {'error': 'other_account_unsent'}))
+            self.assertTrue(conexao.conexao.cofre.ler('openai') == CHAVE)
+            self.assertTrue(conexao.firestore.documentos['B']['chave']['stringValue'] == OUTRA_CHAVE)
+            self.assertFalse(any(uid == 'B' for _metodo, uid, _token in conexao.firestore.pedidos))
+            conexao.firestore.recusar_escritas = False
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/sincronizar',
+                corpo={'uid': 'A', 'token': 'token-ficticio-A', 'versao': 1})[0], 200)
+            self.assertTrue(conexao.firestore.documentos['A']['chave']['stringValue'] == CHAVE)
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/sincronizar',
+                corpo={'uid': 'B', 'token': 'token-ficticio-B', 'versao': 1})[0], 200)
+            self.assertTrue(conexao.conexao.cofre.ler('openai') == OUTRA_CHAVE)
 
 
 if __name__ == "__main__":
