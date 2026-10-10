@@ -100,6 +100,24 @@ test('recarregar retoma Abrir o Anki sozinho até Agora não, mesmo com a saúde
   await estadoFinal(extensao, { pm_anki_abridor_pendente: false, pm_abridor: { agoraNao: true } });
 });
 
+test('a primeira conexão confirmada mantém o título do abridor pendente após queda e recarga', async ({ page, extensao, fakes }) => {
+  await conectarPelaPrimeiraVez(page, extensao, fakes);
+  await expect(permitir(page)).toBeVisible();
+  fakes.anki.desligar();
+  await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
+  await expect(statusDaConexao(page)).toHaveText('Esperando a Conexão');
+  await expect(page.locator('#anki-primeira-vez')).toBeVisible();
+  await expect(page.locator('#anki-primeira-vez-titulo')).toHaveText('Abrir o Anki sozinho');
+  await fotografar(page, 'abridor-pendente-apos-queda.png');
+  await page.reload();
+  await expect(statusDaConexao(page)).toHaveText('Esperando a Conexão');
+  await expect(page.locator('#anki-primeira-vez')).toBeVisible();
+  await expect(page.locator('#anki-primeira-vez-titulo')).toHaveText('Abrir o Anki sozinho');
+  await expect(abas(page)).toBeHidden();
+  await fotografar(page, 'abridor-pendente-queda-apos-reload.png');
+  await estadoFinal(extensao, { pm_anki_ja_conectou: true, pm_anki_abridor_pendente: true });
+});
+
 test('Permitir pede a permissão ao Chrome: o passo espera a resposta do aviso dele e ainda não chama o abridor', async ({ page, extensao, fakes }) => {
   await conectarPelaPrimeiraVez(page, extensao, fakes);
 

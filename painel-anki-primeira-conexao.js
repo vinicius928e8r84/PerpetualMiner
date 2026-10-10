@@ -155,7 +155,8 @@
     estado.prontoDesenhado = estado.pronto;
 
     porId('anki-primeira-vez-titulo').textContent = estado.pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA)
-      : textoDaVoz(estado.visto.situacao === CONEXAO.LIGADA ? 'ONB-17.titulo' : 'ONB-16.titulo');
+      : textoDaVoz(estado.esperandoOAbridor || ConexaoAnki.jaConectou() || estado.visto.situacao === CONEXAO.LIGADA
+        ? 'ONB-17.titulo' : 'ONB-16.titulo');
     porId('apv-apoio').hidden = estado.pronto;
     porId('apv-rodape').hidden = estado.pronto;
     passos.desenhar({ pronto: estado.pronto });
