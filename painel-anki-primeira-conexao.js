@@ -9,8 +9,10 @@
 //
 // Os passos se marcam pelo estado real, e o único que a extensão enxerga antes da
 // Conexão é ela mesma (o AnkiConnect não é lido: sem permissão nova). Por isso
-// eles esperam a Conexão e viram ✓ juntos quando ela responde ligada: é o
-// momento Pronto, que o card segura antes de devolver as abas.
+// os dois primeiros esperam a Conexão e viram ✓ juntos quando ela responde ligada.
+// Logo depois vem o passo 3, Abrir o Anki sozinho (#147): o card fica no lugar das
+// abas até ele se resolver (o abridor achou o Anki, ou a pessoa disse “Agora não”),
+// e só então vem o momento Pronto, que o card segura antes de devolver as abas.
 //
 // A linha “Confere sozinho a cada 15 s” segue a conferência de /health que o
 // shell inicia em `ConexaoAnki` (`acompanhar`, `aoConferir`): este arquivo não
@@ -27,6 +29,8 @@
   const INTERVALO_DO_TIQUE = 1000;
   // Quanto o momento Pronto fica na tela antes de as abas voltarem.
   const MOMENTO_PRONTO_MS = 1800;
+  // A saúde HTTP não conclui o pedido de permissão: esta espera sobrevive à recarga.
+  const CHAVE_ABRIDOR_PENDENTE = 'pm_anki_abridor_pendente';
 
   const { textoDaVoz, Veio, Shell, ConexaoAnki, ConexaoNaTela, PassosDaConexao } = raiz;
   const { SITUACAO: CONEXAO } = ConexaoAnki;
@@ -34,6 +38,7 @@
 
   const estado = {
     pronto: false,          // o momento Pronto está na tela
+    esperandoOAbridor: false, // a Conexão ligou com o card na tela; o passo 3 ainda não se resolveu
     prontoDesenhado: false, // o Pronto que o último desenho já mostrou (para o foco)
     conferindo: false,      // uma conferência está no ar
     conferiuEm: null,       // quando a última voltou
@@ -51,13 +56,14 @@
    * de situação; não desmonta o card nem encerra a Conferência.
    */
   function montar() {
-    passos = PassosDaConexao.montar(porId('apv-passos'), { prefixo: 'apv' });
+    passos = PassosDaConexao.montar(porId('apv-passos'), { prefixo: 'apv', aoResolverOAbridor });
     ConexaoAnki.aoConferir(conferindo => {
       estado.conferindo = conferindo;
       desenharConferencia();
     });
     setInterval(desenharConferencia, INTERVALO_DO_TIQUE);
-    return ConexaoAnki.pronta.then(() => {
+    return Promise.all([ConexaoAnki.pronta, chrome.storage.local.get({ [CHAVE_ABRIDOR_PENDENTE]: false })]).then(([, gravado]) => {
+      estado.esperandoOAbridor = gravado[CHAVE_ABRIDOR_PENDENTE] === true;
       estado.visto.respondeu = ConexaoAnki.ultimaResposta() !== null;
       // Os 2 minutos do componente contam da primeira vez que a área está à vista: quem chega depois
       // (de outra área) precisa de um desenho na entrada, que é quando o card passa a ser visto.
@@ -68,9 +74,10 @@
 
   // ─── A Conexão ─────────────────────────────────────────────────────────────
 
-  /** O card está no lugar das abas (inclusive no momento Pronto). */
+  /** O card está no lugar das abas (inclusive no passo 3 logo depois de ligar, e no momento Pronto). */
   function cobreAsAbas({ situacao, respondeu } = estado.visto) {
-    return respondeu && (estado.pronto || (!ConexaoAnki.jaConectou() && situacao !== CONEXAO.LIGADA));
+    return respondeu && (estado.pronto || estado.esperandoOAbridor
+      || (!ConexaoAnki.jaConectou() && situacao !== CONEXAO.LIGADA));
   }
 
   function aoMudarAConexao(situacao) {
@@ -81,8 +88,26 @@
     // Em outra área (ou nas Boas-vindas) ninguém olha o card: as abas só estarão
     // lá quando a pessoa chegar, sem Pronto nem toast.
     if (situacao === CONEXAO.LIGADA && eraPrimeiraVez && !estado.pronto && Shell.areaAtual() === 'anki') {
-      comecarOPronto();
+      // O passo 3 vem antes do Pronto, a menos que ele já esteja resolvido (um “Agora não” guardado).
+      if (passos.abridorResolvido()) {
+        estado.esperandoOAbridor = false;
+        chrome.storage.local.set({ [CHAVE_ABRIDOR_PENDENTE]: false });
+        comecarOPronto();
+      } else {
+        estado.esperandoOAbridor = true;
+        chrome.storage.local.set({ [CHAVE_ABRIDOR_PENDENTE]: true });
+      }
     }
+    // Mesmo se a saúde cair no meio do passo 3, a escolha continua pendente.
+    desenhar();
+  }
+
+  /** O passo 3 se resolveu: se o card o esperava, é a hora do Pronto. */
+  function aoResolverOAbridor() {
+    if (!estado.esperandoOAbridor) return;
+    estado.esperandoOAbridor = false;
+    chrome.storage.local.set({ [CHAVE_ABRIDOR_PENDENTE]: false });
+    comecarOPronto();
     desenhar();
   }
 
@@ -129,7 +154,9 @@
     const entrouNoPronto = estado.pronto && !estado.prontoDesenhado;
     estado.prontoDesenhado = estado.pronto;
 
-    porId('anki-primeira-vez-titulo').textContent = estado.pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA) : textoDaVoz('ONB-16.titulo');
+    porId('anki-primeira-vez-titulo').textContent = estado.pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA)
+      : textoDaVoz(estado.esperandoOAbridor || ConexaoAnki.jaConectou() || estado.visto.situacao === CONEXAO.LIGADA
+        ? 'ONB-17.titulo' : 'ONB-16.titulo');
     porId('apv-apoio').hidden = estado.pronto;
     porId('apv-rodape').hidden = estado.pronto;
     passos.desenhar({ pronto: estado.pronto });

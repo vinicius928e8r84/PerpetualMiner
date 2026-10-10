@@ -31,7 +31,8 @@ const extensao = path.join(saida, 'extensao');
   for (const pagina of paginas) {
     const html = fs.readFileSync(pagina, 'utf8');
     const pedidos = [...html.matchAll(/\b(?:src|href)="([^"#?:]+)"/g)].map(m => m[1]).filter(p => !p.startsWith('//'));
-    assert(pedidos.length > 0, `${pagina}: não achei o que ela carrega`);
+    // A ponte do abridor (lib/abridor.js) é vazia de propósito: um quadro escondido que só empresta o `chrome.runtime`.
+    if (pagina !== 'abridor.html') assert(pedidos.length > 0, `${pagina}: não achei o que ela carrega`);
     for (const pedido of pedidos) {
       assert(fs.existsSync(path.join(extensao, pedido)), `${pagina} carrega ${pedido}, que não está no preview`);
     }

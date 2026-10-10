@@ -12,10 +12,12 @@ import socket
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import configuracao, inicio, item_de_login  # noqa: E402
+from complemento import abridor, configuracao, inicio, item_de_login  # noqa: E402
+from complemento.test_abridor import Pastas, RegistroDeMentira, abridor_do_mac, conversar  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
 
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
@@ -55,9 +57,28 @@ def parar(conexao):
 
 
 class AoCarregarNoAnki(unittest.TestCase):
+    def setUp(self):
+        # Falha fechada: nenhum teste de início pode sequer descobrir o host real.
+        remendo = patch("complemento.inicio.abridores.deste_computador", side_effect=AssertionError("registro real proibido no teste"))
+        self.fabrica_real = remendo.start()
+        self.addCleanup(remendo.stop)
+        self.addCleanup(self.fabrica_real.assert_not_called)
+
+    def test_desativar_o_abridor_nao_descobre_nem_registra_host_no_mac_ou_no_windows(self):
+        for plataforma in ("darwin", "win32"):
+            with self.subTest(plataforma=plataforma), tempfile.TemporaryDirectory() as pasta:
+                with patch.object(inicio.sys, "platform", plataforma):
+                    conexao = inicio.iniciar(pasta, lambda: None, porta=0, abridor=None)
+                    try:
+                        self.assertIsNotNone(conexao)
+                        self.assertEqual(saude(conexao.porta)[0], 200)
+                        self.assertFalse(os.path.exists(os.path.join(pasta, "user_files", "abridor")))
+                    finally:
+                        parar(conexao)
+
     def test_a_conexao_sobe_e_responde_a_saude_com_o_perfil_aberto(self):
         with tempfile.TemporaryDirectory() as pasta:
-            conexao = inicio.iniciar(pasta, lambda: "Usuário 1", porta=0)
+            conexao = inicio.iniciar(pasta, lambda: "Usuário 1", porta=0, abridor=None)
             try:
                 status, corpo = saude(conexao.porta)
             finally:
@@ -67,7 +88,7 @@ class AoCarregarNoAnki(unittest.TestCase):
 
     def test_user_files_ganha_as_pastas_da_fila_do_estado_dos_custos_dos_logs_e_das_chaves(self):
         with tempfile.TemporaryDirectory() as pasta:
-            parar(inicio.iniciar(pasta, lambda: None, porta=0))
+            parar(inicio.iniciar(pasta, lambda: None, porta=0, abridor=None))
             criadas = sorted(os.listdir(os.path.join(pasta, "user_files")))
         self.assertEqual(criadas, ["chaves", "custos", "estado", "fila", "logs"])
 
@@ -76,7 +97,7 @@ class AoCarregarNoAnki(unittest.TestCase):
         antes = os.umask(0o000)
         try:
             with tempfile.TemporaryDirectory() as pasta:
-                parar(inicio.iniciar(pasta, lambda: None, porta=0))
+                parar(inicio.iniciar(pasta, lambda: None, porta=0, abridor=None))
                 modo = os.stat(os.path.join(pasta, "user_files", "chaves")).st_mode & 0o777
         finally:
             os.umask(antes)
@@ -88,19 +109,19 @@ class AoCarregarNoAnki(unittest.TestCase):
             antiga = os.path.join(pasta, "user_files", "chaves")
             os.makedirs(antiga)
             os.chmod(antiga, 0o755)
-            parar(inicio.iniciar(pasta, lambda: None, porta=0))
+            parar(inicio.iniciar(pasta, lambda: None, porta=0, abridor=None))
             modo = os.stat(antiga).st_mode & 0o777
         self.assertEqual(modo, 0o700)
 
     def test_a_chave_que_a_extensao_manda_fica_em_user_files_chaves_e_a_conexao_a_reconhece_ao_reiniciar(self):
         chave = "sk-proj-DeTesteDoInicio0123456789-f00d"
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira("aceita") as openai:
-            conexao = inicio.iniciar(pasta, lambda: None, porta=0, openai_base=openai.base)
+            conexao = inicio.iniciar(pasta, lambda: None, porta=0, openai_base=openai.base, abridor=None)
             try:
                 enviada = pedir_a_chave(conexao.porta, chave)
             finally:
                 parar(conexao)
-            conexao = inicio.iniciar(pasta, lambda: None, porta=0, openai_base=openai.base)
+            conexao = inicio.iniciar(pasta, lambda: None, porta=0, openai_base=openai.base, abridor=None)
             try:
                 estado = estado_da_ia(conexao.porta)
             finally:
@@ -116,7 +137,7 @@ class AoCarregarNoAnki(unittest.TestCase):
             os.makedirs(fila)
             with open(os.path.join(fila, "envio.json"), "w", encoding="utf-8") as arquivo:
                 arquivo.write('{"jobId": "job-1"}')
-            parar(inicio.iniciar(pasta, lambda: None, porta=0))
+            parar(inicio.iniciar(pasta, lambda: None, porta=0, abridor=None))
             with open(os.path.join(fila, "envio.json"), encoding="utf-8") as arquivo:
                 guardado = arquivo.read()
         self.assertEqual(guardado, '{"jobId": "job-1"}')
@@ -125,7 +146,7 @@ class AoCarregarNoAnki(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta:
             agentes = os.path.join(pasta, "agentes")
             item = item_de_login.ItemDeLogin(sistema="mac", pasta=agentes, comando=["/usr/bin/open", "-a", "Anki"])
-            conexao = inicio.iniciar(pasta, lambda: None, porta=0, item_de_login=item)
+            conexao = inicio.iniciar(pasta, lambda: None, porta=0, item_de_login=item, abridor=None)
             try:
                 pedido = http.client.HTTPConnection("127.0.0.1", conexao.porta, timeout=5)
                 pedido.request("POST", "/abrir-com-o-computador", body='{"ligado": true}', headers={"Origin": ORIGEM})
@@ -136,6 +157,66 @@ class AoCarregarNoAnki(unittest.TestCase):
             escritos = os.listdir(agentes)
         self.assertEqual((status, escritos), (200, ["com.perpetualminer.abrir-o-anki.plist"]))
 
+    @unittest.skipIf(os.name == "nt", "o script do Mac roda num sh")
+    def test_ao_carregar_escreve_o_abridor_e_o_registra_para_o_chrome(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            pastas = Pastas(raiz)
+            conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: None, porta=0, abridor=abridor_do_mac(pastas))
+            parar(conexao)
+            registrados = os.listdir(pastas.hosts_do_chrome)
+            resposta = conversar(os.path.join(pastas.abridor, "abrir-o-anki.sh"), {"acao": "conferir"})
+        self.assertEqual((registrados, resposta), (["com.perpetualminer.abridor.json"], {"achou": True}))
+
+    @unittest.skipIf(os.name == "nt", "o script do Mac roda num sh")
+    def test_quando_um_perfil_abre_o_abridor_passa_a_abrir_o_anki_nesse_perfil(self):
+        ganchos = []
+        perfil = {"aberto": None}
+        with tempfile.TemporaryDirectory() as raiz:
+            pastas = Pastas(raiz)
+            conexao = inicio.iniciar(
+                os.path.join(raiz, "complemento"), lambda: perfil["aberto"], porta=0,
+                abridor=abridor_do_mac(pastas), ao_abrir_o_perfil=ganchos.append,
+            )
+            parar(conexao)
+            perfil["aberto"] = "Maria"
+            for gancho in ganchos:
+                gancho()
+            conversar(os.path.join(pastas.abridor, "abrir-o-anki.sh"), {"acao": "abrir"})
+            recebeu = pastas.open.recebeu()
+        self.assertEqual(recebeu, ["-a", pastas.app, "--args", "-p", "Maria"])
+
+    def test_sem_saber_onde_o_anki_esta_a_conexao_sobe_assim_mesmo_e_o_log_diz_por_que_nao_ha_abridor(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            pastas = Pastas(raiz)
+            pasta = os.path.join(raiz, "complemento")
+            erro = io.StringIO()
+            with contextlib.redirect_stderr(erro):
+                conexao = inicio.iniciar(pasta, lambda: None, porta=0, abridor=abridor_do_mac(pastas, programa=""))
+                try:
+                    status, _ = saude(conexao.porta)
+                finally:
+                    parar(conexao)
+            with open(os.path.join(pasta, "user_files", "logs", "complemento.log"), encoding="utf-8") as arquivo:
+                registrado = arquivo.read()
+            registrou = os.path.exists(pastas.hosts_do_chrome)
+        self.assertEqual((status, registrou, erro.getvalue()), (200, False, ""))
+        self.assertIn("O abridor não foi escrito", registrado)
+
+    def test_um_gancho_de_perfil_que_falha_ao_registrar_nao_derruba_a_conexao(self):
+        def gancho_quebrado(_):
+            raise ImportError("sem aqt")
+
+        with tempfile.TemporaryDirectory() as raiz:
+            conexao = inicio.iniciar(
+                os.path.join(raiz, "complemento"), lambda: None, porta=0,
+                abridor=abridor_do_mac(Pastas(raiz)), ao_abrir_o_perfil=gancho_quebrado,
+            )
+            try:
+                status, _ = saude(conexao.porta)
+            finally:
+                parar(conexao)
+        self.assertEqual(status, 200)
+
     def test_com_a_porta_ocupada_o_complemento_fica_quieto_e_registra_o_motivo(self):
         ocupante = socket.socket()
         ocupante.bind(("127.0.0.1", 0))
@@ -145,7 +226,7 @@ class AoCarregarNoAnki(unittest.TestCase):
         try:
             with tempfile.TemporaryDirectory() as pasta:
                 with contextlib.redirect_stdout(saida), contextlib.redirect_stderr(erro):
-                    conexao = inicio.iniciar(pasta, lambda: None, porta=porta)
+                    conexao = inicio.iniciar(pasta, lambda: None, porta=porta, abridor=None)
                 with open(os.path.join(pasta, "user_files", "logs", "complemento.log"), encoding="utf-8") as arquivo:
                     registrado = arquivo.read()
         finally:
@@ -159,7 +240,7 @@ class AoCarregarNoAnki(unittest.TestCase):
             os.makedirs(os.path.join(pasta, "user_files", "logs", "complemento.log"))  # uma pasta no lugar do arquivo
             erro = io.StringIO()
             with contextlib.redirect_stderr(erro):
-                conexao = inicio.iniciar(pasta, lambda: "Usuário 1", porta=0)
+                conexao = inicio.iniciar(pasta, lambda: "Usuário 1", porta=0, abridor=None)
                 try:
                     status, corpo = saude(conexao.porta)
                     conexao.logger.error("um erro que não tem para onde ir")
@@ -175,9 +256,34 @@ class AoCarregarNoAnki(unittest.TestCase):
                 arquivo.write("não sou uma pasta")
             erro = io.StringIO()
             with contextlib.redirect_stderr(erro):
-                conexao = inicio.iniciar(pasta, lambda: None, porta=0)
+                conexao = inicio.iniciar(pasta, lambda: None, porta=0, abridor=None)
         self.assertIsNone(conexao)
         self.assertEqual(erro.getvalue(), "")
+
+
+class InicioDeProducaoIsolado(unittest.TestCase):
+    def test_abridor_omitido_usa_a_fabrica_mas_o_ensaio_so_registra_em_destinos_temporarios(self):
+        for sistema in ("mac", "windows"):
+            with self.subTest(sistema=sistema), tempfile.TemporaryDirectory() as raiz:
+                pastas = Pastas(raiz)
+                registro = RegistroDeMentira()
+                injetado = abridor_do_mac(pastas) if sistema == "mac" else abridor.Abridor(
+                    sistema="windows", pasta=pastas.abridor, programa=os.path.join(raiz, "anki.exe"),
+                    onde_registrar={"Chrome": "HKCU-de-mentira"}, registro=registro,
+                )
+                with patch("complemento.inicio.abridores.deste_computador", return_value=injetado) as fabrica:
+                    conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: None, porta=0)
+                    try:
+                        self.assertIsNotNone(conexao)
+                        fabrica.assert_called_once()
+                        self.assertTrue(fabrica.call_args.kwargs["pasta"].startswith(raiz + os.sep))
+                        manifesto = (os.path.join(pastas.hosts_do_chrome, abridor.NOME_DO_HOST + ".json")
+                                     if sistema == "mac" else next(iter(registro.valores.values())))
+                        self.assertTrue(manifesto.startswith(raiz + os.sep))
+                        with open(manifesto, encoding="utf-8") as arquivo:
+                            self.assertTrue(json.load(arquivo)["path"].startswith(raiz + os.sep))
+                    finally:
+                        parar(conexao)
 
 
 if __name__ == "__main__":

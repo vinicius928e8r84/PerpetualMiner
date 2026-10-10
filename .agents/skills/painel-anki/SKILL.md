@@ -26,9 +26,16 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
      Obter complementos (`PerpetualMiner.CODIGO_DO_ANKIWEB`, none until the first upload, #176) or that it comes soon: never an invented number.
   2. **Reiniciar o Anki**: always there. The extension checks by itself (the shared 15 s `/health`); the status line says Conectando
      and then “Achei o Anki · perfil · versão” from `ConexaoAnki.saude()`; **Tentar de novo** lives here.
+  3. **Abrir o Anki sozinho** (#147, ONB-17): when the Conexão answers, the card moves to it by itself (the connection's status line stays).
+     **Permitir abrir o Anki** calls `Abridor.pedirPermissao()` inside the click (Chrome's prompt for the optional `nativeMessaging`) and,
+     granted, checks the opener (`Abridor.conferirOAnki()`: only “is Anki there?”); with the permission already granted it checks with no
+     click. **Agora não** writes `pm_abridor: { agoraNao: true }` and marks the step “agora não” (a later grant writes `false`). Not found or
+     no answer (10 s, or the host is not registered: an older Conexão) say what to do, with Tentar de novo and Chrome's message in Detalhes.
+     The opener's state is one per page (the Boas-vindas and this card are in the same panel), so it is checked once. In this card the
+     **Pronto** moment waits for step 3 to be resolved (found, or Agora não); a stored Agora não goes straight to Pronto.
   The steps are marked by the real state, and the only thing the extension sees before the Conexão is the Conexão itself (the
-  AnkiConnect is not read: no new permission), so the first step says “Esperando a Conexão” and every step turns ✓ together when `/health`
-  answers successfully. Without a person's choice, the card opens on the first step, or on the last while connecting; after the card's own Tentar de novo
+  AnkiConnect is not read: no new permission), so the first step says “Esperando a Conexão” and the first two turn ✓ together when `/health`
+  answers successfully; the third, when the opener finds Anki. Without a person's choice, the card opens on the first step, or on the last while connecting; after the card's own Tentar de novo
   it stays on step 2 (the F1's and the Boas-vindas' do not set the person's choice). **2 minutes without an answer** (counted from the first time the person
   really sees the steps — the host passes the real visibility to `mostrar`: the Anki area is the current one, the Boas-vindas page is on screen — or from Baixar) show the 3-item checklist and **Baixar de novo** in whatever step is open, while the check keeps going alone; it leaves when the Conexão answers.
   On step 2 an automatic check in flight over a Conexão that was off shows “Conectando” with no click (`ConexaoAnki.conferindo()`, `aoConferir`); a
@@ -38,7 +45,7 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   The Conferência line (“Confere sozinho a cada 15 s · última vez há N s”, “Conferindo agora…” while a check is out) follows the
   shared checks; see the doc comments in `painel-anki-primeira-conexao.js` for its subscription and timer lifecycle. See the
   [Anki area states](../../../docs/design/painel/anki/README.md#estados) for the **Pronto** moment, its status during a new check and focus when the controls or card leave.
-  Tests: `e2e/tests/painel-anki-primeira-conexao.spec.js` (behaviour, download, checklist), `boas-vindas.spec.js` (the same component in step 4 and “the same step in both places”),
+  Tests: `e2e/tests/painel-anki-primeira-conexao.spec.js` (behaviour, download, checklist), `abrir-o-anki-sozinho.spec.js` (step 3, here and in the Boas-vindas, against the fake opener of the fixture), `boas-vindas.spec.js` (the same component in step 4 and “the same step in both places”),
   `complemento/test_pacote.py` and `test_empacotar.js` (the file inside the package).
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
   selo (“Anki fechado. Mostrando dados de há 2 h.”, with the code in Detalhes) and the period controls set to that reading's

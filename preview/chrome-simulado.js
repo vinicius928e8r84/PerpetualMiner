@@ -171,6 +171,11 @@
       },
     },
     windows: { update: (_id, _info, callback) => talvezPromessa(undefined, callback) },
+    // A permissão opcional do abridor (Abrir o Anki sozinho): o preview nunca a tem, e o aviso do Chrome não existe.
+    permissions: {
+      contains: (_permissoes, callback) => talvezPromessa(false, callback),
+      request: (_permissoes, callback) => talvezPromessa(false, callback),
+    },
     identity: {
       getRedirectURL: () => document.baseURI,
       launchWebAuthFlow: (_opcoes, callback) =>

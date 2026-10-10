@@ -1,9 +1,9 @@
 {
   "grupos": {
     "node": {
-      "descricao": "Os testes de Node da raiz: mineração automática, sincronização, pacote da loja e o fake da Conexão com o Anki",
+      "descricao": "Os testes de Node da raiz: mineração automática, sincronização, pacote da loja e os fakes da Conexão com o Anki e do abridor",
       "executor": "node",
-      "arquivos": ["test_auto_keyword.js", "test_sync.js", "test_empacotar.js", "test_contrato_fechado.js", "test_fake_anki.js", "test_voz.js", "test_preview.js", "scripts/ci/test_ci.js"]
+      "arquivos": ["test_auto_keyword.js", "test_sync.js", "test_empacotar.js", "test_contrato_fechado.js", "test_fake_anki.js", "test_fake_abridor.js", "test_voz.js", "test_preview.js", "scripts/ci/test_ci.js"]
     },
     "regras": {
       "descricao": "As provas das regras de revisão (scripts/regras/); quem as confere no repositório é `node scripts/regras/verificar.js`",

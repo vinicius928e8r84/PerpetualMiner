@@ -13,6 +13,7 @@ import tempfile
 import threading
 import types
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -207,11 +208,19 @@ def ler_pelo_http(porta, caminho, corpo):
         pedido.close()
 
 
-class BaralhosLidosDoAnki(unittest.TestCase):
+class SemRegistroReal:
+    def setUp(self):
+        remendo = patch("complemento.inicio.abridores.deste_computador", side_effect=AssertionError("host real proibido"))
+        fabrica = remendo.start()
+        self.addCleanup(remendo.stop)
+        self.addCleanup(fabrica.assert_not_called)
+
+
+class BaralhosLidosDoAnki(SemRegistroReal, unittest.TestCase):
     def conectar(self, anki):
         pasta = tempfile.TemporaryDirectory()
         self.addCleanup(pasta.cleanup)
-        conexao = no_anki.ao_carregar(anki, pasta.name, porta=0)
+        conexao = no_anki.ao_carregar(anki, pasta.name, porta=0, abridor=None)
         self.addCleanup(conexao.parar)
         self.addCleanup(anki.encerrar)
         return conexao
@@ -239,11 +248,24 @@ class BaralhosLidosDoAnki(unittest.TestCase):
         self.assertEqual((antes, depois), (4, 5))
 
 
-class PerfilQueOAnkiTemAberto(unittest.TestCase):
+class PerfilQueOAnkiTemAberto(SemRegistroReal, unittest.TestCase):
+    def test_o_adaptador_sem_abridor_nao_aciona_a_fabrica_de_registro_real(self):
+        with tempfile.TemporaryDirectory() as pasta, patch(
+            "complemento.inicio.abridores.deste_computador", side_effect=AssertionError("host real proibido")
+        ) as fabrica:
+            conexao = no_anki.ao_carregar(AnkiDeMentira(), pasta, porta=0, abridor=None)
+            try:
+                self.assertIsNotNone(conexao)
+                self.assertIsNone(perfil_na_saude(conexao.porta))
+                fabrica.assert_not_called()
+            finally:
+                if conexao is not None:
+                    conexao.parar()
+
     def test_a_saude_so_diz_o_perfil_com_a_colecao_aberta_e_volta_a_null_ao_fechar(self):
         anki = AnkiDeMentira()
         with tempfile.TemporaryDirectory() as pasta:
-            conexao = no_anki.ao_carregar(anki, pasta, porta=0)
+            conexao = no_anki.ao_carregar(anki, pasta, porta=0, abridor=None)
             try:
                 anki.selecionar_na_janela_de_perfis("Maria")
                 na_janela = perfil_na_saude(conexao.porta)
@@ -259,7 +281,7 @@ class PerfilQueOAnkiTemAberto(unittest.TestCase):
         anki = AnkiDeMentira()
         anki.abrir("João")
         with tempfile.TemporaryDirectory() as pasta:
-            conexao = no_anki.ao_carregar(anki, pasta, porta=0)
+            conexao = no_anki.ao_carregar(anki, pasta, porta=0, abridor=None)
             try:
                 pedido = http.client.HTTPConnection("127.0.0.1", conexao.porta, timeout=5)
                 pedido.request("GET", "/health")

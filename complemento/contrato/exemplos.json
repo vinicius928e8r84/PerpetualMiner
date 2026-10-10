@@ -2003,5 +2003,112 @@
         }
       }
     }
-  ]
+  ],
+  "abridor": {
+    "host": "com.perpetualminer.abridor",
+    "exemplos": [
+      {
+        "nome": "conferir com o Anki no lugar que a Conexão anotou",
+        "daExtensao": true,
+        "contexto": {
+          "anki": "no_lugar"
+        },
+        "mensagem": {
+          "acao": "conferir"
+        },
+        "resposta": {
+          "achou": true
+        }
+      },
+      {
+        "nome": "conferir com o Anki fora do lugar que a Conexão anotou",
+        "daExtensao": true,
+        "contexto": {
+          "anki": "sumiu"
+        },
+        "mensagem": {
+          "acao": "conferir"
+        },
+        "resposta": {
+          "achou": false
+        }
+      },
+      {
+        "nome": "abrir o Anki no perfil anotado",
+        "daExtensao": false,
+        "contexto": {
+          "anki": "no_lugar"
+        },
+        "mensagem": {
+          "acao": "abrir"
+        },
+        "resposta": {
+          "achou": true,
+          "abriu": true
+        }
+      },
+      {
+        "nome": "abrir sem o Anki no lugar",
+        "daExtensao": false,
+        "contexto": {
+          "anki": "sumiu"
+        },
+        "mensagem": {
+          "acao": "abrir"
+        },
+        "resposta": {
+          "achou": false,
+          "abriu": false
+        }
+      },
+      {
+        "nome": "espaço dentro da ação não vira abrir",
+        "daExtensao": false,
+        "contexto": { "anki": "no_lugar" },
+        "mensagem": { "acao": "abr ir" },
+        "resposta": { "erro": "acao_desconhecida" }
+      },
+      {
+        "nome": "uma ação aninhada não vale como ação principal",
+        "daExtensao": false,
+        "contexto": { "anki": "no_lugar" },
+        "mensagem": { "acao": "fechar", "extra": { "acao": "abrir" } },
+        "resposta": { "erro": "acao_desconhecida" }
+      },
+      {
+        "nome": "a ação diferencia maiúsculas de minúsculas",
+        "daExtensao": false,
+        "contexto": { "anki": "no_lugar" },
+        "mensagem": { "acao": "ABRIR" },
+        "resposta": { "erro": "acao_desconhecida" }
+      },
+      {
+        "nome": "a ação deve ser uma string, não uma lista",
+        "daExtensao": false,
+        "contexto": { "anki": "no_lugar" },
+        "mensagem": { "acao": ["abrir"] },
+        "resposta": { "erro": "acao_desconhecida" }
+      },
+      {
+        "nome": "a mensagem deve ser um objeto, não uma lista",
+        "daExtensao": false,
+        "contexto": { "anki": "no_lugar" },
+        "mensagem": [{ "acao": "abrir" }],
+        "resposta": { "erro": "acao_desconhecida" }
+      },
+      {
+        "nome": "uma ação que o abridor não conhece",
+        "daExtensao": false,
+        "contexto": {
+          "anki": "no_lugar"
+        },
+        "mensagem": {
+          "acao": "fechar"
+        },
+        "resposta": {
+          "erro": "acao_desconhecida"
+        }
+      }
+    ]
+  }
 }
