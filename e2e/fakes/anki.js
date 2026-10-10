@@ -282,10 +282,8 @@ function criarFakeAnki() {
     const json = comOAgora(exemplo.resposta.json);
     // Os exemplos dizem os 4 últimos da chave deles; a resposta leva os da chave que o teste mandou ou que a Conexão guarda.
     if (json.ultimos4 && typeof corpo?.chave === 'string') json.ultimos4 = ultimos4(corpo.chave.trim());
-    if (json.openai?.ultimos4) {
-      json.openai.ultimos4 = contexto.chaveNaConexao;
-      if (estado.versaoDaChave) json.openai.versao = estado.versaoDaChave;
-    }
+    if (json.openai?.ultimos4) json.openai.ultimos4 = contexto.chaveNaConexao;
+    if (json.openai && estado.versaoDaChave) json.openai.versao = estado.versaoDaChave;
     return { status: exemplo.resposta.status, json };
   }
 
@@ -293,12 +291,15 @@ function criarFakeAnki() {
   function guardarChave(req) {
     let corpo = null;
     try { corpo = JSON.parse(req.postData() || 'null'); } catch { /* o contrato diz o que responder */ }
-    const resposta = respostaDoContrato('POST', '/ia/openai/chave', corpo);
+    if (corpo.versao && corpo.versao === estado.versaoDaChave && estado.chaveDaOpenAI === corpo.chave.trim()) {
+      return { status: 200, json: { ok: true, ultimos4: ultimos4(estado.chaveDaOpenAI) } };
+    }
     if (corpo.versao < estado.versaoDaChave
       || (corpo.versao && corpo.versao === estado.versaoDaChave && estado.chaveDaOpenAI !== corpo.chave.trim())
       || (estado.chaveApagada && corpo.versao <= estado.versaoDaChave)) {
       return { status: 409, json: { error: 'stale_key_version' } };
     }
+    const resposta = respostaDoContrato('POST', '/ia/openai/chave', corpo);
     if (resposta.status === 200) {
       estado.chaveDaOpenAI = corpo.chave.trim();
       estado.versaoDaChave = corpo.versao || 0;
@@ -464,6 +465,7 @@ function criarFakeAnki() {
     guardarChaveNaConexao(finalDaChave, versao = 0) { estado.chaveDaOpenAI = `sk-proj-guardada-antes-${finalDaChave}`; estado.versaoDaChave = versao; estado.chaveApagada = false; },
     /** A Conexão voltou sem a chave (o Anki foi reinstalado, a pasta de dados foi apagada). */
     esquecerAChave() { estado.chaveDaOpenAI = null; estado.versaoDaChave = 0; estado.chaveApagada = false; },
+    guardarRemocaoNaConexao(versao) { estado.chaveDaOpenAI = null; estado.versaoDaChave = versao; estado.chaveApagada = true; },
     /** @estado-guardado A cópia da chave da OpenAI que a Conexão guarda, ou null: o que o teste confere que chegou. */
     chaveNaConexao() { return estado.chaveDaOpenAI; },
     /** As respostas do contrato a um pedido (com o corpo, se tiver), para o teste que confere o fake contra os exemplos. */

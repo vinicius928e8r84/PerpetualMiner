@@ -61,6 +61,18 @@ class Cofre:
                 pass
             raise
 
+    def reentrega(self, nome, chave, versao):
+        """True para repetição já gravada, False para versão obsoleta, None para uma nova conferência."""
+        with self._tranca:
+            anterior = self.documento(nome)
+            if versao and versao == anterior.get('versao', 0) and anterior.get('chave') == chave:
+                return True
+            if versao < anterior.get('versao', 0) or (versao and versao == anterior.get('versao', 0)):
+                return False
+            if anterior.get('apagada') and versao <= anterior.get('versao', 0):
+                return False
+            return None
+
     def guardar(self, nome, chave, versao=0, se=None):
         with self._tranca:
             anterior = self.documento(nome)

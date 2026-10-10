@@ -34,6 +34,7 @@ IndexedDB is the site's; `chrome.storage.local` would not do: the content script
 close all of it); `{ ultimos4 }` in `chrome.storage.local` as `pm_chave_openai`, which the summary, the Boas-vindas step and the
 reminder read; and the Conexão's own copy in `user_files/chaves` (see `complemento/`). When the Conexão answers again after being
 off, the card asks `POST /ia/estado` and, if the copy is missing or has another non-secret local HTTP generation (separate from cloud `em`, so an older key of another account can be delivered), delivers the key again by itself;
+Before the first draw, the panel reads the real copy state even with no local key and invalidates abandoned reservations; an unconfirmed remote copy is deleted, or the previously confirmed vault key is restored with a newer generation. The vault is the only secret owner (no persisted draft/handshake key). A lost accepted HTTP response therefore cannot leave an untracked copy, and late validation after reload is fenced. Identical key/generation replay returns stored success without validating again; `/ia/estado` includes a non-secret version even when deleted.
 “A Conexão com o Anki tem uma cópia da chave” / “…ainda não tem a cópia” says the true state, and with the Conexão off (also when it goes off while the card is open) the card
 says nothing about the copy, and a late answer from before it went off is dropped. A pasted draft never survives a confirmation
 and Trocar chave always opens empty, so the whole key is never put back on screen. With an account the key follows its bound UID (#154): changes bind before the first request (failed uploads stay pending for that UID), and the note says “Vai junto com a sua conta Google…” only for the current account; another account's key stays local and is named as such, a key or a deletion
@@ -116,7 +117,7 @@ named by `Conta.SITUACOES` (never a loose string): `SINCRONIZANDO` (CFG-01), `PR
 this computer's phrases, not the whole cloud collection), `RECUSADO` (CFG-04) and `EXPIROU` (CFG-08); with no profile
 name the account is “Conta Google” (CFG-10).
 
-The panel retains phrase and key outcomes separately: phrase failure/partial/loading is not overwritten by a transient key-only retry; CFG-41 applies only with a key/deletion to sync and phrases synced. A key failure classified as access refusal or session expiry still uses CFG-04/CFG-08, even with no local key.
+The panel retains phrase and key outcomes separately: phrase failure/partial/loading is not overwritten by a transient key-only retry; CFG-41 applies with a local key/deletion and phrases synced, using neutral “não deu para conferir” wording for either read or upload failure (not claiming an already uploaded key never arrived). A key failure classified as access refusal or session expiry still uses CFG-04/CFG-08, even with no local key.
 
 A sync problem shows **only** in the card and the chip — never a toast or a strip in another area. The one exception is
 the spec's own PAI-15: when a delete reaches this computer but not the cloud, Frases also shows the persistent aviso

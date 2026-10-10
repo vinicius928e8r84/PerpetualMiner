@@ -310,7 +310,7 @@ test.fixme('Conta & sync: só a chave da OpenAI está pendente — aprovação v
   await page.locator('#cfg-ia').getByRole('button', { name: 'Conferir e salvar' }).click();
   await expect(page.locator('#cfg-ia-resumo')).toHaveText('••••••••9f3a');
   await page.locator('#shell-chip').click();
-  await expect(page.locator('#cfg-conta')).toContainText('A chave da OpenAI ainda não sincronizou com a sua conta.');
+  await expect(page.locator('#cfg-conta')).toContainText('Não deu para conferir a sincronização da chave da OpenAI.');
   expect(fakes.google.frasesDe('uid-visual')).toEqual(FRASES_DO_PROTOTIPO);
   await expect(page).toHaveScreenshot('conta-chave-pendente.png', { animations: 'disabled', mask: [campoDaChave(page)] });
 });

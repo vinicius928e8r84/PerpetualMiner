@@ -2205,6 +2205,29 @@
       }
     },
     {
+      "nome": "Reentrega idempotente da mesma chave e geração mesmo com OpenAI fora do ar",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1", "openai": "fora_do_ar", "chaveNaConexao": "9f3a", "versaoNaConexao": 200
+      },
+      "pedido": {
+        "metodo": "POST", "caminho": "/ia/openai/chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": { "chave": "sk-proj-guardada-antes-9f3a", "versao": 200 }
+      },
+      "resposta": { "status": 200, "json": { "ok": true, "ultimos4": "9f3a" } }
+    },
+    {
+      "nome": "Estado da IA apagada com versão não secreta",
+      "daExtensao": true,
+      "contexto": { "perfil": "Usuário 1", "versaoNaConexao": 200, "chaveApagada": true },
+      "pedido": {
+        "metodo": "POST", "caminho": "/ia/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf", "corpo": {}
+      },
+      "resposta": { "status": 200, "json": { "openai": { "configurada": false, "versao": 200 } } }
+    },
+    {
       "nome": "Estado da IA com versão não secreta",
       "daExtensao": true,
       "contexto": {

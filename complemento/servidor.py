@@ -85,6 +85,11 @@ def _guardar_chave_da_openai(conexao, corpo):
     if not isinstance(chave, str) or not chave.strip():
         return 400, {"error": "invalid_request"}
     chave = chave.strip()
+    repetida = conexao.cofre.reentrega('openai', chave, versao)
+    if repetida is True:
+        return 200, {'ok': True, 'ultimos4': chave[-4:]}
+    if repetida is False:
+        return 409, {'error': 'stale_key_version'}
     if not _FORMA_DA_CHAVE.match(chave):
         return 401, {"error": openai_api.RECUSADA}
     try:
@@ -107,11 +112,12 @@ def _apagar_chave_da_openai(conexao, corpo):
 
 
 def _estado_da_ia(conexao, corpo):
-    ultimos4 = conexao.cofre.ultimos4("openai")
-    if ultimos4 is None:
-        return 200, {"openai": {"configurada": False}}
-    openai = {"configurada": True, "ultimos4": ultimos4}
-    versao = conexao.cofre.documento('openai').get('versao', 0)
+    documento = conexao.cofre.documento('openai')
+    chave = documento.get('chave')
+    openai = {'configurada': bool(chave)}
+    if chave:
+        openai['ultimos4'] = chave[-4:]
+    versao = documento.get('versao', 0)
     if versao:
         openai['versao'] = versao
     return 200, {"openai": openai}

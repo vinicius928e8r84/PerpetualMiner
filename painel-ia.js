@@ -50,17 +50,24 @@
   const lugares = [];
   let configuracoes = null;
   let conexaoLigada = false;
+  let leituraInicial = Promise.resolve();
 
   function iniciar() {
     configuracoes = montar(porId('cfg-ia-corpo'), { prefixo: 'cfg' });
-    chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null, [ChaveDaOpenAI.VERSAO]: null, pm_user_info: null }, dados => {
-      estado.ultimos4 = dados[ChaveDaOpenAI.MARCA]?.ultimos4 || '';
-      estado.comConta = Boolean(dados.pm_user_info);
-      estado.uid = dados.pm_user_info?.uid || '';
-      estado.contaDaChave = dados[ChaveDaOpenAI.VERSAO]?.conta || '';
-      desenharResumo();
-      lugares.forEach(desenhar);
-      if (estado.focarAoLer) focarOCampoSeVazio();
+    // Antes do primeiro desenho, recupera a verdade do cofre e da Conexão,
+    // inclusive uma conferência da página anterior cuja resposta se perdeu.
+    leituraInicial = ChaveDaOpenAI.conferirACopia({ aoAbrir: true }).catch(() => null);
+    leituraInicial.then(tem => {
+      estado.copia = conexaoLigada ? tem : null;
+      chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null, [ChaveDaOpenAI.VERSAO]: null, pm_user_info: null }, dados => {
+        estado.ultimos4 = dados[ChaveDaOpenAI.MARCA]?.ultimos4 || '';
+        estado.comConta = Boolean(dados.pm_user_info);
+        estado.uid = dados.pm_user_info?.uid || '';
+        estado.contaDaChave = dados[ChaveDaOpenAI.VERSAO]?.conta || '';
+        desenharResumo();
+        lugares.forEach(desenhar);
+        if (estado.focarAoLer) focarOCampoSeVazio();
+      });
     });
     // Outra página (ou o outro lugar do card) guardou a chave: aparece aqui sem recarregar. No meio de uma
     // troca ou de uma conferência o que a pessoa faz não é derrubado.
@@ -123,6 +130,7 @@
   let rodada = 0;
 
   async function conferirACopia() {
+    await leituraInicial;
     const minha = ++rodada;
     const tem = await ChaveDaOpenAI.conferirACopia();
     if (minha === rodada) mudarACopia(tem);

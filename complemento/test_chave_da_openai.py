@@ -5,6 +5,8 @@ Roda no Python 3.9 (o do Anki do Mac) e no 3.13:
 """
 
 import json
+import http.client
+import time
 import os
 import socket
 import stat
@@ -122,6 +124,45 @@ class ChaveRecebida(unittest.TestCase):
             status, _, _ = conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 200})
             self.assertEqual(status, 200) # Identical retry is idempotent, not another generation.
 
+    def test_resposta_perdida_reentrega_mesma_geracao_e_chave_sem_conferir_novamente(self):
+        for com_anterior in (False, True):
+            with self.subTest(com_anterior=com_anterior), tempfile.TemporaryDirectory() as pasta:
+                entrou, liberar = threading.Event(), threading.Event()
+                def conferir(*_args):
+                    entrou.set()
+                    self.assertTrue(liberar.wait(5))
+                with ConexaoNoTeste(pasta) as conexao:
+                    if com_anterior:
+                        conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': OUTRA_CHAVE, 'versao': 100})
+                    cliente = http.client.HTTPConnection('127.0.0.1', conexao.conexao.porta, timeout=0.2)
+                    with patch('complemento.servidor.openai_api.conferir', conferir):
+                        cliente.request('POST', '/ia/openai/chave', body=json.dumps({'chave': CHAVE, 'versao': 200}),
+                            headers={'Origin': ORIGEM, 'Content-Type': 'application/json'})
+                        self.assertTrue(entrou.wait(5))
+                        try:
+                            with self.assertRaises(socket.timeout):
+                                cliente.getresponse()
+                        finally:
+                            cliente.close()
+                            liberar.set()
+                        limite = time.monotonic() + 5
+                        while conexao.conexao.cofre.documento('openai').get('versao') != 200 and time.monotonic() < limite:
+                            time.sleep(0.01)
+                        self.assertEqual(conexao.conexao.cofre.ler('openai') == CHAVE, True)
+                # A resposta já perdida não precisa de outra aprovação da OpenAI;
+                # a repetição é uma leitura idempotente, inclusive após reiniciar.
+                with ConexaoNoTeste(pasta, openai='fora_do_ar') as conexao:
+                    antes = conexao.conexao.cofre.documento('openai')
+                    status, _, corpo = conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 200})
+                    self.assertEqual((status, json.loads(corpo)), (200, {'ok': True, 'ultimos4': 'abcd'}))
+                    self.assertEqual(conexao.conexao.cofre.documento('openai') == antes, True)
+                    self.assertEqual(conexao.openai.pedidos, [])
+                    self.assertEqual(estado(conexao), (200, {'openai': {'configurada': True, 'ultimos4': 'abcd', 'versao': 200}}))
+                    conexao.pedir('POST', '/ia/openai/chave/apagar', corpo={'versao': 300})
+                    status, _, _ = conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 200})
+                    self.assertEqual(status, 409)
+                    self.assertEqual(conexao.conexao.cofre.ler('openai'), None)
+
     def test_trocar_a_chave_guarda_a_nova(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             enviar(conexao, CHAVE)
@@ -178,12 +219,17 @@ class ChaveApagada(unittest.TestCase):
                     conexao.pedir('POST', '/ia/openai/chave/apagar', corpo={'versao': 200})
                     liberar.set()
                     self.assertEqual(atrasado.result()[0], 409)
-                self.assertEqual(estado(conexao), (200, {'openai': {'configurada': False}}))
+                self.assertEqual(estado(conexao), (200, {'openai': {'configurada': False, 'versao': 200}}))
             with ConexaoNoTeste(pasta) as conexao:
                 resposta = conexao.pedir('POST', '/ia/openai/chave', corpo={'chave': CHAVE, 'versao': 100})
                 self.assertEqual(resposta[0], 409)
-                self.assertEqual(estado(conexao), (200, {'openai': {'configurada': False}}))
+                self.assertEqual(estado(conexao), (200, {'openai': {'configurada': False, 'versao': 200}}))
                 self.assertFalse(any(CHAVE.encode() in dados for _, dados in tudo_em_disco(pasta)))
+
+    def test_estado_sem_chave_informa_geracao_do_tombstone_para_reconciliar_uma_copia_antiga(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            conexao.pedir('POST', '/ia/openai/chave/apagar', corpo={'versao': 300})
+            self.assertEqual(estado(conexao), (200, {'openai': {'configurada': False, 'versao': 300}}))
 
     def test_remocao_antiga_nao_apaga_uma_chave_de_versao_mais_nova(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:

@@ -219,6 +219,137 @@ for (const inicial of ['sem chave', 'com chave anterior']) {
 
 }
 
+for (const inicial of ['sem chave', 'com chave anterior']) {
+  for (const perda of ['resposta abortada', 'aba fechada', 'recarregar conferindo']) {
+    test(`R1: a Conexão gravou mas a resposta se perdeu — ${inicial}, ${perda}`, async ({ page, extensao, fakes, context }) => {
+      await abrirPainel(page, extensao, '#configuracoes/ia');
+      if (inicial === 'com chave anterior') {
+        await colarEConferir(page, CHAVE);
+        await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+        await expect(campo(page)).toHaveCount(0);
+        await expect(card(page)).toContainText('A Conexão com o Anki tem uma cópia da chave.');
+        await card(page).getByRole('button', { name: 'Trocar chave' }).click();
+      } else await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+      let gravou, liberar;
+      const guardada = new Promise(resolve => { gravou = resolve; });
+      const espera = new Promise(resolve => { liberar = resolve; });
+      const capturadas = [];
+      let perder = true;
+      await context.route('**/ia/openai/chave', async route => {
+        if (!perder) return route.fallback();
+        perder = false;
+        // Fronteira HTTP: o fake real grava normalmente, só a resposta se perde.
+        await fakes.anki.tratar({ request: () => route.request(), fulfill: async resposta => {
+          capturadas.push(resposta.status);
+          gravou();
+          await espera;
+          await route.abort('connectionreset').catch(() => {});
+        } });
+      });
+      let atual = page;
+      try {
+        await colarEConferir(page, OUTRA_CHAVE);
+        await guardada;
+        expect(capturadas).toEqual([200]);
+        expect(fakes.anki.chaveNaConexao() === OUTRA_CHAVE).toBe(true);
+        if (perda === 'aba fechada') {
+          await page.close();
+          atual = await context.newPage();
+        } else if (perda === 'recarregar conferindo') {
+          await expect(card(page).getByRole('button', { name: 'Conferindo a chave…' })).toBeVisible();
+          await page.reload();
+        } else {
+          liberar();
+          await expect(erro(page)).toContainText('A Conexão com o Anki não respondeu,');
+        }
+        liberar();
+        await abrirPainel(atual, extensao, '#configuracoes/ia');
+        await atual.reload();
+        const previa = inicial === 'com chave anterior' ? CHAVE : '';
+        await expect(card(atual).locator('.cfg-resumo')).toHaveText(previa ? MASCARADA : 'Sem chave');
+        await expect.poll(() => fakes.anki.chaveNaConexao() === (previa || null)).toBe(true);
+        expect((await chaveNoBancoDaExtensao(atual)) === previa).toBe(true);
+        if (previa) {
+          await expect(card(atual)).toContainText('A Conexão com o Anki tem uma cópia da chave.');
+          await expect(card(atual).getByRole('button', { name: 'Apagar chave' })).toBeVisible();
+        }
+        await fotografar(card(atual), `ia-resposta-perdida-${inicial === 'sem chave' ? 'vazia' : 'anterior'}-${perda.replaceAll(' ', '-')}.png`);
+        await atual.reload();
+        await expect(card(atual).locator('.cfg-resumo')).toHaveText(previa ? MASCARADA : 'Sem chave');
+        expect((await chaveNoBancoDaExtensao(atual)) === previa).toBe(true);
+        expect(fakes.anki.chaveNaConexao() === (previa || null)).toBe(true);
+      } finally { liberar(); }
+    });
+  }
+}
+
+for (const inicial of ['sem chave', 'com chave anterior']) {
+  test(`R1: recarregar antes de a conferência antiga gravar não deixa cópia órfã — ${inicial}`, async ({ page, extensao, fakes, context }) => {
+    await abrirPainel(page, extensao, '#configuracoes/ia');
+    if (inicial === 'com chave anterior') {
+      await colarEConferir(page, CHAVE);
+      await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+      await expect(campo(page)).toHaveCount(0);
+      await expect(card(page)).toContainText('A Conexão com o Anki tem uma cópia da chave.');
+      await card(page).getByRole('button', { name: 'Trocar chave' }).click();
+    }
+    let iniciou, liberar, terminou;
+    const inicio = new Promise(resolve => { iniciou = resolve; });
+    const espera = new Promise(resolve => { liberar = resolve; });
+    const fim = new Promise(resolve => { terminou = resolve; });
+    let segurar = true;
+    let statusTardio;
+    await context.route('**/ia/openai/chave', async route => {
+      if (!segurar) return route.fallback();
+      segurar = false;
+      iniciou();
+      await espera;
+      // O servidor pode continuar a conferência depois que o cliente fecha:
+      // o fake recebe o pedido original, mas a resposta já não tem destinatário.
+      await fakes.anki.tratar({ request: () => route.request(), fulfill: async resposta => {
+        statusTardio = resposta.status;
+        terminou();
+        await route.abort('connectionreset').catch(() => {});
+      } });
+    });
+    try {
+      await colarEConferir(page, OUTRA_CHAVE);
+      await inicio;
+      await page.reload();
+      await expect(card(page).locator('.cfg-resumo')).toHaveText(inicial === 'sem chave' ? 'Sem chave' : MASCARADA);
+      liberar();
+      await fim;
+      expect(statusTardio).toBe(409);
+      expect((await chaveNoBancoDaExtensao(page)) === (inicial === 'sem chave' ? '' : CHAVE)).toBe(true);
+      expect(fakes.anki.chaveNaConexao() === (inicial === 'sem chave' ? null : CHAVE)).toBe(true);
+    } finally { liberar(); }
+  });
+}
+
+test('R1: se a chave anterior agora é recusada, a recuperação remove a cópia não confirmada', async ({ page, extensao, fakes, context }) => {
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await colarEConferir(page, CHAVE);
+  await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+  await expect(campo(page)).toHaveCount(0);
+  await card(page).getByRole('button', { name: 'Trocar chave' }).click();
+  let perder = true;
+  await context.route('**/ia/openai/chave', async route => {
+    if (!perder) return route.fallback();
+    perder = false;
+    await fakes.anki.tratar({ request: () => route.request(), fulfill: async () => {
+      fakes.anki.responderOpenAI('recusa');
+      await route.abort('connectionreset');
+    } });
+  });
+  await colarEConferir(page, OUTRA_CHAVE);
+  await expect(erro(page)).toContainText('A Conexão com o Anki não respondeu,');
+  await page.reload();
+  await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+  await expect(card(page)).toContainText('A Conexão com o Anki ainda não tem a cópia da chave.');
+  expect((await chaveNoBancoDaExtensao(page)) === CHAVE).toBe(true);
+  await expect.poll(() => fakes.anki.chaveNaConexao() === null).toBe(true);
+});
+
 test('Enter no campo confere, como o botão', async ({ page, extensao, fakes }) => {
   await abrirPainel(page, extensao, '#configuracoes/ia');
 
@@ -645,7 +776,8 @@ test('S3: chegada remota invalida a confirmação anterior da cópia antes de co
   recusar = true;
   for (const liberar of liberadores) liberar();
   await expect(corpo(page)).toContainText('A Conexão com o Anki ainda não tem a cópia');
-  expect(fakes.anki.chaveNaConexao() === CHAVE).toBe(true);
+  // Se a nova cópia foi recusada, não deixa o Envio gastar a anterior.
+  await expect.poll(() => fakes.anki.chaveNaConexao() === null).toBe(true);
   expect((await chaveNoBancoDaExtensao(page)) === OUTRA_CHAVE).toBe(true);
 });
 
@@ -747,6 +879,9 @@ test('F4: Apagar tudo limpa todas as cópias locais pendentes de A/B/C antes de 
     await abrirPainel(page, extensao, '#configuracoes/ia');
     // Seeding auth changes storage, not an already-running panel's session.
     await page.reload();
+    // A primeira leitura agora espera a recuperação: não conclui “sem chave”
+    // só porque o botão ainda não foi desenhado.
+    await expect(card(page).locator('.cfg-resumo')).toHaveText(uid === 'A' ? 'Sem chave' : `••••••••${uid === 'B' ? 'aaaa' : 'bbbb'}`);
     if (await card(page).getByRole('button', { name: 'Trocar chave' }).count()) {
       await card(page).getByRole('button', { name: 'Trocar chave' }).click();
     }
@@ -847,7 +982,7 @@ for (const comChave of [false, true]) {
     // O evento nativo foi simulado; aguarda a resposta e o próximo desenho, não chama sync por dentro.
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     await expect(conta).toContainText('as frases estão só neste computador');
-    await expect(conta).not.toContainText('A chave da OpenAI ainda não sincronizou');
+    await expect(conta).not.toContainText('Não deu para conferir a sincronização da chave da OpenAI.');
     await fotografar(conta, comChave ? 'conta-frases-e-chave-pendentes.png' : 'conta-frases-sem-chave.png');
     expect(await extensao.frases()).toEqual([frase]);
     expect(fakes.google.frasesDe(UID)).toEqual([]);
@@ -888,7 +1023,7 @@ for (const falha of ['acesso recusado', 'token recusado', 'renovação recusada'
       await expect(conta).toContainText(falha === 'acesso recusado'
         ? 'A nuvem recusou o acesso. Saia da conta e entre de novo.'
         : 'Sua sessão expirou. Entre de novo para sincronizar.');
-      await expect(conta).not.toContainText('A chave da OpenAI ainda não sincronizou');
+      await expect(conta).not.toContainText('Não deu para conferir a sincronização da chave da OpenAI.');
       await expect(conta.getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
       if (comChave) await fotografar(conta, `conta-chave-${falha.replaceAll(' ', '-')}.png`);
       expect((await chaveNoBancoDaExtensao(page)) === (comChave ? CHAVE : '')).toBe(true);
@@ -898,6 +1033,35 @@ for (const falha of ['acesso recusado', 'token recusado', 'renovação recusada'
     });
   }
 }
+
+test('R2: falha ao ler uma chave já na nuvem não diz que ela ainda não chegou', async ({ page, extensao, fakes }) => {
+  const frase = { id: 79, texto: 'This phrase is already synchronized.', data: '09/10/2026', idioma: 'Inglês', streaming: 'web' };
+  await extensao.semearSessao({ uid: UID });
+  await extensao.gravarStorage({ frases: [frase], pm_migrated: UID });
+  fakes.google.gravarFrases(UID, [frase]);
+  await abrirPainel(page, extensao, '#configuracoes/ia');
+  await colarEConferir(page);
+  await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+  await expect.poll(() => fakes.google.chaveDaOpenAIDe(UID)?.chave === CHAVE).toBe(true);
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
+  await page.locator('#shell-chip').click();
+  await page.route('**/segredos/openai**', route => route.fulfill({ status: 503, json: { error: { message: 'HTTP 503' } } }));
+  // Exceção de teste: chrome-nativo — simula voltar à aba para tentar a leitura da nuvem.
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  const conta = page.locator('#cfg-conta');
+  await expect(conta).toContainText('Não deu para conferir a sincronização da chave da OpenAI.');
+  await expect(conta).not.toContainText('ainda não chegou');
+  await expect(conta).not.toContainText('as frases estão só neste computador');
+  await fotografar(conta, 'conta-chave-leitura-falhou.png');
+  expect(fakes.google.chaveDaOpenAIDe(UID)?.chave === CHAVE).toBe(true);
+  expect(fakes.google.frasesDe(UID)).toEqual([frase]);
+  await page.unroute('**/segredos/openai**');
+  await conta.getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
+  expect((await chaveNoBancoDaExtensao(page)) === CHAVE).toBe(true);
+  expect(fakes.google.chaveDaOpenAIDe(UID)?.chave === CHAVE).toBe(true);
+  expect(await extensao.frases()).toEqual([frase]);
+});
 
 test('F1: só a chave falha no upload; a Conta não diz que frases já sincronizadas estão só aqui', async ({ page, extensao, fakes }) => {
   const frase = { id: 42, texto: 'The fake phrase is in the cloud.', data: '09/10/2026', idioma: 'Inglês', streaming: 'web' };
@@ -911,7 +1075,7 @@ test('F1: só a chave falha no upload; a Conta não diz que frases já sincroniz
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
   await page.locator('#shell-chip').click();
   const conta = page.locator('#cfg-conta');
-  await expect(conta).toContainText('A chave da OpenAI ainda não sincronizou com a sua conta.');
+  await expect(conta).toContainText('Não deu para conferir a sincronização da chave da OpenAI.');
   await expect(conta).not.toContainText('as frases estão só neste computador');
   await conta.getByText('Detalhes').click();
   await expect(conta).toContainText('OpenAI sync');
