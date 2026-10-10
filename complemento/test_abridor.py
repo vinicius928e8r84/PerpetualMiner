@@ -33,8 +33,8 @@ with open(CONTRATO, encoding="utf-8") as _arquivo:
 
 HOST = DO_ABRIDOR["host"]
 ORIGEM_DA_EXTENSAO = configuracao.ORIGENS_ACEITAS[0] + "/"
-# Onde o Opera do Windows procura um host: na chave do Chrome (a ajuda do Opera, “Passing Messages in
-# Extensions”). Se o ensaio do dono mostrar outra (risco 1), é esta linha e a do `abridor.py` que mudam.
+# Opera GX 136 encontrou/chamou o host só na chave HKCU do Chrome no Windows real (W4, 2026-10-10).
+# A ajuda do Opera cita HKLM, não HKCU; esta constante segue o ensaio, não confirma outros builds.
 ONDE_O_CHROME_PROCURA_NO_WINDOWS = r"Software\Google\Chrome\NativeMessagingHosts"
 ONDE_O_OPERA_PROCURA_NO_WINDOWS = r"Software\Google\Chrome\NativeMessagingHosts"
 ANKI_DO_WINDOWS = r"C:\Users\Maria\AppData\Local\Programs\Anki\anki.exe"

@@ -18,7 +18,7 @@ A Conexão de hoje (`bridge/`) só ganhou o mesmo POST nas três rotas da coleç
 | `chaves.py` | O cofre das chaves: `user_files/chaves/openai.json`, só do dono (0600), gravado de uma vez; a chave inteira só sai daqui para o pedido que a gasta |
 | `openai_api.py` | Conferir uma chave da OpenAI (`GET /v1/models` e um `POST /v1/embeddings` de uma palavra, só com a biblioteca padrão): recusada, sem crédito, organização não verificada ou a OpenAI fora do ar. Nunca copia o que a OpenAI diz ao recusar para o log nem para a resposta |
 | `item_de_login.py` | O item de login de “Abrir o Anki com o computador”: um LaunchAgent no Mac, um atalho na pasta Inicializar no Windows (o `.lnk` escrito byte a byte, sem COM nem PowerShell). Ligar escreve, desligar apaga; desligado por padrão |
-| `abridor.py` | O abridor de “Abrir o Anki sozinho” (#147): ao carregar e a cada perfil que abre, escreve em `user_files/abridor` o script com o caminho do Anki e o perfil (`.sh` no Mac; no Windows, um `.bat` que chama com o PowerShell do Windows o `.ps1` ao lado) e o registra como host de Native Messaging `com.perpetualminer.abridor`, só para a origem da extensão: no Mac, o manifesto na pasta de hosts do Chrome; no Windows, o valor padrão de `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.perpetualminer.abridor` (o Opera lê a chave do Chrome). O script só responde `conferir` (o Anki está lá?) e `abrir` (abre o Anki com `-p "<perfil>"`), pelos exemplos de `contrato/exemplos.json` › `abridor`. Escrever falhou: vai ao log, a Conexão sobe assim mesmo |
+| `abridor.py` | O abridor de “Abrir o Anki sozinho” (#147): ao carregar e a cada perfil que abre, escreve em `user_files/abridor` o script com o caminho do Anki e o perfil (`.sh` no Mac; no Windows, um `.bat` que chama com o PowerShell do Windows o `.ps1` ao lado) e o registra como host de Native Messaging `com.perpetualminer.abridor`, só para a origem da extensão: no Mac, o manifesto na pasta de hosts do Chrome; no Windows, o valor padrão de `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.perpetualminer.abridor` (Opera GX 136 encontrou e chamou o host só nessa chave HKCU do Chrome num Windows real, ensaio W4 de 2026-10-10; não confirma outros builds do Opera. A ajuda do Opera cita HKLM, não HKCU). O script só responde `conferir` (o Anki está lá?) e `abrir` (abre o Anki com `-p "<perfil>"`), pelos exemplos de `contrato/exemplos.json` › `abridor`. Escrever falhou: vai ao log, a Conexão sobe assim mesmo |
 | `registro.py` | O logger do complemento: todo erro vai para `user_files/logs/complemento.log` |
 | `pasta_de_dados.py` | `user_files/{fila,estado,custos,logs,chaves}`, que o Anki preserva nas atualizações |
 | `configuracao.py` | Versão, porta e o ID da extensão |
@@ -87,14 +87,18 @@ O item de login **nunca foi testado** num Mac nem num Windows de verdade: os tes
 
 ### Ensaio do dono: Abrir o Anki sozinho (riscos 1 e 2 do #138)
 
-O abridor **nunca foi testado** num Mac nem num Windows de verdade. `test_abridor.py` escreve e registra só em pastas temporárias / registro de mentira;
+O abridor **não foi testado num Mac de verdade**. No Windows real (ensaio de 2026-10-10), o complemento escreveu e registrou o host;
+o PowerShell 5.1 respondeu `conferir` e recusou as cinco ações inválidas sem abrir outro Anki. Chrome 153 e Opera GX 136, em perfis separados,
+encontraram e chamaram o host registrado só em HKCU do Chrome, com permissão nativa concedida por UI Automation. Isso não prova outros builds
+nem o fluxo visual do painel: a porta 8766 estava ocupada, `/health` e os passos do painel não foram exercitados; `abrir` não foi executado.
+`test_abridor.py` escreve e registra só em pastas temporárias / registro de mentira;
 no Linux, roda o `.sh` com o mesmo parser JavaScript em Node (a CLI do JXA é adaptada), não o `/usr/bin/osascript` real. O e2e usa um abridor de mentira.
 `test_inicio.py` e `test_no_anki.py` desativam o abridor explicitamente (`abridor=None`); os ensaios de registro injetam só destinos temporários.
 Isso não confirma a aceitação do dono:
 
 | Confirmação exigida antes de fechar #147 | Estado | Prova do dono |
 |---|---|---|
-| Risco 1 — Opera no Windows encontra e chama o host registrado | **PENDING OWNER** | Ainda não registrada |
+| Risco 1 — Opera no Windows encontra e chama o host registrado | **VERIFICADO: Opera GX 136** | W4, Windows real, 2026-10-10: host só em `HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts`, `conferirOAnki()` → `achou`. Outros builds e fluxo visual do painel não confirmados; aceitação final (S5) permanece **PENDING OWNER** |
 | Risco 2 — Chrome no Mac chama o host e abre o Anki sem pergunta do macOS | **PENDING OWNER** | Ainda não registrada |
 | Comparação/aprovação visual do passo 3 e do Pronto (S4) | **PENDING OWNER** | Propostas continuam `test.fixme`, sem PNG aprovado |
 

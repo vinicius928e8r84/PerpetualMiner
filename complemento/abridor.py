@@ -23,9 +23,11 @@ Onde se registra:
   (`~/Library/Application Support/Google/Chrome/NativeMessagingHosts`); o script fica em `user_files/abridor`. Só o
   Chrome: o critério do #147 pede o Opera no Windows, e onde o Opera do Mac procura não foi conferido.
 - **Windows**: o script, o `.ps1` e o manifesto em `user_files/abridor`, e o caminho do manifesto no valor
-  padrão de `HKEY_CURRENT_USER\\Software\\Google\\Chrome\\NativeMessagingHosts\\<host>`. O Opera procura na
-  chave do Chrome (a ajuda do Opera, “Passing Messages in Extensions”): o Opera tem a sua entrada em
-  `ONDE_REGISTRAR_NO_WINDOWS`, para o conserto do risco 1 ser uma linha se o ensaio mostrar outra chave.
+  padrão de `HKEY_CURRENT_USER\\Software\\Google\\Chrome\\NativeMessagingHosts\\<host>`. No ensaio W4 de
+  2026-10-10, o Opera GX 136 num Windows real encontrou e chamou o host registrado só nessa chave HKCU do Chrome.
+  Isso não confirma outros builds do Opera. A ajuda do Opera (“Passing Messages in Extensions”) cita HKLM,
+  não HKCU: a evidência de HKCU é o ensaio real, não essa documentação. `ONDE_REGISTRAR_NO_WINDOWS`
+  mantém a entrada do Opera para ajustar o destino caso outro ensaio mostre uma chave diferente.
 
 Só a biblioteca padrão. A escrita é de uma vez (escreve ao lado e troca), e reescrever troca o perfil sem
 duplicar nada. O que o Chrome e o Opera fazem com o host só o ensaio do dono confere (riscos 1 e 2 do #138).
@@ -45,7 +47,7 @@ from .item_de_login import AnkiNaoEncontrado, aplicativo_do_anki_no_mac, program
 NOME_DO_HOST = "com.perpetualminer.abridor"
 DESCRICAO = "PerpetualMiner: abre o Anki para a Conexão com o Anki"
 
-# Onde cada navegador procura um host no Windows (a chave do usuário). O Opera lê a do Chrome.
+# Chave do usuário: Chrome; Opera GX 136 confirmado no Windows real (W4), sem generalizar a outros builds.
 ONDE_REGISTRAR_NO_WINDOWS = {
     "Chrome": r"Software\Google\Chrome\NativeMessagingHosts",
     "Opera": r"Software\Google\Chrome\NativeMessagingHosts",
