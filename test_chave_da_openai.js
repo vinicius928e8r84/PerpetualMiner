@@ -119,6 +119,50 @@ test('F4: Apagar tudo remove segredos de todas as pendências e não os revive a
   }
 });
 
+for (const contaAtiva of ['C', null]) {
+  test(`J1: wipe de ${contaAtiva || 'sem conta'} não apaga a chave mais nova de A no outro computador`, async () => {
+    const pc = computador();
+    pc.local.pm_user_info = { uid: 'A' };
+    await pc.chave.confirmar(FAKE);
+    const em = (await pc.chave.daqui.ler()).em;
+    const nova = 'sk-fake-outro-computador-aaaa';
+    let documento = { chave: nova, em: em + 1 };
+    pc.local.pm_user_info = contaAtiva ? { uid: contaAtiva } : null;
+    if (contaAtiva) await pc.chave.confirmar('sk-fake-conta-C-cccc');
+    await pc.chave.apagar({ comConta: Boolean(contaAtiva), mesmoSemChave: true, todas: true });
+    assert.equal([...pc.itens.values()].some(v => typeof v === 'string' ? v.startsWith('sk-fake-') : Boolean(v?.chave)), false);
+    pc.local.pm_user_info = { uid: 'A' };
+    await criarSincronizacaoDaChave({ daqui: pc.chave.daqui, nuvem: {
+      uid: 'A', async lerChaveDaOpenAI() { return documento; },
+      async gravarChaveDaOpenAI(valor) { documento = structuredClone(valor); },
+    } }).sincronizar();
+    await pc.chave.conferirACopia();
+    assert.equal(documento.chave === nova, true);
+    assert.equal(documento.em, em + 1);
+    assert.equal((await pc.chave.daqui.ler()).chave === nova, true);
+    assert.equal(pc.copia() === nova, true);
+  });
+}
+
+test('J1: a marca de outra conta cancela a cópia exata, sem promover sua hora para a do wipe', async () => {
+  const pc = computador();
+  pc.local.pm_user_info = { uid: 'A' };
+  await pc.chave.confirmar(FAKE);
+  const em = (await pc.chave.daqui.ler()).em;
+  let documento = { chave: FAKE, em }; // PATCH chegou, mas a confirmação do upload não voltou.
+  pc.local.pm_user_info = { uid: 'C' };
+  await pc.chave.confirmar('sk-fake-conta-C-cccc');
+  await pc.chave.apagar({ comConta: true, todas: true });
+  pc.local.pm_user_info = { uid: 'A' };
+  await criarSincronizacaoDaChave({ daqui: pc.chave.daqui, nuvem: {
+    uid: 'A', async lerChaveDaOpenAI() { return documento; },
+    async gravarChaveDaOpenAI(valor) { documento = structuredClone(valor); },
+  } }).sincronizar();
+  assert.equal(documento.chave === '', true);
+  assert.equal(documento.em, em);
+  assert.equal((await pc.chave.daqui.ler()).chave, '');
+});
+
 test('P2: a leitura da versão abre uma única transação, sem combinar chave antiga com tombstone', async () => {
   const pc = computador();
   await pc.chave.confirmar(FAKE);

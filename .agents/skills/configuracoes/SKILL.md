@@ -40,9 +40,9 @@ and Trocar chave always opens empty, so the whole key is never put back on scree
 from another computer arrives through `pm_chave_openai` and the card invalidates the old copy confirmation before re-checking it (also with an unchanged suffix); without an account the note says it stays on this
 computer (C8). Apagar chave (danger outline) opens the Veio confirmation; confirmed, `ChaveDaOpenAI.apagar()` takes it out of the extension
 and the Conexão (now, or when the Conexão answers again), and `painel.js` takes the tombstone to the cloud. Apagar tudo deletes it too, including every pending `conta:<uid>` secret (one IndexedDB transaction); it keeps only UID-bound secret-free deletion marks, uploaded only once that UID authenticates. Its
-modal says so only when a key is stored. Concurrent confirmations reserve exclusive generations before HTTP, and an obsolete confirmation cannot commit locally; an equal generation at the server can only retry the identical key. Local deletion failures show a persistent aviso with retry and Detalhes; Apagar tudo names a partial result. The Conta & sync retry also retries key/tombstone sync, and never reports successful sync while that fails. Firebase tokens live in extension-origin IndexedDB `pm-sessao`, not readable Chrome storage. Threat note: `docs/seguranca/chave-da-openai.md`. Tests: `e2e/tests/configuracoes-ia.spec.js` (including a CDP check from the content script's isolated
+modal says so only when a key is stored. Another UID's removal mark keeps that copy's own time, so it cannot delete a newer remote key; a deletion wins an equal-time key (the exact cancelled version), and the active UID gets the wipe's new time. Concurrent confirmations reserve exclusive generations before HTTP; only a newer COMMITTED change invalidates an accepted confirmation (a newer FAILED reservation does not). An equal generation at the server can only retry the identical key. Local deletion failures show a persistent aviso with retry and Detalhes; Apagar tudo names a partial result. The Conta & sync retry also retries key/tombstone sync, and never reports successful sync while that fails. Firebase tokens live in extension-origin IndexedDB `pm-sessao`, not readable Chrome storage. Threat note: `docs/seguranca/chave-da-openai.md`. Tests: `e2e/tests/configuracoes-ia.spec.js` (including a CDP check from the content script's isolated
 world), the visual references `ia-*.png` in `configuracoes-visual.spec.js`, `complemento/test_chave_da_openai.py` for the
-Conexão's side, and the contract examples both read (`complemento/contrato/exemplos.json`).
+Conexão's side, and the contract examples both read (`complemento/contrato/exemplos.json`). For the DB-fault wipe test, wait for the preceding save to finish (masked summary, no field, actual vault key) BEFORE injecting the fault: a hash-only `goto` keeps its continuation alive.
 
 ### Chave do Gemini and Zona de perigo (`painel-chave.js`, `painel-perigo.js`)
 
@@ -115,6 +115,8 @@ named by `Conta.SITUACOES` (never a loose string): `SINCRONIZANDO` (CFG-01), `PR
 `PRIMEIRA_SUBIDA_FALHOU` (CFG-09), `SINCRONIZADO` (CFG-02), `SEM_SINCRONIZAR` (CFG-03), `CHAVE_PENDENTE` (CFG-41, key-only failure without claiming synced phrases are local), `PARCIAL` (CFG-05, counting
 this computer's phrases, not the whole cloud collection), `RECUSADO` (CFG-04) and `EXPIROU` (CFG-08); with no profile
 name the account is “Conta Google” (CFG-10).
+
+The panel retains phrase and key outcomes separately: phrase failure/partial/loading is not overwritten by a transient key-only retry; CFG-41 applies only with a key/deletion to sync and phrases synced. A key failure classified as access refusal or session expiry still uses CFG-04/CFG-08, even with no local key.
 
 A sync problem shows **only** in the card and the chip — never a toast or a strip in another area. The one exception is
 the spec's own PAI-15: when a delete reaches this computer but not the cloud, Frases also shows the persistent aviso

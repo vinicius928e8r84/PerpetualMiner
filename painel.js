@@ -275,10 +275,32 @@ function conectarNuvem(credenciais) {
 
 let sincronizandoAChave = Promise.resolve();
 let erroDaChave = null;
+let estadoDasFrases = { situacao: SITUACOES.SINCRONIZADO, dados: {} };
+
+// A chave e as frases têm resultados separados. Uma tentativa só da chave
+// não pode apagar do card a falha/pendência que as frases ainda têm.
+function mostrarEstadoDoSync() {
+  const { situacao, dados } = estadoDasFrases;
+  const situacaoDaChave = erroDaChave ? situacaoDoErro(erroDaChave, SITUACOES.CHAVE_PENDENTE) : null;
+  const exigeConta = s => s === SITUACOES.RECUSADO || s === SITUACOES.EXPIROU;
+  if (exigeConta(situacaoDaChave) && !exigeConta(situacao)) {
+    Conta.mostrarSincronizacao(situacaoDaChave, { detalhes: erroDaChave.message });
+  } else if (situacao !== SITUACOES.SINCRONIZADO) {
+    Conta.mostrarSincronizacao(situacao, { ...dados,
+      detalhes: [dados.detalhes, erroDaChave?.message].filter(Boolean).join('\n'),
+    });
+  } else if (erroDaChave) {
+    Conta.mostrarSincronizacao(situacaoDaChave, { detalhes: erroDaChave.message });
+  } else Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
+}
+
+function mostrarEstadoDasFrases(situacao, dados = {}) {
+  estadoDasFrases = { situacao, dados };
+  mostrarEstadoDoSync();
+}
 
 function mostrarSincronizado() {
-  if (erroDaChave) Conta.mostrarSincronizacao(SITUACOES.CHAVE_PENDENTE, { detalhes: erroDaChave.message });
-  else Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
+  mostrarEstadoDasFrases(SITUACOES.SINCRONIZADO);
 }
 
 function sincronizarAChave() {
@@ -287,13 +309,20 @@ function sincronizarAChave() {
     if (!estaNuvem) return;
     try {
       await Sincronizacao.criarSincronizacaoDaChave({ nuvem: estaNuvem, daqui: ChaveDaOpenAI.daqui }).sincronizar();
-      if (nuvem === estaNuvem) erroDaChave = null;
+      if (nuvem === estaNuvem) { erroDaChave = null; mostrarEstadoDoSync(); }
     } catch (err) {
       if (nuvem !== estaNuvem) return;
       // A mensagem da API pode repetir o corpo secreto: só códigos chegam ao Detalhes.
-      erroDaChave = Object.assign(new Error(`OpenAI sync · ${err?.status || err?.motivo || 'sem resposta'}`), { motivo: err?.motivo });
-      Conta.mostrarSincronizacao(SITUACOES.CHAVE_PENDENTE, { detalhes: erroDaChave.message });
-      // Uma falha das frases, se houver, substitui este estado ao terminar a leitura.
+      let temMudanca = true;
+      try {
+        const aqui = await ChaveDaOpenAI.daqui.ler(estaNuvem.uid);
+        temMudanca = (!aqui.conta || aqui.conta === estaNuvem.uid) && Boolean(aqui.chave || aqui.em);
+      } catch { /* Falha do cofre também continua visível, sem expor seu conteúdo. */ }
+      if (nuvem !== estaNuvem) return;
+      erroDaChave = temMudanca || err?.motivo === Sincronizacao.MOTIVO.RECUSADO || err?.motivo === Sincronizacao.MOTIVO.EXPIROU
+        ? Object.assign(new Error(`OpenAI sync · ${err?.status || err?.motivo || 'sem resposta'}`), { motivo: err?.motivo })
+        : null;
+      mostrarEstadoDoSync();
     }
   });
   return sincronizandoAChave;
@@ -301,6 +330,7 @@ function sincronizarAChave() {
 
 function desconectarNuvem() {
   erroDaChave = null;
+  estadoDasFrases = { situacao: SITUACOES.SINCRONIZADO, dados: {} };
   sessao?.revogar();
   sessao = null;
   nuvem = null;
@@ -322,7 +352,7 @@ function situacaoDoErro(err, semSincronizar = SITUACOES.SEM_SINCRONIZAR) {
 }
 
 function mostrarFalhaNaNuvem(err, semSincronizar) {
-  Conta.mostrarSincronizacao(situacaoDoErro(err, semSincronizar), { detalhes: err?.message || String(err) });
+  mostrarEstadoDasFrases(situacaoDoErro(err, semSincronizar), { detalhes: err?.message || String(err) });
 }
 
 // ─── Migração e Sync ──────────────────────────────────────────────────────────
@@ -330,7 +360,7 @@ function mostrarFalhaNaNuvem(err, semSincronizar) {
 async function migrarParaFirestore() {
   const { frases = [] } = await chromeGet({ frases: [] });
   if (frases.length > 0) {
-    Conta.mostrarSincronizacao(SITUACOES.PRIMEIRA_SUBIDA, { n: frases.length });
+    mostrarEstadoDasFrases(SITUACOES.PRIMEIRA_SUBIDA, { n: frases.length });
     try {
       await nuvem.gravarFrases(frases);
       mostrarToastDeSucesso(textoDaVoz('CFG-09.sucesso', { n: frases.length }));
@@ -359,7 +389,7 @@ function carregarFrasesLocal() {
 
 async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
   const semSincronizar = primeiraSubidaFalhou ? SITUACOES.PRIMEIRA_SUBIDA_FALHOU : SITUACOES.SEM_SINCRONIZAR;
-  Conta.mostrarSincronizacao(SITUACOES.SINCRONIZANDO);
+  mostrarEstadoDasFrases(SITUACOES.SINCRONIZANDO);
   await sincronizarAChave();
   try {
     // Passa o estado vivo, não um snapshot anterior à rede (ver o contrato de carregar).
@@ -388,10 +418,10 @@ function mostrarSyncIncompleto({ quantas, causas }, desteComputador, semSincroni
   const situacao = situacaoDoErro(causas[0], semSincronizar);
   const naNuvem = desteComputador - quantas;
   if (situacao !== semSincronizar || naNuvem === 0) {
-    Conta.mostrarSincronizacao(situacao, { detalhes });
+    mostrarEstadoDasFrases(situacao, { detalhes });
     return;
   }
-  Conta.mostrarSincronizacao(SITUACOES.PARCIAL, { n: naNuvem, total: desteComputador, detalhes });
+  mostrarEstadoDasFrases(SITUACOES.PARCIAL, { n: naNuvem, total: desteComputador, detalhes });
 }
 
 function finalizarCarregamento() {
