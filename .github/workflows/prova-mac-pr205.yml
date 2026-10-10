@@ -1,0 +1,488 @@
+# DESCARTÁVEL — NÃO MESCLAR. Prova real no macOS do risco 2 da PR 205 (#147): o Chrome de verdade chama o
+# host com.perpetualminer.abridor (conferir e abrir) registrado por complemento/abridor.py, e o Anki.app real abre.
+# Rodada 2 (aprovada): o driver registra a falta de resposta em vez de parar, e cobre o abrir quente e o App Nap.
+# Só este arquivo muda; a PR que o traz é fechada sem mesclar e o ramo apagado ao fim.
+name: Prova Mac PR 205 (descartavel)
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  prova-mac:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: 0 A arvore e a da PR 205 (dc62dfc) mais so este workflow
+        run: |
+          set -euo pipefail
+          PROVA="$RUNNER_TEMP/prova"; SCRIPTS="$RUNNER_TEMP/scripts"; mkdir -p "$PROVA" "$SCRIPTS" "$RUNNER_TEMP/driver"
+          ADDON="$HOME/Library/Application Support/Anki2/addons21/perpetualminer"
+          { echo "PROVA=$PROVA"; echo "SCRIPTS=$SCRIPTS"; echo "ADDON=$ADDON"; echo "ABRIDOR_DIR=$ADDON/user_files/abridor"
+            echo "HOSTS_DIR=$HOME/Library/Application Support/Google/Chrome/NativeMessagingHosts"
+            echo "CHROME=/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"; } >> "$GITHUB_ENV"
+          { echo "HEAD=$(git rev-parse HEAD)"; echo "PAI=$(git rev-parse HEAD^)"; git diff --name-only HEAD^ HEAD; } | tee "$PROVA/00-arvore.txt"
+          test "$(git rev-parse HEAD^)" = dc62dfc8b336f2952c1b20d455187f489b14c1fd
+          test "$(git diff --name-only HEAD^ HEAD)" = .github/workflows/prova-mac-pr205.yml
+
+      - name: 1 O Mac do runner (sistema, Chrome, Gatekeeper, TCC)
+        continue-on-error: true
+        run: |
+          { set -x; date -u +%FT%TZ; sw_vers; uname -a; id; "$CHROME" --version; spctl --status; csrutil status
+            launchctl print gui/$(id -u) 2>&1 | head -5; ls -la "$HOME/Library/Application Support/Google/Chrome" 2>&1 | head
+            sudo sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" "select service, client, auth_value from access" 2>&1
+            sqlite3 "$HOME/Library/Application Support/com.apple.TCC/TCC.db" "select service, client, auth_value from access" 2>&1; } > "$PROVA/01-ambiente.txt" 2>&1
+          cat "$PROVA/01-ambiente.txt"
+
+      - name: 2 Anki.app real (brew install --cask anki)
+        timeout-minutes: 6
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        run: |
+          set -o pipefail
+          brew install --cask anki 2>&1 | tail -20 | tee "$PROVA/02-brew-anki.txt"
+          { set -x; ls -la /Applications/Anki.app/Contents/MacOS; defaults read /Applications/Anki.app/Contents/Info CFBundleIdentifier
+            defaults read /Applications/Anki.app/Contents/Info CFBundleShortVersionString; xattr -l /Applications/Anki.app
+            spctl -a -vv -t exec /Applications/Anki.app; codesign -dv /Applications/Anki.app; } >> "$PROVA/02-brew-anki.txt" 2>&1
+          cat "$PROVA/02-brew-anki.txt"
+          # O complemento na pasta de complementos do Anki: se o Anki chegar a um perfil, a Conexão de verdade roda.
+          mkdir -p "$(dirname "$ADDON")"; cp -R complemento "$ADDON"; find "$ADDON" -name __pycache__ -prune -exec rm -rf {} +
+
+      - name: 3 test_abridor.py no Mac (o .sh com o osascript de verdade)
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          set -o pipefail
+          python3 --version | tee "$PROVA/03-test_abridor.txt"
+          python3 complemento/test_abridor.py -v 2>&1 | tee -a "$PROVA/03-test_abridor.txt"
+
+      - name: 4 Registro real (abridor.deste_computador, variante mac) no HOME do runner
+        run: |
+          set -euo pipefail
+          test ! -e "$HOSTS_DIR/com.perpetualminer.abridor.json"
+          python3 - <<'PY' 2>&1 | tee "$PROVA/04-registro.txt"
+          import os, sys
+          sys.path.insert(0, os.getcwd())
+          from complemento import abridor
+          a = abridor.deste_computador(plataforma=sys.platform, ambiente=dict(os.environ), executavel=sys.executable, pasta=os.environ["ABRIDOR_DIR"])
+          print("plataforma", sys.platform, "| sistema", a.sistema, "| programa", a.programa, "| hosts", a.onde_registrar, "| open", a.abrir_com, "| json", a.ler_json_com)
+          a.escrever("User 1")
+          print("escrito com o perfil 'User 1'")
+          PY
+          { ls -laT "$ABRIDOR_DIR" "$HOSTS_DIR"; cat "$HOSTS_DIR/com.perpetualminer.abridor.json"; } | tee -a "$PROVA/04-registro.txt"
+          cp "$HOSTS_DIR/com.perpetualminer.abridor.json" "$PROVA/04-manifesto-do-host.json"; cp "$ABRIDOR_DIR/abrir-o-anki.sh" "$PROVA/04-abrir-o-anki.sh"
+
+      - name: 5 Terminal (so aproximacao) conferir e invalidas, sem abrir
+        continue-on-error: true
+        run: |
+          S="$ABRIDOR_DIR/abrir-o-anki.sh"
+          { for m in '{"acao":"conferir"}' '{"acao":"Abrir"}' '{"acao":["abrir"]}' '{"x":{"acao":"abrir"}}'; do
+              r=$(python3 -c 'import struct,sys;m=sys.argv[1].encode();sys.stdout.buffer.write(struct.pack("<I",len(m))+m)' "$m" | /bin/sh "$S" chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf/ | tail -c +5)
+              echo "$(date -u +%FT%TZ) $m -> $r"; done; } 2>&1 | tee "$PROVA/05-terminal.txt"
+          pgrep -fl "Anki.app" || echo "nenhum Anki aberto (certo: so conferir)" | tee -a "$PROVA/05-terminal.txt"
+
+      - name: 6 Scripts da prova e puppeteer-core
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          cat > "$SCRIPTS/clicar.sh" <<'FIM_CLICAR_SH'
+          #!/bin/bash
+          # Aperta um botão de um aviso que o teste não alcança pelo Chrome:
+          #   ax|xy|enter   "Allow" no aviso de permissão do Chrome (árvore de acessibilidade, clique na posição, tecla Return)
+          #   ax-open|xy-open   "Open" no aviso do Gatekeeper (CoreServicesUIAgent)
+          limite() { perl -e 'alarm shift; exec @ARGV' "$@"; }
+          clicar_em() { # x y: um clique de verdade do mouse (CGEvent), sem AppleScript
+            python3 - "$1" "$2" <<'PY'
+          import ctypes, sys, time
+          cg = ctypes.cdll.LoadLibrary("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")
+          class Ponto(ctypes.Structure):
+              _fields_ = [("x", ctypes.c_double), ("y", ctypes.c_double)]
+          cg.CGEventCreateMouseEvent.restype = ctypes.c_void_p
+          cg.CGEventCreateMouseEvent.argtypes = [ctypes.c_void_p, ctypes.c_uint32, Ponto, ctypes.c_uint32]
+          cg.CGEventPost.argtypes = [ctypes.c_uint32, ctypes.c_void_p]
+          p = Ponto(float(sys.argv[1]), float(sys.argv[2]))
+          for tipo in (5, 1, 2):  # mover, apertar, soltar
+              cg.CGEventPost(0, cg.CGEventCreateMouseEvent(None, tipo, p, 0))
+              time.sleep(0.15)
+          print("clique em", p.x, p.y)
+          PY
+          }
+          procurar() { # processo botão
+            limite 40 osascript - "$1" "$2" <<'AS'
+          on run argv
+            set processo to item 1 of argv
+            set botao to item 2 of argv
+            tell application "System Events"
+              tell process processo
+                try
+                  set value of attribute "AXManualAccessibility" to true
+                end try
+                delay 0.5
+                set nomes to {}
+                repeat with w in windows
+                  set end of nomes to (name of w as text)
+                  try
+                    repeat with i in (entire contents of w)
+                      try
+                        if (class of i is button) and (name of i is botao) then
+                          click i
+                          return "clicou " & botao & " na janela: " & (name of w as text)
+                        end if
+                      end try
+                    end repeat
+                  end try
+                end repeat
+                return "nao achou " & botao & "; janelas: " & (nomes as text)
+              end tell
+            end tell
+          end run
+          AS
+          }
+          case "$1" in
+            ax) procurar "Google Chrome" "Allow" ;;
+            xy)
+              # O aviso fica no centro da janela do Chrome; na rodada 1 o Allow estava 170 pt à direita e 67 pt abaixo do centro.
+              q=$(limite 20 osascript -e 'tell application "System Events" to tell process "Google Chrome"' -e 'repeat with w in windows' \
+                -e 'if (name of w as text) ends with "Google Chrome" then' -e 'set {x, y} to position of w' -e 'set {l, a} to size of w' \
+                -e 'return (x as text) & " " & (y as text) & " " & (l as text) & " " & (a as text)' -e 'end if' -e 'end repeat' -e 'end tell')
+              echo "janela do Chrome: $q"
+              set -- $q
+              [ -n "$4" ] && clicar_em $(( $1 + $3 / 2 + 170 )) $(( $2 + $4 / 2 + 67 )) ;;
+            enter) limite 20 osascript -e 'tell application "System Events" to set frontmost of process "Google Chrome" to true' -e 'delay 0.5' -e 'tell application "System Events" to key code 36' -e 'return "apertou Return"' ;;
+            ax-open) procurar "CoreServicesUIAgent" "Open" ;;
+            xy-open) clicar_em 571 376 ;;  # o Open do aviso do Gatekeeper, centrado na tela (rodada 1)
+          esac
+          echo "exit=$?"
+          FIM_CLICAR_SH
+          cat > "$SCRIPTS/foto.sh" <<'FIM_FOTO_SH'
+          #!/bin/bash
+          perl -e 'alarm shift; exec @ARGV' 15 screencapture -x "$1"; echo "exit=$? $(ls -l "$1" 2>&1)"
+          FIM_FOTO_SH
+          cat > "$SCRIPTS/janelas.sh" <<'FIM_JANELAS_SH'
+          #!/bin/bash
+          # As janelas visíveis de cada processo com interface (um aviso do macOS aparece aqui).
+          perl -e 'alarm shift; exec @ARGV' 30 osascript <<'AS'
+          set saida to ""
+          tell application "System Events"
+            repeat with p in (every process whose background only is false)
+              try
+                set saida to saida & (name of p) & " [visivel=" & (visible of p) & "]: " & (name of every window of p as text) & linefeed
+              end try
+            end repeat
+            repeat with nome in {"CoreServicesUIAgent", "UserNotificationCenter", "SecurityAgent"}
+              try
+                set p to process (nome as text)
+                repeat with w in windows of p
+                  set linha to "AVISO " & nome & ": " & (name of w as text)
+                  try
+                    repeat with i in (entire contents of w)
+                      try
+                        if class of i is static text then set linha to linha & " | texto: " & (value of i as text)
+                        if class of i is button then set linha to linha & " | botao: " & (name of i as text)
+                      end try
+                    end repeat
+                  end try
+                  set saida to saida & linha & linefeed
+                end repeat
+              end try
+            end repeat
+          end tell
+          return saida
+          AS
+          echo "exit=$?"
+          FIM_JANELAS_SH
+          cat > "$SCRIPTS/inspecionar.sh" <<'FIM_INSPECIONAR_SH'
+          #!/bin/bash
+          # Depois do abrir frio: o Anki abriu? o macOS perguntou algo (Gatekeeper, TCC)? Se o Gatekeeper perguntou, o teste
+          # aperta Open UMA vez (o primeiro uso que a pessoa faria), e é só isso que deixa o abrir quente sem o aviso.
+          set -x
+          date -u +%FT%TZ
+          ps -axo pid,ppid,pgid,user,stat,lstart,command | grep -iE "anki|CoreServicesUIAgent|abrir-o-anki|osascript|/usr/bin/open" | grep -v grep
+          lsappinfo info -app net.ankiweb.anki 2>&1
+          "$SCRIPTS/janelas.sh"
+          log show --last 1m --style compact --predicate 'process == "syspolicyd" OR process == "CoreServicesUIAgent" OR process == "tccd"' 2>&1 | grep -iE "anki|quarant|GKQuarantine|first launch|prompt|assess" | tail -60
+          "$SCRIPTS/foto.sh" "$PROVA/tela-04-abrir-frio-aviso.png"
+          date -u +%FT%TZ; echo "APERTANDO OPEN NO AVISO DO GATEKEEPER (o teste, uma vez)"
+          r=$("$SCRIPTS/clicar.sh" ax-open); echo "$r"
+          case "$r" in *clicou*) ;; *) "$SCRIPTS/clicar.sh" xy-open ;; esac
+          date -u +%FT%TZ
+          sleep 3
+          "$SCRIPTS/janelas.sh"
+          ps -axo pid,ppid,pgid,user,stat,lstart,command | grep -iE "anki|CoreServicesUIAgent|abrir-o-anki|/usr/bin/open" | grep -v grep
+          FIM_INSPECIONAR_SH
+          cat > "$SCRIPTS/inspecionar-quente.sh" <<'FIM_INSPECIONAR_QUENTE_SH'
+          #!/bin/bash
+          set -x
+          date -u +%FT%TZ
+          ps -axo pid,ppid,pgid,user,stat,lstart,command | grep -iE "anki|CoreServicesUIAgent|abrir-o-anki|osascript|/usr/bin/open" | grep -v grep
+          lsappinfo info -app net.ankiweb.anki 2>&1
+          "$SCRIPTS/janelas.sh"
+          log show --last 1m --style compact --predicate 'process == "syspolicyd" OR process == "CoreServicesUIAgent" OR process == "tccd"' 2>&1 | grep -iE "anki|quarant|GKQuarantine|first launch|prompt|assess" | tail -60
+          xattr -l /Applications/Anki.app
+          curl -s -m 3 http://127.0.0.1:8766/health; echo " health_exit=$?"
+          ls -laT "$ABRIDOR_DIR" "$HOSTS_DIR"; cat "$HOSTS_DIR/com.perpetualminer.abridor.json"
+          FIM_INSPECIONAR_QUENTE_SH
+          cat > "$SCRIPTS/fechar-anki.sh" <<'FIM_FECHAR_ANKI_SH'
+          #!/bin/bash
+          # Fecha o Anki por sinal (sem AppleEvent), para o próximo abrir partir do Anki fechado.
+          pkill -TERM -f "/Applications/Anki.app/|AnkiProgramFiles"
+          for i in 1 2 3 4 5 6 7 8; do pgrep -f "/Applications/Anki.app/|AnkiProgramFiles" >/dev/null || break; sleep 1; done
+          pkill -KILL -f "/Applications/Anki.app/|AnkiProgramFiles"; sleep 1
+          ps -axo pid,ppid,command | grep -iE "Anki.app|AnkiProgramFiles" | grep -v grep || echo "Anki fechado $(date -u +%FT%TZ)"
+          FIM_FECHAR_ANKI_SH
+          cat > "$SCRIPTS/monitor.py" <<'FIM_MONITOR'
+          # Olha os processos do abridor, do Anki e dos avisos do macOS a cada 50 ms e anota quem nasce e quem sai.
+          import datetime, re, subprocess, sys, time
+          saida = open(sys.argv[1], "a")
+          padrao = re.compile(r"anki|abrir-o-anki|osascript|CoreServicesUIAgent|/usr/bin/open|UserNotificationCenter|SecurityAgent", re.I)
+          vistos = {}
+          while True:
+              t = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="milliseconds")
+              ps = subprocess.run(["ps", "-axo", "pid=,ppid=,pgid=,user=,stat=,command="], capture_output=True, text=True).stdout
+              atuais = {}
+              for linha in ps.splitlines():
+                  if padrao.search(linha) and "monitor.py" not in linha and " grep " not in linha:
+                      atuais[linha.split()[0]] = linha.strip()
+              for pid, linha in atuais.items():
+                  if pid not in vistos:
+                      saida.write(t + " NASCEU " + linha + "\n")
+              for pid, linha in vistos.items():
+                  if pid not in atuais:
+                      saida.write(t + " SAIU   " + linha + "\n")
+              saida.flush()
+              vistos = atuais
+              time.sleep(0.05)
+          FIM_MONITOR
+          cat > "$RUNNER_TEMP/driver/prova.mjs" <<'FIM_PROVA'
+          // Prova do risco 2 (PR 205): o Chrome de verdade chama o host com.perpetualminer.abridor.
+          // Ambiente: EXT (pasta da extensão), UDD (perfil do Chrome), OUT (artefatos), NMH_REAL (pasta de hosts do usuário),
+          // CHROME (executável), HEADLESS=1 (só no protótipo), CLICAR (script que aperta Allow), FOTO (script de screencapture).
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { execFileSync, spawnSync } from 'node:child_process';
+          import puppeteer from 'puppeteer-core';
+
+          const { EXT, UDD, OUT, NMH_REAL, CHROME } = process.env;
+          const ID = 'ohpoogiccjmdgilgegholdidgfhjkadf';
+          const HOST = 'com.perpetualminer.abridor';
+          fs.mkdirSync(OUT, { recursive: true });
+          const diario = path.join(OUT, 'prova-chrome.jsonl');
+          const agora = () => new Date().toISOString();
+          const anotar = (evento, dados = {}) => {
+            const linha = JSON.stringify({ t: agora(), evento, ...dados });
+            fs.appendFileSync(diario, linha + '\n');
+            console.log(linha);
+          };
+          const dormir = ms => new Promise(r => setTimeout(r, ms));
+          const sh = (nome, comando, limite = 30000) => {
+            const r = spawnSync('/bin/sh', ['-c', comando], { encoding: 'utf8', timeout: limite });
+            const saida = `${r.stdout || ''}${r.stderr || ''}`;
+            fs.writeFileSync(path.join(OUT, `${nome}.txt`), `# ${agora()} $ ${comando}\n${saida}\nexit=${r.status} signal=${r.signal}\n`);
+            return saida;
+          };
+          const foto = nome => { if (process.env.FOTO) { sh(`foto-${nome}`, `${process.env.FOTO} "${path.join(OUT, `tela-${nome}.png`)}"`); anotar('foto', { nome }); } };
+          const comLimite = (promessa, ms, rotulo) => Promise.race([promessa, dormir(ms).then(() => { throw new Error(`${rotulo}: sem resposta em ${ms} ms`); })]);
+
+          const abrirChrome = () => puppeteer.launch({
+            executablePath: CHROME,
+            headless: process.env.HEADLESS ? true : false,
+            pipe: true,
+            enableExtensions: true,
+            userDataDir: UDD,
+            defaultViewport: null,
+            args: ['--no-first-run', '--no-default-browser-check', '--window-size=1200,800', '--lang=en-US', '--disable-features=Translate,TranslateUI'],
+          });
+          // O Translate do Chrome tomou o foco do aviso de permissão na rodada 1: desligado pela preferência do perfil.
+          fs.mkdirSync(path.join(UDD, 'Default'), { recursive: true });
+          fs.writeFileSync(path.join(UDD, 'Default', 'Preferences'), JSON.stringify({ translate: { enabled: false } }));
+          let navegador = await abrirChrome();
+          let extensaoUsada = EXT;
+          let versao = await navegador.version();
+          let pidDoChrome = navegador.process()?.pid;
+          anotar('chrome_aberto', { versao, pidDoChrome, udd: UDD });
+
+          let id = await navegador.installExtension(EXT);
+          anotar('extensao_carregada', { id, esperado: ID, igual: id === ID });
+          if (id !== ID) throw new Error('id inesperado');
+
+          let pagina = await navegador.newPage();
+          await pagina.goto(`chrome-extension://${ID}/abridor.html`);
+          await dormir(500);
+          const antes = await pagina.evaluate(() => chrome.permissions.contains({ permissions: ['nativeMessaging'] }));
+          anotar('permissao_antes', { nativeMessaging: antes });
+
+          // Permissão: o pedido de verdade (chrome.permissions.request com gesto), e o aviso do Chrome respondido "Allow".
+          await pagina.evaluate(() => {
+            window.__pedido = 'esperando';
+            chrome.permissions.request({ permissions: ['nativeMessaging'] }).then(r => { window.__pedido = r; }, e => { window.__pedido = 'erro: ' + e.message; });
+          });
+          anotar('pedido_de_permissao_feito');
+          await dormir(1500);
+          foto('01-aviso-de-permissao');
+          let resposta = 'esperando';
+          for (const jeito of (process.env.CLICAR ? ['ax', 'xy', 'enter'] : [])) {
+            anotar('clicar_allow', { jeito, saida: sh(`clicar-${jeito}`, `${process.env.CLICAR} ${jeito}`, 60000).trim() });
+            for (let i = 0; i < 20 && resposta === 'esperando'; i++) { await dormir(250); resposta = await pagina.evaluate(() => window.__pedido); }
+            if (resposta !== 'esperando') { anotar('allow_aceito_por', { jeito }); break; }
+          }
+          anotar('pedido_de_permissao_resolvido', { resposta });
+          foto('02-depois-do-allow');
+          let dada = await pagina.evaluate(() => chrome.permissions.contains({ permissions: ['nativeMessaging'] }));
+          anotar('permissao_depois', { nativeMessaging: dada });
+          if (!dada) {
+            // Plano B (NÃO é o aviso real): uma cópia da extensão com nativeMessaging entre as permissões obrigatórias.
+            await navegador.close();
+            const copia = path.join(path.dirname(UDD), 'extensao-copia-plano-b');
+            fs.cpSync(EXT, copia, { recursive: true, filter: f => !/[/\\](\.git|node_modules|e2e|bridge|engine)$/.test(f) });
+            const manifesto = JSON.parse(fs.readFileSync(path.join(copia, 'manifest.json'), 'utf8'));
+            manifesto.permissions.push('nativeMessaging');
+            manifesto.optional_permissions = (manifesto.optional_permissions || []).filter(p => p !== 'nativeMessaging');
+            fs.writeFileSync(path.join(copia, 'manifest.json'), JSON.stringify(manifesto, null, 2));
+            anotar('permissao_por_copia_do_manifesto_NAO_REAL', { copia });
+            extensaoUsada = copia;
+            navegador = await abrirChrome();
+            pidDoChrome = navegador.process()?.pid;
+            id = await navegador.installExtension(extensaoUsada);
+            pagina = await navegador.newPage();
+            await pagina.goto(`chrome-extension://${ID}/abridor.html`);
+            dada = await pagina.evaluate(() => chrome.permissions.contains({ permissions: ['nativeMessaging'] }));
+            anotar('permissao_depois_da_semente', { nativeMessaging: dada, pidDoChrome });
+          }
+          if (!dada) { anotar('fim', { motivo: 'sem permissao nativeMessaging' }); await navegador.close(); process.exit(3); }
+
+          // Uma conversa crua pela página recarregada (a permissão chega ao chrome.runtime de uma página nova).
+          await pagina.reload();
+          const conversar = async (mensagem, rotulo, limite = 25000) => {
+            const inicio = Date.now();
+            anotar('mensagem_enviada', { rotulo, mensagem });
+            let r;
+            try {
+              r = await comLimite(pagina.evaluate(async (host, m) => {
+                try { return { resposta: await chrome.runtime.sendNativeMessage(host, m) }; } catch (e) { return { erro: e.message }; }
+              }, HOST, mensagem), limite, rotulo);
+            } catch (e) {
+              r = { sem_resposta_no_prazo: e.message };
+            }
+            anotar('mensagem_respondida', { rotulo, ms: Date.now() - inicio, ...r });
+            return r;
+          };
+          const PS = 'ps -axo pid,ppid,pgid,user,stat,lstart,command | grep -i -E "anki|abrir-o-anki|osascript|CoreServicesUIAgent|/usr/bin/open" | grep -v grep';
+          const fotosEPs = async (prefixo, segundos) => {
+            let passado = 0;
+            for (const s of segundos) {
+              await dormir((s - passado) * 1000); passado = s;
+              foto(`${prefixo}-${s}s`);
+              sh(`ps-${prefixo}-${s}s`, PS);
+            }
+          };
+          const fecharAnki = rotulo => anotar('anki_fechado', { rotulo, saida: sh(`fechar-anki-${rotulo}`, process.env.FECHAR_ANKI || 'true', 60000).slice(-300) });
+
+          // Controle negativo: com --user-data-dir próprio, o Chrome procura os hosts em <udd>/NativeMessagingHosts.
+          const nmhDoPerfil = path.join(UDD, 'NativeMessagingHosts');
+          anotar('controle_negativo', { nmhDoPerfil, existe: fs.existsSync(nmhDoPerfil), conteudo: fs.existsSync(nmhDoPerfil) ? fs.readdirSync(nmhDoPerfil) : null });
+          await conversar({ acao: 'conferir' }, 'conferir-sem-pasta-de-hosts-no-perfil');
+          // A pasta de hosts do perfil passa a ser a pasta real do usuário (link): o Chrome lê o manifesto real.
+          if (fs.existsSync(nmhDoPerfil)) { anotar('pasta_de_hosts_do_perfil_existia', { conteudo: fs.readdirSync(nmhDoPerfil) }); fs.rmdirSync(nmhDoPerfil); }
+          fs.symlinkSync(NMH_REAL, nmhDoPerfil);
+          anotar('link_da_pasta_de_hosts', { de: nmhDoPerfil, para: fs.readlinkSync(nmhDoPerfil) });
+          await conversar({ acao: 'conferir' }, 'conferir-cru');
+
+          // O módulo real da extensão, pela ponte do painel (lib/abridor.js › conferirOAnki).
+          const painel = await navegador.newPage();
+          await painel.goto(`chrome-extension://${ID}/painel.html`);
+          await dormir(1500);
+          const inicioModulo = Date.now();
+          let doModulo;
+          try { doModulo = await comLimite(painel.evaluate(() => PerpetualMiner.Abridor.conferirOAnki()), 20000, 'conferirOAnki'); } catch (e) { doModulo = { sem_resposta_no_prazo: e.message }; }
+          anotar('conferirOAnki', { ms: Date.now() - inicioModulo, ...doModulo });
+          foto('03-painel-depois-do-conferir');
+          await painel.close();
+
+          // Inválidas: nada abre.
+          for (const m of [{ acao: 'Abrir' }, { acao: ['abrir'] }, { outra: { acao: 'abrir' } }]) await conversar(m, 'invalida');
+          sh('ps-antes-do-abrir', PS);
+
+          // abrir, frio: o Anki recém-instalado (em quarentena do brew) nunca abriu. A conversa fica pendente enquanto o
+          // macOS decide; a inspeção olha o aviso e, se houver, aperta Open (o primeiro uso, que a pessoa faria uma vez).
+          await pagina.bringToFront();
+          const frio = conversar({ acao: 'abrir' }, 'abrir-frio', 90000);
+          await fotosEPs('04-abrir-frio', [1, 3, 6]);
+          anotar('inspecao_frio_comeca');
+          anotar('inspecao_frio', { saida: sh('inspecao-depois-do-abrir-frio', process.env.INSPECIONAR || 'true', 150000).slice(-800) });
+          const rFrio = await frio;
+          anotar('abrir_frio_terminou', rFrio);
+          await fotosEPs('05-anki-primeira-vez', [2, 8]);
+          sh('primeira-vez-do-anki', process.env.INSPECIONAR_QUENTE || 'true', 60000);
+          fecharAnki('depois-do-frio');
+
+          // abrir, quente: o Anki já abriu uma vez (o Open acima) e está fechado; o Chrome visível.
+          await pagina.bringToFront();
+          await conversar({ acao: 'abrir' }, 'abrir-quente-chrome-visivel', 30000);
+          await fotosEPs('06-abrir-quente-visivel', [2, 6]);
+          sh('inspecao-depois-do-abrir-quente-visivel', process.env.INSPECIONAR_QUENTE || 'true', 60000);
+          fecharAnki('depois-do-quente-visivel');
+
+          // App Nap: o Chrome minimizado e escondido (o macOS pode pôr um app invisível em App Nap), e o host chamado assim mesmo.
+          const sessao = await pagina.createCDPSession();
+          const { windowId } = await sessao.send('Browser.getWindowForTarget');
+          await conversar({ acao: 'conferir' }, 'conferir-chrome-visivel');
+          await sessao.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'minimized' } });
+          anotar('chrome_minimizado');
+          if (process.env.ESCONDER) anotar('chrome_escondido', { saida: sh('esconder-chrome', process.env.ESCONDER).trim() });
+          await dormir(Number(process.env.ESPERA_APPNAP || 15000));
+          foto('07-chrome-escondido');
+          const APPNAP = 'date -u +%FT%TZ; lsappinfo info -app com.google.Chrome 2>&1; lsappinfo info -app net.ankiweb.anki 2>&1; echo; pmset -g assertions; echo; ps -axo pid,ppid,pri,nice,stat,command | grep -iE "Google Chrome$|Google Chrome --|Anki" | grep -v grep | cut -c1-200';
+          sh('appnap-chrome-escondido', APPNAP);
+          for (let i = 1; i <= 3; i++) await conversar({ acao: 'conferir' }, `conferir-chrome-escondido-${i}`);
+          await conversar({ acao: 'abrir' }, 'abrir-quente-chrome-escondido', 30000);
+          await fotosEPs('08-abrir-quente-escondido', [2, 6]);
+          sh('appnap-depois-do-abrir-escondido', APPNAP);
+          sh('inspecao-depois-do-abrir-quente-escondido', process.env.INSPECIONAR_QUENTE || 'true', 60000);
+          fecharAnki('depois-do-quente-escondido');
+          anotar('fim', { ok: true });
+          await navegador.close();
+          FIM_PROVA
+
+          chmod +x "$SCRIPTS"/*.sh
+          cd "$RUNNER_TEMP/driver" && npm init -y >/dev/null && npm i --no-audit --no-fund puppeteer-core@25.13.0 2>&1 | tail -3
+
+      - name: 7 Chrome real chama o host (conferir, abrir frio, App Nap, abrir quente)
+        timeout-minutes: 8
+        env:
+          ESCONDER: osascript -e 'tell application "System Events" to set visible of process "Google Chrome" to false'
+        run: |
+          python3 "$SCRIPTS/monitor.py" "$PROVA/monitor-processos.log" &
+          sudo eslogger exec > "$RUNNER_TEMP/eslogger-exec.jsonl" 2> "$PROVA/eslogger-erro.txt" &
+          sleep 1; "$SCRIPTS/foto.sh" "$PROVA/tela-00-antes-do-chrome.png"
+          cd "$RUNNER_TEMP/driver"
+          EXT="$GITHUB_WORKSPACE" UDD="$RUNNER_TEMP/chrome-perfil-de-teste" OUT="$PROVA" NMH_REAL="$HOSTS_DIR" \
+            CLICAR="$SCRIPTS/clicar.sh" FOTO="$SCRIPTS/foto.sh" INSPECIONAR="$SCRIPTS/inspecionar.sh" INSPECIONAR_QUENTE="$SCRIPTS/inspecionar-quente.sh" FECHAR_ANKI="$SCRIPTS/fechar-anki.sh" \
+            node prova.mjs 2>&1 | tee "$PROVA/07-prova-chrome-console.txt"
+
+      - name: 8 Coleta e manifesto sha256
+        if: always()
+        run: |
+          sudo pkill eslogger || true; pkill -f monitor.py || true; sleep 1
+          grep -E 'abrir-o-anki|osascript|Anki\.app|/usr/bin/open|CoreServicesUIAgent' "$RUNNER_TEMP/eslogger-exec.jsonl" > "$PROVA/eslogger-exec-filtrado.jsonl" || true
+          wc -l "$RUNNER_TEMP/eslogger-exec.jsonl" "$PROVA/eslogger-exec-filtrado.jsonl" > "$PROVA/eslogger-contagem.txt" 2>&1 || true
+          log show --last 15m --style compact --predicate 'process == "tccd" OR subsystem == "com.apple.TCC"' 2>&1 | grep -iE "abrir-o-anki|osascript|Anki|Chrome|/bin/sh|open" | tail -300 > "$PROVA/tcc-log.txt" || true
+          log show --last 15m --style compact --predicate 'process == "syspolicyd" OR process == "CoreServicesUIAgent"' 2>&1 | grep -iE "anki|quarant|assess|prompt|gatekeeper" | tail -300 > "$PROVA/gatekeeper-log.txt" || true
+          ps -axo pid,ppid,pgid,user,stat,lstart,command > "$PROVA/ps-final.txt"
+          "$SCRIPTS/foto.sh" "$PROVA/tela-99-final.png" || true
+          cd "$PROVA" && find . -type f ! -name MANIFESTO-sha256.txt | sort | xargs shasum -a 256 > MANIFESTO-sha256.txt; cat MANIFESTO-sha256.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pm205mac-prova-mac
+          path: ${{ runner.temp }}/prova
+          retention-days: 7
