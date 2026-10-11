@@ -194,7 +194,7 @@
     const apagar = botao('perigo', textoDaVoz('CFG-35.chaveApagar'), () => confirmarApagar(lugar));
     apagar.id = idDe(lugar, 'apagar');
 
-    const deOutraConta = estado.contaDaChave && estado.contaDaChave !== estado.uid;
+    const deOutraConta = estado.uid && estado.contaDaChave && estado.contaDaChave !== estado.uid;
     const linha = elemento('div', 'cfg-linha',
       elemento('div', 'cfg-quem',
         elemento('span', 'cfg-status', ponto, textoDaVoz('CFG-35.chaveSalva')),
@@ -265,7 +265,8 @@
     if (salva) {
       notas.push(elemento('p', 'cfg-nota', textoDaVoz(estado.contaDaChave === null || (estado.comConta && !estado.contaDaChave) ? 'CFG-42.legado'
         : estado.comConta && estado.contaDaChave && estado.contaDaChave !== estado.uid
-          ? 'CFG-35.chaveDeOutraConta' : estado.comConta ? 'CFG-35.chaveNaConta' : 'CFG-35.chaveSemConta')));
+          ? 'CFG-35.chaveDeOutraConta' : estado.comConta ? 'CFG-35.chaveNaConta'
+            : estado.contaDaChave ? 'CFG-35.chaveSemContaVinculada' : 'CFG-35.chaveSemConta')));
       if (estado.copia !== null) {
         const copia = elemento('p', 'cfg-nota', textoDaVoz(estado.copia ? 'CFG-35.chaveCopiaNaConexao' : 'CFG-35.chaveSemCopia'));
         copia.dataset.copia = estado.copia ? 'tem' : 'falta';
@@ -309,6 +310,7 @@
       sem_conexao: { texto: 'CFG-35.erroSemConexao', acao: tentar },
       conexao_com_erro: { texto: 'CFG-35.erroConexaoComErro', acao: tentar },
       conexao_antiga: { texto: 'CFG-35.erroConexaoAntiga', acao: { rotulo: textoDaVoz('CFG-35.erroAtualizar'), aoUsar: baixarConexao } },
+      outra_conta: { texto: 'CFG-35.erroOutraConta', acao: { rotulo: textoDaVoz('CFG-35.erroTrocar'), aoUsar: () => { lugar.trocando = true; trocarDeNovo(lugar); } } },
       apagar_local: { texto: 'CFG-35.erroAoApagar', acao: { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: () => apagarAChave(lugar) } },
     }[motivo];
     const aviso = montarAviso({
@@ -414,7 +416,8 @@
       dono = await ChaveDaOpenAI.apagar();
     } catch (erro) {
       // Incerto: pode ter apagado no dono e falhado apenas a escrita do cache.
-      lugar.erro = { motivo: erro?.codigo === 'outdated_connection' ? 'conexao_antiga' : 'apagar_local',
+      lugar.erro = { motivo: erro?.codigo === 'outdated_connection' ? 'conexao_antiga'
+        : erro?.codigo === 'other_account_owner' ? 'outra_conta' : 'apagar_local',
         detalhes: erro?.codigo || erro?.name || 'storage_error' };
       desenhar(lugar);
       return;

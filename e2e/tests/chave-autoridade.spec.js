@@ -120,8 +120,13 @@ test('K1-delete: dono mudou para B durante o modal de A, confirmar não apaga ne
   fakes.anki.guardarChaveNaConexao('bbbb', 42, 'B', 101, false);
   const dono = fakes.anki.estadoDaChave();
   await page.getByRole('dialog').getByRole('button', { name: 'Apagar chave', exact: true }).click();
-  await expect(card(page).getByRole('alert')).toContainText('Não deu para confirmar o apagamento');
+  const aviso = card(page).getByRole('alert');
+  await expect(aviso).toContainText('Esta chave é de outra conta Google e não foi apagada.');
+  await expect(aviso.getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
   await expect(resumo(page)).toHaveText('••••••••bbbb');
+  await fotografar(aviso, 'o1-recusa-modal.png');
+  await aviso.getByRole('button', { name: 'Trocar chave' }).click();
+  await expect(campo(page)).toBeEmpty();
   await expect(card(page).getByRole('button', { name: 'Apagar chave', exact: true })).toHaveCount(0);
   expect(fakes.anki.estadoDaChave()).toEqual(dono);
   expect(fakes.anki.chaveNaConexao()?.endsWith('bbbb')).toBe(true);
@@ -148,8 +153,15 @@ test('K1-delete: Apagar tudo em A não apaga o dono de B nem a chave da nuvem de
   await expect(resumo(page)).toHaveText('••••••••bbbb');
   await page.getByRole('button', { name: 'Zona de perigo', exact: true }).click();
   await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar 1 frase', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('Nenhuma chave da OpenAI será apagada: a chave deste computador é de outra conta Google.');
+  await fotografar(page.getByRole('dialog'), 'o1-outra-conta-tudo-modal.png');
   await page.getByRole('dialog').getByRole('button', { name: 'Apagar 1 frase', exact: true }).click();
-  await expect(page.locator('#cfg-perigo').getByRole('alert')).toContainText('não deu para conferir o apagamento da chave');
+  const aviso = page.locator('#cfg-perigo').getByRole('alert');
+  await expect(aviso).toContainText('Esta chave é de outra conta Google e não foi apagada.');
+  await expect(aviso.getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
+  await fotografar(aviso, 'o1-recusa-tudo.png');
+  await aviso.getByRole('button', { name: 'Trocar chave' }).click();
+  await expect(campo(page)).toBeEmpty();
   await expect(resumo(page)).toHaveText('••••••••bbbb');
   expect(fakes.anki.estadoDaChave()).toEqual(dono);
   expect(fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
@@ -157,6 +169,58 @@ test('K1-delete: Apagar tudo em A não apaga o dono de B nem a chave da nuvem de
   expect(fakes.google.frasesDe('A')).toEqual([]);
   expect(await extensao.frases()).toEqual([]);
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.conta).toBe('B');
+});
+
+for (const tudo of [false, true]) test(`O1: sair da conta permite ${tudo ? 'Apagar tudo' : 'Apagar chave'} só deste computador, sem apagar nenhuma chave na nuvem`, async ({ page, extensao, fakes }) => {
+  await page.clock.install();
+  await page.clock.pauseAt(new Date(Date.now() + 60_000));
+  await extensao.semearSessao({ uid: 'A' });
+  const frases = [{ id: '123', text: 'A sentence to study.', lang: 'Inglês', source: 'manual', timestamp: Date.now() }];
+  await extensao.gravarStorage({ frases });
+  fakes.google.gravarFrases('A', frases);
+  fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE, em: 100 });
+  fakes.google.gravarChaveDaOpenAI('B', { chave: NOVA, em: 101 });
+  await abrir(page, extensao);
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
+  await page.getByRole('button', { name: 'Conta & sync', exact: true }).click();
+  await page.locator('#cfg-conta').getByRole('button', { name: 'Sair da conta' }).click();
+  await expect(page.locator('#shell-chip')).toContainText('Sem conta');
+  const syncs = fakes.anki.requisicoes.filter(p => p.caminho === '/ia/openai/sincronizar').length;
+  const nuvem = fakes.google.requisicoes.length;
+  await page.evaluate(() => new Promise((resolve, reject) => {
+    const req = indexedDB.open('pm-segredos', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('chaves');
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result, tx = db.transaction('chaves', 'readwrite');
+      tx.objectStore('chaves').put({ chave: 'sk-fake-legacy-A', conta: 'A', em: 10 }, 'conta:A');
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    };
+  }));
+  const entrada = page.getByRole('button', { name: 'IA dos cartões', exact: true });
+  if (await entrada.getAttribute('aria-expanded') !== 'true') await entrada.click();
+  await expect(card(page).getByRole('button', { name: 'Apagar chave', exact: true })).toBeVisible();
+  await expect(card(page)).toContainText('Esta chave está vinculada a uma conta Google.');
+  await expect(card(page)).not.toContainText('entre e confira a chave de novo');
+  if (tudo) await page.getByRole('button', { name: 'Zona de perigo', exact: true }).click();
+  const rotulo = tudo ? 'Apagar 1 frase' : 'Apagar chave';
+  await page.locator(tudo ? '#cfg-perigo' : '#cfg-ia').getByRole('button', { name: rotulo, exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('Nenhuma chave da conta Google é apagada.');
+  await fotografar(page.getByRole('dialog'), `o1-local-${tudo ? 'tudo' : 'chave'}-modal.png`);
+  await page.getByRole('dialog').getByRole('button', { name: rotulo, exact: true }).click();
+  await expect(resumo(page)).toHaveText('Sem chave');
+  expect(fakes.anki.chaveNaConexao()).toBeNull();
+  expect(fakes.anki.estadoDaChave().conta).toBe('');
+  expect(fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
+  expect(fakes.google.chaveDaOpenAIDe('B')?.chave === NOVA).toBe(true);
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.ultimos4).toBe('');
+  expect(await segredosLocais(page)).toEqual([]);
+  expect(fakes.google.frasesDe('A')).toHaveLength(1);
+  expect(await extensao.frases()).toHaveLength(tudo ? 0 : 1);
+  expect(fakes.anki.requisicoes.filter(p => p.caminho === '/ia/openai/sincronizar').length).toBe(syncs);
+  expect(fakes.google.requisicoes.length).toBe(nuvem);
+  await fotografar(card(page), `o1-local-${tudo ? 'tudo' : 'chave'}-resultado.png`);
 });
 
 test('K2: o legado do main com conta A oferece Trocar chave, não um retry sem saída', async ({ page, extensao, fakes }) => {

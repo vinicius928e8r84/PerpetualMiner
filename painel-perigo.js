@@ -25,14 +25,21 @@
   const { abrirConfirmacao } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
-  const estado = { n: null, comConta: false, temChave: false };   // n: null até o painel.js contar
+  const estado = { n: null, comConta: false, temChave: false, contaDaChave: '', uid: '' };   // n: null até o painel.js contar
 
   // A chave da OpenAI só pelos 4 últimos caracteres (`pm_chave_openai`): basta saber se há uma.
-  chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null }, dados => {
+  chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null, pm_user_info: null }, dados => {
     estado.temChave = Boolean(dados[ChaveDaOpenAI.MARCA]?.ultimos4);
+    estado.contaDaChave = dados[ChaveDaOpenAI.MARCA]?.conta || '';
+    estado.uid = dados.pm_user_info?.uid || '';
   });
   chrome.storage.onChanged.addListener((mudancas, area) => {
-    if (area === 'local' && ChaveDaOpenAI.MARCA in mudancas) estado.temChave = Boolean(mudancas[ChaveDaOpenAI.MARCA].newValue?.ultimos4);
+    if (area !== 'local') return;
+    if (ChaveDaOpenAI.MARCA in mudancas) {
+      estado.temChave = Boolean(mudancas[ChaveDaOpenAI.MARCA].newValue?.ultimos4);
+      estado.contaDaChave = mudancas[ChaveDaOpenAI.MARCA].newValue?.conta || '';
+    }
+    if ('pm_user_info' in mudancas) estado.uid = mudancas.pm_user_info.newValue?.uid || '';
   });
   let apagarTudo = () => {};
   let partes = null;   // o conteúdo do card, montado uma vez e atualizado no lugar
@@ -95,12 +102,13 @@
     const { n, comConta } = estado;
     if (!estado.n) return;
 
+    const outraConta = comConta && estado.contaDaChave && estado.contaDaChave !== estado.uid;
     abrirConfirmacao({
       id: 'cfg-perigo-modal',
       titulo: n === 1 ? textoDaVoz('CFG-17.tituloUma') : textoDaVoz('CFG-17.titulo', { n }),
       corpo: [
         textoDaVoz(comConta ? 'CFG-17.corpo' : 'CFG-17.corpoSemConta'),
-        ...(estado.temChave ? [textoDaVoz(comConta ? 'CFG-17.chave' : 'CFG-17.chaveSemConta')] : []),
+        ...(estado.temChave ? [textoDaVoz(outraConta ? 'CFG-17.chaveOutraConta' : comConta ? 'CFG-17.chave' : 'CFG-17.chaveSemConta')] : []),
       ].join(' '),
       cancelar: textoDaVoz('CFG-17.cancelar'),
       confirmar: textoDaVoz('CFG-17.confirmar', { n }),

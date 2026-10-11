@@ -353,6 +353,28 @@ class AutoridadeVersionada(unittest.TestCase):
             self.assertTrue(conexao.firestore.documentos['A']['chave']['stringValue'] == CHAVE)
             self.assertNotIn('B', conexao.firestore.documentos)
 
+    def test_apagar_sem_conta_tira_so_do_computador_e_entrar_recebe_a_chave_sem_apagar_a_nuvem(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
+                corpo={'chave': CHAVE, 'versao': 0, 'conta': 'A'})[0], 200)
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/sincronizar',
+                corpo={'uid': 'A', 'token': 'token-ficticio-A', 'versao': 1})[0], 200)
+            antes = json.loads(json.dumps(conexao.firestore.documentos))
+            conexao.firestore.pedidos.clear()
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/chave/apagar',
+                corpo={'versao': 1, 'conta': ''})[0], 200)
+            self.assertIsNone(conexao.conexao.cofre.ler('openai'))
+            self.assertEqual(json.loads(conexao.pedir('POST', '/ia/estado')[2])['openai'],
+                {'configurada': False, 'conta': '', 'versao': 2, 'naoEnviada': True})
+            self.assertEqual(conexao.firestore.pedidos, [])
+            self.assertTrue(conexao.firestore.documentos == antes)
+            # Apagar só aqui não revoga/retira a chave da conta: entrar pode trazê-la.
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/sincronizar',
+                corpo={'uid': 'A', 'token': 'token-ficticio-A', 'versao': 2})[0], 200)
+            self.assertTrue(conexao.conexao.cofre.ler('openai') == CHAVE)
+            self.assertTrue(conexao.firestore.documentos == antes)
+            self.assertEqual([metodo for metodo, _, _ in conexao.firestore.pedidos], ['GET'])
+
     def test_N1_falha_posterior_nao_reserva_revisao_nem_desfaz_aceitacao(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             status, _, _ = conexao.pedir('POST', '/ia/openai/chave',
