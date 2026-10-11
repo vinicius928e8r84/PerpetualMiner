@@ -171,6 +171,40 @@ test('K1-delete: Apagar tudo em A não apaga o dono de B nem a chave da nuvem de
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.conta).toBe('B');
 });
 
+test('K1-PC: três reconfirmações idênticas mantêm v1 e não disparam upload ou confirmação automática', async ({ page, extensao, fakes }) => {
+  await page.clock.install();
+  await page.clock.pauseAt(new Date(Date.now() + 60_000));
+  await extensao.semearSessao({ uid: 'A' });
+  await abrir(page, extensao);
+  await confirmar(page, CHAVE);
+  await expect(resumo(page)).toHaveText('••••••••aaaa');
+  await expect.poll(() => fakes.anki.estadoDaChave().naoEnviada).toBe(false);
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
+  const antes = fakes.anki.estadoDaChave();
+  const nuvem = fakes.google.chaveDaOpenAIDe('A');
+  const uploads = fakes.google.requisicoes.filter(p => p.metodo === 'PATCH').length;
+  const revisoes = [antes.versao];
+  for (let tentativa = 0; tentativa < 3; tentativa += 1) {
+    await card(page).getByRole('button', { name: 'Trocar chave', exact: true }).click();
+    await expect(campo(page)).toBeEmpty();
+    await confirmar(page, CHAVE);
+    await expect(card(page).getByRole('button', { name: 'Trocar chave', exact: true })).toBeVisible();
+    await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
+    revisoes.push(fakes.anki.estadoDaChave().versao);
+  }
+  expect(revisoes).toEqual([1, 1, 1, 1]);
+  await page.clock.runFor(31000); // saúde só lê, não reconfirma chave nem dispara sync
+  await expect(resumo(page)).toHaveText('••••••••aaaa');
+  expect(fakes.anki.estadoDaChave()).toEqual(antes);
+  expect(fakes.google.chaveDaOpenAIDe('A')?.em).toBe(nuvem.em);
+  expect(fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
+  expect(fakes.google.requisicoes.filter(p => p.metodo === 'PATCH').length).toBe(uploads);
+  expect(fakes.anki.requisicoes.filter(p => p.caminho === '/ia/openai/chave').length).toBe(4);
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai).toEqual({ ultimos4: 'aaaa', conta: 'A', versao: 1, naoEnviada: false });
+  expect(await segredosLocais(page)).toEqual([]);
+  await fotografar(card(page), 'k1-pc-reconfirmacoes-idempotentes.png');
+});
+
 for (const tudo of [false, true]) test(`O1: sair da conta permite ${tudo ? 'Apagar tudo' : 'Apagar chave'} só deste computador, sem apagar nenhuma chave na nuvem`, async ({ page, extensao, fakes }) => {
   await page.clock.install();
   await page.clock.pauseAt(new Date(Date.now() + 60_000));

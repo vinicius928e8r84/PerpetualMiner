@@ -62,6 +62,12 @@ A saúde (`GET /health`) é lida pela primeira conexão: a extensão mostra “A
 que ela diz (`ConexaoAnki.saude()`, `e2e/tests/painel-anki-primeira-conexao.spec.js`, que lê os valores destes exemplos). Sem perfil (a tela de
 perfis do Anki) a parte do perfil não aparece.
 
+## Confirmação idempotente e permissões do arquivo
+
+`POST /ia/openai/chave` com chave inteira/conta iguais às já aceitas e revisão atual do dono moderno responde o mesmo 200 sem revalidar OpenAI, regravar arquivo ou avançar revisão/hora/pendência. Três reconfirmações após v1 permanecem v1. Replay da base anterior continua idempotente; bases antigas conflitantes continuam 409. Outra conta ou outro valor inteiro (mesmo com o mesmo sufixo) são mudanças sujeitas a validação/CAS. Legado sem metadados continua exigindo confirmação explícita; não é automaticamente tratado como dono moderno.
+
+**Known limit — ACL no Windows:** o produto NÃO define ACL no arquivo da chave; ele herda a ACL da pasta. Na prova real em `Anki/addons21`: usuário + SYSTEM + Administrators. Numa pasta arbitrária, a herança pode incluir leitura por Users, expondo a chave em texto claro a esses usuários/processos e permitindo uso/custo na OpenAI. Modo 0600/`chmod` não restringe essa ACL no Windows (no-op para essa proteção), embora 0600 seja usado em POSIX. Não há garantia de acesso exclusivo ao usuário nem proteção contra administradores. Nenhuma engenharia de ACL nesta correção; teste POSIX não certifica a prova Windows informada pelo capitão. Revogar na OpenAI é o desligamento de verdade.
+
 ## Quem o complemento atende
 
 O complemento gasta a chave da OpenAI, então a regra é a da origem da extensão

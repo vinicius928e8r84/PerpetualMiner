@@ -325,6 +325,56 @@ class PedidoQueOProtocoloRecusa(unittest.TestCase):
 class AutoridadeVersionada(unittest.TestCase):
     """Opção B: o cliente observa a revisão; só o cofre a muda após aceitar."""
 
+    def test_tres_reconfirmacoes_da_mesma_chave_e_conta_mantem_a_revisao_do_aceite(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
+                corpo={'chave': CHAVE, 'versao': 0, 'conta': 'A'})[0], 200)
+            antes = conexao.conexao.cofre.documento('openai')
+            pedidos = len(conexao.openai.pedidos)
+            revisoes = [1]
+            for _ in range(3):
+                versao = json.loads(conexao.pedir('POST', '/ia/estado')[2])['openai']['versao']
+                self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
+                    corpo={'chave': CHAVE, 'versao': versao, 'conta': 'A'})[0], 200)
+                revisoes.append(json.loads(conexao.pedir('POST', '/ia/estado')[2])['openai']['versao'])
+            self.assertEqual(revisoes, [1, 1, 1, 1]) # sequência v1→2→3→4 observada no PC real
+            self.assertTrue(conexao.conexao.cofre.documento('openai') == antes)
+            self.assertEqual(len(conexao.openai.pedidos), pedidos)
+            for _ in range(3): # CAS público após validação, inclusive sem passar pelo atalho HTTP
+                self.assertTrue(conexao.conexao.cofre.guardar('openai', CHAVE, versao=1, conta='A'))
+            self.assertTrue(conexao.conexao.cofre.documento('openai') == antes)
+
+    def test_reconfirmar_preserva_replica_e_CAS_distingue_conta_e_valor_inteiro(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
+                corpo={'chave': CHAVE, 'versao': 0, 'conta': 'A'})[0], 200)
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/sincronizar',
+                corpo={'uid': 'A', 'token': 'token-ficticio-A', 'versao': 1})[0], 200)
+            antes = conexao.conexao.cofre.documento('openai')
+            conexao.openai.comportamento = 'fora_do_ar'
+            pedidos = len(conexao.openai.pedidos)
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
+                corpo={'chave': CHAVE, 'versao': 1, 'conta': 'A'})[0], 200)
+            self.assertTrue(conexao.conexao.cofre.documento('openai') == antes)
+            self.assertFalse(antes['naoEnviada'])
+            self.assertEqual(len(conexao.openai.pedidos), pedidos)
+            conexao.openai.comportamento = 'aceita'
+            # A mesma chave numa conta diferente é uma mudança explícita, não replay.
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
+                corpo={'chave': CHAVE, 'versao': 1, 'conta': 'B'})[0], 200)
+            self.assertEqual(json.loads(conexao.pedir('POST', '/ia/estado')[2])['openai']['versao'], 2)
+            for versao, conta in ((0, 'B'), (1, 'A')):
+                self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
+                    corpo={'chave': CHAVE, 'versao': versao, 'conta': conta})[0], 409)
+            outra = 'sk-proj-OutroValorInteiro-abcd' # mesmo sufixo não é a mesma chave
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
+                corpo={'chave': outra, 'versao': 2, 'conta': 'B'})[0], 200)
+            self.assertTrue(conexao.conexao.cofre.ler('openai') == outra)
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
+                corpo={'chave': CHAVE, 'versao': 2, 'conta': 'B'})[0], 409)
+            self.assertEqual(json.loads(conexao.pedir('POST', '/ia/estado')[2])['openai']['versao'], 3)
+            self.assertTrue(conexao.conexao.cofre.ler('openai') == outra)
+
     def test_estado_versionado_identifica_o_protocolo_que_exige_atualizar_o_complemento(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             self.assertEqual(json.loads(conexao.pedir('GET', '/health')[2])['versao'], '0.2.0')

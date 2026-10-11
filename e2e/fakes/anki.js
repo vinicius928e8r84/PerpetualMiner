@@ -313,7 +313,8 @@ function criarFakeAnki() {
     return naFilaDaChave(() => {
       const corpo = JSON.parse(req.postData());
       const versao = corpo.versao || 0, conta = corpo.conta || '', chave = corpo.chave.trim();
-      if (versao === estado.versaoDaChave - 1 && chave === estado.chaveDaOpenAI && conta === estado.contaDaChave) {
+      if ((versao === estado.versaoDaChave - 1 || versao === estado.versaoDaChave)
+        && chave === estado.chaveDaOpenAI && conta === estado.contaDaChave) {
         return { status: 200, json: { ok: true, ultimos4: ultimos4(chave) } };
       }
       if (versao !== estado.versaoDaChave) return { status: 409, json: { error: 'stale_key_version' } };

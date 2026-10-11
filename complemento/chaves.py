@@ -46,7 +46,7 @@ class Cofre:
         return chave[-4:] if chave else None
 
     def _gravar(self, nome, documento):
-        """Sob a tranca: substituição atômica, modo 0600 desde o primeiro byte."""
+        """Sob a tranca: substituição atômica; 0600 em POSIX, ACL herdada no Windows."""
         destino = self._caminho(nome)
         temporario = destino + ".novo"
         try:
@@ -66,12 +66,13 @@ class Cofre:
             raise
 
     def reentrega(self, nome, chave, versao, conta=''):
-        """True: mesmo valor aceito; False: conflito; None: precisa conferir."""
+        """True: chave/conta já aceitas no CAS atual ou replay; False: conflito."""
         with self._tranca:
             atual = self.documento(nome)
             revisao = atual.get('versao', 0)
             igual = (atual.get('chave', '') == chave and atual.get('conta', '') == conta)
-            if igual and versao == revisao - 1:
+            moderna = all(campo in atual for campo in ('conta', 'versao', 'em', 'naoEnviada'))
+            if igual and (versao == revisao - 1 or (chave and moderna and versao == revisao)):
                 return True
             return None if versao == revisao else False
 
