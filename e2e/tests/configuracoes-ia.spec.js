@@ -45,6 +45,44 @@ async function colarEConferir(page, chave = CHAVE) {
   await conferir(page).click();
 }
 
+for (const configurada of [false, true]) test(`K4: complemento antigo responde, mas exige atualização antes de enviar a chave — ${configurada ? 'com chave' : 'sem chave'}`, async ({ page, extensao, fakes }) => {
+  // Fronteira HTTP do main 0.1.0: /ia/estado não traz revisão/conta/flag.
+  if (configurada) fakes.anki.guardarChaveNaConexao('9f3a');
+  fakes.anki.responder('POST', '/ia/estado', () => ({ status: 200,
+    json: { openai: configurada ? { configurada: true, ultimos4: '9f3a' } : { configurada: false } } }));
+  await extensao.semearSessao({ uid: 'A' });
+  await abrirPainel(page, extensao, '#configuracoes/conta');
+  await expect(page.locator('#cfg-conta')).toContainText('Atualize a Conexão com o Anki');
+  await page.goto(extensao.url('painel.html#configuracoes/ia'));
+  await colarEConferir(page, OUTRA_CHAVE);
+  await expect(erro(page)).toContainText('Atualize a Conexão com o Anki');
+  await expect(erro(page)).not.toContainText('não respondeu');
+  await fotografar(erro(page), `k4-atualizar-${configurada ? 'com' : 'sem'}-chave.png`);
+  const download = page.waitForEvent('download');
+  await erro(page).getByRole('button', { name: 'Baixar atualização' }).click();
+  expect((await download).suggestedFilename()).toBe('perpetualminer.ankiaddon');
+  expect(fakes.anki.chaveNaConexao()?.endsWith('9f3a') || false).toBe(configurada);
+  expect(fakes.anki.requisicoes.some(r => r.caminho === '/ia/openai/chave')).toBe(false);
+  expect(fakes.google.chaveDaOpenAIDe('A')).toBeNull();
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai?.ultimos4 || '').toBe('');
+});
+
+test('K3: chave já replicada com o Anki fechado não acusa pendência nem perde a máscara', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: 'A' });
+  fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE, em: 100 });
+  await abrirPainel(page, extensao, '#configuracoes/conta');
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
+  expect(fakes.anki.estadoDaChave().naoEnviada).toBe(false);
+  fakes.anki.desligar();
+  await page.reload();
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
+  await expect(page.locator('#cfg-conta').getByRole('alert')).toHaveCount(0);
+  await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+  expect(fakes.anki.chaveNaConexao() === CHAVE).toBe(true);
+  expect(fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.naoEnviada).toBe(false);
+});
+
 test('N2: sem chave e sem Conexão opcional, só as frases sincronizam; ligar depois recebe a chave da conta', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await extensao.semearSessao({ uid: 'A' });
@@ -101,7 +139,7 @@ test('colar a chave: a Conexão a confere e guarda a cópia, a tela mostra só a
   await expect(corpo(page).getByText(MASCARADA)).toBeVisible();
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
   // Sem conta, a chave fica neste computador: a tela diz o estado verdadeiro (C8).
-  await expect(corpo(page)).toContainText('Fica neste computador, na Conexão com o Anki. Com a conta Google, ela vai junto para os seus outros computadores.');
+  await expect(corpo(page)).toContainText('Fica neste computador, na Conexão com o Anki. Para levá-la à conta Google, entre e confira a chave de novo.');
   await expect(corpo(page)).not.toContainText('vai junto com a sua conta Google');
   await expect(corpo(page)).toContainText('A Conexão com o Anki guarda a chave.');
   await expect(campo(page)).toHaveCount(0);

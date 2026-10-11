@@ -120,7 +120,7 @@
       estado.focarAoLer = true;
       return;
     }
-    if (!estado.ultimos4) porId(idDe(configuracoes, 'campo'))?.focus();
+    if (!estado.ultimos4 || configuracoes.trocando) porId(idDe(configuracoes, 'campo'))?.focus();
   }
 
   /** A resposta de uma conferência da cópia que a Conexão desligou no meio do caminho já não vale. */
@@ -307,6 +307,7 @@
       openai_fora_do_ar: { texto: 'CFG-35.erroForaDoAr', acao: tentar },
       sem_conexao: { texto: 'CFG-35.erroSemConexao', acao: tentar },
       conexao_com_erro: { texto: 'CFG-35.erroConexaoComErro', acao: tentar },
+      conexao_antiga: { texto: 'CFG-35.erroConexaoAntiga', acao: { rotulo: textoDaVoz('CFG-35.erroAtualizar'), aoUsar: baixarConexao } },
       apagar_local: { texto: 'CFG-35.erroAoApagar', acao: { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: () => apagarAChave(lugar) } },
     }[motivo];
     const aviso = montarAviso({
@@ -361,7 +362,8 @@
     } catch (erro) {
       // O cache pode ter falhado depois da aceitação. Não declara que o dono
       // perdeu a chave, nem repete mensagem que pudesse conter um segredo.
-      resultado = { ok: false, motivo: 'conexao_com_erro', detalhes: erro?.name || 'storage_error' };
+      resultado = { ok: false, motivo: erro?.codigo === 'outdated_connection' ? 'conexao_antiga' : 'conexao_com_erro',
+        detalhes: erro?.codigo || erro?.name || 'storage_error' };
     }
     lugar.conferindo = false;
     if (resultado.ok) {
@@ -411,7 +413,8 @@
       dono = await ChaveDaOpenAI.apagar();
     } catch (erro) {
       // Incerto: pode ter apagado no dono e falhado apenas a escrita do cache.
-      lugar.erro = { motivo: 'apagar_local', detalhes: erro?.name || 'storage_error' };
+      lugar.erro = { motivo: erro?.codigo === 'outdated_connection' ? 'conexao_antiga' : 'apagar_local',
+        detalhes: erro?.codigo || erro?.name || 'storage_error' };
       desenhar(lugar);
       return;
     }
@@ -458,5 +461,16 @@
 
   document.addEventListener('DOMContentLoaded', iniciar);
 
-  raiz.CartaoDaIA = { montar };
+  function baixarConexao() {
+    const link = document.createElement('a');
+    link.href = chrome.runtime.getURL('conexao/perpetualminer.ankiaddon');
+    link.download = 'perpetualminer.ankiaddon';
+    link.click();
+  }
+
+  raiz.CartaoDaIA = { montar, baixarConexao, trocarChave: () => {
+    location.hash = '#configuracoes/ia';
+    configuracoes.trocando = true;
+    trocarDeNovo(configuracoes);
+  } };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

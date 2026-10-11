@@ -170,11 +170,15 @@
     if (!sincronizacao) return null;
     const vista = { ...COMO_APARECE[sincronizacao.situacao], dados: sincronizacao };
     if (sincronizacao.situacao === SITUACOES.CHAVE_PENDENTE) {
-      if (sincronizacao.codigo === 'other_account_unsent') {
+      if (sincronizacao.codigo === 'outdated_connection') {
+        vista.aviso = { texto: 'CFG-35.erroConexaoAntiga', acao: 'CFG-35.erroAtualizar',
+          aoUsar: () => raiz.CartaoDaIA.baixarConexao() };
+      } else if (sincronizacao.codigo === 'other_account_unsent') {
         vista.status = () => textoDaVoz('CFG-42.status');
         vista.aviso = { texto: 'CFG-42.aviso', acao: 'CFG-03.tentarDeNovo' };
       } else if (sincronizacao.codigo === 'legacy_key_unbound') {
-        vista.aviso = { texto: 'CFG-42.legado', acao: 'CFG-03.tentarDeNovo' };
+        vista.aviso = { texto: 'CFG-42.legado', acao: 'CFG-35.erroTrocar',
+          aoUsar: () => raiz.CartaoDaIA.trocarChave() };
       }
     }
     return vista;
@@ -285,7 +289,7 @@
     if (situacao?.aviso) {
       partes.push(montarAviso({
         texto: textoDaVoz(situacao.aviso.texto),
-        acao: { rotulo: textoDaVoz(situacao.aviso.acao), aoUsar: () => pedidos.tentarDeNovo() },
+        acao: { rotulo: textoDaVoz(situacao.aviso.acao), aoUsar: situacao.aviso.aoUsar || (() => pedidos.tentarDeNovo()) },
         detalhes,
         fechavel: false,
       }));

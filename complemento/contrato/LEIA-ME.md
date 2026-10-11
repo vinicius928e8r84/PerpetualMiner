@@ -91,10 +91,13 @@ Por isso (decisão do dono, opção B):
    esse apagamento pode seguir à conta no próximo sync. A migração exige prova exata do valor já guardado.
    Uma chave sem conta (inclusive `conta: ''`) não é vinculada/exportada só por pedir sync: requer nova confirmação explícita.
    A sincronização recebe UID e bearer transitórios e fala com o Firestore, cujas regras devem restringir cada UID (P6).
-   **Known limit #192:** um listener impostor na porta de loopback pode receber o bearer e ler os dados desse UID,
+   **Known limit #192:** um listener impostor na porta de loopback pode receber o bearer e ler, gravar e apagar os dados desse UID,
    inclusive sua chave na nuvem. Um cliente local pode forjar Origin; regras own-UID não autenticam esse cliente.
    É preciso confiar nos processos locais até o pareamento autenticar **ambos os lados**, antes do lançamento.
-   Esta PR não vai ao ar nem implementa/certifica o #192; o teste HTTP P1 nomeia a recusa de exportação sem vínculo.
+   As mudanças chegam às instalações de teste que seguem a `main`; a Chrome Web Store só recebe esta versão depois
+   do #192 e do P6. O pareamento não está implementado/certificado; o teste HTTP P1 nomeia a recusa de exportação sem vínculo.
+   **N-9, Known limit:** no legado divergente, a prova recusada pode reenviar a chave legada inteira ao loopback a cada
+   saúde (~15 s) enquanto o painel permanece aberto. Isso aumenta a janela do listener impostor; não é proteção de pareamento.
 4. A primeira rota de leitura sensível (os Baralhos, os números e o vocabulário) seguiu a regra do 2: são POST
    com a origem da extensão, e o limite do 3 está nomeado em um teste. O reforço com um token de pareamento (a
    extensão o recebe por um POST e o manda nos pedidos) é o #192 e não foi feito.

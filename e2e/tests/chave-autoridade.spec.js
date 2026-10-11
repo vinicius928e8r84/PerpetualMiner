@@ -4,6 +4,10 @@
 // é o valor exibido. Só chaves fictícias. UI nativa + estado guardado.
 const { test, expect } = require('../fixtures');
 const { fotografar } = require('../evidencias-mineracao');
+const { chromium } = require('@playwright/test');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const CHAVE = 'sk-fake-autoridade-primeira-aaaa';
 async function segredosLocais(page) {
   return page.evaluate(() => new Promise((resolve, reject) => {
@@ -29,6 +33,99 @@ async function confirmar(page, chave) {
   await campo(page).fill(chave);
   await card(page).getByRole('button', { name: 'Conferir e salvar' }).click();
 }
+
+test('K1: a saúde de dois perfis A e B só lê o dono, sem pingue-pongue de sync', async ({ page, extensao, fakes }) => {
+  test.slow(); // dois processos Chromium/perfis, não duas abas do mesmo perfil
+  await page.clock.install();
+  await page.clock.pauseAt(new Date(Date.now() + 60_000));
+  await extensao.semearSessao({ uid: 'A' });
+  fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE, em: 100 });
+  await abrir(page, extensao);
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-perfil-B-'));
+  const raiz = path.resolve(__dirname, '../..');
+  const outro = await chromium.launchPersistentContext(pasta, {
+    channel: 'chromium', headless: true,
+    env: { ...process.env, FONTCONFIG_FILE: path.join(__dirname, '../fontconfig/fonts.conf') },
+    args: [`--disable-extensions-except=${raiz}`, `--load-extension=${raiz}`, '--no-proxy-server'],
+  });
+  try {
+    await outro.route(/^https?:/, route => route.abort('blockedbyclient'));
+    for (const fake of Object.values(fakes)) if (fake.padrao) await outro.route(fake.padrao, fake.tratar);
+    const sw = outro.serviceWorkers()[0] || await outro.waitForEvent('serviceworker');
+    await expect.poll(() => outro.pages().some(p => p.url().includes('painel.html'))).toBe(true);
+    for (const instalada of outro.pages()) await instalada.close();
+    // Fronteira de armazenamento de outro perfil real, não outra aba com a mesma sessão.
+    await sw.evaluate(async () => {
+      await chrome.storage.local.set({ pm_user_info: { uid: 'B', displayName: 'Pessoa B' } });
+      await chrome.storage.local.remove('pm_boas_vindas');
+      await new Promise((resolve, reject) => {
+        const req = indexedDB.open('pm-sessao', 1);
+        req.onupgradeneeded = () => req.result.createObjectStore('sessao');
+        req.onerror = () => reject(req.error);
+        req.onsuccess = () => {
+          const db = req.result, tx = db.transaction('sessao', 'readwrite'), loja = tx.objectStore('sessao');
+          loja.put(true, 'migrada');
+          loja.put({ uid: 'B', idToken: 'token-teste', refreshToken: 'refresh-teste', expiresAt: Date.now() + 3600000 }, 'firebase');
+          tx.oncomplete = () => { db.close(); resolve(); };
+          tx.onerror = () => { db.close(); reject(tx.error); };
+        };
+      });
+    });
+    const b = await outro.newPage();
+    await b.clock.install();
+    await b.clock.pauseAt(new Date(Date.now() + 60_000));
+    await abrir(b, extensao);
+    await expect(b.locator('#shell-chip')).toContainText('Sincronizado agora');
+    const dono = fakes.anki.estadoDaChave();
+    const syncs = () => fakes.anki.requisicoes.filter(r => r.caminho === '/ia/openai/sincronizar').length;
+    const antes = syncs();
+    for (let n = 0; n < 4; n++) {
+      for (const tela of [page, b]) {
+        const lida = tela.waitForResponse(r => r.url().endsWith('/ia/estado'));
+        await tela.clock.runFor(16000);
+        await (await lida).finished();
+      }
+    }
+    await expect(resumo(page)).toHaveText('Sem chave');
+    expect(fakes.anki.estadoDaChave()).toEqual(dono);
+    expect(syncs()).toBe(antes);
+    expect(fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
+    expect(fakes.google.chaveDaOpenAIDe('B')).toBeNull();
+    expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.conta).toBe('B');
+  } finally { await outro.close(); fs.rmSync(pasta, { recursive: true, force: true }); }
+});
+
+test('K2: o legado do main com conta A oferece Trocar chave, não um retry sem saída', async ({ page, extensao, fakes }) => {
+  const antiga = 'sk-proj-guardada-antes-aaaa';
+  fakes.anki.guardarChaveNaConexao('aaaa');
+  fakes.google.gravarChaveDaOpenAI('A', { chave: antiga, em: 100 });
+  await extensao.semearSessao({ uid: 'A' });
+  await page.goto(extensao.url('manifest.json'));
+  await page.evaluate(chave => new Promise((resolve, reject) => {
+    const req = indexedDB.open('pm-segredos', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('chaves');
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result, tx = db.transaction('chaves', 'readwrite');
+      tx.objectStore('chaves').put(chave, 'openai');
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    };
+  }), antiga);
+  await page.goto(extensao.url('painel.html#configuracoes/conta'));
+  const conta = page.locator('#cfg-conta');
+  await expect(conta).toContainText('cole a mesma chave de novo');
+  await conta.getByRole('button', { name: 'Trocar chave', exact: true }).click();
+  await expect(campo(page)).toBeVisible();
+  await expect(campo(page)).toBeFocused();
+  await confirmar(page, antiga);
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
+  expect(fakes.anki.estadoDaChave().conta).toBe('A');
+  expect(fakes.google.chaveDaOpenAIDe('A')?.chave === antiga).toBe(true);
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.conta).toBe('A');
+  expect(await segredosLocais(page)).toEqual([]);
+});
 
 test('P1 legado: migrar o cache de A com B aberta não vincula o segredo a B', async ({ page, extensao, fakes }) => {
   const legado = 'sk-proj-guardada-antes-aaaa';

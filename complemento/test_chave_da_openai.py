@@ -325,6 +325,12 @@ class PedidoQueOProtocoloRecusa(unittest.TestCase):
 class AutoridadeVersionada(unittest.TestCase):
     """Opção B: o cliente observa a revisão; só o cofre a muda após aceitar."""
 
+    def test_estado_versionado_identifica_o_protocolo_que_exige_atualizar_o_complemento(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            self.assertEqual(json.loads(conexao.pedir('GET', '/health')[2])['versao'], '0.2.0')
+            self.assertEqual(json.loads(conexao.pedir('POST', '/ia/estado')[2])['openai'],
+                {'configurada': False, 'conta': '', 'versao': 0, 'naoEnviada': False})
+
     def test_P1_chave_sem_conta_nao_sai_para_A_ou_B_sem_nova_confirmacao(self):
         # #192: este cliente HTTP não é autenticado só por declarar ORIGEM.
         # Mesmo assim, sync não pode exportar a chave local para o UID que ele pede.

@@ -4,6 +4,15 @@ Objetivo: o PerpetualMiner instalado da loja, com link privado (visibilidade **N
 
 Enquanto a loja não aprova, use o caminho da pasta descompactada: [instalar-extensao.md](instalar-extensao.md). Ela tem o mesmo ID do item.
 
+## Gate de publicação: #192 e P6
+
+As mudanças da chave chegam automaticamente às instalações de teste que seguem a `main`, não equivalem a uma publicação segura na loja. **Não publicar esta versão na Chrome Web Store antes de:**
+
+- **#192:** pareamento que autentique cliente e listener do loopback; Origin não autentica processos locais. Um listener impostor pode receber o bearer e ler, gravar e apagar dados do UID, inclusive a chave na nuvem.
+- **P6 (dono):** regras Firestore reais, publicadas e comprovadas: próprio UID lê/escreve; outros UIDs e pedidos sem autenticação são recusados. Fakes/CI não encerram esse gate.
+
+Atualize primeiro a Conexão com o Anki para **0.2.0** (abra o `.ankiaddon` desta extensão no Anki e reinicie), depois a extensão. Usuários do main com chave e conta precisam colar/conferir a mesma chave de novo na conta escolhida; o aviso oferece Trocar chave, não um retry de migração sem vínculo. Se não guardaram a chave, criam outra na OpenAI. Limites: [nota de ameaça](seguranca/chave-da-openai.md).
+
 ## 1. Conta de desenvolvedor (uma vez)
 
 1. Entre em <https://chrome.google.com/webstore/devconsole> com a conta Google que será a dona do item.
