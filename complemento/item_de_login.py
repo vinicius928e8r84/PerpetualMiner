@@ -78,19 +78,25 @@ def deste_computador(*, plataforma, ambiente, executavel, existe=os.path.exists)
         return ItemDeLogin(sistema="mac", pasta=pasta, comando=_como_abrir_no_mac(ambiente, executavel))
     if plataforma == "win32":
         inicializar = ntpath.join(ambiente.get("APPDATA", ""), "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
-        return ItemDeLogin(sistema="windows", pasta=inicializar, comando=_como_abrir_no_windows(ambiente, executavel, existe))
+        return ItemDeLogin(sistema="windows", pasta=inicializar, comando=programa_do_anki_no_windows(ambiente, executavel, existe))
+    return None
+
+
+def aplicativo_do_anki_no_mac(ambiente, executavel):
+    """O `.app` de onde o Anki roda (pelo abridor do Anki novo ou pelo programa que roda o complemento), ou None."""
+    for caminho in (ambiente.get("ANKI_LAUNCHER"), executavel):
+        if caminho and ".app/" in caminho:
+            return caminho[: caminho.index(".app/") + len(".app")]
     return None
 
 
 def _como_abrir_no_mac(ambiente, executavel):
     """Abre o aplicativo de onde o Anki roda; sem saber qual é, o aplicativo que o sistema conhece por “Anki”."""
-    for caminho in (ambiente.get("ANKI_LAUNCHER"), executavel):
-        if caminho and ".app/" in caminho:
-            return ["/usr/bin/open", caminho[: caminho.index(".app/") + len(".app")]]
-    return ["/usr/bin/open", "-a", "Anki"]
+    aplicativo = aplicativo_do_anki_no_mac(ambiente, executavel)
+    return ["/usr/bin/open", aplicativo] if aplicativo else ["/usr/bin/open", "-a", "Anki"]
 
 
-def _como_abrir_no_windows(ambiente, executavel, existe):
+def programa_do_anki_no_windows(ambiente, executavel, existe=os.path.exists):
     """O programa do Anki: o abridor que o próprio Anki diz, o que roda o complemento, ou onde o instalador o põe."""
     abridor = ambiente.get("ANKI_LAUNCHER")
     if abridor:

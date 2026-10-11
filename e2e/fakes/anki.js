@@ -341,10 +341,9 @@ function criarFakeAnki() {
     return naFilaDaChave(async () => {
       const { uid, token, versao = 0 } = JSON.parse(req.postData());
       if (versao !== estado.versaoDaChave) return { status: 409, json: { error: 'stale_key_version' } };
-      if (estado.chaveDaOpenAI && estado.contaDaChave === null) return { status: 409, json: { error: 'legacy_key_unbound' } };
+      if (estado.chaveDaOpenAI && !estado.contaDaChave) return { status: 409, json: { error: 'legacy_key_unbound' } };
       if (estado.contaDaChave && estado.contaDaChave !== uid && estado.chaveNaoEnviada) return { status: 409, json: { error: 'other_account_unsent' } };
       if (estado.contexto.cofre === 'sem_escrita') return { status: 500, json: { error: 'internal_error' } };
-      if (estado.chaveDaOpenAI && !estado.contaDaChave) mudarChave(estado.chaveDaOpenAI, uid, estado.horaDaChave || 1);
       if (estado.contexto.firebase) return { status: estado.contexto.firebase,
         json: { error: 'cloud_sync_failed', status: estado.contexto.firebase } };
       const remota = estado.google ? await estado.google.pedidoDaConexao('GET', uid, token) : { status: 404 };

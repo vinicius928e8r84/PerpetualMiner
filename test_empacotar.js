@@ -83,5 +83,17 @@ assert.deepStrictEqual(
   'os hosts do bloco "Host permission use" do guia da loja diferem dos do manifest'
 );
 
+// “Abrir o Anki sozinho” (#147): o abridor é chamado por Native Messaging, e `nativeMessaging` é uma
+// permissão com aviso. Obrigatória, ela desativaria a extensão de quem já instalou até a pessoa aceitar o
+// aviso novo; opcional, ela só é pedida quando a pessoa aperta Permitir abrir o Anki.
+for (const [onde, manifesto] of [['do repositório', manifestoDoRepo], ['do zip', manifestoDoZip]]) {
+  assert(!(manifesto.permissions || []).includes('nativeMessaging'),
+    `o manifest ${onde} pede nativeMessaging como obrigatória: a extensão de quem já instalou seria desativada`);
+  assert.deepStrictEqual(manifesto.optional_permissions, ['nativeMessaging'],
+    `o manifest ${onde} tem de pedir nativeMessaging como permissão opcional, e só ela`);
+}
+assert(/\| `nativeMessaging` \(opcional\) \|/.test(guiaDaLoja),
+  'falta a justificativa de `nativeMessaging` (opcional) na tabela de permissões de docs/publicar-chrome-web-store.md');
+
 fs.rmSync(saida, { recursive: true, force: true });
 console.log('empacotar tests passed');

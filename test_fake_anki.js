@@ -84,6 +84,17 @@ async function conferirACopiaDaChave() {
   assert.deepStrictEqual(estado.json, { openai: { configurada: true, ultimos4: '7c2e', conta: '', versao: 1, naoEnviada: true } });
   assert.ok(!JSON.stringify(estado).includes(chave));
 
+  // A IA é do dono da Conexão, não do perfil do Anki (MATRIZ HTTP: le_o_perfil=false).
+  aceita.abrirPerfil(null);
+  assert.deepStrictEqual(await pedir(aceita, '/ia/estado', {}), estado);
+  assert.strictEqual(aceita.chaveNaConexao(), chave);
+  const semPerfilNemChave = criarFakeAnki();
+  semPerfilNemChave.abrirPerfil(null);
+  assert.deepStrictEqual(await pedir(semPerfilNemChave, '/ia/estado', {}), {
+    status: 200, json: { openai: { configurada: false, conta: '', versao: 0, naoEnviada: false } },
+  });
+  assert.strictEqual(semPerfilNemChave.chaveNaConexao(), null);
+
   const recusada = criarFakeAnki();
   recusada.responderOpenAI('recusa');
   assert.strictEqual((await pedir(recusada, '/ia/openai/chave', { chave })).status, 401);

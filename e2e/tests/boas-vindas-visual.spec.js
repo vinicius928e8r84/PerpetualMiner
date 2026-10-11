@@ -23,6 +23,8 @@ const { test, expect } = require('../fixtures');
 // não estão na árvore e as antigas do passo 4 ficam sem uso. Elas estão no commit 59d3d04
 // (e2e/tests/boas-vindas-visual.spec.js-snapshots/passo-4-*-linux.png). Aprovando: tirar o `fixme` e
 // `npx playwright test boas-vindas-visual --update-snapshots -g "passo 4"`.
+// #147: os passos da Conexão ganharam o 3º, Abrir o Anki sozinho (ONB-17); com a Conexão ligada, o passo 4 abre nele. As
+// propostas dele também são `test.fixme`, para o dono aprovar olhando.
 
 const UMA_FRASE = [{ id: 1, texto: 'Old news', data: '01/09/2026', streaming: 'web', idioma: 'Inglês' }];
 const SELECAO_EM_ALT_Q = { type: 'keyboard', code: 'KeyQ', button: null, altKey: true, ctrlKey: false, shiftKey: false, label: 'Alt+Q' };
@@ -116,6 +118,26 @@ test.fixme('passo 4 com a Conexão ligada: Achei o Anki, com o perfil e a versã
   await expect(page.locator('.bv-card').getByRole('status')).toHaveText(/^Achei o Anki · Usuário 1 · versão /);
   await page.evaluate(() => document.fonts.ready);
   await foto(page, 'passo-4-ligada.png');
+});
+
+test.fixme('passo 4, Abrir o Anki sozinho: Permitir abrir o Anki e Agora não', async ({ page, extensao, fakes }) => {
+  await abrir(page, extensao, 'anki');
+  fakes.anki.ligar();
+  await page.locator('.bv-card').getByRole('button', { name: 'Reiniciar o Anki' }).click();
+  await page.locator('#bv4-tentar').click();
+  await expect(page.locator('#bv4-passo-titulo')).toHaveText('Abrir o Anki sozinho');
+  await foto(page, 'passo-4-abridor.png');
+});
+
+test.fixme('passo 4, Abrir o Anki sozinho depois de Agora não', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ pm_abridor: { agoraNao: true } });
+  await abrir(page, extensao, 'anki');
+  fakes.anki.ligar();
+  await page.locator('.bv-card').getByRole('button', { name: 'Reiniciar o Anki' }).click();
+  await page.locator('#bv4-tentar').click();
+  await page.locator('.bv-card').getByRole('button', { name: /^Abrir o Anki sozinho/ }).click();
+  await expect(page.locator('#bv4-abridor-status')).toHaveText(/^Sem essa permissão/);
+  await foto(page, 'passo-4-abridor-agora-nao.png');
 });
 
 // AGUARDANDO A APROVAÇÃO DO DONO (CODING_STANDARDS regra 10): o passo 5 (o card IA dos cartões) é tela nova; a

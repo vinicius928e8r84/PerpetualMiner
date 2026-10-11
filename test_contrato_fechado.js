@@ -76,6 +76,21 @@ async function main() {
     /não saiu de PedidoAoAnki/);
   assert.throws(() => PedidoAoAnki.estatisticas(BARALHOS, { deNovo: false, abrirOAnki: true }), /leitura dos números sem exemplo no contrato/);
 
+  // O abridor (#147) não é HTTP, é Native Messaging, mas o contrato é o mesmo: cada mensagem que a extensão
+  // manda nasce de `PerpetualMiner.Abridor` (lib/abridor.js), e o contrato tem um exemplo `daExtensao` de cada.
+  const doAbridor = vm.createContext({});
+  doAbridor.globalThis = doAbridor;
+  vm.runInContext(fs.readFileSync(path.join(__dirname, 'lib', 'abridor.js'), 'utf8'), doAbridor);
+  const { Abridor } = doAbridor.PerpetualMiner;
+  assert.strictEqual(Abridor.HOST, contrato.abridor.host, 'a extensão chama o host que a Conexão registra');
+  const mensagens = Abridor.variantes();
+  assert.ok(mensagens.length >= 1, 'a extensão manda ao menos o conferir');
+  for (const { nome, mensagem } of mensagens) {
+    assert.ok(contrato.abridor.exemplos.some(e => e.daExtensao && isDeepStrictEqual(e.mensagem, comoValores(mensagem))),
+      `A extensão manda ao abridor "${nome}" (${JSON.stringify(mensagem)}) e o contrato (complemento/contrato/exemplos.json › abridor) `
+      + 'não tem um exemplo dela (daExtensao: true). Escreva o exemplo; o script de verdade e o fake do e2e leem o mesmo arquivo.');
+  }
+
   console.log('contrato fechado tests passed');
 }
 

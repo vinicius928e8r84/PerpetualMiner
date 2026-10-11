@@ -83,10 +83,18 @@ Por isso (decisão do dono, opção B):
    cabeçalho, e um programa local também. **Limite aceito pelo dono no PR #190, a ser reforçado pelo ticket #192
    (credencial de pareamento, confirmada no Anki) antes do lançamento:** hoje um processo local que declara a
    origem da extensão lê o vocabulário pelas rotas privadas. `test_servidor.py` mostra isso com um cliente fora do navegador
-   e passa a exigir a credencial quando o #192 entrar. As rotas da chave da OpenAI (`POST /ia/openai/chave`,
-   `POST /ia/openai/chave/apagar`, `POST /ia/estado`) têm o mesmo limite, com o dano menor: **nenhuma devolve a chave inteira** (só os 4 últimos
-   caracteres), então um processo local que forjasse a origem consegue gravar uma chave (que a OpenAI confere), apagar a cópia
-   da Conexão (a extensão a entrega de novo quando confere a cópia) ou saber se há uma e como ela termina, nunca lê-la.
+   e passa a exigir a credencial quando o #192 entrar. Na Opção B, a Conexão é o único dono local da chave;
+   a extensão não guarda uma segunda cópia nem restaura a apagada. As rotas `POST /ia/openai/chave`,
+   `/ia/openai/chave/apagar`, `/ia/estado`, `/ia/openai/legado` e `/ia/openai/sincronizar` têm o mesmo limite.
+   Nenhuma resposta HTTP devolve a chave inteira, mas isso **não é autenticação do cliente nem do listener**:
+   um cliente local com Origin forjado lê máscara/UID/revisão, grava uma chave aceita pela OpenAI ou apaga o dono;
+   esse apagamento pode seguir à conta no próximo sync. A migração exige prova exata do valor já guardado.
+   Uma chave sem conta (inclusive `conta: ''`) não é vinculada/exportada só por pedir sync: requer nova confirmação explícita.
+   A sincronização recebe UID e bearer transitórios e fala com o Firestore, cujas regras devem restringir cada UID (P6).
+   **Known limit #192:** um listener impostor na porta de loopback pode receber o bearer e ler os dados desse UID,
+   inclusive sua chave na nuvem. Um cliente local pode forjar Origin; regras own-UID não autenticam esse cliente.
+   É preciso confiar nos processos locais até o pareamento autenticar **ambos os lados**, antes do lançamento.
+   Esta PR não vai ao ar nem implementa/certifica o #192; o teste HTTP P1 nomeia a recusa de exportação sem vínculo.
 4. A primeira rota de leitura sensível (os Baralhos, os números e o vocabulário) seguiu a regra do 2: são POST
    com a origem da extensão, e o limite do 3 está nomeado em um teste. O reforço com um token de pareamento (a
    extensão o recebe por um POST e o manda nos pedidos) é o #192 e não foi feito.
@@ -120,3 +128,15 @@ o complemento só existe com o Anki aberto. A Conexão de hoje (`bridge/`) atend
    (um `contexto` novo, uma fila) pedem código no fake.
 4. Uma rota que já existe na Conexão de hoje (`bridge/server.py`) entra com o formato que a
    extensão já lê; a regra é a de “o mesmo contrato HTTP”, e o exemplo é a prova.
+
+## O abridor (Native Messaging)
+
+O abridor (#147, `complemento/abridor.py`) não fala HTTP: a extensão o chama por `chrome.runtime.sendNativeMessage`
+(`com.perpetualminer.abridor`), com a permissão opcional `nativeMessaging`. O contrato é o mesmo arquivo, na seção `abridor`:
+cada exemplo tem o `contexto` (`anki`: `no_lugar` ou `sumiu`, o Anki no lugar que a Conexão anotou ou não), a `mensagem` que o
+Chrome entrega e a `resposta` do script. Os três lados leem os mesmos exemplos:
+
+- **o script de verdade**: `complemento/test_abridor.py` roda o `.sh` do Mac com cada exemplo (no Linux, só a CLI do JXA é adaptada para Node, executando o mesmo parser JavaScript; no Mac, `/usr/bin/osascript`), e o `.ps1` do Windows onde houver `pwsh`. A ação é a string principal exata `conferir` ou `abrir`: espaços internos, maiúsculas, ação aninhada e listas voltam `acao_desconhecida` sem abrir nada; os exemplos inválidos são compartilhados entre os dois sistemas;
+- **o fake do e2e**: `e2e/fakes/abridor.js` responde pelos exemplos (`node test_fake_abridor.js` o confere);
+- **a extensão**: cada mensagem nasce de `PerpetualMiner.Abridor` (`lib/abridor.js`), e `node test_contrato_fechado.js` exige um exemplo
+  `daExtensao` de cada uma de `Abridor.variantes()`. Hoje a extensão só manda `conferir`; o `abrir` é do Envio (#150).

@@ -89,14 +89,13 @@
       for (const lugar of lugares) if (!lugar.trocando && !lugar.conferindo) desenhar(lugar);
       if (conexaoLigada) conferirACopia();
     });
-    // Quando a Conexão volta a responder, ela pode estar sem a cópia da chave que a extensão guarda.
+    // Cada saúde concluída relê o dono, inclusive uma aceitação tardia de outra página.
     ConexaoAnki.acompanhar(situacao => {
       if (situacao === ConexaoAnki.SITUACAO.CONECTANDO) return;
       const ligada = situacao === ConexaoAnki.SITUACAO.LIGADA;
-      const voltou = ligada && !conexaoLigada;
       conexaoLigada = ligada;
       if (ligada) {
-        if (voltou) conferirACopia();
+        conferirACopia();
       } else {
         // Sem resposta da Conexão o card não afirma nada sobre a cópia (C8): o que ficou na tela era de antes.
         rodada += 1;
@@ -263,7 +262,7 @@
   function notasDaChave(lugar, salva) {
     const notas = [];
     if (salva) {
-      notas.push(elemento('p', 'cfg-nota', textoDaVoz(estado.contaDaChave === null ? 'CFG-42.legado'
+      notas.push(elemento('p', 'cfg-nota', textoDaVoz(estado.contaDaChave === null || (estado.comConta && !estado.contaDaChave) ? 'CFG-42.legado'
         : estado.comConta && estado.contaDaChave && estado.contaDaChave !== estado.uid
           ? 'CFG-35.chaveDeOutraConta' : estado.comConta ? 'CFG-35.chaveNaConta' : 'CFG-35.chaveSemConta')));
       if (estado.copia !== null) {

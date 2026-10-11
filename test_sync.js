@@ -699,6 +699,19 @@ await (async () => {
   assert(getLocal(storageLocalA, { frases: [] }).frases.some(f => f.id === frase.id), 'a frase continua no local');
 })();
 
+head('CENÁRIO 26 — Tombstone local: o DELETE que falhou é repetido no próximo carregamento');
+sep();
+await (async () => {
+  resetState();
+  const frase = await capturarFrase(storageLocalA, 'Delete teimoso');
+  await deletarFrase(storageLocalA, frase.id, { firestoreFailure: true });
+  assert(getLocal(storageLocalA, { pm_deleted_ids: [] }).pm_deleted_ids.includes(String(frase.id)), 'id fica em pm_deleted_ids');
+
+  const vis = await carregarFrases(storageLocalA);
+  assert(!fraseVisivel(vis, 'Delete teimoso') && !idNoFirestore(frase.id), 'o retry apagou da nuvem');
+  assert(getLocal(storageLocalA, { pm_deleted_ids: [] }).pm_deleted_ids.length === 0, 'e limpou pm_deleted_ids');
+})();
+
 head('CENÁRIO 27 — Subir frases de uma vez: tira da fila de retry; a falha é devolvida');
 sep();
 await (async () => {

@@ -105,8 +105,21 @@ def _cartoes_do_baralho(colecao, nome):
     return cartoes
 
 
-def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA):
+def _ao_abrir_o_perfil(funcao):
+    """Roda `funcao` cada vez que um perfil abre no Anki (o gancho `profile_did_open`)."""
+    from aqt import gui_hooks
+
+    gui_hooks.profile_did_open.append(funcao)
+
+
+def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_abrir_o_perfil,
+                abridor=inicio.ABRIDOR_DESTE_COMPUTADOR):
     """O que o Anki faz ao importar o complemento: devolve a Conexão, ou None se ela não subiu."""
     return inicio.iniciar(
-        pasta_do_complemento, lambda: perfil_aberto(mw), porta=porta, colecao=LeitorDaColecaoDoAnki(mw)
+        pasta_do_complemento,
+        lambda: perfil_aberto(mw),
+        porta=porta,
+        colecao=LeitorDaColecaoDoAnki(mw),
+        ao_abrir_o_perfil=ao_abrir_o_perfil,
+        abridor=abridor,
     )

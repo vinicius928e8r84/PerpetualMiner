@@ -42,7 +42,8 @@ const statusDoCard = page => page.locator('#apv-status');
 const pontoDoCard = page => page.locator('#apv-ponto');
 const cardDaBoasVindas = page => page.locator('.bv-card');
 const statusDoPasso4 = page => cardDaBoasVindas(page).getByRole('status');
-const pontoDoPasso4 = page => cardDaBoasVindas(page).locator('.bv-status .bv-ponto');
+// O ponto da Conexão (o passo 3, Abrir o Anki sozinho, tem o ponto do abridor ao lado).
+const pontoDoPasso4 = page => cardDaBoasVindas(page).locator('#bv4-ponto');
 const tentarDoPasso4 = page => cardDaBoasVindas(page).getByRole('button', { name: 'Tentar de novo', exact: true });
 // O passo 4 abre no passo de pôr a Conexão, que espera sem dizer “desligada”: o status da Conexão está no de reiniciar.
 const irParaReiniciar = page => cardDaBoasVindas(page).getByRole('button', { name: 'Reiniciar o Anki', exact: true }).click();
@@ -108,6 +109,8 @@ test.describe('a mesma situação, a mesma tela', () => {
 
   test('ONB-16: tentar de novo durante o Pronto anuncia Conectando sem desfazer o marco', async ({ page, extensao, fakes }) => {
     fakes.anki.desligar();
+    // A pessoa já disse “Agora não” ao passo 3 (Abrir o Anki sozinho, #147): o Pronto vem logo que a Conexão responde.
+    await extensao.gravarStorage({ pm_abridor: { agoraNao: true } });
     const agora = new Date('2026-09-18T12:00:00');
     await page.clock.install({ time: agora });
     await page.clock.pauseAt(new Date(agora.getTime() + 1_000));
@@ -199,7 +202,7 @@ test.describe('Tentar de novo indisponível enquanto confere', () => {
     await expect(statusDoCard(page)).toHaveText(TEXTO.desligada);
     await expect(tentarDoCard(page)).not.toHaveAttribute('aria-disabled', 'true');
     await expect(tentarDoCard(page)).toBeFocused();
-    await expect(cardDaPrimeiraConexao(page)).toContainText('Como ligar · Passo 2 de 2');
+    await expect(cardDaPrimeiraConexao(page)).toContainText('Como ligar · Passo 2 de 3');
     expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
   });
 

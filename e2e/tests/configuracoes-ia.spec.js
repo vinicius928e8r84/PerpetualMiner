@@ -45,6 +45,25 @@ async function colarEConferir(page, chave = CHAVE) {
   await conferir(page).click();
 }
 
+test('N2: sem chave e sem Conexão opcional, só as frases sincronizam; ligar depois recebe a chave da conta', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await extensao.semearSessao({ uid: 'A' });
+  await abrirPainel(page, extensao, '#configuracoes/conta');
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
+  await expect(page.locator('#cfg-conta')).not.toContainText('Não deu para conferir a sincronização da chave');
+  expect(fakes.google.chaveDaOpenAIDe('A')).toBeNull();
+  expect(fakes.anki.estadoDaChave()).toEqual({ versao: 0, conta: '', em: 0, naoEnviada: false });
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai?.ultimos4 || '').toBe('');
+  fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE, em: 100 });
+  fakes.anki.ligar();
+  await page.reload();
+  await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
+  expect(fakes.anki.chaveNaConexao() === CHAVE).toBe(true);
+  expect(fakes.anki.estadoDaChave().conta).toBe('A');
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.ultimos4).toBe('9f3a');
+});
+
 test('sem chave: as duas entradas aparecem em colunas do mesmo tamanho e nada fica guardado', async ({ page, extensao }) => {
   await abrirPainel(page, extensao, '#configuracoes/ia');
 

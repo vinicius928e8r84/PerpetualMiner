@@ -322,7 +322,7 @@ test('passo 4: abre em pôr a Conexão no Anki, com o arquivo para baixar e nenh
   await abrirBoasVindas(page, extensao, 'anki');
 
   await expect(card(page)).toContainText('A Conexão com o Anki fica dentro do Anki, neste computador. É ela que cria os cartões e diz quais palavras você já conhece.');
-  await expect(passosDaConexao(page).getByRole('button')).toHaveText(['Pôr a Conexão no Anki', 'Reiniciar o Anki']);
+  await expect(passosDaConexao(page).getByRole('button')).toHaveText(['Pôr a Conexão no Anki', 'Reiniciar o Anki', 'Abrir o Anki sozinho']);
   await expect(passosDaConexao(page).getByRole('button', { name: /^Pôr a Conexão no Anki/ })).toHaveAttribute('aria-current', 'step');
   await expect(card(page)).toContainText('Baixe o arquivo e abra-o. Se o Anki estiver fechado, ele abre sozinho. Quando o Anki perguntar se você quer instalar, responda Sim.');
   await expect(card(page).getByRole('status')).toHaveText('Esperando a Conexão');

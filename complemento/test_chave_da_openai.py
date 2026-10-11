@@ -325,6 +325,28 @@ class PedidoQueOProtocoloRecusa(unittest.TestCase):
 class AutoridadeVersionada(unittest.TestCase):
     """Opção B: o cliente observa a revisão; só o cofre a muda após aceitar."""
 
+    def test_P1_chave_sem_conta_nao_sai_para_A_ou_B_sem_nova_confirmacao(self):
+        # #192: este cliente HTTP não é autenticado só por declarar ORIGEM.
+        # Mesmo assim, sync não pode exportar a chave local para o UID que ele pede.
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            self.assertEqual(enviar(conexao)[0], 200)
+            antes = conexao.conexao.cofre.documento('openai')
+            for uid in ('B', 'A'):
+                with self.subTest(uid=uid):
+                    status, _, corpo = conexao.pedir('POST', '/ia/openai/sincronizar',
+                        corpo={'uid': uid, 'token': 'token-ficticio-' + uid, 'versao': 1})
+                    self.assertEqual((status, json.loads(corpo)), (409, {'error': 'legacy_key_unbound'}))
+                    self.assertEqual(conexao.conexao.cofre.documento('openai'), antes)
+                    self.assertEqual(conexao.firestore.pedidos, [])
+                    self.assertEqual(conexao.firestore.documentos, {})
+            # Escolha explícita: colar/conferir na conta A, não apenas entrar nela.
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
+                corpo={'chave': CHAVE, 'versao': 1, 'conta': 'A'})[0], 200)
+            self.assertEqual(conexao.pedir('POST', '/ia/openai/sincronizar',
+                corpo={'uid': 'A', 'token': 'token-ficticio-A', 'versao': 2})[0], 200)
+            self.assertTrue(conexao.firestore.documentos['A']['chave']['stringValue'] == CHAVE)
+            self.assertNotIn('B', conexao.firestore.documentos)
+
     def test_N1_falha_posterior_nao_reserva_revisao_nem_desfaz_aceitacao(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             status, _, _ = conexao.pedir('POST', '/ia/openai/chave',

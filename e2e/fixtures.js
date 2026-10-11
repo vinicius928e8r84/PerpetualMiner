@@ -9,6 +9,8 @@
 // internet. A página de login do Google é a exceção de mecanismo, não de regra:
 // a janela do `chrome.identity` não passa pelo roteamento do Playwright, então o
 // nome accounts.google.com aponta para um servidor HTTPS local (fakes/login-google.js).
+// O abridor da Conexão com o Anki (#147) não é HTTP: é um host de Native Messaging, e o de
+// mentira (fakes/abridor.js) fica registrado no próprio perfil de teste, onde o Chromium o procura.
 
 const { test: base, expect, chromium } = require('@playwright/test');
 const fs = require('fs');
@@ -16,12 +18,14 @@ const http = require('http');
 const os = require('os');
 const path = require('path');
 
+const { criarFakeAbridor } = require('./fakes/abridor');
 const { criarFakeAnki } = require('./fakes/anki');
 const { criarFakeGemini } = require('./fakes/gemini');
 const { criarFakeGoogle } = require('./fakes/google');
 const { subirServidorDoLogin } = require('./fakes/login-google');
 
 const RAIZ_DA_EXTENSAO = path.resolve(__dirname, '..');
+const ID_DA_EXTENSAO = new URL(require('../complemento/contrato/exemplos.json').origemDaExtensao).host;
 const PASTA_DAS_PAGINAS = path.join(__dirname, 'pages');
 const PASTA_DA_VITRINE = path.join(__dirname, 'vitrine');
 
@@ -114,9 +118,16 @@ const test = base.extend({
 
   fakes: async ({}, use) => {
     const anki = criarFakeAnki(), google = criarFakeGoogle();
+    const abridor = criarFakeAbridor();
     anki.sincronizarCom(google);
-    await use({ anki, gemini: criarFakeGemini(), google });
+    await use({ anki, gemini: criarFakeGemini(), google, abridor });
+    abridor.limpar();
   },
+
+  // A permissão opcional `nativeMessaging` já dada, como o Chrome a guarda nas preferências do perfil
+  // depois de a pessoa apertar Permitir no aviso dele: o aviso é do Chrome e o Playwright não o alcança.
+  // Sem esta opção, a extensão chega como da loja: sem a permissão, e o pedido dela espera o aviso.
+  permissaoDoAbridor: [false, { option: true }],
 
   // A pasta que o Chromium carrega como extensão: a raiz do repositório, salvo num
   // teste que precisa mexer nos arquivos (a atualização automática usa uma cópia).
@@ -124,9 +135,18 @@ const test = base.extend({
     await use(RAIZ_DA_EXTENSAO);
   },
 
-  context: async ({ fakes, paginas, servidorDoLogin, pastaDaExtensao }, use) => {
+  context: async ({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor }, use) => {
     servidorDoLogin.atender(fakes.google.responderLogin);
     const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-e2e-'));
+    // O abridor que a Conexão com o Anki registraria no computador (o de mentira).
+    fakes.abridor.registrarNoPerfil(perfil);
+    if (permissaoDoAbridor) {
+      const dada = { api: ['nativeMessaging'], explicit_host: [], manifest_permissions: [], scriptable_host: [] };
+      fs.mkdirSync(path.join(perfil, 'Default'));
+      fs.writeFileSync(path.join(perfil, 'Default', 'Preferences'), JSON.stringify({
+        extensions: { settings: { [ID_DA_EXTENSAO]: { granted_permissions: dada, active_permissions: dada } } },
+      }));
+    }
     const context = await chromium.launchPersistentContext(perfil, {
       channel: 'chromium',
       headless: !process.env.HEADED,
@@ -147,7 +167,7 @@ const test = base.extend({
     const origensLocais = [paginas.origem, paginas.origemCruzada];
     await context.route(url => /^https?:$/.test(url.protocol) && !origensLocais.includes(url.origin),
       route => route.abort('blockedbyclient'));
-    for (const fake of Object.values(fakes)) await context.route(fake.padrao, fake.tratar);
+    for (const fake of Object.values(fakes)) if (fake.padrao) await context.route(fake.padrao, fake.tratar);
 
     await use(context);
     await context.close();
@@ -210,6 +230,8 @@ const test = base.extend({
       lerSessao: () => sessaoNoBanco(null),
       gravarSessao: sessaoNoBanco,
       gravarStorage,
+      /** Se a extensão tem a permissão do abridor (`nativeMessaging`), como o Chrome a guarda. */
+      permissaoDoAbridor: () => sw.evaluate(() => chrome.permissions.contains({ permissions: ['nativeMessaging'] })),
       /** O histórico de frases como está gravado (mais nova primeiro). */
       frases: async () => (await lerStorage({ frases: [] })).frases,
       /** Semeia uma sessão da conta no armazenamento, sem passar pelo login real. */

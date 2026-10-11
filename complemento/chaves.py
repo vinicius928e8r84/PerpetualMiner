@@ -120,15 +120,12 @@ class Cofre:
                     self._gravar(nome, atual)
                 return {'resultado': resultado, 'versao': atual.get('versao', 0)}
             chave = aqui.get('chave', '')
-            if chave and 'conta' not in aqui:
+            if chave and not aqui.get('conta'):
+                # Nem legado nem chave colada sem Google pertencem ao primeiro
+                # UID que pedir: a pessoa precisa conferir de novo naquela conta.
                 raise LegadoNaoVinculado()
             if aqui.get('conta') and aqui['conta'] != conta and aqui.get('naoEnviada', bool(chave)):
                 raise OutraContaNaoEnviada()
-            # A primeira tentativa já vincula o valor local ao UID capturado.
-            # Uma falha da nuvem não pode deixá-lo solto para a próxima conta.
-            if chave and not aqui.get('conta'):
-                self.guardar(nome, chave, aqui.get('versao', 0), conta, em=aqui.get('em') or 1)
-                aqui = self.documento(nome)
             remota = nuvem.ler()
             if not remota and not chave and not aqui.get('em'):
                 return confirmado(None) # uma leitura vazia não é uma mudança

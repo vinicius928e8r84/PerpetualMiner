@@ -73,13 +73,62 @@ test('legado divergente não vira outro dono: a tela lê a Conexão sem exportar
   }));
   await abrir(page, extensao);
   await expect(resumo(page)).toHaveText('••••••••bbbb');
-  await expect(card(page)).toContainText('chave antiga sem conta identificada');
+  await expect(card(page)).toContainText('chave sem conta identificada');
   await expect(card(page)).not.toContainText('Vai junto com a sua conta Google');
   expect(fakes.anki.estadoDaChave().conta).toBeNull();
   expect(fakes.anki.chaveNaConexao()?.endsWith('bbbb')).toBe(true);
   expect(fakes.google.chaveDaOpenAIDe('B')).toBeNull();
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.ultimos4).toBe('bbbb');
   expect((await segredosLocais(page)).includes('sk-fake-legado-aaaa')).toBe(true); // migração não concluída, sem perda silenciosa
+});
+
+test('A3: apagar chave também descarta o legado divergente após a escolha explícita', async ({ page, extensao, fakes }) => {
+  fakes.anki.guardarChaveNaConexao('bbbb');
+  await page.goto(extensao.url('manifest.json'));
+  await page.evaluate(() => new Promise((resolve, reject) => {
+    const req = indexedDB.open('pm-segredos', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('chaves');
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result, tx = db.transaction('chaves', 'readwrite'), loja = tx.objectStore('chaves');
+      loja.put('sk-fake-legado-aaaa', 'openai'); loja.put('A', 'openai-conta'); loja.put(100, 'openai-em');
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    };
+  }));
+  await abrir(page, extensao);
+  await expect(resumo(page)).toHaveText('••••••••bbbb');
+  await card(page).getByRole('button', { name: 'Apagar chave', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar chave', exact: true }).click();
+  await expect(resumo(page)).toHaveText('Sem chave');
+  expect(fakes.anki.chaveNaConexao()).toBeNull();
+  expect(await segredosLocais(page)).toEqual([]);
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.ultimos4).toBe('');
+});
+
+test('P1: uma chave sem conta não sobe ao abrir perfis A ou B; colar de novo em A é a escolha', async ({ page, extensao, fakes }) => {
+  await abrir(page, extensao);
+  await confirmar(page, CHAVE);
+  await expect(resumo(page)).toHaveText('••••••••aaaa');
+  expect(fakes.anki.estadoDaChave().conta).toBe('');
+  const antes = fakes.anki.estadoDaChave();
+  for (const uid of ['B', 'A']) {
+    await extensao.semearSessao({ uid });
+    await page.reload();
+    await expect(page.locator('#shell-chip')).toContainText('Sem sincronizar');
+    await expect(card(page)).toContainText('sem conta identificada');
+    await expect(card(page)).not.toContainText('Vai junto com a sua conta Google');
+    expect(fakes.anki.estadoDaChave()).toEqual(antes);
+    expect(fakes.google.chaveDaOpenAIDe(uid)).toBeNull();
+    expect(fakes.anki.chaveNaConexao() === CHAVE).toBe(true);
+  }
+  await card(page).getByRole('button', { name: 'Trocar chave' }).click();
+  await confirmar(page, CHAVE);
+  await expect.poll(() => fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
+  expect(fakes.google.chaveDaOpenAIDe('B')).toBeNull();
+  expect(fakes.anki.estadoDaChave().conta).toBe('A');
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.conta).toBe('A');
+  expect(await segredosLocais(page)).toEqual([]);
 });
 
 test('L1: abrir e reabrir com OpenAI fora do ar lê a chave da conta sem 409 permanente', async ({ page, extensao, fakes }) => {
@@ -187,6 +236,9 @@ test('F4: Apagar tudo limpa o dono, a conta e todas as cópias secretas do forma
 });
 
 test('o apagamento aceito não apaga da tela uma chave nova aceita enquanto a resposta espera', async ({ page, extensao, context, fakes }) => {
+  const instante = new Date();
+  await page.clock.install({ time: instante });
+  await page.clock.pauseAt(new Date(instante.getTime() + 60_000));
   await abrir(page, extensao);
   await confirmar(page, CHAVE);
   await expect(card(page).getByRole('button', { name: 'Trocar chave' })).toBeVisible();
@@ -208,7 +260,10 @@ test('o apagamento aceito não apaga da tela uma chave nova aceita enquanto a re
     await expect(card(outra).getByRole('button', { name: 'Trocar chave' })).toBeVisible();
     expect(fakes.anki.chaveNaConexao() === NOVA).toBe(true);
     liberar();
-    await expect(page.locator('.veio-toast').filter({ hasText: 'Chave da OpenAI apagada' })).toBeVisible();
+    // Sob uma espera longa, a resposta pode ter expirado. Aguarde o resultado
+    // terminal (sucesso ou incerteza), não apenas o cache atualizado pela outra aba.
+    await expect(page.locator('.veio-toast').filter({ hasText: 'Chave da OpenAI apagada' })
+      .or(card(page).getByRole('alert').filter({ hasText: 'Não deu para confirmar o apagamento' }))).toBeVisible();
     await expect(resumo(page)).toHaveText('••••••••bbbb');
     expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.ultimos4).toBe('bbbb');
     expect(fakes.anki.estadoDaChave().versao).toBe(3);
@@ -217,6 +272,9 @@ test('o apagamento aceito não apaga da tela uma chave nova aceita enquanto a re
 });
 
 test('R1: aceitação tardia depois de recarregar aparece no painel já aberto', async ({ page, extensao, context, fakes }) => {
+  const instante = new Date();
+  await page.clock.install({ time: instante });
+  await page.clock.pauseAt(new Date(instante.getTime() + 60_000));
   await abrir(page, extensao);
   let liberar, entrou;
   const espera = new Promise(resolve => { liberar = resolve; });
@@ -232,8 +290,18 @@ test('R1: aceitação tardia depois de recarregar aparece no painel já aberto',
     await pedidoEmVoo;
     await page.reload();
     await expect(resumo(page)).toHaveText('Sem chave');
+    await expect(page.locator('#shell-conexao-descricao')).toHaveText('Conexão com o Anki: ligada');
+    // A primeira leitura é vazia; não deixe a aceitação vencer por acaso o bootstrap.
+    const antes = page.waitForResponse(resposta => resposta.url().endsWith('/health'));
+    await page.clock.runFor(16000);
+    await antes;
+    await expect(resumo(page)).toHaveText('Sem chave');
     liberar();
-    await expect(resumo(page)).toHaveText('••••••••bbbb', { timeout: 20000 });
+    await expect.poll(() => fakes.anki.chaveNaConexao() === NOVA).toBe(true);
+    const depois = page.waitForResponse(resposta => resposta.url().endsWith('/health'));
+    await page.clock.runFor(16000);
+    await depois;
+    await expect(resumo(page)).toHaveText('••••••••bbbb');
     expect(fakes.anki.chaveNaConexao() === NOVA).toBe(true);
     expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.ultimos4).toBe('bbbb');
     expect(await segredosLocais(page)).toEqual([]);

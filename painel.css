@@ -1513,6 +1513,36 @@ body {
   color: var(--veio-muted);
 }
 
+/* O abridor (passo 3, Abrir o Anki sozinho): a linha do que ele disse, as ações e o Detalhes. */
+.pc-abridor {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--veio-border);
+}
+
+.pc-abridor[hidden],
+.pc-abridor .bv-status[hidden],
+.pc-abridor__acoes[hidden],
+.pc-abridor__acoes .veio-botao[hidden] {
+  display: none;
+}
+
+.pc-abridor__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pc-abridor .veio-aviso__detalhes {
+  margin: 0;
+}
+
+.pc-abridor .veio-aviso__detalhes > pre {
+  background: var(--veio-surface-2);
+}
+
 /* Dois minutos sem resposta: o checklist de 3 itens e Baixar de novo. */
 .pc-sem-resposta {
   display: grid;
