@@ -1253,10 +1253,12 @@ async function apagarChaveNoApagarTudo() {
     return !erroDaChave;
   } catch (erro) {
     avisoDaChaveNoApagarTudo?.remove();
+    const antiga = erro?.codigo === 'outdated_connection';
     avisoDaChaveNoApagarTudo = montarAviso({
-      texto: textoDaVoz('CFG-17.chaveNaoApagada'),
-      acao: { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: apagarChaveNoApagarTudo },
-      detalhes: erro?.name || 'storage_error', fechavel: false,
+      texto: textoDaVoz(antiga ? 'CFG-35.erroConexaoAntiga' : 'CFG-17.chaveNaoApagada'),
+      acao: antiga ? { rotulo: textoDaVoz('CFG-35.erroAtualizar'), aoUsar: () => PerpetualMiner.CartaoDaIA.baixarConexao() }
+        : { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: apagarChaveNoApagarTudo },
+      detalhes: erro?.codigo || erro?.name || 'storage_error', fechavel: false,
     });
     document.getElementById('cfg-perigo-corpo').append(avisoDaChaveNoApagarTudo);
     return false;

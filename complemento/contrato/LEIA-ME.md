@@ -96,8 +96,12 @@ Por isso (decisão do dono, opção B):
    É preciso confiar nos processos locais até o pareamento autenticar **ambos os lados**, antes do lançamento.
    As mudanças chegam às instalações de teste que seguem a `main`; a Chrome Web Store só recebe esta versão depois
    do #192 e do P6. O pareamento não está implementado/certificado; o teste HTTP P1 nomeia a recusa de exportação sem vínculo.
-   **N-9, Known limit:** no legado divergente, a prova recusada pode reenviar a chave legada inteira ao loopback a cada
-   saúde (~15 s) enquanto o painel permanece aberto. Isso aumenta a janela do listener impostor; não é proteção de pareamento.
+   **Known limit: legado não migrado.** Com a Conexão divergente **ou vazia**, a prova recusada pode reenviar a chave
+   legada inteira ao loopback a cada saúde (~15 s) enquanto o painel permanece aberto. O segredo continua no navegador,
+   aumentando a janela de captura por um listener impostor; a Conexão vazia não o recupera automaticamente.
+   O bearer só é enviado após `/ia/estado` responder no formato versionado completo. O bridge sem essa rota (404) não
+   recebe bearer: sem pendência não gera erro da chave; com pendência exige atualização. Isso verifica protocolo,
+   não autentica um listener impostor que imite o formato (#192).
 4. A primeira rota de leitura sensível (os Baralhos, os números e o vocabulário) seguiu a regra do 2: são POST
    com a origem da extensão, e o limite do 3 está nomeado em um teste. O reforço com um token de pareamento (a
    extensão o recebe por um POST e o manda nos pedidos) é o #192 e não foi feito.

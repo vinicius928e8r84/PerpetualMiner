@@ -67,6 +67,80 @@ for (const configurada of [false, true]) test(`K4: complemento antigo responde, 
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai?.ultimos4 || '').toBe('');
 });
 
+for (const tudo of [false, true]) test(`K4-delete: complemento antigo preserva legado e resumo ao ${tudo ? 'Apagar tudo' : 'Apagar chave'}`, async ({ page, extensao, fakes }) => {
+  fakes.anki.guardarChaveNaConexao('9f3a');
+  const dono = fakes.anki.estadoDaChave();
+  const antiga = fakes.anki.chaveNaConexao();
+  fakes.anki.responder('POST', '/ia/estado', () => ({ status: 200, json: { openai: { configurada: true, ultimos4: '9f3a' } } }));
+  await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' },
+    frases: [{ id: '123', text: 'A sentence to study.', lang: 'Inglês', source: 'manual', timestamp: Date.now() }] });
+  await page.goto(extensao.url('manifest.json'));
+  await page.evaluate(chave => new Promise((resolve, reject) => {
+    const req = indexedDB.open('pm-segredos', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('chaves');
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result, tx = db.transaction('chaves', 'readwrite');
+      tx.objectStore('chaves').put(chave, 'openai');
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    };
+  }), antiga);
+  await abrirPainel(page, extensao, `#configuracoes/${tudo ? 'perigo' : 'ia'}`);
+  await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+  const rotulo = tudo ? 'Apagar 1 frase' : 'Apagar chave';
+  await page.locator(tudo ? '#cfg-perigo' : '#cfg-ia').getByRole('button', { name: rotulo, exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: rotulo, exact: true }).click();
+  const aviso = (tudo ? page.locator('#cfg-perigo') : card(page)).getByRole('alert');
+  await expect(aviso).toContainText('Atualize a Conexão com o Anki');
+  await expect(aviso.getByRole('button', { name: 'Baixar atualização' })).toBeVisible();
+  await fotografar(aviso, `k4-delete-${tudo ? 'tudo' : 'chave'}.png`);
+  expect((await chaveNoBancoDaExtensao(page)) === antiga).toBe(true);
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai).toEqual({ ultimos4: '9f3a' });
+  expect(fakes.anki.chaveNaConexao() === antiga).toBe(true);
+  expect(fakes.anki.estadoDaChave()).toEqual(dono);
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/ia/openai/chave/apagar').length).toBe(0);
+  if (tudo) expect(await extensao.frases()).toEqual([]);
+  await page.reload();
+  await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+  expect((await chaveNoBancoDaExtensao(page)) === antiga).toBe(true);
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai).toEqual({ ultimos4: '9f3a' });
+});
+
+test('B1: bridge sem rotas da chave não recebe bearer nem cria falha sem pendência', async ({ page, extensao, fakes }) => {
+  for (const rota of ['/ia/estado', '/ia/openai/sincronizar']) {
+    fakes.anki.responder('POST', rota, () => ({ status: 404, json: { error: 'not_found' } }));
+  }
+  await extensao.semearSessao({ uid: 'A' });
+  await abrirPainel(page, extensao, '#configuracoes/conta');
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
+  await expect(page.locator('#cfg-conta').getByRole('alert')).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/ia/openai/sincronizar').length).toBe(0);
+  expect(fakes.anki.chaveNaConexao()).toBeNull();
+  expect(fakes.google.chaveDaOpenAIDe('A')).toBeNull();
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai?.ultimos4 || '').toBe('');
+});
+
+for (const pendente of [true, false]) test(`B1: só estado versionado libera bearer — ${pendente ? 'bridge com pendência' : 'resposta incompleta 200'}`, async ({ page, extensao, fakes }) => {
+  const cache = { ultimos4: '9f3a', conta: 'A', versao: 5, naoEnviada: true };
+  if (pendente) await extensao.gravarStorage({ pm_chave_openai: cache });
+  fakes.anki.responder('POST', '/ia/estado', () => pendente
+    ? { status: 404, json: { error: 'not_found' } }
+    : { status: 200, json: { openai: { configurada: false, versao: 1 } } });
+  await extensao.semearSessao({ uid: 'A' });
+  await abrirPainel(page, extensao, '#configuracoes/conta');
+  await expect(page.locator('#shell-chip')).toContainText('Sem sincronizar');
+  const aviso = page.locator('#cfg-conta').getByRole('alert');
+  await expect(aviso).toContainText(pendente ? 'Atualize a Conexão com o Anki' : 'A sincronização da chave ou seu apagamento não pôde ser conferida');
+  if (pendente) await expect(aviso.getByRole('button', { name: 'Baixar atualização' })).toBeVisible();
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/ia/openai/sincronizar').length).toBe(0);
+  expect(fakes.anki.chaveNaConexao()).toBeNull();
+  expect(fakes.google.chaveDaOpenAIDe('A')).toBeNull();
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai).toEqual(pendente ? cache : undefined);
+});
+
 test('K3: chave já replicada com o Anki fechado não acusa pendência nem perde a máscara', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'A' });
   fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE, em: 100 });

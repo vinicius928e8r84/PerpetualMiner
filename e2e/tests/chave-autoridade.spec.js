@@ -34,12 +34,15 @@ async function confirmar(page, chave) {
   await card(page).getByRole('button', { name: 'Conferir e salvar' }).click();
 }
 
-test('K1: a saúde de dois perfis A e B só lê o dono, sem pingue-pongue de sync', async ({ page, extensao, fakes }) => {
+for (const bComChave of [false, true]) test(bComChave
+  ? 'K1-delete: A vê a chave de B sem Apagar chave e não muda nenhuma das contas'
+  : 'K1: a saúde de dois perfis A e B só lê o dono, sem pingue-pongue de sync', async ({ page, extensao, fakes }) => {
   test.slow(); // dois processos Chromium/perfis, não duas abas do mesmo perfil
   await page.clock.install();
   await page.clock.pauseAt(new Date(Date.now() + 60_000));
   await extensao.semearSessao({ uid: 'A' });
   fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE, em: 100 });
+  if (bComChave) fakes.google.gravarChaveDaOpenAI('B', { chave: NOVA, em: 101 });
   await abrir(page, extensao);
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
   const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-perfil-B-'));
@@ -87,13 +90,73 @@ test('K1: a saúde de dois perfis A e B só lê o dono, sem pingue-pongue de syn
         await (await lida).finished();
       }
     }
-    await expect(resumo(page)).toHaveText('Sem chave');
+    await expect(resumo(page)).toHaveText(bComChave ? '••••••••bbbb' : 'Sem chave');
+    if (bComChave) {
+      await expect(card(page)).toContainText('Esta chave é de outra conta Google.');
+      await expect(card(page).getByRole('button', { name: 'Apagar chave', exact: true })).toHaveCount(0);
+      await fotografar(card(page), 'k1-chave-de-B-na-tela-de-A.png');
+      await card(page).getByRole('button', { name: 'Trocar chave', exact: true }).click();
+      await expect(campo(page)).toBeEmpty();
+    }
     expect(fakes.anki.estadoDaChave()).toEqual(dono);
     expect(syncs()).toBe(antes);
     expect(fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
-    expect(fakes.google.chaveDaOpenAIDe('B')).toBeNull();
+    if (bComChave) expect(fakes.google.chaveDaOpenAIDe('B')?.chave === NOVA).toBe(true);
+    else expect(fakes.google.chaveDaOpenAIDe('B')).toBeNull();
     expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.conta).toBe('B');
   } finally { await outro.close(); fs.rmSync(pasta, { recursive: true, force: true }); }
+});
+
+test('K1-delete: dono mudou para B durante o modal de A, confirmar não apaga nem cria tombstone de A', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: 'A' });
+  fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE, em: 100 });
+  fakes.google.gravarChaveDaOpenAI('B', { chave: NOVA, em: 101 });
+  await abrir(page, extensao);
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
+  await expect(resumo(page)).toHaveText('••••••••aaaa');
+  await card(page).getByRole('button', { name: 'Apagar chave', exact: true }).click();
+  // Mudança externa aceita enquanto a confirmação está aberta, não alteração
+  // de internals da extensão: o dono agora pertence a outro perfil.
+  fakes.anki.guardarChaveNaConexao('bbbb', 42, 'B', 101, false);
+  const dono = fakes.anki.estadoDaChave();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar chave', exact: true }).click();
+  await expect(card(page).getByRole('alert')).toContainText('Não deu para confirmar o apagamento');
+  await expect(resumo(page)).toHaveText('••••••••bbbb');
+  await expect(card(page).getByRole('button', { name: 'Apagar chave', exact: true })).toHaveCount(0);
+  expect(fakes.anki.estadoDaChave()).toEqual(dono);
+  expect(fakes.anki.chaveNaConexao()?.endsWith('bbbb')).toBe(true);
+  expect(fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
+  expect(fakes.google.chaveDaOpenAIDe('B')?.chave === NOVA).toBe(true);
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/ia/openai/chave/apagar').length).toBe(0);
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.conta).toBe('B');
+});
+
+test('K1-delete: Apagar tudo em A não apaga o dono de B nem a chave da nuvem de A', async ({ page, extensao, fakes }) => {
+  await page.clock.install();
+  await page.clock.pauseAt(new Date(Date.now() + 60_000));
+  const frases = [{ id: '123', text: 'A sentence to study.', lang: 'Inglês', source: 'manual', timestamp: Date.now() }];
+  await extensao.semearSessao({ uid: 'A' });
+  await extensao.gravarStorage({ frases });
+  fakes.google.gravarFrases('A', frases);
+  fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE, em: 100 });
+  fakes.google.gravarChaveDaOpenAI('B', { chave: NOVA, em: 101 });
+  await abrir(page, extensao);
+  await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
+  fakes.anki.guardarChaveNaConexao('bbbb', 42, 'B', 101, false);
+  const dono = fakes.anki.estadoDaChave();
+  await page.clock.runFor(16000);
+  await expect(resumo(page)).toHaveText('••••••••bbbb');
+  await page.getByRole('button', { name: 'Zona de perigo', exact: true }).click();
+  await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar 1 frase', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 1 frase', exact: true }).click();
+  await expect(page.locator('#cfg-perigo').getByRole('alert')).toContainText('não deu para conferir o apagamento da chave');
+  await expect(resumo(page)).toHaveText('••••••••bbbb');
+  expect(fakes.anki.estadoDaChave()).toEqual(dono);
+  expect(fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
+  expect(fakes.google.chaveDaOpenAIDe('B')?.chave === NOVA).toBe(true);
+  expect(fakes.google.frasesDe('A')).toEqual([]);
+  expect(await extensao.frases()).toEqual([]);
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.conta).toBe('B');
 });
 
 test('K2: o legado do main com conta A oferece Trocar chave, não um retry sem saída', async ({ page, extensao, fakes }) => {

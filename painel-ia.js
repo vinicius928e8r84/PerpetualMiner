@@ -194,11 +194,12 @@
     const apagar = botao('perigo', textoDaVoz('CFG-35.chaveApagar'), () => confirmarApagar(lugar));
     apagar.id = idDe(lugar, 'apagar');
 
+    const deOutraConta = estado.contaDaChave && estado.contaDaChave !== estado.uid;
     const linha = elemento('div', 'cfg-linha',
       elemento('div', 'cfg-quem',
         elemento('span', 'cfg-status', ponto, textoDaVoz('CFG-35.chaveSalva')),
         elemento('span', 'cfg-chave-mascarada cfg-chave-mascarada--card', mascarada())),
-      elemento('div', 'cfg-acoes', trocar, apagar));
+      elemento('div', 'cfg-acoes', trocar, ...(deOutraConta ? [] : [apagar])));
     return colunaDaChave(lugar, linha, ...notasDaChave(lugar, true));
   }
 
