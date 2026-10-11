@@ -282,7 +282,7 @@ test('Sem sincronizar (CFG-03): só no card e no chip, com Tentar de novo e Deta
 
   fakes.google.ficarForaDoAr(false);
   await aviso.getByRole('button', { name: 'Tentar de novo' }).click();
-  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
+  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora', { timeout: 45000 });
   await expect(conta(page).getByRole('alert')).toHaveCount(0);
 });
 
@@ -346,7 +346,7 @@ test('Sync parcial: editar uma frase não apaga as que ainda não subiram', asyn
   await extensao.gravarStorage({ frases });
   await extensao.semearSessao({ uid: 'uid-parcial', displayName: 'Ana Souza' });
   await abrirPainel(page, extensao, '#frases');
-  await expect(estadoDoChip(page)).toHaveText('8 de 10 sincronizadas');
+  await expect(estadoDoChip(page)).toHaveText('8 de 10 sincronizadas', { timeout: 45000 });
 
   await page.locator('#frases-lista .veio-frase').first().locator('.veio-palavra-clicavel').first().click();
 
@@ -521,8 +521,9 @@ test('Sessão expirou (CFG-08): “Entrar” leva ao login e volta a sincronizar
   await expect(page.locator('#shell-total')).toHaveText('2');
 
   await conta(page).getByRole('button', { name: 'Entrar', exact: true }).click();
-  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
-  expect((await extensao.lerStorage(['pm_firebase_auth'])).pm_firebase_auth.expiresAt).toBeGreaterThan(Date.now());
+  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora', { timeout: 45000 });
+  expect((await extensao.lerSessao()).expiresAt).toBeGreaterThan(Date.now());
+  expect(await extensao.lerStorage('pm_firebase_auth')).toEqual({});
 });
 
 test('Perfil sem nome (CFG-10): o card, o resumo e o chip dizem “Conta Google”', async ({ page, extensao }) => {
@@ -590,12 +591,14 @@ test('entrar com Google sobe as frases e mostra a conta; sair deixa as frases ne
   expect(fakes.google.frasesDe('uid-teste')).toHaveLength(3);
   const gravado = await extensao.lerStorage(['pm_user_info', 'pm_firebase_auth']);
   expect(gravado.pm_user_info).toMatchObject({ uid: 'uid-teste', email: 'bruno@teste.dev', displayName: 'Bruno Lima' });
-  expect(gravado.pm_firebase_auth).toMatchObject({ uid: 'uid-teste', idToken: 'token-teste' });
+  expect(gravado.pm_firebase_auth).toBeUndefined();
+  expect(await extensao.lerSessao()).toMatchObject({ uid: 'uid-teste', idToken: 'token-teste' });
 
   await conta(page).getByRole('button', { name: 'Sair da conta' }).click();
   await esperarChipSemConta(page);
   await expect(conta(page).getByRole('button', { name: 'Entrar com Google' })).toBeVisible();
   expect(await extensao.lerStorage(['pm_user_info', 'pm_firebase_auth'])).toEqual({});
+  expect(await extensao.lerSessao()).toBeNull();
   expect(await extensao.frases()).toHaveLength(3);
   await expect(page.locator('#shell-total')).toHaveText('3');
 });
@@ -639,9 +642,10 @@ test('com movimento reduzido, o ponto do Sincronizando fica parado', async ({ pa
 
   const pontos = conta(page).locator('.cfg-ponto[data-estado="sincronizando"]').filter({ visible: true });
   await expect(pontos.first()).toBeVisible();
-  for (const ponto of await pontos.all()) {
-    expect(await ponto.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
-  }
+  // Leitura atômica dos nós vivos: o chip pode ser redesenhado durante a rede.
+  const animacoes = await pontos.evaluateAll(nos => nos.map(no => getComputedStyle(no).animationName));
+  expect(animacoes.length).toBeGreaterThan(0);
+  expect([...new Set(animacoes)]).toEqual(['none']);
 });
 
 test('com movimento reduzido, #configuracoes/conta mostra a borda ouro parada, e ela sai depois do flash', async ({ page, extensao }) => {

@@ -6,6 +6,7 @@
 
 const assert = require('assert');
 const { criarFakeAnki, exemploDaExtensao, diferencaDoContrato } = require('./e2e/fakes/anki');
+const { criarFakeGoogle } = require('./e2e/fakes/google');
 
 const fake = criarFakeAnki();
 assert.deepStrictEqual(fake.respostaDoContrato('GET', '/health').json.perfil, 'Usuário 1');
@@ -33,7 +34,14 @@ async function conferirOsExemplos() {
     if (exemplo.contexto.perfil !== undefined) fakeDoExemplo.abrirPerfil(exemplo.contexto.perfil);
     if (exemplo.contexto.falhaNoPerfil) fakeDoExemplo.falharLeituraDoPerfil();
     if (exemplo.contexto.openai) fakeDoExemplo.responderOpenAI(exemplo.contexto.openai);
-    if (exemplo.contexto.chaveNaConexao) fakeDoExemplo.guardarChaveNaConexao(exemplo.contexto.chaveNaConexao);
+    if (exemplo.contexto.chaveNaConexao) fakeDoExemplo.guardarChaveNaConexao(exemplo.contexto.chaveNaConexao, exemplo.contexto.versaoNaConexao || 0,
+      exemplo.contexto.contaNaConexao ?? null, exemplo.contexto.emNaConexao || 0, exemplo.contexto.naoEnviada ?? true);
+    if (!exemplo.contexto.chaveNaConexao && exemplo.contexto.versaoNaConexao) fakeDoExemplo.guardarRemocaoNaConexao(exemplo.contexto.versaoNaConexao);
+    if (exemplo.contexto.firebase) fakeDoExemplo.responderFirebase(exemplo.contexto.firebase);
+    if (exemplo.contexto.cofre === 'sem_escrita') fakeDoExemplo.falharGravacaoDaChave();
+    const google = criarFakeGoogle();
+    fakeDoExemplo.sincronizarCom(google);
+    if ('chaveNaNuvem' in exemplo.contexto) google.gravarChaveDaOpenAI('uid-teste', { chave: exemplo.contexto.chaveNaNuvem, em: exemplo.contexto.emNaNuvem });
     if ('colecao' in exemplo.contexto) fakeDoExemplo.abrirColecao(exemplo.contexto.colecao);
     if (exemplo.contexto.itemDeLogin) fakeDoExemplo.definirItemDeLogin(exemplo.contexto.itemDeLogin);
     const entregue = await pedirAoFake(fakeDoExemplo, exemplo.pedido.metodo, exemplo.pedido.caminho, exemplo.pedido.corpo);
@@ -73,8 +81,19 @@ async function conferirACopiaDaChave() {
   assert.deepStrictEqual((await pedir(aceita, '/ia/openai/chave', { chave })).json, { ok: true, ultimos4: '7c2e' });
   assert.strictEqual(aceita.chaveNaConexao(), chave);
   const estado = await pedir(aceita, '/ia/estado', {});
-  assert.deepStrictEqual(estado.json, { openai: { configurada: true, ultimos4: '7c2e' } });
+  assert.deepStrictEqual(estado.json, { openai: { configurada: true, ultimos4: '7c2e', conta: '', versao: 1, naoEnviada: true } });
   assert.ok(!JSON.stringify(estado).includes(chave));
+
+  // A IA é do dono da Conexão, não do perfil do Anki (MATRIZ HTTP: le_o_perfil=false).
+  aceita.abrirPerfil(null);
+  assert.deepStrictEqual(await pedir(aceita, '/ia/estado', {}), estado);
+  assert.strictEqual(aceita.chaveNaConexao(), chave);
+  const semPerfilNemChave = criarFakeAnki();
+  semPerfilNemChave.abrirPerfil(null);
+  assert.deepStrictEqual(await pedir(semPerfilNemChave, '/ia/estado', {}), {
+    status: 200, json: { openai: { configurada: false, conta: '', versao: 0, naoEnviada: false } },
+  });
+  assert.strictEqual(semPerfilNemChave.chaveNaConexao(), null);
 
   const recusada = criarFakeAnki();
   recusada.responderOpenAI('recusa');

@@ -1,38 +1,37 @@
-# The AI card: the OpenAI key (Configurações › IA dos cartões)
+# IA dos cartões
 
-The card that sets up who writes the card text. Two entries side by side in equal columns: **Chave da OpenAI** (works) and **Conta do ChatGPT** (shown, button disabled, arrives with #155). A person pastes an OpenAI key; the Conexão com o Anki checks it against OpenAI and keeps a private copy; the card shows "Chave conferida" with the key masked (`••••••••9f3a`). The same card is step 5 of the Boas-vindas.
+Configurações › IA dos cartões and Boas-vindas step 5 mount the same card: OpenAI key works, ChatGPT login awaits #155. Copy is CFG-35/41/42. **Option B:** only the Conexão owns a local secret; the extension caches mask/UID/revision/unsent flag, never a second key.
 
-## Sub-features
+## Feature IDs and paths
 
-- `ia-card` Configurações › IA dos cartões: both columns the same size, the project-with-spending-limit and "revogue a chave" advice, the image-always-by-key line; below ~620 px the columns stack.
-- `ia-paste` paste the key, Conferir e salvar (or Enter): checked, masked, toast `Chave da OpenAI conferida e salva`, Trocar chave opens an empty field.
-- `ia-errors` chave recusada, sem crédito, organização não verificada, OpenAI fora do ar, Conexão sem responder: a strip across the card naming "Chave da OpenAI", what to do, and Detalhes; nothing is stored.
-- `ia-copy` the Conexão's copy: "A Conexão com o Anki tem uma cópia da chave", and re-delivery when the Conexão comes back without it.
-- `ia-storage` where the key lives: whole key only in the extension's IndexedDB (`pm-segredos`) and the Conexão's copy, only the last 4 characters in `chrome.storage.local` (`pm_chave_openai`), out of reach of the content script.
-- `ia-boas-vindas` the same card as Boas-vindas step 5 (`#boas-vindas/ia`), done when the key is checked.
+- `ia-card`: equal columns, advice on spending limit/revocation, image-by-key line; stacked below ~620 px.
+- `ia-paste`: paste/Enter, Conferir e salvar, masked summary/toast; Trocar chave opens empty.
+- `ia-errors`: refusal, credit, organization, OpenAI/Conexão unavailable; persistent entry-naming strip + retry/Detalhes, no false save.
+- `ia-copy`: read the real owner's nonsecret state on opening/reopening and every completed health check, including late acceptance without Google or reconnection. Accepted lost replies survive; identical replay is a read, not another validation or revision. Passive reads of another account do not trigger sync: `K1` uses two independent Chromium profiles sharing one Conexão; only an unsent change of the current session requests replication.
+- `ia-storage`: whole local key only in add-on `user_files/chaves/openai.json`; Chrome storage has one public cache, old `pm-segredos` is cleared during migration/wipe.
+- `ia-session-isolation`: Firebase bearer/refresh tokens in extension-origin IndexedDB `pm-sessao`, legacy readable credentials migrated/removed; content-script CDP proof.
+- `ia-account`: Conexão replicates `usuarios/{uid}/segredos/openai` through Firestore with transient bearer. Arrival, change (including same suffix) and deletion become the real owner; no repeated OpenAI check on download.
+- `ia-account-isolation`: failed A upload cannot move to B or silently discard A. Finish A's unsent change before automatic replacement by B (CFG-42); a synced A may be replaced by B's older key. An unbound key (including `conta: ''`) cannot go to the first requesting A/B profile: paste/check again in the chosen account. Exact-proof legacy UID migration prevents exporting an old A key to B; a divergent legacy is retained pending an explicit choice, but the screen shows the Conexão's mask and unbound-account hint. Cache failure after accepted deletion must not keep the old “Conexão guarda” claim; a newer accepted key during a held deletion reply remains visible.
+- `ia-optional`: no pending change or deletion, including an already-replicated key, + unavailable optional Conexão or today's bridge (`/ia/estado` 404) does not turn successful phrase sync into a key error; once supported/connected, cloud arrival still works. Pending changes with that bridge require update. Bearer is sent only after a complete versioned owner state, never on 404 or malformed 200; this is protocol detection, not #192 pairing.
+- `ia-upgrade`: main users with key + Google paste/check again in the chosen account; CFG-42 opens Trocar chave. Install add-on 0.2.0 first. A 0.1.0 state without revision/account/flag yields an update/download action, not a false no-response claim; no mutation is sent to that owner. Apagar chave/Apagar tudo check support before clearing legacy/cache, preserve the old mask through reload, and show update/download.
+- `ia-confirm-idempotent`: `chave-autoridade.spec.js -g K1-PC`: confirmar inicialmente e colar/conferir a mesma chave três vezes; v1 continua v1, dono/hora/flag/nuvem/cache não mudam, saúde não reconfirma nem dispara upload. Somente os quatro POSTs explícitos (inicial + três) são necessários para provar valor inteiro; não comparar sufixos/cachear segredo no cliente. HTTP/CAS real: `complemento/test_chave_da_openai.py` (`tres_reconfirmacoes`, `reconfirmar_preserva`). ACL Windows é Known limit, não testada/corrigida aqui.
+- `ia-delete`: a key bound to a different signed-in account offers only Trocar chave, not Apagar chave. Signed out, a linked key offers local-only deletion in both entry points, with no cloud key erased; login can bring the account's key back. Its note does not ask to link it again. Fresh owner read/CAS protects the signed-in foreign-owner case, including an already-open modal and Apagar tudo, from creating the current account's tombstone. Specific refusal copy explains what stayed and offers Trocar chave without retry; the wipe modal promises no key deletion in this case. For an eligible owner, explicit deletion also clears divergent legacy, without trying to bind it; danger outline + Veio modal; owner and account get empty value/new time. No per-UID marks. Apagar tudo clears every old secret copy, including `conta:<uid>`.
+- `ia-delete-failure`: persistent retry/Detalhes, partial wipe result; key sync outcome never hides phrase failure or authentication errors. CFG-41 does not claim an already-uploaded key never arrived.
 
-## How to get to it (user POV)
+## Driving and reading the actual values
 
-- Panel › Configurações › IA dos cartões, or `chrome-extension://<id>/painel.html#configuracoes/ia` (opens the card and focuses the field when there is no key).
-- Boas-vindas › step "Configurar a IA dos cartões" (`#boas-vindas/ia`).
+Launch/doctor/drive/cleanup: parent `SKILL.md`; heavy runs sequential under `/tmp/pm-heavy.lock`. Only fake keys. Never update visual snapshots without owner approval.
 
-## Driving it with the Playwright e2e harness
+- Card/paste/error/layout: `configuracoes-ia.spec.js -g 'sem chave:|colar a chave:|a OpenAI responde|com a Conexão desligada|abaixo de ~620 px'`.
+- Owner regressions: `chave-autoridade.spec.js` covers K1/K2 (independent profiles and exact main migration), N1, L1, R1 (abort/reload/late acceptance), same-suffix change/deletion, legacy P1 and F4. Check `fakes.anki.chaveNaConexao()`, `estadoDaChave()`, `fakes.google.chaveDaOpenAIDe(uid)` and `extensao.lerStorage('pm_chave_openai')`. `pm-segredos/chaves.getAll()` must have no secrets after completed migration/wipe.
+- Upgrade/delete/bridge: `configuracoes-ia.spec.js -g 'K4-delete:|B1:'` checks old store/cache retention and no bearer without versioned state. `chave-autoridade.spec.js -g 'K1-delete:'` checks two profiles, a changed owner during confirmation and partial Apagar tudo; both cloud keys must remain unchanged. `chave-autoridade.spec.js -g 'O1:'` signs out through the native UI before Apagar chave/Apagar tudo and checks a cleared local owner/cache/legacy, unchanged cloud keys/phrases and the local-only modal.
+- Pending/auth outcomes: `configuracoes-ia.spec.js -g 'N2:|N3:|R2:|F1:|S1:|S4:|PATCH recusado|trocar para B'`. The key cloud seam is now the add-on: `fakes.anki.responderFirebase(status)`; Firestore fake still owns shared cloud records and write refusals. Never intercept browser key-REST requests that no longer exist.
+- Isolation: `configuracoes-ia.spec.js -g 'o content script e o overlay não alcançam a chave'`; session tests in `configuracoes-conta.spec.js`. Read the isolated world over CDP, not only page-world storage.
+- Server: `PYTHON=python3.9 node scripts/testar.mjs complemento`, also 3.13. Real HTTP tests cover owner CAS, two add-ons with shared external Firestore, refused uploads, HTTP timeout/restart/replay and credential secrecy. `contrato-da-conexao.spec.js` / `test_fake_anki.js` share exact contract examples with the real add-on.
+- Unavailable Conexão: there is no second key to restore. Reads are uncertain and save/wipe cannot falsely declare success. Key-only failure leaves synced phrases true; phrase failure stays visible during key retry.
 
-Preconditions:
+## Boundaries and owner gates
 
-- `doctor.sh` green. The Conexão is the Anki fake: `fakes.anki.responderOpenAI('aceita' | 'recusa' | 'sem_credito' | 'org_nao_verificada' | 'limite_de_uso' | 'limite_so_no_pago' | 'fora_do_ar')` says how OpenAI answers the check, `fakes.anki.chaveNaConexao()` is the copy the Conexão kept (null: none), `fakes.anki.desligar()` makes it unreachable. It answers from `complemento/contrato/exemplos.json`, the same file the add-on's own tests read. Real OpenAI is never reached.
+Chromium/product modules and Python owner/HTTP are real in these tests; OpenAI, Firebase and the Anki collection are external fakes. This is **not** proof of real provider login/rules or two physical computers. P6 remains PENDING OWNER (own-UID read/write, cross-UID and unauthenticated refusal). Physical Mac/Windows/Anki/OpenAI/Google rehearsal and visual approval remain with owner.
 
-- **Card (`ia-card`).** `drive.sh ia-card configuracoes-ia.spec -g "sem chave: as duas entradas"`. Observable: both columns with equal width and top, the `Plus ou Pro` badge, the disabled `Continuar com o ChatGPT`, the closed-row summary `Sem chave`. Narrow: `-g "abaixo de ~620 px"`.
-- **Paste (`ia-paste`).** `-g "colar a chave: a Conexão a confere"`. Observable: `Chave conferida`, `••••••••9f3a`, the toast, the Conexão's copy equal to the pasted key, `pm_chave_openai` = `{ ultimos4: '9f3a' }`, and the whole `chrome.storage.local` dump without the key.
-- **Errors (`ia-errors`).** `-g "a OpenAI responde"` runs the OpenAI answers (key refused, no credit, usage limit on either call, organization not verified, unreachable); `-g "com a Conexão desligada, a faixa"` the unreachable Conexão. Observable: the strip (`role=alert`) naming `Chave da OpenAI`, the action button, Detalhes (`HTTP 402 · openai_no_credit`), the pasted text kept in the field, nothing stored.
-- **Copy (`ia-copy`).** `-g "a chave guardada na extensão volta à Conexão"`, `-g "se a Conexão sem a cópia recusa a chave"`.
-- **Storage (`ia-storage`).** `-g "o content script e o overlay não alcançam a chave"`: reads the content script's isolated world over CDP.
-- **Boas-vindas (`ia-boas-vindas`).** `drive.sh ia-bv boas-vindas.spec -g "passo 5: o card IA dos cartões"`.
-
-## Gotchas
-
-- The extension never talks to OpenAI (no host permission): the Conexão checks the key, so with the Conexão off there is no way to check, and the strip says so.
-- The key shown is only its end: the screen never knows more than `ultimos4`, so a "key is on screen" assertion should look for the 4 characters, not the whole key.
-- A rejected key never replaces the one already stored; Cancelar in Trocar chave keeps it too.
-- The fake keeps the copy in memory per test; a new test starts with no copy. Seed one with `fakes.anki.guardarChaveNaConexao('9f3a')`.
-- The visual references for the card (`configuracoes-visual.spec.js` `ia-*`, `boas-vindas-visual.spec.js` `passo-5-ia*`) are `test.fixme` until the owner approves the look; do not freeze them (never `--update-snapshots` without that approval) and keep the key field masked in any capture.
+`configuracoes-visual.spec.js` / `boas-vindas-visual.spec.js` references remain `test.fixme`; capture review evidence, never freeze new PNGs. Cloud timestamp ordering/availability/legacy-migration limits are in `docs/seguranca/chave-da-openai.md`.

@@ -32,6 +32,7 @@
     PRIMEIRA_SUBIDA_FALHOU: 'primeiraSubidaFalhou',
     SINCRONIZADO: 'sincronizado',
     SEM_SINCRONIZAR: 'semSincronizar',
+    CHAVE_PENDENTE: 'chavePendente',
     PARCIAL: 'parcial',
     RECUSADO: 'recusado',
     EXPIROU: 'expirou',
@@ -74,6 +75,13 @@
       chip: () => textoDaVoz('SHL-05.semSincronizar'),
       status: () => textoDaVoz('CFG-03.aviso'),
       aviso: { texto: 'CFG-03.pendente', acao: 'CFG-03.tentarDeNovo' },
+      sair: 'fantasma',
+    },
+    [SITUACOES.CHAVE_PENDENTE]: {
+      erro: true,
+      chip: () => textoDaVoz('SHL-05.semSincronizar'),
+      status: () => textoDaVoz('CFG-41.status'),
+      aviso: { texto: 'CFG-41.aviso', acao: 'CFG-03.tentarDeNovo' },
       sair: 'fantasma',
     },
     [SITUACOES.PARCIAL]: {
@@ -159,7 +167,21 @@
 
   function situacaoAtual() {
     const sincronizacao = estado.sincronizacao;
-    return sincronizacao ? { ...COMO_APARECE[sincronizacao.situacao], dados: sincronizacao } : null;
+    if (!sincronizacao) return null;
+    const vista = { ...COMO_APARECE[sincronizacao.situacao], dados: sincronizacao };
+    if (sincronizacao.situacao === SITUACOES.CHAVE_PENDENTE) {
+      if (sincronizacao.codigo === 'outdated_connection') {
+        vista.aviso = { texto: 'CFG-35.erroConexaoAntiga', acao: 'CFG-35.erroAtualizar',
+          aoUsar: () => raiz.CartaoDaIA.baixarConexao() };
+      } else if (sincronizacao.codigo === 'other_account_unsent') {
+        vista.status = () => textoDaVoz('CFG-42.status');
+        vista.aviso = { texto: 'CFG-42.aviso', acao: 'CFG-03.tentarDeNovo' };
+      } else if (sincronizacao.codigo === 'legacy_key_unbound') {
+        vista.aviso = { texto: 'CFG-42.legado', acao: 'CFG-35.erroTrocar',
+          aoUsar: () => raiz.CartaoDaIA.trocarChave() };
+      }
+    }
+    return vista;
   }
 
   function textoDoChip() {
@@ -267,7 +289,7 @@
     if (situacao?.aviso) {
       partes.push(montarAviso({
         texto: textoDaVoz(situacao.aviso.texto),
-        acao: { rotulo: textoDaVoz(situacao.aviso.acao), aoUsar: () => pedidos.tentarDeNovo() },
+        acao: { rotulo: textoDaVoz(situacao.aviso.acao), aoUsar: situacao.aviso.aoUsar || (() => pedidos.tentarDeNovo()) },
         detalhes,
         fechavel: false,
       }));

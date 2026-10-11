@@ -13,7 +13,7 @@ Mudar só um lado quebra um teste, e a mensagem diz o exemplo e os dois arquivos
 O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede nem que o complemento responde fica sem exemplo.
 
 - **Os pedidos da extensão**: todo pedido nasce de um construtor de `PerpetualMiner.PedidoAoAnki` (`lib/pedido-ao-anki.js`:
-  `saude`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`), e `PedidoAoAnki.variantes` os lista. `node test_contrato_fechado.js`
+  `saude`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`, `chaveDaOpenAI`, `apagarChaveDaOpenAI`, `estadoDaIA`), e `PedidoAoAnki.variantes` os lista. `node test_contrato_fechado.js`
   pede ao construtor cada variante (com os dois Baralhos, as três leituras dos números…) e exige um exemplo `daExtensao`
   de cada uma, que o fake do e2e então responde. O nome do Baralho não conta para achar o exemplo; quantos Baralhos, `refresh` e
   `launch` contam. A regra `contrato-fechado` (`node scripts/regras/verificar.js`) acusa um `fetch` direto a uma rota da Conexão.
@@ -62,6 +62,12 @@ A saúde (`GET /health`) é lida pela primeira conexão: a extensão mostra “A
 que ela diz (`ConexaoAnki.saude()`, `e2e/tests/painel-anki-primeira-conexao.spec.js`, que lê os valores destes exemplos). Sem perfil (a tela de
 perfis do Anki) a parte do perfil não aparece.
 
+## Confirmação idempotente e permissões do arquivo
+
+`POST /ia/openai/chave` com chave inteira/conta iguais às já aceitas e revisão atual do dono moderno responde o mesmo 200 sem revalidar OpenAI, regravar arquivo ou avançar revisão/hora/pendência. Três reconfirmações após v1 permanecem v1. Replay da base anterior continua idempotente; bases antigas conflitantes continuam 409. Outra conta ou outro valor inteiro (mesmo com o mesmo sufixo) são mudanças sujeitas a validação/CAS. Legado sem metadados continua exigindo confirmação explícita; não é automaticamente tratado como dono moderno.
+
+**Known limit — ACL no Windows:** o produto NÃO define ACL no arquivo da chave; ele herda a ACL da pasta. Na prova real em `Anki/addons21`: usuário + SYSTEM + Administrators. Numa pasta arbitrária, a herança pode incluir leitura por Users, expondo a chave em texto claro a esses usuários/processos e permitindo uso/custo na OpenAI. Modo 0600/`chmod` não restringe essa ACL no Windows (no-op para essa proteção), embora 0600 seja usado em POSIX. Não há garantia de acesso exclusivo ao usuário nem proteção contra administradores. Nenhuma engenharia de ACL nesta correção; teste POSIX não certifica a prova Windows informada pelo capitão. Revogar na OpenAI é o desligamento de verdade.
+
 ## Quem o complemento atende
 
 O complemento gasta a chave da OpenAI, então a regra é a da origem da extensão
@@ -83,10 +89,25 @@ Por isso (decisão do dono, opção B):
    cabeçalho, e um programa local também. **Limite aceito pelo dono no PR #190, a ser reforçado pelo ticket #192
    (credencial de pareamento, confirmada no Anki) antes do lançamento:** hoje um processo local que declara a
    origem da extensão lê o vocabulário pelas rotas privadas. `test_servidor.py` mostra isso com um cliente fora do navegador
-   e passa a exigir a credencial quando o #192 entrar. As rotas da chave da OpenAI (`POST /ia/openai/chave`,
-   `POST /ia/estado`) têm o mesmo limite, com o dano menor: **nenhuma devolve a chave inteira** (só os 4 últimos
-   caracteres), então um processo local que forjasse a origem consegue gravar uma chave (que a OpenAI confere) ou saber
-   se há uma e como ela termina, nunca lê-la.
+   e passa a exigir a credencial quando o #192 entrar. Na Opção B, a Conexão é o único dono local da chave;
+   a extensão não guarda uma segunda cópia nem restaura a apagada. As rotas `POST /ia/openai/chave`,
+   `/ia/openai/chave/apagar`, `/ia/estado`, `/ia/openai/legado` e `/ia/openai/sincronizar` têm o mesmo limite.
+   Nenhuma resposta HTTP devolve a chave inteira, mas isso **não é autenticação do cliente nem do listener**:
+   um cliente local com Origin forjado lê máscara/UID/revisão, grava uma chave aceita pela OpenAI ou apaga o dono;
+   esse apagamento pode seguir à conta no próximo sync. A migração exige prova exata do valor já guardado.
+   Uma chave sem conta (inclusive `conta: ''`) não é vinculada/exportada só por pedir sync: requer nova confirmação explícita.
+   A sincronização recebe UID e bearer transitórios e fala com o Firestore, cujas regras devem restringir cada UID (P6).
+   **Known limit #192:** um listener impostor na porta de loopback pode receber o bearer e ler, gravar e apagar os dados desse UID,
+   inclusive sua chave na nuvem. Um cliente local pode forjar Origin; regras own-UID não autenticam esse cliente.
+   É preciso confiar nos processos locais até o pareamento autenticar **ambos os lados**, antes do lançamento.
+   As mudanças chegam às instalações de teste que seguem a `main`; a Chrome Web Store só recebe esta versão depois
+   do #192 e do P6. O pareamento não está implementado/certificado; o teste HTTP P1 nomeia a recusa de exportação sem vínculo.
+   **Known limit: legado não migrado.** Com a Conexão divergente **ou vazia**, a prova recusada pode reenviar a chave
+   legada inteira ao loopback a cada saúde (~15 s) enquanto o painel permanece aberto. O segredo continua no navegador,
+   aumentando a janela de captura por um listener impostor; a Conexão vazia não o recupera automaticamente.
+   O bearer só é enviado após `/ia/estado` responder no formato versionado completo. O bridge sem essa rota (404) não
+   recebe bearer: sem pendência não gera erro da chave; com pendência exige atualização. Isso verifica protocolo,
+   não autentica um listener impostor que imite o formato (#192).
 4. A primeira rota de leitura sensível (os Baralhos, os números e o vocabulário) seguiu a regra do 2: são POST
    com a origem da extensão, e o limite do 3 está nomeado em um teste. O reforço com um token de pareamento (a
    extensão o recebe por um POST e o manda nos pedidos) é o #192 e não foi feito.

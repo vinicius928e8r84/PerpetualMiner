@@ -28,18 +28,13 @@ screen only knows `ultimos4` (it never reads the key, which is why a stale scree
 fora do ar, the Conexão sem responder or answering something outside the contract (Tentar de novo, which sends what is still in
 the field). The strip leaves when the person types.
 
-Where the key lives (`lib/chave-da-openai.js`; `confirmar` is the only way in): the whole key in the **extension's IndexedDB**
-(`pm-segredos` › `chaves` › `openai`), which a content script and the overlay cannot open (they run in the page, whose
-IndexedDB is the site's; `chrome.storage.local` would not do: the content script reads that area and `setAccessLevel` would
-close all of it); `{ ultimos4 }` in `chrome.storage.local` as `pm_chave_openai`, which the summary, the Boas-vindas step and the
-reminder read; and the Conexão's own copy in `user_files/chaves` (see `complemento/`). When the Conexão answers again after being
-off, the card asks `POST /ia/estado` and, if the copy is missing or has another ending, delivers the key again by itself;
-“A Conexão com o Anki tem uma cópia da chave” / “…ainda não tem a cópia” says the true state, and with the Conexão off (also when it goes off while the card is open) the card
-says nothing about the copy, and a late answer from before it went off is dropped. A pasted draft never survives a confirmation
-and Trocar chave always opens empty, so the whole key is never put back on screen. “Fica neste computador” is the true text of today: following the Google account is #154, and that
-text changes with it. Tests: `e2e/tests/configuracoes-ia.spec.js` (including a CDP check from the content script's isolated
-world), the visual references `ia-*.png` in `configuracoes-visual.spec.js`, `complemento/test_chave_da_openai.py` for the
-Conexão's side, and the contract examples both read (`complemento/contrato/exemplos.json`).
+**Option B owner (#154 / PR #204):** the Conexão's `user_files/chaves/openai.json` is the only local secret owner, `{ chave, conta, versao, em, naoEnviada }`. The extension has one public `pm_chave_openai` cache (mask/UID/revision/flag), no secret vault or pending changes by UID. Firebase tokens still live in extension-origin IndexedDB `pm-sessao`, not readable Chrome storage.
+
+The client sends the revision it observed; only accepted owner mutations increment it. Refused confirmation does not reserve anything (N1). Identical value/UID replay with the acceptance's base revision is a stored success without another OpenAI check or write, including after restart (R1). Opening/reopening and each completed health check read `/ia/estado`, even without Google or reconnection, not suffix equality or a restored old key. Download from the account does not validate again against OpenAI (L1). A key's refused upload stays in its sole UID-bound owner; another account cannot receive or silently replace that unsent key (P1). CFG-42 asks to finish in the original account before switching. A key with `conta: ''` also cannot bind/upload to the first requesting UID: paste/check again in the chosen account. For main upgrades the CFG-42 action opens `CartaoDaIA.trocarChave()` (empty field, focused). Passive owner reads of other accounts do not notify sync; only current-session unsent changes do. A 0.1.0 unversioned state requires update before mutation or legacy/cache deletion, with `CartaoDaIA.baixarConexao()` delivering the 0.2.0 add-on. Today's bridge (404 state) receives no bearer; without pending changes it is not a key sync failure, with them it requires update. Only a complete versioned state permits bearer delivery, not listener authentication (#192). After sync, another account's older cloud key can replace the owner.
+
+`POST /ia/openai/sincronizar` uses captured UID/token transiently; the add-on talks to Firestore. Empty value is deletion, replicated only to the authenticated operation's account. There are no per-UID deletion marks (J1). A key bound to a different signed-in account has no Apagar chave button. Signed out, even a linked key can be deleted only from this computer (`conta: ''`); the cloud is untouched and login can bring its key back. The note distinguishes linked from never-linked keys. A fresh owner read/CAS refuses a foreign owner with a current account, including partial Apagar tudo, without creating that account's tombstone. That refusal has its own CFG-35 copy and Trocar chave action, never futile retry. The wipe modal names the protected key instead of promising deletion. For an eligible owner, explicit Apagar chave and Apagar tudo clear divergent legacy and all old `conta:<uid>` secrets too, with no replacement queue (F4). Legacy UID/time migration requires exact proof of the key already stored; an unbound legacy secret cannot be exported to the first requesting account. Unavailable Conexão prevents a claim of completed save/wipe. Persistent failures/retry/partial wipe are retained. With no pending change or deletion (including a replicated key), unavailable optional Conexão is not a key sync failure; connected, it still receives cloud arrival. Phrase outcomes are separate from key sync; CFG-41 is neutral failure-to-check copy and CFG-04/08 still classify authentication failures.
+
+Tests: `e2e/tests/chave-autoridade.spec.js`, `configuracoes-ia.spec.js` (including content-script isolated-world CDP), real HTTP owner tests in `complemento/test_chave_da_openai.py` and shared `complemento/contrato/exemplos.json`. Old generation/vault-only Node tests were removed; phrase tests remain in `test_sync.js`. Native wipe/fault setup must await preceding Save completion, not only a click. Visual references remain `test.fixme`, pending owner approval. Full invariants/limitations/P6: `docs/seguranca/chave-da-openai.md`.
 
 ### Chave do Gemini and Zona de perigo (`painel-chave.js`, `painel-perigo.js`)
 
@@ -109,9 +104,11 @@ through `PerpetualMiner.Conta`: `mostrarConta(usuario)`, `mostrarSincronizacao(s
 `mostrarFalhaNoLogin(detalhes)` and `aoPedir({ entrar, sair, tentarDeNovo })`; `montarCartao(lugar)` draws the card's body in
 one more place (step 3 of the Boas-vindas), kept in step with Configurações. The situations are the spec's states,
 named by `Conta.SITUACOES` (never a loose string): `SINCRONIZANDO` (CFG-01), `PRIMEIRA_SUBIDA` and
-`PRIMEIRA_SUBIDA_FALHOU` (CFG-09), `SINCRONIZADO` (CFG-02), `SEM_SINCRONIZAR` (CFG-03), `PARCIAL` (CFG-05, counting
+`PRIMEIRA_SUBIDA_FALHOU` (CFG-09), `SINCRONIZADO` (CFG-02), `SEM_SINCRONIZAR` (CFG-03), `CHAVE_PENDENTE` (CFG-41, key-only failure without claiming synced phrases are local), `PARCIAL` (CFG-05, counting
 this computer's phrases, not the whole cloud collection), `RECUSADO` (CFG-04) and `EXPIROU` (CFG-08); with no profile
 name the account is “Conta Google” (CFG-10).
+
+The panel retains phrase and key outcomes separately: phrase failure/partial/loading is not overwritten by a transient key-only retry; CFG-41 applies with a local key/deletion and phrases synced, using neutral “não deu para conferir” wording for either read or upload failure (not claiming an already uploaded key never arrived). A key failure classified as access refusal or session expiry still uses CFG-04/CFG-08, even with no local key.
 
 A sync problem shows **only** in the card and the chip — never a toast or a strip in another area. The one exception is
 the spec's own PAI-15: when a delete reaches this computer but not the cloud, Frases also shows the persistent aviso

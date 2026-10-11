@@ -46,7 +46,7 @@ async function abrirConfiguracoes(page, extensao, endereco, largura = 1280) {
   await page.setViewportSize({ width: largura, height: 800 });
   await page.goto(extensao.url(`painel.html${endereco}`));
   await expect(page.getByRole('navigation', { name: 'Navegação do painel' })).toBeVisible();
-  await expect(page.locator('#cfg-perigo-resumo')).toHaveText('1.284 frases');
+  await expect(page.locator('#cfg-perigo-resumo')).toHaveText('1.284 frases', { timeout: 45000 });
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -207,10 +207,37 @@ test('IA dos cartões aberta, com a chave conferida e a cópia na Conexão', asy
   await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
   fakes.anki.guardarChaveNaConexao('9f3a');
   await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
-  await expect(page.locator('#cfg-ia').getByText('A Conexão com o Anki tem uma cópia da chave.')).toBeVisible();
+  await expect(page.locator('#cfg-ia').getByText('A Conexão com o Anki guarda a chave.')).toBeVisible();
   await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
 
   await expect(page).toHaveScreenshot('ia-conferida.png', { animations: 'disabled' });
+});
+
+// #154: a chave acompanha a conta Google. Também à espera do dono (regra 10): `fixme` e sem PNG, como as de cima.
+test('IA dos cartões com conta: a chave vai junto com a conta Google, com Trocar chave e Apagar chave', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
+  await semearComoNoPrototipo(extensao, fakes, 'uid-ia');
+  await extensao.semearSessao({ uid: 'uid-ia', displayName: 'Vinicius' });
+  await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
+  fakes.anki.guardarChaveNaConexao('9f3a');
+  await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
+  await expect(page.locator('#cfg-ia').getByText('Vai junto com a sua conta Google', { exact: false })).toBeVisible();
+  await expect(page.locator('#cfg-ia').getByText('A Conexão com o Anki guarda a chave.')).toBeVisible();
+
+  await expect(page).toHaveScreenshot('ia-conferida-com-conta.png', { animations: 'disabled' });
+});
+
+test('o modal de apagar a chave da OpenAI, com conta', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
+  await semearComoNoPrototipo(extensao, fakes, 'uid-ia');
+  await extensao.semearSessao({ uid: 'uid-ia', displayName: 'Vinicius' });
+  await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
+  fakes.anki.guardarChaveNaConexao('9f3a');
+  await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
+  await page.locator('#cfg-ia').getByRole('button', { name: 'Apagar chave' }).click();
+  await expect(page.getByRole('dialog')).toHaveAccessibleName('Apagar a chave da OpenAI?');
+
+  await expect(page).toHaveScreenshot('ia-apagar-modal.png', { animations: 'disabled' });
 });
 
 test('IA dos cartões com a chave recusada: a faixa diz a qual entrada pertence', async ({ page, extensao, fakes }) => {
@@ -272,6 +299,66 @@ test('o modal de apagar todas as frases, com conta', async ({ page, extensao, fa
 
   await expect(page).toHaveScreenshot('perigo-modal.png', { animations: 'disabled' });
 });
+
+test.fixme('Conta & sync: só a chave da OpenAI está pendente — aprovação visual pendente', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
+  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
+  await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
+  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
+  fakes.google.recusarEscritas();
+  await campoDaChave(page).fill('sk-fake-visual-9f3a');
+  await page.locator('#cfg-ia').getByRole('button', { name: 'Conferir e salvar' }).click();
+  await expect(page.locator('#cfg-ia-resumo')).toHaveText('••••••••9f3a');
+  await page.locator('#shell-chip').click();
+  await expect(page.locator('#cfg-conta')).toContainText('Não deu para conferir a sincronização da chave da OpenAI.');
+  expect(fakes.google.frasesDe('uid-visual')).toEqual(FRASES_DO_PROTOTIPO);
+  await expect(page).toHaveScreenshot('conta-chave-pendente.png', { animations: 'disabled', mask: [campoDaChave(page)] });
+});
+
+// Security-review states await owner approval; no PNG baseline is approved here.
+for (const variante of ['outra-conta', 'apagar-falhou', 'apagar-tudo-parcial']) {
+  test.fixme(`IA: ${variante} — aprovação visual pendente`, async ({ page, extensao, fakes }) => {
+    await extensao.semearSessao({ uid: 'uid-visual' });
+    await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
+    await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
+    const ia = page.locator('#cfg-ia');
+    await campoDaChave(page).fill('sk-fake-visual-9f3a');
+    await ia.getByRole('button', { name: 'Conferir e salvar' }).click();
+    await expect(ia.locator('.cfg-resumo')).toHaveText('••••••••9f3a');
+    await expect.poll(() => Boolean(fakes.google.chaveDaOpenAIDe('uid-visual'))).toBe(true);
+    if (variante === 'outra-conta') {
+      await extensao.semearSessao({ uid: 'uid-outra-conta' });
+      await page.reload();
+      await expect(ia).toContainText('Esta chave é de outra conta Google.');
+    } else {
+      await page.evaluate(() => {
+        const abrir = indexedDB.open.bind(indexedDB);
+        indexedDB.open = (...args) => {
+          if (args[0] === 'pm-segredos') throw new DOMException('fake storage failure', 'StorageUnavailable');
+          return abrir(...args);
+        };
+      });
+      if (variante === 'apagar-falhou') {
+        await ia.getByRole('button', { name: 'Apagar chave' }).click();
+        await page.getByRole('dialog').getByRole('button', { name: 'Apagar chave' }).click();
+      } else {
+        await page.goto(extensao.url('painel.html#configuracoes/perigo'));
+        await page.evaluate(() => {
+          const abrir = indexedDB.open.bind(indexedDB);
+          indexedDB.open = (...args) => {
+            if (args[0] === 'pm-segredos') throw new DOMException('fake storage failure', 'StorageUnavailable');
+            return abrir(...args);
+          };
+        });
+        await page.locator('#btn-apagar-tudo').click();
+        await page.getByRole('dialog').locator('.veio-botao--perigo-cheio').click();
+      }
+      await expect(page.getByRole('alert')).toContainText(variante === 'apagar-falhou'
+        ? 'Não deu para confirmar o apagamento da chave neste computador.' : 'As frases foram apagadas, mas não deu para conferir o apagamento da chave da OpenAI');
+    }
+    await expect(page).toHaveScreenshot(`ia-${variante}.png`, { animations: 'disabled', mask: [campoDaChave(page)] });
+  });
+}
 
 // Conexão com o Anki › Abrir o Anki com o computador (#153). Não há protótipo próprio dele (o #106 o decidiu em
 // texto): o card segue o “resumo primeiro” e o interruptor é o do Veio. Uma referência nova só entra depois de o

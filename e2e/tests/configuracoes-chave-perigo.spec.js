@@ -222,6 +222,10 @@ test('sem frases, a entrada fica indisponível com “Nenhuma frase para apagar�
 });
 
 test('com conta: o alcance é todos os computadores, e confirmar apaga também a nuvem', async ({ page, extensao, fakes }) => {
+  // Segura o toast transitório enquanto lê o estado persistido sob carga.
+  const instante = new Date();
+  await page.clock.install({ time: instante });
+  await page.clock.pauseAt(new Date(instante.getTime() + 60_000));
   const frases = frasesDeExemplo(2);
   await extensao.semearSessao({ uid: 'uid-perigo' });
   await extensao.gravarStorage({ frases });
@@ -242,6 +246,41 @@ test('com conta: o alcance é todos os computadores, e confirmar apaga também a
   expect(fakes.google.frasesDe('uid-perigo')).toEqual([]);
   await expect(page.locator('#shell-total')).toHaveText('0');
   expect(await extensao.frases()).toEqual([]);
+});
+
+test('com conta e a chave da OpenAI, Apagar tudo diz que a chave também sai e a tira dos três lugares', async ({ page, extensao, fakes }) => {
+  // #154: a chave acompanha a conta, então Apagar tudo a tira da nuvem, da extensão e da Conexão (chave de mentira).
+  const chave = 'sk-proj-chave-de-exemplo-9f3a';
+  const frases = frasesDeExemplo(2);
+  await extensao.semearSessao({ uid: 'uid-perigo' });
+  await extensao.gravarStorage({ frases });
+  fakes.google.gravarFrases('uid-perigo', frases);
+  fakes.google.gravarChaveDaOpenAI('uid-perigo', { chave, em: Date.now() - 60_000 });
+  await abrirPainel(page, extensao, '#configuracoes/perigo');
+  await expect(card(page, 'ia').locator('.cfg-resumo')).toHaveText('••••••••9f3a');
+  await expect.poll(() => fakes.anki.chaveNaConexao()).toBe(chave);
+
+  await card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
+  await expect(modal(page)).toContainText('Elas somem deste computador e de todos os outros conectados à sua conta. Não dá para desfazer. A chave da OpenAI também sai, da sua conta e da Conexão com o Anki.');
+  await modal(page).getByRole('button', { name: 'Apagar 2 frases' }).click();
+
+  await expect(toast(page)).toHaveText('Todas as frases foram apagadas');
+  await expect(card(page, 'ia').locator('.cfg-resumo')).toHaveText('Sem chave');
+  await expect.poll(() => fakes.google.chaveDaOpenAIDe('uid-perigo')).toEqual({ chave: '', em: expect.any(Number) });
+  await expect.poll(() => fakes.anki.chaveNaConexao()).toBeNull();
+  expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai?.ultimos4 || '').toBe('');
+  expect(fakes.google.frasesDe('uid-perigo')).toEqual([]);
+});
+
+test('sem a chave da OpenAI, o modal do Apagar tudo não fala dela', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: frasesDeExemplo(1) });
+  await abrirPainel(page, extensao, '#configuracoes/perigo');
+
+  await card(page, 'perigo').getByRole('button', { name: 'Apagar 1 frase' }).click();
+
+  await expect(modal(page)).toContainText('Elas somem deste computador.');
+  await expect(modal(page)).not.toContainText('chave');
+  // Exceção de teste: sem-estado-guardado — o teste só abre o modal e não confirma: nada é apagado nem gravado.
 });
 
 test('com conta, enquanto a nuvem não responde, a Zona de perigo não finge que não há frases', async ({ page, extensao, fakes }) => {
@@ -349,6 +388,10 @@ test('com conta e a nuvem fora do ar, o que outro computador gravou antes també
 
 test('com movimento reduzido, o flash dos cards novos e o ponto da chave ficam parados', async ({ page, extensao }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
+  // O flash de 1,4 s não é uma barreira de carregamento: pausa antes da navegação.
+  const instante = new Date();
+  await page.clock.install({ time: instante });
+  await page.clock.pauseAt(new Date(instante.getTime() + 60_000));
   await extensao.gravarStorage({ geminiApiKey: CHAVE_DO_GEMINI, frases: frasesDeExemplo(2) });
   await abrirPainel(page, extensao, '#configuracoes/perigo');
 

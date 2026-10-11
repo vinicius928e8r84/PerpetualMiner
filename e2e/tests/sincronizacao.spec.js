@@ -59,6 +59,7 @@ test('sair durante uma renovação não restaura a conta; a próxima mineração
     // no chrome.storage. A ausência é conferida outra vez após minerar no popup.
     await page.waitForTimeout(300);
     expect(await extensao.lerStorage(['pm_firebase_auth', 'pm_user_info'])).toEqual({});
+    expect(await extensao.lerSessao()).toBeNull();
     await expect(page.locator('#shell-total')).toHaveText('1');
     await expect(page.locator('#cfg-conta').getByRole('button', { name: 'Entrar com Google' })).toBeVisible();
     await guardarEvidencia(page, 'logout-renovacao-tardia', {
@@ -76,6 +77,7 @@ test('sair durante uma renovação não restaura a conta; a próxima mineração
     expect(frases).toHaveLength(2);
     await expect.poll(async () => (await extensao.lerStorage({ pm_pending_sync: [] })).pm_pending_sync).toContain(String(minerada.id));
     expect(await extensao.lerStorage(['pm_firebase_auth', 'pm_user_info'])).toEqual({});
+    expect(await extensao.lerSessao()).toBeNull();
     expect(fakes.google.frasesDe(uid)).toEqual([]);
     expect(fakes.google.requisicoes.filter(r => r.url.includes('firestore.googleapis.com'))).toEqual([]);
     await guardarEvidencia(page, 'logout-mineracao-local', {
@@ -92,8 +94,8 @@ test('sair durante uma renovação não restaura a conta; a próxima mineração
 test('minerar com menos de dois minutos de sessão renova o token e preserva Contexto e Palavra na nuvem', async ({ page, extensao, fakes }) => {
   const uid = 'uid-renovacao';
   await extensao.semearSessao({ uid, displayName: 'Ana Souza' });
-  const { pm_firebase_auth: credenciais } = await extensao.lerStorage('pm_firebase_auth');
-  await extensao.gravarStorage({ pm_firebase_auth: { ...credenciais, expiresAt: Date.now() + 90_000 } });
+  const credenciais = await extensao.lerSessao();
+  await extensao.gravarSessao({ ...credenciais, expiresAt: Date.now() + 90_000 });
   fakes.anki.definirVocabulario('en', ['quiet', 'harbor', 'woke']);
 
   const texto = 'The quiet harbor woke before the gulls did.';
@@ -106,7 +108,7 @@ test('minerar com menos de dois minutos de sessão renova o token e preserva Con
     }),
   ]);
   await expect.poll(async () => (await extensao.lerStorage({ pm_pending_sync: [] })).pm_pending_sync).toEqual([]);
-  const { pm_firebase_auth: renovadas } = await extensao.lerStorage('pm_firebase_auth');
+  const renovadas = await extensao.lerSessao();
   expect(renovadas).toMatchObject({ uid, idToken: 'token-renovado', refreshToken: 'refresh-renovado' });
   expect(renovadas.expiresAt).toBeGreaterThan(Date.now() + 50 * 60_000);
   expect(fakes.google.frasesDe(uid)).toEqual(await extensao.frases());

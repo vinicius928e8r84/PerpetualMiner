@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos, configuracao, item_de_login, registro, servidor  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
+from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira  # noqa: E402
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
@@ -121,6 +121,12 @@ class ConexaoNoTeste:
         openai="aceita",
         chave_na_conexao=None,
         cofre_sem_escrita=False,
+        versao_na_conexao=0,
+        chave_apagada=False,
+        conta_na_conexao=None,
+        nao_enviada=True,
+        hora_na_conexao=0,
+        firebase=0,
     ):
         self.perfil = perfil
         self.falha_no_perfil = falha_no_perfil
@@ -133,7 +139,20 @@ class ConexaoNoTeste:
         if chave_na_conexao is not None:
             with open(os.path.join(self.chaves, "openai.json"), "w", encoding="utf-8") as arquivo:
                 json.dump({"chave": "sk-proj-guardada-antes-" + chave_na_conexao}, arquivo)
+        if versao_na_conexao:
+            with open(os.path.join(self.chaves, 'openai.json'), 'w', encoding='utf-8') as arquivo:
+                dados = {'versao': versao_na_conexao, 'chave': '' if chave_apagada else None}
+                if chave_na_conexao and not chave_apagada:
+                    dados['chave'] = 'sk-proj-guardada-antes-' + chave_na_conexao
+                json.dump(dados, arquivo)
+        if conta_na_conexao is not None:
+            caminho = os.path.join(self.chaves, 'openai.json')
+            with open(caminho, 'w', encoding='utf-8') as arquivo:
+                json.dump({'chave': 'sk-proj-guardada-antes-' + chave_na_conexao if chave_na_conexao else '',
+                    'versao': versao_na_conexao, 'conta': conta_na_conexao, 'em': hora_na_conexao, 'naoEnviada': nao_enviada}, arquivo)
         self.openai = OpenAIDeMentira(openai)
+        self.firestore = FirestoreDeMentira()
+        self.firestore.falha = firebase
         self.cofre_sem_escrita = cofre_sem_escrita
         self.logger = registro.criar(self.logs)
         self.conexao = servidor.Conexao(
@@ -146,6 +165,7 @@ class ConexaoNoTeste:
             colecao=colecao,
             item_de_login=self.item,
             openai_base=self.openai.base,
+            firestore_base=self.firestore.base,
         )
 
     def _ler_o_perfil(self):
@@ -155,6 +175,7 @@ class ConexaoNoTeste:
 
     def __enter__(self):
         self.openai.__enter__()
+        self.firestore.__enter__()
         if self.cofre_sem_escrita:
             os.chmod(self.chaves, 0o500)  # gravar a cópia da chave falha: a Conexão responde o erro interno
         assert self.conexao.iniciar(), "a porta de teste devia estar livre"
@@ -165,12 +186,13 @@ class ConexaoNoTeste:
             os.chmod(self.chaves, 0o700)
         self.conexao.parar()
         self.openai.__exit__(*erro)
+        self.firestore.__exit__(*erro)
         for handler in list(self.logger.handlers):
             handler.close()
 
     def pedir(self, metodo, caminho, origem=ORIGEM, cabecalhos=None, corpo=None, corpo_bruto=None):
         """`corpo` é um JSON (dict) ou, para o pedido quebrado, os bytes que seguem; `corpo_bruto` é o texto ou os bytes como vierem."""
-        pedido = http.client.HTTPConnection("127.0.0.1", self.conexao.porta, timeout=5)
+        pedido = http.client.HTTPConnection("127.0.0.1", self.conexao.porta, timeout=30)
         enviados = dict(cabecalhos or {})
         if origem is not None:
             enviados["Origin"] = origem
@@ -212,7 +234,16 @@ class ContratoDaConexao(unittest.TestCase):
                     openai=contexto.get("openai", "aceita"),
                     chave_na_conexao=contexto.get("chaveNaConexao"),
                     cofre_sem_escrita=contexto.get("cofre") == "sem_escrita",
+                    versao_na_conexao=contexto.get('versaoNaConexao', 0),
+                    chave_apagada=contexto.get('chaveApagada', False),
+                    conta_na_conexao=contexto.get('contaNaConexao'),
+                    nao_enviada=contexto.get('naoEnviada', True),
+                    hora_na_conexao=contexto.get('emNaConexao', 0),
+                    firebase=contexto.get('firebase', 0),
                 ) as conexao:
+                    if 'chaveNaNuvem' in contexto:
+                        valor = contexto['chaveNaNuvem']
+                        conexao.firestore.documentos['uid-teste'] = {'chave': {'stringValue': valor}, 'em': {'integerValue': str(contexto.get('emNaNuvem', 100))}}
                     pedido = exemplo["pedido"]
                     status, _, corpo = conexao.pedir(
                         pedido["metodo"], pedido["caminho"], pedido["origem"],
@@ -240,6 +271,15 @@ class ContratoDaConexao(unittest.TestCase):
 # Uma rota nova entra aqui dizendo o que faz: uma que não lê a coleção nem o perfil (a chave da IA, por exemplo)
 # responde o mesmo `status` em todos os estados do Anki.
 MATRIZ = {
+    ('POST', '/ia/openai/sincronizar'): {
+        'corpo': {'uid': 'uid-teste', 'token': 'token-ficticio', 'versao': 1},
+        'le_a_colecao': False, 'le_o_perfil': False, 'recusas': [({}, 400, 'invalid_request')],
+    },
+    ('POST', '/ia/openai/legado'): {
+        'corpo': {'chave': '', 'conta': 'uid-teste', 'em': 100, 'versao': 0},
+        'le_a_colecao': False, 'le_o_perfil': False, 'recusas': [({}, 400, 'invalid_request')],
+        'status': 409,
+    },
     ("GET", "/health"): {"corpo": None, "le_a_colecao": False, "le_o_perfil": True, "recusas": []},
     ("POST", "/anki/decks"): {"corpo": {}, "le_a_colecao": True, "le_o_perfil": False, "recusas": []},
     ("POST", "/anki/stats/decks"): {
@@ -250,6 +290,8 @@ MATRIZ = {
     },
     # A chave da IA (PR 191): não lê a coleção nem o perfil. O corpo mínimo não traz a `chave`, então o pedido é recusado em todo estado.
     ("POST", "/ia/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    # Apagar a cópia da chave (#154): não lê a coleção nem o perfil, e apagar o que não existe também é 200.
+    ("POST", "/ia/openai/chave/apagar"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/ia/openai/chave"): {
         "corpo": {},
         "status": 400,

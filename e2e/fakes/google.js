@@ -127,6 +127,15 @@ function criarFakeGoogle() {
     padrao: /^https:\/\/(firestore|securetoken|identitytoolkit|www)\.googleapis\.com\//,
     tratar,
     requisicoes,
+    /** O seam REST que o complemento (não mais o navegador) usa para a chave. */
+    async pedidoDaConexao(metodo, uid, token, fields) {
+      let resposta;
+      const url = `${URL_DOS_DOCUMENTOS}/usuarios/${encodeURIComponent(uid)}/segredos/openai`;
+      await tratar({ request: () => ({ url: () => url, method: () => metodo,
+        headers: () => ({ authorization: `Bearer ${token}` }), postDataJSON: () => ({ fields }) }),
+      fulfill: async ({ status, body }) => { resposta = { status, json: JSON.parse(body) }; } });
+      return resposta;
+    },
     /** @estado-guardado Frases do usuário no Firestore, já convertidas de campos para objetos. */
     frasesDe(uid) {
       const prefixo = `usuarios/${uid}/frases/`;
@@ -137,6 +146,18 @@ function criarFakeGoogle() {
     /** @estado-guardado Ids com tombstone no Firestore do usuário (`usuarios/{uid}/meta/deleted`). */
     apagadasDe(uid) {
       return Object.keys(documentos.get(`usuarios/${uid}/meta/deleted`)?.ids?.mapValue?.fields || {});
+    },
+    /**
+     * @estado-guardado A chave da OpenAI da conta (`usuarios/{uid}/segredos/openai`), já convertida em objeto:
+     * `{ chave, em }`, o tombstone `{ apagada: true, em }`, ou null se a conta nunca teve chave.
+     */
+    chaveDaOpenAIDe(uid) {
+      const campos = documentos.get(`usuarios/${uid}/segredos/openai`);
+      return campos ? camposParaObjeto(campos) : null;
+    },
+    /** A chave (ou o tombstone, com `apagada: true`) que outro computador da conta já deixou na nuvem. */
+    gravarChaveDaOpenAI(uid, documento) {
+      documentos.set(`usuarios/${uid}/segredos/openai`, objetoParaCampos(documento));
     },
     recusarEscritas(valor = true) { recusarEscritas = valor; },
     /** A leitura das frases da conta nunca responde. */

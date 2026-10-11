@@ -128,7 +128,7 @@ class AoCarregarNoAnki(unittest.TestCase):
                 parar(conexao)
             guardada = os.path.exists(os.path.join(pasta, "user_files", "chaves", "openai.json"))
         self.assertEqual(enviada, (200, {"ok": True, "ultimos4": "f00d"}))
-        self.assertEqual(estado, {"openai": {"configurada": True, "ultimos4": "f00d"}})
+        self.assertEqual(estado, {"openai": {"configurada": True, "ultimos4": "f00d", "conta": "", "versao": 1, "naoEnviada": True}})
         self.assertTrue(guardada)
 
     def test_o_que_ja_estava_em_user_files_fica_como_estava(self):

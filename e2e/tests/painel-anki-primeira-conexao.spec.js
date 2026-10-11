@@ -565,6 +565,8 @@ test('o Anki na tela de perfis: “Achei o Anki · versão”, sem perfil', asyn
 test('dois minutos sem resposta: o checklist de 3 itens e “Baixar de novo”, e a conferência segue sozinha', async ({ page, extensao, fakes }) => {
   await jaDisseAgoraNaoAoAbridor(extensao);
   await page.clock.install({ time: AGORA });
+  // Pronto é transitório: só avance o relógio quando o teste mandar.
+  await page.clock.pauseAt(new Date(AGORA.getTime() + 60_000));
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();
   await expect(naoRespondeu(page)).toBeHidden();

@@ -8,6 +8,10 @@
  * chrome.storage.sync compartilhado, cada um com o seu chrome.storage.local.
  * A seam é a nuvem: aqui ela é a memória; na extensão e nos e2e, o REST do
  * Firestore (as últimas seções do teste cobrem esse adaptador com um fetch falso).
+ *
+ * A chave da OpenAI que acompanha a conta (#154) tem a sua parte: cada computador tem o seu
+ * cofre (a chave na extensão e a cópia da Conexão dele) e os dois dividem a mesma nuvem.
+ * As chaves aqui são de mentira.
  */
 
 'use strict';
@@ -61,7 +65,7 @@ function areaEmMemoria(dados) {
 // O que a nuvem guarda, compartilhado entre A e B, e o que ela está fazendo de errado.
 let firestore     = {};   // { phraseId: phrase }
 let firestoreTomb = {};   // { phraseId: deletedAt }  (usuarios/{uid}/meta/deleted)
-let nuvemFalha    = {};   // { apagar, gravarFrases, gravarFrase, listar }: true = a nuvem recusa
+let nuvemFalha    = {};   // { apagar, gravarFrases, gravarFrase, listar, chave }: true = a nuvem recusa
 
 function nuvemEmMemoria(uid = 'uid-teste') {
   const recusar = (qual) => { if (nuvemFalha[qual]) throw new Error(`nuvem fora do ar (${qual})`); };
@@ -81,11 +85,11 @@ function nuvemEmMemoria(uid = 'uid-teste') {
 let storageSync   = {};   // chrome.storage.sync   — compartilhado entre A e B
 let storageLocalA = {};   // chrome.storage.local do computador A
 let storageLocalB = {};   // chrome.storage.local do computador B
-let computadores  = new Map();   // storage local → { sinc, nuvem }
+let computadores  = new Map();   // storage local → { sinc, nuvem, daqui, sincDaChave }
 let _phraseCounter = 0;
 
-function ligar(storageLocal, { semConta = false } = {}) {
-  const nuvem = semConta ? null : nuvemEmMemoria();
+function ligar(storageLocal, { semConta = false, uid = 'uid-teste' } = {}) {
+  const nuvem = semConta ? null : nuvemEmMemoria(uid);
   const sinc = criarSincronizacao({
     nuvem,
     armazenamento: { local: areaEmMemoria(storageLocal), sync: areaEmMemoria(storageSync) },

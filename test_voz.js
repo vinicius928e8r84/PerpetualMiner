@@ -39,6 +39,8 @@ const conferir = (catalogo, spec = linhas) => problemasDaVoz({ catalogo, linhas:
 
 assert(linhas.length > 0, 'não li nenhuma linha do catálogo na spec');
 assert.strictEqual(new Set(linhas.map(l => l.id)).size, linhas.length, 'a spec repete um ID');
+assert.deepStrictEqual(linhas.filter(l => l.hoje === '(não existe)' && l.marca !== 'novo').map(l => l.id), [],
+  'um estado que não existia precisa da marca **(novo)** na spec e no catálogo HTML');
 
 // ─── o catálogo de verdade bate ──────────────────────────────────────────────
 

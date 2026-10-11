@@ -19,7 +19,7 @@ const Perigo = PerpetualMiner.Perigo;
 const Envio = PerpetualMiner.Envio;
 const { SITUACOES } = Conta;
 // A sincronização com a nuvem: o codec, a sessão, o merge e os tombstones (lib/sincronizacao.js).
-const { Sincronizacao } = PerpetualMiner;
+const { Sincronizacao, ChaveDaOpenAI } = PerpetualMiner;
 const { mostrarToastDeSucesso, abrirModal, montarAviso } = PerpetualMiner.Veio;
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -114,13 +114,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function inicializarAuth() {
   // Tenta restaurar sessão anterior salva no storage
-  const data = await chromeGet({ pm_user_info: null, pm_firebase_auth: null });
-  if (data.pm_user_info && data.pm_firebase_auth) {
+  const data = await chromeGet({ pm_user_info: null });
+  const credenciais = await Sincronizacao.lerCredenciais();
+  if (data.pm_user_info && credenciais?.uid === data.pm_user_info.uid) {
     usuarioLogado = { ...data.pm_user_info };
-    conectarNuvem(data.pm_firebase_auth);
+    conectarNuvem(credenciais);
     atualizarUIAuth(usuarioLogado);
+    sincronizarAChave();
     await carregarFrasesFirestore();
   } else {
+    if (data.pm_user_info) await chrome.storage.local.remove('pm_user_info');
     carregarFrasesLocal();
   }
 }
@@ -193,13 +196,14 @@ async function loginGoogle() {
       refreshToken: fbData.refreshToken,
       expiresAt:    Date.now() + 55 * 60 * 1000,
     };
+    await Sincronizacao.guardarCredenciais(credenciais);
     conectarNuvem(credenciais);
-    chrome.storage.local.set({
-      pm_firebase_auth: credenciais,
+    await chrome.storage.local.set({
       pm_user_info: { uid: usuarioLogado.uid, email: usuarioLogado.email, displayName: usuarioLogado.displayName, photoURL: usuarioLogado.photoURL },
     });
 
     atualizarUIAuth(usuarioLogado);
+    sincronizarAChave();
 
     // 4. Migração única na primeira vez, depois só carrega
     const { pm_migrated = '' } = await chromeGet({ pm_migrated: '' });
@@ -226,7 +230,8 @@ async function logout() {
   if (!usuarioLogado) return;
   usuarioLogado = null;
   desconectarNuvem();
-  chrome.storage.local.remove(['pm_firebase_auth', 'pm_user_info']);
+  await Sincronizacao.apagarCredenciais();
+  await chrome.storage.local.remove(['pm_firebase_auth', 'pm_user_info']);
   atualizarUIAuth(null);
   carregarFrasesLocal();
 }
@@ -254,13 +259,69 @@ function novaSincronizacao() {
 function conectarNuvem(credenciais) {
   sessao = Sincronizacao.criarSessao({
     credenciais,
-    aoRenovar: renovadas => chromeSet({ pm_firebase_auth: renovadas }),
+    aoRenovar: Sincronizacao.guardarCredenciais,
   });
   nuvem = Sincronizacao.nuvemHttp({ sessao });
   sincronizacao = novaSincronizacao();
 }
 
+// ─── A chave da OpenAI acompanha a conta (#154) ──────────────────────────────
+//
+// A Conexão é o único dono. A extensão pede a replicação com UID/token transitórios
+// e relê o resumo público; não lê uma chave do Firestore nem entrega outro segredo
+// confirmado por um cofre paralelo. Roda ao abrir, entrar, voltar e mudar a chave.
+
+let sincronizandoAChave = Promise.resolve();
+let erroDaChave = null;
+let estadoDasFrases = { situacao: SITUACOES.SINCRONIZADO, dados: {} };
+
+// A chave e as frases têm resultados separados. Uma tentativa só da chave
+// não pode apagar do card a falha/pendência que as frases ainda têm.
+function mostrarEstadoDoSync() {
+  const { situacao, dados } = estadoDasFrases;
+  const situacaoDaChave = erroDaChave ? situacaoDoErro(erroDaChave, SITUACOES.CHAVE_PENDENTE) : null;
+  const exigeConta = s => s === SITUACOES.RECUSADO || s === SITUACOES.EXPIROU;
+  if (exigeConta(situacaoDaChave) && !exigeConta(situacao)) {
+    Conta.mostrarSincronizacao(situacaoDaChave, { detalhes: erroDaChave.message });
+  } else if (situacao !== SITUACOES.SINCRONIZADO) {
+    Conta.mostrarSincronizacao(situacao, { ...dados,
+      detalhes: [dados.detalhes, erroDaChave?.message].filter(Boolean).join('\n'),
+    });
+  } else if (erroDaChave) {
+    Conta.mostrarSincronizacao(situacaoDaChave, { detalhes: erroDaChave.message, codigo: erroDaChave.codigo });
+  } else Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
+}
+
+function mostrarEstadoDasFrases(situacao, dados = {}) {
+  estadoDasFrases = { situacao, dados };
+  mostrarEstadoDoSync();
+}
+
+function mostrarSincronizado() {
+  mostrarEstadoDasFrases(SITUACOES.SINCRONIZADO);
+}
+
+function sincronizarAChave() {
+  sincronizandoAChave = sincronizandoAChave.then(async () => {
+    const estaNuvem = nuvem;
+    const estaSessao = sessao;
+    if (!estaNuvem || !estaSessao) return;
+    try {
+      await ChaveDaOpenAI.sincronizar(estaSessao, estaNuvem.uid);
+      if (nuvem === estaNuvem) { erroDaChave = null; mostrarEstadoDoSync(); }
+    } catch (err) {
+      if (nuvem !== estaNuvem) return;
+      // A mensagem da API pode repetir o corpo secreto: só códigos chegam ao Detalhes.
+      erroDaChave = Object.assign(new Error(`OpenAI sync · ${err?.status || err?.motivo || 'sem resposta'}`), { motivo: err?.motivo, codigo: err?.codigo });
+      mostrarEstadoDoSync();
+    }
+  });
+  return sincronizandoAChave;
+}
+
 function desconectarNuvem() {
+  erroDaChave = null;
+  estadoDasFrases = { situacao: SITUACOES.SINCRONIZADO, dados: {} };
   sessao?.revogar();
   sessao = null;
   nuvem = null;
@@ -282,7 +343,7 @@ function situacaoDoErro(err, semSincronizar = SITUACOES.SEM_SINCRONIZAR) {
 }
 
 function mostrarFalhaNaNuvem(err, semSincronizar) {
-  Conta.mostrarSincronizacao(situacaoDoErro(err, semSincronizar), { detalhes: err?.message || String(err) });
+  mostrarEstadoDasFrases(situacaoDoErro(err, semSincronizar), { detalhes: err?.message || String(err) });
 }
 
 // ─── Migração e Sync ──────────────────────────────────────────────────────────
@@ -290,7 +351,7 @@ function mostrarFalhaNaNuvem(err, semSincronizar) {
 async function migrarParaFirestore() {
   const { frases = [] } = await chromeGet({ frases: [] });
   if (frases.length > 0) {
-    Conta.mostrarSincronizacao(SITUACOES.PRIMEIRA_SUBIDA, { n: frases.length });
+    mostrarEstadoDasFrases(SITUACOES.PRIMEIRA_SUBIDA, { n: frases.length });
     try {
       await nuvem.gravarFrases(frases);
       mostrarToastDeSucesso(textoDaVoz('CFG-09.sucesso', { n: frases.length }));
@@ -319,7 +380,8 @@ function carregarFrasesLocal() {
 
 async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
   const semSincronizar = primeiraSubidaFalhou ? SITUACOES.PRIMEIRA_SUBIDA_FALHOU : SITUACOES.SEM_SINCRONIZAR;
-  Conta.mostrarSincronizacao(SITUACOES.SINCRONIZANDO);
+  mostrarEstadoDasFrases(SITUACOES.SINCRONIZANDO);
+  await sincronizarAChave();
   try {
     // Passa o estado vivo, não um snapshot anterior à rede (ver o contrato de carregar).
     const { frases, desteComputador, falhaNasOrfas } = await sincronizacao.carregar({ atuais: () => todasFrases });
@@ -328,7 +390,7 @@ async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
       console.error('[Firestore] orphans com falha:', falhaNasOrfas.quantas, falhaNasOrfas.causas[0]?.message);
       mostrarSyncIncompleto(falhaNasOrfas, desteComputador, semSincronizar);
     } else {
-      Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
+      mostrarSincronizado();
     }
     finalizarCarregamento();
   } catch (err) {
@@ -347,10 +409,10 @@ function mostrarSyncIncompleto({ quantas, causas }, desteComputador, semSincroni
   const situacao = situacaoDoErro(causas[0], semSincronizar);
   const naNuvem = desteComputador - quantas;
   if (situacao !== semSincronizar || naNuvem === 0) {
-    Conta.mostrarSincronizacao(situacao, { detalhes });
+    mostrarEstadoDasFrases(situacao, { detalhes });
     return;
   }
-  Conta.mostrarSincronizacao(SITUACOES.PARCIAL, { n: naNuvem, total: desteComputador, detalhes });
+  mostrarEstadoDasFrases(SITUACOES.PARCIAL, { n: naNuvem, total: desteComputador, detalhes });
 }
 
 function finalizarCarregamento() {
@@ -468,6 +530,11 @@ function idsSelecionados() {
 
 function setupListeners() {
   Perigo.aoApagarTudo(apagarTudo);
+  ChaveDaOpenAI.aoMudar(() => { if (nuvem) carregarFrasesFirestore(); });
+  // Um painel que ficou aberto noutra aba recebe a chave mudada noutro computador quando a pessoa volta a ele.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') sincronizarAChave();
+  });
   document.getElementById('btn-export').addEventListener('click', exportarTxt);
   document.getElementById('btn-bulk-edit').addEventListener('click', () => abrirEditarContexto(idsSelecionados()));
   document.getElementById('btn-delete-selected').addEventListener('click', () => pedirParaApagar(idsSelecionados()));
@@ -1173,7 +1240,31 @@ async function tentarApagarDaNuvemDeNovo() {
   idsAindaNaNuvem.clear();
   tirarAvisoDaArea('ainda-na-nuvem');
   // A nuvem respondeu: o card e o chip da conta deixam de dizer “sem sincronizar”.
-  Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
+  mostrarSincronizado();
+}
+
+let avisoDaChaveNoApagarTudo = null;
+async function apagarChaveNoApagarTudo() {
+  try {
+    await ChaveDaOpenAI.apagar({ comConta: Boolean(usuarioLogado), mesmoSemChave: true, todas: true });
+    await sincronizarAChave();
+    avisoDaChaveNoApagarTudo?.remove();
+    avisoDaChaveNoApagarTudo = null;
+    return !erroDaChave;
+  } catch (erro) {
+    avisoDaChaveNoApagarTudo?.remove();
+    const antiga = erro?.codigo === 'outdated_connection';
+    const outraConta = erro?.codigo === 'other_account_owner';
+    avisoDaChaveNoApagarTudo = montarAviso({
+      texto: textoDaVoz(antiga ? 'CFG-35.erroConexaoAntiga' : outraConta ? 'CFG-35.erroOutraConta' : 'CFG-17.chaveNaoApagada'),
+      acao: antiga ? { rotulo: textoDaVoz('CFG-35.erroAtualizar'), aoUsar: () => PerpetualMiner.CartaoDaIA.baixarConexao() }
+        : outraConta ? { rotulo: textoDaVoz('CFG-35.erroTrocar'), aoUsar: () => PerpetualMiner.CartaoDaIA.trocarChave() }
+          : { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: apagarChaveNoApagarTudo },
+      detalhes: erro?.codigo || erro?.name || 'storage_error', fechavel: false,
+    });
+    document.getElementById('cfg-perigo-corpo').append(avisoDaChaveNoApagarTudo);
+    return false;
+  }
 }
 
 // Roda depois que a pessoa confirma no modal da Zona de perigo (painel-perigo.js).
@@ -1183,6 +1274,8 @@ function apagarTudo() {
   Object.keys(keywords).forEach(k => delete keywords[k]);
   selecionadas.clear();
   atualizarContadorSelecao();
+  // A chave da OpenAI também sai (#154): daqui, da Conexão e, com conta, da nuvem, mesmo que ainda não tenha chegado aqui.
+  const chaveApagada = apagarChaveNoApagarTudo();
   const naNuvem = sincronizacao.apagarTudo(ids).then(({ ok, erro }) => {
     if (!ok) {
       console.error('[Firestore] apagar tudo falhou:', erro);
@@ -1196,7 +1289,8 @@ function apagarTudo() {
     aplicarFiltro();
     // CFG-18 só quando as frases sumiram de todo lugar que a Zona de perigo
     // prometeu. Uma falha na nuvem aparece no card Conta & sync e no chip (Q4).
-    if (await naNuvem) mostrarToastDeSucesso(textoDaVoz('CFG-18'));
+    const [frasesApagadas, apagouChave] = await Promise.all([naNuvem, chaveApagada]);
+    if (frasesApagadas && apagouChave) mostrarToastDeSucesso(textoDaVoz('CFG-18'));
   });
 }
 
@@ -1760,7 +1854,7 @@ async function tentarSubirDeNovo() {
   idsMineradosForaDaNuvem.clear();
   tirarAvisoDaArea('fora-da-nuvem');
   // A nuvem respondeu: o card e o chip da conta deixam de dizer “sem sincronizar”.
-  Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
+  mostrarSincronizado();
 }
 
 // ─── A linha do .txt ──────────────────────────────────────────────────────────

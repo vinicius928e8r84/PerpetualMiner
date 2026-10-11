@@ -11,6 +11,11 @@
 // e como chega à Conexão: lib/chave-da-openai.js. O que o card lê do storage é `pm_chave_openai`
 // (os 4 últimos), nunca a chave.
 //
+// Com conta, a chave acompanha a conta Google (#154): a nota diz que ela vai junto, e uma chave que
+// chega de outro computador (ou um apagamento) aparece aqui pelo storage. Apagar chave (perigo em
+// contorno) só abre a confirmação Veio; confirmada, a chave sai daqui, da Conexão e, com conta, da nuvem.
+// A cópia da Conexão acompanha cada mudança da chave: o card a confere quando `pm_chave_openai` muda.
+//
 // Os erros (chave recusada, sem crédito, organização não verificada, a OpenAI fora do ar, a Conexão
 // sem responder) atravessam o card, abaixo das duas colunas, e a abertura em negrito diz a qual
 // entrada pertencem. Abaixo de ~620 px de largura do card, as colunas viram linhas.
@@ -21,7 +26,7 @@
 
 (function (raiz) {
   const { textoDaVoz, ChaveDaOpenAI, ConexaoAnki } = raiz;
-  const { mostrarToastDeSucesso, montarAviso } = raiz.Veio;
+  const { mostrarToastDeSucesso, montarAviso, abrirConfirmacao } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
   // Onde a pessoa resolve o que a OpenAI pede (links, não cópia).
@@ -36,37 +41,61 @@
     ultimos4: null,    // null até a primeira leitura do storage; '' sem chave
     copia: null,       // a Conexão tem a cópia da chave? true · false · null (não se sabe: ela não respondeu)
     focarAoLer: false, // o endereço pediu o foco antes de o storage responder
+    uid: '',
+    contaDaChave: '',
+    comConta: false,   // há uma conta Google: a chave vai junto com ela (#154)
   };
 
   /** Onde o card é desenhado: { corpo, prefixo, trocando, conferindo, erro, digitado }. `digitado` é o que a pessoa colou no campo. */
   const lugares = [];
   let configuracoes = null;
   let conexaoLigada = false;
+  let leituraInicial = Promise.resolve();
 
   function iniciar() {
     configuracoes = montar(porId('cfg-ia-corpo'), { prefixo: 'cfg' });
-    chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null }, dados => {
-      estado.ultimos4 = dados[ChaveDaOpenAI.MARCA]?.ultimos4 || '';
-      desenharResumo();
-      lugares.forEach(desenhar);
-      if (estado.focarAoLer) focarOCampoSeVazio();
+    // Antes do primeiro desenho, recupera a verdade do cofre e da Conexão,
+    // inclusive uma conferência da página anterior cuja resposta se perdeu.
+    leituraInicial = ChaveDaOpenAI.conferirACopia().catch(() => null);
+    leituraInicial.then(tem => {
+      estado.copia = conexaoLigada ? tem : null;
+      chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null, pm_user_info: null }, dados => {
+        estado.ultimos4 = dados[ChaveDaOpenAI.MARCA]?.ultimos4 || '';
+        estado.comConta = Boolean(dados.pm_user_info);
+        estado.uid = dados.pm_user_info?.uid || '';
+        estado.contaDaChave = dados[ChaveDaOpenAI.MARCA]?.conta === undefined ? '' : dados[ChaveDaOpenAI.MARCA].conta;
+        desenharResumo();
+        lugares.forEach(desenhar);
+        if (estado.focarAoLer) focarOCampoSeVazio();
+      });
     });
     // Outra página (ou o outro lugar do card) guardou a chave: aparece aqui sem recarregar. No meio de uma
     // troca ou de uma conferência o que a pessoa faz não é derrubado.
+    // A chave que chega de outro computador da conta (ou o apagamento dele) chega assim também, e a cópia da
+    // Conexão a acompanha.
     chrome.storage.onChanged.addListener((mudancas, area) => {
-      if (area !== 'local' || !(ChaveDaOpenAI.MARCA in mudancas)) return;
+      if (area !== 'local') return;
+      if ('pm_user_info' in mudancas) {
+        estado.comConta = Boolean(mudancas.pm_user_info.newValue);
+        estado.uid = mudancas.pm_user_info.newValue?.uid || '';
+        for (const lugar of lugares) if (!lugar.trocando && !lugar.conferindo) desenhar(lugar);
+      }
+      if (!(ChaveDaOpenAI.MARCA in mudancas)) return;
+      estado.contaDaChave = mudancas[ChaveDaOpenAI.MARCA].newValue?.conta === undefined ? '' : mudancas[ChaveDaOpenAI.MARCA].newValue.conta;
       estado.ultimos4 = mudancas[ChaveDaOpenAI.MARCA].newValue?.ultimos4 || '';
+      rodada += 1;
+      estado.copia = null;
       desenharResumo();
       for (const lugar of lugares) if (!lugar.trocando && !lugar.conferindo) desenhar(lugar);
+      if (conexaoLigada) conferirACopia();
     });
-    // Quando a Conexão volta a responder, ela pode estar sem a cópia da chave que a extensão guarda.
+    // Cada saúde concluída relê o dono, inclusive uma aceitação tardia de outra página.
     ConexaoAnki.acompanhar(situacao => {
       if (situacao === ConexaoAnki.SITUACAO.CONECTANDO) return;
       const ligada = situacao === ConexaoAnki.SITUACAO.LIGADA;
-      const voltou = ligada && !conexaoLigada;
       conexaoLigada = ligada;
       if (ligada) {
-        if (voltou) conferirACopia();
+        conferirACopia();
       } else {
         // Sem resposta da Conexão o card não afirma nada sobre a cópia (C8): o que ficou na tela era de antes.
         rodada += 1;
@@ -91,15 +120,16 @@
       estado.focarAoLer = true;
       return;
     }
-    if (!estado.ultimos4) porId(idDe(configuracoes, 'campo'))?.focus();
+    if (!estado.ultimos4 || configuracoes.trocando) porId(idDe(configuracoes, 'campo'))?.focus();
   }
 
   /** A resposta de uma conferência da cópia que a Conexão desligou no meio do caminho já não vale. */
   let rodada = 0;
 
   async function conferirACopia() {
+    await leituraInicial;
     const minha = ++rodada;
-    const tem = await ChaveDaOpenAI.conferirACopia();
+    const tem = await ChaveDaOpenAI.conferirACopia().catch(() => null);
     if (minha === rodada) mudarACopia(tem);
   }
 
@@ -160,12 +190,16 @@
       porId(idDe(lugar, 'campo')).focus();
     });
     trocar.id = idDe(lugar, 'trocar');
+    // Perigo em contorno: só abre a confirmação (CODING_STANDARDS, regra 3).
+    const apagar = botao('perigo', textoDaVoz('CFG-35.chaveApagar'), () => confirmarApagar(lugar));
+    apagar.id = idDe(lugar, 'apagar');
 
+    const deOutraConta = estado.uid && estado.contaDaChave && estado.contaDaChave !== estado.uid;
     const linha = elemento('div', 'cfg-linha',
       elemento('div', 'cfg-quem',
         elemento('span', 'cfg-status', ponto, textoDaVoz('CFG-35.chaveSalva')),
         elemento('span', 'cfg-chave-mascarada cfg-chave-mascarada--card', mascarada())),
-      elemento('div', 'cfg-acoes', trocar));
+      elemento('div', 'cfg-acoes', trocar, ...(deOutraConta ? [] : [apagar])));
     return colunaDaChave(lugar, linha, ...notasDaChave(lugar, true));
   }
 
@@ -229,7 +263,10 @@
   function notasDaChave(lugar, salva) {
     const notas = [];
     if (salva) {
-      notas.push(elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chaveGuardada')));
+      notas.push(elemento('p', 'cfg-nota', textoDaVoz(estado.contaDaChave === null || (estado.comConta && !estado.contaDaChave) ? 'CFG-42.legado'
+        : estado.comConta && estado.contaDaChave && estado.contaDaChave !== estado.uid
+          ? 'CFG-35.chaveDeOutraConta' : estado.comConta ? 'CFG-35.chaveNaConta'
+            : estado.contaDaChave ? 'CFG-35.chaveSemContaVinculada' : 'CFG-35.chaveSemConta')));
       if (estado.copia !== null) {
         const copia = elemento('p', 'cfg-nota', textoDaVoz(estado.copia ? 'CFG-35.chaveCopiaNaConexao' : 'CFG-35.chaveSemCopia'));
         copia.dataset.copia = estado.copia ? 'tem' : 'falta';
@@ -272,6 +309,9 @@
       openai_fora_do_ar: { texto: 'CFG-35.erroForaDoAr', acao: tentar },
       sem_conexao: { texto: 'CFG-35.erroSemConexao', acao: tentar },
       conexao_com_erro: { texto: 'CFG-35.erroConexaoComErro', acao: tentar },
+      conexao_antiga: { texto: 'CFG-35.erroConexaoAntiga', acao: { rotulo: textoDaVoz('CFG-35.erroAtualizar'), aoUsar: baixarConexao } },
+      outra_conta: { texto: 'CFG-35.erroOutraConta', acao: { rotulo: textoDaVoz('CFG-35.erroTrocar'), aoUsar: () => { lugar.trocando = true; trocarDeNovo(lugar); } } },
+      apagar_local: { texto: 'CFG-35.erroAoApagar', acao: { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: () => apagarAChave(lugar) } },
     }[motivo];
     const aviso = montarAviso({
       abertura: textoDaVoz('CFG-35.erroEntrada'),
@@ -312,6 +352,8 @@
 
   /** Entrega a chave à Conexão e mostra o que veio: a chave conferida ou a faixa do erro. */
   async function enviarAChave(lugar, chave) {
+    rodada += 1;
+    mudarACopia(null); // a confirmação anterior não descreve a mutação em voo
     lugar.conferindo = true;
     lugar.erro = null;
     lugar.digitado = chave;
@@ -321,8 +363,10 @@
     try {
       resultado = await ChaveDaOpenAI.confirmar(chave);
     } catch (erro) {
-      // A Conexão aceitou, mas a chave não coube no armazenamento da extensão: não está guardada aqui.
-      resultado = { ok: false, motivo: 'conexao_com_erro', detalhes: String(erro?.message || erro) };
+      // O cache pode ter falhado depois da aceitação. Não declara que o dono
+      // perdeu a chave, nem repete mensagem que pudesse conter um segredo.
+      resultado = { ok: false, motivo: erro?.codigo === 'outdated_connection' ? 'conexao_antiga' : 'conexao_com_erro',
+        detalhes: erro?.codigo || erro?.name || 'storage_error' };
     }
     lugar.conferindo = false;
     if (resultado.ok) {
@@ -338,7 +382,7 @@
         }
       }
       estado.ultimos4 = resultado.ultimos4;
-      estado.copia = true;
+      estado.copia = conexaoLigada ? true : null;
       desenharResumo();
       for (const outro of lugares) if (!outro.conferindo) desenhar(outro);
       porId(idDe(lugar, 'trocar'))?.focus();
@@ -349,6 +393,47 @@
     lugar.erro = { motivo: resultado.motivo, detalhes: resultado.detalhes };
     desenhar(lugar);
     porId(idDe(lugar, 'campo'))?.focus();
+  }
+
+  /** Apagar chave: a confirmação Veio, com Cancelar no foco inicial; o corpo diz de onde ela sai. */
+  function confirmarApagar(lugar) {
+    abrirConfirmacao({
+      id: idDe(lugar, 'apagar-modal'),
+      titulo: textoDaVoz('CFG-35.apagarTitulo'),
+      corpo: textoDaVoz(estado.comConta ? 'CFG-35.apagarCorpo' : 'CFG-35.apagarCorpoSemConta'),
+      cancelar: textoDaVoz('CFG-35.apagarCancelar'),
+      confirmar: textoDaVoz('CFG-35.apagarConfirmar'),
+      aoConfirmar: () => apagarAChave(lugar),
+    });
+  }
+
+  /** Apaga no dono e desenha sua leitura posterior, não um estado vazio inventado pela tela. */
+  async function apagarAChave(lugar) {
+    rodada += 1;
+    mudarACopia(null);
+    let dono;
+    try {
+      dono = await ChaveDaOpenAI.apagar();
+    } catch (erro) {
+      // Incerto: pode ter apagado no dono e falhado apenas a escrita do cache.
+      lugar.erro = { motivo: erro?.codigo === 'outdated_connection' ? 'conexao_antiga'
+        : erro?.codigo === 'other_account_owner' ? 'outra_conta' : 'apagar_local',
+        detalhes: erro?.codigo || erro?.name || 'storage_error' };
+      desenhar(lugar);
+      return;
+    }
+    for (const cada of lugares) {
+      cada.trocando = false;
+      cada.erro = null;
+      cada.digitado = '';
+    }
+    estado.ultimos4 = dono.configurada ? dono.ultimos4 : '';
+    estado.contaDaChave = dono.conta;
+    estado.copia = conexaoLigada ? (dono.configurada || null) : null;
+    desenharResumo();
+    for (const cada of lugares) if (!cada.conferindo) desenhar(cada);
+    porId(idDe(lugar, 'campo'))?.focus();
+    mostrarToastDeSucesso(textoDaVoz('CFG-35.apagarToast'));
   }
 
   /** Tentar de novo: manda a chave que a pessoa tinha colado (ainda no campo). */
@@ -380,5 +465,16 @@
 
   document.addEventListener('DOMContentLoaded', iniciar);
 
-  raiz.CartaoDaIA = { montar };
+  function baixarConexao() {
+    const link = document.createElement('a');
+    link.href = chrome.runtime.getURL('conexao/perpetualminer.ankiaddon');
+    link.download = 'perpetualminer.ankiaddon';
+    link.click();
+  }
+
+  raiz.CartaoDaIA = { montar, baixarConexao, trocarChave: () => {
+    location.hash = '#configuracoes/ia';
+    configuracoes.trocando = true;
+    trocarDeNovo(configuracoes);
+  } };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});
