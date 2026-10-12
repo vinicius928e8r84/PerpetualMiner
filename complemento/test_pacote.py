@@ -4,12 +4,14 @@
 """
 
 import importlib
+import io
 import json
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import zipfile
 
@@ -87,6 +89,25 @@ class ArquivoDoComplemento(unittest.TestCase):
             self.assertEqual(resultado.returncode, 0, resultado.stderr)
             self.assertTrue(zipfile.is_zipfile(arquivo))
 
+    def test_dois_empacotamentos_do_mesmo_codigo_dao_os_mesmos_bytes(self):
+        servidor = os.path.join(AQUI, "servidor.py")
+        horas = os.stat(servidor)
+        with tempfile.TemporaryDirectory() as pasta:
+            primeiro = empacotar.empacotar(os.path.join(pasta, "a.ankiaddon"), mod=1700000000)
+            try:
+                os.utime(servidor, (horas.st_atime, horas.st_mtime + 3600))
+                segundo = empacotar.empacotar(os.path.join(pasta, "b.ankiaddon"), mod=1700000000)
+            finally:
+                os.utime(servidor, (horas.st_atime, horas.st_mtime))
+            with open(primeiro, "rb") as a, open(segundo, "rb") as b:
+                self.assertEqual(a.read(), b.read())
+            with zipfile.ZipFile(primeiro) as pacote:
+                for entrada in pacote.infolist():
+                    self.assertEqual(entrada.date_time, empacotar.DATA_FIXA, entrada.filename)
+                    self.assertEqual(entrada.create_system, empacotar.SISTEMA_FIXO, entrada.filename)
+                    self.assertEqual(entrada.external_attr, empacotar.PERMISSOES_FIXAS, entrada.filename)
+
+
     def test_o_codigo_instalado_carrega_pelo_nome_da_pasta_que_o_anki_der_a_ele(self):
         with tempfile.TemporaryDirectory() as pasta:
             pacote = self.empacotado(pasta)
@@ -101,6 +122,67 @@ class ArquivoDoComplemento(unittest.TestCase):
                 sys.path.remove(os.path.dirname(instalado))
                 for nome in [n for n in sys.modules if n == "123456789" or n.startswith("123456789.")]:
                     del sys.modules[nome]
+
+
+class HoraDoEmpacotamento(unittest.TestCase):
+    """Rodado duas vezes sem `mod=` nem variável, o script dá os mesmos bytes: o `mod` só sobe quando o código muda."""
+
+    def setUp(self):
+        self.pasta = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.pasta)
+        self.copia = os.path.join(self.pasta, "complemento")
+        shutil.copytree(AQUI, self.copia, ignore=shutil.ignore_patterns("__pycache__", "user_files"))
+        os.makedirs(os.path.join(self.pasta, "conexao"))
+        self.entregue = os.path.join(self.pasta, "conexao", "perpetualminer.ankiaddon")
+        shutil.copy(ARQUIVO_NO_PACOTE_DA_EXTENSAO, self.entregue)
+        with zipfile.ZipFile(self.entregue) as pacote:
+            self.mod_entregue = json.loads(pacote.read("manifest.json"))["mod"]
+
+    def empacotar(self, nome, **variaveis):
+        ambiente = {k: v for k, v in os.environ.items() if k != "SOURCE_DATE_EPOCH"}
+        ambiente.update(variaveis)
+        destino = os.path.join(self.pasta, nome)
+        resultado = subprocess.run(
+            [sys.executable, os.path.join(self.copia, "empacotar.py"), destino],
+            cwd=self.pasta, capture_output=True, text=True, env=ambiente,
+        )
+        self.assertEqual(resultado.returncode, 0, resultado.stderr)
+        with open(destino, "rb") as arquivo:
+            return arquivo.read()
+
+    def mudar_o_codigo(self):
+        shutil.copy(os.path.join(self.copia, "registro.py"), os.path.join(self.copia, "servidor.py"))
+
+    def mod_de(self, bytes_do_pacote):
+        with zipfile.ZipFile(io.BytesIO(bytes_do_pacote)) as pacote:
+            return json.loads(pacote.read("manifest.json"))["mod"]
+
+    def test_rodado_duas_vezes_sem_variavel_da_os_mesmos_bytes(self):
+        primeiro = self.empacotar("a.ankiaddon")
+        time.sleep(1.1)
+        segundo = self.empacotar("b.ankiaddon")
+        self.assertEqual(primeiro, segundo)
+
+    def test_o_codigo_igual_ao_arquivo_da_extensao_guarda_o_mod_dele(self):
+        self.assertEqual(self.mod_de(self.empacotar("a.ankiaddon")), self.mod_entregue)
+
+    def test_mudou_o_codigo_o_mod_sobe_para_a_hora_do_empacotamento(self):
+        self.mudar_o_codigo()
+        antes = int(time.time())
+        novo = self.mod_de(self.empacotar("a.ankiaddon"))
+        self.assertGreaterEqual(novo, antes)
+        self.assertGreater(novo, self.mod_entregue)
+
+    def test_sem_arquivo_da_extensao_o_mod_e_a_hora_do_empacotamento(self):
+        os.remove(self.entregue)
+        antes = int(time.time())
+        self.assertGreaterEqual(self.mod_de(self.empacotar("a.ankiaddon")), antes)
+
+    def test_source_date_epoch_fixa_o_mod(self):
+        fixo = self.empacotar("a.ankiaddon", SOURCE_DATE_EPOCH="1700000000")
+        self.assertEqual(self.mod_de(fixo), 1700000000)
+        self.mudar_o_codigo()
+        self.assertEqual(self.mod_de(self.empacotar("b.ankiaddon", SOURCE_DATE_EPOCH="1700000000")), 1700000000)
 
 
 class ArquivoQueVaiNoPacoteDaExtensao(unittest.TestCase):

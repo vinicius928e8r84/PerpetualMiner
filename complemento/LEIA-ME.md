@@ -50,6 +50,7 @@ python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon
 ```
 
 `test_pacote.py` falha enquanto o arquivo da extensão estiver para trás do código (o `LEIA-ME.md` e os testes não entram nele).
+Sem mudar o código, refazer o arquivo dá os mesmos bytes (o `mod` do manifest só sobe quando o código muda; `SOURCE_DATE_EPOCH` o fixa).
 
 ## Ensaio do dono, no Mac
 
