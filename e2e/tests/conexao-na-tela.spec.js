@@ -65,7 +65,7 @@ test.describe('a mesma situação, a mesma tela', () => {
     await expect(sidebar(page)).toHaveText(TEXTO.desligada);
     await expect(pontoDaSidebar(page)).toHaveAttribute('data-estado', 'desligada');
 
-    // O passo 2 do card é o que mostra a Conexão desligada; o 1º espera a Conexão sem dizer “desligada”.
+    // O passo 3 do card é o que mostra a Conexão desligada; o 1º nem a linha da Conexão tem, e o 2º espera.
     await page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: 'Reiniciar o Anki' }).click();
     await expect(statusDoCard(page)).toHaveText(TEXTO.desligada);
     await expect(pontoDoCard(page)).toHaveAttribute('data-estado', 'desligada');
@@ -134,7 +134,7 @@ test.describe('a mesma situação, a mesma tela', () => {
     await expect(statusDoCard(page)).toHaveText(TEXTO.conectando);
     await expect(cardDaPrimeiraConexao(page)).toContainText('Pronto');
     await expect(pontoDoCard(page)).toHaveAttribute('data-estado', 'conectando');
-    await expect(page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: /feito$/ })).toHaveCount(2);
+    await expect(page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: /feito$/ })).toHaveCount(3);
     await expect(tentarDoCard(page)).toBeHidden();
     await expect(tentarDaF1(page)).toHaveAttribute('aria-disabled', 'true');
     await fotografar(page, 'a3-onb16-pronto-conectando.png');
@@ -202,7 +202,7 @@ test.describe('Tentar de novo indisponível enquanto confere', () => {
     await expect(statusDoCard(page)).toHaveText(TEXTO.desligada);
     await expect(tentarDoCard(page)).not.toHaveAttribute('aria-disabled', 'true');
     await expect(tentarDoCard(page)).toBeFocused();
-    await expect(cardDaPrimeiraConexao(page)).toContainText('Como ligar · Passo 2 de 3');
+    await expect(cardDaPrimeiraConexao(page)).toContainText('Como ligar · Passo 3 de 4');
     expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
   });
 

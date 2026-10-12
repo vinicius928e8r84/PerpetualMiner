@@ -1495,6 +1495,140 @@ body {
   gap: 10px;
 }
 
+/* O passo Ter o Anki (#146): a pergunta, as duas respostas e o que a escolha mostra. */
+.pc-anki {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+
+.pc-anki[hidden],
+.pc-anki__download[hidden],
+.pc-anki__resultado[hidden] {
+  display: none;
+}
+
+.pc-anki__pergunta {
+  margin: 0;
+  font-weight: var(--veio-peso-rotulo);
+}
+
+.pc-anki__respostas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pc-anki__download {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+
+.pc-anki__depois {
+  margin: 0;
+  color: var(--veio-muted);
+}
+
+.pc-anki__resultado {
+  margin: 0;
+}
+
+/* A animação do aviso do Anki (ONB-19, #146): dois quadros que se alternam sozinhos — o aviso
+   e o mesmo diálogo com o Sim marcado. Com movimento reduzido, ficam parados, lado a lado. */
+.pc-animacao {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin: 0;
+}
+
+.pc-animacao__quadros {
+  display: grid;
+}
+
+.pc-animacao__quadro {
+  grid-area: 1 / 1;
+  animation: pc-quadro var(--veio-ciclo) steps(1, end) infinite;
+}
+
+/* Antes do atraso do segundo quadro vale o valor da classe: o primeiro parado, o segundo fora. */
+.pc-animacao__quadro--clique {
+  opacity: 0;
+  animation-delay: calc(var(--veio-ciclo) / 2);
+}
+
+@keyframes pc-quadro {
+  0% { opacity: 1; }
+  50% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pc-animacao__quadros {
+    display: flex;
+    gap: 12px;
+  }
+
+  .pc-animacao__quadro {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* O diálogo do Anki no desenho: uma janela pequena, com o aviso e os dois botões dele. */
+.pc-dialogo {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  max-width: 300px;
+  padding: 12px 14px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-bg);
+  box-shadow: var(--veio-sombra-ilha);
+}
+
+.pc-dialogo__titulo {
+  margin: 0;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+  font-weight: var(--veio-peso-rotulo);
+}
+
+.pc-dialogo__texto {
+  margin: 0;
+  font-size: var(--veio-tam-corpo);
+}
+
+.pc-dialogo__botoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.pc-dialogo__botao {
+  padding: 4px 14px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-surface);
+  font-size: var(--veio-tam-apoio);
+}
+
+/* O quadro de onde clicar: o Sim com a marca de foco da Base. */
+.pc-animacao__quadro--clique .pc-dialogo__botao--sim {
+  outline: 2px solid var(--veio-accent);
+  outline-offset: 2px;
+}
+
+.pc-animacao__legenda {
+  margin: 0;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
 .pc-arquivo[hidden] {
   display: none;
 }

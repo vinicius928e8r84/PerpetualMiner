@@ -35,7 +35,7 @@ const abas = page => page.getByRole('radiogroup', { name: 'Seções da Conexão 
 const tentarDaF1 = page => page.locator('#shell-tentar-de-novo');
 
 const ACHOU = 'O Anki abre sozinho quando um Envio precisar.';
-const PASSOS = [/^Pôr a Conexão no Anki/, /^Reiniciar o Anki/, /^Abrir o Anki sozinho/];
+const PASSOS = [/^Ter o Anki/, /^Pôr a Conexão no Anki/, /^Reiniciar o Anki/, /^Abrir o Anki sozinho/];
 const AGORA = new Date('2026-09-18T12:00:00');
 
 /** O relógio da página parado: o Pronto (1,8 s) fica na tela até o teste andar com ele. */
@@ -55,15 +55,15 @@ async function conectarPelaPrimeiraVez(page, extensao, fakes) {
   await expect(statusDaConexao(page)).toHaveText(/^Achei o Anki/);
 }
 
-test('ligada, o card passa ao passo 3, Abrir o Anki sozinho, sem pedir nada ao Chrome nem ao abridor', async ({ page, extensao, fakes }) => {
+test('ligada, o card passa ao passo 4, Abrir o Anki sozinho, sem pedir nada ao Chrome nem ao abridor', async ({ page, extensao, fakes }) => {
   // A extensão chega da loja sem a permissão: ela é opcional.
   expect(await extensao.permissaoDoAbridor()).toBe(false);
   await conectarPelaPrimeiraVez(page, extensao, fakes);
 
   await expect(lista(page).getByRole('button')).toHaveText(PASSOS);
   await expect(itemDaLista(page, 'Abrir o Anki sozinho')).toHaveAttribute('aria-current', 'step');
-  await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(2);
-  await expect(card(page)).toContainText('Como ligar · Passo 3 de 3');
+  await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(3);
+  await expect(card(page)).toContainText('Como ligar · Passo 4 de 4');
   await expect(tituloDoPasso(page)).toHaveText('Abrir o Anki sozinho');
   await expect(card(page)).toContainText('Com a sua permissão, a extensão abre o Anki quando um Envio precisar dele. O Chrome vai pedir para ela se comunicar com o abridor que a Conexão com o Anki deixou neste computador. Agora ela só confere se acha o Anki: nada abre nem fecha.');
   // O que a Conexão disse de si continua na tela, e o passo tem as duas saídas.
@@ -105,12 +105,13 @@ test('a primeira conexão confirmada mantém o título do abridor pendente após
   await expect(permitir(page)).toBeVisible();
   fakes.anki.desligar();
   await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
-  await expect(statusDaConexao(page)).toHaveText('Esperando a Conexão');
+  // Quem já viu a Conexão ligar volta ao passo do abridor, que é o que falta; a linha da Conexão diz a queda.
+  await expect(statusDaConexao(page)).toHaveText('Conexão com o Anki: desligada');
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
   await expect(page.locator('#anki-primeira-vez-titulo')).toHaveText('Abrir o Anki sozinho');
   await fotografar(page, 'abridor-pendente-apos-queda.png');
   await page.reload();
-  await expect(statusDaConexao(page)).toHaveText('Esperando a Conexão');
+  await expect(statusDaConexao(page)).toHaveText('Conexão com o Anki: desligada');
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
   await expect(page.locator('#anki-primeira-vez-titulo')).toHaveText('Abrir o Anki sozinho');
   await expect(abas(page)).toBeHidden();
@@ -126,7 +127,7 @@ test('Permitir pede a permissão ao Chrome: o passo espera a resposta do aviso d
   // O aviso do Chrome está aberto (exceção de teste, no topo do arquivo): a tela diz o que fazer e espera.
   await expect(statusDoAbridor(page)).toHaveText('Responda ao aviso do Chrome.');
   await expect(permitir(page)).toHaveAttribute('aria-disabled', 'true');
-  await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(2);
+  await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(3);
   expect(fakes.abridor.pedidos()).toEqual([]);
   await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), false);
   await estadoFinal(extensao, { pm_abridor: null });
@@ -175,7 +176,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await pararRelogio(page);
     await conectarPelaPrimeiraVez(page, extensao, fakes);
 
-    await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(3);
+    await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(4);
     await expect(pronto(page)).toBeVisible();
     await expect(statusDoAbridor(page)).toHaveText(ACHOU);
     await expect(statusDoAbridor(page)).toBeVisible();
@@ -299,7 +300,7 @@ test.describe('na Boas-vindas, com a permissão dada', () => {
     await cardDaBoasVindas(page).locator('#bv4-tentar').click();
 
     await expect(page.locator('#bv4-abridor-status')).toHaveText(ACHOU);
-    await expect(passosDaBoasVindas(page).getByRole('button', { name: /feito$/ })).toHaveCount(3);
+    await expect(passosDaBoasVindas(page).getByRole('button', { name: /feito$/ })).toHaveCount(4);
     await fotografar(page, 'abridor-boas-vindas-achou.png');
     expect(fakes.abridor.pedidos()).toEqual([CONFERIR]);
     await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);
