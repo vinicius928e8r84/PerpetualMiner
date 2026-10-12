@@ -104,13 +104,22 @@ async function main() {
   // `null` é a armadilha: é o que um host quebrado responde, e também o valor que um código de
   // dentro usaria para dizer “não houve resposta”. Confundir os dois põe “O Anki está abrindo…”
   // na tela sem nada ter aberto.
-  for (const esquisita of [null, undefined, {}, { achou: 'sim' }, { abriu: true }, 'achou', 0]) {
+  // Os dois campos “verdadeiros” sem ser `true` também ficam de fora: só o booleano exato é abriu.
+  for (const esquisita of [null, undefined, {}, { achou: 'sim' }, { abriu: true }, 'achou', 0,
+    { achou: 'sim', abriu: 'sim' }, { achou: 1, abriu: 1 }]) {
     const { Abridor } = carregarOAbridor({ responder: () => esquisita });
     const comoDisse = JSON.stringify(esquisita ?? null);
     assert.deepStrictEqual(await comoValores(Abridor.conferirOAnki()), { resultado: Abridor.RESULTADO.SEM_ABRIDOR, detalhe: comoDisse },
       `o conferir com a resposta ${comoDisse} diz SEM_ABRIDOR, com o que o abridor disse`);
     assert.deepStrictEqual(await comoValores(Abridor.abrirOAnki()), { resultado: Abridor.RESULTADO.SEM_ABRIDOR, detalhe: comoDisse },
       `o abrir com a resposta ${comoDisse} diz SEM_ABRIDOR, com o que o abridor disse`);
+  }
+
+  // Achou e abriu com um dos dois falso nunca é ABRIU, nem com o outro verdadeiro.
+  for (const meiaVerdade of [{ achou: false, abriu: true }, { achou: true, abriu: false }]) {
+    const { Abridor } = carregarOAbridor({ responder: () => meiaVerdade });
+    assert.deepStrictEqual(await comoValores(Abridor.abrirOAnki()), { resultado: Abridor.RESULTADO.NAO_ABRIU, detalhe: '' },
+      `o abrir com ${JSON.stringify(meiaVerdade)} diz NAO_ABRIU`);
   }
 
   console.log('abridor tests passed');

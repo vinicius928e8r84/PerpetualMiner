@@ -49,8 +49,8 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   The steps are marked by the real state, and the only thing the extension sees before the Conexão is the Conexão itself (the
   AnkiConnect is not read: no new permission), so the first three steps say nothing about the Anki until it answers and turn ✓
   together when `/health` answers successfully; the fourth, when the opener finds Anki. Without a person's choice, the card opens on
-  the first step, or on the last while connecting; one that has already answered ligada once on this page (or on this computer:
-  `ConexaoAnki.jaConectou()`) falls back to the opener step when the Conexão goes off again. After the card's own Tentar de novo
+  the first step, or on Reiniciar o Anki while connecting; one that has already answered ligada once on this page (or on this computer:
+  `ConexaoAnki.jaConectou()`) falls back to Reiniciar o Anki (the status line and Tentar de novo) when the Conexão goes off again. After the card's own Tentar de novo
   it stays on step 3 (the F1's and the Boas-vindas' do not set the person's choice). **2 minutes without an answer** (counted from the first time the person
   really sees the steps — the host passes the real visibility to `mostrar`: the Anki area is the current one, the Boas-vindas page is on screen — or from Baixar) show the 3-item checklist and **Baixar de novo** in whatever step is open, while the check keeps going alone; it leaves when the Conexão answers.
   On step 3 an automatic check in flight over a Conexão that was off shows “Conectando” with no click (`ConexaoAnki.conferindo()`, `aoConferir`); a

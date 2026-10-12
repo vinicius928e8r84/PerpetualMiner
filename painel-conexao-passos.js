@@ -349,18 +349,27 @@
     const anki = { escolha: null, doAbridor: null };
     const definirResposta = (escolha, doAbridor = null) => Object.assign(anki, { escolha, doAbridor });
 
-    /** O abridor da Conexão abre o Anki agora? Sem a permissão já dada, nem se pergunta a ele. */
+    /**
+     * O abridor da Conexão abre o Anki agora? Sem a permissão já dada, `abrirOAnki` nem pergunta a ele
+     * (SEM_PERMISSAO); uma conversa que falha por dentro (o Chrome recusando a pergunta da permissão, por
+     * exemplo) é o caminho manual.
+     */
     async function oAbridorAbreOAnki() {
-      if (!(await Abridor.temPermissao().catch(() => false))) return false;
-      const { resultado } = await Abridor.abrirOAnki();
+      const { resultado } = await Abridor.abrirOAnki().catch(() => ({ resultado: null }));
       return resultado === Abridor.RESULTADO.ABRIU;
     }
+
+    // Uma conversa com o abridor por vez: cada `abrir` é um Anki aberto pelo sistema, e um clique duplo em
+    // “Já tenho” não pode abrir dois.
+    let conversandoComOAbridor = false;
 
     /** “Já tenho”: com a permissão já dada, o abridor abre o Anki; sem ela (ou sem o abridor), o caminho manual. */
     async function responderJaTenho() {
       definirResposta(RESPOSTA.JA_TENHO);
       desenhar();
-      const abriu = await oAbridorAbreOAnki();
+      if (conversandoComOAbridor) return;
+      conversandoComOAbridor = true;
+      const abriu = await oAbridorAbreOAnki().finally(() => { conversandoComOAbridor = false; });
       // Enquanto o abridor falava, a pessoa podia ter mudado de resposta (ou a Conexão, respondido).
       if (anki.escolha !== RESPOSTA.JA_TENHO) return;
       definirResposta(RESPOSTA.JA_TENHO, abriu ? 'ONB-18.abrindo' : 'ONB-18.manual');
@@ -450,9 +459,10 @@
       const situacao = ConexaoAnki.situacao();
       if (situacao === CONEXAO.LIGADA) return PASSO_DO_ABRIDOR;
       if (situacao === CONEXAO.CONECTANDO) return PASSO_DO_TENTAR;
-      // Desligada: quem nunca conectou começa no primeiro passo; quem já viu a Conexão ligar
-      // (nesta página, ou neste computador: `jaConectou`) volta ao passo do abridor, que é o que falta.
-      return estado.ligou || ConexaoAnki.jaConectou() ? PASSO_DO_ABRIDOR : PASSOS[0].id;
+      // Desligada: quem nunca conectou começa no primeiro passo; quem já viu a Conexão ligar (nesta
+      // página, ou neste computador: `jaConectou`) volta a Reiniciar o Anki, o primeiro que falta de novo,
+      // com a linha da Conexão e o Tentar de novo. O passo do abridor não tem o que fazer sem ela.
+      return estado.ligou || ConexaoAnki.jaConectou() ? PASSO_DO_TENTAR : PASSOS[0].id;
     }
     const indiceAberto = () => indice(passoAberto());
 

@@ -1569,6 +1569,14 @@ body {
   }
 }
 
+/* Numa janela estreita não cabem dois quadros lado a lado (cada um tem a linha Sim · Não inteira): parados, eles
+   empilham, sem sair do card. Acima disto os dois cabem, no card ONB-16 e no passo 4 da Boas-vindas. */
+@media (prefers-reduced-motion: reduce) and (max-width: 560px) {
+  .pc-animacao__quadros {
+    flex-direction: column;
+  }
+}
+
 /* O diálogo do Anki no desenho: uma janela pequena, com o aviso e os dois botões dele. */
 .pc-dialogo {
   display: grid;

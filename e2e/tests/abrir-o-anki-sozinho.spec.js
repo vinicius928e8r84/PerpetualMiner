@@ -105,18 +105,34 @@ test('a primeira conexão confirmada mantém o título do abridor pendente após
   await expect(permitir(page)).toBeVisible();
   fakes.anki.desligar();
   await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
-  // Quem já viu a Conexão ligar volta ao passo do abridor, que é o que falta; a linha da Conexão diz a queda.
+  // Quem já viu a Conexão ligar não volta ao primeiro passo: abre Reiniciar o Anki, o primeiro que falta de novo,
+  // com a linha da Conexão dizendo a queda e o Tentar de novo. O título do card segue o abridor pendente.
+  await expect(tituloDoPasso(page)).toHaveText('Reiniciar o Anki');
   await expect(statusDaConexao(page)).toHaveText('Conexão com o Anki: desligada');
+  await expect(card(page).getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
   await expect(page.locator('#anki-primeira-vez-titulo')).toHaveText('Abrir o Anki sozinho');
   await fotografar(page, 'abridor-pendente-apos-queda.png');
   await page.reload();
+  await expect(tituloDoPasso(page)).toHaveText('Reiniciar o Anki');
   await expect(statusDaConexao(page)).toHaveText('Conexão com o Anki: desligada');
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
   await expect(page.locator('#anki-primeira-vez-titulo')).toHaveText('Abrir o Anki sozinho');
   await expect(abas(page)).toBeHidden();
   await fotografar(page, 'abridor-pendente-queda-apos-reload.png');
   await estadoFinal(extensao, { pm_anki_ja_conectou: true, pm_anki_abridor_pendente: true });
+});
+
+test('quem já conectou e disse Agora não, com a Conexão desligada: o passo 4 da Boas-vindas abre em Reiniciar o Anki, com Tentar de novo', async ({ page, extensao, fakes }) => {
+  // O abridor já está resolvido (Agora não): o passo dele não teria nada a fazer com a Conexão desligada.
+  fakes.anki.desligar();
+  await extensao.gravarStorage({ pm_anki_ja_conectou: true, pm_abridor: { agoraNao: true } });
+  await page.goto(extensao.url('painel.html#boas-vindas/anki'));
+
+  await expect(page.locator('#bv4-passo-titulo')).toHaveText('Reiniciar o Anki');
+  await expect(page.locator('#bv4-status')).toHaveText('Conexão com o Anki: desligada');
+  await expect(page.locator('.bv-card').getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
+  await estadoFinal(extensao, { pm_anki_ja_conectou: true, pm_abridor: { agoraNao: true } });
 });
 
 test('Permitir pede a permissão ao Chrome: o passo espera a resposta do aviso dele e ainda não chama o abridor', async ({ page, extensao, fakes }) => {

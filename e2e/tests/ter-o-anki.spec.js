@@ -188,6 +188,21 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);
   });
 
+  test('“Já tenho” clicado duas vezes seguidas pede ao abridor uma vez só', async ({ page, extensao, fakes }) => {
+    // Cada `abrir` é um Anki aberto pelo sistema: dois pedidos juntos arriscam um segundo Anki ou o perfil já aberto.
+    await page.goto(extensao.url('painel.html#anki/custos'));
+    await expect(card(page)).toBeVisible();
+
+    await jaTenho(page).dblclick();
+
+    await expect(resultadoDoAnki(page)).toHaveText('O Anki está abrindo…');
+    await expect.poll(() => fakes.abridor.pedidos()).toEqual([ABRIR]);
+    // Um segundo pedido sairia logo depois do primeiro: meio segundo depois da resposta, ainda é um só.
+    await page.waitForTimeout(500);
+    expect(fakes.abridor.pedidos()).toEqual([ABRIR]);
+    await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);
+  });
+
   test('sem o abridor no computador: “Já tenho” cai no caminho manual de sempre', async ({ page, extensao, fakes }) => {
     // Uma Conexão antiga (ou nenhuma) não deixou o abridor: o Chrome não acha o host e o passo não trava.
     fakes.abridor.desregistrar();
@@ -282,6 +297,31 @@ test('com menos movimento, a animação vira quadros parados, lado a lado', asyn
   expect(caixas[1].x).toBeGreaterThan(caixas[0].x + caixas[0].largura - 1);
   await fotografar(page, 'ter-o-anki-animacao-parada.png');
   await estadoFinal(extensao, { pm_abridor: null });
+});
+
+test('com menos movimento numa janela estreita, os quadros parados empilham e cabem no card', async ({ page, extensao }) => {
+  // Exceção de teste: sem-estado-guardado — só o layout dos quadros muda com a largura; nada é gravado.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(extensao.url('painel.html#anki/custos'));
+  await expect(card(page)).toBeVisible();
+  await lista(page).getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
+
+  // Larguras de uma janela de Chrome de verdade (ela não fica mais estreita que ~500 px) em que dois quadros não cabem.
+  for (const largura of [540, 500]) {
+    await page.setViewportSize({ width: largura, height: 1000 });
+    const caixas = await card(page).locator('.pc-controle').evaluate(controle => {
+      const limite = controle.getBoundingClientRect();
+      return [...controle.querySelectorAll('.pc-animacao__quadro')].map(quadro => {
+        const caixa = quadro.getBoundingClientRect();
+        return { esquerda: caixa.left - limite.left, direita: limite.right - caixa.right };
+      });
+    });
+    expect(caixas, `na janela de ${largura} px`).toHaveLength(2);
+    for (const caixa of caixas) {
+      expect(caixa.esquerda, `na janela de ${largura} px`).toBeGreaterThanOrEqual(0);
+      expect(caixa.direita, `na janela de ${largura} px`).toBeGreaterThanOrEqual(0);
+    }
+  }
 });
 
 test('no passo 4 da Boas-vindas, o mesmo passo Ter o Anki abre em primeiro lugar', async ({ page, extensao }) => {
