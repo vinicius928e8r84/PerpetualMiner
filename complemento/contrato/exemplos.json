@@ -2939,7 +2939,7 @@
       },
       {
         "nome": "abrir o Anki no perfil anotado",
-        "daExtensao": false,
+        "daExtensao": true,
         "contexto": {
           "anki": "no_lugar"
         },
@@ -2953,7 +2953,7 @@
       },
       {
         "nome": "abrir sem o Anki no lugar",
-        "daExtensao": false,
+        "daExtensao": true,
         "contexto": {
           "anki": "sumiu"
         },
