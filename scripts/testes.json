@@ -50,10 +50,5 @@
       "precisa": "cd e2e && npm ci && npm run setup"
     }
   },
-  "fora": [
-    {
-      "arquivo": "test_gemini.js",
-      "motivo": "não é um teste: um script avulso que lista os modelos da Gemini e precisa da chave da pessoa (CLAUDE.md § Architecture › Files)"
-    }
-  ]
+  "fora": []
 }
