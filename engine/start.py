@@ -374,7 +374,7 @@ def _select_tts_profiles(config: dict, lang: str) -> None:
 
     console.print(
         "  Defina sotaques diferentes para o audio da palavra e da frase.\n"
-        "  O padrao vem do config.yaml, mas voce pode sobrescrever so nesta execucao.\n"
+        "  O padrao vem do config.json, mas voce pode sobrescrever so nesta execucao.\n"
     )
 
     sample = ", ".join(f"{tld} ({tts_accents.friendly_label(tld)})" for tld in recommended[:8])

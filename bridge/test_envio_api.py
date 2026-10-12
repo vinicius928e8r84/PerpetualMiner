@@ -266,7 +266,7 @@ class LeiturasDoAnkiPorPostTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.bridge, self.modules = offline_bridge(Path(temporary.name))
-        self.modules.modules["config_loader"].yaml = SimpleNamespace(safe_load=lambda _file: OfflineModules.config())
+        self.modules.modules["config_loader"].base_config = OfflineModules.config
         self.bridge.anki.collection_ready_status = lambda: (True, "")
         self.bridge.anki.invoke = self.ankiconnect
         self.client = self.bridge.app.test_client()

@@ -279,12 +279,7 @@ class BridgeApp:
         return getattr(parser, "normalize_ru_phrase", None) if parser is not None else None
 
     def _deck_stats_config(self, deck_name: str, lang: str) -> dict[str, Any]:
-        config_path = self.automatic_anki_path / "config.yaml"
-        yaml_mod = getattr(self.modules["config_loader"], "yaml", None)
-        if not yaml_mod:
-            raise RuntimeError("yaml_loader_unavailable")
-        with config_path.open("r", encoding="utf-8") as file:
-            base = yaml_mod.safe_load(file) or {}
+        base = self.modules["config_loader"].base_config() or {}
         lang_cfg = base.get("languages", {}).get(lang, {})
         anki_cfg = base.setdefault("anki", {})
         anki_cfg["deck_name"] = deck_name

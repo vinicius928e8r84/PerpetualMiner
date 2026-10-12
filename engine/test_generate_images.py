@@ -8,7 +8,6 @@ from unittest import mock
 
 import httpx
 import openai
-import yaml
 
 import generate_images
 
@@ -61,7 +60,7 @@ class ImageModelFromConfigTests(unittest.TestCase):
             self.assertEqual((root / "Output" / "cat.png").read_bytes(), PNG_BYTES)
 
     def test_shipped_config_no_longer_uses_the_retired_model(self):
-        config = yaml.safe_load((Path(__file__).parent / "config.yaml").read_text(encoding="utf-8"))
+        config = json.loads((Path(__file__).parent / "config.json").read_text(encoding="utf-8"))
 
         self.assertEqual(config["openai"]["image_model"], "gpt-image-2.5-flare")
 

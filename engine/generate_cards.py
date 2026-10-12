@@ -4,21 +4,28 @@ generate_cards.py - Generate Anki card content via local prompts + chat completi
 One request per keyword (not batched) to prevent keyword hallucination.
   - keywords[0] -> uses the original phrase from the input
   - keywords[1..N] -> explicit instruction to invent a new sentence
+
+OpenAI is called over plain HTTP (`openai_http`), and progress goes to the `perpetualminer.motor` logger,
+never to stdout: the same module runs in the bridge and inside the Anki add-on (`complemento/motor`).
 """
 
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-
+import logging
+import os
 import re
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
-import openai
+if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
+    from . import cost_tracker, openai_http
+    from .parser import CardJob, get_card_jobs, parse_mining_file
+    from .prompt_loader import load_prompt
+else:
+    import cost_tracker
+    import openai_http
+    from parser import CardJob, get_card_jobs, parse_mining_file
+    from prompt_loader import load_prompt
 
-import cost_tracker
-from config_loader import load_config
-from parser import CardJob, get_card_jobs, parse_mining_file
-from prompt_loader import load_prompt
+LOGGER = logging.getLogger("perpetualminer.motor")
 
 
 _TONE_HINTS = {
@@ -115,41 +122,39 @@ def _has_ru_translation(card_text: str) -> bool:
     return bool(match and match.group(1).strip())
 
 
-def _record_chat_cost(log_dir: str, model: str, usage, keyword: str) -> None:
+def _record_chat_cost(log_dir: str, model: str, usage: dict, keyword: str) -> None:
     if not usage:
         return
     cost_tracker.record_tokens(
         log_dir,
         model=model,
-        input_tokens=getattr(usage, "prompt_tokens", 0) or 0,
-        output_tokens=getattr(usage, "completion_tokens", 0) or 0,
+        input_tokens=usage.get("prompt_tokens", 0) or 0,
+        output_tokens=usage.get("completion_tokens", 0) or 0,
         keyword=keyword,
     )
 
 
 def _call_model(
-    client: openai.OpenAI,
+    openai_base: str,
+    api_key: str,
     system_prompt: str,
     user_message: str,
     model: str,
     log_dir: str,
     keyword: str,
 ) -> Optional[str]:
-    resp = client.chat.completions.create(
-        model=model,
-        temperature=0.2,
-        messages=[
+    text, usage = openai_http.completar(
+        openai_base,
+        api_key,
+        model,
+        [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
         ],
+        temperatura=0.2,
     )
-
-    _record_chat_cost(log_dir, model, getattr(resp, "usage", None), keyword)
-
-    choice = (resp.choices or [None])[0]
-    if not choice or not getattr(choice, "message", None):
-        return None
-    return (choice.message.content or "").strip() or None
+    _record_chat_cost(log_dir, model, usage, keyword)
+    return text or None
 
 
 def _validate_keyword(card_text: str, expected: str) -> bool:
@@ -208,15 +213,35 @@ def _prepare_card(response: str) -> str:
     return re.sub(r"\[Phrase with[^\]]*\]\s*:?\s*", "", card, flags=re.IGNORECASE)
 
 
-def run(entries, config: dict) -> List[str]:
-    """Generate one card .txt per CardJob via local prompts + chat completions."""
-    output_dir = Path(config["paths"]["output_dir"])
-    output_dir.mkdir(exist_ok=True)
+def _write_card(dest: Path, card: str) -> None:
+    """Whole file or nothing: a half-written card must never look ready to a later retry."""
+    provisorio = dest.with_name(dest.name + ".novo")
+    provisorio.write_text("## Anki Card\n\n" + card, encoding="utf-8")
+    os.replace(provisorio, dest)
 
-    client = openai.OpenAI(api_key=config["openai_api_key"])
+
+def run(
+    entries,
+    config: dict,
+    *,
+    openai_base: str = openai_http.OPENAI_BASE,
+    skip_existing: bool = False,
+    failures: Optional[Dict[str, str]] = None,
+) -> List[str]:
+    """Generate one card .txt per CardJob via local prompts + chat completions.
+
+    `skip_existing`: a card whose .txt is already there is not asked again (it was paid for).
+    `failures`: when given, gets `{stem: code}` for each card that was not saved (an `openai_http` code,
+    or `empty_response`, `invalid_card`, `keyword_mismatch`, `generation_error`).
+    """
+    output_dir = Path(config["paths"]["output_dir"])
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    api_key = config["openai_api_key"]
     log_dir = config["paths"]["log_dir"]
     lang = config.get("lang", "en")
     model = config["openai"].get("chat_model", "gpt-4o")
+    failures = failures if failures is not None else {}
 
     all_jobs: List[CardJob] = []
     for entry in entries:
@@ -227,8 +252,25 @@ def run(entries, config: dict) -> List[str]:
 
     saved: List[str] = []
 
+    def call(message: str, keyword: str, stem: str) -> Optional[str]:
+        try:
+            return _call_model(openai_base, api_key, system_prompt, message, model, log_dir, keyword)
+        except openai_http.ErroDaOpenAI as exc:
+            LOGGER.error("Modelo falhou para '%s': %s", keyword, exc)
+            failures[stem] = exc.codigo
+        except Exception:
+            LOGGER.exception("Modelo falhou para '%s'", keyword)
+            failures[stem] = "generation_error"
+        return None
+
     for job in all_jobs:
-        print(f"[INFO] Gerando card para: '{job.keyword}'")
+        stem = job.filename_stem or f"card_{len(saved) + 1}"
+        dest = output_dir / f"{stem}.txt"
+        if skip_existing and dest.exists() and dest.stat().st_size > 0:
+            saved.append(stem)
+            continue
+
+        LOGGER.info("Gerando card para: '%s'", job.keyword)
         if lang == "ru":
             user_message = _build_message_ru(job)
             system_prompt = ru_prompt
@@ -236,67 +278,53 @@ def run(entries, config: dict) -> List[str]:
             user_message = _build_message(job)
             system_prompt = en_prompt
 
-        try:
-            response = _call_model(client, system_prompt, user_message, model, log_dir, job.keyword)
-        except Exception as exc:
-            print(f"[ERROR] Modelo falhou para '{job.keyword}': {exc}")
-            continue
-
+        response = call(user_message, job.keyword, stem)
         if not response:
-            print(f"[ERROR] Resposta vazia para '{job.keyword}' - pulando.")
+            if stem not in failures:
+                LOGGER.error("Resposta vazia para '%s' - pulando.", job.keyword)
+                failures[stem] = "empty_response"
             continue
 
         card = _prepare_card(response)
 
         if lang == "ru" and (_looks_like_ru_refusal(card) or not _has_ru_translation(card)):
             reason = "recusa/erro do modelo" if _looks_like_ru_refusal(card) else "campo Translation ausente"
-            print(f"[ERROR] Card russo para '{job.keyword}' invalido ({reason}) - skipping.")
+            LOGGER.error("Card russo para '%s' invalido (%s) - skipping.", job.keyword, reason)
+            failures[stem] = "invalid_card"
             continue
 
         if lang != "ru" and not _validate_keyword(card, job.keyword):
-            print(f"[WARN] Keyword mismatch para '{job.keyword}' - tentando regenerar uma vez.")
-            retry_message = _build_keyword_retry_message(user_message, job.keyword)
-            try:
-                retry_response = _call_model(
-                    client,
-                    system_prompt,
-                    retry_message,
-                    model,
-                    log_dir,
-                    job.keyword,
-                )
-            except Exception as exc:
-                print(f"[ERROR] Retry do modelo falhou para '{job.keyword}': {exc}")
-                continue
-
+            LOGGER.warning("Keyword mismatch para '%s' - tentando regenerar uma vez.", job.keyword)
+            retry_response = call(_build_keyword_retry_message(user_message, job.keyword), job.keyword, stem)
             if not retry_response:
-                print(f"[ERROR] Retry retornou resposta vazia para '{job.keyword}' - pulando.")
+                if stem not in failures:
+                    LOGGER.error("Retry retornou resposta vazia para '%s' - pulando.", job.keyword)
+                    failures[stem] = "empty_response"
                 continue
 
             card = _prepare_card(retry_response)
             if not _validate_keyword(card, job.keyword):
-                print(
-                    f"[ERROR] Keyword mismatch persistente para '{job.keyword}' - "
-                    "card nao sera salvo."
-                )
+                LOGGER.error("Keyword mismatch persistente para '%s' - card nao sera salvo.", job.keyword)
+                failures[stem] = "keyword_mismatch"
                 continue
 
-        stem = job.filename_stem or f"card_{len(saved) + 1}"
-        dest = output_dir / f"{stem}.txt"
-        dest.write_text("## Anki Card\n\n" + card, encoding="utf-8")
+        _write_card(dest, card)
+        failures.pop(stem, None)
         saved.append(stem)
 
-        print(f"[DEBUG] Raw Keyword: '{job.keyword}' -> Final Filename: '{stem}.txt'")
+        LOGGER.info("Raw Keyword: '%s' -> Final Filename: '%s.txt'", job.keyword, stem)
         if len(stem) < 3:
-            print(f"[WARN] Filename '{stem}.txt' e muito curto - verifique o card.")
+            LOGGER.warning("Filename '%s.txt' e muito curto - verifique o card.", stem)
 
     if not saved:
-        print("[WARN] Nenhum card salvo.")
+        LOGGER.warning("Nenhum card salvo.")
 
     return saved
 
 
 if __name__ == "__main__":
+    from config_loader import load_config
+
     cfg = load_config()
     mining_entries = parse_mining_file(Path(cfg["paths"]["mining_file"]))
     result = run(mining_entries, cfg)

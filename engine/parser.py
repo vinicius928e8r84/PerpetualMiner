@@ -134,6 +134,74 @@ def get_card_jobs(entry: MiningEntry) -> List[CardJob]:
     return jobs
 
 
+def _split_context(line: str):
+    """(line without the [Context: ...] / [Contexto: ...] block, source, title, detail)."""
+    ctx_match = re.search(r'\[(?:Context|Contexto):\s*(.*?)\]', line, re.IGNORECASE)
+    if not ctx_match:
+        return line, None, None, None
+    ctx_parts = [p.strip() for p in ctx_match.group(1).split(" - ")]
+    return (
+        line[:ctx_match.start()].strip(),
+        ctx_parts[0] if len(ctx_parts) > 0 else None,
+        ctx_parts[1] if len(ctx_parts) > 1 else None,
+        ctx_parts[2] if len(ctx_parts) > 2 else None,
+    )
+
+
+def parse_mining_line(raw_line: str) -> Optional[MiningEntry]:
+    """One mining line (`kw1 | kw2 : phrase [Context: Source - Title - Detail]`, or `keyword: phrase`), or None."""
+    line = raw_line.strip()
+    if not line:
+        return None
+    line, context_source, context_title, context_detail = _split_context(line)
+    if ":" not in line:
+        return None
+    keywords_raw, phrase = line.split(":", 1)
+    phrase = phrase.strip()
+    keywords = [kw.strip() for kw in keywords_raw.split("|") if kw.strip()]
+    if not keywords or not phrase:
+        return None
+    return MiningEntry(
+        keywords=keywords,
+        phrase=phrase,
+        context_source=context_source,
+        context_title=context_title,
+        context_detail=context_detail,
+    )
+
+
+def parse_mining_line_ru(raw_line: str) -> Optional[MiningEntry]:
+    """One Russian line: the whole line is the phrase (no keyword:phrase split), or None.
+
+    The filename stem is derived from the full normalized phrase so different sentences never collide.
+    """
+    line = raw_line.strip()
+    if not line:
+        return None
+    # Capture the optional [Context: ...] block so the Russian prompt can build a Gist line, then remove it
+    # from the phrase: the Russian model expects only the bare Russian phrase in Front (metadata triggers refusals).
+    _, context_source, context_title, context_detail = _split_context(line)
+    phrase = normalize_ru_phrase(line)
+    if not phrase:
+        return None
+    # Keep a short human-readable label, but use the full phrase for the stem.
+    words = phrase.split()
+    keyword = " ".join(words[:2]) if len(words) >= 2 else words[0]
+    return MiningEntry(
+        keywords=[keyword],
+        phrase=phrase,
+        context_source=context_source,
+        context_title=context_title,
+        context_detail=context_detail,
+        file_stem=stable_phrase_stem(phrase),
+    )
+
+
+def _parse_file(path: Path, parse_line) -> List[MiningEntry]:
+    with open(path, "r", encoding="utf-8") as f:
+        return [entry for entry in (parse_line(raw_line) for raw_line in f) if entry is not None]
+
+
 def parse_mining_file(path: Path) -> List[MiningEntry]:
     """Parse mining.txt into a list of MiningEntry objects.
 
@@ -141,81 +209,9 @@ def parse_mining_file(path: Path) -> List[MiningEntry]:
         kw1 | kw2 : phrase [Context: Source - Title - Detail]
         keyword: phrase                          (legacy format)
     """
-    entries: List[MiningEntry] = []
-    with open(path, "r", encoding="utf-8") as f:
-        for raw_line in f:
-            line = raw_line.strip()
-            if not line:
-                continue
-
-            # Extract optional [Context: ...] / [Contexto: ...] block
-            context_source = context_title = context_detail = None
-            ctx_match = re.search(r'\[(?:Context|Contexto):\s*(.*?)\]', line, re.IGNORECASE)
-            if ctx_match:
-                ctx_parts = [p.strip() for p in ctx_match.group(1).split(" - ")]
-                context_source = ctx_parts[0] if len(ctx_parts) > 0 else None
-                context_title  = ctx_parts[1] if len(ctx_parts) > 1 else None
-                context_detail = ctx_parts[2] if len(ctx_parts) > 2 else None
-                line = line[:ctx_match.start()].strip()
-
-            if ":" not in line:
-                continue
-
-            keywords_raw, phrase = line.split(":", 1)
-            phrase = phrase.strip()
-            keywords = [kw.strip() for kw in keywords_raw.split("|") if kw.strip()]
-
-            if not keywords or not phrase:
-                continue
-
-            entries.append(MiningEntry(
-                keywords=keywords,
-                phrase=phrase,
-                context_source=context_source,
-                context_title=context_title,
-                context_detail=context_detail,
-            ))
-    return entries
+    return _parse_file(path, parse_mining_line)
 
 
 def parse_mining_file_ru(path: Path) -> List[MiningEntry]:
-    """Russian parser: each non-empty line is a full phrase.
-
-    No keyword:phrase split required. The filename stem is derived from the
-    full normalized phrase so different sentences never collide.
-    """
-    entries: List[MiningEntry] = []
-    with open(path, "r", encoding="utf-8") as f:
-        for raw_line in f:
-            line = raw_line.strip()
-            if not line:
-                continue
-
-            # Capture the optional [Context: ...] / [Contexto: ...] block so the
-            # Russian prompt can build a Gist line, then remove it from the phrase.
-            context_source = context_title = context_detail = None
-            ctx_match = re.search(r'\[(?:Context|Contexto):\s*(.*?)\]', line, re.IGNORECASE)
-            if ctx_match:
-                ctx_parts = [p.strip() for p in ctx_match.group(1).split(" - ")]
-                context_source = ctx_parts[0] if len(ctx_parts) > 0 else None
-                context_title  = ctx_parts[1] if len(ctx_parts) > 1 else None
-                context_detail = ctx_parts[2] if len(ctx_parts) > 2 else None
-
-            # The Russian model expects only the bare Russian phrase in Front, so
-            # strip the bracketed metadata (which would otherwise trigger refusals).
-            phrase = normalize_ru_phrase(line)
-            if not phrase:
-                continue
-
-            # Keep a short human-readable label, but use the full phrase for the stem.
-            words   = phrase.split()
-            keyword = " ".join(words[:2]) if len(words) >= 2 else words[0]
-            entries.append(MiningEntry(
-                keywords=[keyword],
-                phrase=phrase,
-                context_source=context_source,
-                context_title=context_title,
-                context_detail=context_detail,
-                file_stem=stable_phrase_stem(phrase),
-            ))
-    return entries
+    """Russian parser: each non-empty line is a full phrase (see `parse_mining_line_ru`)."""
+    return _parse_file(path, parse_mining_line_ru)

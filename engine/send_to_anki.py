@@ -9,14 +9,17 @@ in Anki (ADDED or DUPLICATE), never for FAILED ones (kept for retry).
 """
 
 import base64
+import logging
 import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
-import requests
+if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
+    from .parser import CardJob, get_card_jobs, normalize_ru_phrase, parse_mining_file
+else:
+    from parser import CardJob, get_card_jobs, normalize_ru_phrase, parse_mining_file
 
-from config_loader import load_config
-from parser import CardJob, get_card_jobs, normalize_ru_phrase, parse_mining_file
+LOGGER = logging.getLogger("perpetualminer.motor")
 
 # Per-card outcomes returned by run(). A note that already existed in the deck
 # is reported as DUPLICATE (not ADDED) so it is never silently counted as a
@@ -36,6 +39,8 @@ def is_present(status: object) -> bool:
 
 
 def _store_media(path: Path, anki_url: str) -> bool:
+    import requests  # AnkiConnect is the bridge's path only; the add-on writes through the collection
+
     b64 = base64.b64encode(path.read_bytes()).decode("utf-8")
     payload = {
         "action": "storeMediaFile",
@@ -47,6 +52,8 @@ def _store_media(path: Path, anki_url: str) -> bool:
 
 
 def _anki_invoke(action: str, anki_url: str, params: Optional[dict] = None):
+    import requests
+
     payload = {"action": action, "version": 6, "params": params or {}}
     r = requests.post(anki_url, json=payload, timeout=10).json()
     if r.get("error"):
@@ -61,6 +68,8 @@ def _add_note(
     anki_url: str,
     extra_tags: Optional[List[str]] = None,
 ) -> bool:
+    import requests
+
     tags = list(extra_tags) if extra_tags else ["perpetual_miner"]
     payload = {
         "action": "addNote",
@@ -168,11 +177,8 @@ _COLOR_PALETTE = [
 
 
 def _log_raw(label: str, content: str) -> None:
-    """Print the raw card content so we can see exactly what the AI wrote."""
-    print(f"\n[DEBUG] {label} - raw .txt content:")
-    print("-" * 60)
-    print(content[:600])
-    print("-" * 60)
+    """Log the raw card content so we can see exactly what the AI wrote."""
+    LOGGER.warning("%s - raw .txt content:\n%s", label, content[:600])
 
 
 def _extract_alignments(content: str) -> List[tuple[str, str]]:
@@ -278,14 +284,15 @@ def _reorder_english_back_lines(lines: List[str]) -> List[str]:
     return ordered
 
 
-def _build_front(content: str, phrase_audio_name: str, lang: str = "en") -> str:
+def _build_front(content: str, phrase_audio_name: Optional[str], lang: str = "en") -> str:
+    """The Front field's HTML; `phrase_audio_name` None makes a card without audio (the add-on's text-only card)."""
     match = _FRONT_RE.search(content)
     phrase = match.group(1).strip() if match else ""
 
     if not phrase:
         phrase = next((line.strip() for line in content.splitlines() if line.strip()), "")
         if phrase:
-            print(f"[WARN] 'Front' not found - using first line: '{phrase[:60]}'")
+            LOGGER.warning("'Front' not found - using first line: '%s'", phrase[:60])
         else:
             _log_raw("_build_front FAILED", content)
 
@@ -295,12 +302,12 @@ def _build_front(content: str, phrase_audio_name: str, lang: str = "en") -> str:
         phrase = _apply_chunk_colors(phrase, [ru for ru, _ in alignments])
     phrase = _md_to_html(phrase)
     phrase = phrase.replace("\n", "<br>")
-    return f"{phrase}[sound:{phrase_audio_name}]"
+    return f"{phrase}[sound:{phrase_audio_name}]" if phrase_audio_name else phrase
 
 
 def _build_back(
     content: str,
-    word_audio_name: str,
+    word_audio_name: Optional[str],
     image_name: Optional[str] = None,
     lang: str = "en",
 ) -> str:
@@ -311,7 +318,7 @@ def _build_back(
         lines = [line for line in content.splitlines() if line.strip()]
         text = "\n".join(lines[1:]) if len(lines) > 1 else ""
         if text:
-            print("[WARN] 'Back' not found - using rest of file as back.")
+            LOGGER.warning("'Back' not found - using rest of file as back.")
         else:
             _log_raw("_build_back FAILED", content)
 
@@ -395,7 +402,8 @@ def _build_back(
     blocks = rest.split("\n\n")
     rest_html = "<br><br>".join(_fmt_block(block) for block in blocks)
 
-    back = f"{first_line} [sound:{word_audio_name}]<br>{rest_html.lstrip('<br>').lstrip()}"
+    audio = f" [sound:{word_audio_name}]" if word_audio_name else ""
+    back = f"{first_line}{audio}<br>{rest_html.lstrip('<br>').lstrip()}"
     if image_name:
         back += f'<br><br><img src="{image_name}">'
 
@@ -404,6 +412,8 @@ def _build_back(
 
 
 def _ensure_deck(deck_name: str, anki_url: str) -> None:
+    import requests
+
     payload = {"action": "createDeck", "version": 6, "params": {"deck": deck_name}}
     try:
         requests.post(anki_url, json=payload, timeout=10)
@@ -515,6 +525,8 @@ def cleanup_output(folder: Path, results: Dict[str, str]) -> None:
 
 
 if __name__ == "__main__":
+    from config_loader import load_config
+
     cfg = load_config()
     entries = parse_mining_file(Path(cfg["paths"]["mining_file"]))
     results = run(entries, cfg)
