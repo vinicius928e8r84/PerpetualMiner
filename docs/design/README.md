@@ -48,6 +48,10 @@ Quando duas fontes discordarem, inclusive em algo que só apareça na construç�
 
 Se a dona precisar mudar, mude a spec dela; não crie exceção no lugar.
 
+## Fatia ALTA: a página de desenho vem antes do código
+
+Uma fatia que mexe em credencial, em sync ou em estado que vive em mais de um processo escreve antes a página do [modelo de fatia ALTA](modelo-fatia-alta.md): o dono único de cada dado, os estados, as transições, as 8 variantes da Conexão e os limites aceitos. Não retroage nas fatias já entregues.
+
 ## Lista fechada
 
 As únicas funções novas que a construção pode fazer:

@@ -47,3 +47,13 @@ A surface not in this table (the panel shell, sync, storage, the service worker)
 
 12. **Every test file belongs to a group in `scripts/testes.json`, and CI runs the groups only through `node scripts/testar.mjs <group>`**: a test that no job runs proves nothing on the PR (#185 left the add-on and fake tests out; #188 left the tooling tests out). A file that has a test's name and is not one goes in `fora` with the reason. Source: `CLAUDE.md` § Testing.
 13. **The extension asks the Conexão com o Anki only through `PedidoAoAnki`, and `complemento/contrato/exemplos.json` has an example of every request it builds and every status the add-on answers to a route**: a request typed by hand, or a state with no example, is how #190's Atualizar (two Baralhos, the contract only had one) and #185's health `500` got through. A new route gets its builder and its examples before the extension asks for it. Source: `complemento/contrato/LEIA-ME.md`.
+
+## What blocks a merge
+
+A review verdict has three levels. Only the first stops the merge.
+
+- **Blocks:** a finding rated HIGH (ALTA), or a regression against `main` (something that worked on `main` and does not on the branch).
+- **Fix if cheap:** a new MEDIUM (MÉDIA) finding that this diff brings. Fix it in the PR when the fix is small; otherwise it goes to the next level.
+- **Becomes an issue:** everything else (a MEDIUM that was already on `main`, LOW findings, style, a limit the owner has accepted and named). Open an issue and link it; do not hold the PR for it.
+
+The same class of finding in two rounds in a row is not a third fix: it asks for a design page (`docs/design/modelo-fatia-alta.md`) and a decision from the owner.
