@@ -73,6 +73,29 @@ function grupoDoArquivo(registro, arquivo) {
   return Object.entries(registro.grupos).find(([, grupo]) => padroesDoGrupo(grupo).some(p => padraoComoRegex(p).test(arquivo)))?.[0] || null;
 }
 
+const VENV_PYTHON = path.join('.venv', 'bin', 'python');
+
+/** O Python dos testes e de onde veio: $PYTHON (o CI passa o seu), senão o .venv da raiz, senão python3. */
+function escolherPython(env, raiz) {
+  if (env.PYTHON) return { comando: env.PYTHON, origem: 'PYTHON' };
+  const doVenv = path.join(raiz, VENV_PYTHON);
+  return fs.existsSync(doVenv) ? { comando: doVenv, origem: 'venv' } : { comando: 'python3', origem: 'python3' };
+}
+
+/** O que dizer quando um grupo falhou por falta de um módulo do Python; '' quando não foi isso. */
+function dicaDeModulo(nome, grupo, saidaDeErro, python) {
+  if (!/ModuleNotFoundError/.test(saidaDeErro)) return '';
+  const falta = /No module named '([^']+)'/.exec(saidaDeErro);
+  // No .venv um pip solto instalaria fora dele; o Python do venv instala nele.
+  const precisa = python.origem === 'venv' && grupo.precisa ? grupo.precisa.replace(/\bpip install/g, '.venv/bin/python -m pip install') : grupo.precisa;
+  const preparo = python.origem === 'python3'
+    ? '\n  numa worktree nova: scripts/preparar-python.sh cria o .venv e instala tudo; este comando passa a usá-lo sozinho'
+    : '';
+  return `✗ ${nome}: falta o módulo ${falta ? falta[1] : 'do Python'}`
+    + (precisa ? `; o grupo precisa de: ${precisa}` : '') + preparo;
+}
+
 module.exports = {
   ARQUIVO_DO_REGISTRO, ehArquivoDeTeste, padraoComoRegex, padroesDoGrupo, arquivosDoGrupo, lerRegistro, grupoDoArquivo,
+  escolherPython, dicaDeModulo,
 };

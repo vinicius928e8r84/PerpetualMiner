@@ -185,6 +185,23 @@ Env knobs: `PM_VERIFY_ROOT` (default `/tmp/pm-verify`; keep it short: Chromium's
 
 A proof says which column it ran in. Only the Linux column is proven by this skill: the 501 above was read from the real Conexão with `conexao-real.py` (Python 3.9 and 3.13). The Mac and Windows columns are facts cited from `complemento/LEIA-ME.md` and the owner's Windows run of PR 205, not something a drive here proves. Owner steps for Mac/Windows: `complemento/LEIA-ME.md`.
 
+## The 8 variants of the Conexão
+
+A slice that touches the Conexão com o Anki (the key, sync, any route that carries state) is proven in each of these 8 variants, or says in writing which one does not apply and why. The same list is in `docs/design/modelo-fatia-alta.md` § 4. "Today" is how the e2e reproduces it now; "Missing" is a mode the Anki fake does not have yet.
+
+| # | Variant | Today | Missing |
+|---|---|---|---|
+| 1 | No Conexão | `fakes.anki.desligar()` (`configuracoes-ia.spec.js`: `N2:`, "com a Conexão desligada…") | |
+| 2 | Anki closed | `configuracoes-ia.spec.js -g 'K3:'`: the add-on runs inside Anki, so closed means nothing on 8766, `fakes.anki.desligar()` (`fecharOAnki()` is only the bridge reading the file, with the Conexão still answering) | |
+| 3 | Old add-on (0.1.0, unversioned state) | `configuracoes-ia.spec.js -g 'K4'` (`K4:` and `K4-delete:`), built by hand with `fakes.anki.responder('POST', '/ia/estado', …)` without `versao`; `guardarChaveNaConexao(…)` only seeds the key | an old-version mode of the fake |
+| 4 | Flask bridge on 8766 | `configuracoes-ia.spec.js -g 'B1:'`, a 404 set per route with `fakes.anki.responder('POST', rota, …)` | a bridge mode (404 for every add-on route) |
+| 5 | Two profiles or accounts on one Conexão | `chave-autoridade.spec.js -g 'K1:'` (a second Chromium profile), `-g 'K1-delete:'`, `-g 'P1'` | |
+| 6 | Coming from `main` (legacy store, no UID) | `chave-autoridade.spec.js -g 'K2:'`, `-g 'P1 legado:'` | |
+| 7 | Lost answer or panel closed | `chave-autoridade.spec.js -g 'R1'` (`R1:` and `R1 autoridade`) | |
+| 8 | Repeated request | `chave-autoridade.spec.js -g 'K1-PC:'` | |
+
+There is no helper yet that runs one test over the variants; until it lands, name the variant in the test title or in a comment.
+
 ## Known limits
 
 - The harness fakes Anki, Gemini and Google; nothing here talks to a real bridge, Anki Desktop, Gemini or Firestore.

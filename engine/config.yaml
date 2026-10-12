@@ -62,6 +62,5 @@ paths:
   prompts_file: "prompts.txt"
   log_dir: "log"
   prompts:
-    en_main_card: "prompts/en_main_card.txt"
-    en_additional_card: "prompts/en_additional_card.txt"
+    en_card: "prompts/en_card.txt"
     ru_card: "prompts/ru_card.txt"

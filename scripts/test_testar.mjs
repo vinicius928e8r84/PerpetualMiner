@@ -1,12 +1,14 @@
 // O executor dos grupos de teste (scripts/testar.mjs): o que ele lista, recusa e devolve.
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const { ehArquivoDeTeste, padraoComoRegex } = require('./grupos-de-teste.js');
+const { ehArquivoDeTeste, padraoComoRegex, escolherPython, dicaDeModulo } = require('./grupos-de-teste.js');
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const testar = (...args) => spawnSync('node', [path.join(RAIZ, 'scripts', 'testar.mjs'), ...args], { cwd: RAIZ, encoding: 'utf8' });
@@ -40,10 +42,71 @@ assert.equal(ferramentas.status, 0, ferramentas.stdout + ferramentas.stderr);
 assert.match(ferramentas.stdout, /▶ node: node test_sync\.js/);
 assert.match(ferramentas.stdout, /testes ok: node/);
 
+// O Python: o $PYTHON do CI vence, senão o .venv da raiz, senão python3.
+const raizComVenv = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-venv-'));
+const raizSemVenv = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-sem-venv-'));
+fs.mkdirSync(path.join(raizComVenv, '.venv', 'bin'), { recursive: true });
+fs.writeFileSync(path.join(raizComVenv, '.venv', 'bin', 'python'), '');
+assert.deepEqual(escolherPython({ PYTHON: 'python' }, raizComVenv), { comando: 'python', origem: 'PYTHON' });
+assert.deepEqual(escolherPython({}, raizComVenv), { comando: path.join(raizComVenv, '.venv', 'bin', 'python'), origem: 'venv' });
+assert.deepEqual(escolherPython({}, raizSemVenv), { comando: 'python3', origem: 'python3' });
+fs.rmSync(raizComVenv, { recursive: true, force: true });
+fs.rmSync(raizSemVenv, { recursive: true, force: true });
+
+// Um grupo que falha por falta de módulo diz o que o grupo precisa; sem venv, o comando de preparo; no venv, o pip do venv.
+const semFlask = "ModuleNotFoundError: No module named 'flask'\n";
+const grupoComPrecisa = { precisa: 'pip install -r bridge/requirements.txt' };
+const doPython3 = { comando: 'python3', origem: 'python3' };
+assert.equal(dicaDeModulo('bridge', grupoComPrecisa, 'FAIL: test_x\n', doPython3), '');
+assert.equal(dicaDeModulo('bridge', grupoComPrecisa, semFlask, doPython3),
+  "✗ bridge: falta o módulo flask; o grupo precisa de: pip install -r bridge/requirements.txt\n  numa worktree nova: scripts/preparar-python.sh cria o .venv e instala tudo; este comando passa a usá-lo sozinho");
+assert.equal(dicaDeModulo('bridge', grupoComPrecisa, semFlask, { comando: '/x/.venv/bin/python', origem: 'venv' }),
+  "✗ bridge: falta o módulo flask; o grupo precisa de: .venv/bin/python -m pip install -r bridge/requirements.txt");
+assert.equal(dicaDeModulo('bridge', grupoComPrecisa, semFlask, { comando: 'python', origem: 'PYTHON' }),
+  "✗ bridge: falta o módulo flask; o grupo precisa de: pip install -r bridge/requirements.txt");
+
+// De ponta a ponta: um Python sem o módulo faz o grupo falhar com a dica, e o erro original continua à vista.
+const pastaFalsa = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-python-falso-'));
+const pythonFalso = path.join(pastaFalsa, 'python');
+fs.writeFileSync(pythonFalso, `#!/bin/sh\necho "ModuleNotFoundError: No module named 'flask'" >&2\nexit 1\n`, { mode: 0o755 });
+const semModulo = spawnSync('node', [path.join(RAIZ, 'scripts', 'testar.mjs'), 'bridge'], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, PYTHON: pythonFalso } });
+fs.rmSync(pastaFalsa, { recursive: true, force: true });
+assert.equal(semModulo.status, 1);
+assert.match(semModulo.stderr, /ModuleNotFoundError: No module named 'flask'/);
+assert.match(semModulo.stdout, /✗ bridge: falta o módulo flask; o grupo precisa de: pip install -r bridge\/requirements\.txt/);
+assert.match(semModulo.stdout, /error: falharam: bridge/);
+
+// A saída de erro dos grupos Python aparece enquanto o processo roda (o unittest escreve tudo nela): um teste
+// que trava não deixa o log vazio. O Python falso só termina bem quando o teste, ao ver a linha, cria o arquivo.
+{
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-ao-vivo-'));
+  const liberar = path.join(pasta, 'liberar');
+  const falso = path.join(pasta, 'python');
+  fs.writeFileSync(falso, `#!/bin/sh\necho "test_a ... ok" >&2\ni=0\nwhile [ ! -e "${liberar}" ] && [ $i -lt 100 ]; do sleep 0.1; i=$((i+1)); done\n[ -e "${liberar}" ]\n`, { mode: 0o755 });
+  const filho = spawn('node', [path.join(RAIZ, 'scripts', 'testar.mjs'), 'bridge'], { cwd: RAIZ, env: { ...process.env, PYTHON: falso }, stdio: ['ignore', 'pipe', 'pipe'] });
+  let erro = '';
+  filho.stderr.on('data', pedaco => {
+    erro += pedaco;
+    if (/test_a \.\.\. ok/.test(erro)) fs.writeFileSync(liberar, '');
+  });
+  filho.stdout.resume();
+  const status = await new Promise(resolve => filho.on('close', resolve));
+  fs.rmSync(pasta, { recursive: true, force: true });
+  assert.equal(status, 0, 'a linha do stderr devia chegar antes de o processo acabar');
+}
+
+// Chamado por um caminho com link simbólico, o executor roda do mesmo jeito: nada de sucesso falso.
+{
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-link-'));
+  fs.symlinkSync(RAIZ, path.join(pasta, 'repo'));
+  const porLink = spawnSync('node', [path.join(pasta, 'repo', 'scripts', 'testar.mjs'), 'inexistente'], { cwd: RAIZ, encoding: 'utf8' });
+  fs.rmSync(pasta, { recursive: true, force: true });
+  assert.equal(porLink.status, 2, porLink.stdout + porLink.stderr);
+  assert.match(porLink.stdout, /error: grupo desconhecido: inexistente/);
+}
+
 // O cadastro ausente ou quebrado diz como consertar, em português, com a posição do erro.
 const { lerRegistro } = require('./grupos-de-teste.js');
-const fs = await import('node:fs');
-const os = await import('node:os');
 const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-cadastro-'));
 fs.mkdirSync(path.join(pasta, 'scripts'));
 assert.throws(() => lerRegistro(pasta), /falta scripts\/testes\.json.*git checkout origin\/main -- scripts\/testes\.json/);
