@@ -60,6 +60,134 @@
       "baralhos": []
     }
   },
+  "filas": {
+    "um Envio na fila": [
+      {
+        "job": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+          "createdAt": "2026-10-12T10:00:00-03:00",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400000,
+              "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+            }
+          ]
+        },
+        "state": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+          "status": "queued",
+          "stage": "queued",
+          "completedStages": [],
+          "progress": {},
+          "successfulPhraseIds": [],
+          "failedPhraseIds": [],
+          "duplicatePhraseIds": [],
+          "lastError": null,
+          "updatedAt": "2026-10-12T10:00:00-03:00",
+          "cards": {
+            "give_up__474901fc": {
+              "phraseId": 1760270400000,
+              "keyword": "give up",
+              "status": "pending",
+              "error": null
+            }
+          }
+        },
+        "custos": []
+      }
+    ],
+    "um Envio que terminou em parte": [
+      {
+        "job": {
+          "jobId": "c7d1e2f3-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+          "createdAt": "2026-10-12T10:00:00-03:00",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400001,
+              "line": "keep running | run : They keep running"
+            },
+            {
+              "phraseId": 1760270400002,
+              "line": "give up : She gave up smoking"
+            }
+          ]
+        },
+        "state": {
+          "jobId": "c7d1e2f3-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+          "status": "partial",
+          "stage": "partial",
+          "completedStages": [
+            "generate_cards",
+            "send_to_anki"
+          ],
+          "progress": {},
+          "successfulPhraseIds": [
+            1760270400002
+          ],
+          "failedPhraseIds": [
+            1760270400001
+          ],
+          "duplicatePhraseIds": [],
+          "lastError": "openai_rate_limited",
+          "updatedAt": "2026-10-12T10:05:00-03:00",
+          "cards": {
+            "keep_running__d32b3528": {
+              "phraseId": 1760270400001,
+              "keyword": "keep running",
+              "status": "added",
+              "error": null
+            },
+            "run__aab53287": {
+              "phraseId": 1760270400001,
+              "keyword": "run",
+              "status": "failed",
+              "error": "openai_rate_limited"
+            },
+            "give_up__474901fc": {
+              "phraseId": 1760270400002,
+              "keyword": "give up",
+              "status": "added",
+              "error": null
+            }
+          }
+        },
+        "custos": [
+          {
+            "date": "2026-10-12",
+            "type": "tokens",
+            "model": "gpt-4o",
+            "input_tokens": 1000,
+            "output_tokens": 200,
+            "cost_usd": 0.0045,
+            "keyword": "keep running"
+          },
+          {
+            "date": "2026-10-12",
+            "type": "tokens",
+            "model": "gpt-4o",
+            "input_tokens": 1000,
+            "output_tokens": 200,
+            "cost_usd": 0.0045,
+            "keyword": "give up"
+          }
+        ]
+      }
+    ]
+  },
   "exemplos": [
     {
       "nome": "saúde com um perfil aberto",
@@ -76,7 +204,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.2.0",
+          "versao": "0.3.0",
           "perfil": "Usuário 1"
         }
       }
@@ -96,7 +224,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.2.0",
+          "versao": "0.3.0",
           "perfil": null
         }
       }
@@ -135,7 +263,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.2.0",
+          "versao": "0.3.0",
           "perfil": "Usuário 1"
         }
       }
@@ -2905,6 +3033,903 @@
         "caminho": "/ia/openai/sincronizar",
         "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
         "corpoBruto": "{ quebrado"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "criar um Envio entrega as Frases à Conexão",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400000,
+              "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+            }
+          ]
+        }
+      },
+      "resposta": {
+        "status": 201,
+        "json": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "status": "queued"
+        }
+      }
+    },
+    {
+      "nome": "criar de novo um Envio que a Conexão já tem, com o mesmo pedido, devolve o mesmo Envio",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio na fila"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400000,
+              "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+            }
+          ]
+        }
+      },
+      "resposta": {
+        "status": 201,
+        "json": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+          "status": "queued"
+        }
+      }
+    },
+    {
+      "nome": "criar com o id de um Envio que a Conexão já tem, com outro pedido, é recusado",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio na fila"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+          "lang": "en",
+          "deckName": "Outro Baralho",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400000,
+              "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+            }
+          ]
+        }
+      },
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "job_conflict"
+        }
+      }
+    },
+    {
+      "nome": "criar sem um id de Envio válido é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "../fora",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400000,
+              "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+            }
+          ]
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_job_id"
+        }
+      }
+    },
+    {
+      "nome": "criar sem Frases é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": []
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "entries_required"
+        }
+      }
+    },
+    {
+      "nome": "criar num idioma que a Conexão não envia é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "lang": "de",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400000,
+              "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+            }
+          ]
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_lang"
+        }
+      }
+    },
+    {
+      "nome": "criar sem Baralho é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "lang": "en",
+          "deckName": "",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400000,
+              "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+            }
+          ]
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "listar os Envios sem nenhum na Conexão",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/list",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "jobs": []
+        }
+      }
+    },
+    {
+      "nome": "listar os Envios traz o estado de cada um e de cada Cartão",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio que terminou em parte"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/list",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "jobs": [
+            {
+              "jobId": "c7d1e2f3-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+              "lang": "en",
+              "status": "partial",
+              "createdAt": "2026-10-12T10:00:00-03:00",
+              "updatedAt": "2026-10-12T10:05:00-03:00",
+              "state": {
+                "jobId": "c7d1e2f3-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+                "status": "partial",
+                "stage": "partial",
+                "completedStages": [
+                  "generate_cards",
+                  "send_to_anki"
+                ],
+                "progress": {},
+                "successfulPhraseIds": [
+                  1760270400002
+                ],
+                "failedPhraseIds": [
+                  1760270400001
+                ],
+                "duplicatePhraseIds": [],
+                "lastError": "openai_rate_limited",
+                "updatedAt": "2026-10-12T10:05:00-03:00",
+                "cards": {
+                  "keep_running__d32b3528": {
+                    "phraseId": 1760270400001,
+                    "keyword": "keep running",
+                    "status": "added",
+                    "error": null
+                  },
+                  "run__aab53287": {
+                    "phraseId": 1760270400001,
+                    "keyword": "run",
+                    "status": "failed",
+                    "error": "openai_rate_limited"
+                  },
+                  "give_up__474901fc": {
+                    "phraseId": 1760270400002,
+                    "keyword": "give up",
+                    "status": "added",
+                    "error": null
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nome": "ver um Envio traz o pedido e o estado",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio na fila"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/get",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "job": {
+            "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+            "createdAt": "2026-10-12T10:00:00-03:00",
+            "lang": "en",
+            "deckName": "Inglês",
+            "imageSource": "1",
+            "tts": {
+              "wordTld": "com",
+              "phraseTld": "co.uk"
+            },
+            "entries": [
+              {
+                "phraseId": 1760270400000,
+                "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+              }
+            ]
+          },
+          "state": {
+            "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+            "status": "queued",
+            "stage": "queued",
+            "completedStages": [],
+            "progress": {},
+            "successfulPhraseIds": [],
+            "failedPhraseIds": [],
+            "duplicatePhraseIds": [],
+            "lastError": null,
+            "updatedAt": "2026-10-12T10:00:00-03:00",
+            "cards": {
+              "give_up__474901fc": {
+                "phraseId": 1760270400000,
+                "keyword": "give up",
+                "status": "pending",
+                "error": null
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "nome": "ver um Envio que a Conexão não tem",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/get",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b"
+        }
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "job_not_found"
+        }
+      }
+    },
+    {
+      "nome": "ver sem um id de Envio válido é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/get",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_job_id"
+        }
+      }
+    },
+    {
+      "nome": "tentar de novo um Envio que terminou em parte o põe na fila, guardando os Cartões prontos",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio que terminou em parte"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/retry",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "c7d1e2f3-4a5b-4c6d-8e7f-9a0b1c2d3e4f"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "jobId": "c7d1e2f3-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+          "status": "queued"
+        }
+      }
+    },
+    {
+      "nome": "tentar de novo um Envio que já está na fila não muda nada",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio na fila"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/retry",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+          "status": "queued"
+        }
+      }
+    },
+    {
+      "nome": "tentar de novo um Envio que a Conexão não tem",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/retry",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b"
+        }
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "job_not_found"
+        }
+      }
+    },
+    {
+      "nome": "tentar de novo sem um id de Envio válido é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/retry",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_job_id"
+        }
+      }
+    },
+    {
+      "nome": "o pacote de diagnóstico de um Envio, sem a chave e sem o log de outros Envios",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio na fila"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/debug-bundle",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "generatedAt": "<agora>",
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+          "versao": "0.3.0",
+          "job": {
+            "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+            "createdAt": "2026-10-12T10:00:00-03:00",
+            "lang": "en",
+            "deckName": "Inglês",
+            "imageSource": "1",
+            "tts": {
+              "wordTld": "com",
+              "phraseTld": "co.uk"
+            },
+            "entries": [
+              {
+                "phraseId": 1760270400000,
+                "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+              }
+            ]
+          },
+          "state": {
+            "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+            "status": "queued",
+            "stage": "queued",
+            "completedStages": [],
+            "progress": {},
+            "successfulPhraseIds": [],
+            "failedPhraseIds": [],
+            "duplicatePhraseIds": [],
+            "lastError": null,
+            "updatedAt": "2026-10-12T10:00:00-03:00",
+            "cards": {
+              "give_up__474901fc": {
+                "phraseId": 1760270400000,
+                "keyword": "give up",
+                "status": "pending",
+                "error": null
+              }
+            }
+          },
+          "queueItem": {
+            "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+            "lang": "en",
+            "status": "queued",
+            "createdAt": "2026-10-12T10:00:00-03:00",
+            "updatedAt": "2026-10-12T10:00:00-03:00"
+          },
+          "costs": [],
+          "costSummary": {
+            "costs": {
+              "cardUsd": 0.0,
+              "imageJudgeUsd": 0.0,
+              "imageGuardUsd": 0.0,
+              "imageGenerationUsd": 0.0,
+              "otherUsd": 0.0,
+              "totalUsd": 0.0
+            },
+            "images": {
+              "total": 0,
+              "real": 0,
+              "generated": 0,
+              "skipped": 0,
+              "failed": 0,
+              "generatedAttempted": 0,
+              "savingsUsd": 0.0,
+              "realPct": 0.0,
+              "generatedPct": 0.0,
+              "skippedPct": 0.0,
+              "failedPct": 0.0,
+              "generatedAttemptPct": 0.0
+            },
+            "matchedRecords": 0
+          },
+          "artifacts": [],
+          "logTail": []
+        }
+      }
+    },
+    {
+      "nome": "o pacote de diagnóstico de um Envio que a Conexão não tem",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/debug-bundle",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b"
+        }
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "job_not_found"
+        }
+      }
+    },
+    {
+      "nome": "o pacote de diagnóstico sem um id de Envio válido é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/debug-bundle",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_job_id"
+        }
+      }
+    },
+    {
+      "nome": "os custos de hoje sem nenhum Envio",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/analytics/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "all",
+          "from": "2026-10-12",
+          "to": "2026-10-12"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "jobs": []
+        }
+      }
+    },
+    {
+      "nome": "os custos de todo o período sem nenhum Envio",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/analytics/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "all"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "jobs": []
+        }
+      }
+    },
+    {
+      "nome": "os custos de hoje trazem cada Envio com os custos do texto dos Cartões",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio que terminou em parte"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/analytics/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "all",
+          "from": "2026-10-12",
+          "to": "2026-10-12"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "jobs": [
+            {
+              "jobId": "c7d1e2f3-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+              "createdAt": "2026-10-12T10:00:00-03:00",
+              "updatedAt": "2026-10-12T10:05:00-03:00",
+              "lang": "en",
+              "deckName": "Inglês",
+              "imageSource": "1",
+              "status": "partial",
+              "stage": "partial",
+              "requestedCards": 2,
+              "successfulCards": 1,
+              "failedCards": 1,
+              "lastError": "openai_rate_limited",
+              "costs": {
+                "cardUsd": 0.009,
+                "imageJudgeUsd": 0.0,
+                "imageGuardUsd": 0.0,
+                "imageGenerationUsd": 0.0,
+                "otherUsd": 0.0,
+                "totalUsd": 0.009
+              },
+              "images": {
+                "total": 0,
+                "real": 0,
+                "generated": 0,
+                "skipped": 0,
+                "failed": 0,
+                "generatedAttempted": 0,
+                "savingsUsd": 0.0,
+                "realPct": 0.0,
+                "generatedPct": 0.0,
+                "skippedPct": 0.0,
+                "failedPct": 0.0,
+                "generatedAttemptPct": 0.0
+              },
+              "matchedRecords": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nome": "os custos de outro dia não trazem o Envio de hoje",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio que terminou em parte"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/analytics/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "all",
+          "from": "2026-10-13",
+          "to": "2026-10-13"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "jobs": []
+        }
+      }
+    },
+    {
+      "nome": "os custos de todo o período",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio que terminou em parte"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/analytics/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "all"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "jobs": [
+            {
+              "jobId": "c7d1e2f3-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+              "createdAt": "2026-10-12T10:00:00-03:00",
+              "updatedAt": "2026-10-12T10:05:00-03:00",
+              "lang": "en",
+              "deckName": "Inglês",
+              "imageSource": "1",
+              "status": "partial",
+              "stage": "partial",
+              "requestedCards": 2,
+              "successfulCards": 1,
+              "failedCards": 1,
+              "lastError": "openai_rate_limited",
+              "costs": {
+                "cardUsd": 0.009,
+                "imageJudgeUsd": 0.0,
+                "imageGuardUsd": 0.0,
+                "imageGenerationUsd": 0.0,
+                "otherUsd": 0.0,
+                "totalUsd": 0.009
+              },
+              "images": {
+                "total": 0,
+                "real": 0,
+                "generated": 0,
+                "skipped": 0,
+                "failed": 0,
+                "generatedAttempted": 0,
+                "savingsUsd": 0.0,
+                "realPct": 0.0,
+                "generatedPct": 0.0,
+                "skippedPct": 0.0,
+                "failedPct": 0.0,
+                "generatedAttemptPct": 0.0
+              },
+              "matchedRecords": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nome": "criar com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "listar os Envios com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/list",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "ver um Envio com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/get",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "tentar de novo com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/retry",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "o pacote de diagnóstico com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/debug-bundle",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "os custos com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/analytics/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
       },
       "resposta": {
         "status": 400,

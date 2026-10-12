@@ -10,7 +10,7 @@ A Conexão de hoje (`bridge/`) só ganhou o mesmo POST nas três rotas da coleç
 | Arquivo | O que faz |
 |---|---|
 | `__init__.py` | O que o Anki importa. Fora do Anki (nos testes) não há `aqt` e nada acontece |
-| `no_anki.py` | A ligação com o `mw` do Anki: `perfil_aberto` (só com a coleção aberta; selecionado na janela de perfis é `null`), `LeitorDaColecaoDoAnki` (o adaptador da coleção: lê na thread principal do Anki, e a lista de perfis também sem coleção aberta) e `ao_carregar` |
+| `no_anki.py` | A ligação com o `mw` do Anki: `perfil_aberto` (só com a coleção aberta; selecionado na janela de perfis é `null`), `ColecaoDoAnki` (o adaptador da coleção: lê na thread principal do Anki, e a lista de perfis também sem coleção aberta) e `ao_carregar` |
 | `inicio.py` | Ao carregar: prepara `user_files`, o log e sobe a Conexão. Nunca levanta erro |
 | `servidor.py` | O servidor HTTP e as rotas (`ROTAS`); só a extensão é atendida |
 | `baralhos.py` | O que se lê da coleção: a lista de Baralhos, os números de cada um e o vocabulário, só pelo lado de leitura de um adaptador da coleção (o contrato do adaptador está no topo do arquivo) |

@@ -9,6 +9,9 @@ do `conexao/perpetualminer.ankiaddon` versionado, o `mod` é o dele (rodado duas
 mesmos bytes); se mudou, é a hora atual, ou `SOURCE_DATE_EPOCH` quando definida. Ficam de fora os
 testes, os exemplos do contrato, `user_files`, o cache, o LEIA-ME e o `versoes.json`.
 
+O motor de texto vem de `engine/` (`ARQUIVOS_DO_MOTOR`) e entra como a pasta `motor/` do pacote, ao lado do
+`motor/__init__.py` deste repositório (ver `motor/__init__.py`): é o mesmo código que a Conexão de hoje roda.
+
 A extensão entrega este arquivo num link de download (`conexao/perpetualminer.ankiaddon`, no pacote da loja):
 mudou o código do complemento, refaça-o com `python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon`
 (`test_pacote.py` falha enquanto ele estiver para trás).
@@ -27,6 +30,20 @@ PERMISSOES_FIXAS = 0o100644 << 16  # arquivo comum, rw-r--r--
 SISTEMA_FIXO = 3  # Unix: é o que dá as permissões acima, igual em qualquer máquina
 ARQUIVO_DA_EXTENSAO = os.path.join(PASTA, "..", "conexao", "perpetualminer.ankiaddon")
 FORA_DO_PACOTE = ("test_", "empacotar.py", "__pycache__", "user_files", "contrato", "LEIA-ME.md", "versoes.json")
+ENGINE = os.path.normpath(os.path.join(PASTA, "..", "engine"))
+# O que o Envio usa do motor (só a biblioteca padrão; o áudio e as imagens entram com o #143 e o #144).
+ARQUIVOS_DO_MOTOR = (
+    "config.json",
+    "config_loader.py",
+    "cost_tracker.py",
+    "generate_cards.py",
+    "openai_http.py",
+    "parser.py",
+    "prompt_loader.py",
+    "prompts/en_card.txt",
+    "prompts/ru_card.txt",
+    "send_to_anki.py",
+)
 
 
 def _entra_no_pacote(relativo):
@@ -34,13 +51,20 @@ def _entra_no_pacote(relativo):
 
 
 def arquivos_do_pacote():
-    achados = []
+    achados = ["motor/" + nome for nome in ARQUIVOS_DO_MOTOR]
     for pasta, subpastas, arquivos in os.walk(PASTA):
         for nome in arquivos:
             relativo = os.path.relpath(os.path.join(pasta, nome), PASTA)
             if _entra_no_pacote(relativo):
                 achados.append(relativo.replace(os.sep, "/"))
     return sorted(achados)
+
+
+def origem(relativo):
+    """De onde vem um arquivo do pacote: do motor (`engine/`) ou desta pasta."""
+    if relativo.startswith("motor/") and relativo[len("motor/"):] in ARQUIVOS_DO_MOTOR:
+        return os.path.join(ENGINE, *relativo[len("motor/"):].split("/"))
+    return os.path.join(PASTA, *relativo.split("/"))
 
 
 def _entrada(nome):
@@ -55,7 +79,7 @@ def _codigo_do_pacote():
     codigo = {}
     for relativo in arquivos_do_pacote():
         if relativo != "manifest.json":
-            with open(os.path.join(PASTA, relativo), "rb") as arquivo:
+            with open(origem(relativo), "rb") as arquivo:
                 codigo[relativo] = arquivo.read()
     return codigo
 
@@ -64,7 +88,7 @@ def hash_das_fontes():
     """O SHA-256 do que o pacote leva (nomes e bytes, comentários inclusos): o que `versoes.json` guarda por `VERSAO`."""
     resumo = hashlib.sha256()
     for relativo in arquivos_do_pacote():
-        with open(os.path.join(PASTA, relativo), "rb") as arquivo:
+        with open(origem(relativo), "rb") as arquivo:
             conteudo = arquivo.read()
         resumo.update(relativo.encode("utf-8") + b"\0" + str(len(conteudo)).encode() + b"\0" + conteudo)
     return resumo.hexdigest()
