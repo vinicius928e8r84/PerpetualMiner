@@ -1,15 +1,16 @@
 'use strict';
 
-// As duas decisões que o workflow Testes toma com código: quando a suíte e2e pode ser pulada
-// e quais testes passaram só na segunda tentativa.
+// As três decisões que os workflows tomam com código: quando a suíte e2e pode ser pulada e quais
+// testes passaram só na segunda tentativa (workflow Testes), e a autoria dos commits (workflow Regras).
 
 const assert = require('assert');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { soDocumentacao, arquivosMudados } = require('./so-documentacao.js');
 const { instaveis, resumo } = require('./instaveis.js');
+const { EMAIL_DO_DONO, commitsForaDaRegra, mensagem } = require('./autoria.js');
 
 // --- Mudou só documentação? ---
 assert.strictEqual(soDocumentacao(['CLAUDE.md']), true);
@@ -105,5 +106,48 @@ assert.strictEqual(resumo([]), '');
 const texto = resumo(instaveis(relatorio));
 assert(texto.includes('a.spec.js:9') && texto.includes('oscila no grupo'), 'o resumo nomeia cada teste');
 assert(/2/.test(texto.split('\n')[0]), 'o título conta quantos foram');
+
+// --- Todo commit do PR é do dono? ---
+const linha = (sha, autor, committer, assunto = 'x') => [sha, autor, committer, assunto].join('\t');
+assert.deepStrictEqual(commitsForaDaRegra([linha('a1', EMAIL_DO_DONO, EMAIL_DO_DONO), '']), [], 'autor e committer do dono');
+assert.deepStrictEqual(commitsForaDaRegra([linha('a2', EMAIL_DO_DONO, 'noreply@github.com')]), [], 'o committer GitHub dos merges do site');
+assert.deepStrictEqual(commitsForaDaRegra([linha('a3', 'agente@exemplo.com', EMAIL_DO_DONO)]).map(c => c.sha), ['a3'], 'autor de outra pessoa');
+assert.deepStrictEqual(commitsForaDaRegra([linha('a4', EMAIL_DO_DONO, 'agente@exemplo.com')]).map(c => c.sha), ['a4'], 'committer de outra pessoa');
+assert.deepStrictEqual(commitsForaDaRegra([linha('a5', 'noreply@github.com', EMAIL_DO_DONO)]).map(c => c.sha), ['a5'], 'o autor não tem a exceção do GitHub');
+assert.deepStrictEqual(commitsForaDaRegra([linha('a6', EMAIL_DO_DONO, EMAIL_DO_DONO, 'com\ttabulação')]), [], 'tabulação no assunto');
+assert.match(mensagem(commitsForaDaRegra([linha('abcdef0123', 'agente@exemplo.com', EMAIL_DO_DONO, 'um assunto')]), 'origin/main'),
+  /abcdef0 um assunto[^]*git rebase --rebase-merges --exec 'git commit --amend --no-edit --reset-author' origin\/main/, 'a mensagem dá o comando');
+
+// Sobre um repositório de verdade, pelo mesmo comando que o workflow roda.
+{
+  const repoDeAutoria = fs.mkdtempSync(path.join(os.tmpdir(), 'autoria-'));
+  const gitA = (autor, ...args) => execFileSync('git', args, {
+    cwd: repoDeAutoria, encoding: 'utf8',
+    env: { ...process.env, GIT_AUTHOR_NAME: 'n', GIT_AUTHOR_EMAIL: autor, GIT_COMMITTER_NAME: 'n', GIT_COMMITTER_EMAIL: autor },
+  });
+  const rodarAutoria = () => spawnSync('node', [path.join(__dirname, 'autoria.js'), 'main', 'HEAD'], { cwd: repoDeAutoria, encoding: 'utf8' });
+  const commitar = (autor, assunto) => {
+    fs.writeFileSync(path.join(repoDeAutoria, 'arquivo.txt'), `${assunto}\n`);
+    gitA(autor, 'add', '-A');
+    gitA(autor, 'commit', '-q', '-m', assunto);
+  };
+  gitA(EMAIL_DO_DONO, 'init', '-q', '-b', 'main');
+  commitar(EMAIL_DO_DONO, 'base');
+  gitA(EMAIL_DO_DONO, 'checkout', '-q', '-b', 'ramo');
+  commitar(EMAIL_DO_DONO, 'feito certo');
+  assert.strictEqual(rodarAutoria().status, 0, 'só commits do dono');
+  commitar('agente@exemplo.com', 'do agente');
+  const falha = rodarAutoria();
+  assert.strictEqual(falha.status, 1, 'um commit de outro e-mail barra');
+  assert(falha.stdout.includes('do agente') && !falha.stdout.includes('feito certo'), 'a mensagem nomeia só o commit errado');
+  // O comando da mensagem conserta: depois dele a autoria passa.
+  execFileSync('git', ['rebase', '-q', '--rebase-merges', '--exec', 'git commit --amend --no-edit --reset-author', 'main'], {
+    cwd: repoDeAutoria,
+    env: { ...process.env, GIT_CONFIG_COUNT: '2',
+      GIT_CONFIG_KEY_0: 'user.email', GIT_CONFIG_VALUE_0: EMAIL_DO_DONO, GIT_CONFIG_KEY_1: 'user.name', GIT_CONFIG_VALUE_1: 'n' },
+  });
+  assert.strictEqual(rodarAutoria().status, 0, 'o comando da mensagem refaz a autoria');
+  fs.rmSync(repoDeAutoria, { recursive: true, force: true });
+}
 
 console.log('ci ok');
