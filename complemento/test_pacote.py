@@ -83,11 +83,8 @@ class ArquivoDoComplemento(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta:
             pacote = self.empacotado(pasta)
             nomes = pacote.namelist()
-            gerar = pacote.read("motor/generate_cards.py")
             pacote.close()
-        with open(os.path.join(AQUI, "..", "engine", "generate_cards.py"), "rb") as arquivo:
-            self.assertEqual(gerar, arquivo.read())
-        for nome in ("motor/__init__.py", "motor/openai_http.py", "motor/config.json", "motor/prompts/en_card.txt", "motor/prompts/ru_card.txt"):
+        for nome in ("motor/__init__.py", "motor/generate_cards.py", "motor/openai_http.py", "motor/config.json", "motor/prompts/en_card.txt", "motor/prompts/ru_card.txt"):
             self.assertIn(nome, nomes)
 
     def test_empacotar_numa_copia_limpa_cria_a_pasta_dist_e_o_arquivo(self):

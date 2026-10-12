@@ -237,11 +237,13 @@ class BridgeApp:
         return records
 
     def _analytics_filters(self) -> tuple[date | None, date | None, str]:
-        from_date = self.analytics.parse_date(request.args.get("from"))
-        to_date = self.analytics.parse_date(request.args.get("to"))
+        params = request.get_json(silent=True) if request.method == "POST" else request.args
+        params = params if isinstance(params, dict) or hasattr(params, "get") else {}
+        from_date = self.analytics.parse_date(params.get("from"))
+        to_date = self.analytics.parse_date(params.get("to"))
         if from_date and to_date and to_date < from_date:
             from_date, to_date = to_date, from_date
-        lang = (request.args.get("lang") or "all").lower()
+        lang = str(params.get("lang") or "all").lower()
         if lang not in {"all", "en", "ru"}:
             lang = "all"
         return from_date, to_date, lang
@@ -823,7 +825,7 @@ class BridgeApp:
             from_date, to_date, lang = self._analytics_filters()
             return jsonify(self.analytics.summary(from_date, to_date, lang))
 
-        @self.app.get("/analytics/jobs")
+        @self.app.route("/analytics/jobs", methods=["GET", "POST"])
         def analytics_jobs():
             from_date, to_date, lang = self._analytics_filters()
             return jsonify({"jobs": self.analytics.jobs(from_date, to_date, lang)})
@@ -950,8 +952,14 @@ class BridgeApp:
                 LOGGER.exception("Failed to compute Anki vocabulary")
                 return jsonify({"error": "anki_vocabulary_unavailable", "detail": str(exc)}), 503
 
-        @self.app.get("/jobs/<job_id>")
-        def job(job_id: str):
+        # O Envio também por POST com o `jobId` no corpo: é o contrato do complemento do Anki
+        # (complemento/contrato/exemplos.json), que a extensão fala. As rotas antigas ficam para quem ainda as usa.
+        def _body_job_id() -> str | None:
+            body = request.get_json(silent=True)
+            job_id = body.get("jobId") if isinstance(body, dict) else None
+            return job_id if _valid_job_id(job_id) else None
+
+        def _job_view(job_id: str):
             job_data = self.store.read_job(job_id)
             if not job_data:
                 return jsonify({"error": "job_not_found"}), 404
@@ -960,28 +968,75 @@ class BridgeApp:
                 "state": self.store.read_state(job_id),
             })
 
-        @self.app.get("/jobs/<job_id>/debug-bundle")
-        def debug_bundle(job_id: str):
+        def _job_debug_bundle(job_id: str):
             if not self.store.exists(job_id):
                 return jsonify({"error": "job_not_found"}), 404
             return jsonify(self._debug_bundle(job_id))
 
+        def _job_retry(job_id: str):
+            if not self.store.exists(job_id):
+                return jsonify({"error": "job_not_found"}), 404
+            return jsonify({"jobId": job_id, "status": self.store.requeue(job_id)})
+
+        def _with_body_job(handler: Callable[[str], Any]):
+            job_id = _body_job_id()
+            if job_id is None:
+                return jsonify({"error": "invalid_job_id"}), 400
+            return handler(job_id)
+
+        @self.app.get("/jobs/<job_id>")
+        def job(job_id: str):
+            return _job_view(job_id) if _valid_job_id(job_id) else (jsonify({"error": "job_not_found"}), 404)
+
+        @self.app.get("/jobs/<job_id>/debug-bundle")
+        def debug_bundle(job_id: str):
+            return _job_debug_bundle(job_id) if _valid_job_id(job_id) else (jsonify({"error": "job_not_found"}), 404)
+
+        @self.app.post("/jobs/list")
+        def jobs_post():
+            return jsonify({"jobs": self.store.listing()})
+
+        @self.app.post("/jobs/get")
+        def job_post():
+            return _with_body_job(_job_view)
+
+        @self.app.post("/jobs/debug-bundle")
+        def debug_bundle_post():
+            return _with_body_job(_job_debug_bundle)
+
+        @self.app.post("/jobs/retry")
+        def retry_job_post():
+            return _with_body_job(_job_retry)
+
         @self.app.post("/jobs")
         def create_job():
             payload = request.get_json(force=True, silent=False) or {}
+            if "jobId" in payload and not _valid_job_id(payload.get("jobId")):
+                return jsonify({"error": "invalid_job_id"}), 400
             if not isinstance(payload.get("entries"), list) or not payload["entries"]:
                 return jsonify({"error": "entries_required"}), 400
             if payload.get("lang") not in ("en", "ru"):
                 return jsonify({"error": "invalid_lang"}), 400
+            if payload.get("jobId") and self.store.exists(payload["jobId"]):
+                # O mesmo Envio pedido de novo (a resposta se perdeu): o que já existe, sem gravar nada.
+                if not self.store.same_request(payload["jobId"], payload):
+                    return jsonify({"error": "job_conflict"}), 409
+                return jsonify({"jobId": payload["jobId"], "status": self.store.read_state(payload["jobId"]).get("status", "queued")}), 201
 
             job_id = self.store.create(payload)
             return jsonify({"jobId": job_id, "status": "queued"}), 201
 
         @self.app.post("/jobs/<job_id>/retry")
         def retry_job(job_id: str):
-            if not self.store.exists(job_id):
-                return jsonify({"error": "job_not_found"}), 404
-            return jsonify({"jobId": job_id, "status": self.store.requeue(job_id)})
+            return _job_retry(job_id) if _valid_job_id(job_id) else (jsonify({"error": "job_not_found"}), 404)
+
+
+_JOB_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$")
+
+
+def _valid_job_id(job_id: Any) -> bool:
+    """Um id de Envio vira o nome de uma pasta: só letras, números, `-` e `_` (o UUID do painel ou o id que o bridge gera)."""
+    return isinstance(job_id, str) and bool(_JOB_ID.match(job_id))
 
 
 def main() -> None:

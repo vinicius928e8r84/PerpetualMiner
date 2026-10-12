@@ -215,6 +215,13 @@ class JobStore:
             self.save_queue_data(queue)
         return job_id
 
+    def same_request(self, job_id: str, payload: dict[str, Any]) -> bool:
+        """O pedido guardado é este (o que ``create`` grava dele: idioma, Baralho, imagens, sotaque e Frases)?"""
+        stored = self.read_job(job_id)
+        fields = ("lang", "deckName", "imageSource", "tts", "entries")
+        defaults = {"deckName": "teste", "imageSource": "1", "tts": {}}
+        return all(stored.get(name) == payload.get(name, defaults.get(name)) for name in fields)
+
     def requeue(self, job_id: str) -> str:
         """Continuar envio: preserva as etapas concluidas e as frases ja enviadas.
 

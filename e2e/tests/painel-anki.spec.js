@@ -2,7 +2,7 @@
 
 // Conexão com o Anki (#33): a área por idioma, os estados da conexão e a aba Custos
 // (docs/design/painel/anki/, variante C). A Conexão é o fake da fronteira HTTP
-// (fakes/anki.js): /health diz se ela está ligada, GET /analytics/jobs traz os
+// (fakes/anki.js): /health diz se ela está ligada, POST /analytics/jobs traz os
 // Envios do período no formato do bridge. Os testes afirmam o que a pessoa vê e o
 // que fica gravado.
 
@@ -117,7 +117,7 @@ test('cai depois de responder: a F1 e o último dado com o selo BRG-12; Continua
   await expect(continuar).toHaveAccessibleDescription(/Indisponível: a conexão com o Anki está desligada/);
   // aria-disabled deixa o botão no Tab (a dica diz por quê), mas apertar não faz nada.
   await continuar.click({ force: true });
-  expect(fakes.anki.requisicoes.filter(r => r.caminho.endsWith('/retry'))).toHaveLength(0);
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/retry')).toHaveLength(0);
   // O clique não deixa a dica presa: com o mouse fora ela some, e pelo teclado ela volta.
   const dica = page.locator('#anki-continuar-indisponivel');
   await page.mouse.move(0, 0);
@@ -169,7 +169,7 @@ test('desligada sem nada gravado: “Custo indisponível”, e o Tentar de novo 
 test('carregando: “Somando os custos…” e o esqueleto enquanto a leitura não volta', async ({ page, extensao, fakes }) => {
   let soltar;
   const segurando = new Promise(r => { soltar = r; });
-  fakes.anki.responder('GET', '/analytics/jobs', async () => { await segurando; return { json: { jobs: [] } }; });
+  fakes.anki.responder('POST', '/analytics/jobs', async () => { await segurando; return { json: { jobs: [] } }; });
   await abrirAnki(page, extensao);
 
   await expect(custos(page).getByText('Somando os custos…')).toBeVisible();
@@ -208,7 +208,7 @@ test('vazio: BRG-22 com “Ver tudo”, que troca o período para Tudo', async (
   await expect(page.getByRole('radio', { name: 'Tudo' })).toBeChecked();
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(1);
   const ultimo = pedidosDeCustos(fakes).at(-1);
-  expect(ultimo.busca).not.toContain('from=');
+  expect(ultimo.dados).toEqual({ lang: 'all' });
 });
 
 // ─── Custos: período, azulejos, resumo, envios ───────────────────────────────
@@ -216,21 +216,21 @@ test('vazio: BRG-22 com “Ver tudo”, que troca o período para Tudo', async (
 test('o período abre em Este mês; Hoje e De/Até pedem as datas certas', async ({ page, extensao, fakes }) => {
   await abrirAnki(page, extensao);
   await expect(page.getByRole('radio', { name: 'Este mês' })).toBeChecked();
-  await expect.poll(() => pedidosDeCustos(fakes).at(-1)?.busca).toContain('from=2026-09-01&to=2026-09-18');
+  await expect.poll(() => pedidosDeCustos(fakes).at(-1)?.dados).toEqual({ lang: 'all', from: '2026-09-01', to: '2026-09-18' });
 
   await escolher(page, 'Hoje');
-  await expect.poll(() => pedidosDeCustos(fakes).at(-1).busca).toContain('from=2026-09-18&to=2026-09-18');
+  await expect.poll(() => pedidosDeCustos(fakes).at(-1).dados).toEqual({ lang: 'all', from: '2026-09-18', to: '2026-09-18' });
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(3);
 
   await page.getByLabel('De', { exact: true }).fill('2026-07-01');
-  await expect.poll(() => pedidosDeCustos(fakes).at(-1).busca).toContain('from=2026-07-01');
+  await expect.poll(() => pedidosDeCustos(fakes).at(-1).dados).toMatchObject({ from: '2026-07-01' });
   await expect(page.getByRole('radio', { name: 'Hoje' })).not.toBeChecked();
 });
 
 test('azulejos por idioma com total e envios; o escolhido filtra o resumo, as imagens e a lista', async ({ page, extensao }) => {
   await page.setViewportSize({ width: 1280, height: 1100 });
   // Atrasa a leitura na fronteira HTTP: pegar os botões cedo não pode passar por sorte.
-  await page.route('http://127.0.0.1:8766/analytics/jobs?**', async route => {
+  await page.route('http://127.0.0.1:8766/analytics/jobs', async route => {
     await new Promise(resolve => setTimeout(resolve, 500));
     await route.fallback();
   });
@@ -288,11 +288,11 @@ test('lista × detalhe: o envio em parte mostra o que não entrou, Detalhes e Co
 
   await detalhe.getByRole('button', { name: 'Continuar envio' }).click();
   await expect(page.getByText('Envio retomado')).toBeVisible();
-  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/job-ru-parte/retry')).toHaveLength(1);
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/retry' && r.dados?.jobId === 'job-ru-parte')).toHaveLength(1);
 });
 
 test('Continuar envio que falha: ENV-14 no detalhe, com a causa em Detalhes, sem toast', async ({ page, extensao, fakes }) => {
-  fakes.anki.responder('POST', '/jobs/job-ru-parte/retry', () => ({ status: 500, json: { error: 'retry_failed' } }));
+  fakes.anki.responder('POST', '/jobs/retry', () => ({ status: 500, json: { error: 'retry_failed' } }));
   await abrirAnki(page, extensao);
   await listaDeEnvios(page).getByRole('option', { name: /Envio em russo/ }).click();
   const detalhe = detalheDoEnvio(page, 'Envio em russo · 4 frases');

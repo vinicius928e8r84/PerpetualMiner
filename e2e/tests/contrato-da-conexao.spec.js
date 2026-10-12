@@ -34,6 +34,7 @@ for (const exemplo of daExtensao) {
     if ('chaveNaNuvem' in exemplo.contexto) fakes.google.gravarChaveDaOpenAI('uid-teste', { chave: exemplo.contexto.chaveNaNuvem, em: exemplo.contexto.emNaNuvem });
     if ('colecao' in exemplo.contexto) fakes.anki.abrirColecao(exemplo.contexto.colecao);
     if (exemplo.contexto.itemDeLogin) fakes.anki.definirItemDeLogin(exemplo.contexto.itemDeLogin);
+    if (exemplo.contexto.fila) fakes.anki.definirFila(exemplo.contexto.fila);
     // O seam é o HTTP: uma página do produto poderia alterar o contexto
     // semeado. Um recurso estático mantém a origem sem executar o painel/popup.
     await page.goto(extensao.url('manifest.json'), { waitUntil: 'domcontentloaded' });

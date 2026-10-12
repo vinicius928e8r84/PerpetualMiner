@@ -36,15 +36,17 @@
   const FIM = { completed: 'concluido', partial: 'concluidoEmParte', failed: 'falhou' };
   const IDIOMA_DO_LANG = { en: 'INGLES', ru: 'RUSSO' };
 
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, Contexto, IDIOMAS, ehRussa, AjustesDeEnvio } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, Contexto, IDIOMAS, ehRussa, AjustesDeEnvio, PedidoAoAnki } = raiz;
   const { AREAS_DO_PAINEL } = Shell;
   const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
 
   let doPainel = null;
-  // A remessa acompanhada: { envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar }] }.
+  // A remessa acompanhada: { envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar, corpo }] }. `corpo` é o
+  // pedido do Envio, montado uma vez e gravado antes do primeiro POST: reenviado igual (Tentar de novo, o painel reaberto
+  // com o pedido sem resposta), é o mesmo Envio na Conexão, porque o `jobId` dele é o `id` (docs/design/envio-no-complemento.md).
   let remessa = null;
-  const jobs = new Map();           // jobId → o último job lido de GET /jobs
+  const jobs = new Map();           // jobId → o último job lido de POST /jobs/list
   const falhasAoRetomar = new Map(); // jobId → a causa, quando Continuar envio não deu
   let criando = false;
   const retomando = new Set();      // jobIds com um Continuar envio a caminho
@@ -74,8 +76,21 @@
     for (const area of AREAS_DO_PAINEL) Shell.aoEntrarNaArea(area, tentarAbrirResumo);
 
     const gravado = await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r));
-    if (!remessa && gravado[CHAVE_GRAVADA]?.envios?.some(e => e.jobId)) {
+    if (!remessa && gravado[CHAVE_GRAVADA]?.envios?.some(e => e.jobId || e.corpo)) {
       remessa = gravado[CHAVE_GRAVADA];
+      // O painel fechou com um pedido sem resposta: o mesmo corpo de novo, e a Conexão devolve o Envio que já tem (ou o cria).
+      const semResposta = remessa.envios.filter(e => !e.jobId && !e.falhaAoCriar && e.corpo);
+      if (semResposta.length) {
+        criando = true;
+        try {
+          for (const envio of semResposta) {
+            await criarEnvio(envio);
+            await gravar();
+          }
+        } finally {
+          criando = false;
+        }
+      }
       acompanhar();
     }
   }
@@ -119,34 +134,37 @@
     acompanhar();
   }
 
-  /** `POST /jobs` de um Envio; se não começa, a causa fica no cartão (ENV-03). */
+  /**
+   * `POST /jobs` de um Envio; se não começa, a causa fica no cartão (ENV-03). O corpo é montado na primeira vez e
+   * gravado antes de sair; daí em diante vai sempre o mesmo, para a Conexão reconhecer o Envio pelo `jobId`.
+   */
   async function criarEnvio(envio) {
     envio.falhaAoCriar = null;
     envio.criadoEm = Date.now();
-    // Lidos na hora, não na abertura do painel: outra aba pode ter salvado no meio.
-    let preset;
-    try {
-      preset = (await AjustesDeEnvio.ler())[envio.lang];
-    } catch (erro) {
-      envio.falhaAoCriar = { motivo: 'ENV-03.motivoAjustes', causa: String(erro.message || erro) };
-      return;
+    if (!envio.corpo) {
+      // Lidos na hora, não na abertura do painel: outra aba pode ter salvado no meio.
+      let preset;
+      try {
+        preset = (await AjustesDeEnvio.ler())[envio.lang];
+      } catch (erro) {
+        envio.falhaAoCriar = { motivo: 'ENV-03.motivoAjustes', causa: String(erro.message || erro) };
+        return;
+      }
+      // O baralho de quando o Envio foi criado: é o que o resumo diz, mesmo se os ajustes mudarem.
+      envio.baralho = preset.deckName;
+      envio.corpo = {
+        jobId: envio.id,
+        lang: envio.lang,
+        deckName: preset.deckName,
+        imageSource: preset.imageSource,
+        tts: { wordTld: preset.ttsWordTld, phraseTld: preset.ttsPhraseTld },
+        entries: doPainel.frasesPorId(envio.ids).map(frase => ({ phraseId: frase.id, line: doPainel.linha(frase) })),
+      };
+      await gravar();
     }
-    // O baralho de quando o Envio foi criado: é o que o resumo diz, mesmo se os ajustes mudarem.
-    envio.baralho = preset.deckName;
-    const corpo = {
-      lang: envio.lang,
-      deckName: preset.deckName,
-      imageSource: preset.imageSource,
-      tts: { wordTld: preset.ttsWordTld, phraseTld: preset.ttsPhraseTld },
-      entries: doPainel.frasesPorId(envio.ids).map(frase => ({ phraseId: frase.id, line: doPainel.linha(frase) })),
-    };
     let resposta;
     try {
-      resposta = await fetch(`${ENDERECO_DA_CONEXAO}/jobs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(corpo),
-      });
+      resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, PedidoAoAnki.criarEnvio(envio.corpo));
     } catch (erro) {
       envio.falhaAoCriar = { semResposta: true, causa: `POST /jobs → ${erro.message || erro}` };
       return;
@@ -183,7 +201,7 @@
 
   async function lerJobs() {
     try {
-      const resposta = await fetch(`${ENDERECO_DA_CONEXAO}/jobs`);
+      const resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, PedidoAoAnki.listarEnvios());
       if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
       const lista = (await resposta.json()).jobs || [];
       const porJob = new Map(lista.map(job => [job.jobId, job]));
@@ -211,9 +229,9 @@
     return Boolean(estado && FIM[estado.status]);
   }
 
-  /** Grava só os Envios que já têm um desfecho do POST: criado, ou não começou. */
+  /** Grava os Envios que já têm um pedido montado (ainda sem resposta, criado ou que não começou). */
   function gravar() {
-    const envios = remessa.envios.filter(e => e.jobId || e.falhaAoCriar);
+    const envios = remessa.envios.filter(e => e.jobId || e.falhaAoCriar || e.corpo);
     return new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios } }, r));
   }
 
@@ -466,8 +484,8 @@
 
   async function retomar(jobId) {
     try {
-      const resposta = await fetch(`${ENDERECO_DA_CONEXAO}/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });
-      if (!resposta.ok) throw new Error(`POST /jobs/${jobId}/retry → HTTP ${resposta.status}`);
+      const resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, PedidoAoAnki.tentarEnvioDeNovo(jobId));
+      if (!resposta.ok) throw new Error(`POST /jobs/retry ${jobId} → HTTP ${resposta.status}`);
       falhasAoRetomar.delete(jobId);
       const job = jobs.get(jobId);
       // Como a Conexão faz ao retomar: o erro da vez anterior sai junto.
