@@ -5,6 +5,7 @@
 // não inventa uma resposta: diz para escrever o exemplo antes.
 
 const assert = require('assert');
+const { isDeepStrictEqual } = require('util');
 const { criarFakeAnki, exemploDaExtensao, diferencaDoContrato } = require('./e2e/fakes/anki');
 const { criarFakeGoogle } = require('./e2e/fakes/google');
 
@@ -28,22 +29,61 @@ async function pedirAoFake(fakeDaConexao, metodo, caminho, corpo = null) {
   return entregue;
 }
 
+/** Um fake no contexto que o exemplo descreve, com a nuvem de mentira ao lado. */
+function fakeNoContextoDe(exemplo) {
+  const fakeDoExemplo = criarFakeAnki();
+  if (exemplo.contexto.perfil !== undefined) fakeDoExemplo.abrirPerfil(exemplo.contexto.perfil);
+  if (exemplo.contexto.falhaNoPerfil) fakeDoExemplo.falharLeituraDoPerfil();
+  if (exemplo.contexto.openai) fakeDoExemplo.responderOpenAI(exemplo.contexto.openai);
+  if (exemplo.contexto.chaveNaConexao) fakeDoExemplo.guardarChaveNaConexao(exemplo.contexto.chaveNaConexao, exemplo.contexto.versaoNaConexao || 0,
+    exemplo.contexto.contaNaConexao ?? null, exemplo.contexto.emNaConexao || 0, exemplo.contexto.naoEnviada ?? true);
+  if (!exemplo.contexto.chaveNaConexao && exemplo.contexto.versaoNaConexao) fakeDoExemplo.guardarRemocaoNaConexao(exemplo.contexto.versaoNaConexao);
+  if (exemplo.contexto.firebase) fakeDoExemplo.responderFirebase(exemplo.contexto.firebase);
+  if (exemplo.contexto.cofre === 'sem_escrita') fakeDoExemplo.falharGravacaoDaChave();
+  const google = criarFakeGoogle();
+  fakeDoExemplo.sincronizarCom(google);
+  if ('chaveNaNuvem' in exemplo.contexto) google.gravarChaveDaOpenAI('uid-teste', { chave: exemplo.contexto.chaveNaNuvem, em: exemplo.contexto.emNaNuvem });
+  if ('colecao' in exemplo.contexto) fakeDoExemplo.abrirColecao(exemplo.contexto.colecao);
+  if (exemplo.contexto.itemDeLogin) fakeDoExemplo.definirItemDeLogin(exemplo.contexto.itemDeLogin);
+  return { fakeDoExemplo, google };
+}
+
+/** O que o fake guardou, pelos leitores `@estado-guardado` dele e da nuvem. */
+function guardado({ fakeDoExemplo, google }) {
+  return {
+    chave: fakeDoExemplo.chaveNaConexao(), estadoDaChave: fakeDoExemplo.estadoDaChave(), item: fakeDoExemplo.itemDeLogin(),
+    nuvem: google.chaveDaOpenAIDe('uid-teste'),
+  };
+}
+
+/**
+ * Todo POST do contrato que dá 200 é repetível: de novo, a resposta é a mesma (salvo o instante) e o que o fake guardou não muda.
+ * Uma exceção é declarada no exemplo (`"repetivel": false, "porque": …`) e tem que valer no fake também. O servidor real segue a mesma
+ * regra em `complemento/test_servidor.py` (complemento/contrato/LEIA-ME.md).
+ */
+async function conferirARepeticao(exemplo) {
+  const contexto = fakeNoContextoDe(exemplo);
+  const { metodo, caminho, corpo } = exemplo.pedido;
+  const primeira = await pedirAoFake(contexto.fakeDoExemplo, metodo, caminho, corpo);
+  const depoisDoPrimeiro = guardado(contexto);
+  const segunda = await pedirAoFake(contexto.fakeDoExemplo, metodo, caminho, corpo);
+  const igual = segunda.status === primeira.status && diferencaDoContrato(segunda.json, exemplo.resposta.json) === null;
+  const intacto = isDeepStrictEqual(guardado(contexto), depoisDoPrimeiro);
+  if (exemplo.repetivel === false) {
+    assert.ok(exemplo.porque, `O exemplo "${exemplo.nome}" diz "repetivel": false sem o \`porque\`.`);
+    assert.ok(!(igual && intacto), `O exemplo "${exemplo.nome}" diz "repetivel": false, mas o fake repetido dá a mesma resposta e o mesmo estado: tire a exceção.`);
+    return;
+  }
+  const mensagem = `O mesmo POST de novo, no fake (e2e/fakes/anki.js), mudou a resposta ou o estado no exemplo "${exemplo.nome}": se é de propósito, `
+    + 'declare `"repetivel": false, "porque": …` no exemplo (complemento/contrato/LEIA-ME.md).';
+  assert.ok(igual, mensagem);
+  assert.ok(intacto, mensagem);
+}
+
 async function conferirOsExemplos() {
   for (const exemplo of contrato.exemplos.filter(exemploDaExtensao)) {
-    const fakeDoExemplo = criarFakeAnki();
-    if (exemplo.contexto.perfil !== undefined) fakeDoExemplo.abrirPerfil(exemplo.contexto.perfil);
-    if (exemplo.contexto.falhaNoPerfil) fakeDoExemplo.falharLeituraDoPerfil();
-    if (exemplo.contexto.openai) fakeDoExemplo.responderOpenAI(exemplo.contexto.openai);
-    if (exemplo.contexto.chaveNaConexao) fakeDoExemplo.guardarChaveNaConexao(exemplo.contexto.chaveNaConexao, exemplo.contexto.versaoNaConexao || 0,
-      exemplo.contexto.contaNaConexao ?? null, exemplo.contexto.emNaConexao || 0, exemplo.contexto.naoEnviada ?? true);
-    if (!exemplo.contexto.chaveNaConexao && exemplo.contexto.versaoNaConexao) fakeDoExemplo.guardarRemocaoNaConexao(exemplo.contexto.versaoNaConexao);
-    if (exemplo.contexto.firebase) fakeDoExemplo.responderFirebase(exemplo.contexto.firebase);
-    if (exemplo.contexto.cofre === 'sem_escrita') fakeDoExemplo.falharGravacaoDaChave();
-    const google = criarFakeGoogle();
-    fakeDoExemplo.sincronizarCom(google);
-    if ('chaveNaNuvem' in exemplo.contexto) google.gravarChaveDaOpenAI('uid-teste', { chave: exemplo.contexto.chaveNaNuvem, em: exemplo.contexto.emNaNuvem });
-    if ('colecao' in exemplo.contexto) fakeDoExemplo.abrirColecao(exemplo.contexto.colecao);
-    if (exemplo.contexto.itemDeLogin) fakeDoExemplo.definirItemDeLogin(exemplo.contexto.itemDeLogin);
+    const { fakeDoExemplo } = fakeNoContextoDe(exemplo);
+    if (exemplo.pedido.metodo === 'POST' && exemplo.resposta.status === 200) await conferirARepeticao(exemplo);
     const entregue = await pedirAoFake(fakeDoExemplo, exemplo.pedido.metodo, exemplo.pedido.caminho, exemplo.pedido.corpo);
     assert.strictEqual(entregue.status, exemplo.resposta.status, `O fake e o contrato se separaram no exemplo "${exemplo.nome}" (complemento/contrato/exemplos.json).`);
     assert.strictEqual(diferencaDoContrato(entregue.json, exemplo.resposta.json), null,

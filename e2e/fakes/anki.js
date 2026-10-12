@@ -418,7 +418,8 @@ function criarFakeAnki() {
         || (versao !== estado.versaoDaChave && !(versao === estado.versaoDaChave - 1 && estado.contaDaChave === conta))) {
         return responderJson(route, 409, { error: 'legacy_key_mismatch' });
       }
-      if (estado.contaDaChave === null || estado.chaveDaOpenAI === null) mudarChave(chave, conta, em);
+      // Já vinculado a esta conta é o mesmo pedido de novo (ou o replay da base anterior): responde 200 sem avançar a revisão, como a Conexão.
+      if ((estado.contaDaChave === null || estado.chaveDaOpenAI === null) && estado.contaDaChave !== conta) mudarChave(chave, conta, em);
       return responderJson(route, 200, { ok: true });
     }
     if (url.pathname === '/ia/openai/sincronizar' && req.method() === 'POST') {
