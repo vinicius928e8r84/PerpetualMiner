@@ -39,7 +39,7 @@ def arquivos_do_pacote():
         for nome in arquivos:
             relativo = os.path.relpath(os.path.join(pasta, nome), PASTA)
             if _entra_no_pacote(relativo):
-                achados.append(relativo)
+                achados.append(relativo.replace(os.sep, "/"))
     return sorted(achados)
 
 
@@ -56,7 +56,7 @@ def _codigo_do_pacote():
     for relativo in arquivos_do_pacote():
         if relativo != "manifest.json":
             with open(os.path.join(PASTA, relativo), "rb") as arquivo:
-                codigo[relativo.replace(os.sep, "/")] = arquivo.read()
+                codigo[relativo] = arquivo.read()
     return codigo
 
 
@@ -66,7 +66,7 @@ def hash_das_fontes():
     for relativo in arquivos_do_pacote():
         with open(os.path.join(PASTA, relativo), "rb") as arquivo:
             conteudo = arquivo.read()
-        resumo.update(relativo.replace(os.sep, "/").encode("utf-8") + b"\0" + str(len(conteudo)).encode() + b"\0" + conteudo)
+        resumo.update(relativo.encode("utf-8") + b"\0" + str(len(conteudo)).encode() + b"\0" + conteudo)
     return resumo.hexdigest()
 
 

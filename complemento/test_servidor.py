@@ -326,27 +326,27 @@ class RepeticaoDoContrato(unittest.TestCase):
     def test_resposta_igual_salvo_o_instante_e_estado_igual_passa(self):
         confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(), dict(self.GUARDADO))
 
-    def test_outra_resposta_sem_a_exececao_declarada_acusa_e_diz_como_declarar(self):
+    def test_outra_resposta_sem_a_excecao_declarada_acusa_e_diz_como_declarar(self):
         with self.assertRaisesRegex(AssertionError, "repetivel"):
             confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(corpo=b'{"ok": false, "em": "2026-10-12T10:00:00Z"}'), self.GUARDADO)
 
-    def test_outro_status_sem_a_exececao_declarada_acusa(self):
+    def test_outro_status_sem_a_excecao_declarada_acusa(self):
         with self.assertRaisesRegex(AssertionError, "status"):
             confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(status=409), self.GUARDADO)
 
-    def test_estado_guardado_que_muda_sem_a_exececao_declarada_acusa(self):
+    def test_estado_guardado_que_muda_sem_a_excecao_declarada_acusa(self):
         with self.assertRaisesRegex(AssertionError, "guardou"):
             confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(), {"arquivos": {"a": b"2"}, "nuvem": {}})
 
-    def test_a_exececao_declarada_com_motivo_e_que_de_fato_muda_algo_passa(self):
+    def test_a_excecao_declarada_com_motivo_e_que_de_fato_muda_algo_passa(self):
         exemplo = dict(self.EXEMPLO, repetivel=False, porque="a versão sobe")
         confere_a_repeticao(self, exemplo, (200, b""), self.GUARDADO, self.segundo(status=409), self.GUARDADO)
 
-    def test_a_exececao_sem_motivo_acusa(self):
+    def test_a_excecao_sem_motivo_acusa(self):
         with self.assertRaisesRegex(AssertionError, "porque"):
             confere_a_repeticao(self, dict(self.EXEMPLO, repetivel=False), (200, b""), self.GUARDADO, self.segundo(status=409), self.GUARDADO)
 
-    def test_a_exececao_que_repetida_nao_muda_nada_acusa_que_esta_velha(self):
+    def test_a_excecao_que_repetida_nao_muda_nada_acusa_que_esta_velha(self):
         exemplo = dict(self.EXEMPLO, repetivel=False, porque="a versão sobe")
         with self.assertRaisesRegex(AssertionError, "tire a exceção"):
             confere_a_repeticao(self, exemplo, (200, b""), self.GUARDADO, self.segundo(), dict(self.GUARDADO))

@@ -195,11 +195,20 @@ class VersaoDoComplemento(unittest.TestCase):
         self.assertEqual(resultado.returncode, 0, resultado.stderr)
 
     def test_o_arquivo_de_versoes_nao_entra_no_pacote_nem_no_hash(self):
+        self.assertNotIn("versoes.json", empacotar.arquivos_do_pacote())
         with tempfile.TemporaryDirectory() as pasta:
-            antes = empacotar.hash_das_fontes()
-            nomes = zipfile.ZipFile(empacotar.empacotar(os.path.join(pasta, "a.ankiaddon"))).namelist()
-        self.assertNotIn("versoes.json", nomes)
-        self.assertEqual(antes, empacotar.hash_das_fontes())
+            with zipfile.ZipFile(empacotar.empacotar(os.path.join(pasta, "a.ankiaddon"))) as pacote:
+                self.assertNotIn("versoes.json", pacote.namelist())
+
+    def test_o_checkout_do_complemento_e_sempre_lf_para_o_hash_nao_mudar_no_windows(self):
+        if shutil.which("git") is None or not os.path.exists(os.path.join(empacotar.PASTA, "..", ".git")):
+            self.skipTest("sem git ou fora de um checkout")
+        atributos = subprocess.run(
+            ["git", "check-attr", "eol", "text", "--", "complemento/servidor.py", "complemento/configuracao.py"],
+            cwd=os.path.join(empacotar.PASTA, ".."), capture_output=True, text=True, check=True,
+        ).stdout
+        self.assertEqual(atributos.count("eol: lf"), 2, atributos)
+        self.assertEqual(atributos.count("text: set"), 2, atributos)
 
 
 class HoraDoEmpacotamento(unittest.TestCase):

@@ -59,7 +59,7 @@ O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede 
   qualquer instante ISO 8601 em UTC, e o fake escreve o do relógio dele.
 - `repetivel` e `porque`: todo exemplo `POST` com resposta `200` é pedido **duas vezes**, e a segunda resposta tem que ser igual à primeira
   (salvo `"<agora>"`) sem mudar nada do que a Conexão guardou (os arquivos de `user_files`, menos o log, e a nuvem). O servidor real
-  (`test_servidor.py`) e o fake do e2e (`contrato-da-conexao.spec.js`, que repete os exemplos `daExtensao`) seguem a mesma regra. Repetir de
+  (`test_servidor.py`) e o fake do e2e (`test_fake_anki.js`, que repete os exemplos `daExtensao`) seguem a mesma regra. Repetir de
   propósito muda algo? (O pedido leva uma versão que a primeira vez sobe, ou a segunda já não tem o que fazer.) Declare no exemplo
   `"repetivel": false, "porque": "…"`: sem o `porque` o teste falha, e a exceção que, repetida, dá mesmo resposta e mesmo estado também falha
   (está velha: tire-a). Um `POST` novo que muda a resposta ao repetir é um defeito até prova em contrário.
