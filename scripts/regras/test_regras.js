@@ -457,6 +457,35 @@ nulo(achadosDe(comOPortao({ 'scripts/testes.json': CADASTRO.replace('test_*.py',
 nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': `${CHAMA_TUDO}      - run: node scripts/testar.mjs engine\n` }), '.github/workflows/testes.yml'), 1,
   'workflow que chama um grupo que o cadastro não tem');
 
+// ─── doc-datado ──────────────────────────────────────────────────────────────
+
+// Os erros reais: a SKILL.md de verificação carregou "41" como o tamanho da suíte e o CLAUDE.md ainda fala em "about 700 tests".
+acusa('doc-datado', '.agents/skills/verify-perpetualminer/SKILL.md', 'that the suite is collectable (41 specs listed by `playwright test --list`)\n', 1, 'contagem de specs (a SKILL.md antes do #226)');
+acusa('doc-datado', 'CLAUDE.md', 'the whole suite (about 700 tests) runs in CI\n', 1, 'contagem de tests (CLAUDE.md)');
+acusa('doc-datado', 'docs/instalar-extensao.md', 'São 12 testes de ponta a ponta.\n', 1, 'contagem em português');
+acusa('doc-datado', 'complemento/LEIA-ME.md', 'o servidor tem 3 e2e specs\n', 1, 'um e2e entre o número e a palavra');
+acusa('doc-datado', 'docs/design/README.md', 'Nesta rodada travo a variante; esta PR traz o painel e nessa rodada nada mais.\n', 3, 'esta PR / nesta rodada');
+acusa('doc-datado', '.agents/skills/popup/SKILL.md', 'This PR adds the popup; in this PR nothing else.\n', 2, 'this PR');
+acusa('doc-datado', 'CLAUDE.md', 'one finding\nholds 236 older tests on its baseline\n', 1, 'a linha do achado é a certa');
+// O jeito certo passa.
+acusa('doc-datado', 'CLAUDE.md', [
+  'Run `HEADED=1 npm test` to see the browser; the doctor counts the specs (`playwright test --list`).',
+  'A suíte inteira roda no CI; os testes de cada grupo: `node scripts/testar.mjs --listar`.',
+  'Rode os specs da área; a prova de cada regra fica em test_regras.js (Python 3.9, 3.13).',
+  'Veja o PR no git log; a rodada de revisão fica no ticket.',
+].join('\n'), 0, 'comandos, variável com número, sem contagem');
+// Onde a regra vale: docs/ (menos docs/superpowers/), complemento/, CLAUDE.md e as skills, só em Markdown.
+const aplica = arquivo => regras['doc-datado'].seAplica(arquivo);
+for (const sim of ['CLAUDE.md', 'docs/instalar-extensao.md', 'docs/design/voz/README.md', 'complemento/LEIA-ME.md', 'complemento/contrato/LEIA-ME.md',
+  '.agents/skills/verify-perpetualminer/SKILL.md', '.agents/skills/verify-perpetualminer/features/ia.md']) {
+  assert.strictEqual(aplica(sim), true, `${sim} é conferido`);
+  total++;
+}
+for (const nao of ['docs/superpowers/specs/2026-06-nota.md', 'README.md', 'bridge/README.md', 'engine/CLAUDE.md', 'docs/design/painel/p.html', 'painel.js', 'complemento/servidor.py']) {
+  assert.strictEqual(aplica(nao), false, `${nao} não é conferido`);
+  total++;
+}
+
 // ─── exceções na linha ───────────────────────────────────────────────────────
 
 const HOJE = '2026-10-04';
