@@ -40,10 +40,42 @@ assert.equal(ferramentas.status, 0, ferramentas.stdout + ferramentas.stderr);
 assert.match(ferramentas.stdout, /▶ node: node test_sync\.js/);
 assert.match(ferramentas.stdout, /testes ok: node/);
 
-// O cadastro ausente ou quebrado diz como consertar, em português, com a posição do erro.
-const { lerRegistro } = require('./grupos-de-teste.js');
+// O Python: o $PYTHON do CI vence, senão o .venv da raiz, senão python3.
+const { escolherPython, dicaDeModulo } = await import('./testar.mjs');
 const fs = await import('node:fs');
 const os = await import('node:os');
+const raizComVenv = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-venv-'));
+const raizSemVenv = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-sem-venv-'));
+fs.mkdirSync(path.join(raizComVenv, '.venv', 'bin'), { recursive: true });
+fs.writeFileSync(path.join(raizComVenv, '.venv', 'bin', 'python'), '');
+assert.equal(escolherPython({ PYTHON: 'python' }, raizComVenv), 'python');
+assert.equal(escolherPython({}, raizComVenv), path.join(raizComVenv, '.venv', 'bin', 'python'));
+assert.equal(escolherPython({}, raizSemVenv), 'python3');
+fs.rmSync(raizComVenv, { recursive: true, force: true });
+fs.rmSync(raizSemVenv, { recursive: true, force: true });
+
+// Um grupo que falha por falta de módulo diz o que o grupo precisa e, sem venv, o comando de preparo.
+const semFlask = "ModuleNotFoundError: No module named 'flask'\n";
+const grupoComPrecisa = { precisa: 'pip install -r bridge/requirements.txt' };
+assert.equal(dicaDeModulo('bridge', grupoComPrecisa, 'FAIL: test_x\n', 'python3'), '');
+assert.equal(dicaDeModulo('bridge', grupoComPrecisa, semFlask, 'python3'),
+  "✗ bridge: falta o módulo flask; o grupo precisa de: pip install -r bridge/requirements.txt\n  numa worktree nova: scripts/preparar-python.sh cria o .venv e instala tudo; este comando passa a usá-lo sozinho");
+assert.equal(dicaDeModulo('bridge', grupoComPrecisa, semFlask, '/x/.venv/bin/python'),
+  "✗ bridge: falta o módulo flask; o grupo precisa de: pip install -r bridge/requirements.txt");
+
+// De ponta a ponta: um Python sem o módulo faz o grupo falhar com a dica, e o erro original continua à vista.
+const pastaFalsa = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-python-falso-'));
+const pythonFalso = path.join(pastaFalsa, 'python');
+fs.writeFileSync(pythonFalso, `#!/bin/sh\necho "ModuleNotFoundError: No module named 'flask'" >&2\nexit 1\n`, { mode: 0o755 });
+const semModulo = spawnSync('node', [path.join(RAIZ, 'scripts', 'testar.mjs'), 'bridge'], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, PYTHON: pythonFalso } });
+fs.rmSync(pastaFalsa, { recursive: true, force: true });
+assert.equal(semModulo.status, 1);
+assert.match(semModulo.stderr, /ModuleNotFoundError: No module named 'flask'/);
+assert.match(semModulo.stdout, /✗ bridge: falta o módulo flask; o grupo precisa de: pip install -r bridge\/requirements\.txt/);
+assert.match(semModulo.stdout, /error: falharam: bridge/);
+
+// O cadastro ausente ou quebrado diz como consertar, em português, com a posição do erro.
+const { lerRegistro } = require('./grupos-de-teste.js');
 const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-cadastro-'));
 fs.mkdirSync(path.join(pasta, 'scripts'));
 assert.throws(() => lerRegistro(pasta), /falta scripts\/testes\.json.*git checkout origin\/main -- scripts\/testes\.json/);
