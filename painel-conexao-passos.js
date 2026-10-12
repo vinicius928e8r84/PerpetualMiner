@@ -82,13 +82,26 @@
   const PASSO_DO_ABRIDOR = 'abridor';
   const ARQUIVO_DA_CONEXAO = 'conexao/perpetualminer.ankiaddon';
   const NOME_DO_ARQUIVO = 'perpetualminer.ankiaddon';
-  // O Anki de hoje, para o download do passo Ter o Anki (#146): os arquivos do site do Anki
-  // (apps.ankiweb.net). Versão nova do Anki, número novo aqui.
+  // O Anki do passo Ter o Anki (#146), por sistema: o que “Não tenho” baixa e o que fazer depois
+  // dele. Nos outros sistemas, a página de download do Anki, que escolhe sozinha.
+  //
+  // ⚠ Os dois endereços de arquivo não existem (conferidos em 12/10/2026: 404 nos quatro nomes
+  // possíveis). O Anki publica os instaladores nos lançamentos do GitHub, um por processador
+  // (`anki-<versão>-mac-apple.dmg` · `-mac-intel.dmg` · `-win-x64.msi` · `-win-arm64.msi`), e o nome
+  // carrega a versão: não existe endereço fixo por sistema. Escolher o arquivo certo pede o
+  // processador (`userAgentData.getHighEntropyValues`) e um número que envelhece a cada lançamento
+  // do Anki — qual dos dois caminhos seguir é decisão do dono (revisão do PR #224).
   const VERSAO_DO_ANKI = '24.06.3';
-  const DOWNLOAD_DO_ANKI = Object.freeze({
-    mac: `https://apps.ankiweb.net/downloads/current/anki-${VERSAO_DO_ANKI}-mac.dmg`,
-    windows: `https://apps.ankiweb.net/downloads/current/anki-${VERSAO_DO_ANKI}-windows.exe`,
-    outro: 'https://apps.ankiweb.net/',
+  const O_ANKI_NO_SISTEMA = Object.freeze({
+    mac: Object.freeze({
+      download: `https://apps.ankiweb.net/downloads/current/anki-${VERSAO_DO_ANKI}-mac.dmg`,
+      depois: 'ONB-18.depoisNoMac',
+    }),
+    windows: Object.freeze({
+      download: `https://apps.ankiweb.net/downloads/current/anki-${VERSAO_DO_ANKI}-windows.exe`,
+      depois: 'ONB-18.depoisNoWindows',
+    }),
+    outro: Object.freeze({ download: 'https://apps.ankiweb.net/', depois: 'ONB-18.depois' }),
   });
   /** Sem resposta depois disto, o checklist e “Baixar de novo”. */
   const SEM_RESPOSTA_MS = 2 * 60 * 1000;
@@ -100,15 +113,14 @@
   const { SITUACAO } = Configuracao;
 
   /**
-   * O sistema da pessoa, pelo `userAgentData` do Chromium (ou pelo user agent): é o que
-   * escolhe o instalador do Anki do passo Ter o Anki. Nos outros sistemas, a página de
-   * download do Anki, que escolhe sozinha.
+   * O Anki do sistema da pessoa, pelo `userAgentData` do Chromium (ou pelo user agent): o que
+   * o passo Ter o Anki baixa e o que ele diz depois. Fora do Mac e do Windows, o `outro`.
    */
-  function sistemaDaPessoa() {
+  function oAnkiDestaPessoa() {
     const plataforma = navigator.userAgentData?.platform ?? navigator.userAgent;
-    if (/mac/i.test(plataforma)) return 'mac';
-    if (/win/i.test(plataforma)) return 'windows';
-    return 'outro';
+    if (/mac/i.test(plataforma)) return O_ANKI_NO_SISTEMA.mac;
+    if (/win/i.test(plataforma)) return O_ANKI_NO_SISTEMA.windows;
+    return O_ANKI_NO_SISTEMA.outro;
   }
 
   // ─── O abridor (passo 4), um por página ─────────────────────────────────────
@@ -267,16 +279,20 @@
     titulo.tabIndex = -1;
     const texto = elemento('p', 'bv-texto');
 
-    // O arquivo: um link de download do próprio pacote da extensão (o Chrome não pede permissão).
-    const linkDoArquivo = (classe, rotulo, endereco, nome) => {
+    const destaque = navegacao ? 'veio-botao--primario' : 'veio-botao--contorno';
+    /** Um link de download com cara de botão: o do arquivo da Conexão e o do instalador do Anki. */
+    const botaoDeDownload = (rotulo, endereco, classe = `veio-botao ${destaque}`) => {
       const link = elemento('a', classe, rotulo);
       link.href = endereco;
-      if (nome) link.download = nome;
       return link;
     };
-    const destaque = navegacao ? 'veio-botao--primario' : 'veio-botao--contorno';
-    const baixar = linkDoArquivo(`veio-botao ${destaque}`, textoDaVoz('ONB-16.baixar'),
-      chrome.runtime.getURL(ARQUIVO_DA_CONEXAO), NOME_DO_ARQUIVO);
+    /** O arquivo da Conexão vem do próprio pacote da extensão (o Chrome não pede permissão). */
+    const botaoDoArquivo = (rotulo, classe) => {
+      const link = botaoDeDownload(rotulo, chrome.runtime.getURL(ARQUIVO_DA_CONEXAO), classe);
+      link.download = NOME_DO_ARQUIVO;
+      return link;
+    };
+    const baixar = botaoDoArquivo(textoDaVoz('ONB-16.baixar'));
     baixar.addEventListener('click', () => { if (estado.esperandoDesde === null) estado.esperandoDesde = Date.now(); });
 
     // A animação do aviso (ONB-19, #146): o que o próprio Anki pergunta ao abrir o arquivo, e de
@@ -300,7 +316,9 @@
     const detalhes = Veio.montarDetalhes(
       codigo === null ? textoDaVoz('ONB-16.codigoEmBreve') : textoDaVoz('ONB-16.codigoDoAnkiWeb', { codigo }),
       document, textoDaVoz('ONB-16.arquivoNaoAbriu'));
-    const doArquivo = elemento('div', 'pc-arquivo', baixar, aAnimacao, detalhes);
+    // A animação vem antes do botão: a pessoa vê o que o Anki vai perguntar antes de baixar o
+    // arquivo (“Antes de baixar…”, ONB-19 e docs/design/painel/boas-vindas/README.md § os passos).
+    const doArquivo = elemento('div', 'pc-arquivo', aAnimacao, baixar, detalhes);
 
     // O passo Ter o Anki (#146): a pergunta, as duas respostas e o que a escolha mostra.
     const perguntaDoAnki = elemento('p', 'pc-anki__pergunta', textoDaVoz('ONB-18.pergunta'));
@@ -312,10 +330,10 @@
     naoTenho.type = 'button';
     const respostasDoAnki = elemento('div', 'pc-anki__respostas', jaTenho, naoTenho);
 
-    const sistema = sistemaDaPessoa();
-    const baixarOAnki = linkDoArquivo(`veio-botao ${destaque}`, textoDaVoz('ONB-18.baixar'), DOWNLOAD_DO_ANKI[sistema]);
+    const oAnkiDaPessoa = oAnkiDestaPessoa();
+    const baixarOAnki = botaoDeDownload(textoDaVoz('ONB-18.baixar'), oAnkiDaPessoa.download);
     baixarOAnki.id = id('anki-baixar');
-    const depoisDoDownload = elemento('p', 'pc-anki__depois', textoDaVoz(`ONB-18.depois${sistema === 'mac' ? 'NoMac' : sistema === 'windows' ? 'NoWindows' : ''}`));
+    const depoisDoDownload = elemento('p', 'pc-anki__depois', textoDaVoz(oAnkiDaPessoa.depois));
     const doDownloadDoAnki = elemento('div', 'pc-anki__download', baixarOAnki, depoisDoDownload);
 
     const resultadoDoAnki = elemento('p', 'pc-anki__resultado');
@@ -325,36 +343,32 @@
     doDownloadDoAnki.hidden = true;
     resultadoDoAnki.hidden = true;
 
-    // O que a resposta “Já tenho” mostrou por último; o que marca o passo é a Conexão
-    // respondendo, e a escolha volta à pergunta quando ela responde.
-    const anki = { escolha: null, abrindo: false, manual: false };
+    // A resposta do passo Ter o Anki, só na tela: `escolha` é `null` (a pergunta), `'ja'` ou `'nao'`,
+    // e `doAbridor` é o ID do que a resposta “Já tenho” mostrou por último (nenhum, enquanto não há o
+    // que dizer). O que marca o passo é a Conexão respondendo, e a escolha volta à pergunta então.
+    const anki = { escolha: null, doAbridor: null };
+    const definirResposta = (escolha, doAbridor = null) => Object.assign(anki, { escolha, doAbridor });
+
+    /** O abridor da Conexão abre o Anki agora? Sem a permissão já dada, nem se pergunta a ele. */
+    async function oAbridorAbreOAnki() {
+      if (!(await Abridor.temPermissao().catch(() => false))) return false;
+      const { resultado } = await Abridor.abrirOAnkiDeVerdade();
+      return resultado === Abridor.RESULTADO.ACHOU;
+    }
 
     /** “Já tenho”: com a permissão já dada, o abridor abre o Anki; sem ela (ou sem o abridor), o caminho manual. */
     async function responderJaTenho() {
-      anki.escolha = 'ja';
-      anki.abrindo = false;
-      anki.manual = false;
+      definirResposta('ja');
       desenhar();
-      if (!(await Abridor.temPermissao().catch(() => false))) {
-        if (anki.escolha === 'ja') {
-          anki.manual = true;
-          desenhar();
-        }
-        return;
-      }
-      const { resultado } = await Abridor.abrirOAnkiDeVerdade();
+      const abriu = await oAbridorAbreOAnki();
       // Enquanto o abridor falava, a pessoa podia ter mudado de resposta (ou a Conexão, respondido).
       if (anki.escolha !== 'ja') return;
-      const abriu = resultado === Abridor.RESULTADO.ACHOU;
-      anki.abrindo = abriu;
-      anki.manual = !abriu;
+      definirResposta('ja', abriu ? 'ONB-18.abrindo' : 'ONB-18.manual');
       desenhar();
     }
 
     function responderNaoTenho() {
-      anki.escolha = 'nao';
-      anki.abrindo = false;
-      anki.manual = false;
+      definirResposta('nao');
       desenhar();
     }
 
@@ -400,8 +414,8 @@
     let avisoDoAbridor = null;
     const blocoDoAbridor = elemento('div', 'pc-abridor', statusDoAbridor, acoesDoAbridor);
 
-    const baixarDeNovo = linkDoArquivo('veio-botao veio-botao--contorno veio-botao--compacto', textoDaVoz('ONB-16.baixarDeNovo'),
-      chrome.runtime.getURL(ARQUIVO_DA_CONEXAO), NOME_DO_ARQUIVO);
+    const baixarDeNovo = botaoDoArquivo(textoDaVoz('ONB-16.baixarDeNovo'),
+      'veio-botao veio-botao--contorno veio-botao--compacto');
     const checklist = elemento('ul', 'pc-checklist', ...ITENS_DO_CHECKLIST.map(item => elemento('li', null, textoDaVoz(item))));
     const semResposta = elemento('div', 'pc-sem-resposta',
       elemento('p', 'pc-sem-resposta__texto', textoDaVoz('ONB-16.semResposta')), checklist, baixarDeNovo);
@@ -537,9 +551,8 @@
       jaTenho.setAttribute('aria-pressed', String(anki.escolha === 'ja'));
       naoTenho.setAttribute('aria-pressed', String(anki.escolha === 'nao'));
       doDownloadDoAnki.hidden = anki.escolha !== 'nao';
-      resultadoDoAnki.hidden = !anki.abrindo && !anki.manual;
-      resultadoDoAnki.textContent = anki.abrindo ? textoDaVoz('ONB-18.abrindo')
-        : anki.manual ? textoDaVoz('ONB-18.manual') : '';
+      resultadoDoAnki.hidden = anki.doAbridor === null;
+      resultadoDoAnki.textContent = anki.doAbridor === null ? '' : textoDaVoz(anki.doAbridor);
     }
 
     /** O bloco do abridor: só no passo 4, com a Conexão ligada (é ela que deixa o abridor no computador). */
@@ -592,7 +605,7 @@
       if (situacao === CONEXAO.LIGADA && estado.ultimaSituacao !== CONEXAO.LIGADA) {
         estado.ligou = true;
         if (!abridorResolvido()) estado.escolha = null;
-        Object.assign(anki, { escolha: null, abrindo: false, manual: false });
+        definirResposta(null);
         aoLigarAConexao();
       }
       estado.ultimaSituacao = situacao;

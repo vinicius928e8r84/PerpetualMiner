@@ -11,7 +11,7 @@
 // sozinhos — o aviso que o próprio Anki mostra ao abrir o arquivo, e o mesmo diálogo com o Sim
 // marcado, de onde clicar. Com “menos movimento”, os quadros ficam parados, lado a lado.
 
-const { test, expect } = require('../fixtures');
+const { test, expect, comOSistema, SISTEMAS } = require('../fixtures');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 const { fotografar } = require('../evidencias-mineracao');
 const contrato = require('../../complemento/contrato/exemplos.json');
@@ -29,18 +29,11 @@ const jaTenho = page => card(page).getByRole('button', { name: 'Já tenho' });
 const naoTenho = page => card(page).getByRole('button', { name: 'Não tenho' });
 const baixarOAnki = page => card(page).getByRole('link', { name: 'Baixar o Anki' });
 const resultadoDoAnki = page => page.locator('#apv-anki-resultado');
+const statusDaConexao = page => page.locator('#apv-status');
 
-const MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-const WINDOWS = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-
-/** O painel como um usuário do sistema dado: o user agent e o `userAgentData` são os dele. */
+/** O painel como um usuário do sistema dado (o user agent e o `userAgentData` são os dele). */
 async function abrirComo(page, extensao, sistema) {
-  await page.addInitScript(sistema => {
-    Object.defineProperty(navigator, 'userAgent', { value: sistema });
-    Object.defineProperty(navigator, 'userAgentData', {
-      value: { platform: /Mac/.test(sistema) ? 'macOS' : 'Windows' },
-    });
-  }, sistema);
+  await comOSistema(page, sistema);
   await page.goto(extensao.url('painel.html#anki/custos'));
 }
 
@@ -65,12 +58,15 @@ test('o primeiro passo é Ter o Anki: a pergunta e as duas respostas, e nada do 
   await expect(card(page)).not.toContainText(/não encontrado|instalar o Anki antes/i);
   await expect(baixarOAnki(page)).toHaveCount(0);
   await expect(resultadoDoAnki(page)).toBeHidden();
+  // E nem a linha da Conexão, que neste passo não tem o que fazer: o Tentar de novo mora no de reiniciar.
+  await expect(statusDaConexao(page)).toBeHidden();
+  await expect(card(page).getByRole('button', { name: 'Tentar de novo' })).toBeHidden();
   await fotografar(page, 'ter-o-anki-pergunta.png');
   await estadoFinal(extensao, { pm_abridor: null });
 });
 
 test('“Não tenho” no Mac: o download é o .dmg do Anki, e o passo mostra a arrastada para Aplicativos', async ({ page, extensao }) => {
-  await abrirComo(page, extensao, MAC);
+  await abrirComo(page, extensao, SISTEMAS.MAC);
   await expect(card(page)).toBeVisible();
 
   await naoTenho(page).click();
@@ -84,7 +80,7 @@ test('“Não tenho” no Mac: o download é o .dmg do Anki, e o passo mostra a 
 });
 
 test('“Não tenho” no Windows: o download é o instalador .exe do Anki', async ({ page, extensao }) => {
-  await abrirComo(page, extensao, WINDOWS);
+  await abrirComo(page, extensao, SISTEMAS.WINDOWS);
   await expect(card(page)).toBeVisible();
 
   await naoTenho(page).click();
@@ -136,6 +132,19 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);
   });
 
+  test('sem o abridor no computador: “Já tenho” cai no caminho manual de sempre', async ({ page, extensao, fakes }) => {
+    // Uma Conexão antiga (ou nenhuma) não deixou o abridor: o Chrome não acha o host e o passo não trava.
+    fakes.abridor.desregistrar();
+    await page.goto(extensao.url('painel.html#anki/custos'));
+    await expect(card(page)).toBeVisible();
+
+    await jaTenho(page).click();
+
+    await expect(resultadoDoAnki(page)).toHaveText('Abra o Anki para continuar.');
+    expect(fakes.abridor.pedidos()).toEqual([]);
+    await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);
+  });
+
   test('o abridor não acha o Anki: “Já tenho” cai no caminho manual de sempre', async ({ page, extensao, fakes }) => {
     fakes.abridor.definir('nao_achei');
     await page.goto(extensao.url('painel.html#anki/custos'));
@@ -167,7 +176,12 @@ test('no passo de baixar o arquivo, a animação mostra o aviso do Anki e de ond
   // Alternam sozinhos: é animação, não duas cópias paradas.
   await expect(aviso.locator('.pc-animacao__quadro').first()).toHaveCSS('animation-name', 'pc-quadro');
   // E o desenho é do Anki: o passo do arquivo continua com o dele.
-  await expect(card(page).getByRole('link', { name: 'Baixar a Conexão com o Anki' })).toBeVisible();
+  const baixar = card(page).getByRole('link', { name: 'Baixar a Conexão com o Anki' });
+  await expect(baixar).toBeVisible();
+  // O aviso vem acima do botão: a pessoa vê o que o Anki vai perguntar antes de baixar o arquivo.
+  const doAviso = await aviso.boundingBox();
+  const doBotao = await baixar.boundingBox();
+  expect(doAviso.y + doAviso.height).toBeLessThanOrEqual(doBotao.y);
   await fotografar(page, 'ter-o-anki-animacao.png');
   await estadoFinal(extensao, { pm_abridor: null });
 });

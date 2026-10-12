@@ -25,6 +25,10 @@ const { test, expect } = require('../fixtures');
 // `npx playwright test boas-vindas-visual --update-snapshots -g "passo 4"`.
 // #147: os passos da Conexão ganharam o 3º, Abrir o Anki sozinho (ONB-17); com a Conexão ligada, o passo 4 abre nele. As
 // propostas dele também são `test.fixme`, para o dono aprovar olhando.
+// #146: Ter o Anki (ONB-18) entrou como 1º dos passos da Conexão, e é nele que o passo 4 abre; o do arquivo, agora o 2º,
+// ganhou a animação do aviso (ONB-19). A proposta da pergunta é nova e as outras do passo 4 passam por ela antes de
+// chegar ao passo que fotografam. Aprovando: tirar o `fixme` e `npx playwright test boas-vindas-visual
+// --update-snapshots -g "passo 4"`.
 
 const UMA_FRASE = [{ id: 1, texto: 'Old news', data: '01/09/2026', streaming: 'web', idioma: 'Inglês' }];
 const SELECAO_EM_ALT_Q = { type: 'keyboard', code: 'KeyQ', button: null, altKey: true, ctrlKey: false, shiftKey: false, label: 'Alt+Q' };
@@ -96,8 +100,16 @@ test('passo 3 com a conta: o nome e Sair da conta', async ({ page, extensao }) =
   await foto(page, 'passo-3-com-conta.png');
 });
 
-test.fixme('passo 4 com a Conexão desligada: pôr a Conexão no Anki, com o arquivo e o Detalhes', async ({ page, extensao }) => {
+test.fixme('passo 4 com a Conexão desligada: Ter o Anki, com a pergunta e as duas respostas', async ({ page, extensao }) => {
   await abrir(page, extensao, 'anki');
+  await expect(page.locator('#bv4-passo-titulo')).toHaveText('Ter o Anki');
+  await foto(page, 'passo-4-ter-o-anki.png');
+});
+
+test.fixme('passo 4, pôr a Conexão no Anki: a animação do aviso, o arquivo e o Detalhes', async ({ page, extensao }) => {
+  await abrir(page, extensao, 'anki');
+  await page.locator('.bv-card').getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
+  // `foto` já tira a animação do caminho (`animations: 'disabled'`): o primeiro quadro é o que se vê.
   await foto(page, 'passo-4-desligada.png');
 });
 

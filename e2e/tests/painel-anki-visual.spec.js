@@ -9,7 +9,7 @@
 //
 //   cd e2e && npx playwright test painel-anki-visual --update-snapshots
 
-const { test, expect } = require('../fixtures');
+const { test, expect, comOSistema, SISTEMAS } = require('../fixtures');
 
 // #145: a primeira conexão ganhou os passos do arquivo (sem terminal). As telas abaixo marcadas `test.fixme` são PROPOSTAS de
 // referência, não referências: o dono ainda não aprovou o novo visual (CODING_STANDARDS regra 10), então as imagens novas
@@ -151,10 +151,7 @@ test.fixme('nunca conectada: o passo Ter o Anki com a resposta Não tenho, o ins
   fakes.anki.desligar();
   await abrirAnki(page, extensao, { jaConectou: false });
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, 'userAgent', { value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36' });
-    Object.defineProperty(navigator, 'userAgentData', { value: { platform: 'macOS' } });
-  });
+  await comOSistema(page, SISTEMAS.MAC);
   await page.reload();
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
   await page.locator('#anki-primeira-vez').getByRole('button', { name: 'Não tenho' }).click();
