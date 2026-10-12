@@ -10,13 +10,13 @@
 //                                           (unittest e Playwright: `-- --shard=1/8`, um spec)
 //   node scripts/testar.mjs --listar        os grupos e os arquivos que cada um roda
 
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const { arquivosDoGrupo, lerRegistro } = require('./grupos-de-teste.js');
+const { arquivosDoGrupo, dicaDeModulo, escolherPython, lerRegistro } = require('./grupos-de-teste.js');
 const { arquivosDoRepositorio } = require('./regras/comum.js');
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -24,11 +24,11 @@ const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const AJUDA = `uso: node scripts/testar.mjs [--listar] [<grupo>...] [-- <argumentos do comando>]
 
 Roda os grupos de teste de scripts/testes.json. Sem grupo, roda os leves (o e2e é "pesado": peça por nome).
-O Python é o de $PYTHON, senão python3.`;
+O Python é o de $PYTHON, senão o do .venv (scripts/preparar-python.sh o cria), senão python3.`;
 
 /** Os comandos de um grupo: [{ comando, argumentos, cwd }]. */
 function comandosDoGrupo(grupo, arquivos, extras) {
-  const python = process.env.PYTHON || 'python3';
+  const python = escolherPython(process.env, RAIZ).comando;
   if (grupo.executor === 'node') return arquivos.map(arquivo => ({ comando: 'node', argumentos: [arquivo], cwd: RAIZ }));
   if (grupo.executor === 'unittest') {
     return [{ comando: python, argumentos: ['-m', 'unittest', 'discover', '-s', grupo.pasta, '-p', grupo.padrao, ...extras], cwd: RAIZ }];
@@ -39,7 +39,21 @@ function comandosDoGrupo(grupo, arquivos, extras) {
   throw new Error(`executor desconhecido: ${grupo.executor}`);
 }
 
-function main(argv) {
+/** Roda o comando com a saída à vista; com `copiarErro`, o erro padrão também é guardado em `stderr`. */
+function rodar(comando, argumentos, cwd, copiarErro) {
+  return new Promise(resolve => {
+    const filho = spawn(comando, argumentos, { cwd, stdio: ['inherit', 'inherit', copiarErro ? 'pipe' : 'inherit'] });
+    let stderr = '';
+    filho.stderr?.on('data', pedaco => {
+      process.stderr.write(pedaco);
+      stderr += pedaco;
+    });
+    filho.on('error', error => resolve({ error, stderr }));
+    filho.on('close', status => resolve({ status, stderr }));
+  });
+}
+
+async function main(argv) {
   const aoPassar = argv.indexOf('--');
   const extras = aoPassar < 0 ? [] : argv.slice(aoPassar + 1);
   const pedidos = aoPassar < 0 ? argv : argv.slice(0, aoPassar);
@@ -80,11 +94,14 @@ function main(argv) {
     }
     for (const { comando, argumentos, cwd } of comandosDoGrupo(grupo, doGrupo, extras)) {
       console.log(`\n▶ ${nome}: ${[comando, ...argumentos].join(' ')}`);
-      const resultado = spawnSync(comando, argumentos, { cwd, stdio: 'inherit' });
+      // O erro padrão sai na hora, e uma cópia fica para reconhecer o ModuleNotFoundError; o Playwright não o precisa.
+      const resultado = await rodar(comando, argumentos, cwd, grupo.executor !== 'playwright');
       if (resultado.error) {
         console.log(`✗ ${nome}: não consegui rodar ${comando} (${resultado.error.message})${grupo.precisa ? `; o grupo precisa de: ${grupo.precisa}` : ''}`);
         falhas.push(nome);
       } else if (resultado.status !== 0) {
+        const dica = dicaDeModulo(nome, grupo, resultado.stderr, escolherPython(process.env, RAIZ));
+        if (dica) console.log(dica);
         falhas.push(nome);
       }
     }
@@ -98,7 +115,7 @@ function main(argv) {
 }
 
 try {
-  process.exitCode = main(process.argv.slice(2));
+  process.exitCode = await main(process.argv.slice(2));
 } catch (erro) {
   console.log(`error: ${erro.message}\nhelp: node scripts/testar.mjs --help; os grupos estão em scripts/testes.json`);
   process.exitCode = 1;

@@ -668,34 +668,6 @@ def _run_images(config, prompt_lines, output_dir, img_source, api_key, log_dir):
         except Exception:
             return ""
 
-    def _extract_multiline_queries(content: str) -> list[str]:
-        lines = [line.rstrip() for line in content.splitlines()]
-        headings = {
-            "google image search queries:",
-            "image search queries:",
-        }
-        queries: list[str] = []
-
-        for idx, line in enumerate(lines):
-            clean = line.strip().strip("*").strip()
-            if clean.lower() not in headings:
-                continue
-
-            for next_line in lines[idx + 1:]:
-                raw = next_line.strip()
-                if not raw:
-                    break
-                if re.match(r"^[A-Za-z][A-Za-z ]+:", raw):
-                    break
-                raw = raw.strip("*").strip()
-                match = re.match(r"^(?:[-*]|\d+[.)]|[A-Da-d][.)])\s*(.+)$", raw)
-                query = (match.group(1) if match else raw).strip()
-                query = _normalize_query(query)
-                if query and query.lower() not in ("none", "none.", "n/a"):
-                    queries.append(query)
-            break
-        return queries
-
     def _field_value(content: str, pattern: str) -> str:
         match = re.search(pattern, content, re.IGNORECASE)
         if not match:
@@ -1299,16 +1271,6 @@ def _run_images(config, prompt_lines, output_dir, img_source, api_key, log_dir):
 def _print_costs(log_dir: str):
     costs = cost_tracker.summary(log_dir)
 
-    def _fmt(d: dict) -> str:
-        parts = [f"[bold green]${d['total_usd']:.4f}[/bold green]"]
-        if d["n_images_dalle"]:
-            parts.append(f"[dim]{d['n_images_dalle']} img DALL-E[/dim]")
-        if d["n_images_google"]:
-            parts.append(f"[dim]{d['n_images_google']} img Google (grátis)[/dim]")
-        if d["n_cards"]:
-            parts.append(f"[dim]{d['n_cards']} cards[/dim]")
-        return "  ".join(parts)
-
     t = Table(box=box.SIMPLE, show_header=True, header_style="bold dim", padding=(0, 2))
     t.add_column("Período")
     t.add_column("Custo total")
@@ -1386,13 +1348,6 @@ def _pipeline(config: dict, lang: str, img_source: str):
         TextColumn("{task.completed}/{task.total} cards"),
     ) as prog:
         task = prog.add_task("cards", total=max(n_cards, 1))
-
-        _orig_run = generate_cards.run
-
-        def _run_with_progress(entries_, cfg_):
-            result = _orig_run(entries_, cfg_)
-            prog.update(task, completed=len(result))
-            return result
 
         saved, t1 = _run_stage(
             "Criando conteúdo dos cards com IA",

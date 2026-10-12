@@ -222,8 +222,7 @@ def run(entries, config: dict) -> List[str]:
     for entry in entries:
         all_jobs.extend(get_card_jobs(entry))
 
-    en_main_prompt = load_prompt(config, "en_main_card") if lang != "ru" else ""
-    en_additional_prompt = load_prompt(config, "en_additional_card") if lang != "ru" else ""
+    en_prompt = load_prompt(config, "en_card") if lang != "ru" else ""
     ru_prompt = load_prompt(config, "ru_card") if lang == "ru" else ""
 
     saved: List[str] = []
@@ -235,7 +234,7 @@ def run(entries, config: dict) -> List[str]:
             system_prompt = ru_prompt
         else:
             user_message = _build_message(job)
-            system_prompt = en_additional_prompt if job.is_generated else en_main_prompt
+            system_prompt = en_prompt
 
         try:
             response = _call_model(client, system_prompt, user_message, model, log_dir, job.keyword)
