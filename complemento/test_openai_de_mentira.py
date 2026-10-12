@@ -92,7 +92,7 @@ class OpenAIDeMentira:
         self._servidor = ThreadingHTTPServer(("127.0.0.1", 0), Atendente)
         self._servidor.daemon_threads = True
         self.base = "http://127.0.0.1:%d" % self._servidor.server_address[1]
-        self._thread = threading.Thread(target=lambda: self._servidor.serve_forever(poll_interval=0.05), daemon=True)
+        self._thread = threading.Thread(target=lambda: self._servidor.serve_forever(poll_interval=0.005), daemon=True)
 
     def __enter__(self):
         self._thread.start()
@@ -153,7 +153,7 @@ class FirestoreDeMentira:
         self._servidor = ThreadingHTTPServer(('127.0.0.1', 0), Atendente)
         self._servidor.daemon_threads = True
         self.base = 'http://127.0.0.1:%d/documents' % self._servidor.server_address[1]
-        self._thread = threading.Thread(target=lambda: self._servidor.serve_forever(poll_interval=0.05), daemon=True)
+        self._thread = threading.Thread(target=lambda: self._servidor.serve_forever(poll_interval=0.005), daemon=True)
 
     def __enter__(self):
         self._thread.start()

@@ -349,6 +349,7 @@ class Conexao:
         item_de_login=None,
         openai_base=OPENAI_BASE,
         firestore_base='https://firestore.googleapis.com/v1/projects/perpetualminer-4c219/databases/(default)/documents',
+        intervalo_de_parada=0.1,
     ):
         self.porta = porta
         self.origens_aceitas = tuple(origens_aceitas)
@@ -361,6 +362,8 @@ class Conexao:
         self.firestore_base = firestore_base
         # O item de login de “Abrir o Anki com o computador”; None onde o sistema não tem (nem Mac nem Windows).
         self.item_de_login = item_de_login
+        # De quanto em quanto tempo o servidor olha se mandaram parar; `parar()` espera até esse tempo.
+        self.intervalo_de_parada = intervalo_de_parada
         self._servidor = None
         self._thread = None
 
@@ -381,7 +384,7 @@ class Conexao:
 
     def _servir(self):
         try:
-            self._servidor.serve_forever(poll_interval=0.1)
+            self._servidor.serve_forever(poll_interval=self.intervalo_de_parada)
         except Exception:
             self.logger.exception("O servidor da Conexão parou")
 
