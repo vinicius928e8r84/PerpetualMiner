@@ -84,6 +84,49 @@ def igual_ao_do_contrato(obtido, esperado):
     return obtido == esperado
 
 
+def deve_repetir(exemplo):
+    """Todo `POST` que dá 200 é pedido uma segunda vez: igual na resposta e no que fica guardado, ou o exemplo declara
+    `"repetivel": false` e o `porque` (e o teste exige que repetir de fato mude algo)."""
+    return exemplo["pedido"]["metodo"] == "POST" and exemplo["resposta"]["status"] == 200
+
+
+def estado_guardado(conexao):
+    """Tudo o que o teste enxerga de guardado: os arquivos da pasta da Conexão (menos o log) e os documentos da nuvem de mentira."""
+    arquivos = {}
+    for pasta, _, nomes in os.walk(conexao.pasta):
+        for nome in nomes:
+            caminho = os.path.join(pasta, nome)
+            if os.path.relpath(caminho, conexao.pasta) != os.path.join("logs", "complemento.log"):
+                with open(caminho, "rb") as arquivo:
+                    arquivos[os.path.relpath(caminho, conexao.pasta)] = arquivo.read()
+    return {"arquivos": arquivos, "nuvem": json.loads(json.dumps(conexao.firestore.documentos))}
+
+
+def confere_a_repeticao(caso, exemplo, primeiro, guardado, segundo, guardado_depois):
+    """O mesmo POST de novo: a mesma resposta (salvo o instante) e nada novo guardado, ou a exceção que o exemplo declara."""
+    status, _, corpo = segundo
+    igual = status == primeiro[0] and igual_ao_do_contrato(json.loads(corpo), exemplo["resposta"]["json"])
+    intacto = guardado == guardado_depois
+    if exemplo.get("repetivel") is False:
+        caso.assertTrue(exemplo.get("porque"), 'O exemplo "%s" diz "repetivel": false sem o `porque`.' % exemplo["nome"])
+        caso.assertFalse(
+            igual and intacto,
+            'O exemplo "%s" diz "repetivel": false, mas pedido duas vezes dá a mesma resposta e o mesmo estado: tire a exceção.' % exemplo["nome"],
+        )
+        return
+    caso.assertEqual(status, primeiro[0], 'O mesmo POST de novo mudou o status no exemplo "%s".' % exemplo["nome"])
+    caso.assertTrue(
+        igual_ao_do_contrato(json.loads(corpo), exemplo["resposta"]["json"]),
+        'O mesmo POST de novo respondeu outra coisa no exemplo "%s": %s. Se repetir de propósito muda a resposta ou o estado, '
+        'declare no exemplo `"repetivel": false, "porque": …` (complemento/contrato/LEIA-ME.md).' % (exemplo["nome"], corpo.decode("utf-8")),
+    )
+    caso.assertEqual(
+        guardado, guardado_depois,
+        'O mesmo POST de novo mudou o que a Conexão guardou no exemplo "%s". Se é de propósito, declare '
+        '`"repetivel": false, "porque": …` no exemplo (complemento/contrato/LEIA-ME.md).' % exemplo["nome"],
+    )
+
+
 def _item_de_login_do_contexto(pasta, situacao):
     """O item de login na situação que o contrato diz (`itemDeLogin`): numa pasta do teste, nunca na do computador."""
     comando = ["/usr/bin/open", "/Applications/Anki.app"]
@@ -250,6 +293,12 @@ class ContratoDaConexao(unittest.TestCase):
                         pedido["metodo"], pedido["caminho"], pedido["origem"],
                         corpo=pedido.get("corpo"), corpo_bruto=pedido.get("corpoBruto"),
                     )
+                    guardado = estado_guardado(conexao)
+                    segundo = conexao.pedir(
+                        pedido["metodo"], pedido["caminho"], pedido["origem"],
+                        corpo=pedido.get("corpo"), corpo_bruto=pedido.get("corpoBruto"),
+                    ) if deve_repetir(exemplo) else None
+                    guardado_depois = estado_guardado(conexao) if segundo else None
                 self.assertEqual(status, exemplo["resposta"]["status"])
                 self.assertTrue(
                     igual_ao_do_contrato(json.loads(corpo), exemplo["resposta"]["json"]),
@@ -257,10 +306,50 @@ class ContratoDaConexao(unittest.TestCase):
                     "Se a mudança é de propósito, atualize o exemplo; o fake da Conexão do e2e lê o mesmo arquivo."
                     % exemplo["nome"] + " Obtido: %s" % corpo.decode("utf-8"),
                 )
+                if segundo:
+                    confere_a_repeticao(self, exemplo, (status, corpo), guardado, segundo, guardado_depois)
 
     def test_o_contrato_tem_a_origem_da_extensao_que_o_complemento_aceita(self):
         with open(CONTRATO, encoding="utf-8") as arquivo:
             self.assertEqual(json.load(arquivo)["origemDaExtensao"], ORIGEM)
+
+
+class RepeticaoDoContrato(unittest.TestCase):
+    """O que a conferência de “o mesmo POST de novo” aceita e o que ela acusa."""
+
+    EXEMPLO = {"nome": "ligar", "resposta": {"status": 200, "json": {"ok": True, "em": "<agora>"}}}
+    GUARDADO = {"arquivos": {"a": b"1"}, "nuvem": {}}
+
+    def segundo(self, status=200, corpo=b'{"ok": true, "em": "2026-10-12T10:00:00Z"}'):
+        return status, {}, corpo
+
+    def test_resposta_igual_salvo_o_instante_e_estado_igual_passa(self):
+        confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(), dict(self.GUARDADO))
+
+    def test_outra_resposta_sem_a_excecao_declarada_acusa_e_diz_como_declarar(self):
+        with self.assertRaisesRegex(AssertionError, "repetivel"):
+            confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(corpo=b'{"ok": false, "em": "2026-10-12T10:00:00Z"}'), self.GUARDADO)
+
+    def test_outro_status_sem_a_excecao_declarada_acusa(self):
+        with self.assertRaisesRegex(AssertionError, "status"):
+            confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(status=409), self.GUARDADO)
+
+    def test_estado_guardado_que_muda_sem_a_excecao_declarada_acusa(self):
+        with self.assertRaisesRegex(AssertionError, "guardou"):
+            confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(), {"arquivos": {"a": b"2"}, "nuvem": {}})
+
+    def test_a_excecao_declarada_com_motivo_e_que_de_fato_muda_algo_passa(self):
+        exemplo = dict(self.EXEMPLO, repetivel=False, porque="a versão sobe")
+        confere_a_repeticao(self, exemplo, (200, b""), self.GUARDADO, self.segundo(status=409), self.GUARDADO)
+
+    def test_a_excecao_sem_motivo_acusa(self):
+        with self.assertRaisesRegex(AssertionError, "porque"):
+            confere_a_repeticao(self, dict(self.EXEMPLO, repetivel=False), (200, b""), self.GUARDADO, self.segundo(status=409), self.GUARDADO)
+
+    def test_a_excecao_que_repetida_nao_muda_nada_acusa_que_esta_velha(self):
+        exemplo = dict(self.EXEMPLO, repetivel=False, porque="a versão sobe")
+        with self.assertRaisesRegex(AssertionError, "tire a exceção"):
+            confere_a_repeticao(self, exemplo, (200, b""), self.GUARDADO, self.segundo(), dict(self.GUARDADO))
 
 
 # Cada rota do servidor, declarada à parte dos exemplos, para a matriz de estados pedir a rota de verdade:
