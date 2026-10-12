@@ -71,8 +71,7 @@ def _config(root: Path) -> dict:
             "output_dir": str(root / "Output"),
             "log_dir": str(root / "log"),
             "prompts": {
-                "en_main_card": str(root / "prompts" / "en_main_card.txt"),
-                "en_additional_card": str(root / "prompts" / "en_additional_card.txt"),
+                "en_card": str(root / "prompts" / "en_card.txt"),
                 "ru_card": str(root / "prompts" / "ru_card.txt"),
             },
         },
@@ -82,8 +81,7 @@ def _config(root: Path) -> dict:
 def _write_prompts(root: Path) -> None:
     prompt_dir = root / "prompts"
     prompt_dir.mkdir()
-    (prompt_dir / "en_main_card.txt").write_text("main prompt", encoding="utf-8")
-    (prompt_dir / "en_additional_card.txt").write_text("additional prompt", encoding="utf-8")
+    (prompt_dir / "en_card.txt").write_text("en prompt", encoding="utf-8")
     (prompt_dir / "ru_card.txt").write_text("ru prompt", encoding="utf-8")
 
 
