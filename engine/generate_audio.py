@@ -27,12 +27,6 @@ def _has_cyrillic(text: str) -> bool:
     return bool(re.search(r"[\u0400-\u04FF]", text))
 
 
-def _pick_lang(text: str, config: dict) -> str:
-    if _has_cyrillic(text):
-        return config["tts"].get("cyrillic_lang", "ru")
-    return config["tts"].get("target_lang", "en")
-
-
 def _pick_profile(text: str, config: dict, field: str) -> dict:
     lang_key = "ru" if _has_cyrillic(text) else "en"
     profile = (

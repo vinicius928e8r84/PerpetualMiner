@@ -70,10 +70,6 @@ class MiningEntry:
     file_stem: Optional[str] = None
 
     @property
-    def primary_keyword(self) -> str:
-        return self.keywords[0]
-
-    @property
     def has_context(self) -> bool:
         return any([self.context_source, self.context_title, self.context_detail])
 

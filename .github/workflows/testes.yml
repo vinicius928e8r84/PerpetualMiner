@@ -69,8 +69,7 @@ jobs:
           cache-dependency-path: |
             bridge/requirements.txt
             engine/requirements.txt
-      # O PyYAML é da divisão do CLAUDE.md em skills (confere o YAML dos cabeçalhos).
-      - run: pip install pyyaml -r bridge/requirements.txt -r engine/requirements.txt
+      - run: pip install -r bridge/requirements.txt -r engine/requirements.txt
       - run: node scripts/testar.mjs node ferramentas bridge engine
         env:
           PYTHON: python

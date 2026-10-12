@@ -11,8 +11,7 @@
 //
 // A sidebar e a ilha do conteúdo têm a altura da janela e começam e terminam
 // juntas; a lista rola dentro da ilha. Por isso a lista é capturada duas
-// vezes: o topo, e a ilha rolada até a paginação. O que ainda for de hoje
-// (.conteudo-de-hoje) fica coberto; em Frases já não sobra nada dele.
+// vezes: o topo, e a ilha rolada até a paginação.
 
 const { test, expect } = require('../fixtures');
 
@@ -34,15 +33,13 @@ const FRASES = [
   { id: 1, texto: 'That ship has sailed.', data: '13/09/2026', streaming: 'netflix', idioma: 'Inglês', contexto: { fonte: 'netflix', titulo: 'Succession', detalhe: 'T2E1' } },
 ];
 
-const paginaInteira = page => ({ fullPage: true, mask: [page.locator('.conteudo-de-hoje')] });
-const naJanela = page => ({ mask: [page.locator('.conteudo-de-hoje')] });
 
 /** O topo da lista e o fim dela, rolada até a paginação. */
 async function capturarTopoEFim(page, nome) {
-  await expect(page).toHaveScreenshot(`${nome}.png`, naJanela(page));
+  await expect(page).toHaveScreenshot(`${nome}.png`);
   await page.locator('.shell-conteudo').evaluate(ilha => ilha.scrollTo(0, ilha.scrollHeight));
   await expect(page.getByRole('navigation', { name: 'Páginas' })).toBeInViewport();
-  await expect(page).toHaveScreenshot(`${nome}-fim.png`, naJanela(page));
+  await expect(page).toHaveScreenshot(`${nome}-fim.png`);
 }
 
 async function abrirFrases(page, extensao, largura = 1280) {
@@ -75,14 +72,14 @@ test('carregando (PAI-01): 5 cartões-esqueleto', async ({ page, extensao, fakes
   await abrirFrases(page, extensao);
   await expect(page.locator('.veio-frase-esqueleto')).toHaveCount(5);
 
-  await expect(page).toHaveScreenshot('frases-carregando.png', paginaInteira(page));
+  await expect(page).toHaveScreenshot('frases-carregando.png', { fullPage: true });
 });
 
 test('primeiro uso (PAI-02)', async ({ page, extensao }) => {
   await abrirFrases(page, extensao);
   await expect(page.locator('#frases-lista .veio-vazio')).toBeVisible();
 
-  await expect(page).toHaveScreenshot('frases-primeiro-uso.png', paginaInteira(page));
+  await expect(page).toHaveScreenshot('frases-primeiro-uso.png', { fullPage: true });
 });
 
 test('filtros esconderam tudo (PAI-03)', async ({ page, extensao }) => {
@@ -91,7 +88,7 @@ test('filtros esconderam tudo (PAI-03)', async ({ page, extensao }) => {
   await page.locator('.veio-toggle').getByText('Ocultar enviadas e exportadas').click();
   await expect(page.locator('#frases-lista .veio-vazio')).toBeVisible();
 
-  await expect(page).toHaveScreenshot('frases-filtros-vazios.png', paginaInteira(page));
+  await expect(page).toHaveScreenshot('frases-filtros-vazios.png', { fullPage: true });
 });
 
 test('busca sem resultado com filtro ligado (PAI-04)', async ({ page, extensao }) => {
@@ -101,7 +98,7 @@ test('busca sem resultado com filtro ligado (PAI-04)', async ({ page, extensao }
   await page.getByRole('searchbox', { name: 'Buscar nas frases' }).fill('zebra');
   await expect(page.locator('#frases-lista .veio-vazio')).toBeVisible();
 
-  await expect(page).toHaveScreenshot('frases-busca-vazia.png', paginaInteira(page));
+  await expect(page).toHaveScreenshot('frases-busca-vazia.png', { fullPage: true });
 });
 
 // ─── Seleção, ações do cartão e modais (#30) ─────────────────────────────────
@@ -114,7 +111,7 @@ test('a barra contextual da seleção, com o cartão selecionado', async ({ page
   await primeiroCartao(page).getByRole('checkbox', { name: 'Selecionar frase' }).check();
   await expect(page.locator('#frases-barra')).toBeVisible();
 
-  await expect(page).toHaveScreenshot('frases-barra-selecao.png', naJanela(page));
+  await expect(page).toHaveScreenshot('frases-barra-selecao.png');
 });
 
 test('a barra com a página inteira marcada, oferecendo todas as frases', async ({ page, extensao }) => {
@@ -123,7 +120,7 @@ test('a barra com a página inteira marcada, oferecendo todas as frases', async 
   await page.getByRole('checkbox', { name: 'Selecionar página' }).check();
   await expect(page.getByRole('button', { name: 'Selecionar todas as 12 frases' })).toBeVisible();
 
-  await expect(page).toHaveScreenshot('frases-barra-todas.png', naJanela(page));
+  await expect(page).toHaveScreenshot('frases-barra-todas.png');
 });
 
 test('as 4 ações do cartão, à vista no hover', async ({ page, extensao }) => {
@@ -150,7 +147,7 @@ test('o modal Apagar, para 1 frase (PAI-12)', async ({ page, extensao }) => {
   await primeiroCartao(page).getByRole('button', { name: 'Apagar frase' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
 
-  await expect(page).toHaveScreenshot('frases-modal-apagar.png', naJanela(page));
+  await expect(page).toHaveScreenshot('frases-modal-apagar.png');
 });
 
 test('o modal Editar contexto, para a seleção (PAI-20)', async ({ page, extensao }) => {
@@ -160,7 +157,7 @@ test('o modal Editar contexto, para a seleção (PAI-20)', async ({ page, extens
   await page.locator('#frases-barra').getByRole('button', { name: 'Editar contexto' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
 
-  await expect(page).toHaveScreenshot('frases-modal-contexto.png', naJanela(page));
+  await expect(page).toHaveScreenshot('frases-modal-contexto.png');
 });
 
 // ─── Minerar frases (#31) ────────────────────────────────────────────────────
@@ -195,7 +192,7 @@ test('o menu Minerar frases aberto: Colar · Arquivo .txt · Foto', async ({ pag
   await page.getByRole('button', { name: 'Minerar frases' }).first().click();
   await expect(page.getByRole('menu', { name: 'Minerar frases' })).toBeVisible();
 
-  await expect(page).toHaveScreenshot('frases-minerar-menu.png', naJanela(page));
+  await expect(page).toHaveScreenshot('frases-minerar-menu.png');
 });
 
 test('o modal Minerar frases em Colar, com 3 frases, Fonte e Título', async ({ page, extensao }) => {
@@ -206,7 +203,7 @@ test('o modal Minerar frases em Colar, com 3 frases, Fonte e Título', async ({ 
   await modalDeMinerar(page).getByRole('textbox', { name: 'Fonte' }).fill('livro');
   await modalDeMinerar(page).getByRole('textbox', { name: 'Título' }).fill('Atomic Habits');
 
-  await expect(page).toHaveScreenshot('frases-minerar-colar.png', naJanela(page));
+  await expect(page).toHaveScreenshot('frases-minerar-colar.png');
 });
 
 test('Colar vazio (ADD-03): o erro no campo', async ({ page, extensao }) => {
@@ -216,7 +213,7 @@ test('Colar vazio (ADD-03): o erro no campo', async ({ page, extensao }) => {
   await modalDeMinerar(page).getByRole('button', { name: 'Minerar frases' }).click();
   await expect(modalDeMinerar(page).getByText('Cole pelo menos uma frase.')).toBeVisible();
 
-  await expect(page).toHaveScreenshot('frases-minerar-colar-vazio.png', naJanela(page));
+  await expect(page).toHaveScreenshot('frases-minerar-colar-vazio.png');
 });
 
 test('minerando (ADD-04): o progresso no próprio modal', async ({ page, extensao, fakes }) => {
@@ -228,7 +225,7 @@ test('minerando (ADD-04): o progresso no próprio modal', async ({ page, extensa
   await modalDeMinerar(page).getByRole('button', { name: 'Minerar 3 frases' }).click();
   await expect(modalDeMinerar(page).getByText('Minerando 0 de 3…')).toBeVisible();
 
-  await expect(page).toHaveScreenshot('frases-minerar-progresso.png', naJanela(page));
+  await expect(page).toHaveScreenshot('frases-minerar-progresso.png');
   soltar();
 });
 
@@ -237,7 +234,7 @@ test('o modal Minerar frases em Arquivo .txt', async ({ page, extensao }) => {
   await abrirFrases(page, extensao);
   await abrirModoDeMinerar(page, /^Arquivo/);
 
-  await expect(page).toHaveScreenshot('frases-minerar-arquivo.png', naJanela(page));
+  await expect(page).toHaveScreenshot('frases-minerar-arquivo.png');
 });
 
 test('nada novo no arquivo (ADD-09), com Fechar', async ({ page, extensao }) => {
@@ -247,7 +244,7 @@ test('nada novo no arquivo (ADD-09), com Fechar', async ({ page, extensao }) => 
   await escolherArquivo(page, 'Keep me posted.\nThat ship has sailed.\n');
   await expect(modalDeMinerar(page).locator('.minerar-resultado')).toBeVisible();
 
-  await expect(page).toHaveScreenshot('frases-minerar-nada-novo.png', naJanela(page));
+  await expect(page).toHaveScreenshot('frases-minerar-nada-novo.png');
 });
 
 test('a nuvem falhou (ADD-06): o aviso persistente no topo de Frases', async ({ page, extensao, fakes }) => {
@@ -262,7 +259,6 @@ test('a nuvem falhou (ADD-06): o aviso persistente no topo de Frases', async ({ 
   await expect(page.locator('#frases-avisos').getByRole('alert')).toBeVisible();
 
   await expect(page).toHaveScreenshot('frases-minerar-nuvem-falhou.png', {
-    ...naJanela(page),
     // A lista ganha as frases coladas com o id da hora: ela já tem a própria referência.
     mask: [page.locator('#frases-lista, #frases-paginas')],
   });
@@ -281,7 +277,7 @@ test.describe('configuração pela metade (ONB-15)', () => {
     await abrirFrases(page, extensao);
     await expect(faixa(page)).toBeVisible();
     await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(10);
-    await expect(page).toHaveScreenshot('frases-configuracao-pela-metade.png', naJanela(page));
+    await expect(page).toHaveScreenshot('frases-configuracao-pela-metade.png');
   });
 
   test('a faixa na janela estreita, com a sidebar em trilho', async ({ page, extensao }) => {
@@ -289,6 +285,6 @@ test.describe('configuração pela metade (ONB-15)', () => {
     await abrirFrases(page, extensao, 720);
     await expect(faixa(page)).toBeVisible();
     await expect(page.locator('#frases-lista .veio-frase')).toHaveCount(10);
-    await expect(page).toHaveScreenshot('frases-configuracao-pela-metade-estreita.png', naJanela(page));
+    await expect(page).toHaveScreenshot('frases-configuracao-pela-metade-estreita.png');
   });
 });

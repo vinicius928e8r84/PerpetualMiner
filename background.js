@@ -188,13 +188,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
-  if (request.type === 'AUTO_KEYWORDS_FOR_PHRASE') {
-    autoKeywordsForPhrase(request.frase || request)
-      .then(keywords => sendResponse({ keywords }))
-      .catch(() => sendResponse({ keywords: [] }));
-    return true;
-  }
-
   if (request.type === 'AUTO_MINER_GET_STATE') {
     getAutoMinerState()
       .then(state => sendResponse({ ok: true, state }))
@@ -353,7 +346,6 @@ async function autoKeywordsForPhrase(frase) {
     if (!isEnglishPhrase(frase)) return [];
     return await autoKeywordsForEnglishPhrase(frase, {
       limit: AUTO_KEYWORD_MAX_EN_GROUPS,
-      onlyUnknown: true,
       requireVocabulary: true,
     });
   } catch {
@@ -374,7 +366,7 @@ async function autoKeywordsForEnglishPhrase(frase, options = {}) {
   if (!words.length) return [];
   const vocab = await getAutoKeywordVocabulary('en');
   if (!vocab.available && options.requireVocabulary) return [];
-  const candidates = pickAutoKeywordCandidates(words, vocab, Math.min(options.limit || AUTO_KEYWORD_MAX_EN_GROUPS, AUTO_KEYWORD_MAX_EN_GROUPS), options);
+  const candidates = pickAutoKeywordCandidates(words, vocab, Math.min(options.limit || AUTO_KEYWORD_MAX_EN_GROUPS, AUTO_KEYWORD_MAX_EN_GROUPS));
   return candidatesToKeywords(candidates, tokens);
 }
 
@@ -391,29 +383,15 @@ async function autoKeywordsForRussianPhrase(frase, options = {}) {
   return candidatesToKeywords(candidates.slice(0, options.limit || 1), tokens);
 }
 
-function pickAutoKeywordCandidate(words, vocab) {
-  return pickAutoKeywordCandidates(words, vocab, 1)[0] || null;
-}
-
-function pickAutoKeywordCandidates(words, vocab, limit = 1, options = {}) {
-  const candidates = options.onlyUnknown
-    ? [
-        ...idiomCandidates(words, vocab, { onlyUnknown: true }),
-        ...contentExpressionCandidates(words, vocab, { onlyUnknown: true }),
-        ...actionObjectCandidates(words, vocab, { onlyUnknown: true }),
-        ...patternCandidates(words, vocab, { onlyUnknown: true }),
-        ...phrasalVerbCandidates(words, vocab, { onlyUnknown: true }),
-        ...unknownWordCandidates(words, vocab),
-      ]
-    : [
-        ...idiomCandidates(words, vocab),
-        ...contentExpressionCandidates(words, vocab),
-        ...actionObjectCandidates(words, vocab),
-        ...patternCandidates(words, vocab),
-        ...phrasalVerbCandidates(words, vocab),
-        ...unknownWordCandidates(words, vocab),
-        ...interestingKnownWordCandidates(words, vocab),
-      ];
+function pickAutoKeywordCandidates(words, vocab, limit = 1) {
+  const candidates = [
+    ...idiomCandidates(words, vocab),
+    ...contentExpressionCandidates(words, vocab),
+    ...actionObjectCandidates(words, vocab),
+    ...patternCandidates(words, vocab),
+    ...phrasalVerbCandidates(words, vocab),
+    ...unknownWordCandidates(words, vocab),
+  ];
   candidates.sort((a, b) => b.score - a.score || a.wordIndexes[0] - b.wordIndexes[0]);
   return dedupeAutoCandidates(candidates.filter(candidate => candidate.score >= AUTO_KEYWORD_MIN_SCORE)).slice(0, limit);
 }
@@ -441,13 +419,13 @@ function candidatesToKeywords(candidates, tokens) {
   return out;
 }
 
-function idiomCandidates(words, vocab, options = {}) {
+function idiomCandidates(words, vocab) {
   const out = [];
   for (let start = 0; start < words.length; start++) {
     for (const parts of AUTO_KEYWORD_IDIOMS) {
       if (!autoContainsTerm(words, start, parts)) continue;
       const term = autoTermKey(parts);
-      if (options.onlyUnknown && vocab.terms.has(term)) continue;
+      if (vocab.terms.has(term)) continue;
       const score = autoKnownScore(vocab.termInfo.get(term), {
         unknown: 122,
         new: 94,
@@ -465,7 +443,7 @@ function idiomCandidates(words, vocab, options = {}) {
   return out;
 }
 
-function contentExpressionCandidates(words, vocab, options = {}) {
+function contentExpressionCandidates(words, vocab) {
   const out = [];
   for (let i = 0; i < words.length - 2; i++) {
     const first = words[i];
@@ -476,8 +454,8 @@ function contentExpressionCandidates(words, vocab, options = {}) {
 
     const parts = [first.clean, linker.clean, third.clean];
     const term = autoTermKey(parts);
-    if (options.onlyUnknown && vocab.terms.has(term)) continue;
-    if (options.onlyUnknown && !autoHasUnknownContentWord([first, third], vocab)) continue;
+    if (vocab.terms.has(term)) continue;
+    if (!autoHasUnknownContentWord([first, third], vocab)) continue;
 
     const score = autoKnownScore(vocab.termInfo.get(term), {
       unknown: 124,
@@ -495,7 +473,7 @@ function contentExpressionCandidates(words, vocab, options = {}) {
   return out;
 }
 
-function actionObjectCandidates(words, vocab, options = {}) {
+function actionObjectCandidates(words, vocab) {
   const out = [];
   for (let i = 0; i < words.length - 1; i++) {
     const action = words[i];
@@ -505,8 +483,8 @@ function actionObjectCandidates(words, vocab, options = {}) {
 
     const parts = [action.clean, object.clean];
     const term = autoTermKey(parts);
-    if (options.onlyUnknown && vocab.terms.has(term)) continue;
-    if (options.onlyUnknown && !autoHasUnknownContentWord([action, object], vocab)) continue;
+    if (vocab.terms.has(term)) continue;
+    if (!autoHasUnknownContentWord([action, object], vocab)) continue;
 
     const score = autoKnownScore(vocab.termInfo.get(term), {
       unknown: 118,
@@ -524,13 +502,13 @@ function actionObjectCandidates(words, vocab, options = {}) {
   return out;
 }
 
-function patternCandidates(words, vocab, options = {}) {
+function patternCandidates(words, vocab) {
   const out = [];
   for (let start = 0; start < words.length; start++) {
     for (const parts of AUTO_KEYWORD_PATTERNS) {
       if (!autoContainsTerm(words, start, parts)) continue;
       const term = autoTermKey(parts);
-      if (options.onlyUnknown && vocab.terms.has(term)) continue;
+      if (vocab.terms.has(term)) continue;
       const score = autoKnownScore(vocab.termInfo.get(term), {
         unknown: 72,
         new: 52,
@@ -548,7 +526,7 @@ function patternCandidates(words, vocab, options = {}) {
   return out;
 }
 
-function phrasalVerbCandidates(words, vocab, options = {}) {
+function phrasalVerbCandidates(words, vocab) {
   const out = [];
   for (let i = 0; i < words.length - 1; i++) {
     const first = words[i].clean;
@@ -560,8 +538,8 @@ function phrasalVerbCandidates(words, vocab, options = {}) {
       const maybeThird = words[i + 2]?.clean;
       if (maybeThird && AUTO_PHRASAL_TRAILERS.has(maybeThird)) parts.push(maybeThird);
       const term = autoTermKey(parts);
-      if (options.onlyUnknown && vocab.terms.has(term)) continue;
-      if (options.onlyUnknown && !AUTO_STRONG_PHRASAL_ROOTS.has(first) && !autoHasUnknownContentWord([words[i]], vocab)) continue;
+      if (vocab.terms.has(term)) continue;
+      if (!AUTO_STRONG_PHRASAL_ROOTS.has(first) && !autoHasUnknownContentWord([words[i]], vocab)) continue;
       const score = genericPhrasalScore(first, vocab.termInfo.get(term), {
         unknown: 60,
         new: 50,
@@ -579,8 +557,8 @@ function phrasalVerbCandidates(words, vocab, options = {}) {
     if (i + 2 < words.length && AUTO_PHRASAL_PARTICLES.has(words[i + 1].clean) && AUTO_PHRASAL_TRAILERS.has(words[i + 2].clean)) {
       const parts = [first, words[i + 1].clean, words[i + 2].clean];
       const term = autoTermKey(parts);
-      if (options.onlyUnknown && vocab.terms.has(term)) continue;
-      if (options.onlyUnknown && !AUTO_STRONG_PHRASAL_ROOTS.has(first) && !autoHasUnknownContentWord([words[i]], vocab)) continue;
+      if (vocab.terms.has(term)) continue;
+      if (!AUTO_STRONG_PHRASAL_ROOTS.has(first) && !autoHasUnknownContentWord([words[i]], vocab)) continue;
       const score = genericPhrasalScore(first, vocab.termInfo.get(term), {
         unknown: 60,
         new: 50,
@@ -605,26 +583,6 @@ function unknownWordCandidates(words, vocab) {
       score: singleWordScore(word.clean),
       wordIndexes: [word.index],
     }));
-}
-
-function interestingKnownWordCandidates(words, vocab) {
-  return words
-    .map(word => {
-      const info = vocab.wordInfo.get(word.clean);
-      if (!info || !isAutoKeywordWord(word.clean)) return null;
-      return {
-        score: autoKnownScore(info, {
-          unknown: 0,
-          new: 62,
-          recent: 52,
-          mixed: 38,
-          seen: 34,
-          mature: 18,
-        }) + Math.min(18, word.clean.length),
-        wordIndexes: [word.index],
-      };
-    })
-    .filter(Boolean);
 }
 
 function russianUnknownWordCandidates(words, vocab) {
@@ -846,7 +804,7 @@ async function evaluateAutoMinerPhrase(texto, lang, contexto = null) {
   }
 
   if (normalizeAutoMinerText(texto).length > 240) return { accept: false, reason: 'too_long_en' };
-  const keywords = await autoKeywordsForPhraseByLang(frase, 'en', { limit: AUTO_MINER_MAX_EN_KEYWORDS, requireVocabulary: true, onlyUnknown: true });
+  const keywords = await autoKeywordsForPhraseByLang(frase, 'en', { limit: AUTO_MINER_MAX_EN_KEYWORDS, requireVocabulary: true });
   const groups = keywordGroups(keywords);
   if (groups.length === 0) return { accept: false, reason: 'no_new_item' };
   return { accept: true, reason: groups.length > 1 ? 'en_multi_new_items' : 'en_new_item', keywords };

@@ -47,7 +47,6 @@ const ICONES_DE_FONTE = {
 const GOOGLE_USERINFO   = 'https://www.googleapis.com/oauth2/v1/userinfo?alt=json';
 const FIREBASE_API_KEY  = Sincronizacao.CHAVE_DA_API;
 const FB_SIGNIN_URL     = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${FIREBASE_API_KEY}`;
-const BRIDGE_URL        = 'http://127.0.0.1:8766';
 
 // A Fonte de uma frase minerada sem Fonte: colada (Colar) ou vinda de uma
 // linha simples de um .txt (Arquivo .txt).
@@ -366,11 +365,6 @@ async function migrarParaFirestore() {
   await carregarFrasesFirestore();
 }
 
-function carregarFrases() {
-  if (usuarioLogado) carregarFrasesFirestore();
-  else               carregarFrasesLocal();
-}
-
 function carregarFrasesLocal() {
   chrome.storage.local.get({ frases: [] }, (data) => {
     todasFrases = data.frases || [];
@@ -587,15 +581,6 @@ function setupListeners() {
     atualizarContadorSelecao();
   });
 
-}
-
-function byId(id) {
-  return document.getElementById(id);
-}
-
-function setText(id, value) {
-  const el = byId(id);
-  if (el) el.textContent = value;
 }
 
 
@@ -1996,27 +1981,6 @@ function palavrasNoTexto(prefixo, texto) {
 function sanitizarCampo(val) {
   const s = String(val ?? '').trim();
   return s && s !== 'undefined' && s !== 'null' ? s : 'Desconhecido';
-}
-
-function esc(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function mostrarToast(msg) {
-  document.getElementById('_toast')?.remove();
-  const t = document.createElement('div');
-  t.id = '_toast';
-  t.textContent = msg;
-  Object.assign(t.style, {
-    position: 'fixed', bottom: '28px', right: '28px',
-    background: '#7c3aed', color: 'white',
-    padding: '9px 18px', borderRadius: '8px',
-    fontSize: '13px', fontFamily: 'inherit',
-    zIndex: '9999', boxShadow: '0 4px 14px rgba(124,58,237,0.4)',
-    transition: 'opacity 0.3s',
-  });
-  document.body.appendChild(t);
-  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 1800);
 }
 
 function chromeGet(defaults) {
