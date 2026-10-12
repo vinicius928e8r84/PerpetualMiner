@@ -734,7 +734,7 @@
     aoAtualizar,
     atualizar: atualizarTudo,
     // Os pedaços da área que Baralhos e termos e o Vocabulário também desenham.
-    pecas: { esqueleto, linhaDeEspera, partesDoSeloAntigo, seloDoDadoAntigo },
+    pecas: { esqueleto, linhaDeEspera, seloDoDadoAntigo },
   };
   document.addEventListener('DOMContentLoaded', iniciar);
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});
