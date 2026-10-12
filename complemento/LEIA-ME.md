@@ -24,6 +24,7 @@ A Conexão de hoje (`bridge/`) só ganhou o mesmo POST nas três rotas da coleç
 | `configuracao.py` | Versão, porta e o ID da extensão |
 | `contrato/` | Os exemplos que o complemento e o fake do e2e leem, e como uma rota nova entra |
 | `empacotar.py` | Monta o `.ankiaddon` (e `conexao/perpetualminer.ankiaddon`, o que a extensão entrega no botão Baixar a Conexão com o Anki) |
+| `versoes.json` | O hash das fontes do pacote por `VERSAO` (fora do `.ankiaddon`); `test_pacote.py` falha, pedindo para subir a `VERSAO`, se as fontes mudam e a versão não |
 
 ## Testes
 
@@ -50,6 +51,11 @@ python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon
 ```
 
 `test_pacote.py` falha enquanto o arquivo da extensão estiver para trás do código (o `LEIA-ME.md` e os testes não entram nele).
+Sem mudar o código, refazer o arquivo dá os mesmos bytes (o `mod` do manifest só sobe quando o código muda; `SOURCE_DATE_EPOCH` o fixa).
+
+Mudou o código do pacote (qualquer byte, comentário incluso: é o que o Anki instala)? Suba a `VERSAO` em `configuracao.py` e registre-a em
+`versoes.json` com o hash que `test_pacote.py` mostra ao falhar (`python3 -c "from complemento import empacotar; print(empacotar.hash_das_fontes())"`
+na raiz do repositório). Depois refaça o arquivo da extensão. Um `VERSAO` que sobe muda a `versao` dos exemplos de saúde de `contrato/exemplos.json`.
 
 ## Ensaio do dono, no Mac
 

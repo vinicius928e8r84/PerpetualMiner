@@ -11,10 +11,9 @@
       "arquivos": ["scripts/regras/test_regras.js"]
     },
     "ferramentas": {
-      "descricao": "As ferramentas de scripts/: o executor dos grupos, a divisão do CLAUDE.md em skills",
+      "descricao": "As ferramentas de scripts/: o executor dos grupos",
       "executor": "node",
-      "precisa": "python3 com PyYAML (`pip install pyyaml`), para a divisão do CLAUDE.md",
-      "arquivos": ["scripts/test_testar.mjs", "scripts/test_divisao_do_claude_md.mjs"]
+      "arquivos": ["scripts/test_testar.mjs"]
     },
     "bridge": {
       "descricao": "A Conexão de hoje (Flask) e o Envio ao Anki",
@@ -50,10 +49,5 @@
       "precisa": "cd e2e && npm ci && npm run setup"
     }
   },
-  "fora": [
-    {
-      "arquivo": "test_gemini.js",
-      "motivo": "não é um teste: um script avulso que lista os modelos da Gemini e precisa da chave da pessoa (CLAUDE.md § Architecture › Files)"
-    }
-  ]
+  "fora": []
 }

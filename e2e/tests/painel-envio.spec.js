@@ -203,7 +203,7 @@ test('um Envio parado porque o Windows não deixou fechar o Anki diz o que fazer
   await expect(cartaoIngles).not.toContainText('O Windows não deixou fechar o Anki');
 });
 
-// ─── Não começou (ENV-03 · ENV-04) ───────────────────────────────────────────
+// ─── Não começou (ENV-03) ───────────────────────────────────────────
 
 test('bug #9: o POST do envio caindo na rede mostra o erro com Tentar de novo, e EN ok + RU falho mostra cada Envio', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });

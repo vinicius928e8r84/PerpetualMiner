@@ -129,7 +129,6 @@
 
   raiz.Tema = {
     TEMAS,
-    TEMA_PADRAO,
     CHAVE,
     gravarTema,
     lerTemaGravado,

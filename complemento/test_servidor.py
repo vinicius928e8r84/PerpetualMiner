@@ -84,6 +84,49 @@ def igual_ao_do_contrato(obtido, esperado):
     return obtido == esperado
 
 
+def deve_repetir(exemplo):
+    """Todo `POST` que dá 200 é pedido uma segunda vez: igual na resposta e no que fica guardado, ou o exemplo declara
+    `"repetivel": false` e o `porque` (e o teste exige que repetir de fato mude algo)."""
+    return exemplo["pedido"]["metodo"] == "POST" and exemplo["resposta"]["status"] == 200
+
+
+def estado_guardado(conexao):
+    """Tudo o que o teste enxerga de guardado: os arquivos da pasta da Conexão (menos o log) e os documentos da nuvem de mentira."""
+    arquivos = {}
+    for pasta, _, nomes in os.walk(conexao.pasta):
+        for nome in nomes:
+            caminho = os.path.join(pasta, nome)
+            if os.path.relpath(caminho, conexao.pasta) != os.path.join("logs", "complemento.log"):
+                with open(caminho, "rb") as arquivo:
+                    arquivos[os.path.relpath(caminho, conexao.pasta)] = arquivo.read()
+    return {"arquivos": arquivos, "nuvem": json.loads(json.dumps(conexao.firestore.documentos))}
+
+
+def confere_a_repeticao(caso, exemplo, primeiro, guardado, segundo, guardado_depois):
+    """O mesmo POST de novo: a mesma resposta (salvo o instante) e nada novo guardado, ou a exceção que o exemplo declara."""
+    status, _, corpo = segundo
+    igual = status == primeiro[0] and igual_ao_do_contrato(json.loads(corpo), exemplo["resposta"]["json"])
+    intacto = guardado == guardado_depois
+    if exemplo.get("repetivel") is False:
+        caso.assertTrue(exemplo.get("porque"), 'O exemplo "%s" diz "repetivel": false sem o `porque`.' % exemplo["nome"])
+        caso.assertFalse(
+            igual and intacto,
+            'O exemplo "%s" diz "repetivel": false, mas pedido duas vezes dá a mesma resposta e o mesmo estado: tire a exceção.' % exemplo["nome"],
+        )
+        return
+    caso.assertEqual(status, primeiro[0], 'O mesmo POST de novo mudou o status no exemplo "%s".' % exemplo["nome"])
+    caso.assertTrue(
+        igual_ao_do_contrato(json.loads(corpo), exemplo["resposta"]["json"]),
+        'O mesmo POST de novo respondeu outra coisa no exemplo "%s": %s. Se repetir de propósito muda a resposta ou o estado, '
+        'declare no exemplo `"repetivel": false, "porque": …` (complemento/contrato/LEIA-ME.md).' % (exemplo["nome"], corpo.decode("utf-8")),
+    )
+    caso.assertEqual(
+        guardado, guardado_depois,
+        'O mesmo POST de novo mudou o que a Conexão guardou no exemplo "%s". Se é de propósito, declare '
+        '`"repetivel": false, "porque": …` no exemplo (complemento/contrato/LEIA-ME.md).' % exemplo["nome"],
+    )
+
+
 def _item_de_login_do_contexto(pasta, situacao):
     """O item de login na situação que o contrato diz (`itemDeLogin`): numa pasta do teste, nunca na do computador."""
     comando = ["/usr/bin/open", "/Applications/Anki.app"]
@@ -166,6 +209,7 @@ class ConexaoNoTeste:
             item_de_login=self.item,
             openai_base=self.openai.base,
             firestore_base=self.firestore.base,
+            intervalo_de_parada=0.005,
         )
 
     def _ler_o_perfil(self):
@@ -218,6 +262,33 @@ class ConexaoNoTeste:
             return arquivo.read()
 
 
+@contextlib.contextmanager
+def conexao_do_exemplo(pasta, exemplo):
+    """A Conexão no contexto que o exemplo do contrato diz, já no ar; a nuvem de mentira já tem o que ele pede."""
+    contexto = exemplo["contexto"]
+    with ConexaoNoTeste(
+        pasta,
+        perfil=contexto.get("perfil", "Usuário 1"),
+        falha_no_perfil=contexto.get("falhaNoPerfil", False),
+        colecao=colecao_do_exemplo(contexto),
+        item=contexto.get("itemDeLogin", "desligado"),
+        openai=contexto.get("openai", "aceita"),
+        chave_na_conexao=contexto.get("chaveNaConexao"),
+        cofre_sem_escrita=contexto.get("cofre") == "sem_escrita",
+        versao_na_conexao=contexto.get('versaoNaConexao', 0),
+        chave_apagada=contexto.get('chaveApagada', False),
+        conta_na_conexao=contexto.get('contaNaConexao'),
+        nao_enviada=contexto.get('naoEnviada', True),
+        hora_na_conexao=contexto.get('emNaConexao', 0),
+        firebase=contexto.get('firebase', 0),
+    ) as conexao:
+        if 'chaveNaNuvem' in contexto:
+            conexao.firestore.documentos['uid-teste'] = {
+                'chave': {'stringValue': contexto['chaveNaNuvem']}, 'em': {'integerValue': str(contexto.get('emNaNuvem', 100))},
+            }
+        yield conexao
+
+
 class ContratoDaConexao(unittest.TestCase):
     def test_cada_exemplo_do_contrato_tem_a_resposta_combinada(self):
         for exemplo in exemplos_do_contrato():
@@ -225,30 +296,18 @@ class ContratoDaConexao(unittest.TestCase):
                 contexto = exemplo["contexto"]
                 if contexto.get("cofre") == "sem_escrita" and (os.name == "nt" or os.geteuid() == 0):
                     self.skipTest("quem é root, ou o Windows, grava onde a pasta é só de leitura")
-                with ConexaoNoTeste(
-                    pasta,
-                    perfil=contexto.get("perfil", "Usuário 1"),
-                    falha_no_perfil=contexto.get("falhaNoPerfil", False),
-                    colecao=colecao_do_exemplo(contexto),
-                    item=contexto.get("itemDeLogin", "desligado"),
-                    openai=contexto.get("openai", "aceita"),
-                    chave_na_conexao=contexto.get("chaveNaConexao"),
-                    cofre_sem_escrita=contexto.get("cofre") == "sem_escrita",
-                    versao_na_conexao=contexto.get('versaoNaConexao', 0),
-                    chave_apagada=contexto.get('chaveApagada', False),
-                    conta_na_conexao=contexto.get('contaNaConexao'),
-                    nao_enviada=contexto.get('naoEnviada', True),
-                    hora_na_conexao=contexto.get('emNaConexao', 0),
-                    firebase=contexto.get('firebase', 0),
-                ) as conexao:
-                    if 'chaveNaNuvem' in contexto:
-                        valor = contexto['chaveNaNuvem']
-                        conexao.firestore.documentos['uid-teste'] = {'chave': {'stringValue': valor}, 'em': {'integerValue': str(contexto.get('emNaNuvem', 100))}}
+                with conexao_do_exemplo(pasta, exemplo) as conexao:
                     pedido = exemplo["pedido"]
                     status, _, corpo = conexao.pedir(
                         pedido["metodo"], pedido["caminho"], pedido["origem"],
                         corpo=pedido.get("corpo"), corpo_bruto=pedido.get("corpoBruto"),
                     )
+                    guardado = estado_guardado(conexao)
+                    segundo = conexao.pedir(
+                        pedido["metodo"], pedido["caminho"], pedido["origem"],
+                        corpo=pedido.get("corpo"), corpo_bruto=pedido.get("corpoBruto"),
+                    ) if deve_repetir(exemplo) else None
+                    guardado_depois = estado_guardado(conexao) if segundo else None
                 self.assertEqual(status, exemplo["resposta"]["status"])
                 self.assertTrue(
                     igual_ao_do_contrato(json.loads(corpo), exemplo["resposta"]["json"]),
@@ -256,10 +315,50 @@ class ContratoDaConexao(unittest.TestCase):
                     "Se a mudança é de propósito, atualize o exemplo; o fake da Conexão do e2e lê o mesmo arquivo."
                     % exemplo["nome"] + " Obtido: %s" % corpo.decode("utf-8"),
                 )
+                if segundo:
+                    confere_a_repeticao(self, exemplo, (status, corpo), guardado, segundo, guardado_depois)
 
     def test_o_contrato_tem_a_origem_da_extensao_que_o_complemento_aceita(self):
         with open(CONTRATO, encoding="utf-8") as arquivo:
             self.assertEqual(json.load(arquivo)["origemDaExtensao"], ORIGEM)
+
+
+class RepeticaoDoContrato(unittest.TestCase):
+    """O que a conferência de “o mesmo POST de novo” aceita e o que ela acusa."""
+
+    EXEMPLO = {"nome": "ligar", "resposta": {"status": 200, "json": {"ok": True, "em": "<agora>"}}}
+    GUARDADO = {"arquivos": {"a": b"1"}, "nuvem": {}}
+
+    def segundo(self, status=200, corpo=b'{"ok": true, "em": "2026-10-12T10:00:00Z"}'):
+        return status, {}, corpo
+
+    def test_resposta_igual_salvo_o_instante_e_estado_igual_passa(self):
+        confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(), dict(self.GUARDADO))
+
+    def test_outra_resposta_sem_a_excecao_declarada_acusa_e_diz_como_declarar(self):
+        with self.assertRaisesRegex(AssertionError, "repetivel"):
+            confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(corpo=b'{"ok": false, "em": "2026-10-12T10:00:00Z"}'), self.GUARDADO)
+
+    def test_outro_status_sem_a_excecao_declarada_acusa(self):
+        with self.assertRaisesRegex(AssertionError, "status"):
+            confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(status=409), self.GUARDADO)
+
+    def test_estado_guardado_que_muda_sem_a_excecao_declarada_acusa(self):
+        with self.assertRaisesRegex(AssertionError, "guardou"):
+            confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(), {"arquivos": {"a": b"2"}, "nuvem": {}})
+
+    def test_a_excecao_declarada_com_motivo_e_que_de_fato_muda_algo_passa(self):
+        exemplo = dict(self.EXEMPLO, repetivel=False, porque="a versão sobe")
+        confere_a_repeticao(self, exemplo, (200, b""), self.GUARDADO, self.segundo(status=409), self.GUARDADO)
+
+    def test_a_excecao_sem_motivo_acusa(self):
+        with self.assertRaisesRegex(AssertionError, "porque"):
+            confere_a_repeticao(self, dict(self.EXEMPLO, repetivel=False), (200, b""), self.GUARDADO, self.segundo(status=409), self.GUARDADO)
+
+    def test_a_excecao_que_repetida_nao_muda_nada_acusa_que_esta_velha(self):
+        exemplo = dict(self.EXEMPLO, repetivel=False, porque="a versão sobe")
+        with self.assertRaisesRegex(AssertionError, "tire a exceção"):
+            confere_a_repeticao(self, exemplo, (200, b""), self.GUARDADO, self.segundo(), dict(self.GUARDADO))
 
 
 # Cada rota do servidor, declarada à parte dos exemplos, para a matriz de estados pedir a rota de verdade:
@@ -267,16 +366,20 @@ class ContratoDaConexao(unittest.TestCase):
 #   status        o que ela responde a esse corpo com o Anki saudável (200 se não disser);
 #   le_a_colecao  lê a coleção do Anki: com a coleção que quebra responde 500, sem coleção aberta responde 503;
 #   le_o_perfil   lê o perfil aberto: com o perfil ilegível responde 500;
-#   recusas       cada validação do pedido: (corpo, status, `error`), com a coleção aberta.
+#   recusas       cada validação do pedido: (corpo, status, `error`), com a coleção aberta;
+#   muda          a rota muda o que a Conexão guarda (a chave, o item de login): `RepeticaoDeCadaRotaQueMuda` a pede de novo e
+#                 com a base velha, e uma rota que muda sem dizer isso quebra;
+#   versao        o corpo traz a base (`versao`) do que ela muda: a base velha tem que dar 409, sem mudar nada;
+#   muda_de_novo  o motivo (texto) de pedir de novo com a base atual poder mudar o que fica guardado de propósito.
 # Uma rota nova entra aqui dizendo o que faz: uma que não lê a coleção nem o perfil (a chave da IA, por exemplo)
 # responde o mesmo `status` em todos os estados do Anki.
 MATRIZ = {
     ('POST', '/ia/openai/sincronizar'): {
-        'corpo': {'uid': 'uid-teste', 'token': 'token-ficticio', 'versao': 1},
+        'corpo': {'uid': 'uid-teste', 'token': 'token-ficticio', 'versao': 1}, 'muda': True, 'versao': True,
         'le_a_colecao': False, 'le_o_perfil': False, 'recusas': [({}, 400, 'invalid_request')],
     },
     ('POST', '/ia/openai/legado'): {
-        'corpo': {'chave': '', 'conta': 'uid-teste', 'em': 100, 'versao': 0},
+        'corpo': {'chave': '', 'conta': 'uid-teste', 'em': 100, 'versao': 0}, 'muda': True, 'versao': True,
         'le_a_colecao': False, 'le_o_perfil': False, 'recusas': [({}, 400, 'invalid_request')],
         'status': 409,
     },
@@ -291,10 +394,16 @@ MATRIZ = {
     # A chave da IA (PR 191): não lê a coleção nem o perfil. O corpo mínimo não traz a `chave`, então o pedido é recusado em todo estado.
     ("POST", "/ia/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     # Apagar a cópia da chave (#154): não lê a coleção nem o perfil, e apagar o que não existe também é 200.
-    ("POST", "/ia/openai/chave/apagar"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/ia/openai/chave/apagar"): {
+        "corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": [], "muda": True, "versao": True,
+        # `Cofre.reentrega` só reconhece como repetição na base atual uma chave não vazia (`chave and moderna`, d6b9289).
+        "muda_de_novo": "apagar de novo na base atual avança a revisão e a hora: `Cofre.reentrega` só reconhece a repetição de uma chave não vazia",
+    },
     ("POST", "/ia/openai/chave"): {
         "corpo": {},
         "status": 400,
+        "muda": True,
+        "versao": True,
         "le_a_colecao": False,
         "le_o_perfil": False,
         "recusas": [({"chave": "x"}, 401, "openai_key_rejected")],
@@ -303,6 +412,7 @@ MATRIZ = {
     ("POST", "/abrir-com-o-computador/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/abrir-com-o-computador"): {
         "corpo": {"ligado": True},
+        "muda": True,
         "le_a_colecao": False,
         "le_o_perfil": False,
         "recusas": [({"ligado": "sim"}, 400, "invalid_request")],
@@ -411,6 +521,170 @@ class EstadosDeCadaRota(unittest.TestCase):
             servidor.ROTAS.clear()
             servidor.ROTAS.update(original)
             RESPONDIDOS.intersection_update(respondidos)  # a rota inventada não é do contrato
+
+
+class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
+    """Cada rota que muda o que a Conexão guarda é pedida de novo, e com a base velha, e o dono não se mexe à toa.
+
+    `MATRIZ` diz quais rotas mudam (`muda`) e quais trazem a base (`versao`). O pedido é o de cada exemplo de sucesso (`200`)
+    da rota no contrato, no contexto dele. Uma rota que muda o que fica guardado e não diz `muda: True` quebra.
+    Os métodos `conferir_*` recebem as rotas, a matriz e os exemplos, para o teste da própria conferência usar uma rota inventada."""
+
+    CHAVES_NOVAS = ("sk-proj-mudanca-nova-0001", "sk-proj-mudanca-nova-0002")
+
+    def exemplos_de_sucesso(self, rota, exemplos):
+        return [
+            e for e in exemplos
+            if (e["pedido"]["metodo"], e["pedido"]["caminho"]) == rota and e["resposta"]["status"] == 200 and e["contexto"].get("cofre") != "sem_escrita"
+        ]
+
+    def pedir_o_exemplo(self, conexao, exemplo, corpo=None):
+        pedido = exemplo["pedido"]
+        status, _, lido = conexao.pedir(pedido["metodo"], pedido["caminho"], pedido["origem"], corpo=corpo if corpo is not None else pedido.get("corpo"))
+        return status, json.loads(lido)
+
+    def revisao(self, conexao):
+        return conexao.conexao.cofre.documento("openai").get("versao", 0)
+
+    def conferir_que_toda_rota_que_muda_diz(self, rotas, matriz, exemplos):
+        for rota in sorted(rotas):
+            if matriz[rota].get("muda"):
+                self.assertTrue(self.exemplos_de_sucesso(rota, exemplos), "rota %s %s diz `muda: True` e não tem exemplo de sucesso no contrato para ser pedida de novo" % rota)
+                continue
+            for exemplo in self.exemplos_de_sucesso(rota, exemplos):
+                with tempfile.TemporaryDirectory() as pasta, conexao_do_exemplo(pasta, exemplo) as conexao:
+                    antes = estado_guardado(conexao)
+                    self.pedir_o_exemplo(conexao, exemplo)
+                    self.assertEqual(
+                        antes, estado_guardado(conexao),
+                        'a rota %s %s mudou o que a Conexão guarda no exemplo "%s" e MATRIZ (complemento/test_servidor.py) não diz `muda: True`: '
+                        "diga também `versao: True` se o corpo traz a base." % (rota + (exemplo["nome"],)),
+                    )
+
+    def conferir_o_pedido_repetido(self, rotas, matriz, exemplos):
+        for rota in sorted(rotas):
+            if not matriz[rota].get("muda"):
+                continue
+            for exemplo in self.exemplos_de_sucesso(rota, exemplos):
+                nome = exemplo["nome"]
+                if exemplo.get("repetivel") is False:
+                    continue  # a exceção já declarada, com o `porque`, e conferida por `confere_a_repeticao`
+                with tempfile.TemporaryDirectory() as pasta, conexao_do_exemplo(pasta, exemplo) as conexao:
+                    primeiro = self.pedir_o_exemplo(conexao, exemplo)
+                    guardado = estado_guardado(conexao)
+                    self.assertEqual(self.pedir_o_exemplo(conexao, exemplo), primeiro, nome + ": o mesmo pedido de sucesso de novo respondeu outra coisa")
+                    self.assertEqual(guardado, estado_guardado(conexao), nome + ": o mesmo pedido de sucesso de novo mudou o que a Conexão guarda (o arquivo do dono)")
+                    if not matriz[rota].get("versao"):
+                        continue
+                    # O cliente que já leu a revisão nova a manda de volta ao reconfirmar: é a mesma chave, o mesmo arquivo.
+                    de_novo = dict(exemplo["pedido"]["corpo"], versao=self.revisao(conexao))
+                    if matriz[rota].get("muda_de_novo"):
+                        self.pedir_o_exemplo(conexao, exemplo, de_novo)
+                        self.assertNotEqual(guardado, estado_guardado(conexao), nome + ": `muda_de_novo` está velho em MATRIZ: reconfirmar na base atual já não muda nada, tire a exceção")
+                        continue
+                    for _ in range(3):
+                        self.assertEqual(self.pedir_o_exemplo(conexao, exemplo, de_novo), primeiro, nome + ": reconfirmar na base atual respondeu outra coisa")
+                        self.assertEqual(
+                            guardado, estado_guardado(conexao),
+                            nome + ": reconfirmar na base atual mudou o que a Conexão guarda (a revisão avança a cada reconfirmação, v1→2→3→4)",
+                        )
+
+    def conferir_a_base_velha(self, rotas, matriz, exemplos):
+        for rota in sorted(rotas):
+            if not matriz[rota].get("versao"):
+                continue
+            for exemplo in self.exemplos_de_sucesso(rota, exemplos):
+                with tempfile.TemporaryDirectory() as pasta, conexao_do_exemplo(pasta, exemplo) as conexao:
+                    self.pedir_o_exemplo(conexao, exemplo)
+                    cofre = conexao.conexao.cofre
+                    for chave in self.CHAVES_NOVAS:  # duas mudanças mais novas: a base do exemplo deixa de ser nem a atual nem a anterior
+                        atual = cofre.documento("openai")
+                        self.assertTrue(cofre.guardar("openai", chave, versao=atual.get("versao", 0), conta=atual.get("conta", "")))
+                    guardado = estado_guardado(conexao)
+                    status, corpo = self.pedir_o_exemplo(conexao, exemplo)
+                    self.assertEqual(
+                        (status, guardado), (409, estado_guardado(conexao)),
+                        "%s: a base velha de %s %s tem que dar 409 sem mudar o que está guardado: respondeu %s %s" % ((exemplo["nome"],) + rota + (status, corpo)),
+                    )
+
+    def conferir_tudo(self, rotas, matriz, exemplos):
+        self.conferir_que_toda_rota_que_muda_diz(rotas, matriz, exemplos)
+        self.conferir_o_pedido_repetido(rotas, matriz, exemplos)
+        self.conferir_a_base_velha(rotas, matriz, exemplos)
+
+    def test_cada_rota_que_muda_repete_igual_e_recusa_a_base_velha(self):
+        self.conferir_tudo(servidor.ROTAS, MATRIZ, exemplos_do_contrato())
+
+    @contextlib.contextmanager
+    def rota_inventada(self, tratador, **regra):
+        """Uma rota que só existe aqui, com o exemplo de sucesso dela e a entrada em uma matriz; desfaz o que registrou."""
+        rota = ("POST", "/rota/inventada")
+        original, respondidos = dict(servidor.ROTAS), set(RESPONDIDOS)
+        servidor.ROTAS[rota] = tratador
+        exemplo = {
+            "nome": "rota inventada", "contexto": {},
+            "pedido": {"metodo": "POST", "caminho": rota[1], "origem": ORIGEM, "corpo": {"versao": 0}},
+            "resposta": {"status": 200, "json": {"ok": True}},
+        }
+        matriz = {rota: dict({"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []}, **regra)}
+        try:
+            yield {rota: tratador}, matriz, [exemplo]
+        finally:
+            servidor.ROTAS.clear()
+            servidor.ROTAS.update(original)
+            RESPONDIDOS.intersection_update(respondidos)  # a rota inventada não é do contrato
+
+    @staticmethod
+    def gravar_o_dono(conexao, chave, versao):
+        """Escreve o arquivo do dono por conta própria, para a conferência não depender da `Cofre` que ela confere."""
+        with open(os.path.join(conexao.cofre._pasta, "openai.json"), "w", encoding="utf-8") as arquivo:
+            json.dump({"chave": chave, "conta": "", "versao": versao, "em": 1, "naoEnviada": True}, arquivo)
+
+    @classmethod
+    def grava_sempre(cls, conexao, corpo):
+        """Muda o que fica guardado a cada pedido, sem olhar a base."""
+        versao = conexao.cofre.documento("openai").get("versao", 0)
+        cls.gravar_o_dono(conexao, "sk-proj-inventada-%d" % (versao + 1), versao + 1)
+        return 200, {"ok": True}
+
+    @classmethod
+    def grava_uma_vez_e_cobra_a_base(cls, conexao, corpo):
+        """Como a chave da IA: grava uma vez; o mesmo pedido de novo, ou a base atual, repete a resposta; a base velha dá 409."""
+        atual = conexao.cofre.documento("openai")
+        revisao = atual.get("versao", 0)
+        if atual.get("chave") == "sk-proj-inventada-0001" and corpo["versao"] in (revisao - 1, revisao):
+            return 200, {"ok": True}
+        if corpo["versao"] != revisao:
+            return 409, {"error": "stale_key_version"}
+        cls.gravar_o_dono(conexao, "sk-proj-inventada-0001", revisao + 1)
+        return 200, {"ok": True}
+
+    def test_uma_rota_que_muda_sem_dizer_quebra_dizendo_o_que_declarar(self):
+        with self.rota_inventada(self.grava_sempre) as (rotas, matriz, exemplos), self.assertRaisesRegex(AssertionError, r"não diz `muda: True`"):
+            self.conferir_que_toda_rota_que_muda_diz(rotas, matriz, exemplos)
+
+    def test_uma_rota_que_diz_que_muda_e_repetida_muda_o_arquivo_quebra(self):
+        with self.rota_inventada(self.grava_sempre, muda=True) as (rotas, matriz, exemplos), self.assertRaisesRegex(AssertionError, "mudou o que a Conexão guarda"):
+            self.conferir_o_pedido_repetido(rotas, matriz, exemplos)
+
+    def test_uma_rota_que_aceita_a_base_velha_quebra(self):
+        with self.rota_inventada(self.grava_sempre, muda=True, versao=True) as (rotas, matriz, exemplos), self.assertRaisesRegex(AssertionError, "409"):
+            self.conferir_a_base_velha(rotas, matriz, exemplos)
+
+    def test_uma_rota_que_grava_uma_vez_e_cobra_a_base_passa_em_tudo(self):
+        with self.rota_inventada(self.grava_uma_vez_e_cobra_a_base, muda=True, versao=True) as (rotas, matriz, exemplos):
+            self.conferir_tudo(rotas, matriz, exemplos)
+
+    def test_a_excecao_muda_de_novo_que_ja_nao_muda_nada_acusa_que_esta_velha(self):
+        with self.rota_inventada(self.grava_uma_vez_e_cobra_a_base, muda=True, versao=True, muda_de_novo="avança a revisão") as (rotas, matriz, exemplos):
+            with self.assertRaisesRegex(AssertionError, "tire a exceção"):
+                self.conferir_o_pedido_repetido(rotas, matriz, exemplos)
+
+    def test_as_rotas_que_mudam_sao_as_da_chave_e_do_item_de_login(self):
+        self.assertEqual(
+            sorted(rota[1] for rota, regra in MATRIZ.items() if regra.get("muda")),
+            ["/abrir-com-o-computador", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar"],
+        )
 
 
 class SaudeDaConexao(unittest.TestCase):

@@ -5,10 +5,7 @@ import image_judge
 
 
 ROOT = Path(__file__).resolve().parent
-EN_PROMPTS = (
-    ROOT / "prompts" / "en_main_card.txt",
-    ROOT / "prompts" / "en_additional_card.txt",
-)
+EN_PROMPTS = (ROOT / "prompts" / "en_card.txt",)
 RU_PROMPT = ROOT / "prompts" / "ru_card.txt"
 
 

@@ -19,10 +19,9 @@ function arquivosDoRepositorio(raiz) {
 }
 
 // O código da extensão que roda no Chrome: os .js da raiz (menos os test_*.js),
-// lib/ (menos os bundles do Firebase, que ninguém carrega) e veio/.
+// lib/ e veio/.
 function ehJsDaExtensao(arquivo) {
   if (/^[^/]+\.js$/.test(arquivo)) return !/^test_/.test(arquivo);
-  if (arquivo.startsWith('lib/firebase/')) return false;
   return /^(lib|veio)\/.+\.js$/.test(arquivo);
 }
 
