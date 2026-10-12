@@ -16,7 +16,9 @@ name: Testes
 # Para gastar menos minutos sem perder proteção: uma nova execução na mesma PR cancela a
 # anterior; a e2e (91% dos minutos) só começa depois que Node, bridge e complemento passam; e
 # numa PR que mexe só em documentação as fatias e2e terminam sem rodar nada (os passos são
-# pulados, não os jobs, para o nome e o resultado de cada fatia continuarem aparecendo).
+# pulados, não os jobs, para o nome e o resultado de cada fatia continuarem aparecendo). O push
+# na main faz o mesmo: roda os jobs rápidos e as fatias e2e terminam sem rodar (a PR já passou
+# por elas; isso basta quando a main estiver protegida para só entrar atualizada, AMB-02 b).
 on:
   pull_request:
   push:
@@ -26,20 +28,21 @@ permissions:
   contents: read
 
 # Só a PR cancela a execução anterior (ela é substituída pela do próximo commit). Cada push
-# na main tem a sua, para nenhum commit dela ficar sem conferência.
+# na main tem a sua, para nenhum commit dela ficar sem os testes rápidos e os do complemento.
 concurrency:
   group: testes-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # Os grupos rápidos e pequenos num job só (cada um custava 1 minuto cobrado por 6 a 18 s de trabalho).
-  # Também olha o que a PR muda para as fatias e2e saberem se há o que rodar. No push na main roda tudo.
+  # Também decide se as fatias e2e têm o que rodar: numa PR, só se ela muda mais que documentação;
+  # no push na main, nunca (os rápidos rodam inteiros).
   rapidos:
     name: Testes rápidos
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
-      so_documentacao: ${{ steps.classificar.outputs.so_documentacao }}
+      rodar_e2e: ${{ steps.classificar.outputs.rodar_e2e }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -52,12 +55,13 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = pull_request ]; then
             # Se não der para ver o que mudou, a suíte roda.
-            resultado=$(node scripts/ci/so-documentacao.js HEAD^1 HEAD) || resultado=false
+            so_documentacao=$(node scripts/ci/so-documentacao.js HEAD^1 HEAD) || so_documentacao=false
+            if [ "$so_documentacao" = true ]; then rodar=false; else rodar=true; fi
           else
-            resultado=false
+            rodar=false
           fi
-          echo "so_documentacao=$resultado" >> "$GITHUB_OUTPUT"
-          echo "so_documentacao=$resultado"
+          echo "rodar_e2e=$rodar" >> "$GITHUB_OUTPUT"
+          echo "rodar_e2e=$rodar"
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -104,7 +108,7 @@ jobs:
     # processador e os testes sensíveis a tempo (relógios, transições) falham sem motivo.
     timeout-minutes: 45
     env:
-      RODAR: ${{ needs.rapidos.outputs.so_documentacao != 'true' }}
+      RODAR: ${{ needs.rapidos.outputs.rodar_e2e != 'false' }}
     strategy:
       fail-fast: false
       matrix:

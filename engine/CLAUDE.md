@@ -33,7 +33,7 @@ mining.txt
 |---|---|
 | `parser.py` | `MiningEntry`, `CardJob`, `parse_mining_file()`, `safe_filename()` |
 | `config_loader.py` | `config.yaml` + `.env` injection |
-| `prompt_loader.py` | System prompts from `prompts/` (keys: `en_main_card`, `en_additional_card`, `ru_card`) |
+| `prompt_loader.py` | System prompts from `prompts/` (keys: `en_card`, `ru_card`) |
 | `image_guard.py` | Classify keyword (concrete/abstract) before image API; skip abstract, ambiguous → GPT-4o-mini (~$0.0001) |
 | `google_images.py` | `search_candidates()` / `download_candidate()` from Openverse API (free) |
 | `image_judge.py` | `rank_candidates()` — GPT-vision score real photos; keep if `real_min_score` hit, else generate |
@@ -47,8 +47,8 @@ keyword : phrase
 kw1 | kw2 | kw3 : phrase [Context: Source - Title - Detail]
 ```
 - `|` → one card per keyword
-- `keywords[0]`: original phrase (`en_main_card` prompt)
-- `keywords[1..N]`: invented sentence (`en_additional_card` + context)
+- `keywords[0]`: original phrase (`en_card` prompt)
+- `keywords[1..N]`: invented sentence (`en_card` + context)
 - `[Context: ...]` optional, parsed into `entry.context_source` / `entry.context_str`
 
 ## Card Format & Filenames
