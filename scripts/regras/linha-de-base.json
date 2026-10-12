@@ -49,5 +49,8 @@
     "e2e/tests/painel-shell.spec.js": 9,
     "e2e/tests/popup.spec.js": 11,
     "e2e/tests/seam.spec.js": 1
+  },
+  "doc-datado": {
+    "CLAUDE.md": 2
   }
 }
