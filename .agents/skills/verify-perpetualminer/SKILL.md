@@ -126,6 +126,23 @@ Env knobs: `PM_VERIFY_ROOT` (default `/tmp/pm-verify`), `PM_HEAVY_RUN` (limiter 
 
 `features/` is the maintained record of what can be verified and how. **Any PR that changes a user-facing feature or command updates its file in `features/` (add the sub-feature ID, the driving step, the proof), or says "feature map unchanged" in the PR body.** User-facing means anything a person sees or presses: panel areas and addresses, popup, overlay, shortcuts, onboarding steps, Anki send/connection screens, photo mining, bridge routes the panel calls. CI enforces it: the `Regras` workflow runs `scripts/mapa-de-features.sh` on every PR and fails when `manifest.json`, `popup.html/js`, `painel*.html/js`, `bookreader.html/js`, `overlay.js`, `content.js`, `background.js` or `bridge/server.py` changed and neither `features/` was touched nor the PR body says "feature map unchanged" (editing the body re-runs the check). A change that is not in that file list (a lib module, a Voice catalog string) is still covered by the rule above, by review. For a periodic audit use `/maintain-verification-skill`.
 
+## The 8 variants of the Conexão
+
+A slice that touches the Conexão com o Anki (the key, sync, any route that carries state) is proven in each of these 8 variants, or says in writing which one does not apply and why. The same list is in `docs/design/modelo-fatia-alta.md` § 4. "Today" is how the e2e reproduces it now; "Missing" is a mode the Anki fake does not have yet.
+
+| # | Variant | Today | Missing |
+|---|---|---|---|
+| 1 | No Conexão | `fakes.anki.desligar()` (`configuracoes-ia.spec.js`: `N2:`, "com a Conexão desligada…") | |
+| 2 | Anki closed | `configuracoes-ia.spec.js -g 'K3:'`: the add-on runs inside Anki, so closed means nothing on 8766, `fakes.anki.desligar()` (`fecharOAnki()` is only the bridge reading the file, with the Conexão still answering) | |
+| 3 | Old add-on (0.1.0, unversioned state) | `configuracoes-ia.spec.js -g 'K4'` (`K4:` and `K4-delete:`), built by hand with `fakes.anki.responder('POST', '/ia/estado', …)` without `versao`; `guardarChaveNaConexao(…)` only seeds the key | an old-version mode of the fake |
+| 4 | Flask bridge on 8766 | `configuracoes-ia.spec.js -g 'B1:'`, a 404 set per route with `fakes.anki.responder('POST', rota, …)` | a bridge mode (404 for every add-on route) |
+| 5 | Two profiles or accounts on one Conexão | `chave-autoridade.spec.js -g 'K1:'` (a second Chromium profile), `-g 'K1-delete:'`, `-g 'P1'` | |
+| 6 | Coming from `main` (legacy store, no UID) | `chave-autoridade.spec.js -g 'K2:'`, `-g 'P1 legado:'` | |
+| 7 | Lost answer or panel closed | `chave-autoridade.spec.js -g 'R1'` (`R1:` and `R1 autoridade`) | |
+| 8 | Repeated request | `chave-autoridade.spec.js -g 'K1-PC:'` | |
+
+There is no helper yet that runs one test over the variants; until it lands, name the variant in the test title or in a comment.
+
 ## Known limits
 
 - The harness fakes Anki, Gemini and Google; nothing here talks to a real bridge, Anki Desktop, Gemini or Firestore.
