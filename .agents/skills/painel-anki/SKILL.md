@@ -64,7 +64,7 @@ Off, nothing tries to open the Anki. BRG-04's Tentar de novo only re-reads Custo
 The relative time (“agora”, “há 5 min”, “há 2 h”, then the PAI-11 day: ontem · há 3 dias) is `Contexto.haQuanto`
 (`lib/contexto.js`), shared by Custos, the Envio cards and the Conta chip (CFG-02).
 
-**Custos** reads `POST /analytics/jobs` (`{ lang: 'all', from?, to? }`, `PedidoAoAnki.custosDosEnvios`) once per period and adds everything up in the panel, so every
+**Custos** reads `GET /analytics/jobs?lang=all[&from&to]` once per period and adds everything up in the panel, so every
 total on screen is the sum of the parts on screen — including `otherUsd` (“Outros custos”, shown in the detail only
 above zero), which the old screen left out of the parts (#9). Top to bottom: the period (segmented Hoje · Este mês ·
 Tudo, default Este mês; De/Até on the right turn the period into a custom range); the tiles Todos os idiomas · Inglês ·
@@ -73,7 +73,7 @@ strip (BRG-08/29); Origem das imagens of the period (the 4 BRG-09 bars, %, count
 `listbox` (↑ ↓ Home End choose) and the chosen Envio's detail (ENV-08 title, the selo — Concluído, Concluído em parte ·
 N de M frases, Não concluído, or Enviando… · the ENV-07 stage —, “N não entrou” and Detalhes with `lastError`, the cost
 per part and the total, the Envio's image bar, and Continuar envio only for `partial`/`failed`, which `POST`s
-`/jobs/retry` (`{ jobId }`) and shows the ENV-14 toast). States: loading is BRG-25 with the skeleton; an error is **not** the
+`/jobs/<id>/retry` and shows the ENV-14 toast). States: loading is BRG-25 with the skeleton; an error is **not** the
 loading look (#9): “Custo indisponível” (BRG-03) and the persistent BRG-04 aviso with Tentar de novo and Detalhes; empty
 is BRG-22 with “Ver tudo” (switches to Tudo).
 
@@ -82,7 +82,7 @@ Money (V7): US$ with 2 decimals, a positive value under 1 cent is “< US$ 0,01�
 **Avançado** (collapsed, dashed, at the foot) has Escolha and Triagem de imagem and the total with 4 decimals, the
 switches “Mostrar custos com 4 casas” (every value on the tab goes to 4 decimals) and “Mostrar IDs dos envios” (the
 jobId joins the list, the detail and the diagnostics), both remembered on this computer, and Baixar diagnóstico per
-Envio (`POST /jobs/debug-bundle` with `{ jobId }`, saved as `diagnostico-<jobId>.json`; the download is the feedback, no toast;
+Envio (`GET /jobs/<id>/debug-bundle` saved as `diagnostico-<jobId>.json`; the download is the feedback, no toast;
 failure is BRG-23 inline).
 
 ### Baralhos e termos, Vocabulário and Reparar Anki (`painel-anki-baralhos.js`)
@@ -168,17 +168,13 @@ tombstones, no toast) and `marcarComoEnviadas(ids)` (`status: 'exported'`, no to
 atualizado há 1 min” (ENV-08) and a collapsed Detalhes with jobId, raw stage, ISO
 time (the bridge's `updatedAt`, or when the Envio was created) and `lastError`. A card that needs the person has no error box: its stage and segments turn calm (muted), the reason is one short
 sentence and the action is a gold link below it (`pedidoDoCartao`). An Envio that ended partial or failed while another
-still runs gets **Continuar envio →** (`POST /jobs/retry`, toast ENV-14); when the bridge says Windows would not let
+still runs gets **Continuar envio →** (`POST /jobs/<id>/retry`, toast ENV-14); when the bridge says Windows would not let
 it close a stuck Anki (`ankiError: 'repair_access_denied'`), the reason is BRG-18. Phrases go to the Envio of their language by `ehRussa` (`lib/idioma.js`), the same rule
 the list uses: the stored `idioma`, or the text when it is missing. A `POST /jobs` that fails does not hide the Envio: its card says “Não começou”
 with the ENV-03 reason (`motivoSemResposta` when the request never got an answer), its cause in Detalhes, and
 **Tentar de novo →**, which re-creates only that language. While such an error is on a card (or a Continuar envio that failed, ENV-14), the summary
 waits: the progress modal comes back with it, and the summary opens once the person closes it, counting those phrases
-as failed. Every request goes through `PedidoAoAnki` (POST with the extension's origin). The Envio's request body is built once, with
-`jobId` = the Envio's `id` (`crypto.randomUUID()`), and saved in `pm_envio` (`corpo`) **before** the first `POST /jobs`; the ENV-03
-Tentar de novo and a panel reopened with a request that got no answer send those same bytes, and the Conexão answers with the
-Envio it already has (the Envio belongs to the Conexão: `docs/design/envio-no-complemento.md`). `pm_envio` is written again after each `POST /jobs`.
-The footer is ENV-15. `POST /jobs/list` runs every 2 s while something is running; when it fails the modal says
+as failed. `pm_envio` is written after each `POST /jobs`. The footer is ENV-15. `GET /jobs` runs every 2 s while something is running; when it fails the modal says
 ENV-09 and keeps trying. Phrases already in a running Envio are not sent twice (a second click only reopens the modal),
 and the Veio modal ignores the second press of a double click, so it does not close the modal the first press opened.
 

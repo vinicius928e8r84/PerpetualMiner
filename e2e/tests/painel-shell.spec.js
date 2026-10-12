@@ -340,7 +340,7 @@ test('dentro do shell, Enviar ao Anki cria o envio, e o acompanhamento continua 
     envios.push(JSON.parse(req.postData()));
     return { json: { jobId: 'job-shell' } };
   });
-  fakes.anki.responder('POST', '/jobs/list', async () => ({
+  fakes.anki.responder('GET', '/jobs', async () => ({
     json: { jobs: [{ jobId: 'job-shell', status: 'running', lang: 'en', state: { status: 'running', stage: 'generate_cards' } }] },
   }));
   await abrirPainel(page, extensao);
@@ -355,9 +355,9 @@ test('dentro do shell, Enviar ao Anki cria o envio, e o acompanhamento continua 
 
   await progresso.getByRole('button', { name: 'Fechar' }).click();
   await itemDaNav(page, 'Configurações').click();
-  const leiturasAntes = fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/list').length;
+  const leiturasAntes = fakes.anki.requisicoes.filter(r => r.metodo === 'GET' && r.caminho === '/jobs').length;
   await expect.poll(
-    () => fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/list').length,
+    () => fakes.anki.requisicoes.filter(r => r.metodo === 'GET' && r.caminho === '/jobs').length,
     { timeout: 8000 },
   ).toBeGreaterThan(leiturasAntes);
 });

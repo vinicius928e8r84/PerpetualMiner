@@ -15,7 +15,7 @@ import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import baralhos, custos, envio, openai_api
+from . import baralhos, openai_api
 from .chaves import Cofre, OutraContaNaoEnviada, LegadoNaoVinculado
 from .nuvem_da_chave import NuvemDaChave, NuvemIndisponivel
 from .configuracao import ENDERECO, OPENAI_BASE
@@ -23,10 +23,6 @@ from .item_de_login import AnkiNaoEncontrado
 
 # Um pedido maior que isto não é da extensão: a leitura mais pesada (os Baralhos pedidos) cabe em poucos KB.
 LIMITE_DO_CORPO = 64 * 1024
-# O Envio leva as Frases escolhidas de uma vez (centenas de linhas de mineração): só ele vai até aqui.
-LIMITE_DO_ENVIO = 4 * 1024 * 1024
-# As rotas cujo corpo pode passar de `LIMITE_DO_CORPO`.
-LIMITES_POR_ROTA = {("POST", "/jobs"): LIMITE_DO_ENVIO}
 
 
 # Uma chave da OpenAI é uma palavra só, de caracteres que cabem num cabeçalho HTTP. O que não tem essa
@@ -186,42 +182,6 @@ def _abrir_com_o_computador(conexao, corpo):
     return 200, {"ok": True, "ligado": item.ligado()}
 
 
-def _criar_envio(conexao, corpo):
-    return conexao.fila.criar(corpo)
-
-
-def _listar_envios(conexao, corpo):
-    return 200, {"jobs": conexao.fila.listar()}
-
-
-def _com_o_envio(corpo, conexao, resposta):
-    """Responde pelo Envio `jobId` do corpo: 400 sem um id válido, 404 se a Conexão não o tem."""
-    job_id = corpo.get("jobId")
-    if not envio.id_valido(job_id):
-        return 400, {"error": "invalid_job_id"}
-    if conexao.fila.pedido(job_id) is None:
-        return 404, {"error": "job_not_found"}
-    return resposta(job_id)
-
-
-def _ver_envio(conexao, corpo):
-    return _com_o_envio(corpo, conexao, lambda job_id: (200, {"job": conexao.fila.pedido(job_id), "state": conexao.fila.estado(job_id)}))
-
-
-def _tentar_envio_de_novo(conexao, corpo):
-    return _com_o_envio(corpo, conexao, conexao.fila.tentar_de_novo)
-
-
-def _pacote_de_diagnostico(conexao, corpo):
-    log = os.path.join(conexao.dados.logs, "complemento.log")
-    return _com_o_envio(corpo, conexao, lambda job_id: (200, envio.pacote_de_diagnostico(conexao.fila, job_id, conexao.versao, log)))
-
-
-def _custos_dos_envios(conexao, corpo):
-    idioma = corpo.get("lang") if corpo.get("lang") in ("en", "ru") else "all"
-    return 200, {"jobs": custos.linhas(conexao.fila, custos.dia(corpo.get("from")), custos.dia(corpo.get("to")), idioma)}
-
-
 ROTAS = {
     ("GET", "/health"): _saude,
     # O que lê o Anki da pessoa é POST: o GET de uma página da extensão vai sem `Origin` (contrato/LEIA-ME.md).
@@ -236,13 +196,6 @@ ROTAS = {
     ("POST", "/ia/estado"): _estado_da_ia,
     ("POST", "/abrir-com-o-computador/estado"): _estado_do_item_de_login,
     ("POST", "/abrir-com-o-computador"): _abrir_com_o_computador,
-    # O Envio (#142): criar e tentar de novo mudam a fila; as outras só leem. Tudo POST com a origem da extensão.
-    ("POST", "/jobs"): _criar_envio,
-    ("POST", "/jobs/list"): _listar_envios,
-    ("POST", "/jobs/get"): _ver_envio,
-    ("POST", "/jobs/retry"): _tentar_envio_de_novo,
-    ("POST", "/jobs/debug-bundle"): _pacote_de_diagnostico,
-    ("POST", "/analytics/jobs"): _custos_dos_envios,
 }
 
 # As rotas que respondem sem a origem da extensão. Rota nova não entra aqui sem decisão do dono:
@@ -305,15 +258,15 @@ class _Atendente(BaseHTTPRequestHandler):
             return origem in self.conexao.origens_aceitas
         return (self.command, caminho) in ROTAS_ABERTAS
 
-    def _ler_o_corpo(self, limite):
-        """O JSON do pedido (`{}` sem corpo), ou None se o corpo não é um objeto JSON ou passa do `limite`."""
+    def _ler_o_corpo(self):
+        """O JSON do pedido (`{}` sem corpo), ou None se o corpo não é um objeto JSON ou passa do limite."""
         try:
             tamanho = int(self.headers.get("Content-Length") or 0)
         except ValueError:
             return None
         if tamanho <= 0:
             return {}
-        if tamanho > limite:
+        if tamanho > LIMITE_DO_CORPO:
             return None
         try:
             corpo = json.loads(self.rfile.read(tamanho).decode("utf-8"))
@@ -338,7 +291,7 @@ class _Atendente(BaseHTTPRequestHandler):
         rota = ROTAS.get((self.command, caminho))
         if rota is None:
             return self._responder(404, {"error": "not_found"}, origem=origem)
-        corpo = self._ler_o_corpo(LIMITES_POR_ROTA.get((self.command, caminho), LIMITE_DO_CORPO))
+        corpo = self._ler_o_corpo()
         if corpo is None:
             return self._responder(400, {"error": "invalid_json"}, origem=origem)
         try:
@@ -369,22 +322,19 @@ class _Servidor(ThreadingHTTPServer):
 
 
 class _SemColecao:
-    """A coleção de uma Conexão que nasceu sem adaptador: nada a ler nem a gravar (o Envio espera)."""
+    """A coleção de uma Conexão que nasceu sem adaptador: nada a ler."""
 
     def perfis(self):
         return []
 
-    def nomes_dos_baralhos(self, *_):
+    def nomes_dos_baralhos(self):
         raise baralhos.ColecaoIndisponivel("collection_unavailable")
 
-    cartoes_do_baralho = tipo_de_nota = guids_existentes = adicionar_nota = nomes_dos_baralhos
+    cartoes_do_baralho = nomes_dos_baralhos
 
 
 class Conexao:
-    """O servidor da Conexão e a thread de trabalho do Envio: `iniciar()` sobe as duas, `parar()` encerra.
-
-    `dados` é a pasta de dados (`pasta_de_dados.preparar`). `trabalhando=False` deixa a fila parada (os Envios entram e
-    ficam `queued`): é o que os testes do contrato usam, para um pedido repetido achar a fila como a deixou."""
+    """O servidor da Conexão: `iniciar()` sobe numa thread, `parar()` encerra."""
 
     def __init__(
         self,
@@ -394,17 +344,12 @@ class Conexao:
         versao,
         perfil_aberto,
         logger,
-        dados,
+        pasta_das_chaves,
         colecao=None,
         item_de_login=None,
         openai_base=OPENAI_BASE,
         firestore_base='https://firestore.googleapis.com/v1/projects/perpetualminer-4c219/databases/(default)/documents',
         intervalo_de_parada=0.1,
-        trabalhando=True,
-        intervalo_do_envio=1.0,
-        espera_do_anki=2.0,
-        esperas_da_openai=(2, 8, 30),
-        motor=None,
     ):
         self.porta = porta
         self.origens_aceitas = tuple(origens_aceitas)
@@ -412,8 +357,7 @@ class Conexao:
         self.perfil_aberto = perfil_aberto
         self.colecao = colecao or _SemColecao()
         self.logger = logger
-        self.dados = dados
-        self.cofre = Cofre(dados.chaves)
+        self.cofre = Cofre(pasta_das_chaves)
         self.openai_base = openai_base
         self.firestore_base = firestore_base
         # O item de login de “Abrir o Anki com o computador”; None onde o sistema não tem (nem Mac nem Windows).
@@ -422,12 +366,6 @@ class Conexao:
         self.intervalo_de_parada = intervalo_de_parada
         self._servidor = None
         self._thread = None
-        self.fila = envio.Fila(dados, motor or envio.motor_do_complemento())
-        self._trabalhador = envio.Trabalhador(
-            envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(),
-                           espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai),
-            intervalo=intervalo_do_envio,
-        ) if trabalhando else None
 
     def iniciar(self):
         """Sobe a Conexão. Com a porta ocupada fica quieta, registra o motivo e devolve False."""
@@ -442,8 +380,6 @@ class Conexao:
         self._thread = threading.Thread(target=self._servir, name="perpetualminer-conexao", daemon=True)
         self._thread.start()
         self.logger.info("Conexão ouvindo em %s:%d", ENDERECO, self.porta)
-        if self._trabalhador is not None:
-            self._trabalhador.iniciar()
         return True
 
     def _servir(self):
@@ -453,8 +389,6 @@ class Conexao:
             self.logger.exception("O servidor da Conexão parou")
 
     def parar(self):
-        if self._trabalhador is not None:
-            self._trabalhador.encerrar()
         if self._servidor is None:
             return
         self._servidor.shutdown()

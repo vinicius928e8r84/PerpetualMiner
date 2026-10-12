@@ -13,7 +13,7 @@
 //
 // Baralhos e termos, Vocabulário e Reparar Anki são do painel-anki-baralhos.js.
 //
-// Custos lê POST /analytics/jobs do período (todos os idiomas numa leitura só) e
+// Custos lê GET /analytics/jobs do período (todos os idiomas numa leitura só) e
 // soma aqui o que cada azulejo, a faixa e o detalhe mostram, então o total é
 // sempre a soma das partes que estão na tela — inclusive os “outros custos”,
 // que antes ficavam de fora (#9). As chaves do Avançado (4 casas, IDs) ficam
@@ -48,7 +48,7 @@
     { chave: 'failed', rotulo: 'BRG-09.falhou', serie: 'falhou' },
   ];
 
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, Contexto, IDIOMAS, PrimeiraConexao, PedidoAoAnki } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, Contexto, IDIOMAS, PrimeiraConexao } = raiz;
   const { haQuanto } = Contexto;
   const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
@@ -185,12 +185,14 @@
     estado.erro = null;
     desenhar();
 
-    const pedidoDosCustos = PedidoAoAnki.custosDosEnvios({ de, ate });
-    const pedido = `POST /analytics/jobs ${JSON.stringify(pedidoDosCustos.corpo)}`;
+    const busca = new URLSearchParams({ lang: 'all' });
+    if (de) busca.set('from', de);
+    if (ate) busca.set('to', ate);
+    const pedido = `GET /analytics/jobs?${busca}`;
     let envios = null;
     let erro = null;
     try {
-      const resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, pedidoDosCustos);
+      const resposta = await fetch(`${ENDERECO_DA_CONEXAO}/analytics/jobs?${busca}`);
       if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
       const { jobs } = await resposta.json();
       envios = Array.isArray(jobs) ? jobs : [];
@@ -652,13 +654,13 @@
   async function retomar(jobId, acao) {
     if (acao.getAttribute('aria-disabled') === 'true') return;
     try {
-      const resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, PedidoAoAnki.tentarEnvioDeNovo(jobId));
+      const resposta = await fetch(`${ENDERECO_DA_CONEXAO}/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });
       if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
       estado.falhasAoRetomar.delete(jobId);
       Veio.mostrarToastDeSucesso(textoDaVoz('ENV-14.sucesso'));
       ler();
     } catch (falha) {
-      estado.falhasAoRetomar.set(jobId, `POST /jobs/retry ${jobId} · ${falha.message}`);
+      estado.falhasAoRetomar.set(jobId, `POST /jobs/${jobId}/retry · ${falha.message}`);
       desenhar();
     }
   }
@@ -693,7 +695,7 @@
   /** O pacote de diagnóstico do envio, como arquivo. O download é o retorno: sem toast. */
   async function baixarDiagnostico(jobId) {
     try {
-      const resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, PedidoAoAnki.pacoteDeDiagnostico(jobId));
+      const resposta = await fetch(`${ENDERECO_DA_CONEXAO}/jobs/${encodeURIComponent(jobId)}/debug-bundle`);
       if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
       const pacote = await resposta.json();
       const url = URL.createObjectURL(new Blob([JSON.stringify(pacote, null, 2)], { type: 'application/json' }));

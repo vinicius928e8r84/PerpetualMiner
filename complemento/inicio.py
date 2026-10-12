@@ -51,7 +51,7 @@ def iniciar(
             versao=VERSAO,
             perfil_aberto=perfil_aberto,
             logger=logger,
-            dados=dados,
+            pasta_das_chaves=dados.chaves,
             colecao=colecao,
             openai_base=openai_base,
             item_de_login=item_de_login,

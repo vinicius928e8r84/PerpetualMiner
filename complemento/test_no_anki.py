@@ -11,7 +11,6 @@ import sqlite3
 import sys
 import tempfile
 import threading
-import time
 import types
 import unittest
 from unittest.mock import patch
@@ -47,15 +46,12 @@ class ThreadPrincipalDeMentira:
         self.thread = threading.Thread(target=self._rodar, name="principal-do-anki", daemon=True)
         self.thread.start()
         self.parada = False
-        self.livre = threading.Event()  # limpo: a thread principal está ocupada e as tarefas esperam a vez
-        self.livre.set()
 
     def _rodar(self):
         while True:
             tarefa = self._tarefas.get()
             if tarefa is None:
                 return
-            self.livre.wait()
             if not self.parada:
                 tarefa()
 
@@ -66,33 +62,16 @@ class ThreadPrincipalDeMentira:
         self._tarefas.put(None)
 
 
-class NotaDeMentira:
-    """A nota nova de `col.new_note`: os campos por nome (um nome que o tipo não tem é `KeyError`, como no Anki)."""
-
-    def __init__(self, modelo, nomes):
-        self.modelo, self._valores = modelo, {nome: "" for nome in nomes}
-        self.tags, self.guid = [], None
-
-    def __setitem__(self, nome, valor):
-        if nome not in self._valores:
-            raise KeyError(nome)
-        self._valores[nome] = valor
-
-    def valores(self):
-        return list(self._valores.values())
-
-
 class ColecaoDoAnkiDeMentira:
-    """O que o adaptador usa de `mw.col`, sobre um sqlite de verdade (as tabelas `cards` e `notes` do Anki, só com as
-    colunas que o Anki tem e o complemento lê ou grava): `decks.all_names_and_ids` e `decks.id` (que cria o Baralho),
-    `models.get` e `models.by_name`, `new_note`, `add_note` e `db.all`. Toda chamada fora da thread principal fica anotada."""
+    """O que o adaptador usa de `mw.col`: `decks.all_names_and_ids`, `models.get` e `db.all`, sobre um sqlite de verdade
+    (as tabelas `cards` e `notes` do Anki, só com as colunas que o Anki tem e o complemento lê)."""
 
     def __init__(self, descricao, thread_principal):
         self._principal = thread_principal
         self.fora_da_principal = []
         self._sqlite = sqlite3.connect(":memory:", check_same_thread=False)
         self._sqlite.executescript(
-            "create table notes (id integer primary key, mid integer, flds text, guid text, tags text);"
+            "create table notes (id integer primary key, mid integer, flds text);"
             "create table cards (id integer primary key, nid integer, did integer, odid integer, type integer, ivl integer);"
         )
         self._baralhos, self._modelos = [], {}
@@ -103,18 +82,14 @@ class ColecaoDoAnkiDeMentira:
                 proxima += 1
                 campos = list((nota.get("campos") or {"Frente": nota["frente"], "Verso": nota["verso"]}).items())
                 modelo = self._modelos.setdefault(tuple(nome for nome, _ in campos), len(self._modelos) + 1)
-                self._sqlite.execute("insert into notes (id, mid, flds) values (?, ?, ?)", (proxima, modelo, "\x1f".join(valor for _, valor in campos)))
+                self._sqlite.execute("insert into notes values (?, ?, ?)", (proxima, modelo, "\x1f".join(valor for _, valor in campos)))
                 for cartao in nota["cartoes"]:
                     self._sqlite.execute(
                         "insert into cards (nid, did, odid, type, ivl) values (?, ?, 0, ?, ?)", (proxima, indice, cartao["tipo"], cartao["intervalo"])
                     )
-        self._modelos.setdefault(("Frente", "Verso"), len(self._modelos) + 1)
-        self._nomes_dos_modelos = {"Básico": ("Frente", "Verso")}
-        self.decks = types.SimpleNamespace(all_names_and_ids=self._conferido(lambda: list(self._baralhos)), id=self._conferido(self._id_do_baralho))
-        self.models = types.SimpleNamespace(get=self._conferido(self._modelo), by_name=self._conferido(self._modelo_por_nome))
-        self.db = types.SimpleNamespace(all=self._conferido(lambda sql, *args: [list(linha) for linha in self._sqlite.execute(sql, args)]))
-        self.new_note = self._conferido(lambda modelo: NotaDeMentira(modelo["id"], modelo["nomes"]))
-        self.add_note = self._conferido(self._adicionar)
+        self.decks = types.SimpleNamespace(all_names_and_ids=self._conferido(lambda: list(self._baralhos)))
+        self.models = types.SimpleNamespace(get=self._conferido(self._modelo))
+        self.db = types.SimpleNamespace(all=self._conferido(lambda sql: [list(linha) for linha in self._sqlite.execute(sql)]))
 
     def _conferido(self, funcao):
         def chamada(*argumentos):
@@ -123,28 +98,6 @@ class ColecaoDoAnkiDeMentira:
             return funcao(*argumentos)
 
         return chamada
-
-    def _id_do_baralho(self, nome):
-        existente = next((baralho for baralho in self._baralhos if baralho.name == nome), None)
-        if existente is None:
-            existente = types.SimpleNamespace(id=len(self._baralhos) + 1, name=nome)
-            self._baralhos.append(existente)
-        return existente.id
-
-    def _modelo_por_nome(self, nome):
-        nomes = self._nomes_dos_modelos.get(nome)
-        if nomes is None:
-            return None
-        return dict(self._modelo(self._modelos[nomes]), id=self._modelos[nomes], nomes=nomes)
-
-    def _adicionar(self, nota, id_do_baralho):
-        cursor = self._sqlite.execute(
-            "insert into notes (mid, flds, guid, tags) values (?, ?, ?, ?)", (nota.modelo, "\x1f".join(nota.valores()), nota.guid, " ".join(nota.tags))
-        )
-        self._sqlite.execute("insert into cards (nid, did, odid, type, ivl) values (?, ?, 0, 0, 0)", (cursor.lastrowid, id_do_baralho))
-
-    def notas_gravadas(self):
-        return [list(linha) for linha in self._sqlite.execute("select flds, guid, tags from notes where guid is not null order by id")]
 
     def _modelo(self, id_do_modelo):
         nomes = next((nomes for nomes, id_ in self._modelos.items() if id_ == id_do_modelo), None)
@@ -199,57 +152,11 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, unittest.TestCase):
 
     def adaptador(self, descricao, perfis=("Usuário 1",)):
         self.anki = AnkiComColecaoDeMentira(descricao, perfis)
-        return no_anki.ColecaoDoAnki(self.anki)
+        return no_anki.LeitorDaColecaoDoAnki(self.anki)
 
     def adaptador_fechado(self, perfis=("Usuário 1",)):
         self.anki = AnkiComColecaoDeMentira(None, perfis)
-        return no_anki.ColecaoDoAnki(self.anki)
-
-    def sincronizar(self, colecao, sincronizando):
-        (colecao.sincronizacao_comecou if sincronizando else colecao.sincronizacao_terminou)()
-
-    def test_a_gravacao_tambem_so_toca_a_colecao_pela_thread_principal(self):
-        colecao = self.adaptador(DESCRICAO)
-        colecao.tipo_de_nota("Básico")
-        colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, ["perpetual_miner"], "guid-1")
-        colecao.guids_existentes(["guid-1"])
-        self.assertEqual(self.anki.col.fora_da_principal, [])
-        self.assertEqual(self.anki.col.notas_gravadas(), [["a\x1fb", "guid-1", "perpetual_miner"]])
-
-    def test_a_gravacao_que_o_anki_ocupado_atrasou_nao_dobra_a_nota_quando_o_envio_tenta_de_novo(self):
-        colecao = no_anki.ColecaoDoAnki(self.adaptador(DESCRICAO)._mw, limite_s=0.2)
-        self.anki.taskman.livre.clear()  # o Anki fica ocupado mais que o limite
-        with self.assertRaises(baralhos.ColecaoIndisponivel):
-            colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
-        self.anki.taskman.livre.set()  # a gravação atrasada roda; o Envio tenta de novo
-        colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
-        self.assertEqual([guid for _, guid, _ in self.anki.col.notas_gravadas()], ["guid-1"])
-
-    def test_uma_sincronizacao_que_comeca_com_a_gravacao_na_fila_a_impede(self):
-        colecao = no_anki.ColecaoDoAnki(self.adaptador(DESCRICAO)._mw, limite_s=1)
-        self.anki.taskman.livre.clear()
-        resultado = {}
-        gravacao = threading.Thread(target=lambda: resultado.setdefault("erro", self._erro_de(colecao)))
-        gravacao.start()
-        time.sleep(0.1)
-        colecao.sincronizacao_comecou()
-        self.anki.taskman.livre.set()
-        gravacao.join(5)
-        self.assertEqual((resultado["erro"], self.anki.col.notas_gravadas()), ("anki_syncing", []))
-
-    @staticmethod
-    def _erro_de(colecao):
-        try:
-            colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
-        except baralhos.ColecaoIndisponivel as erro:
-            return str(erro)
-        return None
-
-    def test_um_campo_que_o_tipo_de_nota_nao_tem_nao_grava_nada(self):
-        colecao = self.adaptador(DESCRICAO)
-        with self.assertRaises(baralhos.TipoDeNotaAusente):
-            colecao.adicionar_nota("Inglês", "Básico", {"Front": "a", "Verso": "b"}, [], "guid-1")
-        self.assertEqual(self.anki.col.notas_gravadas(), [])
+        return no_anki.LeitorDaColecaoDoAnki(self.anki)
 
     def test_a_colecao_so_e_tocada_pela_thread_principal_do_anki(self):
         colecao = self.adaptador(DESCRICAO)
@@ -258,7 +165,7 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, unittest.TestCase):
         self.assertEqual(self.anki.col.fora_da_principal, [])
 
     def test_um_anki_que_nao_responde_a_tempo_diz_que_esta_ocupado_sem_prender_a_conexao(self):
-        leitor = no_anki.ColecaoDoAnki(self.adaptador(DESCRICAO)._mw, limite_s=0.2)
+        leitor = no_anki.LeitorDaColecaoDoAnki(self.adaptador(DESCRICAO)._mw, limite_s=0.2)
         self.anki.taskman.parada = True  # a thread principal está ocupada com outra coisa
         with self.assertRaises(baralhos.ColecaoIndisponivel) as erro:
             leitor.nomes_dos_baralhos()
@@ -339,33 +246,6 @@ class BaralhosLidosDoAnki(SemRegistroReal, unittest.TestCase):
         anki.col._sqlite.execute("insert into cards (nid, did, odid, type, ivl) select nid, did, 0, 0, 0 from cards where did = 2 limit 1")
         depois = ler_pelo_http(conexao.porta, "/anki/stats/decks", {"decks": [{"deckName": "Inglês", "lang": "en"}]})[1]["decks"][0]["cards"]
         self.assertEqual((antes, depois), (4, 5))
-
-
-class EnvioGravadoNoAnki(SemRegistroReal, unittest.TestCase):
-    """O Envio pelo adaptador do Anki, do `POST /jobs` à nota no sqlite da coleção, com a OpenAI de mentira."""
-
-    def test_uma_frase_vira_nota_na_colecao_gravada_pela_thread_principal(self):
-        from complemento.test_openai_de_mentira import OpenAIDeMentira
-
-        anki = AnkiComColecaoDeMentira(DESCRICAO)
-        self.addCleanup(anki.encerrar)
-        with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
-            conexao = no_anki.ao_carregar(anki, pasta, porta=0, abridor=None, ao_sincronizar=lambda colecao: None, openai_base=openai.base)
-            try:
-                conexao.cofre.guardar("openai", "sk-proj-chave-do-anki-0000")
-                job = "11111111-2222-4333-8444-555555555555"
-                ler_pelo_http(conexao.porta, "/jobs", {"jobId": job, "lang": "en", "deckName": "Inglês",
-                                                       "entries": [{"phraseId": 1, "line": "keep going : They keep going"}]})
-                fim = time.monotonic() + 10
-                while ler_pelo_http(conexao.porta, "/jobs/get", {"jobId": job})[1]["state"]["status"] not in ("completed", "partial", "failed"):
-                    self.assertLess(time.monotonic(), fim)
-                    time.sleep(0.02)
-                estado = ler_pelo_http(conexao.porta, "/jobs/get", {"jobId": job})[1]["state"]
-            finally:
-                conexao.parar()
-        self.assertEqual(estado["status"], "completed")
-        self.assertEqual([flds.split("\x1f")[0] for flds, _, _ in anki.col.notas_gravadas()], ["They <b>keep going</b>"])
-        self.assertEqual(anki.col.fora_da_principal, [])
 
 
 class PerfilQueOAnkiTemAberto(SemRegistroReal, unittest.TestCase):

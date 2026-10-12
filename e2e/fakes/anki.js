@@ -32,15 +32,12 @@ const contrato = require('../../complemento/contrato/exemplos.json');
 // como a Conexão faria: `chaveNaConexao()` é o que o teste confere, e `POST /ia/estado`
 // devolve só os 4 últimos caracteres dela. A chave inteira nunca sai numa resposta.
 //
-// Os Envios seguem o contrato (as rotas `/jobs…` e `/analytics/jobs` de `complemento/contrato/exemplos.json`, todas POST):
-// `POST /jobs` cria um pelo `jobId` que o painel manda (o mesmo corpo de novo é o mesmo Envio; outro corpo, o `409`
-// do contrato), `POST /jobs/list` lista cada um com o `state` dele, `/jobs/get` mostra um, `/jobs/retry` o põe na
-// fila de novo e `/jobs/debug-bundle` dá o pacote. O teste move cada Envio (`moverEnvio`) e o termina
-// (`concluirEnvio`) como a Conexão faria: `successfulPhraseIds` inclui as duplicadas, que também vão em
-// `duplicatePhraseIds`, e o que não virou cartão vai em `failedPhraseIds`. `definirFila(nome)` põe a fila de
-// `filas` do contrato (com os custos dela), para quem confere o fake contra os exemplos. Os custos (`/analytics/jobs`)
-// são os de `definirCustos`, em termos de gente; sem eles, saem dos Envios da fila como no complemento (`custos.py`,
-// só os registros de texto: as imagens entram com o #143 e o #144).
+// Os Envios seguem o contrato de `bridge/server.py`: `POST /jobs` cria um
+// (`{ jobId }`, 201), `GET /jobs` lista cada um com o `state` dele, e
+// `POST /jobs/<id>/retry` o põe na fila de novo. O teste move cada Envio
+// (`moverEnvio`) e o termina (`concluirEnvio`) como a Conexão faria:
+// `successfulPhraseIds` inclui as duplicadas, que também vão em
+// `duplicatePhraseIds`, e o que não virou cartão vai em `failedPhraseIds`.
 
 // O exemplo do contrato de onde o fake tira a linha de um Baralho que o Anki não tem.
 const EXEMPLO_DO_BARALHO_QUE_NAO_EXISTE = 'Números de um Baralho que existe e de um que não existe';
@@ -69,9 +66,8 @@ function criarFakeAnki() {
     rotas: new Map(),   // 'GET /caminho' → (req, url) => ({ status, json })
     recusas: new Map(), // lang → { status } | { rede: true }, para o próximo POST /jobs
     agora: () => new Date(),
-    custos: null,       // as linhas de POST /analytics/jobs que o teste definiu (definirCustos); null: as dos Envios da fila
-    registrosDeCusto: new Map(), // jobId → os registros de custo do Envio (os da fila do contrato)
-    falhaDosCustos: null, // { status } | { rede: true }: POST /analytics/jobs falha
+    custos: [],         // as linhas de GET /analytics/jobs (o contrato de bridge/analytics.py)
+    falhaDosCustos: null, // { status } | { rede: true }: GET /analytics/jobs falha
     baralhos: {},       // deckName → os números do baralho (definirBaralho)
     fonteDosBaralhos: 'colecao',        // 'collection.anki2': lidos do arquivo local (BRG-13)
     lidoDoArquivo: false,       // a Conexão responde lendo o arquivo do Anki: baralhos e vocabulário vêm de `collection.anki2`
@@ -89,33 +85,21 @@ function criarFakeAnki() {
     chaveDaOpenAI: null,        // a cópia da chave que a Conexão guarda (a inteira: só o teste a vê)
   };
   const requisicoes = [];
-  const envios = [];    // { jobId, lang, entries, corpo, createdAt, state }
+  const envios = [];    // { jobId, lang, entries, deckName, state }
 
   function novoEstado(extra = {}) {
     return {
       status: 'queued',
       stage: 'queued',
-      completedStages: [],
       progress: {},
       successfulPhraseIds: [],
       failedPhraseIds: [],
       duplicatePhraseIds: [],
       lastError: null,
       updatedAt: estado.agora().toISOString(),
-      cards: {},
       ...extra,
     };
   }
-
-  /** A resposta de erro que o contrato dá a uma rota do Envio (o exemplo `daExtensao` com esse `error`, ou o que não é da extensão). */
-  function erroDoContrato(caminho, erro) {
-    const exemplo = contrato.exemplos.find(e => e.pedido.caminho === caminho && e.resposta.json?.error === erro);
-    if (!exemplo) throw new Error(`O contrato não tem o erro ${erro} de POST ${caminho}; escreva o exemplo antes de o fake responder.`);
-    return { status: exemplo.resposta.status, json: exemplo.resposta.json };
-  }
-
-  const ID_DO_ENVIO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-  const semHora = ({ createdAt, ...pedido }) => pedido;
 
   function acharEnvio(jobId) {
     const envio = envios.find(e => e.jobId === jobId);
@@ -128,14 +112,8 @@ function criarFakeAnki() {
     const recusa = estado.recusas.get(corpo.lang);
     if (recusa?.rede) return { abortar: true };
     if (recusa) return { status: recusa.status, json: { error: recusa.erro || 'job_failed' } };
-    if (!ID_DO_ENVIO.test(corpo.jobId || '')) return erroDoContrato('/jobs', 'invalid_job_id');
-    const { jobId } = corpo;
-    const existente = envios.find(e => e.jobId === jobId);
-    if (existente) {
-      if (!isDeepStrictEqual(semHora(existente.corpo), corpo)) return erroDoContrato('/jobs', 'job_conflict');
-      return { status: 201, json: { jobId, status: existente.state.status } };
-    }
-    envios.push({ jobId, lang: corpo.lang, entries: corpo.entries || [], corpo, createdAt: estado.agora().toISOString(), state: novoEstado({ jobId }) });
+    const jobId = `job-${corpo.lang}-${envios.length + 1}`;
+    envios.push({ jobId, lang: corpo.lang, entries: corpo.entries || [], corpo, state: novoEstado() });
     return { status: 201, json: { jobId, status: 'queued' } };
   }
 
@@ -145,75 +123,21 @@ function criarFakeAnki() {
         jobId: e.jobId,
         lang: e.lang,
         status: e.state.status,
-        createdAt: e.createdAt,
         updatedAt: e.state.updatedAt,
         state: e.state,
       })),
     };
   }
 
-  /** O pedido de um Envio como a Conexão o guarda (o corpo, mais `createdAt`). */
-  const pedidoGuardado = envio => ({ ...envio.corpo, createdAt: envio.createdAt });
-
-  /** O resumo dos registros de custo de um Envio, como `custos.resumir` do complemento (só os registros de texto). */
-  function resumoDosCustos(registros, de, ate) {
-    const custos = { cardUsd: 0, imageJudgeUsd: 0, imageGuardUsd: 0, imageGenerationUsd: 0, otherUsd: 0, totalUsd: 0 };
-    let contados = 0;
-    for (const registro of registros) {
-      const dia = String(registro.date || '').slice(0, 10);
-      if ((de && dia < de) || (ate && dia > ate)) continue;
-      contados += 1;
-      const palavra = String(registro.keyword || '');
-      const campo = palavra.startsWith('[image_judge]') ? 'imageJudgeUsd' : palavra.startsWith('[image_guard]') ? 'imageGuardUsd' : 'cardUsd';
-      if (registro.type === 'tokens') custos[campo] += registro.cost_usd || 0;
-    }
-    custos.totalUsd = custos.cardUsd + custos.imageJudgeUsd + custos.imageGuardUsd + custos.imageGenerationUsd + custos.otherUsd;
-    const arredondados = Object.fromEntries(Object.entries(custos).map(([chave, valor]) => [chave, Math.round(valor * 1e6) / 1e6]));
-    return { costs: arredondados, images: imagensZeradas(), matchedRecords: contados };
-  }
-
-  /** As linhas de Custos do período e do idioma pedidos (`POST /analytics/jobs`), como `JobAnalytics.jobs`. */
-  function linhasDosCustos(corpo) {
-    const { lang = 'all', from: de, to: ate } = corpo || {};
-    const doIdioma = linha => lang === 'all' || linha.lang === lang;
-    if (estado.custos) {
-      return estado.custos.filter(linha => {
-        const dia = String(linha.createdAt).slice(0, 10);
-        return doIdioma(linha) && (!de || dia >= de) && (!ate || dia <= ate);
-      });
-    }
-    return envios.filter(envio => {
-      const dia = String(envio.createdAt).slice(0, 10);
-      return doIdioma(envio) && (!de || dia >= de) && (!ate || dia <= ate);
-    }).map(envio => {
-      const resumo = resumoDosCustos(estado.registrosDeCusto.get(envio.jobId) || [], de, ate);
-      const pedidas = new Set(envio.entries.map(e => e.phraseId)).size;
-      const enviadas = envio.state.successfulPhraseIds.length;
-      const falharam = ['failed', 'partial'].includes(envio.state.status) ? Math.max(envio.state.failedPhraseIds.length, pedidas - enviadas) : envio.state.failedPhraseIds.length;
-      return {
-        jobId: envio.jobId, createdAt: envio.createdAt, updatedAt: envio.state.updatedAt, lang: envio.lang,
-        deckName: envio.corpo.deckName || '', imageSource: envio.corpo.imageSource || '', status: envio.state.status, stage: envio.state.stage,
-        requestedCards: pedidas, successfulCards: enviadas, failedCards: falharam, lastError: envio.state.lastError,
-        costs: resumo.costs, images: resumo.images, matchedRecords: resumo.matchedRecords,
-      };
-    }).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-  }
-
-  /** `POST /jobs/debug-bundle`: o pacote de diagnóstico como o complemento o monta (o fake não tem arquivos nem log). */
-  function pacoteDeDiagnostico(jobId) {
-    const envio = envios.find(e => e.jobId === jobId);
-    const linha = estado.custos?.find(l => l.jobId === jobId);
-    if (!envio && !linha) return erroDoContrato('/jobs/debug-bundle', 'job_not_found');
-    const registros = envio ? (estado.registrosDeCusto.get(jobId) || []) : [];
-    return {
-      status: 200,
-      json: {
-        generatedAt: estado.agora().toISOString(), jobId, versao: contrato.exemplos.find(e => e.pedido.caminho === '/health').resposta.json.versao,
-        job: envio ? pedidoGuardado(envio) : null, state: envio ? envio.state : { status: linha.status },
-        queueItem: envio ? { jobId, lang: envio.lang, status: envio.state.status, createdAt: envio.createdAt, updatedAt: envio.state.updatedAt } : null,
-        costs: registros, costSummary: resumoDosCustos(registros), artifacts: [], logTail: [],
-      },
-    };
+  /** As linhas de Custos do período e do idioma pedidos, como `JobAnalytics.jobs`. */
+  function linhasDosCustos(url) {
+    const lang = url.searchParams.get('lang') || 'all';
+    const de = url.searchParams.get('from');
+    const ate = url.searchParams.get('to');
+    return estado.custos.filter(linha => {
+      const dia = String(linha.createdAt).slice(0, 10);
+      return (lang === 'all' || linha.lang === lang) && (!de || dia >= de) && (!ate || dia <= ate);
+    });
   }
 
   /** Uma linha do vocabulário como `front_vocabulary_rows_from_cards` (card_normalization.py). */
@@ -300,19 +224,15 @@ function criarFakeAnki() {
   }
 
   function retomarEnvio(jobId) {
-    const linha = estado.custos?.find(l => l.jobId === jobId);
+    const linha = estado.custos.find(l => l.jobId === jobId);
     if (linha) {
       linha.status = 'queued';
       linha.stage = 'queued';
       return { status: 200, json: { jobId, status: 'queued' } };
     }
     const envio = envios.find(e => e.jobId === jobId);
-    if (!envio) return erroDoContrato('/jobs/retry', 'job_not_found');
-    // Na fila ou andando, a Conexão só diz o estado: nada muda.
-    if (['queued', 'running'].includes(envio.state.status)) return { status: 200, json: { jobId, status: envio.state.status } };
-    const cards = Object.fromEntries(Object.entries(envio.state.cards || {}).map(([stem, cartao]) =>
-      [stem, cartao.status === 'failed' ? { ...cartao, status: 'pending', error: null } : cartao]));
-    envio.state = { ...envio.state, status: 'queued', stage: 'queued', progress: {}, lastError: null, cards, updatedAt: estado.agora().toISOString() };
+    if (!envio) return { status: 404, json: { error: 'job_not_found' } };
+    envio.state = { ...envio.state, status: 'queued', stage: 'queued', lastError: null, ankiError: null, updatedAt: estado.agora().toISOString() };
     return { status: 200, json: { jobId, status: 'queued' } };
   }
 
@@ -554,45 +474,27 @@ function criarFakeAnki() {
     if (url.pathname === '/anki/repair' && req.method() === 'POST') {
       return responderJson(route, 200, { ok: true, after: { collectionReady: true, connectAvailable: true } });
     }
-    // O Envio e os custos: só POST, como no complemento (o GET de antes não existe mais).
-    const doEnvio = ['/jobs', '/jobs/list', '/jobs/get', '/jobs/retry', '/jobs/debug-bundle', '/analytics/jobs'].includes(url.pathname);
-    if (doEnvio && req.method() !== 'POST') return responderJson(route, 404, { error: 'not_found' });
-    const pedidoDoEnvio = doEnvio ? dadosDoCorpo(corpoDoPedido) || {} : null;
     if (url.pathname === '/analytics/jobs') {
       const falha = estado.falhaDosCustos;
       if (falha?.rede) return route.abort('connectionrefused');
       if (falha) return responderJson(route, falha.status, { error: 'analytics_unavailable' });
-      return responderJson(route, 200, { jobs: linhasDosCustos(pedidoDoEnvio) });
+      return responderJson(route, 200, { jobs: linhasDosCustos(url) });
     }
-    if (url.pathname === '/jobs') {
+    const diagnostico = url.pathname.match(/^\/jobs\/([^/]+)\/debug-bundle$/);
+    if (diagnostico) {
+      const jobId = decodeURIComponent(diagnostico[1]);
+      if (!estado.custos.some(l => l.jobId === jobId)) return responderJson(route, 404, { error: 'job_not_found' });
+      return responderJson(route, 200, { jobId, state: { status: 'failed' }, bridgeLogTail: ['linha do log'] });
+    }
+    if (url.pathname === '/jobs' && req.method() === 'POST') {
       const resposta = criarEnvio(req);
       if (resposta.abortar) return route.abort('connectionrefused');
-      // A Conexão criou o Envio e a resposta se perdeu no caminho (a conexão caiu).
-      if (estado.perdaDoEnvio) {
-        estado.perdaDoEnvio = false;
-        return route.abort('connectionreset');
-      }
       return responderJson(route, resposta.status, resposta.json);
     }
-    if (url.pathname === '/jobs/list') return responderJson(route, 200, listarEnvios());
-    if (doEnvio && typeof pedidoDoEnvio.jobId !== 'string') {
-      const { status, json } = erroDoContrato(url.pathname, 'invalid_job_id');
-      return responderJson(route, status, json);
-    }
-    if (url.pathname === '/jobs/get') {
-      const envio = envios.find(e => e.jobId === pedidoDoEnvio.jobId);
-      if (!envio) {
-        const { status, json } = erroDoContrato('/jobs/get', 'job_not_found');
-        return responderJson(route, status, json);
-      }
-      return responderJson(route, 200, { job: pedidoGuardado(envio), state: envio.state });
-    }
-    if (url.pathname === '/jobs/retry') {
-      const { status, json } = retomarEnvio(pedidoDoEnvio.jobId);
-      return responderJson(route, status, json);
-    }
-    if (url.pathname === '/jobs/debug-bundle') {
-      const { status, json } = pacoteDeDiagnostico(pedidoDoEnvio.jobId);
+    if (url.pathname === '/jobs' && req.method() === 'GET') return responderJson(route, 200, listarEnvios());
+    const retomada = url.pathname.match(/^\/jobs\/([^/]+)\/retry$/);
+    if (retomada && req.method() === 'POST') {
+      const { status, json } = retomarEnvio(decodeURIComponent(retomada[1]));
       return responderJson(route, status, json);
     }
     return responderJson(route, 404, { error: 'not_found' });
@@ -680,28 +582,14 @@ function criarFakeAnki() {
     pararDeResponder(metodo, caminho) { estado.rotas.delete(`${metodo} ${caminho}`); },
 
     /**
-     * Os Envios que a aba Custos lê (POST /analytics/jobs), em termos de gente;
-     * o fake os entrega no formato do contrato, com o total somado como lá
+     * Os Envios que a aba Custos lê (GET /analytics/jobs), em termos de gente;
+     * o fake os entrega no formato do bridge, com o total somado como lá
      * (`totalUsd` inclui o `otherUsd`).
      */
     definirCustos(lista) {
       estado.custos = lista.map(linhaDeCustos);
     },
-    /**
-     * A fila que a Conexão já tinha: a de `filas` do contrato pelo nome, com os registros de custo de cada Envio
-     * (o `contexto.fila` dos exemplos).
-     */
-    definirFila(nome) {
-      const fila = contrato.filas[nome];
-      if (!fila) throw new Error(`O contrato não tem a fila "${nome}" em filas (complemento/contrato/exemplos.json).`);
-      envios.length = 0;
-      for (const { job, state, custos } of fila) {
-        const { createdAt, ...corpo } = JSON.parse(JSON.stringify(job));
-        envios.push({ jobId: job.jobId, lang: job.lang, entries: job.entries, corpo, createdAt, state: JSON.parse(JSON.stringify(state)) });
-        estado.registrosDeCusto.set(job.jobId, custos);
-      }
-    },
-    /** POST /analytics/jobs falha: `{ status: 503 }` responde com erro, `{ rede: true }` derruba. */
+    /** GET /analytics/jobs falha: `{ status: 503 }` responde com erro, `{ rede: true }` derruba. */
     falharCustos(falha = { status: 503 }) { estado.falhaDosCustos = falha; },
     voltarCustos() { estado.falhaDosCustos = null; },
 
@@ -713,12 +601,6 @@ function criarFakeAnki() {
      * erro, `{ rede: true }` derruba a conexão. Vale até `aceitarEnvios(lang)`.
      */
     recusarEnvios(lang, recusa = { status: 500 }) { estado.recusas.set(lang, recusa); },
-    /** O próximo `POST /jobs` cria o Envio na Conexão e a resposta se perde: o painel não sabe que ele existe. */
-    perderARespostaDoEnvio() { estado.perdaDoEnvio = true; },
-    /** A Conexão recebeu este pedido de Envio antes de o teste começar (o painel fechou sem ver a resposta). */
-    receberEnvio(corpo) {
-      envios.push({ jobId: corpo.jobId, lang: corpo.lang, entries: corpo.entries, corpo, createdAt: estado.agora().toISOString(), state: novoEstado({ jobId: corpo.jobId }) });
-    },
     aceitarEnvios(lang) { estado.recusas.delete(lang); },
 
     /** @estado-guardado Os Envios criados de um idioma, na ordem. */
@@ -764,15 +646,7 @@ function criarFakeAnki() {
   };
 }
 
-/** As imagens de uma linha de Custos sem nenhuma imagem (as chaves do contrato). */
-function imagensZeradas() {
-  return {
-    total: 0, real: 0, generated: 0, skipped: 0, failed: 0, generatedAttempted: 0, savingsUsd: 0,
-    realPct: 0, generatedPct: 0, skippedPct: 0, failedPct: 0, generatedAttemptPct: 0,
-  };
-}
-
-/** Um Envio da aba Custos no formato de `JobAnalytics.jobs` (bridge/analytics.py), o das linhas do contrato. */
+/** Um Envio da aba Custos no formato de `JobAnalytics.jobs` (bridge/analytics.py). */
 function linhaDeCustos({
   jobId, lang = 'en', createdAt, status = 'completed', stage, pedidas = 1, enviadas, lastError = null,
   custos = {}, imagens = {}, economia = 0, baralho = '',
@@ -786,7 +660,6 @@ function linhaDeCustos({
   };
   costs.totalUsd = Object.values(costs).reduce((a, b) => a + b, 0);
   const images = {
-    ...imagensZeradas(),
     real: imagens.real || 0,
     generated: imagens.geradas || 0,
     skipped: imagens.sem || 0,
@@ -794,8 +667,6 @@ function linhaDeCustos({
     savingsUsd: economia,
   };
   images.total = images.real + images.generated + images.skipped + images.failed;
-  const pct = parte => (images.total ? Math.round((parte / images.total) * 1000) / 10 : 0);
-  Object.assign(images, { realPct: pct(images.real), generatedPct: pct(images.generated), skippedPct: pct(images.skipped), failedPct: pct(images.failed) });
   const successfulCards = enviadas ?? (status === 'completed' ? pedidas : 0);
   return {
     jobId,

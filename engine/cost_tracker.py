@@ -5,8 +5,6 @@ Costs are appended to log/costs.jsonl (one JSON object per line).
 Pricing constants reflect OpenAI list prices as of 2025-05 — update as needed.
 """
 
-from __future__ import annotations
-
 import json
 from datetime import date, timedelta
 from pathlib import Path

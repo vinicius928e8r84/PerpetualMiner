@@ -76,10 +76,12 @@ Para um arquivo so, use o venv: `.venv/bin/python bridge/test_envio.py`. Esse ar
 ## API
 
 - `GET /health`
-- `POST /jobs` (com o `jobId` do painel: o mesmo pedido de novo devolve o mesmo Envio; outro pedido com o mesmo id é `409 job_conflict`)
-- `POST /jobs/list`, `/jobs/get`, `/jobs/retry` e `/jobs/debug-bundle` (o `jobId` no corpo; é o contrato do complemento, `complemento/contrato/exemplos.json`), e os antigos `GET /jobs`, `GET /jobs/<job_id>`, `POST /jobs/<job_id>/retry` e `GET /jobs/<job_id>/debug-bundle`
+- `GET /jobs`
+- `GET /jobs/<job_id>`
+- `POST /jobs`
+- `POST /jobs/<job_id>/retry`
 - `GET /analytics/summary`
-- `GET` ou `POST /analytics/jobs` (o `POST` leva `{ lang, from?, to? }` no corpo)
+- `GET /analytics/jobs`
 - `GET /anki/status`
 - `POST /anki/repair`
 - `GET` ou `POST /anki/stats/decks` (o `POST` leva `{ decks: [{ deckName, lang }], refresh?, launch? }`, o contrato do complemento)

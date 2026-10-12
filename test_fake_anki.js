@@ -45,7 +45,6 @@ function fakeNoContextoDe(exemplo) {
   if ('chaveNaNuvem' in exemplo.contexto) google.gravarChaveDaOpenAI('uid-teste', { chave: exemplo.contexto.chaveNaNuvem, em: exemplo.contexto.emNaNuvem });
   if ('colecao' in exemplo.contexto) fakeDoExemplo.abrirColecao(exemplo.contexto.colecao);
   if (exemplo.contexto.itemDeLogin) fakeDoExemplo.definirItemDeLogin(exemplo.contexto.itemDeLogin);
-  if (exemplo.contexto.fila) fakeDoExemplo.definirFila(exemplo.contexto.fila);
   return { fakeDoExemplo, google };
 }
 
@@ -53,12 +52,12 @@ function fakeNoContextoDe(exemplo) {
 function guardado({ fakeDoExemplo, google }) {
   return {
     chave: fakeDoExemplo.chaveNaConexao(), estadoDaChave: fakeDoExemplo.estadoDaChave(), item: fakeDoExemplo.itemDeLogin(),
-    nuvem: google.chaveDaOpenAIDe('uid-teste'), envios: JSON.parse(JSON.stringify(fakeDoExemplo.envios)),
+    nuvem: google.chaveDaOpenAIDe('uid-teste'),
   };
 }
 
 /**
- * Todo POST do contrato que dá 2xx é repetível: de novo, a resposta é a mesma (salvo o instante) e o que o fake guardou não muda.
+ * Todo POST do contrato que dá 200 é repetível: de novo, a resposta é a mesma (salvo o instante) e o que o fake guardou não muda.
  * Uma exceção é declarada no exemplo (`"repetivel": false, "porque": …`) e tem que valer no fake também. O servidor real segue a mesma
  * regra em `complemento/test_servidor.py` (complemento/contrato/LEIA-ME.md).
  */
@@ -84,7 +83,7 @@ async function conferirARepeticao(exemplo) {
 async function conferirOsExemplos() {
   for (const exemplo of contrato.exemplos.filter(exemploDaExtensao)) {
     const { fakeDoExemplo } = fakeNoContextoDe(exemplo);
-    if (exemplo.pedido.metodo === 'POST' && exemplo.resposta.status >= 200 && exemplo.resposta.status < 300) await conferirARepeticao(exemplo);
+    if (exemplo.pedido.metodo === 'POST' && exemplo.resposta.status === 200) await conferirARepeticao(exemplo);
     const entregue = await pedirAoFake(fakeDoExemplo, exemplo.pedido.metodo, exemplo.pedido.caminho, exemplo.pedido.corpo);
     assert.strictEqual(entregue.status, exemplo.resposta.status, `O fake e o contrato se separaram no exemplo "${exemplo.nome}" (complemento/contrato/exemplos.json).`);
     assert.strictEqual(diferencaDoContrato(entregue.json, exemplo.resposta.json), null,
@@ -110,17 +109,6 @@ async function conferirOsExemplos() {
   formas(await lido('/anki/vocabulary', { deck: 'Inglês', lang: 'en', limit: 10000 }), exemploDe('Vocabulário de um Baralho'));
   formas(await lido('/anki/stats/decks', { decks: [{ deckName: 'Inglês', lang: 'en' }, { deckName: 'Alemão', lang: 'en' }] }),
     exemploDe('Números de um Baralho que existe e de um que não existe'));
-  // As linhas de Custos que os testes de tela montam (definirCustos) têm as chaves das do contrato.
-  dosTestes.definirCustos([{ jobId: 'job-en-1', createdAt: '2026-10-12T10:00:00-03:00', custos: { cartoes: 0.01 } }]);
-  formas(await lido('/analytics/jobs', { lang: 'all' }), exemploDe('os custos de todo o período'));
-  // Um Envio que o painel cria no fake tem a forma do da fila do contrato (a lista e o estado).
-  const criado = criarFakeAnki();
-  const envio = contrato.exemplos.find(e => e.nome === 'criar um Envio entrega as Frases à Conexão').pedido.corpo;
-  assert.strictEqual((await pedirAoFake(criado, 'POST', '/jobs', envio)).status, 201);
-  const listado = (await pedirAoFake(criado, 'POST', '/jobs/list', {})).json.jobs[0];
-  const daFila = exemploDe('listar os Envios traz o estado de cada um e de cada Cartão').jobs[0];
-  assert.deepStrictEqual(Object.keys(listado).sort(), Object.keys(daFila).sort(), 'a forma do Envio do fake não é a do contrato');
-  assert.deepStrictEqual(Object.keys(listado.state).sort(), Object.keys(daFila.state).sort(), 'a forma do estado do fake não é a do contrato');
   console.log('fake anki tests passed');
 }
 

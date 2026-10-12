@@ -7,7 +7,6 @@ os contratos observados, inclusive ao continuar o mesmo Envio.
 from __future__ import annotations
 
 import copy
-from datetime import date
 import json
 import sys
 import tempfile
@@ -267,7 +266,7 @@ class LeiturasDoAnkiPorPostTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.bridge, self.modules = offline_bridge(Path(temporary.name))
-        self.modules.modules["config_loader"].base_config = OfflineModules.config
+        self.modules.modules["config_loader"].yaml = SimpleNamespace(safe_load=lambda _file: OfflineModules.config())
         self.bridge.anki.collection_ready_status = lambda: (True, "")
         self.bridge.anki.invoke = self.ankiconnect
         self.client = self.bridge.app.test_client()
@@ -317,58 +316,3 @@ class LeiturasDoAnkiPorPostTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-class EnvioPorPostTests(unittest.TestCase):
-    """A extensão fala com o Envio só por POST, como no complemento do Anki (complemento/contrato/exemplos.json):
-    a Conexão de hoje atende as mesmas rotas, e o criar com o `jobId` do painel é idempotente."""
-
-    JOB = "11111111-2222-4333-8444-555555555555"
-
-    def setUp(self) -> None:
-        temporary = tempfile.TemporaryDirectory()
-        self.addCleanup(temporary.cleanup)
-        self.bridge, self.modules = offline_bridge(Path(temporary.name))
-        self.client = self.bridge.app.test_client()
-
-    def criar(self, **mudanca: Any) -> Any:
-        corpo = {"jobId": self.JOB, "lang": "en", "deckName": "Inglês", "imageSource": "1", "tts": {},
-                 "entries": [{"phraseId": 1, "line": "gave up : She gave up smoking"}]}
-        corpo.update(mudanca)
-        return self.client.post("/jobs", json=corpo)
-
-    def test_o_mesmo_pedido_com_o_mesmo_job_id_devolve_o_mesmo_envio_sem_criar_outro(self) -> None:
-        primeiro, segundo = self.criar(), self.criar()
-        self.assertEqual((primeiro.status_code, primeiro.get_json()), (201, {"jobId": self.JOB, "status": "queued"}))
-        self.assertEqual((segundo.status_code, segundo.get_json()), (201, {"jobId": self.JOB, "status": "queued"}))
-        self.assertEqual(len(self.bridge.store.queue_data()["jobs"]), 1)
-
-    def test_outro_pedido_com_o_mesmo_job_id_e_recusado_sem_mexer_no_envio(self) -> None:
-        self.criar()
-        outro = self.criar(deckName="Outro")
-        self.assertEqual((outro.status_code, outro.get_json()), (409, {"error": "job_conflict"}))
-        self.assertEqual(self.bridge.store.read_job(self.JOB)["deckName"], "Inglês")
-
-    def test_um_job_id_que_nao_e_um_uuid_nao_vira_pasta(self) -> None:
-        resposta = self.criar(jobId="../../fora")
-        self.assertEqual((resposta.status_code, resposta.get_json()), (400, {"error": "invalid_job_id"}))
-        self.assertEqual(self.bridge.store.queue_data()["jobs"], [])
-
-    def test_listar_ver_tentar_de_novo_e_o_pacote_por_post(self) -> None:
-        self.criar()
-        lista = self.client.post("/jobs/list", json={}).get_json()
-        self.assertEqual(lista, self.client.get("/jobs").get_json())
-        self.assertEqual(self.client.post("/jobs/get", json={"jobId": self.JOB}).get_json(), self.client.get(f"/jobs/{self.JOB}").get_json())
-        self.assertEqual(self.client.post("/jobs/retry", json={"jobId": self.JOB}).get_json(), {"jobId": self.JOB, "status": "queued"})
-        pacote = self.client.post("/jobs/debug-bundle", json={"jobId": self.JOB})
-        self.assertEqual((pacote.status_code, pacote.get_json()["jobId"]), (200, self.JOB))
-        for caminho in ("/jobs/get", "/jobs/retry", "/jobs/debug-bundle"):
-            self.assertEqual(self.client.post(caminho, json={"jobId": "00000000-0000-4000-8000-000000000000"}).status_code, 404, caminho)
-            self.assertEqual(self.client.post(caminho, json={"jobId": "../x"}).get_json(), {"error": "invalid_job_id"}, caminho)
-
-    def test_os_custos_por_post_sao_os_mesmos_do_get(self) -> None:
-        self.criar()
-        hoje = date.today().isoformat()
-        post = self.client.post("/analytics/jobs", json={"lang": "all", "from": hoje, "to": hoje}).get_json()
-        self.assertEqual(post, self.client.get(f"/analytics/jobs?lang=all&from={hoje}&to={hoje}").get_json())
-        self.assertEqual([linha["jobId"] for linha in post["jobs"]], [self.JOB])

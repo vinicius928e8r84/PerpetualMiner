@@ -5,7 +5,6 @@ ela por HTTP, então é aqui, na fronteira, que o teste decide como a OpenAI res
 """
 
 import json
-import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlsplit
@@ -60,42 +59,12 @@ COMPORTAMENTOS = {
 }
 
 
-def _cartao_de_mentira(mensagens):
-    """Um Cartão que o motor aceita, feito do pedido: a Palavra no verso, destacada na frente, e o contexto, se veio."""
-    pedido = mensagens[-1]["content"]
-    if re.search(r"[\u0400-\u04FF]", pedido):  # russo: a frase inteira é a frente
-        frase = pedido.split("\n")[0]
-        return "Front\n%s\n\nBack\nPronunciation: x\n\nTranslation: tradução de mentira\n" % frase
-    alvo = re.search(r"Target keyword for this card: (.+)", pedido)
-    linha = pedido.split("Input Format:\n")[-1].strip()
-    palavra, frase = [parte.strip() for parte in linha.split(" : ", 1)]
-    palavra = alvo.group(1).strip() if alvo else palavra
-    contexto = re.search(r"\[Contexto: (.+?)\]", frase)
-    frase = re.sub(r"\s*\[Contexto: .+?\]", "", frase)
-    frente = frase.replace(palavra, "*%s*" % palavra, 1) if palavra in frase else "*%s* aqui" % palavra
-    fonte = "Source Context: %s\n\n" % contexto.group(1) if contexto else ""
-    return "%sFront: %s\n\nBack: %s - /ipa/\n\nDefinition: definição de mentira.\n" % (fonte, frente, palavra)
-
-
-def _palavra_do_pedido(mensagens):
-    pedido = mensagens[-1]["content"]
-    alvo = re.search(r"Target keyword for this card: (.+)", pedido)
-    return alvo.group(1).strip() if alvo else pedido.split("Input Format:\n")[-1].split(" : ", 1)[0].strip()
-
-
 class OpenAIDeMentira:
-    """`OpenAIDeMentira("aceita")` escuta numa porta livre; `base` é o endereço que a Conexão usa no lugar da OpenAI.
-
-    A conferência da chave (`/v1/models`, `/v1/embeddings`) segue o `comportamento`. O texto dos Cartões
-    (`/v1/chat/completions`) volta um Cartão válido feito do pedido, com 1000 tokens de entrada e 200 de saída,
-    salvo para a Palavra que `recusar_o_chat_de` mandou recusar (`"*"`: todas). `chats` guarda (Authorization, corpo).
-    """
+    """`OpenAIDeMentira("aceita")` escuta numa porta livre; `base` é o endereço que a Conexão usa no lugar da OpenAI."""
 
     def __init__(self, comportamento="aceita"):
         self.comportamento = comportamento
         self.pedidos = []  # (metodo, caminho, Authorization)
-        self.chats = []  # (Authorization, corpo) de cada pedido de texto
-        self.recusas_do_chat = {}  # Palavra (ou "*") → (status, código)
         self.antes_de_responder = lambda _metodo, _autorizacao: None
         dono = self
 
@@ -105,14 +74,12 @@ class OpenAIDeMentira:
 
             def _responder(self):
                 tamanho = int(self.headers.get("Content-Length") or 0)
-                lido = self.rfile.read(tamanho) if tamanho else b""
+                if tamanho:
+                    self.rfile.read(tamanho)
                 dono.pedidos.append((self.command, self.path, self.headers.get("Authorization")))
                 dono.antes_de_responder(self.command, self.headers.get('Authorization'))
                 modelos, embeddings = COMPORTAMENTOS[dono.comportamento]
-                if self.path == "/v1/chat/completions":
-                    status, corpo = dono._chat(self.headers.get("Authorization"), json.loads(lido.decode("utf-8")))
-                else:
-                    status, corpo = modelos if self.path == "/v1/models" else embeddings
+                status, corpo = modelos if self.path == "/v1/models" else embeddings
                 dados = json.dumps(corpo).encode("utf-8")
                 self.send_response(status)
                 self.send_header("Content-Type", "application/json")
@@ -126,21 +93,6 @@ class OpenAIDeMentira:
         self._servidor.daemon_threads = True
         self.base = "http://127.0.0.1:%d" % self._servidor.server_address[1]
         self._thread = threading.Thread(target=lambda: self._servidor.serve_forever(poll_interval=0.005), daemon=True)
-
-    def recusar_o_chat_de(self, palavra, status, codigo):
-        """O texto da `palavra` (`"*"`: de todas) volta `status` com o erro `codigo`; `status` None volta a aceitar."""
-        if status is None:
-            self.recusas_do_chat.pop(palavra, None)
-        else:
-            self.recusas_do_chat[palavra] = (status, codigo)
-
-    def _chat(self, autorizacao, corpo):
-        self.chats.append((autorizacao, corpo))
-        recusa = self.recusas_do_chat.get(_palavra_do_pedido(corpo["messages"])) or self.recusas_do_chat.get("*")
-        if recusa:
-            return _erro(recusa[0], "Incorrect API key provided: %s" % (autorizacao or ""), "x", recusa[1])
-        texto = _cartao_de_mentira(corpo["messages"])
-        return 200, {"choices": [{"message": {"role": "assistant", "content": texto}}], "usage": {"prompt_tokens": 1000, "completion_tokens": 200}}
 
     def __enter__(self):
         self._thread.start()

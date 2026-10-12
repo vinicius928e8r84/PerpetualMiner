@@ -29,10 +29,10 @@
       "padrao": "test_*.py"
     },
     "paridade": {
-      "descricao": "A normalização e os custos repetidos no bridge e no complemento, rodados também no Python 3.9 do Anki (o job do complemento)",
+      "descricao": "A normalização repetida no bridge e no complemento, rodada também no Python 3.9 do Anki (o job do complemento)",
       "executor": "unittest",
       "pasta": "bridge",
-      "padrao": "test_paridade_*.py"
+      "padrao": "test_paridade_da_normalizacao.py"
     },
     "engine": {
       "descricao": "O motor que gera os cartões",

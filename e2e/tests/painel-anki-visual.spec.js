@@ -248,7 +248,7 @@ test('erro na leitura: Custo indisponível e BRG-04 com Tentar de novo', async (
 });
 
 test('carregando: “Somando os custos…” e o esqueleto', async ({ page, extensao, fakes }) => {
-  fakes.anki.responder('POST', '/analytics/jobs', () => new Promise(() => {}));
+  fakes.anki.responder('GET', '/analytics/jobs', () => new Promise(() => {}));
   await abrirAnki(page, extensao);
   await expect(custos(page).getByText('Somando os custos…')).toBeVisible();
 

@@ -17,7 +17,7 @@ import threading
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from test_servidor import ORIGEM, ConexaoNoTeste, configuracao  # noqa: E402
+from test_servidor import ORIGEM, ConexaoNoTeste  # noqa: E402
 
 CHAVE = "sk-proj-ChaveSecretaDeTeste0123456789-abcd"
 OUTRA_CHAVE = "sk-proj-OutraChaveSecreta9876543210-wxyz"
@@ -377,7 +377,7 @@ class AutoridadeVersionada(unittest.TestCase):
 
     def test_estado_versionado_identifica_o_protocolo_que_exige_atualizar_o_complemento(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            self.assertEqual(json.loads(conexao.pedir('GET', '/health')[2])['versao'], configuracao.VERSAO)
+            self.assertEqual(json.loads(conexao.pedir('GET', '/health')[2])['versao'], '0.2.0')
             self.assertEqual(json.loads(conexao.pedir('POST', '/ia/estado')[2])['openai'],
                 {'configurada': False, 'conta': '', 'versao': 0, 'naoEnviada': False})
 

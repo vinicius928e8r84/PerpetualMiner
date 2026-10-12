@@ -6,8 +6,8 @@ Fica fora do `__init__.py` para que os testes usem o mesmo adaptador que o Anki 
 import threading
 
 from . import inicio
-from .baralhos import ColecaoIndisponivel, TipoDeNotaAusente
-from .configuracao import OPENAI_BASE, PORTA
+from .baralhos import ColecaoIndisponivel
+from .configuracao import PORTA
 
 # Quanto a Conexão espera a thread principal do Anki ler a coleção antes de dizer que o Anki não respondeu.
 LIMITE_DA_LEITURA_S = 10
@@ -24,13 +24,11 @@ def perfil_aberto(mw):
     return getattr(getattr(mw, "pm", None), "name", None)
 
 
-class ColecaoDoAnki:
-    """O adaptador da coleção (o contrato, de leitura e de gravação, está em `baralhos.py`), sobre o `mw` do Anki.
+class LeitorDaColecaoDoAnki:
+    """O lado de leitura do adaptador da coleção (o contrato está em `baralhos.py`), sobre o `mw` do Anki.
 
-    A coleção do Anki não é para outras threads: toda leitura e toda gravação roda na thread principal
-    (`mw.taskman.run_on_main`), uma operação curta de cada vez, e só volta com o resultado; o que se faz com os
-    Cartões (normalizar, contar, montar os campos) fica na thread da Conexão ou na do Envio. Durante uma sincronização
-    (os ganchos `sync_will_start`/`sync_did_finish`, ligados por `ao_carregar`) nada se grava: `anki_syncing`.
+    A coleção do Anki não é para outras threads: toda leitura roda na thread principal (`mw.taskman.run_on_main`)
+    e só volta com o que leu; o que se faz com os Cartões (normalizar, contar) fica na thread da Conexão.
     A lista de perfis vem do gerente de perfis (`mw.pm`), que a conhece mesmo sem coleção aberta, mas também
     guarda um sqlite da thread principal: ela é lida lá, sem exigir coleção.
     """
@@ -38,13 +36,6 @@ class ColecaoDoAnki:
     def __init__(self, mw, limite_s=LIMITE_DA_LEITURA_S):
         self._mw = mw
         self._limite_s = limite_s
-        self._sincronizando = threading.Event()
-
-    def sincronizacao_comecou(self, *_):
-        self._sincronizando.set()
-
-    def sincronizacao_terminou(self, *_):
-        self._sincronizando.clear()
 
     def _na_thread_principal(self, leitura, com_colecao=True):
         """Roda `leitura` na thread principal do Anki e devolve o que ela leu. Com `com_colecao`, `leitura`
@@ -81,49 +72,6 @@ class ColecaoDoAnki:
 
     def cartoes_do_baralho(self, nome):
         return self._na_thread_principal(lambda colecao: _cartoes_do_baralho(colecao, nome))
-
-    def _gravando(self, operacao):
-        """A operação de gravação, na thread principal; a sincronização é conferida lá, na hora em que ela roda."""
-        def sem_sincronizar(colecao):
-            if self._sincronizando.is_set():
-                raise ColecaoIndisponivel("anki_syncing")
-            return operacao(colecao)
-
-        return self._na_thread_principal(sem_sincronizar)
-
-    def tipo_de_nota(self, nome):
-        return self._gravando(lambda colecao: _campos_do_tipo(colecao.models.by_name(nome)))
-
-    def guids_existentes(self, guids):
-        if not guids:
-            return set()
-        marcas = ",".join("?" * len(guids))
-        return self._gravando(lambda colecao: {linha[0] for linha in colecao.db.all("select guid from notes where guid in (%s)" % marcas, *guids)})
-
-    def adicionar_nota(self, baralho, tipo_de_nota, campos, etiquetas, guid):
-        return self._gravando(lambda colecao: _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid))
-
-
-def _campos_do_tipo(modelo):
-    return [campo["name"] for campo in sorted(modelo["flds"], key=lambda c: c["ord"])] if modelo else None
-
-
-def _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid):
-    """Uma nota nova, na thread principal: o Baralho é criado se falta (`decks.id`), o tipo de nota tem de existir com os campos.
-
-    Uma nota com o mesmo `guid` já gravada fica como está: é a gravação que o Anki ocupado atrasou (o Envio desistiu de
-    esperar e pediu de novo), e o Anki não impede dois `guid` iguais."""
-    if colecao.db.all("select 1 from notes where guid = ?", guid):
-        return
-    modelo = colecao.models.by_name(tipo_de_nota)
-    if modelo is None or not set(campos) <= set(_campos_do_tipo(modelo)):
-        raise TipoDeNotaAusente(tipo_de_nota)
-    nota = colecao.new_note(modelo)
-    for nome, valor in campos.items():
-        nota[nome] = valor
-    nota.tags = list(etiquetas)
-    nota.guid = guid
-    colecao.add_note(nota, colecao.decks.id(baralho))
 
 
 def _cartoes_do_baralho(colecao, nome):
@@ -164,28 +112,14 @@ def _ao_abrir_o_perfil(funcao):
     gui_hooks.profile_did_open.append(funcao)
 
 
-def _ao_sincronizar(colecao):
-    """Liga o adaptador aos ganchos de sincronização do Anki: enquanto sincroniza, o Envio não grava."""
-    from aqt import gui_hooks
-
-    gui_hooks.sync_will_start.append(colecao.sincronizacao_comecou)
-    gui_hooks.sync_did_finish.append(colecao.sincronizacao_terminou)
-
-
 def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_abrir_o_perfil,
-                abridor=inicio.ABRIDOR_DESTE_COMPUTADOR, ao_sincronizar=_ao_sincronizar, openai_base=OPENAI_BASE):
+                abridor=inicio.ABRIDOR_DESTE_COMPUTADOR):
     """O que o Anki faz ao importar o complemento: devolve a Conexão, ou None se ela não subiu."""
-    colecao = ColecaoDoAnki(mw)
-    try:
-        ao_sincronizar(colecao)
-    except Exception:  # sem os ganchos (um Anki que os mudou), o Envio só não sabe da sincronização: o Anki recusa e ele espera
-        pass
     return inicio.iniciar(
         pasta_do_complemento,
         lambda: perfil_aberto(mw),
         porta=porta,
-        colecao=colecao,
+        colecao=LeitorDaColecaoDoAnki(mw),
         ao_abrir_o_perfil=ao_abrir_o_perfil,
         abridor=abridor,
-        openai_base=openai_base,
     )

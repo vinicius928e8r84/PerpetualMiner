@@ -113,6 +113,8 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
             calls = []
             responses = [BAD_CARD, GOOD_CARD]
             original_call_model = generate_cards._call_model
+            original_openai = generate_cards.openai.OpenAI
+            generate_cards.openai.OpenAI = lambda api_key: object()
 
             def fake_call_model(*args, **kwargs):
                 calls.append(args)
@@ -123,6 +125,7 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
                 saved = generate_cards.run([entry], _config(root))
             finally:
                 generate_cards._call_model = original_call_model
+                generate_cards.openai.OpenAI = original_openai
 
             expected_stem = build_card_stem(
                 "exerts himself",
@@ -147,6 +150,8 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
 
             calls = []
             original_call_model = generate_cards._call_model
+            original_openai = generate_cards.openai.OpenAI
+            generate_cards.openai.OpenAI = lambda api_key: object()
 
             def fake_call_model(*args, **kwargs):
                 calls.append(args)
@@ -157,6 +162,7 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
                 saved = generate_cards.run([entry], _config(root))
             finally:
                 generate_cards._call_model = original_call_model
+                generate_cards.openai.OpenAI = original_openai
 
             self.assertEqual(len(calls), 2)
             self.assertEqual(saved, [])

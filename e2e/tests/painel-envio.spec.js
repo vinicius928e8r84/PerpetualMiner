@@ -134,7 +134,7 @@ test('o cartão mostra a etapa com nome de gente, a barra, “atualizado há 1 m
 test('um Envio na fila sem hora da Conexão ainda mostra a hora ISO em Detalhes', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: INGLESAS });
   await abrirPainel(page, extensao);
-  fakes.anki.responder('POST', '/jobs/list', () => ({
+  fakes.anki.responder('GET', '/jobs', () => ({
     json: { jobs: fakes.anki.envios.map(e => ({ jobId: e.jobId, lang: e.lang, status: 'queued', state: { status: 'queued', stage: 'queued' } })) },
   }));
   await marcarEEnviar(page, [SACK.texto]);
@@ -152,10 +152,10 @@ test('sem notícia da Conexão durante o envio, o modal diz que está tentando d
   await marcarEEnviar(page, [SACK.texto]);
   const [job] = await enviosCriados(fakes, 1);
 
-  fakes.anki.responder('POST', '/jobs/list', async () => ({ status: 503, json: {} }));
+  fakes.anki.responder('GET', '/jobs', async () => ({ status: 503, json: {} }));
   await expect(progresso(page)).toContainText('Sem resposta da conexão com o Anki. Tentando de novo…', { timeout: 10_000 });
 
-  fakes.anki.pararDeResponder('POST', '/jobs/list');
+  fakes.anki.pararDeResponder('GET', '/jobs');
   fakes.anki.moverEnvio(job.jobId, { stage: 'send_to_anki' });
   await expect(envio(page, 'Envio em inglês · 1 frase')).toContainText('Enviando ao Anki', { timeout: 10_000 });
   await expect(progresso(page).getByText('Sem resposta da conexão com o Anki. Tentando de novo…')).toBeHidden();
@@ -174,7 +174,7 @@ test('um Envio que fica em parte enquanto o outro anda mostra Continuar envio, q
   await expect(cartaoIngles).toContainText('Concluído em parte', { timeout: 10_000 });
   await cartaoIngles.getByRole('button', { name: 'Continuar envio' }).click();
 
-  await expect.poll(() => fakes.anki.requisicoes.some(r => r.metodo === 'POST' && r.caminho === '/jobs/retry' && r.dados?.jobId === ingles.jobId)).toBe(true);
+  await expect.poll(() => fakes.anki.requisicoes.some(r => r.metodo === 'POST' && r.caminho === `/jobs/${ingles.jobId}/retry`)).toBe(true);
   await expect(cartaoIngles).toContainText('Na fila');
   await expect(cartaoIngles.getByRole('button', { name: 'Continuar envio' })).toHaveCount(0);
   await expect(toasts(page)).toHaveText('Envio retomado');
@@ -196,9 +196,9 @@ test('um Envio parado porque o Windows não deixou fechar o Anki diz o que fazer
   await expect(cartaoIngles.getByRole('alert')).toHaveCount(0);
   await expect(cartaoIngles.getByRole('button', { name: 'Continuar envio' })).toHaveCount(1);
   // A próxima leitura da Conexão demora: o aviso sai na hora do Continuar envio, não nela.
-  fakes.anki.responder('POST', '/jobs/list', () => new Promise(() => {}));
+  fakes.anki.responder('GET', '/jobs', () => new Promise(() => {}));
   await cartaoIngles.getByRole('button', { name: 'Continuar envio' }).click();
-  await expect.poll(() => fakes.anki.requisicoes.some(r => r.metodo === 'POST' && r.caminho === '/jobs/retry' && r.dados?.jobId === ingles.jobId)).toBe(true);
+  await expect.poll(() => fakes.anki.requisicoes.some(r => r.metodo === 'POST' && r.caminho === `/jobs/${ingles.jobId}/retry`)).toBe(true);
   await expect(cartaoIngles).toContainText('Na fila');
   await expect(cartaoIngles).not.toContainText('O Windows não deixou fechar o Anki');
 });
@@ -415,7 +415,7 @@ test('uma frase que a Conexão dá como enviada e como falha conta como falha, e
 
   // A Conexão responde a frase nas duas listas: a falha vale, ela não é apagada.
   fakes.anki.concluirEnvio(job.jobId);
-  fakes.anki.responder('POST', '/jobs/list', () => ({
+  fakes.anki.responder('GET', '/jobs', () => ({
     json: {
       jobs: fakes.anki.envios.map(e => ({
         jobId: e.jobId,
@@ -555,9 +555,9 @@ test('Tentar de novo no bloco do idioma retoma só aquele Envio, e o resumo segu
   await baralho(page, 'Russo').getByRole('button', { name: 'Tentar de novo' }).click();
 
   await expect(progresso(page)).toBeVisible();
-  await expect.poll(() => fakes.anki.requisicoes.some(r => r.caminho === '/jobs/retry' && r.dados?.jobId === russo.jobId)).toBe(true);
+  await expect.poll(() => fakes.anki.requisicoes.some(r => r.caminho === `/jobs/${russo.jobId}/retry`)).toBe(true);
   // O inglês, que deu certo, não é retomado.
-  expect(fakes.anki.requisicoes.some(r => r.caminho === '/jobs/retry' && r.dados?.jobId === ingles.jobId)).toBe(false);
+  expect(fakes.anki.requisicoes.some(r => r.caminho === `/jobs/${ingles.jobId}/retry`)).toBe(false);
   await expect(envio(page, 'Envio em russo · 1 frase')).toContainText('Na fila');
 
   fakes.anki.concluirEnvio(russo.jobId);
@@ -579,7 +579,7 @@ test('o resumo espera o outro modal aberto fechar', async ({ page, extensao, fak
   await cartao(page, ARM.texto).getByRole('button', { name: 'Editar contexto' }).click();
   const contexto = page.getByRole('dialog', { name: 'Editar contexto' });
   await expect(contexto).toBeVisible();
-  const leituras = () => fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/list').length;
+  const leituras = () => fakes.anki.requisicoes.filter(r => r.metodo === 'GET' && r.caminho === '/jobs').length;
   const antes = leituras();
   fakes.anki.concluirEnvio(job.jobId);
   // O painel já leu o fim do envio, e o resumo continua esperando.
@@ -624,7 +624,7 @@ test('na Boas-vindas o resumo espera: ele abre quando a pessoa vai ao painel', a
 
   await page.goto(extensao.url('painel.html#boas-vindas'));
   await expect(page.locator('.bv-card h2')).toHaveText('Boas-vindas ao PerpetualMiner');
-  const leiturasDosEnvios = () => fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/list').length;
+  const leiturasDosEnvios = () => fakes.anki.requisicoes.filter(r => r.caminho === '/jobs').length;
   const antes = leiturasDosEnvios();
   fakes.anki.concluirEnvio(job.jobId);
   // A volta do acompanhamento que vê o Envio terminado, e a seguinte, sem o
@@ -678,7 +678,7 @@ test('com a Conexão desligada, Enviar ao Anki fica indisponível e o tooltip di
   await page.keyboard.press('Tab');
   await expect(botao).toBeFocused();
   await expect(page.getByRole('tooltip')).toBeVisible();
-  expect(fakes.anki.requisicoes.filter(r => r.caminho.startsWith('/jobs'))).toHaveLength(0);
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs')).toHaveLength(0);
 
   // A Conexão volta: o botão volta junto, sem recarregar.
   fakes.anki.ligar();
@@ -741,74 +741,4 @@ test('com movimento reduzido, as etapas do envio andam sem animação', async ({
   // página o estilo calculado vem vazio (NaN), então se espera o valor, não o elemento.
   await expect.poll(() => preenchimento.evaluate(el => parseFloat(getComputedStyle(el).transitionDuration)))
     .toBeLessThanOrEqual(0.01);
-});
-
-// ─── O Envio é da Conexão (#142): o mesmo pedido de novo é o mesmo Envio ─────
-
-test('a resposta do Envio que se perde: Tentar de novo manda o mesmo pedido e a Conexão devolve o mesmo Envio, sem criar outro', async ({ page, extensao, fakes }) => {
-  await extensao.gravarStorage({ frases: INGLESAS });
-  fakes.anki.perderARespostaDoEnvio();
-  await abrirPainel(page, extensao);
-  await marcarEEnviar(page, [SACK.texto]);
-
-  const cartaoIngles = envio(page, 'Envio em inglês · 1 frase');
-  await expect(cartaoIngles).toContainText('Não começou');
-  // A Conexão já tem o Envio, com o id que o painel deu a ele e guardou antes de pedir.
-  const [naConexao] = await enviosCriados(fakes, 1);
-  const { pm_envio: antes } = await extensao.lerStorage('pm_envio');
-  expect(antes.envios.map(e => ({ jobId: e.jobId, doCorpo: e.corpo.jobId }))).toEqual([{ jobId: null, doCorpo: naConexao.jobId }]);
-  expect(naConexao.jobId).toBe(antes.envios[0].id);
-
-  await cartaoIngles.getByRole('button', { name: 'Tentar de novo' }).click();
-  await expect(cartaoIngles).toContainText('Na fila');
-  const pedidos = fakes.anki.requisicoes.filter(r => r.metodo === 'POST' && r.caminho === '/jobs').map(r => r.dados);
-  expect(pedidos).toHaveLength(2);
-  expect(pedidos[1]).toEqual(pedidos[0]);
-  expect(fakes.anki.envios).toHaveLength(1);
-  await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio.envios.map(e => e.jobId)).toEqual([naConexao.jobId]);
-});
-
-test('o painel que fechou antes da resposta manda o mesmo pedido ao reabrir e acompanha o Envio que a Conexão já tinha feito', async ({ page, extensao, fakes }) => {
-  const id = '0f1e2d3c-4b5a-4968-8776-a5b4c3d2e1f0';
-  const corpo = {
-    jobId: id, lang: 'en', deckName: 'CIMV', imageSource: '1', tts: { wordTld: 'com', phraseTld: 'co.uk' },
-    entries: [{ phraseId: SACK.id, line: 'sack : She hit the sack early. [Contexto: netflix]' }],
-  };
-  await extensao.gravarStorage({
-    frases: INGLESAS,
-    pm_envio: { envios: [{ id, lang: 'en', ids: [SACK.id], baralho: 'CIMV', jobId: null, criadoEm: AGORA.getTime(), falhaAoCriar: null, corpo }] },
-  });
-  // Com o Chrome fechado, a Conexão recebeu o pedido e fez o Cartão.
-  fakes.anki.receberEnvio(corpo);
-  fakes.anki.concluirEnvio(id);
-
-  await abrirPainel(page, extensao);
-  await expect(resumo(page)).toBeVisible({ timeout: 10_000 });
-  await expect(baralho(page, 'Inglês')).toContainText('+1 cartão');
-  expect(fakes.anki.requisicoes.filter(r => r.metodo === 'POST' && r.caminho === '/jobs').map(r => r.dados)).toEqual([corpo]);
-  expect(fakes.anki.envios).toHaveLength(1);
-  await resumo(page).getByRole('button', { name: 'Manter' }).click();
-  await expect.poll(async () => (await extensao.frases()).filter(f => f.status === 'exported').map(f => f.id)).toEqual([SACK.id]);
-  await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
-});
-
-test('com o painel fechado, os Cartões continuam na Conexão; ao reabrir, o progresso vem dela', async ({ page, context, extensao, fakes }) => {
-  await extensao.gravarStorage({ frases: INGLESAS });
-  await abrirPainel(page, extensao);
-  await marcarEEnviar(page, [SACK.texto, ARM.texto]);
-  const [ingles] = await enviosCriados(fakes, 1);
-  await page.close();
-
-  // Ninguém pergunta nada à Conexão enquanto o painel está fechado; ela termina o Envio sozinha.
-  const leiturasFechado = fakes.anki.requisicoes.length;
-  fakes.anki.concluirEnvio(ingles.jobId, { falhas: [ARM.id] });
-  expect(fakes.anki.requisicoes).toHaveLength(leiturasFechado);
-
-  const reaberta = await context.newPage();
-  await abrirPainel(reaberta, extensao);
-  await expect(resumo(reaberta)).toHaveAccessibleName('Envio concluído em parte', { timeout: 10_000 });
-  await expect(baralho(reaberta, 'Inglês')).toContainText('+1 cartão');
-  await expect(baralho(reaberta, 'Inglês')).toContainText('1 não entrou');
-  await resumo(reaberta).getByRole('button', { name: 'Manter' }).click();
-  await expect.poll(async () => (await extensao.frases()).filter(f => f.status === 'exported').map(f => f.id)).toEqual([SACK.id]);
 });

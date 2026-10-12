@@ -27,8 +27,6 @@ const { PedidoAoAnki } = contexto.PerpetualMiner;
 // A chave que o exemplo do contrato entrega (o fake compara o corpo inteiro).
 const CHAVE_DE_EXEMPLO = contrato.exemplos.find(e => e.pedido.caminho === '/ia/openai/chave').pedido.corpo.chave;
 const BARALHOS = [{ deckName: 'Inglês', lang: 'en' }, { deckName: 'Alemão', lang: 'ru' }];
-// O corpo de um Envio que o exemplo de criar entrega; o `jobId` dele é o que os outros pedidos do Envio levam.
-const ENVIO_DE_EXEMPLO = contrato.exemplos.find(e => e.daExtensao && e.pedido.caminho === '/jobs').pedido.corpo;
 
 // Um pedido é o mesmo para o contrato quando só o nome do Baralho muda: o resto do corpo (quantos Baralhos, `refresh`, `launch`) conta.
 const formaDoCorpo = corpo => JSON.parse(JSON.stringify(corpo ?? null), function (chave, valor) {
@@ -39,7 +37,7 @@ const exemplosDa = pedido => contrato.exemplos.filter(e => exemploDaExtensao(e)
   && isDeepStrictEqual(formaDoCorpo(e.pedido.corpo), formaDoCorpo(pedido.corpo)));
 
 async function main() {
-  const variantes = PedidoAoAnki.variantes(BARALHOS, CHAVE_DE_EXEMPLO, ENVIO_DE_EXEMPLO);
+  const variantes = PedidoAoAnki.variantes(BARALHOS, CHAVE_DE_EXEMPLO);
   assert.ok(variantes.length >= 7, 'os construtores montam os pedidos de saúde, Baralhos, números (3 leituras) e vocabulário');
 
   for (const { nome, pedido: doContexto } of variantes) {

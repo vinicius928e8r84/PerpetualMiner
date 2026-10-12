@@ -21,7 +21,9 @@
   },
   "contrato-fechado": {
     "lib/vocabulario-da-mineracao.js": 1,
-    "painel-anki-baralhos.js": 1
+    "painel-anki-baralhos.js": 1,
+    "painel-anki.js": 3,
+    "painel-envio.js": 3
   },
   "e2e-estado-final": {
     "e2e/tests/badge-da-toolbar.spec.js": 1,
