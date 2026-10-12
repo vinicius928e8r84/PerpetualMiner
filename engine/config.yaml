@@ -1,0 +1,66 @@
+anki:
+  deck_name: "teste"          # overridden at runtime by the menu
+  note_type: "Básico"         # overridden at runtime by the menu
+  url: "http://localhost:8765"
+  # Default field names — match the user's PT-BR Anki installation.
+  # send_to_anki.py reads these; NEVER hardcodes 'Front'/'Back'.
+  fields:
+    front: "Frente"
+    back: "Verso"
+
+# Per-language presets injected into anki.* by start.py at runtime.
+# Both EN and RU use the same Básico model (PT-BR Anki installation).
+languages:
+  en:
+    note_type: "Básico"
+    fields:
+      front: "Frente"
+      back: "Verso"
+  ru:
+    note_type: "Básico"
+    fields:
+      front: "Frente"
+      back: "Verso"
+
+tts:
+  target_lang: "en"
+  cyrillic_lang: "ru"
+  profiles:
+    en:
+      word:
+        lang: "en"
+        tld: "com"
+      phrase:
+        lang: "en"
+        tld: "co.uk"
+    ru:
+      word:
+        lang: "ru"
+        tld: "ru"
+      phrase:
+        lang: "ru"
+        tld: "ru"
+
+openai:
+  chat_model: "gpt-4o"
+  image_model: "gpt-image-2.5-flare"      # gpt-image-1 is removed on 2026-10-23; see developers.openai.com deprecations
+  image_size: "1024x1024"
+  image_judge_model: "gpt-4.1-mini"
+
+image_judge:
+  enabled: true
+  real_candidate_limit: 8
+  real_total_candidate_limit: 24
+  max_queries: 8
+  real_min_score: 55
+  real_skip_generate_score: 88
+  generated_win_margin: 20
+
+paths:
+  mining_file: "mining.txt"
+  output_dir: "Output"
+  prompts_file: "prompts.txt"
+  log_dir: "log"
+  prompts:
+    en_card: "prompts/en_card.txt"
+    ru_card: "prompts/ru_card.txt"
