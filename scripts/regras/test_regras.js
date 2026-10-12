@@ -465,6 +465,7 @@ acusa('doc-datado', 'CLAUDE.md', 'the whole suite (about 700 tests) runs in CI\n
 acusa('doc-datado', 'docs/instalar-extensao.md', 'São 12 testes de ponta a ponta.\n', 1, 'contagem em português');
 acusa('doc-datado', 'complemento/LEIA-ME.md', 'o servidor tem 3 e2e specs\n', 1, 'um e2e entre o número e a palavra');
 acusa('doc-datado', 'docs/design/README.md', 'Nesta rodada travo a variante; esta PR traz o painel e nessa rodada nada mais.\n', 3, 'esta PR / nesta rodada');
+acusa('doc-datado', 'CLAUDE.md', 'Neste PR o painel muda.\n', 1, 'o masculino: Neste PR');
 acusa('doc-datado', '.agents/skills/popup/SKILL.md', 'This PR adds the popup; in this PR nothing else.\n', 2, 'this PR');
 acusa('doc-datado', 'CLAUDE.md', 'one finding\nholds 236 older tests on its baseline\n', 1, 'a linha do achado é a certa');
 // O jeito certo passa.

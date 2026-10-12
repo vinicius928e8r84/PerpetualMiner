@@ -1,7 +1,7 @@
 'use strict';
 
-// As duas decisões que o workflow Testes toma com código: quando a suíte e2e pode ser pulada
-// e quais testes passaram só na segunda tentativa.
+// As três decisões que os workflows tomam com código: quando a suíte e2e pode ser pulada e quais
+// testes passaram só na segunda tentativa (workflow Testes), e a autoria dos commits (workflow Regras).
 
 const assert = require('assert');
 const { execFileSync, spawnSync } = require('child_process');

@@ -2,7 +2,7 @@
 
 // A autoria que o portão confere em todo PR (.github/workflows/regras.yml): cada commit de
 // base..head tem como autor e committer o e-mail do dono. O committer `GitHub <noreply@github.com>`
-// dos merges feitos pelo site também passa. Uso: node scripts/ci/autoria.js <base> <head>
+// (o que o site põe no que edita ou mescla) passa em qualquer commit. Uso: node scripts/ci/autoria.js <base> <head>
 
 const { execFileSync } = require('child_process');
 

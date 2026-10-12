@@ -43,7 +43,7 @@ jobs:
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
       # A autoria: todo commit do PR (base..ponta da branch) tem como autor e committer o e-mail do
-      # dono; o committer GitHub dos merges feitos pelo site também passa (scripts/ci/autoria.js).
+      # dono; o committer GitHub (noreply@github.com) passa em qualquer commit (scripts/ci/autoria.js).
       - name: Autoria dos commits
         if: github.event_name == 'pull_request'
         run: node scripts/ci/autoria.js "origin/$BASE" "$HEAD"

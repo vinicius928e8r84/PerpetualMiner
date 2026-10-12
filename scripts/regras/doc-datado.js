@@ -5,8 +5,8 @@
 // ("41 specs", "cerca de 700 tests"), que o primeiro teste novo desmente (a SKILL.md da skill de
 // verificação carregou um 41 muito depois de a suíte passar dele). Esta regra acusa as duas coisas
 // nos textos de docs/ (menos docs/superpowers/, as notas datadas de junho), complemento/, CLAUDE.md e
-// .agents/skills/. Não há exceção na linha: o Markdown não tem comentário de código; um texto que
-// precisa ficar entra na linha de base.
+// .agents/skills/. Não há exceção na linha: o verificar.js só lê exceções em comentários de
+// js, mjs, css, html e py, não em Markdown; um texto que precisa ficar entra na linha de base.
 
 const id = 'doc-datado';
 
@@ -21,7 +21,7 @@ const seAplica = arquivo => arquivo.endsWith('.md') && (
   || /^\.agents\/skills\/.+/.test(arquivo)
 );
 
-const DE_ESTA_PR = /\b(?:nesta|desta|nessa|dessa|esta|essa)\s+(?:PR|rodada)\b|\bthis\s+PR\b/gi;
+const DE_ESTA_PR = /\b(?:nest[ae]|dest[ae]|ness[ae]|dess[ae]|est[ae]|ess[ae])\s+(?:PR|rodada)\b|\bthis\s+PR\b/gi;
 // Um número, no máximo uma palavra (e2e, Playwright, Node) e então "testes", "tests" ou "specs".
 const CONTAGEM_DE_TESTES = /(?<![=\w.,])\d[\d.,]*\+?\s+(?:[\w-]+\s+)?(?:tests?|testes|specs?)\b/gi;
 
