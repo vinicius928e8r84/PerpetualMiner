@@ -33,7 +33,7 @@ Ready = Doctor prints `doctor: worth driving`. Teardown = Cleanup below (nothing
 
 Every command in this file is meant to run from the repository root, and each snippet that changes directory does it in a subshell, so the next step starts from the root again.
 
-Runs are isolated: every `drive.sh` run gets its own `TMPDIR` (so its Chromium profiles and the fake Google login's certificate never mix with another run's) and its own evidence directory. Two runs side by side are fine with distinct run IDs; the host's heavy-run limit applies (at most 3 heavy runs per host). Heavy runs: set `PM_HEAVY_RUN` to the host's limiter, e.g. `PM_HEAVY_RUN="flock /tmp/pm-heavy.lock nice -n 10"` (word-split on purpose); `drive.sh` falls back to `/tmp/fm-heavy-run.sh` when that exists and `PM_HEAVY_RUN` is empty.
+Runs are isolated: every `drive.sh` run gets its own `TMPDIR` (so its Chromium profiles and the fake Google login's certificate never mix with another run's) and its own evidence directory. Two runs side by side are fine with distinct run IDs; the host's heavy-run limit applies (at most 3 heavy runs per host). Heavy runs: set `PM_HEAVY_RUN` to the host's limiter, e.g. `PM_HEAVY_RUN="flock /tmp/pm-heavy.lock nice -n 10"` (word-split on purpose); `drive.sh` falls back to `/tmp/fm-heavy-run.sh` when that is executable and `PM_HEAVY_RUN` is empty.
 
 ## Doctor
 
@@ -74,7 +74,7 @@ Which spec and which `-g` prove which feature is in `features/<feature>.md`; the
 The ordinary specs talk to `fakes.anki`, a JavaScript copy of the Conexão. For a change to the key, the account or any route that carries state, also drive the real Python owner and its HTTP, outside Anki. `scripts/conexao-real.py` starts `complemento.servidor.Conexao` on a free port with the repo's fake OpenAI and Firestore, and writes `{porta, pasta}` to the file you name. It proves the real Python owner and HTTP, not Anki, OpenAI or Firestore.
 
 ```bash
-PRONTO=/tmp/conexao-<run-id>.json    # outside the run directory: drive.sh refuses a run ID that already holds files
+PRONTO=/tmp/conexao-<run-id>.json    # outside the run directory: drive.sh refuses a run whose evidence/ holds files
 python3.9 .agents/skills/verify-perpetualminer/scripts/conexao-real.py "$PWD" "$PRONTO" &   # also python3.13
 until [ -s "$PRONTO" ]; do sleep 0.2; done
 PM_CONEXAO_REAL="$PRONTO" .agents/skills/verify-perpetualminer/scripts/drive.sh <run-id> zz-scratch-<run-id>.spec
@@ -171,7 +171,7 @@ Env knobs: `PM_VERIFY_ROOT` (default `/tmp/pm-verify`; keep it short: Chromium's
 
 ## Keeping the feature map honest
 
-`features/` is the maintained record of what can be verified and how. **Any PR that changes a user-facing feature or command updates its file in `features/` (add the sub-feature ID, the driving step, the proof), or says "feature map unchanged" in the PR body.** User-facing means anything a person sees or presses: panel areas and addresses, popup, overlay, shortcuts, onboarding steps, Anki send/connection screens, photo mining, bridge routes the panel calls. CI enforces it: the `Regras` workflow runs `scripts/mapa-de-features.sh` on every PR and fails when `manifest.json`, any `*.html` in the repo root, `popup.js`, `painel*.js`, `bookreader.js`, `overlay.js`, `content.js`, `background.js`, `bridge/server.py`, `complemento/servidor.py` or `lib/voz/catalogo.js` changed and neither `features/` was touched nor the PR body says "feature map unchanged" (editing the body re-runs the check). A change that is not in that file list (another `lib/` module, a `popup.css` rule) is still covered by the rule above, by review. For a periodic audit use `/maintain-verification-skill`.
+`features/` is the maintained record of what can be verified and how. **Any PR that changes a user-facing feature or command updates its file in `features/` (add the sub-feature ID, the driving step, the proof), or says "feature map unchanged" in the PR body.** User-facing means anything a person sees or presses: panel areas and addresses, popup, overlay, shortcuts, onboarding steps, Anki send/connection screens, photo mining, bridge or Conexão routes the panel calls. CI enforces it: the `Regras` workflow runs `scripts/mapa-de-features.sh` on every PR and fails when `manifest.json`, any `*.html` in the repo root, `popup.js`, `painel*.js`, `bookreader.js`, `overlay.js`, `content.js`, `background.js`, `bridge/server.py`, `complemento/servidor.py` or `lib/voz/catalogo.js` changed and neither `features/` was touched nor the PR body says "feature map unchanged" (editing the body re-runs the check). A change that is not in that file list (another `lib/` module, a `popup.css` rule) is still covered by the rule above, by review. For a periodic audit use `/maintain-verification-skill`.
 
 ## Platforms
 
@@ -183,7 +183,7 @@ Env knobs: `PM_VERIFY_ROOT` (default `/tmp/pm-verify`; keep it short: Chromium's
 | Login item (`anki-no-login`) | none: `/abrir-com-o-computador` answers 501 `login_item_unsupported` | LaunchAgent | Startup-folder shortcut |
 | Key file mode | 0600 | 0600 | inherits the folder ACL (no 0600; see `docs/seguranca/chave-da-openai.md`) |
 
-A proof says which column it ran in. Only the Linux column is proven by this skill: the 501 above was read from the real Conexão with `conexao-real.py` (Python 3.9 and 3.13). The Mac and Windows columns are facts cited from `complemento/LEIA-ME.md` and the owner's Windows run of PR 205, not something a drive here proves. Owner steps for Mac/Windows: `complemento/LEIA-ME.md`.
+A proof says which column it ran in. The Linux cells come from `item_de_login.deste_computador` and the opener's `deste_computador` returning None outside Mac and Windows (`test_item_de_login.py`); `conexao-real.py` is created without a login item, so it answers 501 on any system and does not prove the Linux decision. The Mac and Windows columns are facts cited from `complemento/LEIA-ME.md` and the owner's Windows run of PR 205, not something this skill proves. Owner steps for Mac/Windows: `complemento/LEIA-ME.md`.
 
 ## The 8 variants of the Conexão
 
@@ -217,4 +217,4 @@ There is no helper yet that runs one test over the variants; until it lands, nam
 - `drive.sh` does not stop a Playwright job that moved itself out of its process group (`setsid`); Cleanup still reaches it as a descendant while a parent is alive.
 - The `--update-snapshots` rule is stated in the Drive section and in `features/README.md`; `CODING_STANDARDS.md` rule 10 owns it.
 - Known gaps from the last review, none a safety hole in normal use: a recorded process group whose leader died is accepted without a second proof, so a stale `drive.pid` plus real pid reuse could signal an unrelated group; the group id is read from the job with a 5 s wait that is not an error when it expires; `drive.sh` waits for the whole pipeline, so a child holding the job's stdout delays the post-job stop until it exits; the `setsid`-ed Chromium that Playwright launches (`detached`) is outside the group and found only as a descendant while its parent lives (a `--user-data-dir=<run>/tmp/` match would close that, not done); two `drive.sh` with the same run ID started together can both pass the single-use check; `drive.sh` exits 1 for leftover processes only when the job itself had passed; `test_helpers.sh` cases 8 and 11 use their own copy of the scripts, so `PM_SCRIPTS_DIR` does not apply to them; the feature-map step accepts the phrase "feature map unchanged" anywhere in the body and does not see a `git mv` of `bridge/server.py` (rename detection).
-- The upkeep ratchet is path-based: it cannot tell a user-visible change in a file outside its list (a `lib/` module, the Voice catalog, `popup.css`) from a refactor, and a PR that only declares "feature map unchanged" is trusted. It lives in the `Regras` workflow as a step, not as a rule in `scripts/regras/` (those scan file contents against a baseline; this one reads the PR's diff and body).
+- The upkeep ratchet is path-based: it cannot tell a user-visible change in a file outside its list (a `lib/` module, `popup.css`) from a refactor, and a PR that only declares "feature map unchanged" is trusted. It lives in the `Regras` workflow as a step, not as a rule in `scripts/regras/` (those scan file contents against a baseline; this one reads the PR's diff and body).

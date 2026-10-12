@@ -1,6 +1,6 @@
 # Anki connection and send
 
-The panel talks to the local Anki Connection (the bridge today; the add-on in `complemento/` answers `/health`, the collection reads, the OpenAI key, the login item and the opener's registration; the bridge still does the Envio) on `127.0.0.1:8766`. The **Conexão com o Anki** area (`painel.html#anki/custos|baralhos|vocabulario|ajustes`) shows whether it is on, the costs of each send, decks and vocabulary, and the send settings. **Enviar ao Anki** in the Frases bar sends the selected phrases (one Envio per language) with a progress modal and a summary when it ends.
+The panel talks to the local Anki Connection (the bridge today; the add-on in `complemento/` answers `/health`, the collection reads, the OpenAI key and the login item, and registers the opener when it loads; the bridge still does the Envio) on `127.0.0.1:8766`. The **Conexão com o Anki** area (`painel.html#anki/custos|baralhos|vocabulario|ajustes`) shows whether it is on, the costs of each send, decks and vocabulary, and the send settings. **Enviar ao Anki** in the Frases bar sends the selected phrases (one Envio per language) with a progress modal and a summary when it ends.
 
 ## Sub-features
 
