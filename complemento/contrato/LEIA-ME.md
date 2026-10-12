@@ -61,7 +61,12 @@ O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede 
   ganham `corpo`, o JSON do pedido (no fake, o exemplo que cita `corpo` só vale para esse corpo), ou `corpoBruto` (os bytes como vierem, para o que não é JSON: o `400` `invalid_json`; a extensão nunca o manda, então esse exemplo não é `daExtensao`).
 - `resposta`: o status e o JSON. `"<agora>"` no JSON é o instante em que a Conexão respondeu: o complemento confere
   qualquer instante ISO 8601 em UTC, e o fake escreve o do relógio dele.
-- `repetivel` e `porque`: todo exemplo `POST` com resposta `200` é pedido **duas vezes**, e a segunda resposta tem que ser igual à primeira
+- `fila`: o nome de uma fila de `filas` (no alto do arquivo, ao lado de `colecoes`): os Envios que a Conexão já tinha, cada um
+  com o pedido (`job`), o estado (`state`, com o de cada Cartão em `cards`) e os registros de custo (`custos`). O teste do
+  complemento a escreve nos arquivos da pasta de dados (`semear_a_fila` em `test_servidor.py`) e o fake a carrega por
+  `fakes.anki.definirFila(nome)`; sem `fila`, a Conexão não tem nenhum Envio. Nos exemplos, a thread de trabalho do Envio está
+  parada: a fila fica como o exemplo a deixou.
+- `repetivel` e `porque`: todo exemplo `POST` com resposta 2xx (o `200`, e o `201` do Envio criado) é pedido **duas vezes**, e a segunda resposta tem que ser igual à primeira
   (salvo `"<agora>"`) sem mudar nada do que a Conexão guardou (os arquivos de `user_files`, menos o log, e a nuvem). O servidor real
   (`test_servidor.py`) e o fake do e2e (`test_fake_anki.js`, que repete os exemplos `daExtensao`) seguem a mesma regra. Repetir de
   propósito muda algo? (O pedido leva uma versão que a primeira vez sobe, ou a segunda já não tem o que fazer.) Declare no exemplo
@@ -151,6 +156,23 @@ o complemento só existe com o Anki aberto. A Conexão de hoje (`bridge/`) atend
    (um `contexto` novo, uma fila) pedem código no fake.
 4. Uma rota que já existe na Conexão de hoje (`bridge/server.py`) entra com o formato que a
    extensão já lê; a regra é a de “o mesmo contrato HTTP”, e o exemplo é a prova.
+
+## As rotas do Envio (#142)
+
+Todas POST, com a origem da extensão (levam as Frases e os custos da pessoa); o desenho é `docs/design/envio-no-complemento.md`.
+A Conexão de hoje (`bridge/`) atende as mesmas rotas e o mesmo criar idempotente.
+
+| Rota | Corpo | Resposta |
+|---|---|---|
+| `POST /jobs` | `{ jobId, lang, deckName, imageSource, tts, entries: [{ phraseId, line }] }` (até 4 MB; `jobId` é o `id` do Envio no painel, um UUID) | `201 { jobId, status }`. O mesmo corpo de novo é o mesmo Envio (`201`, nada gravado); outro corpo com o mesmo `jobId`, `409 job_conflict`. `400`: `invalid_job_id`, `invalid_lang`, `invalid_request` (sem Baralho), `entries_required` |
+| `POST /jobs/list` | `{}` | `{ jobs: [{ jobId, lang, status, createdAt, updatedAt, state }] }`; `state` tem o estado de cada Cartão em `cards` (`pending` · `text` · `added` · `duplicate` · `failed`, com o `error`) |
+| `POST /jobs/get` | `{ jobId }` | `{ job, state }`; `404 job_not_found` |
+| `POST /jobs/retry` | `{ jobId }` | `{ jobId, status }`: um Envio terminado volta à fila guardando os Cartões prontos; na fila ou andando, só diz o estado (nada gravado). `404 job_not_found` |
+| `POST /jobs/debug-bundle` | `{ jobId }` | o pedido, o estado, os custos, os arquivos do Envio e as linhas do log que o citam; nunca a chave. `404 job_not_found` |
+| `POST /analytics/jobs` | `{ lang: 'all', from?, to? }` | `{ jobs: [linha por Envio] }`, as linhas de `bridge/analytics.py` (`custos.py`) |
+
+`lastError` e o `error` de cada Cartão são códigos (`openai_key_missing`, `openai_key_rejected`, `openai_no_credit`,
+`openai_rate_limited`, `openai_unreachable`, `note_type_missing`, `anki_write_failed`…), nunca o texto da OpenAI.
 
 ## O abridor (Native Messaging)
 
