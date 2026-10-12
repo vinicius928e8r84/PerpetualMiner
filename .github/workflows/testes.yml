@@ -18,7 +18,7 @@ name: Testes
 # numa PR que mexe só em documentação as fatias e2e terminam sem rodar nada (os passos são
 # pulados, não os jobs, para o nome e o resultado de cada fatia continuarem aparecendo). O push
 # na main faz o mesmo: roda os jobs rápidos e as fatias e2e terminam sem rodar (a PR já passou
-# por elas, e a branch está protegida para só entrar atualizada).
+# por elas; isso basta quando a main estiver protegida para só entrar atualizada, AMB-02 b).
 on:
   pull_request:
   push:
@@ -28,7 +28,7 @@ permissions:
   contents: read
 
 # Só a PR cancela a execução anterior (ela é substituída pela do próximo commit). Cada push
-# na main tem a sua, para nenhum commit dela ficar sem conferência.
+# na main tem a sua, para nenhum commit dela ficar sem os testes rápidos e os do complemento.
 concurrency:
   group: testes-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -108,7 +108,7 @@ jobs:
     # processador e os testes sensíveis a tempo (relógios, transições) falham sem motivo.
     timeout-minutes: 45
     env:
-      RODAR: ${{ needs.rapidos.outputs.rodar_e2e }}
+      RODAR: ${{ needs.rapidos.outputs.rodar_e2e != 'false' }}
     strategy:
       fail-fast: false
       matrix:

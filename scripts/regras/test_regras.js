@@ -438,6 +438,7 @@ semOComplementoNoPortao(JOB('', '      - run: |\n          node scripts/testar.m
 // A e2e do #198: o passo só roda quando `env.RODAR` é verdadeiro, e o job o define pela saída do job `mudancas` (a PR que só muda documentação a pula).
 const PASSO_RODAR = "      - if: env.RODAR == 'true'\n        run: node scripts/testar.mjs complemento\n";
 semOComplementoNoPortao(JOB("    env:\n      RODAR: ${{ needs.mudancas.outputs.so_documentacao != 'true' }}\n", PASSO_RODAR), 0, 'o passo decidido pela saída de outro job do workflow');
+semOComplementoNoPortao(JOB("    env:\n      RODAR: ${{ needs.rapidos.outputs.rodar_e2e != 'false' }}\n", PASSO_RODAR), 0, 'o passo decidido pela saída do job rapidos (a forma real do testes.yml)');
 semOComplementoNoPortao(JOB('    env:\n      RODAR: false\n', PASSO_RODAR), 1, 'o env fixo em false');
 semOComplementoNoPortao(JOB('    env:\n      RODAR: true\n', PASSO_RODAR), 0, 'o env fixo em true');
 semOComplementoNoPortao(JOB('', PASSO_RODAR), 1, 'um env que o job não define não conta');
