@@ -33,7 +33,7 @@ O que o desenho precisa dizer sobre a falha, sem exceção:
 
 ## 4. As 8 variantes
 
-Toda fatia ALTA da Conexão é provada nas 8 variantes abaixo, ou diz por escrito qual não se aplica e por quê. A mesma lista está na skill [`verify-perpetualminer`](../../.agents/skills/verify-perpetualminer/SKILL.md) (§ As 8 variantes da Conexão), com como cada uma é reproduzida hoje no e2e.
+Toda fatia ALTA da Conexão é provada nas 8 variantes abaixo, ou diz por escrito qual não se aplica e por quê. A mesma lista está na skill [`verify-perpetualminer`](../../.agents/skills/verify-perpetualminer/SKILL.md) (§ The 8 variants of the Conexão), com como cada uma é reproduzida hoje no e2e.
 
 | # | variante | o que muda para o desenho |
 |---|---|---|

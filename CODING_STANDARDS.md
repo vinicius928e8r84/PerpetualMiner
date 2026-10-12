@@ -55,5 +55,3 @@ A review verdict has three levels. Only the first stops the merge.
 - **Blocks:** a finding rated HIGH (ALTA), or a regression against `main` (something that worked on `main` and does not on the branch).
 - **Fix if cheap:** a new MEDIUM (MÉDIA) finding that this diff brings. Fix it in the PR when the fix is small; otherwise it goes to the next level.
 - **Becomes an issue:** everything else (a MEDIUM that was already on `main`, LOW findings, style, a limit the owner has accepted and named). Open an issue and link it; do not hold the PR for it.
-
-The same class of finding in two rounds in a row is not a third fix: it asks for a design page (`docs/design/modelo-fatia-alta.md`) and a decision from the owner.
