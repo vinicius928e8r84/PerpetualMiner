@@ -22,7 +22,6 @@ const FRASES = [
   { id: 2, texto: 'Мне всё равно.', data: HOJE, streaming: 'youtube', idioma: 'Russo', contexto: { fonte: 'youtube', titulo: 'Russian with Max', detalhe: '' } },
 ];
 
-const naJanela = page => ({ mask: [page.locator('.conteudo-de-hoje')] });
 const progresso = page => page.getByRole('dialog', { name: 'Enviando ao Anki…' });
 const resumo = page => page.getByRole('dialog', { name: /^Envio concluído/ });
 
@@ -59,7 +58,7 @@ test('o progresso: um Envio andando, o outro que não começou (ENV-03)', async 
   await expect(progresso(page).getByRole('group', { name: 'Envio em inglês · 3 frases' })).toContainText('Gerando áudio', { timeout: 10_000 });
   await expect(progresso(page).getByRole('group', { name: 'Envio em russo · 2 frases' })).toContainText('A conexão com o Anki respondeu com erro.');
 
-  await expect(page).toHaveScreenshot('envio-progresso.png', naJanela(page));
+  await expect(page).toHaveScreenshot('envio-progresso.png');
 });
 
 test('o progresso: um Envio em parte, com Continuar envio', async ({ page, extensao, fakes }) => {
@@ -70,7 +69,7 @@ test('o progresso: um Envio em parte, com Continuar envio', async ({ page, exten
   fakes.anki.concluirEnvio(ingles.jobId, { falhas: [5] });
   await expect(progresso(page).getByRole('button', { name: 'Continuar envio' })).toBeVisible({ timeout: 10_000 });
 
-  await expect(page).toHaveScreenshot('envio-em-parte.png', naJanela(page));
+  await expect(page).toHaveScreenshot('envio-em-parte.png');
 });
 
 test('o resumo concluído em parte (ENV-10), com Tentar de novo as que falharam', async ({ page, extensao, fakes }) => {
@@ -81,7 +80,7 @@ test('o resumo concluído em parte (ENV-10), com Tentar de novo as que falharam'
   fakes.anki.concluirEnvio(russo.jobId, { falhas: [2] });
   await expect(resumo(page)).toHaveAccessibleName('Envio concluído em parte', { timeout: 10_000 });
 
-  await expect(page).toHaveScreenshot('envio-resumo-em-parte.png', naJanela(page));
+  await expect(page).toHaveScreenshot('envio-resumo-em-parte.png');
 });
 
 test('o resumo concluído (ENV-10), aberto em Configurações', async ({ page, extensao, fakes }) => {
@@ -92,7 +91,7 @@ test('o resumo concluído (ENV-10), aberto em Configurações', async ({ page, e
   for (const envio of fakes.anki.envios) fakes.anki.concluirEnvio(envio.jobId);
   await expect(resumo(page)).toHaveAccessibleName('Envio concluído', { timeout: 10_000 });
 
-  await expect(page).toHaveScreenshot('envio-resumo.png', naJanela(page));
+  await expect(page).toHaveScreenshot('envio-resumo.png');
 });
 
 test('Enviar ao Anki indisponível com a Conexão desligada, com o tooltip', async ({ page, extensao, fakes }) => {
@@ -104,5 +103,5 @@ test('Enviar ao Anki indisponível com a Conexão desligada, com o tooltip', asy
   await botao.hover();
   await expect(page.getByRole('tooltip')).toBeVisible();
 
-  await expect(page).toHaveScreenshot('envio-indisponivel.png', naJanela(page));
+  await expect(page).toHaveScreenshot('envio-indisponivel.png');
 });

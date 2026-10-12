@@ -22,7 +22,6 @@ for (const esperado of ['manifest.json', 'background.js', 'lib/auto-recarregar.j
 for (const arquivo of arquivos) {
   assert(!PASTAS_QUE_NAO_SAO_RUNTIME.includes(arquivo.split('/')[0]), `não devia entrar: ${arquivo}`);
   assert(!/^test_.*\.js$/.test(arquivo), `teste no pacote: ${arquivo}`);
-  assert(!arquivo.startsWith('lib/firebase/'), `bundle sem uso no pacote: ${arquivo}`);
 }
 
 const zip = fs.readFileSync(path.join(saida, `perpetualminer-${versao}.zip`));

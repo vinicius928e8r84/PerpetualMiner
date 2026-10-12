@@ -138,8 +138,6 @@
         Object.assign(ESTADO_AUTO_MINER.settings, mensagem.settings || {});
         return { ok: true, state: copiar(ESTADO_AUTO_MINER) };
       }
-      case 'AUTO_KEYWORDS_FOR_PHRASE':
-        return { ok: true, keywords: [] };
       default:
         return { ok: true };
     }

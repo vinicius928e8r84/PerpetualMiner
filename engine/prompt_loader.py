@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-PROMPT_KEYS = ("en_main_card", "en_additional_card", "ru_card")
+PROMPT_KEYS = ("en_card", "ru_card")
 
 
 def load_prompt(config: dict, prompt_key: str) -> str:
