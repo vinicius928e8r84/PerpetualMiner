@@ -809,6 +809,9 @@ body {
   background-color: var(--veio-bg);
   font-size: var(--veio-tam-apoio);
   font-weight: var(--veio-peso-rotulo);
+  /* Altura fixa da linha: com `normal` o select mantém a altura da fonte que valia quando foi
+     desenhado, então a pílula sai com 29 ou 31 px conforme a Manrope já tenha chegado (#221). */
+  line-height: 1.2;
   cursor: pointer;
 }
 
