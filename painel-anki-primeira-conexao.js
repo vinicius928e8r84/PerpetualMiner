@@ -9,8 +9,8 @@
 //
 // Os passos se marcam pelo estado real, e o único que a extensão enxerga antes da
 // Conexão é ela mesma (o AnkiConnect não é lido: sem permissão nova). Por isso
-// os dois primeiros esperam a Conexão e viram ✓ juntos quando ela responde ligada.
-// Logo depois vem o passo 3, Abrir o Anki sozinho (#147): o card fica no lugar das
+// os três primeiros esperam a Conexão e viram ✓ juntos quando ela responde ligada.
+// Logo depois vem o passo 4, Abrir o Anki sozinho (#147): o card fica no lugar das
 // abas até ele se resolver (o abridor achou o Anki, ou a pessoa disse “Agora não”),
 // e só então vem o momento Pronto, que o card segura antes de devolver as abas.
 //
@@ -38,7 +38,7 @@
 
   const estado = {
     pronto: false,          // o momento Pronto está na tela
-    esperandoOAbridor: false, // a Conexão ligou com o card na tela; o passo 3 ainda não se resolveu
+    esperandoOAbridor: false, // a Conexão ligou com o card na tela; o passo 4 ainda não se resolveu
     prontoDesenhado: false, // o Pronto que o último desenho já mostrou (para o foco)
     conferindo: false,      // uma conferência está no ar
     conferiuEm: null,       // quando a última voltou
@@ -74,7 +74,7 @@
 
   // ─── A Conexão ─────────────────────────────────────────────────────────────
 
-  /** O card está no lugar das abas (inclusive no passo 3 logo depois de ligar, e no momento Pronto). */
+  /** O card está no lugar das abas (inclusive no passo 4 logo depois de ligar, e no momento Pronto). */
   function cobreAsAbas({ situacao, respondeu } = estado.visto) {
     return respondeu && (estado.pronto || estado.esperandoOAbridor
       || (!ConexaoAnki.jaConectou() && situacao !== CONEXAO.LIGADA));
@@ -88,7 +88,7 @@
     // Em outra área (ou nas Boas-vindas) ninguém olha o card: as abas só estarão
     // lá quando a pessoa chegar, sem Pronto nem toast.
     if (situacao === CONEXAO.LIGADA && eraPrimeiraVez && !estado.pronto && Shell.areaAtual() === 'anki') {
-      // O passo 3 vem antes do Pronto, a menos que ele já esteja resolvido (um “Agora não” guardado).
+      // O passo 4 vem antes do Pronto, a menos que ele já esteja resolvido (um “Agora não” guardado).
       if (passos.abridorResolvido()) {
         estado.esperandoOAbridor = false;
         chrome.storage.local.set({ [CHAVE_ABRIDOR_PENDENTE]: false });
@@ -98,11 +98,11 @@
         chrome.storage.local.set({ [CHAVE_ABRIDOR_PENDENTE]: true });
       }
     }
-    // Mesmo se a saúde cair no meio do passo 3, a escolha continua pendente.
+    // Mesmo se a saúde cair no meio do passo 4, a escolha continua pendente.
     desenhar();
   }
 
-  /** O passo 3 se resolveu: se o card o esperava, é a hora do Pronto. */
+  /** O passo 4 se resolveu: se o card o esperava, é a hora do Pronto. */
   function aoResolverOAbridor() {
     if (!estado.esperandoOAbridor) return;
     estado.esperandoOAbridor = false;
