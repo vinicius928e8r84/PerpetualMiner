@@ -3,13 +3,14 @@
 # must touch .agents/skills/verify-perpetualminer/features/ or say "feature map unchanged" in its body.
 # Usage: PR_BODY="<body>" mapa-de-features.sh <base-ref>        e.g. origin/main
 # Exit 0 = fine, 1 = a surface changed and neither happened, 2 = usage.
-# Surfaces: manifest.json, popup.html/js, painel*.html/js, bookreader.html/js, overlay.js, content.js, background.js,
-# bridge/server.py (the files whose change a person can see or press).
+# Surfaces: manifest.json, every *.html in the repo root, popup.js, painel*.js, bookreader.js, overlay.js, content.js,
+# background.js, bridge/server.py, complemento/servidor.py (its routes are what the panel calls), lib/voz/catalogo.js
+# (the Voice catalog: the copy a person reads).
 set -u
 [ $# -eq 1 ] || { echo 'usage: PR_BODY=... mapa-de-features.sh <base-ref>' >&2; exit 2; }
 git rev-parse --verify --quiet "$1^{commit}" >/dev/null || { echo "base ref '$1' not found" >&2; exit 2; }
 alterados="$(git diff --name-only "$1"...HEAD)" || exit 2
-superficies="$(printf '%s\n' "$alterados" | grep -E '^(manifest\.json|popup\.(html|js)|painel[^/]*\.(html|js)|bookreader\.(html|js)|overlay\.js|content\.js|background\.js|bridge/server\.py)$')"
+superficies="$(printf '%s\n' "$alterados" | grep -E '^(manifest\.json|[^/]+\.html|popup\.js|painel[^/]*\.js|bookreader\.js|overlay\.js|content\.js|background\.js|bridge/server\.py|complemento/servidor\.py|lib/voz/catalogo\.js)$')"
 [ -n "$superficies" ] || { echo "feature map: no user-facing surface changed"; exit 0; }
 if printf '%s\n' "$alterados" | grep -q '^\.agents/skills/verify-perpetualminer/features/'; then
   echo "feature map: surfaces changed and features/ was updated"; exit 0

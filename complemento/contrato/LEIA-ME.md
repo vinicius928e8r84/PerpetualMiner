@@ -23,6 +23,10 @@ O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede 
   (coleção que quebra, sem coleção, perfil ilegível, corpo inválido) é a matriz `EstadosDeCadaRota`, que não lê os exemplos:
   uma rota nova se declara em `MATRIZ` (corpo mínimo, se lê a coleção, se lê o perfil e as recusas de validação dela; uma
   rota que não lê a coleção, como a chave da IA, responde o mesmo `status` em todos os estados) e sem isso o teste quebra dizendo o que declarar.
+- **Repetir e a base velha**: uma rota que muda o que a Conexão guarda (a chave da IA, o item de login) diz `muda: True` em `MATRIZ`
+  (e `versao: True` se o corpo traz a base). `RepeticaoDeCadaRotaQueMuda` pede o exemplo de sucesso dela de novo (mesma resposta, o arquivo do
+  dono byte a byte igual, também reconfirmando na base atual) e a base velha depois de mudanças mais novas (409, sem mudar nada). Uma rota
+  que muda sem dizer `muda: True` quebra; `muda_de_novo: "motivo"` declara que repetir na base atual muda de propósito.
 
 ## Um exemplo
 
@@ -57,6 +61,12 @@ O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede 
   ganham `corpo`, o JSON do pedido (no fake, o exemplo que cita `corpo` só vale para esse corpo), ou `corpoBruto` (os bytes como vierem, para o que não é JSON: o `400` `invalid_json`; a extensão nunca o manda, então esse exemplo não é `daExtensao`).
 - `resposta`: o status e o JSON. `"<agora>"` no JSON é o instante em que a Conexão respondeu: o complemento confere
   qualquer instante ISO 8601 em UTC, e o fake escreve o do relógio dele.
+- `repetivel` e `porque`: todo exemplo `POST` com resposta `200` é pedido **duas vezes**, e a segunda resposta tem que ser igual à primeira
+  (salvo `"<agora>"`) sem mudar nada do que a Conexão guardou (os arquivos de `user_files`, menos o log, e a nuvem). O servidor real
+  (`test_servidor.py`) e o fake do e2e (`test_fake_anki.js`, que repete os exemplos `daExtensao`) seguem a mesma regra. Repetir de
+  propósito muda algo? (O pedido leva uma versão que a primeira vez sobe, ou a segunda já não tem o que fazer.) Declare no exemplo
+  `"repetivel": false, "porque": "…"`: sem o `porque` o teste falha, e a exceção que, repetida, dá mesmo resposta e mesmo estado também falha
+  (está velha: tire-a). Um `POST` novo que muda a resposta ao repetir é um defeito até prova em contrário.
 
 A saúde (`GET /health`) é lida pela primeira conexão: a extensão mostra “Achei o Anki · perfil · versão” com o `perfil` e a `versao`
 que ela diz (`ConexaoAnki.saude()`, `e2e/tests/painel-anki-primeira-conexao.spec.js`, que lê os valores destes exemplos). Sem perfil (a tela de

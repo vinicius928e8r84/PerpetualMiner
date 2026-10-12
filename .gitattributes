@@ -3,3 +3,5 @@
 # O empacotador tira a linha da "key" do manifest.json por regex: com CRLF o zip da loja sairia diferente do arquivo.
 *.mjs text eol=lf
 manifest.json text eol=lf
+# O hash das fontes do complemento (test_pacote.py) lê os bytes crus: com CRLF o teste mandaria subir a VERSAO sem mudança de código.
+complemento/** text eol=lf
