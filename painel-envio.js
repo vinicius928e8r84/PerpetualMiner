@@ -140,8 +140,8 @@
    */
   async function criarEnvio(envio) {
     envio.falhaAoCriar = null;
-    envio.criadoEm = Date.now();
     if (!envio.corpo) {
+      envio.criadoEm = Date.now();
       // Lidos na hora, não na abertura do painel: outra aba pode ter salvado no meio.
       let preset;
       try {
