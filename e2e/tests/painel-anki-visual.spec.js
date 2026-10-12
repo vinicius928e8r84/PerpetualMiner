@@ -22,8 +22,9 @@ const { test, expect, comOSistema, SISTEMAS } = require('../fixtures');
 // passo do #145). Aprovando: tirar o `fixme` e `npx playwright test painel-anki-visual --update-snapshots -g "passo 3"`.
 //
 // #146: a lista passou a ter 4 passos: Ter o Anki (ONB-18) entrou como 1º, e o passo de baixar o arquivo ganhou a
-// animação do aviso (ONB-19). As telas novas também são `test.fixme`, PROPOSTAS para o dono aprovar. Aprovando: tirar o
-// `fixme` e `npx playwright test painel-anki-visual --update-snapshots -g "Ter o Anki|aviso|menos movimento"`.
+// animação do aviso (ONB-19). As quatro telas do #146 (o card do passo 1, Não tenho no Mac, a animação do aviso e os
+// quadros parados com menos movimento) foram aprovadas pelo dono (#236) e são referência. As outras “nunca conectada”
+// (tema claro, conectando, Pronto, Detalhes, dois minutos, janela estreita) seguem propostas do #145.
 
 const AGORA = new Date('2026-09-18T12:00:00');
 
@@ -102,7 +103,7 @@ test('conectando: a faixa neutra e o esqueleto', async ({ page, extensao, fakes 
 
 // A primeira conexão (ONB-16, desenho B), comparada pelo dono com o protótipo travado
 // (`prototipo-primeira-conexao.html?variant=B`). Substitui `anki-nunca-conectada`.
-test.fixme('nunca conectada: a F1 e o card do passo 1 (Ter o Anki), com a lista, a pergunta e os dois quadros', async ({ page, extensao, fakes }) => {
+test('nunca conectada: a F1 e o card do passo 1 (Ter o Anki), com a lista, a pergunta e os dois quadros', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirAnki(page, extensao, { jaConectou: false });
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
@@ -147,7 +148,7 @@ test.fixme('nunca conectada, na primeira resposta: o momento Pronto, com as abas
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-pronto.png');
 });
 
-test.fixme('nunca conectada: o passo Ter o Anki com a resposta Não tenho, o instalador do Mac', async ({ page, extensao, fakes }) => {
+test('nunca conectada: o passo Ter o Anki com a resposta Não tenho, no Mac', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirAnki(page, extensao, { jaConectou: false });
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
@@ -159,7 +160,7 @@ test.fixme('nunca conectada: o passo Ter o Anki com a resposta Não tenho, o ins
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-nao-tenho.png');
 });
 
-test.fixme('nunca conectada: a animação do aviso do Anki no passo de baixar o arquivo', async ({ page, extensao, fakes }) => {
+test('nunca conectada: a animação do aviso do Anki no passo de baixar o arquivo', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirAnki(page, extensao, { jaConectou: false });
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
@@ -169,7 +170,7 @@ test.fixme('nunca conectada: a animação do aviso do Anki no passo de baixar o 
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-animacao.png', { animations: 'disabled' });
 });
 
-test.fixme('nunca conectada, com menos movimento: os quadros do aviso parados, lado a lado', async ({ page, extensao, fakes }) => {
+test('nunca conectada, com menos movimento: os quadros do aviso parados, lado a lado', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await abrirAnki(page, extensao, { jaConectou: false });
