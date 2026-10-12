@@ -83,9 +83,13 @@ class ColecaoDoAnki:
         return self._na_thread_principal(lambda colecao: _cartoes_do_baralho(colecao, nome))
 
     def _gravando(self, operacao):
-        if self._sincronizando.is_set():
-            raise ColecaoIndisponivel("anki_syncing")
-        return self._na_thread_principal(operacao)
+        """A operação de gravação, na thread principal; a sincronização é conferida lá, na hora em que ela roda."""
+        def sem_sincronizar(colecao):
+            if self._sincronizando.is_set():
+                raise ColecaoIndisponivel("anki_syncing")
+            return operacao(colecao)
+
+        return self._na_thread_principal(sem_sincronizar)
 
     def tipo_de_nota(self, nome):
         return self._gravando(lambda colecao: _campos_do_tipo(colecao.models.by_name(nome)))
@@ -105,7 +109,12 @@ def _campos_do_tipo(modelo):
 
 
 def _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid):
-    """Uma nota nova, na thread principal: o Baralho é criado se falta (`decks.id`), o tipo de nota tem de existir com os campos."""
+    """Uma nota nova, na thread principal: o Baralho é criado se falta (`decks.id`), o tipo de nota tem de existir com os campos.
+
+    Uma nota com o mesmo `guid` já gravada fica como está: é a gravação que o Anki ocupado atrasou (o Envio desistiu de
+    esperar e pediu de novo), e o Anki não impede dois `guid` iguais."""
+    if colecao.db.all("select 1 from notes where guid = ?", guid):
+        return
     modelo = colecao.models.by_name(tipo_de_nota)
     if modelo is None or not set(campos) <= set(_campos_do_tipo(modelo)):
         raise TipoDeNotaAusente(tipo_de_nota)

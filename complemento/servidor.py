@@ -25,6 +25,8 @@ from .item_de_login import AnkiNaoEncontrado
 LIMITE_DO_CORPO = 64 * 1024
 # O Envio leva as Frases escolhidas de uma vez (centenas de linhas de mineração): só ele vai até aqui.
 LIMITE_DO_ENVIO = 4 * 1024 * 1024
+# As rotas cujo corpo pode passar de `LIMITE_DO_CORPO`.
+LIMITES_POR_ROTA = {("POST", "/jobs"): LIMITE_DO_ENVIO}
 
 
 # Uma chave da OpenAI é uma palavra só, de caracteres que cabem num cabeçalho HTTP. O que não tem essa
@@ -212,7 +214,7 @@ def _tentar_envio_de_novo(conexao, corpo):
 
 def _pacote_de_diagnostico(conexao, corpo):
     log = os.path.join(conexao.dados.logs, "complemento.log")
-    return _com_o_envio(corpo, conexao, lambda job_id: (200, envio.pacote_de_diagnostico(conexao.fila, job_id, conexao.versao, log, custos)))
+    return _com_o_envio(corpo, conexao, lambda job_id: (200, envio.pacote_de_diagnostico(conexao.fila, job_id, conexao.versao, log)))
 
 
 def _custos_dos_envios(conexao, corpo):
@@ -336,7 +338,7 @@ class _Atendente(BaseHTTPRequestHandler):
         rota = ROTAS.get((self.command, caminho))
         if rota is None:
             return self._responder(404, {"error": "not_found"}, origem=origem)
-        corpo = self._ler_o_corpo(LIMITE_DO_ENVIO if (self.command, caminho) == ("POST", "/jobs") else LIMITE_DO_CORPO)
+        corpo = self._ler_o_corpo(LIMITES_POR_ROTA.get((self.command, caminho), LIMITE_DO_CORPO))
         if corpo is None:
             return self._responder(400, {"error": "invalid_json"}, origem=origem)
         try:

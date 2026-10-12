@@ -411,6 +411,30 @@ def _build_back(
     return back
 
 
+def card_fields(
+    content: str,
+    lang: str,
+    phrase_audio_name: Optional[str] = None,
+    word_audio_name: Optional[str] = None,
+    image_name: Optional[str] = None,
+) -> Dict[str, object]:
+    """The note a card .txt becomes: `front` and `back` HTML, the `normalized_front` the duplicate search compares and
+    the `tags`. Without audio or image names the card is text only (the Anki add-on's first card, #142)."""
+    content = content.replace("## Anki Card", "").strip()
+    front = _build_front(content, phrase_audio_name, lang=lang)
+    return {
+        "front": front,
+        "back": _build_back(content, word_audio_name, image_name, lang=lang),
+        "normalized_front": _normalize_front_text(front, lang),
+        "tags": _extract_tags_from_card(content),
+    }
+
+
+def normalize_front(text: str, lang: str) -> str:
+    """A Front field as the duplicate search compares it (HTML, sound tags and case gone; Russian ё → е)."""
+    return _normalize_front_text(text, lang)
+
+
 def _ensure_deck(deck_name: str, anki_url: str) -> None:
     import requests
 

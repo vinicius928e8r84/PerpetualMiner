@@ -49,11 +49,11 @@ def _origem_da_imagem(valor):
     return "skipped" if origem == "skipped" else "failed"
 
 
-def registros(fila, job_id):
-    """Os registros de custo de um Envio (linhas que não se leem ficam de fora)."""
+def registros(pasta):
+    """Os registros de custo de um Envio, da pasta dos custos dele (linhas que não se leem ficam de fora)."""
     lidos = []
     try:
-        with open(os.path.join(fila.pasta_dos_custos(job_id), "costs.jsonl"), encoding="utf-8") as arquivo:
+        with open(os.path.join(pasta, "costs.jsonl"), encoding="utf-8") as arquivo:
             for linha in arquivo:
                 try:
                     registro = json.loads(linha)
@@ -127,7 +127,7 @@ def linhas(fila, de, ate, lang):
         criado_em = pedido.get("createdAt") or item.get("createdAt")
         idioma = pedido.get("lang") or item.get("lang") or "unknown"
         status = estado.get("status") or item.get("status") or "unknown"
-        lidos = registros(fila, job_id)
+        lidos = fila.registros_de_custo(job_id)
         do_envio = dia(criado_em)
         if lang != "all" and idioma != lang:
             continue

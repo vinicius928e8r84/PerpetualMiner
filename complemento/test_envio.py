@@ -193,6 +193,16 @@ class AChave(unittest.TestCase):
         self.assertEqual((estado["status"], estado["lastError"], len(pedidos)), ("failed", "openai_key_rejected", 1))
         self.assertEqual(sorted(c["status"] for c in estado["cards"].values()), ["failed", "pending"])
 
+    def test_quando_a_chave_e_recusada_no_meio_os_textos_ja_pagos_vao_ao_anki(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+            conexao.openai.recusar_o_chat_de("run", 401, "invalid_api_key")
+            conexao.criar(pedido(ID, "gave up : She gave up smoking", "run : They run", "late : Better late than never"))
+            estado = conexao.esperar(ID)
+            gravadas = [n["campos"]["Verso"].split(" - ")[0] for n in conexao.conexao.colecao.gravadas]
+        self.assertEqual((estado["status"], estado["lastError"], estado["successfulPhraseIds"]), ("partial", "openai_key_rejected", [1760000000000]))
+        self.assertEqual(gravadas, ["gave up"])
+        self.assertEqual(sorted(c["status"] for c in estado["cards"].values()), ["added", "failed", "pending"])
+
     def test_a_chave_vai_so_no_cabecalho_do_pedido_a_openai_e_em_nenhum_arquivo_log_ou_resposta(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.openai.recusar_o_chat_de("run", 401, "invalid_api_key")
@@ -267,6 +277,27 @@ class ARetomada(unittest.TestCase):
             pedidos = chats(conexao.openai)
         self.assertEqual((de_novo, outro), ((201, {"jobId": ID, "status": "completed"}), (409, {"error": "job_conflict"})))
         self.assertEqual((len(lista), len(pedidos)), (1, 1))
+
+    def test_o_pedido_gravado_sem_entrar_na_fila_entra_quando_o_painel_pede_de_novo(self):
+        # A Conexão parou entre gravar o pedido e pô-lo na fila; o painel manda o mesmo pedido de novo.
+        corpo = pedido(ID, "gave up : She gave up smoking")
+        with tempfile.TemporaryDirectory() as pasta:
+            with EnvioNoTeste(pasta, trabalhando=False) as conexao:
+                conexao.criar(corpo)
+            with open(os.path.join(pasta, "fila", "fila.json"), "w", encoding="utf-8") as arquivo:
+                json.dump({"jobs": []}, arquivo)
+            with EnvioNoTeste(pasta) as conexao:
+                de_novo = conexao.criar(corpo)
+                estado = conexao.esperar(ID)
+        self.assertEqual((de_novo[0], estado["status"]), (201, "completed"))
+
+    def test_uma_frase_sem_um_id_inteiro_e_recusada(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, trabalhando=False) as conexao:
+            for ruim in (True, "12", 1.5, None):
+                corpo = pedido(ID, "gave up : She gave up smoking")
+                corpo["entries"][0]["phraseId"] = ruim
+                self.assertEqual(conexao.criar(corpo), (400, {"error": "entries_required"}), ruim)
+            self.assertEqual(json.loads(conexao.pedir("POST", "/jobs/list", corpo={})[2])["jobs"], [])
 
     def test_dois_envios_rodam_um_depois_do_outro(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:

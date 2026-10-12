@@ -47,12 +47,15 @@ class ThreadPrincipalDeMentira:
         self.thread = threading.Thread(target=self._rodar, name="principal-do-anki", daemon=True)
         self.thread.start()
         self.parada = False
+        self.livre = threading.Event()  # limpo: a thread principal está ocupada e as tarefas esperam a vez
+        self.livre.set()
 
     def _rodar(self):
         while True:
             tarefa = self._tarefas.get()
             if tarefa is None:
                 return
+            self.livre.wait()
             if not self.parada:
                 tarefa()
 
@@ -212,6 +215,35 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, unittest.TestCase):
         colecao.guids_existentes(["guid-1"])
         self.assertEqual(self.anki.col.fora_da_principal, [])
         self.assertEqual(self.anki.col.notas_gravadas(), [["a\x1fb", "guid-1", "perpetual_miner"]])
+
+    def test_a_gravacao_que_o_anki_ocupado_atrasou_nao_dobra_a_nota_quando_o_envio_tenta_de_novo(self):
+        colecao = no_anki.ColecaoDoAnki(self.adaptador(DESCRICAO)._mw, limite_s=0.2)
+        self.anki.taskman.livre.clear()  # o Anki fica ocupado mais que o limite
+        with self.assertRaises(baralhos.ColecaoIndisponivel):
+            colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
+        self.anki.taskman.livre.set()  # a gravação atrasada roda; o Envio tenta de novo
+        colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
+        self.assertEqual([guid for _, guid, _ in self.anki.col.notas_gravadas()], ["guid-1"])
+
+    def test_uma_sincronizacao_que_comeca_com_a_gravacao_na_fila_a_impede(self):
+        colecao = no_anki.ColecaoDoAnki(self.adaptador(DESCRICAO)._mw, limite_s=1)
+        self.anki.taskman.livre.clear()
+        resultado = {}
+        gravacao = threading.Thread(target=lambda: resultado.setdefault("erro", self._erro_de(colecao)))
+        gravacao.start()
+        time.sleep(0.1)
+        colecao.sincronizacao_comecou()
+        self.anki.taskman.livre.set()
+        gravacao.join(5)
+        self.assertEqual((resultado["erro"], self.anki.col.notas_gravadas()), ("anki_syncing", []))
+
+    @staticmethod
+    def _erro_de(colecao):
+        try:
+            colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
+        except baralhos.ColecaoIndisponivel as erro:
+            return str(erro)
+        return None
 
     def test_um_campo_que_o_tipo_de_nota_nao_tem_nao_grava_nada(self):
         colecao = self.adaptador(DESCRICAO)

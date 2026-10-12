@@ -82,6 +82,8 @@ class ColecaoEmMemoria:
 
     def adicionar_nota(self, baralho, tipo_de_nota, campos, etiquetas, guid):
         self._exigir_gravavel()
+        if guid in self._guids:
+            return
         nomes = self._tipos.get(tipo_de_nota)
         if nomes is None or not set(campos) <= set(nomes):
             raise baralhos.TipoDeNotaAusente(tipo_de_nota)
@@ -186,6 +188,13 @@ class ContratoDoAdaptadorDaColecao:
         with self.assertRaises(baralhos.TipoDeNotaAusente):
             colecao.adicionar_nota("Inglês", "Basic", {"Front": "a", "Back": "b"}, [], "guid-1")
         self.assertEqual(colecao.guids_existentes(["guid-1"]), set())
+
+    def test_gravar_de_novo_o_mesmo_guid_nao_dobra_a_nota(self):
+        colecao = self.adaptador(DESCRICAO)
+        for _ in range(2):
+            colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
+        frentes = [dict(cartao["campos"]).get("Frente") for cartao in colecao.cartoes_do_baralho("Inglês")]
+        self.assertEqual(frentes.count("a"), 1)
 
     def test_sem_colecao_aberta_nada_se_grava(self):
         fechada = self.adaptador_fechado()

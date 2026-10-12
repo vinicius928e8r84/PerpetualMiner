@@ -15,7 +15,7 @@ Anki está sincronizando (`anki_syncing`):
 - `tipo_de_nota(nome)`: os nomes dos campos do tipo de nota, ou None se a coleção não o tem;
 - `guids_existentes(guids)`: quais destes `guid` já são de uma nota da coleção;
 - `adicionar_nota(baralho, tipo_de_nota, campos, etiquetas, guid)`: grava uma nota (`campos` é `{nome: valor}`), criando o
-  Baralho se faltar; um tipo de nota que falta, ou sem um dos campos, levanta `TipoDeNotaAusente` sem gravar nada.
+  Baralho se faltar; uma nota com o mesmo `guid` já gravada fica como está (gravar de novo não dobra); um tipo de nota que falta, ou sem um dos campos, levanta `TipoDeNotaAusente` sem gravar nada.
 
 A frente e o verso são os campos “Frente” e “Verso” (ou “Front” e “Back”, do Anki em inglês) e, sem eles,
 o primeiro e o segundo campo, como a Conexão de hoje faz.
