@@ -87,6 +87,18 @@ class ArquivoDoComplemento(unittest.TestCase):
             self.assertEqual(resultado.returncode, 0, resultado.stderr)
             self.assertTrue(zipfile.is_zipfile(arquivo))
 
+    def test_dois_empacotamentos_do_mesmo_codigo_dao_os_mesmos_bytes(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            primeiro = empacotar.empacotar(os.path.join(pasta, "a.ankiaddon"), mod=1700000000)
+            os.utime(os.path.join(AQUI, "manifest.json"))
+            segundo = empacotar.empacotar(os.path.join(pasta, "b.ankiaddon"), mod=1700000000)
+            with open(primeiro, "rb") as a, open(segundo, "rb") as b:
+                self.assertEqual(a.read(), b.read())
+            with zipfile.ZipFile(primeiro) as pacote:
+                for entrada in pacote.infolist():
+                    self.assertEqual(entrada.date_time, empacotar.DATA_FIXA, entrada.filename)
+                    self.assertEqual(entrada.external_attr, empacotar.PERMISSOES_FIXAS, entrada.filename)
+
     def test_o_codigo_instalado_carrega_pelo_nome_da_pasta_que_o_anki_der_a_ele(self):
         with tempfile.TemporaryDirectory() as pasta:
             pacote = self.empacotado(pasta)
