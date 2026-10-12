@@ -166,6 +166,7 @@ class ConexaoNoTeste:
             item_de_login=self.item,
             openai_base=self.openai.base,
             firestore_base=self.firestore.base,
+            intervalo_de_parada=0.005,
         )
 
     def _ler_o_perfil(self):
