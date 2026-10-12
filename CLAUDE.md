@@ -156,10 +156,6 @@ The shell's fixed copy comes from the catalog through `data-voz`, `data-voz-aria
 and start and end together; the content scrolls inside its island (entering an area scrolls it back to the top). Below 1000 px the sidebar becomes a 76 px rail: labels leave
 the screen but stay as the links' names (visually hidden, not `display: none`) and become tooltips.
 
-Until an area is rebuilt, today's content lives inside the shell in `.conteudo-de-hoje` blocks marked
-`data-tema="claro"`: its CSS was drawn for a light background. Frases has none left: #30 and #31 rebuilt its bulk
-actions. In the Anki area Custos (#33), Baralhos e termos and Vocabulário (#34), and Ajustes de envio (#35) are rebuilt.
-
 Configurações is the “summary first” variant C (`docs/design/painel/configuracoes/`): each of the five cards (Conta & sync ·
 Atalhos · Chave do Gemini · Aparência · Zona de perigo) is one closed row — icon tile, title, a summary of its state, chevron — and
 opens in place; several can be open at once. The whole row toggles, and the title's `<button aria-expanded>` inside the
