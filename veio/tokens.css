@@ -161,7 +161,7 @@
   /* A borda ouro que pisca no card aberto por endereço (#configuracoes/<seção>). */
   --veio-destaque: 1.4s;
   /* A volta inteira da animação de dois quadros do passo da Conexão (ONB-19). */
-  --veio-ciclo: 4s;
+  --veio-ciclo-dos-quadros: 4s;
 }
 
 /* ── Tema claro (escolhido em Configurações › Aparência) ──────────────── */

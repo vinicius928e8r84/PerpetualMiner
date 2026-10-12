@@ -145,7 +145,8 @@ rótulos da navegação do Painel; `peso-num` fica só para números),
 `--veio-raio-losango` (o canto do losango ouro que abre o título de seção do
 popup), `--veio-tam-contador` (o número grande do azulejo da mineração
 automática, “7/20”), `--veio-brilho-da-linha` e `--veio-raio-linha` (o brilho ouro e a ponta da
-linha que o overlay desenha sob o texto capturado).
+linha que o overlay desenha sob o texto capturado), `--veio-ciclo-dos-quadros` (os 4 s da volta
+inteira da animação de dois quadros do aviso do Anki, ONB-19).
 
 ### O overlay redefine as fontes
 

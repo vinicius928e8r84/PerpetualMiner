@@ -55,7 +55,7 @@ async function main() {
     const { Abridor, enviadas } = carregarOAbridor({ responder: m => exemploDoAbridor(m.acao, 'no_lugar') });
     assert.deepStrictEqual(await comoValores(Abridor.conferirOAnki()), { resultado: Abridor.RESULTADO.ACHOU, detalhe: '' },
       'o conferir com o Anki no lugar achou');
-    assert.deepStrictEqual(await comoValores(Abridor.abrirOAnkiDeVerdade()), { resultado: Abridor.RESULTADO.ACHOU, detalhe: '' },
+    assert.deepStrictEqual(await comoValores(Abridor.abrirOAnki()), { resultado: Abridor.RESULTADO.ABRIU, detalhe: '' },
       'o abrir com o Anki no lugar abriu');
     assert.deepStrictEqual(enviadas.map(e => e.mensagem), [{ acao: 'conferir' }, { acao: 'abrir' }],
       'a extensão manda as mensagens dos construtores, nada mais');
@@ -66,15 +66,17 @@ async function main() {
     const { Abridor } = carregarOAbridor({ responder: m => exemploDoAbridor(m.acao, 'sumiu') });
     assert.deepStrictEqual(await comoValores(Abridor.conferirOAnki()), { resultado: Abridor.RESULTADO.NAO_ACHOU, detalhe: '' },
       'o conferir sem o Anki no lugar não achou');
-    assert.deepStrictEqual(await comoValores(Abridor.abrirOAnkiDeVerdade()), { resultado: Abridor.RESULTADO.NAO_ACHOU, detalhe: '' },
+    assert.deepStrictEqual(await comoValores(Abridor.abrirOAnki()), { resultado: Abridor.RESULTADO.NAO_ABRIU, detalhe: '' },
       'o abrir sem o Anki no lugar não abriu');
   }
 
   // O Anki no lugar que não abriu (o `open` falhou): o caminho manual, sem Detalhes de abridor quebrado.
   {
-    const { Abridor } = carregarOAbridor({ responder: () => ({ achou: true, abriu: false }) });
-    assert.deepStrictEqual(await comoValores(Abridor.abrirOAnkiDeVerdade()), { resultado: Abridor.RESULTADO.NAO_ACHOU, detalhe: '' },
-      'achou o Anki e não abriu: NAO_ACHOU');
+    const { Abridor } = carregarOAbridor({ responder: m => exemploDoAbridor(m.acao, 'nao_abre') });
+    assert.deepStrictEqual(await comoValores(Abridor.conferirOAnki()), { resultado: Abridor.RESULTADO.ACHOU, detalhe: '' },
+      'o conferir com o Anki no lugar achou, mesmo que o sistema não consiga abri-lo');
+    assert.deepStrictEqual(await comoValores(Abridor.abrirOAnki()), { resultado: Abridor.RESULTADO.NAO_ABRIU, detalhe: '' },
+      'achou o Anki e não abriu: NAO_ABRIU');
   }
 
   // ─── Sem a permissão, nem uma mensagem sai ─────────────────────────────────
@@ -82,7 +84,7 @@ async function main() {
     const { Abridor, enviadas } = carregarOAbridor({ permissao: false, responder: () => ({ achou: true }) });
     assert.deepStrictEqual(await comoValores(Abridor.conferirOAnki()), { resultado: Abridor.RESULTADO.SEM_PERMISSAO, detalhe: '' },
       'sem a permissão, o conferir diz SEM_PERMISSAO');
-    assert.deepStrictEqual(await comoValores(Abridor.abrirOAnkiDeVerdade()), { resultado: Abridor.RESULTADO.SEM_PERMISSAO, detalhe: '' },
+    assert.deepStrictEqual(await comoValores(Abridor.abrirOAnki()), { resultado: Abridor.RESULTADO.SEM_PERMISSAO, detalhe: '' },
       'sem a permissão, o abrir diz SEM_PERMISSAO');
     assert.deepStrictEqual(enviadas, [], 'e nada chega ao abridor');
   }
@@ -93,7 +95,7 @@ async function main() {
     const { Abridor } = carregarOAbridor({ responder: () => { throw new Error(recado); } });
     assert.deepStrictEqual(await comoValores(Abridor.conferirOAnki()), { resultado: Abridor.RESULTADO.SEM_ABRIDOR, detalhe: recado },
       'o conferir sem o host diz SEM_ABRIDOR com o recado do Chrome');
-    assert.deepStrictEqual(await comoValores(Abridor.abrirOAnkiDeVerdade()), { resultado: Abridor.RESULTADO.SEM_ABRIDOR, detalhe: recado },
+    assert.deepStrictEqual(await comoValores(Abridor.abrirOAnki()), { resultado: Abridor.RESULTADO.SEM_ABRIDOR, detalhe: recado },
       'o abrir sem o host diz SEM_ABRIDOR com o recado do Chrome');
   }
 
@@ -107,7 +109,7 @@ async function main() {
     const comoDisse = JSON.stringify(esquisita ?? null);
     assert.deepStrictEqual(await comoValores(Abridor.conferirOAnki()), { resultado: Abridor.RESULTADO.SEM_ABRIDOR, detalhe: comoDisse },
       `o conferir com a resposta ${comoDisse} diz SEM_ABRIDOR, com o que o abridor disse`);
-    assert.deepStrictEqual(await comoValores(Abridor.abrirOAnkiDeVerdade()), { resultado: Abridor.RESULTADO.SEM_ABRIDOR, detalhe: comoDisse },
+    assert.deepStrictEqual(await comoValores(Abridor.abrirOAnki()), { resultado: Abridor.RESULTADO.SEM_ABRIDOR, detalhe: comoDisse },
       `o abrir com a resposta ${comoDisse} diz SEM_ABRIDOR, com o que o abridor disse`);
   }
 

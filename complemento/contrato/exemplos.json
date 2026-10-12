@@ -2972,6 +2972,33 @@
         }
       },
       {
+        "nome": "conferir com o Anki no lugar, num computador que não consegue abri-lo",
+        "daExtensao": true,
+        "contexto": {
+          "anki": "nao_abre"
+        },
+        "mensagem": {
+          "acao": "conferir"
+        },
+        "resposta": {
+          "achou": true
+        }
+      },
+      {
+        "nome": "abrir com o Anki no lugar e o sistema sem conseguir abri-lo",
+        "daExtensao": true,
+        "contexto": {
+          "anki": "nao_abre"
+        },
+        "mensagem": {
+          "acao": "abrir"
+        },
+        "resposta": {
+          "achou": true,
+          "abriu": false
+        }
+      },
+      {
         "nome": "espaço dentro da ação não vira abrir",
         "daExtensao": false,
         "contexto": { "anki": "no_lugar" },

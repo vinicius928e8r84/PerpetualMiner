@@ -9,7 +9,7 @@
 //
 // Os passos se marcam pelo estado real, e o único que a extensão enxerga antes da
 // Conexão é ela mesma (o AnkiConnect não é lido: sem permissão nova). Por isso
-// os dois primeiros esperam a Conexão e viram ✓ juntos quando ela responde ligada.
+// os três primeiros esperam a Conexão e viram ✓ juntos quando ela responde ligada.
 // Logo depois vem o passo 4, Abrir o Anki sozinho (#147): o card fica no lugar das
 // abas até ele se resolver (o abridor achou o Anki, ou a pessoa disse “Agora não”),
 // e só então vem o momento Pronto, que o card segura antes de devolver as abas.

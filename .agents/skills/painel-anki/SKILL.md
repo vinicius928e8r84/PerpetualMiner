@@ -21,12 +21,13 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   bottom, the Conferência line and the two boxes “Continua funcionando” / “Fica indisponível sem ela”.
   The steps, with no terminal command (`pip`, `python`, Detalhes with commands and Copiar are gone):
   1. **Ter o Anki** (#146, ONB-18): the question “Você já tem o Anki?” with the two answers (the choice lives only on
-     the screen; it goes back to the question when the Conexão answers). **Não tenho** downloads the installer by the
-     person's system (`navigator.userAgentData?.platform`, else the user agent): the Mac `.dmg` with “Arraste o Anki
-     para a pasta Aplicativos e abra-o de lá.”, the Windows `.exe` with the installer's sentence, anything else the
-     Anki's download page. **Já tenho** asks the Conexão's opener (#147) to open the Anki when the `nativeMessaging`
-     permission is already granted (`Abridor.abrirOAnkiDeVerdade`: only `{ achou: true, abriu: true }` counts as
-     opened; “O Anki está abrindo…” waits for the Conexão, which the 15 s check finds by itself); without the
+     the screen; it goes back to the question when the Conexão answers). **Não tenho** opens the Anki's download page
+     (`https://apps.ankiweb.net/`) in a new tab (`target="_blank"`, so the panel stays on the step; the Anki has no
+     fixed installer address per system: one file per processor with the version in its name) and says what to do
+     after it by the person's system (`navigator.userAgentData?.platform`, else the user agent): on the Mac “Arraste
+     o Anki para a pasta Aplicativos e abra-o de lá.”, on Windows the installer's sentence, anything else the
+     general one. **Já tenho** asks the Conexão's opener (#147) to open the Anki when the `nativeMessaging`
+     permission is already granted (`Abridor.abrirOAnki`: only `{ achou: true, abriu: true }` is `ABRIU`; “O Anki está abrindo…” waits for the Conexão, which the 15 s check finds by itself); without the
      permission, without the opener, or when it does not open, the manual path of always (“Abra o Anki para
      continuar.”). Before the Conexão the step never says “não encontrado”: not installed, closed and open without
      the Conexão give the same silence (the step turns ✓ with the other Conexão steps).

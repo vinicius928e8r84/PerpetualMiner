@@ -7,22 +7,23 @@
 // (`painel-anki-primeira-conexao.js`) montam este mesmo componente, sem comando de
 // terminal nenhum:
 //
-//   1  Ter o Anki (#146, ONB-18): a pergunta “Você já tem o Anki?”. “Não tenho” baixa o
-//      instalador pelo sistema da pessoa (o .dmg do Mac, com a arrastada para Aplicativos;
-//      o .exe do Windows; nos outros, a página do Anki). “Já tenho” usa o abridor da
-//      Conexão (#147) para abrir o Anki sozinho quando a permissão `nativeMessaging` já
-//      está dada; sem ela, ou sem o abridor, o caminho manual de sempre. A escolha fica só
-//      na tela: o que marca o passo é a Conexão respondendo, e antes dela a tela não diz
-//      nada do Anki (“não instalado”, “fechado” e “aberto sem a Conexão” dão o mesmo
-//      silêncio: nunca “não encontrado”).
+//   1  Ter o Anki (#146, ONB-18): a pergunta “Você já tem o Anki?”. “Não tenho” leva à
+//      página de download do Anki, numa aba nova, e diz o que fazer depois pelo sistema da
+//      pessoa (no Mac, a arrastada para Aplicativos; no Windows, o instalador). “Já tenho”
+//      usa o abridor da Conexão (#147) para abrir o Anki sozinho quando a permissão
+//      `nativeMessaging` já está dada; sem ela, ou sem o abridor, o caminho manual de
+//      sempre. A escolha fica só na tela: o que marca o passo é a Conexão respondendo, e
+//      antes dela a tela não diz nada do Anki (“não instalado”, “fechado” e “aberto sem a
+//      Conexão” dão o mesmo silêncio: nunca “não encontrado”).
 //   2  Pôr a Conexão no Anki: baixar › abrir › Sim › reiniciar. O arquivo vai dentro do
 //      pacote da extensão (`conexao/perpetualminer.ankiaddon`) e sai por um link de
 //      download, sem permissão nova. Antes de baixar, a animação do aviso (ONB-19, #146)
 //      mostra o que o próprio Anki pergunta ao abrir o arquivo, e de onde clicar: dois
-//      quadros que se alternam sozinhos, parados com movimento reduzido. O Detalhes “O
-//      arquivo não abriu?” leva o código do AnkiWeb (para colar em Ferramentas ›
-//      Complementos › Obter complementos) ou, até o primeiro upload (#176), diz que ele
-//      vem em breve: nunca um número inventado.
+//      quadros que se alternam sozinhos, parados com movimento reduzido, com as palavras da
+//      janela do próprio Anki em pt-BR (ele diz “extensões”). O Detalhes “O arquivo não
+//      abriu?” leva o código do AnkiWeb (para colar em Ferramentas › Complementos › Obter
+//      complementos; o nome do menu no Anki em pt-BR é o #237) ou, até o primeiro upload
+//      (#176), diz que ele vem em breve: nunca um número inventado.
 //   3  Reiniciar o Anki: este passo sempre existe. A extensão confere sozinha e a linha de
 //      status mostra Conectando enquanto a conferência está no ar (a de 15 s também, sem
 //      ninguém apertar nada) e, quando a Conexão responde, “Achei o Anki · perfil · versão”.
@@ -43,6 +44,9 @@
 // Os passos se marcam pelo estado real, e a única coisa que a extensão enxerga antes
 // da Conexão é ela mesma: os três primeiros viram ✓ juntos quando ela responde ligada; o
 // quarto, quando o abridor acha o Anki (ou “agora não”, quando a pessoa disse isso).
+//
+// O abridor é um só por página: os dois lugares que montam o componente (a Boas-vindas e o
+// card ONB-16 moram no mesmo painel) leem o mesmo estado, e a conferência sai uma vez.
 //
 // Sem resposta em 2 minutos, o card mostra o checklist de 3 itens e “Baixar de novo”,
 // e a conferência segue sozinha (ela é do `ConexaoAnki`; aqui não se pergunta nada à
@@ -82,27 +86,19 @@
   const PASSO_DO_ABRIDOR = 'abridor';
   const ARQUIVO_DA_CONEXAO = 'conexao/perpetualminer.ankiaddon';
   const NOME_DO_ARQUIVO = 'perpetualminer.ankiaddon';
-  // O Anki do passo Ter o Anki (#146), por sistema: o que “Não tenho” baixa e o que fazer depois
-  // dele. Nos outros sistemas, a página de download do Anki, que escolhe sozinha.
-  //
-  // ⚠ Os dois endereços de arquivo não existem (conferidos em 12/10/2026: 404 nos quatro nomes
-  // possíveis). O Anki publica os instaladores nos lançamentos do GitHub, um por processador
+  // “Não tenho” (#146) leva à página de download do Anki, que existe sempre e mostra o arquivo de
+  // cada sistema. Não há endereço fixo de instalador por sistema: o Anki publica um por processador
   // (`anki-<versão>-mac-apple.dmg` · `-mac-intel.dmg` · `-win-x64.msi` · `-win-arm64.msi`), e o nome
-  // carrega a versão: não existe endereço fixo por sistema. Escolher o arquivo certo pede o
-  // processador (`userAgentData.getHighEntropyValues`) e um número que envelhece a cada lançamento
-  // do Anki — qual dos dois caminhos seguir é decisão do dono (revisão do PR #224).
-  const VERSAO_DO_ANKI = '24.06.3';
-  const O_ANKI_NO_SISTEMA = Object.freeze({
-    mac: Object.freeze({
-      download: `https://apps.ankiweb.net/downloads/current/anki-${VERSAO_DO_ANKI}-mac.dmg`,
-      depois: 'ONB-18.depoisNoMac',
-    }),
-    windows: Object.freeze({
-      download: `https://apps.ankiweb.net/downloads/current/anki-${VERSAO_DO_ANKI}-windows.exe`,
-      depois: 'ONB-18.depoisNoWindows',
-    }),
-    outro: Object.freeze({ download: 'https://apps.ankiweb.net/', depois: 'ONB-18.depois' }),
+  // carrega a versão; o download direto pelo processador é o #232.
+  // O que muda por sistema é o que fazer depois do download.
+  const PAGINA_DO_ANKI = 'https://apps.ankiweb.net/';
+  const DEPOIS_DO_DOWNLOAD = Object.freeze({
+    mac: 'ONB-18.depoisNoMac',
+    windows: 'ONB-18.depoisNoWindows',
+    outro: 'ONB-18.depois',
   });
+  // A resposta da pessoa à pergunta “Você já tem o Anki?”, que fica só na tela.
+  const RESPOSTA = Object.freeze({ JA_TENHO: 'ja', NAO_TENHO: 'nao' });
   /** Sem resposta depois disto, o checklist e “Baixar de novo”. */
   const SEM_RESPOSTA_MS = 2 * 60 * 1000;
   const INTERVALO_DO_TIQUE = 1000;
@@ -113,14 +109,14 @@
   const { SITUACAO } = Configuracao;
 
   /**
-   * O Anki do sistema da pessoa, pelo `userAgentData` do Chromium (ou pelo user agent): o que
-   * o passo Ter o Anki baixa e o que ele diz depois. Fora do Mac e do Windows, o `outro`.
+   * O que fazer depois de baixar o Anki, pelo sistema da pessoa (o `userAgentData` do Chromium, ou o
+   * user agent): o ID da cópia. Fora do Mac e do Windows, a frase geral.
    */
-  function oAnkiDestaPessoa() {
+  function depoisDoDownloadDestaPessoa() {
     const plataforma = navigator.userAgentData?.platform ?? navigator.userAgent;
-    if (/mac/i.test(plataforma)) return O_ANKI_NO_SISTEMA.mac;
-    if (/win/i.test(plataforma)) return O_ANKI_NO_SISTEMA.windows;
-    return O_ANKI_NO_SISTEMA.outro;
+    if (/mac/i.test(plataforma)) return DEPOIS_DO_DOWNLOAD.mac;
+    if (/win/i.test(plataforma)) return DEPOIS_DO_DOWNLOAD.windows;
+    return DEPOIS_DO_DOWNLOAD.outro;
   }
 
   // ─── O abridor (passo 4), um por página ─────────────────────────────────────
@@ -280,15 +276,15 @@
     const texto = elemento('p', 'bv-texto');
 
     const destaque = navegacao ? 'veio-botao--primario' : 'veio-botao--contorno';
-    /** Um link de download com cara de botão: o do arquivo da Conexão e o do instalador do Anki. */
-    const botaoDeDownload = (rotulo, endereco, classe = `veio-botao ${destaque}`) => {
+    /** Um link com cara de botão: o do arquivo da Conexão e o da página do Anki. */
+    const botaoDeLink = (rotulo, endereco, classe = `veio-botao ${destaque}`) => {
       const link = elemento('a', classe, rotulo);
       link.href = endereco;
       return link;
     };
     /** O arquivo da Conexão vem do próprio pacote da extensão (o Chrome não pede permissão). */
     const botaoDoArquivo = (rotulo, classe) => {
-      const link = botaoDeDownload(rotulo, chrome.runtime.getURL(ARQUIVO_DA_CONEXAO), classe);
+      const link = botaoDeLink(rotulo, chrome.runtime.getURL(ARQUIVO_DA_CONEXAO), classe);
       link.download = NOME_DO_ARQUIVO;
       return link;
     };
@@ -322,18 +318,22 @@
 
     // O passo Ter o Anki (#146): a pergunta, as duas respostas e o que a escolha mostra.
     const perguntaDoAnki = elemento('p', 'pc-anki__pergunta', textoDaVoz('ONB-18.pergunta'));
-    const jaTenho = elemento('button', 'veio-botao veio-botao--contorno veio-botao--compacto', textoDaVoz('ONB-18.jaTenho'));
-    jaTenho.id = id('anki-ja-tenho');
-    jaTenho.type = 'button';
-    const naoTenho = elemento('button', 'veio-botao veio-botao--contorno veio-botao--compacto', textoDaVoz('ONB-18.naoTenho'));
-    naoTenho.id = id('anki-nao-tenho');
-    naoTenho.type = 'button';
+    const botaoDeResposta = (rotulo, parte) => {
+      const botao = elemento('button', 'veio-botao veio-botao--contorno veio-botao--compacto', textoDaVoz(rotulo));
+      botao.id = id(parte);
+      botao.type = 'button';
+      return botao;
+    };
+    const jaTenho = botaoDeResposta('ONB-18.jaTenho', 'anki-ja-tenho');
+    const naoTenho = botaoDeResposta('ONB-18.naoTenho', 'anki-nao-tenho');
     const respostasDoAnki = elemento('div', 'pc-anki__respostas', jaTenho, naoTenho);
 
-    const oAnkiDaPessoa = oAnkiDestaPessoa();
-    const baixarOAnki = botaoDeDownload(textoDaVoz('ONB-18.baixar'), oAnkiDaPessoa.download);
+    // A página do Anki abre numa aba nova: o painel (e o passo em que a pessoa está) fica onde está.
+    const baixarOAnki = botaoDeLink(textoDaVoz('ONB-18.baixar'), PAGINA_DO_ANKI);
     baixarOAnki.id = id('anki-baixar');
-    const depoisDoDownload = elemento('p', 'pc-anki__depois', textoDaVoz(oAnkiDaPessoa.depois));
+    baixarOAnki.target = '_blank';
+    baixarOAnki.rel = 'noopener';
+    const depoisDoDownload = elemento('p', 'pc-anki__depois', textoDaVoz(depoisDoDownloadDestaPessoa()));
     const doDownloadDoAnki = elemento('div', 'pc-anki__download', baixarOAnki, depoisDoDownload);
 
     const resultadoDoAnki = elemento('p', 'pc-anki__resultado');
@@ -343,7 +343,7 @@
     doDownloadDoAnki.hidden = true;
     resultadoDoAnki.hidden = true;
 
-    // A resposta do passo Ter o Anki, só na tela: `escolha` é `null` (a pergunta), `'ja'` ou `'nao'`,
+    // A resposta do passo Ter o Anki, só na tela: `escolha` é `null` (a pergunta) ou uma `RESPOSTA`,
     // e `doAbridor` é o ID do que a resposta “Já tenho” mostrou por último (nenhum, enquanto não há o
     // que dizer). O que marca o passo é a Conexão respondendo, e a escolha volta à pergunta então.
     const anki = { escolha: null, doAbridor: null };
@@ -352,23 +352,23 @@
     /** O abridor da Conexão abre o Anki agora? Sem a permissão já dada, nem se pergunta a ele. */
     async function oAbridorAbreOAnki() {
       if (!(await Abridor.temPermissao().catch(() => false))) return false;
-      const { resultado } = await Abridor.abrirOAnkiDeVerdade();
-      return resultado === Abridor.RESULTADO.ACHOU;
+      const { resultado } = await Abridor.abrirOAnki();
+      return resultado === Abridor.RESULTADO.ABRIU;
     }
 
     /** “Já tenho”: com a permissão já dada, o abridor abre o Anki; sem ela (ou sem o abridor), o caminho manual. */
     async function responderJaTenho() {
-      definirResposta('ja');
+      definirResposta(RESPOSTA.JA_TENHO);
       desenhar();
       const abriu = await oAbridorAbreOAnki();
       // Enquanto o abridor falava, a pessoa podia ter mudado de resposta (ou a Conexão, respondido).
-      if (anki.escolha !== 'ja') return;
-      definirResposta('ja', abriu ? 'ONB-18.abrindo' : 'ONB-18.manual');
+      if (anki.escolha !== RESPOSTA.JA_TENHO) return;
+      definirResposta(RESPOSTA.JA_TENHO, abriu ? 'ONB-18.abrindo' : 'ONB-18.manual');
       desenhar();
     }
 
     function responderNaoTenho() {
-      definirResposta('nao');
+      definirResposta(RESPOSTA.NAO_TENHO);
       desenhar();
     }
 
@@ -548,9 +548,9 @@
     function desenharOAnki(passoDoCard, pronto) {
       blocoDoAnki.hidden = pronto || passoDoCard.id !== PASSO_DO_ANKI;
       if (blocoDoAnki.hidden) return;
-      jaTenho.setAttribute('aria-pressed', String(anki.escolha === 'ja'));
-      naoTenho.setAttribute('aria-pressed', String(anki.escolha === 'nao'));
-      doDownloadDoAnki.hidden = anki.escolha !== 'nao';
+      jaTenho.setAttribute('aria-pressed', String(anki.escolha === RESPOSTA.JA_TENHO));
+      naoTenho.setAttribute('aria-pressed', String(anki.escolha === RESPOSTA.NAO_TENHO));
+      doDownloadDoAnki.hidden = anki.escolha !== RESPOSTA.NAO_TENHO;
       resultadoDoAnki.hidden = anki.doAbridor === null;
       resultadoDoAnki.textContent = anki.doAbridor === null ? '' : textoDaVoz(anki.doAbridor);
     }

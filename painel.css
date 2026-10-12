@@ -1539,13 +1539,13 @@ body {
 
 .pc-animacao__quadro {
   grid-area: 1 / 1;
-  animation: pc-quadro var(--veio-ciclo) steps(1, end) infinite;
+  animation: pc-quadro var(--veio-ciclo-dos-quadros) steps(1, end) infinite;
 }
 
 /* Antes do atraso do segundo quadro vale o valor da classe: o primeiro parado, o segundo fora. */
 .pc-animacao__quadro--clique {
   opacity: 0;
-  animation-delay: calc(var(--veio-ciclo) / 2);
+  animation-delay: calc(var(--veio-ciclo-dos-quadros) / 2);
 }
 
 @keyframes pc-quadro {
