@@ -9,10 +9,9 @@ const path = require('path');
 
 // Na raiz entram os .js/.html/.css da extensão (menos os test_*.js); das pastas
 // entram só as de runtime (`conexao/` leva o `.ankiaddon` que a extensão entrega num link de
-// download). `lib/firebase/` fica de fora: nenhuma página carrega
-// esses bundles, e código minificado sem uso só atrai pergunta na revisão.
+// download).
 const PASTAS_DE_RUNTIME = ['lib', 'veio', 'conexao'];
-const FORA_DO_PACOTE = [/^lib\/firebase\//, /^veio\/README\.md$/, /^test_.*\.js$/];
+const FORA_DO_PACOTE = [/^veio\/README\.md$/, /^test_.*\.js$/];
 
 // O que existe no repositório e não é da extensão. O pacote nunca leva nada daqui.
 const PASTAS_QUE_NAO_SAO_RUNTIME = [

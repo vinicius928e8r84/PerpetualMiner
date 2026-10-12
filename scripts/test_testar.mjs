@@ -13,7 +13,7 @@ const testar = (...args) => spawnSync('node', [path.join(RAIZ, 'scripts', 'testa
 
 // O que é teste e o que um padrão alcança.
 assert.ok(ehArquivoDeTeste('test_sync.js'));
-assert.ok(ehArquivoDeTeste('scripts/test_divisao_do_claude_md.mjs'));
+assert.ok(ehArquivoDeTeste('scripts/test_testar.mjs'));
 assert.ok(ehArquivoDeTeste('.agents/skills/x/scripts/test_helpers.sh'));
 assert.ok(ehArquivoDeTeste('e2e/tests/sub/algo.spec.js'));
 assert.ok(!ehArquivoDeTeste('e2e/fixtures.js'));

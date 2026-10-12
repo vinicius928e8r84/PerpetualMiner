@@ -491,8 +491,7 @@
   function outroModalAberto() {
     const scrims = [...document.querySelectorAll('.veio-scrim:not([hidden])')]
       .filter(s => s.id !== 'modal-envio' && s.id !== 'modal-resumo');
-    const antigos = document.querySelectorAll('.modal-overlay:not(.hidden), .import-overlay:not(.hidden)');
-    return scrims.length > 0 || antigos.length > 0;
+    return scrims.length > 0;
   }
 
   /** O desfecho de cada idioma: o que virou cartão agora, o que já estava lá e o que não entrou. */

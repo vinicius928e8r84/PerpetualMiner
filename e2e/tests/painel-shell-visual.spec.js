@@ -24,7 +24,7 @@ const FRASES = [
 const AGORA = new Date('2026-09-18T12:00:00');
 
 const semOConteudoDeHoje = page => ({
-  mask: [page.locator('.conteudo-de-hoje, .frases-filtros, #frases-lista, #frases-paginas, #anki-custos')],
+  mask: [page.locator('.frases-filtros, #frases-lista, #frases-paginas, #anki-custos')],
 });
 
 async function abrirPainel(page, extensao, endereco, largura = 1280) {
