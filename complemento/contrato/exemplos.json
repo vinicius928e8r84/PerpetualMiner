@@ -2793,6 +2793,8 @@
     {
       "nome": "Uma chave local mais nova sobe pela Conexão",
       "daExtensao": true,
+      "repetivel": false,
+      "porque": "a primeira vez sobe a chave para a conta (resultado subiu); repetida, a conta já a tem e não há o que subir (resultado null)",
       "contexto": {
         "chaveNaConexao": "9f3a",
         "contaNaConexao": "uid-teste",
@@ -2820,6 +2822,8 @@
     {
       "nome": "Uma chave da conta chega ao único dono",
       "daExtensao": true,
+      "repetivel": false,
+      "porque": "o pedido leva a versão da chave que o chamador viu; a primeira vez grava a chave da conta e sobe a versão, então repetido com a versão antiga é recusado com 409 (stale_key_version) e nada muda",
       "contexto": {
         "chaveNaNuvem": "sk-fake-cloud-9f3a",
         "emNaNuvem": 100
@@ -2846,6 +2850,8 @@
     {
       "nome": "O valor vazio mais novo chega da conta",
       "daExtensao": true,
+      "repetivel": false,
+      "porque": "o pedido leva a versão da chave que o chamador viu; a primeira vez apaga a chave local e sobe a versão, então repetido com a versão antiga é recusado com 409 (stale_key_version) e nada muda",
       "contexto": {
         "chaveNaConexao": "9f3a",
         "contaNaConexao": "uid-teste",
