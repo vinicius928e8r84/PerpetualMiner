@@ -4,16 +4,17 @@
 
 O Anki instala o arquivo pelo `manifest.json` na raiz do zip. O `mod` é a hora em que o código
 mudou: é ele que põe a cópia instalada por arquivo no caminho de atualização do AnkiWeb. Cada entrada
-do zip leva data, permissões e ordem fixas, e o `mod` só sobe quando o código sobe: se o código é o do
-`conexao/perpetualminer.ankiaddon` versionado, o `mod` é o dele (rodado duas vezes, o script dá os mesmos
-bytes); se mudou, é a hora atual, ou `SOURCE_DATE_EPOCH` quando definida. Ficam de fora os testes, os exemplos
-do contrato, `user_files`, o cache e o LEIA-ME.
+do zip leva data, permissões e ordem fixas, e o `mod` só sobe quando o código sobe: se o código é o
+do `conexao/perpetualminer.ankiaddon` versionado, o `mod` é o dele (rodado duas vezes, o script dá os
+mesmos bytes); se mudou, é a hora atual, ou `SOURCE_DATE_EPOCH` quando definida. Ficam de fora os
+testes, os exemplos do contrato, `user_files`, o cache, o LEIA-ME e o `versoes.json`.
 
 A extensão entrega este arquivo num link de download (`conexao/perpetualminer.ankiaddon`, no pacote da loja):
 mudou o código do complemento, refaça-o com `python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon`
 (`test_pacote.py` falha enquanto ele estiver para trás).
 """
 
+import hashlib
 import json
 import os
 import sys
@@ -25,7 +26,7 @@ DATA_FIXA = (1980, 1, 1, 0, 0, 0)  # o menor que o zip aceita
 PERMISSOES_FIXAS = 0o100644 << 16  # arquivo comum, rw-r--r--
 SISTEMA_FIXO = 3  # Unix: é o que dá as permissões acima, igual em qualquer máquina
 ARQUIVO_DA_EXTENSAO = os.path.join(PASTA, "..", "conexao", "perpetualminer.ankiaddon")
-FORA_DO_PACOTE = ("test_", "empacotar.py", "__pycache__", "user_files", "contrato", "LEIA-ME.md")
+FORA_DO_PACOTE = ("test_", "empacotar.py", "__pycache__", "user_files", "contrato", "LEIA-ME.md", "versoes.json")
 
 
 def _entra_no_pacote(relativo):
@@ -57,6 +58,16 @@ def _codigo_do_pacote():
             with open(os.path.join(PASTA, relativo), "rb") as arquivo:
                 codigo[relativo.replace(os.sep, "/")] = arquivo.read()
     return codigo
+
+
+def hash_das_fontes():
+    """O SHA-256 do que o pacote leva (nomes e bytes, comentários inclusos): o que `versoes.json` guarda por `VERSAO`."""
+    resumo = hashlib.sha256()
+    for relativo in arquivos_do_pacote():
+        with open(os.path.join(PASTA, relativo), "rb") as arquivo:
+            conteudo = arquivo.read()
+        resumo.update(relativo.replace(os.sep, "/").encode("utf-8") + b"\0" + str(len(conteudo)).encode() + b"\0" + conteudo)
+    return resumo.hexdigest()
 
 
 def _manifesto():

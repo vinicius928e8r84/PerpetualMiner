@@ -18,7 +18,7 @@ import zipfile
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(AQUI))
 
-from complemento import empacotar  # noqa: E402
+from complemento import configuracao, empacotar  # noqa: E402
 
 
 RAIZ = os.path.dirname(AQUI)
@@ -122,6 +122,84 @@ class ArquivoDoComplemento(unittest.TestCase):
                 sys.path.remove(os.path.dirname(instalado))
                 for nome in [n for n in sys.modules if n == "123456789" or n.startswith("123456789.")]:
                     del sys.modules[nome]
+
+
+CONFERE_A_VERSAO = "test_as_fontes_de_hoje_sao_as_que_a_versao_do_complemento_registrou"
+
+
+class VersaoDoComplemento(unittest.TestCase):
+    """`versoes.json` guarda o hash das fontes do pacote (comentários inclusos: são bytes que o Anki instala) por `VERSAO`.
+    Mudou o código sem subir a versão, o teste falha; subiu a versão, ela entra no arquivo com o hash novo."""
+
+    def test_as_fontes_de_hoje_sao_as_que_a_versao_do_complemento_registrou(self):
+        with open(os.path.join(AQUI, "versoes.json"), encoding="utf-8") as arquivo:
+            registradas = json.load(arquivo)
+        hoje = empacotar.hash_das_fontes()
+        if configuracao.VERSAO not in registradas:
+            self.fail(
+                "a VERSAO %s não está em complemento/versoes.json: registre-a com o hash das fontes, %s"
+                % (configuracao.VERSAO, hoje)
+            )
+        self.assertEqual(
+            registradas[configuracao.VERSAO], hoje,
+            "as fontes do complemento mudaram e a VERSAO continua %s: suba a VERSAO em complemento/configuracao.py "
+            "e registre-a em complemento/versoes.json com o hash %s" % (configuracao.VERSAO, hoje),
+        )
+
+    def rodar_numa_copia(self, mudar):
+        with tempfile.TemporaryDirectory() as pasta:
+            copia = os.path.join(pasta, "complemento")
+            shutil.copytree(AQUI, copia, ignore=shutil.ignore_patterns("__pycache__", "user_files"))
+            mudar(copia)
+            return subprocess.run(
+                [sys.executable, "-m", "unittest", "complemento.test_pacote.VersaoDoComplemento." + CONFERE_A_VERSAO],
+                cwd=pasta, capture_output=True, text=True,
+            )
+
+    def test_mudar_um_arquivo_do_pacote_sem_subir_a_versao_falha_pedindo_para_subi_la(self):
+        def acrescentar_um_comentario(copia):
+            with open(os.path.join(copia, "servidor.py"), "a", encoding="utf-8") as arquivo:
+                arquivo.write("# um comentário também muda o que o Anki instala\n")
+
+        resultado = self.rodar_numa_copia(acrescentar_um_comentario)
+        self.assertNotEqual(resultado.returncode, 0)
+        self.assertIn("suba a VERSAO", resultado.stderr)
+
+    def test_subir_a_versao_sem_registrar_o_hash_falha_dizendo_o_hash(self):
+        def subir(copia):
+            caminho = os.path.join(copia, "configuracao.py")
+            with open(caminho, encoding="utf-8") as arquivo:
+                codigo = arquivo.read()
+            with open(caminho, "w", encoding="utf-8") as arquivo:
+                arquivo.write(codigo.replace(configuracao.VERSAO, "9.9.9"))
+
+        resultado = self.rodar_numa_copia(subir)
+        self.assertNotEqual(resultado.returncode, 0)
+        self.assertIn("a VERSAO 9.9.9 não está em complemento/versoes.json", resultado.stderr)
+
+    def test_subir_a_versao_e_registrar_o_hash_passa(self):
+        def subir_e_registrar(copia):
+            caminho = os.path.join(copia, "configuracao.py")
+            with open(caminho, encoding="utf-8") as arquivo:
+                codigo = arquivo.read()
+            with open(caminho, "w", encoding="utf-8") as arquivo:
+                arquivo.write(codigo.replace(configuracao.VERSAO, "9.9.9"))
+            hash_novo = subprocess.run(
+                [sys.executable, "-c", "from complemento import empacotar; print(empacotar.hash_das_fontes())"],
+                cwd=os.path.dirname(copia), capture_output=True, text=True, check=True,
+            ).stdout.strip()
+            with open(os.path.join(copia, "versoes.json"), "w", encoding="utf-8") as arquivo:
+                json.dump({configuracao.VERSAO: "x", "9.9.9": hash_novo}, arquivo)
+
+        resultado = self.rodar_numa_copia(subir_e_registrar)
+        self.assertEqual(resultado.returncode, 0, resultado.stderr)
+
+    def test_o_arquivo_de_versoes_nao_entra_no_pacote_nem_no_hash(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            antes = empacotar.hash_das_fontes()
+            nomes = zipfile.ZipFile(empacotar.empacotar(os.path.join(pasta, "a.ankiaddon"))).namelist()
+        self.assertNotIn("versoes.json", nomes)
+        self.assertEqual(antes, empacotar.hash_das_fontes())
 
 
 class HoraDoEmpacotamento(unittest.TestCase):
