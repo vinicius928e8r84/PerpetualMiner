@@ -137,10 +137,12 @@ jobs:
       # Quem falhou e passou na repetição (retries em e2e/playwright.config.js) aparece
       # como aviso e no resumo do job, para a repetição não esconder a instabilidade.
       - name: Testes instáveis
+        id: instaveis
         if: ${{ !cancelled() && env.RODAR == 'true' }}
         run: node scripts/ci/instaveis.js e2e/test-results/relatorio.json
+      # Também quando só oscilou: a imagem de diferença da primeira tentativa explica a oscilação.
       - uses: actions/upload-artifact@v6
-        if: failure() && env.RODAR == 'true'
+        if: ${{ (failure() || steps.instaveis.outputs.achou == 'true') && env.RODAR == 'true' }}
         with:
           name: e2e-${{ matrix.fatia }}-resultados
           path: e2e/test-results
