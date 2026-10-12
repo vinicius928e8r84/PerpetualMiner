@@ -10,8 +10,8 @@
 //
 //   definir('achei' | 'nao_achei' | 'sem_resposta')  o que o abridor encontra (padrão: 'achei'); sem resposta,
 //                                                    ele lê a mensagem e fica quieto
-//   registrarNoPerfil(perfil) / desregistrar()       o manifesto do host no perfil (sem ele: uma Conexão antiga,
-//                                                    que ainda não escrevia o abridor)
+//   registrarNoPerfil(perfil) / desregistrar()       o manifesto do host no perfil, em cada perfil que o registrou (sem ele:
+//                                                    uma Conexão antiga, que ainda não escrevia o abridor)
 //   pedidos()                                        as mensagens que chegaram, com a origem que o Chrome passou
 //                                                    (transporte: o que a extensão pediu, não o que ficou guardado)
 //
@@ -41,7 +41,7 @@ function criarFakeAbridor() {
   const aspas = texto => `'${texto.replace(/'/g, `'\\''`)}'`;
   // O Chrome roda o `path` do manifesto direto: um script que chama o Node deste processo com o programa do fake.
   fs.writeFileSync(programa, `#!/bin/sh\nexec ${aspas(process.execPath)} ${aspas(PROGRAMA_DO_HOST)} ${aspas(pasta)} "$@"\n`, { mode: 0o755 });
-  let manifesto = null;
+  const manifestos = [];   // um por perfil que o registrou (o segundo perfil do teste também)
 
   function definir(situacao) {
     if (situacao !== SEM_RESPOSTA && !exemplosDa(situacao).length) {
@@ -62,7 +62,8 @@ function criarFakeAbridor() {
     registrarNoPerfil(perfil) {
       const hosts = path.join(perfil, 'NativeMessagingHosts');
       fs.mkdirSync(hosts, { recursive: true });
-      manifesto = path.join(hosts, `${HOST}.json`);
+      const manifesto = path.join(hosts, `${HOST}.json`);
+      manifestos.push(manifesto);
       fs.writeFileSync(manifesto, JSON.stringify({
         name: HOST,
         description: 'PerpetualMiner: o abridor de mentira do e2e',
@@ -72,7 +73,7 @@ function criarFakeAbridor() {
       }));
     },
     desregistrar() {
-      if (manifesto) fs.rmSync(manifesto, { force: true });
+      for (const manifesto of manifestos) fs.rmSync(manifesto, { force: true });
     },
     pedidos() {
       const arquivo = path.join(pasta, 'pedidos.jsonl');
