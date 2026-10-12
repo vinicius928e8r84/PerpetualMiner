@@ -19,6 +19,7 @@ const REGRAS = [
   require('./testes-no-portao'),
   require('./contrato-fechado'),
   require('./e2e-estado-final'),
+  require('./doc-datado'),
 ];
 
 const ARQUIVO_DA_LINHA_DE_BASE = 'scripts/regras/linha-de-base.json';
