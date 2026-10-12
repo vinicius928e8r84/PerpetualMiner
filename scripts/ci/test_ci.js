@@ -107,6 +107,23 @@ const texto = resumo(instaveis(relatorio));
 assert(texto.includes('a.spec.js:9') && texto.includes('oscila no grupo'), 'o resumo nomeia cada teste');
 assert(/2/.test(texto.split('\n')[0]), 'o título conta quantos foram');
 
+// O job guarda e2e/test-results quando algum teste oscilou: o passo diz isso pela saída `achou`.
+function saidaDoPasso(conteudo) {
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'instaveis-'));
+  const arquivoRelatorio = path.join(pasta, 'relatorio.json');
+  const arquivoSaida = path.join(pasta, 'saida');
+  fs.writeFileSync(arquivoRelatorio, JSON.stringify(conteudo));
+  execFileSync('node', [path.join(__dirname, 'instaveis.js'), arquivoRelatorio], {
+    env: { ...process.env, GITHUB_OUTPUT: arquivoSaida, GITHUB_STEP_SUMMARY: path.join(pasta, 'resumo') },
+    stdio: 'ignore',
+  });
+  const saida = fs.readFileSync(arquivoSaida, 'utf8');
+  fs.rmSync(pasta, { recursive: true, force: true });
+  return saida;
+}
+assert.strictEqual(saidaDoPasso(relatorio), 'achou=true\n', 'com um teste instável o job guarda os resultados');
+assert.strictEqual(saidaDoPasso({ suites: [] }), 'achou=false\n', 'sem nenhum, não guarda');
+
 // --- Todo commit do PR é do dono? ---
 const linha = (sha, autor, committer, assunto = 'x') => [sha, autor, committer, assunto].join('\t');
 assert.deepStrictEqual(commitsForaDaRegra([linha('a1', EMAIL_DO_DONO, EMAIL_DO_DONO), '']), [], 'autor e committer do dono');
