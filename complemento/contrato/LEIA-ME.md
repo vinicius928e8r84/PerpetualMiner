@@ -23,6 +23,10 @@ O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede 
   (coleção que quebra, sem coleção, perfil ilegível, corpo inválido) é a matriz `EstadosDeCadaRota`, que não lê os exemplos:
   uma rota nova se declara em `MATRIZ` (corpo mínimo, se lê a coleção, se lê o perfil e as recusas de validação dela; uma
   rota que não lê a coleção, como a chave da IA, responde o mesmo `status` em todos os estados) e sem isso o teste quebra dizendo o que declarar.
+- **Repetir e a base velha**: uma rota que muda o que a Conexão guarda (a chave da IA, o item de login) diz `muda: True` em `MATRIZ`
+  (e `versao: True` se o corpo traz a base). `RepeticaoDeCadaRotaQueMuda` pede o exemplo de sucesso dela de novo (mesma resposta, o arquivo do
+  dono byte a byte igual, também reconfirmando na base atual) e a base velha depois de mudanças mais novas (409, sem mudar nada). Uma rota
+  que muda sem dizer `muda: True` quebra; `muda_de_novo: "motivo"` declara que repetir na base atual muda de propósito.
 
 ## Um exemplo
 
