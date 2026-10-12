@@ -157,7 +157,7 @@ repo="$TMP/mapa"; mkdir -p "$repo/.agents/skills/verify-perpetualminer/features"
 (cd "$repo" && git init -q -b main && git config user.email t@t && git config user.name t && echo a > popup.js && echo a > popup.css && echo a > README.md \
   && echo a > .agents/skills/verify-perpetualminer/features/x.md && git add -A && git commit -qm base)
 mapa() { (cd "$repo" && git checkout -q main && git checkout -q -B pr main && "$@"); }
-muda() { (cd "$repo" && for f in "$@"; do echo "$RANDOM" >> "$f"; done && git add -A && git commit -qm change); }
+muda() { (cd "$repo" && for f in "$@"; do mkdir -p "$(dirname "$f")"; echo "$RANDOM" >> "$f"; done && git add -A && git commit -qm change); }
 confere() { (cd "$repo" && PR_BODY="${PR_BODY:-}" "$AQUI/mapa-de-features.sh" main >/dev/null 2>&1); }
 mapa true; muda popup.js
 confere && falhou "ratchet passed a popup.js change with no features/ and no declaration" || passou "ratchet fails a surface change with no features/ and no declaration"
@@ -168,6 +168,14 @@ mapa true; muda popup.css README.md
 confere && passou "ratchet ignores files that are not surfaces (popup.css, README.md)" || falhou "ratchet flagged a non-surface change"
 mapa true; muda bridge-server-lookalike.py 2>/dev/null; muda painel-shell.js
 confere && falhou "ratchet passed painel-shell.js with nothing" || passou "ratchet fails a painel*.js change"
+mapa true; muda complemento/servidor.py
+confere && falhou "ratchet passed a complemento/servidor.py change with nothing" || passou "ratchet fails a complemento/servidor.py change"
+mapa true; muda abridor.html
+confere && falhou "ratchet passed a root abridor.html change with nothing" || passou "ratchet fails a root *.html change"
+mapa true; muda lib/voz/catalogo.js
+confere && falhou "ratchet passed a lib/voz/catalogo.js change with nothing" || passou "ratchet fails a Voice catalog change"
+mapa true; muda lib/voz/outro.js e2e/pages/player.html
+confere && passou "ratchet ignores other lib/ files and html below the root" || falhou "ratchet flagged lib/voz/outro.js or e2e/pages/player.html"
 (cd "$repo" && "$AQUI/mapa-de-features.sh" nao-existe >/dev/null 2>&1); [ $? -eq 2 ] && passou "ratchet refuses a base ref that does not exist" || falhou "ratchet accepted an unknown base ref"
 
 # 12. Playwright's worker count: 2 by default (an inherited PM_WORKERS is removed for that case), PM_WORKERS overrides it (a --workers argument comes before drive.sh's own and loses).
