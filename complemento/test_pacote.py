@@ -150,6 +150,9 @@ class HoraDoEmpacotamento(unittest.TestCase):
         with open(destino, "rb") as arquivo:
             return arquivo.read()
 
+    def mudar_o_codigo(self):
+        shutil.copy(os.path.join(self.copia, "registro.py"), os.path.join(self.copia, "servidor.py"))
+
     def mod_de(self, bytes_do_pacote):
         with zipfile.ZipFile(io.BytesIO(bytes_do_pacote)) as pacote:
             return json.loads(pacote.read("manifest.json"))["mod"]
@@ -164,8 +167,7 @@ class HoraDoEmpacotamento(unittest.TestCase):
         self.assertEqual(self.mod_de(self.empacotar("a.ankiaddon")), self.mod_entregue)
 
     def test_mudou_o_codigo_o_mod_sobe_para_a_hora_do_empacotamento(self):
-        with open(os.path.join(self.copia, "servidor.py"), "a", encoding="utf-8") as arquivo:
-            arquivo.write("\n# mudou\n")
+        self.mudar_o_codigo()
         antes = int(time.time())
         novo = self.mod_de(self.empacotar("a.ankiaddon"))
         self.assertGreaterEqual(novo, antes)
@@ -179,8 +181,7 @@ class HoraDoEmpacotamento(unittest.TestCase):
     def test_source_date_epoch_fixa_o_mod(self):
         fixo = self.empacotar("a.ankiaddon", SOURCE_DATE_EPOCH="1700000000")
         self.assertEqual(self.mod_de(fixo), 1700000000)
-        with open(os.path.join(self.copia, "servidor.py"), "a", encoding="utf-8") as arquivo:
-            arquivo.write("\n# mudou\n")
+        self.mudar_o_codigo()
         self.assertEqual(self.mod_de(self.empacotar("b.ankiaddon", SOURCE_DATE_EPOCH="1700000000")), 1700000000)
 
 
