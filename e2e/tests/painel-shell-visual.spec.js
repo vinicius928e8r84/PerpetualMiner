@@ -1,5 +1,16 @@
 'use strict';
 
+// Referência visual do shell “Ilhas” (#25). O dono aprovou as telas lado a lado
+// com o protótipo B; estas capturas são essas telas, e qualquer mudança visual
+// no shell faz o teste falhar até alguém olhar e atualizar a referência:
+//
+//   cd e2e && npx playwright test painel-shell-visual --update-snapshots
+//
+// O conteúdo de hoje (baralhos…) ainda vai ser reconstruído, cada área no seu
+// ticket, e a lista de Frases e a aba Custos têm a referência delas em
+// painel-frases-visual.spec.js e painel-anki-visual.spec.js; todos ficam cobertos. O que a captura guarda é
+// o shell — a sidebar, os indicadores, as ilhas, a faixa F1 e o chip.
+
 const { test, expect } = require('../fixtures');
 
 const FRASES = [

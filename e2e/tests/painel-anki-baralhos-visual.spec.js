@@ -1,5 +1,14 @@
 'use strict';
 
+// Referência visual de Baralhos e termos, Vocabulário e Reparar Anki (#34), na
+// arrumação C · Por idioma do protótipo travado
+// (docs/design/painel/anki/prototipo-anki.html?variant=C, “⚙ Estados do
+// protótipo”), com os números do protótipo. O dono revisa estas telas lado a
+// lado com o protótipo; depois de aprovadas, uma mudança visual faz o teste
+// falhar até alguém olhar e atualizar a referência:
+//
+//   cd e2e && npx playwright test painel-anki-baralhos-visual --update-snapshots
+
 const { test, expect } = require('../fixtures');
 
 const AGORA = new Date('2026-09-18T12:00:00');

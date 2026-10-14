@@ -1,5 +1,20 @@
 'use strict';
 
+// Referência visual de Configurações · resumo primeiro + Conta & sync (#26),
+// Chave do Gemini e Zona de perigo (#28), mais o card Aparência e o tema claro
+// (#45).
+//
+// O dono revisa estas telas lado a lado com o protótipo travado
+// (docs/design/painel/configuracoes/prototipo-configuracoes.html?variant=C).
+// Depois de aprovadas, elas são a referência: uma mudança visual faz o teste
+// falhar até alguém olhar e atualizar:
+//
+//   cd e2e && npx playwright test configuracoes-visual --update-snapshots
+//
+// O relógio fica parado, para “Sincronizado agora” sair sempre igual. Os dados
+// são os do protótipo (1.284 frases, a chave salva, a seleção em Alt+Botão
+// voltar), para os resumos das linhas fechadas saírem iguais aos dele.
+
 const { test, expect } = require('../fixtures');
 
 const AGORA = new Date('2026-09-18T12:00:00');
@@ -166,6 +181,13 @@ test('Chave do Gemini aberta, vazia, depois de salvar vazio', async ({ page, ext
   await expect(page).toHaveScreenshot('chave-vazia-recusada.png', { animations: 'disabled' });
 });
 
+// O card IA dos cartões (#140): o desenho A do #101, duas entradas em colunas do mesmo tamanho.
+// A chave do protótipo termina em 9f3a, como o exemplo do contrato da Conexão.
+//
+// AGUARDANDO A APROVAÇÃO DO DONO (CODING_STANDARDS regra 10): estas cinco telas são novas e a referência só
+// entra depois que ele aprova o visual implementado. Até lá ficam como `fixme` e sem PNG. Aprovado: tire o
+// `test.fixme` de cada uma, rode `npx playwright test configuracoes-visual -g "IA dos cartões" --update-snapshots`
+// e confira que nenhuma captura tem a chave inteira (o campo é sempre mascarado: regra 9).
 const AGUARDA_O_DONO = 'a referência visual do card IA dos cartões espera a aprovação do dono (regra 10)';
 const campoDaChave = page => page.locator('#cfg-ia .cfg-chave-campo');
 test('IA dos cartões aberta, sem chave: as duas entradas lado a lado', async ({ page, extensao, fakes }) => {
@@ -336,6 +358,13 @@ for (const variante of ['outra-conta', 'apagar-falhou', 'apagar-tudo-parcial']) 
     await expect(page).toHaveScreenshot(`ia-${variante}.png`, { animations: 'disabled', mask: [campoDaChave(page)] });
   });
 }
+
+// Conexão com o Anki › Abrir o Anki com o computador (#153). Não há protótipo próprio dele (o #106 o decidiu em
+// texto): o card segue o “resumo primeiro” e o interruptor é o do Veio. Uma referência nova só entra depois de o
+// dono aprovar o visual (CODING_STANDARDS, regra 10), então estas quatro ficam em `test.fixme` até lá. Para
+// aprovar: tire o `fixme`, rode `npx playwright test configuracoes-visual -g "Conexão com o Anki aberta" --update-snapshots`
+// e olhe os quatro PNGs (as imagens de proposta estão no corpo do PR #189). Os cards fechados das outras referências
+// já mostram a linha do card.
 
 test.fixme('Conexão com o Anki aberta, com o interruptor desligado', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });

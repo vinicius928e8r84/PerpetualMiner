@@ -1,5 +1,18 @@
 'use strict';
 
+// Referência visual do overlay na página (#40, #41): o botão flutuante, a marca
+// sobre o texto capturado (a linha, o grifo e o chip) e a pílula, a reserva.
+//
+// O dono revisa estas telas lado a lado com o protótipo travado
+// (docs/design/overlay/prototipo-overlay.html?variant=M1). Depois de aprovadas,
+// elas são a referência: uma mudança visual faz o teste falhar até alguém olhar
+// e atualizar:
+//
+//   cd e2e && npx playwright test overlay-visual --update-snapshots
+//
+// O sucesso some em ~3,5 s: cada foto é tirada logo que o feedback aparece.
+// A marca entra em 150 ms: a foto espera a entrada terminar.
+
 const { test, expect } = require('../fixtures');
 
 // O player tem o tamanho do player do protótipo (1118 × 630): lado a lado com

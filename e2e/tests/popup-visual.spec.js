@@ -1,5 +1,15 @@
 'use strict';
 
+// Referência visual do popup “Cockpit” (#38), na variante A do protótipo
+// travado (docs/design/popup/prototipo-popup.html?variant=A). O dono revisa
+// estas telas lado a lado com o protótipo; depois de aprovadas, qualquer
+// mudança visual no popup faz o teste falhar até alguém olhar e atualizar a
+// referência:
+//
+//   cd e2e && npx playwright test popup-visual --update-snapshots
+//
+// O popup tem 340 px de largura e teto de 600 px, como no balão do ícone.
+
 const { test, expect } = require('../fixtures');
 const { leituraDoVocabulario: leitura } = require('../leitura-do-vocabulario');
 
