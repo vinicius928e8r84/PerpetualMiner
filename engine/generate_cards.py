@@ -13,7 +13,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Set
 
 if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
     from . import cost_tracker, openai_http
@@ -227,12 +227,18 @@ def run(
     openai_base: str = openai_http.OPENAI_BASE,
     skip_existing: bool = False,
     failures: Optional[Dict[str, str]] = None,
+    card_stem: Optional[Callable[[CardJob, int], str]] = None,
+    only_stems: Optional[Set[str]] = None,
 ) -> List[str]:
     """Generate one card .txt per CardJob via local prompts + chat completions.
 
     `skip_existing`: a card whose .txt is already there is not asked again (it was paid for).
     `failures`: when given, gets `{stem: code}` for each card that was not saved (an `openai_http` code,
     or `empty_response`, `invalid_card`, `keyword_mismatch`, `generation_error`).
+    `card_stem(job, index)`: names each card (`index` is the keyword's position in its entry) instead of the
+    keyword-and-phrase stem; the Anki add-on uses `<phraseId>-<n>`. A named card is also what the log and the cost
+    records say, never the keyword or the phrase (what the person mined is not written outside the Envio's own files).
+    `only_stems`: generate just these cards (after the naming above).
     """
     output_dir = Path(config["paths"]["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -243,34 +249,39 @@ def run(
     model = config["openai"].get("chat_model", "gpt-4o")
     failures = failures if failures is not None else {}
 
-    all_jobs: List[CardJob] = []
+    all_jobs: List[tuple] = []
     for entry in entries:
-        all_jobs.extend(get_card_jobs(entry))
+        for index, job in enumerate(get_card_jobs(entry)):
+            named = card_stem(job, index) if card_stem else None
+            if only_stems is None or (named or job.filename_stem) in only_stems:
+                all_jobs.append((job, named))
 
     en_prompt = load_prompt(config, "en_card") if lang != "ru" else ""
     ru_prompt = load_prompt(config, "ru_card") if lang == "ru" else ""
 
     saved: List[str] = []
 
-    def call(message: str, keyword: str, stem: str) -> Optional[str]:
+    def call(message: str, label: str, stem: str) -> Optional[str]:
         try:
-            return _call_model(openai_base, api_key, system_prompt, message, model, log_dir, keyword)
+            return _call_model(openai_base, api_key, system_prompt, message, model, log_dir, label)
         except openai_http.ErroDaOpenAI as exc:
-            LOGGER.error("Modelo falhou para '%s': %s", keyword, exc)
+            LOGGER.error("Modelo falhou para '%s': %s", label, exc)
             failures[stem] = exc.codigo
-        except Exception:
-            LOGGER.exception("Modelo falhou para '%s'", keyword)
+        except Exception as exc:
+            # Without the traceback when the card is named: the message of a library error may quote the request.
+            LOGGER.error("Modelo falhou para '%s': %s", label, type(exc).__name__, exc_info=not card_stem)
             failures[stem] = "generation_error"
         return None
 
-    for job in all_jobs:
-        stem = job.filename_stem or f"card_{len(saved) + 1}"
+    for job, named in all_jobs:
+        stem = named or job.filename_stem or f"card_{len(saved) + 1}"
+        label = named or job.keyword
         dest = output_dir / f"{stem}.txt"
         if skip_existing and dest.exists() and dest.stat().st_size > 0:
             saved.append(stem)
             continue
 
-        LOGGER.info("Gerando card para: '%s'", job.keyword)
+        LOGGER.info("Gerando card para: '%s'", label)
         if lang == "ru":
             user_message = _build_message_ru(job)
             system_prompt = ru_prompt
@@ -278,10 +289,10 @@ def run(
             user_message = _build_message(job)
             system_prompt = en_prompt
 
-        response = call(user_message, job.keyword, stem)
+        response = call(user_message, label, stem)
         if not response:
             if stem not in failures:
-                LOGGER.error("Resposta vazia para '%s' - pulando.", job.keyword)
+                LOGGER.error("Resposta vazia para '%s' - pulando.", label)
                 failures[stem] = "empty_response"
             continue
 
@@ -289,22 +300,22 @@ def run(
 
         if lang == "ru" and (_looks_like_ru_refusal(card) or not _has_ru_translation(card)):
             reason = "recusa/erro do modelo" if _looks_like_ru_refusal(card) else "campo Translation ausente"
-            LOGGER.error("Card russo para '%s' invalido (%s) - skipping.", job.keyword, reason)
+            LOGGER.error("Card russo para '%s' invalido (%s) - skipping.", label, reason)
             failures[stem] = "invalid_card"
             continue
 
         if lang != "ru" and not _validate_keyword(card, job.keyword):
-            LOGGER.warning("Keyword mismatch para '%s' - tentando regenerar uma vez.", job.keyword)
-            retry_response = call(_build_keyword_retry_message(user_message, job.keyword), job.keyword, stem)
+            LOGGER.warning("Keyword mismatch para '%s' - tentando regenerar uma vez.", label)
+            retry_response = call(_build_keyword_retry_message(user_message, job.keyword), label, stem)
             if not retry_response:
                 if stem not in failures:
-                    LOGGER.error("Retry retornou resposta vazia para '%s' - pulando.", job.keyword)
+                    LOGGER.error("Retry retornou resposta vazia para '%s' - pulando.", label)
                     failures[stem] = "empty_response"
                 continue
 
             card = _prepare_card(retry_response)
             if not _validate_keyword(card, job.keyword):
-                LOGGER.error("Keyword mismatch persistente para '%s' - card nao sera salvo.", job.keyword)
+                LOGGER.error("Keyword mismatch persistente para '%s' - card nao sera salvo.", label)
                 failures[stem] = "keyword_mismatch"
                 continue
 
@@ -312,7 +323,7 @@ def run(
         failures.pop(stem, None)
         saved.append(stem)
 
-        LOGGER.info("Raw Keyword: '%s' -> Final Filename: '%s.txt'", job.keyword, stem)
+        LOGGER.info("Raw Keyword: '%s' -> Final Filename: '%s.txt'", label, stem)
         if len(stem) < 3:
             LOGGER.warning("Filename '%s.txt' e muito curto - verifique o card.", stem)
 

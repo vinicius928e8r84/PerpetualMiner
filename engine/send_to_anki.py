@@ -177,8 +177,8 @@ _COLOR_PALETTE = [
 
 
 def _log_raw(label: str, content: str) -> None:
-    """Log the raw card content so we can see exactly what the AI wrote."""
-    LOGGER.warning("%s - raw .txt content:\n%s", label, content[:600])
+    """Log that a card text is unusable; its content is the person's mined phrase, so only the size goes to the log."""
+    LOGGER.warning("%s - the card text has no usable content (%d characters)", label, len(content))
 
 
 def _extract_alignments(content: str) -> List[tuple[str, str]]:
@@ -292,7 +292,7 @@ def _build_front(content: str, phrase_audio_name: Optional[str], lang: str = "en
     if not phrase:
         phrase = next((line.strip() for line in content.splitlines() if line.strip()), "")
         if phrase:
-            LOGGER.warning("'Front' not found - using first line: '%s'", phrase[:60])
+            LOGGER.warning("'Front' not found - using the first line")
         else:
             _log_raw("_build_front FAILED", content)
 
