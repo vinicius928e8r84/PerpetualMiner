@@ -245,6 +245,25 @@ const test = base.extend({
   },
 });
 
+/** Os sistemas que o passo Ter o Anki (#146) distingue para escolher o instalador do Anki. */
+const SISTEMAS = Object.freeze({
+  MAC: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  WINDOWS: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+});
+
+/**
+ * O Chromium do teste como o de um sistema (`SISTEMAS.MAC` · `SISTEMAS.WINDOWS`): o `userAgent` e o
+ * `userAgentData.platform` passam a ser os dele. Chame antes do `goto` da página que os lê.
+ */
+async function comOSistema(page, sistema) {
+  await page.addInitScript(sistema => {
+    Object.defineProperty(navigator, 'userAgent', { value: sistema });
+    Object.defineProperty(navigator, 'userAgentData', {
+      value: { platform: /Mac/.test(sistema) ? 'macOS' : 'Windows' },
+    });
+  }, sistema);
+}
+
 /** O botão flutuante de minerar a legenda, sobre o player. */
 const botaoFlutuante = page => page.getByRole('button', { name: /^Minerar legenda/ });
 
@@ -259,4 +278,4 @@ async function tocarVideo(page) {
   });
 }
 
-module.exports = { test, expect, botaoFlutuante, tocarVideo };
+module.exports = { test, expect, botaoFlutuante, tocarVideo, comOSistema, SISTEMAS };

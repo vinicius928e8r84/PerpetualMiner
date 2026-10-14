@@ -20,32 +20,47 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   card (“Como ligar · Passo N de 2”, the Boas-vindas marks, `aria-current="step"`, Voltar · Continuar); and, across the
   bottom, the Conferência line and the two boxes “Continua funcionando” / “Fica indisponível sem ela”.
   The steps, with no terminal command (`pip`, `python`, Detalhes with commands and Copiar are gone):
-  1. **Pôr a Conexão no Anki**: baixar › abrir › Sim › reiniciar. **Baixar a Conexão com o Anki** is an `<a download>` of
-     `conexao/perpetualminer.ankiaddon` (the add-on file inside the extension package, no permission); the Detalhes
-     “O arquivo não abriu?” (`Veio.montarDetalhes(…, rotulo)`) says the AnkiWeb code to paste in Ferramentas › Complementos ›
+  1. **Ter o Anki** (#146, ONB-18): the question “Você já tem o Anki?” with the two answers (the choice lives only on
+     the screen; it goes back to the question when the Conexão answers). **Não tenho** opens the Anki's download page
+     (`https://apps.ankiweb.net/`) in a new tab (`target="_blank"`, so the panel stays on the step; the Anki has no
+     fixed installer address per system: one file per processor with the version in its name) and says what to do
+     after it by the person's system (`navigator.userAgentData?.platform`, else the user agent): on the Mac “Arraste
+     o Anki para a pasta Aplicativos e abra-o de lá.”, on Windows the installer's sentence, anything else the
+     general one. **Já tenho** asks the Conexão's opener (#147) to open the Anki when the `nativeMessaging`
+     permission is already granted (`Abridor.abrirOAnki`: only `{ achou: true, abriu: true }` is `ABRIU`; “O Anki está abrindo…” waits for the Conexão, which the 15 s check finds by itself); without the
+     permission, without the opener, or when it does not open, the manual path of always (“Abra o Anki para
+     continuar.”). Before the Conexão the step never says “não encontrado”: not installed, closed and open without
+     the Conexão give the same silence (the step turns ✓ with the other Conexão steps).
+  2. **Pôr a Conexão no Anki**: baixar › abrir › Sim › reiniciar. **Baixar a Conexão com o Anki** is an `<a download>` of
+     `conexao/perpetualminer.ankiaddon` (the add-on file inside the extension package, no permission); above it, the
+     ONB-19 animation of the Anki's own warning (#146): two frames alternating by themselves — the warning the Anki
+     shows when the file opens, and the same dialog with the Sim marked, where to click; still, side by side, with
+     `prefers-reduced-motion: reduce`. The Detalhes “O arquivo não abriu?” (`Veio.montarDetalhes(…, rotulo)`) says the AnkiWeb code to paste in Ferramentas › Complementos ›
      Obter complementos (`PerpetualMiner.CODIGO_DO_ANKIWEB`, none until the first upload, #176) or that it comes soon: never an invented number.
-  2. **Reiniciar o Anki**: always there. The extension checks by itself (the shared 15 s `/health`); the status line says Conectando
+  3. **Reiniciar o Anki**: always there. The extension checks by itself (the shared 15 s `/health`); the status line says Conectando
      and then “Achei o Anki · perfil · versão” from `ConexaoAnki.saude()`; **Tentar de novo** lives here.
-  3. **Abrir o Anki sozinho** (#147, ONB-17): when the Conexão answers, the card moves to it by itself (the connection's status line stays).
+  4. **Abrir o Anki sozinho** (#147, ONB-17): when the Conexão answers, the card moves to it by itself (the connection's status line stays).
      **Permitir abrir o Anki** calls `Abridor.pedirPermissao()` inside the click (Chrome's prompt for the optional `nativeMessaging`) and,
      granted, checks the opener (`Abridor.conferirOAnki()`: only “is Anki there?”); with the permission already granted it checks with no
      click. **Agora não** writes `pm_abridor: { agoraNao: true }` and marks the step “agora não” (a later grant writes `false`). Not found or
      no answer (10 s, or the host is not registered: an older Conexão) say what to do, with Tentar de novo and Chrome's message in Detalhes.
      The opener's state is one per page (the Boas-vindas and this card are in the same panel), so it is checked once. In this card the
-     **Pronto** moment waits for step 3 to be resolved (found, or Agora não); a stored Agora não goes straight to Pronto.
+     **Pronto** moment waits for step 4 to be resolved (found, or Agora não); a stored Agora não goes straight to Pronto.
   The steps are marked by the real state, and the only thing the extension sees before the Conexão is the Conexão itself (the
-  AnkiConnect is not read: no new permission), so the first step says “Esperando a Conexão” and the first two turn ✓ together when `/health`
-  answers successfully; the third, when the opener finds Anki. Without a person's choice, the card opens on the first step, or on the last while connecting; after the card's own Tentar de novo
-  it stays on step 2 (the F1's and the Boas-vindas' do not set the person's choice). **2 minutes without an answer** (counted from the first time the person
+  AnkiConnect is not read: no new permission), so the first three steps say nothing about the Anki until it answers and turn ✓
+  together when `/health` answers successfully; the fourth, when the opener finds Anki. Without a person's choice, the card opens on
+  the first step, or on Reiniciar o Anki while connecting; one that has already answered ligada once on this page (or on this computer:
+  `ConexaoAnki.jaConectou()`) falls back to Reiniciar o Anki (the status line and Tentar de novo) when the Conexão goes off again. After the card's own Tentar de novo
+  it stays on step 3 (the F1's and the Boas-vindas' do not set the person's choice). **2 minutes without an answer** (counted from the first time the person
   really sees the steps — the host passes the real visibility to `mostrar`: the Anki area is the current one, the Boas-vindas page is on screen — or from Baixar) show the 3-item checklist and **Baixar de novo** in whatever step is open, while the check keeps going alone; it leaves when the Conexão answers.
-  On step 2 an automatic check in flight over a Conexão that was off shows “Conectando” with no click (`ConexaoAnki.conferindo()`, `aoConferir`); a
+  On step 3 an automatic check in flight over a Conexão that was off shows “Conectando” with no click (`ConexaoAnki.conferindo()`, `aoConferir`); a
   Conexão that was on stays on, and the failure goes back to “desligada”. One primary control per screen: with the card's own Voltar · Continuar the
   primary is the step's action (Baixar, Tentar de novo) and Continuar is an outline; inside the Boas-vindas the card has only outlines and the host's Continuar is the primary.
   The status is a `role="status"` region that stays in the DOM (the 1 s clock only redraws the checklist, never the status).
   The Conferência line (“Confere sozinho a cada 15 s · última vez há N s”, “Conferindo agora…” while a check is out) follows the
   shared checks; see the doc comments in `painel-anki-primeira-conexao.js` for its subscription and timer lifecycle. See the
   [Anki area states](../../../docs/design/painel/anki/README.md#estados) for the **Pronto** moment, its status during a new check and focus when the controls or card leave.
-  Tests: `e2e/tests/painel-anki-primeira-conexao.spec.js` (behaviour, download, checklist), `abrir-o-anki-sozinho.spec.js` (step 3, here and in the Boas-vindas, against the fake opener of the fixture), `boas-vindas.spec.js` (the same component in step 4 and “the same step in both places”),
+  Tests: `e2e/tests/painel-anki-primeira-conexao.spec.js` (behaviour, download, checklist), `ter-o-anki.spec.js` (the first step: the question, the installer by system, the opener opening the Anki, the manual path, the warning animation and its reduced-motion still frames), `abrir-o-anki-sozinho.spec.js` (the opener step, here and in the Boas-vindas, against the fake opener of the fixture), `boas-vindas.spec.js` (the same component in step 4 and “the same step in both places”),
   `complemento/test_pacote.py` and `test_empacotar.js` (the file inside the package).
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
   selo (“Anki fechado. Mostrando dados de há 2 h.”, with the code in Detalhes) and the period controls set to that reading's

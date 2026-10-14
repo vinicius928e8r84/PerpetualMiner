@@ -32,6 +32,8 @@ with open(CONTRATO, encoding="utf-8") as _arquivo:
     DO_ABRIDOR = json.load(_arquivo)["abridor"]
 
 HOST = DO_ABRIDOR["host"]
+# Os contextos do contrato em que o Anki está no lugar anotado: `nao_abre` é o Anki lá e o sistema sem abri-lo.
+ANKI_NO_LUGAR = ("no_lugar", "nao_abre")
 ORIGEM_DA_EXTENSAO = configuracao.ORIGENS_ACEITAS[0] + "/"
 # Opera GX 136 encontrou/chamou o host só na chave HKCU do Chrome no Windows real (W4, 2026-10-10).
 # A ajuda do Opera cita HKLM, não HKCU; esta constante segue o ensaio, não confirma outros builds.
@@ -64,8 +66,13 @@ class OpenDeMentira:
     def __init__(self, pasta):
         self.caminho = os.path.join(pasta, "open-de-mentira")
         self.anotados = os.path.join(pasta, "open-recebeu.txt")
+        self.consegue(True)
+
+    def consegue(self, abrir):
+        """Com `abrir` falso, anota os argumentos e sai com erro, como o `open` que não conseguiu abrir o Anki."""
         with open(self.caminho, "w", encoding="utf-8") as arquivo:
-            arquivo.write('#!/bin/sh\nfor a in "$@"; do printf "%%s\\n" "$a"; done > "%s"\n' % self.anotados)
+            arquivo.write('#!/bin/sh\nfor a in "$@"; do printf "%%s\\n" "$a"; done > "%s"\n%s'
+                          % (self.anotados, "" if abrir else "exit 1\n"))
         os.chmod(self.caminho, 0o755)
 
     def recebeu(self):
@@ -159,10 +166,12 @@ class NoMac(unittest.TestCase):
         script = self.escrever()
         for exemplo in DO_ABRIDOR["exemplos"]:
             with self.subTest(exemplo["nome"]):
-                if exemplo["contexto"]["anki"] == "no_lugar":
+                contexto = exemplo["contexto"]["anki"]
+                if contexto in ANKI_NO_LUGAR:
                     os.makedirs(self.pastas.app, exist_ok=True)
-                else:
+                elif os.path.exists(self.pastas.app):
                     shutil.rmtree(self.pastas.app)
+                self.pastas.open.consegue(contexto != "nao_abre")
                 resposta = conversar(script, exemplo["mensagem"])
                 self.assertEqual(
                     resposta, exemplo["resposta"],
@@ -365,7 +374,7 @@ class OPs1NoPowerShell(unittest.TestCase):
                 if exemplo["mensagem"] == {"acao": "abrir"}:
                     continue  # abrir rodaria um programa: só o ensaio do dono
                 with self.subTest(exemplo["nome"]):
-                    if exemplo["contexto"]["anki"] == "no_lugar":
+                    if exemplo["contexto"]["anki"] in ANKI_NO_LUGAR:
                         open(anki, "wb").close()
                     elif os.path.exists(anki):
                         os.remove(anki)
