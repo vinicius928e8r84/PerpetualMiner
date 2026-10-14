@@ -812,3 +812,62 @@ test('com o painel fechado, os Cartões continuam na Conexão; ao reabrir, o pro
   await resumo(reaberta).getByRole('button', { name: 'Manter' }).click();
   await expect.poll(async () => (await extensao.frases()).filter(f => f.status === 'exported').map(f => f.id)).toEqual([SACK.id]);
 });
+
+// ─── Apagar tudo (CFG-17) alcança as Frases do Envio (#248) ──────────────────
+
+const SENTINELA = 'zymurgyxq';
+
+test('Apagar tudo tira a Palavra e a Frase do que o painel guarda do Envio e da Conexão, e o Tentar de novo não as reenvia', async ({ page, extensao, fakes }) => {
+  const sentinela = frase(1_700_000_000_099, `The ${SENTINELA} vat bubbled all night.`, { keywords: [`${SENTINELA}@1`] });
+  await extensao.gravarStorage({ frases: [sentinela] });
+  fakes.anki.perderARespostaDoEnvio();
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, [sentinela.texto]);
+  await expect(envio(page, 'Envio em inglês · 1 frase')).toContainText('Não começou');
+  const [naConexao] = await enviosCriados(fakes, 1);
+  // Antes: a Frase está onde o Envio precisa dela (o corpo congelado do painel e a linha do pedido na Conexão).
+  expect(JSON.stringify(await extensao.lerStorage())).toContain(SENTINELA);
+  expect(JSON.stringify(naConexao.corpo)).toContain(SENTINELA);
+
+  await progresso(page).getByRole('button', { name: 'Fechar' }).first().click();
+  await page.goto(extensao.url('painel.html#configuracoes/perigo'));
+  await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar 1 frase' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 1 frase' }).click();
+
+  await expect.poll(async () => JSON.stringify(await extensao.lerStorage())).not.toContain(SENTINELA);
+  await expect.poll(() => JSON.stringify(fakes.anki.envios.map(e => e.corpo))).not.toContain(SENTINELA);
+  expect(fakes.anki.requisicoes.filter(r => r.metodo === 'POST' && r.caminho === '/jobs/apagar-frases')).toHaveLength(1);
+  // O Envio sem resposta (jobId nulo) não tem mais o que reenviar: nada de Tentar de novo, nada de `POST /jobs` novo.
+  expect((await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
+  await page.goto(extensao.url('painel.html#frases'));
+  await page.waitForTimeout(500);
+  expect(fakes.anki.requisicoes.filter(r => r.metodo === 'POST' && r.caminho === '/jobs')).toHaveLength(1);
+  expect(fakes.anki.envios).toHaveLength(1);
+});
+
+test('Apagar tudo sem a Conexão responder: as Frases saem do painel e o pedido segue marcado até a Conexão responder', async ({ page, extensao, fakes }) => {
+  const sentinela = frase(1_700_000_000_098, `The ${SENTINELA} vat bubbled all night.`, { keywords: [`${SENTINELA}@1`] });
+  await extensao.gravarStorage({ frases: [sentinela] });
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, [sentinela.texto]);
+  await enviosCriados(fakes, 1);
+  await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio?.envios?.[0]?.jobId).toBeTruthy();
+
+  fakes.anki.falharApagarFrases();
+  await progresso(page).getByRole('button', { name: 'Fechar' }).first().click();
+  await page.goto(extensao.url('painel.html#configuracoes/perigo'));
+  await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar 1 frase' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 1 frase' }).click();
+
+  // O que o painel guardava já saiu; a Conexão ainda não confirmou, e o pedido fica marcado.
+  await expect.poll(async () => JSON.stringify(await extensao.lerStorage())).not.toContain(SENTINELA);
+  const { pm_envio: pendente } = await extensao.lerStorage('pm_envio');
+  expect(pendente.apagarFrases).toBe(true);
+  expect(pendente.envios.map(e => e.corpo)).toEqual([undefined]);
+  expect(JSON.stringify(fakes.anki.envios.map(e => e.corpo))).toContain(SENTINELA);
+
+  fakes.anki.voltarApagarFrases();
+  await page.reload();
+  await expect.poll(() => JSON.stringify(fakes.anki.envios.map(e => e.corpo))).not.toContain(SENTINELA);
+  await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio?.apagarFrases).toBeUndefined();
+});

@@ -72,6 +72,7 @@ function criarFakeAnki() {
     custos: null,       // as linhas de POST /analytics/jobs que o teste definiu (definirCustos); null: as dos Envios da fila
     registrosDeCusto: new Map(), // jobId → os registros de custo do Envio (os da fila do contrato)
     falhaDosCustos: null, // { status } | { rede: true }: POST /analytics/jobs falha
+    falhaDoApagarFrases: null, // { rede: true }: POST /jobs/apagar-frases não tem resposta
     baralhos: {},       // deckName → os números do baralho (definirBaralho)
     fonteDosBaralhos: 'colecao',        // 'collection.anki2': lidos do arquivo local (BRG-13)
     lidoDoArquivo: false,       // a Conexão responde lendo o arquivo do Anki: baralhos e vocabulário vêm de `collection.anki2`
@@ -152,6 +153,23 @@ function criarFakeAnki() {
     };
   }
 
+  /**
+   * `POST /jobs/apagar-frases`: de todo Envio somem as linhas das Frases (ficam os `phraseId`); um Envio na fila ou andando vai a
+   * `failed` com `wiped`. Repetido, não muda nada.
+   */
+  function apagarAsFrases() {
+    for (const envio of envios) {
+      envio.corpo = { ...envio.corpo, entries: envio.corpo.entries.map(({ line, ...entrada }) => entrada) };
+      envio.entries = envio.corpo.entries;
+      if (envio.state.wiped) continue;
+      const parou = ['queued', 'running'].includes(envio.state.status);
+      envio.state = { ...envio.state, wiped: true, ...(parou ? { status: 'failed', stage: 'failed', lastError: 'frases_apagadas', progress: {} } : {}), updatedAt: estado.agora().toISOString() };
+    }
+  }
+
+  /** O pacote de diagnóstico não leva as linhas das Frases: só os `phraseId` (a Palavra e a Frase não saem do Envio). */
+  const semAsLinhas = pedido => ({ ...pedido, entries: pedido.entries.map(({ line, ...entrada }) => entrada) });
+
   /** O pedido de um Envio como a Conexão o guarda (o corpo, mais `createdAt`). */
   const pedidoGuardado = envio => ({ ...envio.corpo, createdAt: envio.createdAt });
 
@@ -209,8 +227,8 @@ function criarFakeAnki() {
       status: 200,
       json: {
         generatedAt: estado.agora().toISOString(), jobId, versao: contrato.exemplos.find(e => e.pedido.caminho === '/health').resposta.json.versao,
-        job: envio ? pedidoGuardado(envio) : null, state: envio ? envio.state : { status: linha.status },
-        queueItem: envio ? { jobId, lang: envio.lang, status: envio.state.status, createdAt: envio.createdAt, updatedAt: envio.state.updatedAt } : null,
+        job: envio ? semAsLinhas(pedidoGuardado(envio)) : null, state: envio ? envio.state : { status: linha.status },
+        queueItem: envio ? { jobId, lang: envio.lang, createdAt: envio.createdAt } : null,
         costs: registros, costSummary: resumoDosCustos(registros), artifacts: [], logTail: [],
       },
     };
@@ -308,8 +326,8 @@ function criarFakeAnki() {
     }
     const envio = envios.find(e => e.jobId === jobId);
     if (!envio) return erroDoContrato('/jobs/retry', 'job_not_found');
-    // Na fila ou andando, a Conexão só diz o estado: nada muda.
-    if (['queued', 'running'].includes(envio.state.status)) return { status: 200, json: { jobId, status: envio.state.status } };
+    // Na fila ou andando, ou com as Frases apagadas, a Conexão só diz o estado: nada muda.
+    if (['queued', 'running'].includes(envio.state.status) || envio.state.wiped) return { status: 200, json: { jobId, status: envio.state.status } };
     const cards = Object.fromEntries(Object.entries(envio.state.cards || {}).map(([stem, cartao]) =>
       [stem, cartao.status === 'failed' ? { ...cartao, status: 'pending', error: null } : cartao]));
     envio.state = { ...envio.state, status: 'queued', stage: 'queued', progress: {}, lastError: null, cards, updatedAt: estado.agora().toISOString() };
@@ -555,7 +573,7 @@ function criarFakeAnki() {
       return responderJson(route, 200, { ok: true, after: { collectionReady: true, connectAvailable: true } });
     }
     // O Envio e os custos: só POST, como no complemento (o GET de antes não existe mais).
-    const doEnvio = ['/jobs', '/jobs/list', '/jobs/get', '/jobs/retry', '/jobs/debug-bundle', '/analytics/jobs'].includes(url.pathname);
+    const doEnvio = ['/jobs', '/jobs/list', '/jobs/get', '/jobs/retry', '/jobs/debug-bundle', '/jobs/apagar-frases', '/analytics/jobs'].includes(url.pathname);
     if (doEnvio && req.method() !== 'POST') return responderJson(route, 404, { error: 'not_found' });
     const pedidoDoEnvio = doEnvio ? dadosDoCorpo(corpoDoPedido) || {} : null;
     if (url.pathname === '/analytics/jobs') {
@@ -575,7 +593,12 @@ function criarFakeAnki() {
       return responderJson(route, resposta.status, resposta.json);
     }
     if (url.pathname === '/jobs/list') return responderJson(route, 200, listarEnvios());
-    if (doEnvio && typeof pedidoDoEnvio.jobId !== 'string') {
+    if (url.pathname === '/jobs/apagar-frases') {
+      if (estado.falhaDoApagarFrases?.rede) return route.abort('connectionrefused');
+      apagarAsFrases();
+      return responderJson(route, 200, { ok: true });
+    }
+    if (doEnvio && url.pathname !== '/jobs/apagar-frases' && typeof pedidoDoEnvio.jobId !== 'string') {
       const { status, json } = erroDoContrato(url.pathname, 'invalid_job_id');
       return responderJson(route, status, json);
     }
@@ -704,6 +727,9 @@ function criarFakeAnki() {
     /** POST /analytics/jobs falha: `{ status: 503 }` responde com erro, `{ rede: true }` derruba. */
     falharCustos(falha = { status: 503 }) { estado.falhaDosCustos = falha; },
     voltarCustos() { estado.falhaDosCustos = null; },
+    /** POST /jobs/apagar-frases sem resposta (`{ rede: true }`); `voltarApagarFrases()` o faz responder de novo. */
+    falharApagarFrases(falha = { rede: true }) { estado.falhaDoApagarFrases = falha; },
+    voltarApagarFrases() { estado.falhaDoApagarFrases = null; },
 
     /** O relógio da Conexão, para o `updatedAt` (o painel diz “atualizado há …”). */
     usarRelogio(agora) { estado.agora = agora; },

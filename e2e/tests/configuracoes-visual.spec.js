@@ -227,6 +227,20 @@ test('IA dos cartões com conta: a chave vai junto com a conta Google, com Troca
   await expect(page).toHaveScreenshot('ia-conferida-com-conta.png', { animations: 'disabled' });
 });
 
+// #142 / #248: a parte “Falha local” do CFG-17 ganha as Frases que a Conexão ainda guarda quando ela não responde ao Apagar tudo.
+// A cópia dessa falha ainda não existe no catálogo da Voz: é cópia a aprovar pelo dono (regra 10, “Falha local” do CFG-17 na
+// página docs/design/envio-no-complemento.md). Até lá o teste fica `fixme`, sem PNG e sem texto inventado na tela.
+test('Apagar tudo com a Conexão sem responder: a falha local diz que as Frases dela ainda não saíram', async ({ page, extensao, fakes }) => {
+  test.fixme(true, 'a cópia da Falha local do CFG-17 com as Frases na Conexão espera a aprovação do dono (regra 10)');
+  await semearComoNoPrototipo(extensao, fakes);
+  fakes.anki.falharApagarFrases();
+  await abrirConfiguracoes(page, extensao, '#configuracoes/perigo');
+  await page.locator('#cfg-perigo').getByRole('button', { name: /^Apagar todas as/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: /^Apagar .* frases$/ }).click();
+
+  await expect(page).toHaveScreenshot('apagar-tudo-falha-frases-na-conexao.png', { animations: 'disabled' });
+});
+
 test('o modal de apagar a chave da OpenAI, com conta', async ({ page, extensao, fakes }) => {
   test.fixme(true, AGUARDA_O_DONO);
   await semearComoNoPrototipo(extensao, fakes, 'uid-ia');

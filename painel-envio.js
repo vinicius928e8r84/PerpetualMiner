@@ -15,6 +15,8 @@
 //   apagar(ids)               apaga pelo caminho de sempre (tombstone, nuvem), sem toast;
 //   marcarComoEnviadas(ids)   grava Enviada ao Anki, sem toast e sem mexer na seleção.
 //
+// E devolve `Envio.apagarTudo()`, que o Apagar tudo chama (CFG-17): as Frases saem do `pm_envio` e da Conexão (#248).
+//
 // Os Ajustes de envio (baralho, imagens, sotaque) vêm de `AjustesDeEnvio`, lidos
 // na hora de criar cada Envio.
 
@@ -42,7 +44,8 @@
   const porId = id => document.getElementById(id);
 
   let doPainel = null;
-  // A remessa acompanhada: { envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar, corpo }] }. `corpo` é o
+  // A remessa acompanhada: { envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar, corpo }] } (em `pm_envio` vai também
+  // `apagarFrases: true` quando o Apagar tudo ainda não foi confirmado pela Conexão: o painel pede de novo quando ela responder). `corpo` é o
   // pedido do Envio, montado uma vez e gravado antes do primeiro POST: reenviado igual (Tentar de novo, o painel reaberto
   // com o pedido sem resposta), é o mesmo Envio na Conexão, porque o `jobId` dele é o `id` (docs/design/envio-no-complemento.md).
   let remessa = null;
@@ -71,7 +74,10 @@
     porId('modal-resumo-fechar').addEventListener('click', () => resumo?.fechar());
     porId('btn-resumo-manter').addEventListener('click', () => resumo?.fechar());
     porId('btn-resumo-apagar').addEventListener('click', () => responderResumo('apagar'));
-    ConexaoAnki.acompanhar(mostrarConexao);
+    ConexaoAnki.acompanhar(situacao => {
+      mostrarConexao(situacao);
+      if (situacao !== CONEXAO.DESLIGADA) pedirAApagarAsFrases();
+    });
     // O resumo que esperou a Boas-vindas abre quando a pessoa chega ao painel.
     for (const area of AREAS_DO_PAINEL) Shell.aoEntrarNaArea(area, tentarAbrirResumo);
 
@@ -230,17 +236,57 @@
   }
 
   /** Grava os Envios que já têm um pedido montado (ainda sem resposta, criado ou que não começou). */
-  function gravar() {
+  async function gravar() {
     const envios = remessa.envios.filter(e => e.jobId || e.falhaAoCriar || e.corpo);
-    return new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios } }, r));
+    // O Apagar tudo que a Conexão ainda não confirmou continua marcado, mesmo com um Envio novo.
+    const apagarFrases = (await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r)))[CHAVE_GRAVADA]?.apagarFrases;
+    return new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios, ...(apagarFrases ? { apagarFrases: true } : {}) } }, r));
   }
 
-  function esquecer() {
+  // ─── Apagar tudo (CFG-17) ───────────────────────────────────────────────────
+
+  /**
+   * As Frases saem do que o painel guarda do Envio e da Conexão. Em `pm_envio`, um Envio que ainda não tinha resposta some (não há
+   * mais o que reenviar: o Tentar de novo do ENV-03 gastaria a chave com Frases apagadas) e os outros perdem o `corpo`, que tem as
+   * Frases. A Conexão apaga as dela (`POST /jobs/apagar-frases`); sem resposta, o pedido fica marcado e sai de novo quando ela responder.
+   */
+  async function apagarTudo() {
+    const gravado = (await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r)))[CHAVE_GRAVADA];
+    const envios = (remessa?.envios || gravado?.envios || []).filter(e => e.jobId).map(({ corpo, ...resto }) => resto);
+    remessa = remessa ? { ...remessa, envios } : null;
+    await new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios, apagarFrases: true } }, r));
+    return pedirAApagarAsFrases();
+  }
+
+  let apagandoAsFrases = null;
+  /** Pede à Conexão o apagamento das Frases dela, se ele está marcado; devolve se a Conexão confirmou (ou nada havia a pedir). */
+  function pedirAApagarAsFrases() {
+    if (apagandoAsFrases) return apagandoAsFrases;
+    apagandoAsFrases = (async () => {
+      const gravado = (await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r)))[CHAVE_GRAVADA];
+      if (!gravado?.apagarFrases) return true;
+      try {
+        const resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, PedidoAoAnki.apagarFrasesDosEnvios());
+        if (!resposta.ok) return false;
+      } catch {
+        return false;
+      }
+      const envios = gravado.envios || [];
+      if (envios.length) await new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios } }, r));
+      else await new Promise(r => chrome.storage.local.remove(CHAVE_GRAVADA, r));
+      return true;
+    })().finally(() => { apagandoAsFrases = null; });
+    return apagandoAsFrases;
+  }
+
+  async function esquecer() {
     remessa = null;
     desistiuDasPendencias = false;
     jobs.clear();
     falhasAoRetomar.clear();
     pararDeAcompanhar();
+    const apagarFrases = (await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r)))[CHAVE_GRAVADA]?.apagarFrases;
+    if (apagarFrases) return new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios: [], apagarFrases: true } }, r));
     return new Promise(r => chrome.storage.local.remove(CHAVE_GRAVADA, r));
   }
 
@@ -672,5 +718,5 @@
     return ETAPAS.find(([etapa]) => etapa === stage)?.[1] || null;
   }
 
-  raiz.Envio = { usar, nomeDaEtapa };
+  raiz.Envio = { usar, nomeDaEtapa, apagarTudo };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

@@ -1261,6 +1261,8 @@ function apagarTudo() {
   atualizarContadorSelecao();
   // A chave da OpenAI também sai (#154): daqui, da Conexão e, com conta, da nuvem, mesmo que ainda não tenha chegado aqui.
   const chaveApagada = apagarChaveNoApagarTudo();
+  // As Frases também saem do que o painel guarda do Envio (`pm_envio.corpo`) e da Conexão (#248); sem resposta dela, o painel pede de novo depois.
+  Envio.apagarTudo();
   const naNuvem = sincronizacao.apagarTudo(ids).then(({ ok, erro }) => {
     if (!ok) {
       console.error('[Firestore] apagar tudo falhou:', erro);
