@@ -103,6 +103,15 @@ class ColecaoDoAnki:
     def adicionar_nota(self, baralho, tipo_de_nota, campos, etiquetas, guid):
         return self._gravando(lambda colecao: _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid))
 
+    def gravar_cartao(self, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar):
+        """O passo de gravar um Cartão, **uma função só** na thread principal: a sincronização, o `guid`, a frente no Baralho e a nota.
+
+        Devolve `"added"` (a nota é deste Cartão: já estava, ou foi gravada agora) ou `"duplicate"` (a frente já estava no Baralho,
+        de outra nota). A busca da frente fica aqui dentro: uma função que o Anki ocupado atrasou, e que a thread de trabalho
+        deixou de esperar, não faz a volta seguinte contar a própria nota como duplicata."""
+        return self._gravando(lambda colecao: _gravar_cartao(
+            colecao, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar))
+
 
 def _campos_do_tipo(modelo):
     return [campo["name"] for campo in sorted(modelo["flds"], key=lambda c: c["ord"])] if modelo else None
@@ -124,6 +133,16 @@ def _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid):
     nota.tags = list(etiquetas)
     nota.guid = guid
     colecao.add_note(nota, colecao.decks.id(baralho))
+
+
+def _gravar_cartao(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar):
+    if colecao.db.all("select 1 from notes where guid = ?", guid):
+        return "added"
+    for cartao in _cartoes_do_baralho(colecao, baralho):
+        if any(nome == campo_da_frente and valor and normalizar(valor) == frente_normalizada for nome, valor in cartao["campos"]):
+            return "duplicate"
+    _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid)
+    return "added"
 
 
 def _cartoes_do_baralho(colecao, nome):

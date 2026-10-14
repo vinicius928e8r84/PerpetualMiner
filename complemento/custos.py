@@ -126,7 +126,7 @@ def linhas(fila, de, ate, lang):
         pedido, estado = fila.pedido(job_id) or {}, fila.estado(job_id)
         criado_em = pedido.get("createdAt") or item.get("createdAt")
         idioma = pedido.get("lang") or item.get("lang") or "unknown"
-        status = estado.get("status") or item.get("status") or "unknown"
+        status = estado.get("status") or "unknown"
         lidos = fila.registros_de_custo(job_id)
         do_envio = dia(criado_em)
         if lang != "all" and idioma != lang:

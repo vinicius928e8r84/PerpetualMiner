@@ -92,9 +92,8 @@
           "lastError": null,
           "updatedAt": "2026-10-12T10:00:00-03:00",
           "cards": {
-            "give_up__474901fc": {
+            "1760270400000-0": {
               "phraseId": 1760270400000,
-              "keyword": "give up",
               "status": "pending",
               "error": null
             }
@@ -145,21 +144,18 @@
           "lastError": "openai_rate_limited",
           "updatedAt": "2026-10-12T10:05:00-03:00",
           "cards": {
-            "keep_running__d32b3528": {
+            "1760270400001-0": {
               "phraseId": 1760270400001,
-              "keyword": "keep running",
               "status": "added",
               "error": null
             },
-            "run__aab53287": {
+            "1760270400001-1": {
               "phraseId": 1760270400001,
-              "keyword": "run",
               "status": "failed",
               "error": "openai_rate_limited"
             },
-            "give_up__474901fc": {
+            "1760270400002-0": {
               "phraseId": 1760270400002,
-              "keyword": "give up",
               "status": "added",
               "error": null
             }
@@ -173,7 +169,7 @@
             "input_tokens": 1000,
             "output_tokens": 200,
             "cost_usd": 0.0045,
-            "keyword": "keep running"
+            "keyword": "1760270400001-0"
           },
           {
             "date": "2026-10-12",
@@ -182,7 +178,7 @@
             "input_tokens": 1000,
             "output_tokens": 200,
             "cost_usd": 0.0045,
-            "keyword": "give up"
+            "keyword": "1760270400002-0"
           }
         ]
       }
@@ -3075,6 +3071,45 @@
       }
     },
     {
+      "nome": "criar de novo um Envio que já terminou, com o mesmo pedido, devolve o Envio como ele está",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio que terminou em parte"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "c7d1e2f3-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400001,
+              "line": "keep running | run : They keep running"
+            },
+            {
+              "phraseId": 1760270400002,
+              "line": "give up : She gave up smoking"
+            }
+          ]
+        }
+      },
+      "resposta": {
+        "status": 201,
+        "json": {
+          "jobId": "c7d1e2f3-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+          "status": "partial"
+        }
+      }
+    },
+    {
       "nome": "criar de novo um Envio que a Conexão já tem, com o mesmo pedido, devolve o mesmo Envio",
       "daExtensao": true,
       "contexto": {
@@ -3324,21 +3359,18 @@
                 "lastError": "openai_rate_limited",
                 "updatedAt": "2026-10-12T10:05:00-03:00",
                 "cards": {
-                  "keep_running__d32b3528": {
+                  "1760270400001-0": {
                     "phraseId": 1760270400001,
-                    "keyword": "keep running",
                     "status": "added",
                     "error": null
                   },
-                  "run__aab53287": {
+                  "1760270400001-1": {
                     "phraseId": 1760270400001,
-                    "keyword": "run",
                     "status": "failed",
                     "error": "openai_rate_limited"
                   },
-                  "give_up__474901fc": {
+                  "1760270400002-0": {
                     "phraseId": 1760270400002,
-                    "keyword": "give up",
                     "status": "added",
                     "error": null
                   }
@@ -3395,9 +3427,8 @@
             "lastError": null,
             "updatedAt": "2026-10-12T10:00:00-03:00",
             "cards": {
-              "give_up__474901fc": {
+              "1760270400000-0": {
                 "phraseId": 1760270400000,
-                "keyword": "give up",
                 "status": "pending",
                 "error": null
               }
@@ -3554,8 +3585,7 @@
             },
             "entries": [
               {
-                "phraseId": 1760270400000,
-                "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+                "phraseId": 1760270400000
               }
             ]
           },
@@ -3571,9 +3601,8 @@
             "lastError": null,
             "updatedAt": "2026-10-12T10:00:00-03:00",
             "cards": {
-              "give_up__474901fc": {
+              "1760270400000-0": {
                 "phraseId": 1760270400000,
-                "keyword": "give up",
                 "status": "pending",
                 "error": null
               }
@@ -3582,9 +3611,7 @@
           "queueItem": {
             "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
             "lang": "en",
-            "status": "queued",
-            "createdAt": "2026-10-12T10:00:00-03:00",
-            "updatedAt": "2026-10-12T10:00:00-03:00"
+            "createdAt": "2026-10-12T10:00:00-03:00"
           },
           "costs": [],
           "costSummary": {
@@ -3650,6 +3677,59 @@
         "status": 400,
         "json": {
           "error": "invalid_job_id"
+        }
+      }
+    },
+    {
+      "nome": "apagar as Frases sem nenhum Envio não muda nada",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/apagar-frases",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "nome": "apagar as Frases tira as linhas e os textos da Conexão e para o Envio que está na fila",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio na fila"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/apagar-frases",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "nome": "apagar as Frases com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/apagar-frases",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
         }
       }
     },

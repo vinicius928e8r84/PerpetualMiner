@@ -1,0 +1,64 @@
+"""O motor de texto de `engine/` visto como o pacote `complemento.motor`: o mesmo código que o Anki roda (Python 3.9, sem PyYAML,
+dotenv nem o SDK da OpenAI), conferido nos grupos 3.9 e 3.13 do complemento (C10 de `docs/design/envio-no-complemento.md`).
+
+    python3.9 complemento/test_motor.py
+"""
+
+import os
+import sys
+import tempfile
+import unittest
+from unittest import mock
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from complemento import envio  # noqa: E402
+from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
+
+SEM_AS_BIBLIOTECAS_DE_FORA = {"yaml": None, "dotenv": None, "openai": None, "httpx": None, "requests": None}
+
+
+def configuracao_do_teste(motor, pasta):
+    config = motor.config_loader.base_config()
+    config["openai_api_key"] = "sk-proj-chave-do-teste-0000"
+    pasta_do_motor = os.path.dirname(os.path.abspath(motor.config_loader.__file__))
+    config["paths"]["prompts"] = {nome: os.path.join(pasta_do_motor, caminho) for nome, caminho in config["paths"]["prompts"].items()}
+    config["paths"]["output_dir"] = os.path.join(pasta, "textos")
+    config["paths"]["log_dir"] = os.path.join(pasta, "custos")
+    return config
+
+
+class OMotorComoPacote(unittest.TestCase):
+    def test_a_configuracao_se_le_sem_pyyaml_nem_dotenv_e_o_tipo_de_nota_e_o_de_hoje(self):
+        with mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
+            motor = envio.motor_do_complemento()
+            config = motor.config_loader.base_config()
+        self.assertEqual((config["anki"]["note_type"], config["anki"]["fields"]), ("Básico", {"front": "Frente", "back": "Verso"}))
+
+    def test_uma_linha_com_duas_palavras_tem_dois_cartoes_e_a_linha_russa_um(self):
+        motor = envio.motor_do_complemento()
+        self.assertEqual(envio.cartoes_da_frase(motor, "en", "keep running | run : They keep running"), 2)
+        self.assertEqual(envio.cartoes_da_frase(motor, "ru", "Я не мальчик! [Context: Série - Episódio 1]"), 1)
+        self.assertEqual(envio.cartoes_da_frase(motor, "en", ""), 0)
+
+    def test_gera_um_cartao_contra_a_openai_de_mentira_sem_o_sdk_e_o_chama_pelo_nome_que_o_envio_deu(self):
+        with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai, mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
+            motor = envio.motor_do_complemento()
+            config = configuracao_do_teste(motor, pasta)
+            falhas = {}
+            entrada = motor.parser.parse_mining_line("give up : She gave up smoking")
+            salvos = motor.generate_cards.run(
+                [entrada], config, openai_base=openai.base, failures=falhas, card_stem=lambda trabalho, posicao: "17-%d" % posicao)
+            with open(os.path.join(pasta, "textos", "17-0.txt"), encoding="utf-8") as arquivo:
+                nota = motor.send_to_anki.card_fields(arquivo.read(), "en")
+            with open(os.path.join(pasta, "custos", "costs.jsonl"), encoding="utf-8") as arquivo:
+                custos = arquivo.read()
+        self.assertEqual((salvos, falhas), (["17-0"], {}))
+        self.assertIn("<b>give up</b>", nota["front"])
+        self.assertEqual([p[0] for p in openai.chats], ["Bearer sk-proj-chave-do-teste-0000"])
+        self.assertIn('"keyword": "17-0"', custos)
+        self.assertNotIn("give up", custos)
+
+
+if __name__ == "__main__":
+    unittest.main()

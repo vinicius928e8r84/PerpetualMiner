@@ -41,6 +41,8 @@ python3.9 complemento/test_item_de_login.py  # o item de login escrito e apagado
 python3.9 complemento/test_abridor.py        # o abridor escrito e registrado numa pasta temporária, por sistema; o script do Mac roda (e o .ps1, onde houver pwsh)
 python3.9 complemento/test_chave_da_openai.py  # a chave: o que atravessa o HTTP, o que fica no disco, o que o log guarda
 python3.9 complemento/test_envio.py          # o Envio: a fila, o estado por Cartão, as duplicatas, a espera do Anki, a retomada, os custos e a chave fora de tudo
+python3.9 complemento/test_envio_fronteiras.py  # a Conexão morre em cada gravação do criar, do trabalho e do Apagar tudo (#248)
+python3.9 complemento/test_motor.py          # o motor de texto como o pacote `complemento.motor`, sem PyYAML, dotenv nem o SDK da OpenAI
 ```
 
 Rode todos também com `python3.12` e `python3.13`. Sem os interpretadores: `uv python install 3.9 3.13`.

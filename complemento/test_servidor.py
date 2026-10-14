@@ -19,7 +19,7 @@ import warnings
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import baralhos, configuracao, item_de_login, pasta_de_dados, registro, servidor  # noqa: E402
+from complemento import baralhos, configuracao, envio, item_de_login, pasta_de_dados, registro, servidor  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira  # noqa: E402
 
@@ -158,7 +158,9 @@ def semear_a_fila(pasta, fila):
     for envio_ in fila:
         job, estado = envio_["job"], envio_["state"]
         job_id = job["jobId"]
-        for nome, dados in ((os.path.join("fila", job_id + ".json"), job), (os.path.join("estado", job_id + ".json"), estado)):
+        sem_hora = {chave: valor for chave, valor in job.items() if chave != "createdAt"}
+        pedido = dict(job, corpoSha256=envio.impressao(sem_hora))
+        for nome, dados in ((os.path.join("fila", job_id + ".json"), pedido), (os.path.join("estado", job_id + ".json"), estado)):
             os.makedirs(os.path.dirname(os.path.join(pasta, nome)), exist_ok=True)
             with open(os.path.join(pasta, nome), "w", encoding="utf-8") as arquivo:
                 json.dump(dados, arquivo, ensure_ascii=False, indent=2)
@@ -170,7 +172,7 @@ def semear_a_fila(pasta, fila):
             os.makedirs(os.path.join(pasta, "custos", job_id), exist_ok=True)
             with open(os.path.join(pasta, "custos", job_id, "costs.jsonl"), "w", encoding="utf-8") as arquivo:
                 arquivo.writelines(json.dumps(registro, ensure_ascii=False) + "\n" for registro in envio_["custos"])
-        ordem.append({"jobId": job_id, "lang": job["lang"], "status": estado["status"], "createdAt": job["createdAt"], "updatedAt": estado["updatedAt"]})
+        ordem.append({"jobId": job_id, "lang": job["lang"], "createdAt": job["createdAt"]})
     os.makedirs(os.path.join(pasta, "fila"), exist_ok=True)
     with open(os.path.join(pasta, "fila", "fila.json"), "w", encoding="utf-8") as arquivo:
         json.dump({"jobs": ordem}, arquivo, ensure_ascii=False, indent=2)
@@ -480,6 +482,8 @@ MATRIZ = {
         "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
         "recusas": [({}, 400, "invalid_job_id")],
     },
+    # O Apagar tudo (CFG-17) tira as Frases que a Conexão guarda: não lê a coleção nem o perfil; repetido, nada muda.
+    ("POST", "/jobs/apagar-frases"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/jobs/debug-bundle"): {
         "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, "le_a_colecao": False, "le_o_perfil": False,
         "recusas": [({}, 400, "invalid_job_id")],
@@ -745,7 +749,7 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
     def test_as_rotas_que_mudam_sao_as_da_chave_do_item_de_login_e_do_envio(self):
         self.assertEqual(
             sorted(rota[1] for rota, regra in MATRIZ.items() if regra.get("muda")),
-            ["/abrir-com-o-computador", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/retry"],
+            ["/abrir-com-o-computador", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry"],
         )
 
 

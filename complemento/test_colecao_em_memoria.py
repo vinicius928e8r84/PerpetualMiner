@@ -93,6 +93,17 @@ class ColecaoEmMemoria:
         self._guids.add(guid)
         self.gravadas.append({"baralho": baralho, "tipo": tipo_de_nota, "campos": dict(campos), "etiquetas": list(etiquetas), "guid": guid})
 
+    def gravar_cartao(self, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar):
+        """O passo inteiro de gravar um Cartão (ver `no_anki.ColecaoDoAnki.gravar_cartao`): `"added"` ou `"duplicate"`."""
+        self._exigir_gravavel()
+        if guid in self._guids:
+            return "added"
+        for cartao in self.cartoes_do_baralho(baralho):
+            if any(nome == campo_da_frente and valor and normalizar(valor) == frente_normalizada for nome, valor in cartao["campos"]):
+                return "duplicate"
+        self.adicionar_nota(baralho, tipo_de_nota, campos, etiquetas, guid)
+        return "added"
+
     def perfis(self):
         return list(self._perfis)
 
@@ -180,6 +191,21 @@ class ContratoDoAdaptadorDaColecao:
         colecao.adicionar_nota("PerpetualMiner::Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
         self.assertIn("PerpetualMiner::Inglês", colecao.nomes_dos_baralhos())
         self.assertEqual(len(colecao.cartoes_do_baralho("PerpetualMiner")), 1)
+
+    def gravar_o_cartao(self, colecao, guid="guid-1", frente="a"):
+        return colecao.gravar_cartao(
+            "Inglês", "Básico", {"Frente": frente, "Verso": "b"}, [], guid, "Frente", frente.strip().lower(), lambda valor: valor.strip().lower())
+
+    def test_gravar_o_cartao_de_novo_pelo_mesmo_guid_diz_added_sem_dobrar_nem_virar_duplicata(self):
+        colecao = self.adaptador({"baralhos": [{"nome": "Inglês"}]})
+        self.assertEqual((self.gravar_o_cartao(colecao), self.gravar_o_cartao(colecao)), ("added", "added"))
+        self.assertEqual(len(colecao.cartoes_do_baralho("Inglês")), 1)
+
+    def test_a_frente_que_ja_esta_no_baralho_de_outra_nota_diz_duplicate_e_nada_e_gravado(self):
+        colecao = self.adaptador({"baralhos": [{"nome": "Inglês"}]})
+        self.gravar_o_cartao(colecao, "guid-1", "a")
+        self.assertEqual(self.gravar_o_cartao(colecao, "guid-2", "A "), "duplicate")
+        self.assertEqual(len(colecao.cartoes_do_baralho("Inglês")), 1)
 
     def test_o_tipo_de_nota_diz_os_campos_e_um_tipo_que_nao_existe_nao_grava(self):
         colecao = self.adaptador(DESCRICAO)

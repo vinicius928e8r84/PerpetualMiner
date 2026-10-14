@@ -13,6 +13,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 import zipfile
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -131,6 +132,16 @@ class ArquivoDoComplemento(unittest.TestCase):
                 self.assertTrue(motor.generate_cards.__file__.startswith(instalado))
                 self.assertEqual(motor.config_loader.base_config()["anki"]["note_type"], "Básico")
                 self.assertTrue(os.path.isfile(os.path.join(os.path.dirname(motor.config_loader.__file__), "prompts", "en_card.txt")))
+                # E gera um Cartão de dentro da pasta instalada, contra a OpenAI de mentira, sem PyYAML, dotenv nem o SDK da OpenAI.
+                from complemento.test_openai_de_mentira import OpenAIDeMentira
+                from complemento.test_motor import SEM_AS_BIBLIOTECAS_DE_FORA, configuracao_do_teste
+
+                with OpenAIDeMentira() as openai, mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
+                    config = configuracao_do_teste(motor, pasta)
+                    entrada = motor.parser.parse_mining_line("give up : She gave up smoking")
+                    salvos = motor.generate_cards.run([entrada], config, openai_base=openai.base, card_stem=lambda trabalho, posicao: "9-%d" % posicao)
+                self.assertEqual(salvos, ["9-0"])
+                self.assertTrue(os.path.isfile(os.path.join(pasta, "textos", "9-0.txt")))
             finally:
                 sys.path.remove(os.path.dirname(instalado))
                 for nome in [n for n in sys.modules if n == "123456789" or n.startswith("123456789.")]:

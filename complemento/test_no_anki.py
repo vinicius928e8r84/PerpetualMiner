@@ -225,6 +225,39 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, unittest.TestCase):
         colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
         self.assertEqual([guid for _, guid, _ in self.anki.col.notas_gravadas()], ["guid-1"])
 
+    def gravar_o_cartao(self, colecao, guid="guid-1", frente="a"):
+        return colecao.gravar_cartao(
+            "Inglês", "Básico", {"Frente": frente, "Verso": "b"}, [], guid, "Frente", frente.strip().lower(), lambda valor: valor.strip().lower())
+
+    def test_o_cartao_que_o_anki_ocupado_atrasou_da_uma_nota_so_e_a_volta_seguinte_diz_added(self):
+        colecao = no_anki.ColecaoDoAnki(self.adaptador(DESCRICAO)._mw, limite_s=0.2)
+        self.anki.taskman.livre.clear()
+        with self.assertRaises(baralhos.ColecaoIndisponivel):
+            self.gravar_o_cartao(colecao)
+        self.anki.taskman.livre.set()  # a função atrasada roda e grava; a thread de trabalho já tinha desistido
+        self.assertEqual(self.gravar_o_cartao(colecao), "added")  # nunca “duplicate” da própria nota
+        self.assertEqual([guid for _, guid, _ in self.anki.col.notas_gravadas()], ["guid-1"])
+
+    def test_a_funcao_de_gravar_que_roda_depois_de_o_perfil_fechar_nao_levanta_na_thread_principal(self):
+        # O perfil fecha com a função na fila: ela acha `mw.col` vazio, devolve `ColecaoIndisponivel` à thread de trabalho
+        # e nada escapa para a thread principal (o diálogo de erro do Anki nunca abriria).
+        colecao = no_anki.ColecaoDoAnki(self.adaptador(DESCRICAO)._mw, limite_s=0.2)
+        escapou = []
+        anterior = threading.excepthook
+        threading.excepthook = lambda argumentos: escapou.append(argumentos.exc_value)
+        try:
+            self.anki.taskman.livre.clear()
+            with self.assertRaises(baralhos.ColecaoIndisponivel):
+                self.gravar_o_cartao(colecao)
+            self.anki.fechar_o_perfil()
+            self.anki.taskman.livre.set()
+            time.sleep(0.2)
+        finally:
+            threading.excepthook = anterior
+        self.assertEqual(escapou, [])
+        with self.assertRaises(baralhos.ColecaoIndisponivel):
+            self.gravar_o_cartao(colecao)
+
     def test_uma_sincronizacao_que_comeca_com_a_gravacao_na_fila_a_impede(self):
         colecao = no_anki.ColecaoDoAnki(self.adaptador(DESCRICAO)._mw, limite_s=1)
         self.anki.taskman.livre.clear()

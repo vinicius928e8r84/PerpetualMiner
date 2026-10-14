@@ -195,9 +195,10 @@ def _listar_envios(conexao, corpo):
 
 
 def _com_o_envio(corpo, conexao, resposta):
-    """Responde pelo Envio `jobId` do corpo: 400 sem um id válido, 404 se a Conexão não o tem."""
+    """Responde pelo Envio `jobId` do corpo: 400 se o id não é texto ou tem caractere de caminho, 404 se a Conexão não o tem
+    (qualquer formato: só o criar exige um UUID)."""
     job_id = corpo.get("jobId")
-    if not envio.id_valido(job_id):
+    if not envio.id_que_serve_de_caminho(job_id):
         return 400, {"error": "invalid_job_id"}
     if conexao.fila.pedido(job_id) is None:
         return 404, {"error": "job_not_found"}
@@ -205,11 +206,17 @@ def _com_o_envio(corpo, conexao, resposta):
 
 
 def _ver_envio(conexao, corpo):
-    return _com_o_envio(corpo, conexao, lambda job_id: (200, {"job": conexao.fila.pedido(job_id), "state": conexao.fila.estado(job_id)}))
+    return _com_o_envio(corpo, conexao, lambda job_id: (200, {"job": envio.visao_do_pedido(conexao.fila.pedido(job_id)), "state": conexao.fila.estado(job_id)}))
 
 
 def _tentar_envio_de_novo(conexao, corpo):
     return _com_o_envio(corpo, conexao, conexao.fila.tentar_de_novo)
+
+
+def _apagar_as_frases_dos_envios(conexao, corpo):
+    """O Apagar tudo da extensão (CFG-17) tira também as Frases que a Conexão guarda: as linhas dos pedidos e os textos gerados."""
+    conexao.fila.apagar_as_frases()
+    return 200, {"ok": True}
 
 
 def _pacote_de_diagnostico(conexao, corpo):
@@ -242,6 +249,7 @@ ROTAS = {
     ("POST", "/jobs/get"): _ver_envio,
     ("POST", "/jobs/retry"): _tentar_envio_de_novo,
     ("POST", "/jobs/debug-bundle"): _pacote_de_diagnostico,
+    ("POST", "/jobs/apagar-frases"): _apagar_as_frases_dos_envios,
     ("POST", "/analytics/jobs"): _custos_dos_envios,
 }
 
@@ -377,7 +385,7 @@ class _SemColecao:
     def nomes_dos_baralhos(self, *_):
         raise baralhos.ColecaoIndisponivel("collection_unavailable")
 
-    cartoes_do_baralho = tipo_de_nota = guids_existentes = adicionar_nota = nomes_dos_baralhos
+    cartoes_do_baralho = tipo_de_nota = guids_existentes = adicionar_nota = gravar_cartao = nomes_dos_baralhos
 
 
 class Conexao:
@@ -422,7 +430,7 @@ class Conexao:
         self.intervalo_de_parada = intervalo_de_parada
         self._servidor = None
         self._thread = None
-        self.fila = envio.Fila(dados, motor or envio.motor_do_complemento())
+        self.fila = envio.Fila(dados, motor or envio.motor_do_complemento(), logger)
         self._trabalhador = envio.Trabalhador(
             envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(),
                            espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai),
