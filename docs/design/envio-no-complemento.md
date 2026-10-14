@@ -5,23 +5,23 @@ gasta a credencial (a chave da OpenAI que a Conexão guarda). O que a fatia entr
 Conexão, e cada uma vira um Cartão de **texto** (sem áudio, sem imagem: #143, #144), gravado direto na coleção, no tipo de nota e
 nos campos de hoje (“Básico”, “Frente”, “Verso”, até o #161).
 
-**Segunda versão**, depois da revisão independente na PR #231 (B1 e C1…C11), de 2026-10-12. O que mudou de decisão está nas seções; a tabela
-do fim liga cada ponto da revisão à resposta. O código que a acompanha foi escrito antes desta versão e **não** a segue em tudo: ele espera
-esta página ser revista de novo, e o que muda no código está em “O que o código ainda não faz” no fim.
+**Histórico (não é parte do desenho):** a página saiu de três rodadas de revisão independente na PR #231; o que as rodadas mudaram
+está nas seções, e a tabela do fim (“A revisão e onde está a resposta”) é só o histórico delas. O primeiro código, sobre a primeira
+versão, está no branch `fm/pm-142-codigo`; a coluna “hoje” da §6 descreve esse branch.
 
 ## 1. Dono único de cada dado
 
 | dado | dono | quem mais guarda | o que a cópia nunca é |
 |---|---|---|---|
 | **o status** de cada Envio (`queued`, `running`, `completed`, `partial`, `failed`) e o estado de cada Cartão | a Conexão: **só** `user_files/estado/<jobId>.json` | o painel relê pelo `POST /jobs/list` a cada 2 s; em `pm_envio` guarda só o que acompanha (`{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar, corpo }`) | a fila: `user_files/fila/fila.json` guarda **a ordem e o id**, nunca o status (C1). O painel nunca decide o estado de um Cartão |
-| o pedido de cada Envio (idioma, Baralho, imagens, sotaque, as Frases) | a Conexão: `user_files/fila/<jobId>.json` | o painel, em `pm_envio.corpo`, **antes** do primeiro `POST` (o corpo congelado) | outro corpo com o mesmo `jobId` (`409`) |
-| a identidade de cada Cartão | o pedido: um Cartão é **(`phraseId`, a posição da Palavra na Frase)**, escrito como `<phraseId>-<n>` (C4) | o `guid` da nota e o nome do texto derivam dela | o `filename_stem` do motor (Palavra + hash da frase): duas Frases iguais têm o mesmo stem, e o Cartão não pode ser o mesmo |
+| o pedido de cada Envio (idioma, Baralho, imagens, sotaque, as Frases) | a Conexão: `user_files/fila/<jobId>.json`, com a **impressão do corpo** (`corpoSha256`, o SHA-256 do JSON canônico do corpo recebido), gravada no criar e nunca mudada (N2) | o painel, em `pm_envio.corpo`, **antes** do primeiro `POST` (o corpo congelado) | outro corpo com o mesmo `jobId` (`409`). O criar compara a impressão, **nunca** o pedido guardado, que o fim do Envio e o Apagar tudo reescrevem (C7) |
+| a identidade de cada Cartão | o pedido: um Cartão é **(`phraseId`, a posição da Palavra na Frase)**, escrito como `<phraseId>-<n>` (C4); a Palavra e a Frase de cada Cartão ficam **só na linha do pedido** (nunca no estado, nos custos nem no pacote de diagnóstico: #248), e o texto é gerado lendo a linha, que o Cartão mantém até chegar ao Anki (#247) | o `guid` da nota e o nome do texto derivam dela | o `filename_stem` do motor (Palavra + hash da frase): duas Frases iguais têm o mesmo stem, e o Cartão não pode ser o mesmo |
 | o texto gerado de cada Cartão | a Conexão: `user_files/estado/<jobId>/<phraseId>-<n>.txt` | ninguém | pedido de novo quando já existe (seria pagar duas vezes) |
-| **o texto das Frases dentro da Conexão** (as linhas do pedido e os textos gerados) | é uma **cópia** das Frases da extensão, enquanto o Envio precisa dela (C7) | — | guardada depois que o Envio não precisa mais dela: some quando cada Frase chega ao Anki, e o Apagar tudo a apaga (§3) |
+| **o texto das Frases dentro da Conexão** (as linhas do pedido e os textos gerados) | é uma **cópia** das Frases da extensão, enquanto o Envio precisa dela (C7) | — | guardada depois que o Envio não precisa mais dela: some quando cada Frase chega ao Anki, e o Apagar tudo a apaga (§3). Escrita no `complemento.log`: o log cita o Cartão por `<phraseId>-<n>`, nunca a Palavra nem a Frase (N3) |
 | a nota no Anki | a coleção do Anki, com `guid` = `pm` + sha1(`jobId`, `phraseId`, `n`) | — | gravada duas vezes: o `guid` reconhece a nota deste Envio (`added`), e a busca de duplicatas reconhece a que já existia (`duplicate`) |
 | os custos de cada Envio | a Conexão: `user_files/custos/<jobId>/costs.jsonl` | a aba Custos guarda a última leitura em `pm_anki_custos` (já existia) | fonte: o cache só aparece com o selo BRG-12 |
 | a chave da OpenAI | a Conexão (o cofre, `user_files/chaves`), **uma só, de uma conta** (C5) | ninguém | lida antes de cada pedido de texto, e só para ele; escrita na fila, no estado, nos custos, no log, no pacote de diagnóstico ou numa resposta |
-| a configuração do motor | na `main`, `engine/config.yaml`; depois da revisão desta página, `engine/config.json` (§3 “O motor”) | — | duas fontes ao mesmo tempo. **Estado do código que acompanha esta página, não o desenho:** ele já lê `config.json`, e o `config.yaml` foi restaurado byte a byte (B1) sem leitor; o código só segue com um dos dois |
+| a configuração do motor | na `main`, `engine/config.yaml`; na fase do código, `engine/config.json`, e o `config.yaml` **sai no mesmo commit** (N7, §3 “O motor”) | — | duas fontes ao mesmo tempo |
 | as Frases | a extensão (`frases`) | a cópia acima, dentro da Conexão | escrita de volta pela Conexão: “Enviada ao Anki” continua sendo o painel que marca, lendo `successfulPhraseIds` |
 
 ## 2. Estados
@@ -33,7 +33,7 @@ O Envio tem os estados da Conexão de hoje (`bridge/envio.py`), que o painel já
 O que a tela diz (regra C8: o estado verdadeiro):
 
 - as etapas e o fim, como hoje (ENV-07, ENV-08, ENV-10…12). “Esperando o Anki” é verdade enquanto a coleção está fechada,
-  sincronizando ou ocupada, porque a Conexão de fato espera (sem prazo: I4 da revisão, com as histórias 82 e 83);
+  sincronizando ou ocupada, porque a Conexão de fato espera (sem prazo: I4 da revisão, #246, com as histórias 82 e 83);
 - **as falhas novas não têm cópia própria nesta fatia** (C8, limite 5.i): `openai_key_missing`, `openai_key_rejected`,
   `openai_no_credit`, `note_type_missing`, `job_conflict` e o `404` de um complemento antigo aparecem como o que já existe
   (“Não concluído” / ENV-03 “não começou” e “N não entrou”), com o código em Detalhes. É verdade (o Envio de fato não fez os
@@ -44,15 +44,15 @@ O que a tela diz (regra C8: o estado verdadeiro):
 
 | transição | quem pede | o que lê antes | quem aceita | o que muda | o que não pode mudar |
 |---|---|---|---|---|---|
-| criar | o painel: `POST /jobs` com `jobId` = o `id` do Envio (`crypto.randomUUID()`), idioma, Baralho e as Frases; o corpo é montado uma vez, gravado em `pm_envio` antes do pedido e reenviado igual (Tentar de novo do ENV-03, painel reaberto com o pedido sem resposta) | a fila (o `jobId` está nela?) | a Conexão | grava, nesta ordem: o pedido, o estado (`queued`, cada Cartão `pending`) e, **por último, a entrada na fila: é o ponto de confirmação** (C2). Frases com o mesmo `phraseId` no corpo valem uma vez (a primeira) | um `jobId` **na fila**: o mesmo corpo (JSON canônico) é `201` igual e nada é gravado; outro corpo, `409 job_conflict`. Um `jobId` com pedido gravado e **sem** entrada na fila é um criar que não terminou: o mesmo corpo de novo **termina** (grava a entrada; o estado e o pedido ficam como estavam), outro corpo é `409` |
-| trabalhar | a thread de trabalho | a fila (a ordem) e, para cada id, **o estado** (o status) | a própria thread, que muda **só o estado** (o arquivo do status), sob a tranca | `running`; confere o tipo de nota e os campos (faltando: `failed`, `note_type_missing`, nada gasto); por Cartão: **lê a chave do cofre** (sem chave: o Envio para com `openai_key_missing` e nada mais é gasto) → pede o texto (rede, nesta thread, 120 s por pedido) → grava o texto → grava a nota (uma função na thread principal do Anki, abaixo) → grava o estado do Cartão. Chave recusada ou sem crédito: o Envio para com o código, e os textos já pagos ainda vão ao Anki; limite de uso, 5xx ou sem rede: o Cartão tenta 3 vezes com espera e depois fica `failed` | um Cartão `added`/`duplicate` não roda de novo; um texto gravado não é pedido de novo; `lastError` é um código, nunca o texto da OpenAI |
-| gravar a nota | a thread de trabalho | — | **uma única função na thread principal do Anki** (C3) | dentro dela, nesta ordem: confere a sincronização (o sinal dos ganchos `sync_will_start`/`sync_did_finish`; sincronizando, levanta `ColecaoIndisponivel` sem gravar) → procura o `guid` do Cartão (achou: devolve `added`, sem gravar) → cria o Baralho se falta → confere o tipo de nota e os campos → `add_note` com o `guid` | uma nota dobrada: a função que o Anki ocupado atrasou e roda depois de a thread desistir acha o próprio `guid` na volta seguinte (ou a volta seguinte acha o dela). Nenhuma exceção sai da função para a thread principal (abaixo) |
+| criar | o painel: `POST /jobs` com `jobId` = o `id` do Envio (`crypto.randomUUID()`), idioma, Baralho e as Frases; o corpo é montado uma vez, gravado em `pm_envio` antes do pedido e reenviado igual (Tentar de novo do ENV-03, painel reaberto com o pedido sem resposta) | a fila (o `jobId` está nela?) | a Conexão | grava, nesta ordem: o pedido (com a impressão do corpo), o estado (`queued`, cada Cartão `pending` com a sua Palavra) e, **por último, a entrada na fila: é o ponto de confirmação** (C2). Frases com o mesmo `phraseId` no corpo valem uma vez (a primeira) | um `jobId` **na fila**: o mesmo corpo (a mesma impressão) é `201` com o Envio como ele está e nada é gravado, **mesmo depois de o Envio terminar ou de o Apagar tudo** reescrever o pedido (N2); outro corpo, `409 job_conflict`. Um `jobId` com pedido gravado e **sem** entrada na fila é um criar que não terminou: o mesmo corpo de novo **termina**: grava o estado a partir do pedido guardado **se ele falta** (N1), e depois a entrada na fila; um estado que já existe fica como estava. Outro corpo é `409` |
+| trabalhar | a thread de trabalho | a fila (a ordem) e, para cada id, **o estado** (o status; um id da fila sem estado é refeito como na subida, abaixo, e nunca lido como `{}`) | a própria thread, que muda **só o estado** (o arquivo do status), sob a tranca | `running`; confere o tipo de nota e os campos (faltando: `failed`, `note_type_missing`, nada gasto); por Cartão: **lê a chave do cofre** (sem chave: o Envio para com `openai_key_missing` e nada mais é gasto) → pede o texto (rede, nesta thread, 120 s por pedido) → grava o texto → grava a nota (uma função na thread principal do Anki, abaixo) → grava o estado do Cartão. Chave recusada ou sem crédito: o Envio para com o código, e os textos já pagos ainda vão ao Anki; limite de uso, 5xx ou sem rede: o Cartão tenta 3 vezes com espera e depois fica `failed` | um Cartão `added`/`duplicate` não roda de novo; um texto gravado não é pedido de novo; `lastError` é um código, nunca o texto da OpenAI |
+| gravar a nota | a thread de trabalho | — | **uma única função na thread principal do Anki** (C3) | dentro dela, nesta ordem: confere a sincronização (o sinal dos ganchos `sync_will_start`/`sync_did_finish`; sincronizando, **devolve** `ColecaoIndisponivel` sem gravar) → procura o `guid` do Cartão (achou: devolve `added`, sem gravar) → procura a frente normalizada no Baralho (achou: devolve `duplicate`, sem gravar) (N6) → cria o Baralho se falta → confere o tipo de nota e os campos → `add_note` com o `guid` | uma nota dobrada: a função que o Anki ocupado atrasou e roda depois de a thread desistir acha o próprio `guid` na volta seguinte (ou a volta seguinte acha o dela); uma nota própria contada como `duplicate`, porque a busca da frente e a gravação estão na mesma função. Nenhuma exceção sai da função para a thread principal: o que dá errado é devolvido, nunca levantado (abaixo) |
 | esperar o Anki | a thread de trabalho | a resposta da função: `ColecaoIndisponivel` (perfil fechado, sincronizando, ou a thread principal sem responder em 10 s) | — | etapa `wait_anki`; tenta de novo a cada poucos segundos, sem prazo | o Envio não falha por isso |
 | terminar | a thread de trabalho | o estado **guardado** de cada Cartão (não só os desta volta) | — | `completed` / `partial` / `failed` pelas regras de `settle` de hoje (a Frase está no Anki quando todos os Cartões dela estão `added`/`duplicate`, e é duplicada quando todos são `duplicate`); o texto das Frases que chegaram ao Anki é apagado (a linha no pedido vira só o `phraseId`, os `.txt` delas somem) (C7) | os números da aba Custos: o pedido guarda quantas Frases tinha |
-| tentar de novo | o painel: `POST /jobs/retry` (`{ jobId }`) | o estado, sob a mesma tranca | a Conexão | de `completed`/`partial`/`failed` para `queued`, guardando o estado de cada Cartão | já `queued` ou `running`: responde o estado e nada é gravado |
+| tentar de novo | o painel: `POST /jobs/retry` (`{ jobId }`) | o estado, sob a mesma tranca | a Conexão | de `completed`/`partial`/`failed` para `queued`, guardando o estado de cada Cartão | já `queued` ou `running`: responde o estado e nada é gravado. Um Envio `failed` com `wiped` (as linhas já foram apagadas) também: responde o estado e não grava nada (N5) |
 | Apagar tudo (CFG-17) | o painel: `POST /jobs/apagar-frases` (rota nova, C7) | o estado de cada Envio, sob a tranca | a Conexão | um Envio `queued`/`running` vai a `failed` com `wiped` (a thread para antes do próximo Cartão); de todo Envio somem as linhas das Frases e os textos gerados; ficam os `phraseId`, o estado de cada Cartão e os custos | as notas que já estão no Anki (o Anki não é o histórico). Repetido, responde igual e não grava nada. Sem resposta da Conexão, o Apagar tudo segue a regra que já tem para a chave da OpenAI (a parte “Falha local” do CFG-17, que hoje fala só da chave, ganha as Frases na Conexão: cópia a aprovar) e o painel pede de novo quando a Conexão responder |
-| a Conexão sobe | o Anki abre | **o estado** de cada id da fila | a Conexão | um estado `running` volta a `queued` e o Envio continua de onde parou; um pedido sem entrada na fila **não** é posto na fila sozinho (só o mesmo pedido do painel o termina: ninguém gasta a chave por um Envio que ninguém acompanha) | — |
-| ler | o painel: `POST /jobs/list`, `/jobs/get`, `/jobs/debug-bundle`, `/analytics/jobs` | — | a Conexão | nada | — |
+| a Conexão sobe | o Anki abre | **o estado** de cada id da fila | a Conexão | um estado `running` volta a `queued` e o Envio continua de onde parou; um id da fila **sem estado** (o arquivo sumiu) tem o estado refeito a partir do pedido guardado (`queued`, cada Cartão `pending`; o `guid` acha as notas que já estão no Anki), e sem pedido o id sai da fila e o log diz por quê (N1); um pedido sem entrada na fila **não** é posto na fila sozinho (só o mesmo pedido do painel o termina: ninguém gasta a chave por um Envio que ninguém acompanha) | um id da fila sem estado nunca fica como está |
+| ler | o painel: `POST /jobs/list`, `/jobs/get`, `/jobs/debug-bundle`, `/analytics/jobs` | o estado | a Conexão | nada | a forma das respostas: cada item do `/jobs/list` continua com o `status` no topo, **preenchido do estado** (a fila não o tem mais), então o contrato, o fake do e2e e o painel ficam como estão (N4) |
 
 **A base observada** é o `jobId`: ele é a chave de idempotência do criar. Não há revisão do lado do painel, porque só a
 thread de trabalho avança o estado; o painel só cria (idempotente), pede para tentar de novo (idempotente) e pede o apagamento
@@ -83,7 +83,8 @@ chave”), agora com custo (5.j). A chave é lida do cofre **antes de cada pedid
 próximo Cartão usar a chave nova; Apagar chave ou Apagar tudo faz o próximo Cartão parar o Envio com `openai_key_missing`, e nada
 mais é gasto. Nada do que a OpenAI devolve num erro é guardado: `openai_http.py` lê só o código da resposta e joga o corpo fora
 (o 401 ecoa a chave: “Incorrect API key provided: sk-…”); o logger do motor (`perpetualminer.motor`, o mesmo arquivo
-`complemento.log`) só escreve a Palavra e o código. O pacote de diagnóstico junta o pedido, o estado, os registros de custo, os
+`complemento.log`) só escreve o Cartão (`<phraseId>-<n>`) e o código, nunca a Palavra nem a Frase (N3): o log fica depois do Apagar
+tudo e entra em todo pacote de diagnóstico. O pacote de diagnóstico junta o pedido, o estado, os registros de custo, os
 nomes dos arquivos do Envio e as linhas do `complemento.log` que citam o `jobId`; nunca a pasta `chaves`.
 
 **O motor dentro do Anki (Python 3.9) e a configuração (B1).** O motor de texto (`engine/parser.py`, `prompt_loader.py`,
@@ -91,10 +92,11 @@ nomes dos arquivos do Envio e as linhas do `complemento.log` que citam o `jobId`
 prompts) vira, no `.ankiaddon`, o subpacote `motor` (o `empacotar.py` os copia; no repositório, `complemento/motor/__init__.py`
 aponta para `engine/`): importações relativas quando é pacote, absolutas no bridge; a OpenAI por HTTP direto; a configuração lida
 sem PyYAML nem dotenv; a chave passada pela Conexão, sem ler o ambiente; logger no lugar de `print`; nenhum `warnings.filterwarnings`.
-Na `main`, `engine/config.yaml` é a configuração. A troca por `config.json` é **um commit só** com tudo o que a lê: `config_loader.load_config()` (que o `start.py`, o `generate_cards.py`, o `send_to_anki.py` e o
-`bridge/envio.py` usam) e o `bridge/server.py` (`_deck_stats_config`, que serve os números dos Baralhos e o vocabulário e lia o
-YAML pelo `yaml` do `config_loader`), mais o `test_generate_images.py`. O código que acompanha esta página já fez essa troca (commit `24d2c67`), e o `config.yaml` voltou ao lugar pela
-B1 sem ninguém que o leia: até a segunda revisão, há dois arquivos e um só é lido (o `config.json`). A máquina de estados do bridge (que usa `zip(strict=)` do
+Na `main`, `engine/config.yaml` é a configuração. A troca por `config.json` é **um commit só**, na PR do código, com tudo o que a lê:
+`config_loader.load_config()` (que o `start.py`, o `generate_cards.py`, o `send_to_anki.py` e o `bridge/envio.py` usam) e o
+`bridge/server.py` (`_deck_stats_config`, que serve os números dos Baralhos e o vocabulário e lia o YAML pelo `yaml` do
+`config_loader`), mais o `test_generate_images.py`; **o mesmo commit apaga o `config.yaml`** (N7: os dois têm os mesmos dados, e o
+código não volta a ler YAML). Nunca há dois arquivos com um só lido. A máquina de estados do bridge (que usa `zip(strict=)` do
 3.10 e o `anki_session` do Windows) é reaproveitada **como contrato**: o complemento tem a sua (`complemento/envio.py`), com os
 mesmos estados, transições e regras de `settle`.
 
@@ -127,16 +129,16 @@ no bridge segue funcionando no bridge.
 
 - **a. A origem não autentica (#192).** Um processo local que declara a origem da extensão pode criar Envios: gasta a chave e grava
   notas no Anki. É o limite das rotas da chave (`complemento/contrato/LEIA-ME.md`, “Quem o complemento atende”), agora com custo; o
-  pareamento entra antes da loja. Um corpo de 4 MB sem teto de Frases agrava isso (I1 da revisão, vira issue junto do #192 e do #151).
+  pareamento entra antes da loja. Um corpo de 4 MB sem teto de Frases agrava isso (I1 da revisão: #243).
 - **b. Perfil fixo (#149):** a nota vai para o perfil aberto.
 - **c. Texto pago duas vezes** na janela entre a resposta da OpenAI e a gravação do texto, se o Anki for morto nela.
 - **d. Tipo de nota e campos de hoje (#161):** num Anki sem o “Básico” com “Frente” e “Verso”, o Envio falha com `note_type_missing` antes de gastar.
 - **e. Só texto:** sem áudio e sem imagem até o #143 e o #144; a fila os aceita depois sem mudar o contrato.
 - **f. Envio que a Conexão não conhece** (veio do bridge, ou a pasta de dados foi apagada): o painel o conta como não concluído e o
-  Continuar envio dá 404. O painel decide esse `failed` sozinho (I3 da revisão), contra a §1; o estado “a Conexão não conhece este
+  Continuar envio dá 404. O painel decide esse `failed` sozinho (I3 da revisão: #245), contra a §1; o estado “a Conexão não conhece este
   Envio” com Esquecer fica para a retomada (#151).
 - **g. Sem limpeza dos Envios terminados:** os arquivos de estado e de custo de cada Envio ficam (os textos das Frases não: §3);
-  a retenção fica para a retomada (#151), e um pedido gravado sem entrada na fila fica parado até o mesmo pedido voltar.
+  a retenção fica para a retomada (#151), e um pedido gravado sem entrada na fila fica parado até o mesmo pedido voltar (o Apagar tudo o alcança: #248).
 - **h. Custos de antes:** o histórico de custos do bridge não passa para o complemento (é a passagem, #115).
 - **i. Falhas novas sem cópia própria** (C8): a tela diz “não começou” / “não entrou” com o código em Detalhes, não o que fazer,
   até o #173 (a chave), o #161 (o tipo de nota) e o #177 (atualizar a Conexão).
@@ -145,35 +147,42 @@ no bridge segue funcionando no bridge.
 - **k. No bridge, a nota sem estado vira `duplicate`** (C4): o AnkiConnect não grava `guid`.
 - **l. Frases repetidas no mesmo Envio** (C4): duas Frases com o mesmo texto e `phraseId` diferentes são dois Cartões; o segundo
   acha a frente do primeiro e fica `duplicate` (“já estava lá”), embora o primeiro seja deste Envio.
+- **m. Edições locais do `engine/config.yaml` não passam** (N7): quem mudou o YAML à mão (o bridge do dono, no Windows) perde a
+  mudança quando ele sai; o `config.json` tem os valores da `main`, e a mudança tem de ser refeita nele.
 
 ## 6. Provas
 
 Cada prova abaixo é um teste que o código tem de ter antes do merge; “hoje” diz o que o código já tem.
 
-| o quê | teste | hoje | o que não prova |
+| o quê | teste | hoje (no branch `fm/pm-142-codigo`) | o que não prova |
 |---|---|---|---|
 | a fila, o estado por Cartão, as duplicatas, a espera com o perfil fechado e na sincronização, a retomada sem refazer, os custos | `complemento/test_envio.py`: o servidor real, a coleção em memória, a OpenAI de mentira na fronteira HTTP | existe | o Anki de verdade |
 | **o status num arquivo só** (C1): um `fila.json` sem status (ou com um status velho) não muda o que a lista, o retry e a retomada dizem | `test_envio.py` | falta | — |
-| **o criar interrompido em cada ponto** (C2): entre o pedido e o estado, entre o estado e a fila; o mesmo corpo termina o criar e o Envio roda; outro corpo é `409`; sem o pedido de novo, a Conexão que sobe não o põe na fila | `test_envio.py` | em parte (só a fila apagada depois) | — |
+| **o criar interrompido em cada ponto** (C2, N1): entre o pedido e o estado (o mesmo corpo grava o estado que falta), entre o estado e a fila; o mesmo corpo termina o criar e o Envio roda; outro corpo é `409`; sem o pedido de novo, a Conexão que sobe não o põe na fila; um id da fila sem estado tem o estado refeito na subida | `test_envio.py` | em parte (só a fila apagada depois) | — |
+| **o criar repetido depois do fim** (N2): criar, deixar o Envio terminar (as linhas viram só `phraseId`), mandar o mesmo corpo: `201` com o Envio terminado, nada gravado; o mesmo depois do Apagar tudo | `test_envio.py` | falta | — |
 | **a gravação atrasada** (C3): o adaptador em memória e o `mw` de mentira seguram a função além dos 10 s; a volta seguinte dá **uma** nota, `added`; uma sincronização que começa com a função na fila a impede | `test_colecao_em_memoria.py`, `test_no_anki.py`, `test_envio.py` | em parte (o adaptador; falta o Envio inteiro esperar e dar `added`) | as funções do Anki 2.1.50…26.x |
 | **a identidade do Cartão** (C4): duas Frases com o mesmo texto viram dois Cartões, dois `guid`, dois textos; o segundo é `duplicate`; o mesmo `phraseId` repetido vale uma vez | `test_envio.py` | falta | — |
 | **a chave durante o Envio** (C5): Trocar no meio faz o Cartão seguinte usar a nova; Apagar no meio para o Envio com `openai_key_missing` e nenhum pedido depois | `test_envio.py` | falta (a chave é lida uma vez) | — |
 | **a chave fora de tudo** (C6): a OpenAI de mentira ecoa a chave inteira no 401; ela não está na fila, no estado, nos custos, no log, no pacote de diagnóstico nem em resposta HTTP | `test_envio.py` | existe (a OpenAI de mentira já ecoa `Authorization`) | — |
-| **as Frases na Conexão** (C7): a Frase que chega ao Anki perde o texto na Conexão; `POST /jobs/apagar-frases` para o Envio andando e apaga as linhas e os textos; repetido, nada muda; o painel o pede no Apagar tudo | `test_envio.py`, `test_servidor.py`, `configuracoes-chave-perigo.spec.js` | falta | — |
+| **a gravação conta certo** (N6): a busca da frente roda na mesma função que o `add_note`; uma função atrasada que grava a nota não faz a volta seguinte contá-la `duplicate` | `test_envio.py`, `test_no_anki.py` | falta | as funções do Anki 2.1.50…26.x |
+| **as Frases na Conexão** (C7, N3, N5): a Frase que chega ao Anki perde o texto na Conexão; `POST /jobs/apagar-frases` para o Envio andando e apaga as linhas e os textos; repetido, nada muda; o tentar de novo de um Envio `wiped` não grava nada; o `complemento.log` não tem a Palavra nem a Frase; o painel o pede no Apagar tudo | `test_envio.py`, `test_servidor.py`, `configuracoes-chave-perigo.spec.js` | falta | — |
+| **a lista com o status do estado** (N4): `/jobs/list` dá o `status` de cada item lido do estado, com um `fila.json` que não o tem | `test_envio.py`, `test_servidor.py` (os exemplos de hoje) | falta | — |
 | **o id nas rotas** (C9): no complemento, um id fora de UUID é `404` no `get`/`retry`/`debug-bundle`; no bridge, o Continuar envio de um id dele funciona | `test_servidor.py`, `bridge/test_envio_api.py` | em parte (o bridge sim; o complemento dá `400`) | — |
 | **o motor no 3.9** (C10): os testes do motor de texto rodam pelo pacote `complemento.motor` nos grupos 3.9 e 3.13 do complemento; o `motor` importado **de dentro do `.ankiaddon` montado**, num Python sem PyYAML, dotenv e o SDK da OpenAI, gera um Cartão contra a OpenAI de mentira | `complemento/test_motor.py`, `test_pacote.py` | em parte (o `test_pacote.py` importa o `motor` montado e lê a configuração; o CI do complemento roda sem esses pacotes, mas não gera um Cartão) | — |
 | **fechar o Anki no meio** (C11): a função de gravação que roda depois de o perfil fechar não levanta nada na thread principal de mentira; a thread de trabalho não segura o fim do processo (um subprocesso sai com um pedido de 120 s pendente) | `test_no_anki.py`, `test_envio.py` | falta | o fechamento do Anki de verdade |
 | cada rota e cada estado tem exemplo; criar, tentar de novo e apagar as Frases repetidos não mudam nada | `test_servidor.py` (`MATRIZ`, repetição) e `contrato/exemplos.json` | existe (falta a rota de apagar) | — |
 | o fake do e2e responde os mesmos exemplos; o painel cria, acompanha e reabre lendo da Conexão | `test_fake_anki.js`, `contrato-da-conexao.spec.js`, `painel-envio.spec.js`, `painel-anki.spec.js` | existe | — |
-| o motor mudado faz o mesmo Cartão na Conexão de hoje | `engine/test_*.py`, `bridge/test_envio*.py` | existe | o Windows do dono (I2 da revisão: até quando o bridge recebe mudança é uma linha no #115) |
+| o motor mudado faz o mesmo Cartão na Conexão de hoje | `engine/test_*.py`, `bridge/test_envio*.py` | existe | o Windows do dono (I2 da revisão, #244: até quando o bridge recebe mudança é uma linha no #115) |
 | o painel real contra a Conexão real (fora do Anki) | a skill `verify-perpetualminer`, § Driving against the real Conexão | existe | o Anki e a OpenAI de verdade |
+| **a tela do Apagar tudo** (CFG-17, “Falha local” ganha as Frases na Conexão): referência visual da variante | `e2e/tests/configuracoes-chave-perigo.spec.js`, variante com `test.fixme` até o dono aprovar a cópia | falta | a cópia aprovada |
+| **as classes R4** (#248): a sentinela (Palavra e Frase únicas somem de `user_files/`, do `complemento.log`, do pacote de diagnóstico e do `chrome.storage.local` depois do Apagar tudo) e a fronteira de gravação (matar, subir, reenviar, tentar de novo em cada gravação: sem id encalhado, sem `409`, sem segunda chamada à OpenAI para um Cartão já no Anki; o `guid` é procurado antes de gerar o texto) | `complemento/test_envio.py`, `e2e/tests/painel-envio.spec.js` | falta | — |
 | uma Frase vira Cartão de texto no Anki do Mac | ensaio do dono (`complemento/LEIA-ME.md`, passo 9) | escrito | — |
 
-## A revisão e onde está a resposta
+## Histórico: a revisão e onde está a resposta
 
 | ponto | resposta |
 |---|---|
-| B1 `config.yaml` apagado antes do código | restaurado byte a byte da `main`; a troca por `config.json` é um commit só com o `config_loader` e o `bridge/server.py` (§1, §3 “O motor”). O código que acompanha esta página já lê `config.json`: o YAML restaurado não tem leitor até a decisão da segunda revisão |
+| B1 `config.yaml` apagado antes do código | restaurado byte a byte da `main`; a troca por `config.json` é um commit só com o `config_loader` e o `bridge/server.py`, que apaga o YAML (§1, §3 “O motor”, N7) |
 | C1 o status com dois donos | só `estado/<jobId>.json`; a fila guarda ordem e id; a retomada lê o estado (§1, §3) |
 | C2 o criar que encalha | a entrada na fila é o ponto de confirmação; o mesmo corpo termina um criar interrompido; a Conexão não enfileira sozinha (§3, prova na §6) |
 | C3 a gravação depois dos 10 s | `guid`, sincronização e `add_note` numa função só da thread principal (§3 “gravar a nota”, prova na §6) |
@@ -185,13 +194,23 @@ Cada prova abaixo é um teste que o código tem de ter antes do merge; “hoje�
 | C9 o UUID no Continuar envio | só o criar exige UUID; achar dá `404`; o bridge aceita os ids dele (§3 “O id nas rotas”) |
 | C10 o motor no 3.9 | os testes do motor pelo pacote, nos grupos 3.9/3.13, e o `.ankiaddon` montado gerando um Cartão (§6) |
 | C11 fechar o Anki no meio | thread *daemon* sem espera; nenhuma exceção na thread principal (§3, prova na §6) |
-| I1…I4 | viram issues, como a revisão diz; estão ligados em 5.a (I1), §6 (I2), 5.f (I3) e §2 (I4) |
+| I1…I4 | issues #243 (I1, 5.a), #244 (I2, §6), #245 (I3, 5.f) e #246 (I4, §2) |
+| N0 o código no branch da página | o código saiu para o branch `fm/pm-142-codigo`, sem PR; a PR #231 tem só esta página |
+| N1 o criar que acha o pedido sem o estado | o mesmo corpo grava o estado que falta; na subida, um id da fila sem estado é refeito ou sai (§3 “criar”, “a Conexão sobe”, prova na §6) |
+| N2 o criar repetido depois do fim dá `409` | o criar compara a impressão do corpo, gravada uma vez, nunca o pedido que o fim e o Apagar tudo reescrevem (§1, §3 “criar”, prova na §6) |
+| N3 a Palavra no `complemento.log` | o log cita o Cartão por `<phraseId>-<n>` (§1, §3 “A chave”) |
+| N4 o `status` da lista | preenchido do estado; a forma do contrato não muda (§3 “ler”) |
+| N5 tentar de novo um Envio `wiped` | responde o estado e não grava nada (§3 “tentar de novo”) |
+| N6 a busca de duplicatas fora da função | dentro dela, depois do `guid`; a função devolve, não levanta (§3 “gravar a nota”) |
+| N7 o `config.yaml` | sai no mesmo commit do código que lê o `config.json`; 5.m |
+| a Palavra relida a cada volta | fixada no estado no criar (§1, #247) |
 
-## O que o código ainda não faz
+## Histórico: o que o código ainda não faz (no branch `fm/pm-142-codigo`)
 
-O código que acompanha esta página foi escrito sobre a primeira versão dela. Ele **espera a segunda revisão** antes de mudar; depois dela,
-muda nisto: o status só no estado (C1); o criar interrompido entre o pedido e o estado (C2); a retomada que não enfileira um
-pedido órfão (C2); o Envio inteiro esperando a gravação atrasada (C3, já seguro no adaptador); o Cartão por `phraseId` e posição
-(C4); a chave lida antes de cada pedido (C5); as Frases apagadas na Conexão e a rota do Apagar tudo (C7); o `404` para um id fora
-de UUID (C9); `test_motor.py` e o Cartão gerado de dentro do `.ankiaddon` (C10); as provas de C11; e o B1: ou o código volta a ler o
-`config.yaml` até a troca, ou o `config.yaml` sai no mesmo commit do código que já lê o `config.json` (a decisão é da segunda revisão).
+O código do branch `fm/pm-142-codigo` (sem PR) foi escrito sobre a primeira versão desta página. A fase do código começa fazendo-o
+seguir esta versão: o status só no estado, com o `status` da lista lido dele (C1, N4); o criar interrompido em cada ponto e o id da
+fila sem estado (C2, N1); a impressão do corpo no criar (N2); a retomada que não enfileira um pedido órfão (C2); o Envio inteiro
+esperando a gravação atrasada e a busca da frente dentro da função da thread principal (C3, N6); o Cartão por `phraseId` e posição,
+com a Palavra fixada no criar (C4, #247); a chave lida antes de cada pedido (C5); as Frases apagadas na Conexão, a rota do Apagar
+tudo, o tentar de novo de um `wiped` e o log sem a Palavra (C7, N3, N5); o `404` para um id fora de UUID (C9); `test_motor.py` e o
+Cartão gerado de dentro do `.ankiaddon` (C10); as provas de C11; e o `config.yaml` apagado no commit que já lê o `config.json` (N7).
