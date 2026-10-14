@@ -5,10 +5,9 @@ gasta a credencial (a chave da OpenAI que a Conexão guarda). O que a fatia entr
 Conexão, e cada uma vira um Cartão de **texto** (sem áudio, sem imagem: #143, #144), gravado direto na coleção, no tipo de nota e
 nos campos de hoje (“Básico”, “Frente”, “Verso”, até o #161).
 
-**Terceira versão**, depois das duas revisões independentes na PR #231 (B1 e C1…C11; depois N0…N7), de 2026-10-12. O que mudou de
-decisão está nas seções; a tabela do fim liga cada ponto das revisões à resposta. A PR #231 tem só esta página. Um primeiro código,
-escrito sobre a primeira versão, está guardado no branch `fm/pm-142-codigo` (sem PR) e **não** a segue em tudo: o que ele tem de
-mudar está em “O que o código ainda não faz” no fim.
+**Histórico (não é parte do desenho):** a página saiu de três rodadas de revisão independente na PR #231; o que as rodadas mudaram
+está nas seções, e a tabela do fim (“A revisão e onde está a resposta”) é só o histórico delas. O primeiro código, sobre a primeira
+versão, está no branch `fm/pm-142-codigo`; a coluna “hoje” da §6 descreve esse branch.
 
 ## 1. Dono único de cada dado
 
@@ -16,7 +15,7 @@ mudar está em “O que o código ainda não faz” no fim.
 |---|---|---|---|
 | **o status** de cada Envio (`queued`, `running`, `completed`, `partial`, `failed`) e o estado de cada Cartão | a Conexão: **só** `user_files/estado/<jobId>.json` | o painel relê pelo `POST /jobs/list` a cada 2 s; em `pm_envio` guarda só o que acompanha (`{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar, corpo }`) | a fila: `user_files/fila/fila.json` guarda **a ordem e o id**, nunca o status (C1). O painel nunca decide o estado de um Cartão |
 | o pedido de cada Envio (idioma, Baralho, imagens, sotaque, as Frases) | a Conexão: `user_files/fila/<jobId>.json`, com a **impressão do corpo** (`corpoSha256`, o SHA-256 do JSON canônico do corpo recebido), gravada no criar e nunca mudada (N2) | o painel, em `pm_envio.corpo`, **antes** do primeiro `POST` (o corpo congelado) | outro corpo com o mesmo `jobId` (`409`). O criar compara a impressão, **nunca** o pedido guardado, que o fim do Envio e o Apagar tudo reescrevem (C7) |
-| a identidade de cada Cartão | o pedido: um Cartão é **(`phraseId`, a posição da Palavra na Frase)**, escrito como `<phraseId>-<n>` (C4); a Palavra de cada um fica no estado desde o criar, e o texto é gerado dela, sem reler a linha (#247) | o `guid` da nota e o nome do texto derivam dela | o `filename_stem` do motor (Palavra + hash da frase): duas Frases iguais têm o mesmo stem, e o Cartão não pode ser o mesmo |
+| a identidade de cada Cartão | o pedido: um Cartão é **(`phraseId`, a posição da Palavra na Frase)**, escrito como `<phraseId>-<n>` (C4); a Palavra e a Frase de cada Cartão ficam **só na linha do pedido** (nunca no estado, nos custos nem no pacote de diagnóstico: #248), e o texto é gerado lendo a linha, que o Cartão mantém até chegar ao Anki (#247) | o `guid` da nota e o nome do texto derivam dela | o `filename_stem` do motor (Palavra + hash da frase): duas Frases iguais têm o mesmo stem, e o Cartão não pode ser o mesmo |
 | o texto gerado de cada Cartão | a Conexão: `user_files/estado/<jobId>/<phraseId>-<n>.txt` | ninguém | pedido de novo quando já existe (seria pagar duas vezes) |
 | **o texto das Frases dentro da Conexão** (as linhas do pedido e os textos gerados) | é uma **cópia** das Frases da extensão, enquanto o Envio precisa dela (C7) | — | guardada depois que o Envio não precisa mais dela: some quando cada Frase chega ao Anki, e o Apagar tudo a apaga (§3). Escrita no `complemento.log`: o log cita o Cartão por `<phraseId>-<n>`, nunca a Palavra nem a Frase (N3) |
 | a nota no Anki | a coleção do Anki, com `guid` = `pm` + sha1(`jobId`, `phraseId`, `n`) | — | gravada duas vezes: o `guid` reconhece a nota deste Envio (`added`), e a busca de duplicatas reconhece a que já existia (`duplicate`) |
@@ -139,7 +138,7 @@ no bridge segue funcionando no bridge.
   Continuar envio dá 404. O painel decide esse `failed` sozinho (I3 da revisão: #245), contra a §1; o estado “a Conexão não conhece este
   Envio” com Esquecer fica para a retomada (#151).
 - **g. Sem limpeza dos Envios terminados:** os arquivos de estado e de custo de cada Envio ficam (os textos das Frases não: §3);
-  a retenção fica para a retomada (#151), e um pedido gravado sem entrada na fila fica parado até o mesmo pedido voltar.
+  a retenção fica para a retomada (#151), e um pedido gravado sem entrada na fila fica parado até o mesmo pedido voltar (o Apagar tudo o alcança: #248).
 - **h. Custos de antes:** o histórico de custos do bridge não passa para o complemento (é a passagem, #115).
 - **i. Falhas novas sem cópia própria** (C8): a tela diz “não começou” / “não entrou” com o código em Detalhes, não o que fazer,
   até o #173 (a chave), o #161 (o tipo de nota) e o #177 (atualizar a Conexão).
@@ -155,7 +154,7 @@ no bridge segue funcionando no bridge.
 
 Cada prova abaixo é um teste que o código tem de ter antes do merge; “hoje” diz o que o código já tem.
 
-| o quê | teste | hoje | o que não prova |
+| o quê | teste | hoje (no branch `fm/pm-142-codigo`) | o que não prova |
 |---|---|---|---|
 | a fila, o estado por Cartão, as duplicatas, a espera com o perfil fechado e na sincronização, a retomada sem refazer, os custos | `complemento/test_envio.py`: o servidor real, a coleção em memória, a OpenAI de mentira na fronteira HTTP | existe | o Anki de verdade |
 | **o status num arquivo só** (C1): um `fila.json` sem status (ou com um status velho) não muda o que a lista, o retry e a retomada dizem | `test_envio.py` | falta | — |
@@ -175,9 +174,11 @@ Cada prova abaixo é um teste que o código tem de ter antes do merge; “hoje�
 | o fake do e2e responde os mesmos exemplos; o painel cria, acompanha e reabre lendo da Conexão | `test_fake_anki.js`, `contrato-da-conexao.spec.js`, `painel-envio.spec.js`, `painel-anki.spec.js` | existe | — |
 | o motor mudado faz o mesmo Cartão na Conexão de hoje | `engine/test_*.py`, `bridge/test_envio*.py` | existe | o Windows do dono (I2 da revisão, #244: até quando o bridge recebe mudança é uma linha no #115) |
 | o painel real contra a Conexão real (fora do Anki) | a skill `verify-perpetualminer`, § Driving against the real Conexão | existe | o Anki e a OpenAI de verdade |
+| **a tela do Apagar tudo** (CFG-17, “Falha local” ganha as Frases na Conexão): referência visual da variante | `e2e/tests/configuracoes-chave-perigo.spec.js`, variante com `test.fixme` até o dono aprovar a cópia | falta | a cópia aprovada |
+| **as classes R4** (#248): a sentinela (Palavra e Frase únicas somem de `user_files/`, do `complemento.log`, do pacote de diagnóstico e do `chrome.storage.local` depois do Apagar tudo) e a fronteira de gravação (matar, subir, reenviar, tentar de novo em cada gravação: sem id encalhado, sem `409`, sem segunda chamada à OpenAI para um Cartão já no Anki; o `guid` é procurado antes de gerar o texto) | `complemento/test_envio.py`, `e2e/tests/painel-envio.spec.js` | falta | — |
 | uma Frase vira Cartão de texto no Anki do Mac | ensaio do dono (`complemento/LEIA-ME.md`, passo 9) | escrito | — |
 
-## A revisão e onde está a resposta
+## Histórico: a revisão e onde está a resposta
 
 | ponto | resposta |
 |---|---|
@@ -204,7 +205,7 @@ Cada prova abaixo é um teste que o código tem de ter antes do merge; “hoje�
 | N7 o `config.yaml` | sai no mesmo commit do código que lê o `config.json`; 5.m |
 | a Palavra relida a cada volta | fixada no estado no criar (§1, #247) |
 
-## O que o código ainda não faz
+## Histórico: o que o código ainda não faz (no branch `fm/pm-142-codigo`)
 
 O código do branch `fm/pm-142-codigo` (sem PR) foi escrito sobre a primeira versão desta página. A fase do código começa fazendo-o
 seguir esta versão: o status só no estado, com o `status` da lista lido dele (C1, N4); o criar interrompido em cada ponto e o id da
