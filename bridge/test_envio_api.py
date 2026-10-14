@@ -349,6 +349,44 @@ class EnvioPorPostTests(unittest.TestCase):
         self.assertEqual((outro.status_code, outro.get_json()), (409, {"error": "job_conflict"}))
         self.assertEqual(self.bridge.store.read_job(self.JOB)["deckName"], "Inglês")
 
+    def test_o_mesmo_pedido_depois_do_apagar_tudo_e_201_e_nao_409_e_nada_e_gravado(self) -> None:
+        # A impressão do corpo é gravada no criar; o Apagar tudo reescreve o pedido guardado (sem as linhas), e o mesmo corpo
+        # depois dele não pode virar `job_conflict`.
+        self.criar()
+        apagou = self.client.post("/jobs/apagar-frases", json={})
+        guardado = self.bridge.store.read_job(self.JOB)
+        de_novo = self.criar()
+        depois = self.bridge.store.read_job(self.JOB)
+        self.assertEqual((apagou.status_code, apagou.get_json()), (200, {"ok": True}))
+        self.assertEqual([entrada.get("line") for entrada in guardado["entries"]], [None])
+        self.assertEqual((de_novo.status_code, de_novo.get_json()["jobId"]), (201, self.JOB))
+        self.assertEqual(depois, guardado)
+        self.assertEqual(len(self.bridge.store.queue_data()["jobs"]), 1)
+
+    def test_apagar_as_frases_para_o_envio_na_fila_tira_o_texto_e_repetido_nao_grava_nada(self) -> None:
+        self.criar()
+        oficina = self.bridge.store.job_dir(self.JOB)
+        (oficina / "Output").mkdir()
+        (oficina / "Output" / "x.txt").write_text("gave up : She gave up smoking", encoding="utf-8")
+        (oficina / "mining.txt").write_text("gave up : She gave up smoking\n", encoding="utf-8")
+        self.client.post("/jobs/apagar-frases", json={})
+        estado = self.bridge.store.read_state(self.JOB)
+        antes = {caminho.name: caminho.read_bytes() for caminho in oficina.iterdir() if caminho.is_file()}
+        self.client.post("/jobs/apagar-frases", json={})
+        depois = {caminho.name: caminho.read_bytes() for caminho in oficina.iterdir() if caminho.is_file()}
+        self.assertEqual((estado["status"], estado["wiped"]), ("failed", True))
+        self.assertEqual(sorted(caminho.name for caminho in oficina.iterdir()), ["job.json", "state.json"])
+        self.assertEqual(antes, depois)
+        self.assertNotIn("She gave up smoking", json.dumps(antes, default=str))
+
+    def test_tentar_de_novo_um_envio_apagado_responde_o_estado_e_nao_grava_nada(self) -> None:
+        self.criar()
+        self.client.post("/jobs/apagar-frases", json={})
+        antes = self.bridge.store.state_file(self.JOB).read_bytes()
+        resposta = self.client.post("/jobs/retry", json={"jobId": self.JOB})
+        self.assertEqual((resposta.status_code, resposta.get_json()), (200, {"jobId": self.JOB, "status": "failed"}))
+        self.assertEqual(self.bridge.store.state_file(self.JOB).read_bytes(), antes)
+
     def test_um_job_id_que_nao_e_um_uuid_nao_vira_pasta(self) -> None:
         resposta = self.criar(jobId="../../fora")
         self.assertEqual((resposta.status_code, resposta.get_json()), (400, {"error": "invalid_job_id"}))

@@ -25,11 +25,13 @@ Os adapters entram por injecao e sao trocaveis no teste:
 from __future__ import annotations
 
 import copy
+import hashlib
 import io
 import contextlib
 import json
 import logging
 import random
+import shutil
 import threading
 import time
 import uuid
@@ -69,6 +71,18 @@ SEND_FAILED_MESSAGE = "Falha ao enviar um ou mais cards ao Anki"
 
 class InvalidTransition(ValueError):
     """O Envio nao pode ir do status atual para o pedido."""
+
+
+def body_fingerprint(payload: dict[str, Any]) -> str:
+    """O SHA-256 do corpo do ``POST /jobs`` normalizado como ``create`` o grava (idioma, Baralho, imagens, sotaque e Frases)."""
+    body = {
+        "lang": payload.get("lang"),
+        "deckName": payload.get("deckName", "teste"),
+        "imageSource": payload.get("imageSource", "1"),
+        "tts": payload.get("tts", {}),
+        "entries": payload.get("entries"),
+    }
+    return hashlib.sha256(json.dumps(body, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
 
 
 def now_iso() -> str:
@@ -190,6 +204,7 @@ class JobStore:
             "tts": payload.get("tts", {}),
             "entries": payload["entries"],
             "status": QUEUED,
+            "corpoSha256": body_fingerprint(payload),
         }
         state = {
             "jobId": job_id,
@@ -216,11 +231,41 @@ class JobStore:
         return job_id
 
     def same_request(self, job_id: str, payload: dict[str, Any]) -> bool:
-        """O pedido guardado é este (o que ``create`` grava dele: idioma, Baralho, imagens, sotaque e Frases)?"""
-        stored = self.read_job(job_id)
-        fields = ("lang", "deckName", "imageSource", "tts", "entries")
-        defaults = {"deckName": "teste", "imageSource": "1", "tts": {}}
-        return all(stored.get(name) == payload.get(name, defaults.get(name)) for name in fields)
+        """O corpo é o que criou este Envio? Compara a impressão gravada no criar (``corpoSha256``), nunca o pedido
+        guardado, que o Apagar tudo reescreve (sem as linhas das Frases): o mesmo corpo depois dele não é ``409``."""
+        return self.read_job(job_id).get("corpoSha256") == body_fingerprint(payload)
+
+    def wipe_phrases(self) -> None:
+        """O Apagar tudo (CFG-17): de todo Envio somem as linhas das Frases e os arquivos de trabalho (o texto minerado,
+        os cartões e o áudio gerados); um Envio na fila ou rodando vai a ``failed`` com ``wiped``. Ficam o estado, os
+        ``phraseId`` e os custos. Repetido, nao grava nada."""
+        with self.lock:
+            if not self.jobs_root.is_dir():
+                return
+            for folder in sorted(path for path in self.jobs_root.iterdir() if path.is_dir()):
+                job_id = folder.name
+                job = self.read_job(job_id)
+                if not job:
+                    continue
+                if not job.get("wiped") or any("line" in entry for entry in job.get("entries", [])):
+                    for entry in job.get("entries", []):
+                        entry.pop("line", None)
+                    job["wiped"] = True
+                    write_json(self.job_file(job_id), job)
+                (folder / "mining.txt").unlink(missing_ok=True)
+                shutil.rmtree(folder / "Output", ignore_errors=True)
+                state = self.read_state(job_id)
+                if state and not state.get("wiped"):
+                    if state.get("status") in (QUEUED, RUNNING):
+                        state.update(status=FAILED, stage="failed", lastError="frases_apagadas")
+                        queue = self.queue_data()
+                        for item in queue["jobs"]:
+                            if item.get("jobId") == job_id:
+                                item["status"] = FAILED
+                        self.save_queue_data(queue)
+                    state["wiped"] = True
+                    state["updatedAt"] = now_iso()
+                    write_json(self.state_file(job_id), state)
 
     def requeue(self, job_id: str) -> str:
         """Continuar envio: preserva as etapas concluidas e as frases ja enviadas.
@@ -232,6 +277,8 @@ class JobStore:
             state = self.read_state(job_id)
             if state.get("status") == RUNNING:
                 return state["status"]
+            if state.get("wiped") or self.read_job(job_id).get("wiped"):
+                return state.get("status", FAILED)  # as Frases foram apagadas: nao ha o que refazer
             self._check_transition(state, QUEUED)
             state.update({"status": QUEUED, "stage": "queued", "lastError": None, "ankiError": None, "repairPayload": None})
             state["updatedAt"] = now_iso()

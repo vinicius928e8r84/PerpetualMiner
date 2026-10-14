@@ -992,6 +992,12 @@ class BridgeApp:
         def debug_bundle(job_id: str):
             return _job_debug_bundle(job_id) if _valid_job_id(job_id) else (jsonify({"error": "job_not_found"}), 404)
 
+        @self.app.post("/jobs/apagar-frases")
+        def wipe_phrases():
+            # O Apagar tudo da extensao (CFG-17): as linhas das Frases e os arquivos de trabalho saem dos Envios.
+            self.store.wipe_phrases()
+            return jsonify({"ok": True})
+
         @self.app.post("/jobs/list")
         def jobs_post():
             return jsonify({"jobs": self.store.listing()})
