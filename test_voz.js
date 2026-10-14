@@ -42,17 +42,11 @@ assert.strictEqual(new Set(linhas.map(l => l.id)).size, linhas.length, 'a spec r
 assert.deepStrictEqual(linhas.filter(l => l.hoje === '(não existe)' && l.marca !== 'novo').map(l => l.id), [],
   'um estado que não existia precisa da marca **(novo)** na spec e no catálogo HTML');
 
-// ─── o catálogo de verdade bate ──────────────────────────────────────────────
-
 assert.deepStrictEqual(conferir(CATALOGO_DA_VOZ), [],
   'lib/voz/catalogo.js, a spec da Voz e o retrato não batem. Mudou um texto de propósito? Mude a spec e rode: node scripts/gerar-catalogo-da-voz.js');
 
-// ─── catalogo.html é gerado ──────────────────────────────────────────────────
-
 assert.strictEqual(fs.readFileSync(CAMINHO_DO_HTML, 'utf8'), htmlDoCatalogo(),
   'docs/design/voz/catalogo.html não bate com a spec. Rode: node scripts/gerar-catalogo-da-voz.js');
-
-// ─── e as mudanças indevidas ficam vermelhas ─────────────────────────────────
 
 /** O catálogo com uma mudança, sem mexer no de verdade. */
 function comMudanca(mudar) {

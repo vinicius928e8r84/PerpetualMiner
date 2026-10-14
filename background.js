@@ -90,8 +90,6 @@ const AUTO_STRONG_PHRASAL_ROOTS = new Set([
   'fritter', 'frittered', 'frittering',
 ]);
 
-// ─── Context Menu ────────────────────────────────────────────────────────────
-
 const MENU_MINERAR_SELECAO = 'minerar-perpetualminer';
 
 // Os itens do menu ficam gravados entre versões, e o id mudou junto com a cópia
@@ -140,8 +138,6 @@ function minerarSelecaoDoMenu(info, tab) {
 
   salvarFrase(selecao, contexto.fonte, contexto, detectarIdioma(selecao));
 }
-
-// ─── Mensagens do content.js ─────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Um player em iframe sem permissão de clipboard pede a cópia ao frame de cima
@@ -213,8 +209,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// ─── Storage ─────────────────────────────────────────────────────────────────
-
 // Toda leitura-modificação-escrita de `frases` e `pm_pending_sync` passa por esta
 // fila. Sem ela, gravações concorrentes (ex.: várias frases de uma foto) leem
 // o mesmo histórico e cada escrita apaga as frases gravadas pelas outras.
@@ -285,8 +279,6 @@ async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', e
   return novaFrase;
 }
 
-// ─── Firestore Sync via REST API ──────────────────────────────────────────────
-
 // A nuvem da conta conectada (a sessão renova o token pelo refresh token do
 // Firebase se expirou), ou null sem conta. O REST do Firestore é de lib/sincronizacao.js.
 async function nuvemDaConta() {
@@ -314,8 +306,6 @@ async function sincronizarComFirestore(frase) {
     marcarPendenteDeSync(frase.id);
   }
 }
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function isEnglishPhrase(frase) {
   const idioma = String(frase?.idioma || '').toLowerCase();
@@ -881,8 +871,6 @@ function autoMinerTextKey(value) {
   return normalizeAutoMinerText(value).toLowerCase();
 }
 
-// ─── Badge da toolbar ────────────────────────────────────────────────────────
-//
 // O contador da mineração automática de hoje, somando só os idiomas ligados
 // (MIN-09). Sem badge com os dois desligados: um contador parado em 0 diria que
 // a mineração automática está funcionando e não minerou nada.

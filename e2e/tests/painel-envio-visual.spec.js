@@ -1,14 +1,5 @@
 'use strict';
 
-// Referência visual do Envio ao Anki (#32): o modal de progresso, o resumo e o
-// Enviar ao Anki indisponível, no layout A do protótipo travado
-// (docs/design/painel/frases/prototipo-frases.html?variant=A, “⚙ Estados do
-// protótipo” › Envio ao Anki termina). O dono revisa estas telas lado a lado
-// com o protótipo; depois de aprovadas, uma mudança visual faz o teste falhar
-// até alguém olhar e atualizar a referência:
-//
-//   cd e2e && npx playwright test painel-envio-visual --update-snapshots
-
 const { test, expect } = require('../fixtures');
 
 const AGORA = new Date('2026-09-18T12:00:00');

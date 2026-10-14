@@ -47,8 +47,6 @@ async function lerUmaFoto(page, nome = 'pagina.png') {
   await page.getByRole('button', { name: 'Ler marcações' }).click();
 }
 
-// ─── O caminho feliz de hoje ────────────────────────────────────────────────
-
 test('uma foto: prévia, leitura, frases agrupadas pela foto e “Minerar N frases” grava todas com o Livro', async ({ page, extensao, fakes }) => {
   fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
   await abrirAPagina(page, extensao);
@@ -167,8 +165,6 @@ test('“Selecionar todas” marca e desmarca, fica misto com parte, e o botão 
     .toEqual([FRASES_DA_PAGINA_1[0], FRASES_DA_PAGINA_1[2]].sort());
 });
 
-// ─── Gravou ou não gravou: só um “ok” do service worker conta ────────────────
-
 for (const caso of [
   { nome: 'sem resposta', resposta: undefined },
   { nome: 'objeto sem ok', resposta: {} },
@@ -218,8 +214,6 @@ for (const caso of [
   });
 }
 
-// ─── Bug de #9: o botão “salvo” reabilitava e salvava de novo ────────────────
-
 test('minerar e clicar de novo não grava nada duas vezes; as mineradas ficam “Minerada” e saem do botão', async ({ page, extensao, fakes }) => {
   fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
   fakes.gemini.responderFrases(FRASES_DA_PAGINA_2);
@@ -247,8 +241,6 @@ test('minerar e clicar de novo não grava nada duas vezes; as mineradas ficam �
   const gravadas = await gravadasDoLivro(extensao);
   expect(gravadas.map(f => f.texto).sort()).toEqual([...FRASES_DA_PAGINA_1, ...FRASES_DA_PAGINA_2].sort());
 });
-
-// ─── Bug de #9: o estado vazio culpava as marcações quando a API falhava ─────
 
 test('o Gemini sem marcações diz “Sem marcações” e ensina a marcar', async ({ page, extensao, fakes }) => {
   fakes.gemini.responderFrases([]);
@@ -413,8 +405,6 @@ test('fechado, o aviso das falhas não volta com uma foto lida; volta com uma fa
   await expect(aviso).toContainText('Não deu para ler 2 fotos.');
 });
 
-// ─── Cancelar (FOT-06, FOT-07, FOT-21) ───────────────────────────────────────
-
 const FRASES_DA_PAGINA_3 = ['The lamp flickered twice and went out.'];
 const botaoCancelar = page => page.getByRole('button', { name: 'Cancelar', exact: true });
 const botaoRecomecar = page => page.getByRole('button', { name: 'Recomeçar' });
@@ -484,8 +474,6 @@ test('lendo a 1ª foto de várias, a coluna diz “Lendo a foto 1 de 3…”, e 
   await soltar();
   await expect(frase(page, FRASES_DA_PAGINA_1[0])).toHaveCount(0);
 });
-
-// ─── Recomeçar (FOT-17, FOT-18) ──────────────────────────────────────────────
 
 test('Recomeçar com a leitura em andamento: nenhuma frase chega depois (sem itens fantasma)', async ({ page, extensao, fakes }) => {
   fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
@@ -595,8 +583,6 @@ test('Recomeçar também está na prévia e nos vazios de falha e de sem marcaç
   await expect(page.getByText('Arraste fotos de páginas marcadas')).toBeVisible();
 });
 
-// ─── “Tentar de novo” numa foto que falhou (FOT-11, FOT-19) ─────────────────
-
 test('“Tentar de novo” numa foto que falhou lê só aquela foto', async ({ page, extensao, fakes }) => {
   fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
   fakes.gemini.falhar(500, 'Internal error encountered.');
@@ -644,8 +630,6 @@ test('“Tentar de novo” com todas as fotos falhadas: a que volta a falhar con
   expect(fakes.gemini.chamadas).toHaveLength(4);
 });
 
-// ─── Bug de #9: “Voltar” abria um segundo painel ──────────────────────────────
-
 test('“Voltar ao painel” com o painel aberto foca aquela aba, sem abrir outra nem recarregar', async ({ page, context, extensao }) => {
   const painel = await context.newPage();
   await painel.goto(extensao.url('painel.html#frases'));
@@ -673,8 +657,6 @@ test('“Voltar ao painel” sem painel aberto abre um', async ({ page, context,
   await expect(painel).toHaveURL(/painel\.html/);
 });
 
-// ─── Bug de #9: o Título do livro nunca era lembrado ────────────────────────
-
 test('o Livro digitado volta preenchido na próxima visita', async ({ page, extensao }) => {
   await abrirAPagina(page, extensao);
   await page.getByLabel('Livro').fill('Братья Карамазовы');
@@ -693,8 +675,6 @@ test('com o Livro em branco a frase vai com o Título “Físico/Livro”, como 
   await expect(page.locator('.veio-toast')).toHaveText('1 frase minerada');
   expect((await gravadasDoLivro(extensao))[0].contexto.titulo).toBe('Físico/Livro');
 });
-
-// ─── Bug de #9: HEIC anunciado mas recusado ou mal rotulado ──────────────────
 
 test('o que a página anuncia de formatos é o que ela aceita: HEIC entra e vai ao Gemini como HEIC', async ({ page, extensao, fakes }) => {
   fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
@@ -722,8 +702,6 @@ test('um arquivo que não é foto é recusado com o aviso, e nada entra na fila'
   await expect(filaDeFotos(page).getByRole('listitem')).toHaveCount(0);
   expect(fakes.gemini.chamadas).toHaveLength(0);
 });
-
-// ─── Sem chave do Gemini ─────────────────────────────────────────────────────
 
 test('sem chave, o cartão FOT-05 no lugar do campo de chave, e “Abrir Configurações” abre #configuracoes/chave com o campo focado', async ({ page, context, extensao }) => {
   await abrirAPagina(page, extensao, { chave: null });
@@ -780,8 +758,6 @@ test('a chave salva no painel libera a página sem recarregar', async ({ page, e
   await expect(page.getByText('Tire uma foto da página com os trechos marcados e escolha quais frases minerar. As frases aparecem aqui, agrupadas por foto.', { exact: true })).toBeVisible();
 });
 
-// ─── Teclado, leitor de tela e movimento ─────────────────────────────────────
-
 test('os controles têm nome, e o teclado chega à escolha de fotos e ao Livro', async ({ page, extensao, fakes }) => {
   fakes.gemini.responderFrases(FRASES_DA_PAGINA_1);
   await abrirAPagina(page, extensao);
@@ -820,8 +796,6 @@ test('com movimento reduzido, o “Lendo…” da foto fica parado', async ({ pa
   expect(animacao.nome).toBe('none');
   soltar();
 });
-
-// ─── Tema ────────────────────────────────────────────────────────────────────
 
 test('a página segue o tema escolhido, sem recarregar', async ({ page, extensao }) => {
   await abrirAPagina(page, extensao);

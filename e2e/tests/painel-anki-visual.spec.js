@@ -1,30 +1,6 @@
 'use strict';
 
-// Referência visual da Conexão com o Anki (#33, #35): os estados da conexão e as
-// abas Custos e Ajustes de envio na arrumação C · Por idioma do protótipo travado
-// (docs/design/painel/anki/prototipo-anki.html?variant=C, “⚙ Estados do
-// protótipo”). O dono revisa estas telas lado a lado com o protótipo; depois de
-// aprovadas, uma mudança visual faz o teste falhar até alguém olhar e atualizar
-// a referência:
-//
-//   cd e2e && npx playwright test painel-anki-visual --update-snapshots
-
 const { test, expect, comOSistema, SISTEMAS } = require('../fixtures');
-
-// #145: a primeira conexão ganhou os passos do arquivo (sem terminal). As telas abaixo marcadas `test.fixme` são PROPOSTAS de
-// referência, não referências: o dono ainda não aprovou o novo visual (CODING_STANDARDS regra 10), então as imagens novas
-// não estão na árvore e as antigas (do card de 3 passos com comandos) ficam sem uso. Elas estão no commit 59d3d04
-// (e2e/tests/painel-anki-visual.spec.js-snapshots/anki-primeira-conexao-*-linux.png). Aprovando: tirar o `fixme` e
-// `npx playwright test painel-anki-visual --update-snapshots -g "nunca conectada"`.
-//
-// #147: a primeira conexão ganhou o passo 3, Abrir o Anki sozinho (ONB-17), e a lista passou a ter 3 passos. As telas do
-// passo 3 abaixo também são `test.fixme`, PROPOSTAS para o dono aprovar (sem protótipo próprio: o desenho segue o card do
-// passo do #145). Aprovando: tirar o `fixme` e `npx playwright test painel-anki-visual --update-snapshots -g "passo 3"`.
-//
-// #146: a lista passou a ter 4 passos: Ter o Anki (ONB-18) entrou como 1º, e o passo de baixar o arquivo ganhou a
-// animação do aviso (ONB-19). As quatro telas do #146 (o card do passo 1, Não tenho no Mac, a animação do aviso e os
-// quadros parados com menos movimento) foram aprovadas pelo dono (#236) e são referência. As outras “nunca conectada”
-// (tema claro, conectando, Pronto, Detalhes, dois minutos, janela estreita) seguem propostas do #145.
 
 const AGORA = new Date('2026-09-18T12:00:00');
 
@@ -315,7 +291,6 @@ test('o tema claro', async ({ page, extensao }) => {
   await expect(ilha(page)).toHaveScreenshot('anki-claro.png');
 });
 
-// ─── Ajustes de envio (#35) ──────────────────────────────────────────────────
 // Os cards por idioma da variante A do protótipo (docs/design/painel/anki/prototipo-ajustes-envio.html).
 
 const AJUSTES = {

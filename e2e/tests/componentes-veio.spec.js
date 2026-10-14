@@ -28,8 +28,6 @@ const abrirVitrine = async (page, paginas) => {
   await expect(page.locator('[data-grupo="Botões"]').first()).toBeVisible();
 };
 
-/* ── A vitrine ────────────────────────────────────────────────────────────── */
-
 test('a vitrine mostra cada componente nos dois temas', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -219,8 +217,6 @@ test('o estado vazio ensina o que fazer e leva a ação junto', async ({ page, p
   }
 });
 
-/* ── Modal ────────────────────────────────────────────────────────────────── */
-
 test('o modal é um diálogo, começa no botão seguro e prende o foco', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -282,8 +278,6 @@ test('o clique fora fecha o modal, e dentro dele não', async ({ page, paginas }
   await expect(scrim).toBeHidden();
   await expect(abrir).toBeFocused();
 });
-
-/* ── Toast e aviso persistente ────────────────────────────────────────────── */
 
 test('o toast de sucesso some sozinho, depois do tempo de leitura', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
@@ -397,8 +391,6 @@ test('o aviso que só informa é neutro, fala sem alarme e abre com a 1ª frase 
   expect(cores.neutro[1]).not.toBe(cores.erro[1]);
 });
 
-/* ── Palavra grifada ──────────────────────────────────────────────────────── */
-
 test('a Palavra é grifada de 50% a 94% da linha, sem raio', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -482,8 +474,6 @@ test('na frase clicável, cada palavra é um botão, a escolhida é grifada e as
   await expect(palavra('not')).toBeFocused();
   await expect(cartao.locator('[role="button"][tabindex="0"]')).toHaveCount(1);
 });
-
-/* ── Cópia, teclado e movimento ───────────────────────────────────────────── */
 
 test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);

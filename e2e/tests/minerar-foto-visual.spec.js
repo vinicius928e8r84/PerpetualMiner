@@ -1,19 +1,5 @@
 'use strict';
 
-// Referência visual de Minerar de uma foto · Fotos × frases (#36), com
-// Cancelar, Recomeçar e “Tentar de novo” numa foto (#37).
-//
-// O dono revisa estas telas lado a lado com o protótipo travado
-// (docs/design/foto/prototipo-bookreader.html?variant=C). Depois de aprovadas,
-// elas são a referência: uma mudança visual faz o teste falhar até alguém
-// olhar e atualizar:
-//
-//   cd e2e && npx playwright test minerar-foto-visual --update-snapshots
-//
-// A foto é sempre a mesma página marcada (pages/pagina-marcada.png), e o
-// Gemini falso devolve as frases do protótipo. O toast some sozinho, então
-// fica mascarado.
-
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../fixtures');

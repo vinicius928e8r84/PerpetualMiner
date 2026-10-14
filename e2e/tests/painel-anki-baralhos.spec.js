@@ -59,8 +59,6 @@ test.beforeEach(({ fakes }) => {
   fakes.anki.definirVocabulario('ru', VOCABULARIO_RU);
 });
 
-// ─── Baralhos e termos ───────────────────────────────────────────────────────
-
 test('baralhos: azulejos Inglês · Russo com as palavras; o escolhido mostra o anel de maturidade e os números', async ({ page, extensao, fakes }) => {
   await abrirAnki(page, extensao, '#anki/baralhos');
 
@@ -149,8 +147,6 @@ test('baralhos que falham: BRG-11 com Reparar Anki, Tentar de novo e a causa em 
   await expect(aviso).toBeHidden();
   await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
 });
-
-// ─── Reparar Anki ────────────────────────────────────────────────────────────
 
 test('Reparar Anki espera o reparo inteiro (~100 s): “Reparando…” até o fim e o toast “Anki reparado”, sem erro falso (#9)', async ({ page, extensao, fakes }) => {
   let terminar;
@@ -260,8 +256,6 @@ test('Reparar Anki que não deixa o Anki pronto: BRG-17 com Atualizar, que confe
   await expect.poll(() => pedidos(fakes, '/anki/stats/decks').length).toBeGreaterThan(leiturasAntes);
 });
 
-// ─── Vocabulário ─────────────────────────────────────────────────────────────
-
 test('vocabulário: azulejos com o total de itens, lista × detalhe e as setas escolhem', async ({ page, extensao }) => {
   await abrirAnki(page, extensao, '#anki/vocabulario');
 
@@ -367,8 +361,6 @@ test('vocabulário que falha: BRG-20 com Tentar de novo, em vez de ficar em “A
   await expect(aviso).toBeHidden();
   await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
 });
-
-// ─── Conexão desligada ───────────────────────────────────────────────────────
 
 test('cai depois de responder: baralhos e vocabulário mostram o último dado com BRG-12; Reparar Anki fica indisponível', async ({ page, extensao, fakes }) => {
   await abrirAnki(page, extensao, '#anki/vocabulario');
@@ -540,8 +532,6 @@ test('o último dado que a própria Conexão guardou (stale) segue com “Não d
   await expect(baralhos(page)).not.toContainText('Anki fechado');
 });
 
-// ─── A coleção do contrato ───────────────────────────────────────────────────
-
 // O que o complemento do Anki responde (os exemplos de complemento/contrato/exemplos.json, lidos também
 // pelos testes do complemento) mostra os dados nas duas abas, sem passar pelos números que os outros testes montam.
 test('com a coleção do contrato aberta, Baralhos e termos e Vocabulário mostram o que o complemento leu', async ({ page, extensao, fakes }) => {
@@ -621,8 +611,6 @@ test('a Conexão que responde antes dos Ajustes de envio não impede a primeira 
   expect(leituras.map(r => r.dados)).toEqual([{ decks: [{ deckName: 'CIMV', lang: 'en' }, { deckName: 'RUSSIAN', lang: 'ru' }] }]);
   await estadoFinal(extensao, { pm_anki_baralhos: { nomes: { en: 'CIMV', ru: 'RUSSIAN' }, dados: { decks: [{ deckName: 'CIMV', cards: 2140 }, { deckName: 'RUSSIAN', cards: 480 }] } } });
 });
-
-// ─── Ajustes de envio, ↻ Atualizar e acessibilidade ──────────────────────────
 
 test('salvar outro baralho nos Ajustes de envio lê os baralhos e o vocabulário dele', async ({ page, extensao, fakes }) => {
   fakes.anki.definirBaralho('Mining EN', { ...BARALHO_EN, palavras: 99 });

@@ -1,19 +1,5 @@
 'use strict';
 
-// Passo 3 do redesign: seleção, ações do cartão e Apagar com confirmação (#30).
-//
-// “Selecionar página” com o estado misto e a barra contextual que gruda ao
-// rolar: contagem, “Selecionar todas as N frases” (as dos filtros), Editar
-// contexto · Exportar .txt · Apagar · Enviar ao Anki. As 4 ações só-ícone do
-// cartão: Editar texto no lugar, Editar contexto, Copiar e Apagar. Um só modal
-// Apagar para 1 frase e para a seleção (item 2 da lista fechada).
-//
-// Fecha dois bugs de #9: o Exportar .txt marcava a frase como Enviada ao Anki,
-// e a seleção sobrevivia à troca de filtro.
-//
-// Os testes afirmam o que a pessoa vê e o que fica gravado, nunca funções
-// internas.
-
 const { test, expect } = require('../fixtures');
 
 const AGORA = new Date('2026-09-18T12:00:00');
@@ -54,8 +40,6 @@ const toasts = page => page.locator('.veio-toast');
 const paginas = page => page.getByRole('navigation', { name: 'Páginas' });
 const filtro = (page, nome) => page.getByRole('combobox', { name: nome, exact: true });
 const busca = page => page.getByRole('searchbox', { name: 'Buscar nas frases' });
-
-// ─── Seleção e barra contextual ──────────────────────────────────────────────
 
 test('sem seleção, só “Selecionar página”; ao marcar, a barra mostra a contagem e as ações', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
@@ -187,8 +171,6 @@ test('a barra gruda no topo da ilha ao rolar', async ({ page, extensao }) => {
   expect(await linhaDaBarra.evaluate(el => getComputedStyle(el).position)).toBe('sticky');
 });
 
-// ─── Exportar .txt ───────────────────────────────────────────────────────────
-
 test('Exportar .txt baixa as escolhidas e as marca Exportada, nunca Enviada ao Anki (bug de #9)', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
   await abrirFrases(page, extensao);
@@ -249,8 +231,6 @@ test('com a conta conectada, a marca de Exportada chega à nuvem', async ({ page
   await expect.poll(() => fakes.google.frasesDe('uid-exporta').find(f => f.texto.startsWith('Sentence number 2 '))?.exportadaTxt).toBe(true);
   expect(fakes.google.frasesDe('uid-exporta').find(f => f.texto.startsWith('Sentence number 2 ')).status).toBeUndefined();
 });
-
-// ─── Apagar ──────────────────────────────────────────────────────────────────
 
 test('Apagar 1 frase pede confirmação (PAI-12); Cancelar mantém, confirmar tira sem toast', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
@@ -362,8 +342,6 @@ test('a seleção de uma frase só fala como a do cartão: “Apagar esta frase?
   await expect(toasts(page)).toHaveCount(0);
 });
 
-// ─── Editar texto ────────────────────────────────────────────────────────────
-
 test('Editar texto troca o texto por um campo no lugar: Enter salva, sem toast', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(2) });
   await abrirFrases(page, extensao);
@@ -416,8 +394,6 @@ test('Editar texto: Salvar texto grava pelo mouse', async ({ page, extensao }) =
   await expect.poll(async () => (await extensao.frases())[0].texto).toBe('Saved with the button.');
 });
 
-// ─── Editar contexto ─────────────────────────────────────────────────────────
-
 test('Editar contexto de 1 frase: o modal traz a frase e o Contexto dela, e salva sem toast', async ({ page, extensao }) => {
   await extensao.gravarStorage({
     frases: [frase(1, 'I never take it for granted.', { contexto: { fonte: 'netflix', titulo: 'Dark', detalhe: 'T1E3' } })],
@@ -465,8 +441,6 @@ test('Editar contexto de N frases: campos em branco ficam como estão, e o toast
   ]);
 });
 
-// ─── Copiar ──────────────────────────────────────────────────────────────────
-
 test('Copiar frase põe o texto no clipboard e diz “Frase copiada”', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(2) });
   await abrirFrases(page, extensao);
@@ -500,8 +474,6 @@ test('se o copiar não vai, fica o aviso “Não deu para copiar”, com a causa
   await aviso.getByRole('button', { name: 'Fechar' }).click();
   await expect(aviso).toHaveCount(0);
 });
-
-// ─── Teclado, leitor de tela e movimento ─────────────────────────────────────
 
 test('as ações do cartão aparecem ao focar pelo teclado, e os controles da barra e dos modais têm nome e foco visível', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(2) });

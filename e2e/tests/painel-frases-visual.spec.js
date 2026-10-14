@@ -1,18 +1,5 @@
 'use strict';
 
-// Referência visual da lista de Frases (#29), da seleção, das ações do cartão
-// e dos modais (#30) e do Minerar frases (#31), no layout A · Cartões do
-// protótipo travado (docs/design/painel/frases/prototipo-frases.html?variant=A).
-// O dono revisa estas telas lado a lado com o protótipo; depois de aprovadas,
-// qualquer mudança visual na lista faz o teste falhar até alguém olhar e
-// atualizar a referência:
-//
-//   cd e2e && npx playwright test painel-frases-visual --update-snapshots
-//
-// A sidebar e a ilha do conteúdo têm a altura da janela e começam e terminam
-// juntas; a lista rola dentro da ilha. Por isso a lista é capturada duas
-// vezes: o topo, e a ilha rolada até a paginação.
-
 const { test, expect } = require('../fixtures');
 
 // O cabeçalho de data sai do relógio: ele fica parado no dia das frases.
@@ -101,8 +88,6 @@ test('busca sem resultado com filtro ligado (PAI-04)', async ({ page, extensao }
   await expect(page).toHaveScreenshot('frases-busca-vazia.png', { fullPage: true });
 });
 
-// ─── Seleção, ações do cartão e modais (#30) ─────────────────────────────────
-
 const primeiroCartao = page => page.locator('#frases-lista .veio-frase').first();
 
 test('a barra contextual da seleção, com o cartão selecionado', async ({ page, extensao }) => {
@@ -159,8 +144,6 @@ test('o modal Editar contexto, para a seleção (PAI-20)', async ({ page, extens
 
   await expect(page).toHaveScreenshot('frases-modal-contexto.png');
 });
-
-// ─── Minerar frases (#31) ────────────────────────────────────────────────────
 
 const modalDeMinerar = page => page.getByRole('dialog', { name: 'Minerar frases' });
 

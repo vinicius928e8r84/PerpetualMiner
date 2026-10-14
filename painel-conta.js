@@ -1,26 +1,5 @@
 'use strict';
 
-// A conta no Painel (docs/design/painel/configuracoes/, card Conta & sync):
-// um estado só, desenhado em três lugares que dizem sempre a mesma coisa —
-// o card Conta & sync aberto, o resumo da linha fechada dele e o chip de conta
-// no pé da sidebar.
-//
-// O painel.js conta o que acontece e este arquivo decide o que a pessoa vê:
-//
-//   Conta.mostrarConta(usuario | null)
-//   Conta.mostrarSincronizacao(situacao, { n, total, detalhes })
-//   Conta.mostrarFalhaNoLogin(detalhes | null)
-//   Conta.aoPedir({ entrar, sair, tentarDeNovo })
-//   Conta.montarCartao(lugar)   o mesmo corpo do card em outro lugar (o passo 3 da Boas-vindas)
-//   Conta.SITUACOES   os nomes das situações
-//
-// As situações são os estados CFG da spec, com os nomes de `Conta.SITUACOES`:
-// sincronizando (CFG-01), primeira subida (CFG-09) e a falha dela, sincronizado
-// (CFG-02), sem sincronizar (CFG-03), parcial (CFG-05), a nuvem recusou (CFG-04)
-// e a sessão expirou (CFG-08).
-// Um problema de sync aparece só aqui: no card e no chip, nunca numa faixa ou
-// num toast de outra área. Toda cópia vem do catálogo da Voz.
-
 (function (raiz) {
   /** “Sincronizado há N min” avança sozinho. */
   const INTERVALO_DO_RELOGIO = 30000;
@@ -115,8 +94,6 @@
   // Onde o corpo do card é desenhado, além de Configurações.
   const outrosLugares = [];
 
-  // ─── O que o painel.js conta ───────────────────────────────────────────────
-
   function mostrarConta(usuario) {
     estado.conta = usuario ? { ...usuario } : null;
     estado.sincronizacao = null;
@@ -150,8 +127,6 @@
     outrosLugares.push(lugar);
     desenharCorpo(lugar);
   }
-
-  // ─── Desenho ───────────────────────────────────────────────────────────────
 
   function desenhar() {
     desenharChip();

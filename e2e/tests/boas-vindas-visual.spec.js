@@ -1,33 +1,7 @@
 'use strict';
 
-// Referência visual da Boas-vindas (#42, #43): a abertura, os passos 1 e 2
-// (com e sem atalho de legenda, e o gravador gravando), os controles dos
-// passos 3 a 7 nos seus estados, Tudo pronto com cada situação do resumo e a
-// janela estreita, nos dois temas.
-//
-// O protótipo travado é referência de layout; para os controles dos passos
-// 3–6, vale docs/design/painel/boas-vindas/README.md (§ Os passos). Depois
-// de aprovadas, as telas são a referência: uma mudança visual faz o teste
-// falhar até alguém olhar e atualizar:
-//
-//   cd e2e && npx playwright test boas-vindas-visual --update-snapshots
-//
-// A Conexão com o Anki fica desligada, para o passo 4 sair igual (“falta”)
-// sem depender de quando o shell conferiu a /health.
-
 const path = require('path');
 const { test, expect } = require('../fixtures');
-
-// #145: o passo 4 ganhou os passos do arquivo (sem terminal). Os três testes do passo 4 `test.fixme` são PROPOSTAS de
-// referência, não referências: o dono ainda não aprovou o novo visual (CODING_STANDARDS regra 10), então as imagens novas
-// não estão na árvore e as antigas do passo 4 ficam sem uso. Elas estão no commit 59d3d04
-// (e2e/tests/boas-vindas-visual.spec.js-snapshots/passo-4-*-linux.png). Aprovando: tirar o `fixme` e
-// `npx playwright test boas-vindas-visual --update-snapshots -g "passo 4"`.
-// #147: os passos da Conexão ganharam o 3º, Abrir o Anki sozinho (ONB-17); com a Conexão ligada, o passo 4 abre nele. As
-// propostas dele também são `test.fixme`, para o dono aprovar olhando.
-// #146: Ter o Anki (ONB-18) entrou como 1º dos passos da Conexão, e é nele que o passo 4 abre; o do arquivo, agora o 2º,
-// ganhou a animação do aviso (ONB-19). As duas telas do #146 (“Ter o Anki” e “a animação do aviso”) foram aprovadas
-// pelo dono (#236) e são referência; as outras do passo 4 seguem propostas do #145 e do #147.
 
 const UMA_FRASE = [{ id: 1, texto: 'Old news', data: '01/09/2026', streaming: 'web', idioma: 'Inglês' }];
 const SELECAO_EM_ALT_Q = { type: 'keyboard', code: 'KeyQ', button: null, altKey: true, ctrlKey: false, shiftKey: false, label: 'Alt+Q' };
@@ -151,8 +125,6 @@ test.fixme('passo 4, Abrir o Anki sozinho depois de Agora não', async ({ page, 
   await foto(page, 'passo-4-abridor-agora-nao.png');
 });
 
-// AGUARDANDO A APROVAÇÃO DO DONO (CODING_STANDARDS regra 10): o passo 5 (o card IA dos cartões) é tela nova; a
-// referência só entra depois que ele aprova. Aprovado: tire o `test.fixme` dos dois e rode com --update-snapshots.
 const AGUARDA_O_DONO = 'a referência visual do passo da IA espera a aprovação do dono (regra 10)';
 
 test('passo 5 sem chave: o card IA dos cartões, com as duas entradas lado a lado', async ({ page, extensao }) => {

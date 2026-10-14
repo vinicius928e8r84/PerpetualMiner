@@ -1,24 +1,5 @@
 'use strict';
 
-// O card Atalhos de Configurações (docs/design/painel/configuracoes/, item 7 da
-// lista fechada): “Minerar legenda” e “Minerar seleção”, cada um gravado na
-// própria linha, com uma tecla e modificadores ou com um botão extra do mouse.
-//
-//   Gravar atalho   a tecla da linha vira a pílula ouro (CFG-13) e o botão vira
-//                   Cancelar; o botão da outra linha fica indisponível.
-//   Esc             sem modificador, cancela. Sair do card também cancela.
-//   Clique          esquerdo e direito não gravam, então o Cancelar continua
-//                   clicável. Voltar e avançar do mouse não navegam enquanto grava.
-//   Repetido        a combinação que já é do outro atalho é recusada, com o
-//                   aviso na linha (CFG-19); a gravação continua.
-//   Gravou          a tecla nova pisca uma vez, sem toast.
-//   Restaurar       “Restaurar atalhos padrão” só aparece fora do padrão e grava
-//                   {legenda: Alt+S, seleção: nenhum} na hora, sem confirmação.
-//
-// O que fica gravado, o rótulo em PT-BR e a regra de repetido são de
-// lib/atalhos.js, os mesmos que o content script usa. Toda cópia vem do
-// catálogo da Voz.
-
 (function (raiz) {
   const { textoDaVoz, Atalhos, Veio } = raiz;
   const { ACOES } = Atalhos;
@@ -97,8 +78,6 @@
       return restaurar;
     }
 
-    // ─── Desenho ───────────────────────────────────────────────────────────────
-
     function desenhar() {
       for (const [acao, { tecla, botao, anuncio, aviso }] of linhas) {
         const gravando = estado.gravando === acao;
@@ -128,8 +107,6 @@
       const kbd = linhas.get(acao).tecla.querySelector('kbd');
       kbd?.classList.add('cfg-atalho__tecla--nova');
     }
-
-    // ─── Gravação ──────────────────────────────────────────────────────────────
 
     function comecarAGravar(acao) {
       estado.gravando = acao;

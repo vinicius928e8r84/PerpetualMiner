@@ -1,11 +1,3 @@
-/* ─────────────────────────────────────────────────────────────────────────
-   Overlay na página (content.js): o botão flutuante e a pílula de feedback.
-
-   Carregado só dentro do Shadow DOM do overlay, depois de veio/tokens.css e
-   veio/componentes.css. Nada aqui alcança o site, e nada do site alcança
-   isto. Spec: docs/design/overlay/ (M1, a reserva C: a pílula).
-   ───────────────────────────────────────────────────────────────────────── */
-
 /* O ponto de partida é zero: nada que o site herda até o host chega aqui.
    As fontes são as que overlay.js registra no documento com nomes só dele (o
    @font-face dos tokens não vale dentro de uma sombra). */
@@ -36,10 +28,6 @@
 .pm *::after {
   box-sizing: border-box;
 }
-
-/* ── A pílula ─────────────────────────────────────────────────────────────
-   O botão é o círculo da direita; o corpo estica para a esquerda e volta.
-   Do tamanho do protótipo: 46 px de altura. */
 
 .pm-pilula {
   display: flex;
@@ -132,11 +120,6 @@
   color: var(--veio-muted);
   white-space: nowrap;
 }
-
-/* ── O botão flutuante ────────────────────────────────────────────────────
-   O azulejo Veio num círculo de 46 px, como no protótipo. Parado, fica meio apagado para não
-   pesar sobre o vídeo; com o mouse, o foco do teclado ou a pílula aberta,
-   volta a 100%. */
 
 .pm-botao {
   position: relative;
@@ -277,12 +260,6 @@
   color: var(--veio-accent-text);
   box-shadow: 0 0 0 1.5px var(--veio-accent);
 }
-
-/* ── A marca no texto capturado (D) ───────────────────────────────────────
-   A linha ouro de 3 px sob o texto, a faixa de marca-texto sobre a Palavra e o
-   chip acima. São elementos do overlay posicionados sobre o texto do site (o
-   host é o bloco que os contém): o DOM do site não é tocado. Nada disso pega o
-   mouse, que continua sendo do site. */
 
 .pm-marca {
   pointer-events: none;

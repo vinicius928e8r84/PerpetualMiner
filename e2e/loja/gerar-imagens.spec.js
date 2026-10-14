@@ -28,8 +28,6 @@ const salvar = (page, imagem, opcoes = {}) => page.screenshot({ path: path.join(
 
 test.beforeAll(() => fs.mkdirSync(SAIDA, { recursive: true }));
 
-// ─── 1 · Legenda de um vídeo, com o overlay e o aviso de minerada ───────────
-
 test('captura 1: legenda com o overlay e o aviso de minerada', async ({ page, context, paginas, fakes, extensao }) => {
   fakes.anki.definirVocabulario('en', ['quiet', 'harbor', 'woke']);
   const dia = diaDeHoje();
@@ -49,8 +47,6 @@ test('captura 1: legenda com o overlay e o aviso de minerada', async ({ page, co
     Promise.all(host.shadowRoot.getAnimations({ subtree: true }).map(animacao => animacao.finished)));
   await salvar(page, IMAGENS.captura1);
 });
-
-// ─── 2 · Painel de estudos, lista de Frases ─────────────────────────────────
 
 /**
  * A Palavra como o painel a guarda (`palavra@índice`): o índice é o do token na
@@ -83,8 +79,6 @@ test('captura 2: painel de estudos, lista de Frases', async ({ page, extensao })
   await salvar(page, IMAGENS.captura2);
 });
 
-// ─── 3 · Minerar de uma foto, com as frases lidas ───────────────────────────
-
 const PAGINA = fs.readFileSync(path.join(__dirname, '..', 'pages', 'pagina-marcada.png'));
 const foto = nome => ({ name: nome, mimeType: 'image/png', buffer: PAGINA });
 const LIVRO = 'The Lantern Keeper';
@@ -113,8 +107,6 @@ test('captura 3: minerar de uma foto, com as frases lidas', async ({ page, exten
   await salvar(page, IMAGENS.captura3);
 });
 
-// ─── 4 · Configurações: atalhos, chave do Gemini e aparência ────────────────
-
 test('captura 4: Configurações com Atalhos aberto', async ({ page, extensao }) => {
   await extensao.gravarStorage({
     frases: FRASES,
@@ -129,8 +121,6 @@ test('captura 4: Configurações com Atalhos aberto', async ({ page, extensao })
   await page.mouse.move(0, 0);
   await salvar(page, IMAGENS.captura4, { animations: 'disabled' });
 });
-
-// ─── 5 · O popup da barra, com o contador do dia ────────────────────────────
 
 test('captura 5: popup da barra com a mineração automática do dia', async ({ context, page, paginas, extensao }) => {
   const dia = diaDeHoje();
@@ -157,8 +147,6 @@ test('captura 5: popup da barra com a mineração automática do dia', async ({ 
   await page.evaluate(() => document.fonts.ready);
   await salvar(page, IMAGENS.captura5);
 });
-
-// ─── Imagem promocional pequena e ícone da loja ─────────────────────────────
 
 test('promoção pequena 440x280 e ícone 128 sobre o fundo do tema', async ({ page, paginas }) => {
   await page.setViewportSize({ width: IMAGENS.promo.largura, height: IMAGENS.promo.altura });

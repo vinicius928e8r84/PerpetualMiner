@@ -47,8 +47,6 @@ function linhasDaSpec(spec = fs.readFileSync(CAMINHO_DA_SPEC, 'utf8')) {
   return linhas;
 }
 
-// ─── catalogo.html ───────────────────────────────────────────────────────────
-//
 // `docs/design/voz/catalogo.html` é a versão interativa da spec. A tabela dele
 // (`const CAT`) é gerada daqui, entre as duas marcas abaixo, e não se edita à mão:
 // `node scripts/gerar-catalogo-da-voz.js` regrava, `--conferir` só confere.

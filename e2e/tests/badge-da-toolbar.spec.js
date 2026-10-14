@@ -1,17 +1,5 @@
 'use strict';
 
-// Passo 6 do redesign: o contador da mineração automática no badge da toolbar.
-//
-// O badge é do Chrome, não do DOM: o Playwright não tira uma foto do ícone da
-// extensão. Os testes olham o que a extensão entrega ao Chrome — o texto do
-// badge e o tooltip do ícone, por `chrome.action.getBadgeText` e
-// `chrome.action.getTitle` —, que é exatamente o que a pessoa lê na toolbar.
-//
-// A mineração automática que aumenta o contador entra pelo caminho de verdade:
-// o player falso tocando com uma legenda na tela. A virada do dia é do relógio
-// do Chrome, que o teste não adianta: ele dispara o alarme no lugar do Chrome.
-// As exceções estão na seção de testes do CLAUDE.md.
-
 const fs = require('fs');
 const path = require('path');
 
