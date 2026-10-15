@@ -205,8 +205,7 @@ const test = base.extend({
     const gravarStorage = valores => sw.evaluate(v => chrome.storage.local.set(v), valores);
     if (!lembreteDaConfiguracao) await sw.evaluate(() => chrome.storage.local.remove('pm_boas_vindas'));
 
-    // The session storage boundary, not the production auth implementation.
-    const sessaoNoBanco = valor => sw.evaluate(valor => new Promise((resolve, reject) => {
+    const sessaoDiretoNoIndexedDB = valor => sw.evaluate(valor => new Promise((resolve, reject) => {
       const req = indexedDB.open('pm-sessao', 1);
       req.onupgradeneeded = () => req.result.createObjectStore('sessao');
       req.onerror = () => reject(req.error);
@@ -227,8 +226,8 @@ const test = base.extend({
       abaDaInstalacao: manterAbaDaInstalacao ? abaDaInstalacao : null,
       url: caminho => `chrome-extension://${id}/${caminho}`,
       lerStorage,
-      lerSessao: () => sessaoNoBanco(null),
-      gravarSessao: sessaoNoBanco,
+      lerSessao: () => sessaoDiretoNoIndexedDB(null),
+      gravarSessao: sessaoDiretoNoIndexedDB,
       gravarStorage,
       /** Se a extensão tem a permissão do abridor (`nativeMessaging`), como o Chrome a guarda. */
       permissaoDoAbridor: () => sw.evaluate(() => chrome.permissions.contains({ permissions: ['nativeMessaging'] })),
@@ -237,7 +236,7 @@ const test = base.extend({
       /** Semeia uma sessão da conta no armazenamento, sem passar pelo login real. */
       /** `expirada` grava um token já vencido: o painel precisa renová-lo antes de ir à nuvem. */
       semearSessao: async ({ uid = 'uid-teste', email = 'pessoa@teste.dev', displayName = 'Pessoa de Teste', expirada = false } = {}) => {
-        await sessaoNoBanco({ uid, idToken: 'token-teste', refreshToken: 'refresh-teste',
+        await sessaoDiretoNoIndexedDB({ uid, idToken: 'token-teste', refreshToken: 'refresh-teste',
           expiresAt: expirada ? Date.now() - 60 * 1000 : Date.now() + 60 * 60 * 1000 });
         await gravarStorage({ pm_user_info: { uid, email, displayName, photoURL: '' } });
       },

@@ -293,13 +293,13 @@ class JobRunnerStageTests(EnvioTestCase):
 
     def test_progress_of_audio_and_images_reaches_the_state_while_running(self) -> None:
         seen: list[tuple[str, Any]] = []
-        original = self.store.set_stage
 
-        def spy(job_id: str, stage: str, **extra: Any) -> None:
-            seen.append((stage, extra.get("progress")))
-            original(job_id, stage, **extra)
+        class LojaQueRegistra(JobStore):
+            def set_stage(self, job_id: str, stage: str, **extra: Any) -> None:
+                seen.append((stage, extra.get("progress")))
+                super().set_stage(job_id, stage, **extra)
 
-        self.store.set_stage = spy  # type: ignore[method-assign]
+        self.store.__class__ = LojaQueRegistra
         self.run_envio(self.envio(1))
 
         self.assertIn(("generate_audio", {"done": 0, "total": 4}), seen)
@@ -678,9 +678,11 @@ class JobWorkerTests(EnvioTestCase):
             naps.append(seconds)
             self.stop.set()
 
-        worker = JobWorker(self.store, self.runner, self.stop, sleep=nap)
-        worker.run_next = lambda: (_ for _ in ()).throw(OSError("disco cheio"))  # type: ignore[method-assign]
+        class WorkerQueFalha(JobWorker):
+            def run_next(self) -> bool:
+                raise OSError("disco cheio")
 
+        worker = WorkerQueFalha(self.store, self.runner, self.stop, sleep=nap)
         worker.loop()
 
         self.assertEqual(naps, [2])

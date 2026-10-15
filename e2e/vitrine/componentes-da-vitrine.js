@@ -78,7 +78,7 @@
   const estadoDaAmostra = estado => ({
     desabilitado: estado === 'desabilitado',
     erro: estado === 'erro',
-    classeDeFoco: estado === 'foco' ? 'demo-de-foco' : '',
+    classeDeFoco: estado === 'foco' ? 'amostra-de-foco-parado' : '',
   });
 
   /** Um rótulo da própria vitrine, que não é cópia de nenhuma tela. */
@@ -320,13 +320,7 @@
       mostrarToastDeSucesso(textoDaVoz('PAI-14', { n: 12 }), { dentroDe: coluna }));
   }
 
-  /**
-   * O aviso persistente, que volta depois de fechado.
-   *
-   * Na vitrine ele precisa voltar: é uma página de referência, e um componente
-   * que some no primeiro clique deixa de estar lá para ser olhado.
-   */
-  function aviso() {
+  function avisoQueVolta() {
     const lugar = el('div', { class: 'lugar-do-aviso' });
     const montar = () => lugar.append(montarAviso({
       texto: textoDaVoz('PAI-15.aviso'),
@@ -473,7 +467,7 @@
 
       grupo('Controle segmentado',
         linha('normal', segmentado()),
-        linha('foco', segmentado({ classeDeFoco: 'demo-de-foco' })),
+        linha('foco', segmentado({ classeDeFoco: 'amostra-de-foco-parado' })),
         linha('desabilitado', segmentado({ desabilitado: true }))),
 
       grupo('Azulejo',
@@ -488,7 +482,7 @@
         linha('normal', toast(destino))),
 
       grupo('Aviso persistente',
-        linha('erro', aviso()),
+        linha('erro', avisoQueVolta()),
         linha('informativo', avisoInformativo())),
 
       grupo('Estado vazio',

@@ -64,7 +64,7 @@
 
   function aoMudarOGravado(ajustes) {
     estado.gravados = ajustes;
-    for (const lang of AjustesDeEnvio.LANGS) {
+    for (const lang of AjustesDeEnvio.CODIGOS_DO_BRIDGE) {
       if (!temRascunho(lang) && estado.salvando !== lang) adotarGravado(lang);
     }
     desenhar();
@@ -183,7 +183,7 @@
   }
 
   function montarCartoes() {
-    porId('ajustes-cards').replaceChildren(...AjustesDeEnvio.LANGS.map(lang => {
+    porId('ajustes-cards').replaceChildren(...AjustesDeEnvio.CODIGOS_DO_BRIDGE.map(lang => {
       const alternador = elemento('button', 'cfg-alternar', NOME_DO_IDIOMA[lang]);
       alternador.type = 'button';
       alternador.id = `ajustes-cabeca-${lang}`;
