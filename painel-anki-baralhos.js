@@ -4,9 +4,7 @@
   const CHAVE_BARALHOS = 'pm_anki_baralhos';
   const CHAVE_VOCABULARIO = 'pm_anki_vocabulario';
   const FONTE_ARQUIVO = raiz.VocabularioDaMineracao.FONTE_ARQUIVO;
-  // O reparo leva até ~110 s (fechar o Anki + os 90 s de espera da Conexão). Este
-  // limite não é o do reparo: só evita esperar para sempre uma Conexão muda.
-  const LIMITE_DO_REPARO_MS = 180_000;
+  const LIMITE_DA_CONEXAO_MUDA_MS = 180_000;
   // Os itens do vocabulário que a lista desenha; a busca e os filtros estreitam.
   const MOSTRAR_NO_MAXIMO = 200;
 
@@ -242,7 +240,7 @@
     porId('anki-reparando')?.focus();
 
     const limite = new AbortController();
-    const relogio = setTimeout(() => limite.abort(), LIMITE_DO_REPARO_MS);
+    const relogio = setTimeout(() => limite.abort(), LIMITE_DA_CONEXAO_MUDA_MS);
     let fim;
     try {
       const resposta = await fetch(`${ENDERECO_DA_CONEXAO}/anki/repair`, { method: 'POST', signal: limite.signal });
@@ -256,7 +254,7 @@
         fim = { demorou: Boolean(dados.after), causa };
       }
     } catch (falha) {
-      const motivo = limite.signal.aborted ? `sem resposta em ${LIMITE_DO_REPARO_MS / 1000} s` : falha.message;
+      const motivo = limite.signal.aborted ? `sem resposta em ${LIMITE_DA_CONEXAO_MUDA_MS / 1000} s` : falha.message;
       fim = { demorou: limite.signal.aborted, causa: `POST /anki/repair · ${motivo}` };
     } finally {
       clearTimeout(relogio);

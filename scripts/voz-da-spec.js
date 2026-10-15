@@ -55,8 +55,7 @@ const CAMINHO_DO_HTML = path.join(__dirname, '..', 'docs', 'design', 'voz', 'cat
 const MARCA_INICIAL = '// ─── gerado por scripts/gerar-catalogo-da-voz.js a partir de README.md: não edite à mão ───';
 const MARCA_FINAL = '// ─── fim do gerado ───';
 
-/** A página põe estes textos em `innerHTML`, então os `&`, `<` e `>` saem escapados. */
-const paraHtml = texto => texto.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const escaparParaInnerHtml = texto => texto.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 function tabelaDoHtml(linhas) {
   const secoes = [];
@@ -64,7 +63,7 @@ function tabelaDoHtml(linhas) {
     if (secoes.at(-1)?.secao !== linha.secao) secoes.push({ secao: linha.secao, linhas: [] });
     secoes.at(-1).linhas.push(linha);
   }
-  const texto = valor => JSON.stringify(paraHtml(valor));
+  const texto = valor => JSON.stringify(escaparParaInnerHtml(valor));
   const dados = secoes.map(({ secao, linhas: doGrupo }) => {
     const linhasDoGrupo = doGrupo.map(l =>
       `  [${[l.id, l.estado, l.categoria, l.hoje, l.copia, l.nota].map(texto).join(', ')}${l.marca ? `, ${JSON.stringify(l.marca)}` : ''}],`);
