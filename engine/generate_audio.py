@@ -21,8 +21,6 @@ from config_loader import load_config
 from parser import parse_mining_file, get_card_jobs, CardJob
 
 
-# ── helpers ──────────────────────────────────────────────────────────────────
-
 def _has_cyrillic(text: str) -> bool:
     return bool(re.search(r"[\u0400-\u04FF]", text))
 
@@ -73,8 +71,6 @@ def _read_phrase_from_card(card_file: Path) -> Optional[str]:
     return phrase or None
 
 
-# ── public API ────────────────────────────────────────────────────────────────
-
 def run(
     entries,
     config: dict,
@@ -113,7 +109,6 @@ def run(
         word_profile = _pick_profile(word_text, config, "word")
         phrase_profile = _pick_profile(phrase_text, config, "phrase")
 
-        # ── word audio ──
         word_file = output_dir / f"{stem}_word.mp3"
         gTTS(text=word_text, lang=word_profile["lang"], tld=word_profile["tld"]).save(str(word_file))
         generated.append(word_file.name)
@@ -121,7 +116,6 @@ def run(
         if progress_callback:
             progress_callback(done, total, f"[word] {job.keyword}")
 
-        # ── phrase audio ──
         phrase_file = output_dir / f"{stem}_phrase.mp3"
         gTTS(text=phrase_text, lang=phrase_profile["lang"], tld=phrase_profile["tld"]).save(str(phrase_file))
         generated.append(phrase_file.name)

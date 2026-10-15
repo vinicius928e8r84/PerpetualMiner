@@ -1,17 +1,5 @@
 'use strict';
 
-// Passo 8 do redesign: o lembrete “Configuração pela metade” (#44; item 9 da
-// lista fechada, docs/design/painel/boas-vindas/, variante C).
-//
-// Enquanto a Boas-vindas não chega a Tudo pronto (Abrir painel) e o lembrete não
-// foi ocultado, o popup mostra o cartão ONB-14 com o anel de progresso e Frases
-// a faixa ONB-15. A conta é a mesma da Boas-vindas: um passo conta quando está
-// feito pelo estado real ou quando a pessoa disse “Agora não” a ele.
-// Continuar configuração abre #boas-vindas no primeiro passo que falta; Ocultar
-// (só em Frases) esconde o lembrete de vez, nos dois lugares.
-//
-// Os testes afirmam o que a pessoa vê e o que fica gravado.
-
 const { test, expect } = require('../fixtures');
 
 test.use({ lembreteDaConfiguracao: true });

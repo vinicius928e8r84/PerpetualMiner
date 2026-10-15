@@ -61,9 +61,6 @@ class AnkiSession:
         self.anki_launch_grace_sec = int(config.get("anki_launch_grace_sec", 30))
         self.anki_repair_lock = threading.Lock()
 
-    # ------------------------------------------------------------------
-    # AnkiConnect RPC layer
-    # ------------------------------------------------------------------
     def invoke(self, action: str, params: dict[str, Any] | None = None, timeout: int = 20) -> Any:
         response = requests.post(
             self.anki_connect_url,
@@ -111,9 +108,6 @@ class AnkiSession:
         except Exception as exc:  # noqa: BLE001
             return False, f"{type(exc).__name__}: {exc}"
 
-    # ------------------------------------------------------------------
-    # meta.json version-cap healing
-    # ------------------------------------------------------------------
     def ensure_connect_enabled(self) -> None:
         """Impede que atualizacoes do Anki desabilitem o AnkiConnect.
 
@@ -170,9 +164,6 @@ class AnkiSession:
         except Exception as exc:  # noqa: BLE001
             LOGGER.warning("ensure_connect_enabled falhou: %s", exc)
 
-    # ------------------------------------------------------------------
-    # Launch command / profile detection
-    # ------------------------------------------------------------------
     def _anki_launch_command(self) -> list[str]:
         if not self.anki_executable:
             return []
@@ -290,9 +281,6 @@ class AnkiSession:
     def _ps_single_quote(self, value: str) -> str:
         return "'" + value.replace("'", "''") + "'"
 
-    # ------------------------------------------------------------------
-    # Process inspection / launch / kill
-    # ------------------------------------------------------------------
     def _anki_processes(self) -> list[dict[str, Any]]:
         if os.name != "nt":
             return []
@@ -589,9 +577,6 @@ class AnkiSession:
             "detail": "access_denied" if blocked else ("processes_remaining" if remaining else "ok"),
         }
 
-    # ------------------------------------------------------------------
-    # Public verbs: status / repair / ensure_ready
-    # ------------------------------------------------------------------
     def status(self) -> dict[str, Any]:
         connect_ready, connect_detail = self.connect_status()
         collection_ready, collection_detail = self.collection_ready_status()

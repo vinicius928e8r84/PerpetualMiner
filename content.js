@@ -16,7 +16,6 @@ const SUBTITLE_UI_TEXT = [
     'следующая серия', 'сезоны и серии', 'субтитры',
 ];
 
-// ─── Atalhos gravados ────────────────────────────────────────────────────────
 // “Minerar legenda” (padrão Alt+S) e “Minerar seleção” (padrão sem atalho), como
 // estão gravados em Configurações › Atalhos (lib/atalhos.js). Um atalho novo vale
 // na hora, sem recarregar a página.
@@ -112,7 +111,6 @@ function _ativarCaptura(texto, evento) {
   });
 }
 
-// ─── Feedback honesto ────────────────────────────────────────────────────────
 // A pílula espera o service worker: só diz “minerada” depois que a frase foi
 // gravada, e só diz “copiada” depois que o clipboard aceitou.
 
@@ -229,8 +227,6 @@ function palavraDe(frase) {
   return { palavras, palavraDetectada: frase?.autoKeyword !== false };
 }
 
-// ─── Ponte de Segurança (Cross-Frame) ────────────────────────────────────────
-
 // Nada passa por window.postMessage: a página divide a janela com o content
 // script e vê as mensagens entre frames, então poderia forjá-las. Quando o
 // clipboard falha num iframe, o pedido de cópia vai pelo service worker, que o
@@ -254,16 +250,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (video && videoVisivel(video)) sendResponse({ temVideo: true });
 });
 
-// ─── Atalho de legenda (teclado) ─────────────────────────────────────────────
-
 document.addEventListener('keydown', function(event) {
     if (!Atalhos.correspondeAoAtalho(_atalhos.legenda, event)) return;
     if (Atalhos.digitandoNumCampo(event)) return;
     event.preventDefault();
     minerarLegenda(event);
 });
-
-// ─── Botão Flutuante ─────────────────────────────────────────────────────────
 
 setInterval(() => {
     const video = obterVideoAtivo();
@@ -284,8 +276,6 @@ function containerDoPlayer(video) {
     }
     return video.parentElement;
 }
-
-// ─── Mineração ───────────────────────────────────────────────────────────────
 
 function processarAutoMinerLegenda() {
     const legenda = lerLegenda();
@@ -700,12 +690,9 @@ function minerarAmazon() {
     return melhorCandidato;
 }
 
-// ─── Extração de Contexto ────────────────────────────────────────────────────
-
 function extrairContexto() {
     const host = window.location.hostname;
 
-    // ── YouTube ──────────────────────────────────────────────────────────────
     if (host.includes('youtube.com')) {
         const titulo = (
             document.querySelector('.ytp-title-link')?.textContent ||
@@ -723,7 +710,6 @@ function extrairContexto() {
         return { fonte: 'youtube', titulo, detalhe: canal };
     }
 
-    // ── Netflix ───────────────────────────────────────────────────────────────
     if (host.includes('netflix.com')) {
         const titulo = (
             document.querySelector('.video-title h4')?.innerText ||
@@ -740,7 +726,6 @@ function extrairContexto() {
         return { fonte: 'netflix', titulo, detalhe: formatarEpisodio(epRaw) };
     }
 
-    // ── Amazon Prime ──────────────────────────────────────────────────────────
     if (host.includes('primevideo') || host.includes('amazon')) {
         const titulo = (
             document.querySelector('.atvwebplayersdk-title-text')?.innerText ||
@@ -754,7 +739,6 @@ function extrairContexto() {
         return { fonte: 'primevideo', titulo, detalhe: formatarEpisodio(epRaw) };
     }
 
-    // ── HBO Max / Max ─────────────────────────────────────────────────────────
     if (host.includes('hbomax.com') || host.includes('max.com') || host.includes('hbo.com')) {
         const titulo = (
             document.querySelector('[class*="TitleName"],[class*="titleName"],[data-testid="player-ux-asset-title"]')?.innerText ||
@@ -769,7 +753,6 @@ function extrairContexto() {
         return { fonte: 'max', titulo, detalhe: formatarEpisodio(epRaw) };
     }
 
-    // ── Disney+ / Star+ ───────────────────────────────────────────────────────
     if (host.includes('disneyplus.com') || host.includes('starplus.com')) {
         const titulo = (
             document.querySelector('[class*="title-field"],[data-testid="title"]')?.innerText ||
@@ -784,7 +767,6 @@ function extrairContexto() {
         return { fonte, titulo, detalhe: formatarEpisodio(epRaw) };
     }
 
-    // ── Kinopoisk (hd.kinopoisk.ru) ───────────────────────────────────────────
     if (host.includes('kinopoisk')) {
         const titulo = (
             document.querySelector('[data-tid="title"], [class*="title"] [class*="text"]')?.innerText ||
@@ -798,7 +780,6 @@ function extrairContexto() {
         return { fonte: 'kinopoisk', titulo, detalhe: formatarEpisodio(epRaw) };
     }
 
-    // ── Fallback: Web genérico ────────────────────────────────────────────────
     return { fonte: 'web', titulo: document.title.trim(), detalhe: '' };
 }
 

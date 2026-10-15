@@ -60,8 +60,6 @@ class JobAnalytics:
         self._unique_phrase_ids = unique_phrase_ids
         self._job_phrase_ids = job_phrase_ids
 
-    # -- I/O de leitura (replicado de BridgeApp; le via jobs_root/queue_file) --
-
     def _job_dir(self, job_id: str) -> Path:
         return self.jobs_root / job_id
 
@@ -92,8 +90,6 @@ class JobAnalytics:
             if isinstance(record, dict):
                 records.append(record)
         return records
-
-    # -- Datas e classificacao (puro) --
 
     def parse_date(self, raw: Any) -> date | None:
         if not raw:
@@ -154,8 +150,6 @@ class JobAnalytics:
         if source == "skipped":
             return "skipped"
         return "failed"
-
-    # -- Leitura e agregacao de snapshots --
 
     def _iter_job_snapshots(self) -> list[dict[str, Any]]:
         queue = self._safe_read_json(self.queue_file, {"jobs": []})

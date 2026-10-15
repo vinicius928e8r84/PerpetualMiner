@@ -19,7 +19,6 @@
 const { criarSincronizacao, criarSessao, nuvemHttp, armazenamentoDoChrome, paraCampos, deCampos,
   tombstoneFirestore, tombstonesSync, MOTIVO, TTL_DO_TOMBSTONE, PREFIXO_DO_TOMBSTONE } = require('./lib/sincronizacao.js');
 
-// ─── Cores para output ────────────────────────────────────────────────────────
 const C = {
   reset: '\x1b[0m', bold: '\x1b[1m',
   green: '\x1b[32m', red: '\x1b[31m', yellow: '\x1b[33m',
@@ -40,8 +39,6 @@ function assert(condition, label) {
 
 const clone = (v) => JSON.parse(JSON.stringify(v));
 
-// ─── Armazenamento em memória (o chrome.storage, como promessas) ──────────────
-
 function areaEmMemoria(dados) {
   return {
     async get(chaves) {
@@ -60,8 +57,6 @@ function areaEmMemoria(dados) {
   };
 }
 
-// ─── A nuvem em memória (a seam, do lado do Node) ─────────────────────────────
-
 // O que a nuvem guarda, compartilhado entre A e B, e o que ela está fazendo de errado.
 let firestore     = {};   // { phraseId: phrase }
 let firestoreTomb = {};   // { phraseId: deletedAt }  (usuarios/{uid}/meta/deleted)
@@ -79,8 +74,6 @@ function nuvemEmMemoria(uid = 'uid-teste') {
     async gravarTombstones(ids, apagadaEm) { for (const id of ids) firestoreTomb[String(id)] = apagadaEm; },
   };
 }
-
-// ─── Computadores A e B ───────────────────────────────────────────────────────
 
 let storageSync   = {};   // chrome.storage.sync   — compartilhado entre A e B
 let storageLocalA = {};   // chrome.storage.local do computador A
@@ -108,8 +101,6 @@ function resetState() {
 
 const de = (storage) => computadores.get(storage);
 
-// ─── Helpers de storage ───────────────────────────────────────────────────────
-
 function getLocal(storage, defaults) {
   const result = {};
   for (const [k, v] of Object.entries(defaults)) result[k] = k in storage ? clone(storage[k]) : v;
@@ -118,8 +109,6 @@ function getLocal(storage, defaults) {
 function setLocal(storage, data) {
   for (const [k, v] of Object.entries(data)) storage[k] = clone(v);
 }
-
-// ─── O que o painel e o service worker fazem em volta da sincronização ────────
 
 /** O painel apaga: tira da tela e do local, e a sincronização grava os tombstones e apaga da nuvem. */
 async function removerFrases(storage, ids, { firestoreFailure = false } = {}) {
@@ -174,8 +163,6 @@ async function deletarFrase(storage, id, opts = {}) {
   setLocal(storage, { frases: frases.filter(f => f.id !== id) });
 }
 
-// ─── Utilitários de verificação ───────────────────────────────────────────────
-
 function fraseVisivel(frases, texto) {
   return frases.some(f => f.texto === texto);
 }
@@ -197,10 +184,6 @@ async function idNoTombstoneSync(id) {
 
 async function rodar() {
 resetState();
-
-// ═════════════════════════════════════════════════════════════════════════════
-// CENÁRIOS DE TESTE
-// ═════════════════════════════════════════════════════════════════════════════
 
 head('CENÁRIO 1 — Adição no dispositivo A aparece no dispositivo B');
 sep();
@@ -724,10 +707,6 @@ await (async () => {
   assert(await de(storageLocalA).sinc.subirFrases([f1]) === null && idNoFirestore(f1.id) && !idNoPendingSync(storageLocalA, f1.id), 'ao subir, sai da fila');
 })();
 
-// ═════════════════════════════════════════════════════════════════════════════
-// O ADAPTADOR HTTP (o que roda na extensão): codec, sessão e REST, com um fetch falso
-// ═════════════════════════════════════════════════════════════════════════════
-
 const DOCS = 'https://firestore.googleapis.com/v1/projects/perpetualminer-4c219/databases/(default)/documents';
 
 /** Um fetch que responde com o que `responder(url, opcoes)` devolve ({ status, corpo }) e guarda os pedidos. */
@@ -955,8 +934,6 @@ await (async () => {
   assert(semRenovar.status === 'rejected' && semRenovar.reason?.motivo === MOTIVO.EXPIROU && renovadas.length === 0,
     'revogar durante a leitura da resposta também impede aoRenovar');
 })();
-
-// ─── Resultado final ──────────────────────────────────────────────────────────
 
 console.log(`\n${C.bold}${'═'.repeat(60)}${C.reset}`);
 const total = passed + failed;

@@ -1,14 +1,5 @@
 'use strict';
 
-// Abrir o Anki sozinho (#147, ONB-17): o último passo da primeira conexão, logo depois de a Conexão com o
-// Anki responder. A extensão pede a permissão opcional `nativeMessaging` e confere o abridor que a Conexão
-// deixou no computador (só “achou o Anki?”: nada abre nem fecha). O mesmo componente
-// (painel-conexao-passos.js) está no card ONB-16 da área Conexão com o Anki e no passo 4 da Boas-vindas.
-//
-// O abridor é o de mentira do fixture (fakes/abridor.js), registrado no perfil de teste do Chromium e
-// respondendo pelos exemplos do contrato (complemento/contrato/exemplos.json › abridor). O que fica guardado
-// é a permissão que o Chrome guarda (`extensao.permissaoDoAbridor()`) e o “Agora não” (`pm_abridor`).
-//
 // Exceção de teste (o aviso nativo do Chrome): o aviso da permissão é do Chrome, e o Playwright não alcança
 // os botões dele. Por isso a permissão dada vem do fixture (`permissaoDoAbridor`, gravada no perfil como o
 // Chrome a guarda depois de Permitir), e o teste do pedido confere o que a tela mostra enquanto o aviso espera.
@@ -276,8 +267,6 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await estadoFinal(extensao, { pm_abridor: { agoraNao: false } });
   });
 });
-
-// ─── O mesmo passo na Boas-vindas ──────────────────────────────────────────────
 
 const cardDaBoasVindas = page => page.locator('.bv-card');
 const passosDaBoasVindas = page => cardDaBoasVindas(page).getByRole('navigation', { name: 'Como ligar' });

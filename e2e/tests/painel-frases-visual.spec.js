@@ -101,7 +101,6 @@ test('busca sem resultado com filtro ligado (PAI-04)', async ({ page, extensao }
   await expect(page).toHaveScreenshot('frases-busca-vazia.png', { fullPage: true });
 });
 
-// ─── Seleção, ações do cartão e modais (#30) ─────────────────────────────────
 
 const primeiroCartao = page => page.locator('#frases-lista .veio-frase').first();
 
@@ -160,7 +159,6 @@ test('o modal Editar contexto, para a seleção (PAI-20)', async ({ page, extens
   await expect(page).toHaveScreenshot('frases-modal-contexto.png');
 });
 
-// ─── Minerar frases (#31) ────────────────────────────────────────────────────
 
 const modalDeMinerar = page => page.getByRole('dialog', { name: 'Minerar frases' });
 

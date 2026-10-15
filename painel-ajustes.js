@@ -1,20 +1,5 @@
 'use strict';
 
-// A aba Ajustes de envio da Conexão com o Anki (docs/design/painel/anki/prototipo-ajustes-envio.html,
-// variante A · Cartões): um card por idioma, recolhível como os de Configurações. O card fechado
-// diz o baralho e a fonte de imagem gravados; aberto, traz o formulário do idioma (Baralho, Imagens,
-// o sotaque do áudio no Avançado) e só grava em Salvar ajustes.
-//
-// O Baralho é uma escolha entre os baralhos que o Anki tem (`POST /anki/decks`, com o nome legível:
-// os níveis `::` viram ›). Sem a lista (a Conexão desligada, o Anki sem responder), é um campo de
-// texto, em branco volta ao padrão, e um nome com nível vazio (`Inglês::`) é recusado no campo.
-//
-// O rascunho de cada idioma sobrevive a abrir e fechar os cards. O que outra aba salva chega por
-// `AjustesDeEnvio.acompanhar`: um idioma sem rascunho passa a mostrar o novo; um com rascunho fica
-// como está, e Salvar recusa (a versão lida ficou para trás) com o aviso de que mudou em outra aba;
-// nada é sobrescrito sem a pessoa ver. Com a Conexão desligada, tudo continua editável (a nota BRG-33
-// é do painel-anki.js). Toda cópia vem do catálogo da Voz.
-
 (function (raiz) {
   const { textoDaVoz, Veio, AjustesDeEnvio, IDIOMAS, Shell, ConexaoAnki } = raiz;
   const { IMAGENS } = AjustesDeEnvio;
@@ -60,8 +45,6 @@
     Shell.aoEntrarNaArea('anki', lerBaralhos);
   }
 
-  // ─── Estado ────────────────────────────────────────────────────────────────
-
   function copia(ajustesDoIdioma) {
     return Object.fromEntries(CAMPOS.map(campo => [campo, ajustesDoIdioma[campo]]));
   }
@@ -92,8 +75,6 @@
     const texto = String(nome || '').trim();
     return texto !== '' && texto.split('::').some(parte => !parte.trim());
   }
-
-  // ─── Os baralhos do Anki ───────────────────────────────────────────────────
 
   async function lerBaralhos() {
     const leitura = ++estado.ultimaLeituraDeBaralhos;
@@ -134,8 +115,6 @@
       return opcao(nome, estado.baralhos.includes(nome) ? legivel : textoDaVoz('BRG-07.baralhoForaDoAnki', { baralho: legivel }));
     });
   }
-
-  // ─── Salvar ────────────────────────────────────────────────────────────────
 
   async function salvar(lang) {
     if (estado.salvando || !estado.gravados) return;
@@ -182,8 +161,6 @@
     (porId(`ajustes-baralho-${lang}`) || porId(`ajustes-cabeca-${lang}`))?.focus();
   }
 
-  // ─── Aviso ─────────────────────────────────────────────────────────────────
-
   function mostrarAviso({ texto, acao, detalhes }) {
     const aviso = Veio.montarAviso({
       texto,
@@ -198,8 +175,6 @@
   function fecharAviso() {
     porId('ajustes-aviso').replaceChildren();
   }
-
-  // ─── Os cards ──────────────────────────────────────────────────────────────
 
   function alternar(lang) {
     estado.aberto = estado.aberto === lang ? null : lang;
@@ -258,8 +233,6 @@
     }
     if (foco) porId(foco)?.focus();
   }
-
-  // ─── O formulário de um idioma ─────────────────────────────────────────────
 
   function formulario(lang) {
     return [campoDoBaralho(lang), campoDasImagens(lang), avancado(lang), acoes(lang)];

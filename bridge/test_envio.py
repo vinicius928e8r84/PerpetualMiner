@@ -43,7 +43,6 @@ class FakeEngine:
         self.make_audio = True
         self.parsed_limit: int | None = None
 
-    # -- Engine --
     def prepare(self, job: dict[str, Any], workspace: Path) -> tuple[str, list[str]]:
         self.calls.append("prepare")
         parsed = [f"s{entry['phraseId']}" for entry in job["entries"]]
@@ -149,9 +148,6 @@ class EnvioTestCase(unittest.TestCase):
         return next(i["status"] for i in self.store.queue_data()["jobs"] if i["jobId"] == job_id)
 
 
-# ---------------------------------------------------------------------------
-# A fila e o estado
-# ---------------------------------------------------------------------------
 class JobStoreTests(EnvioTestCase):
     def test_a_new_envio_waits_in_the_queue_with_nothing_done(self) -> None:
         job_id = self.envio(1, 2, deckName="CIMV", imageSource="2")
@@ -267,9 +263,6 @@ class JobStoreTests(EnvioTestCase):
                 self.assertEqual(self.store.queue_data(), {"jobs": []})
 
 
-# ---------------------------------------------------------------------------
-# As etapas
-# ---------------------------------------------------------------------------
 class JobRunnerStageTests(EnvioTestCase):
     def test_a_new_envio_goes_through_every_stage_and_completes(self) -> None:
         job_id = self.envio(1, 2, imageSource="2")
@@ -417,9 +410,6 @@ class JobRunnerStageTests(EnvioTestCase):
         self.assertEqual(self.anki.ready_calls, 2)
 
 
-# ---------------------------------------------------------------------------
-# O fim: adicionada / duplicada / falhou
-# ---------------------------------------------------------------------------
 class JobRunnerOutcomeTests(EnvioTestCase):
     def test_a_phrase_with_every_card_already_in_anki_is_duplicate_not_added(self) -> None:
         job_id = self.envio(1, 2)
@@ -548,9 +538,6 @@ class SettleTests(unittest.TestCase):
         self.assertEqual(outcome.status, "failed")
 
 
-# ---------------------------------------------------------------------------
-# O worker
-# ---------------------------------------------------------------------------
 class JobWorkerTests(EnvioTestCase):
     def setUp(self) -> None:
         super().setUp()

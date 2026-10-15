@@ -50,8 +50,6 @@
   const FRASE_EM_INGLES = 'I’m not saying it’s your fault, I’m saying it’s your responsibility.';
   const FRASE_EM_RUSSO = 'Мы с тобой одной крови — ты и я.';
 
-  /* ── Andaime ──────────────────────────────────────────────────────────── */
-
   /** Um elemento com atributos e filhos, sem passar por innerHTML. */
   function el(tag, atributos = {}, ...filhos) {
     const no = document.createElement(tag);
@@ -105,8 +103,6 @@
       texto, 'data-vitrine-chrome': true, onclick: aoUsar,
     });
 
-  /* ── Botões ───────────────────────────────────────────────────────────── */
-
   function botoes(estado) {
     const { desabilitado, classeDeFoco: foco } = estadoDaAmostra(estado);
     const botao = (variante, id, valores) => el('button', {
@@ -133,8 +129,6 @@
       }, iconeVeio('apagar')),
     ];
   }
-
-  /* ── Campos ───────────────────────────────────────────────────────────── */
 
   function busca({ desabilitado = false, classeDeFoco = '' } = {}) {
     const limpar = el('button', {
@@ -195,8 +189,6 @@
     ];
   }
 
-  /* ── Toggle e checkbox ────────────────────────────────────────────────── */
-
   function toggle({ ligado, desabilitado = false, classeDeFoco = '' }) {
     return el('label', { class: 'veio-toggle' },
       el('input', { type: 'checkbox', checked: ligado, disabled: desabilitado }),
@@ -224,8 +216,6 @@
         rotulo('span', '', 'misto')),
     ];
   }
-
-  /* ── Selos, kbd, segmentado e azulejo ─────────────────────────────────── */
 
   const selo = (classe, icone, texto) =>
     el('span', { class: `veio-selo ${classe}`.trim() },
@@ -286,8 +276,6 @@
       azulejo('Russo', 'POP-08', {}, 100, false),
     ];
   }
-
-  /* ── Modal, toast, aviso e esqueleto ──────────────────────────────────── */
 
   /** O modal desta coluna: aberto pelo botão de perigo em contorno. */
   function modal(temaDaColuna) {
@@ -366,10 +354,6 @@
     return lugar;
   }
 
-  /* ── Estado vazio ─────────────────────────────────────────────────────────
-     O vazio que ensina (PAI-02) e o vazio de uma busca sem resultado
-     (PAI-04), que leva a ação de limpar junto. */
-
   /** O vazio: o título em destaque, o texto que ensina (se houver) e a ação. */
   function vazio({ titulo, texto, acao, variante, icone }) {
     return el('div', { class: 'veio-vazio' },
@@ -401,8 +385,6 @@
       el('div', { class: 'veio-esqueleto', style: 'width:94%' }),
       el('div', { class: 'veio-esqueleto', style: 'width:58%' }));
   }
-
-  /* ── Linha de frase ───────────────────────────────────────────────────── */
 
   function frase({ texto, palavra, detectada, idioma, fonte, titulo, detalhe, selecionada, enviada }) {
     const marcada = el('input', {
@@ -462,8 +444,6 @@
         marcada, el('div', { class: 'coluna-da-frase' }, corpo, montarChipDaPalavra('fault')), el('span')));
     return ilha;
   }
-
-  /* ── A galeria ────────────────────────────────────────────────────────── */
 
   /** Monta a galeria inteira dentro de `destino`, na coluna do tema `tema`. */
   function montarComponentes(destino, tema) {

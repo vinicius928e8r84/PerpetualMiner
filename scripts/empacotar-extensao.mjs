@@ -44,8 +44,6 @@ async function validarManifesto(manifesto, arquivos) {
   return erros;
 }
 
-// ─── zip (store + deflate, o bastante para a loja) ────────────────────────────
-
 const TABELA_CRC = Uint32Array.from({ length: 256 }, (_, n) => {
   let c = n;
   for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
@@ -121,8 +119,6 @@ function montarZip(arquivos) {
   ]);
   return Buffer.concat([...partes, ...diretorio, fim]);
 }
-
-// ─── execução ─────────────────────────────────────────────────────────────────
 
 function pastaDeSaida() {
   const i = process.argv.indexOf('--saida');

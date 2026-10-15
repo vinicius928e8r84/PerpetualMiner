@@ -29,8 +29,6 @@ if str(BRIDGE_DIR) not in sys.path:
 import analytics as an  # noqa: E402  (apos ajustar sys.path)
 
 
-# ---- Helpers de fixture -----------------------------------------------------
-
 def _write_json(path: Path, data) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
@@ -83,8 +81,6 @@ def make_analytics(jobs_root: Path, queue_file: Path) -> an.JobAnalytics:
         job_phrase_ids=_job_phrase_ids,
     )
 
-
-# ---- Testes puros (sem I/O) -------------------------------------------------
 
 class ClassifyImageSourceTest(unittest.TestCase):
     def setUp(self) -> None:
@@ -177,8 +173,6 @@ class SummarizeRecordsTest(unittest.TestCase):
         self.assertEqual(out["matchedRecords"], 1)
         self.assertAlmostEqual(out["costs"]["cardUsd"], 2.0)
 
-
-# ---- Testes com I/O (jobs_root em tmpdir) -----------------------------------
 
 def _sample_jobs():
     jobs = {
@@ -273,8 +267,6 @@ class SummaryIoTest(unittest.TestCase):
         rows = self.ja.jobs(None, None, "all")
         self.assertEqual([r["jobId"] for r in rows], ["job-ru", "job-en"])
 
-
-# ---- Teste diferencial contra o server.py antigo (backup .bak) --------------
 
 def _load_old_server():
     """Carrega o server.py antigo (backup .bak desta sessao) como modulo isolado.

@@ -19,8 +19,6 @@ const IDIOMAS_DA_MINERACAO = [
 // O atalho entra no meio da cópia como tecla (kbd), não como texto solto.
 const MARCA_DO_ATALHO = '\u0000';
 
-// ─── Estado ───────────────────────────────────────────────────────────────────
-
 let frases = null;                    // null enquanto a primeira leitura não volta (POP-01)
 let idsJaMostrados = null;            // o que a lista já mostrou, para realçar a frase que chega
 const idsChegando = new Set();        // as que ainda estão no realce: um redesenho não o apaga
@@ -31,8 +29,6 @@ let configuracao = null;              // o retrato da configuração (lib/config
 let minerando = false;
 
 const porId = id => document.getElementById(id);
-
-// ─── Início ───────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
   escreverCopiaFixa();
@@ -95,8 +91,6 @@ function escreverCopiaFixa() {
   porId('minerar-rapida').textContent = textoDaVoz('POP-04');
 }
 
-// ─── Painel ───────────────────────────────────────────────────────────────────
-
 /**
  * Foca a aba do Painel que já está aberta, ou abre uma. Com `endereco`, a aba
  * vai para aquele endereço (#frases, #configuracoes/atalhos); sem ele, fica
@@ -114,8 +108,6 @@ function abrirPainel(endereco = '') {
     chrome.windows.update(aba.windowId, { focused: true });
   });
 }
-
-// ─── Mineração automática ─────────────────────────────────────────────────────
 
 /** Pede o estado ao service worker, com o esqueleto (POP-01) enquanto ele não responde. */
 function pedirEstadoDaAutomatica() {
@@ -334,8 +326,6 @@ function refletirOVocabularioDoAnkiFechado() {
   }
 }
 
-// ─── Configuração pela metade ─────────────────────────────────────────────────
-
 /**
  * O cartão ONB-14, enquanto a Boas-vindas não chegou a Tudo pronto e o lembrete
  * não foi ocultado (em Frases); ele espera o /health, que conta um dos passos.
@@ -349,8 +339,6 @@ function desenharLembrete() {
   porId('lembrete-anel').replaceChildren(montarAnelDeProgresso(n, total));
   porId('lembrete-titulo').textContent = textoDaVoz('ONB-14.titulo', { n, total });
 }
-
-// ─── Mineração rápida ─────────────────────────────────────────────────────────
 
 function prepararMineracaoRapida() {
   const formulario = porId('mineracao-rapida');
@@ -417,8 +405,6 @@ function limparErro() {
   porId('erro-rapida').replaceChildren();
   porId('frase-rapida').removeAttribute('aria-invalid');
 }
-
-// ─── Últimas mineradas ────────────────────────────────────────────────────────
 
 function desenharUltimas() {
   const lugar = porId('ultimas');
@@ -510,8 +496,6 @@ function montarVazio() {
   return vazio;
 }
 
-// ─── Rodapé ───────────────────────────────────────────────────────────────────
-
 /** POP-11: o atalho de legenda gravado e Mudar atalho; sem atalho, “Sem atalho” e Definir atalho. */
 function desenharRodape() {
   const rodape = porId('rodape');
@@ -541,8 +525,6 @@ function botaoDosAtalhos(rotulo, variante = 'veio-botao--fantasma') {
   botao.addEventListener('click', () => abrirPainel(ENDERECO_DOS_ATALHOS));
   return botao;
 }
-
-// ─── Utilidades ───────────────────────────────────────────────────────────────
 
 /** O esqueleto sem texto (POP-01): uma linha inteira e uma curta. */
 function linhasDeEsqueleto() {

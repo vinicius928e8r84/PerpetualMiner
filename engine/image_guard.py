@@ -15,8 +15,6 @@ import re
 import openai
 from typing import Optional
 
-# ── heuristic fast-path ───────────────────────────────────────────────────────
-
 _ABSTRACT_PATTERNS = [
     r"\b(to|at|in|on|of|for|with|by|from|into|onto|out of|up to)\b.*\b(someone|sb|sth)\b",
     r"^(strike|hit|make|take|give|get|put|keep|break|bring|come|go|run|set|turn|fall|hold|pull|push|cut|let|lay|pay|play|stand|work)\b.+\b(a|an|the)?\b\w+$",
@@ -61,8 +59,6 @@ def _heuristic(keyword: str) -> Optional[bool]:
 
     return None  # single/dual word — let GPT decide
 
-
-# ── GPT classifier ────────────────────────────────────────────────────────────
 
 _SYSTEM = (
     "You are a classifier. Given a word or phrase, reply with exactly one letter:\n"
