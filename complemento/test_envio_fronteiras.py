@@ -134,6 +134,22 @@ def ler_a_fila(pasta):
         return []
 
 
+def sobras_da_frase(pasta):
+    """O que o desenho promete que some quando a Frase chega ao Anki: a linha no pedido, o texto pago (`.txt`) e todo `.novo`."""
+    sobras = []
+    for raiz, _, nomes in os.walk(pasta):
+        for nome in nomes:
+            caminho = os.path.join(raiz, nome)
+            if nome.endswith((".txt", ".novo")) and "chaves" not in raiz:
+                sobras.append(os.path.relpath(caminho, pasta))
+    try:
+        with open(os.path.join(pasta, "fila", ID + ".json"), encoding="utf-8") as arquivo:
+            sobras += ["linha de %s" % e["phraseId"] for e in json.load(arquivo)["entries"] if "line" in e]
+    except (OSError, ValueError):
+        pass
+    return sorted(sobras)
+
+
 class AMorteEmCadaGravacaoDoCriarEDoTrabalho(unittest.TestCase):
     def rodar(self, morrer_em):
         """Mata na gravação `morrer_em`; devolve (quantas gravações houve, o que o teste conferiu no fim)."""
@@ -157,9 +173,11 @@ class AMorteEmCadaGravacaoDoCriarEDoTrabalho(unittest.TestCase):
                 fila = ler_a_fila(pasta)
                 pedido_gravado = os.path.exists(os.path.join(pasta, "fila", ID + ".json"))
                 estado_gravado = os.path.exists(os.path.join(pasta, "estado", ID + ".json"))
+                restos = sobras_da_frase(pasta)
         rotulo = "morrendo na gravação %s" % morrer_em
         self.assertEqual(resposta[0], 201, "%s: o mesmo corpo não pode dar 409 nem erro" % rotulo)
         self.assertEqual((estado["status"], sorted(estado["successfulPhraseIds"])), ("completed", [1760000000000, 1760000000001]), rotulo)
+        self.assertEqual(restos, [], "%s: terminado o Envio, a Frase e o texto pago não ficam em user_files" % rotulo)
         self.assertEqual(estado["duplicatePhraseIds"], [], "%s: a nota que o próprio Envio gravou não é duplicata" % rotulo)
         self.assertEqual([item["jobId"] for item in fila], [ID], "%s: o Envio entra na fila uma vez" % rotulo)
         self.assertTrue(pedido_gravado and estado_gravado, "%s: id encalhado (a fila tem um id sem pedido ou sem estado)" % rotulo)

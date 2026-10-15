@@ -573,6 +573,7 @@ class Trabalho:
                 return
             cartao = estado["cards"][cartao_id]
             if cartao["status"] in NO_ANKI:
+                self.fila.cartao_chegou(job_id, cartao_id)  # a morte pode ter vindo entre `added` e o fim dele; repetir não grava o que já foi
                 continue
             feitos = sum(1 for c in estado["cards"].values() if c["status"] in NO_ANKI)
             self._etapa(job_id, "generate_cards", progress={"done": feitos, "total": total})
