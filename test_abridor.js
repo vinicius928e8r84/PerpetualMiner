@@ -110,7 +110,6 @@ async function main() {
       `o abrir com a resposta ${comoDisse} diz SEM_ABRIDOR, com o que o abridor disse`);
   }
 
-  // Achou e abriu com um dos dois falso nunca é ABRIU, nem com o outro verdadeiro.
   for (const meiaVerdade of [{ achou: false, abriu: true }, { achou: true, abriu: false }]) {
     const { Abridor } = carregarOAbridor({ responder: () => meiaVerdade });
     assert.deepStrictEqual(await comoValores(Abridor.abrirOAnki()), { resultado: Abridor.RESULTADO.NAO_ABRIU, detalhe: '' },

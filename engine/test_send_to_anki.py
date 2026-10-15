@@ -228,7 +228,6 @@ class RunStatusTests(unittest.TestCase):
             self.assertEqual(results["dup_stem"], send_to_anki.DUPLICATE)
             # The existing card must NOT trigger an addNote call.
             self.assertEqual(add_note.call_count, 1)
-            # Both count as "present in Anki".
             self.assertTrue(send_to_anki.is_present(results["new_stem"]))
             self.assertTrue(send_to_anki.is_present(results["dup_stem"]))
 
@@ -285,7 +284,6 @@ class CleanupOutputTests(unittest.TestCase):
             send_to_anki.cleanup_output(
                 folder, {"added": send_to_anki.ADDED, "z": send_to_anki.FAILED}
             )
-            # Not all present -> the stray file must NOT be wiped.
             self.assertTrue((folder / "leftover.tmp").exists())
 
     def test_full_wipe_when_all_present(self):

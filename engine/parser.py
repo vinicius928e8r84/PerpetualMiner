@@ -27,13 +27,10 @@ def safe_filename(text: str) -> str:
     # If the entire text was wrapped in brackets, just strip the bracket chars
     if not stem:
         stem = re.sub(r'[\[\]]', '', text).strip()
-    # Lowercase
     stem = stem.lower()
-    # Spaces → underscore
     stem = re.sub(r'\s+', '_', stem)
     # Strip Windows-reserved and bracket chars (keep hyphens)
     stem = re.sub(r'[<>:"/\\|?*\[\]]+', '', stem)
-    # Collapse consecutive underscores; strip leading/trailing _ and -
     stem = re.sub(r'_+', '_', stem).strip('_-')
     return stem
 

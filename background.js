@@ -909,7 +909,6 @@ function badgeDaMineracaoAutomatica(state) {
   };
 }
 
-/** Põe na toolbar o badge do estado de agora. */
 async function atualizarBadgeDaToolbar() {
   if (!chrome.action?.setBadgeText) return;
 
@@ -1004,7 +1003,6 @@ async function getAutoKeywordDeckName(lang = 'en') {
   return (await PerpetualMiner.AjustesDeEnvio.ler())[normalizedLang].deckName;
 }
 
-/** Wrapper de chrome.storage.local.get que retorna Promise */
 function chromeGet(defaults) {
   return new Promise(resolve => chrome.storage.local.get(defaults, resolve));
 }

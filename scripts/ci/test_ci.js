@@ -17,7 +17,6 @@ assert.strictEqual(soDocumentacao(['docs/instalar-extensao.md', 'bridge/README.m
 assert.strictEqual(soDocumentacao(['docs/design/painel/anki/prototipo-anki.html', 'docs/design/foto/ref.png']), true);
 assert.strictEqual(soDocumentacao(['.agents/skills/popup/SKILL.md', '.claude/skills/x/SKILL.md']), true);
 
-// Qualquer arquivo de código na lista basta para rodar a suíte.
 assert.strictEqual(soDocumentacao(['CLAUDE.md', 'painel.js']), false);
 assert.strictEqual(soDocumentacao(['e2e/tests/popup.spec.js']), false);
 assert.strictEqual(soDocumentacao(['.github/workflows/testes.yml']), false);
@@ -104,7 +103,6 @@ const texto = resumo(instaveis(relatorio));
 assert(texto.includes('a.spec.js:9') && texto.includes('oscila no grupo'), 'o resumo nomeia cada teste');
 assert(/2/.test(texto.split('\n')[0]), 'o título conta quantos foram');
 
-// O job guarda e2e/test-results quando algum teste oscilou: o passo diz isso pela saída `achou`.
 function saidaDoPasso(conteudo) {
   const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'instaveis-'));
   const arquivoRelatorio = path.join(pasta, 'relatorio.json');
@@ -153,7 +151,6 @@ assert.match(mensagem(commitsForaDaRegra([linha('abcdef0123', 'agente@exemplo.co
   const falha = rodarAutoria();
   assert.strictEqual(falha.status, 1, 'um commit de outro e-mail barra');
   assert(falha.stdout.includes('do agente') && !falha.stdout.includes('feito certo'), 'a mensagem nomeia só o commit errado');
-  // O comando da mensagem conserta: depois dele a autoria passa.
   execFileSync('git', ['rebase', '-q', '--rebase-merges', '--exec', 'git commit --amend --no-edit --reset-author', 'main'], {
     cwd: repoDeAutoria,
     env: { ...process.env, GIT_CONFIG_COUNT: '2',

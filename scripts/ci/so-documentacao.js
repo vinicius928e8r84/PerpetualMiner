@@ -28,7 +28,6 @@ function ehDocumentacao(arquivo) {
   return /^docs\//.test(arquivo) && ILUSTRACAO.test(arquivo);
 }
 
-/** Verdadeiro quando há arquivos e todos são documentação. */
 function soDocumentacao(arquivos) {
   return arquivos.length > 0 && arquivos.every(ehDocumentacao);
 }

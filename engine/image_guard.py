@@ -75,14 +75,12 @@ def should_generate_image(
     api_key: str,
     log_dir: str = "log",
 ) -> bool:
-    """Return True if an image should be generated for *keyword*."""
     fast = _heuristic(keyword)
     if fast is False:
         return False
     if fast is True:
         return True
 
-    # GPT micro-call
     try:
         client = openai.OpenAI(api_key=api_key)
         resp = client.chat.completions.create(

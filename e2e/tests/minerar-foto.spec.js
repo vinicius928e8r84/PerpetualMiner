@@ -432,7 +432,6 @@ test('4 fotos, Cancelar depois da 2ª: as fotos 3 e 4 ficam “Cancelada” e as
   const aviso = page.locator('#foto-avisos .veio-aviso');
   await expect(aviso).toHaveText('Leitura cancelada. 2 fotos ficaram sem ler; as frases das fotos já lidas continuam aqui.');
   await expect(aviso.locator('strong')).toHaveText('Leitura cancelada.');
-  // Informa, não alarma: é um status, não um alerta.
   await expect(aviso).toHaveAttribute('role', 'status');
   await expect(botaoMinerar(page)).toHaveText('Minerar 5 frases');
 

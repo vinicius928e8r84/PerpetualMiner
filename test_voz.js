@@ -48,7 +48,6 @@ assert.deepStrictEqual(conferir(CATALOGO_DA_VOZ), [],
 assert.strictEqual(fs.readFileSync(CAMINHO_DO_HTML, 'utf8'), htmlDoCatalogo(),
   'docs/design/voz/catalogo.html não bate com a spec. Rode: node scripts/gerar-catalogo-da-voz.js');
 
-/** O catálogo com uma mudança, sem mexer no de verdade. */
 function comMudanca(mudar) {
   const copia = JSON.parse(JSON.stringify(CATALOGO_DA_VOZ));
   mudar(copia);
@@ -58,13 +57,9 @@ const aponta = (problemas, nome) => problemas.some(p => p.startsWith(`${nome}:`)
 
 // Um texto cortado, que ainda aparece dentro da linha da spec.
 assert(aponta(conferir(comMudanca(c => { c['POP-04'] = 'Min'; })), 'POP-04'), 'POP-04 cortado devia ficar vermelho');
-// Uma parte apagada.
 assert(aponta(conferir(comMudanca(c => { delete c['FOT-11'].causaChave; })), 'FOT-11.causaChave'), 'parte apagada devia ficar vermelha');
-// Um texto que a spec não escreve, trocado.
 assert(aponta(conferir(comMudanca(c => { c['FOT-11'].causaRede = 'TEXTO DIFERENTE NA COPIA'; })), 'FOT-11.causaRede'), 'texto fora da spec, trocado, devia ficar vermelho');
-// Uma parte nova que ninguém registrou.
 assert(aponta(conferir(comMudanca(c => { c['FOT-11'].nova = 'Parte nova'; })), 'FOT-11.nova'), 'parte nova devia ficar vermelha');
-// Um ID que sai, e um que entra.
 assert(aponta(conferir(comMudanca(c => { delete c['POP-04']; })), 'POP-04'), 'ID apagado devia ficar vermelho');
 assert(aponta(conferir(comMudanca(c => { c['XXX-01'] = 'Inventado'; })), 'XXX-01'), 'ID inventado devia ficar vermelho');
 // Um texto trocado por outro que a spec escreve na mesma linha, mas não é o dele.

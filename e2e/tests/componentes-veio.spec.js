@@ -228,7 +228,6 @@ test('o modal é um diálogo, começa no botão seguro e prende o foco', async (
   await expect(dialogo).toBeVisible();
   await expect(dialogo).toHaveAttribute('aria-modal', 'true');
 
-  // O foco entra no botão seguro: "Cancelar", nunca no que apaga.
   await expect(dialogo.getByRole('button', { name: 'Cancelar' })).toBeFocused();
 
   // O Tab dá a volta dentro do modal e não sai para a página atrás.

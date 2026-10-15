@@ -29,7 +29,6 @@ const DIRETORIO_DOS_WORKFLOWS = '.github/workflows';
 const seAplica = arquivo => ehArquivoDeTeste(arquivo) || arquivo === ARQUIVO_DO_REGISTRO
   || new RegExp(`^${DIRETORIO_DOS_WORKFLOWS.replace('.', '\\.')}/[^/]+\\.ya?ml$`).test(arquivo);
 
-// O que num workflow é um teste rodado por fora do executor.
 const TESTE_POR_FORA = [
   /\bnode\s+(?:\S*\/)?test_\S+/,
   /-m\s+unittest\b/,
@@ -103,7 +102,6 @@ function verificar(arquivo, fonte, raiz = process.cwd()) {
     return achados;
   }
 
-  // Um workflow.
   const achados = [];
   for (const { linha, texto } of linhasDeComando(fonte)) {
     if (TESTE_POR_FORA.some(r => r.test(texto))) {

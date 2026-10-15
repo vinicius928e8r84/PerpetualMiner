@@ -50,7 +50,6 @@ acusa('tokens-veio', 'overlay.css', [
   '.red-text { color: currentColor; background: transparent; border-color: inherit; }',
   '.x { --tom-red: var(--veio-accent); animation: piscar-red var(--veio-piscar) steps(2); }',
 ].join('\n'), 0, 'currentColor, transparent, inherit e nomes que só contêm uma cor');
-// O jeito certo passa.
 acusa('tokens-veio', 'painel.css', [
   '.pm-linha { border-radius: var(--veio-raio-linha); font-size: var(--veio-tam-pagina); }',
   'a:hover { color: var(--veio-text); }',
@@ -71,7 +70,6 @@ acusa('gravacao-de-frases', 'painel.js',
   'if (restantes.length !== pm_pending_sync.length) await chromeSet({ pm_pending_sync: restantes });\n', 1, 'chromeSet da página (0ade3d1)');
 acusa('gravacao-de-frases', 'painel.js', "chrome.storage.local.set({\n  frases: todasFrases,\n}, () => {});\nchrome.storage.local.remove('frases');\n", 2,
   'objeto em várias linhas e remove');
-// Dentro da fila, e outras chaves, passam.
 acusa('gravacao-de-frases', 'background.js', [
   'function naFilaDeGravacao(tarefa) { return fila.then(tarefa); }',
   'async function salvarFrase(nova) {',
@@ -319,7 +317,6 @@ const [retomar] = acusa('contrato-fechado', 'painel-envio.js',
 assert.match(retomar.detalhe, /POST \/jobs\/:id\/retry: a rota não tem exemplo no contrato/);
 total++;
 acusa('contrato-fechado', 'background.js', "await fetch('http://127.0.0.1:8766/anki/status');\n", 1, 'o endereço por extenso');
-// O jeito certo, e o que não é da Conexão, passam.
 acusa('contrato-fechado', 'painel-ajustes.js',
   'const resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, raiz.PedidoAoAnki.baralhos());\n', 0, 'o construtor');
 acusa('contrato-fechado', 'lib/sincronizacao.js', "const r = await fetch(`${URL_DO_FIRESTORE}/documents/frases`, { method: 'POST' });\n", 0, 'outro servidor');
@@ -450,7 +447,6 @@ acusa('doc-datado', 'docs/design/README.md', 'Nesta rodada travo a variante; est
 acusa('doc-datado', 'CLAUDE.md', 'Neste PR o painel muda.\n', 1, 'o masculino: Neste PR');
 acusa('doc-datado', '.agents/skills/popup/SKILL.md', 'This PR adds the popup; in this PR nothing else.\n', 2, 'this PR');
 acusa('doc-datado', 'CLAUDE.md', 'one finding\nholds 236 older tests on its baseline\n', 1, 'a linha do achado é a certa');
-// O jeito certo passa.
 acusa('doc-datado', 'CLAUDE.md', [
   'Run `HEADED=1 npm test` to see the browser; the doctor counts the specs (`playwright test --list`).',
   'A suíte inteira roda no CI; os testes de cada grupo: `node scripts/testar.mjs --listar`.',
