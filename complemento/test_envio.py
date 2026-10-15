@@ -660,6 +660,22 @@ class AFraseNaoSobreviveAoApagarTudo(unittest.TestCase):
             self.assertNotIn(sentinela.encode(), respostas, "%s numa resposta" % sentinela)
         self.assertEqual(gravadas, [], "o Envio apagado não grava mais nada")
 
+    def test_o_provisorio_novo_de_qualquer_pasta_tambem_perde_a_palavra_e_a_frase_no_apagar_tudo(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, trabalhando=False) as conexao:
+            conexao.criar(pedido(ID, LINHA))
+            with open(os.path.join(pasta, "fila", ID + ".json"), "rb") as arquivo:
+                conteudo = arquivo.read()
+            sobras = [("fila", ID + ".json.novo"), ("fila", "fila.json.novo"), ("estado", ID + ".json.novo"),
+                      ("estado", ID, "1.txt.novo"), ("custos", ID, "custos.jsonl.novo")]
+            for partes in sobras:
+                caminho = os.path.join(pasta, *partes)
+                os.makedirs(os.path.dirname(caminho), exist_ok=True)
+                with open(caminho, "wb") as arquivo:
+                    arquivo.write(conteudo)
+            apagar_as_frases(conexao)
+            restos = [nome for nome, c in conexao.arquivos().items() if nome.endswith(".novo") or PALAVRA.encode() in c]
+        self.assertEqual(restos, [])
+
     def test_o_envio_que_nem_chegou_a_apagar_nao_poe_a_palavra_no_log_no_estado_nem_nos_custos(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.openai.recusar_o_chat_de("*", 503, None)

@@ -418,6 +418,12 @@ class Fila:
         das Frases e os textos gerados; um Envio na fila ou rodando vai a `failed` com `wiped`. Ficam os `phraseId`, o estado de
         cada Cartão e os custos. Repetido, não grava nada. Cada passo grava só o que falta, então morrer no meio e pedir de novo termina."""
         with self.tranca:
+            # Todo `<nome>.novo` (a gravação que morreu entre escrever e renomear) guarda a Palavra e a Frase e ninguém o reescreve.
+            for pasta in (self.dados.fila, self.dados.estado, self.dados.custos):
+                for raiz, _, nomes in os.walk(pasta):
+                    for nome in sorted(nomes):
+                        if nome.endswith(".novo"):
+                            _apagar(os.path.join(raiz, nome))
             for nome in sorted(os.listdir(self.dados.fila)) if os.path.isdir(self.dados.fila) else []:
                 job_id = nome[:-5] if nome.endswith(".json") else None
                 if job_id is None or job_id == "fila" or not id_valido(job_id):

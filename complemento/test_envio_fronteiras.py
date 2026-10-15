@@ -228,5 +228,51 @@ class AMorteEmCadaGravacaoDoApagarTudo(unittest.TestCase):
                 self.rodar(ponto)
 
 
+class AMorteDepoisDoArquivoProvisorioEAntesDoRenomear(unittest.TestCase):
+    """Cada gravação escreve `<nome>.novo` e o renomeia. Morrer entre as duas deixa o provisório com a Palavra e a Frase em
+    `user_files`: o Apagar tudo tem de levá-lo também (a fronteira acima morre antes de o provisório existir)."""
+
+    def rodar(self, morrer_em):
+        renomear = os.replace
+        contadas = []
+        morta = []
+
+        def replace(origem, destino, *argumentos, **nomeados):
+            if not str(origem).endswith(".novo"):
+                return renomear(origem, destino, *argumentos, **nomeados)
+            if morta or len(contadas) == morrer_em:
+                morta.append(origem)
+                raise Morte()  # o provisório já foi escrito; o renomear não acontece
+            contadas.append(origem)
+            return renomear(origem, destino, *argumentos, **nomeados)
+
+        colecao = ColecaoEmMemoria(INGLES)
+        with tempfile.TemporaryDirectory() as pasta:
+            with mock.patch.object(os, "replace", replace):
+                with EnvioNoTeste(pasta, colecao=colecao) as conexao:
+                    tentar(conexao.criar, dois_cartoes())
+                    esperar_ate(lambda: morta or ler_estado(pasta).get("status") in envio.FIM)
+                    time.sleep(0.15)
+            provisorios = []
+            for raiz, _, nomes in os.walk(pasta):
+                provisorios += [os.path.join(raiz, nome) for nome in nomes if nome.endswith(".novo") and "chaves" not in raiz]
+            with EnvioNoTeste(pasta, colecao=colecao, trabalhando=False) as conexao:
+                apagar_as_frases(conexao)
+                restos = arquivos_sem_o_log(conexao)
+        return len(contadas) if morrer_em is None else (provisorios, restos)
+
+    def test_em_cada_renomeacao_a_morte_deixa_o_provisorio_e_o_apagar_tudo_o_leva(self):
+        total = self.rodar(None)
+        self.assertGreater(total, 4)
+        for ponto in range(total):
+            with self.subTest(renomear=ponto):
+                provisorios, restos = self.rodar(ponto)
+                for sentinela in SENTINELAS:
+                    for nome, conteudo in restos.items():
+                        self.assertNotIn(sentinela.encode(), conteudo, "%s em %s" % (sentinela, nome))
+                self.assertEqual([nome for nome in restos if nome.endswith(".novo") and not nome.startswith("chaves")], [])
+                self.assertTrue(provisorios, "a prova só vale se a morte deixou o provisório")
+
+
 if __name__ == "__main__":
     unittest.main()
