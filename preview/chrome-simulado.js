@@ -129,7 +129,6 @@
 
   const area = criarArea();
 
-  /** As mensagens que as telas mandam ao service worker. */
   function responderMensagem(mensagem) {
     switch (mensagem && mensagem.type) {
       case 'AUTO_MINER_GET_STATE':
@@ -182,7 +181,6 @@
     action: { setBadgeText: () => {}, setBadgeBackgroundColor: () => {}, setIcon: () => {} },
   };
 
-  // Uma faixa discreta, para ninguém confundir preview com a extensão rodando.
   document.addEventListener('DOMContentLoaded', () => {
     const faixa = document.createElement('div');
     faixa.textContent = 'Preview: dados de exemplo, fora do Chrome. Botões que dependem do navegador não funcionam.';

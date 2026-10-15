@@ -172,7 +172,6 @@ async function montar() {
     await copiar(path.join(RAIZ, 'veio'), path.join(DESTINO, 'extensao', 'veio'));
   }
 
-  // As telas, com o simulador injetado, e o que elas carregam.
   const telas = [];
   for (const tela of TELAS) {
     const origem = path.join(RAIZ, tela.arquivo);
@@ -210,7 +209,6 @@ async function montar() {
   const temVitrine = await existe(path.join(vitrine, 'vitrine.html'));
   if (temVitrine) await copiar(vitrine, DESTINO);
 
-  // Os protótipos travados.
   const prototipos = await acharPrototipos();
   if (prototipos.length) await copiar(path.join(RAIZ, 'docs', 'design'), path.join(DESTINO, 'design'));
 

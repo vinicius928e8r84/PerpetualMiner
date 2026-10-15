@@ -131,7 +131,7 @@ async function loginGoogle() {
 
     const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     authUrl.searchParams.set('client_id', '777592854175-o2ha6n3oqv4f9i2mavbdmfoqbh9iauio.apps.googleusercontent.com');
-    authUrl.searchParams.set('response_type', 'token id_token'); // pede ambos
+    authUrl.searchParams.set('response_type', 'token id_token');
     authUrl.searchParams.set('redirect_uri', redirectUri);
     authUrl.searchParams.set('scope', 'openid email profile');
     authUrl.searchParams.set('nonce', hashedNonce);              // obrigatório para id_token
@@ -445,7 +445,6 @@ function salvarFraseFirestore(frase, campos = null) {
 // ações. A barra gruda no topo da ilha ao rolar (CSS). Trocar filtro ou busca
 // limpa a seleção, para nenhuma ação cair em frase que não está à vista.
 
-/** Redesenha a linha de seleção a partir de `selecionadas`. */
 function atualizarContadorSelecao() {
   const linha = document.getElementById('frases-selecao');
   const idsPag = idsPaginaAtual();
@@ -1068,7 +1067,6 @@ function terminarEdicaoDeTexto(salvar) {
   const novoTexto = rascunho.trim();
   if (salvar && frase && novoTexto && novoTexto !== frase.texto) salvarTextoFrase(id, novoTexto);
   else atualizarCartao(id);
-  // O foco volta para a ação que abriu a edição.
   cartaoNaLista(id)?.querySelector('[data-action="edit-text"]')?.focus();
 }
 

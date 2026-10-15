@@ -58,7 +58,6 @@ def parar(conexao):
 
 class AoCarregarNoAnki(unittest.TestCase):
     def setUp(self):
-        # Falha fechada: nenhum teste de início pode sequer descobrir o host real.
         remendo = patch("complemento.inicio.abridores.deste_computador", side_effect=AssertionError("registro real proibido no teste"))
         self.fabrica_real = remendo.start()
         self.addCleanup(remendo.stop)

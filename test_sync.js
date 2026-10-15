@@ -156,7 +156,6 @@ async function adicionarFraseManual(storage, texto, { syncFails = false } = {}) 
   return frase;
 }
 
-/** Apagar uma frase pelo painel */
 async function deletarFrase(storage, id, opts = {}) {
   await removerFrases(storage, [id], opts);
   const { frases = [] } = getLocal(storage, { frases: [] });
@@ -201,14 +200,11 @@ head('CENÁRIO 2 — Deleção no dispositivo A desaparece do dispositivo B (cen
 sep();
 await (async () => {
   resetState();
-  // Setup: frase existe em ambos
   const frase = await capturarFrase(storageLocalA, 'To delete');
   await carregarFrases(storageLocalB); // B sincroniza, vê a frase
 
-  // A deleta
   await deletarFrase(storageLocalA, frase.id);
 
-  // B abre o painel
   const visB = await carregarFrases(storageLocalB);
 
   assert(!idNoFirestore(frase.id),            'frase removida do Firestore');
@@ -222,13 +218,11 @@ head('CENÁRIO 3 — O bug original: frase pendente em B, deletada em A');
 sep();
 await (async () => {
   resetState();
-  // B captura frase mas o sync com Firestore falha → fica em pm_pending_sync
   const frase = await capturarFrase(storageLocalB, 'Pendente no B', { syncFails: true });
 
   assert(!idNoFirestore(frase.id),                'frase NÃO está no Firestore (sync falhou)');
   assert(idNoPendingSync(storageLocalB, frase.id),'frase está em pm_pending_sync do B');
 
-  // A de alguma forma sabe da frase (ex: subiu depois por outro meio) e deleta
   await nuvemEmMemoria().gravarFrase(frase); // coloca no Firestore manualmente para simular que chegou
   await deletarFrase(storageLocalA, frase.id);
 
@@ -256,7 +250,6 @@ await (async () => {
   assert(idNoFirestore(frase.id),             'frase ainda no Firestore (delete falhou)');
   assert(await idNoTombstoneSync(frase.id),         'id está no tombstone sync');
 
-  // B abre o painel → tombstone sync ativa → B deleta do Firestore
   const visB = await carregarFrases(storageLocalB);
 
   assert(!idNoFirestore(frase.id),            'B deletou do Firestore via tombstone sync');
@@ -271,21 +264,18 @@ head('CENÁRIO 5 — Frase antiga (>30d) deletada hoje propaga corretamente');
 sep();
 await (async () => {
   resetState();
-  // Frase criada 40 dias atrás (id no passado)
   const idAntigo = Date.now() - 40 * 24 * 60 * 60 * 1000;
   const frase = { texto: 'Frase antiga', data: '01/02/2026', streaming: 'netflix', id: idAntigo, idioma: 'Inglês' };
   await nuvemEmMemoria().gravarFrase(frase);
   setLocal(storageLocalA, { frases: [frase] });
   setLocal(storageLocalB, { frases: [frase] });
 
-  // A deleta hoje
   await deletarFrase(storageLocalA, frase.id);
 
   // Verifica que o tombstone NÃO expirou imediatamente (bug do TTL antigo)
   const tombstone = await lerTombstoneSync();
   assert(tombstone.has(String(idAntigo)), 'tombstone contém frase antiga (TTL conta da deleção, não da criação)');
 
-  // B abre o painel
   const visB = await carregarFrases(storageLocalB);
   assert(!idNoFirestore(frase.id),                'frase antiga removida do Firestore');
   assert(!fraseVisivel(visB, 'Frase antiga'),     'frase antiga NÃO aparece no B');
@@ -298,14 +288,11 @@ await (async () => {
   const f1 = await capturarFrase(storageLocalA, 'Keep this');
   const f2 = await capturarFrase(storageLocalA, 'Delete this');
 
-  // B sincroniza e também captura uma frase própria
   await carregarFrases(storageLocalB);
   const f3 = await capturarFrase(storageLocalB, 'From B');
 
-  // A deleta apenas f2
   await deletarFrase(storageLocalA, f2.id);
 
-  // B abre painel
   const visB = await carregarFrases(storageLocalB);
 
   assert(fraseVisivel(visB, 'Keep this'),     'f1 (não deletada) ainda aparece em B');
@@ -321,10 +308,8 @@ await (async () => {
   const frase = await capturarFrase(storageLocalA, 'Delete from B');
   await carregarFrases(storageLocalB); // B sincroniza
 
-  // B deleta
   await deletarFrase(storageLocalB, frase.id);
 
-  // A abre painel
   const visA = await carregarFrases(storageLocalA);
   assert(!idNoFirestore(frase.id),               'frase removida do Firestore por B');
   assert(!fraseVisivel(visA, 'Delete from B'),   'frase não aparece no painel de A');
@@ -339,7 +324,6 @@ await (async () => {
   const f3 = await capturarFrase(storageLocalA, 'Phrase 3');
   await carregarFrases(storageLocalB);
 
-  // A apaga tudo
   const ids = [f1.id, f2.id, f3.id];
   await removerFrases(storageLocalA, ids);
   setLocal(storageLocalA, { frases: [] });
@@ -359,7 +343,6 @@ await (async () => {
   firestore[fAntiga.id] = fAntiga;
   firestore[fRecente.id] = fRecente;
 
-  // Uma chave por frase: uma expirada (31 dias) e uma válida
   storageSync[`${PREFIXO_DO_TOMBSTONE}${fAntiga.id}`]  = deletedAt31d;
   storageSync[`${PREFIXO_DO_TOMBSTONE}${fRecente.id}`] = Date.now();
 
@@ -367,10 +350,8 @@ await (async () => {
   assert(fraseVisivel(visB, 'Tombstone expirado'),  'tombstone expirado (31d) NÃO apaga a frase');
   assert(!fraseVisivel(visB, 'Tombstone válido'),   'tombstone recente apaga a frase');
   assert(idNoFirestore(fAntiga.id) && !idNoFirestore(fRecente.id), 'só a frase com tombstone válido saiu da nuvem');
-  // chave expirada é removida automaticamente
   assert(!(`${PREFIXO_DO_TOMBSTONE}${fAntiga.id}` in storageSync), 'chave expirada removida do sync storage');
 
-  // E o tombstone na nuvem também expira com o TTL
   firestoreTomb[fAntiga.id] = deletedAt31d;
   const visA = await carregarFrases(storageLocalA);
   assert(fraseVisivel(visA, 'Tombstone expirado'),  'tombstone da nuvem expirado (31d) NÃO apaga a frase');
@@ -380,13 +361,10 @@ head('CENÁRIO 10 — Captura em B durante painel aberto em A não perde dados')
 sep();
 await (async () => {
   resetState();
-  // A tem uma frase
   const f1 = await capturarFrase(storageLocalA, 'Already synced');
 
-  // B captura uma frase nova enquanto A está sincronizando (sem falha)
   const f2 = await capturarFrase(storageLocalB, 'New from B');
 
-  // A carrega frases (deve incluir as de B via Firestore)
   const visA = await carregarFrases(storageLocalA);
   assert(fraseVisivel(visA, 'Already synced'), 'f1 aparece em A');
   assert(fraseVisivel(visA, 'New from B'),     'f2 (de B) aparece em A via Firestore');
@@ -416,7 +394,6 @@ await (async () => {
 
   await carregarFrases(storageLocalB);
 
-  // A deleta frases 2 e 4
   await deletarFrase(storageLocalA, frases[1].id);
   await deletarFrase(storageLocalA, frases[3].id);
 
@@ -437,7 +414,6 @@ await (async () => {
 
   assert(!idNoFirestore(frase.id),                 'frase não está no Firestore ainda (sync em voo)');
 
-  // Painel abre imediatamente — frase está no local, deve aparecer e ser re-enviada
   const visA = await carregarFrases(storageLocalA);
 
   assert(fraseVisivel(visA, 'In-flight phrase'),   'frase aparece no painel (local como buffer)');
@@ -453,7 +429,6 @@ await (async () => {
 
   assert(!idNoFirestore(frase.id),               'frase não está no Firestore (sync falhou)');
 
-  // Refresh do painel — nova lógica detecta como orphan e re-sobe
   const visA = await carregarFrases(storageLocalA);
 
   assert(fraseVisivel(visA, 'Manual phrase'),    'frase recuperada no painel após refresh');
@@ -472,7 +447,6 @@ await (async () => {
   assert(!idNoFirestore(frase.id),               'frase deletada do Firestore');
   assert(await idNoTombstoneSync(frase.id),            'tombstone ativo');
 
-  // Painel re-abre: tombstone vence, não re-sobe
   const visA = await carregarFrases(storageLocalA);
 
   assert(!fraseVisivel(visA, 'Will be deleted'), 'frase NÃO re-aparece');
@@ -488,12 +462,10 @@ await (async () => {
 
   assert(!idNoFirestore(frase.id), 'frase não está no Firestore');
 
-  // B abre painel → detecta orphan → re-sobe
   const visB = await carregarFrases(storageLocalB);
   assert(fraseVisivel(visB, 'Manual from B'), 'frase aparece em B após re-envio');
   assert(idNoFirestore(frase.id),             'frase chegou ao Firestore');
 
-  // A abre painel → vê a frase de B
   const visA = await carregarFrases(storageLocalA);
   assert(fraseVisivel(visA, 'Manual from B'), 'frase de B aparece em A');
 })();
@@ -504,7 +476,6 @@ await (async () => {
   resetState();
   const fA = await capturarFrase(storageLocalA, 'Phrase A');
   const fB = await capturarFrase(storageLocalB, 'Phrase B');
-  // ambas chegam ao Firestore
   assert(idNoFirestore(fA.id), 'fA no Firestore');
   assert(idNoFirestore(fB.id), 'fB no Firestore');
 
@@ -519,12 +490,10 @@ await (async () => {
   assert(tomb.has(String(fA.id)), 'tombstone contém fA (deletada por A)');
   assert(tomb.has(String(fB.id)), 'tombstone contém fB (deletada por B)');
 
-  // A abre painel — deve não ver nenhuma das duas
   const visA = await carregarFrases(storageLocalA);
   assert(!fraseVisivel(visA, 'Phrase A'), 'A: fA não aparece');
   assert(!fraseVisivel(visA, 'Phrase B'), 'A: fB não aparece (deletada por B)');
 
-  // B abre painel — deve não ver nenhuma das duas
   const visB = await carregarFrases(storageLocalB);
   assert(!fraseVisivel(visB, 'Phrase A'), 'B: fA não aparece (deletada por A)');
   assert(!fraseVisivel(visB, 'Phrase B'), 'B: fB não aparece');
@@ -542,7 +511,6 @@ await (async () => {
 
   await carregarFrases(storageLocalB); // B sincroniza fKeep
 
-  // Deleções simultâneas
   await deletarFrase(storageLocalA, fA.id);
   await deletarFrase(storageLocalB, fB.id);
 
@@ -576,11 +544,9 @@ await (async () => {
   assert(getLocal(storageLocalA, { pm_apagar_tudo: null }).pm_apagar_tudo?.uid === 'uid-teste', 'pm_apagar_tudo guardado até a nuvem confirmar');
   assert(idNoFirestore(antes1.id), 'a nuvem ainda tem as frases');
 
-  // Depois do apagar tudo, outra frase é minerada em B
   await new Promise(r => setTimeout(r, 5));
   const depois = await capturarFrase(storageLocalB, 'Minerada depois');
 
-  // O próximo carregamento de A alcança a nuvem e conclui
   const visA = await carregarFrases(storageLocalA);
   assert(!idNoFirestore(antes1.id) && !idNoFirestore(antesB.id), 'frases de antes do Apagar tudo saíram da nuvem (também a de B, que A nunca tinha em mãos)');
   assert(idNoFirestore(depois.id),                              'o que foi minerado depois fica na nuvem');

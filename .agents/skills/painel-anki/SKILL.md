@@ -130,7 +130,7 @@ fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
   skeleton; failure is the persistent BRG-20 aviso with Tentar de novo.
 - **Reparar Anki** lives in Baralhos' Avançado (dashed, collapsed, “reparar Anki”, BRG-36) and in BRG-11 and BRG-18.
   It `POST`s `/anki/repair` and **waits for the real repair** — the bridge closes the Anki and waits up to 90 s
-  (~110 s in all); the old 45 s abort said a working repair had failed (#9). `LIMITE_DO_REPARO_MS` (180 s) only
+  (~110 s in all); the old 45 s abort said a working repair had failed (#9). `LIMITE_DA_CONEXAO_MUDA_MS` (180 s) only
   guards against a Conexão that never answers. While it runs `#anki-reparando` receives focus; see the
   [design states](../../../docs/design/painel/anki/README.md#estados) for the visible repair state. `ok` or
   `after.collectionReady` → the BRG-16 toast and both tabs read again (`refresh=1`). `devolverOFoco` and

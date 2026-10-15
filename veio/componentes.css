@@ -266,7 +266,6 @@ select.veio-campo {
   opacity: .5;
 }
 
-/* A mensagem de erro do campo, logo abaixo dele. */
 .veio-campo-erro {
   margin: 6px 0 0;
   color: var(--veio-danger);
@@ -399,7 +398,6 @@ select.veio-campo {
   background: var(--veio-accent);
 }
 
-/* O visto: um L girado, na cor de tinta do acento. */
 .veio-checkbox:checked::after {
   content: "";
   width: 8px;
@@ -410,7 +408,6 @@ select.veio-campo {
   transform: rotate(-45deg) translate(1px, -1px);
 }
 
-/* Parte da lista marcada: um traço. */
 .veio-checkbox:indeterminate::after {
   content: "";
   width: 8px;
@@ -742,7 +739,6 @@ select.veio-campo {
   line-height: 1.45;
 }
 
-/* O ícone do começo do texto, na linha: o do erro em perigo. */
 .veio-aviso__texto > svg {
   width: 16px;
   height: 16px;
@@ -751,7 +747,6 @@ select.veio-campo {
   vertical-align: -3px;
 }
 
-/* O tom que só informa: neutro, e o ícone em ouro. */
 .veio-aviso--info {
   border-color: var(--veio-border);
   background: var(--veio-surface-2);

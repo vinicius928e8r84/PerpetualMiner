@@ -55,17 +55,15 @@ const CAMINHO_DO_HTML = path.join(__dirname, '..', 'docs', 'design', 'voz', 'cat
 const MARCA_INICIAL = '// ─── gerado por scripts/gerar-catalogo-da-voz.js a partir de README.md: não edite à mão ───';
 const MARCA_FINAL = '// ─── fim do gerado ───';
 
-/** A página põe estes textos em `innerHTML`, então os `&`, `<` e `>` saem escapados. */
-const paraHtml = texto => texto.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const escaparParaInnerHtml = texto => texto.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-/** O bloco `const CAT = [...]` que a página lê, com uma linha por ID. */
 function tabelaDoHtml(linhas) {
   const secoes = [];
   for (const linha of linhas) {
     if (secoes.at(-1)?.secao !== linha.secao) secoes.push({ secao: linha.secao, linhas: [] });
     secoes.at(-1).linhas.push(linha);
   }
-  const texto = valor => JSON.stringify(paraHtml(valor));
+  const texto = valor => JSON.stringify(escaparParaInnerHtml(valor));
   const dados = secoes.map(({ secao, linhas: doGrupo }) => {
     const linhasDoGrupo = doGrupo.map(l =>
       `  [${[l.id, l.estado, l.categoria, l.hoje, l.copia, l.nota].map(texto).join(', ')}${l.marca ? `, ${JSON.stringify(l.marca)}` : ''}],`);
@@ -74,7 +72,6 @@ function tabelaDoHtml(linhas) {
   return `${MARCA_INICIAL}\n// [id, estado/gatilho, categoria, hoje, proposto, nota, marca]\nconst CAT = [\n${dados.join('\n')}\n];\n${MARCA_FINAL}`;
 }
 
-/** O `catalogo.html` com a tabela regerada a partir da spec. */
 function htmlDoCatalogo(html = fs.readFileSync(CAMINHO_DO_HTML, 'utf8'), linhas = linhasDaSpec()) {
   const tabela = tabelaDoHtml(linhas);
   const comMarcas = new RegExp(`${escapar(MARCA_INICIAL)}[\\s\\S]*?${escapar(MARCA_FINAL)}`);

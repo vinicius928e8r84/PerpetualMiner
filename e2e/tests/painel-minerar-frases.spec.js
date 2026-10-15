@@ -65,7 +65,6 @@ test('o cabeçalho traz [Minerar frases ▾], que abre o menu Colar · Arquivo .
     /Arquivo \.txt\s*Importar um \.txt com uma frase por linha/,
     /Foto\s*Abre Minerar de uma foto numa aba nova/,
   ]);
-  // O foco entra no primeiro modo.
   await expect(itemDoMenu(page, /^Colar/)).toBeFocused();
 });
 

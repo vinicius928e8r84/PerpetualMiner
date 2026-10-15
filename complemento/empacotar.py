@@ -26,7 +26,7 @@ import zipfile
 
 PASTA = os.path.dirname(os.path.abspath(__file__))
 DATA_FIXA = (1980, 1, 1, 0, 0, 0)  # o menor que o zip aceita
-PERMISSOES_FIXAS = 0o100644 << 16  # arquivo comum, rw-r--r--
+PERMISSOES_FIXAS = 0o100644 << 16
 SISTEMA_FIXO = 3  # Unix: é o que dá as permissões acima, igual em qualquer máquina
 ARQUIVO_DA_EXTENSAO = os.path.join(PASTA, "..", "conexao", "perpetualminer.ankiaddon")
 FORA_DO_PACOTE = ("test_", "empacotar.py", "__pycache__", "user_files", "contrato", "LEIA-ME.md", "versoes.json")

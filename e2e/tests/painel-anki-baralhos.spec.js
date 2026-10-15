@@ -433,7 +433,6 @@ test('Conexão ligada mas o Anki fechado: baralhos e vocabulário vêm do arquiv
   await expect(baralhos(page)).toContainText('Números lidos direto do arquivo do Anki.');
   await expect(baralhos(page)).toContainText('Anki fechado. Mostrando dados de há 2 h.');
   await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
-  // A leitura não pediu para abrir o Anki.
   expect(pedidos(fakes, '/anki/stats/decks').slice(1).every(r => !('launch' in r.dados))).toBe(true);
 
   // O Anki abre e a pessoa aperta Atualizar: a leitura volta a ser do Anki, sem o selo.
@@ -551,7 +550,6 @@ test('com a coleção do contrato aberta, Baralhos e termos e Vocabulário mostr
   await expect(numeros).toContainText('Maduros1');
   await expect(numeros).toContainText('Recentes2');
   await expect(numeros).toContainText('Novos1');
-  // O Baralho que o Anki não tem.
   await expect(azulejos.nth(1)).toContainText('baralho não encontrado');
   await fotografar(page, 'baralhos-da-colecao-do-contrato.png');
 

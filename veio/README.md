@@ -184,7 +184,7 @@ fontes, os mesmos componentes e o mesmo catálogo da Voz que a extensão carrega
 
 Cada componente aparece nos estados que ele tem: botão e campo têm foco e
 desabilitado (e o campo, erro); um selo ou um `kbd` só têm o normal. A linha
-“foco” é pintada com `demo-de-foco`, uma classe da própria vitrine — sem o
+“foco” é pintada com `amostra-de-foco-parado`, uma classe da própria vitrine — sem o
 prefixo `veio-`, porque não é componente —, e um teste compara esse anel parado
 com o anel que o foco de verdade desenha, para a referência não passar a mentir.
 

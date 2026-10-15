@@ -299,7 +299,7 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, unittest.TestCase):
 
     def test_um_baralho_filtrado_empresta_os_cartoes_ao_baralho_de_origem(self):
         colecao = self.adaptador(DESCRICAO)
-        self.anki.col._sqlite.execute("update cards set odid = did, did = 4 where did = 2")  # um Baralho filtrado os emprestou
+        self.anki.col._sqlite.execute("update cards set odid = did, did = 4 where did = 2")
         self.assertEqual(len(colecao.cartoes_do_baralho("Inglês")), 4)
 
     def test_um_tipo_de_nota_que_o_anki_nao_acha_nao_derruba_a_leitura_e_a_frente_e_o_primeiro_campo(self):

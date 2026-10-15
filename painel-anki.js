@@ -209,7 +209,6 @@
     }
   }
 
-  /** Qual vista a aba mostra agora. */
   function vistaDosCustos() {
     if (desligada() && estado.dados) return 'antiga';
     if (!jaRespondeu()) return 'esqueleto';

@@ -31,7 +31,7 @@ class NormalizeEnWordTest(unittest.TestCase):
         ("boss", "boss"),          # -ss nao remove s
         ("is", "is"),              # curto demais para regra -s
         ("John's", "john"),        # possessivo 's removido
-        ("", ""),                  # vazio
+        ("", ""),
         ("123", ""),               # sem letras -> vazio
     ]
 

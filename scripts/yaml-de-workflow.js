@@ -147,7 +147,6 @@ function motivoDoIf(condicao, env) {
 
 const verdadeiro = valor => /^(?:\$\{\{\s*)?true(?:\s*\}\})?$/i.test(String(valor ?? '').trim());
 
-// Um comando que só imprime ou que engole a falha não barra nada.
 const NAO_EXECUTA = [
   [/^\s*(?:echo|printf|:|true)\b/, 'só imprime, não executa'],
   [/\|\|\s*(?:true|:|exit\s+0)\b/, 'a falha é engolida por `|| true`'],

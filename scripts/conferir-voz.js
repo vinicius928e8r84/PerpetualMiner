@@ -5,7 +5,6 @@
 
 const CAMINHO_DO_RETRATO = require('path').join(__dirname, '..', 'docs', 'design', 'voz', 'catalogo-textos.json');
 
-/** Cada texto do catálogo com o nome dele: `ID` quando a entrada é um texto, `ID.parte` quando tem partes. */
 function textosDoCatalogo(catalogo) {
   const textos = [];
   for (const [id, entrada] of Object.entries(catalogo)) {
@@ -52,7 +51,6 @@ function problemasDaVoz({ catalogo, linhas, retrato, naoEscritos }) {
   }
   for (const nome of Object.keys(atuais).filter(nome => !(nome in retrato))) problemas.push(`${nome}: entrou no catalogo.js e não está no retrato`);
 
-  // E o texto de cada parte está escrito na linha do mesmo ID da spec.
   const copiaDaSpec = Object.fromEntries(linhas.map(l => [l.id, normalizar(`${l.copia} ${l.nota}`)]));
   for (const { nome, id, modelo } of textosDoCatalogo(catalogo)) {
     if (!(id in copiaDaSpec)) continue;
