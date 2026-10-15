@@ -51,8 +51,6 @@ const AJUSTES = {
   ru: { deckName: 'Русский', imageSource: '2', ttsWordTld: 'ru', ttsPhraseTld: 'ru' },
 };
 
-// ─── Os cards e o formulário ─────────────────────────────────────────────────
-
 test('sem nada gravado: os cards dizem o Baralho padrão e a foto real; o do Inglês abre com a nota de custo', async ({ page, extensao }) => {
   await abrirAjustes(page, extensao);
 
@@ -232,8 +230,6 @@ test('abrir Configurações não fecha o card de Ajustes de envio ao voltar', as
   await expect(formulario(page)).toHaveCount(0);
 });
 
-// ─── O sotaque ───────────────────────────────────────────────────────────────
-
 test('o sotaque do áudio fica no Avançado, recolhido, escolhido pelo nome do lugar, e é salvo com o resto', async ({ page, extensao }) => {
   await abrirAjustes(page, extensao);
 
@@ -272,8 +268,6 @@ test('um sotaque gravado fora da lista continua escolhido e não se perde ao sal
   await expect(toasts(page)).toHaveText('Ajustes de envio salvos');
   expect((await ajustesGravados(extensao)).en).toMatchObject({ deckName: 'Outro baralho', ttsWordTld: 'com.ng' });
 });
-
-// ─── Os baralhos do Anki ─────────────────────────────────────────────────────
 
 test('com a Conexão ligada, o Baralho é uma escolha entre os baralhos do Anki, com o nome legível', async ({ page, extensao, fakes }) => {
   fakes.anki.definirBaralhosDoAnki(['CIMV', 'English Mining', 'Inglês::Mineradas', 'RUSSIAN']);
@@ -413,8 +407,6 @@ test('com a Conexão desligada, os ajustes continuam editáveis, com a nota BRG-
   await expect(page.getByText(NOTA_DESLIGADA)).toBeHidden();
 });
 
-// ─── Bugs de #9 ──────────────────────────────────────────────────────────────
-
 test('bug #9: enviar ao Anki sem tocar nos ajustes não grava ajustes, nem manda PUT à Conexão', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({
     frases: [{ id: 1_700_000_000_001, texto: 'Better late than never.', data: HOJE, streaming: 'netflix', idioma: 'Inglês' }],
@@ -478,8 +470,6 @@ test('a aba sem rascunho acompanha o que outra aba salvou, nos cards e no formul
   // O que a outra aba não mexeu continua como estava.
   expect((await ajustesGravados(extensao)).en).toMatchObject(AJUSTES.en);
 });
-
-// ─── Um Baralho padrão só ────────────────────────────────────────────────────
 
 test('o Baralho padrão é o mesmo em Ajustes, em Baralhos e termos e no envio', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({

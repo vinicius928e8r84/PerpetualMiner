@@ -1,17 +1,5 @@
 'use strict';
 
-// Passo 2 do redesign: o shell “Ilhas” do Painel (#25).
-//
-// O painel vira uma página só, com uma área por endereço (#frases,
-// #anki/<aba>, #configuracoes[/<seção>]). Colados na navegação ficam o total
-// de frases, o ponto da Conexão com o Anki e o chip de conta. Abaixo de
-// ~1000 px a sidebar vira trilho. Com a Conexão desligada, a área dela mostra
-// a faixa F1 com “Tentar de novo”. O conteúdo de hoje (lista de frases, custos,
-// baralhos…) mora dentro do shell até cada área ser reconstruída.
-//
-// Os testes afirmam o que a pessoa vê (textos, papéis, estilo computado) e o
-// que fica gravado, nunca funções internas.
-
 const { test, expect } = require('../fixtures');
 
 const HOJE = new Date().toLocaleDateString('pt-BR');
@@ -48,8 +36,6 @@ const paginaAtual = page => page.locator('#paginas-atual');
 const marcarFrase = page => page.locator('#frases-lista').getByRole('checkbox', { name: 'Selecionar frase' });
 const cartao = (page, texto) => page.locator('#frases-lista .veio-frase').filter({ hasText: texto });
 const faixaF1 = page => page.getByText('A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.');
-
-// ─── Endereços ───────────────────────────────────────────────────────────────
 
 test('sem endereço, o painel abre em Frases, com Frases e a Conexão no topo e Configurações no pé', async ({ page, extensao }) => {
   await abrirPainel(page, extensao);
@@ -116,8 +102,6 @@ test('um endereço desconhecido abre Frases', async ({ page, extensao }) => {
   await expect(tituloDaArea(page)).toHaveText('Frases mineradas');
 });
 
-// ─── Trocar de área não recarrega ────────────────────────────────────────────
-
 test('trocar de área e voltar mantém filtro, página e seleção; recarregar zera', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(24) });
   await abrirPainel(page, extensao);
@@ -147,8 +131,6 @@ test('trocar de área e voltar mantém filtro, página e seleção; recarregar z
   await expect(paginaAtual(page)).toHaveText('1 de 3');
   await expect(marcarFrase(page).and(page.locator(':checked'))).toHaveCount(0);
 });
-
-// ─── Indicadores colados na navegação ────────────────────────────────────────
 
 test('o total de frases fica no item Frases, no formato PT-BR, e acompanha o que é minerado', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(1284) });
@@ -229,8 +211,6 @@ test('enquanto sincroniza, o chip diz “Sincronizando…”; se a nuvem falha, 
   await expect(chip(page).locator('.shell-chip__estado')).toHaveClass(/shell-chip__estado--erro/);
 });
 
-// ─── Conexão com o Anki: estados ─────────────────────────────────────────────
-
 test('enquanto a Conexão não responde, o ponto diz “Conectando ao Anki…”; ligada, diz ligada e não há faixa', async ({ page, extensao, fakes }) => {
   let liberar;
   const respondendo = new Promise(resolve => { liberar = resolve; });
@@ -273,8 +253,6 @@ test('com a Conexão desligada, a área dela mostra a faixa F1; “Tentar de nov
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'ligada');
 });
 
-// ─── Trilho ──────────────────────────────────────────────────────────────────
-
 test('abaixo de ~1000 px a sidebar vira trilho, com o ponto do Anki e o avatar visíveis', async ({ page, extensao }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await abrirPainel(page, extensao);
@@ -293,8 +271,6 @@ test('abaixo de ~1000 px a sidebar vira trilho, com o ponto do Anki e o avatar v
   await expect(itemDaNav(page, 'Configurações')).toHaveAttribute('title', 'Configurações');
   await expect(chip(page)).toHaveAttribute('title', 'Sem conta · só neste computador');
 });
-
-// ─── Bug de #9: nomes de Fonte sem escape ────────────────────────────────────
 
 test('uma Fonte com marcação no nome aparece literal no filtro, e a sidebar não lista Fontes', async ({ page, extensao }) => {
   const fonteHostil = '<img src=x onerror="window.__injetado=1">fonte';
@@ -315,8 +291,6 @@ test('uma Fonte com marcação no nome aparece literal no filtro, e a sidebar n�
   await expect(page.locator('img[src="x"]')).toHaveCount(0);
   expect(await page.evaluate(() => window.__injetado)).toBeUndefined();
 });
-
-// ─── O conteúdo de hoje continua funcionando dentro do shell ─────────────────
 
 test('dentro do shell, Frases lista em cartões e apaga como hoje', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
@@ -377,8 +351,6 @@ test('Configurações hospeda Entrar com Google e Apagar tudo', async ({ page, e
   await expect(page.getByRole('button', { name: 'Nenhuma frase para apagar' })).toBeDisabled();
   expect(await extensao.frases()).toEqual([]);
 });
-
-// ─── Teclado, leitor de tela e movimento ─────────────────────────────────────
 
 test('os controles do shell têm nome, e o foco do teclado aparece', async ({ page, extensao }) => {
   await abrirPainel(page, extensao, '#anki/custos');

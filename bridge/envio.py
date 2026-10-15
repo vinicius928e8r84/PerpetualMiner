@@ -44,7 +44,6 @@ from anki_session import AnkiRepairBlockedError
 
 LOGGER = logging.getLogger("anki_bridge")
 
-# --- Status do Envio -------------------------------------------------------
 QUEUED = "queued"
 RUNNING = "running"
 COMPLETED = "completed"
@@ -61,7 +60,6 @@ TRANSITIONS: dict[str, frozenset[str]] = {
     FAILED: frozenset({QUEUED}),
 }
 
-# --- Resultado de cada cartao no Anki ---------------------------------------
 ADDED = "added"
 DUPLICATE = "duplicate"
 CARD_FAILED = "failed"
@@ -144,16 +142,12 @@ def is_transient_anki_error(exc: Exception) -> bool:
     )
 
 
-# ---------------------------------------------------------------------------
-# JobStore — fila + estado, unico dono do status
-# ---------------------------------------------------------------------------
 class JobStore:
     def __init__(self, jobs_root: Path, queue_file: Path) -> None:
         self.jobs_root = jobs_root
         self.queue_file = queue_file
         self.lock = threading.Lock()
 
-    # -- caminhos e leitura --
     def job_dir(self, job_id: str) -> Path:
         return self.jobs_root / job_id
 
@@ -189,7 +183,6 @@ class JobStore:
         if not self.queue_file.exists():
             write_json(self.queue_file, {"jobs": []})
 
-    # -- escrita (tudo passa por aqui) --
     def create(self, payload: dict[str, Any]) -> str:
         """Entra um Envio novo na fila (``queued``) e devolve o id."""
         job_id = payload.get("jobId") or f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{payload['lang']}-{uuid.uuid4().hex[:6]}"
@@ -373,7 +366,6 @@ class JobStore:
             completed.append(stage)
         self.update(job_id, completedStages=completed)
 
-    # -- internos --
     @staticmethod
     def _check_transition(state: dict[str, Any], to: str) -> None:
         current = state.get("status")
@@ -383,9 +375,6 @@ class JobStore:
             raise InvalidTransition(f"Envio nao pode ir de {current} para {to}")
 
 
-# ---------------------------------------------------------------------------
-# Engine — o que o Envio pede ao Automatic Anki
-# ---------------------------------------------------------------------------
 class Engine(Protocol):
     """A seam do motor. ``config`` e ``entries`` sao os que ``prepare`` devolve;
     o Envio so os repassa."""
@@ -531,9 +520,6 @@ class AutomaticAnkiEngine:
         self.modules["send_to_anki"].cleanup_output(Path(config["paths"]["output_dir"]), results)
 
 
-# ---------------------------------------------------------------------------
-# O fim do Envio: adicionada / duplicada / falhou, por frase
-# ---------------------------------------------------------------------------
 @dataclass(frozen=True)
 class Outcome:
     status: str
@@ -580,9 +566,6 @@ def settle(
     return Outcome(status, successful, failed, duplicate, None if completed else SEND_FAILED_MESSAGE)
 
 
-# ---------------------------------------------------------------------------
-# JobRunner — percorre as etapas de um Envio
-# ---------------------------------------------------------------------------
 @dataclass
 class _Run:
     job_id: str
@@ -643,7 +626,6 @@ class JobRunner:
             return True
         return stage.ready is not None and not stage.ready(self.engine, run.config, run.entries)
 
-    # -- etapas --
     def _generate_cards(self, run: _Run) -> None:
         self.store.set_stage(run.job_id, "generate_cards")
         self.engine.generate_cards(run.entries, run.config)
@@ -731,7 +713,6 @@ class JobRunner:
             lastError=outcome.last_error,
         )
 
-    # -- repeticoes --
     def _with_retry(
         self,
         fn: Callable[..., Any],
@@ -792,9 +773,6 @@ def _pending_send_pairs(
     return pairs
 
 
-# ---------------------------------------------------------------------------
-# JobWorker — o laco que tira Envios da fila
-# ---------------------------------------------------------------------------
 class JobWorker:
     def __init__(
         self,

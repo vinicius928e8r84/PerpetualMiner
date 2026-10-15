@@ -1,40 +1,5 @@
 'use strict';
 
-// A Boas-vindas (docs/design/painel/boas-vindas/, variante C; item 8 da lista
-// fechada): uma página do Painel sem a sidebar, em #boas-vindas, que a
-// instalação abre sozinha (background.js, onInstalled com `install`).
-//
-//   #boas-vindas                 a abertura: o que é o produto e os 7 passos
-//   #boas-vindas/<passo>         minerar · atalho · conta · anki · ia · automatica · chave
-//   #boas-vindas/pronto          Tudo pronto: o resumo de cada passo e Abrir painel
-//
-// À esquerda, a lista dos 8 itens (dá para clicar em qualquer um), com a marca
-// de cada passo: o número, o ✓ ouro quando feito, o tracejado quando “agora
-// não”. À direita, o card do passo atual, com Voltar · Agora não (só nos
-// opcionais) · Continuar.
-//
-// Um passo está feito pelo estado real, do storage e da Conexão: a frase
-// no histórico, o atalho de Minerar seleção, a conta, a Conexão com o Anki
-// ligada, a chave da OpenAI conferida, um idioma da mineração automática ligado, a chave do Gemini. O
-// que a pessoa fez fora da página já aparece feito. Só o “agora não” (e se ela
-// chegou a Abrir painel) é desta página, gravado neste computador em
-// `pm_boas_vindas`. Quem lê e grava esse progresso é `lib/configuracao.js`,
-// que também informa o lembrete “Configuração pela metade” ao popup e a Frases.
-// “Continuar” num passo obrigatório segue sem marcar nada: ele fica “falta” no
-// resumo.
-//
-// Cada passo tem o controle real, o mesmo de onde ele mora no dia a dia:
-//   1  a mineração rápida do popup (SALVAR_HISTORICO com a Fonte `manual`);
-//   2  o gravador de Configurações › Atalhos (painel-atalhos.js);
-//   3  o card Conta & sync (painel-conta.js), com o Entrar com Google;
-//   4  os passos de pôr a Conexão com o Anki no Anki e a conferência sozinha,
-//      o mesmo componente do card ONB-16 (painel-conexao-passos.js);
-//   5  o card IA dos cartões (painel-ia.js): a Chave da OpenAI e a Conta do ChatGPT;
-//   6  os switches EN/RU e o limite por dia do popup, pelas mesmas mensagens ao
-//      service worker, com a nota ONB-10 enquanto a Conexão está desligada;
-//   7  o card Chave do Gemini (painel-chave.js), com o Onde conseguir a chave.
-// Toda cópia vem do catálogo da Voz.
-
 (function (raiz) {
   const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao, ConexaoAnki, Conta, PassosDaConexao, MineracaoAutomatica, MineracaoDoDia } = raiz;
   const { SITUACAO: CONEXAO } = ConexaoAnki;
@@ -115,8 +80,6 @@
   let passo6 = null;                // as do passo 6: a nota, as linhas dos idiomas, a falha
   let ondeConseguirAChave = null;   // o “Onde conseguir a chave” (ONB-11) do passo 7, só sem chave
 
-  // ─── Início ────────────────────────────────────────────────────────────────
-
   function iniciarBoasVindas() {
     montarLista();
     montarTelas();
@@ -150,14 +113,10 @@
     location.hash = tela === ABERTURA ? '#boas-vindas' : `#boas-vindas/${tela}`;
   }
 
-  // ─── Os passos ─────────────────────────────────────────────────────────────
-
   /** Até a primeira leitura do que está gravado, todo passo falta. */
   const situacaoDo = passo => (estado.configuracao ? estado.configuracao.situacaoDo(passo.id) : SITUACAO.FALTA);
 
   const tituloDaTela = tela => (tela === PRONTO ? textoDaVoz('ONB-12.titulo') : textoDaVoz(`ONB-03.${tela}`));
-
-  // ─── A lista ───────────────────────────────────────────────────────────────
 
   function montarLista() {
     const nav = porId('bv-lista');
@@ -209,8 +168,6 @@
     marca.replaceChildren(...(situacao === SITUACAO.FEITO ? [Veio.iconeVeio('certo')] : []));
   }
 
-  // ─── O card ────────────────────────────────────────────────────────────────
-
   function montarTelas() {
     const lugar = porId('bv-telas');
     const montarPronto = () => elemento('div', null,
@@ -232,8 +189,6 @@
     }));
     return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-01.corpo')), lista);
   }
-
-  // ─── Passo 1: minerar a primeira frase ─────────────────────────────────────
 
   function montarPasso1() {
     paragrafoDoVideo = elemento('p', 'bv-texto');
@@ -319,8 +274,6 @@
     campo.removeAttribute('aria-invalid');
   }
 
-  // ─── Passo 2: o atalho de Minerar seleção ──────────────────────────────────
-
   function montarPasso2() {
     const controle = elemento('div', 'bv-controle bv-controle--atalhos');
     const tela = elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-06')), controle);
@@ -329,16 +282,12 @@
     return tela;
   }
 
-  // ─── Passo 3: Entrar com Google ────────────────────────────────────────────
-
   /** O corpo do card Conta & sync, o mesmo de Configurações (painel-conta.js). */
   function montarPasso3() {
     const cartao = elemento('div', 'cfg-corpo bv-cartao');
     Conta.montarCartao(cartao);
     return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-07')), elemento('div', 'bv-controle', cartao));
   }
-
-  // ─── Passo 4: Ligar a Conexão com o Anki ───────────────────────────────────
 
   /**
    * Os passos de pôr a Conexão no Anki: o mesmo componente do card ONB-16 da área
@@ -353,8 +302,6 @@
     });
     return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-08.corpo')), lugar);
   }
-
-  // ─── Passo 6: Ligar a mineração automática ─────────────────────────────────
 
   /**
    * Os switches EN/RU do popup, cada um com o limite por dia, e a nota ONB-10
@@ -458,8 +405,6 @@
     passo6.falha.replaceChildren(elemento('p', 'bv-falha', Veio.iconeVeio('alerta'), textoDaVoz(id)));
   }
 
-  // ─── Passo 7: Adicionar a chave do Gemini ──────────────────────────────────
-
   /** O card Chave do Gemini de Configurações (painel-chave.js) e, sem chave, onde consegui-la. */
   function montarPasso7() {
     const cartao = elemento('div', 'cfg-corpo bv-cartao');
@@ -472,15 +417,11 @@
     return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-11.corpo')), controle);
   }
 
-  // ─── Passo da IA: o card IA dos cartões ────────────────────────────────────
-
   function montarPassoDaIA() {
     const cartao = elemento('div', 'cfg-corpo bv-cartao');
     raiz.CartaoDaIA.montar(cartao, { prefixo: 'bv' });
     return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('CFG-35.passo')), elemento('div', 'bv-controle', cartao));
   }
-
-  // ─── Tudo pronto ───────────────────────────────────────────────────────────
 
   function desenharResumo() {
     const lista = telas.get(PRONTO).querySelector('.bv-resumo');
@@ -495,8 +436,6 @@
       return elemento('li', 'bv-resumo__item', marca, elemento('span', null, tituloDaTela(passo.id)), lado);
     }));
   }
-
-  // ─── Desenho ───────────────────────────────────────────────────────────────
 
   function desenhar() {
     const { tela } = estado;

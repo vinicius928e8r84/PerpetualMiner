@@ -26,8 +26,6 @@ FAILURES_LOG = "image_generation_failures.jsonl"
 _MODEL_GONE_HINTS = ("model_not_found", "does not exist", "deprecated", "decommission", "retired", "no access")
 
 
-# ── helpers ───────────────────────────────────────────────────────────────────
-
 def _failure_reason(exc: Exception) -> str:
     """Short label for why a generation failed: model_unavailable or generation_error."""
     if isinstance(exc, openai.NotFoundError):
@@ -108,8 +106,6 @@ def generate_one(config: dict, stem: str, prompt: str, dest: Optional[Path] = No
         _log_failure(config, stem, exc)
         return False
 
-
-# ── public API ────────────────────────────────────────────────────────────────
 
 def run(
     config: dict,

@@ -25,8 +25,6 @@ function acusa(id, arquivo, fonte, quantas, porque) {
 
 const nulo = (achados, quantas, porque) => { assert.strictEqual(achados.length, quantas, `${porque}\n${JSON.stringify(achados, null, 2)}`); total++; return achados; };
 
-// ─── tokens-veio ─────────────────────────────────────────────────────────────
-
 // 8d13cc7^ overlay.css: o raio da linha do overlay solto, que a revisão do #41 tirou.
 acusa('tokens-veio', 'overlay.css', '.pm-linha {\n  height: 3px;\n  border-radius: 2px;\n  background: var(--veio-accent);\n}\n', 1,
   'raio em px fora dos tokens (8d13cc7)');
@@ -61,8 +59,6 @@ acusa('tokens-veio', 'painel.css', [
   '/* font-size: 22px no comentário não conta */',
 ].join('\n'), 0, 'tokens, 50%, 0 e comentários');
 
-// ─── gravacao-de-frases ──────────────────────────────────────────────────────
-
 // b2188a1 (#126) lib/sincronizacao.js: escritas de `frases` e `pm_pending_sync` fora da fila.
 acusa('gravacao-de-frases', 'lib/sincronizacao.js', [
   'async function sincronizar(local) {',
@@ -90,8 +86,6 @@ acusa('gravacao-de-frases', 'background.js', [
   '}',
 ].join('\n'), 0, 'a escrita dentro de naFilaDeGravacao e outra chave');
 
-// ─── idioma-solto ────────────────────────────────────────────────────────────
-
 // bf640d9^ popup.js: uma das cinco cópias do detector que divergiram.
 acusa('idioma-solto', 'popup.js', "  const idioma = /[\\u0400-\\u04FF]/.test(texto) ? 'Russo' : 'Inglês';\n", 3, 'o detector copiado (bf640d9)');
 // 25e0b21 painel.js: a revisão do passo 1 ainda achou o nome solto.
@@ -106,8 +100,6 @@ acusa('idioma-solto', 'painel.js', [
   'const rotulo = "Frases em russo";',
 ].join('\n'), 0, 'o jeito de lib/idioma.js');
 assert.strictEqual(regras['idioma-solto'].seAplica('lib/idioma.js'), false, 'lib/idioma.js é o dono');
-
-// ─── teste-le-codigo ─────────────────────────────────────────────────────────
 
 const LEITOR = [
   'SERVER_PATH = Path(__file__).with_name("server.py")',
@@ -132,8 +124,6 @@ acusa('teste-le-codigo', 'bridge/test_anki_launcher.py', `${LEITOR}
         config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
         self.assertEqual(response.status_code, 503)
 `, 0, 'o teste pela rota e a leitura de um .json');
-
-// ─── e2e-funcao-interna ──────────────────────────────────────────────────────
 
 // 86b8bff (#129, achado S2): o callback do menu chamado sem dizer qual exceção usa.
 const MENU = [
@@ -181,8 +171,6 @@ acusa('e2e-funcao-interna', 'e2e/tests/popup.spec.js', [
   "const texto = await extensao.serviceWorker.evaluate(() => chrome.action.getBadgeText({}));",
   "const frases = await page.evaluate(() => document.querySelectorAll('.veio-frase').length);",
 ].join('\n'), 0, 'chrome.* e o DOM não são código da extensão');
-
-// ─── e2e-estado-final ────────────────────────────────────────────────────────
 
 const achadosDoEstado = fonte => regras['e2e-estado-final'].verificar('e2e/tests/probe.spec.js', fonte, RAIZ);
 
@@ -308,8 +296,6 @@ acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js',
 assert.strictEqual(regras['e2e-estado-final'].seAplica('e2e/tests/painel-anki-baralhos-visual.spec.js'), false);
 total++;
 
-// ─── contrato-fechado ────────────────────────────────────────────────────────
-
 // 7996b48 (#190) painel-anki-baralhos.js: o pedido da Conexão com o caminho e o corpo montados à mão, que o contrato
 // não tinha como conferir (o corpo de Atualizar tinha os dois Baralhos e o exemplo só o de Inglês).
 acusa('contrato-fechado', 'painel-anki-baralhos.js', [
@@ -338,8 +324,6 @@ acusa('contrato-fechado', 'painel-ajustes.js',
   'const resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, raiz.PedidoAoAnki.baralhos());\n', 0, 'o construtor');
 acusa('contrato-fechado', 'lib/sincronizacao.js', "const r = await fetch(`${URL_DO_FIRESTORE}/documents/frases`, { method: 'POST' });\n", 0, 'outro servidor');
 acusa('contrato-fechado', 'background.js', "// fetch(`${BRIDGE_URL}/jobs`)\n", 0, 'um comentário');
-
-// ─── testes-no-portao ────────────────────────────────────────────────────────
 
 // Um repositório mínimo (só o que a regra lê: o cadastro, os arquivos e os workflows).
 function repositorioDeTestes(arquivos) {
@@ -457,8 +441,6 @@ nulo(achadosDe(comOPortao({ 'scripts/testes.json': CADASTRO.replace('test_*.py',
 nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': `${CHAMA_TUDO}      - run: node scripts/testar.mjs engine\n` }), '.github/workflows/testes.yml'), 1,
   'workflow que chama um grupo que o cadastro não tem');
 
-// ─── doc-datado ──────────────────────────────────────────────────────────────
-
 // Os erros reais: a SKILL.md de verificação carregou "41" como o tamanho da suíte e o CLAUDE.md ainda fala em "about 700 tests".
 acusa('doc-datado', '.agents/skills/verify-perpetualminer/SKILL.md', 'that the suite is collectable (41 specs listed by `playwright test --list`)\n', 1, 'contagem de specs (a SKILL.md antes do #226)');
 acusa('doc-datado', 'CLAUDE.md', 'the whole suite (about 700 tests) runs in CI\n', 1, 'contagem de tests (CLAUDE.md)');
@@ -487,8 +469,6 @@ for (const nao of ['docs/superpowers/specs/2026-06-nota.md', 'README.md', 'bridg
   total++;
 }
 
-// ─── exceções na linha ───────────────────────────────────────────────────────
-
 const HOJE = '2026-10-04';
 assert.deepStrictEqual(excecaoNaLinha('  font-size: 9px; /* exceção tokens-veio até 2026-12-31, aprovada por Vinicius: imitação do badge */', HOJE),
   { regra: 'tokens-veio', valida: true });
@@ -496,8 +476,6 @@ assert.match(excecaoNaLinha('x // exceção tokens-veio até 2026-01-31, aprovad
 assert.match(excecaoNaLinha('x // exceção tokens-veio porque sim', HOJE).erro, /formato/);
 assert.strictEqual(excecaoNaLinha('// a exceção de teste do menu', HOJE), null);
 total += 4;
-
-// ─── a catraca, de ponta a ponta ─────────────────────────────────────────────
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-regras-'));
 const git = (...args) => execFileSync('git', args, { cwd: tmp, encoding: 'utf8', stdio: 'pipe' }).trim();
@@ -625,8 +603,6 @@ r = rodar('main', '--atualizar');
 assert.strictEqual(r.status, 0, r.stdout);
 assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(tmp, 'scripts/regras/linha-de-base.json'), 'utf8'))['tokens-veio'], {});
 total += 18;
-
-// ─── a linha de comando ──────────────────────────────────────────────────────
 
 r = rodar('main', '--raizz', tmp);
 assert.strictEqual(r.status, 2, 'bandeira desconhecida é erro de uso');

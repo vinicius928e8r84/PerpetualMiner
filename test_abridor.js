@@ -50,7 +50,6 @@ function carregarOAbridor({ responder, permissao = true }) {
 }
 
 async function main() {
-  // ─── As respostas do contrato ───────────────────────────────────────────────
   {
     const { Abridor, enviadas } = carregarOAbridor({ responder: m => exemploDoAbridor(m.acao, 'no_lugar') });
     assert.deepStrictEqual(await comoValores(Abridor.conferirOAnki()), { resultado: Abridor.RESULTADO.ACHOU, detalhe: '' },
@@ -79,7 +78,6 @@ async function main() {
       'achou o Anki e não abriu: NAO_ABRIU');
   }
 
-  // ─── Sem a permissão, nem uma mensagem sai ─────────────────────────────────
   {
     const { Abridor, enviadas } = carregarOAbridor({ permissao: false, responder: () => ({ achou: true }) });
     assert.deepStrictEqual(await comoValores(Abridor.conferirOAnki()), { resultado: Abridor.RESULTADO.SEM_PERMISSAO, detalhe: '' },
@@ -89,7 +87,6 @@ async function main() {
     assert.deepStrictEqual(enviadas, [], 'e nada chega ao abridor');
   }
 
-  // ─── O host que não existe: o que o Chrome disse vai no Detalhes ───────────
   {
     const recado = 'Specified native messaging host not found.';
     const { Abridor } = carregarOAbridor({ responder: () => { throw new Error(recado); } });
@@ -99,8 +96,6 @@ async function main() {
       'o abrir sem o host diz SEM_ABRIDOR com o recado do Chrome');
   }
 
-  // ─── Uma resposta fora do contrato nunca é “achei” nem “abriu” ─────────────
-  //
   // `null` é a armadilha: é o que um host quebrado responde, e também o valor que um código de
   // dentro usaria para dizer “não houve resposta”. Confundir os dois põe “O Anki está abrindo…”
   // na tela sem nada ter aberto.

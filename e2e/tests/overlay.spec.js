@@ -93,8 +93,6 @@ const metaDaPilula = (page, sigla) => feedback(page).getByText(sigla, { exact: t
 /** O título da pílula, pelo texto exato. */
 const tituloDaPilula = (page, titulo) => feedback(page).getByText(titulo, { exact: true });
 
-// ─── O botão flutuante ───────────────────────────────────────────────────────
-
 test('o botão flutuante é o azulejo Veio num círculo de 46 px, meio apagado parado e inteiro com o mouse', async ({ page, paginas }) => {
   await abrirPlayer(page, paginas);
   const botao = botaoFlutuante(page);
@@ -187,8 +185,6 @@ test('o botão chega pelo teclado, com o foco visível, e Enter minera a legenda
   await expect.poll(() => textosGravados(extensao)).toEqual([LEGENDA]);
   await expect(feedback(page)).toContainText(LEGENDA);
 });
-
-// ─── O caminho feliz ─────────────────────────────────────────────────────────
 
 test('Alt+S minera e copia: a pílula diz MIN-01 com a frase e some sozinha em ~3,5 s', async ({ page, context, paginas, extensao }) => {
   await permitirClipboard(context, paginas);
@@ -298,8 +294,6 @@ test('um vídeo de anúncio escondido num iframe não conta: a página sem playe
   expect(await extensao.frases()).toEqual([]);
 });
 
-// ─── Os bugs de #9 que este passo fecha ──────────────────────────────────────
-
 test('bug de #9: o atalho de legenda digitado num campo de texto entra no campo e nada é minerado', async ({ page, paginas, extensao }) => {
   await extensao.gravarStorage({ pm_atalho_legenda: LEGENDA_EM_SHIFT_S });
   await page.goto(paginas.url('player-com-campos.html'));
@@ -355,8 +349,6 @@ test('bug de #9: com o clipboard negado no frame de cima, a frase fica no histó
   expect(await textosGravados(extensao)).toEqual([LEGENDA]);
 });
 
-// ─── As falhas ───────────────────────────────────────────────────────────────
-
 test('o service worker falha ao gravar: MIN-03 com a dica, nada gravado, e a pílula some sozinha', async ({ page, context, paginas, extensao }) => {
   await permitirClipboard(context, paginas);
   await abrirPlayer(page, paginas);
@@ -411,8 +403,6 @@ test('no player sem legenda na tela, Alt+S diz MIN-04 e não grava nada', async 
   await page.waitForTimeout(800);
   expect(await extensao.frases()).toEqual([]);
 });
-
-// ─── Isolamento: Shadow DOM ──────────────────────────────────────────────────
 
 test('nada do overlay entra no DOM do site fora do host, e os estilos não vazam em nenhum sentido', async ({ page, context, paginas, extensao }) => {
   await permitirClipboard(context, paginas);
@@ -483,8 +473,6 @@ test('com o tema claro escolhido, o overlay continua escuro', async ({ page, con
   expect(await titulo.evaluate(no => getComputedStyle(no).color)).toBe(textoDoEscuro());
 });
 
-// ─── Movimento reduzido ──────────────────────────────────────────────────────
-
 test('com prefers-reduced-motion, a pílula abre e fecha sem animação', async ({ page, context, paginas }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await permitirClipboard(context, paginas);
@@ -536,8 +524,6 @@ test('com uma falha aberta, o Esc digitado num campo do site é do site e a falh
   expect(await page.evaluate(() => window.escsDoSite)).toBe(1);
   await expect(page.getByText(MIN_03)).toBeVisible();
 });
-
-// ─── A mineração automática ──────────────────────────────────────────────────
 
 test('a mineração automática minera uma linha: MIN-06 na pílula, com o idioma e o contador do dia na meta', async ({ page, paginas, extensao }) => {
   await extensao.gravarStorage({

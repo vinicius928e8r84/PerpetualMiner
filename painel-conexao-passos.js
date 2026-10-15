@@ -1,62 +1,5 @@
 'use strict';
 
-// Os passos de pôr a Conexão com o Anki no Anki, num componente só (#99, #145): a
-// lista de passos e o card do passo, do desenho B de
-// docs/design/painel/anki/prototipo-primeira-conexao.html. O passo 4 da Boas-vindas
-// (`painel-boas-vindas.js`) e o card ONB-16 da área Conexão com o Anki
-// (`painel-anki-primeira-conexao.js`) montam este mesmo componente, sem comando de
-// terminal nenhum:
-//
-//   1  Ter o Anki (#146, ONB-18): a pergunta “Você já tem o Anki?”. “Não tenho” leva à
-//      página de download do Anki, numa aba nova, e diz o que fazer depois pelo sistema da
-//      pessoa (no Mac, a arrastada para Aplicativos; no Windows, o instalador). “Já tenho”
-//      usa o abridor da Conexão (#147) para abrir o Anki sozinho quando a permissão
-//      `nativeMessaging` já está dada; sem ela, ou sem o abridor, o caminho manual de
-//      sempre. A escolha fica só na tela: o que marca o passo é a Conexão respondendo, e
-//      antes dela a tela não diz nada do Anki (“não instalado”, “fechado” e “aberto sem a
-//      Conexão” dão o mesmo silêncio: nunca “não encontrado”).
-//   2  Pôr a Conexão no Anki: baixar › abrir › Sim › reiniciar. O arquivo vai dentro do
-//      pacote da extensão (`conexao/perpetualminer.ankiaddon`) e sai por um link de
-//      download, sem permissão nova. Antes de baixar, a animação do aviso (ONB-19, #146)
-//      mostra o que o próprio Anki pergunta ao abrir o arquivo, e de onde clicar: dois
-//      quadros que se alternam sozinhos, parados com movimento reduzido, com as palavras da
-//      janela do próprio Anki em pt-BR (ele diz “extensões”). O Detalhes “O arquivo não
-//      abriu?” leva o código do AnkiWeb (para colar em Ferramentas › Complementos › Obter
-//      complementos; o nome do menu no Anki em pt-BR é o #237) ou, até o primeiro upload
-//      (#176), diz que ele vem em breve: nunca um número inventado.
-//   3  Reiniciar o Anki: este passo sempre existe. A extensão confere sozinha e a linha de
-//      status mostra Conectando enquanto a conferência está no ar (a de 15 s também, sem
-//      ninguém apertar nada) e, quando a Conexão responde, “Achei o Anki · perfil · versão”.
-//      Uma conferência no ar não apaga o último resultado: ligada continua ligada até uma
-//      resposta dizer o contrário, e a falha volta a “desligada”.
-//   4  Abrir o Anki sozinho (#147, ONB-17): logo depois de a Conexão responder, o card passa
-//      sozinho a este passo. “Permitir abrir o Anki” pede ao Chrome a permissão opcional
-//      `nativeMessaging` e a extensão confere o abridor que a Conexão deixou no computador
-//      (`PerpetualMiner.Abridor`: só “achou o Anki?”, nada abre nem fecha). Com a permissão já
-//      dada, ela confere sem clique. “Agora não” fica guardado (`pm_abridor`) e o passo fica
-//      “agora não”; não achou, ou o abridor não respondeu, o passo diz o que fazer, com
-//      Tentar de novo e o que o Chrome disse no Detalhes. Antes de a Conexão responder, este
-//      passo não tem o que fazer: o abridor é ela que escreve.
-//
-// A lista é dado (`PASSOS`): um passo entra nela sem mexer no resto. O número do passo na
-// tela é a posição na lista.
-//
-// Os passos se marcam pelo estado real, e a única coisa que a extensão enxerga antes
-// da Conexão é ela mesma: os três primeiros viram ✓ juntos quando ela responde ligada; o
-// quarto, quando o abridor acha o Anki (ou “agora não”, quando a pessoa disse isso).
-//
-// O abridor é um só por página: os dois lugares que montam o componente (a Boas-vindas e o
-// card ONB-16 moram no mesmo painel) leem o mesmo estado, e a conferência sai uma vez.
-//
-// Sem resposta em 2 minutos, o card mostra o checklist de 3 itens e “Baixar de novo”,
-// e a conferência segue sozinha (ela é do `ConexaoAnki`; aqui não se pergunta nada à
-// rede). Os 2 minutos contam desde que a pessoa vê os passos pela primeira vez ou baixa
-// o arquivo, o que vier primeiro; o checklist, uma vez na tela, fica até a Conexão responder.
-//
-// Um destaque (`--primario`) só por tela (veio/README.md): com a navegação do card, o
-// destaque é a ação do passo (Baixar, Tentar de novo) e Voltar · Continuar são contorno;
-// sem ela, o destaque é o Continuar do anfitrião e o card só tem contornos.
-//
 //   montar(lugar, { prefixo, navegacao, aoSairOBotao, aoResolverOAbridor })
 //     `prefixo`        dá os ids (`<prefixo>-passo-titulo`, `-status`, `-tentar`, `-abridor-status`…)
 //     `navegacao`      Voltar · Continuar no card (padrão true; a Boas-vindas tem os seus)
@@ -119,8 +62,6 @@
     return DEPOIS_DO_DOWNLOAD.outro;
   }
 
-  // ─── O abridor (passo 4), um por página ─────────────────────────────────────
-  //
   // Em que fase está a conversa com o abridor. `PEDIR` é “sem permissão”: os botões
   // Permitir e Agora não; `PEDINDO` é o aviso do Chrome aberto.
   const FASE = Object.freeze({
@@ -252,7 +193,6 @@
     };
     const marcas = [];
 
-    // ─── A lista ────────────────────────────────────────────────────────────
     const itens = elemento('ol', 'bv-lista__itens');
     PASSOS.forEach((passo, i) => {
       const marca = elemento('span', 'bv-marca');
@@ -268,7 +208,6 @@
     const lista = elemento('nav', 'pc-lista', itens);
     lista.setAttribute('aria-label', textoDaVoz('ONB-16.passos'));
 
-    // ─── O card do passo ────────────────────────────────────────────────────
     const sobretitulo = elemento('p', 'bv-sobretitulo');
     const titulo = elemento('h3', 'bv-titulo');
     titulo.id = id('passo-titulo');
@@ -446,7 +385,6 @@
     const card = elemento('div', 'pc-card', sobretitulo, titulo, texto, controle, rodape);
     lugar.append(elemento('div', empilhado ? 'pc pc--empilhado' : 'pc', lista, card));
 
-    // ─── O passo aberto ─────────────────────────────────────────────────────
     const indice = passoId => PASSOS.findIndex(p => p.id === passoId);
 
     /**
@@ -474,7 +412,6 @@
       titulo.focus();
     }
 
-    // ─── A espera ───────────────────────────────────────────────────────────
     /** Conta os 2 minutos e diz se o checklist está na tela (ele sai quando a Conexão responde). */
     function desenharAEspera() {
       const ligada = ConexaoAnki.situacao() === CONEXAO.LIGADA;
@@ -488,7 +425,6 @@
       semResposta.hidden = !estado.semResposta || estado.pronto || ligada;
     }
 
-    // ─── O desenho ──────────────────────────────────────────────────────────
     function desenhar({ pronto = estado.pronto } = {}) {
       estado.pronto = pronto;
       const aberto = pronto ? -1 : indiceAberto();

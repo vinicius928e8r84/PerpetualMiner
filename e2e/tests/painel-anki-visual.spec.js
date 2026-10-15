@@ -315,7 +315,6 @@ test('o tema claro', async ({ page, extensao }) => {
   await expect(ilha(page)).toHaveScreenshot('anki-claro.png');
 });
 
-// ─── Ajustes de envio (#35) ──────────────────────────────────────────────────
 // Os cards por idioma da variante A do protótipo (docs/design/painel/anki/prototipo-ajustes-envio.html).
 
 const AJUSTES = {

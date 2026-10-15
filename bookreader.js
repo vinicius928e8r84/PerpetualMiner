@@ -1,35 +1,8 @@
 'use strict';
 
-// Minerar de uma foto, no layout C · Fotos × frases (docs/design/foto/).
-//
-// À esquerda, a fila de fotos: cada uma com miniatura e status (FOT-19), o
-// progresso da leitura (FOT-20) e a área de envio. À direita, as frases que o
-// Gemini leu, agrupadas por foto, com “Selecionar todas”, a contagem (FOT-09)
-// e “Minerar N frases” (FOT-12).
-//
-// A página só afirma o que confirmou:
-//   - uma foto que o Gemini leu sem achar nada é “Sem marcações” (FOT-10); uma
-//     foto em que a API falhou é “Falhou” com o motivo (FOT-11), nunca culpa as
-//     marcações;
-//   - uma frase minerada fica com o selo “Minerada” e sai do botão, então
-//     clicar de novo (ou chegar outra foto) nunca grava a mesma frase duas vezes.
-//
-// Cancelar (FOT-06) para a leitura das fotos restantes, que ficam
-// “Cancelada”, e mantém as frases das já lidas (FOT-21). Recomeçar (FOT-17)
-// esvazia a página, pedindo confirmação (FOT-18) quando há frases não
-// mineradas. Os dois abandonam a leitura em curso: a resposta que chega depois
-// não entra. Uma foto que falhou tem “Tentar de novo”, que lê só ela.
-//
-// A chave do Gemini mora em Configurações: sem ela, o cartão FOT-05 leva a
-// #configuracoes/chave. O Livro (o Título das frases) fica lembrado em
-// `bookTitleDefault`, e Recomeçar não o apaga. Toda cópia vem do catálogo da
-// Voz.
-
 (function (raiz) {
   const { textoDaVoz, Mineracao } = raiz;
   const { iconeVeio, montarAviso, mostrarToastDeSucesso, refletirSelecao, abrirConfirmacao } = raiz.Veio;
-
-  // ─── Constantes ─────────────────────────────────────────────────────────────
 
   const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
 
@@ -100,8 +73,6 @@ To be or not to be, that is the question`;
     { exemplo: 'FOT-24.exemploColchetes', nome: 'FOT-24.colchetes' },
   ];
 
-  // ─── Estado ─────────────────────────────────────────────────────────────────
-
   const estado = {
     chaveGemini: '',
     fotos: [],        // { id, nome, tipo, base64, url, status, achadas, falha: { causa, chaveRecusada, detalhes } }
@@ -129,8 +100,6 @@ To be or not to be, that is the question`;
 
   const porId = id => document.getElementById(id);
   const fotosCom = (...status) => estado.fotos.filter(foto => status.includes(foto.status));
-
-  // ─── Início ─────────────────────────────────────────────────────────────────
 
   document.addEventListener('DOMContentLoaded', iniciar);
 
@@ -214,8 +183,6 @@ To be or not to be, that is the question`;
       receberArquivos([...evento.dataTransfer.files]);
     });
   }
-
-  // ─── Fotos ──────────────────────────────────────────────────────────────────
 
   /** O tipo da foto pelo tipo do arquivo ou, sem ele, pela extensão; `null` se não é foto. */
   function tipoDaFoto(arquivo) {
@@ -352,8 +319,6 @@ To be or not to be, that is the question`;
     lerAFila();
   }
 
-  // ─── Recomeçar ──────────────────────────────────────────────────────────────
-
   /** As frases que Recomeçar perderia: as ainda não mineradas, com texto. */
   const aPerder = () => pendentes().filter(frase => frase.texto.trim());
 
@@ -395,8 +360,6 @@ To be or not to be, that is the question`;
     desenhar();
     porId('foto-escolher').focus();
   }
-
-  // ─── Gemini ─────────────────────────────────────────────────────────────────
 
   async function chamarGemini(chave, foto, sinal) {
     let resposta;
@@ -528,8 +491,6 @@ To be or not to be, that is the question`;
     return aviso;
   }
 
-  // ─── Minerar ────────────────────────────────────────────────────────────────
-
   const pendentes = () => estado.frases.filter(frase => !frase.minerada);
   const paraMinerar = () => pendentes().filter(frase => frase.marcada && frase.texto.trim());
 
@@ -586,8 +547,6 @@ To be or not to be, that is the question`;
     return ok;
   }
 
-  // ─── Painel ─────────────────────────────────────────────────────────────────
-
   /**
    * Foca a aba do painel que já estiver aberta (levando-a a `endereco`, se
    * houver); sem nenhuma, abre uma. Nunca abre um segundo painel. Um painel
@@ -609,8 +568,6 @@ To be or not to be, that is the question`;
       }
     });
   }
-
-  // ─── Desenho ────────────────────────────────────────────────────────────────
 
   function desenhar() {
     desenharFila();
@@ -936,8 +893,6 @@ To be or not to be, that is the question`;
     linha.classList.toggle('foto-frase--desmarcada', !frase.minerada && !frase.marcada);
     linha.querySelector('.foto-frase__minerada').hidden = !frase.minerada;
   }
-
-  // ─── Ajudantes ──────────────────────────────────────────────────────────────
 
   /** Um elemento com classe e filhos; texto sempre entra como texto. */
   function elemento(tag, classe, ...filhos) {

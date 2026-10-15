@@ -12,7 +12,6 @@ const { soDocumentacao, arquivosMudados } = require('./so-documentacao.js');
 const { instaveis, resumo } = require('./instaveis.js');
 const { EMAIL_DO_DONO, commitsForaDaRegra, mensagem } = require('./autoria.js');
 
-// --- Mudou só documentação? ---
 assert.strictEqual(soDocumentacao(['CLAUDE.md']), true);
 assert.strictEqual(soDocumentacao(['docs/instalar-extensao.md', 'bridge/README.md', 'engine/prompts/README.md']), true);
 assert.strictEqual(soDocumentacao(['docs/design/painel/anki/prototipo-anki.html', 'docs/design/foto/ref.png']), true);
@@ -47,7 +46,6 @@ assert.strictEqual(soDocumentacao(['.agents/skills/x/dados.yaml']), false);
 assert.strictEqual(soDocumentacao(['painel.png']), false);
 assert.strictEqual(soDocumentacao(['CLAUDE.md', 'docs/design/foto/ref.png']), true);
 
-// --- Sobre um diff de verdade: apagar ou mover um teste não é só documentação ---
 const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-ci-'));
 const git = (...args) => execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { encoding: 'utf8' });
 const escrever = (arquivo, texto) => {
@@ -79,7 +77,6 @@ assert.strictEqual(classificar(() => escrever('e2e/tests/ref.png', 'png')), fals
 assert.strictEqual(classificar(() => fs.rmSync(path.join(repo, 'painel.js'))), false, 'apagar código');
 fs.rmSync(repo, { recursive: true, force: true });
 
-// --- Quem passou só na segunda tentativa? ---
 const relatorio = {
   suites: [{
     title: 'a.spec.js',
@@ -124,7 +121,6 @@ function saidaDoPasso(conteudo) {
 assert.strictEqual(saidaDoPasso(relatorio), 'achou=true\n', 'com um teste instável o job guarda os resultados');
 assert.strictEqual(saidaDoPasso({ suites: [] }), 'achou=false\n', 'sem nenhum, não guarda');
 
-// --- Todo commit do PR é do dono? ---
 const linha = (sha, autor, committer, assunto = 'x') => [sha, autor, committer, assunto].join('\t');
 assert.deepStrictEqual(commitsForaDaRegra([linha('a1', EMAIL_DO_DONO, EMAIL_DO_DONO), '']), [], 'autor e committer do dono');
 assert.deepStrictEqual(commitsForaDaRegra([linha('a2', EMAIL_DO_DONO, 'noreply@github.com')]), [], 'o committer GitHub dos merges do site');

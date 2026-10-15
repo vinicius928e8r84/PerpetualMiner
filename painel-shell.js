@@ -1,31 +1,5 @@
 'use strict';
 
-// O shell “Ilhas” do Painel (docs/design/painel/shell/): uma página só, com uma
-// área por endereço, e os indicadores colados na navegação.
-//
-//   #frases (padrão)                        Frases mineradas
-//   #anki/custos|baralhos|vocabulario|ajustes  a aba da Conexão com o Anki
-//   #configuracoes[/conta|atalhos|ia|chave|anki|aparencia|perigo] Configurações, rolando até o card
-//   #boas-vindas[/<passo>]                  a Boas-vindas, sem a sidebar (painel-boas-vindas.js)
-//
-// Trocar de área só troca a vista: nada recarrega, então os filtros, a página, a
-// seleção, o sync e o acompanhamento de envios do painel.js continuam como estão.
-//
-// O shell é dono do que fica na sidebar: o total de frases e o ponto da Conexão
-// com o Anki (e a faixa F1 da área dela). O chip de conta mora na sidebar, mas
-// quem o desenha é painel-conta.js, junto com o card Conta & sync que ele
-// espelha. O painel.js conta ao shell o total (`mostrarTotalDeFrases`) e pede
-// para saber quando a pessoa entra numa área (`aoEntrarNaArea`).
-//
-// Em Configurações, os cards ficam fechados numa linha com o resumo e abrem no
-// lugar, vários ao mesmo tempo; #configuracoes/<seção> abre o da seção e avisa
-// quem pediu (`aoAbrirASecao`). O resumo da conta é do painel-conta.js; os de
-// Atalhos, Chave do Gemini, Aparência e Zona de perigo saem daqui, do que já
-// está gravado (os atalhos, a chave, o tema e o total de frases). O conteúdo dos
-// cards Atalhos, IA dos cartões, Chave do Gemini, Conexão com o Anki (o resumo também) e
-// Zona de perigo é do painel-atalhos.js, do painel-ia.js (o resumo da IA também), do
-// painel-chave.js, do painel-abrir-anki.js e do painel-perigo.js. Toda cópia vem do catálogo da Voz.
-
 (function (raiz) {
   /** As áreas do painel com a sidebar; a Boas-vindas é a página à parte. */
   const AREAS_DO_PAINEL = Object.freeze(['frases', 'anki', 'configuracoes']);
@@ -48,8 +22,6 @@
   const $ = seletor => document.querySelector(seletor);
   const $$ = seletor => [...document.querySelectorAll(seletor)];
   const porId = id => document.getElementById(id);
-
-  // ─── Início ────────────────────────────────────────────────────────────────
 
   function iniciarShell() {
     escreverTextosDoCatalogo();
@@ -98,8 +70,6 @@
     const { iconeVeio } = raiz.Veio;
     for (const lugar of $$('[data-icone]')) lugar.replaceWith(iconeVeio(lugar.dataset.icone));
   }
-
-  // ─── Endereços ─────────────────────────────────────────────────────────────
 
   /** A área (e a aba ou a seção) que um endereço abre. O desconhecido abre Frases. */
   function lerEndereco(hash) {
@@ -154,8 +124,6 @@
     // Voltar à área pela sidebar reabre a última aba vista.
     $('.shell-item[data-area="anki"]').setAttribute('href', `#anki/${aba}`);
   }
-
-  // ─── Cards de Configurações ────────────────────────────────────────────────
 
   function abrirCard(card, aberto) {
     card.classList.toggle('cfg-card--aberto', aberto);
@@ -221,8 +189,6 @@
     return estado.area;
   }
 
-  // ─── Frases ────────────────────────────────────────────────────────────────
-
   function mostrarTotalDeFrases(n) {
     porId('shell-total').textContent = n.toLocaleString('pt-BR');
     porId('shell-total-descricao').textContent = textoDaVoz('PAI-05', { n });
@@ -230,8 +196,6 @@
     porId('cfg-perigo-resumo').replaceChildren(
       elemento('span', null, n ? textoDaVoz('PAI-05', { n }) : textoDaVoz('CFG-28.nenhumaFrase')));
   }
-
-  // ─── Resumos de Atalhos e da Chave do Gemini ───────────────────────────────
 
   /** Os atalhos, a chave e o tema, como estão gravados, e cada mudança deles. */
   function lerResumosGravados() {
@@ -291,8 +255,6 @@
     no.append(...filhos);
     return no;
   }
-
-  // ─── Conexão com o Anki ────────────────────────────────────────────────────
 
   /** O ponto, o texto e a faixa F1 da sidebar mostram a situação que o ConexaoAnki diz. */
   function mostrarConexao(situacao) {

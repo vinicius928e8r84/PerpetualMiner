@@ -123,7 +123,6 @@ test('janela estreita: sem resumo na linha e sem recuo no conteúdo', async ({ p
   await expect(page).toHaveScreenshot('conta-estreita.png', { animations: 'disabled' });
 });
 
-// ─── Atalhos (#27) ───────────────────────────────────────────────────────────
 // Com a seleção em Alt+Botão voltar, como no protótipo: fora do padrão, então
 // “Restaurar atalhos padrão” aparece no pé do card.
 

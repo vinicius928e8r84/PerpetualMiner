@@ -1,19 +1,5 @@
 'use strict';
 
-// Passo 3 do redesign: a lista de Frases em cartões, com filtros, busca e
-// paginação (#29).
-//
-// Cada frase é um cartão sob um cabeçalho de data (hoje · ontem · há 3 dias),
-// com a Palavra grifada e o chip `palavra:`/`auto:`, e a linha de Contexto com a
-// Fonte, Título · Detalhe e o selo do estado. Os filtros ficam numa linha, com a
-// busca no texto e no Título (item 1 da lista fechada). A lista mostra os
-// estados PAI-01 a PAI-04. A seleção, as ações do cartão e o Apagar com
-// confirmação são do #30 (painel-frases-selecao.spec.js); o envio ao Anki
-// continua o de hoje até o #32.
-//
-// Os testes afirmam o que a pessoa vê e o que fica gravado, nunca funções
-// internas.
-
 const { test, expect } = require('../fixtures');
 
 // O cabeçalho de data sai do relógio: ele fica parado neste dia.
@@ -53,8 +39,6 @@ async function ligarOcultar(page) {
 const paginas = page => page.getByRole('navigation', { name: 'Páginas' });
 const palavra = (page, textoDaFrase, nome) =>
   cartao(page, textoDaFrase).getByRole('button', { name: nome, exact: true });
-
-// ─── Cartões ─────────────────────────────────────────────────────────────────
 
 test('cada frase é um cartão sob o cabeçalho do seu dia: hoje, ontem, há 3 dias', async ({ page, extensao }) => {
   await extensao.gravarStorage({
@@ -127,8 +111,6 @@ test('uma frase com marcação aparece literal no cartão, sem virar elemento', 
   await expect(lista(page).locator('b, i, img')).toHaveCount(0);
   expect(await page.evaluate(() => window.__injetado)).toBeUndefined();
 });
-
-// ─── A Palavra ───────────────────────────────────────────────────────────────
 
 test('o chip diz palavra: quando foi escolhida e auto: quando foi detectada, e a Palavra fica grifada', async ({ page, extensao }) => {
   await extensao.gravarStorage({
@@ -221,8 +203,6 @@ test('pelo teclado: Tab entra na frase, as setas andam pelas palavras e Enter es
   // A frase é uma parada só do Tab: as outras palavras ficam fora da ordem.
   await expect(cartao(page, 'Keep me posted').locator('[role="button"][tabindex="0"]')).toHaveCount(1);
 });
-
-// ─── Filtros e busca ─────────────────────────────────────────────────────────
 
 const PARA_FILTRAR = [
   frase(4, 'That was a close call.', { streaming: 'netflix', contexto: { fonte: 'netflix', titulo: 'The Bear', detalhe: 'T2E1' } }),
@@ -320,8 +300,6 @@ test('filtros escondendo tudo mostram PAI-03, e Limpar filtros traz a lista de v
   await expect(cartoes(page)).toHaveText([/long shot/]);
 });
 
-// ─── Estados da lista ────────────────────────────────────────────────────────
-
 test('primeiro uso: PAI-02 com o atalho de legenda padrão (Alt+S) e Minerar frases', async ({ page, extensao }) => {
   await abrirFrases(page, extensao);
 
@@ -403,8 +381,6 @@ test('se a nuvem falha ao carregar, a lista mostra as frases deste computador', 
   await expect(lista(page)).not.toHaveAttribute('aria-busy', 'true');
 });
 
-// ─── Paginação ───────────────────────────────────────────────────────────────
-
 test('10 por página, com “1–10 de 24” e ‹ › para andar', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(24) });
   await abrirFrases(page, extensao);
@@ -438,8 +414,6 @@ test('os números da paginação saem em PT-BR: “1–10 de 1.284” e “1 de 
   await expect(paginas(page)).toContainText('1 de 129');
 });
 
-// ─── Seleção sobre os cartões ────────────────────────────────────────────────
-//
 // A barra contextual, o Exportar .txt, o Apagar com confirmação e as ações do
 // cartão são do #30: `painel-frases-selecao.spec.js`.
 
@@ -487,8 +461,6 @@ test('sem frases, a linha “Selecionar página” não aparece', async ({ page,
   await expect(lista(page).locator('.veio-vazio')).toBeVisible();
   await expect(page.getByRole('checkbox', { name: 'Selecionar página' })).toBeHidden();
 });
-
-// ─── Teclado, leitor de tela e movimento ─────────────────────────────────────
 
 test('os controles da lista têm nome, e o foco do teclado aparece', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: PARA_FILTRAR });

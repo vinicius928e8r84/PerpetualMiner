@@ -46,8 +46,6 @@
   };
   let passos = null;        // o componente dos passos (painel-conexao-passos.js)
 
-  // ─── Montagem ──────────────────────────────────────────────────────────────
-
   /**
    * Monta o card e espera `ConexaoAnki.pronta` antes de acompanhar a situação,
    * para conhecer o fato “já respondeu ligada neste computador”. Uma resposta
@@ -71,8 +69,6 @@
       return ConexaoAnki.acompanhar(aoMudarAConexao);
     });
   }
-
-  // ─── A Conexão ─────────────────────────────────────────────────────────────
 
   /** O card está no lugar das abas (inclusive no passo 4 logo depois de ligar, e no momento Pronto). */
   function cobreAsAbas({ situacao, respondeu } = estado.visto) {
@@ -121,8 +117,6 @@
     }, MOMENTO_PRONTO_MS);
   }
 
-  // ─── A conferência de 15 s do ConexaoAnki ───────────────────────────────────
-
   function desenharConferencia() {
     if (porId('anki-primeira-vez').hidden) return;
     const agora = estado.conferindo || ConexaoAnki.situacao() === CONEXAO.CONECTANDO;
@@ -131,8 +125,6 @@
       ? textoDaVoz('ONB-16.conferindoAgora')
       : textoDaVoz('ONB-16.conferindo', { segundos });
   }
-
-  // ─── O card ────────────────────────────────────────────────────────────────
 
   function desenhar() {
     const cobre = cobreAsAbas();

@@ -43,10 +43,6 @@
     '[tabindex]:not([tabindex="-1"])',
   ].join(',');
 
-  /* ── Ícones ───────────────────────────────────────────────────────────────
-     Traço de 2 px num grid de 24, cantos redondos. São desenhos fixos, então
-     ficam aqui e não num arquivo por ícone. */
-
   const DESENHOS = {
     busca: ['<circle cx="11" cy="11" r="7"/>', '<path d="M20 20l-4-4"/>'],
     fechar: ['<path d="M6 6l12 12M18 6L6 18"/>'],
@@ -132,9 +128,6 @@
     svg.innerHTML = desenho.join('');
     return svg;
   }
-
-  /* ── Modal ────────────────────────────────────────────────────────────────
-     Confirmação destrutiva e fim de envio. Nunca o confirm() do navegador. */
 
   /**
    * Abre o modal que está dentro de `scrim` e devolve como fechá-lo.
@@ -316,10 +309,6 @@
     no.focus();
   }
 
-  /* ── Toast ────────────────────────────────────────────────────────────────
-     Só sucesso curto, sem ação obrigatória. Erro que pede ação é o aviso
-     persistente. */
-
   /**
    * Quanto tempo o toast fica na tela: nunca menos que o mínimo, e mais
    * quanto maior o texto, porque a pessoa precisa terminar de ler.
@@ -371,11 +360,6 @@
     dentroDe.append(regiao);
     return regiao;
   }
-
-  /* ── Aviso persistente ────────────────────────────────────────────────────
-     Todo erro que pede ação. Fica até ser resolvido ou fechado, e a causa
-     técnica vai para um Detalhes recolhido e copiável. O tom `info` é o aviso
-     que só informa (uma leitura cancelada): neutro, sem alarme. */
 
   /**
    * Monta o aviso e devolve o elemento, para a tela pô-lo no lugar do problema.
@@ -480,9 +464,6 @@
     recolhido.append(resumo, texto);
     return recolhido;
   }
-
-  /* ── Frase ────────────────────────────────────────────────────────────────
-     A Palavra que o cartão ensina aparece grifada dentro da frase. */
 
   /**
    * Escreve a frase em `no`, com a Palavra grifada.
@@ -601,9 +582,6 @@
     chip.append(rotulo, documento.createTextNode(palavra));
     return chip;
   }
-
-  /* ── Checkbox ─────────────────────────────────────────────────────────────
-     O cabeçalho de uma lista com parte dela marcada. */
 
   /**
    * Põe o checkbox no estado que a seleção pede: marcado, vazio ou misto.

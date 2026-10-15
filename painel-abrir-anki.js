@@ -1,25 +1,5 @@
 'use strict';
 
-// O card Conexão com o Anki de Configurações: o interruptor “Abrir o Anki com o
-// computador” (história 101, #106). Vem desligado. Ligado, a Conexão escreve o
-// item de login (um LaunchAgent no Mac, um atalho na pasta Inicializar no
-// Windows); desligado, ela o apaga. O item mora na Conexão, não na extensão:
-// por isso o interruptor mostra o que a Conexão diz (`POST
-// /abrir-com-o-computador/estado`) e só muda depois da resposta dela (`POST
-// /abrir-com-o-computador`, `{ ligado }`). Nada é gravado no storage.
-//
-// A tela só diz o que a Conexão confirmou (C8): sem a Conexão, com uma que não
-// tem a rota (o bridge de hoje), com uma leitura que falha ou com uma resposta que
-// não traz um `ligado` verdadeiro ou falso, o interruptor fica indisponível e a nota
-// diz por quê, nunca “desligado”. Um pedido que a Conexão recusa deixa o item como
-// estava e mostra o aviso persistente (CFG-39), com a causa em Detalhes. Um pedido
-// sem resposta (a conexão caiu, passou o prazo) é incerto: o item pode ter mudado,
-// então o aviso não afirma nada (CFG-39.incerta), a tela confere por `/estado` e o
-// aviso some, ou passa a dizer o que ficou, quando a leitura confirma.
-//
-// O Anki nunca abre sozinho por aqui: esta tela só escreve ou apaga o item. Toda
-// cópia vem do catálogo da Voz.
-
 (function (raiz) {
   const { textoDaVoz, Veio, ConexaoAnki, Shell } = raiz;
   const { SITUACAO } = ConexaoAnki;
@@ -53,8 +33,6 @@
     // O item pode mudar fora daqui (a pessoa o tira dos Itens de Início): ao entrar na área, lê de novo.
     Shell.aoEntrarNaArea('configuracoes', () => { if (estado.situacao === SITUACAO.LIGADA) ler(); });
   }
-
-  // ─── A Conexão ─────────────────────────────────────────────────────────────
 
   /** Envia o `pedido` (de `PedidoAoAnki`); devolve o `ligado` da resposta, ou levanta o erro (com o `codigo` e o `status`, se a Conexão respondeu). */
   async function pedir(pedido) {
@@ -122,8 +100,6 @@
     if (erro) await ler();
     partes.interruptor.focus();
   }
-
-  // ─── Card ──────────────────────────────────────────────────────────────────
 
   function montar() {
     const nome = elemento('b', 'cfg-nome', textoDaVoz('CFG-36.rotulo'));

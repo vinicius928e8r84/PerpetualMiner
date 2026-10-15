@@ -1,21 +1,5 @@
 'use strict';
 
-// Passo 3 do redesign: o Envio ao Anki com o resumo que abre em qualquer área (#32).
-//
-// Enviar ao Anki abre o modal na hora, com um cartão por Envio (um por idioma):
-// a etapa com nome de gente, a barra, “atualizado há …” e Detalhes; Continuar
-// envio quando fica em parte; ENV-03 inline com Tentar de novo quando não
-// começa. O resumo ENV-10 abre sozinho em qualquer área quando o envio termina
-// (esperando outro modal fechar). Recarregar o painel não perde os envios
-// acompanhados. Com a Conexão desligada, Enviar ao Anki fica indisponível.
-//
-// Fecha cinco bugs de #9: as duplicatas contavam como enviadas, o duplo clique
-// duplicava os envios, o erro de rede no POST não dizia nada (e deixava um
-// envio órfão), recarregar perdia a pergunta do fim, e o fim limpava a seleção.
-//
-// A Conexão com o Anki é falsificada na fronteira HTTP (e2e/fakes/anki.js); os
-// testes afirmam o que a pessoa vê e o que fica gravado.
-
 const { test, expect } = require('../fixtures');
 
 const AGORA = new Date('2026-09-18T12:00:00');
@@ -63,8 +47,6 @@ async function enviosCriados(fakes, n) {
 test.beforeEach(({ fakes }) => {
   fakes.anki.usarRelogio(() => AGORA);
 });
-
-// ─── Progresso ───────────────────────────────────────────────────────────────
 
 test('Enviar ao Anki abre o progresso na hora, com um cartão por idioma, e sem toast', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
@@ -203,8 +185,6 @@ test('um Envio parado porque o Windows não deixou fechar o Anki diz o que fazer
   await expect(cartaoIngles).not.toContainText('O Windows não deixou fechar o Anki');
 });
 
-// ─── Não começou (ENV-03) ───────────────────────────────────────────
-
 test('bug #9: o POST do envio caindo na rede mostra o erro com Tentar de novo, e EN ok + RU falho mostra cada Envio', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
   fakes.anki.recusarEnvios('ru', { rede: true });
@@ -321,8 +301,6 @@ test('enviar de novo as frases de um Envio que não começou não cria um Envio 
   expect(fakes.anki.requisicoes.filter(r => r.metodo === 'POST' && r.caminho === '/jobs')).toHaveLength(2);
 });
 
-// ─── Duplo clique ────────────────────────────────────────────────────────────
-
 test('uma frase em cirílico gravada sem idioma vai no Envio em russo, como a lista a mostra', async ({ page, extensao, fakes }) => {
   const semIdioma = { ...RUSSA, idioma: undefined };
   await extensao.gravarStorage({ frases: [SACK, semIdioma] });
@@ -363,8 +341,6 @@ test('enviar de novo as mesmas frases enquanto o Envio anda só reabre o progres
   await page.waitForTimeout(500);
   expect(fakes.anki.envios).toHaveLength(1);
 });
-
-// ─── Resumo (ENV-10 · ENV-11 · ENV-12) ───────────────────────────────────────
 
 test('bug #9: as duplicatas do Anki aparecem como “já estavam no Anki”, não como enviadas', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: INGLESAS });
@@ -592,8 +568,6 @@ test('o resumo espera o outro modal aberto fechar', async ({ page, extensao, fak
   await expect(resumo(page)).toBeVisible();
 });
 
-// ─── Em qualquer área, e depois de recarregar ────────────────────────────────
-
 test('bug #9: recarregar com um Envio em andamento não o perde, e o resumo abre em Configurações', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
   await abrirPainel(page, extensao);
@@ -650,8 +624,6 @@ test('o resumo abre na área da Conexão com o Anki também', async ({ page, ext
   await expect(resumo(page)).toBeVisible({ timeout: 10_000 });
 });
 
-// ─── Conexão desligada ───────────────────────────────────────────────────────
-
 test('com a Conexão desligada, Enviar ao Anki fica indisponível e o tooltip diz por quê', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: INGLESAS });
   fakes.anki.desligar();
@@ -688,8 +660,6 @@ test('com a Conexão desligada, Enviar ao Anki fica indisponível e o tooltip di
   await expect(botao).not.toHaveAttribute('aria-disabled', 'true');
   await expect(page.getByRole('tooltip')).toHaveCount(0);
 });
-
-// ─── Teclado, leitor de tela e movimento ─────────────────────────────────────
 
 test('os modais do envio têm nome, foco dentro e foco visível; Esc fecha o progresso', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });

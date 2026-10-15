@@ -1,22 +1,5 @@
 'use strict';
 
-// Passo 3 do redesign: Minerar frases (Colar e Arquivo .txt) e a ida para a Foto (#31).
-//
-// O cabeçalho de Frases ganha [Minerar frases ▾] com Colar · Arquivo .txt ·
-// Foto. Colar e Arquivo .txt abrem um só modal com abas, já na aba certa:
-// contagem ao vivo, “Minerar N frases”, o progresso de verdade (“Minerando 3 de
-// 12…”) e os fins ADD: o toast, o aviso persistente ADD-06 quando a nuvem falha
-// e ADD-07/08/09 no próprio modal. Foto abre Minerar de uma foto numa aba nova.
-//
-// Fecha três bugs de #9:
-//   - Exportar → Importar .txt perdia as Palavras e cortava os textos com “ : ”;
-//   - o overlay de importação nunca pintava, e o progresso da Adição em Massa
-//     era falso (chegava ao fim antes de gravar qualquer frase);
-//   - o duplo clique em “Adicionar frases” gravava as frases duas vezes.
-//
-// Os testes afirmam o que a pessoa vê e o que fica gravado, nunca funções
-// internas.
-
 const { test, expect } = require('../fixtures');
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 
@@ -67,8 +50,6 @@ async function escolherArquivo(page, conteudo, nome = 'frases.txt') {
   ]);
   await seletor.setFiles({ name: nome, mimeType: 'text/plain', buffer: Buffer.isBuffer(conteudo) ? conteudo : Buffer.from(conteudo, 'utf8') });
 }
-
-// ─── O menu Minerar frases (ADD-01 · ADD-11) ─────────────────────────────────
 
 test('o cabeçalho traz [Minerar frases ▾], que abre o menu Colar · Arquivo .txt · Foto com uma linha de explicação', async ({ page, extensao }) => {
   await abrirFrases(page, extensao);
@@ -131,8 +112,6 @@ test('Foto abre Minerar de uma foto numa aba nova', async ({ page, context, exte
   await expect(aba).toHaveURL(extensao.url('bookreader.html'));
   await expect(menu(page)).toBeHidden();
 });
-
-// ─── O modal: Colar (ADD-02 · ADD-03 · ADD-04 · ADD-05) ──────────────────────
 
 test('Colar abre o modal na aba Colar, com o campo focado, a contagem ao vivo e “Minerar N frases”', async ({ page, extensao }) => {
   await abrirFrases(page, extensao);
@@ -304,8 +283,6 @@ test('Cancelar e Esc fecham o modal sem minerar nada', async ({ page, extensao }
   expect(await extensao.frases()).toEqual([]);
 });
 
-// ─── A nuvem falhou (ADD-06) ─────────────────────────────────────────────────
-
 test('com a conta, as frases coladas sobem para a nuvem', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-minerar' });
   await abrirFrases(page, extensao);
@@ -352,8 +329,6 @@ test('a nuvem falhou: fica o aviso persistente ADD-06 com Tentar de novo, sem De
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
   expect((await extensao.lerStorage({ pm_pending_sync: [] })).pm_pending_sync).toEqual([]);
 });
-
-// ─── O modal: Arquivo .txt (ADD-07 · ADD-08 · ADD-09 · ADD-10) ───────────────
 
 test('Arquivo .txt abre o modal na aba certa, com a área de escolher o arquivo', async ({ page, extensao }) => {
   await abrirFrases(page, extensao);
@@ -472,8 +447,6 @@ test('nada novo só com linhas ilegíveis: ADD-09 não fala de zero repetidas', 
 
   await expect(modal(page).locator('.minerar-resultado')).toHaveText('Nenhuma frase nova: 1 linha não pôde ser lida.');
 });
-
-// ─── Exportar → Importar devolve as frases intactas (bug de #9) ──────────────
 
 // `keywords` guarda a Palavra por posição na frase (palavra@índice do token).
 const PARA_EXPORTAR = [
@@ -595,8 +568,6 @@ test('um .txt exportado por uma versão antiga, com Palavra e com “ : ” no t
   expect(porTexto.has('Note : this matters a lot.')).toBe(true);
   expect(porTexto.get('Note : this matters a lot.').keywords || []).toEqual([]);
 });
-
-// ─── Primeiro uso e movimento reduzido ───────────────────────────────────────
 
 test('o Minerar frases do primeiro uso (PAI-02) abre o modal em Colar', async ({ page, extensao }) => {
   await abrirFrases(page, extensao);

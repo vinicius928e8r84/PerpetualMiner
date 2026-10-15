@@ -1,17 +1,5 @@
 'use strict';
 
-// Passo 2 do redesign: o card Atalhos de Configurações (#27,
-// docs/design/painel/configuracoes/, item 7 da lista fechada).
-//
-// A pessoa grava “Minerar legenda” (padrão Alt+S) e “Minerar seleção” (padrão
-// sem atalho) na própria linha, com tecla e modificadores ou com um botão extra
-// do mouse. Um atalho repetido é recusado e a gravação continua; “Restaurar
-// atalhos padrão” só aparece quando algo difere do padrão e aplica na hora. O
-// content script obedece o atalho de legenda gravado, que antes era o Alt+S fixo.
-//
-// Os testes afirmam o que a pessoa vê, o que fica gravado e o que a extensão
-// faz na página (minerar ou não), nunca funções internas.
-
 const { test, expect } = require('../fixtures');
 
 const LEGENDA = 'The quiet harbor woke before the gulls did.';
@@ -48,8 +36,6 @@ async function apertarBotaoDoMouse(page, botao, { alt = false } = {}) {
   await cdp.detach();
 }
 
-// ─── O card ──────────────────────────────────────────────────────────────────
-
 test('aberto, o card mostra a descrição e as duas linhas com o padrão: Alt+S e “Sem atalho” tracejado', async ({ page, extensao }) => {
   await abrirAtalhos(page, extensao);
 
@@ -73,8 +59,6 @@ test('um atalho gravado em inglês aparece em PT-BR na linha', async ({ page, ex
 
   await expect(tecla(page, 'Minerar seleção')).toHaveText('Alt+Botão voltar');
 });
-
-// ─── Gravar ──────────────────────────────────────────────────────────────────
 
 test('gravar Ctrl+Shift+K para Minerar legenda: no player, Ctrl+Shift+K minera e Alt+S não', async ({ page, context, paginas, extensao }) => {
   // O player já está aberto: o content script segue o atalho novo sem recarregar.
@@ -221,8 +205,6 @@ test('sem atalho de legenda gravado, Alt+S não minera no player', async ({ page
   expect(await extensao.frases()).toEqual([]);
 });
 
-// ─── Atalho repetido ─────────────────────────────────────────────────────────
-
 test('um atalho repetido é recusado com aviso, e nada muda até sair uma combinação livre', async ({ page, extensao }) => {
   await abrirAtalhos(page, extensao);
   await gravar(page, 'Minerar seleção').click();
@@ -258,8 +240,6 @@ test('o repetido vale também para o botão do mouse, pelo nome do outro atalho'
   await expect(tecla(page, 'Minerar legenda')).toHaveText('Pressione as teclas ou um botão extra do mouse…');
   expect((await atalhosGravados(extensao)).pm_atalho_legenda).toBeUndefined();
 });
-
-// ─── Restaurar atalhos padrão ────────────────────────────────────────────────
 
 test('Restaurar atalhos padrão só aparece fora do padrão e grava {legenda: Alt+S, seleção: nenhum} na hora', async ({ page, extensao }) => {
   await extensao.gravarStorage({
@@ -298,8 +278,6 @@ test('Restaurar aparece assim que um atalho deixa o padrão', async ({ page, ext
 
   await expect(restaurar(page)).toBeVisible();
 });
-
-// ─── Teclado, leitor de tela e movimento ─────────────────────────────────────
 
 test('pelo teclado: Tab chega ao Gravar atalho, Enter grava e o foco aparece', async ({ page, extensao }) => {
   await abrirAtalhos(page, extensao);
@@ -360,8 +338,6 @@ test('sem movimento reduzido, a pílula de gravação pulsa', async ({ page, ext
   const repeticoes = await tecla(page, 'Minerar legenda').evaluate(el => getComputedStyle(el).animationIterationCount);
   expect(repeticoes).toBe('infinite');
 });
-
-// ─── O atalho no botão do mouse, na página ───────────────────────────────────
 
 test('com o botão voltar gravado para a legenda, minerar não leva a página de volta', async ({ page, paginas, extensao }) => {
   await extensao.gravarStorage({

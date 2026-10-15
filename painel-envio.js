@@ -1,25 +1,5 @@
 'use strict';
 
-// O Envio ao Anki no painel (docs/design/painel/frases/, ENV-03…15).
-//
-// Enviar ao Anki abre o modal de progresso na hora, com um cartão por Envio (um
-// por idioma). Os Envios acompanhados ficam gravados em `pm_envio`, então
-// recarregar o painel não os perde. Quando nenhum está andando, o resumo
-// (ENV-10) abre sozinho, em qualquer área, depois que outro modal aberto fechar.
-//
-// `painel.js` entrega o que só ele sabe fazer com as frases, por `Envio.usar`,
-// depois da primeira leitura do histórico:
-//   selecionadas()            as frases que a barra manda enviar;
-//   frasesPorId(ids)          as frases do histórico, para (re)criar um Envio;
-//   linha(frase)              a linha de mineração que a Conexão recebe;
-//   apagar(ids)               apaga pelo caminho de sempre (tombstone, nuvem), sem toast;
-//   marcarComoEnviadas(ids)   grava Enviada ao Anki, sem toast e sem mexer na seleção.
-//
-// E devolve `Envio.apagarTudo()`, que o Apagar tudo chama (CFG-17): as Frases saem do `pm_envio` e da Conexão (#248).
-//
-// Os Ajustes de envio (baralho, imagens, sotaque) vêm de `AjustesDeEnvio`, lidos
-// na hora de criar cada Envio.
-
 (function (raiz) {
   const CHAVE_GRAVADA = 'pm_envio';
   /** De quanto em quanto tempo a Conexão é perguntada sobre os Envios. */
@@ -64,8 +44,6 @@
   let respostaDoResumo = null;      // 'apagar' | { tentar: lang } | null (Manter)
   const assinaturas = new Map();    // id do Envio → o que o cartão mostra agora
 
-  // ─── Começo ────────────────────────────────────────────────────────────────
-
   async function usar(operacoes) {
     if (doPainel) return;
     doPainel = operacoes;
@@ -100,8 +78,6 @@
       acompanhar();
     }
   }
-
-  // ─── Enviar ao Anki ────────────────────────────────────────────────────────
 
   async function enviar() {
     if (conexaoDesligada || criando || !doPainel) return;
@@ -183,8 +159,6 @@
     envio.jobId = dados.jobId;
     jobs.set(envio.jobId, { jobId: envio.jobId, status: 'queued', state: { status: 'queued', stage: 'queued' } });
   }
-
-  // ─── Acompanhar ────────────────────────────────────────────────────────────
 
   function acompanhar() {
     if (relogio) return;
@@ -289,8 +263,6 @@
     if (apagarFrases) return new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios: [], apagarFrases: true } }, r));
     return new Promise(r => chrome.storage.local.remove(CHAVE_GRAVADA, r));
   }
-
-  // ─── Modal de progresso (ENV-06 · 07 · 08 · 09 · 13 · 15) ────────────────────
 
   function abrirProgresso() {
     if (resumo) return;
@@ -543,8 +515,6 @@
     }
   }
 
-  // ─── Resumo (ENV-10 · 11 · 12) ─────────────────────────────────────────────
-
   /** O resumo abre quando nada anda e algum Envio chegou a começar. */
   function prontoParaResumo() {
     if (!remessa || criando || resumo) return false;
@@ -695,8 +665,6 @@
       }
     });
   }
-
-  // ─── Conexão desligada ─────────────────────────────────────────────────────
 
   /** Com a Conexão desligada, Enviar ao Anki fica `aria-disabled` e o tooltip diz por quê, só no hover e no foco. */
   function mostrarConexao(situacao) {

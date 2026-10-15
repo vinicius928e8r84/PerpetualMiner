@@ -60,9 +60,6 @@ def _session(**overrides: Any) -> AnkiSession:
     return AnkiSession(config)
 
 
-# ---------------------------------------------------------------------------
-# AnkiSession — behavior tests (the seam is now a real, callable interface)
-# ---------------------------------------------------------------------------
 class AnkiSessionBehaviorTests(unittest.TestCase):
     def test_repair_blocked_error_is_reexported_from_server(self) -> None:
         # Routes/worker in server.py catch the exception imported from anki_session.
@@ -370,10 +367,6 @@ class AnkiSessionBehaviorTests(unittest.TestCase):
             self.assertEqual(healed["max_point_version"], 2147483647)
 
 
-# ---------------------------------------------------------------------------
-# AnkiSession — Windows-only internals with no behavioral surface here.
-# These still assert the invocation shape, now against anki_session.py.
-# ---------------------------------------------------------------------------
 class AnkiSessionInternalsSourceTests(unittest.TestCase):
     def test_shell_execute_uses_shellexecutew_open_verb(self) -> None:
         shell_fn = _anki_session_function_source("_shell_execute_anki_desktop")
@@ -432,9 +425,6 @@ class AnkiSessionInternalsSourceTests(unittest.TestCase):
         self.assertIn('meta["disabled"] = False', fn)
 
 
-# ---------------------------------------------------------------------------
-# Structural wiring that stays in server.py (routes / worker / config / panel)
-# ---------------------------------------------------------------------------
 class BridgeServerTests(unittest.TestCase):
     def test_config_uses_windows_shortcut_anki_launcher(self) -> None:
         config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))

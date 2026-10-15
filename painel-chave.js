@@ -1,22 +1,5 @@
 'use strict';
 
-// O card Chave do Gemini de Configurações (docs/design/painel/configuracoes/).
-//
-// A chave é a mesma de sempre: `geminiApiKey` no chrome.storage.local, que o
-// Minerar de uma foto lê. Salva, ela aparece só mascarada (4 primeiros + 4
-// últimos, como no resumo da linha fechada), com Trocar chave; trocar abre o
-// campo vazio com Salvar chave e Cancelar, para a chave antiga nunca ir para a
-// tela. Vazia, o campo fica aberto. Salvar vazio é recusado no próprio campo
-// (CFG-16); salvar — pelo botão ou com Enter — mostra o toast e volta ao resumo.
-// A chave não é validada: não há chamada de teste.
-//
-// #configuracoes/chave com a chave vazia põe o foco no campo: é para lá que o
-// “Abrir Configurações” do Minerar de uma foto leva.
-//
-// O mesmo campo mora no passo 6 da Boas-vindas: `ChaveDoGemini.montar(corpo,
-// { prefixo })` desenha o card em outro lugar, com a mesma chave. Cada lugar
-// tem o seu Trocar chave aberto ou fechado. Toda cópia vem do catálogo da Voz.
-
 (function (raiz) {
   const { textoDaVoz } = raiz;
   const { mostrarToastDeSucesso } = raiz.Veio;
@@ -69,8 +52,6 @@
   }
 
   const idDe = (lugar, parte) => `${lugar.prefixo}-chave-${parte}`;
-
-  // ─── Desenho ───────────────────────────────────────────────────────────────
 
   function desenhar(lugar) {
     if (estado.chave && !lugar.trocando) lugar.corpo.replaceChildren(chaveSalva(lugar));

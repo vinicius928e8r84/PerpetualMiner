@@ -1,19 +1,5 @@
 'use strict';
 
-// Passo 2 do redesign: os cards Chave do Gemini e Zona de perigo de
-// Configurações (#28, docs/design/painel/configuracoes/).
-//
-// Chave do Gemini: salva, ela aparece só mascarada (4 primeiros + 4 últimos),
-// com Trocar chave; vazia, o campo fica aberto e salvar vazio é recusado. A
-// chave é a mesma de sempre: `geminiApiKey` no chrome.storage.local, que o
-// Minerar de uma foto lê.
-//
-// Zona de perigo: o botão de contorno só abre o modal Veio; quem apaga é o botão
-// preenchido dentro dele. O alcance muda com a conta: com conta, some também da
-// nuvem. Nenhum confirm() do navegador.
-//
-// Os testes afirmam o que a pessoa vê e o que fica gravado, nunca funções internas.
-
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../fixtures');
@@ -47,8 +33,6 @@ const campoDaChave = page => card(page, 'chave').getByRole('textbox', { name: 'C
 const toast = page => page.locator('.veio-toast');
 const toastCom = (page, texto) => page.locator('.veio-toast', { hasText: texto });
 const modal = page => page.getByRole('dialog');
-
-// ─── Chave do Gemini ─────────────────────────────────────────────────────────
 
 test('chave salva: “Chave salva”, a chave mascarada e Trocar chave; Cancelar volta sem mudar nada', async ({ page, extensao }) => {
   await extensao.gravarStorage({ geminiApiKey: CHAVE_DO_GEMINI });
@@ -153,8 +137,6 @@ test('a chave gravada em outra página aparece no card aberto sem recarregar', a
   await expect(card(page, 'chave').getByText('Chave salva', { exact: true })).toBeVisible();
   await expect(campoDaChave(page)).toHaveCount(0);
 });
-
-// ─── Zona de perigo ──────────────────────────────────────────────────────────
 
 test('sem conta: o alcance é este computador; Cancelar tem o foco, Esc fecha e nada é apagado', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
@@ -383,8 +365,6 @@ test('com conta e a nuvem fora do ar, o que outro computador gravou antes també
     }, null, 2) + '\n');
   }
 });
-
-// ─── Teclado, leitor de tela e movimento ─────────────────────────────────────
 
 test('com movimento reduzido, o flash dos cards novos e o ponto da chave ficam parados', async ({ page, extensao }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });

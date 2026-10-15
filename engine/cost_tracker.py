@@ -13,8 +13,6 @@ from pathlib import Path
 from typing import Optional
 
 
-# ── pricing (USD per 1 000 tokens / per image) ────────────────────────────────
-
 PRICES = {
     # Assistant API uses gpt-4o under the hood by default
     "gpt-4o": {"input": 0.0025, "output": 0.01},
@@ -31,8 +29,6 @@ PRICES = {
 def _log_path(log_dir: str | Path) -> Path:
     return Path(log_dir) / "costs.jsonl"
 
-
-# ── write ─────────────────────────────────────────────────────────────────────
 
 def record_tokens(
     log_dir: str | Path,
@@ -114,8 +110,6 @@ def _append(log_dir: str | Path, record: dict) -> None:
     with p.open("a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
-
-# ── read ──────────────────────────────────────────────────────────────────────
 
 def _load(log_dir: str | Path) -> list[dict]:
     p = _log_path(log_dir)

@@ -56,8 +56,6 @@ async function abaAtiva(extensao) {
 const abasDoPainel = (context, extensao) =>
   context.pages().filter(p => p.url().startsWith(extensao.url('painel.html')));
 
-// ─── Abrir painel ─────────────────────────────────────────────────────────────
-
 test('com o painel já aberto, Abrir painel foca a aba existente, sem abrir outra nem mudar o endereço', async ({ page, context, extensao }) => {
   const painel = await context.newPage();
   await painel.goto(extensao.url('painel.html#configuracoes'));
@@ -95,8 +93,6 @@ test('Ver todas leva a aba do painel já aberta para Frases', async ({ page, con
   await expect(painel.locator('#frases-lista .veio-frase').first()).toBeVisible();
   expect(abasDoPainel(context, extensao)).toHaveLength(1);
 });
-
-// ─── Mineração rápida ─────────────────────────────────────────────────────────
 
 test('mineração rápida: Minerar só com texto; Enter minera, o campo limpa e a frase entra no topo, sem toast', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: SETE_FRASES });
@@ -173,8 +169,6 @@ test('mineração rápida com o service worker falhando: POP-06 com o alerta, se
   await expect(campoRapido(page)).not.toHaveAttribute('aria-invalid', 'true');
   await expect(ultimas(page).first()).toContainText('Break a leg');
 });
-
-// ─── Últimas mineradas ────────────────────────────────────────────────────────
 
 test('as 5 últimas, só leitura: a Palavra grifada e o Contexto; sem checkbox, Deletar, ↻ nem Tudo', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: SETE_FRASES });
@@ -261,8 +255,6 @@ test('vazio sem atalho gravado: “Defina um atalho…” e Definir atalho, que 
   await expect(painel).toHaveURL(extensao.url('painel.html#configuracoes/atalhos'));
 });
 
-// ─── Rodapé ───────────────────────────────────────────────────────────────────
-
 test('o rodapé mostra o atalho de legenda gravado, e acompanha a mudança feita em Configurações', async ({ page, extensao }) => {
   await page.goto(extensao.url('popup.html'));
   const rodape = page.getByRole('contentinfo');
@@ -299,8 +291,6 @@ test('sem atalho gravado, o rodapé diz “Sem atalho” e Definir atalho abre C
   await rodape.getByRole('button', { name: 'Definir atalho' }).click();
   await expect(await nova).toHaveURL(extensao.url('painel.html#configuracoes/atalhos'));
 });
-
-// ─── Mineração automática ─────────────────────────────────────────────────────
 
 test('os azulejos Inglês | Russo mostram o dia, e o toggle e o limite gravam', async ({ page, extensao }) => {
   await semearMineracaoAutomatica(extensao, {
@@ -519,8 +509,6 @@ test('no campo de limite, clicar seleciona o número: digitar troca o limite int
   await expect.poll(async () => (await extensao.lerStorage('pm_auto_miner_settings')).pm_auto_miner_settings.en.dailyLimit).toBe(35);
 });
 
-// ─── Com o Anki fechado: a idade do vocabulário (POP-17) e o esperando (BRG-37) ──
-
 /** Um momento de ontem às 14:02, a hora local: o selo diz “Vocabulário de ontem, 14:02”. */
 function ontemAs1402() {
   const quando = new Date();
@@ -679,8 +667,6 @@ test('uma leitura de outro Baralho não vale: o azulejo espera o Anki, e a leitu
   await expect(selo(page)).toHaveText('Vocabulário de ontem, 14:02');
   await expect(esperando(page, 'en')).toBeHidden();
 });
-
-// ─── Acessibilidade e movimento ───────────────────────────────────────────────
 
 test('com movimento reduzido, a frase que chega não pisca', async ({ page, extensao }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });

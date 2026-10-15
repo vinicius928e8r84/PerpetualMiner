@@ -1,20 +1,5 @@
 'use strict';
 
-// Passo 8 do redesign: a Boas-vindas (#42, docs/design/painel/boas-vindas/,
-// variante C; item 8 da lista fechada).
-//
-// Instalar a extensão abre `painel.html#boas-vindas`: uma página sem sidebar,
-// com a lista dos 8 itens à esquerda e um passo por vez no card. Os passos se
-// marcam pelo estado real (a frase no histórico, o atalho gravado, a conta, a
-// Conexão com o Anki, a mineração automática, a chave); “Agora não” fica gravado
-// neste computador. O passo 1 tem a mineração rápida do popup, o 2 o gravador
-// de Configurações › Atalhos; Tudo pronto resume cada passo e abre o painel.
-//
-// Os testes afirmam o que a pessoa vê e o que fica gravado, nunca funções
-// internas. A exceção é a atualização da extensão, que o Chromium do Playwright
-// não sabe fazer (recarregar uma extensão desempacotada a desliga): o teste
-// chama o ouvinte do `onInstalled` como o Chrome chamaria, com `update`.
-
 const { test, expect } = require('../fixtures');
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 const path = require('path');
@@ -37,8 +22,6 @@ async function abrirBoasVindas(page, extensao, passo = '') {
   await page.goto(extensao.url(`painel.html#boas-vindas${passo && `/${passo}`}`));
   await expect(tituloDoCard(page)).toBeVisible();
 }
-
-// ─── Na instalação ───────────────────────────────────────────────────────────
 
 test.describe('na instalação', () => {
   test.use({ manterAbaDaInstalacao: true });
@@ -65,8 +48,6 @@ test('atualizar a extensão não abre aba nenhuma', async ({ context, extensao }
   const abas = await extensao.serviceWorker.evaluate(() => chrome.tabs.query({}));
   expect(abas.map(a => a.url).filter(url => url.includes('painel.html'))).toEqual([]);
 });
-
-// ─── A abertura ──────────────────────────────────────────────────────────────
 
 test('a abertura lista os 7 passos com “opcional” e leva ao passo 1 com Começar', async ({ page, extensao }) => {
   await abrirBoasVindas(page, extensao);
@@ -114,8 +95,6 @@ test('qualquer item da lista abre o seu passo; o opcional diz “opcional” no 
   await expect(tituloDoCard(page)).toHaveText('Ligar a mineração automática');
   await expect(botaoDoCard(page, 'Agora não')).toBeVisible();
 });
-
-// ─── Passo 1 ─────────────────────────────────────────────────────────────────
 
 test('passo 1: minerar a primeira frase pelo campo grava a frase e o passo fica feito', async ({ page, extensao }) => {
   await abrirBoasVindas(page, extensao, 'minerar');
@@ -224,8 +203,6 @@ test('“Continuar” num passo obrigatório segue sem marcar; o resumo mostra �
   await expect(resumo.filter({ hasText: 'Minerar a primeira frase' })).toContainText('falta');
 });
 
-// ─── Passo 2 ─────────────────────────────────────────────────────────────────
-
 test('passo 2: o gravador é o de Configurações — grava, recusa o repetido e Configurações mostra o mesmo', async ({ page, extensao }) => {
   await abrirBoasVindas(page, extensao, 'atalho');
   const linhaSelecao = card(page).getByRole('group', { name: 'Minerar seleção' });
@@ -262,8 +239,6 @@ test('passo 2: trocar de passo durante a gravação cancela', async ({ page, ext
   expect((await extensao.lerStorage('pm_atalho')).pm_atalho ?? null).toBeNull();
 });
 
-// ─── Passos 3 a 6 e o progresso ──────────────────────────────────────────────
-
 test('os passos 3 a 6 se marcam pelo estado real', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({
     geminiApiKey: 'AIzaSyExemplo1234',
@@ -283,8 +258,6 @@ test('os passos 3 a 6 se marcam pelo estado real', async ({ page, extensao, fake
   await expect(resumo.filter({ hasText: 'mineração automática' })).toContainText('Inglês');
   await expect(resumo.filter({ hasText: 'chave do Gemini' })).toContainText('salva');
 });
-
-// ─── Passo 3: Entrar com Google ──────────────────────────────────────────────
 
 test('passo 3: o Entrar com Google de Configurações; entrar marca o passo e o card mostra a conta', async ({ page, extensao }) => {
   await abrirBoasVindas(page, extensao, 'conta');
@@ -311,8 +284,6 @@ test('passo 3: um login que falha diz CFG-07 no próprio passo', async ({ page, 
   await expect(card(page).getByText('Não deu para entrar com o Google. Tente de novo.')).toBeVisible();
   await expect(itemDaLista(page, 'Entrar com Google')).not.toHaveAccessibleName(/feito/);
 });
-
-// ─── Passo 4: Ligar a Conexão com o Anki ─────────────────────────────────────
 
 const passosDaConexao = page => card(page).getByRole('navigation', { name: 'Como ligar' });
 const baixarDoPasso4 = page => card(page).getByRole('link', { name: 'Baixar a Conexão com o Anki' });
@@ -433,8 +404,6 @@ test('quem já tinha a área Conexão com o Anki aberta sem conexão vê o mesmo
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
-// ─── Passo 5: Configurar a IA dos cartões ────────────────────────────────────
-
 test('passo 5: o card IA dos cartões de Configurações; conferir a chave a guarda e marca o passo', async ({ page, extensao, fakes }) => {
   fakes.anki.ligar();
   await abrirBoasVindas(page, extensao, 'ia');
@@ -475,8 +444,6 @@ test('passo 5: a chave recusada mostra a faixa da entrada e o passo continua fal
   await expect(itemDaLista(page, 'Configurar a IA dos cartões')).not.toHaveAccessibleName(/feito/);
   expect((await extensao.lerStorage('pm_chave_openai'))).toEqual({});
 });
-
-// ─── Passo 6: Ligar a mineração automática ───────────────────────────────────
 
 test('passo 6: os switches EN/RU e o limite por dia gravam o mesmo que o popup', async ({ page, extensao, fakes }) => {
   fakes.anki.ligar();
@@ -534,8 +501,6 @@ test('passo 6: com o disco recusando, POP-16 pede para tentar de novo e o switch
   await extensao.serviceWorker.evaluate(() => { chrome.storage.local.set = globalThis.gravarDeVerdade; });
 });
 
-// ─── Passo 7: Adicionar a chave do Gemini ────────────────────────────────────
-
 test('passo 7: o campo de Configurações › Chave do Gemini; salvar grava a chave e marca o passo', async ({ page, extensao }) => {
   await abrirBoasVindas(page, extensao, 'chave');
   const campo = card(page).getByRole('textbox', { name: 'Chave do Gemini' });
@@ -573,8 +538,6 @@ test('“Agora não” num opcional fica gravado neste computador e aparece no r
   await itemDaLista(page, 'Tudo pronto').click();
   await expect(card(page).getByRole('listitem').filter({ hasText: 'Entrar com Google' })).toContainText('agora não');
 });
-
-// ─── Tudo pronto ─────────────────────────────────────────────────────────────
 
 test('Tudo pronto resume cada passo e Abrir painel leva a Frases', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();

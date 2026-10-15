@@ -73,8 +73,6 @@ test.beforeEach(({ fakes }) => {
   fakes.anki.definirCustos(ENVIOS);
 });
 
-// ─── Estados da conexão ──────────────────────────────────────────────────────
-
 test('conectando: a faixa neutra “Conectando ao Anki…” e o esqueleto, até a Conexão responder', async ({ page, extensao, fakes }) => {
   let responder;
   const respondendo = new Promise(r => { responder = r; });
@@ -164,8 +162,6 @@ test('desligada sem nada gravado: “Custo indisponível”, e o Tentar de novo 
   expect(pedidosDeCustos(fakes)).toHaveLength(0);
 });
 
-// ─── Custos: carregando, erro, vazio ─────────────────────────────────────────
-
 test('carregando: “Somando os custos…” e o esqueleto enquanto a leitura não volta', async ({ page, extensao, fakes }) => {
   let soltar;
   const segurando = new Promise(r => { soltar = r; });
@@ -210,8 +206,6 @@ test('vazio: BRG-22 com “Ver tudo”, que troca o período para Tudo', async (
   const ultimo = pedidosDeCustos(fakes).at(-1);
   expect(ultimo.dados).toEqual({ lang: 'all' });
 });
-
-// ─── Custos: período, azulejos, resumo, envios ───────────────────────────────
 
 test('o período abre em Este mês; Hoje e De/Até pedem as datas certas', async ({ page, extensao, fakes }) => {
   await abrirAnki(page, extensao);
@@ -340,8 +334,6 @@ test('o total do envio bate com a soma das partes, inclusive os outros custos (#
   expect(resto.reduce((a, b) => a + b, 0)).toBeCloseTo(total, 4);
 });
 
-// ─── Dinheiro, chaves do Avançado e diagnóstico ──────────────────────────────
-
 test('dinheiro com 2 casas e “< US$ 0,01”; a chave 4 casas passa tudo a 4 casas, e fica lembrada', async ({ page, extensao }) => {
   await abrirAnki(page, extensao);
   await listaDeEnvios(page).getByRole('option', { name: /Envio em russo/ }).click();
@@ -396,8 +388,6 @@ test('o Avançado mostra escolha e triagem com 4 casas e baixa o diagnóstico de
   expect(download.suggestedFilename()).toBe('diagnostico-job-ru-parte.json');
   await expect(page.locator('.veio-toast')).toHaveCount(0);
 });
-
-// ─── As outras abas, o teclado e o movimento ─────────────────────────────────
 
 test('com 4 casas, um valor abaixo de US$ 0,0001 diz “< US$ 0,0001”, nunca “US$ 0,0000”', async ({ page, extensao, fakes }) => {
   fakes.anki.definirCustos([{
