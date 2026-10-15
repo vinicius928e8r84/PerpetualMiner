@@ -33,6 +33,16 @@ const envio = (page, nome) => progresso(page).getByRole('group', { name: nome })
 const baralho = (page, idioma) => resumo(page).getByRole('group', { name: idioma });
 const toasts = page => page.locator('.veio-toast');
 
+async function pedirConferenciaDaConexao(page) {
+  await page.locator('#shell-tentar-de-novo').evaluate(el => el.click());
+}
+
+async function transicaoCurta(locator) {
+  await expect(locator).toBeAttached();
+  await expect.poll(() => locator.evaluate(el => parseFloat(getComputedStyle(el).transitionDuration)))
+    .toBeLessThanOrEqual(0.01);
+}
+
 async function marcarEEnviar(page, textos) {
   for (const texto of textos) await marcar(page, texto).check();
   await enviarAoAnki(page).click();
@@ -375,7 +385,7 @@ test('Apagar as N enviadas apaga só as que viraram cartão agora, marca as que 
   await expect(toasts(page)).toHaveText('2 frases apagadas');
   await expect.poll(async () => (await extensao.frases()).map(f => f.texto)).toEqual([LATE.texto, RUSSA.texto]);
   const gravadas = await extensao.frases();
-  expect(gravadas.find(f => f.id === LATE.id).status).toBe('exported');
+  expect(gravadas.find(f => f.id === LATE.id).status).toBe('enviadaAoAnki');
   expect(gravadas.find(f => f.id === RUSSA.id).status).toBeUndefined();
   await expect(cartao(page, LATE.texto)).toContainText('Enviada ao Anki');
   // Apagadas pelo caminho de sempre: o tombstone impede que voltem pela nuvem.
@@ -490,7 +500,7 @@ test('Manter marca as enviadas e as que já estavam como Enviada ao Anki, sem to
   await resumo(page).getByRole('button', { name: 'Manter' }).click();
 
   await expect(resumo(page)).toHaveCount(0);
-  await expect.poll(async () => (await extensao.frases()).filter(f => f.status === 'exported').map(f => f.id).sort())
+  await expect.poll(async () => (await extensao.frases()).filter(f => f.status === 'enviadaAoAnki').map(f => f.id).sort())
     .toEqual([SACK.id, LATE.id, RUSSA.id].sort());
   expect((await extensao.frases()).find(f => f.id === ARM.id).status).toBeUndefined();
   await expect(toasts(page)).toHaveCount(0);
@@ -509,7 +519,7 @@ test('fechar o resumo pelo × é o mesmo que Manter', async ({ page, extensao, f
   await expect(resumo(page).getByRole('button', { name: 'Tirar do histórico' })).toBeVisible();
   await resumo(page).getByRole('button', { name: 'Fechar' }).click();
 
-  await expect.poll(async () => (await extensao.frases()).find(f => f.id === SACK.id).status).toBe('exported');
+  await expect.poll(async () => (await extensao.frases()).find(f => f.id === SACK.id).status).toBe('enviadaAoAnki');
   await expect(toasts(page)).toHaveCount(0);
   // O resumo já foi respondido: recarregar não o traz de volta.
   await page.reload();
@@ -586,7 +596,7 @@ test('bug #9: recarregar com um Envio em andamento não o perde, e o resumo abre
   await expect(baralho(page, 'Inglês')).toContainText('+1 cartão');
   await expect(baralho(page, 'Russo')).toContainText('1 já estava lá');
   await resumo(page).getByRole('button', { name: 'Manter' }).click();
-  await expect.poll(async () => (await extensao.frases()).filter(f => f.status === 'exported').length).toBe(2);
+  await expect.poll(async () => (await extensao.frases()).filter(f => f.status === 'enviadaAoAnki').length).toBe(2);
 });
 
 test('na Boas-vindas o resumo espera: ele abre quando a pessoa vai ao painel', async ({ page, extensao, fakes }) => {
@@ -654,9 +664,7 @@ test('com a Conexão desligada, Enviar ao Anki fica indisponível e o tooltip di
 
   // A Conexão volta: o botão volta junto, sem recarregar.
   fakes.anki.ligar();
-  // O “Tentar de novo” da faixa F1 mora na área da Conexão, fora da tela em Frases;
-  // o clique por evaluate faz o shell conferir a Conexão agora, sem esperar 15 s.
-  await page.locator('#shell-tentar-de-novo').evaluate(el => el.click());
+  await pedirConferenciaDaConexao(page);
   await expect(botao).not.toHaveAttribute('aria-disabled', 'true');
   await expect(page.getByRole('tooltip')).toHaveCount(0);
 });
@@ -705,10 +713,5 @@ test('com movimento reduzido, as etapas do envio andam sem animação', async ({
   await enviosCriados(fakes, 1);
 
   const preenchimento = envio(page, 'Envio em inglês · 1 frase').locator('.envio-cartao__etapas > i > b');
-  await expect(preenchimento).toBeAttached();
-  // veio/tokens.css leva toda transição a 1 ms com movimento reduzido. O cartão é
-  // desenhado de novo assim que o Envio ganha o jobId; num elemento que já saiu da
-  // página o estilo calculado vem vazio (NaN), então se espera o valor, não o elemento.
-  await expect.poll(() => preenchimento.evaluate(el => parseFloat(getComputedStyle(el).transitionDuration)))
-    .toBeLessThanOrEqual(0.01);
+  await transicaoCurta(preenchimento);
 });

@@ -56,11 +56,13 @@ function crc32(bytes) {
   return (c ^ 0xffffffff) >>> 0;
 }
 
-// Um cabeçalho do zip: `campos` são [deslocamento, bytes, valor] (2 ou 4 bytes,
-// little-endian) sobre um buffer zerado do tamanho fixo do cabeçalho.
+function campoDoZip(deslocamento, bytes, valor) {
+  return { deslocamento, bytes, valor };
+}
+
 function cabecalho(tamanho, campos) {
   const buffer = Buffer.alloc(tamanho);
-  for (const [deslocamento, bytes, valor] of campos) {
+  for (const { deslocamento, bytes, valor } of campos) {
     if (bytes === 4) buffer.writeUInt32LE(valor, deslocamento);
     else buffer.writeUInt16LE(valor, deslocamento);
   }
@@ -97,15 +99,15 @@ function montarZip(arquivos) {
     const crc = crc32(conteudo);
 
     const local = cabecalho(30, [
-      [0, 4, 0x04034b50], [4, 2, 20], [6, 2, 0x0800], [8, 2, 8], [10, 2, hora], [12, 2, data],
-      [14, 4, crc], [18, 4, comprimido.length], [22, 4, conteudo.length], [26, 2, nome.length],
+      campoDoZip(0, 4, 0x04034b50), campoDoZip(4, 2, 20), campoDoZip(6, 2, 0x0800), campoDoZip(8, 2, 8), campoDoZip(10, 2, hora), campoDoZip(12, 2, data),
+      campoDoZip(14, 4, crc), campoDoZip(18, 4, comprimido.length), campoDoZip(22, 4, conteudo.length), campoDoZip(26, 2, nome.length),
     ]);
     partes.push(local, nome, comprimido);
 
     const central = cabecalho(46, [
-      [0, 4, 0x02014b50], [4, 2, 20], [6, 2, 20], [8, 2, 0x0800], [10, 2, 8], [12, 2, hora], [14, 2, data],
-      [16, 4, crc], [20, 4, comprimido.length], [24, 4, conteudo.length], [28, 2, nome.length],
-      [42, 4, deslocamento],
+      campoDoZip(0, 4, 0x02014b50), campoDoZip(4, 2, 20), campoDoZip(6, 2, 20), campoDoZip(8, 2, 0x0800), campoDoZip(10, 2, 8), campoDoZip(12, 2, hora), campoDoZip(14, 2, data),
+      campoDoZip(16, 4, crc), campoDoZip(20, 4, comprimido.length), campoDoZip(24, 4, conteudo.length), campoDoZip(28, 2, nome.length),
+      campoDoZip(42, 4, deslocamento),
     ]);
     diretorio.push(central, nome);
 
@@ -114,8 +116,8 @@ function montarZip(arquivos) {
 
   const tamanhoDoDiretorio = diretorio.reduce((soma, parte) => soma + parte.length, 0);
   const fim = cabecalho(22, [
-    [0, 4, 0x06054b50], [8, 2, arquivos.length], [10, 2, arquivos.length],
-    [12, 4, tamanhoDoDiretorio], [16, 4, deslocamento],
+    campoDoZip(0, 4, 0x06054b50), campoDoZip(8, 2, arquivos.length), campoDoZip(10, 2, arquivos.length),
+    campoDoZip(12, 4, tamanhoDoDiretorio), campoDoZip(16, 4, deslocamento),
   ]);
   return Buffer.concat([...partes, ...diretorio, fim]);
 }

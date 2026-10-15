@@ -175,7 +175,7 @@ worker's automatic Palavra falls back to the same Baralho padrão. The bridge ke
 
 The Envio is its own module; `painel.js` hands it, once the first read of the history finishes (`Envio.usar`), only
 what it does with phrases: the selection, the mining line, `apagar(ids)` (the usual delete, with
-tombstones, no toast) and `marcarComoEnviadas(ids)` (`status: 'exported'`, no toast, the selection untouched).
+tombstones, no toast) and `marcarComoEnviadas(ids)` (`status: 'enviadaAoAnki'`, no toast, the selection untouched).
 
 **Enviar ao Anki** opens the progress modal at once (ENV-05 is silence), with one card per Envio — one per language:
 “Envio em inglês · 12 frases”, the stage in people's words (ENV-07, from the bridge `stage`), the 7 stages as segments

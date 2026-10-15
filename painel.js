@@ -51,8 +51,7 @@ const FB_SIGNIN_URL     = `https://identitytoolkit.googleapis.com/v1/accounts:si
 const FONTE_MANUAL    = 'manual';
 const FONTE_IMPORTADO = 'importado';
 
-// Enviada ao Anki fica gravada com o nome de antes do glossário (ver foiEnviadaAoAnki).
-const STATUS_ENVIADA_AO_ANKI = 'exported';
+const { STATUS_ENVIADA_AO_ANKI, migrarFrasesEnviadas, fraseFoiEnviadaAoAnki } = Sincronizacao;
 
 let todasFrases        = [];
 let frasesVisiveis     = [];
@@ -349,9 +348,15 @@ async function migrarParaFirestore() {
   await carregarFrasesFirestore();
 }
 
+function aplicarFrasesLocais(frases) {
+  const migradas = migrarFrasesEnviadas(frases);
+  if (migradas.alteradas.length) chrome.storage.local.set({ frases: migradas.frases });
+  return migradas.frases;
+}
+
 function carregarFrasesLocal() {
   chrome.storage.local.get({ frases: [] }, (data) => {
-    todasFrases = data.frases || [];
+    todasFrases = aplicarFrasesLocais(data.frases || []);
     finalizarCarregamento();
   });
 }
@@ -414,7 +419,7 @@ function atualizarTotal() {
 function setupStorageSyncListener() {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local' || !changes.frases) return;
-    const novasLocais = changes.frases.newValue || [];
+    const novasLocais = aplicarFrasesLocais(changes.frases.newValue || []);
     if (!usuarioLogado) {
       todasFrases = novasLocais;
       finalizarCarregamento();
@@ -865,13 +870,8 @@ function montarContexto(f) {
   return linha;
 }
 
-/**
- * Enviada ao Anki: a frase entrou num Envio concluído. O nome gravado é o
- * `status: 'exported'` de antes do glossário; o Exportar .txt grava só o
- * `exportadaTxt` e nunca este.
- */
 function foiEnviadaAoAnki(f) {
-  return f.status === STATUS_ENVIADA_AO_ANKI;
+  return fraseFoiEnviadaAoAnki(f);
 }
 
 // As 4 ações só-ícone do cartão (PAI-30), que aparecem no hover e no foco.
@@ -1240,9 +1240,6 @@ function apagarTudo() {
     if (frasesApagadas && apagouChave) mostrarToastDeSucesso(textoDaVoz('CFG-18'));
   });
 }
-
-// Baixa as selecionadas e as marca Exportada (`exportadaTxt`). Nunca grava o
-// `status: 'exported'` do Envio: exportar não põe a frase no Anki (#9).
 
 function exportarTxt() {
   if (selecionadas.size === 0) return;

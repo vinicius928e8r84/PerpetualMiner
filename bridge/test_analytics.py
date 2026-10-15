@@ -3,18 +3,11 @@
 Monta um jobs_root falso em tmpdir (job.json / state.json / log/costs.jsonl +
 queue.json) e exercita JobAnalytics: summary totals, filtros de data from/to,
 buckets de custo e imagem, classify_image_source e as linhas de jobs().
-
-Alem dos asserts de comportamento, ha um teste DIFERENCIAL contra o server.py
-antigo (backup .bak desta sessao): para muitos inputs, exige que os metodos
-antigos (_analytics_summary/_analytics_jobs/_summarize_records) e o novo
-JobAnalytics produzam saida identica (0 divergencias).
 """
 
 from __future__ import annotations
 
-import importlib.util
 import json
-import os
 import shutil
 import sys
 import tempfile
@@ -27,6 +20,7 @@ if str(BRIDGE_DIR) not in sys.path:
     sys.path.insert(0, str(BRIDGE_DIR))
 
 import analytics as an  # noqa: E402  (apos ajustar sys.path)
+from envio import job_phrase_ids, unique_phrase_ids  # noqa: E402
 
 
 def _write_json(path: Path, data) -> None:
@@ -53,32 +47,12 @@ def build_jobs_root(base: Path, jobs: dict, queue: list) -> tuple[Path, Path]:
     return jobs_root, queue_file
 
 
-# Contagem de phraseId (identica ao BridgeApp; usada como seam injetado).
-def _unique_phrase_ids(values) -> list[int]:
-    ids: list[int] = []
-    seen: set[int] = set()
-    for value in values or []:
-        try:
-            phrase_id = int(value)
-        except (TypeError, ValueError):
-            continue
-        if phrase_id in seen:
-            continue
-        ids.append(phrase_id)
-        seen.add(phrase_id)
-    return ids
-
-
-def _job_phrase_ids(entries) -> list[int]:
-    return _unique_phrase_ids([e.get("phraseId") for e in entries if isinstance(e, dict)])
-
-
 def make_analytics(jobs_root: Path, queue_file: Path) -> an.JobAnalytics:
     return an.JobAnalytics(
         jobs_root,
         queue_file,
-        unique_phrase_ids=_unique_phrase_ids,
-        job_phrase_ids=_job_phrase_ids,
+        unique_phrase_ids=unique_phrase_ids,
+        job_phrase_ids=job_phrase_ids,
     )
 
 
@@ -266,104 +240,6 @@ class SummaryIoTest(unittest.TestCase):
     def test_jobs_sorted_newest_first(self) -> None:
         rows = self.ja.jobs(None, None, "all")
         self.assertEqual([r["jobId"] for r in rows], ["job-ru", "job-en"])
-
-
-def _load_old_server():
-    """Carrega o server.py antigo (backup .bak desta sessao) como modulo isolado.
-
-    Copia o .bak para bridge/_server_old_c.py (para __file__/ROOT resolverem no
-    projeto real), importa e devolve o modulo. O arquivo copiado e removido em
-    tearDownModule. Retorna None se o backup nao existir (pula o diferencial).
-    """
-    bak = Path(r"C:/Users/sadvi/.claude/jobs/853728b2/tmp/server.py.20260830-C.bak")
-    if not bak.exists():
-        return None, None
-    shim = BRIDGE_DIR / "_server_old_c.py"
-    shutil.copyfile(bak, shim)
-    spec = importlib.util.spec_from_file_location("_server_old_c", shim)
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules["_server_old_c"] = mod
-    spec.loader.exec_module(mod)
-    return mod, shim
-
-
-_OLD_MOD = None
-_OLD_SHIM = None
-
-
-def tearDownModule() -> None:
-    if _OLD_SHIM and _OLD_SHIM.exists():
-        try:
-            os.remove(_OLD_SHIM)
-        except OSError:
-            pass
-
-
-class DifferentialTest(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        global _OLD_MOD, _OLD_SHIM
-        _OLD_MOD, _OLD_SHIM = _load_old_server()
-
-    def setUp(self) -> None:
-        if _OLD_MOD is None:
-            self.skipTest("backup .bak indisponivel; diferencial pulado")
-        self.tmp = Path(tempfile.mkdtemp(prefix="an_diff_"))
-        jobs, queue = _sample_jobs()
-        self.jobs_root, self.queue_file = build_jobs_root(self.tmp, jobs, queue)
-        # BridgeApp antigo apontado ao fixture.
-        self.bo = _OLD_MOD.BridgeApp(config={"automatic_anki_path": "."})
-        self.bo.jobs_root = self.jobs_root
-        self.bo.queue_file = self.queue_file
-        # JobAnalytics novo reusando a contagem de phrase-id do BridgeApp antigo.
-        self.ja = an.JobAnalytics(
-            self.jobs_root, self.queue_file,
-            unique_phrase_ids=self.bo._unique_phrase_ids,
-            job_phrase_ids=self.bo._job_phrase_ids,
-        )
-
-    def tearDown(self) -> None:
-        shutil.rmtree(getattr(self, "tmp", Path(".")), ignore_errors=True)
-
-    FILTERS = [
-        (None, None, "all"),
-        (None, None, "en"),
-        (None, None, "ru"),
-        (date(2026, 8, 1), date(2026, 8, 15), "all"),
-        (date(2026, 8, 15), date(2026, 8, 31), "all"),
-        (date(2026, 8, 15), date(2026, 8, 31), "en"),
-        (date(2026, 8, 15), date(2026, 8, 31), "ru"),
-        (date(2027, 1, 1), date(2027, 2, 1), "all"),  # janela vazia
-    ]
-
-    def test_summary_matches_old(self) -> None:
-        for f, t, lang in self.FILTERS:
-            with self.subTest(f=f, t=t, lang=lang):
-                old = self.bo._analytics_summary(f, t, lang)
-                new = self.ja.summary(f, t, lang)
-                old.pop("generatedAt", None)  # timestamp de wall-clock difere
-                new.pop("generatedAt", None)
-                self.assertEqual(old, new)
-
-    def test_jobs_matches_old(self) -> None:
-        for f, t, lang in self.FILTERS:
-            with self.subTest(f=f, t=t, lang=lang):
-                self.assertEqual(
-                    self.bo._analytics_jobs(f, t, lang),
-                    self.ja.jobs(f, t, lang),
-                )
-
-    def test_summarize_records_matches_old(self) -> None:
-        jobs, _ = _sample_jobs()
-        record_sets = [spec["costs"] for spec in jobs.values()] + [[], [{"type": "session"}]]
-        windows = [(None, None), (date(2026, 8, 1), date(2026, 8, 15))]
-        for records in record_sets:
-            for f, t in windows:
-                with self.subTest(records=records, f=f, t=t):
-                    self.assertEqual(
-                        self.bo._summarize_records(records, None, f, t),
-                        self.ja.summarize_records(records, None, f, t),
-                    )
 
 
 if __name__ == "__main__":

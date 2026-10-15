@@ -16,8 +16,9 @@
 
 'use strict';
 
-const { criarSincronizacao, criarSessao, nuvemHttp, armazenamentoDoChrome, paraCampos, deCampos,
-  tombstoneFirestore, tombstonesSync, MOTIVO, TTL_DO_TOMBSTONE, PREFIXO_DO_TOMBSTONE } = require('./lib/sincronizacao.js');
+  const { criarSincronizacao, criarSessao, nuvemHttp, armazenamentoDoChrome, paraCampos, deCampos,
+  tombstoneFirestore, tombstonesSync, MOTIVO, TTL_DO_TOMBSTONE, PREFIXO_DO_TOMBSTONE,
+  STATUS_ENVIADA_AO_ANKI, STATUS_ENVIADA_LEGADO, fraseFoiEnviadaAoAnki, migrarFrasesEnviadas } = require('./lib/sincronizacao.js');
 
 const C = {
   reset: '\x1b[0m', bold: '\x1b[1m',
@@ -595,10 +596,45 @@ await (async () => {
 
   const vis = await carregarFrases(storageLocalA);
   const porTexto = (t) => vis.find(f => f.texto === t);
-  assert(porTexto('Marcada aqui').status === 'exported',      'a marca daqui aparece na lista');
-  assert(firestore[marcadaAqui.id].status === 'exported',     'e vai para a nuvem (retry)');
+  assert(porTexto('Marcada aqui').status === STATUS_ENVIADA_AO_ANKI, 'a marca daqui aparece na lista');
+  assert(firestore[marcadaAqui.id].status === STATUS_ENVIADA_AO_ANKI, 'e vai para a nuvem (retry)');
+  assert(porTexto('Marcada aqui').status !== STATUS_ENVIADA_LEGADO, 'o nome gravado não volta a ser exported');
   assert(porTexto('Marcada na nuvem').exportadaTxt === true,  'a marca da nuvem aparece na lista');
+  assert(porTexto('Marcada na nuvem').status !== STATUS_ENVIADA_AO_ANKI, 'exportar .txt não vira Enviada ao Anki');
   assert(getLocal(storageLocalA, { frases: [] }).frases.find(f => f.id === marcadaLa.id).exportadaTxt === true, 'e é aplicada ao local');
+})();
+
+head('CENÁRIO 22b — exported antigo continua Enviada ao Anki e é reescrito sem perder frase nem campo');
+sep();
+await (async () => {
+  resetState();
+  const enviada = {
+    id: 501, texto: 'Already sent', idioma: 'Inglês', data: '01/02/2026', streaming: 'netflix',
+    keywords: ['sent'], contexto: { titulo: 'Show', detalhe: 'T1' }, status: STATUS_ENVIADA_LEGADO, exportadaTxt: true,
+  };
+  const soTxt = { id: 502, texto: 'Only txt', idioma: 'Inglês', exportadaTxt: true };
+  const semMarca = { id: 503, texto: 'Plain', idioma: 'Russo', keywords: ['a', 'b'] };
+  setLocal(storageLocalA, { frases: [enviada, soTxt, semMarca] });
+  firestore[enviada.id] = { ...enviada };
+
+  const antes = getLocal(storageLocalA, { frases: [] }).frases.map(f => f.id);
+  const vis = await carregarFrases(storageLocalA);
+  const local = getLocal(storageLocalA, { frases: [] }).frases;
+  const porId = (lista, id) => lista.find(f => f.id === id);
+
+  assert(local.map(f => f.id).join() === antes.join(), 'nenhuma frase sai do local');
+  assert(vis.map(f => f.id).sort().join() === antes.slice().sort().join(), 'nenhuma frase sai da lista');
+  const gravada = porId(local, 501);
+  assert(fraseFoiEnviadaAoAnki({ status: STATUS_ENVIADA_LEGADO }), 'exported antigo ainda é Enviada ao Anki');
+  assert(gravada.status === STATUS_ENVIADA_AO_ANKI, 'o local reescreve exported');
+  assert(gravada.texto === enviada.texto && gravada.idioma === enviada.idioma && gravada.streaming === enviada.streaming, 'texto, idioma e fonte ficam');
+  assert(JSON.stringify(gravada.keywords) === JSON.stringify(enviada.keywords), 'as palavras ficam');
+  assert(gravada.contexto.titulo === 'Show' && gravada.contexto.detalhe === 'T1', 'o contexto fica');
+  assert(gravada.exportadaTxt === true, 'exportadaTxt fica junto da marca de Envio');
+  assert(porId(local, 502).exportadaTxt === true && porId(local, 502).status === undefined, 'só exportadaTxt não ganha status');
+  assert(porId(local, 503).status === undefined && porId(local, 503).texto === 'Plain', 'frase sem marca fica igual');
+  assert(firestore[501].status === STATUS_ENVIADA_AO_ANKI, 'a nuvem em memória recebe o nome novo');
+  assert(firestore[501].texto === enviada.texto && firestore[501].contexto.detalhe === 'T1', 'a nuvem não perde os outros campos');
 })();
 
 head('CENÁRIO 23 — Frase que não sobe fica na lista e na fila de retry (nunca some do computador)');
@@ -709,6 +745,52 @@ sep();
   assert(!('nulo' in volta),                                                        'null não vai para a nuvem');
   assert(paraCampos({ id: 5 }).id.integerValue === '5',                             'inteiros vão como integerValue em texto');
 }
+
+head('HTTP 1b — exported antigo sai como stringValue do status, com o resto do documento');
+sep();
+await (async () => {
+  const frase = {
+    id: 77, texto: 'Hello', idioma: 'Inglês', keywords: ['a', 'b'], exportadaTxt: true,
+    contexto: { titulo: 'Show', detalhe: 'T1' }, streaming: 'netflix', data: '01/02/2026',
+    status: STATUS_ENVIADA_LEGADO,
+  };
+  const documento = paraCampos(frase);
+  assert(documento.status.stringValue === STATUS_ENVIADA_LEGADO, 'o Firestore guarda status como string');
+  const lida = deCampos(documento);
+  const { frases, alteradas } = migrarFrasesEnviadas([lida, { id: 78, texto: 'sem', exportadaTxt: true }]);
+  assert(alteradas.length === 1 && frases.length === 2, 'só a frase exported é reescrita, e nenhuma some');
+  const corpo = paraCampos(frases[0]);
+  assert(corpo.status.stringValue === STATUS_ENVIADA_AO_ANKI, 'a escrita manda o nome novo');
+  for (const campo of ['texto', 'idioma', 'streaming', 'data']) {
+    assert(corpo[campo].stringValue === frase[campo], `${campo} continua stringValue`);
+  }
+  assert(corpo.exportadaTxt.booleanValue === true, 'exportadaTxt continua booleanValue');
+  assert(corpo.keywords.arrayValue.values.map(v => v.stringValue).join() === 'a,b', 'keywords continua lista');
+  assert(corpo.contexto.mapValue.fields.titulo.stringValue === 'Show', 'contexto continua mapa');
+  assert(corpo.id.integerValue === '77', 'o id continua integerValue');
+  assert(!paraCampos(frases[1]).status, 'exportadaTxt sozinha não ganha campo status');
+
+  const local = {};
+  const http = nuvemDeTeste((url) => {
+    if (url.includes(':batchWrite')) return { corpo: {} };
+    if (url.includes('/meta/deleted')) return { status: 404, corpo: { error: { message: 'NOT_FOUND' } } };
+    return { corpo: { documents: [{ fields: documento }] } };
+  });
+  const sinc = criarSincronizacao({
+    nuvem: http.nuvem,
+    armazenamento: { local: areaEmMemoria(local), sync: areaEmMemoria({}) },
+  });
+  local.frases = [frase, { id: 78, texto: 'sem', exportadaTxt: true }];
+  const resultado = await sinc.carregar({ atuais: () => [] });
+  await resultado.concluida;
+  const lote = http.pedidos.find(p => p.url.includes(':batchWrite'));
+  const escrito = lote.corpo.writes[0].update.fields;
+  assert(escrito.status.stringValue === STATUS_ENVIADA_AO_ANKI, 'o batchWrite manda status stringValue com o nome novo');
+  assert(escrito.texto.stringValue === 'Hello' && escrito.contexto.mapValue.fields.detalhe.stringValue === 'T1', 'o batchWrite leva o resto do documento');
+  assert(local.frases.map(f => f.id).sort().join() === '77,78', 'o carregamento não apaga frase do local');
+  assert(local.frases.find(f => f.id === 77).status === STATUS_ENVIADA_AO_ANKI, 'o local do adaptador HTTP fica com o nome novo');
+  assert(local.frases.find(f => f.id === 78).exportadaTxt === true && local.frases.find(f => f.id === 78).status === undefined, 'o .txt não vira Envio');
+})();
 
 head('HTTP 2 — Tombstone: o campo do id vai entre crases, com updateMask por campo');
 sep();

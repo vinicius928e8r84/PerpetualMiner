@@ -80,6 +80,10 @@ async function esperarAbaDaInstalacao(context, id) {
   throw new Error('A instalação não abriu a aba da Boas-vindas');
 }
 
+async function apagarPmBoasVindas(sw) {
+  await sw.evaluate(() => chrome.storage.local.remove('pm_boas_vindas'));
+}
+
 const test = base.extend({
   // Servidor das páginas-fixture (player falso, página com texto, página sem
   // vídeo), da vitrine da Base Veio e dos arquivos de `veio/`.
@@ -188,10 +192,6 @@ const test = base.extend({
   // `test.use({ manterAbaDaInstalacao: true })` e a recebe em `extensao.abaDaInstalacao`.
   manterAbaDaInstalacao: [false, { option: true }],
 
-  // A instalação também deixa a configuração começada (`pm_boas_vindas`), o que
-  // põe o lembrete “Configuração pela metade” no popup e em Frases. O teste
-  // começa como quem já passou por ela, sem o lembrete; quem testa o lembrete
-  // pede `test.use({ lembreteDaConfiguracao: true })`.
   lembreteDaConfiguracao: [false, { option: true }],
 
   extensao: async ({ context, manterAbaDaInstalacao, lembreteDaConfiguracao }, use) => {
@@ -203,7 +203,7 @@ const test = base.extend({
 
     const lerStorage = (chaves = null) => sw.evaluate(c => chrome.storage.local.get(c), chaves);
     const gravarStorage = valores => sw.evaluate(v => chrome.storage.local.set(v), valores);
-    if (!lembreteDaConfiguracao) await sw.evaluate(() => chrome.storage.local.remove('pm_boas_vindas'));
+    if (!lembreteDaConfiguracao) await apagarPmBoasVindas(sw);
 
     // The session storage boundary, not the production auth implementation.
     const sessaoNoBanco = valor => sw.evaluate(valor => new Promise((resolve, reject) => {
