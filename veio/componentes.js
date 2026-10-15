@@ -70,7 +70,6 @@
     conta: ['<circle cx="12" cy="8" r="4"/>', '<path d="M4 21a8 8 0 0 1 16 0"/>'],
     // O chevron de um botão que abre um menu.
     abaixo: ['<path d="M6 9l6 6 6-6"/>'],
-    // A paginação: primeira, anterior, próxima e última página.
     primeira: ['<path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>'],
     anterior: ['<path d="M15 18l-6-6 6-6"/>'],
     proxima: ['<path d="M9 18l6-6-6-6"/>'],
@@ -88,7 +87,6 @@
     tema: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/>'],
     perigo: ['<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>', '<path d="M12 9v4M12 17h.01"/>'],
     abrir: ['<path d="m6 9 6 6 6-6"/>'],
-    // O que o overlay minerou: legenda, seleção e mineração automática; e a falha.
     legenda: ['<rect x="3" y="5" width="18" height="14" rx="2"/>', '<path d="M7 14h4M13 14h4M7 10h10"/>'],
     selecao: ['<path d="M4 6h16M4 12h10M4 18h7"/>'],
     automatica: ['<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>'],

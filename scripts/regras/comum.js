@@ -18,14 +18,11 @@ function arquivosDoRepositorio(raiz) {
     .sort();
 }
 
-// O código da extensão que roda no Chrome: os .js da raiz (menos os test_*.js),
-// lib/ e veio/.
 function ehJsDaExtensao(arquivo) {
   if (/^[^/]+\.js$/.test(arquivo)) return !/^test_/.test(arquivo);
   return /^(lib|veio)\/.+\.js$/.test(arquivo);
 }
 
-/** O número da linha (a partir de 1) do caractere `indice`. */
 function linhaDe(texto, indice) {
   let linha = 1;
   for (let i = 0; i < indice; i++) if (texto.charCodeAt(i) === 10) linha++;
@@ -38,7 +35,6 @@ function apagar(trecho) {
   return trecho.replace(/[^\n]/g, ' ');
 }
 
-/** O índice da aspa que fecha a string que abre em `i` (ou o fim do texto). */
 function fimDaString(texto, i) {
   const aspa = texto[i];
   let j = i + 1;
@@ -232,7 +228,6 @@ function comentariosPorLinha(arquivo, fonte) {
   return porLinha;
 }
 
-/** Onde fecha o parêntese que abre em `abre` (o índice do `(`); -1 se não fecha. */
 function fechamento(texto, abre) {
   const par = { '(': ')', '{': '}', '[': ']' };
   const pilha = [];

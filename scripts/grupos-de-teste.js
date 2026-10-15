@@ -13,7 +13,6 @@ const ARQUIVO_DO_REGISTRO = 'scripts/testes.json';
 // O que o Playwright descobre sozinho dentro de `e2e/tests/` (o `testMatch` dele).
 const SPECS_DO_PLAYWRIGHT = 'e2e/tests/**/*.spec.js';
 
-/** Um arquivo que é teste: `test_*` (js, mjs, py, sh) em qualquer pasta ou um spec do e2e. */
 function ehArquivoDeTeste(arquivo) {
   return /(^|\/)test_[^/]*\.(js|mjs|py|sh)$/.test(arquivo) || /^e2e\/tests\/.+\.spec\.js$/.test(arquivo);
 }
@@ -27,7 +26,6 @@ function padraoComoRegex(padrao) {
   return new RegExp(`^${texto}$`);
 }
 
-/** Os padrões de arquivo que um grupo roda (o que o comando dele descobre ou nomeia). */
 function padroesDoGrupo(grupo) {
   if (grupo.executor === 'node') return grupo.arquivos || [];
   if (grupo.executor === 'unittest') return [`${grupo.pasta}/${grupo.padrao}`];
@@ -43,7 +41,6 @@ function arquivosDoGrupo(grupo, arquivos) {
 
 const RESTAURAR = `restaure-o com \`git checkout origin/main -- ${ARQUIVO_DO_REGISTRO}\` ou corrija-o, e confira com \`node scripts/testar.mjs --listar\``;
 
-/** Onde (linha e coluna, a partir de 1) o JSON quebrou, quando o erro do `JSON.parse` diz a posição. */
 function ondeQuebrou(texto, erro) {
   const posicao = /position (\d+)/.exec(erro.message);
   if (!posicao) return '';
@@ -82,7 +79,6 @@ function escolherPython(env, raiz) {
   return fs.existsSync(doVenv) ? { comando: doVenv, origem: 'venv' } : { comando: 'python3', origem: 'python3' };
 }
 
-/** O que dizer quando um grupo falhou por falta de um módulo do Python; '' quando não foi isso. */
 function dicaDeModulo(nome, grupo, saidaDeErro, python) {
   if (!/ModuleNotFoundError/.test(saidaDeErro)) return '';
   const falta = /No module named '([^']+)'/.exec(saidaDeErro);

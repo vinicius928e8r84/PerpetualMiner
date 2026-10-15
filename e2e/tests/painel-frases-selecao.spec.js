@@ -242,7 +242,6 @@ test('Apagar 1 frase pede confirmação (PAI-12); Cancelar mantém, confirmar ti
   // Sem conta, o corpo não fala dos outros computadores.
   await expect(modal(page)).toContainText('Não dá para desfazer.');
   await expect(modal(page)).not.toContainText('outros computadores');
-  // O foco entra no botão seguro.
   await expect(modal(page).getByRole('button', { name: 'Cancelar' })).toBeFocused();
 
   await modal(page).getByRole('button', { name: 'Cancelar' }).click();

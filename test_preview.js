@@ -21,11 +21,9 @@ const extensao = path.join(saida, 'extensao');
 (async () => {
   const arquivos = await arquivosDaExtensao(async caminho => fs.readFileSync(caminho, 'utf8'));
 
-  // Tudo que a extensão usa em execução está no preview.
   const faltam = arquivos.filter(arquivo => !fs.existsSync(path.join(extensao, arquivo)));
   assert.deepStrictEqual(faltam, [], `o preview não copiou: ${faltam.join(', ')}`);
 
-  // Cada página, lida do repositório, tem no preview tudo o que ela pede por src/href.
   const paginas = arquivos.filter(arquivo => arquivo.endsWith('.html'));
   assert(paginas.includes('painel.html'), 'a lista da extensão devia ter o painel');
   for (const pagina of paginas) {
@@ -41,7 +39,6 @@ const extensao = path.join(saida, 'extensao');
   // O arquivo da Conexão não está no manifest: o painel o entrega num link.
   assert(fs.existsSync(path.join(extensao, 'conexao', 'perpetualminer.ankiaddon')), 'falta o .ankiaddon no preview');
 
-  // As telas levam o simulador do `chrome.*`; a página original não.
   assert(fs.readFileSync(path.join(extensao, 'painel.html'), 'utf8').includes('/preview-chrome-simulado.js'));
   assert(!fs.readFileSync('painel.html', 'utf8').includes('preview-chrome-simulado'));
 

@@ -229,7 +229,6 @@
     return Boolean(host?.isConnected && !partes.pilula.classList.contains('pm-pilula--livre'));
   }
 
-  /** Uma falha está na tela. */
   function mostrandoFalha() {
     return Boolean(partes?.pilula.classList.contains('pm-pilula--aberta')
       && partes.pilula.classList.contains('pm-pilula--erro'));

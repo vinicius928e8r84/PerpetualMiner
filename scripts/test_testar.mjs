@@ -13,7 +13,6 @@ const { ehArquivoDeTeste, padraoComoRegex, escolherPython, dicaDeModulo } = requ
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const testar = (...args) => spawnSync('node', [path.join(RAIZ, 'scripts', 'testar.mjs'), ...args], { cwd: RAIZ, encoding: 'utf8' });
 
-// O que é teste e o que um padrão alcança.
 assert.ok(ehArquivoDeTeste('test_sync.js'));
 assert.ok(ehArquivoDeTeste('scripts/test_testar.mjs'));
 assert.ok(ehArquivoDeTeste('.agents/skills/x/scripts/test_helpers.sh'));
@@ -24,25 +23,21 @@ assert.ok(padraoComoRegex('bridge/test_*.py').test('bridge/test_envio.py'));
 assert.ok(!padraoComoRegex('bridge/test_*.py').test('bridge/sub/test_envio.py'));
 assert.ok(padraoComoRegex('e2e/tests/**/*.spec.js').test('e2e/tests/sub/algo.spec.js'));
 
-// O que o executor mostra.
 const lista = testar('--listar');
 assert.equal(lista.status, 0, lista.stdout + lista.stderr);
 assert.match(lista.stdout, /^node: (?:\S+ )*test_sync\.js(?: \S+)*$/m);
 assert.match(lista.stdout, /^e2e \(pesado\): e2e\/tests\/.*\.spec\.js/m);
 assert.match(lista.stdout, /^complemento: (?:\S+ )*complemento\/test_servidor\.py(?: \S+)*$/m);
 
-// Um grupo que não existe é erro de uso, e a mensagem diz quais existem.
 const desconhecido = testar('inexistente');
 assert.equal(desconhecido.status, 2);
 assert.match(desconhecido.stdout, /grupo desconhecido: inexistente\nhelp: os grupos são node, regras/);
 
-// Um grupo roda de verdade e o código de saída é o do teste.
 const ferramentas = testar('node');
 assert.equal(ferramentas.status, 0, ferramentas.stdout + ferramentas.stderr);
 assert.match(ferramentas.stdout, /▶ node: node test_sync\.js/);
 assert.match(ferramentas.stdout, /testes ok: node/);
 
-// O Python: o $PYTHON do CI vence, senão o .venv da raiz, senão python3.
 const raizComVenv = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-venv-'));
 const raizSemVenv = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-sem-venv-'));
 fs.mkdirSync(path.join(raizComVenv, '.venv', 'bin'), { recursive: true });
@@ -53,7 +48,6 @@ assert.deepEqual(escolherPython({}, raizSemVenv), { comando: 'python3', origem: 
 fs.rmSync(raizComVenv, { recursive: true, force: true });
 fs.rmSync(raizSemVenv, { recursive: true, force: true });
 
-// Um grupo que falha por falta de módulo diz o que o grupo precisa; sem venv, o comando de preparo; no venv, o pip do venv.
 const semFlask = "ModuleNotFoundError: No module named 'flask'\n";
 const grupoComPrecisa = { precisa: 'pip install -r bridge/requirements.txt' };
 const doPython3 = { comando: 'python3', origem: 'python3' };
@@ -65,7 +59,6 @@ assert.equal(dicaDeModulo('bridge', grupoComPrecisa, semFlask, { comando: '/x/.v
 assert.equal(dicaDeModulo('bridge', grupoComPrecisa, semFlask, { comando: 'python', origem: 'PYTHON' }),
   "✗ bridge: falta o módulo flask; o grupo precisa de: pip install -r bridge/requirements.txt");
 
-// De ponta a ponta: um Python sem o módulo faz o grupo falhar com a dica, e o erro original continua à vista.
 const pastaFalsa = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-python-falso-'));
 const pythonFalso = path.join(pastaFalsa, 'python');
 fs.writeFileSync(pythonFalso, `#!/bin/sh\necho "ModuleNotFoundError: No module named 'flask'" >&2\nexit 1\n`, { mode: 0o755 });
@@ -105,7 +98,6 @@ assert.match(semModulo.stdout, /error: falharam: bridge/);
   assert.match(porLink.stdout, /error: grupo desconhecido: inexistente/);
 }
 
-// O cadastro ausente ou quebrado diz como consertar, em português, com a posição do erro.
 const { lerRegistro } = require('./grupos-de-teste.js');
 const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-cadastro-'));
 fs.mkdirSync(path.join(pasta, 'scripts'));
