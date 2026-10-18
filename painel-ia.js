@@ -1,29 +1,5 @@
 'use strict';
 
-// O card IA dos cartões de Configurações (docs/design/painel/configuracoes/, desenho A do #101):
-// as duas entradas da IA em colunas do mesmo tamanho, a Chave da OpenAI e a Conta do ChatGPT,
-// e uma linha sobre a imagem gerada. A coluna da chave funciona; a do ChatGPT mostra que ainda
-// não dá para entrar (chega no ticket do plano, #155) e leva a pessoa à chave.
-//
-// A chave é colada num campo, a Conexão com o Anki a confere na OpenAI (a extensão não fala com ela)
-// e, aceita, o card mostra “Chave conferida” com ela mascarada. A chave inteira nunca volta à tela:
-// salva, só os 4 últimos caracteres aparecem, e Trocar chave abre o campo vazio. Onde a chave mora
-// e como chega à Conexão: lib/chave-da-openai.js. O que o card lê do storage é `pm_chave_openai`
-// (os 4 últimos), nunca a chave.
-//
-// Com conta, a chave acompanha a conta Google (#154): a nota diz que ela vai junto, e uma chave que
-// chega de outro computador (ou um apagamento) aparece aqui pelo storage. Apagar chave (perigo em
-// contorno) só abre a confirmação Veio; confirmada, a chave sai daqui, da Conexão e, com conta, da nuvem.
-// A cópia da Conexão acompanha cada mudança da chave: o card a confere quando `pm_chave_openai` muda.
-//
-// Os erros (chave recusada, sem crédito, organização não verificada, a OpenAI fora do ar, a Conexão
-// sem responder) atravessam o card, abaixo das duas colunas, e a abertura em negrito diz a qual
-// entrada pertencem. Abaixo de ~620 px de largura do card, as colunas viram linhas.
-//
-// O mesmo card mora no passo “Configurar a IA dos cartões” da Boas-vindas: `CartaoDaIA.montar(corpo,
-// { prefixo })` o desenha em outro lugar, com a mesma chave; cada lugar tem o seu Trocar chave e o seu
-// erro. Toda cópia vem do catálogo da Voz.
-
 (function (raiz) {
   const { textoDaVoz, ChaveDaOpenAI, ConexaoAnki } = raiz;
   const { mostrarToastDeSucesso, montarAviso, abrirConfirmacao } = raiz.Veio;
@@ -138,8 +114,6 @@
     estado.copia = tem;
     for (const lugar of lugares) if (!lugar.trocando && !lugar.conferindo) desenhar(lugar);
   }
-
-  // ─── Desenho ───────────────────────────────────────────────────────────────
 
   /** A linha fechada: a chave mascarada em mono; sem chave, o ponto `danger` e “Sem chave”. */
   function desenharResumo() {
@@ -324,8 +298,6 @@
     aviso.id = idDe(lugar, 'erro');
     return aviso;
   }
-
-  // ─── Ações ─────────────────────────────────────────────────────────────────
 
   /** Liga ou desliga o erro de conferir vazio: borda danger (aria-invalid) e o aviso embaixo, ligado ao campo. */
   function marcarVazia(campo, aviso, vazia) {

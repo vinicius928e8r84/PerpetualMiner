@@ -1,20 +1,3 @@
-/* ─────────────────────────────────────────────────────────────────────────
-   Base Veio · tokens de cor, tipo, raio e movimento.
-
-   Este é o único lugar onde a identidade mora. Toda página da extensão
-   (painel, popup, Minerar de uma foto) inclui este arquivo, e nenhuma cor
-   nova é escrita fora dele. A fundação travada é a variante F do protótipo
-   em docs/design/identidade-veio/.
-
-   O tema escuro é o padrão. O claro entra com data-tema="claro" no <html>, que
-   é o que veio/tema.js grava a partir da escolha em Configurações › Aparência.
-   ───────────────────────────────────────────────────────────────────────── */
-
-/* ── Fontes empacotadas (latin + cyrillic) ────────────────────────────────
-   Nada vem do Google Fonts em runtime: os .woff2 estão em veio/fontes/.
-   São arquivos variáveis, então um arquivo por subset cobre toda a escala
-   de pesos. */
-
 @font-face {
   font-family: 'Manrope';
   font-style: normal;
@@ -54,11 +37,6 @@
   src: url('fontes/jetbrains-mono-cyrillic.woff2') format('woff2');
   unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
-
-/* ── Tema escuro (padrão) ─────────────────────────────────────────────────
-   O tema vale para a página inteira pelo <html>, e também para um trecho
-   marcado com data-tema (é assim que a vitrine mostra os dois lado a lado e
-   que o overlay fica escuro dentro do Shadow DOM). */
 
 :root,
 [data-tema="escuro"] {
@@ -103,7 +81,6 @@
   --veio-avatar-fundo: linear-gradient(135deg, #8A6A2A, #3A2F1C);
   --veio-avatar-tinta: #F2EEE6;
 
-  /* ── Tipografia ── */
   --veio-fonte-ui: 'Manrope', system-ui, sans-serif;
   --veio-fonte-display: 'Manrope', system-ui, sans-serif;
   --veio-fonte-frase: 'Manrope', system-ui, sans-serif;
@@ -138,7 +115,6 @@
   --veio-tracking-legenda: 0.14em;
   --veio-altura-frase: 1.5;
 
-  /* ── Forma ── */
   /* O losango que abre o título de seção do popup. */
   --veio-raio-losango: 2px;
   /* A ponta arredondada da linha ouro que o overlay desenha sob o texto capturado. */
@@ -154,15 +130,14 @@
   --veio-raio-selecao: 22px;
   --veio-raio-pilula: 999px;
 
-  /* ── Movimento ── */
   --veio-piscar: 1.1s;
   --veio-esqueleto: 1.2s;
   --veio-transicao: 150ms;
   /* A borda ouro que pisca no card aberto por endereço (#configuracoes/<seção>). */
   --veio-destaque: 1.4s;
+  /* A volta inteira da animação de dois quadros do passo da Conexão (ONB-19). */
+  --veio-ciclo-dos-quadros: 4s;
 }
-
-/* ── Tema claro (escolhido em Configurações › Aparência) ──────────────── */
 
 :root[data-tema="claro"],
 [data-tema="claro"] {
@@ -195,11 +170,6 @@
 
   --veio-brilho: rgba(255, 255, 255, .55);
 }
-
-/* ── A marca ──────────────────────────────────────────────────────────────
-   O cristal e o nome com o cursor ouro. O cursor é a única animação
-   ambiente da identidade: pisca a cada 1,1 s e fica parado com movimento
-   reduzido. */
 
 .veio-marca {
   flex: none;
@@ -241,18 +211,10 @@
   }
 }
 
-/* ── Foco visível ─────────────────────────────────────────────────────────
-   Todo controle mostra onde o teclado está. Vale como base: uma superfície
-   pode desenhar o próprio foco, nunca apagá-lo. */
-
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--veio-accent);
   outline-offset: 2px;
 }
-
-/* ── Movimento reduzido ───────────────────────────────────────────────────
-   Pulsar, piscar e flash ficam estáticos em qualquer página da extensão,
-   inclusive nas telas que ainda não foram reconstruídas. */
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -263,13 +225,6 @@
     transition-duration: 1ms !important;
   }
 }
-
-/* ── Troca de tema ────────────────────────────────────────────────────────
-   A troca de tema não anima (spec de Configurações › Aparência). Os
-   componentes transicionam fundo, cor e borda, e sem esta regra a tela
-   inteira faria um cross-fade ao trocar. veio/tema.js marca o <html> só
-   enquanto as cores novas pintam, e as transições voltam logo depois, para
-   o que a pessoa fizer na tela. */
 
 [data-trocando-tema],
 [data-trocando-tema] *,

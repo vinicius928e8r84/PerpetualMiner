@@ -8,8 +8,9 @@
 // abridor), os mesmos que complemento/test_abridor.py confere no script de verdade; `node test_fake_abridor.js`
 // confere este fake contra eles.
 //
-//   definir('achei' | 'nao_achei' | 'sem_resposta')  o que o abridor encontra (padrão: 'achei'); sem resposta,
-//                                                    ele lê a mensagem e fica quieto
+//   definir('achei' | 'nao_achei' | 'achei_sem_abrir' | 'sem_resposta')  o que o abridor encontra (padrão:
+//                                                    'achei'); `achei_sem_abrir` é o Anki no lugar e o sistema sem
+//                                                    conseguir abri-lo; sem resposta, ele lê a mensagem e fica quieto
 //   registrarNoPerfil(perfil) / desregistrar()       o manifesto do host no perfil, em cada perfil que o registrou (sem ele:
 //                                                    uma Conexão antiga, que ainda não escrevia o abridor)
 //   pedidos()                                        as mensagens que chegaram, com a origem que o Chrome passou
@@ -27,7 +28,7 @@ const contrato = require('../../complemento/contrato/exemplos.json');
 const HOST = contrato.abridor.host;
 const PROGRAMA_DO_HOST = path.join(__dirname, 'abridor-host.js');
 // A situação do fake e o contexto dos exemplos do contrato que ela escolhe.
-const CONTEXTO_DA_SITUACAO = { achei: 'no_lugar', nao_achei: 'sumiu' };
+const CONTEXTO_DA_SITUACAO = { achei: 'no_lugar', nao_achei: 'sumiu', achei_sem_abrir: 'nao_abre' };
 const SEM_RESPOSTA = 'sem_resposta';
 
 /** Os exemplos do contrato que o abridor responde numa situação. */

@@ -145,7 +145,8 @@ rótulos da navegação do Painel; `peso-num` fica só para números),
 `--veio-raio-losango` (o canto do losango ouro que abre o título de seção do
 popup), `--veio-tam-contador` (o número grande do azulejo da mineração
 automática, “7/20”), `--veio-brilho-da-linha` e `--veio-raio-linha` (o brilho ouro e a ponta da
-linha que o overlay desenha sob o texto capturado).
+linha que o overlay desenha sob o texto capturado), `--veio-ciclo-dos-quadros` (os 4 s da volta
+inteira da animação de dois quadros do aviso do Anki, ONB-19).
 
 ### O overlay redefine as fontes
 
@@ -183,7 +184,7 @@ fontes, os mesmos componentes e o mesmo catálogo da Voz que a extensão carrega
 
 Cada componente aparece nos estados que ele tem: botão e campo têm foco e
 desabilitado (e o campo, erro); um selo ou um `kbd` só têm o normal. A linha
-“foco” é pintada com `demo-de-foco`, uma classe da própria vitrine — sem o
+“foco” é pintada com `amostra-de-foco-parado`, uma classe da própria vitrine — sem o
 prefixo `veio-`, porque não é componente —, e um teste compara esse anel parado
 com o anel que o foco de verdade desenha, para a referência não passar a mentir.
 

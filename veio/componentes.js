@@ -43,10 +43,6 @@
     '[tabindex]:not([tabindex="-1"])',
   ].join(',');
 
-  /* ── Ícones ───────────────────────────────────────────────────────────────
-     Traço de 2 px num grid de 24, cantos redondos. São desenhos fixos, então
-     ficam aqui e não num arquivo por ícone. */
-
   const DESENHOS = {
     busca: ['<circle cx="11" cy="11" r="7"/>', '<path d="M20 20l-4-4"/>'],
     fechar: ['<path d="M6 6l12 12M18 6L6 18"/>'],
@@ -74,7 +70,6 @@
     conta: ['<circle cx="12" cy="8" r="4"/>', '<path d="M4 21a8 8 0 0 1 16 0"/>'],
     // O chevron de um botão que abre um menu.
     abaixo: ['<path d="M6 9l6 6 6-6"/>'],
-    // A paginação: primeira, anterior, próxima e última página.
     primeira: ['<path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>'],
     anterior: ['<path d="M15 18l-6-6 6-6"/>'],
     proxima: ['<path d="M9 18l6-6-6-6"/>'],
@@ -92,7 +87,6 @@
     tema: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/>'],
     perigo: ['<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>', '<path d="M12 9v4M12 17h.01"/>'],
     abrir: ['<path d="m6 9 6 6 6-6"/>'],
-    // O que o overlay minerou: legenda, seleção e mineração automática; e a falha.
     legenda: ['<rect x="3" y="5" width="18" height="14" rx="2"/>', '<path d="M7 14h4M13 14h4M7 10h10"/>'],
     selecao: ['<path d="M4 6h16M4 12h10M4 18h7"/>'],
     automatica: ['<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>'],
@@ -132,9 +126,6 @@
     svg.innerHTML = desenho.join('');
     return svg;
   }
-
-  /* ── Modal ────────────────────────────────────────────────────────────────
-     Confirmação destrutiva e fim de envio. Nunca o confirm() do navegador. */
 
   /**
    * Abre o modal que está dentro de `scrim` e devolve como fechá-lo.
@@ -316,10 +307,6 @@
     no.focus();
   }
 
-  /* ── Toast ────────────────────────────────────────────────────────────────
-     Só sucesso curto, sem ação obrigatória. Erro que pede ação é o aviso
-     persistente. */
-
   /**
    * Quanto tempo o toast fica na tela: nunca menos que o mínimo, e mais
    * quanto maior o texto, porque a pessoa precisa terminar de ler.
@@ -371,11 +358,6 @@
     dentroDe.append(regiao);
     return regiao;
   }
-
-  /* ── Aviso persistente ────────────────────────────────────────────────────
-     Todo erro que pede ação. Fica até ser resolvido ou fechado, e a causa
-     técnica vai para um Detalhes recolhido e copiável. O tom `info` é o aviso
-     que só informa (uma leitura cancelada): neutro, sem alarme. */
 
   /**
    * Monta o aviso e devolve o elemento, para a tela pô-lo no lugar do problema.
@@ -480,9 +462,6 @@
     recolhido.append(resumo, texto);
     return recolhido;
   }
-
-  /* ── Frase ────────────────────────────────────────────────────────────────
-     A Palavra que o cartão ensina aparece grifada dentro da frase. */
 
   /**
    * Escreve a frase em `no`, com a Palavra grifada.
@@ -601,9 +580,6 @@
     chip.append(rotulo, documento.createTextNode(palavra));
     return chip;
   }
-
-  /* ── Checkbox ─────────────────────────────────────────────────────────────
-     O cabeçalho de uma lista com parte dela marcada. */
 
   /**
    * Põe o checkbox no estado que a seleção pede: marcado, vazio ou misto.

@@ -1,14 +1,5 @@
 'use strict';
 
-// Abrir o Anki sozinho (#147, ONB-17): o último passo da primeira conexão, logo depois de a Conexão com o
-// Anki responder. A extensão pede a permissão opcional `nativeMessaging` e confere o abridor que a Conexão
-// deixou no computador (só “achou o Anki?”: nada abre nem fecha). O mesmo componente
-// (painel-conexao-passos.js) está no card ONB-16 da área Conexão com o Anki e no passo 4 da Boas-vindas.
-//
-// O abridor é o de mentira do fixture (fakes/abridor.js), registrado no perfil de teste do Chromium e
-// respondendo pelos exemplos do contrato (complemento/contrato/exemplos.json › abridor). O que fica guardado
-// é a permissão que o Chrome guarda (`extensao.permissaoDoAbridor()`) e o “Agora não” (`pm_abridor`).
-//
 // Exceção de teste (o aviso nativo do Chrome): o aviso da permissão é do Chrome, e o Playwright não alcança
 // os botões dele. Por isso a permissão dada vem do fixture (`permissaoDoAbridor`, gravada no perfil como o
 // Chrome a guarda depois de Permitir), e o teste do pedido confere o que a tela mostra enquanto o aviso espera.
@@ -35,7 +26,7 @@ const abas = page => page.getByRole('radiogroup', { name: 'Seções da Conexão 
 const tentarDaF1 = page => page.locator('#shell-tentar-de-novo');
 
 const ACHOU = 'O Anki abre sozinho quando um Envio precisar.';
-const PASSOS = [/^Pôr a Conexão no Anki/, /^Reiniciar o Anki/, /^Abrir o Anki sozinho/];
+const PASSOS = [/^Ter o Anki/, /^Pôr a Conexão no Anki/, /^Reiniciar o Anki/, /^Abrir o Anki sozinho/];
 const AGORA = new Date('2026-09-18T12:00:00');
 
 /** O relógio da página parado: o Pronto (1,8 s) fica na tela até o teste andar com ele. */
@@ -55,15 +46,15 @@ async function conectarPelaPrimeiraVez(page, extensao, fakes) {
   await expect(statusDaConexao(page)).toHaveText(/^Achei o Anki/);
 }
 
-test('ligada, o card passa ao passo 3, Abrir o Anki sozinho, sem pedir nada ao Chrome nem ao abridor', async ({ page, extensao, fakes }) => {
+test('ligada, o card passa ao passo 4, Abrir o Anki sozinho, sem pedir nada ao Chrome nem ao abridor', async ({ page, extensao, fakes }) => {
   // A extensão chega da loja sem a permissão: ela é opcional.
   expect(await extensao.permissaoDoAbridor()).toBe(false);
   await conectarPelaPrimeiraVez(page, extensao, fakes);
 
   await expect(lista(page).getByRole('button')).toHaveText(PASSOS);
   await expect(itemDaLista(page, 'Abrir o Anki sozinho')).toHaveAttribute('aria-current', 'step');
-  await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(2);
-  await expect(card(page)).toContainText('Como ligar · Passo 3 de 3');
+  await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(3);
+  await expect(card(page)).toContainText('Como ligar · Passo 4 de 4');
   await expect(tituloDoPasso(page)).toHaveText('Abrir o Anki sozinho');
   await expect(card(page)).toContainText('Com a sua permissão, a extensão abre o Anki quando um Envio precisar dele. O Chrome vai pedir para ela se comunicar com o abridor que a Conexão com o Anki deixou neste computador. Agora ela só confere se acha o Anki: nada abre nem fecha.');
   // O que a Conexão disse de si continua na tela, e o passo tem as duas saídas.
@@ -105,17 +96,34 @@ test('a primeira conexão confirmada mantém o título do abridor pendente após
   await expect(permitir(page)).toBeVisible();
   fakes.anki.desligar();
   await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
-  await expect(statusDaConexao(page)).toHaveText('Esperando a Conexão');
+  // Quem já viu a Conexão ligar não volta ao primeiro passo: abre Reiniciar o Anki, o primeiro que falta de novo,
+  // com a linha da Conexão dizendo a queda e o Tentar de novo. O título do card segue o abridor pendente.
+  await expect(tituloDoPasso(page)).toHaveText('Reiniciar o Anki');
+  await expect(statusDaConexao(page)).toHaveText('Conexão com o Anki: desligada');
+  await expect(card(page).getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
   await expect(page.locator('#anki-primeira-vez-titulo')).toHaveText('Abrir o Anki sozinho');
   await fotografar(page, 'abridor-pendente-apos-queda.png');
   await page.reload();
-  await expect(statusDaConexao(page)).toHaveText('Esperando a Conexão');
+  await expect(tituloDoPasso(page)).toHaveText('Reiniciar o Anki');
+  await expect(statusDaConexao(page)).toHaveText('Conexão com o Anki: desligada');
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
   await expect(page.locator('#anki-primeira-vez-titulo')).toHaveText('Abrir o Anki sozinho');
   await expect(abas(page)).toBeHidden();
   await fotografar(page, 'abridor-pendente-queda-apos-reload.png');
   await estadoFinal(extensao, { pm_anki_ja_conectou: true, pm_anki_abridor_pendente: true });
+});
+
+test('quem já conectou e disse Agora não, com a Conexão desligada: o passo 4 da Boas-vindas abre em Reiniciar o Anki, com Tentar de novo', async ({ page, extensao, fakes }) => {
+  // O abridor já está resolvido (Agora não): o passo dele não teria nada a fazer com a Conexão desligada.
+  fakes.anki.desligar();
+  await extensao.gravarStorage({ pm_anki_ja_conectou: true, pm_abridor: { agoraNao: true } });
+  await page.goto(extensao.url('painel.html#boas-vindas/anki'));
+
+  await expect(page.locator('#bv4-passo-titulo')).toHaveText('Reiniciar o Anki');
+  await expect(page.locator('#bv4-status')).toHaveText('Conexão com o Anki: desligada');
+  await expect(page.locator('.bv-card').getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
+  await estadoFinal(extensao, { pm_anki_ja_conectou: true, pm_abridor: { agoraNao: true } });
 });
 
 test('Permitir pede a permissão ao Chrome: o passo espera a resposta do aviso dele e ainda não chama o abridor', async ({ page, extensao, fakes }) => {
@@ -126,7 +134,7 @@ test('Permitir pede a permissão ao Chrome: o passo espera a resposta do aviso d
   // O aviso do Chrome está aberto (exceção de teste, no topo do arquivo): a tela diz o que fazer e espera.
   await expect(statusDoAbridor(page)).toHaveText('Responda ao aviso do Chrome.');
   await expect(permitir(page)).toHaveAttribute('aria-disabled', 'true');
-  await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(2);
+  await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(3);
   expect(fakes.abridor.pedidos()).toEqual([]);
   await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), false);
   await estadoFinal(extensao, { pm_abridor: null });
@@ -175,7 +183,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await pararRelogio(page);
     await conectarPelaPrimeiraVez(page, extensao, fakes);
 
-    await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(3);
+    await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(4);
     await expect(pronto(page)).toBeVisible();
     await expect(statusDoAbridor(page)).toHaveText(ACHOU);
     await expect(statusDoAbridor(page)).toBeVisible();
@@ -260,8 +268,6 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
   });
 });
 
-// ─── O mesmo passo na Boas-vindas ──────────────────────────────────────────────
-
 const cardDaBoasVindas = page => page.locator('.bv-card');
 const passosDaBoasVindas = page => cardDaBoasVindas(page).getByRole('navigation', { name: 'Como ligar' });
 
@@ -299,7 +305,7 @@ test.describe('na Boas-vindas, com a permissão dada', () => {
     await cardDaBoasVindas(page).locator('#bv4-tentar').click();
 
     await expect(page.locator('#bv4-abridor-status')).toHaveText(ACHOU);
-    await expect(passosDaBoasVindas(page).getByRole('button', { name: /feito$/ })).toHaveCount(3);
+    await expect(passosDaBoasVindas(page).getByRole('button', { name: /feito$/ })).toHaveCount(4);
     await fotografar(page, 'abridor-boas-vindas-achou.png');
     expect(fakes.abridor.pedidos()).toEqual([CONFERIR]);
     await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);

@@ -23,6 +23,10 @@ O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede 
   (coleção que quebra, sem coleção, perfil ilegível, corpo inválido) é a matriz `EstadosDeCadaRota`, que não lê os exemplos:
   uma rota nova se declara em `MATRIZ` (corpo mínimo, se lê a coleção, se lê o perfil e as recusas de validação dela; uma
   rota que não lê a coleção, como a chave da IA, responde o mesmo `status` em todos os estados) e sem isso o teste quebra dizendo o que declarar.
+- **Repetir e a base velha**: uma rota que muda o que a Conexão guarda (a chave da IA, o item de login) diz `muda: True` em `MATRIZ`
+  (e `versao: True` se o corpo traz a base). `RepeticaoDeCadaRotaQueMuda` pede o exemplo de sucesso dela de novo (mesma resposta, o arquivo do
+  dono byte a byte igual, também reconfirmando na base atual) e a base velha depois de mudanças mais novas (409, sem mudar nada). Uma rota
+  que muda sem dizer `muda: True` quebra; `muda_de_novo: "motivo"` declara que repetir na base atual muda de propósito.
 
 ## Um exemplo
 
@@ -152,10 +156,10 @@ o complemento só existe com o Anki aberto. A Conexão de hoje (`bridge/`) atend
 
 O abridor (#147, `complemento/abridor.py`) não fala HTTP: a extensão o chama por `chrome.runtime.sendNativeMessage`
 (`com.perpetualminer.abridor`), com a permissão opcional `nativeMessaging`. O contrato é o mesmo arquivo, na seção `abridor`:
-cada exemplo tem o `contexto` (`anki`: `no_lugar` ou `sumiu`, o Anki no lugar que a Conexão anotou ou não), a `mensagem` que o
+cada exemplo tem o `contexto` (`anki`: `no_lugar` ou `sumiu`, o Anki no lugar que a Conexão anotou ou não; `nao_abre`, o Anki no lugar e o sistema sem conseguir abri-lo), a `mensagem` que o
 Chrome entrega e a `resposta` do script. Os três lados leem os mesmos exemplos:
 
 - **o script de verdade**: `complemento/test_abridor.py` roda o `.sh` do Mac com cada exemplo (no Linux, só a CLI do JXA é adaptada para Node, executando o mesmo parser JavaScript; no Mac, `/usr/bin/osascript`), e o `.ps1` do Windows onde houver `pwsh`. A ação é a string principal exata `conferir` ou `abrir`: espaços internos, maiúsculas, ação aninhada e listas voltam `acao_desconhecida` sem abrir nada; os exemplos inválidos são compartilhados entre os dois sistemas;
 - **o fake do e2e**: `e2e/fakes/abridor.js` responde pelos exemplos (`node test_fake_abridor.js` o confere);
 - **a extensão**: cada mensagem nasce de `PerpetualMiner.Abridor` (`lib/abridor.js`), e `node test_contrato_fechado.js` exige um exemplo
-  `daExtensao` de cada uma de `Abridor.variantes()`. Hoje a extensão só manda `conferir`; o `abrir` é do Envio (#150).
+  `daExtensao` de cada uma de `Abridor.variantes()`. A extensão manda `conferir` (o passo Abrir o Anki sozinho, #147) e `abrir` (o passo Ter o Anki, #146; depois o Envio, #150).

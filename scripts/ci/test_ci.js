@@ -1,23 +1,22 @@
 'use strict';
 
-// As duas decisões que o workflow Testes toma com código: quando a suíte e2e pode ser pulada
-// e quais testes passaram só na segunda tentativa.
+// As três decisões que os workflows tomam com código: quando a suíte e2e pode ser pulada e quais
+// testes passaram só na segunda tentativa (workflow Testes), e a autoria dos commits (workflow Regras).
 
 const assert = require('assert');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { soDocumentacao, arquivosMudados } = require('./so-documentacao.js');
 const { instaveis, resumo } = require('./instaveis.js');
+const { EMAIL_DO_DONO, commitsForaDaRegra, mensagem } = require('./autoria.js');
 
-// --- Mudou só documentação? ---
 assert.strictEqual(soDocumentacao(['CLAUDE.md']), true);
 assert.strictEqual(soDocumentacao(['docs/instalar-extensao.md', 'bridge/README.md', 'engine/prompts/README.md']), true);
 assert.strictEqual(soDocumentacao(['docs/design/painel/anki/prototipo-anki.html', 'docs/design/foto/ref.png']), true);
 assert.strictEqual(soDocumentacao(['.agents/skills/popup/SKILL.md', '.claude/skills/x/SKILL.md']), true);
 
-// Qualquer arquivo de código na lista basta para rodar a suíte.
 assert.strictEqual(soDocumentacao(['CLAUDE.md', 'painel.js']), false);
 assert.strictEqual(soDocumentacao(['e2e/tests/popup.spec.js']), false);
 assert.strictEqual(soDocumentacao(['.github/workflows/testes.yml']), false);
@@ -46,7 +45,6 @@ assert.strictEqual(soDocumentacao(['.agents/skills/x/dados.yaml']), false);
 assert.strictEqual(soDocumentacao(['painel.png']), false);
 assert.strictEqual(soDocumentacao(['CLAUDE.md', 'docs/design/foto/ref.png']), true);
 
-// --- Sobre um diff de verdade: apagar ou mover um teste não é só documentação ---
 const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-ci-'));
 const git = (...args) => execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { encoding: 'utf8' });
 const escrever = (arquivo, texto) => {
@@ -78,7 +76,6 @@ assert.strictEqual(classificar(() => escrever('e2e/tests/ref.png', 'png')), fals
 assert.strictEqual(classificar(() => fs.rmSync(path.join(repo, 'painel.js'))), false, 'apagar código');
 fs.rmSync(repo, { recursive: true, force: true });
 
-// --- Quem passou só na segunda tentativa? ---
 const relatorio = {
   suites: [{
     title: 'a.spec.js',
@@ -105,5 +102,62 @@ assert.strictEqual(resumo([]), '');
 const texto = resumo(instaveis(relatorio));
 assert(texto.includes('a.spec.js:9') && texto.includes('oscila no grupo'), 'o resumo nomeia cada teste');
 assert(/2/.test(texto.split('\n')[0]), 'o título conta quantos foram');
+
+function saidaDoPasso(conteudo) {
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'instaveis-'));
+  const arquivoRelatorio = path.join(pasta, 'relatorio.json');
+  const arquivoSaida = path.join(pasta, 'saida');
+  fs.writeFileSync(arquivoRelatorio, JSON.stringify(conteudo));
+  execFileSync('node', [path.join(__dirname, 'instaveis.js'), arquivoRelatorio], {
+    env: { ...process.env, GITHUB_OUTPUT: arquivoSaida, GITHUB_STEP_SUMMARY: path.join(pasta, 'resumo') },
+    stdio: 'ignore',
+  });
+  const saida = fs.readFileSync(arquivoSaida, 'utf8');
+  fs.rmSync(pasta, { recursive: true, force: true });
+  return saida;
+}
+assert.strictEqual(saidaDoPasso(relatorio), 'achou=true\n', 'com um teste instável o job guarda os resultados');
+assert.strictEqual(saidaDoPasso({ suites: [] }), 'achou=false\n', 'sem nenhum, não guarda');
+
+const linha = (sha, autor, committer, assunto = 'x') => [sha, autor, committer, assunto].join('\t');
+assert.deepStrictEqual(commitsForaDaRegra([linha('a1', EMAIL_DO_DONO, EMAIL_DO_DONO), '']), [], 'autor e committer do dono');
+assert.deepStrictEqual(commitsForaDaRegra([linha('a2', EMAIL_DO_DONO, 'noreply@github.com')]), [], 'o committer GitHub dos merges do site');
+assert.deepStrictEqual(commitsForaDaRegra([linha('a3', 'agente@exemplo.com', EMAIL_DO_DONO)]).map(c => c.sha), ['a3'], 'autor de outra pessoa');
+assert.deepStrictEqual(commitsForaDaRegra([linha('a4', EMAIL_DO_DONO, 'agente@exemplo.com')]).map(c => c.sha), ['a4'], 'committer de outra pessoa');
+assert.deepStrictEqual(commitsForaDaRegra([linha('a5', 'noreply@github.com', EMAIL_DO_DONO)]).map(c => c.sha), ['a5'], 'o autor não tem a exceção do GitHub');
+assert.deepStrictEqual(commitsForaDaRegra([linha('a6', EMAIL_DO_DONO, EMAIL_DO_DONO, 'com\ttabulação')]), [], 'tabulação no assunto');
+assert.match(mensagem(commitsForaDaRegra([linha('abcdef0123', 'agente@exemplo.com', EMAIL_DO_DONO, 'um assunto')]), 'origin/main'),
+  /abcdef0 um assunto[^]*git rebase --rebase-merges --exec 'git commit --amend --no-edit --reset-author' origin\/main/, 'a mensagem dá o comando');
+
+// Sobre um repositório de verdade, pelo mesmo comando que o workflow roda.
+{
+  const repoDeAutoria = fs.mkdtempSync(path.join(os.tmpdir(), 'autoria-'));
+  const gitA = (autor, ...args) => execFileSync('git', args, {
+    cwd: repoDeAutoria, encoding: 'utf8',
+    env: { ...process.env, GIT_AUTHOR_NAME: 'n', GIT_AUTHOR_EMAIL: autor, GIT_COMMITTER_NAME: 'n', GIT_COMMITTER_EMAIL: autor },
+  });
+  const rodarAutoria = () => spawnSync('node', [path.join(__dirname, 'autoria.js'), 'main', 'HEAD'], { cwd: repoDeAutoria, encoding: 'utf8' });
+  const commitar = (autor, assunto) => {
+    fs.writeFileSync(path.join(repoDeAutoria, 'arquivo.txt'), `${assunto}\n`);
+    gitA(autor, 'add', '-A');
+    gitA(autor, 'commit', '-q', '-m', assunto);
+  };
+  gitA(EMAIL_DO_DONO, 'init', '-q', '-b', 'main');
+  commitar(EMAIL_DO_DONO, 'base');
+  gitA(EMAIL_DO_DONO, 'checkout', '-q', '-b', 'ramo');
+  commitar(EMAIL_DO_DONO, 'feito certo');
+  assert.strictEqual(rodarAutoria().status, 0, 'só commits do dono');
+  commitar('agente@exemplo.com', 'do agente');
+  const falha = rodarAutoria();
+  assert.strictEqual(falha.status, 1, 'um commit de outro e-mail barra');
+  assert(falha.stdout.includes('do agente') && !falha.stdout.includes('feito certo'), 'a mensagem nomeia só o commit errado');
+  execFileSync('git', ['rebase', '-q', '--rebase-merges', '--exec', 'git commit --amend --no-edit --reset-author', 'main'], {
+    cwd: repoDeAutoria,
+    env: { ...process.env, GIT_CONFIG_COUNT: '2',
+      GIT_CONFIG_KEY_0: 'user.email', GIT_CONFIG_VALUE_0: EMAIL_DO_DONO, GIT_CONFIG_KEY_1: 'user.name', GIT_CONFIG_VALUE_1: 'n' },
+  });
+  assert.strictEqual(rodarAutoria().status, 0, 'o comando da mensagem refaz a autoria');
+  fs.rmSync(repoDeAutoria, { recursive: true, force: true });
+}
 
 console.log('ci ok');

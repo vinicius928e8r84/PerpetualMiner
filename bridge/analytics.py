@@ -60,8 +60,6 @@ class JobAnalytics:
         self._unique_phrase_ids = unique_phrase_ids
         self._job_phrase_ids = job_phrase_ids
 
-    # -- I/O de leitura (replicado de BridgeApp; le via jobs_root/queue_file) --
-
     def _job_dir(self, job_id: str) -> Path:
         return self.jobs_root / job_id
 
@@ -92,8 +90,6 @@ class JobAnalytics:
             if isinstance(record, dict):
                 records.append(record)
         return records
-
-    # -- Datas e classificacao (puro) --
 
     def parse_date(self, raw: Any) -> date | None:
         if not raw:
@@ -154,8 +150,6 @@ class JobAnalytics:
         if source == "skipped":
             return "skipped"
         return "failed"
-
-    # -- Leitura e agregacao de snapshots --
 
     def _iter_job_snapshots(self) -> list[dict[str, Any]]:
         queue = self._safe_read_json(self.queue_file, {"jobs": []})
@@ -224,13 +218,13 @@ class JobAnalytics:
         generated_image_cost_pipeline = 0.0
         image_record_counts = self._image_bucket()
         pipeline_count = 0
-        matched_records = 0
+        registros_na_janela = 0
 
         for record in records:
             record_date = self._record_date(record, fallback_date)
             if not self._date_in_range(record_date, from_date, to_date):
                 continue
-            matched_records += 1
+            registros_na_janela += 1
             record_type = record.get("type")
             cost = self._cost_value(record)
 
@@ -291,7 +285,7 @@ class JobAnalytics:
                 "savingsUsd": round(images["savingsUsd"], 6),
                 **percentages,
             },
-            "matchedRecords": matched_records,
+            "matchedRecords": registros_na_janela,
         }
 
     def summary(self, from_date: date | None, to_date: date | None, lang: str) -> dict[str, Any]:

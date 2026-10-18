@@ -1,25 +1,5 @@
 'use strict';
 
-// O card Zona de perigo de Configurações (docs/design/painel/configuracoes/):
-// apagar todas as frases.
-//
-// O botão de perigo em contorno é só a entrada: ele abre o modal Veio (CFG-17),
-// com o foco inicial em Cancelar, e quem apaga é o botão de perigo preenchido
-// lá dentro. Nunca o confirm() do navegador. O alcance que a tela promete muda
-// com a conta: com ela, as frases somem de todos os computadores da conta; sem
-// ela, só deste. Sem frases, a entrada fica indisponível (CFG-20). Enquanto o
-// total não chega, a linha fica escondida: nunca um “Nenhuma frase” de mentira.
-// Com uma chave da OpenAI guardada, o modal diz que ela também sai (#154): quem
-// a apaga é o painel.js, pelo lib/chave-da-openai.js.
-//
-// O painel.js conta o que muda e faz o apagamento:
-//
-//   Perigo.mostrarTotal(n)
-//   Perigo.mostrarConta(comConta)
-//   Perigo.aoApagarTudo(apagar)   roda depois que a pessoa confirma no modal
-//
-// Toda cópia vem do catálogo da Voz.
-
 (function (raiz) {
   const { textoDaVoz, ChaveDaOpenAI } = raiz;
   const { abrirConfirmacao } = raiz.Veio;
@@ -58,8 +38,6 @@
     apagarTudo = apagar;
   }
 
-  // ─── Card ──────────────────────────────────────────────────────────────────
-
   /**
    * A entrada é sempre o mesmo botão: o modal devolve o foco a ele quando fecha,
    * então ele não pode ser trocado por outro enquanto isso.
@@ -94,8 +72,6 @@
     else if (n === 1) partes.entrada.textContent = textoDaVoz('CFG-24.uma');
     else partes.entrada.textContent = textoDaVoz('CFG-24.todas', { n });
   }
-
-  // ─── Modal ─────────────────────────────────────────────────────────────────
 
   /** “Apagar todas as 1.284 frases?”, com Cancelar (foco inicial) e o perigo preenchido. */
   function confirmarApagarTudo() {

@@ -1,14 +1,5 @@
 'use strict';
 
-// Frases · o lembrete “Configuração pela metade” (ONB-15; item 9 da lista
-// fechada, docs/design/painel/boas-vindas/, variante C). Enquanto a Boas-vindas
-// não chegou a Tudo pronto e o lembrete não foi ocultado, a faixa ouro fica no
-// topo de Frases com o anel de progresso e “N de 6 passos”, a mesma conta do
-// popup e da Boas-vindas (lib/configuracao.js).
-//
-// Continuar configuração abre #boas-vindas no primeiro passo que falta (ou em
-// Tudo pronto); Ocultar esconde o lembrete de vez, aqui e no popup.
-
 (function (raiz) {
   const { textoDaVoz, Veio, Configuracao } = raiz;
 

@@ -28,8 +28,6 @@ const abrirVitrine = async (page, paginas) => {
   await expect(page.locator('[data-grupo="Botões"]').first()).toBeVisible();
 };
 
-/* ── A vitrine ────────────────────────────────────────────────────────────── */
-
 test('a vitrine mostra cada componente nos dois temas', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -185,10 +183,7 @@ test('sem atalho gravado, o kbd fica tracejado', async ({ page, paginas }) => {
 test('a amostra de foco parado desenha o mesmo anel do foco de verdade', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  // A linha "foco" da vitrine pinta o anel o tempo todo, para o dono ver o
-  // estado parado. Se ela divergir do anel que tokens.css desenha no foco de
-  // verdade, a referência passa a mentir — então os dois são comparados.
-  const parado = await page.locator('[data-tema="escuro"] .veio-botao.demo-de-foco').first()
+  const parado = await page.locator('[data-tema="escuro"] .veio-botao.amostra-de-foco-parado').first()
     .evaluate(no => {
       const estilo = getComputedStyle(no);
       return [estilo.outlineStyle, estilo.outlineWidth, estilo.outlineColor, estilo.outlineOffset].join(' ');
@@ -219,8 +214,6 @@ test('o estado vazio ensina o que fazer e leva a ação junto', async ({ page, p
   }
 });
 
-/* ── Modal ────────────────────────────────────────────────────────────────── */
-
 test('o modal é um diálogo, começa no botão seguro e prende o foco', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -232,7 +225,6 @@ test('o modal é um diálogo, começa no botão seguro e prende o foco', async (
   await expect(dialogo).toBeVisible();
   await expect(dialogo).toHaveAttribute('aria-modal', 'true');
 
-  // O foco entra no botão seguro: "Cancelar", nunca no que apaga.
   await expect(dialogo.getByRole('button', { name: 'Cancelar' })).toBeFocused();
 
   // O Tab dá a volta dentro do modal e não sai para a página atrás.
@@ -282,8 +274,6 @@ test('o clique fora fecha o modal, e dentro dele não', async ({ page, paginas }
   await expect(scrim).toBeHidden();
   await expect(abrir).toBeFocused();
 });
-
-/* ── Toast e aviso persistente ────────────────────────────────────────────── */
 
 test('o toast de sucesso some sozinho, depois do tempo de leitura', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
@@ -397,8 +387,6 @@ test('o aviso que só informa é neutro, fala sem alarme e abre com a 1ª frase 
   expect(cores.neutro[1]).not.toBe(cores.erro[1]);
 });
 
-/* ── Palavra grifada ──────────────────────────────────────────────────────── */
-
 test('a Palavra é grifada de 50% a 94% da linha, sem raio', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -482,8 +470,6 @@ test('na frase clicável, cada palavra é um botão, a escolhida é grifada e as
   await expect(palavra('not')).toBeFocused();
   await expect(cartao.locator('[role="button"][tabindex="0"]')).toHaveCount(1);
 });
-
-/* ── Cópia, teclado e movimento ───────────────────────────────────────────── */
 
 test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
@@ -584,9 +570,7 @@ test('todo controle da vitrine mostra onde o foco está', async ({ page, paginas
     const focado = await page.evaluate(async ordem => {
       const no = document.activeElement;
       if (!no || no === document.body || no.dataset.focoDeTeste) return null;
-      // A linha "foco" da vitrine pinta o anel o tempo todo, para o dono ver
-      // o estado parado ao lado dos outros: ela não diz nada sobre o foco real.
-      if (no.classList.contains('demo-de-foco')) return { pular: true };
+      if (no.classList.contains('amostra-de-foco-parado')) return { pular: true };
       no.dataset.focoDeTeste = String(ordem);
       return {
         controle: no.id || `${no.tagName.toLowerCase()}.${no.className}`,

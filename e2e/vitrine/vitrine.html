@@ -242,11 +242,6 @@
       color: var(--veio-muted);
     }
 
-    /* ── Galeria de componentes ──────────────────────────────────────────
-       O andaime da vitrine: o nome de cada componente e a linha de cada
-       estado. Os componentes em si não ganham nenhum estilo aqui — o que se
-       vê é o que veio/componentes.css desenha. */
-
     .grupo {
       margin-top: 16px;
       padding-top: 12px;
@@ -343,11 +338,7 @@
       background: var(--veio-surface);
     }
 
-    /* Como o foco aparece, parado ao lado dos outros estados. Não leva o
-       prefixo veio- porque não é componente: é andaime da vitrine. Repete o
-       anel que tokens.css desenha em :focus-visible, e o teste compara os dois
-       para esta cópia nunca divergir do anel de verdade. */
-    .demo-de-foco {
+    .amostra-de-foco-parado {
       outline: 2px solid var(--veio-accent);
       outline-offset: 2px;
     }
@@ -461,7 +452,6 @@
 
   <main class="temas">
 
-    <!-- ESCURO (padrão) ─────────────────────────────────────────────── -->
     <section class="tema" data-tema="escuro">
       <div class="tema-nome">
         <h2>Escuro</h2>
@@ -505,7 +495,6 @@
       </div>
     </section>
 
-    <!-- CLARO (pronto, sem seletor) ─────────────────────────────────── -->
     <section class="tema" data-tema="claro">
       <div class="tema-nome">
         <h2>Claro</h2>
@@ -551,7 +540,6 @@
 
   </main>
 
-  <!-- BADGE DA TOOLBAR ──────────────────────────────────────────────── -->
   <section class="toolbar">
     <div class="secao" style="margin-top:0">
       <h3>Badge da toolbar (MIN-09)</h3>
@@ -668,8 +656,6 @@
         tema.querySelector('[data-componentes]'), tema.dataset.tema);
     }
 
-    // ── Badge da toolbar ────────────────────────────────────────────────
-    //
     // Os três estados que o service worker entrega ao Chrome: o texto do badge
     // e o tooltip do ícone. Sem badge, o tooltip volta a ser o nome da extensão.
     const ESTADOS_DO_BADGE = [

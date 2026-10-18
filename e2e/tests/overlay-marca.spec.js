@@ -81,8 +81,6 @@ const voltarGravacoes = extensao => extensao.serviceWorker.evaluate(() => {
   globalThis.__seguradas = [];
 });
 
-// ─── A legenda ───────────────────────────────────────────────────────────────
-
 test('Alt+S num player com legenda: a linha fica sob a legenda e o grifo sobre a Palavra que o service worker devolveu', async ({ page, context, paginas, fakes, extensao }) => {
   fakes.anki.definirVocabulario('en', ['quiet', 'harbor', 'woke']);
   await abrirPlayer(page, context, paginas);
@@ -184,8 +182,6 @@ test('enquanto o service worker não responde, não há marca: ela só aparece c
   await expect(chip(page)).toContainText(MIN_01);
 });
 
-// ─── A seleção ───────────────────────────────────────────────────────────────
-
 test('seleção numa página comum: a linha sob o trecho, o grifo na Palavra gravada e o chip com “Web”', async ({ page, paginas, extensao }) => {
   await extensao.gravarStorage({ pm_atalho: SELECAO_EM_ALT_E });
   await page.goto(paginas.url('texto.html'));
@@ -262,8 +258,6 @@ test('seleção dentro de um textarea: sem retângulo do texto, a pílula livre 
   }
 });
 
-// ─── O contador do botão ─────────────────────────────────────────────────────
-
 /** Uma legenda nova no player, como a de um vídeo tocando. */
 const trocarLegenda = (page, texto) => page.locator('#legenda').evaluate((no, texto) => { no.textContent = texto; }, texto);
 const contador = page => page.locator('perpetualminer-overlay .pm-contador');
@@ -307,8 +301,6 @@ test('o contador do idioma da legenda: no limite vira contorno e o leitor de tel
   await expect(contador(page)).toBeHidden();
   await expect(botaoFlutuante(page)).toHaveAccessibleDescription('');
 });
-
-// ─── A mineração automática ──────────────────────────────────────────────────
 
 async function tocarVideoComLegenda(page, texto) {
   // A mineração automática só olha a legenda de um vídeo que está tocando.

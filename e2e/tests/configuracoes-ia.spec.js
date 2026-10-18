@@ -576,8 +576,6 @@ test('abaixo de ~620 px de largura do card, as colunas viram linhas', async ({ p
   expect(Math.abs(estreita.chatgpt.width - estreita.chave.width)).toBeLessThan(1);
 });
 
-// ─── A chave acompanha a conta Google (#154) ───────────────────────────────────
-//
 // A Conexão é o único dono local; a nuvem replica o valor. A extensão só
 // guarda o resumo público. As chaves são fictícias; os provedores são fronteiras.
 

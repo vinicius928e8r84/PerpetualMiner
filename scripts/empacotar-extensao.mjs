@@ -44,8 +44,6 @@ async function validarManifesto(manifesto, arquivos) {
   return erros;
 }
 
-// ─── zip (store + deflate, o bastante para a loja) ────────────────────────────
-
 const TABELA_CRC = Uint32Array.from({ length: 256 }, (_, n) => {
   let c = n;
   for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
@@ -85,9 +83,8 @@ function lerParaOZip(arquivo) {
 }
 
 function montarZip(arquivos) {
-  // Data fixa (2020-01-01): o mesmo conteúdo gera o mesmo zip.
-  const hora = 0;
-  const data = ((2020 - 1980) << 9) | (1 << 5) | 1;
+  const HORA_DOS_REPRODUZIVEL = 0;
+  const DATA_DOS_2020_01_01 = ((2020 - 1980) << 9) | (1 << 5) | 1;
   const partes = [];
   const diretorio = [];
   let deslocamento = 0;
@@ -99,13 +96,13 @@ function montarZip(arquivos) {
     const crc = crc32(conteudo);
 
     const local = cabecalho(30, [
-      [0, 4, 0x04034b50], [4, 2, 20], [6, 2, 0x0800], [8, 2, 8], [10, 2, hora], [12, 2, data],
+      [0, 4, 0x04034b50], [4, 2, 20], [6, 2, 0x0800], [8, 2, 8], [10, 2, HORA_DOS_REPRODUZIVEL], [12, 2, DATA_DOS_2020_01_01],
       [14, 4, crc], [18, 4, comprimido.length], [22, 4, conteudo.length], [26, 2, nome.length],
     ]);
     partes.push(local, nome, comprimido);
 
     const central = cabecalho(46, [
-      [0, 4, 0x02014b50], [4, 2, 20], [6, 2, 20], [8, 2, 0x0800], [10, 2, 8], [12, 2, hora], [14, 2, data],
+      [0, 4, 0x02014b50], [4, 2, 20], [6, 2, 20], [8, 2, 0x0800], [10, 2, 8], [12, 2, HORA_DOS_REPRODUZIVEL], [14, 2, DATA_DOS_2020_01_01],
       [16, 4, crc], [20, 4, comprimido.length], [24, 4, conteudo.length], [28, 2, nome.length],
       [42, 4, deslocamento],
     ]);
@@ -121,8 +118,6 @@ function montarZip(arquivos) {
   ]);
   return Buffer.concat([...partes, ...diretorio, fim]);
 }
-
-// ─── execução ─────────────────────────────────────────────────────────────────
 
 function pastaDeSaida() {
   const i = process.argv.indexOf('--saida');

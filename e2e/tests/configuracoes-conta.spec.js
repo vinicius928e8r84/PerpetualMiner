@@ -1,20 +1,5 @@
 'use strict';
 
-// Passo 2 do redesign: Configurações com os cards “resumo primeiro” e o card
-// Conta & sync (#26, docs/design/painel/configuracoes/).
-//
-// #configuracoes mostra os sete cards fechados, cada um numa linha com o
-// resumo do estado, e eles abrem no lugar (vários ao mesmo tempo).
-// #configuracoes/<seção> abre o card, rola até ele e pisca a borda. O card
-// Conta & sync cobre os 10 estados de conta (CFG-01…10), e o chip da sidebar
-// espelha o mesmo estado. Um problema de sync aparece só ali: no card e no chip.
-//
-// O login roda de verdade: a janela do chrome.identity abre a página de login do
-// Google, que o fixture serve localmente (fakes/login-google.js); o teste escolhe
-// se a pessoa entra, fecha a janela ou se a página não carrega.
-//
-// Os testes afirmam o que a pessoa vê e o que fica gravado, nunca funções internas.
-
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../fixtures');
@@ -74,8 +59,6 @@ async function detalhesDoCard(page) {
   return detalhes.locator('pre');
 }
 
-// ─── Os cards fechados, resumo primeiro ──────────────────────────────────────
-
 test('#configuracoes mostra os 7 cards fechados em linha, na ordem, com o resumo da conta', async ({ page, extensao }) => {
   await abrirPainel(page, extensao);
 
@@ -129,8 +112,6 @@ test('o chip de conta leva ao card Conta & sync aberto', async ({ page, extensao
   await expect(cabecaDoCard(page, 'Conta & sync')).toHaveAttribute('aria-expanded', 'true');
   await expect(conta(page).getByRole('button', { name: 'Entrar com Google' })).toBeVisible();
 });
-
-// ─── Os resumos de Atalhos, Chave do Gemini e Zona de perigo ─────────────────
 
 const CHAVE_DO_GEMINI = 'AIzaSyD4kQ7wL2mXe9pRtB8nVfH0cJ3kQ9';
 const SELECAO_NO_BOTAO_VOLTAR = {
@@ -196,8 +177,6 @@ test('abaixo de ~560 px de conteúdo, nenhuma linha fechada mostra resumo', asyn
   await page.setViewportSize({ width: 700, height: 800 });
   for (const secao of ['conta', 'atalhos', 'chave', 'perigo']) await expect(resumo(page, secao)).toBeHidden();
 });
-
-// ─── Os 10 estados de conta: card, resumo e chip ─────────────────────────────
 
 test('Sincronizado (CFG-02): nome, ponto verde, Sair da conta e a nota; o chip e o resumo dizem o mesmo', async ({ page, extensao }) => {
   await extensao.semearSessao({ displayName: 'Ana Souza' });
@@ -577,8 +556,6 @@ test('cancelar o login (fechar a janela do Google) não mostra nada', async ({ p
   await esperarChipSemConta(page);
 });
 
-// ─── O caminho feliz de hoje: entrar, sincronizar, sair ──────────────────────
-
 test('entrar com Google sobe as frases e mostra a conta; sair deixa as frases neste computador', async ({ page, extensao, fakes }) => {
   fakes.google.usarPerfil({ name: 'Bruno Lima', email: 'bruno@teste.dev' });
   await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
@@ -602,8 +579,6 @@ test('entrar com Google sobe as frases e mostra a conta; sair deixa as frases ne
   expect(await extensao.frases()).toHaveLength(3);
   await expect(page.locator('#shell-total')).toHaveText('3');
 });
-
-// ─── Janela estreita, teclado e movimento ────────────────────────────────────
 
 test('abaixo de ~560 px de conteúdo, o resumo da linha fechada some e o conteúdo perde o recuo', async ({ page, extensao }) => {
   await extensao.semearSessao({ displayName: 'Ana Souza' });

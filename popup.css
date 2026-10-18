@@ -1,11 +1,3 @@
-/* ─────────────────────────────────────────────────────────────────────────
-   Popup “Cockpit” (docs/design/popup/, variante A).
-
-   340 px de largura, teto de 600 px de altura. Só a disposição da pilha mora
-   aqui: botão, campo, toggle, azulejo, medidor, kbd, esqueleto e vazio são
-   os componentes da Base Veio, e toda cor vem dos tokens.
-   ───────────────────────────────────────────────────────────────────────── */
-
 *,
 *::before,
 *::after {
@@ -36,8 +28,6 @@ textarea {
   font: inherit;
 }
 
-/* ── Cabeçalho: a marca, sem subtítulo (POP-12) ── */
-
 .popup-cabecalho {
   display: flex;
   align-items: center;
@@ -51,8 +41,6 @@ textarea {
   font-size: var(--veio-tam-card);
   line-height: 1.2;
 }
-
-/* ── A pilha ── */
 
 .popup-corpo {
   display: grid;
@@ -106,8 +94,6 @@ textarea {
   padding: 0;
 }
 
-/* ── O lembrete “Configuração pela metade” (ONB-14): o cartão é o botão ── */
-
 .popup-lembrete {
   display: flex;
   align-items: center;
@@ -153,8 +139,6 @@ textarea {
   font-weight: var(--veio-peso-titulo);
   white-space: nowrap;
 }
-
-/* ── Mineração automática: dois azulejos EN | RU ── */
 
 .popup-azulejos {
   display: grid;
@@ -260,8 +244,6 @@ textarea {
   line-height: 1.45;
 }
 
-/* ── Mineração rápida: o botão dentro do canto do campo ── */
-
 .popup-rapida {
   margin: 0;
 }
@@ -310,8 +292,6 @@ textarea {
   height: 14px;
   margin-top: 1px;
 }
-
-/* ── Últimas mineradas: só leitura ── */
 
 .popup-ultimas {
   margin: 0;
@@ -393,8 +373,6 @@ textarea {
 .popup-vazio .veio-vazio__texto {
   font-size: var(--veio-tam-apoio);
 }
-
-/* ── Rodapé: o atalho de legenda ── */
 
 .popup-rodape {
   display: flex;

@@ -25,8 +25,6 @@ function acusa(id, arquivo, fonte, quantas, porque) {
 
 const nulo = (achados, quantas, porque) => { assert.strictEqual(achados.length, quantas, `${porque}\n${JSON.stringify(achados, null, 2)}`); total++; return achados; };
 
-// ─── tokens-veio ─────────────────────────────────────────────────────────────
-
 // 8d13cc7^ overlay.css: o raio da linha do overlay solto, que a revisão do #41 tirou.
 acusa('tokens-veio', 'overlay.css', '.pm-linha {\n  height: 3px;\n  border-radius: 2px;\n  background: var(--veio-accent);\n}\n', 1,
   'raio em px fora dos tokens (8d13cc7)');
@@ -52,7 +50,6 @@ acusa('tokens-veio', 'overlay.css', [
   '.red-text { color: currentColor; background: transparent; border-color: inherit; }',
   '.x { --tom-red: var(--veio-accent); animation: piscar-red var(--veio-piscar) steps(2); }',
 ].join('\n'), 0, 'currentColor, transparent, inherit e nomes que só contêm uma cor');
-// O jeito certo passa.
 acusa('tokens-veio', 'painel.css', [
   '.pm-linha { border-radius: var(--veio-raio-linha); font-size: var(--veio-tam-pagina); }',
   'a:hover { color: var(--veio-text); }',
@@ -60,8 +57,6 @@ acusa('tokens-veio', 'painel.css', [
   '.zero { border-radius: 0; box-shadow: 0 0 0 2px var(--veio-accent); }',
   '/* font-size: 22px no comentário não conta */',
 ].join('\n'), 0, 'tokens, 50%, 0 e comentários');
-
-// ─── gravacao-de-frases ──────────────────────────────────────────────────────
 
 // b2188a1 (#126) lib/sincronizacao.js: escritas de `frases` e `pm_pending_sync` fora da fila.
 acusa('gravacao-de-frases', 'lib/sincronizacao.js', [
@@ -75,7 +70,6 @@ acusa('gravacao-de-frases', 'painel.js',
   'if (restantes.length !== pm_pending_sync.length) await chromeSet({ pm_pending_sync: restantes });\n', 1, 'chromeSet da página (0ade3d1)');
 acusa('gravacao-de-frases', 'painel.js', "chrome.storage.local.set({\n  frases: todasFrases,\n}, () => {});\nchrome.storage.local.remove('frases');\n", 2,
   'objeto em várias linhas e remove');
-// Dentro da fila, e outras chaves, passam.
 acusa('gravacao-de-frases', 'background.js', [
   'function naFilaDeGravacao(tarefa) { return fila.then(tarefa); }',
   'async function salvarFrase(nova) {',
@@ -89,8 +83,6 @@ acusa('gravacao-de-frases', 'background.js', [
   "  chrome.storage.local.set({ pm_tema: 'claro', frasesDoDia: 3 });",
   '}',
 ].join('\n'), 0, 'a escrita dentro de naFilaDeGravacao e outra chave');
-
-// ─── idioma-solto ────────────────────────────────────────────────────────────
 
 // bf640d9^ popup.js: uma das cinco cópias do detector que divergiram.
 acusa('idioma-solto', 'popup.js', "  const idioma = /[\\u0400-\\u04FF]/.test(texto) ? 'Russo' : 'Inglês';\n", 3, 'o detector copiado (bf640d9)');
@@ -106,8 +98,6 @@ acusa('idioma-solto', 'painel.js', [
   'const rotulo = "Frases em russo";',
 ].join('\n'), 0, 'o jeito de lib/idioma.js');
 assert.strictEqual(regras['idioma-solto'].seAplica('lib/idioma.js'), false, 'lib/idioma.js é o dono');
-
-// ─── teste-le-codigo ─────────────────────────────────────────────────────────
 
 const LEITOR = [
   'SERVER_PATH = Path(__file__).with_name("server.py")',
@@ -132,8 +122,6 @@ acusa('teste-le-codigo', 'bridge/test_anki_launcher.py', `${LEITOR}
         config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
         self.assertEqual(response.status_code, 503)
 `, 0, 'o teste pela rota e a leitura de um .json');
-
-// ─── e2e-funcao-interna ──────────────────────────────────────────────────────
 
 // 86b8bff (#129, achado S2): o callback do menu chamado sem dizer qual exceção usa.
 const MENU = [
@@ -181,8 +169,6 @@ acusa('e2e-funcao-interna', 'e2e/tests/popup.spec.js', [
   "const texto = await extensao.serviceWorker.evaluate(() => chrome.action.getBadgeText({}));",
   "const frases = await page.evaluate(() => document.querySelectorAll('.veio-frase').length);",
 ].join('\n'), 0, 'chrome.* e o DOM não são código da extensão');
-
-// ─── e2e-estado-final ────────────────────────────────────────────────────────
 
 const achadosDoEstado = fonte => regras['e2e-estado-final'].verificar('e2e/tests/probe.spec.js', fonte, RAIZ);
 
@@ -308,8 +294,6 @@ acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js',
 assert.strictEqual(regras['e2e-estado-final'].seAplica('e2e/tests/painel-anki-baralhos-visual.spec.js'), false);
 total++;
 
-// ─── contrato-fechado ────────────────────────────────────────────────────────
-
 // 7996b48 (#190) painel-anki-baralhos.js: o pedido da Conexão com o caminho e o corpo montados à mão, que o contrato
 // não tinha como conferir (o corpo de Atualizar tinha os dois Baralhos e o exemplo só o de Inglês).
 acusa('contrato-fechado', 'painel-anki-baralhos.js', [
@@ -333,13 +317,10 @@ const [retomar] = acusa('contrato-fechado', 'painel-envio.js',
 assert.match(retomar.detalhe, /POST \/jobs\/:id\/retry: a rota não tem exemplo no contrato/);
 total++;
 acusa('contrato-fechado', 'background.js', "await fetch('http://127.0.0.1:8766/anki/status');\n", 1, 'o endereço por extenso');
-// O jeito certo, e o que não é da Conexão, passam.
 acusa('contrato-fechado', 'painel-ajustes.js',
   'const resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, raiz.PedidoAoAnki.baralhos());\n', 0, 'o construtor');
 acusa('contrato-fechado', 'lib/sincronizacao.js', "const r = await fetch(`${URL_DO_FIRESTORE}/documents/frases`, { method: 'POST' });\n", 0, 'outro servidor');
 acusa('contrato-fechado', 'background.js', "// fetch(`${BRIDGE_URL}/jobs`)\n", 0, 'um comentário');
-
-// ─── testes-no-portao ────────────────────────────────────────────────────────
 
 // Um repositório mínimo (só o que a regra lê: o cadastro, os arquivos e os workflows).
 function repositorioDeTestes(arquivos) {
@@ -457,7 +438,32 @@ nulo(achadosDe(comOPortao({ 'scripts/testes.json': CADASTRO.replace('test_*.py',
 nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': `${CHAMA_TUDO}      - run: node scripts/testar.mjs engine\n` }), '.github/workflows/testes.yml'), 1,
   'workflow que chama um grupo que o cadastro não tem');
 
-// ─── exceções na linha ───────────────────────────────────────────────────────
+// Os erros reais: a SKILL.md de verificação carregou "41" como o tamanho da suíte e o CLAUDE.md ainda fala em "about 700 tests".
+acusa('doc-datado', '.agents/skills/verify-perpetualminer/SKILL.md', 'that the suite is collectable (41 specs listed by `playwright test --list`)\n', 1, 'contagem de specs (a SKILL.md antes do #226)');
+acusa('doc-datado', 'CLAUDE.md', 'the whole suite (about 700 tests) runs in CI\n', 1, 'contagem de tests (CLAUDE.md)');
+acusa('doc-datado', 'docs/instalar-extensao.md', 'São 12 testes de ponta a ponta.\n', 1, 'contagem em português');
+acusa('doc-datado', 'complemento/LEIA-ME.md', 'o servidor tem 3 e2e specs\n', 1, 'um e2e entre o número e a palavra');
+acusa('doc-datado', 'docs/design/README.md', 'Nesta rodada travo a variante; esta PR traz o painel e nessa rodada nada mais.\n', 3, 'esta PR / nesta rodada');
+acusa('doc-datado', 'CLAUDE.md', 'Neste PR o painel muda.\n', 1, 'o masculino: Neste PR');
+acusa('doc-datado', '.agents/skills/popup/SKILL.md', 'This PR adds the popup; in this PR nothing else.\n', 2, 'this PR');
+acusa('doc-datado', 'CLAUDE.md', 'one finding\nholds 236 older tests on its baseline\n', 1, 'a linha do achado é a certa');
+acusa('doc-datado', 'CLAUDE.md', [
+  'Run `HEADED=1 npm test` to see the browser; the doctor counts the specs (`playwright test --list`).',
+  'A suíte inteira roda no CI; os testes de cada grupo: `node scripts/testar.mjs --listar`.',
+  'Rode os specs da área; a prova de cada regra fica em test_regras.js (Python 3.9, 3.13).',
+  'Veja o PR no git log; a rodada de revisão fica no ticket.',
+].join('\n'), 0, 'comandos, variável com número, sem contagem');
+// Onde a regra vale: docs/ (menos docs/superpowers/), complemento/, CLAUDE.md e as skills, só em Markdown.
+const aplica = arquivo => regras['doc-datado'].seAplica(arquivo);
+for (const sim of ['CLAUDE.md', 'docs/instalar-extensao.md', 'docs/design/voz/README.md', 'complemento/LEIA-ME.md', 'complemento/contrato/LEIA-ME.md',
+  '.agents/skills/verify-perpetualminer/SKILL.md', '.agents/skills/verify-perpetualminer/features/ia.md']) {
+  assert.strictEqual(aplica(sim), true, `${sim} é conferido`);
+  total++;
+}
+for (const nao of ['docs/superpowers/specs/2026-06-nota.md', 'README.md', 'bridge/README.md', 'engine/CLAUDE.md', 'docs/design/painel/p.html', 'painel.js', 'complemento/servidor.py']) {
+  assert.strictEqual(aplica(nao), false, `${nao} não é conferido`);
+  total++;
+}
 
 const HOJE = '2026-10-04';
 assert.deepStrictEqual(excecaoNaLinha('  font-size: 9px; /* exceção tokens-veio até 2026-12-31, aprovada por Vinicius: imitação do badge */', HOJE),
@@ -466,8 +472,6 @@ assert.match(excecaoNaLinha('x // exceção tokens-veio até 2026-01-31, aprovad
 assert.match(excecaoNaLinha('x // exceção tokens-veio porque sim', HOJE).erro, /formato/);
 assert.strictEqual(excecaoNaLinha('// a exceção de teste do menu', HOJE), null);
 total += 4;
-
-// ─── a catraca, de ponta a ponta ─────────────────────────────────────────────
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-regras-'));
 const git = (...args) => execFileSync('git', args, { cwd: tmp, encoding: 'utf8', stdio: 'pipe' }).trim();
@@ -595,8 +599,6 @@ r = rodar('main', '--atualizar');
 assert.strictEqual(r.status, 0, r.stdout);
 assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(tmp, 'scripts/regras/linha-de-base.json'), 'utf8'))['tokens-veio'], {});
 total += 18;
-
-// ─── a linha de comando ──────────────────────────────────────────────────────
 
 r = rodar('main', '--raizz', tmp);
 assert.strictEqual(r.status, 2, 'bandeira desconhecida é erro de uso');

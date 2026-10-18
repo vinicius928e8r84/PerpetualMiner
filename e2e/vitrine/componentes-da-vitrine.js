@@ -50,8 +50,6 @@
   const FRASE_EM_INGLES = 'I’m not saying it’s your fault, I’m saying it’s your responsibility.';
   const FRASE_EM_RUSSO = 'Мы с тобой одной крови — ты и я.';
 
-  /* ── Andaime ──────────────────────────────────────────────────────────── */
-
   /** Um elemento com atributos e filhos, sem passar por innerHTML. */
   function el(tag, atributos = {}, ...filhos) {
     const no = document.createElement(tag);
@@ -80,7 +78,7 @@
   const estadoDaAmostra = estado => ({
     desabilitado: estado === 'desabilitado',
     erro: estado === 'erro',
-    classeDeFoco: estado === 'foco' ? 'demo-de-foco' : '',
+    classeDeFoco: estado === 'foco' ? 'amostra-de-foco-parado' : '',
   });
 
   /** Um rótulo da própria vitrine, que não é cópia de nenhuma tela. */
@@ -104,8 +102,6 @@
       type: 'button', class: 'veio-botao veio-botao--secundario',
       texto, 'data-vitrine-chrome': true, onclick: aoUsar,
     });
-
-  /* ── Botões ───────────────────────────────────────────────────────────── */
 
   function botoes(estado) {
     const { desabilitado, classeDeFoco: foco } = estadoDaAmostra(estado);
@@ -133,8 +129,6 @@
       }, iconeVeio('apagar')),
     ];
   }
-
-  /* ── Campos ───────────────────────────────────────────────────────────── */
 
   function busca({ desabilitado = false, classeDeFoco = '' } = {}) {
     const limpar = el('button', {
@@ -195,8 +189,6 @@
     ];
   }
 
-  /* ── Toggle e checkbox ────────────────────────────────────────────────── */
-
   function toggle({ ligado, desabilitado = false, classeDeFoco = '' }) {
     return el('label', { class: 'veio-toggle' },
       el('input', { type: 'checkbox', checked: ligado, disabled: desabilitado }),
@@ -224,8 +216,6 @@
         rotulo('span', '', 'misto')),
     ];
   }
-
-  /* ── Selos, kbd, segmentado e azulejo ─────────────────────────────────── */
 
   const selo = (classe, icone, texto) =>
     el('span', { class: `veio-selo ${classe}`.trim() },
@@ -287,8 +277,6 @@
     ];
   }
 
-  /* ── Modal, toast, aviso e esqueleto ──────────────────────────────────── */
-
   /** O modal desta coluna: aberto pelo botão de perigo em contorno. */
   function modal(temaDaColuna) {
     const cancelar = el('button', {
@@ -332,13 +320,7 @@
       mostrarToastDeSucesso(textoDaVoz('PAI-14', { n: 12 }), { dentroDe: coluna }));
   }
 
-  /**
-   * O aviso persistente, que volta depois de fechado.
-   *
-   * Na vitrine ele precisa voltar: é uma página de referência, e um componente
-   * que some no primeiro clique deixa de estar lá para ser olhado.
-   */
-  function aviso() {
+  function avisoQueVolta() {
     const lugar = el('div', { class: 'lugar-do-aviso' });
     const montar = () => lugar.append(montarAviso({
       texto: textoDaVoz('PAI-15.aviso'),
@@ -365,10 +347,6 @@
     montar();
     return lugar;
   }
-
-  /* ── Estado vazio ─────────────────────────────────────────────────────────
-     O vazio que ensina (PAI-02) e o vazio de uma busca sem resultado
-     (PAI-04), que leva a ação de limpar junto. */
 
   /** O vazio: o título em destaque, o texto que ensina (se houver) e a ação. */
   function vazio({ titulo, texto, acao, variante, icone }) {
@@ -401,8 +379,6 @@
       el('div', { class: 'veio-esqueleto', style: 'width:94%' }),
       el('div', { class: 'veio-esqueleto', style: 'width:58%' }));
   }
-
-  /* ── Linha de frase ───────────────────────────────────────────────────── */
 
   function frase({ texto, palavra, detectada, idioma, fonte, titulo, detalhe, selecionada, enviada }) {
     const marcada = el('input', {
@@ -463,8 +439,6 @@
     return ilha;
   }
 
-  /* ── A galeria ────────────────────────────────────────────────────────── */
-
   /** Monta a galeria inteira dentro de `destino`, na coluna do tema `tema`. */
   function montarComponentes(destino, tema) {
     destino.append(
@@ -493,7 +467,7 @@
 
       grupo('Controle segmentado',
         linha('normal', segmentado()),
-        linha('foco', segmentado({ classeDeFoco: 'demo-de-foco' })),
+        linha('foco', segmentado({ classeDeFoco: 'amostra-de-foco-parado' })),
         linha('desabilitado', segmentado({ desabilitado: true }))),
 
       grupo('Azulejo',
@@ -508,7 +482,7 @@
         linha('normal', toast(destino))),
 
       grupo('Aviso persistente',
-        linha('erro', aviso()),
+        linha('erro', avisoQueVolta()),
         linha('informativo', avisoInformativo())),
 
       grupo('Estado vazio',

@@ -1,77 +1,47 @@
 'use strict';
 
-// Os passos de pôr a Conexão com o Anki no Anki, num componente só (#99, #145): a
-// lista de passos e o card do passo, do desenho B de
-// docs/design/painel/anki/prototipo-primeira-conexao.html. O passo 4 da Boas-vindas
-// (`painel-boas-vindas.js`) e o card ONB-16 da área Conexão com o Anki
-// (`painel-anki-primeira-conexao.js`) montam este mesmo componente, sem comando de
-// terminal nenhum:
-//
-//   1  Pôr a Conexão no Anki: baixar › abrir › Sim › reiniciar. O arquivo vai dentro do
-//      pacote da extensão (`conexao/perpetualminer.ankiaddon`) e sai por um link de
-//      download, sem permissão nova. O Detalhes “O arquivo não abriu?” leva o código do
-//      AnkiWeb (para colar em Ferramentas › Complementos › Obter complementos) ou, até o
-//      primeiro upload (#176), diz que ele vem em breve: nunca um número inventado.
-//   2  Reiniciar o Anki: este passo sempre existe. A extensão confere sozinha e a linha de
-//      status mostra Conectando enquanto a conferência está no ar (a de 15 s também, sem
-//      ninguém apertar nada) e, quando a Conexão responde, “Achei o Anki · perfil · versão”.
-//      Uma conferência no ar não apaga o último resultado: ligada continua ligada até uma
-//      resposta dizer o contrário, e a falha volta a “desligada”.
-//   3  Abrir o Anki sozinho (#147, ONB-17): logo depois de a Conexão responder, o card passa
-//      sozinho a este passo. “Permitir abrir o Anki” pede ao Chrome a permissão opcional
-//      `nativeMessaging` e a extensão confere o abridor que a Conexão deixou no computador
-//      (`PerpetualMiner.Abridor`: só “achou o Anki?”, nada abre nem fecha). Com a permissão já
-//      dada, ela confere sem clique. “Agora não” fica guardado (`pm_abridor`) e o passo fica
-//      “agora não”; não achou, ou o abridor não respondeu, o passo diz o que fazer, com
-//      Tentar de novo e o que o Chrome disse no Detalhes. Antes de a Conexão responder, este
-//      passo não tem o que fazer: o abridor é ela que escreve.
-//
-// A lista é dado (`PASSOS`): o passo “Ter o Anki” (#146) entra nela sem mexer no resto. O
-// número do passo na tela é a posição na lista.
-//
-// Os passos se marcam pelo estado real, e a única coisa que a extensão enxerga antes
-// da Conexão é ela mesma: os dois primeiros viram ✓ juntos quando ela responde ligada; o
-// terceiro, quando o abridor acha o Anki (ou “agora não”, quando a pessoa disse isso).
-//
-// O abridor é um só por página: os dois lugares que montam o componente (a Boas-vindas e o
-// card ONB-16 moram no mesmo painel) leem o mesmo estado, e a conferência sai uma vez.
-//
-// Sem resposta em 2 minutos, o card mostra o checklist de 3 itens e “Baixar de novo”,
-// e a conferência segue sozinha (ela é do `ConexaoAnki`; aqui não se pergunta nada à
-// rede). Os 2 minutos contam desde que a pessoa vê os passos pela primeira vez ou baixa
-// o arquivo, o que vier primeiro; o checklist, uma vez na tela, fica até a Conexão responder.
-//
-// Um destaque (`--primario`) só por tela (veio/README.md): com a navegação do card, o
-// destaque é a ação do passo (Baixar, Tentar de novo) e Voltar · Continuar são contorno;
-// sem ela, o destaque é o Continuar do anfitrião e o card só tem contornos.
-//
 //   montar(lugar, { prefixo, navegacao, aoSairOBotao, aoResolverOAbridor })
 //     `prefixo`        dá os ids (`<prefixo>-passo-titulo`, `-status`, `-tentar`, `-abridor-status`…)
 //     `navegacao`      Voltar · Continuar no card (padrão true; a Boas-vindas tem os seus)
 //     `empilhado`      a lista acima do card, para quando o componente mora dentro de outro card
 //     `aoSairOBotao`   o elemento que acolhe o foco quando o Tentar de novo sai com ele
-//     `aoResolverOAbridor`  chamado quando o passo 3 se resolve (achou o Anki, ou “Agora não”)
+//     `aoResolverOAbridor`  chamado quando o passo 4 se resolve (achou o Anki, ou “Agora não”)
 //   devolve { desenhar({ pronto }), mostrar(visivel), focarTitulo(), abridorResolvido() }
 //     `desenhar`  redesenha pelo estado da Conexão. O anfitrião chama com `pronto` quando
 //                 mostra o momento Pronto (todos os passos resolvidos, sem botões);
 //     `mostrar`   o anfitrião diz se o componente está à vista de verdade (a área ou a tela
 //                 aberta, não só montada em um lugar escondido): é daí que contam os 2 minutos;
-//     `abridorResolvido`  o passo 3 já está resolvido (o card ONB-16 só vai ao Pronto depois dele).
+//     `abridorResolvido`  o passo 4 já está resolvido (o card ONB-16 só vai ao Pronto depois dele).
 //
 // O código do AnkiWeb vem de `PerpetualMiner.CODIGO_DO_ANKIWEB` (nenhum até o primeiro
 // upload); quem o publicar define esse valor em `lib/` e nada mais muda aqui.
 
 (function (raiz) {
   const PASSOS = [
+    { id: 'anki', titulo: 'ONB-18.titulo', texto: 'ONB-18.texto' },
     { id: 'colocar', titulo: 'ONB-16.passo1Titulo', texto: 'ONB-16.passo1Texto' },
     { id: 'reiniciar', titulo: 'ONB-16.passo2Titulo', texto: 'ONB-16.passo2Texto' },
     { id: 'abridor', titulo: 'ONB-17.titulo', texto: 'ONB-17.texto' },
   ];
+  const PASSO_DO_ANKI = 'anki';
   const PASSO_DO_ARQUIVO = 'colocar';
   const PASSO_DO_TENTAR = 'reiniciar';
   const PASSO_DO_ABRIDOR = 'abridor';
   const ARQUIVO_DA_CONEXAO = 'conexao/perpetualminer.ankiaddon';
   const NOME_DO_ARQUIVO = 'perpetualminer.ankiaddon';
+  // “Não tenho” (#146) leva à página de download do Anki, que existe sempre e mostra o arquivo de
+  // cada sistema. Não há endereço fixo de instalador por sistema: o Anki publica um por processador
+  // (`anki-<versão>-mac-apple.dmg` · `-mac-intel.dmg` · `-win-x64.msi` · `-win-arm64.msi`), e o nome
+  // carrega a versão; o download direto pelo processador é o #232.
+  // O que muda por sistema é o que fazer depois do download.
+  const PAGINA_DO_ANKI = 'https://apps.ankiweb.net/';
+  const DEPOIS_DO_DOWNLOAD = Object.freeze({
+    mac: 'ONB-18.depoisNoMac',
+    windows: 'ONB-18.depoisNoWindows',
+    outro: 'ONB-18.depois',
+  });
+  // A resposta da pessoa à pergunta “Você já tem o Anki?”, que fica só na tela.
+  const RESPOSTA = Object.freeze({ JA_TENHO: 'ja', NAO_TENHO: 'nao' });
   /** Sem resposta depois disto, o checklist e “Baixar de novo”. */
   const SEM_RESPOSTA_MS = 2 * 60 * 1000;
   const INTERVALO_DO_TIQUE = 1000;
@@ -81,8 +51,17 @@
   const { SITUACAO: CONEXAO } = ConexaoAnki;
   const { SITUACAO } = Configuracao;
 
-  // ─── O abridor (passo 3), um por página ─────────────────────────────────────
-  //
+  /**
+   * O que fazer depois de baixar o Anki, pelo sistema da pessoa (o `userAgentData` do Chromium, ou o
+   * user agent): o ID da cópia. Fora do Mac e do Windows, a frase geral.
+   */
+  function depoisDoDownloadDestaPessoa() {
+    const plataforma = navigator.userAgentData?.platform ?? navigator.userAgent;
+    if (/mac/i.test(plataforma)) return DEPOIS_DO_DOWNLOAD.mac;
+    if (/win/i.test(plataforma)) return DEPOIS_DO_DOWNLOAD.windows;
+    return DEPOIS_DO_DOWNLOAD.outro;
+  }
+
   // Em que fase está a conversa com o abridor. `PEDIR` é “sem permissão”: os botões
   // Permitir e Agora não; `PEDINDO` é o aviso do Chrome aberto.
   const FASE = Object.freeze({
@@ -109,7 +88,7 @@
     abridor.ouvintes.forEach(ouvinte => ouvinte());
   }
 
-  /** O passo 3 está resolvido: o abridor achou o Anki, ou a pessoa disse “Agora não”. */
+  /** O passo 4 está resolvido: o abridor achou o Anki, ou a pessoa disse “Agora não”. */
   const abridorResolvido = () => abridor.fase === FASE.ACHOU || abridor.agoraNao;
 
   /** Lê o “Agora não” guardado e o acompanha (outra aba, ou o outro lugar desta página, pode mudá-lo). */
@@ -202,7 +181,8 @@
     iniciarOAbridor();
     const id = parte => `${prefixo}-${parte}`;
     const estado = {
-      ultimaSituacao: null, // a situação da Conexão no último desenho (o passo 3 abre quando ela liga)
+      ultimaSituacao: null, // a situação da Conexão no último desenho (o passo 4 abre quando ela liga)
+      ligou: false,         // a Conexão respondeu ligada nesta página (a guardada vem de `jaConectou`)
       resolvido: abridorResolvido(),
       escolha: null,        // o passo que a pessoa abriu; sem ele, o primeiro que falta
       pronto: false,        // o anfitrião mostra o momento Pronto
@@ -213,7 +193,6 @@
     };
     const marcas = [];
 
-    // ─── A lista ────────────────────────────────────────────────────────────
     const itens = elemento('ol', 'bv-lista__itens');
     PASSOS.forEach((passo, i) => {
       const marca = elemento('span', 'bv-marca');
@@ -229,29 +208,120 @@
     const lista = elemento('nav', 'pc-lista', itens);
     lista.setAttribute('aria-label', textoDaVoz('ONB-16.passos'));
 
-    // ─── O card do passo ────────────────────────────────────────────────────
     const sobretitulo = elemento('p', 'bv-sobretitulo');
     const titulo = elemento('h3', 'bv-titulo');
     titulo.id = id('passo-titulo');
     titulo.tabIndex = -1;
     const texto = elemento('p', 'bv-texto');
 
-    // O arquivo: um link de download do próprio pacote da extensão (o Chrome não pede permissão).
-    const linkDoArquivo = (classe, rotulo) => {
+    const destaque = navegacao ? 'veio-botao--primario' : 'veio-botao--contorno';
+    /** Um link com cara de botão: o do arquivo da Conexão e o da página do Anki. */
+    const botaoDeLink = (rotulo, endereco, classe = `veio-botao ${destaque}`) => {
       const link = elemento('a', classe, rotulo);
-      link.href = chrome.runtime.getURL(ARQUIVO_DA_CONEXAO);
+      link.href = endereco;
+      return link;
+    };
+    /** O arquivo da Conexão vem do próprio pacote da extensão (o Chrome não pede permissão). */
+    const botaoDoArquivo = (rotulo, classe) => {
+      const link = botaoDeLink(rotulo, chrome.runtime.getURL(ARQUIVO_DA_CONEXAO), classe);
       link.download = NOME_DO_ARQUIVO;
       return link;
     };
-    const destaque = navegacao ? 'veio-botao--primario' : 'veio-botao--contorno';
-    const baixar = linkDoArquivo(`veio-botao ${destaque}`, textoDaVoz('ONB-16.baixar'));
+    const baixar = botaoDoArquivo(textoDaVoz('ONB-16.baixar'));
     baixar.addEventListener('click', () => { if (estado.esperandoDesde === null) estado.esperandoDesde = Date.now(); });
+
+    // A animação do aviso (ONB-19, #146): o que o próprio Anki pergunta ao abrir o arquivo, e de
+    // onde clicar. Os quadros são um desenho (aria-hidden); a legenda é o que o leitor de tela lê.
+    const dialogoDoAnki = comOClique => {
+      const quadro = elemento('div', `pc-animacao__quadro${comOClique ? ' pc-animacao__quadro--clique' : ''}`);
+      quadro.setAttribute('aria-hidden', 'true');
+      const botoes = elemento('div', 'pc-dialogo__botoes',
+        elemento('span', 'pc-dialogo__botao pc-dialogo__botao--sim', textoDaVoz('ONB-19.sim')),
+        elemento('span', 'pc-dialogo__botao', textoDaVoz('ONB-19.nao')));
+      quadro.append(elemento('div', 'pc-dialogo',
+        elemento('p', 'pc-dialogo__titulo', textoDaVoz('ONB-19.janela')),
+        elemento('p', 'pc-dialogo__texto', textoDaVoz('ONB-19.aviso')), botoes));
+      return quadro;
+    };
+    const aAnimacao = elemento('figure', 'pc-animacao',
+      elemento('div', 'pc-animacao__quadros', dialogoDoAnki(false), dialogoDoAnki(true)),
+      elemento('figcaption', 'pc-animacao__legenda', textoDaVoz('ONB-19.legenda')));
 
     const codigo = raiz.CODIGO_DO_ANKIWEB ?? null;
     const detalhes = Veio.montarDetalhes(
       codigo === null ? textoDaVoz('ONB-16.codigoEmBreve') : textoDaVoz('ONB-16.codigoDoAnkiWeb', { codigo }),
       document, textoDaVoz('ONB-16.arquivoNaoAbriu'));
-    const doArquivo = elemento('div', 'pc-arquivo', baixar, detalhes);
+    // A animação vem antes do botão: a pessoa vê o que o Anki vai perguntar antes de baixar o
+    // arquivo (“Antes de baixar…”, ONB-19 e docs/design/painel/boas-vindas/README.md § os passos).
+    const doArquivo = elemento('div', 'pc-arquivo', aAnimacao, baixar, detalhes);
+
+    // O passo Ter o Anki (#146): a pergunta, as duas respostas e o que a escolha mostra.
+    const perguntaDoAnki = elemento('p', 'pc-anki__pergunta', textoDaVoz('ONB-18.pergunta'));
+    const botaoDeResposta = (rotulo, parte) => {
+      const botao = elemento('button', 'veio-botao veio-botao--contorno veio-botao--compacto', textoDaVoz(rotulo));
+      botao.id = id(parte);
+      botao.type = 'button';
+      return botao;
+    };
+    const jaTenho = botaoDeResposta('ONB-18.jaTenho', 'anki-ja-tenho');
+    const naoTenho = botaoDeResposta('ONB-18.naoTenho', 'anki-nao-tenho');
+    const respostasDoAnki = elemento('div', 'pc-anki__respostas', jaTenho, naoTenho);
+
+    // A página do Anki abre numa aba nova: o painel (e o passo em que a pessoa está) fica onde está.
+    const baixarOAnki = botaoDeLink(textoDaVoz('ONB-18.baixar'), PAGINA_DO_ANKI);
+    baixarOAnki.id = id('anki-baixar');
+    baixarOAnki.target = '_blank';
+    baixarOAnki.rel = 'noopener';
+    const depoisDoDownload = elemento('p', 'pc-anki__depois', textoDaVoz(depoisDoDownloadDestaPessoa()));
+    const doDownloadDoAnki = elemento('div', 'pc-anki__download', baixarOAnki, depoisDoDownload);
+
+    const resultadoDoAnki = elemento('p', 'pc-anki__resultado');
+    resultadoDoAnki.id = id('anki-resultado');
+    resultadoDoAnki.setAttribute('aria-live', 'polite');
+    const blocoDoAnki = elemento('div', 'pc-anki', perguntaDoAnki, respostasDoAnki, doDownloadDoAnki, resultadoDoAnki);
+    doDownloadDoAnki.hidden = true;
+    resultadoDoAnki.hidden = true;
+
+    // A resposta do passo Ter o Anki, só na tela: `escolha` é `null` (a pergunta) ou uma `RESPOSTA`,
+    // e `doAbridor` é o ID do que a resposta “Já tenho” mostrou por último (nenhum, enquanto não há o
+    // que dizer). O que marca o passo é a Conexão respondendo, e a escolha volta à pergunta então.
+    const anki = { escolha: null, doAbridor: null };
+    const definirResposta = (escolha, doAbridor = null) => Object.assign(anki, { escolha, doAbridor });
+
+    /**
+     * O abridor da Conexão abre o Anki agora? Sem a permissão já dada, `abrirOAnki` nem pergunta a ele
+     * (SEM_PERMISSAO); uma conversa que falha por dentro (o Chrome recusando a pergunta da permissão, por
+     * exemplo) é o caminho manual.
+     */
+    async function oAbridorAbreOAnki() {
+      const { resultado } = await Abridor.abrirOAnki().catch(() => ({ resultado: null }));
+      return resultado === Abridor.RESULTADO.ABRIU;
+    }
+
+    // Uma conversa com o abridor por vez: cada `abrir` é um Anki aberto pelo sistema, e um clique duplo em
+    // “Já tenho” não pode abrir dois.
+    let conversandoComOAbridor = false;
+
+    /** “Já tenho”: com a permissão já dada, o abridor abre o Anki; sem ela (ou sem o abridor), o caminho manual. */
+    async function responderJaTenho() {
+      definirResposta(RESPOSTA.JA_TENHO);
+      desenhar();
+      if (conversandoComOAbridor) return;
+      conversandoComOAbridor = true;
+      const abriu = await oAbridorAbreOAnki().finally(() => { conversandoComOAbridor = false; });
+      // Enquanto o abridor falava, a pessoa podia ter mudado de resposta (ou a Conexão, respondido).
+      if (anki.escolha !== RESPOSTA.JA_TENHO) return;
+      definirResposta(RESPOSTA.JA_TENHO, abriu ? 'ONB-18.abrindo' : 'ONB-18.manual');
+      desenhar();
+    }
+
+    function responderNaoTenho() {
+      definirResposta(RESPOSTA.NAO_TENHO);
+      desenhar();
+    }
+
+    jaTenho.addEventListener('click', responderJaTenho);
+    naoTenho.addEventListener('click', responderNaoTenho);
 
     const ponto = elemento('span', 'bv-ponto');
     ponto.id = id('ponto');
@@ -271,7 +341,7 @@
     });
     const conexao = elemento('div', 'bv-conexao', status, tentar);
 
-    // O abridor (passo 3): a linha do que ele disse, as ações e, quando ele não respondeu, o Detalhes.
+    // O abridor (passo 4): a linha do que ele disse, as ações e, quando ele não respondeu, o Detalhes.
     const pontoDoAbridor = elemento('span', 'bv-ponto');
     pontoDoAbridor.setAttribute('aria-hidden', 'true');
     const textoDoAbridor = elemento('span');
@@ -292,13 +362,14 @@
     let avisoDoAbridor = null;
     const blocoDoAbridor = elemento('div', 'pc-abridor', statusDoAbridor, acoesDoAbridor);
 
-    const baixarDeNovo = linkDoArquivo('veio-botao veio-botao--contorno veio-botao--compacto', textoDaVoz('ONB-16.baixarDeNovo'));
+    const baixarDeNovo = botaoDoArquivo(textoDaVoz('ONB-16.baixarDeNovo'),
+      'veio-botao veio-botao--contorno veio-botao--compacto');
     const checklist = elemento('ul', 'pc-checklist', ...ITENS_DO_CHECKLIST.map(item => elemento('li', null, textoDaVoz(item))));
     const semResposta = elemento('div', 'pc-sem-resposta',
       elemento('p', 'pc-sem-resposta__texto', textoDaVoz('ONB-16.semResposta')), checklist, baixarDeNovo);
     semResposta.hidden = true;
 
-    const controle = elemento('div', 'pc-controle', doArquivo, conexao, blocoDoAbridor, semResposta);
+    const controle = elemento('div', 'pc-controle', blocoDoAnki, doArquivo, conexao, blocoDoAbridor, semResposta);
 
     const voltar = elemento('button', 'veio-botao veio-botao--contorno', textoDaVoz('ONB-04.voltar'));
     voltar.id = id('voltar');
@@ -314,7 +385,6 @@
     const card = elemento('div', 'pc-card', sobretitulo, titulo, texto, controle, rodape);
     lugar.append(elemento('div', empilhado ? 'pc pc--empilhado' : 'pc', lista, card));
 
-    // ─── O passo aberto ─────────────────────────────────────────────────────
     const indice = passoId => PASSOS.findIndex(p => p.id === passoId);
 
     /**
@@ -326,7 +396,11 @@
       if (estado.escolha !== null) return estado.escolha;
       const situacao = ConexaoAnki.situacao();
       if (situacao === CONEXAO.LIGADA) return PASSO_DO_ABRIDOR;
-      return situacao === CONEXAO.CONECTANDO ? PASSO_DO_TENTAR : PASSOS[0].id;
+      if (situacao === CONEXAO.CONECTANDO) return PASSO_DO_TENTAR;
+      // Desligada: quem nunca conectou começa no primeiro passo; quem já viu a Conexão ligar (nesta
+      // página, ou neste computador: `jaConectou`) volta a Reiniciar o Anki, o primeiro que falta de novo,
+      // com a linha da Conexão e o Tentar de novo. O passo do abridor não tem o que fazer sem ela.
+      return estado.ligou || ConexaoAnki.jaConectou() ? PASSO_DO_TENTAR : PASSOS[0].id;
     }
     const indiceAberto = () => indice(passoAberto());
 
@@ -338,7 +412,6 @@
       titulo.focus();
     }
 
-    // ─── A espera ───────────────────────────────────────────────────────────
     /** Conta os 2 minutos e diz se o checklist está na tela (ele sai quando a Conexão responde). */
     function desenharAEspera() {
       const ligada = ConexaoAnki.situacao() === CONEXAO.LIGADA;
@@ -352,7 +425,6 @@
       semResposta.hidden = !estado.semResposta || estado.pronto || ligada;
     }
 
-    // ─── O desenho ──────────────────────────────────────────────────────────
     function desenhar({ pronto = estado.pronto } = {}) {
       estado.pronto = pronto;
       const aberto = pronto ? -1 : indiceAberto();
@@ -364,7 +436,7 @@
       const exibida = estado.conferindo && situacao === CONEXAO.DESLIGADA && passoDoCard.id === PASSO_DO_TENTAR
         ? CONEXAO.CONECTANDO : situacao;
       const conectou = pronto || situacao === CONEXAO.LIGADA;
-      // Os dois primeiros passos são a Conexão; o terceiro, o abridor (ou o “Agora não” dele).
+      // Os três primeiros passos são a Conexão; o quarto, o abridor (ou o “Agora não” dele).
       const situacaoDoPasso = passo => {
         if (passo.id !== PASSO_DO_ABRIDOR) return conectou ? SITUACAO.FEITO : '';
         if (abridor.fase === FASE.ACHOU) return SITUACAO.FEITO;
@@ -389,6 +461,11 @@
       titulo.textContent = pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA) : textoDaVoz(passoDoCard.titulo);
       texto.textContent = pronto ? textoDaVoz('ONB-16.prontoApoio') : textoDaVoz(passoDoCard.texto);
       doArquivo.hidden = pronto || passoDoCard.id !== PASSO_DO_ARQUIVO;
+      desenharOAnki(passoDoCard, pronto);
+
+      // No passo Ter o Anki, a linha da Conexão não tem o que fazer: o Tentar de novo mora no
+      // passo de reiniciar, e o que a pessoa está respondendo é se tem o Anki.
+      conexao.hidden = passoDoCard.id === PASSO_DO_ANKI;
 
       // O status é uma região que anuncia a mudança: o ponto e o texto trocam, ela fica. No passo do
       // arquivo, enquanto a Conexão não respondeu, ele espera (o Anki não é lido antes dela: nunca
@@ -413,7 +490,18 @@
       desenharAEspera();
     }
 
-    /** O bloco do abridor: só no passo 3, com a Conexão ligada (é ela que deixa o abridor no computador). */
+    /** O bloco do passo Ter o Anki: a pergunta, a escolha e o que ela mostrou por último. */
+    function desenharOAnki(passoDoCard, pronto) {
+      blocoDoAnki.hidden = pronto || passoDoCard.id !== PASSO_DO_ANKI;
+      if (blocoDoAnki.hidden) return;
+      jaTenho.setAttribute('aria-pressed', String(anki.escolha === RESPOSTA.JA_TENHO));
+      naoTenho.setAttribute('aria-pressed', String(anki.escolha === RESPOSTA.NAO_TENHO));
+      doDownloadDoAnki.hidden = anki.escolha !== RESPOSTA.NAO_TENHO;
+      resultadoDoAnki.hidden = anki.doAbridor === null;
+      resultadoDoAnki.textContent = anki.doAbridor === null ? '' : textoDaVoz(anki.doAbridor);
+    }
+
+    /** O bloco do abridor: só no passo 4, com a Conexão ligada (é ela que deixa o abridor no computador). */
     function desenharOAbridor(passoDoCard, pronto, situacao) {
       const { fase } = abridor;
       blocoDoAbridor.hidden = passoDoCard.id !== PASSO_DO_ABRIDOR || fase === FASE.ANTES
@@ -458,9 +546,12 @@
     }
 
     ConexaoAnki.acompanhar(situacao => {
-      // A Conexão acabou de ligar: o card vai ao passo do abridor, a menos que ele já esteja resolvido.
+      // A Conexão acabou de ligar: o card vai ao passo do abridor, a menos que ele já esteja
+      // resolvido. O passo Ter o Anki fez o dele (o Anki está aí): a pergunta volta ao começo.
       if (situacao === CONEXAO.LIGADA && estado.ultimaSituacao !== CONEXAO.LIGADA) {
+        estado.ligou = true;
         if (!abridorResolvido()) estado.escolha = null;
+        definirResposta(null);
         aoLigarAConexao();
       }
       estado.ultimaSituacao = situacao;

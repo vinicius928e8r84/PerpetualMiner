@@ -1,38 +1,10 @@
 'use strict';
 
-// Baralhos e termos, Vocabulário e Reparar Anki, na área Conexão com o Anki
-// (docs/design/painel/anki/, variante C “Por idioma”). Custos é de
-// painel-anki.js; a situação da Conexão vem de lib/conexao-anki.js.
-//
-// Baralhos e termos: azulejos Inglês · Russo com o nº de palavras; o baralho
-// escolhido tem o anel de maturidade (maduros · recentes · novos) e a lista de
-// números. Lido do arquivo local, a nota BRG-13; um baralho que não existe no
-// Anki, “—” no azulejo e BRG-14 com Abrir Ajustes de envio. Falhou, BRG-11 com
-// Reparar Anki e Tentar de novo.
-//
-// Vocabulário: azulejos com o total de itens, filtros tipo e status, a busca e
-// lista × detalhe. O vocabulário de cada baralho vem inteiro numa leitura e é
-// filtrado aqui, então o azulejo tem o total do idioma e a busca não espera a
-// rede. As duas leituras são independentes: baralhos que falham não prendem o
-// vocabulário, que antes ficava em “Aguardando…” (#9); o dele falhar é BRG-20.
-//
-// Reparar Anki (no Avançado de Baralhos e no erro BRG-11) espera o reparo
-// inteiro. A Conexão fecha o Anki e espera até 90 s ele voltar: o painel, que
-// desistia em 45 s, dizia erro num reparo que dava certo (#9).
-//
-// Com a Conexão desligada, as duas abas mostram o último dado lido neste
-// computador (`pm_anki_baralhos`, `pm_anki_vocabulario`) com o selo BRG-12, e
-// Reparar Anki fica aria-disabled com o porquê na dica (C8). Os baralhos são os
-// dos Ajustes de envio, que o painel.js informa por `usarBaralhos`. Toda cópia
-// vem do catálogo da Voz.
-
 (function (raiz) {
   const CHAVE_BARALHOS = 'pm_anki_baralhos';
   const CHAVE_VOCABULARIO = 'pm_anki_vocabulario';
   const FONTE_ARQUIVO = raiz.VocabularioDaMineracao.FONTE_ARQUIVO;
-  // O reparo leva até ~110 s (fechar o Anki + os 90 s de espera da Conexão). Este
-  // limite não é o do reparo: só evita esperar para sempre uma Conexão muda.
-  const LIMITE_DO_REPARO_MS = 180_000;
+  const LIMITE_DA_CONEXAO_MUDA_MS = 180_000;
   // Os itens do vocabulário que a lista desenha; a busca e os filtros estreitam.
   const MOSTRAR_NO_MAXIMO = 200;
 
@@ -111,8 +83,6 @@
     fimDoReparo: null,      // o aviso do reparo que não deu certo (BRG-17, BRG-18), até fechar
   };
 
-  // ─── Começo ────────────────────────────────────────────────────────────────
-
   async function iniciar() {
     montarAzulejos('anki-baralhos-azulejos', estado.baralhos);
     montarAzulejos('anki-vocabulario-azulejos', estado.vocabulario);
@@ -158,8 +128,6 @@
   function desligada() {
     return ConexaoAnki.situacao() === CONEXAO.DESLIGADA;
   }
-
-  // ─── Leituras ──────────────────────────────────────────────────────────────
 
   /** Lê as duas abas, cada uma por si; sem a Conexão (ou sem os baralhos) não há de onde. */
   function lerTudo(opcoes = {}) {
@@ -262,8 +230,6 @@
     return resposta.json();
   }
 
-  // ─── Reparar Anki ──────────────────────────────────────────────────────────
-
   async function pedirReparo(botao) {
     if (botao.getAttribute('aria-disabled') === 'true') return;
     const reparoDoErro = Boolean(botao.closest('#anki-baralhos-corpo'));
@@ -274,7 +240,7 @@
     porId('anki-reparando')?.focus();
 
     const limite = new AbortController();
-    const relogio = setTimeout(() => limite.abort(), LIMITE_DO_REPARO_MS);
+    const relogio = setTimeout(() => limite.abort(), LIMITE_DA_CONEXAO_MUDA_MS);
     let fim;
     try {
       const resposta = await fetch(`${ENDERECO_DA_CONEXAO}/anki/repair`, { method: 'POST', signal: limite.signal });
@@ -288,7 +254,7 @@
         fim = { demorou: Boolean(dados.after), causa };
       }
     } catch (falha) {
-      const motivo = limite.signal.aborted ? `sem resposta em ${LIMITE_DO_REPARO_MS / 1000} s` : falha.message;
+      const motivo = limite.signal.aborted ? `sem resposta em ${LIMITE_DA_CONEXAO_MUDA_MS / 1000} s` : falha.message;
       fim = { demorou: limite.signal.aborted, causa: `POST /anki/repair · ${motivo}` };
     } finally {
       clearTimeout(relogio);
@@ -400,8 +366,6 @@
     }
   }
 
-  // ─── Desenho ───────────────────────────────────────────────────────────────
-
   function desenhar() {
     desenharBaralhos();
     desenharVocabulario();
@@ -442,8 +406,6 @@
     desenhados.set(lugar, { chave, no });
     return no;
   }
-
-  // ─── Baralhos e termos ─────────────────────────────────────────────────────
 
   const esperaDoReparo = (() => {
     const linha = linhaDeEspera(textoDaVoz('BRG-15.detalhe'));
@@ -617,8 +579,6 @@
     svg.append(texto('anki-anel__pct', 66, pct), texto('anki-anel__rotulo', 82, textoDaVoz('BRG-34.anel')));
     return svg;
   }
-
-  // ─── Vocabulário ───────────────────────────────────────────────────────────
 
   function montarFiltros() {
     const opcoes = (select, lista) => select.replaceChildren(...lista.map(([valor, id]) => {
@@ -828,8 +788,6 @@
     return detalhe;
   }
 
-  // ─── Azulejos ──────────────────────────────────────────────────────────────
-
   /** Os azulejos Inglês · Russo de uma aba; o escolhido fica em `recorte.idioma`. */
   function montarAzulejos(id, recorte) {
     porId(id).replaceChildren(...IDIOMAS_DOS_AZULEJOS.map(({ idioma }) => {
@@ -860,8 +818,6 @@
       azulejo.querySelector('.anki-azulejo__envios').textContent = legenda;
     }
   }
-
-  // ─── Pedaços e formatos ────────────────────────────────────────────────────
 
   function numero(valor) {
     const n = Number(valor);

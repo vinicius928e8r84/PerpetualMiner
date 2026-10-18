@@ -34,7 +34,7 @@ function conversar(fake, mensagem, espera = 5000) {
   });
 }
 
-const SITUACAO_DO_CONTEXTO = { no_lugar: 'achei', sumiu: 'nao_achei' };
+const SITUACAO_DO_CONTEXTO = { no_lugar: 'achei', sumiu: 'nao_achei', nao_abre: 'achei_sem_abrir' };
 
 async function main() {
   const doAbridor = contrato.abridor.exemplos.filter(e => e.daExtensao);

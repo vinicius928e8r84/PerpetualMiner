@@ -26,7 +26,6 @@ ADDED = "added"
 DUPLICATE = "duplicate"
 FAILED = "failed"
 
-# A card is "present in Anki" for either of these outcomes.
 PRESENT_STATUSES = frozenset({ADDED, DUPLICATE})
 
 

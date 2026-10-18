@@ -1,26 +1,5 @@
 'use strict';
 
-// O overlay na página: um componente Veio só, em Shadow DOM.
-//
-// Carregado pelo manifest antes de content.js, que o usa por
-// `PerpetualMiner.Overlay`. O overlay vive sobre sites de terceiros, então:
-//
-// - O único nó que ele põe no DOM do site é o host (`<perpetualminer-overlay>`).
-//   Tudo o mais — botão, pílula, marca, estilos — mora na sombra dele, e nem o
-//   site enxerga os estilos do overlay nem o contrário.
-// - Os tokens são sempre os escuros (`data-tema="escuro"`), qualquer que seja o
-//   tema escolhido para as páginas da extensão.
-// - A cópia vem de quem chama, já buscada no catálogo da Voz.
-//
-// Uma regra só (M1): o feedback marca o texto onde ele está — a linha ouro sob
-// o texto capturado, a Palavra grifada por cima e o chip acima —; quando não dá
-// para marcar (a legenda já trocou, o texto não tem retângulo, foi falha), o
-// botão fala, esticado em pílula. A linha e o grifo são elementos do overlay
-// posicionados sobre o texto do site: nada é injetado no DOM dele.
-//
-// Uma instância por vez: o feedback novo substitui o anterior. Todo feedback,
-// sucesso ou falha, some em ~3,5 s, como no protótipo; o Esc fecha uma falha antes.
-
 (function (raiz) {
   const TAG_DO_HOST = 'perpetualminer-overlay';
   const FEEDBACK_SOME_EM_MS = 3500;
@@ -250,7 +229,6 @@
     return Boolean(host?.isConnected && !partes.pilula.classList.contains('pm-pilula--livre'));
   }
 
-  /** Uma falha está na tela. */
   function mostrandoFalha() {
     return Boolean(partes?.pilula.classList.contains('pm-pilula--aberta')
       && partes.pilula.classList.contains('pm-pilula--erro'));

@@ -2,6 +2,8 @@
 
 // Lista os testes e2e que falharam e passaram na repetição automática (`retries` em
 // e2e/playwright.config.js), para o resumo do job não esconder a instabilidade.
+// Também diz ao job, pela saída `achou`, se algum oscilou: o job então guarda e2e/test-results
+// (com o PNG de diferença da primeira tentativa), que sem isso só se guarda quando o job falha.
 // Uso: node scripts/ci/instaveis.js e2e/test-results/relatorio.json
 
 const fs = require('fs');
@@ -46,4 +48,5 @@ if (require.main === module) {
   const texto = resumo(lista);
   if (texto && process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, texto);
   if (texto) console.log(texto);
+  if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `achou=${lista.length > 0}\n`);
 }

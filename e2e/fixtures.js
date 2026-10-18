@@ -151,8 +151,7 @@ async function prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConf
   const gravarStorage = valores => sw.evaluate(v => chrome.storage.local.set(v), valores);
   if (!lembreteDaConfiguracao) await sw.evaluate(() => chrome.storage.local.remove('pm_boas_vindas'));
 
-  // The session storage boundary, not the production auth implementation.
-  const sessaoNoBanco = valor => sw.evaluate(valor => new Promise((resolve, reject) => {
+  const sessaoDiretoNoIndexedDB = valor => sw.evaluate(valor => new Promise((resolve, reject) => {
     const req = indexedDB.open('pm-sessao', 1);
     req.onupgradeneeded = () => req.result.createObjectStore('sessao');
     req.onerror = () => reject(req.error);
@@ -173,8 +172,8 @@ async function prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConf
     abaDaInstalacao: manterAbaDaInstalacao ? abaDaInstalacao : null,
     url: caminho => `chrome-extension://${id}/${caminho}`,
     lerStorage,
-    lerSessao: () => sessaoNoBanco(null),
-    gravarSessao: sessaoNoBanco,
+    lerSessao: () => sessaoDiretoNoIndexedDB(null),
+    gravarSessao: sessaoDiretoNoIndexedDB,
     gravarStorage,
     /** Se a extensão tem a permissão do abridor (`nativeMessaging`), como o Chrome a guarda. */
     permissaoDoAbridor: () => sw.evaluate(() => chrome.permissions.contains({ permissions: ['nativeMessaging'] })),
@@ -183,7 +182,7 @@ async function prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConf
     /** Semeia uma sessão da conta no armazenamento, sem passar pelo login real. */
     /** `expirada` grava um token já vencido: o painel precisa renová-lo antes de ir à nuvem. */
     semearSessao: async ({ uid = 'uid-teste', email = 'pessoa@teste.dev', displayName = 'Pessoa de Teste', expirada = false } = {}) => {
-      await sessaoNoBanco({ uid, idToken: 'token-teste', refreshToken: 'refresh-teste',
+      await sessaoDiretoNoIndexedDB({ uid, idToken: 'token-teste', refreshToken: 'refresh-teste',
         expiresAt: expirada ? Date.now() - 60 * 1000 : Date.now() + 60 * 60 * 1000 });
       await gravarStorage({ pm_user_info: { uid, email, displayName, photoURL: '' } });
     },
@@ -289,6 +288,25 @@ const test = base.extend({
   },
 });
 
+/** Os sistemas que o passo Ter o Anki (#146) distingue para escolher o instalador do Anki. */
+const SISTEMAS = Object.freeze({
+  MAC: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  WINDOWS: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+});
+
+/**
+ * O Chromium do teste como o de um sistema (`SISTEMAS.MAC` · `SISTEMAS.WINDOWS`): o `userAgent` e o
+ * `userAgentData.platform` passam a ser os dele. Chame antes do `goto` da página que os lê.
+ */
+async function comOSistema(page, sistema) {
+  await page.addInitScript(sistema => {
+    Object.defineProperty(navigator, 'userAgent', { value: sistema });
+    Object.defineProperty(navigator, 'userAgentData', {
+      value: { platform: /Mac/.test(sistema) ? 'macOS' : 'Windows' },
+    });
+  }, sistema);
+}
+
 /** O botão flutuante de minerar a legenda, sobre o player. */
 const botaoFlutuante = page => page.getByRole('button', { name: /^Minerar legenda/ });
 
@@ -303,4 +321,4 @@ async function tocarVideo(page) {
   });
 }
 
-module.exports = { test, expect, botaoFlutuante, tocarVideo };
+module.exports = { test, expect, botaoFlutuante, tocarVideo, comOSistema, SISTEMAS };

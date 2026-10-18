@@ -1,24 +1,5 @@
 'use strict';
 
-// A área Conexão com o Anki (docs/design/painel/anki/, variante C “Por idioma”):
-// os estados da conexão na área e a aba Custos.
-//
-// Estados (o ConexaoAnki, lib/conexao-anki.js, diz a situação):
-//   Conectando       a primeira conferência ainda não voltou: faixa neutra BRG-02
-//                    e esqueleto no lugar dos custos.
-//   Nunca conectada  ver painel-anki-primeira-conexao.js, dono do fluxo ONB-16.
-//   Desligada        a F1 do shell, e Custos mostra o último dado (`pm_anki_custos`)
-//                    com o selo BRG-12; Continuar envio fica aria-disabled, com o
-//                    porquê na dica (C8).
-//
-// Baralhos e termos, Vocabulário e Reparar Anki são do painel-anki-baralhos.js.
-//
-// Custos lê GET /analytics/jobs do período (todos os idiomas numa leitura só) e
-// soma aqui o que cada azulejo, a faixa e o detalhe mostram, então o total é
-// sempre a soma das partes que estão na tela — inclusive os “outros custos”,
-// que antes ficavam de fora (#9). As chaves do Avançado (4 casas, IDs) ficam
-// lembradas neste computador. Toda cópia vem do catálogo da Voz.
-
 (function (raiz) {
   const CHAVE_CUSTOS = 'pm_anki_custos';
   const CHAVE_QUATRO_CASAS = 'pm_anki_quatro_casas';
@@ -69,8 +50,6 @@
     diagnosticoFalhou: false,
   };
   const ouvintesDoAtualizar = [];   // quem mais responde ao ↻ Atualizar (aoAtualizar)
-
-  // ─── Começo ────────────────────────────────────────────────────────────────
 
   async function iniciar() {
     PrimeiraConexao.montar();
@@ -158,8 +137,6 @@
     ouvintesDoAtualizar.push(ouvinte);
   }
 
-  // ─── Leitura ───────────────────────────────────────────────────────────────
-
   function dataIso(data) {
     const mes = String(data.getMonth() + 1).padStart(2, '0');
     const dia = String(data.getDate()).padStart(2, '0');
@@ -210,8 +187,6 @@
     desenhar();
   }
 
-  // ─── Estados da área ───────────────────────────────────────────────────────
-
   function desenhar() {
     porId('anki-conectando').hidden = jaRespondeu() || situacaoDaConexao() !== CONEXAO.CONECTANDO;
     porId('anki-ajustes-nota').hidden = !desligada();
@@ -236,9 +211,6 @@
     }
   }
 
-  // ─── Custos ────────────────────────────────────────────────────────────────
-
-  /** Qual vista a aba mostra agora. */
   function vistaDosCustos() {
     if (desligada() && estado.dados) return 'antiga';
     if (!jaRespondeu()) return 'esqueleto';
@@ -355,8 +327,6 @@
     return vazio;
   }
 
-  // ─── Somas e formatos ──────────────────────────────────────────────────────
-
   function numero(valor) {
     const n = Number(valor);
     return Number.isFinite(n) ? n : 0;
@@ -437,8 +407,6 @@
       .filter(envio => idioma === 'all' || envio.lang === idioma);
   }
 
-  // ─── Azulejos, resumo e imagens ────────────────────────────────────────────
-
   function montarAzulejos() {
     porId('anki-custos-azulejos').replaceChildren(...IDIOMAS_DOS_AZULEJOS.map(({ idioma, codigo }) => {
       const azulejo = botao(null, 'veio-azulejo anki-azulejo', () => {
@@ -495,8 +463,6 @@
     cartao.id = 'anki-custos-imagens';
     return cartao;
   }
-
-  // ─── Envios recentes × detalhe ─────────────────────────────────────────────
 
   function listaEDetalhe(envios) {
     if (!envios.some(envio => envio.jobId === estado.escolhido)) estado.escolhido = envios[0]?.jobId || null;
@@ -665,8 +631,6 @@
     }
   }
 
-  // ─── Avançado ──────────────────────────────────────────────────────────────
-
   function desenharAvancado(envios, soma) {
     const numeros = [
       [textoDaVoz('BRG-08.escolhaDeImagem'), soma.escolha],
@@ -712,8 +676,6 @@
     }
     desenhar();
   }
-
-  // ─── DOM ───────────────────────────────────────────────────────────────────
 
   function elemento(tag, classe, ...filhos) {
     const no = document.createElement(tag);

@@ -284,8 +284,6 @@ def _card_phrase_and_context_from_text(content: str) -> tuple[str, str]:
     context = ctx_match.group(1).strip() if ctx_match else ""
     return phrase, context
 
-# ── presets ───────────────────────────────────────────────────────────────────
-
 _PRESET_DECKS = {"1": "CIMV", "2": "RUSSIAN", "3": "teste"}
 _LANG_LABELS  = {"en": "Inglês", "ru": "Russo"}
 _IMG_SOURCE_LABELS = {
@@ -293,8 +291,6 @@ _IMG_SOURCE_LABELS = {
     "2": "DALL-E  (pago, geração de IA)",
 }
 
-
-# ── UI helpers ────────────────────────────────────────────────────────────────
 
 def _header():
     console.clear()
@@ -483,8 +479,6 @@ def _select_session(config: dict) -> str:
     return lang
 
 
-# ── input collection ──────────────────────────────────────────────────────────
-
 def _select_image_source(lang: str = "en") -> str:
     _section("4 de 4 - Fonte das imagens dos cards")
     console.print(
@@ -569,8 +563,6 @@ def _get_user_input(mining_path: Path, lang: str) -> tuple[int, str]:
     img_source = _select_image_source(lang)
     return len(lines), img_source
 
-
-# ── pipeline ──────────────────────────────────────────────────────────────────
 
 def _run_images(config, prompt_lines, output_dir, img_source, api_key, log_dir):
     total_images = len(prompt_lines)
@@ -1289,8 +1281,6 @@ def _print_costs(log_dir: str):
     console.print(Panel(t, title="[bold cyan]💰  Custos de API[/bold cyan]", expand=False))
 
 
-# ── post-run menu ─────────────────────────────────────────────────────────────
-
 def _post_run_menu(config: dict) -> bool:
     """Show end-of-run options. Returns True to run again, False to exit."""
     console.print()
@@ -1317,8 +1307,6 @@ def _post_run_menu(config: dict) -> bool:
             _tip("Digite R, C ou Q")
 
 
-# ── main pipeline run ─────────────────────────────────────────────────────────
-
 def _pipeline(config: dict, lang: str, img_source: str):
     mining_path = Path(config["paths"]["mining_file"])
     deck_name   = config["anki"]["deck_name"]
@@ -1340,7 +1328,6 @@ def _pipeline(config: dict, lang: str, img_source: str):
     _tip(f"{n_entries} linha(s) → {n_cards} card(s) a criar  |  modelo: {model}")
     console.print()
 
-    # ── 1. Cards ──────────────────────────────────────────────────────────────
     with _make_progress(
         SpinnerColumn(),
         TextColumn("[bold green]Criando conteúdo dos cards com IA[/bold green]"),
@@ -1356,10 +1343,8 @@ def _pipeline(config: dict, lang: str, img_source: str):
 
     _success(f"{len(saved)} card(s) criado(s) em {t1:.1f}s")
 
-    # ── 2. Extract prompts ────────────────────────────────────────────────────
     n_prompts, _ = _run_stage("Extraindo prompts de imagem", extract_prompts.run, entries, config)
 
-    # ── 3. Áudio ──────────────────────────────────────────────────────────────
     _section("Gerando áudio")
     _tip("Pronunciacao via Google TTS com sotaques separados para palavra e frase")
     console.print()
@@ -1378,7 +1363,6 @@ def _pipeline(config: dict, lang: str, img_source: str):
 
     _success(f"{len(audio_files)} arquivo(s) de áudio")
 
-    # ── 4. Imagens ────────────────────────────────────────────────────────────
     _section("Buscando / gerando imagens")
     src_label = _IMG_SOURCE_LABELS[img_source].split("(")[0].strip()
     _tip(f"Fonte: {src_label}  |  Fotos reais passam por um juiz antes do fallback gerado")
@@ -1394,7 +1378,6 @@ def _pipeline(config: dict, lang: str, img_source: str):
     if n_skipped:
         _tip(f"{n_skipped} keyword(s) abstrata(s) pulada(s) pelo filtro inteligente")
 
-    # ── 5. Enviar para o Anki ─────────────────────────────────────────────────
     _section("Enviando para o Anki")
     _tip("O Anki precisa estar aberto com o plugin AnkiConnect instalado")
     console.print()
@@ -1412,7 +1395,6 @@ def _pipeline(config: dict, lang: str, img_source: str):
     fail_count = len(results) - ok_count
     output_folder = Path(config["paths"]["output_dir"])
 
-    # ── 6. Tabela de status ───────────────────────────────────────────────────
     _section("Resultado")
 
     saved_lower = {s.lower() for s in saved}
@@ -1447,10 +1429,8 @@ def _pipeline(config: dict, lang: str, img_source: str):
 
     console.print(status_table)
 
-    # ── 7. Limpeza ────────────────────────────────────────────────────────────
     send_to_anki.cleanup_output(output_folder, results)
 
-    # ── 8. Custo + resumo ─────────────────────────────────────────────────────
     cost_tracker.record_session(log_dir, n_cards=ok_count, total_cost_usd=0.0,
                                 deck=deck_name, lang=lang)
 
@@ -1469,8 +1449,6 @@ def _pipeline(config: dict, lang: str, img_source: str):
 
     _print_costs(log_dir)
 
-
-# ── entry point ───────────────────────────────────────────────────────────────
 
 def start() -> None:
     config = load_config()
