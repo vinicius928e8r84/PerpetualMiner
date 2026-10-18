@@ -1,0 +1,9 @@
+#!/bin/sh
+# Gancho pre-commit do repositório (ligado por `node scripts/ganchos/instalar.mjs`; veja LEIA-ME.md).
+# Barra o commit de arquivo preparado acima de 20.000 bytes (5.000 tokens).
+raiz=$(git rev-parse --show-toplevel) || exit 0
+if ! command -v node >/dev/null 2>&1; then
+  echo "aviso: node não encontrado; a conferência de tamanho dos arquivos foi pulada" >&2
+  exit 0
+fi
+exec node "$raiz/scripts/ganchos/limite-de-tokens.js"
