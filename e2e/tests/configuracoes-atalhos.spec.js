@@ -22,6 +22,16 @@ const gravar = (page, nome) => linha(page, nome).getByRole('button', { name: 'Gr
 const cancelar = (page, nome) => linha(page, nome).getByRole('button', { name: 'Cancelar' });
 const restaurar = page => cardDeAtalhos(page).getByRole('button', { name: 'Restaurar atalhos padrão' });
 
+const TITULO_DA_AREA = { frases: 'Frases mineradas' };
+
+// O endereço muda antes de o painel reagir a ele (o hashchange vem depois, e uma tecla pode passar na frente):
+// só com o título da área na tela a gravação já foi cancelada.
+async function irParaArea(page, area) {
+  await page.locator(`a.shell-item[data-area="${area}"]`).click();
+  await expect(page).toHaveURL(new RegExp(`#${area}$`));
+  await expect(page.getByRole('heading', { name: TITULO_DA_AREA[area] })).toBeVisible();
+}
+
 async function atalhosGravados(extensao) {
   return extensao.lerStorage(['pm_atalho', 'pm_atalho_legenda']);
 }
@@ -133,13 +143,8 @@ test('uma tecla sem Ctrl, Alt nem Shift não grava, nem com Meta: a gravação c
 test('sair do card cancela a gravação: a tecla digitada lá fora não vira atalho', async ({ page, extensao }) => {
   await abrirAtalhos(page, extensao);
 
-  // Indo a outra área.
   await gravar(page, 'Minerar legenda').click();
-  await page.locator('a.shell-item[data-area="frases"]').click();
-  await expect(page).toHaveURL(/#frases$/);
-  // O endereço muda antes de o painel reagir a ele (o hashchange vem depois, e uma tecla pode passar na frente):
-  // só com a área de Frases na tela a gravação já foi cancelada.
-  await expect(page.getByRole('heading', { name: 'Frases mineradas' })).toBeVisible();
+  await irParaArea(page, 'frases');
   await page.keyboard.press('Alt+KeyE');
 
   // Fechando o card.

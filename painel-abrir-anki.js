@@ -61,9 +61,8 @@
     }
     if (leitura !== estado.leitura || estado.gravando) return;
     if (erro) {
-      // 404 é uma Conexão que não tem a rota: o bridge de hoje, antes do complemento.
       estado.confirmado = false;
-      estado.semResposta = erro.status === 404 ? 'antiga' : 'falhou';
+      estado.semResposta = raiz.PedidoAoAnki.ausenciaDaRota(erro.status);
     } else {
       Object.assign(estado, { ligado, confirmado: true, semResposta: null });
       reconciliarOAviso();

@@ -27,6 +27,21 @@ function diaDe(momento) {
   ].join('-');
 }
 
+// O relógio do Chrome não é dirigível pelo Playwright. Só durante a leitura inicial,
+// o relógio do worker ainda está em ontem: a aba recebe pelo canal real um estado de
+// ontem no limite, já em hoje, sem alarme ou outra publicação antes de minerar.
+async function congelarRelogioDoServiceWorker(extensao, momento) {
+  await extensao.serviceWorker.evaluate(momento => {
+    const RelogioReal = Date;
+    globalThis.__relogioReal = RelogioReal;
+    globalThis.Date = class extends RelogioReal {
+      constructor(...args) { super(...(args.length ? args : [momento])); }
+      static now() { return momento; }
+    };
+  }, momento);
+  return () => extensao.serviceWorker.evaluate(() => { globalThis.Date = globalThis.__relogioReal; });
+}
+
 async function tocarVideoComLegenda(page, texto) {
   // A mineração automática só olha a legenda de um vídeo que está tocando.
   await page.evaluate(async texto => {
@@ -94,18 +109,7 @@ test('a aba trata um estado de ontem no limite como zero, mesmo antes do alarme'
     },
   });
 
-  // O relógio do Chrome não é dirigível pelo Playwright. Só durante a leitura
-  // inicial, o relógio do worker ainda está em ontem: a aba recebe pelo canal
-  // real um estado de ontem no limite. A aba já está em hoje e não recebe um
-  // alarme ou outra publicação antes de começar a minerar.
-  await extensao.serviceWorker.evaluate(momento => {
-    const RelogioReal = Date;
-    globalThis.__relogioReal = RelogioReal;
-    globalThis.Date = class extends RelogioReal {
-      constructor(...args) { super(...(args.length ? args : [momento])); }
-      static now() { return momento; }
-    };
-  }, ontem);
+  const soltarRelogio = await congelarRelogioDoServiceWorker(extensao, ontem);
   try {
     await page.goto(paginas.url('player.html'));
     await page.locator('#legenda').evaluate((no, texto) => { no.textContent = texto; }, FRASE_RUSSA);
@@ -113,7 +117,7 @@ test('a aba trata um estado de ontem no limite como zero, mesmo antes do alarme'
     await expect(contador(page)).toHaveText('0/3');
     await expect(botaoFlutuante(page)).toHaveAccessibleDescription('Mineração automática · Russo: 0 de 3 hoje');
   } finally {
-    await extensao.serviceWorker.evaluate(() => { globalThis.Date = globalThis.__relogioReal; });
+    await soltarRelogio();
   }
 
   await tocarVideoComLegenda(page, FRASE_RUSSA);

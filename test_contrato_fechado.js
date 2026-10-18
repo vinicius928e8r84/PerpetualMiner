@@ -37,6 +37,10 @@ const exemplosDa = pedido => contrato.exemplos.filter(e => exemploDaExtensao(e)
   && isDeepStrictEqual(formaDoCorpo(e.pedido.corpo), formaDoCorpo(pedido.corpo)));
 
 async function main() {
+  assert.strictEqual(PedidoAoAnki.ausenciaDaRota(404), 'antiga');
+  assert.strictEqual(PedidoAoAnki.ausenciaDaRota(500), 'falhou');
+  assert.strictEqual(PedidoAoAnki.ausenciaDaRota(undefined), 'falhou');
+
   const variantes = PedidoAoAnki.variantes(BARALHOS, CHAVE_DE_EXEMPLO);
   assert.ok(variantes.length >= 7, 'os construtores montam os pedidos de saúde, Baralhos, números (3 leituras) e vocabulário');
 

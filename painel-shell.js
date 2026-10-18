@@ -16,9 +16,6 @@
 
   const { textoDaVoz, Atalhos, Veio, ConexaoAnki, ConexaoNaTela } = raiz;
   const { SITUACAO } = ConexaoAnki;
-  // O tema (veio/tema.js) é pedido só na hora de usar: o shell também é
-  // carregado fora da extensão, pelos testes legados, sem a base do <head>.
-  const baseDoTema = () => raiz.Tema;
   const $ = seletor => document.querySelector(seletor);
   const $$ = seletor => [...document.querySelectorAll(seletor)];
   const porId = id => document.getElementById(id);
@@ -34,7 +31,7 @@
     // O tema vale na hora: gravar é o que troca a tela, aqui e em qualquer
     // outra página aberta (veio/tema.js escuta o mesmo storage).
     for (const radio of $$('#cfg-tema input[name="tema"]')) {
-      radio.addEventListener('change', () => { if (radio.checked) baseDoTema().gravarTema(radio.value); });
+      radio.addEventListener('change', () => { if (radio.checked) raiz.Tema.gravarTema(radio.value); });
     }
     // A linha inteira do card abre e fecha; o botão do título é quem o teclado
     // e o leitor de tela usam, e o clique nele sobe até aqui.
@@ -201,11 +198,11 @@
   function lerResumosGravados() {
     Atalhos.acompanharAtalhos(mostrarResumoDosAtalhos);
     chrome.storage.local.get({ geminiApiKey: '' }, dados => mostrarResumoDaChave(dados.geminiApiKey));
-    // O tema sai do que está gravado, como os outros resumos: o que está
-    // pintado ainda pode ser o espelho da primeira pintura, que veio/tema.js
-    // corrige quando o storage responde.
-    baseDoTema().lerTemaGravado().then(mostrarTema);
-    baseDoTema().aoMudarTema(mostrarTema);
+    // O tema sai do que está gravado, como os outros resumos: o que está pintado
+    // ainda pode ser o espelho da primeira pintura, que veio/tema.js corrige quando
+    // o storage responde. `raiz.Tema` só é lido aqui, na hora de usar: o shell também
+    // é carregado fora da extensão, pelos testes legados, sem a base do <head>.
+    raiz.Tema.acompanharTemaGravado(mostrarTema);
     chrome.storage.onChanged.addListener((mudancas, area) => {
       if (area === 'local' && 'geminiApiKey' in mudancas) mostrarResumoDaChave(mudancas.geminiApiKey.newValue || '');
     });

@@ -604,6 +604,11 @@
     return kbd;
   }
 
+  /** “Ctrl++” é a tecla + com Ctrl: o último + nunca separa. */
+  function separarTeclas(rotulo) {
+    return String(rotulo).split(/\+(?!$)/);
+  }
+
   /**
    * O atalho com uma tecla por `kbd` (Alt + S), como o protótipo do popup o
    * desenha. Sem `rotulo`, o mesmo `kbd` tracejado de `montarTecla`.
@@ -612,8 +617,7 @@
     if (!rotulo) return montarTecla(null, { seVazia, documento });
     const teclas = documento.createElement('span');
     teclas.className = 'veio-teclas';
-    // “Ctrl++” é a tecla + com Ctrl: o último + nunca separa.
-    rotulo.split(/\+(?!$)/).forEach((tecla, i) => {
+    separarTeclas(rotulo).forEach((tecla, i) => {
       if (i > 0) teclas.append('+');
       teclas.append(montarTecla(tecla, { documento }));
     });
@@ -666,6 +670,7 @@
     refletirSelecao,
     montarTecla,
     montarTeclas,
+    separarTeclas,
     montarAnelDeProgresso,
   };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

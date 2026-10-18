@@ -189,14 +189,18 @@ function devolverOFoco(azulejos, foco) {
   alvo?.focus();
 }
 
+// O popup mostra o retrato do service worker sem reinterpretar `daily.date`
+// pelo relógio da página. A virada chega pela publicação de
+// `agendarViradaDoDia` em background.js.
+function contagemPublicada(registro) {
+  return registro?.count || 0;
+}
+
 function numerosDoIdioma(chave) {
   const ajustes = mineracaoAutomatica.settings?.[chave] || {};
   // O service worker devolve o limite normalizado por `MineracaoDoDia`.
   const limite = ajustes.dailyLimit;
-  // O popup mostra o retrato do service worker sem reinterpretar `daily.date`
-  // pelo relógio da página. A virada chega pela publicação de
-  // `agendarViradaDoDia` em background.js.
-  const n = mineracaoAutomatica.daily?.[chave]?.count || 0;
+  const n = contagemPublicada(mineracaoAutomatica.daily?.[chave]);
   const ligado = Boolean(ajustes.enabled);
   return { ligado, limite, n, atingiuOLimite: ligado && n >= limite };
 }

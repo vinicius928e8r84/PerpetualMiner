@@ -361,10 +361,8 @@ select.veio-campo {
   border-color: var(--veio-accent);
 }
 
-/* O trilho de 40 é border-box em qualquer página, então tem 38 por dentro: o
-   botão de 18 em 18px deixa 2px de cada lado, igual ao desligado. */
 .veio-toggle input:checked + .veio-toggle__trilho::after {
-  left: 18px;
+  left: calc(100% - 18px - 2px);
   background: var(--veio-accent-ink);
 }
 

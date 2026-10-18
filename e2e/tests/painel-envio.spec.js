@@ -33,6 +33,21 @@ const envio = (page, nome) => progresso(page).getByRole('group', { name: nome })
 const baralho = (page, idioma) => resumo(page).getByRole('group', { name: idioma });
 const toasts = page => page.locator('.veio-toast');
 
+// O “Tentar de novo” da faixa F1 mora na área da Conexão, fora da tela em Frases;
+// o clique por evaluate faz o shell conferir a Conexão agora, sem esperar 15 s.
+async function pedirConferenciaDaConexao(page) {
+  await page.locator('#shell-tentar-de-novo').evaluate(el => el.click());
+}
+
+// veio/tokens.css leva toda transição a 1 ms com movimento reduzido. O cartão é desenhado de novo
+// assim que o Envio ganha o jobId; num elemento que já saiu da página o estilo calculado vem vazio
+// (NaN), então se espera o valor, não o elemento.
+async function transicaoCurta(locator) {
+  await expect(locator).toBeAttached();
+  await expect.poll(() => locator.evaluate(el => parseFloat(getComputedStyle(el).transitionDuration)))
+    .toBeLessThanOrEqual(0.01);
+}
+
 async function marcarEEnviar(page, textos) {
   for (const texto of textos) await marcar(page, texto).check();
   await enviarAoAnki(page).click();
@@ -654,9 +669,7 @@ test('com a Conexão desligada, Enviar ao Anki fica indisponível e o tooltip di
 
   // A Conexão volta: o botão volta junto, sem recarregar.
   fakes.anki.ligar();
-  // O “Tentar de novo” da faixa F1 mora na área da Conexão, fora da tela em Frases;
-  // o clique por evaluate faz o shell conferir a Conexão agora, sem esperar 15 s.
-  await page.locator('#shell-tentar-de-novo').evaluate(el => el.click());
+  await pedirConferenciaDaConexao(page);
   await expect(botao).not.toHaveAttribute('aria-disabled', 'true');
   await expect(page.getByRole('tooltip')).toHaveCount(0);
 });
@@ -705,10 +718,5 @@ test('com movimento reduzido, as etapas do envio andam sem animação', async ({
   await enviosCriados(fakes, 1);
 
   const preenchimento = envio(page, 'Envio em inglês · 1 frase').locator('.envio-cartao__etapas > i > b');
-  await expect(preenchimento).toBeAttached();
-  // veio/tokens.css leva toda transição a 1 ms com movimento reduzido. O cartão é
-  // desenhado de novo assim que o Envio ganha o jobId; num elemento que já saiu da
-  // página o estilo calculado vem vazio (NaN), então se espera o valor, não o elemento.
-  await expect.poll(() => preenchimento.evaluate(el => parseFloat(getComputedStyle(el).transitionDuration)))
-    .toBeLessThanOrEqual(0.01);
+  await transicaoCurta(preenchimento);
 });

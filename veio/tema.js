@@ -10,7 +10,7 @@
 // Carregado no <head> de toda página da extensão, antes do CSS da página, e
 // pendurado em `PerpetualMiner.Tema`:
 //
-//   const { gravarTema, lerTemaGravado, aoMudarTema, TEMAS } = PerpetualMiner.Tema;
+//   const { gravarTema, lerTemaGravado, aoMudarTema, acompanharTemaGravado, TEMAS } = PerpetualMiner.Tema;
 //
 // Ele aplica o tema no <html>, que é onde veio/tokens.css troca os valores
 // (`[data-tema="claro"]`). Quem desenha o seletor é o painel; aqui fica só o
@@ -99,6 +99,11 @@
     });
   }
 
+  function acompanharTemaGravado(fn) {
+    lerTemaGravado().then(fn);
+    aoMudarTema(fn);
+  }
+
   /**
    * Abre no tema certo e acompanha as trocas.
    *
@@ -133,5 +138,6 @@
     gravarTema,
     lerTemaGravado,
     aoMudarTema,
+    acompanharTemaGravado,
   };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

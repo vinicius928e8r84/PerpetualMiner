@@ -28,6 +28,27 @@ const abrirVitrine = async (page, paginas) => {
   await expect(page.locator('[data-grupo="Botões"]').first()).toBeVisible();
 };
 
+// textContent, e não innerText: o cabeçalho de data é escrito "hoje" e só aparece em
+// maiúsculas por causa do text-transform. A abertura em negrito de um aviso é uma
+// parte do estado e o resto é outra: cada uma é conferida sozinha.
+async function textosEscritos(page) {
+  return page.evaluate(() => {
+    const SELETORES = ['.veio-botao', '.veio-selo', '.veio-kbd', '.veio-segmentado__opcao',
+      '.veio-azulejo__numero', '.veio-modal__titulo', '.veio-modal__corpo', '.veio-toast',
+      '.veio-chip-palavra__rotulo', '.veio-aviso__texto', '.veio-aviso__detalhes > summary',
+      '.veio-campo-erro', '.veio-vazio__texto', '.veio-cabecalho-de-data'].join(', ');
+    return [...document.querySelectorAll(`[data-componentes] :is(${SELETORES})`)]
+      .filter(no => !no.closest('[data-vitrine-chrome]') && !no.hasAttribute('data-vitrine-chrome'))
+      .flatMap(no => {
+        const abertura = no.matches('.veio-aviso__texto') && no.querySelector(':scope > strong');
+        if (!abertura) return [no.textContent];
+        return [abertura.textContent, no.textContent.slice(no.textContent.indexOf(abertura.textContent) + abertura.textContent.length)];
+      })
+      .map(texto => texto.trim())
+      .filter(texto => texto !== '');
+  });
+}
+
 test('a vitrine mostra cada componente nos dois temas', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -520,26 +541,7 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
   // recolhido da causa técnica (regra V3 da Voz).
   const doPadrao = new Set(['palavra:', 'auto:', 'Detalhes']);
 
-  const soltos = await page.evaluate(() => {
-    const SELETORES = ['.veio-botao', '.veio-selo', '.veio-kbd', '.veio-segmentado__opcao',
-      '.veio-azulejo__numero', '.veio-modal__titulo', '.veio-modal__corpo', '.veio-toast',
-      '.veio-chip-palavra__rotulo', '.veio-aviso__texto', '.veio-aviso__detalhes > summary',
-      '.veio-campo-erro', '.veio-vazio__texto', '.veio-cabecalho-de-data'].join(', ');
-    return [...document.querySelectorAll(`[data-componentes] :is(${SELETORES})`)]
-      .filter(no => !no.closest('[data-vitrine-chrome]') && !no.hasAttribute('data-vitrine-chrome'))
-      // textContent, e não innerText: o cabeçalho de data é escrito "hoje" e
-      // só aparece em maiúsculas por causa do text-transform. O que se compara
-      // com o catálogo é a cópia escrita, não a caixa que o CSS dá a ela.
-      // A abertura em negrito de um aviso é uma parte do estado, e o resto é
-      // outra: cada uma é conferida sozinha.
-      .flatMap(no => {
-        const abertura = no.matches('.veio-aviso__texto') && no.querySelector(':scope > strong');
-        if (!abertura) return [no.textContent];
-        return [abertura.textContent, no.textContent.slice(no.textContent.indexOf(abertura.textContent) + abertura.textContent.length)];
-      })
-      .map(texto => texto.trim())
-      .filter(texto => texto !== '');
-  });
+  const soltos = await textosEscritos(page);
 
   expect(soltos.filter(texto => !aprovados.has(texto) && !doGlossario.has(texto)
     && !teclasGravadas.has(texto) && !doPadrao.has(texto))).toEqual([]);

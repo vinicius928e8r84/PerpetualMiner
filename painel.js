@@ -1243,7 +1243,6 @@ function apagarTudo() {
 
 // Baixa as selecionadas e as marca Exportada (`exportadaTxt`). Nunca grava o
 // `status: 'exported'` do Envio: exportar não põe a frase no Anki (#9).
-
 function exportarTxt() {
   if (selecionadas.size === 0) return;
   const linhas = todasFrases
