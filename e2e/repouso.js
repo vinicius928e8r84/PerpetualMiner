@@ -12,25 +12,56 @@ const { expect } = require('@playwright/test');
 const CICLO_MS = 16_000;
 /** O que cada perfil deixa, depois da resposta, para a cadeia da leitura terminar (o relógio da página está parado). */
 const ASSENTAR_MS = 300;
-/** Os pedidos à Conexão que só leem: todo GET e estes POST (o corpo vai só para dizer qual dono perguntar). */
-const POST_QUE_SO_LE = new Set(['/ia/estado', '/abrir-com-o-computador/estado']);
+/**
+ * Os pedidos à Conexão que só leem: todo GET e estes POST (o corpo vai só para dizer qual dono perguntar; a lista de
+ * Baralhos responde igual ao GET, bridge/test_envio_api.py). Um POST novo que só lê entra aqui; um que muda algo, não.
+ */
+const POST_QUE_SO_LE = new Set(['/ia/estado', '/abrir-com-o-computador/estado', '/anki/decks']);
 
 const muda = r => r.metodo !== 'GET' && !POST_QUE_SO_LE.has(r.caminho);
 
+/** Quanto a página espera, em tempo real, a resposta de um ciclo antes de andar o relógio de novo (a cadeia anterior ainda em voo pula o tique). */
+const ESPERA_DA_RESPOSTA_MS = 6_000;
+const TENTATIVAS_DO_CICLO = 4;
+
 /** Um ciclo de saúde na tela: o relógio anda e a resposta `esperar` (o fim da cadeia que a saúde dispara) chega. */
 async function umCiclo(page, esperar = '/health') {
-  const lida = page.waitForResponse(r => new URL(r.url()).pathname.endsWith(esperar));
-  await page.clock.runFor(CICLO_MS);
-  await (await lida).finished();
+  for (let tentativa = 0; tentativa < TENTATIVAS_DO_CICLO; tentativa++) {
+    const lida = page.waitForResponse(r => new URL(r.url()).pathname.endsWith(esperar), { timeout: ESPERA_DA_RESPOSTA_MS });
+    lida.catch(() => {});
+    await page.clock.runFor(CICLO_MS);
+    try {
+      await (await lida).finished();
+      return;
+    } catch (erro) {
+      if (tentativa === TENTATIVAS_DO_CICLO - 1) throw erro;
+    }
+  }
+}
+
+/**
+ * Anda ciclos até o `chrome.storage.local` das telas parar de mudar de um ciclo para o outro: com dois perfis, a
+ * tela aberta primeiro ainda vai ler o dono que o segundo deixou, e ler não é escrever em repouso. Uma leitura
+ * que escreve a cada ciclo (a chave que pinga de um perfil para o outro) nunca assenta e o `emRepouso` seguinte
+ * a pega.
+ */
+async function assentar(telas, { esperar = '/health' } = {}) {
+  let anterior = null;
+  for (let n = 0; n < 4; n++) {
+    for (const tela of telas) await umCiclo(tela.page, esperar);
+    for (const tela of telas) await tela.page.waitForTimeout(ASSENTAR_MS);
+    const agora = JSON.stringify(await Promise.all(telas.map(t => t.extensao.lerStorage())));
+    if (agora === anterior) return;
+    anterior = agora;
+  }
 }
 
 /**
  * Avança `ciclos` ciclos de saúde em `page` (e em cada tela de `tambem`) e confere o repouso.
  *
  * `page` e as telas de `tambem` já têm o relógio instalado (`page.clock.install()` e `pauseAt`) e a tela
- * aberta e assentada: com dois perfis, a tela aberta primeiro ainda não leu o dono que o segundo deixou, o que
- * o teste faz com um `umCiclo` antes (ler o que o outro perfil deixou não é escrever em repouso). `tambem` é a lista de `{ page, extensao }` dos outros perfis da cena. `esperar` é a
- * resposta que fecha um ciclo na tela (o fim da cadeia que a saúde dispara).
+ * aberta e assentada: com dois perfis, o teste chama `assentar` antes. `tambem` é a lista de `{ page, extensao }`
+ * dos outros perfis da cena. `esperar` é a resposta que fecha um ciclo na tela (o fim da cadeia que a saúde dispara).
  */
 async function emRepouso(page, { ciclos, fakes, extensao, tambem = [], esperar = '/health' }) {
   const telas = [{ page, extensao }, ...tambem];
@@ -49,4 +80,4 @@ async function emRepouso(page, { ciclos, fakes, extensao, tambem = [], esperar =
   expect(await guardado(), `chrome.storage.local em ${ciclos} ciclos de repouso`).toEqual(antes.storage);
 }
 
-module.exports = { emRepouso, umCiclo };
+module.exports = { emRepouso, assentar, umCiclo };

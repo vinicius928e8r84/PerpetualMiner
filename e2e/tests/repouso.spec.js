@@ -6,7 +6,7 @@
 // contas Google, uma Conexão só). Só chaves fictícias.
 
 const { test, expect } = require('../fixtures');
-const { emRepouso, umCiclo } = require('../repouso');
+const { emRepouso, assentar } = require('../repouso');
 
 const CHAVE_A = 'sk-fake-repouso-primeira-aaaa';
 const CHAVE_B = 'sk-fake-repouso-segunda-bbbb';
@@ -49,7 +49,8 @@ for (const bComChave of [false, true]) {
     const b = await segundoPerfil.context.newPage();
     await abrirComRelogio(b, segundoPerfil.extensao, 'ia');
     const resumoFinal = bComChave ? '••••••••bbbb' : 'Sem chave';
-    await umCiclo(page, '/ia/estado'); // A lê o dono que B deixou na Conexão ao abrir; só depois vem o repouso
+    // A lê o dono que B deixou na Conexão ao abrir; só depois vem o repouso
+    await assentar([{ page, extensao }, { page: b, extensao: segundoPerfil.extensao }], { esperar: '/ia/estado' });
     await expect(cardDaIA(b).locator('.cfg-resumo')).toHaveText(resumoFinal);
 
     await emRepouso(page, { ciclos: CICLOS, fakes, extensao, esperar: '/ia/estado', tambem: [{ page: b, extensao: segundoPerfil.extensao }] });
@@ -84,7 +85,8 @@ test('Conta & sync com dois perfis: parados, A e B não escrevem um no outro', a
   const b = await segundoPerfil.context.newPage();
   await abrirComRelogio(b, segundoPerfil.extensao, 'conta');
   await expect(cardDaConta(b)).toContainText('Sincronizado');
-  await umCiclo(page); // A lê o dono que B deixou na Conexão ao abrir; só depois vem o repouso
+  // A lê o dono que B deixou na Conexão ao abrir; só depois vem o repouso
+  await assentar([{ page, extensao }, { page: b, extensao: segundoPerfil.extensao }]);
 
   await emRepouso(page, { ciclos: CICLOS, fakes, extensao, tambem: [{ page: b, extensao: segundoPerfil.extensao }] });
 
