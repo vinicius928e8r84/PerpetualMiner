@@ -198,6 +198,10 @@
   function lerResumosGravados() {
     Atalhos.acompanharAtalhos(mostrarResumoDosAtalhos);
     chrome.storage.local.get({ geminiApiKey: '' }, dados => mostrarResumoDaChave(dados.geminiApiKey));
+    // O tema sai do que está gravado, como os outros resumos: o que está pintado
+    // ainda pode ser o espelho da primeira pintura, que veio/tema.js corrige quando
+    // o storage responde. `raiz.Tema` só é lido aqui, na hora de usar: o shell também
+    // é carregado fora da extensão, pelos testes legados, sem a base do <head>.
     raiz.Tema.acompanharTemaGravado(mostrarTema);
     chrome.storage.onChanged.addListener((mudancas, area) => {
       if (area === 'local' && 'geminiApiKey' in mudancas) mostrarResumoDaChave(mudancas.geminiApiKey.newValue || '');

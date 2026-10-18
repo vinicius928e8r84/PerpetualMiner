@@ -40,6 +40,8 @@ const chaveNoBancoDaExtensao = page => page.evaluate(() => new Promise((resolver
   };
 }));
 
+// O goto seguinte muda só o hash, não o documento. Sem esta barreira de conclusão, a
+// falha do banco atinge a continuação do salvamento ANTERIOR, não o Apagar tudo.
 async function prepararConferenciaDaChave(context) {
   let liberar;
   const conferencia = new Promise(resolve => { liberar = resolve; });

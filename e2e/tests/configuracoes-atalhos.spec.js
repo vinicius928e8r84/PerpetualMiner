@@ -24,6 +24,8 @@ const restaurar = page => cardDeAtalhos(page).getByRole('button', { name: 'Resta
 
 const TITULO_DA_AREA = { frases: 'Frases mineradas' };
 
+// O endereço muda antes de o painel reagir a ele (o hashchange vem depois, e uma tecla pode passar na frente):
+// só com o título da área na tela a gravação já foi cancelada.
 async function irParaArea(page, area) {
   await page.locator(`a.shell-item[data-area="${area}"]`).click();
   await expect(page).toHaveURL(new RegExp(`#${area}$`));

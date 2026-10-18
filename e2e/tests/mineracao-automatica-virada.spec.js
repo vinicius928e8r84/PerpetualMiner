@@ -27,6 +27,9 @@ function diaDe(momento) {
   ].join('-');
 }
 
+// O relógio do Chrome não é dirigível pelo Playwright. Só durante a leitura inicial,
+// o relógio do worker ainda está em ontem: a aba recebe pelo canal real um estado de
+// ontem no limite, já em hoje, sem alarme ou outra publicação antes de minerar.
 async function congelarRelogioDoServiceWorker(extensao, momento) {
   await extensao.serviceWorker.evaluate(momento => {
     const RelogioReal = Date;

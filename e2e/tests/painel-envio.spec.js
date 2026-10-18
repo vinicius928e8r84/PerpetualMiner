@@ -33,10 +33,15 @@ const envio = (page, nome) => progresso(page).getByRole('group', { name: nome })
 const baralho = (page, idioma) => resumo(page).getByRole('group', { name: idioma });
 const toasts = page => page.locator('.veio-toast');
 
+// O “Tentar de novo” da faixa F1 mora na área da Conexão, fora da tela em Frases;
+// o clique por evaluate faz o shell conferir a Conexão agora, sem esperar 15 s.
 async function pedirConferenciaDaConexao(page) {
   await page.locator('#shell-tentar-de-novo').evaluate(el => el.click());
 }
 
+// veio/tokens.css leva toda transição a 1 ms com movimento reduzido. O cartão é desenhado de novo
+// assim que o Envio ganha o jobId; num elemento que já saiu da página o estilo calculado vem vazio
+// (NaN), então se espera o valor, não o elemento.
 async function transicaoCurta(locator) {
   await expect(locator).toBeAttached();
   await expect.poll(() => locator.evaluate(el => parseFloat(getComputedStyle(el).transitionDuration)))

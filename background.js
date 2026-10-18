@@ -909,6 +909,8 @@ function badgeDaMineracaoAutomatica(state) {
   };
 }
 
+// O `chrome` dos testes Node de `test_auto_keyword.js` é mínimo, sem `alarms` nem
+// `onChanged`: a API que falta não derruba o arquivo, só deixa de agir.
 function metodoDoChrome(alvo, nome) {
   if (!alvo || typeof alvo[nome] !== 'function') return null;
   return alvo[nome].bind(alvo);

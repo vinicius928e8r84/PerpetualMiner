@@ -189,6 +189,9 @@ function devolverOFoco(azulejos, foco) {
   alvo?.focus();
 }
 
+// O popup mostra o retrato do service worker sem reinterpretar `daily.date`
+// pelo relógio da página. A virada chega pela publicação de
+// `agendarViradaDoDia` em background.js.
 function contagemPublicada(registro) {
   return registro?.count || 0;
 }

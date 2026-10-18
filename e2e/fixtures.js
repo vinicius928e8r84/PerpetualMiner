@@ -80,6 +80,10 @@ async function esperarAbaDaInstalacao(context, id) {
   throw new Error('A instalação não abriu a aba da Boas-vindas');
 }
 
+// A instalação também deixa a configuração começada (`pm_boas_vindas`), o que
+// põe o lembrete “Configuração pela metade” no popup e em Frases. O teste
+// começa como quem já passou por ela, sem o lembrete; quem testa o lembrete
+// pede `test.use({ lembreteDaConfiguracao: true })`.
 async function apagarPmBoasVindas(sw) {
   await sw.evaluate(() => chrome.storage.local.remove('pm_boas_vindas'));
 }
@@ -205,6 +209,7 @@ const test = base.extend({
     const gravarStorage = valores => sw.evaluate(v => chrome.storage.local.set(v), valores);
     if (!lembreteDaConfiguracao) await apagarPmBoasVindas(sw);
 
+    // A fronteira de armazenamento da sessão, não a autenticação de produção.
     const sessaoDiretoNoIndexedDB = valor => sw.evaluate(valor => new Promise((resolve, reject) => {
       const req = indexedDB.open('pm-sessao', 1);
       req.onupgradeneeded = () => req.result.createObjectStore('sessao');

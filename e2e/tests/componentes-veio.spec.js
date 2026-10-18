@@ -28,6 +28,9 @@ const abrirVitrine = async (page, paginas) => {
   await expect(page.locator('[data-grupo="Botões"]').first()).toBeVisible();
 };
 
+// textContent, e não innerText: o cabeçalho de data é escrito "hoje" e só aparece em
+// maiúsculas por causa do text-transform. A abertura em negrito de um aviso é uma
+// parte do estado e o resto é outra: cada uma é conferida sozinha.
 async function textosEscritos(page) {
   return page.evaluate(() => {
     const SELETORES = ['.veio-botao', '.veio-selo', '.veio-kbd', '.veio-segmentado__opcao',
