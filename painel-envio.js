@@ -128,6 +128,7 @@
    * gravado antes de sair; daí em diante vai sempre o mesmo, para a Conexão reconhecer o Envio pelo `jobId`.
    */
   async function criarEnvio(envio) {
+    const aRemessaDoEnvio = remessa;
     envio.falhaAoCriar = null;
     if (!envio.corpo) {
       envio.criadoEm = Date.now();
@@ -151,6 +152,8 @@
       };
       await gravar();
     }
+    // O Apagar tudo no meio (enquanto os ajustes eram lidos ou o corpo gravado) encerra a remessa: as Frases não saem mais.
+    if (remessa !== aRemessaDoEnvio) return;
     let resposta;
     try {
       resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, PedidoAoAnki.criarEnvio(envio.corpo));
@@ -218,10 +221,13 @@
 
   /** Grava os Envios que já têm um pedido montado (ainda sem resposta, criado ou que não começou). */
   async function gravar() {
-    if (!remessa) return;
-    const envios = remessa.envios.filter(e => e.jobId || e.falhaAoCriar || e.corpo);
+    const aRemessa = remessa;
+    if (!aRemessa) return;
+    const envios = aRemessa.envios.filter(e => e.jobId || e.falhaAoCriar || e.corpo);
     // O Apagar tudo que a Conexão ainda não confirmou continua marcado, mesmo com um Envio novo.
     const apagarFrases = (await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r)))[CHAVE_GRAVADA]?.apagarFrases;
+    // O Apagar tudo enquanto se lia: o que ele gravou fica, e as Frases deste Envio não voltam a `pm_envio`.
+    if (remessa !== aRemessa) return;
     return new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios, ...(apagarFrases ? { apagarFrases: true } : {}) } }, r));
   }
 

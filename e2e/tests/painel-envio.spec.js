@@ -877,11 +877,43 @@ test('Apagar tudo no meio de um Envio encerra o Envio no painel: nenhum resumo o
   await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
 });
 
+test('Apagar tudo enquanto o pedido de um Envio espera a Conexão: a resposta que chega depois não traz o Envio de volta, e o outro idioma não sai', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
+  // O primeiro POST /jobs (o inglês) fica esperando até o teste soltar; os idiomas que chegam são anotados.
+  const idiomasPedidos = [];
+  let soltar;
+  const solto = new Promise(r => { soltar = r; });
+  fakes.anki.responder('POST', '/jobs', async req => {
+    const { jobId, lang } = JSON.parse(req.postData());
+    idiomasPedidos.push(lang);
+    await solto;
+    return { status: 201, json: { jobId, status: 'queued' } };
+  });
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, [SACK.texto, RUSSA.texto]);
+  await expect.poll(() => idiomasPedidos).toEqual(['en']);
+
+  // Mesma página: o painel que espera a resposta é o que apaga.
+  await progresso(page).getByRole('button', { name: 'Fechar' }).first().click();
+  await page.locator('.shell-item[data-area="configuracoes"]').click();
+  await page.locator('#cfg-perigo-titulo').click();
+  await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar todas as 4 frases' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 4 frases' }).click();
+  await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
+
+  soltar();
+  await page.waitForTimeout(3_000);
+  expect(idiomasPedidos).toEqual(['en']);
+  // Nada do Envio voltou ao que o painel guarda, nem as Frases dele.
+  expect((await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
+  expect(JSON.stringify(await extensao.lerStorage())).not.toContain('hit the sack');
+});
+
 // ─── A cópia das telas do Envio com a Conexão dentro do Anki (#142) ──────────
 
 /**
  * Os textos à vista em `seletor` que não saem do catálogo da Voz, e os que chamam a Conexão de “complemento”. Um texto
- * sai do catálogo quando casa com um modelo dele (os valores `{…}` casam com qualquer coisa), ou cada parte dele separada
+ * sai do catálogo quando casa com um modelo dele (um valor de contagem só casa com um número), ou cada parte dele separada
  * por “ · ” casa; os nomes de `IDIOMAS` e o “Detalhes” do componente base também valem. O que está dentro do Detalhes é
  * a causa técnica (V3), não cópia: fica de fora.
  */
@@ -890,17 +922,22 @@ const COPIA_FORA_DO_CATALOGO = seletor => {
   const modelos = [];
   const juntar = entrada => (typeof entrada === 'string' ? [entrada] : Object.values(entrada).flatMap(juntar));
   const escapar = texto => texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  for (const modelo of Object.values(CATALOGO_DA_VOZ).flatMap(juntar)) {
-    // `{n|frase|frases}` é uma das duas palavras; `{valor}`, qualquer coisa.
+  const textos = Object.values(CATALOGO_DA_VOZ).flatMap(juntar);
+  // Os valores que são números: os que escolhem singular ou plural em algum modelo, e os de contagem e posição.
+  const numeros = new Set(['total', 'atual', 'inicio', 'fim', 'limite', 'pct', 'segundos',
+    ...textos.flatMap(t => [...t.matchAll(/\{([^{}|]+)\|/g)].map(m => m[1]))]);
+  for (const modelo of textos) {
+    // `{n|frase|frases}` é uma das duas palavras; `{n}`, um número; outro `{valor}`, qualquer coisa.
     let fixo = '';
     const padrao = modelo.split(/(\{[^{}]*\})/).map(pedaco => {
       if (!/^\{.*\}$/.test(pedaco)) {
         fixo += pedaco;
         return escapar(pedaco);
       }
-      const [, ...formas] = pedaco.slice(1, -1).split('|');
+      const [nome, ...formas] = pedaco.slice(1, -1).split('|');
       fixo += formas.join('');
-      return formas.length ? `(?:${formas.map(escapar).join('|')})` : '.+?';
+      if (formas.length) return `(?:${formas.map(escapar).join('|')})`;
+      return numeros.has(nome) ? '\\d[\\d.,]*' : '.+?';
     }).join('');
     // Um modelo só de valores (“{nome} · {estado}”) casaria com qualquer texto: não prova nada.
     if (/\p{L}/u.test(fixo)) modelos.push(new RegExp(`^${padrao}$`, 'u'));
