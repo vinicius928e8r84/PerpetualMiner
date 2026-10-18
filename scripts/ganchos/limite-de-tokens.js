@@ -6,13 +6,16 @@
 // o arquivo virar grande demais para ler de uma vez. Lê o conteúdo do índice, não da cópia de trabalho.
 //
 // Fica de fora (limite-de-tokens.json › ignorar): trava de pacotes, saída gerada, binários, código
-// de terceiros e arquivos com cabeçalho de gerado. Os que já passavam do limite quando o gancho
-// entrou estão em linha-de-base-de-tamanho.json: podem ser editados, não podem crescer. Sem esse
-// arquivo o gancho é estrito (tudo acima do limite barra). Como usar e instalar: LEIA-ME.md.
+// de terceiros e arquivos com a marca das ferramentas de geração (`@generated`, `DO NOT EDIT`). Os
+// que já passavam do limite quando o gancho entrou estão em linha-de-base-de-tamanho.json: podem
+// ser editados, não podem crescer. A base lida é a do índice, e ela só desce em relação à do HEAD
+// (entrada nova ou maior barra o commit); o teto de cada um é o menor entre a base e o tamanho no
+// HEAD. Sem o arquivo da base o gancho é estrito (tudo acima do limite barra). Como usar e instalar:
+// LEIA-ME.md.
 //
 //   node scripts/ganchos/limite-de-tokens.js                          confere o que está preparado (o gancho)
 //   node scripts/ganchos/limite-de-tokens.js --atualizar-linha-de-base  baixa as entradas que encolheram
-//   node scripts/ganchos/limite-de-tokens.js --gerar-linha-de-base      refaz a linha de base do zero
+//   node scripts/ganchos/limite-de-tokens.js --gerar-linha-de-base      cria a linha de base (só se ainda não existe)
 
 const { execFileSync } = require('child_process');
 const fs = require('fs');
@@ -78,7 +81,7 @@ function ehBinario(inicio) {
 
 function temCabecalhoDeGerado(inicio, config) {
   const cabecalho = inicio.toString('utf8').split('\n').slice(0, config.linhasDoCabecalho).join('\n');
-  return config.marcasDeGerado.some(marca => new RegExp(marca, 'i').test(cabecalho));
+  return config.marcasDeGerado.some(marca => cabecalho.includes(marca)); // texto exato, maiúsculas e minúsculas contam
 }
 
 /**
@@ -103,10 +106,49 @@ function avaliar(arquivo, config, linhaDeBase) {
 
 // --- A linha de base ---
 
-function lerLinhaDeBase(raiz, config) {
-  const arquivo = path.join(raiz, config.linhaDeBase);
-  if (!fs.existsSync(arquivo)) return {}; // sem o arquivo, modo estrito
-  return JSON.parse(fs.readFileSync(arquivo, 'utf8')).arquivos || {};
+/** A linha de base de uma versão do git (`:caminho` = índice, `HEAD:caminho`); `null` se o arquivo não existe nela. */
+function lerLinhaDeBase(raiz, config, versao) {
+  let texto;
+  try {
+    texto = git(raiz, ['cat-file', 'blob', `${versao}:${config.linhaDeBase}`], { stdio: ['ignore', 'pipe', 'ignore'] });
+  } catch {
+    return null;
+  }
+  return JSON.parse(texto).arquivos || {};
+}
+
+/** O tamanho de cada caminho no HEAD (só os que existem lá). */
+function tamanhosNoHead(raiz, caminhos) {
+  const validos = caminhos.filter(c => !c.includes('\n'));
+  if (!validos.length) return {};
+  const saida = git(raiz, ['cat-file', '--batch-check=%(objectsize)'], { input: `${validos.map(c => `HEAD:${c}`).join('\n')}\n` });
+  const tamanhos = {};
+  saida.split('\n').forEach((linha, i) => { if (/^\d+$/.test(linha)) tamanhos[validos[i]] = Number(linha); });
+  return tamanhos;
+}
+
+/** O teto de cada um da base: o menor entre a base e o tamanho no HEAD, e só para quem já passava do limite lá. */
+function limitarPeloHead(linhaDeBase, noHead, limite = LIMITE_DE_BYTES) {
+  const teto = {};
+  for (const [caminho, valor] of Object.entries(linhaDeBase)) {
+    if (noHead[caminho] !== undefined && noHead[caminho] > limite) teto[caminho] = Math.min(valor, noHead[caminho]);
+  }
+  return teto;
+}
+
+/**
+ * As entradas da base preparada que a afrouxam: arquivo que a do HEAD não tinha, ou com tamanho maior.
+ * Sem base no HEAD (a primeira), só vale o arquivo que o HEAD já tinha acima do limite, até o tamanho dele.
+ */
+function afrouxamentos(preparada, baseDoHead, noHead, limite = LIMITE_DE_BYTES) {
+  const achados = [];
+  for (const [caminho, valor] of Object.entries(preparada)) {
+    let permitido = null;
+    if (baseDoHead) permitido = baseDoHead[caminho] === undefined ? null : baseDoHead[caminho];
+    else if (noHead[caminho] !== undefined && noHead[caminho] > limite) permitido = noHead[caminho];
+    if (permitido === null || valor > permitido) achados.push({ caminho, valor, permitido });
+  }
+  return achados;
 }
 
 /** Só desce: mantém as entradas que ainda passam do limite com o menor tamanho; não acrescenta nem sobe. */
@@ -121,7 +163,7 @@ function atualizarLinhaDeBase(linhaDeBase, tamanhosAtuais, limite = LIMITE_DE_BY
 }
 
 const DESCRICAO_DA_LINHA_DE_BASE = 'Arquivos que já passavam do limite quando o gancho entrou (caminho: bytes). Cada um pode ser '
-  + 'editado, não pode crescer além do tamanho daqui. Depois de dividir um deles, rode '
+  + 'editado, não pode crescer além do tamanho daqui (nem do que tinha no último commit); esta lista só desce: entrada nova ou maior barra o commit. Depois de dividir um deles, rode '
   + '`node scripts/ganchos/limite-de-tokens.js --atualizar-linha-de-base`. Arquivo novo não entra aqui: tem de caber no limite. '
   + 'Apagar este arquivo liga o modo estrito (tudo acima do limite barra o commit).';
 
@@ -146,7 +188,7 @@ const lerBlob = (raiz, oid) => git(raiz, ['cat-file', 'blob', oid], { encoding: 
 
 /** Os arquivos preparados (adicionados, copiados, modificados, renomeados), com o tamanho do blob do índice. */
 function arquivosPreparados(raiz) {
-  const saida = git(raiz, ['diff', '--cached', '--raw', '-z', '--no-abbrev', '--no-renames', '--diff-filter=ACMR']);
+  const saida = git(raiz, ['diff', '--cached', '--raw', '-z', '--no-abbrev', '--no-renames', '--diff-filter=ACMRT']);
   const pedacos = saida.split('\0');
   const achados = [];
   for (let i = 0; i + 1 < pedacos.length; i += 2) {
@@ -213,54 +255,91 @@ function tipoDe(caminho) {
   return 'outro';
 }
 
+function mensagemDeAfrouxamento(achado, baseDoHead, config) {
+  const motivo = achado.permitido !== null
+    ? `o permitido é ${achado.permitido} bytes (o da linha de base do último commit${baseDoHead ? '' : ', o tamanho dele'})`
+    : baseDoHead
+      ? 'ele não estava na linha de base do último commit'
+      : 'ele não passava do limite no último commit';
+  return `✗ ${achado.caminho}: linha de base afrouxada. Entrada preparada: ${achado.valor} bytes, mas ${motivo}. `
+    + `A linha de base só desce. Desfaça: git restore --source=HEAD --staged --worktree -- ${config.linhaDeBase}; `
+    + `e divida o arquivo em vez de afrouxar a base (arquivo gerado por ferramenta: acrescente o glob em "ignorar" de scripts/ganchos/limite-de-tokens.json).`;
+}
+
 function mensagemDeErro(achado, config) {
   const { caminho, tamanho, limite } = achado;
   const bytesPorToken = config.bytesPorToken || 4;
   const cabecalho = achado.estado === 'cresceu'
-    ? `✗ ${caminho}: ${tamanho} bytes (~${tokensDe(tamanho, bytesPorToken)} tokens). Ele já passava do limite (${limite} bytes = ${tokensDe(limite, bytesPorToken)} tokens) e está na linha de base com ${achado.naBase} bytes; cresceu ${tamanho - achado.naBase} bytes. Um arquivo da linha de base não pode crescer: ponha o que você acrescentou (ou parte do que já havia) em um arquivo novo ao lado.`
+    ? `✗ ${caminho}: ${tamanho} bytes (~${tokensDe(tamanho, bytesPorToken)} tokens). Ele já passava do limite (${limite} bytes = ${tokensDe(limite, bytesPorToken)} tokens) e está na linha de base; o máximo para ele é ${achado.naBase} bytes (o menor entre a linha de base e o tamanho no último commit); cresceu ${tamanho - achado.naBase} bytes. Um arquivo da linha de base não pode crescer: ponha o que você acrescentou (ou parte do que já havia) em um arquivo novo ao lado.`
     : `✗ ${caminho}: ${tamanho} bytes (~${tokensDe(tamanho, bytesPorToken)} tokens), acima do limite de ${limite} bytes (${tokensDe(limite, bytesPorToken)} tokens).`;
   const passos = [...PASSOS_POR_TIPO[tipoDe(caminho)], ...PASSOS_COMUNS].map((p, i) => `    ${i + 1}. ${p}`);
-  const linhaDeBase = achado.estado === 'cresceu'
+  const fim = achado.estado === 'cresceu'
     ? [`  Depois de dividir ${caminho}, baixe a linha de base: node scripts/ganchos/limite-de-tokens.js --atualizar-linha-de-base && git add ${config.linhaDeBase}`]
-    : [`  Não ponha ${caminho} na linha de base (${config.linhaDeBase}): arquivo novo precisa caber no limite.`];
-  return [cabecalho, '  Como dividir:', ...passos, ...linhaDeBase].join('\n');
+    : [`  Não ponha ${caminho} na linha de base (${config.linhaDeBase}): arquivo novo precisa caber no limite.`,
+      `  Se ele é gerado por uma ferramenta (ninguém o edita à mão), acrescente o glob dele em "ignorar" de scripts/ganchos/limite-de-tokens.json em vez de dividir.`];
+  return [cabecalho, '  Como dividir:', ...passos, ...fim].join('\n');
 }
 
 // --- A linha de comando ---
 
 function conferirPreparados(raiz, config) {
-  const linhaDeBase = lerLinhaDeBase(raiz, config);
-  const falhas = arquivosPreparados(raiz)
+  const preparados = arquivosPreparados(raiz);
+  // A base vale pelo índice (o que será commitado), limitada pelo HEAD: nunca pela cópia de trabalho.
+  const baseDoIndice = lerLinhaDeBase(raiz, config, '') || {};
+  const baseDoHead = lerLinhaDeBase(raiz, config, 'HEAD');
+  const consultar = baseDoHead
+    ? preparados.map(a => a.caminho).filter(c => c in baseDoIndice)
+    : Object.keys(baseDoIndice);
+  const noHead = tamanhosNoHead(raiz, consultar);
+  const afrouxadas = afrouxamentos(baseDoIndice, baseDoHead, noHead, config.limiteDeBytes);
+  const linhaDeBase = limitarPeloHead(baseDoIndice, noHead, config.limiteDeBytes);
+  const falhas = preparados
     .map(arquivo => avaliar(arquivo, config, linhaDeBase))
     .filter(achado => achado.estado === 'excede' || achado.estado === 'cresceu');
-  if (!falhas.length) return 0;
-  process.stderr.write(`Commit barrado: ${falhas.length} arquivo(s) acima do limite de ${config.limiteDeBytes} bytes (${tokensDe(config.limiteDeBytes, config.bytesPorToken)} tokens).\n\n`);
-  process.stderr.write(`${falhas.map(f => mensagemDeErro(f, config)).join('\n\n')}\n`);
+  if (!falhas.length && !afrouxadas.length) return 0;
+  process.stderr.write(`Commit barrado: ${falhas.length + afrouxadas.length} problema(s) de tamanho (limite ${config.limiteDeBytes} bytes = ${tokensDe(config.limiteDeBytes, config.bytesPorToken)} tokens).\n\n`);
+  const mensagens = [...afrouxadas.map(a => mensagemDeAfrouxamento(a, baseDoHead, config)), ...falhas.map(f => mensagemDeErro(f, config))];
+  process.stderr.write(`${mensagens.join('\n\n')}\n`);
   return 1;
+}
+
+function gerarLinhaDeBase(raiz, config, doIndice) {
+  if (lerLinhaDeBase(raiz, config, '') || lerLinhaDeBase(raiz, config, 'HEAD')) {
+    process.stderr.write(`A linha de base já existe (${config.linhaDeBase}) e só desce: ela não é refeita do zero. `
+      + 'Depois de dividir um arquivo, rode `node scripts/ganchos/limite-de-tokens.js --atualizar-linha-de-base`.\n');
+    return 1;
+  }
+  const grandes = {};
+  for (const arquivo of doIndice) {
+    if (arquivo.tamanho > config.limiteDeBytes && avaliar(arquivo, config, {}).estado === 'excede') grandes[arquivo.caminho] = arquivo.tamanho;
+  }
+  gravarLinhaDeBase(raiz, config, grandes);
+  process.stdout.write(`${config.linhaDeBase}: ${Object.keys(grandes).length} arquivo(s); só entra o que o último commit já tinha acima do limite\n`);
+  return 0;
+}
+
+function atualizarLinhaDeBaseDoIndice(raiz, config, doIndice) {
+  const antes = lerLinhaDeBase(raiz, config, '');
+  if (!antes) {
+    process.stdout.write(`${config.linhaDeBase} não existe: modo estrito, nada a atualizar\n`);
+    return 0;
+  }
+  const atuais = {};
+  for (const arquivo of doIndice) {
+    if (avaliar(arquivo, config, {}).estado !== 'ignorado') atuais[arquivo.caminho] = arquivo.tamanho;
+  }
+  const depois = atualizarLinhaDeBase(antes, atuais, config.limiteDeBytes);
+  gravarLinhaDeBase(raiz, config, depois);
+  process.stdout.write(`${config.linhaDeBase}: ${Object.keys(antes).length} -> ${Object.keys(depois).length} arquivo(s); `
+    + `dê \`git add ${config.linhaDeBase}\`\n`);
+  return 0;
 }
 
 function principal(argumentos) {
   const config = lerConfiguracao();
   const raiz = git(process.cwd(), ['rev-parse', '--show-toplevel']).trim();
-  if (argumentos.includes('--gerar-linha-de-base') || argumentos.includes('--atualizar-linha-de-base')) {
-    const doIndice = tamanhosDoIndice(raiz);
-    if (argumentos.includes('--gerar-linha-de-base')) {
-      const grandes = {};
-      for (const arquivo of doIndice) {
-        if (arquivo.tamanho > config.limiteDeBytes && avaliar(arquivo, config, {}).estado === 'excede') grandes[arquivo.caminho] = arquivo.tamanho;
-      }
-      gravarLinhaDeBase(raiz, config, grandes);
-      process.stdout.write(`${config.linhaDeBase}: ${Object.keys(grandes).length} arquivo(s)\n`);
-      return 0;
-    }
-    const atuais = Object.fromEntries(doIndice.map(a => [a.caminho, a.tamanho]));
-    const antes = lerLinhaDeBase(raiz, config);
-    const depois = atualizarLinhaDeBase(antes, atuais, config.limiteDeBytes);
-    gravarLinhaDeBase(raiz, config, depois);
-    process.stdout.write(`${config.linhaDeBase}: ${Object.keys(antes).length} -> ${Object.keys(depois).length} arquivo(s); `
-      + `dê \`git add ${config.linhaDeBase}\`\n`);
-    return 0;
-  }
+  if (argumentos.includes('--gerar-linha-de-base')) return gerarLinhaDeBase(raiz, config, tamanhosDoIndice(raiz));
+  if (argumentos.includes('--atualizar-linha-de-base')) return atualizarLinhaDeBaseDoIndice(raiz, config, tamanhosDoIndice(raiz));
   return conferirPreparados(raiz, config);
 }
 
@@ -275,5 +354,5 @@ if (require.main === module) {
 }
 
 module.exports = {
-  LIMITE_DE_BYTES, atualizarLinhaDeBase, avaliar, globParaRegex, lerConfiguracao, mensagemDeErro, tokensDe,
+  LIMITE_DE_BYTES, afrouxamentos, atualizarLinhaDeBase, avaliar, globParaRegex, lerConfiguracao, limitarPeloHead, mensagemDeErro, tokensDe,
 };

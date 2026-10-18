@@ -2,36 +2,92 @@
   "limiteDeBytes": 20000,
   "bytesPorToken": 4,
   "linhaDeBase": "scripts/ganchos/linha-de-base-de-tamanho.json",
-  "linhasDoCabecalho": 10,
+  "linhasDoCabecalho": 5,
   "marcasDeGerado": [
     "@generated",
     "DO NOT EDIT",
-    "Code generated",
-    "auto-?generated",
-    "automatically generated",
-    "file is generated",
-    "gerado automaticamente",
-    "NÃO EDITE"
+    "Code generated"
   ],
   "ignorar": [
-    { "glob": "package-lock.json", "motivo": "trava de pacotes, escrita pelo npm" },
-    { "glob": "npm-shrinkwrap.json", "motivo": "trava de pacotes, escrita pelo npm" },
-    { "glob": "pnpm-lock.yaml", "motivo": "trava de pacotes, escrita pelo pnpm" },
-    { "glob": "yarn.lock", "motivo": "trava de pacotes, escrita pelo yarn" },
-    { "glob": "*.lock", "motivo": "trava de pacotes (poetry.lock, uv.lock, Cargo.lock, Gemfile.lock, composer.lock...)" },
-    { "glob": "dist/", "motivo": "saída de build" },
-    { "glob": "build/", "motivo": "saída de build" },
-    { "glob": "coverage/", "motivo": "relatório de cobertura" },
-    { "glob": "*.min.*", "motivo": "arquivo minificado" },
-    { "glob": "*.map", "motivo": "source map" },
-    { "glob": "docs/design/voz/catalogo-textos.json", "motivo": "regravado inteiro por scripts/gerar-catalogo-da-voz.js; test_voz.js falha se sair da mão" },
-    { "glob": "node_modules/", "motivo": "dependências de terceiros" },
-    { "glob": "vendor/", "motivo": "cópia de terceiros" },
-    { "glob": "third_party/", "motivo": "cópia de terceiros" },
-    { "glob": "*.{png,jpg,jpeg,gif,webp,avif,ico,bmp,tiff,psd}", "motivo": "imagem (binário)" },
-    { "glob": "*.{woff,woff2,ttf,otf,eot}", "motivo": "fonte (binário)" },
-    { "glob": "*.{zip,gz,tgz,bz2,xz,7z,rar,tar,jar,ankiaddon,apkg,crx}", "motivo": "pacote compactado (binário); o .ankiaddon sai de complemento/empacotar.py" },
-    { "glob": "*.{mp3,mp4,m4a,wav,ogg,flac,mov,webm,mkv,avi}", "motivo": "áudio e vídeo (binário)" },
-    { "glob": "*.{pdf,wasm,so,dll,dylib,exe,pyc,sqlite,db}", "motivo": "binário" }
+    {
+      "glob": "package-lock.json",
+      "motivo": "trava de pacotes, escrita pelo npm"
+    },
+    {
+      "glob": "npm-shrinkwrap.json",
+      "motivo": "trava de pacotes, escrita pelo npm"
+    },
+    {
+      "glob": "pnpm-lock.yaml",
+      "motivo": "trava de pacotes, escrita pelo pnpm"
+    },
+    {
+      "glob": "yarn.lock",
+      "motivo": "trava de pacotes, escrita pelo yarn"
+    },
+    {
+      "glob": "*.lock",
+      "motivo": "trava de pacotes (poetry.lock, uv.lock, Cargo.lock, Gemfile.lock, composer.lock...)"
+    },
+    {
+      "glob": "dist/",
+      "motivo": "saída de build"
+    },
+    {
+      "glob": "build/",
+      "motivo": "saída de build"
+    },
+    {
+      "glob": "coverage/",
+      "motivo": "relatório de cobertura"
+    },
+    {
+      "glob": "*.min.*",
+      "motivo": "arquivo minificado"
+    },
+    {
+      "glob": "*.map",
+      "motivo": "source map"
+    },
+    {
+      "glob": "docs/design/voz/catalogo-textos.json",
+      "motivo": "regravado inteiro por scripts/gerar-catalogo-da-voz.js; test_voz.js falha se sair da mão"
+    },
+    {
+      "glob": "docs/design/voz/catalogo.html",
+      "motivo": "regravado por scripts/gerar-catalogo-da-voz.js a partir da spec (o README da Voz); test_voz.js falha se sair da mão, e a página não se divide"
+    },
+    {
+      "glob": "node_modules/",
+      "motivo": "dependências de terceiros"
+    },
+    {
+      "glob": "vendor/",
+      "motivo": "cópia de terceiros"
+    },
+    {
+      "glob": "third_party/",
+      "motivo": "cópia de terceiros"
+    },
+    {
+      "glob": "*.{png,jpg,jpeg,gif,webp,avif,ico,bmp,tiff,psd}",
+      "motivo": "imagem (binário)"
+    },
+    {
+      "glob": "*.{woff,woff2,ttf,otf,eot}",
+      "motivo": "fonte (binário)"
+    },
+    {
+      "glob": "*.{zip,gz,tgz,bz2,xz,7z,rar,tar,jar,ankiaddon,apkg,crx}",
+      "motivo": "pacote compactado (binário); o .ankiaddon sai de complemento/empacotar.py"
+    },
+    {
+      "glob": "*.{mp3,mp4,m4a,wav,ogg,flac,mov,webm,mkv,avi}",
+      "motivo": "áudio e vídeo (binário)"
+    },
+    {
+      "glob": "*.{pdf,wasm,so,dll,dylib,exe,pyc,sqlite,db}",
+      "motivo": "binário"
+    }
   ]
 }

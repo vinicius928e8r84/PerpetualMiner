@@ -1,5 +1,5 @@
 {
-  "descricao": "Arquivos que já passavam do limite quando o gancho entrou (caminho: bytes). Cada um pode ser editado, não pode crescer além do tamanho daqui. Depois de dividir um deles, rode `node scripts/ganchos/limite-de-tokens.js --atualizar-linha-de-base`. Arquivo novo não entra aqui: tem de caber no limite. Apagar este arquivo liga o modo estrito (tudo acima do limite barra o commit).",
+  "descricao": "Arquivos que já passavam do limite quando o gancho entrou (caminho: bytes). Cada um pode ser editado, não pode crescer além do tamanho daqui (nem do que tinha no último commit); esta lista só desce: entrada nova ou maior barra o commit. Depois de dividir um deles, rode `node scripts/ganchos/limite-de-tokens.js --atualizar-linha-de-base`. Arquivo novo não entra aqui: tem de caber no limite. Apagar este arquivo liga o modo estrito (tudo acima do limite barra o commit).",
   "arquivos": {
     ".agents/skills/painel-anki/SKILL.md": 24858,
     ".agents/skills/verify-perpetualminer/SKILL.md": 27304,
@@ -41,7 +41,6 @@
     "docs/design/painel/shell/prototipo-shell.html": 39933,
     "docs/design/popup/prototipo-popup.html": 49532,
     "docs/design/voz/README.md": 80581,
-    "docs/design/voz/catalogo.html": 84369,
     "docs/publicar-chrome-web-store.md": 22853,
     "e2e/fakes/anki.js": 50203,
     "e2e/tests/boas-vindas.spec.js": 31863,
