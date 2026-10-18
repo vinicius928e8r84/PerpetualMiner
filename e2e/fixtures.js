@@ -80,12 +80,117 @@ async function esperarAbaDaInstalacao(context, id) {
   throw new Error('A instalação não abriu a aba da Boas-vindas');
 }
 
-// A instalação também deixa a configuração começada (`pm_boas_vindas`), o que
-// põe o lembrete “Configuração pela metade” no popup e em Frases. O teste
-// começa como quem já passou por ela, sem o lembrete; quem testa o lembrete
-// pede `test.use({ lembreteDaConfiguracao: true })`.
+/**
+ * Abre um perfil novo do Chromium com a extensão carregada e a rede falsificada. O primeiro perfil do
+ * teste (`context`) e o segundo (`segundoPerfil`) abrem por aqui, então os dois têm o mesmo: `HEADED`, o
+ * login do Google no servidor local, o abridor falso registrado, a permissão do abridor e as rotas dos fakes.
+ * A pasta do perfil nasce antes e some se qualquer passo da abertura falha, em vez de ficar no disco.
+ */
+async function abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor }) {
+  servidorDoLogin.atender(fakes.google.responderLogin);
+  const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-e2e-'));
+  let context = null;
+  try {
+    // O abridor que a Conexão com o Anki registraria no computador (o de mentira).
+    fakes.abridor.registrarNoPerfil(perfil);
+    if (permissaoDoAbridor) {
+      const dada = { api: ['nativeMessaging'], explicit_host: [], manifest_permissions: [], scriptable_host: [] };
+      fs.mkdirSync(path.join(perfil, 'Default'));
+      fs.writeFileSync(path.join(perfil, 'Default', 'Preferences'), JSON.stringify({
+        extensions: { settings: { [ID_DA_EXTENSAO]: { granted_permissions: dada, active_permissions: dada } } },
+      }));
+    }
+    context = await chromium.launchPersistentContext(perfil, {
+      channel: 'chromium',
+      headless: !process.env.HEADED,
+      env: { ...process.env, FONTCONFIG_FILE: path.join(__dirname, 'fontconfig', 'fonts.conf') },
+      args: [
+        `--disable-extensions-except=${pastaDaExtensao}`,
+        `--load-extension=${pastaDaExtensao}`,
+        `--host-resolver-rules=MAP accounts.google.com 127.0.0.1:${servidorDoLogin.porta}`,
+        // Só o servidor local do login usa HTTPS, com certificado autoassinado.
+        '--ignore-certificate-errors',
+        // A rede é toda falsificada ou bloqueada aqui: um proxy do ambiente
+        // (HTTPS_PROXY) levaria a janela do login para fora do servidor local.
+        '--no-proxy-server',
+      ],
+    });
+
+    // A última rota registrada tem prioridade: o bloqueio geral vem primeiro.
+    const origensLocais = [paginas.origem, paginas.origemCruzada];
+    await context.route(url => /^https?:$/.test(url.protocol) && !origensLocais.includes(url.origin),
+      route => route.abort('blockedbyclient'));
+    for (const fake of Object.values(fakes)) if (fake.padrao) await context.route(fake.padrao, fake.tratar);
+  } catch (erro) {
+    await context?.close().catch(() => {});
+    fs.rmSync(perfil, { recursive: true, force: true });
+    throw erro;
+  }
+  return {
+    context,
+    fechar: async () => {
+      await context.close();
+      fs.rmSync(perfil, { recursive: true, force: true });
+    },
+  };
+}
+
 async function apagarPmBoasVindas(sw) {
   await sw.evaluate(() => chrome.storage.local.remove('pm_boas_vindas'));
+}
+
+/**
+ * O que um teste tem da extensão de um perfil já aberto: o service worker, o storage, a sessão semeada.
+ * A instalação deixa a aba da Boas-vindas (fechada, salvo `manterAbaDaInstalacao`) e a configuração
+ * começada (removida, salvo `lembreteDaConfiguracao`); veja as opções do fixture.
+ */
+async function prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConfiguracao }) {
+  const sw = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
+  const id = new URL(sw.url()).host;
+
+  const abaDaInstalacao = await esperarAbaDaInstalacao(context, id);
+  if (!manterAbaDaInstalacao) await abaDaInstalacao.close();
+
+  const lerStorage = (chaves = null) => sw.evaluate(c => chrome.storage.local.get(c), chaves);
+  const gravarStorage = valores => sw.evaluate(v => chrome.storage.local.set(v), valores);
+  if (!lembreteDaConfiguracao) await apagarPmBoasVindas(sw);
+
+  const sessaoDiretoNoIndexedDB = valor => sw.evaluate(valor => new Promise((resolve, reject) => {
+    const req = indexedDB.open('pm-sessao', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('sessao');
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result;
+      const tx = db.transaction('sessao', valor === null ? 'readonly' : 'readwrite');
+      const loja = tx.objectStore('sessao');
+      if (valor !== null) loja.put(true, 'migrada');
+      const pedido = valor === null ? loja.get('firebase') : loja.put(valor, 'firebase');
+      tx.oncomplete = () => { db.close(); resolve(pedido.result || null); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    };
+  }), valor);
+
+  return {
+    id,
+    serviceWorker: sw,
+    abaDaInstalacao: manterAbaDaInstalacao ? abaDaInstalacao : null,
+    url: caminho => `chrome-extension://${id}/${caminho}`,
+    lerStorage,
+    lerSessao: () => sessaoDiretoNoIndexedDB(null),
+    gravarSessao: sessaoDiretoNoIndexedDB,
+    gravarStorage,
+    /** Se a extensão tem a permissão do abridor (`nativeMessaging`), como o Chrome a guarda. */
+    permissaoDoAbridor: () => sw.evaluate(() => chrome.permissions.contains({ permissions: ['nativeMessaging'] })),
+    /** O histórico de frases como está gravado (mais nova primeiro). */
+    frases: async () => (await lerStorage({ frases: [] })).frases,
+    /** Semeia uma sessão da conta no armazenamento, sem passar pelo login real. */
+    /** `expirada` grava um token já vencido: o painel precisa renová-lo antes de ir à nuvem. */
+    semearSessao: async ({ uid = 'uid-teste', email = 'pessoa@teste.dev', displayName = 'Pessoa de Teste', expirada = false } = {}) => {
+      await sessaoDiretoNoIndexedDB({ uid, idToken: 'token-teste', refreshToken: 'refresh-teste',
+        expiresAt: expirada ? Date.now() - 60 * 1000 : Date.now() + 60 * 60 * 1000 });
+      await gravarStorage({ pm_user_info: { uid, email, displayName, photoURL: '' } });
+    },
+  };
 }
 
 const test = base.extend({
@@ -144,42 +249,9 @@ const test = base.extend({
   },
 
   context: async ({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor }, use) => {
-    servidorDoLogin.atender(fakes.google.responderLogin);
-    const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-e2e-'));
-    // O abridor que a Conexão com o Anki registraria no computador (o de mentira).
-    fakes.abridor.registrarNoPerfil(perfil);
-    if (permissaoDoAbridor) {
-      const dada = { api: ['nativeMessaging'], explicit_host: [], manifest_permissions: [], scriptable_host: [] };
-      fs.mkdirSync(path.join(perfil, 'Default'));
-      fs.writeFileSync(path.join(perfil, 'Default', 'Preferences'), JSON.stringify({
-        extensions: { settings: { [ID_DA_EXTENSAO]: { granted_permissions: dada, active_permissions: dada } } },
-      }));
-    }
-    const context = await chromium.launchPersistentContext(perfil, {
-      channel: 'chromium',
-      headless: !process.env.HEADED,
-      env: { ...process.env, FONTCONFIG_FILE: path.join(__dirname, 'fontconfig', 'fonts.conf') },
-      args: [
-        `--disable-extensions-except=${pastaDaExtensao}`,
-        `--load-extension=${pastaDaExtensao}`,
-        `--host-resolver-rules=MAP accounts.google.com 127.0.0.1:${servidorDoLogin.porta}`,
-        // Só o servidor local do login usa HTTPS, com certificado autoassinado.
-        '--ignore-certificate-errors',
-        // A rede é toda falsificada ou bloqueada aqui: um proxy do ambiente
-        // (HTTPS_PROXY) levaria a janela do login para fora do servidor local.
-        '--no-proxy-server',
-      ],
-    });
-
-    // A última rota registrada tem prioridade: o bloqueio geral vem primeiro.
-    const origensLocais = [paginas.origem, paginas.origemCruzada];
-    await context.route(url => /^https?:$/.test(url.protocol) && !origensLocais.includes(url.origin),
-      route => route.abort('blockedbyclient'));
-    for (const fake of Object.values(fakes)) if (fake.padrao) await context.route(fake.padrao, fake.tratar);
-
-    await use(context);
-    await context.close();
-    fs.rmSync(perfil, { recursive: true, force: true });
+    const perfil = await abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor });
+    await use(perfil.context);
+    await perfil.fechar();
   },
 
   // A página do teste passa pela `extensao`, que fecha a aba da instalação, e
@@ -196,56 +268,27 @@ const test = base.extend({
   // `test.use({ manterAbaDaInstalacao: true })` e a recebe em `extensao.abaDaInstalacao`.
   manterAbaDaInstalacao: [false, { option: true }],
 
+  // A instalação também deixa a configuração começada (`pm_boas_vindas`), o que
+  // põe o lembrete “Configuração pela metade” no popup e em Frases. O teste
+  // começa como quem já passou por ela, sem o lembrete; quem testa o lembrete
+  // pede `test.use({ lembreteDaConfiguracao: true })`.
   lembreteDaConfiguracao: [false, { option: true }],
 
   extensao: async ({ context, manterAbaDaInstalacao, lembreteDaConfiguracao }, use) => {
-    const sw = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
-    const id = new URL(sw.url()).host;
+    await use(await prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConfiguracao }));
+  },
 
-    const abaDaInstalacao = await esperarAbaDaInstalacao(context, id);
-    if (!manterAbaDaInstalacao) await abaDaInstalacao.close();
-
-    const lerStorage = (chaves = null) => sw.evaluate(c => chrome.storage.local.get(c), chaves);
-    const gravarStorage = valores => sw.evaluate(v => chrome.storage.local.set(v), valores);
-    if (!lembreteDaConfiguracao) await apagarPmBoasVindas(sw);
-
-    // A fronteira de armazenamento da sessão, não a autenticação de produção.
-    const sessaoDiretoNoIndexedDB = valor => sw.evaluate(valor => new Promise((resolve, reject) => {
-      const req = indexedDB.open('pm-sessao', 1);
-      req.onupgradeneeded = () => req.result.createObjectStore('sessao');
-      req.onerror = () => reject(req.error);
-      req.onsuccess = () => {
-        const db = req.result;
-        const tx = db.transaction('sessao', valor === null ? 'readonly' : 'readwrite');
-        const loja = tx.objectStore('sessao');
-        if (valor !== null) loja.put(true, 'migrada');
-        const pedido = valor === null ? loja.get('firebase') : loja.put(valor, 'firebase');
-        tx.oncomplete = () => { db.close(); resolve(pedido.result || null); };
-        tx.onerror = () => { db.close(); reject(tx.error); };
-      };
-    }), valor);
-
-    await use({
-      id,
-      serviceWorker: sw,
-      abaDaInstalacao: manterAbaDaInstalacao ? abaDaInstalacao : null,
-      url: caminho => `chrome-extension://${id}/${caminho}`,
-      lerStorage,
-      lerSessao: () => sessaoDiretoNoIndexedDB(null),
-      gravarSessao: sessaoDiretoNoIndexedDB,
-      gravarStorage,
-      /** Se a extensão tem a permissão do abridor (`nativeMessaging`), como o Chrome a guarda. */
-      permissaoDoAbridor: () => sw.evaluate(() => chrome.permissions.contains({ permissions: ['nativeMessaging'] })),
-      /** O histórico de frases como está gravado (mais nova primeiro). */
-      frases: async () => (await lerStorage({ frases: [] })).frases,
-      /** Semeia uma sessão da conta no armazenamento, sem passar pelo login real. */
-      /** `expirada` grava um token já vencido: o painel precisa renová-lo antes de ir à nuvem. */
-      semearSessao: async ({ uid = 'uid-teste', email = 'pessoa@teste.dev', displayName = 'Pessoa de Teste', expirada = false } = {}) => {
-        await sessaoDiretoNoIndexedDB({ uid, idToken: 'token-teste', refreshToken: 'refresh-teste',
-          expiresAt: expirada ? Date.now() - 60 * 1000 : Date.now() + 60 * 60 * 1000 });
-        await gravarStorage({ pm_user_info: { uid, email, displayName, photoURL: '' } });
-      },
-    });
+  // Um segundo perfil do Chromium com a extensão, aberto como o primeiro (mesma rede falsificada, mesmo
+  // abridor, mesma Conexão com o Anki): a cena de duas contas Google em dois perfis diante de uma Conexão só.
+  // Não é uma segunda aba do mesmo perfil, que dividiria o armazenamento. `context` abre páginas dele;
+  // `extensao` é o mesmo objeto que o teste já tem (semearSessao, lerStorage, …), mas do segundo perfil.
+  segundoPerfil: async ({ extensao, fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, manterAbaDaInstalacao, lembreteDaConfiguracao }, use) => {
+    const perfil = await abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor });
+    try {
+      await use({ context: perfil.context, extensao: await prepararExtensao(perfil.context, { manterAbaDaInstalacao, lembreteDaConfiguracao }) });
+    } finally {
+      await perfil.fechar();
+    }
   },
 });
 
