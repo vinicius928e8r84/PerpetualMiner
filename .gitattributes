@@ -5,3 +5,5 @@
 manifest.json text eol=lf
 # O hash das fontes do complemento (test_pacote.py) lê os bytes crus: com CRLF o teste mandaria subir a VERSAO sem mudança de código.
 complemento/** text eol=lf
+# O gancho pre-commit é um script de shell sem extensão: com CRLF o sh falha antes de conferir.
+scripts/ganchos/pre-commit text eol=lf

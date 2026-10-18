@@ -4,7 +4,8 @@
   "description": "Testes da extensão desempacotada no Chromium, dirigidos por Playwright.",
   "scripts": {
     "test": "playwright test",
-    "setup": "playwright install chromium"
+    "setup": "playwright install chromium",
+    "prepare": "node ../scripts/ganchos/instalar.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"

@@ -11,9 +11,9 @@
       "arquivos": ["scripts/regras/test_regras.js"]
     },
     "ferramentas": {
-      "descricao": "As ferramentas de scripts/: o executor dos grupos",
+      "descricao": "As ferramentas de scripts/: o executor dos grupos e o gancho do limite de tamanho dos arquivos",
       "executor": "node",
-      "arquivos": ["scripts/test_testar.mjs"]
+      "arquivos": ["scripts/test_testar.mjs", "scripts/ganchos/test_limite_de_tokens.js"]
     },
     "bridge": {
       "descricao": "A Conexão de hoje (Flask) e o Envio ao Anki",
