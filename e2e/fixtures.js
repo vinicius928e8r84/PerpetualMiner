@@ -135,6 +135,10 @@ async function abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, p
   };
 }
 
+async function apagarPmBoasVindas(sw) {
+  await sw.evaluate(() => chrome.storage.local.remove('pm_boas_vindas'));
+}
+
 /**
  * O que um teste tem da extensão de um perfil já aberto: o service worker, o storage, a sessão semeada.
  * A instalação deixa a aba da Boas-vindas (fechada, salvo `manterAbaDaInstalacao`) e a configuração
@@ -149,7 +153,7 @@ async function prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConf
 
   const lerStorage = (chaves = null) => sw.evaluate(c => chrome.storage.local.get(c), chaves);
   const gravarStorage = valores => sw.evaluate(v => chrome.storage.local.set(v), valores);
-  if (!lembreteDaConfiguracao) await sw.evaluate(() => chrome.storage.local.remove('pm_boas_vindas'));
+  if (!lembreteDaConfiguracao) await apagarPmBoasVindas(sw);
 
   const sessaoDiretoNoIndexedDB = valor => sw.evaluate(valor => new Promise((resolve, reject) => {
     const req = indexedDB.open('pm-sessao', 1);

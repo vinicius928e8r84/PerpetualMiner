@@ -40,6 +40,23 @@ const chaveNoBancoDaExtensao = page => page.evaluate(() => new Promise((resolver
   };
 }));
 
+// O goto seguinte muda só o hash, não o documento. Sem esta barreira de conclusão, a
+// falha do banco atinge a continuação do salvamento ANTERIOR, não o Apagar tudo.
+async function prepararConferenciaDaChave(context) {
+  let liberar;
+  const conferencia = new Promise(resolve => { liberar = resolve; });
+  await context.route('**/ia/openai/chave', async route => {
+    await conferencia;
+    await route.fallback();
+  });
+  return async function esperarConferenciaDaChave(page) {
+    liberar();
+    await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
+    await expect(campo(page)).toHaveCount(0);
+    expect(await chaveNoBancoDaExtensao(page)).toBe('');
+  };
+}
+
 async function colarEConferir(page, chave = CHAVE) {
   await campo(page).fill(chave);
   await conferir(page).click();
@@ -839,17 +856,10 @@ test('S4: apagamento aceito com falha no cache mostra resultado incerto, Detalhe
 });
 
 test('S4: Apagar tudo comunica resultado parcial se o cofre local falha', async ({ page, extensao, fakes, context }) => {
-  let liberar;
-  const resposta = new Promise(resolve => { liberar = resolve; });
-  await context.route('**/ia/openai/chave', async route => { await resposta; await route.fallback(); });
+  const esperarConferenciaDaChave = await prepararConferenciaDaChave(context);
   await abrirPainel(page, extensao, '#configuracoes/ia');
   await colarEConferir(page);
-  // goto below changes only the hash, not the document. Without this completion
-  // barrier, the DB fault hits the PREVIOUS save continuation, not Apagar tudo.
-  liberar();
-  await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
-  await expect(campo(page)).toHaveCount(0);
-  expect(await chaveNoBancoDaExtensao(page)).toBe('');
+  await esperarConferenciaDaChave(page);
   await extensao.gravarStorage({ frases: [{ id: 1, texto: 'fake phrase', data: '01/01/2026', idioma: 'Inglês', streaming: 'web' }] });
   await page.goto(extensao.url('painel.html#configuracoes/perigo'));
   await falharBanco(page);

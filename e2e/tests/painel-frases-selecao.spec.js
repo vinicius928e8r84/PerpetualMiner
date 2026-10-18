@@ -196,7 +196,7 @@ test('Exportar .txt baixa as escolhidas e as marca Exportada, nunca Enviada ao A
   // O que fica gravado não diz Enviada ao Anki: o `exported` é o do Envio.
   const gravadas = await extensao.frases();
   const porTexto = texto => gravadas.find(f => f.texto.startsWith(texto));
-  expect(porTexto('Sentence number 3 ').status).not.toBe('exported');
+  expect(porTexto('Sentence number 3 ').status).toBeUndefined();
   expect(porTexto('Sentence number 3 ').exportadaTxt).toBe(true);
   expect(porTexto('Sentence number 2 ').exportadaTxt).toBeUndefined();
 });

@@ -34,6 +34,15 @@ async function esperarChipSemConta(page) {
   await expect(page.locator('#shell-chip-estado')).toHaveText('Só neste computador');
 }
 
+// `install` sozinho deixa o relógio andar em tempo real. Pausado antes de abrir o painel, ele segura o
+// destaque de 1,4 s até o `runFor`: sob carga, a leitura da borda não o perde. O alvo fica 60 s à frente
+// para não ter passado se o comando seguinte demorar mais de 1 s (o teste tem 30 s).
+async function segurarODestaque(page) {
+  const instante = new Date('2026-09-18T12:00:00');
+  await page.clock.install({ time: instante });
+  await page.clock.pauseAt(new Date(instante.getTime() + 60_000));
+}
+
 /** Abre o card Conta & sync, se estiver fechado. */
 async function abrirConta(page) {
   const cabeca = cabecaDoCard(page, 'Conta & sync');
@@ -625,12 +634,7 @@ test('com movimento reduzido, o ponto do Sincronizando fica parado', async ({ pa
 
 test('com movimento reduzido, #configuracoes/conta mostra a borda ouro parada, e ela sai depois do flash', async ({ page, extensao }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  // `install` sozinho deixa o relógio andar em tempo real. Pausado antes de abrir o painel, ele segura o
-  // destaque de 1,4 s até o `runFor`: sob carga, a leitura da borda não o perde. O alvo fica 60 s à frente
-  // para não ter passado se o comando seguinte demorar mais de 1 s (o teste tem 30 s).
-  const INSTANTE = new Date('2026-09-18T12:00:00');
-  await page.clock.install({ time: INSTANTE });
-  await page.clock.pauseAt(new Date(INSTANTE.getTime() + 60_000));
+  await segurarODestaque(page);
   await abrirPainel(page, extensao, '#configuracoes/conta');
 
   const ouro = await page.evaluate(() => {
