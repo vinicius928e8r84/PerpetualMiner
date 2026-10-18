@@ -201,10 +201,7 @@ test('sem atalho gravado, o kbd fica tracejado', async ({ page, paginas }) => {
 test('a amostra de foco parado desenha o mesmo anel do foco de verdade', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  // A linha "foco" da vitrine pinta o anel o tempo todo, para o dono ver o
-  // estado parado. Se ela divergir do anel que tokens.css desenha no foco de
-  // verdade, a referência passa a mentir — então os dois são comparados.
-  const parado = await page.locator('[data-tema="escuro"] .veio-botao.demo-de-foco').first()
+  const parado = await page.locator('[data-tema="escuro"] .veio-botao.amostra-de-foco-parado').first()
     .evaluate(no => {
       const estilo = getComputedStyle(no);
       return [estilo.outlineStyle, estilo.outlineWidth, estilo.outlineColor, estilo.outlineOffset].join(' ');
@@ -572,9 +569,7 @@ test('todo controle da vitrine mostra onde o foco está', async ({ page, paginas
     const focado = await page.evaluate(async ordem => {
       const no = document.activeElement;
       if (!no || no === document.body || no.dataset.focoDeTeste) return null;
-      // A linha "foco" da vitrine pinta o anel o tempo todo, para o dono ver
-      // o estado parado ao lado dos outros: ela não diz nada sobre o foco real.
-      if (no.classList.contains('demo-de-foco')) return { pular: true };
+      if (no.classList.contains('amostra-de-foco-parado')) return { pular: true };
       no.dataset.focoDeTeste = String(ordem);
       return {
         controle: no.id || `${no.tagName.toLowerCase()}.${no.className}`,

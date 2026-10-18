@@ -120,7 +120,6 @@ class SummarizeRecordsTest(unittest.TestCase):
         self.assertEqual(out["images"]["generatedAttempted"], 1)
         self.assertAlmostEqual(out["images"]["savingsUsd"], 0.20)
         self.assertEqual(out["images"]["realPct"], 50.0)
-        # matched_records incrementa antes do check de type; session conta.
         self.assertEqual(out["matchedRecords"], 8)
 
     def test_image_records_fallback_when_no_pipeline(self) -> None:

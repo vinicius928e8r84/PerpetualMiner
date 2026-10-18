@@ -218,13 +218,13 @@ class JobAnalytics:
         generated_image_cost_pipeline = 0.0
         image_record_counts = self._image_bucket()
         pipeline_count = 0
-        matched_records = 0
+        registros_na_janela = 0
 
         for record in records:
             record_date = self._record_date(record, fallback_date)
             if not self._date_in_range(record_date, from_date, to_date):
                 continue
-            matched_records += 1
+            registros_na_janela += 1
             record_type = record.get("type")
             cost = self._cost_value(record)
 
@@ -285,7 +285,7 @@ class JobAnalytics:
                 "savingsUsd": round(images["savingsUsd"], 6),
                 **percentages,
             },
-            "matchedRecords": matched_records,
+            "matchedRecords": registros_na_janela,
         }
 
     def summary(self, from_date: date | None, to_date: date | None, lang: str) -> dict[str, Any]:
