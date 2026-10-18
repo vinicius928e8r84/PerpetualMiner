@@ -385,7 +385,7 @@ test('Apagar as N enviadas apaga só as que viraram cartão agora, marca as que 
   await expect(toasts(page)).toHaveText('2 frases apagadas');
   await expect.poll(async () => (await extensao.frases()).map(f => f.texto)).toEqual([LATE.texto, RUSSA.texto]);
   const gravadas = await extensao.frases();
-  expect(gravadas.find(f => f.id === LATE.id).status).toBe('enviadaAoAnki');
+  expect(gravadas.find(f => f.id === LATE.id).status).toBe('exported');
   expect(gravadas.find(f => f.id === RUSSA.id).status).toBeUndefined();
   await expect(cartao(page, LATE.texto)).toContainText('Enviada ao Anki');
   // Apagadas pelo caminho de sempre: o tombstone impede que voltem pela nuvem.
@@ -500,7 +500,7 @@ test('Manter marca as enviadas e as que já estavam como Enviada ao Anki, sem to
   await resumo(page).getByRole('button', { name: 'Manter' }).click();
 
   await expect(resumo(page)).toHaveCount(0);
-  await expect.poll(async () => (await extensao.frases()).filter(f => f.status === 'enviadaAoAnki').map(f => f.id).sort())
+  await expect.poll(async () => (await extensao.frases()).filter(f => f.status === 'exported').map(f => f.id).sort())
     .toEqual([SACK.id, LATE.id, RUSSA.id].sort());
   expect((await extensao.frases()).find(f => f.id === ARM.id).status).toBeUndefined();
   await expect(toasts(page)).toHaveCount(0);
@@ -519,7 +519,7 @@ test('fechar o resumo pelo × é o mesmo que Manter', async ({ page, extensao, f
   await expect(resumo(page).getByRole('button', { name: 'Tirar do histórico' })).toBeVisible();
   await resumo(page).getByRole('button', { name: 'Fechar' }).click();
 
-  await expect.poll(async () => (await extensao.frases()).find(f => f.id === SACK.id).status).toBe('enviadaAoAnki');
+  await expect.poll(async () => (await extensao.frases()).find(f => f.id === SACK.id).status).toBe('exported');
   await expect(toasts(page)).toHaveCount(0);
   // O resumo já foi respondido: recarregar não o traz de volta.
   await page.reload();
@@ -596,7 +596,7 @@ test('bug #9: recarregar com um Envio em andamento não o perde, e o resumo abre
   await expect(baralho(page, 'Inglês')).toContainText('+1 cartão');
   await expect(baralho(page, 'Russo')).toContainText('1 já estava lá');
   await resumo(page).getByRole('button', { name: 'Manter' }).click();
-  await expect.poll(async () => (await extensao.frases()).filter(f => f.status === 'enviadaAoAnki').length).toBe(2);
+  await expect.poll(async () => (await extensao.frases()).filter(f => f.status === 'exported').length).toBe(2);
 });
 
 test('na Boas-vindas o resumo espera: ele abre quando a pessoa vai ao painel', async ({ page, extensao, fakes }) => {

@@ -38,8 +38,8 @@ computers when an account is connected. Both modals are the Veio modal, driven b
 (PAI-01), first run (PAI-02: its `titulo` in bold above the text, with the recorded caption shortcut in a `kbd`, or, with none, the dashed “Sem atalho” `kbd` and a Definir atalho link to `#configuracoes/atalhos`, GLB-02), filters hid everything (PAI-03) and search without
 result (PAI-04, plus Limpar filtros when a filter is on). Everything is built with DOM nodes, never HTML strings.
 
-Two marks, never the same one: `status: 'enviadaAoAnki'` is **Enviada ao Anki** (the phrase went into a completed Envio;
-a stored `exported` is still read as sent and rewritten to that word), and `exportadaTxt` is **Exportada** (it was written to a .txt). Exporting never
+Two marks, never the same one: `status: 'exported'` is **Enviada ao Anki** (the phrase went into a completed Envio;
+the field keeps its pre-glossary name), and `exportadaTxt` is **Exportada** (it was written to a .txt). Exporting never
 writes the Envio's mark, a phrase that has both says Enviada ao Anki, and “Ocultar enviadas e exportadas” hides either.
 For the cloud merge of these marks, see the `carregar` contract in `lib/sincronizacao.js`.
 

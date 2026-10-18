@@ -51,7 +51,8 @@ const FB_SIGNIN_URL     = `https://identitytoolkit.googleapis.com/v1/accounts:si
 const FONTE_MANUAL    = 'manual';
 const FONTE_IMPORTADO = 'importado';
 
-const { STATUS_ENVIADA_AO_ANKI, migrarFrasesEnviadas, fraseFoiEnviadaAoAnki } = Sincronizacao;
+// Enviada ao Anki fica gravada com o nome de antes do glossário (ver foiEnviadaAoAnki).
+const STATUS_ENVIADA_AO_ANKI = 'exported';
 
 let todasFrases        = [];
 let frasesVisiveis     = [];
@@ -348,15 +349,9 @@ async function migrarParaFirestore() {
   await carregarFrasesFirestore();
 }
 
-function aplicarFrasesLocais(frases) {
-  const migradas = migrarFrasesEnviadas(frases);
-  if (migradas.alteradas.length) chrome.storage.local.set({ frases: migradas.frases });
-  return migradas.frases;
-}
-
 function carregarFrasesLocal() {
   chrome.storage.local.get({ frases: [] }, (data) => {
-    todasFrases = aplicarFrasesLocais(data.frases || []);
+    todasFrases = data.frases || [];
     finalizarCarregamento();
   });
 }
@@ -419,7 +414,7 @@ function atualizarTotal() {
 function setupStorageSyncListener() {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local' || !changes.frases) return;
-    const novasLocais = aplicarFrasesLocais(changes.frases.newValue || []);
+    const novasLocais = changes.frases.newValue || [];
     if (!usuarioLogado) {
       todasFrases = novasLocais;
       finalizarCarregamento();
@@ -870,8 +865,13 @@ function montarContexto(f) {
   return linha;
 }
 
+/**
+ * Enviada ao Anki: a frase entrou num Envio concluído. O nome gravado é o
+ * `status: 'exported'` de antes do glossário; o Exportar .txt grava só o
+ * `exportadaTxt` e nunca este.
+ */
 function foiEnviadaAoAnki(f) {
-  return fraseFoiEnviadaAoAnki(f);
+  return f.status === STATUS_ENVIADA_AO_ANKI;
 }
 
 // As 4 ações só-ícone do cartão (PAI-30), que aparecem no hover e no foco.
