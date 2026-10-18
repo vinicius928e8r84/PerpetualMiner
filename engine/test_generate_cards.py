@@ -113,8 +113,6 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
             calls = []
             responses = [BAD_CARD, GOOD_CARD]
             original_call_model = generate_cards._call_model
-            original_openai = generate_cards.openai.OpenAI
-            generate_cards.openai.OpenAI = lambda api_key: object()
 
             def fake_call_model(*args, **kwargs):
                 calls.append(args)
@@ -125,7 +123,6 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
                 saved = generate_cards.run([entry], _config(root))
             finally:
                 generate_cards._call_model = original_call_model
-                generate_cards.openai.OpenAI = original_openai
 
             expected_stem = build_card_stem(
                 "exerts himself",
@@ -150,8 +147,6 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
 
             calls = []
             original_call_model = generate_cards._call_model
-            original_openai = generate_cards.openai.OpenAI
-            generate_cards.openai.OpenAI = lambda api_key: object()
 
             def fake_call_model(*args, **kwargs):
                 calls.append(args)
@@ -162,11 +157,38 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
                 saved = generate_cards.run([entry], _config(root))
             finally:
                 generate_cards._call_model = original_call_model
-                generate_cards.openai.OpenAI = original_openai
 
             self.assertEqual(len(calls), 2)
             self.assertEqual(saved, [])
             self.assertEqual(list((root / "Output").glob("*.txt")), [])
+
+    def test_a_named_card_is_the_only_label_in_the_log_and_the_cost_record_and_only_stems_limits_the_run(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "Output").mkdir()
+            (root / "log").mkdir()
+            _write_prompts(root)
+            entry = MiningEntry(keywords=["exerts himself", "toil"], phrase="He exerts himself on brands of his own, if at all.")
+            labels, original_call_model = [], generate_cards._call_model
+
+            def fake_call_model(openai_base, api_key, system_prompt, user_message, model, log_dir, keyword):
+                labels.append(keyword)
+                return GOOD_CARD
+
+            generate_cards._call_model = fake_call_model
+            try:
+                with self.assertLogs("perpetualminer.motor", level="INFO") as logged:
+                    saved = generate_cards.run(
+                        [entry], _config(root), card_stem=lambda job, index: "77-%d" % index, only_stems={"77-0"}
+                    )
+            finally:
+                generate_cards._call_model = original_call_model
+
+            self.assertEqual(saved, ["77-0"])
+            self.assertEqual(labels, ["77-0"])
+            self.assertEqual([path.name for path in (root / "Output").glob("*.txt")], ["77-0.txt"])
+            self.assertNotIn("exerts himself", "\n".join(logged.output))
+            self.assertNotIn("toil", "\n".join(logged.output))
 
 
 if __name__ == "__main__":

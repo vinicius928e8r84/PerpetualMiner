@@ -1,12 +1,14 @@
 # CLAUDE.md – Automatic Anki (PerpetualMiner)
 
-Python pipeline: keyword:phrase → multimedia Anki flashcards via OpenAI (chat.completions, image model from `openai.image_model`), gTTS audio, Openverse/GPT-vision images, AnkiConnect.
+Python pipeline: keyword:phrase → multimedia Anki flashcards via OpenAI (chat.completions over plain HTTP, image model from `openai.image_model`), gTTS audio, Openverse/GPT-vision images, AnkiConnect.
+
+The text half (`parser.py`, `prompt_loader.py`, `generate_cards.py`, `openai_http.py`, `cost_tracker.py`, `config_loader.py`, `send_to_anki.py`'s card formatting, `config.json`, `prompts/`) also runs **inside the Anki add-on** (`complemento/motor`, Python 3.9, standard library only): no OpenAI SDK, no PyYAML, no dotenv there; sibling imports are relative when `__package__` is set; progress goes to the `perpetualminer.motor` logger, never to stdout; nothing touches `warnings`. `complemento/empacotar.py` lists those files (`ARQUIVOS_DO_MOTOR`): a change in them changes the add-on (bump its `VERSAO`).
 
 ## Setup & Run
 
 ```bash
 pip install -r requirements.txt
-# .env: OPENAI_API_KEY=sk-...
+# .env: OPENAI_API_KEY=sk-...  (read without dotenv; the add-on passes the Conexão's key instead)
 python start.py  # Full pipeline with menu
 # Or individual: generate_cards.py, extract_prompts.py, generate_audio.py, generate_images.py, send_to_anki.py
 ```
@@ -32,7 +34,8 @@ mining.txt
 | File | Role |
 |---|---|
 | `parser.py` | `MiningEntry`, `CardJob`, `parse_mining_file()`, `safe_filename()` |
-| `config_loader.py` | `config.yaml` + `.env` injection |
+| `config_loader.py` | `config.json` (`base_config()`) + the key: `load_config(openai_api_key=…)` from the Conexão, else `OPENAI_API_KEY` from the environment or the `.env` next to the engine |
+| `openai_http.py` | `completar()`: POST /v1/chat/completions with urllib; a refusal is `ErroDaOpenAI(codigo)` (the add-on's codes), never OpenAI's text. The base URL is passed by code |
 | `prompt_loader.py` | System prompts from `prompts/` (keys: `en_card`, `ru_card`) |
 | `image_guard.py` | Classify keyword (concrete/abstract) before image API; skip abstract, ambiguous → GPT-4o-mini (~$0.0001) |
 | `google_images.py` | `search_candidates()` / `download_candidate()` from Openverse API (free) |
@@ -57,6 +60,8 @@ Cards: `Front: / Back: / Image:` fields (RU may add `Google Image Search Queries
 `send_to_anki.py` parses with regex; all stages must use `safe_filename(keyword)` stem or files won't be found.
 
 ## Image Generation
+
+`config.json` › `openai.image_model` is `gpt-image-2.5-flare` (`gpt-image-1` is removed on 2026-10-23; see the OpenAI deprecations page). `anki.deck_name`/`note_type` there are overridden at runtime (menu, bridge or add-on); the field names match the owner's PT-BR Anki (`Frente`/`Verso`) and are never hard-coded.
 
 **User choice at start:** Google Images (real photos, default) or an AI image (`openai.image_model`).
 

@@ -13,6 +13,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 import zipfile
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -55,6 +56,7 @@ class ArquivoDoComplemento(unittest.TestCase):
         self.assertIn("__init__.py", nomes)
         self.assertIn("servidor.py", nomes)
         for nome in nomes:
+            self.assertFalse(nome.startswith("motor/") and nome[len("motor/"):] in ("start.py", "generate_images.py", "generate_audio.py"), nome)
             self.assertFalse(nome.startswith(("test_", "contrato/", "user_files/")), "não devia entrar: " + nome)
             self.assertNotIn("__pycache__", nome)
             self.assertNotEqual(nome, "empacotar.py")
@@ -78,10 +80,17 @@ class ArquivoDoComplemento(unittest.TestCase):
                 shutil.rmtree(os.path.join(AQUI, "user_files"))
         self.assertNotIn(chave.encode(), conteudo)
 
+    def test_o_arquivo_leva_o_motor_de_texto_do_engine_como_a_pasta_motor(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            pacote = self.empacotado(pasta)
+            nomes = pacote.namelist()
+            pacote.close()
+        for nome in ("motor/__init__.py", "motor/generate_cards.py", "motor/openai_http.py", "motor/config.json", "motor/prompts/en_card.txt", "motor/prompts/ru_card.txt"):
+            self.assertIn(nome, nomes)
+
     def test_empacotar_numa_copia_limpa_cria_a_pasta_dist_e_o_arquivo(self):
         with tempfile.TemporaryDirectory() as pasta:
-            copia = os.path.join(pasta, "complemento")
-            shutil.copytree(AQUI, copia, ignore=shutil.ignore_patterns("__pycache__", "user_files"))
+            copia = copiar_o_complemento(pasta)
             resultado = subprocess.run(
                 [sys.executable, os.path.join(copia, "empacotar.py")], cwd=pasta, capture_output=True, text=True
             )
@@ -118,6 +127,21 @@ class ArquivoDoComplemento(unittest.TestCase):
             try:
                 inicio = importlib.import_module("123456789.inicio")
                 self.assertTrue(callable(inicio.iniciar))
+                # O motor que o Envio usa é o da pasta instalada, e lê a configuração e os prompts de lá.
+                motor = importlib.import_module("123456789.envio").motor_do_complemento()
+                self.assertTrue(motor.generate_cards.__file__.startswith(instalado))
+                self.assertEqual(motor.config_loader.base_config()["anki"]["note_type"], "Básico")
+                self.assertTrue(os.path.isfile(os.path.join(os.path.dirname(motor.config_loader.__file__), "prompts", "en_card.txt")))
+                # E gera um Cartão de dentro da pasta instalada, contra a OpenAI de mentira, sem PyYAML, dotenv nem o SDK da OpenAI.
+                from complemento.test_openai_de_mentira import OpenAIDeMentira
+                from complemento.test_motor import SEM_AS_BIBLIOTECAS_DE_FORA, configuracao_do_teste
+
+                with OpenAIDeMentira() as openai, mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
+                    config = configuracao_do_teste(motor, pasta)
+                    entrada = motor.parser.parse_mining_line("give up : She gave up smoking")
+                    salvos = motor.generate_cards.run([entrada], config, openai_base=openai.base, card_stem=lambda trabalho, posicao: "9-%d" % posicao)
+                self.assertEqual(salvos, ["9-0"])
+                self.assertTrue(os.path.isfile(os.path.join(pasta, "textos", "9-0.txt")))
             finally:
                 sys.path.remove(os.path.dirname(instalado))
                 for nome in [n for n in sys.modules if n == "123456789" or n.startswith("123456789.")]:
@@ -125,6 +149,14 @@ class ArquivoDoComplemento(unittest.TestCase):
 
 
 CONFERE_A_VERSAO = "test_as_fontes_de_hoje_sao_as_que_a_versao_do_complemento_registrou"
+
+
+def copiar_o_complemento(pasta):
+    """Uma cópia limpa do complemento em `pasta`, com o `engine/` ao lado (de onde vem o motor do pacote); devolve a do complemento."""
+    copia = os.path.join(pasta, "complemento")
+    shutil.copytree(AQUI, copia, ignore=shutil.ignore_patterns("__pycache__", "user_files"))
+    shutil.copytree(os.path.join(AQUI, "..", "engine"), os.path.join(pasta, "engine"), ignore=shutil.ignore_patterns("__pycache__"))
+    return copia
 
 
 class VersaoDoComplemento(unittest.TestCase):
@@ -148,8 +180,7 @@ class VersaoDoComplemento(unittest.TestCase):
 
     def rodar_numa_copia(self, mudar):
         with tempfile.TemporaryDirectory() as pasta:
-            copia = os.path.join(pasta, "complemento")
-            shutil.copytree(AQUI, copia, ignore=shutil.ignore_patterns("__pycache__", "user_files"))
+            copia = copiar_o_complemento(pasta)
             mudar(copia)
             return subprocess.run(
                 [sys.executable, "-m", "unittest", "complemento.test_pacote.VersaoDoComplemento." + CONFERE_A_VERSAO],
@@ -217,8 +248,7 @@ class HoraDoEmpacotamento(unittest.TestCase):
     def setUp(self):
         self.pasta = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.pasta)
-        self.copia = os.path.join(self.pasta, "complemento")
-        shutil.copytree(AQUI, self.copia, ignore=shutil.ignore_patterns("__pycache__", "user_files"))
+        self.copia = copiar_o_complemento(self.pasta)
         os.makedirs(os.path.join(self.pasta, "conexao"))
         self.entregue = os.path.join(self.pasta, "conexao", "perpetualminer.ankiaddon")
         shutil.copy(ARQUIVO_NO_PACOTE_DA_EXTENSAO, self.entregue)

@@ -9,6 +9,19 @@ testes, em memória, em `test_colecao_em_memoria.py`). O adaptador tem quatro m�
   `{ "nota": id, "campos": [(nome, valor), ...], "tipo": 0..3, "intervalo": dias }`;
 - os dois últimos levantam `ColecaoIndisponivel` quando não há coleção aberta ou o Anki não respondeu.
 
+O **lado de gravação**, que o Envio usa (`envio.py`), tem mais três; todos levantam `ColecaoIndisponivel` também quando o
+Anki está sincronizando (`anki_syncing`):
+
+- `tipo_de_nota(nome)`: os nomes dos campos do tipo de nota, ou None se a coleção não o tem;
+- `guids_existentes(guids)`: quais destes `guid` já são de uma nota da coleção;
+- `adicionar_nota(baralho, tipo_de_nota, campos, etiquetas, guid)`: grava uma nota (`campos` é `{nome: valor}`), criando o
+  Baralho se faltar; uma nota com o mesmo `guid` já gravada fica como está (gravar de novo não dobra); um tipo de nota que falta, ou sem um dos campos, levanta `TipoDeNotaAusente` sem gravar nada.
+
+- `gravar_cartao(baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar)`: **a** função de
+  gravar um Cartão, uma só na thread principal do Anki. Nesta ordem: a sincronização (`ColecaoIndisponivel`, sem gravar), o
+  `guid` (achou: devolve `"added"`, sem gravar), a frente normalizada no Baralho (achou: `"duplicate"`, sem gravar) e a nota nova
+  (devolve `"added"`). O que dá errado é devolvido ou levantado para a thread de trabalho, nunca para a thread principal do Anki.
+
 A frente e o verso são os campos “Frente” e “Verso” (ou “Front” e “Back”, do Anki em inglês) e, sem eles,
 o primeiro e o segundo campo, como a Conexão de hoje faz.
 """
@@ -29,7 +42,11 @@ _NOMES_DO_VERSO = ("verso", "back")
 
 
 class ColecaoIndisponivel(Exception):
-    """Não há coleção aberta (o Anki está na tela de perfis) ou o Anki não respondeu a tempo."""
+    """Não há coleção aberta (o Anki está na tela de perfis), o Anki está sincronizando ou não respondeu a tempo."""
+
+
+class TipoDeNotaAusente(Exception):
+    """A coleção não tem o tipo de nota pedido (ou ele não tem os campos pedidos): nada foi gravado."""
 
 
 def _agora():

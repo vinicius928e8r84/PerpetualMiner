@@ -1,7 +1,7 @@
 """
 generate_audio.py — Generate pronunciation MP3 files via gTTS.
 
-Language is read from config.yaml (tts.target_lang).
+Language is read from config.json (tts.target_lang).
 Texts containing Cyrillic script automatically switch to tts.cyrillic_lang.
 
 For AI-generated secondary cards the phrase is read from the card .txt file
