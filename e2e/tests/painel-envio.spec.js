@@ -808,7 +808,8 @@ test('Apagar tudo tira a Palavra e a Frase do que o painel guarda do Envio e da 
   await expect.poll(() => JSON.stringify(fakes.anki.envios.map(e => e.corpo))).not.toContain(SENTINELA);
   expect(fakes.anki.requisicoes.filter(r => r.metodo === 'POST' && r.caminho === '/jobs/apagar-frases')).toHaveLength(1);
   // O Envio sem resposta (jobId nulo) não tem mais o que reenviar: nada de Tentar de novo, nada de `POST /jobs` novo.
-  expect((await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
+  // O fake muda antes de a resposta chegar à extensão: `pm_envio` só sai quando o painel a lê.
+  await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
   await page.goto(extensao.url('painel.html#frases'));
   await page.waitForTimeout(500);
   expect(fakes.anki.requisicoes.filter(r => r.metodo === 'POST' && r.caminho === '/jobs')).toHaveLength(1);
