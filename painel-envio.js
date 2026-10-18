@@ -65,9 +65,12 @@
       // O painel fechou com um pedido sem resposta: o mesmo corpo de novo, e a Conexão devolve o Envio que já tem (ou o cria).
       const semResposta = remessa.envios.filter(e => !e.jobId && !e.falhaAoCriar && e.corpo);
       if (semResposta.length) {
+        const estaRemessa = remessa;
         criando = true;
         try {
           for (const envio of semResposta) {
+            // O Apagar tudo no meio encerra a remessa: nada mais sai.
+            if (remessa !== estaRemessa) break;
             await criarEnvio(envio);
             await gravar();
           }
@@ -99,17 +102,21 @@
     desistiuDasPendencias = false;
     remessa = remessa || { envios: [] };
     remessa.envios.push(...envios);
+    const estaRemessa = remessa;
     // ENV-05 é silêncio: o modal aberto na hora é a resposta.
     abrirProgresso();
     try {
       // Gravado a cada Envio criado: recarregar no meio não deixa um órfão.
       for (const envio of envios) {
+        // O Apagar tudo no meio encerra a remessa: nada mais sai.
+        if (remessa !== estaRemessa) break;
         await criarEnvio(envio);
         await gravar();
       }
     } finally {
       criando = false;
     }
+    if (remessa !== estaRemessa) return;
     // Fechado enquanto nada começou: não sobra envio para acompanhar.
     if (!progresso && !remessa.envios.some(e => e.jobId)) return esquecer();
     desenharProgresso();
@@ -211,6 +218,7 @@
 
   /** Grava os Envios que já têm um pedido montado (ainda sem resposta, criado ou que não começou). */
   async function gravar() {
+    if (!remessa) return;
     const envios = remessa.envios.filter(e => e.jobId || e.falhaAoCriar || e.corpo);
     // O Apagar tudo que a Conexão ainda não confirmou continua marcado, mesmo com um Envio novo.
     const apagarFrases = (await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r)))[CHAVE_GRAVADA]?.apagarFrases;
@@ -220,15 +228,19 @@
   // ─── Apagar tudo (CFG-17) ───────────────────────────────────────────────────
 
   /**
-   * As Frases saem do que o painel guarda do Envio e da Conexão. Em `pm_envio`, um Envio que ainda não tinha resposta some (não há
-   * mais o que reenviar: o Tentar de novo do ENV-03 gastaria a chave com Frases apagadas) e os outros perdem o `corpo`, que tem as
-   * Frases. A Conexão apaga as dela (`POST /jobs/apagar-frases`); sem resposta, o pedido fica marcado e sai de novo quando ela responder.
+   * As Frases saem do que o painel guarda do Envio e da Conexão. O painel deixa de acompanhar os Envios: as Frases deles não existem
+   * mais, então não há resumo a mostrar nem o que reenviar (o Tentar de novo gastaria a chave com Frases apagadas, e o de um Envio que
+   * a Conexão parou não faz nada). Em `pm_envio` fica só a marca do pedido. A Conexão apaga as Frases dela
+   * (`POST /jobs/apagar-frases`) e para os Envios dela; sem resposta, a marca fica e o pedido sai de novo quando ela responder.
    */
   async function apagarTudo() {
-    const gravado = (await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r)))[CHAVE_GRAVADA];
-    const envios = (remessa?.envios || gravado?.envios || []).filter(e => e.jobId).map(({ corpo, ...resto }) => resto);
-    remessa = remessa ? { ...remessa, envios } : null;
-    await new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios, apagarFrases: true } }, r));
+    remessa = null;
+    desistiuDasPendencias = false;
+    jobs.clear();
+    falhasAoRetomar.clear();
+    pararDeAcompanhar();
+    progresso?.fechar();
+    await new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios: [], apagarFrases: true } }, r));
     return pedirAApagarAsFrases();
   }
 

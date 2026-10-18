@@ -838,17 +838,43 @@ test('Apagar tudo sem a Conexão responder: as Frases saem do painel e o pedido 
   await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar 1 frase' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Apagar 1 frase' }).click();
 
-  // O que o painel guardava já saiu; a Conexão ainda não confirmou, e o pedido fica marcado.
+  // O que o painel guardava já saiu, e ele não acompanha mais o Envio; a Conexão ainda não confirmou, e o pedido fica marcado.
   await expect.poll(async () => JSON.stringify(await extensao.lerStorage())).not.toContain(SENTINELA);
   const { pm_envio: pendente } = await extensao.lerStorage('pm_envio');
-  expect(pendente.apagarFrases).toBe(true);
-  expect(pendente.envios.map(e => e.corpo)).toEqual([undefined]);
+  expect(pendente).toStrictEqual({ envios: [], apagarFrases: true });
   expect(JSON.stringify(fakes.anki.envios.map(e => e.corpo))).toContain(SENTINELA);
 
   fakes.anki.voltarApagarFrases();
   await page.reload();
   await expect.poll(() => JSON.stringify(fakes.anki.envios.map(e => e.corpo))).not.toContain(SENTINELA);
   await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio?.apagarFrases).toBeUndefined();
+});
+
+test('Apagar tudo no meio de um Envio encerra o Envio no painel: nenhum resumo oferece mandar de novo as Frases apagadas', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, [SACK.texto, ARM.texto, RUSSA.texto]);
+  const [ingles, russo] = await enviosCriados(fakes, 2);
+  fakes.anki.moverEnvio(ingles.jobId, { stage: 'generate_cards', progress: { done: 1, total: 2 } });
+  await expect(envio(page, 'Envio em inglês · 2 frases')).toContainText('Criando cartões');
+
+  await progresso(page).getByRole('button', { name: 'Fechar' }).first().click();
+  await page.goto(extensao.url('painel.html#configuracoes/perigo'));
+  await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar todas as 4 frases' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 4 frases' }).click();
+  // A Conexão parou os dois Envios (as Frases deles não existem mais).
+  await expect.poll(() => [ingles, russo].map(e => fakes.anki.envios.find(x => x.jobId === e.jobId).state.lastError))
+    .toEqual(['frases_apagadas', 'frases_apagadas']);
+
+  // De volta a Frases: nada do Envio aparece, nem o resumo, nem o progresso.
+  await page.goto(extensao.url('painel.html#frases'));
+  await expect(page.getByText('Nenhuma frase ainda.')).toBeVisible();
+  await page.waitForTimeout(3_000);
+  await expect(resumo(page)).toBeHidden();
+  await expect(progresso(page)).toBeHidden();
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/retry')).toHaveLength(0);
+  // O painel não guarda mais Envio nenhum: a Conexão confirmou o Apagar tudo.
+  await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
 });
 
 // ─── A cópia das telas do Envio com a Conexão dentro do Anki (#142) ──────────
