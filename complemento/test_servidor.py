@@ -185,6 +185,7 @@ class ConexaoNoTeste:
     `colecao`: o adaptador da coleção do Anki que a Conexão lê (sem ele, não há o que ler).
     `item`: a situação do item de login de “Abrir o Anki com o computador” (ver `_item_de_login_do_contexto`).
     `trabalhando`: a thread de trabalho do Envio ligada (`test_envio.py`); desligada, os Envios ficam na fila como estão.
+    `espera_do_contato`: quanto a thread espera, depois de subir, o primeiro pedido de Envio da extensão (nos testes, nada: 0).
     """
 
     def __init__(
@@ -205,6 +206,7 @@ class ConexaoNoTeste:
         hora_na_conexao=0,
         firebase=0,
         trabalhando=False,
+        espera_do_contato=0.0,
     ):
         self.perfil = perfil
         self.falha_no_perfil = falha_no_perfil
@@ -249,6 +251,7 @@ class ConexaoNoTeste:
             intervalo_do_envio=0.01,
             espera_do_anki=0.01,
             esperas_da_openai=(0, 0),
+            espera_do_contato=espera_do_contato,
         )
 
     def _ler_o_perfil(self):

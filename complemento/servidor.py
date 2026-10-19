@@ -26,6 +26,8 @@ from .item_de_login import AnkiNaoEncontrado
 LIMITE_DO_CORPO = 64 * 1024
 # O Envio leva as Frases escolhidas de uma vez (centenas de linhas de mineração): só ele vai até aqui.
 LIMITE_DO_ENVIO = 4 * 1024 * 1024
+# Depois que a Conexão sobe, a thread do Envio espera este tempo (s) um pedido de Envio da extensão antes de retomar o que ficou parado.
+ESPERA_DO_CONTATO = 60.0
 # As rotas cujo corpo pode passar de `LIMITE_DO_CORPO`.
 LIMITES_POR_ROTA = {("POST", "/jobs"): LIMITE_DO_ENVIO}
 
@@ -355,6 +357,8 @@ class _Atendente(BaseHTTPRequestHandler):
         except Exception:
             self.conexao.logger.exception("Erro na rota %s %s", self.command, caminho)
             return self._responder(500, {"error": "internal_error"}, origem=origem)
+        if self.command == "POST" and caminho.startswith("/jobs"):
+            self.conexao.contato.set()  # depois da rota: um apagar-frases já apagou quando a thread de trabalho é solta
         return self._responder(status, dados, origem=origem)
 
     def __getattr__(self, nome):
@@ -420,6 +424,7 @@ class Conexao:
         espera_do_anki=2.0,
         esperas_da_openai=(2, 8, 30),
         motor=None,
+        espera_do_contato=ESPERA_DO_CONTATO,
     ):
         self.porta = porta
         self.origens_aceitas = tuple(origens_aceitas)
@@ -437,11 +442,13 @@ class Conexao:
         self.intervalo_de_parada = intervalo_de_parada
         self._servidor = None
         self._thread = None
+        # Posto no primeiro pedido de Envio da extensão (`POST /jobs…`) depois da subida; o `/health` não conta.
+        self.contato = threading.Event()
         self.fila = envio.Fila(dados, motor or envio.motor_do_complemento(), logger)
         self._trabalhador = envio.Trabalhador(
             envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(),
                            espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai),
-            intervalo=intervalo_do_envio,
+            intervalo=intervalo_do_envio, contato=self.contato, espera_do_contato=espera_do_contato,
         ) if trabalhando else None
 
     def iniciar(self):

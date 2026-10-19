@@ -908,6 +908,46 @@ test('Apagar tudo numa aba encerra o Envio nas outras abas: nenhuma abre um resu
   expect((await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
 });
 
+test('Apagar tudo é recusado com um Envio andando e a Conexão sem responder: nada é apagado e a pessoa sabe por quê', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, [SACK.texto, ARM.texto]);
+  const [naConexao] = await enviosCriados(fakes, 1);
+  await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio?.envios?.[0]?.jobId).toBe(naConexao.jobId);
+  const antes = (await extensao.lerStorage('pm_envio')).pm_envio;
+
+  // O Anki fecha com o Envio no meio: a Conexão não responde, e um Apagar tudo agora ficaria marcado sem chegar a ela.
+  fakes.anki.desligar();
+  await progresso(page).getByRole('button', { name: 'Fechar' }).first().click();
+  await page.goto(extensao.url('painel.html#configuracoes/perigo'));
+  await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar todas as 4 frases' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 4 frases' }).click();
+
+  await expect(page.locator('#cfg-perigo').getByRole('alert')).toContainText('Não deu para apagar agora: a Conexão com o Anki não está respondendo. Abra o Anki e tente de novo.');
+  // Nada saiu: as Frases e o Envio estão como estavam, e não há marca de Apagar tudo esperando.
+  expect((await extensao.frases()).map(f => f.id).sort()).toEqual([...INGLESAS, RUSSA].map(f => f.id).sort());
+  expect((await extensao.lerStorage('pm_envio')).pm_envio).toStrictEqual(antes);
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/apagar-frases')).toHaveLength(0);
+
+  // O Anki abre de novo e a pessoa tenta outra vez: agora a Conexão ouve o pedido.
+  fakes.anki.ligar();
+  await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar todas as 4 frases' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 4 frases' }).click();
+  await expect(page.locator('#cfg-perigo').getByRole('alert')).toBeHidden();
+  await expect.poll(async () => (await extensao.frases()).length).toBe(0);
+  await expect.poll(() => fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/apagar-frases').length).toBe(1);
+});
+
+test('Apagar tudo sem nenhum Envio andando segue com a Conexão sem responder', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
+  fakes.anki.desligar();
+  await abrirPainel(page, extensao, '#configuracoes/perigo');
+  await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar todas as 4 frases' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 4 frases' }).click();
+  await expect.poll(async () => (await extensao.frases()).length).toBe(0);
+  await expect(page.locator('#cfg-perigo').getByRole('alert').filter({ hasText: 'Não deu para apagar agora' })).toBeHidden();
+});
+
 test('Apagar tudo enquanto o pedido de um Envio espera a Conexão: a resposta que chega depois não traz o Envio de volta, e o outro idioma não sai', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
   // O primeiro POST /jobs (o inglês) fica esperando até o teste soltar; os idiomas que chegam são anotados.

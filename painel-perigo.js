@@ -1,8 +1,8 @@
 'use strict';
 
 (function (raiz) {
-  const { textoDaVoz, ChaveDaOpenAI } = raiz;
-  const { abrirConfirmacao } = raiz.Veio;
+  const { textoDaVoz, ChaveDaOpenAI, ConexaoAnki } = raiz;
+  const { abrirConfirmacao, montarAviso } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
   const estado = { n: null, comConta: false, temChave: false, contaDaChave: '', uid: '' };   // n: null até o painel.js contar
@@ -20,6 +20,15 @@
       estado.contaDaChave = mudancas[ChaveDaOpenAI.MARCA].newValue?.conta || '';
     }
     if ('pm_user_info' in mudancas) estado.uid = mudancas.pm_user_info.newValue?.uid || '';
+  });
+  // A recusa do Apagar tudo com a Conexão fora do ar: a faixa sai quando ela volta a responder ou na próxima tentativa.
+  let avisoDaRecusa = null;
+  const tirarARecusa = () => {
+    avisoDaRecusa?.remove();
+    avisoDaRecusa = null;
+  };
+  ConexaoAnki.acompanhar(situacao => {
+    if (situacao === ConexaoAnki.SITUACAO.LIGADA) tirarARecusa();
   });
   let apagarTudo = () => {};
   let partes = null;   // o conteúdo do card, montado uma vez e atualizado no lugar
@@ -73,6 +82,19 @@
     else partes.entrada.textContent = textoDaVoz('CFG-24.todas', { n });
   }
 
+  /**
+   * Com um Envio andando e a Conexão sem responder, o Apagar tudo não a alcançaria: o Envio seguiria sozinho quando o Anki abrisse,
+   * gastando a chave com as Frases apagadas. Nada é apagado; a faixa pede para abrir o Anki. Confere a Conexão agora, não a de 15 s atrás.
+   */
+  async function recusarSeAConexaoNaoResponde() {
+    tirarARecusa();
+    if (!raiz.Envio.temEnvioAndando()) return false;
+    if (await ConexaoAnki.conferir() !== ConexaoAnki.SITUACAO.DESLIGADA) return false;
+    avisoDaRecusa = montarAviso({ texto: textoDaVoz('CFG-17.conexaoNaoResponde'), fechavel: false });
+    porId('cfg-perigo-corpo').append(avisoDaRecusa);
+    return true;
+  }
+
   /** “Apagar todas as 1.284 frases?”, com Cancelar (foco inicial) e o perigo preenchido. */
   function confirmarApagarTudo() {
     const { n, comConta } = estado;
@@ -88,7 +110,10 @@
       ].join(' '),
       cancelar: textoDaVoz('CFG-17.cancelar'),
       confirmar: textoDaVoz('CFG-17.confirmar', { n }),
-      aoConfirmar: () => apagarTudo(),
+      aoConfirmar: async () => {
+        if (await recusarSeAConexaoNaoResponde()) return;
+        apagarTudo();
+      },
     });
   }
 

@@ -519,6 +519,7 @@
   "CFG-17.chaveSemConta": "A chave da OpenAI também sai da Conexão com o Anki. Nenhuma chave da conta Google é apagada. Ao entrar, a chave da conta pode voltar.",
   "CFG-17.chaveOutraConta": "Nenhuma chave da OpenAI será apagada: a chave deste computador é de outra conta Google.",
   "CFG-17.chaveNaoApagada": "As frases foram apagadas, mas não deu para conferir o apagamento da chave da OpenAI. Tente apagar a chave de novo.",
+  "CFG-17.conexaoNaoResponde": "Não deu para apagar agora: a Conexão com o Anki não está respondendo. Abra o Anki e tente de novo.",
   "CFG-17.cancelar": "Cancelar",
   "CFG-17.confirmar": "Apagar {n} {n|frase|frases}",
   "CFG-18": "Todas as frases foram apagadas",

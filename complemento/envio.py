@@ -33,6 +33,7 @@ import json
 import os
 import re
 import threading
+import time
 from types import SimpleNamespace
 from datetime import datetime, timezone
 
@@ -657,12 +658,24 @@ class Trabalho:
 class Trabalhador:
     """A thread de trabalho: tira um Envio da fila de cada vez. Nenhum erro dela sai do logger."""
 
-    def __init__(self, trabalho, intervalo=1.0):
+    def __init__(self, trabalho, intervalo=1.0, contato=None, espera_do_contato=0.0):
         self.trabalho = trabalho
         self.fila = trabalho.fila
         self.parar = trabalho.parar
         self.intervalo = intervalo
+        # Depois de subir, a thread espera `contato` (um pedido de Envio da extensão) por até `espera_do_contato` s antes de retomar o
+        # que ficou parado: um Apagar tudo feito com o Anki fechado chega antes de a Conexão gastar a chave com as Frases apagadas.
+        self.contato = contato
+        self.espera_do_contato = espera_do_contato
         self._thread = None
+
+    def _esperar_a_extensao(self):
+        if self.contato is None or self.espera_do_contato <= 0:
+            return
+        self.trabalho.logger.info("Envio: esperando até %g s o primeiro pedido de Envio da extensão antes de retomar", self.espera_do_contato)
+        fim = time.monotonic() + self.espera_do_contato
+        while not self.contato.is_set() and not self.parar.is_set() and time.monotonic() < fim:
+            self.contato.wait(min(self.intervalo, max(fim - time.monotonic(), 0)))
 
     def iniciar(self):
         self.fila.recuperar_os_interrompidos()
@@ -671,6 +684,7 @@ class Trabalhador:
 
     def _rodar(self):
         logger = self.trabalho.logger
+        self._esperar_a_extensao()
         while not self.parar.is_set():
             job_id = None
             try:

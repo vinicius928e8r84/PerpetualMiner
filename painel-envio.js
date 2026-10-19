@@ -261,6 +261,14 @@
     if (resumo) responderResumo('descartar');
   }
 
+  /**
+   * Um Envio que o painel acompanha ainda pode estar andando na Conexão: não terminou, ou o pedido dele ficou sem resposta (ela pode
+   * tê-lo recebido). Com a Conexão fora do ar, um Apagar tudo agora não a alcançaria: a Zona de perigo o recusa (CFG-17).
+   */
+  function temEnvioAndando() {
+    return Boolean(remessa?.envios.some(e => e.falhaAoCriar?.semResposta || ((e.jobId || e.corpo) && !terminou(e))));
+  }
+
   let apagandoAsFrases = null;
   /** Pede à Conexão o apagamento das Frases dela, se ele está marcado; devolve se a Conexão confirmou (ou nada havia a pedir). */
   function pedirAApagarAsFrases() {
@@ -716,5 +724,5 @@
     return ETAPAS.find(([etapa]) => etapa === stage)?.[1] || null;
   }
 
-  raiz.Envio = { usar, nomeDaEtapa, apagarTudo };
+  raiz.Envio = { usar, nomeDaEtapa, apagarTudo, temEnvioAndando };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

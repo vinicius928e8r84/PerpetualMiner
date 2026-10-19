@@ -240,6 +240,22 @@ test('Apagar tudo com a Conexão sem responder: a falha local diz que as Frases 
   await expect(page).toHaveScreenshot('apagar-tudo-falha-frases-na-conexao.png', { animations: 'disabled' });
 });
 
+// #142 / #259: o Apagar tudo recusado (CFG-17.conexaoNaoResponde) com um Envio andando e a Conexão sem responder. A cópia é a que o dono
+// propôs e ainda não viu na tela: `fixme` e sem PNG até ele aprovar o visual implementado (regra 10). Aprovado: tire o `test.fixme`
+// e rode `npx playwright test configuracoes-visual -g "recusado" --update-snapshots`.
+test('Apagar tudo recusado: a Conexão não responde e há um Envio andando', async ({ page, extensao, fakes }) => {
+  test.fixme(true, 'a referência visual da recusa do Apagar tudo espera a aprovação do dono (regra 10)');
+  await semearComoNoPrototipo(extensao, fakes);
+  await extensao.gravarStorage({ pm_envio: { envios: [{ id: 'e1', lang: 'en', ids: [1], baralho: 'Inglês', jobId: 'job-1', criadoEm: 0, falhaAoCriar: null }] } });
+  fakes.anki.desligar();
+  await abrirConfiguracoes(page, extensao, '#configuracoes/perigo');
+  await page.locator('#cfg-perigo').getByRole('button', { name: /^Apagar todas as/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: /^Apagar .* frases$/ }).click();
+  await expect(page.locator('#cfg-perigo').getByRole('alert')).toContainText('Não deu para apagar agora');
+
+  await expect(page).toHaveScreenshot('apagar-tudo-recusado-conexao-fora.png', { animations: 'disabled' });
+});
+
 test('o modal de apagar a chave da OpenAI, com conta', async ({ page, extensao, fakes }) => {
   test.fixme(true, AGUARDA_O_DONO);
   await semearComoNoPrototipo(extensao, fakes, 'uid-ia');

@@ -1,7 +1,7 @@
 'use strict';
 
 // A base compartilhada: o catálogo da Voz e a detecção de idioma.
-importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/pedido-ao-anki.js', 'lib/sincronizacao.js');
+importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/pedido-ao-anki.js', 'lib/apagar-frases-pendente.js', 'lib/sincronizacao.js');
 const { textoDaVoz, detectarIdioma, IDIOMAS, MineracaoDoDia, Mineracao, VocabularioDaMineracao, Sincronizacao } = PerpetualMiner;
 
 // During an upgrade, close the old readable area before migrating bearer tokens.
@@ -976,9 +976,18 @@ ouvirChrome(chrome.alarms && chrome.alarms.onAlarm, alarme => {
 // trabalho é o do fim do arquivo, que roda a cada despertar.
 ouvirChrome(chrome.runtime.onStartup, () => {});
 
+// O Apagar tudo que a Conexão não confirmou (a marca em `pm_envio`) é pedido de novo a cada 30 s, com todo painel fechado.
+const apagarFrasesPendente = metodoDoChrome(chrome.alarms, 'create')
+  ? PerpetualMiner.ApagarFrasesPendente.criar({ chrome, PedidoAoAnki: PerpetualMiner.PedidoAoAnki, endereco: BRIDGE_URL })
+  : null;
+ouvirChrome(chrome.alarms && chrome.alarms.onAlarm, alarme => {
+  if (alarme.name === PerpetualMiner.ApagarFrasesPendente.ALARME) apagarFrasesPendente?.conferir();
+});
+
 ouvirChrome(chrome.storage.onChanged, (changes, area) => {
   if (area !== 'local') return;
   if (AUTO_MINER_SETTINGS_KEY in changes || AUTO_MINER_DAILY_KEY in changes) atualizarBadgeDaToolbar();
+  if ('pm_envio' in changes) apagarFrasesPendente?.cuidar();
 });
 
 // O service worker acorda e dorme o tempo todo — inclusive na partida do Chrome,
@@ -986,6 +995,7 @@ ouvirChrome(chrome.storage.onChanged, (changes, area) => {
 // pode ser o de ontem.
 agendarViradaDoDia();
 atualizarBadgeDaToolbar();
+apagarFrasesPendente?.cuidar();
 
 /**
  * Centraliza a publicação espontânea do estado pelos canais de `MineracaoDoDia`.
