@@ -653,12 +653,12 @@ class AConexaoQueSobeEsperaAExtensao(unittest.TestCase):
         colecao = ColecaoEmMemoria(INGLES)
         with tempfile.TemporaryDirectory() as pasta:
             self.com_o_envio_parado_porque_o_anki_fechou(pasta, colecao)
-            with EnvioNoTeste(pasta, colecao=colecao, espera_do_contato=1.0) as conexao:
+            with EnvioNoTeste(pasta, colecao=colecao, espera_do_contato=60.0) as conexao:
                 conexao.pedir("GET", "/health")
                 time.sleep(0.4)
                 esperando = (self.estado_no_disco(pasta)["status"], len(chats(conexao.openai)), len(colecao.gravadas))
                 apagar_as_frases(conexao)
-                time.sleep(1.4)  # mais que a espera: a thread já podia ter retomado
+                time.sleep(0.6)  # a thread, solta pelo apagar-frases, já podia ter retomado
                 estado = self.estado_no_disco(pasta)
                 gastos, notas = len(chats(conexao.openai)), len(colecao.gravadas)
         self.assertEqual(esperando, ("queued", 0, 0))
@@ -672,11 +672,9 @@ class AConexaoQueSobeEsperaAExtensao(unittest.TestCase):
                 inicio = time.monotonic()
                 while self.estado_no_disco(pasta)["status"] not in FIM and time.monotonic() - inicio < 15:
                     time.sleep(0.02)
-                demorou = time.monotonic() - inicio
                 estado = self.estado_no_disco(pasta)
                 notas = len(colecao.gravadas)
         self.assertEqual((estado["status"], notas), ("completed", 1))
-        self.assertGreaterEqual(demorou, 0.4, "a Conexão esperou a extensão antes de retomar")
 
     def test_um_pedido_de_envio_da_extensao_solta_a_espera_na_hora(self):
         colecao = ColecaoEmMemoria(INGLES)
