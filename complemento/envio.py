@@ -645,7 +645,7 @@ class Trabalho:
                 campos["front"], nota["normalized_front"], lambda valor: envio.normalize_front(valor, lang)))
         except baralhos.TipoDeNotaAusente:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=SEM_TIPO_DE_NOTA)
-        except Interrompido:
+        except (Interrompido, Apagado):
             raise
         except Exception as erro:
             self.logger.error("Envio %s: o Anki não gravou o Cartão %s (%s)", job_id, cartao_id, type(erro).__name__)

@@ -41,7 +41,7 @@
   let relogio = null;
   let progresso = null;             // o modal de progresso aberto ({ fechar })
   let resumo = null;                // o modal do resumo aberto
-  let respostaDoResumo = null;      // 'apagar' | { tentar: lang } | null (Manter)
+  let respostaDoResumo = null;      // 'apagar' | 'descartar' | { tentar: lang } | null (Manter)
   const assinaturas = new Map();    // id do Envio → o que o cartão mostra agora
 
   async function usar(operacoes) {
@@ -52,6 +52,11 @@
     porId('modal-resumo-fechar').addEventListener('click', () => resumo?.fechar());
     porId('btn-resumo-manter').addEventListener('click', () => resumo?.fechar());
     porId('btn-resumo-apagar').addEventListener('click', () => responderResumo('apagar'));
+    // O Apagar tudo em outra aba grava só a marca: esta aba também deixa de acompanhar os Envios (as Frases deles se foram).
+    chrome.storage.onChanged.addListener((mudancas, area) => {
+      const nova = mudancas[CHAVE_GRAVADA]?.newValue;
+      if (area === 'local' && nova?.apagarFrases && !nova.envios?.length && remessa) encerrarOAcompanhamento();
+    });
     ConexaoAnki.acompanhar(situacao => {
       mostrarConexao(situacao);
       if (situacao !== CONEXAO.DESLIGADA) pedirAApagarAsFrases();
@@ -240,14 +245,20 @@
    * (`POST /jobs/apagar-frases`) e para os Envios dela; sem resposta, a marca fica e o pedido sai de novo quando ela responder.
    */
   async function apagarTudo() {
+    encerrarOAcompanhamento();
+    await new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios: [], apagarFrases: true } }, r));
+    return pedirAApagarAsFrases();
+  }
+
+  /** O painel deixa de acompanhar os Envios e fecha o que mostrava deles; nada é gravado nem enviado. */
+  function encerrarOAcompanhamento() {
     remessa = null;
     desistiuDasPendencias = false;
     jobs.clear();
     falhasAoRetomar.clear();
     pararDeAcompanhar();
     progresso?.fechar();
-    await new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios: [], apagarFrases: true } }, r));
-    return pedirAApagarAsFrases();
+    if (resumo) responderResumo('descartar');
   }
 
   let apagandoAsFrases = null;
@@ -655,6 +666,7 @@
     const resposta = respostaDoResumo;
     respostaDoResumo = null;
 
+    if (resposta === 'descartar') return; // o Apagar tudo (aqui ou em outra aba): as Frases do resumo não existem mais
     if (resposta?.tentar) {
       await tentarDeNovoOIdioma(resposta.tentar);
       return;

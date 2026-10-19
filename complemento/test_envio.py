@@ -660,6 +660,21 @@ class AFraseNaoSobreviveAoApagarTudo(unittest.TestCase):
             self.assertNotIn(sentinela.encode(), respostas, "%s numa resposta" % sentinela)
         self.assertEqual(gravadas, [], "o Envio apagado não grava mais nada")
 
+    def test_o_apagar_tudo_com_o_cartao_pago_esperando_o_anki_nao_conta_como_falha_ao_gravar(self):
+        colecao = ColecaoEmMemoria(INGLES)
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, colecao=colecao) as conexao:
+            conexao.openai.antes_de_responder = lambda metodo, autorizacao: colecao.fechar()
+            conexao.criar(pedido(ID, LINHA))
+            conexao.esperar(ID, lambda estado: estado["stage"] == "wait_anki")
+            apagar_as_frases(conexao)
+            time.sleep(0.3)
+            estado = conexao.estado(ID)
+            registrado = conexao.log()
+        erros = {cartao["error"] for cartao in estado["cards"].values()}
+        self.assertEqual((estado["status"], estado["lastError"], estado["wiped"]), ("failed", "frases_apagadas", True))
+        self.assertNotIn("anki_write_failed", erros)
+        self.assertNotIn("o Anki não gravou o Cartão", registrado)
+
     def test_o_provisorio_novo_de_qualquer_pasta_tambem_perde_a_palavra_e_a_frase_no_apagar_tudo(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, trabalhando=False) as conexao:
             conexao.criar(pedido(ID, LINHA))

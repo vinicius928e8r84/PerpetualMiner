@@ -12,6 +12,7 @@ Cada rota é uma função `(conexao, corpo) -> (status, json)` em `ROTAS`; `corp
 import json
 import os
 import re
+import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -373,6 +374,12 @@ class _Servidor(ThreadingHTTPServer):
 
     def handle_error(self, request, client_address):
         # O padrão imprime o erro no stderr.
+        erro = sys.exc_info()[1]
+        if sys.excepthook is None or sys.is_finalizing():
+            return  # o Anki está fechando: nenhuma thread nasce mais, e cada pedido em voo diria o mesmo
+        if isinstance(erro, ConnectionError):
+            self.conexao.logger.info("O pedido de %s não terminou: o cliente fechou a conexão", client_address)
+            return
         self.conexao.logger.exception("Erro ao atender %s", client_address)
 
 

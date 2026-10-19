@@ -877,6 +877,37 @@ test('Apagar tudo no meio de um Envio encerra o Envio no painel: nenhum resumo o
   await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
 });
 
+test('Apagar tudo numa aba encerra o Envio nas outras abas: nenhuma abre um resumo falso nem o Tentar de novo', async ({ page, context, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, [SACK.texto, ARM.texto, RUSSA.texto]);
+  const [ingles, russo] = await enviosCriados(fakes, 2);
+  await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio?.envios?.map(e => e.jobId)).toEqual([ingles.jobId, russo.jobId]);
+  fakes.anki.moverEnvio(ingles.jobId, { stage: 'generate_cards', progress: { done: 1, total: 2 } });
+
+  // A outra aba acompanha os mesmos Envios (a remessa vem de `pm_envio`).
+  const outra = await context.newPage();
+  await abrirPainel(outra, extensao);
+  await expect(outra.locator('#frases-lista .veio-frase').first()).toBeVisible();
+
+  await progresso(page).getByRole('button', { name: 'Fechar' }).first().click();
+  await page.goto(extensao.url('painel.html#configuracoes/perigo'));
+  await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar todas as 4 frases' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 4 frases' }).click();
+  await expect.poll(() => [ingles, russo].map(e => fakes.anki.envios.find(x => x.jobId === e.jobId).state.lastError))
+    .toEqual(['frases_apagadas', 'frases_apagadas']);
+  await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
+
+  // A outra aba soube do Apagar tudo: as Frases dos Envios não existem mais, então não há resumo "+0 cartões" nem Tentar de novo.
+  await outra.bringToFront();
+  await outra.waitForTimeout(3_000);
+  await expect(outra.getByText('Nenhuma frase ainda.')).toBeVisible();
+  await expect(resumo(outra)).toBeHidden();
+  await expect(progresso(outra)).toBeHidden();
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/retry')).toHaveLength(0);
+  expect((await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
+});
+
 test('Apagar tudo enquanto o pedido de um Envio espera a Conexão: a resposta que chega depois não traz o Envio de volta, e o outro idioma não sai', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
   // O primeiro POST /jobs (o inglês) fica esperando até o teste soltar; os idiomas que chegam são anotados.
