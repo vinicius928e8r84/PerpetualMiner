@@ -4,7 +4,8 @@ name: Regras
 # É o mesmo comando que se roda localmente. O histórico inteiro vem para a
 # verificação comparar a linha de base e mostrar as linhas novas: no PR, com a
 # ponta da branch-alvo; no push, com o commit anterior (não consigo mesma).
-# O sistema fica fixo em ubuntu-24.04; migrar para o 26.04 será uma decisão à parte.
+# Por padrão usa ubuntu-24.04; CI_RUNS_ON pode selecionar outros labels em JSON.
+# O runner próprio também usa Ubuntu 24.04; migrar para o 26.04 será uma decisão à parte.
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
@@ -22,7 +23,7 @@ concurrency:
 jobs:
   regras:
     name: Regras de revisão
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
