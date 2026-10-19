@@ -17,24 +17,18 @@ name: Testes
 # anterior; a e2e (91% dos minutos) só começa depois que Node, bridge e complemento passam; e
 # numa PR que mexe só em documentação as fatias e2e terminam sem rodar nada (os passos são
 # pulados, não os jobs, para o nome e o resultado de cada fatia continuarem aparecendo). O push
-# na main roda só os jobs rápidos e o do complemento: as fatias e2e nem são criadas (a PR já
-# passou por elas, e a main só recebe PR atualizada, AMB-02 b; nenhuma verificação obrigatória
-# é lida num push). A suíte inteira roda uma vez por noite na main, e só se a main mudou desde
-# a noite anterior (schedule; também sob demanda, workflow_dispatch).
+# na main faz o mesmo: roda os jobs rápidos e as fatias e2e terminam sem rodar (a PR já passou
+# por elas; isso basta quando a main estiver protegida para só entrar atualizada, AMB-02 b).
 on:
   pull_request:
   push:
     branches: [main]
-  schedule:
-    - cron: '17 5 * * *'
-  workflow_dispatch:
 
 permissions:
   contents: read
 
 # Só a PR cancela a execução anterior (ela é substituída pela do próximo commit). Cada push
-# na main tem a sua, para nenhum commit dela ficar sem os testes rápidos e os do complemento
-# (a execução da noite e a manual também, pela mesma chave do commit).
+# na main tem a sua, para nenhum commit dela ficar sem os testes rápidos e os do complemento.
 concurrency:
   group: testes-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -42,7 +36,7 @@ concurrency:
 jobs:
   # Os grupos rápidos e pequenos num job só (cada um custava 1 minuto cobrado por 6 a 18 s de trabalho).
   # Também decide se as fatias e2e têm o que rodar: numa PR, só se ela muda mais que documentação;
-  # na execução da noite, só se a main mudou nas últimas 26 horas; sob demanda, sempre.
+  # no push na main, nunca (os rápidos rodam inteiros).
   rapidos:
     name: Testes rápidos
     runs-on: ubuntu-24.04
@@ -64,10 +58,6 @@ jobs:
             so_documentacao=$(node scripts/ci/so-documentacao.js HEAD^1 HEAD) || so_documentacao=false
             if [ "$so_documentacao" = true ]; then rodar=false; else rodar=true; fi
           else
-            rodar=true
-          fi
-          # A noite: o commit na ponta da main tem menos de 26 horas? Senão não há o que conferir.
-          if [ "${{ github.event_name }}" = schedule ] && [ $(( $(date +%s) - $(git log -1 --format=%ct HEAD) )) -gt $(( 26 * 3600 )) ]; then
             rodar=false
           fi
           echo "rodar_e2e=$rodar" >> "$GITHUB_OUTPUT"
@@ -113,9 +103,6 @@ jobs:
     name: e2e (${{ matrix.fatia }}/8)
     # Só depois que os testes rápidos passam: um erro de Node não gasta ~35 minutos de e2e.
     needs: [rapidos, complemento]
-    # Sem fatias no push na main (nenhuma verificação obrigatória é lida lá); na PR elas sempre
-    # existem, para o nome de cada uma continuar aparecendo.
-    if: github.event_name != 'push'
     runs-on: ubuntu-24.04
     # Um worker por runner de 2 núcleos: com dois, o Chromium de cada teste disputa o
     # processador e os testes sensíveis a tempo (relógios, transições) falham sem motivo.
