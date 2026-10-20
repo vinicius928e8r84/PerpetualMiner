@@ -83,16 +83,20 @@
   }
 
   /**
-   * Com um Envio andando e a Conexão sem responder, o Apagar tudo não a alcançaria: o Envio seguiria sozinho quando o Anki abrisse,
-   * gastando a chave com as Frases apagadas. Nada é apagado; a faixa pede para abrir o Anki. Confere a Conexão agora, não a de 15 s atrás.
+   * Com a Conexão sem responder, o Apagar tudo não a alcançaria: um Envio dela seguiria sozinho quando o Anki abrisse, gastando a chave
+   * com as Frases apagadas. Nada é apagado e nada fica marcado; a faixa pede para abrir o Anki, e o caminho é abri-lo. Confere a
+   * Conexão agora, não a de 15 s atrás; o Tentar de novo da faixa repete a conferência (a confirmação já foi dada).
    */
-  async function recusarSeAConexaoNaoResponde() {
+  async function apagarSeAConexaoResponde() {
     tirarARecusa();
-    if (!raiz.Envio.temEnvioAndando()) return false;
-    if (await ConexaoAnki.conferir() !== ConexaoAnki.SITUACAO.DESLIGADA) return false;
-    avisoDaRecusa = montarAviso({ texto: textoDaVoz('CFG-17.conexaoNaoResponde'), fechavel: false });
+    if (await ConexaoAnki.conferir() !== ConexaoAnki.SITUACAO.DESLIGADA) return apagarTudo();
+    avisoDaRecusa = montarAviso({
+      texto: textoDaVoz('CFG-17.conexaoNaoResponde'),
+      acao: { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: apagarSeAConexaoResponde },
+      detalhes: 'anki_connection_unreachable',
+      fechavel: false,
+    });
     porId('cfg-perigo-corpo').append(avisoDaRecusa);
-    return true;
   }
 
   /** “Apagar todas as 1.284 frases?”, com Cancelar (foco inicial) e o perigo preenchido. */
@@ -110,10 +114,7 @@
       ].join(' '),
       cancelar: textoDaVoz('CFG-17.cancelar'),
       confirmar: textoDaVoz('CFG-17.confirmar', { n }),
-      aoConfirmar: async () => {
-        if (await recusarSeAConexaoNaoResponde()) return;
-        apagarTudo();
-      },
+      aoConfirmar: apagarSeAConexaoResponde,
     });
   }
 

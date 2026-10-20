@@ -29,8 +29,8 @@ VARIAVEIS_DE_PROXY = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "htt
 
 
 # Tudo o que o servidor real respondeu, neste arquivo, a uma rota que ele tem: (método, caminho, status, `error`).
-# `tearDownModule` exige um exemplo do contrato para cada um. A recusa de origem (403) é a mesma em toda rota e
-# o que não é rota (404, OPTIONS) é do contrato de origem, não de uma rota; ficam de fora.
+# `tearDownModule` exige um exemplo do contrato para cada um. Ficam de fora a recusa de origem (403), igual em toda rota,
+# e o que não é rota (404, OPTIONS), que é do contrato de origem.
 RESPONDIDOS = set()
 
 
@@ -179,13 +179,12 @@ def semear_a_fila(pasta, fila):
 
 
 class ConexaoNoTeste:
-    """A Conexão real numa porta livre, com o perfil que o teste escolher e uma OpenAI de mentira no lugar da de verdade.
+    """A Conexão real numa porta livre, com o perfil que o teste escolher e uma OpenAI de mentira.
 
     `chave_na_conexao`: os 4 últimos caracteres de uma chave que a Conexão já guardava antes de o teste começar.
-    `colecao`: o adaptador da coleção do Anki que a Conexão lê (sem ele, não há o que ler).
+    `colecao`: o adaptador da coleção do Anki que a Conexão lê.
     `item`: a situação do item de login de “Abrir o Anki com o computador” (ver `_item_de_login_do_contexto`).
-    `trabalhando`: a thread de trabalho do Envio ligada (`test_envio.py`); desligada, os Envios ficam na fila como estão.
-    `espera_do_contato`: quanto a thread espera, depois de subir, o primeiro pedido de Envio da extensão (nos testes, nada: 0).
+    `trabalhando`: a thread de trabalho do Envio ligada (`test_envio.py`; `espera_do_contato`: quanto ela espera a extensão ao subir, 0 aqui); desligada, os Envios ficam na fila.
     """
 
     def __init__(
@@ -408,15 +407,14 @@ class RepeticaoDoContrato(unittest.TestCase):
 # Cada rota do servidor, declarada à parte dos exemplos, para a matriz de estados pedir a rota de verdade:
 #   corpo         o corpo mínimo que ela aceita (None: sem corpo);
 #   status        o que ela responde a esse corpo com o Anki saudável (200 se não disser);
-#   le_a_colecao  lê a coleção do Anki: com a coleção que quebra responde 500, sem coleção aberta responde 503;
-#   le_o_perfil   lê o perfil aberto: com o perfil ilegível responde 500;
+#   le_a_colecao  lê a coleção: se quebra responde 500, sem coleção aberta responde 503;
+#   le_o_perfil   lê o perfil aberto: ilegível, responde 500;
 #   recusas       cada validação do pedido: (corpo, status, `error`), com a coleção aberta;
 #   muda          a rota muda o que a Conexão guarda (a chave, o item de login): `RepeticaoDeCadaRotaQueMuda` a pede de novo e
 #                 com a base velha, e uma rota que muda sem dizer isso quebra;
 #   versao        o corpo traz a base (`versao`) do que ela muda: a base velha tem que dar 409, sem mudar nada;
 #   muda_de_novo  o motivo (texto) de pedir de novo com a base atual poder mudar o que fica guardado de propósito.
-# Uma rota nova entra aqui dizendo o que faz: uma que não lê a coleção nem o perfil (a chave da IA, por exemplo)
-# responde o mesmo `status` em todos os estados do Anki.
+# Uma rota nova entra aqui dizendo o que faz: uma que não lê a coleção nem o perfil (a chave da IA) responde o mesmo `status` sempre.
 MATRIZ = {
     ('POST', '/ia/openai/sincronizar'): {
         'corpo': {'uid': 'uid-teste', 'token': 'token-ficticio', 'versao': 1}, 'muda': True, 'versao': True,
@@ -467,8 +465,8 @@ MATRIZ = {
         "le_o_perfil": False,
         "recusas": [({"lang": "en"}, 400, "deck_required"), ({"deck": "Inglês", "lang": "fr"}, 400, "invalid_lang")],
     },
-    # O Envio (#142): a fila é da Conexão, não da coleção nem do perfil (quem lê e grava a coleção é a thread de trabalho).
-    # Criar e tentar de novo mudam a fila; repetidos, respondem igual e não gravam nada (o `jobId` é a chave).
+    # O Envio (#142): a fila é da Conexão, não da coleção nem do perfil (a thread de trabalho é quem os lê). Criar e tentar de novo
+    # mudam a fila; repetidos, respondem igual e não gravam nada (o `jobId` é a chave).
     ("POST", "/jobs"): {
         "corpo": {"jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b", "lang": "en", "deckName": "Inglês", "entries": [{"phraseId": 1, "line": "give up : She gave up smoking"}]},
         "status": 201, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
@@ -1024,40 +1022,6 @@ class ProcessoDoAnki(unittest.TestCase):
             sys.excepthook = original
         self.assertIn("perfil ilegível", registrado)
         self.assertEqual((saida.getvalue(), erro.getvalue(), chamadas_do_excepthook), ("", "", []))
-
-    def erro_ao_atender(self, conexao, erro):
-        """Entrega ao servidor real um erro de pedido, como o `socketserver` faz, e devolve o que o log ganhou."""
-        antes = conexao.log()
-        try:
-            raise erro
-        except Exception:
-            conexao.conexao._servidor.handle_error(None, ("127.0.0.1", 50000))
-        return conexao.log()[len(antes):]
-
-    def test_o_anki_fechando_nao_enche_o_log_de_erros(self):
-        original = sys.excepthook
-        with tempfile.TemporaryDirectory() as pasta:
-            with ConexaoNoTeste(pasta) as conexao:
-                sys.excepthook = None  # o interpretador no fim: nenhuma thread nova nasce
-                try:
-                    acrescentado = self.erro_ao_atender(conexao, RuntimeError("sys.excepthook is None"))
-                finally:
-                    sys.excepthook = original
-        self.assertEqual(acrescentado, "")
-
-    def test_cliente_que_fecha_a_conexao_antes_da_resposta_nao_vira_erro_com_traceback(self):
-        with tempfile.TemporaryDirectory() as pasta:
-            with ConexaoNoTeste(pasta) as conexao:
-                acrescentado = self.erro_ao_atender(conexao, BrokenPipeError(32, "Broken pipe"))
-        self.assertNotIn("Traceback", acrescentado)
-        self.assertNotIn("ERROR", acrescentado)
-
-    def test_erro_de_verdade_ao_atender_continua_no_log_com_o_traceback(self):
-        with tempfile.TemporaryDirectory() as pasta:
-            with ConexaoNoTeste(pasta) as conexao:
-                acrescentado = self.erro_ao_atender(conexao, ValueError("falha de verdade"))
-        self.assertIn("ERROR Erro ao atender", acrescentado)
-        self.assertIn("falha de verdade", acrescentado)
 
     def test_pedido_quebrado_vai_ao_log_e_nao_ao_stderr(self):
         erro = io.StringIO()

@@ -16,39 +16,7 @@
 // voltar), para os resumos das linhas fechadas saírem iguais aos dele.
 
 const { test, expect } = require('../fixtures');
-
-const AGORA = new Date('2026-09-18T12:00:00');
-const TOTAL_DO_PROTOTIPO = 1284;
-
-const FRASES_DO_PROTOTIPO = Array.from({ length: TOTAL_DO_PROTOTIPO }, (_, i) => ({
-  id: 1_700_000_000_000 + (TOTAL_DO_PROTOTIPO - i),
-  texto: `Sentence number ${TOTAL_DO_PROTOTIPO - i} about the harbour.`,
-  data: AGORA.toLocaleDateString('pt-BR'),
-  streaming: 'netflix',
-  idioma: 'Inglês',
-}));
-
-/**
- * As frases, a chave do Gemini e o atalho de seleção do protótipo. Com a conta,
- * as frases já estão na nuvem, então abrir o painel não vira uma primeira subida.
- */
-async function semearComoNoPrototipo(extensao, fakes, uid = null) {
-  await extensao.gravarStorage({
-    frases: FRASES_DO_PROTOTIPO,
-    geminiApiKey: 'AIzaSyD4kQ7wL2mXe9pRtB8nVfH0cJ3kQ9',
-    pm_atalho: { type: 'mouse', button: 3, code: null, altKey: true, ctrlKey: false, shiftKey: false, label: 'Alt+Mouse Back' },
-  });
-  if (uid) fakes.google.gravarFrases(uid, FRASES_DO_PROTOTIPO);
-}
-
-async function abrirConfiguracoes(page, extensao, endereco, largura = 1280) {
-  await page.clock.setFixedTime(AGORA);
-  await page.setViewportSize({ width: largura, height: 800 });
-  await page.goto(extensao.url(`painel.html${endereco}`));
-  await expect(page.getByRole('navigation', { name: 'Navegação do painel' })).toBeVisible();
-  await expect(page.locator('#cfg-perigo-resumo')).toHaveText('1.284 frases', { timeout: 45000 });
-  await page.evaluate(() => document.fonts.ready);
-}
+const { AGORA, FRASES_DO_PROTOTIPO, semearComoNoPrototipo, abrirConfiguracoes } = require('../apoio-das-configuracoes');
 
 const estadoDoChip = page => page.locator('#shell-chip-estado');
 
@@ -238,22 +206,6 @@ test('Apagar tudo com a Conexão sem responder: a falha local diz que as Frases 
   await page.getByRole('dialog').getByRole('button', { name: /^Apagar .* frases$/ }).click();
 
   await expect(page).toHaveScreenshot('apagar-tudo-falha-frases-na-conexao.png', { animations: 'disabled' });
-});
-
-// #142 / #259: o Apagar tudo recusado (CFG-17.conexaoNaoResponde) com um Envio andando e a Conexão sem responder. A cópia é a que o dono
-// propôs e ainda não viu na tela: `fixme` e sem PNG até ele aprovar o visual implementado (regra 10). Aprovado: tire o `test.fixme`
-// e rode `npx playwright test configuracoes-visual -g "recusado" --update-snapshots`.
-test('Apagar tudo recusado: a Conexão não responde e há um Envio andando', async ({ page, extensao, fakes }) => {
-  test.fixme(true, 'a referência visual da recusa do Apagar tudo espera a aprovação do dono (regra 10)');
-  await semearComoNoPrototipo(extensao, fakes);
-  await extensao.gravarStorage({ pm_envio: { envios: [{ id: 'e1', lang: 'en', ids: [1], baralho: 'Inglês', jobId: 'job-1', criadoEm: 0, falhaAoCriar: null }] } });
-  fakes.anki.desligar();
-  await abrirConfiguracoes(page, extensao, '#configuracoes/perigo');
-  await page.locator('#cfg-perigo').getByRole('button', { name: /^Apagar todas as/ }).click();
-  await page.getByRole('dialog').getByRole('button', { name: /^Apagar .* frases$/ }).click();
-  await expect(page.locator('#cfg-perigo').getByRole('alert')).toContainText('Não deu para apagar agora');
-
-  await expect(page).toHaveScreenshot('apagar-tudo-recusado-conexao-fora.png', { animations: 'disabled' });
 });
 
 test('o modal de apagar a chave da OpenAI, com conta', async ({ page, extensao, fakes }) => {

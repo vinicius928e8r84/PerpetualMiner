@@ -909,8 +909,7 @@ function badgeDaMineracaoAutomatica(state) {
   };
 }
 
-// O `chrome` dos testes Node de `test_auto_keyword.js` é mínimo, sem `alarms` nem
-// `onChanged`: a API que falta não derruba o arquivo, só deixa de agir.
+// O `chrome` mínimo de `test_auto_keyword.js` não tem `alarms` nem `onChanged`: a API que falta só deixa de agir.
 function metodoDoChrome(alvo, nome) {
   if (!alvo || typeof alvo[nome] !== 'function') return null;
   return alvo[nome].bind(alvo);
@@ -951,9 +950,8 @@ async function atualizarBadgeDaToolbar() {
  * Regressão: `e2e/tests/mineracao-automatica-virada.spec.js`.
  */
 async function agendarViradaDoDia() {
-  // O alarme sobrevive ao service worker, então recriá-lo a cada despertar à toa
-  // só empurraria a próxima meia-noite para longe. Depois de disparar ele some
-  // sozinho, e aí esta chamada agenda o da meia-noite seguinte.
+  // O alarme sobrevive ao service worker: recriá-lo a cada despertar empurraria a meia-noite. Depois de disparar ele some,
+  // e esta chamada agenda o da seguinte.
   const lerAlarme = metodoDoChrome(chrome.alarms, 'get');
   const criarAlarme = metodoDoChrome(chrome.alarms, 'create');
   if (!lerAlarme || !criarAlarme) return;
@@ -971,31 +969,19 @@ ouvirChrome(chrome.alarms && chrome.alarms.onAlarm, alarme => {
   getAutoMinerState().then(publicarEstadoDaAutomatica);
 });
 
-// Na partida do Chrome o badge não volta sozinho, e nada garante que outro
-// evento acorde o service worker logo. Escutar a partida é o que o acorda; o
-// trabalho é o do fim do arquivo, que roda a cada despertar.
+// Na partida do Chrome o badge não volta sozinho: escutar a partida acorda o service worker, que faz o trabalho do fim do arquivo.
 ouvirChrome(chrome.runtime.onStartup, () => {});
-
-// O Apagar tudo que a Conexão não confirmou (a marca em `pm_envio`) é pedido de novo a cada 30 s, com todo painel fechado.
-const apagarFrasesPendente = metodoDoChrome(chrome.alarms, 'create')
-  ? PerpetualMiner.ApagarFrasesPendente.criar({ chrome, PedidoAoAnki: PerpetualMiner.PedidoAoAnki, endereco: BRIDGE_URL })
-  : null;
-ouvirChrome(chrome.alarms && chrome.alarms.onAlarm, alarme => {
-  if (alarme.name === PerpetualMiner.ApagarFrasesPendente.ALARME) apagarFrasesPendente?.conferir();
-});
 
 ouvirChrome(chrome.storage.onChanged, (changes, area) => {
   if (area !== 'local') return;
   if (AUTO_MINER_SETTINGS_KEY in changes || AUTO_MINER_DAILY_KEY in changes) atualizarBadgeDaToolbar();
-  if ('pm_envio' in changes) apagarFrasesPendente?.cuidar();
 });
 
-// O service worker acorda e dorme o tempo todo — inclusive na partida do Chrome,
-// que é quando este arquivo roda de novo. Ao acordar, o badge que está na toolbar
-// pode ser o de ontem.
+// O service worker acorda e dorme o tempo todo (também na partida do Chrome): ao acordar, o badge pode ser o de ontem.
 agendarViradaDoDia();
 atualizarBadgeDaToolbar();
-apagarFrasesPendente?.cuidar();
+// O Apagar tudo que a Conexão não confirmou (a marca em `pm_envio`) é pedido de novo a cada 30 s, com todo painel fechado.
+PerpetualMiner.ApagarFrasesPendente.ligar({ chrome, ouvirChrome, endereco: BRIDGE_URL });
 
 /**
  * Centraliza a publicação espontânea do estado pelos canais de `MineracaoDoDia`.
