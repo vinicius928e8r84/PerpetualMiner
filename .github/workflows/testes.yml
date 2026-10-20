@@ -5,7 +5,8 @@ name: Testes
 # (a extensão desempacotada no Chromium). Quem trabalha roda só os specs da
 # área que mudou; a suíte inteira roda aqui. Ver "Testing" no CLAUDE.md.
 #
-# O sistema dos runners está fixo em ubuntu-24.04 (não ubuntu-latest): o Python 3.9 do complemento
+# Por padrão, os runners usam ubuntu-24.04 (não ubuntu-latest); CI_RUNS_ON pode selecionar
+# outros labels em JSON (o runner próprio também precisa de Ubuntu 24.04): o Python 3.9 do complemento
 # e o Chromium do Playwright dependem dele, e a mudança para o 26.04 será uma decisão à parte,
 # tomada de propósito (e a chave do cache do Playwright abaixo já leva a versão do sistema).
 #
@@ -39,7 +40,7 @@ jobs:
   # no push na main, nunca (os rápidos rodam inteiros).
   rapidos:
     name: Testes rápidos
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 10
     outputs:
       rodar_e2e: ${{ steps.classificar.outputs.rodar_e2e }}
@@ -76,7 +77,7 @@ jobs:
 
   complemento:
     name: Testes do complemento (Python ${{ matrix.python }})
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 10
     strategy:
       fail-fast: false
@@ -103,7 +104,7 @@ jobs:
     name: e2e (${{ matrix.fatia }}/8)
     # Só depois que os testes rápidos passam: um erro de Node não gasta ~35 minutos de e2e.
     needs: [rapidos, complemento]
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     # Um worker por runner de 2 núcleos: com dois, o Chromium de cada teste disputa o
     # processador e os testes sensíveis a tempo (relógios, transições) falham sem motivo.
     # Uma fatia leva de 5 a 12 minutos; 20 impede que uma travada gaste 45.
