@@ -54,6 +54,10 @@ Cancelar has the initial focus, Esc and a click outside close it); only the fill
 cloud is empty too; a cloud failure shows in the Conta & sync card and the chip instead (Q4). The description (CFG-32),
 the reach line and the modal body say “all computers of your account” only with an account. Until the total arrives,
 the entry row stays hidden, so it never shows “Nenhuma frase para apagar” while the list is still loading. No `confirm()`.
+Before it deletes anything the confirmation checks the Conexão com o Anki now (`ConexaoAnki.conferir()`): if it does not answer, the
+Apagar tudo is refused whether or not an Envio exists. Nothing is deleted or marked; a notice (CFG-17.conexaoNaoResponde: open the Anki
+and try again) with Tentar de novo and Detalhes stays in the card until the Conexão answers again. Why, and the Envio side: the
+`painel-anki` skill, `apagar-tudo.md`.
 
 ### Conexão com o Anki: Abrir o Anki com o computador (`painel-abrir-anki.js`)
 
