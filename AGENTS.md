@@ -48,8 +48,8 @@ Keep local paths and Anki settings in `bridge/config.json`. Do not commit secret
 | 9 Python tests | `teste-le-codigo` |
 | 12 Every test runs in CI | `testes-no-portao` |
 | 13 The contract has every request and answer | `contrato-fechado` (a `fetch` straight to the Conexão); `test_contrato_fechado.js` and the end of `complemento/test_servidor.py` (an example for each request the extension builds and each status the server answers) |
-| 10 Visual references | review |
-| 11 New files | review; `test_empacotar.js` |
+| 10 Visual references | review; `aprovacao-visual` (a reference PNG outside a `test.fixme` needs its entry in `e2e/aprovados-visuais.json`) |
+| 11 New files | review; `indice-de-arquivos` (a root, `lib/`, `veio/` or `scripts/` file needs its row in `CLAUDE.md` › Files); `test_empacotar.js` |
 
 A PR that changes a user-facing file (`popup.*`, `painel*`, `manifest.json`, `bridge/server.py`, …) also needs `.agents/skills/verify-perpetualminer/features/` updated or "feature map unchanged" in its body: the `Mapa de features` step of `.github/workflows/regras.yml` (PRs only).
 

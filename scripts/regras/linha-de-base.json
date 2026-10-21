@@ -50,7 +50,22 @@
     "e2e/tests/popup.spec.js": 11,
     "e2e/tests/seam.spec.js": 1
   },
-  "doc-datado": {
-    "CLAUDE.md": 2
+  "doc-datado": {},
+  "indice-de-arquivos": {
+    "scripts/com.perpetualminer.atualizar.plist.exemplo": 1,
+    "scripts/preparar-python.sh": 1,
+    "vercel.json": 1
+  },
+  "aprovacao-visual": {
+    "e2e/tests/boas-vindas-visual.spec.js": 15,
+    "e2e/tests/configuracoes-visual.spec.js": 14,
+    "e2e/tests/minerar-foto-visual.spec.js": 15,
+    "e2e/tests/overlay-visual.spec.js": 11,
+    "e2e/tests/painel-anki-baralhos-visual.spec.js": 16,
+    "e2e/tests/painel-anki-visual.spec.js": 21,
+    "e2e/tests/painel-envio-visual.spec.js": 5,
+    "e2e/tests/painel-frases-visual.spec.js": 23,
+    "e2e/tests/painel-shell-visual.spec.js": 5,
+    "e2e/tests/popup-visual.spec.js": 11
   }
 }

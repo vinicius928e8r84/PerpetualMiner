@@ -20,6 +20,8 @@ const REGRAS = [
   require('./contrato-fechado'),
   require('./e2e-estado-final'),
   require('./doc-datado'),
+  require('./indice-de-arquivos'),
+  require('./aprovacao-visual'),
 ];
 
 const ARQUIVO_DA_LINHA_DE_BASE = 'scripts/regras/linha-de-base.json';

@@ -1,0 +1,17 @@
+{
+  "descricao": "Os checks que a proteção da branch main exige para mesclar (GitHub › Settings › Branches). Renomear um job destes nos workflows deixa o merge esperando para sempre um check que não existe: o teste em test_ci.js confere que cada nome daqui sai de algum workflow. Mudou a proteção? Mude esta lista na mesma PR.",
+  "checks": [
+    "Testes rápidos",
+    "Testes do complemento (Python 3.9)",
+    "Testes do complemento (Python 3.13)",
+    "e2e (1/8)",
+    "e2e (2/8)",
+    "e2e (3/8)",
+    "e2e (4/8)",
+    "e2e (5/8)",
+    "e2e (6/8)",
+    "e2e (7/8)",
+    "e2e (8/8)",
+    "Regras de revisão"
+  ]
+}
