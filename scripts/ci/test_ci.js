@@ -11,6 +11,7 @@ const path = require('path');
 const { soDocumentacao, arquivosMudados } = require('./so-documentacao.js');
 const { instaveis, resumo } = require('./instaveis.js');
 const { EMAIL_DO_DONO, commitsForaDaRegra, mensagem } = require('./autoria.js');
+const { ARQUIVO_DA_LISTA, checksDosWorkflows, checksQueFaltam } = require('./checks-obrigatorios.js');
 
 assert.strictEqual(soDocumentacao(['CLAUDE.md']), true);
 assert.strictEqual(soDocumentacao(['docs/instalar-extensao.md', 'bridge/README.md', 'engine/prompts/README.md']), true);
@@ -158,6 +159,40 @@ assert.match(mensagem(commitsForaDaRegra([linha('abcdef0123', 'agente@exemplo.co
   });
   assert.strictEqual(rodarAutoria().status, 0, 'o comando da mensagem refaz a autoria');
   fs.rmSync(repoDeAutoria, { recursive: true, force: true });
+}
+
+// Os checks obrigatórios: cada nome da lista sai de algum workflow. O erro real é o do #262/#263, em que o
+// revisor conferiu à mão que "nenhum nome de check mudou".
+{
+  const RAIZ = path.resolve(__dirname, '..', '..');
+  assert.deepStrictEqual(checksQueFaltam(RAIZ), [], 'todo check obrigatório sai de um workflow (ou a lista e a proteção da main mudam juntas)');
+  assert(checksDosWorkflows(RAIZ).has('e2e (8/8)') && checksDosWorkflows(RAIZ).has('Testes do complemento (Python 3.13)'), 'a matriz é expandida');
+
+  const copia = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-checks-'));
+  fs.mkdirSync(path.join(copia, '.github', 'workflows'), { recursive: true });
+  fs.mkdirSync(path.join(copia, 'scripts', 'ci'), { recursive: true });
+  fs.copyFileSync(path.join(RAIZ, ARQUIVO_DA_LISTA), path.join(copia, ARQUIVO_DA_LISTA));
+  for (const arquivo of fs.readdirSync(path.join(RAIZ, '.github', 'workflows'))) {
+    fs.copyFileSync(path.join(RAIZ, '.github', 'workflows', arquivo), path.join(copia, '.github', 'workflows', arquivo));
+  }
+  const reescrever = (arquivo, de, para) => {
+    const caminho = path.join(copia, '.github', 'workflows', arquivo);
+    const antes = fs.readFileSync(caminho, 'utf8');
+    assert(antes.includes(de), `${arquivo} tem "${de}"`);
+    fs.writeFileSync(caminho, antes.replace(de, para));
+  };
+  reescrever('regras.yml', 'name: Regras de revisão', 'name: Regras');
+  assert.deepStrictEqual(checksQueFaltam(copia), ['Regras de revisão'], 'um job renomeado deixa o merge esperando um check que não existe');
+  reescrever('regras.yml', '    name: Regras\n', '    name: Regras de revisão\n');
+  reescrever('testes.yml', 'name: e2e (${{ matrix.fatia }}/8)', 'name: e2e ${{ matrix.fatia }}');
+  assert.strictEqual(checksQueFaltam(copia).length, 8, 'a matriz renomeada perde as oito fatias');
+  reescrever('testes.yml', 'name: e2e ${{ matrix.fatia }}', 'name: e2e (${{ matrix.fatia }}/8)');
+  reescrever('testes.yml', 'fatia: [1, 2, 3, 4, 5, 6, 7, 8]', 'fatia: [1, 2, 3, 4, 5, 6, 7]');
+  assert.deepStrictEqual(checksQueFaltam(copia), ['e2e (8/8)'], 'uma fatia a menos');
+  reescrever('testes.yml', 'fatia: [1, 2, 3, 4, 5, 6, 7]', 'fatia: [1, 2, 3, 4, 5, 6, 7, 8]');
+  reescrever('testes.yml', '"ubuntu-24.04"', '"ubuntu-22.04"');
+  assert.deepStrictEqual(checksQueFaltam(copia), [], 'trocar o runner (CI_RUNS_ON) não muda nenhum nome');
+  fs.rmSync(copia, { recursive: true, force: true });
 }
 
 console.log('ci ok');
