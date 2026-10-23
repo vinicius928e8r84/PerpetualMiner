@@ -29,6 +29,15 @@ A Conexão de hoje (`bridge/`) só ganhou o mesmo POST nas três rotas da coleç
 | `empacotar.py` | Monta o `.ankiaddon` (e `conexao/perpetualminer.ankiaddon`, o que a extensão entrega no botão Baixar a Conexão com o Anki), com o motor de `engine/` em `motor/` |
 | `versoes.json` | O hash das fontes do pacote por `VERSAO` (fora do `.ankiaddon`); `test_pacote.py` falha, pedindo para subir a `VERSAO`, se as fontes mudam e a versão não |
 
+## Regras que o código assume
+
+- A thread da Conexão nunca mexe no processo do Anki: sem proxy, sem trocar `stdout`, `stderr`, `excepthook` nem os avisos; todo erro vai para o logger de `registro.py`. Com a porta ocupada ela fica quieta e registra o motivo.
+- A coleção só é lida por um adaptador (`baralhos.py` diz o que ele tem: `perfis()`, `nomes_dos_baralhos()`, `cartoes_do_baralho()`). `no_anki.ColecaoDoAnki` é o do Anki e lê e grava na thread principal do Anki; os testes usam `test_colecao_em_memoria.ColecaoEmMemoria`. O lado de gravação é o do Envio: `tipo_de_nota()`, `guids_existentes()`, `adicionar_nota()`.
+- `GET /health` é a única rota sem `Origin`, porque o Chrome manda o GET de uma extensão sem ele; as outras são só POST e exigem a origem (`contrato/LEIA-ME.md` § Quem o complemento atende). A credencial de pareamento é o ticket #192, antes do lançamento.
+- `bridge/test_paridade_da_normalizacao.py` roda as 19 funções compartilhadas nas duas cópias com os mesmos casos; `bridge/card_normalization.py` é a referência até a Conexão de hoje sair.
+- Chave da OpenAI: `POST /ia/openai/chave` confere a chave (`openai_api.py`, dois pedidos baratos, só a biblioteca padrão, URL base só por código) e guarda a cópia em `user_files/chaves` (fora de tudo que o pacote de diagnóstico lê e fora do `.ankiaddon`); `POST /ia/estado` lê um retrato do dono, expondo só máscara, UID, revisão e se há envio pendente; `POST /ia/openai/sincronizar` replica o dono pelo Firestore com UID e token transitórios; `/ia/openai/legado` só transfere o UID e a hora antigos com a prova exata do segredo; `POST /ia/openai/chave/apagar` apaga a cópia (Apagar chave e Apagar tudo, #154; Trocar sobrescreve por `POST /ia/openai/chave`). A Conexão nunca devolve a chave inteira nem a escreve no log.
+- Envio: o mesmo corpo de `POST /jobs` com o mesmo `jobId` é o mesmo Envio; outro corpo com ele dá `409`; `/jobs/list`, `/jobs/get`, `/jobs/retry` e `/jobs/debug-bundle` levam o `jobId` no corpo. Cada nota é gravada na thread principal do Anki (Básico/Frente/Verso até o #161); o criar usa a busca de duplicata pela frente normalizada.
+
 ## Testes
 
 ```bash
