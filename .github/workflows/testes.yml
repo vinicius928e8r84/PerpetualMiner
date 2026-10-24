@@ -153,3 +153,45 @@ jobs:
           name: e2e-${{ matrix.fatia }}-resultados
           path: e2e/test-results
           retention-days: 7
+
+  # A extensão diante da Conexão de verdade (PM_CONEXAO=real, e2e/conexao-real.js): só o spec conexao-real,
+  # com o complemento do repositório no lugar do fake de JavaScript. Um job à parte, pequeno; não é um dos
+  # checks que a proteção da main exige (scripts/ci/checks-obrigatorios.json).
+  e2e-conexao-real:
+    name: e2e com a Conexão real
+    needs: [rapidos, complemento]
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
+    timeout-minutes: 20
+    env:
+      RODAR: ${{ needs.rapidos.outputs.rodar_e2e != 'false' }}
+    steps:
+      - uses: actions/checkout@v5
+        if: env.RODAR == 'true'
+      - uses: actions/setup-node@v5
+        if: env.RODAR == 'true'
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - uses: actions/setup-python@v6
+        if: env.RODAR == 'true'
+        with:
+          python-version: '3.9'
+      - run: npm ci
+        if: env.RODAR == 'true'
+        working-directory: e2e
+      - uses: actions/cache@v5
+        if: env.RODAR == 'true'
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-ubuntu-24.04-${{ hashFiles('e2e/package-lock.json') }}
+      - run: npx playwright install --with-deps chromium
+        if: env.RODAR == 'true'
+        working-directory: e2e
+      - if: env.RODAR == 'true'
+        run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+      - if: env.RODAR == 'true'
+        run: xvfb-run --auto-servernum node scripts/testar.mjs e2e -- conexao-real --workers=1
+        env:
+          PM_CONEXAO: real
+          PYTHON: python
