@@ -23,6 +23,7 @@ const { criarFakeAnki } = require('./fakes/anki');
 const { criarFakeGemini } = require('./fakes/gemini');
 const { criarFakeGoogle } = require('./fakes/google');
 const { subirServidorDoLogin } = require('./fakes/login-google');
+const conexaoReal = require('./conexao-real');
 
 const RAIZ_DA_EXTENSAO = path.resolve(__dirname, '..');
 const ID_DA_EXTENSAO = new URL(require('../complemento/contrato/exemplos.json').origemDaExtensao).host;
@@ -86,7 +87,7 @@ async function esperarAbaDaInstalacao(context, id) {
  * login do Google no servidor local, o abridor falso registrado, a permissão do abridor e as rotas dos fakes.
  * A pasta do perfil nasce antes e some se qualquer passo da abertura falha, em vez de ficar no disco.
  */
-async function abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor }) {
+async function abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste }) {
   servidorDoLogin.atender(fakes.google.responderLogin);
   const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-e2e-'));
   let context = null;
@@ -121,6 +122,8 @@ async function abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, p
     await context.route(url => /^https?:$/.test(url.protocol) && !origensLocais.includes(url.origin),
       route => route.abort('blockedbyclient'));
     for (const fake of Object.values(fakes)) if (fake.padrao) await context.route(fake.padrao, fake.tratar);
+    // `PM_CONEXAO=real`: a 8766 vai para o complemento de verdade, não para `fakes.anki.tratar`.
+    if (conexaoDoTeste) await context.route(fakes.anki.padrao, conexaoReal.rotaParaAConexaoReal(conexaoDoTeste));
   } catch (erro) {
     await context?.close().catch(() => {});
     fs.rmSync(perfil, { recursive: true, force: true });
@@ -237,6 +240,13 @@ const test = base.extend({
     abridor.limpar();
   },
 
+  // Com `PM_CONEXAO=real`, a Conexão de verdade deste teste (conexao-real.js); sem a variável, null e nenhum Python roda.
+  conexaoDoTeste: async ({}, use) => {
+    const conexao = conexaoReal.modoReal() ? await conexaoReal.subir() : null;
+    await use(conexao);
+    await conexao?.fechar();
+  },
+
   // A permissão opcional `nativeMessaging` já dada, como o Chrome a guarda nas preferências do perfil
   // depois de a pessoa apertar Permitir no aviso dele: o aviso é do Chrome e o Playwright não o alcança.
   // Sem esta opção, a extensão chega como da loja: sem a permissão, e o pedido dela espera o aviso.
@@ -248,8 +258,8 @@ const test = base.extend({
     await use(RAIZ_DA_EXTENSAO);
   },
 
-  context: async ({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor }, use) => {
-    const perfil = await abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor });
+  context: async ({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste }, use) => {
+    const perfil = await abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste });
     await use(perfil.context);
     await perfil.fechar();
   },
@@ -282,8 +292,8 @@ const test = base.extend({
   // abridor, mesma Conexão com o Anki): a cena de duas contas Google em dois perfis diante de uma Conexão só.
   // Não é uma segunda aba do mesmo perfil, que dividiria o armazenamento. `context` abre páginas dele;
   // `extensao` é o mesmo objeto que o teste já tem (semearSessao, lerStorage, …), mas do segundo perfil.
-  segundoPerfil: async ({ extensao, fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, manterAbaDaInstalacao, lembreteDaConfiguracao }, use) => {
-    const perfil = await abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor });
+  segundoPerfil: async ({ extensao, fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste, manterAbaDaInstalacao, lembreteDaConfiguracao }, use) => {
+    const perfil = await abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste });
     try {
       await use({ context: perfil.context, extensao: await prepararExtensao(perfil.context, { manterAbaDaInstalacao, lembreteDaConfiguracao }) });
     } finally {
