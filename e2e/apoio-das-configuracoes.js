@@ -28,9 +28,9 @@ async function semearComoNoPrototipo(extensao, fakes, uid = null) {
   if (uid) fakes.google.gravarFrases(uid, FRASES_DO_PROTOTIPO);
 }
 
-async function abrirConfiguracoes(page, extensao, endereco, largura = 1280) {
+async function abrirConfiguracoes(page, extensao, endereco, largura = 1280, altura = 800) {
   await page.clock.setFixedTime(AGORA);
-  await page.setViewportSize({ width: largura, height: 800 });
+  await page.setViewportSize({ width: largura, height: altura });
   await page.goto(extensao.url(`painel.html${endereco}`));
   await expect(page.getByRole('navigation', { name: 'Navegação do painel' })).toBeVisible();
   await expect(page.locator('#cfg-perigo-resumo')).toHaveText('1.284 frases', { timeout: 45000 });

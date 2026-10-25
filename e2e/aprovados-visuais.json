@@ -1,4 +1,15 @@
 {
   "leia-me": "O livro das referências visuais que o dono aprovou. Uma entrada por PNG de e2e/tests/<spec>-snapshots/, em telas › <spec sem .spec.js> › <nome>.png, com a data da aprovação (AAAA-MM-DD) e onde ele respondeu. A regra aprovacao-visual (scripts/regras/) falha para um PNG sem entrada, fora de um test.fixme; as referências anteriores a este livro estão na linha de base da regra. Quem aprova é o dono olhando a tela; o livro só deixa um --update-snapshots sem aprovação visível no diff.",
-  "telas": {}
+  "telas": {
+    "configuracoes-perigo-visual": {
+      "apagar-tudo-recusado-conexao-fora.png": {
+        "data": "2026-10-25",
+        "resposta": "o dono, na pagina de decisoes do #259, 2026-10-25"
+      },
+      "apagar-tudo-recusado-conexao-fora-estreita.png": {
+        "data": "2026-10-25",
+        "resposta": "o dono, na pagina de decisoes do #259, 2026-10-25"
+      }
+    }
+  }
 }

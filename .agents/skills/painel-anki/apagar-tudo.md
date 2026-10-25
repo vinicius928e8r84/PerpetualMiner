@@ -15,8 +15,8 @@ The design, with what is left over, is `docs/design/envio-apagar-tudo.md`. Tests
   (`test.fixme` in `configuracoes-visual.spec.js`).
 - **The refusal (CFG-17.conexaoNaoResponde).** Whenever the Conexão does not answer, with or without an Envio, `painel-perigo.js` checks it at the
   click (`ConexaoAnki.conferir()`), deletes nothing and writes no mark; the notice has Tentar de novo (checks again and, with the Conexão back,
-  deletes: the confirmation was already given) and Detalhes, and goes away when the Conexão answers. The way out is to open the Anki. Visual
-  reference: `configuracoes-perigo-visual.spec.js` (`test.fixme`, no PNG, until the owner approves).
+  deletes: the confirmation was already given) and Detalhes, and goes away when the Conexão answers. Whoever has no Conexão that answers stays
+  refused until it does, and can still delete Frases by selection. Visual reference: `configuracoes-perigo-visual.spec.js` (approved, desktop and 390 px).
 - **After the Anki opens** the Conexão waits up to 60 s for the extension's first `/jobs…` request before resuming a stopped Envio, so the
   `apagar-frases` arrives first (the panel sends it on opening; the alarm with every panel closed). What is left: a Conexão that drops right
-  after the click, and no Chrome reaching the Conexão in those 60 s (the Envio then resumes and spends the key).
+  after the click, and no Chrome reaching the Conexão in those 60 s (the Envio then resumes and spends the key: a limit the owner kept on 2026-10-25).

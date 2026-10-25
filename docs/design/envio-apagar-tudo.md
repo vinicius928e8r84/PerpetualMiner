@@ -25,7 +25,8 @@ O Apagar tudo é **recusado sempre que a Conexão não responde**, haja Envio ou
 Zona de perigo confere a Conexão naquele instante; se ela não responde, **nada é apagado e nada fica marcado**, e a faixa dá o texto
 `CFG-17.conexaoNaoResponde` (“Não deu para apagar agora: a Conexão com o Anki não está respondendo. Abra o Anki e tente de novo.”), com
 o Tentar de novo (repete a conferência e, com a Conexão de volta, apaga) e o Detalhes. A faixa some quando a Conexão volta a responder.
-O caminho é abrir o Anki: ninguém fica recusado para sempre.
+Quem não tem uma Conexão que responda (sem o Anki, sem a Conexão no Anki, com a porta ocupada) fica recusado até ela responder; enquanto
+isso pode apagar Frases pela seleção, na lista de Frases (esse apagar não tira a chave da OpenAI).
 
 O motivo: com a Conexão fora, o Apagar tudo só existiria no navegador (`pm_envio.apagarFrases`), e um Envio parado em disco seguiria
 sozinho quando o Anki abrisse, gastando a chave com as Frases apagadas. A confirmação da recusa vem da Conexão, não da memória do
@@ -42,6 +43,9 @@ interrupção comum atrasa a retomada em até 60 s.
 ## O que sobra
 
 - Uma marca pendente com um Envio que a Conexão retomaria só nasce na janela curta entre a conferência e o `POST /jobs/apagar-frases`:
-  a Conexão cai logo depois do clique.
-- Se nenhum Chrome alcança a Conexão nos 60 s depois que o Anki abre (o Chrome fechado nessa hora, por exemplo no dia seguinte), o Envio
-  retoma como antes e gasta a chave com as Frases apagadas.
+  a Conexão cai logo depois do clique (fechar a janela do Anki logo depois de confirmar basta).
+- **O limite aceito (decisão do dono, 2026-10-25): o Anki abre de novo sem nenhum Chrome.** Se depois disso o Anki abre e nenhum Chrome
+  alcança a Conexão nos 60 s (o Chrome fechado, por exemplo no dia seguinte), a Conexão retoma sozinha o Envio das Frases apagadas: chama
+  a OpenAI com a chave e cria no Anki as notas dessas Frases (na prova real, 24 chamadas e 24 notas). Quando um Chrome volta, o alarme
+  apaga o que sobrou na Conexão, mas as notas e o gasto ficam. Se o pedido de apagar a chave também não chegou, ela fica na Conexão até a
+  pessoa apagá-la de novo (o aviso “Falha local” do CFG-17). Fica assim, sem mudança de código.

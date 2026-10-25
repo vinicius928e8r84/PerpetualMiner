@@ -84,8 +84,9 @@
 
   /**
    * Com a Conexão sem responder, o Apagar tudo não a alcançaria: um Envio dela seguiria sozinho quando o Anki abrisse, gastando a chave
-   * com as Frases apagadas. Nada é apagado e nada fica marcado; a faixa pede para abrir o Anki, e o caminho é abri-lo. Confere a
-   * Conexão agora, não a de 15 s atrás; o Tentar de novo da faixa repete a conferência (a confirmação já foi dada).
+   * com as Frases apagadas. Nada é apagado e nada fica marcado; a faixa pede para abrir o Anki, e quem não tem a Conexão fica recusado
+   * até ela responder (a seleção na lista de Frases ainda apaga). Confere a Conexão agora, não a de 15 s atrás; o Tentar de novo da
+   * faixa repete a conferência (a confirmação já foi dada).
    */
   async function apagarSeAConexaoResponde() {
     tirarARecusa();
