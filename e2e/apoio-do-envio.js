@@ -52,15 +52,28 @@ async function pedirConferenciaDaConexao(page) {
   await page.locator('#shell-tentar-de-novo').evaluate(el => el.click());
 }
 
+/** De quanto em quanto tempo o painel lê os Envios na Conexão (`INTERVALO` em painel-envio.js). */
+const INTERVALO_DO_ENVIO = 2_000;
+
 /**
- * Espera o painel assentar o que já chegou até ele (o que o storage mandou antes desta volta chega antes dela), para um teste que
- * afirma que algo NÃO aconteceu não depender de uma pausa.
+ * Para um teste que afirma que algo NÃO aconteceu: espera a resposta que o teste soltou (`resposta`, de `page.waitForResponse`),
+ * uma volta inteira do acompanhamento (o `/jobs/list` a cada 2 s) e a resposta de cada pedido da tela nessa volta.
  */
-async function assentar(page) {
+async function umaVoltaDoEnvio(page, { resposta } = {}) {
+  const pedidos = [];
+  const anotar = pedido => pedidos.push(pedido);
+  page.on('request', anotar);
+  try {
+    if (resposta) await (await resposta).finished();
+    await page.waitForTimeout(INTERVALO_DO_ENVIO + 500);
+  } finally {
+    page.off('request', anotar);
+  }
+  await Promise.all(pedidos.map(async pedido => (await pedido.response())?.finished()));
   await page.evaluate(async () => {
-    await chrome.storage.local.get('pm_envio');
+    await chrome.storage.local.get(null);
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
   });
 }
 
-module.exports = { pedirConferenciaDaConexao, assentar, AGORA, HOJE, frase, INGLESAS, RUSSA, SACK, ARM, LATE, abrirPainel, cartao, marcar, enviarAoAnki, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados };
+module.exports = { pedirConferenciaDaConexao, umaVoltaDoEnvio, AGORA, HOJE, frase, INGLESAS, RUSSA, SACK, ARM, LATE, abrirPainel, cartao, marcar, enviarAoAnki, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados };

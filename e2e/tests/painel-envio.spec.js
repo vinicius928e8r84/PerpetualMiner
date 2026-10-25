@@ -743,5 +743,3 @@ test('com o painel fechado, os Cartões continuam na Conexão; ao reabrir, o pro
   await resumo(reaberta).getByRole('button', { name: 'Manter' }).click();
   await expect.poll(async () => (await extensao.frases()).filter(f => f.status === 'exported').map(f => f.id)).toEqual([SACK.id]);
 });
-
-// ─── Apagar tudo (CFG-17) alcança as Frases do Envio (#248) ──────────────────

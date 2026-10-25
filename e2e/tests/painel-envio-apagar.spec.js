@@ -1,7 +1,7 @@
 'use strict';
 
 const { test, expect } = require('../fixtures');
-const { AGORA, frase, INGLESAS, RUSSA, SACK, ARM, abrirPainel, progresso, resumo, envio, marcarEEnviar, enviosCriados, pedirConferenciaDaConexao, assentar } = require('../apoio-do-envio');
+const { AGORA, frase, INGLESAS, RUSSA, SACK, ARM, abrirPainel, progresso, resumo, envio, marcarEEnviar, enviosCriados, pedirConferenciaDaConexao, umaVoltaDoEnvio } = require('../apoio-do-envio');
 
 test.beforeEach(({ fakes }) => {
   fakes.anki.usarRelogio(() => AGORA);
@@ -83,7 +83,7 @@ test('Apagar tudo no meio de um Envio encerra o Envio no painel: nenhum resumo o
   // De volta a Frases: nada do Envio aparece, nem o resumo, nem o progresso.
   await page.goto(extensao.url('painel.html#frases'));
   await expect(page.getByText('Nenhuma frase ainda.')).toBeVisible();
-  await assentar(page);
+  await umaVoltaDoEnvio(page);
   await expect(resumo(page)).toBeHidden();
   await expect(progresso(page)).toBeHidden();
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/retry')).toHaveLength(0);
@@ -114,7 +114,7 @@ test('Apagar tudo numa aba encerra o Envio nas outras abas: nenhuma abre um resu
 
   // A outra aba soube do Apagar tudo: as Frases dos Envios não existem mais, então não há resumo "+0 cartões" nem Tentar de novo.
   await outra.bringToFront();
-  await assentar(outra);
+  await umaVoltaDoEnvio(outra);
   await expect(outra.getByText('Nenhuma frase ainda.')).toBeVisible();
   await expect(resumo(outra)).toBeHidden();
   await expect(progresso(outra)).toBeHidden();
@@ -246,8 +246,9 @@ test('Apagar tudo enquanto o pedido de um Envio espera a Conexão: a resposta qu
   await page.getByRole('dialog').getByRole('button', { name: 'Apagar 4 frases' }).click();
   await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
 
+  const resposta = page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname.endsWith('/jobs'));
   soltar();
-  await assentar(page);
+  await umaVoltaDoEnvio(page, { resposta });
   expect(idiomasPedidos).toEqual(['en']);
   // Nada do Envio voltou ao que o painel guarda, nem as Frases dele.
   expect((await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();

@@ -1,4 +1,4 @@
-"""O Envio dentro da Conexão (#142): a fila, o estado de cada Cartão e a thread de trabalho que os faz.
+"""O Envio dentro da Conexão (#142): a fila, o estado de cada Cartão e o trabalho que os faz (a thread dele: `trabalhador.py`).
 
 O desenho (dono de cada dado, estados, transições, variantes e limites) está em `docs/design/envio-no-complemento.md`.
 Os estados e as regras são os do Envio de hoje (`bridge/envio.py`), que o painel já lê: `queued` → `running` (etapa
