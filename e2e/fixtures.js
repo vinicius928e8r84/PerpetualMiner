@@ -89,6 +89,7 @@ async function esperarAbaDaInstalacao(context, id) {
  */
 async function abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste }) {
   servidorDoLogin.atender(fakes.google.responderLogin);
+  servidorDoLogin.atenderChatGPT(fakes.chatgpt.responderAutorizacao);
   const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-e2e-'));
   let context = null;
   try {
@@ -108,7 +109,7 @@ async function abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, p
       args: [
         `--disable-extensions-except=${pastaDaExtensao}`,
         `--load-extension=${pastaDaExtensao}`,
-        `--host-resolver-rules=MAP accounts.google.com 127.0.0.1:${servidorDoLogin.porta}`,
+        `--host-resolver-rules=MAP accounts.google.com 127.0.0.1:${servidorDoLogin.porta}, MAP auth.openai.com 127.0.0.1:${servidorDoLogin.porta}`,
         // Só o servidor local do login usa HTTPS, com certificado autoassinado.
         '--ignore-certificate-errors',
         // A rede é toda falsificada ou bloqueada aqui: um proxy do ambiente
@@ -236,7 +237,8 @@ const test = base.extend({
     const anki = criarFakeAnki(), google = criarFakeGoogle();
     const abridor = criarFakeAbridor();
     anki.sincronizarCom(google);
-    await use({ anki, gemini: criarFakeGemini(), google, abridor });
+    // `chatgpt`: a página de autorização do auth.openai.com, ligada ao login que o fake da Conexão guarda (#155).
+    await use({ anki, gemini: criarFakeGemini(), google, abridor, chatgpt: anki.chatgpt });
     abridor.limpar();
   },
 

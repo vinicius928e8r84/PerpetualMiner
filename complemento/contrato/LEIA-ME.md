@@ -1,7 +1,8 @@
 # O contrato da Conexão com o Anki
 
 `exemplos.json` é o conjunto único de pedidos e respostas entre a extensão e a Conexão
-com o Anki (o complemento do Anki, em `127.0.0.1:8766`). Dois lados leem o mesmo arquivo:
+com o Anki (o complemento do Anki, em `127.0.0.1:8766`), junto com os `exemplos-*.json` ao lado dele (um por assunto;
+`carregar.js` e `test_servidor.py` os somam e recusam um nome repetido). Dois lados leem o mesmo conjunto:
 
 - **o complemento**: `python3 complemento/test_servidor.py` sobe o servidor real e confere
   cada exemplo (rode também no 3.9, o Python do Anki do Mac);
@@ -13,7 +14,7 @@ Mudar só um lado quebra um teste, e a mensagem diz o exemplo e os dois arquivos
 O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede nem que o complemento responde fica sem exemplo.
 
 - **Os pedidos da extensão**: todo pedido nasce de um construtor de `PerpetualMiner.PedidoAoAnki` (`lib/pedido-ao-anki.js`:
-  `saude`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`, `chaveDaOpenAI`, `apagarChaveDaOpenAI`, `estadoDaIA`, e os do Envio: `criarEnvio` (o corpo leva o `jobId`), `listarEnvios`, `verEnvio`, `tentarEnvioDeNovo`, `pacoteDeDiagnostico`, `apagarFrasesDosEnvios`, `custosDosEnvios`), e `PedidoAoAnki.variantes` os lista. `node test_contrato_fechado.js`
+  `saude`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`, `chaveDaOpenAI`, `apagarChaveDaOpenAI`, `estadoDaIA`, os do ChatGPT e os do Envio: `criarEnvio` (o corpo leva o `jobId`), `listarEnvios`, `verEnvio`, `tentarEnvioDeNovo`, `pacoteDeDiagnostico`, `apagarFrasesDosEnvios`, `custosDosEnvios`), e `PedidoAoAnki.variantes` os lista. `node test_contrato_fechado.js`
   pede ao construtor cada variante (com os dois Baralhos, as três leituras dos números…) e exige um exemplo `daExtensao`
   de cada uma, que o fake do e2e então responde. O nome do Baralho não conta para achar o exemplo; quantos Baralhos, `refresh` e
   `launch` contam. A regra `contrato-fechado` (`node scripts/regras/verificar.js`) acusa um `fetch` direto a uma rota da Conexão.
@@ -60,7 +61,8 @@ O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede 
 - `pedido`: o que chega, com `origem` (o cabeçalho `Origin`; `null` é que ele não veio). Rotas com corpo
   ganham `corpo`, o JSON do pedido (no fake, o exemplo que cita `corpo` só vale para esse corpo), ou `corpoBruto` (os bytes como vierem, para o que não é JSON: o `400` `invalid_json`; a extensão nunca o manda, então esse exemplo não é `daExtensao`).
 - `resposta`: o status e o JSON. `"<agora>"` no JSON é o instante em que a Conexão respondeu: o complemento confere
-  qualquer instante ISO 8601 em UTC, e o fake escreve o do relógio dele.
+  qualquer instante ISO 8601 em UTC, e o fake escreve o do relógio dele. `"<url de autorização>"` é a do login do ChatGPT
+  (o `state` muda a cada tentativa).
 - `fila`: o nome de uma fila de `filas` (no alto do arquivo, ao lado de `colecoes`): os Envios que a Conexão já tinha, cada um
   com o pedido (`job`), o estado (`state`, com o de cada Cartão em `cards`) e os registros de custo (`custos`). O teste do
   complemento a escreve nos arquivos da pasta de dados (`semear_a_fila` em `test_servidor.py`) e o fake a carrega por
@@ -173,6 +175,19 @@ A Conexão de hoje (`bridge/`) atende as mesmas rotas e o mesmo criar idempotent
 
 `lastError` e o `error` de cada Cartão são códigos (`openai_key_missing`, `openai_key_rejected`, `openai_no_credit`,
 `openai_rate_limited`, `openai_unreachable`, `note_type_missing`, `anki_write_failed`…), nunca o texto da OpenAI.
+
+## Entrar com o ChatGPT (#155)
+
+POST com a origem da extensão; contexto `chatgpt`: `desconectada`, `entrando`, `conectada` ou `recusou`. Nenhuma resposta leva
+um token (`docs/design/login-do-chatgpt.md`).
+
+| Rota | Corpo | Resposta |
+|---|---|---|
+| `POST /ia/chatgpt/estado` | `{}` | `{ conectada, entrando, falha }` (`falha`: `chatgpt_access_denied`, `chatgpt_plan_not_granted`, `chatgpt_login_failed` ou `null`) |
+| `POST /ia/chatgpt/entrar` | `{}` | `{ url }`: uma tentativa nova; a extensão abre a URL numa aba |
+| `POST /ia/chatgpt/sair` | `{}` | `{ ok, revogada }`: revoga a sessão (se dá) e apaga o login |
+
+O retorno `GET /auth/callback` é do navegador, fora dos exemplos (`servidor.PAGINAS`; `test_login_do_chatgpt.py`).
 
 ## O abridor (Native Messaging)
 

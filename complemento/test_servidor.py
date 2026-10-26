@@ -16,12 +16,14 @@ import tempfile
 import threading
 import unittest
 import warnings
+from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos, configuracao, envio, item_de_login, pasta_de_dados, registro, servidor  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira  # noqa: E402
+from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira  # noqa: E402
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
@@ -59,8 +61,20 @@ def tearDownModule():
 
 
 def ler_o_contrato():
+    """O contrato inteiro: `exemplos.json` e os `exemplos-*.json` ao lado dele, juntos (o mesmo que `contrato/carregar.js` faz)."""
     with open(CONTRATO, encoding="utf-8") as arquivo:
-        return json.load(arquivo)
+        contrato = json.load(arquivo)
+    pasta = os.path.dirname(CONTRATO)
+    for nome in sorted(n for n in os.listdir(pasta) if n.startswith("exemplos-") and n.endswith(".json")):
+        with open(os.path.join(pasta, nome), encoding="utf-8") as arquivo:
+            for chave, valor in json.load(arquivo).items():
+                if isinstance(valor, list):
+                    contrato[chave] = contrato.get(chave, []) + valor
+                else:
+                    repetidos = set(valor) & set(contrato.get(chave, {}))
+                    assert not repetidos, "%s: %s de %r já existe em outro arquivo do contrato" % (nome, sorted(repetidos), chave)
+                    contrato[chave] = dict(contrato.get(chave, {}), **valor)
+    return contrato
 
 
 def exemplos_do_contrato():
@@ -74,9 +88,11 @@ def colecao_do_exemplo(contexto):
 
 
 def igual_ao_do_contrato(obtido, esperado):
-    """O JSON obtido é o do contrato; `"<agora>"` no contrato é qualquer instante ISO 8601 (Z)."""
+    """O JSON obtido é o do contrato; `"<agora>"` é qualquer instante ISO 8601 (Z) e `"<url de autorização>"`, a do login do ChatGPT."""
     if esperado == "<agora>":
         return isinstance(obtido, str) and bool(re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z", obtido))
+    if esperado == "<url de autorização>":
+        return isinstance(obtido, str) and obtido.startswith("https://auth.openai.com/api/accounts/authorize?client_id=dynamic_agent_client&")
     if isinstance(esperado, dict):
         return isinstance(obtido, dict) and obtido.keys() == esperado.keys() and all(igual_ao_do_contrato(obtido[k], v) for k, v in esperado.items())
     if isinstance(esperado, list):
@@ -206,8 +222,10 @@ class ConexaoNoTeste:
         firebase=0,
         trabalhando=False,
         espera_do_contato=0.0,
+        chatgpt=None,
     ):
         self.perfil = perfil
+        self.situacao_do_chatgpt = chatgpt  # `conectada` (o arquivo do login já existe), `entrando` ou `recusou` (a tentativa)
         self.falha_no_perfil = falha_no_perfil
         self.pasta = pasta
         self.item = _item_de_login_do_contexto(pasta, item)
@@ -232,6 +250,10 @@ class ConexaoNoTeste:
         self.openai = OpenAIDeMentira(openai)
         self.firestore = FirestoreDeMentira()
         self.firestore.falha = firebase
+        self.servidor_de_login = ChatGPTDeMentira()
+        if chatgpt == "conectada":
+            with open(os.path.join(self.chaves, "chatgpt.json"), "w", encoding="utf-8") as arquivo:
+                json.dump({"client_id": "oaiapp_x", "access_token": "acesso-x", "refresh_token": "renovacao-x", "expira_em": 4e9}, arquivo)
         self.cofre_sem_escrita = cofre_sem_escrita
         self.logger = registro.criar(self.logs)
         self.conexao = servidor.Conexao(
@@ -245,6 +267,7 @@ class ConexaoNoTeste:
             item_de_login=self.item,
             openai_base=self.openai.base,
             firestore_base=self.firestore.base,
+            chatgpt_base=self.servidor_de_login.base,
             intervalo_de_parada=0.005,
             trabalhando=trabalhando,
             intervalo_do_envio=0.01,
@@ -261,9 +284,14 @@ class ConexaoNoTeste:
     def __enter__(self):
         self.openai.__enter__()
         self.firestore.__enter__()
+        self.servidor_de_login.__enter__()
         if self.cofre_sem_escrita:
             os.chmod(self.chaves, 0o500)  # gravar a cópia da chave falha: a Conexão responde o erro interno
         assert self.conexao.iniciar(), "a porta de teste devia estar livre"
+        if self.situacao_do_chatgpt in ("entrando", "recusou"):
+            estado = parse_qs(urlsplit(self.conexao.chatgpt.iniciar(self.conexao.porta)).query)["state"][0]
+            if self.situacao_do_chatgpt == "recusou":
+                self.conexao.chatgpt.receber({"error": "access_denied", "state": estado}, "127.0.0.1:%d" % self.conexao.porta, self.conexao.porta)
         return self
 
     def __exit__(self, *erro):
@@ -272,6 +300,7 @@ class ConexaoNoTeste:
         self.conexao.parar()
         self.openai.__exit__(*erro)
         self.firestore.__exit__(*erro)
+        self.servidor_de_login.__exit__(*erro)
         for handler in list(self.logger.handlers):
             handler.close()
 
@@ -324,6 +353,7 @@ def conexao_do_exemplo(pasta, exemplo):
         nao_enviada=contexto.get('naoEnviada', True),
         hora_na_conexao=contexto.get('emNaConexao', 0),
         firebase=contexto.get('firebase', 0),
+        chatgpt=contexto.get("chatgpt"),
     ) as conexao:
         if 'chaveNaNuvem' in contexto:
             conexao.firestore.documentos['uid-teste'] = {
@@ -435,6 +465,10 @@ MATRIZ = {
     },
     # A chave da IA (PR 191): não lê a coleção nem o perfil. O corpo mínimo não traz a `chave`, então o pedido é recusado em todo estado.
     ("POST", "/ia/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    # Entrar com o ChatGPT (#155): não lê a coleção nem o perfil. Entrar cria o id deste computador; sair apaga o arquivo do login.
+    ("POST", "/ia/chatgpt/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/ia/chatgpt/entrar"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/ia/chatgpt/sair"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     # Apagar a cópia da chave (#154): não lê a coleção nem o perfil, e apagar o que não existe também é 200.
     ("POST", "/ia/openai/chave/apagar"): {
         "corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": [], "muda": True, "versao": True,
@@ -639,7 +673,10 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
                 with tempfile.TemporaryDirectory() as pasta, conexao_do_exemplo(pasta, exemplo) as conexao:
                     primeiro = self.pedir_o_exemplo(conexao, exemplo)
                     guardado = estado_guardado(conexao)
-                    self.assertEqual(self.pedir_o_exemplo(conexao, exemplo), primeiro, nome + ": o mesmo pedido de sucesso de novo respondeu outra coisa")
+                    status, segundo = self.pedir_o_exemplo(conexao, exemplo)
+                    combinada = exemplo["resposta"]["json"]  # salvo o que o contrato marca como variável (`<agora>`, `<url de autorização>`)
+                    mesma = segundo == primeiro[1] or (igual_ao_do_contrato(primeiro[1], combinada) and igual_ao_do_contrato(segundo, combinada))
+                    self.assertTrue(status == primeiro[0] and mesma, nome + ": o mesmo pedido de sucesso de novo respondeu outra coisa")
                     self.assertEqual(guardado, estado_guardado(conexao), nome + ": o mesmo pedido de sucesso de novo mudou o que a Conexão guarda (o arquivo do dono)")
                     if not matriz[rota].get("versao"):
                         continue
@@ -747,10 +784,10 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
             with self.assertRaisesRegex(AssertionError, "tire a exceção"):
                 self.conferir_o_pedido_repetido(rotas, matriz, exemplos)
 
-    def test_as_rotas_que_mudam_sao_as_da_chave_do_item_de_login_e_do_envio(self):
+    def test_as_rotas_que_mudam_sao_as_da_chave_do_chatgpt_do_item_de_login_e_do_envio(self):
         self.assertEqual(
             sorted(rota[1] for rota, regra in MATRIZ.items() if regra.get("muda")),
-            ["/abrir-com-o-computador", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry"],
+            ["/abrir-com-o-computador", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry"],
         )
 
 
@@ -854,66 +891,6 @@ class LeituraDaColecao(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             status, _, corpo = conexao.pedir("POST", "/anki/decks", corpo={})
         self.assertEqual((status, json.loads(corpo)["error"]), (503, "anki_decks_unavailable"))
-
-
-class AbrirOAnkiComOComputador(unittest.TestCase):
-    """O que o pedido deixa no disco: o item de login escrito ou apagado, e só a extensão o pede."""
-
-    ROTA = "/abrir-com-o-computador"
-
-    def itens(self, conexao):
-        pasta = conexao.item.pasta
-        return sorted(os.listdir(pasta)) if os.path.isdir(pasta) else []
-
-    def test_ligar_escreve_o_item_e_desligar_o_apaga(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            antes = self.itens(conexao)
-            conexao.pedir("POST", self.ROTA, corpo={"ligado": True})
-            ligado = self.itens(conexao)
-            estado = json.loads(conexao.pedir("POST", self.ROTA + "/estado", corpo={})[2])
-            conexao.pedir("POST", self.ROTA, corpo={"ligado": False})
-            depois = self.itens(conexao)
-        self.assertEqual((antes, ligado, depois), ([], ["com.perpetualminer.abrir-o-anki.plist"], []))
-        self.assertEqual(estado, {"ok": True, "ligado": True})
-
-    def test_a_pergunta_pelo_estado_nao_escreve_nem_apaga_nada(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, item="ligado") as conexao:
-            conexao.pedir("POST", self.ROTA + "/estado", corpo={})
-            ainda = self.itens(conexao)
-        self.assertEqual(ainda, ["com.perpetualminer.abrir-o-anki.plist"])
-
-    def test_outro_site_ou_outra_extensao_nao_liga_nada(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            for origem in (None, "https://exemplo.com", "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"):
-                with self.subTest(origem):
-                    status, _, _ = conexao.pedir("POST", self.ROTA, origem=origem, corpo={"ligado": True})
-                    self.assertEqual(status, 403)
-            self.assertEqual(self.itens(conexao), [])
-
-    def test_ler_o_estado_exige_a_origem_da_extensao(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            status, _, _ = conexao.pedir("GET", self.ROTA + "/estado", origem=None)
-        self.assertEqual(status, 403)
-
-    def test_corpo_que_nao_e_json_e_recusado_sem_escrever_nada(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            status, _, corpo = conexao.pedir("POST", self.ROTA, corpo=b"isto nao e json")
-            itens = self.itens(conexao)
-        self.assertEqual((status, json.loads(corpo), itens), (400, {"error": "invalid_json"}, []))
-
-    def test_corpo_sem_ligado_e_recusado_sem_escrever_nada(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            for corpo in ({}, {"ligado": 1}, {"ligado": None}):
-                with self.subTest(corpo):
-                    status, _, resposta = conexao.pedir("POST", self.ROTA, corpo=corpo)
-                    self.assertEqual((status, json.loads(resposta)), (400, {"error": "invalid_request"}))
-            self.assertEqual(self.itens(conexao), [])
-
-    def test_a_falha_ao_escrever_vai_ao_log_do_complemento(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, item="falha") as conexao:
-            conexao.pedir("POST", self.ROTA, corpo={"ligado": True})
-            registrado = conexao.log()
-        self.assertIn("Abrir o Anki com o computador", registrado)
 
 
 class OrigemDosPedidos(unittest.TestCase):

@@ -1,7 +1,7 @@
 'use strict';
 
 // O card IA dos cartões de Configurações (#140, docs/design/painel/configuracoes/): as duas entradas em
-// colunas do mesmo tamanho, a coluna da Chave da OpenAI funcionando e a do ChatGPT ainda sem login.
+// colunas do mesmo tamanho, a coluna da Chave da OpenAI (o login do ChatGPT: configuracoes-chatgpt.spec.js).
 //
 // A pessoa cola a chave; a Conexão com o Anki (o fake do e2e, que fala o contrato de
 // complemento/contrato/exemplos.json) a confere na OpenAI e guarda a cópia dela; a tela mostra a chave
@@ -207,12 +207,12 @@ test('sem chave: as duas entradas aparecem em colunas do mesmo tamanho e nada fi
   expect(Math.abs(a.y - b.y)).toBeLessThan(1);
   expect(b.x).toBeGreaterThan(a.x + a.width - 1);
 
-  // O que cada coluna diz: a chave é paga à parte e vale criá-la num projeto com limite de gasto; o ChatGPT ainda não entra.
+  // O que cada coluna diz: a chave é paga à parte e vale criá-la num projeto com limite de gasto; o ChatGPT usa o plano.
   await expect(colunaDaChave).toContainText('Você paga à OpenAI pelo uso, direto na sua conta.');
   await expect(colunaDaChave).toContainText('Crie a chave num projeto próprio da OpenAI, com limite de gasto por mês. Para desligar de verdade, revogue a chave na OpenAI.');
   await expect(colunaDaChave.getByRole('link', { name: 'Onde criar a chave' })).toHaveAttribute('href', 'https://platform.openai.com/api-keys');
-  await expect(colunaDoChatGPT.getByRole('button', { name: 'Continuar com o ChatGPT' })).toBeDisabled();
-  await expect(colunaDoChatGPT).toContainText('Ainda não dá para entrar com o ChatGPT. Por enquanto, use a chave.');
+  await expect(colunaDoChatGPT.getByRole('button', { name: 'Continuar com o ChatGPT' })).toBeEnabled();
+  await expect(colunaDoChatGPT).toContainText('Use o seu plano em vez de pagar por cartão.');
   await expect(corpo(page)).toContainText('A imagem gerada por IA sempre sai pela chave, mesmo com o plano do ChatGPT.');
   await expect(campo(page)).toHaveAttribute('placeholder', 'Cole a chave (começa com sk-)');
 

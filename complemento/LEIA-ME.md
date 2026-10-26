@@ -4,7 +4,7 @@ Python só com a biblioteca padrão (o Anki do Mac roda o 3.9, sem Flask, waitre
 Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 (`GET /health`: `{ ok, versao, perfil }`, aberta a qualquer cliente local), as leituras da coleção do Anki
 (`POST /anki/decks`, `/anki/stats/decks` e `/anki/vocabulary`) e a chave da OpenAI
-(`POST /ia/openai/chave` confere a chave na OpenAI e guarda uma cópia; `POST /ia/estado` diz se há cópia e como ela termina) e o Envio (`POST /jobs`, `/jobs/list`, `/jobs/get`, `/jobs/retry`, `/jobs/debug-bundle` e os custos, `/analytics/jobs`: cada Frase vira um Cartão de texto gravado na coleção, #142); o resto exige a origem da extensão e é POST (`contrato/LEIA-ME.md`).
+(`POST /ia/openai/chave` confere a chave na OpenAI e guarda uma cópia; `POST /ia/estado` diz se há cópia e como ela termina) o Envio (`POST /jobs`, `/jobs/list`, `/jobs/get`, `/jobs/retry`, `/jobs/debug-bundle` e os custos, `/analytics/jobs`: cada Frase vira um Cartão de texto gravado na coleção, #142) e o login do ChatGPT (`POST /ia/chatgpt/…` e o retorno `GET /auth/callback`, #155); o resto exige a origem da extensão e é POST (`contrato/LEIA-ME.md`).
 A Conexão de hoje (`bridge/`) só ganhou o mesmo POST nas três rotas da coleção.
 
 | Arquivo | O que faz |
@@ -21,6 +21,7 @@ A Conexão de hoje (`bridge/`) só ganhou o mesmo POST nas três rotas da coleç
 | `motor/` | O motor de texto de `engine/` (o mesmo código que a Conexão de hoje roda): no `.ankiaddon`, `empacotar.py` copia os arquivos de `ARQUIVOS_DO_MOTOR` para cá; no repositório, `motor/__init__.py` aponta para `engine/` |
 | `normalizacao.py` | A lógica pura do vocabulário e dos números (a de `bridge/card_normalization.py`, só com a biblioteca padrão) |
 | `chaves.py` | O cofre das chaves: `user_files/chaves/openai.json`, só do dono (0600), gravado de uma vez; a chave inteira só sai daqui para o pedido que a gasta |
+| `login_do_chatgpt.py`, `rotas_do_chatgpt.py`, `chatgpt_oficial.py` | Entrar com o ChatGPT (#155): a tentativa (PKCE), o retorno, os tokens só em `user_files/chaves/chatgpt.json` (0600), a renovação e o Sair; os endereços num módulo só (`docs/design/login-do-chatgpt.md`) |
 | `openai_api.py` | Conferir uma chave da OpenAI (`GET /v1/models` e um `POST /v1/embeddings` de uma palavra, só com a biblioteca padrão): recusada, sem crédito, organização não verificada ou a OpenAI fora do ar. Nunca copia o que a OpenAI diz ao recusar para o log nem para a resposta |
 | `item_de_login.py` | O item de login de “Abrir o Anki com o computador”: um LaunchAgent no Mac, um atalho na pasta Inicializar no Windows (o `.lnk` escrito byte a byte, sem COM nem PowerShell). Ligar escreve, desligar apaga; desligado por padrão |
 | `abridor.py` | O abridor de “Abrir o Anki sozinho” (#147): ao carregar e a cada perfil que abre, escreve em `user_files/abridor` o script com o caminho do Anki e o perfil (`.sh` no Mac; no Windows, um `.bat` que chama com o PowerShell do Windows o `.ps1` ao lado) e o registra como host de Native Messaging `com.perpetualminer.abridor`, só para a origem da extensão: no Mac, o manifesto na pasta de hosts do Chrome; no Windows, o valor padrão de `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.perpetualminer.abridor` (Opera GX 136 encontrou e chamou o host só nessa chave HKCU do Chrome num Windows real, ensaio W4 de 2026-10-10; não confirma outros builds do Opera. A ajuda do Opera cita HKLM, não HKCU). O script só responde `conferir` (o Anki está lá?) e `abrir` (abre o Anki com `-p "<perfil>"`), pelos exemplos de `contrato/exemplos.json` › `abridor`. Escrever falhou: vai ao log, a Conexão sobe assim mesmo |
@@ -50,12 +51,15 @@ python3.9 complemento/test_no_anki.py    # o adaptador do Anki (um mw de mentira
 python3.9 complemento/test_colecao_em_memoria.py  # o adaptador em memória dos testes e o contrato que ele divide com o do Anki
 python3.9 complemento/test_pacote.py     # o conteúdo do .ankiaddon (sem user_files, nem a chave)
 python3.9 complemento/test_item_de_login.py  # o item de login escrito e apagado numa pasta temporária, por sistema
-python3.9 complemento/test_abridor.py        # o abridor escrito e registrado numa pasta temporária, por sistema; o script do Mac roda (e o .ps1, onde houver pwsh)
+python3.9 complemento/test_abridor.py        # o abridor escrito e registrado numa pasta temporária; o script do Mac roda (e o .ps1, com pwsh)
 python3.9 complemento/test_chave_da_openai.py  # a chave: o que atravessa o HTTP, o que fica no disco, o que o log guarda
 python3.9 complemento/test_envio.py          # o Envio: a fila, o estado por Cartão, as duplicatas, a espera do Anki, a retomada, os custos e a chave fora de tudo
 python3.9 complemento/test_envio_fronteiras.py  # a Conexão morre em cada gravação do criar, do trabalho e do Apagar tudo (#248)
 python3.9 complemento/test_envio_apagar.py      # o Apagar tudo com o Anki fechado ou no meio do Envio
-python3.9 complemento/test_motor.py          # o motor de texto como o pacote `complemento.motor`, sem PyYAML, dotenv nem o SDK da OpenAI
+python3.9 complemento/test_motor.py          # o motor de texto como `complemento.motor`, sem PyYAML, dotenv nem o SDK da OpenAI
+python3.9 complemento/test_login_do_chatgpt.py  # o login do ChatGPT (#155)
+python3.9 complemento/test_plano_do_chatgpt.py  # o Cartão pelo plano; os tokens só no arquivo
+python3.9 complemento/test_servidor_item_de_login.py  # o item de login pelo HTTP
 ```
 
 Rode todos também com `python3.12` e `python3.13`. Sem os interpretadores: `uv python install 3.9 3.13`.
@@ -105,7 +109,7 @@ na raiz do repositório). Depois refaça o arquivo da extensão. Um `VERSAO` que
    e o Baralho não ganha nota dobrada. Em `user_files/custos/<jobId>/costs.jsonl` está o custo do texto, e a aba Custos o
    mostra; o log e o pacote de diagnóstico (Custos › Avançado › Baixar diagnóstico) não têm a chave.
 
-`test_openai_de_mentira.py` não é teste: é a OpenAI de mentira (um servidor local) que os testes põem no lugar da de verdade.
+`test_openai_de_mentira.py` e `test_chatgpt_de_mentira.py` não são testes: são a OpenAI e o login de mentira.
 
 O `package` do manifesto (`perpetualminer`) é provisório: vira o id do AnkiWeb quando o complemento for publicado.
 

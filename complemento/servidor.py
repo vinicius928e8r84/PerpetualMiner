@@ -14,9 +14,12 @@ import os
 import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs
 
-from . import baralhos, custos, envio, trabalhador
+from . import baralhos, chatgpt_oficial, custos, envio, trabalhador
 from .chaves import Cofre
+from .login_do_chatgpt import LoginDoChatGPT
+from .rotas_do_chatgpt import entrar_com_o_chatgpt, estado_do_chatgpt, retorno_do_login, sair_do_chatgpt
 from .rotas_da_chave import (
     apagar_chave_da_openai, estado_da_ia, guardar_chave_da_openai, sincronizar_chave_da_openai, vincular_legado_da_openai,
 )
@@ -151,6 +154,10 @@ ROTAS = {
     ("POST", "/ia/openai/sincronizar"): sincronizar_chave_da_openai,
     ("POST", "/ia/openai/legado"): vincular_legado_da_openai,
     ("POST", "/ia/estado"): estado_da_ia,
+    # Entrar com o ChatGPT (#155): POST com a origem da extensão, e nenhuma resposta devolve um token.
+    ("POST", "/ia/chatgpt/estado"): estado_do_chatgpt,
+    ("POST", "/ia/chatgpt/entrar"): entrar_com_o_chatgpt,
+    ("POST", "/ia/chatgpt/sair"): sair_do_chatgpt,
     ("POST", "/abrir-com-o-computador/estado"): _estado_do_item_de_login,
     ("POST", "/abrir-com-o-computador"): _abrir_com_o_computador,
     # O Envio (#142): criar e tentar de novo mudam a fila; as outras só leem. Tudo POST com a origem da extensão.
@@ -163,9 +170,13 @@ ROTAS = {
     ("POST", "/analytics/jobs"): _custos_dos_envios,
 }
 
+# O que o navegador pede, fora do contrato com a extensão: o retorno do login do ChatGPT, uma navegação (sem `Origin`) que a
+# spec #138 pôs nesta porta. Cada uma é `(conexao, consulta, host) -> bytes` de uma página HTML, e nunca levanta erro.
+PAGINAS = {("GET", chatgpt_oficial.CAMINHO_DO_RETORNO): retorno_do_login}
+
 # As rotas que respondem sem a origem da extensão. Rota nova não entra aqui sem decisão do dono:
-# o que gasta a chave ou lê dado da pessoa é POST e exige a origem.
-ROTAS_ABERTAS = frozenset([("GET", "/health")])
+# o que gasta a chave ou lê dado da pessoa é POST e exige a origem. O retorno do login é decisão da spec #138.
+ROTAS_ABERTAS = frozenset([("GET", "/health")]) | frozenset(PAGINAS)
 
 
 class _Atendente(BaseHTTPRequestHandler):
@@ -211,6 +222,16 @@ class _Atendente(BaseHTTPRequestHandler):
         if self.command != "HEAD":
             self.wfile.write(corpo)
 
+    def _responder_a_pagina(self, corpo):
+        """Uma página para o navegador: sem cache, sem referenciador e sem nada que ela possa carregar ou executar."""
+        self.send_response(200)
+        for nome, valor in (("Content-Type", "text/html; charset=utf-8"), ("Content-Length", str(len(corpo))), ("Cache-Control", "no-store"),
+                            ("Referrer-Policy", "no-referrer"), ("Content-Security-Policy", "default-src 'none'"),
+                            ("X-Content-Type-Options", "nosniff")):
+            self.send_header(nome, valor)
+        self.end_headers()
+        self.wfile.write(corpo)
+
     def _pedido_aceito(self, caminho):
         """Só a extensão pode pedir, pela origem dela. A exceção é a saúde: o Chrome manda o GET de uma
         página da extensão sem `Origin` e nada diferencia uma extensão da outra, então `GET /health`
@@ -253,6 +274,11 @@ class _Atendente(BaseHTTPRequestHandler):
             if self.headers.get("Access-Control-Request-Private-Network") == "true":
                 extras["Access-Control-Allow-Private-Network"] = "true"
             return self._responder(204, origem=origem, extras=extras)
+        pagina = PAGINAS.get((self.command, caminho))
+        if pagina is not None:
+            busca = parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
+            consulta = {nome: valores[0] for nome, valores in busca.items() if len(valores) == 1}
+            return self._responder_a_pagina(pagina(self.conexao, consulta, self.headers.get("Host")))
         rota = ROTAS.get((self.command, caminho))
         if rota is None:
             return self._responder(404, {"error": "not_found"}, origem=origem)
@@ -325,6 +351,7 @@ class Conexao:
         item_de_login=None,
         openai_base=OPENAI_BASE,
         firestore_base='https://firestore.googleapis.com/v1/projects/perpetualminer-4c219/databases/(default)/documents',
+        chatgpt_base=chatgpt_oficial.LOGIN,
         intervalo_de_parada=0.1,
         trabalhando=True,
         intervalo_do_envio=1.0,
@@ -341,6 +368,7 @@ class Conexao:
         self.logger = logger
         self.dados = dados
         self.cofre = Cofre(dados.chaves)
+        self.chatgpt = LoginDoChatGPT(dados.chaves, logger, base=chatgpt_base, api=openai_base)
         self.openai_base = openai_base
         self.firestore_base = firestore_base
         # O item de login de “Abrir o Anki com o computador”; None onde o sistema não tem (nem Mac nem Windows).
@@ -353,7 +381,7 @@ class Conexao:
         self.contato = threading.Event()
         self.fila = envio.Fila(dados, motor or envio.motor_do_complemento(), logger)
         self._trabalhador = trabalhador.Trabalhador(
-            envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(),
+            envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(), chatgpt=self.chatgpt,
                            espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai),
             intervalo=intervalo_do_envio, contato=self.contato, espera_do_contato=espera_do_contato,
         ) if trabalhando else None

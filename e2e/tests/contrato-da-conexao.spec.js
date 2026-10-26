@@ -12,7 +12,7 @@
 // está em `complemento/contrato/LEIA-ME.md`.
 
 const { test, expect } = require('../fixtures');
-const contrato = require('../../complemento/contrato/exemplos.json');
+const contrato = require('../../complemento/contrato/carregar');
 const { exemploDaExtensao, diferencaDoContrato } = require('../fakes/anki');
 
 const daExtensao = contrato.exemplos.filter(exemploDaExtensao);
@@ -35,6 +35,7 @@ for (const exemplo of daExtensao) {
     if ('colecao' in exemplo.contexto) fakes.anki.abrirColecao(exemplo.contexto.colecao);
     if (exemplo.contexto.itemDeLogin) fakes.anki.definirItemDeLogin(exemplo.contexto.itemDeLogin);
     if (exemplo.contexto.fila) fakes.anki.definirFila(exemplo.contexto.fila);
+    if (exemplo.contexto.chatgpt) fakes.anki.chatgpt.definir(exemplo.contexto.chatgpt);
     // O seam é o HTTP: uma página do produto poderia alterar o contexto
     // semeado. Um recurso estático mantém a origem sem executar o painel/popup.
     await page.goto(extensao.url('manifest.json'), { waitUntil: 'domcontentloaded' });

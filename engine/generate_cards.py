@@ -1,5 +1,5 @@
 """
-generate_cards.py - Generate Anki card content via local prompts + chat completions.
+generate_cards.py - Generate Anki card content via local prompts + chat completions (or the ChatGPT plan's Responses API).
 
 One request per keyword (not batched) to prevent keyword hallucination.
   - keywords[0] -> uses the original phrase from the input
@@ -244,6 +244,7 @@ def run(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     api_key = config["openai_api_key"]
+    plan = config.get("plano_do_chatgpt")  # {token, modelo}: the text goes through the ChatGPT plan instead of the key
     log_dir = config["paths"]["log_dir"]
     lang = config.get("lang", "en")
     model = config["openai"].get("chat_model", "gpt-4o")
@@ -263,6 +264,10 @@ def run(
 
     def call(message: str, label: str, stem: str) -> Optional[str]:
         try:
+            if plan:
+                # The ChatGPT plan (#155): the Responses API with the plan's model and token; no USD cost, the plan is not paid per card.
+                text, _usage = openai_http.responder(openai_base, plan["token"], plan["modelo"], system_prompt, message)
+                return text or None
             return _call_model(openai_base, api_key, system_prompt, message, model, log_dir, label)
         except openai_http.ErroDaOpenAI as exc:
             LOGGER.error("Modelo falhou para '%s': %s", label, exc)

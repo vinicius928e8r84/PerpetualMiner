@@ -1,30 +1,26 @@
-"""O Envio dentro da Conexão (#142): a fila, o estado de cada Cartão e o trabalho que os faz (a thread dele: `trabalhador.py`).
+"""O Envio dentro da Conexão (#142): a fila, o estado de cada Cartão e o trabalho que os faz (a thread: `trabalhador.py`).
 
-O desenho (dono de cada dado, estados, transições, variantes e limites) está em `docs/design/envio-no-complemento.md`.
-Os estados e as regras são os do Envio de hoje (`bridge/envio.py`), que o painel já lê: `queued` → `running` (etapa
-`generate_cards`, `wait_anki` ou `send_to_anki`) → `completed` | `partial` | `failed`, e uma Frase está no Anki quando todos
-os Cartões dela estão (`settle`). Aqui o estado também é **por Cartão** (`cards`: `pending` → `text` → `added` | `duplicate`,
-ou `failed` com o `error`), e é ele que faz a retomada não refazer nada pronto. Um Cartão é (`phraseId`, posição da Palavra na
-Frase), escrito `<phraseId>-<n>`.
+Desenho: `docs/design/envio-no-complemento.md`. Os estados e as regras são os de `bridge/envio.py`: `queued` →
+`running` (`generate_cards`, `wait_anki` ou `send_to_anki`) → `completed` | `partial` | `failed`; uma Frase está no Anki quando
+todos os Cartões dela estão (`settle`). O estado também é **por Cartão** (`cards`: `pending` → `text` → `added` | `duplicate`,
+ou `failed` com o `error`): a retomada não refaz nada pronto. Um Cartão é (`phraseId`, posição da Palavra), `<phraseId>-<n>`.
 
-Os arquivos, em `user_files` (`pasta_de_dados.py`), cada um escrito num temporário e trocado de uma vez, sob a tranca da fila:
+Os arquivos em `user_files`, cada um gravado num temporário e trocado de uma vez:
 
     fila/fila.json              a ordem e o id de cada Envio: [{ jobId, lang, createdAt }] (nunca o status)
-    fila/<jobId>.json           o pedido: o corpo do POST /jobs, `createdAt` e a impressão do corpo (`corpoSha256`)
+    fila/<jobId>.json           o pedido: o corpo do POST /jobs, `createdAt` e a impressão dele (`corpoSha256`)
     estado/<jobId>.json         o status do Envio e o estado de cada Cartão (nunca a Palavra nem a Frase)
     estado/<jobId>/<id>.txt     o texto de cada Cartão, escrito pelo motor (pago: nunca pedido de novo)
     custos/<jobId>/costs.jsonl  os custos, escritos pelo `cost_tracker` do motor (o Cartão no lugar da Palavra)
 
-A Palavra e a Frase só existem na linha do pedido (`entries[].line`) e no texto gerado, enquanto o Cartão não chegou ao Anki: a
-nota gravada tira o texto dele, a Frase inteira no Anki reduz a linha a `{ phraseId, noAnki }` e o Apagar tudo tira o que sobrou
-(`apagar_as_frases`). Tudo o que o Envio grava passa por `_gravar_json` e `_apagar`, e é a esses dois pontos que o teste de
-fronteira de gravação (`test_envio_fronteiras.py`) mata a Conexão.
+A Palavra e a Frase só existem na linha do pedido (`entries[].line`) e no texto gerado, até o Cartão chegar ao Anki: a nota
+gravada tira o texto dele, a Frase inteira no Anki reduz a linha a `{ phraseId, noAnki }` e o Apagar tudo tira o resto
+(`apagar_as_frases`). Toda gravação passa por `_gravar_json` e `_apagar`, onde `test_envio_fronteiras.py` mata a Conexão.
 
-As chamadas de rede (a OpenAI) acontecem na thread de trabalho; cada nota é gravada pelo adaptador da coleção (`gravar_cartao`,
-que no Anki roda na thread principal, numa operação curta). Sem coleção (perfil fechado), sincronizando ou com o Anki ocupado, o
-adaptador levanta `ColecaoIndisponivel` e a thread espera e tenta de novo, sem prazo. A chave é lida do cofre antes de cada
-pedido de texto, só para ele; `lastError` e o erro de cada Cartão são códigos, nunca o que a OpenAI escreveu. Toda leitura e
-escrita dos arquivos passa pela tranca da fila: no Windows, trocar um arquivo (`os.replace`) que outra thread tem aberto falha.
+A rede é da thread de trabalho; cada nota é gravada pelo adaptador da coleção (`gravar_cartao`, na thread principal do Anki).
+Sem coleção, sincronizando ou ocupado, ele levanta `ColecaoIndisponivel` e a thread espera, sem prazo. A chave (ou o login do
+ChatGPT) é lida antes de cada pedido de texto, só para ele; os erros são códigos, nunca o texto da OpenAI. Tudo passa
+pela tranca da fila (no Windows, `os.replace` de um arquivo aberto por outra thread falha).
 """
 
 import copy
@@ -37,6 +33,7 @@ from types import SimpleNamespace
 from datetime import datetime, timezone
 
 from . import baralhos, custos
+from .login_do_chatgpt import RECUSOU, SAIU, credencial
 
 QUEUED, RUNNING, COMPLETED, PARTIAL, FAILED = "queued", "running", "completed", "partial", "failed"
 FIM = (COMPLETED, PARTIAL, FAILED)
@@ -57,8 +54,8 @@ FALHA_AO_GRAVAR = "anki_write_failed"
 CARTOES_FALHARAM = "cards_failed"
 # As Frases foram apagadas (Apagar tudo) antes de este Cartão ter o texto: não há de onde gerá-lo.
 FRASE_APAGADA = "phrase_wiped"
-# A OpenAI recusou a chave ou a conta não tem como pagar: os Cartões seguintes falhariam igual, então o Envio para.
-PARA_O_ENVIO = ("openai_key_rejected", "openai_no_credit")
+# A chave recusada, a conta sem como pagar ou o plano que não serve agora: os próximos Cartões falhariam igual.
+PARA_O_ENVIO = ("openai_key_rejected", "openai_no_credit", SAIU, "chatgpt_usage_limit", "chatgpt_not_eligible", RECUSOU)
 # Passageiros: o Cartão tenta de novo depois de cada espera de `esperas_da_openai`.
 PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", "empty_response")
 
@@ -467,8 +464,8 @@ def resolver(pedido, estado):
 class Trabalho:
     """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto e grava a nota."""
 
-    def __init__(self, fila, colecao, cofre, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30)):
-        self.fila = fila
+    def __init__(self, fila, colecao, cofre, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30), chatgpt=None):
+        self.fila, self.chatgpt, self.plano = fila, chatgpt, {}  # o login do ChatGPT e o modelo do Envio
         self.motor = fila.motor
         self.colecao = colecao
         self.cofre = cofre
@@ -547,6 +544,7 @@ class Trabalho:
 
     # -- o Envio --
     def fazer(self, job_id):
+        self.plano = {}
         pedido = self.fila.pedido(job_id)
         if self.fila.estado_ou_refazer(job_id).get("wiped"):
             return
@@ -597,10 +595,10 @@ class Trabalho:
             if linha is None:
                 self._cartao(job_id, cartao_id, status=FALHOU, error=FRASE_APAGADA)
                 return None
-            chave = self.cofre.ler("openai")
-            if not chave:
-                return SEM_CHAVE
-            falha = self._gerar_o_texto(job_id, pedido, dict(config, openai_api_key=chave), cartao_id, cartao["phraseId"], linha)
+            chave = credencial(self.chatgpt, self.cofre, self.plano)  # o plano (#155), a chave, None ou um código
+            if not isinstance(chave, dict):
+                return SEM_CHAVE if chave is None else chave if chave in PARA_O_ENVIO else self._cartao(job_id, cartao_id, status=FALHOU, error=chave)
+            falha = self._gerar_o_texto(job_id, pedido, dict(config, **chave), cartao_id, cartao["phraseId"], linha)
             chave = None
             if self.fila.estado(job_id).get("wiped"):
                 with self.fila.tranca:
@@ -657,7 +655,7 @@ class Trabalho:
 def pacote_de_diagnostico(fila, job_id, versao, caminho_do_log):
     """O pacote de diagnóstico de um Envio: o pedido (sem as linhas das Frases), o estado, os custos, os arquivos dele e as linhas do log que o citam.
 
-    Nada da pasta `chaves` entra, e nem o log nem os custos nem o estado têm a chave, a Palavra ou a Frase."""
+    Nada da pasta `chaves` entra (a chave e o login do ChatGPT), e o log, os custos e o estado não têm a chave, a Palavra nem a Frase."""
     arquivos = []
     for pasta in (fila.pasta_dos_textos(job_id), fila.pasta_dos_custos(job_id)):
         for raiz, _, nomes in os.walk(pasta):

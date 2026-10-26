@@ -13,6 +13,26 @@ import time
 _ARQUIVOS = {"openai": "openai.json"}
 
 
+def gravar_so_do_dono(destino, documento):
+    """Sob a tranca de quem chama: substituição atômica; 0600 em POSIX, ACL herdada no Windows (a chave e o login do ChatGPT)."""
+    temporario = destino + ".novo"
+    try:
+        os.remove(temporario)
+    except OSError:
+        pass
+    descritor = os.open(temporario, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(descritor, "w", encoding="utf-8") as arquivo:
+            json.dump(documento, arquivo)
+        os.replace(temporario, destino)
+    except BaseException:
+        try:
+            os.remove(temporario)
+        except OSError:
+            pass
+        raise
+
+
 class OutraContaNaoEnviada(Exception):
     pass
 
@@ -46,24 +66,7 @@ class Cofre:
         return chave[-4:] if chave else None
 
     def _gravar(self, nome, documento):
-        """Sob a tranca: substituição atômica; 0600 em POSIX, ACL herdada no Windows."""
-        destino = self._caminho(nome)
-        temporario = destino + ".novo"
-        try:
-            os.remove(temporario)
-        except OSError:
-            pass
-        descritor = os.open(temporario, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        try:
-            with os.fdopen(descritor, "w", encoding="utf-8") as arquivo:
-                json.dump(documento, arquivo)
-            os.replace(temporario, destino)
-        except BaseException:
-            try:
-                os.remove(temporario)
-            except OSError:
-                pass
-            raise
+        gravar_so_do_dono(self._caminho(nome), documento)
 
     def reentrega(self, nome, chave, versao, conta=''):
         """True: chave/conta já aceitas no CAS atual ou replay; False: conflito."""
