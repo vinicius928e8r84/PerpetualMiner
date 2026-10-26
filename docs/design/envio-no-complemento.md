@@ -2,7 +2,7 @@
 
 Fatia ALTA pelo [modelo](modelo-fatia-alta.md): o Envio passa a viver em dois processos (o painel acompanha, a Conexão faz) e
 gasta a credencial (a chave da OpenAI que a Conexão guarda). O que a fatia entrega: apertar Enviar ao Anki entrega as Frases à
-Conexão, e cada uma vira um Cartão de **texto** (áudio: #143; imagem: [#144](imagem-do-cartao.md)), gravado direto na coleção, no tipo de nota e
+Conexão, e cada uma vira um Cartão de **texto** (áudio: [#143](audio-do-cartao.md); imagem: [#144](imagem-do-cartao.md)), gravado direto na coleção, no tipo de nota e
 nos campos de hoje (“Básico”, “Frente”, “Verso”, até o #161).
 
 **Histórico (não é parte do desenho):** a página saiu de três rodadas de revisão independente na PR #231; o que as rodadas mudaram
@@ -132,7 +132,7 @@ no bridge segue funcionando no bridge.
 - **b. Perfil fixo (#149):** a nota vai para o perfil aberto.
 - **c. Texto pago duas vezes** na janela entre a resposta da OpenAI e a gravação do texto, se o Anki for morto nela.
 - **d. Tipo de nota e campos de hoje (#161):** num Anki sem o “Básico” com “Frente” e “Verso”, o Envio falha com `note_type_missing` antes de gastar.
-- **e. Sem áudio** até o #143; a imagem: [#144](imagem-do-cartao.md).
+- **e. Áudio e imagem** são dos #143 e #144 ([audio-do-cartao.md](audio-do-cartao.md), [imagem-do-cartao.md](imagem-do-cartao.md)).
 - **f. Envio que a Conexão não conhece** (veio do bridge, ou a pasta de dados foi apagada): o painel o conta como não concluído e o
   Continuar envio dá 404. O painel decide esse `failed` sozinho (I3 da revisão: #245), contra a §1; o estado “a Conexão não conhece este
   Envio” com Esquecer fica para a retomada (#151).

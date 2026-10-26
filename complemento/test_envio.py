@@ -78,7 +78,7 @@ def chats(openai):
 
 
 class UmaFraseViraCartao(unittest.TestCase):
-    def test_uma_frase_vira_um_cartao_de_texto_no_baralho_com_o_tipo_de_nota_e_os_campos_de_hoje(self):
+    def test_uma_frase_vira_um_cartao_no_baralho_com_o_tipo_de_nota_e_os_campos_de_hoje(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             status, resposta = conexao.criar(pedido(ID, "gave up : She gave up smoking [Context: Série - The Office - S01E01]"))
             estado = conexao.esperar(ID)
@@ -88,7 +88,6 @@ class UmaFraseViraCartao(unittest.TestCase):
         self.assertEqual([(n["baralho"], n["tipo"], sorted(n["campos"])) for n in notas], [("Inglês", "Básico", ["Frente", "Verso"])])
         self.assertIn("<b>gave up</b>", notas[0]["campos"]["Frente"])
         self.assertTrue(notas[0]["campos"]["Verso"].startswith("gave up - /"))
-        self.assertNotIn("[sound:", notas[0]["campos"]["Frente"] + notas[0]["campos"]["Verso"])
         self.assertEqual(notas[0]["etiquetas"], ["perpetual_miner", "série", "the_office", "s01e01"])
         self.assertEqual(list(estado["cards"].values()), [{"phraseId": 1760000000000, "status": "added", "error": None}])
         self.assertEqual(list(estado["cards"]), ["1760000000000-0"])
@@ -263,7 +262,7 @@ class ARetomada(unittest.TestCase):
                 final = conexao.esperar(job["jobId"])
                 pedidos = chats(conexao.openai)
         self.assertEqual(pedidos, [])
-        self.assertEqual([n["campos"]["Frente"] for n in colecao.gravadas], ["They <b>run</b>"])
+        self.assertEqual([n["campos"]["Frente"].split("[sound:")[0] for n in colecao.gravadas], ["They <b>run</b>"])
         self.assertEqual(
             {stem: c["status"] for stem, c in final["cards"].items()},
             {"1760270400001-0": "added", "1760270400001-1": "added", "1760270400002-0": "added"},

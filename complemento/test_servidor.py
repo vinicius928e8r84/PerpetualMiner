@@ -24,6 +24,7 @@ from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_fila_de_mentira import semear_a_fila  # noqa: E402,F401
 from complemento.test_imagens_de_mentira import OpenverseDeMentira  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira  # noqa: E402
+from complemento.test_voz_de_mentira import VozDeMentira  # noqa: E402
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
@@ -207,6 +208,7 @@ class ConexaoNoTeste:
                     'versao': versao_na_conexao, 'conta': conta_na_conexao, 'em': hora_na_conexao, 'naoEnviada': nao_enviada}, arquivo)
         self.openai = OpenAIDeMentira(openai)
         self.openverse = OpenverseDeMentira()
+        self.voz = VozDeMentira()
         self.firestore = FirestoreDeMentira()
         self.firestore.falha = firebase
         self.cofre_sem_escrita = cofre_sem_escrita
@@ -223,6 +225,7 @@ class ConexaoNoTeste:
             openai_base=self.openai.base,
             openverse_base=self.openverse.base,
             adaptador_de_imagem=adaptador_de_imagem,
+            voz_base=self.voz.base,
             firestore_base=self.firestore.base,
             intervalo_de_parada=0.005,
             trabalhando=trabalhando,
@@ -240,6 +243,7 @@ class ConexaoNoTeste:
     def __enter__(self):
         self.openai.__enter__()
         self.openverse.__enter__()
+        self.voz.__enter__()
         self.firestore.__enter__()
         if self.cofre_sem_escrita:
             os.chmod(self.chaves, 0o500)  # gravar a cópia da chave falha: a Conexão responde o erro interno
@@ -252,6 +256,7 @@ class ConexaoNoTeste:
         self.conexao.parar()
         self.openai.__exit__(*erro)
         self.openverse.__exit__(*erro)
+        self.voz.__exit__(*erro)
         self.firestore.__exit__(*erro)
         for handler in list(self.logger.handlers):
             handler.close()

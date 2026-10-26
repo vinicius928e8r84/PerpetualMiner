@@ -29,6 +29,11 @@ def imagens(campos):
     return re.findall(r'<img src="([^"]+)">', campos["Frente"] + campos["Verso"])
 
 
+def so_a_imagem(midia):
+    """A mídia da nota que é imagem: a voz (#143) vai na mesma nota e tem os seus testes."""
+    return {nome: dados for nome, dados in midia.items() if nome.endswith(".png")}
+
+
 def juiz_que_prefere(escolhida, nota=95):
     """Um juiz que dá `nota` à candidata `escolhida` e 10 às outras, e na comparação com a gerada mantém a foto."""
     return lambda modo, candidatas: veredito_do_juiz(escolhida, [nota if i == escolhida else 10 for i in range(len(candidatas))])
@@ -55,7 +60,7 @@ class AFotoRealQueOJuizEscolhe(unittest.TestCase):
         self.assertEqual((estado["status"], estado["cards"]["1760000000000-0"]["status"]), ("completed", "added"))
         self.assertEqual(len(notas), 1)
         arquivo, = imagens(notas[0]["campos"])
-        self.assertEqual(notas[0]["midia"], {arquivo: png_de("foto-b")})
+        self.assertEqual(so_a_imagem(notas[0]["midia"]), {arquivo: png_de("foto-b")})
         self.assertEqual(geradas, [])
         autorizacao, modo, candidatas = juizes[0]
         self.assertEqual((autorizacao, modo, [c["imagem"] for c in candidatas]), ("Bearer " + CHAVE, "real_only", [png_de("foto-a"), png_de("foto-b")]))
@@ -82,7 +87,7 @@ class AFotoRealQueOJuizEscolhe(unittest.TestCase):
             estado, notas = enviar(conexao)
         self.assertEqual(estado["status"], "completed")
         arquivo, = imagens(notas[0]["campos"])
-        self.assertEqual((notas[0]["midia"], adaptador.pedidos), ({arquivo: png_de("convertida")}, [(True, "PNG")]))
+        self.assertEqual((so_a_imagem(notas[0]["midia"]), adaptador.pedidos), ({arquivo: png_de("convertida")}, [(True, "PNG")]))
 
     def test_a_foto_que_o_juiz_nao_le_manda_o_cartao_para_a_imagem_gerada(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
@@ -92,7 +97,7 @@ class AFotoRealQueOJuizEscolhe(unittest.TestCase):
             geradas = len(conexao.openai.imagens)
         self.assertEqual(estado["status"], "completed")
         arquivo, = imagens(notas[0]["campos"])
-        self.assertEqual((notas[0]["midia"], geradas), ({arquivo: png_de("gerada")}, 1))
+        self.assertEqual((so_a_imagem(notas[0]["midia"]), geradas), ({arquivo: png_de("gerada")}, 1))
 
 
 class AImagemGeradaPelaChave(unittest.TestCase):
@@ -103,7 +108,7 @@ class AImagemGeradaPelaChave(unittest.TestCase):
             estado, notas = enviar(conexao)
             geradas, juizes = list(conexao.openai.imagens), [modo for _, modo, _ in conexao.openai.juizes]
         arquivo, = imagens(notas[0]["campos"])
-        self.assertEqual((estado["status"], notas[0]["midia"]), ("completed", {arquivo: png_de("gerada")}))
+        self.assertEqual((estado["status"], so_a_imagem(notas[0]["midia"])), ("completed", {arquivo: png_de("gerada")}))
         self.assertEqual(juizes, ["real_only", "real_vs_generated"])
         autorizacao, corpo = geradas[0]
         self.assertEqual((autorizacao, corpo["model"], corpo["n"], corpo["size"]), ("Bearer " + CHAVE, "gpt-image-2.5-flare", 1, "1024x1024"))
@@ -114,7 +119,7 @@ class AImagemGeradaPelaChave(unittest.TestCase):
             estado, notas = enviar(conexao)
             juizes = len(conexao.openai.juizes)
         arquivo, = imagens(notas[0]["campos"])
-        self.assertEqual((estado["status"], notas[0]["midia"], juizes), ("completed", {arquivo: png_de("gerada")}, 0))
+        self.assertEqual((estado["status"], so_a_imagem(notas[0]["midia"]), juizes), ("completed", {arquivo: png_de("gerada")}, 0))
 
     def test_com_a_imagem_gerada_pedida_nos_ajustes_nao_ha_busca_e_a_triagem_decide_antes_de_gastar(self):
         corpo = dict(pedido(ID, FRASE), imageSource="2")
@@ -123,7 +128,7 @@ class AImagemGeradaPelaChave(unittest.TestCase):
             estado, notas = enviar(conexao, corpo=corpo)
             buscas, triagens, geradas = list(conexao.openverse.buscas), list(conexao.openai.triagens), len(conexao.openai.imagens)
         arquivo, = imagens(notas[0]["campos"])
-        self.assertEqual((estado["status"], notas[0]["midia"], buscas, geradas), ("completed", {arquivo: png_de("gerada")}, [], 1))
+        self.assertEqual((estado["status"], so_a_imagem(notas[0]["midia"]), buscas, geradas), ("completed", {arquivo: png_de("gerada")}, [], 1))
         self.assertEqual([autorizacao for autorizacao, _ in triagens], ["Bearer " + CHAVE])
 
     def test_a_triagem_que_acha_a_palavra_abstrata_manda_o_cartao_sem_imagem_e_sem_gastar_a_geracao(self):
@@ -132,7 +137,39 @@ class AImagemGeradaPelaChave(unittest.TestCase):
             conexao.openai.triagem = "A"
             estado, notas = enviar(conexao, corpo=corpo)
             geradas = len(conexao.openai.imagens)
-        self.assertEqual((estado["status"], imagens(notas[0]["campos"]), notas[0]["midia"], geradas), ("completed", [], {}, 0))
+        self.assertEqual((estado["status"], imagens(notas[0]["campos"]), so_a_imagem(notas[0]["midia"]), geradas), ("completed", [], {}, 0))
+
+
+class JuntoComOAudio(unittest.TestCase):
+    """A voz (#143) e a imagem (#144) vão na mesma nota; só a falha da voz derruba o Cartão."""
+
+    def test_o_cartao_leva_a_voz_e_a_foto_na_mesma_nota_e_a_colecao_guarda_os_tres_arquivos(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+            conexao.openverse.fotos = FOTOS
+            conexao.openai.juiz = juiz_que_prefere(1)
+            estado, notas = enviar(conexao)
+        self.assertEqual((estado["status"], len(notas)), ("completed", 1))
+        arquivo, = imagens(notas[0]["campos"])
+        sons = re.findall(r"\[sound:([^\]]+)\]", notas[0]["campos"]["Frente"] + notas[0]["campos"]["Verso"])
+        self.assertEqual((len(sons), sorted(notas[0]["midia"])), (2, sorted(sons + [arquivo])))
+        self.assertEqual(notas[0]["midia"][arquivo], png_de("foto-b"))
+
+    def test_a_voz_recusada_falha_o_cartao_sem_nota_e_sem_gastar_com_a_imagem(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+            conexao.openverse.fotos = FOTOS
+            conexao.voz.recusar("com", 400)
+            estado, notas = enviar(conexao)
+            buscas, geradas = list(conexao.openverse.buscas), list(conexao.openai.imagens)
+        self.assertEqual((estado["status"], estado["lastError"], notas), ("failed", "tts_rejected", []))
+        self.assertEqual((buscas, geradas), ([], []))
+
+    def test_a_imagem_que_falha_com_a_voz_boa_deixa_o_cartao_com_o_audio_e_sem_a_foto(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+            conexao.openverse.fora_do_ar = 503
+            conexao.openai.recusa_da_imagem = (503, "server_error")
+            estado, notas = enviar(conexao)
+        self.assertEqual((estado["status"], len(notas), imagens(notas[0]["campos"])), ("completed", 1, []))
+        self.assertEqual(sorted(notas[0]["midia"]), sorted(re.findall(r"\[sound:([^\]]+)\]", notas[0]["campos"]["Frente"] + notas[0]["campos"]["Verso"])))
 
 
 class SoAImagemFalha(unittest.TestCase):
@@ -142,7 +179,7 @@ class SoAImagemFalha(unittest.TestCase):
         self.assertEqual(bool(conexao.openai.imagens), tentou_gerar)  # a imagem foi mesmo tentada: só ela falhou
         self.assertEqual((estado["status"], estado["successfulPhraseIds"], estado["failedPhraseIds"]), ("completed", [1760000000000], []))
         self.assertEqual(estado["cards"]["1760000000000-0"], {"phraseId": 1760000000000, "status": "added", "error": None})
-        self.assertEqual((len(notas), imagens(notas[0]["campos"]), notas[0]["midia"]), (1, [], {}))
+        self.assertEqual((len(notas), imagens(notas[0]["campos"]), so_a_imagem(notas[0]["midia"])), (1, [], {}))
 
     def test_a_geracao_recusada_e_sem_foto_nenhuma_o_cartao_vai_sem_imagem_e_conta_como_enviado(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:

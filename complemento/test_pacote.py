@@ -56,7 +56,7 @@ class ArquivoDoComplemento(unittest.TestCase):
         self.assertIn("__init__.py", nomes)
         self.assertIn("servidor.py", nomes)
         for nome in nomes:
-            self.assertFalse(nome.startswith("motor/") and nome[len("motor/"):] in ("start.py", "generate_audio.py"), nome)
+            self.assertFalse(nome.startswith("motor/") and nome[len("motor/"):] == "start.py", nome)
             self.assertFalse(nome.startswith(("test_", "contrato/", "user_files/")), "não devia entrar: " + nome)
             self.assertNotIn("__pycache__", nome)
             self.assertNotEqual(nome, "empacotar.py")
@@ -85,7 +85,7 @@ class ArquivoDoComplemento(unittest.TestCase):
             pacote = self.empacotado(pasta)
             nomes = pacote.namelist()
             pacote.close()
-        for nome in ("motor/__init__.py", "motor/generate_cards.py", "motor/openai_http.py", "motor/image_pipeline.py", "motor/google_images.py", "motor/config.json", "motor/prompts/en_card.txt", "motor/prompts/ru_card.txt"):
+        for nome in ("motor/__init__.py", "motor/generate_cards.py", "motor/openai_http.py", "motor/generate_audio.py", "motor/image_pipeline.py", "motor/google_images.py", "motor/config.json", "motor/prompts/en_card.txt", "motor/prompts/ru_card.txt"):
             self.assertIn(nome, nomes)
 
     def test_empacotar_numa_copia_limpa_cria_a_pasta_dist_e_o_arquivo(self):

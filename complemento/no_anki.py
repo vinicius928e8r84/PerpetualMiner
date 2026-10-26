@@ -7,7 +7,7 @@ import threading
 
 from . import inicio
 from .baralhos import ColecaoIndisponivel, TipoDeNotaAusente
-from .configuracao import OPENAI_BASE, OPENVERSE_BASE, PORTA
+from .configuracao import OPENAI_BASE, OPENVERSE_BASE, PORTA, VOZ_BASE
 
 # Quanto a Conexão espera a thread principal do Anki ler a coleção antes de dizer que o Anki não respondeu.
 LIMITE_DA_LEITURA_S = 10
@@ -108,7 +108,7 @@ class ColecaoDoAnki:
 
         Devolve `"added"` (a nota é deste Cartão: já estava, ou foi gravada agora) ou `"duplicate"` (a frente já estava no Baralho,
         de outra nota). A busca da frente fica aqui dentro: uma função que o Anki ocupado atrasou, e que a thread de trabalho
-        deixou de esperar, não faz a volta seguinte contar a própria nota como duplicata. A `midia` (`{nome: bytes}`, o áudio do
+        deixou de esperar, não faz a volta seguinte contar a própria nota como duplicata. A `midia` (`{nome: bytes}`, o áudio e a imagem do
         Cartão) é guardada pela coleção junto com a nota nova, e só com ela."""
         return self._gravando(lambda colecao: _gravar_cartao(
             colecao, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar, midia))
@@ -199,7 +199,7 @@ def _ao_sincronizar(colecao):
 
 def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_abrir_o_perfil,
                 abridor=inicio.ABRIDOR_DESTE_COMPUTADOR, ao_sincronizar=_ao_sincronizar, openai_base=OPENAI_BASE,
-                openverse_base=OPENVERSE_BASE):
+                openverse_base=OPENVERSE_BASE, voz_base=VOZ_BASE):
     """O que o Anki faz ao importar o complemento: devolve a Conexão, ou None se ela não subiu."""
     colecao = ColecaoDoAnki(mw)
     try:
@@ -215,4 +215,5 @@ def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_
         abridor=abridor,
         openai_base=openai_base,
         openverse_base=openverse_base,
+        voz_base=voz_base,
     )
