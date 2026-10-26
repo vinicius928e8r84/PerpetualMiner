@@ -15,12 +15,12 @@ import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import baralhos, custos, envio, trabalhador
+from . import baralhos, custos, diagnostico, envio, trabalhador
 from .chaves import Cofre
 from .rotas_da_chave import (
     apagar_chave_da_openai, estado_da_ia, guardar_chave_da_openai, sincronizar_chave_da_openai, vincular_legado_da_openai,
 )
-from .configuracao import ENDERECO, OPENAI_BASE
+from .configuracao import ENDERECO, OPENAI_BASE, VOZ_BASE
 from .item_de_login import AnkiNaoEncontrado
 
 # Um pedido maior que isto não é da extensão: a leitura mais pesada (os Baralhos pedidos) cabe em poucos KB.
@@ -131,7 +131,7 @@ def _apagar_as_frases_dos_envios(conexao, corpo):
 
 def _pacote_de_diagnostico(conexao, corpo):
     log = os.path.join(conexao.dados.logs, "complemento.log")
-    return _com_o_envio(corpo, conexao, lambda job_id: (200, envio.pacote_de_diagnostico(conexao.fila, job_id, conexao.versao, log)))
+    return _com_o_envio(corpo, conexao, lambda job_id: (200, diagnostico.pacote_de_diagnostico(conexao.fila, job_id, conexao.versao, log)))
 
 
 def _custos_dos_envios(conexao, corpo):
@@ -324,6 +324,7 @@ class Conexao:
         colecao=None,
         item_de_login=None,
         openai_base=OPENAI_BASE,
+        voz_base=VOZ_BASE,
         firestore_base='https://firestore.googleapis.com/v1/projects/perpetualminer-4c219/databases/(default)/documents',
         intervalo_de_parada=0.1,
         trabalhando=True,
@@ -354,7 +355,7 @@ class Conexao:
         self.fila = envio.Fila(dados, motor or envio.motor_do_complemento(), logger)
         self._trabalhador = trabalhador.Trabalhador(
             envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(),
-                           espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai),
+                           espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai, voz_base=voz_base),
             intervalo=intervalo_do_envio, contato=self.contato, espera_do_contato=espera_do_contato,
         ) if trabalhando else None
 

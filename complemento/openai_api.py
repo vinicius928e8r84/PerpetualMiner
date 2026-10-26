@@ -34,7 +34,7 @@ class ErroDaChave(Exception):
         self.codigo = codigo
 
 
-def _contexto_tls():
+def contexto_tls():
     # O Python do Anki do Mac nem sempre acha as autoridades do sistema; o Anki leva o `certifi`.
     try:
         import certifi
@@ -52,7 +52,7 @@ def _pedir(base, metodo, caminho, chave, corpo=None):
     if dados is not None:
         pedido.add_header("Content-Type", "application/json")
     try:
-        with urllib.request.urlopen(pedido, timeout=TEMPO_DE_CADA_PEDIDO, context=_contexto_tls()) as resposta:
+        with urllib.request.urlopen(pedido, timeout=TEMPO_DE_CADA_PEDIDO, context=contexto_tls()) as resposta:
             return resposta.status, {}
     except urllib.error.HTTPError as erro:
         try:
