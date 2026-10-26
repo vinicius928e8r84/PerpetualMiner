@@ -41,6 +41,11 @@ class ImageGuardTests(unittest.TestCase):
         _, _, custos = self.decidir("bicycle", resposta("C"), label="1760000000000-0")
         self.assertEqual([c["keyword"] for c in custos], ["[image_guard] 1760000000000-0"])
 
+    def test_a_passing_429_is_asked_again_and_the_model_still_decides(self):
+        vezes = []
+        decisao, pedidos, _ = self.decidir("bicycle", lambda pedido: (vezes.append(1), (429, {"error": {"code": "rate_limit_exceeded"}}) if len(vezes) == 1 else resposta("A"))[1])
+        self.assertEqual((decisao, len(pedidos)), (False, 2))
+
 
 if __name__ == "__main__":
     unittest.main()

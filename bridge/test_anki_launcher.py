@@ -602,15 +602,19 @@ class BridgeServerTests(unittest.TestCase):
         self.assertIn("self.server_fingerprint = _file_fingerprint(SERVER_PATH)", source)
         self.assertIn('"sha256_12"', source)
 
-    def test_module_fingerprint_checks_image_normalization_guard(self) -> None:
-        fingerprint_fn = _function_source("_build_module_fingerprint")
+    def test_health_says_the_image_normalization_modules_are_loaded(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bridge = server.BridgeApp(config={
+                "automatic_anki_path": "engine",
+                "jobs_root": str(Path(tmp) / "jobs"),
+                "queue_file": str(Path(tmp) / "queue.json"),
+            })
+            bridge._load_modules()  # what start() does with the engine on disk
+            health = bridge.app.test_client().get("/health").get_json()
 
-        self.assertIn('"image_judge.py"', fingerprint_fn)
-        self.assertIn('"google_images.py"', fingerprint_fn)
-        self.assertIn('"image_utils.py"', fingerprint_fn)
-        self.assertIn('"normalize_image_bytes"', fingerprint_fn)
-        self.assertIn('"download_candidate"', fingerprint_fn)
-        self.assertIn('"_is_invalid_image_format_error"', fingerprint_fn)
+        fingerprint = health["moduleFingerprint"]
+        self.assertTrue(fingerprint["normalizationLoaded"])
+        self.assertEqual(sorted(fingerprint["modules"]), ["google_images.py", "image_judge.py", "image_utils.py"])
 
     def test_access_denied_repair_route_answers_503_with_the_payload(self) -> None:
         payload = {

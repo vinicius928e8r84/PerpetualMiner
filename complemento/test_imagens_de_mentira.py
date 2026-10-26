@@ -30,7 +30,7 @@ class OpenverseDeMentira:
     """`OpenverseDeMentira({"eye": ["olho-1", "olho-2"]})`: a busca por "eye" acha essas duas fotos, e cada uma é servida em `/foto/<rótulo>`.
 
     Uma busca que não está em `fotos` não acha nada; `fora_do_ar` (um status) faz toda busca e todo arquivo responderem esse status.
-    `buscas` guarda as consultas; `baixados`, os rótulos pedidos.
+    `buscas` guarda as consultas; `baixados`, os rótulos pedidos; `cabecalhos`, os cabeçalhos de cada pedido que chegou (busca ou arquivo).
     """
 
     def __init__(self, fotos=None):
@@ -38,6 +38,7 @@ class OpenverseDeMentira:
         self.fora_do_ar = None
         self.buscas = []
         self.baixados = []
+        self.cabecalhos = []
         dono = self
 
         class Atendente(BaseHTTPRequestHandler):
@@ -46,6 +47,7 @@ class OpenverseDeMentira:
 
             def do_GET(self):
                 partes = urlsplit(self.path)
+                dono.cabecalhos.append(dict(self.headers))
                 if dono.fora_do_ar:
                     return self._responder(dono.fora_do_ar, "application/json", b"{}")
                 if partes.path == "/v1/images/":

@@ -100,6 +100,7 @@ def should_generate_image(
             ],
             temperatura=0,
             max_tokens=1,
+            repeticoes=openai_http.REPETICOES_DA_IMAGEM,
         )
 
         # Record the tiny cost

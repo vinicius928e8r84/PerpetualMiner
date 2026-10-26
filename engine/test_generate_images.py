@@ -101,6 +101,28 @@ class ImageGenerationFailureTests(unittest.TestCase):
             self.assertFalse(ok)
             self.assertEqual(_failure_log(root)[0]["reason"], "generation_error")
 
+    def test_a_passing_429_or_5xx_is_asked_again_and_the_image_is_stored(self):
+        for falha in [(429, {"error": {"code": "rate_limit_exceeded"}}), (502, {"error": {"message": "bad gateway"}})]:
+            vezes = []
+            with self.subTest(falha[0]), tempfile.TemporaryDirectory() as tmp:
+                with ServidorDeMentira({"/v1/images/generations": lambda pedido: (vezes.append(1), falha if len(vezes) == 1 else _ok())[1]}) as openai:
+                    root = Path(tmp)
+                    ok = generate_images.generate_one(_config(root, openai.base), "cat", "a cat")
+                    pedidos = len(openai.pedidos)
+                    guardada = (root / "Output" / "cat.png").read_bytes()
+                self.assertEqual((ok, guardada, pedidos, _failure_log(root)), (True, PNG_BYTES, 2, []))
+
+    def test_a_generation_that_keeps_failing_is_asked_three_times_and_then_logged_once(self):
+        with tempfile.TemporaryDirectory() as tmp, ServidorDeMentira({"/v1/images/generations": (503, {"error": {"message": "boom"}})}) as openai:
+            root = Path(tmp)
+            ok = generate_images.generate_one(_config(root, openai.base), "cat", "a cat")
+            self.assertEqual((ok, len(openai.pedidos), len(_failure_log(root))), (False, 3, 1))
+
+    def test_a_missing_model_is_not_asked_again(self):
+        with tempfile.TemporaryDirectory() as tmp, ServidorDeMentira({"/v1/images/generations": _model_gone}) as openai:
+            generate_images.generate_one(_config(Path(tmp), openai.base), "cat", "a cat")
+            self.assertEqual(len(openai.pedidos), 1)
+
     def test_an_answer_without_an_image_is_a_failure_too(self):
         with tempfile.TemporaryDirectory() as tmp, ServidorDeMentira({"/v1/images/generations": (200, {"data": []})}) as openai:
             root = Path(tmp)

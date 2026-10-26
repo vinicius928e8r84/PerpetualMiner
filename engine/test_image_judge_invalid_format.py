@@ -72,6 +72,31 @@ class ImageJudgeTests(unittest.TestCase):
                 julgar(td, openai)
         self.assertEqual(recusa.exception.codigo, openai_http.LIMITE_DE_USO)
 
+    def test_a_passing_429_or_5xx_is_asked_again_and_the_judge_still_chooses_the_photo(self):
+        for falha in [(429, {"error": {"code": "rate_limit_exceeded"}}), (503, {"error": {"message": "overloaded"}})]:
+            vezes = []
+            with self.subTest(falha[0]), tempfile.TemporaryDirectory() as td:
+                with ServidorDeMentira({"/v1/chat/completions": lambda pedido: falha if not vezes.append(1) and len(vezes) == 1 else veredito()}) as openai:
+                    resultado = julgar(td, openai)
+                    pedidos = len(openai.pedidos)
+                self.assertEqual((resultado["best_index"], resultado["verdict"], pedidos), (0, "keep_real", 2))
+
+    def test_a_refusal_that_keeps_coming_is_asked_three_times_and_then_reaches_the_caller(self):
+        with tempfile.TemporaryDirectory() as td, ServidorDeMentira({"/v1/chat/completions": (429, {"error": {"code": "rate_limit_exceeded"}})}) as openai:
+            with self.assertRaises(openai_http.ErroDaOpenAI) as recusa:
+                julgar(td, openai)
+            pedidos = len(openai.pedidos)
+        self.assertEqual((recusa.exception.codigo, pedidos), (openai_http.LIMITE_DE_USO, 3))
+
+    def test_a_rejected_key_or_a_billing_refusal_is_not_asked_again(self):
+        for status, corpo, codigo in [(401, {"error": {"code": "invalid_api_key"}}, openai_http.RECUSADA),
+                                      (429, {"error": {"code": "insufficient_quota"}}, openai_http.SEM_CREDITO)]:
+            with self.subTest(codigo), tempfile.TemporaryDirectory() as td, ServidorDeMentira({"/v1/chat/completions": (status, corpo)}) as openai:
+                with self.assertRaises(openai_http.ErroDaOpenAI) as recusa:
+                    julgar(td, openai)
+                pedidos = len(openai.pedidos)
+            self.assertEqual((recusa.exception.codigo, pedidos), (codigo, 1))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -3,8 +3,11 @@ openai_http.py - Chat completions and image generation over plain HTTP (standard
 
 The engine's text and image stages talk to OpenAI through this module instead of the SDK, so they also run inside
 the Anki add-on (the Conexão com o Anki), where there is no `openai`, `httpx` or `requests`. The base URL
-is passed by code (the bridge uses OPENAI_BASE; the add-on passes its own constant): nothing in the
-environment or the config can redirect the key.
+is passed by code (each caller passes its own constant, or OPENAI_BASE): nothing in the environment or in
+`engine/config.json` can redirect the key.
+
+The image calls (the judge, the screening, the generation) ask again, twice, after a passing refusal (408/409/429/5xx,
+a timeout or no answer), as the SDK did; the text call does not (the add-on waits and repeats it by itself).
 
 A refusal becomes `ErroDaOpenAI(codigo)`; what OpenAI wrote in the refusal is never kept, because the
 message of a rejected key repeats parts of it.
@@ -12,12 +15,15 @@ message of a rejected key repeats parts of it.
 
 import json
 import ssl
+import time
 import urllib.error
 import urllib.request
 
 OPENAI_BASE = "https://api.openai.com"
 TEMPO_PADRAO = 120
 TEMPO_DA_IMAGEM = 240  # an image takes longer than a text
+REPETICOES_DA_IMAGEM = 2
+ESPERA_ENTRE_TENTATIVAS = 0.5  # seconds before the first repetition; doubles for the next
 
 # The same codes the add-on uses when it checks a key (complemento/openai_api.py).
 RECUSADA = "openai_key_rejected"
@@ -61,8 +67,12 @@ def _classificar(status, detalhe):
     return PEDIDO_RECUSADO
 
 
-def _pedir(base, caminho, chave, corpo, tempo):
-    """POST `corpo` (JSON) to `base + caminho`; returns the answer as a dict. A refusal is an `ErroDaOpenAI`."""
+def _passageira(codigo, status):
+    """A refusal worth asking again: the server or the network failed, or OpenAI asked to slow down (never the key or the billing)."""
+    return codigo == FORA_DO_AR or codigo == LIMITE_DE_USO or status in (408, 409)
+
+
+def _pedir_uma_vez(base, caminho, chave, corpo, tempo):
     pedido = urllib.request.Request(base + caminho, data=json.dumps(corpo).encode("utf-8"), method="POST")
     pedido.add_header("Authorization", "Bearer " + chave)
     pedido.add_header("Content-Type", "application/json")
@@ -80,7 +90,20 @@ def _pedir(base, caminho, chave, corpo, tempo):
         raise ErroDaOpenAI(FORA_DO_AR) from None
 
 
-def completar(base, chave, modelo, mensagens, temperatura=None, tempo=TEMPO_PADRAO, formato_json=False, max_tokens=None):
+def _pedir(base, caminho, chave, corpo, tempo, repeticoes=0):
+    """POST `corpo` (JSON) to `base + caminho`; returns the answer as a dict. A refusal is an `ErroDaOpenAI`; a passing one is asked again `repeticoes` times."""
+    espera = ESPERA_ENTRE_TENTATIVAS
+    for tentativa in range(repeticoes + 1):
+        try:
+            return _pedir_uma_vez(base, caminho, chave, corpo, tempo)
+        except ErroDaOpenAI as recusa:
+            if tentativa == repeticoes or not _passageira(recusa.codigo, recusa.status):
+                raise
+        time.sleep(espera)
+        espera *= 2
+
+
+def completar(base, chave, modelo, mensagens, temperatura=None, tempo=TEMPO_PADRAO, formato_json=False, max_tokens=None, repeticoes=0):
     """POST /v1/chat/completions. Returns (text, usage): the first choice's text ('' if none) and the `usage` dict."""
     corpo = {"model": modelo, "messages": mensagens}
     if temperatura is not None:
@@ -89,7 +112,7 @@ def completar(base, chave, modelo, mensagens, temperatura=None, tempo=TEMPO_PADR
         corpo["response_format"] = {"type": "json_object"}
     if max_tokens is not None:
         corpo["max_tokens"] = max_tokens
-    dados = _pedir(base, "/v1/chat/completions", chave, corpo, tempo)
+    dados = _pedir(base, "/v1/chat/completions", chave, corpo, tempo, repeticoes)
     escolha = (dados.get("choices") or [{}])[0] or {}
     texto = ((escolha.get("message") or {}).get("content") or "").strip()
     return texto, dados.get("usage") or {}
@@ -97,6 +120,6 @@ def completar(base, chave, modelo, mensagens, temperatura=None, tempo=TEMPO_PADR
 
 def gerar_imagem(base, chave, modelo, prompt, tamanho, tempo=TEMPO_DA_IMAGEM):
     """POST /v1/images/generations. Returns the first image of the answer: `{"b64_json": ...}` or `{"url": ...}` (`{}` if none)."""
-    dados = _pedir(base, "/v1/images/generations", chave, {"model": modelo, "prompt": prompt, "n": 1, "size": tamanho}, tempo)
+    dados = _pedir(base, "/v1/images/generations", chave, {"model": modelo, "prompt": prompt, "n": 1, "size": tamanho}, tempo, REPETICOES_DA_IMAGEM)
     primeira = (dados.get("data") or [{}])[0]
     return primeira if isinstance(primeira, dict) else {}

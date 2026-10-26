@@ -121,7 +121,7 @@ def _campos_do_tipo(modelo):
 def _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, midia=None):
     """Uma nota nova, na thread principal: o Baralho é criado se falta (`decks.id`), o tipo de nota tem de existir com os campos.
     A `midia` vai para a pasta de mídia da coleção (`media.write_data`) antes da nota; se a coleção deu outro nome ao arquivo (já
-    havia um de mesmo nome e outro conteúdo), a nota cita o nome que ficou.
+    havia um de mesmo nome e outro conteúdo), o `[sound:…]` da nota cita o nome que ficou (um `<img src>` segue o nome pedido).
 
     Uma nota com o mesmo `guid` já gravada fica como está: é a gravação que o Anki ocupado atrasou (o Envio desistiu de
     esperar e pediu de novo), e o Anki não impede dois `guid` iguais."""

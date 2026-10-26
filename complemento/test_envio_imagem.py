@@ -199,6 +199,24 @@ class OQueFicaGuardado(unittest.TestCase):
         self.assertTrue(all("queries" not in c and "query_stats" not in c and "best_real_query" not in c for c in custos))
         self.assertIn("[image_judge] 1760000000000-0", [c["keyword"] for c in custos if c["type"] == "tokens"])
 
+    def test_a_chave_vai_so_para_a_openai_e_nunca_para_o_openverse_nem_para_um_arquivo_fora_do_cofre(self):
+        for fonte in ("1", "2"):
+            with self.subTest(imageSource=fonte), tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+                conexao.openverse.fotos = FOTOS
+                conexao.openai.juiz = juiz_fraco_que_prefere_a_gerada  # a foto não presta: o Envio paga a OpenAI pelo juiz e pela geração
+                enviar(conexao, corpo=dict(pedido(ID, FRASE), imageSource=fonte))
+                arquivos = conexao.arquivos()
+                _, _, pacote = conexao.pedir("POST", "/jobs/debug-bundle", corpo={"jobId": ID})
+                with open(os.path.join(conexao.logs, "complemento.log"), "rb") as log:
+                    guardado = b"".join(dados for nome, dados in arquivos.items() if not nome.startswith("chaves")) + pacote + log.read()
+                para_a_openai = [autorizacao for _, caminho, autorizacao in conexao.openai.pedidos if caminho in ("/v1/chat/completions", "/v1/images/generations")]
+                para_o_openverse = list(conexao.openverse.cabecalhos)
+            self.assertTrue(conexao.openai.imagens)
+            self.assertEqual(set(para_a_openai), {"Bearer " + CHAVE})
+            self.assertEqual(bool(para_o_openverse), fonte == "1")
+            self.assertNotIn(CHAVE, json.dumps(para_o_openverse))
+            self.assertNotIn(CHAVE.encode("utf-8"), guardado)
+
     def test_a_aba_custos_conta_a_foto_real_do_envio(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.openverse.fotos = FOTOS

@@ -48,6 +48,14 @@ class ConfiguracaoDoMotor(unittest.TestCase):
             self.assertEqual(base, json.load(arquivo))
         self.assertNotIn("openai_api_key", base)
 
+    def test_um_endereco_no_config_json_nao_desvia_a_chave_para_outro_lugar(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            arquivo = Path(pasta) / "config.json"
+            arquivo.write_text(json.dumps({"openai": {"image_model": "m"}, "openai_base": "http://outro.exemplo", "openverse_base": "http://outro.exemplo"}), encoding="utf-8")
+            with mock.patch.object(config_loader, "CONFIG_PATH", arquivo):
+                config = config_loader.load_config(openai_api_key="sk-x")
+        self.assertEqual(config, {"openai": {"image_model": "m"}, "openai_api_key": "sk-x"})
+
     def test_cada_leitura_e_uma_copia_nova(self):
         primeira = config_loader.base_config()
         primeira["anki"]["deck_name"] = "mudado"

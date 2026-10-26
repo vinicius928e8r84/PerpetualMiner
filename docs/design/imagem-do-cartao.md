@@ -47,11 +47,14 @@ registrando como antes). As consultas saem sim da máquina, para o Openverse, co
 
 ## Riscos e limites
 
-- **Risco 10 (a imagem gerada fora do motor de hoje):** o pedido de geração agora é `urllib` (`POST /v1/images/generations` com `model`,
-  `prompt`, `n`, `size` e o `b64_json` da resposta, o mesmo corpo que o SDK mandava). Foi provado só contra a OpenAI de mentira: a imagem
-  gerada **nunca rodou contra a OpenAI de verdade** nem com o modelo `gpt-image-2.5-flare`. O ensaio do dono (#269) é a prova.
-- **Sem as tentativas do SDK:** o SDK repetia sozinho (2 vezes) um 429 ou 5xx; o `urllib` não. Na Conexão de hoje, uma falha passageira da
-  geração ou do juiz custa a imagem desta vez; no complemento, a imagem vai sem ela.
+- **Risco 10 (a imagem fora do SDK, nos dois caminhos):** o juiz, a triagem e o pedido de geração agora são `urllib`, no complemento **e na
+  Conexão de hoje** (`POST /v1/chat/completions` e `POST /v1/images/generations`, os mesmos corpos que o SDK mandava). Foi provado só contra
+  a OpenAI de mentira: depois da mescla, **nenhum dos dois caminhos rodou contra a OpenAI de verdade**, nem com o modelo `gpt-image-2.5-flare`.
+  O ensaio do dono (#269) é a prova, e vale também um Envio pela Conexão de hoje.
+- **As tentativas do SDK:** as chamadas de imagem (juiz, triagem e geração) repetem 2 vezes, esperando 0,5 s e depois 1 s, um 408, 409, 429
+  (menos o de crédito), 5xx, tempo esgotado ou falta de resposta, como o SDK fazia (`engine/openai_http.py`). Passadas as tentativas, é como
+  era: na Conexão de hoje o erro do juiz derruba o Envio, a geração perde a imagem e a triagem manda gerar; no complemento a imagem vai sem
+  ela. O texto do Cartão não repete aqui (o complemento espera e repete por conta própria).
 - **Duplicata e retomada gastam a imagem:** a busca da duplicata e a gravação são uma função só (N6), então o Cartão que acaba `duplicate`
   já pagou o juiz e, se foi o caso, a geração (como já pagava o texto). Um Envio interrompido entre a imagem e a nota (o Anki fechou) a
   pede de novo na volta.
@@ -66,7 +69,7 @@ registrando como antes). As consultas saem sim da máquina, para o Openverse, co
 Com o primeiro Cartão funcionando (`complemento/LEIA-ME.md`, passo 9), uma Palavra concreta (“bicycle”) e **Foto real** nos Ajustes de envio:
 a nota nova tem a foto no verso, e ela está na pasta de mídia do Anki (Ferramentas › Verificar mídia não a acha órfã). Uma foto que o Openverse
 serve em JPEG ou WebP vira PNG pelo Qt do Anki: abre, de pé (a orientação do EXIF vale)? Depois **Gerada por IA**: a imagem gerada entra (é a
-primeira vez que ela roda fora da Conexão de hoje; se não vier, o `complemento.log` diz o código e o Cartão chegou sem imagem mesmo assim). Uma
+primeira vez que ela roda sem o SDK; se não vier, o `complemento.log` diz o código e o Cartão chegou sem imagem mesmo assim). Uma
 Palavra abstrata (“resilience”) na imagem gerada vai sem imagem. Em `user_files/custos/<jobId>/costs.jsonl` estão as linhas `image` e
 `image_pipeline` (sem a Palavra nem as buscas), a aba Custos conta a foto ou a imagem gerada, e `user_files` não tem imagem nenhuma.
 
@@ -77,7 +80,8 @@ Palavra abstrata (“resilience”) na imagem gerada vai sem imagem. Em `user_fi
 | a nota cita a foto que o juiz escolheu, a coleção guarda os bytes dela, e o juiz recebeu as candidatas e a chave certas | `complemento/test_envio_imagem.py` (o Openverse de mentira: `test_imagens_de_mentira.py`; a OpenAI de mentira: `test_openai_de_mentira.py`) |
 | a imagem gerada (sem foto que preste, o juiz a prefere, sem foto nenhuma, `imageSource` `"2"`, a triagem abstrata) | `test_envio_imagem.py` |
 | só a imagem falha (geração recusada, Openverse e geração fora do ar, juiz recusado, foto que não converte): o Cartão vai sem imagem e conta como enviado | `test_envio_imagem.py` |
-| JPEG pelo adaptador de imagem; a imagem não fica na pasta de dados; nem a Palavra nem a Frase nos custos, no log, no pacote de diagnóstico | `test_envio_imagem.py` |
+| JPEG pelo adaptador de imagem; a imagem não fica na pasta de dados; nem a Palavra nem a Frase nos custos, no log, no pacote de diagnóstico; a chave vai só à OpenAI (nunca ao Openverse nem a um arquivo fora do cofre) | `test_envio_imagem.py` |
+| o 429 ou 5xx passageiro do juiz, da triagem e da geração é pedido de novo (2 vezes); a chave recusada e o crédito não | `engine/test_image_judge_invalid_format.py`, `test_image_guard.py`, `test_generate_images.py` |
 | o Qt de verdade (JPEG→PNG, EXIF, transparência, o que não lê) | `complemento/test_imagem_qt.py` (com PyQt6) |
 | a mídia da imagem nos dois adaptadores da coleção; pelo adaptador do Anki, na thread principal | `test_colecao_em_memoria.py`, `test_no_anki.py`, `test_no_anki_envio.py` |
 | os testes de imagem do motor, **sem Pillow instalado**: adaptador de mentira, busca, juiz, triagem, geração e download na fronteira HTTP | `engine/test_image_normalization.py`, `test_google_images.py`, `test_image_judge_invalid_format.py`, `test_image_guard.py`, `test_generate_images.py` |

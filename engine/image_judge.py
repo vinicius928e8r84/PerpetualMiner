@@ -191,6 +191,7 @@ def rank_candidates(
             ],
             temperatura=0,
             formato_json=True,
+            repeticoes=openai_http.REPETICOES_DA_IMAGEM,
         )
     except openai_http.ErroDaOpenAI as exc:
         if exc.codigo != openai_http.IMAGEM_INVALIDA:
