@@ -17,6 +17,7 @@ A Conexão de hoje (`bridge/`) só ganhou o mesmo POST nas três rotas da coleç
 | `baralhos.py` | O que se lê da coleção: a lista de Baralhos, os números de cada um e o vocabulário, só pelo lado de leitura de um adaptador da coleção (o contrato do adaptador, de leitura e de gravação, está no topo do arquivo) |
 | `envio.py` | O Envio (#142): a fila, o estado de cada Cartão e o trabalho que gera o texto pelo motor e grava cada nota pelo adaptador (na thread principal do Anki), esperando o perfil fechado e a sincronização; o criar idempotente pelo `jobId`, a retomada sem refazer o que está pronto (`guid` fixo por Cartão) e o pacote de diagnóstico. O desenho: `docs/design/envio-no-complemento.md` |
 | `trabalhador.py` | A thread de trabalho do Envio: tira um Envio da fila de cada vez e o faz (`envio.Trabalho`); depois de subir, espera até 60 s o primeiro pedido de Envio da extensão antes de retomar o que ficou parado |
+| `janela.py`, `qt_do_anki.py`, `voz.py` | O item “PerpetualMiner…” em Ferramentas, a janela dele, o Config e os avisos do Envio (#175): o estado que a janela lê (sem Qt), a fronteira com o `aqt` e a cópia por ID. `docs/design/dentro-do-anki.md` |
 | `custos.py` | Os custos de cada Envio (`user_files/custos/<jobId>/costs.jsonl`, do `cost_tracker` do motor) nas linhas que a aba Custos lê, as de `bridge/analytics.py` |
 | `motor/` | O motor de texto de `engine/` (o mesmo código que a Conexão de hoje roda): no `.ankiaddon`, `empacotar.py` copia os arquivos de `ARQUIVOS_DO_MOTOR` para cá; no repositório, `motor/__init__.py` aponta para `engine/` |
 | `normalizacao.py` | A lógica pura do vocabulário e dos números (a de `bridge/card_normalization.py`, só com a biblioteca padrão) |
@@ -55,6 +56,7 @@ python3.9 complemento/test_chave_da_openai.py  # a chave: o que atravessa o HTTP
 python3.9 complemento/test_envio.py          # o Envio: a fila, o estado por Cartão, as duplicatas, a espera do Anki, a retomada, os custos e a chave fora de tudo
 python3.9 complemento/test_envio_fronteiras.py  # a Conexão morre em cada gravação do criar, do trabalho e do Apagar tudo (#248)
 python3.9 complemento/test_envio_apagar.py      # o Apagar tudo com o Anki fechado ou no meio do Envio
+python3.9 complemento/test_janela.py         # o que a janela e os avisos dizem (um Envio de verdade, o Qt de mentira), a chave fora de tudo
 python3.9 complemento/test_motor.py          # o motor de texto como o pacote `complemento.motor`, sem PyYAML, dotenv nem o SDK da OpenAI
 ```
 
