@@ -10,6 +10,7 @@ import os
 import re
 import sys
 import tempfile
+import time
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -171,8 +172,11 @@ class AVozQueFalha(unittest.TestCase):
             conexao.voz.recusar("*", 503, vezes=1)  # o primeiro pedido volta 503, o Apagar tudo chega nele, e a voz depois responde
             conexao.voz.antes_de_responder = lambda: (apagar_as_frases(conexao), setattr(conexao.voz, "antes_de_responder", lambda: None))
             conexao.criar(pedido(ID, FRASE))
-            estado = conexao.esperar(ID)
-            pedidos = len(conexao.voz.pedidos)
+            estado = conexao.esperar(ID)  # o Apagar tudo já deu o Envio por falho: o Trabalho ainda vai pedir a voz de novo
+            fim = time.monotonic() + 15
+            while len(conexao.voz.pedidos) < 2 and time.monotonic() < fim:
+                time.sleep(0.02)
+        pedidos = len(conexao.voz.pedidos)  # fora do `with`: a Conexão parada já juntou a thread de trabalho, nada mais é gravado
         self.assertEqual((estado["status"], estado["lastError"], estado["wiped"]), ("failed", "frases_apagadas", True))
         self.assertGreater(pedidos, 1)
         self.assertEqual((colecao.gravadas, colecao.midia), ([], {}))
