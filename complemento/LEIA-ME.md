@@ -2,7 +2,7 @@
 
 Python só com a biblioteca padrão (o Anki do Mac roda o 3.9, sem Flask, waitress nem requests).
 Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
-(`GET /health`: `{ ok, versao, perfil }`, aberta a qualquer cliente local), as leituras da coleção do Anki
+(`GET /health`: `{ ok, versao, perfil }`, aberta ao cliente local), as leituras da coleção do Anki
 (`POST /anki/decks`, `/anki/stats/decks` e `/anki/vocabulary`) e a chave da OpenAI
 (`POST /ia/openai/chave` confere a chave na OpenAI e guarda uma cópia; `POST /ia/estado` diz se há cópia e como ela termina) e o Envio (`POST /jobs`, `/jobs/list`, `/jobs/get`, `/jobs/retry`, `/jobs/debug-bundle` e os custos, `/analytics/jobs`: cada Frase vira um Cartão de texto gravado na coleção, #142); o resto exige a origem da extensão e é POST (`contrato/LEIA-ME.md`).
 A Conexão de hoje (`bridge/`) só ganhou o mesmo POST nas três rotas da coleção.
@@ -15,23 +15,23 @@ A Conexão de hoje (`bridge/`) só ganhou o mesmo POST nas três rotas da coleç
 | `servidor.py` | O servidor HTTP e as rotas (`ROTAS`); só a extensão é atendida |
 | `rotas_da_chave.py` | As rotas da chave da OpenAI (`/ia/openai/…`, `/ia/estado`), listadas em `servidor.ROTAS` |
 | `baralhos.py` | O que se lê da coleção: a lista de Baralhos, os números de cada um e o vocabulário, só pelo lado de leitura de um adaptador da coleção (o contrato do adaptador, de leitura e de gravação, está no topo do arquivo) |
-| `envio.py` | O Envio (#142): a fila, o estado de cada Cartão e o trabalho que gera o texto pelo motor e grava cada nota pelo adaptador (na thread principal do Anki), esperando o perfil fechado e a sincronização; o criar idempotente pelo `jobId`, a retomada sem refazer o que está pronto (`guid` fixo por Cartão) e o pacote de diagnóstico. O desenho: `docs/design/envio-no-complemento.md` |
+| `envio.py` | O Envio (#142): a fila, o estado de cada Cartão e o trabalho que gera o texto pelo motor e grava cada nota pelo adaptador (na thread principal do Anki), esperando o perfil fechado e a sincronização; o criar idempotente pelo `jobId`, a retomada sem refazer o que está pronto (`guid` fixo por Cartão) e o pacote de diagnóstico. O desenho: `docs/design/envio-no-complemento.md`. `motor_do_envio.py`: o motor e a configuração de cada pedido |
 | `trabalhador.py` | A thread de trabalho do Envio: tira um Envio da fila de cada vez e o faz (`envio.Trabalho`); depois de subir, espera até 60 s o primeiro pedido de Envio da extensão antes de retomar o que ficou parado |
-| `imagem_do_cartao.py` | A imagem do Cartão (#144): foto real (Openverse e o juiz) ou gerada pela chave, com o código da Conexão de hoje (`motor/image_pipeline.py`); só a imagem falha → o Cartão vai sem ela. `imagem_qt.py` converte a foto com o Qt do Anki. `docs/design/imagem-do-cartao.md` |
+| `imagem_do_cartao.py` | A imagem do Cartão (#144): foto real (Openverse e o juiz) ou gerada; só ela falha → o Cartão vai sem. `imagem_qt.py`: o Qt do Anki. `docs/design/imagem-do-cartao.md` |
 | `voz.py` | A voz do Cartão (#143): o áudio pedido ao Google Tradutor como o gTTS 2.5 faz, só com a biblioteca padrão; `audio_do_cartao.py` o liga ao Envio. Página: `docs/design/audio-do-cartao.md` |
 | `diagnostico.py` | O pacote de diagnóstico de um Envio (`/jobs/debug-bundle`) |
 | `custos.py` | Os custos de cada Envio (`user_files/custos/<jobId>/costs.jsonl`, do `cost_tracker` do motor) nas linhas que a aba Custos lê, as de `bridge/analytics.py` |
-| `motor/` | O motor de texto, de voz e de imagem de `engine/` (o mesmo código que a Conexão de hoje roda): no `.ankiaddon`, `empacotar.py` copia os arquivos de `ARQUIVOS_DO_MOTOR` para cá; no repositório, `motor/__init__.py` aponta para `engine/` |
+| `motor/` | O motor de `engine/` (texto, voz e imagem; o mesmo código que a Conexão de hoje roda): no `.ankiaddon`, `empacotar.py` copia os arquivos de `ARQUIVOS_DO_MOTOR` para cá; no repositório, `motor/__init__.py` aponta para `engine/` |
 | `normalizacao.py` | A lógica pura do vocabulário e dos números (a de `bridge/card_normalization.py`, só com a biblioteca padrão) |
 | `chaves.py` | O cofre das chaves: `user_files/chaves/openai.json`, só do dono (0600), gravado de uma vez; a chave inteira só sai daqui para o pedido que a gasta |
 | `openai_api.py` | Conferir uma chave da OpenAI (`GET /v1/models` e um `POST /v1/embeddings` de uma palavra, só com a biblioteca padrão): recusada, sem crédito, organização não verificada ou a OpenAI fora do ar. Nunca copia o que a OpenAI diz ao recusar para o log nem para a resposta |
 | `item_de_login.py` | O item de login de “Abrir o Anki com o computador”: um LaunchAgent no Mac, um atalho na pasta Inicializar no Windows (o `.lnk` escrito byte a byte, sem COM nem PowerShell). Ligar escreve, desligar apaga; desligado por padrão |
 | `abridor.py` | O abridor de “Abrir o Anki sozinho” (#147): ao carregar e a cada perfil que abre, escreve em `user_files/abridor` o script com o caminho do Anki e o perfil (`.sh` no Mac; no Windows, um `.bat` que chama com o PowerShell do Windows o `.ps1` ao lado) e o registra como host de Native Messaging `com.perpetualminer.abridor`, só para a origem da extensão: no Mac, o manifesto na pasta de hosts do Chrome; no Windows, o valor padrão de `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.perpetualminer.abridor` (Opera GX 136 encontrou e chamou o host só nessa chave HKCU do Chrome num Windows real, ensaio W4 de 2026-10-10; não confirma outros builds do Opera. A ajuda do Opera cita HKLM, não HKCU). O script só responde `conferir` (o Anki está lá?) e `abrir` (abre o Anki com `-p "<perfil>"`), pelos exemplos de `contrato/exemplos.json` › `abridor`. Escrever falhou: vai ao log, a Conexão sobe assim mesmo |
 | `registro.py` | O logger do complemento: todo erro vai para `user_files/logs/complemento.log` |
-| `pasta_de_dados.py` | `user_files/{fila,estado,custos,logs,chaves}`, que o Anki preserva nas atualizações (a fila, o estado e os custos são os do Envio, `envio.py`) |
+| `pasta_de_dados.py` | `user_files/{fila,estado,custos,logs,chaves}`, que o Anki preserva nas atualizações (os do Envio, `envio.py`) |
 | `configuracao.py` | Versão, porta e o ID da extensão |
 | `contrato/` | Os exemplos que o complemento e o fake do e2e leem, e como uma rota nova entra |
-| `empacotar.py` | Monta o `.ankiaddon` (e `conexao/perpetualminer.ankiaddon`, o que a extensão entrega no botão Baixar a Conexão com o Anki), com o motor de `engine/` em `motor/` |
+| `empacotar.py` | Monta o `.ankiaddon` (e `conexao/perpetualminer.ankiaddon`, o que o botão Baixar a Conexão com o Anki entrega), com o motor de `engine/` em `motor/` |
 | `versoes.json` | O hash das fontes do pacote por `VERSAO` (fora do `.ankiaddon`); `test_pacote.py` falha, pedindo para subir a `VERSAO`, se as fontes mudam e a versão não |
 
 ## Regras que o código assume
@@ -46,21 +46,21 @@ A Conexão de hoje (`bridge/`) só ganhou o mesmo POST nas três rotas da coleç
 ## Testes
 
 ```bash
-python3.9 complemento/test_servidor.py   # o servidor real, o contrato, o processo do Anki intacto
+python3.9 complemento/test_servidor.py   # o servidor real e o contrato
 python3.9 complemento/test_servidor_erro_ao_atender.py  # os erros de um pedido que não vão para o log do Anki
 python3.9 complemento/test_inicio.py     # a pasta de dados, a Conexão no ar, a porta ocupada
 python3.9 complemento/test_no_anki.py    # o adaptador do Anki (um mw de mentira com sqlite), pelo HTTP
 python3.9 complemento/test_colecao_em_memoria.py  # o adaptador em memória dos testes e o contrato que ele divide com o do Anki
-python3.9 complemento/test_pacote.py     # o conteúdo do .ankiaddon (sem user_files, nem a chave)
-python3.9 complemento/test_item_de_login.py  # o item de login escrito e apagado numa pasta temporária, por sistema
-python3.9 complemento/test_abridor.py        # o abridor escrito e registrado numa pasta temporária, por sistema; o script do Mac roda (e o .ps1, onde houver pwsh)
+python3.9 complemento/test_pacote.py     # o conteúdo do .ankiaddon
+python3.9 complemento/test_item_de_login.py  # o item de login escrito e apagado numa pasta temporária
+python3.9 complemento/test_abridor.py        # o abridor escrito e registrado numa pasta temporária
 python3.9 complemento/test_chave_da_openai.py  # a chave: o que atravessa o HTTP, o que fica no disco, o que o log guarda
-python3.9 complemento/test_envio.py          # o Envio: a fila, o estado por Cartão, as duplicatas, a espera do Anki, a retomada, os custos e a chave fora de tudo
-python3.9 complemento/test_envio_imagem.py   # a imagem do Cartão: Openverse e OpenAI de mentira no HTTP; `test_imagem_qt.py` (com PyQt6) confere o Qt
+python3.9 complemento/test_envio.py          # o Envio: a fila, o estado por Cartão, as duplicatas, a espera do Anki, a retomada
 python3.9 complemento/test_envio_audio.py    # o áudio do Cartão: a voz do Google de mentira no HTTP, a mídia na coleção
-python3.9 complemento/test_envio_fronteiras.py  # a Conexão morre em cada gravação do criar, do trabalho e do Apagar tudo (#248)
+python3.9 complemento/test_envio_imagem.py   # a imagem do Cartão: Openverse e OpenAI de mentira
+python3.9 complemento/test_envio_fronteiras.py  # a Conexão morre em cada gravação do Envio (#248)
 python3.9 complemento/test_envio_apagar.py      # o Apagar tudo com o Anki fechado ou no meio do Envio
-python3.9 complemento/test_motor.py          # o motor de texto como o pacote `complemento.motor`, sem PyYAML, dotenv nem o SDK da OpenAI
+python3.9 complemento/test_motor.py          # o motor como o pacote `complemento.motor`, sem PyYAML, dotenv nem o SDK da OpenAI
 ```
 
 Rode todos também com `python3.12` e `python3.13`. Sem os interpretadores: `uv python install 3.9 3.13`.
@@ -103,13 +103,13 @@ na raiz do repositório). Depois refaça o arquivo da extensão. Um `VERSAO` que
 9. **O primeiro Cartão (#142).** Com a chave conferida (passo 7) e um perfil aberto que tenha o tipo de nota “Básico” com
    os campos “Frente” e “Verso” (o de hoje, até o #161), marque uma Frase em inglês em Frases e aperte **Enviar ao Anki**:
    o progresso passa por “Criando cartões” e “Enviando ao Anki” e o resumo diz “+1 cartão”. No Anki, o Baralho dos Ajustes
-   de envio tem a nota nova, com o áudio da Frase (frente) e o da Palavra (verso), com a imagem (o ensaio dela: `docs/design/imagem-do-cartao.md`), e a etiqueta `perpetual_miner`;
+   de envio tem a nota nova, com o áudio da Frase (frente) e o da Palavra (verso), a imagem (`docs/design/imagem-do-cartao.md`) e a etiqueta `perpetual_miner`;
    toque os dois áudios (um 400 na Palavra é o risco 11, reserva no #174); o Anki seguiu
    usável no meio. Depois: feche o painel e o Chrome logo depois de apertar Enviar, espere um minuto e reabra o painel: o
-   resumo vem da Conexão com o Cartão feito. Com o perfil fechado (Arquivo › Trocar perfil), um Envio fica em
+   resumo vem da Conexão. Com o perfil fechado (Arquivo › Trocar perfil), um Envio fica em
    “Esperando o Anki” e continua sozinho quando o perfil abre. Envie a mesma Frase de novo: o resumo diz “1 já estava lá”
-   e o Baralho não ganha nota dobrada. Em `user_files/custos/<jobId>/costs.jsonl` está o custo do texto, e a aba Custos o
-   mostra; o log e o pacote de diagnóstico (Custos › Avançado › Baixar diagnóstico) não têm a chave.
+   e o Baralho não ganha nota dobrada. Em `user_files/custos/<jobId>/costs.jsonl` está o custo, e a aba Custos o
+   mostra; o log e o pacote de diagnóstico não têm a chave.
 
 `test_openai_de_mentira.py` não é teste: é a OpenAI de mentira (um servidor local) que os testes põem no lugar da de verdade.
 
