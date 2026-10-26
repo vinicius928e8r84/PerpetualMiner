@@ -31,12 +31,21 @@ SISTEMA_FIXO = 3  # Unix: é o que dá as permissões acima, igual em qualquer m
 ARQUIVO_DA_EXTENSAO = os.path.join(PASTA, "..", "conexao", "perpetualminer.ankiaddon")
 FORA_DO_PACOTE = ("test_", "empacotar.py", "__pycache__", "user_files", "contrato", "LEIA-ME.md", "versoes.json")
 ENGINE = os.path.normpath(os.path.join(PASTA, "..", "engine"))
-# O que o Envio usa do motor (só a biblioteca padrão; o áudio e as imagens entram com o #143 e o #144).
+# O que o Envio usa do motor (só a biblioteca padrão; o áudio entra com o #143).
 ARQUIVOS_DO_MOTOR = (
     "config.json",
     "config_loader.py",
     "cost_tracker.py",
+    "extract_prompts.py",
     "generate_cards.py",
+    "generate_images.py",
+    "google_images.py",
+    "image_guard.py",
+    "image_judge.py",
+    "image_pipeline.py",
+    "image_queries.py",
+    "image_real_first.py",
+    "image_utils.py",
     "openai_http.py",
     "parser.py",
     "prompt_loader.py",

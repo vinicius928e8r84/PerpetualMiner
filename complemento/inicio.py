@@ -8,7 +8,7 @@ import os
 import sys
 
 from . import abridor as abridores, item_de_login as itens_de_login, pasta_de_dados, registro
-from .configuracao import OPENAI_BASE, ORIGENS_ACEITAS, PORTA, VERSAO
+from .configuracao import OPENAI_BASE, OPENVERSE_BASE, ORIGENS_ACEITAS, PORTA, VERSAO
 from .servidor import Conexao
 
 ABRIDOR_DESTE_COMPUTADOR = object()
@@ -23,6 +23,7 @@ def iniciar(
     colecao=None,
     item_de_login=None,
     openai_base=OPENAI_BASE,
+    openverse_base=OPENVERSE_BASE,
     abridor=ABRIDOR_DESTE_COMPUTADOR,
     ao_abrir_o_perfil=None,
 ):
@@ -54,6 +55,7 @@ def iniciar(
             dados=dados,
             colecao=colecao,
             openai_base=openai_base,
+            openverse_base=openverse_base,
             item_de_login=item_de_login,
         )
         return conexao if conexao.iniciar() else None

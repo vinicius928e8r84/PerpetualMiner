@@ -3,21 +3,19 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from types import SimpleNamespace
-from unittest import mock
-
-import httpx
-import openai
 
 import generate_images
+from test_servidor_de_mentira import ServidorDeMentira
 
 PNG_BYTES = b"fake png bytes"
 B64 = base64.b64encode(PNG_BYTES).decode()
+CHAVE = "sk-proj-chave-da-imagem-0000"
 
 
-def _config(root: Path, model: str = "test-image-model") -> dict:
+def _config(root: Path, base: str, model: str = "test-image-model") -> dict:
     return {
-        "openai_api_key": "test",
+        "openai_api_key": CHAVE,
+        "openai_base": base,
         "openai": {"image_model": model, "image_size": "1024x1024"},
         "paths": {
             "output_dir": str(root / "Output"),
@@ -27,18 +25,12 @@ def _config(root: Path, model: str = "test-image-model") -> dict:
     }
 
 
-def _ok_response():
-    return SimpleNamespace(data=[SimpleNamespace(b64_json=B64, url=None)])
+def _ok(corpo=None):
+    return 200, {"data": [{"b64_json": B64}], "usage": {"total_tokens": 1}}
 
 
-def _model_gone_error() -> openai.NotFoundError:
-    request = httpx.Request("POST", "https://api.openai.com/v1/images/generations")
-    response = httpx.Response(404, request=request)
-    return openai.NotFoundError(
-        "The model `test-image-model` does not exist",
-        response=response,
-        body={"code": "model_not_found"},
-    )
+def _model_gone(pedido):
+    return 404, {"error": {"message": "The model `test-image-model` does not exist " + CHAVE, "type": "invalid_request_error", "code": "model_not_found"}}
 
 
 def _failure_log(root: Path) -> list[dict]:
@@ -48,16 +40,37 @@ def _failure_log(root: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
 
 
-class ImageModelFromConfigTests(unittest.TestCase):
-    def test_generate_one_sends_the_model_from_config(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            with mock.patch.object(generate_images.openai.images, "generate", return_value=_ok_response()) as gen:
-                ok = generate_images.generate_one(_config(root, "some-other-model"), "cat", "a cat")
+def _good_or_gone(pedido):
+    return _model_gone(pedido) if pedido["corpo"]["prompt"] == "bad prompt" else _ok()
 
-            self.assertTrue(ok)
-            self.assertEqual(gen.call_args.kwargs["model"], "some-other-model")
-            self.assertEqual((root / "Output" / "cat.png").read_bytes(), PNG_BYTES)
+
+class ImageModelFromConfigTests(unittest.TestCase):
+    def test_generate_one_sends_the_model_the_size_and_the_key_from_config_and_stores_the_image(self):
+        with tempfile.TemporaryDirectory() as tmp, ServidorDeMentira({"/v1/images/generations": _ok}) as openai:
+            root = Path(tmp)
+            ok = generate_images.generate_one(_config(root, openai.base, "some-other-model"), "cat", "a cat")
+            pedido = openai.pedidos[0]
+            guardada = (root / "Output" / "cat.png").read_bytes()
+
+        self.assertTrue(ok)
+        self.assertEqual(guardada, PNG_BYTES)
+        self.assertEqual(pedido["cabecalhos"]["Authorization"], "Bearer " + CHAVE)
+        self.assertEqual(pedido["corpo"], {"model": "some-other-model", "prompt": "a cat", "n": 1, "size": "1024x1024"})
+
+    def test_generate_one_can_write_where_the_caller_says(self):
+        with tempfile.TemporaryDirectory() as tmp, ServidorDeMentira({"/v1/images/generations": _ok}) as openai:
+            destino = Path(tmp) / "elsewhere.png"
+            ok = generate_images.generate_one(_config(Path(tmp), openai.base), "cat", "a cat", dest=destino)
+            guardada = destino.read_bytes()
+        self.assertEqual((ok, guardada), (True, PNG_BYTES))
+
+    def test_generate_one_downloads_the_image_when_the_answer_is_a_url(self):
+        with tempfile.TemporaryDirectory() as tmp, ServidorDeMentira() as openai:
+            openai.rotas["/v1/images/generations"] = (200, {"data": [{"url": openai.base + "/img.png"}]})
+            openai.rotas["/img.png"] = (200, ("image/png", PNG_BYTES))
+            ok = generate_images.generate_one(_config(Path(tmp), openai.base), "cat", "a cat")
+            guardada = (Path(tmp) / "Output" / "cat.png").read_bytes()
+        self.assertEqual((ok, guardada), (True, PNG_BYTES))
 
     def test_shipped_config_no_longer_uses_the_retired_model(self):
         config = json.loads((Path(__file__).parent / "config.json").read_text(encoding="utf-8"))
@@ -67,10 +80,9 @@ class ImageModelFromConfigTests(unittest.TestCase):
 
 class ImageGenerationFailureTests(unittest.TestCase):
     def test_unavailable_model_returns_false_and_logs_the_reason(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory() as tmp, ServidorDeMentira({"/v1/images/generations": _model_gone}) as openai:
             root = Path(tmp)
-            with mock.patch.object(generate_images.openai.images, "generate", side_effect=_model_gone_error()):
-                ok = generate_images.generate_one(_config(root), "cat", "a cat")
+            ok = generate_images.generate_one(_config(root, openai.base), "cat", "a cat")
 
             self.assertFalse(ok)
             self.assertFalse((root / "Output" / "cat.png").exists())
@@ -79,29 +91,36 @@ class ImageGenerationFailureTests(unittest.TestCase):
             self.assertEqual(entries[0]["keyword"], "cat")
             self.assertEqual(entries[0]["model"], "test-image-model")
             self.assertEqual(entries[0]["reason"], "model_unavailable")
+            self.assertNotIn(CHAVE, json.dumps(entries))
 
     def test_other_generation_errors_are_logged_as_generation_error(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory() as tmp, ServidorDeMentira({"/v1/images/generations": (500, {"error": {"message": "boom"}})}) as openai:
             root = Path(tmp)
-            with mock.patch.object(generate_images.openai.images, "generate", side_effect=RuntimeError("boom")):
-                ok = generate_images.generate_one(_config(root), "cat", "a cat")
+            ok = generate_images.generate_one(_config(root, openai.base), "cat", "a cat")
 
             self.assertFalse(ok)
             self.assertEqual(_failure_log(root)[0]["reason"], "generation_error")
 
-    def test_one_card_failing_does_not_stop_the_other_cards(self):
-        def fake_generate(**kwargs):
-            if kwargs["prompt"] == "bad prompt":
-                raise _model_gone_error()
-            return _ok_response()
-
-        with tempfile.TemporaryDirectory() as tmp:
+    def test_an_answer_without_an_image_is_a_failure_too(self):
+        with tempfile.TemporaryDirectory() as tmp, ServidorDeMentira({"/v1/images/generations": (200, {"data": []})}) as openai:
             root = Path(tmp)
-            config = _config(root)
+            ok = generate_images.generate_one(_config(root, openai.base), "cat", "a cat")
+
+            self.assertEqual((ok, (root / "Output" / "cat.png").exists()), (False, False))
+
+    def test_no_answer_at_all_is_a_failure_and_does_not_raise(self):
+        with ServidorDeMentira() as fora:
+            base = fora.base
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertFalse(generate_images.generate_one(_config(Path(tmp), base), "cat", "a cat"))
+
+    def test_one_card_failing_does_not_stop_the_other_cards(self):
+        with tempfile.TemporaryDirectory() as tmp, ServidorDeMentira({"/v1/images/generations": _good_or_gone}) as openai:
+            root = Path(tmp)
+            config = _config(root, openai.base)
             results = []
-            with mock.patch.object(generate_images.openai.images, "generate", side_effect=fake_generate):
-                for stem, prompt in [("one", "good prompt"), ("two", "bad prompt"), ("three", "good prompt")]:
-                    results.append(generate_images.generate_one(config, stem, prompt))
+            for stem, prompt in [("one", "good prompt"), ("two", "bad prompt"), ("three", "good prompt")]:
+                results.append(generate_images.generate_one(config, stem, prompt))
 
             self.assertEqual(results, [True, False, True])
             self.assertTrue((root / "Output" / "one.png").exists())
@@ -110,19 +129,13 @@ class ImageGenerationFailureTests(unittest.TestCase):
             self.assertEqual([e["keyword"] for e in _failure_log(root)], ["two"])
 
     def test_run_keeps_going_after_a_failed_prompt_and_logs_it(self):
-        def fake_generate(**kwargs):
-            if kwargs["prompt"] == "bad prompt":
-                raise _model_gone_error()
-            return _ok_response()
-
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory() as tmp, ServidorDeMentira({"/v1/images/generations": _good_or_gone}) as openai:
             root = Path(tmp)
-            config = _config(root)
+            config = _config(root, openai.base)
             Path(config["paths"]["prompts_file"]).write_text(
                 "one: good prompt\ntwo: bad prompt\nthree: good prompt\n", encoding="utf-8"
             )
-            with mock.patch.object(generate_images.openai.images, "generate", side_effect=fake_generate):
-                generated = generate_images.run(config)
+            generated = generate_images.run(config)
 
             self.assertEqual(generated, ["one.png", "three.png"])
             self.assertEqual(_failure_log(root)[0]["reason"], "model_unavailable")

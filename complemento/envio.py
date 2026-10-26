@@ -37,6 +37,8 @@ from types import SimpleNamespace
 from datetime import datetime, timezone
 
 from . import baralhos, custos
+from .configuracao import OPENVERSE_BASE
+from .imagem_do_cartao import ImagemDoCartao
 
 QUEUED, RUNNING, COMPLETED, PARTIAL, FAILED = "queued", "running", "completed", "partial", "failed"
 FIM = (COMPLETED, PARTIAL, FAILED)
@@ -68,9 +70,11 @@ IDIOMAS = ("en", "ru")
 
 def motor_do_complemento():
     """Os módulos do motor de texto que o Envio usa (`complemento.motor`, ver `motor/__init__.py`)."""
-    from .motor import config_loader, generate_cards, parser, send_to_anki
+    from .motor import config_loader, extract_prompts, generate_cards, image_pipeline, image_utils, parser, send_to_anki
 
-    return SimpleNamespace(config_loader=config_loader, generate_cards=generate_cards, parser=parser, send_to_anki=send_to_anki)
+    return SimpleNamespace(
+        config_loader=config_loader, extract_prompts=extract_prompts, generate_cards=generate_cards, image_pipeline=image_pipeline,
+        image_utils=image_utils, parser=parser, send_to_anki=send_to_anki)
 
 
 class Interrompido(Exception):
@@ -464,16 +468,19 @@ def resolver(pedido, estado):
     return status, no_anki, falharam, duplicadas
 
 
-class Trabalho:
-    """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto e grava a nota."""
+class Trabalho(ImagemDoCartao):
+    """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto e a imagem e grava a nota."""
 
-    def __init__(self, fila, colecao, cofre, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30)):
+    def __init__(self, fila, colecao, cofre, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30),
+                 openverse_base=OPENVERSE_BASE, adaptador_de_imagem=None):
         self.fila = fila
         self.motor = fila.motor
         self.colecao = colecao
         self.cofre = cofre
         self.logger = logger
         self.openai_base = openai_base
+        self.openverse_base = openverse_base
+        self.adaptador_de_imagem = adaptador_de_imagem
         self.parar = parar
         self.espera_do_anki = espera_do_anki
         self.esperas_da_openai = tuple(esperas_da_openai)
@@ -611,7 +618,6 @@ class Trabalho:
                 self._cartao(job_id, cartao_id, status=FALHOU, error=falha)
                 return falha if falha in PARA_O_ENVIO else None
             self._cartao(job_id, cartao_id, status=TEXTO, error=None)
-        self._etapa(job_id, "send_to_anki")
         self._gravar_a_nota(job_id, pedido, config, cartao_id, guid, arquivo)
         return None
 
@@ -638,11 +644,16 @@ class Trabalho:
         lang, baralho = pedido["lang"], pedido["deckName"]
         tipo, campos = config["anki"]["note_type"], config["anki"]["fields"]
         with open(arquivo, encoding="utf-8") as texto:
-            nota = envio.card_fields(texto.read(), lang)
+            conteudo = texto.read()
+        midia, da_imagem = self._a_imagem(job_id, pedido, config, cartao_id, guid, conteudo)
+        if self.fila.estado(job_id).get("wiped"):
+            raise Apagado()
+        nota = envio.card_fields(conteudo, lang, image_name=da_imagem)
+        self._etapa(job_id, "send_to_anki")
         try:
             resultado = self._com_a_colecao(job_id, lambda: self.colecao.gravar_cartao(
                 baralho, tipo, {campos["front"]: nota["front"], campos["back"]: nota["back"]}, nota["tags"], guid,
-                campos["front"], nota["normalized_front"], lambda valor: envio.normalize_front(valor, lang)))
+                campos["front"], nota["normalized_front"], lambda valor: envio.normalize_front(valor, lang), midia))
         except baralhos.TipoDeNotaAusente:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=SEM_TIPO_DE_NOTA)
         except (Interrompido, Apagado):
@@ -653,34 +664,3 @@ class Trabalho:
         self._cartao(job_id, cartao_id, status=resultado, error=None)
         self.fila.cartao_chegou(job_id, cartao_id)
 
-
-def pacote_de_diagnostico(fila, job_id, versao, caminho_do_log):
-    """O pacote de diagnóstico de um Envio: o pedido (sem as linhas das Frases), o estado, os custos, os arquivos dele e as linhas do log que o citam.
-
-    Nada da pasta `chaves` entra, e nem o log nem os custos nem o estado têm a chave, a Palavra ou a Frase."""
-    arquivos = []
-    for pasta in (fila.pasta_dos_textos(job_id), fila.pasta_dos_custos(job_id)):
-        for raiz, _, nomes in os.walk(pasta):
-            for nome in sorted(nomes):
-                arquivos.append({"path": os.path.relpath(os.path.join(raiz, nome), fila.dados.raiz).replace(os.sep, "/")})
-    linhas = []
-    try:
-        with open(caminho_do_log, encoding="utf-8", errors="replace") as log:
-            linhas = [linha.rstrip("\n") for linha in log if job_id in linha][-200:]
-    except OSError:
-        pass
-    registros = fila.registros_de_custo(job_id)
-    pedido = visao_do_pedido(fila.pedido(job_id))
-    pedido["entries"] = [{chave: valor for chave, valor in entrada.items() if chave != "line"} for entrada in pedido.get("entries", [])]
-    return {
-        "generatedAt": agora_utc(),
-        "jobId": job_id,
-        "versao": versao,
-        "job": pedido,
-        "state": fila.estado(job_id),
-        "queueItem": fila.item_da_fila(job_id),
-        "costs": registros,
-        "costSummary": custos.resumir(registros, custos.dia(pedido.get("createdAt")), None, None),
-        "artifacts": sorted(arquivos, key=lambda a: a["path"]),
-        "logTail": linhas,
-    }

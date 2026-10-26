@@ -12,8 +12,13 @@ The GPT call is the safety net for edge cases the heuristics miss.
 """
 
 import re
-import openai
 from typing import Optional
+
+if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
+    from . import cost_tracker, openai_http
+else:
+    import cost_tracker
+    import openai_http
 
 _ABSTRACT_PATTERNS = [
     r"\b(to|at|in|on|of|for|with|by|from|into|onto|out of|up to)\b.*\b(someone|sb|sth)\b",
@@ -74,7 +79,10 @@ def should_generate_image(
     keyword: str,
     api_key: str,
     log_dir: str = "log",
+    openai_base: str = openai_http.OPENAI_BASE,
+    label: Optional[str] = None,
 ) -> bool:
+    """`label` is what the cost record says the call was for (the word by default; the add-on passes the card's id)."""
     fast = _heuristic(keyword)
     if fast is False:
         return False
@@ -82,31 +90,29 @@ def should_generate_image(
         return True
 
     try:
-        client = openai.OpenAI(api_key=api_key)
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
+        verdict, usage = openai_http.completar(
+            openai_base,
+            api_key,
+            "gpt-4o-mini",
+            [
                 {"role": "system", "content": _SYSTEM},
                 {"role": "user",   "content": keyword},
             ],
+            temperatura=0,
             max_tokens=1,
-            temperature=0,
         )
-        verdict = resp.choices[0].message.content.strip().upper()
 
         # Record the tiny cost
-        usage = resp.usage
         if usage:
-            import cost_tracker
             cost_tracker.record_tokens(
                 log_dir,
                 model="gpt-4o-mini",
-                input_tokens=usage.prompt_tokens,
-                output_tokens=usage.completion_tokens,
-                keyword=f"[image_guard] {keyword}",
+                input_tokens=usage.get("prompt_tokens") or 0,
+                output_tokens=usage.get("completion_tokens") or 0,
+                keyword=f"[image_guard] {label or keyword}",
             )
 
-        return verdict == "C"
+        return verdict.upper() == "C"
     except Exception:
         # On any API error, default to generating the image
         return True

@@ -7,7 +7,7 @@ import threading
 
 from . import inicio
 from .baralhos import ColecaoIndisponivel, TipoDeNotaAusente
-from .configuracao import OPENAI_BASE, PORTA
+from .configuracao import OPENAI_BASE, OPENVERSE_BASE, PORTA
 
 # Quanto a Conexão espera a thread principal do Anki ler a coleção antes de dizer que o Anki não respondeu.
 LIMITE_DA_LEITURA_S = 10
@@ -100,25 +100,28 @@ class ColecaoDoAnki:
         marcas = ",".join("?" * len(guids))
         return self._gravando(lambda colecao: {linha[0] for linha in colecao.db.all("select guid from notes where guid in (%s)" % marcas, *guids)})
 
-    def adicionar_nota(self, baralho, tipo_de_nota, campos, etiquetas, guid):
-        return self._gravando(lambda colecao: _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid))
+    def adicionar_nota(self, baralho, tipo_de_nota, campos, etiquetas, guid, midia=None):
+        return self._gravando(lambda colecao: _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, midia))
 
-    def gravar_cartao(self, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar):
+    def gravar_cartao(self, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar, midia=None):
         """O passo de gravar um Cartão, **uma função só** na thread principal: a sincronização, o `guid`, a frente no Baralho e a nota.
 
         Devolve `"added"` (a nota é deste Cartão: já estava, ou foi gravada agora) ou `"duplicate"` (a frente já estava no Baralho,
         de outra nota). A busca da frente fica aqui dentro: uma função que o Anki ocupado atrasou, e que a thread de trabalho
-        deixou de esperar, não faz a volta seguinte contar a própria nota como duplicata."""
+        deixou de esperar, não faz a volta seguinte contar a própria nota como duplicata. A `midia` (`{nome: bytes}`, o áudio do
+        Cartão) é guardada pela coleção junto com a nota nova, e só com ela."""
         return self._gravando(lambda colecao: _gravar_cartao(
-            colecao, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar))
+            colecao, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar, midia))
 
 
 def _campos_do_tipo(modelo):
     return [campo["name"] for campo in sorted(modelo["flds"], key=lambda c: c["ord"])] if modelo else None
 
 
-def _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid):
+def _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, midia=None):
     """Uma nota nova, na thread principal: o Baralho é criado se falta (`decks.id`), o tipo de nota tem de existir com os campos.
+    A `midia` vai para a pasta de mídia da coleção (`media.write_data`) antes da nota; se a coleção deu outro nome ao arquivo (já
+    havia um de mesmo nome e outro conteúdo), a nota cita o nome que ficou.
 
     Uma nota com o mesmo `guid` já gravada fica como está: é a gravação que o Anki ocupado atrasou (o Envio desistiu de
     esperar e pediu de novo), e o Anki não impede dois `guid` iguais."""
@@ -127,6 +130,9 @@ def _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid):
     modelo = colecao.models.by_name(tipo_de_nota)
     if modelo is None or not set(campos) <= set(_campos_do_tipo(modelo)):
         raise TipoDeNotaAusente(tipo_de_nota)
+    for nome, dados in (midia or {}).items():
+        guardado = colecao.media.write_data(nome, dados)
+        campos = {campo: valor.replace("[sound:%s]" % nome, "[sound:%s]" % guardado) for campo, valor in campos.items()}
     nota = colecao.new_note(modelo)
     for nome, valor in campos.items():
         nota[nome] = valor
@@ -135,13 +141,13 @@ def _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid):
     colecao.add_note(nota, colecao.decks.id(baralho))
 
 
-def _gravar_cartao(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar):
+def _gravar_cartao(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar, midia=None):
     if colecao.db.all("select 1 from notes where guid = ?", guid):
         return "added"
     for cartao in _cartoes_do_baralho(colecao, baralho):
         if any(nome == campo_da_frente and valor and normalizar(valor) == frente_normalizada for nome, valor in cartao["campos"]):
             return "duplicate"
-    _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid)
+    _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, midia)
     return "added"
 
 
@@ -192,7 +198,8 @@ def _ao_sincronizar(colecao):
 
 
 def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_abrir_o_perfil,
-                abridor=inicio.ABRIDOR_DESTE_COMPUTADOR, ao_sincronizar=_ao_sincronizar, openai_base=OPENAI_BASE):
+                abridor=inicio.ABRIDOR_DESTE_COMPUTADOR, ao_sincronizar=_ao_sincronizar, openai_base=OPENAI_BASE,
+                openverse_base=OPENVERSE_BASE):
     """O que o Anki faz ao importar o complemento: devolve a Conexão, ou None se ela não subiu."""
     colecao = ColecaoDoAnki(mw)
     try:
@@ -207,4 +214,5 @@ def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_
         ao_abrir_o_perfil=ao_abrir_o_perfil,
         abridor=abridor,
         openai_base=openai_base,
+        openverse_base=openverse_base,
     )

@@ -4,6 +4,10 @@ import unittest
 from contextlib import contextmanager
 from pathlib import Path
 
+import generate_images
+import google_images
+import image_guard
+import image_judge
 import start
 
 
@@ -103,25 +107,25 @@ def _patched_pipeline(
     should_generate_image,
 ):
     originals = {
-        "search_candidates": start.google_images.search_candidates,
-        "download_candidate": start.google_images.download_candidate,
-        "rank_candidates": start.image_judge.rank_candidates,
-        "generate_one": start.generate_images.generate_one,
-        "should_generate_image": start.image_guard.should_generate_image,
+        "search_candidates": google_images.search_candidates,
+        "download_candidate": google_images.download_candidate,
+        "rank_candidates": image_judge.rank_candidates,
+        "generate_one": generate_images.generate_one,
+        "should_generate_image": image_guard.should_generate_image,
     }
-    start.google_images.search_candidates = search_candidates
-    start.google_images.download_candidate = download_candidate
-    start.image_judge.rank_candidates = rank_candidates
-    start.generate_images.generate_one = generate_one
-    start.image_guard.should_generate_image = should_generate_image
+    google_images.search_candidates = search_candidates
+    google_images.download_candidate = download_candidate
+    image_judge.rank_candidates = rank_candidates
+    generate_images.generate_one = generate_one
+    image_guard.should_generate_image = should_generate_image
     try:
         yield
     finally:
-        start.google_images.search_candidates = originals["search_candidates"]
-        start.google_images.download_candidate = originals["download_candidate"]
-        start.image_judge.rank_candidates = originals["rank_candidates"]
-        start.generate_images.generate_one = originals["generate_one"]
-        start.image_guard.should_generate_image = originals["should_generate_image"]
+        google_images.search_candidates = originals["search_candidates"]
+        google_images.download_candidate = originals["download_candidate"]
+        image_judge.rank_candidates = originals["rank_candidates"]
+        generate_images.generate_one = originals["generate_one"]
+        image_guard.should_generate_image = originals["should_generate_image"]
 
 
 class ImageFallbackPolicyTests(unittest.TestCase):
