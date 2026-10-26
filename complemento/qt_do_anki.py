@@ -59,6 +59,7 @@ class QtDoAnki:
             self._aberta.show()
             self._aberta.raise_()
             self._aberta.activateWindow()
+            self._relogio_da_janela.start()
             self._mostrar()
             return
         from aqt.qt import QDialog, QFormLayout, QLabel, QProgressBar, QPushButton, QTimer, Qt, QVBoxLayout, qconnect
@@ -111,7 +112,8 @@ class QtDoAnki:
         relogio = QTimer(dialogo)
         relogio.setInterval(int(janela.INTERVALO_S * 1000))
         qconnect(relogio.timeout, mostrar_protegido)
+        qconnect(dialogo.finished, relogio.stop)  # fechada, a janela não lê a Conexão a cada ciclo
         relogio.start()
         dialogo.show()
         mostrar_protegido()
-        self._aberta, self._mostrar = dialogo, mostrar_protegido
+        self._aberta, self._mostrar, self._relogio_da_janela = dialogo, mostrar_protegido, relogio

@@ -57,6 +57,7 @@ python3.9 complemento/test_envio.py          # o Envio: a fila, o estado por Car
 python3.9 complemento/test_envio_fronteiras.py  # a Conexão morre em cada gravação do criar, do trabalho e do Apagar tudo (#248)
 python3.9 complemento/test_envio_apagar.py      # o Apagar tudo com o Anki fechado ou no meio do Envio
 python3.9 complemento/test_janela.py         # o que a janela e os avisos dizem (um Envio de verdade, o Qt de mentira), a chave fora de tudo
+python3.9 complemento/test_qt_do_anki.py     # o que o complemento pede ao Qt do Anki (a janela é uma só, o relógio para fechada, o aviso sem marcação)
 python3.9 complemento/test_motor.py          # o motor de texto como o pacote `complemento.motor`, sem PyYAML, dotenv nem o SDK da OpenAI
 ```
 
