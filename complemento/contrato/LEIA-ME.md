@@ -1,7 +1,8 @@
 # O contrato da Conexão com o Anki
 
 `exemplos.json` é o conjunto único de pedidos e respostas entre a extensão e a Conexão
-com o Anki (o complemento do Anki, em `127.0.0.1:8766`). Dois lados leem o mesmo arquivo:
+com o Anki (o complemento do Anki, em `127.0.0.1:8766`), junto com os `exemplos-*.json` ao lado dele (um por assunto, como
+`exemplos-do-perfil.json`; `carregar.js` e `test_servidor.py` os somam e recusam um nome repetido). Dois lados leem o mesmo conjunto:
 
 - **o complemento**: `python3 complemento/test_servidor.py` sobe o servidor real e confere
   cada exemplo (rode também no 3.9, o Python do Anki do Mac);
@@ -173,6 +174,18 @@ A Conexão de hoje (`bridge/`) atende as mesmas rotas e o mesmo criar idempotent
 
 `lastError` e o `error` de cada Cartão são códigos (`openai_key_missing`, `openai_key_rejected`, `openai_no_credit`,
 `openai_rate_limited`, `openai_unreachable`, `note_type_missing`, `anki_write_failed`…), nunca o texto da OpenAI.
+
+## As rotas do perfil fixo (#149)
+
+Todas POST, com a origem da extensão. O perfil marcado é o que estava aberto na primeira vez que a Conexão viu um perfil aberto (`user_files/perfil.json`).
+
+| Rota | Corpo | Resposta |
+|---|---|---|
+| `POST /anki/profiles` | `{}` | `{ profiles, marked, open }`: os perfis do Anki, o marcado (`null`: nenhum ainda) e o aberto (`null`: a tela de perfis). `503 anki_profiles_unavailable` |
+| `POST /anki/profile` | `{ profile }` | `{ ok, marked }`: marca outro perfil (e o abridor passa a abrir o Anki nele). `400 invalid_request`; `404 profile_not_found` |
+| `POST /anki/profile/open` | `{}` | `{ ok, profile }`: “Abrir <perfil>”, fecha o perfil aberto pelo caminho normal do Anki e abre o marcado. `404 profile_not_found` (sem marcado, ou ele sumiu) |
+
+O Envio que espera por causa do perfil diz o motivo no `state` (`waiting: { reason: other_profile | profile_missing, profile, marked }`).
 
 ## O abridor (Native Messaging)
 

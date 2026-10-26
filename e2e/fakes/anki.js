@@ -2,45 +2,29 @@
 
 const { isDeepStrictEqual } = require('util');
 const { responderJson } = require('./http');
+const { criarPerfis } = require('./perfis');
 const contrato = require('../../complemento/contrato/carregar');
 
-// Fake da Conexão com o Anki: responde na porta local dela (127.0.0.1:8766).
-// Por padrão está ligada, com vocabulário vazio. Um teste pode desligá-la
-// (conexão recusada, como quando o programa não está rodando) ou responder
-// uma rota específica com `responder`.
+// Fake da Conexão com o Anki: responde na porta local dela (127.0.0.1:8766). Por padrão está ligada, com vocabulário vazio.
+// Um teste pode desligá-la (conexão recusada) ou responder uma rota específica com `responder`.
 //
-// Baralhos e termos (`POST /anki/stats/decks`) e Vocabulário (`POST /anki/vocabulary`)
-// seguem o contrato do complemento: os baralhos pedidos voltam na ordem pedida, um
-// baralho que não existe no Anki volta `missing`, e o vocabulário do baralho vem
-// inteiro, com os filtros (`status`, `type`, `q`) aplicados como lá.
+// O que o complemento responde (a saúde, os Baralhos, os números, o vocabulário, a chave da OpenAI e o item de login) vem de
+// `complemento/contrato/exemplos.json` (e dos `exemplos-*.json` ao lado, juntos por `carregar.js`), o mesmo que os testes do
+// complemento leem: o fake responde o exemplo do pedido no contexto em que a Conexão está (`abrirPerfil`, `abrirColecao`,
+// `responderOpenAI`, `guardarChaveNaConexao`, `definirItemDeLogin`). Os testes de tela montam os Baralhos em termos de gente
+// (`definirVocabulario`, `definirBaralho`); `abrirColecao(nome)` passa a responder o contrato inteiro. Uma rota nova entra nesse
+// arquivo (`complemento/contrato/LEIA-ME.md`). O perfil fixo (#149) mora em `perfis.js`.
 //
-// Ajustes de envio (`POST /anki/decks`) lista os nomes dos baralhos que o Anki tem
-// (`{ decks: [...] }`); sem `definirBaralhosDoAnki` a lista não vem (503), como
-// com o Anki sem responder, e a aba oferece o campo de texto.
+// Baralhos e termos, Vocabulário e Ajustes de envio (`POST /anki/decks`, sem `definirBaralhosDoAnki` é 503): os baralhos pedidos
+// voltam na ordem pedida, o que o Anki não tem volta `missing`, e os filtros (`status`, `type`, `q`) valem como no complemento.
 //
-// O que o complemento do Anki responde (a saúde, os Baralhos, os números, o vocabulário, a chave da OpenAI (guardar, apagar e o estado) e o item de login de “Abrir o Anki com o computador”) vem de
-// `complemento/contrato/exemplos.json`, o mesmo arquivo que os testes do
-// complemento leem: o fake responde o exemplo do pedido no contexto em que a
-// Conexão está (`abrirPerfil`, `abrirColecao`, `responderOpenAI`, `guardarChaveNaConexao`, `definirItemDeLogin`). Os testes de tela montam os Baralhos
-// em termos de gente (`definirVocabulario`, `definirBaralho`) e o fake os entrega no
-// formato do contrato; `abrirColecao(nome)` passa a responder o contrato inteiro, para quem confere o
-// fake contra ele. Uma rota nova do complemento entra nesse arquivo
-// (veja `complemento/contrato/LEIA-ME.md`) e o fake passa a respondê-la daqui.
+// A chave da OpenAI: `POST /ia/openai/chave` responde pelo exemplo do contexto (`responderOpenAI(...)`) e, aceita, o fake guarda a
+// cópia como a Conexão faria (`chaveNaConexao()`); `POST /ia/estado` devolve só os 4 últimos caracteres. A chave inteira nunca sai.
 //
-// A chave da OpenAI: `POST /ia/openai/chave` responde pelo exemplo do contexto em que a
-// OpenAI está (`responderOpenAI('aceita' | 'recusa' | …`) e, aceita, o fake guarda a cópia
-// como a Conexão faria: `chaveNaConexao()` é o que o teste confere, e `POST /ia/estado`
-// devolve só os 4 últimos caracteres dela. A chave inteira nunca sai numa resposta.
-//
-// Os Envios seguem o contrato (as rotas `/jobs…` e `/analytics/jobs` de `complemento/contrato/exemplos.json`, todas POST):
-// `POST /jobs` cria um pelo `jobId` que o painel manda (o mesmo corpo de novo é o mesmo Envio; outro corpo, o `409`
-// do contrato), `POST /jobs/list` lista cada um com o `state` dele, `/jobs/get` mostra um, `/jobs/retry` o põe na
-// fila de novo e `/jobs/debug-bundle` dá o pacote. O teste move cada Envio (`moverEnvio`) e o termina
-// (`concluirEnvio`) como a Conexão faria: `successfulPhraseIds` inclui as duplicadas, que também vão em
-// `duplicatePhraseIds`, e o que não virou cartão vai em `failedPhraseIds`. `definirFila(nome)` põe a fila de
-// `filas` do contrato (com os custos dela), para quem confere o fake contra os exemplos. Os custos (`/analytics/jobs`)
-// são os de `definirCustos`, em termos de gente; sem eles, saem dos Envios da fila como no complemento (`custos.py`,
-// só os registros de texto: as imagens entram com o #143 e o #144).
+// Os Envios (`/jobs…`, `/analytics/jobs`, todas POST): `POST /jobs` cria um pelo `jobId` do painel (o mesmo corpo é o mesmo Envio;
+// outro corpo, o `409`), `/jobs/list` lista com o `state` de cada um, `/jobs/retry` o põe na fila. O teste move (`moverEnvio`) e
+// termina (`concluirEnvio`) cada Envio como a Conexão faria; `definirFila(nome)` põe uma fila do contrato. Os custos são os de
+// `definirCustos` ou, sem eles, os dos Envios da fila (`custos.py`, só os de texto: imagens são do #144).
 
 // O exemplo do contrato de onde o fake tira a linha de um Baralho que o Anki não tem.
 const EXEMPLO_DO_BARALHO_QUE_NAO_EXISTE = 'Números de um Baralho que existe e de um que não existe';
@@ -89,6 +73,7 @@ function criarFakeAnki() {
     filaDaChave: Promise.resolve(),
     chaveDaOpenAI: null,        // a cópia da chave que a Conexão guarda (a inteira: só o teste a vê)
   };
+  const perfis = criarPerfis(() => estado.contexto);
   const requisicoes = [];
   const envios = [];    // { jobId, lang, entries, corpo, createdAt, state }
 
@@ -351,9 +336,7 @@ function criarFakeAnki() {
 
   /**
    * `perfil` (com `falhaNoPerfil`: um exemplo que não o diz é o da saúde sem falha), `itemDeLogin`, `colecao`, `openai` e
-   * `chaveNaConexao` só contam nos exemplos que os dizem: a saúde responde igual com qualquer coleção, chave ou item, e o item
-   * responde com o Anki em qualquer perfil.
-   * Da chave só conta ter ou não ter: os 4 últimos caracteres do exemplo são os da chave do exemplo, e a resposta leva os da guardada.
+   * `chaveNaConexao` só contam nos exemplos que os dizem. Da chave só conta ter ou não ter: a resposta leva os 4 últimos da guardada.
    */
   function exemploServe(exemplo, contexto) {
     const doExemplo = exemplo.contexto;
@@ -373,6 +356,8 @@ function criarFakeAnki() {
    * (a resposta leva os 4 últimos da que o teste mandou); o que cita `colecao` só vale com essa coleção aberta (`abrirColecao`).
    */
   function respostaDoContrato(metodo, caminho, corpo) {
+    const doPerfil = perfis.responder(metodo, caminho, corpo); // o perfil fixo responde pelo estado dele (perfis.js)
+    if (doPerfil) return doPerfil;
     const contexto = contextoDeAgora();
     const candidatos = contrato.exemplos.filter(e =>
       exemploDaExtensao(e) && e.pedido.metodo === metodo && e.pedido.caminho === caminho && exemploServe(e, contexto));
@@ -498,7 +483,7 @@ function criarFakeAnki() {
       return responderJson(route, status, json);
     }
     if (url.pathname === '/health') {
-      const { status, json } = respostaDoContrato(req.method(), '/health');
+      const { status, json } = perfis.saudeCom(respostaDoContrato(req.method(), '/health'));
       return responderJson(route, status, json);
     }
     if (url.pathname === '/ia/openai/chave' && req.method() === 'POST') {
@@ -538,6 +523,8 @@ function criarFakeAnki() {
       const { status, json } = itemDeLogin(req, url);
       return responderJson(route, status, json);
     }
+    const doPerfil = perfis.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido));
+    if (doPerfil) return responderJson(route, doPerfil.status, doPerfil.json);
     // O que lê o Anki da pessoa é POST (contrato/LEIA-ME.md): por GET a Conexão não tem a rota.
     const leituraDoAnki = ['/anki/vocabulary', '/anki/decks', '/anki/stats/decks'].includes(url.pathname);
     if (leituraDoAnki && req.method() !== 'POST') return responderJson(route, 404, { error: 'not_found' });
@@ -631,6 +618,14 @@ function criarFakeAnki() {
     ligar() { estado.ligada = true; },
     /** O perfil que o Anki tem aberto (`null`: a tela de perfis); precisa de exemplo no contrato. */
     abrirPerfil(perfil) { estado.contexto = { ...estado.contexto, perfil }; },
+    /** O perfil fixo (#149, `perfis.js`): os perfis do Anki, o `marcado` e o `aberto`; `perfilMarcado`/`perfilAberto` são o que a Conexão ficou com. */
+    definirPerfis: perfis.definir,
+    /** @estado-guardado O perfil que a Conexão tem marcado (`null`: nenhum ainda). */
+    perfilMarcado: perfis.marcado,
+    /** @estado-guardado O perfil que o Anki tem aberto (`null`: a tela de perfis). */
+    perfilAberto: perfis.aberto,
+    /** A Conexão não consegue marcar o perfil que a tela escolheu: `POST /anki/profile` responde o erro interno. */
+    falharAEscolhaDoPerfil: perfis.falharAEscolha,
     /**
      * A coleção que o Anki tem aberta, por nome em `colecoes` do contrato (`null`: nenhuma, o Anki na tela de
      * perfis): os Baralhos, os números e o vocabulário passam a vir dos exemplos do contrato.
@@ -751,13 +746,14 @@ function criarFakeAnki() {
     enviosEm(lang) { return envios.filter(e => e.lang === lang); },
 
     /** Põe o Envio numa etapa do bridge (`generate_cards`, `send_to_anki`…). */
-    moverEnvio(jobId, { stage, progress = {}, atualizadoEm } = {}) {
+    moverEnvio(jobId, { stage, progress = {}, atualizadoEm, esperando } = {}) {
       const envio = acharEnvio(jobId);
       envio.state = {
         ...envio.state,
         status: 'running',
         stage,
         progress,
+        waiting: esperando, // o Envio espera o perfil (#149): `{ reason, profile, marked }`
         updatedAt: (atualizadoEm || estado.agora()).toISOString(),
       };
     },
