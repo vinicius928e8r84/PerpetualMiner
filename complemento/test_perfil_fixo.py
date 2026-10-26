@@ -60,6 +60,56 @@ class AListaDePerfis(unittest.TestCase):
         self.assertEqual(status, 403)
 
 
+def estragar_o_perfil_json(pasta, como):
+    """O `perfil.json` que não se lê: texto que não é JSON, ou uma pasta no lugar do arquivo. Devolve o que há lá para conferir depois."""
+    caminho = os.path.join(pasta, "perfil.json")
+    if como == "texto":
+        with open(caminho, "w", encoding="utf-8") as arquivo:
+            arquivo.write('{"perfil": "Ana"')  # cortado no meio
+    else:
+        os.makedirs(caminho)
+    return caminho
+
+
+def conteudo(caminho):
+    return os.listdir(caminho) if os.path.isdir(caminho) else open(caminho, encoding="utf-8").read()
+
+
+class UmPerfilJsonQueNaoSeLe(unittest.TestCase):
+    COMOS = ("texto", "pasta")
+
+    def test_a_lista_diz_que_o_anki_nao_responde_e_o_arquivo_nao_e_trocado_pelo_perfil_aberto(self):
+        for como in self.COMOS:
+            with self.subTest(como), tempfile.TemporaryDirectory() as pasta:
+                caminho = estragar_o_perfil_json(pasta, como)
+                antes = conteudo(caminho)
+                with ConexaoNoTeste(pasta, perfil="Beto", colecao=com_a_ana_e_o_beto("Beto")) as conexao:
+                    resposta = perfis_pelo_http(conexao)
+                self.assertEqual(resposta[0], 503)
+                self.assertEqual(resposta[1]["error"], "anki_profiles_unavailable")
+                self.assertEqual(conteudo(caminho), antes)
+
+    def test_o_envio_espera_sem_gravar_em_perfil_nenhum_e_o_arquivo_fica_como_estava(self):
+        for como in self.COMOS:
+            with self.subTest(como), tempfile.TemporaryDirectory() as pasta:
+                caminho = estragar_o_perfil_json(pasta, como)
+                antes = conteudo(caminho)
+                colecao = com_a_ana_e_o_beto("Beto")
+                with EnvioNoTeste(pasta, colecao=colecao, perfil="Beto") as conexao:
+                    conexao.criar(pedido(ID, "give up : She gave up smoking"))
+                    esperando = conexao.esperar(ID, lambda estado: estado.get("stage") == "wait_anki")
+                self.assertEqual((esperando["status"], colecao.gravadas, conteudo(caminho)), ("running", [], antes))
+
+    def test_escolher_o_perfil_na_lista_marca_de_novo_e_a_lista_volta_a_responder(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            estragar_o_perfil_json(pasta, "texto")
+            with ConexaoNoTeste(pasta, perfil="Beto", colecao=com_a_ana_e_o_beto("Beto")) as conexao:
+                escolha = pedir_json(conexao, "/anki/profile", {"profile": "Ana"})
+                depois = perfis_pelo_http(conexao)
+        self.assertEqual(escolha, (200, {"ok": True, "marked": "Ana"}))
+        self.assertEqual(depois, (200, {"profiles": ["Ana", "Beto"], "marked": "Ana", "open": "Beto"}))
+
+
 class EscolherOutroPerfil(unittest.TestCase):
     def test_escolher_outro_perfil_muda_o_marcado_e_ele_fica_guardado(self):
         with tempfile.TemporaryDirectory() as pasta:

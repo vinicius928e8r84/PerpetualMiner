@@ -152,6 +152,11 @@ class AnkiComColecaoDeMentira(AnkiDeMentira):
         self.pm.load = self._carregar_o_perfil
         self.descricao = descricao
         self.state = "profileManager"
+        self.profileDiag = object()  # a janela de perfis
+        self.janela_modal = None  # um diálogo modal aberto (o “Excluir” da janela de perfis, por exemplo)
+        self.janela_ativa = self.profileDiag
+        self.app = types.SimpleNamespace(activeModalWidget=lambda: self.janela_modal, activeWindow=lambda: self.janela_modal or self.janela_ativa)
+        self.fechamentos_adiados = None  # com uma lista, o `unloadProfile` só guarda o que fazer depois (a sincronização ao fechar demora)
         self.passos = []  # o que a Conexão pediu ao Anki, na ordem: o teste confere o caminho que ela fez
         if descricao is not None:
             self.abrir(aberto or perfis[0])
@@ -171,8 +176,23 @@ class AnkiComColecaoDeMentira(AnkiDeMentira):
 
     def unloadProfile(self, depois):
         self.passos.append(("unloadProfile", self.pm.name))
+        if self.fechamentos_adiados is not None:
+            self.fechamentos_adiados.append(depois)
+            return
         self.fechar_o_perfil()  # o Anki sincroniza ao fechar e só então chama `depois`
         depois()
+
+    def terminar_o_fechamento(self):
+        """A sincronização ao fechar terminou: o perfil fecha e o `depois` do `unloadProfile` roda, na thread principal."""
+        depois, pronto = self.fechamentos_adiados.pop(), threading.Event()
+
+        def terminar():
+            self.fechar_o_perfil()
+            depois()
+            pronto.set()
+
+        self.taskman.run_on_main(terminar)
+        assert pronto.wait(5)
 
     def showProfileManager(self):
         self.passos.append(("showProfileManager", None))

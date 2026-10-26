@@ -75,6 +75,12 @@ def _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger):
         if abridor is None:
             return
         try:
+            perfis = conexao.colecao.perfis()
+        except Exception:  # o Anki não respondeu: não se sabe se o marcado sumiu, então vale o marcado
+            perfis = []
+        if perfis and marcado not in perfis:
+            marcado = None  # `-p` com um perfil que o Anki não tem: os Anki mais antigos não abrem; sem ele abrem a tela de perfis
+        try:
             abridor.escrever(marcado)
         except Exception as erro:  # sem abridor, a extensão só não abre o Anki sozinha: o resto segue
             logger.warning("O abridor não foi escrito: %s", erro)

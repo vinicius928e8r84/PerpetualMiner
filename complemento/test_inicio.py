@@ -221,6 +221,22 @@ class AoCarregarNoAnki(unittest.TestCase):
         self.assertEqual(escolha, (200, {"ok": True, "marked": "Joana"}))
         self.assertEqual(recebeu, ["-a", pastas.app, "--args", "-p", "Joana"])
 
+    @unittest.skipIf(os.name == "nt", "o script do Mac roda num sh")
+    def test_o_perfil_marcado_que_o_anki_ja_nao_tem_deixa_o_abridor_sem_perfil_para_o_anki_abrir_na_tela_de_perfis(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            pastas = Pastas(raiz)
+            os.makedirs(os.path.join(raiz, "complemento", "user_files"))
+            with open(os.path.join(raiz, "complemento", "user_files", "perfil.json"), "w", encoding="utf-8") as arquivo:
+                json.dump({"perfil": "Ana"}, arquivo)  # marcado antes; a Ana foi apagada ou renomeada no Anki
+            colecao = ColecaoEmMemoria(perfis=("Beto", "Carla"), perfil_aberto="Beto")
+            conexao = inicio.iniciar(
+                os.path.join(raiz, "complemento"), lambda: "Beto", porta=0, colecao=colecao, abridor=abridor_do_mac(pastas),
+            )
+            parar(conexao)
+            conversar(os.path.join(pastas.abridor, "abrir-o-anki.sh"), {"acao": "abrir"})
+            recebeu = pastas.open.recebeu()
+        self.assertEqual(recebeu, ["-a", pastas.app])
+
     def test_sem_saber_onde_o_anki_esta_a_conexao_sobe_assim_mesmo_e_o_log_diz_por_que_nao_ha_abridor(self):
         with tempfile.TemporaryDirectory() as raiz:
             pastas = Pastas(raiz)

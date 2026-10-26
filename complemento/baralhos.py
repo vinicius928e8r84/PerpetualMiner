@@ -72,6 +72,13 @@ class PerfilSumiu(ColecaoIndisponivel):
         self.marcado, self.aberto = marcado, aberto
 
 
+class PerfilIlegivel(ColecaoIndisponivel):
+    """O arquivo do perfil marcado existe e não se lê (#149): não vale por “nenhum perfil marcado”, e nada é marcado nem gravado por cima."""
+
+    def __init__(self):
+        super().__init__("anki_profile_unreadable")
+
+
 class TipoDeNotaAusente(Exception):
     """A coleção não tem o tipo de nota pedido (ou ele não tem os campos pedidos): nada foi gravado."""
 

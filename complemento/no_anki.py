@@ -7,7 +7,7 @@ import threading
 import time
 
 from . import inicio
-from .baralhos import ColecaoIndisponivel, TipoDeNotaAusente
+from .baralhos import ColecaoIndisponivel, PerfilIlegivel, TipoDeNotaAusente
 from .configuracao import OPENAI_BASE, PORTA
 
 # Quanto a Conexão espera a thread principal do Anki ler a coleção antes de dizer que o Anki não respondeu.
@@ -46,6 +46,7 @@ class ColecaoDoAnki:
         self._fixo = None
         self._espera_da_entrada_s = espera_da_entrada_s
         self._entrando_ate = 0.0
+        self._trocando = False
 
     def sincronizacao_comecou(self, *_):
         self._sincronizando.set()
@@ -101,13 +102,27 @@ class ColecaoDoAnki:
         return self._na_thread_principal(self._trocar_para_o_marcado, com_colecao=False)
 
     def _marcado_que_existe(self, mw):
-        marcado = self._fixo.marcado() if self._fixo is not None else None
+        try:
+            marcado = self._fixo.marcado() if self._fixo is not None else None
+        except PerfilIlegivel:
+            return None
         return marcado if marcado in mw.pm.profiles() else None
+
+    @staticmethod
+    def _janela_de_perfis_livre(mw):
+        """A janela de perfis é a janela ativa e nenhum diálogo modal está aberto. `run_on_main` roda também dentro do laço de um modal:
+        com o “Excluir” ou o “Renomear” da janela de perfis aberto, entrar no perfil marcado faria o que a pessoa confirmar valer para ele
+        (`pm.remove(pm.name)`, `pm.rename`)."""
+        app = mw.app
+        ativa = app.activeWindow()
+        return not app.activeModalWidget() and (ativa is None or ativa is getattr(mw, "profileDiag", None))
 
     def _entrar_no_marcado(self, mw):
         """Na thread principal. Só da tela de perfis (`mw.state`), sem coleção aberta, e uma vez por `espera_da_entrada_s`."""
         marcado = self._marcado_que_existe(mw)
         if marcado is None or getattr(mw, "col", None) is not None or getattr(mw, "state", None) != "profileManager":
+            return False
+        if not self._janela_de_perfis_livre(mw):
             return False
         if time.monotonic() < self._entrando_ate:
             return False
@@ -123,15 +138,21 @@ class ColecaoDoAnki:
             return False
         if getattr(mw, "col", None) is None:
             return self._entrar_no_marcado(mw)
-        if mw.pm.name == marcado:
-            return False
+        if mw.pm.name == marcado or self._trocando:
+            return False  # `_trocando`: o Anki ainda sincroniza ao fechar; um segundo clique fecharia o perfil de novo
 
         def depois_de_fechar():
+            self._trocando = False
             mw.showProfileManager()  # o que o item Trocar de perfil faz depois de fechar (`unloadProfileAndShowProfileManager`)
             self._entrando_ate = 0.0
             self._entrar_no_marcado(mw)
 
-        mw.unloadProfile(depois_de_fechar)
+        self._trocando = True
+        try:
+            mw.unloadProfile(depois_de_fechar)
+        except Exception:
+            self._trocando = False
+            raise
         return True
 
     def nomes_dos_baralhos(self):

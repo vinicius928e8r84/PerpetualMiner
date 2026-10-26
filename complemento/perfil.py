@@ -12,7 +12,7 @@ import json
 import os
 import threading
 
-from .baralhos import OutroPerfil, PerfilSumiu
+from .baralhos import OutroPerfil, PerfilIlegivel, PerfilSumiu
 
 
 class PerfilFixo:
@@ -21,16 +21,20 @@ class PerfilFixo:
         self._tranca = threading.Lock()
 
     def marcado(self):
-        """O nome do perfil marcado, ou None se nenhum perfil ficou marcado ainda (ou o arquivo não se lê)."""
+        """O nome do perfil marcado, ou None se nenhum perfil ficou marcado ainda (o arquivo não existe).
+        Um arquivo que existe e não se lê levanta `PerfilIlegivel`: não é uma primeira conexão, e nada se marca por cima dele."""
         try:
             with open(self._caminho, encoding="utf-8") as arquivo:
                 nome = json.load(arquivo).get("perfil")
-        except (OSError, ValueError, AttributeError):
+        except FileNotFoundError:
             return None
+        except (OSError, ValueError, AttributeError):
+            raise PerfilIlegivel() from None
         return nome if isinstance(nome, str) and nome else None
 
     def marcar(self, nome):
-        """Marca `nome`, escrevendo ao lado e trocando de uma vez. O mesmo nome de novo não muda nada."""
+        """Marca `nome`, escrevendo ao lado e trocando de uma vez. O mesmo nome de novo não muda nada. É a escolha da pessoa:
+        vale também por cima de um arquivo que não se lê."""
         with self._tranca:
             self._gravar(nome)
 
@@ -53,8 +57,11 @@ class PerfilFixo:
             raise OutroPerfil(aberto, marcado)
 
     def _gravar(self, nome):
-        if self.marcado() == nome:
-            return
+        try:
+            if self.marcado() == nome:
+                return
+        except PerfilIlegivel:
+            pass
         os.makedirs(os.path.dirname(self._caminho), exist_ok=True)
         provisorio = self._caminho + ".novo"
         with open(provisorio, "w", encoding="utf-8") as arquivo:

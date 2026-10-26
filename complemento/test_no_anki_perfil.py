@@ -59,6 +59,51 @@ class OPerfilFixoNoAnki(SemRegistroReal, unittest.TestCase):
         self.assertEqual(anki.passos, [("pm.load", "Beto"), ("onOpenProfile", "Beto")])
         self.assertEqual(ler_pelo_http(conexao.porta, "/anki/profiles", {})[1]["open"], "Beto")
 
+    def test_com_um_dialogo_modal_aberto_na_tela_de_perfis_a_conexao_nao_entra_no_perfil(self):
+        anki = AnkiComColecaoDeMentira(None, perfis=("Ana", "Beto"))
+        anki.janela_modal = object()  # a pessoa está no “Excluir” ou no “Renomear” do perfil Beto: o que ela confirmar vale para `pm.name`
+        conexao = self.conectar(anki, marcado="Ana")
+        status, corpo = ler_pelo_http(conexao.porta, "/anki/profile/open", {})
+        self.assertEqual((status, corpo), (200, {"ok": True, "profile": "Ana"}))
+        self.assertEqual((anki.passos, anki.pm.name, anki.col), ([], None, None))
+
+    def test_com_outra_janela_ativa_no_lugar_da_janela_de_perfis_a_conexao_nao_entra_no_perfil(self):
+        anki = AnkiComColecaoDeMentira(None, perfis=("Ana", "Beto"))
+        anki.janela_ativa = object()
+        conexao = self.conectar(anki, marcado="Ana")
+        ler_pelo_http(conexao.porta, "/anki/profile/open", {})
+        self.assertEqual(anki.passos, [])
+
+    def test_fechado_o_dialogo_modal_a_conexao_entra_no_perfil_marcado(self):
+        anki = AnkiComColecaoDeMentira(None, perfis=("Ana", "Beto"))
+        anki.janela_modal = object()
+        conexao = self.conectar(anki, marcado="Ana")
+        ler_pelo_http(conexao.porta, "/anki/profile/open", {})
+        anki.janela_modal = None
+        ler_pelo_http(conexao.porta, "/anki/profile/open", {})
+        self.assertEqual(anki.passos, [("pm.load", "Ana"), ("onOpenProfile", "Ana")])
+
+    def test_dois_cliques_em_abrir_durante_a_sincronizacao_ao_fechar_fecham_o_perfil_uma_vez_so(self):
+        anki = AnkiComColecaoDeMentira(DESCRICAO, perfis=("Ana", "Beto"), aberto="Beto")
+        anki.fechamentos_adiados = []  # o Anki ainda sincroniza: o perfil continua aberto
+        conexao = self.conectar(anki, marcado="Ana")
+        ler_pelo_http(conexao.porta, "/anki/profile/open", {})
+        ler_pelo_http(conexao.porta, "/anki/profile/open", {})
+        self.assertEqual(anki.passos, [("unloadProfile", "Beto")])
+        anki.terminar_o_fechamento()
+        self.assertEqual(
+            anki.passos, [("unloadProfile", "Beto"), ("showProfileManager", None), ("pm.load", "Ana"), ("onOpenProfile", "Ana")])
+
+    def test_depois_de_trocar_um_novo_clique_volta_a_fechar_o_perfil_aberto(self):
+        anki = AnkiComColecaoDeMentira(DESCRICAO, perfis=("Ana", "Beto"), aberto="Beto")
+        anki.fechamentos_adiados = []
+        conexao = self.conectar(anki, marcado="Ana")
+        ler_pelo_http(conexao.porta, "/anki/profile/open", {})
+        anki.terminar_o_fechamento()
+        anki.abrir("Beto")  # a pessoa volta ao Beto por conta própria
+        ler_pelo_http(conexao.porta, "/anki/profile/open", {})
+        self.assertEqual(anki.passos.count(("unloadProfile", "Beto")), 2)
+
     def test_o_clique_fecha_o_perfil_pelo_caminho_normal_do_anki_e_abre_o_marcado(self):
         anki = AnkiComColecaoDeMentira(DESCRICAO, perfis=("Ana", "Beto"), aberto="Beto")
         conexao = self.conectar(anki, marcado="Ana")
