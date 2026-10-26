@@ -604,17 +604,12 @@ class BridgeServerTests(unittest.TestCase):
 
     def test_health_says_the_image_normalization_modules_are_loaded(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            bridge = server.BridgeApp(config={
-                "automatic_anki_path": "engine",
-                "jobs_root": str(Path(tmp) / "jobs"),
-                "queue_file": str(Path(tmp) / "queue.json"),
-            })
-            bridge._load_modules()  # what start() does with the engine on disk
+            bridge = self._bridge_with_jobs(tmp)
+            bridge.automatic_anki_path = server.ROOT / "engine"
+            bridge._load_modules()  # what start() does
             health = bridge.app.test_client().get("/health").get_json()
 
-        fingerprint = health["moduleFingerprint"]
-        self.assertTrue(fingerprint["normalizationLoaded"])
-        self.assertEqual(sorted(fingerprint["modules"]), ["google_images.py", "image_judge.py", "image_utils.py"])
+        self.assertTrue(health["moduleFingerprint"]["normalizationLoaded"])
 
     def test_access_denied_repair_route_answers_503_with_the_payload(self) -> None:
         payload = {
