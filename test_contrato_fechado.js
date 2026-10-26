@@ -13,7 +13,7 @@ const vm = require('vm');
 const { isDeepStrictEqual } = require('util');
 
 const { criarFakeAnki, exemploDaExtensao } = require('./e2e/fakes/anki');
-const contrato = require('./complemento/contrato/exemplos.json');
+const contrato = require('./complemento/contrato/carregar');
 
 // A lib como o service worker e as páginas a carregam: um script comum, com `fetch` à mão para ver o que sai.
 const enviados = [];

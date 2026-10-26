@@ -22,6 +22,17 @@ Anki está sincronizando (`anki_syncing`):
   `guid` (achou: devolve `"added"`, sem gravar), a frente normalizada no Baralho (achou: `"duplicate"`, sem gravar) e a nota nova
   (devolve `"added"`). O que dá errado é devolvido ou levantado para a thread de trabalho, nunca para a thread principal do Anki.
 
+O **perfil fixo** (#149, `perfil.py`): a Conexão entrega ao adaptador o `PerfilFixo` por `fixar_o_perfil(fixo)`, e daí em diante
+toda gravação só vale no perfil marcado: com outro perfil aberto levanta `OutroPerfil` e com o marcado apagado, `PerfilSumiu` (os dois
+são `ColecaoIndisponivel`: o Envio espera, nada é gravado). A conferência acontece na hora de gravar, no mesmo passo que a grava.
+Mais três métodos, para a Conexão:
+
+- `perfil_aberto()`: o nome do perfil com a coleção aberta, ou None (a tela de perfis);
+- `entrar_no_perfil_fixo()`: **só** com o Anki na tela de perfis, abre o marcado pelas funções de perfil do Anki; devolve se começou.
+  Com um perfil aberto não faz nada: ninguém é tirado do perfil em que estuda;
+- `trocar_para_o_perfil_fixo()`: o clique em “Abrir <perfil>”: fecha o perfil aberto pelo caminho normal do Anki (que sincroniza) e abre
+  o marcado; na tela de perfis, só abre; já no marcado, não faz nada. Devolve se começou.
+
 A frente e o verso são os campos “Frente” e “Verso” (ou “Front” e “Back”, do Anki em inglês) e, sem eles,
 o primeiro e o segundo campo, como a Conexão de hoje faz.
 """
@@ -43,6 +54,22 @@ _NOMES_DO_VERSO = ("verso", "back")
 
 class ColecaoIndisponivel(Exception):
     """Não há coleção aberta (o Anki está na tela de perfis), o Anki está sincronizando ou não respondeu a tempo."""
+
+
+class OutroPerfil(ColecaoIndisponivel):
+    """O Anki está noutro perfil que o marcado (#149): nada se grava, e o Envio espera o marcado abrir (`aberto`, `marcado`)."""
+
+    def __init__(self, aberto, marcado):
+        super().__init__("anki_other_profile")
+        self.aberto, self.marcado = aberto, marcado
+
+
+class PerfilSumiu(ColecaoIndisponivel):
+    """O perfil marcado já não existe no Anki (renomeado ou apagado, #149): nada se grava em perfil nenhum até a pessoa escolher outro."""
+
+    def __init__(self, marcado, aberto=None):
+        super().__init__("anki_profile_missing")
+        self.marcado, self.aberto = marcado, aberto
 
 
 class TipoDeNotaAusente(Exception):

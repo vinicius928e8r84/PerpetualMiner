@@ -16,7 +16,7 @@ fake.abrirPerfil('Perfil sem exemplo');
 assert.throws(() => fake.respostaDoContrato('GET', '/health'), /não tem exemplo de GET \/health/);
 
 // Cada pedido que a extensão faz de verdade, pelo mesmo ponto em que o Playwright entrega o pedido ao fake.
-const contrato = require('./complemento/contrato/exemplos.json');
+const contrato = require('./complemento/contrato/carregar');
 
 /** Entrega ao fake o pedido `metodo caminho` (com `corpo`, se tiver) como o Playwright o entregaria; devolve `{ status, json }` ou `{ abortado }`. */
 async function pedirAoFake(fakeDaConexao, metodo, caminho, corpo = null) {

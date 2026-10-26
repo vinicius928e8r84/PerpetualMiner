@@ -12,7 +12,7 @@
 // está em `complemento/contrato/LEIA-ME.md`.
 
 const { test, expect } = require('../fixtures');
-const contrato = require('../../complemento/contrato/exemplos.json');
+const contrato = require('../../complemento/contrato/carregar');
 const { exemploDaExtensao, diferencaDoContrato } = require('../fakes/anki');
 
 const daExtensao = contrato.exemplos.filter(exemploDaExtensao);

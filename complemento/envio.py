@@ -31,12 +31,12 @@ import copy
 import hashlib
 import json
 import os
-import re
 import threading
 from types import SimpleNamespace
 from datetime import datetime, timezone
 
 from . import baralhos, custos
+from .pedido_do_envio import id_que_serve_de_caminho, id_valido, impressao, validar_pedido, visao_do_pedido  # noqa: F401
 
 QUEUED, RUNNING, COMPLETED, PARTIAL, FAILED = "queued", "running", "completed", "partial", "failed"
 FIM = (COMPLETED, PARTIAL, FAILED)
@@ -62,15 +62,21 @@ PARA_O_ENVIO = ("openai_key_rejected", "openai_no_credit")
 # Passageiros: o Cartão tenta de novo depois de cada espera de `esperas_da_openai`.
 PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", "empty_response")
 
-_ID_DO_ENVIO = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
-IDIOMAS = ("en", "ru")
-
 
 def motor_do_complemento():
     """Os módulos do motor de texto que o Envio usa (`complemento.motor`, ver `motor/__init__.py`)."""
     from .motor import config_loader, generate_cards, parser, send_to_anki
 
     return SimpleNamespace(config_loader=config_loader, generate_cards=generate_cards, parser=parser, send_to_anki=send_to_anki)
+
+
+def _espera_pelo_perfil(motivo):
+    """O que o estado do Envio diz da espera quando o motivo é o perfil (#149); None para qualquer outro motivo."""
+    if isinstance(motivo, baralhos.OutroPerfil):
+        return {"reason": "other_profile", "profile": motivo.aberto, "marked": motivo.marcado}
+    if isinstance(motivo, baralhos.PerfilSumiu):
+        return {"reason": "profile_missing", "profile": motivo.aberto, "marked": motivo.marcado}
+    return None
 
 
 class Interrompido(Exception):
@@ -88,15 +94,6 @@ def agora_local():
 
 def agora_utc():
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-
-
-def id_valido(job_id):
-    return isinstance(job_id, str) and bool(_ID_DO_ENVIO.match(job_id))
-
-
-def id_que_serve_de_caminho(job_id):
-    """Um id que as rotas de achar aceitam: texto, sem barra nem `..` (um id fora de UUID só dá 404)."""
-    return isinstance(job_id, str) and bool(job_id) and "/" not in job_id and "\\" not in job_id and ".." not in job_id and "\x00" not in job_id
 
 
 def id_do_cartao(phrase_id, posicao):
@@ -146,55 +143,10 @@ def _apagar(caminho):
     return True
 
 
-def _canonico(dados):
-    return json.dumps(dados, ensure_ascii=False, sort_keys=True)
-
-
-def impressao(pedido):
-    """O SHA-256 do JSON canônico do corpo do `POST /jobs` já normalizado (`validar_pedido`): gravado no criar, nunca mudado."""
-    return hashlib.sha256(_canonico(pedido).encode("utf-8")).hexdigest()
-
-
 def cartoes_da_frase(motor, lang, linha):
     """Quantos Cartões uma linha de mineração tem (um por Palavra, na ordem); 0 se a linha não se lê."""
     entrada = motor.parser.parse_mining_line_ru(linha) if lang == "ru" else motor.parser.parse_mining_line(linha)
     return 0 if entrada is None else len(motor.parser.get_card_jobs(entrada))
-
-
-def validar_pedido(corpo):
-    """O pedido de `POST /jobs` normalizado, ou (status, erro) se ele não serve. Frases com o mesmo `phraseId` valem uma vez (a primeira)."""
-    if not id_valido(corpo.get("jobId")):
-        return None, (400, "invalid_job_id")
-    if corpo.get("lang") not in IDIOMAS:
-        return None, (400, "invalid_lang")
-    deck = corpo.get("deckName")
-    if not isinstance(deck, str) or not deck.strip() or len(deck) > 256:
-        return None, (400, "invalid_request")
-    entradas = corpo.get("entries")
-    if not isinstance(entradas, list) or not entradas:
-        return None, (400, "entries_required")
-    limpas, vistas = [], set()
-    for entrada in entradas:
-        frase = entrada.get("phraseId") if isinstance(entrada, dict) else None
-        if type(frase) is not int or not isinstance(entrada.get("line"), str):
-            return None, (400, "entries_required")
-        if frase not in vistas:
-            vistas.add(frase)
-            limpas.append({"phraseId": frase, "line": entrada["line"]})
-    tts = corpo.get("tts") if isinstance(corpo.get("tts"), dict) else {}
-    return {
-        "jobId": corpo["jobId"],
-        "lang": corpo["lang"],
-        "deckName": deck.strip(),
-        "imageSource": str(corpo.get("imageSource") or "1"),
-        "tts": {chave: str(valor) for chave, valor in tts.items() if isinstance(valor, str)},
-        "entries": limpas,
-    }, None
-
-
-def visao_do_pedido(pedido):
-    """O pedido como as rotas o mostram: sem a impressão do corpo (ela é só da Conexão)."""
-    return None if pedido is None else {chave: valor for chave, valor in pedido.items() if chave != "corpoSha256"}
 
 
 class Fila:
@@ -380,6 +332,7 @@ class Fila:
                     continue
                 ficam.append(item)
                 if estado["status"] == RUNNING:
+                    estado.pop("waiting", None)
                     estado.update(status=QUEUED, stage=QUEUED)
                     self._gravar_estado(item["jobId"], estado)
             if len(ficam) != len(ordem):
@@ -446,6 +399,7 @@ class Fila:
                         if cartao["status"] == TEXTO:
                             cartao["status"] = PENDENTE
                     if estado["status"] in (QUEUED, RUNNING):
+                        estado.pop("waiting", None)
                         estado.update(status=FAILED, stage=FAILED, lastError="frases_apagadas", progress={})
                     estado["wiped"] = True
                     self._gravar_estado(job_id, estado)
@@ -504,13 +458,40 @@ class Trabalho:
                     esperando_desde = self.fila.estado(job_id).get("stage")
                     self.logger.info("Envio %s: esperando o Anki (%s)", job_id, motivo)
                     self._etapa(job_id, "wait_anki")
+                self._dizer_a_espera(job_id, _espera_pelo_perfil(motivo))
+                if str(motivo) == "collection_not_open":
+                    self._entrar_no_perfil(job_id)
                 self._dormir(self.espera_do_anki)
                 if self.fila.estado(job_id).get("wiped"):
                     raise Apagado()
                 continue
+            if esperando_desde is not None:
+                self._dizer_a_espera(job_id, None)
             if esperando_desde not in (None, QUEUED, "wait_anki"):
                 self._etapa(job_id, esperando_desde)
             return resultado
+
+    def _dizer_a_espera(self, job_id, espera):
+        """O estado diz por que o Envio espera quando é o perfil (`waiting`, que o painel lê); só grava se mudou."""
+        if self.fila.estado(job_id).get("waiting") == espera:
+            return
+
+        def mudanca(estado):
+            if espera:
+                estado["waiting"] = espera
+            else:
+                estado.pop("waiting", None)
+
+        self.fila.mudar(job_id, mudanca)
+
+    def _entrar_no_perfil(self, job_id):
+        """O Anki está na tela de perfis (ou fechado o perfil): ninguém estuda, e a Conexão abre o perfil marcado. Com um perfil aberto o
+        adaptador não faz nada, e a troca só vem do clique da pessoa."""
+        try:
+            if self.colecao.entrar_no_perfil_fixo():
+                self.logger.info("Envio %s: o Anki estava sem perfil aberto; a Conexão abriu o perfil marcado", job_id)
+        except Exception as erro:  # o Envio só continua esperando
+            self.logger.warning("Envio %s: não deu para abrir o perfil marcado (%s)", job_id, type(erro).__name__)
 
     def _cartao(self, job_id, cartao_id, **mudanca):
         self.fila.mudar(job_id, lambda estado: estado["cards"][cartao_id].update(mudanca))
@@ -523,6 +504,7 @@ class Trabalho:
             if erro:
                 status = PARTIAL if no_anki else FAILED
             primeiro = next((c["error"] for c in estado["cards"].values() if c["status"] == FALHOU and c["error"]), None)
+            estado.pop("waiting", None)
             estado.update(
                 status=status, stage=status, successfulPhraseIds=no_anki, failedPhraseIds=falharam, duplicatePhraseIds=duplicadas,
                 progress={}, lastError=None if status == COMPLETED else (erro or primeiro or CARTOES_FALHARAM),

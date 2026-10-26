@@ -45,8 +45,10 @@ const contratos = new Map();
 /** As rotas que o contrato tem como pedido da extensão: `Set` de `MÉTODO /caminho`. */
 function rotasDoContrato(raiz) {
   if (!contratos.has(raiz)) {
-    const caminho = path.join(raiz, 'complemento', 'contrato', 'exemplos.json');
-    const exemplos = fs.existsSync(caminho) ? JSON.parse(fs.readFileSync(caminho, 'utf8')).exemplos : [];
+    const pasta = path.join(raiz, 'complemento', 'contrato');
+    // `exemplos.json` e os `exemplos-*.json` ao lado dele (complemento/contrato/carregar.js).
+    const [base, carregador] = ['exemplos.json', 'carregar.js'].map(nome => path.join(pasta, nome));
+    const exemplos = !fs.existsSync(base) ? [] : fs.existsSync(carregador) ? require(carregador).carregar(pasta).exemplos : JSON.parse(fs.readFileSync(base, 'utf8')).exemplos;
     contratos.set(raiz, new Set(exemplos.filter(e => e.daExtensao === true).map(e => `${e.pedido.metodo} ${e.pedido.caminho}`)));
   }
   return contratos.get(raiz);

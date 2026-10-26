@@ -2,7 +2,7 @@
 
 const { isDeepStrictEqual } = require('util');
 const { responderJson } = require('./http');
-const contrato = require('../../complemento/contrato/exemplos.json');
+const contrato = require('../../complemento/contrato/carregar');
 
 // Fake da Conexão com o Anki: responde na porta local dela (127.0.0.1:8766).
 // Por padrão está ligada, com vocabulário vazio. Um teste pode desligá-la
