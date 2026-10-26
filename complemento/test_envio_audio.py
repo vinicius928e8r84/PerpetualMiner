@@ -15,7 +15,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_envio import ID, INGLES, EnvioNoTeste, chats, pedido  # noqa: E402
+from complemento.test_envio import ID, INGLES, EnvioNoTeste, apagar_as_frases, chats, pedido  # noqa: E402
 from complemento.test_voz_de_mentira import audio_de_mentira, dito  # noqa: E402
 
 FRASE = "gave up : She gave up smoking [Context: Série - The Office - S01E01]"
@@ -106,6 +106,22 @@ class OCartaoGanhaAudio(unittest.TestCase):
             frase = [texto for _, _, texto in conexao.voz.pedidos if texto != "gave up"]
         self.assertEqual(frase, ["Mr Smith gave up smoking"])
 
+    def test_o_trecho_sem_pontuacao_que_so_passa_de_cem_letras_por_causa_do_espaco_do_corte_vai_inteiro_como_no_gtts_de_hoje(self):
+        primeiro = "gave up " + " ".join(["abcdefghi"] * 8) + " abcdefghijk"  # 99 letras, e um espaço no cem
+        segundo = " ".join(["abcdefghi"] * 9 + ["abcdefghij"])  # 100 letras
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+            conexao.criar(pedido(ID, "gave up : %s %s" % (primeiro, segundo)))
+            conexao.esperar(ID)
+            frase = [texto for _, _, texto in conexao.voz.pedidos if texto != "gave up"]
+        self.assertEqual(frase, [primeiro, segundo])
+
+    def test_o_esq_ponto_vira_esquire_em_qualquer_caixa_como_no_gtts_de_hoje(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+            conexao.criar(pedido(ID, "gave up : John esq. gave up smoking"))
+            conexao.esperar(ID)
+            frase = [texto for _, _, texto in conexao.voz.pedidos if texto != "gave up"]
+        self.assertEqual(frase, ["John Esquire gave up smoking"])
+
     def test_a_frase_que_ja_esta_no_baralho_nao_leva_midia_para_a_colecao(self):
         colecao = ColecaoEmMemoria({"baralhos": [{"nome": "Inglês", "notas": [{"frente": "She <b>gave up</b> smoking", "verso": "x"}]}]})
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, colecao=colecao) as conexao:
@@ -148,6 +164,18 @@ class AVozQueFalha(unittest.TestCase):
             conexao.criar(pedido(ID, FRASE))
             estado = conexao.esperar(ID)
         self.assertEqual((estado["status"], estado["lastError"]), ("failed", "tts_unreachable"))
+
+    def test_o_apagar_tudo_no_meio_do_pedido_da_voz_nao_grava_nota_nem_deixa_midia_na_colecao(self):
+        colecao = ColecaoEmMemoria(INGLES)
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, colecao=colecao) as conexao:
+            conexao.voz.recusar("*", 503, vezes=1)  # o primeiro pedido volta 503, o Apagar tudo chega nele, e a voz depois responde
+            conexao.voz.antes_de_responder = lambda: (apagar_as_frases(conexao), setattr(conexao.voz, "antes_de_responder", lambda: None))
+            conexao.criar(pedido(ID, FRASE))
+            estado = conexao.esperar(ID)
+            pedidos = len(conexao.voz.pedidos)
+        self.assertEqual((estado["status"], estado["lastError"], estado["wiped"]), ("failed", "frases_apagadas", True))
+        self.assertGreater(pedidos, 1)
+        self.assertEqual((colecao.gravadas, colecao.midia), ([], {}))
 
     def test_a_resposta_boa_sem_audio_dentro_falha_o_cartao_e_nao_grava_nota_muda(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:

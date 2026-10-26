@@ -67,7 +67,7 @@ def _preparar(texto):
     texto = texto.replace("-\n", "")
     for abreviacao in _ABREVIACOES:
         texto = re.sub(r"(?<=%s)(?=\.)." % abreviacao, "", texto, flags=re.IGNORECASE)
-    return texto.replace("Esq.", "Esquire")
+    return re.sub(re.escape("Esq."), "Esquire", texto, flags=re.IGNORECASE)
 
 
 def pedacos(texto):
@@ -77,15 +77,17 @@ def pedacos(texto):
     trechos = [texto] if len(texto) <= LIMITE_DO_PEDACO else _CORTES.split(texto)
     achados = []
     for trecho in (t.strip() for t in trechos if not _SO_PONTUACAO_OU_ESPACO.match(t)):
-        while len(trecho) > LIMITE_DO_PEDACO:
+        while True:
             if trecho.startswith(" "):
                 trecho = trecho[1:]
+            if len(trecho) <= LIMITE_DO_PEDACO:
+                break
             corte = trecho.rfind(" ", 0, LIMITE_DO_PEDACO)
             corte = corte if corte >= 0 else LIMITE_DO_PEDACO
             achados.append(trecho[:corte])
             trecho = trecho[corte:]
         if trecho.strip():
-            achados.append(trecho[1:] if trecho.startswith(" ") else trecho)
+            achados.append(trecho)
     return [achado for achado in achados if achado]
 
 

@@ -29,6 +29,7 @@ class VozDeMentira:
         self.cabecalhos = []
         self.recusas = {}  # sotaque (ou "*") → [status, vezes que ainda recusa (None: sempre)]
         self.responde_sem_audio = False
+        self.antes_de_responder = lambda: None  # o teste age aqui, com o pedido de áudio já anotado e ainda sem resposta
         dono = self
 
         class Atendente(BaseHTTPRequestHandler):
@@ -81,6 +82,7 @@ class VozDeMentira:
         texto, lang = json.loads(rpc[1])[:2]
         self.pedidos.append((sotaque, lang, texto))
         self.cabecalhos.append(cabecalhos)
+        self.antes_de_responder()
         status = self._recusa(sotaque)
         if status:
             return status, "{}"
