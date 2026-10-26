@@ -1,9 +1,11 @@
 """A fronteira de `janela.ligar` com o Qt do Anki: a única parte do item “PerpetualMiner…” que só existe dentro do Anki.
 
 Nada daqui roda fora do Anki (`aqt` só existe lá, e cada chamada importa o que usa), então o `unittest` não a exercita: o ensaio do
-dono, num Anki de verdade, confere o item, a janela, o botão Config e os avisos (`complemento/LEIA-ME.md`). O que a janela diz vem
+dono, num Anki de verdade, confere o item, a janela, o botão Config e os avisos (`docs/design/dentro-do-anki.md`). O que a janela diz vem
 pronto de `janela.Janela.estado()`, já em texto da Voz. Todo callback que o Qt chama aqui passa por `janela.protegido`.
 """
+
+import html
 
 from . import janela, texto_da_janela
 
@@ -22,6 +24,7 @@ class QtDoAnki:
     def __init__(self, logger):
         self._logger = logger
         self._aberta = None
+        self._mostrar = None
         self._relogio = None
 
     def item_do_menu(self, mw, texto, ao_clicar):
@@ -39,7 +42,8 @@ class QtDoAnki:
     def aviso(self, texto):
         from aqt.utils import tooltip
 
-        tooltip(texto, period=max(4000, 80 * len(texto)))  # some sozinho; o tempo acompanha o tamanho do texto
+        # O tooltip do Anki lê texto rico, e o nome do Baralho vem da extensão: `<` e `&` nunca viram marcação.
+        tooltip(html.escape(texto, quote=False), period=max(4000, 80 * len(texto)))  # some sozinho; o tempo acompanha o tamanho do texto
 
     def a_cada(self, mw, segundos, funcao):
         from aqt.qt import QTimer, qconnect
@@ -50,10 +54,12 @@ class QtDoAnki:
         self._relogio.start()
 
     def abrir_janela(self, mw, ler_estado):
-        """Abre a janela pequena (sem travar o Anki); se já está aberta, só a traz para a frente."""
-        if self._aberta is not None and self._aberta.isVisible():
+        """Abre a janela pequena (sem travar o Anki). A janela é uma só: aberta de novo, ela é mostrada e trazida para a frente."""
+        if self._aberta is not None:
+            self._aberta.show()
             self._aberta.raise_()
             self._aberta.activateWindow()
+            self._mostrar()
             return
         from aqt.qt import QDialog, QFormLayout, QLabel, QProgressBar, QPushButton, QTimer, Qt, QVBoxLayout, qconnect
 
@@ -108,4 +114,4 @@ class QtDoAnki:
         relogio.start()
         dialogo.show()
         mostrar_protegido()
-        self._aberta = dialogo
+        self._aberta, self._mostrar = dialogo, mostrar_protegido

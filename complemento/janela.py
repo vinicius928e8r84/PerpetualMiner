@@ -181,7 +181,8 @@ def protegido(funcao, logger, o_que):
 def ligar(mw, janela, qt, modulo, logger):
     """Põe no Anki o item de Ferramentas, o botão Config do complemento `modulo` e a conferência do Envio, pela fronteira `qt`.
 
-    O item e o Config abrem a mesma janela. Cada passo é independente: se o Anki não aceita um, os outros ficam."""
+    O item e o Config abrem a mesma janela. Só o Config é opcional: se o Anki não o aceita, o item e a conferência ficam. Se o item
+    não entra, `ligar` levanta e quem chamou (`no_anki`) registra o erro e segue sem a janela."""
     abrir = protegido(lambda: qt.abrir_janela(mw, janela.estado), logger, "abrir a janela")
     item = qt.item_do_menu(mw, texto_da_janela.texto("ANK-01.parado"), abrir)
     try:

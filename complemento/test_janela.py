@@ -17,10 +17,11 @@ import threading
 import time
 import types
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import configuracao, janela, no_anki, registro, texto_da_janela  # noqa: E402
+from complemento import configuracao, janela, no_anki, qt_do_anki, registro, texto_da_janela  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_envio import CHAVE, ID, INGLES, EnvioNoTeste, pedido  # noqa: E402
 from complemento.test_no_anki import AnkiDeMentira  # noqa: E402
@@ -31,17 +32,20 @@ OUTRO_ID = "66666666-7777-4888-9999-aaaaaaaaaaaa"
 
 
 class ColecaoQueSegura(ColecaoEmMemoria):
-    """Grava `ate` Cartões e segura o seguinte até `liberar()`: o Envio fica no meio, com o estado que a janela lê."""
+    """Grava `ate` Cartões e segura o seguinte até `liberar()`: o Envio fica no meio, com o estado que a janela lê.
+
+    `segurando` só vale a partir de quando o Cartão seguinte já está na etapa de gravar (a etapa muda antes de chegar aqui)."""
 
     def __init__(self, descricao, ate):
         super().__init__(descricao)
-        self.ate, self._solta = ate, threading.Event()
+        self.ate, self._solta, self.segurando = ate, threading.Event(), threading.Event()
 
     def liberar(self):
         self._solta.set()
 
     def gravar_cartao(self, *argumentos):
         if len(self.gravadas) >= self.ate:
+            self.segurando.set()
             self._solta.wait(15)
         return super().gravar_cartao(*argumentos)
 
@@ -96,7 +100,8 @@ class AJanelaDiz(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, colecao=colecao) as conexao:
             conexao.criar(pedido(ID, *DOZE, baralho="Inglês::Mineradas"))
             a = a_janela(conexao)
-            envio = esperar(lambda: a.estado().envio if a.estado().envio and a.estado().envio.feitos == 7 else None)
+            self.assertTrue(colecao.segurando.wait(15))
+            envio = a.estado().envio
             colecao.liberar()
             conexao.esperar(ID)
         self.assertEqual(
@@ -354,6 +359,83 @@ def tabela_da_pagina():
         linhas = [linha for linha in arquivo.read().split("\n") if linha.startswith("| ANK-")]
     celulas = [[c.strip().replace("\\|", "|") for c in re.split(r"(?<!\\)\|", linha)[1:-1]] for linha in linhas]
     return {id_: modelo for id_, modelo, *_ in celulas}
+
+
+class _Qualquer:
+    """Qualquer nome do Qt (um enum, um sinal, um método) que a fronteira use: aceita tudo e anota o que o complemento pediu."""
+
+    def __getattr__(self, nome):
+        return self if nome[:1].isupper() else lambda *argumentos, **nomeados: None
+
+
+class AqtDeMentira:
+    """O `aqt` do Anki, só o que `qt_do_anki.py` importa, anotando o que o complemento pede a ele."""
+
+    def __init__(self):
+        self.tooltips, self.dialogos, self.relogios = [], [], []
+        aqui = self
+
+        class Dialogo(_Qualquer):
+            def __init__(self, *_):
+                self.visivel, self.mostradas, self.trazidas, self.ativadas = False, 0, 0, 0
+                aqui.dialogos.append(self)
+
+            def show(self):
+                self.visivel, self.mostradas = True, self.mostradas + 1
+
+            def close(self):
+                self.visivel = False
+
+            def isVisible(self):
+                return self.visivel
+
+            def raise_(self):
+                self.trazidas += 1
+
+            def activateWindow(self):
+                self.ativadas += 1
+
+        class Relogio(_Qualquer):
+            def __init__(self, *_):
+                aqui.relogios.append(self)
+
+        qt = types.SimpleNamespace(
+            QDialog=Dialogo, QTimer=Relogio, Qt=_Qualquer(), qconnect=lambda *_: None,
+            **{nome: (lambda *_: _Qualquer()) for nome in ("QFormLayout", "QLabel", "QProgressBar", "QPushButton", "QVBoxLayout")})
+        utils = types.SimpleNamespace(tooltip=lambda texto, period=None: self.tooltips.append((texto, period)))
+        self.modulos = {"aqt": types.SimpleNamespace(qt=qt, utils=utils), "aqt.qt": qt, "aqt.utils": utils}
+
+    def __enter__(self):
+        self._troca = mock.patch.dict(sys.modules, self.modulos)
+        self._troca.__enter__()
+        return self
+
+    def __exit__(self, *erro):
+        return self._troca.__exit__(*erro)
+
+
+class AFronteiraComOQtDoAnki(unittest.TestCase):
+    def test_o_nome_do_baralho_no_aviso_nunca_vira_marcacao_no_tooltip_do_anki(self):
+        with AqtDeMentira() as aqt:
+            qt_do_anki.QtDoAnki(registro.silencioso()).aviso('12 cartões enviados ao Baralho <b>Meu</b> & "Outro"')
+        self.assertEqual([texto for texto, _ in aqt.tooltips], ['12 cartões enviados ao Baralho &lt;b&gt;Meu&lt;/b&gt; &amp; "Outro"'])
+
+    def test_o_aviso_sem_marcacao_chega_ao_tooltip_como_foi_escrito(self):
+        with AqtDeMentira() as aqt:
+            qt_do_anki.QtDoAnki(registro.silencioso()).aviso("Enviando 12 cartões ao Baralho Inglês")
+        self.assertEqual([texto for texto, _ in aqt.tooltips], ["Enviando 12 cartões ao Baralho Inglês"])
+
+    def test_abrir_a_janela_de_novo_depois_de_fechada_mostra_a_mesma_sem_criar_outra_janela_nem_outro_relogio(self):
+        with AqtDeMentira() as aqt:
+            qt = qt_do_anki.QtDoAnki(registro.silencioso())
+            estado = janela.Janela(None, lambda: "Usuário 1", configuracao.VERSAO, registro.silencioso()).estado
+            qt.abrir_janela(object(), estado)
+            aqt.dialogos[0].close()
+            qt.abrir_janela(object(), estado)
+            qt.abrir_janela(object(), estado)
+        dialogo = aqt.dialogos[0]
+        self.assertEqual((len(aqt.dialogos), len(aqt.relogios)), (1, 1))
+        self.assertEqual((dialogo.visivel, dialogo.mostradas, dialogo.trazidas, dialogo.ativadas), (True, 3, 2, 2))
 
 
 class ACopiaDaJanelaEADaVoz(unittest.TestCase):
