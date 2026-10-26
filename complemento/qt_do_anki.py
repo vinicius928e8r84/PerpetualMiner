@@ -5,7 +5,7 @@ dono, num Anki de verdade, confere o item, a janela, o botão Config e os avisos
 pronto de `janela.Janela.estado()`, já em texto da Voz. Todo callback que o Qt chama aqui passa por `janela.protegido`.
 """
 
-from . import janela, voz
+from . import janela, texto_da_janela
 
 
 class _Item:
@@ -58,7 +58,7 @@ class QtDoAnki:
         from aqt.qt import QDialog, QFormLayout, QLabel, QProgressBar, QPushButton, QTimer, Qt, QVBoxLayout, qconnect
 
         dialogo = QDialog(mw)
-        dialogo.setWindowTitle(voz.texto("ANK-02.titulo"))
+        dialogo.setWindowTitle(texto_da_janela.texto("ANK-02.titulo"))
         dialogo.setMinimumWidth(420)
         layout = QVBoxLayout(dialogo)
         formulario = QFormLayout()
@@ -69,7 +69,7 @@ class QtDoAnki:
             valor.setTextFormat(Qt.TextFormat.PlainText)  # o nome de um Baralho nunca vira marcação
             valor.setWordWrap(True)
             valor.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-            formulario.addRow(voz.texto(rotulo), valor)
+            formulario.addRow(texto_da_janela.texto(rotulo), valor)
             return valor
 
         conexao, versao, perfil = linha("ANK-02.conexao"), linha("ANK-02.versao"), linha("ANK-02.perfil")
@@ -80,7 +80,7 @@ class QtDoAnki:
         formulario.addRow(barra)
         formulario.addRow(baralho)
         erro = linha("ANK-02.erro")
-        fechar = QPushButton(voz.texto("ANK-02.fechar"))
+        fechar = QPushButton(texto_da_janela.texto("ANK-02.fechar"))
         qconnect(fechar.clicked, dialogo.close)
         layout.addWidget(fechar)
 
@@ -92,14 +92,14 @@ class QtDoAnki:
             versao.setText(estado.versao)
             perfil.setText(estado.perfil)
             atual = estado.envio
-            envio.setText("%s · %s" % (atual.progresso, atual.etapa) if atual else voz.texto("ANK-02.semEnvio"))
+            envio.setText("%s · %s" % (atual.progresso, atual.etapa) if atual else texto_da_janela.texto("ANK-02.semEnvio"))
             barra.setVisible(atual is not None)
             baralho.setVisible(atual is not None)
             if atual:
                 barra.setRange(0, max(atual.total, 1))  # (0, 0) seria a barra sem fim
                 barra.setValue(atual.feitos)
-                baralho.setText(voz.texto("ANK-02.baralho", baralho=atual.baralho))
-            erro.setText(estado.ultimo_erro or voz.texto("ANK-02.semErro"))
+                baralho.setText(texto_da_janela.texto("ANK-02.baralho", baralho=atual.baralho))
+            erro.setText(estado.ultimo_erro or texto_da_janela.texto("ANK-02.semErro"))
 
         mostrar_protegido = janela.protegido(mostrar, self._logger, "atualizar a janela")
         relogio = QTimer(dialogo)

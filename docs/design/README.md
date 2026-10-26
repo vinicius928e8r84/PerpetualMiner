@@ -32,7 +32,7 @@ O escopo é redesign: auditar, podar, reagrupar e revestir. Nenhuma função nov
 | Minerar de uma foto (ex-BookReader) | `bookreader.html/css/js` | [foto/](foto/README.md) | [`prototipo-bookreader.html?variant=C`](foto/prototipo-bookreader.html) | [Protótipo: Minerar de uma foto (ex-BookReader)](https://github.com/vinicius928e8r84/PerpetualMiner/issues/7) |
 | Popup (mini painel) e badge | `popup.html/css/js`, ícone da toolbar | [popup/](popup/README.md) | [`prototipo-popup.html?variant=A`](popup/prototipo-popup.html) | [Protótipo: Popup (mini painel)](https://github.com/vinicius928e8r84/PerpetualMiner/issues/5) |
 | Overlay in-page | `content.js` (só o visual) | [overlay/](overlay/README.md) | [`prototipo-overlay.html?variant=M1`](overlay/prototipo-overlay.html) | [Protótipo: Overlay in-page (content.js)](https://github.com/vinicius928e8r84/PerpetualMiner/issues/8) |
-| Dentro do Anki: o item “PerpetualMiner…” em Ferramentas | `complemento/janela.py`, `qt_do_anki.py`, `voz.py` | [dentro-do-anki.md](dentro-do-anki.md) | (sem protótipo de tela; a janela é do Anki) | [Dentro do Anki: o item PerpetualMiner… em Ferramentas](https://github.com/vinicius928e8r84/PerpetualMiner/issues/175) |
+| Dentro do Anki: o item “PerpetualMiner…” em Ferramentas | `complemento/janela.py`, `qt_do_anki.py`, `texto_da_janela.py` | [dentro-do-anki.md](dentro-do-anki.md) | (sem protótipo de tela; a janela é do Anki) | [Dentro do Anki: o item PerpetualMiner… em Ferramentas](https://github.com/vinicius928e8r84/PerpetualMiner/issues/175) |
 
 Todos os protótipos abrem na variante travada por padrão.
 

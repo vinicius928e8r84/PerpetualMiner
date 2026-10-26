@@ -1,6 +1,6 @@
 """O item “PerpetualMiner…” em Ferramentas, a janela dele e os avisos do Envio (#175), sem o Qt.
 
-`Janela` lê o que a Conexão guardou (a fila e o estado de cada Envio, `envio.py`) e o devolve já em texto da Voz (`voz.py`):
+`Janela` lê o que a Conexão guardou (a fila e o estado de cada Envio, `envio.py`) e o devolve já em texto da Voz (`texto_da_janela.py`):
 `estado()` é o que a janela mostra e `passo()` o rótulo do item e os avisos novos. Nada daqui lê o cofre das chaves nem o pedido
 das Frases: a chave da OpenAI, a Palavra e a Frase não têm por onde chegar à tela do Anki.
 
@@ -11,7 +11,7 @@ de erro culpando o complemento.
 
 from collections import namedtuple
 
-from . import envio, voz
+from . import envio, texto_da_janela
 
 # Quantos Envios, do mais recente para trás, o item olha a cada passo (a fila não tem limpeza: #151).
 ENVIOS_LIDOS = 20
@@ -54,8 +54,8 @@ class _Lido:
     def na_janela(self):
         chave = _ETAPAS.get(self.estado.get("stage"), "naFila") if self.ativo else _FIM.get(self.status, "falhou")
         return EnvioNaJanela(
-            progresso=voz.texto("ANK-02.progresso", feitos=self.feitos, total=self.total),
-            etapa=voz.texto("ENV-07." + chave),
+            progresso=texto_da_janela.texto("ANK-02.progresso", feitos=self.feitos, total=self.total),
+            etapa=texto_da_janela.texto("ENV-07." + chave),
             feitos=self.feitos,
             total=self.total,
             baralho=self.baralho,
@@ -65,19 +65,19 @@ class _Lido:
         codigo = self.estado.get("lastError")
         if self.ativo or not codigo:
             return None
-        return voz.texto("ANK-02.falhou", n=max(self.total - self.feitos, 0), baralho=self.baralho, codigo=codigo)
+        return texto_da_janela.texto("ANK-02.falhou", n=max(self.total - self.feitos, 0), baralho=self.baralho, codigo=codigo)
 
     def aviso_do_comeco(self):
-        return voz.texto("ANK-03.comecou", total=self.total, baralho=self.baralho)
+        return texto_da_janela.texto("ANK-03.comecou", total=self.total, baralho=self.baralho)
 
     def aviso_do_fim(self):
         if not self.feitos:
-            return voz.texto("ANK-03.naoTerminou", baralho=self.baralho)
-        partes = [voz.texto("ANK-03.terminou", n=self.adicionados, baralho=self.baralho)]
+            return texto_da_janela.texto("ANK-03.naoTerminou", baralho=self.baralho)
+        partes = [texto_da_janela.texto("ANK-03.terminou", n=self.adicionados, baralho=self.baralho)]
         if self.duplicados:
-            partes.append(voz.texto("ENV-10.jaEstavam", n=self.duplicados))
+            partes.append(texto_da_janela.texto("ENV-10.jaEstavam", n=self.duplicados))
         if self.total > self.feitos:
-            partes.append(voz.texto("ENV-10.naoEntraram", n=self.total - self.feitos))
+            partes.append(texto_da_janela.texto("ENV-10.naoEntraram", n=self.total - self.feitos))
         return " · ".join(partes)
 
 
@@ -111,7 +111,7 @@ class Janela:
         except Exception as erro:
             self._registrar("o perfil", erro)
             nome = None
-        return nome or voz.texto("ANK-02.semPerfil")
+        return nome or texto_da_janela.texto("ANK-02.semPerfil")
 
     def _envios(self):
         """Os últimos Envios da fila, do mais antigo ao mais novo; vazio se a Conexão não subiu ou a fila não se lê."""
@@ -135,7 +135,7 @@ class Janela:
         agora = next((e for e in envios if e.ativo), envios[-1] if envios else None)
         terminado = next((e for e in reversed(envios) if not e.ativo), None)
         return Estado(
-            conexao=voz.texto("ANK-02.ligada" if self._conexao is not None else "ANK-02.desligada"),
+            conexao=texto_da_janela.texto("ANK-02.ligada" if self._conexao is not None else "ANK-02.desligada"),
             versao=self._versao,
             perfil=self._perfil(),
             envio=agora.na_janela() if agora else None,
@@ -163,8 +163,8 @@ class Janela:
                     avisos.append(lido.aviso_do_fim())
         agora = next((e for e in envios if e.ativo), None)
         if agora is None:
-            return voz.texto("ANK-01.parado"), avisos
-        return voz.texto("ANK-01.enviando", feitos=agora.feitos, total=agora.total), avisos
+            return texto_da_janela.texto("ANK-01.parado"), avisos
+        return texto_da_janela.texto("ANK-01.enviando", feitos=agora.feitos, total=agora.total), avisos
 
 
 def protegido(funcao, logger, o_que):
@@ -183,12 +183,12 @@ def ligar(mw, janela, qt, modulo, logger):
 
     O item e o Config abrem a mesma janela. Cada passo é independente: se o Anki não aceita um, os outros ficam."""
     abrir = protegido(lambda: qt.abrir_janela(mw, janela.estado), logger, "abrir a janela")
-    item = qt.item_do_menu(mw, voz.texto("ANK-01.parado"), abrir)
+    item = qt.item_do_menu(mw, texto_da_janela.texto("ANK-01.parado"), abrir)
     try:
         qt.acao_de_configuracao(mw, modulo, abrir)
     except Exception:
         logger.exception("O botão Config do complemento não abriu a janela; o Anki mostra a configuração dele")
-    rotulo = [voz.texto("ANK-01.parado")]
+    rotulo = [texto_da_janela.texto("ANK-01.parado")]
 
     def conferir():
         texto, avisos = janela.passo()

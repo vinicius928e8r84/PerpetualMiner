@@ -15,7 +15,7 @@ Fatia do mapa [#138](https://github.com/vinicius928e8r84/PerpetualMiner/issues/1
 |---|---|
 | `complemento/janela.py` | `Janela.estado()` (o que a janela lê) e `Janela.passo()` (o rótulo e os avisos novos), só com a fila e o estado do Envio (`envio.py`); `ligar` põe o item, o Config e a conferência (a cada 1,5 s) no Anki por uma fronteira de cinco chamadas (`qt`) |
 | `complemento/qt_do_anki.py` | a fronteira de verdade, sobre o `aqt`: `QAction` em `mw.form.menuTools`, `addonManager.setConfigAction`, `tooltip`, `QTimer` e o `QDialog`. Só roda dentro do Anki |
-| `complemento/voz.py` | a cópia abaixo, por ID, com os modelos da extensão (`{nome}`, `{n\|singular\|plural}`) |
+| `complemento/texto_da_janela.py` | a cópia abaixo, por ID, com os modelos da extensão (`{nome}`, `{n\|singular\|plural}`) |
 | `complemento/no_anki.py` | `ao_carregar` põe o item depois de subir a Conexão, **suba ela ou não** (desligada, a janela diz onde está o motivo) |
 
 ## O que a janela lê (e o que nunca lê)
@@ -38,7 +38,7 @@ Tudo o que o Anki chama de volta (o item, o Config, a conferência, a atualizaç
 
 Os IDs `ANK-*` vivem aqui e não no catálogo da Voz (`docs/design/voz/README.md`, `lib/voz/catalogo.js`): os dois estão no teto de tamanho do gancho
 (`scripts/ganchos/linha-de-base-de-tamanho.json` só desce) e uma tela de dentro do Anki não passa pela extensão. A tabela segue o formato dele;
-`complemento/test_janela.py` confere cada texto de `voz.py` com esta tabela (os `ANK-*`) e com o retrato do catálogo (os `ENV-07` e `ENV-10`
+`complemento/test_janela.py` confere cada texto de `texto_da_janela.py` com esta tabela (os `ANK-*`) e com o retrato do catálogo (os `ENV-07` e `ENV-10`
 que a janela reusa). Entrar no catálogo é dividi-lo, outro ticket.
 
 | ID | Cópia | Onde |

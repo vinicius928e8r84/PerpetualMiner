@@ -20,7 +20,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import configuracao, janela, no_anki, registro, voz  # noqa: E402
+from complemento import configuracao, janela, no_anki, registro, texto_da_janela  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_envio import CHAVE, ID, INGLES, EnvioNoTeste, pedido  # noqa: E402
 from complemento.test_no_anki import AnkiDeMentira  # noqa: E402
@@ -359,7 +359,7 @@ def tabela_da_pagina():
 class ACopiaDaJanelaEADaVoz(unittest.TestCase):
     def test_cada_texto_da_janela_e_o_da_pagina_de_desenho_por_id(self):
         tabela = tabela_da_pagina()
-        meus = {id_: modelo for id_, modelo in voz.TEXTOS.items() if id_.startswith("ANK-")}
+        meus = {id_: modelo for id_, modelo in texto_da_janela.TEXTOS.items() if id_.startswith("ANK-")}
         self.assertTrue(meus)
         self.assertEqual(tabela, meus)
 
@@ -369,15 +369,15 @@ class ACopiaDaJanelaEADaVoz(unittest.TestCase):
             self.skipTest("o catálogo da Voz não vai no .ankiaddon")
         with open(caminho, encoding="utf-8") as arquivo:
             retrato = json.load(arquivo)
-        reusados = {id_: modelo for id_, modelo in voz.TEXTOS.items() if not id_.startswith("ANK-")}
+        reusados = {id_: modelo for id_, modelo in texto_da_janela.TEXTOS.items() if not id_.startswith("ANK-")}
         self.assertTrue(reusados)
         self.assertEqual({id_: retrato.get(id_) for id_ in reusados}, reusados)
 
     def test_o_catalogo_enche_os_valores_como_a_extensao_numeros_em_pt_br_e_singular_e_plural(self):
-        self.assertEqual(voz.texto("ANK-03.terminou", n=1, baralho="X"), "1 cartão enviado ao Baralho X")
-        self.assertEqual(voz.texto("ANK-03.terminou", n=1284, baralho="X"), "1.284 cartões enviados ao Baralho X")
+        self.assertEqual(texto_da_janela.texto("ANK-03.terminou", n=1, baralho="X"), "1 cartão enviado ao Baralho X")
+        self.assertEqual(texto_da_janela.texto("ANK-03.terminou", n=1284, baralho="X"), "1.284 cartões enviados ao Baralho X")
         with self.assertRaises(KeyError):
-            voz.texto("ANK-03.terminou", n=2)
+            texto_da_janela.texto("ANK-03.terminou", n=2)
 
 
 if __name__ == "__main__":
