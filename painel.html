@@ -175,8 +175,7 @@
               <button class="veio-botao veio-botao--perigo-fantasma veio-botao--compacto" id="btn-delete-selected" type="button">
                 <span data-icone="apagar"></span><span data-voz="PAI-32.apagar"></span>
               </button>
-              <!-- Com a Conexão desligada fica aria-disabled (não disabled, para o tooltip
-                   aparecer no hover e no foco), e o tooltip diz por quê (painel-envio.js). -->
+              <!-- Com a Conexão desligada fica aria-disabled (para o tooltip aparecer no hover e no foco), e o tooltip diz por quê (painel-envio.js). -->
               <span class="veio-com-dica">
                 <button class="veio-botao veio-botao--primario veio-botao--compacto" id="btn-send-anki" type="button">
                   <span data-icone="enviar"></span><span data-voz="PAI-32.enviar"></span>
@@ -360,13 +359,10 @@
         </header>
 
         <!--
-          Resumo primeiro (variante C): cada card é uma linha fechada com o resumo
-          do estado e abre no lugar; vários podem ficar abertos. A linha inteira
-          abre e fecha (painel-shell.js); o botão do título é o controle para o
-          teclado e o leitor de tela. O card Conta & sync é desenhado por
-          painel-conta.js, o Atalhos por painel-atalhos.js, o Chave do Gemini
-          por painel-chave.js, o Conexão com o Anki por painel-abrir-anki.js e o
-          Zona de perigo por painel-perigo.js.
+          Resumo primeiro (variante C): cada card é uma linha fechada com o resumo do estado e abre no lugar; vários podem
+          ficar abertos. A linha inteira abre e fecha (painel-shell.js); o botão do título é o controle para o teclado e o
+          leitor de tela. Desenham os cards: Conta & sync, painel-conta.js; Atalhos, painel-atalhos.js; Chave do Gemini,
+          painel-chave.js; Conexão com o Anki, painel-abrir-anki.js; Zona de perigo, painel-perigo.js.
         -->
         <div class="shell-cards">
           <section class="shell-card cfg-card" id="cfg-conta" aria-labelledby="cfg-conta-titulo">
@@ -651,6 +647,7 @@
   <script src="painel-ia.js"></script>
   <script src="painel-abrir-anki.js"></script>
   <script src="painel-perigo.js"></script>
+  <script src="painel-envio-cartao.js"></script>
   <script src="painel-envio.js"></script>
   <script src="painel-anki-primeira-conexao.js"></script>
   <script src="painel-anki.js"></script>

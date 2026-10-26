@@ -1,4 +1,4 @@
-"""O Envio dentro da Conexão (#142): a fila, o estado de cada Cartão e a thread de trabalho que os faz.
+"""O Envio dentro da Conexão (#142): a fila, o estado de cada Cartão e o trabalho que os faz (a thread dele: `trabalhador.py`).
 
 O desenho (dono de cada dado, estados, transições, variantes e limites) está em `docs/design/envio-no-complemento.md`.
 Os estados e as regras são os do Envio de hoje (`bridge/envio.py`), que o painel já lê: `queued` → `running` (etapa
@@ -645,62 +645,13 @@ class Trabalho:
                 campos["front"], nota["normalized_front"], lambda valor: envio.normalize_front(valor, lang)))
         except baralhos.TipoDeNotaAusente:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=SEM_TIPO_DE_NOTA)
-        except Interrompido:
+        except (Interrompido, Apagado):
             raise
         except Exception as erro:
             self.logger.error("Envio %s: o Anki não gravou o Cartão %s (%s)", job_id, cartao_id, type(erro).__name__)
             return self._cartao(job_id, cartao_id, status=FALHOU, error=FALHA_AO_GRAVAR)
         self._cartao(job_id, cartao_id, status=resultado, error=None)
         self.fila.cartao_chegou(job_id, cartao_id)
-
-
-class Trabalhador:
-    """A thread de trabalho: tira um Envio da fila de cada vez. Nenhum erro dela sai do logger."""
-
-    def __init__(self, trabalho, intervalo=1.0):
-        self.trabalho = trabalho
-        self.fila = trabalho.fila
-        self.parar = trabalho.parar
-        self.intervalo = intervalo
-        self._thread = None
-
-    def iniciar(self):
-        self.fila.recuperar_os_interrompidos()
-        self._thread = threading.Thread(target=self._rodar, name="perpetualminer-envio", daemon=True)
-        self._thread.start()
-
-    def _rodar(self):
-        logger = self.trabalho.logger
-        while not self.parar.is_set():
-            job_id = None
-            try:
-                job_id = self.fila.reservar_o_proximo()
-                if job_id is None:
-                    self.fila.mudou.wait(self.intervalo)
-                    self.fila.mudou.clear()
-                    continue
-                logger.info("Envio %s: começou", job_id)
-                self.trabalho.fazer(job_id)
-            except Interrompido:
-                return
-            except Exception as erro:
-                logger.error("Envio: erro inesperado na thread de trabalho (%s)", type(erro).__name__, exc_info=True)
-                if job_id is not None:
-                    self._falhou(job_id)
-                self.parar.wait(self.intervalo)
-
-    def _falhou(self, job_id):
-        try:
-            self.trabalho._terminar(job_id, self.fila.pedido(job_id) or {}, "internal_error")
-        except Exception:
-            self.trabalho.logger.exception("Envio %s: não deu para gravar a falha", job_id)
-
-    def encerrar(self):
-        self.parar.set()
-        self.fila.mudou.set()
-        if self._thread is not None:
-            self._thread.join(timeout=5)
-            self._thread = None
 
 
 def pacote_de_diagnostico(fila, job_id, versao, caminho_do_log):

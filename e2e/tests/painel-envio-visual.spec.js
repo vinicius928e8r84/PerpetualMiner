@@ -105,3 +105,38 @@ test('Enviar ao Anki indisponível com a Conexão desligada, com o tooltip', asy
 
   await expect(page).toHaveScreenshot('envio-indisponivel.png');
 });
+
+// #142: o Envio dentro da Conexão com o Anki. As duas telas novas são propostas: ficam `fixme`, sem PNG, até o dono
+// compará-las com o protótipo aprovado do #105 (o Envio longo, opção A) e aprovar (regra 10).
+const AGUARDA_O_DONO = 'a referência visual do Envio na Conexão com o Anki espera a aprovação do dono contra o protótipo do #105 (regra 10)';
+
+test('o Envio esperando o Anki: a coleção fechada ou sincronizando, e a Conexão espera', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
+  await abrirFrases(page, extensao);
+  await enviarTodas(page, fakes, 2);
+  const [ingles, russo] = fakes.anki.envios;
+  fakes.anki.moverEnvio(ingles.jobId, { stage: 'wait_anki', atualizadoEm: new Date(AGORA.getTime() - 120_000) });
+  fakes.anki.moverEnvio(russo.jobId, { stage: 'wait_anki', atualizadoEm: new Date(AGORA.getTime() - 120_000) });
+  await expect(progresso(page).getByText('Esperando o Anki')).toHaveCount(2, { timeout: 10_000 });
+
+  await expect(page).toHaveScreenshot('envio-esperando-o-anki.png');
+});
+
+test('o Envio com um código da Conexão: um Cartão não entrou, Continuar envio e o código em Detalhes', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
+  // Uma Conexão de antes do Envio (≤ 0.2.0) não tem a rota: o russo não começa, com o 404 em Detalhes.
+  fakes.anki.recusarEnvios('ru', { status: 404, erro: 'not_found' });
+  // O id do Envio aparece em Detalhes: fixo, para a referência não mudar a cada execução.
+  await page.addInitScript(() => {
+    let n = 0;
+    crypto.randomUUID = () => `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`;
+  });
+  await abrirFrases(page, extensao);
+  await enviarTodas(page, fakes, 2);
+  const [ingles] = fakes.anki.enviosEm('en');
+  fakes.anki.concluirEnvio(ingles.jobId, { erro: 'openai_key_missing' });
+  await expect(progresso(page).getByRole('button', { name: 'Continuar envio' })).toBeVisible({ timeout: 10_000 });
+  for (const detalhes of await progresso(page).locator('summary').all()) await detalhes.click();
+
+  await expect(page).toHaveScreenshot('envio-codigo-da-conexao.png');
+});

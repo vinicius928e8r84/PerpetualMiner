@@ -42,7 +42,7 @@
     "e2e/tests/painel-anki-baralhos.spec.js": 17,
     "e2e/tests/painel-anki-primeira-conexao.spec.js": 1,
     "e2e/tests/painel-anki.spec.js": 14,
-    "e2e/tests/painel-envio.spec.js": 17,
+    "e2e/tests/painel-envio.spec.js": 15,
     "e2e/tests/painel-frases-selecao.spec.js": 12,
     "e2e/tests/painel-frases.spec.js": 14,
     "e2e/tests/painel-minerar-frases.spec.js": 16,

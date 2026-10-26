@@ -11,13 +11,15 @@ Cada rota é uma função `(conexao, corpo) -> (status, json)` em `ROTAS`; `corp
 
 import json
 import os
-import re
+import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import baralhos, custos, envio, openai_api
-from .chaves import Cofre, OutraContaNaoEnviada, LegadoNaoVinculado
-from .nuvem_da_chave import NuvemDaChave, NuvemIndisponivel
+from . import baralhos, custos, envio, trabalhador
+from .chaves import Cofre
+from .rotas_da_chave import (
+    apagar_chave_da_openai, estado_da_ia, guardar_chave_da_openai, sincronizar_chave_da_openai, vincular_legado_da_openai,
+)
 from .configuracao import ENDERECO, OPENAI_BASE
 from .item_de_login import AnkiNaoEncontrado
 
@@ -25,20 +27,10 @@ from .item_de_login import AnkiNaoEncontrado
 LIMITE_DO_CORPO = 64 * 1024
 # O Envio leva as Frases escolhidas de uma vez (centenas de linhas de mineração): só ele vai até aqui.
 LIMITE_DO_ENVIO = 4 * 1024 * 1024
+# Depois que a Conexão sobe, a thread do Envio espera este tempo (s) um pedido de Envio da extensão antes de retomar o que ficou parado.
+ESPERA_DO_CONTATO = 60.0
 # As rotas cujo corpo pode passar de `LIMITE_DO_CORPO`.
 LIMITES_POR_ROTA = {("POST", "/jobs"): LIMITE_DO_ENVIO}
-
-
-# Uma chave da OpenAI é uma palavra só, de caracteres que cabem num cabeçalho HTTP. O que não tem essa
-# forma nem sai da Conexão: não vale gastar um pedido para a OpenAI dizer o que já se vê.
-_FORMA_DA_CHAVE = re.compile(r"^[A-Za-z0-9._\-]{8,256}$")
-
-_STATUS_DO_ERRO_DA_CHAVE = {
-    openai_api.RECUSADA: 401,
-    openai_api.SEM_CREDITO: 402,
-    openai_api.ORGANIZACAO_NAO_VERIFICADA: 403,
-    openai_api.FORA_DO_AR: 502,
-}
 
 
 def _saude(conexao, corpo):
@@ -74,88 +66,6 @@ def _vocabulario(conexao, corpo):
     return _lendo_a_colecao(
         "anki_vocabulary_unavailable", lambda: baralhos.vocabulario(conexao.colecao, nome, idioma, corpo)
     )
-
-
-def _versao_da_chave(corpo):
-    versao = corpo.get('versao', 0)
-    return versao if type(versao) is int and 0 <= versao <= 9007199254740991 else None
-
-
-def _guardar_chave_da_openai(conexao, corpo):
-    versao = _versao_da_chave(corpo)
-    if versao is None:
-        return 400, {'error': 'invalid_request'}
-    conta = corpo.get('conta', '')
-    if not isinstance(conta, str) or len(conta) > 128:
-        return 400, {'error': 'invalid_request'}
-    chave = corpo.get("chave")
-    if not isinstance(chave, str) or not chave.strip():
-        return 400, {"error": "invalid_request"}
-    chave = chave.strip()
-    repetida = conexao.cofre.reentrega('openai', chave, versao, conta)
-    if repetida is True:
-        return 200, {'ok': True, 'ultimos4': chave[-4:]}
-    if repetida is False:
-        return 409, {'error': 'stale_key_version'}
-    if not _FORMA_DA_CHAVE.match(chave):
-        return 401, {"error": openai_api.RECUSADA}
-    try:
-        openai_api.conferir(conexao.openai_base, chave, conexao.logger)
-    except openai_api.ErroDaChave as erro:
-        return _STATUS_DO_ERRO_DA_CHAVE[erro.codigo], {"error": erro.codigo}
-    if not conexao.cofre.guardar("openai", chave, versao=versao, conta=conta):
-        return 409, {'error': 'stale_key_version'}
-    return 200, {"ok": True, "ultimos4": chave[-4:]}
-
-
-def _apagar_chave_da_openai(conexao, corpo):
-    """Apagar chave e Apagar tudo na extensão tiram a cópia daqui também (#154). Trocar a chave a substitui pelo POST /ia/openai/chave."""
-    versao = _versao_da_chave(corpo)
-    if versao is None:
-        return 400, {'error': 'invalid_request'}
-    conta = corpo.get('conta', '')
-    if not isinstance(conta, str) or len(conta) > 128:
-        return 400, {'error': 'invalid_request'}
-    if not conexao.cofre.apagar("openai", versao=versao, conta=conta):
-        return 409, {'error': 'stale_key_version'}
-    return 200, {"ok": True}
-
-
-def _vincular_legado_da_openai(conexao, corpo):
-    versao, chave, conta, em = _versao_da_chave(corpo), corpo.get('chave'), corpo.get('conta'), corpo.get('em')
-    if versao is None or not isinstance(chave, str) or not isinstance(conta, str) or len(conta) > 128 or type(em) is not int or not 0 <= em <= 9007199254740991:
-        return 400, {'error': 'invalid_request'}
-    if not conexao.cofre.vincular_legado('openai', chave, conta, em, versao):
-        return 409, {'error': 'legacy_key_mismatch'}
-    return 200, {'ok': True}
-
-
-def _sincronizar_chave_da_openai(conexao, corpo):
-    uid, token = corpo.get('uid'), corpo.get('token')
-    versao = _versao_da_chave(corpo)
-    if versao is None or not isinstance(uid, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', uid) or not isinstance(token, str) or not token or '\r' in token or '\n' in token:
-        return 400, {'error': 'invalid_request'}
-    try:
-        resultado = conexao.cofre.sincronizar('openai', uid, NuvemDaChave(conexao.firestore_base, uid, token), versao)
-    except OutraContaNaoEnviada:
-        return 409, {'error': 'other_account_unsent'}
-    except LegadoNaoVinculado:
-        return 409, {'error': 'legacy_key_unbound'}
-    except NuvemIndisponivel as erro:
-        return erro.status, {'error': 'cloud_sync_failed', 'status': erro.status}
-    if resultado is None:
-        return 409, {'error': 'stale_key_version'}
-    return 200, dict(ok=True, **resultado)
-
-
-def _estado_da_ia(conexao, corpo):
-    documento = conexao.cofre.documento('openai')
-    chave = documento.get('chave')
-    openai = {'configurada': bool(chave), 'conta': documento.get('conta', None if chave else ''),
-              'versao': documento.get('versao', 0), 'naoEnviada': documento.get('naoEnviada', bool(chave))}
-    if chave:
-        openai['ultimos4'] = chave[-4:]
-    return 200, {"openai": openai}
 
 
 def _estado_do_item_de_login(conexao, corpo):
@@ -236,11 +146,11 @@ ROTAS = {
     ("POST", "/anki/stats/decks"): _numeros_dos_baralhos,
     ("POST", "/anki/vocabulary"): _vocabulario,
     # A chave da OpenAI: POST com a origem da extensão, e nenhuma resposta devolve a chave inteira.
-    ("POST", "/ia/openai/chave"): _guardar_chave_da_openai,
-    ("POST", "/ia/openai/chave/apagar"): _apagar_chave_da_openai,
-    ("POST", "/ia/openai/sincronizar"): _sincronizar_chave_da_openai,
-    ("POST", "/ia/openai/legado"): _vincular_legado_da_openai,
-    ("POST", "/ia/estado"): _estado_da_ia,
+    ("POST", "/ia/openai/chave"): guardar_chave_da_openai,
+    ("POST", "/ia/openai/chave/apagar"): apagar_chave_da_openai,
+    ("POST", "/ia/openai/sincronizar"): sincronizar_chave_da_openai,
+    ("POST", "/ia/openai/legado"): vincular_legado_da_openai,
+    ("POST", "/ia/estado"): estado_da_ia,
     ("POST", "/abrir-com-o-computador/estado"): _estado_do_item_de_login,
     ("POST", "/abrir-com-o-computador"): _abrir_com_o_computador,
     # O Envio (#142): criar e tentar de novo mudam a fila; as outras só leem. Tudo POST com a origem da extensão.
@@ -354,6 +264,8 @@ class _Atendente(BaseHTTPRequestHandler):
         except Exception:
             self.conexao.logger.exception("Erro na rota %s %s", self.command, caminho)
             return self._responder(500, {"error": "internal_error"}, origem=origem)
+        if self.command == "POST" and caminho.startswith("/jobs"):
+            self.conexao.contato.set()  # depois da rota: um apagar-frases já apagou quando a thread de trabalho é solta
         return self._responder(status, dados, origem=origem)
 
     def __getattr__(self, nome):
@@ -373,6 +285,12 @@ class _Servidor(ThreadingHTTPServer):
 
     def handle_error(self, request, client_address):
         # O padrão imprime o erro no stderr.
+        erro = sys.exc_info()[1]
+        if sys.excepthook is None or sys.is_finalizing():
+            return  # o Anki está fechando: nenhuma thread nasce mais, e cada pedido em voo diria o mesmo
+        if isinstance(erro, ConnectionError):
+            self.conexao.logger.info("O pedido de %s não terminou: o cliente fechou a conexão", client_address)
+            return
         self.conexao.logger.exception("Erro ao atender %s", client_address)
 
 
@@ -413,6 +331,7 @@ class Conexao:
         espera_do_anki=2.0,
         esperas_da_openai=(2, 8, 30),
         motor=None,
+        espera_do_contato=ESPERA_DO_CONTATO,
     ):
         self.porta = porta
         self.origens_aceitas = tuple(origens_aceitas)
@@ -430,11 +349,13 @@ class Conexao:
         self.intervalo_de_parada = intervalo_de_parada
         self._servidor = None
         self._thread = None
+        # Posto no primeiro pedido de Envio da extensão (`POST /jobs…`) depois da subida; o `/health` não conta.
+        self.contato = threading.Event()
         self.fila = envio.Fila(dados, motor or envio.motor_do_complemento(), logger)
-        self._trabalhador = envio.Trabalhador(
+        self._trabalhador = trabalhador.Trabalhador(
             envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(),
                            espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai),
-            intervalo=intervalo_do_envio,
+            intervalo=intervalo_do_envio, contato=self.contato, espera_do_contato=espera_do_contato,
         ) if trabalhando else None
 
     def iniciar(self):

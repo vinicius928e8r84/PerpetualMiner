@@ -1,43 +1,7 @@
 'use strict';
 
 const { test, expect } = require('../fixtures');
-
-const AGORA = new Date('2026-09-18T12:00:00');
-const HOJE = '18/09/2026';
-
-function frase(id, texto, extras = {}) {
-  return { id, texto, data: HOJE, streaming: 'netflix', idioma: 'Inglês', ...extras };
-}
-
-const INGLESAS = [
-  frase(1_700_000_000_005, 'She hit the sack early.', { keywords: ['sack@3'] }),
-  frase(1_700_000_000_004, 'It costs an arm and a leg.'),
-  frase(1_700_000_000_003, 'Better late than never.'),
-];
-const RUSSA = frase(1_700_000_000_002, 'Я улыбаюсь каждое утро.', { idioma: 'Russo' });
-const [SACK, ARM, LATE] = INGLESAS;
-
-async function abrirPainel(page, extensao, endereco = '#frases') {
-  await page.clock.setFixedTime(AGORA);
-  await page.goto(extensao.url(`painel.html${endereco}`));
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-}
-
-const cartao = (page, texto) => page.locator('#frases-lista .veio-frase').filter({ hasText: texto });
-const marcar = (page, texto) => cartao(page, texto).getByRole('checkbox', { name: 'Selecionar frase' });
-const enviarAoAnki = page => page.locator('#frases-barra').getByRole('button', { name: 'Enviar ao Anki', exact: true });
-const progresso = page => page.getByRole('dialog', { name: 'Enviando ao Anki…' });
-const resumo = page => page.getByRole('dialog', { name: /^Envio concluído/ });
-const envio = (page, nome) => progresso(page).getByRole('group', { name: nome });
-/** O bloco de um idioma no resumo: “+N cartões”, o baralho, o que já estava e o que não entrou. */
-const baralho = (page, idioma) => resumo(page).getByRole('group', { name: idioma });
-const toasts = page => page.locator('.veio-toast');
-
-// O “Tentar de novo” da faixa F1 mora na área da Conexão, fora da tela em Frases;
-// o clique por evaluate faz o shell conferir a Conexão agora, sem esperar 15 s.
-async function pedirConferenciaDaConexao(page) {
-  await page.locator('#shell-tentar-de-novo').evaluate(el => el.click());
-}
+const { AGORA, INGLESAS, RUSSA, SACK, ARM, LATE, abrirPainel, cartao, marcar, enviarAoAnki, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados, pedirConferenciaDaConexao } = require('../apoio-do-envio');
 
 // veio/tokens.css leva toda transição a 1 ms com movimento reduzido. O cartão é desenhado de novo
 // assim que o Envio ganha o jobId; num elemento que já saiu da página o estilo calculado vem vazio
@@ -46,17 +10,6 @@ async function transicaoCurta(locator) {
   await expect(locator).toBeAttached();
   await expect.poll(() => locator.evaluate(el => parseFloat(getComputedStyle(el).transitionDuration)))
     .toBeLessThanOrEqual(0.01);
-}
-
-async function marcarEEnviar(page, textos) {
-  for (const texto of textos) await marcar(page, texto).check();
-  await enviarAoAnki(page).click();
-}
-
-/** Espera o painel criar os Envios na Conexão falsa. */
-async function enviosCriados(fakes, n) {
-  await expect.poll(() => fakes.anki.envios.length).toBe(n);
-  return fakes.anki.envios;
 }
 
 test.beforeEach(({ fakes }) => {
@@ -789,64 +742,4 @@ test('com o painel fechado, os Cartões continuam na Conexão; ao reabrir, o pro
   await expect(baralho(reaberta, 'Inglês')).toContainText('1 não entrou');
   await resumo(reaberta).getByRole('button', { name: 'Manter' }).click();
   await expect.poll(async () => (await extensao.frases()).filter(f => f.status === 'exported').map(f => f.id)).toEqual([SACK.id]);
-});
-
-// ─── Apagar tudo (CFG-17) alcança as Frases do Envio (#248) ──────────────────
-
-const SENTINELA = 'zymurgyxq';
-
-test('Apagar tudo tira a Palavra e a Frase do que o painel guarda do Envio e da Conexão, e o Tentar de novo não as reenvia', async ({ page, extensao, fakes }) => {
-  const sentinela = frase(1_700_000_000_099, `The ${SENTINELA} vat bubbled all night.`, { keywords: [`${SENTINELA}@1`] });
-  await extensao.gravarStorage({ frases: [sentinela] });
-  fakes.anki.perderARespostaDoEnvio();
-  await abrirPainel(page, extensao);
-  await marcarEEnviar(page, [sentinela.texto]);
-  await expect(envio(page, 'Envio em inglês · 1 frase')).toContainText('Não começou');
-  const [naConexao] = await enviosCriados(fakes, 1);
-  // Antes: a Frase está onde o Envio precisa dela (o corpo congelado do painel e a linha do pedido na Conexão).
-  expect(JSON.stringify(await extensao.lerStorage())).toContain(SENTINELA);
-  expect(JSON.stringify(naConexao.corpo)).toContain(SENTINELA);
-
-  await progresso(page).getByRole('button', { name: 'Fechar' }).first().click();
-  await page.goto(extensao.url('painel.html#configuracoes/perigo'));
-  await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar 1 frase' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 1 frase' }).click();
-
-  await expect.poll(async () => JSON.stringify(await extensao.lerStorage())).not.toContain(SENTINELA);
-  await expect.poll(() => JSON.stringify(fakes.anki.envios.map(e => e.corpo))).not.toContain(SENTINELA);
-  expect(fakes.anki.requisicoes.filter(r => r.metodo === 'POST' && r.caminho === '/jobs/apagar-frases')).toHaveLength(1);
-  // O Envio sem resposta (jobId nulo) não tem mais o que reenviar: nada de Tentar de novo, nada de `POST /jobs` novo.
-  // O fake muda antes de a resposta chegar à extensão: `pm_envio` só sai quando o painel a lê.
-  await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
-  await page.goto(extensao.url('painel.html#frases'));
-  await page.waitForTimeout(500);
-  expect(fakes.anki.requisicoes.filter(r => r.metodo === 'POST' && r.caminho === '/jobs')).toHaveLength(1);
-  expect(fakes.anki.envios).toHaveLength(1);
-});
-
-test('Apagar tudo sem a Conexão responder: as Frases saem do painel e o pedido segue marcado até a Conexão responder', async ({ page, extensao, fakes }) => {
-  const sentinela = frase(1_700_000_000_098, `The ${SENTINELA} vat bubbled all night.`, { keywords: [`${SENTINELA}@1`] });
-  await extensao.gravarStorage({ frases: [sentinela] });
-  await abrirPainel(page, extensao);
-  await marcarEEnviar(page, [sentinela.texto]);
-  await enviosCriados(fakes, 1);
-  await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio?.envios?.[0]?.jobId).toBeTruthy();
-
-  fakes.anki.falharApagarFrases();
-  await progresso(page).getByRole('button', { name: 'Fechar' }).first().click();
-  await page.goto(extensao.url('painel.html#configuracoes/perigo'));
-  await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar 1 frase' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 1 frase' }).click();
-
-  // O que o painel guardava já saiu; a Conexão ainda não confirmou, e o pedido fica marcado.
-  await expect.poll(async () => JSON.stringify(await extensao.lerStorage())).not.toContain(SENTINELA);
-  const { pm_envio: pendente } = await extensao.lerStorage('pm_envio');
-  expect(pendente.apagarFrases).toBe(true);
-  expect(pendente.envios.map(e => e.corpo)).toEqual([undefined]);
-  expect(JSON.stringify(fakes.anki.envios.map(e => e.corpo))).toContain(SENTINELA);
-
-  fakes.anki.voltarApagarFrases();
-  await page.reload();
-  await expect.poll(() => JSON.stringify(fakes.anki.envios.map(e => e.corpo))).not.toContain(SENTINELA);
-  await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio?.apagarFrases).toBeUndefined();
 });

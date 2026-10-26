@@ -1,8 +1,8 @@
 'use strict';
 
 (function (raiz) {
-  const { textoDaVoz, ChaveDaOpenAI } = raiz;
-  const { abrirConfirmacao } = raiz.Veio;
+  const { textoDaVoz, ChaveDaOpenAI, ConexaoAnki } = raiz;
+  const { abrirConfirmacao, montarAviso } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
   const estado = { n: null, comConta: false, temChave: false, contaDaChave: '', uid: '' };   // n: null até o painel.js contar
@@ -20,6 +20,15 @@
       estado.contaDaChave = mudancas[ChaveDaOpenAI.MARCA].newValue?.conta || '';
     }
     if ('pm_user_info' in mudancas) estado.uid = mudancas.pm_user_info.newValue?.uid || '';
+  });
+  // A recusa do Apagar tudo com a Conexão fora do ar: a faixa sai quando ela volta a responder ou na próxima tentativa.
+  let avisoDaRecusa = null;
+  const tirarARecusa = () => {
+    avisoDaRecusa?.remove();
+    avisoDaRecusa = null;
+  };
+  ConexaoAnki.acompanhar(situacao => {
+    if (situacao === ConexaoAnki.SITUACAO.LIGADA) tirarARecusa();
   });
   let apagarTudo = () => {};
   let partes = null;   // o conteúdo do card, montado uma vez e atualizado no lugar
@@ -73,6 +82,24 @@
     else partes.entrada.textContent = textoDaVoz('CFG-24.todas', { n });
   }
 
+  /**
+   * Com a Conexão sem responder, o Apagar tudo não a alcançaria: um Envio dela seguiria sozinho quando o Anki abrisse, gastando a chave
+   * com as Frases apagadas. Nada é apagado e nada fica marcado; a faixa pede para abrir o Anki, e quem não tem a Conexão fica recusado
+   * até ela responder (a seleção na lista de Frases ainda apaga). Confere a Conexão agora, não a de 15 s atrás; o Tentar de novo da
+   * faixa repete a conferência (a confirmação já foi dada).
+   */
+  async function apagarSeAConexaoResponde() {
+    tirarARecusa();
+    if (await ConexaoAnki.conferir() !== ConexaoAnki.SITUACAO.DESLIGADA) return apagarTudo();
+    avisoDaRecusa = montarAviso({
+      texto: textoDaVoz('CFG-17.conexaoNaoResponde'),
+      acao: { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: apagarSeAConexaoResponde },
+      detalhes: 'anki_connection_unreachable',
+      fechavel: false,
+    });
+    porId('cfg-perigo-corpo').append(avisoDaRecusa);
+  }
+
   /** “Apagar todas as 1.284 frases?”, com Cancelar (foco inicial) e o perigo preenchido. */
   function confirmarApagarTudo() {
     const { n, comConta } = estado;
@@ -88,7 +115,7 @@
       ].join(' '),
       cancelar: textoDaVoz('CFG-17.cancelar'),
       confirmar: textoDaVoz('CFG-17.confirmar', { n }),
-      aoConfirmar: () => apagarTudo(),
+      aoConfirmar: apagarSeAConexaoResponde,
     });
   }
 
