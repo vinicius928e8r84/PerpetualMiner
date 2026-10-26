@@ -61,7 +61,7 @@ registrando como antes). As consultas saem sim da máquina, para o Openverse, co
   motor tenta a miniatura.
 - **Fora do escopo (da issue):** o juiz ver miniaturas e o crédito do Openverse.
 
-## Ensaio do dono, no Mac (risco 10; é o #269, não esta PR)
+## Ensaio do dono, no Mac (risco 10; é o #269)
 
 Com o primeiro Cartão funcionando (`complemento/LEIA-ME.md`, passo 9), uma Palavra concreta (“bicycle”) e **Foto real** nos Ajustes de envio:
 a nota nova tem a foto no verso, e ela está na pasta de mídia do Anki (Ferramentas › Verificar mídia não a acha órfã). Uma foto que o Openverse

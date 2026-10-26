@@ -56,7 +56,7 @@ class ArquivoDoComplemento(unittest.TestCase):
         self.assertIn("__init__.py", nomes)
         self.assertIn("servidor.py", nomes)
         for nome in nomes:
-            self.assertFalse(nome.startswith("motor/") and nome[len("motor/"):] in ("start.py", "generate_images.py", "generate_audio.py"), nome)
+            self.assertFalse(nome.startswith("motor/") and nome[len("motor/"):] in ("start.py", "generate_audio.py"), nome)
             self.assertFalse(nome.startswith(("test_", "contrato/", "user_files/")), "não devia entrar: " + nome)
             self.assertNotIn("__pycache__", nome)
             self.assertNotEqual(nome, "empacotar.py")
@@ -85,7 +85,7 @@ class ArquivoDoComplemento(unittest.TestCase):
             pacote = self.empacotado(pasta)
             nomes = pacote.namelist()
             pacote.close()
-        for nome in ("motor/__init__.py", "motor/generate_cards.py", "motor/openai_http.py", "motor/config.json", "motor/prompts/en_card.txt", "motor/prompts/ru_card.txt"):
+        for nome in ("motor/__init__.py", "motor/generate_cards.py", "motor/openai_http.py", "motor/image_pipeline.py", "motor/google_images.py", "motor/config.json", "motor/prompts/en_card.txt", "motor/prompts/ru_card.txt"):
             self.assertIn(nome, nomes)
 
     def test_empacotar_numa_copia_limpa_cria_a_pasta_dist_e_o_arquivo(self):
@@ -142,6 +142,19 @@ class ArquivoDoComplemento(unittest.TestCase):
                     salvos = motor.generate_cards.run([entrada], config, openai_base=openai.base, card_stem=lambda trabalho, posicao: "9-%d" % posicao)
                 self.assertEqual(salvos, ["9-0"])
                 self.assertTrue(os.path.isfile(os.path.join(pasta, "textos", "9-0.txt")))
+                # E escolhe a imagem do Cartão de lá (a gerada, pela OpenAI de mentira), também sem Pillow nem `requests`.
+                from pathlib import Path
+
+                from complemento.test_imagens_de_mentira import png_de
+
+                with OpenAIDeMentira() as openai, mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
+                    imagem = Path(pasta) / "imagem.png"
+                    concreta = motor.parser.parse_mining_line("bicycle : He rides a bicycle")
+                    motor.generate_cards.run([concreta], config, openai_base=openai.base, card_stem=lambda trabalho, posicao: "9-1")
+                    escolha = motor.image_pipeline.build(dict(config, openai_base=openai.base), Path(pasta) / "textos", "2", config["openai_api_key"], config["paths"]["log_dir"])
+                    resultado = escolha.generate_direct("9-1", "a bicycle", imagem)
+                self.assertEqual(resultado, "ok")
+                self.assertEqual(imagem.read_bytes(), png_de("gerada"))
             finally:
                 sys.path.remove(os.path.dirname(instalado))
                 for nome in [n for n in sys.modules if n == "123456789" or n.startswith("123456789.")]:

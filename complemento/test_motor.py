@@ -16,7 +16,7 @@ from complemento import envio  # noqa: E402
 from complemento.test_imagens_de_mentira import JPEG_DE_MENTIRA, png_de  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
 
-SEM_AS_BIBLIOTECAS_DE_FORA = {"yaml": None, "dotenv": None, "openai": None, "httpx": None, "requests": None}
+SEM_AS_BIBLIOTECAS_DE_FORA = {"yaml": None, "dotenv": None, "openai": None, "httpx": None, "requests": None, "PIL": None}
 
 
 def configuracao_do_teste(motor, pasta):
@@ -37,7 +37,7 @@ class OMotorComoPacote(unittest.TestCase):
         self.assertEqual((config["anki"]["note_type"], config["anki"]["fields"]), ("Básico", {"front": "Frente", "back": "Verso"}))
 
     def test_as_imagens_do_motor_rodam_sem_pillow_requests_nem_o_sdk_e_so_o_que_precisa_converter_pede_um_adaptador(self):
-        with mock.patch.dict(sys.modules, dict(SEM_AS_BIBLIOTECAS_DE_FORA, PIL=None)):
+        with mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
             motor = envio.motor_do_complemento()
             png, mime = motor.image_utils.normalize_image_bytes(png_de("a"), target_format="PNG")
             motor.image_utils.usar_adaptador(None)
