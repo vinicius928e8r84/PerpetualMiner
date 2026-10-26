@@ -124,7 +124,7 @@ class ChatGPTDeMentira:
 
     def _renovar(self, formulario):
         if self.renovacao == "fora_do_ar":
-            return 503, {"error": "temporarily_unavailable"}
+            return 503, {"error": "temporarily_unavailable", "error_description": "o token %s" % formulario.get("refresh_token")}
         client_id = self._renovaveis.pop(formulario.get("refresh_token"), None)
         if self.renovacao != "aceita" or client_id is None or client_id != formulario.get("client_id"):
             return 400, {"error": "invalid_grant", "error_description": "o token %s" % formulario.get("refresh_token")}

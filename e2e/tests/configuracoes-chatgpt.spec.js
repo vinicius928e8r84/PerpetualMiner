@@ -85,6 +85,22 @@ test('recusar no ChatGPT: a faixa diz que o plano não foi liberado, com Tentar 
   await estadoFinalEm('o login do ChatGPT na Conexão', () => fakes.anki.chatgpt.situacao(), 'recusou');
 });
 
+test('se a Conexão responde com um endereço que não é o da autorização oficial do ChatGPT, nenhuma aba abre e a faixa diz que não deu para entrar', async ({ page, context, extensao, fakes }) => {
+  fakes.chatgpt.responderAoEntrarComAUrl('https://evil.exemplo/api/accounts/authorize?client_id=dynamic_agent_client&redirect_uri=http%3A%2F%2F127.0.0.1%3A8766%2Fauth%2Fcallback&state=roubado');
+  await abrirIA(page, extensao);
+  const abasAntes = context.pages().length;
+
+  await continuar(page).click();
+  await expect(faixa(page)).toContainText('Conta do ChatGPT: Não deu para entrar com o ChatGPT. Tente de novo.');
+  await expect(faixa(page).getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
+  await expect(continuar(page)).toBeEnabled();
+  expect(fakes.chatgpt.abertas).toHaveLength(0);
+  expect(context.pages()).toHaveLength(abasAntes);
+  expect(context.pages().map(aba => aba.url()).filter(url => url.includes('evil.exemplo'))).toEqual([]);
+
+  await estadoFinalEm('o login do ChatGPT na Conexão', () => fakes.anki.chatgpt.situacao(), 'desconectada');
+});
+
 test('Sair do ChatGPT: a Conexão apaga o login e a coluna volta a oferecer Continuar com o ChatGPT', async ({ page, extensao, fakes }) => {
   fakes.anki.chatgpt.definir('conectada');
   await abrirIA(page, extensao);

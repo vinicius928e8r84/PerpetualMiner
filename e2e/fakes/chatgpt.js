@@ -13,7 +13,7 @@ const PAGINA_DO_RETORNO = '<!doctype html><html lang="pt-BR"><meta charset="utf-
 const AUTORIZAR = 'https://auth.openai.com/api/accounts/authorize';
 
 function criarFakeChatGPT() {
-  const estado = { situacao: 'desconectada', state: null, tentativas: 0, autorizacao: 'aceita', abertas: [] };
+  const estado = { situacao: 'desconectada', state: null, tentativas: 0, autorizacao: 'aceita', abertas: [], urlDaConexao: null };
 
   /** A URL que a Conexão daria (os parâmetros da doc oficial), com o `state` desta tentativa. */
   function urlDeAutorizacao() {
@@ -40,8 +40,8 @@ function criarFakeChatGPT() {
     }
     const { status, json } = respostaDoContrato('POST', url.pathname, {});
     if (url.pathname === '/ia/chatgpt/entrar' && status === 200) {
-      json.url = urlDeAutorizacao();
-      estado.situacao = 'entrando';
+      json.url = estado.urlDaConexao || urlDeAutorizacao();
+      if (!estado.urlDaConexao) estado.situacao = 'entrando';
     }
     if (url.pathname === '/ia/chatgpt/sair' && status === 200) {
       estado.situacao = 'desconectada';
@@ -91,6 +91,8 @@ function criarFakeChatGPT() {
     situacao() { return estado.situacao; },
     /** Na página do ChatGPT, a pessoa recusa (`recusa`), ou ainda não respondeu (`espera`); o padrão é autorizar. */
     responderNaAutorizacao(como) { estado.autorizacao = como; },
+    /** A Conexão passa a responder ao entrar com esta URL, em vez da oficial (uma Conexão trocada ou adulterada); não inicia tentativa. */
+    responderAoEntrarComAUrl(url) { estado.urlDaConexao = url; },
     /** As URLs de autorização que a extensão abriu, como parâmetros. */
     abertas: estado.abertas,
   };

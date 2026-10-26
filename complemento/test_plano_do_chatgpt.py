@@ -108,6 +108,38 @@ class OsTokensSoNoArquivoDoLogin(unittest.TestCase):
                 self.assertNotIn(segredo.encode("utf-8"), resposta)
         self.assertFalse([nome for nome in ficou if re.search(MARCA, nome)])
 
+    def test_quando_a_renovacao_ou_a_responses_api_falham_nenhum_token_vai_ao_log_nem_ao_que_a_conexao_responde(self):
+        # Os de mentira devolvem o token no corpo do erro: o que a Conexão guarda ou responde não pode repeti-lo.
+        falhas = {
+            "renovacao fora do ar": lambda conexao: setattr(conexao.servidor_de_login, "renovacao", "fora_do_ar"),
+            "renovacao recusada": lambda conexao: setattr(conexao.servidor_de_login, "renovacao", "invalid_grant"),
+            "recusa antes do stream": lambda conexao: setattr(conexao.openai, "recusa_das_respostas", (401, "invalid_token")),
+            "limite antes do stream": lambda conexao: setattr(conexao.openai, "recusa_das_respostas", (429, "subscription_sharing_usage_limit_exceeded")),
+            "falha no meio do stream": lambda conexao: setattr(conexao.openai, "falha_no_stream", "server_error"),
+        }
+        for nome, falhar in falhas.items():
+            with self.subTest(nome), tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+                conexao.servidor_de_login.validade = 60  # renova antes do Cartão
+                entrar_e_voltar(conexao)
+                falhar(conexao)
+                conexao.criar(pedido(ID, "gave up : She gave up smoking"))
+                self.assertEqual(conexao.esperar(ID)["status"], "failed")
+                segredos = list(conexao.servidor_de_login.emitidos)
+                respostas = [conexao.pedir("POST", caminho, corpo=corpo)[2] for caminho, corpo in (
+                    ("/ia/chatgpt/estado", {}), ("/ia/estado", {}), ("/jobs/list", {}), ("/jobs/get", {"jobId": ID}),
+                    ("/jobs/debug-bundle", {"jobId": ID}), ("/analytics/jobs", {"lang": "all"}))]
+                ficou = tudo_o_que_ficou(conexao)
+                log = conexao.log()
+                self.assertGreaterEqual(len(segredos), 2)
+                for segredo in segredos:
+                    self.assertNotIn(segredo, log)
+                    self.assertNotIn(MARCA, log)
+                    for arquivo, conteudo in ficou.items():
+                        self.assertNotIn(segredo, conteudo, arquivo)
+                    for resposta in respostas:
+                        self.assertNotIn(segredo.encode("utf-8"), resposta)
+                self.assertFalse([arquivo for arquivo in ficou if re.search(MARCA, arquivo)])
+
 
 if __name__ == "__main__":
     unittest.main()
