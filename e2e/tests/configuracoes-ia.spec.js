@@ -1,7 +1,7 @@
 'use strict';
 
 // O card IA dos cartões de Configurações (#140, docs/design/painel/configuracoes/): as duas entradas em
-// colunas do mesmo tamanho, a coluna da Chave da OpenAI (o login do ChatGPT: configuracoes-chatgpt.spec.js).
+// colunas do mesmo tamanho, a coluna da Chave da OpenAI.
 //
 // A pessoa cola a chave; a Conexão com o Anki (o fake do e2e, que fala o contrato de
 // complemento/contrato/exemplos.json) a confere na OpenAI e guarda a cópia dela; a tela mostra a chave
@@ -207,7 +207,7 @@ test('sem chave: as duas entradas aparecem em colunas do mesmo tamanho e nada fi
   expect(Math.abs(a.y - b.y)).toBeLessThan(1);
   expect(b.x).toBeGreaterThan(a.x + a.width - 1);
 
-  // O que cada coluna diz: a chave é paga à parte e vale criá-la num projeto com limite de gasto; o ChatGPT usa o plano.
+  // O que cada coluna diz.
   await expect(colunaDaChave).toContainText('Você paga à OpenAI pelo uso, direto na sua conta.');
   await expect(colunaDaChave).toContainText('Crie a chave num projeto próprio da OpenAI, com limite de gasto por mês. Para desligar de verdade, revogue a chave na OpenAI.');
   await expect(colunaDaChave.getByRole('link', { name: 'Onde criar a chave' })).toHaveAttribute('href', 'https://platform.openai.com/api-keys');
@@ -288,6 +288,7 @@ test('enquanto a Conexão confere, o campo guarda o que foi colado e o botão n�
   await expect(campo(page)).toBeDisabled();
   await expect(campo(page)).toHaveValue(CHAVE);
   await card(page).getByRole('button', { name: 'Conferindo a chave…' }).click({ force: true });
+  await expect.poll(() => fakes.anki.requisicoes.some(r => r.caminho === '/ia/openai/chave')).toBe(true);
   liberar();
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/ia/openai/chave')).toHaveLength(1);
