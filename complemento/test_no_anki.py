@@ -18,9 +18,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from complemento import baralhos, configuracao, no_anki  # noqa: E402
 from complemento.test_anki_de_mentira import AnkiComColecaoDeMentira, AnkiDeMentira  # noqa: E402
 from complemento.test_colecao_em_memoria import DESCRICAO, ContratoDoAdaptadorDaColecao  # noqa: E402
+from complemento.test_contrato_do_perfil_fixo import ContratoDoPerfilFixo  # noqa: E402
 
 
-class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, unittest.TestCase):
+class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, unittest.TestCase):
     """O adaptador do Anki passa pelos mesmos testes que o da memória."""
 
     def setUp(self):
