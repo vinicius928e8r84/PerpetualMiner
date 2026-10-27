@@ -288,6 +288,7 @@ test('enquanto a Conexão confere, o campo guarda o que foi colado e o botão n�
   await expect(campo(page)).toBeDisabled();
   await expect(campo(page)).toHaveValue(CHAVE);
   await card(page).getByRole('button', { name: 'Conferindo a chave…' }).click({ force: true });
+  await expect.poll(() => fakes.anki.requisicoes.some(r => r.caminho === '/ia/openai/chave')).toBe(true);
   liberar();
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/ia/openai/chave')).toHaveLength(1);
