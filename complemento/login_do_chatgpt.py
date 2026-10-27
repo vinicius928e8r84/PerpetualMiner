@@ -23,7 +23,7 @@ import uuid
 from . import chatgpt_oficial as oficial
 from .chaves import gravar_so_do_dono
 from .configuracao import OPENAI_BASE
-from .openai_api import _contexto_tls
+from .openai_api import contexto_tls
 
 TEMPO_DE_CADA_PEDIDO = 15
 VALIDADE_DA_TENTATIVA = 600  # s: depois disso o retorno não vale, e a pessoa aperta o botão de novo
@@ -265,7 +265,7 @@ class LoginDoChatGPT:
         if token:
             pedido.add_header("Authorization", "Bearer " + token)
         try:
-            with urllib.request.urlopen(pedido, timeout=TEMPO_DE_CADA_PEDIDO, context=_contexto_tls()) as resposta:
+            with urllib.request.urlopen(pedido, timeout=TEMPO_DE_CADA_PEDIDO, context=contexto_tls()) as resposta:
                 status, lido = resposta.status, resposta.read(1024 * 1024)
         except urllib.error.HTTPError as erro:
             status, lido = erro.code, erro.read(65536)
