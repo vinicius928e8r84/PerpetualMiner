@@ -21,7 +21,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos, configuracao, envio, item_de_login, pasta_de_dados, registro, servidor  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
+from complemento.test_fila_de_mentira import semear_a_fila  # noqa: E402,F401
 from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira  # noqa: E402
+from complemento.test_voz_de_mentira import VozDeMentira  # noqa: E402
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
@@ -165,34 +167,6 @@ def _item_de_login_do_contexto(pasta, situacao):
     return item
 
 
-def semear_a_fila(pasta, fila):
-    """Os Envios que a Conexão já tinha (`filas` do contrato): os arquivos de `envio.py`, como a Conexão os deixa.
-
-    Cada Envio é `{ job, state, custos, textos? }` (`textos`: `{ stem: texto }` já pagos)."""
-    ordem = []
-    for envio_ in fila:
-        job, estado = envio_["job"], envio_["state"]
-        job_id = job["jobId"]
-        sem_hora = {chave: valor for chave, valor in job.items() if chave != "createdAt"}
-        pedido = dict(job, corpoSha256=envio.impressao(sem_hora))
-        for nome, dados in ((os.path.join("fila", job_id + ".json"), pedido), (os.path.join("estado", job_id + ".json"), estado)):
-            os.makedirs(os.path.dirname(os.path.join(pasta, nome)), exist_ok=True)
-            with open(os.path.join(pasta, nome), "w", encoding="utf-8") as arquivo:
-                json.dump(dados, arquivo, ensure_ascii=False, indent=2)
-        for stem, texto in (envio_.get("textos") or {}).items():
-            os.makedirs(os.path.join(pasta, "estado", job_id), exist_ok=True)
-            with open(os.path.join(pasta, "estado", job_id, stem + ".txt"), "w", encoding="utf-8") as arquivo:
-                arquivo.write(texto)
-        if envio_.get("custos"):
-            os.makedirs(os.path.join(pasta, "custos", job_id), exist_ok=True)
-            with open(os.path.join(pasta, "custos", job_id, "costs.jsonl"), "w", encoding="utf-8") as arquivo:
-                arquivo.writelines(json.dumps(registro, ensure_ascii=False) + "\n" for registro in envio_["custos"])
-        ordem.append({"jobId": job_id, "lang": job["lang"], "createdAt": job["createdAt"]})
-    os.makedirs(os.path.join(pasta, "fila"), exist_ok=True)
-    with open(os.path.join(pasta, "fila", "fila.json"), "w", encoding="utf-8") as arquivo:
-        json.dump({"jobs": ordem}, arquivo, ensure_ascii=False, indent=2)
-
-
 class ConexaoNoTeste:
     """A Conexão real numa porta livre, com o perfil que o teste escolher e uma OpenAI de mentira.
 
@@ -249,6 +223,7 @@ class ConexaoNoTeste:
             with open(os.path.join(pasta, "perfil.json"), "w", encoding="utf-8") as arquivo:
                 json.dump({"perfil": perfil_marcado}, arquivo)  # o perfil fixo que a Conexão marcou antes de o teste começar
         self.openai = OpenAIDeMentira(openai)
+        self.voz = VozDeMentira()
         self.firestore = FirestoreDeMentira()
         self.firestore.falha = firebase
         self.cofre_sem_escrita = cofre_sem_escrita
@@ -263,6 +238,7 @@ class ConexaoNoTeste:
             colecao=colecao,
             item_de_login=self.item,
             openai_base=self.openai.base,
+            voz_base=self.voz.base,
             firestore_base=self.firestore.base,
             intervalo_de_parada=0.005,
             trabalhando=trabalhando,
@@ -279,6 +255,7 @@ class ConexaoNoTeste:
 
     def __enter__(self):
         self.openai.__enter__()
+        self.voz.__enter__()
         self.firestore.__enter__()
         if self.cofre_sem_escrita:
             os.chmod(self.chaves, 0o500)  # gravar a cópia da chave falha: a Conexão responde o erro interno
@@ -290,6 +267,7 @@ class ConexaoNoTeste:
             os.chmod(self.chaves, 0o700)
         self.conexao.parar()
         self.openai.__exit__(*erro)
+        self.voz.__exit__(*erro)
         self.firestore.__exit__(*erro)
         for handler in list(self.logger.handlers):
             handler.close()

@@ -35,6 +35,9 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, unittest.TestCase):
         self.anki = AnkiComColecaoDeMentira(None, perfis)
         return no_anki.ColecaoDoAnki(self.anki)
 
+    def midia_guardada(self, colecao):
+        return dict(self.anki.col.arquivos_de_midia)
+
     def sincronizar(self, colecao, sincronizando):
         (colecao.sincronizacao_comecou if sincronizando else colecao.sincronizacao_terminou)()
 
@@ -202,33 +205,6 @@ class BaralhosLidosDoAnki(SemRegistroReal, unittest.TestCase):
         anki.col._sqlite.execute("insert into cards (nid, did, odid, type, ivl) select nid, did, 0, 0, 0 from cards where did = 2 limit 1")
         depois = ler_pelo_http(conexao.porta, "/anki/stats/decks", {"decks": [{"deckName": "Inglês", "lang": "en"}]})[1]["decks"][0]["cards"]
         self.assertEqual((antes, depois), (4, 5))
-
-
-class EnvioGravadoNoAnki(SemRegistroReal, unittest.TestCase):
-    """O Envio pelo adaptador do Anki, do `POST /jobs` à nota no sqlite da coleção, com a OpenAI de mentira."""
-
-    def test_uma_frase_vira_nota_na_colecao_gravada_pela_thread_principal(self):
-        from complemento.test_openai_de_mentira import OpenAIDeMentira
-
-        anki = AnkiComColecaoDeMentira(DESCRICAO)
-        self.addCleanup(anki.encerrar)
-        with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
-            conexao = no_anki.ao_carregar(anki, pasta, porta=0, abridor=None, ao_sincronizar=lambda colecao: None, openai_base=openai.base)
-            try:
-                conexao.cofre.guardar("openai", "sk-proj-chave-do-anki-0000")
-                job = "11111111-2222-4333-8444-555555555555"
-                ler_pelo_http(conexao.porta, "/jobs", {"jobId": job, "lang": "en", "deckName": "Inglês",
-                                                       "entries": [{"phraseId": 1, "line": "keep going : They keep going"}]})
-                fim = time.monotonic() + 10
-                while ler_pelo_http(conexao.porta, "/jobs/get", {"jobId": job})[1]["state"]["status"] not in ("completed", "partial", "failed"):
-                    self.assertLess(time.monotonic(), fim)
-                    time.sleep(0.02)
-                estado = ler_pelo_http(conexao.porta, "/jobs/get", {"jobId": job})[1]["state"]
-            finally:
-                conexao.parar()
-        self.assertEqual(estado["status"], "completed")
-        self.assertEqual([flds.split("\x1f")[0] for flds, _, _ in anki.col.notas_gravadas()], ["They <b>keep going</b>"])
-        self.assertEqual(anki.col.fora_da_principal, [])
 
 
 class PerfilQueOAnkiTemAberto(SemRegistroReal, unittest.TestCase):

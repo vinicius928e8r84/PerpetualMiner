@@ -9,6 +9,8 @@ import sqlite3
 import threading
 import types
 
+from complemento.test_colecao_em_memoria import guardar_na_midia
+
 
 class AnkiDeMentira:
     """O que o complemento lê do `mw`: `pm.name` (o perfil que o gerente guarda) e `col` (a coleção aberta)."""
@@ -103,6 +105,8 @@ class ColecaoDoAnkiDeMentira:
         self.db = types.SimpleNamespace(all=self._conferido(lambda sql, *args: [list(linha) for linha in self._sqlite.execute(sql, args)]))
         self.new_note = self._conferido(lambda modelo: NotaDeMentira(modelo["id"], modelo["nomes"]))
         self.add_note = self._conferido(self._adicionar)
+        self.arquivos_de_midia = {}
+        self.media = types.SimpleNamespace(write_data=self._conferido(lambda nome, dados: guardar_na_midia(self.arquivos_de_midia, nome, dados)))
 
     def _conferido(self, funcao):
         def chamada(*argumentos):

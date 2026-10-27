@@ -14,13 +14,14 @@ Anki está sincronizando (`anki_syncing`):
 
 - `tipo_de_nota(nome)`: os nomes dos campos do tipo de nota, ou None se a coleção não o tem;
 - `guids_existentes(guids)`: quais destes `guid` já são de uma nota da coleção;
-- `adicionar_nota(baralho, tipo_de_nota, campos, etiquetas, guid)`: grava uma nota (`campos` é `{nome: valor}`), criando o
-  Baralho se faltar; uma nota com o mesmo `guid` já gravada fica como está (gravar de novo não dobra); um tipo de nota que falta, ou sem um dos campos, levanta `TipoDeNotaAusente` sem gravar nada.
+- `adicionar_nota(baralho, tipo_de_nota, campos, etiquetas, guid, midia=None)`: grava uma nota (`campos` é `{nome: valor}`), criando o
+  Baralho se faltar; a `midia` (`{nome do arquivo: bytes}`, o áudio do Cartão, #143) é guardada pela coleção com a nota, e a nota cita
+  o nome que a coleção deu ao arquivo (o Anki troca o nome se já tem outro arquivo com ele e outro conteúdo); uma nota com o mesmo `guid` já gravada fica como está (gravar de novo não dobra); um tipo de nota que falta, ou sem um dos campos, levanta `TipoDeNotaAusente` sem gravar nada.
 
-- `gravar_cartao(baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar)`: **a** função de
+- `gravar_cartao(baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar, midia=None)`: **a** função de
   gravar um Cartão, uma só na thread principal do Anki. Nesta ordem: a sincronização (`ColecaoIndisponivel`, sem gravar), o
   `guid` (achou: devolve `"added"`, sem gravar), a frente normalizada no Baralho (achou: `"duplicate"`, sem gravar) e a nota nova
-  (devolve `"added"`). O que dá errado é devolvido ou levantado para a thread de trabalho, nunca para a thread principal do Anki.
+  (devolve `"added"`; é só aqui que a `midia` é guardada). O que dá errado é devolvido ou levantado para a thread de trabalho, nunca para a thread principal do Anki.
 
 O **perfil fixo** (#149, `perfil.py`): a Conexão entrega ao adaptador o `PerfilFixo` por `fixar_o_perfil(fixo)`, e daí em diante
 toda gravação só vale no perfil marcado: com outro perfil aberto levanta `OutroPerfil` e com o marcado apagado, `PerfilSumiu` (os dois

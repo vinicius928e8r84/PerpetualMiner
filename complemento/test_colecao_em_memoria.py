@@ -6,6 +6,7 @@ tem em comum com o adaptador do Anki (`no_anki.py`): os dois passam pelos mesmos
 O que este arquivo tem de fora de `test_*` é só o adaptador; ele fica fora do `.ankiaddon` pelo nome.
 """
 
+import hashlib
 import os
 import sys
 import tempfile
@@ -14,6 +15,16 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos, perfil  # noqa: E402
+
+
+def guardar_na_midia(arquivos, nome, dados):
+    """`col.media.write_data` do Anki: guarda `dados` em `arquivos` com o nome pedido e devolve o nome que ficou. Um arquivo de
+    mesmo nome e conteúdo diferente já na coleção faz o Anki trocar o nome (`<nome>-<sha1 do conteúdo>.<extensão>`)."""
+    if arquivos.get(nome, dados) != dados:
+        base, ponto, extensao = nome.rpartition(".")
+        nome = "%s-%s%s%s" % (base or extensao, hashlib.sha1(dados).hexdigest(), ponto if base else "", extensao if base else "")
+    arquivos[nome] = dados
+    return nome
 
 
 class ColecaoEmMemoria:
@@ -45,6 +56,7 @@ class ColecaoEmMemoria:
         self._tipos = {nome: list(campos) for nome, campos in ((descricao or {}).get("tiposDeNota") or {"Básico": ["Frente", "Verso"]}).items()}
         self._guids = set()
         self.gravadas = []
+        self.midia = {}  # a mídia da coleção: nome do arquivo → bytes
         self.sincronizando = False
         self._baralhos = {}
         proxima = 1700000000000
@@ -121,20 +133,25 @@ class ColecaoEmMemoria:
         self._exigir_gravavel()
         return set(guids) & self._guids
 
-    def adicionar_nota(self, baralho, tipo_de_nota, campos, etiquetas, guid):
+    def adicionar_nota(self, baralho, tipo_de_nota, campos, etiquetas, guid, midia=None):
         self._exigir_gravavel()
         if guid in self._guids:
             return
         nomes = self._tipos.get(tipo_de_nota)
         if nomes is None or not set(campos) <= set(nomes):
             raise baralhos.TipoDeNotaAusente(tipo_de_nota)
+        guardada = {}
+        for nome, dados in (midia or {}).items():
+            guardado = guardar_na_midia(self.midia, nome, dados)
+            guardada[guardado] = dados
+            campos = {campo: valor.replace("[sound:%s]" % nome, "[sound:%s]" % guardado) for campo, valor in campos.items()}
         self._proxima += 1
         valores = [(nome, campos.get(nome, "")) for nome in nomes]
         self._baralhos.setdefault(baralho, []).append({"nota": self._proxima, "campos": valores, "tipo": 0, "intervalo": 0})
         self._guids.add(guid)
-        self.gravadas.append({"baralho": baralho, "tipo": tipo_de_nota, "campos": dict(campos), "etiquetas": list(etiquetas), "guid": guid})
+        self.gravadas.append({"baralho": baralho, "tipo": tipo_de_nota, "campos": dict(campos), "etiquetas": list(etiquetas), "guid": guid, "midia": guardada})
 
-    def gravar_cartao(self, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar):
+    def gravar_cartao(self, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar, midia=None):
         """O passo inteiro de gravar um Cartão (ver `no_anki.ColecaoDoAnki.gravar_cartao`): `"added"` ou `"duplicate"`."""
         self._exigir_gravavel()
         if guid in self._guids:
@@ -142,7 +159,7 @@ class ColecaoEmMemoria:
         for cartao in self.cartoes_do_baralho(baralho):
             if any(nome == campo_da_frente and valor and normalizar(valor) == frente_normalizada for nome, valor in cartao["campos"]):
                 return "duplicate"
-        self.adicionar_nota(baralho, tipo_de_nota, campos, etiquetas, guid)
+        self.adicionar_nota(baralho, tipo_de_nota, campos, etiquetas, guid, midia)
         return "added"
 
     def perfis(self):
@@ -198,6 +215,10 @@ class ContratoDoAdaptadorDaColecao:
 
     def sincronizar(self, colecao, sincronizando):
         """O Anki começa (True) ou termina (False) uma sincronização."""
+        raise NotImplementedError
+
+    def midia_guardada(self, colecao):
+        """A mídia que a coleção guarda: `{ nome do arquivo: bytes }`."""
         raise NotImplementedError
 
     def test_lista_todos_os_baralhos_com_dois_pontos_entre_os_niveis(self):
@@ -265,6 +286,41 @@ class ContratoDoAdaptadorDaColecao:
         with self.assertRaises(baralhos.TipoDeNotaAusente):
             colecao.adicionar_nota("Inglês", "Basic", {"Front": "a", "Back": "b"}, [], "guid-1")
         self.assertEqual(colecao.guids_existentes(["guid-1"]), set())
+
+    def gravar_com_midia(self, colecao, guid, frente, midia, tipo_de_nota="Básico"):
+        return colecao.gravar_cartao(
+            "Inglês", tipo_de_nota, {"Frente": frente, "Verso": "b"}, [], guid, "Frente", frente.strip().lower(), lambda valor: valor.strip().lower(), midia)
+
+    def frentes(self, colecao):
+        return [dict(cartao["campos"])["Frente"] for cartao in colecao.cartoes_do_baralho("Inglês")]
+
+    def test_a_midia_gravada_com_a_nota_fica_na_colecao_com_o_nome_que_a_nota_cita(self):
+        colecao = self.adaptador({"baralhos": [{"nome": "Inglês"}]})
+        self.gravar_com_midia(colecao, "guid-1", "a [sound:pm1_phrase.mp3]", {"pm1_phrase.mp3": b"um"})
+        self.assertEqual(self.midia_guardada(colecao), {"pm1_phrase.mp3": b"um"})
+        self.assertEqual(self.frentes(colecao), ["a [sound:pm1_phrase.mp3]"])
+
+    def test_o_nome_que_a_colecao_trocou_por_ter_outro_arquivo_com_ele_e_o_que_a_nota_cita(self):
+        colecao = self.adaptador({"baralhos": [{"nome": "Inglês"}]})
+        self.gravar_com_midia(colecao, "guid-1", "primeira [sound:x.mp3]", {"x.mp3": b"um"})
+        self.gravar_com_midia(colecao, "guid-2", "segunda [sound:x.mp3]", {"x.mp3": b"dois"})
+        guardada = self.midia_guardada(colecao)
+        novo = next(nome for nome in guardada if nome != "x.mp3")
+        self.assertEqual((guardada["x.mp3"], guardada[novo]), (b"um", b"dois"))
+        self.assertEqual(self.frentes(colecao), ["primeira [sound:x.mp3]", "segunda [sound:%s]" % novo])
+
+    def test_a_nota_que_ja_esta_na_colecao_ou_que_e_duplicata_nao_grava_midia(self):
+        colecao = self.adaptador({"baralhos": [{"nome": "Inglês"}]})
+        self.gravar_com_midia(colecao, "guid-1", "a", {})
+        self.gravar_com_midia(colecao, "guid-1", "a", {"x.mp3": b"um"})
+        self.gravar_com_midia(colecao, "guid-2", "A ", {"y.mp3": b"dois"})
+        self.assertEqual(self.midia_guardada(colecao), {})
+
+    def test_sem_o_tipo_de_nota_nenhuma_midia_fica_na_colecao(self):
+        colecao = self.adaptador({"baralhos": [{"nome": "Inglês"}]})
+        with self.assertRaises(baralhos.TipoDeNotaAusente):
+            self.gravar_com_midia(colecao, "guid-1", "a", {"x.mp3": b"um"}, tipo_de_nota="Basic")
+        self.assertEqual(self.midia_guardada(colecao), {})
 
     def test_gravar_de_novo_o_mesmo_guid_nao_dobra_a_nota(self):
         colecao = self.adaptador(DESCRICAO)
@@ -376,6 +432,9 @@ class AdaptadorEmMemoria(ContratoDoAdaptadorDaColecao, unittest.TestCase):
 
     def sincronizar(self, colecao, sincronizando):
         colecao.sincronizando = sincronizando
+
+    def midia_guardada(self, colecao):
+        return dict(colecao.midia)
 
     def adaptador_fechado(self, perfis=("Usuário 1",)):
         return ColecaoEmMemoria.fechada(perfis=perfis)
