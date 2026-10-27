@@ -2,7 +2,7 @@
 
 Python pipeline: keyword:phrase → multimedia Anki flashcards via OpenAI (chat.completions over plain HTTP, image model from `openai.image_model`), gTTS audio, Openverse/GPT-vision images, AnkiConnect.
 
-The text half (`parser.py`, `prompt_loader.py`, `generate_cards.py`, `openai_http.py`, `cost_tracker.py`, `config_loader.py`, `send_to_anki.py`'s card formatting, `config.json`, `prompts/`) also runs **inside the Anki add-on** (`complemento/motor`, Python 3.9, standard library only): no OpenAI SDK, no PyYAML, no dotenv there; sibling imports are relative when `__package__` is set; progress goes to the `perpetualminer.motor` logger, never to stdout; nothing touches `warnings`. `complemento/empacotar.py` lists those files (`ARQUIVOS_DO_MOTOR`): a change in them changes the add-on (bump its `VERSAO`).
+The text half (`parser.py`, `prompt_loader.py`, `generate_cards.py`, `generate_audio.py`'s `voices()` (what a card says and with which accent; the add-on asks Google for it in `complemento/voz.py`, gTTS is imported only inside `run`), `openai_http.py`, `cost_tracker.py`, `config_loader.py`, `send_to_anki.py`'s card formatting, `config.json`, `prompts/`) also runs **inside the Anki add-on** (`complemento/motor`, Python 3.9, standard library only): no OpenAI SDK, no PyYAML, no dotenv there; sibling imports are relative when `__package__` is set; progress goes to the `perpetualminer.motor` logger, never to stdout; nothing touches `warnings`. `complemento/empacotar.py` lists those files (`ARQUIVOS_DO_MOTOR`): a change in them changes the add-on (bump its `VERSAO`).
 
 ## Setup & Run
 

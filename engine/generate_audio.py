@@ -9,16 +9,22 @@ For AI-generated secondary cards the phrase is read from the card .txt file
 the Assistant created, not the original entry phrase.
 
 Output filenames: {stem}_word.mp3  and  {stem}_phrase.mp3
+
+`voices()` is what a card says and with which accent; the bridge speaks it with gTTS (`run`, imported only when it runs), the
+Anki add-on asks Google for it with the standard library only (`complemento/voz.py`), so this module also imports as
+`complemento.motor.generate_audio` without gTTS.
 """
 
 import re
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Tuple
 
-from gtts import gTTS
-
-from config_loader import load_config
-from parser import parse_mining_file, get_card_jobs, CardJob
+if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
+    from .config_loader import load_config
+    from .parser import parse_mining_file, get_card_jobs, CardJob
+else:
+    from config_loader import load_config
+    from parser import parse_mining_file, get_card_jobs, CardJob
 
 
 def _has_cyrillic(text: str) -> bool:
@@ -44,15 +50,12 @@ def _clean_for_tts(text: str) -> str:
     return re.sub(r'\[.*?\]', '', text).strip()
 
 
-def _read_phrase_from_card(card_file: Path) -> Optional[str]:
-    """Extract the spoken phrase from the Front section of a card .txt file.
+def phrase_from_card_text(content: str) -> Optional[str]:
+    """Extract the spoken phrase from the Front section of a card's text.
 
     Handles **Front**, **Front:**, Front:, etc.
     Strips GPT artefacts like '[Phrase with keyword highlighted:]'.
     """
-    if not card_file.exists():
-        return None
-    content = card_file.read_text(encoding="utf-8")
     match = re.search(
         r'\*{0,2}Front:?\*{0,2}\s*(.*?)\s*\*{0,2}Back:?\*{0,2}',
         content,
@@ -71,6 +74,22 @@ def _read_phrase_from_card(card_file: Path) -> Optional[str]:
     return phrase or None
 
 
+def voices(job: CardJob, card_text: Optional[str], config: dict) -> Tuple[Tuple[str, str, str], Tuple[str, str, str]]:
+    """What a card says and how: ((word, lang, tld), (phrase, lang, tld)).
+
+    The phrase is read from the card text so secondary keywords speak the AI-generated sentence, not the original
+    mining.txt phrase; without it (`None`, or no Front in it) the original phrase is the fallback.
+    """
+    phrase_text = (phrase_from_card_text(card_text) if card_text is not None else None) or _clean_for_tts(job.phrase)
+    word_text = _clean_for_tts(job.keyword)
+    word_profile = _pick_profile(word_text, config, "word")
+    phrase_profile = _pick_profile(phrase_text, config, "phrase")
+    return (
+        (word_text, word_profile["lang"], word_profile["tld"]),
+        (phrase_text, phrase_profile["lang"], phrase_profile["tld"]),
+    )
+
+
 def run(
     entries,
     config: dict,
@@ -81,6 +100,8 @@ def run(
     progress_callback(done, total, label) is called after each file is saved.
     Returns list of generated filenames.
     """
+    from gtts import gTTS  # the add-on has no gTTS: only the bridge speaks through it
+
     output_dir = Path(config["paths"]["output_dir"])
     output_dir.mkdir(exist_ok=True)
 
@@ -95,29 +116,18 @@ def run(
     for job in all_jobs:
         stem = job.filename_stem
         card_file = output_dir / f"{stem}.txt"
-
-        # Always read the phrase from the card file so secondary keywords
-        # speak the AI-generated sentence, not the original mining.txt phrase.
-        phrase_text = _read_phrase_from_card(card_file)
-        if not phrase_text:
-            # Fallback: use original phrase (should only happen if card file is missing)
-            phrase_text = _clean_for_tts(job.phrase)
-
-        # Clean the keyword too (in case mining.txt had brackets)
-        word_text = _clean_for_tts(job.keyword)
-
-        word_profile = _pick_profile(word_text, config, "word")
-        phrase_profile = _pick_profile(phrase_text, config, "phrase")
+        card_text = card_file.read_text(encoding="utf-8") if card_file.exists() else None
+        (word_text, word_lang, word_tld), (phrase_text, phrase_lang, phrase_tld) = voices(job, card_text, config)
 
         word_file = output_dir / f"{stem}_word.mp3"
-        gTTS(text=word_text, lang=word_profile["lang"], tld=word_profile["tld"]).save(str(word_file))
+        gTTS(text=word_text, lang=word_lang, tld=word_tld).save(str(word_file))
         generated.append(word_file.name)
         done += 1
         if progress_callback:
             progress_callback(done, total, f"[word] {job.keyword}")
 
         phrase_file = output_dir / f"{stem}_phrase.mp3"
-        gTTS(text=phrase_text, lang=phrase_profile["lang"], tld=phrase_profile["tld"]).save(str(phrase_file))
+        gTTS(text=phrase_text, lang=phrase_lang, tld=phrase_tld).save(str(phrase_file))
         generated.append(phrase_file.name)
         done += 1
         if progress_callback:

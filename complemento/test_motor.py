@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from complemento import envio  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
 
-SEM_AS_BIBLIOTECAS_DE_FORA = {"yaml": None, "dotenv": None, "openai": None, "httpx": None, "requests": None}
+SEM_AS_BIBLIOTECAS_DE_FORA = {"yaml": None, "dotenv": None, "openai": None, "httpx": None, "requests": None, "gtts": None}
 
 
 def configuracao_do_teste(motor, pasta):
@@ -40,6 +40,14 @@ class OMotorComoPacote(unittest.TestCase):
         self.assertEqual(envio.cartoes_da_frase(motor, "en", "keep running | run : They keep running"), 2)
         self.assertEqual(envio.cartoes_da_frase(motor, "ru", "Я не мальчик! [Context: Série - Episódio 1]"), 1)
         self.assertEqual(envio.cartoes_da_frase(motor, "en", ""), 0)
+
+    def test_o_motor_de_audio_importa_sem_a_gtts_e_diz_o_que_o_cartao_fala_e_com_que_sotaque(self):
+        with mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
+            motor = envio.motor_do_complemento()
+            config = motor.config_loader.base_config()
+            trabalho = motor.parser.get_card_jobs(motor.parser.parse_mining_line("give up : She gave up smoking"))[0]
+            fala = motor.generate_audio.voices(trabalho, "Front: She *gave up* smoking\n\nBack: give up", config)
+        self.assertEqual(fala, (("give up", "en", "com"), ("She gave up smoking", "en", "co.uk")))
 
     def test_gera_um_cartao_contra_a_openai_de_mentira_sem_o_sdk_e_o_chama_pelo_nome_que_o_envio_deu(self):
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai, mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):

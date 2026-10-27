@@ -1,6 +1,6 @@
 """O que a Conexão com o Anki sabe de si, num lugar só."""
 
-VERSAO = "0.3.2"
+VERSAO = "0.3.3"
 NOME_DO_LOGGER = "perpetualminer"
 
 ENDERECO = "127.0.0.1"
@@ -15,3 +15,7 @@ ORIGENS_ACEITAS = ("chrome-extension://" + ID_DA_EXTENSAO,)
 # Onde a Conexão confere uma chave da OpenAI. Só o código muda isto (a Conexão recebe o endereço de
 # `inicio.iniciar`): nada no ambiente, na configuração ou num pedido pode desviar a chave para outro lugar.
 OPENAI_BASE = "https://api.openai.com"
+
+# De onde vem a voz do Cartão: `{tld}` é o sotaque dos Ajustes de envio (`com`, `co.uk`, `ru`…), como o gTTS da Conexão de
+# hoje monta o endereço. Só o código muda isto, como o `OPENAI_BASE`.
+VOZ_BASE = "https://translate.google.{tld}"
