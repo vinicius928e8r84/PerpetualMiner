@@ -21,7 +21,7 @@ const fotografar = async (page, nome) => {
 };
 
 const pontoDaConexao = page => page.locator('.shell-ponto');
-const faixaF1 = page => page.getByText('A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.');
+const faixaF1 = page => page.getByText('A Conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.');
 const esperaDoPopup = page => page.locator('.popup-azulejo__espera:visible');
 
 /** O inglês ligado e nenhuma leitura do vocabulário: o popup, com a Conexão desligada, espera o Anki. */

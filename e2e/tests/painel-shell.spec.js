@@ -35,7 +35,7 @@ const filtroDeFonte = page => page.getByRole('combobox', { name: 'Fonte', exact:
 const paginaAtual = page => page.locator('#paginas-atual');
 const marcarFrase = page => page.locator('#frases-lista').getByRole('checkbox', { name: 'Selecionar frase' });
 const cartao = (page, texto) => page.locator('#frases-lista .veio-frase').filter({ hasText: texto });
-const faixaF1 = page => page.getByText('A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.');
+const faixaF1 = page => page.getByText('A Conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.');
 
 test('sem endereço, o painel abre em Frases, com Frases e a Conexão no topo e Configurações no pé', async ({ page, extensao }) => {
   await abrirPainel(page, extensao);

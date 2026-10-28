@@ -13,7 +13,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const { CAMINHO_DO_HTML, linhasDaSpec, htmlDoCatalogo } = require('./scripts/voz-da-spec.js');
-const { CAMINHO_DO_RETRATO, problemasDaVoz } = require('./scripts/conferir-voz.js');
+const { CAMINHO_DO_RETRATO, problemasDaVoz, retratoDoCatalogo } = require('./scripts/conferir-voz.js');
 
 globalThis.PerpetualMiner = {};
 require('./lib/voz/catalogo.js');
@@ -54,6 +54,10 @@ function comMudanca(mudar) {
   return copia;
 }
 const aponta = (problemas, nome) => problemas.some(p => p.startsWith(`${nome}:`));
+
+// O nome da Conexão com o Anki leva o C maiúsculo em todo texto (a resposta do dono no #269).
+const comONomeMinusculo = Object.entries(retratoDoCatalogo(CATALOGO_DA_VOZ)).filter(([, texto]) => /conexão com o Anki/.test(texto)).map(([nome]) => nome);
+assert.deepStrictEqual(comONomeMinusculo, [], 'o nome é “Conexão com o Anki”, com C maiúsculo, em todo texto da Voz');
 
 // Um texto cortado, que ainda aparece dentro da linha da spec.
 assert(aponta(conferir(comMudanca(c => { c['POP-04'] = 'Min'; })), 'POP-04'), 'POP-04 cortado devia ficar vermelho');
