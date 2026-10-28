@@ -12,6 +12,14 @@
       }
     },
     "painel-envio-visual": {
+      "envio-esperando-o-anki.png": {
+        "data": "2026-10-26",
+        "resposta": "o dono, na pagina de telas do #142 (resposta no #269), 2026-10-26"
+      },
+      "envio-codigo-da-conexao.png": {
+        "data": "2026-10-26",
+        "resposta": "o dono, na pagina de telas do #142 (resposta no #269), 2026-10-26"
+      },
       "envio-abrindo-o-anki.png": {
         "data": "2026-10-26",
         "resposta": "o dono, no quadro de aprovacao das PRs 271, 273 e 276, 2026-10-26"
@@ -19,6 +27,12 @@
       "envio-abra-o-anki.png": {
         "data": "2026-10-26",
         "resposta": "o dono, no quadro de aprovacao das PRs 271, 273 e 276, 2026-10-26"
+      }
+    },
+    "configuracoes-visual": {
+      "apagar-tudo-falha-frases-na-conexao.png": {
+        "data": "2026-10-26",
+        "resposta": "o dono, na pagina de telas do #142 (resposta no #269), 2026-10-26"
       }
     },
     "popup-visual": {
