@@ -22,17 +22,19 @@ const exemploDoAbridor = (acao, anki) => contrato.abridor.exemplos
  * As libs como a página as carrega. `permissao` é o que o Chrome faz com o pedido (true: já dada ou dada agora;
  * false: recusada); `situacoes` é o que cada conferência do /health da Conexão responde, em ordem (a última se repete).
  */
-function carregar({ permissao = true, responder = () => exemploDoAbridor('abrir', 'no_lugar'), situacoes = ['ligada'] }) {
+function carregar({ permissao = true, jaTem = permissao, responder = () => exemploDoAbridor('abrir', 'no_lugar'), situacoes = ['ligada'], relogio = {}, globais = {}, extras = {}, arquivos = ['lib/abridor.js', 'lib/abrir-o-anki.js'] }) {
   const chamadas = [];
   const enviadas = [];
   let conferencias = 0;
+  let tem = jaTem;
   const contexto = vm.createContext({
-    setTimeout, clearTimeout,
+    setTimeout: relogio.setTimeout || setTimeout, clearTimeout,
     document: { getElementById: () => null },
+    ...globais,
     chrome: {
       permissions: {
-        contains: async () => permissao,
-        request: pedido => { chamadas.push(pedido); return Promise.resolve(permissao); },
+        contains: async () => tem,
+        request: pedido => { chamadas.push(pedido); tem = permissao; return Promise.resolve(permissao); },
       },
       runtime: {
         async sendNativeMessage(host, mensagem) {
@@ -48,12 +50,79 @@ function carregar({ permissao = true, responder = () => exemploDoAbridor('abrir'
     ConexaoAnki: {
       SITUACAO: { CONECTANDO: 'conectando', LIGADA: 'ligada', DESLIGADA: 'desligada' },
       conferir: async () => situacoes[Math.min(conferencias++, situacoes.length - 1)],
+      ...extras.ConexaoAnki,
+    },
+    ...extras.outros,
+  };
+  for (const arquivo of arquivos) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, arquivo), 'utf8'), contexto);
+  }
+  return { Abridor: contexto.PerpetualMiner.Abridor, AbrirOAnki: contexto.PerpetualMiner.AbrirOAnki, EnvioComOAnkiFechado: contexto.PerpetualMiner.EnvioComOAnkiFechado, chamadas, enviadas, conferencias: () => conferencias };
+}
+
+/** Um relógio de mentira: `setTimeout` guarda o timer e `avancar(ms)` roda os que vencem, deixando as promessas andarem entre eles. */
+function relogioFalso() {
+  let agora = 0;
+  const timers = [];
+  const deixarAndar = () => new Promise(resolver => setImmediate(resolver));
+  return {
+    setTimeout: (funcao, atraso) => { timers.push({ quando: agora + atraso, funcao }); return timers.length; },
+    async avancar(ms) {
+      const fim = agora + ms;
+      await deixarAndar();
+      for (;;) {
+        timers.sort((a, b) => a.quando - b.quando);
+        if (!timers.length || timers[0].quando > fim) break;
+        const { quando, funcao } = timers.shift();
+        agora = quando;
+        funcao();
+        await deixarAndar();
+      }
+      agora = fim;
+    },
+    deixarAndar,
+  };
+}
+
+/** A faixa do Envio (painel-envio-anki-fechado.js) com a página de mentira: o aviso de agora, o botão e as Frases enviadas. */
+function carregarFaixa({ responder } = {}) {
+  const relogio = relogioFalso();
+  let aviso = null;
+  const aoLigar = [];
+  let situacao = 'desligada';
+  let ouvinte = () => {};
+  const documento = {
+    querySelector: () => aviso,
+    getElementById: id => (id === 'frases-avisos' ? { append: novo => { aviso = novo; } } : null),
+  };
+  const Veio = {
+    montarAviso: opcoes => {
+      const novo = { dataset: {}, ...opcoes, remove: () => { if (aviso === novo) aviso = null; } };
+      return novo;
     },
   };
-  for (const arquivo of ['abridor.js', 'abrir-o-anki.js']) {
-    vm.runInContext(fs.readFileSync(path.join(__dirname, 'lib', arquivo), 'utf8'), contexto);
-  }
-  return { Abridor: contexto.PerpetualMiner.Abridor, AbrirOAnki: contexto.PerpetualMiner.AbrirOAnki, chamadas, enviadas, conferencias: () => conferencias };
+  const { EnvioComOAnkiFechado } = carregar({
+    jaTem: false,
+    situacoes: ['desligada'],
+    responder,
+    relogio,
+    globais: { document: documento },
+    extras: {
+      ConexaoAnki: {
+        conferir: async () => situacao,
+        acompanhar: funcao => { ouvinte = funcao; },
+      },
+      outros: { textoDaVoz: id => id, Veio },
+    },
+    arquivos: ['lib/abridor.js', 'lib/abrir-o-anki.js', 'painel-envio-anki-fechado.js'],
+  });
+  const faixa = EnvioComOAnkiFechado.criar({ aoLigar: ids => aoLigar.push(ids) });
+  return {
+    relogio, faixa, aoLigar,
+    aviso: () => aviso,
+    clicarNoBotao: () => aviso.acao.aoUsar({ currentTarget: { getAttribute: () => null, setAttribute() {}, removeAttribute() {} } }),
+    ligar: () => { situacao = 'ligada'; ouvinte('ligada'); },
+  };
 }
 
 async function main() {
@@ -97,6 +166,34 @@ async function main() {
     const { AbrirOAnki, conferencias } = carregar({ situacoes: ['desligada'] });
     assert.strictEqual(await AbrirOAnki.esperarOAnki({ prazo: 20, intervalo: 5 }), false, 'a Conexão que não responde no prazo diz false');
     assert.ok(conferencias() >= 2 && conferencias() <= 6, `não confere sem parar: ${conferencias()}`);
+  }
+
+  {
+    // O prazo de 2 min da faixa recomeça quando a pessoa aperta Abrir o Anki sozinho e o Anki abre.
+    const { relogio, faixa, aoLigar, aviso, clicarNoBotao, ligar } = carregarFaixa();
+    faixa.pedir(['a']);
+    await relogio.deixarAndar();
+    assert.strictEqual(aviso().texto, 'ENV-16.abra', 'sem a permissão, a faixa pede que a pessoa abra o Anki');
+    await relogio.avancar(118_000);
+    clicarNoBotao();
+    await relogio.avancar(10_000);
+    assert.strictEqual(aviso().texto, 'ENV-16.abrindo', 'o Anki abriu no clique: passado o prazo do pedido, a faixa segue dizendo que abre');
+    ligar();
+    assert.deepStrictEqual(aoLigar, [['a']], 'o Anki respondeu: as Frases pedidas saem');
+  }
+
+  {
+    const { relogio, faixa, aoLigar, aviso, clicarNoBotao } = carregarFaixa();
+    faixa.pedir(['a']);
+    await relogio.deixarAndar();
+    await relogio.avancar(118_000);
+    clicarNoBotao();
+    await relogio.avancar(100_000);
+    assert.strictEqual(aviso().texto, 'ENV-16.abrindo', 'a espera nova dura os 2 min inteiros');
+    await relogio.avancar(30_000);
+    assert.strictEqual(aviso().texto, 'ENV-16.abra', 'o Anki que não responde nem na espera nova volta a pedir que a pessoa o abra');
+    assert.match(aviso().detalhes, /sem resposta/);
+    assert.deepStrictEqual(aoLigar, []);
   }
 
   console.log('abrir o anki tests passed');

@@ -47,8 +47,9 @@
         if (pedido !== este) return;
         if (resposta.resultado === RESULTADO.SEM_PERMISSAO) return botao.removeAttribute('aria-disabled');
         este.abriu = resposta.resultado === RESULTADO.ABRIU;
-        if (este.abriu) mostrar('abrindo');
-        else mostrar('abra', { causa: causaDoAbridor(resposta) });
+        if (!este.abriu) return mostrar('abra', { causa: causaDoAbridor(resposta) });
+        mostrar('abrindo');
+        esperar(este); // o Anki abriu agora: o prazo recomeça
       });
     }
 
@@ -68,6 +69,13 @@
         este.abriu = resposta.resultado === RESULTADO.ABRIU;
         if (!este.abriu) mostrar('abra', { causa: causaDoAbridor(resposta) });
       }
+      await esperar(este);
+    }
+
+    /** Espera a Conexão responder; uma espera nova (o botão da faixa) encerra a anterior sem dizer nada. */
+    async function esperar(este) {
+      const minha = este.espera = {};
+      const vale = () => pedido === este && este.espera === minha;
       const respondeu = await AbrirOAnki.esperarOAnki({ continuar: vale });
       if (!vale() || respondeu) return;
       pedido = null;

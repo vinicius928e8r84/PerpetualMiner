@@ -70,7 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // O selo e o esperando só aparecem com a Conexão desligada; o Configuracao a acompanha por conta própria.
-  porId('selo-vocabulario').append(AbrirOAnki.montarBotao('veio-botao veio-botao--link'));
   ConexaoAnki.acompanhar(refletirOVocabularioDoAnkiFechado);
   ConexaoAnki.iniciar();
   lerAIdadeDoVocabulario();
@@ -234,7 +233,7 @@ function montarAzulejo(chave, idioma, numeros) {
   // BRG-37: sem nenhuma leitura do vocabulário, a Mineração automática espera o Anki abrir uma vez.
   const espera = criar('p', 'popup-azulejo__espera');
   espera.hidden = true;
-  espera.append(criar('b', null, textoDaVoz('BRG-37.esperando')), criar('span', null, textoDaVoz('BRG-37.comeca')), AbrirOAnki.montarBotao());
+  espera.append(criar('b', null, textoDaVoz('BRG-37.esperando')), criar('span', null, textoDaVoz('BRG-37.comeca')));
 
   azulejo.append(topo, contador, medidor, espera);
 
@@ -310,6 +309,7 @@ function lerAIdadeDoVocabulario() {
  */
 function refletirOVocabularioDoAnkiFechado() {
   const selo = porId('selo-vocabulario');
+  AbrirOAnki.montarSeJaConectou(selo, 'veio-botao veio-botao--link');
   const leituras = leiturasDoVocabulario;
   const desligada = ConexaoAnki.situacao() === ConexaoAnki.SITUACAO.DESLIGADA;
   const ligados = IDIOMAS_DA_MINERACAO.filter(({ chave }) => mineracaoAutomatica?.settings?.[chave]?.enabled);
@@ -321,6 +321,7 @@ function refletirOVocabularioDoAnkiFechado() {
   if (semOAnki) porId('selo-vocabulario-texto').textContent = textoDaVoz('POP-17.selo', { quando: diaEHora(Math.min(...lidos.map(leitura => leitura.dadosDe))) });
   for (const { chave } of IDIOMAS_DA_MINERACAO) {
     const espera = document.querySelector(`.popup-azulejo[data-idioma="${chave}"] .popup-azulejo__espera`);
+    AbrirOAnki.montarSeJaConectou(espera);
     if (espera) espera.hidden = !(leituras && desligada && ligados.some(l => l.chave === chave) && !leituras[chave]);
   }
 }
