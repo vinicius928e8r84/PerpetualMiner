@@ -72,6 +72,18 @@ happened). Only what the Conexão confirmed is shown: any failed or invalid read
 opens the Anki, only writes or deletes the item. `#configuracoes/anki` opens the card. Tests: `e2e/tests/configuracoes-abrir-anki.spec.js`
 (the fake follows `complemento/contrato/exemplos.json`), the visual reference in `configuracoes-visual.spec.js`.
 
+#### The “Perfil do Anki ▾” row (CFG-43, #149; same file and card)
+
+The fixed profile lives in the Conexão (`complemento/perfil.py`, `user_files/perfil.json`: the profile open on the first connection), so
+nothing is stored in `chrome.storage`. The row reads `POST /anki/profiles` (`{ profiles, marked, open }`) when the Conexão comes on, on
+entering Configurações and after each pick, and exists only with 2 or more profiles **or** a marked one the Anki no longer has (then also
+with one profile left: a red non-closable aviso, `CFG-43.sumiu`, and a list with nothing selected). With one profile nothing about profiles
+shows. Picking posts `POST /anki/profile` `{ profile }`; the list is redrawn from a fresh read, so it shows what the Conexão kept, and a
+refused pick shows `CFG-43.falha` with Detalhes. The row is rebuilt only when what it shows changes (an open list survives the 15 s
+checks). Picking never opens or closes anything in the Anki: only the Envio card's “Abrir <perfil>” does (`painel-envio-cartao.js`).
+Tests: `e2e/tests/configuracoes-perfil.spec.js`, `painel-envio-perfil.spec.js` (the fake is `e2e/fakes/perfis.js`); the visual reference of
+both screens is `fixme` in `perfil-fixo-visual.spec.js` until the owner approves it.
+
 ### Shortcuts (`painel-atalhos.js`, `lib/atalhos.js`)
 
 Two recorded shortcuts, each recorded in its own row of the Configurações › Atalhos card: **Minerar legenda**

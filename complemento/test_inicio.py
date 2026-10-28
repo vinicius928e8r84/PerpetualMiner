@@ -17,6 +17,7 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import abridor, configuracao, inicio, item_de_login  # noqa: E402
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_abridor import Pastas, RegistroDeMentira, abridor_do_mac, conversar  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
 
@@ -183,6 +184,58 @@ class AoCarregarNoAnki(unittest.TestCase):
             conversar(os.path.join(pastas.abridor, "abrir-o-anki.sh"), {"acao": "abrir"})
             recebeu = pastas.open.recebeu()
         self.assertEqual(recebeu, ["-a", pastas.app, "--args", "-p", "Maria"])
+
+    @unittest.skipIf(os.name == "nt", "o script do Mac roda num sh")
+    def test_o_abridor_abre_o_anki_no_perfil_marcado_mesmo_depois_de_outro_perfil_abrir(self):
+        ganchos = []
+        perfil = {"aberto": None}
+        with tempfile.TemporaryDirectory() as raiz:
+            pastas = Pastas(raiz)
+            conexao = inicio.iniciar(
+                os.path.join(raiz, "complemento"), lambda: perfil["aberto"], porta=0,
+                abridor=abridor_do_mac(pastas), ao_abrir_o_perfil=ganchos.append,
+            )
+            parar(conexao)
+            for aberto in ("Maria", "Joana"):  # a Maria estava aberta na primeira conexão; depois a Joana abre
+                perfil["aberto"] = aberto
+                for gancho in ganchos:
+                    gancho()
+            conversar(os.path.join(pastas.abridor, "abrir-o-anki.sh"), {"acao": "abrir"})
+            recebeu = pastas.open.recebeu()
+        self.assertEqual(recebeu, ["-a", pastas.app, "--args", "-p", "Maria"])
+
+    @unittest.skipIf(os.name == "nt", "o script do Mac roda num sh")
+    def test_escolher_outro_perfil_marcado_faz_o_abridor_abrir_o_anki_nele(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            pastas = Pastas(raiz)
+            colecao = ColecaoEmMemoria(perfis=("Maria", "Joana"))
+            conexao = inicio.iniciar(
+                os.path.join(raiz, "complemento"), lambda: "Maria", porta=0, colecao=colecao, abridor=abridor_do_mac(pastas),
+            )
+            try:
+                escolha = _post(conexao.porta, "/anki/profile", {"profile": "Joana"})
+            finally:
+                parar(conexao)
+            conversar(os.path.join(pastas.abridor, "abrir-o-anki.sh"), {"acao": "abrir"})
+            recebeu = pastas.open.recebeu()
+        self.assertEqual(escolha, (200, {"ok": True, "marked": "Joana"}))
+        self.assertEqual(recebeu, ["-a", pastas.app, "--args", "-p", "Joana"])
+
+    @unittest.skipIf(os.name == "nt", "o script do Mac roda num sh")
+    def test_o_perfil_marcado_que_o_anki_ja_nao_tem_deixa_o_abridor_sem_perfil_para_o_anki_abrir_na_tela_de_perfis(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            pastas = Pastas(raiz)
+            os.makedirs(os.path.join(raiz, "complemento", "user_files"))
+            with open(os.path.join(raiz, "complemento", "user_files", "perfil.json"), "w", encoding="utf-8") as arquivo:
+                json.dump({"perfil": "Ana"}, arquivo)  # marcado antes; a Ana foi apagada ou renomeada no Anki
+            colecao = ColecaoEmMemoria(perfis=("Beto", "Carla"), perfil_aberto="Beto")
+            conexao = inicio.iniciar(
+                os.path.join(raiz, "complemento"), lambda: "Beto", porta=0, colecao=colecao, abridor=abridor_do_mac(pastas),
+            )
+            parar(conexao)
+            conversar(os.path.join(pastas.abridor, "abrir-o-anki.sh"), {"acao": "abrir"})
+            recebeu = pastas.open.recebeu()
+        self.assertEqual(recebeu, ["-a", pastas.app])
 
     def test_sem_saber_onde_o_anki_esta_a_conexao_sobe_assim_mesmo_e_o_log_diz_por_que_nao_ha_abridor(self):
         with tempfile.TemporaryDirectory() as raiz:

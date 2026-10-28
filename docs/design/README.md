@@ -51,7 +51,7 @@ Se a dona precisar mudar, mude a spec dela; não crie exceção no lugar.
 
 ## Fatia ALTA: a página de desenho vem antes do código
 
-Uma fatia que mexe em credencial, em sync ou em estado que vive em mais de um processo escreve antes a página do [modelo de fatia ALTA](modelo-fatia-alta.md): o dono único de cada dado, os estados, as transições, as 8 variantes da Conexão e os limites aceitos. Não retroage nas fatias já entregues. A primeira feita assim é a do Envio dentro da Conexão com o Anki: [envio-no-complemento.md](envio-no-complemento.md) (#142).
+Uma fatia que mexe em credencial, em sync ou em estado que vive em mais de um processo escreve antes a página do [modelo de fatia ALTA](modelo-fatia-alta.md): o dono único de cada dado, os estados, as transições, as 8 variantes da Conexão e os limites aceitos. Não retroage nas fatias já entregues. A primeira feita assim é a do Envio dentro da Conexão com o Anki: [envio-no-complemento.md](envio-no-complemento.md) (#142). O perfil fixo do Anki tem a sua: [perfil-fixo-do-anki.md](perfil-fixo-do-anki.md) (#149).
 
 ## Lista fechada
 

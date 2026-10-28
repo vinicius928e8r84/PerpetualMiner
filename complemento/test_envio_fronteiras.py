@@ -288,7 +288,8 @@ class AMorteDepoisDoArquivoProvisorioEAntesDoRenomear(unittest.TestCase):
                 for sentinela in SENTINELAS:
                     for nome, conteudo in restos.items():
                         self.assertNotIn(sentinela.encode(), conteudo, "%s em %s" % (sentinela, nome))
-                self.assertEqual([nome for nome in restos if nome.endswith(".novo") and not nome.startswith("chaves")], [])
+                # `perfil.json.novo` (a marca do perfil fixo, #149) guarda só o nome do perfil: o Apagar tudo não precisa levá-lo.
+                self.assertEqual([nome for nome in restos if nome.endswith(".novo") and not nome.startswith("chaves") and nome != "perfil.json.novo"], [])
                 self.assertTrue(provisorios, "a prova só vale se a morte deixou o provisório")
 
 

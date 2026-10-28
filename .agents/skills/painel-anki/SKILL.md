@@ -177,15 +177,12 @@ tombstones, no toast) and `marcarComoEnviadas(ids)` (`status: 'exported'`, no to
 “Envio em inglês · 12 frases”, the stage in people's words (ENV-07, from the bridge `stage`), the 7 stages as segments
 (the done ones full, the current one filling by its `done/total`; all in the outcome's color at the end), “etapa 4 de 7 ·
 atualizado há 1 min” (ENV-08) and a collapsed Detalhes with jobId, raw stage, ISO
-time (the bridge's `updatedAt`, or when the Envio was created) and `lastError`. A card that needs the person has no error box: its stage and segments turn calm (muted), the reason is one short
-sentence and the action is a gold link below it (`pedidoDoCartao`). An Envio that ended partial or failed while another
+time (`updatedAt`, or creation) and `lastError`. A card that needs the person has no error box: its stage and segments turn calm (muted); the reason is one short
+sentence and the action a gold link (`pedidoDoCartao`). One that ended partial or failed while another
 still runs gets **Continuar envio →** (`POST /jobs/retry`, toast ENV-14); when the bridge says Windows would not let
-it close a stuck Anki (`ankiError: 'repair_access_denied'`), the reason is BRG-18. Phrases go to the Envio of their language by `ehRussa` (`lib/idioma.js`), the same rule
-the list uses: the stored `idioma`, or the text when it is missing. A `POST /jobs` that fails does not hide the Envio: its card says “Não começou”
-with the ENV-03 reason (`motivoSemResposta` when the request never got an answer), its cause in Detalhes, and
-**Tentar de novo →**, which re-creates only that language. While such an error is on a card (or a Continuar envio that failed, ENV-14), the summary
-waits: the progress modal comes back with it, and the summary opens once the person closes it, counting those phrases
-as failed. Every request goes through `PedidoAoAnki` (POST with the extension's origin). The Envio's request body is built once, with
+it close a stuck Anki (`ankiError: 'repair_access_denied'`), the reason is BRG-18. On the fixed profile (`state.waiting`, #149) it is ENV-17: “Abrir <perfil>” or “Escolher perfil”. Phrases go to the Envio of their language by `ehRussa` (`lib/idioma.js`): the stored `idioma`, or the text. A `POST /jobs` that fails does not hide the Envio: its card says “Não começou”
+with the ENV-03 reason (`motivoSemResposta` when the request never got an answer), its cause in Detalhes and
+**Tentar de novo →** (re-creates only that language). While such an error is on a card (or a Continuar envio that failed, ENV-14), the summary waits: the progress modal comes back and the summary opens once it is closed, counting those phrases as failed. Every request goes through `PedidoAoAnki` (POST, the extension's origin). The Envio's request body is built once, with
 `jobId` = the Envio's `id` (`crypto.randomUUID()`), and saved in `pm_envio` (`corpo`) **before** the first `POST /jobs`; the ENV-03
 Tentar de novo and a panel reopened with a request that got no answer send those same bytes, and the Conexão answers with the
 Envio it already has (`docs/design/envio-no-complemento.md`). `pm_envio` is written again after each `POST /jobs`.

@@ -6,8 +6,8 @@ chama por `chrome.runtime.sendNativeMessage` (a permissão `nativeMessaging` é 
 Abrir o Anki sozinho), e nada fica ligado em segundo plano: o navegador roda o script, ele responde uma
 vez e sai.
 
-O perfil é o do último perfil aberto neste Anki (reescrito a cada `profile_did_open`; ao carregar, nenhum, e o
-script abre o Anki sem `-p`). O perfil fixo da primeira conexão (história 19 do #138) é de outro ticket, e troca isto.
+O perfil é o perfil fixo (#149): o que estava aberto na primeira conexão, até a pessoa escolher outro. O script é reescrito a cada
+`profile_did_open` e a cada escolha (`inicio.py`); sem nenhum perfil marcado ainda (o Anki nunca abriu um), o script abre o Anki sem `-p`.
 
 O script só sabe duas coisas, pelas mensagens de `contrato/exemplos.json` › `abridor`:
 

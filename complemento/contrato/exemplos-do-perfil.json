@@ -1,0 +1,533 @@
+{
+  "exemplos": [
+    {
+      "nome": "Perfis do Anki com o perfil marcado aberto",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Ana",
+        "colecao": "inglês com subbaralho",
+        "perfis": [
+          "Ana",
+          "Beto"
+        ],
+        "perfilMarcado": "Ana"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/profiles",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "profiles": [
+            "Ana",
+            "Beto"
+          ],
+          "marked": "Ana",
+          "open": "Ana"
+        }
+      }
+    },
+    {
+      "nome": "Perfis do Anki na primeira conexão: o perfil aberto fica marcado",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Ana",
+        "colecao": "inglês com subbaralho",
+        "perfis": [
+          "Ana",
+          "Beto"
+        ]
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/profiles",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "profiles": [
+            "Ana",
+            "Beto"
+          ],
+          "marked": "Ana",
+          "open": "Ana"
+        }
+      }
+    },
+    {
+      "nome": "Perfis do Anki com outro perfil aberto",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Beto",
+        "colecao": "inglês com subbaralho",
+        "perfis": [
+          "Ana",
+          "Beto"
+        ],
+        "perfilMarcado": "Ana"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/profiles",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "profiles": [
+            "Ana",
+            "Beto"
+          ],
+          "marked": "Ana",
+          "open": "Beto"
+        }
+      }
+    },
+    {
+      "nome": "Perfis do Anki com o Anki na tela de perfis",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": null,
+        "perfis": [
+          "Ana",
+          "Beto"
+        ],
+        "perfilMarcado": "Ana"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/profiles",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "profiles": [
+            "Ana",
+            "Beto"
+          ],
+          "marked": "Ana",
+          "open": null
+        }
+      }
+    },
+    {
+      "nome": "Perfis do Anki com o perfil marcado renomeado ou apagado",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Beto",
+        "colecao": "inglês com subbaralho",
+        "perfis": [
+          "Beto"
+        ],
+        "perfilMarcado": "Ana"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/profiles",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "profiles": [
+            "Beto"
+          ],
+          "marked": "Ana",
+          "open": "Beto"
+        }
+      }
+    },
+    {
+      "nome": "Perfis do Anki com um perfil só",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho",
+        "perfis": [
+          "Usuário 1"
+        ],
+        "perfilMarcado": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/profiles",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "profiles": [
+            "Usuário 1"
+          ],
+          "marked": "Usuário 1",
+          "open": "Usuário 1"
+        }
+      }
+    },
+    {
+      "nome": "Escolher outro perfil do Anki",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Ana",
+        "colecao": "inglês com subbaralho",
+        "perfis": [
+          "Ana",
+          "Beto"
+        ],
+        "perfilMarcado": "Ana"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/profile",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "profile": "Beto"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "marked": "Beto"
+        }
+      }
+    },
+    {
+      "nome": "Escolher um perfil que o Anki não tem",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Ana",
+        "colecao": "inglês com subbaralho",
+        "perfis": [
+          "Ana",
+          "Beto"
+        ],
+        "perfilMarcado": "Ana"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/profile",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "profile": "Carla"
+        }
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "profile_not_found"
+        }
+      }
+    },
+    {
+      "nome": "Escolher um perfil sem dizer o nome",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Ana",
+        "colecao": "inglês com subbaralho",
+        "perfis": [
+          "Ana",
+          "Beto"
+        ],
+        "perfilMarcado": "Ana"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/profile",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "Abrir o perfil marcado com outro perfil aberto",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Beto",
+        "colecao": "inglês com subbaralho",
+        "perfis": [
+          "Ana",
+          "Beto"
+        ],
+        "perfilMarcado": "Ana"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/profile/open",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "profile": "Ana"
+        }
+      }
+    },
+    {
+      "nome": "Abrir o perfil marcado com o Anki na tela de perfis",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": null,
+        "perfis": [
+          "Ana",
+          "Beto"
+        ],
+        "perfilMarcado": "Ana"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/profile/open",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "profile": "Ana"
+        }
+      }
+    },
+    {
+      "nome": "Abrir o perfil marcado que o Anki já não tem",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Beto",
+        "colecao": "inglês com subbaralho",
+        "perfis": [
+          "Beto"
+        ],
+        "perfilMarcado": "Ana"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/profile/open",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "profile_not_found"
+        }
+      }
+    },
+    {
+      "nome": "listar os Envios traz o Envio que espera o outro perfil",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio esperando o outro perfil"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/list",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "jobs": [
+            {
+              "jobId": "5d8e0f1a-2b3c-4d4e-8f5a-6b7c8d9e0f1a",
+              "lang": "en",
+              "status": "running",
+              "createdAt": "2026-10-12T10:00:00-03:00",
+              "updatedAt": "2026-10-12T10:00:30-03:00",
+              "state": {
+                "jobId": "5d8e0f1a-2b3c-4d4e-8f5a-6b7c8d9e0f1a",
+                "status": "running",
+                "stage": "wait_anki",
+                "completedStages": [],
+                "progress": {},
+                "successfulPhraseIds": [],
+                "failedPhraseIds": [],
+                "duplicatePhraseIds": [],
+                "lastError": null,
+                "updatedAt": "2026-10-12T10:00:30-03:00",
+                "cards": {
+                  "1760270400000-0": {
+                    "phraseId": 1760270400000,
+                    "status": "pending",
+                    "error": null
+                  }
+                },
+                "waiting": {
+                  "reason": "other_profile",
+                  "profile": "Beto",
+                  "marked": "Ana"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nome": "Perfis do Anki pedidos com um corpo que não é um objeto JSON",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Ana",
+        "colecao": "inglês com subbaralho",
+        "perfis": [
+          "Ana",
+          "Beto"
+        ],
+        "perfilMarcado": "Ana"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/profiles",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "Escolher o perfil do Anki pedidos com um corpo que não é um objeto JSON",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Ana",
+        "colecao": "inglês com subbaralho",
+        "perfis": [
+          "Ana",
+          "Beto"
+        ],
+        "perfilMarcado": "Ana"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/profile",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "Abrir o perfil marcado pedidos com um corpo que não é um objeto JSON",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Ana",
+        "colecao": "inglês com subbaralho",
+        "perfis": [
+          "Ana",
+          "Beto"
+        ],
+        "perfilMarcado": "Ana"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/profile/open",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "Perfis do Anki quando a Conexão não consegue ler o perfil aberto",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Ana",
+        "colecao": "inglês com subbaralho",
+        "perfis": [
+          "Ana",
+          "Beto"
+        ],
+        "perfilMarcado": "Ana",
+        "falhaNoPerfil": true
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/profiles",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 500,
+        "json": {
+          "error": "internal_error"
+        }
+      }
+    }
+  ],
+  "filas": {
+    "um Envio esperando o outro perfil": [
+      {
+        "job": {
+          "jobId": "5d8e0f1a-2b3c-4d4e-8f5a-6b7c8d9e0f1a",
+          "createdAt": "2026-10-12T10:00:00-03:00",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400000,
+              "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+            }
+          ]
+        },
+        "state": {
+          "jobId": "5d8e0f1a-2b3c-4d4e-8f5a-6b7c8d9e0f1a",
+          "status": "running",
+          "stage": "wait_anki",
+          "completedStages": [],
+          "progress": {},
+          "successfulPhraseIds": [],
+          "failedPhraseIds": [],
+          "duplicatePhraseIds": [],
+          "lastError": null,
+          "updatedAt": "2026-10-12T10:00:30-03:00",
+          "cards": {
+            "1760270400000-0": {
+              "phraseId": 1760270400000,
+              "status": "pending",
+              "error": null
+            }
+          },
+          "waiting": {
+            "reason": "other_profile",
+            "profile": "Beto",
+            "marked": "Ana"
+          }
+        },
+        "custos": []
+      }
+    ]
+  }
+}

@@ -16,7 +16,7 @@ fake.abrirPerfil('Perfil sem exemplo');
 assert.throws(() => fake.respostaDoContrato('GET', '/health'), /não tem exemplo de GET \/health/);
 
 // Cada pedido que a extensão faz de verdade, pelo mesmo ponto em que o Playwright entrega o pedido ao fake.
-const contrato = require('./complemento/contrato/exemplos.json');
+const contrato = require('./complemento/contrato/carregar');
 
 /** Entrega ao fake o pedido `metodo caminho` (com `corpo`, se tiver) como o Playwright o entregaria; devolve `{ status, json }` ou `{ abortado }`. */
 async function pedirAoFake(fakeDaConexao, metodo, caminho, corpo = null) {
@@ -46,6 +46,7 @@ function fakeNoContextoDe(exemplo) {
   if ('colecao' in exemplo.contexto) fakeDoExemplo.abrirColecao(exemplo.contexto.colecao);
   if (exemplo.contexto.itemDeLogin) fakeDoExemplo.definirItemDeLogin(exemplo.contexto.itemDeLogin);
   if (exemplo.contexto.fila) fakeDoExemplo.definirFila(exemplo.contexto.fila);
+  if (exemplo.contexto.perfis) fakeDoExemplo.definirPerfis(exemplo.contexto.perfis, { marcado: exemplo.contexto.perfilMarcado ?? null, aberto: exemplo.contexto.perfil });
   return { fakeDoExemplo, google };
 }
 
@@ -54,6 +55,7 @@ function guardado({ fakeDoExemplo, google }) {
   return {
     chave: fakeDoExemplo.chaveNaConexao(), estadoDaChave: fakeDoExemplo.estadoDaChave(), item: fakeDoExemplo.itemDeLogin(),
     nuvem: google.chaveDaOpenAIDe('uid-teste'), envios: JSON.parse(JSON.stringify(fakeDoExemplo.envios)),
+    perfilMarcado: fakeDoExemplo.perfilMarcado(), perfilAberto: fakeDoExemplo.perfilAberto(),
   };
 }
 

@@ -14,6 +14,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos  # noqa: E402
+from complemento.test_contrato_do_perfil_fixo import ContratoDoPerfilFixo  # noqa: E402
 
 
 def guardar_na_midia(arquivos, nome, dados):
@@ -34,6 +35,8 @@ class ColecaoEmMemoria:
 
     Uma nota pode trazer `campos` ({ "Front": ..., "Back": ... }) no lugar de `frente` e `verso`.
     `ColecaoEmMemoria.fechada()` é o Anki na tela de perfis: só os perfis se leem.
+    `perfil_aberto` é o perfil que a coleção aberta é (o primeiro de `perfis` se não for dito). A Conexão entra no perfil fixo
+    sozinha com o Anki na tela de perfis (`entradas`) e o troca a pedido (`trocas`), como `no_anki.ColecaoDoAnki`.
     `"quebra": true` na descrição é uma coleção que levanta um erro inesperado ao ler (o `500` do contrato).
     `"tiposDeNota"` diz os tipos de nota e os campos de cada um (sem ele, o “Básico” com “Frente” e “Verso”).
 
@@ -41,9 +44,14 @@ class ColecaoEmMemoria:
     conferir; `fechar()`/`abrir()` e `sincronizando` fazem a gravação levantar `ColecaoIndisponivel`, como no Anki.
     """
 
-    def __init__(self, descricao=None, perfis=("Usuário 1",), aberta=True):
+    def __init__(self, descricao=None, perfis=("Usuário 1",), aberta=True, perfil_aberto=None):
         self._perfis = list(perfis)
         self._aberta = aberta
+        self._perfil_aberto = perfil_aberto or self._perfis[0]
+        self._anki_inteiro = False
+        self._fixo = None
+        self.entradas = []  # os perfis em que a Conexão entrou sozinha (o Anki na tela de perfis)
+        self.trocas = []  # (o perfil que estava aberto, o perfil aberto no lugar): o clique em “Abrir <perfil>”
         self._quebra = bool((descricao or {}).get("quebra"))
         self._tipos = {nome: list(campos) for nome, campos in ((descricao or {}).get("tiposDeNota") or {"Básico": ["Frente", "Verso"]}).items()}
         self._guids = set()
@@ -67,10 +75,41 @@ class ColecaoEmMemoria:
         return cls(perfis=perfis, aberta=False)
 
     def fechar(self):
+        """O perfil fechado com o Anki sem ninguém para abri-lo: a Conexão não entra em perfil nenhum (o abridor, que abre o Anki, é do
+        #150). A tela de perfis, onde ela pode entrar no perfil fixo, é `fechada()` (ou `aberta=False`); só `abrir()` traz o perfil de volta."""
         self._aberta = False
+        self._anki_inteiro = True
 
-    def abrir(self):
+    def abrir(self, perfil=None):
         self._aberta = True
+        self._anki_inteiro = False
+        self._perfil_aberto = perfil or self._perfil_aberto
+
+    def perfil_aberto(self):
+        return self._perfil_aberto if self._aberta else None
+
+    def fixar_o_perfil(self, fixo):
+        self._fixo = fixo
+
+    def entrar_no_perfil_fixo(self):
+        marcado = self._fixo.marcado() if self._fixo else None
+        if self._aberta or self._anki_inteiro or marcado not in self._perfis:
+            return False
+        self.entradas.append(marcado)
+        self.abrir(marcado)
+        return True
+
+    def trocar_para_o_perfil_fixo(self):
+        marcado = self._fixo.marcado() if self._fixo else None
+        if marcado not in self._perfis:
+            return False
+        if not self._aberta:
+            return self.entrar_no_perfil_fixo()
+        if self._perfil_aberto == marcado:
+            return False
+        self.trocas.append((self._perfil_aberto, marcado))
+        self.abrir(marcado)
+        return True
 
     def _exigir_aberta(self):
         if self._quebra:
@@ -80,6 +119,8 @@ class ColecaoEmMemoria:
 
     def _exigir_gravavel(self):
         self._exigir_aberta()
+        if self._fixo is not None:
+            self._fixo.conferir(self._perfil_aberto, self._perfis)
         if self.sincronizando:
             raise baralhos.ColecaoIndisponivel("anki_syncing")
 
@@ -156,7 +197,10 @@ DESCRICAO = {
 class ContratoDoAdaptadorDaColecao:
     """O que qualquer adaptador de coleção tem de fazer; as subclasses dizem como montá-lo."""
 
-    def adaptador(self, descricao, perfis=("Usuário 1",)):
+    DESCRICAO = DESCRICAO
+
+    def adaptador(self, descricao, perfis=("Usuário 1",), aberto=None):
+        """O adaptador com a coleção do perfil `aberto` (o primeiro de `perfis` se não for dito)."""
         raise NotImplementedError
 
     def adaptador_fechado(self, perfis=("Usuário 1",)):
@@ -296,9 +340,9 @@ class ContratoDoAdaptadorDaColecao:
         self.assertEqual(colecao.guids_existentes(["g"]), {"g"})
 
 
-class AdaptadorEmMemoria(ContratoDoAdaptadorDaColecao, unittest.TestCase):
-    def adaptador(self, descricao, perfis=("Usuário 1",)):
-        return ColecaoEmMemoria(descricao, perfis=perfis)
+class AdaptadorEmMemoria(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, unittest.TestCase):
+    def adaptador(self, descricao, perfis=("Usuário 1",), aberto=None):
+        return ColecaoEmMemoria(descricao, perfis=perfis, perfil_aberto=aberto)
 
     def sincronizar(self, colecao, sincronizando):
         colecao.sincronizando = sincronizando

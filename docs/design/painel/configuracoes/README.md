@@ -134,16 +134,17 @@ Ticket [#140](https://github.com/vinicius928e8r84/PerpetualMiner/issues/140) da 
 
 ## Conexão com o Anki
 
-**Descrição:** “Só vale neste computador.” (CFG-40). Hoje o card tem um controle só, o interruptor da história 101 ([#106](https://github.com/vinicius928e8r84/PerpetualMiner/issues/106), opção 1, “só quando você clica”); o “Perfil do Anki ▾” (história 20) entra neste mesmo card.
+**Descrição:** “Só vale neste computador.” (CFG-40). O card tem o interruptor da história 101 ([#106](https://github.com/vinicius928e8r84/PerpetualMiner/issues/106), opção 1, “só quando você clica”) e, com 2 ou mais perfis, a linha “Perfil do Anki ▾” (história 20, #149, CFG-43).
 
-- **Interruptor “Abrir o Anki com o computador”** (CFG-36), **desligado por padrão**, com a nota: “O Anki abre quando você liga o computador, e a Conexão com o Anki já fica pronta. A janela dele aparece na tela.” O custo (a janela do Anki abrindo no login) está dito na nota.
-- **Ligar** pede à Conexão que escreva o item de login (um LaunchAgent no Mac, um atalho na pasta Inicializar no Windows); **desligar** pede que o apague. O item mora na Conexão, não na extensão: nada fica em `chrome.storage`, e o interruptor mostra o que a Conexão diz e só muda depois da resposta dela (C8). Enquanto ela escreve, o interruptor fica indisponível, ainda no estado de verdade.
-- **Sem a Conexão** o estado não se sabe: o interruptor fica indisponível e a nota diz por quê (CFG-38); o resumo da linha fechada, “Indisponível agora”. Também indisponível, com o motivo, quando a Conexão que responde não tem a rota (o bridge de hoje, antes do complemento) ou a leitura falha (CFG-38).
-- **Só vale o que a Conexão confirmou:** uma leitura que falha (mesmo depois de uma que deu certo) ou uma resposta sem `ligado` verdadeiro ou falso deixa o interruptor indisponível, nunca “desligado”.
-- **Sem resposta ao ligar ou desligar** (a conexão cai, passa o prazo de 3 s): o resultado é incerto. O aviso não afirma nada (CFG-39), o interruptor fica indisponível e a tela confere sozinha; quando a leitura confirma, o aviso some (deu certo) ou passa a dizer o que ficou.
-- **Não mudou** (CFG-39): aviso persistente do Veio, com Detalhes (o código da Conexão) e o interruptor onde está de verdade. A Conexão separa três causas: não sabe onde o Anki está instalado, não conseguiu escrever o item, ou o computador não tem item de login (só o Mac e o Windows têm).
-- **Nunca abre o Anki por aqui:** esta tela só escreve ou apaga o item. Quem abre o Anki quando a pessoa aperta Enviar ou Abrir o Anki é o abridor (#150).
-- **Sem protótipo próprio:** o desenho segue o card “resumo primeiro” (Q1) com o interruptor do Veio (o da Boas-vindas e do popup); a referência visual está em `e2e/tests/configuracoes-visual.spec.js`, para o dono aprovar.
+- **Interruptor “Abrir o Anki com o computador”** (CFG-36), **desligado por padrão**, com a nota: “O Anki abre quando você liga o computador, e a Conexão com o Anki já fica pronta. A janela dele aparece na tela.”
+- **Ligar** pede à Conexão que escreva o item de login (um LaunchAgent no Mac, um atalho na pasta Inicializar no Windows); **desligar** pede que o apague. O item mora na Conexão: nada fica em `chrome.storage`, e o interruptor mostra o que a Conexão diz e só muda depois da resposta dela (C8). Enquanto ela escreve, fica indisponível, no estado real.
+- **Sem a Conexão** o estado não se sabe: o interruptor fica indisponível e a nota diz por quê (CFG-38); o resumo, “Indisponível agora”. Também indisponível, com o motivo, sem a rota (o bridge de hoje) ou com a leitura falha (CFG-38).
+- **“Perfil do Anki ▾”** (CFG-43, só com 2 ou mais perfis): a lista do Anki com o marcado; escolher outro pede à Conexão e a lista mostra o que ela guardou. O marcado que sumiu dá um aviso em vermelho, mesmo com um perfil só.
+- **Só vale o que a Conexão confirmou:** uma leitura que falha (mesmo depois de uma boa) ou uma resposta sem `ligado` booleano deixa o interruptor indisponível, nunca “desligado”.
+- **Sem resposta ao ligar ou desligar** (a conexão cai, passa o prazo de 3 s): o resultado é incerto. O aviso não afirma nada (CFG-39), o interruptor fica indisponível e a tela confere; quando a leitura confirma, o aviso some (deu certo) ou passa a dizer o que ficou.
+- **Não mudou** (CFG-39): aviso persistente do Veio, com Detalhes (o código) e o interruptor onde está. A Conexão separa três causas: não sabe onde o Anki está instalado, não conseguiu escrever o item, ou o computador não tem item de login.
+- **Nunca abre o Anki por aqui:** só escreve ou apaga o item. Quem abre o Anki ao apertar Enviar ou Abrir o Anki é o abridor (#150).
+- **Sem protótipo próprio:** o desenho segue o card “resumo primeiro” (Q1) com o interruptor do Veio; a referência visual está em `e2e/tests/configuracoes-visual.spec.js`. A da linha do perfil é `perfil-fixo-visual.spec.js` (`fixme`, até o dono aprovar).
 
 ## Aparência
 
