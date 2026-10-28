@@ -146,11 +146,11 @@ data e confirmação do dono (ou a mudança explícita do critério de aceitaç�
    mostra o aviso da permissão (“Comunicar-se com aplicativos nativos cooperativos”); responda Permitir. A tela deve dizer
    “O Anki abre sozinho quando um Envio precisar.” e o passo virar ✓. Nada abre nem fecha.
 3. **Mac (risco 2):** o manifesto está em `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.perpetualminer.abridor.json`
-   e aponta para `…/user_files/abridor/abrir-o-anki.sh`. Para ver o `abrir` (que o Envio vai usar, #150), feche o Anki e rode, no Terminal,
+   e aponta para `…/user_files/abridor/abrir-o-anki.sh`. Para ver o `abrir` (que o Envio e o botão Abrir o Anki chamam, #150), feche o Anki e rode, no Terminal,
    `printf '\x13\x00\x00\x00{"acao":"abrir"}' | sh "<o caminho do script>" | tail -c +5`: o Anki abre no perfil anotado, **sem pergunta
    do macOS**? A resposta é `{"achou":true,"abriu":true}`. Se o macOS perguntar algo (Gatekeeper, “Terminal quer controlar…”), anote o texto.
    Isto é só uma aproximação: o macOS julga o script que o Terminal roda de um jeito e o que o Chrome roda de outro, e a extensão só
-   manda `abrir` a partir do Envio (#150). O risco 2 de verdade (o Chrome chama, o Anki abre sem pergunta) continua **PENDING OWNER**:
+   manda `abrir` a partir do Envio e do botão Abrir o Anki (#150). O risco 2 de verdade (o Chrome chama, o Anki abre sem pergunta) continua **PENDING OWNER**:
    se o ensaio depender do #150, #147 permanece pendente até essa confirmação ou uma mudança explícita do critério pelo dono.
 4. **Windows com o Chrome:** `reg query "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.perpetualminer.abridor"` mostra o caminho
    do manifesto em `user_files\abridor`. O passo 2 acima dá ✓? Se a política do computador bloquear o PowerShell (`-ExecutionPolicy Bypass`

@@ -13,6 +13,10 @@ const { test, expect } = require('../fixtures');
 
 const AGORA = new Date('2026-09-18T12:00:00');
 
+// #150: o selo e o “— esperando o Anki” ganharam o botão Abrir o Anki (BRG-38). As telas que mudaram voltam a ser propostas:
+// ficam `fixme`, sem PNG, até o dono compará-las com o protótipo do #106 (a opção “1 · só quando você clica”) e aprovar (regra 10).
+const AGUARDA_O_DONO = 'a referência com o botão Abrir o Anki espera a aprovação do dono contra o protótipo do #106 (regra 10)';
+
 const VOCABULARIO_EN = [
   { word: 'take for granted', type: 'term', maduros: 3, recentes: 1 },
   { word: 'reluctant', recentes: 2, novos: 1 },
@@ -133,6 +137,7 @@ test('vocabulário carregando: “Lendo o vocabulário…” e o esqueleto', asy
 });
 
 test('desligada: o último vocabulário com o selo BRG-12', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
   await abrirAnki(page, extensao, '#anki/vocabulario');
   await expect(vocabulario(page).getByRole('listbox').getByRole('option')).toHaveCount(8);
   fakes.anki.desligar();
@@ -144,6 +149,7 @@ test('desligada: o último vocabulário com o selo BRG-12', async ({ page, exten
 });
 
 test('desligada, sem nenhuma leitura: “— esperando o Anki” em Baralhos e termos e em Vocabulário', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
   fakes.anki.desligar();
   await abrirAnki(page, extensao, '#anki/baralhos');
   await expect(baralhos(page)).toContainText('— esperando o Anki');

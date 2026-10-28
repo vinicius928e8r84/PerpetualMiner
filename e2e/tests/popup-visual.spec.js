@@ -13,6 +13,10 @@
 const { test, expect } = require('../fixtures');
 const { leituraDoVocabulario: leitura } = require('../leitura-do-vocabulario');
 
+// #150: o selo e o “— esperando o Anki” ganharam o botão Abrir o Anki (BRG-38). As telas que mudaram voltam a ser propostas:
+// ficam `fixme`, sem PNG, até o dono compará-las com o protótipo do #106 (a opção “1 · só quando você clica”) e aprovar (regra 10).
+const AGUARDA_O_DONO = 'a referência com o botão Abrir o Anki espera a aprovação do dono contra o protótipo do #106 (regra 10)';
+
 // O Contexto diz o dia da frase (PAI-11): o relógio fica parado no dia delas.
 const AGORA = new Date('2026-09-18T12:00:00');
 
@@ -81,6 +85,7 @@ test('limite de hoje atingido', async ({ page, extensao }) => {
 });
 
 test('Conexão com o Anki desligada, com a leitura de ontem: o azulejo segue contando e o selo diz a idade', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
   fakes.anki.desligar();
   await extensao.gravarStorage({
     frases: FRASES,
@@ -93,6 +98,7 @@ test('Conexão com o Anki desligada, com a leitura de ontem: o azulejo segue con
 });
 
 test('Conexão com o Anki desligada, sem nenhuma leitura: o azulejo ligado espera o Anki', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
   fakes.anki.desligar();
   await extensao.gravarStorage({ frases: FRASES, ...mineracao({ en: [true, 20, 0], ru: [false, 15, 0] }) });
   await abrirPopup(page, extensao);

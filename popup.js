@@ -3,7 +3,7 @@
 // O popup “Cockpit” (docs/design/popup/, variante A). A base compartilhada é
 // carregada antes pelo popup.html: o catálogo da Voz, os componentes da Veio,
 // o detector de idioma, os atalhos gravados e o Contexto da frase.
-const { IDIOMAS, textoDaVoz, Atalhos, minerarFraseManual, Configuracao, ConexaoAnki, MineracaoAutomatica, MineracaoDoDia, AjustesDeEnvio, VocabularioDaMineracao } = PerpetualMiner;
+const { IDIOMAS, textoDaVoz, Atalhos, minerarFraseManual, Configuracao, ConexaoAnki, AbrirOAnki, MineracaoAutomatica, MineracaoDoDia, AjustesDeEnvio, VocabularioDaMineracao } = PerpetualMiner;
 const { iconeVeio, escreverFrase, montarTeclas, montarAnelDeProgresso } = PerpetualMiner.Veio;
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia, diaEHora } = PerpetualMiner.Contexto;
 
@@ -70,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // O selo e o esperando só aparecem com a Conexão desligada; o Configuracao a acompanha por conta própria.
+  porId('selo-vocabulario').append(AbrirOAnki.montarBotao('veio-botao veio-botao--link'));
   ConexaoAnki.acompanhar(refletirOVocabularioDoAnkiFechado);
   ConexaoAnki.iniciar();
   lerAIdadeDoVocabulario();
@@ -126,11 +127,7 @@ function pedirEstadoDaAutomatica() {
     () => { if (!mineracaoAutomatica) mostrarFalhaDaAutomatica('POP-16.leitura'); });
 }
 
-/**
- * POP-16 sob os azulejos (ou no lugar deles, se o estado nunca chegou): uma
- * linha que diz o que fazer, sem botão e sem Detalhes. Sai no próximo estado
- * que o service worker publicar.
- */
+/** POP-16 sob os azulejos (ou no lugar deles, se o estado nunca chegou): uma linha sem botão nem Detalhes, que sai no próximo estado publicado. */
 function mostrarFalhaDaAutomatica(id) {
   const azulejos = porId('azulejos');
   azulejos.removeAttribute('aria-busy');
@@ -237,7 +234,7 @@ function montarAzulejo(chave, idioma, numeros) {
   // BRG-37: sem nenhuma leitura do vocabulário, a Mineração automática espera o Anki abrir uma vez.
   const espera = criar('p', 'popup-azulejo__espera');
   espera.hidden = true;
-  espera.append(criar('b', null, textoDaVoz('BRG-37.esperando')), criar('span', null, textoDaVoz('BRG-37.comeca')));
+  espera.append(criar('b', null, textoDaVoz('BRG-37.esperando')), criar('span', null, textoDaVoz('BRG-37.comeca')), AbrirOAnki.montarBotao());
 
   azulejo.append(topo, contador, medidor, espera);
 
@@ -306,12 +303,10 @@ function lerAIdadeDoVocabulario() {
 }
 
 /**
- * Com o Anki fechado, a Mineração automática segue pela última leitura do
- * vocabulário, e o popup diz a idade dos dados (POP-17): a mais antiga entre os
- * idiomas ligados. O Anki está fechado para um idioma quando a Conexão não
- * responde ou quando ela leu o arquivo do Anki e confirmou que não há processo
- * dele (a Conexão de hoje no Windows). O idioma ligado que nunca foi lido, com a Conexão desligada,
- * espera o Anki abrir uma vez (BRG-37). Com o Anki respondendo não há nada a dizer.
+ * Com o Anki fechado, a Mineração automática segue pela última leitura do vocabulário, e o popup diz a idade dos
+ * dados (POP-17): a mais antiga entre os idiomas ligados. O Anki está fechado para um idioma quando a Conexão não
+ * responde, ou leu o arquivo do Anki e confirmou que não há processo dele (o Windows de hoje). O idioma ligado que
+ * nunca foi lido espera o Anki abrir uma vez (BRG-37). O Abrir o Anki (BRG-38) só abre num clique.
  */
 function refletirOVocabularioDoAnkiFechado() {
   const selo = porId('selo-vocabulario');
@@ -323,18 +318,14 @@ function refletirOVocabularioDoAnkiFechado() {
   const semOAnki = lidos.some(leitura => desligada || leitura.ankiFechado);
 
   selo.hidden = !semOAnki;
-  if (semOAnki) selo.textContent = textoDaVoz('POP-17.selo', { quando: diaEHora(Math.min(...lidos.map(leitura => leitura.dadosDe))) });
+  if (semOAnki) porId('selo-vocabulario-texto').textContent = textoDaVoz('POP-17.selo', { quando: diaEHora(Math.min(...lidos.map(leitura => leitura.dadosDe))) });
   for (const { chave } of IDIOMAS_DA_MINERACAO) {
     const espera = document.querySelector(`.popup-azulejo[data-idioma="${chave}"] .popup-azulejo__espera`);
     if (espera) espera.hidden = !(leituras && desligada && ligados.some(l => l.chave === chave) && !leituras[chave]);
   }
 }
 
-/**
- * O cartão ONB-14, enquanto a Boas-vindas não chegou a Tudo pronto e o lembrete
- * não foi ocultado (em Frases); ele espera o /health, que conta um dos passos.
- * O cartão é o botão, e só o conteúdo dele é refeito: o foco fica nele.
- */
+/** O cartão ONB-14, enquanto a Boas-vindas não chegou a Tudo pronto e o lembrete não foi ocultado (em Frases). O cartão é o botão, e só o conteúdo dele é refeito: o foco fica nele. */
 function desenharLembrete() {
   const cartao = porId('lembrete');
   cartao.hidden = !configuracao.lembrete;
