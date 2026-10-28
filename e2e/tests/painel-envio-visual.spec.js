@@ -141,9 +141,7 @@ test('o Envio com um código da Conexão: um Cartão não entrou, Continuar envi
   await expect(page).toHaveScreenshot('envio-codigo-da-conexao.png');
 });
 
-// #150: o Envio com o Anki fechado. As duas faixas são propostas: ficam `fixme`, sem PNG, até o dono compará-las com o
-// protótipo do #105 (o Envio esperando o Anki) e aprovar (regra 10).
-const AGUARDA_A_FAIXA = 'a referência da faixa do Envio com o Anki fechado espera a aprovação do dono contra o protótipo do #105 (regra 10)';
+// #150: o Envio com o Anki fechado, aprovado pelo dono contra o protótipo do #105 (o Envio esperando o Anki).
 const faixaDoAnkiFechado = page => page.locator('#frases-avisos [data-aviso="envio-anki-fechado"]');
 
 async function enviarComOAnkiFechado(page, extensao, fakes) {
@@ -158,7 +156,6 @@ test.describe('com a permissão do abridor', () => {
   test.use({ permissaoDoAbridor: true });
 
   test('Enviar com o Anki fechado: a faixa “Abrindo o Anki para enviar…”', async ({ page, extensao, fakes }) => {
-    test.fixme(true, AGUARDA_A_FAIXA);
     await enviarComOAnkiFechado(page, extensao, fakes);
     await expect(faixaDoAnkiFechado(page)).toHaveText('Abrindo o Anki para enviar…');
 
@@ -167,7 +164,6 @@ test.describe('com a permissão do abridor', () => {
 });
 
 test('Enviar com o Anki fechado e sem a permissão: a faixa “Abra o Anki para enviar” com o botão Abrir o Anki sozinho', async ({ page, extensao, fakes }) => {
-  test.fixme(true, AGUARDA_A_FAIXA);
   await enviarComOAnkiFechado(page, extensao, fakes);
   await expect(faixaDoAnkiFechado(page).getByRole('button', { name: 'Abrir o Anki sozinho' })).toBeVisible();
 
