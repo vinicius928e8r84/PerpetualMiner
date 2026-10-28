@@ -4,11 +4,14 @@ Não é um teste: é o que os testes põem no lugar de `https://api.openai.com`.
 ela por HTTP, então é aqui, na fronteira, que o teste decide como a OpenAI responde.
 """
 
+import base64
 import json
 import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlsplit
+
+from complemento.test_imagens_de_mentira import png_de
 
 # O que cada comportamento faz com os dois pedidos que a Conexão faz ao conferir uma chave:
 # (status, corpo) de GET /v1/models e de POST /v1/embeddings.
@@ -77,7 +80,8 @@ def _cartao_de_mentira(mensagens):
     frase = re.sub(r"\s*\[Contexto: .+?\]", "", frase)
     frente = frase.replace(palavra, "*%s*" % palavra, 1) if palavra in frase else "*%s* aqui" % palavra
     fonte = "Source Context: %s\n\n" % contexto.group(1) if contexto else ""
-    return "%sFront: %s\n\nBack: %s - /ipa/\n\nDefinition: definição de mentira.\n" % (fonte, frente, palavra)
+    imagem = "Google Image Search Queries:\n1. %s\n2. %s photo\n\nImage: A %s, no text.\n" % (palavra, palavra, palavra)
+    return "%sFront: %s\n\nBack: %s - /ipa/\n\nDefinition: definição de mentira.\n%s" % (fonte, frente, palavra, imagem)
 
 
 def _palavra_do_pedido(mensagens):
@@ -105,6 +109,13 @@ class OpenAIDeMentira:
         self.respostas = []
         self.recusa_das_respostas = None
         self.falha_no_stream = None
+        # As imagens do Cartão (#144): o juiz (`juiz(modo, candidatas) -> veredito`, `candidatas`: `{index, title, kind, imagem}`), a triagem
+        # (a letra que ela responde), e a imagem gerada (`recusa_da_imagem`: (status, código); `imagem_gerada`: o que ela devolve).
+        self.juiz = _juiz_que_gosta_da_primeira
+        self.triagem = "C"
+        self.recusa_da_imagem = None
+        self.imagem_gerada = png_de("gerada")
+        self.juizes, self.triagens, self.imagens = [], [], []  # (Authorization, modo, candidatas) / (Authorization, palavra) / (Authorization, corpo)
         self.antes_de_responder = lambda _metodo, _autorizacao: None
         dono = self
 
@@ -124,6 +135,8 @@ class OpenAIDeMentira:
                     modelos = MODELOS_DO_PLANO
                 if self.path == "/v1/chat/completions":
                     status, corpo = dono._chat(self.headers.get("Authorization"), json.loads(lido.decode("utf-8")))
+                elif self.path == "/v1/images/generations":
+                    status, corpo = dono._imagem(self.headers.get("Authorization"), json.loads(lido.decode("utf-8")))
                 else:
                     status, corpo = modelos if self.path == "/v1/models" else embeddings
                 dados = json.dumps(corpo).encode("utf-8")
@@ -147,7 +160,19 @@ class OpenAIDeMentira:
         else:
             self.recusas_do_chat[palavra] = (status, codigo)
 
+    def _imagem(self, autorizacao, corpo):
+        self.imagens.append((autorizacao, corpo))
+        if self.recusa_da_imagem:
+            return _erro(self.recusa_da_imagem[0], "Billing hard limit " + (autorizacao or ""), "x", self.recusa_da_imagem[1])
+        return 200, {"data": [{"b64_json": base64.b64encode(self.imagem_gerada).decode("ascii")}]}
+
     def _chat(self, autorizacao, corpo):
+        sistema = corpo["messages"][0]["content"]
+        if sistema.startswith("You are an expert visual selector"):
+            return self._juiz(autorizacao, corpo)
+        if sistema.startswith("You are a classifier"):
+            self.triagens.append((autorizacao, corpo["messages"][1]["content"]))
+            return 200, {"choices": [{"message": {"content": self.triagem}}], "usage": {"prompt_tokens": 80, "completion_tokens": 1}}
         self.chats.append((autorizacao, corpo))
         recusa = self.recusas_do_chat.get(_palavra_do_pedido(corpo["messages"])) or self.recusas_do_chat.get("*")
         if recusa:
@@ -182,6 +207,19 @@ class OpenAIDeMentira:
             atendente.wfile.write(("event: %s\ndata: %s\n\n" % (evento["type"], json.dumps(evento))).encode("utf-8"))
             atendente.wfile.flush()
 
+    def _juiz(self, autorizacao, corpo):
+        partes = corpo["messages"][1]["content"]
+        modo = re.search(r"Mode: (\w+)", partes[0]["text"]).group(1)
+        candidatas = [{"index": int(re.search(r"Candidate (\d+)", texto["text"]).group(1)), "title": re.search(r"title=(.*)", texto["text"]).group(1),
+                       "kind": re.search(r"kind=(.*)", texto["text"]).group(1), "imagem": base64.b64decode(foto["image_url"]["url"].split(",", 1)[1])}
+                      for texto, foto in zip(partes[1::2], partes[2::2])]
+        self.juizes.append((autorizacao, modo, candidatas))
+        recusa = self.recusas_do_chat.get("[juiz]")
+        if recusa:
+            return _erro(recusa[0], "unsupported image " + (autorizacao or ""), "invalid_request_error", recusa[1])
+        veredito = self.juiz(modo, candidatas)
+        return 200, {"choices": [{"message": {"content": json.dumps(veredito)}}], "usage": {"prompt_tokens": 1500, "completion_tokens": 40}}
+
     def __enter__(self):
         self._thread.start()
         return self
@@ -190,6 +228,16 @@ class OpenAIDeMentira:
         self._servidor.shutdown()
         self._servidor.server_close()
         self._thread.join(timeout=5)
+
+
+def veredito_do_juiz(melhor, notas):
+    """O que o juiz devolve: `notas` é a nota de cada candidata, na ordem; `melhor` é o índice da que ele escolhe."""
+    return {"best_index": melhor, "best_score": notas[melhor], "verdict": "keep_real", "summary": "de mentira",
+            "candidates": [{"index": indice, "score": nota, "reason": "de mentira"} for indice, nota in enumerate(notas)]}
+
+
+def _juiz_que_gosta_da_primeira(modo, candidatas):
+    return veredito_do_juiz(0, [90] + [10] * (len(candidatas) - 1))
 
 
 class FirestoreDeMentira:

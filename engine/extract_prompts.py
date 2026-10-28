@@ -15,8 +15,12 @@ import re
 from pathlib import Path
 from typing import List, Optional
 
-from config_loader import load_config
-from parser import get_card_jobs, parse_mining_file
+if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
+    from .config_loader import load_config
+    from .parser import get_card_jobs, parse_mining_file
+else:
+    from config_loader import load_config
+    from parser import get_card_jobs, parse_mining_file
 
 
 _QUERY_HEADING_RE = re.compile(
@@ -72,6 +76,11 @@ def _extract_first_search_query(content: str) -> Optional[str]:
     return None
 
 
+def card_prompt(content: str) -> str:
+    """The image prompt of one card's text: its `Image:` line, else its first search query, else ''."""
+    return _extract_image_prompt(content) or _extract_first_search_query(content) or ""
+
+
 def run(entries, config: dict) -> int:
     """Return the number of prompts written to prompts.txt."""
     output_dir = Path(config["paths"]["output_dir"])
@@ -90,7 +99,7 @@ def run(entries, config: dict) -> int:
             continue
 
         content = card_file.read_text(encoding="utf-8")
-        prompt = _extract_image_prompt(content) or _extract_first_search_query(content) or ""
+        prompt = card_prompt(content)
         entries_out.append(f"{stem}:{prompt}")
 
     prompts_file.write_text("\n".join(entries_out), encoding="utf-8")

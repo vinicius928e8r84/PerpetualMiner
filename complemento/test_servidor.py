@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from complemento import baralhos, configuracao, envio, item_de_login, pasta_de_dados, registro, servidor  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_fila_de_mentira import semear_a_fila  # noqa: E402,F401
+from complemento.test_imagens_de_mentira import OpenverseDeMentira  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira  # noqa: E402
 from complemento.test_voz_de_mentira import VozDeMentira  # noqa: E402
 from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira  # noqa: E402
@@ -168,13 +169,24 @@ def _item_de_login_do_contexto(pasta, situacao):
     return item
 
 
+def _chave_guardada_antes(chave, versao, apagada, conta, em, nao_enviada):
+    """O `chaves/openai.json` ao subir, ou None (vale o último caso: conta, versão, chave)."""
+    antes = "sk-proj-guardada-antes-" + chave if chave else ""
+    if conta is not None:
+        return {"chave": antes, "versao": versao, "conta": conta, "em": em, "naoEnviada": nao_enviada}
+    if versao:
+        return {"versao": versao, "chave": "" if apagada else (antes or None)}
+    return None if chave is None else {"chave": "sk-proj-guardada-antes-" + chave}
+
+
 class ConexaoNoTeste:
     """A Conexão real numa porta livre, com o perfil que o teste escolher e uma OpenAI de mentira.
 
     `chave_na_conexao`: os 4 últimos caracteres de uma chave que a Conexão já guardava antes de o teste começar.
-    `colecao`: o adaptador da coleção do Anki que a Conexão lê.
-    `item`: a situação do item de login de “Abrir o Anki com o computador” (ver `_item_de_login_do_contexto`).
-    `trabalhando`: a thread de trabalho do Envio ligada (`test_envio.py`; `espera_do_contato`: quanto ela espera a extensão ao subir, 0 aqui); desligada, os Envios ficam na fila.
+    `colecao`: o adaptador da coleção do Anki.
+    `item`: o item de login de “Abrir o Anki com o computador” (`_item_de_login_do_contexto`).
+    `adaptador_de_imagem`: converte imagem no lugar do Qt do Anki.
+    `trabalhando`: a thread do Envio ligada (`test_envio.py`; `espera_do_contato`: quanto ela espera a extensão, 0 aqui); desligada, os Envios ficam na fila.
     """
 
     def __init__(
@@ -197,6 +209,7 @@ class ConexaoNoTeste:
         trabalhando=False,
         espera_do_contato=0.0,
         chatgpt=None,
+        adaptador_de_imagem=None,
     ):
         self.perfil = perfil
         self.situacao_do_chatgpt = chatgpt  # `conectada` (o arquivo do login já existe), `entrando` ou `recusou` (a tentativa)
@@ -207,25 +220,15 @@ class ConexaoNoTeste:
         self.logs, self.chaves = self.dados.logs, self.dados.chaves
         for pasta_ in self.dados[1:]:
             os.makedirs(pasta_, exist_ok=True)
-        if chave_na_conexao is not None:
+        antes = _chave_guardada_antes(chave_na_conexao, versao_na_conexao, chave_apagada, conta_na_conexao, hora_na_conexao, nao_enviada)
+        if antes is not None:
             with open(os.path.join(self.chaves, "openai.json"), "w", encoding="utf-8") as arquivo:
-                json.dump({"chave": "sk-proj-guardada-antes-" + chave_na_conexao}, arquivo)
-        if versao_na_conexao:
-            with open(os.path.join(self.chaves, 'openai.json'), 'w', encoding='utf-8') as arquivo:
-                dados = {'versao': versao_na_conexao, 'chave': '' if chave_apagada else None}
-                if chave_na_conexao and not chave_apagada:
-                    dados['chave'] = 'sk-proj-guardada-antes-' + chave_na_conexao
-                json.dump(dados, arquivo)
-        if conta_na_conexao is not None:
-            caminho = os.path.join(self.chaves, 'openai.json')
-            with open(caminho, 'w', encoding='utf-8') as arquivo:
-                json.dump({'chave': 'sk-proj-guardada-antes-' + chave_na_conexao if chave_na_conexao else '',
-                    'versao': versao_na_conexao, 'conta': conta_na_conexao, 'em': hora_na_conexao, 'naoEnviada': nao_enviada}, arquivo)
-        self.openai = OpenAIDeMentira(openai)
-        self.voz = VozDeMentira()
-        self.firestore = FirestoreDeMentira()
+                json.dump(antes, arquivo)
+        self.de_mentira = (self.openai, self.openverse, self.voz, self.firestore) = (
+            OpenAIDeMentira(openai), OpenverseDeMentira(), VozDeMentira(), FirestoreDeMentira())
         self.firestore.falha = firebase
         self.servidor_de_login = ChatGPTDeMentira()
+        self.de_mentira += (self.servidor_de_login,)
         if chatgpt == "conectada":
             with open(os.path.join(self.chaves, "chatgpt.json"), "w", encoding="utf-8") as arquivo:
                 json.dump({"client_id": "oaiapp_x", "access_token": "acesso-x", "refresh_token": "renovacao-x", "expira_em": 4e9}, arquivo)
@@ -241,6 +244,8 @@ class ConexaoNoTeste:
             colecao=colecao,
             item_de_login=self.item,
             openai_base=self.openai.base,
+            openverse_base=self.openverse.base,
+            adaptador_de_imagem=adaptador_de_imagem,
             voz_base=self.voz.base,
             firestore_base=self.firestore.base,
             chatgpt_base=self.servidor_de_login.base,
@@ -258,10 +263,8 @@ class ConexaoNoTeste:
         return self.perfil
 
     def __enter__(self):
-        self.openai.__enter__()
-        self.voz.__enter__()
-        self.firestore.__enter__()
-        self.servidor_de_login.__enter__()
+        for de_mentira in self.de_mentira:
+            de_mentira.__enter__()
         if self.cofre_sem_escrita:
             os.chmod(self.chaves, 0o500)  # gravar a cópia da chave falha: a Conexão responde o erro interno
         assert self.conexao.iniciar(), "a porta de teste devia estar livre"
@@ -275,10 +278,8 @@ class ConexaoNoTeste:
         if self.cofre_sem_escrita:
             os.chmod(self.chaves, 0o700)
         self.conexao.parar()
-        self.openai.__exit__(*erro)
-        self.voz.__exit__(*erro)
-        self.firestore.__exit__(*erro)
-        self.servidor_de_login.__exit__(*erro)
+        for de_mentira in self.de_mentira:
+            de_mentira.__exit__(*erro)
         for handler in list(self.logger.handlers):
             handler.close()
 
@@ -628,7 +629,7 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
     def conferir_que_toda_rota_que_muda_diz(self, rotas, matriz, exemplos):
         for rota in sorted(rotas):
             if matriz[rota].get("muda"):
-                self.assertTrue(self.exemplos_de_sucesso(rota, exemplos), "rota %s %s diz `muda: True` e não tem exemplo de sucesso no contrato para ser pedida de novo" % rota)
+                self.assertTrue(self.exemplos_de_sucesso(rota, exemplos), "rota %s %s diz `muda: True` e não tem exemplo de sucesso no contrato" % rota)
                 continue
             for exemplo in self.exemplos_de_sucesso(rota, exemplos):
                 with tempfile.TemporaryDirectory() as pasta, conexao_do_exemplo(pasta, exemplo) as conexao:
@@ -662,7 +663,7 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
                     de_novo = dict(exemplo["pedido"]["corpo"], versao=self.revisao(conexao))
                     if matriz[rota].get("muda_de_novo"):
                         self.pedir_o_exemplo(conexao, exemplo, de_novo)
-                        self.assertNotEqual(guardado, estado_guardado(conexao), nome + ": `muda_de_novo` está velho em MATRIZ: reconfirmar na base atual já não muda nada, tire a exceção")
+                        self.assertNotEqual(guardado, estado_guardado(conexao), nome + ": `muda_de_novo` está velho em MATRIZ: reconfirmar já não muda nada, tire a exceção")
                         continue
                     for _ in range(3):
                         self.assertEqual(self.pedir_o_exemplo(conexao, exemplo, de_novo), primeiro, nome + ": reconfirmar na base atual respondeu outra coisa")

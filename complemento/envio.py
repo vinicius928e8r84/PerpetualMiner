@@ -29,13 +29,14 @@ import json
 import os
 import re
 import threading
-from types import SimpleNamespace
 from datetime import datetime, timezone
 
 from . import baralhos, custos, voz
-from .audio_do_cartao import FRASE_APAGADA, AudioDoCartao, aplicar_os_sotaques
-from .configuracao import VOZ_BASE
+from .audio_do_cartao import FRASE_APAGADA, AudioDoCartao
+from .configuracao import OPENVERSE_BASE, VOZ_BASE
+from .imagem_do_cartao import ImagemDoCartao
 from .login_do_chatgpt import RECUSOU, SAIU, credencial
+from .motor_do_envio import configuracao_do_motor, motor_do_complemento  # noqa: F401  (`envio.motor_do_complemento`)
 
 QUEUED, RUNNING, COMPLETED, PARTIAL, FAILED = "queued", "running", "completed", "partial", "failed"
 FIM = (COMPLETED, PARTIAL, FAILED)
@@ -61,14 +62,6 @@ PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", 
 
 _ID_DO_ENVIO = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 IDIOMAS = ("en", "ru")
-
-
-def motor_do_complemento():
-    """Os módulos do motor de texto que o Envio usa (`complemento.motor`, ver `motor/__init__.py`)."""
-    from .motor import config_loader, generate_audio, generate_cards, parser, send_to_anki
-
-    return SimpleNamespace(
-        config_loader=config_loader, generate_audio=generate_audio, generate_cards=generate_cards, parser=parser, send_to_anki=send_to_anki)
 
 
 class Interrompido(Exception):
@@ -462,11 +455,11 @@ def resolver(pedido, estado):
     return status, no_anki, falharam, duplicadas
 
 
-class Trabalho(AudioDoCartao):
-    """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto e o áudio e grava a nota."""
+class Trabalho(AudioDoCartao, ImagemDoCartao):
+    """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto, o áudio e a imagem e grava a nota."""
 
-    def __init__(self, fila, colecao, cofre, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30), voz_base=VOZ_BASE,
-                 chatgpt=None):
+    def __init__(self, fila, colecao, cofre, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30),
+                 voz_base=VOZ_BASE, openverse_base=OPENVERSE_BASE, adaptador_de_imagem=None, chatgpt=None):
         self.fila, self.chatgpt, self.plano = fila, chatgpt, {}  # o login do ChatGPT e o modelo do Envio
         self.motor = fila.motor
         self.colecao = colecao
@@ -474,6 +467,8 @@ class Trabalho(AudioDoCartao):
         self.logger = logger
         self.openai_base = openai_base
         self.voz_base = voz_base
+        self.openverse_base = openverse_base
+        self.adaptador_de_imagem = adaptador_de_imagem
         self.parar = parar
         self.espera_do_anki = espera_do_anki
         self.esperas_da_openai = tuple(esperas_da_openai)
@@ -531,28 +526,13 @@ class Trabalho(AudioDoCartao):
         estado = self.fila.mudar(job_id, mudanca)
         self.logger.info("Envio %s: %s (%s)", job_id, estado["status"], estado["lastError"] or "sem erro")
 
-    def _configuracao(self, pedido, chave):
-        config = self.motor.config_loader.base_config()
-        config["openai_api_key"] = chave
-        config["lang"] = pedido["lang"]
-        config["anki"]["deck_name"] = pedido["deckName"]
-        do_idioma = config.get("languages", {}).get(pedido["lang"], {})
-        config["anki"]["note_type"] = do_idioma.get("note_type") or config["anki"]["note_type"]
-        config["anki"]["fields"] = do_idioma.get("fields") or config["anki"]["fields"]
-        pasta_do_motor = os.path.dirname(os.path.abspath(self.motor.config_loader.__file__))
-        config["paths"]["prompts"] = {chave_: os.path.join(pasta_do_motor, caminho) for chave_, caminho in config["paths"]["prompts"].items()}
-        aplicar_os_sotaques(config, pedido["lang"], pedido["tts"])
-        config["paths"]["output_dir"] = self.fila.pasta_dos_textos(pedido["jobId"])
-        config["paths"]["log_dir"] = self.fila.pasta_dos_custos(pedido["jobId"])
-        return config
-
     # -- o Envio --
     def fazer(self, job_id):
         self.plano = {}
         pedido = self.fila.pedido(job_id)
         if self.fila.estado_ou_refazer(job_id).get("wiped"):
             return
-        config = self._configuracao(pedido, None)
+        config = configuracao_do_motor(self.motor, self.fila, pedido, None)
         tipo, campos = config["anki"]["note_type"], config["anki"]["fields"]
         try:
             nomes = self._com_a_colecao(job_id, lambda: self.colecao.tipo_de_nota(tipo))
@@ -644,9 +624,11 @@ class Trabalho(AudioDoCartao):
             arquivos, da_frase, da_palavra = self._o_audio(job_id, pedido, config, cartao_id, guid, conteudo)
         except voz.ErroDaVoz as erro:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=erro.codigo)
+        imagem, da_imagem = self._a_imagem(job_id, pedido, config, cartao_id, guid, conteudo)  # só a imagem falha: o Cartão vai sem ela
+        arquivos.update(imagem)
         if self.fila.estado(job_id).get("wiped"):
             raise Apagado()
-        nota = envio.card_fields(conteudo, lang, phrase_audio_name=da_frase, word_audio_name=da_palavra)
+        nota = envio.card_fields(conteudo, lang, phrase_audio_name=da_frase, word_audio_name=da_palavra, image_name=da_imagem)
         self._etapa(job_id, "send_to_anki")
         try:
             resultado = self._com_a_colecao(job_id, lambda: self.colecao.gravar_cartao(

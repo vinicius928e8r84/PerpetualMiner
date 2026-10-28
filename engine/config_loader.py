@@ -4,6 +4,7 @@ config_loader.py - Load config.json and the OpenAI key (standard library only).
 The key comes from whoever runs the engine: the Conexão com o Anki passes the one it keeps
 (`load_config(openai_api_key=...)`); the bridge and the command line read OPENAI_API_KEY from the
 environment or, failing that, from the `.env` next to the engine. The environment is never changed.
+Where the requests go (`openai_base`, `openverse_base`) is code's to say, never the file's: the file's keys are dropped.
 """
 
 import json
@@ -14,12 +15,16 @@ PASTA = Path(__file__).parent
 CONFIG_PATH = PASTA / "config.json"
 ENV_PATH = PASTA / ".env"
 NOME_DA_CHAVE = "OPENAI_API_KEY"
+ENDERECOS_SO_DO_CODIGO = ("openai_base", "openverse_base")  # the key goes where these say
 
 
 def base_config() -> dict:
-    """config.json as a fresh dict, without the key."""
+    """config.json as a fresh dict, without the key and without any address for the requests."""
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+        config = json.load(f)
+    for chave in ENDERECOS_SO_DO_CODIGO:
+        config.pop(chave, None)
+    return config
 
 
 def _ler_env(caminho: Path) -> dict:
