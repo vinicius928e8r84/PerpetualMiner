@@ -43,7 +43,8 @@ def iniciar(
         logger = registro.criar(dados.logs)
         if abridor is ABRIDOR_DESTE_COMPUTADOR:
             abridor = abridores.deste_computador(
-                plataforma=sys.platform, ambiente=os.environ, executavel=sys.executable, pasta=os.path.join(dados.raiz, "abridor")
+                plataforma=sys.platform, ambiente=os.environ, executavel=sys.executable, pasta=os.path.join(dados.raiz, "abridor"),
+                pid=os.getpid(), complemento=pasta_do_complemento,
             )
         if item_de_login is None:
             item_de_login = itens_de_login.deste_computador(plataforma=sys.platform, ambiente=os.environ, executavel=sys.executable)

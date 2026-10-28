@@ -9,13 +9,14 @@ vez e sai.
 O perfil é o perfil fixo (#149): o que estava aberto na primeira conexão, até a pessoa escolher outro. O script é reescrito a cada
 `profile_did_open` e a cada escolha (`inicio.py`); sem nenhum perfil marcado ainda (o Anki nunca abriu um), o script abre o Anki sem `-p`.
 
-O script só sabe duas coisas, pelas mensagens de `contrato/exemplos.json` › `abridor`:
+O script só sabe três coisas, pelas mensagens de `contrato/exemplos.json` › `abridor` e de `contrato/exemplos-do-conserto.json`:
 
 - `conferir`: responde se o Anki está no lugar anotado (`{"achou": …}`), sem abrir nem fechar nada;
-- `abrir`: abre o Anki, no perfil anotado se houver (`-p "<perfil>"`), e responde se abriu.
+- `abrir`: abre o Anki, no perfil anotado se houver (`-p "<perfil>"`), e responde se abriu;
+- `consertar` (#152): fecha à força o Anki que não responde há 30 s e o abre de novo, ou liga o complemento desativado no
+  `meta.json` do Anki e o reinicia. O que ele faz, e só no Anki que o complemento anotou, está em `conserto_do_anki.py`.
 
-Qualquer outra mensagem é `{"erro": "acao_desconhecida"}`. Reiniciar, fechar à força e ligar o complemento
-desativado (#102) não são deste arquivo.
+Qualquer outra mensagem é `{"erro": "acao_desconhecida"}`.
 
 Onde se registra:
 
@@ -41,6 +42,7 @@ import re
 import shlex
 import tempfile
 
+from . import conserto_do_anki
 from .configuracao import ORIGENS_ACEITAS
 from .item_de_login import AnkiNaoEncontrado, aplicativo_do_anki_no_mac, programa_do_anki_no_windows
 
@@ -75,9 +77,10 @@ class Abridor:
 
     `onde_registrar` diz, por navegador, a pasta de hosts (Mac) ou a chave do registro (Windows, gravada
     por `registro`). `abrir_com` é o `open` do Mac (os testes trocam por um programa que anota o que recebeu).
+    `conserto` (`Conserto`) diz qual Anki o `consertar` pode fechar; sem ele, o script nunca fecha nada.
     """
 
-    def __init__(self, *, sistema, pasta, programa, onde_registrar, registro=None, abrir_com="/usr/bin/open", ler_json_com="/usr/bin/osascript"):
+    def __init__(self, *, sistema, pasta, programa, onde_registrar, registro=None, abrir_com="/usr/bin/open", ler_json_com="/usr/bin/osascript", conserto=None):
         if sistema not in ("mac", "windows"):
             raise ValueError("sistema sem abridor: %r" % (sistema,))
         self.sistema = sistema
@@ -87,6 +90,7 @@ class Abridor:
         self.registro = registro
         self.abrir_com = abrir_com
         self.ler_json_com = ler_json_com
+        self.conserto = conserto or conserto_do_anki.Conserto()
 
     def escrever(self, perfil):
         """Escreve o script com o `perfil` (None: abre sem escolher perfil) e registra o host.
@@ -98,13 +102,13 @@ class Abridor:
         os.makedirs(self.pasta, exist_ok=True)
         if self.sistema == "mac":
             script = os.path.join(self.pasta, SCRIPT_DO_MAC)
-            _gravar(script, _script_do_mac(self.programa, perfil, self.abrir_com, self.ler_json_com).encode("utf-8"), modo=0o700)
+            _gravar(script, _script_do_mac(self.programa, perfil, self.abrir_com, self.ler_json_com, self.conserto, self.pasta).encode("utf-8"), modo=0o700)
             for pasta_de_hosts in _sem_repetir(self.onde_registrar.values()):
                 os.makedirs(pasta_de_hosts, exist_ok=True)
                 _gravar(os.path.join(pasta_de_hosts, NOME_DO_HOST + ".json"), _manifesto(script))
         else:
             script = os.path.join(self.pasta, BAT_DO_WINDOWS)
-            _gravar(os.path.join(self.pasta, PS1_DO_WINDOWS), b"\xef\xbb\xbf" + _ps1(self.programa, perfil).encode("utf-8"))
+            _gravar(os.path.join(self.pasta, PS1_DO_WINDOWS), b"\xef\xbb\xbf" + _ps1(self.programa, perfil, self.conserto, self.pasta).encode("utf-8"))
             _gravar(script, _BAT.encode("ascii"))
             manifesto = os.path.join(self.pasta, NOME_DO_HOST + ".json")
             _gravar(manifesto, _manifesto(script))
@@ -112,15 +116,20 @@ class Abridor:
                 self.registro.gravar(chave + "\\" + NOME_DO_HOST, manifesto)
 
 
-def deste_computador(*, plataforma, ambiente, executavel, pasta, registro=None, existe=os.path.exists):
-    """O abridor deste computador, escrito em `pasta`; `None` onde não há (só Mac e Windows)."""
+def deste_computador(*, plataforma, ambiente, executavel, pasta, registro=None, existe=os.path.exists, pid=None, complemento=None):
+    """O abridor deste computador, escrito em `pasta`; `None` onde não há (só Mac e Windows).
+
+    `pid` e `complemento` (a pasta do complemento, com o `meta.json`) são os do Anki que roda o complemento agora: é o único
+    Anki que o `consertar` fecha, e só se `executavel` ainda for o programa daquele `pid`.
+    """
+    conserto = conserto_do_anki.Conserto(pid=pid, executavel=executavel, complemento=complemento)
     if plataforma == "darwin":
         casa = ambiente.get("HOME") or os.path.expanduser("~")
         hosts = posixpath.join(casa, "Library", "Application Support", "Google", "Chrome", "NativeMessagingHosts")
         programa = aplicativo_do_anki_no_mac(ambiente, executavel)
         if programa is None and existe("/Applications/Anki.app"):
             programa = "/Applications/Anki.app"
-        return Abridor(sistema="mac", pasta=pasta, programa=programa, onde_registrar={"Chrome": hosts})
+        return Abridor(sistema="mac", pasta=pasta, programa=programa, onde_registrar={"Chrome": hosts}, conserto=conserto)
     if plataforma == "win32":
         return Abridor(
             sistema="windows",
@@ -128,6 +137,7 @@ def deste_computador(*, plataforma, ambiente, executavel, pasta, registro=None, 
             programa=programa_do_anki_no_windows(ambiente, executavel, existe),
             onde_registrar=dict(ONDE_REGISTRAR_NO_WINDOWS),
             registro=registro if registro is not None else RegistroDoWindows(),
+            conserto=conserto,
         )
     return None
 
@@ -174,13 +184,15 @@ def _manifesto(script):
 _MODELO_DO_MAC = r"""#!/bin/sh
 # PerpetualMiner: o abridor do Anki, um host de Native Messaging do Chrome.
 # A Conexão com o Anki escreve este arquivo quando o Anki abre e quando um perfil abre: não edite.
-# Só a extensão PerpetualMiner o chama, e ele só faz duas coisas:
-#   conferir  responde se o Anki está no lugar abaixo, sem abrir nem fechar nada;
-#   abrir     abre o Anki (no perfil abaixo, se houver).
+# Só a extensão PerpetualMiner o chama, e ele só faz três coisas:
+#   conferir   responde se o Anki está no lugar abaixo, sem abrir nem fechar nada;
+#   abrir      abre o Anki (no perfil abaixo, se houver);
+#   consertar  fecha à força o Anki que não responde e abre de novo, ou liga o complemento desativado (conserto_do_anki.py).
 ANKI=@ANKI@
 PERFIL=@PERFIL@
 ABRIR=@ABRIR@
 LER_JSON=@LERJSON@
+@DADOS@
 
 # A mensagem do Chrome: 4 bytes com o tamanho e o JSON (as nossas são curtas; o resto é ignorado).
 tamanho=$(dd bs=1 count=4 2>/dev/null | od -An -tu4 | tr -d ' \n')
@@ -194,7 +206,7 @@ function run(argumentos) {
   try {
     var mensagem = JSON.parse(argumentos[0]);
     if (mensagem && typeof mensagem === 'object' && !Array.isArray(mensagem)
-        && (mensagem.acao === 'conferir' || mensagem.acao === 'abrir')) return mensagem.acao;
+        && (mensagem.acao === 'conferir' || mensagem.acao === 'abrir' || mensagem.acao === 'consertar')) return mensagem.acao;
   } catch (erro) {}
   return 'acao_desconhecida';
 }
@@ -208,19 +220,24 @@ responder() {
 }
 
 if [ -d "$ANKI" ]; then achou=true; else achou=false; fi
+abrir_o_anki() {
+  [ "$achou" = true ] || return 1
+  if [ -n "$PERFIL" ]; then
+    "$ABRIR" -a "$ANKI" --args -p "$PERFIL" </dev/null >/dev/null 2>&1
+  else
+    "$ABRIR" -a "$ANKI" </dev/null >/dev/null 2>&1
+  fi
+}
+@FUNCOES@
 case "$acao" in
   conferir)
     responder "{\"achou\":$achou}" ;;
   abrir)
     abriu=false
-    if [ "$achou" = true ]; then
-      if [ -n "$PERFIL" ]; then
-        "$ABRIR" -a "$ANKI" --args -p "$PERFIL" </dev/null >/dev/null 2>&1 && abriu=true
-      else
-        "$ABRIR" -a "$ANKI" </dev/null >/dev/null 2>&1 && abriu=true
-      fi
-    fi
+    abrir_o_anki && abriu=true
     responder "{\"achou\":$achou,\"abriu\":$abriu}" ;;
+  consertar)
+    consertar ;;
   *)
     responder '{"erro":"acao_desconhecida"}' ;;
 esac
@@ -232,8 +249,10 @@ def _preencher(modelo, valores):
     return re.sub(r"@([A-Z]+)@", lambda marca: valores[marca.group(1)], modelo)
 
 
-def _script_do_mac(aplicativo, perfil, abrir_com, ler_json_com):
+def _script_do_mac(aplicativo, perfil, abrir_com, ler_json_com, conserto, pasta):
     return _preencher(_MODELO_DO_MAC, {
+        "DADOS": conserto_do_anki.variaveis_do_mac(conserto, pasta),
+        "FUNCOES": conserto_do_anki.FUNCOES_DO_MAC,
         "ANKI": shlex.quote(aplicativo),
         "PERFIL": shlex.quote(perfil or ""),
         "ABRIR": shlex.quote(abrir_com),
@@ -259,11 +278,13 @@ _BAT = "\r\n".join([
 
 _MODELO_DO_PS1 = r"""# PerpetualMiner: o abridor do Anki, um host de Native Messaging do Chrome e do Opera.
 # A Conexão com o Anki escreve este arquivo quando o Anki abre e quando um perfil abre: não edite.
-# Só a extensão PerpetualMiner o chama (pelo .bat ao lado), e ele só faz duas coisas:
-#   conferir  responde se o Anki está no lugar abaixo, sem abrir nem fechar nada;
-#   abrir     abre o Anki (no perfil abaixo, se houver).
+# Só a extensão PerpetualMiner o chama (pelo .bat ao lado), e ele só faz três coisas:
+#   conferir   responde se o Anki está no lugar abaixo, sem abrir nem fechar nada;
+#   abrir      abre o Anki (no perfil abaixo, se houver);
+#   consertar  fecha à força o Anki que não responde e abre de novo, ou liga o complemento desativado (conserto_do_anki.py).
 $anki = @ANKI@
 $perfil = @PERFIL@
+@DADOS@
 
 $ErrorActionPreference = 'Stop'
 
@@ -299,19 +320,15 @@ function Responder($resposta) {
   $saida.Flush()
 }
 
+@FUNCOES@
+
 $achou = Test-Path -LiteralPath $anki -PathType Leaf
 if ($acao -ceq 'conferir') {
   Responder ([ordered]@{ achou = $achou })
 } elseif ($acao -ceq 'abrir') {
-  $abriu = $false
-  if ($achou) {
-    try {
-      # O Windows não deixa aspas num nome de pasta, e o perfil do Anki é uma pasta: as aspas em volta bastam.
-      if ($perfil) { Start-Process -FilePath $anki -ArgumentList ('-p "' + $perfil + '"') } else { Start-Process -FilePath $anki }
-      $abriu = $true
-    } catch { }
-  }
-  Responder ([ordered]@{ achou = $achou; abriu = $abriu })
+  Responder ([ordered]@{ achou = $achou; abriu = [bool](AbrirOAnki) })
+} elseif ($acao -ceq 'consertar') {
+  Consertar
 } else {
   Responder ([ordered]@{ erro = 'acao_desconhecida' })
 }
@@ -326,8 +343,10 @@ def _texto_do_powershell(texto):
     return "'" + texto + "'"
 
 
-def _ps1(programa, perfil):
+def _ps1(programa, perfil, conserto, pasta):
     return _preencher(_MODELO_DO_PS1, {
+        "DADOS": conserto_do_anki.variaveis_do_ps1(conserto, pasta, _texto_do_powershell),
+        "FUNCOES": conserto_do_anki.FUNCOES_DO_PS1,
         "ANKI": _texto_do_powershell(programa),
         "PERFIL": "$null" if perfil is None else _texto_do_powershell(perfil),
     }).replace("\n", "\r\n")

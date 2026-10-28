@@ -1,0 +1,113 @@
+{
+  "conserto": {
+    "exemplos": [
+      {
+        "nome": "consertar com o Anki fechado: o abridor não abre o Anki que a pessoa fechou",
+        "daExtensao": true,
+        "contexto": {
+          "conserto": "anki_fechado"
+        },
+        "mensagem": {
+          "acao": "consertar"
+        },
+        "resposta": {
+          "situacao": "fechado"
+        }
+      },
+      {
+        "nome": "consertar com a Conexão respondendo: não há o que consertar",
+        "daExtensao": true,
+        "contexto": {
+          "conserto": "conexao_responde"
+        },
+        "mensagem": {
+          "acao": "consertar"
+        },
+        "resposta": {
+          "situacao": "respondeu"
+        }
+      },
+      {
+        "nome": "consertar o Anki que não respondeu em 30 s: fecha à força e abre de novo",
+        "daExtensao": true,
+        "contexto": {
+          "conserto": "anki_travado"
+        },
+        "mensagem": {
+          "acao": "consertar"
+        },
+        "resposta": {
+          "situacao": "reiniciado"
+        }
+      },
+      {
+        "nome": "consertar a Conexão desativada no Anki: liga pelo meta.json e reinicia o Anki",
+        "daExtensao": true,
+        "contexto": {
+          "conserto": "complemento_desativado"
+        },
+        "mensagem": {
+          "acao": "consertar"
+        },
+        "resposta": {
+          "situacao": "ligado"
+        }
+      },
+      {
+        "nome": "consertar com a Conexão fora da pasta de complementos do Anki",
+        "daExtensao": true,
+        "contexto": {
+          "conserto": "complemento_sumiu"
+        },
+        "mensagem": {
+          "acao": "consertar"
+        },
+        "resposta": {
+          "situacao": "sumiu"
+        }
+      },
+      {
+        "nome": "consertar o Anki que não fechou, nem à força",
+        "daExtensao": true,
+        "contexto": {
+          "conserto": "anki_nao_fecha"
+        },
+        "mensagem": {
+          "acao": "consertar"
+        },
+        "resposta": {
+          "situacao": "falhou",
+          "motivo": "nao_fechou"
+        }
+      },
+      {
+        "nome": "consertar o Anki que fechou e não abriu de novo",
+        "daExtensao": true,
+        "contexto": {
+          "conserto": "anki_nao_abre"
+        },
+        "mensagem": {
+          "acao": "consertar"
+        },
+        "resposta": {
+          "situacao": "falhou",
+          "motivo": "nao_abriu"
+        }
+      },
+      {
+        "nome": "consertar com o meta.json do Anki ilegível: nada é escrito",
+        "daExtensao": true,
+        "contexto": {
+          "conserto": "meta_ilegivel"
+        },
+        "mensagem": {
+          "acao": "consertar"
+        },
+        "resposta": {
+          "situacao": "falhou",
+          "motivo": "meta_ilegivel"
+        }
+      }
+    ]
+  }
+}
