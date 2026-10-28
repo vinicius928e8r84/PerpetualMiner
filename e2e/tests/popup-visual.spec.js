@@ -85,20 +85,23 @@ test('Conexão com o Anki desligada, com a leitura de ontem: o azulejo segue con
   await extensao.gravarStorage({
     frases: FRASES,
     ...DIA_NORMAL,
+    pm_anki_ja_conectou: true,
     pm_auto_keyword_vocab_en: leitura('CIMV', new Date('2026-09-17T14:02:00').getTime()),
   });
   await abrirPopup(page, extensao);
   await expect(page.getByText('Vocabulário de ontem, 14:02')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Abrir o Anki' })).toBeVisible();
   await expect(page).toHaveScreenshot('popup-vocabulario-de-ontem.png');
 });
 
 test('Conexão com o Anki desligada, sem nenhuma leitura: o azulejo ligado espera o Anki', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
-  await extensao.gravarStorage({ frases: FRASES, ...mineracao({ en: [true, 20, 0], ru: [false, 15, 0] }) });
+  await extensao.gravarStorage({ frases: FRASES, pm_anki_ja_conectou: true, ...mineracao({ en: [true, 20, 0], ru: [false, 15, 0] }) });
   await abrirPopup(page, extensao);
   const espera = page.locator('.popup-azulejo__espera:visible');
   await expect(espera).toContainText('— esperando o Anki');
   await expect(espera).toContainText('Começa depois que o Anki abrir uma vez.');
+  await expect(page.getByRole('button', { name: 'Abrir o Anki' })).toBeVisible();
   await expect(page).toHaveScreenshot('popup-esperando-o-anki.png');
 });
 

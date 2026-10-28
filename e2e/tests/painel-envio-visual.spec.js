@@ -137,3 +137,32 @@ test('o Envio com um código da Conexão: um Cartão não entrou, Continuar envi
 
   await expect(page).toHaveScreenshot('envio-codigo-da-conexao.png');
 });
+
+// #150: o Envio com o Anki fechado, aprovado pelo dono contra o protótipo do #105 (o Envio esperando o Anki).
+const faixaDoAnkiFechado = page => page.locator('#frases-avisos [data-aviso="envio-anki-fechado"]');
+
+async function enviarComOAnkiFechado(page, extensao, fakes) {
+  await extensao.gravarStorage({ pm_anki_ja_conectou: true });
+  fakes.anki.desligar();
+  await abrirFrases(page, extensao);
+  await page.getByRole('checkbox', { name: 'Selecionar página' }).check();
+  await page.locator('#frases-barra').getByRole('button', { name: 'Enviar ao Anki', exact: true }).click();
+}
+
+test.describe('com a permissão do abridor', () => {
+  test.use({ permissaoDoAbridor: true });
+
+  test('Enviar com o Anki fechado: a faixa “Abrindo o Anki para enviar…”', async ({ page, extensao, fakes }) => {
+    await enviarComOAnkiFechado(page, extensao, fakes);
+    await expect(faixaDoAnkiFechado(page)).toHaveText('Abrindo o Anki para enviar…');
+
+    await expect(page).toHaveScreenshot('envio-abrindo-o-anki.png');
+  });
+});
+
+test('Enviar com o Anki fechado e sem a permissão: a faixa “Abra o Anki para enviar” com o botão Abrir o Anki sozinho', async ({ page, extensao, fakes }) => {
+  await enviarComOAnkiFechado(page, extensao, fakes);
+  await expect(faixaDoAnkiFechado(page).getByRole('button', { name: 'Abrir o Anki sozinho' })).toBeVisible();
+
+  await expect(page).toHaveScreenshot('envio-abra-o-anki.png');
+});

@@ -23,14 +23,11 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   1. **Ter o Anki** (#146, ONB-18): the question “Você já tem o Anki?” with the two answers (the choice lives only on
      the screen; it goes back to the question when the Conexão answers). **Não tenho** opens the Anki's download page
      (`https://apps.ankiweb.net/`) in a new tab (`target="_blank"`, so the panel stays on the step; the Anki has no
-     fixed installer address per system: one file per processor with the version in its name) and says what to do
-     after it by the person's system (`navigator.userAgentData?.platform`, else the user agent): on the Mac “Arraste
-     o Anki para a pasta Aplicativos e abra-o de lá.”, on Windows the installer's sentence, anything else the
-     general one. **Já tenho** asks the Conexão's opener (#147) to open the Anki when the `nativeMessaging`
+     fixed installer address: one file per processor, with the version in its name) and says what to do after it by the
+     person's system (`navigator.userAgentData?.platform`, else the user agent): the Mac's, Windows' or the general sentence. **Já tenho** asks the Conexão's opener (#147) to open the Anki when the `nativeMessaging`
      permission is already granted (`Abridor.abrirOAnki`: only `{ achou: true, abriu: true }` is `ABRIU`; “O Anki está abrindo…” waits for the Conexão, which the 15 s check finds by itself); without the
-     permission, without the opener, or when it does not open, the manual path of always (“Abra o Anki para
-     continuar.”). Before the Conexão the step never says “não encontrado”: not installed, closed and open without
-     the Conexão give the same silence (the step turns ✓ with the other Conexão steps).
+     permission, without the opener, or when it does not open, the manual path (“Abra o Anki para continuar.”). Before the Conexão
+     the step never says “não encontrado”: not installed, closed and open without it give the same silence.
   2. **Pôr a Conexão no Anki**: baixar › abrir › Sim › reiniciar. **Baixar a Conexão com o Anki** is an `<a download>` of
      `conexao/perpetualminer.ankiaddon` (the add-on file inside the extension package, no permission); above it, the
      ONB-19 animation of the Anki's own warning (#146): two frames alternating by themselves — the warning the Anki
@@ -46,38 +43,38 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
      no answer (10 s, or the host is not registered: an older Conexão) say what to do, with Tentar de novo and Chrome's message in Detalhes.
      The opener's state is one per page (the Boas-vindas and this card are in the same panel), so it is checked once. In this card the
      **Pronto** moment waits for step 4 to be resolved (found, or Agora não); a stored Agora não goes straight to Pronto.
-  The steps are marked by the real state, and the only thing the extension sees before the Conexão is the Conexão itself (the
-  AnkiConnect is not read: no new permission), so the first three steps say nothing about the Anki until it answers and turn ✓
-  together when `/health` answers successfully; the fourth, when the opener finds Anki. Without a person's choice, the card opens on
-  the first step, or on Reiniciar o Anki while connecting; one that has already answered ligada once on this page (or on this computer:
-  `ConexaoAnki.jaConectou()`) falls back to Reiniciar o Anki (the status line and Tentar de novo) when the Conexão goes off again. After the card's own Tentar de novo
-  it stays on step 3 (the F1's and the Boas-vindas' do not set the person's choice). **2 minutes without an answer** (counted from the first time the person
-  really sees the steps — the host passes the real visibility to `mostrar`: the Anki area is the current one, the Boas-vindas page is on screen — or from Baixar) show the 3-item checklist and **Baixar de novo** in whatever step is open, while the check keeps going alone; it leaves when the Conexão answers.
-  On step 3 an automatic check in flight over a Conexão that was off shows “Conectando” with no click (`ConexaoAnki.conferindo()`, `aoConferir`); a
-  Conexão that was on stays on, and the failure goes back to “desligada”. One primary control per screen: with the card's own Voltar · Continuar the
-  primary is the step's action (Baixar, Tentar de novo) and Continuar is an outline; inside the Boas-vindas the card has only outlines and the host's Continuar is the primary.
-  The status is a `role="status"` region that stays in the DOM (the 1 s clock only redraws the checklist, never the status).
+  The steps are marked by the real state, and before the Conexão the extension sees only the Conexão itself (no AnkiConnect, no new
+  permission), so the first three steps say nothing about the Anki until `/health` answers, and turn ✓ together; the fourth, when the
+  opener finds Anki. Without a person's choice, the card opens on the first step, or on Reiniciar o Anki while connecting; one that has
+  answered ligada once (on this page, or on this computer: `ConexaoAnki.jaConectou()`) falls back to Reiniciar o Anki when the Conexão
+  goes off again. After the card's own Tentar de novo it stays on step 3 (the F1's and the Boas-vindas' do not set the person's choice).
+  **2 minutes without an answer** (counted from when the person really sees the steps — the host passes the visibility to `mostrar` — or
+  from Baixar) show the 3-item checklist and **Baixar de novo** in whatever step is open, while the check keeps going; it leaves when the
+  Conexão answers. On step 3 an automatic check in flight over a Conexão that was off shows “Conectando” with no click
+  (`ConexaoAnki.conferindo()`, `aoConferir`); one that was on stays on, and a failure goes back to “desligada”. One primary control per
+  screen: with the card's own Voltar · Continuar the primary is the step's action (Baixar, Tentar de novo) and Continuar an outline;
+  inside the Boas-vindas the card has only outlines and the host's Continuar is the primary. The status is a `role="status"` region that
+  stays in the DOM (the 1 s clock only redraws the checklist).
   The Conferência line (“Confere sozinho a cada 15 s · última vez há N s”, “Conferindo agora…” while a check is out) follows the
   shared checks; see the doc comments in `painel-anki-primeira-conexao.js` for its subscription and timer lifecycle. See the
   [Anki area states](../../../docs/design/painel/anki/README.md#estados) for the **Pronto** moment, its status during a new check and focus when the controls or card leave.
-  Tests: `e2e/tests/painel-anki-primeira-conexao.spec.js` (behaviour, download, checklist), `ter-o-anki.spec.js` (the first step: the question, the installer by system, the opener opening the Anki, the manual path, the warning animation and its reduced-motion still frames), `abrir-o-anki-sozinho.spec.js` (the opener step, here and in the Boas-vindas, against the fake opener of the fixture), `boas-vindas.spec.js` (the same component in step 4 and “the same step in both places”),
+  Tests: `e2e/tests/painel-anki-primeira-conexao.spec.js` (behaviour, download, checklist), `ter-o-anki.spec.js` (the first step, the warning animation), `abrir-o-anki-sozinho.spec.js` (the opener step, here and in the Boas-vindas, against the fixture's fake opener), `boas-vindas.spec.js` (the same component in step 4),
   `complemento/test_pacote.py` and `test_empacotar.js` (the file inside the package).
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
   selo (“Anki fechado. Mostrando dados de há 2 h.”, with the code in Detalhes) and the period controls set to that reading's
-  period and disabled (another period would have nowhere to come from). **Continuar envio** and
+  period and disabled (no other period to read). **Continuar envio** and
   **Reparar Anki** get `aria-disabled` (still in the Tab order) with a `.veio-dica` tooltip (BRG-33) on hover and on keyboard focus (`:focus-visible`, so a click never leaves it open);
-  a press does nothing. With the Conexão off and nothing stored, Custos only says “Custo indisponível”:
-  the why and Tentar de novo are the F1's.
+  a press does nothing. With nothing stored, Custos only says “Custo indisponível” (the why and Tentar de novo are the F1's).
   Ajustes de envio stays editable, with the BRG-33 note that it applies from the next Envio.
 
 **↻ Atualizar** (BRG-24) is one action, owned by `painel-anki.js`: it asks `ConexaoAnki` for `/health` again
-(`ConexaoAnki.conferir`) and, only with the Conexão on, reads Custos again and calls whoever registered through
+(`ConexaoAnki.conferir`) and, with the Conexão on, reads Custos again and calls whoever registered through
 `PerpetualMiner.Anki.aoAtualizar(fn)` — `painel-anki-baralhos.js` re-reads the decks there, with `launch=1` (“abre o Anki se precisar”),
 and the vocabulary. Only a click asks the Conexão to open the Anki (↻ Atualizar, Tentar de novo): entering the area, a new Baralho or the Conexão coming back read without `launch`. `Anki.atualizar()` is the same action for whoever needs it (BRG-17's Atualizar).
-Off, nothing tries to open the Anki. BRG-04's Tentar de novo only re-reads Custos.
+Off, nothing tries to open the Anki, except the **Abrir o Anki** button (BRG-38, `AbrirOAnki.montarBotao`, #150) in the BRG-12 `anki` selo
+and BRG-37 of both tabs, and in the popup (`abrir-o-anki-botao.spec.js`). BRG-04's Tentar de novo only re-reads Custos.
 
-The relative time (“agora”, “há 5 min”, “há 2 h”, then the PAI-11 day: ontem · há 3 dias) is `Contexto.haQuanto`
-(`lib/contexto.js`), shared by Custos, the Envio cards and the Conta chip (CFG-02).
+The relative time (“agora”, “há 5 min”, “há 2 h”, then the PAI-11 day) is `Contexto.haQuanto` (`lib/contexto.js`), shared by Custos, the Envio cards and the Conta chip (CFG-02).
 
 **Custos** reads `POST /analytics/jobs` (`{ lang: 'all', from?, to? }`, `PedidoAoAnki.custosDosEnvios`) once per period and adds everything up in the panel, so every
 total on screen is the sum of the parts on screen — including `otherUsd` (“Outros custos”, shown in the detail only
@@ -92,13 +89,12 @@ per part and the total, the Envio's image bar, and Continuar envio only for `par
 loading look (#9): “Custo indisponível” (BRG-03) and the persistent BRG-04 aviso with Tentar de novo and Detalhes; empty
 is BRG-22 with “Ver tudo” (switches to Tudo).
 
-Money (V7): US$ with 2 decimals, a positive value under 1 cent is “< US$ 0,01” (BRG-26, `< US$ {valor}`), never
-“US$ 0,00”; with 4 decimals, under US$ 0,0001 it is “< US$ 0,0001”. The tiles' codes (EN + RU · EN · RU) are BRG-28's. The
-**Avançado** (collapsed, dashed, at the foot) has Escolha and Triagem de imagem and the total with 4 decimals, the
-switches “Mostrar custos com 4 casas” (every value on the tab goes to 4 decimals) and “Mostrar IDs dos envios” (the
-jobId joins the list, the detail and the diagnostics), both remembered on this computer, and Baixar diagnóstico per
-Envio (`POST /jobs/debug-bundle` with `{ jobId }`, saved as `diagnostico-<jobId>.json`; the download is the feedback, no toast;
-failure is BRG-23 inline).
+Money (V7): US$ with 2 decimals, a positive value under 1 cent is “< US$ 0,01” (BRG-26), never “US$ 0,00”; with 4
+decimals, under US$ 0,0001 it is “< US$ 0,0001”. The tiles' codes are BRG-28's. The **Avançado** (collapsed, dashed, at the foot)
+has Escolha and Triagem de imagem and the total with 4 decimals, the switches “Mostrar custos com 4 casas” (every value on the
+tab) and “Mostrar IDs dos envios” (the jobId joins the list, the detail and the diagnostics), both remembered on this computer,
+and Baixar diagnóstico per Envio (`POST /jobs/debug-bundle` with `{ jobId }`, saved as `diagnostico-<jobId>.json`; the download
+is the feedback, no toast; failure is BRG-23 inline).
 
 ### Baralhos e termos, Vocabulário and Reparar Anki (`painel-anki-baralhos.js`)
 
@@ -115,7 +111,7 @@ fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
   (an SVG `role="img"` named “66% de maturidade”: mature over all cards, recentes = `young + learning`), the big
   number, “palavras diferentes nos cartões” and Cartões · Termos-alvo · Palavra nova por cartão (1 decimal) · Maduros ·
   Recentes · Novos. Ring, bars and legend use the maturity series (ouro · info · muted). Read from the local file
-  (`source: 'collection.anki2'`): the BRG-13 note on top; the bridge's own stale cache: the BRG-12 selo “Mostrando dados de … Não deu para atualizar agora.” (`BRG-12.atualizacao`; with the Conexão off, or answering from the file with the Anki confirmed closed (`ankiFechado`), it is `BRG-12.anki`, “Anki fechado. Mostrando dados de {quando}.”, with `{quando}` the stored `dadosDe` (never another Baralho's; the selo's text is redrawn on every read); with the Conexão off and nothing stored the two tabs say BRG-37 instead of staying empty) (see the
+  (`source: 'collection.anki2'`): the BRG-13 note on top; the bridge's own stale cache: the BRG-12 selo “Mostrando dados de … Não deu para atualizar agora.” (`BRG-12.atualizacao`; with the Conexão off, or answering from the file with the Anki confirmed closed (`ankiFechado`), it is `BRG-12.anki`, “Anki fechado. Mostrando dados de {quando}.”, with `{quando}` the stored `dadosDe` (never another Baralho's), and the Abrir o Anki button; off with nothing stored the two tabs say BRG-37, with the same button) (see the
   [design states](../../../docs/design/painel/anki/README.md#estados) for presentation by tab). Loading BRG-10 + skeleton;
   failure is the persistent BRG-11 aviso with Reparar Anki, Tentar de
   novo and the cause in Detalhes.
@@ -192,8 +188,8 @@ waits: the progress modal comes back with it, and the summary opens once the per
 as failed. Every request goes through `PedidoAoAnki` (POST with the extension's origin). The Envio's request body is built once, with
 `jobId` = the Envio's `id` (`crypto.randomUUID()`), and saved in `pm_envio` (`corpo`) **before** the first `POST /jobs`; the ENV-03
 Tentar de novo and a panel reopened with a request that got no answer send those same bytes, and the Conexão answers with the
-Envio it already has (the Envio belongs to the Conexão: `docs/design/envio-no-complemento.md`). `pm_envio` is written again after each `POST /jobs`.
-**Apagar tudo (CFG-17)** reaches the Envio's copy of the Frases (#248): `Envio.apagarTudo()` (called by `painel.js`) ends the panel's tracking of the Envios and asks the Conexão (`POST /jobs/apagar-frases`); the Zona de perigo refuses it while the Conexão does not answer. How, what `pm_envio` keeps, the other tabs, the service worker's alarm, the refusal and the tests: `apagar-tudo.md` next to this file.
+Envio it already has (`docs/design/envio-no-complemento.md`). `pm_envio` is written again after each `POST /jobs`.
+**Apagar tudo (CFG-17)** reaches the Envio's copy of the Frases (#248): `Envio.apagarTudo()` (called by `painel.js`) ends the panel's tracking of the Envios and asks the Conexão (`POST /jobs/apagar-frases`); the Zona de perigo refuses it while the Conexão does not answer. The rest (`pm_envio`, the other tabs, the alarm, the refusal, the tests): `apagar-tudo.md` next to this file.
 The footer is ENV-15. `POST /jobs/list` runs every 2 s while something is running; when it fails the modal says
 ENV-09 and keeps trying. Phrases already in a running Envio are not sent twice (a second click only reopens the modal),
 and the Veio modal ignores the second press of a double click, so it does not close the modal the first press opened.
@@ -209,6 +205,10 @@ which redoes only that language. Below the blocks, the history question: “Tira
 are named (“1 enviada você já tinha apagado.”), and with none left it says “Nada para tirar do histórico.” with **Pronto**.
 **Manter** — and Pronto, ×, Esc, a click outside — marks the sent and the duplicates Enviada ao Anki, no toast (ENV-12).
 **Tirar do histórico** deletes only the ones sent now, marks the duplicates, and shows the ENV-11 toast. Either answer
-clears `pm_envio`. With the Conexão off (from `ConexaoAnki`), Enviar ao Anki has `aria-disabled` (not `disabled`), `aria-describedby` and a
-tooltip on hover and keyboard focus only (`PAI-32.enviarIndisponivel`): nothing stays on the bar while the Conexão is off, which
-can be for days before the Anki is set up.
+clears `pm_envio`. Off and never connected on this computer (`ConexaoAnki.jaConectou()`), Enviar ao Anki has `aria-disabled` (not `disabled`),
+`aria-describedby` and a tooltip on hover and keyboard focus only (`PAI-32.enviarIndisponivel`): there is no opener yet.
+**Off after it answered once (the Anki closed)** the button works: `painel-envio-anki-fechado.js` keeps the chosen ids and shows
+the ENV-16 notice in `#frases-avisos` — “Abrindo o Anki para enviar…” after `Abridor.abrirOAnki()` (permission already given), or
+“Abra o Anki para enviar” (no permission: **Abrir o Anki sozinho** asks it inside the click; the opener did not open: the cause in
+Detalhes). `AbrirOAnki.esperarOAnki` checks `/health` every 2 s for 2 min; when the Conexão answers the notice goes and `enviar(ids)`
+runs; after 2 min the pending Envio is dropped and the person presses Enviar again. Tests: `painel-envio-anki-fechado.spec.js`.
