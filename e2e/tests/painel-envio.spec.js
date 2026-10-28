@@ -3,7 +3,7 @@
 const { test, expect } = require('../fixtures');
 const { AGORA, INGLESAS, RUSSA, SACK, ARM, LATE, abrirPainel, cartao, marcar, enviarAoAnki, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados, pedirConferenciaDaConexao } = require('../apoio-do-envio');
 
-// veio/tokens.css leva toda transição a 1 ms com movimento reduzido. O cartão é desenhado de novo
+// veio/tokens.css zera toda transição com movimento reduzido. O cartão é desenhado de novo
 // assim que o Envio ganha o jobId; num elemento que já saiu da página o estilo calculado vem vazio
 // (NaN), então se espera o valor, não o elemento.
 async function transicaoCurta(locator) {
