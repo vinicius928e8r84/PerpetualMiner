@@ -14,33 +14,37 @@ reason is printed and appended to log/image_generation_failures.jsonl.
 
 import base64
 import json
-import requests
-import openai
+import logging
+import urllib.error
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, List, Optional
 
-from config_loader import load_config
+if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
+    from . import openai_http
+    from .config_loader import load_config
+else:
+    import openai_http
+    from config_loader import load_config
+
+LOGGER = logging.getLogger("perpetualminer.motor")  # inside the Anki add-on nothing goes to stdout
 
 FAILURES_LOG = "image_generation_failures.jsonl"
-_MODEL_GONE_HINTS = ("model_not_found", "does not exist", "deprecated", "decommission", "retired", "no access")
 
 
 def _failure_reason(exc: Exception) -> str:
     """Short label for why a generation failed: model_unavailable or generation_error."""
-    if isinstance(exc, openai.NotFoundError):
-        return "model_unavailable"
-    text = f"{getattr(exc, 'code', '')} {exc}".lower()
-    if any(hint in text for hint in _MODEL_GONE_HINTS):
+    if isinstance(exc, openai_http.ErroDaOpenAI) and exc.status == 404:
         return "model_unavailable"
     return "generation_error"
 
 
 def _log_failure(config: dict, stem: str, exc: Exception) -> str:
-    """Print the failure and append it to the log dir. Returns the reason label."""
+    """Log the failure and append it to the log dir. Returns the reason label."""
     reason = _failure_reason(exc)
     model = config["openai"]["image_model"]
-    print(f"[ERROR] Geração de imagem falhou para '{stem}' ({reason}, modelo {model}): {exc}")
+    LOGGER.warning("Geração de imagem falhou para '%s' (%s, modelo %s): %s", stem, reason, model, exc)
     try:
         log_dir = Path(config["paths"]["log_dir"])
         log_dir.mkdir(exist_ok=True)
@@ -49,7 +53,7 @@ def _log_failure(config: dict, stem: str, exc: Exception) -> str:
             "keyword": stem,
             "model": model,
             "reason": reason,
-            "error": f"{type(exc).__name__}: {exc}",
+            "error": f"{type(exc).__name__}: {exc}",  # an ErroDaOpenAI says only its code and status, never OpenAI's text
         }
         with (log_dir / FAILURES_LOG).open("a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
@@ -58,10 +62,10 @@ def _log_failure(config: dict, stem: str, exc: Exception) -> str:
     return reason
 
 
-def _save_from_response(item, dest: Path) -> bool:
+def _save_from_response(item: dict, dest: Path) -> bool:
     """Persist one image result to *dest*, handling both b64 and URL payloads."""
     # gpt-image-1 (and gpt-image-* family) return base64-encoded bytes directly.
-    b64 = getattr(item, "b64_json", None)
+    b64 = item.get("b64_json")
     if b64:
         try:
             dest.write_bytes(base64.b64decode(b64))
@@ -70,16 +74,27 @@ def _save_from_response(item, dest: Path) -> bool:
             return False
 
     # Legacy dall-e path: download from the returned URL.
-    url = getattr(item, "url", None)
-    if url:
+    url = item.get("url")
+    if url and url.startswith(("http://", "https://")):
         try:
-            r = requests.get(url, timeout=60)
-            if r.status_code == 200:
-                dest.write_bytes(r.content)
-                return True
+            with urllib.request.urlopen(urllib.request.Request(url), timeout=60, context=openai_http.contexto_tls()) as r:
+                if r.status == 200:
+                    dest.write_bytes(r.read())
+                    return True
         except Exception:
             pass
     return False
+
+
+def _generate(config: dict, prompt: str) -> dict:
+    """Ask the Images API for one image: the answer's first item (`{}` if none)."""
+    return openai_http.gerar_imagem(
+        config.get("openai_base", openai_http.OPENAI_BASE),
+        config["openai_api_key"],
+        config["openai"]["image_model"],
+        prompt,
+        config["openai"]["image_size"],
+    )
 
 
 def generate_one(config: dict, stem: str, prompt: str, dest: Optional[Path] = None) -> bool:
@@ -89,17 +104,10 @@ def generate_one(config: dict, stem: str, prompt: str, dest: Optional[Path] = No
     card without a generated image.
     """
     try:
-        openai.api_key = config["openai_api_key"]
         output_dir = Path(config["paths"]["output_dir"])
         output_dir.mkdir(exist_ok=True)
 
-        resp = openai.images.generate(
-            model=config["openai"]["image_model"],
-            prompt=prompt,
-            n=1,
-            size=config["openai"]["image_size"],
-        )
-        item = resp.data[0]
+        item = _generate(config, prompt)
         dest = dest or (output_dir / f"{stem}.png")
         return _save_from_response(item, dest)
     except Exception as exc:
@@ -116,7 +124,6 @@ def run(
     progress_callback(done, total, stem) is called after each image attempt.
     Returns list of successfully downloaded filenames.
     """
-    openai.api_key = config["openai_api_key"]
     output_dir  = Path(config["paths"]["output_dir"])
     log_dir     = Path(config["paths"]["log_dir"])
     prompts_file = Path(config["paths"]["prompts_file"])
@@ -137,13 +144,7 @@ def run(
         prompt = prompt.strip()
 
         try:
-            resp = openai.images.generate(
-                model=config["openai"]["image_model"],
-                prompt=prompt,
-                n=1,
-                size=config["openai"]["image_size"],
-            )
-            item = resp.data[0]
+            item = _generate(config, prompt)
             dest = output_dir / f"{stem}.png"
             ok   = _save_from_response(item, dest)
             log_lines.append(f"{stem}: {prompt}\n{dest.name if ok else 'SAVE_FAILED'}\n")

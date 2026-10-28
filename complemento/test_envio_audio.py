@@ -28,6 +28,11 @@ def sons(campos):
     return re.findall(r"\[sound:([^\]]+)\]", campos["Frente"]), re.findall(r"\[sound:([^\]]+)\]", campos["Verso"])
 
 
+def so_o_audio(midia):
+    """A mídia da nota que é voz: a imagem (#144) vai na mesma nota e tem os seus testes."""
+    return {nome: dados for nome, dados in midia.items() if nome.endswith(".mp3")}
+
+
 class OCartaoGanhaAudio(unittest.TestCase):
     def test_o_cartao_gravado_toca_a_frase_e_a_palavra_e_os_dois_arquivos_ficam_na_colecao_ligados_a_nota(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
@@ -39,10 +44,10 @@ class OCartaoGanhaAudio(unittest.TestCase):
         self.assertEqual(len(notas), 1)
         da_frase, da_palavra = sons(notas[0]["campos"])
         self.assertEqual((len(da_frase), len(da_palavra)), (1, 1))
-        self.assertEqual(sorted(notas[0]["midia"]), sorted(da_frase + da_palavra))
-        self.assertTrue(all(nome.endswith(".mp3") for nome in notas[0]["midia"]))
-        self.assertEqual(notas[0]["midia"][da_frase[0]], audio_de_mentira("co.uk", "en", "She gave up smoking"))
-        self.assertEqual(notas[0]["midia"][da_palavra[0]], audio_de_mentira("com", "en", "gave up"))
+        audios = so_o_audio(notas[0]["midia"])
+        self.assertEqual(sorted(audios), sorted(da_frase + da_palavra))
+        self.assertEqual(audios[da_frase[0]], audio_de_mentira("co.uk", "en", "She gave up smoking"))
+        self.assertEqual(audios[da_palavra[0]], audio_de_mentira("com", "en", "gave up"))
         self.assertEqual([nome for nome in arquivos if nome.endswith(".mp3")], [])
 
     def test_os_sotaques_dos_ajustes_de_envio_dizem_com_que_voz_a_palavra_e_a_frase_sao_pedidas(self):
@@ -148,7 +153,7 @@ class AVozQueFalha(unittest.TestCase):
             log = conexao.log()
         self.assertEqual((falhou["status"], falhou["lastError"], falhou["cards"]["1760000000000-0"]["error"]), ("failed", "tts_rejected", "tts_rejected"))
         self.assertEqual(sem_nota, [])
-        self.assertEqual((estado["status"], len(notas), len(notas[0]["midia"]), texto_pago), ("completed", 1, 2, 1))
+        self.assertEqual((estado["status"], len(notas), len(so_o_audio(notas[0]["midia"])), texto_pago), ("completed", 1, 2, 1))
         self.assertNotIn("gave up", log)
 
     def test_a_voz_fora_do_ar_por_um_momento_e_pedida_de_novo_e_o_cartao_entra_com_audio(self):
@@ -157,7 +162,7 @@ class AVozQueFalha(unittest.TestCase):
             conexao.criar(pedido(ID, FRASE))
             estado = conexao.esperar(ID)
             notas = conexao.conexao.colecao.gravadas
-        self.assertEqual((estado["status"], len(notas), len(notas[0]["midia"])), ("completed", 1, 2))
+        self.assertEqual((estado["status"], len(notas), len(so_o_audio(notas[0]["midia"]))), ("completed", 1, 2))
 
     def test_a_voz_fora_do_ar_para_sempre_falha_o_cartao_com_o_codigo_de_voz_fora_do_ar(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
@@ -196,7 +201,7 @@ class AMidiaNaColecao(unittest.TestCase):
             conexao.criar(pedido(ID, "keep running | run : They keep running"))
             conexao.esperar(ID)
             notas = conexao.conexao.colecao.gravadas
-        nomes = [nome for nota in notas for nome in nota["midia"]]
+        nomes = [nome for nota in notas for nome in so_o_audio(nota["midia"])]
         self.assertEqual((len(notas), len(nomes), len(set(nomes))), (2, 4, 4))
 
 

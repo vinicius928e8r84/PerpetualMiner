@@ -20,7 +20,7 @@ from .chaves import Cofre
 from .rotas_da_chave import (
     apagar_chave_da_openai, estado_da_ia, guardar_chave_da_openai, sincronizar_chave_da_openai, vincular_legado_da_openai,
 )
-from .configuracao import ENDERECO, OPENAI_BASE, VOZ_BASE
+from .configuracao import ENDERECO, OPENAI_BASE, OPENVERSE_BASE, VOZ_BASE
 from .item_de_login import AnkiNaoEncontrado
 
 # Um pedido maior que isto não é da extensão: a leitura mais pesada (os Baralhos pedidos) cabe em poucos KB.
@@ -324,6 +324,8 @@ class Conexao:
         colecao=None,
         item_de_login=None,
         openai_base=OPENAI_BASE,
+        openverse_base=OPENVERSE_BASE,
+        adaptador_de_imagem=None,
         voz_base=VOZ_BASE,
         firestore_base='https://firestore.googleapis.com/v1/projects/perpetualminer-4c219/databases/(default)/documents',
         intervalo_de_parada=0.1,
@@ -355,7 +357,8 @@ class Conexao:
         self.fila = envio.Fila(dados, motor or envio.motor_do_complemento(), logger)
         self._trabalhador = trabalhador.Trabalhador(
             envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(),
-                           espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai, voz_base=voz_base),
+                           espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai, voz_base=voz_base,
+                           openverse_base=openverse_base, adaptador_de_imagem=adaptador_de_imagem),
             intervalo=intervalo_do_envio, contato=self.contato, espera_do_contato=espera_do_contato,
         ) if trabalhando else None
 

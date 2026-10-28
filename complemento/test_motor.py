@@ -13,9 +13,10 @@ from unittest import mock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import envio  # noqa: E402
+from complemento.test_imagens_de_mentira import JPEG_DE_MENTIRA, png_de  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
 
-SEM_AS_BIBLIOTECAS_DE_FORA = {"yaml": None, "dotenv": None, "openai": None, "httpx": None, "requests": None, "gtts": None}
+SEM_AS_BIBLIOTECAS_DE_FORA = {"yaml": None, "dotenv": None, "openai": None, "httpx": None, "requests": None, "PIL": None, "gtts": None}
 
 
 def configuracao_do_teste(motor, pasta):
@@ -34,6 +35,15 @@ class OMotorComoPacote(unittest.TestCase):
             motor = envio.motor_do_complemento()
             config = motor.config_loader.base_config()
         self.assertEqual((config["anki"]["note_type"], config["anki"]["fields"]), ("Básico", {"front": "Frente", "back": "Verso"}))
+
+    def test_as_imagens_do_motor_rodam_sem_pillow_requests_nem_o_sdk_e_so_o_que_precisa_converter_pede_um_adaptador(self):
+        with mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
+            motor = envio.motor_do_complemento()
+            png, mime = motor.image_utils.normalize_image_bytes(png_de("a"), target_format="PNG")
+            motor.image_utils.usar_adaptador(None)
+            with self.assertRaises(motor.image_utils.UnsupportedImageFormatError):
+                motor.image_utils.normalize_image_bytes(JPEG_DE_MENTIRA, target_format="PNG")
+        self.assertEqual((png, mime), (png_de("a"), "image/png"))
 
     def test_uma_linha_com_duas_palavras_tem_dois_cartoes_e_a_linha_russa_um(self):
         motor = envio.motor_do_complemento()

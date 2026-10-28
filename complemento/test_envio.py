@@ -1,6 +1,5 @@
 """O Envio dentro da Conexão, visto de fora: o servidor real com a thread de trabalho ligada, a coleção em memória e a
-OpenAI de mentira na fronteira HTTP. O que o teste confere é o que atravessa o HTTP e o que fica guardado (a coleção,
-os arquivos da pasta de dados).
+OpenAI de mentira na fronteira HTTP. O teste confere o que atravessa o HTTP e o que fica guardado (a coleção, a pasta de dados).
 
     python3.9 complemento/test_envio.py
 """
@@ -74,7 +73,7 @@ class EnvioNoTeste(ConexaoNoTeste):
 
 
 def chats(openai):
-    """Os pedidos de texto que chegaram à OpenAI de mentira: (Authorization, corpo)."""
+    """Os pedidos de texto da OpenAI de mentira: (Authorization, corpo)."""
     return list(openai.chats)
 
 
@@ -337,10 +336,10 @@ class OsCustos(unittest.TestCase):
             conexao.esperar(ID)
             linhas = json.loads(conexao.pedir("POST", "/analytics/jobs", corpo={"lang": "all"})[2])["jobs"]
             registros = conexao.arquivos()[os.path.join("custos", ID, "costs.jsonl")].decode("utf-8").splitlines()
-        self.assertEqual([json.loads(r)["type"] for r in registros], ["tokens"])
+        self.assertEqual([json.loads(r)["type"] for r in registros], ["tokens", "image", "image_pipeline"])
         self.assertEqual(
             [(l["jobId"], l["status"], l["requestedCards"], l["successfulCards"], l["costs"]["cardUsd"], l["costs"]["totalUsd"]) for l in linhas],
-            [(ID, "completed", 1, 1, 0.0045, 0.0045)],
+            [(ID, "completed", 1, 1, 0.0045, 0.0445)],
         )
 
 
