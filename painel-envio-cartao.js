@@ -37,7 +37,7 @@
   const abrindoOPerfil = new Set();
   const falhasAoAbrirOPerfil = new Set();
 
-  /** “Abrir <perfil>” (ENV-16): a Conexão fecha o perfil aberto pelo caminho do Anki (que sincroniza) e abre o marcado. */
+  /** “Abrir <perfil>” (ENV-17): a Conexão fecha o perfil aberto pelo caminho do Anki (que sincroniza) e abre o marcado. */
   async function abrirOPerfil(envio) {
     if (abrindoOPerfil.has(envio.jobId)) return;
     abrindoOPerfil.add(envio.jobId);
@@ -52,7 +52,7 @@
     }
   }
 
-  /** “Escolher perfil” (ENV-16): o marcado já não existe; a escolha mora nas Configurações. */
+  /** “Escolher perfil” (ENV-17): o marcado já não existe; a escolha mora nas Configurações. */
   function escolherOutroPerfil() {
     document.getElementById('modal-envio-fechar')?.click();
     location.hash = '#configuracoes/anki';
@@ -200,12 +200,12 @@
       const espera = estado?.waiting;
       if (espera?.reason === 'other_profile') {
         return {
-          motivo: textoDaVoz(falhasAoAbrirOPerfil.has(envio.jobId) ? 'ENV-16.falha' : 'ENV-16.espera', { aberto: espera.profile }),
-          rotulo: textoDaVoz('ENV-16.abrir', { perfil: espera.marked }), foco: 'abrir-perfil', aoUsar: () => abrirOPerfil(envio),
+          motivo: textoDaVoz(falhasAoAbrirOPerfil.has(envio.jobId) ? 'ENV-17.falha' : 'ENV-17.espera', { aberto: espera.profile }),
+          rotulo: textoDaVoz('ENV-17.abrir', { perfil: espera.marked }), foco: 'abrir-perfil', aoUsar: () => abrirOPerfil(envio),
         };
       }
       if (espera?.reason === 'profile_missing') {
-        return { motivo: textoDaVoz('ENV-16.sumiu', { perfil: espera.marked }), rotulo: textoDaVoz('ENV-16.escolher'), foco: 'escolher-perfil', aoUsar: escolherOutroPerfil };
+        return { motivo: textoDaVoz('ENV-17.sumiu', { perfil: espera.marked }), rotulo: textoDaVoz('ENV-17.escolher'), foco: 'escolher-perfil', aoUsar: escolherOutroPerfil };
       }
       const falhaAoContinuar = falhaAoRetomar(envio);
       const continuar = { rotulo: textoDaVoz('ENV-13.continuar'), foco: 'continuar', aoUsar: () => continuarEnvio(envio) };

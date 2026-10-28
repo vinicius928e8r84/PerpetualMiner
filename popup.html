@@ -36,7 +36,7 @@
     <section class="popup-secao" aria-labelledby="titulo-automatica">
       <h2 class="popup-titulo" id="titulo-automatica"><span id="titulo-automatica-texto"></span><span class="popup-titulo__lado" id="automatica-por-dia"></span></h2>
       <div class="popup-azulejos" id="azulejos"></div>
-      <p class="popup-nota" id="selo-vocabulario" hidden></p>
+      <p class="popup-nota" id="selo-vocabulario" hidden><span id="selo-vocabulario-texto"></span></p>
     </section>
 
     <form class="popup-rapida" id="mineracao-rapida" novalidate>
@@ -56,6 +56,9 @@
 
   <footer class="popup-rodape" id="rodape"></footer>
 
+  <!-- A ponte do abridor, recarregada a cada conversa com ele (lib/abridor.js). -->
+  <iframe id="abridor-ponte" src="abridor.html" hidden></iframe>
+
   <script src="lib/voz/catalogo.js"></script>
   <script src="lib/voz/texto.js"></script>
   <script src="veio/componentes.js"></script>
@@ -68,6 +71,8 @@
   <script src="lib/atalhos.js"></script>
   <script src="lib/pedido-ao-anki.js"></script>
   <script src="lib/conexao-anki.js"></script>
+  <script src="lib/abridor.js"></script>
+  <script src="lib/abrir-o-anki.js"></script>
   <script src="lib/configuracao.js"></script>
   <script src="lib/contexto.js"></script>
   <script src="popup.js"></script>

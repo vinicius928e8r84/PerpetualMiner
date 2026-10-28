@@ -83,7 +83,7 @@ python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon
 `test_pacote.py` falha enquanto o arquivo da extensão estiver para trás do código (o `LEIA-ME.md` e os testes não entram nele).
 Sem mudar o código, refazer o arquivo dá os mesmos bytes (o `mod` do manifest só sobe quando o código muda).
 
-Mudou o código do pacote (qualquer byte)? Suba a `VERSAO` em `configuracao.py` (a ainda não lançada fica) e registre-a em
+Mudou o código do pacote (qualquer byte)? Suba a `VERSAO` em `configuracao.py` (a não lançada fica) e registre-a em
 `versoes.json` com o hash que `test_pacote.py` mostra ao falhar (`python3 -c "from complemento import empacotar; print(empacotar.hash_das_fontes())"`).
 Depois refaça o arquivo. Subir a `VERSAO` muda a `versao` dos exemplos de `contrato/`.
 
@@ -150,12 +150,12 @@ data e confirmação do dono (ou a mudança do critério) antes do fechamento. O
    mostra o aviso da permissão (“Comunicar-se com aplicativos nativos cooperativos”); responda Permitir. A tela deve dizer
    “O Anki abre sozinho quando um Envio precisar.” e o passo virar ✓. Nada abre nem fecha.
 3. **Mac (risco 2):** o manifesto está em `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.perpetualminer.abridor.json`
-   e aponta para `…/user_files/abridor/abrir-o-anki.sh`. Para ver o `abrir` (que o Envio vai usar, #150), feche o Anki e rode no Terminal
+   e aponta para `…/user_files/abridor/abrir-o-anki.sh`. Para ver o `abrir` (que o Envio usa, #150), feche o Anki e rode, no Terminal,
    `printf '\x13\x00\x00\x00{"acao":"abrir"}' | sh "<o caminho do script>" | tail -c +5`: o Anki abre no perfil anotado, **sem pergunta
    do macOS**? A resposta é `{"achou":true,"abriu":true}`. Se o macOS perguntar algo (Gatekeeper, “Terminal quer controlar…”), anote o texto.
-   É só uma aproximação: o macOS julga o script do Terminal de um jeito e o do Chrome de outro, e a extensão só manda `abrir` a partir
-   do Envio (#150). O risco 2 de verdade (o Chrome chama, o Anki abre sem pergunta) continua **PENDING OWNER**:
-   se depender do #150, #147 fica pendente até essa confirmação ou uma mudança explícita do critério pelo dono.
+   Isto é só uma aproximação: o macOS julga de um jeito o script do Terminal e de outro o do Chrome, e a extensão só
+   manda `abrir` do Envio e do botão (#150). O risco 2 de verdade (o Chrome chama, o Anki abre sem pergunta) continua **PENDING OWNER**:
+   se o ensaio depender do #150, #147 permanece pendente até essa confirmação ou uma mudança explícita do critério pelo dono.
 4. **Windows com o Chrome:** `reg query "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.perpetualminer.abridor"` mostra o caminho
    do manifesto em `user_files\abridor`. O passo 2 acima dá ✓? Se a política do computador bloquear o PowerShell (`-ExecutionPolicy Bypass`
    não basta), o passo diz que o abridor não respondeu, com o Detalhes: anote o texto.

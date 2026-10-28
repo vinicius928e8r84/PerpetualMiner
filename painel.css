@@ -871,9 +871,7 @@ body {
   cursor: pointer;
 }
 
-/* Com seleção, a linha vira a barra contextual (PAI-32): pílula com borda ouro
-   a 45%, grudada no topo da ilha ao rolar. O checkbox da página fica no começo
-   dela, só com o nome para o leitor de tela. */
+/* Com seleção, a linha vira a barra contextual (PAI-32): pílula com borda ouro a 45%, grudada no topo da ilha ao rolar; o checkbox da página fica no começo dela. */
 .frases-selecao--barra {
   position: sticky;
   top: 12px;
@@ -1373,9 +1371,8 @@ body {
   display: none;
 }
 
-/* Os passos da Conexão (painel-conexao-passos.js): a lista ao lado do card do passo; na
-   janela estreita (o trilho) a lista fica em cima. Dentro de outro card (o passo 4 da
-   Boas-vindas), `pc--empilhado` põe a lista em fila acima do card, sem moldura própria. */
+/* Os passos da Conexão (painel-conexao-passos.js): a lista ao lado do card do passo; na janela estreita, em cima.
+   Dentro de outro card (o passo 4 da Boas-vindas), `pc--empilhado` a põe em fila acima do card, sem moldura. */
 .pc {
   display: grid;
   grid-template-columns: 230px minmax(0, 1fr);
@@ -1494,8 +1491,7 @@ body {
   margin: 0;
 }
 
-/* A animação do aviso do Anki (ONB-19, #146): dois quadros que se alternam sozinhos — o aviso
-   e o mesmo diálogo com o Sim marcado. Com movimento reduzido, ficam parados, lado a lado. */
+/* A animação do aviso do Anki (ONB-19, #146): dois quadros que se alternam sozinhos (o aviso e o Sim marcado); com movimento reduzido, parados. */
 .pc-animacao {
   display: grid;
   justify-items: start;
@@ -1536,8 +1532,7 @@ body {
   }
 }
 
-/* Numa janela estreita não cabem dois quadros lado a lado (cada um tem a linha Sim · Não inteira): parados, eles
-   empilham, sem sair do card. Acima disto os dois cabem, no card ONB-16 e no passo 4 da Boas-vindas. */
+/* Numa janela estreita os dois quadros não cabem lado a lado (cada um tem a linha Sim · Não inteira): empilham, sem sair do card. */
 @media (prefers-reduced-motion: reduce) and (max-width: 560px) {
   .pc-animacao__quadros {
     flex-direction: column;
@@ -1872,6 +1867,15 @@ body {
 
 .anki-antigo .veio-aviso__detalhes {
   margin: 0;
+}
+
+/* BRG-38: o Abrir o Anki do vazio, com o que deu ao lado. */
+.veio-vazio .abrir-o-anki {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .anki-selo-antigo {
