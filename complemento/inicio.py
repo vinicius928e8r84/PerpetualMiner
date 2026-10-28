@@ -33,8 +33,9 @@ def iniciar(
     O `item_de_login` é o de “Abrir o Anki com o computador”; sem ele, o deste computador (None onde não há).
     O `abridor` é o de “Abrir o Anki sozinho” (`abridor.py`); omitido, o deste computador, em `user_files/abridor`.
     `abridor=None` desativa a escrita e o registro (testes); um abridor injetado só usa os destinos dele.
-    Ele é escrito agora, com o perfil aberto (nenhum, ao carregar), e de novo a cada perfil que abre: `ao_abrir_o_perfil`
-    recebe a função que o reescreve (no Anki, o gancho `profile_did_open`).
+    Ele é escrito agora e de novo a cada perfil que abre (`ao_abrir_o_perfil` recebe a função que o reescreve; no Anki, o gancho
+    `profile_did_open`), sempre com o perfil **marcado** (#149): o que estava aberto na primeira conexão, até a pessoa escolher outro.
+    A mesma função marca o perfil aberto quando ainda não há marcado.
     """
     logger = registro.silencioso()
     try:
@@ -44,7 +45,6 @@ def iniciar(
             abridor = abridores.deste_computador(
                 plataforma=sys.platform, ambiente=os.environ, executavel=sys.executable, pasta=os.path.join(dados.raiz, "abridor")
             )
-        _cuidar_do_abridor(abridor, perfil_aberto, ao_abrir_o_perfil, logger)
         if item_de_login is None:
             item_de_login = itens_de_login.deste_computador(plataforma=sys.platform, ambiente=os.environ, executavel=sys.executable)
         conexao = Conexao(
@@ -60,26 +60,39 @@ def iniciar(
             voz_base=voz_base,
             item_de_login=item_de_login,
         )
+        _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger)
         return conexao if conexao.iniciar() else None
     except Exception:
         logger.exception("O complemento não conseguiu iniciar")
         return None
 
 
-def _cuidar_do_abridor(abridor, perfil_aberto, ao_abrir_o_perfil, logger):
-    """Escreve o abridor agora e pede para reescrevê-lo a cada perfil que abre. Nada aqui derruba a Conexão."""
-    if abridor is None:
-        return
-
-    def escrever():
+def _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger):
+    """Marca o perfil aberto na primeira conexão (#149) e escreve o abridor com o perfil marcado, agora e a cada perfil que abre
+    (`ao_abrir_o_perfil`); a Conexão o reescreve também quando a pessoa escolhe outro perfil. Nada aqui derruba a Conexão."""
+    def reagir():
         try:
-            abridor.escrever(perfil_aberto())
+            marcado = conexao.perfil_fixo.marcar_se_falta(conexao.perfil_aberto())
+        except Exception as erro:  # sem marca, o Envio só espera: o resto segue
+            logger.warning("O perfil aberto não foi marcado: %s", erro)
+            return
+        if abridor is None:
+            return
+        try:
+            perfis = conexao.colecao.perfis()
+        except Exception:  # o Anki não respondeu: não se sabe se o marcado sumiu, então vale o marcado
+            perfis = []
+        if perfis and marcado not in perfis:
+            marcado = None  # `-p` com um perfil que o Anki não tem: os Anki mais antigos não abrem; sem ele abrem a tela de perfis
+        try:
+            abridor.escrever(marcado)
         except Exception as erro:  # sem abridor, a extensão só não abre o Anki sozinha: o resto segue
             logger.warning("O abridor não foi escrito: %s", erro)
 
-    escrever()
+    conexao.ao_mudar_o_perfil = reagir
+    reagir()
     if ao_abrir_o_perfil is not None:
         try:
-            ao_abrir_o_perfil(escrever)
+            ao_abrir_o_perfil(reagir)
         except Exception:
-            logger.exception("O abridor não vai acompanhar o perfil que abrir")
+            logger.exception("O perfil e o abridor não vão acompanhar o perfil que abrir")

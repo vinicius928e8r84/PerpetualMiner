@@ -33,6 +33,31 @@
     return estado?.ankiError === 'repair_access_denied';
   }
 
+  // O Envio espera por causa do perfil do Anki (#149): `estado.waiting` diz qual, e a ação é a do cartão.
+  const abrindoOPerfil = new Set();
+  const falhasAoAbrirOPerfil = new Set();
+
+  /** “Abrir <perfil>” (ENV-17): a Conexão fecha o perfil aberto pelo caminho do Anki (que sincroniza) e abre o marcado. */
+  async function abrirOPerfil(envio) {
+    if (abrindoOPerfil.has(envio.jobId)) return;
+    abrindoOPerfil.add(envio.jobId);
+    try {
+      const resposta = await raiz.PedidoAoAnki.pedir(raiz.ConexaoAnki.ENDERECO, raiz.PedidoAoAnki.abrirOPerfilMarcado());
+      if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+      falhasAoAbrirOPerfil.delete(envio.jobId);
+    } catch {
+      falhasAoAbrirOPerfil.add(envio.jobId);
+    } finally {
+      abrindoOPerfil.delete(envio.jobId);
+    }
+  }
+
+  /** “Escolher perfil” (ENV-17): o marcado já não existe; a escolha mora nas Configurações. */
+  function escolherOutroPerfil() {
+    document.getElementById('modal-envio-fechar')?.click();
+    location.hash = '#configuracoes/anki';
+  }
+
   function etapaDeSete({ indice }) {
     return textoDaVoz('ENV-08.etapa', { n: indice + 1, total: ETAPAS.length });
   }
@@ -171,6 +196,16 @@
           motivo: textoDaVoz(envio.falhaAoCriar.motivo || (envio.falhaAoCriar.semResposta ? 'ENV-03.motivoSemResposta' : 'ENV-03.motivo')),
           rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'tentar', aoUsar: () => tentarCriarDeNovo(envio),
         };
+      }
+      const espera = estado?.waiting;
+      if (espera?.reason === 'other_profile') {
+        return {
+          motivo: textoDaVoz(falhasAoAbrirOPerfil.has(envio.jobId) ? 'ENV-17.falha' : 'ENV-17.espera', { aberto: espera.profile }),
+          rotulo: textoDaVoz('ENV-17.abrir', { perfil: espera.marked }), foco: 'abrir-perfil', aoUsar: () => abrirOPerfil(envio),
+        };
+      }
+      if (espera?.reason === 'profile_missing') {
+        return { motivo: textoDaVoz('ENV-17.sumiu', { perfil: espera.marked }), rotulo: textoDaVoz('ENV-17.escolher'), foco: 'escolher-perfil', aoUsar: escolherOutroPerfil };
       }
       const falhaAoContinuar = falhaAoRetomar(envio);
       const continuar = { rotulo: textoDaVoz('ENV-13.continuar'), foco: 'continuar', aoUsar: () => continuarEnvio(envio) };

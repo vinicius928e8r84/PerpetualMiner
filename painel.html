@@ -175,7 +175,7 @@
               <button class="veio-botao veio-botao--perigo-fantasma veio-botao--compacto" id="btn-delete-selected" type="button">
                 <span data-icone="apagar"></span><span data-voz="PAI-32.apagar"></span>
               </button>
-              <!-- Com a Conexão desligada fica aria-disabled (o tooltip aparece no hover e no foco) e diz por quê (painel-envio.js). -->
+              <!-- Desligada e nunca ligada: aria-disabled, e o tooltip diz por quê (painel-envio.js). -->
               <span class="veio-com-dica">
                 <button class="veio-botao veio-botao--primario veio-botao--compacto" id="btn-send-anki" type="button">
                   <span data-icone="enviar"></span><span data-voz="PAI-32.enviar"></span>
@@ -235,7 +235,7 @@
             <p class="apv-apoio" id="apv-apoio" data-voz="ONB-16.apoio"></p>
           </div>
 
-          <!-- A lista de passos e o card do passo: o componente de painel-conexao-passos.js, o mesmo do passo 4 da Boas-vindas. -->
+          <!-- Os passos e o card do passo: painel-conexao-passos.js, o mesmo do passo 4 da Boas-vindas. -->
           <div id="apv-passos"></div>
 
           <div class="apv-rodape" id="apv-rodape">
@@ -526,7 +526,7 @@
             <label class="veio-segmentado__opcao"><input type="radio" name="aba-minerar" value="colar"><span data-voz="ADD-01.colar"></span></label>
             <label class="veio-segmentado__opcao"><input type="radio" name="aba-minerar" value="arquivo"><span data-voz="ADD-01.arquivo"></span></label>
           </div>
-          <!-- Foto não é uma aba: fecha o modal e abre Minerar de uma foto numa aba nova. -->
+          <!-- Foto não é uma aba: abre Minerar de uma foto numa aba nova. -->
           <button class="veio-botao veio-botao--fantasma veio-botao--compacto minerar-abas__foto" type="button" id="btn-minerar-foto"
                   aria-describedby="minerar-foto-ajuda">
             <span data-voz="ADD-01.foto"></span><span data-icone="externo"></span>
@@ -616,7 +616,7 @@
     </div>
   </div>
 
-  <!-- A ponte do abridor (lib/abridor.js): uma página vazia, recarregada a cada conversa com o abridor. -->
+  <!-- A ponte do abridor, recarregada a cada conversa com ele (lib/abridor.js). -->
   <iframe id="abridor-ponte" src="abridor.html" hidden></iframe>
 
   <script src="lib/voz/catalogo.js"></script>
@@ -636,6 +636,7 @@
   <script src="lib/vocabulario-da-mineracao.js"></script>
   <script src="lib/pedido-ao-anki.js"></script>
   <script src="lib/abridor.js"></script>
+  <script src="lib/abrir-o-anki.js"></script>
   <script src="lib/sincronizacao.js"></script>
   <script src="painel-shell.js"></script>
   <script src="painel-conta.js"></script>
@@ -649,6 +650,7 @@
   <script src="painel-abrir-anki.js"></script>
   <script src="painel-perigo.js"></script>
   <script src="painel-envio-cartao.js"></script>
+  <script src="painel-envio-anki-fechado.js"></script>
   <script src="painel-envio.js"></script>
   <script src="painel-anki-primeira-conexao.js"></script>
   <script src="painel-anki.js"></script>

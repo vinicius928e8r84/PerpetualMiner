@@ -32,7 +32,7 @@ const ENVIO_DE_EXEMPLO = contrato.exemplos.find(e => e.daExtensao && e.pedido.ca
 
 // Um pedido é o mesmo para o contrato quando só o nome do Baralho muda: o resto do corpo (quantos Baralhos, `refresh`, `launch`) conta.
 const formaDoCorpo = corpo => JSON.parse(JSON.stringify(corpo ?? null), function (chave, valor) {
-  return chave === 'deckName' || chave === 'deck' ? '<baralho>' : chave === 'chave' ? '<chave>' : valor;
+  return chave === 'deckName' || chave === 'deck' ? '<baralho>' : chave === 'chave' ? '<chave>' : chave === 'profile' ? '<perfil>' : valor;
 });
 const exemplosDa = pedido => contrato.exemplos.filter(e => exemploDaExtensao(e)
   && e.pedido.metodo === pedido.metodo && e.pedido.caminho === pedido.caminho
@@ -45,6 +45,10 @@ async function main() {
 
   const variantes = PedidoAoAnki.variantes(BARALHOS, CHAVE_DE_EXEMPLO, ENVIO_DE_EXEMPLO);
   assert.ok(variantes.length >= 7, 'os construtores montam os pedidos de saúde, Baralhos, números (3 leituras) e vocabulário');
+  // O perfil fixo (#149): a lista, escolher outro e abrir o marcado são pedidos que a extensão faz, e cada um tem o seu exemplo.
+  for (const caminho of ['/anki/profiles', '/anki/profile', '/anki/profile/open']) {
+    assert.ok(variantes.some(({ pedido }) => pedido.caminho === caminho), `PedidoAoAnki.variantes não lista o pedido ${caminho} do perfil fixo`);
+  }
 
   for (const { nome, pedido: doContexto } of variantes) {
     // O objeto vem de outro contexto do `vm`: uma cópia em JSON, para a comparação de objetos ser a de valores.
@@ -58,6 +62,7 @@ async function main() {
     // O fake responde o mesmo pedido, com o corpo exato, como o complemento responde: pelo exemplo.
     const fake = criarFakeAnki();
     fake.abrirColecao('inglês com subbaralho');
+    if (pedido.caminho.startsWith('/anki/profile')) fake.definirPerfis(['Ana', 'Beto'], { marcado: 'Ana', aberto: 'Ana' });
     const { status } = fake.respostaDoContrato(pedido.metodo, pedido.caminho, pedido.corpo);
     assert.strictEqual(status, exemplos[0].resposta.status, `o fake respondeu "${nome}" diferente do exemplo "${exemplos[0].nome}"`);
   }

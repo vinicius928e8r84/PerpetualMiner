@@ -5,13 +5,17 @@ Fica fora do `__init__.py` para que os testes usem o mesmo adaptador que o Anki 
 
 import os
 import threading
+import time
 
 from . import inicio, janela, registro
-from .baralhos import ColecaoIndisponivel, TipoDeNotaAusente
+from .baralhos import ColecaoIndisponivel, PerfilIlegivel, TipoDeNotaAusente
 from .configuracao import OPENAI_BASE, OPENVERSE_BASE, PORTA, VERSAO, VOZ_BASE
 
 # Quanto a Conexão espera a thread principal do Anki ler a coleção antes de dizer que o Anki não respondeu.
 LIMITE_DA_LEITURA_S = 10
+# Depois de pedir ao Anki que entre num perfil, a Conexão não pede de novo por este tempo (s): entrar não é instantâneo, e um segundo
+# pedido no meio abriria o perfil duas vezes.
+ESPERA_DA_ENTRADA_S = 15
 
 
 def perfil_aberto(mw):
@@ -26,7 +30,7 @@ def perfil_aberto(mw):
 
 
 class ColecaoDoAnki:
-    """O adaptador da coleção (o contrato, de leitura e de gravação, está em `baralhos.py`), sobre o `mw` do Anki.
+    """O adaptador da coleção (o contrato, de leitura, de gravação e do perfil fixo, está em `baralhos.py`), sobre o `mw` do Anki.
 
     A coleção do Anki não é para outras threads: toda leitura e toda gravação roda na thread principal
     (`mw.taskman.run_on_main`), uma operação curta de cada vez, e só volta com o resultado; o que se faz com os
@@ -36,10 +40,14 @@ class ColecaoDoAnki:
     guarda um sqlite da thread principal: ela é lida lá, sem exigir coleção.
     """
 
-    def __init__(self, mw, limite_s=LIMITE_DA_LEITURA_S):
+    def __init__(self, mw, limite_s=LIMITE_DA_LEITURA_S, espera_da_entrada_s=ESPERA_DA_ENTRADA_S):
         self._mw = mw
         self._limite_s = limite_s
         self._sincronizando = threading.Event()
+        self._fixo = None
+        self._espera_da_entrada_s = espera_da_entrada_s
+        self._entrando_ate = 0.0
+        self._trocando = False
 
     def sincronizacao_comecou(self, *_):
         self._sincronizando.set()
@@ -77,6 +85,77 @@ class ColecaoDoAnki:
     def perfis(self):
         return self._na_thread_principal(lambda mw: list(mw.pm.profiles()), com_colecao=False)
 
+    def perfil_aberto(self):
+        return perfil_aberto(self._mw)
+
+    def fixar_o_perfil(self, fixo):
+        """O perfil fixo (#149, `perfil.PerfilFixo`): daqui em diante toda gravação só vale no perfil marcado."""
+        self._fixo = fixo
+
+    def entrar_no_perfil_fixo(self):
+        """Com o Anki na tela de perfis, abre o perfil marcado (`mw.pm.load` e `mw.onOpenProfile`, as funções que a janela de perfis
+        usa). Com um perfil aberto não faz nada. Devolve se começou a entrar."""
+        return self._na_thread_principal(self._entrar_no_marcado, com_colecao=False)
+
+    def trocar_para_o_perfil_fixo(self):
+        """O clique em “Abrir <perfil>”: fecha o perfil aberto pelo caminho normal do Anki (`unloadProfile`, que sincroniza e só então
+        segue) e abre o marcado. Na tela de perfis só abre; já no marcado, não faz nada. Devolve se começou."""
+        return self._na_thread_principal(self._trocar_para_o_marcado, com_colecao=False)
+
+    def _marcado_que_existe(self, mw):
+        try:
+            marcado = self._fixo.marcado() if self._fixo is not None else None
+        except PerfilIlegivel:
+            return None
+        return marcado if marcado in mw.pm.profiles() else None
+
+    @staticmethod
+    def _janela_de_perfis_livre(mw):
+        """A janela de perfis é a janela ativa e nenhum diálogo modal está aberto. `run_on_main` roda também dentro do laço de um modal:
+        com o “Excluir” ou o “Renomear” da janela de perfis aberto, entrar no perfil marcado faria o que a pessoa confirmar valer para ele
+        (`pm.remove(pm.name)`, `pm.rename`)."""
+        app = mw.app
+        ativa = app.activeWindow()
+        return not app.activeModalWidget() and (ativa is None or ativa is getattr(mw, "profileDiag", None))
+
+    def _entrar_no_marcado(self, mw):
+        """Na thread principal. Só da tela de perfis (`mw.state`), sem coleção aberta, e uma vez por `espera_da_entrada_s`."""
+        marcado = self._marcado_que_existe(mw)
+        if marcado is None or getattr(mw, "col", None) is not None or getattr(mw, "state", None) != "profileManager":
+            return False
+        if not self._janela_de_perfis_livre(mw):
+            return False
+        if time.monotonic() < self._entrando_ate:
+            return False
+        self._entrando_ate = time.monotonic() + self._espera_da_entrada_s
+        if not mw.pm.load(marcado):
+            return False
+        mw.onOpenProfile()
+        return True
+
+    def _trocar_para_o_marcado(self, mw):
+        marcado = self._marcado_que_existe(mw)
+        if marcado is None:
+            return False
+        if getattr(mw, "col", None) is None:
+            return self._entrar_no_marcado(mw)
+        if mw.pm.name == marcado or self._trocando:
+            return False  # `_trocando`: o Anki ainda sincroniza ao fechar; um segundo clique fecharia o perfil de novo
+
+        def depois_de_fechar():
+            self._trocando = False
+            mw.showProfileManager()  # o que o item Trocar de perfil faz depois de fechar (`unloadProfileAndShowProfileManager`)
+            self._entrando_ate = 0.0
+            self._entrar_no_marcado(mw)
+
+        self._trocando = True
+        try:
+            mw.unloadProfile(depois_de_fechar)
+        except Exception:
+            self._trocando = False
+            raise
+        return True
+
     def nomes_dos_baralhos(self):
         return self._na_thread_principal(lambda colecao: [baralho.name for baralho in colecao.decks.all_names_and_ids()])
 
@@ -86,6 +165,8 @@ class ColecaoDoAnki:
     def _gravando(self, operacao):
         """A operação de gravação, na thread principal; a sincronização é conferida lá, na hora em que ela roda."""
         def sem_sincronizar(colecao):
+            if self._fixo is not None:  # o perfil lido aqui, na hora de gravar: nenhuma troca de perfil cabe entre a conferência e a nota
+                self._fixo.conferir(self._mw.pm.name, self._mw.pm.profiles())
             if self._sincronizando.is_set():
                 raise ColecaoIndisponivel("anki_syncing")
             return operacao(colecao)

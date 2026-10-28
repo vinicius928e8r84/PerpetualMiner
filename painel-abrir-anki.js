@@ -17,6 +17,14 @@
     falha: null,         // { ligar, erro, incerta }: o que não mudou e a causa; `incerta`: a resposta não chegou, o item pode ter mudado
     leitura: 0,          // só a leitura mais recente vale
   };
+  // O perfil fixo (#149): a lista que a Conexão leu do Anki, o marcado e o que a última escolha disse.
+  const perfis = {
+    lista: null,         // os perfis do Anki; null enquanto a Conexão não os disse
+    marcado: null,
+    escolhendo: false,   // um pedido de escolha no ar
+    falha: null,         // o erro da escolha que a Conexão não fez
+    leitura: 0,          // só a leitura mais recente vale
+  };
   let partes = null;     // o conteúdo do card, montado uma vez e atualizado no lugar
 
   function iniciar() {
@@ -26,12 +34,12 @@
       estado.situacao = situacao;
       // Sem a Conexão não se sabe o que o item é agora: o que estava confirmado deixa de valer.
       if (situacao !== SITUACAO.LIGADA) estado.confirmado = false;
-      if (voltou) ler();
+      if (voltou) { ler(); lerOsPerfis(); }
       else if (situacao === SITUACAO.LIGADA && !estado.confirmado && estado.semResposta === 'falhou' && !estado.gravando) ler();
       desenhar();
     });
     // O item pode mudar fora daqui (a pessoa o tira dos Itens de Início): ao entrar na área, lê de novo.
-    Shell.aoEntrarNaArea('configuracoes', () => { if (estado.situacao === SITUACAO.LIGADA) ler(); });
+    Shell.aoEntrarNaArea('configuracoes', () => { if (estado.situacao === SITUACAO.LIGADA) { ler(); lerOsPerfis(); } });
   }
 
   /** Envia o `pedido` (de `PedidoAoAnki`); devolve o `ligado` da resposta, ou levanta o erro (com o `codigo` e o `status`, se a Conexão respondeu). */
@@ -100,6 +108,84 @@
     partes.interruptor.focus();
   }
 
+  /** Pede à Conexão e devolve o JSON da resposta; levanta o erro (com o `status`) se ela não respondeu 2xx. */
+  async function pedirOPerfil(pedido) {
+    const resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, pedido, { signal: AbortSignal.timeout(ConexaoAnki.TEMPO_DA_RESPOSTA) });
+    const dados = await resposta.json().catch(() => null);
+    if (!resposta.ok) throw Object.assign(new Error(`HTTP ${resposta.status}${dados?.error ? ` · ${dados.error}` : ''}`), { status: resposta.status });
+    return dados;
+  }
+
+  /** Lê os perfis do Anki e o marcado. Sem resposta que se entenda (uma Conexão sem a rota, o Anki ocupado) a tela não diz nada de perfis. */
+  async function lerOsPerfis() {
+    const leitura = ++perfis.leitura;
+    let dados = null;
+    try {
+      dados = await pedirOPerfil(raiz.PedidoAoAnki.perfisDoAnki());
+    } catch {
+      dados = null;
+    }
+    if (leitura !== perfis.leitura || perfis.escolhendo) return;
+    const entendida = Array.isArray(dados?.profiles) && dados.profiles.every(nome => typeof nome === 'string');
+    perfis.lista = entendida ? dados.profiles : null;
+    perfis.marcado = entendida && typeof dados.marked === 'string' ? dados.marked : null;
+    desenhar();
+  }
+
+  /** Marca outro perfil. A tela mostra o que a Conexão ficou com (relido no fim), nunca o que a pessoa pediu. */
+  async function escolherOPerfil(nome) {
+    perfis.escolhendo = true;
+    perfis.falha = null;
+    perfis.leitura++;
+    desenhar();
+    try {
+      await pedirOPerfil(raiz.PedidoAoAnki.escolherOPerfil(nome));
+    } catch (erro) {
+      perfis.falha = erro;
+    }
+    perfis.escolhendo = false;
+    await lerOsPerfis();
+  }
+
+  /** Só com 2 ou mais perfis, ou com o marcado que o Anki já não tem (a pessoa precisa escolher outro). */
+  function oMarcadoSumiu() {
+    return perfis.lista !== null && perfis.marcado !== null && !perfis.lista.includes(perfis.marcado);
+  }
+
+  function aLinhaDoPerfilAparece() {
+    return estado.situacao === SITUACAO.LIGADA && perfis.lista !== null && (perfis.lista.length >= 2 || oMarcadoSumiu());
+  }
+
+  /** A linha “Perfil do Anki ▾” (CFG-43): o aviso em vermelho do marcado que sumiu, o que o Anki não escolheu, e a lista. */
+  function montarALinhaDoPerfil() {
+    const nome = elemento('label', 'cfg-nome', textoDaVoz('CFG-43.rotulo'));
+    nome.htmlFor = 'cfg-anki-perfil-escolha';
+    const lista = elemento('select', 'veio-campo');
+    lista.id = 'cfg-anki-perfil-escolha';
+    lista.disabled = perfis.escolhendo;
+    lista.setAttribute('aria-busy', String(perfis.escolhendo));
+    lista.append(...perfis.lista.map(perfil => Object.assign(elemento('option'), { value: perfil, textContent: perfil })));
+    lista.value = perfis.marcado ?? '';
+    if (!perfis.lista.includes(lista.value)) lista.selectedIndex = -1;
+    lista.addEventListener('change', () => escolherOPerfil(lista.value));
+
+    const avisos = [];
+    if (oMarcadoSumiu()) {
+      avisos.push(Veio.montarAviso({ texto: textoDaVoz('CFG-43.sumiu', { perfil: perfis.marcado }), fechavel: false }));
+    }
+    if (perfis.falha) {
+      avisos.push(Veio.montarAviso({
+        texto: textoDaVoz('CFG-43.falha'), detalhes: perfis.falha.message, rotuloDeFechar: textoDaVoz('PAI-34'),
+        aoFechar: () => { perfis.falha = null; },
+      }));
+    }
+    const linha = elemento('div', 'cfg-linha',
+      elemento('div', 'cfg-quem', nome, elemento('span', 'cfg-nota', textoDaVoz('CFG-43.nota'))),
+      elemento('div', 'cfg-acoes', elemento('span', 'veio-select', lista)));
+    linha.id = 'cfg-anki-perfil';
+    return [...avisos, linha]; // filhos diretos do corpo do card, que já os espaça
+  }
+
   function montar() {
     const nome = elemento('b', 'cfg-nome', textoDaVoz('CFG-36.rotulo'));
     nome.id = 'cfg-anki-nome';
@@ -118,7 +204,7 @@
       elemento('div', 'cfg-quem', nome, nota),
       elemento('div', 'cfg-acoes', elemento('label', 'veio-toggle', interruptor, elemento('span', 'veio-toggle__trilho'))));
     porId('cfg-anki-corpo').replaceChildren(aviso, linha);
-    return { aviso, avisoDe: null, nota, interruptor };
+    return { aviso, avisoDe: null, nota, interruptor, perfil: [], assinaturaDoPerfil: null };
   }
 
   function desenhar() {
@@ -136,12 +222,26 @@
           : textoDaVoz('CFG-36.nota');
     desenharOResumo(sabe);
     desenharOAviso();
+    desenharOPerfil();
   }
 
   /** A linha fechada: o que o item faz agora; sem a Conexão, que não se sabe. */
   function desenharOResumo(sabe) {
     const texto = !sabe ? 'CFG-37.indisponivel' : estado.ligado ? 'CFG-37.ligado' : 'CFG-37.desligado';
     porId('cfg-anki-resumo').replaceChildren(elemento('span', null, textoDaVoz(texto)));
+  }
+
+  /** A linha do perfil é refeita só quando muda o que ela mostra, para a lista aberta não piscar a cada conferência da Conexão. */
+  function desenharOPerfil() {
+    const aparece = aLinhaDoPerfilAparece();
+    const assinatura = JSON.stringify(aparece ? [perfis.lista, perfis.marcado, perfis.escolhendo, perfis.falha?.message ?? null] : null);
+    if (assinatura === partes.assinaturaDoPerfil) return;
+    partes.assinaturaDoPerfil = assinatura;
+    const tinhaFoco = partes.perfil.some(no => no.contains(document.activeElement));
+    partes.perfil.forEach(no => no.remove());
+    partes.perfil = aparece ? montarALinhaDoPerfil() : [];
+    porId('cfg-anki-corpo').append(...partes.perfil);
+    if (tinhaFoco) document.getElementById('cfg-anki-perfil-escolha')?.focus();
   }
 
   /** O aviso fica o mesmo nó enquanto a falha é a mesma: o Detalhes aberto e o foco sobrevivem às outras leituras. */

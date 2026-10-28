@@ -25,6 +25,8 @@ from .rotas_da_chave import (
 )
 from .configuracao import ENDERECO, OPENAI_BASE, OPENVERSE_BASE, VOZ_BASE
 from .item_de_login import AnkiNaoEncontrado
+from .perfil import PerfilFixo
+from .rotas_do_perfil import abrir_o_perfil_marcado, escolher_o_perfil, listar_os_perfis
 
 # Um pedido maior que isto não é da extensão: a leitura mais pesada (os Baralhos pedidos) cabe em poucos KB.
 LIMITE_DO_CORPO = 64 * 1024
@@ -148,6 +150,10 @@ ROTAS = {
     ("POST", "/anki/decks"): _baralhos_do_anki,
     ("POST", "/anki/stats/decks"): _numeros_dos_baralhos,
     ("POST", "/anki/vocabulary"): _vocabulario,
+    # O perfil fixo (#149): a lista com o marcado, escolher outro e abrir o marcado.
+    ("POST", "/anki/profiles"): listar_os_perfis,
+    ("POST", "/anki/profile"): escolher_o_perfil,
+    ("POST", "/anki/profile/open"): abrir_o_perfil_marcado,
     # A chave da OpenAI: POST com a origem da extensão, e nenhuma resposta devolve a chave inteira.
     ("POST", "/ia/openai/chave"): guardar_chave_da_openai,
     ("POST", "/ia/openai/chave/apagar"): apagar_chave_da_openai,
@@ -326,6 +332,17 @@ class _SemColecao:
     def perfis(self):
         return []
 
+    def perfil_aberto(self):
+        return None
+
+    def fixar_o_perfil(self, fixo):
+        pass
+
+    def entrar_no_perfil_fixo(self):
+        return False
+
+    trocar_para_o_perfil_fixo = entrar_no_perfil_fixo
+
     def nomes_dos_baralhos(self, *_):
         raise baralhos.ColecaoIndisponivel("collection_unavailable")
 
@@ -370,6 +387,11 @@ class Conexao:
         self.colecao = colecao or _SemColecao()
         self.logger = logger
         self.dados = dados
+        # O perfil fixo (#149): o marcado fica em `user_files/perfil.json`, e o adaptador da coleção só grava nele.
+        self.perfil_fixo = PerfilFixo(os.path.join(dados.raiz, "perfil.json"))
+        self.colecao.fixar_o_perfil(self.perfil_fixo)
+        # Chamado depois de a pessoa escolher outro perfil: o que depende do marcado (o abridor) se refaz. Quem monta a Conexão o troca.
+        self.ao_mudar_o_perfil = lambda: None
         self.cofre = Cofre(dados.chaves)
         self.chatgpt = LoginDoChatGPT(dados.chaves, logger, base=chatgpt_base, api=openai_base)
         self.openai_base = openai_base

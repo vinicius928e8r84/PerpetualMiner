@@ -87,7 +87,10 @@ def exemplos_do_contrato():
 def colecao_do_exemplo(contexto):
     """A coleção do contexto do exemplo: a que ele nomeia em `colecoes`, ou o Anki sem coleção aberta."""
     nome = contexto.get("colecao")
-    return ColecaoEmMemoria(ler_o_contrato()["colecoes"][nome]) if nome else ColecaoEmMemoria.fechada()
+    perfis = tuple(contexto.get("perfis", ("Usuário 1",)))
+    if not nome:
+        return ColecaoEmMemoria.fechada(perfis=perfis)
+    return ColecaoEmMemoria(ler_o_contrato()["colecoes"][nome], perfis=perfis, perfil_aberto=contexto.get("perfil"))
 
 
 def igual_ao_do_contrato(obtido, esperado):
@@ -209,6 +212,7 @@ class ConexaoNoTeste:
         trabalhando=False,
         espera_do_contato=0.0,
         chatgpt=None,
+        perfil_marcado=None,
         adaptador_de_imagem=None,
     ):
         self.perfil = perfil
@@ -224,6 +228,9 @@ class ConexaoNoTeste:
         if antes is not None:
             with open(os.path.join(self.chaves, "openai.json"), "w", encoding="utf-8") as arquivo:
                 json.dump(antes, arquivo)
+        if perfil_marcado is not None:
+            with open(os.path.join(pasta, "perfil.json"), "w", encoding="utf-8") as arquivo:
+                json.dump({"perfil": perfil_marcado}, arquivo)  # o perfil fixo que a Conexão marcou antes de o teste começar
         self.de_mentira = (self.openai, self.openverse, self.voz, self.firestore) = (
             OpenAIDeMentira(openai), OpenverseDeMentira(), VozDeMentira(), FirestoreDeMentira())
         self.firestore.falha = firebase
@@ -333,6 +340,7 @@ def conexao_do_exemplo(pasta, exemplo):
         hora_na_conexao=contexto.get('emNaConexao', 0),
         firebase=contexto.get('firebase', 0),
         chatgpt=contexto.get("chatgpt"),
+        perfil_marcado=contexto.get('perfilMarcado'),
     ) as conexao:
         if 'chaveNaNuvem' in contexto:
             conexao.firestore.documentos['uid-teste'] = {
@@ -419,6 +427,7 @@ class RepeticaoDoContrato(unittest.TestCase):
 #   le_a_colecao  lê a coleção: se quebra responde 500, sem coleção aberta responde 503;
 #   le_o_perfil   lê o perfil aberto: ilegível, responde 500;
 #   recusas       cada validação do pedido: (corpo, status, `error`), com a coleção aberta;
+#   abre_perfil   a rota abre um perfil no Anki (de uma tela de perfis passa a haver coleção): a matriz a pede por último;
 #   muda          a rota muda o que a Conexão guarda (a chave, o item de login): `RepeticaoDeCadaRotaQueMuda` a pede de novo e
 #                 com a base velha, e uma rota que muda sem dizer isso quebra;
 #   versao        o corpo traz a base (`versao`) do que ela muda: a base velha tem que dar 409, sem mudar nada;
@@ -472,6 +481,16 @@ MATRIZ = {
         "le_o_perfil": False,
         "recusas": [({"ligado": "sim"}, 400, "invalid_request")],
     },
+    # O perfil fixo (#149): a lista dos perfis lê o gerente de perfis do Anki, que responde sem coleção aberta, e o perfil aberto (da saúde).
+    # A primeira lista com um perfil aberto o marca (`perfil.json`); marcar outro grava o mesmo arquivo; repetidos, nada mais muda.
+    # Abrir o marcado não grava nada da Conexão: pede ao Anki. Na matriz, a rota anterior (`/anki/profile`) já marcou o perfil; o 404 de
+    # quando não há marcado, ou ele sumiu, é dos exemplos do contrato.
+    ("POST", "/anki/profiles"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": True, "recusas": []},
+    ("POST", "/anki/profile"): {
+        "corpo": {"profile": "Usuário 1"}, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
+        "recusas": [({}, 400, "invalid_request"), ({"profile": "Carla"}, 404, "profile_not_found")],
+    },
+    ("POST", "/anki/profile/open"): {"corpo": {}, "abre_perfil": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/anki/vocabulary"): {
         "corpo": {"deck": "Inglês", "lang": "en"},
         "le_a_colecao": True,
@@ -526,7 +545,8 @@ class EstadosDeCadaRota(unittest.TestCase):
         self.assertEqual(sem_entrada, [], "rota nova sem entrada em MATRIZ (complemento/test_servidor.py): diga o corpo, se lê a coleção e o perfil, e as recusas dela")
 
     def pedir_cada_rota(self, conexao, rotas, matriz):
-        return {rota: conexao.pedir(rota[0], rota[1], corpo=matriz[rota]["corpo"]) for rota in sorted(rotas)}
+        # `abre_perfil`: a rota abre um perfil no Anki (a tela de perfis passa a ter coleção); vai por último, para as outras a pedirem como estava.
+        return {rota: conexao.pedir(rota[0], rota[1], corpo=matriz[rota]["corpo"]) for rota in sorted(rotas, key=lambda r: (matriz[r].get("abre_perfil", False), r))}
 
     def conferir_a_colecao_que_quebra(self, rotas, matriz):
         with tempfile.TemporaryDirectory() as pasta, contextlib.redirect_stderr(io.StringIO()), ConexaoNoTeste(pasta, colecao=QuebradaAoLer()) as conexao:
@@ -538,7 +558,7 @@ class EstadosDeCadaRota(unittest.TestCase):
                 self.assertEqual(status, matriz[rota].get("status", 200), rota)
 
     def conferir_sem_a_colecao_aberta(self, rotas, matriz):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, colecao=ColecaoEmMemoria.fechada()) as conexao:
             respostas = self.pedir_cada_rota(conexao, rotas, matriz)
         for rota, (status, _, corpo) in respostas.items():
             if matriz[rota]["le_a_colecao"]:
@@ -548,7 +568,7 @@ class EstadosDeCadaRota(unittest.TestCase):
                 self.assertEqual(status, matriz[rota].get("status", 200), rota)
 
     def conferir_o_perfil_que_nao_se_le(self, rotas, matriz):
-        with tempfile.TemporaryDirectory() as pasta, contextlib.redirect_stderr(io.StringIO()), ConexaoNoTeste(pasta, falha_no_perfil=True) as conexao:
+        with tempfile.TemporaryDirectory() as pasta, contextlib.redirect_stderr(io.StringIO()), ConexaoNoTeste(pasta, falha_no_perfil=True, colecao=ColecaoEmMemoria.fechada()) as conexao:
             respostas = self.pedir_cada_rota(conexao, rotas, matriz)
         for rota, (status, _, corpo) in respostas.items():
             if matriz[rota]["le_o_perfil"]:
@@ -763,10 +783,10 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
             with self.assertRaisesRegex(AssertionError, "tire a exceção"):
                 self.conferir_o_pedido_repetido(rotas, matriz, exemplos)
 
-    def test_as_rotas_que_mudam_sao_as_da_chave_do_chatgpt_do_item_de_login_e_do_envio(self):
+    def test_as_rotas_que_mudam_sao_as_da_chave_do_chatgpt_do_item_de_login_do_perfil_e_do_envio(self):
         self.assertEqual(
             sorted(rota[1] for rota, regra in MATRIZ.items() if regra.get("muda")),
-            ["/abrir-com-o-computador", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry"],
+            ["/abrir-com-o-computador", "/anki/profile", "/anki/profiles", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry"],
         )
 
 

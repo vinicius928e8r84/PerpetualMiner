@@ -5,7 +5,7 @@
   /** De quanto em quanto tempo a Conexão é perguntada sobre os Envios. */
   const INTERVALO = 2000;
 
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, IDIOMAS, ehRussa, AjustesDeEnvio, PedidoAoAnki, CartaoDoEnvio } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, IDIOMAS, ehRussa, AjustesDeEnvio, PedidoAoAnki, CartaoDoEnvio, EnvioComOAnkiFechado } = raiz;
   const { ETAPAS, FIM, IDIOMA_DO_LANG, nomeDoIdioma, retomavel, botao, elemento } = CartaoDoEnvio;
   const { AREAS_DO_PAINEL } = Shell;
   const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
@@ -18,17 +18,16 @@
   });
 
   let doPainel = null;
-  // A remessa acompanhada: { envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar, corpo }] } (em `pm_envio` vai também
-  // `apagarFrases: true` quando o Apagar tudo ainda não foi confirmado pela Conexão: o painel pede de novo quando ela responder). `corpo` é o
-  // pedido do Envio, montado uma vez e gravado antes do primeiro POST: reenviado igual (Tentar de novo, o painel reaberto
-  // com o pedido sem resposta), é o mesmo Envio na Conexão, porque o `jobId` dele é o `id` (docs/design/envio-no-complemento.md).
+  let ankiFechado = null;
+  // A remessa acompanhada: { envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar, corpo }] } (`pm_envio` leva também
+  // `apagarFrases: true` até a Conexão confirmar o Apagar tudo). `corpo` é o pedido, montado uma vez e gravado antes do primeiro POST:
+  // reenviado igual, é o mesmo Envio na Conexão, porque o `jobId` dele é o `id` (docs/design/envio-no-complemento.md).
   let remessa = null;
   const jobs = new Map();           // jobId → o último job lido de POST /jobs/list
   const falhasAoRetomar = new Map(); // jobId → a causa, quando Continuar envio não deu
   let criando = false;
   const retomando = new Set();      // jobIds com um Continuar envio a caminho
-  // Um Envio que não começou (ou que não deu para retomar) segura o resumo: o
-  // progresso volta com o erro à vista, e o resumo só abre quando a pessoa o fecha.
+  // Um Envio que não começou (ou que não deu para retomar) segura o resumo até a pessoa fechar o progresso.
   let desistiuDasPendencias = false;
   let semNoticia = false;
   let conexaoDesligada = false;
@@ -41,7 +40,7 @@
   async function usar(operacoes) {
     if (doPainel) return;
     doPainel = operacoes;
-    porId('btn-send-anki').addEventListener('click', enviar);
+    porId('btn-send-anki').addEventListener('click', () => enviar());
     porId('modal-envio-fechar').addEventListener('click', () => progresso?.fechar());
     porId('modal-resumo-fechar').addEventListener('click', () => resumo?.fechar());
     porId('btn-resumo-manter').addEventListener('click', () => resumo?.fechar());
@@ -55,6 +54,7 @@
       mostrarConexao(situacao);
       if (situacao !== CONEXAO.DESLIGADA) pedirAApagarAsFrases();
     });
+    ankiFechado = EnvioComOAnkiFechado.criar({ aoLigar: enviar });
     // O resumo que esperou a Boas-vindas abre quando a pessoa chega ao painel.
     for (const area of AREAS_DO_PAINEL) Shell.aoEntrarNaArea(area, tentarAbrirResumo);
 
@@ -81,11 +81,13 @@
     }
   }
 
-  async function enviar() {
-    if (conexaoDesligada || criando || !doPainel) return;
+  /** `ids`: as Frases que um Enviar com o Anki fechado guardou; sem eles, a seleção de agora. */
+  async function enviar(ids) {
+    if (criando || !doPainel) return;
     // Uma frase que já está na remessa não vai de novo: quem não começou tem o Tentar de novo dele.
     const acompanhadas = new Set((remessa?.envios || []).flatMap(e => e.ids));
-    const novas = doPainel.selecionadas().filter(f => !acompanhadas.has(f.id));
+    const novas = (ids ? doPainel.frasesPorId(ids) : doPainel.selecionadas()).filter(f => !acompanhadas.has(f.id));
+    if (conexaoDesligada) return novas.length && ConexaoAnki.jaConectou() ? ankiFechado.pedir(novas.map(f => f.id)) : undefined;
     if (novas.length === 0) {
       if (remessa) abrirProgresso();
       return;
@@ -122,10 +124,7 @@
     acompanhar();
   }
 
-  /**
-   * `POST /jobs` de um Envio; se não começa, a causa fica no cartão (ENV-03). O corpo é montado na primeira vez e
-   * gravado antes de sair; daí em diante vai sempre o mesmo, para a Conexão reconhecer o Envio pelo `jobId`.
-   */
+  /** `POST /jobs` de um Envio; se não começa, a causa fica no cartão (ENV-03). O corpo é montado na primeira vez e vai sempre o mesmo. */
   async function criarEnvio(envio) {
     const aRemessaDoEnvio = remessa;
     envio.falhaAoCriar = null;
@@ -233,10 +232,8 @@
   // ─── Apagar tudo (CFG-17) ───────────────────────────────────────────────────
 
   /**
-   * As Frases saem do que o painel guarda do Envio e da Conexão. O painel deixa de acompanhar os Envios: as Frases deles não existem
-   * mais, então não há resumo a mostrar nem o que reenviar (o Tentar de novo gastaria a chave com Frases apagadas, e o de um Envio que
-   * a Conexão parou não faz nada). Em `pm_envio` fica só a marca do pedido. A Conexão apaga as Frases dela
-   * (`POST /jobs/apagar-frases`) e para os Envios dela; sem resposta, a marca fica e o pedido sai de novo quando ela responder.
+   * O painel deixa de acompanhar os Envios (as Frases deles não existem mais: sem resumo, sem o que reenviar) e a Conexão apaga as
+   * dela (`POST /jobs/apagar-frases`) e para os Envios; em `pm_envio` fica só a marca do pedido, que sai de novo quando ela responder.
    */
   async function apagarTudo() {
     encerrarOAcompanhamento();
@@ -534,13 +531,13 @@
     });
   }
 
-  /** Com a Conexão desligada, Enviar ao Anki fica `aria-disabled` e o tooltip diz por quê, só no hover e no foco. */
+  /** Desligada e nunca ligada neste computador (sem abridor), Enviar ao Anki fica `aria-disabled` e o tooltip diz por quê, só no hover e no foco. */
   function mostrarConexao(situacao) {
     conexaoDesligada = situacao === CONEXAO.DESLIGADA;
     const enviarAoAnki = porId('btn-send-anki');
     const dica = porId('envio-indisponivel');
     dica.textContent = textoDaVoz('PAI-32.enviarIndisponivel');
-    if (conexaoDesligada) {
+    if (conexaoDesligada && !ConexaoAnki.jaConectou()) {
       enviarAoAnki.setAttribute('aria-disabled', 'true');
       enviarAoAnki.setAttribute('aria-describedby', dica.id);
     } else {

@@ -244,6 +244,20 @@ textarea {
   line-height: 1.45;
 }
 
+/* BRG-38: o Abrir o Anki do selo (POP-17) segue o texto, depois de um ponto médio; o do azulejo fica embaixo dele. */
+#selo-vocabulario .abrir-o-anki::before {
+  content: '·';
+  margin: 0 6px;
+}
+
+.popup-azulejo__espera .abrir-o-anki {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
 .popup-rapida {
   margin: 0;
 }

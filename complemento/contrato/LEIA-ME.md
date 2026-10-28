@@ -1,8 +1,8 @@
 # O contrato da Conexão com o Anki
 
 `exemplos.json` é o conjunto único de pedidos e respostas entre a extensão e a Conexão
-com o Anki (o complemento do Anki, em `127.0.0.1:8766`), junto com os `exemplos-*.json` ao lado dele (um por assunto;
-`carregar.js` e `test_servidor.py` os somam e recusam um nome repetido). Dois lados leem o mesmo conjunto:
+com o Anki (o complemento do Anki, em `127.0.0.1:8766`), junto com os `exemplos-*.json` ao lado dele (um por assunto, como
+`exemplos-do-perfil.json`; `carregar.js` e `test_servidor.py` os somam e recusam nome repetido). Dois lados leem o mesmo conjunto:
 
 - **o complemento**: `python3 complemento/test_servidor.py` sobe o servidor real e confere
   cada exemplo (rode também no 3.9, o Python do Anki do Mac);
@@ -189,6 +189,18 @@ um token (`docs/design/login-do-chatgpt.md`).
 
 O retorno `GET /auth/callback` é do navegador, fora dos exemplos (`servidor.PAGINAS`; `test_login_do_chatgpt.py`).
 
+## As rotas do perfil fixo (#149)
+
+Todas POST, com a origem da extensão. O perfil marcado é o aberto na primeira vez que a Conexão viu um (`user_files/perfil.json`).
+
+| Rota | Corpo | Resposta |
+|---|---|---|
+| `POST /anki/profiles` | `{}` | `{ profiles, marked, open }`: os perfis do Anki, o marcado (`null`: nenhum ainda) e o aberto (`null`: a tela de perfis). `503 anki_profiles_unavailable` |
+| `POST /anki/profile` | `{ profile }` | `{ ok, marked }`: marca outro perfil (e o abridor passa a abrir o Anki nele). `400 invalid_request`; `404 profile_not_found` |
+| `POST /anki/profile/open` | `{}` | `{ ok, profile }`: “Abrir <perfil>”, fecha o perfil aberto pelo caminho normal do Anki e abre o marcado. `404 profile_not_found` (sem marcado, ou ele sumiu) |
+
+O Envio que espera por causa do perfil diz o motivo no `state` (`waiting: { reason: other_profile | profile_missing, profile, marked }`).
+
 ## O abridor (Native Messaging)
 
 O abridor (#147, `complemento/abridor.py`) não fala HTTP: a extensão o chama por `chrome.runtime.sendNativeMessage`
@@ -199,4 +211,4 @@ Chrome entrega e a `resposta` do script. Os três lados leem os mesmos exemplos:
 - **o script de verdade**: `complemento/test_abridor.py` roda o `.sh` do Mac com cada exemplo (no Linux, só a CLI do JXA é adaptada para Node, executando o mesmo parser JavaScript; no Mac, `/usr/bin/osascript`), e o `.ps1` do Windows onde houver `pwsh`. A ação é a string principal exata `conferir` ou `abrir`: espaços internos, maiúsculas, ação aninhada e listas voltam `acao_desconhecida` sem abrir nada; os exemplos inválidos são compartilhados entre os dois sistemas;
 - **o fake do e2e**: `e2e/fakes/abridor.js` responde pelos exemplos (`node test_fake_abridor.js` o confere);
 - **a extensão**: cada mensagem nasce de `PerpetualMiner.Abridor` (`lib/abridor.js`), e `node test_contrato_fechado.js` exige um exemplo
-  `daExtensao` de cada uma de `Abridor.variantes()`. A extensão manda `conferir` (o passo Abrir o Anki sozinho, #147) e `abrir` (o passo Ter o Anki, #146; depois o Envio, #150).
+  `daExtensao` de cada uma de `Abridor.variantes()`. A extensão manda `conferir` (o passo Abrir o Anki sozinho, #147) e `abrir` (o passo Ter o Anki, #146; o Envio com o Anki fechado e o botão Abrir o Anki, #150).

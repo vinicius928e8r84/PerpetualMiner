@@ -102,11 +102,7 @@
     desenhar();
   }
 
-  /**
-   * O painel.js informa os baralhos dos Ajustes de envio, ao abrir e a cada
-   * Salvar ajustes; um baralho novo é lido de novo. Ler nunca abre o Anki: só
-   * Atualizar e Tentar de novo, que a pessoa aperta, pedem à Conexão que o abra.
-   */
+  /** O painel.js informa os baralhos dos Ajustes de envio ao abrir e a cada Salvar ajustes; um baralho novo é lido de novo, sem abrir o Anki. */
   function usarBaralhos(nomes) {
     const antes = estado.nomes;
     estado.nomes = { en: nomes.en, ru: nomes.ru };
@@ -210,10 +206,7 @@
     desenhar();
   }
 
-  /**
-   * O `dadosDe` e o `ankiFechado` de uma leitura nova da aba. A idade só vem da
-   * leitura anterior dos mesmos baralhos: outro Baralho começa a sua agora.
-   */
+  /** O `dadosDe` e o `ankiFechado` de uma leitura nova da aba; a idade vem só da leitura anterior dos mesmos baralhos. */
   function marcaDaLeitura(aba, nomes, source, quando) {
     const mesmosBaralhos = aba.nomes?.en === nomes.en && aba.nomes?.ru === nomes.ru;
     const anterior = mesmosBaralhos ? { dadosDe: aba.dadosDe, createdAt: aba.quando } : null;
@@ -351,10 +344,7 @@
     return elemento('span', 'veio-com-dica', acao, dica);
   }
 
-  /**
-   * Os botões ficam ocultos durante o reparo; enquanto isso, não aceitam outro
-   * pedido. Com a Conexão desligada, aria-disabled (continua no Tab) e dica.
-   */
+  /** Os botões ficam ocultos durante o reparo; com a Conexão desligada, aria-disabled (continua no Tab) e dica. */
   function desenharBotoesDeReparar() {
     for (const acao of document.querySelectorAll('#btn-bridge-anki-repair, [data-reparar]')) {
       acao.textContent = textoDaVoz(estado.reparando ? 'BRG-15.titulo' : 'BRG-11.repararAnki');
@@ -391,8 +381,9 @@
   /** O momento dos dados de uma leitura gravada; as de antes de `dadosDe` valem o momento em que foram lidas. */
   const momentoDosDados = leitura => leitura.dadosDe || leitura.quando;
 
-  function seloAntigo(quando, motivo) {
-    return elemento('div', 'anki-antigo', seloDoDadoAntigo(quando, motivo));
+  /** O selo BRG-12; o Anki fechado ganha o Abrir o Anki (BRG-38), que só o clique chama. */
+  function seloAntigo(quando, motivo = 'anki') {
+    return elemento('div', 'anki-antigo', seloDoDadoAntigo(quando, motivo), ...(motivo === 'anki' ? [raiz.AbrirOAnki.montarBotao()] : []));
   }
 
   // Cada lugar da tela guarda o último nó que desenhou e com o quê: enquanto
@@ -455,7 +446,8 @@
   function esperandoOAnki() {
     return elemento('div', 'veio-vazio',
       elemento('p', 'veio-vazio__titulo', textoDaVoz('BRG-37.esperando')),
-      elemento('p', 'veio-vazio__texto', textoDaVoz('BRG-37.comeca')));
+      elemento('p', 'veio-vazio__texto', textoDaVoz('BRG-37.comeca')),
+      raiz.AbrirOAnki.montarBotao());
   }
 
   function notaDoArquivoLocal() {
