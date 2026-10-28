@@ -2,7 +2,7 @@
 
 `exemplos.json` é o conjunto único de pedidos e respostas entre a extensão e a Conexão
 com o Anki (o complemento do Anki, em `127.0.0.1:8766`), junto com os `exemplos-*.json` ao lado dele (um por assunto, como
-`exemplos-do-perfil.json`; `carregar.js` e `test_servidor.py` os somam e recusam um nome repetido). Dois lados leem o mesmo conjunto:
+`exemplos-do-perfil.json`; `carregar.js` e `test_servidor.py` os somam e recusam nome repetido). Dois lados leem o mesmo conjunto:
 
 - **o complemento**: `python3 complemento/test_servidor.py` sobe o servidor real e confere
   cada exemplo (rode também no 3.9, o Python do Anki do Mac);
@@ -177,7 +177,7 @@ A Conexão de hoje (`bridge/`) atende as mesmas rotas e o mesmo criar idempotent
 
 ## As rotas do perfil fixo (#149)
 
-Todas POST, com a origem da extensão. O perfil marcado é o que estava aberto na primeira vez que a Conexão viu um perfil aberto (`user_files/perfil.json`).
+Todas POST, com a origem da extensão. O perfil marcado é o aberto na primeira vez que a Conexão viu um (`user_files/perfil.json`).
 
 | Rota | Corpo | Resposta |
 |---|---|---|
