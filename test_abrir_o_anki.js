@@ -103,7 +103,7 @@ function carregarFaixa({ responder } = {}) {
       return novo;
     },
   };
-  const { EnvioComOAnkiFechado } = carregar({
+  const { EnvioComOAnkiFechado, enviadas } = carregar({
     jaTem: false,
     situacoes: ['desligada'],
     responder,
@@ -120,7 +120,7 @@ function carregarFaixa({ responder } = {}) {
   });
   const faixa = EnvioComOAnkiFechado.criar({ aoLigar: ids => aoLigar.push(ids) });
   return {
-    relogio, faixa, aoLigar,
+    relogio, faixa, aoLigar, enviadas,
     aviso: () => aviso,
     clicarNoBotao: () => aviso.acao.aoUsar({ currentTarget: { getAttribute: () => null, setAttribute() {}, removeAttribute() {} } }),
     ligar: () => { situacao = 'ligada'; ouvinte('ligada'); },
@@ -198,6 +198,18 @@ async function main() {
     assert.deepStrictEqual(aoLigar, []);
   }
 
+  {
+    // O Anki que a pessoa fechou na espera do consertar: a faixa pede que ela o abra e não manda abrir por conta própria.
+    const { relogio, faixa, aoLigar, aviso, clicarNoBotao, enviadas } = carregarFaixa({ responder: () => exemploDoConserto('anki_fechou_na_espera') });
+    faixa.pedir(['a']);
+    await relogio.deixarAndar();
+    clicarNoBotao();
+    await relogio.avancar(1_000);
+    assert.strictEqual(aviso().texto, 'ENV-16.abra', 'a pessoa fechou o Anki: a faixa pede que ela o abra');
+    assert.deepStrictEqual(enviadas.map(e => e.mensagem.acao), ['consertar'], 'e o abridor não recebe um abrir');
+    assert.deepStrictEqual(aoLigar, []);
+  }
+
   // O consertar sem clique (#152): o abridor conserta primeiro e só abre o Anki que está fechado.
   {
     const esperadas = ['consertar', 'abrir'];
@@ -231,6 +243,38 @@ async function main() {
       assert.deepStrictEqual([fim.desfecho, fim.motivo], [desfecho, motivo], `${conserto}: o desfecho do abridor`);
       assert.deepStrictEqual(ordem({ enviadas }), ['consertar'], `${conserto}: sem abrir o Anki por cima do que o abridor disse`);
       assert.ok(fim.passos.length >= 1 && fim.quando, `${conserto}: o diagnóstico sabe o que se passou`);
+    }
+    {
+      // O Anki que a pessoa fechou DURANTE a espera do consertar não é o fechado de antes: a extensão não manda abrir.
+      const { AbrirOAnki, enviadas } = comAConexao('anki_fechou_na_espera', ['desligada']);
+      const fim = await comoValores(AbrirOAnki.abrirOuConsertar({}));
+      assert.strictEqual(fim.desfecho, 'fechou', 'a pessoa fechou o Anki durante a espera: o desfecho diz isso');
+      assert.deepStrictEqual(ordem({ enviadas }), ['consertar'], 'o Anki que a pessoa fechou na espera não é reaberto pela extensão');
+    }
+    {
+      const { AbrirOAnki, enviadas } = carregar({
+        responder: porMensagem('conexao_fora'), situacoes: ['desligada'],
+        extras: { ConexaoAnki: { jaConectou: () => true }, outros: { textoDaVoz: id => id } },
+      });
+      const fim = await comoValores(AbrirOAnki.abrirOuConsertar({}));
+      assert.deepStrictEqual([fim.desfecho, fim.motivo], ['falhou', 'conexao_fora'], 'o Anki saudável com a Conexão fora: o abridor não mata e a extensão conta');
+      assert.deepStrictEqual(ordem({ enviadas }), ['consertar']);
+      assert.strictEqual(AbrirOAnki.falaDoDesfecho(fim).texto, 'BRG-39.conexaoFora', 'a fala própria do conexao_fora, não a do conserto que falhou');
+      assert.match(AbrirOAnki.falaDoDesfecho(fim).detalhes, /conexao_fora/, 'o diagnóstico leva o motivo');
+      assert.strictEqual(AbrirOAnki.falaDoDesfecho({ ...fim, motivo: 'nao_fechou' }).texto, 'BRG-39.falhou');
+    }
+    {
+      // O Anki aberto pela extensão e fechado pela pessoa antes do segundo consertar: continua fechado, sem terceiro abrir.
+      const relogio = relogioFalso();
+      const respostas = [exemploDoConserto('anki_fechado'), exemploDoConserto('anki_fechou_na_espera')];
+      const { AbrirOAnki, enviadas } = carregar({
+        relogio, responder: m => (m.acao === 'consertar' ? respostas.shift() : exemploDoAbridor('abrir', 'no_lugar')),
+        situacoes: ['desligada'], extras: { ConexaoAnki: { jaConectou: () => true } },
+      });
+      const andando = AbrirOAnki.abrirOuConsertar({});
+      await relogio.avancar(125_000);
+      assert.strictEqual((await comoValores(andando)).desfecho, 'fechou');
+      assert.deepStrictEqual(ordem({ enviadas }), ['consertar', 'abrir', 'consertar'], 'só um abrir por pedido');
     }
     {
       // O Anki abriu, a Conexão continua muda (desativada): o abridor vê o Anki aberto, liga e reinicia, uma vez só.

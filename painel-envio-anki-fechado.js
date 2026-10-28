@@ -9,6 +9,7 @@
 //       que travou ou o complemento desativado e abre o que está fechado) e diz “Abrindo o Anki para enviar…”, ou
 //       “Conferindo a Conexão com o Anki…” se o abridor demora;
 //     - sem ela, ou se o abridor não abre o Anki, diz “Abra o Anki para enviar”, com o botão que pede a permissão;
+//     - se a pessoa fechou o Anki durante a espera do conserto, nada o reabre: a faixa “Abra o Anki para enviar” fica e o pedido se desfaz;
 //     - se o abridor consertou, o toast conta o que fez (BRG-39); se a Conexão sumiu do Anki ou o conserto falhou, a faixa
 //       (BRG-39) traz o único botão (Instalar de novo, ou Baixar diagnóstico) e o pedido se desfaz.
 //   Quando a Conexão responde, a faixa some e `aoLigar(ids)` envia as Frases. A espera dura `PRAZO_DO_ANKI_MS`
@@ -101,6 +102,10 @@
       } else if (resultado.desfecho === DESFECHO.SEM_RESPOSTA) {
         pedido = null;
         mostrar('abra', { causa: 'abridor · sem resposta da Conexão no prazo' });
+      } else if (resultado.desfecho === DESFECHO.FECHOU) {
+        // A pessoa fechou o Anki durante a espera: nada o reabre, o pedido se desfaz e a faixa fica até ela abri-lo.
+        pedido = null;
+        mostrar('abra', { causa: 'abridor · a pessoa fechou o Anki durante a espera' });
       } else if (resultado.desfecho === DESFECHO.RESPONDEU) ConexaoAnki.conferir();
     }
 

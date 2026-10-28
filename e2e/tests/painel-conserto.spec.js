@@ -164,6 +164,37 @@ test.describe('com a permissão do abridor', () => {
     });
   }
 
+  test('o Anki que a pessoa fechou durante a espera do consertar não é reaberto: a faixa pede que ela o abra', async ({ page, extensao, fakes }) => {
+    await prepararComAConexaoMuda(page, extensao, fakes, 'anki_fechou_na_espera');
+
+    await enviarAoAnki(page).click();
+
+    await expect(faixa(page)).toContainText('Abra o Anki para enviar');
+    expect(acoesDoAbridor(fakes)).toEqual(['consertar']);
+    expect(fakes.anki.envios).toHaveLength(0);
+    await expect(toasts(page)).toHaveCount(0);
+    await estadoFinal(extensao, { pm_anki_ja_conectou: true });
+  });
+
+  test('o Anki saudável com a Conexão fora (porta ocupada): o abridor não fecha nada e a faixa conta, com o motivo no diagnóstico', async ({ page, extensao, fakes }) => {
+    await prepararComAConexaoMuda(page, extensao, fakes, 'conexao_fora');
+
+    await enviarAoAnki(page).click();
+
+    await expect(faixa(page)).toContainText('O Anki está aberto, mas a Conexão com ele não subiu. Outro programa pode estar usando a porta 8766.');
+    await expect(faixa(page).getByRole('button', { name: 'Baixar diagnóstico' })).toBeVisible();
+    await faixa(page).getByText('Detalhes').click();
+    await expect(faixa(page)).toContainText('conexao_fora');
+    expect(acoesDoAbridor(fakes)).toEqual(['consertar']);
+    expect(fakes.anki.envios).toHaveLength(0);
+
+    const baixando = page.waitForEvent('download');
+    await faixa(page).getByRole('button', { name: 'Baixar diagnóstico' }).click();
+    const diagnostico = JSON.parse(fs.readFileSync(await (await baixando).path(), 'utf8'));
+    expect(diagnostico).toMatchObject({ tipo: 'diagnostico-do-conserto', desfecho: 'falhou', motivo: 'conexao_fora' });
+    await estadoFinal(extensao, { pm_anki_ja_conectou: true });
+  });
+
   test('o botão Abrir o Anki de Baralhos e termos também conserta: o abridor reinicia o Anki que travou', async ({ page, extensao, fakes }) => {
     fakes.abridor.definirConserto('anki_travado');
     await extensao.gravarStorage({ pm_anki_ja_conectou: true });

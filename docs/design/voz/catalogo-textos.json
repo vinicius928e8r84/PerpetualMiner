@@ -477,6 +477,7 @@
   "BRG-39.sumiu": "A Conexão com o Anki não está mais no Anki.",
   "BRG-39.instalar": "Instalar de novo",
   "BRG-39.falhou": "Não deu para consertar. Feche o Anki e abra de novo.",
+  "BRG-39.conexaoFora": "O Anki está aberto, mas a Conexão com ele não subiu. Outro programa pode estar usando a porta 8766.",
   "BRG-39.baixar": "Baixar diagnóstico",
   "CFG-01": "Sincronizando…",
   "CFG-02": "Sincronizado {quando}",
