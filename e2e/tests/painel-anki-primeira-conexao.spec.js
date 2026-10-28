@@ -17,7 +17,7 @@ const { fotografar } = require('../evidencias-mineracao');
 const contrato = require('../../complemento/contrato/exemplos.json');
 
 const AGORA = new Date('2026-09-18T12:00:00');
-const F1 = 'A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.';
+const F1 = 'A Conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.';
 
 const card = page => page.getByRole('region', { name: 'Ainda não houve conexão neste computador' });
 const pronto = page => page.getByRole('region', { name: 'Conexão com o Anki: ligada' });
