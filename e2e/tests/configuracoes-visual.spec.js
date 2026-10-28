@@ -194,11 +194,9 @@ test('IA dos cartões com conta: a chave vai junto com a conta Google, com Troca
   await expect(page).toHaveScreenshot('ia-conferida-com-conta.png', { animations: 'disabled' });
 });
 
-// #142 / #248: a parte “Falha local” do CFG-17 ganha as Frases que a Conexão ainda guarda quando ela não responde ao Apagar tudo.
-// A cópia dessa falha ainda não existe no catálogo da Voz: é cópia a aprovar pelo dono (regra 10, “Falha local” do CFG-17 na
-// página docs/design/envio-no-complemento.md). Até lá o teste fica `fixme`, sem PNG e sem texto inventado na tela.
-test('Apagar tudo com a Conexão sem responder: a falha local diz que as Frases dela ainda não saíram', async ({ page, extensao, fakes }) => {
-  test.fixme(true, 'a cópia da Falha local do CFG-17 com as Frases na Conexão espera a aprovação do dono (regra 10)');
+// #142 / #248: o Apagar tudo quando a Conexão não responde e ainda guarda as Frases dela. O dono decidiu que a tela de
+// hoje é a referência, sem aviso novo (#269, 2026-10-26).
+test('Apagar tudo com a Conexão sem responder: a falha local de hoje, sem aviso novo', async ({ page, extensao, fakes }) => {
   await semearComoNoPrototipo(extensao, fakes);
   fakes.anki.falharApagarFrases();
   await abrirConfiguracoes(page, extensao, '#configuracoes/perigo');
