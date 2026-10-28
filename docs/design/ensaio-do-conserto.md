@@ -13,8 +13,8 @@ Use um perfil de teste do Anki, nunca o principal. Em todos os cenários o paine
 presa). Um Anki com a thread principal travada continua respondendo o `/health`: o Enviar não o conserta, e isso é outra fatia (issue à parte). Por
 isso `kill -STOP` (cenário 1) não é o travamento real: ele para o processo inteiro, `/health` incluído.
 
-**A regra de segurança.** O abridor só fecha à força um Anki que é **dono da porta 8766**. Se o Anki está aberto e quem ouve a porta é outro programa (ou
-ninguém), o desfecho é `falhou` · `conexao_fora` e **nada é morto** (cenário 3). Se a pessoa fechou o Anki durante a espera, ou ele saiu antes do sinal,
+**A regra de segurança.** O abridor só fecha à força um Anki cujos pids são **todos** os donos da porta 8766, e só esses pids. Se o Anki está aberto e quem ouve a porta é outro programa (sozinho ou dividindo a porta com o Anki) ou
+ninguém, o desfecho é `falhou` · `conexao_fora` e **nada é morto** (cenário 3). Se a pessoa fechou o Anki durante a espera, ou ele saiu antes do sinal,
 o desfecho é `fechou` e **nada é aberto** (cenários 4 e 5).
 
 ## Mac e Windows
@@ -50,11 +50,11 @@ Rode o `abrir-o-anki.bat` pelo Chrome (ou o `.ps1` com `powershell -ExecutionPol
 
 | # | O que o `.ps1` faz | O que conferir |
 |---|---|---|
-| W1 | `ProcessosDoAnki`: `Get-Process \| ? { $_.Path -ieq $programaDoAnki }` | `Get-Process \| ? Path -ieq '<$programaDoAnki>'` lista **só** o Anki, com `MainWindowHandle` ≠ 0 na janela principal. No Anki 25 com launcher, o `python.exe` do venv pode ser só um redirecionador e o Anki de verdade um processo filho: se for assim, a lista não o acha e o abridor responde `fechado` (seguro, mas não age) |
+| W1 | `ProcessosDoAnki`: `Get-Process \| ? { $_.Path -ieq $programaDoAnki }` | `Get-Process \| ? Path -ieq '<$programaDoAnki>'` lista **só** o Anki, com `MainWindowHandle` ≠ 0 na janela principal. No Anki 25 com launcher, o `python.exe` do venv pode ser só um redirecionador e o Anki de verdade um processo filho: se for assim, a lista acha só o redirecionador, que não tem janela nem ouve a porta: com o Anki travado o abridor responde `falhou` · `conexao_fora` e, com o complemento desativado, `nao_fechou` (seguro, mas não age) |
 | W2 | `ConexaoResponde`: `Invoke-WebRequest -Method Post` em `/anki/profiles`, `-TimeoutSec 3` | Responde 200 com o Anki vivo e dá erro com a thread principal travada |
-| W3 | `ConexaoEDoAnki`: `Get-NetTCPConnection -LocalPort 8766 -State Listen` › `OwningProcess` | O pid é um dos de W1. Com um programa qualquer na 8766 o abridor diz `conexao_fora` e não mata (cenário 3). Num Windows sem `Get-NetTCPConnection` também cai em `conexao_fora` |
-| W4 | `Stop-Process -Id … -Force` por processo, contando `$recebeu` | Só os de W1 morrem. Se o Anki sai antes do sinal, `$recebeu` fica 0 e a resposta é `fechou` (cenário 5), nunca `reiniciado` |
-| W5 | Desativado: `CloseMainWindow()` em cada processo | Fecha o Anki **com janela**; sem janela devolve `false` e o abridor espera 30 s e diz `nao_fechou` |
+| W3 | `DonosDaConexao`: `Get-NetTCPConnection -LocalPort 8766 -State Listen` › `OwningProcess` | **Todos** os pids são de W1. Com um programa qualquer na 8766, sozinho ou dividindo a porta com o Anki, o abridor diz `conexao_fora` e não mata (cenário 3). Num Windows sem `Get-NetTCPConnection` também cai em `conexao_fora` |
+| W4 | `Stop-Process -Id … -Force` em cada pid que ouve a porta, contando `$recebeu` | Só os pids que ouvem a porta morrem, não os outros processos de W1. Se o Anki sai antes do sinal, `$recebeu` fica 0 e a resposta é `fechou` (cenário 5), nunca `reiniciado` |
+| W5 | Desativado: `CloseMainWindow()` em cada processo | Fecha o Anki **com janela**; sem janela devolve `false`: o abridor conta quem devolveu `true` e, com nenhum, não espera, não grava o `meta.json` e diz `nao_fechou` (`fechou` se o Anki já saiu) |
 | W6 | `ConvertFrom-Json` / `ConvertTo-Json -Depth 32` do Windows PowerShell 5.1 | O `meta.json` volta com o resto igual (ordem das chaves, números, acentos), sem BOM; compare com `meta.json.antes` |
 | W7 | `[IO.File]::Copy` para `meta.json.antes`, `WriteAllText` em `meta.json.novo` e `Move-Item -Force` | Nenhum `.novo` sobra; um `meta.json` aberto por outro programa dá `meta_nao_gravou` |
 | W8 | `Start-Process` do Anki no perfil marcado | O Anki aberto pelo host **continua aberto** depois que o host sai (o Chrome roda o host num job object) |

@@ -57,7 +57,7 @@ python3.9 complemento/test_colecao_em_memoria.py  # o adaptador em memória e o 
 python3.9 complemento/test_pacote.py     # o conteúdo do .ankiaddon
 python3.9 complemento/test_item_de_login.py  # o item de login escrito e apagado numa pasta temporária
 python3.9 complemento/test_abridor.py        # o abridor escrito e registrado numa pasta temporária; roda o script do Mac
-python3.9 complemento/test_conserto.py       # o consertar: esperar 30 s, fechar, abrir; + `test_conserto_meta.py`, `_windows.py`
+python3.9 complemento/test_conserto.py       # o consertar: esperar 30 s, fechar, abrir; + `test_conserto_meta.py`, `_porta.py`, `_windows.py`
 python3.9 complemento/test_chave_da_openai.py  # a chave: o que atravessa o HTTP, fica no disco e vai ao log
 python3.9 complemento/test_perfil_fixo.py   # o perfil fixo: a escolha, a espera, a tela de perfis (+ `test_no_anki_perfil.py`)
 python3.9 complemento/test_envio.py          # o Envio: a fila, o estado por Cartão, as duplicatas, a espera, a retomada, os custos

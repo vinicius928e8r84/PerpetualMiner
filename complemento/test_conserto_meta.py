@@ -8,8 +8,11 @@ no lugar da do Anki) é o de `test_conserto.py`. Nenhum processo de verdade é f
 
 import json
 import os
+import sys
 import tempfile
 import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento.test_conserto import META_DESATIVADO, PID, CONSERTAR, Mundo  # noqa: E402,F401
 

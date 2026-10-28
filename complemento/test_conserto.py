@@ -66,7 +66,9 @@ class Mundo:
                  'chamada=$(( $(cat "%s/chamadas_do_ps" 2>/dev/null || echo 0) + 1 )); echo $chamada > "%s/chamadas_do_ps"\n'
                  'if [ -f "%s/fecha_em" ] && [ "$(cat "%s/relogio")" -ge "$(cat "%s/fecha_em")" ]; then rm -f "%s/vivo"; fi\n'
                  'if [ -f "%s/some_na_chamada" ] && [ "$chamada" -ge "$(cat "%s/some_na_chamada")" ]; then rm -f "%s/vivo"; fi\n'
-                 '[ -f "%s/vivo" ] && printf "  %d %%s\\n" "$(cat "%s/comando")"\nexit 0\n' % ((self.registro,) + (e,) * 10 + (PID, e)))
+                 '[ -f "%s/vivo" ] && printf "  %d %%s\\n" "$(cat "%s/comando")"\n'
+                 '[ -f "%s/vivo" ] && [ -f "%s/outros" ] && while read -r p; do printf "  %%s %%s\\n" "$p" "$(cat "%s/comando")"; done < "%s/outros"\n'
+                 'exit 0\n' % ((self.registro,) + (e,) * 10 + (PID, e) + (e,) * 4))
         # Quem ouve a porta: o Anki (o padrão) ou o que o teste disser (`escuta`: os pids, um por linha; vazio, ninguém).
         programa(self.programas["lsof"],
                  'echo "lsof $*" >> "%s"\nif [ -f "%s/escuta" ]; then cat "%s/escuta"; elif [ -f "%s/vivo" ]; then echo %d; fi\n' % (self.registro, e, e, e, PID))
@@ -103,6 +105,11 @@ class Mundo:
 
     def anki_some_na_chamada_do_ps(self, n):
         self.escrever_estado("some_na_chamada", str(n))
+
+    def outro_processo_do_anki(self, pid):
+        """Mais um processo que roda o mesmo programa do Anki (o `ps` o lista) e que não ouve a porta."""
+        with open(os.path.join(self.estado, "outros"), "a", encoding="utf-8") as arquivo:
+            arquivo.write("%d\n" % pid)
 
     def porta_ouvida_por(self, *pids):
         self.escrever_estado("escuta", "".join("%d\n" % pid for pid in pids))
@@ -230,23 +237,6 @@ class NoMac(unittest.TestCase):
         self.mundo.anki_some_no_curl_a_partir_de(30)
         self.assertEqual(self.mundo.consertar(), {"situacao": "fechou"})
         self.assertEqual(self.mundo.passos(), ["esperou 30 s"])
-
-    def test_porta_ocupada_por_outro_programa_nao_mata_o_anki_saudavel_e_diz_que_a_conexao_esta_fora(self):
-        self.mundo.porta_ouvida_por(9999)
-        self.assertEqual(self.mundo.consertar(), {"situacao": "falhou", "motivo": "conexao_fora"})
-        self.assertEqual(self.mundo.passos(), ["esperou 30 s"])
-
-    def test_ninguem_ouvindo_na_porta_tambem_nao_mata_o_anki(self):
-        self.mundo.porta_ouvida_por()
-        self.assertEqual(self.mundo.consertar(), {"situacao": "falhou", "motivo": "conexao_fora"})
-        self.assertNotIn("kill", " ".join(self.mundo.passos()))
-
-    def test_so_mata_o_anki_depois_de_ver_que_e_ele_quem_ouve_a_porta_da_conexao(self):
-        self.mundo.porta_ouvida_por(9999, PID)
-        self.assertEqual(self.mundo.consertar(), {"situacao": "reiniciado"})
-        lsof = [linha for linha in self.mundo.eventos() if linha.startswith("lsof ")]
-        self.assertEqual(lsof, ["lsof -nP -iTCP:8766 -sTCP:LISTEN -t"])
-        self.assertLess(self.mundo.eventos().index(lsof[0]), self.mundo.eventos().index("kill -KILL %d" % PID))
 
     def test_so_conta_os_processos_da_propria_pessoa_e_nao_os_de_outra_conta_do_computador(self):
         self.mundo.consertar()

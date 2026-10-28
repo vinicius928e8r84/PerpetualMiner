@@ -48,7 +48,7 @@ class NoWindows(unittest.TestCase):
     def test_o_ps1_so_fecha_os_processos_do_programa_que_o_complemento_anotou(self):
         self.assertIn("$_.Path -ieq $programaDoAnki", self.ps1)
         self.assertEqual(self.ps1.count("Stop-Process"), 1)
-        self.assertIn("foreach ($processo in ProcessosDoAnki) { try { Stop-Process -Id $processo.Id -Force", self.ps1)
+        self.assertIn("foreach ($dono in $donos) { try { Stop-Process -Id $dono -Force", self.ps1)
         self.assertNotIn("Get-Process -Name", self.ps1)
         self.assertNotIn("taskkill", self.ps1.lower())
 
@@ -62,8 +62,31 @@ class NoWindows(unittest.TestCase):
         self.assertIn("Get-NetTCPConnection -LocalPort $porta -State Listen", self.ps1)
         self.assertIn("OwningProcess", self.ps1)
         corpo = self.ps1[self.ps1.index("function Consertar"):]
-        self.assertLess(corpo.index("ConexaoEDoAnki"), corpo.index("Stop-Process"))
+        self.assertLess(corpo.index("DonosDaConexao"), corpo.index("Stop-Process"))
         self.assertIn("Falhou 'conexao_fora'", corpo)
+
+    def test_o_ps1_so_mata_os_pids_que_ouvem_a_porta_e_so_quando_todos_os_ouvintes_sao_do_anki(self):
+        funcao = self.ps1[self.ps1.index("function DonosDaConexao"):self.ps1.index("function Falhou")]
+        self.assertIn("if ($pidsDoAnki -notcontains $dono) { return @() }", funcao)
+        self.assertNotIn("ProcessosDoAnki) { try { Stop-Process", self.ps1)
+        corpo = self.ps1[self.ps1.index("function Consertar"):]
+        self.assertIn("$donos = @(DonosDaConexao)", corpo)
+        self.assertLess(corpo.index("$donos.Count -eq 0"), corpo.index("Stop-Process"))
+
+    def test_o_ps1_dado_o_anki_que_sumiu_antes_de_achar_o_dono_da_porta_diz_fechou_e_nao_conexao_fora(self):
+        corpo = self.ps1[self.ps1.index("function Consertar"):]
+        self.assertIn("if (AnkiRodando) { Falhou 'conexao_fora' } else { Fechou }", corpo)
+
+    def test_o_ps1_conta_quem_recebeu_o_fechamento_e_sem_ninguem_nao_grava_o_meta_json_nem_abre(self):
+        corpo = self.ps1[self.ps1.index("function Consertar"):]
+        self.assertIn("if ($processo.CloseMainWindow()) { $recebeu++ }", corpo)
+        self.assertNotIn("[void]$processo.CloseMainWindow()", corpo)
+        sem_ninguem = "if ($recebeu -eq 0) { NinguemRecebeu; return }"
+        self.assertEqual(corpo.count(sem_ninguem), 2)   # o do desativado e o do kill
+        primeiro = corpo.index(sem_ninguem)
+        self.assertLess(corpo.index("CloseMainWindow"), primeiro)
+        self.assertLess(primeiro, corpo.index("EsperarOAnkiSair $espera"))
+        self.assertLess(primeiro, corpo.index("[IO.File]::Copy"))
 
     def test_o_ps1_nao_abre_o_anki_que_a_pessoa_fechou_nem_o_que_nenhum_processo_recebeu_o_kill(self):
         corpo = self.ps1[self.ps1.index("function Consertar"):]
