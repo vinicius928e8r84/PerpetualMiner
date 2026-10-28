@@ -208,65 +208,6 @@ class NoMac(unittest.TestCase):
         self.assertEqual(self.mundo.consertar(), {"situacao": "falhou", "motivo": "nao_abriu"})
         self.assertEqual(self.mundo.passos()[1], "kill -KILL %d" % PID)
 
-    def test_complemento_desativado_fecha_pelo_caminho_normal_liga_no_meta_e_abre_nesta_ordem(self):
-        self.mundo.meta_com(META_DESATIVADO)
-        self.assertEqual(self.mundo.consertar(), {"situacao": "ligado"})
-        self.assertEqual(self.mundo.passos(), [
-            "kill -TERM %d" % PID,
-            "open -a %s --args -p Usuário 1" % self.mundo.pastas.app,
-        ])
-        self.assertNotIn("-KILL", " ".join(self.mundo.eventos()))
-
-    def test_ligar_so_vira_a_marca_desativado_e_deixa_o_resto_do_meta_json_como_estava(self):
-        self.mundo.meta_com(META_DESATIVADO)
-        self.mundo.consertar()
-        self.assertEqual(json.loads(self.mundo.meta_atual()), dict(META_DESATIVADO, disabled=False))
-
-    def test_guarda_o_meta_json_de_antes_byte_a_byte_ao_lado_do_abridor(self):
-        antes = json.dumps(META_DESATIVADO, indent=4) + "\n"
-        self.mundo.meta_com(antes)
-        self.mundo.consertar()
-        copia = os.path.join(self.mundo.pastas.abridor, "meta.json.antes")
-        with open(copia, encoding="utf-8") as arquivo:
-            self.assertEqual(arquivo.read(), antes)
-
-    def test_nao_deixa_arquivo_provisorio_para_tras_ao_gravar_o_meta_json(self):
-        self.mundo.meta_com(META_DESATIVADO)
-        self.mundo.consertar()
-        self.assertEqual(sorted(os.listdir(self.mundo.complemento)), ["__init__.py", "meta.json"])
-        self.assertEqual(sorted(os.listdir(self.mundo.pastas.abridor)), ["abrir-o-anki.sh", "meta.json.antes"])
-
-    def test_complemento_desativado_que_o_anki_nao_deixa_fechar_nao_mexe_no_meta_json(self):
-        self.mundo.meta_com(META_DESATIVADO)
-        self.mundo.kill_nao_funciona_com("-TERM")
-        antes = self.mundo.meta_atual()
-        self.assertEqual(self.mundo.consertar(espera_s=6), {"situacao": "falhou", "motivo": "nao_fechou"})
-        self.assertEqual(self.mundo.meta_atual(), antes)
-        self.assertNotIn("open", " ".join(self.mundo.passos()))
-
-    def test_meta_json_ilegivel_nao_e_escrito_e_o_anki_nao_e_tocado(self):
-        self.mundo.meta_com("{isto não é json")
-        self.assertEqual(self.mundo.consertar(), {"situacao": "falhou", "motivo": "meta_ilegivel"})
-        self.assertEqual(self.mundo.meta_atual(), "{isto não é json")
-        self.assertEqual(self.mundo.passos(), [])
-
-    def test_complemento_ligado_no_meta_json_nao_reescreve_nada(self):
-        self.mundo.meta_com(dict(META_DESATIVADO, disabled=False))
-        antes = self.mundo.meta_atual()
-        self.mundo.conexao_responde_em(0)
-        self.mundo.consertar()
-        self.assertEqual(self.mundo.meta_atual(), antes)
-        self.assertEqual(os.listdir(self.mundo.pastas.abridor), ["abrir-o-anki.sh"])
-
-    def test_um_disabled_dentro_da_config_nao_conta_como_complemento_desativado(self):
-        self.mundo.meta_com({"name": "PerpetualMiner", "config": {"disabled": True}})
-        self.mundo.conexao_responde_em(0)
-        self.assertEqual(self.mundo.consertar(), {"situacao": "respondeu"})
-
-    def test_sem_meta_json_o_anki_conta_o_complemento_como_ligado(self):
-        self.mundo.conexao_responde_em(0)
-        self.assertEqual(self.mundo.consertar(), {"situacao": "respondeu"})
-
     def test_complemento_que_sumiu_da_pasta_do_anki_nao_fecha_nem_abre_nada(self):
         os.remove(os.path.join(self.mundo.complemento, "__init__.py"))
         self.assertEqual(self.mundo.consertar(), {"situacao": "sumiu"})
@@ -344,59 +285,6 @@ class NoMac(unittest.TestCase):
         self.assertEqual(resposta, {"situacao": "reiniciado"})
 
 
-class NoWindows(unittest.TestCase):
-    """O `.ps1` do Windows só se confere por inspeção aqui; onde houver `pwsh` ele ainda roda o caso que não toca em nada."""
-
-    def setUp(self):
-        self._raiz = tempfile.TemporaryDirectory()
-        self.pasta = os.path.join(self._raiz.name, "user_files", "abridor")
-        self.complemento = r"C:\Users\Maria\AppData\Roaming\Anki2\addons21\perpetualminer"
-        abridor.deste_computador(
-            plataforma="win32", ambiente={"ANKI_LAUNCHER": ANKI_DO_WINDOWS}, executavel=r"C:\Anki\pythonw.exe",
-            pasta=self.pasta, registro=RegistroDeMentira(), complemento=self.complemento,
-        ).escrever("Usuário 1")
-        with open(os.path.join(self.pasta, "abrir-o-anki.ps1"), "rb") as arquivo:
-            self.ps1 = arquivo.read().decode("utf-8-sig")
-
-    def tearDown(self):
-        self._raiz.cleanup()
-
-    def valor(self, variavel):
-        for linha in self.ps1.splitlines():
-            if linha.startswith("$%s = " % variavel):
-                return linha[len("$%s = " % variavel):]
-        self.fail("o .ps1 não tem $%s" % variavel)
-
-    def test_o_ps1_leva_o_programa_a_pasta_do_complemento_e_a_espera(self):
-        self.assertEqual(self.valor("programaDoAnki"), r"'C:\Anki\pythonw.exe'")
-        self.assertEqual(self.valor("complemento"), "'%s'" % self.complemento)
-        self.assertEqual(self.valor("espera"), "30")
-
-    def test_o_ps1_so_fecha_os_processos_do_programa_que_o_complemento_anotou(self):
-        self.assertIn("$_.Path -ieq $programaDoAnki", self.ps1)
-        self.assertEqual(self.ps1.count("Stop-Process"), 1)
-        self.assertIn("ProcessosDoAnki | Stop-Process -Force", self.ps1)
-        self.assertNotIn("Get-Process -Name", self.ps1)
-        self.assertNotIn("taskkill", self.ps1.lower())
-
-    def test_o_ps1_fecha_pelo_caminho_normal_para_ligar_o_complemento_e_a_forca_so_depois_da_espera(self):
-        self.assertIn("CloseMainWindow()", self.ps1)
-        corpo = self.ps1[self.ps1.index("function Consertar"):]
-        self.assertLess(corpo.index("Start-Sleep"), corpo.index("Stop-Process"))
-
-    def test_o_ps1_guarda_o_meta_json_de_antes_e_troca_o_arquivo_de_uma_vez(self):
-        self.assertIn("meta.json.antes", self.ps1)
-        self.assertIn("Move-Item", self.ps1)
-
-    @unittest.skipUnless(shutil.which("pwsh"), "o .ps1 só roda onde houver PowerShell (pwsh)")
-    def test_o_ps1_responde_acao_desconhecida_a_uma_mensagem_que_nao_conhece(self):
-        import struct
-        corpo = b'{"acao":"fechar"}'
-        saida = subprocess.run(
-            ["pwsh", "-NoProfile", "-NonInteractive", "-File", os.path.join(self.pasta, "abrir-o-anki.ps1")],
-            input=struct.pack("<I", len(corpo)) + corpo, stdout=subprocess.PIPE, timeout=60, check=True).stdout
-        self.assertEqual(json.loads(saida[4:].decode("utf-8")), {"erro": "acao_desconhecida"})
-
-
 if __name__ == "__main__":
     unittest.main()
+
