@@ -55,7 +55,7 @@ class Mundo:
             arquivo.write("")
         self.meta = os.path.join(self.complemento, "meta.json")
         self.registro = os.path.join(self.estado, "eventos.log")
-        self.programas = {nome: os.path.join(self.estado, nome) for nome in ("ps", "curl", "kill", "sleep", "date", "open")}
+        self.programas = {nome: os.path.join(self.estado, nome) for nome in ("ps", "curl", "kill", "sleep", "date", "open", "lsof")}
         e = self.estado
         programa(self.programas["date"], 'cat "%s/relogio"\n' % e)
         programa(self.programas["sleep"],
@@ -63,13 +63,19 @@ class Mundo:
         # A lista de processos do computador: o Anki (se vive), o abridor e um processo qualquer, como o `ps` de verdade os mostra.
         programa(self.programas["ps"],
                  'echo "ps $*" >> "%s"\nprintf "  100 /usr/sbin/cron\\n  200 sh /x/abrir-o-anki.sh chrome-extension://x/\\n"\n'
+                 'chamada=$(( $(cat "%s/chamadas_do_ps" 2>/dev/null || echo 0) + 1 )); echo $chamada > "%s/chamadas_do_ps"\n'
                  'if [ -f "%s/fecha_em" ] && [ "$(cat "%s/relogio")" -ge "$(cat "%s/fecha_em")" ]; then rm -f "%s/vivo"; fi\n'
-                 '[ -f "%s/vivo" ] && printf "  %d %%s\\n" "$(cat "%s/comando")"\nexit 0\n' % ((self.registro, e, e, e, e, e, PID, e)))
+                 'if [ -f "%s/some_na_chamada" ] && [ "$chamada" -ge "$(cat "%s/some_na_chamada")" ]; then rm -f "%s/vivo"; fi\n'
+                 '[ -f "%s/vivo" ] && printf "  %d %%s\\n" "$(cat "%s/comando")"\nexit 0\n' % ((self.registro,) + (e,) * 10 + (PID, e)))
+        # Quem ouve a porta: o Anki (o padrão) ou o que o teste disser (`escuta`: os pids, um por linha; vazio, ninguém).
+        programa(self.programas["lsof"],
+                 'echo "lsof $*" >> "%s"\nif [ -f "%s/escuta" ]; then cat "%s/escuta"; elif [ -f "%s/vivo" ]; then echo %d; fi\n' % (self.registro, e, e, e, PID))
         programa(self.programas["curl"],
-                 'echo "curl $*" >> "%s"\n[ -f "%s/responde_a_partir_de" ] && [ "$(cat "%s/relogio")" -ge "$(cat "%s/responde_a_partir_de")" ] && exit 0\nexit 28\n'
-                 % (self.registro, e, e, e))
+                 'echo "curl $*" >> "%s"\nif [ -f "%s/some_no_curl" ] && [ "$(cat "%s/relogio")" -ge "$(cat "%s/some_no_curl")" ]; then rm -f "%s/vivo"; fi\n'
+                 '[ -f "%s/responde_a_partir_de" ] && [ "$(cat "%s/relogio")" -ge "$(cat "%s/responde_a_partir_de")" ] && exit 0\nexit 28\n'
+                 % ((self.registro,) + (e,) * 7))
         programa(self.programas["kill"],
-                 'echo "kill $*" >> "%s"\n[ "$1" = "$(cat "%s/resiste_a" 2>/dev/null)" ] && exit 0\nrm -f "%s/vivo"\n' % (self.registro, e, e))
+                 'echo "kill $*" >> "%s"\n[ -f "%s/sem_permissao" ] && exit 1\n[ "$1" = "$(cat "%s/resiste_a" 2>/dev/null)" ] && exit 0\nrm -f "%s/vivo"\n' % (self.registro, e, e, e))
         programa(self.programas["open"],
                  'echo "open $*" >> "%s"\n[ -f "%s/nao_abre" ] && exit 1\ntouch "%s/vivo"\n' % (self.registro, e, e))
         self.escrever_estado("relogio", "1000")
@@ -91,6 +97,18 @@ class Mundo:
 
     def pessoa_fecha_o_anki_em(self, segundos):
         self.escrever_estado("fecha_em", str(1000 + segundos))
+
+    def anki_some_no_curl_a_partir_de(self, segundos):
+        self.escrever_estado("some_no_curl", str(1000 + segundos))
+
+    def anki_some_na_chamada_do_ps(self, n):
+        self.escrever_estado("some_na_chamada", str(n))
+
+    def porta_ouvida_por(self, *pids):
+        self.escrever_estado("escuta", "".join("%d\n" % pid for pid in pids))
+
+    def kill_recusado_por_falta_de_permissao(self):
+        self.escrever_estado("sem_permissao", "")
 
     def kill_nao_funciona_com(self, sinal):
         self.escrever_estado("resiste_a", sinal)
@@ -135,7 +153,7 @@ class Mundo:
             ler_json_com=self.pastas.ler_json,
             conserto=conserto_do_anki.Conserto(
                 executavel=COMANDO_DO_ANKI, complemento=self.complemento,
-                programas={nome: self.programas[nome] for nome in ("ps", "curl", "kill", "sleep", "date")},
+                programas={nome: self.programas[nome] for nome in ("ps", "curl", "kill", "sleep", "date", "lsof")},
                 **conserto),
         )
         a.escrever(perfil)
@@ -195,13 +213,56 @@ class NoMac(unittest.TestCase):
 
     def test_a_pessoa_que_fecha_o_anki_durante_a_espera_nao_ve_o_anki_reaberto(self):
         self.mundo.pessoa_fecha_o_anki_em(8)
-        self.assertEqual(self.mundo.consertar(), {"situacao": "fechado"})
+        self.assertEqual(self.mundo.consertar(), {"situacao": "fechou"})
         self.assertEqual(self.mundo.passos(), ["esperou 8 s"])
+
+    def test_anki_que_sai_durante_o_ultimo_curl_antes_do_kill_nao_e_reaberto_nem_dado_como_reiniciado(self):
+        # O curl de verdade com -m 3 gasta 3 s quando o Anki não responde: o relógio anda 3 s dentro dele.
+        e = self.mundo.estado
+        programa(self.mundo.programas["curl"], 'echo "curl $*" >> "%s"\nprintf %%s $(( $(cat "%s/relogio") + 3 )) > "%s/relogio"\nexit 28\n'
+                 % (self.mundo.registro, e, e))
+        self.mundo.pessoa_fecha_o_anki_em(32)
+        self.assertEqual(self.mundo.consertar(), {"situacao": "fechou"})
+        self.assertNotIn("open", " ".join(self.mundo.passos()))
+        self.assertNotIn("kill", " ".join(self.mundo.passos()))
+
+    def test_anki_que_sai_no_ultimo_curl_da_espera_nao_e_reaberto_porque_nenhum_pid_recebeu_o_kill(self):
+        self.mundo.anki_some_no_curl_a_partir_de(30)
+        self.assertEqual(self.mundo.consertar(), {"situacao": "fechou"})
+        self.assertEqual(self.mundo.passos(), ["esperou 30 s"])
+
+    def test_porta_ocupada_por_outro_programa_nao_mata_o_anki_saudavel_e_diz_que_a_conexao_esta_fora(self):
+        self.mundo.porta_ouvida_por(9999)
+        self.assertEqual(self.mundo.consertar(), {"situacao": "falhou", "motivo": "conexao_fora"})
+        self.assertEqual(self.mundo.passos(), ["esperou 30 s"])
+
+    def test_ninguem_ouvindo_na_porta_tambem_nao_mata_o_anki(self):
+        self.mundo.porta_ouvida_por()
+        self.assertEqual(self.mundo.consertar(), {"situacao": "falhou", "motivo": "conexao_fora"})
+        self.assertNotIn("kill", " ".join(self.mundo.passos()))
+
+    def test_so_mata_o_anki_depois_de_ver_que_e_ele_quem_ouve_a_porta_da_conexao(self):
+        self.mundo.porta_ouvida_por(9999, PID)
+        self.assertEqual(self.mundo.consertar(), {"situacao": "reiniciado"})
+        lsof = [linha for linha in self.mundo.eventos() if linha.startswith("lsof ")]
+        self.assertEqual(lsof, ["lsof -nP -iTCP:8766 -sTCP:LISTEN -t"])
+        self.assertLess(self.mundo.eventos().index(lsof[0]), self.mundo.eventos().index("kill -KILL %d" % PID))
+
+    def test_so_conta_os_processos_da_propria_pessoa_e_nao_os_de_outra_conta_do_computador(self):
+        self.mundo.consertar()
+        ps = [linha for linha in self.mundo.eventos() if linha.startswith("ps ")]
+        self.assertTrue(ps)
+        self.assertEqual({linha for linha in ps}, {"ps -x -U %d -ww -o pid= -o command=" % os.getuid()})
 
     def test_anki_que_nao_fecha_nem_a_forca_nao_e_aberto_de_novo(self):
         self.mundo.kill_nao_funciona_com("-KILL")
         self.assertEqual(self.mundo.consertar(), {"situacao": "falhou", "motivo": "nao_fechou"})
         self.assertNotIn("open", " ".join(self.mundo.passos()))
+
+    def test_anki_que_nenhum_kill_alcanca_e_que_continua_rodando_falha_na_hora_sem_abrir_outro(self):
+        self.mundo.kill_recusado_por_falta_de_permissao()
+        self.assertEqual(self.mundo.consertar(), {"situacao": "falhou", "motivo": "nao_fechou"})
+        self.assertEqual(self.mundo.passos(), ["esperou 30 s", "kill -KILL %d" % PID])
 
     def test_anki_que_fecha_e_nao_abre_de_novo_e_falha_com_o_motivo(self):
         self.mundo.open_nao_abre()
@@ -240,6 +301,10 @@ class NoMac(unittest.TestCase):
                     mundo.open_nao_abre()
                 elif situacao == "meta_ilegivel":
                     mundo.meta_com("{")
+                elif situacao == "anki_fechou_na_espera":
+                    mundo.pessoa_fecha_o_anki_em(8)
+                elif situacao == "conexao_fora":
+                    mundo.porta_ouvida_por(9999)
                 self.assertEqual(
                     conversar(mundo.abridor(), exemplo["mensagem"]), exemplo["resposta"],
                     'O abridor e o contrato (complemento/contrato/exemplos-do-conserto.json) se separaram no exemplo "%s".' % exemplo["nome"],
@@ -278,7 +343,7 @@ class NoMac(unittest.TestCase):
             ler_json_com=self.mundo.pastas.ler_json,
             conserto=conserto_do_anki.Conserto(
                 executavel=comando, complemento=self.mundo.complemento, espera_s=2,
-                programas={nome: self.mundo.programas[nome] for nome in ("ps", "curl", "kill", "sleep", "date")}),
+                programas={nome: self.mundo.programas[nome] for nome in ("ps", "curl", "kill", "sleep", "date", "lsof")}),
         )
         script.escrever(None)
         resposta = conversar(os.path.join(self.mundo.pastas.abridor, "abrir-o-anki.sh"), CONSERTAR)

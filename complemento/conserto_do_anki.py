@@ -3,21 +3,26 @@
 `{"acao": "consertar"}` (`abridor.py` escreve o script; aqui moram os trechos dele e o que ele precisa saber). A resposta é
 sempre `{"situacao": …}`:
 
-- `fechado`: o Anki não está rodando. A pessoa o fechou, e **um Anki fechado continua fechado**: nada é aberto nem fechado.
+- `fechado`: o Anki não está rodando quando o `consertar` começa. A pessoa o fechou, e **um Anki fechado continua fechado**: nada é
+  fechado, e a extensão, que o pediu, é quem decide abrir.
+- `fechou`: o Anki rodava quando o `consertar` começou e a pessoa o fechou durante a espera (ou ele saiu antes de o abridor
+  conseguir sinalizá-lo): nada é aberto, nem a extensão deve abrir.
 - `respondeu`: a Conexão respondeu antes dos 30 s. Nada a consertar.
 - `reiniciado`: o Anki não respondeu em 30 s; o abridor o fechou à força e o abriu de novo.
 - `ligado`: o Anki tinha desativado a Conexão (`disabled` no `meta.json`); o abridor fechou o Anki pelo caminho normal, ligou
   o complemento e abriu o Anki.
 - `sumiu`: a pasta do complemento não tem mais o complemento.
-- `falhou`, com `motivo`: `nao_fechou`, `nao_abriu`, `meta_ilegivel` ou `meta_nao_gravou`.
+- `falhou`, com `motivo`: `nao_fechou`, `nao_abriu`, `meta_ilegivel`, `meta_nao_gravou` ou `conexao_fora` (o Anki roda e não é ele
+  quem ouve a porta da Conexão: outro programa a ocupa, ou a Conexão não subiu. O Anki está saudável e **nada é fechado**).
 
 O que o abridor sabe do Anki vem do próprio Anki: quem escreve o script é o complemento, dentro do Anki, e anota o programa
 (`sys.executable`) que roda o Anki. Só os processos que rodam exatamente esse programa **agora** (a lista de processos, lida a
-cada passo) são fechados: nunca se procura por nome (`pkill anki`), e um `pid` anotado não serviria, porque com a Conexão
-desativada o Anki reabre sem o complemento e o `pid` do script já é de um Anki que saiu. Antes de fechar à força o abridor
-confere de novo que o Anki ainda roda (uma pessoa que o fechou durante a espera o encontra fechado). Perguntar se a Conexão
-responde é pedir a lista de perfis (`POST /anki/profiles`), que só volta com a thread principal do Anki viva: o `/health`
-responde mesmo com o Anki travado.
+cada passo, só os da própria pessoa) são fechados: nunca se procura por nome (`pkill anki`), e um `pid` anotado não serviria,
+porque com a Conexão desativada o Anki reabre sem o complemento e o `pid` do script já é de um Anki que saiu. Só se fecha à força
+o Anki que **trava de verdade**: quem ouve a porta da Conexão tem que ser um processo do Anki (Mac: `lsof`; Windows:
+`Get-NetTCPConnection`), senão é `conexao_fora` e nada é morto. E só se abre o Anki depois que ao menos um processo recebeu o
+sinal: se nenhum recebeu porque o Anki já tinha saído, é `fechou`. Perguntar se a Conexão responde é pedir a lista de perfis
+(`POST /anki/profiles`), que só volta com a thread principal do Anki viva: o `/health` responde mesmo com o Anki travado.
 
 O `meta.json` só tem uma marca mexida, a `disabled` do topo: o resto fica como estava. O de antes fica em
 `user_files/abridor/meta.json.antes`, e a troca é de uma vez (escreve ao lado e troca). Fechar o Anki **antes** de mexer no
@@ -39,6 +44,8 @@ PROGRAMAS_DO_MAC = {
     "kill": "/bin/kill",
     "sleep": "/bin/sleep",
     "date": "/bin/date",
+    "lsof": "/usr/sbin/lsof",
+    "id": "/usr/bin/id",
 }
 NOME_DA_COPIA = "meta.json.antes"
 
@@ -47,7 +54,7 @@ class Conserto:
     """O que o abridor precisa saber do Anki que o escreveu para consertá-lo. Sem `executavel`, ele nunca fecha nada.
 
     `espera_s` é a espera sem resposta antes de fechar à força (os testes passam menos, com o relógio de mentira);
-    `programas` troca `ps`, `curl`, `kill`, `sleep` e `date` do Mac (os testes passam os de mentira).
+    `programas` troca `ps`, `curl`, `kill`, `sleep`, `date`, `lsof` e `id` do Mac (os testes passam os de mentira).
     """
 
     def __init__(self, *, executavel=None, complemento=None, porta=PORTA, espera_s=ESPERA_PADRAO_S, programas=None):
@@ -75,22 +82,36 @@ def variaveis_do_mac(conserto, pasta_do_abridor):
         ("URL", conserto.url),
         ("ORIGEM", conserto.origem),
         ("ESPERA", str(int(conserto.espera_s))),
+        ("PORTA", str(int(conserto.porta))),
     ] + [(nome.upper(), caminho) for nome, caminho in sorted(conserto.programas.items())]
     return "\n".join("%s=%s" % (nome, shlex.quote(valor)) for nome, valor in valores) + '\nMETA="$COMPLEMENTO/meta.json"'
 
 
 FUNCOES_DO_MAC = r"""
-# consertar: os processos que rodam agora o programa que a Conexão anotou (EXECUTAVEL, o do Anki), e só eles.
+# consertar: os processos da própria pessoa que rodam agora o programa que a Conexão anotou (EXECUTAVEL, o do Anki), e só eles.
 anki_pids() {
   [ -n "$EXECUTAVEL" ] || return 0
-  "$PS" -axww -o pid= -o command= 2>/dev/null | while read -r pid comando; do
+  "$PS" -x -U "$("$ID" -u)" -ww -o pid= -o command= 2>/dev/null | while read -r pid comando; do
     case "$comando" in
       "$EXECUTAVEL"|"$EXECUTAVEL "*) echo "$pid" ;;
     esac
   done
 }
 anki_rodando() { [ -n "$(anki_pids)" ]; }
-sinalizar_o_anki() { for pid in $(anki_pids); do "$KILL" "$1" "$pid" >/dev/null 2>&1; done; }
+# Sinaliza cada processo do Anki; só dá certo (0) se algum recebeu o sinal.
+sinalizar_o_anki() {
+  recebeu=1
+  for pid in $(anki_pids); do "$KILL" "$1" "$pid" >/dev/null 2>&1 && recebeu=0; done
+  return $recebeu
+}
+# Quem ouve a porta da Conexão é um processo do Anki? Outro programa na porta, ou ninguém, não é um Anki travado.
+conexao_e_do_anki() {
+  pids=$(anki_pids)
+  for ouvinte in $("$LSOF" -nP -iTCP:"$PORTA" -sTCP:LISTEN -t 2>/dev/null); do
+    for pid in $pids; do [ "$ouvinte" = "$pid" ] && return 0; done
+  done
+  return 1
+}
 agora() { "$DATE" +%s; }
 # A lista de perfis só volta com a thread principal do Anki viva (o /health responde mesmo com o Anki travado).
 conexao_responde() {
@@ -105,6 +126,9 @@ esperar_o_anki_sair() {
   return 0
 }
 falhou() { responder "{\"situacao\":\"falhou\",\"motivo\":\"$1\"}"; }
+fechou() { responder '{"situacao":"fechou"}'; }
+# Nenhum processo recebeu o sinal: ou o Anki já tinha saído (a pessoa o fechou) ou o sinal não o alcança.
+ninguem_recebeu() { if anki_rodando; then falhou nao_fechou; else fechou; fi; }
 # O meta.json do Anki: "ligado" (nada a ligar), vazio (ilegível) ou o conteúdo novo, só com o disabled do topo desligado.
 estado_do_meta() {
   [ -f "$META" ] || { printf ligado; return; }
@@ -129,22 +153,25 @@ guardar_o_meta() {
 }
 # O complemento desativado: fecha o Anki pelo caminho normal (nunca à força), liga e abre.
 ligar_e_reiniciar() {
-  sinalizar_o_anki -TERM
+  sinalizar_o_anki -TERM || { ninguem_recebeu; return; }
   esperar_o_anki_sair "$ESPERA" || { falhou nao_fechou; return; }
   guardar_o_meta || { falhou meta_nao_gravou; return; }
   abrir_o_anki || { falhou nao_abriu; return; }
   responder '{"situacao":"ligado"}'
 }
-# Sem resposta por ESPERA segundos: fecha à força e abre. Um Anki que a pessoa fechou no meio da espera continua fechado.
+# Sem resposta por ESPERA segundos: fecha à força e abre, mas só o Anki que é dono da porta da Conexão (o travado de verdade).
+# Um Anki que a pessoa fechou no meio da espera continua fechado (fechou).
 reiniciar_o_que_travou() {
   inicio=$(agora)
   while :; do
-    anki_rodando || { responder '{"situacao":"fechado"}'; return; }
+    anki_rodando || { fechou; return; }
     conexao_responde && { responder '{"situacao":"respondeu"}'; return; }
     [ $(( $(agora) - inicio )) -ge "$ESPERA" ] && break
     "$SLEEP" 2
   done
-  sinalizar_o_anki -KILL
+  anki_rodando || { fechou; return; }
+  conexao_e_do_anki || { falhou conexao_fora; return; }
+  sinalizar_o_anki -KILL || { ninguem_recebeu; return; }
   esperar_o_anki_sair 10 || { falhou nao_fechou; return; }
   abrir_o_anki || { falhou nao_abriu; return; }
   responder '{"situacao":"reiniciado"}'
@@ -171,6 +198,7 @@ def variaveis_do_ps1(conserto, pasta_do_abridor, texto_do_powershell):
         "$url = " + texto_do_powershell(conserto.url),
         "$origem = " + texto_do_powershell(conserto.origem),
         "$espera = " + str(int(conserto.espera_s)),
+        "$porta = " + str(int(conserto.porta)),
     ])
 
 
@@ -205,7 +233,18 @@ function EsperarOAnkiSair($segundos) {
   }
   return $true
 }
+# Quem ouve a porta da Conexão é um processo do Anki? Outro programa na porta, ou ninguém, não é um Anki travado.
+function ConexaoEDoAnki {
+  try {
+    $donos = @(Get-NetTCPConnection -LocalPort $porta -State Listen -ErrorAction Stop | ForEach-Object { $_.OwningProcess })
+    $pidsDoAnki = @(ProcessosDoAnki | ForEach-Object { $_.Id })
+    return (@($donos | Where-Object { $pidsDoAnki -contains $_ }).Count -gt 0)
+  } catch { return $false }
+}
 function Falhou($motivo) { Responder ([ordered]@{ situacao = 'falhou'; motivo = $motivo }) }
+function Fechou { Responder ([ordered]@{ situacao = 'fechou' }) }
+# Nenhum processo recebeu o sinal: ou o Anki já tinha saído (a pessoa o fechou) ou o sinal não o alcança.
+function NinguemRecebeu { if (AnkiRodando) { Falhou 'nao_fechou' } else { Fechou } }
 
 function Consertar {
   if (-not (AnkiRodando)) { Responder ([ordered]@{ situacao = 'fechado' }); return }
@@ -221,7 +260,9 @@ function Consertar {
   }
   if ($null -ne $novo) {
     # O complemento desativado: fecha o Anki pelo caminho normal (nunca à força), guarda o meta.json de antes, liga e abre.
-    foreach ($processo in ProcessosDoAnki) { [void]$processo.CloseMainWindow() }
+    $achados = @(ProcessosDoAnki)
+    if ($achados.Count -eq 0) { Fechou; return }
+    foreach ($processo in $achados) { [void]$processo.CloseMainWindow() }
     if (-not (EsperarOAnkiSair $espera)) { Falhou 'nao_fechou'; return }
     try {
       [IO.File]::Copy($metaCaminho, $copia, $true)
@@ -233,15 +274,20 @@ function Consertar {
     Responder ([ordered]@{ situacao = 'ligado' })
     return
   }
-  # Sem resposta por $espera segundos: fecha à força e abre. Um Anki que a pessoa fechou no meio da espera continua fechado.
+  # Sem resposta por $espera segundos: fecha à força e abre, mas só o Anki que é dono da porta da Conexão (o travado de verdade).
+  # Um Anki que a pessoa fechou no meio da espera continua fechado (fechou).
   $inicio = Get-Date
   while ($true) {
-    if (-not (AnkiRodando)) { Responder ([ordered]@{ situacao = 'fechado' }); return }
+    if (-not (AnkiRodando)) { Fechou; return }
     if (ConexaoResponde) { Responder ([ordered]@{ situacao = 'respondeu' }); return }
     if (((Get-Date) - $inicio).TotalSeconds -ge $espera) { break }
     Start-Sleep -Seconds 2
   }
-  ProcessosDoAnki | Stop-Process -Force -ErrorAction SilentlyContinue
+  if (-not (AnkiRodando)) { Fechou; return }
+  if (-not (ConexaoEDoAnki)) { Falhou 'conexao_fora'; return }
+  $recebeu = 0
+  foreach ($processo in ProcessosDoAnki) { try { Stop-Process -Id $processo.Id -Force -ErrorAction Stop; $recebeu++ } catch {} }
+  if ($recebeu -eq 0) { NinguemRecebeu; return }
   if (-not (EsperarOAnkiSair 10)) { Falhou 'nao_fechou'; return }
   if (-not (AbrirOAnki)) { Falhou 'nao_abriu'; return }
   Responder ([ordered]@{ situacao = 'reiniciado' })

@@ -48,7 +48,7 @@ class NoWindows(unittest.TestCase):
     def test_o_ps1_so_fecha_os_processos_do_programa_que_o_complemento_anotou(self):
         self.assertIn("$_.Path -ieq $programaDoAnki", self.ps1)
         self.assertEqual(self.ps1.count("Stop-Process"), 1)
-        self.assertIn("ProcessosDoAnki | Stop-Process -Force", self.ps1)
+        self.assertIn("foreach ($processo in ProcessosDoAnki) { try { Stop-Process -Id $processo.Id -Force", self.ps1)
         self.assertNotIn("Get-Process -Name", self.ps1)
         self.assertNotIn("taskkill", self.ps1.lower())
 
@@ -56,6 +56,21 @@ class NoWindows(unittest.TestCase):
         self.assertIn("CloseMainWindow()", self.ps1)
         corpo = self.ps1[self.ps1.index("function Consertar"):]
         self.assertLess(corpo.index("Start-Sleep"), corpo.index("Stop-Process"))
+
+    def test_o_ps1_so_fecha_a_forca_o_anki_que_e_dono_da_porta_da_conexao(self):
+        self.assertEqual(self.valor("porta"), "8766")
+        self.assertIn("Get-NetTCPConnection -LocalPort $porta -State Listen", self.ps1)
+        self.assertIn("OwningProcess", self.ps1)
+        corpo = self.ps1[self.ps1.index("function Consertar"):]
+        self.assertLess(corpo.index("ConexaoEDoAnki"), corpo.index("Stop-Process"))
+        self.assertIn("Falhou 'conexao_fora'", corpo)
+
+    def test_o_ps1_nao_abre_o_anki_que_a_pessoa_fechou_nem_o_que_nenhum_processo_recebeu_o_kill(self):
+        corpo = self.ps1[self.ps1.index("function Consertar"):]
+        self.assertLess(corpo.index("if ($achados.Count -eq 0) { Fechou; return }"), corpo.index("CloseMainWindow"))
+        self.assertLess(corpo.index("if ($recebeu -eq 0) { NinguemRecebeu; return }"), corpo.index("situacao = 'reiniciado'"))
+        self.assertIn("function Fechou { Responder ([ordered]@{ situacao = 'fechou' }) }", self.ps1)
+        self.assertEqual(self.ps1.count("situacao = 'fechado'"), 1)
 
     def test_o_ps1_guarda_o_meta_json_de_antes_e_troca_o_arquivo_de_uma_vez(self):
         self.assertIn("meta.json.antes", self.ps1)

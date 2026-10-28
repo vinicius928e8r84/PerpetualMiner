@@ -32,6 +32,15 @@ class NoMacComMeta(unittest.TestCase):
         ])
         self.assertNotIn("-KILL", " ".join(self.mundo.eventos()))
 
+    def test_anki_que_a_pessoa_fecha_antes_do_term_continua_fechado_e_o_meta_json_nao_e_tocado(self):
+        self.mundo.meta_com(META_DESATIVADO)
+        antes = self.mundo.meta_atual()
+        self.mundo.anki_some_na_chamada_do_ps(2)   # a 1ª é a do consertar, a 2ª a de quem acha os processos a fechar
+        self.assertEqual(self.mundo.consertar(), {"situacao": "fechou"})
+        self.assertEqual(self.mundo.meta_atual(), antes)
+        self.assertEqual(self.mundo.passos(), [])
+        self.assertEqual(os.listdir(self.mundo.pastas.abridor), ["abrir-o-anki.sh"])
+
     def test_ligar_so_vira_a_marca_desativado_e_deixa_o_resto_do_meta_json_como_estava(self):
         self.mundo.meta_com(META_DESATIVADO)
         self.mundo.consertar()

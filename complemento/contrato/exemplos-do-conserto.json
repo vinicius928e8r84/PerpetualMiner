@@ -15,6 +15,19 @@
         }
       },
       {
+        "nome": "consertar o Anki que a pessoa fechou durante a espera: o abridor não o abre de novo",
+        "daExtensao": true,
+        "contexto": {
+          "conserto": "anki_fechou_na_espera"
+        },
+        "mensagem": {
+          "acao": "consertar"
+        },
+        "resposta": {
+          "situacao": "fechou"
+        }
+      },
+      {
         "nome": "consertar com a Conexão respondendo: não há o que consertar",
         "daExtensao": true,
         "contexto": {
@@ -38,6 +51,20 @@
         },
         "resposta": {
           "situacao": "reiniciado"
+        }
+      },
+      {
+        "nome": "consertar o Anki aberto cuja Conexão não subiu (porta ocupada por outro programa): nada é fechado",
+        "daExtensao": true,
+        "contexto": {
+          "conserto": "conexao_fora"
+        },
+        "mensagem": {
+          "acao": "consertar"
+        },
+        "resposta": {
+          "situacao": "falhou",
+          "motivo": "conexao_fora"
         }
       },
       {
