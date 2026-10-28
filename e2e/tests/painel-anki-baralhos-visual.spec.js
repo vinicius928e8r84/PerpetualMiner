@@ -8,6 +8,10 @@
 // falhar até alguém olhar e atualizar a referência:
 //
 //   cd e2e && npx playwright test painel-anki-baralhos-visual --update-snapshots
+//
+// As telas de Baralhos e termos perderam o Avançado e o Reparar Anki (#152). As referências aprovadas das telas de antes
+// (`baralhos*.png`) ficam como estavam até o dono olhar as de agora, que são PROPOSTAS (`test.fixme`, `*-sem-reparo.png`).
+// Depois de aprovadas: tire o `.fixme`, troque cada referência antiga pela nova e acrescente a entrada em e2e/aprovados-visuais.json.
 
 const { test, expect } = require('../fixtures');
 
@@ -53,27 +57,27 @@ async function abrirAnki(page, extensao, hash, { largura = 1280, gravado = {} } 
   await page.evaluate(() => document.fonts.ready);
 }
 
-test('baralhos: azulejos, anel de maturidade e os números', async ({ page, extensao }) => {
+test.fixme('baralhos: azulejos, anel de maturidade e os números', async ({ page, extensao }) => {
   await abrirAnki(page, extensao, '#anki/baralhos');
   await expect(baralhos(page).getByRole('img', { name: /de maturidade/ })).toBeVisible();
 
-  await expect(ilha(page)).toHaveScreenshot('baralhos.png');
+  await expect(ilha(page)).toHaveScreenshot('baralhos-sem-reparo.png');
 });
 
-test('baralhos lidos do arquivo local (BRG-13) e o baralho que não existe (BRG-14)', async ({ page, extensao, fakes }) => {
+test.fixme('baralhos lidos do arquivo local (BRG-13) e o baralho que não existe (BRG-14)', async ({ page, extensao, fakes }) => {
   fakes.anki.lerBaralhosDoArquivo();
   await abrirAnki(page, extensao, '#anki/baralhos', { gravado: { ankiBridgePresets: { en: { deckName: 'CIMV' }, ru: { deckName: 'RUSSIAN' } } } });
   await expect(baralhos(page).getByRole('button', { name: 'Abrir Ajustes de envio' })).toBeVisible();
 
-  await expect(ilha(page)).toHaveScreenshot('baralhos-local-e-sem-baralho.png');
+  await expect(ilha(page)).toHaveScreenshot('baralhos-local-e-sem-baralho-sem-reparo.png');
 });
 
-test('baralhos que falham: BRG-11 com Tentar de novo', async ({ page, extensao, fakes }) => {
+test.fixme('baralhos que falham: BRG-11 com Tentar de novo', async ({ page, extensao, fakes }) => {
   fakes.anki.falharBaralhos({ status: 503 });
   await abrirAnki(page, extensao, '#anki/baralhos');
   await expect(baralhos(page).getByRole('alert')).toBeVisible();
 
-  await expect(ilha(page)).toHaveScreenshot('baralhos-erro.png');
+  await expect(ilha(page)).toHaveScreenshot('baralhos-erro-sem-reparo.png');
 });
 
 test('vocabulário: azulejos, filtros, lista × detalhe', async ({ page, extensao }) => {
@@ -122,17 +126,37 @@ test('desligada, sem nenhuma leitura: “— esperando o Anki” em Baralhos e t
   fakes.anki.desligar();
   await abrirAnki(page, extensao, '#anki/baralhos');
   await expect(baralhos(page)).toContainText('— esperando o Anki');
-  await expect(ilha(page)).toHaveScreenshot('baralhos-esperando.png');
 
   await page.locator('label.veio-segmentado__opcao').filter({ hasText: /^Vocabulário$/ }).click();
   await expect(vocabulario(page)).toContainText('Começa depois que o Anki abrir uma vez.');
   await expect(ilha(page)).toHaveScreenshot('vocabulario-esperando.png');
 });
 
+test.fixme('desligada, sem nenhuma leitura: “— esperando o Anki” em Baralhos e termos, sem o Reparar Anki', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await abrirAnki(page, extensao, '#anki/baralhos');
+  await expect(baralhos(page)).toContainText('— esperando o Anki');
+
+  await expect(ilha(page)).toHaveScreenshot('baralhos-esperando-sem-reparo.png');
+});
+
+test.fixme('janela estreita: baralhos numa coluna, sem o Reparar Anki', async ({ page, extensao }) => {
+  await abrirAnki(page, extensao, '#anki/baralhos', { largura: 760 });
+  await expect(baralhos(page).getByRole('img', { name: /de maturidade/ })).toBeVisible();
+
+  await expect(page).toHaveScreenshot('baralhos-estreita-sem-reparo.png', { fullPage: false });
+});
+
+test.fixme('o tema claro: baralhos, sem o Reparar Anki', async ({ page, extensao }) => {
+  await abrirAnki(page, extensao, '#anki/baralhos', { gravado: { pm_tema: 'claro' } });
+  await expect(baralhos(page).getByRole('img', { name: /de maturidade/ })).toBeVisible();
+
+  await expect(ilha(page)).toHaveScreenshot('baralhos-claro-sem-reparo.png');
+});
+
 test('janela estreita: baralhos e vocabulário numa coluna', async ({ page, extensao }) => {
   await abrirAnki(page, extensao, '#anki/baralhos', { largura: 760 });
   await expect(baralhos(page).getByRole('img', { name: /de maturidade/ })).toBeVisible();
-  await expect(page).toHaveScreenshot('baralhos-estreita.png', { fullPage: false });
 
   await page.locator('label.veio-segmentado__opcao').filter({ hasText: /^Vocabulário$/ }).click();
   await expect(vocabulario(page).getByRole('listbox').getByRole('option')).toHaveCount(8);
@@ -142,7 +166,6 @@ test('janela estreita: baralhos e vocabulário numa coluna', async ({ page, exte
 test('o tema claro', async ({ page, extensao }) => {
   await abrirAnki(page, extensao, '#anki/baralhos', { gravado: { pm_tema: 'claro' } });
   await expect(baralhos(page).getByRole('img', { name: /de maturidade/ })).toBeVisible();
-  await expect(ilha(page)).toHaveScreenshot('baralhos-claro.png');
 
   await page.locator('label.veio-segmentado__opcao').filter({ hasText: /^Vocabulário$/ }).click();
   await expect(vocabulario(page).getByRole('listbox').getByRole('option')).toHaveCount(8);
