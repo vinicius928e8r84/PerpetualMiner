@@ -6,13 +6,16 @@ import logging
 from pathlib import Path
 from typing import Any
 
-import openai
+if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
+    from . import cost_tracker, openai_http
+    from .image_utils import UnsupportedImageFormatError, supported_image_mime
+else:
+    import cost_tracker
+    import openai_http
+    from image_utils import UnsupportedImageFormatError, supported_image_mime
 
-import cost_tracker
-from image_utils import UnsupportedImageFormatError, supported_image_mime
 
-
-LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger("perpetualminer.motor")
 
 _SYSTEM = """You are an expert visual selector for low-cost Anki flashcards.
 
@@ -55,14 +58,14 @@ Scores are integers from 0 to 100.
 """
 
 
-def _record_cost(log_dir: str, model: str, usage, keyword: str) -> None:
+def _record_cost(log_dir: str, model: str, usage: dict, keyword: str) -> None:
     if not usage:
         return
     cost_tracker.record_tokens(
         log_dir,
         model=model,
-        input_tokens=getattr(usage, "prompt_tokens", 0) or 0,
-        output_tokens=getattr(usage, "completion_tokens", 0) or 0,
+        input_tokens=usage.get("prompt_tokens") or 0,
+        output_tokens=usage.get("completion_tokens") or 0,
         keyword=keyword,
     )
 
@@ -92,34 +95,6 @@ def _card_brief(card_text: str) -> str:
             continue
         keep.append(line)
     return "\n".join(keep[:12])
-
-
-def _openai_error_code(exc: Exception) -> str:
-    code = getattr(exc, "code", "") or ""
-    if code:
-        return str(code)
-    body = getattr(exc, "body", None)
-    if isinstance(body, dict):
-        error = body.get("error")
-        if isinstance(error, dict):
-            return str(error.get("code") or "")
-        return str(body.get("code") or "")
-    response = getattr(exc, "response", None)
-    try:
-        data = response.json() if response is not None else None
-    except Exception:
-        data = None
-    if isinstance(data, dict):
-        error = data.get("error")
-        if isinstance(error, dict):
-            return str(error.get("code") or "")
-        return str(data.get("code") or "")
-    return ""
-
-
-def _is_invalid_image_format_error(exc: Exception) -> bool:
-    code = _openai_error_code(exc).casefold()
-    return code == "invalid_image_format" or "invalid_image_format" in str(exc).casefold()
 
 
 def _invalid_image_format_fallback(mode: str, valid_index_map: list[int]) -> dict[str, Any]:
@@ -154,8 +129,10 @@ def rank_candidates(
     card_text: str,
     candidates: list[dict[str, Any]],
     mode: str,
+    openai_base: str = openai_http.OPENAI_BASE,
+    label: str | None = None,
 ) -> dict[str, Any]:
-    client = openai.OpenAI(api_key=api_key)
+    """`label` is what the cost record says the call was for (the keyword by default; the add-on passes the card's id)."""
     content: list[dict[str, Any]] = [{
         "type": "text",
         "text": (
@@ -204,31 +181,29 @@ def rank_candidates(
         }
 
     try:
-        resp = client.chat.completions.create(
-            model=model,
-            temperature=0,
-            response_format={"type": "json_object"},
-            messages=[
+        raw, usage = openai_http.completar(
+            openai_base,
+            api_key,
+            model,
+            [
                 {"role": "system", "content": _SYSTEM},
                 {"role": "user", "content": content},
             ],
+            temperatura=0,
+            formato_json=True,
+            repeticoes=openai_http.REPETICOES_DA_IMAGEM,
         )
-    except openai.BadRequestError as exc:
-        if not _is_invalid_image_format_error(exc):
+    except openai_http.ErroDaOpenAI as exc:
+        if exc.codigo != openai_http.IMAGEM_INVALIDA:
             raise
         LOGGER.warning(
             "image_judge invalid_image_format keyword=%s mode=%s candidates=%s",
-            keyword,
+            label or keyword,
             mode,
             len(valid_index_map),
         )
         return _invalid_image_format_fallback(mode, valid_index_map)
-    _record_cost(log_dir, model, getattr(resp, "usage", None), f"[image_judge] {keyword}")
-
-    choice = (resp.choices or [None])[0]
-    raw = ""
-    if choice and getattr(choice, "message", None):
-        raw = choice.message.content or ""
+    _record_cost(log_dir, model, usage, f"[image_judge] {label or keyword}")
 
     try:
         data = json.loads(raw)
