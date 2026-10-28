@@ -167,7 +167,7 @@ class BridgeApp:
                 normalization_loaded
                 and getattr(image_utils, "normalize_image_bytes", None)
                 and getattr(google_images, "download_candidate", None)
-                and getattr(image_judge, "_is_invalid_image_format_error", None)
+                and getattr(image_judge, "_invalid_image_format_fallback", None)
             )
         except Exception:
             normalization_loaded = False
