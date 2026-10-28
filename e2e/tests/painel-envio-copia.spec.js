@@ -75,7 +75,7 @@ test('as telas do Envio com a Conexão dentro do Anki só dizem o que o catálog
   // A coleção fechada ou sincronizando: a Conexão espera o Anki.
   fakes.anki.moverEnvio(ingles.jobId, { stage: 'wait_anki' });
   await expect(envio(page, 'Envio em inglês · 2 frases')).toContainText('Esperando o Anki');
-  await expect(envio(page, 'Envio em russo · 1 frase')).toContainText('A conexão com o Anki respondeu com erro.');
+  await expect(envio(page, 'Envio em russo · 1 frase')).toContainText('A Conexão com o Anki respondeu com erro.');
   await copiaDoCatalogo(page, '#modal-envio');
 
   // Um Cartão que não entrou (o código novo vai ao Detalhes) e o Continuar envio.

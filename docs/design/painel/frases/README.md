@@ -72,7 +72,7 @@ Decidido numa rodada no Lavish em 2026-09-15. O dono aceitou as 5 recomendaçõe
 | Primeiro uso (PAI-02) | “Nenhuma frase ainda. Minere de um vídeo com `Alt+S` ou use Minerar frases para colar, importar ou ler uma foto.” + **[Minerar frases]**. O `Alt+S` é o atalho de legenda que estiver gravado. Sem atalho gravado, no lugar da tecla aparece “Sem atalho” + a ação **Definir atalho**, que leva a `#configuracoes/atalhos`. |
 | Filtros esconderam tudo (PAI-03) | “Nenhuma frase com estes filtros.” + **[Limpar filtros]**. |
 | Busca sem resultado (PAI-04) | “Nenhuma frase com “{termo}”.” + **[Limpar busca]** e, se houver filtro ligado, **[Limpar filtros]**. |
-| Conexão desligada | **Enviar ao Anki** fica com `aria-disabled` (não `disabled`, para o tooltip funcionar). O tooltip diz: “Indisponível: a conexão com o Anki está desligada. Ligue-a neste computador para enviar.” |
+| Conexão desligada | **Enviar ao Anki** fica com `aria-disabled` (não `disabled`, para o tooltip funcionar). O tooltip diz: “Indisponível: a Conexão com o Anki está desligada. Ligue-a neste computador para enviar.” |
 
 ## Modais
 
@@ -105,7 +105,7 @@ Todos seguem o modal Veio: `surface`, raio 20, × no canto, Esc e clique fora fe
     - título “Enviando ao Anki…” e subtítulo “2 envios · inglês e russo”;
     - um cartão por envio: “Envio em inglês · 12 frases”, a etapa com nome de gente (Na fila · Criando cartões · Preparando imagens · Gerando áudio · Escolhendo imagens · Esperando o Anki · Enviando ao Anki), as 7 etapas em segmentos (as feitas cheias, a atual enchendo), “etapa 4 de 7 · atualizado há 1 min” e **Detalhes** recolhido com jobId, stage cru e ISO;
     - quando o cartão precisa da pessoa, nada de caixa de erro: a etapa e os segmentos ficam em tom calmo, o motivo vem numa frase curta e a ação é um link dourado logo embaixo (variante A da rodada 3 do PR #64):
-      - não começou (ENV-03): “A conexão com o Anki respondeu com erro.” + **Tentar de novo →**;
+      - não começou (ENV-03): “A Conexão com o Anki respondeu com erro.” + **Tentar de novo →**;
       - o Windows não deixou fechar o Anki (BRG-18) ou um Continuar que não deu (ENV-14): o motivo + **Continuar envio →**;
       - terminou em parte: só **Continuar envio →** (a etapa já diz “Concluído em parte”);
     - no pé: “Pode fechar: o resumo abre quando o envio terminar.”;

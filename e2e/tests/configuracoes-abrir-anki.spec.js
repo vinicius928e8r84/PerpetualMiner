@@ -126,7 +126,7 @@ test.describe('com a Conexão desligada', () => {
 
     await expect(interruptor(page)).toBeDisabled();
     await expect(nota(page)).toHaveText(
-      'Indisponível: a conexão com o Anki está desligada. Ligue-a neste computador para mudar isto.');
+      'Indisponível: a Conexão com o Anki está desligada. Ligue-a neste computador para mudar isto.');
     await expect(resumo(page)).toHaveText('Indisponível agora');
     expect(fakes.anki.requisicoes.filter(r => r.caminho.startsWith('/abrir-com-o-computador'))).toEqual([]);
     expect(fakes.anki.itemInstalado()).toBe(false);
