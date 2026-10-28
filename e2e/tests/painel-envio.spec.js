@@ -103,12 +103,12 @@ test('sem notícia da Conexão durante o envio, o modal diz que está tentando d
   const [job] = await enviosCriados(fakes, 1);
 
   fakes.anki.responder('POST', '/jobs/list', async () => ({ status: 503, json: {} }));
-  await expect(progresso(page)).toContainText('Sem resposta da conexão com o Anki. Tentando de novo…', { timeout: 10_000 });
+  await expect(progresso(page)).toContainText('Sem resposta da Conexão com o Anki. Tentando de novo…', { timeout: 10_000 });
 
   fakes.anki.pararDeResponder('POST', '/jobs/list');
   fakes.anki.moverEnvio(job.jobId, { stage: 'send_to_anki' });
   await expect(envio(page, 'Envio em inglês · 1 frase')).toContainText('Enviando ao Anki', { timeout: 10_000 });
-  await expect(progresso(page).getByText('Sem resposta da conexão com o Anki. Tentando de novo…')).toBeHidden();
+  await expect(progresso(page).getByText('Sem resposta da Conexão com o Anki. Tentando de novo…')).toBeHidden();
 });
 
 test('um Envio que fica em parte enquanto o outro anda mostra Continuar envio, que o retoma', async ({ page, extensao, fakes }) => {
@@ -165,7 +165,7 @@ test('bug #9: o POST do envio caindo na rede mostra o erro com Tentar de novo, e
   await expect(cartaoIngles).toContainText('Na fila');
   await expect(cartaoRusso).toContainText('Não começou');
   await expect(cartaoRusso).toContainText('Não começou');
-  await expect(cartaoRusso).toContainText('A conexão com o Anki não respondeu. Confira se ela está ligada.');
+  await expect(cartaoRusso).toContainText('A Conexão com o Anki não respondeu. Confira se ela está ligada.');
   expect(fakes.anki.enviosEm('en')).toHaveLength(1);
   expect(fakes.anki.enviosEm('ru')).toHaveLength(0);
 
@@ -219,7 +219,7 @@ test('a Conexão respondendo com erro ao criar o envio mostra ENV-03, com o stat
 
   const cartaoIngles = envio(page, 'Envio em inglês · 1 frase');
   await expect(cartaoIngles).toContainText('Não começou');
-  await expect(cartaoIngles).toContainText('A conexão com o Anki respondeu com erro.');
+  await expect(cartaoIngles).toContainText('A Conexão com o Anki respondeu com erro.');
   await cartaoIngles.locator('details').getByText('Detalhes').click();
   await expect(cartaoIngles.locator('details pre')).toContainText('500');
   await expect(cartaoIngles.locator('details pre')).toContainText('deck_missing');
@@ -245,7 +245,7 @@ test('EN termina com o RU sem começar: o progresso volta com o ENV-03, e o resu
 
   fakes.anki.concluirEnvio(ingles.jobId);
   // O russo que não começou não some dentro do resumo: o progresso reabre com ele.
-  await expect(envio(page, 'Envio em russo · 1 frase')).toContainText('A conexão com o Anki respondeu com erro.', { timeout: 10_000 });
+  await expect(envio(page, 'Envio em russo · 1 frase')).toContainText('A Conexão com o Anki respondeu com erro.', { timeout: 10_000 });
   await expect(envio(page, 'Envio em inglês · 1 frase')).toContainText('Concluído');
   await page.waitForTimeout(2500);
   await expect(resumo(page)).toHaveCount(0);
@@ -603,7 +603,7 @@ test('com a Conexão desligada, Enviar ao Anki fica indisponível e o tooltip di
   // Discreto: nada fica na barra o tempo todo; o porquê só aparece ao passar o mouse (ou com o foco).
   await expect(page.getByRole('tooltip')).toBeHidden();
   await expect(page.locator('#frases-barra')).not.toContainText('Conexão desligada');
-  const porque = 'Indisponível: a conexão com o Anki está desligada. Ligue-a neste computador para enviar.';
+  const porque = 'Indisponível: a Conexão com o Anki está desligada. Ligue-a neste computador para enviar.';
   await expect(botao).toHaveAccessibleDescription(porque);
   await botao.hover();
   await expect(page.getByRole('tooltip')).toHaveText(porque);

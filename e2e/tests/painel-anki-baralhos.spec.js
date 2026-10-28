@@ -15,7 +15,7 @@ const { fotografar } = require('../evidencias-mineracao');
 const { estadoFinal } = require('../estado-final');
 
 const AGORA = new Date('2026-09-18T12:00:00');
-const F1 = 'A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.';
+const F1 = 'A Conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.';
 
 const BARALHO_EN = { palavras: 3412, cartoes: 2140, termos: 1870, porCartao: 1.62, novos: 310, aprendendo: 20, recentes: 400, maduros: 1410 };
 const BARALHO_RU = { palavras: 612, cartoes: 480, termos: 455, porCartao: 1.27, novos: 120, aprendendo: 4, recentes: 140, maduros: 216 };
