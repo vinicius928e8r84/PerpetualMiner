@@ -1,14 +1,13 @@
 'use strict';
 
-// Conexão com o Anki (#34): Baralhos e termos, Vocabulário e Reparar Anki, na
+// Conexão com o Anki (#34): Baralhos e termos e Vocabulário, na
 // arrumação C · Por idioma (docs/design/painel/anki/). A Conexão é o fake da
 // fronteira HTTP (fakes/anki.js), com os baralhos dos Ajustes de envio padrão
 // (CIMV em inglês, RUSSIAN em russo). Os testes afirmam o que a pessoa vê e o
 // que fica gravado.
 //
-// Dois bugs de #9 fecham aqui, cada um com o teste que falhava antes:
-//   - Reparar Anki abortava em 45 s, e o reparo leva até ~110 s: falso erro.
-//   - O Vocabulário ficava preso em “Aguardando…” quando as estatísticas falhavam.
+// Um bug de #9 fecha aqui, com o teste que falhava antes: o Vocabulário ficava preso em “Aguardando…” quando as
+// estatísticas falhavam. O Reparar Anki saiu da extensão (#152): quem conserta é o abridor (painel-conserto.spec.js).
 
 const { test, expect } = require('../fixtures');
 const { fotografar } = require('../evidencias-mineracao');
@@ -45,11 +44,6 @@ async function abrirAnki(page, extensao, hash, { jaConectou = true } = {}) {
   if (jaConectou) await extensao.gravarStorage({ pm_anki_ja_conectou: true });
   await page.clock.setFixedTime(AGORA);
   await page.goto(extensao.url(`painel.html${hash}`));
-}
-
-/** O Avançado de Baralhos e termos, aberto como a pessoa abre: clicando no resumo. */
-async function abrirAvancado(page) {
-  await baralhos(page).getByText('Avançado', { exact: true }).click();
 }
 
 test.beforeEach(({ fakes }) => {
@@ -131,13 +125,13 @@ test('baralhos carregando: BRG-10 com o esqueleto', async ({ page, extensao, fak
   responder();
 });
 
-test('baralhos que falham: BRG-11 com Reparar Anki, Tentar de novo e a causa em Detalhes', async ({ page, extensao, fakes }) => {
+test('baralhos que falham: BRG-11 com Tentar de novo e a causa em Detalhes, sem Reparar Anki', async ({ page, extensao, fakes }) => {
   fakes.anki.falharBaralhos({ status: 503 });
   await abrirAnki(page, extensao, '#anki/baralhos');
 
-  const aviso = baralhos(page).getByRole('alert').filter({ hasText: 'Não deu para ler os baralhos do Anki. Use Reparar Anki e tente de novo.' });
+  const aviso = baralhos(page).getByRole('alert').filter({ hasText: 'Não deu para ler os baralhos do Anki.' });
   await expect(aviso).toBeVisible();
-  await expect(aviso.getByRole('button', { name: 'Reparar Anki' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Reparar Anki' })).toHaveCount(0);
   await aviso.getByText('Detalhes', { exact: true }).click();
   await expect(aviso.locator('pre')).toContainText('POST /anki/stats/decks · HTTP 503');
   await expect(azulejosDosBaralhos(page)).toBeHidden();
@@ -146,114 +140,6 @@ test('baralhos que falham: BRG-11 com Reparar Anki, Tentar de novo e a causa em 
   await aviso.getByRole('button', { name: 'Tentar de novo' }).click();
   await expect(aviso).toBeHidden();
   await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
-});
-
-test('Reparar Anki espera o reparo inteiro (~100 s): “Reparando…” até o fim e o toast “Anki reparado”, sem erro falso (#9)', async ({ page, extensao, fakes }) => {
-  let terminar;
-  const reparo = new Promise(r => { terminar = r; });
-  fakes.anki.responder('POST', '/anki/repair', async () => {
-    await reparo;
-    return { json: { ok: true, after: { collectionReady: true, connectAvailable: true } } };
-  });
-  await extensao.gravarStorage({ pm_anki_ja_conectou: true });
-  await page.clock.install({ time: AGORA });
-  await page.goto(extensao.url('painel.html#anki/baralhos'));
-  await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
-
-  await abrirAvancado(page);
-  await baralhos(page).getByRole('button', { name: 'Reparar Anki' }).click();
-  // Reparando, o Avançado some: fica a nota BRG-15, e não há outro Reparar para apertar.
-  const reparando = baralhos(page).getByText('Fechando o Anki travado e abrindo de novo…');
-  await expect(reparando).toBeVisible();
-  await expect(baralhos(page).getByRole('button', { name: 'Reparar Anki' })).toBeHidden();
-
-  // O reparo fecha o Anki e espera até 90 s ele voltar: 100 s depois ainda está reparando.
-  await page.clock.runFor(100_000);
-  await expect(reparando).toBeVisible();
-  await expect(baralhos(page).getByRole('alert')).toHaveCount(0);
-
-  // Os 100 s do relógio vencem os 3 s de cada conferência da Conexão antes de a resposta chegar, e sob
-  // carga ela fica fora do ar até a resposta atrasada voltar. Com ela desligada ao fim do reparo, não há
-  // leitura com `refresh`: a Conexão que volta a ligar lê sozinha, pelo cache.
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
-  const leiturasAntesDoFim = pedidos(fakes, '/anki/stats/decks').length;
-  terminar();
-  await expect(page.locator('.veio-toast')).toHaveText('Anki reparado');
-  await expect(baralhos(page).getByRole('button', { name: 'Reparar Anki' })).toBeVisible();
-  await expect(baralhos(page).getByRole('button', { name: 'Reparar Anki' })).toBeFocused();
-  await expect(baralhos(page).getByRole('alert')).toHaveCount(0);
-  expect(pedidos(fakes, '/anki/repair')).toHaveLength(1);
-  // Reparado, os baralhos são lidos de novo, sem o cache da Conexão.
-  await expect.poll(() => pedidos(fakes, '/anki/stats/decks').length).toBeGreaterThan(leiturasAntesDoFim);
-  expect(pedidos(fakes, '/anki/stats/decks').at(-1).dados.refresh).toBe(true);
-});
-
-test('Reparar Anki pelo erro BRG-11: após o reparo o foco vai para o idioma escolhido', async ({ page, extensao, fakes }) => {
-  let terminar;
-  const reparo = new Promise(resolve => { terminar = resolve; });
-  fakes.anki.responder('POST', '/anki/repair', async () => {
-    await reparo;
-    fakes.anki.voltarBaralhos();
-    return { json: { ok: true, after: { collectionReady: true } } };
-  });
-  await abrirAnki(page, extensao, '#anki/baralhos');
-  const russo = azulejosDosBaralhos(page).getByRole('button').nth(1);
-  await expect(russo).toContainText('612 palavras');
-  await russo.click();
-  fakes.anki.falharBaralhos({ status: 503 });
-  await atualizar(page).click();
-  const aviso = baralhos(page).getByRole('alert').filter({ hasText: 'Não deu para ler os baralhos do Anki.' });
-  await expect(aviso).toBeVisible();
-  await aviso.getByRole('button', { name: 'Reparar Anki' }).click();
-  await expect(baralhos(page).getByRole('status').filter({ hasText: 'Fechando o Anki travado e abrindo de novo…' })).toBeFocused();
-
-  terminar();
-  await expect(page.locator('.veio-toast')).toHaveText('Anki reparado');
-  await expect(russo).toContainText('612 palavras');
-  await expect(russo).toHaveAttribute('aria-pressed', 'true');
-  await expect(russo).toBeFocused();
-});
-
-test('Reparar Anki que o Windows bloqueia: BRG-18 persistente, com os processos em Detalhes', async ({ page, extensao, fakes }) => {
-  fakes.anki.responder('POST', '/anki/repair', async () => ({
-    status: 503,
-    json: { ok: false, code: 'anki_repair_access_denied', accessDenied: true, pids: [11840, 12204], after: { collectionReady: false } },
-  }));
-  await abrirAnki(page, extensao, '#anki/baralhos');
-  await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
-
-  await abrirAvancado(page);
-  await baralhos(page).getByRole('button', { name: 'Reparar Anki' }).click();
-
-  const aviso = baralhos(page).getByRole('alert').filter({ hasText: 'O Windows não deixou fechar o Anki.' });
-  await expect(aviso).toContainText('Feche o Anki pelo Gerenciador de Tarefas (como administrador) ou reinicie o computador, e tente de novo.');
-  await aviso.getByText('Detalhes', { exact: true }).click();
-  await expect(aviso.locator('pre')).toContainText('11840, 12204');
-  await expect(page.locator('.veio-toast')).toHaveCount(0);
-  // Persistente: fica até a pessoa fechar.
-  await aviso.getByRole('button', { name: 'Fechar' }).click();
-  await expect(aviso).toBeHidden();
-});
-
-test('Reparar Anki que não deixa o Anki pronto: BRG-17 com Atualizar, que confere e lê de novo', async ({ page, extensao, fakes }) => {
-  fakes.anki.responder('POST', '/anki/repair', async () => ({
-    status: 503,
-    json: { ok: false, detail: 'AnkiConnect did not become ready', after: { collectionReady: false } },
-  }));
-  await abrirAnki(page, extensao, '#anki/baralhos');
-  await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
-  await abrirAvancado(page);
-  await baralhos(page).getByRole('button', { name: 'Reparar Anki' }).click();
-
-  const aviso = baralhos(page).getByRole('alert').filter({ hasText: 'O reparo demorou demais e foi interrompido.' });
-  await expect(aviso).toContainText('O Anki pode ter reaberto mesmo assim: atualize para conferir.');
-  await aviso.getByText('Detalhes', { exact: true }).click();
-  await expect(aviso.locator('pre')).toContainText('AnkiConnect did not become ready');
-
-  const leiturasAntes = pedidos(fakes, '/anki/stats/decks').length;
-  await aviso.getByRole('button', { name: 'Atualizar', exact: true }).click();
-  await expect(aviso).toBeHidden();
-  await expect.poll(() => pedidos(fakes, '/anki/stats/decks').length).toBeGreaterThan(leiturasAntes);
 });
 
 test('vocabulário: azulejos com o total de itens, lista × detalhe e as setas escolhem', async ({ page, extensao }) => {
@@ -362,7 +248,7 @@ test('vocabulário que falha: BRG-20 com Tentar de novo, em vez de ficar em “A
   await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
 });
 
-test('cai depois de responder: baralhos e vocabulário mostram o último dado com BRG-12; Reparar Anki fica indisponível', async ({ page, extensao, fakes }) => {
+test('cai depois de responder: baralhos e vocabulário mostram o último dado com BRG-12', async ({ page, extensao, fakes }) => {
   await abrirAnki(page, extensao, '#anki/vocabulario');
   await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
   await aba(page, 'Baralhos e termos').click();
@@ -376,12 +262,6 @@ test('cai depois de responder: baralhos e vocabulário mostram o último dado co
   await expect(baralhos(page)).toContainText('Anki fechado. Mostrando dados de há 2 h.');
   await expect(baralhos(page)).not.toContainText('Não deu para atualizar agora');
   await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
-  await abrirAvancado(page);
-  const reparar = baralhos(page).getByRole('button', { name: 'Reparar Anki' });
-  await expect(reparar).toHaveAttribute('aria-disabled', 'true');
-  await expect(reparar).toHaveAccessibleDescription(/para reparar o Anki/);
-  await reparar.click({ force: true });
-  expect(pedidos(fakes, '/anki/repair')).toHaveLength(0);
 
   await aba(page, 'Vocabulário').click();
   await expect(vocabulario(page)).toContainText('Anki fechado. Mostrando dados de há 2 h.');
@@ -662,34 +542,6 @@ test('azulejos, filtros e lista têm nome e foco visível', async ({ page, exten
   const opcao = listaDoVocabulario(page).getByRole('option').first();
   await opcao.focus();
   await expect(opcao).toHaveCSS('outline-style', 'solid');
-});
-
-test('com movimento reduzido, a espera do reparo fica parada', async ({ page, extensao, fakes }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  fakes.anki.responder('POST', '/anki/repair', () => new Promise(() => {}));
-  await abrirAnki(page, extensao, '#anki/baralhos');
-  await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
-  await abrirAvancado(page);
-  await baralhos(page).getByRole('button', { name: 'Reparar Anki' }).click();
-
-  const ponto = baralhos(page).locator('.anki-espera .anki-ponto').first();
-  await expect(ponto).toBeVisible();
-  await expect(ponto).toHaveCSS('animation-name', 'none');
-});
-
-test('Reparar Anki que falha sem o reparo ter esperado o Anki: GLB-01 com Reparar Anki, não “demorou demais”', async ({ page, extensao, fakes }) => {
-  fakes.anki.responder('POST', '/anki/repair', async () => ({ status: 409, json: { error: 'anki_repair_unavailable', detail: 'anki_repair_in_progress' } }));
-  await abrirAnki(page, extensao, '#anki/baralhos');
-  await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
-  await abrirAvancado(page);
-  await baralhos(page).getByRole('button', { name: 'Reparar Anki' }).click();
-
-  const aviso = baralhos(page).getByRole('alert').filter({ hasText: 'Algo deu errado. Tente de novo.' });
-  await expect(aviso).toBeVisible();
-  await expect(baralhos(page)).not.toContainText('O reparo demorou demais');
-  await expect(aviso.getByRole('button', { name: 'Reparar Anki' })).toBeVisible();
-  await aviso.getByText('Detalhes', { exact: true }).click();
-  await expect(aviso.locator('pre')).toContainText('HTTP 409 · anki_repair_unavailable · anki_repair_in_progress');
 });
 
 test('um idioma sem nenhum item no vocabulário: BRG-21, sem Limpar busca (não há o que limpar)', async ({ page, extensao, fakes }) => {

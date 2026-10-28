@@ -28,11 +28,6 @@
     return Boolean(estado) && (estado.status === 'partial' || estado.status === 'failed');
   }
 
-  /** O Windows não deixou a Conexão fechar o Anki travado: a pessoa precisa fechá-lo antes. */
-  function ankiTravado(estado) {
-    return estado?.ankiError === 'repair_access_denied';
-  }
-
   // O Envio espera por causa do perfil do Anki (#149): `estado.waiting` diz qual, e a ação é a do cartão.
   const abrindoOPerfil = new Set();
   const falhasAoAbrirOPerfil = new Set();
@@ -210,7 +205,6 @@
       const falhaAoContinuar = falhaAoRetomar(envio);
       const continuar = { rotulo: textoDaVoz('ENV-13.continuar'), foco: 'continuar', aoUsar: () => continuarEnvio(envio) };
       if (falhaAoContinuar) return { motivo: textoDaVoz('ENV-14.falha'), ...continuar };
-      if (ankiTravado(estado)) return { motivo: textoDaVoz('BRG-18'), ...continuar };
       if (retomavel(estado)) return continuar;
       return null;
     }

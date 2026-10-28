@@ -15,7 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const contrato = require('./complemento/contrato/exemplos.json');
+const contrato = require('./complemento/contrato/carregar.js');
 
 // Os objetos que saem do `vm` têm outro protótipo: compara-se o valor deles.
 const comoValores = async promessa => JSON.parse(JSON.stringify(await promessa));
@@ -114,6 +114,35 @@ async function main() {
     const { Abridor } = carregarOAbridor({ responder: () => meiaVerdade });
     assert.deepStrictEqual(await comoValores(Abridor.abrirOAnki()), { resultado: Abridor.RESULTADO.NAO_ABRIU, detalhe: '' },
       `o abrir com ${JSON.stringify(meiaVerdade)} diz NAO_ABRIU`);
+  }
+
+  // O consertar (#152): cada exemplo do contrato vira o resultado que a tela lê, com o motivo da falha.
+  {
+    const { Abridor } = carregarOAbridor({ responder: () => null });
+    for (const exemplo of contrato.conserto.exemplos) {
+      const { Abridor: A } = carregarOAbridor({ responder: () => exemplo.resposta });
+      assert.deepStrictEqual(await comoValores(A.consertarOAnki()),
+        { resultado: exemplo.resposta.situacao, motivo: exemplo.resposta.motivo ?? '', detalhe: '' }, exemplo.nome);
+    }
+    assert.ok(Abridor.LIMITE_DO_CONSERTO_MS >= 30_000 + 10_000 + 20_000, 'a conversa do consertar cobre a espera, o fechar e o abrir');
+  }
+  {
+    const { Abridor, enviadas } = carregarOAbridor({ permissao: false, responder: () => ({ situacao: 'reiniciado' }) });
+    assert.deepStrictEqual(await comoValores(Abridor.consertarOAnki()), { resultado: Abridor.RESULTADO.SEM_PERMISSAO, detalhe: '' },
+      'sem a permissão o consertar não fecha nada');
+    assert.deepStrictEqual(enviadas, []);
+  }
+  {
+    const recado = 'Specified native messaging host not found.';
+    const { Abridor, enviadas } = carregarOAbridor({ responder: () => { throw new Error(recado); } });
+    assert.deepStrictEqual(await comoValores(Abridor.consertarOAnki()), { resultado: Abridor.RESULTADO.SEM_ABRIDOR, detalhe: recado });
+    assert.deepStrictEqual(enviadas.map(e => e.mensagem), [{ acao: 'consertar' }]);
+  }
+  // Um abridor de antes do consertar responde acao_desconhecida; uma resposta fora do contrato nunca vira “reiniciado”.
+  for (const esquisita of [null, {}, { erro: 'acao_desconhecida' }, { situacao: 'quase' }, { situacao: 'achou' }, { achou: true, abriu: true }, { situacao: ['reiniciado'] }]) {
+    const { Abridor } = carregarOAbridor({ responder: () => esquisita });
+    assert.deepStrictEqual(await comoValores(Abridor.consertarOAnki()),
+      { resultado: Abridor.RESULTADO.SEM_ABRIDOR, detalhe: JSON.stringify(esquisita ?? null) }, `consertar com a resposta ${JSON.stringify(esquisita)}`);
   }
 
   console.log('abridor tests passed');

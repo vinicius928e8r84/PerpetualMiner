@@ -556,9 +556,6 @@ function criarFakeAnki() {
       if (falha) return responderJson(route, falha.status, { error: 'anki_stats_unavailable', detail: 'AnkiConnect timeout' });
       return responderJson(route, 200, numerosDosBaralhos(corpo));
     }
-    if (url.pathname === '/anki/repair' && req.method() === 'POST') {
-      return responderJson(route, 200, { ok: true, after: { collectionReady: true, connectAvailable: true } });
-    }
     // O Envio e os custos: só POST, como no complemento (o GET de antes não existe mais).
     const doEnvio = ['/jobs', '/jobs/list', '/jobs/get', '/jobs/retry', '/jobs/debug-bundle', '/jobs/apagar-frases', '/analytics/jobs'].includes(url.pathname);
     if (doEnvio && req.method() !== 'POST') return responderJson(route, 404, { error: 'not_found' });
@@ -761,8 +758,7 @@ function criarFakeAnki() {
     /**
      * Termina o Envio. Todas as frases dele viram cartão, menos as `falhas`;
      * as `duplicadas` já estavam no Anki. `erro` termina sem nenhuma (o job
-     * quebrou antes de enviar); `ankiError` é o código que a Conexão junta a ele
-     * (`repair_access_denied`: o Windows não deixou fechar o Anki travado).
+     * quebrou antes de enviar); `ankiError` é o código que a Conexão junta a ele.
      */
     concluirEnvio(jobId, { duplicadas = [], falhas = [], erro, ankiError = null } = {}) {
       const envio = acharEnvio(jobId);

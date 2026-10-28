@@ -1,6 +1,6 @@
 'use strict';
 
-// Referência visual de Baralhos e termos, Vocabulário e Reparar Anki (#34), na
+// Referência visual de Baralhos e termos e Vocabulário (#34), na
 // arrumação C · Por idioma do protótipo travado
 // (docs/design/painel/anki/prototipo-anki.html?variant=C, “⚙ Estados do
 // protótipo”), com os números do protótipo. O dono revisa estas telas lado a
@@ -53,10 +53,9 @@ async function abrirAnki(page, extensao, hash, { largura = 1280, gravado = {} } 
   await page.evaluate(() => document.fonts.ready);
 }
 
-test('baralhos: azulejos, anel de maturidade e os números, com o Avançado aberto', async ({ page, extensao }) => {
+test('baralhos: azulejos, anel de maturidade e os números', async ({ page, extensao }) => {
   await abrirAnki(page, extensao, '#anki/baralhos');
   await expect(baralhos(page).getByRole('img', { name: /de maturidade/ })).toBeVisible();
-  await baralhos(page).getByText('Avançado', { exact: true }).click();
 
   await expect(ilha(page)).toHaveScreenshot('baralhos.png');
 });
@@ -69,36 +68,12 @@ test('baralhos lidos do arquivo local (BRG-13) e o baralho que não existe (BRG-
   await expect(ilha(page)).toHaveScreenshot('baralhos-local-e-sem-baralho.png');
 });
 
-test('baralhos que falham: BRG-11 com Reparar Anki e Tentar de novo', async ({ page, extensao, fakes }) => {
+test('baralhos que falham: BRG-11 com Tentar de novo', async ({ page, extensao, fakes }) => {
   fakes.anki.falharBaralhos({ status: 503 });
   await abrirAnki(page, extensao, '#anki/baralhos');
   await expect(baralhos(page).getByRole('alert')).toBeVisible();
 
   await expect(ilha(page)).toHaveScreenshot('baralhos-erro.png');
-});
-
-test('reparando: a nota BRG-15 e o esqueleto, sem o Avançado', async ({ page, extensao, fakes }) => {
-  fakes.anki.responder('POST', '/anki/repair', () => new Promise(() => {}));
-  await abrirAnki(page, extensao, '#anki/baralhos');
-  await expect(baralhos(page).getByRole('img', { name: /de maturidade/ })).toBeVisible();
-  await baralhos(page).getByText('Avançado', { exact: true }).click();
-  await baralhos(page).getByRole('button', { name: 'Reparar Anki' }).click();
-  await expect(baralhos(page).getByText('Fechando o Anki travado e abrindo de novo…')).toBeVisible();
-  await expect(baralhos(page).getByText('Avançado', { exact: true })).toBeHidden();
-
-  await expect(ilha(page)).toHaveScreenshot('baralhos-reparando.png', { animations: 'disabled' });
-});
-
-test('o reparo que o Windows bloqueia: BRG-18 no topo', async ({ page, extensao, fakes }) => {
-  fakes.anki.responder('POST', '/anki/repair', async () => ({
-    status: 503, json: { ok: false, accessDenied: true, pids: [11840, 12204] },
-  }));
-  await abrirAnki(page, extensao, '#anki/baralhos');
-  await baralhos(page).getByText('Avançado', { exact: true }).click();
-  await baralhos(page).getByRole('button', { name: 'Reparar Anki' }).first().click();
-  await expect(baralhos(page).getByRole('alert')).toBeVisible();
-
-  await expect(ilha(page)).toHaveScreenshot('baralhos-reparo-bloqueado.png');
 });
 
 test('vocabulário: azulejos, filtros, lista × detalhe', async ({ page, extensao }) => {

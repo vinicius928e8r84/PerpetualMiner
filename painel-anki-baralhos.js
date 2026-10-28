@@ -4,7 +4,6 @@
   const CHAVE_BARALHOS = 'pm_anki_baralhos';
   const CHAVE_VOCABULARIO = 'pm_anki_vocabulario';
   const FONTE_ARQUIVO = raiz.VocabularioDaMineracao.FONTE_ARQUIVO;
-  const LIMITE_DA_CONEXAO_MUDA_MS = 180_000;
   // Os itens do vocabulário que a lista desenha; a busca e os filtros estreitam.
   const MOSTRAR_NO_MAXIMO = 200;
 
@@ -79,16 +78,12 @@
       busca: '',
       escolhido: null,      // a chave do item no detalhe
     },
-    reparando: false,
-    fimDoReparo: null,      // o aviso do reparo que não deu certo (BRG-17, BRG-18), até fechar
   };
 
   async function iniciar() {
     montarAzulejos('anki-baralhos-azulejos', estado.baralhos);
     montarAzulejos('anki-vocabulario-azulejos', estado.vocabulario);
     montarFiltros();
-    const reparar = porId('btn-bridge-anki-repair');
-    reparar.addEventListener('click', () => pedirReparo(reparar));
 
     const gravado = await chrome.storage.local.get({ [CHAVE_BARALHOS]: null, [CHAVE_VOCABULARIO]: null });
     const baralhos = gravado[CHAVE_BARALHOS];
@@ -136,7 +131,7 @@
    * POST /anki/stats/decks com os dois baralhos numa leitura só. `deNovo` passa
    * por cima do cache da Conexão; `abrirOAnki` a deixa abrir o Anki (BRG-24): só um clique pede isso.
    */
-  async function lerBaralhos({ deNovo = false, abrirOAnki = false, focarAzulejo = false } = {}) {
+  async function lerBaralhos({ deNovo = false, abrirOAnki = false } = {}) {
     const baralhos = estado.baralhos;
     const leitura = ++baralhos.leitura;
     baralhos.carregando = true;
@@ -163,9 +158,6 @@
       chrome.storage.local.set({ [CHAVE_BARALHOS]: { dados, quando, nomes, dadosDe: marca.dadosDe, ankiFechado: marca.ankiFechado } });
     }
     desenhar();
-    if (focarAzulejo && dados && document.activeElement === document.body) {
-      porId('anki-baralhos-azulejos').querySelector('[aria-pressed="true"]')?.focus();
-    }
   }
 
   /** O vocabulário inteiro do baralho de cada idioma; os filtros são aplicados aqui. */
@@ -223,143 +215,9 @@
     return resposta.json();
   }
 
-  async function pedirReparo(botao) {
-    if (botao.getAttribute('aria-disabled') === 'true') return;
-    const reparoDoErro = Boolean(botao.closest('#anki-baralhos-corpo'));
-    estado.reparando = true;
-    estado.fimDoReparo = null;
-    desenhar();
-    // Quem apertou saiu da tela (o Reparar do BRG-11 ou o do Avançado, que some no reparo): o foco vai para a espera.
-    porId('anki-reparando')?.focus();
-
-    const limite = new AbortController();
-    const relogio = setTimeout(() => limite.abort(), LIMITE_DA_CONEXAO_MUDA_MS);
-    let fim;
-    try {
-      const resposta = await fetch(`${ENDERECO_DA_CONEXAO}/anki/repair`, { method: 'POST', signal: limite.signal });
-      const dados = await resposta.json().catch(() => ({}));
-      if ((resposta.ok && dados.ok) || dados.after?.collectionReady) fim = { ok: true };
-      else if (windowsBloqueou(dados)) fim = { bloqueado: true, causa: `anki_repair_access_denied · ${processosDoReparo(dados)}` };
-      else {
-        // Com `after`, o reparo rodou e esperou o Anki voltar, e ele não voltou: BRG-17.
-        // Sem ele (já reparando, ou o reparo nem começou), a Conexão não chegou a esperar.
-        const causa = ['POST /anki/repair', `HTTP ${resposta.status}`, dados.error || dados.code, dados.detail].filter(Boolean).join(' · ');
-        fim = { demorou: Boolean(dados.after), causa };
-      }
-    } catch (falha) {
-      const motivo = limite.signal.aborted ? `sem resposta em ${LIMITE_DA_CONEXAO_MUDA_MS / 1000} s` : falha.message;
-      fim = { demorou: limite.signal.aborted, causa: `POST /anki/repair · ${motivo}` };
-    } finally {
-      clearTimeout(relogio);
-    }
-
-    estado.reparando = false;
-    if (fim.ok) {
-      Veio.mostrarToastDeSucesso(textoDaVoz('BRG-16'));
-      desenhar();
-      if (!reparoDoErro) devolverOFoco(botao);
-      lerTudo({ deNovo: true, focarAzulejo: reparoDoErro });
-      return;
-    }
-    if (fim.bloqueado) estado.fimDoReparo = avisoDeBloqueio(fim.causa);
-    else if (fim.demorou) estado.fimDoReparo = avisoDeDemora(fim.causa);
-    else estado.fimDoReparo = avisoDeFalha(fim.causa);
-    desenhar();
-    devolverOFoco(botao);
-  }
-
-  /** A espera sumiu: devolve o foco apenas ao botão que ainda permanece na tela. */
-  function devolverOFoco(botao) {
-    if (document.activeElement === document.body && botao.isConnected && !botao.closest('[hidden]')) botao.focus();
-  }
-
-  function windowsBloqueou(dados) {
-    return Boolean(dados.accessDenied || dados.kill?.accessDenied || dados.code === 'anki_repair_access_denied');
-  }
-
-  /** Os processos que o Windows não deixou fechar, para o Detalhes do BRG-18. */
-  function processosDoReparo(dados) {
-    const linhas = [
-      ...(Array.isArray(dados.pids) ? dados.pids : []),
-      ...(Array.isArray(dados.processes) ? dados.processes : []),
-      ...(Array.isArray(dados.kill?.remaining) ? dados.kill.remaining : []),
-    ];
-    const pids = [...new Set(linhas.map(linha => Number(linha?.pid ?? linha)).filter(Boolean))];
-    return `processos: ${pids.join(', ') || '?'}`;
-  }
-
-  /** BRG-18: persistente, com Reparar Anki de novo e os processos em Detalhes. */
-  function avisoDeBloqueio(causa) {
-    const aviso = Veio.montarAviso({
-      texto: textoDaVoz('BRG-18'),
-      detalhes: causa,
-      rotuloDeFechar: textoDaVoz('PAI-34'),
-      aoFechar: fecharFimDoReparo,
-    });
-    aviso.querySelector('.veio-aviso__acoes').prepend(botaoDeReparar('anki-reparar-indisponivel-bloqueio'));
-    return aviso;
-  }
-
-  /** BRG-17: o reparo não deixou o Anki pronto; Atualizar confere e lê de novo. */
-  function avisoDeDemora(causa) {
-    return Veio.montarAviso({
-      texto: textoDaVoz('BRG-17.aviso'),
-      acao: {
-        rotulo: textoDaVoz('BRG-17.atualizar'),
-        aoUsar: () => {
-          fecharFimDoReparo();
-          raiz.Anki.atualizar();
-        },
-      },
-      detalhes: causa,
-      rotuloDeFechar: textoDaVoz('PAI-34'),
-      aoFechar: fecharFimDoReparo,
-    });
-  }
-
-  /** O reparo que falhou sem cópia própria: GLB-01, com Reparar Anki de novo e a causa em Detalhes. */
-  function avisoDeFalha(causa) {
-    const aviso = Veio.montarAviso({
-      texto: textoDaVoz('GLB-01'),
-      detalhes: causa,
-      rotuloDeFechar: textoDaVoz('PAI-34'),
-      aoFechar: fecharFimDoReparo,
-    });
-    aviso.querySelector('.veio-aviso__acoes').prepend(botaoDeReparar('anki-reparar-indisponivel-falha'));
-    return aviso;
-  }
-
-  function fecharFimDoReparo() {
-    estado.fimDoReparo = null;
-    desenhar();
-  }
-
-  /** Um Reparar Anki a mais (nos avisos), com a dica própria. */
-  function botaoDeReparar(idDaDica) {
-    const acao = botao(null, 'veio-botao veio-botao--contorno', () => pedirReparo(acao));
-    acao.dataset.reparar = '';
-    const dica = elemento('span', 'veio-dica', textoDaVoz('BRG-33.reparar'));
-    dica.id = idDaDica;
-    dica.setAttribute('role', 'tooltip');
-    return elemento('span', 'veio-com-dica', acao, dica);
-  }
-
-  /** Os botões ficam ocultos durante o reparo; com a Conexão desligada, aria-disabled (continua no Tab) e dica. */
-  function desenharBotoesDeReparar() {
-    for (const acao of document.querySelectorAll('#btn-bridge-anki-repair, [data-reparar]')) {
-      acao.textContent = textoDaVoz(estado.reparando ? 'BRG-15.titulo' : 'BRG-11.repararAnki');
-      const dica = acao.parentElement.querySelector('.veio-dica');
-      if (desligada() || estado.reparando) acao.setAttribute('aria-disabled', 'true');
-      else acao.removeAttribute('aria-disabled');
-      if (desligada()) acao.setAttribute('aria-describedby', dica.id);
-      else acao.removeAttribute('aria-describedby');
-    }
-  }
-
   function desenhar() {
     desenharBaralhos();
     desenharVocabulario();
-    desenharBotoesDeReparar();
   }
 
   /** O que a aba mostra agora: a mesma regra nas duas abas. */
@@ -398,20 +256,11 @@
     return no;
   }
 
-  const esperaDoReparo = (() => {
-    const linha = linhaDeEspera(textoDaVoz('BRG-15.detalhe'));
-    linha.id = 'anki-reparando';
-    linha.tabIndex = -1;
-    return linha;
-  })();
-
   function desenharBaralhos() {
     const baralhos = estado.baralhos;
-    const qual = estado.reparando ? 'reparando' : vista(baralhos);
+    const qual = vista(baralhos);
 
     const topo = [];
-    if (estado.reparando) topo.push(esperaDoReparo);
-    if (estado.fimDoReparo) topo.push(estado.fimDoReparo);
     const comDados = qual === 'dados' || qual === 'antiga';
     if (comDados && baralhos.dados.source === FONTE_ARQUIVO) topo.push(oMesmo('baralhos:arquivo', true, notaDoArquivoLocal));
     if (qual === 'antiga' || (qual === 'dados' && baralhos.ankiFechado)) {
@@ -421,10 +270,9 @@
     mostrar(porId('anki-baralhos-topo'), topo);
 
     porId('anki-baralhos-azulejos').hidden = !comDados;
-    porId('anki-baralhos-avancado').hidden = qual === 'esqueleto' || qual === 'reparando';
     const corpo = porId('anki-baralhos-corpo');
     if (qual === 'esqueleto') mostrar(corpo, [esqueleto([120, 120])]);
-    else if (qual === 'carregando' || qual === 'reparando') mostrar(corpo, [linhaDeEspera(textoDaVoz('BRG-10')), esqueleto([120, 120])]);
+    else if (qual === 'carregando') mostrar(corpo, [linhaDeEspera(textoDaVoz('BRG-10')), esqueleto([120, 120])]);
     else if (qual === 'erro') mostrar(corpo, [oMesmo('baralhos:erro', baralhos.erro, erroDosBaralhos)]);
     else if (qual === 'nada') mostrar(corpo, [oMesmo('baralhos:esperando', true, esperandoOAnki)]);
     else {
@@ -461,16 +309,14 @@
     return seloAntigo(dados.generatedAt || estado.baralhos.quando, 'atualizacao');
   }
 
-  /** BRG-11: persistente, com Reparar Anki e Tentar de novo, e a causa em Detalhes. */
+  /** BRG-11: persistente, com Tentar de novo e a causa em Detalhes. */
   function erroDosBaralhos() {
-    const aviso = Veio.montarAviso({
+    return Veio.montarAviso({
       texto: textoDaVoz('BRG-11.aviso'),
       acao: { rotulo: textoDaVoz('BRG-11.tentarDeNovo'), aoUsar: () => lerTudo({ deNovo: true, abrirOAnki: true }) },
       detalhes: estado.baralhos.erro,
       fechavel: false,
     });
-    aviso.querySelector('.veio-aviso__acoes').prepend(botaoDeReparar('anki-reparar-indisponivel-erro'));
-    return aviso;
   }
 
   function decksPorIdioma(dados) {

@@ -30,7 +30,6 @@ const SPEC_NAO_ESCREVE = new Set([
   'ENV-03.motivoAjustes',
   'ENV-10.ajudaUma',
   'BRG-01.desligada',
-  'BRG-33.reparar',
   'ONB-11.corpo',
   'ONB-11.detalhes',
 ]);

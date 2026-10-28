@@ -2413,23 +2413,6 @@ body {
   border-radius: 3px;
 }
 
-/* Reparar Anki no Avançado: a frase do que ele faz e o botão ao lado. */
-.anki-reparar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 16px;
-}
-
-.anki-reparar__texto {
-  flex: 1;
-  min-width: min(100%, 240px);
-}
-
-.anki-reparar__texto .anki-apoio {
-  margin-top: 2px;
-}
-
 .anki-filtros {
   display: flex;
   flex-wrap: wrap;
