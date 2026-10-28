@@ -116,13 +116,13 @@ class Abridor:
                 self.registro.gravar(chave + "\\" + NOME_DO_HOST, manifesto)
 
 
-def deste_computador(*, plataforma, ambiente, executavel, pasta, registro=None, existe=os.path.exists, pid=None, complemento=None):
+def deste_computador(*, plataforma, ambiente, executavel, pasta, registro=None, existe=os.path.exists, complemento=None):
     """O abridor deste computador, escrito em `pasta`; `None` onde não há (só Mac e Windows).
 
-    `pid` e `complemento` (a pasta do complemento, com o `meta.json`) são os do Anki que roda o complemento agora: é o único
-    Anki que o `consertar` fecha, e só se `executavel` ainda for o programa daquele `pid`.
+    `executavel` é o programa que roda o Anki (e o complemento) agora: o `consertar` só fecha processos desse programa. `complemento`
+    é a pasta do complemento, com o `meta.json`.
     """
-    conserto = conserto_do_anki.Conserto(pid=pid, executavel=executavel, complemento=complemento)
+    conserto = conserto_do_anki.Conserto(executavel=executavel, complemento=complemento)
     if plataforma == "darwin":
         casa = ambiente.get("HOME") or os.path.expanduser("~")
         hosts = posixpath.join(casa, "Library", "Application Support", "Google", "Chrome", "NativeMessagingHosts")

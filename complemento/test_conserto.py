@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from complemento import abridor, conserto_do_anki  # noqa: E402
 from complemento.test_abridor import ANKI_DO_WINDOWS, Pastas, RegistroDeMentira, conversar  # noqa: E402
 
-PID = 4242
+PID = 4242   # o do Anki de mentira: o programa de mentira `ps` o lista, o `kill` de mentira o fecha
 COMANDO_DO_ANKI = "/Applications/Anki.app/Contents/MacOS/anki"
 CONSERTAR = {"acao": "consertar"}
 
@@ -60,10 +60,11 @@ class Mundo:
         programa(self.programas["date"], 'cat "%s/relogio"\n' % e)
         programa(self.programas["sleep"],
                  'echo "sleep $1" >> "%s"\nprintf %%s $(( $(cat "%s/relogio") + $1 )) > "%s/relogio"\n' % (self.registro, e, e))
+        # A lista de processos do computador: o Anki (se vive), o abridor e um processo qualquer, como o `ps` de verdade os mostra.
         programa(self.programas["ps"],
-                 'echo "ps $*" >> "%s"\n[ -f "%s/vivo" ] || exit 1\n'
-                 'if [ -f "%s/fecha_em" ] && [ "$(cat "%s/relogio")" -ge "$(cat "%s/fecha_em")" ]; then rm -f "%s/vivo"; exit 1; fi\n'
-                 'cat "%s/comando"\n' % ((self.registro, e) + (e,) * 5))
+                 'echo "ps $*" >> "%s"\nprintf "  100 /usr/sbin/cron\\n  200 sh /x/abrir-o-anki.sh chrome-extension://x/\\n"\n'
+                 'if [ -f "%s/fecha_em" ] && [ "$(cat "%s/relogio")" -ge "$(cat "%s/fecha_em")" ]; then rm -f "%s/vivo"; fi\n'
+                 '[ -f "%s/vivo" ] && printf "  %d %%s\\n" "$(cat "%s/comando")"\nexit 0\n' % ((self.registro, e, e, e, e, e, PID, e)))
         programa(self.programas["curl"],
                  'echo "curl $*" >> "%s"\n[ -f "%s/responde_a_partir_de" ] && [ "$(cat "%s/relogio")" -ge "$(cat "%s/responde_a_partir_de")" ] && exit 0\nexit 28\n'
                  % (self.registro, e, e, e))
@@ -133,7 +134,7 @@ class Mundo:
             abrir_com=self.programas["open"],
             ler_json_com=self.pastas.ler_json,
             conserto=conserto_do_anki.Conserto(
-                pid=PID, executavel=COMANDO_DO_ANKI, complemento=self.complemento,
+                executavel=COMANDO_DO_ANKI, complemento=self.complemento,
                 programas={nome: self.programas[nome] for nome in ("ps", "curl", "kill", "sleep", "date")},
                 **conserto),
         )
@@ -158,7 +159,7 @@ class NoMac(unittest.TestCase):
         self.assertEqual(self.mundo.consertar(), {"situacao": "fechado"})
         self.assertEqual(self.mundo.passos(), [])
 
-    def test_um_pid_que_virou_outro_programa_nao_e_fechado(self):
+    def test_outro_programa_que_nao_e_o_do_anki_nao_e_fechado(self):
         self.mundo.anki_aberto(comando="/usr/bin/vim notas.txt")
         self.assertEqual(self.mundo.consertar(), {"situacao": "fechado"})
         self.assertEqual(self.mundo.passos(), [])
@@ -335,7 +336,7 @@ class NoMac(unittest.TestCase):
             onde_registrar={"Chrome": self.mundo.pastas.hosts_do_chrome}, abrir_com=self.mundo.programas["open"],
             ler_json_com=self.mundo.pastas.ler_json,
             conserto=conserto_do_anki.Conserto(
-                pid=PID, executavel=comando, complemento=self.mundo.complemento, espera_s=2,
+                executavel=comando, complemento=self.mundo.complemento, espera_s=2,
                 programas={nome: self.mundo.programas[nome] for nome in ("ps", "curl", "kill", "sleep", "date")}),
         )
         script.escrever(None)
@@ -352,7 +353,7 @@ class NoWindows(unittest.TestCase):
         self.complemento = r"C:\Users\Maria\AppData\Roaming\Anki2\addons21\perpetualminer"
         abridor.deste_computador(
             plataforma="win32", ambiente={"ANKI_LAUNCHER": ANKI_DO_WINDOWS}, executavel=r"C:\Anki\pythonw.exe",
-            pasta=self.pasta, registro=RegistroDeMentira(), pid=777, complemento=self.complemento,
+            pasta=self.pasta, registro=RegistroDeMentira(), complemento=self.complemento,
         ).escrever("Usuário 1")
         with open(os.path.join(self.pasta, "abrir-o-anki.ps1"), "rb") as arquivo:
             self.ps1 = arquivo.read().decode("utf-8-sig")
@@ -366,17 +367,15 @@ class NoWindows(unittest.TestCase):
                 return linha[len("$%s = " % variavel):]
         self.fail("o .ps1 não tem $%s" % variavel)
 
-    def test_o_ps1_leva_o_pid_o_programa_a_pasta_do_complemento_e_a_espera(self):
-        self.assertEqual(self.valor("pidDoAnki"), "777")
+    def test_o_ps1_leva_o_programa_a_pasta_do_complemento_e_a_espera(self):
         self.assertEqual(self.valor("programaDoAnki"), r"'C:\Anki\pythonw.exe'")
         self.assertEqual(self.valor("complemento"), "'%s'" % self.complemento)
         self.assertEqual(self.valor("espera"), "30")
 
-    def test_o_ps1_so_fecha_o_processo_que_o_complemento_anotou(self):
-        self.assertIn("Get-Process -Id $pidDoAnki", self.ps1)
-        self.assertIn("-ieq $programaDoAnki", self.ps1)
+    def test_o_ps1_so_fecha_os_processos_do_programa_que_o_complemento_anotou(self):
+        self.assertIn("$_.Path -ieq $programaDoAnki", self.ps1)
         self.assertEqual(self.ps1.count("Stop-Process"), 1)
-        self.assertIn("Stop-Process -Id $pidDoAnki -Force", self.ps1)
+        self.assertIn("ProcessosDoAnki | Stop-Process -Force", self.ps1)
         self.assertNotIn("Get-Process -Name", self.ps1)
         self.assertNotIn("taskkill", self.ps1.lower())
 

@@ -5,7 +5,6 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 (`GET /health`: `{ ok, versao, perfil }`, aberta ao cliente local), as leituras da coleção do Anki
 (`POST /anki/decks`, `/anki/stats/decks` e `/anki/vocabulary`) e a chave da OpenAI
 (`POST /ia/openai/chave` a confere e guarda; `POST /ia/estado` diz se há cópia), o Envio (`POST /jobs`, `/jobs/list`, `/jobs/get`, `/jobs/retry`, `/jobs/debug-bundle`, `/analytics/jobs`: cada Frase vira um Cartão com texto e áudio gravado na coleção, #142) e o perfil fixo (`POST /anki/profiles`, `/anki/profile`, `/anki/profile/open`, #149); o resto exige a origem da extensão e é POST (`contrato/LEIA-ME.md`).
-A Conexão de hoje (`bridge/`) só ganhou o POST nas três rotas da coleção.
 
 | Arquivo | O que faz |
 |---|---|
@@ -28,8 +27,9 @@ A Conexão de hoje (`bridge/`) só ganhou o POST nas três rotas da coleção.
 | `normalizacao.py` | A lógica pura do vocabulário e dos números (a de `bridge/card_normalization.py`, na biblioteca padrão) |
 | `chaves.py` | O cofre das chaves: `user_files/chaves/openai.json`, só do dono (0600), gravado de uma vez; a chave inteira só sai daqui para o pedido que a gasta |
 | `openai_api.py` | Conferir uma chave da OpenAI (`GET /v1/models` e um `POST /v1/embeddings` de uma palavra, só com a biblioteca padrão): recusada, sem crédito, organização não verificada ou a OpenAI fora do ar. Nunca copia o que a OpenAI diz ao recusar para o log nem para a resposta |
-| `item_de_login.py` | O item de login de “Abrir o Anki com o computador”: um LaunchAgent no Mac, um atalho na pasta Inicializar no Windows (o `.lnk` escrito byte a byte, sem COM nem PowerShell). Ligar escreve, desligar apaga; desligado por padrão |
-| `abridor.py` | O abridor de “Abrir o Anki sozinho” (#147): ao carregar, a cada perfil que abre e quando se escolhe outro, escreve em `user_files/abridor` o script com o caminho do Anki e o perfil marcado (`.sh` no Mac; no Windows, um `.bat` que chama com o PowerShell do Windows o `.ps1` ao lado) e o registra como host de Native Messaging `com.perpetualminer.abridor`, só para a origem da extensão: no Mac, o manifesto na pasta de hosts do Chrome; no Windows, o valor padrão de `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.perpetualminer.abridor` (o Opera GX 136 achou o host só aí num Windows real, ensaio W4 de 2026-10-10; outros builds não confirmados; a ajuda do Opera cita HKLM). O script só responde `conferir` (o Anki está lá?) e `abrir` (abre o Anki com `-p "<perfil>"`), pelos exemplos de `contrato/exemplos.json` › `abridor`. Escrever falhou: vai ao log, a Conexão sobe assim mesmo |
+| `item_de_login.py` | O item de login de “Abrir o Anki com o computador”: um LaunchAgent no Mac, um atalho na pasta Inicializar no Windows (o `.lnk` escrito byte a byte). Ligar escreve, desligar apaga; desligado por padrão |
+| `abridor.py` | O abridor de “Abrir o Anki sozinho” (#147): ao carregar, a cada perfil que abre e quando se escolhe outro, escreve em `user_files/abridor` o script com o caminho do Anki e o perfil marcado (`.sh` no Mac; no Windows, um `.bat` que chama com o PowerShell do Windows o `.ps1` ao lado) e o registra como host de Native Messaging `com.perpetualminer.abridor`, só para a origem da extensão: no Mac, o manifesto na pasta de hosts do Chrome; no Windows, o valor padrão de `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.perpetualminer.abridor` (o Opera GX 136 achou o host só aí num Windows real, ensaio W4 de 2026-10-10; outros builds não confirmados; a ajuda do Opera cita HKLM). O script responde `conferir` (o Anki está lá?), `abrir` (abre o Anki com `-p "<perfil>"`) e `consertar` (#152), pelos exemplos de `contrato/exemplos.json` › `abridor` e `exemplos-do-conserto.json`. Escrever falhou: vai ao log, a Conexão sobe assim mesmo |
+| `conserto_do_anki.py` | O `consertar` do abridor (#152): fecha à força o Anki que não responde há 30 s e abre de novo, ou liga a Conexão desativada no `meta.json` e reinicia; só o Anki (`pid` e programa) que o complemento anotou, nunca um fechado pela pessoa. Ensaio: `docs/design/ensaio-do-conserto.md` |
 | `registro.py` | O logger do complemento: todo erro vai para `user_files/logs/complemento.log` |
 | `pasta_de_dados.py` | `user_files/{fila,estado,custos,logs,chaves}`, que o Anki preserva nas atualizações (os do Envio, `envio.py`) |
 | `configuracao.py` | Versão, porta e o ID da extensão |
@@ -57,6 +57,7 @@ python3.9 complemento/test_colecao_em_memoria.py  # o adaptador em memória e o 
 python3.9 complemento/test_pacote.py     # o conteúdo do .ankiaddon
 python3.9 complemento/test_item_de_login.py  # o item de login escrito e apagado numa pasta temporária
 python3.9 complemento/test_abridor.py        # o abridor escrito e registrado numa pasta temporária; roda o script do Mac
+python3.9 complemento/test_conserto.py       # o consertar: esperar 30 s, fechar, abrir e o meta.json, com programas de mentira
 python3.9 complemento/test_chave_da_openai.py  # a chave: o que atravessa o HTTP, fica no disco e vai ao log
 python3.9 complemento/test_perfil_fixo.py   # o perfil fixo: a escolha, a espera, a tela de perfis (+ `test_no_anki_perfil.py`)
 python3.9 complemento/test_envio.py          # o Envio: a fila, o estado por Cartão, as duplicatas, a espera, a retomada, os custos
@@ -90,7 +91,6 @@ Depois refaça o arquivo. Subir a `VERSAO` muda a `versao` dos exemplos de `cont
 ## Ensaio do dono, no Mac
 
 1. Com a extensão carregada, abra o painel › Conexão com o Anki (ou a Boas-vindas, passo 4): **Baixar a Conexão com o Anki**.
-   (Sem a extensão: `python3 complemento/empacotar.py` gera `dist/perpetualminer.ankiaddon`.)
 2. Abra o arquivo baixado, com o Anki **fechado** de propósito: ele abre sozinho e pergunta se quer instalar; responda Sim.
 3. Reinicie o Anki. A tela confere sozinha e diz “Achei o Anki · perfil · versão”.
 4. Com um perfil aberto, abra o painel › Conexão com o Anki: **Baralhos e termos** e **Vocabulário** mostram os
@@ -128,8 +128,8 @@ O item de login **nunca foi testado** num Mac nem num Windows de verdade: os tes
 
 O abridor **não foi testado num Mac de verdade**. No Windows real (ensaio de 2026-10-10), o complemento escreveu e registrou o host;
 o PowerShell 5.1 respondeu `conferir` e recusou as cinco ações inválidas sem abrir outro Anki. Chrome 153 e Opera GX 136, em perfis separados,
-acharam e chamaram o host registrado só em HKCU do Chrome, com permissão nativa concedida por UI Automation. Isso não prova outros builds
-nem o fluxo do painel: a porta 8766 estava ocupada, `/health` e o painel não rodaram; `abrir` não foi executado.
+acharam e chamaram o host registrado só em HKCU do Chrome, com permissão nativa concedida por UI Automation. Isso não prova outros builds nem o fluxo
+do painel (porta 8766 ocupada; `abrir` não foi executado).
 `test_abridor.py` escreve e registra só em pastas temporárias / registro de mentira;
 no Linux, roda o `.sh` com o mesmo parser JavaScript em Node (a CLI do JXA é adaptada), não o `osascript` real. O e2e usa um abridor de mentira.
 `test_inicio.py` e `test_no_anki.py` desativam o abridor (`abridor=None`); os ensaios de registro usam só destinos temporários.
@@ -141,8 +141,8 @@ Isso não confirma o aceite do dono:
 | Risco 2 — Chrome no Mac chama o host e abre o Anki sem pergunta do macOS | **PENDING OWNER** | Ainda não registrada |
 | Comparação/aprovação visual do passo 3 e do Pronto (S4) | **PENDING OWNER** | Propostas continuam `test.fixme`, sem PNG aprovado |
 
-Não fechar #147 com base nos testes de Linux, num ✓ de `conferir` ou na abertura pelo Terminal. Registrar sistema, navegador, resultado,
-data e confirmação do dono (ou a mudança do critério) antes do fechamento. O que só o ensaio mostra:
+Não fechar #147 só com testes de Linux, um ✓ de `conferir` ou a abertura pelo Terminal: registre sistema, navegador, resultado, data
+e confirmação do dono. O que só o ensaio mostra:
 
 1. Com o complemento novo no Anki (refaça o arquivo: `python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon`), abra o Anki
    e um perfil. Em `user_files/abridor` (Ferramentas › Complementos › Ver arquivos) aparece o script; o log só diz “O abridor não foi escrito” se algo falhou.
@@ -153,13 +153,11 @@ data e confirmação do dono (ou a mudança do critério) antes do fechamento. O
    e aponta para `…/user_files/abridor/abrir-o-anki.sh`. Para ver o `abrir` (que o Envio usa, #150), feche o Anki e rode, no Terminal,
    `printf '\x13\x00\x00\x00{"acao":"abrir"}' | sh "<o caminho do script>" | tail -c +5`: o Anki abre no perfil anotado, **sem pergunta
    do macOS**? A resposta é `{"achou":true,"abriu":true}`. Se o macOS perguntar algo (Gatekeeper, “Terminal quer controlar…”), anote o texto.
-   Isto é só uma aproximação: o macOS julga de um jeito o script do Terminal e de outro o do Chrome, e a extensão só
-   manda `abrir` do Envio e do botão (#150). O risco 2 de verdade (o Chrome chama, o Anki abre sem pergunta) continua **PENDING OWNER**:
-   se o ensaio depender do #150, #147 permanece pendente até essa confirmação ou uma mudança explícita do critério pelo dono.
+   Isto é só uma aproximação: o macOS julga o script do Terminal e o do Chrome de modos diferentes. O risco 2 de verdade (o Chrome chama,
+   o Anki abre sem pergunta) continua **PENDING OWNER**.
 4. **Windows com o Chrome:** `reg query "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.perpetualminer.abridor"` mostra o caminho
    do manifesto em `user_files\abridor`. O passo 2 acima dá ✓? Se a política do computador bloquear o PowerShell (`-ExecutionPolicy Bypass`
    não basta), o passo diz que o abridor não respondeu, com o Detalhes: anote o texto.
 5. **Windows com o Opera (risco 1):** instale a extensão no Opera e repita o passo 2. O Opera acha o host registrado na chave do Chrome?
-   Se não achar (“Specified native messaging host not found.”), registre também na chave que o Opera lê: uma linha em
-   `ONDE_REGISTRAR_NO_WINDOWS` (`abridor.py`) e a constante do teste.
+   Se não achar (“Specified native messaging host not found.”), registre também na chave que o Opera lê (`ONDE_REGISTRAR_NO_WINDOWS` e o teste).
 6. **Agora não:** num perfil novo do Chrome, aperte Agora não: o passo fica “agora não” e o Pronto devolve as abas.
