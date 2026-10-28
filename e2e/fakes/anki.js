@@ -4,6 +4,7 @@ const { isDeepStrictEqual } = require('util');
 const { responderJson } = require('./http');
 const { criarFakeChatGPT } = require('./chatgpt');
 const { criarPerfis } = require('./perfis');
+const { diferencaDoContrato } = require('./diferenca-do-contrato');
 const contrato = require('../../complemento/contrato/carregar');
 
 // Fake da Conexão com o Anki: responde na porta local dela (127.0.0.1:8766). Por padrão está ligada, com vocabulário vazio.
@@ -843,30 +844,6 @@ function linhaDeCustos({
     images,
     matchedRecords: 1,
   };
-}
-
-/**
- * O JSON obtido é o do contrato; `"<agora>"` no contrato é qualquer instante ISO 8601 (o que o complemento
- * escreve é UTC com `Z`). Devolve o que difere, para a mensagem do teste, ou null se iguais.
- */
-function diferencaDoContrato(obtido, esperado, caminho = '') {
-  if (esperado === '<url de autorização>') {
-    return typeof obtido === 'string' && obtido.startsWith('https://auth.openai.com/api/accounts/authorize?client_id=dynamic_agent_client&') ? null : `${caminho}: ${JSON.stringify(obtido)} não é a URL de autorização`;
-  }
-  if (esperado === '<agora>') {
-    return typeof obtido === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z$/.test(obtido) ? null : `${caminho || '/'}: ${JSON.stringify(obtido)} não é um instante`;
-  }
-  if (Array.isArray(esperado) || (esperado && typeof esperado === 'object')) {
-    if (!obtido || typeof obtido !== 'object' || Array.isArray(obtido) !== Array.isArray(esperado)) return `${caminho || '/'}: ${JSON.stringify(obtido)} não é ${JSON.stringify(esperado)}`;
-    const chaves = new Set([...Object.keys(esperado), ...Object.keys(obtido)]);
-    for (const chave of chaves) {
-      if (!(chave in esperado) || !(chave in obtido)) return `${caminho}/${chave}: ${chave in obtido ? 'sobra' : 'falta'}`;
-      const diferenca = diferencaDoContrato(obtido[chave], esperado[chave], `${caminho}/${chave}`);
-      if (diferenca) return diferenca;
-    }
-    return null;
-  }
-  return obtido === esperado ? null : `${caminho || '/'}: ${JSON.stringify(obtido)} em vez de ${JSON.stringify(esperado)}`;
 }
 
 module.exports = { criarFakeAnki, exemploDaExtensao, diferencaDoContrato };

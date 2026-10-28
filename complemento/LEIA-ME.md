@@ -4,7 +4,7 @@ Python só com a biblioteca padrão (o Anki do Mac roda o 3.9, sem Flask nem req
 Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 (`GET /health`: `{ ok, versao, perfil }`, aberta ao cliente local), as leituras da coleção do Anki
 (`POST /anki/decks`, `/anki/stats/decks` e `/anki/vocabulary`) e a chave da OpenAI
-(`POST /ia/openai/chave` a confere e guarda; `POST /ia/estado` diz se há cópia), o Envio (`POST /jobs`, `/jobs/list`, `/jobs/get`, `/jobs/retry`, `/jobs/debug-bundle`, `/analytics/jobs`: cada Frase vira um Cartão com texto e áudio gravado na coleção, #142), o perfil fixo (`POST /anki/profiles`, `/anki/profile`, `/anki/profile/open`, #149) e o login do ChatGPT (#155); o resto exige a origem da extensão e é POST (`contrato/LEIA-ME.md`).
+(`POST /ia/openai/chave` a confere e guarda; `POST /ia/estado` diz se há cópia), o Envio (`POST /jobs`, `/jobs/list`, `/jobs/get`, `/jobs/retry`, `/jobs/debug-bundle`, `/analytics/jobs`: cada Frase vira um Cartão com texto e áudio gravado na coleção, #142) e o perfil fixo (`POST /anki/profiles`, `/anki/profile`, `/anki/profile/open`, #149); o resto exige a origem da extensão e é POST (`contrato/LEIA-ME.md`).
 A Conexão de hoje (`bridge/`) só ganhou o POST nas três rotas da coleção.
 
 | Arquivo | O que faz |
@@ -27,7 +27,7 @@ A Conexão de hoje (`bridge/`) só ganhou o POST nas três rotas da coleção.
 | `motor/` | O motor de `engine/` (texto, voz e imagem; o mesmo código que a Conexão de hoje roda): no `.ankiaddon`, `empacotar.py` copia os arquivos de `ARQUIVOS_DO_MOTOR` para cá; no repositório, `motor/__init__.py` aponta para `engine/` |
 | `normalizacao.py` | A lógica pura do vocabulário e dos números (a de `bridge/card_normalization.py`, na biblioteca padrão) |
 | `chaves.py` | O cofre das chaves: `user_files/chaves/openai.json`, só do dono (0600), gravado de uma vez; a chave inteira só sai daqui para o pedido que a gasta |
-| `login_do_chatgpt.py`, `rotas_do_chatgpt.py`, `chatgpt_oficial.py` | O login do ChatGPT (#155): tokens só em `chaves/chatgpt.json` (0600), PKCE |
+| `login_do_chatgpt.py`, `rotas_do_chatgpt.py`, `paginas_do_navegador.py`, `chatgpt_oficial.py` | O login do ChatGPT (#155): tokens só em `chaves/chatgpt.json` (0600), PKCE |
 | `openai_api.py` | Conferir uma chave da OpenAI (`GET /v1/models` e um `POST /v1/embeddings` de uma palavra, só com a biblioteca padrão): recusada, sem crédito, organização não verificada ou a OpenAI fora do ar. Nunca copia o que a OpenAI diz ao recusar para o log nem para a resposta |
 | `item_de_login.py` | O item de login de “Abrir o Anki com o computador”: um LaunchAgent no Mac, um atalho na pasta Inicializar no Windows (o `.lnk` escrito byte a byte, sem COM nem PowerShell). Ligar escreve, desligar apaga; desligado por padrão |
 | `abridor.py` | O abridor de “Abrir o Anki sozinho” (#147): ao carregar, a cada perfil que abre e quando se escolhe outro, escreve em `user_files/abridor` o script com o caminho do Anki e o perfil marcado (`.sh` no Mac; no Windows, um `.bat` que chama com o PowerShell do Windows o `.ps1` ao lado) e o registra como host de Native Messaging `com.perpetualminer.abridor`, só para a origem da extensão: no Mac, o manifesto na pasta de hosts do Chrome; no Windows, o valor padrão de `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.perpetualminer.abridor` (o Opera GX 136 achou o host só aí num Windows real, ensaio W4 de 2026-10-10; outros builds não confirmados; a ajuda do Opera cita HKLM). O script só responde `conferir` (o Anki está lá?) e `abrir` (abre o Anki com `-p "<perfil>"`), pelos exemplos de `contrato/exemplos.json` › `abridor`. Escrever falhou: vai ao log, a Conexão sobe assim mesmo |
@@ -50,7 +50,7 @@ A Conexão de hoje (`bridge/`) só ganhou o POST nas três rotas da coleção.
 ## Testes
 
 ```bash
-python3.9 complemento/test_servidor.py   # o servidor real e o contrato (+ `test_servidor_item_de_login.py`)
+python3.9 complemento/test_servidor.py   # o servidor real e o contrato (+ `test_servidor_item_de_login.py`, `test_servidor_processo.py`)
 python3.9 complemento/test_servidor_erro_ao_atender.py  # os erros de um pedido, fora do log do Anki
 python3.9 complemento/test_inicio.py     # a pasta de dados, a Conexão no ar, a porta ocupada
 python3.9 complemento/test_no_anki.py    # o adaptador do Anki (um mw de mentira com sqlite)
@@ -84,7 +84,7 @@ python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon
 ```
 
 `test_pacote.py` falha se o arquivo estiver atrás do código (o `LEIA-ME.md` e os testes não entram nele). Refeito sem mudar o
-código, dá os mesmos bytes (o `mod` só sobe quando o código muda).
+código, dá os mesmos bytes.
 
 Mudou o código do pacote (qualquer byte)? Suba a `VERSAO` em `configuracao.py` (a não lançada fica) e registre-a em
 `versoes.json` com o hash que `test_pacote.py` mostra ao falhar (`python3 -c "from complemento import empacotar; print(empacotar.hash_das_fontes())"`).
@@ -113,7 +113,7 @@ Depois refaça o arquivo. Subir a `VERSAO` muda a `versao` dos exemplos de `cont
    minuto e reabra: o resumo vem da Conexão. Na tela de perfis o Envio entra no marcado (8b). Enviar a mesma Frase de novo dá
    “1 já estava lá”, sem nota dobrada. O custo está em `user_files/custos/<jobId>/costs.jsonl` e na aba Custos; o log e o diagnóstico não têm a chave.
 
-`test_openai_de_mentira.py` e `test_chatgpt_de_mentira.py` são servidores de mentira, não testes.
+`test_openai_de_mentira.py` não é teste: é a OpenAI de mentira (servidor local) no lugar da de verdade.
 
 O `package` do manifesto (`perpetualminer`) é provisório: vira o id do AnkiWeb na publicação.
 
