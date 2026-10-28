@@ -15,11 +15,11 @@ const contrato = require('../../complemento/contrato/carregar');
 // (`definirVocabulario`, `definirBaralho`); `abrirColecao(nome)` passa a responder o contrato inteiro. Uma rota nova entra nesse
 // arquivo (`complemento/contrato/LEIA-ME.md`). O perfil fixo (#149) mora em `perfis.js`.
 //
-// Baralhos e termos, Vocabulário e Ajustes de envio (`POST /anki/decks`, sem `definirBaralhosDoAnki` é 503): os baralhos pedidos
-// voltam na ordem pedida, o que o Anki não tem volta `missing`, e os filtros (`status`, `type`, `q`) valem como no complemento.
+// Baralhos e termos, Vocabulário e Ajustes de envio (`POST /anki/decks`, sem `definirBaralhosDoAnki` é 503): voltam na ordem pedida,
+// o que o Anki não tem volta `missing`, e os filtros (`status`, `type`, `q`) valem como no complemento.
 //
 // A chave da OpenAI: `POST /ia/openai/chave` responde pelo exemplo do contexto (`responderOpenAI(...)`) e, aceita, o fake guarda a
-// cópia como a Conexão faria (`chaveNaConexao()`); `POST /ia/estado` devolve só os 4 últimos caracteres. A chave inteira nunca sai.
+// cópia (`chaveNaConexao()`); `POST /ia/estado` devolve só os 4 últimos caracteres.
 //
 // Os Envios (`/jobs…`, `/analytics/jobs`, todas POST): `POST /jobs` cria um pelo `jobId` do painel (o mesmo corpo é o mesmo Envio;
 // outro corpo, o `409`), `/jobs/list` lista com o `state` de cada um, `/jobs/retry` o põe na fila. O teste move (`moverEnvio`) e
@@ -501,7 +501,7 @@ function criarFakeAnki() {
         || (versao !== estado.versaoDaChave && !(versao === estado.versaoDaChave - 1 && estado.contaDaChave === conta))) {
         return responderJson(route, 409, { error: 'legacy_key_mismatch' });
       }
-      // Já vinculado a esta conta é o mesmo pedido de novo (ou o replay da base anterior): responde 200 sem avançar a revisão, como a Conexão.
+      // Já vinculado a esta conta é o mesmo pedido de novo (ou o replay da base anterior): 200 sem avançar a revisão.
       if ((estado.contaDaChave === null || estado.chaveDaOpenAI === null) && estado.contaDaChave !== conta) mudarChave(chave, conta, em);
       return responderJson(route, 200, { ok: true });
     }
@@ -612,13 +612,13 @@ function criarFakeAnki() {
     padrao: /^http:\/\/(127\.0\.0\.1|localhost):8766\//,
     tratar,
     requisicoes,
-    /** @estado-guardado Os Envios que a Conexão guardou (um por `POST /jobs`): o que ficou do lado dela, não o pedido que chegou. */
+    /** @estado-guardado Os Envios que a Conexão guardou (um por `POST /jobs`), não o pedido que chegou. */
     envios,
     desligar() { estado.ligada = false; },
     ligar() { estado.ligada = true; },
     /** O perfil que o Anki tem aberto (`null`: a tela de perfis); precisa de exemplo no contrato. */
     abrirPerfil(perfil) { estado.contexto = { ...estado.contexto, perfil }; },
-    /** O perfil fixo (#149, `perfis.js`): os perfis do Anki, o `marcado` e o `aberto`; `perfilMarcado`/`perfilAberto` são o que a Conexão ficou com. */
+    /** O perfil fixo (#149, `perfis.js`): os perfis do Anki, o `marcado` e o `aberto`. */
     definirPerfis: perfis.definir,
     /** @estado-guardado O perfil que a Conexão tem marcado (`null`: nenhum ainda). */
     perfilMarcado: perfis.marcado,
@@ -638,7 +638,7 @@ function criarFakeAnki() {
      * (o sistema não tem item). Pedir ligar ou desligar o muda, como a Conexão faria.
      */
     definirItemDeLogin(situacao) { estado.contexto = { ...estado.contexto, itemDeLogin: situacao }; },
-    /** @estado-guardado O item de login está escrito de verdade (só a situação `ligado`): o que a Conexão deixou no computador. */
+    /** @estado-guardado O item de login está escrito de verdade (só a situação `ligado`). */
     itemInstalado() { return estado.contexto.itemDeLogin === 'ligado'; },
     /** @estado-guardado O item de login agora: `ligado` ou `desligado` (ou a situação que o teste pôs). */
     itemDeLogin() { return estado.contexto.itemDeLogin; },
@@ -648,7 +648,7 @@ function criarFakeAnki() {
      */
     perderARespostaDoItemDeLogin({ aplicada }) { estado.perdaDaRespostaDoItem = { aplicada }; },
     falharLeituraDoPerfil() { estado.contexto = { ...estado.contexto, falhaNoPerfil: true }; },
-    /** Como a OpenAI responde à conferência de uma chave: o `openai` dos exemplos (aceita, recusa, sem_credito, org_nao_verificada, limite_de_uso, limite_so_no_pago, fora_do_ar). */
+    /** Como a OpenAI responde à conferência de uma chave: o `openai` dos exemplos (aceita, recusa, sem_credito, limite_de_uso…). */
     responderOpenAI(comportamento) { estado.contexto = { ...estado.contexto, openai: comportamento }; },
     /** A Conexão já guardava uma chave (os 4 últimos caracteres dos exemplos), de antes de o teste começar. */
     guardarChaveNaConexao(finalDaChave, versao = 0, conta = null, em = 0, naoEnviada = true) { estado.chaveDaOpenAI = `sk-proj-guardada-antes-${finalDaChave}`; estado.versaoDaChave = versao; estado.contaDaChave = conta; estado.horaDaChave = em; estado.chaveNaoEnviada = naoEnviada; },
@@ -686,7 +686,7 @@ function criarFakeAnki() {
     definirBaralhosDoAnki(nomes) { estado.baralhosDoAnki = nomes; },
     /** Os baralhos passam a vir do arquivo local do Anki (BRG-13), e não do AnkiConnect. */
     lerBaralhosDoArquivo() { estado.fonteDosBaralhos = 'collection.anki2'; },
-    /** O Anki fecha com a Conexão ligada: baralhos e vocabulário passam a vir do arquivo, como no bridge, e não há processo do Anki. */
+    /** O Anki fecha com a Conexão ligada: baralhos e vocabulário vêm do arquivo, e não há processo do Anki. */
     fecharOAnki() { estado.lidoDoArquivo = true; estado.processosDoAnki = 0; estado.fonteDosBaralhos = 'collection.anki2'; },
     /** O Anki está aberto, mas o AnkiConnect não responde: a Conexão também lê o arquivo, e o processo do Anki existe. */
     ankiAbertoSemAnkiConnect() { estado.lidoDoArquivo = true; estado.processosDoAnki = 1; estado.fonteDosBaralhos = 'collection.anki2'; },
@@ -745,8 +745,8 @@ function criarFakeAnki() {
     /** @estado-guardado Os Envios criados de um idioma, na ordem. */
     enviosEm(lang) { return envios.filter(e => e.lang === lang); },
 
-    /** Põe o Envio numa etapa do bridge (`generate_cards`, `send_to_anki`…). */
-    moverEnvio(jobId, { stage, progress = {}, atualizadoEm, esperando } = {}) {
+    /** Põe o Envio numa etapa (`generate_cards`…); `cartoes`: `{ '<phraseId>-<n>': 'added' | 'pending' | 'failed'… }` (o `cards` do estado). */
+    moverEnvio(jobId, { stage, progress = {}, atualizadoEm, esperando, cartoes } = {}) {
       const envio = acharEnvio(jobId);
       envio.state = {
         ...envio.state,
@@ -754,6 +754,7 @@ function criarFakeAnki() {
         stage,
         progress,
         waiting: esperando, // o Envio espera o perfil (#149): `{ reason, profile, marked }`
+        ...(cartoes && { cards: Object.fromEntries(Object.entries(cartoes).map(([id, status]) => [id, { phraseId: Number(id.split('-')[0]), status, error: null }])) }),
         updatedAt: (atualizadoEm || estado.agora()).toISOString(),
       };
     },
