@@ -3,11 +3,12 @@
 Fica fora do `__init__.py` para que os testes usem o mesmo adaptador que o Anki usa, com um `mw` de mentira.
 """
 
+import os
 import threading
 
-from . import inicio
+from . import inicio, janela, registro
 from .baralhos import ColecaoIndisponivel, TipoDeNotaAusente
-from .configuracao import OPENAI_BASE, PORTA, VOZ_BASE
+from .configuracao import OPENAI_BASE, PORTA, VERSAO, VOZ_BASE
 
 # Quanto a Conexão espera a thread principal do Anki ler a coleção antes de dizer que o Anki não respondeu.
 LIMITE_DA_LEITURA_S = 10
@@ -197,15 +198,25 @@ def _ao_sincronizar(colecao):
     gui_hooks.sync_did_finish.append(colecao.sincronizacao_terminou)
 
 
+def _qt_do_anki(logger):
+    from .qt_do_anki import QtDoAnki
+
+    return QtDoAnki(logger)
+
+
 def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_abrir_o_perfil,
-                abridor=inicio.ABRIDOR_DESTE_COMPUTADOR, ao_sincronizar=_ao_sincronizar, openai_base=OPENAI_BASE, voz_base=VOZ_BASE):
-    """O que o Anki faz ao importar o complemento: devolve a Conexão, ou None se ela não subiu."""
+                abridor=inicio.ABRIDOR_DESTE_COMPUTADOR, ao_sincronizar=_ao_sincronizar, openai_base=OPENAI_BASE, voz_base=VOZ_BASE,
+                qt=None):
+    """O que o Anki faz ao importar o complemento: devolve a Conexão, ou None se ela não subiu.
+
+    Depois de subir (ou não), põe o item “PerpetualMiner…” em Ferramentas e o botão Config (#175) pela fronteira `qt`
+    (`qt_do_anki.QtDoAnki`; omitida, a do Anki). O nome da pasta do complemento é o que o Anki chama de módulo dele."""
     colecao = ColecaoDoAnki(mw)
     try:
         ao_sincronizar(colecao)
     except Exception:  # sem os ganchos (um Anki que os mudou), o Envio só não sabe da sincronização: o Anki recusa e ele espera
         pass
-    return inicio.iniciar(
+    conexao = inicio.iniciar(
         pasta_do_complemento,
         lambda: perfil_aberto(mw),
         porta=porta,
@@ -215,3 +226,14 @@ def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_
         openai_base=openai_base,
         voz_base=voz_base,
     )
+    _por_no_menu(mw, conexao, os.path.basename(os.path.abspath(pasta_do_complemento)), qt)
+    return conexao
+
+
+def _por_no_menu(mw, conexao, modulo, qt):
+    """O item e a janela. Sem eles (um Anki que mudou o menu) a Conexão segue: o erro vai ao registro, nunca ao Anki."""
+    logger = conexao.logger if conexao is not None else registro.silencioso()
+    try:
+        janela.ligar(mw, janela.Janela(conexao, lambda: perfil_aberto(mw), VERSAO, logger), qt or _qt_do_anki(logger), modulo, logger)
+    except Exception:
+        logger.exception("O item PerpetualMiner… não entrou em Ferramentas")
