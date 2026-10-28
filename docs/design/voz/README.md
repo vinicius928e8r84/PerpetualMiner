@@ -214,7 +214,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
 | ENV-01 | Bridge desligado ao enviar | erro | Anki Bridge offline. Inicie o serviço residente no PC. | A Conexão com o Anki está desligada. Ligue-a neste computador e tente de novo. | “Tentar de novo”. Ver F1. |
-| ENV-03 | Envio não começou | erro | Falha ao criar job EN: 500 | A Conexão com o Anki respondeu com erro. | No cartão do envio, que já diz “Não começou”: a frase curta, e embaixo o link “Tentar de novo →” + Detalhes. Sem caixa de erro. Quando o pedido nem chega (erro de rede): “A Conexão com o Anki não respondeu. Confira se ela está ligada.” O link também está no cartão que terminou em parte ou não concluído (#151). |
+| ENV-03 | Envio não começou | erro | Falha ao criar job EN: 500 | A Conexão com o Anki respondeu com erro. | No cartão do envio, que já diz “Não começou”: a frase curta, e embaixo o link “Tentar de novo →” + Detalhes. Sem caixa de erro. Quando o pedido nem chega (erro de rede): “A Conexão com o Anki não respondeu. Confira se ela está ligada.” Também no cartão em parte ou não concluído (#151). |
 | ENV-05 | Envios criados **(some)** | sucesso | 2 lote(s) enviado(s) ao bridge. + Presets do Anki Bridge salvos. | _(sem texto)_ | O modal de progresso abre na hora: é visível (C4). |
 | ENV-06 | Modal de progresso | loading | Aguardando jobs… · 2 job(s) acompanhados | Enviando ao Anki… — 2 envios · inglês e russo |  |
 | ENV-07 | Etapas do envio | loading | Na fila · Gerando cards · … · Aguardando Anki · Enviando ao Anki · Stage atual: … | Na fila · Criando cartões · Preparando imagens · Gerando áudio · Escolhendo imagens · Esperando o Anki · Enviando ao Anki | Sem “Stage atual:”, só a etapa. No fim: Concluído · Concluído em parte · Não concluído; e Não começou quando o envio não chegou a ser criado. |
@@ -228,7 +228,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | ENV-15 | Pé do modal de progresso **(novo)** | status | (não existe) | Pode fechar: o resumo abre quando o envio terminar. | O resumo (ENV-10) abre sozinho em qualquer área. |
 | ENV-16 | Enviar com o Anki fechado **(novo)** | status | (não existe) | Abrindo o Anki para enviar… · Abra o Anki para enviar · Abrir o Anki sozinho | Aviso na área de Frases (#150), depois de a Conexão ter respondido uma vez. Com a permissão, Enviar chama o abridor e as Frases saem quando o Anki responde. Sem ela, ou se o abridor não abre: “Abra o Anki para enviar” (Detalhes com a causa; o botão pede a permissão). |
 | ENV-17 | Envio esperando o perfil **(novo)** | status | (não existe) | O Anki está no perfil Beto. O Envio espera. · Abrir Ana · O perfil “Ana” não está mais no Anki. O Envio espera você escolher outro. · Escolher perfil · Não deu para abrir o perfil. Tente de novo. | No cartão do Envio (#149), com a ação ao lado. |
-| ENV-18 | Envio parado, o Anki fechou **(novo)** | status | (não existe) | 3 de 10 no Anki. Quando o Anki abrir, o Envio continua sozinho. | No cartão do Envio (#151), com Continuar envio (ENV-13), que abre o Anki (ENV-16; se não abre, BRG-38). Sem a contagem de Cartões da Conexão, só a segunda frase. |
+| ENV-18 | Envio parado, o Anki fechou **(novo)** | status | (não existe) | 3 de 10 no Anki. Quando o Anki abrir, o Envio continua sozinho. | No cartão do Envio (#151), com Continuar envio (ENV-13), que abre o Anki (ENV-16; se não abre, BRG-38). |
 
 ### Painel · Conexão com o Anki
 

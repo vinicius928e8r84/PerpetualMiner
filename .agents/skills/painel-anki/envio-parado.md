@@ -23,3 +23,7 @@ Tests: `e2e/tests/painel-envio-parado.spec.js` (the sentence, the button, the op
   the Conexão redoes only the Cards that failed. **Continuar envio** stays where the person has to act first (Windows would not close the Anki,
   BRG-18) and for the Envio stopped by a closed Anki. Visual references: `envio-parado`, `envio-em-parte`, `envio-codigo-da-conexao`
   wait for the owner (`test.fixme`, no PNG).
+
+## Driving it (`drive.sh anki-parado painel-envio-parado.spec`)
+
+The fake Envio gets `moverEnvio(jobId, { stage, cartoes })` (`cartoes`: `{ '<phraseId>-<n>': 'added' | 'pending' | 'failed' }`), then `fakes.anki.desligar()`. Observable: the card text above within a few seconds, `fakes.abridor.pedidos()` has no `abrir` until Continuar envio is clicked (then exactly one, and `Abrindo o Anki para enviar…`); after `ligar()` the sentence goes and the panel sends no `/jobs/retry` (the Conexão resumes by itself: that part is `python3.9 complemento/test_envio_retomada.py`, not the fake). `definir('achei_sem_abrir')` adds `Não deu para abrir o Anki. Abra-o você mesmo.`. A real Anki closing and reopening on a Mac is only the owner's rehearsal.
