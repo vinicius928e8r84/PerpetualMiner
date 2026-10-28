@@ -56,7 +56,7 @@ test('o progresso: um Envio andando, o outro que não começou (ENV-03)', async 
     atualizadoEm: new Date(AGORA.getTime() - 60_000),
   });
   await expect(progresso(page).getByRole('group', { name: 'Envio em inglês · 3 frases' })).toContainText('Gerando áudio', { timeout: 10_000 });
-  await expect(progresso(page).getByRole('group', { name: 'Envio em russo · 2 frases' })).toContainText('A conexão com o Anki respondeu com erro.');
+  await expect(progresso(page).getByRole('group', { name: 'Envio em russo · 2 frases' })).toContainText('A Conexão com o Anki respondeu com erro.');
 
   await expect(page).toHaveScreenshot('envio-progresso.png');
 });
@@ -106,12 +106,10 @@ test('Enviar ao Anki indisponível com a Conexão desligada, com o tooltip', asy
   await expect(page).toHaveScreenshot('envio-indisponivel.png');
 });
 
-// #142: o Envio dentro da Conexão com o Anki. As duas telas novas são propostas: ficam `fixme`, sem PNG, até o dono
-// compará-las com o protótipo aprovado do #105 (o Envio longo, opção A) e aprovar (regra 10).
-const AGUARDA_O_DONO = 'a referência visual do Envio na Conexão com o Anki espera a aprovação do dono contra o protótipo do #105 (regra 10)';
+// #142: o Envio dentro da Conexão com o Anki. O dono aprovou as duas telas como referência (#269, 2026-10-26); o
+// Envio com um código da Conexão fica assim até o #173 e o #177 trazerem o texto de o que fazer.
 
 test('o Envio esperando o Anki: a coleção fechada ou sincronizando, e a Conexão espera', async ({ page, extensao, fakes }) => {
-  test.fixme(true, AGUARDA_O_DONO);
   await abrirFrases(page, extensao);
   await enviarTodas(page, fakes, 2);
   const [ingles, russo] = fakes.anki.envios;
@@ -123,7 +121,6 @@ test('o Envio esperando o Anki: a coleção fechada ou sincronizando, e a Conex�
 });
 
 test('o Envio com um código da Conexão: um Cartão não entrou, Continuar envio e o código em Detalhes', async ({ page, extensao, fakes }) => {
-  test.fixme(true, AGUARDA_O_DONO);
   // Uma Conexão de antes do Envio (≤ 0.2.0) não tem a rota: o russo não começa, com o 404 em Detalhes.
   fakes.anki.recusarEnvios('ru', { status: 404, erro: 'not_found' });
   // O id do Envio aparece em Detalhes: fixo, para a referência não mudar a cada execução.

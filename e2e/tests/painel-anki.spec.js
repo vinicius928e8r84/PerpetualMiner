@@ -37,7 +37,7 @@ const ENVIOS = [
   },
 ];
 
-const F1 = 'A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.';
+const F1 = 'A Conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.';
 
 const custos = page => page.locator('#anki-custos');
 const abas = page => page.getByRole('radiogroup', { name: 'Seções da Conexão com o Anki' });
@@ -112,7 +112,7 @@ test('cai depois de responder: a F1 e o último dado com o selo BRG-12; Continua
   await listaDeEnvios(page).getByRole('option', { name: /Envio em russo/ }).click();
   const continuar = detalheDoEnvio(page, 'Envio em russo · 4 frases').getByRole('button', { name: 'Continuar envio' });
   await expect(continuar).toHaveAttribute('aria-disabled', 'true');
-  await expect(continuar).toHaveAccessibleDescription(/Indisponível: a conexão com o Anki está desligada/);
+  await expect(continuar).toHaveAccessibleDescription(/Indisponível: a Conexão com o Anki está desligada/);
   // aria-disabled deixa o botão no Tab (a dica diz por quê), mas apertar não faz nada.
   await continuar.click({ force: true });
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/retry')).toHaveLength(0);
@@ -179,7 +179,7 @@ test('erro na leitura de custos: BRG-04 inline com Tentar de novo e Detalhes, di
   await abrirAnki(page, extensao);
 
   const aviso = custos(page).getByRole('alert');
-  await expect(aviso).toContainText('Não deu para carregar os custos. Confira se a conexão com o Anki está ligada.');
+  await expect(aviso).toContainText('Não deu para carregar os custos. Confira se a Conexão com o Anki está ligada.');
   await expect(custos(page)).toContainText('Custo indisponível');
   // O erro não tem a cara do carregando: nem a linha de espera, nem o esqueleto.
   await expect(custos(page).getByText('Somando os custos…')).toBeHidden();
@@ -293,7 +293,7 @@ test('Continuar envio que falha: ENV-14 no detalhe, com a causa em Detalhes, sem
 
   await detalhe.getByRole('button', { name: 'Continuar envio' }).click();
 
-  await expect(detalhe).toContainText('Não deu para retomar o envio. Confira se a conexão com o Anki está ligada.');
+  await expect(detalhe).toContainText('Não deu para retomar o envio. Confira se a Conexão com o Anki está ligada.');
   await detalhe.getByText('Detalhes', { exact: true }).click();
   await expect(detalhe.locator('pre')).toContainText('HTTP 500');
   await expect(detalhe.locator('pre')).toContainText('collection is not available');
