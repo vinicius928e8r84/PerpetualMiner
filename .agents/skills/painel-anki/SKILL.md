@@ -159,11 +159,11 @@ worker's automatic Palavra falls back to the same Baralho padrão. The bridge ke
 ### Consertar sozinho (`lib/abrir-o-anki.js`, `painel-envio-anki-fechado.js`, #152)
 
 With the Conexão silent, an Enviar the person pressed (or Abrir o Anki) runs `AbrirOAnki.abrirOuConsertar()`: the opener's `consertar` first
-(`complemento/conserto_do_anki.py`), `abrir` only if it found the Anki closed from the start, and one more `consertar` if the Conexão stays mute. The opener answers `fechou` when the person closed the Anki during its wait: nothing is reopened (the faixa asks to open it). It kills only an Anki that owns the Conexão's port; otherwise `falhou`/`conexao_fora` (BRG-39.conexaoFora) and nothing is closed.
+(`complemento/conserto_do_anki.py`), `abrir` only if it found the Anki closed from the start, and one more `consertar` if the Conexão stays mute. `fechou` (the person closed it during the wait) reopens nothing; `falhou`/`conexao_fora` (BRG-39.conexaoFora): the Anki does not own the port, nothing is killed.
 The extension sees “Anki fechado” and “complemento desativado” as the same network error; only the opener tells them apart. BRG-39: success is a toast;
 `sumiu` (or Chrome's “host not found” once connected) is an aviso with **Instalar de novo** (`ConexaoAnki.esquecerQueConectou()` → `#anki`, the first-connection card);
 `falhou` is “Não deu para consertar…” with **Baixar diagnóstico** (`diagnostico-do-conserto.json`). “Conferindo…” shows only past 3 s.
-Tests: `painel-conserto.spec.js`, `painel-conserto-visual.spec.js` (`test.fixme`), `test_abrir_o_anki.js`, `complemento/test_conserto.py` (+ `_meta`, `_windows`); no real Anki is closed (risks 3 and 12).
+Tests: `painel-conserto.spec.js`, `painel-conserto-visual.spec.js` (`test.fixme`), `test_abrir_o_anki.js`, `complemento/test_conserto*.py`; no real Anki is closed (risks 3 and 12).
 
 ### Envio ao Anki (`painel-envio.js`)
 
