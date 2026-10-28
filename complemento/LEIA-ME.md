@@ -17,8 +17,10 @@ A Conexão de hoje (`bridge/`) só ganhou o mesmo POST nas três rotas da coleç
 | `baralhos.py` | O que se lê da coleção: a lista de Baralhos, os números de cada um e o vocabulário, só pelo lado de leitura de um adaptador da coleção (o contrato do adaptador, de leitura e de gravação, está no topo do arquivo) |
 | `envio.py` | O Envio (#142): a fila, o estado de cada Cartão e o trabalho que gera o texto pelo motor e grava cada nota pelo adaptador (na thread principal do Anki), esperando o perfil fechado e a sincronização; o criar idempotente pelo `jobId`, a retomada sem refazer o que está pronto (`guid` fixo por Cartão) e o pacote de diagnóstico. O desenho: `docs/design/envio-no-complemento.md` |
 | `trabalhador.py` | A thread de trabalho do Envio: tira um Envio da fila de cada vez e o faz (`envio.Trabalho`); depois de subir, espera até 60 s o primeiro pedido de Envio da extensão antes de retomar o que ficou parado |
+| `voz.py` | A voz do Cartão (#143): o áudio pedido ao Google Tradutor como o gTTS 2.5 faz, só com a biblioteca padrão; `audio_do_cartao.py` o liga ao Envio. Página: `docs/design/audio-do-cartao.md` |
+| `diagnostico.py` | O pacote de diagnóstico de um Envio (`/jobs/debug-bundle`) |
 | `custos.py` | Os custos de cada Envio (`user_files/custos/<jobId>/costs.jsonl`, do `cost_tracker` do motor) nas linhas que a aba Custos lê, as de `bridge/analytics.py` |
-| `motor/` | O motor de texto de `engine/` (o mesmo código que a Conexão de hoje roda): no `.ankiaddon`, `empacotar.py` copia os arquivos de `ARQUIVOS_DO_MOTOR` para cá; no repositório, `motor/__init__.py` aponta para `engine/` |
+| `motor/` | O motor de `engine/` (texto e voz; o mesmo código que a Conexão de hoje roda): no `.ankiaddon`, `empacotar.py` copia os arquivos de `ARQUIVOS_DO_MOTOR` para cá; no repositório, `motor/__init__.py` aponta para `engine/` |
 | `normalizacao.py` | A lógica pura do vocabulário e dos números (a de `bridge/card_normalization.py`, só com a biblioteca padrão) |
 | `chaves.py` | O cofre das chaves: `user_files/chaves/openai.json`, só do dono (0600), gravado de uma vez; a chave inteira só sai daqui para o pedido que a gasta |
 | `openai_api.py` | Conferir uma chave da OpenAI (`GET /v1/models` e um `POST /v1/embeddings` de uma palavra, só com a biblioteca padrão): recusada, sem crédito, organização não verificada ou a OpenAI fora do ar. Nunca copia o que a OpenAI diz ao recusar para o log nem para a resposta |
@@ -53,6 +55,7 @@ python3.9 complemento/test_item_de_login.py  # o item de login escrito e apagado
 python3.9 complemento/test_abridor.py        # o abridor escrito e registrado numa pasta temporária, por sistema; o script do Mac roda (e o .ps1, onde houver pwsh)
 python3.9 complemento/test_chave_da_openai.py  # a chave: o que atravessa o HTTP, o que fica no disco, o que o log guarda
 python3.9 complemento/test_envio.py          # o Envio: a fila, o estado por Cartão, as duplicatas, a espera do Anki, a retomada, os custos e a chave fora de tudo
+python3.9 complemento/test_envio_audio.py    # o áudio do Cartão: a voz do Google de mentira no HTTP, a mídia na coleção
 python3.9 complemento/test_envio_fronteiras.py  # a Conexão morre em cada gravação do criar, do trabalho e do Apagar tudo (#248)
 python3.9 complemento/test_envio_apagar.py      # o Apagar tudo com o Anki fechado ou no meio do Envio
 python3.9 complemento/test_motor.py          # o motor de texto como o pacote `complemento.motor`, sem PyYAML, dotenv nem o SDK da OpenAI
@@ -98,7 +101,8 @@ na raiz do repositório). Depois refaça o arquivo da extensão. Um `VERSAO` que
 9. **O primeiro Cartão (#142).** Com a chave conferida (passo 7) e um perfil aberto que tenha o tipo de nota “Básico” com
    os campos “Frente” e “Verso” (o de hoje, até o #161), marque uma Frase em inglês em Frases e aperte **Enviar ao Anki**:
    o progresso passa por “Criando cartões” e “Enviando ao Anki” e o resumo diz “+1 cartão”. No Anki, o Baralho dos Ajustes
-   de envio tem a nota nova, só com texto (sem áudio e sem imagem, #143/#144), e a etiqueta `perpetual_miner`; o Anki seguiu
+   de envio tem a nota nova, com o áudio da Frase (frente) e o da Palavra (verso), sem imagem (#144), e a etiqueta `perpetual_miner`;
+   toque os dois (um 400 na Palavra é o risco 11, reserva no #174); o Anki seguiu
    usável no meio. Depois: feche o painel e o Chrome logo depois de apertar Enviar, espere um minuto e reabra o painel: o
    resumo vem da Conexão com o Cartão feito. Com o perfil fechado (Arquivo › Trocar perfil), um Envio fica em
    “Esperando o Anki” e continua sozinho quando o perfil abre. Envie a mesma Frase de novo: o resumo diz “1 já estava lá”
