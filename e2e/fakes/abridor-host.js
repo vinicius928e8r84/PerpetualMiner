@@ -22,11 +22,13 @@ function responder(resposta) {
 
 function aoReceber(mensagem) {
   fs.appendFileSync(path.join(pasta, 'pedidos.jsonl'), `${JSON.stringify({ mensagem, origem })}\n`);
-  const { situacao, exemplos } = JSON.parse(fs.readFileSync(path.join(pasta, 'situacao.json'), 'utf8'));
+  const { situacao, exemplos, atrasoMs } = JSON.parse(fs.readFileSync(path.join(pasta, 'situacao.json'), 'utf8'));
   if (situacao === 'sem_resposta') return; // fica quieto até o Chrome fechar a entrada
   const exemplo = exemplos.find(e => isDeepStrictEqual(e.mensagem, mensagem));
   if (!exemplo) process.exit(1);
-  responder(exemplo.resposta);
+  // O consertar espera 30 s antes de fechar o Anki: o fake demora a resposta pelo tempo que o teste pedir.
+  if (mensagem.acao === 'consertar' && atrasoMs) setTimeout(() => responder(exemplo.resposta), atrasoMs);
+  else responder(exemplo.resposta);
 }
 
 process.stdin.on('data', dados => {

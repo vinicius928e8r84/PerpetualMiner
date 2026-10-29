@@ -106,7 +106,7 @@ Todos seguem o modal Veio: `surface`, raio 20, × no canto, Esc e clique fora fe
     - um cartão por envio: “Envio em inglês · 12 frases”, a etapa com nome de gente (Na fila · Criando cartões · Preparando imagens · Gerando áudio · Escolhendo imagens · Esperando o Anki · Enviando ao Anki), as 7 etapas em segmentos (as feitas cheias, a atual enchendo), “etapa 4 de 7 · atualizado há 1 min” e **Detalhes** recolhido com jobId, stage cru e ISO;
     - quando o cartão precisa da pessoa, nada de caixa de erro: a etapa e os segmentos ficam em tom calmo, o motivo vem numa frase curta e a ação é um link dourado logo embaixo (variante A da rodada 3 do PR #64):
       - não começou (ENV-03): “A Conexão com o Anki respondeu com erro.” + **Tentar de novo →**;
-      - o Windows não deixou fechar o Anki (BRG-18) ou um Continuar que não deu (ENV-14): o motivo + **Continuar envio →**;
+      - um Continuar que não deu (ENV-14): o motivo + **Continuar envio →**;
       - terminou em parte: só **Continuar envio →** (a etapa já diz “Concluído em parte”);
     - no pé: “Pode fechar: o resumo abre quando o envio terminar.”;
     - sai o “Atualizar status” (M3.7).

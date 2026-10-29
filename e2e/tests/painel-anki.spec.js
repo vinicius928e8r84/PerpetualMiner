@@ -90,7 +90,7 @@ test('conectando: a faixa neutra “Conectando ao Anki…” e o esqueleto, até
   await expect(listaDeEnvios(page)).toBeVisible();
 });
 
-test('cai depois de responder: a F1 e o último dado com o selo BRG-12; Continuar envio e Reparar Anki ficam indisponíveis', async ({ page, extensao, fakes }) => {
+test('cai depois de responder: a F1 e o último dado com o selo BRG-12; Continuar envio fica indisponível', async ({ page, extensao, fakes }) => {
   await abrirAnki(page, extensao);
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(4);
 
@@ -125,16 +125,9 @@ test('cai depois de responder: a F1 e o último dado com o selo BRG-12; Continua
   await expect(continuar).toBeFocused();
   await expect(dica).toBeVisible();
 
-  // Reparar Anki mora no Avançado de Baralhos e termos (painel-anki-baralhos.spec.js).
+  // O Reparar Anki saiu da extensão (#152): nem Baralhos e termos tem mais botão para ele.
   await escolher(page, 'Baralhos e termos');
-  await page.locator('#anki-baralhos-avancado').getByText('Avançado', { exact: true }).click();
-  const reparar = page.getByRole('button', { name: 'Reparar Anki' });
-  await expect(reparar).toHaveAttribute('aria-disabled', 'true');
-  await expect(reparar).toHaveAccessibleDescription(/para reparar o Anki/);
-  fakes.anki.ligar();
-  await atualizar(page).click();
-  await expect(reparar).not.toHaveAttribute('aria-disabled');
-  await expect(reparar).not.toHaveAttribute('aria-describedby');
+  await expect(page.getByRole('button', { name: 'Reparar Anki' })).toHaveCount(0);
 });
 
 test('reabrir o painel com a Conexão desligada mostra o último dado gravado, não o card da primeira vez', async ({ page, extensao, fakes }) => {

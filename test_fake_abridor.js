@@ -9,7 +9,7 @@ const assert = require('assert');
 const { spawn } = require('child_process');
 
 const { criarFakeAbridor } = require('./e2e/fakes/abridor');
-const contrato = require('./complemento/contrato/exemplos.json');
+const contrato = require('./complemento/contrato/carregar.js');
 
 const ORIGEM = `${contrato.origemDaExtensao}/`;
 
@@ -51,6 +51,25 @@ async function main() {
     } finally {
       fake.limpar();
     }
+  }
+
+  // O consertar (#152): cada exemplo do contrato, na situação que o nome dele diz, e o padrão é o Anki que a pessoa fechou.
+  for (const exemplo of contrato.conserto.exemplos.filter(e => e.daExtensao)) {
+    const fake = criarFakeAbridor();
+    try {
+      fake.definirConserto(exemplo.contexto.conserto);
+      assert.deepStrictEqual(await conversar(fake, exemplo.mensagem), exemplo.resposta,
+        `O fake do abridor e o contrato se separaram no exemplo "${exemplo.nome}" (complemento/contrato/exemplos-do-conserto.json).`);
+    } finally {
+      fake.limpar();
+    }
+  }
+  const padrao = criarFakeAbridor();
+  try {
+    assert.deepStrictEqual(await conversar(padrao, { acao: 'consertar' }), { situacao: 'fechado' });
+    assert.throws(() => padrao.definirConserto('o_anki_virou_passaro'), /não tem essa situação do consertar/);
+  } finally {
+    padrao.limpar();
   }
 
   // Sem resposta: o host lê a mensagem e fica quieto (a extensão é que desiste).

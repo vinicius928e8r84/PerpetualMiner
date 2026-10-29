@@ -1,6 +1,6 @@
 ---
 name: painel-anki
-description: "Use when changing or reviewing the Conexão com o Anki area of the panel: Custos, first connection, Baralhos e termos, Vocabulário, Reparar Anki, Ajustes de envio and the Envio ao Anki (`painel-anki*.js`, `painel-ajustes.js`, `painel-envio.js`, `lib/ajustes-de-envio.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
+description: "Use when changing or reviewing the Conexão com o Anki area of the panel: Custos, first connection, Baralhos e termos, Vocabulário, the Consertar sozinho, Ajustes de envio and the Envio ao Anki (`painel-anki*.js`, `painel-ajustes.js`, `painel-envio.js`, `lib/ajustes-de-envio.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
 ---
 
 # Conexão com o Anki area
@@ -62,15 +62,15 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   `complemento/test_pacote.py` and `test_empacotar.js` (the file inside the package).
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
   selo (“Anki fechado. Mostrando dados de há 2 h.”, with the code in Detalhes) and the period controls set to that reading's
-  period and disabled (no other period to read). **Continuar envio** and
-  **Reparar Anki** get `aria-disabled` (still in the Tab order) with a `.veio-dica` tooltip (BRG-33) on hover and on keyboard focus (`:focus-visible`, so a click never leaves it open);
+  period and disabled (no other period to read). **Continuar envio**
+  gets `aria-disabled` (still in the Tab order) with a `.veio-dica` tooltip (BRG-33) on hover and on keyboard focus (`:focus-visible`, so a click never leaves it open);
   a press does nothing. With nothing stored, Custos only says “Custo indisponível” (the why and Tentar de novo are the F1's).
   Ajustes de envio stays editable, with the BRG-33 note that it applies from the next Envio.
 
 **↻ Atualizar** (BRG-24) is one action, owned by `painel-anki.js`: it asks `ConexaoAnki` for `/health` again
 (`ConexaoAnki.conferir`) and, with the Conexão on, reads Custos again and calls whoever registered through
 `PerpetualMiner.Anki.aoAtualizar(fn)` — `painel-anki-baralhos.js` re-reads the decks there, with `launch=1` (“abre o Anki se precisar”),
-and the vocabulary. Only a click asks the Conexão to open the Anki (↻ Atualizar, Tentar de novo): entering the area, a new Baralho or the Conexão coming back read without `launch`. `Anki.atualizar()` is the same action for whoever needs it (BRG-17's Atualizar).
+and the vocabulary. Only a click asks the Conexão to open the Anki (↻ Atualizar, Tentar de novo): entering the area, a new Baralho or the Conexão coming back read without `launch`. `Anki.atualizar()` is the same action for whoever needs it.
 Off, nothing tries to open the Anki, except the **Abrir o Anki** button (BRG-38, `AbrirOAnki.montarBotao`, #150) in the BRG-12 `anki` selo
 and BRG-37 of both tabs, and in the popup (`abrir-o-anki-botao.spec.js`). BRG-04's Tentar de novo only re-reads Custos.
 
@@ -96,7 +96,7 @@ tab) and “Mostrar IDs dos envios” (the jobId joins the list, the detail and 
 and Baixar diagnóstico per Envio (`POST /jobs/debug-bundle` with `{ jobId }`, saved as `diagnostico-<jobId>.json`; the download
 is the feedback, no toast; failure is BRG-23 inline).
 
-### Baralhos e termos, Vocabulário and Reparar Anki (`painel-anki-baralhos.js`)
+### Baralhos e termos and Vocabulário (`painel-anki-baralhos.js`)
 
 The two tabs read the decks of the Ajustes de envio, which `painel.js` reports through
 `PerpetualMiner.Baralhos.usarBaralhos({ en, ru })` on load and on every save (a new deck is read again). Both read on
@@ -104,7 +104,7 @@ entering the Anki area with the Conexão on, when it comes back, and on ↻ Atua
 fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
 
 - **Baralhos e termos** reads `POST /anki/stats/decks` with both decks at once (body `{ decks: [{ deckName, lang }, …] }`; `launch: true` on
-  ↻ and Tentar de novo only, `refresh: true` on ↻ and after a repair; the add-on ignores both, it never opens the Anki). Reads of the
+  ↻ and Tentar de novo only, `refresh: true` on ↻; the add-on ignores both, it never opens the Anki). Reads of the
   person's Anki are POST because the extension's GET carries no `Origin` (`complemento/contrato/LEIA-ME.md`). The tiles Inglês · Russo (`aria-pressed`, group BRG-34.idiomas) say
   “EN · <deck>” and the words (`vocabulary.phraseVocabulary`); a deck the Anki does not have (`missing`) says “—” and
   BRG-27, and its detail is BRG-14 with Abrir Ajustes de envio (→ `#anki/ajustes`). The chosen deck: the maturity ring
@@ -113,8 +113,7 @@ fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
   Recentes · Novos. Ring, bars and legend use the maturity series (ouro · info · muted). Read from the local file
   (`source: 'collection.anki2'`): the BRG-13 note on top; the bridge's own stale cache: the BRG-12 selo “Mostrando dados de … Não deu para atualizar agora.” (`BRG-12.atualizacao`; with the Conexão off, or answering from the file with the Anki confirmed closed (`ankiFechado`), it is `BRG-12.anki`, “Anki fechado. Mostrando dados de {quando}.”, with `{quando}` the stored `dadosDe` (never another Baralho's), and the Abrir o Anki button; off with nothing stored the two tabs say BRG-37, with the same button) (see the
   [design states](../../../docs/design/painel/anki/README.md#estados) for presentation by tab). Loading BRG-10 + skeleton;
-  failure is the persistent BRG-11 aviso with Reparar Anki, Tentar de
-  novo and the cause in Detalhes.
+  failure is the persistent BRG-11 aviso with Tentar de novo and the cause in Detalhes.
 - **Vocabulário** reads `POST /anki/vocabulary` (`{ deck, lang, limit: 10000 }`) of each language whole and filters in the panel, so
   each tile has the language's total and the search never waits for the network. Tipo (Palavras e termos · Só
   palavras · Só termos), Status (Todos · Novos · Recentes · Maduros · Mistos) and the search (with ×), then BRG-21's
@@ -124,17 +123,7 @@ fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
   BRG-21's empty with Limpar busca (clears the search and both filters, focus to the search; only when there is
   something to clear — a language with no items shows the same empty without it). Loading BRG-19 +
   skeleton; failure is the persistent BRG-20 aviso with Tentar de novo.
-- **Reparar Anki** lives in Baralhos' Avançado (dashed, collapsed, “reparar Anki”, BRG-36) and in BRG-11 and BRG-18.
-  It `POST`s `/anki/repair` and **waits for the real repair** — the bridge closes the Anki and waits up to 90 s
-  (~110 s in all); the old 45 s abort said a working repair had failed (#9). `LIMITE_DA_CONEXAO_MUDA_MS` (180 s) only
-  guards against a Conexão that never answers. While it runs `#anki-reparando` receives focus; see the
-  [design states](../../../docs/design/painel/anki/README.md#estados) for the visible repair state. `ok` or
-  `after.collectionReady` → the BRG-16 toast and both tabs read again (`refresh=1`). `devolverOFoco` and
-  `focarAzulejo` restore focus for the Avançado and BRG-11 entry points, respectively. Windows refused to close it (`accessDenied`,
-  `anki_repair_access_denied`) → BRG-18, persistent, with Reparar Anki again and the PIDs in Detalhes; the repair ran
-  (the answer has `after`) and the Anki did not come back, or the panel's limit ran out → BRG-17 with Atualizar
-  (`Anki.atualizar()`); any other failure (already repairing, no answer) → GLB-01 with Reparar Anki. All keep the
-  cause in Detalhes and close with ×.
+- **Reparar Anki** left the extension (#152): BRG-11 keeps only Tentar de novo, and Baralhos has no Avançado.
 
 A node that stays on screen across redraws (an aviso, the selo, the deck's detail) is reused while its input is the
 same (`oMesmo`), so focus and an open Detalhes survive the other tab's reading.
@@ -167,6 +156,15 @@ ajustes when it creates each Envio (never an in-memory copy from when the panel 
 termos and Vocabulário ask for the same decks (`painel.js` reports them to `Baralhos.usarBaralhos`), and the service
 worker's automatic Palavra falls back to the same Baralho padrão. The bridge keeps its own defaults (out of this step).
 
+### Consertar sozinho (`lib/abrir-o-anki.js`, `painel-envio-anki-fechado.js`, #152)
+
+With the Conexão silent, an Enviar the person pressed (or Abrir o Anki) runs `AbrirOAnki.abrirOuConsertar()`: the opener's `consertar` first
+(`complemento/conserto_do_anki.py`), `abrir` only if it found the Anki closed from the start, and one more `consertar` if the Conexão stays mute. `fechou` (the person closed it during the wait) reopens nothing; `falhou`/`conexao_fora` (BRG-39.conexaoFora): the Anki does not own the port, nothing is killed.
+The extension sees “Anki fechado” and “complemento desativado” as the same network error; only the opener tells them apart. BRG-39: success is a toast;
+`sumiu` (or Chrome's “host not found” once connected) is an aviso with **Instalar de novo** (`ConexaoAnki.esquecerQueConectou()` → `#anki`, the first-connection card);
+`falhou` is “Não deu para consertar…” with **Baixar diagnóstico** (`diagnostico-do-conserto.json`). “Conferindo…” shows only past 3 s.
+Tests: `painel-conserto.spec.js`, `painel-conserto-visual.spec.js` (`test.fixme`), `test_abrir_o_anki.js`, `complemento/test_conserto*.py`; no real Anki is closed (risks 3 and 12).
+
 ### Envio ao Anki (`painel-envio.js`)
 
 The Envio is its own module; `painel.js` hands it, once the first read of the history finishes (`Envio.usar`), only
@@ -178,8 +176,7 @@ tombstones, no toast) and `marcarComoEnviadas(ids)` (`status: 'exported'`, no to
 (the done ones full, the current one filling by its `done/total`; all in the outcome's color at the end), “etapa 4 de 7 ·
 atualizado há 1 min” (ENV-08) and a collapsed Detalhes with jobId, raw stage, ISO
 time (`updatedAt`, or creation) and `lastError`. A card that needs the person has no error box: its stage and segments turn calm (muted); the reason is one short
-sentence and the action a gold link (`pedidoDoCartao`). One that ended partial or failed gets **Tentar de novo →** (`POST /jobs/retry`, toast ENV-14); when Windows would not let
-it close a stuck Anki (`ankiError: 'repair_access_denied'`), the reason is BRG-18 and the action stays Continuar envio. With the Anki closed in the middle of an Envio: `envio-parado.md`. On the fixed profile (`state.waiting`, #149) it is ENV-17: “Abrir <perfil>” or “Escolher perfil”. Phrases go to the Envio of their language by `ehRussa` (`lib/idioma.js`): the stored `idioma`, or the text. A `POST /jobs` that fails does not hide the Envio: its card says “Não começou”
+sentence and the action a gold link (`pedidoDoCartao`). One that ended partial or failed gets **Tentar de novo →** (`POST /jobs/retry`, toast ENV-14). With the Anki closed in the middle of an Envio: `envio-parado.md`. On the fixed profile (`state.waiting`, #149) it is ENV-17: “Abrir <perfil>” or “Escolher perfil”. Phrases go to the Envio of their language by `ehRussa` (`lib/idioma.js`): the stored `idioma`, or the text. A `POST /jobs` that fails does not hide the Envio: its card says “Não começou”
 with the ENV-03 reason (`motivoSemResposta` when the request never got an answer), its cause in Detalhes and
 **Tentar de novo →** (re-creates only that language). While such an error is on a card (or a Continuar envio that failed, ENV-14), the summary waits: the progress modal comes back and the summary opens once it is closed, counting those phrases as failed. Every request goes through `PedidoAoAnki` (POST, the extension's origin). The Envio's request body is built once, with
 `jobId` = the Envio's `id` (`crypto.randomUUID()`), and saved in `pm_envio` (`corpo`) **before** the first `POST /jobs`; the ENV-03

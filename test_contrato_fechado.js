@@ -97,7 +97,7 @@ async function main() {
   const mensagens = Abridor.variantes();
   assert.ok(mensagens.length >= 1, 'a extensão manda ao menos o conferir');
   for (const { nome, mensagem } of mensagens) {
-    assert.ok(contrato.abridor.exemplos.some(e => e.daExtensao && isDeepStrictEqual(e.mensagem, comoValores(mensagem))),
+    assert.ok([...contrato.abridor.exemplos, ...contrato.conserto.exemplos].some(e => e.daExtensao && isDeepStrictEqual(e.mensagem, comoValores(mensagem))),
       `A extensão manda ao abridor "${nome}" (${JSON.stringify(mensagem)}) e o contrato (complemento/contrato/exemplos.json › abridor) `
       + 'não tem um exemplo dela (daExtensao: true). Escreva o exemplo; o script de verdade e o fake do e2e leem o mesmo arquivo.');
   }

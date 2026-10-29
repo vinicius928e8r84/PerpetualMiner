@@ -28,11 +28,6 @@
     return Boolean(estado) && (estado.status === 'partial' || estado.status === 'failed');
   }
 
-  /** O Windows não deixou a Conexão fechar o Anki travado: a pessoa precisa fechá-lo antes. */
-  function ankiTravado(estado) {
-    return estado?.ankiError === 'repair_access_denied';
-  }
-
   // O Envio espera por causa do perfil do Anki (#149): `estado.waiting` diz qual, e a ação é a do cartão.
   const abrindoOPerfil = new Set();
   const falhasAoAbrirOPerfil = new Set();
@@ -221,11 +216,9 @@
       }
       const falhaAoContinuar = falhaAoRetomar(envio);
       // Tentar de novo no próprio cartão do Envio que ficou em parte ou não concluiu; Continuar envio só onde falta a pessoa agir antes.
-      const retomar = rotulo => ({ rotulo: textoDaVoz(rotulo), foco: 'continuar', aoUsar: () => continuarEnvio(envio) });
-      const acao = retomar(ankiTravado(estado) ? 'ENV-13.continuar' : 'ENV-03.tentarDeNovo');
-      if (falhaAoContinuar) return { motivo: textoDaVoz('ENV-14.falha'), ...acao };
-      if (ankiTravado(estado)) return { motivo: textoDaVoz('BRG-18'), ...acao };
-      if (retomavel(estado)) return acao;
+      const continuar = { rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'continuar', aoUsar: () => continuarEnvio(envio) };
+      if (falhaAoContinuar) return { motivo: textoDaVoz('ENV-14.falha'), ...continuar };
+      if (retomavel(estado)) return continuar;
       return null;
     }
 

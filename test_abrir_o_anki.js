@@ -11,12 +11,14 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const contrato = require('./complemento/contrato/exemplos.json');
+const contrato = require('./complemento/contrato/carregar.js');
 
 const comoValores = async promessa => JSON.parse(JSON.stringify(await promessa));
 
 const exemploDoAbridor = (acao, anki) => contrato.abridor.exemplos
   .find(e => e.daExtensao && e.mensagem.acao === acao && e.contexto.anki === anki).resposta;
+
+const exemploDoConserto = contexto => contrato.conserto.exemplos.find(e => e.contexto.conserto === contexto).resposta;
 
 /**
  * As libs como a página as carrega. `permissao` é o que o Chrome faz com o pedido (true: já dada ou dada agora;
@@ -101,7 +103,7 @@ function carregarFaixa({ responder } = {}) {
       return novo;
     },
   };
-  const { EnvioComOAnkiFechado } = carregar({
+  const { EnvioComOAnkiFechado, enviadas } = carregar({
     jaTem: false,
     situacoes: ['desligada'],
     responder,
@@ -118,7 +120,7 @@ function carregarFaixa({ responder } = {}) {
   });
   const faixa = EnvioComOAnkiFechado.criar({ aoLigar: ids => aoLigar.push(ids) });
   return {
-    relogio, faixa, aoLigar,
+    relogio, faixa, aoLigar, enviadas,
     aviso: () => aviso,
     clicarNoBotao: () => aviso.acao.aoUsar({ currentTarget: { getAttribute: () => null, setAttribute() {}, removeAttribute() {} } }),
     ligar: () => { situacao = 'ligada'; ouvinte('ligada'); },
@@ -194,6 +196,152 @@ async function main() {
     assert.strictEqual(aviso().texto, 'ENV-16.abra', 'o Anki que não responde nem na espera nova volta a pedir que a pessoa o abra');
     assert.match(aviso().detalhes, /sem resposta/);
     assert.deepStrictEqual(aoLigar, []);
+  }
+
+  {
+    // O Anki que a pessoa fechou na espera do consertar: a faixa pede que ela o abra e não manda abrir por conta própria.
+    const { relogio, faixa, aoLigar, aviso, clicarNoBotao, enviadas } = carregarFaixa({ responder: () => exemploDoConserto('anki_fechou_na_espera') });
+    faixa.pedir(['a']);
+    await relogio.deixarAndar();
+    clicarNoBotao();
+    await relogio.avancar(1_000);
+    assert.strictEqual(aviso().texto, 'ENV-16.abra', 'a pessoa fechou o Anki: a faixa pede que ela o abra');
+    assert.deepStrictEqual(enviadas.map(e => e.mensagem.acao), ['consertar'], 'e o abridor não recebe um abrir');
+    assert.deepStrictEqual(aoLigar, []);
+  }
+
+  // O consertar sem clique (#152): o abridor conserta primeiro e só abre o Anki que está fechado.
+  {
+    const esperadas = ['consertar', 'abrir'];
+    const ordem = ({ enviadas }) => enviadas.map(e => e.mensagem.acao);
+    const porMensagem = (conserto, abrir = 'no_lugar') => m => (m.acao === 'consertar' ? exemploDoConserto(conserto) : exemploDoAbridor('abrir', abrir));
+    const comAConexao = (conserto, situacoes, extras = {}) => carregar({
+      responder: porMensagem(conserto), situacoes, extras: { ConexaoAnki: { jaConectou: () => true, ...extras } },
+    });
+
+    {
+      const { AbrirOAnki, enviadas } = comAConexao('anki_fechado', ['ligada']);
+      const fim = await comoValores(AbrirOAnki.abrirOuConsertar({ aoMudar: () => {} }));
+      assert.strictEqual(fim.desfecho, 'aberto', 'o Anki que a pessoa fechou abre quando ela pede, e a Conexão responde');
+      assert.deepStrictEqual(enviadas.map(e => e.mensagem.acao), esperadas, 'consertar vem antes de abrir, e o Anki fechado só é aberto pelo abrir');
+    }
+    for (const [conserto, desfecho] of [['anki_travado', 'reiniciado'], ['complemento_desativado', 'ligado']]) {
+      const { AbrirOAnki, enviadas } = comAConexao(conserto, ['desligada', 'ligada']);
+      const fim = await comoValores(AbrirOAnki.abrirOuConsertar({}));
+      assert.strictEqual(fim.desfecho, desfecho, `${conserto}: o abridor consertou e a Conexão voltou`);
+      assert.deepStrictEqual(ordem({ enviadas }), ['consertar'], `${conserto}: o abridor já reabriu o Anki, a extensão não manda abrir de novo`);
+    }
+    {
+      const { AbrirOAnki, enviadas } = comAConexao('anki_travado', ['desligada']);
+      const fim = await comoValores(AbrirOAnki.abrirOuConsertar({ continuar: () => false }));
+      assert.strictEqual(fim.desfecho, 'falhou', 'reiniciou e a Conexão não voltou: não deu para consertar');
+      assert.deepStrictEqual(ordem({ enviadas }), ['consertar']);
+    }
+    for (const [conserto, desfecho, motivo] of [['complemento_sumiu', 'sumiu', undefined], ['anki_nao_fecha', 'falhou', 'nao_fechou'], ['anki_nao_abre', 'falhou', 'nao_abriu']]) {
+      const { AbrirOAnki, enviadas } = comAConexao(conserto, ['desligada']);
+      const fim = await comoValores(AbrirOAnki.abrirOuConsertar({}));
+      assert.deepStrictEqual([fim.desfecho, fim.motivo], [desfecho, motivo], `${conserto}: o desfecho do abridor`);
+      assert.deepStrictEqual(ordem({ enviadas }), ['consertar'], `${conserto}: sem abrir o Anki por cima do que o abridor disse`);
+      assert.ok(fim.passos.length >= 1 && fim.quando, `${conserto}: o diagnóstico sabe o que se passou`);
+    }
+    {
+      // O Anki que a pessoa fechou DURANTE a espera do consertar não é o fechado de antes: a extensão não manda abrir.
+      const { AbrirOAnki, enviadas } = comAConexao('anki_fechou_na_espera', ['desligada']);
+      const fim = await comoValores(AbrirOAnki.abrirOuConsertar({}));
+      assert.strictEqual(fim.desfecho, 'fechou', 'a pessoa fechou o Anki durante a espera: o desfecho diz isso');
+      assert.deepStrictEqual(ordem({ enviadas }), ['consertar'], 'o Anki que a pessoa fechou na espera não é reaberto pela extensão');
+    }
+    {
+      const { AbrirOAnki, enviadas } = carregar({
+        responder: porMensagem('conexao_fora'), situacoes: ['desligada'],
+        extras: { ConexaoAnki: { jaConectou: () => true }, outros: { textoDaVoz: id => id } },
+      });
+      const fim = await comoValores(AbrirOAnki.abrirOuConsertar({}));
+      assert.deepStrictEqual([fim.desfecho, fim.motivo], ['falhou', 'conexao_fora'], 'o Anki saudável com a Conexão fora: o abridor não mata e a extensão conta');
+      assert.deepStrictEqual(ordem({ enviadas }), ['consertar']);
+      assert.strictEqual(AbrirOAnki.falaDoDesfecho(fim).texto, 'BRG-39.conexaoFora', 'a fala própria do conexao_fora, não a do conserto que falhou');
+      assert.match(AbrirOAnki.falaDoDesfecho(fim).detalhes, /conexao_fora/, 'o diagnóstico leva o motivo');
+      assert.strictEqual(AbrirOAnki.falaDoDesfecho({ ...fim, motivo: 'nao_fechou' }).texto, 'BRG-39.falhou');
+    }
+    {
+      // O Anki aberto pela extensão e fechado pela pessoa antes do segundo consertar: continua fechado, sem terceiro abrir.
+      const relogio = relogioFalso();
+      const respostas = [exemploDoConserto('anki_fechado'), exemploDoConserto('anki_fechou_na_espera')];
+      const { AbrirOAnki, enviadas } = carregar({
+        relogio, responder: m => (m.acao === 'consertar' ? respostas.shift() : exemploDoAbridor('abrir', 'no_lugar')),
+        situacoes: ['desligada'], extras: { ConexaoAnki: { jaConectou: () => true } },
+      });
+      const andando = AbrirOAnki.abrirOuConsertar({});
+      await relogio.avancar(125_000);
+      assert.strictEqual((await comoValores(andando)).desfecho, 'fechou');
+      assert.deepStrictEqual(ordem({ enviadas }), ['consertar', 'abrir', 'consertar'], 'só um abrir por pedido');
+    }
+    {
+      // O Anki abriu, a Conexão continua muda (desativada): o abridor vê o Anki aberto, liga e reinicia, uma vez só.
+      const relogio = relogioFalso();
+      let situacao = 'desligada';
+      const respostas = [exemploDoConserto('anki_fechado'), exemploDoConserto('complemento_desativado')];
+      const { AbrirOAnki, enviadas } = carregar({
+        relogio,
+        responder: m => {
+          if (m.acao !== 'consertar') return exemploDoAbridor('abrir', 'no_lugar');
+          const resposta = respostas.shift();
+          if (resposta.situacao === 'ligado') situacao = 'ligada';
+          return resposta;
+        },
+        extras: { ConexaoAnki: { jaConectou: () => true, conferir: async () => situacao } },
+      });
+      const andando = AbrirOAnki.abrirOuConsertar({});
+      await relogio.avancar(125_000);
+      assert.strictEqual((await comoValores(andando)).desfecho, 'ligado');
+      assert.deepStrictEqual(ordem({ enviadas }), ['consertar', 'abrir', 'consertar']);
+    }
+    {
+      // O Anki que a pessoa fechou durante a espera continua fechado: o segundo consertar o encontra fechado e nada o abre de novo.
+      const relogio = relogioFalso();
+      const { AbrirOAnki, enviadas } = carregar({
+        relogio, responder: porMensagem('anki_fechado'), situacoes: ['desligada'], extras: { ConexaoAnki: { jaConectou: () => true } },
+      });
+      const andando = AbrirOAnki.abrirOuConsertar({});
+      await relogio.avancar(125_000);
+      assert.strictEqual((await comoValores(andando)).desfecho, 'sem_resposta');
+      assert.deepStrictEqual(ordem({ enviadas }), ['consertar', 'abrir', 'consertar'], 'só um abrir por pedido');
+    }
+    {
+      // Um abridor de antes do consertar (acao_desconhecida) abre como antes.
+      const { AbrirOAnki, enviadas } = carregar({
+        responder: m => (m.acao === 'consertar' ? { erro: 'acao_desconhecida' } : exemploDoAbridor('abrir', 'no_lugar')),
+        extras: { ConexaoAnki: { jaConectou: () => true } },
+      });
+      assert.strictEqual((await comoValores(AbrirOAnki.abrirOuConsertar({}))).desfecho, 'aberto');
+      assert.deepStrictEqual(ordem({ enviadas }), esperadas);
+    }
+    {
+      // O host que o Chrome não acha mais: quem já conectou perdeu a Conexão do Anki; quem nunca conectou não tem o que reinstalar.
+      for (const [jaConectou, desfecho] of [[true, 'sumiu'], [false, 'nao_abriu']]) {
+        const { AbrirOAnki } = carregar({
+          responder: () => { throw new Error('Specified native messaging host not found.'); },
+          extras: { ConexaoAnki: { jaConectou: () => jaConectou } },
+        });
+        assert.strictEqual((await comoValores(AbrirOAnki.abrirOuConsertar({}))).desfecho, desfecho, `já conectou: ${jaConectou}`);
+      }
+    }
+    {
+      // “Conferindo…” só aparece se o consertar demora (a espera de 30 s do abridor).
+      const relogio = relogioFalso();
+      const fases = [];
+      let responder;
+      const { AbrirOAnki } = carregar({
+        relogio, responder: () => new Promise(resolver => { responder = resolver; }), extras: { ConexaoAnki: { jaConectou: () => true } },
+      });
+      const andando = AbrirOAnki.abrirOuConsertar({ aoMudar: fase => fases.push(fase) });
+      await relogio.avancar(2_000);
+      assert.deepStrictEqual(fases, [], 'um consertar rápido (o Anki fechado) não pisca “conferindo”');
+      await relogio.avancar(2_000);
+      assert.deepStrictEqual(fases, ['consertando'], 'passados 3 s, a faixa diz que confere');
+      responder(exemploDoConserto('anki_travado'));
+      assert.strictEqual((await comoValores(andando)).desfecho, 'reiniciado');
+    }
   }
 
   console.log('abrir o anki tests passed');

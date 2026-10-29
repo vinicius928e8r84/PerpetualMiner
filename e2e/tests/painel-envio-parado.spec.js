@@ -5,10 +5,11 @@
 // e2e/fakes/abridor.js); e o abridor nunca reabre um Anki que a pessoa fechou: só o clique o chama. Quem retoma o Envio é a Conexão,
 // quando sobe com o Anki (complemento/test_envio_retomada.py); aqui o teste faz o papel dela com o fake (`moverEnvio`).
 
+const fs = require('fs');
 const { test, expect } = require('../fixtures');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 const contrato = require('../../complemento/contrato/exemplos.json');
-const { AGORA, INGLESAS, RUSSA, SACK, ARM, abrirPainel, cartoesDe, enviarAoAnki, marcarEEnviar, envio, progresso, enviosCriados, umaVoltaDoEnvio } = require('../apoio-do-envio');
+const { AGORA, INGLESAS, RUSSA, SACK, ARM, abrirPainel, cartoesDe, enviarAoAnki, marcarEEnviar, envio, progresso, enviosCriados, umaVoltaDoEnvio, toasts } = require('../apoio-do-envio');
 
 /** As mensagens `abrir` que o abridor recebeu. */
 const aberturas = fakes => fakes.abridor.pedidos().filter(p => p.mensagem.acao === 'abrir');
@@ -80,7 +81,76 @@ test('Continuar envio abre o Anki pelo abridor, uma vez; quando o Anki abre o En
   // Continuar sozinho: o painel só lê, não manda retomar, e não abre o Anki outra vez.
   expect(retomadas(fakes)).toEqual([]);
   expect(aberturas(fakes)).toEqual([ABRIR]);
+  // O Anki abriu e a Conexão respondeu: o abridor não falhou em nada, nem na tela nem no Detalhes.
+  await umaVoltaDoEnvio(page);
+  await expect(cartao).not.toContainText('Não deu para abrir');
+  await cartao.getByText('Detalhes').click();
+  await expect(cartao).not.toContainText('abridor ·');
   await estadoFinal(extensao, { pm_envio: { envios: [{ ids: INGLESAS.map(f => f.id), jobId: job.jobId }] } });
+});
+
+test('Continuar envio com o Anki que travou: o abridor o reinicia pelo consertar, o toast conta e o cartão não diz que falhou', async ({ page, extensao, fakes }) => {
+  fakes.abridor.definirConserto('anki_travado');
+  const job = await fecharOAnkiNoMeio(page, extensao, fakes);
+  const cartao = envio(page, 'Envio em inglês · 3 frases');
+  await expect(cartao).toContainText('Quando o Anki abrir, o Envio continua sozinho.', { timeout: 20_000 });
+
+  await cartao.getByRole('button', { name: 'Continuar envio' }).click();
+
+  await expect(cartao).toContainText('Abrindo o Anki para enviar…');
+  fakes.anki.ligar();
+  fakes.anki.moverEnvio(job.jobId, { stage: 'generate_cards', progress: { done: 5, total: 10 }, cartoes: cartoesDe(5) });
+  await expect(toasts(page)).toHaveText('O Anki travou e foi reiniciado.', { timeout: 20_000 });
+  await expect(cartao).not.toContainText('Quando o Anki abrir');
+  await umaVoltaDoEnvio(page);
+  await expect(cartao).not.toContainText('Não deu para abrir');
+  await cartao.getByText('Detalhes').click();
+  await expect(cartao).not.toContainText('abridor ·');
+  // O consertar já abriu o Anki: nenhum `abrir` por cima, e o painel não manda retomar.
+  expect(aberturas(fakes)).toEqual([]);
+  expect(retomadas(fakes)).toEqual([]);
+  await estadoFinal(extensao, { pm_envio: { envios: [{ ids: INGLESAS.map(f => f.id), jobId: job.jobId }] } });
+});
+
+test('Continuar envio com o conserto que falhou: o cartão conta, oferece Baixar diagnóstico e guarda o motivo no Detalhes', async ({ page, extensao, fakes }) => {
+  fakes.abridor.definirConserto('anki_nao_fecha');
+  const job = await fecharOAnkiNoMeio(page, extensao, fakes);
+  const cartao = envio(page, 'Envio em inglês · 3 frases');
+  await expect(cartao).toContainText('Quando o Anki abrir, o Envio continua sozinho.', { timeout: 20_000 });
+
+  await cartao.getByRole('button', { name: 'Continuar envio' }).click();
+
+  await expect(cartao).toContainText('Não deu para consertar. Feche o Anki e abra de novo.');
+  await expect(cartao).not.toContainText('Não deu para abrir');
+  await expect(cartao).toContainText('Quando o Anki abrir, o Envio continua sozinho.');
+  await cartao.getByText('Detalhes').click();
+  await expect(cartao).toContainText('abridor · falhou · nao_fechou');
+  expect(aberturas(fakes)).toEqual([]);
+  await expect(cartao.getByRole('button', { name: 'Continuar envio' })).toBeVisible();
+
+  const baixando = page.waitForEvent('download');
+  await cartao.getByRole('button', { name: 'Baixar diagnóstico' }).click();
+  const download = await baixando;
+  expect(download.suggestedFilename()).toBe('diagnostico-do-conserto.json');
+  expect(JSON.parse(fs.readFileSync(await download.path(), 'utf8'))).toMatchObject({ tipo: 'diagnostico-do-conserto', desfecho: 'falhou', motivo: 'nao_fechou' });
+  await estadoFinal(extensao, { pm_envio: { envios: [{ ids: INGLESAS.map(f => f.id), jobId: job.jobId }] } });
+});
+
+test('Continuar envio com a Conexão que sumiu do Anki: o cartão conta e o botão Instalar de novo leva ao passo da primeira conexão', async ({ page, extensao, fakes }) => {
+  fakes.abridor.definirConserto('complemento_sumiu');
+  const job = await fecharOAnkiNoMeio(page, extensao, fakes);
+  const cartao = envio(page, 'Envio em inglês · 3 frases');
+  await expect(cartao).toContainText('Quando o Anki abrir, o Envio continua sozinho.', { timeout: 20_000 });
+
+  await cartao.getByRole('button', { name: 'Continuar envio' }).click();
+
+  await expect(cartao).toContainText('A Conexão com o Anki não está mais no Anki.');
+  await expect(cartao).not.toContainText('Não deu para abrir');
+  expect(aberturas(fakes)).toEqual([]);
+  await cartao.getByRole('button', { name: 'Instalar de novo' }).click();
+
+  await expect(page).toHaveURL(/painel\.html#anki$/);
+  await estadoFinal(extensao, { pm_anki_ja_conectou: false });
 });
 
 test('a pessoa abre o Anki por conta própria: o Envio continua e o abridor nunca é chamado', async ({ page, extensao, fakes }) => {

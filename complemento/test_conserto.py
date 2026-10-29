@@ -1,0 +1,345 @@
+"""O abridor que conserta sozinho (#152): fecha à força o Anki que não responde, liga o complemento desativado e reinicia.
+
+    python3.9 complemento/test_conserto.py
+
+O script do Mac roda de verdade (`sh`), numa pasta temporária, com os programas de mentira no lugar de `ps`, `curl`, `kill`,
+`sleep`, `date` e `open`: todos anotam o que receberam num registro só, na ordem em que o script os chamou, e o relógio de
+mentira só anda quando o script manda dormir. Assim os testes conferem a **ordem** (esperar 30 s, fechar, abrir) sem esperar,
+e a edição do `meta.json` do Anki acontece numa pasta temporária. Nenhum processo de verdade é fechado, nenhum Anki é aberto.
+
+O que o Mac e o Windows de verdade fazem com isto (fechar à força, ligar pelo `meta.json`) só o ensaio do dono vê
+(`complemento/LEIA-ME.md`, riscos 3 e 12 do #138). O `.ps1` do Windows só roda onde houver `pwsh`.
+"""
+
+import json
+import os
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from complemento import abridor, conserto_do_anki  # noqa: E402
+from complemento.test_abridor import ANKI_DO_WINDOWS, Pastas, RegistroDeMentira, conversar  # noqa: E402
+
+PID = 4242   # o do Anki de mentira: o programa de mentira `ps` o lista, o `kill` de mentira o fecha
+COMANDO_DO_ANKI = "/Applications/Anki.app/Contents/MacOS/anki"
+CONSERTAR = {"acao": "consertar"}
+
+CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos-do-conserto.json")
+with open(CONTRATO, encoding="utf-8") as _arquivo:
+    EXEMPLOS = json.load(_arquivo)["conserto"]["exemplos"]
+
+META_DESATIVADO = {"name": "PerpetualMiner", "mod": 1760000000, "disabled": True, "config": {"porta": 8766, "lista": ["a", "b"]}}
+
+
+def programa(caminho, corpo):
+    with open(caminho, "w", encoding="utf-8") as arquivo:
+        arquivo.write("#!/bin/sh\n" + corpo)
+    os.chmod(caminho, 0o755)
+
+
+class Mundo:
+    """O computador de mentira: o Anki (um pid), a Conexão, o relógio e a pasta do complemento com o `meta.json`."""
+
+    def __init__(self, raiz):
+        self.pastas = Pastas(raiz)
+        self.estado = os.path.join(raiz, "mundo")
+        os.makedirs(self.estado)
+        self.complemento = os.path.join(raiz, "Anki2", "addons21", "perpetualminer")
+        os.makedirs(self.complemento)
+        with open(os.path.join(self.complemento, "__init__.py"), "w", encoding="utf-8") as arquivo:
+            arquivo.write("")
+        self.meta = os.path.join(self.complemento, "meta.json")
+        self.registro = os.path.join(self.estado, "eventos.log")
+        self.programas = {nome: os.path.join(self.estado, nome) for nome in ("ps", "curl", "kill", "sleep", "date", "open", "lsof")}
+        e = self.estado
+        programa(self.programas["date"], 'cat "%s/relogio"\n' % e)
+        programa(self.programas["sleep"],
+                 'echo "sleep $1" >> "%s"\nprintf %%s $(( $(cat "%s/relogio") + $1 )) > "%s/relogio"\n' % (self.registro, e, e))
+        # A lista de processos do computador: o Anki (se vive), o abridor e um processo qualquer, como o `ps` de verdade os mostra.
+        programa(self.programas["ps"],
+                 'echo "ps $*" >> "%s"\nprintf "  100 /usr/sbin/cron\\n  200 sh /x/abrir-o-anki.sh chrome-extension://x/\\n"\n'
+                 'chamada=$(( $(cat "%s/chamadas_do_ps" 2>/dev/null || echo 0) + 1 )); echo $chamada > "%s/chamadas_do_ps"\n'
+                 'if [ -f "%s/fecha_em" ] && [ "$(cat "%s/relogio")" -ge "$(cat "%s/fecha_em")" ]; then rm -f "%s/vivo"; fi\n'
+                 'if [ -f "%s/some_na_chamada" ] && [ "$chamada" -ge "$(cat "%s/some_na_chamada")" ]; then rm -f "%s/vivo"; fi\n'
+                 '[ -f "%s/vivo" ] && printf "  %d %%s\\n" "$(cat "%s/comando")"\n'
+                 '[ -f "%s/vivo" ] && [ -f "%s/outros" ] && while read -r p; do printf "  %%s %%s\\n" "$p" "$(cat "%s/comando")"; done < "%s/outros"\n'
+                 'exit 0\n' % ((self.registro,) + (e,) * 10 + (PID, e) + (e,) * 4))
+        # Quem ouve a porta: o Anki (o padrão) ou o que o teste disser (`escuta`: os pids, um por linha; vazio, ninguém).
+        programa(self.programas["lsof"],
+                 'echo "lsof $*" >> "%s"\nif [ -f "%s/escuta" ]; then cat "%s/escuta"; elif [ -f "%s/vivo" ]; then echo %d; fi\n' % (self.registro, e, e, e, PID))
+        programa(self.programas["curl"],
+                 'echo "curl $*" >> "%s"\nif [ -f "%s/some_no_curl" ] && [ "$(cat "%s/relogio")" -ge "$(cat "%s/some_no_curl")" ]; then rm -f "%s/vivo"; fi\n'
+                 '[ -f "%s/responde_a_partir_de" ] && [ "$(cat "%s/relogio")" -ge "$(cat "%s/responde_a_partir_de")" ] && exit 0\nexit 28\n'
+                 % ((self.registro,) + (e,) * 7))
+        programa(self.programas["kill"],
+                 'echo "kill $*" >> "%s"\n[ -f "%s/sem_permissao" ] && exit 1\n[ "$1" = "$(cat "%s/resiste_a" 2>/dev/null)" ] && exit 0\nrm -f "%s/vivo"\n' % (self.registro, e, e, e))
+        programa(self.programas["open"],
+                 'echo "open $*" >> "%s"\n[ -f "%s/nao_abre" ] && exit 1\ntouch "%s/vivo"\n' % (self.registro, e, e))
+        self.escrever_estado("relogio", "1000")
+        self.anki_aberto()
+
+    def escrever_estado(self, nome, valor):
+        with open(os.path.join(self.estado, nome), "w", encoding="utf-8") as arquivo:
+            arquivo.write(valor)
+
+    def anki_aberto(self, comando=COMANDO_DO_ANKI):
+        self.escrever_estado("vivo", "")
+        self.escrever_estado("comando", comando + "\n")
+
+    def anki_fechado(self):
+        os.remove(os.path.join(self.estado, "vivo"))
+
+    def conexao_responde_em(self, segundos):
+        self.escrever_estado("responde_a_partir_de", str(1000 + segundos))
+
+    def pessoa_fecha_o_anki_em(self, segundos):
+        self.escrever_estado("fecha_em", str(1000 + segundos))
+
+    def anki_some_no_curl_a_partir_de(self, segundos):
+        self.escrever_estado("some_no_curl", str(1000 + segundos))
+
+    def anki_some_na_chamada_do_ps(self, n):
+        self.escrever_estado("some_na_chamada", str(n))
+
+    def outro_processo_do_anki(self, pid):
+        """Mais um processo que roda o mesmo programa do Anki (o `ps` o lista) e que não ouve a porta."""
+        with open(os.path.join(self.estado, "outros"), "a", encoding="utf-8") as arquivo:
+            arquivo.write("%d\n" % pid)
+
+    def porta_ouvida_por(self, *pids):
+        self.escrever_estado("escuta", "".join("%d\n" % pid for pid in pids))
+
+    def kill_recusado_por_falta_de_permissao(self):
+        self.escrever_estado("sem_permissao", "")
+
+    def kill_nao_funciona_com(self, sinal):
+        self.escrever_estado("resiste_a", sinal)
+
+    def open_nao_abre(self):
+        self.escrever_estado("nao_abre", "")
+
+    def meta_com(self, texto):
+        with open(self.meta, "w", encoding="utf-8") as arquivo:
+            arquivo.write(texto if isinstance(texto, str) else json.dumps(texto, indent=4))
+
+    def meta_atual(self):
+        with open(self.meta, encoding="utf-8") as arquivo:
+            return arquivo.read()
+
+    def eventos(self):
+        if not os.path.exists(self.registro):
+            return []
+        with open(self.registro, encoding="utf-8") as arquivo:
+            return arquivo.read().splitlines()
+
+    def passos(self):
+        """O que o script fez, na ordem: as esperas juntas (`esperou N s`), cada `kill` e cada `open` (o `ps` e o `curl` ficam de fora)."""
+        passos = []
+        for linha in self.eventos():
+            if linha.startswith("sleep "):
+                segundos = int(linha.split()[1])
+                if passos and passos[-1].startswith("esperou "):
+                    segundos += int(passos.pop().split()[1])
+                passos.append("esperou %d s" % segundos)
+            elif linha.startswith(("kill ", "open ")):
+                passos.append(linha)
+        return passos
+
+    def abridor(self, perfil="Usuário 1", **conserto):
+        a = abridor.Abridor(
+            sistema="mac",
+            pasta=self.pastas.abridor,
+            programa=self.pastas.app,
+            onde_registrar={"Chrome": self.pastas.hosts_do_chrome},
+            abrir_com=self.programas["open"],
+            ler_json_com=self.pastas.ler_json,
+            conserto=conserto_do_anki.Conserto(
+                executavel=COMANDO_DO_ANKI, complemento=self.complemento,
+                programas={nome: self.programas[nome] for nome in ("ps", "curl", "kill", "sleep", "date", "lsof")},
+                **conserto),
+        )
+        a.escrever(perfil)
+        return os.path.join(self.pastas.abridor, "abrir-o-anki.sh")
+
+    def consertar(self, perfil="Usuário 1", **conserto):
+        return conversar(self.abridor(perfil, **conserto), CONSERTAR)
+
+
+@unittest.skipIf(os.name == "nt", "o script do Mac roda num sh")
+class NoMac(unittest.TestCase):
+    def setUp(self):
+        self._raiz = tempfile.TemporaryDirectory()
+        self.mundo = Mundo(self._raiz.name)
+
+    def tearDown(self):
+        self._raiz.cleanup()
+
+    def test_anki_fechado_pela_pessoa_continua_fechado_sem_fechar_nem_abrir_nada(self):
+        self.mundo.anki_fechado()
+        self.assertEqual(self.mundo.consertar(), {"situacao": "fechado"})
+        self.assertEqual(self.mundo.passos(), [])
+
+    def test_outro_programa_que_nao_e_o_do_anki_nao_e_fechado(self):
+        self.mundo.anki_aberto(comando="/usr/bin/vim notas.txt")
+        self.assertEqual(self.mundo.consertar(), {"situacao": "fechado"})
+        self.assertEqual(self.mundo.passos(), [])
+
+    def test_conexao_que_responde_logo_nao_fecha_nem_abre_nada(self):
+        self.mundo.conexao_responde_em(0)
+        self.assertEqual(self.mundo.consertar(), {"situacao": "respondeu"})
+        self.assertEqual(self.mundo.passos(), [])
+
+    def test_anki_que_demora_a_responder_mas_responde_antes_dos_30_s_nao_e_fechado(self):
+        self.mundo.conexao_responde_em(10)
+        self.assertEqual(self.mundo.consertar(), {"situacao": "respondeu"})
+        self.assertEqual(self.mundo.passos(), ["esperou 10 s"])
+
+    def test_sem_resposta_espera_30_s_fecha_a_forca_e_abre_de_novo_nesta_ordem(self):
+        self.assertEqual(self.mundo.consertar(), {"situacao": "reiniciado"})
+        self.assertEqual(self.mundo.passos(), [
+            "esperou 30 s",
+            "kill -KILL %d" % PID,
+            "open -a %s --args -p Usuário 1" % self.mundo.pastas.app,
+        ])
+
+    def test_a_espera_e_a_que_o_abridor_recebe_e_os_testes_nao_esperam_de_verdade(self):
+        self.assertEqual(self.mundo.consertar(espera_s=12), {"situacao": "reiniciado"})
+        self.assertEqual(self.mundo.passos()[0], "esperou 12 s")
+
+    def test_o_padrao_da_espera_e_de_30_s(self):
+        self.assertEqual(conserto_do_anki.Conserto().espera_s, 30)
+
+    def test_reabre_sem_escolher_perfil_quando_nenhum_foi_marcado(self):
+        self.assertEqual(self.mundo.consertar(perfil=None), {"situacao": "reiniciado"})
+        self.assertEqual(self.mundo.passos()[-1], "open -a %s" % self.mundo.pastas.app)
+
+    def test_a_pessoa_que_fecha_o_anki_durante_a_espera_nao_ve_o_anki_reaberto(self):
+        self.mundo.pessoa_fecha_o_anki_em(8)
+        self.assertEqual(self.mundo.consertar(), {"situacao": "fechou"})
+        self.assertEqual(self.mundo.passos(), ["esperou 8 s"])
+
+    def test_anki_que_sai_durante_o_ultimo_curl_antes_do_kill_nao_e_reaberto_nem_dado_como_reiniciado(self):
+        # O curl de verdade com -m 3 gasta 3 s quando o Anki não responde: o relógio anda 3 s dentro dele.
+        e = self.mundo.estado
+        programa(self.mundo.programas["curl"], 'echo "curl $*" >> "%s"\nprintf %%s $(( $(cat "%s/relogio") + 3 )) > "%s/relogio"\nexit 28\n'
+                 % (self.mundo.registro, e, e))
+        self.mundo.pessoa_fecha_o_anki_em(32)
+        self.assertEqual(self.mundo.consertar(), {"situacao": "fechou"})
+        self.assertNotIn("open", " ".join(self.mundo.passos()))
+        self.assertNotIn("kill", " ".join(self.mundo.passos()))
+
+    def test_anki_que_sai_no_ultimo_curl_da_espera_nao_e_reaberto_porque_nenhum_pid_recebeu_o_kill(self):
+        self.mundo.anki_some_no_curl_a_partir_de(30)
+        self.assertEqual(self.mundo.consertar(), {"situacao": "fechou"})
+        self.assertEqual(self.mundo.passos(), ["esperou 30 s"])
+
+    def test_so_conta_os_processos_da_propria_pessoa_e_nao_os_de_outra_conta_do_computador(self):
+        self.mundo.consertar()
+        ps = [linha for linha in self.mundo.eventos() if linha.startswith("ps ")]
+        self.assertTrue(ps)
+        self.assertEqual({linha for linha in ps}, {"ps -x -U %d -ww -o pid= -o command=" % os.getuid()})
+
+    def test_anki_que_nao_fecha_nem_a_forca_nao_e_aberto_de_novo(self):
+        self.mundo.kill_nao_funciona_com("-KILL")
+        self.assertEqual(self.mundo.consertar(), {"situacao": "falhou", "motivo": "nao_fechou"})
+        self.assertNotIn("open", " ".join(self.mundo.passos()))
+
+    def test_anki_que_nenhum_kill_alcanca_e_que_continua_rodando_falha_na_hora_sem_abrir_outro(self):
+        self.mundo.kill_recusado_por_falta_de_permissao()
+        self.assertEqual(self.mundo.consertar(), {"situacao": "falhou", "motivo": "nao_fechou"})
+        self.assertEqual(self.mundo.passos(), ["esperou 30 s", "kill -KILL %d" % PID])
+
+    def test_anki_que_fecha_e_nao_abre_de_novo_e_falha_com_o_motivo(self):
+        self.mundo.open_nao_abre()
+        self.assertEqual(self.mundo.consertar(), {"situacao": "falhou", "motivo": "nao_abriu"})
+        self.assertEqual(self.mundo.passos()[1], "kill -KILL %d" % PID)
+
+    def test_complemento_que_sumiu_da_pasta_do_anki_nao_fecha_nem_abre_nada(self):
+        os.remove(os.path.join(self.mundo.complemento, "__init__.py"))
+        self.assertEqual(self.mundo.consertar(), {"situacao": "sumiu"})
+        self.assertEqual(self.mundo.passos(), [])
+
+    def test_pergunta_a_conexao_pela_rota_que_so_responde_com_a_thread_principal_do_anki(self):
+        self.mundo.conexao_responde_em(0)
+        self.mundo.consertar()
+        curl = [linha for linha in self.mundo.eventos() if linha.startswith("curl ")][0]
+        self.assertIn("-X POST", curl)
+        self.assertIn("http://127.0.0.1:8766/anki/profiles", curl)
+        self.assertIn("Origin: chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf", curl)
+
+    def test_o_script_responde_cada_exemplo_do_contrato(self):
+        for exemplo in EXEMPLOS:
+            with self.subTest(exemplo["nome"]):
+                mundo = Mundo(tempfile.mkdtemp(dir=self._raiz.name))
+                situacao = exemplo["contexto"]["conserto"]
+                if situacao == "anki_fechado":
+                    mundo.anki_fechado()
+                elif situacao == "conexao_responde":
+                    mundo.conexao_responde_em(0)
+                elif situacao == "complemento_desativado":
+                    mundo.meta_com(META_DESATIVADO)
+                elif situacao == "complemento_sumiu":
+                    os.remove(os.path.join(mundo.complemento, "__init__.py"))
+                elif situacao == "anki_nao_fecha":
+                    mundo.kill_nao_funciona_com("-KILL")
+                elif situacao == "anki_nao_abre":
+                    mundo.open_nao_abre()
+                elif situacao == "meta_ilegivel":
+                    mundo.meta_com("{")
+                elif situacao == "anki_fechou_na_espera":
+                    mundo.pessoa_fecha_o_anki_em(8)
+                elif situacao == "conexao_fora":
+                    mundo.porta_ouvida_por(9999)
+                self.assertEqual(
+                    conversar(mundo.abridor(), exemplo["mensagem"]), exemplo["resposta"],
+                    'O abridor e o contrato (complemento/contrato/exemplos-do-conserto.json) se separaram no exemplo "%s".' % exemplo["nome"],
+                )
+
+    def test_consertar_so_vale_como_acao_principal_exata(self):
+        script = self.mundo.abridor()
+        for mensagem in [{"acao": "Consertar"}, {"acao": "consertar "}, {"acao": ["consertar"]}, {"x": {"acao": "consertar"}}]:
+            with self.subTest(mensagem=mensagem):
+                self.assertEqual(conversar(script, mensagem), {"erro": "acao_desconhecida"})
+        self.assertEqual(self.mundo.passos(), [])
+
+    def test_conferir_e_abrir_continuam_iguais(self):
+        script = self.mundo.abridor()
+        self.assertEqual(conversar(script, {"acao": "conferir"}), {"achou": True})
+        self.assertEqual(conversar(script, {"acao": "abrir"}), {"achou": True, "abriu": True})
+        self.assertEqual(self.mundo.passos(), ["open -a %s --args -p Usuário 1" % self.mundo.pastas.app])
+
+    def test_um_abridor_sem_os_dados_do_conserto_nunca_fecha_nada(self):
+        a = abridor.Abridor(
+            sistema="mac", pasta=self.mundo.pastas.abridor, programa=self.mundo.pastas.app,
+            onde_registrar={"Chrome": self.mundo.pastas.hosts_do_chrome}, abrir_com=self.mundo.programas["open"],
+            ler_json_com=self.mundo.pastas.ler_json,
+        )
+        a.escrever("Usuário 1")
+        resposta = conversar(os.path.join(self.mundo.pastas.abridor, "abrir-o-anki.sh"), CONSERTAR)
+        self.assertEqual(resposta, {"situacao": "fechado"})
+        self.assertEqual(self.mundo.passos(), [])
+
+    def test_um_caminho_do_anki_com_aspas_e_cifrao_chega_inteiro_a_comparacao_do_processo(self):
+        comando = "/Applications/Anki's $HOME.app/Contents/MacOS/anki"
+        self.mundo.anki_aberto(comando=comando + " --flag")
+        script = abridor.Abridor(
+            sistema="mac", pasta=self.mundo.pastas.abridor, programa=self.mundo.pastas.app,
+            onde_registrar={"Chrome": self.mundo.pastas.hosts_do_chrome}, abrir_com=self.mundo.programas["open"],
+            ler_json_com=self.mundo.pastas.ler_json,
+            conserto=conserto_do_anki.Conserto(
+                executavel=comando, complemento=self.mundo.complemento, espera_s=2,
+                programas={nome: self.mundo.programas[nome] for nome in ("ps", "curl", "kill", "sleep", "date", "lsof")}),
+        )
+        script.escrever(None)
+        resposta = conversar(os.path.join(self.mundo.pastas.abridor, "abrir-o-anki.sh"), CONSERTAR)
+        self.assertEqual(resposta, {"situacao": "reiniciado"})
+
+
+if __name__ == "__main__":
+    unittest.main()
+

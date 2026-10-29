@@ -130,29 +130,6 @@ test('um Envio que fica em parte enquanto o outro anda mostra Tentar de novo, qu
   await expect(toasts(page)).toHaveText('Envio retomado');
 });
 
-test('um Envio parado porque o Windows não deixou fechar o Anki diz o que fazer, com Continuar envio', async ({ page, extensao, fakes }) => {
-  await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
-  await abrirPainel(page, extensao);
-  await marcarEEnviar(page, [SACK.texto, RUSSA.texto]);
-  const [ingles, russo] = await enviosCriados(fakes, 2);
-
-  fakes.anki.moverEnvio(russo.jobId, { stage: 'generate_cards' });
-  fakes.anki.concluirEnvio(ingles.jobId, { erro: 'AnkiRepairBlockedError', ankiError: 'repair_access_denied' });
-
-  const cartaoIngles = envio(page, 'Envio em inglês · 1 frase');
-  await expect(cartaoIngles).toContainText('Não concluído', { timeout: 10_000 });
-  // O cartão diz o que fazer numa frase curta, sem caixa de erro, e a ação vem logo embaixo.
-  await expect(cartaoIngles).toContainText('O Windows não deixou fechar o Anki. Feche o Anki pelo Gerenciador de Tarefas');
-  await expect(cartaoIngles.getByRole('alert')).toHaveCount(0);
-  await expect(cartaoIngles.getByRole('button', { name: 'Continuar envio' })).toHaveCount(1);
-  // A próxima leitura da Conexão demora: o aviso sai na hora do Continuar envio, não nela.
-  fakes.anki.responder('POST', '/jobs/list', () => new Promise(() => {}));
-  await cartaoIngles.getByRole('button', { name: 'Continuar envio' }).click();
-  await expect.poll(() => fakes.anki.requisicoes.some(r => r.metodo === 'POST' && r.caminho === '/jobs/retry' && r.dados?.jobId === ingles.jobId)).toBe(true);
-  await expect(cartaoIngles).toContainText('Na fila');
-  await expect(cartaoIngles).not.toContainText('O Windows não deixou fechar o Anki');
-});
-
 test('bug #9: o POST do envio caindo na rede mostra o erro com Tentar de novo, e EN ok + RU falho mostra cada Envio', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
   fakes.anki.recusarEnvios('ru', { rede: true });

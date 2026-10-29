@@ -33,6 +33,7 @@ O escopo é redesign: auditar, podar, reagrupar e revestir. Nenhuma função nov
 | Popup (mini painel) e badge | `popup.html/css/js`, ícone da toolbar | [popup/](popup/README.md) | [`prototipo-popup.html?variant=A`](popup/prototipo-popup.html) | [Protótipo: Popup (mini painel)](https://github.com/vinicius928e8r84/PerpetualMiner/issues/5) |
 | Overlay in-page | `content.js` (só o visual) | [overlay/](overlay/README.md) | [`prototipo-overlay.html?variant=M1`](overlay/prototipo-overlay.html) | [Protótipo: Overlay in-page (content.js)](https://github.com/vinicius928e8r84/PerpetualMiner/issues/8) |
 | Dentro do Anki: o item “PerpetualMiner…” em Ferramentas | `complemento/janela.py`, `qt_do_anki.py`, `texto_da_janela.py` | [dentro-do-anki.md](dentro-do-anki.md) | (sem protótipo de tela; a janela é do Anki) | [Dentro do Anki: o item PerpetualMiner… em Ferramentas](https://github.com/vinicius928e8r84/PerpetualMiner/issues/175) |
+| Consertar sozinho: o abridor fecha à força o Anki que travou e liga a Conexão desativada | `complemento/conserto_do_anki.py`, `lib/abrir-o-anki.js` | [ensaio-do-conserto.md](ensaio-do-conserto.md) | (a faixa do Envio, BRG-39) | [O Consertar sozinho, e sai o Reparar Anki](https://github.com/vinicius928e8r84/PerpetualMiner/issues/152) |
 
 Todos os protótipos abrem na variante travada por padrão.
 
