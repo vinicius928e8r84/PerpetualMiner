@@ -17,7 +17,8 @@ sempre `{"situacao": …}`:
 
 O que o abridor sabe do Anki vem do próprio Anki: quem escreve o script é o complemento, dentro do Anki, e anota o programa
 (`sys.executable`) que roda o Anki. Só os processos que rodam exatamente esse programa **agora** (a lista de processos, lida a
-cada passo, só os da própria pessoa) são fechados: nunca se procura por nome (`pkill anki`), e um `pid` anotado não serviria,
+cada passo, só os da própria pessoa) são fechados e, no Windows do instalador novo, também o filho CPython desse programa
+(`FilhosDoAnki`, pela árvore de processos). Nunca se procura por nome (`pkill anki`), e um `pid` anotado não serviria,
 porque com a Conexão desativada o Anki reabre sem o complemento e o `pid` do script já é de um Anki que saiu. Só se fecha à força
 o Anki que **trava de verdade**: todo processo que ouve a porta da Conexão tem que ser do Anki (Mac: `lsof`; Windows:
 `Get-NetTCPConnection`), senão é `conexao_fora` e nada é morto (também quando outro programa divide a porta com o Anki), e a força
@@ -218,10 +219,51 @@ function AbrirOAnki {
   } catch { return $false }
 }
 
-# consertar: os processos que rodam agora o programa que a Conexão anotou ($programaDoAnki, o do Anki), e só eles.
+# consertar: os processos que rodam agora o programa que a Conexão anotou ($programaDoAnki, o do Anki), e os filhos dele que são o
+# mesmo Anki, e só eles. No Anki do instalador novo o programa anotado é o redirecionador do .venv (pythonw.exe), que roda o
+# CPython de verdade como filho, com os mesmos argumentos (`-c "import aqt, sys; ...; aqt.run()"`), e é o filho quem ouve a porta
+# da Conexão. Um filho é do Anki quando os argumentos dele são os do aqt.run(), são iguais aos do pai, e o pai (na cadeia, de filho
+# a pai, todos com esses argumentos) é um processo do programa anotado e nasceu antes dele (o pid de um pai que saiu pode ter sido
+# reusado). Nome do programa sozinho, ou a linha do aqt.run() sozinha, não bastam. Sem ler a tabela de processos, vale só o programa.
+# Os argumentos de uma linha de comando: o que vem depois do programa (o primeiro item, entre aspas ou não).
+function ArgumentosDaLinha($linha) {
+  $linha = ([string]$linha).Trim()
+  if ($linha.StartsWith('"')) { $fim = $linha.IndexOf('"', 1); if ($fim -lt 0) { return '' }; return $linha.Substring($fim + 1).Trim() }
+  $espaco = $linha.IndexOf(' ')
+  if ($espaco -lt 0) { return '' }
+  return $linha.Substring($espaco + 1).Trim()
+}
+function FilhosDoAnki($doPrograma, $todos) {
+  $filhos = @()
+  try {
+    $tabela = @{}
+    foreach ($p in @(Get-CimInstance Win32_Process)) { $tabela[[int]$p.ProcessId] = $p }
+    $ids = @($doPrograma | ForEach-Object { [int]$_.Id })
+    foreach ($candidato in $todos) {
+      $id = [int]$candidato.Id
+      if ($ids -contains $id -or -not $tabela.ContainsKey($id)) { continue }
+      $linha = ArgumentosDaLinha $tabela[$id].CommandLine
+      if ($linha -cnotmatch 'aqt\.run\(\)') { continue }
+      $atual = $tabela[$id]; $n = 0
+      while ($n -lt 8) {
+        $pai = [int]$atual.ParentProcessId
+        if ($pai -le 0 -or -not $tabela.ContainsKey($pai)) { break }
+        $acima = $tabela[$pai]
+        if ((ArgumentosDaLinha $acima.CommandLine) -cne $linha) { break }
+        if ($acima.CreationDate -and $atual.CreationDate -and $acima.CreationDate -gt $atual.CreationDate) { break }
+        if ($ids -contains $pai) { $filhos += $candidato; break }
+        $atual = $acima; $n++
+      }
+    }
+  } catch { return @() }
+  return $filhos
+}
 function ProcessosDoAnki {
   if (-not $programaDoAnki) { return @() }
-  return @(Get-Process -ErrorAction SilentlyContinue | Where-Object { try { $_.Path -ieq $programaDoAnki } catch { $false } })
+  $todos = @(Get-Process -ErrorAction SilentlyContinue)
+  $doPrograma = @($todos | Where-Object { try { $_.Path -ieq $programaDoAnki } catch { $false } })
+  if ($doPrograma.Count -eq 0) { return @() }
+  return @($doPrograma) + @(FilhosDoAnki $doPrograma $todos)
 }
 function AnkiRodando { return (@(ProcessosDoAnki).Count -gt 0) }
 # A lista de perfis só volta com a thread principal do Anki viva (o /health responde mesmo com o Anki travado).
