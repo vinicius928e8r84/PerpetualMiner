@@ -15,8 +15,10 @@ import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import baralhos, custos, diagnostico, envio, trabalhador
+from . import baralhos, chatgpt_oficial, custos, diagnostico, envio, trabalhador
 from .chaves import Cofre
+from .login_do_chatgpt import LoginDoChatGPT
+from .paginas_do_navegador import PAGINAS, ROTAS_DO_CHATGPT, responder_a_pagina
 from .rotas_da_chave import (
     apagar_chave_da_openai, estado_da_ia, guardar_chave_da_openai, sincronizar_chave_da_openai, vincular_legado_da_openai,
 )
@@ -157,6 +159,7 @@ ROTAS = {
     ("POST", "/ia/openai/sincronizar"): sincronizar_chave_da_openai,
     ("POST", "/ia/openai/legado"): vincular_legado_da_openai,
     ("POST", "/ia/estado"): estado_da_ia,
+    **ROTAS_DO_CHATGPT,
     ("POST", "/abrir-com-o-computador/estado"): _estado_do_item_de_login,
     ("POST", "/abrir-com-o-computador"): _abrir_com_o_computador,
     # O Envio (#142): criar e tentar de novo mudam a fila; as outras só leem. Tudo POST com a origem da extensão.
@@ -171,7 +174,7 @@ ROTAS = {
 
 # As rotas que respondem sem a origem da extensão. Rota nova não entra aqui sem decisão do dono:
 # o que gasta a chave ou lê dado da pessoa é POST e exige a origem.
-ROTAS_ABERTAS = frozenset([("GET", "/health")])
+ROTAS_ABERTAS = frozenset([("GET", "/health")]) | frozenset(PAGINAS)
 
 
 class _Atendente(BaseHTTPRequestHandler):
@@ -259,6 +262,9 @@ class _Atendente(BaseHTTPRequestHandler):
             if self.headers.get("Access-Control-Request-Private-Network") == "true":
                 extras["Access-Control-Allow-Private-Network"] = "true"
             return self._responder(204, origem=origem, extras=extras)
+        pagina = PAGINAS.get((self.command, caminho))
+        if pagina is not None:
+            return responder_a_pagina(self, pagina)
         rota = ROTAS.get((self.command, caminho))
         if rota is None:
             return self._responder(404, {"error": "not_found"}, origem=origem)
@@ -345,6 +351,7 @@ class Conexao:
         adaptador_de_imagem=None,
         voz_base=VOZ_BASE,
         firestore_base='https://firestore.googleapis.com/v1/projects/perpetualminer-4c219/databases/(default)/documents',
+        chatgpt_base=chatgpt_oficial.LOGIN,
         intervalo_de_parada=0.1,
         trabalhando=True,
         intervalo_do_envio=1.0,
@@ -366,6 +373,7 @@ class Conexao:
         # Chamado depois de a pessoa escolher outro perfil: o que depende do marcado (o abridor) se refaz. Quem monta a Conexão o troca.
         self.ao_mudar_o_perfil = lambda: None
         self.cofre = Cofre(dados.chaves)
+        self.chatgpt = LoginDoChatGPT(dados.chaves, logger, base=chatgpt_base, api=openai_base)
         self.openai_base = openai_base
         self.firestore_base = firestore_base
         # O item de login de “Abrir o Anki com o computador”; None onde o sistema não tem (nem Mac nem Windows).
@@ -378,7 +386,7 @@ class Conexao:
         self.contato = threading.Event()
         self.fila = envio.Fila(dados, motor or envio.motor_do_complemento(), logger)
         self._trabalhador = trabalhador.Trabalhador(
-            envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(),
+            envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(), chatgpt=self.chatgpt,
                            espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai, voz_base=voz_base,
                            openverse_base=openverse_base, adaptador_de_imagem=adaptador_de_imagem),
             intervalo=intervalo_do_envio, contato=self.contato, espera_do_contato=espera_do_contato,

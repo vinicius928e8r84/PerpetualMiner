@@ -5,22 +5,22 @@ com o Anki (o complemento do Anki, em `127.0.0.1:8766`), junto com os `exemplos-
 `exemplos-do-perfil.json`; `carregar.js` e `test_servidor.py` os somam e recusam nome repetido). Dois lados leem o mesmo conjunto:
 
 - **o complemento**: `python3 complemento/test_servidor.py` sobe o servidor real e confere
-  cada exemplo (rode também no 3.9, o Python do Anki do Mac);
+  cada exemplo (rode também no 3.9);
 - **a extensão**: o fake da Conexão do e2e (`e2e/fakes/anki.js`) responde pelos exemplos,
   e `e2e/tests/contrato-da-conexao.spec.js` confere o fake contra eles.
 
-Mudar só um lado quebra um teste, e a mensagem diz o exemplo e os dois arquivos.
+Mudar só um lado quebra um teste, que diz o exemplo e os arquivos.
 
 O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede nem que o complemento responde fica sem exemplo.
 
 - **Os pedidos da extensão**: todo pedido nasce de um construtor de `PerpetualMiner.PedidoAoAnki` (`lib/pedido-ao-anki.js`:
   `saude`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`, `chaveDaOpenAI`, `apagarChaveDaOpenAI`, `estadoDaIA`, e os do Envio: `criarEnvio` (o corpo leva o `jobId`), `listarEnvios`, `verEnvio`, `tentarEnvioDeNovo`, `pacoteDeDiagnostico`, `apagarFrasesDosEnvios`, `custosDosEnvios`), e `PedidoAoAnki.variantes` os lista. `node test_contrato_fechado.js`
-  pede ao construtor cada variante (com os dois Baralhos, as três leituras dos números…) e exige um exemplo `daExtensao`
+  pede ao construtor cada variante (com os dois Baralhos, as três leituras…) e exige um exemplo `daExtensao`
   de cada uma, que o fake do e2e então responde. O nome do Baralho não conta para achar o exemplo; quantos Baralhos, `refresh` e
   `launch` contam. A regra `contrato-fechado` (`node scripts/regras/verificar.js`) acusa um `fetch` direto a uma rota da Conexão.
 - **As respostas do complemento**: `complemento/test_servidor.py` guarda o que o servidor real respondeu a uma rota que ele
   tem (método, caminho, status e `error`) e, no fim, exige um exemplo para cada um. Um estado novo do servidor
-  sem exemplo (foi o `500` da saúde, no #185) quebra o teste dizendo qual. Quem pede cada rota em cada estado do Anki
+  sem exemplo quebra o teste dizendo qual. Quem pede cada rota em cada estado do Anki
   (coleção que quebra, sem coleção, perfil ilegível, corpo inválido) é a matriz `EstadosDeCadaRota`, que não lê os exemplos:
   uma rota nova se declara em `MATRIZ` (corpo mínimo, se lê a coleção, se lê o perfil e as recusas de validação dela; uma
   rota que não lê a coleção, como a chave da IA, responde o mesmo `status` em todos os estados) e sem isso o teste quebra dizendo o que declarar.
@@ -61,7 +61,7 @@ O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede 
 - `pedido`: o que chega, com `origem` (o cabeçalho `Origin`; `null` é que ele não veio). Rotas com corpo
   ganham `corpo`, o JSON do pedido (no fake, o exemplo que cita `corpo` só vale para esse corpo), ou `corpoBruto` (os bytes como vierem, para o que não é JSON: o `400` `invalid_json`; a extensão nunca o manda, então esse exemplo não é `daExtensao`).
 - `resposta`: o status e o JSON. `"<agora>"` no JSON é o instante em que a Conexão respondeu: o complemento confere
-  qualquer instante ISO 8601 em UTC, e o fake escreve o do relógio dele.
+  qualquer instante ISO 8601 em UTC, e o fake escreve o do relógio.
 - `fila`: o nome de uma fila de `filas` (no alto do arquivo, ao lado de `colecoes`): os Envios que a Conexão já tinha, cada um
   com o pedido (`job`), o estado (`state`, com o de cada Cartão em `cards`) e os registros de custo (`custos`). O teste do
   complemento a escreve nos arquivos da pasta de dados (`semear_a_fila` em `test_servidor.py`) e o fake a carrega por
@@ -174,6 +174,8 @@ A Conexão de hoje (`bridge/`) atende as mesmas rotas e o mesmo criar idempotent
 
 `lastError` e o `error` de cada Cartão são códigos (`openai_key_missing`, `openai_key_rejected`, `openai_no_credit`,
 `openai_rate_limited`, `openai_unreachable`, `note_type_missing`, `anki_write_failed`…), nunca o texto da OpenAI.
+
+As rotas do login do ChatGPT (#155): [`entrar-com-o-chatgpt.md`](entrar-com-o-chatgpt.md).
 
 ## As rotas do perfil fixo (#149)
 

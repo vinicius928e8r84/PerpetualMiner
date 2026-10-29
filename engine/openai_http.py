@@ -1,5 +1,5 @@
 """
-openai_http.py - Chat completions and image generation over plain HTTP (standard library only, Python 3.9+).
+openai_http.py - Chat completions, the Responses API of the ChatGPT plan and image generation over plain HTTP (standard library only, Python 3.9+).
 
 The engine's text and image stages talk to OpenAI through this module instead of the SDK, so they also run inside
 the Anki add-on (the Conexão com o Anki), where there is no `openai`, `httpx` or `requests`. The base URL
@@ -31,6 +31,21 @@ SEM_CREDITO = "openai_no_credit"
 LIMITE_DE_USO = "openai_rate_limited"
 FORA_DO_AR = "openai_unreachable"
 PEDIDO_RECUSADO = "openai_request_rejected"
+# The ChatGPT plan (Sign in with ChatGPT, #155): the codes its Responses API errors become. Source: the SIWC docs,
+# "Errors and recovery" (https://developers.openai.com/siwc/token-sharing-open-source/errors-and-recovery).
+LIMITE_DO_PLANO = "chatgpt_usage_limit"
+PLANO_NAO_SERVE = "chatgpt_not_eligible"
+PLANO_RECUSOU = "chatgpt_rejected"
+RESPOSTA_INCOMPLETA = "empty_response"
+_DO_PLANO = {
+    "subscription_sharing_usage_limit_exceeded": LIMITE_DO_PLANO,
+    "subscription_sharing_user_not_eligible": PLANO_NAO_SERVE,
+    "subscription_sharing_usage_unavailable": FORA_DO_AR,
+    "subscription_sharing_user_unavailable": FORA_DO_AR,
+    "subscription_sharing_invalid_user": PLANO_RECUSOU,
+    "chatpass_v2_scope_not_authorized": PLANO_RECUSOU,
+    "chatpass_v2_invalid_authorization_context": PLANO_RECUSOU,
+}
 # OpenAI's own machine code for an image it cannot read (the image judge discards the candidates); no text of its answer is kept.
 IMAGEM_INVALIDA = "openai_invalid_image"
 
@@ -65,6 +80,56 @@ def _classificar(status, detalhe):
     if status >= 500:
         return FORA_DO_AR
     return PEDIDO_RECUSADO
+
+
+def _detalhe_do_erro(erro):
+    try:
+        detalhe = json.loads(erro.read(65536).decode("utf-8")).get("error") or {}
+    except (ValueError, AttributeError, OSError):
+        detalhe = {}
+    return detalhe if isinstance(detalhe, dict) else {}
+
+
+def _classificar_do_plano(status, detalhe):
+    codigo = _DO_PLANO.get(str(detalhe.get("code") or ""))
+    if codigo:
+        return codigo
+    if status in (401, 403):
+        return PLANO_RECUSOU
+    return FORA_DO_AR if status >= 500 else (LIMITE_DE_USO if status == 429 else PEDIDO_RECUSADO)
+
+
+def responder(base, token, modelo, instrucoes, mensagem, tempo=TEMPO_PADRAO):
+    """POST /v1/responses with the ChatGPT plan's access token: no `temperature`, the system prompt as `instructions`,
+    `store: false` and `stream: true` (the SIWC "Preview limitations"). Returns (text, usage) only after
+    `response.completed`; anything else is `ErroDaOpenAI` with a code, never what the plan wrote."""
+    corpo = {"model": modelo, "instructions": instrucoes, "input": [{"role": "user", "content": mensagem}], "store": False, "stream": True}
+    pedido = urllib.request.Request(base + "/v1/responses", data=json.dumps(corpo).encode("utf-8"), method="POST")
+    pedido.add_header("Authorization", "Bearer " + token)
+    pedido.add_header("Content-Type", "application/json")
+    pedido.add_header("Accept", "text/event-stream")
+    pedacos = []
+    try:
+        with urllib.request.urlopen(pedido, timeout=tempo, context=contexto_tls()) as resposta:
+            for linha in resposta:
+                if not linha.startswith(b"data:"):
+                    continue
+                evento = json.loads(linha[5:].decode("utf-8"))
+                tipo = evento.get("type") if isinstance(evento, dict) else None
+                if tipo == "response.output_text.delta":
+                    pedacos.append(str(evento.get("delta") or ""))
+                elif tipo == "response.completed":
+                    return "".join(pedacos).strip(), (evento.get("response") or {}).get("usage") or {}
+                elif tipo in ("response.failed", "error"):
+                    erro = (evento.get("response") or {}).get("error") or evento.get("error") or evento
+                    raise ErroDaOpenAI(_classificar_do_plano(500, erro if isinstance(erro, dict) else {}))
+                elif tipo == "response.incomplete":
+                    raise ErroDaOpenAI(RESPOSTA_INCOMPLETA)
+    except urllib.error.HTTPError as erro:
+        raise ErroDaOpenAI(_classificar_do_plano(erro.code, _detalhe_do_erro(erro)), erro.code) from None
+    except (urllib.error.URLError, OSError, ValueError):
+        raise ErroDaOpenAI(FORA_DO_AR) from None
+    raise ErroDaOpenAI(FORA_DO_AR)  # the stream ended without `response.completed`
 
 
 def _passageira(codigo, status):

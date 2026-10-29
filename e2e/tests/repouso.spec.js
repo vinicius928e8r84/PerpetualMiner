@@ -39,6 +39,18 @@ test('card da IA com um perfil: parado, não escreve na Conexão nem no Firestor
   expect(fakes.google.chaveDaOpenAIDe('A')?.chave).toBe(CHAVE_A);
 });
 
+test('card da IA com o ChatGPT conectado: parado, só relê o login e não escreve na Conexão', async ({ page, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: 'A' });
+  fakes.anki.chatgpt.definir('conectada');
+  await abrirComRelogio(page, extensao, 'ia');
+  await expect(cardDaIA(page)).toContainText('Usando o plano do ChatGPT');
+
+  await emRepouso(page, { ciclos: CICLOS, fakes, extensao, esperar: '/ia/chatgpt/estado' });
+
+  await expect(cardDaIA(page)).toContainText('Usando o plano do ChatGPT');
+  expect(fakes.anki.chatgpt.situacao()).toBe('conectada');
+});
+
 for (const bComChave of [false, true]) {
   test(`card da IA com dois perfis${bComChave ? ' (B tem chave)' : ''}: parados, A e B só leem o dono`, async ({ page, extensao, fakes, segundoPerfil }) => {
     await extensao.semearSessao({ uid: 'A' });

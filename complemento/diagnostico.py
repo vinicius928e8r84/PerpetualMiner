@@ -9,7 +9,7 @@ from .envio import agora_utc, visao_do_pedido
 def pacote_de_diagnostico(fila, job_id, versao, caminho_do_log):
     """O pacote de diagnóstico de um Envio: o pedido (sem as linhas das Frases), o estado, os custos, os arquivos dele e as linhas do log que o citam.
 
-    Nada da pasta `chaves` entra, e nem o log nem os custos nem o estado têm a chave, a Palavra ou a Frase."""
+    Nada da pasta `chaves` entra (a chave e o login do ChatGPT), e o log, os custos e o estado não têm a chave, a Palavra nem a Frase."""
     arquivos = []
     for pasta in (fila.pasta_dos_textos(job_id), fila.pasta_dos_custos(job_id)):
         for raiz, _, nomes in os.walk(pasta):

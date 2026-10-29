@@ -178,5 +178,117 @@ class GerarCartoesPorHttp(unittest.TestCase):
         self.assertEqual((feito.stdout.strip(), feito.stderr), ("True", ""))
 
 
+class PlanoDeMentira:
+    """Responde `POST /v1/responses` como o plano do ChatGPT: `resposta` é (status, corpo JSON) antes do stream ou a lista de eventos."""
+
+    def __init__(self, resposta):
+        self.resposta = resposta
+        self.pedidos = []
+        dono = self
+
+        class Atendente(BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def do_POST(self):
+                corpo = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                dono.pedidos.append({"caminho": self.path, "autorizacao": self.headers.get("Authorization"), "corpo": corpo})
+                if isinstance(dono.resposta, tuple):
+                    status, resposta = dono.resposta
+                    dados = json.dumps(resposta).encode("utf-8")
+                    self.send_response(status)
+                    self.send_header("Content-Length", str(len(dados)))
+                    self.end_headers()
+                    self.wfile.write(dados)
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream")
+                self.end_headers()
+                for evento in dono.resposta:
+                    self.wfile.write(("event: %s\ndata: %s\n\n" % (evento["type"], json.dumps(evento))).encode("utf-8"))
+
+        self._servidor = ThreadingHTTPServer(("127.0.0.1", 0), Atendente)
+        self.base = "http://127.0.0.1:%d" % self._servidor.server_address[1]
+        self._thread = threading.Thread(target=self._servidor.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+
+    def __enter__(self):
+        self._thread.start()
+        return self
+
+    def __exit__(self, *erro):
+        self._servidor.shutdown()
+        self._servidor.server_close()
+
+
+TOKEN_DO_PLANO = "acesso-do-plano-0000"
+
+
+def eventos(*pedacos, fim="response.completed", erro_=None):
+    lista = [{"type": "response.created", "response": {"status": "in_progress"}}]
+    lista += [{"type": "response.output_text.delta", "delta": pedaco} for pedaco in pedacos]
+    if fim == "response.completed":
+        lista.append({"type": fim, "response": {"status": "completed", "usage": {"input_tokens": 2061, "output_tokens": 387}}})
+    elif fim:
+        lista.append({"type": fim, "response": {"status": fim.split(".")[1], "error": {"code": erro_, "message": "falhou " + TOKEN_DO_PLANO}}})
+    return lista
+
+
+class ResponderPeloPlano(unittest.TestCase):
+    def test_o_pedido_vai_sem_temperature_com_instructions_store_false_e_stream_e_o_texto_vem_dos_pedacos(self):
+        with PlanoDeMentira(eventos("Front: ", "oi")) as plano:
+            texto, uso = openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "o prompt de sistema", "give up : She gave up")
+        self.assertEqual((texto, uso), ("Front: oi", {"input_tokens": 2061, "output_tokens": 387}))
+        self.assertEqual(plano.pedidos, [{
+            "caminho": "/v1/responses",
+            "autorizacao": "Bearer " + TOKEN_DO_PLANO,
+            "corpo": {"model": "gpt-6-luna", "instructions": "o prompt de sistema", "input": [{"role": "user", "content": "give up : She gave up"}],
+                      "store": False, "stream": True},
+        }])
+
+    def test_so_o_response_completed_e_sucesso(self):
+        casos = [
+            (eventos("Front: oi", fim=None), openai_http.FORA_DO_AR),
+            (eventos("Front: oi", fim="response.incomplete", erro_=None), openai_http.RESPOSTA_INCOMPLETA),
+            (eventos("Front: oi", fim="response.failed", erro_="subscription_sharing_usage_limit_exceeded"), openai_http.LIMITE_DO_PLANO),
+            (eventos("Front: oi", fim="response.failed", erro_="subscription_sharing_usage_unavailable"), openai_http.FORA_DO_AR),
+        ]
+        for resposta, codigo in casos:
+            with self.subTest(codigo), PlanoDeMentira(resposta) as plano:
+                with self.assertRaises(openai_http.ErroDaOpenAI) as recusa:
+                    openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "p", "m")
+            self.assertEqual(recusa.exception.codigo, codigo)
+            self.assertNotIn(TOKEN_DO_PLANO, str(recusa.exception))
+
+    def test_cada_recusa_antes_do_stream_vira_um_codigo_e_o_que_o_plano_escreveu_nunca_volta(self):
+        def recusa(status, codigo):
+            return status, {"error": {"code": codigo, "message": "recusado " + TOKEN_DO_PLANO}}
+
+        casos = [
+            (recusa(429, "subscription_sharing_usage_limit_exceeded"), openai_http.LIMITE_DO_PLANO),
+            (recusa(403, "subscription_sharing_user_not_eligible"), openai_http.PLANO_NAO_SERVE),
+            ((401, {"detail": "not accepted " + TOKEN_DO_PLANO}), openai_http.PLANO_RECUSOU),
+            (recusa(403, "chatpass_v2_scope_not_authorized"), openai_http.PLANO_RECUSOU),
+            (recusa(503, "subscription_sharing_user_unavailable"), openai_http.FORA_DO_AR),
+            (recusa(429, "rate_limit_exceeded"), openai_http.LIMITE_DE_USO),
+            (recusa(400, "subscription_sharing_unsupported_capability"), openai_http.PEDIDO_RECUSADO),
+        ]
+        for resposta, codigo in casos:
+            with self.subTest(codigo=codigo, status=resposta[0]), PlanoDeMentira(resposta) as plano:
+                with self.assertRaises(openai_http.ErroDaOpenAI) as recusa_:
+                    openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "p", "m")
+            self.assertEqual(recusa_.exception.codigo, codigo)
+            self.assertNotIn(TOKEN_DO_PLANO, str(recusa_.exception))
+
+    def test_com_o_plano_o_cartao_sai_pela_responses_api_e_nao_conta_custo_em_dolar(self):
+        with tempfile.TemporaryDirectory() as pasta, PlanoDeMentira(eventos(CARTAO[:40], CARTAO[40:])) as plano:
+            raiz = Path(pasta)
+            config = dict(configuracao(raiz), openai_api_key=None, plano_do_chatgpt={"token": TOKEN_DO_PLANO, "modelo": "gpt-6-luna"})
+            salvos = generate_cards.run([ENTRADA], config, openai_base=plano.base)
+            custos = (raiz / "log" / "costs.jsonl").exists()
+        self.assertEqual(salvos, [build_card_stem(ENTRADA.keywords[0], ENTRADA.phrase)])
+        self.assertEqual([(p["caminho"], p["corpo"]["instructions"], p["corpo"]["model"]) for p in plano.pedidos], [("/v1/responses", "en prompt", "gpt-6-luna")])
+        self.assertFalse(custos)
+
+
 if __name__ == "__main__":
     unittest.main()

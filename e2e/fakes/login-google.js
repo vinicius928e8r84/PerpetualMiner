@@ -1,6 +1,8 @@
 'use strict';
 
-// O servidor que responde por accounts.google.com, a página de login do Google.
+// O servidor que responde por accounts.google.com, a página de login do Google, e por auth.openai.com, a autorização do
+// ChatGPT (#155): a aba que a extensão abre com `chrome.tabs.create` também escapa do `context.route` na primeira navegação, e
+// o nome apontado para cá garante que nada sai para a internet.
 //
 // A janela de login do `chrome.identity.launchWebAuthFlow` carrega fora do
 // roteamento do Playwright: o `context.route` não a alcança. O Chromium do teste
@@ -36,7 +38,13 @@ function gerarCertificado() {
  */
 async function subirServidorDoLogin() {
   let responder = null;
+  let responderChatGPT = null;
   const servidor = https.createServer(gerarCertificado(), (req, res) => {
+    if (/^auth\.openai\.com(:\d+)?$/.test(req.headers.host || '')) {
+      const url = new URL(req.url, 'https://auth.openai.com');
+      if (!responderChatGPT) return res.writeHead(404).end();
+      return responderChatGPT(url, req, res);
+    }
     const url = new URL(req.url, 'https://accounts.google.com');
     if (url.pathname !== '/o/oauth2/v2/auth' || !responder) {
       res.writeHead(404).end();
@@ -48,6 +56,7 @@ async function subirServidorDoLogin() {
   return {
     porta: servidor.address().port,
     atender(fn) { responder = fn; },
+    atenderChatGPT(fn) { responderChatGPT = fn; },
     fechar: () => new Promise(resolve => servidor.close(resolve)),
   };
 }
