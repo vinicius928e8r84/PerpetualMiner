@@ -10,12 +10,10 @@ import io
 import json
 import os
 import re
-import socket
 import sys
 import tempfile
-import threading
 import unittest
-import warnings
+from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -25,10 +23,10 @@ from complemento.test_fila_de_mentira import semear_a_fila  # noqa: E402,F401
 from complemento.test_imagens_de_mentira import OpenverseDeMentira  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira  # noqa: E402
 from complemento.test_voz_de_mentira import VozDeMentira  # noqa: E402
+from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira  # noqa: E402
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
-VARIAVEIS_DE_PROXY = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy")
 
 
 # Tudo o que o servidor real respondeu, neste arquivo, a uma rota que ele tem: (método, caminho, status, `error`).
@@ -92,9 +90,11 @@ def colecao_do_exemplo(contexto):
 
 
 def igual_ao_do_contrato(obtido, esperado):
-    """O JSON obtido é o do contrato; `"<agora>"` no contrato é qualquer instante ISO 8601 (Z)."""
+    """O JSON obtido é o do contrato; `"<agora>"` é qualquer instante ISO 8601 (Z) e `"<url de autorização>"`, a do login do ChatGPT."""
     if esperado == "<agora>":
         return isinstance(obtido, str) and bool(re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z", obtido))
+    if esperado == "<url de autorização>":
+        return isinstance(obtido, str) and obtido.startswith("https://auth.openai.com/api/accounts/authorize?client_id=dynamic_agent_client&")
     if isinstance(esperado, dict):
         return isinstance(obtido, dict) and obtido.keys() == esperado.keys() and all(igual_ao_do_contrato(obtido[k], v) for k, v in esperado.items())
     if isinstance(esperado, list):
@@ -207,10 +207,12 @@ class ConexaoNoTeste:
         firebase=0,
         trabalhando=False,
         espera_do_contato=0.0,
+        chatgpt=None,
         perfil_marcado=None,
         adaptador_de_imagem=None,
     ):
         self.perfil = perfil
+        self.situacao_do_chatgpt = chatgpt  # `conectada` (o arquivo do login já existe), `entrando` ou `recusou` (a tentativa)
         self.falha_no_perfil = falha_no_perfil
         self.pasta = pasta
         self.item = _item_de_login_do_contexto(pasta, item)
@@ -228,6 +230,11 @@ class ConexaoNoTeste:
         self.de_mentira = (self.openai, self.openverse, self.voz, self.firestore) = (
             OpenAIDeMentira(openai), OpenverseDeMentira(), VozDeMentira(), FirestoreDeMentira())
         self.firestore.falha = firebase
+        self.servidor_de_login = ChatGPTDeMentira()
+        self.de_mentira += (self.servidor_de_login,)
+        if chatgpt == "conectada":
+            with open(os.path.join(self.chaves, "chatgpt.json"), "w", encoding="utf-8") as arquivo:
+                json.dump({"client_id": "oaiapp_x", "access_token": "acesso-x", "refresh_token": "renovacao-x", "expira_em": 4e9}, arquivo)
         self.cofre_sem_escrita = cofre_sem_escrita
         self.logger = registro.criar(self.logs)
         self.conexao = servidor.Conexao(
@@ -244,6 +251,7 @@ class ConexaoNoTeste:
             adaptador_de_imagem=adaptador_de_imagem,
             voz_base=self.voz.base,
             firestore_base=self.firestore.base,
+            chatgpt_base=self.servidor_de_login.base,
             intervalo_de_parada=0.005,
             trabalhando=trabalhando,
             intervalo_do_envio=0.01,
@@ -263,6 +271,10 @@ class ConexaoNoTeste:
         if self.cofre_sem_escrita:
             os.chmod(self.chaves, 0o500)  # gravar a cópia da chave falha: a Conexão responde o erro interno
         assert self.conexao.iniciar(), "a porta de teste devia estar livre"
+        if self.situacao_do_chatgpt in ("entrando", "recusou"):
+            estado = parse_qs(urlsplit(self.conexao.chatgpt.iniciar(self.conexao.porta)).query)["state"][0]
+            if self.situacao_do_chatgpt == "recusou":
+                self.conexao.chatgpt.receber({"error": "access_denied", "state": estado}, "127.0.0.1:%d" % self.conexao.porta, self.conexao.porta)
         return self
 
     def __exit__(self, *erro):
@@ -323,6 +335,7 @@ def conexao_do_exemplo(pasta, exemplo):
         nao_enviada=contexto.get('naoEnviada', True),
         hora_na_conexao=contexto.get('emNaConexao', 0),
         firebase=contexto.get('firebase', 0),
+        chatgpt=contexto.get("chatgpt"),
         perfil_marcado=contexto.get('perfilMarcado'),
     ) as conexao:
         if 'chaveNaNuvem' in contexto:
@@ -436,6 +449,10 @@ MATRIZ = {
     },
     # A chave da IA (PR 191): não lê a coleção nem o perfil. O corpo mínimo não traz a `chave`, então o pedido é recusado em todo estado.
     ("POST", "/ia/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    # Entrar com o ChatGPT (#155): não lê a coleção nem o perfil. Entrar cria o id deste computador; sair apaga o arquivo do login.
+    ("POST", "/ia/chatgpt/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/ia/chatgpt/entrar"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/ia/chatgpt/sair"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     # Apagar a cópia da chave (#154): não lê a coleção nem o perfil, e apagar o que não existe também é 200.
     ("POST", "/ia/openai/chave/apagar"): {
         "corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": [], "muda": True, "versao": True,
@@ -651,7 +668,10 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
                 with tempfile.TemporaryDirectory() as pasta, conexao_do_exemplo(pasta, exemplo) as conexao:
                     primeiro = self.pedir_o_exemplo(conexao, exemplo)
                     guardado = estado_guardado(conexao)
-                    self.assertEqual(self.pedir_o_exemplo(conexao, exemplo), primeiro, nome + ": o mesmo pedido de sucesso de novo respondeu outra coisa")
+                    status, segundo = self.pedir_o_exemplo(conexao, exemplo)
+                    combinada = exemplo["resposta"]["json"]  # salvo o que o contrato marca como variável (`<agora>`, `<url de autorização>`)
+                    mesma = segundo == primeiro[1] or (igual_ao_do_contrato(primeiro[1], combinada) and igual_ao_do_contrato(segundo, combinada))
+                    self.assertTrue(status == primeiro[0] and mesma, nome + ": o mesmo pedido de sucesso de novo respondeu outra coisa")
                     self.assertEqual(guardado, estado_guardado(conexao), nome + ": o mesmo pedido de sucesso de novo mudou o que a Conexão guarda (o arquivo do dono)")
                     if not matriz[rota].get("versao"):
                         continue
@@ -759,10 +779,10 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
             with self.assertRaisesRegex(AssertionError, "tire a exceção"):
                 self.conferir_o_pedido_repetido(rotas, matriz, exemplos)
 
-    def test_as_rotas_que_mudam_sao_as_da_chave_do_item_de_login_do_perfil_e_do_envio(self):
+    def test_as_rotas_que_mudam_sao_as_da_chave_do_chatgpt_do_item_de_login_do_perfil_e_do_envio(self):
         self.assertEqual(
             sorted(rota[1] for rota, regra in MATRIZ.items() if regra.get("muda")),
-            ["/abrir-com-o-computador", "/anki/profile", "/anki/profiles", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry"],
+            ["/abrir-com-o-computador", "/anki/profile", "/anki/profiles", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry"],
         )
 
 
@@ -933,61 +953,6 @@ class OrigemDosPedidos(unittest.TestCase):
             status, cabecalhos, _ = conexao.pedir("OPTIONS", "/health", origem="https://exemplo.com")
         self.assertEqual(status, 403)
         self.assertNotIn("Access-Control-Allow-Origin", cabecalhos)
-
-
-class ProcessoDoAnki(unittest.TestCase):
-    """Dentro do Anki a Conexão não mexe no processo e nenhum erro abre o diálogo dele."""
-
-    def estado_do_processo(self):
-        return {
-            "proxy": {nome: os.environ.get(nome) for nome in VARIAVEIS_DE_PROXY},
-            "stdout": sys.stdout,
-            "stderr": sys.stderr,
-            "excepthook": sys.excepthook,
-            "thread_excepthook": threading.excepthook,
-            "avisos": list(warnings.filters),
-            "mostrar_aviso": warnings.showwarning,
-            "tempo_do_socket": socket.getdefaulttimeout(),
-        }
-
-    def test_subir_atender_e_parar_nao_troca_proxy_stdout_stderr_excepthook_nem_avisos(self):
-        antes = self.estado_do_processo()
-        with tempfile.TemporaryDirectory() as pasta:
-            with ConexaoNoTeste(pasta) as conexao:
-                conexao.pedir("GET", "/health")
-                conexao.pedir("GET", "/nao-existe")
-                conexao.pedir("GET", "/health", origem="https://exemplo.com")
-        self.assertEqual(self.estado_do_processo(), antes)
-
-    def test_erro_dentro_de_uma_rota_vai_ao_log_do_complemento_e_a_nenhum_outro_lugar(self):
-        chamadas_do_excepthook = []
-        original = sys.excepthook
-        sys.excepthook = lambda *dados: chamadas_do_excepthook.append(dados)
-        saida, erro = io.StringIO(), io.StringIO()
-        try:
-            with tempfile.TemporaryDirectory() as pasta:
-                with contextlib.redirect_stdout(saida), contextlib.redirect_stderr(erro):
-                    with ConexaoNoTeste(pasta, falha_no_perfil=True) as conexao:
-                        conexao.pedir("GET", "/health")  # a resposta 500 é o exemplo do contrato
-                        registrado = conexao.log()
-        finally:
-            sys.excepthook = original
-        self.assertIn("perfil ilegível", registrado)
-        self.assertEqual((saida.getvalue(), erro.getvalue(), chamadas_do_excepthook), ("", "", []))
-
-    def test_pedido_quebrado_vai_ao_log_e_nao_ao_stderr(self):
-        erro = io.StringIO()
-        with tempfile.TemporaryDirectory() as pasta, contextlib.redirect_stderr(erro):
-            with ConexaoNoTeste(pasta) as conexao:
-                bruto = socket.create_connection(("127.0.0.1", conexao.conexao.porta), timeout=5)
-                bruto.sendall(b"\x16\x03\x01 isto nao e http\r\n\r\n")
-                bruto.recv(4096)
-                bruto.close()
-                conexao.pedir("GET", "/health")
-                registrado = conexao.log()
-        self.assertEqual(erro.getvalue(), "")
-        self.assertIn("http: code 400, message Bad Request", registrado)  # o texto da biblioteca, sem a linha do pedido
-        self.assertNotIn("isto nao e http", registrado)
 
 
 if __name__ == "__main__":

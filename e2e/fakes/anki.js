@@ -2,7 +2,9 @@
 
 const { isDeepStrictEqual } = require('util');
 const { responderJson } = require('./http');
+const { criarFakeChatGPT } = require('./chatgpt');
 const { criarPerfis } = require('./perfis');
+const { diferencaDoContrato } = require('./diferenca-do-contrato');
 const contrato = require('../../complemento/contrato/carregar');
 
 // Fake da Conexão com o Anki: responde na porta local dela (127.0.0.1:8766). Por padrão está ligada, com vocabulário vazio.
@@ -13,7 +15,7 @@ const contrato = require('../../complemento/contrato/carregar');
 // complemento leem: o fake responde o exemplo do pedido no contexto em que a Conexão está (`abrirPerfil`, `abrirColecao`,
 // `responderOpenAI`, `guardarChaveNaConexao`, `definirItemDeLogin`). Os testes de tela montam os Baralhos em termos de gente
 // (`definirVocabulario`, `definirBaralho`); `abrirColecao(nome)` passa a responder o contrato inteiro. Uma rota nova entra nesse
-// arquivo (`complemento/contrato/LEIA-ME.md`). O perfil fixo (#149) mora em `perfis.js`.
+// arquivo (`complemento/contrato/LEIA-ME.md`). O perfil fixo (#149) mora em `perfis.js`; o login do ChatGPT (#155), em `chatgpt.js` (`fakes.anki.chatgpt`).
 //
 // Baralhos e termos, Vocabulário e Ajustes de envio (`POST /anki/decks`, sem `definirBaralhosDoAnki` é 503): voltam na ordem pedida,
 // o que o Anki não tem volta `missing`, e os filtros (`status`, `type`, `q`) valem como no complemento.
@@ -76,6 +78,7 @@ function criarFakeAnki() {
   const perfis = criarPerfis(() => estado.contexto);
   const requisicoes = [];
   const envios = [];    // { jobId, lang, entries, corpo, createdAt, state }
+  const chatgpt = criarFakeChatGPT(); // o login do ChatGPT (#155): as rotas dele aqui e a página do auth.openai.com (fakes.chatgpt)
 
   function novoEstado(extra = {}) {
     return {
@@ -331,7 +334,7 @@ function criarFakeAnki() {
 
   /** O contexto de agora como os exemplos o descrevem: a chave guardada aparece só pelos 4 últimos. */
   function contextoDeAgora() {
-    return { ...estado.contexto, chaveNaConexao: ultimos4(estado.chaveDaOpenAI) };
+    return { ...estado.contexto, chaveNaConexao: ultimos4(estado.chaveDaOpenAI), chatgpt: chatgpt.situacao() };
   }
 
   /**
@@ -347,7 +350,8 @@ function criarFakeAnki() {
       && (!('openai' in doExemplo) || doExemplo.openai === contexto.openai)
       && (!('chaveNaConexao' in doExemplo) || (doExemplo.chaveNaConexao === null) === (contexto.chaveNaConexao === null))
       && (!('firebase' in doExemplo) || doExemplo.firebase === contexto.firebase)
-      && (!('cofre' in doExemplo) || doExemplo.cofre === contexto.cofre);
+      && (!('cofre' in doExemplo) || doExemplo.cofre === contexto.cofre)
+      && (!('chatgpt' in doExemplo) || doExemplo.chatgpt === contexto.chatgpt);
   }
 
   /**
@@ -509,6 +513,9 @@ function criarFakeAnki() {
       const { status, json } = await sincronizarChave(req);
       return responderJson(route, status, json);
     }
+    if ((url.pathname.startsWith('/ia/chatgpt/') && req.method() === 'POST') || (url.pathname === '/auth/callback' && req.method() === 'GET')) {
+      return chatgpt.naConexao(route, url, respostaDoContrato);
+    }
     if (url.pathname === '/ia/estado' && req.method() === 'POST') {
       const { status, json } = respostaDoContrato('POST', '/ia/estado', {});
       return responderJson(route, status, json);
@@ -612,6 +619,7 @@ function criarFakeAnki() {
     padrao: /^http:\/\/(127\.0\.0\.1|localhost):8766\//,
     tratar,
     requisicoes,
+    chatgpt,
     /** @estado-guardado Os Envios que a Conexão guardou (um por `POST /jobs`), não o pedido que chegou. */
     envios,
     desligar() { estado.ligada = false; },
@@ -837,27 +845,6 @@ function linhaDeCustos({
     images,
     matchedRecords: 1,
   };
-}
-
-/**
- * O JSON obtido é o do contrato; `"<agora>"` no contrato é qualquer instante ISO 8601 (o que o complemento
- * escreve é UTC com `Z`). Devolve o que difere, para a mensagem do teste, ou null se iguais.
- */
-function diferencaDoContrato(obtido, esperado, caminho = '') {
-  if (esperado === '<agora>') {
-    return typeof obtido === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z$/.test(obtido) ? null : `${caminho || '/'}: ${JSON.stringify(obtido)} não é um instante`;
-  }
-  if (Array.isArray(esperado) || (esperado && typeof esperado === 'object')) {
-    if (!obtido || typeof obtido !== 'object' || Array.isArray(obtido) !== Array.isArray(esperado)) return `${caminho || '/'}: ${JSON.stringify(obtido)} não é ${JSON.stringify(esperado)}`;
-    const chaves = new Set([...Object.keys(esperado), ...Object.keys(obtido)]);
-    for (const chave of chaves) {
-      if (!(chave in esperado) || !(chave in obtido)) return `${caminho}/${chave}: ${chave in obtido ? 'sobra' : 'falta'}`;
-      const diferenca = diferencaDoContrato(obtido[chave], esperado[chave], `${caminho}/${chave}`);
-      if (diferenca) return diferenca;
-    }
-    return null;
-  }
-  return obtido === esperado ? null : `${caminho || '/'}: ${JSON.stringify(obtido)} em vez de ${JSON.stringify(esperado)}`;
 }
 
 module.exports = { criarFakeAnki, exemploDaExtensao, diferencaDoContrato };

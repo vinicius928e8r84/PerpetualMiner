@@ -17,6 +17,9 @@ from complemento.test_imagens_de_mentira import png_de
 # (status, corpo) de GET /v1/models e de POST /v1/embeddings.
 MODELOS_OK = (200, {"object": "list", "data": [{"id": "gpt-4.1-mini", "object": "model"}]})
 EMBEDDINGS_OK = (200, {"object": "list", "data": [{"embedding": [0.0]}]})
+# A lista de modelos que o plano do ChatGPT devolve ao `access_token` do login (a forma da doc: `models`, com `slug` e `visibility`).
+MODELOS_DO_PLANO = (200, {"models": [{"slug": "gpt-interno", "visibility": "hide"}, {"slug": "gpt-6-luna", "display_name": "GPT-6 Luna", "visibility": "list"},
+                                     {"slug": "gpt-6-sol", "display_name": "GPT-6 Sol", "visibility": "list"}]})
 
 
 def _erro(status, mensagem, tipo, codigo):
@@ -93,6 +96,9 @@ class OpenAIDeMentira:
     A conferência da chave (`/v1/models`, `/v1/embeddings`) segue o `comportamento`. O texto dos Cartões
     (`/v1/chat/completions`) volta um Cartão válido feito do pedido, com 1000 tokens de entrada e 200 de saída,
     salvo para a Palavra que `recusar_o_chat_de` mandou recusar (`"*"`: todas). `chats` guarda (Authorization, corpo).
+    O plano do ChatGPT: um `Bearer acesso-…` (o do login de mentira) recebe a lista do plano em `/v1/models`, e `/v1/responses`
+    devolve o mesmo Cartão em stream de eventos; `respostas` guarda (Authorization, corpo), `recusa_das_respostas` = (status, código)
+    recusa antes do stream e `falha_no_stream` = código termina o stream com `response.failed`.
     """
 
     def __init__(self, comportamento="aceita"):
@@ -100,6 +106,9 @@ class OpenAIDeMentira:
         self.pedidos = []  # (metodo, caminho, Authorization)
         self.chats = []  # (Authorization, corpo) de cada pedido de texto
         self.recusas_do_chat = {}  # Palavra (ou "*") → (status, código)
+        self.respostas = []
+        self.recusa_das_respostas = None
+        self.falha_no_stream = None
         # As imagens do Cartão (#144): o juiz (`juiz(modo, candidatas) -> veredito`, `candidatas`: `{index, title, kind, imagem}`), a triagem
         # (a letra que ela responde), e a imagem gerada (`recusa_da_imagem`: (status, código); `imagem_gerada`: o que ela devolve).
         self.juiz = _juiz_que_gosta_da_primeira
@@ -120,6 +129,10 @@ class OpenAIDeMentira:
                 dono.pedidos.append((self.command, self.path, self.headers.get("Authorization")))
                 dono.antes_de_responder(self.command, self.headers.get('Authorization'))
                 modelos, embeddings = COMPORTAMENTOS[dono.comportamento]
+                if self.path == "/v1/responses":
+                    return dono._respostas(self, self.headers.get("Authorization"), json.loads(lido.decode("utf-8")))
+                if self.path == "/v1/models" and (self.headers.get("Authorization") or "").startswith("Bearer acesso-"):
+                    modelos = MODELOS_DO_PLANO
                 if self.path == "/v1/chat/completions":
                     status, corpo = dono._chat(self.headers.get("Authorization"), json.loads(lido.decode("utf-8")))
                 elif self.path == "/v1/images/generations":
@@ -166,6 +179,33 @@ class OpenAIDeMentira:
             return _erro(recusa[0], "Incorrect API key provided: %s" % (autorizacao or ""), "x", recusa[1])
         texto = _cartao_de_mentira(corpo["messages"])
         return 200, {"choices": [{"message": {"role": "assistant", "content": texto}}], "usage": {"prompt_tokens": 1000, "completion_tokens": 200}}
+
+    def _respostas(self, atendente, autorizacao, corpo):
+        """`POST /v1/responses`: o Cartão em eventos (`response.output_text.delta` em pedaços e `response.completed` com o uso)."""
+        self.respostas.append((autorizacao, corpo))
+        if self.recusa_das_respostas:
+            status, codigo = self.recusa_das_respostas
+            dados = json.dumps({"error": {"code": codigo, "message": "recusado para %s" % autorizacao}}).encode("utf-8")
+            atendente.send_response(status)
+            atendente.send_header("Content-Type", "application/json")
+            atendente.send_header("Content-Length", str(len(dados)))
+            atendente.end_headers()
+            atendente.wfile.write(dados)
+            return
+        texto = _cartao_de_mentira([{"content": corpo["input"][-1]["content"]}])
+        meio = len(texto) // 2
+        eventos = [{"type": "response.created", "response": {"id": "resp_1", "status": "in_progress"}}]
+        eventos += [{"type": "response.output_text.delta", "delta": pedaco} for pedaco in (texto[:meio], texto[meio:])]
+        if self.falha_no_stream:
+            eventos.append({"type": "response.failed", "response": {"error": {"code": self.falha_no_stream, "message": "falhou para %s" % autorizacao}}})
+        else:
+            eventos.append({"type": "response.completed", "response": {"id": "resp_1", "status": "completed", "usage": {"input_tokens": 1000, "output_tokens": 200}}})
+        atendente.send_response(200)
+        atendente.send_header("Content-Type", "text/event-stream")
+        atendente.end_headers()
+        for evento in eventos:
+            atendente.wfile.write(("event: %s\ndata: %s\n\n" % (evento["type"], json.dumps(evento))).encode("utf-8"))
+            atendente.wfile.flush()
 
     def _juiz(self, autorizacao, corpo):
         partes = corpo["messages"][1]["content"]

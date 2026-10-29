@@ -14,12 +14,12 @@
     Shell “Ilhas” (docs/design/painel/shell/): a sidebar e o conteúdo são duas
     ilhas. Cada área tem endereço (#frases, #anki/<aba>, #configuracoes[/<seção>]),
     tratado por painel-shell.js. Os textos do shell vêm do catálogo da Voz pelos
-    atributos data-voz / data-voz-aria / data-voz-title.
+    atributos data-voz, data-voz-aria e data-voz-title.
   -->
   <!--
     Boas-vindas (docs/design/painel/boas-vindas/, variante C): #boas-vindas[/<passo>],
-    uma página sem a sidebar, que a instalação abre sozinha. A lista dos 8 itens
-    e o card do passo são montados por painel-boas-vindas.js.
+    sem a sidebar, aberta pela instalação. A lista dos 8 itens e o card do passo
+    são montados por painel-boas-vindas.js.
   -->
   <div class="bv" id="boas-vindas" hidden>
     <div class="bv-topo">
@@ -85,7 +85,7 @@
         <header class="shell-cabecalho">
           <h1 id="titulo-frases" data-voz="SHL-02.frases"></h1>
           <!-- Minerar frases (ADD-01 · ADD-11): Colar e Arquivo .txt abrem o modal
-               na aba certa; Foto abre Minerar de uma foto numa aba nova. -->
+               na aba certa; Foto abre Minerar de uma foto. -->
           <div class="minerar-menu">
             <button class="veio-botao veio-botao--primario" id="btn-minerar-frases" type="button"
                     aria-haspopup="menu" aria-expanded="false" aria-controls="menu-minerar">
@@ -186,7 +186,7 @@
           </div>
         </div>
 
-        <!-- PAI-01: enquanto a lista carrega, 5 cartões-esqueleto sem texto. -->
+        <!-- PAI-01: 5 cartões-esqueleto enquanto carrega. -->
         <div id="frases-lista" class="frases-lista" aria-busy="true">
           <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
           <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
@@ -645,6 +645,7 @@
   <script src="painel-boas-vindas.js"></script>
   <script src="painel-lembrete.js"></script>
   <script src="painel-chave.js"></script>
+  <script src="painel-ia-chatgpt.js"></script>
   <script src="painel-ia.js"></script>
   <script src="painel-abrir-anki.js"></script>
   <script src="painel-perigo.js"></script>

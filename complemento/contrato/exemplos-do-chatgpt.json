@@ -1,0 +1,196 @@
+{
+  "exemplos": [
+    {
+      "nome": "estado do ChatGPT sem login",
+      "daExtensao": true,
+      "contexto": {
+        "chatgpt": "desconectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/chatgpt/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "conectada": false,
+          "entrando": false,
+          "falha": null
+        }
+      }
+    },
+    {
+      "nome": "estado do ChatGPT com a pessoa entrando no navegador",
+      "daExtensao": true,
+      "contexto": {
+        "chatgpt": "entrando"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/chatgpt/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "conectada": false,
+          "entrando": true,
+          "falha": null
+        }
+      }
+    },
+    {
+      "nome": "estado do ChatGPT com o login feito: nenhum token sai da Conexão",
+      "daExtensao": true,
+      "contexto": {
+        "chatgpt": "conectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/chatgpt/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "conectada": true,
+          "entrando": false,
+          "falha": null
+        }
+      }
+    },
+    {
+      "nome": "estado do ChatGPT depois de a pessoa recusar no ChatGPT",
+      "daExtensao": true,
+      "contexto": {
+        "chatgpt": "recusou"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/chatgpt/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "conectada": false,
+          "entrando": false,
+          "falha": "chatgpt_access_denied"
+        }
+      }
+    },
+    {
+      "nome": "entrar com o ChatGPT, com ou sem login: a URL de autorização que a extensão abre numa aba",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/chatgpt/entrar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "url": "<url de autorização>"
+        }
+      }
+    },
+    {
+      "nome": "sair do ChatGPT: revoga a sessão e apaga o login",
+      "daExtensao": true,
+      "contexto": {
+        "chatgpt": "conectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/chatgpt/sair",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "revogada": true
+        }
+      }
+    },
+    {
+      "nome": "sair do ChatGPT sem login: nada a revogar",
+      "daExtensao": true,
+      "contexto": {
+        "chatgpt": "desconectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/chatgpt/sair",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "revogada": true
+        }
+      }
+    },
+    {
+      "nome": "o estado do ChatGPT com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/chatgpt/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "entrar com o ChatGPT com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/chatgpt/entrar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "sair do ChatGPT com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/chatgpt/sair",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    }
+  ]
+}

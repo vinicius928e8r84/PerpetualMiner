@@ -134,10 +134,11 @@
     const colunaDaChave = estado.ultimos4 && !lugar.trocando
       ? chaveSalva(lugar)
       : campoDaChave(lugar);
-    const colunas = elemento('div', 'ia-colunas', colunaDaChave, colunaDoChatGPT(lugar));
+    // A coluna do ChatGPT e a faixa do erro dela são de `painel-ia-chatgpt.js` (#155), que as redesenha no lugar.
+    const colunas = elemento('div', 'ia-colunas', colunaDaChave, raiz.ColunaDoChatGPT.coluna(lugar));
     const partes = [colunas];
     if (lugar.erro) partes.push(faixaDoErro(lugar));
-    partes.push(elemento('p', 'cfg-nota ia-imagem', textoDaVoz('CFG-35.imagem')));
+    partes.push(raiz.ColunaDoChatGPT.faixa(lugar), elemento('p', 'cfg-nota ia-imagem', textoDaVoz('CFG-35.imagem')));
     lugar.corpo.classList.add('ia-cartao');
     lugar.corpo.replaceChildren(...partes);
   }
@@ -253,22 +254,6 @@
     onde.rel = 'noopener noreferrer';
     notas.push(elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chaveDica'), ' ', onde));
     return notas;
-  }
-
-  /** A outra entrada: a do ChatGPT, do mesmo tamanho, ainda sem login (o plano chega no #155). */
-  function colunaDoChatGPT(lugar) {
-    const titulo = elemento('h3', 'ia-coluna__titulo', textoDaVoz('CFG-35.chatgptTitulo'),
-      elemento('span', 'veio-selo', textoDaVoz('CFG-35.chatgptSelo')));
-    titulo.id = idDe(lugar, 'chatgpt-titulo');
-    const continuar = elemento('button', 'veio-botao veio-botao--secundario', textoDaVoz('CFG-35.chatgptBotao'));
-    continuar.type = 'button';
-    continuar.disabled = true;
-    const coluna = elemento('section', 'ia-coluna ia-coluna--chatgpt', titulo,
-      elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chatgptCorpo')),
-      elemento('div', 'cfg-acoes', continuar),
-      elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chatgptIndisponivel')));
-    coluna.setAttribute('aria-labelledby', titulo.id);
-    return coluna;
   }
 
   /** A faixa do erro, abaixo das colunas, com a entrada a que pertence, o que fazer e o Detalhes. */

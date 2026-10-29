@@ -10,8 +10,8 @@ Notes moved unchanged from `CLAUDE.md` § Architecture. `CLAUDE.md` keeps the fi
 ### IA dos cartões (`painel-ia.js`, `lib/chave-da-openai.js`)
 
 Ticket #140, design A of #101: the two entries of the AI in **two equal columns**, the **Chave da OpenAI** (works) and
-the **Conta do ChatGPT** (the “Plus ou Pro” badge, a disabled “Continuar com o ChatGPT” and “Ainda não dá para entrar…”;
-the login is #155), then the line that generated images always go through the key. Below ~620 px of card width (560 px of body)
+the **Conta do ChatGPT** (the “Plus ou Pro” badge and “Continuar com o ChatGPT”, `painel-ia-chatgpt.js`, below), then the line that
+generated images always go through the key. Below ~620 px of card width (560 px of body)
 the columns become rows (a container query on `.ia-cartao`, the worker's proposal); the Boas-vindas step body is ~595 px, so
 there design A is two columns too. The card is mountable
 (`CartaoDaIA.montar(corpo, { prefixo })`): Configurações and step 5 of the Boas-vindas draw the same card, each with its own
@@ -35,6 +35,16 @@ The client sends the revision it observed; only accepted owner mutations increme
 `POST /ia/openai/sincronizar` uses captured UID/token transiently; the add-on talks to Firestore. Empty value is deletion, replicated only to the authenticated operation's account. There are no per-UID deletion marks (J1). A key bound to a different signed-in account has no Apagar chave button. Signed out, even a linked key can be deleted only from this computer (`conta: ''`); the cloud is untouched and login can bring its key back. The note distinguishes linked from never-linked keys. A fresh owner read/CAS refuses a foreign owner with a current account, including partial Apagar tudo, without creating that account's tombstone. That refusal has its own CFG-35 copy and Trocar chave action, never futile retry. The wipe modal names the protected key instead of promising deletion. For an eligible owner, explicit Apagar chave and Apagar tudo clear divergent legacy and all old `conta:<uid>` secrets too, with no replacement queue (F4). Legacy UID/time migration requires exact proof of the key already stored; an unbound legacy secret cannot be exported to the first requesting account. Unavailable Conexão prevents a claim of completed save/wipe. Persistent failures/retry/partial wipe are retained. With no pending change or deletion (including a replicated key), unavailable optional Conexão is not a key sync failure; connected, it still receives cloud arrival. Phrase outcomes are separate from key sync; CFG-41 is neutral failure-to-check copy and CFG-04/08 still classify authentication failures.
 
 Tests: `e2e/tests/chave-autoridade.spec.js`, `configuracoes-ia.spec.js` (including content-script isolated-world CDP), real HTTP owner tests in `complemento/test_chave_da_openai.py` and shared `complemento/contrato/exemplos.json`. Old generation/vault-only Node tests were removed; phrase tests remain in `test_sync.js`. Native wipe/fault setup must await preceding Save completion, not only a click. Visual references remain `test.fixme`, pending owner approval. Full invariants/limitations/P6: `docs/seguranca/chave-da-openai.md`.
+
+**Conta do ChatGPT (#155, `painel-ia-chatgpt.js`, design: `docs/design/login-do-chatgpt.md`).** The column asks the Conexão
+(`PedidoAoAnki.estadoDoChatGPT/entrarComOChatGPT/sairDoChatGPT`) and stores nothing in the browser: the tokens live only in the
+Conexão's `user_files/chaves/chatgpt.json`. The button gets the authorize URL (opened with `chrome.tabs.create`, only if it starts
+with `https://auth.openai.com/api/accounts/authorize?`), then “Esperando o ChatGPT…” (Cancelar stops waiting) re-reads the state every
+2 s and on window focus; logged in, “Usando o plano do ChatGPT · Gerenciar uso” (`chatgpt.com/settings/usage`) and Sair do ChatGPT.
+Failures are their own strip under the columns, opened by “Conta do ChatGPT:”, with the code in Detalhes. The column is redrawn in
+place (`ColunaDoChatGPT.coluna/faixa(lugar)`), so a key being typed is not lost. Tests: `e2e/tests/configuracoes-chatgpt.spec.js`
+(auth.openai.com is mapped to the local fake server: the extension's tab escapes `context.route` on its first navigation), the
+fixme reference in `configuracoes-chatgpt-visual.spec.js`, and `complemento/test_login_do_chatgpt.py`, `test_plano_do_chatgpt.py`.
 
 ### Chave do Gemini and Zona de perigo (`painel-chave.js`, `painel-perigo.js`)
 
