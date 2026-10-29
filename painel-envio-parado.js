@@ -7,15 +7,16 @@
 //
 //   pedido(envio, estado)  o motivo e a ação do cartão quando o Envio parou, ou null (a Conexão responde, ou o Envio terminou)
 //   escrever(p, motivo)    põe o motivo (um texto, ou as frases de `pedido`) no parágrafo do cartão
-//   causa(envio)           o que o abridor disse quando não abriu, para o Detalhes do cartão ('' sem falha)
+//   causa(envio)           o que o abridor disse quando não deu certo, para o Detalhes do cartão ('' sem falha)
 //
 // Carregado depois de lib/abridor.js, lib/abrir-o-anki.js e lib/conexao-anki.js.
 
 (function (raiz) {
-  const { textoDaVoz, ConexaoAnki, Abridor, AbrirOAnki } = raiz;
+  const { textoDaVoz, ConexaoAnki, AbrirOAnki, Veio } = raiz;
+  const { DESFECHO } = AbrirOAnki;
   const FIM = ['completed', 'partial', 'failed'];
   const abrindo = new Set();      // jobIds com o Anki abrindo pelo clique
-  const naoAbriu = new Map();     // jobId → o que o abridor disse, quando o Anki não abriu
+  const naoAbriu = new Map();     // jobId → { causa, fala? }: o que o abridor disse quando o Anki não abriu (`fala`: a de falaDoDesfecho, se tem botão)
 
   /** Quantos Cartões do Envio estão no Anki, pelo `cards` que a Conexão manda; null sem ele (a Conexão ainda não os listou). */
   function contagem(estado) {
@@ -30,18 +31,33 @@
     return [
       dos ? textoDaVoz('ENV-18.contagem', dos) : '',
       textoDaVoz(abrindo.has(envio.jobId) ? 'ENV-16.abrindo' : 'ENV-18.continua'),
-      naoAbriu.has(envio.jobId) && !abrindo.has(envio.jobId) ? textoDaVoz('BRG-38.naoAbriu') : '',
+      naoAbriu.has(envio.jobId) && !abrindo.has(envio.jobId) ? (naoAbriu.get(envio.jobId).fala || textoDaVoz('BRG-38.naoAbriu')) : '',
     ].filter(Boolean);
   }
 
-  /** Escreve o motivo no parágrafo do cartão: um texto só, ou uma frase por trecho (`motivo`). */
+  /** Escreve o motivo no parágrafo do cartão: um texto só, ou uma frase por trecho (`motivo`; a fala do abridor leva o botão dela). */
   function escrever(paragrafo, partes) {
     if (typeof partes === 'string') return void (paragrafo.textContent = partes);
-    paragrafo.replaceChildren(...partes.flatMap((texto, i) => {
+    paragrafo.replaceChildren(...partes.flatMap((parte, i) => {
       const frase = document.createElement('span');
-      frase.textContent = texto;
-      return i ? [' ', frase] : [frase];
+      frase.textContent = parte.texto ?? parte;
+      return [...(i ? [' '] : []), frase, ...(parte.acao ? [' ', AbrirOAnki.botaoDaFala(parte.acao)] : [])];
     }));
+  }
+
+  /** O que o cartão guarda do desfecho do abridor, ou null quando nada falhou (o toast de sucesso do conserto sai aqui). */
+  function falhaDe(resposta) {
+    const { desfecho, motivo: porque, passos = [] } = resposta;
+    const fala = AbrirOAnki.falaDoDesfecho(resposta);
+    if (fala?.sucesso) {
+      Veio.mostrarToastDeSucesso(fala.texto);
+      return null;
+    }
+    if (desfecho === DESFECHO.ABERTO || desfecho === DESFECHO.RESPONDEU) return null;
+    if (desfecho === DESFECHO.NAO_ABRIU) return { causa: AbrirOAnki.causaDoAbridor(resposta) };
+    if (desfecho === DESFECHO.SEM_RESPOSTA) return { causa: 'abridor · sem resposta da Conexão no prazo' };
+    const causa = ['abridor', desfecho, porque].filter(Boolean).join(' · ');
+    return { causa: [causa, ...passos].join('\n'), ...(fala && { fala: { texto: fala.texto, acao: fala.acao, toString: () => fala.texto } }) };
   }
 
   /** Continuar envio, no clique: abre o Anki e espera a Conexão responder. A Conexão retoma o Envio sozinha, então nada mais é pedido. */
@@ -58,11 +74,10 @@
     };
     mostrar();
     try {
-      const resposta = await aberto;
-      if (resposta.resultado !== Abridor.RESULTADO.ABRIU) naoAbriu.set(envio.jobId, AbrirOAnki.causaDoAbridor(resposta));
-      else if (!resposta.respondeu) naoAbriu.set(envio.jobId, 'abridor · sem resposta da Conexão no prazo');
+      const falha = falhaDe(await aberto);
+      if (falha) naoAbriu.set(envio.jobId, falha);
     } catch (erro) {
-      naoAbriu.set(envio.jobId, `abridor · ${erro.message || erro}`);
+      naoAbriu.set(envio.jobId, { causa: `abridor · ${erro.message || erro}` });
     } finally {
       abrindo.delete(envio.jobId);
       // Abriu e a Conexão respondeu: o cartão volta ao normal na próxima volta do Envio.
@@ -83,7 +98,7 @@
     };
   }
 
-  const causa = envio => naoAbriu.get(envio.jobId) || '';
+  const causa = envio => naoAbriu.get(envio.jobId)?.causa || '';
 
   raiz.EnvioParado = Object.freeze({ pedido, causa, escrever });
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

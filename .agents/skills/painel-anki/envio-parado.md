@@ -15,7 +15,9 @@ Tests: `e2e/tests/painel-envio-parado.spec.js` (the sentence, the button, the op
 - **Continuar envio** is the one click that calls the opener (`AbrirOAnki.abrirEEsperar()`, inside the click so Chrome can ask the
   `nativeMessaging` permission): “Abrindo o Anki para enviar…” (ENV-16) until the Conexão answers. When it does not open (no permission, no opener, the
   Anki not there, no answer in 2 min) the card adds BRG-38's “Não deu para abrir o Anki. Abra-o você mesmo.” and the cause in Detalhes
-  (`AbrirOAnki.causaDoAbridor`). The person opening the Anki alone needs no click at all.
+  (`AbrirOAnki.causaDoAbridor`). The card reads the opener's answer by its `desfecho` (`AbrirOAnki.DESFECHO`), like the Envio strip: `aberto` and `respondeu` say
+  nothing, `reiniciado` and `ligado` show the BRG-39 success toast, `sumiu` and `falhou` show BRG-39's sentence with Instalar de novo or Baixar
+  diagnóstico on the card (`AbrirOAnki.falaDoDesfecho`), the rest is `abridor · <desfecho> · <motivo>` in Detalhes. The person opening the Anki alone needs no click at all.
 - **The opener never reopens an Anki the person closed.** Nothing calls it but that click (and Enviar, #150): polling, redrawing, the loop and the
   Conexão coming back do not. The panel cannot tell a closed Anki from a hung one (the Conexão is dead either way), so it never opens either by
   itself; the automatic restart of a hung Anki belongs to the repair (#152), which must keep a closed Anki closed.
