@@ -1,7 +1,7 @@
 'use strict';
 
 const { test, expect } = require('../fixtures');
-const { AGORA, INGLESAS, RUSSA, SACK, ARM, abrirPainel, resumo, envio, marcarEEnviar, enviosCriados } = require('../apoio-do-envio');
+const { AGORA, INGLESAS, RUSSA, SACK, ARM, abrirPainel, cartoesDe, resumo, envio, marcarEEnviar, enviosCriados } = require('../apoio-do-envio');
 
 test.beforeEach(({ fakes }) => {
   fakes.anki.usarRelogio(() => AGORA);
@@ -78,9 +78,9 @@ test('as telas do Envio com a Conexão dentro do Anki só dizem o que o catálog
   await expect(envio(page, 'Envio em russo · 1 frase')).toContainText('A Conexão com o Anki respondeu com erro.');
   await copiaDoCatalogo(page, '#modal-envio');
 
-  // Um Cartão que não entrou (o código novo vai ao Detalhes) e o Continuar envio.
+  // Um Cartão que não entrou (o código novo vai ao Detalhes) e o Tentar de novo.
   fakes.anki.concluirEnvio(ingles.jobId, { falhas: [ARM.id] });
-  await expect(envio(page, 'Envio em inglês · 2 frases').getByRole('button', { name: 'Continuar envio' })).toBeVisible();
+  await expect(envio(page, 'Envio em inglês · 2 frases').getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
   await copiaDoCatalogo(page, '#modal-envio');
 
   // O russo vai depois de a Conexão ser atualizada, e o resumo abre com o que não entrou.
@@ -96,4 +96,30 @@ test('as telas do Envio com a Conexão dentro do Anki só dizem o que o catálog
   const { pm_envio: guardado } = await extensao.lerStorage('pm_envio');
   expect(guardado.envios.map(e => [e.lang, e.jobId])).toEqual([['en', ingles.jobId], ['ru', russo.jobId]]);
   expect(fakes.anki.enviosEm('ru')).toHaveLength(1);
+});
+
+test.describe('o Envio parado porque o Anki fechou (#151)', () => {
+  test.use({ permissaoDoAbridor: true });
+
+  test('só diz o que o catálogo da Voz tem: a espera e o Anki que não abre', async ({ page, extensao, fakes }) => {
+    test.slow();
+    fakes.abridor.definir('achei_sem_abrir');
+    await extensao.gravarStorage({ frases: INGLESAS, pm_anki_ja_conectou: true });
+    await abrirPainel(page, extensao);
+    await marcarEEnviar(page, INGLESAS.map(f => f.texto));
+    const [job] = await enviosCriados(fakes, 1);
+    fakes.anki.moverEnvio(job.jobId, { stage: 'generate_cards', cartoes: cartoesDe(3) });
+    await expect(envio(page, 'Envio em inglês · 3 frases')).toContainText('Criando cartões');
+    fakes.anki.desligar();
+    const cartao = envio(page, 'Envio em inglês · 3 frases');
+    await expect(cartao).toContainText('3 de 10 no Anki. Quando o Anki abrir, o Envio continua sozinho.', { timeout: 20_000 });
+    await copiaDoCatalogo(page, '#modal-envio');
+
+    await cartao.getByRole('button', { name: 'Continuar envio' }).click();
+    await expect(cartao).toContainText('Não deu para abrir o Anki. Abra-o você mesmo.');
+    await copiaDoCatalogo(page, '#modal-envio');
+
+    const { pm_envio: guardado } = await extensao.lerStorage('pm_envio');
+    expect(guardado.envios.map(e => e.jobId)).toEqual([job.jobId]);
+  });
 });

@@ -44,8 +44,6 @@
       document.getElementById('frases-avisos').append(aviso);
     }
 
-    const causaDoAbridor = ({ resultado, detalhe }) => `abridor · ${resultado}${detalhe ? ` · ${detalhe}` : ''}`;
-
     /** O botão da faixa, no clique: pede a permissão ao Chrome (o gesto é daqui) e, dada, abre ou conserta. */
     function pedirAPermissao(botao) {
       if (botao.getAttribute('aria-disabled') === 'true' || !pedido) return;
@@ -97,7 +95,7 @@
         colocar(Veio.montarAviso({ texto: fala.texto, acao: fala.acao, detalhes: fala.detalhes, fechavel: false }));
       } else if (resultado.desfecho === DESFECHO.SEM_PERMISSAO || resultado.desfecho === DESFECHO.NAO_ABRIU) {
         // O abridor não abriu o Anki: a pessoa o abre, e a faixa espera a Conexão responder.
-        mostrar('abra', resultado.desfecho === DESFECHO.SEM_PERMISSAO ? { botao: true } : { causa: causaDoAbridor(resultado) });
+        mostrar('abra', resultado.desfecho === DESFECHO.SEM_PERMISSAO ? { botao: true } : { causa: AbrirOAnki.causaDoAbridor(resultado) });
         await esperar(este);
       } else if (resultado.desfecho === DESFECHO.SEM_RESPOSTA) {
         pedido = null;

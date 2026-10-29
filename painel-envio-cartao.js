@@ -158,11 +158,19 @@
       // Quando o cartão precisa da pessoa: uma frase curta com o motivo e a ação como link
       // logo embaixo (a variante A da rodada 3 do PR #64). Nada de caixa de erro.
       const pedido = pedidoDoCartao(envio, estado);
-      if (pedido?.motivo) cartao.append(elemento('p', 'envio-cartao__motivo', pedido.motivo));
+      if (pedido?.motivo) {
+        const motivo = elemento('p', 'envio-cartao__motivo');
+        raiz.EnvioParado.escrever(motivo, pedido.motivo);
+        cartao.append(motivo);
+      }
 
       const atualizado = textoDaVoz('ENV-08.atualizado', { quando: Contexto.haQuanto(atualizadoEm) });
       const meta = elemento('div', 'envio-cartao__meta');
-      if (pedido) meta.append(botaoLink(pedido.rotulo, pedido.foco, pedido.aoUsar));
+      if (pedido) {
+        const acao = botaoLink(pedido.rotulo, pedido.foco, pedido.aoUsar);
+        if (pedido.emAndamento) acao.setAttribute('aria-disabled', 'true');
+        meta.append(acao);
+      }
       meta.append(elemento('span', '', situacao.fim ? atualizado : `${etapaDeSete(situacao)} · ${atualizado}`));
       cartao.append(meta);
 
@@ -173,6 +181,7 @@
           `updatedAt ${estado?.updatedAt || new Date(atualizadoEm).toISOString()}`,
           estado?.lastError || '',
           falhaAoContinuar || '',
+          raiz.EnvioParado.causa(envio),
         ].filter(Boolean).join('\n');
       if (causa) cartao.append(Veio.montarDetalhes(causa));
 
@@ -192,6 +201,9 @@
           rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'tentar', aoUsar: () => tentarCriarDeNovo(envio),
         };
       }
+      // O Anki fechou no meio: o que ficou em `waiting` é de antes, e quem fala é o Envio parado (#151).
+      const parado = raiz.EnvioParado.pedido(envio, estado);
+      if (parado) return parado;
       const espera = estado?.waiting;
       if (espera?.reason === 'other_profile') {
         return {
@@ -203,7 +215,8 @@
         return { motivo: textoDaVoz('ENV-17.sumiu', { perfil: espera.marked }), rotulo: textoDaVoz('ENV-17.escolher'), foco: 'escolher-perfil', aoUsar: escolherOutroPerfil };
       }
       const falhaAoContinuar = falhaAoRetomar(envio);
-      const continuar = { rotulo: textoDaVoz('ENV-13.continuar'), foco: 'continuar', aoUsar: () => continuarEnvio(envio) };
+      // Tentar de novo no próprio cartão do Envio que ficou em parte ou não concluiu; Continuar envio só onde falta a pessoa agir antes.
+      const continuar = { rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'continuar', aoUsar: () => continuarEnvio(envio) };
       if (falhaAoContinuar) return { motivo: textoDaVoz('ENV-14.falha'), ...continuar };
       if (retomavel(estado)) return continuar;
       return null;

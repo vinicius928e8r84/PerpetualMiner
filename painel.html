@@ -125,7 +125,7 @@
              apagadas (PAI-15) ou mineradas (ADD-06), e o copiar que não deu (PAI-17). -->
         <div class="frases-avisos" id="frases-avisos"></div>
 
-        <!-- Filtros numa linha que quebra: Fonte · idioma · ordem, a busca e o toggle. -->
+        <!-- Filtros numa linha que quebra: Fonte, idioma, ordem, busca e toggle. -->
         <div class="frases-filtros">
           <span class="veio-select"><select class="veio-campo frases-filtro" id="filtro-fonte" data-voz-aria="PAI-25.fonte"></select></span>
           <span class="veio-select"><select class="veio-campo frases-filtro" id="filtro-idioma" data-voz-aria="PAI-25.idioma"></select></span>
@@ -175,7 +175,7 @@
               <button class="veio-botao veio-botao--perigo-fantasma veio-botao--compacto" id="btn-delete-selected" type="button">
                 <span data-icone="apagar"></span><span data-voz="PAI-32.apagar"></span>
               </button>
-              <!-- Desligada e nunca ligada: aria-disabled, e o tooltip diz por quê (painel-envio.js). -->
+              <!-- Desligada e nunca ligada: aria-disabled e o tooltip (painel-envio.js). -->
               <span class="veio-com-dica">
                 <button class="veio-botao veio-botao--primario veio-botao--compacto" id="btn-send-anki" type="button">
                   <span data-icone="enviar"></span><span data-voz="PAI-32.enviar"></span>
@@ -195,7 +195,7 @@
           <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
         </div>
 
-        <!-- Paginação: “1–10 de 1.284” (PAI-07) à esquerda, « ‹ 1 de 129 › » à direita. -->
+        <!-- Paginação: “1–10 de 1.284” (PAI-07) à esquerda, « ‹ 1 de 129 › » à direita -->
         <nav class="frases-paginas" id="frases-paginas" data-voz-aria="PAI-26.rotulo" hidden>
           <span class="frases-paginas__intervalo" id="paginas-intervalo"></span>
           <button class="veio-botao-icone" id="btn-first" type="button" data-voz-aria="PAI-26.primeira" data-voz-title="PAI-26.primeira"><span data-icone="primeira"></span></button>
@@ -223,19 +223,19 @@
           </div>
         </div>
 
-        <!-- Conectando: a primeira conferência da Conexão ainda não voltou (BRG-02). -->
+        <!-- Conectando: a primeira conferência ainda não voltou (BRG-02). -->
         <div class="anki-faixa-conectando" id="anki-conectando" role="status" hidden>
           <span class="anki-ponto" aria-hidden="true"></span><span data-voz="BRG-02"></span>
         </div>
 
-        <!-- Nunca conectada: o card ONB-16 fica no lugar das abas (desenho B, painel-anki-primeira-conexao.js). -->
+        <!-- Nunca conectada: o card ONB-16 no lugar das abas (painel-anki-primeira-conexao.js). -->
         <section class="anki-primeira-vez" id="anki-primeira-vez" aria-labelledby="anki-primeira-vez-titulo" hidden>
           <div class="apv-topo">
             <h2 class="apv-titulo" id="anki-primeira-vez-titulo"></h2>
             <p class="apv-apoio" id="apv-apoio" data-voz="ONB-16.apoio"></p>
           </div>
 
-          <!-- Os passos e o card do passo: painel-conexao-passos.js, o mesmo do passo 4 da Boas-vindas. -->
+          <!-- Os passos e o card do passo: painel-conexao-passos.js, como no passo 4 da Boas-vindas. -->
           <div id="apv-passos"></div>
 
           <div class="apv-rodape" id="apv-rodape">
@@ -635,6 +635,7 @@
   <script src="painel-perigo.js"></script>
   <script src="painel-envio-cartao.js"></script>
   <script src="painel-envio-anki-fechado.js"></script>
+  <script src="painel-envio-parado.js"></script>
   <script src="painel-envio.js"></script>
   <script src="painel-anki-primeira-conexao.js"></script>
   <script src="painel-anki.js"></script>

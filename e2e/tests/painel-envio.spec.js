@@ -111,7 +111,7 @@ test('sem notícia da Conexão durante o envio, o modal diz que está tentando d
   await expect(progresso(page).getByText('Sem resposta da Conexão com o Anki. Tentando de novo…')).toBeHidden();
 });
 
-test('um Envio que fica em parte enquanto o outro anda mostra Continuar envio, que o retoma', async ({ page, extensao, fakes }) => {
+test('um Envio que fica em parte enquanto o outro anda mostra Tentar de novo, que o retoma', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
   await abrirPainel(page, extensao);
   await marcarEEnviar(page, [SACK.texto, ARM.texto, RUSSA.texto]);
@@ -122,11 +122,11 @@ test('um Envio que fica em parte enquanto o outro anda mostra Continuar envio, q
 
   const cartaoIngles = envio(page, 'Envio em inglês · 2 frases');
   await expect(cartaoIngles).toContainText('Concluído em parte', { timeout: 10_000 });
-  await cartaoIngles.getByRole('button', { name: 'Continuar envio' }).click();
+  await cartaoIngles.getByRole('button', { name: 'Tentar de novo' }).click();
 
   await expect.poll(() => fakes.anki.requisicoes.some(r => r.metodo === 'POST' && r.caminho === '/jobs/retry' && r.dados?.jobId === ingles.jobId)).toBe(true);
   await expect(cartaoIngles).toContainText('Na fila');
-  await expect(cartaoIngles.getByRole('button', { name: 'Continuar envio' })).toHaveCount(0);
+  await expect(cartaoIngles.getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
   await expect(toasts(page)).toHaveText('Envio retomado');
 });
 
