@@ -35,8 +35,6 @@
       document.getElementById('frases-avisos').append(aviso);
     }
 
-    const causaDoAbridor = ({ resultado, detalhe }) => `abridor · ${resultado}${detalhe ? ` · ${detalhe}` : ''}`;
-
     /** O botão da faixa, no clique: pede a permissão ao Chrome e, dada, abre o Anki. */
     function pedirAPermissao(botao) {
       if (botao.getAttribute('aria-disabled') === 'true' || !pedido) return;
@@ -47,7 +45,7 @@
         if (pedido !== este) return;
         if (resposta.resultado === RESULTADO.SEM_PERMISSAO) return botao.removeAttribute('aria-disabled');
         este.abriu = resposta.resultado === RESULTADO.ABRIU;
-        if (!este.abriu) return mostrar('abra', { causa: causaDoAbridor(resposta) });
+        if (!este.abriu) return mostrar('abra', { causa: AbrirOAnki.causaDoAbridor(resposta) });
         mostrar('abrindo');
         esperar(este); // o Anki abriu agora: o prazo recomeça
       });
@@ -67,7 +65,7 @@
         const resposta = await Abridor.abrirOAnki();
         if (!vale()) return;
         este.abriu = resposta.resultado === RESULTADO.ABRIU;
-        if (!este.abriu) mostrar('abra', { causa: causaDoAbridor(resposta) });
+        if (!este.abriu) mostrar('abra', { causa: AbrirOAnki.causaDoAbridor(resposta) });
       }
       await esperar(este);
     }

@@ -52,6 +52,12 @@ async function pedirConferenciaDaConexao(page) {
   await page.locator('#shell-tentar-de-novo').evaluate(el => el.click());
 }
 
+/** O `cards` de um Envio das três Frases em inglês: dez Cartões, `prontos` deles já no Anki (`fakes.anki.moverEnvio(..., { cartoes })`). */
+function cartoesDe(prontos) {
+  const ids = [SACK, ARM, LATE].flatMap((f, i) => Array.from({ length: [4, 3, 3][i] }, (_, n) => `${f.id}-${n}`));
+  return Object.fromEntries(ids.map((id, i) => [id, i < prontos ? 'added' : 'pending']));
+}
+
 /** De quanto em quanto tempo o painel lê os Envios na Conexão (`INTERVALO` em painel-envio.js). */
 const INTERVALO_DO_ENVIO = 2_000;
 
@@ -76,4 +82,4 @@ async function umaVoltaDoEnvio(page, { resposta } = {}) {
   });
 }
 
-module.exports = { pedirConferenciaDaConexao, umaVoltaDoEnvio, AGORA, HOJE, frase, INGLESAS, RUSSA, SACK, ARM, LATE, abrirPainel, cartao, marcar, enviarAoAnki, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados };
+module.exports = { cartoesDe, pedirConferenciaDaConexao, umaVoltaDoEnvio, AGORA, HOJE, frase, INGLESAS, RUSSA, SACK, ARM, LATE, abrirPainel, cartao, marcar, enviarAoAnki, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados };
