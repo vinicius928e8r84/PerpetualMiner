@@ -316,6 +316,8 @@
   "ENV-17.sumiu": "O perfil “{perfil}” não está mais no Anki. O Envio espera você escolher outro.",
   "ENV-17.escolher": "Escolher perfil",
   "ENV-17.falha": "Não deu para abrir o perfil. Tente de novo.",
+  "ENV-18.contagem": "{n} de {total} no Anki.",
+  "ENV-18.continua": "Quando o Anki abrir, o Envio continua sozinho.",
   "BRG-01.ligada": "Conexão com o Anki: ligada",
   "BRG-01.desligada": "Conexão com o Anki: desligada",
   "BRG-01.semEnvio": "Enviar ao Anki fica indisponível",

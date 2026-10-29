@@ -20,8 +20,8 @@
   let doPainel = null;
   let ankiFechado = null;
   // A remessa acompanhada: { envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar, corpo }] } (`pm_envio` leva também
-  // `apagarFrases: true` até a Conexão confirmar o Apagar tudo). `corpo` é o pedido, montado uma vez e gravado antes do primeiro POST:
-  // reenviado igual, é o mesmo Envio na Conexão, porque o `jobId` dele é o `id` (docs/design/envio-no-complemento.md).
+  // `apagarFrases: true` até a Conexão confirmar o Apagar tudo). `corpo`, o pedido, é montado uma vez e gravado antes do primeiro
+  // POST: reenviado igual, é o mesmo Envio na Conexão, pois o `jobId` é o `id` (docs/design/envio-no-complemento.md).
   let remessa = null;
   const jobs = new Map();           // jobId → o último job lido de POST /jobs/list
   const falhasAoRetomar = new Map(); // jobId → a causa, quando Continuar envio não deu
@@ -45,7 +45,7 @@
     porId('modal-resumo-fechar').addEventListener('click', () => resumo?.fechar());
     porId('btn-resumo-manter').addEventListener('click', () => resumo?.fechar());
     porId('btn-resumo-apagar').addEventListener('click', () => responderResumo('apagar'));
-    // O Apagar tudo em outra aba grava só a marca: esta aba também deixa de acompanhar os Envios (as Frases deles se foram).
+    // O Apagar tudo em outra aba grava só a marca: esta aba também deixa de acompanhar os Envios.
     chrome.storage.onChanged.addListener((mudancas, area) => {
       const nova = mudancas[CHAVE_GRAVADA]?.newValue;
       if (area === 'local' && nova?.apagarFrases && !nova.envios?.length && remessa) encerrarOAcompanhamento();
@@ -87,7 +87,7 @@
     // Uma frase que já está na remessa não vai de novo: quem não começou tem o Tentar de novo dele.
     const acompanhadas = new Set((remessa?.envios || []).flatMap(e => e.ids));
     const novas = (ids ? doPainel.frasesPorId(ids) : doPainel.selecionadas()).filter(f => !acompanhadas.has(f.id));
-    if (conexaoDesligada) return novas.length && ConexaoAnki.jaConectou() ? ankiFechado.pedir(novas.map(f => f.id)) : undefined;
+    if (conexaoDesligada && novas.length) return ConexaoAnki.jaConectou() ? ankiFechado.pedir(novas.map(f => f.id)) : undefined;
     if (novas.length === 0) {
       if (remessa) abrirProgresso();
       return;
@@ -124,7 +124,7 @@
     acompanhar();
   }
 
-  /** `POST /jobs` de um Envio; se não começa, a causa fica no cartão (ENV-03). O corpo é montado na primeira vez e vai sempre o mesmo. */
+  /** `POST /jobs` de um Envio; se não começa, a causa fica no cartão (ENV-03). O corpo é montado uma vez e vai sempre o mesmo. */
   async function criarEnvio(envio) {
     const aRemessaDoEnvio = remessa;
     envio.falhaAoCriar = null;
@@ -182,7 +182,11 @@
   /** Uma volta do acompanhamento: lê os Envios na Conexão, redesenha, e abre o resumo se acabaram. */
   async function conferirEnvios() {
     if (!remessa) return pararDeAcompanhar();
-    if (remessa.envios.some(e => e.jobId && !terminou(e))) await lerJobs();
+    if (remessa.envios.some(e => e.jobId && !terminou(e))) {
+      await lerJobs();
+      // O Anki fechou ou abriu: a situação da Conexão se confere agora, sem esperar o relógio dela.
+      if (semNoticia || conexaoDesligada) ConexaoAnki.conferir();
+    }
     desenharProgresso();
     tentarAbrirResumo();
   }
@@ -229,7 +233,7 @@
     return new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios, ...(apagarFrases ? { apagarFrases: true } : {}) } }, r));
   }
 
-  // ─── Apagar tudo (CFG-17) ───────────────────────────────────────────────────
+  // ─── Apagar tudo (CFG-17) ───
 
   /**
    * O painel deixa de acompanhar os Envios (as Frases deles não existem mais: sem resumo, sem o que reenviar) e a Conexão apaga as
@@ -316,7 +320,7 @@
     const idiomas = new Intl.ListFormat('pt-BR', { type: 'conjunction' })
       .format([...new Set(envios.map(e => nomeDoIdioma(e.lang)))]);
     porId('modal-envio-detalhe').textContent = textoDaVoz('ENV-06.detalhe', { n: envios.length, idiomas });
-    porId('modal-envio-sem-noticia').hidden = !semNoticia;
+    porId('modal-envio-sem-noticia').hidden = !semNoticia || conexaoDesligada;
 
     const lista = porId('modal-envio-lista');
     for (const envio of envios) {
@@ -531,7 +535,7 @@
     });
   }
 
-  /** Desligada e nunca ligada neste computador (sem abridor), Enviar ao Anki fica `aria-disabled` e o tooltip diz por quê, só no hover e no foco. */
+  /** Desligada e nunca ligada neste computador (sem abridor), Enviar ao Anki fica `aria-disabled`, e o tooltip diz por quê. */
   function mostrarConexao(situacao) {
     conexaoDesligada = situacao === CONEXAO.DESLIGADA;
     const enviarAoAnki = porId('btn-send-anki');
