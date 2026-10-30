@@ -7,15 +7,15 @@ com o Anki (o complemento do Anki, em `127.0.0.1:8766`), junto com os `exemplos-
 - **o complemento**: `python3 complemento/test_servidor.py` sobe o servidor real e confere
   cada exemplo (rode também no 3.9);
 - **a extensão**: o fake da Conexão do e2e (`e2e/fakes/anki.js`) responde pelos exemplos,
-  e `e2e/tests/contrato-da-conexao.spec.js` confere o fake contra eles.
+  e `contrato-da-conexao.spec.js` confere o fake contra eles.
 
-Mudar só um lado quebra um teste, que diz o exemplo e os arquivos.
+Mudar só um lado quebra um teste, que diz o exemplo.
 
 O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede nem que o complemento responde fica sem exemplo.
 
 - **Os pedidos da extensão**: todo pedido nasce de um construtor de `PerpetualMiner.PedidoAoAnki` (`lib/pedido-ao-anki.js`:
-  `saude`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`, `chaveDaOpenAI`, `apagarChaveDaOpenAI`, `estadoDaIA`, e os do Envio: `criarEnvio` (o corpo leva o `jobId`), `listarEnvios`, `verEnvio`, `tentarEnvioDeNovo`, `pacoteDeDiagnostico`, `apagarFrasesDosEnvios`, `custosDosEnvios`), e `PedidoAoAnki.variantes` os lista. `node test_contrato_fechado.js`
-  pede ao construtor cada variante (com os dois Baralhos, as três leituras…) e exige um exemplo `daExtensao`
+  `saude`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`, `chaveDaOpenAI`, `apagarChaveDaOpenAI`, `estadoDaIA`, e os do Envio: `criarEnvio` (o corpo leva o `jobId`), `ouvirAVoz`, `listarEnvios`, `verEnvio`, `tentarEnvioDeNovo`, `pacoteDeDiagnostico`, `apagarFrasesDosEnvios`, `custosDosEnvios`), e `PedidoAoAnki.variantes` os lista. `node test_contrato_fechado.js`
+  pede ao construtor cada variante e exige um exemplo `daExtensao`
   de cada uma, que o fake do e2e então responde. O nome do Baralho não conta para achar o exemplo; quantos Baralhos, `refresh` e
   `launch` contam. A regra `contrato-fechado` (`node scripts/regras/verificar.js`) acusa um `fetch` direto a uma rota da Conexão.
 - **As respostas do complemento**: `complemento/test_servidor.py` guarda o que o servidor real respondeu a uma rota que ele
@@ -175,7 +175,7 @@ A Conexão de hoje (`bridge/`) atende as mesmas rotas e o mesmo criar idempotent
 `lastError` e o `error` de cada Cartão são códigos (`openai_key_missing`, `openai_key_rejected`, `openai_no_credit`,
 `openai_rate_limited`, `openai_unreachable`, `note_type_missing`, `anki_write_failed`…), nunca o texto da OpenAI.
 
-As rotas do login do ChatGPT (#155): [`entrar-com-o-chatgpt.md`](entrar-com-o-chatgpt.md).
+As rotas do login do ChatGPT (#155): [`entrar-com-o-chatgpt.md`](entrar-com-o-chatgpt.md). A voz e o Ouvir (#174): [`voz.md`](voz.md).
 
 ## As rotas do perfil fixo (#149)
 

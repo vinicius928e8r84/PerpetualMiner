@@ -36,6 +36,7 @@ for (const exemplo of daExtensao) {
     if (exemplo.contexto.itemDeLogin) fakes.anki.definirItemDeLogin(exemplo.contexto.itemDeLogin);
     if (exemplo.contexto.fila) fakes.anki.definirFila(exemplo.contexto.fila);
     if (exemplo.contexto.chatgpt) fakes.anki.chatgpt.definir(exemplo.contexto.chatgpt);
+    if (exemplo.contexto.voz) fakes.anki.voz.definir(exemplo.contexto.voz);
     if (exemplo.contexto.perfis) fakes.anki.definirPerfis(exemplo.contexto.perfis, { marcado: exemplo.contexto.perfilMarcado ?? null, aberto: exemplo.contexto.perfil });
     // O seam é o HTTP: uma página do produto poderia alterar o contexto
     // semeado. Um recurso estático mantém a origem sem executar o painel/popup.

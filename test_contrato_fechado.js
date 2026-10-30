@@ -30,6 +30,8 @@ const BARALHOS = [{ deckName: 'Inglês', lang: 'en' }, { deckName: 'Alemão', la
 // O corpo de um Envio que o exemplo de criar entrega; o `jobId` dele é o que os outros pedidos do Envio levam.
 const ENVIO_DE_EXEMPLO = contrato.exemplos.find(e => e.daExtensao && e.pedido.caminho === '/jobs').pedido.corpo;
 
+const CHAVE_DO_OUVIR = contrato.exemplos.find(e => e.pedido.corpo?.provedor === 'openai' && e.resposta.status === 200).contexto.chaveNaConexao;
+
 // Um pedido é o mesmo para o contrato quando só o nome do Baralho muda: o resto do corpo (quantos Baralhos, `refresh`, `launch`) conta.
 const formaDoCorpo = corpo => JSON.parse(JSON.stringify(corpo ?? null), function (chave, valor) {
   return chave === 'deckName' || chave === 'deck' ? '<baralho>' : chave === 'chave' ? '<chave>' : chave === 'profile' ? '<perfil>' : valor;
@@ -63,6 +65,7 @@ async function main() {
     const fake = criarFakeAnki();
     fake.abrirColecao('inglês com subbaralho');
     if (pedido.caminho.startsWith('/anki/profile')) fake.definirPerfis(['Ana', 'Beto'], { marcado: 'Ana', aberto: 'Ana' });
+    if (pedido.corpo?.provedor === 'openai') fake.guardarChaveNaConexao(CHAVE_DO_OUVIR); // a voz da OpenAI é pela chave (o contexto do exemplo)
     const { status } = fake.respostaDoContrato(pedido.metodo, pedido.caminho, pedido.corpo);
     assert.strictEqual(status, exemplos[0].resposta.status, `o fake respondeu "${nome}" diferente do exemplo "${exemplos[0].nome}"`);
   }

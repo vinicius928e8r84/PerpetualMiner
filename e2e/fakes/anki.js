@@ -3,6 +3,8 @@
 const { isDeepStrictEqual } = require('util');
 const { responderJson } = require('./http');
 const { criarFakeChatGPT } = require('./chatgpt');
+const { criarFakeVoz } = require('./voz');
+const { linhaDeCustos, imagensZeradas } = require('./custos');
 const { criarPerfis } = require('./perfis');
 const { diferencaDoContrato } = require('./diferenca-do-contrato');
 const contrato = require('../../complemento/contrato/carregar');
@@ -79,6 +81,7 @@ function criarFakeAnki() {
   const requisicoes = [];
   const envios = [];    // { jobId, lang, entries, corpo, createdAt, state }
   const chatgpt = criarFakeChatGPT(); // o login do ChatGPT (#155): as rotas dele aqui e a página do auth.openai.com (fakes.chatgpt)
+  const voz = criarFakeVoz(); // o Ouvir (#174): `fakes.anki.voz.definir('recusada')`
 
   function novoEstado(extra = {}) {
     return {
@@ -334,7 +337,7 @@ function criarFakeAnki() {
 
   /** O contexto de agora como os exemplos o descrevem: a chave guardada aparece só pelos 4 últimos. */
   function contextoDeAgora() {
-    return { ...estado.contexto, chaveNaConexao: ultimos4(estado.chaveDaOpenAI), chatgpt: chatgpt.situacao() };
+    return { ...estado.contexto, chaveNaConexao: ultimos4(estado.chaveDaOpenAI), chatgpt: chatgpt.situacao(), voz: voz.situacao() };
   }
 
   /**
@@ -349,9 +352,7 @@ function criarFakeAnki() {
       && (!('colecao' in doExemplo) || doExemplo.colecao === contexto.colecao)
       && (!('openai' in doExemplo) || doExemplo.openai === contexto.openai)
       && (!('chaveNaConexao' in doExemplo) || (doExemplo.chaveNaConexao === null) === (contexto.chaveNaConexao === null))
-      && (!('firebase' in doExemplo) || doExemplo.firebase === contexto.firebase)
-      && (!('cofre' in doExemplo) || doExemplo.cofre === contexto.cofre)
-      && (!('chatgpt' in doExemplo) || doExemplo.chatgpt === contexto.chatgpt);
+      && ['firebase', 'cofre', 'chatgpt', 'voz'].every(campo => !(campo in doExemplo) || doExemplo[campo] === contexto[campo]);
   }
 
   /**
@@ -516,6 +517,10 @@ function criarFakeAnki() {
     if ((url.pathname.startsWith('/ia/chatgpt/') && req.method() === 'POST') || (url.pathname === '/auth/callback' && req.method() === 'GET')) {
       return chatgpt.naConexao(route, url, respostaDoContrato);
     }
+    if (url.pathname === '/voz/ouvir' && req.method() === 'POST') {
+      const { status, json } = voz.naConexao(dadosDoCorpo(corpoDoPedido) || {}, respostaDoContrato);
+      return responderJson(route, status, json);
+    }
     if (url.pathname === '/ia/estado' && req.method() === 'POST') {
       const { status, json } = respostaDoContrato('POST', '/ia/estado', {});
       return responderJson(route, status, json);
@@ -617,6 +622,7 @@ function criarFakeAnki() {
     tratar,
     requisicoes,
     chatgpt,
+    voz,
     /** @estado-guardado Os Envios que a Conexão guardou (um por `POST /jobs`), não o pedido que chegou. */
     envios,
     desligar() { estado.ligada = false; },
@@ -788,58 +794,6 @@ function criarFakeAnki() {
         updatedAt: estado.agora().toISOString(),
       };
     },
-  };
-}
-
-/** As imagens de uma linha de Custos sem nenhuma imagem (as chaves do contrato). */
-function imagensZeradas() {
-  return {
-    total: 0, real: 0, generated: 0, skipped: 0, failed: 0, generatedAttempted: 0, savingsUsd: 0,
-    realPct: 0, generatedPct: 0, skippedPct: 0, failedPct: 0, generatedAttemptPct: 0,
-  };
-}
-
-/** Um Envio da aba Custos no formato de `JobAnalytics.jobs` (bridge/analytics.py), o das linhas do contrato. */
-function linhaDeCustos({
-  jobId, lang = 'en', createdAt, status = 'completed', stage, pedidas = 1, enviadas, lastError = null,
-  custos = {}, imagens = {}, economia = 0, baralho = '',
-}) {
-  const costs = {
-    cardUsd: custos.cartoes || 0,
-    imageJudgeUsd: custos.escolha || 0,
-    imageGuardUsd: custos.triagem || 0,
-    imageGenerationUsd: custos.geradas || 0,
-    otherUsd: custos.outros || 0,
-  };
-  costs.totalUsd = Object.values(costs).reduce((a, b) => a + b, 0);
-  const images = {
-    ...imagensZeradas(),
-    real: imagens.real || 0,
-    generated: imagens.geradas || 0,
-    skipped: imagens.sem || 0,
-    failed: imagens.falhas || 0,
-    savingsUsd: economia,
-  };
-  images.total = images.real + images.generated + images.skipped + images.failed;
-  const pct = parte => (images.total ? Math.round((parte / images.total) * 1000) / 10 : 0);
-  Object.assign(images, { realPct: pct(images.real), generatedPct: pct(images.generated), skippedPct: pct(images.skipped), failedPct: pct(images.failed) });
-  const successfulCards = enviadas ?? (status === 'completed' ? pedidas : 0);
-  return {
-    jobId,
-    createdAt,
-    updatedAt: createdAt,
-    lang,
-    deckName: baralho,
-    imageSource: 'real',
-    status,
-    stage: stage || status,
-    requestedCards: pedidas,
-    successfulCards,
-    failedCards: ['failed', 'partial'].includes(status) ? pedidas - successfulCards : 0,
-    lastError,
-    costs,
-    images,
-    matchedRecords: 1,
   };
 }
 

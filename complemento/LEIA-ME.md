@@ -109,7 +109,7 @@ Depois refaça o arquivo. Subir a `VERSAO` muda a `versao` dos exemplos de `cont
 9. **O primeiro Cartão (#142).** Com a chave conferida (passo 7) e um perfil aberto com o tipo de nota “Básico” (campos “Frente” e “Verso”, até o #161),
    marque uma Frase em inglês em Frases e aperte **Enviar ao Anki**: o progresso passa por “Criando cartões” e “Enviando ao Anki” e o
    resumo diz “+1 cartão”. No Baralho dos Ajustes de envio há a nota nova (etiqueta `perpetual_miner`), com o áudio da Frase (frente) e o da Palavra (verso)
-   e a imagem; toque os dois (um 400 na Palavra é o risco 11, reserva no #174). Feche o painel e o Chrome logo ao apertar Enviar, espere um
+   e a imagem; toque os dois (um 400 na Palavra é o risco 11: a reserva fala). Feche o painel e o Chrome logo ao apertar Enviar, espere um
    minuto e reabra: o resumo vem da Conexão. Na tela de perfis o Envio entra no marcado (8b). Enviar a mesma Frase de novo dá
    “1 já estava lá”, sem nota dobrada. O custo está em `user_files/custos/<jobId>/costs.jsonl` e na aba Custos; o log e o diagnóstico não têm a chave.
 

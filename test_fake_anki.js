@@ -47,6 +47,7 @@ function fakeNoContextoDe(exemplo) {
   if (exemplo.contexto.itemDeLogin) fakeDoExemplo.definirItemDeLogin(exemplo.contexto.itemDeLogin);
   if (exemplo.contexto.fila) fakeDoExemplo.definirFila(exemplo.contexto.fila);
   if (exemplo.contexto.chatgpt) fakeDoExemplo.chatgpt.definir(exemplo.contexto.chatgpt);
+  if (exemplo.contexto.voz) fakeDoExemplo.voz.definir(exemplo.contexto.voz);
   if (exemplo.contexto.perfis) fakeDoExemplo.definirPerfis(exemplo.contexto.perfis, { marcado: exemplo.contexto.perfilMarcado ?? null, aberto: exemplo.contexto.perfil });
   return { fakeDoExemplo, google };
 }
