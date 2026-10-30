@@ -7,6 +7,7 @@
   <script src="veio/tema.js"></script>
   <link rel="stylesheet" href="veio/componentes.css">
   <link rel="stylesheet" href="painel.css">
+  <link rel="stylesheet" href="painel-ia-modelo.css">
 </head>
 <body>
 
@@ -124,7 +125,6 @@
              apagadas (PAI-15) ou mineradas (ADD-06), e o copiar que não deu (PAI-17). -->
         <div class="frases-avisos" id="frases-avisos"></div>
 
-        <!-- Filtros numa linha que quebra: Fonte, idioma, ordem, busca, toggle. -->
         <div class="frases-filtros">
           <span class="veio-select"><select class="veio-campo frases-filtro" id="filtro-fonte" data-voz-aria="PAI-25.fonte"></select></span>
           <span class="veio-select"><select class="veio-campo frases-filtro" id="filtro-idioma" data-voz-aria="PAI-25.idioma"></select></span>
@@ -185,7 +185,6 @@
           </div>
         </div>
 
-        <!-- PAI-01: 5 cartões-esqueleto enquanto carrega. -->
         <div id="frases-lista" class="frases-lista" aria-busy="true">
           <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
           <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
@@ -630,6 +629,7 @@
   <script src="painel-lembrete.js"></script>
   <script src="painel-chave.js"></script>
   <script src="painel-ia-chatgpt.js"></script>
+  <script src="painel-ia-modelo.js"></script>
   <script src="painel-ia.js"></script>
   <script src="painel-abrir-anki.js"></script>
   <script src="painel-perigo.js"></script>

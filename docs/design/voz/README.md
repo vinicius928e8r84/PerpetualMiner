@@ -2,17 +2,7 @@
 
 Resolução do ticket Voz, tom & catálogo de mensagens/estados (#4), parte do mapa Redesign do front-end do PerpetualMiner (#1).
 
-O que está aqui:
-
-1. **Guia de voz e tom**: as regras que qualquer mensagem nova precisa seguir.
-2. **Regras por categoria**: onde cada tipo de mensagem aparece e o que ela diz.
-3. **Catálogo**: estados-chave com a cópia aprovada. É o texto que os protótipos e a construção usam.
-
-Este documento cobre só o *conteúdo*. Três coisas ficam para outros tickets:
-
-- a aparência dos componentes (toast, modal, ícone de status): Identidade visual própria & design system base (#3);
-- onde cada área mora: Painel — arquitetura de informação & shell (#6);
-- a lógica que hoje mente (mensagem de sucesso antes de confirmar): Bugs encontrados na auditoria do front (#9).
+O que está aqui: o **guia de voz e tom** (as regras de qualquer mensagem nova), as **regras por categoria** (onde cada tipo de mensagem aparece) e o **catálogo** de estados-chave com a cópia aprovada, que os protótipos e a construção usam. Só o *conteúdo*: a aparência dos componentes é da identidade visual, onde cada área mora é do shell do painel e a lógica que mentia é da auditoria do front.
 
 Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do catálogo está em [`catalogo.html`](catalogo.html).
 
@@ -317,6 +307,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | CFG-41 | Conta & sync: falha da chave da OpenAI **(novo)** | erro + recuperação | (não existe) | Não deu para conferir a sincronização da chave da OpenAI. · A sincronização da chave ou seu apagamento não pôde ser conferida com a sua conta Google. Tente de novo. [Tentar de novo] | C8: falha de leitura não afirma que uma chave já enviada não chegou; falha da chave não diz que as frases estão só neste computador. Chip e resumo continuam Sem sincronizar; o aviso persiste com repetição e Detalhes. |
 | CFG-42 | Conta & sync: chave de outra conta ou legado **(novo)** | erro + recuperação | (não existe) | Há uma mudança da chave pendente de outra conta Google. · A mudança da chave ainda não sincronizou com a outra conta Google. Saia desta conta, entre naquela e tente de novo antes de trocar para esta. · A Conexão com o Anki tem uma chave sem conta identificada. Entre na conta escolhida e cole a mesma chave de novo em Trocar chave, em IA dos cartões. Se não a guardou, crie outra na OpenAI. | Um dono: não descarta a única mudança de A ao entrar em B, nem exporta um segredo legado sem UID provado. |
 | CFG-43 | Perfil do Anki **(novo)** | status | (não existe) | Perfil do Anki · Os cartões só entram neste perfil. · O perfil “Ana” não está mais no Anki. Escolha outro: nada é enviado até lá. · Não deu para trocar o perfil. Tente de novo. | A linha do card Conexão com o Anki (#149); o aviso é vermelho. |
+| CFG-44 | IA dos cartões: o modelo **(novo)** | status | (não existe) | Modelo dos cartões · Automático · Pago pela sua chave · gpt-4.1-mini sai do ar em 20 de novembro. No dia, o Envio passa sozinho para o Automático. · Trocar agora · Escolher outro · O gpt-4.1 saiu do ar. O Envio passou para o Automático. · Não deu para ler os modelos da sua conta. Tente de novo. | No Avançado do card (#157). O aviso é âmbar; o que o Envio trocou, uma linha verde. |
 
 ### Boas-vindas (primeira execução)
 

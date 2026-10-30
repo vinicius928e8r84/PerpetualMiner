@@ -11,7 +11,8 @@ import tempfile
 from pathlib import Path
 
 from .imagem_qt import AdaptadorQt
-from .login_do_chatgpt import SAIU, credencial_da_imagem
+from .login_do_chatgpt import SAIU
+from .modelo_dos_cartoes import credencial_da_imagem
 
 DO_PLANO_QUE_PARA = ("chatgpt_usage_limit", "chatgpt_not_eligible", "chatgpt_rejected", SAIU)
 
@@ -48,7 +49,7 @@ class ImagemDoCartao:
 
     def _escolher_a_imagem(self, pedido, config, cartao_id, conteudo):
         """Os bytes do PNG escolhido para o Cartão, ou None se nenhuma imagem serviu."""
-        plano, chave = credencial_da_imagem(self.chatgpt, self.cofre, self.plano)  # lidos antes do pedido, só para ele (C5)
+        plano, chave = credencial_da_imagem(self.chatgpt, self.cofre, self.plano, self.modelos)  # lidos antes do pedido, só para ele (C5)
         if not (plano or chave) or (pedido["imageSource"] != "1" and not chave):
             return None  # sem login nem chave (Apagar chave no meio), ou só a imagem gerada pedida e nenhuma chave: sem imagem
         motor = self.motor

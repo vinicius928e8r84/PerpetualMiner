@@ -13,6 +13,7 @@ import json
 import os
 import sys
 import threading
+from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import baralhos, chatgpt_oficial, custos, diagnostico, envio, limite_do_plano, trabalhador
@@ -24,7 +25,9 @@ from .rotas_da_chave import (
 )
 from .configuracao import ENDERECO, OPENAI_BASE, OPENVERSE_BASE, VOZ_BASE
 from .item_de_login import AnkiNaoEncontrado
+from .modelo_dos_cartoes import ModeloDosCartoes, lista_nossa
 from .perfil import PerfilFixo
+from .rotas_do_modelo import ROTAS_DO_MODELO
 from .rotas_do_perfil import abrir_o_perfil_marcado, escolher_o_perfil, listar_os_perfis
 
 # Um pedido maior que isto não é da extensão: a leitura mais pesada (os Baralhos pedidos) cabe em poucos KB.
@@ -165,6 +168,7 @@ ROTAS = {
     ("POST", "/ia/openai/legado"): vincular_legado_da_openai,
     ("POST", "/ia/estado"): estado_da_ia,
     **ROTAS_DO_CHATGPT,
+    **ROTAS_DO_MODELO,
     ("POST", "/abrir-com-o-computador/estado"): _estado_do_item_de_login,
     ("POST", "/abrir-com-o-computador"): _abrir_com_o_computador,
     # O Envio (#142): criar e tentar de novo mudam a fila; as outras só leem. Tudo POST com a origem da extensão.
@@ -366,6 +370,8 @@ class Conexao:
         espera_do_plano=300,
         motor=None,
         espera_do_contato=ESPERA_DO_CONTATO,
+        modelos_da_ia=None,
+        hoje=date.today,
     ):
         self.porta = porta
         self.origens_aceitas = tuple(origens_aceitas)
@@ -382,6 +388,8 @@ class Conexao:
         self.cofre = Cofre(dados.chaves)
         self.chatgpt = LoginDoChatGPT(dados.chaves, logger, base=chatgpt_base, api=openai_base)
         self.openai_base = openai_base
+        self.modelos = ModeloDosCartoes(os.path.join(dados.raiz, "modelo-dos-cartoes.json"), modelos_da_ia or lista_nossa(), hoje,
+                                        logger, self.chatgpt, self.cofre, openai_base)
         self.firestore_base = firestore_base
         # O item de login de “Abrir o Anki com o computador”; None onde o sistema não tem (nem Mac nem Windows).
         self.item_de_login = item_de_login
@@ -393,7 +401,7 @@ class Conexao:
         self.contato = threading.Event()
         self.fila = envio.Fila(dados, motor or envio.motor_do_complemento(), logger)
         self._trabalhador = trabalhador.Trabalhador(
-            envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(), chatgpt=self.chatgpt,
+            envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(), chatgpt=self.chatgpt, modelos=self.modelos,
                            espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai, espera_do_plano=espera_do_plano, voz_base=voz_base,
                            openverse_base=openverse_base, adaptador_de_imagem=adaptador_de_imagem),
             intervalo=intervalo_do_envio, contato=self.contato, espera_do_contato=espera_do_contato,

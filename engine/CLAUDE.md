@@ -21,7 +21,7 @@ python start.py  # Full pipeline with menu
 
 ```
 mining.txt
-├─ generate_cards.py    → Output/{stem}.txt (chat.completions)
+├─ generate_cards.py    → Output/{stem}.txt (chat.completions; the model is the add-on's `modelo_do_texto` when it sets one (#157), else `openai.chat_model`)
 ├─ extract_prompts.py   → prompts.txt (Image: field)
 ├─ generate_audio.py    → Output/{stem}_{word,phrase}.mp3 (gTTS)
 ├─ image_guard.py       → skip/real/generate decision (heuristics + GPT-4o-mini)

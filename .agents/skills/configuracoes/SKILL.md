@@ -48,6 +48,16 @@ fixme reference in `configuracoes-chatgpt-visual.spec.js`, and `complemento/test
 
 **The rest of the plan (#156, design: `docs/design/imagem-pelo-plano.md`).** The first time the column reads the login as connected, a Veio modal (CFG-35.planoTitulo…planoEntendi, built in `painel-ia-chatgpt.js` on `Veio.abrirModal`) says the plan is in use; Entendi, Esc and a click outside store `pm_plano_do_chatgpt_avisado: true` in `chrome.storage.local` (this computer only) and it never returns. Connected with no stored key (`CartaoDaIA.temChave()`), the column adds CFG-35.semChave (photo or no generated image). The strip for `chatgpt_not_eligible` (the second `invalid_grant` in a row, or the Envio's code) says the plan does not serve a free or Go account, with Usar a chave (focus on the key field). Tests: `configuracoes-chatgpt-plano.spec.js`, fixme references in `configuracoes-chatgpt-visual.spec.js`.
 
+**Modelo dos cartões (#157, `painel-ia-modelo.js` + `painel-ia-modelo.css`, design: `docs/design/modelo-dos-cartoes.md`).** The card's Avançado
+(`details.ia-avancado`, CFG-44; the label is BRG-32.titulo) is a select of the account's models, Automático by default, over
+`PedidoAoAnki.estadoDoModelo/escolherOModelo`; nothing is stored in the browser. Without key and login, or with the Conexão off or
+old (404), there is no Avançado (nothing is claimed). Below the select: “Pago pela sua chave”, or the plan line of the ChatGPT column
+(`ColunaDoChatGPT.linhaDoPlano`). Before a chosen model leaves: the amber aviso (`tom: 'info'` plus `ia-modelo__aviso`, tokens only) with
+the date, Trocar agora (chooses Automático) and Escolher outro (focuses the select); after the Envio swaps on the day, or when the model
+leaves the account, the green line. The Conexão owns everything: choice, list, swap (`complemento/modelo_dos_cartoes.py`; reading never
+writes, the Envio does) and the dates (`complemento/modelos_da_ia.json`, none yet). Tests: `e2e/tests/configuracoes-modelo.spec.js`
+(`fakes.anki.modelo`, `relogioParado`), the fixme references in `configuracoes-modelo-visual.spec.js`, `complemento/test_modelo_dos_cartoes.py`.
+
 ### Chave do Gemini and Zona de perigo (`painel-chave.js`, `painel-perigo.js`)
 
 The Chave do Gemini card owns `geminiApiKey` (the same key the Minerar de uma foto reads) straight from

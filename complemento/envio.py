@@ -35,7 +35,8 @@ from .audio_do_cartao import FRASE_APAGADA, AudioDoCartao
 from .configuracao import OPENVERSE_BASE, VOZ_BASE
 from .imagem_do_cartao import ImagemDoCartao, ParaOEnvio
 from .limite_do_plano import LIMITE_DO_PLANO, LimiteDoPlano, espera_pelo_plano
-from .login_do_chatgpt import RECUSOU, SAIU, credencial
+from .login_do_chatgpt import RECUSOU, SAIU
+from .modelo_dos_cartoes import credencial
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento  # noqa: F401  (`envio.motor_do_complemento`)
 from .paradas_do_envio import Apagado, Interrompido  # noqa: F401  (`envio.Interrompido`)
 from .pedido_do_envio import id_que_serve_de_caminho, id_valido, impressao, validar_pedido, visao_do_pedido  # noqa: F401
@@ -57,10 +58,10 @@ SEM_CHAVE = "openai_key_missing"
 SEM_TIPO_DE_NOTA = "note_type_missing"
 FALHA_AO_GRAVAR = "anki_write_failed"
 CARTOES_FALHARAM = "cards_failed"
-# A chave recusada, a conta sem como pagar ou o plano que não serve agora: os próximos Cartões falhariam igual. (O limite de uso do
+# Chave recusada, conta sem crédito ou plano que não serve: os próximos Cartões falhariam igual. (O limite de uso do
 # plano não para o Envio: ele espera, `limite_do_plano.py`.)
 PARA_O_ENVIO = ("openai_key_rejected", "openai_no_credit", SAIU, "chatgpt_not_eligible", RECUSOU)
-# Passageiros: o Cartão tenta de novo depois de cada espera de `esperas_da_openai`.
+# Passageiros: o Cartão tenta de novo depois de cada espera.
 PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", "empty_response")
 
 
@@ -403,8 +404,8 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
     """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto, o áudio e a imagem e grava a nota."""
 
     def __init__(self, fila, colecao, cofre, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30),
-                 voz_base=VOZ_BASE, openverse_base=OPENVERSE_BASE, adaptador_de_imagem=None, chatgpt=None, espera_do_plano=300):
-        self.fila, self.chatgpt, self.plano = fila, chatgpt, {}  # o login do ChatGPT e o modelo do Envio
+                 voz_base=VOZ_BASE, openverse_base=OPENVERSE_BASE, adaptador_de_imagem=None, chatgpt=None, espera_do_plano=300, modelos=None):
+        self.fila, self.chatgpt, self.modelos, self.plano = fila, chatgpt, modelos, {}  # o login do ChatGPT, os modelos e o modelo do Envio
         self.espera_do_plano = espera_do_plano  # s entre dois pedidos com o plano no limite
         self.motor = fila.motor
         self.colecao = colecao
@@ -541,7 +542,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
                 return None
             while True:
                 pela_chave = self.fila.estado(job_id).get("usingKey", False)  # Usar a minha chave (limite_do_plano.py)
-                chave = credencial(self.chatgpt, self.cofre, self.plano, pela_chave)  # o plano (#155), a chave, None ou um código
+                chave = credencial(self.chatgpt, self.cofre, self.plano, self.modelos, pela_chave)  # o plano, a chave, None ou um código
                 if not isinstance(chave, dict):
                     return SEM_CHAVE if chave is None else chave if chave in PARA_O_ENVIO else self._cartao(job_id, cartao_id, status=FALHOU, error=chave)
                 falha = self._gerar_o_texto(job_id, pedido, dict(config, **chave), cartao_id, cartao["phraseId"], linha)

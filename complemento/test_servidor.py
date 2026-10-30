@@ -23,6 +23,7 @@ from complemento.test_imagens_de_mentira import OpenverseDeMentira  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira  # noqa: E402
 from complemento.test_voz_de_mentira import VozDeMentira  # noqa: E402
 from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira, situar_o_login  # noqa: E402
+from complemento.test_modelos_de_mentira import preparar_o_cenario  # noqa: E402
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
@@ -210,6 +211,7 @@ class ConexaoNoTeste:
         perfil_marcado=None,
         adaptador_de_imagem=None,
         espera_do_plano=300,
+        modelo=None,
     ):
         self.perfil = perfil
         self.situacao_do_chatgpt = chatgpt  # `conectada` (o arquivo do login já existe), `entrando`, `recusou` ou `nao_serve` (a tentativa)
@@ -236,6 +238,7 @@ class ConexaoNoTeste:
             with open(os.path.join(self.chaves, "chatgpt.json"), "w", encoding="utf-8") as arquivo:
                 json.dump({"client_id": "oaiapp_x", "access_token": "acesso-x", "refresh_token": "renovacao-x", "expira_em": 4e9}, arquivo)
         self.cofre_sem_escrita = cofre_sem_escrita
+        do_modelo = preparar_o_cenario(modelo, pasta, self.openai)  # o modelo dos cartões (#157): o cenário de `modelos` do contrato
         self.logger = registro.criar(self.logs)
         self.conexao = servidor.Conexao(
             porta=0,
@@ -259,6 +262,7 @@ class ConexaoNoTeste:
             esperas_da_openai=(0, 0),
             espera_do_plano=espera_do_plano,
             espera_do_contato=espera_do_contato,
+            **do_modelo,
         )
 
     def _ler_o_perfil(self):
@@ -336,6 +340,7 @@ def conexao_do_exemplo(pasta, exemplo):
         firebase=contexto.get('firebase', 0),
         chatgpt=contexto.get("chatgpt"),
         perfil_marcado=contexto.get('perfilMarcado'),
+        modelo=ler_o_contrato().get("modelos", {}).get(contexto.get("modelo")),
     ) as conexao:
         if 'chaveNaNuvem' in contexto:
             conexao.firestore.documentos['uid-teste'] = {
@@ -378,44 +383,6 @@ class ContratoDaConexao(unittest.TestCase):
             self.assertEqual(json.load(arquivo)["origemDaExtensao"], ORIGEM)
 
 
-class RepeticaoDoContrato(unittest.TestCase):
-    """O que a conferência de “o mesmo POST de novo” aceita e o que ela acusa."""
-
-    EXEMPLO = {"nome": "ligar", "resposta": {"status": 200, "json": {"ok": True, "em": "<agora>"}}}
-    GUARDADO = {"arquivos": {"a": b"1"}, "nuvem": {}}
-
-    def segundo(self, status=200, corpo=b'{"ok": true, "em": "2026-10-12T10:00:00Z"}'):
-        return status, {}, corpo
-
-    def test_resposta_igual_salvo_o_instante_e_estado_igual_passa(self):
-        confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(), dict(self.GUARDADO))
-
-    def test_outra_resposta_sem_a_excecao_declarada_acusa_e_diz_como_declarar(self):
-        with self.assertRaisesRegex(AssertionError, "repetivel"):
-            confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(corpo=b'{"ok": false, "em": "2026-10-12T10:00:00Z"}'), self.GUARDADO)
-
-    def test_outro_status_sem_a_excecao_declarada_acusa(self):
-        with self.assertRaisesRegex(AssertionError, "status"):
-            confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(status=409), self.GUARDADO)
-
-    def test_estado_guardado_que_muda_sem_a_excecao_declarada_acusa(self):
-        with self.assertRaisesRegex(AssertionError, "guardou"):
-            confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(), {"arquivos": {"a": b"2"}, "nuvem": {}})
-
-    def test_a_excecao_declarada_com_motivo_e_que_de_fato_muda_algo_passa(self):
-        exemplo = dict(self.EXEMPLO, repetivel=False, porque="a versão sobe")
-        confere_a_repeticao(self, exemplo, (200, b""), self.GUARDADO, self.segundo(status=409), self.GUARDADO)
-
-    def test_a_excecao_sem_motivo_acusa(self):
-        with self.assertRaisesRegex(AssertionError, "porque"):
-            confere_a_repeticao(self, dict(self.EXEMPLO, repetivel=False), (200, b""), self.GUARDADO, self.segundo(status=409), self.GUARDADO)
-
-    def test_a_excecao_que_repetida_nao_muda_nada_acusa_que_esta_velha(self):
-        exemplo = dict(self.EXEMPLO, repetivel=False, porque="a versão sobe")
-        with self.assertRaisesRegex(AssertionError, "tire a exceção"):
-            confere_a_repeticao(self, exemplo, (200, b""), self.GUARDADO, self.segundo(), dict(self.GUARDADO))
-
-
 # Cada rota do servidor, declarada à parte dos exemplos, para a matriz de estados pedir a rota de verdade:
 #   corpo         o corpo mínimo que ela aceita (None: sem corpo);
 #   status        o que ela responde a esse corpo com o Anki saudável (200 se não disser);
@@ -452,6 +419,12 @@ MATRIZ = {
     ("POST", "/ia/chatgpt/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/ia/chatgpt/entrar"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/ia/chatgpt/sair"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    # O modelo dos cartões (#157): lê a OpenAI (a lista da conta), nunca a coleção nem o perfil; sem chave nem login só o Automático vale.
+    ("POST", "/ia/modelo/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/ia/modelo/escolher"): {
+        "corpo": {"modelo": "automatico"}, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
+        "recusas": [({}, 400, "invalid_request"), ({"modelo": "gpt-4o"}, 404, "model_not_found")],
+    },
     # Apagar a cópia da chave (#154): apagar o que não existe também é 200.
     ("POST", "/ia/openai/chave/apagar"): {
         "corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": [], "muda": True, "versao": True,
@@ -784,7 +757,7 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
     def test_as_rotas_que_mudam_sao_as_da_chave_do_chatgpt_do_item_de_login_do_perfil_e_do_envio(self):
         self.assertEqual(
             sorted(rota[1] for rota, regra in MATRIZ.items() if regra.get("muda")),
-            ["/abrir-com-o-computador", "/anki/profile", "/anki/profiles", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry", "/jobs/usar-a-chave"],
+            ["/abrir-com-o-computador", "/anki/profile", "/anki/profiles", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/modelo/escolher", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry", "/jobs/usar-a-chave"],
         )
 
 

@@ -38,7 +38,9 @@
     clearTimeout(releitura);
     const resposta = await pedir(raiz.PedidoAoAnki.estadoDoChatGPT());
     const login = resposta?.status === 200 && typeof resposta.json?.conectada === 'boolean' ? resposta.json : null;
+    const conectava = Boolean(estado.login?.conectada);
     estado.login = login;
+    if (conectava !== Boolean(login?.conectada)) raiz.ModeloDosCartoes.reler(); // quem paga e a lista de modelos mudam com o login
     if (login?.conectada) avisarDoPlano();
     if (entrando()) releitura = setTimeout(ler, RELER_A_CADA_MS);
     desenharTudo();
@@ -108,6 +110,16 @@
     return estado.erro || (login?.falha && !login.entrando && !login.conectada ? { motivo: login.falha, detalhes: login.falha } : null);
   }
 
+  /** “Usando o plano do ChatGPT · Gerenciar uso”: a coluna do login e a linha do modelo dos cartões (`painel-ia-modelo.js`) dizem quem paga com esta. */
+  function linhaDoPlano() {
+    const ponto = elemento('span', 'cfg-ponto');
+    ponto.dataset.estado = 'ok';
+    ponto.setAttribute('aria-hidden', 'true');
+    const gerenciar = elemento('a', 'veio-botao veio-botao--link', textoDaVoz('CFG-35.chatgptGerenciar'));
+    Object.assign(gerenciar, { href: GERENCIAR_USO, target: '_blank', rel: 'noopener noreferrer' });
+    return elemento('p', 'cfg-status ia-chatgpt-plano', ponto, textoDaVoz('CFG-35.chatgptUsando'), ' · ', gerenciar);
+  }
+
   function coluna(lugar) {
     const no = elemento('section', 'ia-coluna ia-coluna--chatgpt');
     no.setAttribute('aria-labelledby', `${lugar.prefixo}-ia-chatgpt-titulo`);
@@ -131,13 +143,7 @@
     const partes = [titulo, elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chatgptCorpo'))];
     const { login } = estado;
     if (login?.conectada) {
-      const ponto = elemento('span', 'cfg-ponto');
-      ponto.dataset.estado = 'ok';
-      ponto.setAttribute('aria-hidden', 'true');
-      const gerenciar = elemento('a', 'veio-botao veio-botao--link', textoDaVoz('CFG-35.chatgptGerenciar'));
-      Object.assign(gerenciar, { href: GERENCIAR_USO, target: '_blank', rel: 'noopener noreferrer' });
-      partes.push(elemento('p', 'cfg-status ia-chatgpt-plano', ponto, textoDaVoz('CFG-35.chatgptUsando'), ' · ', gerenciar),
-        elemento('div', 'cfg-acoes', botao('contorno', textoDaVoz('CFG-35.chatgptSair'), sair)));
+      partes.push(linhaDoPlano(), elemento('div', 'cfg-acoes', botao('contorno', textoDaVoz('CFG-35.chatgptSair'), sair)));
       // Com o plano e sem chave, o cartão não leva imagem gerada (#156): a coluna diz o que a pessoa perde.
       if (!raiz.CartaoDaIA.temChave()) partes.push(elemento('p', 'cfg-nota', textoDaVoz('CFG-35.semChave')));
     } else if (entrando()) {
@@ -207,5 +213,5 @@
     window.addEventListener('focus', () => { if (entrando()) ler(); });
   });
 
-  raiz.ColunaDoChatGPT = { coluna, faixa, GERENCIAR_USO };
+  raiz.ColunaDoChatGPT = { coluna, faixa, linhaDoPlano, GERENCIAR_USO };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

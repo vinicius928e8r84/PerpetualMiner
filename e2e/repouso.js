@@ -15,9 +15,10 @@ const ASSENTAR_MS = 300;
 /**
  * Os pedidos à Conexão que só leem: todo GET e estes POST (o corpo vai só para dizer qual dono perguntar; a lista de
  * Baralhos responde igual ao GET, bridge/test_envio_api.py; o login do ChatGPT só lê o arquivo e a tentativa, sem a tranca
- * nem a rede, `estado()` em complemento/login_do_chatgpt.py). Um POST novo que só lê entra aqui; um que muda algo, não.
+ * nem a rede, `estado()` em complemento/login_do_chatgpt.py; o `estado` do modelo dos cartões não grava a escolha, #157).
+ * Um POST novo que só lê entra aqui; um que muda algo, não.
  */
-const POST_QUE_SO_LE = new Set(['/ia/estado', '/ia/chatgpt/estado', '/abrir-com-o-computador/estado', '/anki/decks']);
+const POST_QUE_SO_LE = new Set(['/ia/estado', '/ia/chatgpt/estado', '/ia/modelo/estado', '/abrir-com-o-computador/estado', '/anki/decks']);
 
 const muda = r => r.metodo !== 'GET' && !POST_QUE_SO_LE.has(r.caminho);
 

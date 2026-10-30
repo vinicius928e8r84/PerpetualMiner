@@ -44,8 +44,8 @@ def contexto_tls():
         return ssl.create_default_context()
 
 
-def _pedir(base, metodo, caminho, chave, corpo=None):
-    """(status, erro) da OpenAI; levanta `ErroDaChave(FORA_DO_AR)` se nem a resposta chegou."""
+def _pedir(base, metodo, caminho, chave, corpo=None, ler=False):
+    """(status, erro) da OpenAI (com `ler`, o corpo de um 200); levanta `ErroDaChave(FORA_DO_AR)` se nem a resposta chegou."""
     dados = None if corpo is None else json.dumps(corpo).encode("utf-8")
     pedido = urllib.request.Request(base + caminho, data=dados, method=metodo)
     pedido.add_header("Authorization", "Bearer " + chave)
@@ -53,7 +53,8 @@ def _pedir(base, metodo, caminho, chave, corpo=None):
         pedido.add_header("Content-Type", "application/json")
     try:
         with urllib.request.urlopen(pedido, timeout=TEMPO_DE_CADA_PEDIDO, context=contexto_tls()) as resposta:
-            return resposta.status, {}
+            lido = json.loads(resposta.read(1024 * 1024).decode("utf-8")) if ler and resposta.status == 200 else {}
+            return resposta.status, lido if isinstance(lido, dict) else {}
     except urllib.error.HTTPError as erro:
         try:
             detalhe = json.loads(erro.read(65536).decode("utf-8")).get("error") or {}
@@ -61,7 +62,7 @@ def _pedir(base, metodo, caminho, chave, corpo=None):
             detalhe = {}
         return erro.code, detalhe if isinstance(detalhe, dict) else {}
     except (urllib.error.URLError, OSError, ValueError):
-        raise ErroDaChave(FORA_DO_AR)
+        raise ErroDaChave(FORA_DO_AR)  # (ValueError: o 200 que não é um JSON também não diz nada)
 
 
 def _classificar(status, erro):
@@ -97,3 +98,11 @@ def conferir(base, chave, logger):
     if codigo is not None:
         logger.info("A OpenAI não aceitou a chave: %s (HTTP %s)", codigo, status)
         raise ErroDaChave(codigo)
+
+
+def modelos_da_conta(base, chave):
+    """Os ids da lista de modelos da conta (`GET /v1/models`, #157); levanta `ErroDaChave` se a lista não veio."""
+    status, corpo = _pedir(base, "GET", "/v1/models", chave, ler=True)
+    if status != 200:
+        raise ErroDaChave(_classificar(status, corpo) or FORA_DO_AR)
+    return [modelo["id"] for modelo in corpo.get("data", []) if isinstance(modelo, dict) and isinstance(modelo.get("id"), str)]

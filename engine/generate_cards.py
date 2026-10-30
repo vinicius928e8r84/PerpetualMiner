@@ -247,7 +247,7 @@ def run(
     plan = config.get("plano_do_chatgpt")  # {token, modelo}: the text goes through the ChatGPT plan instead of the key
     log_dir = config["paths"]["log_dir"]
     lang = config.get("lang", "en")
-    model = config["openai"].get("chat_model", "gpt-4o")
+    model = config.get("modelo_do_texto") or config["openai"].get("chat_model", "gpt-4o")  # the Conexão's choice (#157), else the engine's
     failures = failures if failures is not None else {}
 
     all_jobs: List[tuple] = []
