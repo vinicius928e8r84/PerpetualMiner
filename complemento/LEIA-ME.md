@@ -62,15 +62,14 @@ python3.9 complemento/test_conserto.py       # o consertar (+ `test_conserto_*.p
 python3.9 complemento/test_chave_da_openai.py  # a chave: o que atravessa o HTTP, fica no disco e vai ao log
 python3.9 complemento/test_perfil_fixo.py   # o perfil fixo: a escolha, a espera, a tela de perfis (+ `test_no_anki_perfil.py`)
 python3.9 complemento/test_envio.py          # o Envio: a fila, o estado por Cartão, as duplicatas, a espera, a retomada, os custos
-python3.9 complemento/test_envio_audio.py    # o áudio do Cartão: a voz do Google de mentira, a mídia na coleção
-python3.9 complemento/test_envio_imagem.py   # a imagem do Cartão: Openverse e OpenAI de mentira
+python3.9 complemento/test_envio_audio.py # o áudio do Cartão: a voz do Google de mentira, a mídia na coleção
+python3.9 complemento/test_envio_imagem.py # a imagem do Cartão: Openverse e OpenAI de mentira
 python3.9 complemento/test_envio_fronteiras.py  # a Conexão morre em cada gravação (#248)
 python3.9 complemento/test_envio_apagar.py      # o Apagar tudo com o Anki fechado ou no Envio
 python3.9 complemento/test_janela.py         # a janela e os avisos, com o Qt de mentira
 python3.9 complemento/test_qt_do_anki.py     # o que se pede ao Qt do Anki
 python3.9 complemento/test_motor.py          # o motor como pacote `complemento.motor`, sem PyYAML, dotenv nem SDK
-python3.9 complemento/test_login_do_chatgpt.py
-python3.9 complemento/test_plano_do_chatgpt.py
+python3.9 complemento/test_login_do_chatgpt.py  # com test_plano_do_chatgpt, test_imagem_pelo_plano
 ```
 
 Rode todos também no `python3.12` e no `3.13` (`uv python install 3.9 3.13`).

@@ -1,4 +1,51 @@
 {
+  "filas": {
+    "um Envio que parou no primeiro limite de uso do plano": [
+      {
+        "job": {
+          "jobId": "d2e3f4a5-5b6c-4d7e-8f9a-0b1c2d3e4f50",
+          "createdAt": "2026-10-29T09:00:00-03:00",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270500001,
+              "line": "give up : She gave up smoking"
+            }
+          ]
+        },
+        "state": {
+          "jobId": "d2e3f4a5-5b6c-4d7e-8f9a-0b1c2d3e4f50",
+          "status": "failed",
+          "stage": "failed",
+          "completedStages": [
+            "generate_cards"
+          ],
+          "progress": {},
+          "successfulPhraseIds": [],
+          "failedPhraseIds": [
+            1760270500001
+          ],
+          "duplicatePhraseIds": [],
+          "lastError": "chatgpt_usage_limit",
+          "updatedAt": "2026-10-29T09:05:00-03:00",
+          "cards": {
+            "1760270500001-0": {
+              "phraseId": 1760270500001,
+              "status": "failed",
+              "error": "chatgpt_usage_limit"
+            }
+          }
+        },
+        "custos": []
+      }
+    ]
+  },
   "exemplos": [
     {
       "nome": "estado do ChatGPT sem login",
@@ -39,6 +86,87 @@
           "conectada": false,
           "entrando": true,
           "falha": null
+        }
+      }
+    },
+    {
+      "nome": "estado do ChatGPT depois de a conta não ter o plano: a segunda troca recusada com invalid_grant (conta grátis ou Go)",
+      "daExtensao": true,
+      "contexto": {
+        "chatgpt": "nao_serve"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/chatgpt/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "conectada": false,
+          "entrando": false,
+          "falha": "chatgpt_not_eligible"
+        }
+      }
+    },
+    {
+      "nome": "um Envio que o plano parou no primeiro limite de uso: o Cartão fica com o código e o Tentar de novo o termina",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio que parou no primeiro limite de uso do plano"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/get",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "d2e3f4a5-5b6c-4d7e-8f9a-0b1c2d3e4f50"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "job": {
+            "jobId": "d2e3f4a5-5b6c-4d7e-8f9a-0b1c2d3e4f50",
+            "createdAt": "2026-10-29T09:00:00-03:00",
+            "lang": "en",
+            "deckName": "Inglês",
+            "imageSource": "1",
+            "tts": {
+              "wordTld": "com",
+              "phraseTld": "co.uk"
+            },
+            "entries": [
+              {
+                "phraseId": 1760270500001,
+                "line": "give up : She gave up smoking"
+              }
+            ]
+          },
+          "state": {
+            "jobId": "d2e3f4a5-5b6c-4d7e-8f9a-0b1c2d3e4f50",
+            "status": "failed",
+            "stage": "failed",
+            "completedStages": [
+              "generate_cards"
+            ],
+            "progress": {},
+            "successfulPhraseIds": [],
+            "failedPhraseIds": [
+              1760270500001
+            ],
+            "duplicatePhraseIds": [],
+            "lastError": "chatgpt_usage_limit",
+            "updatedAt": "2026-10-29T09:05:00-03:00",
+            "cards": {
+              "1760270500001-0": {
+                "phraseId": 1760270500001,
+                "status": "failed",
+                "error": "chatgpt_usage_limit"
+              }
+            }
+          }
         }
       }
     },

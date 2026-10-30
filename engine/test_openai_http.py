@@ -245,6 +245,21 @@ class ResponderPeloPlano(unittest.TestCase):
                       "store": False, "stream": True},
         }])
 
+    def test_o_json_vai_por_text_format_e_a_mensagem_pode_levar_a_foto_como_input_image(self):
+        partes = [{"type": "input_text", "text": "Mode: real_only"}, {"type": "input_image", "image_url": "data:image/png;base64,AAAA"}]
+        with PlanoDeMentira(eventos('{"best_index": 1}')) as plano:
+            texto, _ = openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "o juiz", partes, formato_json=True)
+        self.assertEqual(json.loads(texto), {"best_index": 1})
+        [pedido] = plano.pedidos
+        self.assertEqual(pedido["corpo"]["input"], [{"role": "user", "content": partes}])
+        self.assertEqual(pedido["corpo"]["text"], {"format": {"type": "json_object"}})
+
+    def test_a_foto_que_o_plano_nao_le_vira_o_codigo_da_imagem_invalida_e_nao_um_pedido_recusado(self):
+        with PlanoDeMentira((400, {"error": {"code": "invalid_image_format", "message": "falhou " + TOKEN_DO_PLANO}})) as plano:
+            with self.assertRaises(openai_http.ErroDaOpenAI) as recusa:
+                openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "p", "m")
+        self.assertEqual(recusa.exception.codigo, openai_http.IMAGEM_INVALIDA)
+
     def test_so_o_response_completed_e_sucesso(self):
         casos = [
             (eventos("Front: oi", fim=None), openai_http.FORA_DO_AR),

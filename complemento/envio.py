@@ -33,8 +33,8 @@ from datetime import datetime, timezone
 from . import baralhos, custos, voz
 from .audio_do_cartao import FRASE_APAGADA, AudioDoCartao
 from .configuracao import OPENVERSE_BASE, VOZ_BASE
-from .imagem_do_cartao import ImagemDoCartao
-from .login_do_chatgpt import RECUSOU, SAIU, credencial
+from .imagem_do_cartao import DO_PLANO_QUE_PARA, ImagemDoCartao, ParaOEnvio
+from .login_do_chatgpt import credencial
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento  # noqa: F401  (`envio.motor_do_complemento`)
 from .pedido_do_envio import id_que_serve_de_caminho, id_valido, impressao, validar_pedido, visao_do_pedido  # noqa: F401
 
@@ -56,18 +56,9 @@ SEM_TIPO_DE_NOTA = "note_type_missing"
 FALHA_AO_GRAVAR = "anki_write_failed"
 CARTOES_FALHARAM = "cards_failed"
 # A chave recusada, a conta sem como pagar ou o plano que não serve agora: os próximos Cartões falhariam igual.
-PARA_O_ENVIO = ("openai_key_rejected", "openai_no_credit", SAIU, "chatgpt_usage_limit", "chatgpt_not_eligible", RECUSOU)
+PARA_O_ENVIO = ("openai_key_rejected", "openai_no_credit") + DO_PLANO_QUE_PARA
 # Passageiros: o Cartão tenta de novo depois de cada espera de `esperas_da_openai`.
 PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", "empty_response")
-
-
-def _espera_pelo_perfil(motivo):
-    """O que o estado do Envio diz da espera quando o motivo é o perfil (#149); None para qualquer outro motivo."""
-    if isinstance(motivo, baralhos.OutroPerfil):
-        return {"reason": "other_profile", "profile": motivo.aberto, "marked": motivo.marcado}
-    if isinstance(motivo, baralhos.PerfilSumiu):
-        return {"reason": "profile_missing", "profile": motivo.aberto, "marked": motivo.marcado}
-    return None
 
 
 class Interrompido(Exception):
@@ -453,7 +444,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao):
                     esperando_desde = self.fila.estado(job_id).get("stage")
                     self.logger.info("Envio %s: esperando o Anki (%s)", job_id, motivo)
                     self._etapa(job_id, "wait_anki")
-                self._dizer_a_espera(job_id, _espera_pelo_perfil(motivo))
+                self._dizer_a_espera(job_id, baralhos.espera_pelo_perfil(motivo))
                 if str(motivo) == "collection_not_open":
                     self._entrar_no_perfil(job_id)
                 self._dormir(self.espera_do_anki)
@@ -575,7 +566,11 @@ class Trabalho(AudioDoCartao, ImagemDoCartao):
                 self._cartao(job_id, cartao_id, status=FALHOU, error=falha)
                 return falha if falha in PARA_O_ENVIO else None
             self._cartao(job_id, cartao_id, status=TEXTO, error=None)
-        self._gravar_a_nota(job_id, pedido, config, cartao_id, guid, arquivo)
+        try:
+            self._gravar_a_nota(job_id, pedido, config, cartao_id, guid, arquivo)
+        except ParaOEnvio as parada:  # o plano não deixou escolher a imagem (#156): o texto fica pago e o Tentar de novo termina o Cartão
+            self._cartao(job_id, cartao_id, status=FALHOU, error=parada.codigo)
+            return parada.codigo
         return None
 
     def _gerar_o_texto(self, job_id, pedido, config, cartao_id, phrase_id, linha):

@@ -15,11 +15,14 @@
   // A extensão só abre a autorização do servidor de login oficial, venha o que vier de quem responde na porta da Conexão.
   const AUTORIZAR = 'https://auth.openai.com/api/accounts/authorize?';
   const RELER_A_CADA_MS = 2000;
+  // O aviso da primeira vez com o plano (as diretrizes da OpenAI o pedem, P2 do #101): dado uma vez neste computador, no storage da extensão.
+  const AVISADO = 'pm_plano_do_chatgpt_avisado';
 
   // login: o que a Conexão disse (null: não se sabe); cancelado: a pessoa desistiu de esperar a aba (a próxima tentativa troca a da Conexão).
   const estado = { login: null, pedindo: false, erro: null, cancelado: false };
   const lugares = new Map(); // lugar do card → { coluna, faixa }: os nós desta coluna, redesenhados no lugar
   let releitura = null;
+  let avisando = false;
 
   async function pedir(pedido) {
     try {
@@ -36,11 +39,35 @@
     const resposta = await pedir(raiz.PedidoAoAnki.estadoDoChatGPT());
     const login = resposta?.status === 200 && typeof resposta.json?.conectada === 'boolean' ? resposta.json : null;
     estado.login = login;
+    if (login?.conectada) avisarDoPlano();
     if (entrando()) releitura = setTimeout(ler, RELER_A_CADA_MS);
     desenharTudo();
   }
 
   const entrando = () => Boolean(estado.login?.entrando) && !estado.cancelado;
+
+  /** O modal “Você está usando o seu plano do ChatGPT”, na primeira vez que o plano aparece em uso: Entendi, Esc e o clique fora o dão por visto. */
+  function avisarDoPlano() {
+    if (avisando) return;
+    avisando = true;
+    chrome.storage.local.get({ [AVISADO]: false }, dados => {
+      if (dados[AVISADO]) return;
+      const titulo = elemento('h2', 'veio-modal__titulo', textoDaVoz('CFG-35.planoTitulo'));
+      const corpo = elemento('p', 'veio-modal__corpo', textoDaVoz('CFG-35.planoCorpo'));
+      titulo.id = 'ia-plano-titulo';
+      corpo.id = 'ia-plano-corpo';
+      const entendi = botao('primario', textoDaVoz('CFG-35.planoEntendi'), () => modal.fechar());
+      entendi.dataset.focoSeguro = '';
+      const dialogo = elemento('div', 'veio-modal', titulo, corpo, elemento('div', 'veio-modal__acoes', entendi));
+      dialogo.setAttribute('role', 'dialog');
+      dialogo.setAttribute('aria-labelledby', titulo.id);
+      dialogo.setAttribute('aria-describedby', corpo.id);
+      const scrim = elemento('div', 'veio-scrim', dialogo);
+      scrim.hidden = true;
+      document.body.append(scrim);
+      const modal = raiz.Veio.abrirModal(scrim, { aoFechar: () => { scrim.remove(); chrome.storage.local.set({ [AVISADO]: true }); } });
+    });
+  }
 
   async function entrar() {
     if (estado.pedindo || entrando()) return;
@@ -111,6 +138,8 @@
       Object.assign(gerenciar, { href: GERENCIAR_USO, target: '_blank', rel: 'noopener noreferrer' });
       partes.push(elemento('p', 'cfg-status ia-chatgpt-plano', ponto, textoDaVoz('CFG-35.chatgptUsando'), ' · ', gerenciar),
         elemento('div', 'cfg-acoes', botao('contorno', textoDaVoz('CFG-35.chatgptSair'), sair)));
+      // Com o plano e sem chave, o cartão não leva imagem gerada (#156): a coluna diz o que a pessoa perde.
+      if (!raiz.CartaoDaIA.temChave()) partes.push(elemento('p', 'cfg-nota', textoDaVoz('CFG-35.semChave')));
     } else if (entrando()) {
       const esperando = botao('secundario', textoDaVoz('CFG-35.chatgptEsperando'), entrar);
       esperando.setAttribute('aria-disabled', 'true');
@@ -134,9 +163,11 @@
   /** A faixa do erro, abaixo das colunas como a da chave, aberta por “Conta do ChatGPT:”, com o que fazer e o Detalhes. */
   function faixaDoErro(lugar, { motivo, detalhes }) {
     const tentar = { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: entrar };
+    const usarAChave = { rotulo: textoDaVoz('CFG-35.erroChatgptUsarChave'), aoUsar: () => document.getElementById(`${lugar.prefixo}-ia-campo`)?.focus() };
     const cada = {
       chatgpt_access_denied: ['CFG-35.erroChatgptSemPlano', tentar],
       chatgpt_plan_not_granted: ['CFG-35.erroChatgptSemPlano', tentar],
+      chatgpt_not_eligible: ['CFG-35.erroChatgptNaoServe', usarAChave],
       sem_conexao: ['CFG-35.erroChatgptSemConexao', tentar],
       antiga: ['CFG-35.erroChatgptAntiga', { rotulo: textoDaVoz('CFG-35.erroAtualizar'), aoUsar: () => raiz.CartaoDaIA.baixarConexao() }],
       sem_revogar: ['CFG-35.erroChatgptSemRevogar', { rotulo: textoDaVoz('CFG-35.chatgptGerenciar'),

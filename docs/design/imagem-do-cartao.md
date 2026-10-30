@@ -1,6 +1,6 @@
 # Página de desenho: a imagem do Cartão na Conexão com o Anki (#144)
 
-Continuação de [envio-no-complemento.md](envio-no-complemento.md) (#142): o Cartão que a Conexão grava ganha a imagem, como o de
+Continuação de [envio-no-complemento.md](envio-no-complemento.md) (#142); com o login do ChatGPT o juiz vai pelo plano e a imagem gerada, só pela chave ([imagem-pelo-plano.md](imagem-pelo-plano.md), #156): o Cartão que a Conexão grava ganha a imagem, como o de
 hoje: a **foto real** (Openverse, com o juiz de imagem) ou a **imagem gerada** pela chave. Nenhum pedido nem resposta entre a
 extensão e a Conexão muda: `POST /jobs` já leva `imageSource` (`"1"` foto real, `"2"` gerada, os Ajustes de envio) e a etapa
 `generate_images` já é uma etapa que o painel sabe dizer (“Escolhendo imagens”, ENV-07). Não há tela nova nem cópia nova.

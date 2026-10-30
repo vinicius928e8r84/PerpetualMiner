@@ -46,6 +46,8 @@ place (`ColunaDoChatGPT.coluna/faixa(lugar)`), so a key being typed is not lost.
 (auth.openai.com is mapped to the local fake server: the extension's tab escapes `context.route` on its first navigation), the
 fixme reference in `configuracoes-chatgpt-visual.spec.js`, and `complemento/test_login_do_chatgpt.py`, `test_plano_do_chatgpt.py`.
 
+**The rest of the plan (#156, design: `docs/design/imagem-pelo-plano.md`).** The first time the column reads the login as connected, a Veio modal (CFG-35.planoTitulo…planoEntendi, built in `painel-ia-chatgpt.js` on `Veio.abrirModal`) says the plan is in use; Entendi, Esc and a click outside store `pm_plano_do_chatgpt_avisado: true` in `chrome.storage.local` (this computer only) and it never returns. Connected with no stored key (`CartaoDaIA.temChave()`), the column adds CFG-35.semChave (photo or no generated image). The strip for `chatgpt_not_eligible` (the second `invalid_grant` in a row, or the Envio's code) says the plan does not serve a free or Go account, with Usar a chave (focus on the key field). Tests: `configuracoes-chatgpt-plano.spec.js`, fixme references in `configuracoes-chatgpt-visual.spec.js`.
+
 ### Chave do Gemini and Zona de perigo (`painel-chave.js`, `painel-perigo.js`)
 
 The Chave do Gemini card owns `geminiApiKey` (the same key the Minerar de uma foto reads) straight from

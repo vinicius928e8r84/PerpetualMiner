@@ -82,7 +82,8 @@ pede para entrar de novo: limite 5.d). Reverter: só a pessoa, por Sair ou desco
 - **e. O modelo** é o primeiro da lista da conta (o “Automático” do #123, que ainda não tem tela). Sem custo em US$ nos registros:
   o plano não é pago por Cartão (a aba Custos com o plano é o #159).
 - **f. Limite de uso, conta grátis e o primeiro 429 (#121)** param o Envio com o código (`chatgpt_usage_limit`,
-  `chatgpt_not_eligible`, `chatgpt_rejected`) em Detalhes, sem cópia própria nem volta sozinha: são o #156 e o #158.
+  `chatgpt_not_eligible`, `chatgpt_rejected`), sem volta sozinha. A cópia da conta grátis ou Go, do primeiro 429 e do modal da primeira
+  vez é do #156 ([imagem-pelo-plano.md](imagem-pelo-plano.md)); o limite de verdade, do #158.
 - **g. ACL no Windows**: herdada da pasta, como a da chave (`complemento/contrato/LEIA-ME.md`).
 - **h. A página do retorno** é da Conexão, não do catálogo da Voz da extensão: “Pode fechar esta aba e voltar ao PerpetualMiner.”
 

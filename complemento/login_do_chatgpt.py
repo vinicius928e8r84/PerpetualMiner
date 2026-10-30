@@ -33,6 +33,8 @@ MARGEM_DA_RENOVACAO = 180  # s antes da validade do `access_token`: um pedido nu
 SEM_ACESSO = "chatgpt_access_denied"
 SEM_PLANO = "chatgpt_plan_not_granted"
 LOGIN_FALHOU = "chatgpt_login_failed"
+# A segunda troca seguida recusada com `invalid_grant`: a conta (grátis ou Go) não tem o plano (risco 9 da spec). O Envio também grava este código.
+NAO_SERVE = "chatgpt_not_eligible"
 # Os códigos do Envio: o login acabou (entrar de novo); o plano não respondeu (tentar depois); a conta não tem modelo.
 SAIU = "chatgpt_signed_out"
 FORA_DO_AR = "openai_unreachable"
@@ -85,6 +87,7 @@ class LoginDoChatGPT:
         self._tentativa = None
         self._trocando = False
         self._falha = None
+        self._recusas = 0  # trocas seguidas recusadas com `invalid_grant`
 
     # -- os arquivos --
     def _caminho(self, nome="chatgpt.json"):
@@ -182,9 +185,11 @@ class LoginDoChatGPT:
             "redirect_uri": tentativa["retorno"], "resource": oficial.RECURSO,
         })
         tokens = _tokens(resposta) if status == 200 else None
+        recusa = status == 400 and resposta.get("error") == "invalid_grant"
+        self._recusas = self._recusas + 1 if recusa else 0
         if tokens is None:
             self.logger.warning("Entrar com o ChatGPT: a troca do código não deu certo (HTTP %s)", status)
-            return LOGIN_FALHOU
+            return NAO_SERVE if self._recusas > 1 else LOGIN_FALHOU
         if oficial.ESCOPO_DO_PLANO not in tokens["scopes"]:
             return SEM_PLANO
         id_token = resposta.get("id_token")
@@ -234,6 +239,7 @@ class LoginDoChatGPT:
         """Revoga a sessão renovável, se dá, e apaga o arquivo do login; devolve se a revogação foi confirmada (sem login: True)."""
         with self._tranca:
             self._tentativa = self._falha = None
+            self._recusas = 0
             login = self._login()
             if login is None:
                 self._apagar()
@@ -292,3 +298,12 @@ def credencial(login, cofre, plano):
         return erro.codigo
     chave = cofre.ler("openai")
     return {"openai_api_key": chave} if chave else None
+
+
+def credencial_da_imagem(login, cofre, plano):
+    """Com que o Envio escolhe a imagem do próximo Cartão: `(plano, chave)`. O juiz vai pelo plano (o token renovado e o modelo da conta,
+    como em `credencial`) quando há login; a triagem e a imagem gerada vão sempre pela chave do cofre (None sem ela). Levanta `ErroDoPlano`."""
+    token = login.token() if login is not None else None
+    if token and "modelo" not in plano:
+        plano["modelo"] = login.modelo(token)
+    return ({"token": token, "modelo": plano["modelo"]} if token else None), cofre.ler("openai") or None

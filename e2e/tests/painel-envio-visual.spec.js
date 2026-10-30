@@ -190,3 +190,17 @@ test('o Envio parado porque o Anki fechou: “3 de 10 no Anki” e Continuar env
 
   await expect(page).toHaveScreenshot('envio-parado.png');
 });
+
+// #156: o Envio que o plano do ChatGPT parou no primeiro limite de uso. O protótipo é o P3 do #105 (“Limite de uso atingido”, com Gerenciar uso);
+// a cópia que não diz que a cota acabou é do catálogo (ENV-19) e espera o olhar do dono.
+test('o Envio que o plano do ChatGPT parou no limite de uso: o resumo com Gerenciar uso e Tentar de novo', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
+  await abrirFrases(page, extensao);
+  await enviarTodas(page, fakes, 2);
+  const [ingles, russo] = fakes.anki.envios;
+  fakes.anki.concluirEnvio(ingles.jobId, { erro: 'chatgpt_usage_limit' });
+  fakes.anki.concluirEnvio(russo.jobId);
+  await expect(resumo(page)).toContainText('Gerenciar uso', { timeout: 10_000 });
+
+  await expect(page).toHaveScreenshot('envio-limite-do-plano.png');
+});
