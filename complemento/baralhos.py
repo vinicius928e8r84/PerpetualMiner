@@ -80,6 +80,15 @@ class PerfilIlegivel(ColecaoIndisponivel):
         super().__init__("anki_profile_unreadable")
 
 
+def espera_pelo_perfil(motivo):
+    """O que o estado do Envio diz da espera quando o motivo é o perfil (#149); None para qualquer outro motivo."""
+    if isinstance(motivo, OutroPerfil):
+        return {"reason": "other_profile", "profile": motivo.aberto, "marked": motivo.marcado}
+    if isinstance(motivo, PerfilSumiu):
+        return {"reason": "profile_missing", "profile": motivo.aberto, "marked": motivo.marcado}
+    return None
+
+
 class TipoDeNotaAusente(Exception):
     """A coleção não tem o tipo de nota pedido (ou ele não tem os campos pedidos): nada foi gravado."""
 

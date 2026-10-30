@@ -73,7 +73,7 @@ class CartaoPeloPlano(unittest.TestCase):
             self.assertEqual(estado(conexao)["conectada"], False)
             self.assertNotIn(MARCA, conexao.log())
 
-    def test_o_limite_do_plano_para_o_envio_sem_tentar_de_novo(self):
+    def test_o_limite_do_plano_faz_o_envio_esperar_o_plano_sem_pedir_o_texto_de_novo_antes_da_hora(self):
         for como in ("antes do stream", "no meio do stream"):
             with self.subTest(como), tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
                 if como == "antes do stream":
@@ -82,8 +82,8 @@ class CartaoPeloPlano(unittest.TestCase):
                     conexao.openai.falha_no_stream = "subscription_sharing_usage_limit_exceeded"
                 entrar_e_voltar(conexao)
                 conexao.criar(pedido(ID, "gave up : She gave up smoking", "give in : They gave in"))
-                fim = conexao.esperar(ID)
-                self.assertEqual((fim["status"], fim["lastError"]), ("failed", "chatgpt_usage_limit"))
+                espera = conexao.esperar(ID, lambda estado: estado.get("waiting"))
+                self.assertEqual((espera["status"], espera["lastError"], espera["waiting"]), ("running", None, {"reason": "plan_limit"}))
                 self.assertEqual((len(conexao.openai.respostas), conexao.conexao.colecao.gravadas), (1, []))
 
 
@@ -123,7 +123,7 @@ class OsTokensSoNoArquivoDoLogin(unittest.TestCase):
                 entrar_e_voltar(conexao)
                 falhar(conexao)
                 conexao.criar(pedido(ID, "gave up : She gave up smoking"))
-                self.assertEqual(conexao.esperar(ID)["status"], "failed")
+                conexao.esperar(ID, lambda estado: estado["status"] == "failed" or estado.get("waiting"))  # o limite do plano espera, não falha
                 segredos = list(conexao.servidor_de_login.emitidos)
                 respostas = [conexao.pedir("POST", caminho, corpo=corpo)[2] for caminho, corpo in (
                     ("/ia/chatgpt/estado", {}), ("/ia/estado", {}), ("/jobs/list", {}), ("/jobs/get", {"jobId": ID}),

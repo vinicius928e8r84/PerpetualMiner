@@ -9,18 +9,18 @@ com o Anki (o complemento do Anki, em `127.0.0.1:8766`), junto com os `exemplos-
 - **a extensão**: o fake da Conexão do e2e (`e2e/fakes/anki.js`) responde pelos exemplos,
   e `e2e/tests/contrato-da-conexao.spec.js` confere o fake contra eles.
 
-Mudar só um lado quebra um teste, que diz o exemplo e os arquivos.
+Mudar só um lado quebra um teste, que diz o exemplo.
 
-O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede nem que o complemento responde fica sem exemplo.
+O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede ou o complemento responde fica sem exemplo.
 
 - **Os pedidos da extensão**: todo pedido nasce de um construtor de `PerpetualMiner.PedidoAoAnki` (`lib/pedido-ao-anki.js`:
-  `saude`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`, `chaveDaOpenAI`, `apagarChaveDaOpenAI`, `estadoDaIA`, e os do Envio: `criarEnvio` (o corpo leva o `jobId`), `listarEnvios`, `verEnvio`, `tentarEnvioDeNovo`, `pacoteDeDiagnostico`, `apagarFrasesDosEnvios`, `custosDosEnvios`), e `PedidoAoAnki.variantes` os lista. `node test_contrato_fechado.js`
+  `saude`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`, `chaveDaOpenAI`, `apagarChaveDaOpenAI`, `estadoDaIA`, e os do Envio: `criarEnvio` (o corpo leva o `jobId`), `listarEnvios`, `verEnvio`, `tentarEnvioDeNovo`, `usarAChaveNoEnvio`, `pacoteDeDiagnostico`, `apagarFrasesDosEnvios`, `custosDosEnvios`), e `PedidoAoAnki.variantes` os lista. `node test_contrato_fechado.js`
   pede ao construtor cada variante (com os dois Baralhos, as três leituras…) e exige um exemplo `daExtensao`
   de cada uma, que o fake do e2e então responde. O nome do Baralho não conta para achar o exemplo; quantos Baralhos, `refresh` e
   `launch` contam. A regra `contrato-fechado` (`node scripts/regras/verificar.js`) acusa um `fetch` direto a uma rota da Conexão.
 - **As respostas do complemento**: `complemento/test_servidor.py` guarda o que o servidor real respondeu a uma rota que ele
   tem (método, caminho, status e `error`) e, no fim, exige um exemplo para cada um. Um estado novo do servidor
-  sem exemplo quebra o teste dizendo qual. Quem pede cada rota em cada estado do Anki
+  sem exemplo quebra o teste. Quem pede cada rota em cada estado do Anki
   (coleção que quebra, sem coleção, perfil ilegível, corpo inválido) é a matriz `EstadosDeCadaRota`, que não lê os exemplos:
   uma rota nova se declara em `MATRIZ` (corpo mínimo, se lê a coleção, se lê o perfil e as recusas de validação dela; uma
   rota que não lê a coleção, como a chave da IA, responde o mesmo `status` em todos os estados) e sem isso o teste quebra dizendo o que declarar.

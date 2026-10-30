@@ -15,7 +15,7 @@ import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import baralhos, chatgpt_oficial, custos, diagnostico, envio, trabalhador
+from . import baralhos, chatgpt_oficial, custos, diagnostico, envio, limite_do_plano, trabalhador
 from .chaves import Cofre
 from .login_do_chatgpt import LoginDoChatGPT
 from .paginas_do_navegador import PAGINAS, ROTAS_DO_CHATGPT, responder_a_pagina
@@ -127,6 +127,11 @@ def _tentar_envio_de_novo(conexao, corpo):
     return _com_o_envio(corpo, conexao, conexao.fila.tentar_de_novo)
 
 
+def _usar_a_chave_no_envio(conexao, corpo):
+    """O limite do plano (#158): o que falta do Envio vai pela chave da OpenAI."""
+    return _com_o_envio(corpo, conexao, lambda job_id: limite_do_plano.usar_a_chave(conexao.fila, conexao.cofre, job_id))
+
+
 def _apagar_as_frases_dos_envios(conexao, corpo):
     """O Apagar tudo da extensão (CFG-17) tira também as Frases que a Conexão guarda: as linhas dos pedidos e os textos gerados."""
     conexao.fila.apagar_as_frases()
@@ -167,6 +172,7 @@ ROTAS = {
     ("POST", "/jobs/list"): _listar_envios,
     ("POST", "/jobs/get"): _ver_envio,
     ("POST", "/jobs/retry"): _tentar_envio_de_novo,
+    ("POST", "/jobs/usar-a-chave"): _usar_a_chave_no_envio,
     ("POST", "/jobs/debug-bundle"): _pacote_de_diagnostico,
     ("POST", "/jobs/apagar-frases"): _apagar_as_frases_dos_envios,
     ("POST", "/analytics/jobs"): _custos_dos_envios,
@@ -357,6 +363,7 @@ class Conexao:
         intervalo_do_envio=1.0,
         espera_do_anki=2.0,
         esperas_da_openai=(2, 8, 30),
+        espera_do_plano=300,
         motor=None,
         espera_do_contato=ESPERA_DO_CONTATO,
     ):
@@ -387,7 +394,7 @@ class Conexao:
         self.fila = envio.Fila(dados, motor or envio.motor_do_complemento(), logger)
         self._trabalhador = trabalhador.Trabalhador(
             envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(), chatgpt=self.chatgpt,
-                           espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai, voz_base=voz_base,
+                           espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai, espera_do_plano=espera_do_plano, voz_base=voz_base,
                            openverse_base=openverse_base, adaptador_de_imagem=adaptador_de_imagem),
             intervalo=intervalo_do_envio, contato=self.contato, espera_do_contato=espera_do_contato,
         ) if trabalhando else None
