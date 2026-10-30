@@ -46,6 +46,16 @@ place (`ColunaDoChatGPT.coluna/faixa(lugar)`), so a key being typed is not lost.
 (auth.openai.com is mapped to the local fake server: the extension's tab escapes `context.route` on its first navigation), the
 fixme reference in `configuracoes-chatgpt-visual.spec.js`, and `complemento/test_login_do_chatgpt.py`, `test_plano_do_chatgpt.py`.
 
+**Modelo dos cartões (#157, `painel-ia-modelo.js` + `painel-ia-modelo.css`, design: `docs/design/modelo-dos-cartoes.md`).** The card's Avançado
+(`details.ia-avancado`, CFG-44; the label is BRG-32.titulo) is a select of the account's models, Automático by default, over
+`PedidoAoAnki.estadoDoModelo/escolherOModelo`; nothing is stored in the browser. Without key and login, or with the Conexão off or
+old (404), there is no Avançado (nothing is claimed). Below the select: “Pago pela sua chave”, or the plan line of the ChatGPT column
+(`ColunaDoChatGPT.linhaDoPlano`). Before a chosen model leaves: the amber aviso (`tom: 'info'` plus `ia-modelo__aviso`, tokens only) with
+the date, Trocar agora (chooses Automático) and Escolher outro (focuses the select); after the Envio swaps on the day, or when the model
+leaves the account, the green line. The Conexão owns everything: choice, list, swap (`complemento/modelo_dos_cartoes.py`; reading never
+writes, the Envio does) and the dates (`complemento/modelos_da_ia.json`, none yet). Tests: `e2e/tests/configuracoes-modelo.spec.js`
+(`fakes.anki.modelo`, `relogioParado`), the fixme references in `configuracoes-modelo-visual.spec.js`, `complemento/test_modelo_dos_cartoes.py`.
+
 ### Chave do Gemini and Zona de perigo (`painel-chave.js`, `painel-perigo.js`)
 
 The Chave do Gemini card owns `geminiApiKey` (the same key the Minerar de uma foto reads) straight from

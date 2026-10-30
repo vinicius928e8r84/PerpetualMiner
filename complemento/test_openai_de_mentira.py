@@ -109,6 +109,7 @@ class OpenAIDeMentira:
         self.respostas = []
         self.recusa_das_respostas = None
         self.falha_no_stream = None
+        self.modelos_da_conta = self.modelos_do_plano = None  # os ids que `GET /v1/models` lista para a chave e para o plano (None: os de cima)
         # As imagens do Cartão (#144): o juiz (`juiz(modo, candidatas) -> veredito`, `candidatas`: `{index, title, kind, imagem}`), a triagem
         # (a letra que ela responde), e a imagem gerada (`recusa_da_imagem`: (status, código); `imagem_gerada`: o que ela devolve).
         self.juiz = _juiz_que_gosta_da_primeira
@@ -132,7 +133,9 @@ class OpenAIDeMentira:
                 if self.path == "/v1/responses":
                     return dono._respostas(self, self.headers.get("Authorization"), json.loads(lido.decode("utf-8")))
                 if self.path == "/v1/models" and (self.headers.get("Authorization") or "").startswith("Bearer acesso-"):
-                    modelos = MODELOS_DO_PLANO
+                    modelos = MODELOS_DO_PLANO if dono.modelos_do_plano is None else (200, {"models": [{"slug": slug, "visibility": "list"} for slug in dono.modelos_do_plano]})
+                elif self.path == "/v1/models" and dono.modelos_da_conta is not None and modelos[0] == 200:
+                    modelos = (200, {"object": "list", "data": [{"id": id_, "object": "model"} for id_ in dono.modelos_da_conta]})
                 if self.path == "/v1/chat/completions":
                     status, corpo = dono._chat(self.headers.get("Authorization"), json.loads(lido.decode("utf-8")))
                 elif self.path == "/v1/images/generations":

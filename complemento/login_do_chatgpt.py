@@ -217,18 +217,18 @@ class LoginDoChatGPT:
             self.logger.warning("Entrar com o ChatGPT: a renovação não deu certo (HTTP %s)", status)
             raise ErroDoPlano(FORA_DO_AR)
 
-    def modelo(self, token):
-        """O primeiro modelo da lista da conta (`visibility: list`, na ordem do servidor). Levanta `ErroDoPlano`."""
+    def modelos(self, token):
+        """Os modelos da lista da conta (`visibility: list`, na ordem do servidor), o primeiro é o Automático. Levanta `ErroDoPlano`."""
         status, resposta = self._pedir(self.api + oficial.MODELOS, token=token)
         if status in (401, 403):
             raise ErroDoPlano(RECUSOU)
         if status != 200:
             raise ErroDoPlano(FORA_DO_AR)
-        modelos = resposta.get("models") if isinstance(resposta.get("models"), list) else []
-        for modelo in modelos:
-            if isinstance(modelo, dict) and modelo.get("visibility") == "list" and isinstance(modelo.get("slug"), str) and modelo["slug"]:
-                return modelo["slug"]
-        raise ErroDoPlano(SEM_MODELO)
+        lista = resposta.get("models") if isinstance(resposta.get("models"), list) else []
+        modelos = [m["slug"] for m in lista if isinstance(m, dict) and m.get("visibility") == "list" and isinstance(m.get("slug"), str) and m["slug"]]
+        if not modelos:
+            raise ErroDoPlano(SEM_MODELO)
+        return modelos
 
     def sair(self):
         """Revoga a sessão renovável, se dá, e apaga o arquivo do login; devolve se a revogação foi confirmada (sem login: True)."""
@@ -276,19 +276,3 @@ class LoginDoChatGPT:
         except ValueError:
             corpo = {}
         return status, corpo if isinstance(corpo, dict) else {}
-
-
-def credencial(login, cofre, plano):
-    """Com que o Envio pede o texto do próximo Cartão, lido antes de cada pedido e só para ele: com o login do ChatGPT, o token
-    (renovado) e o modelo da conta (guardado em `plano` durante o Envio); sem ele, a chave do cofre; None sem nenhum dos dois; o
-    código (texto) quando o plano não serve agora. O Envio nunca troca um pelo outro sozinho (o login que acabou para o Envio)."""
-    try:
-        token = login.token() if login is not None else None
-        if token:
-            if "modelo" not in plano:
-                plano["modelo"] = login.modelo(token)
-            return {"openai_api_key": None, "plano_do_chatgpt": {"token": token, "modelo": plano["modelo"]}}
-    except ErroDoPlano as erro:
-        return erro.codigo
-    chave = cofre.ler("openai")
-    return {"openai_api_key": chave} if chave else None

@@ -21,7 +21,7 @@ O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede 
 - **As respostas do complemento**: `complemento/test_servidor.py` guarda o que o servidor real respondeu a uma rota que ele
   tem (método, caminho, status e `error`) e, no fim, exige um exemplo para cada um. Um estado novo do servidor
   sem exemplo quebra o teste dizendo qual. Quem pede cada rota em cada estado do Anki
-  (coleção que quebra, sem coleção, perfil ilegível, corpo inválido) é a matriz `EstadosDeCadaRota`, que não lê os exemplos:
+  (coleção que quebra, sem coleção, perfil ilegível) é a matriz `EstadosDeCadaRota`, que não lê os exemplos:
   uma rota nova se declara em `MATRIZ` (corpo mínimo, se lê a coleção, se lê o perfil e as recusas de validação dela; uma
   rota que não lê a coleção, como a chave da IA, responde o mesmo `status` em todos os estados) e sem isso o teste quebra dizendo o que declarar.
 - **Repetir e a base velha**: uma rota que muda o que a Conexão guarda (a chave da IA, o item de login) diz `muda: True` em `MATRIZ`
@@ -51,8 +51,7 @@ O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede 
   responde à conferência de uma chave: `aceita`, `recusa`, `sem_credito`, `org_nao_verificada`, `limite_de_uso`, `limite_so_no_pago` ou
   `fora_do_ar`) e `chaveNaConexao` (os 4 últimos caracteres da chave que a Conexão já guarda, ou `null`). Uma parte do contexto só
   vale para os exemplos que a citam: a saúde não diz do item e o item não diz do perfil. O fake muda de
-  contexto por `fakes.anki.abrirPerfil(...)`, `falharLeituraDoPerfil()`, `abrirColecao(nome)`, `definirItemDeLogin(...)`,
-  `responderOpenAI(...)` e `guardarChaveNaConexao(...)`; um exemplo só conta no fake pelos campos que ele diz (a saúde responde igual com qualquer
+  contexto por `fakes.anki.*` (`abrirPerfil`, `abrirColecao`, `responderOpenAI`, `guardarChaveNaConexao`…); um exemplo só conta no fake pelos campos que ele diz (a saúde responde igual com qualquer
   chave). Da chave só conta ter ou não ter: a resposta leva os 4 últimos da chave que o teste mandou, não os do exemplo. O teste
   do complemento monta um adaptador de coleção em memória (`test_colecao_em_memoria.py`) com a coleção que o exemplo nomeia.
 - `colecoes` (no alto do arquivo): as coleções que os exemplos nomeiam, com os Baralhos, as notas e os Cartões
@@ -175,7 +174,7 @@ A Conexão de hoje (`bridge/`) atende as mesmas rotas e o mesmo criar idempotent
 `lastError` e o `error` de cada Cartão são códigos (`openai_key_missing`, `openai_key_rejected`, `openai_no_credit`,
 `openai_rate_limited`, `openai_unreachable`, `note_type_missing`, `anki_write_failed`…), nunca o texto da OpenAI.
 
-As rotas do login do ChatGPT (#155): [`entrar-com-o-chatgpt.md`](entrar-com-o-chatgpt.md).
+O login do ChatGPT (#155): [`entrar-com-o-chatgpt.md`](entrar-com-o-chatgpt.md). O modelo dos cartões (#157): [`o-modelo-dos-cartoes.md`](o-modelo-dos-cartoes.md).
 
 ## As rotas do perfil fixo (#149)
 
