@@ -52,6 +52,31 @@ def record_tokens(
     return cost
 
 
+def record_plan_tokens(
+    log_dir: str | Path,
+    plan_model: str,
+    key_model: str,
+    input_tokens: int,
+    output_tokens: int,
+    keyword: str = "",
+) -> float:
+    """Append the usage of a card made through the ChatGPT plan. Returns what the key would have charged (USD):
+    the plan costs nothing per card, so `cost_usd` stays 0 and `would_cost_usd` is priced as `key_model`."""
+    price = PRICES.get(key_model, PRICES["gpt-4o"])
+    would = (input_tokens * price["input"] + output_tokens * price["output"]) / 1000
+    _append(log_dir, {
+        "date": date.today().isoformat(),
+        "type": "plan_tokens",
+        "model": plan_model,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cost_usd": 0.0,
+        "would_cost_usd": round(would, 6),
+        "keyword": keyword,
+    })
+    return would
+
+
 def record_image(
     log_dir: str | Path,
     model: str = "dall-e-3-1024",

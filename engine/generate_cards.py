@@ -265,8 +265,11 @@ def run(
     def call(message: str, label: str, stem: str) -> Optional[str]:
         try:
             if plan:
-                # The ChatGPT plan (#155): the Responses API with the plan's model and token; no USD cost, the plan is not paid per card.
-                text, _usage = openai_http.responder(openai_base, plan["token"], plan["modelo"], system_prompt, message)
+                # The ChatGPT plan (#155): the Responses API with the plan's model and token. No USD cost per card; the usage is logged
+                # with what the key would have charged (#159).
+                text, usage = openai_http.responder(openai_base, plan["token"], plan["modelo"], system_prompt, message)
+                cost_tracker.record_plan_tokens(
+                    log_dir, plan["modelo"], model, usage.get("input_tokens", 0) or 0, usage.get("output_tokens", 0) or 0, label)
                 return text or None
             return _call_model(openai_base, api_key, system_prompt, message, model, log_dir, label)
         except openai_http.ErroDaOpenAI as exc:

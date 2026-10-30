@@ -87,6 +87,37 @@ class CartaoPeloPlano(unittest.TestCase):
                 self.assertEqual((len(conexao.openai.respostas), conexao.conexao.colecao.gravadas), (1, []))
 
 
+class OsCustosDoPlano(unittest.TestCase):
+    def test_a_aba_custos_conta_o_cartao_feito_pelo_plano_e_o_que_ele_teria_custado_na_chave(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+            entrar_e_voltar(conexao)
+            conexao.criar(pedido(ID, "gave up : She gave up smoking", "give in : They gave in"))
+            conexao.esperar(ID, limite=60)
+            [linha] = json.loads(conexao.pedir("POST", "/analytics/jobs", corpo={"lang": "all"})[2])["jobs"]
+            registros = conexao.arquivos()[os.path.join("custos", ID, "costs.jsonl")].decode("utf-8")
+        # 1000 tokens de entrada e 200 de saída por Cartão, ao preço do gpt-4o da chave (US$ 0,0045 cada).
+        self.assertEqual(linha["plan"], {"cards": 2, "wouldCostUsd": 0.009})
+        self.assertEqual((linha["successfulCards"], linha["costs"]["cardUsd"]), (2, 0.0))
+        self.assertNotIn("gave up", registros)
+
+    def test_o_cartao_feito_pela_chave_nao_leva_plano_nos_custos(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+            conexao.criar(pedido(ID, "gave up : She gave up smoking"))
+            conexao.esperar(ID)
+            [linha] = json.loads(conexao.pedir("POST", "/analytics/jobs", corpo={"lang": "all"})[2])["jobs"]
+        self.assertNotIn("plan", linha)
+        self.assertEqual(linha["costs"]["cardUsd"], 0.0045)
+
+    def test_o_limite_do_plano_nao_conta_cartao_que_o_plano_nao_fez(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+            conexao.openai.recusa_das_respostas = (429, "subscription_sharing_usage_limit_exceeded")
+            entrar_e_voltar(conexao)
+            conexao.criar(pedido(ID, "gave up : She gave up smoking"))
+            conexao.esperar(ID)
+            [linha] = json.loads(conexao.pedir("POST", "/analytics/jobs", corpo={"lang": "all"})[2])["jobs"]
+        self.assertNotIn("plan", linha)
+
+
 class OsTokensSoNoArquivoDoLogin(unittest.TestCase):
     def test_nenhum_token_codigo_ou_verificador_aparece_fora_do_arquivo_do_login(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
