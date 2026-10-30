@@ -79,8 +79,9 @@ pede para entrar de novo: limite 5.d). Reverter: só a pessoa, por Sair ou desco
 - **c. O `id_token` não tem a assinatura conferida.** A Conexão confere só o `nonce`; a identidade (e-mail, `sub`) não é usada nem
   mostrada. A conferência pelo JWKS entra quando a tela mostrar a conta.
 - **d. Renovar e não gravar** (o Anki morto entre os dois): o `refresh_token` novo se perde, e a pessoa entra de novo.
-- **e. O modelo** é o primeiro da lista da conta (o “Automático” do #123, que ainda não tem tela). Sem custo em US$ nos registros:
-  o plano não é pago por Cartão (a aba Custos com o plano é o #159).
+- **e. O modelo** é o primeiro da lista da conta (o “Automático” do #123, que ainda não tem tela). Sem custo em US$ nos registros
+  (`cost_usd` 0): o plano não é pago por Cartão. O registro `plan_tokens` guarda os tokens e `would_cost_usd`, o que a chave do modelo do
+  motor (`openai.chat_model`) teria cobrado; a aba Custos (#159) soma isso em “Você economizou” (`plan` da linha, BRG-40).
 - **f. Limite de uso, conta grátis e o primeiro 429 (#121)** param o Envio com o código (`chatgpt_usage_limit`,
   `chatgpt_not_eligible`, `chatgpt_rejected`) em Detalhes, sem cópia própria nem volta sozinha: são o #156 e o #158.
 - **g. ACL no Windows**: herdada da pasta, como a da chave (`complemento/contrato/LEIA-ME.md`).

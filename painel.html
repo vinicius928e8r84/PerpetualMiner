@@ -74,7 +74,7 @@
         </div>
       </nav>
 
-      <!-- As descrições dos indicadores, para o leitor de tela (aria-describedby). -->
+      <!-- As descrições dos indicadores, para o leitor de tela. -->
       <span id="shell-total-descricao" hidden></span>
       <span id="shell-conexao-descricao" hidden></span>
     </aside>
@@ -109,7 +109,7 @@
         </header>
 
         <!-- O lembrete “Configuração pela metade” (ONB-15), enquanto a Boas-vindas
-             não chegou a Tudo pronto e ele não foi ocultado (painel-lembrete.js). -->
+             não chegou a Tudo pronto e ele não saiu (painel-lembrete.js). -->
         <aside class="frases-lembrete" id="frases-lembrete" aria-labelledby="frases-lembrete-texto" hidden>
           <span class="frases-lembrete__anel" id="frases-lembrete-anel"></span>
           <p class="frases-lembrete__texto" id="frases-lembrete-texto"></p>
@@ -125,7 +125,7 @@
              apagadas (PAI-15) ou mineradas (ADD-06), e o copiar que não deu (PAI-17). -->
         <div class="frases-avisos" id="frases-avisos"></div>
 
-        <!-- Filtros numa linha que quebra: Fonte, idioma, ordem, busca e toggle. -->
+        <!-- Filtros numa linha que quebra: Fonte, idioma, ordem, busca, toggle. -->
         <div class="frases-filtros">
           <span class="veio-select"><select class="veio-campo frases-filtro" id="filtro-fonte" data-voz-aria="PAI-25.fonte"></select></span>
           <span class="veio-select"><select class="veio-campo frases-filtro" id="filtro-idioma" data-voz-aria="PAI-25.idioma"></select></span>
@@ -175,7 +175,7 @@
               <button class="veio-botao veio-botao--perigo-fantasma veio-botao--compacto" id="btn-delete-selected" type="button">
                 <span data-icone="apagar"></span><span data-voz="PAI-32.apagar"></span>
               </button>
-              <!-- Desligada e nunca ligada: aria-disabled e o tooltip (painel-envio.js). -->
+              <!-- Sem Conexão e nunca ligada: aria-disabled e tooltip (painel-envio.js). -->
               <span class="veio-com-dica">
                 <button class="veio-botao veio-botao--primario veio-botao--compacto" id="btn-send-anki" type="button">
                   <span data-icone="enviar"></span><span data-voz="PAI-32.enviar"></span>
@@ -235,7 +235,7 @@
             <p class="apv-apoio" id="apv-apoio" data-voz="ONB-16.apoio"></p>
           </div>
 
-          <!-- Os passos e o card do passo: painel-conexao-passos.js, como no passo 4 da Boas-vindas. -->
+          <!-- Os passos e o card do passo: painel-conexao-passos.js, como na Boas-vindas. -->
           <div id="apv-passos"></div>
 
           <div class="apv-rodape" id="apv-rodape">
@@ -324,7 +324,7 @@
         </div>
 
         <div class="shell-aba" data-aba="ajustes" hidden>
-          <!-- Com a Conexão desligada, os ajustes continuam editáveis (BRG-33). -->
+          <!-- Sem a Conexão, os ajustes seguem editáveis (BRG-33). -->
           <p class="anki-nota" id="anki-ajustes-nota" data-voz="BRG-33.ajustes" hidden></p>
           <!--
             Ajustes de envio (painel-ajustes.js): um card por idioma, recolhível como os de
@@ -558,7 +558,7 @@
         </div>
       </div>
 
-      <!-- ADD-04: o progresso fica no próprio modal e anda a cada frase gravada. -->
+      <!-- ADD-04: o progresso fica no modal e anda a cada frase gravada. -->
       <div class="minerar-progresso" id="minerar-progresso" hidden>
         <b class="minerar-progresso__rotulo" id="minerar-progresso-rotulo" aria-live="polite"></b>
         <div class="minerar-progresso__barra" role="progressbar" aria-labelledby="minerar-progresso-rotulo"
@@ -586,7 +586,7 @@
               data-voz-aria="PAI-34" data-voz-title="PAI-34"><span data-icone="fechar"></span></button>
       <h2 class="veio-modal__titulo" id="modal-resumo-titulo"></h2>
       <p class="veio-modal__corpo" id="modal-resumo-detalhe"></p>
-      <!-- Um bloco por idioma: +N cartões, o baralho, o que já estava e o que não entrou. -->
+      <!-- Um bloco por idioma: +N cartões, o baralho, o que já estava, o que não entrou. -->
       <div class="envio-resumo__baralhos" id="modal-resumo-baralhos"></div>
       <div class="envio-resumo__historico">
         <p class="envio-resumo__pergunta" id="modal-resumo-pergunta"></p>
@@ -601,7 +601,7 @@
     </div>
   </div>
 
-  <!-- A ponte do abridor, recarregada a cada conversa com ele (lib/abridor.js). -->
+  <!-- A ponte do abridor, recarregada a cada conversa (lib/abridor.js). -->
   <iframe id="abridor-ponte" src="abridor.html" hidden></iframe>
 
   <script src="lib/voz/catalogo.js"></script>
@@ -639,6 +639,7 @@
   <script src="painel-envio-parado.js"></script>
   <script src="painel-envio.js"></script>
   <script src="painel-anki-primeira-conexao.js"></script>
+  <script src="painel-anki-plano.js"></script>
   <script src="painel-anki.js"></script>
   <script src="painel-anki-baralhos.js"></script>
   <script src="painel-ajustes.js"></script>

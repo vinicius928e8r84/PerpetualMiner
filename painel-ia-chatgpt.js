@@ -176,5 +176,5 @@
     window.addEventListener('focus', () => { if (entrando()) ler(); });
   });
 
-  raiz.ColunaDoChatGPT = { coluna, faixa };
+  raiz.ColunaDoChatGPT = { coluna, faixa, GERENCIAR_USO };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

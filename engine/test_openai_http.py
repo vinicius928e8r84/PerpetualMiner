@@ -279,15 +279,20 @@ class ResponderPeloPlano(unittest.TestCase):
             self.assertEqual(recusa_.exception.codigo, codigo)
             self.assertNotIn(TOKEN_DO_PLANO, str(recusa_.exception))
 
-    def test_com_o_plano_o_cartao_sai_pela_responses_api_e_nao_conta_custo_em_dolar(self):
+    def test_com_o_plano_o_cartao_sai_pela_responses_api_sem_custo_em_dolar_e_com_o_que_a_chave_teria_cobrado(self):
         with tempfile.TemporaryDirectory() as pasta, PlanoDeMentira(eventos(CARTAO[:40], CARTAO[40:])) as plano:
             raiz = Path(pasta)
             config = dict(configuracao(raiz), openai_api_key=None, plano_do_chatgpt={"token": TOKEN_DO_PLANO, "modelo": "gpt-6-luna"})
             salvos = generate_cards.run([ENTRADA], config, openai_base=plano.base)
-            custos = (raiz / "log" / "costs.jsonl").exists()
+            registros = [json.loads(linha) for linha in (raiz / "log" / "costs.jsonl").read_text(encoding="utf-8").splitlines()]
         self.assertEqual(salvos, [build_card_stem(ENTRADA.keywords[0], ENTRADA.phrase)])
         self.assertEqual([(p["caminho"], p["corpo"]["instructions"], p["corpo"]["model"]) for p in plano.pedidos], [("/v1/responses", "en prompt", "gpt-6-luna")])
-        self.assertFalse(custos)
+        # 2061 tokens de entrada e 387 de saída, ao preço do gpt-4o da chave: o plano não cobra por Cartão.
+        self.assertEqual(
+            [(r["type"], r["model"], r["cost_usd"], r["would_cost_usd"], r["keyword"]) for r in registros],
+            [("plan_tokens", "gpt-6-luna", 0.0, 0.009023, ENTRADA.keywords[0])],
+        )
+        self.assertNotIn(TOKEN_DO_PLANO, json.dumps(registros))
 
 
 if __name__ == "__main__":

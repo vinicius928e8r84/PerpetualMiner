@@ -1,17 +1,17 @@
 # O contrato da Conexão com o Anki
 
 `exemplos.json` é o conjunto único de pedidos e respostas entre a extensão e a Conexão
-com o Anki (o complemento do Anki, em `127.0.0.1:8766`), junto com os `exemplos-*.json` ao lado dele (um por assunto, como
-`exemplos-do-perfil.json`; `carregar.js` e `test_servidor.py` os somam e recusam nome repetido). Dois lados leem o mesmo conjunto:
+com o Anki (o complemento do Anki, em `127.0.0.1:8766`), junto com os `exemplos-*.json` ao lado (um por assunto, como
+`exemplos-do-perfil.json`; `carregar.js` e `test_servidor.py` os somam e recusam nome repetido). Dois lados o leem:
 
 - **o complemento**: `python3 complemento/test_servidor.py` sobe o servidor real e confere
   cada exemplo (rode também no 3.9);
 - **a extensão**: o fake da Conexão do e2e (`e2e/fakes/anki.js`) responde pelos exemplos,
-  e `e2e/tests/contrato-da-conexao.spec.js` confere o fake contra eles.
+  e `contrato-da-conexao.spec.js` confere o fake contra eles.
 
-Mudar só um lado quebra um teste, que diz o exemplo e os arquivos.
+Mudar só um lado quebra um teste, que diz o exemplo.
 
-O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede nem que o complemento responde fica sem exemplo.
+O contrato também é **fechado**, nos dois sentidos: nenhum pedido nem resposta fica sem exemplo.
 
 - **Os pedidos da extensão**: todo pedido nasce de um construtor de `PerpetualMiner.PedidoAoAnki` (`lib/pedido-ao-anki.js`:
   `saude`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`, `chaveDaOpenAI`, `apagarChaveDaOpenAI`, `estadoDaIA`, e os do Envio: `criarEnvio` (o corpo leva o `jobId`), `listarEnvios`, `verEnvio`, `tentarEnvioDeNovo`, `pacoteDeDiagnostico`, `apagarFrasesDosEnvios`, `custosDosEnvios`), e `PedidoAoAnki.variantes` os lista. `node test_contrato_fechado.js`
@@ -19,7 +19,7 @@ O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede 
   de cada uma, que o fake do e2e então responde. O nome do Baralho não conta para achar o exemplo; quantos Baralhos, `refresh` e
   `launch` contam. A regra `contrato-fechado` (`node scripts/regras/verificar.js`) acusa um `fetch` direto a uma rota da Conexão.
 - **As respostas do complemento**: `complemento/test_servidor.py` guarda o que o servidor real respondeu a uma rota que ele
-  tem (método, caminho, status e `error`) e, no fim, exige um exemplo para cada um. Um estado novo do servidor
+  tem (método, caminho, status e `error`) e, no fim, exige um exemplo para cada um. Um estado novo
   sem exemplo quebra o teste dizendo qual. Quem pede cada rota em cada estado do Anki
   (coleção que quebra, sem coleção, perfil ilegível, corpo inválido) é a matriz `EstadosDeCadaRota`, que não lê os exemplos:
   uma rota nova se declara em `MATRIZ` (corpo mínimo, se lê a coleção, se lê o perfil e as recusas de validação dela; uma
@@ -170,7 +170,7 @@ A Conexão de hoje (`bridge/`) atende as mesmas rotas e o mesmo criar idempotent
 | `POST /jobs/get` | `{ jobId }` | `{ job, state }`; `404 job_not_found` |
 | `POST /jobs/retry` | `{ jobId }` | `{ jobId, status }`: um Envio terminado volta à fila guardando os Cartões prontos; na fila ou andando, só diz o estado (nada gravado). `404 job_not_found` |
 | `POST /jobs/debug-bundle` | `{ jobId }` | o pedido, o estado, os custos, os arquivos do Envio e as linhas do log que o citam; nunca a chave. `404 job_not_found` |
-| `POST /analytics/jobs` | `{ lang: 'all', from?, to? }` | `{ jobs: [linha por Envio] }`, as linhas de `bridge/analytics.py` (`custos.py`) |
+| `POST /analytics/jobs` | `{ lang: 'all', from?, to? }` | `{ jobs: [linha por Envio] }`, as linhas de `bridge/analytics.py` (`custos.py`); com Cartão do plano do ChatGPT, `plan: { cards, wouldCostUsd }` (#159) |
 
 `lastError` e o `error` de cada Cartão são códigos (`openai_key_missing`, `openai_key_rejected`, `openai_no_credit`,
 `openai_rate_limited`, `openai_unreachable`, `note_type_missing`, `anki_write_failed`…), nunca o texto da OpenAI.
