@@ -34,6 +34,7 @@ Each feature file starts with an H1 and one paragraph of user-visible behavior, 
 - [Mine a phrase](./mineracao.md): caption shortcut and floating button, selection shortcut, context menu, popup quick mining.
 - [Frases list in the panel](./frases.md): cards, search and filters, selection bar, delete/edit.
 - [Anki connection and send](./anki.md): the Conexão com o Anki area and the Envio ao Anki with its summary.
+- [The Card in the Anki](./anki-cartao.md): the note type per language the Conexão creates, the new Baralhos of a new install and the Beginner Card (front: Phrase and audio; back: pronunciation, literal and natural in Portuguese with linked colours, Word audio, image); only in the Anki, not on a screen (#161).
 - [Open the Anki with the computer](./anki-no-login.md): Configurações › Conexão com o Anki, the login-item switch.
 - [The fixed Anki profile](./anki-perfil.md): Configurações › Conexão com o Anki, the row Perfil do Anki; the Envio that waits on another open profile with Abrir <perfil> (#149).
 - [Boas-vindas (first run)](./boas-vindas.md): the 7-step setup opened by installing the extension.

@@ -1,0 +1,79 @@
+{
+  "nivel_padrao": "iniciante",
+  "frente_de_antes": ["Frente", "Front"],
+  "campos": {
+    "frase": "Frase",
+    "audio_da_frase": "Áudio da frase",
+    "palavra": "Palavra",
+    "audio_da_palavra": "Áudio da palavra",
+    "pronuncia": "Pronúncia",
+    "literal": "Tradução literal",
+    "natural": "Tradução natural",
+    "cena": "Contexto da cena",
+    "fonte": "Fonte",
+    "imagem": "Imagem",
+    "definicao": "Definição",
+    "significado_simples": "Significado simples",
+    "outro_exemplo": "Outro exemplo",
+    "gatilho": "Gatilho",
+    "dica": "Dica",
+    "lacuna": "Frase com lacuna",
+    "frase_escrita": "Frase escrita",
+    "escrito_antes": "Escrito antes",
+    "correcao": "Correção",
+    "silaba_forte": "Sílaba forte",
+    "morfologia": "Morfologia",
+    "explicacao_das_cores": "Explicação das cores",
+    "mesma_raiz": "Mesma raiz",
+    "raiz": "Raiz"
+  },
+  "rotulos": {
+    "pronuncia": "Pronunciation",
+    "literal": "Literal",
+    "natural": "Natural",
+    "cena": "Gist",
+    "definicao": "Definition",
+    "significado_simples": "Simple meaning",
+    "outro_exemplo": "Other example",
+    "gatilho": "Trigger"
+  },
+  "idiomas": {
+    "en": {
+      "nome": "Inglês",
+      "tipo_de_nota": "PerpetualMiner Inglês",
+      "baralho": "PerpetualMiner::Inglês",
+      "entrada": "palavras",
+      "campos": [
+        "frase", "audio_da_frase", "palavra", "audio_da_palavra", "pronuncia", "literal", "natural", "cena", "fonte", "imagem",
+        "definicao", "outro_exemplo", "dica", "lacuna", "frase_escrita", "escrito_antes", "correcao", "significado_simples", "gatilho"
+      ],
+      "niveis": {
+        "iniciante": {
+          "prompt": "prompts/en_iniciante.txt",
+          "explicacao": "pt",
+          "verso": ["pronuncia", "literal", "natural", "cena", "palavra", "imagem"],
+          "cores": true
+        }
+      }
+    },
+    "ru": {
+      "nome": "Russo",
+      "tipo_de_nota": "PerpetualMiner Russo",
+      "baralho": "PerpetualMiner::Russo",
+      "entrada": "frase",
+      "campos": [
+        "frase", "audio_da_frase", "palavra", "audio_da_palavra", "pronuncia", "literal", "natural", "cena", "fonte", "imagem",
+        "definicao", "outro_exemplo", "dica", "lacuna", "frase_escrita", "escrito_antes", "correcao",
+        "silaba_forte", "morfologia", "explicacao_das_cores", "mesma_raiz", "raiz"
+      ],
+      "niveis": {
+        "iniciante": {
+          "prompt": "prompts/ru_iniciante.txt",
+          "explicacao": "pt",
+          "verso": ["pronuncia", "literal", "natural", "cena", "palavra", "imagem"],
+          "cores": true
+        }
+      }
+    }
+  }
+}

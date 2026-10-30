@@ -35,13 +35,13 @@ class AudioDoCartao:
         raise ultimo
 
     def _o_audio(self, job_id, pedido, config, cartao_id, guid, conteudo):
-        """O áudio da Palavra e o da Frase do Cartão: ({nome: bytes}, nome do da Frase, nome do da Palavra); levanta `ErroDaVoz`."""
+        """O áudio da Palavra e o da Frase do Cartão: ({nome: bytes}, nome do da Frase, nome do da Palavra, a Palavra); levanta `ErroDaVoz`."""
         phrase_id, posicao = cartao_id.rsplit("-", 1)
         linha = self.fila.linha_do_cartao(job_id, int(phrase_id))
         if linha is None:
             raise voz.ErroDaVoz(FRASE_APAGADA)
-        analisar = self.motor.parser.parse_mining_line_ru if pedido["lang"] == "ru" else self.motor.parser.parse_mining_line
-        trabalho = self.motor.parser.get_card_jobs(analisar(linha))[int(posicao)]
+        entrada = self.motor.parser.parse_line(config["estilo"]["entrada"], linha)
+        trabalho = self.motor.parser.get_card_jobs(entrada)[int(posicao)]
         palavra, frase = self.motor.generate_audio.voices(trabalho, conteudo, config)
         self._etapa(job_id, "generate_audio")
         da_palavra, da_frase = guid + "_word.mp3", guid + "_phrase.mp3"
@@ -52,4 +52,4 @@ class AudioDoCartao:
             except voz.ErroDaVoz as erro:
                 self.logger.warning("Envio %s: o áudio do Cartão %s não veio (%s)", job_id, cartao_id, erro.codigo)
                 raise
-        return arquivos, da_frase, da_palavra
+        return arquivos, da_frase, da_palavra, trabalho.keyword

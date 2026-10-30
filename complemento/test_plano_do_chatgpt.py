@@ -29,7 +29,7 @@ class CartaoPeloPlano(unittest.TestCase):
             fim = conexao.esperar(ID)
             notas = conexao.conexao.colecao.gravadas
             respostas, chats = list(conexao.openai.respostas), list(conexao.openai.chats)
-            with open(os.path.join(os.path.dirname(__file__), "..", "engine", "prompts", "en_card.txt"), encoding="utf-8") as arquivo:
+            with open(os.path.join(os.path.dirname(__file__), "..", "engine", "prompts", "en_iniciante.txt"), encoding="utf-8") as arquivo:
                 prompt = arquivo.read().strip()
         self.assertEqual(fim["status"], "completed")
         self.assertEqual(chats, [])
@@ -39,7 +39,7 @@ class CartaoPeloPlano(unittest.TestCase):
         self.assertEqual((corpo["model"], corpo["store"], corpo["stream"]), ("gpt-6-luna", False, True))
         self.assertEqual(corpo["instructions"].strip(), prompt)
         self.assertEqual(corpo["input"], [{"role": "user", "content": "gave up : She gave up smoking"}])
-        self.assertIn("<b>gave up</b>", notas[0]["campos"]["Frente"])
+        self.assertRegex(notas[0]["campos"]["Frase"], r"<b>(<span[^>]*>)?gave up")
 
     def test_o_access_token_perto_de_vencer_e_renovado_antes_do_cartao_e_o_refresh_novo_substitui_o_antigo(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:

@@ -257,8 +257,10 @@ def run(
             if only_stems is None or (named or job.filename_stem) in only_stems:
                 all_jobs.append((job, named))
 
-    en_prompt = load_prompt(config, "en_card") if lang != "ru" else ""
-    ru_prompt = load_prompt(config, "ru_card") if lang == "ru" else ""
+    estilo = config.get("estilo")  # the add-on's style (`estilos.estilo`, with the path of its prompt): how a line reads and which prompt writes the card
+    whole_phrase = estilo["entrada"] == "frase" if estilo else lang == "ru"
+    system_prompt = (
+        Path(estilo["prompt"]).read_text(encoding="utf-8").strip() if estilo else load_prompt(config, "ru_card" if whole_phrase else "en_card"))
 
     saved: List[str] = []
 
@@ -287,12 +289,7 @@ def run(
             continue
 
         LOGGER.info("Gerando card para: '%s'", label)
-        if lang == "ru":
-            user_message = _build_message_ru(job)
-            system_prompt = ru_prompt
-        else:
-            user_message = _build_message(job)
-            system_prompt = en_prompt
+        user_message = _build_message_ru(job) if whole_phrase else _build_message(job)
 
         response = call(user_message, label, stem)
         if not response:
@@ -303,13 +300,13 @@ def run(
 
         card = _prepare_card(response)
 
-        if lang == "ru" and (_looks_like_ru_refusal(card) or not _has_ru_translation(card)):
+        if whole_phrase and (_looks_like_ru_refusal(card) or not _has_ru_translation(card)):
             reason = "recusa/erro do modelo" if _looks_like_ru_refusal(card) else "campo Translation ausente"
             LOGGER.error("Card russo para '%s' invalido (%s) - skipping.", label, reason)
             failures[stem] = "invalid_card"
             continue
 
-        if lang != "ru" and not _validate_keyword(card, job.keyword):
+        if not whole_phrase and not _validate_keyword(card, job.keyword):
             LOGGER.warning("Keyword mismatch para '%s' - tentando regenerar uma vez.", label)
             retry_response = call(_build_keyword_retry_message(user_message, job.keyword), label, stem)
             if not retry_response:

@@ -18,9 +18,14 @@ Anki está sincronizando (`anki_syncing`):
   Baralho se faltar; a `midia` (`{nome do arquivo: bytes}`, o áudio do Cartão, #143) é guardada pela coleção com a nota, e a nota cita
   o nome que a coleção deu ao arquivo (o Anki troca o nome se já tem outro arquivo com ele e outro conteúdo); uma nota com o mesmo `guid` já gravada fica como está (gravar de novo não dobra); um tipo de nota que falta, ou sem um dos campos, levanta `TipoDeNotaAusente` sem gravar nada.
 
-- `gravar_cartao(baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar, midia=None)`: **a** função de
+- `criar_tipo_de_nota(definicao)` (#161, `tipo_de_nota.definicao`): cria o tipo de nota se a coleção não tem um com o nome e devolve se criou; um que já
+  existe fica como a pessoa o deixou, e nada que já está na coleção é renomeado, convertido nem apagado;
+- `criar_baralhos_da_instalacao_nova(nomes)`: cria os Baralhos só se a coleção não tem nenhum além do “Default” (numa instalação nova) e devolve os
+  criados; quem já tem Baralho fica com o seu. Os dois repetem sem criar nada de novo;
+- `gravar_cartao(baralho, tipo_de_nota, campos, etiquetas, guid, campos_da_frente, frente_normalizada, normalizar, midia=None)`: **a** função de
   gravar um Cartão, uma só na thread principal do Anki. Nesta ordem: a sincronização (`ColecaoIndisponivel`, sem gravar), o
-  `guid` (achou: devolve `"added"`, sem gravar), a frente normalizada no Baralho (achou: `"duplicate"`, sem gravar) e a nota nova
+  `guid` (achou: devolve `"added"`, sem gravar), a frente normalizada no Baralho, lida em qualquer dos `campos_da_frente` (o do tipo próprio e os do
+  “Básico” de antes: o Cartão antigo conta, achou: `"duplicate"`, sem gravar) e a nota nova
   (devolve `"added"`; é só aqui que a `midia` é guardada). O que dá errado é devolvido ou levantado para a thread de trabalho, nunca para a thread principal do Anki.
 
 O **perfil fixo** (#149, `perfil.py`): a Conexão entrega ao adaptador o `PerfilFixo` por `fixar_o_perfil(fixo)`, e daí em diante
@@ -34,23 +39,23 @@ Mais três métodos, para a Conexão:
 - `trocar_para_o_perfil_fixo()`: o clique em “Abrir <perfil>”: fecha o perfil aberto pelo caminho normal do Anki (que sincroniza) e abre
   o marcado; na tela de perfis, só abre; já no marcado, não faz nada. Devolve se começou.
 
-A frente e o verso são os campos “Frente” e “Verso” (ou “Front” e “Back”, do Anki em inglês) e, sem eles,
-o primeiro e o segundo campo, como a Conexão de hoje faz.
+A frente e o verso que a leitura entende são os campos “Frente” e “Verso” (ou “Front” e “Back”, do Anki em inglês; “Frase” e “Palavra”, do tipo de
+nota próprio) e, sem eles, o primeiro e o segundo campo, como a Conexão de hoje faz.
 """
 
 from datetime import datetime, timezone
 
 from . import normalizacao
+from .motor import estilos
 
-IDIOMAS = ("en", "ru")
 SITUACOES = ("all", "new", "recent", "mature", "mixed", "seen")
 TIPOS = ("all", "word", "term")
 LIMITE_PADRAO = 1000
 LIMITE_MAXIMO = 10000
 FONTE = "colecao"
 
-_NOMES_DA_FRENTE = ("frente", "front")
-_NOMES_DO_VERSO = ("verso", "back")
+_NOMES_DA_FRENTE = ("frente", "front", "frase")  # o “Básico” em português, em inglês e o tipo de nota próprio (#161)
+_NOMES_DO_VERSO = ("verso", "back", "palavra")
 
 
 class ColecaoIndisponivel(Exception):
@@ -154,7 +159,7 @@ def numeros_dos_baralhos(colecao, pedidos):
     for pedido in pedidos:
         nome = str(pedido.get("deckName") or "").strip()
         idioma = str(pedido.get("lang") or "en").strip().lower()
-        if not nome or idioma not in IDIOMAS or (nome.casefold(), idioma) in vistos:
+        if not nome or idioma not in estilos.idiomas() or (nome.casefold(), idioma) in vistos:
             continue
         vistos.add((nome.casefold(), idioma))
         if nome in existentes:

@@ -194,6 +194,11 @@ def parse_mining_line_ru(raw_line: str) -> Optional[MiningEntry]:
     )
 
 
+def parse_line(entrada: str, raw_line: str) -> Optional[MiningEntry]:
+    """One mining line the way the language's style reads it (`estilos.json` › `entrada`): `frase` is the whole line, else `kw | kw : phrase`."""
+    return parse_mining_line_ru(raw_line) if entrada == "frase" else parse_mining_line(raw_line)
+
+
 def _parse_file(path: Path, parse_line) -> List[MiningEntry]:
     with open(path, "r", encoding="utf-8") as f:
         return [entry for entry in (parse_line(raw_line) for raw_line in f) if entry is not None]

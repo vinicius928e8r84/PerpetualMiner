@@ -283,8 +283,8 @@ def _reorder_english_back_lines(lines: List[str]) -> List[str]:
     return ordered
 
 
-def _build_front(content: str, phrase_audio_name: Optional[str], lang: str = "en") -> str:
-    """The Front field's HTML; `phrase_audio_name` None makes a card without audio (the add-on's text-only card)."""
+def _build_front(content: str, phrase_audio_name: Optional[str], lang: str = "en", cores: Optional[bool] = None) -> str:
+    """The Front field's HTML; `phrase_audio_name` None makes a card without audio. `cores`: the style colours the Alignment pairs (None: Russian does)."""
     match = _FRONT_RE.search(content)
     phrase = match.group(1).strip() if match else ""
 
@@ -296,9 +296,8 @@ def _build_front(content: str, phrase_audio_name: Optional[str], lang: str = "en
             _log_raw("_build_front FAILED", content)
 
     phrase = re.sub(r"🔊.*", "", phrase).strip()
-    if lang == "ru":
-        alignments = _extract_alignments(content)
-        phrase = _apply_chunk_colors(phrase, [ru for ru, _ in alignments])
+    if lang == "ru" if cores is None else cores:
+        phrase = _apply_chunk_colors(phrase, [alvo for alvo, _ in _extract_alignments(content)])
     phrase = _md_to_html(phrase)
     phrase = phrase.replace("\n", "<br>")
     return f"{phrase}[sound:{phrase_audio_name}]" if phrase_audio_name else phrase

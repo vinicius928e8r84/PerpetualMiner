@@ -185,7 +185,15 @@ class ColecaoDoAnki:
     def adicionar_nota(self, baralho, tipo_de_nota, campos, etiquetas, guid, midia=None):
         return self._gravando(lambda colecao: _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, midia))
 
-    def gravar_cartao(self, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar, midia=None):
+    def criar_tipo_de_nota(self, definicao):
+        """Cria o tipo de nota (`tipo_de_nota.definicao`) se a coleção não tem um com o nome; um que já existe não é tocado. Devolve se criou."""
+        return self._gravando(lambda colecao: _criar_tipo_de_nota(colecao, definicao))
+
+    def criar_baralhos_da_instalacao_nova(self, nomes):
+        """Cria os Baralhos `nomes` só se a coleção não tem nenhum além do “Default”; devolve os criados (nenhum, para quem já tem Baralho)."""
+        return self._gravando(lambda colecao: _criar_baralhos_da_instalacao_nova(colecao, nomes))
+
+    def gravar_cartao(self, baralho, tipo_de_nota, campos, etiquetas, guid, campos_da_frente, frente_normalizada, normalizar, midia=None):
         """O passo de gravar um Cartão, **uma função só** na thread principal: a sincronização, o `guid`, a frente no Baralho e a nota.
 
         Devolve `"added"` (a nota é deste Cartão: já estava, ou foi gravada agora) ou `"duplicate"` (a frente já estava no Baralho,
@@ -193,7 +201,7 @@ class ColecaoDoAnki:
         deixou de esperar, não faz a volta seguinte contar a própria nota como duplicata. A `midia` (`{nome: bytes}`, o áudio e a imagem do
         Cartão) é guardada pela coleção junto com a nota nova, e só com ela."""
         return self._gravando(lambda colecao: _gravar_cartao(
-            colecao, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar, midia))
+            colecao, baralho, tipo_de_nota, campos, etiquetas, guid, campos_da_frente, frente_normalizada, normalizar, midia))
 
 
 def _campos_do_tipo(modelo):
@@ -223,11 +231,37 @@ def _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, mid
     colecao.add_note(nota, colecao.decks.id(baralho))
 
 
-def _gravar_cartao(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar, midia=None):
+def _criar_tipo_de_nota(colecao, definicao):
+    """Na thread principal. Só cria: o que já existe com o nome fica como a pessoa o deixou, qualquer que seja o conteúdo."""
+    modelos = colecao.models
+    if modelos.by_name(definicao["nome"]) is not None:
+        return False
+    novo = modelos.new(definicao["nome"])
+    for campo in definicao["campos"]:
+        modelos.add_field(novo, modelos.new_field(campo))
+    for modelo in definicao["modelos"]:
+        cartao = modelos.new_template(modelo["nome"])
+        cartao["qfmt"], cartao["afmt"] = modelo["frente"], modelo["verso"]
+        modelos.add_template(novo, cartao)
+    novo["css"] = definicao["css"]
+    (modelos.add_dict if hasattr(modelos, "add_dict") else modelos.add)(novo)  # `add_dict` é o do Anki novo; `add`, o dos mais antigos
+    return True
+
+
+def _criar_baralhos_da_instalacao_nova(colecao, nomes):
+    if any(baralho.name != "Default" for baralho in colecao.decks.all_names_and_ids()):
+        return []
+    for nome in nomes:
+        colecao.decks.id(nome)  # cria o Baralho (e o pai, `PerpetualMiner`)
+    return list(nomes)
+
+
+def _gravar_cartao(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, campos_da_frente, frente_normalizada, normalizar, midia=None):
     if colecao.db.all("select 1 from notes where guid = ?", guid):
         return "added"
+    frentes = (campos_da_frente,) if isinstance(campos_da_frente, str) else tuple(campos_da_frente)
     for cartao in _cartoes_do_baralho(colecao, baralho):
-        if any(nome == campo_da_frente and valor and normalizar(valor) == frente_normalizada for nome, valor in cartao["campos"]):
+        if any(nome in frentes and valor and normalizar(valor) == frente_normalizada for nome, valor in cartao["campos"]):
             return "duplicate"
     _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, midia)
     return "added"

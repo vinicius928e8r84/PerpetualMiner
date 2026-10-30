@@ -49,7 +49,7 @@ class EnvioGravadoNoAnki(SemRegistroReal, unittest.TestCase):
         notas = anki.col.notas_gravadas()
         sons = re.findall(r"\[sound:([^\]]+)\]", notas[0][0])
         imagens = re.findall(r'<img src="([^"]+)">', notas[0][0])
-        self.assertEqual([re.sub(r"\[sound:[^\]]+\]", "", flds.split("\x1f")[0]) for flds, _, _ in notas], ["They <b>keep going</b>"])
+        self.assertEqual([re.sub(r"<span[^>]*>|</span>", "", flds.split("\x1f")[0]) for flds, _, _ in notas], ["They <b>keep going</b>"])
         self.assertEqual((len(sons), len(imagens)), (2, 1))
         self.assertEqual(sorted(anki.col.arquivos_de_midia), sorted(sons + imagens))
         self.assertEqual(anki.col.arquivos_de_midia[imagens[0]], png_de("rua-1"))

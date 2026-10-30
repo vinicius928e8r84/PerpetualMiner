@@ -14,6 +14,8 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 | `inicio.py` | Ao carregar: prepara `user_files`, o log e sobe a Conexão. Nunca levanta erro |
 | `servidor.py` | O servidor HTTP e as rotas (`ROTAS`); só a extensão é atendida |
 | `rotas_da_chave.py` | As rotas da chave da OpenAI (`/ia/openai/…`, `/ia/estado`), listadas em `servidor.ROTAS` |
+| `tipo_de_nota.py` | O tipo de nota próprio de cada idioma (#161): nome, campos (**todos** desde o nascimento: mudar campos depois força uma sincronização completa no Anki), modelo e CSS, montados do `estilos.json`; `preparar(colecao)` cria os tipos e, numa instalação nova, os Baralhos `PerpetualMiner::Inglês` e `PerpetualMiner::Russo` (quem já tem Baralho fica com o seu). Só cria: nada que já existe é tocado. `inicio.py` o chama ao carregar e a cada perfil que abre |
+| `espera_do_anki.py` | A espera do Envio pelo Anki (coleção fechada, sincronizando, noutro perfil), de `envio.Trabalho` |
 | `baralhos.py` | O que se lê da coleção: a lista de Baralhos, os números de cada um e o vocabulário, só pelo lado de leitura de um adaptador da coleção (o contrato do adaptador, de leitura e gravação, está no topo) |
 | `pedido_do_envio.py` | O pedido de `POST /jobs` (o que vale, a impressão do corpo) e o id do Envio; `envio.py` os reexporta |
 | `envio.py` | O Envio (#142): a fila, o estado de cada Cartão e o trabalho que gera o texto pelo motor e grava cada nota pelo adaptador (na thread principal do Anki), esperando o perfil fechado e a sincronização; o criar idempotente pelo `jobId`, a retomada sem refazer o que está pronto (`guid` fixo por Cartão). O desenho: `docs/design/envio-no-complemento.md`. `motor_do_envio.py`: o motor de cada pedido |
@@ -45,7 +47,7 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 - `GET /health` é a única rota sem `Origin`, porque o Chrome manda o GET de uma extensão sem ele; as outras são só POST e exigem a origem (`contrato/LEIA-ME.md` § Quem o complemento atende). A credencial de pareamento é o ticket #192, antes do lançamento.
 - `bridge/test_paridade_da_normalizacao.py` roda as 19 funções das duas cópias com os mesmos casos; `bridge/card_normalization.py` é a referência até a Conexão de hoje sair.
 - Chave da OpenAI (#154): `POST /ia/openai/chave` a confere (`openai_api.py`, dois pedidos baratos, só a biblioteca padrão, URL base só por código) e guarda a cópia em `user_files/chaves` (fora do diagnóstico e do `.ankiaddon`); `/ia/estado` dá só máscara, UID, revisão e envio pendente; `/ia/openai/sincronizar`, `/legado` e `/chave/apagar` levam o dono à conta, migram o UID antigo (com a prova do segredo) e apagam a cópia. Nenhuma resposta devolve a chave inteira e o log nunca a escreve.
-- Envio: o mesmo corpo de `POST /jobs` com o mesmo `jobId` é o mesmo Envio; outro corpo com ele dá `409`; `/jobs/list`, `/jobs/get`, `/jobs/retry` e `/jobs/debug-bundle` levam o `jobId` no corpo. Cada nota é gravada na thread principal do Anki (Básico/Frente/Verso até o #161); o criar usa a busca de duplicata pela frente normalizada.
+- Envio: o mesmo corpo de `POST /jobs` com o mesmo `jobId` é o mesmo Envio; outro corpo com ele dá `409`; `/jobs/list`, `/jobs/get`, `/jobs/retry` e `/jobs/debug-bundle` levam o `jobId` no corpo. Cada nota é gravada na thread principal do Anki, no tipo de nota do idioma (`tipo_de_nota.py`; o Envio o cria se faltar, então um Anki em inglês não falha); o criar usa a busca de duplicata pela frase normalizada, lida também nos campos “Frente” e “Front” do “Básico” de antes. O estilo (idioma × nível) é dado em `engine/estilos.json`: hoje o Iniciante, nos dois idiomas.
 
 ## Testes
 
@@ -65,6 +67,8 @@ python3.9 complemento/test_envio.py          # o Envio: a fila, o estado por Car
 python3.9 complemento/test_envio_audio.py    # o áudio do Cartão: a voz do Google de mentira, a mídia na coleção
 python3.9 complemento/test_envio_imagem.py   # a imagem do Cartão: Openverse e OpenAI de mentira
 python3.9 complemento/test_envio_fronteiras.py  # a Conexão morre em cada gravação (#248)
+python3.9 complemento/test_envio_tipo_de_nota.py  # o tipo de nota por idioma e o Cartão Iniciante, num Anki em inglês, num com Cartões antigos e um idioma novo por dados
+python3.9 complemento/test_inicio_preparo.py  # a coleção preparada ao carregar e a cada perfil que abre (+ `test_contrato_da_criacao.py`, nos dois adaptadores)
 python3.9 complemento/test_envio_apagar.py      # o Apagar tudo com o Anki fechado ou no Envio
 python3.9 complemento/test_janela.py         # a janela e os avisos, com o Qt de mentira
 python3.9 complemento/test_qt_do_anki.py     # o que se pede ao Qt do Anki
@@ -106,60 +110,22 @@ Depois refaça o arquivo. Subir a `VERSAO` muda a `versao` dos exemplos de `cont
    Uma chave inventada (`sk-proj-` e letras) deve ser recusada; sem os certificados do sistema, vem “Não deu para falar com a OpenAI”: anote o Detalhes.
 8. Sem resposta em 2 minutos (tente com o Anki fechado), a tela mostra o checklist de 3 itens e Baixar de novo.
 8b. **Perfil fixo (risco 4, #149, #269):** com 2 perfis, “Perfil do Anki” mostra o da primeira conexão. Com um Envio esperando em outro, o cartão diz “O Anki está no perfil X…” e **Abrir <perfil>** fecha o aberto (sincroniza) e abre o marcado, uma vez só? Na tela de perfis o Envio entra no marcado (`mw.pm.load`, `onOpenProfile`: nunca testados), **menos** com Excluir/Renomear aberto?
-9. **O primeiro Cartão (#142).** Com a chave conferida (passo 7) e um perfil aberto com o tipo de nota “Básico” (campos “Frente” e “Verso”, até o #161),
-   marque uma Frase em inglês em Frases e aperte **Enviar ao Anki**: o progresso passa por “Criando cartões” e “Enviando ao Anki” e o
+9. **O primeiro Cartão (#142, #161).** Com a chave conferida (passo 7) e um perfil aberto, marque uma Frase em inglês em Frases e aperte **Enviar ao Anki**: o progresso passa por “Criando cartões” e “Enviando ao Anki” e o
    resumo diz “+1 cartão”. No Baralho dos Ajustes de envio há a nota nova (etiqueta `perpetual_miner`), com o áudio da Frase (frente) e o da Palavra (verso)
    e a imagem; toque os dois (um 400 na Palavra é o risco 11, reserva no #174). Feche o painel e o Chrome logo ao apertar Enviar, espere um
    minuto e reabra: o resumo vem da Conexão. Na tela de perfis o Envio entra no marcado (8b). Enviar a mesma Frase de novo dá
    “1 já estava lá”, sem nota dobrada. O custo está em `user_files/custos/<jobId>/costs.jsonl` e na aba Custos; o log e o diagnóstico não têm a chave.
+10. **O tipo de nota próprio e o Cartão Iniciante (#161, risco ALTO: cria tipos de nota na coleção). PENDING OWNER, num Anki em inglês e num em português (pt-BR).**
+    Antes, copie a pasta do perfil. Instale a Conexão nova e **reinicie o Anki**: em Ferramentas › Gerenciar Tipos de Nota há “PerpetualMiner Inglês” e
+    “PerpetualMiner Russo” (nenhum repetido, o “Básico”/“Basic” intacto, com os mesmos campos); num perfil sem Baralho nenhum aparecem `PerpetualMiner::Inglês`
+    e `PerpetualMiner::Russo`, e com Baralho seu (CIMV, RUSSIAN) nenhum Baralho novo. Reinicie o Anki de novo: nada se repete. O próximo Anki pede
+    sincronização completa **uma vez** (criar tipo de nota é mudança de esquema). Envie uma Frase em inglês e uma em russo: o Cartão tem a Frase e o áudio na frente
+    e, no verso, pronúncia, literal (com as cores da Frase), natural e Contexto da cena em português, a Palavra com o áudio e a imagem; o Anki em inglês **não** falha
+    com “note_type_missing”; reenviar a Frase dá “já estava lá”, também para a que está no “Básico” antigo. Nenhum Cartão antigo muda (compare a contagem e abra um).
 
 `test_openai_de_mentira.py` não é teste: é a OpenAI de mentira (servidor local) no lugar da de verdade.
 
 O `package` do manifesto (`perpetualminer`) é provisório: vira o id do AnkiWeb na publicação.
 
-### Ensaio do dono: Abrir o Anki com o computador (risco 5)
-
-O item de login **nunca foi testado** num Mac nem num Windows de verdade: os testes só conferem o arquivo escrito. No ensaio:
-
-1. Painel › Configurações › Conexão com o Anki: ligue **Abrir o Anki com o computador**.
-2. **Mac:** o arquivo `~/Library/LaunchAgents/com.perpetualminer.abrir-o-anki.plist` existe; o macOS pode avisar “itens de segundo plano adicionados” (Ajustes › Geral › Itens de Início); saia da sessão e entre: o Anki abre sozinho? (`launchctl list | grep perpetualminer` mostra o item.)
-3. **Windows:** `Anki (PerpetualMiner).lnk` está em `shell:startup` (Win+R); clique duas vezes nele: o Anki abre? Reinicie o computador: o Anki abre sozinho? O Gerenciador de Tarefas › Inicializar o lista?
-4. Desligue o interruptor: o arquivo some. O atalho do Anki que a pessoa mesma pôs na pasta (se houver) fica.
-5. Como o Anki é achado: o complemento usa `ANKI_LAUNCHER` (o abridor do Anki novo), depois o programa que roda o complemento, depois onde o instalador o põe; no Mac, `open -a Anki` se nada disso vale. Se o item não abrir o Anki certo, o aviso “não sabe onde o Anki está” (Windows) ou o conteúdo do `.plist` mostram o motivo.
-
-### Ensaio do dono: Abrir o Anki sozinho (riscos 1 e 2 do #138)
-
-O abridor **não foi testado num Mac de verdade**. No Windows real (ensaio de 2026-10-10), o complemento escreveu e registrou o host;
-o PowerShell 5.1 respondeu `conferir` e recusou as cinco ações inválidas sem abrir outro Anki. Chrome 153 e Opera GX 136, em perfis separados,
-encontraram e chamaram o host registrado só em HKCU do Chrome, com permissão nativa concedida por UI Automation. Isso não prova outros builds
-nem o fluxo do painel: a porta 8766 estava ocupada, `/health` e o painel não rodaram; `abrir` não foi executado.
-`test_abridor.py` escreve e registra só em pastas temporárias e num registro de mentira; no Linux, roda o `.sh` com o mesmo parser
-JavaScript em Node (a CLI do JXA adaptada), não o `osascript` real. O e2e usa um abridor de mentira; `test_inicio.py` e `test_no_anki.py`
-o desligam (`abridor=None`). Isso não confirma o aceite do dono:
-
-| Confirmação exigida antes de fechar #147 | Estado | Prova do dono |
-|---|---|---|
-| Risco 1 — Opera no Windows encontra e chama o host registrado | **VERIFICADO: Opera GX 136** | W4, Windows real, 2026-10-10: host só em `HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts`, `conferirOAnki()` → `achou`. Outros builds e fluxo visual do painel não confirmados; aceitação final (S5) permanece **PENDING OWNER** |
-| Risco 2 — Chrome no Mac chama o host e abre o Anki sem pergunta do macOS | **PENDING OWNER** | Ainda não registrada |
-| Comparação/aprovação visual do passo 3 e do Pronto (S4) | **PENDING OWNER** | Propostas continuam `test.fixme`, sem PNG aprovado |
-
-Não fechar #147 só com testes de Linux, um ✓ de `conferir` ou a abertura pelo Terminal: registre sistema, navegador, resultado, data
-e confirmação do dono. O que só o ensaio mostra:
-
-1. Com o complemento novo no Anki (refaça o arquivo: `python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon`), abra o Anki
-   e um perfil. Em `user_files/abridor` (Ferramentas › Complementos › Ver arquivos) aparece o script; o log só diz “O abridor não foi escrito” se algo falhou.
-2. Painel › Conexão com o Anki (nunca conectada) ou Boas-vindas › passo 4: depois de “Achei o Anki”, **Permitir abrir o Anki**. O Chrome
-   mostra o aviso da permissão (“Comunicar-se com aplicativos nativos cooperativos”); responda Permitir. A tela deve dizer
-   “O Anki abre sozinho quando um Envio precisar.” e o passo virar ✓. Nada abre nem fecha.
-3. **Mac (risco 2):** o manifesto está em `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.perpetualminer.abridor.json`
-   e aponta para `…/user_files/abridor/abrir-o-anki.sh`. Para ver o `abrir` (que o Envio usa, #150), feche o Anki e rode, no Terminal,
-   `printf '\x13\x00\x00\x00{"acao":"abrir"}' | sh "<o caminho do script>" | tail -c +5`: o Anki abre no perfil anotado, **sem pergunta
-   do macOS**? A resposta é `{"achou":true,"abriu":true}`. Se o macOS perguntar algo (Gatekeeper, “Terminal quer controlar…”), anote o texto.
-   Isto é só uma aproximação (o macOS julga diferente o script do Terminal e o do Chrome, e a extensão só manda `abrir`
-   do Envio e do botão, #150): o risco 2 de verdade (o Chrome chama, o Anki abre sem pergunta) continua **PENDING OWNER**.
-4. **Windows com o Chrome:** `reg query "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.perpetualminer.abridor"` mostra o caminho
-   do manifesto em `user_files\abridor`. O passo 2 acima dá ✓? Se a política do computador bloquear o PowerShell (`-ExecutionPolicy Bypass`
-   não basta), o passo diz que o abridor não respondeu, com o Detalhes: anote o texto.
-5. **Windows com o Opera (risco 1):** instale a extensão no Opera e repita o passo 2. O Opera acha o host registrado na chave do Chrome?
-   Se não achar (“Specified native messaging host not found.”), registre também na chave que o Opera lê (`ONDE_REGISTRAR_NO_WINDOWS` e o teste).
-6. **Agora não:** num perfil novo do Chrome, aperte Agora não: o passo fica “agora não” e o Pronto devolve as abas.
+Os ensaios do item de login (“Abrir o Anki com o computador”, risco 5) e do abridor (“Abrir o Anki sozinho”, riscos 1 e 2 do #138) estão em
+[`docs/design/ensaios-do-dono-da-conexao.md`](../docs/design/ensaios-do-dono-da-conexao.md).

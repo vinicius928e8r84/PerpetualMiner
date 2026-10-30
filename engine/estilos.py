@@ -1,0 +1,78 @@
+"""estilos.py - the Card style as data: language × level (`estilos.json`), standard library only.
+
+A language is an entry of `idiomas`: its note type and deck, how a mining line reads (`entrada`: `palavras` is `kw | kw : phrase`,
+`frase` is the whole line), its fields (every one it will ever use: changing a note type's fields later forces a full sync in Anki)
+and its levels. A level says which language explains the Card (`explicacao`), which parts the back has (`verso`, in order),
+whether the colours link the parts (`cores`) and which prompt writes it. A new language enters by adding its entry and its prompt file.
+"""
+
+import copy
+import json
+import os
+
+PASTA = os.path.dirname(os.path.abspath(__file__))
+
+
+def _ler():
+    with open(os.path.join(PASTA, "estilos.json"), encoding="utf-8") as arquivo:
+        return json.load(arquivo)
+
+
+DADOS = _ler()
+
+
+class Estilos:
+    """Os dados de estilo de uma vez: `DADOS` (o `estilos.json`) ou, nos testes, outros."""
+
+    def __init__(self, dados):
+        self.dados = dados
+
+    @property
+    def NIVEL_PADRAO(self):
+        return self.dados["nivel_padrao"]
+
+    def idiomas(self):
+        return tuple(self.dados["idiomas"])
+
+    def idioma(self, lang):
+        """O idioma com os campos já nomeados (`campos`: chave → nome do campo, na ordem); `KeyError` se os dados não o têm."""
+        cru = self.dados["idiomas"][lang]
+        return dict(copy.deepcopy(cru), campos={chave: self.dados["campos"][chave] for chave in cru["campos"]})
+
+    def estilo(self, lang, nivel=None):
+        """O estilo de um nível (`prompt`, `explicacao`, `verso`, `cores`), com o idioma da entrada; sem nível, o padrão."""
+        idioma = self.dados["idiomas"][lang]
+        nivel = nivel or self.NIVEL_PADRAO
+        return dict(copy.deepcopy(idioma["niveis"][nivel]), nivel=nivel, entrada=idioma["entrada"])
+
+    def rotulo(self, chave):
+        """O rótulo com que o prompt escreve a parte no texto do Cartão (`Pronunciation`), ou None."""
+        return self.dados["rotulos"].get(chave)
+
+    def nomes_da_frente_de_antes(self):
+        """Os nomes da frente do “Básico” de antes (o do Anki em português e o do Anki em inglês): a busca de duplicatas os lê também."""
+        return tuple(self.dados["frente_de_antes"])
+
+
+_PADRAO = Estilos(DADOS)  # os testes de um idioma novo trocam este (`mock.patch.object(estilos, "_PADRAO", Estilos(outros))`)
+NIVEL_PADRAO = _PADRAO.NIVEL_PADRAO
+
+
+def idiomas():
+    return _PADRAO.idiomas()
+
+
+def idioma(lang):
+    return _PADRAO.idioma(lang)
+
+
+def estilo(lang, nivel=None):
+    return _PADRAO.estilo(lang, nivel)
+
+
+def rotulo(chave):
+    return _PADRAO.rotulo(chave)
+
+
+def nomes_da_frente_de_antes():
+    return _PADRAO.nomes_da_frente_de_antes()

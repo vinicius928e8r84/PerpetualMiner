@@ -7,8 +7,9 @@ import hashlib
 import json
 import re
 
+from .motor import estilos
+
 _ID_DO_ENVIO = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
-IDIOMAS = ("en", "ru")
 
 
 def id_valido(job_id):
@@ -33,7 +34,7 @@ def validar_pedido(corpo):
     """O pedido de `POST /jobs` normalizado, ou (status, erro) se ele não serve. Frases com o mesmo `phraseId` valem uma vez (a primeira)."""
     if not id_valido(corpo.get("jobId")):
         return None, (400, "invalid_job_id")
-    if corpo.get("lang") not in IDIOMAS:
+    if corpo.get("lang") not in estilos.idiomas():  # os idiomas são os dos dados de estilo
         return None, (400, "invalid_lang")
     deck = corpo.get("deckName")
     if not isinstance(deck, str) or not deck.strip() or len(deck) > 256:

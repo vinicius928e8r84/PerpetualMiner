@@ -67,11 +67,14 @@ COMPORTAMENTOS = {
 
 
 def _cartao_de_mentira(mensagens):
-    """Um Cartão que o motor aceita, feito do pedido: a Palavra no verso, destacada na frente, e o contexto, se veio."""
+    """Um Cartão do Iniciante que o motor aceita, feito do pedido: a Palavra no verso, destacada na frente, o contexto, se veio, e a
+    tradução em português com o alinhamento que liga os pedaços (`Literal` e `Natural`, como o prompt do nível pede)."""
     pedido = mensagens[-1]["content"]
     if re.search(r"[\u0400-\u04FF]", pedido):  # russo: a frase inteira é a frente
         frase = pedido.split("\n")[0]
-        return "Front\n%s\n\nBack\nPronunciation: x\n\nTranslation: tradução de mentira\n" % frase
+        primeira = frase.split()[0]
+        return ("Front\n%s\n\nBack\nPronunciation: pronúncia de mentira\n\nLiteral: literal de mentira\n\nNatural: tradução de mentira\n\n"
+                "Gist: cena de mentira.\n\nAlignment:\n1 | %s | literal\n" % (frase, primeira))
     alvo = re.search(r"Target keyword for this card: (.+)", pedido)
     linha = pedido.split("Input Format:\n")[-1].strip()
     palavra, frase = [parte.strip() for parte in linha.split(" : ", 1)]
@@ -81,7 +84,8 @@ def _cartao_de_mentira(mensagens):
     frente = frase.replace(palavra, "*%s*" % palavra, 1) if palavra in frase else "*%s* aqui" % palavra
     fonte = "Source Context: %s\n\n" % contexto.group(1) if contexto else ""
     imagem = "Google Image Search Queries:\n1. %s\n2. %s photo\n\nImage: A %s, no text.\n" % (palavra, palavra, palavra)
-    return "%sFront: %s\n\nBack: %s - /ipa/\n\nDefinition: definição de mentira.\n%s" % (fonte, frente, palavra, imagem)
+    verso = "Pronunciation: pronúncia de mentira\n\nLiteral: literal de mentira\n\nNatural: tradução de mentira\n\nGist: cena de mentira.\n"
+    return "%sFront: %s\n\nBack: %s - /ipa/\n\n%s%s\nAlignment:\n1 | %s | literal\n" % (fonte, frente, palavra, verso, imagem, palavra)
 
 
 def _palavra_do_pedido(mensagens):

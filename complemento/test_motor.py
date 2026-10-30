@@ -8,11 +8,12 @@ import os
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import envio  # noqa: E402
+from complemento import envio, motor_do_envio  # noqa: E402
 from complemento.test_imagens_de_mentira import JPEG_DE_MENTIRA, png_de  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
 
@@ -34,7 +35,7 @@ class OMotorComoPacote(unittest.TestCase):
         with mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
             motor = envio.motor_do_complemento()
             config = motor.config_loader.base_config()
-        self.assertEqual((config["anki"]["note_type"], config["anki"]["fields"]), ("Básico", {"front": "Frente", "back": "Verso"}))
+        self.assertEqual((config["anki"]["note_type"], config["anki"]["fields"]), ("Básico", {"front": "Frente", "back": "Verso"}))  # o da Conexão de hoje (bridge)
 
     def test_as_imagens_do_motor_rodam_sem_pillow_requests_nem_o_sdk_e_so_o_que_precisa_converter_pede_um_adaptador(self):
         with mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
@@ -44,6 +45,17 @@ class OMotorComoPacote(unittest.TestCase):
             with self.assertRaises(motor.image_utils.UnsupportedImageFormatError):
                 motor.image_utils.normalize_image_bytes(JPEG_DE_MENTIRA, target_format="PNG")
         self.assertEqual((png, mime), (png_de("a"), "image/png"))
+
+    def test_o_envio_le_o_estilo_do_idioma_do_pedido_sem_as_bibliotecas_de_fora(self):
+        fila = SimpleNamespace(pasta_dos_textos=lambda job_id: "textos", pasta_dos_custos=lambda job_id: "custos")
+        with mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
+            motor = envio.motor_do_complemento()
+            pedidos = {lang: {"lang": lang, "deckName": "x", "jobId": "j", "tts": {}} for lang in ("en", "ru")}
+            configs = {lang: motor_do_envio.configuracao_do_motor(motor, fila, pedido, None) for lang, pedido in pedidos.items()}
+        self.assertEqual(
+            {lang: (c["anki"]["note_type"], c["estilo"]["nivel"], c["estilo"]["entrada"], os.path.basename(c["estilo"]["prompt"])) for lang, c in configs.items()},
+            {"en": ("PerpetualMiner Inglês", "iniciante", "palavras", "en_iniciante.txt"), "ru": ("PerpetualMiner Russo", "iniciante", "frase", "ru_iniciante.txt")},
+        )
 
     def test_uma_linha_com_duas_palavras_tem_dois_cartoes_e_a_linha_russa_um(self):
         motor = envio.motor_do_complemento()

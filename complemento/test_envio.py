@@ -8,6 +8,7 @@ import contextlib
 import io
 import json
 import os
+import re
 import sys
 import tempfile
 import time
@@ -78,16 +79,16 @@ def chats(openai):
 
 
 class UmaFraseViraCartao(unittest.TestCase):
-    def test_uma_frase_vira_um_cartao_no_baralho_com_o_tipo_de_nota_e_os_campos_de_hoje(self):
+    def test_uma_frase_vira_um_cartao_no_baralho_no_tipo_de_nota_do_idioma(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             status, resposta = conexao.criar(pedido(ID, "gave up : She gave up smoking [Context: Série - The Office - S01E01]"))
             estado = conexao.esperar(ID)
             notas = conexao.conexao.colecao.gravadas
         self.assertEqual((status, resposta), (201, {"jobId": ID, "status": "queued"}))
         self.assertEqual((estado["status"], estado["successfulPhraseIds"], estado["failedPhraseIds"]), ("completed", [1760000000000], []))
-        self.assertEqual([(n["baralho"], n["tipo"], sorted(n["campos"])) for n in notas], [("Inglês", "Básico", ["Frente", "Verso"])])
-        self.assertIn("<b>gave up</b>", notas[0]["campos"]["Frente"])
-        self.assertTrue(notas[0]["campos"]["Verso"].startswith("gave up - /"))
+        self.assertEqual([(n["baralho"], n["tipo"]) for n in notas], [("Inglês", "PerpetualMiner Inglês")])
+        self.assertIn("<b>", notas[0]["campos"]["Frase"])
+        self.assertTrue(notas[0]["campos"]["Palavra"].startswith("gave up - /"))
         self.assertEqual(notas[0]["etiquetas"], ["perpetual_miner", "série", "the_office", "s01e01"])
         self.assertEqual(list(estado["cards"].values()), [{"phraseId": 1760000000000, "status": "added", "error": None}])
         self.assertEqual(list(estado["cards"]), ["1760000000000-0"])
@@ -106,7 +107,7 @@ class UmaFraseViraCartao(unittest.TestCase):
             estado = conexao.esperar(ID)
             notas = conexao.conexao.colecao.gravadas
         self.assertEqual(estado["status"], "completed")
-        self.assertIn("Я не мальчик!", notas[0]["campos"]["Frente"])
+        self.assertIn("Я", notas[0]["campos"]["Frase"])
 
     def test_uma_frase_com_duas_palavras_vira_dois_cartoes_e_so_conta_quando_os_dois_entram(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
@@ -189,8 +190,8 @@ class AGravacaoEsperaOAnki(unittest.TestCase):
         self.assertEqual((estado["status"], estado["cards"]["1760000000000-0"]["status"], estado["duplicatePhraseIds"]), ("completed", "added", []))
         self.assertEqual((len(colecao.gravadas), len(pedidos)), (1, 1))
 
-    def test_sem_o_tipo_de_nota_de_hoje_o_envio_falha_antes_de_gastar_a_chave(self):
-        colecao = ColecaoEmMemoria(dict(INGLES, tiposDeNota={"Basic": ["Front", "Back"]}))
+    def test_o_tipo_nosso_sem_os_nossos_campos_falha_o_envio_antes_de_gastar_a_chave(self):
+        colecao = ColecaoEmMemoria(dict(INGLES, tiposDeNota={"PerpetualMiner Inglês": ["Frase", "Meu campo"]}))
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, colecao=colecao) as conexao:
             conexao.criar(pedido(ID, "give up : She gave up smoking"))
             estado = conexao.esperar(ID)
@@ -220,7 +221,7 @@ class AChave(unittest.TestCase):
             conexao.openai.recusar_o_chat_de("run", 401, "invalid_api_key")
             conexao.criar(pedido(ID, "gave up : She gave up smoking", "run : They run", "late : Better late than never"))
             estado = conexao.esperar(ID)
-            gravadas = [n["campos"]["Verso"].split(" - ")[0] for n in conexao.conexao.colecao.gravadas]
+            gravadas = [n["campos"]["Palavra"].split(" - ")[0] for n in conexao.conexao.colecao.gravadas]
         self.assertEqual((estado["status"], estado["lastError"], estado["successfulPhraseIds"]), ("partial", "openai_key_rejected", [1760000000000]))
         self.assertEqual(gravadas, ["gave up"])
         self.assertEqual(sorted(c["status"] for c in estado["cards"].values()), ["added", "failed", "pending"])
@@ -262,7 +263,7 @@ class ARetomada(unittest.TestCase):
                 final = conexao.esperar(job["jobId"])
                 pedidos = chats(conexao.openai)
         self.assertEqual(pedidos, [])
-        self.assertEqual([n["campos"]["Frente"].split("[sound:")[0] for n in colecao.gravadas], ["They <b>run</b>"])
+        self.assertEqual([re.sub("<span[^>]*>|</span>", "", n["campos"]["Frase"]) for n in colecao.gravadas], ["They <b>run</b>"])
         self.assertEqual(
             {stem: c["status"] for stem, c in final["cards"].items()},
             {"1760270400001-0": "added", "1760270400001-1": "added", "1760270400002-0": "added"},
@@ -280,7 +281,7 @@ class ARetomada(unittest.TestCase):
             retomada = json.loads(conexao.pedir("POST", "/jobs/retry", corpo={"jobId": ID})[2])
             estado = conexao.esperar(ID)
             depois = [p[1]["messages"][1]["content"] for p in chats(conexao.openai)[antes:]]
-            gravadas = [n["campos"]["Verso"].split(" - ")[0] for n in conexao.conexao.colecao.gravadas]
+            gravadas = [n["campos"]["Palavra"].split(" - ")[0] for n in conexao.conexao.colecao.gravadas]
         self.assertEqual(retomada, {"jobId": ID, "status": "queued"})
         self.assertEqual(estado["status"], "completed")
         self.assertEqual(len(depois), 1)

@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import estilos
 import generate_cards
 from parser import MiningEntry, build_card_stem
 
@@ -189,6 +190,111 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
             self.assertEqual([path.name for path in (root / "Output").glob("*.txt")], ["77-0.txt"])
             self.assertNotIn("exerts himself", "\n".join(logged.output))
             self.assertNotIn("toil", "\n".join(logged.output))
+
+
+CARTAO_INICIANTE = """Anki Card
+Source Context: Série - The Office - S01E01
+
+Front: She *gave up* smoking last year.
+
+Back: gave up – /ɡeɪv ʌp/
+
+Pronunciation: shi GUÊIV âp SMÔU-kin lést iâr
+
+Literal: Ela desistiu fumando último ano
+
+Natural: Ela parou de fumar ano passado.
+
+Gist: Alguém conta que largou o cigarro.
+
+Image: None
+Google Image Search Queries:
+1. broken cigarette
+2. no smoking sign
+3. person refusing cigarette
+4. quit smoking
+
+Alignment:
+1 | She | Ela
+2 | gave up | desistiu
+3 | smoking | fumando
+"""
+
+CARTAO_RUSSO_INICIANTE = """Anki Card
+Front
+Я не мальчик!
+
+Back
+Pronunciation: ia ni MAL-tchik
+
+Literal: Eu não menino
+
+Natural: Eu não sou um menino!
+
+Gist: Alguém corrige uma suposição errada sobre si.
+
+Google Image Search Queries:
+1. girl
+2. young girl portrait
+3. confident girl
+4. female child portrait
+
+Image: A confident girl, no text.
+
+Alignment:
+1 | Я | Eu
+2 | не | não
+3 | мальчик | menino
+"""
+
+
+def _com_o_estilo(root: Path, lang: str) -> dict:
+    """A configuração de um Envio do add-on: o estilo do idioma (com o prompt do nível, lido do disco) no lugar dos `paths.prompts`."""
+    estilo = estilos.estilo(lang)
+    estilo["prompt"] = str(Path(__file__).resolve().parent / estilo["prompt"])
+    return dict(_config(root), lang=lang, estilo=estilo)
+
+
+class GenerateCardsByStyleTests(unittest.TestCase):
+    def _gerar(self, lang, entry, resposta):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "Output").mkdir()
+            (root / "log").mkdir()
+            enviados = []
+            original = generate_cards._call_model
+
+            def fake_call_model(openai_base, api_key, system_prompt, user_message, model, log_dir, keyword):
+                enviados.append((system_prompt, user_message))
+                return resposta
+
+            generate_cards._call_model = fake_call_model
+            try:
+                saved = generate_cards.run([entry], _com_o_estilo(root, lang))
+            finally:
+                generate_cards._call_model = original
+            textos = [path.read_text(encoding="utf-8") for path in (root / "Output").glob("*.txt")]
+        return saved, enviados, textos
+
+    def test_o_cartao_do_ingles_e_pedido_com_o_prompt_do_iniciante_e_so_salva_se_a_palavra_confere(self):
+        entry = MiningEntry(keywords=["gave up"], phrase="She gave up smoking last year.")
+        saved, enviados, textos = self._gerar("en", entry, CARTAO_INICIANTE)
+        iniciante = (Path(__file__).resolve().parent / "prompts" / "en_iniciante.txt").read_text(encoding="utf-8").strip()
+        self.assertEqual([prompt for prompt, _ in enviados], [iniciante])
+        self.assertEqual(len(saved), 1)
+        self.assertIn("Literal: Ela desistiu", textos[0])
+
+    def test_o_estilo_diz_que_a_linha_russa_e_a_frase_inteira_e_o_prompt_do_iniciante_do_russo_vale(self):
+        entry = MiningEntry(keywords=["Я не"], phrase="Я не мальчик!", context_source="Série", file_stem="russa")
+        saved, enviados, textos = self._gerar("ru", entry, CARTAO_RUSSO_INICIANTE)
+        iniciante = (Path(__file__).resolve().parent / "prompts" / "ru_iniciante.txt").read_text(encoding="utf-8").strip()
+        self.assertEqual(([prompt for prompt, _ in enviados], saved), ([iniciante], ["russa"]))
+        self.assertEqual(enviados[0][1], "Я не мальчик!\n[Context: Série]")
+
+    def test_um_cartao_russo_sem_a_traducao_em_portugues_nao_e_salvo(self):
+        entry = MiningEntry(keywords=["Я не"], phrase="Я не мальчик!", file_stem="russa")
+        saved, _, textos = self._gerar("ru", entry, CARTAO_RUSSO_INICIANTE.replace("Literal:", "Outro:").replace("Natural:", "Mais:"))
+        self.assertEqual((saved, textos), ([], []))
 
 
 if __name__ == "__main__":
