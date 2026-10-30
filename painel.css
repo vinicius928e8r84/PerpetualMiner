@@ -529,7 +529,8 @@ body {
   font-weight: var(--veio-peso-titulo);
 }
 
-.cfg-acoes {
+.cfg-acoes,
+.envio-cartao__acoes {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -871,7 +872,7 @@ body {
   cursor: pointer;
 }
 
-/* Com seleção, a linha vira a barra contextual (PAI-32): pílula com borda ouro a 45%, grudada no topo da ilha ao rolar; o checkbox da página fica no começo dela. */
+/* Com seleção, a linha vira a barra contextual (PAI-32): pílula com borda ouro a 45%, grudada no topo da ilha ao rolar; o checkbox da página no começo. */
 .frases-selecao--barra {
   position: sticky;
   top: 12px;
@@ -1192,7 +1193,7 @@ body {
 .envio-cartao__etapas--ok > i.feito { background: var(--veio-success); }
 .envio-cartao__etapas--erro > i.feito { background: var(--veio-danger); }
 
-/* Enquanto o cartão espera a pessoa: tudo em tom calmo, quem fala é o motivo. */
+/* Enquanto o cartão espera a pessoa: tom calmo, quem fala é o motivo. */
 .envio-cartao__etapa--calmo { color: var(--veio-muted); }
 .envio-cartao__etapas--calmo > i.feito { background: color-mix(in srgb, var(--veio-accent) 45%, var(--veio-surface-2)); }
 
@@ -1532,7 +1533,7 @@ body {
   }
 }
 
-/* Numa janela estreita os dois quadros não cabem lado a lado (cada um tem a linha Sim · Não inteira): empilham, sem sair do card. */
+/* Numa janela estreita os dois quadros não cabem lado a lado (cada um tem a linha Sim · Não inteira): empilham. */
 @media (prefers-reduced-motion: reduce) and (max-width: 560px) {
   .pc-animacao__quadros {
     flex-direction: column;

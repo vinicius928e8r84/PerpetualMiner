@@ -4,6 +4,7 @@ const { isDeepStrictEqual } = require('util');
 const { responderJson } = require('./http');
 const { criarFakeChatGPT } = require('./chatgpt');
 const { criarPerfis } = require('./perfis');
+const { criarLimiteDoPlano } = require('./limite-do-plano');
 const { diferencaDoContrato } = require('./diferenca-do-contrato');
 const { resumoDosCustos, linhaDeCustos } = require('./custos');
 const contrato = require('../../complemento/contrato/carregar');
@@ -16,7 +17,8 @@ const contrato = require('../../complemento/contrato/carregar');
 // complemento leem: o fake responde o exemplo do pedido no contexto em que a Conexão está (`abrirPerfil`, `abrirColecao`,
 // `responderOpenAI`, `guardarChaveNaConexao`, `definirItemDeLogin`). Os testes de tela montam os Baralhos em termos de gente
 // (`definirVocabulario`, `definirBaralho`); `abrirColecao(nome)` passa a responder o contrato inteiro. Uma rota nova entra nesse
-// arquivo (`complemento/contrato/LEIA-ME.md`). O perfil fixo (#149) mora em `perfis.js`; o login do ChatGPT (#155), em `chatgpt.js` (`fakes.anki.chatgpt`).
+// arquivo (`complemento/contrato/LEIA-ME.md`). Em arquivos à parte: o perfil fixo (#149, `perfis.js`), o login do ChatGPT (#155,
+// `chatgpt.js`) e o limite do plano (#158, `limite-do-plano.js`).
 //
 // Baralhos e termos, Vocabulário e Ajustes de envio (`POST /anki/decks`, sem `definirBaralhosDoAnki` é 503): voltam na ordem pedida,
 // o que o Anki não tem volta `missing`, e os filtros (`status`, `type`, `q`) valem como no complemento.
@@ -27,7 +29,7 @@ const contrato = require('../../complemento/contrato/carregar');
 // Os Envios (`/jobs…`, `/analytics/jobs`, todas POST): `POST /jobs` cria um pelo `jobId` do painel (o mesmo corpo é o mesmo Envio;
 // outro corpo, o `409`), `/jobs/list` lista com o `state` de cada um, `/jobs/retry` o põe na fila. O teste move (`moverEnvio`) e
 // termina (`concluirEnvio`) cada Envio como a Conexão faria; `definirFila(nome)` põe uma fila do contrato. Os custos são os de
-// `definirCustos` ou, sem eles, os dos Envios da fila (`custos.py`, só os de texto: imagens são do #144).
+// `definirCustos` ou, sem eles, os dos Envios da fila (só os de texto).
 
 // O exemplo do contrato de onde o fake tira a linha de um Baralho que o Anki não tem.
 const EXEMPLO_DO_BARALHO_QUE_NAO_EXISTE = 'Números de um Baralho que existe e de um que não existe';
@@ -103,6 +105,7 @@ function criarFakeAnki() {
     if (!exemplo) throw new Error(`O contrato não tem o erro ${erro} de POST ${caminho}; escreva o exemplo antes de o fake responder.`);
     return { status: exemplo.resposta.status, json: exemplo.resposta.json };
   }
+  const limite = criarLimiteDoPlano({ envios, chaveGuardada: () => estado.chaveDaOpenAI, erro: erroDoContrato });
 
   const ID_DO_ENVIO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   const semHora = ({ createdAt, ...pedido }) => pedido;
@@ -129,18 +132,7 @@ function criarFakeAnki() {
     return { status: 201, json: { jobId, status: 'queued' } };
   }
 
-  function listarEnvios() {
-    return {
-      jobs: envios.map(e => ({
-        jobId: e.jobId,
-        lang: e.lang,
-        status: e.state.status,
-        createdAt: e.createdAt,
-        updatedAt: e.state.updatedAt,
-        state: e.state,
-      })),
-    };
-  }
+  const listarEnvios = () => ({ jobs: envios.map(e => ({ jobId: e.jobId, lang: e.lang, status: e.state.status, createdAt: e.createdAt, updatedAt: e.state.updatedAt, state: e.state })) });
 
   /**
    * `POST /jobs/apagar-frases`: de todo Envio somem as linhas das Frases (ficam os `phraseId`); um Envio na fila ou andando vai a
@@ -165,17 +157,9 @@ function criarFakeAnki() {
   /** As linhas de Custos do período e do idioma pedidos (`POST /analytics/jobs`), como `JobAnalytics.jobs`. */
   function linhasDosCustos(corpo) {
     const { lang = 'all', from: de, to: ate } = corpo || {};
-    const doIdioma = linha => lang === 'all' || linha.lang === lang;
-    if (estado.custos) {
-      return estado.custos.filter(linha => {
-        const dia = String(linha.createdAt).slice(0, 10);
-        return doIdioma(linha) && (!de || dia >= de) && (!ate || dia <= ate);
-      });
-    }
-    return envios.filter(envio => {
-      const dia = String(envio.createdAt).slice(0, 10);
-      return doIdioma(envio) && (!de || dia >= de) && (!ate || dia <= ate);
-    }).map(envio => {
+    const doPeriodo = linha => (lang === 'all' || linha.lang === lang) && (!de || String(linha.createdAt).slice(0, 10) >= de) && (!ate || String(linha.createdAt).slice(0, 10) <= ate);
+    if (estado.custos) return estado.custos.filter(doPeriodo);
+    return envios.filter(doPeriodo).map(envio => {
       const resumo = resumoDosCustos(estado.registrosDeCusto.get(envio.jobId) || [], de, ate);
       const pedidas = new Set(envio.entries.map(e => e.phraseId)).size;
       const enviadas = envio.state.successfulPhraseIds.length;
@@ -514,7 +498,7 @@ function criarFakeAnki() {
       const { status, json } = itemDeLogin(req, url);
       return responderJson(route, status, json);
     }
-    const doPerfil = perfis.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido));
+    const doPerfil = perfis.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido)) || limite.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido));
     if (doPerfil) return responderJson(route, doPerfil.status, doPerfil.json);
     // O que lê o Anki da pessoa é POST (contrato/LEIA-ME.md): por GET a Conexão não tem a rota.
     const leituraDoAnki = ['/anki/vocabulary', '/anki/decks', '/anki/stats/decks'].includes(url.pathname);

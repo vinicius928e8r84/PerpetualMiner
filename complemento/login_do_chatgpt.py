@@ -278,12 +278,13 @@ class LoginDoChatGPT:
         return status, corpo if isinstance(corpo, dict) else {}
 
 
-def credencial(login, cofre, plano):
+def credencial(login, cofre, plano, so_a_chave=False):
     """Com que o Envio pede o texto do próximo Cartão, lido antes de cada pedido e só para ele: com o login do ChatGPT, o token
     (renovado) e o modelo da conta (guardado em `plano` durante o Envio); sem ele, a chave do cofre; None sem nenhum dos dois; o
-    código (texto) quando o plano não serve agora. O Envio nunca troca um pelo outro sozinho (o login que acabou para o Envio)."""
+    código (texto) quando o plano não serve agora. O Envio nunca troca um pelo outro sozinho (o login que acabou para o Envio); a
+    pessoa troca por Usar a minha chave (`so_a_chave`, #158): então o login nem é lido."""
     try:
-        token = login.token() if login is not None else None
+        token = login.token() if login is not None and not so_a_chave else None
         if token:
             if "modelo" not in plano:
                 plano["modelo"] = login.modelo(token)

@@ -4,7 +4,7 @@ Python só com a biblioteca padrão (o Anki do Mac roda o 3.9, sem Flask nem req
 Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 (`GET /health`: `{ ok, versao, perfil }`, aberta ao cliente local), as leituras da coleção do Anki
 (`POST /anki/decks`, `/anki/stats/decks` e `/anki/vocabulary`) e a chave da OpenAI
-(`POST /ia/openai/chave` a confere e guarda; `POST /ia/estado` diz se há cópia), o Envio (`POST /jobs`, `/jobs/list`, `/jobs/get`, `/jobs/retry`, `/jobs/debug-bundle`, `/analytics/jobs`: cada Frase vira um Cartão com texto e áudio gravado na coleção, #142) e o perfil fixo (`POST /anki/profiles`, `/anki/profile`, `/anki/profile/open`, #149); o resto exige a origem da extensão e é POST (`contrato/LEIA-ME.md`).
+(`POST /ia/openai/chave` a confere e guarda; `POST /ia/estado` diz se há cópia), o Envio (`POST /jobs`, `/jobs/list`, `/jobs/get`, `/jobs/retry`, `/jobs/debug-bundle`, `/analytics/jobs`: cada Frase vira um Cartão na coleção, #142) e o perfil fixo (`POST /anki/profiles`, `/anki/profile`, `/anki/profile/open`, #149); o resto exige a origem da extensão e é POST (`contrato/LEIA-ME.md`).
 
 | Arquivo | O que faz |
 |---|---|
@@ -16,7 +16,7 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 | `rotas_da_chave.py` | As rotas da chave da OpenAI (`/ia/openai/…`, `/ia/estado`), listadas em `servidor.ROTAS` |
 | `baralhos.py` | O que se lê da coleção: a lista de Baralhos, os números de cada um e o vocabulário, só pelo lado de leitura de um adaptador da coleção (o contrato do adaptador, de leitura e gravação, está no topo) |
 | `pedido_do_envio.py` | O pedido de `POST /jobs` (o que vale, a impressão do corpo) e o id do Envio; `envio.py` os reexporta |
-| `envio.py` | O Envio (#142): a fila, o estado de cada Cartão e o trabalho que gera o texto pelo motor e grava cada nota pelo adaptador (na thread principal do Anki), esperando o perfil fechado e a sincronização; o criar idempotente pelo `jobId`, a retomada sem refazer o que está pronto (`guid` fixo por Cartão). O desenho: `docs/design/envio-no-complemento.md`. `motor_do_envio.py`: o motor de cada pedido |
+| `envio.py` | O Envio (#142): a fila, o estado de cada Cartão e o trabalho que gera o texto pelo motor e grava cada nota pelo adaptador (na thread principal do Anki), esperando o perfil fechado e a sincronização; o criar idempotente pelo `jobId` e a retomada sem refazer o que está pronto (`guid` fixo por Cartão). Desenho: `docs/design/envio-no-complemento.md`. `motor_do_envio.py`: o motor de cada pedido; `limite_do_plano.py`: a espera do plano do ChatGPT (#158) |
 | `trabalhador.py` | A thread de trabalho do Envio: tira um Envio da fila de cada vez e o faz (`envio.Trabalho`); depois de subir, espera até 60 s o primeiro pedido de Envio antes de retomar o que ficou parado |
 | `imagem_do_cartao.py` | A imagem do Cartão (#144): foto do Openverse ou gerada; se falha, o Cartão vai sem. `imagem_qt.py`: o Qt do Anki. `docs/design/imagem-do-cartao.md` |
 | `voz.py` | A voz do Cartão (#143): o áudio pedido ao Google Tradutor como o gTTS 2.5 faz, só com a biblioteca padrão; `audio_do_cartao.py` o liga ao Envio. Página: `docs/design/audio-do-cartao.md` |
@@ -44,8 +44,8 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 - A coleção só é lida por um adaptador (`baralhos.py` diz o que ele tem: `perfis()`, `nomes_dos_baralhos()`, `cartoes_do_baralho()`). `no_anki.ColecaoDoAnki` é o do Anki e lê e grava na thread principal do Anki; os testes usam `test_colecao_em_memoria.ColecaoEmMemoria`. O lado de gravação é o do Envio: `tipo_de_nota()`, `guids_existentes()`, `adicionar_nota()`.
 - `GET /health` é a única rota sem `Origin`, porque o Chrome manda o GET de uma extensão sem ele; as outras são só POST e exigem a origem (`contrato/LEIA-ME.md` § Quem o complemento atende). A credencial de pareamento é o ticket #192, antes do lançamento.
 - `bridge/test_paridade_da_normalizacao.py` roda as 19 funções das duas cópias com os mesmos casos; `bridge/card_normalization.py` é a referência até a Conexão de hoje sair.
-- Chave da OpenAI (#154): `POST /ia/openai/chave` a confere (`openai_api.py`, dois pedidos baratos, só a biblioteca padrão, URL base só por código) e guarda a cópia em `user_files/chaves` (fora do diagnóstico e do `.ankiaddon`); `/ia/estado` dá só máscara, UID, revisão e envio pendente; `/ia/openai/sincronizar`, `/legado` e `/chave/apagar` levam o dono à conta, migram o UID antigo (com a prova do segredo) e apagam a cópia. Nenhuma resposta devolve a chave inteira e o log nunca a escreve.
-- Envio: o mesmo corpo de `POST /jobs` com o mesmo `jobId` é o mesmo Envio; outro corpo com ele dá `409`; `/jobs/list`, `/jobs/get`, `/jobs/retry` e `/jobs/debug-bundle` levam o `jobId` no corpo. Cada nota é gravada na thread principal do Anki (Básico/Frente/Verso até o #161); o criar usa a busca de duplicata pela frente normalizada.
+- Chave da OpenAI (#154): `POST /ia/openai/chave` a confere (`openai_api.py`: dois pedidos baratos) e guarda a cópia em `user_files/chaves` (fora do diagnóstico e do `.ankiaddon`); `/ia/estado` dá só máscara, UID, revisão e envio pendente; `/ia/openai/sincronizar`, `/legado` e `/chave/apagar` levam o dono à conta, migram o UID antigo (com a prova do segredo) e apagam a cópia. Nenhuma resposta devolve a chave inteira e o log nunca a escreve.
+- Envio: o mesmo corpo de `POST /jobs` com o mesmo `jobId` é o mesmo Envio; outro corpo com ele dá `409`; `/jobs/list`, `/jobs/get`, `/jobs/retry`, `/jobs/usar-a-chave` e `/jobs/debug-bundle` levam o `jobId` no corpo. Cada nota é gravada na thread principal do Anki (Básico/Frente/Verso até o #161); o criar usa a busca de duplicata pela frente normalizada.
 
 ## Testes
 

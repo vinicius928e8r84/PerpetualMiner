@@ -98,7 +98,7 @@ class OpenAIDeMentira:
     salvo para a Palavra que `recusar_o_chat_de` mandou recusar (`"*"`: todas). `chats` guarda (Authorization, corpo).
     O plano do ChatGPT: um `Bearer acesso-…` (o do login de mentira) recebe a lista do plano em `/v1/models`, e `/v1/responses`
     devolve o mesmo Cartão em stream de eventos; `respostas` guarda (Authorization, corpo), `recusa_das_respostas` = (status, código)
-    recusa antes do stream e `falha_no_stream` = código termina o stream com `response.failed`.
+    (ou uma função de quantos pedidos já chegaram que devolve isso, ou None) recusa antes do stream e `falha_no_stream` = código termina o stream com `response.failed`.
     """
 
     def __init__(self, comportamento="aceita"):
@@ -183,8 +183,9 @@ class OpenAIDeMentira:
     def _respostas(self, atendente, autorizacao, corpo):
         """`POST /v1/responses`: o Cartão em eventos (`response.output_text.delta` em pedaços e `response.completed` com o uso)."""
         self.respostas.append((autorizacao, corpo))
-        if self.recusa_das_respostas:
-            status, codigo = self.recusa_das_respostas
+        recusa = self.recusa_das_respostas(len(self.respostas)) if callable(self.recusa_das_respostas) else self.recusa_das_respostas
+        if recusa:
+            status, codigo = recusa
             dados = json.dumps({"error": {"code": codigo, "message": "recusado para %s" % autorizacao}}).encode("utf-8")
             atendente.send_response(status)
             atendente.send_header("Content-Type", "application/json")

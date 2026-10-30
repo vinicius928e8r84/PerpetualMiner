@@ -101,6 +101,19 @@
     return no;
   }
 
+  /** As ações de um cartão que tem mais de uma (#158): a principal é um link (`href`) dourado cheio, as outras botões secundários. */
+  function montarAcoes(acoes) {
+    const lista = elemento('div', 'envio-cartao__acoes');
+    for (const { rotulo, foco, href, principal, emAndamento, aoUsar } of acoes) {
+      const no = href ? elemento('a', `veio-botao veio-botao--${principal ? 'primario' : 'secundario'} veio-botao--compacto`, rotulo) : botao(rotulo, foco, aoUsar);
+      if (href) Object.assign(no, { href, target: '_blank', rel: 'noopener noreferrer' });
+      no.dataset.foco = foco;
+      if (emAndamento) no.setAttribute('aria-disabled', 'true');
+      lista.append(no);
+    }
+    return lista;
+  }
+
   function elemento(tag, classe, ...filhos) {
     const no = document.createElement(tag);
     if (classe) no.className = classe;
@@ -110,9 +123,9 @@
 
   /**
    * `estadoDoJob(envio)` é o que a Conexão disse do Envio (ou null); `falhaAoRetomar(envio)`, a causa de um Continuar envio que não
-   * deu; `tentarCriarDeNovo` e `continuarEnvio` são as ações do cartão. Devolve `montarCartao(envio)`.
+   * deu; `tentarCriarDeNovo` e `continuarEnvio` são as ações do cartão; `redesenhar()` refaz os cartões. Devolve `montarCartao(envio)`.
    */
-  function criar({ estadoDoJob, falhaAoRetomar, tentarCriarDeNovo, continuarEnvio }) {
+  function criar({ estadoDoJob, falhaAoRetomar, tentarCriarDeNovo, continuarEnvio, redesenhar }) {
     /** O que o cartão diz: etapa, quanto da barra, se deu certo, e o técnico. */
     function situacaoDoEnvio(envio) {
       if (!envio.jobId) {
@@ -164,9 +177,10 @@
         cartao.append(motivo);
       }
 
+      if (pedido?.acoes) cartao.append(montarAcoes(pedido.acoes));
       const atualizado = textoDaVoz('ENV-08.atualizado', { quando: Contexto.haQuanto(atualizadoEm) });
       const meta = elemento('div', 'envio-cartao__meta');
-      if (pedido) {
+      if (pedido && !pedido.acoes) {
         const acao = botaoLink(pedido.rotulo, pedido.foco, pedido.aoUsar);
         if (pedido.emAndamento) acao.setAttribute('aria-disabled', 'true');
         meta.append(acao);
@@ -185,7 +199,7 @@
         ].filter(Boolean).join('\n');
       if (causa) cartao.append(Veio.montarDetalhes(causa));
 
-      cartao.dataset.assinatura = [etapa, pct, situacao.tom, pedido?.motivo || '', meta.textContent, causa].join('|');
+      cartao.dataset.assinatura = [etapa, pct, situacao.tom, pedido?.motivo || '', pedido?.acoes?.map(a => a.rotulo + a.emAndamento) || '', meta.textContent, causa].join('|');
       return cartao;
     }
 
@@ -204,6 +218,8 @@
       // O Anki fechou no meio: o que ficou em `waiting` é de antes, e quem fala é o Envio parado (#151).
       const parado = raiz.EnvioParado.pedido(envio, estado);
       if (parado) return parado;
+      const noLimite = raiz.EnvioNoLimite.pedido(envio, estado, { tentarDeNovo: () => continuarEnvio(envio), falhou: Boolean(falhaAoRetomar(envio)), redesenhar });
+      if (noLimite) return noLimite;
       const espera = estado?.waiting;
       if (espera?.reason === 'other_profile') {
         return {

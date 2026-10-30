@@ -190,3 +190,17 @@ test('o Envio parado porque o Anki fechou: “3 de 10 no Anki” e Continuar env
 
   await expect(page).toHaveScreenshot('envio-parado.png');
 });
+
+// #158: o Envio no limite do plano do ChatGPT: “Limite de uso atingido · Faltam 7 cartões” e Gerenciar uso, Usar a minha chave e Tentar de novo.
+test('o Envio no limite do plano: “Faltam 7 cartões” com Gerenciar uso, Usar a minha chave e Tentar de novo', async ({ page, extensao, fakes }) => {
+  test.fixme(true, AGUARDA_O_DONO);
+  await abrirFrases(page, extensao);
+  await enviarTodas(page, fakes, 2);
+  const [ingles, russo] = fakes.anki.envios;
+  const cartoes = (frase, prontos, de) => Object.fromEntries(Array.from({ length: de }, (_, i) => [`${frase}-${i}`, i < prontos ? 'added' : 'pending']));
+  fakes.anki.moverEnvio(ingles.jobId, { stage: 'generate_cards', cartoes: cartoes(6, 3, 10), esperando: { reason: 'plan_limit' }, atualizadoEm: new Date(AGORA.getTime() - 60_000) });
+  fakes.anki.moverEnvio(russo.jobId, { stage: 'generate_cards', cartoes: cartoes(3, 1, 2), atualizadoEm: new Date(AGORA.getTime() - 60_000) });
+  await expect(progresso(page).getByText('Limite de uso atingido · Faltam 7 cartões')).toBeVisible({ timeout: 20_000 });
+
+  await expect(page).toHaveScreenshot('envio-limite-do-plano.png');
+});

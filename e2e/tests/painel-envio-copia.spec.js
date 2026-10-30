@@ -123,3 +123,17 @@ test.describe('o Envio parado porque o Anki fechou (#151)', () => {
     expect(guardado.envios.map(e => e.jobId)).toEqual([job.jobId]);
   });
 });
+
+test('o Envio no limite do plano do ChatGPT só diz o que o catálogo da Voz tem (#158)', async ({ page, extensao, fakes }) => {
+  test.slow();
+  await extensao.gravarStorage({ frases: INGLESAS, pm_anki_ja_conectou: true });
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, INGLESAS.map(f => f.texto));
+  const [job] = await enviosCriados(fakes, 1);
+  fakes.anki.moverEnvio(job.jobId, { stage: 'generate_cards', cartoes: cartoesDe(3), esperando: { reason: 'plan_limit' } });
+  await expect(envio(page, 'Envio em inglês · 3 frases')).toContainText('Limite de uso atingido · Faltam 7 cartões', { timeout: 20_000 });
+  await copiaDoCatalogo(page, '#modal-envio');
+
+  const { pm_envio: guardado } = await extensao.lerStorage('pm_envio');
+  expect(guardado.envios.map(e => e.jobId)).toEqual([job.jobId]);
+});

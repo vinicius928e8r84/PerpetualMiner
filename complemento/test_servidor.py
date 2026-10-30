@@ -210,6 +210,7 @@ class ConexaoNoTeste:
         chatgpt=None,
         perfil_marcado=None,
         adaptador_de_imagem=None,
+        espera_do_plano=300,
     ):
         self.perfil = perfil
         self.situacao_do_chatgpt = chatgpt  # `conectada` (o arquivo do login já existe), `entrando` ou `recusou` (a tentativa)
@@ -257,6 +258,7 @@ class ConexaoNoTeste:
             intervalo_do_envio=0.01,
             espera_do_anki=0.01,
             esperas_da_openai=(0, 0),
+            espera_do_plano=espera_do_plano,
             espera_do_contato=espera_do_contato,
         )
 
@@ -447,13 +449,13 @@ MATRIZ = {
         "le_o_perfil": False,
         "recusas": [({}, 400, "decks_required")],
     },
-    # A chave da IA (PR 191): não lê a coleção nem o perfil. O corpo mínimo não traz a `chave`, então o pedido é recusado em todo estado.
+    # A chave da IA (PR 191): não lê a coleção nem o perfil; sem a `chave` no corpo mínimo, recusa em todo estado.
     ("POST", "/ia/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
-    # Entrar com o ChatGPT (#155): não lê a coleção nem o perfil. Entrar cria o id deste computador; sair apaga o arquivo do login.
+    # Entrar com o ChatGPT (#155): entrar cria o id deste computador; sair apaga o arquivo do login.
     ("POST", "/ia/chatgpt/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/ia/chatgpt/entrar"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/ia/chatgpt/sair"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
-    # Apagar a cópia da chave (#154): não lê a coleção nem o perfil, e apagar o que não existe também é 200.
+    # Apagar a cópia da chave (#154): apagar o que não existe também é 200.
     ("POST", "/ia/openai/chave/apagar"): {
         "corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": [], "muda": True, "versao": True,
         # `Cofre.reentrega` só reconhece como repetição na base atual uma chave não vazia (`chave and moderna`, d6b9289).
@@ -468,7 +470,7 @@ MATRIZ = {
         "le_o_perfil": False,
         "recusas": [({"chave": "x"}, 401, "openai_key_rejected")],
     },
-    # O item de login de “Abrir o Anki com o computador” (PR 189): não lê a coleção nem o perfil, e escreve só na pasta do teste.
+    # O item de login de “Abrir o Anki com o computador” (PR 189): não lê a coleção nem o perfil.
     ("POST", "/abrir-com-o-computador/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/abrir-com-o-computador"): {
         "corpo": {"ligado": True},
@@ -477,10 +479,8 @@ MATRIZ = {
         "le_o_perfil": False,
         "recusas": [({"ligado": "sim"}, 400, "invalid_request")],
     },
-    # O perfil fixo (#149): a lista dos perfis lê o gerente de perfis do Anki, que responde sem coleção aberta, e o perfil aberto (da saúde).
-    # A primeira lista com um perfil aberto o marca (`perfil.json`); marcar outro grava o mesmo arquivo; repetidos, nada mais muda.
-    # Abrir o marcado não grava nada da Conexão: pede ao Anki. Na matriz, a rota anterior (`/anki/profile`) já marcou o perfil; o 404 de
-    # quando não há marcado, ou ele sumiu, é dos exemplos do contrato.
+    # O perfil fixo (#149): a lista lê o gerente de perfis do Anki (responde sem coleção) e o perfil aberto. A primeira lista com um perfil
+    # aberto o marca (`perfil.json`), como escolher outro; repetidos, nada mais muda. Abrir o marcado só pede ao Anki (o 404, nos exemplos).
     ("POST", "/anki/profiles"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": True, "recusas": []},
     ("POST", "/anki/profile"): {
         "corpo": {"profile": "Usuário 1"}, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
@@ -493,8 +493,8 @@ MATRIZ = {
         "le_o_perfil": False,
         "recusas": [({"lang": "en"}, 400, "deck_required"), ({"deck": "Inglês", "lang": "fr"}, 400, "invalid_lang")],
     },
-    # O Envio (#142): a fila é da Conexão, não da coleção nem do perfil (a thread de trabalho é quem os lê). Criar e tentar de novo
-    # mudam a fila; repetidos, respondem igual e não gravam nada (o `jobId` é a chave).
+    # O Envio (#142): a fila é da Conexão, não da coleção nem do perfil. Criar e tentar de novo mudam a fila; repetidos, respondem igual
+    # e não gravam nada (o `jobId` é a chave).
     ("POST", "/jobs"): {
         "corpo": {"jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b", "lang": "en", "deckName": "Inglês", "entries": [{"phraseId": 1, "line": "give up : She gave up smoking"}]},
         "status": 201, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
@@ -511,7 +511,12 @@ MATRIZ = {
         "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
         "recusas": [({}, 400, "invalid_job_id")],
     },
-    # O Apagar tudo (CFG-17) tira as Frases que a Conexão guarda: não lê a coleção nem o perfil; repetido, nada muda.
+    # O Apagar tudo (CFG-17) tira as Frases que a Conexão guarda; repetido, nada muda.
+    # Usar a minha chave (#158) marca o Envio; repetido, nada mais muda.
+    ("POST", "/jobs/usar-a-chave"): {
+        "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
+        "recusas": [({}, 400, "invalid_job_id")],
+    },
     ("POST", "/jobs/apagar-frases"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/jobs/debug-bundle"): {
         "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, "le_a_colecao": False, "le_o_perfil": False,
@@ -782,7 +787,7 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
     def test_as_rotas_que_mudam_sao_as_da_chave_do_chatgpt_do_item_de_login_do_perfil_e_do_envio(self):
         self.assertEqual(
             sorted(rota[1] for rota, regra in MATRIZ.items() if regra.get("muda")),
-            ["/abrir-com-o-computador", "/anki/profile", "/anki/profiles", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry"],
+            ["/abrir-com-o-computador", "/anki/profile", "/anki/profiles", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry", "/jobs/usar-a-chave"],
         )
 
 

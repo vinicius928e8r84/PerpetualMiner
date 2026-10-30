@@ -1,4 +1,4 @@
-# The Envio stopped by a closed Anki, and Tentar de novo on its card (`painel-envio-parado.js`, `painel-envio-cartao.js`)
+# The Envio stopped by a closed Anki, Tentar de novo on its card, and the plan's limit (`painel-envio-parado.js`, `painel-envio-cartao.js`, `painel-envio-limite.js`)
 
 Tests: `e2e/tests/painel-envio-parado.spec.js` (the sentence, the button, the opener never called alone, Tentar de novo), the `#151` case of
 `painel-envio-copia.spec.js` (the copy is the catalog's), `complemento/test_envio_retomada.py` (the Conexão side).
@@ -28,3 +28,22 @@ Tests: `e2e/tests/painel-envio-parado.spec.js` (the sentence, the button, the op
 ## Driving it (`drive.sh anki-parado painel-envio-parado.spec`)
 
 The fake Envio gets `moverEnvio(jobId, { stage, cartoes })` (`cartoes`: `{ '<phraseId>-<n>': 'added' | 'pending' | 'failed' }`), then `fakes.anki.desligar()`. Observable: the card text above within a few seconds, `fakes.abridor.pedidos()` has no `abrir` until Continuar envio is clicked (then exactly one, and `Abrindo o Anki para enviar…`); after `ligar()` the sentence goes and the panel sends no `/jobs/retry` (the Conexão resumes by itself: that part is `python3.9 complemento/test_envio_retomada.py`, not the fake). `definir('achei_sem_abrir')` adds `Não deu para abrir o Anki. Abra-o você mesmo.`. A real Anki closing and reopening on a Mac is only the owner's rehearsal.
+
+## The ChatGPT plan at its limit (#158, `painel-envio-limite.js`)
+
+Tests: `e2e/tests/painel-envio-limite.spec.js` (the card, the three actions, the Envio coming back by itself), the `#158` case of
+`painel-envio-copia.spec.js`, `complemento/test_limite_do_plano.py` (the Conexão side), the examples in `complemento/contrato/exemplos-do-limite.json`.
+
+- **What the Conexão does.** A `chatgpt_usage_limit` from the plan no longer ends the Envio: it stays `running` with `waiting: { reason: "plan_limit" }`,
+  asks the same text again every 5 min (`espera_do_plano`) and goes on by itself when the plan answers; a Card in the Anki, or with its text
+  paid, is never asked again. **Tentar de novo** (`POST /jobs/retry`) wakes that wait: the text is asked now. **Usar a minha chave**
+  (`POST /jobs/usar-a-chave`) marks the Envio `usingKey` and what is missing goes by the OpenAI key (`409 openai_key_missing` without one; `409 job_finished` once it ended).
+- **What the card says.** While `state.waiting.reason` is `plan_limit` and the Envio has not ended, ENV-19: “Limite de uso atingido · Faltam 7 cartões”
+  (the Cards of `state.cards` not `added`/`duplicate`; “Falta 1 cartão”) and “Quando o plano liberar, o Envio continua sozinho.”, then three actions in a
+  row: **Gerenciar uso** (a link, the main one, to `chatgpt.com/settings/usage` in a new tab), **Usar a minha chave** and **Tentar de novo**. It goes by itself
+  when the Conexão drops `waiting`. A closed Anki still wins over it (ENV-18).
+- **Usar a minha chave, in the panel.** On `200` the card drops the limit at once (the next read agrees: no `waiting`); on `409 openai_key_missing` the
+  progress modal closes and the panel goes to `#configuracoes/ia` to paste a key (the Envio keeps waiting for the plan); any other failure says ENV-14's “Não deu para retomar o envio…”.
+- **Driving it** (`drive.sh anki-plano-no-limite painel-envio-limite.spec`): `moverEnvio(jobId, { stage, cartoes, esperando: { reason: 'plan_limit' } })`;
+  `guardarChaveNaConexao('9f3a')` gives Usar a minha chave a key. The visual reference `envio-limite-do-plano` waits for the owner (`test.fixme`, no PNG).
+  A real plan at its limit is only the owner's rehearsal (#288).
