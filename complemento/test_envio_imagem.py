@@ -158,7 +158,9 @@ class JuntoComOAudio(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.openverse.fotos = FOTOS
             conexao.voz.recusar("com", 400)
-            estado, notas = enviar(conexao)
+            sem_reserva = pedido(ID, FRASE)
+            sem_reserva["tts"]["reserva"] = []  # com a reserva (#174) a voz da OpenAI falaria e o Cartão entraria
+            estado, notas = enviar(conexao, corpo=sem_reserva)
             buscas, geradas = list(conexao.openverse.buscas), list(conexao.openai.imagens)
         self.assertEqual((estado["status"], estado["lastError"], notas), ("failed", "tts_rejected", []))
         self.assertEqual((buscas, geradas), ([], []))
