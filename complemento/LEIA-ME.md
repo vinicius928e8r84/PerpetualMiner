@@ -115,13 +115,15 @@ Depois refaça o arquivo. Subir a `VERSAO` muda a `versao` dos exemplos de `cont
    e a imagem; toque os dois (um 400 na Palavra é o risco 11, reserva no #174). Feche o painel e o Chrome logo ao apertar Enviar, espere um
    minuto e reabra: o resumo vem da Conexão. Na tela de perfis o Envio entra no marcado (8b). Enviar a mesma Frase de novo dá
    “1 já estava lá”, sem nota dobrada. O custo está em `user_files/custos/<jobId>/costs.jsonl` e na aba Custos; o log e o diagnóstico não têm a chave.
-10. **O tipo de nota próprio e o Cartão Iniciante (#161, risco ALTO: cria tipos de nota na coleção). PENDING OWNER, num Anki em inglês e num em português (pt-BR).**
-    Antes, copie a pasta do perfil. Instale a Conexão nova e **reinicie o Anki**: em Ferramentas › Gerenciar Tipos de Nota há “PerpetualMiner Inglês” e
-    “PerpetualMiner Russo” (nenhum repetido, o “Básico”/“Basic” intacto, com os mesmos campos); num perfil sem Baralho nenhum aparecem `PerpetualMiner::Inglês`
-    e `PerpetualMiner::Russo`, e com Baralho seu (CIMV, RUSSIAN) nenhum Baralho novo. Reinicie o Anki de novo: nada se repete. O próximo Anki pede
-    sincronização completa **uma vez** (criar tipo de nota é mudança de esquema). Envie uma Frase em inglês e uma em russo: o Cartão tem a Frase e o áudio na frente
-    e, no verso, pronúncia, literal (com as cores da Frase), natural e Contexto da cena em português, a Palavra com o áudio e a imagem; o Anki em inglês **não** falha
-    com “note_type_missing”; reenviar a Frase dá “já estava lá”, também para a que está no “Básico” antigo. Nenhum Cartão antigo muda (compare a contagem e abra um).
+10. **O tipo de nota próprio e o Cartão Iniciante (#161, risco ALTO: cria tipos de nota na coleção). PENDING OWNER.** Medido na biblioteca do Anki (2.1.50 e 25.09.5):
+    criar o nosso tipo de nota e o Baralho **não** muda `col.scm`, então **nenhum pedido de sincronização completa é esperado**. Se o Anki pedir um, **cancele e avise**: é o sinal para parar.
+    - Antes, copie a pasta do perfil.
+    - **Perfil dele, Anki em inglês:** instale a Conexão nova e reinicie o Anki. Em Ferramentas › Gerenciar Tipos de Nota há exatamente dois tipos novos (“PerpetualMiner Inglês” e “PerpetualMiner Russo”) e
+      nenhum Baralho novo; o “Basic”/“Básico” segue com os mesmos campos e as mesmas contagens. Reinicie de novo: nada se cria. Envie uma Frase em inglês e uma em russo: os dois Envios terminam, o Cartão tem a Frase e o áudio
+      na frente e, no verso, pronúncia, literal (com as cores da Frase), natural e Contexto da cena em português, a Palavra com o áudio e a imagem; nada de `note_type_missing`. Reenviar a Frase de um Cartão antigo do “Básico” diz “já estava lá”.
+    - **pt-BR:** o mesmo, e mais um perfil vazio (só o Baralho “Padrão”): aparecem os dois Baralhos `PerpetualMiner::Inglês` e `PerpetualMiner::Russo`.
+    - **Perfil sincronizado com o AnkiWeb:** espera-se uma sincronização **normal**.
+    - Opcional: com dois perfis e sem `-p`, os tipos só aparecem no perfil marcado.
 
 `test_openai_de_mentira.py` não é teste: é a OpenAI de mentira (servidor local) no lugar da de verdade.
 

@@ -22,6 +22,6 @@ Nothing here is drivable from the extension: the e2e fake of the Conexão does n
 
 ## Gotchas
 
-- A green run proves the add-on against Anki's library and a fake OpenAI, voice and Openverse; it does **not** prove the Card in the owner's Anki (English UI, pt-BR), the profile hook in the real Anki window, or the full sync Anki asks for once after the first note type is created: those are the owner's rehearsal (`complemento/LEIA-ME.md`, step 10).
-- Creating a note type is a schema change: an Anki synced with AnkiWeb asks for a full sync once. Adding fields later would ask again, which is why they are all born together.
+- A green run proves the add-on against Anki's library and a fake OpenAI, voice and Openverse; it does **not** prove the Card in the owner's Anki (English UI, pt-BR), the profile hook in the real Anki window, or that the Anki asks for no full sync (measured: creating the note type and the deck does not change `col.scm`; an unexpected full-sync prompt is the signal for the owner to stop): those are the owner's rehearsal (`complemento/LEIA-ME.md`, step 10).
+- Creating our note type and deck does not change `col.scm`, so no full-sync prompt is expected, even with AnkiWeb (a normal sync). Changing fields later is a schema change, which is why they are all born together; a second card template (the other fronts, #166 to #168) also changes `scm` and makes a card for every existing note.
 - The extension's default Baralho is still `CIMV` / `RUSSIAN` (`lib/ajustes-de-envio.js`): the Conexão creates the new Baralhos, but pointing the Ajustes de envio at them is a later ticket.

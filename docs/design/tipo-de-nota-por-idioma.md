@@ -44,7 +44,8 @@ Não há tela nova: a pessoa vê o resultado no Anki (Ferramentas › Gerenciar 
 - **Repetido**: criar de novo devolve “não criei” e não grava nada (a prova: `test_contrato_da_criacao.py` nos dois adaptadores; no Anki real, `ensaio_anki_real.py`: ids e notas iguais).
 - **Resposta perdida / Anki morto no meio**: a criação é uma operação do Anki, que a grava inteira ou não grava; a próxima volta vê o tipo (ou não) e segue. Morrer entre o tipo e os Baralhos deixa só o tipo: o `preparar` seguinte cria os Baralhos.
 - **Reverter**: só a pessoa, pelo Anki (Gerenciar Tipos de Nota › Excluir, Baralhos › Excluir). A Conexão nunca apaga. Excluir o tipo faz a Conexão criá-lo de novo no próximo perfil aberto ou Envio.
-- **Sincronização**: criar um tipo de nota é mudança de esquema; um Anki sincronizado com o AnkiWeb pede **uma** sincronização completa na próxima vez. Por isso os campos nascem todos juntos.
+- **Sincronização**: medido na biblioteca do Anki (2.1.50 e 25.09.5), criar o nosso tipo de nota e o Baralho **não** muda `col.scm`: não se espera pedido de sincronização completa, nem com o AnkiWeb (uma sincronização normal). Um pedido inesperado é o sinal para o dono parar. Mudar campos depois muda o esquema, por isso eles nascem todos juntos.
+- **As outras frentes (#166 a #168)**: entrando como modelos de Cartão do mesmo tipo de nota, forçam uma sincronização completa **e** criam um Cartão novo para cada nota que já existe (medido: o segundo modelo mudou o `scm` e fez `cards: 2`). Precisam de decisão própria, ou de um tipo de nota separado.
 
 ## 4. As 8 variantes
 
@@ -74,4 +75,4 @@ Não há tela nova: a pessoa vê o resultado no Anki (Ferramentas › Gerenciar 
 - **A biblioteca de verdade do Anki** (`pip install anki`, o motor em Rust, 2.1.50, 2.1.66 e 25.09.5, Python 3.9, numa coleção em pasta temporária; Anki em inglês, português e russo): o Envio inteiro e o Cartão renderizado pelo renderizador do Anki.
 - **O Anki de verdade** (aqt 25.9.2, Qt sem tela, base e perfil descartáveis em pasta temporária): o complemento carregado do `.ankiaddon`, o gancho `profile_did_open` na janela principal, a primeira abertura (tipos e Baralhos), a segunda (nada de novo),
   o perfil do dono (CIMV, RUSSIAN, o “Básico” com um Cartão: nada criado além dos tipos, nada mexido) e um Anki em português do Brasil.
-- **Não prova**: o Anki do dono (interface em inglês e em português do Brasil), o Mac e o Windows, a sincronização completa com o AnkiWeb, o AnkiMobile e o AnkiDroid: o ensaio do dono (`complemento/LEIA-ME.md`, passo 10), **pendente**.
+- **Não prova**: o Anki do dono (interface em inglês e em português do Brasil), o Mac e o Windows, a sincronização com o AnkiWeb, o AnkiMobile e o AnkiDroid: o ensaio do dono (`complemento/LEIA-ME.md`, passo 10), **pendente**.
