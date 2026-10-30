@@ -203,11 +203,9 @@ test('sem frases, a entrada fica indisponível com “Nenhuma frase para apagar�
   await expect(modal(page)).toHaveCount(0);
 });
 
-test('com conta: o alcance é todos os computadores, e confirmar apaga também a nuvem', async ({ page, extensao, fakes }) => {
+test('com conta: o alcance é todos os computadores, e confirmar apaga também a nuvem', async ({ page, extensao, fakes, relogioParado }) => {
   // Segura o toast transitório enquanto lê o estado persistido sob carga.
-  const instante = new Date();
-  await page.clock.install({ time: instante });
-  await page.clock.pauseAt(new Date(instante.getTime() + 60_000));
+  await relogioParado();
   const frases = frasesDeExemplo(2);
   await extensao.semearSessao({ uid: 'uid-perigo' });
   await extensao.gravarStorage({ frases });
@@ -366,12 +364,10 @@ test('com conta e a nuvem fora do ar, o que outro computador gravou antes també
   }
 });
 
-test('com movimento reduzido, o flash dos cards novos e o ponto da chave ficam parados', async ({ page, extensao }) => {
+test('com movimento reduzido, o flash dos cards novos e o ponto da chave ficam parados', async ({ page, extensao, relogioParado }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   // O flash de 1,4 s não é uma barreira de carregamento: pausa antes da navegação.
-  const instante = new Date();
-  await page.clock.install({ time: instante });
-  await page.clock.pauseAt(new Date(instante.getTime() + 60_000));
+  await relogioParado();
   await extensao.gravarStorage({ geminiApiKey: CHAVE_DO_GEMINI, frases: frasesDeExemplo(2) });
   await abrirPainel(page, extensao, '#configuracoes/perigo');
 

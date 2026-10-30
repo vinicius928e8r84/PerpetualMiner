@@ -112,12 +112,12 @@ test('passo 4, pôr a Conexão no Anki: a animação do aviso, o arquivo e o Det
   await foto(page, 'passo-4-desligada.png');
 });
 
-test.fixme('passo 4, dois minutos sem resposta: reiniciar o Anki com o checklist e Baixar de novo', async ({ page, extensao }) => {
+test.fixme('passo 4, dois minutos sem resposta: reiniciar o Anki com o checklist e Baixar de novo', async ({ page, extensao, relogioParado }) => {
   // O relógio da página é do teste: os 2 minutos passam quando ele anda.
-  await page.clock.install({ time: new Date('2026-09-18T12:00:00') });
+  const relogio = await relogioParado({ em: new Date('2026-09-18T12:00:00') });
   await abrir(page, extensao, 'anki');
   await page.locator('.bv-card').getByRole('button', { name: 'Reiniciar o Anki' }).click();
-  await page.clock.runFor(120_000);
+  await relogio.avancar(120_000);
   await expect(page.locator('.bv-card').getByText('A Conexão com o Anki ainda não respondeu. Confira:')).toBeVisible();
   await foto(page, 'passo-4-sem-resposta.png');
 });

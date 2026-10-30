@@ -32,10 +32,9 @@ async function confirmar(page, chave) {
 
 for (const bComChave of [false, true]) test(bComChave
   ? 'K1-delete: A vê a chave de B sem Apagar chave e não muda nenhuma das contas'
-  : 'K1: a saúde de dois perfis A e B só lê o dono, sem pingue-pongue de sync', async ({ page, extensao, fakes, segundoPerfil }) => {
+  : 'K1: a saúde de dois perfis A e B só lê o dono, sem pingue-pongue de sync', async ({ page, extensao, fakes, segundoPerfil, relogioParado }) => {
   test.slow(); // dois processos Chromium/perfis, não duas abas do mesmo perfil
-  await page.clock.install();
-  await page.clock.pauseAt(new Date(Date.now() + 60_000));
+  const relogio = await relogioParado();
   await extensao.semearSessao({ uid: 'A' });
   fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE, em: 100 });
   if (bComChave) fakes.google.gravarChaveDaOpenAI('B', { chave: NOVA, em: 101 });
@@ -44,17 +43,16 @@ for (const bComChave of [false, true]) test(bComChave
   // Fronteira de armazenamento de outro perfil real, não outra aba com a mesma sessão.
   await segundoPerfil.extensao.semearSessao({ uid: 'B', displayName: 'Pessoa B' });
   const b = await segundoPerfil.context.newPage();
-  await b.clock.install();
-  await b.clock.pauseAt(new Date(Date.now() + 60_000));
+  const relogioDeB = await relogioParado({ page: b });
   await abrir(b, segundoPerfil.extensao);
   await expect(b.locator('#shell-chip')).toContainText('Sincronizado agora');
   const dono = fakes.anki.estadoDaChave();
   const syncs = () => fakes.anki.requisicoes.filter(r => r.caminho === '/ia/openai/sincronizar').length;
   const antes = syncs();
   for (let n = 0; n < 4; n++) {
-    for (const tela of [page, b]) {
+    for (const [tela, relogioDaTela] of [[page, relogio], [b, relogioDeB]]) {
       const lida = tela.waitForResponse(r => r.url().endsWith('/ia/estado'));
-      await tela.clock.runFor(16000);
+      await relogioDaTela.avancar(16000);
       await (await lida).finished();
     }
   }
@@ -103,9 +101,8 @@ test('K1-delete: dono mudou para B durante o modal de A, confirmar não apaga ne
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.conta).toBe('B');
 });
 
-test('K1-delete: Apagar tudo em A não apaga o dono de B nem a chave da nuvem de A', async ({ page, extensao, fakes }) => {
-  await page.clock.install();
-  await page.clock.pauseAt(new Date(Date.now() + 60_000));
+test('K1-delete: Apagar tudo em A não apaga o dono de B nem a chave da nuvem de A', async ({ page, extensao, fakes, relogioParado }) => {
+  const relogio = await relogioParado();
   const frases = [{ id: '123', text: 'A sentence to study.', lang: 'Inglês', source: 'manual', timestamp: Date.now() }];
   await extensao.semearSessao({ uid: 'A' });
   await extensao.gravarStorage({ frases });
@@ -116,7 +113,7 @@ test('K1-delete: Apagar tudo em A não apaga o dono de B nem a chave da nuvem de
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
   fakes.anki.guardarChaveNaConexao('bbbb', 42, 'B', 101, false);
   const dono = fakes.anki.estadoDaChave();
-  await page.clock.runFor(16000);
+  await relogio.avancar(16000);
   await expect(resumo(page)).toHaveText('••••••••bbbb');
   await page.getByRole('button', { name: 'Zona de perigo', exact: true }).click();
   await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar 1 frase', exact: true }).click();
@@ -138,9 +135,8 @@ test('K1-delete: Apagar tudo em A não apaga o dono de B nem a chave da nuvem de
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.conta).toBe('B');
 });
 
-test('K1-PC: três reconfirmações idênticas mantêm v1 e não disparam upload ou confirmação automática', async ({ page, extensao, fakes }) => {
-  await page.clock.install();
-  await page.clock.pauseAt(new Date(Date.now() + 60_000));
+test('K1-PC: três reconfirmações idênticas mantêm v1 e não disparam upload ou confirmação automática', async ({ page, extensao, fakes, relogioParado }) => {
+  const relogio = await relogioParado();
   await extensao.semearSessao({ uid: 'A' });
   await abrir(page, extensao);
   await confirmar(page, CHAVE);
@@ -160,7 +156,7 @@ test('K1-PC: três reconfirmações idênticas mantêm v1 e não disparam upload
     revisoes.push(fakes.anki.estadoDaChave().versao);
   }
   expect(revisoes).toEqual([1, 1, 1, 1]);
-  await page.clock.runFor(31000); // saúde só lê, não reconfirma chave nem dispara sync
+  await relogio.avancar(31000); // saúde só lê, não reconfirma chave nem dispara sync
   await expect(resumo(page)).toHaveText('••••••••aaaa');
   expect(fakes.anki.estadoDaChave()).toEqual(antes);
   expect(fakes.google.chaveDaOpenAIDe('A')?.em).toBe(nuvem.em);
@@ -172,9 +168,8 @@ test('K1-PC: três reconfirmações idênticas mantêm v1 e não disparam upload
   await fotografar(card(page), 'k1-pc-reconfirmacoes-idempotentes.png');
 });
 
-for (const tudo of [false, true]) test(`O1: sair da conta permite ${tudo ? 'Apagar tudo' : 'Apagar chave'} só deste computador, sem apagar nenhuma chave na nuvem`, async ({ page, extensao, fakes }) => {
-  await page.clock.install();
-  await page.clock.pauseAt(new Date(Date.now() + 60_000));
+for (const tudo of [false, true]) test(`O1: sair da conta permite ${tudo ? 'Apagar tudo' : 'Apagar chave'} só deste computador, sem apagar nenhuma chave na nuvem`, async ({ page, extensao, fakes, relogioParado }) => {
+  await relogioParado();
   await extensao.semearSessao({ uid: 'A' });
   const frases = [{ id: '123', text: 'A sentence to study.', lang: 'Inglês', source: 'manual', timestamp: Date.now() }];
   await extensao.gravarStorage({ frases });
@@ -460,10 +455,8 @@ test('F4: Apagar tudo limpa o dono, a conta e todas as cópias secretas do forma
   expect(JSON.stringify(await extensao.lerStorage(null)).includes(CHAVE)).toBe(false);
 });
 
-test('o apagamento aceito não apaga da tela uma chave nova aceita enquanto a resposta espera', async ({ page, extensao, context, fakes }) => {
-  const instante = new Date();
-  await page.clock.install({ time: instante });
-  await page.clock.pauseAt(new Date(instante.getTime() + 60_000));
+test('o apagamento aceito não apaga da tela uma chave nova aceita enquanto a resposta espera', async ({ page, extensao, context, fakes, relogioParado }) => {
+  await relogioParado();
   await abrir(page, extensao);
   await confirmar(page, CHAVE);
   await expect(card(page).getByRole('button', { name: 'Trocar chave' })).toBeVisible();
@@ -496,10 +489,8 @@ test('o apagamento aceito não apaga da tela uma chave nova aceita enquanto a re
   } finally { liberar(); await outra.close(); }
 });
 
-test('R1: aceitação tardia depois de recarregar aparece no painel já aberto', async ({ page, extensao, context, fakes }) => {
-  const instante = new Date();
-  await page.clock.install({ time: instante });
-  await page.clock.pauseAt(new Date(instante.getTime() + 60_000));
+test('R1: aceitação tardia depois de recarregar aparece no painel já aberto', async ({ page, extensao, context, fakes, relogioParado }) => {
+  const relogio = await relogioParado();
   await abrir(page, extensao);
   let liberar, entrou;
   const espera = new Promise(resolve => { liberar = resolve; });
@@ -518,13 +509,13 @@ test('R1: aceitação tardia depois de recarregar aparece no painel já aberto',
     await expect(page.locator('#shell-conexao-descricao')).toHaveText('Conexão com o Anki: ligada');
     // A primeira leitura é vazia; não deixe a aceitação vencer por acaso o bootstrap.
     const antes = page.waitForResponse(resposta => resposta.url().endsWith('/health'));
-    await page.clock.runFor(16000);
+    await relogio.avancar(16000);
     await antes;
     await expect(resumo(page)).toHaveText('Sem chave');
     liberar();
     await expect.poll(() => fakes.anki.chaveNaConexao() === NOVA).toBe(true);
     const depois = page.waitForResponse(resposta => resposta.url().endsWith('/health'));
-    await page.clock.runFor(16000);
+    await relogio.avancar(16000);
     await depois;
     await expect(resumo(page)).toHaveText('••••••••bbbb');
     expect(fakes.anki.chaveNaConexao() === NOVA).toBe(true);

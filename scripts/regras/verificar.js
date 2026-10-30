@@ -22,6 +22,7 @@ const REGRAS = [
   require('./doc-datado'),
   require('./indice-de-arquivos'),
   require('./aprovacao-visual'),
+  require('./relogio-fora-da-fixture'),
 ];
 
 const ARQUIVO_DA_LINHA_DE_BASE = 'scripts/regras/linha-de-base.json';

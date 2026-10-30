@@ -60,7 +60,7 @@ async function assentar(telas, { esperar = '/health' } = {}) {
 /**
  * Avança `ciclos` ciclos de saúde em `page` (e em cada tela de `tambem`) e confere o repouso.
  *
- * `page` e as telas de `tambem` já têm o relógio instalado (`page.clock.install()` e `pauseAt`) e a tela
+ * `page` e as telas de `tambem` já têm o relógio parado (a fixture `relogioParado`, e2e/relogio-parado.js) e a tela
  * aberta e assentada: com dois perfis, o teste chama `assentar` antes. `tambem` é a lista de `{ page, extensao }`
  * dos outros perfis da cena. `esperar` é a resposta que fecha um ciclo na tela (o fim da cadeia que a saúde dispara).
  */
