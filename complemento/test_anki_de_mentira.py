@@ -87,8 +87,10 @@ class ColecaoDoAnkiDeMentira:
             "create table cards (id integer primary key, nid integer, did integer, odid integer, type integer, ivl integer);"
         )
         self._baralhos, self._modelos = [], {}
-        proxima = 1700000000000
-        for indice, baralho in enumerate(descricao["baralhos"], start=1):
+        proxima, padrao, seguinte = 1700000000000, descricao.get("baralhoPadrao", "Default"), 2
+        for baralho in descricao["baralhos"]:
+            indice = 1 if baralho["nome"] == padrao else seguinte  # o Baralho padrão do Anki tem o id 1, qualquer que seja o nome dele
+            seguinte += indice != 1
             self._baralhos.append(types.SimpleNamespace(id=indice, name=baralho["nome"]))
             for nota in baralho.get("notas", []):
                 proxima += 1
@@ -126,7 +128,7 @@ class ColecaoDoAnkiDeMentira:
     def _id_do_baralho(self, nome):
         existente = next((baralho for baralho in self._baralhos if baralho.name == nome), None)
         if existente is None:
-            existente = types.SimpleNamespace(id=len(self._baralhos) + 1, name=nome)
+            existente = types.SimpleNamespace(id=max([baralho.id for baralho in self._baralhos] + [1]) + 1, name=nome)
             self._baralhos.append(existente)
         return existente.id
 

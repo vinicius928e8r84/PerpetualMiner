@@ -32,8 +32,8 @@ from datetime import datetime, timezone
 
 from . import baralhos, custos, tipo_de_nota, voz
 from .audio_do_cartao import FRASE_APAGADA, AudioDoCartao
-from .espera_do_anki import Apagado, EsperaDoAnki, Interrompido  # noqa: F401  (`envio.Interrompido`)
 from .configuracao import OPENVERSE_BASE, VOZ_BASE
+from .espera_do_anki import Apagado, EsperaDoAnki, Interrompido  # noqa: F401  (`envio.Interrompido`)
 from .imagem_do_cartao import ImagemDoCartao
 from .login_do_chatgpt import RECUSOU, SAIU, credencial
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento  # noqa: F401  (`envio.motor_do_complemento`)

@@ -52,6 +52,12 @@ class ContratoDaCriacao:
         self.assertIn("PerpetualMiner::Inglês", nomes)
         self.assertIn("PerpetualMiner::Russo", nomes)
 
+    def test_num_anki_em_portugues_o_baralho_padrao_se_chama_padrao_e_ainda_assim_e_uma_instalacao_nova(self):
+        colecao = self.adaptador({"baralhos": [{"nome": "Padrão"}], "baralhoPadrao": "Padrão", "tiposDeNota": {"Básico": ["Frente", "Verso"]}})
+        resultado = self.preparar(colecao)
+        self.assertEqual(resultado["baralhos"], ["PerpetualMiner::Inglês", "PerpetualMiner::Russo"])
+        self.assertEqual(self.preparar(colecao)["baralhos"], [])
+
     def test_quem_ja_tem_baralho_fica_com_o_seu_e_nenhum_baralho_nosso_e_criado(self):
         colecao = self.adaptador({"baralhos": [{"nome": "Default"}, {"nome": "CIMV"}, {"nome": "RUSSIAN"}]})
         resultado = self.preparar(colecao)

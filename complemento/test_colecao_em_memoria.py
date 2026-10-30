@@ -39,7 +39,8 @@ class ColecaoEmMemoria:
     `perfil_aberto` é o perfil que a coleção aberta é (o primeiro de `perfis` se não for dito). A Conexão entra no perfil fixo
     sozinha com o Anki na tela de perfis (`entradas`) e o troca a pedido (`trocas`), como `no_anki.ColecaoDoAnki`.
     `"quebra": true` na descrição é uma coleção que levanta um erro inesperado ao ler (o `500` do contrato).
-    `"tiposDeNota"` diz os tipos de nota e os campos de cada um (sem ele, o “Básico” com “Frente” e “Verso”).
+    `"tiposDeNota"` diz os tipos de nota e os campos de cada um (sem ele, o “Básico” com “Frente” e “Verso”); `"baralhoPadrao"`, o nome do Baralho
+    que todo Anki tem (“Default”; “Padrão” num Anki em português).
 
     O lado de gravação guarda cada nota nova em `gravadas` (`{ baralho, tipo, campos, etiquetas, guid }`), para o teste
     conferir; `fechar()`/`abrir()` e `sincronizando` fazem a gravação levantar `ColecaoIndisponivel`, como no Anki.
@@ -54,6 +55,7 @@ class ColecaoEmMemoria:
         self.entradas = []  # os perfis em que a Conexão entrou sozinha (o Anki na tela de perfis)
         self.trocas = []  # (o perfil que estava aberto, o perfil aberto no lugar): o clique em “Abrir <perfil>”
         self._quebra = bool((descricao or {}).get("quebra"))
+        self._padrao = (descricao or {}).get("baralhoPadrao", "Default")  # o nome do Baralho padrão segue o idioma do Anki (“Padrão” em português)
         self._tipos = {nome: list(campos) for nome, campos in ((descricao or {}).get("tiposDeNota") or {"Básico": ["Frente", "Verso"]}).items()}
         self._guids = set()
         self.gravadas = []
@@ -161,7 +163,7 @@ class ColecaoEmMemoria:
 
     def criar_baralhos_da_instalacao_nova(self, nomes):
         self._exigir_gravavel()
-        if any(nome != "Default" for nome in self._baralhos):
+        if any(nome != self._padrao for nome in self._baralhos):
             return []
         for nome in nomes:
             self._baralhos.setdefault(nome, [])

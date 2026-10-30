@@ -16,6 +16,7 @@ LIMITE_DA_LEITURA_S = 10
 # Depois de pedir ao Anki que entre num perfil, a Conexão não pede de novo por este tempo (s): entrar não é instantâneo, e um segundo
 # pedido no meio abriria o perfil duas vezes.
 ESPERA_DA_ENTRADA_S = 15
+BARALHO_PADRAO = 1  # o id do Baralho que todo Anki tem
 
 
 def perfil_aberto(mw):
@@ -190,7 +191,7 @@ class ColecaoDoAnki:
         return self._gravando(lambda colecao: _criar_tipo_de_nota(colecao, definicao))
 
     def criar_baralhos_da_instalacao_nova(self, nomes):
-        """Cria os Baralhos `nomes` só se a coleção não tem nenhum além do “Default”; devolve os criados (nenhum, para quem já tem Baralho)."""
+        """Cria os Baralhos `nomes` só se a coleção não tem nenhum além do padrão do Anki; devolve os criados (nenhum, para quem já tem Baralho)."""
         return self._gravando(lambda colecao: _criar_baralhos_da_instalacao_nova(colecao, nomes))
 
     def gravar_cartao(self, baralho, tipo_de_nota, campos, etiquetas, guid, campos_da_frente, frente_normalizada, normalizar, midia=None):
@@ -249,7 +250,8 @@ def _criar_tipo_de_nota(colecao, definicao):
 
 
 def _criar_baralhos_da_instalacao_nova(colecao, nomes):
-    if any(baralho.name != "Default" for baralho in colecao.decks.all_names_and_ids()):
+    """O Baralho padrão do Anki é o de id 1, e o nome dele segue o idioma do Anki (“Default”, “Padrão”, “По умолчанию”): é o id que o reconhece."""
+    if any(baralho.id != BARALHO_PADRAO for baralho in colecao.decks.all_names_and_ids()):
         return []
     for nome in nomes:
         colecao.decks.id(nome)  # cria o Baralho (e o pai, `PerpetualMiner`)
