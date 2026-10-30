@@ -63,11 +63,11 @@ test('o azulejo de um idioma conta só os Cartões do plano desse idioma', async
   await abrirCustos(page, extensao);
   await expect(plano(page)).toContainText('16 cartões feitos pelo plano');
 
-  await page.getByRole('group', { name: 'Idioma dos custos' }).getByRole('button', { name: /RUSSO/ }).click();
+  await page.getByRole('group', { name: 'Idioma dos custos' }).getByRole('button', { name: /Russo/ }).click();
   await expect(plano(page)).toContainText('4 cartões feitos pelo plano');
   await expect(plano(page)).toContainText('Você economizou US$ 0,02');
 
-  await page.getByRole('group', { name: 'Idioma dos custos' }).getByRole('button', { name: /INGL/ }).click();
+  await page.getByRole('group', { name: 'Idioma dos custos' }).getByRole('button', { name: /Inglês/ }).click();
   await expect(plano(page)).toContainText('12 cartões feitos pelo plano');
 });
 
