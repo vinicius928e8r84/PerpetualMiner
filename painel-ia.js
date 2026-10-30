@@ -429,7 +429,7 @@
     link.click();
   }
 
-  raiz.CartaoDaIA = { montar, baixarConexao, trocarChave: () => {
+  raiz.CartaoDaIA = { montar, baixarConexao, temChave: () => Boolean(estado.ultimos4), trocarChave: () => {
     location.hash = '#configuracoes/ia';
     configuracoes.trocando = true;
     trocarDeNovo(configuracoes);

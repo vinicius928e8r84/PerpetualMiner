@@ -103,6 +103,7 @@ test('se a Conexão responde com um endereço que não é o da autorização ofi
 
 test('Sair do ChatGPT: a Conexão apaga o login e a coluna volta a oferecer Continuar com o ChatGPT', async ({ page, extensao, fakes }) => {
   fakes.anki.chatgpt.definir('conectada');
+  await extensao.gravarStorage({ pm_plano_do_chatgpt_avisado: true }); // o modal da primeira vez já foi dado (configuracoes-chatgpt-plano.spec.js)
   await abrirIA(page, extensao);
   await expect(coluna(page)).toContainText('Usando o plano do ChatGPT');
 

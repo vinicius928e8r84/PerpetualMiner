@@ -33,7 +33,7 @@ from datetime import datetime, timezone
 from . import baralhos, custos, voz
 from .audio_do_cartao import FRASE_APAGADA, AudioDoCartao
 from .configuracao import OPENVERSE_BASE, VOZ_BASE
-from .imagem_do_cartao import ImagemDoCartao
+from .imagem_do_cartao import ImagemDoCartao, ParaOEnvio
 from .limite_do_plano import LIMITE_DO_PLANO, LimiteDoPlano, espera_pelo_plano
 from .login_do_chatgpt import RECUSOU, SAIU, credencial
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento  # noqa: F401  (`envio.motor_do_complemento`)
@@ -559,7 +559,11 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
                 self._cartao(job_id, cartao_id, status=FALHOU, error=falha)
                 return falha if falha in PARA_O_ENVIO else None
             self._cartao(job_id, cartao_id, status=TEXTO, error=None)
-        self._gravar_a_nota(job_id, pedido, config, cartao_id, guid, arquivo)
+        try:
+            self._gravar_a_nota(job_id, pedido, config, cartao_id, guid, arquivo)
+        except ParaOEnvio as parada:  # o plano não deixou escolher a imagem (#156): o texto fica pago e o Tentar de novo termina o Cartão
+            self._cartao(job_id, cartao_id, status=FALHOU, error=parada.codigo)
+            return parada.codigo
         return None
 
     def _gerar_o_texto(self, job_id, pedido, config, cartao_id, phrase_id, linha):

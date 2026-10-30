@@ -53,6 +53,41 @@
     location.hash = '#configuracoes/anki';
   }
 
+  // Gerenciar uso: a página de uso do ChatGPT, a mesma do card da IA (painel-ia-chatgpt.js).
+  const GERENCIAR_USO = 'https://chatgpt.com/settings/usage';
+
+  /**
+   * O que o plano do ChatGPT pede da pessoa quando parou o Envio (#156, docs/design/imagem-pelo-plano.md), pelo `lastError` dele; null para
+   * outro. O limite de uso (o primeiro 429 logo depois de entrar também chega assim) leva a Gerenciar uso e a tentar de novo, sem dizer que a
+   * cota acabou; a conta que o plano não atende leva à chave.
+   */
+  function doPlano(codigo) {
+    if (codigo === 'chatgpt_usage_limit') return { motivo: textoDaVoz('ENV-20.limite'), ligacao: textoDaVoz('CFG-35.chatgptGerenciar') };
+    if (codigo === 'chatgpt_not_eligible') return { motivo: textoDaVoz('CFG-35.erroChatgptNaoServe'), usarAChave: textoDaVoz('CFG-35.erroChatgptUsarChave') };
+    return null;
+  }
+
+  /** “Usar a chave” (CFG-35): fecha o modal do Envio que está aberto e leva ao card da IA, que põe o foco no campo da chave. */
+  function usarAChave() {
+    document.querySelectorAll('.veio-scrim:not([hidden]) .veio-modal__fechar').forEach(fechar => fechar.click());
+    location.hash = '#configuracoes/ia';
+  }
+
+  function ligacaoDeUso(rotulo, classe) {
+    const link = elemento('a', classe, rotulo);
+    Object.assign(link, { href: GERENCIAR_USO, target: '_blank', rel: 'noopener noreferrer' });
+    return link;
+  }
+
+  /** As linhas que o resumo ganha no bloco de um idioma cujo Envio o plano parou: o motivo (com Gerenciar uso) e, se for o caso, Usar a chave. */
+  function linhasDoPlano(codigo) {
+    const plano = doPlano(codigo);
+    if (!plano) return [];
+    const linha = elemento('p', 'envio-resumo__linha', plano.motivo);
+    if (plano.ligacao) linha.append(' ', ligacaoDeUso(plano.ligacao, 'veio-botao veio-botao--link'));
+    return plano.usarAChave ? [linha, botao(plano.usarAChave, 'usar-chave', usarAChave)] : [linha];
+  }
+
   function etapaDeSete({ indice }) {
     return textoDaVoz('ENV-08.etapa', { n: indice + 1, total: ETAPAS.length });
   }
@@ -184,6 +219,7 @@
         const acao = botaoLink(pedido.rotulo, pedido.foco, pedido.aoUsar);
         if (pedido.emAndamento) acao.setAttribute('aria-disabled', 'true');
         meta.append(acao);
+        if (pedido.ligacao) meta.append(ligacaoDeUso(pedido.ligacao, 'veio-botao veio-botao--link envio-cartao__acao'));
       }
       meta.append(elemento('span', '', situacao.fim ? atualizado : `${etapaDeSete(situacao)} · ${atualizado}`));
       cartao.append(meta);
@@ -234,12 +270,14 @@
       // Tentar de novo no próprio cartão do Envio que ficou em parte ou não concluiu; Continuar envio só onde falta a pessoa agir antes.
       const continuar = { rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'continuar', aoUsar: () => continuarEnvio(envio) };
       if (falhaAoContinuar) return { motivo: textoDaVoz('ENV-14.falha'), ...continuar };
-      if (retomavel(estado)) return continuar;
-      return null;
+      const plano = retomavel(estado) ? doPlano(estado.lastError) : null;
+      if (plano?.usarAChave) return { motivo: plano.motivo, rotulo: plano.usarAChave, foco: 'usar-chave', aoUsar: usarAChave };
+      if (plano) return { motivo: plano.motivo, ligacao: plano.ligacao, ...continuar };
+      return retomavel(estado) ? continuar : null;
     }
 
     return { montarCartao };
   }
 
-  raiz.CartaoDoEnvio = Object.freeze({ ETAPAS, FIM, IDIOMA_DO_LANG, nomeDoIdioma, retomavel, botao, elemento, criar });
+  raiz.CartaoDoEnvio = Object.freeze({ ETAPAS, FIM, IDIOMA_DO_LANG, nomeDoIdioma, retomavel, botao, elemento, linhasDoPlano, criar });
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

@@ -82,11 +82,12 @@ pede para entrar de novo: limite 5.d). Reverter: só a pessoa, por Sair ou desco
 - **e. O modelo** é o primeiro da lista da conta (o “Automático” do #123, que ainda não tem tela). Sem custo em US$ nos registros
   (`cost_usd` 0): o plano não é pago por Cartão. O registro `plan_tokens` guarda os tokens e `would_cost_usd`, o que a chave do modelo do
   motor (`openai.chat_model`) teria cobrado; a aba Custos (#159) soma isso em “Você economizou” (`plan` da linha, BRG-40).
-- **f. Conta grátis (#121)** para o Envio com o código (`chatgpt_not_eligible`, `chatgpt_rejected`) em Detalhes, sem cópia própria: é o #156.
-  **O limite de uso** (`chatgpt_usage_limit`) não para o Envio (#158): ele espera o plano (`waiting: plan_limit`), pede o mesmo texto de novo a
+- **f. Conta grátis (#121)** para o Envio com o código (`chatgpt_not_eligible`, `chatgpt_rejected`); a cópia dela e a do modal da primeira vez
+  são do #156 ([imagem-pelo-plano.md](imagem-pelo-plano.md)).
+  **O limite de uso** (`chatgpt_usage_limit`) do texto não para o Envio (#158): ele espera o plano (`waiting: plan_limit`), pede o mesmo texto de novo a
   cada 5 min e volta sozinho quando o plano libera. Tentar de novo (`POST /jobs/retry`) pede já; Usar a minha chave (`POST /jobs/usar-a-chave`)
   marca o Envio (`usingKey`) e o que falta vai pela chave, sem refazer Cartão pronto. O primeiro 429 logo depois do registro tem o mesmo código
-  e, até o #156 separá-lo, espera como o limite.
+  e espera igual. O limite que o juiz de imagem acha pelo plano (#156) para o Envio, com a cópia ENV-20, que não diz que a cota acabou.
 - **g. ACL no Windows**: herdada da pasta, como a da chave (`complemento/contrato/LEIA-ME.md`).
 - **h. A página do retorno** é da Conexão, não do catálogo da Voz da extensão: “Pode fechar esta aba e voltar ao PerpetualMiner.”
 

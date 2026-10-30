@@ -13,7 +13,6 @@ import re
 import sys
 import tempfile
 import unittest
-from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -23,7 +22,7 @@ from complemento.test_fila_de_mentira import semear_a_fila  # noqa: E402,F401
 from complemento.test_imagens_de_mentira import OpenverseDeMentira  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira  # noqa: E402
 from complemento.test_voz_de_mentira import VozDeMentira  # noqa: E402
-from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira  # noqa: E402
+from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira, situar_o_login  # noqa: E402
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
@@ -213,7 +212,7 @@ class ConexaoNoTeste:
         espera_do_plano=300,
     ):
         self.perfil = perfil
-        self.situacao_do_chatgpt = chatgpt  # `conectada` (o arquivo do login já existe), `entrando` ou `recusou` (a tentativa)
+        self.situacao_do_chatgpt = chatgpt  # `conectada` (o arquivo do login já existe), `entrando`, `recusou` ou `nao_serve` (a tentativa)
         self.falha_no_perfil = falha_no_perfil
         self.pasta = pasta
         self.item = _item_de_login_do_contexto(pasta, item)
@@ -273,10 +272,8 @@ class ConexaoNoTeste:
         if self.cofre_sem_escrita:
             os.chmod(self.chaves, 0o500)  # gravar a cópia da chave falha: a Conexão responde o erro interno
         assert self.conexao.iniciar(), "a porta de teste devia estar livre"
-        if self.situacao_do_chatgpt in ("entrando", "recusou"):
-            estado = parse_qs(urlsplit(self.conexao.chatgpt.iniciar(self.conexao.porta)).query)["state"][0]
-            if self.situacao_do_chatgpt == "recusou":
-                self.conexao.chatgpt.receber({"error": "access_denied", "state": estado}, "127.0.0.1:%d" % self.conexao.porta, self.conexao.porta)
+        if self.situacao_do_chatgpt in ("entrando", "recusou", "nao_serve"):
+            situar_o_login(self.conexao, self.servidor_de_login, self.situacao_do_chatgpt)
         return self
 
     def __exit__(self, *erro):

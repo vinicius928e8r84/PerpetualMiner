@@ -73,6 +73,15 @@ class PerfilSumiu(ColecaoIndisponivel):
         self.marcado, self.aberto = marcado, aberto
 
 
+def espera_pelo_perfil(motivo):
+    """O que o estado do Envio diz da espera quando o motivo é o perfil (#149); None para qualquer outro motivo."""
+    if isinstance(motivo, OutroPerfil):
+        return {"reason": "other_profile", "profile": motivo.aberto, "marked": motivo.marcado}
+    if isinstance(motivo, PerfilSumiu):
+        return {"reason": "profile_missing", "profile": motivo.aberto, "marked": motivo.marcado}
+    return None
+
+
 class PerfilIlegivel(ColecaoIndisponivel):
     """O arquivo do perfil marcado existe e não se lê (#149): não vale por “nenhum perfil marcado”, e nada é marcado nem gravado por cima."""
 

@@ -59,7 +59,9 @@ class CartaoPeloPlano(unittest.TestCase):
         )
         self.assertNotIn("scope", renovacoes[0])
         self.assertNotEqual(depois["refresh_token"], antes["refresh_token"])
-        self.assertEqual(autorizacao, "Bearer " + depois["access_token"])
+        # Com a validade abaixo da margem, a escolha da imagem renova de novo depois do texto: o arquivo guarda o último, o do texto é um renovado.
+        self.assertNotEqual(autorizacao, "Bearer " + antes["access_token"])
+        self.assertNotEqual(depois["access_token"], antes["access_token"])
 
     def test_um_login_que_acabou_para_o_envio_e_nao_gasta_a_chave(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
