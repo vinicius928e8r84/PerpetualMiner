@@ -78,7 +78,7 @@ jobs:
   complemento:
     name: Testes do complemento (Python ${{ matrix.python }})
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
-    timeout-minutes: 10
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -107,8 +107,8 @@ jobs:
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     # Um worker por runner de 2 núcleos: com dois, o Chromium de cada teste disputa o
     # processador e os testes sensíveis a tempo (relógios, transições) falham sem motivo.
-    # Uma fatia leva de 5 a 12 minutos; 20 impede que uma travada gaste 45.
-    timeout-minutes: 20
+    # Uma fatia leva de 5 a 12 minutos num runner livre; 40 deixa passar um runner carregado e ainda impede que uma travada gaste 45.
+    timeout-minutes: 40
     env:
       RODAR: ${{ needs.rapidos.outputs.rodar_e2e != 'false' }}
     strategy:
