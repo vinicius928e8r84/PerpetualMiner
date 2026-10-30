@@ -86,7 +86,7 @@ pede para entrar de novo: limite 5.d). Reverter: só a pessoa, por Sair ou desco
   são do #156 ([imagem-pelo-plano.md](imagem-pelo-plano.md)).
   **O limite de uso** (`chatgpt_usage_limit`) do texto não para o Envio (#158): ele espera o plano (`waiting: plan_limit`), pede o mesmo texto de novo a
   cada 5 min e volta sozinho quando o plano libera. Tentar de novo (`POST /jobs/retry`) pede já; Usar a minha chave (`POST /jobs/usar-a-chave`)
-  marca o Envio (`usingKey`) e o que falta vai pela chave, sem refazer Cartão pronto. O primeiro 429 logo depois do registro tem o mesmo código
+  marca o Envio (`usingKey`) e o que falta vai pela chave (o juiz de imagem também), sem refazer Cartão pronto. O primeiro 429 logo depois do registro tem o mesmo código
   e espera igual. O limite que o juiz de imagem acha pelo plano (#156) para o Envio, com a cópia ENV-20, que não diz que a cota acabou.
 - **g. ACL no Windows**: herdada da pasta, como a da chave (`complemento/contrato/LEIA-ME.md`).
 - **h. A página do retorno** é da Conexão, não do catálogo da Voz da extensão: “Pode fechar esta aba e voltar ao PerpetualMiner.”

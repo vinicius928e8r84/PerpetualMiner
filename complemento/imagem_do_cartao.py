@@ -35,7 +35,7 @@ class ImagemDoCartao:
         """A imagem do Cartão: `({nome: bytes}, nome)`, ou `({}, None)` se não veio. Só levanta `ParaOEnvio`."""
         self._etapa(job_id, "generate_images")
         try:
-            dados = self._escolher_a_imagem(pedido, config, cartao_id, conteudo)
+            dados = self._escolher_a_imagem(pedido, config, cartao_id, conteudo, self.fila.estado(job_id).get("usingKey", False))
         except Exception as erro:  # nada do que a OpenAI ou o Openverse disseram é guardado: o log leva só o Cartão e o tipo do erro
             if getattr(erro, "codigo", None) in DO_PLANO_QUE_PARA:
                 raise ParaOEnvio(erro.codigo) from None
@@ -47,9 +47,9 @@ class ImagemDoCartao:
         nome = guid + ".png"
         return {nome: dados}, nome
 
-    def _escolher_a_imagem(self, pedido, config, cartao_id, conteudo):
-        """Os bytes do PNG escolhido para o Cartão, ou None se nenhuma imagem serviu."""
-        plano, chave = credencial_da_imagem(self.chatgpt, self.cofre, self.plano, self.modelos)  # lidos antes do pedido, só para ele (C5)
+    def _escolher_a_imagem(self, pedido, config, cartao_id, conteudo, so_a_chave):
+        """Os bytes do PNG escolhido para o Cartão, ou None se nenhuma imagem serviu. `so_a_chave`: Usar a minha chave (#158), o juiz também."""
+        plano, chave = credencial_da_imagem(self.chatgpt, self.cofre, self.plano, self.modelos, so_a_chave)  # lidos antes do pedido, só para ele (C5)
         if not (plano or chave) or (pedido["imageSource"] != "1" and not chave):
             return None  # sem login nem chave (Apagar chave no meio), ou só a imagem gerada pedida e nenhuma chave: sem imagem
         motor = self.motor

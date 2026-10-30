@@ -15,6 +15,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento.test_envio import CHAVE, ID, EnvioNoTeste, chats, pedido  # noqa: E402
+from complemento.test_envio_imagem import FOTOS, FRASE, juiz_que_prefere  # noqa: E402
 from complemento.test_envio_retomada import TRES_FRASES, esperar_ate, palavras_pedidas  # noqa: E402
 
 LIMITE = (429, "subscription_sharing_usage_limit_exceeded")
@@ -124,6 +125,20 @@ class UsarAMinhaChaveNoLimite(unittest.TestCase):
         self.assertEqual(palavras_pedidas(conexao.openai), ["keep running"])  # o Cartão que já estava no Anki não paga de novo
         self.assertEqual(do_plano.count(DUAS_FRASES[0]), 1)
         self.assertTrue(gravado["usingKey"])
+
+    def test_usar_a_minha_chave_leva_tambem_o_juiz_da_imagem_pela_chave_e_nao_pelo_plano_que_esta_no_limite(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoLimite(pasta, espera_do_plano=300) as conexao:
+            conexao.openverse.fotos = FOTOS
+            conexao.openai.juiz = juiz_que_prefere(1)
+            PlanoNoLimite(conexao, aceitos=0)
+            conexao.criar(pedido(ID, FRASE))
+            conexao.esperar(ID, em_espera)
+            conexao.pedir("POST", "/jobs/usar-a-chave", corpo={"jobId": ID})
+            fim = conexao.esperar(ID)
+            pedidos_ao_plano = len(conexao.openai.respostas)
+            juizes = [autorizacao for autorizacao, _, _ in conexao.openai.juizes]
+        self.assertEqual((fim["status"], fim["lastError"], fim["cards"]["1760000000000-0"]["status"]), ("completed", None, "added"))
+        self.assertEqual((pedidos_ao_plano, juizes), (1, ["Bearer " + CHAVE]))  # o único pedido ao plano foi o texto recusado
 
     def test_usar_a_minha_chave_sem_chave_guardada_recusa_e_o_envio_segue_esperando_o_plano(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoLimite(pasta, chave=None) as conexao:

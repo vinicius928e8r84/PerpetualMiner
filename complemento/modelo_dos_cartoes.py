@@ -159,8 +159,9 @@ def credencial(login, cofre, plano, modelos, so_a_chave=False):
     return {"openai_api_key": chave, "modelo_do_texto": plano["modelo"]}
 
 
-def credencial_da_imagem(login, cofre, plano, modelos):
+def credencial_da_imagem(login, cofre, plano, modelos, so_a_chave=False):
     """Com que o Envio escolhe a imagem do próximo Cartão: `(plano, chave)`. O juiz vai pelo plano (o token renovado e o modelo do Envio,
-    como em `credencial`) quando há login; a triagem e a imagem gerada vão sempre pela chave do cofre (None sem ela). Levanta `ErroDoPlano`."""
-    token = login.token() if login is not None else None
+    como em `credencial`) quando há login e a pessoa não pediu Usar a minha chave (`so_a_chave`, #158); a triagem e a imagem gerada vão sempre
+    pela chave do cofre (None sem ela). Levanta `ErroDoPlano`."""
+    token = login.token() if login is not None and not so_a_chave else None
     return ({"token": token, "modelo": _modelo_do_plano(login, token, plano, modelos)} if token else None), cofre.ler("openai") or None
