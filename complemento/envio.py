@@ -58,8 +58,7 @@ SEM_CHAVE = "openai_key_missing"
 SEM_TIPO_DE_NOTA = "note_type_missing"
 FALHA_AO_GRAVAR = "anki_write_failed"
 CARTOES_FALHARAM = "cards_failed"
-# Chave recusada, conta sem crédito ou plano que não serve: os próximos Cartões falhariam igual. (O limite de uso do
-# plano não para o Envio: ele espera, `limite_do_plano.py`.)
+# Chave recusada, conta sem crédito ou plano que não serve: os próximos Cartões falhariam igual (o limite de uso espera: `limite_do_plano.py`).
 PARA_O_ENVIO = ("openai_key_rejected", "openai_no_credit", SAIU, "chatgpt_not_eligible", RECUSOU)
 # Passageiros: o Cartão tenta de novo depois de cada espera.
 PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", "empty_response")
@@ -136,7 +135,7 @@ class Fila:
         self.logger = logger
         self.tranca = threading.RLock()
         self.mudou = threading.Event()
-        self.despertador = threading.Event()  # acorda a espera do plano (limite_do_plano.py)
+        self.despertador = threading.Event()  # acorda a espera do plano
 
     # -- caminhos --
     def _arquivo_da_fila(self):
@@ -277,7 +276,7 @@ class Fila:
             estado = self.estado_ou_refazer(job_id)
             if estado.get("status") in (QUEUED, RUNNING) or estado.get("wiped") or pedido.get("wiped"):
                 if espera_pelo_plano(estado):
-                    self.despertador.set()  # Tentar de novo no limite do plano: o texto é pedido já, sem esperar o intervalo
+                    self.despertador.set()  # Tentar de novo no limite: pede já
                 return 200, {"jobId": job_id, "status": estado["status"]}
             for cartao_id, cartao in estado.get("cards", {}).items():
                 if cartao["status"] == FALHOU:
@@ -351,7 +350,7 @@ class Fila:
         """`POST /jobs/apagar-frases` (o Apagar tudo, CFG-17): de todo pedido da pasta, tenha ou não entrada na fila, somem as linhas
         das Frases e os textos gerados; um Envio na fila ou rodando vai a `failed` com `wiped`. Ficam os `phraseId`, o estado de
         cada Cartão e os custos. Repetido, não grava nada. Cada passo grava só o que falta, então morrer no meio e pedir de novo termina."""
-        self.despertador.set()  # um Envio esperando o plano vê as Frases apagadas e para
+        self.despertador.set()  # o Envio que espera o plano vê as Frases apagadas
         with self.tranca:
             # Todo `<nome>.novo` (a gravação que morreu entre escrever e renomear) guarda a Palavra e a Frase e ninguém o reescreve.
             for pasta in (self.dados.fila, self.dados.estado, self.dados.custos):
@@ -405,8 +404,8 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
 
     def __init__(self, fila, colecao, cofre, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30),
                  voz_base=VOZ_BASE, openverse_base=OPENVERSE_BASE, adaptador_de_imagem=None, chatgpt=None, espera_do_plano=300, modelos=None):
-        self.fila, self.chatgpt, self.modelos, self.plano = fila, chatgpt, modelos, {}  # o login do ChatGPT, os modelos e o modelo do Envio
-        self.espera_do_plano = espera_do_plano  # s entre dois pedidos com o plano no limite
+        self.fila, self.chatgpt, self.modelos, self.plano = fila, chatgpt, modelos, {}
+        self.espera_do_plano = espera_do_plano  # s entre dois pedidos no limite
         self.motor = fila.motor
         self.colecao = colecao
         self.cofre = cofre
@@ -541,7 +540,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
                 self._cartao(job_id, cartao_id, status=FALHOU, error=FRASE_APAGADA)
                 return None
             while True:
-                pela_chave = self.fila.estado(job_id).get("usingKey", False)  # Usar a minha chave (limite_do_plano.py)
+                pela_chave = self.fila.estado(job_id).get("usingKey", False)
                 chave = credencial(self.chatgpt, self.cofre, self.plano, self.modelos, pela_chave)  # o plano, a chave, None ou um código
                 if not isinstance(chave, dict):
                     return SEM_CHAVE if chave is None else chave if chave in PARA_O_ENVIO else self._cartao(job_id, cartao_id, status=FALHOU, error=chave)
@@ -562,7 +561,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
             self._cartao(job_id, cartao_id, status=TEXTO, error=None)
         try:
             self._gravar_a_nota(job_id, pedido, config, cartao_id, guid, arquivo)
-        except ParaOEnvio as parada:  # o plano não deixou escolher a imagem (#156): o texto fica pago e o Tentar de novo termina o Cartão
+        except ParaOEnvio as parada:  # o plano não deixou escolher a imagem (#156): o texto fica pago; Tentar de novo termina o Cartão
             self._cartao(job_id, cartao_id, status=FALHOU, error=parada.codigo)
             return parada.codigo
         return None

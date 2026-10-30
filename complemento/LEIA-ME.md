@@ -13,7 +13,7 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 | `perfil.py`, `rotas_do_perfil.py` | O perfil fixo (#149): `user_files/perfil.json` guarda o da primeira conexão; os adaptadores só gravam nele (`OutroPerfil`, `PerfilSumiu`: o Envio espera); as rotas o listam, escolhem e abrem |
 | `inicio.py` | Ao carregar: prepara `user_files`, o log e sobe a Conexão. Nunca levanta erro |
 | `servidor.py` | O servidor HTTP e as rotas (`ROTAS`); só a extensão é atendida |
-| `rotas_da_chave.py` | As rotas da chave da OpenAI (`/ia/openai/…`, `/ia/estado`), listadas em `servidor.ROTAS` |
+| `rotas_da_chave.py`, `rotas_do_envio.py` | As rotas da chave (`/ia/openai/…`, `/ia/estado`) e do Envio (`/jobs/…`, `/analytics/jobs`) em `servidor.ROTAS` |
 | `baralhos.py` | O que se lê da coleção: a lista de Baralhos, os números de cada um e o vocabulário, só pelo lado de leitura de um adaptador da coleção (o contrato do adaptador, de leitura e gravação, está no topo) |
 | `pedido_do_envio.py` | O pedido de `POST /jobs` (o que vale, a impressão do corpo) e o id do Envio; `envio.py` os reexporta |
 | `envio.py` | O Envio (#142): a fila, o estado de cada Cartão e o trabalho que gera o texto pelo motor e grava cada nota pelo adaptador (na thread principal do Anki), esperando o perfil fechado e a sincronização; o criar idempotente pelo `jobId` e a retomada sem refazer o que está pronto (`guid` fixo por Cartão). Desenho: `docs/design/envio-no-complemento.md`. `motor_do_envio.py`: o motor de cada pedido; `limite_do_plano.py`: a espera do plano do ChatGPT (#158) |
@@ -53,24 +53,24 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 ```bash
 python3.9 complemento/test_servidor.py   # o servidor real e o contrato (+ `test_servidor_*.py`)
 python3.9 complemento/test_servidor_erro_ao_atender.py  # os erros de um pedido
-python3.9 complemento/test_inicio.py     # a pasta de dados, a Conexão no ar, a porta ocupada
-python3.9 complemento/test_no_anki.py    # o adaptador do Anki (um mw de mentira com sqlite)
+python3.9 complemento/test_inicio.py     # a pasta de dados, a Conexão no ar
+python3.9 complemento/test_no_anki.py    # o adaptador do Anki (mw de mentira)
 python3.9 complemento/test_colecao_em_memoria.py  # o adaptador em memória e o contrato com o do Anki
-python3.9 complemento/test_pacote.py     # o conteúdo do .ankiaddon
+python3.9 complemento/test_pacote.py     # o .ankiaddon
 python3.9 complemento/test_item_de_login.py  # o item de login, numa pasta temporária
 python3.9 complemento/test_abridor.py        # o abridor escrito e registrado; roda o script do Mac
 python3.9 complemento/test_conserto.py       # o consertar (+ `test_conserto_*.py`)
 python3.9 complemento/test_chave_da_openai.py  # a chave: o HTTP, o disco e o log
 python3.9 complemento/test_perfil_fixo.py   # o perfil fixo: a escolha, a espera, a tela de perfis (+ `test_no_anki_perfil.py`)
 python3.9 complemento/test_envio.py          # o Envio: a fila, o estado por Cartão, a espera, a retomada, os custos
-python3.9 complemento/test_envio_audio.py    # o áudio do Cartão: a voz do Google de mentira, a mídia na coleção
-python3.9 complemento/test_envio_imagem.py   # a imagem do Cartão: Openverse e OpenAI de mentira
+python3.9 complemento/test_envio_audio.py    # o áudio do Cartão: a voz de mentira, a mídia na coleção
+python3.9 complemento/test_envio_imagem.py   # a imagem do Cartão: Openverse e OpenAI falsos
 python3.9 complemento/test_envio_fronteiras.py  # a Conexão morre em cada gravação
 python3.9 complemento/test_envio_apagar.py      # o Apagar tudo com o Anki fechado ou no Envio
-python3.9 complemento/test_janela.py         # a janela e os avisos, com o Qt de mentira
+python3.9 complemento/test_janela.py         # a janela e os avisos (Qt de mentira)
 python3.9 complemento/test_qt_do_anki.py     # o que se pede ao Qt do Anki
 python3.9 complemento/test_motor.py          # o motor como pacote `complemento.motor`
-python3.9 complemento/test_login_do_chatgpt.py  # com test_plano_do_chatgpt, test_imagem_pelo_plano, test_limite_do_plano, test_modelo_dos_cartoes
+python3.9 complemento/test_login_do_chatgpt.py  # e test_plano_do_chatgpt, test_imagem_pelo_plano
 ```
 
 Rode todos também no `python3.12` e no `3.13` (`uv python install 3.9 3.13`).
