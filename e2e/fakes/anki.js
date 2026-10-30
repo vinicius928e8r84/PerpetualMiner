@@ -3,6 +3,7 @@
 const { isDeepStrictEqual } = require('util');
 const { responderJson } = require('./http');
 const { criarFakeChatGPT } = require('./chatgpt');
+const { criarFakeVoz } = require('./voz');
 const { criarPerfis } = require('./perfis');
 const { criarLimiteDoPlano } = require('./limite-do-plano');
 const { criarModelo } = require('./modelo-dos-cartoes');
@@ -82,6 +83,7 @@ function criarFakeAnki() {
   const requisicoes = [];
   const envios = [];    // { jobId, lang, entries, corpo, createdAt, state }
   const chatgpt = criarFakeChatGPT(); // o login do ChatGPT (#155): as rotas dele aqui e a página do auth.openai.com (fakes.chatgpt)
+  const voz = criarFakeVoz(); // o Ouvir (#174): `fakes.anki.voz.definir('recusada')`
 
   function novoEstado(extra = {}) {
     return {
@@ -303,7 +305,7 @@ function criarFakeAnki() {
 
   /** O contexto de agora como os exemplos o descrevem: a chave guardada aparece só pelos 4 últimos. */
   function contextoDeAgora() {
-    return { ...estado.contexto, chaveNaConexao: ultimos4(estado.chaveDaOpenAI), chatgpt: chatgpt.situacao() };
+    return { ...estado.contexto, chaveNaConexao: ultimos4(estado.chaveDaOpenAI), chatgpt: chatgpt.situacao(), voz: voz.situacao() };
   }
 
   /**
@@ -318,9 +320,7 @@ function criarFakeAnki() {
       && (!('colecao' in doExemplo) || doExemplo.colecao === contexto.colecao)
       && (!('openai' in doExemplo) || doExemplo.openai === contexto.openai)
       && (!('chaveNaConexao' in doExemplo) || (doExemplo.chaveNaConexao === null) === (contexto.chaveNaConexao === null))
-      && (!('firebase' in doExemplo) || doExemplo.firebase === contexto.firebase)
-      && (!('cofre' in doExemplo) || doExemplo.cofre === contexto.cofre)
-      && (!('chatgpt' in doExemplo) || doExemplo.chatgpt === contexto.chatgpt);
+      && ['firebase', 'cofre', 'chatgpt', 'voz'].every(campo => !(campo in doExemplo) || doExemplo[campo] === contexto[campo]);
   }
 
   /**
@@ -485,6 +485,10 @@ function criarFakeAnki() {
     if ((url.pathname.startsWith('/ia/chatgpt/') && req.method() === 'POST') || (url.pathname === '/auth/callback' && req.method() === 'GET')) {
       return chatgpt.naConexao(route, url, respostaDoContrato);
     }
+    if (url.pathname === '/voz/ouvir' && req.method() === 'POST') {
+      const { status, json } = voz.naConexao(dadosDoCorpo(corpoDoPedido) || {}, respostaDoContrato);
+      return responderJson(route, status, json);
+    }
     if (url.pathname === '/ia/estado' && req.method() === 'POST') {
       const { status, json } = respostaDoContrato('POST', '/ia/estado', {});
       return responderJson(route, status, json);
@@ -589,6 +593,7 @@ function criarFakeAnki() {
     chatgpt,
     /** O modelo dos cartões (#157, `modelo-dos-cartoes.js`): `definir(cenario)`, `passarOTempoAte(dia)`, `guardado()`. */
     modelo,
+    voz,
     /** @estado-guardado Os Envios que a Conexão guardou (um por `POST /jobs`), não o pedido que chegou. */
     envios,
     desligar() { estado.ligada = false; },
@@ -763,5 +768,4 @@ function criarFakeAnki() {
   };
 }
 
-/** As imagens de uma linha de Custos sem nenhuma imagem (as chaves do contrato). */
 module.exports = { criarFakeAnki, exemploDaExtensao, diferencaDoContrato };

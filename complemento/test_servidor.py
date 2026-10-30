@@ -9,7 +9,6 @@ import http.client
 import io
 import json
 import os
-import re
 import sys
 import tempfile
 import unittest
@@ -24,6 +23,7 @@ from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMenti
 from complemento.test_voz_de_mentira import VozDeMentira  # noqa: E402
 from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira, situar_o_login  # noqa: E402
 from complemento.test_modelos_de_mentira import preparar_o_cenario  # noqa: E402
+from complemento.test_comparar_com_o_contrato import igual_ao_do_contrato  # noqa: E402
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
@@ -87,19 +87,6 @@ def colecao_do_exemplo(contexto):
     if not nome:
         return ColecaoEmMemoria.fechada(perfis=perfis)
     return ColecaoEmMemoria(ler_o_contrato()["colecoes"][nome], perfis=perfis, perfil_aberto=contexto.get("perfil"))
-
-
-def igual_ao_do_contrato(obtido, esperado):
-    """O JSON obtido é o do contrato; `"<agora>"` é qualquer instante ISO 8601 (Z) e `"<url de autorização>"`, a do login do ChatGPT."""
-    if esperado == "<agora>":
-        return isinstance(obtido, str) and bool(re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z", obtido))
-    if esperado == "<url de autorização>":
-        return isinstance(obtido, str) and obtido.startswith("https://auth.openai.com/api/accounts/authorize?client_id=dynamic_agent_client&")
-    if isinstance(esperado, dict):
-        return isinstance(obtido, dict) and obtido.keys() == esperado.keys() and all(igual_ao_do_contrato(obtido[k], v) for k, v in esperado.items())
-    if isinstance(esperado, list):
-        return isinstance(obtido, list) and len(obtido) == len(esperado) and all(igual_ao_do_contrato(o, e) for o, e in zip(obtido, esperado))
-    return obtido == esperado
 
 
 def sucesso(status):
@@ -212,6 +199,7 @@ class ConexaoNoTeste:
         adaptador_de_imagem=None,
         espera_do_plano=300,
         modelo=None,
+        voz_responde="aceita",
     ):
         self.perfil = perfil
         self.situacao_do_chatgpt = chatgpt  # `conectada` (o arquivo do login já existe), `entrando`, `recusou` ou `nao_serve` (a tentativa)
@@ -232,6 +220,10 @@ class ConexaoNoTeste:
         self.de_mentira = (self.openai, self.openverse, self.voz, self.firestore) = (
             OpenAIDeMentira(openai), OpenverseDeMentira(), VozDeMentira(), FirestoreDeMentira())
         self.firestore.falha = firebase
+        # `voz_responde` (o `voz` dos exemplos): `aceita`, `recusada` (o Google dá 400), `fora_do_ar` (503), `chave_recusada` ou `sem_credito` (a OpenAI).
+        if voz_responde in ("recusada", "fora_do_ar"):
+            self.voz.recusar("*", 400 if voz_responde == "recusada" else 503)
+        self.openai.recusa_da_fala = {"chave_recusada": (401, "invalid_api_key"), "sem_credito": (429, "insufficient_quota")}.get(voz_responde)
         self.servidor_de_login = ChatGPTDeMentira()
         self.de_mentira += (self.servidor_de_login,)
         if chatgpt == "conectada":
@@ -341,6 +333,7 @@ def conexao_do_exemplo(pasta, exemplo):
         chatgpt=contexto.get("chatgpt"),
         perfil_marcado=contexto.get('perfilMarcado'),
         modelo=ler_o_contrato().get("modelos", {}).get(contexto.get("modelo")),
+        voz_responde=contexto.get("voz", "aceita"),
     ) as conexao:
         if 'chaveNaNuvem' in contexto:
             conexao.firestore.documentos['uid-teste'] = {
@@ -493,6 +486,8 @@ MATRIZ = {
         "recusas": [({}, 400, "invalid_job_id")],
     },
     ("POST", "/analytics/jobs"): {"corpo": {"lang": "all"}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    # O Ouvir dos Ajustes de envio (#174): fala uma frase de amostra, não lê a coleção nem o perfil e não guarda nada.
+    ("POST", "/voz/ouvir"): {"corpo": {"lang": "en", "provedor": "google", "sotaque": "com"}, "le_a_colecao": False, "le_o_perfil": False, "recusas": [({}, 400, "invalid_request")]},
 }
 
 

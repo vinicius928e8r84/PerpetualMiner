@@ -145,8 +145,8 @@ collection when it is down) is read when the Conexão comes on and on entering t
 for the `::` levels. A stored deck the Anki does not have (and the Baralho padrão when missing) stays in the list as
 “… · não está no Anki”. Without the list (Conexão off, Anki not answering) the Baralho is a text field: blank goes back
 to the Baralho padrão (said under it) and a name with an empty level (`Inglês::`) is refused in the field. The audio
-accents (Sotaque da palavra · Sotaque da frase) are selects by place name (Estados Unidos, Reino Unido, Austrália…; the
-Google domain stays behind them, and a stored domain outside the list is kept as its own option).
+accents (Sotaque da palavra · Sotaque da frase) are selects by place name (a stored domain outside the list is kept),
+beside the **Voz de reserva** and an **Ouvir** each (#174): `features/anki-voz.md`.
 
 Each language in `ankiBridgePresets` carries a `versao`. The form remembers the version it read; `AjustesDeEnvio.salvar`
 refuses when the stored one moved (another tab saved that language meanwhile): nothing is written, and the persistent

@@ -37,6 +37,7 @@ Each feature file starts with an H1 and one paragraph of user-visible behavior, 
 - [The Custos tab with the key and with the plan](./anki-custos-plano.md): US$ spent with the key; with the ChatGPT plan the Cartões made, “Você economizou” and Gerenciar uso ↗; the Envio shows no value (#159).
 - [Open the Anki with the computer](./anki-no-login.md): Configurações › Conexão com o Anki, the login-item switch.
 - [The fixed Anki profile](./anki-perfil.md): Configurações › Conexão com o Anki, the row Perfil do Anki; the Envio that waits on another open profile with Abrir <perfil> (#149).
+- [The voice and accent of the audio](./anki-voz.md): Ajustes de envio › Avançado, the Google accents, the Voz de reserva and the Ouvir buttons; the audio of the Cartão when Google fails (#174).
 - [Boas-vindas (first run)](./boas-vindas.md): the 7-step setup opened by installing the extension.
 - [The AI card: the OpenAI key](./ia.md): Configurações › IA dos cartões and Boas-vindas step 5; the key checked by the Conexão, masked, stored out of the content scripts' reach, following the Google account (arrival, Trocar, Apagar chave, Apagar tudo, versioned empty value; #154).
 - [Conta & sync](./conta.md): Configurações › Conta & sync, the states of the card and the chip, first upload, partial sync, signing in and out, deleting from the cloud, the session.

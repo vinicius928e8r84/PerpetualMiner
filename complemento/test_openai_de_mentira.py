@@ -22,6 +22,11 @@ MODELOS_DO_PLANO = (200, {"models": [{"slug": "gpt-interno", "visibility": "hide
                                      {"slug": "gpt-6-sol", "display_name": "GPT-6 Sol", "visibility": "list"}]})
 
 
+def audio_da_openai(voz, texto):
+    """Os bytes que a OpenAI de mentira fala para um texto: dizem com que voz ele foi pedido."""
+    return ("mp3-da-openai|%s|%s" % (voz, texto)).encode("utf-8")
+
+
 def _erro(status, mensagem, tipo, codigo):
     return status, {"error": {"message": mensagem, "type": tipo, "code": codigo}}
 
@@ -119,6 +124,7 @@ class OpenAIDeMentira:
         self.recusa_da_imagem = None
         self.imagem_gerada = png_de("gerada")
         self.juizes, self.triagens, self.imagens = [], [], []  # (Authorization, modo, candidatas) / (Authorization, palavra) / (Authorization, corpo)
+        self.falas, self.recusa_da_fala = [], None  # a voz (`/v1/audio/speech`): (Authorization, corpo) de cada pedido; (status, código)
         self.antes_de_responder = lambda _metodo, _autorizacao: None
         dono = self
 
@@ -138,6 +144,8 @@ class OpenAIDeMentira:
                     modelos = MODELOS_DO_PLANO if dono.modelos_do_plano is None else (200, {"models": [{"slug": slug, "visibility": "list"} for slug in dono.modelos_do_plano]})
                 elif self.path == "/v1/models" and dono.modelos_da_conta is not None and modelos[0] == 200:
                     modelos = (200, {"object": "list", "data": [{"id": id_, "object": "model"} for id_ in dono.modelos_da_conta]})
+                if self.path == "/v1/audio/speech":
+                    return dono._fala(self, self.headers.get("Authorization"), json.loads(lido.decode("utf-8")))
                 if self.path == "/v1/chat/completions":
                     status, corpo = dono._chat(self.headers.get("Authorization"), json.loads(lido.decode("utf-8")))
                 elif self.path == "/v1/images/generations":
@@ -164,6 +172,20 @@ class OpenAIDeMentira:
             self.recusas_do_chat.pop(palavra, None)
         else:
             self.recusas_do_chat[palavra] = (status, codigo)
+
+    def _fala(self, atendente, autorizacao, corpo):
+        """`POST /v1/audio/speech`: o MP3 (bytes, não JSON) do texto na voz pedida, ou a recusa de `recusa_da_fala`."""
+        self.falas.append((autorizacao, corpo))
+        if self.recusa_da_fala:
+            status, codigo = self.recusa_da_fala
+            dados, tipo = json.dumps({"error": {"code": codigo, "message": "recusado para %s" % autorizacao}}).encode("utf-8"), "application/json"
+        else:
+            status, dados, tipo = 200, audio_da_openai(corpo.get("voice"), corpo.get("input")), "audio/mpeg"
+        atendente.send_response(status)
+        atendente.send_header("Content-Type", tipo)
+        atendente.send_header("Content-Length", str(len(dados)))
+        atendente.end_headers()
+        atendente.wfile.write(dados)
 
     def _imagem(self, autorizacao, corpo):
         self.imagens.append((autorizacao, corpo))

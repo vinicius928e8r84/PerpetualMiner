@@ -19,7 +19,7 @@ The panel talks to the local Anki Connection (the bridge today; the add-on in `c
 - `anki-send-closed` ENV-16, Enviar ao Anki with the Anki closed after the Conexão answered once (#150): with the opener permission it calls `consertar`, then `abrir`, the notice in Frases says `Abrindo o Anki para enviar…` until the Anki answers, then the chosen Frases go; without it, or if the opener cannot open, `Abra o Anki para enviar` (cause in Detalhes; **Abrir o Anki sozinho** asks the permission).
 - `anki-open-button` BRG-38, **Abrir o Anki** in the popup selo, the BRG-12 selo and BRG-37 of Baralhos e termos and Vocabulário: only a click calls the opener.
 - `anki-fix-alone` BRG-39 (#152; Reparar Anki is gone): Enviar or Abrir o Anki with the Conexão silent asks the opener `consertar` first; only an Anki closed from the start gets `abrir` (`fechou`: closed during the wait, left closed); a port held by another program kills nothing (`conexao_fora`). A toast says `O Anki travou e foi reiniciado.` or `A Conexão com o Anki foi ligada de novo e o Anki reiniciou.`; a Conexão gone from the Anki gets **Instalar de novo**; a failed repair says `Não deu para consertar…` with **Baixar diagnóstico**. Proof: `painel-conserto.spec.js` (fake opener) and `complemento/test_conserto*.py`; a real kill and the `meta.json` edit are the owner's rehearsal.
-- `anki-settings` Ajustes de envio: default deck per language, saved only on Salvar ajustes.
+- `anki-settings` Ajustes de envio: deck per language, saved only on Salvar ajustes; voice: [anki-voz.md](./anki-voz.md).
 
 ## How to get to it (user POV)
 

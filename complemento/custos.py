@@ -50,6 +50,15 @@ def _origem_da_imagem(valor):
     return "skipped" if origem == "skipped" else "failed"
 
 
+def anotar_a_voz(pasta, modelo, letras, dolares_por_mil_letras):
+    """Anota no Envio o custo de uma voz paga que falou (a de reserva, #174), no formato dos registros do motor: cai em `otherUsd`."""
+    os.makedirs(pasta, exist_ok=True)
+    registro = {"date": date.today().isoformat(), "type": "tts", "model": modelo, "characters": letras,
+                "cost_usd": round(letras * dolares_por_mil_letras / 1000, 6)}
+    with open(os.path.join(pasta, "costs.jsonl"), "a", encoding="utf-8") as arquivo:
+        arquivo.write(json.dumps(registro, ensure_ascii=False) + "\n")
+
+
 def registros(pasta):
     """Os registros de custo de um Envio, da pasta dos custos dele (linhas que não se leem ficam de fora)."""
     lidos = []

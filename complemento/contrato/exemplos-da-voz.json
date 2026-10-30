@@ -1,0 +1,262 @@
+{
+  "exemplos": [
+    {
+      "nome": "criar um Envio sem voz de reserva: a lista vazia vai no pedido",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk",
+            "reserva": []
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400000,
+              "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+            }
+          ]
+        }
+      },
+      "resposta": {
+        "status": 201,
+        "json": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "status": "queued"
+        }
+      }
+    },
+    {
+      "nome": "ouvir o sotaque do Google: a Conexão devolve o áudio",
+      "daExtensao": true,
+      "contexto": {
+        "voz": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/ouvir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "provedor": "google",
+          "sotaque": "co.uk"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "audio": "<áudio>"
+        }
+      }
+    },
+    {
+      "nome": "ouvir o sotaque com o Google recusando o pedido (o 400 do Mac)",
+      "daExtensao": true,
+      "contexto": {
+        "voz": "recusada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/ouvir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "provedor": "google",
+          "sotaque": "co.uk"
+        }
+      },
+      "resposta": {
+        "status": 502,
+        "json": {
+          "error": "tts_rejected"
+        }
+      }
+    },
+    {
+      "nome": "ouvir o sotaque com o Google fora do ar",
+      "daExtensao": true,
+      "contexto": {
+        "voz": "fora_do_ar"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/ouvir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "provedor": "google",
+          "sotaque": "co.uk"
+        }
+      },
+      "resposta": {
+        "status": 502,
+        "json": {
+          "error": "tts_unreachable"
+        }
+      }
+    },
+    {
+      "nome": "ouvir a voz da OpenAI com a chave na Conexão: devolve o áudio",
+      "daExtensao": true,
+      "contexto": {
+        "voz": "aceita",
+        "chaveNaConexao": "9f3a"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/ouvir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "provedor": "openai"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "audio": "<áudio>"
+        }
+      }
+    },
+    {
+      "nome": "ouvir a voz da OpenAI sem chave na Conexão",
+      "daExtensao": true,
+      "contexto": {
+        "voz": "aceita",
+        "chaveNaConexao": null
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/ouvir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "provedor": "openai"
+        }
+      },
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "openai_key_missing"
+        }
+      }
+    },
+    {
+      "nome": "ouvir a voz da OpenAI com a chave recusada",
+      "daExtensao": true,
+      "contexto": {
+        "voz": "chave_recusada",
+        "chaveNaConexao": "9f3a"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/ouvir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "provedor": "openai"
+        }
+      },
+      "resposta": {
+        "status": 502,
+        "json": {
+          "error": "openai_key_rejected"
+        }
+      }
+    },
+    {
+      "nome": "ouvir a voz da OpenAI com a conta sem crédito",
+      "daExtensao": true,
+      "contexto": {
+        "voz": "sem_credito",
+        "chaveNaConexao": "9f3a"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/ouvir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "provedor": "openai"
+        }
+      },
+      "resposta": {
+        "status": 502,
+        "json": {
+          "error": "openai_no_credit"
+        }
+      }
+    },
+    {
+      "nome": "ouvir com um sotaque que não é de um endereço do Google",
+      "contexto": {
+        "voz": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/ouvir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "provedor": "google",
+          "sotaque": "evil.example/x"
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "ouvir com um idioma que a Conexão não fala",
+      "contexto": {
+        "voz": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/ouvir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "fr",
+          "provedor": "google",
+          "sotaque": "com"
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "ouvir com um corpo que não é um objeto JSON",
+      "daExtensao": false,
+      "contexto": {
+        "voz": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/ouvir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    }
+  ]
+}
