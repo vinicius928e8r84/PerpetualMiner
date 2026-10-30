@@ -113,7 +113,7 @@ class OsCustosDoPlano(unittest.TestCase):
             conexao.openai.recusa_das_respostas = (429, "subscription_sharing_usage_limit_exceeded")
             entrar_e_voltar(conexao)
             conexao.criar(pedido(ID, "gave up : She gave up smoking"))
-            conexao.esperar(ID)
+            conexao.esperar(ID, lambda estado: estado.get("waiting"))  # o limite do plano espera, não falha (#158)
             [linha] = json.loads(conexao.pedir("POST", "/analytics/jobs", corpo={"lang": "all"})[2])["jobs"]
         self.assertNotIn("plan", linha)
 
