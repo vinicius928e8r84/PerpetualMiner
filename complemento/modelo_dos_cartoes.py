@@ -126,11 +126,16 @@ class ModeloDosCartoes:
         return automatico if efetivo == AUTOMATICO else efetivo
 
 
+def _oferta_do_plano(login, token, modelos):
+    lista = login.modelos(token)
+    return modelos.disponiveis(lista) or lista
+
+
 def _modelo_do_plano(login, token, plano, modelos):
     """O modelo do texto do plano neste Envio: lido uma vez (fica em `plano`); a escolha da pessoa, ou o primeiro da lista da conta."""
     if "modelo" not in plano:
-        lista = login.modelos(token)
-        oferta = modelos.disponiveis(lista) or lista
+        oferta = _oferta_do_plano(login, token, modelos)
+        plano["automatico"] = oferta[0]
         plano["modelo"] = modelos.do_envio(oferta, oferta[0])
     return plano["modelo"]
 
@@ -160,8 +165,10 @@ def credencial(login, cofre, plano, modelos, so_a_chave=False):
 
 
 def credencial_da_imagem(login, cofre, plano, modelos, so_a_chave=False):
-    """Com que o Envio escolhe a imagem do próximo Cartão: `(plano, chave)`. O juiz vai pelo plano (o token renovado e o modelo do Envio,
+    """Com que o Envio escolhe a imagem do próximo Cartão: `(plano, chave)`. O juiz vai pelo plano (o token renovado e o Automático da conta,
     como em `credencial`) quando há login e a pessoa não pediu Usar a minha chave (`so_a_chave`, #158); a triagem e a imagem gerada vão sempre
     pela chave do cofre (None sem ela). Levanta `ErroDoPlano`."""
     token = login.token() if login is not None and not so_a_chave else None
-    return ({"token": token, "modelo": _modelo_do_plano(login, token, plano, modelos)} if token else None), cofre.ler("openai") or None
+    if token and "automatico" not in plano:  # o juiz usa o Automático do plano, não o modelo que a pessoa escolheu para o texto
+        plano["automatico"] = _oferta_do_plano(login, token, modelos)[0]
+    return ({"token": token, "modelo": plano["automatico"]} if token else None), cofre.ler("openai") or None

@@ -18,6 +18,7 @@ from complemento.test_envio import CHAVE, ID, EnvioNoTeste, pedido  # noqa: E402
 from complemento.test_envio_imagem import FOTOS, FRASE, imagens, juiz_fraco_que_prefere_a_gerada, juiz_que_prefere, so_a_imagem  # noqa: E402
 from complemento.test_imagens_de_mentira import png_de  # noqa: E402
 from complemento.test_login_do_chatgpt import arquivo_do_login, entrar_e_voltar, tudo_o_que_ficou  # noqa: E402
+from complemento.test_modelo_dos_cartoes import cenario, escolher  # noqa: E402
 
 JUIZ = "You are an expert visual selector"
 
@@ -71,6 +72,18 @@ class OJuizDeImagemPeloPlano(unittest.TestCase):
             geradas = list(conexao.openai.imagens)
         arquivo, = imagens(notas[0]["campos"])
         self.assertEqual((estado["status"], so_a_imagem(notas[0]["midia"]), [a for a, _ in geradas]), ("completed", {arquivo: png_de("gerada")}, ["Bearer " + CHAVE]))
+
+    def test_o_juiz_do_plano_usa_o_automatico_da_conta_e_nao_o_modelo_que_a_pessoa_escolheu_para_o_texto(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, modelo=cenario("Automático")) as conexao:
+            conexao.openverse.fotos = FOTOS
+            conexao.openai.juiz = juiz_que_prefere(1)
+            entrar_e_voltar(conexao)
+            escolher(conexao, "gpt-6-sol")
+            conexao.criar(pedido(ID, FRASE))
+            conexao.esperar(ID)
+            texto = [corpo["model"] for _, corpo in conexao.openai.respostas if not corpo["instructions"].startswith(JUIZ)]
+            juiz = [corpo["model"] for _, corpo in do_juiz(conexao)]
+        self.assertEqual((texto, juiz), (["gpt-6-sol"], ["gpt-6-luna"]))
 
     def test_o_custo_do_juiz_pelo_plano_nao_vira_dolar_nos_registros(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
