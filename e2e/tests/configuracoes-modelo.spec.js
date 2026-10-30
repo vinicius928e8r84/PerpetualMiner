@@ -59,6 +59,7 @@ test('com a chave, o Avançado traz o Modelo dos cartões em Automático, só co
 
 test('com o login do ChatGPT, a lista é a do plano e a linha de baixo diz Usando o plano do ChatGPT · Gerenciar uso', async ({ page, extensao, fakes }) => {
   fakes.anki.chatgpt.definir('conectada');
+  await extensao.gravarStorage({ pm_plano_do_chatgpt_avisado: true }); // o modal da primeira vez já foi dado (configuracoes-chatgpt-plano.spec.js)
   await abrirIA(page, extensao);
 
   await expect(seletor(page)).toHaveValue('automatico');
