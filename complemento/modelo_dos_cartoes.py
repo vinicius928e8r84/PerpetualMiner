@@ -143,7 +143,7 @@ def _modelo_do_plano(login, token, plano, modelos):
 def credencial(login, cofre, plano, modelos, so_a_chave=False):
     """Com que o Envio pede o texto do próximo Cartão, lido antes de cada pedido e só para ele: com o login do ChatGPT, o token
     (renovado) e o modelo (`plano_do_chatgpt`); sem ele, a chave do cofre e o modelo do texto (None: o do motor); None sem nenhum
-    dos dois; o código (texto) quando o plano não serve agora. O modelo é lido uma vez por Envio (fica em `plano`). O Envio nunca
+    dos dois; o código (texto) quando o plano não serve agora. O modelo é lido uma vez por Envio, o do plano e o da chave cada um à parte (ficam em `plano`). O Envio nunca
     troca o plano pela chave sozinho (o login que acabou para o Envio) nem para por causa de um modelo que caiu: troca para o Automático.
     A pessoa troca por Usar a minha chave (`so_a_chave`, #158): então o login nem é lido."""
     try:
@@ -155,13 +155,13 @@ def credencial(login, cofre, plano, modelos, so_a_chave=False):
     chave = cofre.ler("openai")
     if not chave:
         return None
-    if "modelo" not in plano:
+    if "modelo_da_chave" not in plano:  # o da chave fica à parte do do plano: o Envio pode passar de um para o outro (#158)
         try:
             oferta = modelos.da_chave(chave)
         except openai_api.ErroDaChave:
             oferta = None  # a lista não veio: vale a escolha da pessoa, sem conferir se a conta ainda a tem
-        plano["modelo"] = modelos.do_envio(oferta, None)
-    return {"openai_api_key": chave, "modelo_do_texto": plano["modelo"]}
+        plano["modelo_da_chave"] = modelos.do_envio(oferta, None)
+    return {"openai_api_key": chave, "modelo_do_texto": plano["modelo_da_chave"]}
 
 
 def credencial_da_imagem(login, cofre, plano, modelos, so_a_chave=False):

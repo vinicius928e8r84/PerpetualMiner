@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento.test_envio import CHAVE, ID, EnvioNoTeste, chats, pedido  # noqa: E402
 from complemento.test_envio_imagem import FOTOS, FRASE, juiz_que_prefere  # noqa: E402
+from complemento.test_modelo_dos_cartoes import modelo_do_motor  # noqa: E402
 from complemento.test_envio_retomada import TRES_FRASES, esperar_ate, palavras_pedidas  # noqa: E402
 
 LIMITE = (429, "subscription_sharing_usage_limit_exceeded")
@@ -139,6 +140,18 @@ class UsarAMinhaChaveNoLimite(unittest.TestCase):
             juizes = [autorizacao for autorizacao, _, _ in conexao.openai.juizes]
         self.assertEqual((fim["status"], fim["lastError"], fim["cards"]["1760000000000-0"]["status"]), ("completed", None, "added"))
         self.assertEqual((pedidos_ao_plano, juizes), (1, ["Bearer " + CHAVE]))  # o único pedido ao plano foi o texto recusado
+
+    def test_usar_a_minha_chave_pede_o_texto_com_o_modelo_da_chave_e_nao_com_o_do_plano(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoLimite(pasta, espera_do_plano=300) as conexao:
+            PlanoNoLimite(conexao)
+            conexao.criar(pedido(ID, *DUAS_FRASES))
+            conexao.esperar(ID, em_espera)
+            conexao.pedir("POST", "/jobs/usar-a-chave", corpo={"jobId": ID})
+            conexao.esperar(ID)
+            do_plano = {corpo["model"] for _, corpo in conexao.openai.respostas}
+            da_chave = [corpo["model"] for _, corpo in chats(conexao.openai)]
+        self.assertEqual(da_chave, [modelo_do_motor()])
+        self.assertTrue(do_plano and modelo_do_motor() not in do_plano)  # o plano usou o dele, a chave o da chave
 
     def test_usar_a_minha_chave_sem_chave_guardada_recusa_e_o_envio_segue_esperando_o_plano(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoLimite(pasta, chave=None) as conexao:
