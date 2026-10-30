@@ -165,9 +165,9 @@ test('“Já tenho” sem a permissão do abridor: o caminho manual de sempre, s
 test.describe('com a permissão que o Chrome guardou depois de Permitir', () => {
   test.use({ permissaoDoAbridor: true });
 
-  test('“Já tenho” com o Anki instalado e fechado: o abridor abre o Anki, e a Conexão liga sozinha', async ({ page, extensao, fakes }) => {
+  test('“Já tenho” com o Anki instalado e fechado: o abridor abre o Anki, e a Conexão liga sozinha', async ({ page, extensao, fakes, relogioParado }) => {
     // Sem ninguém apertar nada, é a conferência de 15 s que encontra a Conexão que o Anki abriu trouxe.
-    await page.clock.install({ time: new Date('2026-09-18T12:00:00') });
+    const relogio = await relogioParado({ em: new Date('2026-09-18T12:00:00') });
     await page.goto(extensao.url('painel.html#anki/custos'));
     await expect(card(page)).toBeVisible();
 
@@ -178,7 +178,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
 
     // O Anki abriu e a Conexão com ele responde: o passo vira ✓ e o card anda sozinho ao passo do abridor.
     fakes.anki.ligar();
-    await page.clock.runFor(15_000);
+    await relogio.avancar(15_000);
     await expect(itemDaLista(page, /^Ter o Anki/)).toHaveAccessibleName(/feito$/);
     await expect(itemDaLista(page, /^Pôr a Conexão no Anki/)).toHaveAccessibleName(/feito$/);
     await expect(tituloDoPasso(page)).toHaveText('Abrir o Anki sozinho');

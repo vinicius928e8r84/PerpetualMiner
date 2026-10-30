@@ -47,11 +47,6 @@ async function abrir(page, extensao) {
   await page.goto(extensao.url('painel.html#anki/custos'));
 }
 
-async function pararRelogio(page) {
-  await page.clock.install({ time: new Date(AGORA.getTime() - 60_000) });
-  await page.clock.pauseAt(AGORA);
-}
-
 const listaDeEnvios = page => page.getByRole('listbox', { name: 'Envios recentes' });
 
 test.beforeEach(({ fakes }) => {
@@ -221,10 +216,10 @@ test('conectando (depois de Tentar de novo): abre no passo 3 com “Conectando a
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
-test('a resposta anterior mantém o card visível ao terminar a leitura do fato durante uma tentativa da F1', async ({ page, extensao, fakes }) => {
+test('a resposta anterior mantém o card visível ao terminar a leitura do fato durante uma tentativa da F1', async ({ page, extensao, fakes, relogioParado }) => {
   await page.setViewportSize({ width: 1280, height: 1100 });
   await extensao.gravarStorage({ pm_anki_ja_conectou: false });
-  await pararRelogio(page);
+  await relogioParado({ em: AGORA });
   await page.addInitScript(() => {
     const ler = chrome.storage.local.get.bind(chrome.storage.local);
     const segurada = new Promise(resolve => { globalThis.liberarLeituraDaConexao = resolve; });
@@ -260,10 +255,10 @@ test('a resposta anterior mantém o card visível ao terminar a leitura do fato 
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
-test('a Conexão passa a responder: o momento Pronto, e depois as abas voltam com o toast', async ({ page, extensao, fakes }) => {
+test('a Conexão passa a responder: o momento Pronto, e depois as abas voltam com o toast', async ({ page, extensao, fakes, relogioParado }) => {
   await jaDisseAgoraNaoAoAbridor(extensao);
   await page.setViewportSize({ width: 1280, height: 1100 });
-  await pararRelogio(page);
+  const relogio = await relogioParado({ em: AGORA });
   await page.goto(extensao.url('painel.html#anki/custos'));
   await page.evaluate(() => document.fonts.ready);
   await expect(card(page)).toBeVisible();
@@ -283,11 +278,11 @@ test('a Conexão passa a responder: o momento Pronto, e depois as abas voltam co
   await fotografar(page, 'anki-pronto.png');
 
   // O card cobre as abas pelos 1,8 s inteiros; o relógio parado não depende da carga do host.
-  await page.clock.runFor(1799);
+  await relogio.avancar(1799);
   await expect(pronto(page)).toBeVisible();
   await expect(abas(page)).toBeHidden();
   await expect(page.locator('.veio-toast')).toHaveCount(0);
-  await page.clock.runFor(1);
+  await relogio.avancar(1);
   await expect(abas(page)).toBeVisible();
   await expect(pronto(page)).toBeHidden();
   await expect(page.getByText(F1)).toBeHidden();
@@ -300,8 +295,8 @@ test('a Conexão passa a responder: o momento Pronto, e depois as abas voltam co
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
 });
 
-test('reiniciar o Anki sem apertar nada: a consulta automática mostra Conectando e depois “Achei o Anki · perfil · versão”', async ({ page, extensao, fakes }) => {
-  await page.clock.install({ time: AGORA });
+test('reiniciar o Anki sem apertar nada: a consulta automática mostra Conectando e depois “Achei o Anki · perfil · versão”', async ({ page, extensao, fakes, relogioParado }) => {
+  const relogio = await relogioParado({ em: AGORA });
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();
   await lista(page).getByRole('button', { name: 'Reiniciar o Anki' }).click();
@@ -312,7 +307,7 @@ test('reiniciar o Anki sem apertar nada: a consulta automática mostra Conectand
   const segurada = new Promise(r => { liberar = r; });
   fakes.anki.responder('GET', '/health', async () => { await segurada; return fakes.anki.respostaDoContrato('GET', '/health'); });
   fakes.anki.ligar();
-  await page.clock.runFor(15_000);
+  await relogio.avancar(15_000);
   await expect(status(page)).toHaveText('Conectando ao Anki…');
   await expect(tentarDoCard(page)).toHaveAttribute('aria-disabled', 'true');
   expect(pedidosDeHealth(fakes)).toHaveLength(2);
@@ -324,8 +319,8 @@ test('reiniciar o Anki sem apertar nada: a consulta automática mostra Conectand
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
 });
 
-test('a consulta automática que não acha a Conexão volta ao último resultado, desligada', async ({ page, extensao, fakes }) => {
-  await page.clock.install({ time: AGORA });
+test('a consulta automática que não acha a Conexão volta ao último resultado, desligada', async ({ page, extensao, fakes, relogioParado }) => {
+  const relogio = await relogioParado({ em: AGORA });
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();
   await lista(page).getByRole('button', { name: 'Reiniciar o Anki' }).click();
@@ -335,7 +330,7 @@ test('a consulta automática que não acha a Conexão volta ao último resultado
   const segurada = new Promise(r => { liberar = r; });
   fakes.anki.responder('GET', '/health', async () => { await segurada; return { status: 503, json: {} }; });
   fakes.anki.ligar();
-  await page.clock.runFor(15_000);
+  await relogio.avancar(15_000);
   await expect(status(page)).toHaveText('Conectando ao Anki…');
 
   liberar();
@@ -365,24 +360,25 @@ test('um destaque só por tela: no passo 1 é Baixar o Anki depois de “Não te
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
-test('a Conexão liga sozinha, sem ninguém apertar: a conferência de 15 s do shell a encontra', async ({ page, extensao, fakes }) => {
+test('a Conexão liga sozinha, sem ninguém apertar: a conferência de 15 s do shell a encontra', async ({ page, extensao, fakes, relogioParado }) => {
   await jaDisseAgoraNaoAoAbridor(extensao);
-  await page.clock.install({ time: AGORA });
+  const relogio = await relogioParado({ em: AGORA });
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();
 
   fakes.anki.ligar();
-  await page.clock.runFor(15_000);
+  await relogio.avancar(15_000);
 
   await expect(pronto(page)).toBeVisible();
+  await relogio.avancar(1_800);
   await expect(abas(page)).toBeVisible();
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
 });
 
-test('o foco não cai no fim da página: fica no título do card no Pronto e vai para a aba quando o card sai', async ({ page, extensao, fakes }) => {
+test('o foco não cai no fim da página: fica no título do card no Pronto e vai para a aba quando o card sai', async ({ page, extensao, fakes, relogioParado }) => {
   await jaDisseAgoraNaoAoAbridor(extensao);
   // O relógio da página é do teste: o Pronto fica na tela até ele andar.
-  await page.clock.install({ time: AGORA });
+  const relogio = await relogioParado({ em: AGORA });
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();
 
@@ -393,15 +389,15 @@ test('o foco não cai no fim da página: fica no título do card no Pronto e vai
   await expect(pronto(page)).toBeVisible();
   await expect(tituloDoPasso(page)).toBeFocused();
 
-  await page.clock.runFor(2_000);
+  await relogio.avancar(2_000);
   await expect(abas(page)).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Custos' })).toBeFocused();
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
 });
 
-test('o Tentar de novo do próprio card também deixa o foco no título do Pronto', async ({ page, extensao, fakes }) => {
+test('o Tentar de novo do próprio card também deixa o foco no título do Pronto', async ({ page, extensao, fakes, relogioParado }) => {
   await jaDisseAgoraNaoAoAbridor(extensao);
-  await page.clock.install({ time: AGORA });
+  await relogioParado({ em: AGORA });
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();
   await lista(page).getByRole('button', { name: 'Reiniciar o Anki' }).click();
@@ -429,9 +425,9 @@ test('só o Tentar de novo do card fixa o passo 3: o da F1 deixa o card voltar a
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
-test('o passo que a pessoa abriu continua aberto depois de uma conferência que não achou a Conexão e de uma volta por outra área', async ({ page, extensao, fakes }) => {
+test('o passo que a pessoa abriu continua aberto depois de uma conferência que não achou a Conexão e de uma volta por outra área', async ({ page, extensao, fakes, relogioParado }) => {
   await page.setViewportSize({ width: 1280, height: 1100 });
-  await pararRelogio(page);
+  const relogio = await relogioParado({ em: AGORA });
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();
   const linha = page.locator('#apv-confere');
@@ -449,7 +445,7 @@ test('o passo que a pessoa abriu continua aberto depois de uma conferência que 
   const segurada = new Promise(resolve => { liberar = resolve; });
   fakes.anki.responder('GET', '/health', async () => { await segurada; return { status: 503, json: {} }; });
   fakes.anki.ligar();
-  await page.clock.runFor(15_000);
+  await relogio.avancar(15_000);
   await expect.poll(() => pedidosDeHealth(fakes)).toHaveLength(2);
   await expect(linha).toHaveText('Conferindo agora…');
   // A consulta automática também aparece como Conectando nos passos, sem ninguém apertar nada.
@@ -472,20 +468,20 @@ test('o passo que a pessoa abriu continua aberto depois de uma conferência que 
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
-test('a Conexão liga com a pessoa em outra área: as abas já estão lá quando ela chega, sem Pronto nem toast', async ({ page, extensao, fakes }) => {
-  await page.clock.install({ time: AGORA });
+test('a Conexão liga com a pessoa em outra área: as abas já estão lá quando ela chega, sem Pronto nem toast', async ({ page, extensao, fakes, relogioParado }) => {
+  const relogio = await relogioParado({ em: AGORA });
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();
   await page.getByRole('link', { name: 'Frases' }).click();
   await expect(card(page)).toBeHidden();
 
   fakes.anki.ligar();
-  await page.clock.runFor(15_000);
+  await relogio.avancar(15_000);
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
 
   // O relógio anda o bastante para o Pronto acabar, se ele tivesse começado.
   // (Lida na hora: o toast sai sozinho, então esperar por ele esconderia o erro.)
-  await page.clock.runFor(2_000);
+  await relogio.avancar(2_000);
   expect(await page.locator('.veio-toast').count()).toBe(0);
 
   await page.getByRole('link', { name: 'Conexão com o Anki' }).click();
@@ -494,14 +490,14 @@ test('a Conexão liga com a pessoa em outra área: as abas já estão lá quando
   await expect(card(page)).toBeHidden();
 });
 
-test('“Confere sozinho a cada 15 s” segue a conferência do shell, sem um segundo relógio de rede', async ({ page, extensao, fakes }) => {
-  await page.clock.install({ time: AGORA });
+test('“Confere sozinho a cada 15 s” segue a conferência do shell, sem um segundo relógio de rede', async ({ page, extensao, fakes, relogioParado }) => {
+  const relogio = await relogioParado({ em: AGORA });
   await page.goto(extensao.url('painel.html#anki/custos'));
   const linha = page.locator('#apv-confere');
   await expect(linha).toHaveText('Confere sozinho a cada 15 s · última vez há 0 s');
   expect(pedidosDeHealth(fakes)).toHaveLength(1);
 
-  await page.clock.runFor(5_000);
+  await relogio.avancar(5_000);
   await expect(linha).toHaveText('Confere sozinho a cada 15 s · última vez há 5 s');
   expect(pedidosDeHealth(fakes)).toHaveLength(1);
 
@@ -510,13 +506,13 @@ test('“Confere sozinho a cada 15 s” segue a conferência do shell, sem um se
   const segurada = new Promise(r => { liberar = r; });
   fakes.anki.responder('GET', '/health', async () => { await segurada; return { status: 503, json: {} }; });
   fakes.anki.ligar();
-  await page.clock.runFor(10_000);
+  await relogio.avancar(10_000);
   await expect(linha).toHaveText('Conferindo agora…');
   expect(pedidosDeHealth(fakes)).toHaveLength(2);
 
   liberar();
   await expect(linha).toHaveText('Confere sozinho a cada 15 s · última vez há 0 s');
-  await page.clock.runFor(7_000);
+  await relogio.avancar(7_000);
   await expect(linha).toHaveText('Confere sozinho a cada 15 s · última vez há 7 s');
   expect(pedidosDeHealth(fakes)).toHaveLength(2);
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
@@ -597,18 +593,17 @@ test('o Anki na tela de perfis: “Achei o Anki · versão”, sem perfil', asyn
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
 });
 
-test('dois minutos sem resposta: o checklist de 3 itens e “Baixar de novo”, e a conferência segue sozinha', async ({ page, extensao, fakes }) => {
+test('dois minutos sem resposta: o checklist de 3 itens e “Baixar de novo”, e a conferência segue sozinha', async ({ page, extensao, fakes, relogioParado }) => {
   await jaDisseAgoraNaoAoAbridor(extensao);
-  await page.clock.install({ time: AGORA });
-  // Pronto é transitório: só avance o relógio quando o teste mandar.
-  await page.clock.pauseAt(new Date(AGORA.getTime() + 60_000));
+  const relogio = await relogioParado({ em: AGORA });
+  // Pronto é transitório: o relógio só anda quando o teste mandar.
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();
   await expect(naoRespondeu(page)).toBeHidden();
 
-  await page.clock.runFor(119_000);
+  await relogio.avancar(119_000);
   await expect(naoRespondeu(page)).toBeHidden();
-  await page.clock.runFor(1_000);
+  await relogio.avancar(1_000);
 
   await expect(naoRespondeu(page)).toBeVisible();
   await expect(card(page).locator('.pc-checklist li')).toHaveText([
@@ -625,24 +620,24 @@ test('dois minutos sem resposta: o checklist de 3 itens e “Baixar de novo”, 
 
   // A conferência continua: uma pergunta nova ao /health a cada 15 s, e quando a Conexão responde o checklist sai.
   const antes = pedidosDeHealth(fakes).length;
-  await page.clock.runFor(15_000);
+  await relogio.avancar(15_000);
   await expect.poll(() => pedidosDeHealth(fakes).length).toBeGreaterThan(antes);
   await expect(naoRespondeu(page)).toBeVisible();
   // Quinze segundos de checklist sem resposta não gravaram nada.
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
   fakes.anki.ligar();
-  await page.clock.runFor(15_000);
+  await relogio.avancar(15_000);
   await expect(pronto(page)).toBeVisible();
   await expect(naoRespondeu(page)).toBeHidden();
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
 });
 
-test('os dois minutos contam desde que a pessoa vê os passos: quem chega depois não vê o checklist de cara', async ({ page, extensao }) => {
+test('os dois minutos contam desde que a pessoa vê os passos: quem chega depois não vê o checklist de cara', async ({ page, extensao, relogioParado }) => {
   // Nunca conectou e a Conexão está desligada: a pessoa começa em Frases, onde o card não está à vista.
-  await page.clock.install({ time: AGORA });
+  const relogio = await relogioParado({ em: AGORA });
   await page.goto(extensao.url('painel.html#frases'));
   await expect(page.getByRole('link', { name: 'Conexão com o Anki' })).toBeVisible();
-  await page.clock.runFor(150_000);
+  await relogio.avancar(150_000);
   await expect(card(page)).toBeHidden();
 
   await page.getByRole('link', { name: 'Conexão com o Anki' }).click();
@@ -650,9 +645,9 @@ test('os dois minutos contam desde que a pessoa vê os passos: quem chega depois
   await expect(naoRespondeu(page)).toBeHidden();
 
   // A espera é a de dois minutos inteiros, a partir de agora que ela vê os passos.
-  await page.clock.runFor(119_000);
+  await relogio.avancar(119_000);
   await expect(naoRespondeu(page)).toBeHidden();
-  await page.clock.runFor(1_000);
+  await relogio.avancar(1_000);
   await expect(naoRespondeu(page)).toBeVisible();
   await expect(card(page).locator('.pc-checklist li')).toHaveCount(3);
   await expect(baixarDeNovo(page)).toBeVisible();

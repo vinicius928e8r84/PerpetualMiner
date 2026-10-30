@@ -107,13 +107,11 @@ test.describe('a mesma situação, a mesma tela', () => {
     expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
   });
 
-  test('ONB-16: tentar de novo durante o Pronto anuncia Conectando sem desfazer o marco', async ({ page, extensao, fakes }) => {
+  test('ONB-16: tentar de novo durante o Pronto anuncia Conectando sem desfazer o marco', async ({ page, extensao, fakes, relogioParado }) => {
     fakes.anki.desligar();
     // A pessoa já disse “Agora não” ao passo 3 (Abrir o Anki sozinho, #147): o Pronto vem logo que a Conexão responde.
     await extensao.gravarStorage({ pm_abridor: { agoraNao: true } });
-    const agora = new Date('2026-09-18T12:00:00');
-    await page.clock.install({ time: agora });
-    await page.clock.pauseAt(new Date(agora.getTime() + 1_000));
+    const relogio = await relogioParado({ em: new Date('2026-09-18T12:00:00') });
     await page.goto(extensao.url('painel.html#anki/custos'));
     await expect(cardDaPrimeiraConexao(page)).toBeVisible();
 
@@ -141,7 +139,7 @@ test.describe('a mesma situação, a mesma tela', () => {
 
     liberar();
     await expect(sidebar(page)).toHaveText(TEXTO.desligada);
-    await page.clock.runFor(1_800);
+    await relogio.avancar(1_800);
     await expect(cardDaPrimeiraConexao(page)).toBeHidden();
     await expect(page.getByRole('radiogroup', { name: 'Seções da Conexão com o Anki' })).toBeVisible();
     // A primeira resposta ligada ficou gravada, e a falha de depois não a desfaz.

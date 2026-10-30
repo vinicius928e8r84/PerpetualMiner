@@ -290,19 +290,20 @@ test('com a Conexão ligada, o Baralho é uma escolha entre os baralhos do Anki,
   expect((await ajustesGravados(extensao)).en.deckName).toBe('English Mining');
 });
 
-test('a lista de baralhos não é relida em cada health, mas atualiza ao entrar ou reconectar', async ({ page, extensao, fakes }) => {
+test('a lista de baralhos não é relida em cada health, mas atualiza ao entrar ou reconectar', async ({ page, extensao, fakes, relogioParado }) => {
   fakes.anki.definirBaralhosDoAnki(['CIMV', 'RUSSIAN']);
   await extensao.gravarStorage({ pm_anki_ja_conectou: true });
-  await page.clock.install({ time: AGORA });
+  const relogio = await relogioParado({ em: AGORA });
   await page.goto(extensao.url('painel.html#frases'));
   const leituras = () => fakes.anki.requisicoes.filter(r => r.caminho === '/anki/decks').length;
   await expect.poll(leituras).toBe(1);
 
   for (let n = 2; n <= 4; n += 1) {
     const resposta = page.waitForResponse(r => new URL(r.url()).pathname === '/health');
-    await page.clock.runFor(15_000);
+    await relogio.avancar(15_000);
     await resposta;
-    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 0)));
+    // O relógio da página está parado: um tique de 1 ms deixa a resposta do health terminar de ser lida.
+    await relogio.avancar(1);
     await expect.poll(() => fakes.anki.requisicoes.filter(r => r.caminho === '/health').length).toBe(n);
   }
   expect(leituras()).toBe(1);
@@ -310,10 +311,10 @@ test('a lista de baralhos não é relida em cada health, mas atualiza ao entrar 
   await page.locator('.shell-item[data-area="anki"]').click();
   await expect.poll(leituras).toBe(2);
   fakes.anki.desligar();
-  await page.clock.runFor(15_000);
+  await relogio.avancar(15_000);
   await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'desligada');
   fakes.anki.ligar();
-  await page.clock.runFor(15_000);
+  await relogio.avancar(15_000);
   await expect.poll(leituras).toBe(3);
 });
 

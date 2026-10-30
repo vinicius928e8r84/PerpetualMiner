@@ -339,13 +339,13 @@ test('passo 4: reiniciar o Anki; ligar e Tentar de novo diz “Achei o Anki” e
   await fotografarPasso4(page, 'boas-vindas-conexao-ligada.png');
 });
 
-test('passo 4: dois minutos sem resposta mostram o checklist e Baixar de novo, e a conferência segue sozinha', async ({ page, extensao, fakes }) => {
+test('passo 4: dois minutos sem resposta mostram o checklist e Baixar de novo, e a conferência segue sozinha', async ({ page, extensao, fakes, relogioParado }) => {
   fakes.anki.desligar();
-  await page.clock.install({ time: new Date('2026-09-18T12:00:00') });
+  const relogio = await relogioParado({ em: new Date('2026-09-18T12:00:00') });
   await abrirBoasVindas(page, extensao, 'anki');
   await expect(card(page).getByText('A Conexão com o Anki ainda não respondeu. Confira:')).toBeHidden();
 
-  await page.clock.runFor(120_000);
+  await relogio.avancar(120_000);
 
   await expect(card(page).getByText('A Conexão com o Anki ainda não respondeu. Confira:')).toBeVisible();
   await expect(card(page).locator('.pc-checklist li')).toHaveText([
@@ -358,7 +358,7 @@ test('passo 4: dois minutos sem resposta mostram o checklist e Baixar de novo, e
   await fotografarPasso4(page, 'boas-vindas-conexao-sem-resposta.png');
 
   fakes.anki.ligar();
-  await page.clock.runFor(15_000);
+  await relogio.avancar(15_000);
   await expect(card(page).getByRole('status')).toHaveText(/^Achei o Anki/);
   await expect(card(page).getByText('A Conexão com o Anki ainda não respondeu. Confira:')).toBeHidden();
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);

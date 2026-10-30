@@ -24,6 +24,7 @@ const { criarFakeGemini } = require('./fakes/gemini');
 const { criarFakeGoogle } = require('./fakes/google');
 const { subirServidorDoLogin } = require('./fakes/login-google');
 const conexaoReal = require('./conexao-real');
+const { pararRelogio } = require('./relogio-parado');
 
 const RAIZ_DA_EXTENSAO = path.resolve(__dirname, '..');
 const ID_DA_EXTENSAO = new URL(require('../complemento/contrato/exemplos.json').origemDaExtensao).host;
@@ -285,6 +286,13 @@ const test = base.extend({
   // começa como quem já passou por ela, sem o lembrete; quem testa o lembrete
   // pede `test.use({ lembreteDaConfiguracao: true })`.
   lembreteDaConfiguracao: [false, { option: true }],
+
+  // O relógio parado (#209): `await relogioParado({ em })` antes de navegar. Para o relógio da página do teste (ou de
+  // `page`, a de outro perfil) em `em`, agora sem ele, com a margem maior que o prazo do teste, e devolve
+  // `{ instante, avancar }`: o tempo só anda por `relogio.avancar(ms)`. A montagem fica em e2e/relogio-parado.js.
+  relogioParado: async ({ page }, use, testInfo) => {
+    await use(({ page: alvo = page, em } = {}) => pararRelogio(alvo, { em, prazoDoTeste: testInfo.timeout }));
+  },
 
   extensao: async ({ context, manterAbaDaInstalacao, lembreteDaConfiguracao }, use) => {
     await use(await prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConfiguracao }));

@@ -34,15 +34,6 @@ async function esperarChipSemConta(page) {
   await expect(page.locator('#shell-chip-estado')).toHaveText('Só neste computador');
 }
 
-// `install` sozinho deixa o relógio andar em tempo real. Pausado antes de abrir o painel, ele segura o
-// destaque de 1,4 s até o `runFor`: sob carga, a leitura da borda não o perde. O alvo fica 60 s à frente
-// para não ter passado se o comando seguinte demorar mais de 1 s (o teste tem 30 s).
-async function segurarODestaque(page) {
-  const instante = new Date('2026-09-18T12:00:00');
-  await page.clock.install({ time: instante });
-  await page.clock.pauseAt(new Date(instante.getTime() + 60_000));
-}
-
 /** Abre o card Conta & sync, se estiver fechado. */
 async function abrirConta(page) {
   const cabeca = cabecaDoCard(page, 'Conta & sync');
@@ -467,13 +458,13 @@ test('Sync parcial conta as frases deste computador, não as que outros computad
   await expect(conta(page).getByText('8 de 10 frases sincronizadas · 2 ficaram só neste computador')).toBeVisible();
 });
 
-test('Sincronizado há 2 min (CFG-02): o tempo avança sozinho, na forma curta', async ({ page, extensao }) => {
-  await page.clock.install();
+test('Sincronizado há 2 min (CFG-02): o tempo avança sozinho, na forma curta', async ({ page, extensao, relogioParado }) => {
+  const relogio = await relogioParado();
   await extensao.semearSessao({ displayName: 'Ana Souza' });
   await abrirPainel(page, extensao);
   await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
 
-  await page.clock.runFor('02:30');
+  await relogio.avancar('02:30');
   await expect(estadoDoChip(page)).toHaveText('Sincronizado há 2 min');
   await expect(resumo(page, 'conta')).toHaveText('Ana Souza · Sincronizado há 2 min');
 });
@@ -632,9 +623,10 @@ test('com movimento reduzido, o ponto do Sincronizando fica parado', async ({ pa
   expect([...new Set(animacoes)]).toEqual(['none']);
 });
 
-test('com movimento reduzido, #configuracoes/conta mostra a borda ouro parada, e ela sai depois do flash', async ({ page, extensao }) => {
+test('com movimento reduzido, #configuracoes/conta mostra a borda ouro parada, e ela sai depois do flash', async ({ page, extensao, relogioParado }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await segurarODestaque(page);
+  // O relógio parado segura o destaque de 1,4 s até o `avancar`: sob carga, a leitura da borda não o perde.
+  const relogio = await relogioParado({ em: new Date('2026-09-18T12:00:00') });
   await abrirPainel(page, extensao, '#configuracoes/conta');
 
   const ouro = await page.evaluate(() => {
@@ -648,7 +640,7 @@ test('com movimento reduzido, #configuracoes/conta mostra a borda ouro parada, e
   const borda = () => conta(page).evaluate(el => getComputedStyle(el).borderTopColor);
   expect(await borda()).toBe(ouro);
   expect(await conta(page).evaluate(el => getComputedStyle(el).animationName)).toBe('none');
-  await page.clock.runFor(1500);
+  await relogio.avancar(1500);
   await expect.poll(borda, { timeout: 3000 }).not.toBe(ouro);
 });
 

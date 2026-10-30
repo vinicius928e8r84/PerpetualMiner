@@ -29,11 +29,6 @@ const ACHOU = 'O Anki abre sozinho quando um Envio precisar.';
 const PASSOS = [/^Ter o Anki/, /^Pôr a Conexão no Anki/, /^Reiniciar o Anki/, /^Abrir o Anki sozinho/];
 const AGORA = new Date('2026-09-18T12:00:00');
 
-/** O relógio da página parado: o Pronto (1,8 s) fica na tela até o teste andar com ele. */
-async function pararRelogio(page) {
-  await page.clock.install({ time: new Date(AGORA.getTime() - 60_000) });
-  await page.clock.pauseAt(AGORA);
-}
 const SEM_PERMISSAO = 'Sem essa permissão, quando o Anki estiver fechado o Envio pede que você o abra.';
 
 /** A área Conexão com o Anki nunca conectada, e então a Conexão responde (a pessoa reiniciou o Anki). */
@@ -140,8 +135,9 @@ test('Permitir pede a permissão ao Chrome: o passo espera a resposta do aviso d
   await estadoFinal(extensao, { pm_abridor: null });
 });
 
-test('Agora não guarda a escolha, marca o passo “agora não” e o Pronto devolve as abas', async ({ page, extensao, fakes }) => {
-  await pararRelogio(page);
+test('Agora não guarda a escolha, marca o passo “agora não” e o Pronto devolve as abas', async ({ page, extensao, fakes, relogioParado }) => {
+  // O Pronto (1,8 s) fica na tela até o teste andar com o relógio.
+  const relogio = await relogioParado({ em: AGORA });
   await conectarPelaPrimeiraVez(page, extensao, fakes);
 
   await agoraNao(page).click();
@@ -152,7 +148,7 @@ test('Agora não guarda a escolha, marca o passo “agora não” e o Pronto dev
   await expect(statusDoAbridor(page)).toBeVisible();
   await expect(tituloDoPasso(page)).toBeFocused();
   await fotografar(page, 'abridor-agora-nao-pronto.png');
-  await page.clock.runFor(1_800);
+  await relogio.avancar(1_800);
   await expect(abas(page)).toBeVisible();
   await expect(pronto(page)).toBeHidden();
   expect(fakes.abridor.pedidos()).toEqual([]);
@@ -179,8 +175,9 @@ test('quem já disse Agora não vai direto ao Pronto na primeira conexão', asyn
 test.describe('com a permissão que o Chrome guardou depois de Permitir', () => {
   test.use({ permissaoDoAbridor: true });
 
-  test('o passo confere o abridor sozinho: achou o Anki, o passo vira ✓ e o Pronto devolve as abas', async ({ page, extensao, fakes }) => {
-    await pararRelogio(page);
+  test('o passo confere o abridor sozinho: achou o Anki, o passo vira ✓ e o Pronto devolve as abas', async ({ page, extensao, fakes, relogioParado }) => {
+    // O Pronto (1,8 s) fica na tela até o teste andar com o relógio.
+    const relogio = await relogioParado({ em: AGORA });
     await conectarPelaPrimeiraVez(page, extensao, fakes);
 
     await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(4);
@@ -188,7 +185,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await expect(statusDoAbridor(page)).toHaveText(ACHOU);
     await expect(statusDoAbridor(page)).toBeVisible();
     await fotografar(page, 'abridor-achou-pronto.png');
-    await page.clock.runFor(1_800);
+    await relogio.avancar(1_800);
     await expect(abas(page)).toBeVisible();
 
     // Uma conversa só, com a origem da extensão, e só para conferir: nada abriu.
@@ -240,25 +237,26 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await estadoFinal(extensao, { pm_abridor: null });
   });
 
-  test('o abridor que não responde: em 10 s o passo desiste e diz que ele não respondeu', async ({ page, extensao, fakes }) => {
+  test('o abridor que não responde: em 10 s o passo desiste e diz que ele não respondeu', async ({ page, extensao, fakes, relogioParado }) => {
     fakes.abridor.definir('sem_resposta');
-    await page.clock.install({ time: new Date('2026-09-18T12:00:00') });
+    const relogio = await relogioParado({ em: AGORA });
     await conectarPelaPrimeiraVez(page, extensao, fakes);
 
     await expect(statusDoAbridor(page)).toHaveText('Procurando o Anki…');
     await expect.poll(() => fakes.abridor.pedidos()).toEqual([CONFERIR]);
-    await page.clock.runFor(9_000);
+    await relogio.avancar(9_000);
     await expect(statusDoAbridor(page)).toHaveText('Procurando o Anki…');
-    await page.clock.runFor(1_000);
+    await relogio.avancar(1_000);
 
     await expect(card(page).getByRole('alert').locator('.veio-aviso__texto')).toHaveText(/^O abridor não respondeu\./);
     await expect(tentarDoAbridor(page)).toBeVisible();
     await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);
   });
 
-  test('a permissão dada vence um Agora não antigo: o passo confere e o Agora não sai do que ficou guardado', async ({ page, extensao, fakes }) => {
+  test('a permissão dada vence um Agora não antigo: o passo confere e o Agora não sai do que ficou guardado', async ({ page, extensao, fakes, relogioParado }) => {
     await extensao.gravarStorage({ pm_abridor: { agoraNao: true } });
-    await pararRelogio(page);
+    // O Pronto (1,8 s) fica na tela até o teste andar com o relógio.
+    await relogioParado({ em: AGORA });
     await conectarPelaPrimeiraVez(page, extensao, fakes);
 
     await expect(statusDoAbridor(page)).toHaveText(ACHOU);

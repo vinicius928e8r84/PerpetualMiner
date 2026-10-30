@@ -16,9 +16,8 @@ const CICLOS = 4;
 test.beforeEach(() => { test.slow(); });
 
 /** O relógio da página anda só quando o teste manda; a tela abre nele e espera o chip da conta assentar. */
-async function abrirComRelogio(page, extensao, secao) {
-  await page.clock.install();
-  await page.clock.pauseAt(new Date(Date.now() + 60_000));
+async function abrirComRelogio(relogioParado, page, extensao, secao) {
+  await relogioParado({ page });
   await page.goto(extensao.url(`painel.html#configuracoes/${secao}`));
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora', { timeout: 15_000 });
 }
@@ -26,10 +25,10 @@ async function abrirComRelogio(page, extensao, secao) {
 const cardDaIA = page => page.locator('#cfg-ia');
 const cardDaConta = page => page.locator('#cfg-conta');
 
-test('card da IA com um perfil: parado, não escreve na Conexão nem no Firestore', async ({ page, extensao, fakes }) => {
+test('card da IA com um perfil: parado, não escreve na Conexão nem no Firestore', async ({ page, extensao, fakes, relogioParado }) => {
   await extensao.semearSessao({ uid: 'A' });
   fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE_A, em: 100 });
-  await abrirComRelogio(page, extensao, 'ia');
+  await abrirComRelogio(relogioParado, page, extensao, 'ia');
   await expect(cardDaIA(page).locator('.cfg-resumo')).toHaveText('••••••••aaaa');
 
   await emRepouso(page, { ciclos: CICLOS, fakes, extensao, esperar: '/ia/estado' });
@@ -39,10 +38,10 @@ test('card da IA com um perfil: parado, não escreve na Conexão nem no Firestor
   expect(fakes.google.chaveDaOpenAIDe('A')?.chave).toBe(CHAVE_A);
 });
 
-test('card da IA com o ChatGPT conectado: parado, só relê o login e não escreve na Conexão', async ({ page, extensao, fakes }) => {
+test('card da IA com o ChatGPT conectado: parado, só relê o login e não escreve na Conexão', async ({ page, extensao, fakes, relogioParado }) => {
   await extensao.semearSessao({ uid: 'A' });
   fakes.anki.chatgpt.definir('conectada');
-  await abrirComRelogio(page, extensao, 'ia');
+  await abrirComRelogio(relogioParado, page, extensao, 'ia');
   await expect(cardDaIA(page)).toContainText('Usando o plano do ChatGPT');
 
   await emRepouso(page, { ciclos: CICLOS, fakes, extensao, esperar: '/ia/chatgpt/estado' });
@@ -52,14 +51,14 @@ test('card da IA com o ChatGPT conectado: parado, só relê o login e não escre
 });
 
 for (const bComChave of [false, true]) {
-  test(`card da IA com dois perfis${bComChave ? ' (B tem chave)' : ''}: parados, A e B só leem o dono`, async ({ page, extensao, fakes, segundoPerfil }) => {
+  test(`card da IA com dois perfis${bComChave ? ' (B tem chave)' : ''}: parados, A e B só leem o dono`, async ({ page, extensao, fakes, segundoPerfil, relogioParado }) => {
     await extensao.semearSessao({ uid: 'A' });
     fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE_A, em: 100 });
     if (bComChave) fakes.google.gravarChaveDaOpenAI('B', { chave: CHAVE_B, em: 101 });
-    await abrirComRelogio(page, extensao, 'ia');
+    await abrirComRelogio(relogioParado, page, extensao, 'ia');
     await segundoPerfil.extensao.semearSessao({ uid: 'B', displayName: 'Pessoa B' });
     const b = await segundoPerfil.context.newPage();
-    await abrirComRelogio(b, segundoPerfil.extensao, 'ia');
+    await abrirComRelogio(relogioParado, b, segundoPerfil.extensao, 'ia');
     const resumoFinal = bComChave ? '••••••••bbbb' : 'Sem chave';
     // A lê o dono que B deixou na Conexão ao abrir; só depois vem o repouso
     await assentar([{ page, extensao }, { page: b, extensao: segundoPerfil.extensao }], { esperar: '/ia/estado' });
@@ -75,10 +74,10 @@ for (const bComChave of [false, true]) {
   });
 }
 
-test('Conta & sync com um perfil: parado, não escreve na Conexão nem no Firestore', async ({ page, extensao, fakes }) => {
+test('Conta & sync com um perfil: parado, não escreve na Conexão nem no Firestore', async ({ page, extensao, fakes, relogioParado }) => {
   await extensao.semearSessao({ uid: 'A' });
   fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE_A, em: 100 });
-  await abrirComRelogio(page, extensao, 'conta');
+  await abrirComRelogio(relogioParado, page, extensao, 'conta');
   await expect(cardDaConta(page)).toContainText('Sincronizado');
 
   await emRepouso(page, { ciclos: CICLOS, fakes, extensao });
@@ -88,14 +87,14 @@ test('Conta & sync com um perfil: parado, não escreve na Conexão nem no Firest
   expect(fakes.google.chaveDaOpenAIDe('A')?.chave).toBe(CHAVE_A);
 });
 
-test('Conta & sync com dois perfis: parados, A e B não escrevem um no outro', async ({ page, extensao, fakes, segundoPerfil }) => {
+test('Conta & sync com dois perfis: parados, A e B não escrevem um no outro', async ({ page, extensao, fakes, segundoPerfil, relogioParado }) => {
   await extensao.semearSessao({ uid: 'A' });
   fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE_A, em: 100 });
   fakes.google.gravarChaveDaOpenAI('B', { chave: CHAVE_B, em: 101 });
-  await abrirComRelogio(page, extensao, 'conta');
+  await abrirComRelogio(relogioParado, page, extensao, 'conta');
   await segundoPerfil.extensao.semearSessao({ uid: 'B', displayName: 'Pessoa B' });
   const b = await segundoPerfil.context.newPage();
-  await abrirComRelogio(b, segundoPerfil.extensao, 'conta');
+  await abrirComRelogio(relogioParado, b, segundoPerfil.extensao, 'conta');
   await expect(cardDaConta(b)).toContainText('Sincronizado');
   // A lê o dono que B deixou na Conexão ao abrir; só depois vem o repouso
   await assentar([{ page, extensao }, { page: b, extensao: segundoPerfil.extensao }]);
@@ -116,9 +115,9 @@ const escreveNoCiclo = {
   'uma gravação no chrome.storage.local': () => chrome.storage.local.set({ pm_escrita_em_repouso: true }),
 };
 for (const [descricao, escrita] of Object.entries(escreveNoCiclo)) {
-  test(`emRepouso falha quando o painel parado faz ${descricao}`, async ({ page, extensao, fakes }) => {
+  test(`emRepouso falha quando o painel parado faz ${descricao}`, async ({ page, extensao, fakes, relogioParado }) => {
     await extensao.semearSessao({ uid: 'A' });
-    await abrirComRelogio(page, extensao, 'ia');
+    await abrirComRelogio(relogioParado, page, extensao, 'ia');
     await page.evaluate(`setTimeout(${escrita.toString()}, 5000)`);
 
     await expect(emRepouso(page, { ciclos: 1, fakes, extensao })).rejects.toThrow(/em 1 ciclos de repouso/);

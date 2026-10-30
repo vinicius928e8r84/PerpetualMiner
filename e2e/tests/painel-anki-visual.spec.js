@@ -131,11 +131,11 @@ test.fixme('nunca conectada, conectando depois de Tentar de novo: o passo 3 com 
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-conectando.png', { animations: 'disabled' });
 });
 
-test.fixme('nunca conectada, na primeira resposta: o momento Pronto, com as abas ainda de fora', async ({ page, extensao, fakes }) => {
+test.fixme('nunca conectada, na primeira resposta: o momento Pronto, com as abas ainda de fora', async ({ page, extensao, fakes, relogioParado }) => {
   fakes.anki.desligar();
   // O relógio da página é do teste: o Pronto fica na tela até ele andar. A pessoa já disse “Agora não” ao passo 3
   // (#147): com ele resolvido, o Pronto vem logo que a Conexão responde.
-  await page.clock.install({ time: AGORA });
+  await relogioParado({ em: AGORA });
   await extensao.gravarStorage({ pm_anki_ja_conectou: false, pm_abridor: { agoraNao: true } });
   await page.setViewportSize({ width: 1280, height: 1100 });
   await page.goto(extensao.url('painel.html#anki/custos'));
@@ -190,17 +190,17 @@ test.fixme('nunca conectada: o Detalhes “O arquivo não abriu?” aberto, com 
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-detalhes.png');
 });
 
-test.fixme('nunca conectada, dois minutos sem resposta: o passo 3 com o checklist e Baixar de novo', async ({ page, extensao, fakes }) => {
+test.fixme('nunca conectada, dois minutos sem resposta: o passo 3 com o checklist e Baixar de novo', async ({ page, extensao, fakes, relogioParado }) => {
   fakes.anki.desligar();
   // O relógio da página é do teste: os 2 minutos passam quando ele anda.
-  await page.clock.install({ time: AGORA });
+  const relogio = await relogioParado({ em: AGORA });
   await extensao.gravarStorage({ pm_anki_ja_conectou: false });
   await page.setViewportSize({ width: 1280, height: 1100 });
   await page.goto(extensao.url('painel.html#anki/custos'));
   await page.evaluate(() => document.fonts.ready);
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
   await page.locator('#anki-primeira-vez').getByRole('button', { name: 'Reiniciar o Anki' }).click();
-  await page.clock.runFor(125_000);
+  await relogio.avancar(125_000);
   await expect(page.locator('#anki-primeira-vez').getByText('A Conexão com o Anki ainda não respondeu. Confira:')).toBeVisible();
 
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-sem-resposta.png', { animations: 'disabled' });
