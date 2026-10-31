@@ -21,7 +21,7 @@ python start.py  # Full pipeline with menu
 
 ```
 mining.txt
-├─ generate_cards.py    → Output/{stem}.txt (chat.completions)
+├─ generate_cards.py    → Output/{stem}.txt (chat.completions; the model is the add-on's `modelo_do_texto` when it sets one (#157), else `openai.chat_model`)
 ├─ extract_prompts.py   → prompts.txt (Image: field)
 ├─ generate_audio.py    → Output/{stem}_{word,phrase}.mp3 (gTTS)
 ├─ image_guard.py       → skip/real/generate decision (heuristics + GPT-4o-mini)
@@ -37,7 +37,7 @@ mining.txt
 |---|---|
 | `parser.py` | `MiningEntry`, `CardJob`, `parse_mining_file()`, `safe_filename()` |
 | `config_loader.py` | `config.json` (`base_config()`) + the key: `load_config(openai_api_key=…)` from the Conexão, else `OPENAI_API_KEY` from the environment or the `.env` next to the engine |
-| `openai_http.py` | `completar()`: POST /v1/chat/completions, `gerar_imagem()`: POST /v1/images/generations, with urllib; `responder()`: the ChatGPT plan's POST /v1/responses (stream, `instructions`, no `temperature`; `generate_cards` uses it when the config has `plano_do_chatgpt`, #155). A refusal is `ErroDaOpenAI(codigo)` (the add-on's codes), never OpenAI's text. The base URL is passed by code |
+| `openai_http.py` | `completar()`: POST /v1/chat/completions, `gerar_imagem()`: POST /v1/images/generations, with urllib; `responder()`: the ChatGPT plan's POST /v1/responses (stream, `instructions`, no `temperature`; `generate_cards` uses it when the config has `plano_do_chatgpt`, #155; with `formato_json` and `input_image` parts it is the image judge's, #156). A refusal is `ErroDaOpenAI(codigo)` (the add-on's codes), never OpenAI's text. The base URL is passed by code |
 | `estilos.json`, `estilos.py` | The Card style as data (#161): language × level (the language of the explanation, the back parts, colours on or off, the prompt file) plus, per language, its note type, deck, how a mining line reads (`entrada`) and **all** its fields (changing a note type's fields later forces a full sync in Anki). A new language is a new entry and a prompt file; `prompts/en_iniciante.txt` and `ru_iniciante.txt` are the Beginner level (Portuguese explanations, colours from the Alignment section). Only the add-on uses it: the bridge keeps `en_card`/`ru_card` and the `Básico` note type |
 | `nota_do_cartao.py` | The note a card text becomes, field by field, in the style of its language and level (`campos_da_nota`): the Phrase without the audio tag, the colours linking the Phrase and the Literal line, the audios and the image in their own fields |
 | `prompt_loader.py` | System prompts from `prompts/` (keys: `en_card`, `ru_card`) |

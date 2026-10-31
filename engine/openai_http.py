@@ -94,16 +94,21 @@ def _classificar_do_plano(status, detalhe):
     codigo = _DO_PLANO.get(str(detalhe.get("code") or ""))
     if codigo:
         return codigo
+    if status == 400 and detalhe.get("code") == "invalid_image_format":
+        return IMAGEM_INVALIDA  # the image judge discards the candidates, as on the key's path
     if status in (401, 403):
         return PLANO_RECUSOU
     return FORA_DO_AR if status >= 500 else (LIMITE_DE_USO if status == 429 else PEDIDO_RECUSADO)
 
 
-def responder(base, token, modelo, instrucoes, mensagem, tempo=TEMPO_PADRAO):
+def responder(base, token, modelo, instrucoes, mensagem, tempo=TEMPO_PADRAO, formato_json=False):
     """POST /v1/responses with the ChatGPT plan's access token: no `temperature`, the system prompt as `instructions`,
-    `store: false` and `stream: true` (the SIWC "Preview limitations"). Returns (text, usage) only after
-    `response.completed`; anything else is `ErroDaOpenAI` with a code, never what the plan wrote."""
+    `store: false` and `stream: true` (the SIWC "Preview limitations"). `mensagem` is a text, or the parts of the user's message
+    (`input_text` and `input_image`, the image judge); `formato_json` asks for a JSON object by `text.format`. Returns (text, usage)
+    only after `response.completed`; anything else is `ErroDaOpenAI` with a code, never what the plan wrote."""
     corpo = {"model": modelo, "instructions": instrucoes, "input": [{"role": "user", "content": mensagem}], "store": False, "stream": True}
+    if formato_json:
+        corpo["text"] = {"format": {"type": "json_object"}}
     pedido = urllib.request.Request(base + "/v1/responses", data=json.dumps(corpo).encode("utf-8"), method="POST")
     pedido.add_header("Authorization", "Bearer " + token)
     pedido.add_header("Content-Type", "application/json")

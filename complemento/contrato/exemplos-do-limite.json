@@ -1,0 +1,262 @@
+{
+  "filas": {
+    "um Envio esperando o plano do ChatGPT": [
+      {
+        "job": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+          "createdAt": "2026-10-12T10:00:00-03:00",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400010,
+              "noAnki": {
+                "1760270400010-0": "added"
+              }
+            },
+            {
+              "phraseId": 1760270400011,
+              "line": "keep running : They keep running"
+            }
+          ]
+        },
+        "state": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+          "status": "running",
+          "stage": "generate_cards",
+          "completedStages": [],
+          "progress": {
+            "done": 1,
+            "total": 2
+          },
+          "successfulPhraseIds": [],
+          "failedPhraseIds": [],
+          "duplicatePhraseIds": [],
+          "lastError": null,
+          "updatedAt": "2026-10-12T10:03:00-03:00",
+          "cards": {
+            "1760270400010-0": {
+              "phraseId": 1760270400010,
+              "status": "added",
+              "error": null
+            },
+            "1760270400011-0": {
+              "phraseId": 1760270400011,
+              "status": "pending",
+              "error": null
+            }
+          },
+          "waiting": {
+            "reason": "plan_limit"
+          }
+        },
+        "custos": []
+      }
+    ]
+  },
+  "exemplos": [
+    {
+      "nome": "listar os Envios traz o Envio que espera o plano do ChatGPT no limite de uso",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio esperando o plano do ChatGPT"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/list",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "jobs": [
+            {
+              "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+              "lang": "en",
+              "status": "running",
+              "createdAt": "2026-10-12T10:00:00-03:00",
+              "updatedAt": "2026-10-12T10:03:00-03:00",
+              "state": {
+                "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+                "status": "running",
+                "stage": "generate_cards",
+                "completedStages": [],
+                "progress": {
+                  "done": 1,
+                  "total": 2
+                },
+                "successfulPhraseIds": [],
+                "failedPhraseIds": [],
+                "duplicatePhraseIds": [],
+                "lastError": null,
+                "updatedAt": "2026-10-12T10:03:00-03:00",
+                "cards": {
+                  "1760270400010-0": {
+                    "phraseId": 1760270400010,
+                    "status": "added",
+                    "error": null
+                  },
+                  "1760270400011-0": {
+                    "phraseId": 1760270400011,
+                    "status": "pending",
+                    "error": null
+                  }
+                },
+                "waiting": {
+                  "reason": "plan_limit"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nome": "tentar de novo um Envio que espera o plano só diz o estado, e a Conexão pede o texto já",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio esperando o plano do ChatGPT"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/retry",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+          "status": "running"
+        }
+      }
+    },
+    {
+      "nome": "usar a minha chave num Envio que espera o plano segue o que falta pela chave",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio esperando o plano do ChatGPT",
+        "chaveNaConexao": "9f3a"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/usar-a-chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+          "status": "running"
+        }
+      }
+    },
+    {
+      "nome": "usar a minha chave sem chave guardada na Conexão é recusado",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio esperando o plano do ChatGPT"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/usar-a-chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c"
+        }
+      },
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "openai_key_missing"
+        }
+      }
+    },
+    {
+      "nome": "usar a minha chave num Envio que já terminou é recusado",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio que terminou em parte",
+        "chaveNaConexao": "9f3a"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/usar-a-chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "c7d1e2f3-4a5b-4c6d-8e7f-9a0b1c2d3e4f"
+        }
+      },
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "job_finished"
+        }
+      }
+    },
+    {
+      "nome": "usar a minha chave num Envio que a Conexão não tem",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/usar-a-chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b"
+        }
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "job_not_found"
+        }
+      }
+    },
+    {
+      "nome": "usar a minha chave sem um id de Envio válido é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/usar-a-chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_job_id"
+        }
+      }
+    },
+    {
+      "nome": "usar a minha chave com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/usar-a-chave",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    }
+  ]
+}

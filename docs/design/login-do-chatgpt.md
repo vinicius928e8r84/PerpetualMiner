@@ -79,10 +79,15 @@ pede para entrar de novo: limite 5.d). Reverter: só a pessoa, por Sair ou desco
 - **c. O `id_token` não tem a assinatura conferida.** A Conexão confere só o `nonce`; a identidade (e-mail, `sub`) não é usada nem
   mostrada. A conferência pelo JWKS entra quando a tela mostrar a conta.
 - **d. Renovar e não gravar** (o Anki morto entre os dois): o `refresh_token` novo se perde, e a pessoa entra de novo.
-- **e. O modelo** é o primeiro da lista da conta (o “Automático” do #123, que ainda não tem tela). Sem custo em US$ nos registros:
-  o plano não é pago por Cartão (a aba Custos com o plano é o #159).
-- **f. Limite de uso, conta grátis e o primeiro 429 (#121)** param o Envio com o código (`chatgpt_usage_limit`,
-  `chatgpt_not_eligible`, `chatgpt_rejected`) em Detalhes, sem cópia própria nem volta sozinha: são o #156 e o #158.
+- **e. O modelo** é o primeiro da lista da conta (o “Automático” do #123, que ainda não tem tela). Sem custo em US$ nos registros
+  (`cost_usd` 0): o plano não é pago por Cartão. O registro `plan_tokens` guarda os tokens e `would_cost_usd`, o que a chave do modelo do
+  motor (`openai.chat_model`) teria cobrado; a aba Custos (#159) soma isso em “Você economizou” (`plan` da linha, BRG-40).
+- **f. Conta grátis (#121)** para o Envio com o código (`chatgpt_not_eligible`, `chatgpt_rejected`); a cópia dela e a do modal da primeira vez
+  são do #156 ([imagem-pelo-plano.md](imagem-pelo-plano.md)).
+  **O limite de uso** (`chatgpt_usage_limit`) do texto não para o Envio (#158): ele espera o plano (`waiting: plan_limit`), pede o mesmo texto de novo a
+  cada 5 min e volta sozinho quando o plano libera. Tentar de novo (`POST /jobs/retry`) pede já; Usar a minha chave (`POST /jobs/usar-a-chave`)
+  marca o Envio (`usingKey`) e o que falta vai pela chave (o juiz de imagem também), sem refazer Cartão pronto. O primeiro 429 logo depois do registro tem o mesmo código
+  e espera igual. O limite que o juiz de imagem acha pelo plano (#156) para o Envio, com a cópia ENV-20, que não diz que a cota acabou.
 - **g. ACL no Windows**: herdada da pasta, como a da chave (`complemento/contrato/LEIA-ME.md`).
 - **h. A página do retorno** é da Conexão, não do catálogo da Voz da extensão: “Pode fechar esta aba e voltar ao PerpetualMiner.”
 
@@ -94,6 +99,7 @@ pede para entrar de novo: limite 5.d). Reverter: só a pessoa, por Sair ou desco
 | os tokens só no arquivo: os valores do servidor de mentira não aparecem em nenhum outro arquivo de `user_files`, no log, no pacote de diagnóstico nem em resposta HTTP; o arquivo é 0600 | `test_login_do_chatgpt.py`, `test_plano_do_chatgpt.py` | Windows |
 | o Cartão pela Responses API: o pedido tem `model` da lista, `instructions`, `input`, `store: false`, `stream: true`, sem `temperature`, com o `Bearer` do plano; o texto vem do stream; o login que acaba para o Envio | `test_plano_do_chatgpt.py`, `engine/test_openai_http.py` | a qualidade do Cartão e o consumo do Plus (risco 9) |
 | o estado do login no contrato, nos dois lados | `complemento/contrato/exemplos-do-chatgpt.json`, `test_servidor.py`, `test_fake_anki.js`, `test_contrato_fechado.js` | — |
+| o limite do plano no Envio: a espera, a volta sozinha, Tentar de novo já, Usar a minha chave só com o que falta, o Apagar tudo e a Conexão que cai | `complemento/test_limite_do_plano.py`, `e2e/tests/painel-envio-limite.spec.js`, `complemento/contrato/exemplos-do-limite.json` | o plano de verdade no limite (#288) |
 | a coluna, a linha, o login e o Sair com o fake | `e2e/tests/configuracoes-chatgpt.spec.js` | a tela de consentimento da OpenAI |
 | a referência visual da coluna conectada | `e2e/tests/configuracoes-chatgpt.spec.js`, `test.fixme` sem PNG até o dono aprovar | a aprovação |
 | um Cartão de texto feito pelo plano numa conta Plus ou Pro | ensaio do dono (#269) | — |

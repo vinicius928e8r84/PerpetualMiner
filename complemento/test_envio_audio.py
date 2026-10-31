@@ -23,6 +23,13 @@ FRASE = "gave up : She gave up smoking [Context: Série - The Office - S01E01]"
 RUSSO = ColecaoEmMemoria({"baralhos": [{"nome": "Русский"}]})
 
 
+def sem_reserva():
+    """O pedido sem voz de reserva (#174): o que o Google disser é o que vale."""
+    corpo = pedido(ID, FRASE)
+    corpo["tts"]["reserva"] = []
+    return corpo
+
+
 def sons(campos):
     """Os nomes dos arquivos que os campos da nota tocam (`[sound:...]`): o da frase e o da palavra."""
     return re.findall(r"\[sound:([^\]]+)\]", campos.get("Áudio da frase", "")), re.findall(r"\[sound:([^\]]+)\]", campos.get("Áudio da palavra", ""))
@@ -139,10 +146,10 @@ class OCartaoGanhaAudio(unittest.TestCase):
 
 class AVozQueFalha(unittest.TestCase):
     def test_a_voz_da_palavra_recusada_com_400_deixa_o_cartao_sem_nota_com_o_codigo_e_o_tentar_de_novo_nao_paga_o_texto_de_novo(self):
-        # O risco 11: a voz da Palavra por translate.google.com deu 400 no Mac do dono; a reserva é o #174.
+        # O risco 11: a voz da Palavra por translate.google.com deu 400 no Mac do dono; a reserva que o cobre é de `test_voz_de_reserva.py`.
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.voz.recusar("com", 400)
-            conexao.criar(pedido(ID, FRASE))
+            conexao.criar(sem_reserva())
             falhou = conexao.esperar(ID)
             sem_nota = list(conexao.conexao.colecao.gravadas)
             conexao.voz.recusar("com", None)
@@ -167,7 +174,7 @@ class AVozQueFalha(unittest.TestCase):
     def test_a_voz_fora_do_ar_para_sempre_falha_o_cartao_com_o_codigo_de_voz_fora_do_ar(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.voz.recusar("*", 503)
-            conexao.criar(pedido(ID, FRASE))
+            conexao.criar(sem_reserva())
             estado = conexao.esperar(ID)
         self.assertEqual((estado["status"], estado["lastError"]), ("failed", "tts_unreachable"))
 
@@ -189,7 +196,7 @@ class AVozQueFalha(unittest.TestCase):
     def test_a_resposta_boa_sem_audio_dentro_falha_o_cartao_e_nao_grava_nota_muda(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.voz.sem_audio()
-            conexao.criar(pedido(ID, FRASE))
+            conexao.criar(sem_reserva())
             estado = conexao.esperar(ID)
             notas = conexao.conexao.colecao.gravadas
         self.assertEqual((estado["status"], estado["lastError"], notas), ("failed", "tts_empty", []))

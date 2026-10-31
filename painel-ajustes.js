@@ -2,24 +2,11 @@
 
 (function (raiz) {
   const { textoDaVoz, Veio, AjustesDeEnvio, IDIOMAS, Shell, ConexaoAnki } = raiz;
-  const { IMAGENS } = AjustesDeEnvio;
+  const { IMAGENS, SOTAQUES } = AjustesDeEnvio;
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
   const CODIGO_DO_IDIOMA = { en: 'BRG-28.codigoEn', ru: 'BRG-28.codigoRu' };
-  const CAMPOS = ['deckName', 'imageSource', 'ttsWordTld', 'ttsPhraseTld'];
-  // Os sotaques da voz do Google, por nome de lugar: o domínio é o que o bridge
-  // recebe, e a pessoa não precisa saber qual é qual.
-  const SOTAQUES = {
-    en: [
-      ['com', 'BRG-07.sotaqueEstadosUnidos'],
-      ['co.uk', 'BRG-07.sotaqueReinoUnido'],
-      ['com.au', 'BRG-07.sotaqueAustralia'],
-      ['co.in', 'BRG-07.sotaqueIndia'],
-      ['ca', 'BRG-07.sotaqueCanada'],
-      ['ie', 'BRG-07.sotaqueIrlanda'],
-      ['co.za', 'BRG-07.sotaqueAfricaDoSul'],
-    ],
-    ru: [['ru', 'BRG-07.sotaqueRussia']],
-  };
+  const CAMPOS = ['deckName', 'imageSource', 'ttsWordTld', 'ttsPhraseTld', 'ttsReserva'];
+  const VOZ_DA_RESERVA = { openai: 'BRG-07.reservaOpenai', nenhuma: 'BRG-07.reservaNenhuma' };
   const porId = id => document.getElementById(id);
 
   const estado = {
@@ -31,6 +18,8 @@
     baralhos: null,                 // os baralhos do Anki; null sem a lista (campo de texto)
     ultimaLeituraDeBaralhos: 0,
     salvando: null,
+    erroDeOuvir: {},                // o ID da Voz do que deu errado em cada Ouvir, por `<idioma>:<campo>`
+    audio: null,                    // o que está tocando
   };
 
   function iniciar() {
@@ -322,7 +311,8 @@
         elemento('p', 'anki-apoio', textoDaVoz('BRG-07.sotaque')),
         elemento('div', 'ajustes-sotaques',
           campoDoSotaque(lang, 'ttsWordTld', 'BRG-07.sotaquePalavra'),
-          campoDoSotaque(lang, 'ttsPhraseTld', 'BRG-07.sotaqueFrase'))));
+          campoDoSotaque(lang, 'ttsPhraseTld', 'BRG-07.sotaqueFrase'),
+          campoDaReserva(lang))));
     detalhes.id = `ajustes-avancado-${lang}`;
     detalhes.open = aberto;
     detalhes.addEventListener('toggle', () => {
@@ -331,7 +321,7 @@
     return detalhes;
   }
 
-  /** O sotaque, pelo nome do lugar; um domínio gravado que não está na lista continua lá, com o próprio nome. */
+  /** O sotaque da voz do Google, pelo nome do lugar; um domínio gravado que não está na lista continua lá, com o próprio nome. */
   function campoDoSotaque(lang, campo, vozDoRotulo) {
     const rascunho = estado.rascunhos[lang];
     const dominio = rascunho[campo];
@@ -341,9 +331,85 @@
     escolha.id = `ajustes-${campo}-${lang}`;
     escolha.value = dominio;
     escolha.addEventListener('change', () => { rascunho[campo] = escolha.value; });
+    return comOuvir(lang, campo, vozDoRotulo, escolha);
+  }
+
+  /** A voz de reserva: a lista de provedores que a Conexão tenta quando a do Google falha (a voz do Anki não está nela). */
+  function campoDaReserva(lang) {
+    const rascunho = estado.rascunhos[lang];
+    const escolha = elemento('select', 'veio-campo', ...AjustesDeEnvio.RESERVAS.map(valor => opcao(valor, textoDaVoz(VOZ_DA_RESERVA[valor]))));
+    escolha.id = `ajustes-ttsReserva-${lang}`;
+    escolha.value = rascunho.ttsReserva;
+    const nota = elemento('span', 'ajustes-campo__ajuda', notaDaReserva(lang));
+    nota.id = `${escolha.id}-nota`;
+    escolha.setAttribute('aria-describedby', nota.id);
+    escolha.addEventListener('change', () => {
+      rascunho.ttsReserva = escolha.value;
+      nota.textContent = notaDaReserva(lang);
+      porId(`ajustes-ouvir-ttsReserva-${lang}`).disabled = semVozParaOuvir(lang, 'ttsReserva');
+    });
+    return comOuvir(lang, 'ttsReserva', 'BRG-07.reserva', escolha, nota);
+  }
+
+  const notaDaReserva = lang => textoDaVoz(estado.rascunhos[lang].ttsReserva === 'nenhuma' ? 'BRG-07.reservaNotaNenhuma' : 'BRG-07.reservaNotaOpenai');
+  /** Sem reserva não há voz para ouvir. */
+  const semVozParaOuvir = (lang, campo) => campo === 'ttsReserva' && estado.rascunhos[lang].ttsReserva === 'nenhuma';
+
+  /** O seletor com o Ouvir ao lado e, embaixo, o que deu errado ao ouvir. */
+  function comOuvir(lang, campo, vozDoRotulo, escolha, ...embaixo) {
     const rotulo = elemento('label', 'ajustes-campo__rotulo', textoDaVoz(vozDoRotulo));
     rotulo.htmlFor = escolha.id;
-    return elemento('div', 'ajustes-campo', rotulo, elemento('span', 'veio-select', escolha));
+    const botao = elemento('button', 'veio-botao veio-botao--secundario', textoDaVoz('BRG-07.ouvir'));
+    botao.type = 'button';
+    botao.id = `ajustes-ouvir-${campo}-${lang}`;
+    botao.disabled = semVozParaOuvir(lang, campo);
+    botao.setAttribute('aria-label', textoDaVoz('BRG-07.ouvirCampo', { campo: rotulo.textContent }));
+    botao.addEventListener('click', () => ouvir(lang, campo));
+    const erro = elemento('p', 'veio-campo-erro');
+    erro.id = `${botao.id}-erro`;
+    erro.setAttribute('role', 'alert');
+    const falhou = estado.erroDeOuvir[`${lang}:${campo}`];
+    [erro.textContent, erro.hidden] = [falhou ? textoDaVoz(falhou) : '', !falhou];
+    escolha.addEventListener('change', () => mostrarOErroDeOuvir(lang, campo, null));
+    return elemento('div', 'ajustes-campo', rotulo, elemento('div', 'ajustes-acoes', elemento('span', 'veio-select', escolha), botao), ...embaixo, erro);
+  }
+
+  function mostrarOErroDeOuvir(lang, campo, voz) {
+    estado.erroDeOuvir[`${lang}:${campo}`] = voz;
+    const erro = porId(`ajustes-ouvir-${campo}-${lang}-erro`);
+    if (erro) [erro.textContent, erro.hidden] = [voz ? textoDaVoz(voz) : '', !voz];
+  }
+
+  /** Ouvir: a Conexão fala a amostra com a voz que está na tela (mesmo sem salvar) e o painel a toca. */
+  async function ouvir(lang, campo) {
+    const rascunho = estado.rascunhos[lang];
+    const botao = porId(`ajustes-ouvir-${campo}-${lang}`);
+    estado.audio?.pause();
+    mostrarOErroDeOuvir(lang, campo, null);
+    botao.disabled = true;
+    const { PedidoAoAnki } = raiz;
+    const pedido = campo === 'ttsReserva' ? PedidoAoAnki.ouvirAVoz(lang, rascunho.ttsReserva) : PedidoAoAnki.ouvirAVoz(lang, 'google', rascunho[campo]);
+    mostrarOErroDeOuvir(lang, campo, await tocarAAmostra(pedido));
+    botao.disabled = semVozParaOuvir(lang, campo);
+  }
+
+  /** Pede a amostra à Conexão e a toca; devolve null, ou o ID da Voz que diz por que não tocou. */
+  async function tocarAAmostra(pedido) {
+    let resposta;
+    try {
+      resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, pedido);
+    } catch {
+      return 'BRG-07.ouvirSemConexao';
+    }
+    const dados = await resposta.json().catch(() => ({}));
+    if (!resposta.ok) return dados.error === 'openai_key_missing' ? 'BRG-07.ouvirSemChave' : 'BRG-07.ouvirFalhou';
+    try {
+      estado.audio = new Audio(`data:audio/mpeg;base64,${dados.audio}`);
+      await estado.audio.play();
+    } catch {
+      return 'BRG-07.ouvirFalhou';
+    }
+    return null;
   }
 
   function acoes(lang) {

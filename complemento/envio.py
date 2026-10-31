@@ -33,10 +33,12 @@ from datetime import datetime, timezone
 from . import baralhos, custos, tipo_de_nota, voz
 from .audio_do_cartao import FRASE_APAGADA, AudioDoCartao
 from .configuracao import OPENVERSE_BASE, VOZ_BASE
-from .espera_do_anki import Apagado, EsperaDoAnki, Interrompido  # noqa: F401  (`envio.Interrompido`)
-from .imagem_do_cartao import ImagemDoCartao
-from .login_do_chatgpt import RECUSOU, SAIU, credencial
+from .imagem_do_cartao import ImagemDoCartao, ParaOEnvio
+from .limite_do_plano import LIMITE_DO_PLANO, LimiteDoPlano, espera_pelo_plano
+from .login_do_chatgpt import RECUSOU, SAIU
+from .modelo_dos_cartoes import credencial
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento  # noqa: F401  (`envio.motor_do_complemento`)
+from .paradas_do_envio import Apagado, Interrompido  # noqa: F401  (`envio.Interrompido`)
 from .pedido_do_envio import id_que_serve_de_caminho, id_valido, impressao, validar_pedido, visao_do_pedido  # noqa: F401
 
 QUEUED, RUNNING, COMPLETED, PARTIAL, FAILED = "queued", "running", "completed", "partial", "failed"
@@ -56,9 +58,9 @@ SEM_CHAVE = "openai_key_missing"
 SEM_TIPO_DE_NOTA = "note_type_missing"
 FALHA_AO_GRAVAR = "anki_write_failed"
 CARTOES_FALHARAM = "cards_failed"
-# A chave recusada, a conta sem como pagar ou o plano que não serve agora: os próximos Cartões falhariam igual.
-PARA_O_ENVIO = ("openai_key_rejected", "openai_no_credit", SAIU, "chatgpt_usage_limit", "chatgpt_not_eligible", RECUSOU)
-# Passageiros: o Cartão tenta de novo depois de cada espera de `esperas_da_openai`.
+# Chave recusada, conta sem crédito ou plano que não serve: os próximos Cartões falhariam igual (o limite de uso espera: `limite_do_plano.py`).
+PARA_O_ENVIO = ("openai_key_rejected", "openai_no_credit", SAIU, "chatgpt_not_eligible", RECUSOU)
+# Passageiros: o Cartão tenta de novo depois de cada espera.
 PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", "empty_response")
 
 
@@ -133,6 +135,7 @@ class Fila:
         self.logger = logger
         self.tranca = threading.RLock()
         self.mudou = threading.Event()
+        self.despertador = threading.Event()  # acorda a espera do plano
 
     # -- caminhos --
     def _arquivo_da_fila(self):
@@ -272,6 +275,8 @@ class Fila:
                 return 404, {"error": "job_not_found"}
             estado = self.estado_ou_refazer(job_id)
             if estado.get("status") in (QUEUED, RUNNING) or estado.get("wiped") or pedido.get("wiped"):
+                if espera_pelo_plano(estado):
+                    self.despertador.set()  # Tentar de novo no limite: pede já
                 return 200, {"jobId": job_id, "status": estado["status"]}
             for cartao_id, cartao in estado.get("cards", {}).items():
                 if cartao["status"] == FALHOU:
@@ -345,6 +350,7 @@ class Fila:
         """`POST /jobs/apagar-frases` (o Apagar tudo, CFG-17): de todo pedido da pasta, tenha ou não entrada na fila, somem as linhas
         das Frases e os textos gerados; um Envio na fila ou rodando vai a `failed` com `wiped`. Ficam os `phraseId`, o estado de
         cada Cartão e os custos. Repetido, não grava nada. Cada passo grava só o que falta, então morrer no meio e pedir de novo termina."""
+        self.despertador.set()  # o Envio que espera o plano vê as Frases apagadas
         with self.tranca:
             # Todo `<nome>.novo` (a gravação que morreu entre escrever e renomear) guarda a Palavra e a Frase e ninguém o reescreve.
             for pasta in (self.dados.fila, self.dados.estado, self.dados.custos):
@@ -393,12 +399,13 @@ def resolver(pedido, estado):
     return status, no_anki, falharam, duplicadas
 
 
-class Trabalho(AudioDoCartao, ImagemDoCartao, EsperaDoAnki):
+class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
     """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto, o áudio e a imagem e grava a nota."""
 
     def __init__(self, fila, colecao, cofre, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30),
-                 voz_base=VOZ_BASE, openverse_base=OPENVERSE_BASE, adaptador_de_imagem=None, chatgpt=None):
-        self.fila, self.chatgpt, self.plano = fila, chatgpt, {}  # o login do ChatGPT e o modelo do Envio
+                 voz_base=VOZ_BASE, openverse_base=OPENVERSE_BASE, adaptador_de_imagem=None, chatgpt=None, espera_do_plano=300, modelos=None):
+        self.fila, self.chatgpt, self.modelos, self.plano = fila, chatgpt, modelos, {}
+        self.espera_do_plano = espera_do_plano  # s entre dois pedidos no limite
         self.motor = fila.motor
         self.colecao = colecao
         self.cofre = cofre
@@ -412,11 +419,6 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, EsperaDoAnki):
         self.esperas_da_openai = tuple(esperas_da_openai)
 
     # -- ajudas --
-    def _o_tipo_de_nota(self, tipo):
-        """O tipo de nota do idioma na coleção, criado se falta (a Conexão o prepara ao abrir o perfil; aqui só se a pessoa o apagou ou o Anki estava fechado)."""
-        self.colecao.criar_tipo_de_nota(tipo)
-        return self.colecao.tipo_de_nota(tipo["nome"])
-
     def _dormir(self, segundos):
         if self.parar.wait(segundos):
             raise Interrompido()
@@ -430,6 +432,39 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, EsperaDoAnki):
                 estado["completedStages"].append(etapa)
 
         return self.fila.mudar(job_id, mudanca)
+
+    def _com_a_colecao(self, job_id, leitura):
+        """Roda `leitura()` na coleção; sem ela (perfil fechado, sincronizando, ocupado), espera em `wait_anki` e tenta de novo."""
+        esperando_desde = None
+        while True:
+            try:
+                resultado = leitura()
+            except baralhos.ColecaoIndisponivel as motivo:
+                if esperando_desde is None:
+                    esperando_desde = self.fila.estado(job_id).get("stage")
+                    self.logger.info("Envio %s: esperando o Anki (%s)", job_id, motivo)
+                    self._etapa(job_id, "wait_anki")
+                self._dizer_a_espera(job_id, baralhos.espera_pelo_perfil(motivo))
+                if str(motivo) == "collection_not_open":
+                    self._entrar_no_perfil(job_id)
+                self._dormir(self.espera_do_anki)
+                if self.fila.estado(job_id).get("wiped"):
+                    raise Apagado()
+                continue
+            if esperando_desde is not None:
+                self._dizer_a_espera(job_id, None)
+            if esperando_desde not in (None, QUEUED, "wait_anki"):
+                self._etapa(job_id, esperando_desde)
+            return resultado
+
+    def _entrar_no_perfil(self, job_id):
+        """O Anki está na tela de perfis (ou fechado o perfil): ninguém estuda, e a Conexão abre o perfil marcado. Com um perfil aberto o
+        adaptador não faz nada, e a troca só vem do clique da pessoa."""
+        try:
+            if self.colecao.entrar_no_perfil_fixo():
+                self.logger.info("Envio %s: o Anki estava sem perfil aberto; a Conexão abriu o perfil marcado", job_id)
+        except Exception as erro:  # o Envio só continua esperando
+            self.logger.warning("Envio %s: não deu para abrir o perfil marcado (%s)", job_id, type(erro).__name__)
 
     def _cartao(self, job_id, cartao_id, **mudanca):
         self.fila.mudar(job_id, lambda estado: estado["cards"][cartao_id].update(mudanca))
@@ -460,11 +495,11 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, EsperaDoAnki):
         config = configuracao_do_motor(self.motor, self.fila, pedido, None)
         tipo = tipo_de_nota.definicao(pedido["lang"])
         try:
-            nomes = self._com_a_colecao(job_id, lambda: self._o_tipo_de_nota(tipo))
+            nomes = self._com_a_colecao(job_id, lambda: tipo_de_nota.garantir(self.colecao, tipo))
         except Apagado:
             return
         if nomes is None or not set(tipo["campos_do_cartao"]) <= set(nomes):
-            self.logger.warning("Envio %s: o tipo de nota %r da coleção não tem os campos do Cartão", job_id, tipo["nome"])
+            self.logger.warning("Envio %s: o tipo de nota %r não tem os campos do Cartão", job_id, tipo["nome"])
             return self._terminar(job_id, pedido, SEM_TIPO_DE_NOTA)
         try:
             self._os_cartoes(job_id, pedido, config)
@@ -504,21 +539,31 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, EsperaDoAnki):
             if linha is None:
                 self._cartao(job_id, cartao_id, status=FALHOU, error=FRASE_APAGADA)
                 return None
-            chave = credencial(self.chatgpt, self.cofre, self.plano)  # o plano (#155), a chave, None ou um código
-            if not isinstance(chave, dict):
-                return SEM_CHAVE if chave is None else chave if chave in PARA_O_ENVIO else self._cartao(job_id, cartao_id, status=FALHOU, error=chave)
-            falha = self._gerar_o_texto(job_id, pedido, dict(config, **chave), cartao_id, cartao["phraseId"], linha)
-            chave = None
-            if self.fila.estado(job_id).get("wiped"):
-                with self.fila.tranca:
-                    _apagar(arquivo)  # o Apagar tudo veio no meio do pedido: o texto que chegou depois também sai
-                return None
+            while True:
+                pela_chave = self.fila.estado(job_id).get("usingKey", False)
+                chave = credencial(self.chatgpt, self.cofre, self.plano, self.modelos, pela_chave)  # o plano, a chave, None ou um código
+                if not isinstance(chave, dict):
+                    return SEM_CHAVE if chave is None else chave if chave in PARA_O_ENVIO else self._cartao(job_id, cartao_id, status=FALHOU, error=chave)
+                falha = self._gerar_o_texto(job_id, pedido, dict(config, **chave), cartao_id, cartao["phraseId"], linha)
+                chave = None
+                if self.fila.estado(job_id).get("wiped"):
+                    with self.fila.tranca:
+                        _apagar(arquivo)  # o Apagar tudo veio no meio do pedido: o texto que chegou depois também sai
+                    return None
+                if falha != LIMITE_DO_PLANO:
+                    break
+                self._esperar_o_plano(job_id)
+            self._dizer_a_espera(job_id, None)
             if falha:
                 self.logger.warning("Envio %s: o texto do Cartão %s não veio (%s)", job_id, cartao_id, falha)
                 self._cartao(job_id, cartao_id, status=FALHOU, error=falha)
                 return falha if falha in PARA_O_ENVIO else None
             self._cartao(job_id, cartao_id, status=TEXTO, error=None)
-        self._gravar_a_nota(job_id, pedido, config, cartao_id, guid, arquivo)
+        try:
+            self._gravar_a_nota(job_id, pedido, config, cartao_id, guid, arquivo)
+        except ParaOEnvio as parada:  # o plano não deixou escolher a imagem (#156): o texto fica pago; Tentar de novo termina o Cartão
+            self._cartao(job_id, cartao_id, status=FALHOU, error=parada.codigo)
+            return parada.codigo
         return None
 
     def _gerar_o_texto(self, job_id, pedido, config, cartao_id, phrase_id, linha):
@@ -554,7 +599,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, EsperaDoAnki):
             raise Apagado()
         nota = self.motor.nota_do_cartao.campos_da_nota(
             conteudo, lang, palavra=palavra, audio_da_frase=da_frase, audio_da_palavra=da_palavra, imagem=da_imagem)
-        frentes = (nota["campo_da_frente"],) + self.motor.estilos.nomes_da_frente_de_antes()  # a busca de duplicatas lê o tipo próprio e o “Básico” de antes
+        frentes = (nota["campo_da_frente"],) + self.motor.estilos.nomes_da_frente_de_antes()
         self._etapa(job_id, "send_to_anki")
         try:
             resultado = self._com_a_colecao(job_id, lambda: self.colecao.gravar_cartao(

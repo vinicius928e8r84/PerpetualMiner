@@ -1,0 +1,25 @@
+/* O Avançado do card IA dos cartões (#157): o aviso âmbar antes da saída de um modelo e a linha verde da troca. Só tokens Veio. */
+.ia-modelo {
+  display: contents;
+}
+
+.ia-modelo__aviso {
+  border-color: var(--veio-accent);
+  background: var(--veio-accent-soft);
+}
+
+.ia-modelo__aviso .veio-aviso__texto > svg {
+  color: var(--veio-accent-text);
+}
+
+.ia-modelo__aviso .veio-aviso__acoes {
+  flex-wrap: wrap;
+}
+
+.ia-avancado .veio-campo {
+  max-width: 280px;
+}
+
+.ia-modelo__trocou {
+  margin: 0;
+}

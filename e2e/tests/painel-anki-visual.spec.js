@@ -11,15 +11,13 @@
 
 const { test, expect, comOSistema, SISTEMAS } = require('../fixtures');
 
-// #145: a primeira conexão ganhou os passos do arquivo (sem terminal). As telas abaixo marcadas `test.fixme` são PROPOSTAS de
-// referência, não referências: o dono ainda não aprovou o novo visual (CODING_STANDARDS regra 10), então as imagens novas
-// não estão na árvore e as antigas (do card de 3 passos com comandos) ficam sem uso. Elas estão no commit 59d3d04
-// (e2e/tests/painel-anki-visual.spec.js-snapshots/anki-primeira-conexao-*-linux.png). Aprovando: tirar o `fixme` e
+// #145: a primeira conexão ganhou os passos do arquivo (sem terminal). As telas abaixo marcadas `test.fixme` são PROPOSTAS, não
+// referências: o dono ainda não aprovou o novo visual (CODING_STANDARDS regra 10), então as imagens novas não estão na árvore e as
+// antigas (do card de 3 passos com comandos) estão no commit 59d3d04. Aprovando: tirar o `fixme` e
 // `npx playwright test painel-anki-visual --update-snapshots -g "nunca conectada"`.
 //
-// #147: a primeira conexão ganhou o passo 3, Abrir o Anki sozinho (ONB-17), e a lista passou a ter 3 passos. As telas do
-// passo 3 abaixo também são `test.fixme`, PROPOSTAS para o dono aprovar (sem protótipo próprio: o desenho segue o card do
-// passo do #145). Aprovando: tirar o `fixme` e `npx playwright test painel-anki-visual --update-snapshots -g "passo 3"`.
+// #147: as telas do passo 3, Abrir o Anki sozinho (ONB-17), também são `test.fixme` (PROPOSTAS, sem protótipo próprio).
+// Aprovando: tirar o `fixme` e `npx playwright test painel-anki-visual --update-snapshots -g "passo 3"`.
 //
 // #146: a lista passou a ter 4 passos: Ter o Anki (ONB-18) entrou como 1º, e o passo de baixar o arquivo ganhou a
 // animação do aviso (ONB-19). As quatro telas do #146 (o card do passo 1, Não tenho no Mac, a animação do aviso e os
@@ -315,7 +313,8 @@ test('o tema claro', async ({ page, extensao }) => {
   await expect(ilha(page)).toHaveScreenshot('anki-claro.png');
 });
 
-// Os cards por idioma da variante A do protótipo (docs/design/painel/anki/prototipo-ajustes-envio.html).
+// Os cards por idioma da variante A do protótipo (docs/design/painel/anki/prototipo-ajustes-envio.html). #174: o Avançado passou a se chamar
+// “voz e sotaque do áudio”: estas telas voltam a ser propostas (`test.fixme`, sem PNG) até o dono aprovar (`painel-ajustes-voz-visual.spec.js`).
 
 const AJUSTES = {
   ankiBridgePresets: {
@@ -336,13 +335,13 @@ async function abrirAjustes(page, extensao, fakes, { comLista = true, ...opcoes 
   await expect(comLista ? escolhaDeBaralho(page) : campoDoBaralho(page)).toBeVisible();
 }
 
-test('Ajustes de envio: os cards e o formulário do inglês, com a escolha de baralho', async ({ page, extensao, fakes }) => {
+test.fixme('Ajustes de envio: os cards e o formulário do inglês, com a escolha de baralho', async ({ page, extensao, fakes }) => {
   await abrirAjustes(page, extensao, fakes);
 
   await expect(ilha(page)).toHaveScreenshot('anki-ajustes.png');
 });
 
-test('Ajustes de envio: o russo com Gerada por IA e o Avançado aberto', async ({ page, extensao, fakes }) => {
+test.fixme('Ajustes de envio: o russo com Gerada por IA e o Avançado aberto', async ({ page, extensao, fakes }) => {
   await abrirAjustes(page, extensao, fakes);
   await cabecaDoCard(page, 'Russo').click();
   await formularioDeAjustes(page).locator('summary').click();
@@ -350,7 +349,7 @@ test('Ajustes de envio: o russo com Gerada por IA e o Avançado aberto', async (
   await expect(ilha(page)).toHaveScreenshot('anki-ajustes-russo-avancado.png');
 });
 
-test('Ajustes de envio: sem a lista do Anki, o campo de texto recusa um nível vazio', async ({ page, extensao, fakes }) => {
+test.fixme('Ajustes de envio: sem a lista do Anki, o campo de texto recusa um nível vazio', async ({ page, extensao, fakes }) => {
   await abrirAjustes(page, extensao, fakes, { comLista: false });
   await campoDoBaralho(page).fill('Inglês::');
   await page.getByRole('button', { name: 'Salvar ajustes' }).click();
@@ -359,7 +358,7 @@ test('Ajustes de envio: sem a lista do Anki, o campo de texto recusa um nível v
   await expect(ilha(page)).toHaveScreenshot('anki-ajustes-invalido.png');
 });
 
-test('Ajustes de envio com a Conexão desligada: a F1 e a nota BRG-33', async ({ page, extensao, fakes }) => {
+test.fixme('Ajustes de envio com a Conexão desligada: a F1 e a nota BRG-33', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirAjustes(page, extensao, fakes, { comLista: false });
   await expect(page.locator('#anki-ajustes-nota')).toBeVisible();
@@ -367,7 +366,7 @@ test('Ajustes de envio com a Conexão desligada: a F1 e a nota BRG-33', async ({
   await expect(ilha(page)).toHaveScreenshot('anki-ajustes-desligada.png');
 });
 
-test('Ajustes de envio: a aba desatualizada não salva e avisa', async ({ page, extensao, fakes }) => {
+test.fixme('Ajustes de envio: a aba desatualizada não salva e avisa', async ({ page, extensao, fakes }) => {
   await abrirAjustes(page, extensao, fakes, { comLista: false });
   await campoDoBaralho(page).fill('Da primeira aba');
   // Outra aba salvou o inglês no meio.
@@ -378,13 +377,13 @@ test('Ajustes de envio: a aba desatualizada não salva e avisa', async ({ page, 
   await expect(ilha(page)).toHaveScreenshot('anki-ajustes-desatualizada.png');
 });
 
-test('Ajustes de envio na janela estreita', async ({ page, extensao, fakes }) => {
+test.fixme('Ajustes de envio na janela estreita', async ({ page, extensao, fakes }) => {
   await abrirAjustes(page, extensao, fakes, { largura: 760 });
 
   await expect(page).toHaveScreenshot('anki-ajustes-estreita.png', { fullPage: false });
 });
 
-test('Ajustes de envio no tema claro', async ({ page, extensao, fakes }) => {
+test.fixme('Ajustes de envio no tema claro', async ({ page, extensao, fakes }) => {
   await abrirAjustes(page, extensao, fakes, { gravado: { pm_tema: 'claro' } });
 
   await expect(ilha(page)).toHaveScreenshot('anki-ajustes-claro.png');

@@ -3,7 +3,8 @@
 Cada Envio guarda os registros do `cost_tracker` do motor em `custos/<jobId>/costs.jsonl` (`envio.py`). As linhas e o
 resumo são os de `JobAnalytics.jobs` e `summarize_records` (`bridge/analytics.py`), que o painel já lê: as mesmas
 chaves, as mesmas regras (o texto em `cardUsd`; o juiz e a triagem de imagem pela Palavra `[image_judge]`/`[image_guard]`;
-as imagens pelos registros `image` e `image_pipeline`), só com a biblioteca padrão.
+as imagens pelos registros `image` e `image_pipeline`), só com a biblioteca padrão. O Envio que o plano do ChatGPT escreveu
+leva `plan` (`cards`, `wouldCostUsd`: o que a chave teria cobrado, #159); sem Cartão do plano, a linha não tem a chave `plan`.
 """
 
 import json
@@ -49,6 +50,15 @@ def _origem_da_imagem(valor):
     return "skipped" if origem == "skipped" else "failed"
 
 
+def anotar_a_voz(pasta, modelo, letras, dolares_por_mil_letras):
+    """Anota no Envio o custo de uma voz paga que falou (a de reserva, #174), no formato dos registros do motor: cai em `otherUsd`."""
+    os.makedirs(pasta, exist_ok=True)
+    registro = {"date": date.today().isoformat(), "type": "tts", "model": modelo, "characters": letras,
+                "cost_usd": round(letras * dolares_por_mil_letras / 1000, 6)}
+    with open(os.path.join(pasta, "costs.jsonl"), "a", encoding="utf-8") as arquivo:
+        arquivo.write(json.dumps(registro, ensure_ascii=False) + "\n")
+
+
 def registros(pasta):
     """Os registros de custo de um Envio, da pasta dos custos dele (linhas que não se leem ficam de fora)."""
     lidos = []
@@ -71,6 +81,7 @@ def resumir(lidos, dia_do_envio, de, ate):
     custos, imagens, dos_registros = _custos_zerados(), _imagens_zeradas(), _imagens_zeradas()
     geradas_nos_registros = geradas_no_pipeline = 0.0
     no_pipeline = contados = 0
+    do_plano, na_chave = set(), 0.0  # os Cartões que o plano fez (#159) e o que a chave teria cobrado por eles
     for registro in lidos:
         if not _no_periodo(dia(registro.get("date") or registro.get("createdAt")) or dia_do_envio, de, ate):
             continue
@@ -79,6 +90,9 @@ def resumir(lidos, dia_do_envio, de, ate):
         if tipo == "tokens":
             palavra = str(registro.get("keyword") or "")
             custos["imageJudgeUsd" if palavra.startswith("[image_judge]") else "imageGuardUsd" if palavra.startswith("[image_guard]") else "cardUsd"] += custo
+        elif tipo == "plan_tokens":
+            do_plano.add(str(registro.get("keyword") or ""))
+            na_chave += _custo(registro, "would_cost_usd")
         elif tipo == "image":
             origem = _origem_da_imagem(registro.get("source"))
             if origem == "generated":
@@ -106,7 +120,7 @@ def resumir(lidos, dia_do_envio, de, ate):
     def pct(parte):
         return round(parte / total * 100, 1) if total else 0.0
 
-    return {
+    resumo = {
         "costs": {chave: round(valor, 6) for chave, valor in custos.items()},
         "images": dict(
             {chave: int(valor) for chave, valor in imagens.items() if chave != "savingsUsd"},
@@ -116,6 +130,9 @@ def resumir(lidos, dia_do_envio, de, ate):
         ),
         "matchedRecords": contados,
     }
+    if do_plano:
+        resumo["plan"] = {"cards": len(do_plano), "wouldCostUsd": round(na_chave, 6)}
+    return resumo
 
 
 def linhas(fila, de, ate, lang):
@@ -145,5 +162,6 @@ def linhas(fila, de, ate, lang):
             "status": status, "stage": estado.get("stage") or status,
             "requestedCards": pedidas, "successfulCards": enviadas, "failedCards": falharam, "lastError": estado.get("lastError"),
             "costs": resumo["costs"], "images": resumo["images"], "matchedRecords": resumo["matchedRecords"],
+            **({"plan": resumo["plan"]} if "plan" in resumo else {}),
         })
     return sorted(resultado, key=lambda linha: linha["createdAt"] or "", reverse=True)

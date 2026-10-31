@@ -9,11 +9,9 @@ import http.client
 import io
 import json
 import os
-import re
 import sys
 import tempfile
 import unittest
-from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -23,7 +21,9 @@ from complemento.test_fila_de_mentira import semear_a_fila  # noqa: E402,F401
 from complemento.test_imagens_de_mentira import OpenverseDeMentira  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira  # noqa: E402
 from complemento.test_voz_de_mentira import VozDeMentira  # noqa: E402
-from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira  # noqa: E402
+from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira, situar_o_login  # noqa: E402
+from complemento.test_modelos_de_mentira import preparar_o_cenario  # noqa: E402
+from complemento.test_comparar_com_o_contrato import igual_ao_do_contrato  # noqa: E402
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
@@ -87,19 +87,6 @@ def colecao_do_exemplo(contexto):
     if not nome:
         return ColecaoEmMemoria.fechada(perfis=perfis)
     return ColecaoEmMemoria(ler_o_contrato()["colecoes"][nome], perfis=perfis, perfil_aberto=contexto.get("perfil"))
-
-
-def igual_ao_do_contrato(obtido, esperado):
-    """O JSON obtido é o do contrato; `"<agora>"` é qualquer instante ISO 8601 (Z) e `"<url de autorização>"`, a do login do ChatGPT."""
-    if esperado == "<agora>":
-        return isinstance(obtido, str) and bool(re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z", obtido))
-    if esperado == "<url de autorização>":
-        return isinstance(obtido, str) and obtido.startswith("https://auth.openai.com/api/accounts/authorize?client_id=dynamic_agent_client&")
-    if isinstance(esperado, dict):
-        return isinstance(obtido, dict) and obtido.keys() == esperado.keys() and all(igual_ao_do_contrato(obtido[k], v) for k, v in esperado.items())
-    if isinstance(esperado, list):
-        return isinstance(obtido, list) and len(obtido) == len(esperado) and all(igual_ao_do_contrato(o, e) for o, e in zip(obtido, esperado))
-    return obtido == esperado
 
 
 def sucesso(status):
@@ -210,9 +197,12 @@ class ConexaoNoTeste:
         chatgpt=None,
         perfil_marcado=None,
         adaptador_de_imagem=None,
+        espera_do_plano=300,
+        modelo=None,
+        voz_responde="aceita",
     ):
         self.perfil = perfil
-        self.situacao_do_chatgpt = chatgpt  # `conectada` (o arquivo do login já existe), `entrando` ou `recusou` (a tentativa)
+        self.situacao_do_chatgpt = chatgpt  # `conectada` (o arquivo do login já existe), `entrando`, `recusou` ou `nao_serve` (a tentativa)
         self.falha_no_perfil = falha_no_perfil
         self.pasta = pasta
         self.item = _item_de_login_do_contexto(pasta, item)
@@ -230,12 +220,17 @@ class ConexaoNoTeste:
         self.de_mentira = (self.openai, self.openverse, self.voz, self.firestore) = (
             OpenAIDeMentira(openai), OpenverseDeMentira(), VozDeMentira(), FirestoreDeMentira())
         self.firestore.falha = firebase
+        # `voz_responde` (o `voz` dos exemplos): `aceita`, `recusada` (o Google dá 400), `fora_do_ar` (503), `chave_recusada` ou `sem_credito` (a OpenAI).
+        if voz_responde in ("recusada", "fora_do_ar"):
+            self.voz.recusar("*", 400 if voz_responde == "recusada" else 503)
+        self.openai.recusa_da_fala = {"chave_recusada": (401, "invalid_api_key"), "sem_credito": (429, "insufficient_quota")}.get(voz_responde)
         self.servidor_de_login = ChatGPTDeMentira()
         self.de_mentira += (self.servidor_de_login,)
         if chatgpt == "conectada":
             with open(os.path.join(self.chaves, "chatgpt.json"), "w", encoding="utf-8") as arquivo:
                 json.dump({"client_id": "oaiapp_x", "access_token": "acesso-x", "refresh_token": "renovacao-x", "expira_em": 4e9}, arquivo)
         self.cofre_sem_escrita = cofre_sem_escrita
+        do_modelo = preparar_o_cenario(modelo, pasta, self.openai)  # o modelo dos cartões (#157): o cenário de `modelos` do contrato
         self.logger = registro.criar(self.logs)
         self.conexao = servidor.Conexao(
             porta=0,
@@ -257,7 +252,9 @@ class ConexaoNoTeste:
             intervalo_do_envio=0.01,
             espera_do_anki=0.01,
             esperas_da_openai=(0, 0),
+            espera_do_plano=espera_do_plano,
             espera_do_contato=espera_do_contato,
+            **do_modelo,
         )
 
     def _ler_o_perfil(self):
@@ -271,10 +268,8 @@ class ConexaoNoTeste:
         if self.cofre_sem_escrita:
             os.chmod(self.chaves, 0o500)  # gravar a cópia da chave falha: a Conexão responde o erro interno
         assert self.conexao.iniciar(), "a porta de teste devia estar livre"
-        if self.situacao_do_chatgpt in ("entrando", "recusou"):
-            estado = parse_qs(urlsplit(self.conexao.chatgpt.iniciar(self.conexao.porta)).query)["state"][0]
-            if self.situacao_do_chatgpt == "recusou":
-                self.conexao.chatgpt.receber({"error": "access_denied", "state": estado}, "127.0.0.1:%d" % self.conexao.porta, self.conexao.porta)
+        if self.situacao_do_chatgpt in ("entrando", "recusou", "nao_serve"):
+            situar_o_login(self.conexao, self.servidor_de_login, self.situacao_do_chatgpt)
         return self
 
     def __exit__(self, *erro):
@@ -337,6 +332,8 @@ def conexao_do_exemplo(pasta, exemplo):
         firebase=contexto.get('firebase', 0),
         chatgpt=contexto.get("chatgpt"),
         perfil_marcado=contexto.get('perfilMarcado'),
+        modelo=ler_o_contrato().get("modelos", {}).get(contexto.get("modelo")),
+        voz_responde=contexto.get("voz", "aceita"),
     ) as conexao:
         if 'chaveNaNuvem' in contexto:
             conexao.firestore.documentos['uid-teste'] = {
@@ -379,44 +376,6 @@ class ContratoDaConexao(unittest.TestCase):
             self.assertEqual(json.load(arquivo)["origemDaExtensao"], ORIGEM)
 
 
-class RepeticaoDoContrato(unittest.TestCase):
-    """O que a conferência de “o mesmo POST de novo” aceita e o que ela acusa."""
-
-    EXEMPLO = {"nome": "ligar", "resposta": {"status": 200, "json": {"ok": True, "em": "<agora>"}}}
-    GUARDADO = {"arquivos": {"a": b"1"}, "nuvem": {}}
-
-    def segundo(self, status=200, corpo=b'{"ok": true, "em": "2026-10-12T10:00:00Z"}'):
-        return status, {}, corpo
-
-    def test_resposta_igual_salvo_o_instante_e_estado_igual_passa(self):
-        confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(), dict(self.GUARDADO))
-
-    def test_outra_resposta_sem_a_excecao_declarada_acusa_e_diz_como_declarar(self):
-        with self.assertRaisesRegex(AssertionError, "repetivel"):
-            confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(corpo=b'{"ok": false, "em": "2026-10-12T10:00:00Z"}'), self.GUARDADO)
-
-    def test_outro_status_sem_a_excecao_declarada_acusa(self):
-        with self.assertRaisesRegex(AssertionError, "status"):
-            confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(status=409), self.GUARDADO)
-
-    def test_estado_guardado_que_muda_sem_a_excecao_declarada_acusa(self):
-        with self.assertRaisesRegex(AssertionError, "guardou"):
-            confere_a_repeticao(self, self.EXEMPLO, (200, b""), self.GUARDADO, self.segundo(), {"arquivos": {"a": b"2"}, "nuvem": {}})
-
-    def test_a_excecao_declarada_com_motivo_e_que_de_fato_muda_algo_passa(self):
-        exemplo = dict(self.EXEMPLO, repetivel=False, porque="a versão sobe")
-        confere_a_repeticao(self, exemplo, (200, b""), self.GUARDADO, self.segundo(status=409), self.GUARDADO)
-
-    def test_a_excecao_sem_motivo_acusa(self):
-        with self.assertRaisesRegex(AssertionError, "porque"):
-            confere_a_repeticao(self, dict(self.EXEMPLO, repetivel=False), (200, b""), self.GUARDADO, self.segundo(status=409), self.GUARDADO)
-
-    def test_a_excecao_que_repetida_nao_muda_nada_acusa_que_esta_velha(self):
-        exemplo = dict(self.EXEMPLO, repetivel=False, porque="a versão sobe")
-        with self.assertRaisesRegex(AssertionError, "tire a exceção"):
-            confere_a_repeticao(self, exemplo, (200, b""), self.GUARDADO, self.segundo(), dict(self.GUARDADO))
-
-
 # Cada rota do servidor, declarada à parte dos exemplos, para a matriz de estados pedir a rota de verdade:
 #   corpo         o corpo mínimo que ela aceita (None: sem corpo);
 #   status        o que ela responde a esse corpo com o Anki saudável (200 se não disser);
@@ -447,13 +406,19 @@ MATRIZ = {
         "le_o_perfil": False,
         "recusas": [({}, 400, "decks_required")],
     },
-    # A chave da IA (PR 191): não lê a coleção nem o perfil. O corpo mínimo não traz a `chave`, então o pedido é recusado em todo estado.
+    # A chave da IA (PR 191): não lê a coleção nem o perfil; sem a `chave` no corpo mínimo, recusa em todo estado.
     ("POST", "/ia/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
-    # Entrar com o ChatGPT (#155): não lê a coleção nem o perfil. Entrar cria o id deste computador; sair apaga o arquivo do login.
+    # Entrar com o ChatGPT (#155): entrar cria o id deste computador; sair apaga o arquivo do login.
     ("POST", "/ia/chatgpt/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/ia/chatgpt/entrar"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/ia/chatgpt/sair"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
-    # Apagar a cópia da chave (#154): não lê a coleção nem o perfil, e apagar o que não existe também é 200.
+    # O modelo dos cartões (#157): lê a OpenAI (a lista da conta), nunca a coleção nem o perfil; sem chave nem login só o Automático vale.
+    ("POST", "/ia/modelo/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/ia/modelo/escolher"): {
+        "corpo": {"modelo": "automatico"}, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
+        "recusas": [({}, 400, "invalid_request"), ({"modelo": "gpt-4o"}, 404, "model_not_found")],
+    },
+    # Apagar a cópia da chave (#154): apagar o que não existe também é 200.
     ("POST", "/ia/openai/chave/apagar"): {
         "corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": [], "muda": True, "versao": True,
         # `Cofre.reentrega` só reconhece como repetição na base atual uma chave não vazia (`chave and moderna`, d6b9289).
@@ -468,7 +433,7 @@ MATRIZ = {
         "le_o_perfil": False,
         "recusas": [({"chave": "x"}, 401, "openai_key_rejected")],
     },
-    # O item de login de “Abrir o Anki com o computador” (PR 189): não lê a coleção nem o perfil, e escreve só na pasta do teste.
+    # O item de login de “Abrir o Anki com o computador” (PR 189): não lê a coleção nem o perfil.
     ("POST", "/abrir-com-o-computador/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/abrir-com-o-computador"): {
         "corpo": {"ligado": True},
@@ -477,10 +442,8 @@ MATRIZ = {
         "le_o_perfil": False,
         "recusas": [({"ligado": "sim"}, 400, "invalid_request")],
     },
-    # O perfil fixo (#149): a lista dos perfis lê o gerente de perfis do Anki, que responde sem coleção aberta, e o perfil aberto (da saúde).
-    # A primeira lista com um perfil aberto o marca (`perfil.json`); marcar outro grava o mesmo arquivo; repetidos, nada mais muda.
-    # Abrir o marcado não grava nada da Conexão: pede ao Anki. Na matriz, a rota anterior (`/anki/profile`) já marcou o perfil; o 404 de
-    # quando não há marcado, ou ele sumiu, é dos exemplos do contrato.
+    # O perfil fixo (#149): a lista lê o gerente de perfis do Anki (responde sem coleção) e o perfil aberto. A primeira lista com um perfil
+    # aberto o marca (`perfil.json`), como escolher outro; repetidos, nada mais muda. Abrir o marcado só pede ao Anki (o 404, nos exemplos).
     ("POST", "/anki/profiles"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": True, "recusas": []},
     ("POST", "/anki/profile"): {
         "corpo": {"profile": "Usuário 1"}, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
@@ -493,8 +456,8 @@ MATRIZ = {
         "le_o_perfil": False,
         "recusas": [({"lang": "en"}, 400, "deck_required"), ({"deck": "Inglês", "lang": "fr"}, 400, "invalid_lang")],
     },
-    # O Envio (#142): a fila é da Conexão, não da coleção nem do perfil (a thread de trabalho é quem os lê). Criar e tentar de novo
-    # mudam a fila; repetidos, respondem igual e não gravam nada (o `jobId` é a chave).
+    # O Envio (#142): a fila é da Conexão, não da coleção nem do perfil. Criar e tentar de novo mudam a fila; repetidos, respondem igual
+    # e não gravam nada (o `jobId` é a chave).
     ("POST", "/jobs"): {
         "corpo": {"jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b", "lang": "en", "deckName": "Inglês", "entries": [{"phraseId": 1, "line": "give up : She gave up smoking"}]},
         "status": 201, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
@@ -511,13 +474,20 @@ MATRIZ = {
         "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
         "recusas": [({}, 400, "invalid_job_id")],
     },
-    # O Apagar tudo (CFG-17) tira as Frases que a Conexão guarda: não lê a coleção nem o perfil; repetido, nada muda.
+    # O Apagar tudo (CFG-17) tira as Frases que a Conexão guarda; repetido, nada muda.
+    # Usar a minha chave (#158) marca o Envio; repetido, nada mais muda.
+    ("POST", "/jobs/usar-a-chave"): {
+        "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
+        "recusas": [({}, 400, "invalid_job_id")],
+    },
     ("POST", "/jobs/apagar-frases"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/jobs/debug-bundle"): {
         "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, "le_a_colecao": False, "le_o_perfil": False,
         "recusas": [({}, 400, "invalid_job_id")],
     },
     ("POST", "/analytics/jobs"): {"corpo": {"lang": "all"}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    # O Ouvir dos Ajustes de envio (#174): fala uma frase de amostra, não lê a coleção nem o perfil e não guarda nada.
+    ("POST", "/voz/ouvir"): {"corpo": {"lang": "en", "provedor": "google", "sotaque": "com"}, "le_a_colecao": False, "le_o_perfil": False, "recusas": [({}, 400, "invalid_request")]},
 }
 
 
@@ -782,7 +752,7 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
     def test_as_rotas_que_mudam_sao_as_da_chave_do_chatgpt_do_item_de_login_do_perfil_e_do_envio(self):
         self.assertEqual(
             sorted(rota[1] for rota, regra in MATRIZ.items() if regra.get("muda")),
-            ["/abrir-com-o-computador", "/anki/profile", "/anki/profiles", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry"],
+            ["/abrir-com-o-computador", "/anki/profile", "/anki/profiles", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/modelo/escolher", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry", "/jobs/usar-a-chave"],
         )
 
 

@@ -54,6 +54,12 @@ def definicao(lang):
         "modelos": [{"nome": NOME_DO_MODELO, "frente": frente, "verso": verso}], "css": CSS}
 
 
+def garantir(colecao, tipo):
+    """Os campos do tipo de nota na coleção, criado se falta (a Conexão o prepara ao abrir o perfil; o Envio só o cria se a pessoa o apagou); None se não há."""
+    colecao.criar_tipo_de_nota(tipo)
+    return colecao.tipo_de_nota(tipo["nome"])
+
+
 def preparar(colecao):
     """Deixa a coleção pronta para o Envio: o tipo de nota de cada idioma (criado se falta) e, numa instalação nova (nenhum Baralho além
     do “Default”), o Baralho de cada idioma. Repetir não cria nada de novo. Devolve `{ tipos: { idioma: criado }, baralhos: [criados] }`;

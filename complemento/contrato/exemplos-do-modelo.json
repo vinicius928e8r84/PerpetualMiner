@@ -1,0 +1,455 @@
+{
+  "modelos": {
+    "Automático": {
+      "hoje": "2026-11-01",
+      "escolha": "automatico",
+      "trocou": null,
+      "conta": [
+        "gpt-4o",
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-3.5-turbo",
+        "gpt-image-1",
+        "text-embedding-3-small"
+      ],
+      "plano": [
+        "gpt-6-luna",
+        "gpt-6-sol"
+      ],
+      "saidas": {}
+    },
+    "gpt-4.1-mini sai em 20/11": {
+      "hoje": "2026-11-01",
+      "escolha": "gpt-4.1-mini",
+      "trocou": null,
+      "conta": [
+        "gpt-4o",
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-3.5-turbo",
+        "gpt-image-1",
+        "text-embedding-3-small"
+      ],
+      "plano": [
+        "gpt-6-luna",
+        "gpt-6-sol"
+      ],
+      "saidas": {
+        "gpt-4.1-mini": "2026-11-20"
+      }
+    },
+    "gpt-4.1-mini saiu hoje": {
+      "hoje": "2026-11-20",
+      "escolha": "gpt-4.1-mini",
+      "trocou": null,
+      "conta": [
+        "gpt-4o",
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-3.5-turbo",
+        "gpt-image-1",
+        "text-embedding-3-small"
+      ],
+      "plano": [
+        "gpt-6-luna",
+        "gpt-6-sol"
+      ],
+      "saidas": {
+        "gpt-4.1-mini": "2026-11-20"
+      }
+    },
+    "gpt-4.1 sumiu da conta": {
+      "hoje": "2026-11-01",
+      "escolha": "gpt-4.1",
+      "trocou": null,
+      "conta": [
+        "gpt-4o",
+        "gpt-4.1-mini"
+      ],
+      "plano": [
+        "gpt-6-luna",
+        "gpt-6-sol"
+      ],
+      "saidas": {}
+    }
+  },
+  "exemplos": [
+    {
+      "nome": "estado do modelo sem chave e sem login: nada a escolher além do Automático",
+      "daExtensao": true,
+      "contexto": {
+        "modelo": "Automático",
+        "chaveNaConexao": null,
+        "chatgpt": "desconectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/modelo/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "paga": null,
+          "escolha": "automatico",
+          "modelos": [],
+          "aviso": null,
+          "trocou": null
+        }
+      }
+    },
+    {
+      "nome": "estado do modelo com a chave: só os modelos de texto que veem foto, e o Automático por padrão",
+      "daExtensao": true,
+      "contexto": {
+        "modelo": "Automático",
+        "chaveNaConexao": "9f3a",
+        "chatgpt": "desconectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/modelo/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "paga": "chave",
+          "escolha": "automatico",
+          "modelos": [
+            "gpt-4o",
+            "gpt-4.1",
+            "gpt-4.1-mini"
+          ],
+          "aviso": null,
+          "trocou": null
+        }
+      }
+    },
+    {
+      "nome": "estado do modelo com o login do ChatGPT: a lista do plano",
+      "daExtensao": true,
+      "contexto": {
+        "modelo": "Automático",
+        "chatgpt": "conectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/modelo/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "paga": "plano",
+          "escolha": "automatico",
+          "modelos": [
+            "gpt-6-luna",
+            "gpt-6-sol"
+          ],
+          "aviso": null,
+          "trocou": null
+        }
+      }
+    },
+    {
+      "nome": "estado do modelo escolhido que ainda não saiu: o aviso com a data",
+      "daExtensao": true,
+      "contexto": {
+        "modelo": "gpt-4.1-mini sai em 20/11",
+        "chaveNaConexao": "9f3a",
+        "chatgpt": "desconectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/modelo/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "paga": "chave",
+          "escolha": "gpt-4.1-mini",
+          "modelos": [
+            "gpt-4o",
+            "gpt-4.1",
+            "gpt-4.1-mini"
+          ],
+          "aviso": {
+            "modelo": "gpt-4.1-mini",
+            "saida": "2026-11-20"
+          },
+          "trocou": null
+        }
+      }
+    },
+    {
+      "nome": "estado do modelo no dia da saída: passa para o Automático e conta o que trocou",
+      "daExtensao": true,
+      "contexto": {
+        "modelo": "gpt-4.1-mini saiu hoje",
+        "chaveNaConexao": "9f3a",
+        "chatgpt": "desconectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/modelo/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "paga": "chave",
+          "escolha": "automatico",
+          "modelos": [
+            "gpt-4o",
+            "gpt-4.1"
+          ],
+          "aviso": null,
+          "trocou": {
+            "de": "gpt-4.1-mini"
+          }
+        }
+      }
+    },
+    {
+      "nome": "estado do modelo que sumiu da conta antes da data: passa para o Automático na hora",
+      "daExtensao": true,
+      "contexto": {
+        "modelo": "gpt-4.1 sumiu da conta",
+        "chaveNaConexao": "9f3a",
+        "chatgpt": "desconectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/modelo/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "paga": "chave",
+          "escolha": "automatico",
+          "modelos": [
+            "gpt-4o",
+            "gpt-4.1-mini"
+          ],
+          "aviso": null,
+          "trocou": {
+            "de": "gpt-4.1"
+          }
+        }
+      }
+    },
+    {
+      "nome": "estado do modelo com a OpenAI fora do ar: a lista da conta não veio",
+      "daExtensao": true,
+      "contexto": {
+        "modelo": "Automático",
+        "chaveNaConexao": "9f3a",
+        "chatgpt": "desconectada",
+        "openai": "fora_do_ar"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/modelo/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 503,
+        "json": {
+          "error": "models_unavailable"
+        }
+      }
+    },
+    {
+      "nome": "escolher o Automático sem chave e sem login",
+      "daExtensao": true,
+      "contexto": {
+        "modelo": "Automático",
+        "chaveNaConexao": null,
+        "chatgpt": "desconectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/modelo/escolher",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "modelo": "automatico"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "escolha": "automatico"
+        }
+      }
+    },
+    {
+      "nome": "escolher um modelo da lista da conta",
+      "daExtensao": true,
+      "contexto": {
+        "modelo": "Automático",
+        "chaveNaConexao": "9f3a",
+        "chatgpt": "desconectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/modelo/escolher",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "modelo": "gpt-4.1-mini"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "escolha": "gpt-4.1-mini"
+        }
+      }
+    },
+    {
+      "nome": "Trocar agora: escolher o Automático no lugar do modelo que vai sair",
+      "daExtensao": true,
+      "contexto": {
+        "modelo": "gpt-4.1-mini sai em 20/11",
+        "chaveNaConexao": "9f3a",
+        "chatgpt": "desconectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/modelo/escolher",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "modelo": "automatico"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "escolha": "automatico"
+        }
+      }
+    },
+    {
+      "nome": "escolher um modelo que a conta não tem",
+      "daExtensao": false,
+      "contexto": {
+        "modelo": "Automático",
+        "chaveNaConexao": "9f3a",
+        "chatgpt": "desconectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/modelo/escolher",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "modelo": "gpt-3.5-turbo"
+        }
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "model_not_found"
+        }
+      }
+    },
+    {
+      "nome": "escolher sem dizer o modelo",
+      "daExtensao": false,
+      "contexto": {
+        "modelo": "Automático",
+        "chaveNaConexao": "9f3a",
+        "chatgpt": "desconectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/modelo/escolher",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "escolher um modelo com a OpenAI fora do ar",
+      "daExtensao": false,
+      "contexto": {
+        "modelo": "Automático",
+        "chaveNaConexao": "9f3a",
+        "chatgpt": "desconectada",
+        "openai": "fora_do_ar"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/modelo/escolher",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "modelo": "gpt-4.1-mini"
+        }
+      },
+      "resposta": {
+        "status": 503,
+        "json": {
+          "error": "models_unavailable"
+        }
+      }
+    },
+    {
+      "nome": "modelo dos cartões com um corpo que não é JSON (/ia/modelo/estado)",
+      "daExtensao": false,
+      "contexto": {
+        "modelo": "Automático",
+        "chaveNaConexao": null,
+        "chatgpt": "desconectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/modelo/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "modelo dos cartões com um corpo que não é JSON (/ia/modelo/escolher)",
+      "daExtensao": false,
+      "contexto": {
+        "modelo": "Automático",
+        "chaveNaConexao": null,
+        "chatgpt": "desconectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/modelo/escolher",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    }
+  ]
+}

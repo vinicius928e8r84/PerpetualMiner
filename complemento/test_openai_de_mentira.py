@@ -22,6 +22,11 @@ MODELOS_DO_PLANO = (200, {"models": [{"slug": "gpt-interno", "visibility": "hide
                                      {"slug": "gpt-6-sol", "display_name": "GPT-6 Sol", "visibility": "list"}]})
 
 
+def audio_da_openai(voz, texto):
+    """Os bytes que a OpenAI de mentira fala para um texto: dizem com que voz ele foi pedido."""
+    return ("mp3-da-openai|%s|%s" % (voz, texto)).encode("utf-8")
+
+
 def _erro(status, mensagem, tipo, codigo):
     return status, {"error": {"message": mensagem, "type": tipo, "code": codigo}}
 
@@ -102,7 +107,8 @@ class OpenAIDeMentira:
     salvo para a Palavra que `recusar_o_chat_de` mandou recusar (`"*"`: todas). `chats` guarda (Authorization, corpo).
     O plano do ChatGPT: um `Bearer acesso-…` (o do login de mentira) recebe a lista do plano em `/v1/models`, e `/v1/responses`
     devolve o mesmo Cartão em stream de eventos; `respostas` guarda (Authorization, corpo), `recusa_das_respostas` = (status, código)
-    recusa antes do stream e `falha_no_stream` = código termina o stream com `response.failed`.
+    (ou uma função de quantos pedidos já chegaram que devolve isso, ou None) recusa antes do stream e `falha_no_stream` = código termina o stream com `response.failed`. O juiz de imagem pelo plano (#156) é
+    a `/v1/responses` com as instruções do juiz: ele entra em `juizes` como o do chat, e `recusa_do_juiz_do_plano` = (status, código) o recusa.
     """
 
     def __init__(self, comportamento="aceita"):
@@ -113,6 +119,8 @@ class OpenAIDeMentira:
         self.respostas = []
         self.recusa_das_respostas = None
         self.falha_no_stream = None
+        self.recusa_do_juiz_do_plano = None
+        self.modelos_da_conta = self.modelos_do_plano = None  # os ids que `GET /v1/models` lista para a chave e para o plano (None: os de cima)
         # As imagens do Cartão (#144): o juiz (`juiz(modo, candidatas) -> veredito`, `candidatas`: `{index, title, kind, imagem}`), a triagem
         # (a letra que ela responde), e a imagem gerada (`recusa_da_imagem`: (status, código); `imagem_gerada`: o que ela devolve).
         self.juiz = _juiz_que_gosta_da_primeira
@@ -120,6 +128,7 @@ class OpenAIDeMentira:
         self.recusa_da_imagem = None
         self.imagem_gerada = png_de("gerada")
         self.juizes, self.triagens, self.imagens = [], [], []  # (Authorization, modo, candidatas) / (Authorization, palavra) / (Authorization, corpo)
+        self.falas, self.recusa_da_fala = [], None  # a voz (`/v1/audio/speech`): (Authorization, corpo) de cada pedido; (status, código)
         self.antes_de_responder = lambda _metodo, _autorizacao: None
         dono = self
 
@@ -136,7 +145,11 @@ class OpenAIDeMentira:
                 if self.path == "/v1/responses":
                     return dono._respostas(self, self.headers.get("Authorization"), json.loads(lido.decode("utf-8")))
                 if self.path == "/v1/models" and (self.headers.get("Authorization") or "").startswith("Bearer acesso-"):
-                    modelos = MODELOS_DO_PLANO
+                    modelos = MODELOS_DO_PLANO if dono.modelos_do_plano is None else (200, {"models": [{"slug": slug, "visibility": "list"} for slug in dono.modelos_do_plano]})
+                elif self.path == "/v1/models" and dono.modelos_da_conta is not None and modelos[0] == 200:
+                    modelos = (200, {"object": "list", "data": [{"id": id_, "object": "model"} for id_ in dono.modelos_da_conta]})
+                if self.path == "/v1/audio/speech":
+                    return dono._fala(self, self.headers.get("Authorization"), json.loads(lido.decode("utf-8")))
                 if self.path == "/v1/chat/completions":
                     status, corpo = dono._chat(self.headers.get("Authorization"), json.loads(lido.decode("utf-8")))
                 elif self.path == "/v1/images/generations":
@@ -164,6 +177,20 @@ class OpenAIDeMentira:
         else:
             self.recusas_do_chat[palavra] = (status, codigo)
 
+    def _fala(self, atendente, autorizacao, corpo):
+        """`POST /v1/audio/speech`: o MP3 (bytes, não JSON) do texto na voz pedida, ou a recusa de `recusa_da_fala`."""
+        self.falas.append((autorizacao, corpo))
+        if self.recusa_da_fala:
+            status, codigo = self.recusa_da_fala
+            dados, tipo = json.dumps({"error": {"code": codigo, "message": "recusado para %s" % autorizacao}}).encode("utf-8"), "application/json"
+        else:
+            status, dados, tipo = 200, audio_da_openai(corpo.get("voice"), corpo.get("input")), "audio/mpeg"
+        atendente.send_response(status)
+        atendente.send_header("Content-Type", tipo)
+        atendente.send_header("Content-Length", str(len(dados)))
+        atendente.end_headers()
+        atendente.wfile.write(dados)
+
     def _imagem(self, autorizacao, corpo):
         self.imagens.append((autorizacao, corpo))
         if self.recusa_da_imagem:
@@ -185,10 +212,14 @@ class OpenAIDeMentira:
         return 200, {"choices": [{"message": {"role": "assistant", "content": texto}}], "usage": {"prompt_tokens": 1000, "completion_tokens": 200}}
 
     def _respostas(self, atendente, autorizacao, corpo):
-        """`POST /v1/responses`: o Cartão em eventos (`response.output_text.delta` em pedaços e `response.completed` com o uso)."""
+        """`POST /v1/responses`: o Cartão em eventos (`response.output_text.delta` em pedaços e `response.completed` com o uso).
+        Com as instruções do juiz de imagem (#156), o texto do stream é o veredito em JSON."""
         self.respostas.append((autorizacao, corpo))
-        if self.recusa_das_respostas:
-            status, codigo = self.recusa_das_respostas
+        eh_o_juiz = corpo["instructions"].startswith("You are an expert visual selector")
+        recusa_do_texto = self.recusa_das_respostas(len(self.respostas)) if callable(self.recusa_das_respostas) else self.recusa_das_respostas
+        recusa = (self.recusa_do_juiz_do_plano or self.recusas_do_chat.get("[juiz]")) if eh_o_juiz else recusa_do_texto
+        if recusa:
+            status, codigo = recusa
             dados = json.dumps({"error": {"code": codigo, "message": "recusado para %s" % autorizacao}}).encode("utf-8")
             atendente.send_response(status)
             atendente.send_header("Content-Type", "application/json")
@@ -196,7 +227,11 @@ class OpenAIDeMentira:
             atendente.end_headers()
             atendente.wfile.write(dados)
             return
-        texto = _cartao_de_mentira([{"content": corpo["input"][-1]["content"]}])
+        if eh_o_juiz:
+            partes = corpo["input"][0]["content"]
+            texto = json.dumps(self._veredito(autorizacao, partes[0]["text"], partes[1::2], [foto["image_url"] for foto in partes[2::2]]))
+        else:
+            texto = _cartao_de_mentira([{"content": corpo["input"][-1]["content"]}])
         meio = len(texto) // 2
         eventos = [{"type": "response.created", "response": {"id": "resp_1", "status": "in_progress"}}]
         eventos += [{"type": "response.output_text.delta", "delta": pedaco} for pedaco in (texto[:meio], texto[meio:])]
@@ -211,17 +246,21 @@ class OpenAIDeMentira:
             atendente.wfile.write(("event: %s\ndata: %s\n\n" % (evento["type"], json.dumps(evento))).encode("utf-8"))
             atendente.wfile.flush()
 
+    def _veredito(self, autorizacao, cabecalho, textos, urls):
+        """O veredito do juiz: o do chat e o da Responses API mandam as mesmas partes (o texto de cada candidata e a foto dela, como URL de dados)."""
+        modo = re.search(r"Mode: (\w+)", cabecalho).group(1)
+        candidatas = [{"index": int(re.search(r"Candidate (\d+)", texto["text"]).group(1)), "title": re.search(r"title=(.*)", texto["text"]).group(1),
+                       "kind": re.search(r"kind=(.*)", texto["text"]).group(1), "imagem": base64.b64decode(url.split(",", 1)[1])}
+                      for texto, url in zip(textos, urls)]
+        self.juizes.append((autorizacao, modo, candidatas))
+        return self.juiz(modo, candidatas)
+
     def _juiz(self, autorizacao, corpo):
         partes = corpo["messages"][1]["content"]
-        modo = re.search(r"Mode: (\w+)", partes[0]["text"]).group(1)
-        candidatas = [{"index": int(re.search(r"Candidate (\d+)", texto["text"]).group(1)), "title": re.search(r"title=(.*)", texto["text"]).group(1),
-                       "kind": re.search(r"kind=(.*)", texto["text"]).group(1), "imagem": base64.b64decode(foto["image_url"]["url"].split(",", 1)[1])}
-                      for texto, foto in zip(partes[1::2], partes[2::2])]
-        self.juizes.append((autorizacao, modo, candidatas))
+        veredito = self._veredito(autorizacao, partes[0]["text"], partes[1::2], [foto["image_url"]["url"] for foto in partes[2::2]])
         recusa = self.recusas_do_chat.get("[juiz]")
         if recusa:
             return _erro(recusa[0], "unsupported image " + (autorizacao or ""), "invalid_request_error", recusa[1])
-        veredito = self.juiz(modo, candidatas)
         return 200, {"choices": [{"message": {"content": json.dumps(veredito)}}], "usage": {"prompt_tokens": 1500, "completion_tokens": 40}}
 
     def __enter__(self):

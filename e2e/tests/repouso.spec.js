@@ -40,6 +40,7 @@ test('card da IA com um perfil: parado, não escreve na Conexão nem no Firestor
 
 test('card da IA com o ChatGPT conectado: parado, só relê o login e não escreve na Conexão', async ({ page, extensao, fakes, relogioParado }) => {
   await extensao.semearSessao({ uid: 'A' });
+  await extensao.gravarStorage({ pm_plano_do_chatgpt_avisado: true });
   fakes.anki.chatgpt.definir('conectada');
   await abrirComRelogio(relogioParado, page, extensao, 'ia');
   await expect(cardDaIA(page)).toContainText('Usando o plano do ChatGPT');

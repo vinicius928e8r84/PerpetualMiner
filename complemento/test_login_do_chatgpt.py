@@ -220,6 +220,25 @@ class OQueNaoViraLogin(unittest.TestCase):
                 self.assertNotIn(MARCA, log)
                 self.assertNotIn(pedido_da_troca["code_verifier"], log)
 
+    def test_o_invalid_grant_da_troca_deixa_tentar_de_novo_e_so_o_segundo_seguido_diz_que_o_plano_nao_serve_para_a_conta(self):
+        # Risco 9: a conta grátis ou Go deu `400 invalid_grant` sem segunda tentativa. Uma recusa só pode ser um código gasto.
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            conexao.servidor_de_login.troca = "invalid_grant"
+            entrar_e_voltar(conexao)
+            primeira = estado(conexao)["falha"]
+            entrar_e_voltar(conexao)
+            segunda = estado(conexao)
+            conexao.servidor_de_login.troca = "aceita"
+            entrar_e_voltar(conexao)
+            conectada = estado(conexao)
+            conexao.pedir("POST", "/ia/chatgpt/sair", corpo={})
+            conexao.servidor_de_login.troca = "invalid_grant"
+            entrar_e_voltar(conexao)
+            recomecou = estado(conexao)["falha"]
+        self.assertEqual((primeira, segunda["falha"], segunda["conectada"]), ("chatgpt_login_failed", "chatgpt_not_eligible", False))
+        self.assertEqual(conectada, {"conectada": True, "entrando": False, "falha": None})
+        self.assertEqual(recomecou, "chatgpt_login_failed")
+
     def test_um_id_token_com_outro_nonce_e_recusado(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             url, parametros = entrar(conexao)

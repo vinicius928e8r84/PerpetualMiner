@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_envio import CHAVE, ID, INGLES, EnvioNoTeste, pedido  # noqa: E402
 from complemento.test_imagens_de_mentira import JPEG_DE_MENTIRA, png_de  # noqa: E402
-from complemento.test_openai_de_mentira import veredito_do_juiz  # noqa: E402
+from complemento.test_openai_de_mentira import audio_da_openai, veredito_do_juiz  # noqa: E402
 
 FRASE = "gave up : She gave up smoking [Context: Série - The Office - S01E01]"
 FOTOS = {"gave up": ["foto-a", "foto-b"]}
@@ -154,14 +154,28 @@ class JuntoComOAudio(unittest.TestCase):
         self.assertEqual((len(sons), sorted(notas[0]["midia"])), (2, sorted(sons + [arquivo])))
         self.assertEqual(notas[0]["midia"][arquivo], png_de("foto-b"))
 
-    def test_a_voz_recusada_falha_o_cartao_sem_nota_e_sem_gastar_com_a_imagem(self):
+    def test_a_voz_recusada_sem_reserva_falha_o_cartao_sem_nota_e_sem_gastar_com_a_imagem(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.openverse.fotos = FOTOS
             conexao.voz.recusar("com", 400)
-            estado, notas = enviar(conexao)
+            sem_reserva = pedido(ID, FRASE)
+            sem_reserva["tts"]["reserva"] = []  # com a reserva (#174) a voz da OpenAI falaria e o Cartão entraria
+            estado, notas = enviar(conexao, corpo=sem_reserva)
             buscas, geradas = list(conexao.openverse.buscas), list(conexao.openai.imagens)
         self.assertEqual((estado["status"], estado["lastError"], notas), ("failed", "tts_rejected", []))
         self.assertEqual((buscas, geradas), ([], []))
+
+    def test_a_voz_recusada_com_a_reserva_falando_o_cartao_entra_com_o_audio_da_openai_e_a_foto(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+            conexao.openverse.fotos = FOTOS
+            conexao.openai.juiz = juiz_que_prefere(1)
+            conexao.voz.recusar("com", 400)
+            estado, notas = enviar(conexao)
+        self.assertEqual((estado["status"], len(notas)), ("completed", 1))
+        arquivo, = imagens(notas[0]["campos"])
+        self.assertEqual(notas[0]["midia"][arquivo], png_de("foto-b"))
+        da_palavra = re.findall(r"\[sound:([^\]]+)\]", notas[0]["campos"]["Áudio da palavra"])
+        self.assertEqual(notas[0]["midia"][da_palavra[0]], audio_da_openai("alloy", "gave up"))
 
     def test_a_imagem_que_falha_com_a_voz_boa_deixa_o_cartao_com_o_audio_e_sem_a_foto(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:

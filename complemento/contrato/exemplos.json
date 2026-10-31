@@ -200,7 +200,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.3.3",
+          "versao": "0.3.5",
           "perfil": "Usuário 1"
         }
       }
@@ -220,7 +220,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.3.3",
+          "versao": "0.3.5",
           "perfil": null
         }
       }
@@ -259,7 +259,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.3.3",
+          "versao": "0.3.5",
           "perfil": "Usuário 1"
         }
       }
@@ -3572,7 +3572,7 @@
         "json": {
           "generatedAt": "<agora>",
           "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
-          "versao": "0.3.3",
+          "versao": "0.3.5",
           "job": {
             "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
             "createdAt": "2026-10-12T10:00:00-03:00",

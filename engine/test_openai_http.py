@@ -245,6 +245,21 @@ class ResponderPeloPlano(unittest.TestCase):
                       "store": False, "stream": True},
         }])
 
+    def test_o_json_vai_por_text_format_e_a_mensagem_pode_levar_a_foto_como_input_image(self):
+        partes = [{"type": "input_text", "text": "Mode: real_only"}, {"type": "input_image", "image_url": "data:image/png;base64,AAAA"}]
+        with PlanoDeMentira(eventos('{"best_index": 1}')) as plano:
+            texto, _ = openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "o juiz", partes, formato_json=True)
+        self.assertEqual(json.loads(texto), {"best_index": 1})
+        [pedido] = plano.pedidos
+        self.assertEqual(pedido["corpo"]["input"], [{"role": "user", "content": partes}])
+        self.assertEqual(pedido["corpo"]["text"], {"format": {"type": "json_object"}})
+
+    def test_a_foto_que_o_plano_nao_le_vira_o_codigo_da_imagem_invalida_e_nao_um_pedido_recusado(self):
+        with PlanoDeMentira((400, {"error": {"code": "invalid_image_format", "message": "falhou " + TOKEN_DO_PLANO}})) as plano:
+            with self.assertRaises(openai_http.ErroDaOpenAI) as recusa:
+                openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "p", "m")
+        self.assertEqual(recusa.exception.codigo, openai_http.IMAGEM_INVALIDA)
+
     def test_so_o_response_completed_e_sucesso(self):
         casos = [
             (eventos("Front: oi", fim=None), openai_http.FORA_DO_AR),
@@ -279,15 +294,20 @@ class ResponderPeloPlano(unittest.TestCase):
             self.assertEqual(recusa_.exception.codigo, codigo)
             self.assertNotIn(TOKEN_DO_PLANO, str(recusa_.exception))
 
-    def test_com_o_plano_o_cartao_sai_pela_responses_api_e_nao_conta_custo_em_dolar(self):
+    def test_com_o_plano_o_cartao_sai_pela_responses_api_sem_custo_em_dolar_e_com_o_que_a_chave_teria_cobrado(self):
         with tempfile.TemporaryDirectory() as pasta, PlanoDeMentira(eventos(CARTAO[:40], CARTAO[40:])) as plano:
             raiz = Path(pasta)
             config = dict(configuracao(raiz), openai_api_key=None, plano_do_chatgpt={"token": TOKEN_DO_PLANO, "modelo": "gpt-6-luna"})
             salvos = generate_cards.run([ENTRADA], config, openai_base=plano.base)
-            custos = (raiz / "log" / "costs.jsonl").exists()
+            registros = [json.loads(linha) for linha in (raiz / "log" / "costs.jsonl").read_text(encoding="utf-8").splitlines()]
         self.assertEqual(salvos, [build_card_stem(ENTRADA.keywords[0], ENTRADA.phrase)])
         self.assertEqual([(p["caminho"], p["corpo"]["instructions"], p["corpo"]["model"]) for p in plano.pedidos], [("/v1/responses", "en prompt", "gpt-6-luna")])
-        self.assertFalse(custos)
+        # 2061 tokens de entrada e 387 de saída, ao preço do gpt-4o da chave: o plano não cobra por Cartão.
+        self.assertEqual(
+            [(r["type"], r["model"], r["cost_usd"], r["would_cost_usd"], r["keyword"]) for r in registros],
+            [("plan_tokens", "gpt-6-luna", 0.0, 0.009023, ENTRADA.keywords[0])],
+        )
+        self.assertNotIn(TOKEN_DO_PLANO, json.dumps(registros))
 
 
 if __name__ == "__main__":

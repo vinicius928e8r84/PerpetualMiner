@@ -15,13 +15,14 @@
     falhaAoRetomar: envio => envio.jobId && falhasAoRetomar.get(envio.jobId),
     tentarCriarDeNovo,
     continuarEnvio,
+    redesenhar: () => desenharProgresso(),
   });
 
   let doPainel = null;
   let ankiFechado = null;
   // A remessa acompanhada: { envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar, corpo }] } (`pm_envio` leva também
-  // `apagarFrases: true` até a Conexão confirmar o Apagar tudo). `corpo`, o pedido, é montado uma vez e gravado antes do primeiro
-  // POST: reenviado igual, é o mesmo Envio na Conexão, pois o `jobId` é o `id` (docs/design/envio-no-complemento.md).
+  // `apagarFrases: true` até o Apagar tudo ser confirmado). `corpo`, o pedido, é gravado antes do primeiro POST e reenviado igual:
+  // o `jobId` é o `id`, então é o mesmo Envio na Conexão (docs/design/envio-no-complemento.md).
   let remessa = null;
   const jobs = new Map();           // jobId → o último job lido de POST /jobs/list
   const falhasAoRetomar = new Map(); // jobId → a causa, quando Continuar envio não deu
@@ -61,7 +62,7 @@
     const gravado = await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r));
     if (!remessa && gravado[CHAVE_GRAVADA]?.envios?.some(e => e.jobId || e.corpo)) {
       remessa = gravado[CHAVE_GRAVADA];
-      // O painel fechou com um pedido sem resposta: o mesmo corpo de novo, e a Conexão devolve o Envio que já tem (ou o cria).
+      // O painel fechou com um pedido sem resposta: o mesmo corpo de novo; a Conexão devolve o Envio que tem, ou o cria.
       const semResposta = remessa.envios.filter(e => !e.jobId && !e.falhaAoCriar && e.corpo);
       if (semResposta.length) {
         const estaRemessa = remessa;
@@ -138,19 +139,19 @@
         envio.falhaAoCriar = { motivo: 'ENV-03.motivoAjustes', causa: String(erro.message || erro) };
         return;
       }
-      // O baralho de quando o Envio foi criado: é o que o resumo diz, mesmo se os ajustes mudarem.
+      // O baralho de quando o Envio foi criado: o resumo o diz, mesmo se os ajustes mudarem.
       envio.baralho = preset.deckName;
       envio.corpo = {
         jobId: envio.id,
         lang: envio.lang,
         deckName: preset.deckName,
         imageSource: preset.imageSource,
-        tts: { wordTld: preset.ttsWordTld, phraseTld: preset.ttsPhraseTld },
+        tts: AjustesDeEnvio.ttsDoEnvio(preset),
         entries: doPainel.frasesPorId(envio.ids).map(frase => ({ phraseId: frase.id, line: doPainel.linha(frase) })),
       };
       await gravar();
     }
-    // O Apagar tudo no meio (enquanto os ajustes eram lidos ou o corpo gravado) encerra a remessa: as Frases não saem mais.
+    // O Apagar tudo no meio encerra a remessa: as Frases não saem mais.
     if (remessa !== aRemessaDoEnvio) return;
     let resposta;
     try {
@@ -184,7 +185,7 @@
     if (!remessa) return pararDeAcompanhar();
     if (remessa.envios.some(e => e.jobId && !terminou(e))) {
       await lerJobs();
-      // O Anki fechou ou abriu: a situação da Conexão se confere agora, sem esperar o relógio dela.
+      // O Anki fechou ou abriu: a Conexão é conferida agora, sem esperar o relógio.
       if (semNoticia || conexaoDesligada) ConexaoAnki.conferir();
     }
     desenharProgresso();
@@ -199,7 +200,7 @@
       const porJob = new Map(lista.map(job => [job.jobId, job]));
       for (const envio of remessa?.envios || []) {
         if (!envio.jobId) continue;
-        // Um Envio que a Conexão não conhece mais não volta: conta como não concluído.
+        // Um Envio que a Conexão não conhece mais conta como não concluído.
         jobs.set(envio.jobId, porJob.get(envio.jobId) || { jobId: envio.jobId, status: 'failed', state: { status: 'failed', stage: 'failed' } });
       }
       semNoticia = false;
@@ -214,7 +215,7 @@
     return job ? { status: job.state?.status || job.status, ...job.state } : null;
   }
 
-  /** Terminou: o Envio acabou na Conexão, ou nem começou. */
+  /** Terminou na Conexão, ou nem começou. */
   function terminou(envio) {
     if (!envio.jobId) return Boolean(envio.falhaAoCriar);
     const estado = estadoDoJob(envio);
@@ -226,9 +227,9 @@
     const aRemessa = remessa;
     if (!aRemessa) return;
     const envios = aRemessa.envios.filter(e => e.jobId || e.falhaAoCriar || e.corpo);
-    // O Apagar tudo que a Conexão ainda não confirmou continua marcado, mesmo com um Envio novo.
+    // O Apagar tudo ainda não confirmado continua marcado, mesmo com um Envio novo.
     const apagarFrases = (await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r)))[CHAVE_GRAVADA]?.apagarFrases;
-    // O Apagar tudo enquanto se lia: o que ele gravou fica, e as Frases deste Envio não voltam a `pm_envio`.
+    // O Apagar tudo enquanto se lia: o que ele gravou fica, e estas Frases não voltam a `pm_envio`.
     if (remessa !== aRemessa) return;
     return new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios, ...(apagarFrases ? { apagarFrases: true } : {}) } }, r));
   }
@@ -257,7 +258,7 @@
   }
 
   let apagandoAsFrases = null;
-  /** Pede à Conexão o apagamento das Frases dela, se ele está marcado; devolve se a Conexão confirmou (ou nada havia a pedir). */
+  /** Pede à Conexão o apagamento das Frases dela, se marcado; devolve se ela confirmou (ou nada havia a pedir). */
   function pedirAApagarAsFrases() {
     if (apagandoAsFrases) return apagandoAsFrases;
     apagandoAsFrases = (async () => {
@@ -302,7 +303,7 @@
     if (!remessa || criando) return;
     // Um envio que nunca começou não fica acompanhado: não há o que esperar.
     if (!remessa.envios.some(e => e.jobId)) return esquecer();
-    // Fechou com o resto terminado e um erro à vista: o resumo abre, e conta o que falhou.
+    // Fechou com o resto terminado e um erro à vista: o resumo abre e conta o que falhou.
     if (remessa.envios.every(terminou) && remessa.envios.some(pendente)) {
       desistiuDasPendencias = true;
       setTimeout(tentarAbrirResumo, 0);
@@ -374,8 +375,8 @@
       if (!resposta.ok) throw new Error(`POST /jobs/retry ${jobId} → HTTP ${resposta.status}`);
       falhasAoRetomar.delete(jobId);
       const job = jobs.get(jobId);
-      // Como a Conexão faz ao retomar: o erro da vez anterior sai junto.
-      jobs.set(jobId, { ...job, status: 'queued', state: { ...job?.state, status: 'queued', stage: 'queued', progress: {}, lastError: null, ankiError: null } });
+      // Como a Conexão ao retomar um Envio que terminou: o erro anterior sai. Um que anda (limite do plano) fica como está.
+      if (retomavel(estadoDoJob({ jobId }))) jobs.set(jobId, { ...job, status: 'queued', state: { ...job?.state, status: 'queued', stage: 'queued', progress: {}, lastError: null, ankiError: null } });
       return true;
     } catch (erro) {
       falhasAoRetomar.set(jobId, String(erro.message || erro));
@@ -407,6 +408,7 @@
       idioma.baralho = idioma.baralho || envio.baralho;
       idioma.total += envio.ids.length;
       const estado = envio.jobId ? estadoDoJob(envio) || {} : {};
+      idioma.codigo ||= estado.lastError;
       const sucesso = new Set((estado.successfulPhraseIds || []).map(Number));
       const falha = new Set((estado.failedPhraseIds || []).map(Number));
       const dup = new Set((estado.duplicatePhraseIds || []).map(Number));
@@ -442,7 +444,7 @@
       bloco.append(elemento('p', 'envio-resumo__linha', textoDaVoz('ENV-10.jaEstavam', { n: idioma.duplicadas.length })));
     }
     if (idioma.falhas) {
-      bloco.append(elemento('p', 'envio-resumo__linha envio-resumo__linha--erro', textoDaVoz('ENV-10.naoEntraram', { n: idioma.falhas })));
+      bloco.append(elemento('p', 'envio-resumo__linha envio-resumo__linha--erro', textoDaVoz('ENV-10.naoEntraram', { n: idioma.falhas })), ...CartaoDoEnvio.linhasDoPlano(idioma.codigo));
       const tentar = botao(textoDaVoz('ENV-10.tentarDeNovo'), 'tentar', () => responderResumo({ tentar: idioma.lang }));
       tentar.prepend(Veio.iconeVeio('atualizar'));
       bloco.append(tentar);
@@ -470,7 +472,7 @@
     porId('modal-resumo-detalhe').textContent = textoDaVoz('ENV-10.detalhe', { n: total, baralhos: idiomas.length });
     porId('modal-resumo-baralhos').replaceChildren(...idiomas.map(montarBlocoDoIdioma));
 
-    // Tirar do histórico vale só para as enviadas que ainda estão lá: alguma pode ter sido apagada no meio.
+    // Tirar do histórico vale só para as enviadas que ainda estão lá.
     const aTirar = doPainel.frasesPorId(enviadas).length;
     const jaApagadas = enviadas.length - aTirar;
     porId('modal-resumo-pergunta').textContent = aTirar === 0 ? textoDaVoz('ENV-10.nadaParaTirar')
@@ -523,7 +525,7 @@
     }
   }
 
-  /** Tentar de novo (ENV-10), no bloco de um idioma: retoma os Envios dele que ficaram em parte, recria os que não começaram. */
+  /** Tentar de novo (ENV-10), no bloco de um idioma: retoma os Envios em parte e recria os que não começaram. */
   function tentarDeNovoOIdioma(lang) {
     abrirProgresso();
     return recomecar(async () => {

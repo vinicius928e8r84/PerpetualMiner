@@ -1,26 +1,26 @@
 # O contrato da Conexão com o Anki
 
 `exemplos.json` é o conjunto único de pedidos e respostas entre a extensão e a Conexão
-com o Anki (o complemento do Anki, em `127.0.0.1:8766`), junto com os `exemplos-*.json` ao lado dele (um por assunto, como
-`exemplos-do-perfil.json`; `carregar.js` e `test_servidor.py` os somam e recusam nome repetido). Dois lados leem o mesmo conjunto:
+com o Anki (o complemento do Anki, em `127.0.0.1:8766`), junto com os `exemplos-*.json` ao lado (um por assunto, como
+`exemplos-do-perfil.json`; `carregar.js` e `test_servidor.py` os somam e recusam nome repetido). Dois lados o leem:
 
 - **o complemento**: `python3 complemento/test_servidor.py` sobe o servidor real e confere
   cada exemplo (rode também no 3.9);
 - **a extensão**: o fake da Conexão do e2e (`e2e/fakes/anki.js`) responde pelos exemplos,
-  e `e2e/tests/contrato-da-conexao.spec.js` confere o fake contra eles.
+  e `contrato-da-conexao.spec.js` confere o fake contra eles.
 
-Mudar só um lado quebra um teste, que diz o exemplo e os arquivos.
+Mudar só um lado quebra um teste, que diz o exemplo.
 
-O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede nem que o complemento responde fica sem exemplo.
+O contrato também é **fechado**, nos dois sentidos: nenhum pedido nem resposta fica sem exemplo.
 
 - **Os pedidos da extensão**: todo pedido nasce de um construtor de `PerpetualMiner.PedidoAoAnki` (`lib/pedido-ao-anki.js`:
-  `saude`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`, `chaveDaOpenAI`, `apagarChaveDaOpenAI`, `estadoDaIA`, e os do Envio: `criarEnvio` (o corpo leva o `jobId`), `listarEnvios`, `verEnvio`, `tentarEnvioDeNovo`, `pacoteDeDiagnostico`, `apagarFrasesDosEnvios`, `custosDosEnvios`), e `PedidoAoAnki.variantes` os lista. `node test_contrato_fechado.js`
-  pede ao construtor cada variante (com os dois Baralhos, as três leituras…) e exige um exemplo `daExtensao`
+  `saude`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`, `chaveDaOpenAI`, `apagarChaveDaOpenAI`, `estadoDaIA`, e os do Envio: `criarEnvio`, `ouvirAVoz`, `listarEnvios`, `verEnvio`, `tentarEnvioDeNovo`, `usarAChaveNoEnvio`, `pacoteDeDiagnostico`, `apagarFrasesDosEnvios`, `custosDosEnvios`), e `PedidoAoAnki.variantes` os lista. `node test_contrato_fechado.js`
+  pede ao construtor cada variante e exige um exemplo `daExtensao`
   de cada uma, que o fake do e2e então responde. O nome do Baralho não conta para achar o exemplo; quantos Baralhos, `refresh` e
   `launch` contam. A regra `contrato-fechado` (`node scripts/regras/verificar.js`) acusa um `fetch` direto a uma rota da Conexão.
 - **As respostas do complemento**: `complemento/test_servidor.py` guarda o que o servidor real respondeu a uma rota que ele
   tem (método, caminho, status e `error`) e, no fim, exige um exemplo para cada um. Um estado novo do servidor
-  sem exemplo quebra o teste dizendo qual. Quem pede cada rota em cada estado do Anki
+  sem exemplo quebra o teste. Quem pede cada rota em cada estado do Anki
   (coleção que quebra, sem coleção, perfil ilegível, corpo inválido) é a matriz `EstadosDeCadaRota`, que não lê os exemplos:
   uma rota nova se declara em `MATRIZ` (corpo mínimo, se lê a coleção, se lê o perfil e as recusas de validação dela; uma
   rota que não lê a coleção, como a chave da IA, responde o mesmo `status` em todos os estados) e sem isso o teste quebra dizendo o que declarar.
@@ -51,8 +51,7 @@ O contrato também é **fechado**, nos dois sentidos: nada que a extensão pede 
   responde à conferência de uma chave: `aceita`, `recusa`, `sem_credito`, `org_nao_verificada`, `limite_de_uso`, `limite_so_no_pago` ou
   `fora_do_ar`) e `chaveNaConexao` (os 4 últimos caracteres da chave que a Conexão já guarda, ou `null`). Uma parte do contexto só
   vale para os exemplos que a citam: a saúde não diz do item e o item não diz do perfil. O fake muda de
-  contexto por `fakes.anki.abrirPerfil(...)`, `falharLeituraDoPerfil()`, `abrirColecao(nome)`, `definirItemDeLogin(...)`,
-  `responderOpenAI(...)` e `guardarChaveNaConexao(...)`; um exemplo só conta no fake pelos campos que ele diz (a saúde responde igual com qualquer
+  contexto por `fakes.anki.*` (`abrirPerfil`, `abrirColecao`, `responderOpenAI`, `guardarChaveNaConexao`…); um exemplo só conta no fake pelos campos que ele diz (a saúde responde igual com qualquer
   chave). Da chave só conta ter ou não ter: a resposta leva os 4 últimos da chave que o teste mandou, não os do exemplo. O teste
   do complemento monta um adaptador de coleção em memória (`test_colecao_em_memoria.py`) com a coleção que o exemplo nomeia.
 - `colecoes` (no alto do arquivo): as coleções que os exemplos nomeiam, com os Baralhos, as notas e os Cartões
@@ -170,12 +169,12 @@ A Conexão de hoje (`bridge/`) atende as mesmas rotas e o mesmo criar idempotent
 | `POST /jobs/get` | `{ jobId }` | `{ job, state }`; `404 job_not_found` |
 | `POST /jobs/retry` | `{ jobId }` | `{ jobId, status }`: um Envio terminado volta à fila guardando os Cartões prontos; na fila ou andando, só diz o estado (nada gravado). `404 job_not_found` |
 | `POST /jobs/debug-bundle` | `{ jobId }` | o pedido, o estado, os custos, os arquivos do Envio e as linhas do log que o citam; nunca a chave. `404 job_not_found` |
-| `POST /analytics/jobs` | `{ lang: 'all', from?, to? }` | `{ jobs: [linha por Envio] }`, as linhas de `bridge/analytics.py` (`custos.py`) |
+| `POST /analytics/jobs` | `{ lang: 'all', from?, to? }` | `{ jobs: [linha por Envio] }`, as linhas de `bridge/analytics.py` (`custos.py`); com Cartão do plano do ChatGPT, `plan: { cards, wouldCostUsd }` (#159) |
 
 `lastError` e o `error` de cada Cartão são códigos (`openai_key_missing`, `openai_key_rejected`, `openai_no_credit`,
 `openai_rate_limited`, `openai_unreachable`, `note_type_missing`, `anki_write_failed`…), nunca o texto da OpenAI.
 
-As rotas do login do ChatGPT (#155): [`entrar-com-o-chatgpt.md`](entrar-com-o-chatgpt.md).
+O login do ChatGPT (#155): [`entrar-com-o-chatgpt.md`](entrar-com-o-chatgpt.md). O modelo dos cartões (#157): [`o-modelo-dos-cartoes.md`](o-modelo-dos-cartoes.md). A voz e o Ouvir (#174): [`voz.md`](voz.md).
 
 ## As rotas do perfil fixo (#149)
 
