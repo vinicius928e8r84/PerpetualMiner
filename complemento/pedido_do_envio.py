@@ -9,6 +9,9 @@ import re
 
 _ID_DO_ENVIO = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 IDIOMAS = ("en", "ru")
+# A reserva da voz (#174): uma lista de nomes de provedor, sem tamanho de abuso; a Conexão pula o nome que não conhece.
+_PROVEDOR_DA_VOZ = re.compile(r"^[a-z0-9_-]{1,32}$")
+MAXIMO_DE_RESERVAS = 8
 
 
 def id_valido(job_id):
@@ -50,12 +53,17 @@ def validar_pedido(corpo):
             vistas.add(frase)
             limpas.append({"phraseId": frase, "line": entrada["line"]})
     tts = corpo.get("tts") if isinstance(corpo.get("tts"), dict) else {}
+    reserva = tts.get("reserva")
+    if "reserva" in tts and not (isinstance(reserva, list) and len(reserva) <= MAXIMO_DE_RESERVAS
+                                 and all(isinstance(nome, str) and _PROVEDOR_DA_VOZ.match(nome) for nome in reserva)):
+        return None, (400, "invalid_request")
     return {
         "jobId": corpo["jobId"],
         "lang": corpo["lang"],
         "deckName": deck.strip(),
         "imageSource": str(corpo.get("imageSource") or "1"),
-        "tts": {chave: str(valor) for chave, valor in tts.items() if isinstance(valor, str)},
+        "tts": dict({chave: valor for chave, valor in tts.items() if isinstance(valor, str)},
+                    **({"reserva": list(dict.fromkeys(reserva))} if "reserva" in tts else {})),
         "entries": limpas,
     }, None
 

@@ -1,0 +1,146 @@
+{
+  "filas": {
+    "um Envio de dois Cartões feitos pelo plano do ChatGPT": [
+      {
+        "job": {
+          "jobId": "e4f5a6b7-8c9d-4e0f-9a1b-2c3d4e5f6a7b",
+          "createdAt": "2026-10-12T10:00:00-03:00",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400001,
+              "line": "keep running | run : They keep running"
+            },
+            {
+              "phraseId": 1760270400002,
+              "line": "give up : She gave up smoking"
+            }
+          ]
+        },
+        "state": {
+          "jobId": "e4f5a6b7-8c9d-4e0f-9a1b-2c3d4e5f6a7b",
+          "status": "completed",
+          "stage": "completed",
+          "completedStages": [
+            "generate_cards",
+            "send_to_anki"
+          ],
+          "progress": {},
+          "successfulPhraseIds": [
+            1760270400001,
+            1760270400002
+          ],
+          "failedPhraseIds": [],
+          "duplicatePhraseIds": [],
+          "lastError": null,
+          "updatedAt": "2026-10-12T10:05:00-03:00",
+          "cards": {
+            "1760270400001-0": {
+              "phraseId": 1760270400001,
+              "status": "added",
+              "error": null
+            },
+            "1760270400002-0": {
+              "phraseId": 1760270400002,
+              "status": "added",
+              "error": null
+            }
+          }
+        },
+        "custos": [
+          {
+            "date": "2026-10-12",
+            "type": "plan_tokens",
+            "model": "gpt-6-luna",
+            "input_tokens": 1000,
+            "output_tokens": 200,
+            "cost_usd": 0.0,
+            "would_cost_usd": 0.0045,
+            "keyword": "1760270400001-0"
+          },
+          {
+            "date": "2026-10-12",
+            "type": "plan_tokens",
+            "model": "gpt-6-luna",
+            "input_tokens": 1000,
+            "output_tokens": 200,
+            "cost_usd": 0.0,
+            "would_cost_usd": 0.0045,
+            "keyword": "1760270400002-0"
+          }
+        ]
+      }
+    ]
+  },
+  "exemplos": [
+    {
+      "nome": "os custos de um Envio feito pelo plano trazem os Cartões e o que a chave teria cobrado",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio de dois Cartões feitos pelo plano do ChatGPT"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/analytics/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "all"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "jobs": [
+            {
+              "jobId": "e4f5a6b7-8c9d-4e0f-9a1b-2c3d4e5f6a7b",
+              "createdAt": "2026-10-12T10:00:00-03:00",
+              "updatedAt": "2026-10-12T10:05:00-03:00",
+              "lang": "en",
+              "deckName": "Inglês",
+              "imageSource": "1",
+              "status": "completed",
+              "stage": "completed",
+              "requestedCards": 2,
+              "successfulCards": 2,
+              "failedCards": 0,
+              "lastError": null,
+              "costs": {
+                "cardUsd": 0.0,
+                "imageJudgeUsd": 0.0,
+                "imageGuardUsd": 0.0,
+                "imageGenerationUsd": 0.0,
+                "otherUsd": 0.0,
+                "totalUsd": 0.0
+              },
+              "images": {
+                "total": 0,
+                "real": 0,
+                "generated": 0,
+                "skipped": 0,
+                "failed": 0,
+                "generatedAttempted": 0,
+                "savingsUsd": 0.0,
+                "realPct": 0.0,
+                "generatedPct": 0.0,
+                "skippedPct": 0.0,
+                "failedPct": 0.0,
+                "generatedAttemptPct": 0.0
+              },
+              "matchedRecords": 2,
+              "plan": {
+                "cards": 2,
+                "wouldCostUsd": 0.009
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

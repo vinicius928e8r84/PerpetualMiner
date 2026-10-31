@@ -13,9 +13,10 @@ import json
 import os
 import sys
 import threading
+from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import baralhos, chatgpt_oficial, custos, diagnostico, envio, trabalhador
+from . import baralhos, chatgpt_oficial, envio, trabalhador
 from .chaves import Cofre
 from .login_do_chatgpt import LoginDoChatGPT
 from .paginas_do_navegador import PAGINAS, ROTAS_DO_CHATGPT, responder_a_pagina
@@ -24,7 +25,11 @@ from .rotas_da_chave import (
 )
 from .configuracao import ENDERECO, OPENAI_BASE, OPENVERSE_BASE, VOZ_BASE
 from .item_de_login import AnkiNaoEncontrado
+from .modelo_dos_cartoes import ModeloDosCartoes, lista_nossa
 from .perfil import PerfilFixo
+from .rotas_da_voz import ROTAS_DA_VOZ
+from .rotas_do_envio import ROTAS_DO_ENVIO
+from .rotas_do_modelo import ROTAS_DO_MODELO
 from .rotas_do_perfil import abrir_o_perfil_marcado, escolher_o_perfil, listar_os_perfis
 
 # Um pedido maior que isto não é da extensão: a leitura mais pesada (os Baralhos pedidos) cabe em poucos KB.
@@ -100,49 +105,6 @@ def _abrir_com_o_computador(conexao, corpo):
     return 200, {"ok": True, "ligado": item.ligado()}
 
 
-def _criar_envio(conexao, corpo):
-    return conexao.fila.criar(corpo)
-
-
-def _listar_envios(conexao, corpo):
-    return 200, {"jobs": conexao.fila.listar()}
-
-
-def _com_o_envio(corpo, conexao, resposta):
-    """Responde pelo Envio `jobId` do corpo: 400 se o id não é texto ou tem caractere de caminho, 404 se a Conexão não o tem
-    (qualquer formato: só o criar exige um UUID)."""
-    job_id = corpo.get("jobId")
-    if not envio.id_que_serve_de_caminho(job_id):
-        return 400, {"error": "invalid_job_id"}
-    if conexao.fila.pedido(job_id) is None:
-        return 404, {"error": "job_not_found"}
-    return resposta(job_id)
-
-
-def _ver_envio(conexao, corpo):
-    return _com_o_envio(corpo, conexao, lambda job_id: (200, {"job": envio.visao_do_pedido(conexao.fila.pedido(job_id)), "state": conexao.fila.estado(job_id)}))
-
-
-def _tentar_envio_de_novo(conexao, corpo):
-    return _com_o_envio(corpo, conexao, conexao.fila.tentar_de_novo)
-
-
-def _apagar_as_frases_dos_envios(conexao, corpo):
-    """O Apagar tudo da extensão (CFG-17) tira também as Frases que a Conexão guarda: as linhas dos pedidos e os textos gerados."""
-    conexao.fila.apagar_as_frases()
-    return 200, {"ok": True}
-
-
-def _pacote_de_diagnostico(conexao, corpo):
-    log = os.path.join(conexao.dados.logs, "complemento.log")
-    return _com_o_envio(corpo, conexao, lambda job_id: (200, diagnostico.pacote_de_diagnostico(conexao.fila, job_id, conexao.versao, log)))
-
-
-def _custos_dos_envios(conexao, corpo):
-    idioma = corpo.get("lang") if corpo.get("lang") in ("en", "ru") else "all"
-    return 200, {"jobs": custos.linhas(conexao.fila, custos.dia(corpo.get("from")), custos.dia(corpo.get("to")), idioma)}
-
-
 ROTAS = {
     ("GET", "/health"): _saude,
     # O que lê o Anki da pessoa é POST: o GET de uma página da extensão vai sem `Origin` (contrato/LEIA-ME.md).
@@ -160,16 +122,11 @@ ROTAS = {
     ("POST", "/ia/openai/legado"): vincular_legado_da_openai,
     ("POST", "/ia/estado"): estado_da_ia,
     **ROTAS_DO_CHATGPT,
+    **ROTAS_DO_MODELO,
+    **ROTAS_DA_VOZ,
     ("POST", "/abrir-com-o-computador/estado"): _estado_do_item_de_login,
     ("POST", "/abrir-com-o-computador"): _abrir_com_o_computador,
-    # O Envio (#142): criar e tentar de novo mudam a fila; as outras só leem. Tudo POST com a origem da extensão.
-    ("POST", "/jobs"): _criar_envio,
-    ("POST", "/jobs/list"): _listar_envios,
-    ("POST", "/jobs/get"): _ver_envio,
-    ("POST", "/jobs/retry"): _tentar_envio_de_novo,
-    ("POST", "/jobs/debug-bundle"): _pacote_de_diagnostico,
-    ("POST", "/jobs/apagar-frases"): _apagar_as_frases_dos_envios,
-    ("POST", "/analytics/jobs"): _custos_dos_envios,
+    **ROTAS_DO_ENVIO,
 }
 
 # As rotas que respondem sem a origem da extensão. Rota nova não entra aqui sem decisão do dono:
@@ -357,8 +314,11 @@ class Conexao:
         intervalo_do_envio=1.0,
         espera_do_anki=2.0,
         esperas_da_openai=(2, 8, 30),
+        espera_do_plano=300,
         motor=None,
         espera_do_contato=ESPERA_DO_CONTATO,
+        modelos_da_ia=None,
+        hoje=date.today,
     ):
         self.porta = porta
         self.origens_aceitas = tuple(origens_aceitas)
@@ -374,7 +334,9 @@ class Conexao:
         self.ao_mudar_o_perfil = lambda: None
         self.cofre = Cofre(dados.chaves)
         self.chatgpt = LoginDoChatGPT(dados.chaves, logger, base=chatgpt_base, api=openai_base)
-        self.openai_base = openai_base
+        self.openai_base, self.voz_base = openai_base, voz_base
+        self.modelos = ModeloDosCartoes(os.path.join(dados.raiz, "modelo-dos-cartoes.json"), modelos_da_ia or lista_nossa(), hoje,
+                                        logger, self.chatgpt, self.cofre, openai_base)
         self.firestore_base = firestore_base
         # O item de login de “Abrir o Anki com o computador”; None onde o sistema não tem (nem Mac nem Windows).
         self.item_de_login = item_de_login
@@ -386,8 +348,8 @@ class Conexao:
         self.contato = threading.Event()
         self.fila = envio.Fila(dados, motor or envio.motor_do_complemento(), logger)
         self._trabalhador = trabalhador.Trabalhador(
-            envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(), chatgpt=self.chatgpt,
-                           espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai, voz_base=voz_base,
+            envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(), chatgpt=self.chatgpt, modelos=self.modelos,
+                           espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai, espera_do_plano=espera_do_plano, voz_base=voz_base,
                            openverse_base=openverse_base, adaptador_de_imagem=adaptador_de_imagem),
             intervalo=intervalo_do_envio, contato=self.contato, espera_do_contato=espera_do_contato,
         ) if trabalhando else None

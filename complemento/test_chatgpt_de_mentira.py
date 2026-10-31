@@ -138,3 +138,14 @@ class ChatGPTDeMentira:
         self._servidor.shutdown()
         self._servidor.server_close()
         self._thread.join(timeout=5)
+
+
+def situar_o_login(conexao, servidor, situacao):
+    """O login da Conexão no estado de um exemplo do contrato: `entrando` (a tentativa aberta), `recusou` (a pessoa recusou no ChatGPT) ou
+    `nao_serve` (a conta grátis ou Go: duas trocas seguidas recusadas com `invalid_grant`)."""
+    porta, login = conexao.porta, conexao.chatgpt
+    servidor.troca = "invalid_grant" if situacao == "nao_serve" else servidor.troca
+    for _ in range(2 if situacao == "nao_serve" else 1):
+        consulta = servidor.autorizar(login.iniciar(porta), erro="access_denied" if situacao == "recusou" else None)
+        if situacao != "entrando":
+            login.receber(consulta, "127.0.0.1:%d" % porta, porta)

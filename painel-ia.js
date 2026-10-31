@@ -138,7 +138,8 @@
     const colunas = elemento('div', 'ia-colunas', colunaDaChave, raiz.ColunaDoChatGPT.coluna(lugar));
     const partes = [colunas];
     if (lugar.erro) partes.push(faixaDoErro(lugar));
-    partes.push(raiz.ColunaDoChatGPT.faixa(lugar), elemento('p', 'cfg-nota ia-imagem', textoDaVoz('CFG-35.imagem')));
+    partes.push(raiz.ColunaDoChatGPT.faixa(lugar), elemento('p', 'cfg-nota ia-imagem', textoDaVoz('CFG-35.imagem')),
+      raiz.ModeloDosCartoes.avancado(lugar)); // o Avançado: o modelo dos cartões (#157), de `painel-ia-modelo.js`
     lugar.corpo.classList.add('ia-cartao');
     lugar.corpo.replaceChildren(...partes);
   }
@@ -429,7 +430,7 @@
     link.click();
   }
 
-  raiz.CartaoDaIA = { montar, baixarConexao, trocarChave: () => {
+  raiz.CartaoDaIA = { montar, baixarConexao, temChave: () => Boolean(estado.ultimos4), trocarChave: () => {
     location.hash = '#configuracoes/ia';
     configuracoes.trocando = true;
     trocarDeNovo(configuracoes);

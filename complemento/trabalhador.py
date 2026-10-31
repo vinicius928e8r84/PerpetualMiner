@@ -3,7 +3,7 @@
 import threading
 import time
 
-from .envio import Interrompido
+from .paradas_do_envio import Interrompido
 
 
 class Trabalhador:
@@ -63,6 +63,7 @@ class Trabalhador:
     def encerrar(self):
         self.parar.set()
         self.fila.mudou.set()
+        self.fila.despertador.set()
         if self._thread is not None:
             self._thread.join(timeout=5)
             self._thread = None

@@ -3,30 +3,33 @@
 const { isDeepStrictEqual } = require('util');
 const { responderJson } = require('./http');
 const { criarFakeChatGPT } = require('./chatgpt');
+const { criarFakeVoz } = require('./voz');
 const { criarPerfis } = require('./perfis');
+const { criarLimiteDoPlano } = require('./limite-do-plano');
+const { criarModelo } = require('./modelo-dos-cartoes');
 const { diferencaDoContrato } = require('./diferenca-do-contrato');
+const { resumoDosCustos, linhaDeCustos } = require('./custos');
 const contrato = require('../../complemento/contrato/carregar');
 
 // Fake da Conexão com o Anki: responde na porta local dela (127.0.0.1:8766). Por padrão está ligada, com vocabulário vazio.
 // Um teste pode desligá-la (conexão recusada) ou responder uma rota específica com `responder`.
 //
 // O que o complemento responde (a saúde, os Baralhos, os números, o vocabulário, a chave da OpenAI e o item de login) vem de
-// `complemento/contrato/exemplos.json` (e dos `exemplos-*.json` ao lado, juntos por `carregar.js`), o mesmo que os testes do
+// `complemento/contrato/exemplos.json`, o mesmo que os testes do
 // complemento leem: o fake responde o exemplo do pedido no contexto em que a Conexão está (`abrirPerfil`, `abrirColecao`,
 // `responderOpenAI`, `guardarChaveNaConexao`, `definirItemDeLogin`). Os testes de tela montam os Baralhos em termos de gente
 // (`definirVocabulario`, `definirBaralho`); `abrirColecao(nome)` passa a responder o contrato inteiro. Uma rota nova entra nesse
-// arquivo (`complemento/contrato/LEIA-ME.md`). O perfil fixo (#149) mora em `perfis.js`; o login do ChatGPT (#155), em `chatgpt.js` (`fakes.anki.chatgpt`).
+// arquivo (`complemento/contrato/LEIA-ME.md`). Em arquivos à parte: o perfil fixo (#149, `perfis.js`), o login do ChatGPT (#155,
+// `chatgpt.js`), o limite do plano (#158, `limite-do-plano.js`) e o modelo dos cartões (#157, `modelo-dos-cartoes.js`).
 //
-// Baralhos e termos, Vocabulário e Ajustes de envio (`POST /anki/decks`, sem `definirBaralhosDoAnki` é 503): voltam na ordem pedida,
-// o que o Anki não tem volta `missing`, e os filtros (`status`, `type`, `q`) valem como no complemento.
+// Baralhos e termos, Vocabulário e Ajustes de envio (`POST /anki/decks`): voltam na ordem pedida; o que o Anki não tem volta `missing`.
 //
-// A chave da OpenAI: `POST /ia/openai/chave` responde pelo exemplo do contexto (`responderOpenAI(...)`) e, aceita, o fake guarda a
-// cópia (`chaveNaConexao()`); `POST /ia/estado` devolve só os 4 últimos caracteres.
+// A chave da OpenAI: `POST /ia/openai/chave` responde pelo contexto (`responderOpenAI`) e, aceita, o fake guarda a cópia (`chaveNaConexao()`).
 //
 // Os Envios (`/jobs…`, `/analytics/jobs`, todas POST): `POST /jobs` cria um pelo `jobId` do painel (o mesmo corpo é o mesmo Envio;
 // outro corpo, o `409`), `/jobs/list` lista com o `state` de cada um, `/jobs/retry` o põe na fila. O teste move (`moverEnvio`) e
 // termina (`concluirEnvio`) cada Envio como a Conexão faria; `definirFila(nome)` põe uma fila do contrato. Os custos são os de
-// `definirCustos` ou, sem eles, os dos Envios da fila (`custos.py`, só os de texto: imagens são do #144).
+// `definirCustos` ou, sem eles, os dos Envios da fila (só os de texto).
 
 // O exemplo do contrato de onde o fake tira a linha de um Baralho que o Anki não tem.
 const EXEMPLO_DO_BARALHO_QUE_NAO_EXISTE = 'Números de um Baralho que existe e de um que não existe';
@@ -76,9 +79,11 @@ function criarFakeAnki() {
     chaveDaOpenAI: null,        // a cópia da chave que a Conexão guarda (a inteira: só o teste a vê)
   };
   const perfis = criarPerfis(() => estado.contexto);
+  const modelo = criarModelo(() => contextoDeAgora()); // o modelo dos cartões (#157)
   const requisicoes = [];
   const envios = [];    // { jobId, lang, entries, corpo, createdAt, state }
   const chatgpt = criarFakeChatGPT(); // o login do ChatGPT (#155): as rotas dele aqui e a página do auth.openai.com (fakes.chatgpt)
+  const voz = criarFakeVoz(); // o Ouvir (#174): `fakes.anki.voz.definir('recusada')`
 
   function novoEstado(extra = {}) {
     return {
@@ -102,6 +107,7 @@ function criarFakeAnki() {
     if (!exemplo) throw new Error(`O contrato não tem o erro ${erro} de POST ${caminho}; escreva o exemplo antes de o fake responder.`);
     return { status: exemplo.resposta.status, json: exemplo.resposta.json };
   }
+  const limite = criarLimiteDoPlano({ envios, chaveGuardada: () => estado.chaveDaOpenAI, erro: erroDoContrato });
 
   const ID_DO_ENVIO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   const semHora = ({ createdAt, ...pedido }) => pedido;
@@ -124,22 +130,12 @@ function criarFakeAnki() {
       if (!isDeepStrictEqual(semHora(existente.corpo), corpo)) return erroDoContrato('/jobs', 'job_conflict');
       return { status: 201, json: { jobId, status: existente.state.status } };
     }
+    modelo.aoComecarUmEnvio();
     envios.push({ jobId, lang: corpo.lang, entries: corpo.entries || [], corpo, createdAt: estado.agora().toISOString(), state: novoEstado({ jobId }) });
     return { status: 201, json: { jobId, status: 'queued' } };
   }
 
-  function listarEnvios() {
-    return {
-      jobs: envios.map(e => ({
-        jobId: e.jobId,
-        lang: e.lang,
-        status: e.state.status,
-        createdAt: e.createdAt,
-        updatedAt: e.state.updatedAt,
-        state: e.state,
-      })),
-    };
-  }
+  const listarEnvios = () => ({ jobs: envios.map(e => ({ jobId: e.jobId, lang: e.lang, status: e.state.status, createdAt: e.createdAt, updatedAt: e.state.updatedAt, state: e.state })) });
 
   /**
    * `POST /jobs/apagar-frases`: de todo Envio somem as linhas das Frases (ficam os `phraseId`); um Envio na fila ou andando vai a
@@ -161,37 +157,12 @@ function criarFakeAnki() {
   /** O pedido de um Envio como a Conexão o guarda (o corpo, mais `createdAt`). */
   const pedidoGuardado = envio => ({ ...envio.corpo, createdAt: envio.createdAt });
 
-  /** O resumo dos registros de custo de um Envio, como `custos.resumir` do complemento (só os registros de texto). */
-  function resumoDosCustos(registros, de, ate) {
-    const custos = { cardUsd: 0, imageJudgeUsd: 0, imageGuardUsd: 0, imageGenerationUsd: 0, otherUsd: 0, totalUsd: 0 };
-    let contados = 0;
-    for (const registro of registros) {
-      const dia = String(registro.date || '').slice(0, 10);
-      if ((de && dia < de) || (ate && dia > ate)) continue;
-      contados += 1;
-      const palavra = String(registro.keyword || '');
-      const campo = palavra.startsWith('[image_judge]') ? 'imageJudgeUsd' : palavra.startsWith('[image_guard]') ? 'imageGuardUsd' : 'cardUsd';
-      if (registro.type === 'tokens') custos[campo] += registro.cost_usd || 0;
-    }
-    custos.totalUsd = custos.cardUsd + custos.imageJudgeUsd + custos.imageGuardUsd + custos.imageGenerationUsd + custos.otherUsd;
-    const arredondados = Object.fromEntries(Object.entries(custos).map(([chave, valor]) => [chave, Math.round(valor * 1e6) / 1e6]));
-    return { costs: arredondados, images: imagensZeradas(), matchedRecords: contados };
-  }
-
   /** As linhas de Custos do período e do idioma pedidos (`POST /analytics/jobs`), como `JobAnalytics.jobs`. */
   function linhasDosCustos(corpo) {
     const { lang = 'all', from: de, to: ate } = corpo || {};
-    const doIdioma = linha => lang === 'all' || linha.lang === lang;
-    if (estado.custos) {
-      return estado.custos.filter(linha => {
-        const dia = String(linha.createdAt).slice(0, 10);
-        return doIdioma(linha) && (!de || dia >= de) && (!ate || dia <= ate);
-      });
-    }
-    return envios.filter(envio => {
-      const dia = String(envio.createdAt).slice(0, 10);
-      return doIdioma(envio) && (!de || dia >= de) && (!ate || dia <= ate);
-    }).map(envio => {
+    const doPeriodo = linha => (lang === 'all' || linha.lang === lang) && (!de || String(linha.createdAt).slice(0, 10) >= de) && (!ate || String(linha.createdAt).slice(0, 10) <= ate);
+    if (estado.custos) return estado.custos.filter(doPeriodo);
+    return envios.filter(doPeriodo).map(envio => {
       const resumo = resumoDosCustos(estado.registrosDeCusto.get(envio.jobId) || [], de, ate);
       const pedidas = new Set(envio.entries.map(e => e.phraseId)).size;
       const enviadas = envio.state.successfulPhraseIds.length;
@@ -200,7 +171,7 @@ function criarFakeAnki() {
         jobId: envio.jobId, createdAt: envio.createdAt, updatedAt: envio.state.updatedAt, lang: envio.lang,
         deckName: envio.corpo.deckName || '', imageSource: envio.corpo.imageSource || '', status: envio.state.status, stage: envio.state.stage,
         requestedCards: pedidas, successfulCards: enviadas, failedCards: falharam, lastError: envio.state.lastError,
-        costs: resumo.costs, images: resumo.images, matchedRecords: resumo.matchedRecords,
+        costs: resumo.costs, images: resumo.images, matchedRecords: resumo.matchedRecords, ...(resumo.plan ? { plan: resumo.plan } : {}),
       };
     }).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   }
@@ -334,7 +305,7 @@ function criarFakeAnki() {
 
   /** O contexto de agora como os exemplos o descrevem: a chave guardada aparece só pelos 4 últimos. */
   function contextoDeAgora() {
-    return { ...estado.contexto, chaveNaConexao: ultimos4(estado.chaveDaOpenAI), chatgpt: chatgpt.situacao() };
+    return { ...estado.contexto, chaveNaConexao: ultimos4(estado.chaveDaOpenAI), chatgpt: chatgpt.situacao(), voz: voz.situacao() };
   }
 
   /**
@@ -349,9 +320,7 @@ function criarFakeAnki() {
       && (!('colecao' in doExemplo) || doExemplo.colecao === contexto.colecao)
       && (!('openai' in doExemplo) || doExemplo.openai === contexto.openai)
       && (!('chaveNaConexao' in doExemplo) || (doExemplo.chaveNaConexao === null) === (contexto.chaveNaConexao === null))
-      && (!('firebase' in doExemplo) || doExemplo.firebase === contexto.firebase)
-      && (!('cofre' in doExemplo) || doExemplo.cofre === contexto.cofre)
-      && (!('chatgpt' in doExemplo) || doExemplo.chatgpt === contexto.chatgpt);
+      && ['firebase', 'cofre', 'chatgpt', 'voz'].every(campo => !(campo in doExemplo) || doExemplo[campo] === contexto[campo]);
   }
 
   /**
@@ -360,7 +329,7 @@ function criarFakeAnki() {
    * (a resposta leva os 4 últimos da que o teste mandou); o que cita `colecao` só vale com essa coleção aberta (`abrirColecao`).
    */
   function respostaDoContrato(metodo, caminho, corpo) {
-    const doPerfil = perfis.responder(metodo, caminho, corpo); // o perfil fixo responde pelo estado dele (perfis.js)
+    const doPerfil = perfis.responder(metodo, caminho, corpo) || modelo.responder(metodo, caminho, corpo); // o perfil fixo e o modelo respondem pelo estado deles
     if (doPerfil) return doPerfil;
     const contexto = contextoDeAgora();
     const candidatos = contrato.exemplos.filter(e =>
@@ -516,6 +485,10 @@ function criarFakeAnki() {
     if ((url.pathname.startsWith('/ia/chatgpt/') && req.method() === 'POST') || (url.pathname === '/auth/callback' && req.method() === 'GET')) {
       return chatgpt.naConexao(route, url, respostaDoContrato);
     }
+    if (url.pathname === '/voz/ouvir' && req.method() === 'POST') {
+      const { status, json } = voz.naConexao(dadosDoCorpo(corpoDoPedido) || {}, respostaDoContrato);
+      return responderJson(route, status, json);
+    }
     if (url.pathname === '/ia/estado' && req.method() === 'POST') {
       const { status, json } = respostaDoContrato('POST', '/ia/estado', {});
       return responderJson(route, status, json);
@@ -530,7 +503,8 @@ function criarFakeAnki() {
       const { status, json } = itemDeLogin(req, url);
       return responderJson(route, status, json);
     }
-    const doPerfil = perfis.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido));
+    const doPerfil = perfis.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido)) || limite.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido))
+      || modelo.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido));
     if (doPerfil) return responderJson(route, doPerfil.status, doPerfil.json);
     // O que lê o Anki da pessoa é POST (contrato/LEIA-ME.md): por GET a Conexão não tem a rota.
     const leituraDoAnki = ['/anki/vocabulary', '/anki/decks', '/anki/stats/decks'].includes(url.pathname);
@@ -617,6 +591,9 @@ function criarFakeAnki() {
     tratar,
     requisicoes,
     chatgpt,
+    /** O modelo dos cartões (#157, `modelo-dos-cartoes.js`): `definir(cenario)`, `passarOTempoAte(dia)`, `guardado()`. */
+    modelo,
+    voz,
     /** @estado-guardado Os Envios que a Conexão guardou (um por `POST /jobs`), não o pedido que chegou. */
     envios,
     desligar() { estado.ligada = false; },
@@ -788,58 +765,6 @@ function criarFakeAnki() {
         updatedAt: estado.agora().toISOString(),
       };
     },
-  };
-}
-
-/** As imagens de uma linha de Custos sem nenhuma imagem (as chaves do contrato). */
-function imagensZeradas() {
-  return {
-    total: 0, real: 0, generated: 0, skipped: 0, failed: 0, generatedAttempted: 0, savingsUsd: 0,
-    realPct: 0, generatedPct: 0, skippedPct: 0, failedPct: 0, generatedAttemptPct: 0,
-  };
-}
-
-/** Um Envio da aba Custos no formato de `JobAnalytics.jobs` (bridge/analytics.py), o das linhas do contrato. */
-function linhaDeCustos({
-  jobId, lang = 'en', createdAt, status = 'completed', stage, pedidas = 1, enviadas, lastError = null,
-  custos = {}, imagens = {}, economia = 0, baralho = '',
-}) {
-  const costs = {
-    cardUsd: custos.cartoes || 0,
-    imageJudgeUsd: custos.escolha || 0,
-    imageGuardUsd: custos.triagem || 0,
-    imageGenerationUsd: custos.geradas || 0,
-    otherUsd: custos.outros || 0,
-  };
-  costs.totalUsd = Object.values(costs).reduce((a, b) => a + b, 0);
-  const images = {
-    ...imagensZeradas(),
-    real: imagens.real || 0,
-    generated: imagens.geradas || 0,
-    skipped: imagens.sem || 0,
-    failed: imagens.falhas || 0,
-    savingsUsd: economia,
-  };
-  images.total = images.real + images.generated + images.skipped + images.failed;
-  const pct = parte => (images.total ? Math.round((parte / images.total) * 1000) / 10 : 0);
-  Object.assign(images, { realPct: pct(images.real), generatedPct: pct(images.generated), skippedPct: pct(images.skipped), failedPct: pct(images.failed) });
-  const successfulCards = enviadas ?? (status === 'completed' ? pedidas : 0);
-  return {
-    jobId,
-    createdAt,
-    updatedAt: createdAt,
-    lang,
-    deckName: baralho,
-    imageSource: 'real',
-    status,
-    stage: stage || status,
-    requestedCards: pedidas,
-    successfulCards,
-    failedCards: ['failed', 'partial'].includes(status) ? pedidas - successfulCards : 0,
-    lastError,
-    costs,
-    images,
-    matchedRecords: 1,
   };
 }
 

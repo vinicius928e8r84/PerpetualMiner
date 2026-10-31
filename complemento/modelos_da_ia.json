@@ -1,0 +1,11 @@
+{
+  "fonte": "A lista nossa do modelo dos cartões (#157): viaja com a extensão, dentro da Conexão com o Anki. `texto` e `foto` dizem o que o modelo faz; a chave só oferece quem tem os dois. `saida` é o dia em que a OpenAI tira o modelo do ar (AAAA-MM-DD), ou null enquanto ela não anunciou: no dia o Envio passa sozinho para o Automático. Os modelos aqui são os que o motor chama com `temperature`.",
+  "modelos": [
+    {"modelo": "gpt-4o", "texto": true, "foto": true, "saida": null},
+    {"modelo": "gpt-4o-mini", "texto": true, "foto": true, "saida": null},
+    {"modelo": "gpt-4.1", "texto": true, "foto": true, "saida": null},
+    {"modelo": "gpt-4.1-mini", "texto": true, "foto": true, "saida": null},
+    {"modelo": "gpt-4.1-nano", "texto": true, "foto": true, "saida": null},
+    {"modelo": "gpt-3.5-turbo", "texto": true, "foto": false, "saida": null}
+  ]
+}

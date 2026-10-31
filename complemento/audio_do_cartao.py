@@ -2,7 +2,11 @@
 nome do arquivo que a nota cita. Quem usa é `envio.Trabalho`, que herda daqui; nada do áudio fica na pasta de dados: ele
 vai do Google à coleção do Anki na mesma volta, e o nome vem do `guid` do Cartão (um por Cartão, igual a cada volta)."""
 
-from . import voz
+from . import custos, voz, voz_da_openai
+
+# A reserva da voz (#174): uma lista aberta de provedores; o pedido a diz (`tts.reserva`), e sem ela vale esta. Um nome que a Conexão
+# não conhece é pulado, então um provedor novo entra aqui e em `_a_reserva`, sem mudar o pedido.
+RESERVA_PADRAO = ["openai"]
 
 # As Frases foram apagadas (Apagar tudo) antes de este Cartão ter o texto: não há de onde gerá-lo.
 FRASE_APAGADA = "phrase_wiped"
@@ -21,8 +25,36 @@ def aplicar_os_sotaques(config, lang, tts):
 class AudioDoCartao:
     """O que o `Trabalho` faz para o Cartão ganhar voz; usa `fila`, `motor`, `logger`, `voz_base`, `esperas_da_openai`, `_dormir` e `_etapa` dele."""
 
-    def _a_voz(self, texto, lang, sotaque):
-        """O áudio de um texto, pedido de novo (nas esperas da OpenAI) enquanto a voz falha por um motivo passageiro."""
+    def _a_voz(self, texto, lang, sotaque, reserva, job_id, cartao_id):
+        """O áudio de um texto: o do Google e, se ele falha, o da primeira voz de reserva que fala; sem nenhuma, a falha é a do Google."""
+        try:
+            return self._a_voz_do_google(texto, lang, sotaque)
+        except voz.ErroDaVoz:
+            for nome in reserva:
+                audio = self._a_reserva(nome, texto, job_id, cartao_id)
+                if audio:
+                    return audio
+            raise
+
+    def _a_reserva(self, nome, texto, job_id, cartao_id):
+        """O áudio da voz de reserva `nome`, ou None se ela não existe aqui, não tem com que falar ou falhou (o log diz só o código)."""
+        if nome != "openai":
+            return None
+        chave = self.cofre.ler("openai")  # só a chave: o plano do ChatGPT não cobre voz
+        if not chave:
+            return None
+        try:
+            audio = voz_da_openai.pedir_o_audio(self.openai_base, chave, texto)
+        except voz.ErroDaVoz as erro:
+            self.logger.warning("Envio %s: a voz de reserva (%s) do Cartão %s falhou (%s)", job_id, nome, cartao_id, erro.codigo)
+            return None
+        with self.fila.tranca:
+            custos.anotar_a_voz(self.fila.pasta_dos_custos(job_id), voz_da_openai.MODELO, len(texto), voz_da_openai.DOLARES_POR_MIL_LETRAS)
+        self.logger.info("Envio %s: o áudio do Cartão %s veio da voz de reserva (%s)", job_id, cartao_id, nome)
+        return audio
+
+    def _a_voz_do_google(self, texto, lang, sotaque):
+        """O áudio do Google, pedido de novo (nas esperas da OpenAI) enquanto a voz falha por um motivo passageiro."""
         for espera in (None,) + self.esperas_da_openai:
             if espera is not None:
                 self._dormir(espera)
@@ -43,12 +75,13 @@ class AudioDoCartao:
         analisar = self.motor.parser.parse_mining_line_ru if pedido["lang"] == "ru" else self.motor.parser.parse_mining_line
         trabalho = self.motor.parser.get_card_jobs(analisar(linha))[int(posicao)]
         palavra, frase = self.motor.generate_audio.voices(trabalho, conteudo, config)
+        reserva = pedido["tts"].get("reserva", RESERVA_PADRAO)
         self._etapa(job_id, "generate_audio")
         da_palavra, da_frase = guid + "_word.mp3", guid + "_phrase.mp3"
         arquivos = {}
         for nome, (texto, lang, sotaque) in ((da_palavra, palavra), (da_frase, frase)):
             try:
-                arquivos[nome] = self._a_voz(texto, lang, sotaque)
+                arquivos[nome] = self._a_voz(texto, lang, sotaque, reserva, job_id, cartao_id)
             except voz.ErroDaVoz as erro:
                 self.logger.warning("Envio %s: o áudio do Cartão %s não veio (%s)", job_id, cartao_id, erro.codigo)
                 raise

@@ -47,6 +47,8 @@ function fakeNoContextoDe(exemplo) {
   if (exemplo.contexto.itemDeLogin) fakeDoExemplo.definirItemDeLogin(exemplo.contexto.itemDeLogin);
   if (exemplo.contexto.fila) fakeDoExemplo.definirFila(exemplo.contexto.fila);
   if (exemplo.contexto.chatgpt) fakeDoExemplo.chatgpt.definir(exemplo.contexto.chatgpt);
+  if (exemplo.contexto.modelo) fakeDoExemplo.modelo.definir(exemplo.contexto.modelo);
+  if (exemplo.contexto.voz) fakeDoExemplo.voz.definir(exemplo.contexto.voz);
   if (exemplo.contexto.perfis) fakeDoExemplo.definirPerfis(exemplo.contexto.perfis, { marcado: exemplo.contexto.perfilMarcado ?? null, aberto: exemplo.contexto.perfil });
   return { fakeDoExemplo, google };
 }
@@ -56,7 +58,7 @@ function guardado({ fakeDoExemplo, google }) {
   return {
     chave: fakeDoExemplo.chaveNaConexao(), estadoDaChave: fakeDoExemplo.estadoDaChave(), item: fakeDoExemplo.itemDeLogin(),
     nuvem: google.chaveDaOpenAIDe('uid-teste'), envios: JSON.parse(JSON.stringify(fakeDoExemplo.envios)),
-    chatgpt: fakeDoExemplo.chatgpt.situacao(),
+    chatgpt: fakeDoExemplo.chatgpt.situacao(), modelo: fakeDoExemplo.modelo.guardado(),
     perfilMarcado: fakeDoExemplo.perfilMarcado(), perfilAberto: fakeDoExemplo.perfilAberto(),
   };
 }
@@ -117,6 +119,9 @@ async function conferirOsExemplos() {
   // As linhas de Custos que os testes de tela montam (definirCustos) têm as chaves das do contrato.
   dosTestes.definirCustos([{ jobId: 'job-en-1', createdAt: '2026-10-12T10:00:00-03:00', custos: { cartoes: 0.01 } }]);
   formas(await lido('/analytics/jobs', { lang: 'all' }), exemploDe('os custos de todo o período'));
+  // Com o plano do ChatGPT (#159), a linha leva `plan`, como a do contrato.
+  dosTestes.definirCustos([{ jobId: 'job-en-2', createdAt: '2026-10-12T10:00:00-03:00', plano: { cartoes: 2, economia: 0.009 } }]);
+  formas(await lido('/analytics/jobs', { lang: 'all' }), exemploDe('os custos de um Envio feito pelo plano trazem os Cartões e o que a chave teria cobrado'));
   // Um Envio que o painel cria no fake tem a forma do da fila do contrato (a lista e o estado).
   const criado = criarFakeAnki();
   const envio = contrato.exemplos.find(e => e.nome === 'criar um Envio entrega as Frases à Conexão').pedido.corpo;

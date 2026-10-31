@@ -21,7 +21,7 @@
     failed: { tom: 'erro', selo: 'veio-selo--erro', retomavel: true },
   };
   const ANDANDO = { tom: 'andando', selo: 'veio-selo--info', retomavel: false };
-  // As 4 origens das imagens, na ordem e com a cor da série (a exceção de dataviz do Veio).
+  // As 4 origens das imagens, na ordem e com a cor da série (exceção de dataviz do Veio).
   const ORIGENS = [
     { chave: 'real', rotulo: 'BRG-09.fotoReal', serie: 'real' },
     { chave: 'generated', rotulo: 'BRG-09.geradaPorIa', serie: 'gerada' },
@@ -29,7 +29,7 @@
     { chave: 'failed', rotulo: 'BRG-09.falhou', serie: 'falhou' },
   ];
 
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, Contexto, IDIOMAS, PrimeiraConexao, PedidoAoAnki } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, Contexto, IDIOMAS, PrimeiraConexao, PedidoAoAnki, PlanoDosCustos } = raiz;
   const { haQuanto } = Contexto;
   const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
@@ -106,7 +106,7 @@
   /** A Conexão já respondeu, ligada ou desligada, nesta página. */
   const jaRespondeu = () => ConexaoAnki.ultimaResposta() !== null;
 
-  // A situação que a última notificação já tinha dito: ler os custos é decidido contra ela.
+  // A situação da última notificação: ler os custos é decidido contra ela.
   let anterior = CONEXAO.CONECTANDO;
 
   function aoMudarAConexao(situacao) {
@@ -116,7 +116,7 @@
     desenhar();
   }
 
-  /** Confere a Conexão e, ligada, lê os custos de novo (o Tentar de novo do BRG-04). */
+  /** Confere a Conexão e, ligada, lê os custos de novo (Tentar de novo do BRG-04). */
   async function atualizar() {
     const situacao = await ConexaoAnki.conferir();
     if (situacao === CONEXAO.LIGADA) ler();
@@ -132,7 +132,7 @@
     if (await atualizar() === CONEXAO.LIGADA) for (const ouvinte of ouvintesDoAtualizar) ouvinte();
   }
 
-  /** `ouvinte` roda a cada ↻ Atualizar com a Conexão ligada (e no `atualizar` de quem o pede). */
+  /** `ouvinte` roda a cada ↻ Atualizar com a Conexão ligada. */
   function aoAtualizar(ouvinte) {
     ouvintesDoAtualizar.push(ouvinte);
   }
@@ -221,7 +221,7 @@
   function desenharCustos() {
     const vista = vistaDosCustos();
     const comDados = vista === 'dados' || vista === 'antiga';
-    // O último dado vale para o período em que foi lido: os controles mostram esse.
+    // O último dado vale para o período lido: os controles mostram esse.
     const periodo = vista === 'antiga' ? estado.dados : estado;
     // Sem a Conexão, outro período não teria de onde vir: os controles ficam
     // parados no do último dado até ela voltar.
@@ -253,7 +253,7 @@
       const envios = enviosDoIdioma();
       desenharAzulejos();
       const soma = somar(envios);
-      corpo.replaceChildren(faixaDeResumo(soma), origemDasImagens(soma), listaEDetalhe(envios));
+      corpo.replaceChildren(...[PlanoDosCustos.cartao(envios, dinheiro), faixaDeResumo(soma), origemDasImagens(soma), listaEDetalhe(envios)].filter(Boolean));
       desenharAvancado(envios, soma);
     }
     if (foco) corpo.querySelector(`[data-foco="${CSS.escape(foco)}"]`)?.focus();
@@ -269,8 +269,8 @@
 
   /**
    * Só o selo BRG-12, sem o Detalhes: Baralhos e termos e Vocabulário. O motivo
-   * é o Anki fechado (a Conexão não responde); `'atualizacao'` é a Conexão que
-   * responde com o último dado que tinha, porque não deu para atualizar.
+   * é o Anki fechado (sem resposta); `'atualizacao'` é a Conexão que responde
+   * com o último dado que tinha, porque não deu para atualizar.
    */
   function seloDoDadoAntigo(quando, motivo = 'anki') {
     return elemento('span', 'anki-selo-antigo', textoDaVoz(`BRG-12.${motivo}`, { quando: haQuanto(quando) }));

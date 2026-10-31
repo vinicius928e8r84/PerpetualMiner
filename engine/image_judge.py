@@ -77,6 +77,16 @@ def _image_data_url(path: Path) -> str:
     return f"data:{mime};base64,{raw}"
 
 
+def _partes_da_responses(content: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The chat's parts as the Responses API's: `input_text` and `input_image`. `json_object` needs the word JSON in the input."""
+    partes = [
+        {"type": "input_image", "image_url": parte["image_url"]["url"]} if parte["type"] == "image_url" else {"type": "input_text", "text": parte["text"]}
+        for parte in content
+    ]
+    partes[0]["text"] += "\nReply with the JSON verdict."
+    return partes
+
+
 def _card_brief(card_text: str) -> str:
     lines = [line.strip() for line in (card_text or "").splitlines() if line.strip()]
     keep: list[str] = []
@@ -131,8 +141,10 @@ def rank_candidates(
     mode: str,
     openai_base: str = openai_http.OPENAI_BASE,
     label: str | None = None,
+    plano: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """`label` is what the cost record says the call was for (the keyword by default; the add-on passes the card's id)."""
+    """`label` is what the cost record says the call was for (the keyword by default; the add-on passes the card's id).
+    `plano` (`{token, modelo}`): the judge goes through the ChatGPT plan's Responses API, the JSON by `text.format`, with no cost record."""
     content: list[dict[str, Any]] = [{
         "type": "text",
         "text": (
@@ -181,18 +193,22 @@ def rank_candidates(
         }
 
     try:
-        raw, usage = openai_http.completar(
-            openai_base,
-            api_key,
-            model,
-            [
-                {"role": "system", "content": _SYSTEM},
-                {"role": "user", "content": content},
-            ],
-            temperatura=0,
-            formato_json=True,
-            repeticoes=openai_http.REPETICOES_DA_IMAGEM,
-        )
+        if plano:
+            raw, usage = openai_http.responder(
+                openai_base, plano["token"], plano["modelo"], _SYSTEM, _partes_da_responses(content), openai_http.TEMPO_DA_IMAGEM, formato_json=True)
+        else:
+            raw, usage = openai_http.completar(
+                openai_base,
+                api_key,
+                model,
+                [
+                    {"role": "system", "content": _SYSTEM},
+                    {"role": "user", "content": content},
+                ],
+                temperatura=0,
+                formato_json=True,
+                repeticoes=openai_http.REPETICOES_DA_IMAGEM,
+            )
     except openai_http.ErroDaOpenAI as exc:
         if exc.codigo != openai_http.IMAGEM_INVALIDA:
             raise
@@ -203,7 +219,8 @@ def rank_candidates(
             len(valid_index_map),
         )
         return _invalid_image_format_fallback(mode, valid_index_map)
-    _record_cost(log_dir, model, usage, f"[image_judge] {label or keyword}")
+    if not plano:  # the plan is not paid per call
+        _record_cost(log_dir, model, usage, f"[image_judge] {label or keyword}")
 
     try:
         data = json.loads(raw)

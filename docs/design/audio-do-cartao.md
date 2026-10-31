@@ -39,14 +39,14 @@ fica `failed` com um código, sem nota, e o Tentar de novo o refaz sem pagar o t
 O código vai para o Detalhes, como os outros da §2 de `envio-no-complemento.md` (sem cópia própria nesta fatia: a tela diz “não
 entrou”). O log cita o Cartão e o código, nunca o que o Google respondeu nem a Palavra ou a Frase.
 
-**Risco 11 (visível, não resolvido aqui):** a voz da Palavra por `translate.google.com` (sotaque `com`) deu 400 só no Mac do dono. Com
-esta fatia, isso vira `tts_rejected` no Cartão. A reserva (outra rota para a voz) é o ticket 36, #174.
+**Risco 11:** a voz da Palavra por `translate.google.com` (sotaque `com`) deu 400 só no Mac do dono. Sem reserva, isso é `tts_rejected`
+no Cartão; com a reserva (a seção abaixo, #174), o Cartão entra com a voz da OpenAI.
 
 ## Limites aceitos
 
 - **Duplicata gasta a voz:** o Cartão que acaba `duplicate` já pediu o áudio antes de a coleção dizer que a frente existia (a busca da
   duplicata e a gravação são uma função só, na thread principal). A voz é de graça.
-- **Mesmo endereço do gTTS, mesma exposição:** o Google pode mudar o pedido e quebrar o gTTS e a Conexão juntos; a reserva é o #174.
+- **Mesmo endereço do gTTS, mesma exposição:** o Google pode mudar o pedido e quebrar o gTTS e a Conexão juntos; a reserva (#174) cobre a falha.
 - **O Anki de verdade:** `col.media.write_data` (Anki 2.1.50 ou mais novo) é conferido só contra um `mw` de mentira; o ensaio do dono no
   Mac é o #269.
 
@@ -64,3 +64,26 @@ esta fatia, isso vira `tts_rejected` no Cartão. A reserva (outra rota para a vo
 | pelo adaptador do Anki, na thread principal | `test_no_anki_envio.py` |
 | o motor de áudio importa no pacote sem gTTS | `test_motor.py`, `test_pacote.py` |
 | a Conexão de hoje diz o mesmo texto e sotaque (gTTS trocado na importação) | `engine/test_generate_audio.py` |
+
+## A reserva e o Ouvir (#174)
+
+Contrato: [`complemento/contrato/voz.md`](../../complemento/contrato/voz.md). A voz padrão segue sendo a do Google. A **reserva é uma lista**
+de provedores (`tts.reserva` no pedido do Envio; sem ela vale `["openai"]`, `[]` é sem reserva) que a Conexão tenta na ordem **depois** de
+o Google esgotar as esperas ou ser recusado (`tts_rejected`, `tts_empty`, `tts_unreachable`). Hoje só existe a `openai` (`voz_da_openai.py`,
+`POST /v1/audio/speech`, `tts-1`, voz `alloy`, o mesmo MP3 que entra na nota), **pela chave**: o plano do ChatGPT não cobre voz, e sem a chave
+a reserva é pulada. Cada Palavra e cada Frase cai sozinha: o Google pode falar uma e a reserva a outra. Se todas falham, o Cartão falha com o
+código do Google. A voz que falou entra nos custos do Envio (`type: tts`, US$ 0,015 por mil letras, na linha `otherUsd` da aba Custos); o
+Google é de graça e não anota nada. O log diz o Cartão e o código, nunca o texto nem a chave. A voz do Anki (`{{tts}}` do tipo de nota) não entra.
+
+Na extensão, o Avançado dos Ajustes de envio passa a se chamar “voz e sotaque do áudio” (BRG-07): os dois sotaques do Google, a **Voz de
+reserva** (`ttsReserva`: `openai` ou `nenhuma`, padrão `openai`) e um **Ouvir** ao lado de cada seletor. O pedido do Envio só leva `reserva`
+quando a pessoa mudou o padrão. O Ouvir é `POST /voz/ouvir`: a Conexão fala uma frase de amostra (uma por idioma) com a voz que está na tela,
+salva ou não, e o painel toca o MP3; não grava nada. A Conexão de hoje (`bridge/`) não tem a rota nem a reserva (sai no #179).
+
+| o quê | teste |
+|---|---|
+| o 400 do Google (risco 11) cai para a OpenAI pela chave, na Palavra e na Frase, e o Cartão entra com os dois áudios | `complemento/test_voz_de_reserva.py` |
+| sem chave, só com o login do ChatGPT, sem reserva no pedido ou com a OpenAI recusando: o Cartão falha com o código do Google | `test_voz_de_reserva.py` |
+| a lista: nome desconhecido pulado, forma inválida recusada, custo da voz paga nos Custos | `test_voz_de_reserva.py` |
+| o Ouvir do Google (sotaque e idioma), da OpenAI, sem chave, recusado, pedido inválido | `complemento/test_ouvir_a_voz.py` e o contrato `exemplos-da-voz.json` |
+| os seletores, o Ouvir, o que fica guardado e o que o Envio leva | `e2e/tests/painel-ajustes-voz.spec.js` |
