@@ -26,7 +26,7 @@ FOTOS = {"gave up": ["foto-a", "foto-b"]}
 
 def imagens(campos):
     """Os arquivos que os campos da nota mostram (`<img src="...">`)."""
-    return re.findall(r'<img src="([^"]+)">', campos["Frente"] + campos["Verso"])
+    return re.findall(r'<img src="([^"]+)">', "".join(campos.values()))
 
 
 def so_a_imagem(midia):
@@ -150,7 +150,7 @@ class JuntoComOAudio(unittest.TestCase):
             estado, notas = enviar(conexao)
         self.assertEqual((estado["status"], len(notas)), ("completed", 1))
         arquivo, = imagens(notas[0]["campos"])
-        sons = re.findall(r"\[sound:([^\]]+)\]", notas[0]["campos"]["Frente"] + notas[0]["campos"]["Verso"])
+        sons = re.findall(r"\[sound:([^\]]+)\]", "".join(notas[0]["campos"].values()))
         self.assertEqual((len(sons), sorted(notas[0]["midia"])), (2, sorted(sons + [arquivo])))
         self.assertEqual(notas[0]["midia"][arquivo], png_de("foto-b"))
 
@@ -174,7 +174,7 @@ class JuntoComOAudio(unittest.TestCase):
         self.assertEqual((estado["status"], len(notas)), ("completed", 1))
         arquivo, = imagens(notas[0]["campos"])
         self.assertEqual(notas[0]["midia"][arquivo], png_de("foto-b"))
-        da_palavra = re.findall(r"\[sound:([^\]]+)\]", notas[0]["campos"]["Verso"])
+        da_palavra = re.findall(r"\[sound:([^\]]+)\]", notas[0]["campos"]["Áudio da palavra"])
         self.assertEqual(notas[0]["midia"][da_palavra[0]], audio_da_openai("alloy", "gave up"))
 
     def test_a_imagem_que_falha_com_a_voz_boa_deixa_o_cartao_com_o_audio_e_sem_a_foto(self):
@@ -183,7 +183,7 @@ class JuntoComOAudio(unittest.TestCase):
             conexao.openai.recusa_da_imagem = (503, "server_error")
             estado, notas = enviar(conexao)
         self.assertEqual((estado["status"], len(notas), imagens(notas[0]["campos"])), ("completed", 1, []))
-        self.assertEqual(sorted(notas[0]["midia"]), sorted(re.findall(r"\[sound:([^\]]+)\]", notas[0]["campos"]["Frente"] + notas[0]["campos"]["Verso"])))
+        self.assertEqual(sorted(notas[0]["midia"]), sorted(re.findall(r"\[sound:([^\]]+)\]", "".join(notas[0]["campos"].values()))))
 
 
 class SoAImagemFalha(unittest.TestCase):

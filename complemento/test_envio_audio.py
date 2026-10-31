@@ -31,8 +31,8 @@ def sem_reserva():
 
 
 def sons(campos):
-    """Os nomes dos arquivos que os campos da nota tocam (`[sound:...]`), do verso e da frente."""
-    return re.findall(r"\[sound:([^\]]+)\]", campos["Frente"]), re.findall(r"\[sound:([^\]]+)\]", campos["Verso"])
+    """Os nomes dos arquivos que os campos da nota tocam (`[sound:...]`): o da frase e o da palavra."""
+    return re.findall(r"\[sound:([^\]]+)\]", campos.get("Áudio da frase", "")), re.findall(r"\[sound:([^\]]+)\]", campos.get("Áudio da palavra", ""))
 
 
 def so_o_audio(midia):

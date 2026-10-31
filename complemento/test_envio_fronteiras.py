@@ -161,7 +161,7 @@ class AMorteEmCadaGravacaoDoCriarEDoTrabalho(unittest.TestCase):
                     tentar(conexao.criar, dois_cartoes())
                     esperar_ate(lambda: fronteiras.morta or ler_estado(pasta).get("status") in envio.FIM)
                     time.sleep(0.15)
-            gravadas_ao_morrer = {nota["guid"]: nota["campos"]["Verso"].split(" - ")[0] for nota in colecao.gravadas}
+            gravadas_ao_morrer = {nota["guid"]: nota["campos"]["Palavra"].split(" - ")[0] for nota in colecao.gravadas}
             na_fila_ao_morrer = ler_a_fila(pasta)
             with EnvioNoTeste(pasta, colecao=colecao) as conexao:
                 time.sleep(0.15)
@@ -181,7 +181,7 @@ class AMorteEmCadaGravacaoDoCriarEDoTrabalho(unittest.TestCase):
         self.assertEqual(estado["duplicatePhraseIds"], [], "%s: a nota que o próprio Envio gravou não é duplicata" % rotulo)
         self.assertEqual([item["jobId"] for item in fila], [ID], "%s: o Envio entra na fila uma vez" % rotulo)
         self.assertTrue(pedido_gravado and estado_gravado, "%s: id encalhado (a fila tem um id sem pedido ou sem estado)" % rotulo)
-        self.assertEqual(sorted(nota["campos"]["Verso"].split(" - ")[0] for nota in colecao.gravadas), ["give up", "late"], rotulo)
+        self.assertEqual(sorted(nota["campos"]["Palavra"].split(" - ")[0] for nota in colecao.gravadas), ["give up", "late"], rotulo)
         for guid, palavra in gravadas_ao_morrer.items():
             self.assertFalse(
                 [pedido_ for pedido_ in depois if "Target keyword for this card: %s" % palavra in pedido_ or palavra + " : " in pedido_],

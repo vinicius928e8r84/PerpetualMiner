@@ -1,0 +1,127 @@
+"""A criação dos tipos de nota e dos Baralhos (#161) como qualquer adaptador de coleção a cumpre: o tipo de nota próprio de cada idioma,
+com todos os campos desde o nascimento, os Baralhos só de quem não tem nenhum, e nunca um repetido nem um Cartão antigo mexido.
+Uma parte do contrato do adaptador (`test_colecao_em_memoria.ContratoDoAdaptadorDaColecao`, de onde vêm `adaptador` e `sincronizar`):
+o adaptador em memória e o do Anki herdam esta parte e passam pelos mesmos testes.
+"""
+
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from complemento import baralhos, tipo_de_nota  # noqa: E402
+
+# O que os níveis, a morfologia do russo, as frentes e a Criação vão usar (#138, “o nome exato dos campos é da construção”):
+# mudar os campos depois força uma sincronização completa no Anki, então todos nascem juntos.
+CAMPOS_DOS_DOIS = [
+    "Frase", "Áudio da frase", "Palavra", "Áudio da palavra", "Pronúncia", "Tradução literal", "Tradução natural", "Contexto da cena",
+    "Fonte", "Imagem",
+    "Definição", "Outro exemplo",  # o Intermediário e o Avançado
+    "Dica", "Frase com lacuna",  # a frente Lacuna
+    "Frase escrita", "Escrito antes", "Correção",  # a frente Criação e a correção do próximo Envio
+]
+CAMPOS_SO_DO_INGLES = ["Significado simples", "Gatilho"]  # o Cartão de inglês de hoje, que o Avançado continua
+CAMPOS_SO_DO_RUSSO = ["Sílaba forte", "Morfologia", "Explicação das cores", "Mesma raiz", "Raiz"]  # a morfologia do russo
+ANKI_EM_INGLES = {"baralhos": [{"nome": "Default"}], "tiposDeNota": {"Basic": ["Front", "Back"]}}
+SO_O_DEFAULT = {"baralhos": [{"nome": "Default"}]}
+
+
+class ContratoDaCriacao:
+    def preparar(self, colecao):
+        return tipo_de_nota.preparar(colecao)
+
+    def test_cada_idioma_ganha_o_tipo_de_nota_proprio_com_todos_os_campos_desde_o_nascimento(self):
+        colecao = self.adaptador(SO_O_DEFAULT)
+        self.preparar(colecao)
+        self.assertEqual(colecao.tipo_de_nota("PerpetualMiner Inglês"), CAMPOS_DOS_DOIS + CAMPOS_SO_DO_INGLES)
+        self.assertEqual(colecao.tipo_de_nota("PerpetualMiner Russo"), CAMPOS_DOS_DOIS + CAMPOS_SO_DO_RUSSO)
+
+    def test_repetir_nao_cria_tipo_de_nota_nem_baralho_repetido(self):
+        colecao = self.adaptador(SO_O_DEFAULT)
+        primeira = self.preparar(colecao)
+        baralhos_antes, tipos_antes = sorted(colecao.nomes_dos_baralhos()), self.todos_os_tipos(colecao)
+        repetida = self.preparar(colecao)
+        self.assertEqual((sorted(colecao.nomes_dos_baralhos()), self.todos_os_tipos(colecao)), (baralhos_antes, tipos_antes))
+        self.assertEqual(primeira, {"tipos": {"en": True, "ru": True}, "baralhos": ["PerpetualMiner::Inglês", "PerpetualMiner::Russo"]})
+        self.assertEqual(repetida, {"tipos": {"en": False, "ru": False}, "baralhos": []})
+
+    def test_numa_instalacao_nova_os_dois_baralhos_nascem_dentro_do_baralho_perpetualminer(self):
+        colecao = self.adaptador(SO_O_DEFAULT)
+        self.preparar(colecao)
+        nomes = colecao.nomes_dos_baralhos()
+        self.assertIn("PerpetualMiner::Inglês", nomes)
+        self.assertIn("PerpetualMiner::Russo", nomes)
+
+    def test_num_anki_em_portugues_o_baralho_padrao_se_chama_padrao_e_ainda_assim_e_uma_instalacao_nova(self):
+        colecao = self.adaptador({"baralhos": [{"nome": "Padrão"}], "baralhoPadrao": "Padrão", "tiposDeNota": {"Básico": ["Frente", "Verso"]}})
+        resultado = self.preparar(colecao)
+        self.assertEqual(resultado["baralhos"], ["PerpetualMiner::Inglês", "PerpetualMiner::Russo"])
+        self.assertEqual(self.preparar(colecao)["baralhos"], [])
+
+    def test_quem_ja_tem_baralho_fica_com_o_seu_e_nenhum_baralho_nosso_e_criado(self):
+        colecao = self.adaptador({"baralhos": [{"nome": "Default"}, {"nome": "CIMV"}, {"nome": "RUSSIAN"}]})
+        resultado = self.preparar(colecao)
+        self.assertEqual(sorted(colecao.nomes_dos_baralhos()), ["CIMV", "Default", "RUSSIAN"])
+        self.assertEqual(resultado["baralhos"], [])
+        self.assertEqual(resultado["tipos"], {"en": True, "ru": True})  # o tipo de nota nasce para quem já tem baralho também
+
+    def test_um_baralho_de_outro_nome_que_a_pessoa_ja_tem_basta_para_nao_criar_os_nossos(self):
+        colecao = self.adaptador({"baralhos": [{"nome": "Default"}, {"nome": "Meu inglês"}]})
+        self.assertEqual(self.preparar(colecao)["baralhos"], [])
+
+    def test_os_cartoes_antigos_nao_sao_renomeados_convertidos_nem_apagados(self):
+        colecao = self.adaptador(self.DESCRICAO)
+        antes = {baralho: colecao.cartoes_do_baralho(baralho) for baralho in ("Inglês", "Inglês::Séries")}
+        tipo_antes = colecao.tipo_de_nota("Básico")
+        self.preparar(colecao)
+        self.assertEqual({baralho: colecao.cartoes_do_baralho(baralho) for baralho in antes}, antes)
+        self.assertEqual(colecao.tipo_de_nota("Básico"), tipo_antes)
+        self.assertEqual(sorted(colecao.nomes_dos_baralhos()), ["Default", "Inglês", "Inglês::Séries", "Vazio"])
+
+    def test_um_tipo_de_nota_que_ja_tem_o_nosso_nome_fica_como_a_pessoa_o_deixou(self):
+        colecao = self.adaptador({"baralhos": [{"nome": "Default"}], "tiposDeNota": {"PerpetualMiner Inglês": ["Frase", "Meu campo"]}})
+        resultado = self.preparar(colecao)
+        self.assertEqual(colecao.tipo_de_nota("PerpetualMiner Inglês"), ["Frase", "Meu campo"])
+        self.assertEqual(resultado["tipos"], {"en": False, "ru": True})
+
+    def test_um_anki_em_ingles_ganha_os_nossos_tipos_e_o_basic_dele_nao_e_tocado(self):
+        colecao = self.adaptador(ANKI_EM_INGLES)
+        self.preparar(colecao)
+        self.assertEqual(colecao.tipo_de_nota("Basic"), ["Front", "Back"])
+        self.assertEqual(colecao.tipo_de_nota("PerpetualMiner Inglês")[0], "Frase")
+
+    def test_sem_colecao_aberta_ou_sincronizando_nada_e_criado(self):
+        fechada = self.adaptador_fechado()
+        with self.assertRaises(baralhos.ColecaoIndisponivel):
+            self.preparar(fechada)
+        colecao = self.adaptador(SO_O_DEFAULT)
+        self.sincronizar(colecao, True)
+        with self.assertRaises(baralhos.ColecaoIndisponivel) as erro:
+            self.preparar(colecao)
+        self.assertEqual(str(erro.exception), "anki_syncing")
+        self.assertEqual(colecao.nomes_dos_baralhos(), ["Default"])
+        self.sincronizar(colecao, False)
+        self.assertEqual(self.preparar(colecao)["tipos"], {"en": True, "ru": True})
+
+    def test_a_busca_de_duplicatas_reconhece_o_cartao_antigo_do_basico_e_o_novo_do_tipo_proprio(self):
+        colecao = self.adaptador({"baralhos": [{"nome": "Default"}, {"nome": "Inglês", "notas": [{"frente": "She <b>gave up</b> smoking", "verso": "x"}]}]})
+        self.preparar(colecao)
+        frentes = ("Frase", "Frente", "Front")
+        gravar = lambda guid, frase: colecao.gravar_cartao(  # noqa: E731
+            "Inglês", "PerpetualMiner Inglês", {"Frase": frase}, [], guid, frentes, frase.casefold().replace("<b>", "").replace("</b>", ""),
+            lambda valor: valor.casefold().replace("<b>", "").replace("</b>", ""))
+        self.assertEqual(gravar("g1", "She <b>gave up</b> smoking"), "duplicate")  # o do dono, no Básico
+        self.assertEqual(gravar("g2", "They keep running"), "added")
+        self.assertEqual(gravar("g3", "They keep <b>running</b>"), "duplicate")  # o novo, no tipo próprio
+        self.assertEqual(len(colecao.cartoes_do_baralho("Inglês")), 2)
+
+    def test_o_cartao_novo_do_tipo_proprio_chega_a_leitura_do_vocabulario_como_frente_e_palavra(self):
+        colecao = self.adaptador({"baralhos": [{"nome": "Default"}]})
+        self.preparar(colecao)
+        colecao.adicionar_nota(
+            "PerpetualMiner::Inglês", "PerpetualMiner Inglês", {"Frase": "She <b>gave up</b> smoking", "Palavra": "gave up – /ɡeɪv ʌp/"}, [], "g1")
+        resposta = baralhos.vocabulario(colecao, "PerpetualMiner::Inglês", "en")
+        self.assertEqual([palavra["word"] for palavra in resposta["words"] if palavra["type"] == "term"], ["gave up"])
+
+    def todos_os_tipos(self, colecao):
+        return sorted(nome for nome in ("Básico", "Basic", "PerpetualMiner Inglês", "PerpetualMiner Russo") if colecao.tipo_de_nota(nome) is not None)

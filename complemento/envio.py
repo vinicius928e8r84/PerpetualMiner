@@ -30,7 +30,7 @@ import os
 import threading
 from datetime import datetime, timezone
 
-from . import baralhos, custos, voz
+from . import baralhos, custos, tipo_de_nota, voz
 from .audio_do_cartao import FRASE_APAGADA, AudioDoCartao
 from .configuracao import OPENVERSE_BASE, VOZ_BASE
 from .imagem_do_cartao import ImagemDoCartao, ParaOEnvio
@@ -122,7 +122,7 @@ def _apagar(caminho):
 
 def cartoes_da_frase(motor, lang, linha):
     """Quantos Cartões uma linha de mineração tem (um por Palavra, na ordem); 0 se a linha não se lê."""
-    entrada = motor.parser.parse_mining_line_ru(linha) if lang == "ru" else motor.parser.parse_mining_line(linha)
+    entrada = motor.parser.parse_line(motor.estilos.estilo(lang)["entrada"], linha)
     return 0 if entrada is None else len(motor.parser.get_card_jobs(entrada))
 
 
@@ -493,13 +493,13 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
         if self.fila.estado_ou_refazer(job_id).get("wiped"):
             return
         config = configuracao_do_motor(self.motor, self.fila, pedido, None)
-        tipo, campos = config["anki"]["note_type"], config["anki"]["fields"]
+        tipo = tipo_de_nota.definicao(pedido["lang"])
         try:
-            nomes = self._com_a_colecao(job_id, lambda: self.colecao.tipo_de_nota(tipo))
+            nomes = self._com_a_colecao(job_id, lambda: tipo_de_nota.garantir(self.colecao, tipo))
         except Apagado:
             return
-        if nomes is None or not {campos["front"], campos["back"]} <= set(nomes):
-            self.logger.warning("Envio %s: a coleção não tem o tipo de nota %r com os campos %r", job_id, tipo, campos)
+        if nomes is None or not set(tipo["campos_do_cartao"]) <= set(nomes):
+            self.logger.warning("Envio %s: o tipo de nota %r não tem os campos do Cartão", job_id, tipo["nome"])
             return self._terminar(job_id, pedido, SEM_TIPO_DE_NOTA)
         try:
             self._os_cartoes(job_id, pedido, config)
@@ -568,7 +568,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
 
     def _gerar_o_texto(self, job_id, pedido, config, cartao_id, phrase_id, linha):
         """Gera o texto de um Cartão, tentando de novo o que falha por um motivo passageiro; devolve o código da falha, ou None."""
-        entrada = self.motor.parser.parse_mining_line_ru(linha) if pedido["lang"] == "ru" else self.motor.parser.parse_mining_line(linha)
+        entrada = self.motor.parser.parse_line(config["estilo"]["entrada"], linha)
         if entrada is None:
             return "invalid_card"
         nome = lambda trabalho, posicao: id_do_cartao(phrase_id, posicao)  # noqa: E731
@@ -586,24 +586,25 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
 
     def _gravar_a_nota(self, job_id, pedido, config, cartao_id, guid, arquivo):
         envio = self.motor.send_to_anki
-        lang, baralho = pedido["lang"], pedido["deckName"]
-        tipo, campos = config["anki"]["note_type"], config["anki"]["fields"]
+        lang, baralho, tipo = pedido["lang"], pedido["deckName"], config["anki"]["note_type"]
         with open(arquivo, encoding="utf-8") as texto:
             conteudo = texto.read()
         try:
-            arquivos, da_frase, da_palavra = self._o_audio(job_id, pedido, config, cartao_id, guid, conteudo)
+            arquivos, da_frase, da_palavra, palavra = self._o_audio(job_id, pedido, config, cartao_id, guid, conteudo)
         except voz.ErroDaVoz as erro:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=erro.codigo)
         imagem, da_imagem = self._a_imagem(job_id, pedido, config, cartao_id, guid, conteudo)  # só a imagem falha: o Cartão vai sem ela
         arquivos.update(imagem)
         if self.fila.estado(job_id).get("wiped"):
             raise Apagado()
-        nota = envio.card_fields(conteudo, lang, phrase_audio_name=da_frase, word_audio_name=da_palavra, image_name=da_imagem)
+        nota = self.motor.nota_do_cartao.campos_da_nota(
+            conteudo, lang, palavra=palavra, audio_da_frase=da_frase, audio_da_palavra=da_palavra, imagem=da_imagem)
+        frentes = (nota["campo_da_frente"],) + self.motor.estilos.nomes_da_frente_de_antes()
         self._etapa(job_id, "send_to_anki")
         try:
             resultado = self._com_a_colecao(job_id, lambda: self.colecao.gravar_cartao(
-                baralho, tipo, {campos["front"]: nota["front"], campos["back"]: nota["back"]}, nota["tags"], guid,
-                campos["front"], nota["normalized_front"], lambda valor: envio.normalize_front(valor, lang), arquivos))
+                baralho, tipo, nota["campos"], nota["etiquetas"], guid,
+                frentes, nota["frente_normalizada"], lambda valor: envio.normalize_front(valor, lang), arquivos))
         except baralhos.TipoDeNotaAusente:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=SEM_TIPO_DE_NOTA)
         except (Interrompido, Apagado):

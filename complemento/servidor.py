@@ -26,6 +26,7 @@ from .rotas_da_chave import (
 from .configuracao import ENDERECO, OPENAI_BASE, OPENVERSE_BASE, VOZ_BASE
 from .item_de_login import AnkiNaoEncontrado
 from .modelo_dos_cartoes import ModeloDosCartoes, lista_nossa
+from .motor import estilos
 from .perfil import PerfilFixo
 from .rotas_da_voz import ROTAS_DA_VOZ
 from .rotas_do_envio import ROTAS_DO_ENVIO
@@ -70,7 +71,7 @@ def _vocabulario(conexao, corpo):
     idioma = str(corpo.get("lang") or "en").strip().lower()
     if not nome:
         return 400, {"error": "deck_required"}
-    if idioma not in baralhos.IDIOMAS:
+    if idioma not in estilos.idiomas():
         return 400, {"error": "invalid_lang"}
     return _lendo_a_colecao(
         "anki_vocabulary_unavailable", lambda: baralhos.vocabulario(conexao.colecao, nome, idioma, corpo)

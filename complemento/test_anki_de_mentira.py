@@ -5,6 +5,7 @@ chama (`pm.load`, `onOpenProfile`, `unloadProfile`, `showProfileManager`; `passo
 """
 
 import queue
+import re
 import sqlite3
 import threading
 import types
@@ -86,22 +87,30 @@ class ColecaoDoAnkiDeMentira:
             "create table cards (id integer primary key, nid integer, did integer, odid integer, type integer, ivl integer);"
         )
         self._baralhos, self._modelos = [], {}
-        proxima = 1700000000000
-        for indice, baralho in enumerate(descricao["baralhos"], start=1):
+        proxima, padrao, seguinte = 1700000000000, descricao.get("baralhoPadrao", "Default"), 2
+        for baralho in descricao["baralhos"]:
+            indice = 1 if baralho["nome"] == padrao else seguinte  # o Baralho padrão do Anki tem o id 1, qualquer que seja o nome dele
+            seguinte += indice != 1
             self._baralhos.append(types.SimpleNamespace(id=indice, name=baralho["nome"]))
             for nota in baralho.get("notas", []):
                 proxima += 1
                 campos = list((nota.get("campos") or {"Frente": nota["frente"], "Verso": nota["verso"]}).items())
                 modelo = self._modelos.setdefault(tuple(nome for nome, _ in campos), len(self._modelos) + 1)
                 self._sqlite.execute("insert into notes (id, mid, flds) values (?, ?, ?)", (proxima, modelo, "\x1f".join(valor for _, valor in campos)))
-                for cartao in nota["cartoes"]:
+                for cartao in nota.get("cartoes", [{"tipo": 0, "intervalo": 0}]):
                     self._sqlite.execute(
                         "insert into cards (nid, did, odid, type, ivl) values (?, ?, 0, ?, ?)", (proxima, indice, cartao["tipo"], cartao["intervalo"])
                     )
-        self._modelos.setdefault(("Frente", "Verso"), len(self._modelos) + 1)
-        self._nomes_dos_modelos = {"Básico": ("Frente", "Verso")}
+        tipos = descricao.get("tiposDeNota") or {"Básico": ["Frente", "Verso"]}  # os tipos de nota que a coleção tem (o “Básico” se não dito)
+        self._nomes_dos_modelos = {nome: tuple(campos) for nome, campos in tipos.items()}
+        for nomes in self._nomes_dos_modelos.values():
+            self._modelos.setdefault(nomes, len(self._modelos) + 1)
+        self.tipos_criados = {}  # os tipos de nota que o complemento criou (`models.add_dict`): nome → o dicionário que ele montou
         self.decks = types.SimpleNamespace(all_names_and_ids=self._conferido(lambda: list(self._baralhos)), id=self._conferido(self._id_do_baralho))
-        self.models = types.SimpleNamespace(get=self._conferido(self._modelo), by_name=self._conferido(self._modelo_por_nome))
+        self.models = types.SimpleNamespace(
+            get=self._conferido(self._modelo), by_name=self._conferido(self._modelo_por_nome), new=self._conferido(self._novo_tipo),
+            new_field=lambda nome: {"name": nome}, add_field=self._conferido(self._juntar_campo), new_template=lambda nome: {"name": nome, "qfmt": "", "afmt": ""},
+            add_template=self._conferido(lambda tipo, modelo: tipo["tmpls"].append(modelo)), add_dict=self._conferido(self._guardar_o_tipo))
         self.db = types.SimpleNamespace(all=self._conferido(lambda sql, *args: [list(linha) for linha in self._sqlite.execute(sql, args)]))
         self.new_note = self._conferido(lambda modelo: NotaDeMentira(modelo["id"], modelo["nomes"]))
         self.add_note = self._conferido(self._adicionar)
@@ -119,7 +128,7 @@ class ColecaoDoAnkiDeMentira:
     def _id_do_baralho(self, nome):
         existente = next((baralho for baralho in self._baralhos if baralho.name == nome), None)
         if existente is None:
-            existente = types.SimpleNamespace(id=len(self._baralhos) + 1, name=nome)
+            existente = types.SimpleNamespace(id=max([baralho.id for baralho in self._baralhos] + [1]) + 1, name=nome)
             self._baralhos.append(existente)
         return existente.id
 
@@ -128,6 +137,27 @@ class ColecaoDoAnkiDeMentira:
         if nomes is None:
             return None
         return dict(self._modelo(self._modelos[nomes]), id=self._modelos[nomes], nomes=nomes)
+
+    @staticmethod
+    def _novo_tipo(nome):
+        return {"name": nome, "flds": [], "tmpls": [], "css": "", "id": 0}
+
+    @staticmethod
+    def _juntar_campo(tipo, campo):
+        tipo["flds"].append(dict(campo, ord=len(tipo["flds"])))
+
+    def _guardar_o_tipo(self, tipo):
+        """`models.add_dict` do Anki: recusa um modelo que cita um campo que o tipo não tem, e o nome que já existe não passa (o Anki renomearia)."""
+        nomes = tuple(campo["name"] for campo in tipo["flds"])
+        for modelo in tipo["tmpls"]:
+            for citado in re.findall(r"\{\{[#^/]?([^{}]+)\}\}", modelo["qfmt"] + modelo["afmt"]):
+                if citado not in nomes and citado != "FrontSide":
+                    raise ValueError("o modelo %r cita o campo %r, que o tipo não tem" % (modelo["name"], citado))
+        if tipo["name"] in self._nomes_dos_modelos or not tipo["tmpls"]:
+            raise ValueError("tipo de nota inválido: %r" % tipo["name"])
+        self._nomes_dos_modelos[tipo["name"]] = nomes
+        self._modelos.setdefault(nomes, len(self._modelos) + 1)
+        self.tipos_criados[tipo["name"]] = tipo
 
     def _adicionar(self, nota, id_do_baralho):
         cursor = self._sqlite.execute(

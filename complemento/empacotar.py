@@ -39,6 +39,8 @@ ARQUIVOS_DO_MOTOR = (
     "extract_prompts.py",
     "generate_audio.py",
     "generate_cards.py",
+    "estilos.json",
+    "estilos.py",
     "generate_images.py",
     "google_images.py",
     "image_guard.py",
@@ -47,11 +49,14 @@ ARQUIVOS_DO_MOTOR = (
     "image_queries.py",
     "image_real_first.py",
     "image_utils.py",
+    "nota_do_cartao.py",
     "openai_http.py",
     "parser.py",
     "prompt_loader.py",
     "prompts/en_card.txt",
+    "prompts/en_iniciante.txt",
     "prompts/ru_card.txt",
+    "prompts/ru_iniciante.txt",
     "send_to_anki.py",
 )
 

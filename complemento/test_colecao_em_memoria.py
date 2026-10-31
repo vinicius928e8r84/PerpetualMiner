@@ -14,6 +14,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos  # noqa: E402
+from complemento.test_contrato_da_criacao import ContratoDaCriacao  # noqa: E402
 from complemento.test_contrato_do_perfil_fixo import ContratoDoPerfilFixo  # noqa: E402
 
 
@@ -38,7 +39,8 @@ class ColecaoEmMemoria:
     `perfil_aberto` é o perfil que a coleção aberta é (o primeiro de `perfis` se não for dito). A Conexão entra no perfil fixo
     sozinha com o Anki na tela de perfis (`entradas`) e o troca a pedido (`trocas`), como `no_anki.ColecaoDoAnki`.
     `"quebra": true` na descrição é uma coleção que levanta um erro inesperado ao ler (o `500` do contrato).
-    `"tiposDeNota"` diz os tipos de nota e os campos de cada um (sem ele, o “Básico” com “Frente” e “Verso”).
+    `"tiposDeNota"` diz os tipos de nota e os campos de cada um (sem ele, o “Básico” com “Frente” e “Verso”); `"baralhoPadrao"`, o nome do Baralho
+    que todo Anki tem (“Default”; “Padrão” num Anki em português).
 
     O lado de gravação guarda cada nota nova em `gravadas` (`{ baralho, tipo, campos, etiquetas, guid }`), para o teste
     conferir; `fechar()`/`abrir()` e `sincronizando` fazem a gravação levantar `ColecaoIndisponivel`, como no Anki.
@@ -53,6 +55,7 @@ class ColecaoEmMemoria:
         self.entradas = []  # os perfis em que a Conexão entrou sozinha (o Anki na tela de perfis)
         self.trocas = []  # (o perfil que estava aberto, o perfil aberto no lugar): o clique em “Abrir <perfil>”
         self._quebra = bool((descricao or {}).get("quebra"))
+        self._padrao = (descricao or {}).get("baralhoPadrao", "Default")  # o nome do Baralho padrão segue o idioma do Anki (“Padrão” em português)
         self._tipos = {nome: list(campos) for nome, campos in ((descricao or {}).get("tiposDeNota") or {"Básico": ["Frente", "Verso"]}).items()}
         self._guids = set()
         self.gravadas = []
@@ -151,13 +154,29 @@ class ColecaoEmMemoria:
         self._guids.add(guid)
         self.gravadas.append({"baralho": baralho, "tipo": tipo_de_nota, "campos": dict(campos), "etiquetas": list(etiquetas), "guid": guid, "midia": guardada})
 
-    def gravar_cartao(self, baralho, tipo_de_nota, campos, etiquetas, guid, campo_da_frente, frente_normalizada, normalizar, midia=None):
+    def criar_tipo_de_nota(self, definicao):
+        self._exigir_gravavel()
+        if definicao["nome"] in self._tipos:
+            return False
+        self._tipos[definicao["nome"]] = list(definicao["campos"])
+        return True
+
+    def criar_baralhos_da_instalacao_nova(self, nomes):
+        self._exigir_gravavel()
+        if any(nome != self._padrao for nome in self._baralhos):
+            return []
+        for nome in nomes:
+            self._baralhos.setdefault(nome, [])
+        return list(nomes)
+
+    def gravar_cartao(self, baralho, tipo_de_nota, campos, etiquetas, guid, campos_da_frente, frente_normalizada, normalizar, midia=None):
         """O passo inteiro de gravar um Cartão (ver `no_anki.ColecaoDoAnki.gravar_cartao`): `"added"` ou `"duplicate"`."""
         self._exigir_gravavel()
         if guid in self._guids:
             return "added"
+        frentes = (campos_da_frente,) if isinstance(campos_da_frente, str) else tuple(campos_da_frente)
         for cartao in self.cartoes_do_baralho(baralho):
-            if any(nome == campo_da_frente and valor and normalizar(valor) == frente_normalizada for nome, valor in cartao["campos"]):
+            if any(nome in frentes and valor and normalizar(valor) == frente_normalizada for nome, valor in cartao["campos"]):
                 return "duplicate"
         self.adicionar_nota(baralho, tipo_de_nota, campos, etiquetas, guid, midia)
         return "added"
@@ -340,7 +359,7 @@ class ContratoDoAdaptadorDaColecao:
         self.assertEqual(colecao.guids_existentes(["g"]), {"g"})
 
 
-class AdaptadorEmMemoria(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, unittest.TestCase):
+class AdaptadorEmMemoria(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, ContratoDaCriacao, unittest.TestCase):
     def adaptador(self, descricao, perfis=("Usuário 1",), aberto=None):
         return ColecaoEmMemoria(descricao, perfis=perfis, perfil_aberto=aberto)
 

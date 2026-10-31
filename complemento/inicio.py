@@ -7,7 +7,8 @@ culpando o complemento. Tudo vai ao logger.
 import os
 import sys
 
-from . import abridor as abridores, item_de_login as itens_de_login, pasta_de_dados, registro
+from . import abridor as abridores, item_de_login as itens_de_login, pasta_de_dados, registro, tipo_de_nota
+from .baralhos import ColecaoIndisponivel
 from .configuracao import OPENAI_BASE, OPENVERSE_BASE, ORIGENS_ACEITAS, PORTA, VERSAO, VOZ_BASE
 from .servidor import Conexao
 
@@ -68,6 +69,20 @@ def iniciar(
         return None
 
 
+def _preparar_a_colecao(conexao, logger):
+    """Os tipos de nota de cada idioma e, numa instalação nova, os Baralhos (#161): agora e a cada perfil que abre, só no perfil marcado. Sem
+    coleção aberta, sincronizando ou noutro perfil, fica para a próxima vez (o Envio cria o tipo de nota que faltar). Nada aqui levanta erro."""
+    try:
+        feito = tipo_de_nota.preparar(conexao.colecao)
+    except ColecaoIndisponivel:
+        return
+    except Exception:  # um Anki que mudou a API de tipos de nota: o Envio só avisa que o tipo falta; a Conexão sobe assim mesmo
+        logger.exception("A coleção não foi preparada")
+        return
+    if any(feito["tipos"].values()) or feito["baralhos"]:
+        logger.info("A coleção foi preparada: tipos de nota criados %s, Baralhos criados %s", sorted(l for l, c in feito["tipos"].items() if c), feito["baralhos"])
+
+
 def _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger):
     """Marca o perfil aberto na primeira conexão (#149) e escreve o abridor com o perfil marcado, agora e a cada perfil que abre
     (`ao_abrir_o_perfil`); a Conexão o reescreve também quando a pessoa escolhe outro perfil. Nada aqui derruba a Conexão."""
@@ -77,6 +92,7 @@ def _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger):
         except Exception as erro:  # sem marca, o Envio só espera: o resto segue
             logger.warning("O perfil aberto não foi marcado: %s", erro)
             return
+        _preparar_a_colecao(conexao, logger)
         if abridor is None:
             return
         try:

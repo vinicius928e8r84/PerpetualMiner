@@ -1,0 +1,27 @@
+# The Card in the Anki: the note type per language and the Beginner Card
+
+What a person sees **inside the Anki** after an Envio (#161): the Conexão com o Anki creates its own note type per language (`PerpetualMiner Inglês`, `PerpetualMiner Russo`) with its own field names, so the Envio no longer depends on the Anki's language (an English Anki, `Basic`/`Front`/`Back`, used to fail with `note_type_missing`). A new Card comes out as **Iniciante** in both languages: the Phrase and its audio on the front; on the back the pronunciation, the literal and the natural meaning in Portuguese with colours linking the parts (the same colour on a chunk of the Phrase and on the chunk of the Literal that translates it), the Word with its audio, and the image. Nothing of this is on a screen of the extension: it is only in the Card, so a change here changes this entry.
+
+## Sub-features
+
+- `card-note-type` the Conexão creates the note type of each language when the profile opens (and the Envio creates it if missing), with **every** field the levels, the Russian morphology, the fronts and the Criação will use (Frase, Áudio da frase, Palavra, Áudio da palavra, Pronúncia, Tradução literal, Tradução natural, Contexto da cena, Fonte, Imagem, Definição, Outro exemplo, Dica, Frase com lacuna, Frase escrita, Escrito antes, Correção; English also Significado simples and Gatilho; Russian also Sílaba forte, Morfologia, Explicação das cores, Mesma raiz, Raiz). Repeating creates nothing; a note type that already has the name is never touched.
+- `card-decks` on a new install (no Baralho but Default) it also creates `PerpetualMiner::Inglês` and `PerpetualMiner::Russo`; whoever already has a Baralho keeps theirs and gets none.
+- `card-beginner` the front template `Frase com áudio` and the Beginner back, from `engine/estilos.json` (language × level: the language of the explanation, the back parts, colours on or off) and `engine/prompts/*_iniciante.txt`. The Russian one starts from the Russian Card of before, explained in Portuguese.
+- `card-old-untouched` old Cards (the owner's `Básico` in CIMV and RUSSIAN) are never renamed, converted or deleted, and the duplicate search reads the old `Frente`/`Front` and the new `Frase`: the same Phrase is “já estava lá” whichever note type holds it.
+
+## How to get to it (user POV)
+
+- Frases › tick phrases › **Enviar ao Anki**; then in the Anki: Ferramentas › Gerenciar Tipos de Nota (the two new types), the deck list (the two new Baralhos on a new install), Navegar and a review (the Card).
+
+## Driving it with the Playwright e2e harness
+
+Nothing here is drivable from the extension: the e2e fake of the Conexão does not make Cards, and the Card is not on any screen. Prove it below the HTTP line, on the real code with fakes only on the network:
+
+- **The Envio, on an in-memory collection.** `python3.9 complemento/test_envio_tipo_de_nota.py` (an English Anki, a Portuguese one, old Cards, a new language by data), `python3.9 complemento/test_inicio_preparo.py` (the preparation on load and on each opened profile) and `python3.9 complemento/test_no_anki.py`, `python3.9 complemento/test_colecao_em_memoria.py` (the creation contract on both adapters). Observable: the fields of the note in `colecao.gravadas`, the note types and Baralhos by name.
+- **The real Anki library.** In a throwaway Python 3.9 venv with `pip install anki` (the Rust backend; the same code on 2.1.50, 2.1.66 and 25.09.5), run the rehearsal that creates a collection in a temporary folder (never a real profile), runs `tipo_de_nota.preparar` and a whole Envio through `no_anki.ColecaoDoAnki`, then renders the Card with Anki's own renderer (`card.question()`, `card.answer()`). Observable: `35 PASS / 0 FAIL`, the rendered front with the bold Word and `[anki:play:q:0]`, the back with the three Portuguese lines, the Word with its audio and the `<img>`.
+
+## Gotchas
+
+- A green run proves the add-on against Anki's library and a fake OpenAI, voice and Openverse; it does **not** prove the Card in the owner's Anki (English UI, pt-BR), the profile hook in the real Anki window, or that the Anki asks for no full sync (measured: creating the note type and the deck does not change `col.scm`; an unexpected full-sync prompt is the signal for the owner to stop): those are the owner's rehearsal (`complemento/LEIA-ME.md`, step 10).
+- Creating our note type and deck does not change `col.scm`, so no full-sync prompt is expected, even with AnkiWeb (a normal sync). Changing fields later is a schema change, which is why they are all born together; a second card template (the other fronts, #166 to #168) also changes `scm` and makes a card for every existing note.
+- The extension's default Baralho is still `CIMV` / `RUSSIAN` (`lib/ajustes-de-envio.js`): the Conexão creates the new Baralhos, but pointing the Ajustes de envio at them is a later ticket.

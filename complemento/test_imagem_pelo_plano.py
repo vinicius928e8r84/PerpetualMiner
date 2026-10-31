@@ -135,7 +135,7 @@ class ComOPlanoESemChave(unittest.TestCase):
             geradas, juizes = list(conexao.openai.imagens), [(a, modo) for a, modo, _ in conexao.openai.juizes]
         self.assertEqual((estado["status"], imagens(notas[0]["campos"]), so_a_imagem(notas[0]["midia"]), geradas), ("completed", [], {}, []))
         self.assertEqual(juizes, [(acesso, "real_only")])
-        self.assertIn("<b>gave up</b>", notas[0]["campos"]["Frente"])
+        self.assertRegex(notas[0]["campos"]["Frase"], r"<b>(<span[^>]*>)?gave up")
 
     def test_sem_chave_e_sem_nenhuma_foto_no_openverse_o_cartao_sai_sem_imagem(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, chave=None) as conexao:
