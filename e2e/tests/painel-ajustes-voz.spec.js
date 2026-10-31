@@ -136,6 +136,8 @@ test('com o Google recusando o pedido, Ouvir diz que não deu para tocar e nada 
   // O erro some quando a voz volta e a pessoa tenta de novo.
   fakes.anki.voz.definir('aceita');
   await ouvir(page, 'Sotaque da palavra').click();
+  // O Ouvir volta a ficar ativo quando o pedido e o toque terminam: só então o que a tela diz é a resposta, não o meio do caminho.
+  await expect(ouvir(page, 'Sotaque da palavra')).toBeEnabled();
   await expect(avancado(page)).not.toContainText('Não deu para tocar esta voz.');
   await expect.poll(() => tocados(page)).toHaveLength(1);
   await estadoFinal(extensao, { [CHAVE]: null });
