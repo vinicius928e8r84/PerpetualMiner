@@ -130,12 +130,18 @@ class Janela:
             self._registrar("a fila de Envios", erro)
             return []
 
+    def _situacao_da_conexao(self):
+        """Desligada; ligada; ou, na passagem do Windows do dono (#178), esperando o Envio de agora da Conexão de hoje terminar."""
+        if self._conexao is None:
+            return "ANK-02.desligada"
+        return "ANK-04.esperando" if self._conexao.situacao_da_passagem == "esperando" else "ANK-02.ligada"
+
     def estado(self):
         envios = self._envios()
         agora = next((e for e in envios if e.ativo), envios[-1] if envios else None)
         terminado = next((e for e in reversed(envios) if not e.ativo), None)
         return Estado(
-            conexao=texto_da_janela.texto("ANK-02.ligada" if self._conexao is not None else "ANK-02.desligada"),
+            conexao=texto_da_janela.texto(self._situacao_da_conexao()),
             versao=self._versao,
             perfil=self._perfil(),
             envio=agora.na_janela() if agora else None,

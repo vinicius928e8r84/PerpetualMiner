@@ -7,12 +7,13 @@ culpando o complemento. Tudo vai ao logger.
 import os
 import sys
 
-from . import abridor as abridores, item_de_login as itens_de_login, pasta_de_dados, registro, tipo_de_nota
+from . import abridor as abridores, item_de_login as itens_de_login, passagem as passagens, pasta_de_dados, registro, tipo_de_nota
 from .baralhos import ColecaoIndisponivel
 from .configuracao import OPENAI_BASE, OPENVERSE_BASE, ORIGENS_ACEITAS, PORTA, VERSAO, VOZ_BASE
 from .servidor import Conexao
 
 ABRIDOR_DESTE_COMPUTADOR = object()
+PASSAGEM_DESTE_COMPUTADOR = object()
 
 
 def iniciar(
@@ -28,6 +29,7 @@ def iniciar(
     voz_base=VOZ_BASE,
     abridor=ABRIDOR_DESTE_COMPUTADOR,
     ao_abrir_o_perfil=None,
+    passagem=PASSAGEM_DESTE_COMPUTADOR,
 ):
     """Prepara `user_files`, escreve o abridor e sobe a Conexão, com o adaptador da coleção que ela lê. Devolve a Conexão, ou None se ela não subiu.
 
@@ -37,6 +39,8 @@ def iniciar(
     Ele é escrito agora e de novo a cada perfil que abre (`ao_abrir_o_perfil` recebe a função que o reescreve; no Anki, o gancho
     `profile_did_open`), sempre com o perfil **marcado** (#149): o que estava aberto na primeira conexão, até a pessoa escolher outro.
     A mesma função marca o perfil aberto quando ainda não há marcado.
+    A `passagem` é a do Windows do dono (#178, `passagem.py`): a Conexão de hoje na porta é esperada, copiada e encerrada antes de esta subir.
+    Omitida, a deste computador (só o Windows tem); `passagem=None` a desliga.
     """
     logger = registro.silencioso()
     try:
@@ -63,6 +67,11 @@ def iniciar(
             item_de_login=item_de_login,
         )
         _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger)
+        if passagem is PASSAGEM_DESTE_COMPUTADOR:
+            passagem = passagens.deste_computador(plataforma=sys.platform, ambiente=os.environ, porta=porta)
+        if passagem is not None and passagem.pendente(conexao):
+            conexao.iniciar_depois(lambda cancelado: passagem.fazer(conexao, cancelado))
+            return conexao
         return conexao if conexao.iniciar() else None
     except Exception:
         logger.exception("O complemento não conseguiu iniciar")

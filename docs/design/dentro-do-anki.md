@@ -63,6 +63,7 @@ que a janela reusa). Entrar no catálogo é dividi-lo, outro ticket.
 | ANK-03.comecou | Enviando {total} {total\|cartão\|cartões} ao Baralho {baralho} | o aviso que some sozinho quando um Envio começa |
 | ANK-03.terminou | {n} {n\|cartão enviado\|cartões enviados} ao Baralho {baralho} | o aviso que some sozinho quando um Envio termina; se for o caso, segue “ · N já estava lá” (ENV-10.jaEstavam) e “ · N não entrou” (ENV-10.naoEntraram) |
 | ANK-03.naoTerminou | O Envio ao Baralho {baralho} não terminou | o aviso do fim de um Envio que não pôs nenhum Cartão no Anki; o motivo fica no último erro da janela |
+| ANK-04.esperando | Esperando o Envio de agora terminar | a linha da Conexão, no lugar de Ligada, enquanto a passagem do Windows do dono espera o Envio da Conexão de hoje terminar (#178, `docs/design/passagem-do-windows.md`) |
 
 ## Provado e não provado
 
