@@ -8,6 +8,7 @@ parar a Conexão, que a encerram. Um Cartão já no Anki, ou com o texto pago, n
 """
 
 from .paradas_do_envio import Apagado, Interrompido
+from .teto_do_mes import PausaPeloTeto
 
 LIMITE_DO_PLANO = "chatgpt_usage_limit"  # o mesmo de `engine/openai_http.LIMITE_DO_PLANO`
 PLANO_NO_LIMITE = {"reason": "plan_limit"}
@@ -21,8 +22,8 @@ def espera_pelo_plano(estado):
     return (estado.get("waiting") or {}).get("reason") == PLANO_NO_LIMITE["reason"]
 
 
-class LimiteDoPlano:
-    """A parte do `Trabalho` que espera o plano e a que diz ao estado do Envio por que ele espera."""
+class LimiteDoPlano(PausaPeloTeto):
+    """A parte do `Trabalho` que espera o plano e a que diz ao estado do Envio por que ele espera (e, de `PausaPeloTeto`, o teto do mês)."""
 
     def _dizer_a_espera(self, job_id, espera):
         """O estado diz por que o Envio espera (`waiting`, que o painel lê); só grava se mudou."""

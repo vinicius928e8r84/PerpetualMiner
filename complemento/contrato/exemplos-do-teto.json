@@ -1,0 +1,432 @@
+{
+  "filas": {
+    "um Envio com o gasto do mês": [
+      {
+        "job": {
+          "jobId": "7d1e9b3a-2c4f-4a6b-8d0e-5f7a9c1b3d5e",
+          "createdAt": "2026-10-12T10:00:00-03:00",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400020,
+              "noAnki": {
+                "1760270400020-0": "added"
+              }
+            },
+            {
+              "phraseId": 1760270400021,
+              "noAnki": {
+                "1760270400021-0": "added"
+              }
+            }
+          ]
+        },
+        "state": {
+          "jobId": "7d1e9b3a-2c4f-4a6b-8d0e-5f7a9c1b3d5e",
+          "status": "completed",
+          "stage": "completed",
+          "completedStages": [],
+          "progress": {},
+          "successfulPhraseIds": [
+            1760270400020,
+            1760270400021
+          ],
+          "failedPhraseIds": [],
+          "duplicatePhraseIds": [],
+          "lastError": null,
+          "updatedAt": "2026-10-12T10:03:00-03:00",
+          "cards": {
+            "1760270400020-0": {
+              "phraseId": 1760270400020,
+              "status": "added",
+              "error": null
+            },
+            "1760270400021-0": {
+              "phraseId": 1760270400021,
+              "status": "added",
+              "error": null
+            }
+          }
+        },
+        "custos": [
+          {
+            "date": "2026-10-12",
+            "type": "tokens",
+            "model": "gpt-4o",
+            "input_tokens": 1000,
+            "output_tokens": 200,
+            "cost_usd": 8.3,
+            "keyword": "1760270400020-0"
+          },
+          {
+            "date": "2026-10-12",
+            "type": "plan_tokens",
+            "model": "gpt-6-luna",
+            "input_tokens": 1000,
+            "output_tokens": 200,
+            "cost_usd": 0.0,
+            "would_cost_usd": 0.0045,
+            "keyword": "1760270400021-0"
+          },
+          {
+            "date": "2026-10-12",
+            "type": "image",
+            "model": "dall-e-3-1024",
+            "source": "dalle",
+            "cost_usd": 0.04,
+            "keyword": "1760270400021-0"
+          },
+          {
+            "date": "2026-09-30",
+            "type": "tokens",
+            "model": "gpt-4o",
+            "input_tokens": 1000,
+            "output_tokens": 200,
+            "cost_usd": 5.0,
+            "keyword": "1760270400020-0"
+          }
+        ]
+      }
+    ],
+    "um Envio pausado pelo teto do mês": [
+      {
+        "job": {
+          "jobId": "5b8d2f4a-9c1e-4d3b-a7f6-0e2c4a6b8d1f",
+          "createdAt": "2026-10-12T10:00:00-03:00",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400030,
+              "noAnki": {
+                "1760270400030-0": "added"
+              }
+            },
+            {
+              "phraseId": 1760270400031,
+              "line": "keep running : They keep running"
+            }
+          ]
+        },
+        "state": {
+          "jobId": "5b8d2f4a-9c1e-4d3b-a7f6-0e2c4a6b8d1f",
+          "status": "running",
+          "stage": "generate_cards",
+          "completedStages": [],
+          "progress": {
+            "done": 1,
+            "total": 2
+          },
+          "successfulPhraseIds": [],
+          "failedPhraseIds": [],
+          "duplicatePhraseIds": [],
+          "lastError": null,
+          "updatedAt": "2026-10-12T10:03:00-03:00",
+          "cards": {
+            "1760270400030-0": {
+              "phraseId": 1760270400030,
+              "status": "added",
+              "error": null
+            },
+            "1760270400031-0": {
+              "phraseId": 1760270400031,
+              "status": "pending",
+              "error": null
+            }
+          },
+          "waiting": {
+            "reason": "monthly_cap"
+          }
+        },
+        "custos": [
+          {
+            "date": "2026-10-12",
+            "type": "tokens",
+            "model": "gpt-4o",
+            "input_tokens": 1000,
+            "output_tokens": 200,
+            "cost_usd": 10.0,
+            "keyword": "1760270400030-0"
+          }
+        ]
+      }
+    ]
+  },
+  "exemplos": [
+    {
+      "nome": "o teto do mês vem ligado com US$ 10 e a Conexão conta o gasto da chave no mês, com a imagem gerada e sem o plano",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio com o gasto do mês",
+        "hoje": "2026-10-20"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/custos/teto",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "limitUsd": 10.0,
+          "spentUsd": 8.34,
+          "month": "2026-10"
+        }
+      }
+    },
+    {
+      "nome": "sem Envios o gasto do mês é zero",
+      "daExtensao": true,
+      "contexto": {
+        "hoje": "2026-10-20"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/custos/teto",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "limitUsd": 10.0,
+          "spentUsd": 0.0,
+          "month": "2026-10"
+        }
+      }
+    },
+    {
+      "nome": "o teto que a pessoa já tinha posto neste computador vale",
+      "daExtensao": true,
+      "contexto": {
+        "tetoUsd": 15,
+        "hoje": "2026-10-20"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/custos/teto",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "limitUsd": 15.0,
+          "spentUsd": 0.0,
+          "month": "2026-10"
+        }
+      }
+    },
+    {
+      "nome": "subir o teto para US$ 12 guarda o valor neste computador e responde o teto com o gasto do mês",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio com o gasto do mês",
+        "hoje": "2026-10-20"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/custos/teto/definir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "limitUsd": 12
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "limitUsd": 12.0,
+          "spentUsd": 8.34,
+          "month": "2026-10"
+        }
+      }
+    },
+    {
+      "nome": "o teto com mais de dois decimais fica com dois",
+      "daExtensao": false,
+      "contexto": {
+        "hoje": "2026-10-20"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/custos/teto/definir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "limitUsd": 12.345
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "limitUsd": 12.35,
+          "spentUsd": 0.0,
+          "month": "2026-10"
+        }
+      }
+    },
+    {
+      "nome": "um teto zero é recusado",
+      "daExtensao": false,
+      "contexto": {
+        "hoje": "2026-10-20"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/custos/teto/definir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "limitUsd": 0
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "um teto que não é número é recusado",
+      "daExtensao": false,
+      "contexto": {
+        "hoje": "2026-10-20"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/custos/teto/definir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "limitUsd": "dez"
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "o teto sem valor é recusado",
+      "daExtensao": false,
+      "contexto": {
+        "hoje": "2026-10-20"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/custos/teto/definir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "listar os Envios traz o Envio pausado porque o teto do mês chegou",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio pausado pelo teto do mês"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/list",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "jobs": [
+            {
+              "jobId": "5b8d2f4a-9c1e-4d3b-a7f6-0e2c4a6b8d1f",
+              "lang": "en",
+              "status": "running",
+              "createdAt": "2026-10-12T10:00:00-03:00",
+              "updatedAt": "2026-10-12T10:03:00-03:00",
+              "state": {
+                "jobId": "5b8d2f4a-9c1e-4d3b-a7f6-0e2c4a6b8d1f",
+                "status": "running",
+                "stage": "generate_cards",
+                "completedStages": [],
+                "progress": {
+                  "done": 1,
+                  "total": 2
+                },
+                "successfulPhraseIds": [],
+                "failedPhraseIds": [],
+                "duplicatePhraseIds": [],
+                "lastError": null,
+                "updatedAt": "2026-10-12T10:03:00-03:00",
+                "cards": {
+                  "1760270400030-0": {
+                    "phraseId": 1760270400030,
+                    "status": "added",
+                    "error": null
+                  },
+                  "1760270400031-0": {
+                    "phraseId": 1760270400031,
+                    "status": "pending",
+                    "error": null
+                  }
+                },
+                "waiting": {
+                  "reason": "monthly_cap"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nome": "ler o teto com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/custos/teto",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "subir o teto com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/custos/teto/definir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    }
+  ]
+}

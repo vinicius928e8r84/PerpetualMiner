@@ -60,7 +60,7 @@ FALHA_AO_GRAVAR = "anki_write_failed"
 CARTOES_FALHARAM = "cards_failed"
 # Chave recusada, conta sem crédito ou plano que não serve: os próximos Cartões falhariam igual (o limite de uso espera: `limite_do_plano.py`).
 PARA_O_ENVIO = ("openai_key_rejected", "openai_no_credit", SAIU, "chatgpt_not_eligible", RECUSOU)
-# Passageiros: o Cartão tenta de novo depois de cada espera.
+# Passageiros: tenta de novo depois de cada espera.
 PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", "empty_response")
 
 
@@ -405,7 +405,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
     def __init__(self, fila, colecao, cofre, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30),
                  voz_base=VOZ_BASE, openverse_base=OPENVERSE_BASE, adaptador_de_imagem=None, chatgpt=None, espera_do_plano=300, modelos=None):
         self.fila, self.chatgpt, self.modelos, self.plano = fila, chatgpt, modelos, {}
-        self.espera_do_plano = espera_do_plano  # s entre dois pedidos no limite
+        self.espera_do_plano = espera_do_plano
         self.motor = fila.motor
         self.colecao = colecao
         self.cofre = cofre
@@ -531,6 +531,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
             self._cartao(job_id, cartao_id, status=ADICIONADO, error=None)
             self.fila.cartao_chegou(job_id, cartao_id)
             return None
+        self._conferir_o_teto(job_id)
         arquivo = self.fila.arquivo_do_texto(job_id, cartao_id)
         if not os.path.exists(arquivo):
             if parada:

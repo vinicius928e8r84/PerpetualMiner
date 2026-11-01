@@ -36,6 +36,7 @@ Each feature file starts with an H1 and one paragraph of user-visible behavior, 
 - [Anki connection and send](./anki.md): the Conexão com o Anki area and the Envio ao Anki with its summary.
 - [The Card in the Anki](./anki-cartao.md): the note type per language the Conexão creates, the new Baralhos of a new install and the Beginner Card (front: Phrase and audio; back: pronunciation, literal and natural in Portuguese with linked colours, Word audio, image); only in the Anki, not on a screen (#161).
 - [The Custos tab with the key and with the plan](./anki-custos-plano.md): US$ spent with the key; with the ChatGPT plan the Cartões made, “Você economizou” and Gerenciar uso ↗; the Envio shows no value (#159).
+- [The monthly cap](./anki-teto-do-mes.md): US$ 10 by default, per computer; 80% warning in the Painel, the Envio pauses at 100% with Ver Custos and no value, the cap is adjusted in Custos (#160).
 - [Open the Anki with the computer](./anki-no-login.md): Configurações › Conexão com o Anki, the login-item switch.
 - [The fixed Anki profile](./anki-perfil.md): Configurações › Conexão com o Anki, the row Perfil do Anki; the Envio that waits on another open profile with Abrir <perfil> (#149).
 - [The voice and accent of the audio](./anki-voz.md): Ajustes de envio › Avançado, the Google accents, the Voz de reserva and the Ouvir buttons; the audio of the Cartão when Google fails (#174).

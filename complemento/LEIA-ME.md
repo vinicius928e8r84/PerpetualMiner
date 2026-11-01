@@ -28,6 +28,7 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 | `normalizacao.py` | A lógica pura do vocabulário e dos números (a de `bridge/card_normalization.py`, na biblioteca padrão) |
 | `chaves.py` | O cofre das chaves: `user_files/chaves/openai.json`, só do dono (0600), gravado de uma vez; a chave inteira só sai daqui para o pedido que a gasta |
 | `login_do_chatgpt.py`, `rotas_do_chatgpt.py`, `paginas_do_navegador.py`, `chatgpt_oficial.py` | O login do ChatGPT (#155): tokens só em `chaves/chatgpt.json` (0600), PKCE |
+| `teto_do_mes.py`, `rotas_do_teto.py` | O teto do mês (#160): US$ 10 por padrão, em `user_files/teto-do-mes.json`; o Envio pausa antes do próximo Cartão no teto. `docs/design/teto-do-mes.md` |
 | `modelo_dos_cartoes.py`, `rotas_do_modelo.py`, `modelos_da_ia.json` | O modelo dos cartões (#157): a escolha em `user_files/modelo-dos-cartoes.json`, a lista da conta e a troca antes da saída; `modelos_da_ia.json` (a lista nossa) traz o dia de cada saída. `docs/design/modelo-dos-cartoes.md` |
 | `openai_api.py` | Conferir uma chave da OpenAI (`GET /v1/models` e um `POST /v1/embeddings` de uma palavra, só com a biblioteca padrão): recusada, sem crédito, organização não verificada ou a OpenAI fora do ar. Nunca copia o que a OpenAI diz ao recusar para o log nem para a resposta |
 | `item_de_login.py` | O item de login de “Abrir o Anki com o computador”: um LaunchAgent no Mac, um atalho na pasta Inicializar no Windows (o `.lnk` escrito byte a byte). Ligar escreve, desligar apaga; desligado por padrão |
