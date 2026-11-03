@@ -47,7 +47,7 @@ class OMotorComoPacote(unittest.TestCase):
         self.assertEqual((png, mime), (png_de("a"), "image/png"))
 
     def test_o_envio_le_o_estilo_do_idioma_do_pedido_sem_as_bibliotecas_de_fora(self):
-        fila = SimpleNamespace(pasta_dos_textos=lambda job_id: "textos", pasta_dos_custos=lambda job_id: "custos")
+        fila = SimpleNamespace(dados=SimpleNamespace(raiz="sem-pasta-do-dono"), pasta_dos_textos=lambda job_id: "textos", pasta_dos_custos=lambda job_id: "custos")
         with mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
             motor = envio.motor_do_complemento()
             pedidos = {lang: {"lang": lang, "deckName": "x", "jobId": "j", "tts": {}} for lang in ("en", "ru")}

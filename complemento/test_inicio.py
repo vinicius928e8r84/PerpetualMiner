@@ -86,11 +86,11 @@ class AoCarregarNoAnki(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(corpo, {"ok": True, "versao": configuracao.VERSAO, "perfil": "Usuário 1"})
 
-    def test_user_files_ganha_as_pastas_da_fila_do_estado_dos_custos_dos_logs_e_das_chaves(self):
+    def test_user_files_ganha_as_pastas_da_fila_do_estado_dos_custos_dos_logs_das_chaves_e_dos_prompts(self):
         with tempfile.TemporaryDirectory() as pasta:
             parar(inicio.iniciar(pasta, lambda: None, porta=0, abridor=None))
             criadas = sorted(os.listdir(os.path.join(pasta, "user_files")))
-        self.assertEqual(criadas, ["chaves", "custos", "estado", "fila", "logs"])
+        self.assertEqual(criadas, ["chaves", "custos", "estado", "fila", "logs", "prompts"])
 
     @unittest.skipIf(os.name == "nt", "as permissões do Windows não são as do Unix")
     def test_a_pasta_das_chaves_nasce_so_do_dono_mesmo_com_umask_aberta(self):

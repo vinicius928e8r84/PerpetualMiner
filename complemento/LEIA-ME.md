@@ -34,8 +34,9 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 | `item_de_login.py` | O item de login de “Abrir o Anki com o computador”: um LaunchAgent no Mac, um atalho na pasta Inicializar no Windows (o `.lnk` escrito byte a byte). Ligar escreve, desligar apaga; desligado por padrão |
 | `abridor.py` | O abridor de “Abrir o Anki sozinho” (#147): ao carregar, a cada perfil que abre e quando se escolhe outro, escreve em `user_files/abridor` o script com o caminho do Anki e o perfil marcado (`.sh` no Mac; no Windows, um `.bat` que chama com o PowerShell do Windows o `.ps1` ao lado) e o registra como host de Native Messaging `com.perpetualminer.abridor`, só para a origem da extensão: no Mac, o manifesto na pasta de hosts do Chrome; no Windows, o valor padrão de `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.perpetualminer.abridor` (o Opera GX 136 o achou só aí num Windows real: ensaio W4, 2026-10-10). O script responde `conferir` (o Anki está lá?), `abrir` (abre o Anki com `-p "<perfil>"`) e `consertar` (#152), pelos exemplos de `contrato/`. Escrever falhou: vai ao log, a Conexão sobe assim mesmo |
 | `conserto_do_anki.py` | O `consertar` do abridor (#152): fecha à força o Anki parado há 30 s e o reabre, ou liga a Conexão no `meta.json`; só o Anki anotado pelo complemento. Ensaio: `docs/design/ensaio-do-conserto.md` |
+| `passagem.py`, `passagem_das_copias.py`, `passagem_do_windows.py` | A passagem do Windows do dono (#178): ao carregar no Windows, `inicio.py` acha a Conexão de hoje na porta (`GET /health` com `bridge`), espera o Envio de agora, copia (sem mover) a chave, os custos, os prompts editados e o perfil, passa a fila, apaga o início automático e encerra o processo; só então a Conexão sobe. Sai numa versão seguinte (`passagem=None`). `passagem_do_windows.py` é o único que toca o sistema (executor injetado). `docs/design/passagem-do-windows.md` |
 | `registro.py` | O logger do complemento: todo erro vai para `user_files/logs/complemento.log` |
-| `pasta_de_dados.py` | `user_files/{fila,estado,custos,logs,chaves}`, que o Anki preserva nas atualizações (os do Envio, `envio.py`) |
+| `pasta_de_dados.py` | `user_files/{fila,estado,custos,logs,chaves,prompts}`, que o Anki preserva nas atualizações (os do Envio, `envio.py`); `prompts` é do dono: um arquivo dele com o nome de um prompt vale no lugar do padrão (`motor_do_envio.prompt_do_dono`) |
 | `configuracao.py` | Versão, porta e o ID da extensão |
 | `contrato/` | Os exemplos que o complemento e o fake do e2e leem, e como uma rota nova entra |
 | `empacotar.py` | Monta o `.ankiaddon` (e `conexao/perpetualminer.ankiaddon`, o do botão Baixar a Conexão com o Anki), com o motor de `engine/` em `motor/` |
@@ -71,6 +72,8 @@ python3.9 complemento/test_envio_fronteiras.py  # a Conexão morre em cada grava
 python3.9 complemento/test_envio_tipo_de_nota.py  # o tipo de nota por idioma e o Cartão Iniciante, num Anki em inglês, num com Cartões antigos e um idioma novo por dados
 python3.9 complemento/test_inicio_preparo.py  # a coleção preparada ao carregar e a cada perfil que abre (+ `test_contrato_da_criacao.py`, nos dois adaptadores)
 python3.9 complemento/test_envio_apagar.py      # o Apagar tudo com o Anki fechado ou no Envio
+python3.9 complemento/test_passagem.py      # a passagem do Windows do dono, com uma Conexão de hoje de mentira (+ `test_passagem_cartoes.py`, `test_passagem_do_windows.py`)
+python3.9 complemento/test_prompts_do_dono.py  # o arquivo do dono vale no lugar do prompt padrão; apagá-lo volta ao padrão
 python3.9 complemento/test_janela.py         # a janela e os avisos (Qt de mentira)
 python3.9 complemento/test_qt_do_anki.py     # o que se pede ao Qt do Anki
 python3.9 complemento/test_motor.py          # o motor como pacote `complemento.motor`
