@@ -359,6 +359,11 @@ class Conexao:
             intervalo=intervalo_do_envio, contato=self.contato, espera_do_contato=espera_do_contato,
         ) if trabalhando else None
 
+    @property
+    def no_ar(self):
+        """Se a Conexão está mesmo ouvindo na porta (a passagem que falhou deixa a porta com a de hoje)."""
+        return self._servidor is not None
+
     def iniciar(self):
         """Sobe a Conexão. Com a porta ocupada fica quieta, registra o motivo e devolve False."""
         try:

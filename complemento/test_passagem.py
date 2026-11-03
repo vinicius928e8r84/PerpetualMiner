@@ -77,6 +77,17 @@ class ALiberacaoDaPorta(unittest.TestCase):
         self.assertEqual((nova.eventos, marca, no_ar), ([], False, False))
         self.assertIn("A passagem não terminou", log)
 
+    def test_a_janela_do_anki_diz_desligada_quando_a_passagem_falha_e_a_conexao_de_hoje_segue_com_a_porta(self):
+        from complemento import janela
+
+        with tempfile.TemporaryDirectory() as pasta, uma_conexao_de_hoje(pasta) as antiga:
+            antiga.terminar(ID, [10])
+            with NaPassagem(pasta, antiga, falha_em="inicio", trabalhando=False) as nova:
+                nova.passar()
+                conexao = janela.Janela(nova.conexao, lambda: "Usuário 1", "0", nova.novo.logger).estado().conexao
+            self.assertTrue(antiga.no_ar)
+        self.assertTrue(conexao.startswith("Desligada"), conexao)
+
     def test_tentar_de_novo_depois_de_uma_falha_nao_duplica_a_fila_nem_os_custos(self):
         with tempfile.TemporaryDirectory() as pasta, uma_conexao_de_hoje(pasta) as antiga:
             antiga.terminar(ID, [10])

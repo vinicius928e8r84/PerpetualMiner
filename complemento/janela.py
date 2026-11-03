@@ -131,10 +131,12 @@ class Janela:
             return []
 
     def _situacao_da_conexao(self):
-        """Desligada; ligada; ou, na passagem do Windows do dono (#178), esperando o Envio de agora da Conexão de hoje terminar."""
+        """Desligada; ligada (só se ouve na porta); ou, na passagem do Windows do dono (#178), esperando o Envio de agora da Conexão de hoje terminar."""
         if self._conexao is None:
             return "ANK-02.desligada"
-        return "ANK-04.esperando" if self._conexao.situacao_da_passagem == "esperando" else "ANK-02.ligada"
+        if self._conexao.situacao_da_passagem == "esperando":
+            return "ANK-04.esperando"
+        return "ANK-02.ligada" if self._conexao.no_ar else "ANK-02.desligada"
 
     def estado(self):
         envios = self._envios()
