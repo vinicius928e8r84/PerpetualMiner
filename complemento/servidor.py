@@ -347,6 +347,10 @@ class Conexao:
         self._thread = None
         # Posto no primeiro pedido de Envio da extensão (`POST /jobs…`) depois da subida; o `/health` não conta.
         self.contato = threading.Event()
+        # A passagem do Windows do dono (#178): `"esperando"` enquanto espera o Envio de agora da Conexão de hoje terminar; senão None.
+        self.situacao_da_passagem = None
+        self._cancelar = threading.Event()
+        self._thread_da_passagem = None
         self.fila = envio.Fila(dados, motor or envio.motor_do_complemento(), logger)
         self._trabalhador = trabalhador.Trabalhador(
             envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(), chatgpt=self.chatgpt, modelos=self.modelos,
@@ -354,6 +358,11 @@ class Conexao:
                            openverse_base=openverse_base, adaptador_de_imagem=adaptador_de_imagem),
             intervalo=intervalo_do_envio, contato=self.contato, espera_do_contato=espera_do_contato,
         ) if trabalhando else None
+
+    @property
+    def no_ar(self):
+        """Se a Conexão está mesmo ouvindo na porta (a passagem que falhou deixa a porta com a de hoje)."""
+        return self._servidor is not None
 
     def iniciar(self):
         """Sobe a Conexão. Com a porta ocupada fica quieta, registra o motivo e devolve False."""
@@ -372,6 +381,20 @@ class Conexao:
             self._trabalhador.iniciar()
         return True
 
+    def iniciar_depois(self, preparo):
+        """Sobe a Conexão depois de `preparo(cancelado)` (a passagem, #178: a porta é da Conexão de hoje até ela sair). O `preparo` roda numa
+        thread, e a Conexão sobe mesmo se ele falha (com a porta ocupada fica quieta, como sem a passagem); `parar()` o cancela."""
+        def passar():
+            try:
+                preparo(self._cancelar.is_set)
+            except Exception:
+                self.logger.exception("A passagem não terminou; a Conexão de hoje fica como estava e a passagem tenta de novo na próxima vez")
+            if not self._cancelar.is_set():
+                self.iniciar()
+
+        self._thread_da_passagem = threading.Thread(target=passar, name="perpetualminer-passagem", daemon=True)
+        self._thread_da_passagem.start()
+
     def _servir(self):
         try:
             self._servidor.serve_forever(poll_interval=self.intervalo_de_parada)
@@ -379,6 +402,9 @@ class Conexao:
             self.logger.exception("O servidor da Conexão parou")
 
     def parar(self):
+        self._cancelar.set()
+        if self._thread_da_passagem is not None:
+            self._thread_da_passagem.join(timeout=5)
         if self._trabalhador is not None:
             self._trabalhador.encerrar()
         if self._servidor is None:

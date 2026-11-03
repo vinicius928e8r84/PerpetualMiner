@@ -29,6 +29,7 @@ TEXTOS = {
     "ANK-03.comecou": "Enviando {total} {total|cartão|cartões} ao Baralho {baralho}",
     "ANK-03.terminou": "{n} {n|cartão enviado|cartões enviados} ao Baralho {baralho}",
     "ANK-03.naoTerminou": "O Envio ao Baralho {baralho} não terminou",
+    "ANK-04.esperando": "Esperando o Envio de agora terminar",
     "ENV-07.naFila": "Na fila",
     "ENV-07.criandoCartoes": "Criando cartões",
     "ENV-07.preparandoImagens": "Preparando imagens",
