@@ -13,7 +13,7 @@ const { resumoDosCustos, linhaDeCustos } = require('./custos');
 const contrato = require('../../complemento/contrato/carregar');
 
 // Fake da Conexão com o Anki: responde na porta local dela (127.0.0.1:8766). Por padrão está ligada, com vocabulário vazio.
-// Um teste pode desligá-la (conexão recusada) ou responder uma rota específica com `responder`.
+// Um teste pode desligá-la ou responder uma rota com `responder`.
 //
 // O que o complemento responde (a saúde, os Baralhos, os números, o vocabulário, a chave da OpenAI e o item de login) vem de
 // `complemento/contrato/exemplos.json`, o mesmo que os testes do complemento leem: o fake responde o exemplo do pedido no contexto em
@@ -77,7 +77,7 @@ function criarFakeAnki() {
   };
   const perfis = criarPerfis(() => estado.contexto);
   const modelo = criarModelo(() => contextoDeAgora()); // o modelo dos cartões (#157)
-  const teto = criarTeto({ registros: () => [...estado.registrosDeCusto.values()].flat(), agora: () => estado.agora() });
+  const teto = criarTeto({ registros: () => [...estado.registrosDeCusto.values()].flat(), linhas: () => estado.custos, agora: () => estado.agora() });
   const requisicoes = [];
   const envios = [];    // { jobId, lang, entries, corpo, createdAt, state }
   const chatgpt = criarFakeChatGPT(); // o login do ChatGPT (#155): as rotas dele aqui e a página do auth.openai.com (fakes.chatgpt)
@@ -708,7 +708,7 @@ function criarFakeAnki() {
     falharApagarFrases(falha = { rede: true }) { estado.falhaDoApagarFrases = falha; },
     voltarApagarFrases() { estado.falhaDoApagarFrases = null; },
 
-    /** O relógio da Conexão, para o `updatedAt` (o painel diz “atualizado há …”). */
+    /** O relógio da Conexão, para o `updatedAt`. */
     usarRelogio(agora) { estado.agora = agora; },
 
     /**

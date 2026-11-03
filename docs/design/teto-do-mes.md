@@ -19,8 +19,8 @@ do ChatGPT fez custa 0 (`plan_tokens`), mas a imagem gerada que o Envio pediu à
 
 Antes de gastar a chave com cada Cartão (depois de ver se a nota já está no Anki, antes de pedir o texto) a thread de trabalho confere
 o teto. No teto, o estado diz `waiting: monthly_cap`, nada é pedido e a thread confere de novo a cada 60 s. Voltam sozinhos: **subir o
-teto** (`POST /custos/teto/definir` acorda a espera) e **o mês virar**. O Apagar tudo e parar a Conexão encerram a espera. Um Cartão
-que já tem o texto pago grava a nota mesmo no teto: só se pausa o que ainda gastaria.
+teto** (`POST /custos/teto/definir` acorda a espera) e **o mês virar**. O Apagar tudo e parar a Conexão encerram a espera. A conferência vem antes do texto, da imagem e da voz de
+cada Cartão, então também o Cartão que já tem o texto pago espera no teto (a imagem e a voz ainda custam); o Cartão em andamento termina.
 
 ## 4. Rotas (`complemento/contrato/exemplos-do-teto.json`)
 

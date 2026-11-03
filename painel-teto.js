@@ -12,7 +12,6 @@
   const { textoDaVoz, Veio, ConexaoAnki, PedidoAoAnki } = raiz;
   const { SITUACAO } = ConexaoAnki;
   const AVISO_A_PARTIR_DE = 0.8;
-  const A_CADA = 15000;
   const FIM = ['completed', 'partial', 'failed'];
 
   const porId = id => document.getElementById(id);
@@ -124,7 +123,6 @@
 
   function iniciar() {
     ConexaoAnki.acompanhar(ler);
-    setInterval(ler, A_CADA);
     raiz.Shell.aoEntrarNaArea('anki', ler);
   }
 

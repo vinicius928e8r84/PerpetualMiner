@@ -10,14 +10,15 @@ const MAXIMO = 1_000_000;
 const SEM_GASTO = new Set(['session', 'plan_tokens']); // o plano não cobra por Cartão; o resumo da sessão repete o que já foi contado
 const arredondar = (valor, casas) => Math.round(valor * 10 ** casas) / 10 ** casas;
 
-/** `registros()`: os registros de custo de todos os Envios; `agora()`: o relógio do fake (um Date). */
-function criarTeto({ registros, agora }) {
+/** `registros()`: os registros de custo dos Envios da fila; `linhas()`: as linhas de `definirCustos` (ou null); `agora()`: o relógio do fake (um Date). */
+function criarTeto({ registros, linhas, agora }) {
   const estado = { limite: null, gasto: null, hoje: null };
   const mes = () => (estado.hoje || agora().toISOString().slice(0, 10)).slice(0, 7);
 
   function gastoDoMes() {
     if (estado.gasto !== null) return estado.gasto;
-    const soma = registros().filter(r => String(r.date || '').slice(0, 7) === mes() && !SEM_GASTO.has(r.type)).reduce((total, r) => total + (r.cost_usd || 0), 0);
+    const dasLinhas = (linhas() || []).map(l => ({ date: l.createdAt, type: 'tokens', cost_usd: l.costs.totalUsd }));
+    const soma = [...registros(), ...dasLinhas].filter(r => String(r.date || '').slice(0, 7) === mes() && !SEM_GASTO.has(r.type)).reduce((total, r) => total + (r.cost_usd || 0), 0);
     return arredondar(soma, 6);
   }
 
