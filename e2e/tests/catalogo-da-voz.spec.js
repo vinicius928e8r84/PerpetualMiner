@@ -1,19 +1,12 @@
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-
 const { test, expect } = require('../fixtures');
+const { linhasDaSpec } = require('../../scripts/voz-da-spec');
 
 const FRASE_RUSSA = 'Я улыбаюсь каждое утро без причины.';
 
-/** Os IDs do catálogo como a spec da Voz os lista, lidos da própria spec. */
-function idsDaSpecDaVoz() {
-  const spec = fs.readFileSync(
-    path.join(__dirname, '..', '..', 'docs', 'design', 'voz', 'README.md'), 'utf8');
-  const catalogo = spec.slice(spec.indexOf('## 3. Catálogo de estados-chave'));
-  return [...catalogo.matchAll(/^\| ([A-Z]{3}-\d{2}) \|/gm)].map(m => m[1]);
-}
+/** Os IDs do catálogo como a spec da Voz os lista (o README e os `catalogo-*.md` ao lado), lidos da própria spec. */
+const idsDaSpecDaVoz = () => linhasDaSpec().map(linha => linha.id);
 
 /** Percorre o catálogo e pede cada texto, com 2 em todo valor de modelo. */
 const PEDIR_TODOS_OS_TEXTOS = () => {
