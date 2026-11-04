@@ -29,6 +29,7 @@ from .modelo_dos_cartoes import ModeloDosCartoes, lista_nossa
 from .teto_do_mes import TetoDoMes
 from .motor import estilos
 from .perfil import PerfilFixo
+from .rotas_da_frente import ROTAS_DA_FRENTE
 from .rotas_da_voz import ROTAS_DA_VOZ
 from .rotas_do_envio import ROTAS_DO_ENVIO
 from .rotas_do_modelo import ROTAS_DO_MODELO
@@ -128,6 +129,7 @@ ROTAS = {
     **ROTAS_DO_MODELO,
     **ROTAS_DO_TETO,
     **ROTAS_DA_VOZ,
+    **ROTAS_DA_FRENTE,
     ("POST", "/abrir-com-o-computador/estado"): _estado_do_item_de_login,
     ("POST", "/abrir-com-o-computador"): _abrir_com_o_computador,
     **ROTAS_DO_ENVIO,
@@ -288,6 +290,7 @@ class _SemColecao:
         raise baralhos.ColecaoIndisponivel("collection_unavailable")
 
     cartoes_do_baralho = tipo_de_nota = guids_existentes = adicionar_nota = gravar_cartao = nomes_dos_baralhos
+    criar_tipo_de_nota = modelos_do_tipo_de_nota = trocar_o_modelo = nomes_dos_baralhos
 
 
 class Conexao:

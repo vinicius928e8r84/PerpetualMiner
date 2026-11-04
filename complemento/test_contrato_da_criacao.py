@@ -5,6 +5,7 @@ o adaptador em memória e o do Anki herdam esta parte e passam pelos mesmos test
 """
 
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -122,6 +123,110 @@ class ContratoDaCriacao:
             "PerpetualMiner::Inglês", "PerpetualMiner Inglês", {"Frase": "She <b>gave up</b> smoking", "Palavra": "gave up – /ɡeɪv ʌp/"}, [], "g1")
         resposta = baralhos.vocabulario(colecao, "PerpetualMiner::Inglês", "en")
         self.assertEqual([palavra["word"] for palavra in resposta["words"] if palavra["type"] == "term"], ["gave up"])
+
+    # -- a troca da frente (#166): só o modelo de Cartão do tipo de nota --
+
+    def com_notas_gravadas(self):
+        """Uma coleção preparada, com um Cartão do inglês já gravado (o que a troca de frente não pode tocar)."""
+        colecao = self.adaptador(SO_O_DEFAULT)
+        self.preparar(colecao)
+        colecao.adicionar_nota(
+            "PerpetualMiner::Inglês", "PerpetualMiner Inglês",
+            {"Frase": "She <b>gave up</b> smoking", "Áudio da frase": "[sound:a.mp3]", "Palavra": "gave up"}, [], "g1")
+        return colecao
+
+    def a_colecao_toda(self, colecao):
+        return (colecao.nomes_dos_baralhos(), {baralho: colecao.cartoes_do_baralho(baralho) for baralho in colecao.nomes_dos_baralhos()},
+                {nome: colecao.tipo_de_nota(nome) for nome in ("PerpetualMiner Inglês", "PerpetualMiner Russo")})
+
+    def test_trocar_para_a_lacuna_reescreve_so_o_modelo_sem_nota_nova_nem_campo_novo_nem_cartao_novo(self):
+        colecao = self.com_notas_gravadas()
+        antes = self.a_colecao_toda(colecao)
+        self.assertTrue(tipo_de_nota.trocar_a_frente(colecao, "en", "lacuna"))
+        self.assertEqual(self.a_colecao_toda(colecao), antes)
+        [modelo] = colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")
+        self.assertEqual(modelo, tipo_de_nota.definicao("en", frente="lacuna")["modelos"][0])
+        self.assertEqual(modelo["nome"], "Lacuna")
+
+    def test_a_frente_lacuna_tem_a_frase_com_lacuna_e_a_dica_e_nenhum_audio_e_o_verso_traz_a_frase_com_o_audio(self):
+        colecao = self.com_notas_gravadas()
+        tipo_de_nota.trocar_a_frente(colecao, "en", "lacuna")
+        [modelo] = colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")
+        self.assertIn("{{Frase com lacuna}}", modelo["frente"])
+        self.assertIn("{{Dica}}", modelo["frente"])
+        self.assertNotIn("Áudio da frase", modelo["frente"])
+        self.assertIn("{{Áudio da frase}}", modelo["verso"])
+        self.assertIn("{{Frase}}", modelo["verso"])
+        self.assertNotIn("{{FrontSide}}", modelo["verso"])
+
+    def test_a_frente_ouvir_primeiro_e_so_o_audio_da_frase_e_o_verso_mostra_a_frase(self):
+        colecao = self.com_notas_gravadas()
+        tipo_de_nota.trocar_a_frente(colecao, "en", "ouvir_primeiro")
+        [modelo] = colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")
+        self.assertEqual(re.sub(r"<[^>]+>", "", modelo["frente"]).strip(), "{{Áudio da frase}}")
+        self.assertIn("{{Frase}}", modelo["verso"])
+        self.assertEqual(modelo["nome"], "Ouvir primeiro")
+
+    def test_o_verso_de_todos_os_niveis_continua_em_qualquer_frente(self):
+        colecao = self.com_notas_gravadas()
+        padrao = colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")[0]["verso"]
+        for frente in tipo_de_nota.FRENTES:
+            tipo_de_nota.trocar_a_frente(colecao, "en", frente)
+            verso = colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")[0]["verso"]
+            with self.subTest(frente=frente):
+                self.assertTrue(verso.endswith(padrao.split("<hr id=answer>")[1]))
+
+    def test_voltar_para_a_frase_com_audio_devolve_o_modelo_que_a_conexao_cria(self):
+        colecao = self.com_notas_gravadas()
+        criado = colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")
+        tipo_de_nota.trocar_a_frente(colecao, "en", "ouvir_primeiro")
+        self.assertTrue(tipo_de_nota.trocar_a_frente(colecao, "en", tipo_de_nota.FRENTE_PADRAO))
+        self.assertEqual(colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês"), criado)
+
+    def test_repetir_a_troca_nao_muda_nada_e_diz_que_nao_mudou(self):
+        colecao = self.com_notas_gravadas()
+        self.assertTrue(tipo_de_nota.trocar_a_frente(colecao, "en", "lacuna"))
+        modelos = colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")
+        self.assertFalse(tipo_de_nota.trocar_a_frente(colecao, "en", "lacuna"))
+        self.assertEqual(colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês"), modelos)
+
+    def test_cada_idioma_tem_a_sua_frente(self):
+        colecao = self.com_notas_gravadas()
+        tipo_de_nota.trocar_a_frente(colecao, "en", "lacuna")
+        tipo_de_nota.trocar_a_frente(colecao, "ru", "ouvir_primeiro")
+        self.assertEqual(colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")[0]["nome"], "Lacuna")
+        self.assertEqual(colecao.modelos_do_tipo_de_nota("PerpetualMiner Russo")[0]["nome"], "Ouvir primeiro")
+
+    def test_sem_o_tipo_de_nota_ele_nasce_ja_com_a_frente_escolhida(self):
+        colecao = self.adaptador(SO_O_DEFAULT)
+        self.assertTrue(tipo_de_nota.trocar_a_frente(colecao, "en", "lacuna"))
+        self.assertEqual(colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")[0]["nome"], "Lacuna")
+        self.assertIsNone(colecao.tipo_de_nota("PerpetualMiner Russo"))
+
+    def test_um_tipo_de_nota_que_a_pessoa_mexeu_nao_e_regravado(self):
+        colecao = self.adaptador({"baralhos": [{"nome": "Default"}], "tiposDeNota": {"PerpetualMiner Inglês": ["Frase", "Meu campo"]}})
+        antes = (colecao.tipo_de_nota("PerpetualMiner Inglês"), colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês"))
+        with self.assertRaises(baralhos.TipoDeNotaAlterado):
+            tipo_de_nota.trocar_a_frente(colecao, "en", "lacuna")
+        self.assertEqual((colecao.tipo_de_nota("PerpetualMiner Inglês"), colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")), antes)
+
+    def test_uma_frente_que_nao_existe_nao_muda_nada(self):
+        colecao = self.com_notas_gravadas()
+        antes = colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")
+        with self.assertRaises(KeyError):
+            tipo_de_nota.trocar_a_frente(colecao, "en", "imagem_primeiro")
+        self.assertEqual(colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês"), antes)
+
+    def test_sem_colecao_aberta_ou_sincronizando_a_frente_nao_troca(self):
+        colecao = self.com_notas_gravadas()
+        antes = colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")
+        self.sincronizar(colecao, True)
+        with self.assertRaises(baralhos.ColecaoIndisponivel):
+            tipo_de_nota.trocar_a_frente(colecao, "en", "lacuna")
+        self.sincronizar(colecao, False)
+        self.assertEqual(colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês"), antes)
+        with self.assertRaises(baralhos.ColecaoIndisponivel):
+            tipo_de_nota.trocar_a_frente(self.adaptador_fechado(), "en", "lacuna")
 
     def todos_os_tipos(self, colecao):
         return sorted(nome for nome in ("Básico", "Basic", "PerpetualMiner Inglês", "PerpetualMiner Russo") if colecao.tipo_de_nota(nome) is not None)

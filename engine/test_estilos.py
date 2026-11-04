@@ -61,6 +61,9 @@ class OEstiloVemDosDados(unittest.TestCase):
     def test_a_frente_antiga_do_basico_tem_os_nomes_do_anki_em_portugues_e_em_ingles(self):
         self.assertEqual(estilos.nomes_da_frente_de_antes(), ("Frente", "Front"))
 
+    def test_a_dica_da_lacuna_sai_da_definicao_e_na_falta_dela_da_traducao_natural_e_do_contexto(self):
+        self.assertEqual(estilos.partes_da_dica(), ("definicao", "natural", "cena"))
+
     def test_um_idioma_novo_entra_so_por_dados_e_o_resto_do_motor_o_conhece(self):
         dados = copy.deepcopy(estilos.DADOS)
         dados["idiomas"]["es"] = dict(

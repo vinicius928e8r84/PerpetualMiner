@@ -131,6 +131,8 @@ class OCartaoDosOutrosNiveisDoIngles(unittest.TestCase):
                 "Outro exemplo": "Michael never gives up on a bad joke.",
                 "Contexto da cena": "Alguém conta que largou o cigarro no ano passado.",
                 "Fonte": "Série - The Office - S01E01",
+                "Frase com lacuna": 'She <span class="lacuna">[\u2026]</span> smoking last year.',
+                "Dica": "Desistir de fazer algo, parar de tentar.",
             },
         )
         self.assertEqual(cores_de(campos["Frase"]), [])
@@ -138,7 +140,7 @@ class OCartaoDosOutrosNiveisDoIngles(unittest.TestCase):
     def test_o_avancado_grava_as_mesmas_partes_todas_em_ingles(self):
         campos = nota(AVANCADO, "en", nivel="avancado")["campos"]
         self.assertEqual(
-            sorted(campos), sorted(["Frase", "Palavra", "Definição", "Outro exemplo", "Contexto da cena", "Fonte"]))
+            sorted(campos), sorted(["Frase", "Palavra", "Definição", "Outro exemplo", "Contexto da cena", "Fonte", "Frase com lacuna", "Dica"]))
         self.assertTrue(campos["Definição"].startswith("To stop doing"))
         self.assertEqual(campos["Contexto da cena"], "A coworker explains how she quit smoking, and why the habit had to go.")
         self.assertEqual(cores_de(campos["Frase"]), [])
@@ -207,7 +209,7 @@ class OCartaoIniciante(unittest.TestCase):
     def test_so_os_campos_do_iniciante_vem_preenchidos_e_o_resto_fica_para_os_outros_niveis(self):
         campos = nota(INGLES, "en")["campos"]
         self.assertEqual(
-            sorted(campos), sorted(["Frase", "Palavra", "Pronúncia", "Tradução literal", "Tradução natural", "Contexto da cena", "Fonte"]))
+            sorted(campos), sorted(["Frase", "Palavra", "Pronúncia", "Tradução literal", "Tradução natural", "Contexto da cena", "Fonte", "Frase com lacuna", "Dica"]))
 
     def test_a_frase_do_cartao_e_o_que_a_busca_de_duplicatas_compara_sem_cor_nem_negrito(self):
         pronta = nota(INGLES, "en")
@@ -237,7 +239,7 @@ class OCartaoIniciante(unittest.TestCase):
         dados["idiomas"]["en"]["niveis"]["iniciante"]["verso"] = ["natural", "palavra"]
         with mock.patch.object(estilos, "_PADRAO", estilos.Estilos(dados)):
             campos = nota(INGLES, "en")["campos"]
-        self.assertEqual(sorted(campos), sorted(["Frase", "Palavra", "Tradução natural", "Fonte"]))
+        self.assertEqual(sorted(campos), sorted(["Frase", "Palavra", "Tradução natural", "Fonte", "Frase com lacuna", "Dica"]))
 
     def test_um_idioma_novo_entra_so_por_dados_e_o_cartao_dele_sai_no_tipo_de_nota_dele(self):
         dados = copy.deepcopy(estilos.DADOS)
@@ -246,6 +248,42 @@ class OCartaoIniciante(unittest.TestCase):
             pronta = nota(INGLES.replace("She *gave up*", "Ella *dejó*"), "es")
         self.assertEqual(pronta["campo_da_frente"], "Frase")
         self.assertEqual(re.sub("<[^>]+>", "", pronta["campos"]["Frase"]), "Ella dejó smoking last year.")
+
+
+class ACacaDaLacuna(unittest.TestCase):
+    """A frente Lacuna (#166) lê dois campos que o Envio grava: a Frase sem a Palavra e a Dica (sem IA: sai do texto do próprio Cartão)."""
+
+    def test_a_lacuna_do_ingles_e_a_frase_sem_a_palavra_em_negrito_e_sem_nenhuma_cor(self):
+        campos = nota(INGLES, "en")["campos"]
+        self.assertEqual(campos["Frase com lacuna"], 'She <span class="lacuna">[\u2026]</span> smoking last year.')
+        self.assertEqual(cores_de(campos["Frase com lacuna"]), [])
+        self.assertNotIn("gave up", campos["Frase com lacuna"])
+
+    def test_a_dica_do_iniciante_e_a_traducao_natural_e_a_dos_outros_niveis_e_a_definicao_na_lingua_do_nivel(self):
+        self.assertEqual(nota(INGLES, "en")["campos"]["Dica"], "Ela parou de fumar ano passado.")
+        self.assertEqual(nota(INTERMEDIARIO, "en", nivel="intermediario")["campos"]["Dica"], "Desistir de fazer algo, parar de tentar.")
+        self.assertTrue(nota(AVANCADO, "en", nivel="avancado")["campos"]["Dica"].startswith("To stop doing or trying something"))
+
+    def test_o_russo_nao_marca_a_palavra_e_a_lacuna_sai_do_texto_da_palavra_que_o_pedido_deu(self):
+        campos = nota(RUSSO, "ru", palavra="Я не")["campos"]
+        self.assertEqual(campos["Frase com lacuna"], '<span class="lacuna">[\u2026]</span> мальчик!')
+        self.assertEqual(campos["Dica"], "Eu não sou um menino!")
+
+    def test_sem_a_palavra_na_frase_nao_ha_lacuna_nem_dica_e_a_frente_cai_na_frase(self):
+        for argumentos in ({}, {"palavra": "нет"}):
+            with self.subTest(argumentos=argumentos):
+                self.assertFalse({"Frase com lacuna", "Dica"} & set(nota(RUSSO, "ru", **argumentos)["campos"]))
+
+    def test_a_frase_continua_inteira_no_campo_dela_e_a_busca_de_duplicatas_nao_muda(self):
+        pronta = nota(INGLES, "en")
+        self.assertIn("gave up", pronta["campos"]["Frase"])
+        self.assertEqual(pronta["frente_normalizada"], "she gave up smoking last year.")
+
+    def test_a_ordem_das_partes_da_dica_e_dado(self):
+        dados = copy.deepcopy(estilos.DADOS)
+        dados["dica_da_lacuna"] = ["cena"]
+        with mock.patch.object(estilos, "_PADRAO", estilos.Estilos(dados)):
+            self.assertEqual(nota(INGLES, "en")["campos"]["Dica"], "Alguém conta que largou o cigarro.")
 
 
 if __name__ == "__main__":

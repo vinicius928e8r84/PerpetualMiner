@@ -57,6 +57,8 @@ class ColecaoEmMemoria:
         self._quebra = bool((descricao or {}).get("quebra"))
         self._padrao = (descricao or {}).get("baralhoPadrao", "Default")  # o nome do Baralho padrão segue o idioma do Anki (“Padrão” em português)
         self._tipos = {nome: list(campos) for nome, campos in ((descricao or {}).get("tiposDeNota") or {"Básico": ["Frente", "Verso"]}).items()}
+        self._modelos_dos_tipos = {nome: [] for nome in self._tipos}  # os modelos de Cartão de cada tipo (os da descrição não têm: só os que a Conexão cria)
+        self.css_dos_tipos = {}
         self._guids = set()
         self.gravadas = []
         self.midia = {}  # a mídia da coleção: nome do arquivo → bytes
@@ -159,7 +161,23 @@ class ColecaoEmMemoria:
         if definicao["nome"] in self._tipos:
             return False
         self._tipos[definicao["nome"]] = list(definicao["campos"])
+        self._modelos_dos_tipos[definicao["nome"]] = [dict(modelo) for modelo in definicao["modelos"]]
+        self.css_dos_tipos[definicao["nome"]] = definicao["css"]
         return True
+
+    def modelos_do_tipo_de_nota(self, nome):
+        self._exigir_gravavel()
+        return [dict(modelo) for modelo in self._modelos_dos_tipos[nome]] if nome in self._tipos else None
+
+    def trocar_o_modelo(self, nome, modelo, css):
+        self._exigir_gravavel()
+        if nome not in self._tipos:
+            raise baralhos.TipoDeNotaAusente(nome)
+        if len(self._modelos_dos_tipos[nome]) != 1:
+            raise baralhos.TipoDeNotaAlterado(nome)
+        mudou = self._modelos_dos_tipos[nome] != [modelo] or self.css_dos_tipos.get(nome) != css
+        self._modelos_dos_tipos[nome], self.css_dos_tipos[nome] = [dict(modelo)], css
+        return mudou
 
     def criar_baralhos_da_instalacao_nova(self, nomes):
         self._exigir_gravavel()

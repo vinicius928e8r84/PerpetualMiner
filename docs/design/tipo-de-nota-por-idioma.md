@@ -11,7 +11,7 @@ não diz não foi decidido. Spec: o [#138](https://github.com/vinicius928e8r84/P
 - **Um tipo de nota por idioma** (`PerpetualMiner Inglês`, `PerpetualMiner Russo`), com os nossos nomes de campos: o Envio não depende mais de o Anki ser “Básico/Frente/Verso”.
 - **Os campos nascem todos juntos.** Mudar os campos de um tipo de nota depois obriga o Anki a uma sincronização completa; por isso já nascem os dos níveis (Definição, Outro exemplo),
   os do inglês (Significado simples, Gatilho), os da morfologia do russo (Sílaba forte, Morfologia, Explicação das cores, Mesma raiz, Raiz), os das frentes (Dica, Frase com lacuna) e os da Criação
-  (Frase escrita, Escrito antes, Correção). O que o nível não usa fica vazio. O modelo de Cartão de hoje é `Frase com áudio`; as outras frentes entram como modelos do mesmo tipo (#166 a #168).
+  (Frase escrita, Escrito antes, Correção). O que o nível não usa fica vazio. O modelo de Cartão nasce como `Frase com áudio`; as outras frentes reescrevem esse modelo (#166, § 8; a Produção, o Ditado e a Criação são o #167 e o #168).
 - **O Cartão Iniciante**, nos dois idiomas: a Frase e o áudio na frente; no verso, a pronúncia, a literal e a natural em português (as cores ligam o pedaço da Frase ao pedaço da literal que o traduz),
   o contexto da cena, a Palavra com o áudio e a imagem. O russo parte do Cartão de russo de antes, explicado em português (`engine/prompts/ru_iniciante.txt`).
 - **Os Baralhos**: numa instalação nova (nenhum Baralho além do padrão do Anki) nascem `PerpetualMiner::Inglês` e `PerpetualMiner::Russo`; quem já tem Baralho fica com o seu e não ganha nenhum.
@@ -45,7 +45,7 @@ Não há tela nova: a pessoa vê o resultado no Anki (Ferramentas › Gerenciar 
 - **Resposta perdida / Anki morto no meio**: a criação é uma operação do Anki, que a grava inteira ou não grava; a próxima volta vê o tipo (ou não) e segue. Morrer entre o tipo e os Baralhos deixa só o tipo: o `preparar` seguinte cria os Baralhos.
 - **Reverter**: só a pessoa, pelo Anki (Gerenciar Tipos de Nota › Excluir, Baralhos › Excluir). A Conexão nunca apaga. Excluir o tipo faz a Conexão criá-lo de novo no próximo perfil aberto ou Envio.
 - **Sincronização**: medido na biblioteca do Anki (2.1.50 e 25.09.5), criar o nosso tipo de nota e o Baralho **não** muda `col.scm`: não se espera pedido de sincronização completa, nem com o AnkiWeb (uma sincronização normal). Um pedido inesperado é o sinal para o dono parar. Mudar campos depois muda o esquema, por isso eles nascem todos juntos.
-- **As outras frentes (#166 a #168)**: entrando como modelos de Cartão do mesmo tipo de nota, forçam uma sincronização completa **e** criam um Cartão novo para cada nota que já existe (medido: o segundo modelo mudou o `scm` e fez `cards: 2`). Precisam de decisão própria, ou de um tipo de nota separado.
+- **As frentes (#166 a #168)**: criar um segundo modelo de Cartão no mesmo tipo de nota forçaria uma sincronização completa **e** criaria um Cartão novo para cada nota que já existe (medido: o segundo modelo mudou o `scm` e fez `cards: 2`). Por isso o tipo tem **um** modelo de Cartão só e a troca de frente o reescreve (ver § 8); a Produção, o Ditado e a Criação (#167, #168) ainda precisam desta mesma leitura.
 
 ## 4. As 8 variantes
 
@@ -92,3 +92,21 @@ O Cartão do inglês ganhou o Intermediário e o Avançado (o russo só tem o In
 - **O pedido**: `POST /jobs` leva `nivel` só quando não é o Iniciante (como `tts.reserva`). Um nível fora dos que o idioma tem é `400` `invalid_level` e nada é criado. O nível entra no pedido guardado: repetir o pedido com outro nível é outro pedido (`409`), e o Envio retomado usa o nível com que nasceu.
 - **A imagem** continua no verso dos três níveis (a escolha Foto real · Gerada por IA dos Ajustes de envio vale em todos).
 - **A tela**: Ajustes de envio › Estilo do cartão (`painel-ajustes.js`, BRG-42), um controle segmentado por idioma; só grava em Salvar ajustes e vale a partir do Envio seguinte.
+
+## 8. As frentes do Cartão: Ouvir primeiro e Lacuna (#166)
+
+Em Ajustes de envio › Estilo do cartão › Frente, cada idioma tem a sua frente. Trocar a frente **reescreve o único modelo de Cartão** do tipo de nota do idioma (frente, começo do verso, nome e estilo) e nada mais: nenhuma nota nova, nenhum Cartão novo, nenhuma chamada à IA, à voz ou às fotos, e os Cartões que já existem mudam na hora. Quem troca é a Conexão (`POST /anki/card-front`), e não o AnkiConnect. É um Cartão por Frase.
+
+| frente (`frente`) | nome do modelo | frente do Cartão | começo do verso (o resto é o verso do nível, igual nas três) |
+|---|---|---|---|
+| Frase com áudio (`frase_com_audio`, padrão) | Frase com áudio | a Frase e o áudio dela | `{{FrontSide}}` |
+| Ouvir primeiro (`ouvir_primeiro`) | Ouvir primeiro | só o áudio da Frase (o ▶, sem texto) | o ▶ e a Frase, com a Palavra em negrito |
+| Lacuna (`lacuna`) | Lacuna | a Frase sem a Palavra (`[…]`) e a Dica, **sem áudio** (ele entregaria a resposta) | a Frase e o áudio dela |
+
+- **Os dois campos da Lacuna** (`Frase com lacuna`, `Dica`) o Envio grava em todo Cartão em que a Palavra está na Frase, qualquer que seja a frente do momento, sem IA: a lacuna é a Frase sem o texto em negrito (o inglês marca a Palavra assim) ou, sem negrito, sem a Palavra que o pedido deu (o russo); sem cores, que entregariam o recorte. A Dica é a primeira parte preenchida do verso do Cartão entre a Definição, a Tradução natural e o Contexto da cena (`dica_da_lacuna` de `engine/estilos.json`): fica na língua do nível. É assim que trocar de frente não gera nada.
+- **Quem não tem a lacuna** (a Palavra não estava na Frase, ou o Cartão é de antes do #166): na frente Lacuna aparece a Frase, sem áudio; na frente Ouvir primeiro, um Cartão sem o áudio da Frase (o Envio de texto de antes do #143) aparece vazio.
+- **Medido com a biblioteca de verdade do Anki** (`pip install anki`, 25.09.5; o `models.update_dict` do adaptador numa coleção com notas): depois de trocar quatro vezes, o número de notas, o de Cartões e o `scm` ficaram os mesmos, e a pergunta renderizada de cada Cartão mudou de frente. Esta medida não foi repetida no Anki do dono nem em 2.1.50.
+- **O que a troca regrava**: o modelo e o estilo (`css`) do tipo de nota **da Conexão**, por inteiro; uma mudança que a pessoa fez à mão neles se perde. Um tipo de nota que não tem exatamente um modelo de Cartão (a pessoa acrescentou outro) não é tocado: `409 note_type_changed`, e a tela diz que a frente não mudou. Sem o tipo (a pessoa o apagou), ele nasce já com a frente.
+- **A extensão**: `frente` mora em `ankiBridgePresets` por idioma (`frase_com_audio` sem nada gravado). Salvar ajustes pede a troca à Conexão **antes** de gravar e só grava a frente nova se a Conexão a trocou; se ela não trocou, o resto é salvo, a frente gravada continua a que o Anki tem e a escolha fica na tela, com “Tentar de novo”. A frente **não** vai no `POST /jobs`.
+- **Limites**: quem muda a frente em duas abas ao mesmo tempo pode deixar o gravado diferente do Anki até a próxima troca (a Conexão troca antes da conferência de versão do Salvar); “Usar um tipo que já tenho” (#165) fica com a frente que a pessoa já tem; a Imagem primeiro não existe.
+- **Provas**: `complemento/test_contrato_da_criacao.py` (nos dois adaptadores), `test_frente_do_cartao.py` (por HTTP: só o modelo muda, nada atravessa para a IA, a voz nem as fotos), `engine/test_nota_do_cartao.py` (a lacuna e a Dica), `e2e/tests/painel-ajustes-frente.spec.js` e os exemplos de `complemento/contrato/exemplos-da-frente.json`. As referências visuais são propostas (`painel-ajustes-frente-visual.spec.js`, `test.fixme`).

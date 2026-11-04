@@ -4,6 +4,7 @@ chama (`pm.load`, `onOpenProfile`, `unloadProfile`, `showProfileManager`; `passo
 `.ankiaddon` pelo nome.
 """
 
+import copy
 import queue
 import re
 import sqlite3
@@ -105,12 +106,14 @@ class ColecaoDoAnkiDeMentira:
         self._nomes_dos_modelos = {nome: tuple(campos) for nome, campos in tipos.items()}
         for nomes in self._nomes_dos_modelos.values():
             self._modelos.setdefault(nomes, len(self._modelos) + 1)
+        self.atualizacoes_de_tipo = []  # os tipos de nota que o complemento regravou (`models.update_dict`)
         self.tipos_criados = {}  # os tipos de nota que o complemento criou (`models.add_dict`): nome → o dicionário que ele montou
         self.decks = types.SimpleNamespace(all_names_and_ids=self._conferido(lambda: list(self._baralhos)), id=self._conferido(self._id_do_baralho))
         self.models = types.SimpleNamespace(
             get=self._conferido(self._modelo), by_name=self._conferido(self._modelo_por_nome), new=self._conferido(self._novo_tipo),
             new_field=lambda nome: {"name": nome}, add_field=self._conferido(self._juntar_campo), new_template=lambda nome: {"name": nome, "qfmt": "", "afmt": ""},
-            add_template=self._conferido(lambda tipo, modelo: tipo["tmpls"].append(modelo)), add_dict=self._conferido(self._guardar_o_tipo))
+            add_template=self._conferido(lambda tipo, modelo: tipo["tmpls"].append(modelo)), add_dict=self._conferido(self._guardar_o_tipo),
+            update_dict=self._conferido(self._atualizar_o_tipo))
         self.db = types.SimpleNamespace(all=self._conferido(lambda sql, *args: [list(linha) for linha in self._sqlite.execute(sql, args)]))
         self.new_note = self._conferido(lambda modelo: NotaDeMentira(modelo["id"], modelo["nomes"]))
         self.add_note = self._conferido(self._adicionar)
@@ -136,7 +139,8 @@ class ColecaoDoAnkiDeMentira:
         nomes = self._nomes_dos_modelos.get(nome)
         if nomes is None:
             return None
-        return dict(self._modelo(self._modelos[nomes]), id=self._modelos[nomes], nomes=nomes)
+        guardado = copy.deepcopy(self.tipos_criados.get(nome, {}))  # uma cópia, como o dicionário do Anki: só `update_dict` grava
+        return dict(self._modelo(self._modelos[nomes]), name=nome, id=self._modelos[nomes], nomes=nomes, tmpls=guardado.get("tmpls", []), css=guardado.get("css", ""))
 
     @staticmethod
     def _novo_tipo(nome):
@@ -146,18 +150,32 @@ class ColecaoDoAnkiDeMentira:
     def _juntar_campo(tipo, campo):
         tipo["flds"].append(dict(campo, ord=len(tipo["flds"])))
 
-    def _guardar_o_tipo(self, tipo):
-        """`models.add_dict` do Anki: recusa um modelo que cita um campo que o tipo não tem, e o nome que já existe não passa (o Anki renomearia)."""
+    @staticmethod
+    def _conferir_os_modelos(tipo):
+        """O Anki recusa um modelo que cita um campo que o tipo não tem."""
         nomes = tuple(campo["name"] for campo in tipo["flds"])
         for modelo in tipo["tmpls"]:
             for citado in re.findall(r"\{\{[#^/]?([^{}]+)\}\}", modelo["qfmt"] + modelo["afmt"]):
                 if citado not in nomes and citado != "FrontSide":
                     raise ValueError("o modelo %r cita o campo %r, que o tipo não tem" % (modelo["name"], citado))
+
+    def _guardar_o_tipo(self, tipo):
+        """`models.add_dict` do Anki: confere os modelos, e o nome que já existe não passa (o Anki renomearia)."""
+        nomes = tuple(campo["name"] for campo in tipo["flds"])
+        self._conferir_os_modelos(tipo)
         if tipo["name"] in self._nomes_dos_modelos or not tipo["tmpls"]:
             raise ValueError("tipo de nota inválido: %r" % tipo["name"])
         self._nomes_dos_modelos[tipo["name"]] = nomes
         self._modelos.setdefault(nomes, len(self._modelos) + 1)
         self.tipos_criados[tipo["name"]] = tipo
+
+    def _atualizar_o_tipo(self, tipo):
+        """`models.update_dict` do Anki: grava o tipo de nota que já existe (os modelos e o estilo; os campos ficam como estão)."""
+        if tipo["name"] not in self._nomes_dos_modelos:
+            raise ValueError("tipo de nota que não existe: %r" % tipo["name"])
+        self._conferir_os_modelos(tipo)
+        self.tipos_criados[tipo["name"]] = copy.deepcopy({chave: tipo[chave] for chave in ("name", "flds", "tmpls", "css") if chave in tipo})
+        self.atualizacoes_de_tipo.append(tipo["name"])
 
     def _adicionar(self, nota, id_do_baralho):
         cursor = self._sqlite.execute(

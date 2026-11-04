@@ -55,6 +55,10 @@ class Estilos:
         """O rótulo com que o prompt escreve a parte no texto do Cartão (`Pronunciation`), ou None."""
         return self.dados["rotulos"].get(chave)
 
+    def partes_da_dica(self):
+        """As partes do verso de onde a Dica da frente Lacuna sai, na ordem: a primeira que o Cartão tem preenchida."""
+        return tuple(self.dados["dica_da_lacuna"])
+
     def nomes_da_frente_de_antes(self):
         """Os nomes da frente do “Básico” de antes (o do Anki em português e o do Anki em inglês): a busca de duplicatas os lê também."""
         return tuple(self.dados["frente_de_antes"])
@@ -82,6 +86,10 @@ def estilo(lang, nivel=None):
 
 def rotulo(chave):
     return _PADRAO.rotulo(chave)
+
+
+def partes_da_dica():
+    return _PADRAO.partes_da_dica()
 
 
 def nomes_da_frente_de_antes():

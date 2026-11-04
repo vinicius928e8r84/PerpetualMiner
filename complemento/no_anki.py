@@ -8,7 +8,7 @@ import threading
 import time
 
 from . import inicio, janela, registro
-from .baralhos import ColecaoIndisponivel, PerfilIlegivel, TipoDeNotaAusente
+from .baralhos import ColecaoIndisponivel, PerfilIlegivel, TipoDeNotaAlterado, TipoDeNotaAusente
 from .configuracao import OPENAI_BASE, OPENVERSE_BASE, PORTA, VERSAO, VOZ_BASE
 
 # Quanto a Conexão espera a thread principal do Anki ler a coleção antes de dizer que o Anki não respondeu.
@@ -190,6 +190,14 @@ class ColecaoDoAnki:
         """Cria o tipo de nota (`tipo_de_nota.definicao`) se a coleção não tem um com o nome; um que já existe não é tocado. Devolve se criou."""
         return self._gravando(lambda colecao: _criar_tipo_de_nota(colecao, definicao))
 
+    def modelos_do_tipo_de_nota(self, nome):
+        """Os modelos de Cartão do tipo de nota (`[{ nome, frente, verso }]`), ou None se a coleção não o tem."""
+        return self._gravando(lambda colecao: _modelos_do_tipo(colecao.models.by_name(nome)))
+
+    def trocar_o_modelo(self, nome, modelo, css):
+        """Reescreve o único modelo de Cartão do tipo de nota e o estilo dele (a troca da frente, #166); devolve se mudou algo. As notas não são tocadas."""
+        return self._gravando(lambda colecao: _trocar_o_modelo(colecao, nome, modelo, css))
+
     def criar_baralhos_da_instalacao_nova(self, nomes):
         """Cria os Baralhos `nomes` só se a coleção não tem nenhum além do padrão do Anki; devolve os criados (nenhum, para quem já tem Baralho)."""
         return self._gravando(lambda colecao: _criar_baralhos_da_instalacao_nova(colecao, nomes))
@@ -207,6 +215,26 @@ class ColecaoDoAnki:
 
 def _campos_do_tipo(modelo):
     return [campo["name"] for campo in sorted(modelo["flds"], key=lambda c: c["ord"])] if modelo else None
+
+
+def _modelos_do_tipo(tipo):
+    return [{"nome": cartao["name"], "frente": cartao["qfmt"], "verso": cartao["afmt"]} for cartao in tipo["tmpls"]] if tipo else None
+
+
+def _trocar_o_modelo(colecao, nome, modelo, css):
+    """Na thread principal. Só o texto do modelo e o estilo do tipo de nota: nenhum campo, nenhuma nota. Com mais (ou menos) de um modelo, o tipo é da pessoa."""
+    tipo = colecao.models.by_name(nome)
+    if tipo is None:
+        raise TipoDeNotaAusente(nome)
+    if len(tipo["tmpls"]) != 1:
+        raise TipoDeNotaAlterado(nome)
+    cartao = tipo["tmpls"][0]
+    if (cartao["name"], cartao["qfmt"], cartao["afmt"], tipo["css"]) == (modelo["nome"], modelo["frente"], modelo["verso"], css):
+        return False
+    cartao["name"], cartao["qfmt"], cartao["afmt"], tipo["css"] = modelo["nome"], modelo["frente"], modelo["verso"], css
+    modelos = colecao.models
+    (modelos.update_dict if hasattr(modelos, "update_dict") else modelos.save)(tipo)  # `update_dict` é o do Anki novo; `save`, o dos mais antigos
+    return True
 
 
 def _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, midia=None):

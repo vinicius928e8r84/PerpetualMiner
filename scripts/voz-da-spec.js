@@ -8,6 +8,8 @@ const fs = require('fs');
 const path = require('path');
 
 const CAMINHO_DA_SPEC = path.join(__dirname, '..', 'docs', 'design', 'voz', 'README.md');
+// Os IDs que o README não comporta (ele já passa do limite de tamanho) moram em `docs/design/voz/catalogo-*.md`: a mesma tabela, sob um `###`.
+const PASTA_DA_SPEC = path.dirname(CAMINHO_DA_SPEC);
 
 /** Divide uma linha de tabela nas barras que não vêm escapadas (`\|`). */
 function celulasDaLinha(linha) {
@@ -27,12 +29,18 @@ function textoDaCelula(celula) {
   return celula.replace(/\*\*/g, '');
 }
 
+/** O README e, depois dele, os arquivos `catalogo-*.md` ao lado (em ordem de nome): uma spec só. */
+function lerASpec() {
+  const extras = fs.readdirSync(PASTA_DA_SPEC).filter(nome => /^catalogo-.+\.md$/.test(nome)).sort();
+  return [CAMINHO_DA_SPEC, ...extras.map(nome => path.join(PASTA_DA_SPEC, nome))].map(caminho => fs.readFileSync(caminho, 'utf8')).join('\n');
+}
+
 /**
  * @param {string} [spec] o markdown da spec (por padrão, o arquivo do repositório)
  * @returns {{secao: string, id: string, estado: string, categoria: string, hoje: string, copia: string, nota: string, marca: string}[]}
  *   `marca` é 'novo' ou 'some' quando o estado traz **(novo)** ou **(some)**, senão ''.
  */
-function linhasDaSpec(spec = fs.readFileSync(CAMINHO_DA_SPEC, 'utf8')) {
+function linhasDaSpec(spec = lerASpec()) {
   const catalogo = spec.slice(spec.indexOf('## 3. Catálogo de estados-chave'));
   const linhas = [];
   let secao = '';

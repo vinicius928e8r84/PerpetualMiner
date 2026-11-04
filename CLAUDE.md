@@ -46,7 +46,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-anki-plano.js` | `PerpetualMiner.PlanoDosCustos` — the Custos tab card for the ChatGPT plan: Cartões made, “Você economizou” and Gerenciar uso ↗ (BRG-40, #159) |
 | `painel-anki-baralhos.js` | `PerpetualMiner.Baralhos` — Baralhos e termos and Vocabulário in the Conexão com o Anki area (BRG-10…14, 19…21, 27, 34, 35, GLB-01). See “Baralhos e termos and Vocabulário” in the `painel-anki` skill |
 | `painel-ajustes.js` | The Conexão com o Anki › Ajustes de envio tab: one card per language whose form saves only on Salvar ajustes, the Baralho picked from the Anki's decks, and the stale-tab refusal (#35). See “Ajustes de envio” in the `painel-anki` skill |
-| `painel-anki-estilo.js` | `PerpetualMiner.EstiloDoCartao`: the Estilo do cartão level of an Ajustes de envio card (#162, BRG-42) |
+| `painel-anki-estilo.js` | `PerpetualMiner.EstiloDoCartao`: level and front of an Ajustes de envio card (#162, #166, BRG-42/43) |
 | `painel-envio.js` | The Envio ao Anki: Enviar ao Anki in the Frases bar, the progress modal, the tracking saved in `pm_envio` and the summary (ENV-03…15) that opens by itself in any area. See “Envio ao Anki” in the `painel-anki` skill |
 | `painel-envio-anki-fechado.js` | `PerpetualMiner.EnvioComOAnkiFechado` — Enviar ao Anki with the Anki closed (#150): the ENV-16 notice in Frases, the pending Envio and the Consertar outcome (BRG-39). See “Envio ao Anki” in the `painel-anki` skill |
 | `painel-envio-cartao.js` | `PerpetualMiner.CartaoDoEnvio`: one Envio's card in the progress modal + “Abrir <perfil>” (ENV-17) |

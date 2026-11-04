@@ -1,0 +1,224 @@
+{
+  "colecoes": {
+    "inglês com o tipo de nota que a pessoa mexeu": {
+      "baralhos": [
+        {
+          "nome": "Default"
+        }
+      ],
+      "tiposDeNota": {
+        "PerpetualMiner Inglês": [
+          "Frase",
+          "Meu campo"
+        ]
+      }
+    }
+  },
+  "exemplos": [
+    {
+      "nome": "trocar a frente do inglês para a Lacuna: só o modelo do tipo de nota muda",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-front",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "frente": "lacuna"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "nome": "trocar a frente do russo para o Ouvir primeiro",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-front",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "ru",
+          "frente": "ouvir_primeiro"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "nome": "voltar a frente do inglês para a Frase com áudio",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-front",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "frente": "frase_com_audio"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "nome": "trocar a frente com o Anki na tela de perfis",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": null,
+        "colecao": null
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-front",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "frente": "lacuna"
+        }
+      },
+      "resposta": {
+        "status": 503,
+        "json": {
+          "error": "anki_card_front_unavailable",
+          "detail": "collection_not_open"
+        }
+      }
+    },
+    {
+      "nome": "trocar a frente com a coleção que quebra ao ler",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "coleção que quebra ao ler"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-front",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "frente": "lacuna"
+        }
+      },
+      "resposta": {
+        "status": 500,
+        "json": {
+          "error": "internal_error"
+        }
+      }
+    },
+    {
+      "nome": "trocar a frente de um tipo de nota que a pessoa mexeu: a Conexão não o regrava",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com o tipo de nota que a pessoa mexeu"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-front",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "frente": "lacuna"
+        }
+      },
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "note_type_changed"
+        }
+      }
+    },
+    {
+      "nome": "trocar a frente de um idioma que a Conexão não tem",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-front",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "de",
+          "frente": "lacuna"
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_lang"
+        }
+      }
+    },
+    {
+      "nome": "trocar para a frente Imagem primeiro, que não existe",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-front",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "frente": "imagem_primeiro"
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_front"
+        }
+      }
+    },
+    {
+      "nome": "trocar a frente com um corpo que não é um objeto JSON",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-front",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    }
+  ]
+}
