@@ -1,11 +1,11 @@
 'use strict';
 
 // O estilo do Cartão nos Ajustes de envio (#162, BRG-42): o nível de cada idioma, um controle segmentado Iniciante · Intermediário ·
-// Avançado. Sob o escolhido fica o texto dele (o do quiz de nível, com o idioma). No russo só o Iniciante se escolhe, até o #163. `painel-ajustes.js` põe este campo no formulário de cada idioma e é ele quem grava o rascunho em Salvar ajustes.
+// Avançado. Sob o escolhido fica o texto dele (o do quiz de nível, com o idioma). Os dois idiomas têm os três níveis (o russo, desde o #163). `painel-ajustes.js` põe este campo no formulário de cada idioma e é ele quem grava o rascunho em Salvar ajustes.
 
 (function (raiz) {
   const { textoDaVoz, AjustesDeEnvio, IDIOMAS } = raiz;
-  const { NIVEIS, NIVEIS_ESCOLHIVEIS } = AjustesDeEnvio;
+  const { NIVEIS } = AjustesDeEnvio;
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
   const VOZ_DO_NIVEL = {
     iniciante: ['BRG-42.iniciante', 'BRG-42.textoIniciante'],
@@ -39,7 +39,6 @@
       radio.name = id;
       radio.value = nivel;
       radio.checked = rascunho.nivel === nivel;
-      radio.disabled = !NIVEIS_ESCOLHIVEIS[lang].includes(nivel);
       radio.addEventListener('change', () => {
         rascunho.nivel = nivel;
         preencher(lang, nivel, texto);
@@ -49,9 +48,7 @@
     grupo.setAttribute('role', 'radiogroup');
     grupo.setAttribute('aria-labelledby', rotulo.id);
     grupo.setAttribute('aria-describedby', texto.id);
-    const soIniciante = NIVEIS_ESCOLHIVEIS[lang].length < NIVEIS.length;
-    return elemento('div', 'ajustes-campo', rotulo, grupo, texto,
-      ...(soIniciante ? [elemento('span', 'ajustes-campo__ajuda', textoDaVoz('BRG-42.soIniciante'))] : []));
+    return elemento('div', 'ajustes-campo', rotulo, grupo, texto);
   }
 
   raiz.EstiloDoCartao = Object.freeze({ campo });

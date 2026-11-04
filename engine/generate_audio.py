@@ -10,7 +10,7 @@ the Assistant created, not the original entry phrase.
 
 Output filenames: {stem}_word.mp3  and  {stem}_phrase.mp3
 
-`voices()` is what a card says and with which accent; the module uses the standard library only, so it also imports as
+`voices()` is what a card says and with which accent (the word is the card's own `Word:` line when it has one, else the keyword of its line); the module uses the standard library only, so it also imports as
 `complemento.motor.generate_audio` inside the Anki add-on.
 """
 
@@ -71,6 +71,13 @@ def phrase_from_card_text(content: str) -> Optional[str]:
     return phrase or None
 
 
+def word_from_card_text(content: str) -> Optional[str]:
+    """The word a card names on its own `Word:` line (the Russian levels with morphology: the model picks it in the phrase), without the
+    stress mark; None for a card that does not name one (the word is then the keyword of its mining line)."""
+    match = re.search(r"^[^\S\n]*\*{0,2}Word:\*{0,2}[^\S\n]*(.+)$", content, re.IGNORECASE | re.MULTILINE)
+    return match.group(1).replace("\u0301", "").strip().strip("*").strip() or None if match else None
+
+
 def voices(job: CardJob, card_text: Optional[str], config: dict) -> Tuple[Tuple[str, str, str], Tuple[str, str, str]]:
     """What a card says and how: ((word, lang, tld), (phrase, lang, tld)).
 
@@ -78,7 +85,7 @@ def voices(job: CardJob, card_text: Optional[str], config: dict) -> Tuple[Tuple[
     mining.txt phrase; without it (`None`, or no Front in it) the original phrase is the fallback.
     """
     phrase_text = (phrase_from_card_text(card_text) if card_text is not None else None) or _clean_for_tts(job.phrase)
-    word_text = _clean_for_tts(job.keyword)
+    word_text = _clean_for_tts((word_from_card_text(card_text) if card_text is not None else None) or job.keyword)
     word_profile = _pick_profile(word_text, config, "word")
     phrase_profile = _pick_profile(phrase_text, config, "phrase")
     return (

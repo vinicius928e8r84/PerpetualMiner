@@ -1,6 +1,6 @@
 """O que a Conexão com o Anki sabe de si, num lugar só."""
 
-VERSAO = "0.3.9"
+VERSAO = "0.3.10"
 NOME_DO_LOGGER = "perpetualminer"
 
 ENDERECO = "127.0.0.1"

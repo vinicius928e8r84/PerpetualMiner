@@ -296,6 +296,26 @@ class GenerateCardsByStyleTests(unittest.TestCase):
         saved, _, textos = self._gerar("ru", entry, CARTAO_RUSSO_INICIANTE.replace("Literal:", "Outro:").replace("Natural:", "Mais:"))
         self.assertEqual((saved, textos), ([], []))
 
+    def test_o_estilo_do_intermediario_do_russo_traz_o_prompt_dele_e_o_cartao_com_a_definicao_em_ingles_e_salvo(self):
+        cartao = "Anki Card\nFront\nОна приходила вчера.\n\nBack\nWord: приходила\n\nDefinition: To come, to arrive.\n\nImage: A door.\n"
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "Output").mkdir()
+            (root / "log").mkdir()
+            enviados = []
+            original = generate_cards._call_model
+            generate_cards._call_model = lambda base, key, prompt, mensagem, modelo, log, kw: enviados.append((prompt, mensagem)) or cartao
+            config = _com_o_estilo(root, "ru")
+            config["estilo"] = dict(estilos.estilo("ru", "intermediario"), prompt=str(Path(__file__).resolve().parent / "prompts" / "ru_intermediario.txt"))
+            try:
+                saved = generate_cards.run([MiningEntry(keywords=["Она приходила"], phrase="Она приходила вчера.", file_stem="russa")], config)
+            finally:
+                generate_cards._call_model = original
+            textos = [path.read_text(encoding="utf-8") for path in (root / "Output").glob("*.txt")]
+        intermediario = (Path(__file__).resolve().parent / "prompts" / "ru_intermediario.txt").read_text(encoding="utf-8").strip()
+        self.assertEqual(([prompt for prompt, _ in enviados], saved), ([intermediario], ["russa"]))
+        self.assertIn("Definition: To come", textos[0])
+
 
 if __name__ == "__main__":
     unittest.main()

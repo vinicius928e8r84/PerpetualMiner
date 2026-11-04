@@ -1,0 +1,148 @@
+{
+  "exemplos": [
+    {
+      "nome": "o pacote de diagnóstico de um Envio, sem a chave e sem o log de outros Envios",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio na fila"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/debug-bundle",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "generatedAt": "<agora>",
+          "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+          "versao": "0.3.10",
+          "job": {
+            "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+            "createdAt": "2026-10-12T10:00:00-03:00",
+            "lang": "en",
+            "deckName": "Inglês",
+            "imageSource": "1",
+            "tts": {
+              "wordTld": "com",
+              "phraseTld": "co.uk"
+            },
+            "entries": [
+              {
+                "phraseId": 1760270400000
+              }
+            ]
+          },
+          "state": {
+            "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+            "status": "queued",
+            "stage": "queued",
+            "completedStages": [],
+            "progress": {},
+            "successfulPhraseIds": [],
+            "failedPhraseIds": [],
+            "duplicatePhraseIds": [],
+            "lastError": null,
+            "updatedAt": "2026-10-12T10:00:00-03:00",
+            "cards": {
+              "1760270400000-0": {
+                "phraseId": 1760270400000,
+                "status": "pending",
+                "error": null
+              }
+            }
+          },
+          "queueItem": {
+            "jobId": "3f6c2a9e-5b1d-4c8e-9a70-2b4d6e8f1a3c",
+            "lang": "en",
+            "createdAt": "2026-10-12T10:00:00-03:00"
+          },
+          "costs": [],
+          "costSummary": {
+            "costs": {
+              "cardUsd": 0.0,
+              "imageJudgeUsd": 0.0,
+              "imageGuardUsd": 0.0,
+              "imageGenerationUsd": 0.0,
+              "otherUsd": 0.0,
+              "totalUsd": 0.0
+            },
+            "images": {
+              "total": 0,
+              "real": 0,
+              "generated": 0,
+              "skipped": 0,
+              "failed": 0,
+              "generatedAttempted": 0,
+              "savingsUsd": 0.0,
+              "realPct": 0.0,
+              "generatedPct": 0.0,
+              "skippedPct": 0.0,
+              "failedPct": 0.0,
+              "generatedAttemptPct": 0.0
+            },
+            "matchedRecords": 0
+          },
+          "artifacts": [],
+          "logTail": []
+        }
+      }
+    },
+    {
+      "nome": "o pacote de diagnóstico de um Envio que a Conexão não tem",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/debug-bundle",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b"
+        }
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "job_not_found"
+        }
+      }
+    },
+    {
+      "nome": "o pacote de diagnóstico sem um id de Envio válido é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/debug-bundle",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_job_id"
+        }
+      }
+    },
+    {
+      "nome": "o pacote de diagnóstico com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/debug-bundle",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    }
+  ]
+}
