@@ -1,10 +1,10 @@
 'use strict';
 
 // Referência visual da Conexão com o Anki (#33, #35): os estados da conexão e as
-// abas Custos e Ajustes de envio na arrumação C do protótipo travado
+// abas Custos e Ajustes de envio na arrumação C do protótipo
 // (docs/design/painel/anki/prototipo-anki.html?variant=C). O dono revisa estas
-// telas lado a lado com o protótipo; depois de aprovadas, uma mudança visual faz
-// o teste falhar até alguém olhar e atualizar a referência:
+// telas com o protótipo; aprovadas, uma mudança visual falha
+// o teste até alguém olhar a referência:
 //
 //   cd e2e && npx playwright test painel-anki-visual --update-snapshots
 
@@ -55,6 +55,7 @@ const listaDeEnvios = page => page.getByRole('listbox', { name: 'Envios recentes
 const ilha = page => page.locator('.shell-conteudo');
 
 test.beforeEach(({ fakes }) => {
+  fakes.anki.usarRelogio(() => AGORA);
   fakes.anki.definirCustos(ENVIOS);
 });
 
