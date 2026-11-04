@@ -37,6 +37,50 @@ Alignment:
 3 | smoking | fumando
 """
 
+INTERMEDIARIO = """## Anki Card
+
+Source Context: Série - The Office - S01E01
+
+Front: She *gave up* smoking last year.
+
+Back: gave up \u2013 /\u0261e\u026av \u028cp/
+
+Definition: Desistir de fazer algo, parar de tentar.
+
+Other example: Michael never gives up on a bad joke.
+
+Gist: Alguém conta que largou o cigarro no ano passado.
+
+Image: A person breaking a cigarette, no text.
+Google Image Search Queries:
+1. broken cigarette
+2. no smoking sign
+3. person refusing cigarette
+4. quit smoking
+"""
+
+AVANCADO = """## Anki Card
+
+Source Context: Série - The Office - S01E01
+
+Front: She *gave up* smoking last year.
+
+Back: gave up \u2013 /\u0261e\u026av \u028cp/
+
+Definition: To stop doing or trying something, usually a habit, because it has become pointless or too hard.
+
+Other example: Pam never gave up on her dream of becoming an artist.
+
+Gist: A coworker explains how she quit smoking, and why the habit had to go.
+
+Image: A person breaking a cigarette, no text.
+Google Image Search Queries:
+1. broken cigarette
+2. no smoking sign
+3. person refusing cigarette
+4. quit smoking
+"""
+
 RUSSO = """## Anki Card
 
 Front
@@ -73,6 +117,50 @@ def cores_de(html):
 
 def nota(conteudo, lang, **argumentos):
     return nota_do_cartao.campos_da_nota(conteudo, lang, **argumentos)
+
+
+class OCartaoDosOutrosNiveisDoIngles(unittest.TestCase):
+    def test_o_intermediario_grava_a_definicao_em_portugues_outro_exemplo_contexto_e_palavra_sem_nenhuma_cor(self):
+        campos = nota(INTERMEDIARIO, "en", nivel="intermediario")["campos"]
+        self.assertEqual(
+            campos,
+            {
+                "Frase": "She <b>gave up</b> smoking last year.",
+                "Palavra": "gave up \u2013 /\u0261e\u026av \u028cp/",
+                "Definição": "Desistir de fazer algo, parar de tentar.",
+                "Outro exemplo": "Michael never gives up on a bad joke.",
+                "Contexto da cena": "Alguém conta que largou o cigarro no ano passado.",
+                "Fonte": "Série - The Office - S01E01",
+            },
+        )
+        self.assertEqual(cores_de(campos["Frase"]), [])
+
+    def test_o_avancado_grava_as_mesmas_partes_todas_em_ingles(self):
+        campos = nota(AVANCADO, "en", nivel="avancado")["campos"]
+        self.assertEqual(
+            sorted(campos), sorted(["Frase", "Palavra", "Definição", "Outro exemplo", "Contexto da cena", "Fonte"]))
+        self.assertTrue(campos["Definição"].startswith("To stop doing"))
+        self.assertEqual(campos["Contexto da cena"], "A coworker explains how she quit smoking, and why the habit had to go.")
+        self.assertEqual(cores_de(campos["Frase"]), [])
+
+    def test_os_outros_niveis_nao_gravam_pronuncia_nem_traducoes_mesmo_que_o_texto_as_traga(self):
+        campos = nota(INGLES, "en", nivel="intermediario")["campos"]
+        self.assertFalse({"Pronúncia", "Tradução literal", "Tradução natural"} & set(campos))
+        self.assertEqual(cores_de(campos["Frase"]), [])
+
+    def test_a_imagem_e_os_audios_vao_nos_campos_deles_em_qualquer_nivel(self):
+        campos = nota(AVANCADO, "en", nivel="avancado", audio_da_frase="f.mp3", audio_da_palavra="p.mp3", imagem="a.png")["campos"]
+        self.assertEqual(
+            (campos["Áudio da frase"], campos["Áudio da palavra"], campos["Imagem"]), ("[sound:f.mp3]", "[sound:p.mp3]", '<img src="a.png">'))
+
+    def test_a_frase_que_a_busca_de_duplicatas_compara_e_a_mesma_em_todos_os_niveis(self):
+        frentes = {nivel: nota(texto, "en", nivel=nivel)["frente_normalizada"] for nivel, texto in
+                   (("iniciante", INGLES), ("intermediario", INTERMEDIARIO), ("avancado", AVANCADO))}
+        self.assertEqual(set(frentes.values()), {"she gave up smoking last year."})
+
+    def test_o_nivel_que_o_idioma_nao_tem_nao_gera_nota(self):
+        with self.assertRaises(KeyError):
+            nota(RUSSO, "ru", nivel="avancado")
 
 
 class OCartaoIniciante(unittest.TestCase):

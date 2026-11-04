@@ -1,0 +1,105 @@
+{
+  "exemplos": [
+    {
+      "nome": "criar um Envio no Intermediário: o nível vai no pedido e o Cartão sai com a definição em português",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "nivel": "intermediario",
+          "entries": [
+            {
+              "phraseId": 1760270400000,
+              "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+            }
+          ]
+        }
+      },
+      "resposta": {
+        "status": 201,
+        "json": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "status": "queued"
+        }
+      }
+    },
+    {
+      "nome": "criar um Envio no Avançado: o nível vai no pedido e o Cartão sai monolíngue",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "nivel": "avancado",
+          "entries": [
+            {
+              "phraseId": 1760270400000,
+              "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+            }
+          ]
+        }
+      },
+      "resposta": {
+        "status": 201,
+        "json": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "status": "queued"
+        }
+      }
+    },
+    {
+      "nome": "criar num nível que o idioma não tem é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "lang": "ru",
+          "deckName": "Russo",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "ru",
+            "phraseTld": "ru"
+          },
+          "nivel": "intermediario",
+          "entries": [
+            {
+              "phraseId": 1760270400000,
+              "line": "Я не мальчик! [Context: Série - Episódio 1]"
+            }
+          ]
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_level"
+        }
+      }
+    }
+  ]
+}

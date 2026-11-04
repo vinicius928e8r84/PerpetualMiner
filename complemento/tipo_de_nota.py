@@ -17,6 +17,8 @@ CSS = """.card { font-family: arial, sans-serif; font-size: 22px; text-align: ce
 .natural { font-weight: bold; margin: 10px 0; }
 .cena { color: #6b7280; font-size: 18px; margin: 10px 0; }
 .palavra { margin: 14px 0; }
+.definicao { margin: 10px 0; }
+.exemplo { color: #6b7280; font-style: italic; margin: 10px 0; }
 .imagem img { max-width: 100%; max-height: 320px; border-radius: 8px; }
 """
 
@@ -36,18 +38,21 @@ def _verso(idioma, partes):
         "natural": lambda: _parte("natural", nomes["natural"]),
         "cena": lambda: _parte("cena", nomes["cena"]),
         "palavra": lambda: _parte("palavra", nomes["palavra"], audio=(nomes["audio_da_palavra"],)),
+        "definicao": lambda: _parte("definicao", nomes["definicao"]),
+        "outro_exemplo": lambda: _parte("exemplo", nomes["outro_exemplo"]),
         "imagem": lambda: _parte("imagem", nomes["imagem"]),
     }
     return "\n".join(blocos[parte]() for parte in partes if parte in blocos)
 
 
-def definicao(lang):
+def definicao(lang, nivel=None):
     """O tipo de nota do idioma como a coleção o cria: `{ nome, campos: [nomes, na ordem], campos_do_cartao, modelos: [{ nome, frente, verso }], css }`.
-    O verso do modelo é o do nível padrão (`verso` do estilo); `campos_do_cartao` são os que o Envio grava."""
-    idioma, estilo = estilos.idioma(lang), estilos.estilo(lang)
+    O verso do modelo é um só para todos os níveis do idioma: tem todas as partes que um verso pode ter (`ordem_do_verso`), cada uma só aparece se o
+    campo dela tem texto, e o que o nível não usa fica vazio. `campos_do_cartao` são os que o Envio grava no `nivel` (o padrão, sem ele)."""
+    idioma, estilo = estilos.idioma(lang), estilos.estilo(lang, nivel)
     nomes = idioma["campos"]
     frente = '<div class="frase">{{%s}}</div>\n{{%s}}' % (nomes["frase"], nomes["audio_da_frase"])
-    verso = "{{FrontSide}}\n<hr id=answer>\n" + _verso(idioma, estilo["verso"])
+    verso = "{{FrontSide}}\n<hr id=answer>\n" + _verso(idioma, idioma.get("ordem_do_verso") or estilos.estilo(lang)["verso"])  # um idioma sem a ordem tem o verso do nível padrão
     escritos = ("frase", "audio_da_frase", "audio_da_palavra", "fonte") + tuple(estilo["verso"])  # o que o Envio grava: o tipo da pessoa tem de ter
     return {
         "nome": idioma["tipo_de_nota"], "campos": list(nomes.values()), "campos_do_cartao": [nomes[chave] for chave in escritos],
