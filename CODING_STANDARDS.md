@@ -31,12 +31,12 @@ A surface not in this table (the panel shell, sync, storage, the service worker)
 
 ## Storage
 
-7. **Reading and rewriting `frases` or `pm_pending_sync`:** in the service worker, always through `naFilaDeGravacao` (source: `CLAUDE.md` § Write Serialization). On a page, read the current state again after every `await`, before writing; never write back a snapshot taken before an upload or a bridge call. The page half is a reviewer rule, not written in `CLAUDE.md`; its motivation is the same section's "Not covered by the queue" (the panel and `lib/sincronizacao.js` write outside the queue, so a stale snapshot loses phrases).
+7. **Reading and rewriting `frases` or `pm_pending_sync`:** in the service worker, always through `naFilaDeGravacao` (source: `CLAUDE.md` § Write Serialization). On a page, read the current state again after every `await`, before writing; never write back a snapshot taken before an upload or a call to the Conexão. The page half is a reviewer rule, not written in `CLAUDE.md`; its motivation is the same section's "Not covered by the queue" (the panel and `lib/sincronizacao.js` write outside the queue, so a stale snapshot loses phrases).
 
 ## Tests
 
 8. **e2e tests check the screen and what ends up stored**, in every variant the test adds. The three exceptions (native Chrome UI or clock, catalog states no surface shows yet, base-component guarantees with no on-screen trigger) carry a comment that names them. What ends up stored is read after the test's last action and compared with a concrete value (a read nobody compares does not count) (`estadoFinal` in `e2e/estado-final.js`, `extensao.lerStorage`, `extensao.frases()`, what the fake kept); a photo or a text on screen is not enough (#189, #190). A test that stores nothing (a filter, a tab) says so: `// Exceção de teste: sem-estado-guardado — <reason>`. A test of time stops the clock through the `relogioParado` fixture (`e2e/relogio-parado.js`; rule `relogio-fora-da-fixture` refuses `clock.install`/`pauseAt` anywhere else) and moves it with `relogio.avancar`; a timing flake is never fixed with a larger timeout or a retry (#209). Source: `CLAUDE.md` § Testing.
-9. **A new Python test exercises the route or the function**, never the source text of the code (`_function_source` in `bridge/test_anki_launcher.py` is the old way; `bridge/test_envio.py` is the model).
+9. **A new Python test exercises the route or the function**, never the source text of the code (`complemento/test_servidor.py` and `complemento/test_envio.py` are the model: the route over HTTP, the function with fakes at the borders).
 10. **A new visual reference** (`--update-snapshots`) only goes in after the owner approves the look, and the approval is recorded in `e2e/aprovados-visuais.json` (rule `aprovacao-visual`). Source: the header comment of each `e2e/tests/*-visual.spec.js`, the `e2e-suite` skill (the list of visual references) and `CLAUDE.md` § Testing.
 
 ## New files

@@ -111,14 +111,14 @@ fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
   (an SVG `role="img"` named “66% de maturidade”: mature over all cards, recentes = `young + learning`), the big
   number, “palavras diferentes nos cartões” and Cartões · Termos-alvo · Palavra nova por cartão (1 decimal) · Maduros ·
   Recentes · Novos. Ring, bars and legend use the maturity series (ouro · info · muted). Read from the local file
-  (`source: 'collection.anki2'`): the BRG-13 note on top; the bridge's own stale cache: the BRG-12 selo “Mostrando dados de … Não deu para atualizar agora.” (`BRG-12.atualizacao`; with the Conexão off, or answering from the file with the Anki confirmed closed (`ankiFechado`), it is `BRG-12.anki`, “Anki fechado. Mostrando dados de {quando}.”, `{quando}` being the stored `dadosDe` (never another Baralho's), and the Abrir o Anki button; off with nothing stored the two tabs say BRG-37, with the same button) (see the
+  (`source: 'collection.anki2'`): the BRG-13 note on top; an older reading kept by the Conexão: the BRG-12 selo “Mostrando dados de … Não deu para atualizar agora.” (`BRG-12.atualizacao`; with the Conexão off, or answering from the file with the Anki confirmed closed (`ankiFechado`), it is `BRG-12.anki`, “Anki fechado. Mostrando dados de {quando}.”, `{quando}` being the stored `dadosDe` (never another Baralho's), and the Abrir o Anki button; off with nothing stored the two tabs say BRG-37, with the same button) (see the
   [design states](../../../docs/design/painel/anki/README.md#estados) for presentation by tab). Loading BRG-10 + skeleton;
   failure is the persistent BRG-11 aviso with Tentar de novo and the cause in Detalhes.
 - **Vocabulário** reads `POST /anki/vocabulary` (`{ deck, lang, limit: 10000 }`) of each language whole and filters in the panel, so
   each tile has the language's total and the search never waits for the network. Tipo (Palavras e termos · Só
   palavras · Só termos), Status (Todos · Novos · Recentes · Maduros · Mistos) and the search (with ×), then BRG-21's
   “N itens em inglês · mostrando N” (a polite live region) and the list × detail: a `listbox` (↑ ↓ Home End, at most
-  200 items; the filters narrow; the tile's total is the bridge's `totalWords`, which the 10.000 cap does not cut) whose options say “palavra · 4 cartões” and the status selo, and the item's detail
+  200 items; the filters narrow; the tile's total is the Conexão's `totalWords`, which the 10.000 cap does not cut) whose options say “palavra · 4 cartões” and the status selo, and the item's detail
   (Palavra/Termo · language, the maturity bar, Aparece em · Maduros · Recentes · Novos · Status). Nothing matches:
   BRG-21's empty with Limpar busca (clears the search and both filters, focus to the search; only when there is
   something to clear — a language with no items shows the same empty without it). Loading BRG-19 +
@@ -140,8 +140,7 @@ Nothing is written until Salvar ajustes; saving writes only the language of that
 language's draft survives opening and closing the cards. With the Conexão off the tab stays editable, with the BRG-33
 note (drawn by `painel-anki.js`).
 
-The Baralho is a choice among the decks the Anki has: `POST /anki/decks` (the add-on reads the open collection; the Windows bridge asks AnkiConnect, or reads the local
-collection when it is down) is read when the Conexão comes on and on entering the Anki area, and the names show with ›
+The Baralho is a choice among the decks the Anki has: `POST /anki/decks` (the add-on reads the open collection) is read when the Conexão comes on and on entering the Anki area, and the names show with ›
 for the `::` levels. A stored deck the Anki does not have (and the Baralho padrão when missing) stays in the list as
 “… · não está no Anki”. Without the list (Conexão off, Anki not answering) the Baralho is a text field: blank goes back
 to the Baralho padrão (said under it) and a name with an empty level (`Inglês::`) is refused in the field. The audio
@@ -154,7 +153,7 @@ aviso (BRG-07.desatualizada, “Mudou em outra aba. Nada foi salvo aqui.”) off
 for what was saved. A tab without a draft follows another tab's save at once (`acompanhar`). The Envio reads the stored
 ajustes when it creates each Envio (never an in-memory copy from when the panel opened) and never writes them; Baralhos e
 termos and Vocabulário ask for the same decks (`painel.js` reports them to `Baralhos.usarBaralhos`), and the service
-worker's automatic Palavra falls back to the same Baralho padrão. The bridge keeps its own defaults (out of this step).
+worker's automatic Palavra falls back to the same Baralho padrão. The engine keeps its own defaults (out of this step).
 
 ### Consertar sozinho (`lib/abrir-o-anki.js`, `painel-envio-anki-fechado.js`, #152)
 
@@ -172,7 +171,7 @@ what it does with phrases: the selection, the mining line, `apagar(ids)` (the us
 tombstones, no toast) and `marcarComoEnviadas(ids)` (`status: 'exported'`, no toast, the selection untouched).
 
 **Enviar ao Anki** opens the progress modal at once (ENV-05 is silence), with one card per Envio — one per language:
-“Envio em inglês · 12 frases”, the stage in people's words (ENV-07, from the bridge `stage`), the 7 stages as segments
+“Envio em inglês · 12 frases”, the stage in people's words (ENV-07, from the Envio `stage`), the 7 stages as segments
 (the done ones full, the current one filling by its `done/total`; all in the outcome's color at the end), “etapa 4 de 7 ·
 atualizado há 1 min” (ENV-08) and a collapsed Detalhes with jobId, raw stage, ISO
 time (`updatedAt`, or creation) and `lastError`. A card that needs the person has no error box: its stage and segments turn muted; the reason is one short
@@ -190,8 +189,8 @@ and the Veio modal ignores the second press of a double click, so it does not cl
 The tracked Envios live in `pm_envio`, so reloading the panel keeps them (without reopening the modal). When nothing is
 running and at least one Envio started, the **summary** (ENV-10) opens by itself in whatever area of the panel is on screen (never over the Boas-vindas: it waits for an area), once no
 other modal is open. It has one block per language: `+N cartões` (sent now), `no baralho <deck>` (the deck saved on the
-Envio when it was created, its `::` levels shown as ›), `N já estava lá` (the bridge's `duplicatePhraseIds`, never counted
-as sent) and `N não entrou` (what did not become a card, including an Envio that never started; a phrase the bridge lists
+Envio when it was created, its `::` levels shown as ›), `N já estava lá` (the Envio's `duplicatePhraseIds`, never counted
+as sent) and `N não entrou` (what did not become a card, including an Envio that never started; a phrase the Conexão lists
 both in `successfulPhraseIds` and `failedPhraseIds` counts as failed, so it is never deleted) with **Tentar de novo**,
 which redoes only that language. Below the blocks, the history question: “Tirar as N enviadas do histórico?” with
 **Manter** and **Tirar do histórico**; N counts only the sent phrases still in the history, the ones deleted meanwhile

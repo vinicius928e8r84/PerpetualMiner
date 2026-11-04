@@ -166,7 +166,7 @@ mapa true; muda popup.js .agents/skills/verify-perpetualminer/features/x.md
 confere && passou "ratchet accepts a change that updates features/" || falhou "ratchet failed although features/ was updated"
 mapa true; muda popup.css README.md
 confere && passou "ratchet ignores files that are not surfaces (popup.css, README.md)" || falhou "ratchet flagged a non-surface change"
-mapa true; muda bridge-server-lookalike.py 2>/dev/null; muda painel-shell.js
+mapa true; muda painel-shell.js
 confere && falhou "ratchet passed painel-shell.js with nothing" || passou "ratchet fails a painel*.js change"
 mapa true; muda complemento/servidor.py
 confere && falhou "ratchet passed a complemento/servidor.py change with nothing" || passou "ratchet fails a complemento/servidor.py change"

@@ -10,7 +10,7 @@ mesmos bytes); se mudou, é a hora atual, ou `SOURCE_DATE_EPOCH` quando definida
 testes, os exemplos do contrato, `user_files`, o cache, o LEIA-ME e o `versoes.json`.
 
 O motor de texto vem de `engine/` (`ARQUIVOS_DO_MOTOR`) e entra como a pasta `motor/` do pacote, ao lado do
-`motor/__init__.py` deste repositório (ver `motor/__init__.py`): é o mesmo código que a Conexão de hoje roda.
+`motor/__init__.py` deste repositório (ver `motor/__init__.py`).
 
 A extensão entrega este arquivo num link de download (`conexao/perpetualminer.ankiaddon`, no pacote da loja):
 mudou o código do complemento, refaça-o com `python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon`

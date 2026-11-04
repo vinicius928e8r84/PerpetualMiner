@@ -7,9 +7,9 @@
 
 const id = 'teste-le-codigo';
 
-const conserto = 'Exercite a rota ou a função, não o texto dela: o cliente do Flask '
-  + '(`bridge.app.test_client()`, como em bridge/test_envio_api.py) ou a função com fakes nas fronteiras '
-  + '(bridge/test_envio.py é o modelo). Não leia um .py com read_text/open/inspect.getsource/ast.get_source_segment '
+const conserto = 'Exercite a rota ou a função, não o texto dela: a rota por HTTP '
+  + '(complemento/test_servidor.py) ou a função com fakes nas fronteiras '
+  + '(complemento/test_envio.py é o modelo). Não leia um .py com read_text/open/inspect.getsource/ast.get_source_segment '
   + '(CODING_STANDARDS.md regra 9).';
 
 const seAplica = arquivo => /(^|\/)test_[^/]*\.py$/.test(arquivo);

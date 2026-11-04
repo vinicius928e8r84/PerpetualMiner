@@ -1,8 +1,7 @@
 """Os custos de cada Envio, como a aba Custos os lê (`POST /analytics/jobs`).
 
 Cada Envio guarda os registros do `cost_tracker` do motor em `custos/<jobId>/costs.jsonl` (`envio.py`). As linhas e o
-resumo são os de `JobAnalytics.jobs` e `summarize_records` (`bridge/analytics.py`), que o painel já lê: as mesmas
-chaves, as mesmas regras (o texto em `cardUsd`; o juiz e a triagem de imagem pela Palavra `[image_judge]`/`[image_guard]`;
+resumo são os que o painel lê: as chaves e as regras (o texto em `cardUsd`; o juiz e a triagem de imagem pela Palavra `[image_judge]`/`[image_guard]`;
 as imagens pelos registros `image` e `image_pipeline`), só com a biblioteca padrão. O Envio que o plano do ChatGPT escreveu
 leva `plan` (`cards`, `wouldCostUsd`: o que a chave teria cobrado, #159); sem Cartão do plano, a linha não tem a chave `plan`.
 """
@@ -77,7 +76,7 @@ def registros(pasta):
 
 
 def resumir(lidos, dia_do_envio, de, ate):
-    """O resumo dos registros de um Envio no período (`summarize_records` do bridge)."""
+    """O resumo dos registros de um Envio no período."""
     custos, imagens, dos_registros = _custos_zerados(), _imagens_zeradas(), _imagens_zeradas()
     geradas_nos_registros = geradas_no_pipeline = 0.0
     no_pipeline = contados = 0
@@ -136,7 +135,7 @@ def resumir(lidos, dia_do_envio, de, ate):
 
 
 def linhas(fila, de, ate, lang):
-    """Uma linha por Envio do período e do idioma (`JobAnalytics.jobs` do bridge), do mais novo ao mais velho."""
+    """Uma linha por Envio do período e do idioma, do mais novo ao mais velho."""
     resultado = []
     for item in fila.ordem():
         job_id = item["jobId"]

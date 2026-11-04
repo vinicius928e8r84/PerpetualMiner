@@ -19,8 +19,8 @@ assert.ok(ehArquivoDeTeste('.agents/skills/x/scripts/test_helpers.sh'));
 assert.ok(ehArquivoDeTeste('e2e/tests/sub/algo.spec.js'));
 assert.ok(!ehArquivoDeTeste('e2e/fixtures.js'));
 assert.ok(!ehArquivoDeTeste('lib/atestado.js'));
-assert.ok(padraoComoRegex('bridge/test_*.py').test('bridge/test_envio.py'));
-assert.ok(!padraoComoRegex('bridge/test_*.py').test('bridge/sub/test_envio.py'));
+assert.ok(padraoComoRegex('engine/test_*.py').test('engine/test_parser_line.py'));
+assert.ok(!padraoComoRegex('engine/test_*.py').test('engine/sub/test_parser_line.py'));
 assert.ok(padraoComoRegex('e2e/tests/**/*.spec.js').test('e2e/tests/sub/algo.spec.js'));
 
 const lista = testar('--listar');
@@ -48,26 +48,26 @@ assert.deepEqual(escolherPython({}, raizSemVenv), { comando: 'python3', origem: 
 fs.rmSync(raizComVenv, { recursive: true, force: true });
 fs.rmSync(raizSemVenv, { recursive: true, force: true });
 
-const semFlask = "ModuleNotFoundError: No module named 'flask'\n";
-const grupoComPrecisa = { precisa: 'pip install -r bridge/requirements.txt' };
+const semHttpx = "ModuleNotFoundError: No module named 'httpx'\n";
+const grupoComPrecisa = { precisa: 'pip install -r engine/requirements.txt' };
 const doPython3 = { comando: 'python3', origem: 'python3' };
-assert.equal(dicaDeModulo('bridge', grupoComPrecisa, 'FAIL: test_x\n', doPython3), '');
-assert.equal(dicaDeModulo('bridge', grupoComPrecisa, semFlask, doPython3),
-  "✗ bridge: falta o módulo flask; o grupo precisa de: pip install -r bridge/requirements.txt\n  numa worktree nova: scripts/preparar-python.sh cria o .venv e instala tudo; este comando passa a usá-lo sozinho");
-assert.equal(dicaDeModulo('bridge', grupoComPrecisa, semFlask, { comando: '/x/.venv/bin/python', origem: 'venv' }),
-  "✗ bridge: falta o módulo flask; o grupo precisa de: .venv/bin/python -m pip install -r bridge/requirements.txt");
-assert.equal(dicaDeModulo('bridge', grupoComPrecisa, semFlask, { comando: 'python', origem: 'PYTHON' }),
-  "✗ bridge: falta o módulo flask; o grupo precisa de: pip install -r bridge/requirements.txt");
+assert.equal(dicaDeModulo('engine', grupoComPrecisa, 'FAIL: test_x\n', doPython3), '');
+assert.equal(dicaDeModulo('engine', grupoComPrecisa, semHttpx, doPython3),
+  "✗ engine: falta o módulo httpx; o grupo precisa de: pip install -r engine/requirements.txt\n  numa worktree nova: scripts/preparar-python.sh cria o .venv e instala tudo; este comando passa a usá-lo sozinho");
+assert.equal(dicaDeModulo('engine', grupoComPrecisa, semHttpx, { comando: '/x/.venv/bin/python', origem: 'venv' }),
+  "✗ engine: falta o módulo httpx; o grupo precisa de: .venv/bin/python -m pip install -r engine/requirements.txt");
+assert.equal(dicaDeModulo('engine', grupoComPrecisa, semHttpx, { comando: 'python', origem: 'PYTHON' }),
+  "✗ engine: falta o módulo httpx; o grupo precisa de: pip install -r engine/requirements.txt");
 
 const pastaFalsa = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-python-falso-'));
 const pythonFalso = path.join(pastaFalsa, 'python');
-fs.writeFileSync(pythonFalso, `#!/bin/sh\necho "ModuleNotFoundError: No module named 'flask'" >&2\nexit 1\n`, { mode: 0o755 });
-const semModulo = spawnSync('node', [path.join(RAIZ, 'scripts', 'testar.mjs'), 'bridge'], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, PYTHON: pythonFalso } });
+fs.writeFileSync(pythonFalso, `#!/bin/sh\necho "ModuleNotFoundError: No module named 'httpx'" >&2\nexit 1\n`, { mode: 0o755 });
+const semModulo = spawnSync('node', [path.join(RAIZ, 'scripts', 'testar.mjs'), 'engine'], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, PYTHON: pythonFalso } });
 fs.rmSync(pastaFalsa, { recursive: true, force: true });
 assert.equal(semModulo.status, 1);
-assert.match(semModulo.stderr, /ModuleNotFoundError: No module named 'flask'/);
-assert.match(semModulo.stdout, /✗ bridge: falta o módulo flask; o grupo precisa de: pip install -r bridge\/requirements\.txt/);
-assert.match(semModulo.stdout, /error: falharam: bridge/);
+assert.match(semModulo.stderr, /ModuleNotFoundError: No module named 'httpx'/);
+assert.match(semModulo.stdout, /✗ engine: falta o módulo httpx; o grupo precisa de: pip install -r engine\/requirements\.txt/);
+assert.match(semModulo.stdout, /error: falharam: engine/);
 
 // A saída de erro dos grupos Python aparece enquanto o processo roda (o unittest escreve tudo nela): um teste
 // que trava não deixa o log vazio. O Python falso só termina bem quando o teste, ao ver a linha, cria o arquivo.
@@ -76,7 +76,7 @@ assert.match(semModulo.stdout, /error: falharam: bridge/);
   const liberar = path.join(pasta, 'liberar');
   const falso = path.join(pasta, 'python');
   fs.writeFileSync(falso, `#!/bin/sh\necho "test_a ... ok" >&2\ni=0\nwhile [ ! -e "${liberar}" ] && [ $i -lt 100 ]; do sleep 0.1; i=$((i+1)); done\n[ -e "${liberar}" ]\n`, { mode: 0o755 });
-  const filho = spawn('node', [path.join(RAIZ, 'scripts', 'testar.mjs'), 'bridge'], { cwd: RAIZ, env: { ...process.env, PYTHON: falso }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const filho = spawn('node', [path.join(RAIZ, 'scripts', 'testar.mjs'), 'engine'], { cwd: RAIZ, env: { ...process.env, PYTHON: falso }, stdio: ['ignore', 'pipe', 'pipe'] });
   let erro = '';
   filho.stderr.on('data', pedaco => {
     erro += pedaco;

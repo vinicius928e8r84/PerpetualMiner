@@ -1,5 +1,5 @@
 """O tratamento de imagem do motor passa por um adaptador (`image_utils.usar_adaptador`): o Qt do Anki no complemento, o Pillow
-na Conexão de hoje. Aqui o adaptador é de mentira, então nada disto precisa do Pillow instalado; a Pillow tem o teste dela, no fim,
+por padrão. Aqui o adaptador é de mentira, então nada disto precisa do Pillow instalado; a Pillow tem o teste dela, no fim,
 que só roda onde ela está."""
 
 import base64
@@ -136,7 +136,7 @@ class DownloadDeCandidatas(ComAdaptador):
         self.assertEqual((ok, guardado), (True, PNG_BYTES))
 
 
-@unittest.skipUnless(image_utils.pillow_disponivel(), "sem Pillow: o adaptador de hoje da Conexão de hoje não tem o que converter")
+@unittest.skipUnless(image_utils.pillow_disponivel(), "sem Pillow: o adaptador do Pillow não tem o que converter")
 class AdaptadorDoPillow(unittest.TestCase):
     def test_the_pillow_adapter_converts_a_jpeg_to_png_as_before(self):
         from io import BytesIO

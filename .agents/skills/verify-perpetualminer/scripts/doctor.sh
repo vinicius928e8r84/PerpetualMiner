@@ -38,10 +38,10 @@ if [ -d "$E2E/node_modules/@playwright/test" ]; then
   [ "$n" -gt 0 ] && ok "$n tests collected" || nok 'playwright test --list collected nothing: run it by hand to see the error'
 fi
 
-# The Anki fake lives in the browser's routing, not on the port, so a real bridge on 8766 does not
-# interfere. Report it so nobody mistakes a live bridge for the fake.
+# The Anki fake lives in the browser's routing, not on the port, so a real Conexão on 8766 does not
+# interfere. Report it so nobody mistakes a live Conexão for the fake.
 if (exec 3<>/dev/tcp/127.0.0.1/8766) 2>/dev/null; then
-  printf 'note  something listens on 127.0.0.1:8766 (a real bridge?). The e2e fake answers inside Chromium and never reaches it.\n'
+  printf 'note  something listens on 127.0.0.1:8766 (a real Conexão?). The e2e fake answers inside Chromium and never reaches it.\n'
 else
   ok '127.0.0.1:8766 free (nothing to confuse with the fake)'
 fi

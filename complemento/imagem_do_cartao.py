@@ -1,5 +1,5 @@
-"""A imagem do Cartão dentro do Envio (#144): a foto real que o juiz escolhe (Openverse) ou a imagem gerada pela chave, do mesmo
-código da Conexão de hoje (`motor/image_pipeline.py`), só com a biblioteca padrão. O que precisa de biblioteca de imagem (converter
+"""A imagem do Cartão dentro do Envio (#144): a foto real que o juiz escolhe (Openverse) ou a imagem gerada pela chave, pelo
+código de `motor/image_pipeline.py`, só com a biblioteca padrão. O que precisa de biblioteca de imagem (converter
 JPEG, WebP ou GIF em PNG) passa pelo adaptador de `motor/image_utils.py`: aqui, o Qt do Anki (`imagem_qt.py`). Quem usa é
 `envio.Trabalho`, que herda daqui; a imagem não fica na pasta de dados: vai da rede à coleção do Anki na mesma volta.
 

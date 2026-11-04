@@ -358,7 +358,7 @@
     acompanhar();
   }
 
-  /** Continuar envio (ENV-13): o bridge retoma de onde parou. */
+  /** Continuar envio (ENV-13): o Envio retoma de onde parou. */
   async function continuarEnvio(envio) {
     if (retomando.has(envio.jobId)) return;
     retomando.add(envio.jobId);
@@ -552,7 +552,7 @@
     }
   }
 
-  /** O nome de gente (a chave de ENV-07) da etapa `stage` do bridge, ou null. */
+  /** O nome de gente (a chave de ENV-07) da etapa `stage` do Envio, ou null. */
   function nomeDaEtapa(stage) {
     return ETAPAS.find(([etapa]) => etapa === stage)?.[1] || null;
   }

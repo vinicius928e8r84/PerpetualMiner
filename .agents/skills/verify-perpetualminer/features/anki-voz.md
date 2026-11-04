@@ -24,4 +24,4 @@ Preconditions: `doctor.sh` green. The voice lives in the Anki fake (`fakes.anki.
 ## Gotchas
 
 - The visual references of the Ajustes screens are `test.fixme` (no PNG) until the owner approves them against prototype P9 of #107 (`painel-ajustes-voz-visual.spec.js`, `painel-anki-visual.spec.js`).
-- Not provable here: the real Google voice from the owner's Mac (risk 11) and the real OpenAI voice; the owner's rehearsal. The old Conexão in `bridge/` has no Ouvir route (the panel says `Não deu para tocar esta voz.`) and ignores `tts.reserva`.
+- Not provable here: the real Google voice from the owner's Mac (risk 11) and the real OpenAI voice; the owner's rehearsal.

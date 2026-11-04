@@ -1813,7 +1813,7 @@ function linhaDoTxt(frase) {
 }
 
 /**
- * A linha que o Anki Bridge lê com o parser dele, que não conhece o prefixo
+ * A linha que o parser do motor lê, que não conhece o prefixo
  * vazio: a Palavra como está, sem as duas regras do .txt.
  */
 function linhaParaOAnki(frase) {

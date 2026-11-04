@@ -87,7 +87,7 @@ One switch (CFG-36…40), off by default. The login item lives in the Conexão (
 folder on Windows; `complemento/item_de_login.py`), so nothing is stored in `chrome.storage`: the switch shows what
 `POST /abrir-com-o-computador/estado` says (read when the Conexão comes on and on entering Configurações) and changes only after
 `POST /abrir-com-o-computador` `{ ligado }` answers. While it works the switch is disabled and still shows the real state. With
-the Conexão off it is unavailable (the note CFG-38 and the row “Indisponível agora”); so it is when the Conexão answers the read with 404 (today's bridge has no such route: `CFG-38.antiga`) or fails it (`CFG-38.falhou`), never an endless “Conferindo…”. A refused write (`anki_not_found`, `login_item_failed`, `login_item_unsupported`) leaves the item as it was and shows the persistent
+the Conexão off it is unavailable (the note CFG-38 and the row “Indisponível agora”); so it is when the Conexão answers the read with 404 (an add-on version without the route: `CFG-38.antiga`) or fails it (`CFG-38.falhou`), never an endless “Conferindo…”. A refused write (`anki_not_found`, `login_item_failed`, `login_item_unsupported`) leaves the item as it was and shows the persistent
 aviso CFG-39 with the code in Detalhes; a write with no usable answer (connection lost, the 3 s limit, a body with no boolean `ligado`) is *uncertain*:
 the aviso says so (`CFG-39.incerta`), the switch is unavailable, and `/estado` is read until it confirms (then the aviso goes, or says what
 happened). Only what the Conexão confirmed is shown: any failed or invalid read, even after a good one, makes the switch unavailable. It never

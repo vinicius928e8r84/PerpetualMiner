@@ -1,10 +1,7 @@
 """A leitura do vocabulário e dos números de um Baralho: as funções puras, sem I/O e sem estado.
 
-Vem de `bridge/card_normalization.py`, que a Conexão de hoje (Windows) segue usando até o complemento
-a substituir; o comportamento é o mesmo, só a biblioteca padrão e o Python 3.9. Quando o motor entrar
-no complemento, este é o único lugar. O normalizador da frase russa (que no motor é `parser.normalize_ru_phrase`)
-vem embutido em `normalizar_frase_ru`. Só entra aqui o que as leituras usam (o resto de `card_normalization.py`
-fica no bridge).
+Só a biblioteca padrão e o Python 3.9. O normalizador da frase russa (que no motor é `parser.normalize_ru_phrase`)
+vem embutido em `normalizar_frase_ru`.
 """
 
 from __future__ import annotations

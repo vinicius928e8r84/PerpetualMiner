@@ -1,8 +1,7 @@
 """
 image_queries.py - What to search for a card's picture: the queries, the visual subject and the card's phrase and context.
 
-Pure text functions (standard library only), used by the image pipeline (`image_pipeline.py`) in the bridge and in the
-Anki add-on.
+Pure text functions (standard library only), used by the image pipeline (`image_pipeline.py`) in the Anki add-on.
 """
 
 import re

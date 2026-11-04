@@ -35,7 +35,7 @@ class OMotorComoPacote(unittest.TestCase):
         with mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
             motor = envio.motor_do_complemento()
             config = motor.config_loader.base_config()
-        self.assertEqual((config["anki"]["note_type"], config["anki"]["fields"]), ("Básico", {"front": "Frente", "back": "Verso"}))  # o da Conexão de hoje (bridge)
+        self.assertEqual((config["anki"]["note_type"], config["anki"]["fields"]), ("Básico", {"front": "Frente", "back": "Verso"}))
 
     def test_as_imagens_do_motor_rodam_sem_pillow_requests_nem_o_sdk_e_so_o_que_precisa_converter_pede_um_adaptador(self):
         with mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):

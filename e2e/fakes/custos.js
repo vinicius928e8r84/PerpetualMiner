@@ -31,7 +31,7 @@ function imagensZeradas() {
   };
 }
 
-/** Um Envio da aba Custos no formato de `JobAnalytics.jobs` (bridge/analytics.py), o das linhas do contrato. `plano`: { cartoes, economia }. */
+/** Um Envio da aba Custos no formato das linhas do contrato (`POST /analytics/jobs`). `plano`: { cartoes, economia }. */
 function linhaDeCustos({
   jobId, lang = 'en', createdAt, status = 'completed', stage, pedidas = 1, enviadas, lastError = null,
   custos = {}, imagens = {}, economia = 0, baralho = '', plano = null,

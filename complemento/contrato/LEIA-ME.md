@@ -120,7 +120,7 @@ Por isso (decisão do dono, opção B):
    **Known limit: legado não migrado.** Com a Conexão divergente **ou vazia**, a prova recusada pode reenviar a chave
    legada inteira ao loopback a cada saúde (~15 s) enquanto o painel permanece aberto. O segredo continua no navegador,
    aumentando a janela de captura por um listener impostor; a Conexão vazia não o recupera automaticamente.
-   O bearer só é enviado após `/ia/estado` responder no formato versionado completo. O bridge sem essa rota (404) não
+   O bearer só é enviado após `/ia/estado` responder no formato versionado completo. Uma Conexão sem essa rota (404) não
    recebe bearer: sem pendência não gera erro da chave; com pendência exige atualização. Isso verifica protocolo,
    não autentica um listener impostor que imite o formato (#192).
 4. A primeira rota de leitura sensível (os Baralhos, os números e o vocabulário) seguiu a regra do 2: são POST
@@ -141,8 +141,7 @@ sem responder, é `503` com o `error` da rota e o `detail` (`collection_not_open
 | `POST /anki/stats/decks` | `{ decks: [{ deckName, lang }, …], refresh?, launch? }` | `{ generatedAt, decks: [linha por Baralho, na ordem pedida], totals, source }`. Um Baralho que o Anki não tem volta com `missing: true` e tudo zerado. Sem `decks`, `400` (`decks_required`). `refresh` e `launch` são aceitos e ignorados: a Conexão lê sempre ao vivo e nunca abre o Anki. `error`: `anki_stats_unavailable` |
 | `POST /anki/vocabulary` | `{ deck, lang, status?, type?, q?, limit?, offset? }` | `{ generatedAt, deckName, lang, source, totalCards, filters, totalWords, words }`. Um Baralho que o Anki não tem tem `words: []`. `400`: `deck_required`, `invalid_lang` (só `en` e `ru`). `error`: `anki_vocabulary_unavailable` |
 
-`source` é `"colecao"` (lida do Anki aberto). `"collection.anki2"` é só da Conexão de hoje, lendo o arquivo com o Anki fechado:
-o complemento só existe com o Anki aberto. A Conexão de hoje (`bridge/`) atende o mesmo POST, além do GET que já tinha.
+`source` é `"colecao"` (lida do Anki aberto): o complemento só existe com o Anki aberto e nunca lê o arquivo da coleção.
 
 ## Como uma rota nova entra
 
@@ -154,13 +153,10 @@ o complemento só existe com o Anki aberto. A Conexão de hoje (`bridge/`) atend
 3. Rode `cd e2e && npx playwright test contrato-da-conexao`: ele falha até o fake responder.
    O fake responde pelo exemplo (`respostaDoContrato` em `e2e/fakes/anki.js`); só estados novos
    (um `contexto` novo, uma fila) pedem código no fake.
-4. Uma rota que já existe na Conexão de hoje (`bridge/server.py`) entra com o formato que a
-   extensão já lê; a regra é a de “o mesmo contrato HTTP”, e o exemplo é a prova.
 
 ## As rotas do Envio (#142)
 
 Todas POST, com a origem da extensão (levam as Frases e os custos da pessoa); o desenho é `docs/design/envio-no-complemento.md`.
-A Conexão de hoje (`bridge/`) atende as mesmas rotas e o mesmo criar idempotente.
 
 | Rota | Corpo | Resposta |
 |---|---|---|
@@ -169,7 +165,7 @@ A Conexão de hoje (`bridge/`) atende as mesmas rotas e o mesmo criar idempotent
 | `POST /jobs/get` | `{ jobId }` | `{ job, state }`; `404 job_not_found` |
 | `POST /jobs/retry` | `{ jobId }` | `{ jobId, status }`: um Envio terminado volta à fila guardando os Cartões prontos; na fila ou andando, só diz o estado (nada gravado). `404 job_not_found` |
 | `POST /jobs/debug-bundle` | `{ jobId }` | o pedido, o estado, os custos, os arquivos do Envio e as linhas do log que o citam; nunca a chave. `404 job_not_found` |
-| `POST /analytics/jobs` | `{ lang: 'all', from?, to? }` | `{ jobs: [linha por Envio] }`, as linhas de `bridge/analytics.py` (`custos.py`); com Cartão do plano do ChatGPT, `plan: { cards, wouldCostUsd }` (#159) |
+| `POST /analytics/jobs` | `{ lang: 'all', from?, to? }` | `{ jobs: [linha por Envio] }` (`custos.py`); com Cartão do plano do ChatGPT, `plan: { cards, wouldCostUsd }` (#159) |
 
 `lastError` e o `error` de cada Cartão são códigos (`openai_key_missing`, `openai_key_rejected`, `openai_no_credit`,
 `openai_rate_limited`, `openai_unreachable`, `note_type_missing`, `anki_write_failed`…), nunca o texto da OpenAI.

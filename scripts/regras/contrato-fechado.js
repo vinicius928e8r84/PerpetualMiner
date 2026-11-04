@@ -6,7 +6,7 @@
 // de `PerpetualMiner.PedidoAoAnki` (lib/pedido-ao-anki.js), que lista os pedidos (`variantes`) para o teste do
 // contrato (`node test_contrato_fechado.js`) conferir um exemplo de cada um. Esta regra acusa o `fetch`
 // direto a uma rota da Conexão: ou a rota tem exemplo e o pedido deve passar pelo construtor, ou a rota
-// ainda não está no contrato (as do bridge de hoje) e entra nele antes de a extensão pedi-la.
+// ainda não está no contrato e entra nele antes de a extensão pedi-la.
 
 const fs = require('fs');
 const path = require('path');
@@ -23,7 +23,7 @@ const ARQUIVO_DO_CONSTRUTOR = 'lib/pedido-ao-anki.js';
 const seAplica = arquivo => ehJsDaExtensao(arquivo) && arquivo !== ARQUIVO_DO_CONSTRUTOR;
 
 // Onde um `fetch` aponta para a Conexão: o endereço dela, por nome ou por extenso.
-const ENDERECO = /(?:\bENDERECO\w*|\bBRIDGE_URL\b|\bendereco\b|127\.0\.0\.1:8766|localhost:8766)\}?(?=\/|\$\{)/g;
+const ENDERECO = /(?:\bENDERECO\w*|\bendereco\b|127\.0\.0\.1:8766|localhost:8766)\}?(?=\/|\$\{)/g;
 
 // O caminho que começa em `de` (a barra): até uma aspa, a crase, o `?` ou um espaço; `${…}` é uma peça só e vira `:id`.
 function caminhoDe(codigo, de) {

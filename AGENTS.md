@@ -2,14 +2,14 @@
 
 ## Project Structure & Module Organization
 
-A Chrome extension (Manifest V3, plain JavaScript, no build) plus a local Python bridge (`bridge/`, Flask) that runs the card pipeline in `engine/` (`bridge/config.json` › `automatic_anki_path`).
+A Chrome extension (Manifest V3, plain JavaScript, no build) plus the Conexão com o Anki, an Anki add-on (`complemento/`) that runs the card pipeline of `engine/` inside the Anki.
 
 - **Files:** the role of every root file and every `lib/` module is in the table of `CLAUDE.md` § Architecture › Files; a new file gets its row there, not here.
-- **Design specs and prototypes:** `docs/design/README.md` (index); `docs/superpowers/specs/` holds three old bridge notes (June). Domain glossary: `CONTEXT.md`.
-- **Veio identity:** `veio/README.md`. **Envio state machine:** `bridge/envio.py`'s docstring. **Engine:** `engine/CLAUDE.md`. **Device and store tooling:** `scripts/`, `docs/instalar-extensao.md`, `docs/publicar-chrome-web-store.md`.
-- **Tests:** `e2e/` (see `CLAUDE.md` § Testing), root `test_*.js`, `bridge/test_*.py`, `engine/test_*.py`.
-- `bridge/runtime/` is runtime data, not source. `preview/` only copies files into `preview/dist`; never edit an extension file to make the preview work.
-- **Conexão com o Anki as an Anki add-on:** `complemento/` (standard library only, Python 3.9 and 3.13); its HTTP contract with the extension is `complemento/contrato/exemplos.json`, and `complemento/contrato/LEIA-ME.md` says how a new route enters. The bridge in `bridge/` stays until the add-on replaces it.
+- **Design specs and prototypes:** `docs/design/README.md` (index); domain glossary: `CONTEXT.md`.
+- **Veio identity:** `veio/README.md`. **Envio state machine:** `complemento/envio.py`'s docstring. **Engine:** `engine/CLAUDE.md`. **Device and store tooling:** `scripts/`, `docs/instalar-extensao.md`, `docs/publicar-chrome-web-store.md`.
+- **Tests:** `e2e/` (see `CLAUDE.md` § Testing), root `test_*.js`, `complemento/test_*.py`, `engine/test_*.py`.
+- `preview/` only copies files into `preview/dist`; never edit an extension file to make the preview work.
+- **Conexão com o Anki as an Anki add-on:** `complemento/` (standard library only, Python 3.9 and 3.13); its HTTP contract with the extension is `complemento/contrato/exemplos.json`, and `complemento/contrato/LEIA-ME.md` says how a new route enters.
 
 ## Standards
 
@@ -20,16 +20,16 @@ What the reviewer enforces (Voice catalog copy, Veio tokens, base components, st
 - All tests: `node scripts/testar.mjs [<grupo>]` is the command CI runs for every job; the groups, and which files each one runs, are in `scripts/testes.json` (`--listar` shows them; no group runs the light ones; `-- <args>` reaches unittest/Playwright, e.g. `node scripts/testar.mjs e2e -- popup --workers=2`; `PYTHON=` picks the interpreter). A new test file joins a group there, or `testes-no-portao` fails.
 - Fast checks: `node scripts/testar.mjs node regras ferramentas` (the Node tests, the rule proofs, the tooling).
 - Add-on: `PYTHON=python3.9 node scripts/testar.mjs complemento`, also with `python3.13` (`uv python install 3.9 3.13` if missing).
-- Bridge: `node scripts/testar.mjs bridge` (needs `pip install -r bridge/requirements.txt`; `python3 bridge/test_envio.py` alone needs no Flask); engine: `node scripts/testar.mjs engine` (needs `engine/requirements.txt`). `scripts/preparar-python.sh` makes the venv.
+- Engine: `node scripts/testar.mjs engine` (needs `engine/requirements.txt`). `scripts/preparar-python.sh` makes the venv.
 - e2e: `node scripts/testar.mjs e2e -- <specs> --workers=2` (the same as `cd e2e && npx playwright test <specs> --workers=2`); the whole suite with `npm test` in `e2e/` (first time: `npm ci` and `npm run setup`; see `CLAUDE.md` § Testing).
 - Proving a change by driving the extension (launch, doctor, evidence, cleanup, feature map): `.agents/skills/verify-perpetualminer/SKILL.md` (also linked from `.claude/skills/`).
-- Running and installing the bridge on Windows, and its routes: `bridge/README.md`. When debugging Anki, try `/health`, `/anki/status` and `/anki/repair` before killing processes.
+- Installing and running the Conexão com o Anki: `complemento/LEIA-ME.md`. When debugging Anki, try `GET /health` and the opener's `consertar` (`complemento/conserto_do_anki.py`) before killing processes.
 
-Add or update focused tests when touching bridge launch, Anki repair, sync, or panel logic. New extension behavior is tested in `e2e/`. Name Python tests by behavior, for example `test_anki_launch_omits_profile_when_last_loaded_matches_config`.
+Add or update focused tests when touching the Envio, the opener, the Anki repair, sync, or panel logic. New extension behavior is tested in `e2e/`. Name Python tests by behavior, for example `test_outro_programa_que_nao_e_o_do_anki_nao_e_fechado`.
 
 ## Security & Configuration
 
-Keep local paths and Anki settings in `bridge/config.json`. Do not commit secrets, API keys, browser profile data, or generated job artifacts.
+The Conexão keeps its data in the add-on's `user_files` (`complemento/pasta_de_dados.py`), which the Anki preserves across updates. Do not commit secrets, API keys, browser profile data, or generated job artifacts.
 
 ## Rules and what enforces them
 
@@ -51,7 +51,7 @@ Keep local paths and Anki settings in `bridge/config.json`. Do not commit secret
 | 10 Visual references | review; `aprovacao-visual` (a reference PNG outside a `test.fixme` needs its entry in `e2e/aprovados-visuais.json`) |
 | 11 New files | review; `indice-de-arquivos` (a root, `lib/`, `veio/` or `scripts/` file needs its row in `CLAUDE.md` › Files); `test_empacotar.js` |
 
-A PR that changes a user-facing file (`popup.*`, `painel*`, `manifest.json`, `bridge/server.py`, …) also needs `.agents/skills/verify-perpetualminer/features/` updated or "feature map unchanged" in its body: the `Mapa de features` step of `.github/workflows/regras.yml` (PRs only).
+A PR that changes a user-facing file (`popup.*`, `painel*`, `manifest.json`, `complemento/servidor.py`, …) also needs `.agents/skills/verify-perpetualminer/features/` updated or "feature map unchanged" in its body: the `Mapa de features` step of `.github/workflows/regras.yml` (PRs only).
 
 When the same correction comes up twice, add its rule to `CODING_STANDARDS.md` and this table, enforced at the highest level that works.
 

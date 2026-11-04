@@ -14,7 +14,7 @@ const { EMAIL_DO_DONO, commitsForaDaRegra, mensagem } = require('./autoria.js');
 const { ARQUIVO_DA_LISTA, checksDosWorkflows, checksQueFaltam } = require('./checks-obrigatorios.js');
 
 assert.strictEqual(soDocumentacao(['CLAUDE.md']), true);
-assert.strictEqual(soDocumentacao(['docs/instalar-extensao.md', 'bridge/README.md', 'engine/prompts/README.md']), true);
+assert.strictEqual(soDocumentacao(['docs/instalar-extensao.md', 'complemento/LEIA-ME.md', 'engine/prompts/README.md']), true);
 assert.strictEqual(soDocumentacao(['docs/design/painel/anki/prototipo-anki.html', 'docs/design/foto/ref.png']), true);
 assert.strictEqual(soDocumentacao(['.agents/skills/popup/SKILL.md', '.claude/skills/x/SKILL.md']), true);
 

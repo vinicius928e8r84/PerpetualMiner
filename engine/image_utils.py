@@ -76,7 +76,7 @@ def normalize_image_bytes(data: bytes, *, target_format: str = "PNG") -> tuple[b
 
 
 class AdaptadorDoPillow:
-    """The adapter of the bridge and of the command line: Pillow, imported when the first conversion is asked for."""
+    """The default adapter: Pillow, imported when the first conversion is asked for."""
 
     def converter(self, dados: bytes, formato: str) -> bytes:
         try:

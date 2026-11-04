@@ -40,7 +40,7 @@ Mais três métodos, para a Conexão:
   o marcado; na tela de perfis, só abre; já no marcado, não faz nada. Devolve se começou.
 
 A frente e o verso que a leitura entende são os campos “Frente” e “Verso” (ou “Front” e “Back”, do Anki em inglês; “Frase” e “Palavra”, do tipo de
-nota próprio) e, sem eles, o primeiro e o segundo campo, como a Conexão de hoje faz.
+nota próprio) e, sem eles, o primeiro e o segundo campo.
 """
 
 from datetime import datetime, timezone

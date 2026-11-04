@@ -8,7 +8,7 @@ import generate_images
 import google_images
 import image_guard
 import image_judge
-import start
+from rodar_imagens import _build_card_google_queries, _run_images
 
 
 CARD_TEXT = """Anki Card
@@ -142,7 +142,7 @@ Image: Hungry people asking for food, no text.
 Natural: We are very hungry.
 """
 
-        queries = start._build_card_google_queries(
+        queries = _build_card_google_queries(
             card_text,
             stem="hungry_people",
             prompt="fallback generated prompt",
@@ -188,7 +188,7 @@ Natural: We are very hungry.
                 generate_one=generate_one,
                 should_generate_image=lambda *args, **kwargs: True,
             ):
-                img_files, skipped, sources = start._run_images(
+                img_files, skipped, sources = _run_images(
                     _config(log_dir, lang="ru"),
                     ["vashe_velichestvo:Fallback prompt"],
                     output_dir,
@@ -243,7 +243,7 @@ Natural: We are very hungry.
                 generate_one=generate_one,
                 should_generate_image=lambda *args, **kwargs: True,
             ):
-                img_files, skipped, sources = start._run_images(
+                img_files, skipped, sources = _run_images(
                     _config(log_dir),
                     ["saw:A fallback generated prompt"],
                     output_dir,
@@ -294,7 +294,7 @@ Natural: We are very hungry.
                 generate_one=generate_one,
                 should_generate_image=lambda *args, **kwargs: False,
             ):
-                img_files, skipped, sources = start._run_images(
+                img_files, skipped, sources = _run_images(
                     _config(log_dir),
                     ["resilience:A generated prompt that should be blocked"],
                     output_dir,
@@ -339,7 +339,7 @@ Natural: We are very hungry.
                 generate_one=generate_one,
                 should_generate_image=lambda *args, **kwargs: False,
             ):
-                img_files, skipped, sources = start._run_images(
+                img_files, skipped, sources = _run_images(
                     _config(log_dir),
                     ["resilience:A generated prompt that should be blocked"],
                     output_dir,
@@ -402,7 +402,7 @@ Natural: We are very hungry.
                 generate_one=generate_one,
                 should_generate_image=lambda *args, **kwargs: False,
             ):
-                img_files, skipped, sources = start._run_images(
+                img_files, skipped, sources = _run_images(
                     _config(log_dir),
                     ["resilience:A generated prompt that should be blocked"],
                     output_dir,
@@ -448,7 +448,7 @@ Natural: We are very hungry.
                 generate_one=generate_one,
                 should_generate_image=lambda *args, **kwargs: True,
             ):
-                img_files, skipped, sources = start._run_images(
+                img_files, skipped, sources = _run_images(
                     _config(log_dir),
                     ["saw:A fallback generated prompt"],
                     output_dir,
@@ -491,7 +491,7 @@ Natural: We are very hungry.
                 generate_one=generate_one,
                 should_generate_image=lambda *args, **kwargs: True,
             ):
-                img_files, skipped, sources = start._run_images(
+                img_files, skipped, sources = _run_images(
                     _config(log_dir),
                     ["saw:A fallback generated prompt"],
                     output_dir,
@@ -552,7 +552,7 @@ Natural: We are very hungry.
                 generate_one=generate_one,
                 should_generate_image=lambda *args, **kwargs: True,
             ):
-                img_files, skipped, sources = start._run_images(
+                img_files, skipped, sources = _run_images(
                     _config(log_dir),
                     ["saw:A fallback generated prompt"],
                     output_dir,
@@ -616,7 +616,7 @@ Natural: We are very hungry.
                 generate_one=generate_one,
                 should_generate_image=lambda *args, **kwargs: True,
             ):
-                img_files, skipped, sources = start._run_images(
+                img_files, skipped, sources = _run_images(
                     _config(log_dir),
                     ["saw:A fallback generated prompt"],
                     output_dir,
@@ -662,7 +662,7 @@ Natural: We are very hungry.
                 generate_one=generate_one,
                 should_generate_image=lambda *args, **kwargs: True,
             ):
-                img_files, skipped, sources = start._run_images(
+                img_files, skipped, sources = _run_images(
                     _config(log_dir),
                     ["saw:A fallback generated prompt"],
                     output_dir,
@@ -716,7 +716,7 @@ Natural: We are very hungry.
                 ),
                 should_generate_image=guard_should_not_run,
             ):
-                img_files, skipped, sources = start._run_images(
+                img_files, skipped, sources = _run_images(
                     _config(log_dir, lang="ru"),
                     ["privet:A fallback generated prompt"],
                     output_dir,

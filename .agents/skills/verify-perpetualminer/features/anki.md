@@ -1,6 +1,6 @@
 # Anki connection and send
 
-The panel talks to the local Anki Connection (the bridge today; the add-on in `complemento/` answers `/health`, the collection reads, the OpenAI key and the login item, and registers the opener when it loads; the bridge still does the Envio) on `127.0.0.1:8766`. The **Conexão com o Anki** area (`painel.html#anki/custos|baralhos|vocabulario|ajustes`) shows whether it is on, the costs of each send, decks and vocabulary, and the send settings. **Enviar ao Anki** in the Frases bar sends the selected phrases (one Envio per language) with a progress modal and a summary when it ends.
+The panel talks to the local Anki Connection (the add-on in `complemento/`, which answers `/health`, the collection reads, the OpenAI key, the login item and the Envio, and registers the opener when it loads) on `127.0.0.1:8766`. The **Conexão com o Anki** area (`painel.html#anki/custos|baralhos|vocabulario|ajustes`) shows whether it is on, the costs of each send, decks and vocabulary, and the send settings. **Enviar ao Anki** in the Frases bar sends the selected phrases (one Envio per language) with a progress modal and a summary when it ends.
 
 ## Sub-features
 
@@ -32,7 +32,7 @@ The panel talks to the local Anki Connection (the bridge today; the add-on in `c
 Preconditions:
 
 - `doctor.sh` green. The Anki fake is a stateful queue behind the Envio routes of `complemento/contrato/exemplos.json` (all POST: `/jobs`, `/jobs/list`, `/jobs/get`, `/jobs/retry`, `/jobs/debug-bundle`, `/analytics/jobs`), which the add-on and the bridge both answer. The specs freeze the clock and call `fakes.anki.usarRelogio(() => AGORA)`.
-- The tests, not a human, play the bridge: `fakes.anki.envios` lists created Envios, `moverEnvio(jobId, { stage, progress })` advances one, `concluirEnvio(jobId, { duplicadas, falhas })` ends it; `perderARespostaDoEnvio()` makes the next create land with its answer lost, `receberEnvio(corpo)` is an Envio the Conexão got while the panel was closed, and `definirFila(nome)` loads a queue from the contract's `filas`.
+- The tests, not a human, play the Conexão: `fakes.anki.envios` lists created Envios, `moverEnvio(jobId, { stage, progress })` advances one, `concluirEnvio(jobId, { duplicadas, falhas })` ends it; `perderARespostaDoEnvio()` makes the next create land with its answer lost, `receberEnvio(corpo)` is an Envio the Conexão got while the panel was closed, and `definirFila(nome)` loads a queue from the contract's `filas`.
 
 - **Send and summary (`anki-send-progress`, `anki-send-summary`).** Run `drive.sh anki-envio painel-envio.spec -g "as duplicatas do Anki aparecem"`. The spec seeds 3 English phrases, ticks `Selecionar frase` on each, clicks `Enviar ao Anki` in `#frases-barra`, waits for the fake to hold one Envio, then `concluirEnvio(job.jobId, { duplicadas: [LATE.id] })`. Observable: dialog `Envio concluído` with `3 frases · 1 baralho`, group `Inglês` containing `+2 cartões`, `no baralho CIMV`, `1 já estava lá` and no "não entr"; `Tirar do histórico` focused. Also run `-g "Enviar ao Anki abre o progresso na hora"` for the progress modal (dialog `Enviando ao Anki…`, `Envio em inglês · 2 frases` and `Envio em russo · 1 frase`, and the Envio the fake received: `lang 'en'`, entries in order, line `sack : She hit the sack early. [Contexto: netflix - Desconhecido - Desconhecido]`).
 - **Keep or remove (`anki-send-summary`).** `drive.sh anki-manter painel-envio.spec -g "Manter marca as enviadas"`. Observable: after `Manter`, `frases()` has `status: 'exported'` on exactly the sent and already-there phrases; the failed one has no status; no toast; the bar still says `4 selecionadas`.
@@ -54,8 +54,8 @@ Preconditions:
 
 ## Gotchas
 
-- This proves the panel against the *contract*, not the bridge or Anki. A green run does not prove the real send. Say so; the bridge side is `bridge/test_envio.py`.
-- The bridge's real port is 8766 and the fake never opens it. If `doctor.sh` notes a listener there, it is not part of the run.
+- This proves the panel against the *contract*, not the real Conexão or Anki. A green run does not prove the real send. Say so; the add-on side is `complemento/test_envio.py`.
+- The Conexão's real port is 8766 and the fake never opens it. If `doctor.sh` notes a listener there, it is not part of the run.
 - Double-clicking Enviar ao Anki must create one Envio per language, not two (`bug #9: duplo clique`); count `fakes.anki.envios`.
 - Off and never connected, Enviar ao Anki is unavailable and its tooltip explains; do not try to force it. Off after a first answer it opens the Anki (`anki-send-closed`).
 - The summary waits while another modal is open and opens on its own after a reload (`recarregar com um Envio em andamento`).

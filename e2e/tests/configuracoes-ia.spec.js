@@ -124,7 +124,7 @@ for (const tudo of [false, true]) test(`K4-delete: complemento antigo preserva l
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai).toEqual({ ultimos4: '9f3a' });
 });
 
-test('B1: bridge sem rotas da chave não recebe bearer nem cria falha sem pendência', async ({ page, extensao, fakes }) => {
+test('B1: add-on sem rotas da chave não recebe bearer nem cria falha sem pendência', async ({ page, extensao, fakes }) => {
   for (const rota of ['/ia/estado', '/ia/openai/sincronizar']) {
     fakes.anki.responder('POST', rota, () => ({ status: 404, json: { error: 'not_found' } }));
   }
@@ -140,7 +140,7 @@ test('B1: bridge sem rotas da chave não recebe bearer nem cria falha sem pendê
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai?.ultimos4 || '').toBe('');
 });
 
-for (const pendente of [true, false]) test(`B1: só estado versionado libera bearer — ${pendente ? 'bridge com pendência' : 'resposta incompleta 200'}`, async ({ page, extensao, fakes }) => {
+for (const pendente of [true, false]) test(`B1: só estado versionado libera bearer — ${pendente ? 'add-on com pendência' : 'resposta incompleta 200'}`, async ({ page, extensao, fakes }) => {
   const cache = { ultimos4: '9f3a', conta: 'A', versao: 5, naoEnviada: true };
   if (pendente) await extensao.gravarStorage({ pm_chave_openai: cache });
   fakes.anki.responder('POST', '/ia/estado', () => pendente

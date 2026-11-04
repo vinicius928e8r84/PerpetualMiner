@@ -3,7 +3,7 @@
 
 // Gera dist/perpetualminer-<versão>.zip, o pacote que vai para a Chrome Web
 // Store: só os arquivos que a extensão usa em execução, sem testes, docs, e2e,
-// preview, bridge, engine, .git nem node_modules. Sem dependências: o zip é
+// preview, engine, .git nem node_modules. Sem dependências: o zip é
 // escrito aqui mesmo.
 //
 //   node scripts/empacotar-extensao.mjs [--saida <pasta>]
