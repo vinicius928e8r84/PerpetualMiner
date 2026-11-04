@@ -174,10 +174,10 @@ test('erro na leitura de custos: BRG-04 inline com Tentar de novo e Detalhes, di
   const aviso = custos(page).getByRole('alert');
   await expect(aviso).toContainText('Não deu para carregar os custos. Confira se a Conexão com o Anki está ligada.');
   await expect(custos(page)).toContainText('Custo indisponível');
-  // O erro não tem a cara do carregando: nem a linha de espera, nem o esqueleto.
+  // O erro não tem a cara do carregando.
   await expect(custos(page).getByText('Somando os custos…')).toBeHidden();
   await expect(custos(page).locator('.veio-esqueleto')).toHaveCount(0);
-  await expect(custos(page)).not.toContainText('US$ 0,00');
+  await expect(custos(page).locator('#anki-custos-corpo')).not.toContainText('US$ 0,00');
   await aviso.getByText('Detalhes').click();
   await expect(aviso.locator('pre')).toContainText('503');
 

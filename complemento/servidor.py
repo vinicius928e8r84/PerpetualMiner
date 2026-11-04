@@ -26,11 +26,13 @@ from .rotas_da_chave import (
 from .configuracao import ENDERECO, OPENAI_BASE, OPENVERSE_BASE, VOZ_BASE
 from .item_de_login import AnkiNaoEncontrado
 from .modelo_dos_cartoes import ModeloDosCartoes, lista_nossa
+from .teto_do_mes import TetoDoMes
 from .motor import estilos
 from .perfil import PerfilFixo
 from .rotas_da_voz import ROTAS_DA_VOZ
 from .rotas_do_envio import ROTAS_DO_ENVIO
 from .rotas_do_modelo import ROTAS_DO_MODELO
+from .rotas_do_teto import ROTAS_DO_TETO
 from .rotas_do_perfil import abrir_o_perfil_marcado, escolher_o_perfil, listar_os_perfis
 
 # Um pedido maior que isto não é da extensão: a leitura mais pesada (os Baralhos pedidos) cabe em poucos KB.
@@ -124,6 +126,7 @@ ROTAS = {
     ("POST", "/ia/estado"): estado_da_ia,
     **ROTAS_DO_CHATGPT,
     **ROTAS_DO_MODELO,
+    **ROTAS_DO_TETO,
     **ROTAS_DA_VOZ,
     ("POST", "/abrir-com-o-computador/estado"): _estado_do_item_de_login,
     ("POST", "/abrir-com-o-computador"): _abrir_com_o_computador,
@@ -316,6 +319,7 @@ class Conexao:
         espera_do_anki=2.0,
         esperas_da_openai=(2, 8, 30),
         espera_do_plano=300,
+        espera_do_teto=60,
         motor=None,
         espera_do_contato=ESPERA_DO_CONTATO,
         modelos_da_ia=None,
@@ -352,10 +356,13 @@ class Conexao:
         self._cancelar = threading.Event()
         self._thread_da_passagem = None
         self.fila = envio.Fila(dados, motor or envio.motor_do_complemento(), logger)
+        self.teto = TetoDoMes(os.path.join(dados.raiz, "teto-do-mes.json"), self.fila, hoje)  # o teto do mês (#160)
+        trabalho = envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(), chatgpt=self.chatgpt, modelos=self.modelos,
+                                  espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai, espera_do_plano=espera_do_plano, voz_base=voz_base,
+                                  openverse_base=openverse_base, adaptador_de_imagem=adaptador_de_imagem)
+        trabalho.teto, trabalho.espera_do_teto = self.teto, espera_do_teto
         self._trabalhador = trabalhador.Trabalhador(
-            envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(), chatgpt=self.chatgpt, modelos=self.modelos,
-                           espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai, espera_do_plano=espera_do_plano, voz_base=voz_base,
-                           openverse_base=openverse_base, adaptador_de_imagem=adaptador_de_imagem),
+            trabalho,
             intervalo=intervalo_do_envio, contato=self.contato, espera_do_contato=espera_do_contato,
         ) if trabalhando else None
 

@@ -1,26 +1,25 @@
 'use strict';
 
 // Referência visual da Conexão com o Anki (#33, #35): os estados da conexão e as
-// abas Custos e Ajustes de envio na arrumação C · Por idioma do protótipo travado
-// (docs/design/painel/anki/prototipo-anki.html?variant=C, “⚙ Estados do
-// protótipo”). O dono revisa estas telas lado a lado com o protótipo; depois de
-// aprovadas, uma mudança visual faz o teste falhar até alguém olhar e atualizar
-// a referência:
+// abas Custos e Ajustes de envio na arrumação C do protótipo travado
+// (docs/design/painel/anki/prototipo-anki.html?variant=C). O dono revisa estas
+// telas lado a lado com o protótipo; depois de aprovadas, uma mudança visual faz
+// o teste falhar até alguém olhar e atualizar a referência:
 //
 //   cd e2e && npx playwright test painel-anki-visual --update-snapshots
 
 const { test, expect, comOSistema, SISTEMAS } = require('../fixtures');
 
-// #145: a primeira conexão ganhou os passos do arquivo (sem terminal). As telas abaixo marcadas `test.fixme` são PROPOSTAS, não
-// referências: o dono ainda não aprovou o novo visual (CODING_STANDARDS regra 10), então as imagens novas não estão na árvore e as
-// antigas (do card de 3 passos com comandos) estão no commit 59d3d04. Aprovando: tirar o `fixme` e
+// #145: a primeira conexão ganhou os passos do arquivo (sem terminal). As telas abaixo marcadas `test.fixme` são PROPOSTAS: o dono
+// ainda não aprovou o novo visual (CODING_STANDARDS regra 10), então as imagens novas não estão na árvore e as antigas estão no commit 59d3d04. Aprovando: tirar o `fixme` e
 // `npx playwright test painel-anki-visual --update-snapshots -g "nunca conectada"`.
 //
-// #147: as telas do passo 3, Abrir o Anki sozinho (ONB-17), também são `test.fixme` (PROPOSTAS, sem protótipo próprio).
+// #160: o card Teto do mês entrou em Custos; as 8 telas de Custos abaixo são `test.fixme` até o dono aprovar.
+//
+// #147: as telas do passo 3, Abrir o Anki sozinho (ONB-17), também são `test.fixme`.
 // Aprovando: tirar o `fixme` e `npx playwright test painel-anki-visual --update-snapshots -g "passo 3"`.
 //
-// #146: a lista passou a ter 4 passos: Ter o Anki (ONB-18) entrou como 1º, e o passo de baixar o arquivo ganhou a
-// animação do aviso (ONB-19). As quatro telas do #146 (o card do passo 1, Não tenho no Mac, a animação do aviso e os
+// #146: a lista passou a ter 4 passos (Ter o Anki, ONB-18, é o 1º; o de baixar ganhou a animação do aviso, ONB-19). As quatro telas do #146 (o card do passo 1, Não tenho no Mac, a animação do aviso e os
 // quadros parados com menos movimento) foram aprovadas pelo dono (#236) e são referência. As outras “nunca conectada”
 // (tema claro, conectando, Pronto, Detalhes, dois minutos, janela estreita) seguem propostas do #145.
 
@@ -67,14 +66,14 @@ async function abrirAnki(page, extensao, { largura = 1280, jaConectou = true, gr
   await page.evaluate(() => document.fonts.ready);
 }
 
-test('Custos com a Conexão ligada: período, azulejos, resumo, imagens e lista × detalhe', async ({ page, extensao }) => {
+test.fixme('Custos com a Conexão ligada: período, azulejos, resumo, imagens e lista × detalhe', async ({ page, extensao }) => {
   await abrirAnki(page, extensao);
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(5);
 
   await expect(ilha(page)).toHaveScreenshot('anki-custos.png');
 });
 
-test('o envio em parte no detalhe, com Detalhes aberto e Continuar envio', async ({ page, extensao }) => {
+test.fixme('o envio em parte no detalhe, com Detalhes aberto e Continuar envio', async ({ page, extensao }) => {
   await abrirAnki(page, extensao);
   await listaDeEnvios(page).getByRole('option', { name: /Envio em russo/ }).click();
   await custos(page).locator('.anki-detalhe').getByText('Detalhes', { exact: true }).click();
@@ -82,7 +81,7 @@ test('o envio em parte no detalhe, com Detalhes aberto e Continuar envio', async
   await expect(ilha(page)).toHaveScreenshot('anki-envio-em-parte.png');
 });
 
-test('o Avançado aberto, com 4 casas e os IDs ligados', async ({ page, extensao }) => {
+test.fixme('o Avançado aberto, com 4 casas e os IDs ligados', async ({ page, extensao }) => {
   await abrirAnki(page, extensao, { gravado: { pm_anki_quatro_casas: true, pm_anki_ids_dos_envios: true } });
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(5);
   await custos(page).getByText('Avançado', { exact: true }).click();
@@ -275,7 +274,7 @@ test('desligada: a F1, o último dado com o selo BRG-12 e Continuar envio indisp
   await expect(ilha(page)).toHaveScreenshot('anki-desligada.png');
 });
 
-test('erro na leitura: Custo indisponível e BRG-04 com Tentar de novo', async ({ page, extensao, fakes }) => {
+test.fixme('erro na leitura: Custo indisponível e BRG-04 com Tentar de novo', async ({ page, extensao, fakes }) => {
   fakes.anki.falharCustos({ status: 503 });
   await abrirAnki(page, extensao);
   await expect(custos(page).getByRole('alert')).toBeVisible();
@@ -283,7 +282,7 @@ test('erro na leitura: Custo indisponível e BRG-04 com Tentar de novo', async (
   await expect(ilha(page)).toHaveScreenshot('anki-erro.png');
 });
 
-test('carregando: “Somando os custos…” e o esqueleto', async ({ page, extensao, fakes }) => {
+test.fixme('carregando: “Somando os custos…” e o esqueleto', async ({ page, extensao, fakes }) => {
   fakes.anki.responder('POST', '/analytics/jobs', () => new Promise(() => {}));
   await abrirAnki(page, extensao);
   await expect(custos(page).getByText('Somando os custos…')).toBeVisible();
@@ -291,7 +290,7 @@ test('carregando: “Somando os custos…” e o esqueleto', async ({ page, exte
   await expect(ilha(page)).toHaveScreenshot('anki-carregando.png', { animations: 'disabled' });
 });
 
-test('vazio: BRG-22 com Ver tudo', async ({ page, extensao, fakes }) => {
+test.fixme('vazio: BRG-22 com Ver tudo', async ({ page, extensao, fakes }) => {
   fakes.anki.definirCustos([]);
   await abrirAnki(page, extensao);
   await expect(custos(page)).toContainText('Nenhum envio neste período.');
@@ -299,14 +298,14 @@ test('vazio: BRG-22 com Ver tudo', async ({ page, extensao, fakes }) => {
   await expect(ilha(page)).toHaveScreenshot('anki-vazio.png');
 });
 
-test('janela estreita: tudo numa coluna, o detalhe abaixo da lista', async ({ page, extensao }) => {
+test.fixme('janela estreita: tudo numa coluna, o detalhe abaixo da lista', async ({ page, extensao }) => {
   await abrirAnki(page, extensao, { largura: 760 });
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(5);
 
   await expect(page).toHaveScreenshot('anki-estreita.png', { fullPage: false });
 });
 
-test('o tema claro', async ({ page, extensao }) => {
+test.fixme('o tema claro', async ({ page, extensao }) => {
   await abrirAnki(page, extensao, { gravado: { pm_tema: 'claro' } });
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(5);
 

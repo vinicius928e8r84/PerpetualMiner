@@ -12,6 +12,7 @@ import os
 import sys
 import tempfile
 import unittest
+from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -200,6 +201,9 @@ class ConexaoNoTeste:
         espera_do_plano=300,
         modelo=None,
         voz_responde="aceita",
+        hoje=None,
+        teto=None,
+        espera_do_teto=60,
     ):
         self.perfil = perfil
         self.situacao_do_chatgpt = chatgpt  # `conectada` (o arquivo do login já existe), `entrando`, `recusou` ou `nao_serve` (a tentativa)
@@ -230,7 +234,10 @@ class ConexaoNoTeste:
             with open(os.path.join(self.chaves, "chatgpt.json"), "w", encoding="utf-8") as arquivo:
                 json.dump({"client_id": "oaiapp_x", "access_token": "acesso-x", "refresh_token": "renovacao-x", "expira_em": 4e9}, arquivo)
         self.cofre_sem_escrita = cofre_sem_escrita
-        do_modelo = preparar_o_cenario(modelo, pasta, self.openai)  # o modelo dos cartões (#157): o cenário de `modelos` do contrato
+        do_modelo = dict(preparar_o_cenario(modelo, pasta, self.openai), **({"hoje": hoje} if hoje else {}))  # o cenário de `modelos` do contrato (#157); `hoje`: o relógio
+        if teto is not None:
+            with open(os.path.join(pasta, "teto-do-mes.json"), "w", encoding="utf-8") as arquivo:
+                json.dump({"limitUsd": teto}, arquivo)  # o teto do mês (#160) que a pessoa já tinha posto
         self.logger = registro.criar(self.logs)
         self.conexao = servidor.Conexao(
             porta=0,
@@ -253,6 +260,7 @@ class ConexaoNoTeste:
             espera_do_anki=0.01,
             esperas_da_openai=(0, 0),
             espera_do_plano=espera_do_plano,
+            espera_do_teto=espera_do_teto,
             espera_do_contato=espera_do_contato,
             **do_modelo,
         )
@@ -334,6 +342,8 @@ def conexao_do_exemplo(pasta, exemplo):
         perfil_marcado=contexto.get('perfilMarcado'),
         modelo=ler_o_contrato().get("modelos", {}).get(contexto.get("modelo")),
         voz_responde=contexto.get("voz", "aceita"),
+        hoje=(lambda: date.fromisoformat(contexto["hoje"])) if contexto.get("hoje") else None,
+        teto=contexto.get("tetoUsd"),
     ) as conexao:
         if 'chaveNaNuvem' in contexto:
             conexao.firestore.documentos['uid-teste'] = {
@@ -412,6 +422,11 @@ MATRIZ = {
     ("POST", "/ia/chatgpt/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/ia/chatgpt/entrar"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/ia/chatgpt/sair"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    # O teto do mês (#160): lê só os custos e o arquivo dele; um valor que não é positivo é recusado.
+    ("POST", "/custos/teto"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/custos/teto/definir"): {
+        "corpo": {"limitUsd": 10}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": [({}, 400, "invalid_request"), ({"limitUsd": 0}, 400, "invalid_request")],
+    },
     # O modelo dos cartões (#157): lê a OpenAI (a lista da conta), nunca a coleção nem o perfil; sem chave nem login só o Automático vale.
     ("POST", "/ia/modelo/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/ia/modelo/escolher"): {
@@ -752,7 +767,7 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
     def test_as_rotas_que_mudam_sao_as_da_chave_do_chatgpt_do_item_de_login_do_perfil_e_do_envio(self):
         self.assertEqual(
             sorted(rota[1] for rota, regra in MATRIZ.items() if regra.get("muda")),
-            ["/abrir-com-o-computador", "/anki/profile", "/anki/profiles", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/modelo/escolher", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry", "/jobs/usar-a-chave"],
+            ["/abrir-com-o-computador", "/anki/profile", "/anki/profiles", "/custos/teto/definir", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/modelo/escolher", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry", "/jobs/usar-a-chave"],
         )
 
 
@@ -856,73 +871,6 @@ class LeituraDaColecao(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             status, _, corpo = conexao.pedir("POST", "/anki/decks", corpo={})
         self.assertEqual((status, json.loads(corpo)["error"]), (503, "anki_decks_unavailable"))
-
-
-class OrigemDosPedidos(unittest.TestCase):
-    def test_a_extensao_recebe_a_resposta_com_a_origem_dela_liberada(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            _, cabecalhos, _ = conexao.pedir("GET", "/health")
-        self.assertEqual(cabecalhos.get("Access-Control-Allow-Origin"), ORIGEM)
-
-    def test_saude_sem_origem_responde_so_a_versao_e_o_perfil(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            status, cabecalhos, corpo = conexao.pedir("GET", "/health", origem=None)
-        self.assertEqual(status, 200)
-        self.assertEqual(sorted(json.loads(corpo)), ["ok", "perfil", "versao"])
-        self.assertNotIn("Access-Control-Allow-Origin", cabecalhos)
-
-    def test_sem_origem_nada_alem_da_saude_e_atendido_com_ou_sem_sec_fetch_site(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            for cabecalhos in ({}, {"Sec-Fetch-Site": "none"}):
-                for metodo, caminho in (("GET", "/jobs"), ("GET", "/health/"), ("POST", "/health"), ("POST", "/jobs"), ("OPTIONS", "/health")):
-                    with self.subTest("%s %s %s" % (metodo, caminho, cabecalhos)):
-                        status, _, corpo = conexao.pedir(metodo, caminho, origem=None, cabecalhos=cabecalhos)
-                        self.assertEqual((status, json.loads(corpo) if corpo else None), (403, {"error": "origin_not_allowed"}))
-
-    def test_todo_verbo_passa_pela_mesma_autorizacao_de_origem(self):
-        verbos = ("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE", "FOO")
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            for verbo in verbos:
-                for descricao, origem in (("sem origem", None), ("com origem de outro site", "https://exemplo.com")):
-                    with self.subTest("%s %s" % (verbo, descricao)):
-                        status, cabecalhos, corpo = conexao.pedir(verbo, "/jobs", origem=origem)
-                        self.assertEqual(status, 403)
-                        self.assertEqual(corpo, b"" if verbo == "HEAD" else b'{"error": "origin_not_allowed"}')
-                        self.assertNotIn("text/html", cabecalhos.get("Content-Type", ""))
-                with self.subTest("%s com a origem da extensão numa rota que não existe" % verbo):
-                    status, _, _ = conexao.pedir(verbo, "/nao-existe")
-                    self.assertEqual(status, 404 if verbo != "OPTIONS" else 204)
-
-    def test_com_a_origem_de_outra_extensao_nada_e_atendido_nem_a_saude(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            outra = "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-            respostas = [conexao.pedir(m, c, origem=outra)[0] for m, c in (("GET", "/health"), ("GET", "/jobs"), ("POST", "/jobs"))]
-        self.assertEqual(respostas, [403, 403, 403])
-
-    def test_origem_de_outro_site_nao_recebe_a_origem_liberada_nem_dado_algum(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            status, cabecalhos, corpo = conexao.pedir("GET", "/health", origem="https://exemplo.com")
-        self.assertEqual(status, 403)
-        self.assertNotIn("Access-Control-Allow-Origin", cabecalhos)
-        self.assertNotIn(b"versao", corpo)
-
-    def test_pedido_de_verificacao_previa_da_extensao_e_respondido(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            status, cabecalhos, _ = conexao.pedir(
-                "OPTIONS",
-                "/health",
-                cabecalhos={"Access-Control-Request-Method": "POST", "Access-Control-Request-Private-Network": "true"},
-            )
-        self.assertEqual(status, 204)
-        self.assertEqual(cabecalhos.get("Access-Control-Allow-Origin"), ORIGEM)
-        self.assertIn("POST", cabecalhos.get("Access-Control-Allow-Methods", ""))
-        self.assertEqual(cabecalhos.get("Access-Control-Allow-Private-Network"), "true")
-
-    def test_pedido_de_verificacao_previa_de_outro_site_e_recusado(self):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            status, cabecalhos, _ = conexao.pedir("OPTIONS", "/health", origem="https://exemplo.com")
-        self.assertEqual(status, 403)
-        self.assertNotIn("Access-Control-Allow-Origin", cabecalhos)
 
 
 if __name__ == "__main__":

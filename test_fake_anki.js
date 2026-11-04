@@ -49,6 +49,8 @@ function fakeNoContextoDe(exemplo) {
   if (exemplo.contexto.chatgpt) fakeDoExemplo.chatgpt.definir(exemplo.contexto.chatgpt);
   if (exemplo.contexto.modelo) fakeDoExemplo.modelo.definir(exemplo.contexto.modelo);
   if (exemplo.contexto.voz) fakeDoExemplo.voz.definir(exemplo.contexto.voz);
+  if (exemplo.contexto.hoje) fakeDoExemplo.teto.passarOTempoAte(exemplo.contexto.hoje);
+  if (exemplo.contexto.tetoUsd) fakeDoExemplo.teto.definir({ limite: exemplo.contexto.tetoUsd });
   if (exemplo.contexto.perfis) fakeDoExemplo.definirPerfis(exemplo.contexto.perfis, { marcado: exemplo.contexto.perfilMarcado ?? null, aberto: exemplo.contexto.perfil });
   return { fakeDoExemplo, google };
 }
@@ -58,7 +60,7 @@ function guardado({ fakeDoExemplo, google }) {
   return {
     chave: fakeDoExemplo.chaveNaConexao(), estadoDaChave: fakeDoExemplo.estadoDaChave(), item: fakeDoExemplo.itemDeLogin(),
     nuvem: google.chaveDaOpenAIDe('uid-teste'), envios: JSON.parse(JSON.stringify(fakeDoExemplo.envios)),
-    chatgpt: fakeDoExemplo.chatgpt.situacao(), modelo: fakeDoExemplo.modelo.guardado(),
+    chatgpt: fakeDoExemplo.chatgpt.situacao(), modelo: fakeDoExemplo.modelo.guardado(), teto: fakeDoExemplo.teto.guardado(),
     perfilMarcado: fakeDoExemplo.perfilMarcado(), perfilAberto: fakeDoExemplo.perfilAberto(),
   };
 }

@@ -256,6 +256,8 @@
       if (parado) return parado;
       const noLimite = raiz.EnvioNoLimite.pedido(envio, estado, { tentarDeNovo: () => continuarEnvio(envio), falhou: Boolean(falhaAoRetomar(envio)), redesenhar });
       if (noLimite) return noLimite;
+      const noTeto = raiz.EnvioNoTeto.pedido(envio, estado); // o teto do mês (#160): pausa sem valor, com Ver Custos
+      if (noTeto) return noTeto;
       const espera = estado?.waiting;
       if (espera?.reason === 'other_profile') {
         return {

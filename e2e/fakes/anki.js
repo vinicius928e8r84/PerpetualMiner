@@ -7,29 +7,26 @@ const { criarFakeVoz } = require('./voz');
 const { criarPerfis } = require('./perfis');
 const { criarLimiteDoPlano } = require('./limite-do-plano');
 const { criarModelo } = require('./modelo-dos-cartoes');
+const { criarTeto } = require('./teto');
 const { diferencaDoContrato } = require('./diferenca-do-contrato');
 const { resumoDosCustos, linhaDeCustos } = require('./custos');
 const contrato = require('../../complemento/contrato/carregar');
 
 // Fake da Conexão com o Anki: responde na porta local dela (127.0.0.1:8766). Por padrão está ligada, com vocabulário vazio.
-// Um teste pode desligá-la (conexão recusada) ou responder uma rota específica com `responder`.
+// Um teste pode desligá-la ou responder uma rota com `responder`.
 //
 // O que o complemento responde (a saúde, os Baralhos, os números, o vocabulário, a chave da OpenAI e o item de login) vem de
-// `complemento/contrato/exemplos.json`, o mesmo que os testes do
-// complemento leem: o fake responde o exemplo do pedido no contexto em que a Conexão está (`abrirPerfil`, `abrirColecao`,
-// `responderOpenAI`, `guardarChaveNaConexao`, `definirItemDeLogin`). Os testes de tela montam os Baralhos em termos de gente
-// (`definirVocabulario`, `definirBaralho`); `abrirColecao(nome)` passa a responder o contrato inteiro. Uma rota nova entra nesse
-// arquivo (`complemento/contrato/LEIA-ME.md`). Em arquivos à parte: o perfil fixo (#149, `perfis.js`), o login do ChatGPT (#155,
-// `chatgpt.js`), o limite do plano (#158, `limite-do-plano.js`) e o modelo dos cartões (#157, `modelo-dos-cartoes.js`).
+// `complemento/contrato/exemplos.json`, o mesmo que os testes do complemento leem: o fake responde o exemplo do pedido no contexto em
+// que a Conexão está (`abrirPerfil`, `abrirColecao`, `responderOpenAI`, `guardarChaveNaConexao`, `definirItemDeLogin`). Os testes de
+// tela montam os Baralhos em termos de gente (`definirVocabulario`, `definirBaralho`); `abrirColecao(nome)` passa a responder o contrato
+// inteiro. Uma rota nova entra nesse arquivo (`complemento/contrato/LEIA-ME.md`). Em arquivos à parte: o perfil fixo (`perfis.js`), o
+// login do ChatGPT (`chatgpt.js`), o limite do plano (`limite-do-plano.js`), o modelo (`modelo-dos-cartoes.js`) e o teto (`teto.js`).
 //
-// Baralhos e termos, Vocabulário e Ajustes de envio (`POST /anki/decks`): voltam na ordem pedida; o que o Anki não tem volta `missing`.
-//
-// A chave da OpenAI: `POST /ia/openai/chave` responde pelo contexto (`responderOpenAI`) e, aceita, o fake guarda a cópia (`chaveNaConexao()`).
+// Os Baralhos pedidos voltam na ordem pedida; o que o Anki não tem volta `missing`. A chave da OpenAI aceita fica em `chaveNaConexao()`.
 //
 // Os Envios (`/jobs…`, `/analytics/jobs`, todas POST): `POST /jobs` cria um pelo `jobId` do painel (o mesmo corpo é o mesmo Envio;
-// outro corpo, o `409`), `/jobs/list` lista com o `state` de cada um, `/jobs/retry` o põe na fila. O teste move (`moverEnvio`) e
-// termina (`concluirEnvio`) cada Envio como a Conexão faria; `definirFila(nome)` põe uma fila do contrato. Os custos são os de
-// `definirCustos` ou, sem eles, os dos Envios da fila (só os de texto).
+// outro corpo, o `409`). O teste move (`moverEnvio`) e termina (`concluirEnvio`) cada Envio como a Conexão faria; `definirFila(nome)`
+// põe uma fila do contrato. Os custos são os de `definirCustos` ou, sem eles, os dos Envios da fila (só os de texto).
 
 // O exemplo do contrato de onde o fake tira a linha de um Baralho que o Anki não tem.
 const EXEMPLO_DO_BARALHO_QUE_NAO_EXISTE = 'Números de um Baralho que existe e de um que não existe';
@@ -69,7 +66,7 @@ function criarFakeAnki() {
     falhaDosBaralhos: null,     // { status } | { rede: true }: POST /anki/stats/decks falha
     falhaDoVocabulario: null,   // { status } | { rede: true }: POST /anki/vocabulary falha
     baralhosDoAnki: null,       // os nomes de POST /anki/decks; null: a lista não vem (definirBaralhosDoAnki)
-    contexto: { perfil: 'Usuário 1', falhaNoPerfil: false, openai: 'aceita', itemDeLogin: 'desligado', firebase: 0 }, // em que situação o complemento está (os `contexto` dos exemplos); `colecao` só existe depois de `abrirColecao`
+    contexto: { perfil: 'Usuário 1', falhaNoPerfil: false, openai: 'aceita', itemDeLogin: 'desligado', firebase: 0 }, // o `contexto` dos exemplos; `colecao` só existe depois de `abrirColecao`
     versaoDaChave: 0,
     contaDaChave: '',
     horaDaChave: 0,
@@ -80,6 +77,7 @@ function criarFakeAnki() {
   };
   const perfis = criarPerfis(() => estado.contexto);
   const modelo = criarModelo(() => contextoDeAgora()); // o modelo dos cartões (#157)
+  const teto = criarTeto({ registros: () => [...estado.registrosDeCusto.values()].flat(), linhas: () => estado.custos, agora: () => estado.agora() });
   const requisicoes = [];
   const envios = [];    // { jobId, lang, entries, corpo, createdAt, state }
   const chatgpt = criarFakeChatGPT(); // o login do ChatGPT (#155): as rotas dele aqui e a página do auth.openai.com (fakes.chatgpt)
@@ -101,7 +99,7 @@ function criarFakeAnki() {
     };
   }
 
-  /** A resposta de erro que o contrato dá a uma rota do Envio (o exemplo `daExtensao` com esse `error`, ou o que não é da extensão). */
+  /** A resposta de erro que o contrato dá a uma rota do Envio. */
   function erroDoContrato(caminho, erro) {
     const exemplo = contrato.exemplos.find(e => e.pedido.caminho === caminho && e.resposta.json?.error === erro);
     if (!exemplo) throw new Error(`O contrato não tem o erro ${erro} de POST ${caminho}; escreva o exemplo antes de o fake responder.`);
@@ -329,7 +327,7 @@ function criarFakeAnki() {
    * (a resposta leva os 4 últimos da que o teste mandou); o que cita `colecao` só vale com essa coleção aberta (`abrirColecao`).
    */
   function respostaDoContrato(metodo, caminho, corpo) {
-    const doPerfil = perfis.responder(metodo, caminho, corpo) || modelo.responder(metodo, caminho, corpo); // o perfil fixo e o modelo respondem pelo estado deles
+    const doPerfil = perfis.responder(metodo, caminho, corpo) || modelo.responder(metodo, caminho, corpo) || teto.responder(metodo, caminho, corpo);
     if (doPerfil) return doPerfil;
     const contexto = contextoDeAgora();
     const candidatos = contrato.exemplos.filter(e =>
@@ -504,7 +502,7 @@ function criarFakeAnki() {
       return responderJson(route, status, json);
     }
     const doPerfil = perfis.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido)) || limite.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido))
-      || modelo.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido));
+      || modelo.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido)) || teto.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido));
     if (doPerfil) return responderJson(route, doPerfil.status, doPerfil.json);
     // O que lê o Anki da pessoa é POST (contrato/LEIA-ME.md): por GET a Conexão não tem a rota.
     const leituraDoAnki = ['/anki/vocabulary', '/anki/decks', '/anki/stats/decks'].includes(url.pathname);
@@ -593,6 +591,8 @@ function criarFakeAnki() {
     chatgpt,
     /** O modelo dos cartões (#157, `modelo-dos-cartoes.js`): `definir(cenario)`, `passarOTempoAte(dia)`, `guardado()`. */
     modelo,
+    /** O teto do mês (#160): `definir({ limite, gasto })`, `passarOTempoAte(dia)`, `guardado()`. */
+    teto,
     voz,
     /** @estado-guardado Os Envios que a Conexão guardou (um por `POST /jobs`), não o pedido que chegou. */
     envios,
@@ -708,7 +708,7 @@ function criarFakeAnki() {
     falharApagarFrases(falha = { rede: true }) { estado.falhaDoApagarFrases = falha; },
     voltarApagarFrases() { estado.falhaDoApagarFrases = null; },
 
-    /** O relógio da Conexão, para o `updatedAt` (o painel diz “atualizado há …”). */
+    /** O relógio da Conexão, para o `updatedAt`. */
     usarRelogio(agora) { estado.agora = agora; },
 
     /**
