@@ -19,6 +19,9 @@
   let assinaturaDoAviso = '';
 
   const dinheiro = valor => textoDaVoz('BRG-03.valor', { valor: valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) });
+  const numero = valor => valor.toLocaleString('pt-BR', { maximumFractionDigits: 2, useGrouping: false });
+  /** O que a pessoa digitou como número: “12,50” e “12.50” valem 12,5; qualquer outra coisa (“1.250,50”, “1e3”, “-1”) é NaN. */
+  const lerNumero = texto => (/^\d+(?:[.,]\d+)?$/.test(texto.trim()) ? Number(texto.trim().replace(',', '.')) : NaN);
   const usado = () => (dados && dados.limitUsd > 0 ? dados.spentUsd / dados.limitUsd : 0);
 
   function elemento(tag, classe, ...filhos) {
@@ -78,24 +81,27 @@
   function montarOCard() {
     const uso = elemento('small');
     const campo = elemento('input', 'veio-campo');
-    Object.assign(campo, { id: 'anki-teto-campo', type: 'number', min: '0.01', step: '0.01', inputMode: 'decimal' });
+    // Texto, não `type=number`: o número do navegador lê “12,50” conforme o idioma do Chrome (em inglês vira 1250).
+    Object.assign(campo, { id: 'anki-teto-campo', type: 'text', inputMode: 'decimal', autocomplete: 'off' });
     campo.setAttribute('aria-label', textoDaVoz('BRG-41.campo'));
+    const moeda = elemento('span', 'anki-teto-moeda', textoDaVoz('BRG-41.moeda'));
+    moeda.setAttribute('aria-hidden', 'true');
     const salvar = elemento('button', 'veio-botao veio-botao--contorno veio-botao--compacto', textoDaVoz('BRG-41.salvar'));
     salvar.type = 'button';
     const situacao = elemento('p', 'anki-apoio');
     situacao.setAttribute('role', 'status');
     const secao = elemento('section', 'anki-cartao', elemento('h3', null, textoDaVoz('BRG-41.titulo'), ' ', uso),
-      elemento('p', null, campo, ' ', salvar), situacao, elemento('p', 'anki-apoio', textoDaVoz('BRG-41.nota')));
+      elemento('p', 'anki-teto-linha', moeda, campo, salvar), situacao, elemento('p', 'anki-apoio', textoDaVoz('BRG-41.nota')));
     secao.id = 'anki-custos-teto';
     secao.setAttribute('aria-label', textoDaVoz('BRG-41.titulo'));
 
     salvar.addEventListener('click', async () => {
-      const valor = Number(campo.value);
+      const valor = lerNumero(campo.value);
       if (!(valor > 0)) return void (situacao.textContent = textoDaVoz('BRG-41.invalido'));
       try {
         dados = await chamar(PedidoAoAnki.definirOTeto(valor));
         situacao.textContent = textoDaVoz('BRG-41.salvo');
-        campo.value = String(dados.limitUsd);
+        campo.value = numero(dados.limitUsd);
       } catch {
         situacao.textContent = textoDaVoz('BRG-41.falha');
       }
@@ -113,7 +119,7 @@
     if (!card) card = montarOCard();
     if (!card.secao.isConnected) porId('anki-custos-corpo').before(card.secao);
     card.uso.textContent = `· ${textoDaVoz('BRG-41.uso', { gasto: dinheiro(dados.spentUsd), teto: dinheiro(dados.limitUsd) })}`;
-    if (document.activeElement !== card.campo && !card.campo.value) card.campo.value = String(dados.limitUsd);
+    if (document.activeElement !== card.campo && !card.campo.value) card.campo.value = numero(dados.limitUsd);
   }
 
   function desenhar() {
@@ -121,8 +127,16 @@
     desenharOCard();
   }
 
+  /** O teto é lido quando a situação da Conexão muda, ao entrar na área e a cada volta de um Envio andando (painel-envio.js), não a cada saúde de 15 s. */
+  let situacaoVista = null;
+  function aoSituacao(situacao) {
+    if (situacao === situacaoVista) return;
+    situacaoVista = situacao;
+    return ler();
+  }
+
   function iniciar() {
-    ConexaoAnki.acompanhar(ler);
+    ConexaoAnki.acompanhar(aoSituacao);
     raiz.Shell.aoEntrarNaArea('anki', ler);
   }
 

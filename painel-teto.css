@@ -1,0 +1,19 @@
+/* O teto do mês: “US$ [ 10 ] Salvar teto” numa linha, o campo com a largura de poucos dígitos. */
+.anki-teto-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.anki-teto-moeda {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.anki-teto-linha .veio-campo {
+  width: 88px;
+  font-family: var(--veio-fonte-mono);
+  font-weight: var(--veio-peso-num);
+  text-align: right;
+}
