@@ -7,7 +7,7 @@ não diz não foi decidido. Spec: o [#138](https://github.com/vinicius928e8r84/P
 
 - **O estilo é dado**: `engine/estilos.json` diz, por idioma, o tipo de nota, o Baralho, como uma linha minerada se lê (`entrada`), **todos** os campos e,
   por nível, a língua da explicação, as partes do verso, as cores ligadas ou não e o prompt. Um idioma novo é uma entrada nova e um arquivo de prompt.
-  Só o Iniciante existe (o Intermediário e o Avançado do inglês são o #162; a morfologia do russo, o #163).
+  O Iniciante existe nos dois idiomas; o Intermediário e o Avançado do inglês entraram com o #162 e a morfologia do russo é o #163 (ver “Os níveis do inglês” abaixo).
 - **Um tipo de nota por idioma** (`PerpetualMiner Inglês`, `PerpetualMiner Russo`), com os nossos nomes de campos: o Envio não depende mais de o Anki ser “Básico/Frente/Verso”.
 - **Os campos nascem todos juntos.** Mudar os campos de um tipo de nota depois obriga o Anki a uma sincronização completa; por isso já nascem os dos níveis (Definição, Outro exemplo),
   os do inglês (Significado simples, Gatilho), os da morfologia do russo (Sílaba forte, Morfologia, Explicação das cores, Mesma raiz, Raiz), os das frentes (Dica, Frase com lacuna) e os da Criação
@@ -76,3 +76,19 @@ Não há tela nova: a pessoa vê o resultado no Anki (Ferramentas › Gerenciar 
 - **O Anki de verdade** (aqt 25.9.2, Qt sem tela, base e perfil descartáveis em pasta temporária): o complemento carregado do `.ankiaddon`, o gancho `profile_did_open` na janela principal, a primeira abertura (tipos e Baralhos), a segunda (nada de novo),
   o perfil do dono (CIMV, RUSSIAN, o “Básico” com um Cartão: nada criado além dos tipos, nada mexido) e um Anki em português do Brasil.
 - **Não prova**: o Anki do dono (interface em inglês e em português do Brasil), o Mac e o Windows, a sincronização com o AnkiWeb, o AnkiMobile e o AnkiDroid: o ensaio do dono (`complemento/LEIA-ME.md`, passo 10), **pendente**.
+
+## 7. Os níveis do inglês (#162)
+
+O Cartão do inglês ganhou o Intermediário e o Avançado (o russo só tem o Iniciante até o #163). O estilo continua dado (`engine/estilos.json`); o que muda é o prompt, as partes do verso e o campo de `nivel` no pedido do Envio.
+
+| nível | prompt | verso (campos preenchidos) | cores |
+|---|---|---|---|
+| Iniciante | `en_iniciante.txt` | Pronúncia, Tradução literal, Tradução natural, Contexto da cena, Palavra, Imagem | sim |
+| Intermediário | `en_intermediario.txt` | Contexto da cena (português), Palavra, Definição (português), Outro exemplo (inglês), Imagem | não |
+| Avançado | `en_avancado.txt` (o Cartão de inglês de hoje, `en_card.txt`, sem Simple meaning e Trigger) | as mesmas partes, tudo em inglês | não |
+
+- A frente é a mesma nos três: a Frase com o áudio. O Intermediário e o Avançado não pedem o alinhamento, e a Frase vai sem cor.
+- **Um modelo de Cartão só**: o verso do modelo `Frase com áudio` traz as partes de todos os níveis, na ordem `ordem_do_verso`, e cada parte só aparece se o campo dela tem texto. Trocar o nível não troca o tipo de nota nem o modelo, e Cartões de níveis diferentes convivem. Mudar o verso de um tipo de nota **que já existe** a Conexão não faz (ela só cria): um tipo criado pela #161 fica com o verso do Iniciante até a pessoa o apagar e a Conexão criar o novo; o Cartão novo grava Definição e Outro exemplo no campo, que só não aparecem no verso.
+- **O pedido**: `POST /jobs` leva `nivel` só quando não é o Iniciante (como `tts.reserva`). Um nível fora dos que o idioma tem é `400` `invalid_level` e nada é criado. O nível entra no pedido guardado: repetir o pedido com outro nível é outro pedido (`409`), e o Envio retomado usa o nível com que nasceu.
+- **A imagem** continua no verso dos três níveis (a escolha Foto real · Gerada por IA dos Ajustes de envio vale em todos).
+- **A tela**: Ajustes de envio › Estilo do cartão (`painel-ajustes.js`, BRG-42), um controle segmentado por idioma; só grava em Salvar ajustes e vale a partir do Envio seguinte.

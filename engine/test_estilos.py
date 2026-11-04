@@ -8,6 +8,7 @@ from pathlib import Path
 import estilos
 
 PARTES_DO_INICIANTE = ["pronuncia", "literal", "natural", "cena", "palavra", "imagem"]
+PARTES_SEM_CORES = ["cena", "palavra", "definicao", "outro_exemplo", "imagem"]  # o Intermediário e o Avançado do inglês
 
 
 class OEstiloVemDosDados(unittest.TestCase):
@@ -21,6 +22,34 @@ class OEstiloVemDosDados(unittest.TestCase):
             with self.subTest(lang=lang):
                 estilo = estilos.estilo(lang)
                 self.assertEqual((estilo["explicacao"], estilo["cores"], estilo["verso"]), ("pt", True, PARTES_DO_INICIANTE))
+
+    def test_o_ingles_tem_o_iniciante_o_intermediario_e_o_avancado_e_o_russo_so_o_iniciante(self):
+        self.assertEqual(estilos.niveis("en"), ("iniciante", "intermediario", "avancado"))
+        self.assertEqual(estilos.niveis("ru"), ("iniciante",))
+
+    def test_o_intermediario_do_ingles_explica_em_portugues_sem_cores_e_o_avancado_e_monolingue(self):
+        intermediario, avancado = estilos.estilo("en", "intermediario"), estilos.estilo("en", "avancado")
+        self.assertEqual((intermediario["explicacao"], intermediario["cores"], intermediario["verso"]), ("pt", False, PARTES_SEM_CORES))
+        self.assertEqual((avancado["explicacao"], avancado["cores"], avancado["verso"]), ("en", False, PARTES_SEM_CORES))
+
+    def test_um_nivel_que_o_idioma_nao_tem_nao_existe(self):
+        with self.assertRaises(KeyError):
+            estilos.estilo("ru", "intermediario")
+
+    def test_o_verso_de_cada_nivel_segue_a_ordem_do_modelo_de_cartao_do_idioma(self):
+        for lang in estilos.idiomas():
+            ordem = estilos.DADOS["idiomas"][lang]["ordem_do_verso"]
+            for nivel in estilos.niveis(lang):
+                with self.subTest(lang=lang, nivel=nivel):
+                    verso = estilos.estilo(lang, nivel)["verso"]
+                    self.assertEqual(verso, [parte for parte in ordem if parte in verso])
+
+    def test_cada_parte_do_verso_de_cada_nivel_tem_o_campo_dela_no_idioma(self):
+        for lang in estilos.idiomas():
+            campos = estilos.idioma(lang)["campos"]
+            for nivel in estilos.niveis(lang):
+                with self.subTest(lang=lang, nivel=nivel):
+                    self.assertTrue(set(estilos.estilo(lang, nivel)["verso"]) <= set(campos))
 
     def test_cada_idioma_tem_o_tipo_de_nota_e_o_baralho_proprios(self):
         self.assertEqual(estilos.idiomas(), ("en", "ru"))

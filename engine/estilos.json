@@ -47,12 +47,25 @@
         "frase", "audio_da_frase", "palavra", "audio_da_palavra", "pronuncia", "literal", "natural", "cena", "fonte", "imagem",
         "definicao", "outro_exemplo", "dica", "lacuna", "frase_escrita", "escrito_antes", "correcao", "significado_simples", "gatilho"
       ],
+      "ordem_do_verso": ["pronuncia", "literal", "natural", "cena", "palavra", "definicao", "outro_exemplo", "imagem"],
       "niveis": {
         "iniciante": {
           "prompt": "prompts/en_iniciante.txt",
           "explicacao": "pt",
           "verso": ["pronuncia", "literal", "natural", "cena", "palavra", "imagem"],
           "cores": true
+        },
+        "intermediario": {
+          "prompt": "prompts/en_intermediario.txt",
+          "explicacao": "pt",
+          "verso": ["cena", "palavra", "definicao", "outro_exemplo", "imagem"],
+          "cores": false
+        },
+        "avancado": {
+          "prompt": "prompts/en_avancado.txt",
+          "explicacao": "en",
+          "verso": ["cena", "palavra", "definicao", "outro_exemplo", "imagem"],
+          "cores": false
         }
       }
     },
@@ -66,6 +79,7 @@
         "definicao", "outro_exemplo", "dica", "lacuna", "frase_escrita", "escrito_antes", "correcao",
         "silaba_forte", "morfologia", "explicacao_das_cores", "mesma_raiz", "raiz"
       ],
+      "ordem_do_verso": ["pronuncia", "literal", "natural", "cena", "palavra", "imagem"],
       "niveis": {
         "iniciante": {
           "prompt": "prompts/ru_iniciante.txt",

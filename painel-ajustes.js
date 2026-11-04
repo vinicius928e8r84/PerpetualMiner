@@ -5,7 +5,7 @@
   const { IMAGENS, SOTAQUES } = AjustesDeEnvio;
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
   const CODIGO_DO_IDIOMA = { en: 'BRG-28.codigoEn', ru: 'BRG-28.codigoRu' };
-  const CAMPOS = ['deckName', 'imageSource', 'ttsWordTld', 'ttsPhraseTld', 'ttsReserva'];
+  const CAMPOS = ['deckName', 'imageSource', 'nivel', 'ttsWordTld', 'ttsPhraseTld', 'ttsReserva'];
   const VOZ_DA_RESERVA = { openai: 'BRG-07.reservaOpenai', nenhuma: 'BRG-07.reservaNenhuma' };
   const porId = id => document.getElementById(id);
 
@@ -224,7 +224,7 @@
   }
 
   function formulario(lang) {
-    return [campoDoBaralho(lang), campoDasImagens(lang), avancado(lang), acoes(lang)];
+    return [campoDoBaralho(lang), campoDasImagens(lang), raiz.EstiloDoCartao.campo(lang, estado.rascunhos[lang]), avancado(lang), acoes(lang)];
   }
 
   function campoDoBaralho(lang) {

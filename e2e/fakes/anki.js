@@ -12,21 +12,21 @@ const { diferencaDoContrato } = require('./diferenca-do-contrato');
 const { resumoDosCustos, linhaDeCustos } = require('./custos');
 const contrato = require('../../complemento/contrato/carregar');
 
-// Fake da Conexão com o Anki: responde na porta local dela (127.0.0.1:8766). Por padrão está ligada, com vocabulário vazio.
-// Um teste pode desligá-la ou responder uma rota com `responder`.
+// Fake da Conexão com o Anki: responde na porta local dela (127.0.0.1:8766). Por padrão está ligada, com vocabulário vazio. Um teste a desliga
+// ou responde uma rota com `responder`.
 //
-// O que o complemento responde (a saúde, os Baralhos, os números, o vocabulário, a chave da OpenAI e o item de login) vem de
+// O que o complemento responde vem de
 // `complemento/contrato/exemplos.json`, o mesmo que os testes do complemento leem: o fake responde o exemplo do pedido no contexto em
-// que a Conexão está (`abrirPerfil`, `abrirColecao`, `responderOpenAI`, `guardarChaveNaConexao`, `definirItemDeLogin`). Os testes de
+// que a Conexão está (`abrirPerfil`, `abrirColecao`, `responderOpenAI`…). Os testes de
 // tela montam os Baralhos em termos de gente (`definirVocabulario`, `definirBaralho`); `abrirColecao(nome)` passa a responder o contrato
 // inteiro. Uma rota nova entra nesse arquivo (`complemento/contrato/LEIA-ME.md`). Em arquivos à parte: o perfil fixo (`perfis.js`), o
 // login do ChatGPT (`chatgpt.js`), o limite do plano (`limite-do-plano.js`), o modelo (`modelo-dos-cartoes.js`) e o teto (`teto.js`).
 //
-// Os Baralhos pedidos voltam na ordem pedida; o que o Anki não tem volta `missing`. A chave da OpenAI aceita fica em `chaveNaConexao()`.
+// Os Baralhos pedidos voltam na ordem pedida; o que o Anki não tem, `missing`. A chave da OpenAI aceita fica em `chaveNaConexao()`.
 //
 // Os Envios (`/jobs…`, `/analytics/jobs`, todas POST): `POST /jobs` cria um pelo `jobId` do painel (o mesmo corpo é o mesmo Envio;
 // outro corpo, o `409`). O teste move (`moverEnvio`) e termina (`concluirEnvio`) cada Envio como a Conexão faria; `definirFila(nome)`
-// põe uma fila do contrato. Os custos são os de `definirCustos` ou, sem eles, os dos Envios da fila (só os de texto).
+// põe uma fila do contrato. Os custos são os de `definirCustos` ou, sem eles, os dos Envios da fila (de texto).
 
 // O exemplo do contrato de onde o fake tira a linha de um Baralho que o Anki não tem.
 const EXEMPLO_DO_BARALHO_QUE_NAO_EXISTE = 'Números de um Baralho que existe e de um que não existe';
@@ -122,6 +122,7 @@ function criarFakeAnki() {
     if (recusa?.rede) return { abortar: true };
     if (recusa) return { status: recusa.status, json: { error: recusa.erro || 'job_failed' } };
     if (!ID_DO_ENVIO.test(corpo.jobId || '')) return erroDoContrato('/jobs', 'invalid_job_id');
+    if ('nivel' in corpo && !(corpo.lang === 'en' ? ['iniciante', 'intermediario', 'avancado'] : ['iniciante']).includes(corpo.nivel)) return erroDoContrato('/jobs', 'invalid_level');
     const { jobId } = corpo;
     const existente = envios.find(e => e.jobId === jobId);
     if (existente) {
@@ -213,7 +214,7 @@ function criarFakeAnki() {
       generatedAt: estado.agora().toISOString(),
       deckName: corpo.deck || '',
       lang,
-      // Com o Anki fechado a Conexão responde lendo o arquivo (`_local_vocabulary`, bridge/server.py).
+      // Com o Anki fechado responde lendo o arquivo (`_local_vocabulary`, bridge/server.py).
       source: estado.lidoDoArquivo ? 'collection.anki2' : 'colecao',
       ...(estado.lidoDoArquivo && { sourceDetail: 'AnkiConnect indisponivel; lendo collection.anki2' }),
       totalCards: words.reduce((soma, w) => soma + w.cards, 0),
@@ -340,7 +341,7 @@ function criarFakeAnki() {
         + `com o contexto ${JSON.stringify(contexto)}; escreva-o lá antes de o fake responder.`);
     }
     const json = comOAgora(exemplo.resposta.json);
-    // Os exemplos dizem os 4 últimos da chave deles; a resposta leva os da chave que o teste mandou ou que a Conexão guarda.
+    // Os exemplos dizem os 4 últimos da chave deles; a resposta leva os da chave do teste ou da Conexão.
     if (json.ultimos4 && typeof corpo?.chave === 'string') json.ultimos4 = ultimos4(corpo.chave.trim());
     if (json.openai) json.openai = { configurada: !!estado.chaveDaOpenAI,
       ...(estado.chaveDaOpenAI && { ultimos4: ultimos4(estado.chaveDaOpenAI) }),

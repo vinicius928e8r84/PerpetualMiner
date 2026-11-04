@@ -42,6 +42,9 @@ def validar_pedido(corpo):
     deck = corpo.get("deckName")
     if not isinstance(deck, str) or not deck.strip() or len(deck) > 256:
         return None, (400, "invalid_request")
+    nivel = corpo.get("nivel")
+    if "nivel" in corpo and nivel not in estilos.niveis(corpo["lang"]):  # sem `nivel`, o Cartão sai no padrão (o Iniciante)
+        return None, (400, "invalid_level")
     entradas = corpo.get("entries")
     if not isinstance(entradas, list) or not entradas:
         return None, (400, "entries_required")
@@ -63,6 +66,7 @@ def validar_pedido(corpo):
         "lang": corpo["lang"],
         "deckName": deck.strip(),
         "imageSource": str(corpo.get("imageSource") or "1"),
+        **({"nivel": nivel} if "nivel" in corpo else {}),
         "tts": dict({chave: valor for chave, valor in tts.items() if isinstance(valor, str)},
                     **({"reserva": list(dict.fromkeys(reserva))} if "reserva" in tts else {})),
         "entries": limpas,
