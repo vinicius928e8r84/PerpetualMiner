@@ -1,10 +1,10 @@
 """
 image_pipeline.py - How the pipeline gets a card's picture: the real photo the judge likes, or an image generated from
-the card's prompt. The same code runs in the bridge (`start._run_images`) and inside the Anki add-on (`complemento/imagem_do_cartao.py`):
+the card's prompt. The code runs inside the Anki add-on (`complemento/imagem_do_cartao.py`):
 standard library only, no output of its own. `build` returns the functions that do one card; `image_real_first.py` has
 the "real photo first" one.
 
-Two optional keys of `config` are for the add-on: `openai_base` / `openverse_base` (where the requests go; the bridge uses the
+Two optional keys of `config` are for the add-on: `openai_base` / `openverse_base` (where the requests go; without them the
 real addresses) and `image_records_by_card` (the cost records name the card by its stem and keep no search text, because they stay
 on disk after the Frases are erased).
 """

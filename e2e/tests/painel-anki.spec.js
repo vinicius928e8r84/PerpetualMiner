@@ -3,7 +3,7 @@
 // Conexão com o Anki (#33): a área por idioma, os estados da conexão e a aba Custos
 // (docs/design/painel/anki/, variante C). A Conexão é o fake da fronteira HTTP
 // (fakes/anki.js): /health diz se ela está ligada, POST /analytics/jobs traz os
-// Envios do período no formato do bridge. Os testes afirmam o que a pessoa vê e o
+// Envios do período no do /jobs. Os testes afirmam o que a pessoa vê e o
 // que fica gravado.
 
 const { test, expect } = require('../fixtures');

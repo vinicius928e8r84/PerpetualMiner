@@ -1,6 +1,6 @@
 """O Envio dentro da Conexão (#142): a fila, o estado de cada Cartão e o trabalho que os faz (a thread: `trabalhador.py`).
 
-Desenho: `docs/design/envio-no-complemento.md`. Os estados e as regras são os de `bridge/envio.py`: `queued` →
+Desenho: `docs/design/envio-no-complemento.md`. Os estados: `queued` →
 `running` (`generate_cards`, `wait_anki` ou `send_to_anki`) → `completed` | `partial` | `failed`; uma Frase está no Anki quando
 todos os Cartões dela estão (`settle`). O estado também é **por Cartão** (`cards`: `pending` → `text` → `added` | `duplicate`,
 ou `failed` com o `error`): a retomada não refaz nada pronto. Um Cartão é (`phraseId`, posição da Palavra), `<phraseId>-<n>`.
@@ -65,7 +65,7 @@ PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", 
 
 
 def agora_local():
-    """O instante com o fuso do computador, como a Conexão de hoje: a aba Custos filtra pelo dia de quem usa."""
+    """O instante com o fuso do computador, a aba Custos filtra pelo dia de quem usa."""
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
@@ -387,7 +387,7 @@ class Fila:
 
 
 def resolver(pedido, estado):
-    """O fim do Envio pelo estado guardado de cada Cartão (as regras de `settle` de `bridge/envio.py`)."""
+    """O fim do Envio pelo estado guardado de cada Cartão."""
     pedidas = ids_unicos(entrada.get("phraseId") for entrada in pedido.get("entries", []))
     por_frase = {}
     for cartao in estado.get("cards", {}).values():

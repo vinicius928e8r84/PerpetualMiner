@@ -1,8 +1,8 @@
 """A voz do Cartão: o áudio da Palavra e o da Frase, pedido ao Google Tradutor só com a biblioteca padrão.
 
-É o pedido que o gTTS 2.5 faz na Conexão de hoje (o RPC `jQ1olc` do `translate.google.<sotaque>`), sem a biblioteca: um POST por
+É o pedido que o gTTS 2.5 faz (o RPC `jQ1olc` do `translate.google.<sotaque>`), sem a biblioteca: um POST por
 pedaço de texto de até 100 letras, e o áudio (MP3) volta em base64 dentro da resposta; os pedaços de uma Frase comprida são
-pedidos em ordem e colados. O texto e o sotaque (`tld`) vêm do motor (`generate_audio.voices`), os mesmos da Conexão de hoje.
+pedidos em ordem e colados. O texto e o sotaque (`tld`) vêm do motor (`generate_audio.voices`).
 
 O texto é preparado e quebrado como o gTTS 2.5 faz (`pedacos`). Escrito contra o gTTS 2.5.4: o endereço, o corpo e os cabeçalhos
 de cada pedaço saem iguais aos dele; a biblioteca não é dependência do complemento, então o teste da Conexão confere o pedido

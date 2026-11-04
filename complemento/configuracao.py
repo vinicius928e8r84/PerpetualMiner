@@ -1,6 +1,6 @@
 """O que a Conexão com o Anki sabe de si, num lugar só."""
 
-VERSAO = "0.3.8"
+VERSAO = "0.3.9"
 NOME_DO_LOGGER = "perpetualminer"
 
 ENDERECO = "127.0.0.1"
@@ -19,6 +19,5 @@ OPENAI_BASE = "https://api.openai.com"
 # De onde vêm as fotos reais do Cartão (a busca; o arquivo de cada foto vem do endereço que a busca dá). Só o código muda isto.
 OPENVERSE_BASE = "https://api.openverse.org"
 
-# De onde vem a voz do Cartão: `{tld}` é o sotaque dos Ajustes de envio (`com`, `co.uk`, `ru`…), como o gTTS da Conexão de
-# hoje monta o endereço. Só o código muda isto, como o `OPENAI_BASE`.
+# De onde vem a voz do Cartão: `{tld}` é o sotaque dos Ajustes de envio (`com`, `co.uk`, `ru`…), como o gTTS monta o endereço. Só o código muda isto, como o `OPENAI_BASE`.
 VOZ_BASE = "https://translate.google.{tld}"

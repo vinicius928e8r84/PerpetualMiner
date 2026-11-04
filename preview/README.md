@@ -33,7 +33,7 @@ O preview mostra:
 O preview **não** mostra:
 
 - o ícone na barra do Chrome (só a extensão carregada no navegador mostra);
-- login, sincronização, envio ao Anki, gravação de atalho e a conexão com o Anki Bridge local:
+- login, sincronização, envio ao Anki, gravação de atalho e a Conexão com o Anki:
   tudo isso depende do Chrome ou de um serviço na máquina, e aparece desligado ou offline;
 - o preview começa **deslogado** de propósito: logado, o painel buscaria as frases no Firestore
   e ficaria em "Carregando…".

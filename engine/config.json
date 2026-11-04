@@ -2,7 +2,6 @@
   "anki": {
     "deck_name": "teste",
     "note_type": "Básico",
-    "url": "http://localhost:8765",
     "fields": {
       "front": "Frente",
       "back": "Verso"

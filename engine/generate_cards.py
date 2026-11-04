@@ -6,7 +6,7 @@ One request per keyword (not batched) to prevent keyword hallucination.
   - keywords[1..N] -> explicit instruction to invent a new sentence
 
 OpenAI is called over plain HTTP (`openai_http`), and progress goes to the `perpetualminer.motor` logger,
-never to stdout: the same module runs in the bridge and inside the Anki add-on (`complemento/motor`).
+never to stdout: the module runs inside the Anki add-on (`complemento/motor`).
 """
 
 import logging

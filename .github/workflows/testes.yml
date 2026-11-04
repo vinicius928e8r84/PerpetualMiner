@@ -1,6 +1,6 @@
 name: Testes
 
-# O portão de cada PR: os testes de Node, os das ferramentas, os do bridge, os do motor,
+# O portão de cada PR: os testes de Node, os das ferramentas, os do motor,
 # os do complemento do Anki (Python 3.9, o do Anki do Mac, e 3.13) e a suíte e2e inteira
 # (a extensão desempacotada no Chromium). Quem trabalha roda só os specs da
 # área que mudou; a suíte inteira roda aqui. Ver "Testing" no CLAUDE.md.
@@ -15,7 +15,7 @@ name: Testes
 # falha quando um teste fica sem grupo, um grupo sem job aqui ou um teste roda por fora do executor.
 #
 # Para gastar menos minutos sem perder proteção: uma nova execução na mesma PR cancela a
-# anterior; a e2e (91% dos minutos) só começa depois que Node, bridge e complemento passam; e
+# anterior; a e2e (91% dos minutos) só começa depois que Node, motor e complemento passam; e
 # numa PR que mexe só em documentação as fatias e2e terminam sem rodar nada (os passos são
 # pulados, não os jobs, para o nome e o resultado de cada fatia continuarem aparecendo). O push
 # na main faz o mesmo: roda os jobs rápidos e as fatias e2e terminam sem rodar (a PR já passou
@@ -67,11 +67,9 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: |
-            bridge/requirements.txt
-            engine/requirements.txt
-      - run: pip install -r bridge/requirements.txt -r engine/requirements.txt
-      - run: node scripts/testar.mjs node ferramentas bridge engine
+          cache-dependency-path: engine/requirements.txt
+      - run: pip install -r engine/requirements.txt
+      - run: node scripts/testar.mjs node ferramentas engine
         env:
           PYTHON: python
 
@@ -93,10 +91,6 @@ jobs:
           python-version: ${{ matrix.python }}
       # O complemento usa só a biblioteca padrão: nada a instalar.
       - run: node scripts/testar.mjs complemento
-        env:
-          PYTHON: python
-      # A normalização repetida no bridge e no complemento, também no Python 3.9 do Anki.
-      - run: node scripts/testar.mjs paridade
         env:
           PYTHON: python
 

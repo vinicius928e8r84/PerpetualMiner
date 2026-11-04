@@ -1,5 +1,4 @@
-"""O modo “imagem gerada” (`imageSource` `"2"`) da Conexão de hoje: a triagem decide, a geração grava, e o que falha deixa o Cartão sem imagem.
-Caracterização: o comportamento é o de antes de `image_pipeline.py` sair da `start.py`."""
+"""O modo “imagem gerada” (`imageSource` `"2"`) do Envio: a triagem decide, a geração grava, e o que falha deixa o Cartão sem imagem."""
 
 import json
 import tempfile
@@ -8,7 +7,7 @@ from pathlib import Path
 
 import generate_images
 import image_guard
-import start
+from rodar_imagens import _run_images
 
 CARD_TEXT = """Anki Card
 Front: I *saw* it happen.
@@ -56,7 +55,7 @@ class GeneratedImageModeTests(unittest.TestCase):
             output_dir.mkdir()
             log_dir.mkdir()
             (output_dir / "saw.txt").write_text(CARD_TEXT, encoding="utf-8")
-            result = start._run_images(_config(output_dir, log_dir), ["saw:A person witnessing an event"], output_dir, "2", "test", str(log_dir))
+            result = _run_images(_config(output_dir, log_dir), ["saw:A person witnessing an event"], output_dir, "2", "test", str(log_dir))
             return result, calls, sorted(p.name for p in output_dir.glob("*.png")), _records(log_dir)
 
     def test_a_concrete_word_is_generated_and_recorded_as_a_generated_image(self):

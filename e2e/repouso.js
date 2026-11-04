@@ -14,7 +14,7 @@ const CICLO_MS = 16_000;
 const ASSENTAR_MS = 300;
 /**
  * Os pedidos à Conexão que só leem: todo GET e estes POST (o corpo vai só para dizer qual dono perguntar; a lista de
- * Baralhos responde igual ao GET, bridge/test_envio_api.py; o login do ChatGPT só lê o arquivo e a tentativa, sem a tranca
+ * Baralhos só lê; o login do ChatGPT só lê o arquivo e a tentativa, sem a tranca
  * nem a rede, `estado()` em complemento/login_do_chatgpt.py; o `estado` do modelo dos cartões não grava a escolha, #157; o teto do mês só lê o arquivo e os custos, #160).
  * Um POST novo que só lê entra aqui; um que muda algo, não.
  */

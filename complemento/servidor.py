@@ -252,7 +252,7 @@ class _Atendente(BaseHTTPRequestHandler):
 class _Servidor(ThreadingHTTPServer):
     daemon_threads = True
     # No Windows, reaproveitar o endereço deixaria o complemento subir por cima de
-    # outro programa que já escuta na porta (a Conexão de hoje): lá a porta ocupada
+    # outro programa que já escuta na porta (a Conexão antiga do Windows, na passagem): lá a porta ocupada
     # tem de recusar. No Mac e no Linux o reaproveitamento só pula o TIME_WAIT.
     allow_reuse_address = os.name != "nt"
 

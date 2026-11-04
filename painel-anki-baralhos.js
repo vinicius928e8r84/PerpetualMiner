@@ -23,7 +23,7 @@
     ['mature', 'BRG-35.maduros'],
     ['mixed', 'BRG-35.mistos'],
   ];
-  // O `status` de um item do bridge na tela: o texto e o tom do selo.
+  // O `status` de um item da API na tela: o texto e o tom do selo.
   const STATUS_DO_ITEM = {
     mature: { texto: 'BRG-35.maduro', selo: 'veio-selo--ok' },
     recent: { texto: 'BRG-35.recente', selo: 'veio-selo--info' },
@@ -31,7 +31,7 @@
     new: { texto: 'BRG-35.novo', selo: '' },
     seen: { texto: 'BRG-35.visto', selo: '' },
   };
-  // O `type` de um item do bridge na tela: na lista e no topo do detalhe.
+  // O `type` de um item da API na tela: na lista e no topo do detalhe.
   const TIPO_DO_ITEM = {
     word: { lista: 'BRG-35.palavra', detalhe: 'BRG-35.tipoPalavra' },
     term: { lista: 'BRG-35.termo', detalhe: 'BRG-35.tipoTermo' },
@@ -173,7 +173,7 @@
       const deckName = estado.nomes[idioma];
       const resposta = await pedirJson(raiz.PedidoAoAnki.vocabulario(deckName, idioma));
       const itens = Array.isArray(resposta.words) ? resposta.words : [];
-      // O bridge entrega até 10.000 itens; o total do idioma é o `totalWords` dele.
+      // A API entrega até 10.000 itens; o total do idioma é o `totalWords` dele.
       return { deckName: resposta.deckName || deckName, itens, total: numero(resposta.totalWords ?? itens.length), source: resposta.source };
     };
     let dados = null;

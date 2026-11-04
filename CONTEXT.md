@@ -31,8 +31,8 @@ _Avoid_: Keyword (na tela), palavra-chave, nova
 ## Destino da frase
 
 **Conexão com o Anki**:
-O programa que roda no computador do usuário e leva as frases ao Anki, transformando-as em cartões.
-_Avoid_: Anki Bridge, Bridge, AnkiConnect, serviço residente
+O complemento do Anki mais o Abridor: o complemento roda dentro do Anki do computador do usuário, grava as frases como cartões na coleção e responde à extensão; o Abridor abre o Anki quando ele está fechado. Não há programa à parte nem serviço residente para instalar ou rodar, e o Windows não tem caminho próprio. Na tela, o nome é sempre “Conexão com o Anki”; “complemento” só onde o próprio Anki usa a palavra.
+_Avoid_: Anki Bridge, Bridge, AnkiConnect, serviço residente, servidor local, Conexão de hoje
 
 **Abridor**:
 O script pequeno que a Conexão com o Anki deixa no computador para a extensão abrir o Anki fechado; a extensão só o chama com a permissão que a pessoa deu em “Abrir o Anki sozinho”.

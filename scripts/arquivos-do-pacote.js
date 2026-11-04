@@ -15,7 +15,7 @@ const FORA_DO_PACOTE = [/^veio\/README\.md$/, /^test_.*\.js$/];
 
 // O que existe no repositório e não é da extensão. O pacote nunca leva nada daqui.
 const PASTAS_QUE_NAO_SAO_RUNTIME = [
-  '.claude', '.git', 'bridge', 'complemento', 'dist', 'docs', 'e2e', 'engine', 'node_modules', 'preview', 'scripts', 'test-results',
+  '.claude', '.git', 'complemento', 'dist', 'docs', 'e2e', 'engine', 'node_modules', 'preview', 'scripts', 'test-results',
 ];
 
 function listar(raiz, pasta) {

@@ -5,7 +5,7 @@
   const CHAVE_QUATRO_CASAS = 'pm_anki_quatro_casas';
   const CHAVE_IDS = 'pm_anki_ids_dos_envios';
 
-  // Os idiomas do bridge (`lang`) e o código que cada azulejo mostra (BRG-28).
+  // Os idiomas da API (`lang`) e o código que cada azulejo mostra (BRG-28).
   const IDIOMAS_DOS_AZULEJOS = [
     { idioma: 'all', codigo: 'BRG-28.codigoTodos' },
     { idioma: 'en', codigo: 'BRG-28.codigoEn' },
@@ -13,7 +13,7 @@
   ];
   const CODIGO_DO_IDIOMA = Object.fromEntries(IDIOMAS_DOS_AZULEJOS.map(({ idioma, codigo }) => [idioma, codigo]));
   const NOME_DO_IDIOMA = { en: 'INGLES', ru: 'RUSSO' };
-  // O que cada `status` do bridge vira na tela: o tom do ponto na lista, o selo do
+  // O que cada `status` da API vira na tela: o tom do ponto na lista, o selo do
   // detalhe e se o envio pode ser continuado. O que não está aqui está andando.
   const STATUS_DO_ENVIO = {
     completed: { tom: 'ok', selo: 'veio-selo--ok', retomavel: false },

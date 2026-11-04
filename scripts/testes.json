@@ -15,24 +15,11 @@
       "executor": "node",
       "arquivos": ["scripts/test_testar.mjs", "scripts/ganchos/test_limite_de_tokens.js"]
     },
-    "bridge": {
-      "descricao": "A Conexão de hoje (Flask) e o Envio ao Anki",
-      "executor": "unittest",
-      "pasta": "bridge",
-      "padrao": "test_*.py",
-      "precisa": "pip install -r bridge/requirements.txt"
-    },
     "complemento": {
       "descricao": "O complemento do Anki; na biblioteca padrão, e o CI roda no Python 3.9 (o do Anki do Mac) e no 3.13",
       "executor": "unittest",
       "pasta": "complemento",
       "padrao": "test_*.py"
-    },
-    "paridade": {
-      "descricao": "A normalização e os custos repetidos no bridge e no complemento, rodados também no Python 3.9 do Anki (o job do complemento)",
-      "executor": "unittest",
-      "pasta": "bridge",
-      "padrao": "test_paridade_*.py"
     },
     "engine": {
       "descricao": "O motor que gera os cartões",

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Cria o venv `.venv` na raiz do repositório e instala nele as dependências do
-# bridge e do engine, para rodar os testes Python no Linux e no macOS.
+# engine, para rodar os testes Python no Linux e no macOS.
 #
 # Idempotente: rodar de novo só confere o venv e reinstala o que faltar.
 # Não usa sudo e não altera o Python do sistema: as dependências ficam só no venv
@@ -9,7 +9,7 @@
 # pip entra pelo get-pip.py oficial, dentro do próprio venv.
 #
 # Uso: scripts/preparar-python.sh
-# Depois: .venv/bin/python -m unittest discover -s bridge -p "test_*.py"
+# Depois: .venv/bin/python -m unittest discover -s engine -p "test_*.py"
 
 set -eu
 
@@ -29,4 +29,4 @@ if ! "$VENV/bin/python" -m pip --version >/dev/null 2>&1; then
   rm -f "$VENV/get-pip.py"
 fi
 
-"$VENV/bin/python" -m pip install -r "$RAIZ/bridge/requirements.txt" -r "$RAIZ/engine/requirements.txt"
+"$VENV/bin/python" -m pip install -r "$RAIZ/engine/requirements.txt"

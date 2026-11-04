@@ -12,9 +12,7 @@
     "background.js": 8,
     "content.js": 1
   },
-  "teste-le-codigo": {
-    "bridge/test_anki_launcher.py": 13
-  },
+  "teste-le-codigo": {},
   "e2e-funcao-interna": {},
   "testes-no-portao": {
     ".agents/skills/verify-perpetualminer/scripts/test_helpers.sh": 1

@@ -214,7 +214,7 @@ function criarFakeAnki() {
       generatedAt: estado.agora().toISOString(),
       deckName: corpo.deck || '',
       lang,
-      // Com o Anki fechado responde lendo o arquivo (`_local_vocabulary`, bridge/server.py).
+      // Uma Conexão que lê o arquivo do Anki fechado diz `collection.anki2`.
       source: estado.lidoDoArquivo ? 'collection.anki2' : 'colecao',
       ...(estado.lidoDoArquivo && { sourceDetail: 'AnkiConnect indisponivel; lendo collection.anki2' }),
       totalCards: words.reduce((soma, w) => soma + w.cards, 0),
@@ -647,7 +647,7 @@ function criarFakeAnki() {
     chaveNaConexao() { return estado.chaveDaOpenAI; },
     /** As respostas do contrato a um pedido (com o corpo, se tiver), para o teste que confere o fake contra os exemplos. */
     respostaDoContrato,
-    /** A porta aceita a conexão e nunca responde (o /health do bridge travado). */
+    /** A porta aceita a conexão e nunca responde (o /health travado). */
     silenciar() { estado.muda = true; },
     voltarAFalar() { estado.muda = false; },
     /**

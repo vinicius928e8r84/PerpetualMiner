@@ -17,7 +17,7 @@ if (chrome.storage.local.setAccessLevel) {
 importScripts('lib/arquivos-da-extensao.js', 'lib/auto-recarregar.js');
 PerpetualMiner.AutoRecarregar.iniciar();
 
-const BRIDGE_URL        = 'http://127.0.0.1:8766';
+const ENDERECO = 'http://127.0.0.1:8766';
 const AUTO_MINER_SETTINGS_KEY = MineracaoDoDia.CHAVES.ajustes;
 const AUTO_MINER_DAILY_KEY = MineracaoDoDia.CHAVES.diario;
 const AUTO_MINER_LAST_EVENT_KEY = MineracaoDoDia.CHAVES.ultimoEvento;
@@ -644,7 +644,7 @@ async function getAutoKeywordVocabulary(lang = 'en') {
   const baralhoPadrao = PerpetualMiner.AjustesDeEnvio.baralhoPadrao(normalizedLang);
   for (const deck of [...new Set([deckName, baralhoPadrao])].filter(Boolean)) {
     try {
-      const resp = await PerpetualMiner.PedidoAoAnki.pedir(BRIDGE_URL, PerpetualMiner.PedidoAoAnki.vocabulario(deck, normalizedLang), {
+      const resp = await PerpetualMiner.PedidoAoAnki.pedir(ENDERECO, PerpetualMiner.PedidoAoAnki.vocabulario(deck, normalizedLang), {
         signal: ultimaLeitura ? AbortSignal.timeout(AUTO_KEYWORD_RENEW_TIMEOUT_MS) : undefined,
       });
       if (!resp.ok) continue;
@@ -673,7 +673,7 @@ async function getAutoKeywordVocabulary(lang = 'en') {
   }
 
   const createdAt = Date.now();
-  const marca = await VocabularioDaMineracao.marcaDaLeitura(ultimaLeitura, data.source, BRIDGE_URL, createdAt);
+  const marca = await VocabularioDaMineracao.marcaDaLeitura(ultimaLeitura, data.source, ENDERECO, createdAt);
   const payload = { cacheVersion: VocabularioDaMineracao.VERSAO, deckName, createdAt, ...marca, words, terms, wordInfo, termInfo };
   chrome.storage.local.set({ [cacheKey]: payload });
   return autoVocabularyFromCache(payload);
@@ -981,7 +981,7 @@ ouvirChrome(chrome.storage.onChanged, (changes, area) => {
 agendarViradaDoDia();
 atualizarBadgeDaToolbar();
 // O Apagar tudo que a Conexão não confirmou (a marca em `pm_envio`) é pedido de novo a cada 30 s, com todo painel fechado.
-PerpetualMiner.ApagarFrasesPendente.ligar({ chrome, ouvirChrome, endereco: BRIDGE_URL });
+PerpetualMiner.ApagarFrasesPendente.ligar({ chrome, ouvirChrome, endereco: ENDERECO });
 
 /**
  * Centraliza a publicação espontânea do estado pelos canais de `MineracaoDoDia`.

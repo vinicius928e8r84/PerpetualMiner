@@ -1,6 +1,6 @@
 ---
 name: verify-perpetualminer
-description: "Drive and prove PerpetualMiner (Chrome MV3 extension, plain JS, plus the local Python Anki bridge/engine) the way a user does. Primary surface: the unpacked extension running in real Chromium through the repo's Playwright e2e harness (e2e/), with its fake Anki connection, Gemini and Google. Use when you must show a mining, panel, Anki-send, onboarding or photo-mining change actually works, capture screenshots/state as evidence, or check whether a feature still behaves after a change."
+description: "Drive and prove PerpetualMiner (Chrome MV3 extension, plain JS, plus the Anki add-on `complemento/` and the engine it runs) the way a user does. Primary surface: the unpacked extension running in real Chromium through the repo's Playwright e2e harness (e2e/), with its fake Anki connection, Gemini and Google. Use when you must show a mining, panel, Anki-send, onboarding or photo-mining change actually works, capture screenshots/state as evidence, or check whether a feature still behaves after a change."
 ---
 
 # Verify PerpetualMiner
@@ -12,10 +12,10 @@ Read cold, mid-task. Everything here was run on this repo; if a command disagree
 | Surface | What the user touches | How you drive it | Covered here |
 |---|---|---|---|
 | **Chrome extension** (root: `manifest.json`, `background.js`, `content.js`, `popup.*`, `painel.*`, `bookreader.*`) | The popup, the panel (`painel.html#frases`, `#anki/…`, `#configuracoes/…`, `#boas-vindas/…`), the in-page overlay on video/text pages, `bookreader.html` | Playwright specs in `e2e/tests/` against real Chromium with the repo root loaded unpacked | **Primary.** Launch/Doctor/Drive/Evidence/Cleanup below |
-| **Python bridge** (`bridge/`, Flask on `127.0.0.1:8766`) and **engine** (`engine/`) | Nothing directly; the panel talks to the bridge's HTTP routes | `python3 bridge/test_envio.py` (no Flask needed), the other `bridge/test_*.py` and `engine/test_*.py` (need `scripts/preparar-python.sh` → `.venv`) | Listed in `features/README.md` § Other surfaces. Do not start the real bridge: it launches Anki Desktop and reads `bridge/config.json` (Windows paths) |
-| **Anki add-on "Conexão" (`complemento/`)** | Runs inside Anki; plain stdlib HTTP on `127.0.0.1:8766`: `GET /health`; `POST /anki/decks`, `/anki/stats/decks`, `/anki/vocabulary`; `/abrir-com-o-computador[/estado]`; `/ia/estado`, `/ia/openai/chave`, `/ia/openai/chave/apagar`, `/ia/openai/sincronizar`, `/ia/openai/legado`; the Envio, `/jobs`, `/jobs/list`, `/jobs/get`, `/jobs/retry`, `/jobs/debug-bundle`, `/analytics/jobs` (#142: each Frase becomes a text Card in the collection) (the list is `ROTAS` in `complemento/servidor.py`; the bridge in `bridge/` answers the same Envio routes for the owner's Windows) | Its own tests, every `complemento/test_*.py` (`PYTHON=python3.9 node scripts/testar.mjs complemento`, also with `python3.13`), and the extension side of the same contract, `e2e/tests/contrato-da-conexao.spec.js` | See `features/README.md` § Other surfaces. It runs outside Anki for a drive (§ Driving against the real Conexão); a real Anki is the owner's rehearsal, and the e2e Anki fake answers its contract in the ordinary specs. Do not install it into a real Anki from here. Its OpenAI key routes are driven through the AI card (`features/ia.md`) |
+| **Engine** (`engine/`) | Nothing directly; the add-on runs it for the Envio | `engine/test_*.py` (`node scripts/testar.mjs engine`; needs `scripts/preparar-python.sh` → `.venv`) | Listed in `features/README.md` § Other surfaces |
+| **Anki add-on "Conexão" (`complemento/`)** | Runs inside Anki; plain stdlib HTTP on `127.0.0.1:8766`: `GET /health`; `POST /anki/decks`, `/anki/stats/decks`, `/anki/vocabulary`; `/abrir-com-o-computador[/estado]`; `/ia/estado`, `/ia/openai/chave`, `/ia/openai/chave/apagar`, `/ia/openai/sincronizar`, `/ia/openai/legado`; the Envio, `/jobs`, `/jobs/list`, `/jobs/get`, `/jobs/retry`, `/jobs/debug-bundle`, `/analytics/jobs` (#142: each Frase becomes a text Card in the collection) (the list is `ROTAS` in `complemento/servidor.py`) | Its own tests, every `complemento/test_*.py` (`PYTHON=python3.9 node scripts/testar.mjs complemento`, also with `python3.13`), and the extension side of the same contract, `e2e/tests/contrato-da-conexao.spec.js` | See `features/README.md` § Other surfaces. It runs outside Anki for a drive (§ Driving against the real Conexão); a real Anki is the owner's rehearsal, and the e2e Anki fake answers its contract in the ordinary specs. Do not install it into a real Anki from here. Its OpenAI key routes are driven through the AI card (`features/ia.md`) |
 
-The extension never reaches a real Anki, Gemini or Google in the harness: the fixture fakes those at the HTTP boundary and blocks every other external request. So a pass proves the extension's behavior against the documented contracts, **not** the real bridge or a real Anki. Say so in any proof.
+The extension never reaches a real Anki, Gemini or Google in the harness: the fixture fakes those at the HTTP boundary and blocks every other external request. So a pass proves the extension's behavior against the documented contracts, **not** a real Anki. Say so in any proof.
 
 ## Launch
 
@@ -133,7 +133,7 @@ Proof standards:
 3. **Verify side effects next to what is visible**: what reached the Anki fake (`fakes.anki.envios[…]`), what reached Gemini (`fakes.gemini.chamadas`), what was written to storage.
 4. **Mocks only at the production boundary**, which the fixture already provides (Anki connection, Gemini, Firestore/Google). Do not stub extension code.
 5. **A test that passes is not enough**: open the PNG and read it. Check the evidence names the feature and shows the state you claim.
-6. **Report what you did not prove**: real Anki/bridge, native Chrome menus, Windows. Do not report a skipped entry point (say, the context menu) as verified through a different one (the shortcut).
+6. **Report what you did not prove**: real Anki, native Chrome menus, Windows. Do not report a skipped entry point (say, the context menu) as verified through a different one (the shortcut).
 
 For the PR body, quote the `drive.sh` command, the `run.log` summary line (`N passed`), and the evidence paths.
 
@@ -178,7 +178,7 @@ Env knobs: `PM_VERIFY_ROOT` (default `/tmp/pm-verify`; keep it short: Chromium's
 | | Linux (this skill) | Mac | Windows |
 |---|---|---|---|
 | Extension in Chromium | e2e harness, headless | owner | owner (Chrome 153 has no `--load-extension`: load the folder in chrome://extensions) |
-| Conexão (Python) | `scripts/conexao-real.py`, outside Anki | inside Anki (owner) | inside Anki (owner); port 8766 is held by the bridge on the owner's PC, so the real Conexão does not start there until the bridge stops (owner's call) |
+| Conexão (Python) | `scripts/conexao-real.py`, outside Anki | inside Anki (owner) | inside Anki (owner) |
 | Opener (Native Messaging, `anki-open-alone`) | none: `abridor.deste_computador` returns None; the e2e uses a fake host | registered in Chrome's host folder only | registered in HKCU\Software\Google\Chrome; found by Chrome 153 and Opera GX 136 |
 | Login item (`anki-no-login`) | none: `/abrir-com-o-computador` answers 501 `login_item_unsupported` | LaunchAgent | Startup-folder shortcut |
 | Key file mode | 0600 | 0600 | inherits the folder ACL (no 0600; see `docs/seguranca/chave-da-openai.md`) |
@@ -192,9 +192,9 @@ A slice that touches the Conexão com o Anki (the key, sync, any route that carr
 | # | Variant | Today | Missing |
 |---|---|---|---|
 | 1 | No Conexão | `fakes.anki.desligar()` (`configuracoes-ia.spec.js`: `N2:`, "com a Conexão desligada…") | |
-| 2 | Anki closed | `configuracoes-ia.spec.js -g 'K3:'`: the add-on runs inside Anki, so closed means nothing on 8766, `fakes.anki.desligar()` (`fecharOAnki()` is only the bridge reading the file, with the Conexão still answering) | |
+| 2 | Anki closed | `configuracoes-ia.spec.js -g 'K3:'`: the add-on runs inside Anki, so closed means nothing on 8766, `fakes.anki.desligar()` (`fecharOAnki()` fakes a Conexão that reads the file, which the add-on never does) | |
 | 3 | Old add-on (0.1.0, unversioned state) | `configuracoes-ia.spec.js -g 'K4'` (`K4:` and `K4-delete:`), built by hand with `fakes.anki.responder('POST', '/ia/estado', …)` without `versao`; `guardarChaveNaConexao(…)` only seeds the key | an old-version mode of the fake |
-| 4 | Flask bridge on 8766 | `configuracoes-ia.spec.js -g 'B1:'`, a 404 set per route with `fakes.anki.responder('POST', rota, …)` | a bridge mode (404 for every add-on route) |
+| 4 | An add-on version without the key routes | `configuracoes-ia.spec.js -g 'B1:'`, a 404 set per route with `fakes.anki.responder('POST', rota, …)` | a mode of the fake that 404s every key route |
 | 5 | Two profiles or accounts on one Conexão | `chave-autoridade.spec.js -g 'K1:'` (a second Chromium profile), `-g 'K1-delete:'`, `-g 'P1'` | |
 | 6 | Coming from `main` (legacy store, no UID) | `chave-autoridade.spec.js -g 'K2:'`, `-g 'P1 legado:'` | |
 | 7 | Lost answer or panel closed | `chave-autoridade.spec.js -g 'R1'` (`R1:` and `R1 autoridade`) | |
@@ -204,10 +204,10 @@ There is no helper yet that runs one test over the variants; until it lands, nam
 
 ## Known limits
 
-- The harness fakes Anki, Gemini and Google; nothing here talks to a real bridge, Anki Desktop, Gemini or Firestore.
+- The harness fakes Anki, Gemini and Google; nothing here talks to a real Anki Desktop, Gemini or Firestore.
 - The context menu, toolbar badge, midnight alarm and extension update are simulated by calling the function Chrome would call.
 - Evidence screenshots exist only where a spec calls `fotografar`; other specs leave `run.log` and `report.json`.
-- Windows is the owner's runtime for the bridge; this skill was proven on Linux headless Chromium. `.claude/skills/verify-perpetualminer` is a symlink to this directory (one canonical copy); a Windows checkout without symlink support sees a plain file there, so open `.agents/skills/verify-perpetualminer/` directly.
+- Windows is the owner's machine; this skill was proven on Linux headless Chromium. `.claude/skills/verify-perpetualminer` is a symlink to this directory (one canonical copy); a Windows checkout without symlink support sees a plain file there, so open `.agents/skills/verify-perpetualminer/` directly.
 - The Anki add-on (`complemento/`) is mapped in `features/ia.md` (the key), `features/anki-no-login.md` (the login item) and `features/anki.md` › `anki-open-alone` (the opener); its own tests run with `PYTHON=python3.9|python3.13 node scripts/testar.mjs complemento`. The screens that show what it reads (Baralhos e termos, Vocabulário) are not mapped yet.
 - The add-on's read side (the Anki adapter) is proven only against a fake `mw`; a real Anki is the owner's rehearsal.
 - The OpenAI key was never checked against the real OpenAI: its provider and Firestore are the repo's fakes, even in the real Conexão drive.

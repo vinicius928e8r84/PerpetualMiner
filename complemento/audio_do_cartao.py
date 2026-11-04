@@ -13,7 +13,7 @@ FRASE_APAGADA = "phrase_wiped"
 
 
 def aplicar_os_sotaques(config, lang, tts):
-    """Os sotaques dos Ajustes de envio valem sobre o perfil do idioma, como na Conexão de hoje (`bridge/envio.py`)."""
+    """Os sotaques dos Ajustes de envio valem sobre o perfil do idioma."""
     perfis = config.setdefault("tts", {}).setdefault("profiles", {}).setdefault(lang, {})
     for campo, chave in (("word", "wordTld"), ("phrase", "phraseTld")):
         if voz.sotaque_valido(tts.get(chave)):

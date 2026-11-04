@@ -8,7 +8,7 @@ Tests: `e2e/tests/painel-envio-parado.spec.js` (the sentence, the button, the op
   that are not ready (`test_envio_retomada.py`). The panel never asks it to resume: it reads `POST /jobs/list` as before.
 - **What the card says.** While `ConexaoAnki.situacao()` is `desligada` (after it answered once) and the Envio has not ended, the card shows ENV-18 —
   “3 de 10 no Anki. Quando o Anki abrir, o Envio continua sozinho.” — as two `<span>`s, each from the catalog. The count is the Cards of the last
-  `state.cards` with status `added` or `duplicate` over all of them; without `cards` (the panel reopened with the Anki closed, or the bridge) only the
+  `state.cards` with status `added` or `duplicate` over all of them; without `cards` (the panel reopened with the Anki closed, or a Conexão that kept no `cards`) only the
   second sentence. This beats a stale `waiting` (the profile). The Envio loop checks `/health` on every round while it has no news
   (`conferirEnvios`), so the sentence shows in about two seconds, and goes when the Conexão answers again (ENV-09, “Sem resposta…”, stays hidden meanwhile). The progress modal is where it lives:
   Enviar ao Anki with nothing new opens it.

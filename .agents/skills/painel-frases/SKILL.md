@@ -71,8 +71,8 @@ and opens `bookreader.html` in a new tab, as the menu's Foto does. The PAI-02 em
 `Desconhecido`, Palavra groups joined by ` | `, word positions dropped). A phrase with no Palavra whose text has ` : `
 (or ends in ` :`) is written with an empty prefix (`: texto`), so the text comes back whole. A Palavra group that is
 no longer in the text (the text was edited after it was picked) is left out of the line, and the other groups stay:
-read back, it would stick to the start of the text. The Anki Bridge gets the same line without either rule
-(`linhaParaOAnki`), because its parser does not know the empty prefix. Reading (`lerLinhaDoTxt`): a line in that
+read back, it would stick to the start of the text. The Conexão gets the same line without either rule
+(`linhaParaOAnki`), because the engine's parser does not know the empty prefix. Reading (`lerLinhaDoTxt`): a line in that
 format brings its Contexto and its Palavras back (`palavrasNoTexto` finds each word's position again; a word repeated in
 the text comes back at its first occurrence after the previous one of its group) and skips the automatic Palavra; the
 prefix before the first ` : ` only counts as the Palavra when all its words are in the text after it, which keeps

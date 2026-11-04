@@ -6,7 +6,7 @@
 (function (raiz) {
   const { textoDaVoz, Veio, Contexto, IDIOMAS } = raiz;
 
-  // As etapas do bridge, na ordem, com o nome de gente de cada uma (ENV-07).
+  // As etapas do Envio, na ordem, com o nome de gente de cada uma (ENV-07).
   const ETAPAS = [
     ['queued', 'naFila'],
     ['generate_cards', 'criandoCartoes'],

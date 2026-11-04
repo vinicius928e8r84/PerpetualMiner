@@ -1,5 +1,5 @@
 """
-generate_audio.py — Generate pronunciation MP3 files via gTTS.
+generate_audio.py — What a card says and with which accent (the add-on asks Google for the MP3 in `complemento/voz.py`).
 
 Language is read from config.json (tts.target_lang).
 Texts containing Cyrillic script automatically switch to tts.cyrillic_lang.
@@ -10,21 +10,18 @@ the Assistant created, not the original entry phrase.
 
 Output filenames: {stem}_word.mp3  and  {stem}_phrase.mp3
 
-`voices()` is what a card says and with which accent; the bridge speaks it with gTTS (`run`, imported only when it runs), the
-Anki add-on asks Google for it with the standard library only (`complemento/voz.py`), so this module also imports as
-`complemento.motor.generate_audio` without gTTS.
+`voices()` is what a card says and with which accent; the module uses the standard library only, so it also imports as
+`complemento.motor.generate_audio` inside the Anki add-on.
 """
 
 import re
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import Optional, Tuple
 
 if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
-    from .config_loader import load_config
-    from .parser import parse_mining_file, get_card_jobs, CardJob
+    from .parser import CardJob
 else:
-    from config_loader import load_config
-    from parser import parse_mining_file, get_card_jobs, CardJob
+    from parser import CardJob
 
 
 def _has_cyrillic(text: str) -> bool:
@@ -89,55 +86,3 @@ def voices(job: CardJob, card_text: Optional[str], config: dict) -> Tuple[Tuple[
         (phrase_text, phrase_profile["lang"], phrase_profile["tld"]),
     )
 
-
-def run(
-    entries,
-    config: dict,
-    progress_callback: Optional[Callable[[int, int, str], None]] = None,
-) -> List[str]:
-    """Generate word + phrase MP3 for every CardJob.
-
-    progress_callback(done, total, label) is called after each file is saved.
-    Returns list of generated filenames.
-    """
-    from gtts import gTTS  # the add-on has no gTTS: only the bridge speaks through it
-
-    output_dir = Path(config["paths"]["output_dir"])
-    output_dir.mkdir(exist_ok=True)
-
-    all_jobs: List[CardJob] = []
-    for entry in entries:
-        all_jobs.extend(get_card_jobs(entry))
-
-    total = len(all_jobs) * 2   # word + phrase per card
-    done = 0
-    generated: List[str] = []
-
-    for job in all_jobs:
-        stem = job.filename_stem
-        card_file = output_dir / f"{stem}.txt"
-        card_text = card_file.read_text(encoding="utf-8") if card_file.exists() else None
-        (word_text, word_lang, word_tld), (phrase_text, phrase_lang, phrase_tld) = voices(job, card_text, config)
-
-        word_file = output_dir / f"{stem}_word.mp3"
-        gTTS(text=word_text, lang=word_lang, tld=word_tld).save(str(word_file))
-        generated.append(word_file.name)
-        done += 1
-        if progress_callback:
-            progress_callback(done, total, f"[word] {job.keyword}")
-
-        phrase_file = output_dir / f"{stem}_phrase.mp3"
-        gTTS(text=phrase_text, lang=phrase_lang, tld=phrase_tld).save(str(phrase_file))
-        generated.append(phrase_file.name)
-        done += 1
-        if progress_callback:
-            progress_callback(done, total, f"[phrase] {job.keyword}")
-
-    return generated
-
-
-if __name__ == "__main__":
-    cfg = load_config()
-    mining_entries = parse_mining_file(Path(cfg["paths"]["mining_file"]))
-    result = run(mining_entries, cfg)
-    print(f"✅ {len(result)} audio file(s) generated.")
