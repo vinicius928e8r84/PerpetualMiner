@@ -46,12 +46,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-anki-plano.js` | `PerpetualMiner.PlanoDosCustos` — the Custos tab card for the ChatGPT plan: Cartões made, “Você economizou” and Gerenciar uso ↗ (BRG-40, #159) |
 | `painel-anki-baralhos.js` | `PerpetualMiner.Baralhos` — Baralhos e termos and Vocabulário in the Conexão com o Anki area (BRG-10…14, 19…21, 27, 34, 35, GLB-01). See “Baralhos e termos and Vocabulário” in the `painel-anki` skill |
 | `painel-ajustes.js` | The Conexão com o Anki › Ajustes de envio tab: one card per language whose form saves only on Salvar ajustes, the Baralho picked from the Anki's decks, and the stale-tab refusal (#35). See “Ajustes de envio” in the `painel-anki` skill |
+| `painel-anki-estilo.js` | `PerpetualMiner.EstiloDoCartao`: the Estilo do cartão level of an Ajustes de envio card (#162, BRG-42) |
 | `painel-envio.js` | The Envio ao Anki: Enviar ao Anki in the Frases bar, the progress modal, the tracking saved in `pm_envio` and the summary (ENV-03…15) that opens by itself in any area. See “Envio ao Anki” in the `painel-anki` skill |
 | `painel-envio-anki-fechado.js` | `PerpetualMiner.EnvioComOAnkiFechado` — Enviar ao Anki with the Anki closed (#150): the ENV-16 notice in Frases, the pending Envio and the Consertar outcome (BRG-39). See “Envio ao Anki” in the `painel-anki` skill |
 | `painel-envio-cartao.js` | `PerpetualMiner.CartaoDoEnvio`: one Envio's card in the progress modal + “Abrir <perfil>” (ENV-17) |
 | `painel-envio-parado.js` | `PerpetualMiner.EnvioParado`: the Envio stopped by a closed Anki (#151): ENV-18 and Continuar envio |
 | `painel-envio-limite.js` | `PerpetualMiner.EnvioNoLimite`: the Envio waiting for the ChatGPT plan's limit (#158): ENV-19 and its three actions |
-| `painel-teto.js` | `TetoDoMes` and `EnvioNoTeto`: the monthly cap (#160, kept by the Conexão): the 80% warning, the Custos card to adjust it, the Envio band + Ver Custos (BRG-41, ENV-21) |
+| `painel-teto.js`, `painel-teto.css` | `TetoDoMes` and `EnvioNoTeto`: the monthly cap (#160): the 80% warning, the Custos card to adjust it, the Envio band + Ver Custos (BRG-41, ENV-21) |
 | `bookreader.html/js/css` | Minerar de uma foto (ex-BookReader): photos of marked book pages → Gemini Vision reads the marked passages → the person picks which phrases to mine. See “Minerar de uma foto” in the `minerar-foto` skill |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens, the mark's cursor), `tema.js` (the chosen theme, applied before the first paint on every page), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (Manrope and JetBrains Mono `.woff2`), `icones/` (toolbar PNGs, SVG marks). See `veio/README.md` |
 | `lib/voz/catalogo.js` | The runtime Voice catalog as data; the copy and voice rules are in `docs/design/voz/README.md`, its source. `docs/design/voz/catalogo.html` is generated from that README (`node scripts/gerar-catalogo-da-voz.js`, never by hand; it also rewrites the snapshot `catalogo-textos.json`) and `node test_voz.js` fails when a copy drifts |
@@ -75,7 +76,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `lib/arquivos-da-extensao.js` | `PerpetualMiner.arquivosDaExtensao(lerTexto)` — the files the extension uses at run time, found from `manifest.json` (service worker and its `importScripts`, content scripts, icons, pages and what they load). Read by `lib/auto-recarregar.js` and by `scripts/empacotar-extensao.mjs`, so the two never disagree |
 | `lib/auto-recarregar.js` | `PerpetualMiner.AutoRecarregar.iniciar()` — called at the top of `background.js`; reloads an unpacked (`development`) extension when its files change. See “Testing on devices and the Chrome Web Store” below |
 | `scripts/` | `atualizar-extensao.sh` (+ the launchd `.plist` example) keeps a clone on `main` up to date; `empacotar-extensao.mjs` builds the Web Store zip; `arquivos-do-pacote.js` says which files ship; `ci/` holds what `testes.yml` runs as code, among it `checks-obrigatorios.js` + `.json`. See `docs/instalar-extensao.md` and `docs/publicar-chrome-web-store.md` |
-| `complemento/` | The Conexão com o Anki as an Anki add-on: an stdlib HTTP server on `127.0.0.1:8766` in a thread of the Anki, answering only the extension's `Origin` (except `GET /health`); the collection read and written through an adapter, the key vault, the Envio (#142), the login item, the opener (#147), the fixed profile (#149) and the monthly cap (#160). Modules and write rules: `complemento/LEIA-ME.md`; routes and examples (closed both ways by `test_contrato_fechado.js` and `test_servidor.py`): `complemento/contrato/LEIA-ME.md`. Tests: `python3.9 complemento/test_*.py` and `python3.13 …` |
+| `complemento/` | The Conexão com o Anki as an Anki add-on: an stdlib HTTP server on `127.0.0.1:8766` in an Anki thread, answering only the extension's `Origin` (except `GET /health`); the collection read and written through an adapter, the key vault, the Envio (#142), the login item, the opener, the fixed profile and the monthly cap. Modules and write rules: `complemento/LEIA-ME.md`; routes and examples (closed both ways by `test_contrato_fechado.js` and `test_servidor.py`): `complemento/contrato/LEIA-ME.md`. Tests: `python3.9 complemento/test_*.py` and `python3.13 …` |
 | `test_fake_anki.js` | Node test of the e2e fake of the Conexão com o Anki (`e2e/fakes/anki.js`): it answers `/health` from the contract examples (`complemento/contrato/exemplos.json`) and refuses a context (a profile) the examples do not have |
 | `test_abridor.js` | Node test of `lib/abridor.js` over a test `sendNativeMessage`: each contract answer read on screen, SEM_PERMISSAO with nothing sent, and an answer outside the contract never read as “found” or “opened” |
 | `test_abrir_o_anki.js` | Node test of `lib/abrir-o-anki.js`: the permission is asked inside the click, `consertar` before `abrir`, and the wait is limited |
@@ -156,7 +157,7 @@ they are. Addresses: `#frases` (default, and anything unknown), `#anki/custos|ba
 so the browser's back button walks through areas and tabs.
 
 The shell owns the sidebar and `painel.js` reports to it through `PerpetualMiner.Shell`:
-`mostrarTotalDeFrases(n)`, `aoEntrarNaArea(area, fn)` (the Anki area refreshes on entry), `areaAtual()`, `AREAS_DO_PAINEL` (the three areas with the sidebar, not the Boas-vindas). The shell starts `ConexaoAnki`'s 15 s `/health` checks and uses `ConexaoNaTela` for the sidebar indicator (tooltip and accessible description) and the F1 retry at the top of the Anki area. For the strip's visibility and focus destinations, see the [shell's edge cases](docs/design/painel/shell/README.md#casos-de-borda); the [Boas-vindas § F1](docs/design/painel/boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1) owns the common retry. Other surfaces listen to `ConexaoAnki` directly.
+`mostrarTotalDeFrases(n)`, `aoEntrarNaArea(area, fn)` (the Anki area refreshes on entry), `areaAtual()`, `AREAS_DO_PAINEL` (the three areas with the sidebar, not the Boas-vindas). The shell starts `ConexaoAnki`'s 15 s `/health` checks and uses `ConexaoNaTela` for the sidebar indicator and the F1 retry at the top of the Anki area. For the strip's visibility and focus destinations, see the [shell's edge cases](docs/design/painel/shell/README.md#casos-de-borda); the [Boas-vindas § F1](docs/design/painel/boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1) owns the common retry. Other surfaces listen to `ConexaoAnki` directly.
 
 The shell's fixed copy comes from the catalog through `data-voz`, `data-voz-aria` and `data-voz-title` attributes in
 `painel.html`, which `painel-shell.js` fills on load. The sidebar and the content island are both the height of the window
@@ -199,7 +200,7 @@ Pending capture uploads (including token-refresh failures) are handled by `salva
 
 `criarSincronizacao` owns deletion, tombstones and a pending Apagar tudo; the panel clears its visible/local history and delegates cloud work to the module, while the popup does not delete. For tombstone storage and the offline wipe's account/cutoff rules, read the module's doc comments. The Firestore field-path escaping requirement is documented at `tombstoneFirestore`.
 
-The OpenAI key follows the account (#154): the versioned Conexão owner replicates `usuarios/{uid}/segredos/openai` (`{ chave, em }`, empty value for deletion). The extension sends transient UID/token requests on opening/login/visibility/key changes and reads only the owner's public summary. It has no key-cloud merge or pending secrets by UID. Invariants, legacy migration, ordering limits and P6 owner rule-publication gate: `docs/seguranca/chave-da-openai.md`.
+The OpenAI key follows the account (#154): the versioned Conexão owner replicates `usuarios/{uid}/segredos/openai` (`{ chave, em }`, empty value for deletion). The extension sends transient UID/token requests on opening/login/visibility/key changes and reads only the owner's public summary. Invariants, legacy migration, ordering limits and P6 owner rule-publication gate: `docs/seguranca/chave-da-openai.md`.
 
 ### Storage Schema
 
@@ -220,7 +221,7 @@ Each entry in `chrome.storage.local["frases"]` (unlimited, newest first):
 ```
 
 Other storage keys:
-- `ankiBridgePresets` — the Ajustes de envio: `{ en, ru }`, each `{ deckName, imageSource: '1' (Foto real) | '2' (Gerada por IA), ttsWordTld, ttsPhraseTld, versao }`; written only by Salvar ajustes (`lib/ajustes-de-envio.js`), a missing or blank field reads as the language's default
+- `ankiBridgePresets` — the Ajustes de envio: `{ en, ru }`, each `{ deckName, imageSource: '1' (Foto real) | '2' (Gerada por IA), nivel: 'iniciante' | 'intermediario' | 'avancado', ttsWordTld, ttsPhraseTld, versao }`; written only by Salvar ajustes (`lib/ajustes-de-envio.js`), a missing or blank field reads as the language's default
 - `geminiApiKey` — the Gemini key, written only by Configurações › Chave do Gemini and read by Minerar de uma foto
 - `pm_chave_openai` — public cache `{ ultimos4, conta, versao, naoEnviada }` read from the Conexão, written by `lib/chave-da-openai.js`. The only local whole key is in the Conexão's owner; with an account it replicates to Firestore (#154). The extension's old `pm-segredos` store is cleared during exact-proof migration/wipe; `pm_chave_openai_versao` and every client generation/per-UID secret/removal record are gone.
 - `bookTitleDefault` — the Livro (Título) last typed in Minerar de uma foto, filled back on the next visit
@@ -265,7 +266,7 @@ Not covered by the queue:
 
 ### Toolbar Badge (background.js)
 
-The badge on the extension icon is the auto-miner's counter for today (`MIN-09`): the **sum of the enabled languages only**, in the Veio colors (`#F5B83D` on `#1A1204`). Both languages off → no badge, and the tooltip is the extension's name. Tooltip otherwise: “Mineração automática: N hoje”, or “…: limite de hoje atingido” when every enabled language has hit its own `dailyLimit` (one language at its limit and another below still shows the counter).
+The badge on the extension icon is the auto-miner's counter for today (`MIN-09`): the **sum of the enabled languages only**, in the Veio colors (`#F5B83D` on `#1A1204`). Both languages off → no badge, and the tooltip is the extension's name. Tooltip otherwise: “Mineração automática: N hoje”, or “…: limite de hoje atingido” when every enabled language has hit its own `dailyLimit`.
 
 Storage is what drives it, not the caller: the service worker watches `pm_auto_miner_settings` and `pm_auto_miner_daily` through `chrome.storage.onChanged`, so toggling a language in the popup and each automatic mining both land on the same path (`atualizarBadgeDaToolbar`).
 

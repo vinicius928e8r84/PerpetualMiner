@@ -17,7 +17,7 @@ from complemento.test_imagens_de_mentira import png_de
 # (status, corpo) de GET /v1/models e de POST /v1/embeddings.
 MODELOS_OK = (200, {"object": "list", "data": [{"id": "gpt-4.1-mini", "object": "model"}]})
 EMBEDDINGS_OK = (200, {"object": "list", "data": [{"embedding": [0.0]}]})
-# A lista de modelos que o plano do ChatGPT devolve ao `access_token` do login (a forma da doc: `models`, com `slug` e `visibility`).
+# A lista de modelos que o plano do ChatGPT devolve ao `access_token` do login (a forma da doc: `models`, `slug`, `visibility`).
 MODELOS_DO_PLANO = (200, {"models": [{"slug": "gpt-interno", "visibility": "hide"}, {"slug": "gpt-6-luna", "display_name": "GPT-6 Luna", "visibility": "list"},
                                      {"slug": "gpt-6-sol", "display_name": "GPT-6 Sol", "visibility": "list"}]})
 
@@ -71,10 +71,19 @@ COMPORTAMENTOS = {
 }
 
 
-def _cartao_de_mentira(mensagens):
-    """Um Cartão do Iniciante que o motor aceita, feito do pedido: a Palavra no verso, destacada na frente, o contexto, se veio, e a
-    tradução em português com o alinhamento que liga os pedaços (`Literal` e `Natural`, como o prompt do nível pede)."""
+PARTES_DE_MENTIRA = {
+    "Pronunciation": "pronúncia de mentira", "Literal": "literal de mentira", "Natural": "tradução de mentira",
+    "Definition": "definição de mentira", "Other example": "outro exemplo de mentira", "Gist": "cena de mentira.",
+}
+
+
+def _cartao_de_mentira(mensagens, prompt=""):
+    """Um Cartão que o motor aceita, feito do pedido: a Palavra no verso e destacada na frente, o contexto, se veio, e as partes do verso que
+    o `prompt` do nível manda escrever (sem prompt, as do Iniciante); o alinhamento só se o prompt o pede."""
     pedido = mensagens[-1]["content"]
+    texto_do_prompt = " ".join(prompt.split())
+    partes = re.findall(r"(%s): \[" % "|".join(PARTES_DE_MENTIRA), texto_do_prompt) or list(PARTES_DE_MENTIRA)[:3] + ["Gist"]
+    com_alinhamento = not prompt or "Alignment: 1 |" in texto_do_prompt
     if re.search(r"[\u0400-\u04FF]", pedido):  # russo: a frase inteira é a frente
         frase = pedido.split("\n")[0]
         primeira = frase.split()[0]
@@ -89,8 +98,9 @@ def _cartao_de_mentira(mensagens):
     frente = frase.replace(palavra, "*%s*" % palavra, 1) if palavra in frase else "*%s* aqui" % palavra
     fonte = "Source Context: %s\n\n" % contexto.group(1) if contexto else ""
     imagem = "Google Image Search Queries:\n1. %s\n2. %s photo\n\nImage: A %s, no text.\n" % (palavra, palavra, palavra)
-    verso = "Pronunciation: pronúncia de mentira\n\nLiteral: literal de mentira\n\nNatural: tradução de mentira\n\nGist: cena de mentira.\n"
-    return "%sFront: %s\n\nBack: %s - /ipa/\n\n%s%s\nAlignment:\n1 | %s | literal\n" % (fonte, frente, palavra, verso, imagem, palavra)
+    verso = "".join("%s: %s\n\n" % (parte, PARTES_DE_MENTIRA[parte]) for parte in partes)
+    alinhamento = "\nAlignment:\n1 | %s | literal\n" % palavra if com_alinhamento else ""
+    return "%sFront: %s\n\nBack: %s - /ipa/\n\n%s%s%s" % (fonte, frente, palavra, verso, imagem, alinhamento)
 
 
 def _palavra_do_pedido(mensagens):
@@ -120,14 +130,14 @@ class OpenAIDeMentira:
         self.recusa_das_respostas = None
         self.falha_no_stream = None
         self.recusa_do_juiz_do_plano = None
-        self.modelos_da_conta = self.modelos_do_plano = None  # os ids que `GET /v1/models` lista para a chave e para o plano (None: os de cima)
+        self.modelos_da_conta = self.modelos_do_plano = None  # os ids de `GET /v1/models` para a chave e para o plano (None: os de cima)
         # As imagens do Cartão (#144): o juiz (`juiz(modo, candidatas) -> veredito`, `candidatas`: `{index, title, kind, imagem}`), a triagem
-        # (a letra que ela responde), e a imagem gerada (`recusa_da_imagem`: (status, código); `imagem_gerada`: o que ela devolve).
+        # (a letra que ela responde) e a imagem gerada (`recusa_da_imagem`: (status, código); `imagem_gerada`: o que devolve).
         self.juiz = _juiz_que_gosta_da_primeira
         self.triagem = "C"
         self.recusa_da_imagem = None
         self.imagem_gerada = png_de("gerada")
-        self.juizes, self.triagens, self.imagens = [], [], []  # (Authorization, modo, candidatas) / (Authorization, palavra) / (Authorization, corpo)
+        self.juizes, self.triagens, self.imagens = [], [], []  # (Authorization, modo, candidatas) / (…, palavra) / (…, corpo)
         self.falas, self.recusa_da_fala = [], None  # a voz (`/v1/audio/speech`): (Authorization, corpo) de cada pedido; (status, código)
         self.antes_de_responder = lambda _metodo, _autorizacao: None
         dono = self
@@ -208,7 +218,7 @@ class OpenAIDeMentira:
         recusa = self.recusas_do_chat.get(_palavra_do_pedido(corpo["messages"])) or self.recusas_do_chat.get("*")
         if recusa:
             return _erro(recusa[0], "Incorrect API key provided: %s" % (autorizacao or ""), "x", recusa[1])
-        texto = _cartao_de_mentira(corpo["messages"])
+        texto = _cartao_de_mentira(corpo["messages"], sistema)
         return 200, {"choices": [{"message": {"role": "assistant", "content": texto}}], "usage": {"prompt_tokens": 1000, "completion_tokens": 200}}
 
     def _respostas(self, atendente, autorizacao, corpo):
@@ -231,7 +241,7 @@ class OpenAIDeMentira:
             partes = corpo["input"][0]["content"]
             texto = json.dumps(self._veredito(autorizacao, partes[0]["text"], partes[1::2], [foto["image_url"] for foto in partes[2::2]]))
         else:
-            texto = _cartao_de_mentira([{"content": corpo["input"][-1]["content"]}])
+            texto = _cartao_de_mentira([{"content": corpo["input"][-1]["content"]}], corpo["instructions"])
         meio = len(texto) // 2
         eventos = [{"type": "response.created", "response": {"id": "resp_1", "status": "in_progress"}}]
         eventos += [{"type": "response.output_text.delta", "delta": pedaco} for pedaco in (texto[:meio], texto[meio:])]

@@ -125,7 +125,7 @@
     acompanhar();
   }
 
-  /** `POST /jobs` de um Envio; se não começa, a causa fica no cartão (ENV-03). O corpo é montado uma vez e vai sempre o mesmo. */
+  /** `POST /jobs` de um Envio; se não começa, a causa fica no cartão (ENV-03). */
   async function criarEnvio(envio) {
     const aRemessaDoEnvio = remessa;
     envio.falhaAoCriar = null;
@@ -146,7 +146,7 @@
         lang: envio.lang,
         deckName: preset.deckName,
         imageSource: preset.imageSource,
-        tts: AjustesDeEnvio.ttsDoEnvio(preset),
+        ...AjustesDeEnvio.vozENivel(preset),
         entries: doPainel.frasesPorId(envio.ids).map(frase => ({ phraseId: frase.id, line: doPainel.linha(frase) })),
       };
       await gravar();
@@ -185,6 +185,7 @@
     if (!remessa) return pararDeAcompanhar();
     if (remessa.envios.some(e => e.jobId && !terminou(e))) {
       await lerJobs();
+      raiz.TetoDoMes.atualizar();
       // O Anki fechou ou abriu: a Conexão é conferida agora, sem esperar o relógio.
       if (semNoticia || conexaoDesligada) ConexaoAnki.conferir();
     }

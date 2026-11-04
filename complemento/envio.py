@@ -58,7 +58,7 @@ SEM_CHAVE = "openai_key_missing"
 SEM_TIPO_DE_NOTA = "note_type_missing"
 FALHA_AO_GRAVAR = "anki_write_failed"
 CARTOES_FALHARAM = "cards_failed"
-# Chave recusada, conta sem crédito ou plano que não serve: os próximos Cartões falhariam igual (o limite de uso espera: `limite_do_plano.py`).
+# Chave recusada, conta sem crédito ou plano que não serve: os próximos falhariam igual (o limite de uso espera: `limite_do_plano.py`).
 PARA_O_ENVIO = ("openai_key_rejected", "openai_no_credit", SAIU, "chatgpt_not_eligible", RECUSOU)
 # Passageiros: tenta de novo depois de cada espera.
 PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", "empty_response")
@@ -255,12 +255,12 @@ class Fila:
                     return 409, {"error": "job_conflict"}
                 estado = self.estado_ou_refazer(job_id)
                 if self.item_da_fila(job_id) is None:
-                    self._entrar_na_fila(existente)  # o criar parou antes do ponto de confirmação: o mesmo corpo o termina
+                    self._entrar_na_fila(existente)  # o criar parou antes da confirmação: o mesmo corpo o termina
                     self.mudou.set()
                 return 201, {"jobId": job_id, "status": estado["status"]}
             criado_em = agora_local()
             gravado = dict(pedido, createdAt=criado_em, corpoSha256=marca)
-            # O pedido primeiro, depois o estado e, por último, a entrada na fila: é o ponto de confirmação.
+            # O pedido, depois o estado e por último a entrada na fila: é a confirmação.
             _gravar_json(self._arquivo_do_pedido(job_id), gravado)
             _gravar_json(self._arquivo_do_estado(job_id), self._estado_do_pedido(gravado))
             self._entrar_na_fila(gravado)
@@ -493,7 +493,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
         if self.fila.estado_ou_refazer(job_id).get("wiped"):
             return
         config = configuracao_do_motor(self.motor, self.fila, pedido, None)
-        tipo = tipo_de_nota.definicao(pedido["lang"])
+        tipo = tipo_de_nota.definicao(pedido["lang"], pedido.get("nivel"))
         try:
             nomes = self._com_a_colecao(job_id, lambda: tipo_de_nota.garantir(self.colecao, tipo))
         except Apagado:
@@ -515,7 +515,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
                 return
             cartao = estado["cards"][cartao_id]
             if cartao["status"] in NO_ANKI:
-                self.fila.cartao_chegou(job_id, cartao_id)  # a morte pode ter vindo entre `added` e o fim dele; repetir não grava o que já foi
+                self.fila.cartao_chegou(job_id, cartao_id)  # a morte pode ter vindo entre `added` e o fim dele; repetir não regrava
                 continue
             feitos = sum(1 for c in estado["cards"].values() if c["status"] in NO_ANKI)
             self._etapa(job_id, "generate_cards", progress={"done": feitos, "total": total})
@@ -549,7 +549,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
                 chave = None
                 if self.fila.estado(job_id).get("wiped"):
                     with self.fila.tranca:
-                        _apagar(arquivo)  # o Apagar tudo veio no meio do pedido: o texto que chegou depois também sai
+                        _apagar(arquivo)  # o Apagar tudo veio no meio do pedido: o texto que chegou depois sai
                     return None
                 if falha != LIMITE_DO_PLANO:
                     break
@@ -594,12 +594,12 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
             arquivos, da_frase, da_palavra, palavra = self._o_audio(job_id, pedido, config, cartao_id, guid, conteudo)
         except voz.ErroDaVoz as erro:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=erro.codigo)
-        imagem, da_imagem = self._a_imagem(job_id, pedido, config, cartao_id, guid, conteudo)  # só a imagem falha: o Cartão vai sem ela
+        imagem, da_imagem = self._a_imagem(job_id, pedido, config, cartao_id, guid, conteudo)  # só a imagem falha: o Cartão vai sem
         arquivos.update(imagem)
         if self.fila.estado(job_id).get("wiped"):
             raise Apagado()
         nota = self.motor.nota_do_cartao.campos_da_nota(
-            conteudo, lang, palavra=palavra, audio_da_frase=da_frase, audio_da_palavra=da_palavra, imagem=da_imagem)
+            conteudo, lang, nivel=pedido.get("nivel"), palavra=palavra, audio_da_frase=da_frase, audio_da_palavra=da_palavra, imagem=da_imagem)
         frentes = (nota["campo_da_frente"],) + self.motor.estilos.nomes_da_frente_de_antes()
         self._etapa(job_id, "send_to_anki")
         try:

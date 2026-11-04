@@ -14,7 +14,7 @@ const CARTAO = 'Envio em inglês · 3 frases';
 const NO_TETO = { reason: 'monthly_cap' };
 const aviso = page => page.locator('#painel-teto-aviso');
 const card = page => page.locator('#anki-custos').getByRole('region', { name: 'Teto do mês' });
-const campo = page => card(page).getByRole('spinbutton', { name: 'Teto do mês em dólares' });
+const campo = page => card(page).getByRole('textbox', { name: 'Teto do mês em dólares' });
 const ligada = page => expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
 
 test.beforeEach(({ fakes }) => {
@@ -76,6 +76,68 @@ test('ajustar o teto em Custos guarda o valor na Conexão, tira o aviso e mostra
   await estadoFinalEm('o teto escolhido na Conexão', () => fakes.anki.teto.guardado(), 15);
 });
 
+test('o teto digitado com vírgula vale o mesmo que com ponto, seja qual for o idioma do Chrome', async ({ page, extensao, fakes }) => {
+  fakes.anki.teto.definir({ gasto: 1 });
+  await extensao.gravarStorage({ pm_anki_ja_conectou: true });
+  await abrirPainel(page, extensao, '#anki/custos');
+
+  await campo(page).fill('12,50');
+  await card(page).getByRole('button', { name: 'Salvar teto' }).click();
+
+  await expect(card(page)).toContainText('US$ 1,00 de US$ 12,50 este mês');
+  await expect(campo(page)).toHaveValue('12,5');
+  await estadoFinalEm('o teto escolhido na Conexão', () => fakes.anki.teto.guardado(), 12.5);
+});
+
+test('um número que não é simples (milhar, expoente, sinal) não é enviado', async ({ page, extensao, fakes }) => {
+  fakes.anki.teto.definir({ limite: 12, gasto: 1 });
+  await extensao.gravarStorage({ pm_anki_ja_conectou: true });
+  await abrirPainel(page, extensao, '#anki/custos');
+
+  for (const digitado of ['1.250,50', '1e3', '-5', 'dez']) {
+    await campo(page).fill(digitado);
+    await card(page).getByRole('button', { name: 'Salvar teto' }).click();
+    await expect(card(page)).toContainText('Digite um valor maior que zero.');
+  }
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/custos/teto/definir')).toHaveLength(0);
+  await estadoFinalEm('o teto escolhido na Conexão', () => fakes.anki.teto.guardado(), 12);
+});
+
+test('o campo do teto é estreito, com o US$ ao lado', async ({ page, extensao, fakes }) => {
+  fakes.anki.teto.definir({ gasto: 1 });
+  await extensao.gravarStorage({ pm_anki_ja_conectou: true });
+  await abrirPainel(page, extensao, '#anki/custos');
+
+  await expect(card(page).getByText('US$', { exact: true })).toBeVisible();
+  expect((await campo(page).boundingBox()).width).toBeLessThan(120);
+});
+
+test('a checagem de saúde de 15 s não lê o teto de novo', async ({ page, extensao, fakes, relogioParado }) => {
+  const relogio = await relogioParado({ em: AGORA });
+  fakes.anki.teto.definir({ gasto: 1 });
+  await extensao.gravarStorage({ pm_anki_ja_conectou: true });
+  await page.goto(extensao.url('painel.html#anki/custos'));
+  await expect(card(page)).toBeVisible();
+  const leituras = () => fakes.anki.requisicoes.filter(r => r.caminho === '/custos/teto').length;
+  const saudes = () => fakes.anki.requisicoes.filter(r => r.caminho === '/health').length;
+  const antes = { leituras: leituras(), saudes: saudes() };
+
+  await relogio.avancar(30_000);
+
+  await expect.poll(saudes).toBeGreaterThan(antes.saudes);
+  expect(leituras()).toBe(antes.leituras);
+});
+
+test('o Envio andando lê o teto de novo: o aviso aparece quando o gasto chega aos 80%', async ({ page, extensao, fakes }) => {
+  await envioNoTeto(page, extensao, fakes);
+  fakes.anki.teto.definir({ gasto: 1 });
+  await expect(aviso(page)).toHaveCount(0, { timeout: 20_000 });
+
+  fakes.anki.teto.definir({ gasto: 8.5 });
+
+  await expect(aviso(page)).toBeVisible({ timeout: 20_000 });
+});
+
 test('um valor que não é maior que zero não é enviado e o teto guardado não muda', async ({ page, extensao, fakes }) => {
   fakes.anki.teto.definir({ limite: 12, gasto: 1 });
   await extensao.gravarStorage({ pm_anki_ja_conectou: true });
@@ -129,7 +191,7 @@ test('no teto o Envio pausa e o cartão diz “Envio pausado: o teto do mês che
   const job = await envioNoTeto(page, extensao, fakes);
   const cartao = envio(page, CARTAO);
 
-  await expect(cartao).toContainText('Envio pausado: o teto do mês chegou', { timeout: 20_000 });
+  await expect(cartao).toContainText('Envio pausado: o teto do mês chegou. Quando você subir', { timeout: 20_000 });
   await expect(cartao).toContainText('Quando você subir o teto ou o mês virar, o Envio continua sozinho.');
   await expect(cartao.getByRole('button', { name: 'Ver Custos' })).toBeVisible();
   await expect(cartao).not.toContainText(/US\$|%/);
