@@ -1,17 +1,13 @@
 'use strict';
 
 (function (raiz) {
-  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao, ConexaoAnki, Conta, PassosDaConexao, MineracaoAutomatica, MineracaoDoDia } = raiz;
+  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao, ConexaoAnki, Conta, PassosDaConexao, MineracaoAutomatica, MineracaoDoDia, PassoDoNivel, AjustesDeEnvio } = raiz;
   const { SITUACAO: CONEXAO } = ConexaoAnki;
 
   const ABERTURA = 'abertura';
   const PRONTO = 'pronto';
 
-  /**
-   * O que cada passo tem nesta página: o valor que o resumo mostra quando ele
-   * está feito e o que a tela dele monta. A ordem, o “opcional” e quando ele
-   * está feito são de `Configuracao.PASSOS`.
-   */
+  /** O que cada passo tem nesta página: o valor do resumo, quando feito, e a tela dele. A ordem, o “opcional” e o feito são de `Configuracao.PASSOS`. */
   const DESTA_PAGINA = {
     minerar: {
       valor: e => textoDaVoz('PAI-05', { n: e.totalDeFrases }),
@@ -38,6 +34,10 @@
       valor: e => [e.automatica.en && IDIOMAS.INGLES, e.automatica.ru && IDIOMAS.RUSSO]
         .filter(Boolean).join(' · '),
       montar: montarPasso6,
+    },
+    nivel: {
+      valor: e => PassoDoNivel.valorDoResumo(e),
+      montar: () => { passoDoNivel = PassoDoNivel.montar({ aoLigar: () => irPara('automatica') }); return passoDoNivel.no; },
     },
     chave: {
       valor: () => textoDaVoz('ONB-13.salva'),
@@ -78,7 +78,8 @@
   let rodapeDesenhadoPara = null;   // a tela (e o Agora não) do rodapé na tela agora
   let passo4 = null;                // os passos da Conexão do passo 4 (painel-conexao-passos.js)
   let passo6 = null;                // as do passo 6: a nota, as linhas dos idiomas, a falha
-  let ondeConseguirAChave = null;   // o “Onde conseguir a chave” (ONB-11) do passo 7, só sem chave
+  let ondeConseguirAChave = null;   // o “Onde conseguir a chave” (ONB-11) do passo do Gemini, só sem chave
+  let passoDoNivel = null;          // o passo do nível (painel-boas-vindas-nivel.js)
 
   function iniciarBoasVindas() {
     montarLista();
@@ -94,6 +95,7 @@
       desenhar();
     });
     ConexaoAnki.acompanhar(desenharPasso6);
+    AjustesDeEnvio.acompanhar(() => desenhar());   // o nível salvo, aqui ou em outra aba, é o do campo de cada idioma
     lerMineracaoAutomatica();
     window.addEventListener('hashchange', () => mostrarTelaDoEndereco({ focar: true }));
     mostrarTelaDoEndereco({ focar: false });
@@ -150,11 +152,7 @@
     }
   }
 
-  /**
-   * A marca de um passo. O número (ou o tracejado) sai do CSS, pelo
-   * `data-numero`: a marca é só desenho, e o texto do item continua sendo o
-   * título do passo.
-   */
+  /** A marca de um passo: o número (ou o tracejado) sai do CSS, pelo `data-numero`; o texto do item é o título do passo. */
   function montarMarca(numero) {
     const marca = elemento('span', 'bv-marca');
     marca.setAttribute('aria-hidden', 'true');
@@ -229,15 +227,10 @@
     return elemento('div', null, paragrafoDoVideo, selecao, ilustracao, controle);
   }
 
-  /**
-   * “Num vídeo com legenda, aperte [Alt+S]. …”, com o atalho de legenda
-   * gravado num `kbd`. Sem atalho, o `kbd` tracejado “Sem atalho” e Definir
-   * atalho, que aqui leva ao passo 2 (fora da Boas-vindas, a Configurações).
-   */
+  /** “Num vídeo com legenda, aperte [Alt+S]. …”, com o atalho gravado num `kbd`; sem atalho, “Sem atalho” e Definir atalho (aqui, o passo 2). */
   function desenharAtalhoDoPasso1() {
     const rotulo = Atalhos.rotuloDoAtalho(estado.atalhos[Atalhos.ACOES.LEGENDA]);
-    // Refazer o parágrafo tiraria o foco de quem está no Definir atalho; só
-    // refaz quando o atalho muda, não a cada gravação no storage.
+    // Só refaz quando o atalho muda: refazer o parágrafo tiraria o foco do Definir atalho.
     if (rotulo === atalhoDoPasso1Desenhado) return;
     atalhoDoPasso1Desenhado = rotulo;
     const marcador = '\u0000';
@@ -289,12 +282,7 @@
     return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-07')), elemento('div', 'bv-controle', cartao));
   }
 
-  /**
-   * Os passos de pôr a Conexão no Anki: o mesmo componente do card ONB-16 da área
-   * Conexão com o Anki (painel-conexao-passos.js), com a lista acima do card do passo
-   * e sem Voltar · Continuar próprios (o card da Boas-vindas tem os seus). Ligada, o
-   * botão sai e o foco vai para o título deste passo.
-   */
+  /** Os passos de pôr a Conexão no Anki: o componente do card ONB-16 (painel-conexao-passos.js), sem Voltar · Continuar próprios. Ligada, o foco vai ao título. */
   function montarPasso4() {
     const lugar = elemento('div', 'bv-controle');
     passo4 = PassosDaConexao.montar(lugar, {
@@ -303,11 +291,7 @@
     return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-08.corpo')), lugar);
   }
 
-  /**
-   * Os switches EN/RU do popup, cada um com o limite por dia, e a nota ONB-10
-   * enquanto a Conexão está desligada: dá para ligar mesmo assim (o status é
-   * honesto). O estado é o do service worker, o mesmo que o popup lê e grava.
-   */
+  /** Os switches EN/RU do popup, cada um com o limite por dia, e a nota ONB-10 com a Conexão desligada (dá para ligar mesmo assim). O estado é o do service worker. */
   function montarPasso6() {
     const nota = elemento('p', 'bv-nota bv-nota--conexao', elemento('span', 'bv-ponto'), textoDaVoz('ONB-10'));
     nota.firstChild.dataset.estado = CONEXAO.DESLIGADA;
@@ -449,6 +433,7 @@
     // À vista é a tela aberta numa página que está na tela: o shell esconde a Boas-vindas em outras áreas.
     passo4.mostrar(tela === 'anki' && !porId('boas-vindas').hidden);
     desenharAtalhoDoPasso1();
+    passoDoNivel.desenhar(estado.configuracao?.estado);
     // Até a primeira leitura não se sabe se há chave: o Onde conseguir a chave espera, para não piscar.
     ondeConseguirAChave.hidden = !estado.configuracao || Boolean(estado.configuracao.estado.chave);
     desenharResumo();
@@ -463,8 +448,7 @@
   }
 
   function desenharRodape(tela, passo) {
-    // Refeito só quando muda o que ele mostra: um redesenho pelo storage não
-    // tira o foco do botão em que a pessoa está.
+    // Refeito só quando muda o que ele mostra: o foco do botão não se perde num redesenho.
     const comAgoraNao = Boolean(passo?.opcional && situacaoDo(passo) !== SITUACAO.FEITO);
     const desenhoDoRodape = `${tela}|${comAgoraNao}`;
     if (desenhoDoRodape === rodapeDesenhadoPara) return;

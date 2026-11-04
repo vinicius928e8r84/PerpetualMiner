@@ -15,7 +15,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos  # noqa: E402
 from complemento.test_contrato_da_criacao import ContratoDaCriacao  # noqa: E402
+from complemento.test_contrato_da_previa import ContratoDaPrevia  # noqa: E402
 from complemento.test_contrato_do_perfil_fixo import ContratoDoPerfilFixo  # noqa: E402
+from complemento.test_renderizador_de_mentira import PreviaEmMemoria  # noqa: E402
 
 
 def guardar_na_midia(arquivos, nome, dados):
@@ -28,13 +30,13 @@ def guardar_na_midia(arquivos, nome, dados):
     return nome
 
 
-class ColecaoEmMemoria:
+class ColecaoEmMemoria(PreviaEmMemoria):
     """A coleção de um perfil aberto, descrita como nos exemplos do contrato:
 
         { "baralhos": [ { "nome": "Inglês", "notas": [
             { "frente": "...", "verso": "...", "cartoes": [ { "tipo": 2, "intervalo": 30 } ] } ] } ] }
 
-    Uma nota pode trazer `campos` ({ "Front": ..., "Back": ... }) no lugar de `frente` e `verso`.
+    Uma nota pode trazer `campos` ({ "Front": ..., "Back": ... }) no lugar de `frente` e `verso`, e um `guid` (a prévia a acha por ele).
     `ColecaoEmMemoria.fechada()` é o Anki na tela de perfis: só os perfis se leem.
     `perfil_aberto` é o perfil que a coleção aberta é (o primeiro de `perfis` se não for dito). A Conexão entra no perfil fixo
     sozinha com o Anki na tela de perfis (`entradas`) e o troca a pedido (`trocas`), como `no_anki.ColecaoDoAnki`.
@@ -58,6 +60,8 @@ class ColecaoEmMemoria:
         self._padrao = (descricao or {}).get("baralhoPadrao", "Default")  # o nome do Baralho padrão segue o idioma do Anki (“Padrão” em português)
         self._tipos = {nome: list(campos) for nome, campos in ((descricao or {}).get("tiposDeNota") or {"Básico": ["Frente", "Verso"]}).items()}
         self._guids = set()
+        self._cartoes_dos_tipos = {}  # o modelo de Cartão (frente, verso, css) dos tipos que a Conexão criou; os outros têm o do Anki
+        self._notas = {}  # guid → { baralho, tipo_de_nota, campos } das notas que a Conexão gravou
         self.gravadas = []
         self.midia = {}  # a mídia da coleção: nome do arquivo → bytes
         self.sincronizando = False
@@ -70,6 +74,8 @@ class ColecaoEmMemoria:
                 campos = list((nota.get("campos") or {"Frente": nota.get("frente", ""), "Verso": nota.get("verso", "")}).items())
                 for cartao in nota.get("cartoes", [{"tipo": 0, "intervalo": 0}]):
                     cartoes.append({"nota": proxima, "campos": campos, "tipo": cartao["tipo"], "intervalo": cartao["intervalo"]})
+                if nota.get("guid"):  # uma nota que o Envio gravou: a prévia a acha pelo `guid`
+                    self._notas[nota["guid"]] = {"baralho": baralho["nome"], "tipo_de_nota": nota.get("tipo", "Básico"), "campos": dict(campos)}
             self._baralhos[baralho["nome"]] = cartoes
         self._proxima = proxima
 
@@ -152,6 +158,7 @@ class ColecaoEmMemoria:
         valores = [(nome, campos.get(nome, "")) for nome in nomes]
         self._baralhos.setdefault(baralho, []).append({"nota": self._proxima, "campos": valores, "tipo": 0, "intervalo": 0})
         self._guids.add(guid)
+        self._notas[guid] = {"baralho": baralho, "tipo_de_nota": tipo_de_nota, "campos": dict(valores)}
         self.gravadas.append({"baralho": baralho, "tipo": tipo_de_nota, "campos": dict(campos), "etiquetas": list(etiquetas), "guid": guid, "midia": guardada})
 
     def criar_tipo_de_nota(self, definicao):
@@ -159,6 +166,8 @@ class ColecaoEmMemoria:
         if definicao["nome"] in self._tipos:
             return False
         self._tipos[definicao["nome"]] = list(definicao["campos"])
+        modelo = definicao["modelos"][0]
+        self._cartoes_dos_tipos[definicao["nome"]] = {"frente": modelo["frente"], "verso": modelo["verso"], "css": definicao["css"]}
         return True
 
     def criar_baralhos_da_instalacao_nova(self, nomes):
@@ -359,7 +368,7 @@ class ContratoDoAdaptadorDaColecao:
         self.assertEqual(colecao.guids_existentes(["g"]), {"g"})
 
 
-class AdaptadorEmMemoria(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, ContratoDaCriacao, unittest.TestCase):
+class AdaptadorEmMemoria(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, ContratoDaCriacao, ContratoDaPrevia, unittest.TestCase):
     def adaptador(self, descricao, perfis=("Usuário 1",), aberto=None):
         return ColecaoEmMemoria(descricao, perfis=perfis, perfil_aberto=aberto)
 

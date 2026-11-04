@@ -39,9 +39,9 @@ Each feature file starts with an H1 and one paragraph of user-visible behavior, 
 - [The monthly cap](./anki-teto-do-mes.md): US$ 10 by default, per computer; 80% warning in the Painel, the Envio pauses at 100% with Ver Custos and no value, the cap is adjusted in Custos (#160).
 - [Open the Anki with the computer](./anki-no-login.md): Configurações › Conexão com o Anki, the login-item switch.
 - [The fixed Anki profile](./anki-perfil.md): Configurações › Conexão com o Anki, the row Perfil do Anki; the Envio that waits on another open profile with Abrir <perfil> (#149).
-- [The Estilo do cartão](./anki-estilo.md): Ajustes de envio › Estilo do cartão, the level of each language (Iniciante, Intermediário, Avançado) and the Envio asking for the saved level (#162).
+- [The Estilo do cartão](./anki-estilo.md): Ajustes de envio › Estilo do cartão, the level of each language (Iniciante, Intermediário, Avançado), the Cartão preview under the control and the Envio asking for the saved level (#162, #164).
 - [The voice and accent of the audio](./anki-voz.md): Ajustes de envio › Avançado, the Google accents, the Voz de reserva and the Ouvir buttons; the audio of the Cartão when Google fails (#174).
-- [Boas-vindas (first run)](./boas-vindas.md): the 7-step setup opened by installing the extension.
+- [Boas-vindas (first run)](./boas-vindas.md): the 8-step setup opened by installing the extension, with the level step and the Cartão preview (#164).
 - [The AI card: the OpenAI key](./ia.md): Configurações › IA dos cartões and Boas-vindas step 5; the key checked by the Conexão, masked, stored out of the content scripts' reach, following the Google account (arrival, Trocar, Apagar chave, Apagar tudo, versioned empty value; #154).
 - [Conta & sync](./conta.md): Configurações › Conta & sync, the states of the card and the chip, first upload, partial sync, signing in and out, deleting from the cloud, the session.
 - [Mine from a photo](./minerar-foto.md): `bookreader.html`, Gemini reading marked book pages.

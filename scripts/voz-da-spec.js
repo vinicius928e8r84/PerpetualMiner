@@ -1,6 +1,6 @@
 'use strict';
 
-// A spec da Voz (`docs/design/voz/README.md`) lida como dado: uma linha por ID do
+// A spec da Voz (`docs/design/voz/README.md` e a continuação dela, `catalogo-nivel.md`) lida como dado: uma linha por ID do
 // catálogo. É o que o gerador de `catalogo.html` e o teste de paridade do
 // `lib/voz/catalogo.js` leem, para a spec ser a fonte e as duas cópias, derivadas.
 
@@ -8,6 +8,9 @@ const fs = require('fs');
 const path = require('path');
 
 const CAMINHO_DA_SPEC = path.join(__dirname, '..', 'docs', 'design', 'voz', 'README.md');
+// A continuação do catálogo (§ 3), em arquivo à parte porque o README não pode crescer: a spec é os dois, um depois do outro.
+const CAMINHOS_DA_CONTINUACAO = [path.join(__dirname, '..', 'docs', 'design', 'voz', 'catalogo-nivel.md')];
+const lerASpec = () => [CAMINHO_DA_SPEC, ...CAMINHOS_DA_CONTINUACAO].map(caminho => fs.readFileSync(caminho, 'utf8')).join('\n');
 
 /** Divide uma linha de tabela nas barras que não vêm escapadas (`\|`). */
 function celulasDaLinha(linha) {
@@ -32,7 +35,7 @@ function textoDaCelula(celula) {
  * @returns {{secao: string, id: string, estado: string, categoria: string, hoje: string, copia: string, nota: string, marca: string}[]}
  *   `marca` é 'novo' ou 'some' quando o estado traz **(novo)** ou **(some)**, senão ''.
  */
-function linhasDaSpec(spec = fs.readFileSync(CAMINHO_DA_SPEC, 'utf8')) {
+function linhasDaSpec(spec = lerASpec()) {
   const catalogo = spec.slice(spec.indexOf('## 3. Catálogo de estados-chave'));
   const linhas = [];
   let secao = '';

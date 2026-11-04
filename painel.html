@@ -9,19 +9,12 @@
   <link rel="stylesheet" href="painel.css">
   <link rel="stylesheet" href="painel-ia-modelo.css">
   <link rel="stylesheet" href="painel-teto.css">
+  <link rel="stylesheet" href="painel-previa.css">
 </head>
 <body>
 
-  <!--
-    Shell “Ilhas” (docs/design/painel/shell/): a sidebar e o conteúdo são duas
-    ilhas. Cada área tem endereço (#frases, #anki/<aba>, #configuracoes[/<seção>]),
-    tratado por painel-shell.js. Os textos vêm da Voz por data-voz*.
-  -->
-  <!--
-    Boas-vindas (docs/design/painel/boas-vindas/, variante C): #boas-vindas[/<passo>],
-    sem a sidebar, aberta pela instalação. A lista dos 8 itens e o card do passo
-    são montados por painel-boas-vindas.js.
-  -->
+  <!-- Shell “Ilhas” (docs/design/painel/shell/): sidebar e conteúdo, um endereço por área (painel-shell.js); os textos vêm da Voz por data-voz*. -->
+  <!-- Boas-vindas (docs/design/painel/boas-vindas/): #boas-vindas[/<passo>], sem a sidebar (painel-boas-vindas.js). -->
   <div class="bv" id="boas-vindas" hidden>
     <div class="bv-topo">
       <img class="veio-marca" src="veio/icones/icone.svg" width="40" height="40" alt="PerpetualMiner">
@@ -121,8 +114,7 @@
           </div>
         </aside>
 
-        <!-- Os avisos persistentes da área (C1): a nuvem ficou com as frases
-             apagadas (PAI-15) ou mineradas (ADD-06), e o copiar que não deu (PAI-17). -->
+        <!-- Os avisos persistentes da área (C1): frases apagadas (PAI-15) ou mineradas (ADD-06) na nuvem, e o copiar que não deu (PAI-17). -->
         <div class="frases-avisos" id="frases-avisos"></div>
 
         <div class="frases-filtros">
@@ -602,6 +594,7 @@
   <iframe id="abridor-ponte" src="abridor.html" hidden></iframe>
 
   <script src="lib/voz/catalogo.js"></script>
+  <script src="lib/voz/catalogo-nivel.js"></script>
   <script src="lib/voz/texto.js"></script>
   <script src="veio/componentes.js"></script>
   <script src="lib/idioma.js"></script>
@@ -613,8 +606,8 @@
   <script src="lib/conexao-anki.js"></script>
   <script src="lib/conexao-na-tela.js"></script>
   <script src="lib/chave-da-openai.js"></script>
-  <script src="lib/configuracao.js"></script>
   <script src="lib/ajustes-de-envio.js"></script>
+  <script src="lib/configuracao.js"></script>
   <script src="lib/vocabulario-da-mineracao.js"></script>
   <script src="lib/pedido-ao-anki.js"></script>
   <script src="lib/abridor.js"></script>
@@ -624,6 +617,7 @@
   <script src="painel-conta.js"></script>
   <script src="painel-atalhos.js"></script>
   <script src="painel-conexao-passos.js"></script>
+  <script src="painel-boas-vindas-nivel.js"></script>
   <script src="painel-boas-vindas.js"></script>
   <script src="painel-lembrete.js"></script>
   <script src="painel-chave.js"></script>
@@ -642,6 +636,7 @@
   <script src="painel-anki-plano.js"></script>
   <script src="painel-anki.js"></script>
   <script src="painel-anki-baralhos.js"></script>
+  <script src="painel-anki-previa.js"></script>
   <script src="painel-anki-estilo.js"></script>
   <script src="painel-ajustes.js"></script>
   <script src="painel.js"></script>

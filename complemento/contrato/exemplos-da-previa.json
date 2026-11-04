@@ -1,0 +1,332 @@
+{
+  "colecoes": {
+    "Anki novo, só o Baralho padrão": {
+      "baralhos": [
+        {
+          "nome": "Default"
+        }
+      ]
+    },
+    "Anki com uma nota gravada": {
+      "baralhos": [
+        {
+          "nome": "Default"
+        },
+        {
+          "nome": "CIMV",
+          "notas": [
+            {
+              "guid": "guid-do-basico",
+              "frente": "She <b>gave up</b> smoking",
+              "verso": "give up"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "exemplos": [
+    {
+      "nome": "Prévia do Cartão Iniciante do inglês: o exemplo do estilo, como o Anki o desenha",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki novo, só o Baralho padrão"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {
+          "lang": "en",
+          "nivel": "iniciante"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "front": "<div class=\"frase\"><span style=\"color: #ff8c42;\">She</span> <b><span style=\"color: #a855f7;\">gave up</span></b> <span style=\"color: #22c55e;\">smoking</span> last year.</div>\n<span class=\"pm-tocar\" aria-hidden=\"true\">▶</span>",
+          "back": "<div class=\"frase\"><span style=\"color: #ff8c42;\">She</span> <b><span style=\"color: #a855f7;\">gave up</span></b> <span style=\"color: #22c55e;\">smoking</span> last year.</div>\n<span class=\"pm-tocar\" aria-hidden=\"true\">▶</span>\n<hr id=answer>\n<div class=\"pronuncia\">shi GUÊIV âp SMÔU-kin lést iâr</div>\n<div class=\"literal\"><span style=\"color: #ff8c42;\">Ela</span> <span style=\"color: #a855f7;\">desistiu</span> <span style=\"color: #22c55e;\">fumando</span> último ano</div>\n<div class=\"natural\">Ela parou de fumar ano passado.</div>\n<div class=\"cena\">Alguém conta que largou o cigarro.</div>\n<div class=\"palavra\">gave up – /ɡeɪv ʌp/ <span class=\"pm-tocar\" aria-hidden=\"true\">▶</span></div>\n\n\n<div class=\"imagem\"><img src=\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNDAiIGhlaWdodD0iMTUwIiB2aWV3Qm94PSIwIDAgMjQwIDE1MCI+PHJlY3Qgd2lkdGg9IjI0MCIgaGVpZ2h0PSIxNTAiIHJ4PSI4IiBmaWxsPSIjZTVlN2ViIi8+PGNpcmNsZSBjeD0iMTgwIiBjeT0iNDYiIHI9IjE2IiBmaWxsPSIjZmJiZjI0Ii8+PHBhdGggZD0iTTAgMTUwIEw4MiA1OCBMMTQyIDExOCBMMTgwIDkwIEwyNDAgMTUwIFoiIGZpbGw9IiM5Y2EzYWYiLz48L3N2Zz4=\"></div>",
+          "css": ".card { font-family: arial, sans-serif; font-size: 22px; text-align: center; color: #1f2937; background-color: #ffffff; }\n.nightMode .card { color: #e5e7eb; background-color: #1f2937; }\n.frase { font-size: 26px; margin-bottom: 8px; }\n.pronuncia { color: #6b7280; font-style: italic; margin: 10px 0; }\n.literal { margin: 10px 0; }\n.natural { font-weight: bold; margin: 10px 0; }\n.cena { color: #6b7280; font-size: 18px; margin: 10px 0; }\n.palavra { margin: 14px 0; }\n.definicao { margin: 10px 0; }\n.exemplo { color: #6b7280; font-style: italic; margin: 10px 0; }\n.imagem img { max-width: 100%; max-height: 320px; border-radius: 8px; }\n.pm-tocar { display: inline-block; width: 1.5em; height: 1.5em; line-height: 1.5em; margin: 0 .2em; border-radius: 50%; background: #e5e7eb; color: #374151; font-size: .8em; text-align: center; }\n",
+          "source": "example",
+          "lang": "en",
+          "nivel": "iniciante",
+          "deck": "PerpetualMiner::Inglês",
+          "noteType": "PerpetualMiner Inglês"
+        }
+      }
+    },
+    {
+      "nome": "Prévia do Cartão Intermediário do inglês",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki novo, só o Baralho padrão"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {
+          "lang": "en",
+          "nivel": "intermediario"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "front": "<div class=\"frase\">She <b>gave up</b> smoking last year.</div>\n<span class=\"pm-tocar\" aria-hidden=\"true\">▶</span>",
+          "back": "<div class=\"frase\">She <b>gave up</b> smoking last year.</div>\n<span class=\"pm-tocar\" aria-hidden=\"true\">▶</span>\n<hr id=answer>\n\n\n\n<div class=\"cena\">Alguém conta que largou o cigarro no ano passado.</div>\n<div class=\"palavra\">gave up – /ɡeɪv ʌp/ <span class=\"pm-tocar\" aria-hidden=\"true\">▶</span></div>\n<div class=\"definicao\">Desistir de fazer algo, parar de tentar.</div>\n<div class=\"exemplo\">Michael never gives up on a bad joke.</div>\n<div class=\"imagem\"><img src=\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNDAiIGhlaWdodD0iMTUwIiB2aWV3Qm94PSIwIDAgMjQwIDE1MCI+PHJlY3Qgd2lkdGg9IjI0MCIgaGVpZ2h0PSIxNTAiIHJ4PSI4IiBmaWxsPSIjZTVlN2ViIi8+PGNpcmNsZSBjeD0iMTgwIiBjeT0iNDYiIHI9IjE2IiBmaWxsPSIjZmJiZjI0Ii8+PHBhdGggZD0iTTAgMTUwIEw4MiA1OCBMMTQyIDExOCBMMTgwIDkwIEwyNDAgMTUwIFoiIGZpbGw9IiM5Y2EzYWYiLz48L3N2Zz4=\"></div>",
+          "css": ".card { font-family: arial, sans-serif; font-size: 22px; text-align: center; color: #1f2937; background-color: #ffffff; }\n.nightMode .card { color: #e5e7eb; background-color: #1f2937; }\n.frase { font-size: 26px; margin-bottom: 8px; }\n.pronuncia { color: #6b7280; font-style: italic; margin: 10px 0; }\n.literal { margin: 10px 0; }\n.natural { font-weight: bold; margin: 10px 0; }\n.cena { color: #6b7280; font-size: 18px; margin: 10px 0; }\n.palavra { margin: 14px 0; }\n.definicao { margin: 10px 0; }\n.exemplo { color: #6b7280; font-style: italic; margin: 10px 0; }\n.imagem img { max-width: 100%; max-height: 320px; border-radius: 8px; }\n.pm-tocar { display: inline-block; width: 1.5em; height: 1.5em; line-height: 1.5em; margin: 0 .2em; border-radius: 50%; background: #e5e7eb; color: #374151; font-size: .8em; text-align: center; }\n",
+          "source": "example",
+          "lang": "en",
+          "nivel": "intermediario",
+          "deck": "PerpetualMiner::Inglês",
+          "noteType": "PerpetualMiner Inglês"
+        }
+      }
+    },
+    {
+      "nome": "Prévia do Cartão Avançado do inglês",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki novo, só o Baralho padrão"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {
+          "lang": "en",
+          "nivel": "avancado"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "front": "<div class=\"frase\">She <b>gave up</b> smoking last year.</div>\n<span class=\"pm-tocar\" aria-hidden=\"true\">▶</span>",
+          "back": "<div class=\"frase\">She <b>gave up</b> smoking last year.</div>\n<span class=\"pm-tocar\" aria-hidden=\"true\">▶</span>\n<hr id=answer>\n\n\n\n<div class=\"cena\">A coworker explains how she quit smoking, and why the habit had to go.</div>\n<div class=\"palavra\">gave up – /ɡeɪv ʌp/ <span class=\"pm-tocar\" aria-hidden=\"true\">▶</span></div>\n<div class=\"definicao\">To stop doing or trying something, usually a habit, because it has become pointless or too hard.</div>\n<div class=\"exemplo\">Pam never gave up on her dream of becoming an artist.</div>\n<div class=\"imagem\"><img src=\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNDAiIGhlaWdodD0iMTUwIiB2aWV3Qm94PSIwIDAgMjQwIDE1MCI+PHJlY3Qgd2lkdGg9IjI0MCIgaGVpZ2h0PSIxNTAiIHJ4PSI4IiBmaWxsPSIjZTVlN2ViIi8+PGNpcmNsZSBjeD0iMTgwIiBjeT0iNDYiIHI9IjE2IiBmaWxsPSIjZmJiZjI0Ii8+PHBhdGggZD0iTTAgMTUwIEw4MiA1OCBMMTQyIDExOCBMMTgwIDkwIEwyNDAgMTUwIFoiIGZpbGw9IiM5Y2EzYWYiLz48L3N2Zz4=\"></div>",
+          "css": ".card { font-family: arial, sans-serif; font-size: 22px; text-align: center; color: #1f2937; background-color: #ffffff; }\n.nightMode .card { color: #e5e7eb; background-color: #1f2937; }\n.frase { font-size: 26px; margin-bottom: 8px; }\n.pronuncia { color: #6b7280; font-style: italic; margin: 10px 0; }\n.literal { margin: 10px 0; }\n.natural { font-weight: bold; margin: 10px 0; }\n.cena { color: #6b7280; font-size: 18px; margin: 10px 0; }\n.palavra { margin: 14px 0; }\n.definicao { margin: 10px 0; }\n.exemplo { color: #6b7280; font-style: italic; margin: 10px 0; }\n.imagem img { max-width: 100%; max-height: 320px; border-radius: 8px; }\n.pm-tocar { display: inline-block; width: 1.5em; height: 1.5em; line-height: 1.5em; margin: 0 .2em; border-radius: 50%; background: #e5e7eb; color: #374151; font-size: .8em; text-align: center; }\n",
+          "source": "example",
+          "lang": "en",
+          "nivel": "avancado",
+          "deck": "PerpetualMiner::Inglês",
+          "noteType": "PerpetualMiner Inglês"
+        }
+      }
+    },
+    {
+      "nome": "Prévia do Cartão Iniciante do russo",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki novo, só o Baralho padrão"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {
+          "lang": "ru",
+          "nivel": "iniciante"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "front": "<div class=\"frase\"><span style=\"color: #ff8c42;\">Я</span> <span style=\"color: #a855f7;\">не</span> <span style=\"color: #22c55e;\">мальчик</span>!</div>\n<span class=\"pm-tocar\" aria-hidden=\"true\">▶</span>",
+          "back": "<div class=\"frase\"><span style=\"color: #ff8c42;\">Я</span> <span style=\"color: #a855f7;\">не</span> <span style=\"color: #22c55e;\">мальчик</span>!</div>\n<span class=\"pm-tocar\" aria-hidden=\"true\">▶</span>\n<hr id=answer>\n<div class=\"pronuncia\">ia ni MAL-tchik</div>\n<div class=\"literal\"><span style=\"color: #ff8c42;\">Eu</span> <span style=\"color: #a855f7;\">não</span> <span style=\"color: #22c55e;\">menino</span></div>\n<div class=\"natural\">Eu não sou um menino!</div>\n<div class=\"cena\">Alguém corrige uma suposição errada sobre si.</div>\n<div class=\"palavra\">мальчик <span class=\"pm-tocar\" aria-hidden=\"true\">▶</span></div>\n<div class=\"imagem\"><img src=\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNDAiIGhlaWdodD0iMTUwIiB2aWV3Qm94PSIwIDAgMjQwIDE1MCI+PHJlY3Qgd2lkdGg9IjI0MCIgaGVpZ2h0PSIxNTAiIHJ4PSI4IiBmaWxsPSIjZTVlN2ViIi8+PGNpcmNsZSBjeD0iMTgwIiBjeT0iNDYiIHI9IjE2IiBmaWxsPSIjZmJiZjI0Ii8+PHBhdGggZD0iTTAgMTUwIEw4MiA1OCBMMTQyIDExOCBMMTgwIDkwIEwyNDAgMTUwIFoiIGZpbGw9IiM5Y2EzYWYiLz48L3N2Zz4=\"></div>",
+          "css": ".card { font-family: arial, sans-serif; font-size: 22px; text-align: center; color: #1f2937; background-color: #ffffff; }\n.nightMode .card { color: #e5e7eb; background-color: #1f2937; }\n.frase { font-size: 26px; margin-bottom: 8px; }\n.pronuncia { color: #6b7280; font-style: italic; margin: 10px 0; }\n.literal { margin: 10px 0; }\n.natural { font-weight: bold; margin: 10px 0; }\n.cena { color: #6b7280; font-size: 18px; margin: 10px 0; }\n.palavra { margin: 14px 0; }\n.definicao { margin: 10px 0; }\n.exemplo { color: #6b7280; font-style: italic; margin: 10px 0; }\n.imagem img { max-width: 100%; max-height: 320px; border-radius: 8px; }\n.pm-tocar { display: inline-block; width: 1.5em; height: 1.5em; line-height: 1.5em; margin: 0 .2em; border-radius: 50%; background: #e5e7eb; color: #374151; font-size: .8em; text-align: center; }\n",
+          "source": "example",
+          "lang": "ru",
+          "nivel": "iniciante",
+          "deck": "PerpetualMiner::Russo",
+          "noteType": "PerpetualMiner Russo"
+        }
+      }
+    },
+    {
+      "nome": "Prévia do Cartão de uma nota gravada, pelo guid (o primeiro Cartão do Envio, #173)",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki com uma nota gravada"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {
+          "guid": "guid-do-basico"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "front": "She <b>gave up</b> smoking",
+          "back": "She <b>gave up</b> smoking\n\n<hr id=answer>\n\ngive up",
+          "css": ".card {\n  font-family: arial;\n}\n.pm-tocar { display: inline-block; width: 1.5em; height: 1.5em; line-height: 1.5em; margin: 0 .2em; border-radius: 50%; background: #e5e7eb; color: #374151; font-size: .8em; text-align: center; }\n",
+          "source": "note",
+          "deck": "CIMV",
+          "noteType": "Básico"
+        }
+      }
+    },
+    {
+      "nome": "Prévia de uma nota que a coleção não tem",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki com uma nota gravada"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {
+          "guid": "guid-que-nao-existe"
+        }
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "note_not_found"
+        }
+      }
+    },
+    {
+      "nome": "Prévia com o Anki na tela de perfis",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": null,
+        "colecao": null
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {
+          "lang": "en",
+          "nivel": "iniciante"
+        }
+      },
+      "resposta": {
+        "status": 503,
+        "json": {
+          "error": "anki_card_preview_unavailable",
+          "detail": "collection_not_open"
+        }
+      }
+    },
+    {
+      "nome": "Prévia de um idioma que a Conexão não tem",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki novo, só o Baralho padrão"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {
+          "lang": "fr",
+          "nivel": "iniciante"
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_lang"
+        }
+      }
+    },
+    {
+      "nome": "Prévia de um nível que o idioma não tem (no russo só há o Iniciante)",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki novo, só o Baralho padrão"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {
+          "lang": "ru",
+          "nivel": "avancado"
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_level"
+        }
+      }
+    },
+    {
+      "nome": "Prévia sem dizer o estilo nem a nota",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki novo, só o Baralho padrão"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "Prévia com a coleção que quebra ao ler",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "coleção que quebra ao ler"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {
+          "lang": "en",
+          "nivel": "iniciante"
+        }
+      },
+      "resposta": {
+        "status": 500,
+        "json": {
+          "error": "internal_error"
+        }
+      }
+    },
+    {
+      "nome": "Prévia pedida com um corpo que não é um objeto JSON",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki novo, só o Baralho padrão"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    }
+  ]
+}

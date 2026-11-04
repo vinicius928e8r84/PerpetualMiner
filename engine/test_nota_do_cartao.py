@@ -248,5 +248,33 @@ class OCartaoIniciante(unittest.TestCase):
         self.assertEqual(re.sub("<[^>]+>", "", pronta["campos"]["Frase"]), "Ella dejó smoking last year.")
 
 
+class OCartaoDeExemploDeCadaEstilo(unittest.TestCase):
+    """O exemplo que a prévia mostra (`estilos.json`) é um texto de Cartão como o modelo o escreve: vira a nota que o Envio gravaria."""
+
+    def exemplos(self):
+        for lang in estilos.idiomas():
+            for nivel in estilos.niveis(lang):
+                exemplo = estilos.exemplo(lang, nivel)
+                yield lang, nivel, nota(exemplo["texto"], lang, nivel=nivel, palavra=exemplo["palavra"], audio_da_frase="a.mp3", audio_da_palavra="b.mp3", imagem="c.jpg")["campos"]
+
+    def test_cada_nivel_de_cada_idioma_tem_o_exemplo_dele(self):
+        for lang in estilos.idiomas():
+            for nivel in estilos.niveis(lang):
+                with self.subTest(lang=lang, nivel=nivel):
+                    self.assertIn("Front", estilos.exemplo(lang, nivel)["texto"])
+
+    def test_o_exemplo_preenche_todas_as_partes_do_verso_do_nivel_e_nenhuma_de_outro_nivel(self):
+        for lang, nivel, campos in self.exemplos():
+            with self.subTest(lang=lang, nivel=nivel):
+                nomes = estilos.idioma(lang)["campos"]
+                esperados = {nomes[parte] for parte in estilos.estilo(lang, nivel)["verso"]} | {nomes["frase"], nomes["audio_da_frase"], nomes["audio_da_palavra"]}
+                self.assertEqual(set(campos) - {nomes["fonte"]}, esperados)
+
+    def test_o_exemplo_do_iniciante_leva_as_cores_e_os_outros_niveis_nao(self):
+        for lang, nivel, campos in self.exemplos():
+            with self.subTest(lang=lang, nivel=nivel):
+                self.assertEqual(bool(cores_de(campos["Frase"])), estilos.estilo(lang, nivel)["cores"])
+
+
 if __name__ == "__main__":
     unittest.main()

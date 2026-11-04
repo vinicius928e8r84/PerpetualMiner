@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos, configuracao, envio, item_de_login, pasta_de_dados, registro, servidor  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
+from complemento.test_matriz_da_previa import MATRIZ_DA_PREVIA  # noqa: E402
 from complemento.test_fila_de_mentira import semear_a_fila  # noqa: E402,F401
 from complemento.test_imagens_de_mentira import OpenverseDeMentira  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira  # noqa: E402
@@ -393,11 +394,10 @@ class ContratoDaConexao(unittest.TestCase):
 #   le_o_perfil   lê o perfil aberto: ilegível, responde 500;
 #   recusas       cada validação do pedido: (corpo, status, `error`), com a coleção aberta;
 #   abre_perfil   a rota abre um perfil no Anki (de uma tela de perfis passa a haver coleção): a matriz a pede por último;
-#   muda          a rota muda o que a Conexão guarda (a chave, o item de login): `RepeticaoDeCadaRotaQueMuda` a pede de novo e
-#                 com a base velha, e uma rota que muda sem dizer isso quebra;
+#   muda          a rota muda o que a Conexão guarda (a chave, o item de login): `RepeticaoDeCadaRotaQueMuda` a pede de novo e com a base velha;
 #   versao        o corpo traz a base (`versao`) do que ela muda: a base velha tem que dar 409, sem mudar nada;
 #   muda_de_novo  o motivo (texto) de pedir de novo com a base atual poder mudar o que fica guardado de propósito.
-# Uma rota nova entra aqui dizendo o que faz: uma que não lê a coleção nem o perfil (a chave da IA) responde o mesmo `status` sempre.
+# Uma rota nova entra aqui dizendo o que faz; uma que não lê a coleção nem o perfil responde o mesmo `status` sempre.
 MATRIZ = {
     ('POST', '/ia/openai/sincronizar'): {
         'corpo': {'uid': 'uid-teste', 'token': 'token-ficticio', 'versao': 1}, 'muda': True, 'versao': True,
@@ -427,7 +427,7 @@ MATRIZ = {
     ("POST", "/custos/teto/definir"): {
         "corpo": {"limitUsd": 10}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": [({}, 400, "invalid_request"), ({"limitUsd": 0}, 400, "invalid_request")],
     },
-    # O modelo dos cartões (#157): lê a OpenAI (a lista da conta), nunca a coleção nem o perfil; sem chave nem login só o Automático vale.
+    # O modelo dos cartões (#157): lê a OpenAI (a lista da conta), nunca a coleção nem o perfil.
     ("POST", "/ia/modelo/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/ia/modelo/escolher"): {
         "corpo": {"modelo": "automatico"}, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
@@ -457,8 +457,7 @@ MATRIZ = {
         "le_o_perfil": False,
         "recusas": [({"ligado": "sim"}, 400, "invalid_request")],
     },
-    # O perfil fixo (#149): a lista lê o gerente de perfis do Anki (responde sem coleção) e o perfil aberto. A primeira lista com um perfil
-    # aberto o marca (`perfil.json`), como escolher outro; repetidos, nada mais muda. Abrir o marcado só pede ao Anki (o 404, nos exemplos).
+    # O perfil fixo (#149): a lista lê o gerente de perfis (responde sem coleção) e o perfil aberto; a primeira com um perfil aberto o marca.
     ("POST", "/anki/profiles"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": True, "recusas": []},
     ("POST", "/anki/profile"): {
         "corpo": {"profile": "Usuário 1"}, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
@@ -489,7 +488,6 @@ MATRIZ = {
         "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
         "recusas": [({}, 400, "invalid_job_id")],
     },
-    # O Apagar tudo (CFG-17) tira as Frases que a Conexão guarda; repetido, nada muda.
     # Usar a minha chave (#158) marca o Envio; repetido, nada mais muda.
     ("POST", "/jobs/usar-a-chave"): {
         "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
@@ -504,6 +502,8 @@ MATRIZ = {
     # O Ouvir dos Ajustes de envio (#174): fala uma frase de amostra, não lê a coleção nem o perfil e não guarda nada.
     ("POST", "/voz/ouvir"): {"corpo": {"lang": "en", "provedor": "google", "sotaque": "com"}, "le_a_colecao": False, "le_o_perfil": False, "recusas": [({}, 400, "invalid_request")]},
 }
+
+MATRIZ.update(MATRIZ_DA_PREVIA)  # a prévia do Cartão (#164): em arquivo à parte, que o limite de tamanho não deixa este crescer
 
 
 class QuebradaAoLer(ColecaoEmMemoria):
@@ -767,7 +767,7 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
     def test_as_rotas_que_mudam_sao_as_da_chave_do_chatgpt_do_item_de_login_do_perfil_e_do_envio(self):
         self.assertEqual(
             sorted(rota[1] for rota, regra in MATRIZ.items() if regra.get("muda")),
-            ["/abrir-com-o-computador", "/anki/profile", "/anki/profiles", "/custos/teto/definir", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/modelo/escolher", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry", "/jobs/usar-a-chave"],
+            ["/abrir-com-o-computador", "/anki/card-preview", "/anki/profile", "/anki/profiles", "/custos/teto/definir", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/modelo/escolher", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry", "/jobs/usar-a-chave"],
         )
 
 

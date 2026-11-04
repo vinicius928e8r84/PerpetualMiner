@@ -23,7 +23,7 @@ não diz não foi decidido. Spec: o [#138](https://github.com/vinicius928e8r84/P
 | o tipo de nota e os campos de cada idioma | a coleção do Anki, criados pela Conexão (`tipo_de_nota.py`) | `engine/estilos.json` (a definição de onde sai) | uma regravação: um tipo que já tem o nome não é tocado, qualquer que seja o conteúdo |
 | os Baralhos nossos | a coleção do Anki | nenhum | criados a quem já tem Baralho |
 | os Cartões e Baralhos antigos (o “Básico” do dono) | a coleção do Anki, da pessoa | nenhum | renomeados, convertidos ou apagados pela Conexão |
-| o estilo (idioma × nível) | `engine/estilos.json`, no pacote da Conexão | nenhum | lido da extensão: o nível ainda não atravessa o contrato (#164) |
+| o estilo (idioma × nível) | `engine/estilos.json`, no pacote da Conexão | nenhum | lido da extensão: o nível vem no pedido do Envio (`nivel`, #162); a prévia (#164) lê o estilo do mesmo arquivo |
 | o Baralho de cada Envio | a extensão (Ajustes de envio, `deckName` do pedido) | a Conexão, só dentro do Envio | decidido pela Conexão: o padrão da extensão segue `CIMV`/`RUSSIAN` até um ticket seguinte |
 
 ## 2. Estados
@@ -92,3 +92,14 @@ O Cartão do inglês ganhou o Intermediário e o Avançado (o russo só tem o In
 - **O pedido**: `POST /jobs` leva `nivel` só quando não é o Iniciante (como `tts.reserva`). Um nível fora dos que o idioma tem é `400` `invalid_level` e nada é criado. O nível entra no pedido guardado: repetir o pedido com outro nível é outro pedido (`409`), e o Envio retomado usa o nível com que nasceu.
 - **A imagem** continua no verso dos três níveis (a escolha Foto real · Gerada por IA dos Ajustes de envio vale em todos).
 - **A tela**: Ajustes de envio › Estilo do cartão (`painel-ajustes.js`, BRG-42), um controle segmentado por idioma; só grava em Salvar ajustes e vale a partir do Envio seguinte.
+
+## 8. A prévia do Cartão (#164)
+
+A Conexão mostra um Cartão como o Anki o desenha (`POST /anki/card-preview`, `previa_do_cartao.py`), para o passo do nível da Boas-vindas e para Ajustes de envio › Estilo do cartão. O desenho é do Anki (`Note.ephemeral_card(...).render_output()`, do 2.1.50 em diante, sem gravar nota): a Conexão só escolhe os campos.
+
+- **O exemplo do estilo**: cada nível do `engine/estilos.json` traz um `exemplo` (o texto de Cartão como o modelo o escreveria, e a `palavra` quando o texto não a diz). A Conexão o passa pela mesma `campos_da_nota` do Envio, com os nomes do áudio e da imagem de mentira, e o põe no tipo de nota do idioma que a coleção **tem** (criado antes, se falta: o que o Envio faria). Por isso a prévia mostra o verso que o Cartão vai ter de verdade: um tipo criado antes do #162 mostra só o verso do Iniciante.
+- **Uma nota gravada**: pelo `guid`; os campos vêm da coleção. Ainda não é pedido da extensão (o primeiro Cartão do Envio, #173, o usará).
+- **O que vai para a página**: `front`, `back` e `css`. O áudio vira um botão ▶ (a página não toca o áudio do Anki) e a imagem vai dentro do HTML (`data:`, até 2 MB, lida só da pasta de mídia da coleção, nunca por um caminho); sem o arquivo, um espaço de imagem. A extensão o mostra num `iframe` sem scripts e com uma política que só deixa `data:` entrar.
+- **Atômico e repetido**: a única gravação é a criação do tipo de nota (o que já existe não é tocado); pedir de novo dá a mesma resposta. Estados: sem coleção aberta, `503`; um idioma ou nível que a Conexão não tem, `400`; uma nota que ela não tem, `404`.
+- **Provas**: `complemento/test_contrato_da_previa.py` (a prévia de cada estilo e de uma nota, nos dois adaptadores de coleção: em memória e o do Anki com um `mw` de mentira), `test_servidor.py` (a rota por HTTP e os exemplos de `contrato/exemplos-da-previa.json`), `engine/test_nota_do_cartao.py` (o exemplo de cada nível preenche as partes do verso dele) e `complemento/test_previa_com_o_anki_real.py` (a biblioteca de verdade do Anki, se instalada: 2.1.50, 2.1.66 e 25.9.2 passaram, no Python 3.9).
+- **Não prova**: o Anki do dono (o desenho com o tipo de nota que ele já tem) e a prévia em Mac e Windows.

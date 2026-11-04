@@ -7,10 +7,10 @@ const { test, expect } = require('../fixtures');
 
 const FRASE_RUSSA = 'Я улыбаюсь каждое утро без причины.';
 
-/** Os IDs do catálogo como a spec da Voz os lista, lidos da própria spec. */
+/** Os IDs do catálogo como a spec da Voz os lista, lidos da própria spec (o README e a continuação dele, `catalogo-nivel.md`). */
 function idsDaSpecDaVoz() {
-  const spec = fs.readFileSync(
-    path.join(__dirname, '..', '..', 'docs', 'design', 'voz', 'README.md'), 'utf8');
+  const spec = ['README.md', 'catalogo-nivel.md'].map(nome => fs.readFileSync(
+    path.join(__dirname, '..', '..', 'docs', 'design', 'voz', nome), 'utf8')).join('\n');
   const catalogo = spec.slice(spec.indexOf('## 3. Catálogo de estados-chave'));
   return [...catalogo.matchAll(/^\| ([A-Z]{3}-\d{2}) \|/gm)].map(m => m[1]);
 }

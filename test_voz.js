@@ -17,6 +17,7 @@ const { CAMINHO_DO_RETRATO, problemasDaVoz, retratoDoCatalogo } = require('./scr
 
 globalThis.PerpetualMiner = {};
 require('./lib/voz/catalogo.js');
+require('./lib/voz/catalogo-nivel.js');
 const { CATALOGO_DA_VOZ } = globalThis.PerpetualMiner;
 
 const linhas = linhasDaSpec();

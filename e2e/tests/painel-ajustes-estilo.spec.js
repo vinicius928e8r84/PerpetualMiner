@@ -4,6 +4,8 @@
 // Intermediário, Avançado), com o texto do nível. Só grava em Salvar ajustes; o Envio seguinte pede à Conexão o
 // nível salvo (`nivel` no `POST /jobs`, sem ele é o Iniciante). No russo só o Iniciante se escolhe, até o #163.
 //
+// Sob o controle fica a prévia do Cartão (#164, BRG-43): o Cartão de exemplo do nível que está na tela, desenhado pelo Anki, antes de salvar.
+//
 // A Conexão com o Anki é falsificada na fronteira HTTP (e2e/fakes/anki.js, o contrato `exemplos-do-nivel.json`); o teste confere o que a
 // pessoa vê, o que ficou gravado (`ankiBridgePresets`, `pm_envio`) e o que atravessou o HTTP.
 
@@ -43,6 +45,44 @@ test('sem nada gravado, o inglês está no Iniciante, com o texto do nível', as
   await expect(estilo(page)).toHaveAccessibleDescription('Não entendo nada ou só algumas palavras');
   await expect(situacao(page)).toHaveText('Salvo');
   expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
+});
+
+const previa = (page, idioma) => formulario(page, idioma).locator('.previa');
+const cartao = (page, idioma) => previa(page, idioma).frameLocator('iframe').locator('body');
+
+test('sob o controle fica a prévia do Cartão do nível, que muda com a escolha antes de salvar', async ({ page, extensao }) => {
+  await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });
+
+  await expect(previa(page, 'Inglês')).toContainText('Exemplo do Iniciante em inglês, como o Anki mostra.');
+  await expect(cartao(page, 'Inglês')).toContainText('Ela parou de fumar ano passado.');
+  await expect(cartao(page, 'Inglês')).toContainText('She gave up smoking last year.');
+  await expect(formulario(page, 'Inglês').getByRole('link', { name: 'Mais estilos em Ajustes de envio' })).toHaveCount(0);
+
+  await escolher(page, 'Intermediário');
+  await expect(previa(page, 'Inglês')).toContainText('Exemplo do Intermediário em inglês, como o Anki mostra.');
+  await expect(cartao(page, 'Inglês')).toContainText('Desistir de fazer algo, parar de tentar.');
+  await expect(cartao(page, 'Inglês')).not.toContainText('Ela parou de fumar ano passado.');
+  // Só a prévia mudou: o nível ainda é um rascunho.
+  await estadoFinal(extensao, { [CHAVE]: AJUSTES });
+  expect((await extensao.lerStorage(CHAVE))[CHAVE].en.nivel).toBeUndefined();
+
+  await escolher(page, 'Avançado');
+  await expect(cartao(page, 'Inglês')).toContainText('To stop doing or trying something');
+  await salvar(page).click();
+  await expect(situacao(page)).toHaveText('Salvo');
+  await expect(cartao(page, 'Inglês')).toContainText('Pam never gave up on her dream');
+  await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'avancado', versao: 1 } } });
+});
+
+test('o card do russo tem a prévia do Cartão Iniciante dele, na Frase em russo', async ({ page, extensao }) => {
+  await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });
+  await cabeca(page, 'Russo').click();
+
+  await expect(previa(page, 'Russo')).toContainText('Exemplo do Iniciante em russo, como o Anki mostra.');
+  await expect(cartao(page, 'Russo')).toContainText('Я не мальчик!');
+  await expect(cartao(page, 'Russo')).toContainText('Eu não sou um menino!');
+  // Exceção de teste: sem-estado-guardado — só mostra a prévia; nada é gravado.
+  expect((await extensao.lerStorage(CHAVE))[CHAVE].ru.nivel).toBeUndefined();
 });
 
 test('escolher o Intermediário muda o texto e só grava em Salvar ajustes, sem mexer no russo', async ({ page, extensao }) => {

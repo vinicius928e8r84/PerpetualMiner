@@ -1,0 +1,59 @@
+/* A prévia do Cartão (#164, painel-anki-previa.js): o Cartão de exemplo do estilo, num quadro isolado. O quadro tem o fundo do Cartão do Anki (claro). */
+.previa {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  max-width: 520px;
+}
+
+.previa__cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.previa__titulo {
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.previa__legenda,
+.previa__carregando {
+  margin: 0;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+}
+
+.previa__palco {
+  min-height: 60px;
+}
+
+.previa__quadro {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+}
+
+/* O passo do nível da Boas-vindas (#164, painel-boas-vindas-nivel.js): um campo de Estilo do cartão por idioma ligado. */
+.bv-niveis {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.bv-nivel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.bv-nivel__idioma {
+  margin: 0;
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-titulo);
+}
