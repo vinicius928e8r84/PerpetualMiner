@@ -146,7 +146,7 @@
         lang: envio.lang,
         deckName: preset.deckName,
         imageSource: preset.imageSource,
-        tts: AjustesDeEnvio.ttsDoEnvio(preset),
+        ...AjustesDeEnvio.vozENivel(preset),
         entries: doPainel.frasesPorId(envio.ids).map(frase => ({ phraseId: frase.id, line: doPainel.linha(frase) })),
       };
       await gravar();

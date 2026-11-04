@@ -1,3 +1,4 @@
+import os
 import re
 import unittest
 from pathlib import Path
@@ -186,24 +187,83 @@ class PromptsPorNivelTests(unittest.TestCase):
         self.assertRegex(iniciante, r"Literal: \[Word-by-word literal Portuguese translation")
         self.assertRegex(iniciante, r"Natural: \[Natural Brazilian Portuguese translation")
 
-    def test_o_iniciante_do_ingles_mantem_a_trava_da_palavra_e_a_primeira_linha_do_verso_que_o_motor_confere(self):
-        prompt = _prompt_do_nivel("en")
+    def test_cada_nivel_do_ingles_mantem_a_trava_da_palavra_e_a_primeira_linha_do_verso_que_o_motor_confere(self):
+        for nivel in estilos.niveis("en"):
+            with self.subTest(nivel=nivel):
+                prompt = _prompt_do_nivel("en", nivel)
+                for regra in (
+                    "For a multi-word target, the Back field MUST begin with the full exact target expression",
+                    "For a multi-word target, the Front field MUST highlight the full exact target expression as one span",
+                    "Never make the card about a subword inside the target expression",
+                    "Back: [Target Keyword] \u2013 /[IPA Transcription]/",
+                    "ALWAYS output exactly four English image search queries",
+                ):
+                    self.assertIn(regra, prompt)
+
+    def test_cada_nivel_so_pede_no_verso_as_partes_que_o_estilo_diz(self):
+        for lang in estilos.idiomas():
+            for nivel in estilos.niveis(lang):
+                with self.subTest(lang=lang, nivel=nivel):
+                    prompt = _prompt_do_nivel(lang, nivel)
+                    verso = estilos.estilo(lang, nivel)["verso"]
+                    for parte in ("pronuncia", "literal", "natural", "cena", "definicao", "outro_exemplo", "significado_simples", "gatilho"):
+                        pedida = re.search(r"(?m)(^| )%s: \[" % re.escape(estilos.rotulo(parte)), prompt) is not None
+                        self.assertEqual(pedida, parte in verso, "%s: o prompt e o estilo discordam" % parte)
+
+    def test_o_nivel_sem_cores_nao_pede_alinhamento_pronuncia_nem_traducao(self):
+        for lang in estilos.idiomas():
+            for nivel in estilos.niveis(lang):
+                if estilos.estilo(lang, nivel)["cores"]:
+                    continue
+                with self.subTest(lang=lang, nivel=nivel):
+                    prompt = _prompt_do_nivel(lang, nivel)
+                    self.assertNotRegex(prompt, r"Alignment: 1 \|")
+                    self.assertNotRegex(prompt, r"(Pronunciation|Literal|Natural): \[")
+
+    def test_o_intermediario_do_ingles_define_em_portugues_a_palavra_inteira_e_da_outro_exemplo_em_ingles(self):
+        prompt = _prompt_do_nivel("en", "intermediario")
         for regra in (
-            "For a multi-word target, the Back field MUST begin with the full exact target expression",
-            "For a multi-word target, the Front field MUST highlight the full exact target expression as one span",
-            "Never make the card about a subword inside the target expression",
-            "Back: [Target Keyword] \u2013 /[IPA Transcription]/",
-            "ALWAYS output exactly four English image search queries",
+            "Definition: [Meaning of the target in Brazilian Portuguese",
+            "Other example: [One new natural English sentence using the same target]",
+            "Gist: [One short Brazilian Portuguese sentence",
+            "For a phrasal verb, define the phrasal verb itself, never the verb alone.",
+            "INTERMEDIATE learner",
         ):
             self.assertIn(regra, prompt)
 
-    def test_o_iniciante_so_pede_no_verso_as_partes_que_o_estilo_diz(self):
+    def test_o_avancado_do_ingles_parte_do_cartao_de_hoje_e_e_monolingue(self):
+        hoje, avancado = " ".join(EN_PROMPTS[0].read_text(encoding="utf-8").split()), _prompt_do_nivel("en", "avancado")
+        for regra in (
+            "Target Keyword Focus (CRITICAL)",
+            "LORE & UNIVERSE INTEGRATION (THE DEEP CONTEXT RULE)",
+            "Other example: You MUST use the names of other characters from the same series/book",
+            "Strong free-image strategy:",
+            "NEVER translate to Portuguese. Everything must be in English.",
+            "Gist must always be written in English for English cards.",
+        ):
+            self.assertIn(regra, hoje)
+            self.assertIn(regra, avancado)
+        self.assertIn("must be 100% in ENGLISH", avancado)
+        self.assertNotIn("Brazilian Portuguese", avancado)
+        self.assertNotIn("Trigger:", avancado)
+        self.assertNotIn("Simple meaning:", avancado)
+
+    def test_a_explicacao_em_ingles_proibe_o_portugues(self):
         for lang in estilos.idiomas():
-            with self.subTest(lang=lang):
-                prompt = _prompt_do_nivel(lang)
-                for parte in ("definicao", "outro_exemplo", "gatilho", "significado_simples"):
-                    rotulo = estilos.rotulo(parte)
-                    self.assertNotRegex(prompt, r"(?m)(^| )%s: \[" % re.escape(rotulo), "o Iniciante não leva %s" % parte)
+            for nivel in estilos.niveis(lang):
+                if estilos.estilo(lang, nivel)["explicacao"] != "en":
+                    continue
+                with self.subTest(lang=lang, nivel=nivel):
+                    prompt = _prompt_do_nivel(lang, nivel)
+                    self.assertRegex(prompt, r"No Portuguese allowed")
+                    self.assertNotIn("Brazilian Portuguese", prompt)
+
+    def test_cada_prompt_do_estilo_existe_e_nenhum_arquivo_de_prompt_fica_sem_nivel(self):
+        usados = {Path(estilos.estilo(lang, nivel)["prompt"]).name for lang in estilos.idiomas() for nivel in estilos.niveis(lang)}
+        for nome in usados:
+            self.assertTrue((ROOT / "prompts" / nome).is_file(), nome)
+        niveis = {nome for nome in os.listdir(ROOT / "prompts") if re.match(r"^(en|ru)_(iniciante|intermediario|avancado)\.txt$", nome)}
+        self.assertEqual(niveis, usados)
 
 
 if __name__ == "__main__":
