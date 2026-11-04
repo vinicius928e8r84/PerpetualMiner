@@ -140,7 +140,7 @@ class PromptsPorNivelTests(unittest.TestCase):
             for nivel in estilos.DADOS["idiomas"][lang]["niveis"]:
                 with self.subTest(lang=lang, nivel=nivel):
                     estilo, prompt = estilos.estilo(lang, nivel), _prompt_do_nivel(lang, nivel)
-                    for parte in estilo["verso"]:
+                    for parte in estilo["verso"] + estilo.get("guarda", []):
                         rotulo = estilos.rotulo(parte)
                         if rotulo:
                             self.assertRegex(prompt, r"%s: \[" % rotulo, "o prompt não diz como escrever a parte %s" % parte)
@@ -205,20 +205,24 @@ class PromptsPorNivelTests(unittest.TestCase):
             for nivel in estilos.niveis(lang):
                 with self.subTest(lang=lang, nivel=nivel):
                     prompt = _prompt_do_nivel(lang, nivel)
-                    verso = estilos.estilo(lang, nivel)["verso"]
-                    for parte in ("pronuncia", "literal", "natural", "cena", "definicao", "outro_exemplo", "significado_simples", "gatilho"):
+                    estilo = estilos.estilo(lang, nivel)
+                    pedidas = estilo["verso"] + estilo.get("guarda", [])
+                    for parte in ("pronuncia", "literal", "natural", "cena", "definicao", "outro_exemplo", "significado_simples", "gatilho",
+                                  "silaba_forte", "mesma_raiz", "raiz"):
                         pedida = re.search(r"(?m)(^| )%s: \[" % re.escape(estilos.rotulo(parte)), prompt) is not None
-                        self.assertEqual(pedida, parte in verso, "%s: o prompt e o estilo discordam" % parte)
+                        self.assertEqual(pedida, parte in pedidas, "%s: o prompt e o estilo discordam" % parte)
 
-    def test_o_nivel_sem_cores_nao_pede_alinhamento_pronuncia_nem_traducao(self):
+    def test_o_nivel_sem_cores_nao_pede_alinhamento_nem_traducao_e_so_pede_a_pronuncia_se_o_verso_a_tem(self):
         for lang in estilos.idiomas():
             for nivel in estilos.niveis(lang):
-                if estilos.estilo(lang, nivel)["cores"]:
+                estilo = estilos.estilo(lang, nivel)
+                if estilo["cores"]:
                     continue
                 with self.subTest(lang=lang, nivel=nivel):
                     prompt = _prompt_do_nivel(lang, nivel)
                     self.assertNotRegex(prompt, r"Alignment: 1 \|")
-                    self.assertNotRegex(prompt, r"(Pronunciation|Literal|Natural): \[")
+                    self.assertNotRegex(prompt, r"(Literal|Natural): \[")
+                    self.assertEqual(re.search(r"Pronunciation: \[", prompt) is not None, "pronuncia" in estilo["verso"])
 
     def test_o_intermediario_do_ingles_define_em_portugues_a_palavra_inteira_e_da_outro_exemplo_em_ingles(self):
         prompt = _prompt_do_nivel("en", "intermediario")
@@ -247,6 +251,47 @@ class PromptsPorNivelTests(unittest.TestCase):
         self.assertNotIn("Brazilian Portuguese", avancado)
         self.assertNotIn("Trigger:", avancado)
         self.assertNotIn("Simple meaning:", avancado)
+
+    def test_os_dois_niveis_do_russo_pedem_a_palavra_a_silaba_forte_a_definicao_em_ingles_e_outro_exemplo_sem_repetir_a_frase_nem_pedir_o_alinhamento(self):
+        for nivel in ("intermediario", "avancado"):
+            with self.subTest(nivel=nivel):
+                prompt = _prompt_do_nivel("ru", nivel)
+                for regra in (
+                    "Word: [The Russian word to learn, exactly as in the phrase]",
+                    "Stress: [The Word with an acute accent on the stressed vowel]",
+                    "Pronunciation: [Simple transliteration of the Word",
+                    "Definition: [",
+                    "Other example: [One new short Russian sentence using the Word]",
+                    "Keep the Russian phrase in Front exactly as provided",
+                    "Never put stress marks, colours or any other markup in Front",
+                    "Generate exactly four English Google image search queries",
+                    "ALWAYS write exactly four English image search queries",
+                    "The card therefore does not repeat the phrase on the back.",
+                ):
+                    self.assertIn(regra, prompt)
+                self.assertIn("in English", prompt)
+                self.assertNotIn("Alignment:", prompt)
+
+    def test_os_dois_niveis_do_russo_pedem_os_pedacos_da_morfologia_com_as_quatro_cores_e_uma_explicacao_por_cor(self):
+        for nivel in ("intermediario", "avancado"):
+            with self.subTest(nivel=nivel):
+                prompt = _prompt_do_nivel("ru", nivel)
+                for regra in (
+                    "Morphology: [Russian word] | [kind]:[piece] | [kind]:[piece] | [kind]:[piece]",
+                    "There are four kinds of piece: prefix, root, suffix and ending.",
+                    "the pieces written one after the other MUST spell the word exactly",
+                    "Colors: prefix | [pieces] | [what they do, in English] root | [pieces] | [what they mean, in English] "
+                    "suffix | [pieces] | [tense, aspect, person or other label, in English] "
+                    "ending | [pieces] | [person, number, gender or case, in English]",
+                    "person (1st, 2nd, 3rd), number, gender, tense (past, present, future) and aspect (perfective or imperfective)",
+                    "when a preposition governs the case, say so",
+                    "Root: [The root of the Word]",
+                ):
+                    self.assertIn(regra, prompt)
+
+    def test_so_o_avancado_do_russo_pede_as_palavras_da_mesma_raiz(self):
+        self.assertNotIn("Same root", _prompt_do_nivel("ru", "intermediario"))
+        self.assertIn("Same root: [Three to five Russian words from the same root", _prompt_do_nivel("ru", "avancado"))
 
     def test_a_explicacao_em_ingles_proibe_o_portugues(self):
         for lang in estilos.idiomas():

@@ -3,7 +3,9 @@
 A language is an entry of `idiomas`: its note type and deck, how a mining line reads (`entrada`: `palavras` is `kw | kw : phrase`,
 `frase` is the whole line), its fields (every one it will ever use: changing a note type's fields later forces a full sync in Anki)
 and its levels. A level says which language explains the Card (`explicacao`), which parts the back has (`verso`, in order),
-whether the colours link the parts (`cores`) and which prompt writes it. The note type has one back template for every level of the
+whether the colours link the parts (`cores`) and which prompt writes it. A level can also colour the Phrase by the pieces of its words
+(`morfologia`, the Russian Intermediate and Advanced, #163), write fields the back does not show (`guarda`) and say that its back does not
+repeat the Phrase (`repete_a_frase: false`). The note type has one back template for every level of the
 language, so the language also says the order of all the parts a back can have (`ordem_do_verso`): each level's `verso` is a
 subsequence of it. A new language enters by adding its entry and its prompt file.
 """
@@ -46,7 +48,7 @@ class Estilos:
         return tuple(self.dados["idiomas"][lang]["niveis"])
 
     def estilo(self, lang, nivel=None):
-        """O estilo de um nível (`prompt`, `explicacao`, `verso`, `cores`), com o idioma da entrada; sem nível, o padrão."""
+        """O estilo de um nível (`prompt`, `explicacao`, `verso`, `cores` e, se o nível os tem, `morfologia`, `guarda`, `repete_a_frase`), com o idioma da entrada; sem nível, o padrão."""
         idioma = self.dados["idiomas"][lang]
         nivel = nivel or self.NIVEL_PADRAO
         return dict(copy.deepcopy(idioma["niveis"][nivel]), nivel=nivel, entrada=idioma["entrada"])

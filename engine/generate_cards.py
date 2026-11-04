@@ -115,7 +115,7 @@ def _looks_like_ru_refusal(text: str) -> bool:
 
 def _has_ru_translation(card_text: str) -> bool:
     match = re.search(
-        r"^\s*\*{0,2}(?:Literal|Natural|Translation):\*{0,2}\s*(.+)$",
+        r"^\s*\*{0,2}(?:Literal|Natural|Translation|Definition):\*{0,2}\s*(.+)$",
         card_text,
         re.IGNORECASE | re.MULTILINE,
     )
@@ -304,7 +304,7 @@ def run(
         card = _prepare_card(response)
 
         if whole_phrase and (_looks_like_ru_refusal(card) or not _has_ru_translation(card)):
-            reason = "recusa/erro do modelo" if _looks_like_ru_refusal(card) else "campo Translation ausente"
+            reason = "recusa/erro do modelo" if _looks_like_ru_refusal(card) else "campo Translation/Definition ausente"
             LOGGER.error("Card russo para '%s' invalido (%s) - skipping.", label, reason)
             failures[stem] = "invalid_card"
             continue

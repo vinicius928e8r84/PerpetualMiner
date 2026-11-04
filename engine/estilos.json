@@ -35,7 +35,10 @@
     "definicao": "Definition",
     "significado_simples": "Simple meaning",
     "outro_exemplo": "Other example",
-    "gatilho": "Trigger"
+    "gatilho": "Trigger",
+    "silaba_forte": "Stress",
+    "mesma_raiz": "Same root",
+    "raiz": "Root"
   },
   "idiomas": {
     "en": {
@@ -79,13 +82,33 @@
         "definicao", "outro_exemplo", "dica", "lacuna", "frase_escrita", "escrito_antes", "correcao",
         "silaba_forte", "morfologia", "explicacao_das_cores", "mesma_raiz", "raiz"
       ],
-      "ordem_do_verso": ["pronuncia", "literal", "natural", "cena", "palavra", "imagem"],
+      "ordem_do_verso": [
+        "pronuncia", "literal", "natural", "cena", "palavra", "silaba_forte", "definicao", "explicacao_das_cores", "outro_exemplo", "mesma_raiz", "imagem"
+      ],
       "niveis": {
         "iniciante": {
           "prompt": "prompts/ru_iniciante.txt",
           "explicacao": "pt",
           "verso": ["pronuncia", "literal", "natural", "cena", "palavra", "imagem"],
           "cores": true
+        },
+        "intermediario": {
+          "prompt": "prompts/ru_intermediario.txt",
+          "explicacao": "en",
+          "verso": ["pronuncia", "palavra", "silaba_forte", "definicao", "explicacao_das_cores", "outro_exemplo", "imagem"],
+          "cores": false,
+          "morfologia": true,
+          "repete_a_frase": false,
+          "guarda": ["morfologia", "raiz"]
+        },
+        "avancado": {
+          "prompt": "prompts/ru_avancado.txt",
+          "explicacao": "en",
+          "verso": ["pronuncia", "palavra", "silaba_forte", "definicao", "explicacao_das_cores", "outro_exemplo", "mesma_raiz", "imagem"],
+          "cores": false,
+          "morfologia": true,
+          "repete_a_frase": false,
+          "guarda": ["morfologia", "raiz"]
         }
       }
     }

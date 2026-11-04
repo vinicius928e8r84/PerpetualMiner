@@ -57,8 +57,10 @@ ARQUIVOS_DO_MOTOR = (
     "prompts/en_avancado.txt",
     "prompts/en_iniciante.txt",
     "prompts/en_intermediario.txt",
+    "prompts/ru_avancado.txt",
     "prompts/ru_card.txt",
     "prompts/ru_iniciante.txt",
+    "prompts/ru_intermediario.txt",
     "send_to_anki.py",
 )
 
