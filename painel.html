@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="painel-ia-modelo.css">
   <link rel="stylesheet" href="painel-teto.css">
   <link rel="stylesheet" href="painel-previa.css">
+  <link rel="stylesheet" href="painel-quiz.css">
 </head>
 <body>
 
@@ -314,7 +315,6 @@
         </div>
 
         <div class="shell-aba" data-aba="ajustes" hidden>
-          <!-- Sem a Conexão, os ajustes seguem editáveis (BRG-33). -->
           <p class="anki-nota" id="anki-ajustes-nota" data-voz="BRG-33.ajustes" hidden></p>
           <!--
             Ajustes de envio: um card por idioma, recolhível como os de Configurações;
@@ -500,7 +500,6 @@
             <label class="veio-segmentado__opcao"><input type="radio" name="aba-minerar" value="colar"><span data-voz="ADD-01.colar"></span></label>
             <label class="veio-segmentado__opcao"><input type="radio" name="aba-minerar" value="arquivo"><span data-voz="ADD-01.arquivo"></span></label>
           </div>
-          <!-- Foto não é uma aba: abre Minerar de uma foto numa aba nova. -->
           <button class="veio-botao veio-botao--fantasma veio-botao--compacto minerar-abas__foto" type="button" id="btn-minerar-foto"
                   aria-describedby="minerar-foto-ajuda">
             <span data-voz="ADD-01.foto"></span><span data-icone="externo"></span>
@@ -575,7 +574,6 @@
               data-voz-aria="PAI-34" data-voz-title="PAI-34"><span data-icone="fechar"></span></button>
       <h2 class="veio-modal__titulo" id="modal-resumo-titulo"></h2>
       <p class="veio-modal__corpo" id="modal-resumo-detalhe"></p>
-      <!-- Um bloco por idioma (ENV-10). -->
       <div class="envio-resumo__baralhos" id="modal-resumo-baralhos"></div>
       <div class="envio-resumo__historico">
         <p class="envio-resumo__pergunta" id="modal-resumo-pergunta"></p>
@@ -590,12 +588,12 @@
     </div>
   </div>
 
-  <!-- A ponte do abridor, recarregada a cada conversa (lib/abridor.js). -->
   <iframe id="abridor-ponte" src="abridor.html" hidden></iframe>
 
   <script src="lib/voz/catalogo.js"></script>
   <script src="lib/voz/catalogo-nivel.js"></script>
   <script src="lib/voz/texto.js"></script>
+  <script src="lib/quiz-de-nivel.js"></script>
   <script src="veio/componentes.js"></script>
   <script src="lib/idioma.js"></script>
   <script src="lib/mineracao.js"></script>
@@ -617,6 +615,7 @@
   <script src="painel-conta.js"></script>
   <script src="painel-atalhos.js"></script>
   <script src="painel-conexao-passos.js"></script>
+  <script src="painel-boas-vindas-quiz.js"></script>
   <script src="painel-boas-vindas-nivel.js"></script>
   <script src="painel-boas-vindas.js"></script>
   <script src="painel-lembrete.js"></script>
