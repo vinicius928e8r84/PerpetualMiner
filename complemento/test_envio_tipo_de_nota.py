@@ -65,7 +65,7 @@ class OCartaoNovoSaiNoIniciante(unittest.TestCase):
         campos = notas[0]["campos"]
         self.assertEqual(sorted(campos), sorted([
             "Frase", "Áudio da frase", "Palavra", "Áudio da palavra", "Pronúncia", "Tradução literal", "Tradução natural", "Contexto da cena", "Fonte",
-            "Imagem"]))
+            "Imagem", "Frase com lacuna", "Dica"]))
         self.assertIn("<b>", campos["Frase"])
         self.assertEqual(re.sub("<[^>]+>", "", campos["Frase"]), "She gave up smoking")
         self.assertEqual(campos["Pronúncia"], "pronúncia de mentira")
@@ -109,7 +109,7 @@ def enviar_no_nivel(nivel, frase=FRASE, id_=ID, **argumentos):
 
 
 CAMPOS_SEM_CORES = sorted([
-    "Frase", "Áudio da frase", "Palavra", "Áudio da palavra", "Definição", "Outro exemplo", "Contexto da cena", "Fonte", "Imagem"])
+    "Frase", "Áudio da frase", "Palavra", "Áudio da palavra", "Definição", "Outro exemplo", "Contexto da cena", "Fonte", "Imagem", "Frase com lacuna", "Dica"])
 
 
 class OIntermediarioEOAvancadoDoIngles(unittest.TestCase):

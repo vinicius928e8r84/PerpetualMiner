@@ -173,6 +173,8 @@ class OCartaoDosOutrosNiveisDoIngles(unittest.TestCase):
                 "Outro exemplo": "Michael never gives up on a bad joke.",
                 "Contexto da cena": "Alguém conta que largou o cigarro no ano passado.",
                 "Fonte": "Série - The Office - S01E01",
+                "Frase com lacuna": 'She <b class="lacuna">[\u2026]</b> smoking last year.',
+                "Dica": "Desistir de fazer algo, parar de tentar.",
             },
         )
         self.assertEqual(cores_de(campos["Frase"]), [])
@@ -180,7 +182,7 @@ class OCartaoDosOutrosNiveisDoIngles(unittest.TestCase):
     def test_o_avancado_grava_as_mesmas_partes_todas_em_ingles(self):
         campos = nota(AVANCADO, "en", nivel="avancado")["campos"]
         self.assertEqual(
-            sorted(campos), sorted(["Frase", "Palavra", "Definição", "Outro exemplo", "Contexto da cena", "Fonte"]))
+            sorted(campos), sorted(["Frase", "Palavra", "Definição", "Outro exemplo", "Contexto da cena", "Fonte", "Frase com lacuna", "Dica"]))
         self.assertTrue(campos["Definição"].startswith("To stop doing"))
         self.assertEqual(campos["Contexto da cena"], "A coworker explains how she quit smoking, and why the habit had to go.")
         self.assertEqual(cores_de(campos["Frase"]), [])
@@ -348,7 +350,7 @@ class OCartaoIniciante(unittest.TestCase):
     def test_so_os_campos_do_iniciante_vem_preenchidos_e_o_resto_fica_para_os_outros_niveis(self):
         campos = nota(INGLES, "en")["campos"]
         self.assertEqual(
-            sorted(campos), sorted(["Frase", "Palavra", "Pronúncia", "Tradução literal", "Tradução natural", "Contexto da cena", "Fonte"]))
+            sorted(campos), sorted(["Frase", "Palavra", "Pronúncia", "Tradução literal", "Tradução natural", "Contexto da cena", "Fonte", "Frase com lacuna", "Dica"]))
 
     def test_a_frase_do_cartao_e_o_que_a_busca_de_duplicatas_compara_sem_cor_nem_negrito(self):
         pronta = nota(INGLES, "en")
@@ -378,7 +380,7 @@ class OCartaoIniciante(unittest.TestCase):
         dados["idiomas"]["en"]["niveis"]["iniciante"]["verso"] = ["natural", "palavra"]
         with mock.patch.object(estilos, "_PADRAO", estilos.Estilos(dados)):
             campos = nota(INGLES, "en")["campos"]
-        self.assertEqual(sorted(campos), sorted(["Frase", "Palavra", "Tradução natural", "Fonte"]))
+        self.assertEqual(sorted(campos), sorted(["Frase", "Palavra", "Tradução natural", "Fonte", "Frase com lacuna", "Dica"]))
 
     def test_um_idioma_novo_entra_so_por_dados_e_o_cartao_dele_sai_no_tipo_de_nota_dele(self):
         dados = copy.deepcopy(estilos.DADOS)

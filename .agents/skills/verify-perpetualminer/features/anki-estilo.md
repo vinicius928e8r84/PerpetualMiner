@@ -1,6 +1,6 @@
-# The Estilo do cartão: the level of each language
+# The Estilo do cartão: the level and the front of each language
 
-In **Ajustes de envio** (`painel.html#anki/ajustes`), every language card has **Estilo do cartão** after the Imagens (#162, BRG-42): a segmented control **Iniciante · Intermediário · Avançado**, and under the chosen level its text (the ones of the level quiz of #134, with the language: “Entendo o inglês explicado em inglês”). Under the control is the **prévia do cartão** (#164, BRG-43): the example Cartão of the level on screen, drawn by the Anki, with **Frente · Verso**. It only writes on **Salvar ajustes**, and the next Envio asks the Conexão for the saved level. What the Card looks like in the Anki is `features/anki-cartao.md`.
+In **Ajustes de envio** (`painel.html#anki/ajustes`), every language card has **Estilo do cartão** after the Imagens (#162, BRG-42): a segmented control **Iniciante · Intermediário · Avançado**, and under the chosen level its text (the ones of the level quiz of #134, with the language: “Entendo o inglês explicado em inglês”). Under the control is the **prévia do cartão** (#164, BRG-43): the example Cartão of the level on screen, drawn by the Anki, with **Frente · Verso**. It only writes on **Salvar ajustes**, and the next Envio asks the Conexão for the saved level. What the Card looks like in the Anki is `features/anki-cartao.md`. Under the level there is **Frente** (#166, BRG-44): **Frase com áudio · Ouvir primeiro · Lacuna** per language, with its text under it (“A frase sem a palavra, com uma dica e sem áudio”). On **Salvar ajustes** a changed front is asked of the Conexão (`POST /anki/card-front`), which only rewrites the Card model of the language's note type. What the Card looks like in the Anki is `features/anki-cartao.md`.
 
 ## Sub-features
 
@@ -10,6 +10,10 @@ In **Ajustes de envio** (`painel.html#anki/ajustes`), every language card has **
 - `estilo-previa` under the control the example Cartão of the level on screen (“Exemplo do Intermediário em inglês, como o Anki mostra.”) in a frame with Frente · Verso; choosing another level changes it **before** saving (nothing is stored); the Russian card shows the Russian Cartão of the level (at Intermediário and Avançado the back has no Phrase). With the Conexão off it says “A prévia aparece com a Conexão com o Anki ligada.” and Tentar de novo shows it once the Conexão is back; an older Conexão says to update it.
 - `estilo-envio` the Envio's `POST /jobs` carries `nivel` (`intermediario`, `avancado`) only off the Iniciante, which is what the Conexão does without it; an Envio already created keeps the level it was born with. The Conexão refuses a level the language does not have (`400 invalid_level`). Both languages send `nivel` the same way.
 
+- `frente-default` a language with nothing saved is on Frase com áudio, with “A frase e o áudio na frente do cartão” under the control; there are three fronts (no Imagem primeiro).
+- `frente-pick` choosing a front changes the text under the control and the status to “Alterações não salvas”; nothing is stored and nothing is asked of the Conexão until Salvar ajustes. Saving a changed front stores `frente` of that language only (`ankiBridgePresets`) and sends `{ lang, frente }` to `POST /anki/card-front`; saving without changing it sends nothing. Each language keeps its own (Lacuna in English and Ouvir primeiro in Russian).
+- `frente-fails` if the Conexão is off, the Anki is not ready (no profile open, another profile, syncing) or the person changed the note type in the Anki, the other settings are saved, the stored front stays the one the Anki has, the choice stays on the screen as unsaved, and the warning says why with **Tentar de novo**.
+
 ## How to get to it (user POV)
 
 - Sidebar › **Conexão com o Anki** › **Ajustes de envio** (`painel.html#anki/ajustes`), a language card, **Estilo do cartão**. Then Frases › tick a phrase › **Enviar ao Anki**.
@@ -17,10 +21,12 @@ In **Ajustes de envio** (`painel.html#anki/ajustes`), every language card has **
 ## Driving it with the Playwright e2e harness
 
 - `node scripts/testar.mjs e2e -- painel-ajustes-estilo --workers=2` (the fake Conexão is `e2e/fakes/anki.js` and `e2e/fakes/previa.js`, the contract `complemento/contrato/exemplos-do-nivel.json` and `exemplos-da-previa.json`). Observable: the radios of the `radiogroup` “Estilo do cartão”, the card text inside the preview `iframe` (`.previa iframe` → `frameLocator`), the stored `ankiBridgePresets` and `pm_envio`, `fakes.anki.envios[n].corpo.nivel` and the `POST /anki/card-preview` requests (`fakes.anki.requisicoes`). `fakes.anki.responder('POST', '/anki/card-preview', …)` drives the failures.
-- The visual proposals are in `e2e/tests/painel-ajustes-estilo-visual.spec.js` (`test.fixme` until the owner approves; they now include the preview).
+- `node scripts/testar.mjs e2e -- painel-ajustes-frente --workers=2` for the front (the contract is `complemento/contrato/exemplos-da-frente.json`). Observable: the radios of the `radiogroup` “Frente”, the stored `ankiBridgePresets`, the requests to `/anki/card-front` and `fakes.anki.frente.guardadas()`; `fakes.anki.frente.mexerNoTipoDeNota('en')` makes the Conexão refuse (`409 note_type_changed`).
+- The visual proposals are in `e2e/tests/painel-ajustes-estilo-visual.spec.js` and `e2e/tests/painel-ajustes-frente-visual.spec.js` (`test.fixme` until the owner approves; they now include the preview).
 
 ## Gotchas
 
 - The preview is the **example** of the style (the text in `engine/estilos.json`), not a Frase of the person; it asks the Conexão for the Cartão through the note type the collection has, so an old type (made before #162) shows the back it really has. It creates the language's note type if the collection lacks it, as the Envio would. The real Anki's rendering is proved by `complemento/test_previa_com_o_anki_real.py` (needs `pip install anki`); the e2e fake answers from the contract.
+- The front is **not** in the Envio's `POST /jobs`: the Conexão rewrites the model in the Anki when the person saves, so every Card of the language (also the ones already sent) changes at once, with no new note and no cost. A Card made before #166 has no `Frase com lacuna`, so on Lacuna it shows its Frase; a Card without the phrase audio is blank on Ouvir primeiro.
 - The level is per language and per saved Ajustes; the Envio reads it when it is created, so changing it afterwards does not change an Envio that already left.
 - There is no proof here of the model's text: the real prompts are only checked by the contract tests (`engine/test_prompt_contracts.py`) and by a fake OpenAI; the Card from a real OpenAI at each level is the owner's rehearsal.

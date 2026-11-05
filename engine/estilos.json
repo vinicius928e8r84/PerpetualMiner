@@ -1,6 +1,7 @@
 {
   "nivel_padrao": "iniciante",
   "frente_de_antes": ["Frente", "Front"],
+  "dica_da_lacuna": ["definicao", "natural", "cena"],
   "campos": {
     "frase": "Frase",
     "audio_da_frase": "Áudio da frase",

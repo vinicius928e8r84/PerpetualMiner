@@ -23,7 +23,7 @@ FRASE_RUSSA = "Она приходила вчера [Context: Série - Episódio
 PALAVRA_DE_MENTIRA = "вчера"  # a última palavra da frase: o Cartão de mentira escolhe essa
 CAMPOS_DO_RUSSO_COM_MORFOLOGIA = sorted([
     "Frase", "Áudio da frase", "Palavra", "Áudio da palavra", "Pronúncia", "Sílaba forte", "Definição", "Explicação das cores", "Outro exemplo",
-    "Morfologia", "Raiz", "Imagem"])
+    "Morfologia", "Raiz", "Imagem", "Frase com lacuna", "Dica"])
 
 
 def enviar_o_russo(nivel, frase=FRASE_RUSSA, id_=ID):

@@ -5,21 +5,21 @@
   const { IMAGENS, SOTAQUES } = AjustesDeEnvio;
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
   const CODIGO_DO_IDIOMA = { en: 'BRG-28.codigoEn', ru: 'BRG-28.codigoRu' };
-  const CAMPOS = ['deckName', 'imageSource', 'nivel', 'ttsWordTld', 'ttsPhraseTld', 'ttsReserva'];
+  const CAMPOS = ['deckName', 'imageSource', 'nivel', 'frente', 'ttsWordTld', 'ttsPhraseTld', 'ttsReserva'];
   const VOZ_DA_RESERVA = { openai: 'BRG-07.reservaOpenai', nenhuma: 'BRG-07.reservaNenhuma' };
   const porId = id => document.getElementById(id);
 
   const estado = {
-    aberto: 'en',                   // o card aberto (um por vez); null com todos fechados
-    gravados: null,                 // os ajustes gravados, como os cards fechados mostram
-    lidos: { en: null, ru: null },  // o gravado de onde cada rascunho partiu (com a versão)
+    aberto: 'en', // o card aberto (um por vez); null com todos fechados
+    gravados: null, // os ajustes gravados, como os cards fechados mostram
+    lidos: { en: null, ru: null }, // o gravado de onde cada rascunho partiu (com a versão)
     rascunhos: { en: null, ru: null },
-    erros: { en: false, ru: false },// o nome do baralho tem um nível vazio (só no campo de texto)
-    baralhos: null,                 // os baralhos do Anki; null sem a lista (campo de texto)
+    erros: { en: false, ru: false }, // o nome do baralho tem um nível vazio (só no campo de texto)
+    baralhos: null, // os baralhos do Anki; null sem a lista (campo de texto)
     ultimaLeituraDeBaralhos: 0,
     salvando: null,
-    erroDeOuvir: {},                // o ID da Voz do que deu errado em cada Ouvir, por `<idioma>:<campo>`
-    audio: null,                    // o que está tocando
+    erroDeOuvir: {}, // o ID da Voz do que deu errado em cada Ouvir, por `<idioma>:<campo>`
+    audio: null, // o que está tocando
   };
 
   function iniciar() {
@@ -44,7 +44,7 @@
     return Boolean(lido && rascunho) && CAMPOS.some(campo => rascunho[campo] !== lido[campo]);
   }
 
-  /** Trazer o gravado para o formulário de um idioma, descartando o rascunho. */
+  /** O gravado volta ao formulário do idioma, sem o rascunho. */
   function adotarGravado(lang) {
     estado.lidos[lang] = estado.gravados[lang];
     estado.rascunhos[lang] = copia(estado.gravados[lang]);
@@ -59,7 +59,7 @@
     desenhar();
   }
 
-  /** O nome tem um nível vazio (`Inglês::`, `::Minerar`): o Anki não cria esse baralho. */
+  /** Nome com nível vazio (`Inglês::`, `::Minerar`): o Anki não cria o baralho. */
   function comNivelVazio(nome) {
     const texto = String(nome || '').trim();
     return texto !== '' && texto.split('::').some(parte => !parte.trim());
@@ -116,8 +116,9 @@
     estado.erros[lang] = false;
     const enviados = copia(estado.rascunhos[lang]);
     estado.salvando = lang;
-    let resultado;
+    let resultado, falhaDaFrente;
     try {
+      ({ frente: enviados.frente, falha: falhaDaFrente } = await raiz.EstiloDoCartao.trocarSeMudou(lang, enviados.frente, estado.gravados[lang].frente));
       resultado = await AjustesDeEnvio.salvar(lang, enviados, estado.lidos[lang].versao);
     } catch (erro) {
       mostrarAviso({ texto: textoDaVoz('BRG-07.naoSalvou'), detalhes: String(erro?.message || erro) });
@@ -127,18 +128,16 @@
     }
     estado.gravados = resultado.ajustes;
     if (!resultado.ok) {
-      mostrarAviso({
-        texto: textoDaVoz('BRG-07.desatualizada'),
-        acao: { rotulo: textoDaVoz('BRG-07.mostrarNovos'), aoUsar: () => mostrarOsNovos(lang) },
-      });
+      mostrarAviso({ texto: textoDaVoz('BRG-07.desatualizada'), acao: { rotulo: textoDaVoz('BRG-07.mostrarNovos'), aoUsar: () => mostrarOsNovos(lang) } });
       desenhar();
       return;
     }
     if (CAMPOS.some(campo => estado.rascunhos[lang][campo] !== enviados[campo])) {
       estado.lidos[lang] = estado.gravados[lang];
     } else adotarGravado(lang);
-    fecharAviso();
     desenhar();
+    if (falhaDaFrente) return mostrarAviso(raiz.EstiloDoCartao.avisoDaFrente(lang, falhaDaFrente, () => salvar(lang)));
+    fecharAviso();
     Veio.mostrarToastDeSucesso(textoDaVoz('BRG-07.salvo'));
   }
 
@@ -151,13 +150,7 @@
   }
 
   function mostrarAviso({ texto, acao, detalhes }) {
-    const aviso = Veio.montarAviso({
-      texto,
-      acao,
-      detalhes,
-      rotuloDeFechar: textoDaVoz('PAI-34'),
-      aoFechar: fecharAviso,
-    });
+    const aviso = Veio.montarAviso({ texto, acao, detalhes, rotuloDeFechar: textoDaVoz('PAI-34'), aoFechar: fecharAviso });
     porId('ajustes-aviso').replaceChildren(aviso);
   }
 
@@ -212,10 +205,8 @@
       const aberto = estado.aberto === lang;
       cartao.classList.toggle('cfg-card--aberto', aberto);
       cartao.querySelector('.cfg-alternar').setAttribute('aria-expanded', String(aberto));
-      cartao.querySelector('.ajustes-resumo').textContent = [
-        AjustesDeEnvio.nomeDoBaralho(gravado.deckName),
-        textoDaVoz(gravado.imageSource === IMAGENS.GERADA_POR_IA ? 'BRG-07.azulejoGeradaPorIa' : 'BRG-07.azulejoFotoReal'),
-      ].join(' ');
+      cartao.querySelector('.ajustes-resumo').textContent = [AjustesDeEnvio.nomeDoBaralho(gravado.deckName),
+        textoDaVoz(gravado.imageSource === IMAGENS.GERADA_POR_IA ? 'BRG-07.azulejoGeradaPorIa' : 'BRG-07.azulejoFotoReal')].join(' ');
       const corpo = cartao.querySelector('.ajustes-form');
       corpo.hidden = !aberto;
       if (aberto) corpo.replaceChildren(...formulario(lang));
@@ -224,7 +215,8 @@
   }
 
   function formulario(lang) {
-    return [campoDoBaralho(lang), campoDasImagens(lang), raiz.EstiloDoCartao.campo(lang, estado.rascunhos[lang]), avancado(lang), acoes(lang)];
+    return [campoDoBaralho(lang), campoDasImagens(lang), raiz.EstiloDoCartao.campo(lang, estado.rascunhos[lang]),
+      raiz.EstiloDoCartao.campoDaFrente(lang, estado.rascunhos[lang]), avancado(lang), acoes(lang)];
   }
 
   function campoDoBaralho(lang) {

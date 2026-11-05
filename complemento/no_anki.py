@@ -202,6 +202,14 @@ class ColecaoDoAnki:
         """Cria o tipo de nota (`tipo_de_nota.definicao`) se a coleção não tem um com o nome; um que já existe não é tocado. Devolve se criou."""
         return self._gravando(lambda colecao: _criar_tipo_de_nota(colecao, definicao))
 
+    def modelos_do_tipo_de_nota(self, nome):
+        """Os modelos de Cartão do tipo de nota (`[{ nome, frente, verso }]`), ou None se a coleção não o tem."""
+        return self._gravando(lambda colecao: cartoes_do_anki.modelos_do_tipo(colecao.models.by_name(nome)))
+
+    def trocar_o_modelo(self, nome, modelo, css):
+        """Reescreve o único modelo de Cartão do tipo de nota e o estilo dele (a troca da frente, #166); devolve se mudou algo. As notas não são tocadas."""
+        return self._gravando(lambda colecao: cartoes_do_anki.trocar_o_modelo(colecao, nome, modelo, css))
+
     def criar_baralhos_da_instalacao_nova(self, nomes):
         """Cria os Baralhos `nomes` só se a coleção não tem nenhum além do padrão do Anki; devolve os criados (nenhum, para quem já tem Baralho)."""
         return self._gravando(lambda colecao: _criar_baralhos_da_instalacao_nova(colecao, nomes))

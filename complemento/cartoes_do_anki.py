@@ -3,6 +3,8 @@ mídia. Cada função roda na thread principal do Anki, chamada pelo adaptador (
 
 import os
 
+from .baralhos import TipoDeNotaAlterado, TipoDeNotaAusente
+
 
 def campos_do_tipo(modelo):
     """Os nomes dos campos do tipo de nota, na ordem dele; None se o tipo não existe."""
@@ -46,3 +48,23 @@ def arquivo_de_midia(colecao, nome, limite_de_bytes):
             return arquivo.read(limite_de_bytes + 1)
     except OSError:
         return None
+
+
+def modelos_do_tipo(tipo):
+    return [{"nome": cartao["name"], "frente": cartao["qfmt"], "verso": cartao["afmt"]} for cartao in tipo["tmpls"]] if tipo else None
+
+
+def trocar_o_modelo(colecao, nome, modelo, css):
+    """Na thread principal (a troca da frente, #166). Só o texto do modelo e o estilo do tipo de nota: nenhum campo, nenhuma nota. Com mais (ou menos) de um modelo, o tipo é da pessoa."""
+    tipo = colecao.models.by_name(nome)
+    if tipo is None:
+        raise TipoDeNotaAusente(nome)
+    if len(tipo["tmpls"]) != 1:
+        raise TipoDeNotaAlterado(nome)
+    cartao = tipo["tmpls"][0]
+    if (cartao["name"], cartao["qfmt"], cartao["afmt"], tipo["css"]) == (modelo["nome"], modelo["frente"], modelo["verso"], css):
+        return False
+    cartao["name"], cartao["qfmt"], cartao["afmt"], tipo["css"] = modelo["nome"], modelo["frente"], modelo["verso"], css
+    modelos = colecao.models
+    (modelos.update_dict if hasattr(modelos, "update_dict") else modelos.save)(tipo)  # `update_dict` é o do Anki novo; `save`, o dos mais antigos
+    return True

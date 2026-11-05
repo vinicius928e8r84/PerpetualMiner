@@ -29,6 +29,7 @@ from .modelo_dos_cartoes import ModeloDosCartoes, lista_nossa
 from .teto_do_mes import TetoDoMes
 from .motor import estilos
 from .perfil import PerfilFixo
+from .rotas_da_frente import ROTAS_DA_FRENTE
 from .previa_do_cartao import ROTAS_DA_PREVIA
 from .rotas_da_voz import ROTAS_DA_VOZ
 from .rotas_do_envio import ROTAS_DO_ENVIO
@@ -129,6 +130,7 @@ ROTAS = {
     **ROTAS_DO_MODELO,
     **ROTAS_DO_TETO,
     **ROTAS_DA_VOZ,
+    **ROTAS_DA_FRENTE,
     **ROTAS_DA_PREVIA,
     ("POST", "/abrir-com-o-computador/estado"): _estado_do_item_de_login,
     ("POST", "/abrir-com-o-computador"): _abrir_com_o_computador,

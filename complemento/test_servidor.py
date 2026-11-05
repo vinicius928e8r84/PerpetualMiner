@@ -398,14 +398,16 @@ class ContratoDaConexao(unittest.TestCase):
 #   versao        o corpo traz a base (`versao`) do que ela muda: a base velha tem que dar 409, sem mudar nada;
 #   muda_de_novo  o motivo (texto) de pedir de novo com a base atual poder mudar o que fica guardado de propósito.
 # Uma rota nova entra aqui dizendo o que faz; uma que não lê a coleção nem o perfil responde o mesmo `status` sempre.
+# Rotas que não leem a coleção nem o perfil.
+SEM_LEITURA = {"le_a_colecao": False, "le_o_perfil": False}
 MATRIZ = {
     ('POST', '/ia/openai/sincronizar'): {
         'corpo': {'uid': 'uid-teste', 'token': 'token-ficticio', 'versao': 1}, 'muda': True, 'versao': True,
-        'le_a_colecao': False, 'le_o_perfil': False, 'recusas': [({}, 400, 'invalid_request')],
+        **SEM_LEITURA, 'recusas': [({}, 400, 'invalid_request')],
     },
     ('POST', '/ia/openai/legado'): {
         'corpo': {'chave': '', 'conta': 'uid-teste', 'em': 100, 'versao': 0}, 'muda': True, 'versao': True,
-        'le_a_colecao': False, 'le_o_perfil': False, 'recusas': [({}, 400, 'invalid_request')],
+        **SEM_LEITURA, 'recusas': [({}, 400, 'invalid_request')],
         'status': 409,
     },
     ("GET", "/health"): {"corpo": None, "le_a_colecao": False, "le_o_perfil": True, "recusas": []},
@@ -417,25 +419,25 @@ MATRIZ = {
         "recusas": [({}, 400, "decks_required")],
     },
     # A chave da IA (PR 191): não lê a coleção nem o perfil; sem a `chave` no corpo mínimo, recusa em todo estado.
-    ("POST", "/ia/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/ia/estado"): {"corpo": {}, **SEM_LEITURA, "recusas": []},
     # Entrar com o ChatGPT (#155): entrar cria o id deste computador; sair apaga o arquivo do login.
-    ("POST", "/ia/chatgpt/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
-    ("POST", "/ia/chatgpt/entrar"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
-    ("POST", "/ia/chatgpt/sair"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/ia/chatgpt/estado"): {"corpo": {}, **SEM_LEITURA, "recusas": []},
+    ("POST", "/ia/chatgpt/entrar"): {"corpo": {}, "muda": True, **SEM_LEITURA, "recusas": []},
+    ("POST", "/ia/chatgpt/sair"): {"corpo": {}, "muda": True, **SEM_LEITURA, "recusas": []},
     # O teto do mês (#160): lê só os custos e o arquivo dele; um valor que não é positivo é recusado.
-    ("POST", "/custos/teto"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/custos/teto"): {"corpo": {}, **SEM_LEITURA, "recusas": []},
     ("POST", "/custos/teto/definir"): {
-        "corpo": {"limitUsd": 10}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": [({}, 400, "invalid_request"), ({"limitUsd": 0}, 400, "invalid_request")],
+        "corpo": {"limitUsd": 10}, "muda": True, **SEM_LEITURA, "recusas": [({}, 400, "invalid_request"), ({"limitUsd": 0}, 400, "invalid_request")],
     },
     # O modelo dos cartões (#157): lê a OpenAI (a lista da conta), nunca a coleção nem o perfil.
-    ("POST", "/ia/modelo/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/ia/modelo/estado"): {"corpo": {}, **SEM_LEITURA, "recusas": []},
     ("POST", "/ia/modelo/escolher"): {
-        "corpo": {"modelo": "automatico"}, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
+        "corpo": {"modelo": "automatico"}, "muda": True, **SEM_LEITURA,
         "recusas": [({}, 400, "invalid_request"), ({"modelo": "gpt-4o"}, 404, "model_not_found")],
     },
     # Apagar a cópia da chave (#154): apagar o que não existe também é 200.
     ("POST", "/ia/openai/chave/apagar"): {
-        "corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": [], "muda": True, "versao": True,
+        "corpo": {}, **SEM_LEITURA, "recusas": [], "muda": True, "versao": True,
         # `Cofre.reentrega` só reconhece como repetição na base atual uma chave não vazia (`chave and moderna`, d6b9289).
         "muda_de_novo": "apagar de novo na base atual avança a revisão e a hora: `Cofre.reentrega` só reconhece a repetição de uma chave não vazia",
     },
@@ -449,7 +451,7 @@ MATRIZ = {
         "recusas": [({"chave": "x"}, 401, "openai_key_rejected")],
     },
     # O item de login de “Abrir o Anki com o computador” (PR 189): não lê a coleção nem o perfil.
-    ("POST", "/abrir-com-o-computador/estado"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/abrir-com-o-computador/estado"): {"corpo": {}, **SEM_LEITURA, "recusas": []},
     ("POST", "/abrir-com-o-computador"): {
         "corpo": {"ligado": True},
         "muda": True,
@@ -460,10 +462,10 @@ MATRIZ = {
     # O perfil fixo (#149): a lista lê o gerente de perfis (responde sem coleção) e o perfil aberto; a primeira com um perfil aberto o marca.
     ("POST", "/anki/profiles"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": True, "recusas": []},
     ("POST", "/anki/profile"): {
-        "corpo": {"profile": "Usuário 1"}, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
+        "corpo": {"profile": "Usuário 1"}, "muda": True, **SEM_LEITURA,
         "recusas": [({}, 400, "invalid_request"), ({"profile": "Carla"}, 404, "profile_not_found")],
     },
-    ("POST", "/anki/profile/open"): {"corpo": {}, "abre_perfil": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/anki/profile/open"): {"corpo": {}, "abre_perfil": True, **SEM_LEITURA, "recusas": []},
     ("POST", "/anki/vocabulary"): {
         "corpo": {"deck": "Inglês", "lang": "en"},
         "le_a_colecao": True,
@@ -474,33 +476,39 @@ MATRIZ = {
     # e não gravam nada (o `jobId` é a chave).
     ("POST", "/jobs"): {
         "corpo": {"jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b", "lang": "en", "deckName": "Inglês", "entries": [{"phraseId": 1, "line": "give up : She gave up smoking"}]},
-        "status": 201, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
+        "status": 201, "muda": True, **SEM_LEITURA,
         "recusas": [({}, 400, "invalid_job_id"), ({"jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b", "lang": "de"}, 400, "invalid_lang"),
                     ({"jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b", "lang": "en", "deckName": ""}, 400, "invalid_request"),
                     ({"jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b", "lang": "en", "deckName": "Inglês", "entries": []}, 400, "entries_required")],
     },
-    ("POST", "/jobs/list"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/jobs/list"): {"corpo": {}, **SEM_LEITURA, "recusas": []},
     ("POST", "/jobs/get"): {
-        "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, "le_a_colecao": False, "le_o_perfil": False,
+        "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, **SEM_LEITURA,
         "recusas": [({}, 400, "invalid_job_id")],
     },
     ("POST", "/jobs/retry"): {
-        "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
+        "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, "muda": True, **SEM_LEITURA,
         "recusas": [({}, 400, "invalid_job_id")],
     },
     # Usar a minha chave (#158) marca o Envio; repetido, nada mais muda.
     ("POST", "/jobs/usar-a-chave"): {
-        "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, "muda": True, "le_a_colecao": False, "le_o_perfil": False,
+        "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, "muda": True, **SEM_LEITURA,
         "recusas": [({}, 400, "invalid_job_id")],
     },
-    ("POST", "/jobs/apagar-frases"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/jobs/apagar-frases"): {"corpo": {}, "muda": True, **SEM_LEITURA, "recusas": []},
     ("POST", "/jobs/debug-bundle"): {
-        "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, "le_a_colecao": False, "le_o_perfil": False,
+        "corpo": {"jobId": "00000000-0000-4000-8000-000000000000"}, "status": 404, **SEM_LEITURA,
         "recusas": [({}, 400, "invalid_job_id")],
     },
-    ("POST", "/analytics/jobs"): {"corpo": {"lang": "all"}, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
+    ("POST", "/analytics/jobs"): {"corpo": {"lang": "all"}, **SEM_LEITURA, "recusas": []},
+    # A frente do Cartão (#166): reescreve o modelo do tipo de nota na coleção. A pasta de dados só muda na primeira gravação com um perfil aberto,
+    # que o marca (`perfil.json`, como o Envio); repetida, nada mais muda.
+    ("POST", "/anki/card-front"): {
+        "corpo": {"lang": "en", "frente": "lacuna"}, "muda": True, "le_a_colecao": True, "le_o_perfil": False,
+        "recusas": [({}, 400, "invalid_lang"), ({"lang": "en"}, 400, "invalid_front"), ({"lang": "en", "frente": "imagem_primeiro"}, 400, "invalid_front")],
+    },
     # O Ouvir dos Ajustes de envio (#174): fala uma frase de amostra, não lê a coleção nem o perfil e não guarda nada.
-    ("POST", "/voz/ouvir"): {"corpo": {"lang": "en", "provedor": "google", "sotaque": "com"}, "le_a_colecao": False, "le_o_perfil": False, "recusas": [({}, 400, "invalid_request")]},
+    ("POST", "/voz/ouvir"): {"corpo": {"lang": "en", "provedor": "google", "sotaque": "com"}, **SEM_LEITURA, "recusas": [({}, 400, "invalid_request")]},
 }
 
 MATRIZ.update(MATRIZ_DA_PREVIA)  # a prévia do Cartão (#164): em arquivo à parte, que o limite de tamanho não deixa este crescer
@@ -767,7 +775,7 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
     def test_as_rotas_que_mudam_sao_as_da_chave_do_chatgpt_do_item_de_login_do_perfil_e_do_envio(self):
         self.assertEqual(
             sorted(rota[1] for rota, regra in MATRIZ.items() if regra.get("muda")),
-            ["/abrir-com-o-computador", "/anki/card-preview", "/anki/profile", "/anki/profiles", "/custos/teto/definir", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/modelo/escolher", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry", "/jobs/usar-a-chave"],
+            ["/abrir-com-o-computador", "/anki/card-front", "/anki/card-preview", "/anki/profile", "/anki/profiles", "/custos/teto/definir", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/modelo/escolher", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry", "/jobs/usar-a-chave"],
         )
 
 

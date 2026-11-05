@@ -22,6 +22,10 @@ else:
         _BACK_RE, _apply_chunk_colors, _build_front, _extract_alignments, _extract_tags_from_card, _md_to_html, normalize_front)
 
 _FONTE_RE = re.compile(r"^[^\S\n]*Source\s+Context:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+_NEGRITO_RE = re.compile(r"<b>.*?</b>", re.DOTALL)
+_TAG_RE = re.compile(r"<[^>]+>")
+_MARCA = "\x00"
+_LACUNA = '<b class="lacuna">[\u2026]</b>'
 
 # The four pieces of a Russian word, in the order a word is written, and the colour of each: the same at every level.
 PEDACOS = ("prefix", "root", "suffix", "ending")
@@ -42,6 +46,19 @@ def _palavra_do_verso(content: str) -> str:
     """The first line of the Back (`gave up – /ɡeɪv ʌp/`): the headword the English card writes there."""
     achou = _BACK_RE.search(content)
     return next((linha.strip() for linha in (achou.group(1).splitlines() if achou else []) if linha.strip()), "").strip("*").strip()
+
+
+def _frase_com_lacuna(frase: str, palavra: str) -> str:
+    """The Phrase without the Word, for the Lacuna front: the bold text of the Phrase (English marks the Word that way) or, without any, the
+    `palavra` where it is in the text. No colours: they would give the gap away. Empty when the Word is not in the Phrase."""
+    if _NEGRITO_RE.search(frase):
+        so_o_negrito = _TAG_RE.sub(lambda tag: tag.group(0) if tag.group(0) in ("<b>", "</b>") else "", frase)
+        texto = _NEGRITO_RE.sub(_MARCA, so_o_negrito)
+    else:
+        texto = _TAG_RE.sub("", frase)
+        if palavra.strip():
+            texto = re.sub(re.escape(palavra.strip()), _MARCA, texto, flags=re.IGNORECASE)
+    return texto.replace(_MARCA, _LACUNA) if _MARCA in texto else ""
 
 
 def _secao(content: str, titulo: str) -> List[str]:
@@ -149,6 +166,10 @@ def campos_da_nota(
             if parte == "literal" and alinhamentos:
                 valor = _apply_chunk_colors(valor, [para for _, para in alinhamentos], ignore_case=True)
             valores[parte] = _md_to_html(valor)
+    lacuna = _frase_com_lacuna(valores["frase"], palavra or valores.get("palavra") or "")
+    if lacuna:  # a frente Lacuna (#166): a Frase sem a Palavra e uma dica do verso; o resto da Frase fica no campo da Frase
+        valores["lacuna"] = lacuna
+        valores["dica"] = next((valores[parte] for parte in estilos.partes_da_dica() if valores.get(parte)), "")
     fonte = _FONTE_RE.search(content)
     valores["fonte"] = fonte.group(1).strip() if fonte else ""
     valores["audio_da_frase"] = "[sound:%s]" % audio_da_frase if audio_da_frase else ""

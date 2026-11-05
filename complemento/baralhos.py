@@ -20,6 +20,10 @@ Anki está sincronizando (`anki_syncing`):
 
 - `criar_tipo_de_nota(definicao)` (#161, `tipo_de_nota.definicao`): cria o tipo de nota se a coleção não tem um com o nome e devolve se criou; um que já
   existe fica como a pessoa o deixou, e nada que já está na coleção é renomeado, convertido nem apagado;
+- `modelos_do_tipo_de_nota(nome)` e `trocar_o_modelo(nome, modelo, css)` (#166, a frente do Cartão): o primeiro lê os modelos de Cartão do tipo
+  (`[{ nome, frente, verso }]`, None se a coleção não o tem); o segundo reescreve o **único** modelo do tipo (`modelo` é `{ nome, frente, verso }`) e o estilo
+  e devolve se mudou algo (repetir devolve False). Só isso: nenhuma nota é criada nem tocada, e o número de Cartões não muda. Um tipo que falta levanta
+  `TipoDeNotaAusente`; um que não tem exatamente um modelo, `TipoDeNotaAlterado`, sem escrever nada;
 - `criar_baralhos_da_instalacao_nova(nomes)`: cria os Baralhos só se a coleção não tem nenhum além do “Default” (numa instalação nova) e devolve os
   criados; quem já tem Baralho fica com o seu. Os dois repetem sem criar nada de novo;
 - `gravar_cartao(baralho, tipo_de_nota, campos, etiquetas, guid, campos_da_frente, frente_normalizada, normalizar, midia=None)`: **a** função de
@@ -105,6 +109,10 @@ def espera_pelo_perfil(motivo):
 
 class TipoDeNotaAusente(Exception):
     """A coleção não tem o tipo de nota pedido (ou ele não tem os campos pedidos): nada foi gravado."""
+
+
+class TipoDeNotaAlterado(Exception):
+    """O tipo de nota não tem só o modelo de Cartão que a Conexão cria (a pessoa mexeu nele): a troca da frente (#166) não o regrava."""
 
 
 def _agora():

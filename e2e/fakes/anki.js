@@ -4,6 +4,7 @@ const { isDeepStrictEqual } = require('util');
 const { responderJson } = require('./http');
 const { criarFakeChatGPT } = require('./chatgpt');
 const { criarFakeVoz } = require('./voz');
+const { criarFakeFrente } = require('./frente');
 const { criarPerfis } = require('./perfis');
 const { criarLimiteDoPlano } = require('./limite-do-plano');
 const { criarModelo } = require('./modelo-dos-cartoes');
@@ -51,20 +52,20 @@ function criarFakeAnki() {
   const estado = {
     ligada: true,
     vocabulario: { en: [], ru: [] },
-    rotas: new Map(),   // 'GET /caminho' → (req, url) => ({ status, json })
+    rotas: new Map(), // 'GET /caminho' → (req, url) => ({ status, json })
     recusas: new Map(), // lang → { status } | { rede: true }, para o próximo POST /jobs
     agora: () => new Date(),
-    custos: null,       // as linhas de POST /analytics/jobs que o teste definiu (definirCustos); null: as dos Envios da fila
+    custos: null, // as linhas de POST /analytics/jobs que o teste definiu (definirCustos); null: as dos Envios da fila
     registrosDeCusto: new Map(), // jobId → os registros de custo do Envio (os da fila do contrato)
     falhaDosCustos: null, // { status } | { rede: true }: POST /analytics/jobs falha
     falhaDoApagarFrases: null, // { rede: true }: POST /jobs/apagar-frases não tem resposta
-    baralhos: {},       // deckName → os números do baralho (definirBaralho)
-    fonteDosBaralhos: 'colecao',        // 'collection.anki2': lidos do arquivo local (BRG-13)
-    lidoDoArquivo: false,       // a Conexão responde lendo o arquivo do Anki: baralhos e vocabulário vêm de `collection.anki2`
-    processosDoAnki: 1,         // GET /anki/status: quantos processos do Anki a Conexão vê (0: o Anki está fechado)
-    falhaDosBaralhos: null,     // { status } | { rede: true }: POST /anki/stats/decks falha
-    falhaDoVocabulario: null,   // { status } | { rede: true }: POST /anki/vocabulary falha
-    baralhosDoAnki: null,       // os nomes de POST /anki/decks; null: a lista não vem (definirBaralhosDoAnki)
+    baralhos: {}, // deckName → os números do baralho (definirBaralho)
+    fonteDosBaralhos: 'colecao', // 'collection.anki2': lidos do arquivo local (BRG-13)
+    lidoDoArquivo: false, // a Conexão responde lendo o arquivo do Anki: baralhos e vocabulário vêm de `collection.anki2`
+    processosDoAnki: 1, // GET /anki/status: quantos processos do Anki a Conexão vê (0: o Anki está fechado)
+    falhaDosBaralhos: null, // { status } | { rede: true }: POST /anki/stats/decks falha
+    falhaDoVocabulario: null, // { status } | { rede: true }: POST /anki/vocabulary falha
+    baralhosDoAnki: null, // os nomes de POST /anki/decks; null: a lista não vem (definirBaralhosDoAnki)
     contexto: { perfil: 'Usuário 1', falhaNoPerfil: false, openai: 'aceita', itemDeLogin: 'desligado', firebase: 0 }, // o `contexto` dos exemplos; `colecao` só existe depois de `abrirColecao`
     versaoDaChave: 0,
     contaDaChave: '',
@@ -72,16 +73,17 @@ function criarFakeAnki() {
     chaveNaoEnviada: false,
     google: null,
     filaDaChave: Promise.resolve(),
-    chaveDaOpenAI: null,        // a cópia da chave que a Conexão guarda (a inteira: só o teste a vê)
+    chaveDaOpenAI: null, // a cópia da chave que a Conexão guarda (a inteira: só o teste a vê)
   };
   const perfis = criarPerfis(() => estado.contexto);
   const modelo = criarModelo(() => contextoDeAgora()); // o modelo dos cartões (#157)
   const teto = criarTeto({ registros: () => [...estado.registrosDeCusto.values()].flat(), linhas: () => estado.custos, agora: () => estado.agora() });
   const previa = criarPrevia({ contexto: () => estado.contexto, exemplos: () => contrato.exemplos });
   const requisicoes = [];
-  const envios = [];    // { jobId, lang, entries, corpo, createdAt, state }
+  const envios = []; // { jobId, lang, entries, corpo, createdAt, state }
   const chatgpt = criarFakeChatGPT(); // o login do ChatGPT (#155): as rotas dele aqui e a página do auth.openai.com (fakes.chatgpt)
   const voz = criarFakeVoz(); // o Ouvir (#174): `fakes.anki.voz.definir('recusada')`
+  const frente = criarFakeFrente({ contrato, erro: erroDoContrato, colecao: () => estado.contexto.colecao }); // a frente do Cartão (#166)
 
   function novoEstado(extra = {}) {
     return {
@@ -136,10 +138,7 @@ function criarFakeAnki() {
 
   const listarEnvios = () => ({ jobs: envios.map(e => ({ jobId: e.jobId, lang: e.lang, status: e.state.status, createdAt: e.createdAt, updatedAt: e.state.updatedAt, state: e.state })) });
 
-  /**
-   * `POST /jobs/apagar-frases`: de todo Envio somem as linhas das Frases (ficam os `phraseId`); um Envio na fila ou andando vai a
-   * `failed` com `wiped`. Repetido, não muda nada.
-   */
+  /** `POST /jobs/apagar-frases`: de todo Envio somem as linhas das Frases (ficam os `phraseId`); um Envio na fila ou andando vai a `failed` com `wiped`. Repetido, não muda nada. */
   function apagarAsFrases() {
     for (const envio of envios) {
       envio.corpo = { ...envio.corpo, entries: envio.corpo.entries.map(({ line, ...entrada }) => entrada) };
@@ -324,7 +323,7 @@ function criarFakeAnki() {
    * OpenAI (qualquer chave serve; a resposta leva os 4 últimos da que o teste mandou); o que cita `colecao` só vale com ela aberta (`abrirColecao`).
    */
   function respostaDoContrato(metodo, caminho, corpo) {
-    const doPerfil = perfis.responder(metodo, caminho, corpo) || modelo.responder(metodo, caminho, corpo) || teto.responder(metodo, caminho, corpo) || previa.responder(metodo, caminho, corpo);
+    const doPerfil = [perfis, modelo, teto, previa, frente].reduce((achou, rotas) => achou || rotas.responder(metodo, caminho, corpo), null);
     if (doPerfil) return doPerfil;
     const contexto = contextoDeAgora();
     const candidatos = contrato.exemplos.filter(e =>
@@ -498,9 +497,8 @@ function criarFakeAnki() {
       const { status, json } = itemDeLogin(req, url);
       return responderJson(route, status, json);
     }
-    const doPerfil = perfis.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido)) || limite.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido))
-      || modelo.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido)) || teto.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido))
-      || previa.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido));
+    const dados = dadosDoCorpo(corpoDoPedido);
+    const doPerfil = [perfis, limite, modelo, teto, previa, frente].reduce((achou, rotas) => achou || rotas.responder(req.method(), url.pathname, dados), null);
     if (doPerfil) return responderJson(route, doPerfil.status, doPerfil.json);
     // O que lê o Anki da pessoa é POST (contrato/LEIA-ME.md): por GET a Conexão não tem a rota.
     const leituraDoAnki = ['/anki/vocabulary', '/anki/decks', '/anki/stats/decks'].includes(url.pathname);
@@ -592,6 +590,8 @@ function criarFakeAnki() {
     /** O teto do mês (#160): `definir({ limite, gasto })`, `passarOTempoAte(dia)`, `guardado()`. */
     teto,
     voz,
+    /** A frente do Cartão (#166, `frente.js`): `mexerNoTipoDeNota(lang)`, `guardadas()`. */
+    frente,
     /** @estado-guardado Os Envios que a Conexão guardou (um por `POST /jobs`), não o pedido que chegou. */
     envios,
     desligar() { estado.ligada = false; },
@@ -657,10 +657,7 @@ function criarFakeAnki() {
     falharVocabulario(falha = { status: 503 }) { estado.falhaDoVocabulario = falha; },
     voltarVocabulario() { estado.falhaDoVocabulario = null; },
 
-    /**
-     * Os números de um baralho do Anki, em termos de gente; um baralho pedido
-     * que não foi definido não existe no Anki (`missing`).
-     */
+    /** Os números de um baralho do Anki, em termos de gente; um baralho pedido que não foi definido não existe no Anki (`missing`). */
     definirBaralho(deckName, numeros) { estado.baralhos[deckName] = numeros; },
     /** Os baralhos que o Anki tem, como POST /anki/decks os lista (Ajustes de envio). */
     definirBaralhosDoAnki(nomes) { estado.baralhosDoAnki = nomes; },
@@ -677,18 +674,11 @@ function criarFakeAnki() {
     responder(metodo, caminho, gerar) { estado.rotas.set(`${metodo} ${caminho}`, gerar); },
     pararDeResponder(metodo, caminho) { estado.rotas.delete(`${metodo} ${caminho}`); },
 
-    /**
-     * Os Envios que a aba Custos lê (POST /analytics/jobs), em termos de gente;
-     * o fake os entrega no formato do contrato, com o total somado como lá
-     * (`totalUsd` inclui o `otherUsd`).
-     */
+    /** Os Envios que a aba Custos lê (POST /analytics/jobs), em termos de gente; o fake os entrega no formato do contrato, com o total somado como lá (`totalUsd` inclui o `otherUsd`). */
     definirCustos(lista) {
       estado.custos = lista.map(linhaDeCustos);
     },
-    /**
-     * A fila que a Conexão já tinha: a de `filas` do contrato pelo nome, com os registros de custo de cada Envio
-     * (o `contexto.fila` dos exemplos).
-     */
+    /** A fila que a Conexão já tinha: a de `filas` do contrato pelo nome, com os registros de custo de cada Envio (o `contexto.fila` dos exemplos). */
     definirFila(nome) {
       const fila = contrato.filas[nome];
       if (!fila) throw new Error(`O contrato não tem a fila "${nome}" em filas (complemento/contrato/exemplos.json).`);
@@ -709,10 +699,7 @@ function criarFakeAnki() {
     /** O relógio da Conexão, para o `updatedAt`. */
     usarRelogio(agora) { estado.agora = agora; },
 
-    /**
-     * O próximo `POST /jobs` desse idioma falha: `{ status: 500 }` responde com
-     * erro, `{ rede: true }` derruba a conexão. Vale até `aceitarEnvios(lang)`.
-     */
+    /** O próximo `POST /jobs` desse idioma falha: `{ status: 500 }` responde com erro, `{ rede: true }` derruba a conexão. Vale até `aceitarEnvios(lang)`. */
     recusarEnvios(lang, recusa = { status: 500 }) { estado.recusas.set(lang, recusa); },
     /** O próximo `POST /jobs` cria o Envio na Conexão e a resposta se perde: o painel não sabe que ele existe. */
     perderARespostaDoEnvio() { estado.perdaDoEnvio = true; },

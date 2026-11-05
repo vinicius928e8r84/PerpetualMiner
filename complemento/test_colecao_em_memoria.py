@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos  # noqa: E402
 from complemento.test_contrato_da_criacao import ContratoDaCriacao  # noqa: E402
+from complemento.test_modelos_em_memoria import ModelosEmMemoria  # noqa: E402
 from complemento.test_contrato_da_previa import ContratoDaPrevia  # noqa: E402
 from complemento.test_contrato_do_perfil_fixo import ContratoDoPerfilFixo  # noqa: E402
 from complemento.test_renderizador_de_mentira import PreviaEmMemoria  # noqa: E402
@@ -30,7 +31,7 @@ def guardar_na_midia(arquivos, nome, dados):
     return nome
 
 
-class ColecaoEmMemoria(PreviaEmMemoria):
+class ColecaoEmMemoria(PreviaEmMemoria, ModelosEmMemoria):
     """A coleção de um perfil aberto, descrita como nos exemplos do contrato:
 
         { "baralhos": [ { "nome": "Inglês", "notas": [
@@ -166,8 +167,7 @@ class ColecaoEmMemoria(PreviaEmMemoria):
         if definicao["nome"] in self._tipos:
             return False
         self._tipos[definicao["nome"]] = list(definicao["campos"])
-        modelo = definicao["modelos"][0]
-        self._cartoes_dos_tipos[definicao["nome"]] = {"frente": modelo["frente"], "verso": modelo["verso"], "css": definicao["css"]}
+        self._cartoes_dos_tipos[definicao["nome"]] = dict(definicao["modelos"][0], css=definicao["css"])
         return True
 
     def criar_baralhos_da_instalacao_nova(self, nomes):
