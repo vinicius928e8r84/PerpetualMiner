@@ -57,3 +57,19 @@
   font-size: var(--veio-tam-corpo);
   font-weight: var(--veio-peso-titulo);
 }
+
+/* “Usar um tipo que já tenho” (#165, painel-anki-tipo-proprio.js): o tipo de nota, uma linha por parte do Cartão e a prévia no tipo. */
+.ajustes-proprio {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  max-width: 520px;
+}
+
+.ajustes-proprio__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}

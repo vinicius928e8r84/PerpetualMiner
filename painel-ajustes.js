@@ -5,7 +5,7 @@
   const { IMAGENS, SOTAQUES } = AjustesDeEnvio;
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
   const CODIGO_DO_IDIOMA = { en: 'BRG-28.codigoEn', ru: 'BRG-28.codigoRu' };
-  const CAMPOS = ['deckName', 'imageSource', 'nivel', 'frente', 'ttsWordTld', 'ttsPhraseTld', 'ttsReserva'];
+  const CAMPOS = ['deckName', 'imageSource', 'nivel', 'frente', 'tipoProprio', 'ttsWordTld', 'ttsPhraseTld', 'ttsReserva'];
   const VOZ_DA_RESERVA = { openai: 'BRG-07.reservaOpenai', nenhuma: 'BRG-07.reservaNenhuma' };
   const porId = id => document.getElementById(id);
 
