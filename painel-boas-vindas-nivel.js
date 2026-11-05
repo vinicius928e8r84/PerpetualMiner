@@ -3,6 +3,7 @@
 // O passo do nível do cartão da Boas-vindas (#164, ONB-20): para cada idioma ligado na mineração automática, o Estilo do cartão de Ajustes de envio
 // (o controle do nível e a prévia do Cartão, `painel-anki-estilo.js`), que aqui salva ao escolher. Sem idioma ligado, o passo diz onde ligar.
 // “Mais estilos em Ajustes de envio” fecha o passo: o onboarding só pergunta o nível. `painel-boas-vindas.js` o põe na lista de passos.
+// Quem não sabe o nível abre o quiz do idioma (#170, `painel-boas-vindas-quiz.js`) no lugar do controle: o resultado traz o nível sugerido e “Usar este estilo” o salva aqui.
 
 (function (raiz) {
   const { textoDaVoz, Veio, IDIOMAS, AjustesDeEnvio } = raiz;
@@ -53,21 +54,53 @@
     const passo = { gravando: Promise.resolve(), falha, blocos: new Map() };
     const no = elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-20.corpo')), semIdioma, campos, falha, raiz.EstiloDoCartao.maisEstilosEmAjustes());
 
-    /** Um campo por idioma ligado; o de um idioma que continua ligado não é refeito (a prévia não pisca), salvo se o nível salvo mudou por fora. */
+    /** O controle do nível e o botão do quiz, no corpo do bloco; o campo é refeito a cada volta, para mostrar o nível salvo. */
+    function mostrarOCampo(chave, bloco) {
+      const campo = raiz.EstiloDoCartao.campo(chave, bloco.rascunho, { prefixo: 'bv', aoEscolher: nivel => guardarONivel(passo, chave, nivel) });
+      const descobrir = elemento('button', 'veio-botao veio-botao--secundario bv-nivel__descobrir', textoDaVoz('ONB-21.descobrir'));
+      descobrir.type = 'button';
+      descobrir.addEventListener('click', () => abrirOQuiz(chave, bloco));
+      bloco.corpo.replaceChildren(campo, descobrir);
+    }
+
+    function abrirOQuiz(chave, bloco) {
+      bloco.quiz = raiz.QuizNaTela.montar({
+        lang: chave,
+        aoSair: () => fecharOQuiz(chave, bloco),
+        aoUsar: async nivel => {
+          await guardarONivel(passo, chave, nivel);
+          if (!passo.falha.hidden) return false;
+          bloco.rascunho.nivel = nivel;
+          fecharOQuiz(chave, bloco);
+          return true;
+        },
+      });
+      bloco.corpo.replaceChildren(bloco.quiz.no);
+      bloco.quiz.iniciar();
+    }
+
+    function fecharOQuiz(chave, bloco) {
+      bloco.quiz?.parar();
+      bloco.quiz = null;
+      mostrarOCampo(chave, bloco);
+    }
+
+    /** Um campo por idioma ligado; o de um idioma que continua ligado não é refeito (a prévia não pisca nem o quiz fecha), salvo se o nível salvo mudou por fora e não há quiz aberto. */
     function desenhar(estado) {
       const ligados = IDIOMAS_DO_PASSO.filter(({ chave }) => estado?.automatica[chave]);
       semIdioma.hidden = !estado || ligados.length > 0;
       campos.replaceChildren(...ligados.map(({ chave, idioma }) => {
         const salvo = AjustesDeEnvio.atual()[chave];
         let bloco = passo.blocos.get(chave);
-        if (!bloco || bloco.rascunho.nivel !== salvo.nivel) {
-          const rascunho = { nivel: salvo.nivel };
-          const campo = raiz.EstiloDoCartao.campo(chave, rascunho, { prefixo: 'bv', aoEscolher: nivel => guardarONivel(passo, chave, nivel) });
-          const grupo = elemento('div', 'bv-nivel', elemento('h3', 'bv-nivel__idioma', idioma), campo);
+        if (!bloco || (!bloco.quiz && bloco.rascunho.nivel !== salvo.nivel)) {
+          bloco?.quiz?.parar();
+          const corpo = elemento('div', 'bv-nivel__corpo');
+          const grupo = elemento('div', 'bv-nivel', elemento('h3', 'bv-nivel__idioma', idioma), corpo);
           grupo.setAttribute('role', 'group');
           grupo.setAttribute('aria-label', idioma);
-          bloco = { grupo, rascunho };
+          bloco = { grupo, corpo, rascunho: { nivel: salvo.nivel }, quiz: null };
           passo.blocos.set(chave, bloco);
+          mostrarOCampo(chave, bloco);
         }
         return bloco.grupo;
       }));
