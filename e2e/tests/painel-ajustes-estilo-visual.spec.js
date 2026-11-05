@@ -3,7 +3,8 @@
 // Referência visual do Estilo do cartão (#162; o russo com os três níveis, #163), nos Ajustes de envio: o nível de cada idioma (Iniciante, Intermediário, Avançado), com o
 // texto do nível. Não há protótipo desta seção: ela reusa o controle segmentado e as notas do campo Imagens (o
 // protótipo aprovado dos Ajustes de envio, `docs/design/painel/anki/prototipo-ajustes-envio.html`), e o dono compara estas telas com ele.
-// Todas são PROPOSTAS (`test.fixme`, sem PNG na árvore) até a aprovação dele (CODING_STANDARDS regra 10). Aprovando: tirar o `fixme` e
+// Desde o #164 cada card traz a prévia do Cartão do nível sob o controle (BRG-43); a mesma prévia está no passo do nível da Boas-vindas
+// (`boas-vindas-nivel-visual.spec.js`). Todas são PROPOSTAS (`test.fixme`, sem PNG na árvore) até a aprovação dele (CODING_STANDARDS regra 10). Aprovando: tirar o `fixme` e
 // `cd e2e && npx playwright test painel-ajustes-estilo-visual --update-snapshots`, e a entrada no livro `e2e/aprovados-visuais.json`.
 
 const { test, expect } = require('../fixtures');
@@ -20,6 +21,7 @@ async function abrirOEstilo(page, extensao, { largura = 1280, gravado = {}, idio
   await page.goto(extensao.url('painel.html#anki/ajustes'));
   if (idioma !== 'Inglês') await page.locator('#ajustes-cards').getByRole('button', { name: idioma, exact: true }).click();
   await expect(estilo(page)).toBeVisible();
+  await expect(page.locator('.shell-conteudo .previa:visible iframe').first().contentFrame().locator('.card')).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -37,6 +39,16 @@ test('o inglês no Avançado, escolhido e ainda não salvo', async ({ page, exte
   await expect(page.getByRole('status')).toHaveText('Alterações não salvas');
 
   await expect(ilha(page)).toHaveScreenshot('ajustes-estilo-avancado.png');
+});
+
+test('o inglês no Intermediário: a prévia muda com o nível, antes de salvar', async ({ page, extensao }) => {
+  test.fixme(true, AGUARDA_O_DONO);
+  await abrirOEstilo(page, extensao);
+  await estilo(page).locator('label', { hasText: 'Intermediário' }).click();
+  await expect(page.locator('.shell-conteudo .previa:visible')).toContainText('Exemplo do Intermediário em inglês');
+  await expect(page.locator('.shell-conteudo .previa:visible iframe').first().contentFrame().getByText('Desistir de fazer algo')).toBeVisible();
+
+  await expect(ilha(page)).toHaveScreenshot('ajustes-estilo-intermediario.png');
 });
 
 test('o russo, com os três níveis (#163) e o Avançado escolhido e ainda não salvo', async ({ page, extensao }) => {

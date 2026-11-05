@@ -1,12 +1,13 @@
 # The Estilo do cartão: the level of each language
 
-In **Ajustes de envio** (`painel.html#anki/ajustes`), every language card has **Estilo do cartão** after the Imagens (#162, BRG-42): a segmented control **Iniciante · Intermediário · Avançado**, and under the chosen level its text (the ones of the level quiz of #134, with the language: “Entendo o inglês explicado em inglês”). It only writes on **Salvar ajustes**, and the next Envio asks the Conexão for the saved level. What the Card looks like in the Anki is `features/anki-cartao.md`.
+In **Ajustes de envio** (`painel.html#anki/ajustes`), every language card has **Estilo do cartão** after the Imagens (#162, BRG-42): a segmented control **Iniciante · Intermediário · Avançado**, and under the chosen level its text (the ones of the level quiz of #134, with the language: “Entendo o inglês explicado em inglês”). Under the control is the **prévia do cartão** (#164, BRG-43): the example Cartão of the level on screen, drawn by the Anki, with **Frente · Verso**. It only writes on **Salvar ajustes**, and the next Envio asks the Conexão for the saved level. What the Card looks like in the Anki is `features/anki-cartao.md`.
 
 ## Sub-features
 
 - `estilo-default` a language with nothing saved is on Iniciante, with “Não entendo nada ou só algumas palavras” under the control.
 - `estilo-pick` choosing Intermediário or Avançado changes the text under the control and the status to “Alterações não salvas”; nothing is stored until Salvar ajustes, which stores `nivel` of that language only (`ankiBridgePresets`). The other language is not touched.
 - `estilo-russian` the Russian card has the same three levels as the English one (#163); a stored level that no language has reads as Iniciante. At Intermediário the Russian Card has the morphology colours on the front and the back without the Phrase; at Avançado it adds the words of the same root (`features/anki-cartao.md`).
+- `estilo-previa` under the control the example Cartão of the level on screen (“Exemplo do Intermediário em inglês, como o Anki mostra.”) in a frame with Frente · Verso; choosing another level changes it **before** saving (nothing is stored); the Russian card shows the Russian Cartão of the level (at Intermediário and Avançado the back has no Phrase). With the Conexão off it says “A prévia aparece com a Conexão com o Anki ligada.” and Tentar de novo shows it once the Conexão is back; an older Conexão says to update it.
 - `estilo-envio` the Envio's `POST /jobs` carries `nivel` (`intermediario`, `avancado`) only off the Iniciante, which is what the Conexão does without it; an Envio already created keeps the level it was born with. The Conexão refuses a level the language does not have (`400 invalid_level`). Both languages send `nivel` the same way.
 
 ## How to get to it (user POV)
@@ -15,10 +16,11 @@ In **Ajustes de envio** (`painel.html#anki/ajustes`), every language card has **
 
 ## Driving it with the Playwright e2e harness
 
-- `node scripts/testar.mjs e2e -- painel-ajustes-estilo --workers=2` (the fake Conexão is `e2e/fakes/anki.js`, the contract `complemento/contrato/exemplos-do-nivel.json`). Observable: the radios of the `radiogroup` “Estilo do cartão”, the stored `ankiBridgePresets` and `pm_envio`, and `fakes.anki.envios[n].corpo.nivel`.
-- The visual proposals are in `e2e/tests/painel-ajustes-estilo-visual.spec.js` (`test.fixme` until the owner approves).
+- `node scripts/testar.mjs e2e -- painel-ajustes-estilo --workers=2` (the fake Conexão is `e2e/fakes/anki.js` and `e2e/fakes/previa.js`, the contract `complemento/contrato/exemplos-do-nivel.json` and `exemplos-da-previa.json`). Observable: the radios of the `radiogroup` “Estilo do cartão”, the card text inside the preview `iframe` (`.previa iframe` → `frameLocator`), the stored `ankiBridgePresets` and `pm_envio`, `fakes.anki.envios[n].corpo.nivel` and the `POST /anki/card-preview` requests (`fakes.anki.requisicoes`). `fakes.anki.responder('POST', '/anki/card-preview', …)` drives the failures.
+- The visual proposals are in `e2e/tests/painel-ajustes-estilo-visual.spec.js` (`test.fixme` until the owner approves; they now include the preview).
 
 ## Gotchas
 
+- The preview is the **example** of the style (the text in `engine/estilos.json`), not a Frase of the person; it asks the Conexão for the Cartão through the note type the collection has, so an old type (made before #162) shows the back it really has. It creates the language's note type if the collection lacks it, as the Envio would. The real Anki's rendering is proved by `complemento/test_previa_com_o_anki_real.py` (needs `pip install anki`); the e2e fake answers from the contract.
 - The level is per language and per saved Ajustes; the Envio reads it when it is created, so changing it afterwards does not change an Envio that already left.
 - There is no proof here of the model's text: the real prompts are only checked by the contract tests (`engine/test_prompt_contracts.py`) and by a fake OpenAI; the Card from a real OpenAI at each level is the owner's rehearsal.

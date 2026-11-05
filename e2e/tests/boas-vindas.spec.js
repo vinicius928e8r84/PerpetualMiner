@@ -49,7 +49,7 @@ test('atualizar a extensão não abre aba nenhuma', async ({ context, extensao }
   expect(abas.map(a => a.url).filter(url => url.includes('painel.html'))).toEqual([]);
 });
 
-test('a abertura lista os 7 passos com “opcional” e leva ao passo 1 com Começar', async ({ page, extensao }) => {
+test('a abertura lista os 8 passos com “opcional” e leva ao passo 1 com Começar', async ({ page, extensao }) => {
   await abrirBoasVindas(page, extensao);
 
   await expect(sobretitulo(page)).toHaveText('Boas-vindas');
@@ -62,15 +62,16 @@ test('a abertura lista os 7 passos com “opcional” e leva ao passo 1 com Come
     'Ligar a Conexão com o Anki',
     /^Configurar a IA dos cartões\s*opcional$/,
     /^Ligar a mineração automática\s*opcional$/,
+    /^Escolher o nível do cartão\s*opcional$/,
     /^Adicionar a chave do Gemini\s*opcional$/,
   ]);
-  // A lista ao lado: os 9 itens, o atual marcado.
-  await expect(lista(page).getByRole('button')).toHaveCount(9);
+  // A lista ao lado: os 10 itens, o atual marcado.
+  await expect(lista(page).getByRole('button')).toHaveCount(10);
   await expect(itemDaLista(page, 'Boas-vindas')).toHaveAttribute('aria-current', 'step');
 
   await botaoDoCard(page, 'Começar').click();
   await expect(page).toHaveURL(/#boas-vindas\/minerar$/);
-  await expect(sobretitulo(page)).toHaveText('Passo 1 de 7');
+  await expect(sobretitulo(page)).toHaveText('Passo 1 de 8');
   await expect(tituloDoCard(page)).toHaveText('Minerar a primeira frase');
   await expect(tituloDoCard(page)).toBeFocused();
   await expect(itemDaLista(page, 'Minerar a primeira frase')).toHaveAttribute('aria-current', 'step');
@@ -91,7 +92,7 @@ test('qualquer item da lista abre o seu passo; o opcional diz “opcional” no 
   await itemDaLista(page, 'Ligar a mineração automática').click();
 
   await expect(page).toHaveURL(/#boas-vindas\/automatica$/);
-  await expect(sobretitulo(page)).toHaveText('Passo 6 de 7 · opcional');
+  await expect(sobretitulo(page)).toHaveText('Passo 6 de 8 · opcional');
   await expect(tituloDoCard(page)).toHaveText('Ligar a mineração automática');
   await expect(botaoDoCard(page, 'Agora não')).toBeVisible();
 });
@@ -124,8 +125,7 @@ test('passo 1: com uma frase já no histórico, ele já aparece feito', async ({
 
 test('passo 1: com o disco recusando, POP-06 aparece e o texto fica no campo', async ({ page, extensao }) => {
   await abrirBoasVindas(page, extensao, 'minerar');
-  // O disco recusa a gravação: a fronteira de armazenamento do service worker,
-  // como no teste do popup.
+  // O disco recusa a gravação (a fronteira de armazenamento do service worker).
   await extensao.serviceWorker.evaluate(() => {
     globalThis.gravarDeVerdade = chrome.storage.local.set.bind(chrome.storage.local);
     chrome.storage.local.set = () => { throw new Error('QUOTA_BYTES quota exceeded'); };
@@ -267,7 +267,7 @@ test('passo 3: o Entrar com Google de Configurações; entrar marca o passo e o 
 
   await expect(card(page)).toContainText('Pessoa de Teste');
   await expect(botaoDoCard(page, 'Sair da conta')).toBeVisible();
-  // O botão que tinha o foco saiu com o card antigo: o foco fica no card, não cai no fim da página.
+  // O botão que tinha o foco saiu com o card antigo: o foco fica no card.
   await expect(botaoDoCard(page, 'Sair da conta')).toBeFocused();
   await expect(itemDaLista(page, 'Entrar com Google')).toHaveAccessibleName(/feito$/);
   // Feito, o “Agora não” sai do rodapé.
@@ -332,7 +332,7 @@ test('passo 4: reiniciar o Anki; ligar e Tentar de novo diz “Achei o Anki” e
   await expect(status).toHaveText(/^Achei o Anki · Usuário 1 · versão \d/);
   await expect(itemDaLista(page, 'Ligar a Conexão com o Anki')).toHaveAccessibleName(/feito$/);
   await expect(passosDaConexao(page).getByRole('button', { name: /feito$/ })).toHaveCount(3);
-  // Ligada, o Tentar de novo sai e o foco vai para o título do passo: não há mais o que fazer.
+  // Ligada, o Tentar de novo sai e o foco vai para o título do passo.
   await expect(botaoDoCard(page, 'Tentar de novo')).toHaveCount(0);
   await expect(page.locator('#bv-titulo')).toBeFocused();
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
@@ -385,7 +385,7 @@ test('quem já tinha a área Conexão com o Anki aberta sem conexão vê o mesmo
   await page.goto(extensao.url('painel.html#anki/custos'));
   const naArea = page.getByRole('region', { name: 'Ainda não houve conexão neste computador' });
   await expect(naArea).toBeVisible();
-  // O passo aberto é o mesmo nos dois lugares (o 1º, Ter o Anki); o arquivo, no 2º.
+  // O passo aberto é o mesmo nos dois lugares (o 1º, Ter o Anki).
   await naArea.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
   const daArea = {
     lista: await naArea.getByRole('navigation', { name: 'Como ligar' }).getByRole('button').allTextContents(),
@@ -408,7 +408,7 @@ test('passo 5: o card IA dos cartões de Configurações; conferir a chave a gua
   fakes.anki.ligar();
   await abrirBoasVindas(page, extensao, 'ia');
 
-  await expect(sobretitulo(page)).toHaveText('Passo 5 de 7 · opcional');
+  await expect(sobretitulo(page)).toHaveText('Passo 5 de 8 · opcional');
   await expect(tituloDoCard(page)).toHaveText('Configurar a IA dos cartões');
   await expect(card(page)).toContainText('É ela que escreve o texto dos cartões. Dá para configurar depois, em Configurações.');
   await expect(card(page).getByRole('region', { name: 'Chave da OpenAI' })).toBeVisible();
@@ -454,7 +454,7 @@ test('passo 6: os switches EN/RU e o limite por dia gravam o mesmo que o popup',
 
   const ingles = card(page).getByRole('switch', { name: 'Mineração automática em inglês' });
   await expect(ingles).not.toBeChecked();
-  // A pessoa clica no desenho do switch (ou no nome do idioma, que é o rótulo dele).
+  // A pessoa clica no desenho do switch (ou no nome do idioma, o rótulo dele).
   await card(page).getByText('Inglês', { exact: true }).click();
 
   await expect(ingles).toBeChecked();
@@ -550,7 +550,7 @@ test('Tudo pronto resume cada passo e Abrir painel leva a Frases', async ({ page
   await expect(sobretitulo(page)).toHaveText('Pronto');
   await expect(tituloDoCard(page)).toHaveText('Tudo pronto');
   const resumo = card(page).getByRole('listitem');
-  await expect(resumo).toHaveCount(7);
+  await expect(resumo).toHaveCount(8);
   await expect(resumo.nth(0)).toContainText('1 frase');
   await expect(resumo.nth(1)).toContainText('Alt+Q');
   await expect(resumo.nth(3)).toContainText('falta');

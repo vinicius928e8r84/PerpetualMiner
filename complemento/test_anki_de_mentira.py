@@ -4,13 +4,16 @@ chama (`pm.load`, `onOpenProfile`, `unloadProfile`, `showProfileManager`; `passo
 `.ankiaddon` pelo nome.
 """
 
+import os
 import queue
 import re
 import sqlite3
+import tempfile
 import threading
 import types
 
 from complemento.test_colecao_em_memoria import guardar_na_midia
+from complemento.test_renderizador_de_mentira import renderizar
 
 
 class AnkiDeMentira:
@@ -60,8 +63,8 @@ class ThreadPrincipalDeMentira:
 class NotaDeMentira:
     """A nota nova de `col.new_note`: os campos por nome (um nome que o tipo não tem é `KeyError`, como no Anki)."""
 
-    def __init__(self, modelo, nomes):
-        self.modelo, self._valores = modelo, {nome: "" for nome in nomes}
+    def __init__(self, modelo, nomes, tipo=None):
+        self.modelo, self._valores, self._tipo = modelo, {nome: "" for nome in nomes}, tipo or {}
         self.tags, self.guid = [], None
 
     def __setitem__(self, nome, valor):
@@ -71,6 +74,14 @@ class NotaDeMentira:
 
     def valores(self):
         return list(self._valores.values())
+
+    def ephemeral_card(self, ord=0):
+        """O Cartão que o Anki desenha sem gravar (`Note.ephemeral_card`): o modelo é o primeiro do tipo, ou o “Básico” do Anki."""
+        nomes = list(self._valores)
+        modelo = (self._tipo.get("tmpls") or [{"qfmt": "{{%s}}" % nomes[0], "afmt": "{{FrontSide}}\n\n<hr id=answer>\n\n{{%s}}" % nomes[1]}])[ord]
+        frente, verso = renderizar(modelo["qfmt"], modelo["afmt"], self._valores)
+        saida = types.SimpleNamespace(question_text=frente, answer_text=verso, css=self._tipo.get("css") or ".card {\n  font-family: arial;\n}\n")
+        return types.SimpleNamespace(render_output=lambda: saida)
 
 
 class ColecaoDoAnkiDeMentira:
@@ -112,10 +123,12 @@ class ColecaoDoAnkiDeMentira:
             new_field=lambda nome: {"name": nome}, add_field=self._conferido(self._juntar_campo), new_template=lambda nome: {"name": nome, "qfmt": "", "afmt": ""},
             add_template=self._conferido(lambda tipo, modelo: tipo["tmpls"].append(modelo)), add_dict=self._conferido(self._guardar_o_tipo))
         self.db = types.SimpleNamespace(all=self._conferido(lambda sql, *args: [list(linha) for linha in self._sqlite.execute(sql, args)]))
-        self.new_note = self._conferido(lambda modelo: NotaDeMentira(modelo["id"], modelo["nomes"]))
+        self.new_note = self._conferido(lambda modelo: NotaDeMentira(modelo["id"], modelo["nomes"], modelo))
         self.add_note = self._conferido(self._adicionar)
         self.arquivos_de_midia = {}
-        self.media = types.SimpleNamespace(write_data=self._conferido(lambda nome, dados: guardar_na_midia(self.arquivos_de_midia, nome, dados)))
+        self._pasta_da_midia = tempfile.TemporaryDirectory()  # a pasta de mídia da coleção (`media.dir()`), de arquivos de verdade
+        self.media = types.SimpleNamespace(
+            write_data=self._conferido(self._guardar_a_midia), dir=lambda: self._pasta_da_midia.name)
 
     def _conferido(self, funcao):
         def chamada(*argumentos):
@@ -124,6 +137,16 @@ class ColecaoDoAnkiDeMentira:
             return funcao(*argumentos)
 
         return chamada
+
+    def _guardar_a_midia(self, nome, dados):
+        guardado = guardar_na_midia(self.arquivos_de_midia, nome, dados)
+        with open(os.path.join(self._pasta_da_midia.name, guardado), "wb") as arquivo:
+            arquivo.write(dados)
+        return guardado
+
+    def fechar(self):
+        self._sqlite.close()
+        self._pasta_da_midia.cleanup()
 
     def _id_do_baralho(self, nome):
         existente = next((baralho for baralho in self._baralhos if baralho.name == nome), None)
@@ -136,7 +159,8 @@ class ColecaoDoAnkiDeMentira:
         nomes = self._nomes_dos_modelos.get(nome)
         if nomes is None:
             return None
-        return dict(self._modelo(self._modelos[nomes]), id=self._modelos[nomes], nomes=nomes)
+        criado = self.tipos_criados.get(nome, {})
+        return dict(self._modelo(self._modelos[nomes]), name=nome, id=self._modelos[nomes], nomes=nomes, tmpls=criado.get("tmpls", []), css=criado.get("css", ""))
 
     @staticmethod
     def _novo_tipo(nome):
@@ -172,7 +196,8 @@ class ColecaoDoAnkiDeMentira:
         nomes = next((nomes for nomes, id_ in self._modelos.items() if id_ == id_do_modelo), None)
         if nomes is None:
             return None
-        return {"flds": [{"name": nome, "ord": posicao} for posicao, nome in enumerate(nomes)]}
+        nome = next((nome for nome, campos in self._nomes_dos_modelos.items() if campos == nomes), "")
+        return {"name": nome, "flds": [{"name": campo, "ord": posicao} for posicao, campo in enumerate(nomes)]}
 
 
 class AnkiComColecaoDeMentira(AnkiDeMentira):
@@ -249,7 +274,7 @@ class AnkiComColecaoDeMentira(AnkiDeMentira):
 
     def _fechar_o_sqlite(self):
         if hasattr(self.col, "_sqlite"):
-            self.col._sqlite.close()
+            self.col.fechar()
 
     def abrir(self, nome):
         self._fechar_o_sqlite()
