@@ -1,0 +1,215 @@
+{
+  "exemplos": [
+    {
+      "nome": "saúde com uma versão nova da Conexão já instalada pelo AnkiWeb, que vale na próxima vez que o Anki abrir",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "atualizacao": "instalada"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": null
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "versao": "0.4.5",
+          "perfil": "Usuário 1",
+          "atualizacao": {
+            "estado": "instalada",
+            "versao": "9.9.9",
+            "atualizada": null
+          }
+        }
+      }
+    },
+    {
+      "nome": "saúde depois de uma atualização que falhou: a Conexão segue na versão de agora",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "atualizacao": "falhou"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": null
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "versao": "0.4.5",
+          "perfil": "Usuário 1",
+          "atualizacao": {
+            "estado": "falhou",
+            "versao": "0.4.5",
+            "atualizada": null
+          }
+        }
+      }
+    },
+    {
+      "nome": "saúde na primeira vez que a Conexão atualizada roda",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "atualizacao": "atualizada"
+      },
+      "pedido": {
+        "metodo": "GET",
+        "caminho": "/health",
+        "origem": null
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "versao": "0.4.5",
+          "perfil": "Usuário 1",
+          "atualizacao": {
+            "estado": "em_dia",
+            "versao": "0.4.5",
+            "atualizada": "0.4.5"
+          }
+        }
+      }
+    },
+    {
+      "nome": "atualizar agora com uma versão nova no AnkiWeb: instala e vale na próxima vez que o Anki abrir",
+      "daExtensao": true,
+      "contexto": {
+        "ankiweb": "com_versao_nova"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/atualizacao/agora",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "estado": "instalada",
+          "versao": "9.9.9",
+          "atualizada": null
+        }
+      }
+    },
+    {
+      "nome": "atualizar agora sem versão nova no AnkiWeb: a Conexão já está em dia",
+      "daExtensao": true,
+      "contexto": {
+        "ankiweb": "sem_versao_nova"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/atualizacao/agora",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "estado": "em_dia",
+          "versao": "0.4.5",
+          "atualizada": null
+        }
+      }
+    },
+    {
+      "nome": "atualizar agora quando o AnkiWeb não entrega a versão: a Conexão segue na versão de agora",
+      "daExtensao": true,
+      "contexto": {
+        "ankiweb": "recusa"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/atualizacao/agora",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "estado": "falhou",
+          "versao": "0.4.5",
+          "atualizada": null
+        }
+      }
+    },
+    {
+      "nome": "reiniciar o Anki para a versão nova valer: o Anki é fechado pelo caminho normal dele",
+      "daExtensao": true,
+      "contexto": {
+        "ankiweb": "com_versao_nova"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/atualizacao/reiniciar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "nome": "reiniciar o Anki quando o Anki não entregou o pedido",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/atualizacao/reiniciar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 503,
+        "json": {
+          "error": "restart_unavailable"
+        }
+      }
+    },
+    {
+      "nome": "atualizar agora com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/atualizacao/agora",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "reiniciar o Anki com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/atualizacao/reiniciar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    }
+  ]
+}

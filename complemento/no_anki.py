@@ -9,7 +9,8 @@ import time
 
 from . import cartoes_do_anki, inicio, janela, registro
 from .baralhos import ColecaoIndisponivel, PerfilIlegivel, TipoDeNotaAusente
-from .configuracao import OPENAI_BASE, OPENVERSE_BASE, PORTA, VERSAO, VOZ_BASE
+from .atualizacao_do_anki import AnkiWebDoAnki
+from .configuracao import ATUALIZACAO_AUTOMATICA, OPENAI_BASE, OPENVERSE_BASE, PORTA, VERSAO, VOZ_BASE
 
 # Quanto a Conexão espera a thread principal do Anki ler a coleção antes de dizer que o Anki não respondeu.
 LIMITE_DA_LEITURA_S = 10
@@ -343,7 +344,7 @@ def _qt_do_anki(logger):
 
 def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_abrir_o_perfil,
                 abridor=inicio.ABRIDOR_DESTE_COMPUTADOR, ao_sincronizar=_ao_sincronizar, openai_base=OPENAI_BASE,
-                openverse_base=OPENVERSE_BASE, voz_base=VOZ_BASE, qt=None):
+                openverse_base=OPENVERSE_BASE, voz_base=VOZ_BASE, qt=None, anki_web=None, atualizacao_automatica=ATUALIZACAO_AUTOMATICA):
     """O que o Anki faz ao importar o complemento: devolve a Conexão, ou None se ela não subiu.
 
     Depois de subir (ou não), põe o item “PerpetualMiner…” em Ferramentas e o botão Config (#175) pela fronteira `qt`
@@ -363,6 +364,8 @@ def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_
         openai_base=openai_base,
         openverse_base=openverse_base,
         voz_base=voz_base,
+        anki_web=anki_web or AnkiWebDoAnki(mw, pasta_do_complemento),
+        atualizacao_automatica=atualizacao_automatica,
     )
     _por_no_menu(mw, conexao, os.path.basename(os.path.abspath(pasta_do_complemento)), qt)
     return conexao

@@ -23,6 +23,23 @@
 3. `python3 -m unittest complemento.test_pacote` confere que o `package` do arquivo, o do manifesto e o código do painel são o mesmo número e que o `mod` é de uma hora real;
    o e2e `painel-anki-primeira-conexao` confere o código no Detalhes “O arquivo não abriu?”.
 
+## A atualização em silêncio (#177) e o risco 6
+
+A Conexão sabe se atualizar sozinha pelo AnkiWeb (`complemento/atualizacao.py`): consulta pelo próprio id ao abrir o Anki e a cada 6 h, instala sem perguntar e se marca
+com a atualização automática do Anki desligada (`update_enabled`). **Está desligada por padrão** (`ATUALIZACAO_AUTOMATICA = False` em `complemento/configuracao.py`).
+
+- **Os termos do AnkiWeb não foram conferidos.** A página de termos do AnkiWeb (`https://ankiweb.net/account/terms`) só é montada por JavaScript e o agente que fez o #177
+  não conseguiu lê-la; a conclusão sobre um complemento que se atualiza sozinho **não está registrada, nem a favor nem contra**. O dono lê a página, decide, e só então
+  troca a chave por `True` (e sobe a versão, porque é um arquivo do pacote). Enquanto ela está desligada nada é consultado nem marcado sozinho; o botão Atualizar agora
+  da extensão, que é um clique da pessoa, continua valendo.
+- **As funções internas do Anki** foram lidas no código do Anki 26.09 (`aqt/addons.py`: `fetch_update_info`, `AddonManager.get_updated_addons`, `download_and_install_addon`,
+  `AddonManager.addon_meta` e `write_addon_meta`), sem rodar um Anki de verdade. `AnkiWebDoAnki.pronto()` confere que elas existem antes de usá-las; se um Anki mudar um nome,
+  a Conexão não consulta, não instala e desfaz a marca, e o diálogo normal do Anki volta (nunca pior que isso).
+- **O ensaio do dono** (com a Conexão instalada pelo AnkiWeb): ligar a chave, subir uma versão nova no AnkiWeb, abrir o Anki e conferir que nenhum diálogo de atualização aparece,
+  que a versão nova entra e vale na abertura seguinte, e que o botão Reiniciar o Anki do Painel fecha e abre o Anki; com um Anki que mudou as funções internas, que o diálogo normal volta.
+- **Só funciona com o arquivo do AnkiWeb:** o id é o nome da pasta da Conexão no Anki (`addons21/<id>`), então uma Conexão instalada por arquivo com o `package` provisório
+  (`perpetualminer`) não tem de onde atualizar.
+
 ## Riscos que seguem abertos
 
 - **Risco 8:** o piso do Anki 2.1.50 não foi testado no Mac do dono.

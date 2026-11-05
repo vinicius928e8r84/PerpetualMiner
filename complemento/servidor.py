@@ -27,8 +27,10 @@ from .configuracao import ENDERECO, OPENAI_BASE, OPENVERSE_BASE, VOZ_BASE
 from .item_de_login import AnkiNaoEncontrado
 from .modelo_dos_cartoes import ModeloDosCartoes, lista_nossa
 from .teto_do_mes import TetoDoMes
-from .motor import estilos
 from .perfil import PerfilFixo
+from .atualizacao import AnkiWebAusente, Atualizacao
+from .rotas_da_atualizacao import ROTAS_DA_ATUALIZACAO
+from .rotas_dos_baralhos import ROTAS_DOS_BARALHOS
 from .rotas_da_frente import ROTAS_DA_FRENTE
 from .previa_do_cartao import ROTAS_DA_PREVIA
 from .rotas_da_voz import ROTAS_DA_VOZ
@@ -48,38 +50,11 @@ LIMITES_POR_ROTA = {("POST", "/jobs"): LIMITE_DO_ENVIO}
 
 
 def _saude(conexao, corpo):
-    return 200, {"ok": True, "versao": conexao.versao, "perfil": conexao.perfil_aberto()}
-
-
-def _lendo_a_colecao(erro_do_contrato, leitura):
-    """Roda a leitura da coleção; sem coleção aberta (ou com o Anki sem responder) é 503 com o `erro_do_contrato`."""
-    try:
-        return 200, leitura()
-    except baralhos.ColecaoIndisponivel as motivo:
-        return 503, {"error": erro_do_contrato, "detail": str(motivo)}
-
-
-def _baralhos_do_anki(conexao, corpo):
-    return _lendo_a_colecao("anki_decks_unavailable", lambda: {"decks": baralhos.nomes_dos_baralhos(conexao.colecao)})
-
-
-def _numeros_dos_baralhos(conexao, corpo):
-    pedidos = corpo.get("decks")
-    if not isinstance(pedidos, list) or not pedidos or not all(isinstance(pedido, dict) for pedido in pedidos):
-        return 400, {"error": "decks_required"}
-    return _lendo_a_colecao("anki_stats_unavailable", lambda: baralhos.numeros_dos_baralhos(conexao.colecao, pedidos))
-
-
-def _vocabulario(conexao, corpo):
-    nome = str(corpo.get("deck") or "").strip()
-    idioma = str(corpo.get("lang") or "en").strip().lower()
-    if not nome:
-        return 400, {"error": "deck_required"}
-    if idioma not in estilos.idiomas():
-        return 400, {"error": "invalid_lang"}
-    return _lendo_a_colecao(
-        "anki_vocabulary_unavailable", lambda: baralhos.vocabulario(conexao.colecao, nome, idioma, corpo)
-    )
+    saude = {"ok": True, "versao": conexao.versao, "perfil": conexao.perfil_aberto()}
+    atualizacao = conexao.atualizacao.na_saude()
+    if atualizacao is not None:
+        saude["atualizacao"] = atualizacao
+    return 200, saude
 
 
 def _estado_do_item_de_login(conexao, corpo):
@@ -113,9 +88,7 @@ def _abrir_com_o_computador(conexao, corpo):
 ROTAS = {
     ("GET", "/health"): _saude,
     # O que lê o Anki da pessoa é POST: o GET de uma página da extensão vai sem `Origin` (contrato/LEIA-ME.md).
-    ("POST", "/anki/decks"): _baralhos_do_anki,
-    ("POST", "/anki/stats/decks"): _numeros_dos_baralhos,
-    ("POST", "/anki/vocabulary"): _vocabulario,
+    **ROTAS_DOS_BARALHOS,
     # O perfil fixo (#149): a lista com o marcado, escolher outro e abrir o marcado.
     ("POST", "/anki/profiles"): listar_os_perfis,
     ("POST", "/anki/profile"): escolher_o_perfil,
@@ -129,6 +102,7 @@ ROTAS = {
     **ROTAS_DO_CHATGPT,
     **ROTAS_DO_MODELO,
     **ROTAS_DO_TETO,
+    **ROTAS_DA_ATUALIZACAO,
     **ROTAS_DA_VOZ,
     **ROTAS_DA_FRENTE,
     **ROTAS_DA_PREVIA,
@@ -328,6 +302,7 @@ class Conexao:
         espera_do_contato=ESPERA_DO_CONTATO,
         modelos_da_ia=None,
         hoje=date.today,
+        atualizacao=None,
     ):
         self.porta = porta
         self.origens_aceitas = tuple(origens_aceitas)
@@ -349,6 +324,9 @@ class Conexao:
         self.firestore_base = firestore_base
         # O item de login de “Abrir o Anki com o computador”; None onde o sistema não tem (nem Mac nem Windows).
         self.item_de_login = item_de_login
+        # A atualização pelo AnkiWeb (#177, `atualizacao.Atualizacao`); sem o Anki (os testes) ela não tem de onde atualizar nem o que fechar.
+        self.atualizacao = atualizacao or Atualizacao(
+            arquivo=os.path.join(dados.raiz, "atualizacao.json"), anki_web=AnkiWebAusente(), versao=versao, logger=logger)
         # De quanto em quanto tempo o servidor olha se mandaram parar; `parar()` espera até esse tempo.
         self.intervalo_de_parada = intervalo_de_parada
         self._servidor = None
@@ -414,6 +392,7 @@ class Conexao:
 
     def parar(self):
         self._cancelar.set()
+        self.atualizacao.parar()
         if self._thread_da_passagem is not None:
             self._thread_da_passagem.join(timeout=5)
         if self._trabalhador is not None:

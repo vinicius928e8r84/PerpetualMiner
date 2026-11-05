@@ -866,5 +866,17 @@
   "BRG-45.semConexao": "Os tipos de nota aparecem com a Conexão com o Anki ligada.",
   "BRG-45.antiga": "Atualize a Conexão com o Anki para usar um tipo que você já tem.",
   "BRG-45.falhou": "Não deu para ler os tipos de nota. Tente de novo.",
-  "BRG-45.tentarDeNovo": "Tentar de novo"
+  "BRG-45.tentarDeNovo": "Tentar de novo",
+  "BRG-50.velha": "A Conexão com o Anki está desatualizada · O Envio espera. Suas frases estão guardadas.",
+  "BRG-50.atualizarAgora": "Atualizar agora",
+  "BRG-50.atualizando": "Atualizando a Conexão com o Anki…",
+  "BRG-50.falhou": "A Conexão com o Anki segue na versão {versao}. Não deu para atualizar agora.",
+  "BRG-50.tentarDeNovo": "Tentar de novo",
+  "BRG-50.versaoAnterior": "anterior",
+  "BRG-50.atualizada": "Conexão atualizada · {versao}",
+  "BRG-50.atualizadaReiniciar": "Conexão atualizada · {versao}. Reinicie o Anki para ela valer agora.",
+  "BRG-50.reiniciar": "Reiniciar o Anki",
+  "BRG-50.reiniciando": "Reiniciando o Anki…",
+  "BRG-50.semAbridor": "Feche o Anki e abra de novo para a Conexão nova valer.",
+  "BRG-50.reiniciarFalhou": "Não deu para reiniciar o Anki. Feche e abra de novo."
 }

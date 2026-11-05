@@ -66,6 +66,7 @@ async function main() {
     fake.abrirColecao('inglês com subbaralho');
     if (pedido.caminho.startsWith('/anki/profile')) fake.definirPerfis(['Ana', 'Beto'], { marcado: 'Ana', aberto: 'Ana' });
     if (pedido.corpo?.provedor === 'openai') fake.guardarChaveNaConexao(CHAVE_DO_OUVIR); // a voz da OpenAI é pela chave (o contexto do exemplo)
+    if (pedido.caminho.startsWith('/atualizacao/')) fake.definirAtualizacao({ ankiweb: exemplos[0].contexto.ankiweb }); // como o AnkiWeb responde (o contexto do exemplo)
     const { status } = fake.respostaDoContrato(pedido.metodo, pedido.caminho, pedido.corpo);
     assert.strictEqual(status, exemplos[0].resposta.status, `o fake respondeu "${nome}" diferente do exemplo "${exemplos[0].nome}"`);
   }
