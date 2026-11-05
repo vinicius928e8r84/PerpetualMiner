@@ -550,9 +550,8 @@ test('o Detalhes “O arquivo não abriu?” diz que o código do AnkiWeb vem em
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
-test('com o código do AnkiWeb publicado, o Detalhes o mostra para colar em Obter complementos', async ({ page, extensao }) => {
-  // O código só existe depois do primeiro upload (#176): quem o publicar o define em PerpetualMiner.CODIGO_DO_ANKIWEB.
-  await page.addInitScript(() => { globalThis.PerpetualMiner = { CODIGO_DO_ANKIWEB: '123456789' }; });
+test('com o código do AnkiWeb publicado, o Detalhes o mostra', async ({ page, extensao }) => {
+  await page.route('**/lib/ankiweb.js', r => r.fulfill({ contentType: 'text/javascript', body:"(globalThis.PerpetualMiner ??= {}).AnkiWeb = {codigo:'123456789'};" }));
   await abrir(page, extensao);
   await expect(card(page)).toBeVisible();
   await itemDaLista(page, 'Pôr a Conexão no Anki').click();
