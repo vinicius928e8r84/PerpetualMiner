@@ -27,24 +27,24 @@ test('a instalação deixa a configuração começada, sem nenhum passo', async 
     .toEqual({ agoraNao: [], concluida: false });
 });
 
-test('2 de 7 passos feitos: o popup e Frases dizem “2 de 7”, e a conta segue o que muda', async ({ page, context, extensao, fakes }) => {
+test('2 de 8 passos feitos: o popup e Frases dizem “2 de 8”, e a conta segue o que muda', async ({ page, context, extensao, fakes }) => {
   fakes.anki.desligar();
   await extensao.gravarStorage({ pm_atalho: CTRL_SHIFT_L });
 
   await abrirFrases(page, extensao);
-  await expect(faixa(page)).toContainText('A configuração ficou pela metade: 1 de 7 passos.');
+  await expect(faixa(page)).toContainText('A configuração ficou pela metade: 1 de 8 passos.');
 
   const popup = await context.newPage();
   await abrirPopup(popup, extensao);
-  await expect(cartaoDoPopup(popup)).toContainText('Configuração pela metade · 1 de 7');
+  await expect(cartaoDoPopup(popup)).toContainText('Configuração pela metade · 1 de 8');
 
   await extensao.gravarStorage({ frases: UMA_FRASE });
 
-  await expect(faixa(page)).toContainText('A configuração ficou pela metade: 2 de 7 passos.');
+  await expect(faixa(page)).toContainText('A configuração ficou pela metade: 2 de 8 passos.');
   await expect(faixa(page).getByRole('button', { name: 'Ocultar' })).toBeVisible();
   await expect(faixa(page).getByRole('button', { name: 'Continuar configuração' })).toBeVisible();
 
-  await expect(cartaoDoPopup(popup)).toContainText('Configuração pela metade · 2 de 7');
+  await expect(cartaoDoPopup(popup)).toContainText('Configuração pela metade · 2 de 8');
   await expect(cartaoDoPopup(popup)).toContainText('Volte de onde parou');
   await expect(cartaoDoPopup(popup)).toContainText('Continuar configuração');
 });
@@ -54,12 +54,12 @@ test('“Agora não” conta como um passo resolvido, como na Boas-vindas', asyn
   await extensao.gravarStorage({ pm_boas_vindas: { agoraNao: ['conta', 'chave'], concluida: false } });
 
   await abrirFrases(page, extensao);
-  await expect(faixa(page)).toContainText('2 de 7 passos.');
+  await expect(faixa(page)).toContainText('2 de 8 passos.');
 });
 
 test('a Conexão com o Anki respondendo conta o passo dela', async ({ page, extensao }) => {
   await abrirFrases(page, extensao);
-  await expect(faixa(page)).toContainText('1 de 7 passos.');
+  await expect(faixa(page)).toContainText('1 de 8 passos.');
 });
 
 test('Ocultar em Frases esconde o lembrete de vez: some do popup e continua oculto ao recarregar', async ({ page, context, extensao }) => {
@@ -131,15 +131,15 @@ test('Continuar configuração no popup abre o painel no primeiro passo que falt
   await expect(tituloDaBoasVindas(painel)).toHaveText('Minerar a primeira frase');
 });
 
-test('com todos os passos resolvidos e sem Abrir painel, o lembrete diz 7 de 7 e Continuar leva a Tudo pronto', async ({ page, extensao }) => {
+test('com todos os passos resolvidos e sem Abrir painel, o lembrete diz 8 de 8 e Continuar leva a Tudo pronto', async ({ page, extensao }) => {
   await extensao.gravarStorage({
     frases: UMA_FRASE,
     pm_atalho: CTRL_SHIFT_L,
-    pm_boas_vindas: { agoraNao: ['conta', 'ia', 'automatica', 'chave'], concluida: false },
+    pm_boas_vindas: { agoraNao: ['conta', 'ia', 'automatica', 'nivel', 'chave'], concluida: false },
   });
 
   await abrirFrases(page, extensao);
-  await expect(faixa(page)).toContainText('7 de 7 passos.');
+  await expect(faixa(page)).toContainText('8 de 8 passos.');
   await faixa(page).getByRole('button', { name: 'Continuar configuração' }).click();
 
   await expect(page).toHaveURL(/#boas-vindas\/pronto$/);

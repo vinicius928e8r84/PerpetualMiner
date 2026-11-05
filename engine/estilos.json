@@ -57,19 +57,71 @@
           "prompt": "prompts/en_iniciante.txt",
           "explicacao": "pt",
           "verso": ["pronuncia", "literal", "natural", "cena", "palavra", "imagem"],
-          "cores": true
+          "cores": true,
+          "exemplo": {
+            "texto": [
+              "Source Context: Série - The Office - S01E01",
+              "",
+              "Front: She *gave up* smoking last year.",
+              "",
+              "Back: gave up – /ɡeɪv ʌp/",
+              "",
+              "Pronunciation: shi GUÊIV âp SMÔU-kin lést iâr",
+              "",
+              "Literal: Ela desistiu fumando último ano",
+              "",
+              "Natural: Ela parou de fumar ano passado.",
+              "",
+              "Gist: Alguém conta que largou o cigarro.",
+              "",
+              "Alignment:",
+              "1 | She | Ela",
+              "2 | gave up | desistiu",
+              "3 | smoking | fumando"
+            ]
+          }
         },
         "intermediario": {
           "prompt": "prompts/en_intermediario.txt",
           "explicacao": "pt",
           "verso": ["cena", "palavra", "definicao", "outro_exemplo", "imagem"],
-          "cores": false
+          "cores": false,
+          "exemplo": {
+            "texto": [
+              "Source Context: Série - The Office - S01E01",
+              "",
+              "Front: She *gave up* smoking last year.",
+              "",
+              "Back: gave up – /ɡeɪv ʌp/",
+              "",
+              "Definition: Desistir de fazer algo, parar de tentar.",
+              "",
+              "Other example: Michael never gives up on a bad joke.",
+              "",
+              "Gist: Alguém conta que largou o cigarro no ano passado."
+            ]
+          }
         },
         "avancado": {
           "prompt": "prompts/en_avancado.txt",
           "explicacao": "en",
           "verso": ["cena", "palavra", "definicao", "outro_exemplo", "imagem"],
-          "cores": false
+          "cores": false,
+          "exemplo": {
+            "texto": [
+              "Source Context: Série - The Office - S01E01",
+              "",
+              "Front: She *gave up* smoking last year.",
+              "",
+              "Back: gave up – /ɡeɪv ʌp/",
+              "",
+              "Definition: To stop doing or trying something, usually a habit, because it has become pointless or too hard.",
+              "",
+              "Other example: Pam never gave up on her dream of becoming an artist.",
+              "",
+              "Gist: A coworker explains how she quit smoking, and why the habit had to go."
+            ]
+          }
         }
       }
     },
@@ -91,7 +143,28 @@
           "prompt": "prompts/ru_iniciante.txt",
           "explicacao": "pt",
           "verso": ["pronuncia", "literal", "natural", "cena", "palavra", "imagem"],
-          "cores": true
+          "cores": true,
+          "exemplo": {
+            "palavra": "мальчик",
+            "texto": [
+              "Front",
+              "Я не мальчик!",
+              "",
+              "Back",
+              "Pronunciation: ia ni MAL-tchik",
+              "",
+              "Literal: Eu não menino",
+              "",
+              "Natural: Eu não sou um menino!",
+              "",
+              "Gist: Alguém corrige uma suposição errada sobre si.",
+              "",
+              "Alignment:",
+              "1 | Я | Eu",
+              "2 | не | não",
+              "3 | мальчик | menino"
+            ]
+          }
         },
         "intermediario": {
           "prompt": "prompts/ru_intermediario.txt",
@@ -100,7 +173,39 @@
           "cores": false,
           "morfologia": true,
           "repete_a_frase": false,
-          "guarda": ["morfologia", "raiz"]
+          "guarda": ["morfologia", "raiz"],
+          "exemplo": {
+            "texto": [
+              "Front",
+              "Она приходила вчера, но меня не было дома.",
+              "",
+              "Back",
+              "Word: приходила",
+              "",
+              "Stress: приходи́ла",
+              "",
+              "Pronunciation: pri-ha-DI-la",
+              "",
+              "Definition: To come or to arrive on foot; here it is the habitual or repeated past, \"she used to come\".",
+              "",
+              "Other example: Мама приходила домой поздно.",
+              "",
+              "Morphology:",
+              "приходила | prefix:при | root:ход | suffix:и | suffix:л | ending:а",
+              "вчера | root:вчер | ending:а",
+              "дома | root:дом | ending:а",
+              "",
+              "Colors:",
+              "prefix | при- | arrival, movement towards a place",
+              "suffix | -и-л- | verb stem and past tense; imperfective aspect",
+              "root | ход | the idea of walking, going",
+              "ending | -а | feminine singular: she (3rd person, past tense)",
+              "",
+              "Root: ход",
+              "",
+              "Same root: ходить (to walk), вход (entrance), выход (exit)"
+            ]
+          }
         },
         "avancado": {
           "prompt": "prompts/ru_avancado.txt",
@@ -109,7 +214,39 @@
           "cores": false,
           "morfologia": true,
           "repete_a_frase": false,
-          "guarda": ["morfologia", "raiz"]
+          "guarda": ["morfologia", "raiz"],
+          "exemplo": {
+            "texto": [
+              "Front",
+              "Она приходила вчера, но меня не было дома.",
+              "",
+              "Back",
+              "Word: приходила",
+              "",
+              "Stress: приходи́ла",
+              "",
+              "Pronunciation: pri-ha-DI-la",
+              "",
+              "Definition: To come or to arrive on foot; here it is the habitual or repeated past, \"she used to come\".",
+              "",
+              "Other example: Мама приходила домой поздно.",
+              "",
+              "Morphology:",
+              "приходила | prefix:при | root:ход | suffix:и | suffix:л | ending:а",
+              "вчера | root:вчер | ending:а",
+              "дома | root:дом | ending:а",
+              "",
+              "Colors:",
+              "prefix | при- | arrival, movement towards a place",
+              "suffix | -и-л- | verb stem and past tense; imperfective aspect",
+              "root | ход | the idea of walking, going",
+              "ending | -а | feminine singular: she (3rd person, past tense)",
+              "",
+              "Root: ход",
+              "",
+              "Same root: ходить (to walk), вход (entrance), выход (exit)"
+            ]
+          }
         }
       }
     }

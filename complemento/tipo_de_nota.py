@@ -24,8 +24,6 @@ CSS = """.card { font-family: arial, sans-serif; font-size: 22px; text-align: ce
 .palavra { margin: 14px 0; }
 .definicao { margin: 10px 0; }
 .exemplo { color: #6b7280; font-style: italic; margin: 10px 0; }
-.dica { color: #6b7280; font-size: 18px; margin: 10px 0; }
-.lacuna { font-weight: bold; color: #6b7280; }
 .silaba { font-size: 24px; margin: 4px 0 10px; }
 .cores { text-align: left; font-size: 18px; margin: 14px auto; max-width: 520px; line-height: 1.5; }
 .raiz { color: #6b7280; margin: 10px 0; }
@@ -66,7 +64,7 @@ def _frente(frente, nomes):
     if frente == "ouvir_primeiro":
         return '<div class="ouvir">{{%s}}</div>' % audio, '{{FrontSide}}\n<div class="frase">{{%s}}</div>' % frase
     if frente == "lacuna":
-        return ('<div class="frase">{{#%s}}{{%s}}{{/%s}}{{^%s}}{{%s}}{{/%s}}</div>\n{{#%s}}<div class="dica">{{%s}}</div>{{/%s}}' % (
+        return ('<div class="frase">{{#%s}}{{%s}}{{/%s}}{{^%s}}{{%s}}{{/%s}}</div>\n{{#%s}}<div class="dica cena">{{%s}}</div>{{/%s}}' % (
             lacuna, lacuna, lacuna, lacuna, frase, lacuna, dica, dica, dica), '<div class="frase">{{%s}}</div>\n{{%s}}' % (frase, audio))
     return '<div class="frase">{{%s}}</div>\n{{%s}}' % (frase, audio), "{{FrontSide}}"
 

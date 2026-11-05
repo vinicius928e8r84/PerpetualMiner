@@ -264,11 +264,11 @@ test('a nuvem falhou (ADD-06): o aviso persistente no topo de Frases', async ({ 
 
 // O lembrete “Configuração pela metade” (ONB-15, #44): a faixa ouro no topo de
 // Frases, com o anel, Ocultar e Continuar configuração; na janela estreita ela
-// quebra em linhas. As frases e a Conexão respondendo são 2 dos 6 passos.
+// quebra em linhas. As frases e a Conexão respondendo são 2 dos 8 passos.
 test.describe('configuração pela metade (ONB-15)', () => {
   test.use({ lembreteDaConfiguracao: true });
 
-  const faixa = page => page.getByRole('complementary', { name: /A configuração ficou pela metade: 2 de 7 passos/ });
+  const faixa = page => page.getByRole('complementary', { name: /A configuração ficou pela metade: 2 de 8 passos/ });
 
   test('a faixa no topo de Frases', async ({ page, extensao }) => {
     await extensao.gravarStorage({ frases: FRASES });

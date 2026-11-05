@@ -25,7 +25,7 @@ _FONTE_RE = re.compile(r"^[^\S\n]*Source\s+Context:\s*(.+)$", re.IGNORECASE | re
 _NEGRITO_RE = re.compile(r"<b>.*?</b>", re.DOTALL)
 _TAG_RE = re.compile(r"<[^>]+>")
 _MARCA = "\x00"
-_LACUNA = '<span class="lacuna">[\u2026]</span>'
+_LACUNA = '<b class="lacuna">[\u2026]</b>'
 
 # The four pieces of a Russian word, in the order a word is written, and the colour of each: the same at every level.
 PEDACOS = ("prefix", "root", "suffix", "ending")

@@ -58,7 +58,7 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   The Conferência line (“Confere sozinho a cada 15 s · última vez há N s”, “Conferindo agora…” while a check is out) follows the
   shared checks; see the doc comments in `painel-anki-primeira-conexao.js` for its subscription and timer lifecycle. See the
   [Anki area states](../../../docs/design/painel/anki/README.md#estados) for the **Pronto** moment, its status during a new check and focus when the controls or card leave.
-  Tests: `e2e/tests/painel-anki-primeira-conexao.spec.js` (behaviour, download, checklist), `ter-o-anki.spec.js` (the first step, the warning animation), `abrir-o-anki-sozinho.spec.js` (the opener step, against the fake opener), `boas-vindas.spec.js` (the same component in step 4),
+  Tests: `e2e/tests/painel-anki-primeira-conexao.spec.js` (behaviour, download, checklist), `ter-o-anki.spec.js` (the first step, the animation), `abrir-o-anki-sozinho.spec.js` (the opener step, fake opener), `boas-vindas.spec.js` (step 4),
   `complemento/test_pacote.py` and `test_empacotar.js` (the file inside the package).
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
   selo (“Anki fechado. Mostrando dados de há 2 h.”, with the code in Detalhes) and the period controls set to that reading's
@@ -80,7 +80,7 @@ The relative time (PAI-11) is `Contexto.haQuanto` (`lib/contexto.js`), shared by
 total on screen is the sum of the parts on screen — including `otherUsd` (“Outros custos”, shown in the detail only
 above zero), which the old screen left out of the parts (#9). Top to bottom: the period (segmented Hoje · Este mês ·
 Tudo, default Este mês; De/Até on the right turn the period into a custom range); the tiles Todos os idiomas · Inglês ·
-Russo (`aria-pressed`, each with its total and number of Envios), whose choice filters everything below; the **plano card** (BRG-40, `painel-anki-plano.js`: only when the period has Cartões the ChatGPT plan made, #159; its Cartões, “Você economizou” from `plan.wouldCostUsd`, Gerenciar uso ↗; the line has `plan` only then); the summary
+Russo (`aria-pressed`, each with its total and number of Envios), whose choice filters everything below; the **plano card** (BRG-40, `painel-anki-plano.js`: only when the period has Cartões the ChatGPT plan made, #159; “Você economizou” from `plan.wouldCostUsd`, Gerenciar uso ↗; the line has `plan` only then); the summary
 strip (BRG-08/29); Origem das imagens of the period (the 4 BRG-09 bars, %, count); **Envios recentes × detalhe**: a
 `listbox` (↑ ↓ Home End choose) and the chosen Envio's detail (ENV-08 title, the selo — Concluído, Concluído em parte ·
 N de M frases, Não concluído, or Enviando… · the ENV-07 stage —, “N não entrou” and Detalhes with `lastError`, the cost
@@ -136,7 +136,7 @@ the English one first; the header button `aria-expanded` is the control). A clos
 its `::` levels as ›, and “· foto real” / “· gerada por IA”. Open, it holds the language's form: **Baralho**, **Imagens**
 (a segmented control, Foto real (Google) · Gerada por IA, with the cost note under it), the dashed Avançado with the audio
 accents, and **Salvar ajustes** with a status beside it (“Salvo”, or “Alterações não salvas” with Salvar in gold).
-Nothing is written until Salvar ajustes; saving writes only the language of that card and shows the BRG-07 toast. Each
+Nothing is written until Salvar ajustes; saving writes only that card's language and shows the BRG-07 toast. Each
 language's draft survives opening and closing the cards. With the Conexão off the tab stays editable, with the BRG-33
 note (drawn by `painel-anki.js`).
 
@@ -146,12 +146,13 @@ for the `::` levels. A stored deck the Anki does not have (and the Baralho padr�
 to the Baralho padrão (said under it) and a name with an empty level (`Inglês::`) is refused in the field. The audio
 accents (Sotaque da palavra · Sotaque da frase) are selects by place name (a stored domain outside the list is kept),
 beside the **Voz de reserva** and an **Ouvir** each (#174): `features/anki-voz.md`.
+Estilo do cartão and its preview (#162, #164): [previa-do-cartao.md](previa-do-cartao.md).
 
 Each language in `ankiBridgePresets` carries a `versao`. The form remembers the version it read; `AjustesDeEnvio.salvar`
 refuses when the stored one moved (another tab saved that language meanwhile): nothing is written, and the persistent
 aviso (BRG-07.desatualizada, “Mudou em outra aba. Nada foi salvo aqui.”) offers **Ver os novos**, which swaps the draft
 for what was saved. A tab without a draft follows another tab's save at once (`acompanhar`). The Envio reads the stored
-ajustes when it creates each Envio (never an in-memory copy from when the panel opened) and never writes them; Baralhos e
+ajustes when it creates each Envio and never writes them; Baralhos e
 termos and Vocabulário ask for the same decks (`painel.js` reports them to `Baralhos.usarBaralhos`), and the service
 worker's automatic Palavra falls back to the same Baralho padrão. The engine keeps its own defaults (out of this step).
 

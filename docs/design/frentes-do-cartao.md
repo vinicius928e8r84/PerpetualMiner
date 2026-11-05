@@ -1,0 +1,20 @@
+# As frentes do Cartão: Ouvir primeiro e Lacuna (#166)
+
+Continuação de [`tipo-de-nota-por-idioma.md`](tipo-de-nota-por-idioma.md) (o desenho do tipo de nota, os níveis do inglês e do russo, a prévia); está à parte porque aquele arquivo não pode crescer (o limite de tamanho dos arquivos).
+
+Em Ajustes de envio › Estilo do cartão › Frente, cada idioma tem a sua frente. Trocar a frente **reescreve o único modelo de Cartão** do tipo de nota do idioma (frente, começo do verso, nome e estilo) e nada mais: nenhuma nota nova, nenhum Cartão novo, nenhuma chamada à IA, à voz ou às fotos, e os Cartões que já existem mudam na hora. Quem troca é a Conexão (`POST /anki/card-front`), e não o AnkiConnect. É um Cartão por Frase.
+
+| frente (`frente`) | nome do modelo | frente do Cartão | começo do verso (o resto é o verso do nível, igual nas três) |
+|---|---|---|---|
+| Frase com áudio (`frase_com_audio`, padrão) | Frase com áudio | a Frase e o áudio dela | `{{FrontSide}}` |
+| Ouvir primeiro (`ouvir_primeiro`) | Ouvir primeiro | só o áudio da Frase (o ▶, sem texto) | o ▶ e a Frase, com a Palavra em negrito |
+| Lacuna (`lacuna`) | Lacuna | a Frase sem a Palavra (`[…]`) e a Dica, **sem áudio** (ele entregaria a resposta) | a Frase e o áudio dela |
+
+- **Os dois campos da Lacuna** (`Frase com lacuna`, `Dica`) o Envio grava em todo Cartão em que a Palavra está na Frase, qualquer que seja a frente do momento, sem IA: a lacuna é a Frase sem o texto em negrito (o inglês marca a Palavra assim) ou, sem negrito, sem a Palavra que o pedido deu (o russo); sem cores, que entregariam o recorte. A Dica é a primeira parte preenchida do verso do Cartão entre a Definição, a Tradução natural e o Contexto da cena (`dica_da_lacuna` de `engine/estilos.json`): fica na língua do nível. É assim que trocar de frente não gera nada.
+- **O verso sem a Frase do russo (#163, § 8 de `tipo-de-nota-por-idioma.md`)** só vale na frente Frase com áudio: nas outras duas a pessoa ainda não viu a Frase (a frente é só o áudio, ou a Frase sem a Palavra), e o verso a mostra, com as cores da morfologia que o Cartão tiver.
+- **Quem não tem a lacuna** (a Palavra não estava na Frase, ou o Cartão é de antes do #166): na frente Lacuna aparece a Frase, sem áudio; na frente Ouvir primeiro, um Cartão sem o áudio da Frase (o Envio de texto de antes do #143) aparece vazio.
+- **Medido com a biblioteca de verdade do Anki** (`pip install anki`, 25.09.5; o `models.update_dict` do adaptador numa coleção com notas): depois de trocar quatro vezes, o número de notas, o de Cartões e o `scm` ficaram os mesmos, e a pergunta renderizada de cada Cartão mudou de frente. Esta medida não foi repetida no Anki do dono nem em 2.1.50.
+- **O que a troca regrava**: o modelo e o estilo (`css`) do tipo de nota **da Conexão**, por inteiro; uma mudança que a pessoa fez à mão neles se perde. Um tipo de nota que não tem exatamente um modelo de Cartão (a pessoa acrescentou outro) não é tocado: `409 note_type_changed`, e a tela diz que a frente não mudou. Sem o tipo (a pessoa o apagou), ele nasce já com a frente.
+- **A extensão**: `frente` mora em `ankiBridgePresets` por idioma (`frase_com_audio` sem nada gravado). Salvar ajustes pede a troca à Conexão **antes** de gravar e só grava a frente nova se a Conexão a trocou; se ela não trocou, o resto é salvo, a frente gravada continua a que o Anki tem e a escolha fica na tela, com “Tentar de novo”. A frente **não** vai no `POST /jobs`.
+- **Limites**: quem muda a frente em duas abas ao mesmo tempo pode deixar o gravado diferente do Anki até a próxima troca (a Conexão troca antes da conferência de versão do Salvar); “Usar um tipo que já tenho” (#165) fica com a frente que a pessoa já tem; a Imagem primeiro não existe.
+- **Provas**: `complemento/test_contrato_da_criacao.py` (nos dois adaptadores), `test_frente_do_cartao.py` (por HTTP: só o modelo muda, nada atravessa para a IA, a voz nem as fotos), `engine/test_nota_do_cartao.py` (a lacuna e a Dica), `e2e/tests/painel-ajustes-frente.spec.js` e os exemplos de `complemento/contrato/exemplos-da-frente.json`. As referências visuais são propostas (`painel-ajustes-frente-visual.spec.js`, `test.fixme`).

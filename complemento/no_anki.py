@@ -7,8 +7,8 @@ import os
 import threading
 import time
 
-from . import inicio, janela, registro
-from .baralhos import ColecaoIndisponivel, PerfilIlegivel, TipoDeNotaAlterado, TipoDeNotaAusente
+from . import cartoes_do_anki, inicio, janela, registro
+from .baralhos import ColecaoIndisponivel, PerfilIlegivel, TipoDeNotaAusente
 from .configuracao import OPENAI_BASE, OPENVERSE_BASE, PORTA, VERSAO, VOZ_BASE
 
 # Quanto a Conexão espera a thread principal do Anki ler a coleção antes de dizer que o Anki não respondeu.
@@ -175,7 +175,7 @@ class ColecaoDoAnki:
         return self._na_thread_principal(sem_sincronizar)
 
     def tipo_de_nota(self, nome):
-        return self._gravando(lambda colecao: _campos_do_tipo(colecao.models.by_name(nome)))
+        return self._gravando(lambda colecao: cartoes_do_anki.campos_do_tipo(colecao.models.by_name(nome)))
 
     def guids_existentes(self, guids):
         if not guids:
@@ -186,17 +186,29 @@ class ColecaoDoAnki:
     def adicionar_nota(self, baralho, tipo_de_nota, campos, etiquetas, guid, midia=None):
         return self._gravando(lambda colecao: _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, midia))
 
+    def cartao_renderizado(self, tipo_de_nota, campos):
+        """O Cartão como o Anki o desenha (#164, `cartoes_do_anki.py`): `{ frente, verso, css }`, ou None se a coleção não tem o tipo."""
+        return self._na_thread_principal(lambda colecao: cartoes_do_anki.renderizado(colecao, tipo_de_nota, campos))
+
+    def nota_gravada(self, guid):
+        """A nota de `guid`: `{ baralho, tipo_de_nota, campos: { nome: valor } }`, ou None se a coleção não a tem."""
+        return self._na_thread_principal(lambda colecao: cartoes_do_anki.nota_gravada(colecao, guid))
+
+    def arquivo_de_midia(self, nome, limite_de_bytes):
+        """Os bytes do arquivo `nome` da pasta de mídia (até `limite_de_bytes` + 1), ou None se ele não está lá."""
+        return self._na_thread_principal(lambda colecao: cartoes_do_anki.arquivo_de_midia(colecao, nome, limite_de_bytes))
+
     def criar_tipo_de_nota(self, definicao):
         """Cria o tipo de nota (`tipo_de_nota.definicao`) se a coleção não tem um com o nome; um que já existe não é tocado. Devolve se criou."""
         return self._gravando(lambda colecao: _criar_tipo_de_nota(colecao, definicao))
 
     def modelos_do_tipo_de_nota(self, nome):
         """Os modelos de Cartão do tipo de nota (`[{ nome, frente, verso }]`), ou None se a coleção não o tem."""
-        return self._gravando(lambda colecao: _modelos_do_tipo(colecao.models.by_name(nome)))
+        return self._gravando(lambda colecao: cartoes_do_anki.modelos_do_tipo(colecao.models.by_name(nome)))
 
     def trocar_o_modelo(self, nome, modelo, css):
         """Reescreve o único modelo de Cartão do tipo de nota e o estilo dele (a troca da frente, #166); devolve se mudou algo. As notas não são tocadas."""
-        return self._gravando(lambda colecao: _trocar_o_modelo(colecao, nome, modelo, css))
+        return self._gravando(lambda colecao: cartoes_do_anki.trocar_o_modelo(colecao, nome, modelo, css))
 
     def criar_baralhos_da_instalacao_nova(self, nomes):
         """Cria os Baralhos `nomes` só se a coleção não tem nenhum além do padrão do Anki; devolve os criados (nenhum, para quem já tem Baralho)."""
@@ -213,30 +225,6 @@ class ColecaoDoAnki:
             colecao, baralho, tipo_de_nota, campos, etiquetas, guid, campos_da_frente, frente_normalizada, normalizar, midia))
 
 
-def _campos_do_tipo(modelo):
-    return [campo["name"] for campo in sorted(modelo["flds"], key=lambda c: c["ord"])] if modelo else None
-
-
-def _modelos_do_tipo(tipo):
-    return [{"nome": cartao["name"], "frente": cartao["qfmt"], "verso": cartao["afmt"]} for cartao in tipo["tmpls"]] if tipo else None
-
-
-def _trocar_o_modelo(colecao, nome, modelo, css):
-    """Na thread principal. Só o texto do modelo e o estilo do tipo de nota: nenhum campo, nenhuma nota. Com mais (ou menos) de um modelo, o tipo é da pessoa."""
-    tipo = colecao.models.by_name(nome)
-    if tipo is None:
-        raise TipoDeNotaAusente(nome)
-    if len(tipo["tmpls"]) != 1:
-        raise TipoDeNotaAlterado(nome)
-    cartao = tipo["tmpls"][0]
-    if (cartao["name"], cartao["qfmt"], cartao["afmt"], tipo["css"]) == (modelo["nome"], modelo["frente"], modelo["verso"], css):
-        return False
-    cartao["name"], cartao["qfmt"], cartao["afmt"], tipo["css"] = modelo["nome"], modelo["frente"], modelo["verso"], css
-    modelos = colecao.models
-    (modelos.update_dict if hasattr(modelos, "update_dict") else modelos.save)(tipo)  # `update_dict` é o do Anki novo; `save`, o dos mais antigos
-    return True
-
-
 def _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, midia=None):
     """Uma nota nova, na thread principal: o Baralho é criado se falta (`decks.id`), o tipo de nota tem de existir com os campos.
     A `midia` vai para a pasta de mídia da coleção (`media.write_data`) antes da nota; se a coleção deu outro nome ao arquivo (já
@@ -247,7 +235,7 @@ def _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, mid
     if colecao.db.all("select 1 from notes where guid = ?", guid):
         return
     modelo = colecao.models.by_name(tipo_de_nota)
-    if modelo is None or not set(campos) <= set(_campos_do_tipo(modelo)):
+    if modelo is None or not set(campos) <= set(cartoes_do_anki.campos_do_tipo(modelo)):
         raise TipoDeNotaAusente(tipo_de_nota)
     for nome, dados in (midia or {}).items():
         guardado = colecao.media.write_data(nome, dados)

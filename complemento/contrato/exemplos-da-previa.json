@@ -1,0 +1,212 @@
+{
+  "colecoes": {
+    "Anki novo, só o Baralho padrão": {
+      "baralhos": [
+        {
+          "nome": "Default"
+        }
+      ]
+    },
+    "Anki com uma nota gravada": {
+      "baralhos": [
+        {
+          "nome": "Default"
+        },
+        {
+          "nome": "CIMV",
+          "notas": [
+            {
+              "guid": "guid-do-basico",
+              "frente": "She <b>gave up</b> smoking",
+              "verso": "give up"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "exemplos": [
+    {
+      "nome": "Prévia do Cartão de uma nota gravada, pelo guid (o primeiro Cartão do Envio, #173)",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki com uma nota gravada"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {
+          "guid": "guid-do-basico"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "front": "She <b>gave up</b> smoking",
+          "back": "She <b>gave up</b> smoking\n\n<hr id=answer>\n\ngive up",
+          "css": ".card {\n  font-family: arial;\n}\n.pm-tocar { display: inline-block; width: 1.5em; height: 1.5em; line-height: 1.5em; margin: 0 .2em; border-radius: 50%; background: #e5e7eb; color: #374151; font-size: .8em; text-align: center; }\n",
+          "source": "note",
+          "deck": "CIMV",
+          "noteType": "Básico"
+        }
+      }
+    },
+    {
+      "nome": "Prévia de uma nota que a coleção não tem",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki com uma nota gravada"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {
+          "guid": "guid-que-nao-existe"
+        }
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "note_not_found"
+        }
+      }
+    },
+    {
+      "nome": "Prévia com o Anki na tela de perfis",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": null,
+        "colecao": null
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {
+          "lang": "en",
+          "nivel": "iniciante"
+        }
+      },
+      "resposta": {
+        "status": 503,
+        "json": {
+          "error": "anki_card_preview_unavailable",
+          "detail": "collection_not_open"
+        }
+      }
+    },
+    {
+      "nome": "Prévia de um idioma que a Conexão não tem",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki novo, só o Baralho padrão"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {
+          "lang": "fr",
+          "nivel": "iniciante"
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_lang"
+        }
+      }
+    },
+    {
+      "nome": "Prévia de um nível que o idioma não tem",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki novo, só o Baralho padrão"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {
+          "lang": "ru",
+          "nivel": "mestre"
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_level"
+        }
+      }
+    },
+    {
+      "nome": "Prévia sem dizer o estilo nem a nota",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki novo, só o Baralho padrão"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "Prévia com a coleção que quebra ao ler",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "coleção que quebra ao ler"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpo": {
+          "lang": "en",
+          "nivel": "iniciante"
+        }
+      },
+      "resposta": {
+        "status": 500,
+        "json": {
+          "error": "internal_error"
+        }
+      }
+    },
+    {
+      "nome": "Prévia pedida com um corpo que não é um objeto JSON",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki novo, só o Baralho padrão"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    }
+  ]
+}

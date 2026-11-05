@@ -18,6 +18,7 @@ const { CAMINHO_DO_RETRATO, retratoDoCatalogo } = require('./conferir-voz.js');
 
 globalThis.PerpetualMiner = {};
 require('../lib/voz/catalogo.js');
+require('../lib/voz/catalogo-nivel.js');
 
 const copias = [
   [CAMINHO_DO_HTML, htmlDoCatalogo(fs.readFileSync(CAMINHO_DO_HTML, 'utf8'))],

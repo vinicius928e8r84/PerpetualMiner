@@ -13,7 +13,7 @@ class ACacaDaLacuna(unittest.TestCase):
 
     def test_a_lacuna_do_ingles_e_a_frase_sem_a_palavra_em_negrito_e_sem_nenhuma_cor(self):
         campos = nota(INGLES, "en")["campos"]
-        self.assertEqual(campos["Frase com lacuna"], 'She <span class="lacuna">[\u2026]</span> smoking last year.')
+        self.assertEqual(campos["Frase com lacuna"], 'She <b class="lacuna">[\u2026]</b> smoking last year.')
         self.assertEqual(cores_de(campos["Frase com lacuna"]), [])
         self.assertNotIn("gave up", campos["Frase com lacuna"])
 
@@ -24,7 +24,7 @@ class ACacaDaLacuna(unittest.TestCase):
 
     def test_o_russo_nao_marca_a_palavra_e_a_lacuna_sai_do_texto_da_palavra_que_o_pedido_deu(self):
         campos = nota(RUSSO, "ru", palavra="Я не")["campos"]
-        self.assertEqual(campos["Frase com lacuna"], '<span class="lacuna">[\u2026]</span> мальчик!')
+        self.assertEqual(campos["Frase com lacuna"], '<b class="lacuna">[\u2026]</b> мальчик!')
         self.assertEqual(campos["Dica"], "Eu não sou um menino!")
 
     def test_sem_a_palavra_na_frase_nao_ha_lacuna_nem_dica_e_a_frente_cai_na_frase(self):

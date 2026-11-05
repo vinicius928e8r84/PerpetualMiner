@@ -3,7 +3,8 @@
 A language is an entry of `idiomas`: its note type and deck, how a mining line reads (`entrada`: `palavras` is `kw | kw : phrase`,
 `frase` is the whole line), its fields (every one it will ever use: changing a note type's fields later forces a full sync in Anki)
 and its levels. A level says which language explains the Card (`explicacao`), which parts the back has (`verso`, in order),
-whether the colours link the parts (`cores`) and which prompt writes it. A level can also colour the Phrase by the pieces of its words
+whether the colours link the parts (`cores`), which prompt writes it and an example card text of the level (`exemplo`, written as
+the model writes it: the preview shows the style with it, before any Frase is sent). A level can also colour the Phrase by the pieces of its words
 (`morfologia`, the Russian Intermediate and Advanced, #163), write fields the back does not show (`guarda`) and say that its back does not
 repeat the Phrase (`repete_a_frase: false`). The note type has one back template for every level of the
 language, so the language also says the order of all the parts a back can have (`ordem_do_verso`): each level's `verso` is a
@@ -53,6 +54,12 @@ class Estilos:
         nivel = nivel or self.NIVEL_PADRAO
         return dict(copy.deepcopy(idioma["niveis"][nivel]), nivel=nivel, entrada=idioma["entrada"])
 
+    def exemplo(self, lang, nivel=None):
+        """O Cartão de exemplo de um nível: `{ texto, palavra }`, o texto como o modelo o escreveria (`palavra`: a Palavra, quando o texto não a diz).
+        `KeyError` se o nível não tem exemplo."""
+        exemplo = self.dados["idiomas"][lang]["niveis"][nivel or self.NIVEL_PADRAO]["exemplo"]
+        return {"texto": "\n".join(exemplo["texto"]), "palavra": exemplo.get("palavra", "")}
+
     def rotulo(self, chave):
         """O rótulo com que o prompt escreve a parte no texto do Cartão (`Pronunciation`), ou None."""
         return self.dados["rotulos"].get(chave)
@@ -84,6 +91,10 @@ def niveis(lang):
 
 def estilo(lang, nivel=None):
     return _PADRAO.estilo(lang, nivel)
+
+
+def exemplo(lang, nivel=None):
+    return _PADRAO.exemplo(lang, nivel)
 
 
 def rotulo(chave):

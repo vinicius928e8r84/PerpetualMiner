@@ -1,6 +1,6 @@
 'use strict';
 
-// A spec da Voz (`docs/design/voz/README.md`) lida como dado: uma linha por ID do
+// A spec da Voz (`docs/design/voz/README.md` e a continuação dela, `catalogo-nivel.md`) lida como dado: uma linha por ID do
 // catálogo. É o que o gerador de `catalogo.html` e o teste de paridade do
 // `lib/voz/catalogo.js` leem, para a spec ser a fonte e as duas cópias, derivadas.
 
@@ -8,8 +8,9 @@ const fs = require('fs');
 const path = require('path');
 
 const CAMINHO_DA_SPEC = path.join(__dirname, '..', 'docs', 'design', 'voz', 'README.md');
-// Os IDs que o README não comporta (ele já passa do limite de tamanho) moram em `docs/design/voz/catalogo-*.md`: a mesma tabela, sob um `###`.
-const PASTA_DA_SPEC = path.dirname(CAMINHO_DA_SPEC);
+// A continuação do catálogo (§ 3), em arquivo à parte porque o README não pode crescer: a spec é os dois, um depois do outro.
+const CAMINHOS_DA_CONTINUACAO = [path.join(__dirname, '..', 'docs', 'design', 'voz', 'catalogo-nivel.md')];
+const lerASpec = () => [CAMINHO_DA_SPEC, ...CAMINHOS_DA_CONTINUACAO].map(caminho => fs.readFileSync(caminho, 'utf8')).join('\n');
 
 /** Divide uma linha de tabela nas barras que não vêm escapadas (`\|`). */
 function celulasDaLinha(linha) {
@@ -27,12 +28,6 @@ function celulasDaLinha(linha) {
 function textoDaCelula(celula) {
   if (celula === '_(sem texto)_') return '';
   return celula.replace(/\*\*/g, '');
-}
-
-/** O README e, depois dele, os arquivos `catalogo-*.md` ao lado (em ordem de nome): uma spec só. */
-function lerASpec() {
-  const extras = fs.readdirSync(PASTA_DA_SPEC).filter(nome => /^catalogo-.+\.md$/.test(nome)).sort();
-  return [CAMINHO_DA_SPEC, ...extras.map(nome => path.join(PASTA_DA_SPEC, nome))].map(caminho => fs.readFileSync(caminho, 'utf8')).join('\n');
 }
 
 /**

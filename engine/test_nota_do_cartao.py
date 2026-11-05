@@ -173,7 +173,7 @@ class OCartaoDosOutrosNiveisDoIngles(unittest.TestCase):
                 "Outro exemplo": "Michael never gives up on a bad joke.",
                 "Contexto da cena": "Alguém conta que largou o cigarro no ano passado.",
                 "Fonte": "Série - The Office - S01E01",
-                "Frase com lacuna": 'She <span class="lacuna">[\u2026]</span> smoking last year.',
+                "Frase com lacuna": 'She <b class="lacuna">[\u2026]</b> smoking last year.',
                 "Dica": "Desistir de fazer algo, parar de tentar.",
             },
         )
