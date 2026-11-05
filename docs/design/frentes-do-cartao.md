@@ -1,4 +1,4 @@
-# As frentes do Cartão: Ouvir primeiro e Lacuna (#166)
+# As frentes do Cartão: Ouvir primeiro, Lacuna, Produção e Ditado (#166, #167)
 
 Continuação de [`tipo-de-nota-por-idioma.md`](tipo-de-nota-por-idioma.md) (o desenho do tipo de nota, os níveis do inglês e do russo, a prévia); está à parte porque aquele arquivo não pode crescer (o limite de tamanho dos arquivos).
 
@@ -8,8 +8,11 @@ Em Ajustes de envio › Estilo do cartão › Frente, cada idioma tem a sua fren
 |---|---|---|---|
 | Frase com áudio (`frase_com_audio`, padrão) | Frase com áudio | a Frase e o áudio dela | `{{FrontSide}}` |
 | Ouvir primeiro (`ouvir_primeiro`) | Ouvir primeiro | só o áudio da Frase (o ▶, sem texto) | o ▶ e a Frase, com a Palavra em negrito |
+| Produção (`producao`) | Produção | a Frase em português (a Tradução natural, ou o Contexto da cena nos níveis que não a têm) e o campo de digitação do Anki (`{{type:Frase}}`) | a mesma frente, em que o Anki compara o que a pessoa escreveu com a Frase original, e o áudio da Frase |
+| Ditado (`ditado`) | Ditado | só o ▶ e o campo de digitação (`{{type:Frase}}`) | a mesma frente, em que o Anki mostra o que errou letra por letra |
 | Lacuna (`lacuna`) | Lacuna | a Frase sem a Palavra (`[…]`) e a Dica, **sem áudio** (ele entregaria a resposta) | a Frase e o áudio dela |
 
+- **Produção e Ditado (#167) usam o campo de digitação do Anki**, apontado para o campo `Frase`: a frente e o verso levam `{{type:Frase}}`. O verso repete a frente em vez de `{{FrontSide}}` (como o “Básico (digitando a resposta)” do Anki), porque a comparação tem de estar no verso. O Anki compara com o texto do campo sem as marcas (o negrito da Palavra e as cores da morfologia não contam). Nenhum campo novo: o tipo de nota é o mesmo e a troca é a mesma rota, `POST /anki/card-front`, com `producao` ou `ditado`. O verso do russo sem a Frase (#163) não vale nelas, como na Ouvir primeiro: a Frase ainda não foi vista. Limite: a Produção mostra a Tradução natural, que só o Iniciante preenche; nos outros níveis mostra o Contexto da cena, que no Avançado do inglês está em inglês.
 - **Os dois campos da Lacuna** (`Frase com lacuna`, `Dica`) o Envio grava em todo Cartão em que a Palavra está na Frase, qualquer que seja a frente do momento, sem IA: a lacuna é a Frase sem o texto em negrito (o inglês marca a Palavra assim) ou, sem negrito, sem a Palavra que o pedido deu (o russo); sem cores, que entregariam o recorte. A Dica é a primeira parte preenchida do verso do Cartão entre a Definição, a Tradução natural e o Contexto da cena (`dica_da_lacuna` de `engine/estilos.json`): fica na língua do nível. É assim que trocar de frente não gera nada.
 - **O verso sem a Frase do russo (#163, § 8 de `tipo-de-nota-por-idioma.md`)** só vale na frente Frase com áudio: nas outras duas a pessoa ainda não viu a Frase (a frente é só o áudio, ou a Frase sem a Palavra), e o verso a mostra, com as cores da morfologia que o Cartão tiver.
 - **Quem não tem a lacuna** (a Palavra não estava na Frase, ou o Cartão é de antes do #166): na frente Lacuna aparece a Frase, sem áudio; na frente Ouvir primeiro, um Cartão sem o áudio da Frase (o Envio de texto de antes do #143) aparece vazio.
