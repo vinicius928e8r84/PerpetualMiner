@@ -175,10 +175,11 @@ class ColecaoDoAnkiDeMentira:
 
     @staticmethod
     def _conferir_os_modelos(tipo):
-        """O Anki recusa um modelo que cita um campo que o tipo não tem."""
+        """O Anki recusa um modelo que cita um campo que o tipo não tem (o filtro, como o `type:` da Produção e do Ditado, #167, não é o campo)."""
         nomes = tuple(campo["name"] for campo in tipo["flds"])
         for modelo in tipo["tmpls"]:
             for citado in re.findall(r"\{\{[#^/]?([^{}]+)\}\}", modelo["qfmt"] + modelo["afmt"]):
+                citado = citado.rsplit(":", 1)[-1]
                 if citado not in nomes and citado != "FrontSide":
                     raise ValueError("o modelo %r cita o campo %r, que o tipo não tem" % (modelo["name"], citado))
 

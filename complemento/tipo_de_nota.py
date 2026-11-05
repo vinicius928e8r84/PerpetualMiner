@@ -11,7 +11,8 @@ from .motor import estilos
 # As frentes do Cartão (#166): cada uma é o modelo de Cartão do tipo de nota do idioma. O tipo tem **um** modelo só (um Cartão por Frase) e trocar a
 # frente (`trocar_a_frente`) reescreve o modelo, sem tocar nas notas. O id é o que a extensão manda; o nome é o que o Anki mostra do modelo.
 FRENTE_PADRAO = "frase_com_audio"
-NOMES_DAS_FRENTES = {FRENTE_PADRAO: "Frase com áudio", "ouvir_primeiro": "Ouvir primeiro", "lacuna": "Lacuna"}
+NOMES_DAS_FRENTES = {
+    FRENTE_PADRAO: "Frase com áudio", "ouvir_primeiro": "Ouvir primeiro", "lacuna": "Lacuna", "producao": "Produção", "ditado": "Ditado"}
 FRENTES = tuple(NOMES_DAS_FRENTES)
 NOME_DO_MODELO = NOMES_DAS_FRENTES[FRENTE_PADRAO]
 CSS = """.card { font-family: arial, sans-serif; font-size: 22px; text-align: center; color: #1f2937; background-color: #ffffff; }
@@ -59,8 +60,19 @@ def _verso(idioma, partes):
 def _frente(frente, nomes):
     """A frente e o começo do verso (o que vem antes das partes do nível) de cada frente. Ouvir primeiro: só o ▶ e, no verso, a Frase com a Palavra
     marcada (o negrito do campo). Lacuna: a Frase sem a Palavra e a Dica, sem áudio (ele entregaria a resposta); o verso tem a Frase com o áudio. Uma
-    nota sem a Frase com lacuna (a Palavra não estava na Frase) mostra a Frase, também sem áudio."""
+    nota sem a Frase com lacuna (a Palavra não estava na Frase) mostra a Frase, também sem áudio.
+    Produção e Ditado (#167) usam o campo de digitação do Anki (`{{type:Frase}}`): a pessoa escreve e o Anki compara com a Frase original. A Produção
+    mostra a Frase em português (a Tradução natural, ou o Contexto da cena nos níveis que não a têm) e o Ditado só o ▶. Como no Basic (digitando a resposta) do
+    Anki, o verso repete a frente (com o `{{type:Frase}}`, que vira a comparação letra por letra) em vez de `{{FrontSide}}`."""
     frase, audio, lacuna, dica = nomes["frase"], nomes["audio_da_frase"], nomes["lacuna"], nomes["dica"]
+    if frente in ("producao", "ditado"):
+        digitar = "{{type:%s}}" % frase
+        if frente == "ditado":
+            na_frente = '<div class="ouvir">{{%s}}</div>\n%s' % (audio, digitar)
+            return na_frente, na_frente
+        natural, cena = nomes["natural"], nomes["cena"]
+        na_frente = '<div class="frase">{{#%s}}{{%s}}{{/%s}}{{^%s}}{{%s}}{{/%s}}</div>\n%s' % (natural, natural, natural, natural, cena, natural, digitar)
+        return na_frente, na_frente + "\n{{%s}}" % audio
     if frente == "ouvir_primeiro":
         return '<div class="ouvir">{{%s}}</div>' % audio, '{{FrontSide}}\n<div class="frase">{{%s}}</div>' % frase
     if frente == "lacuna":
