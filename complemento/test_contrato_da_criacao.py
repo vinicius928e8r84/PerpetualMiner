@@ -167,6 +167,40 @@ class ContratoDaCriacao:
         self.assertIn("{{Frase}}", modelo["verso"])
         self.assertEqual(modelo["nome"], "Ouvir primeiro")
 
+    def test_a_producao_mostra_a_frase_em_portugues_e_digita_no_campo_da_frase_tanto_na_frente_quanto_no_verso(self):
+        colecao = self.com_notas_gravadas()
+        tipo_de_nota.trocar_a_frente(colecao, "en", "producao")
+        [modelo] = colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")
+        self.assertEqual(modelo["nome"], "Produção")
+        for lado in ("frente", "verso"):
+            with self.subTest(lado=lado):
+                self.assertEqual(re.findall(r"\{\{type:[^}]+\}\}", modelo[lado]), ["{{type:Frase}}"])
+        self.assertIn("{{Tradução natural}}", modelo["frente"])
+        self.assertNotIn("{{Frase}}", modelo["frente"])
+        self.assertNotIn("Áudio da frase", modelo["frente"])
+        self.assertIn("{{Áudio da frase}}", modelo["verso"])
+        self.assertNotIn("{{FrontSide}}", modelo["verso"])
+
+    def test_o_ditado_tem_so_o_audio_e_o_campo_de_digitacao_apontando_para_a_frase_na_frente_e_no_verso(self):
+        colecao = self.com_notas_gravadas()
+        tipo_de_nota.trocar_a_frente(colecao, "ru", "ditado")
+        [modelo] = colecao.modelos_do_tipo_de_nota("PerpetualMiner Russo")
+        self.assertEqual(modelo["nome"], "Ditado")
+        self.assertEqual(re.sub(r"<[^>]+>", "", modelo["frente"]).split(), ["{{Áudio", "da", "frase}}", "{{type:Frase}}"])
+        self.assertEqual(re.findall(r"\{\{type:[^}]+\}\}", modelo["verso"]), ["{{type:Frase}}"])
+        self.assertNotIn("{{FrontSide}}", modelo["verso"])
+
+    def test_o_campo_de_digitacao_das_frentes_de_escrever_aponta_para_um_campo_que_o_tipo_de_nota_tem(self):
+        colecao = self.com_notas_gravadas()
+        for lang, tipo in (("en", "PerpetualMiner Inglês"), ("ru", "PerpetualMiner Russo")):
+            for frente in ("producao", "ditado"):
+                tipo_de_nota.trocar_a_frente(colecao, lang, frente)
+                [modelo] = colecao.modelos_do_tipo_de_nota(tipo)
+                with self.subTest(lang=lang, frente=frente):
+                    for lado in ("frente", "verso"):
+                        self.assertEqual(re.findall(r"\{\{type:([^}]+)\}\}", modelo[lado]), ["Frase"])
+                    self.assertIn("Frase", colecao.tipo_de_nota(tipo))
+
     def test_o_verso_de_todos_os_niveis_continua_em_qualquer_frente(self):
         colecao = self.com_notas_gravadas()
         padrao = colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")[0]["verso"]
