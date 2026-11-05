@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 
+from . import tipo_proprio
 from .motor import estilos
 
 _ID_DO_ENVIO = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -45,6 +46,9 @@ def validar_pedido(corpo):
     nivel = corpo.get("nivel")
     if "nivel" in corpo and nivel not in estilos.niveis(corpo["lang"]):  # sem `nivel`, o Cartão sai no padrão (o Iniciante)
         return None, (400, "invalid_level")
+    proprio = tipo_proprio.forma(corpo.get("tipoProprio")) if "tipoProprio" in corpo else None
+    if "tipoProprio" in corpo and (proprio is None or tipo_proprio.recusa(proprio, set(proprio["mapa"].values()))):
+        return None, (400, "invalid_mapping")  # sem a Frase e a resposta em campos diferentes não há Cartão: nada é aceito
     entradas = corpo.get("entries")
     if not isinstance(entradas, list) or not entradas:
         return None, (400, "entries_required")
@@ -67,6 +71,7 @@ def validar_pedido(corpo):
         "deckName": deck.strip(),
         "imageSource": str(corpo.get("imageSource") or "1"),
         **({"nivel": nivel} if "nivel" in corpo else {}),
+        **({"tipoProprio": proprio} if proprio else {}),
         "tts": dict({chave: valor for chave, valor in tts.items() if isinstance(valor, str)},
                     **({"reserva": list(dict.fromkeys(reserva))} if "reserva" in tts else {})),
         "entries": limpas,

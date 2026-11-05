@@ -54,6 +54,11 @@ class PreviaEmMemoria:
         frente, verso = renderizar(modelo["frente"], modelo["verso"], campos)
         return {"frente": frente, "verso": verso, "css": modelo["css"]}
 
+    def tipos_de_nota(self):
+        """Todos os tipos de nota da coleção, `{ nome: [campos] }` (#165)."""
+        self._exigir_gravavel()
+        return {nome: list(campos) for nome, campos in self._tipos.items()}
+
     def nota_gravada(self, guid):
         self._exigir_aberta()
         nota = self._notas.get(guid)

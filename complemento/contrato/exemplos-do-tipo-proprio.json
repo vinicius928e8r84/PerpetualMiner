@@ -1,0 +1,392 @@
+{
+  "colecoes": {
+    "Anki com tipos de nota da pessoa": {
+      "baralhos": [
+        {
+          "nome": "Default"
+        },
+        {
+          "nome": "Inglês"
+        }
+      ],
+      "tiposDeNota": {
+        "Meu Inglês": [
+          "Pergunta",
+          "Resposta",
+          "Anotações",
+          "Som"
+        ],
+        "Só um campo": [
+          "Texto"
+        ]
+      }
+    }
+  },
+  "exemplos": [
+    {
+      "nome": "Os tipos de nota da pessoa e os campos deles, para o mapeamento de “Usar um tipo que já tenho”",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki com tipos de nota da pessoa"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/note-types",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "noteTypes": [
+            {
+              "name": "Meu Inglês",
+              "fields": [
+                "Pergunta",
+                "Resposta",
+                "Anotações",
+                "Som"
+              ]
+            },
+            {
+              "name": "Só um campo",
+              "fields": [
+                "Texto"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nome": "Os tipos de nota com o Anki na tela de perfis",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": null,
+        "colecao": null
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/note-types",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 503,
+        "json": {
+          "error": "anki_note_types_unavailable",
+          "detail": "collection_not_open"
+        }
+      }
+    },
+    {
+      "nome": "Os tipos de nota com a coleção que quebra ao ler",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "coleção que quebra ao ler"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/note-types",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 500,
+        "json": {
+          "error": "internal_error"
+        }
+      }
+    },
+    {
+      "nome": "Prévia do Cartão no tipo de nota que a pessoa já tem: as partes nos campos do mapeamento",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki com tipos de nota da pessoa"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "nivel": "iniciante",
+          "tipoProprio": {
+            "nome": "Meu Inglês",
+            "mapa": {
+              "frase": "Pergunta",
+              "audio_da_frase": "Som",
+              "resposta": "Resposta"
+            }
+          }
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "front": "<span style=\"color: #ff8c42;\">She</span> <b><span style=\"color: #a855f7;\">gave up</span></b> <span style=\"color: #22c55e;\">smoking</span> last year.",
+          "back": "<span style=\"color: #ff8c42;\">She</span> <b><span style=\"color: #a855f7;\">gave up</span></b> <span style=\"color: #22c55e;\">smoking</span> last year.\n\n<hr id=answer>\n\nshi GUÊIV âp SMÔU-kin lést iâr<br><span style=\"color: #ff8c42;\">Ela</span> <span style=\"color: #a855f7;\">desistiu</span> <span style=\"color: #22c55e;\">fumando</span> último ano<br>Ela parou de fumar ano passado.<br>Alguém conta que largou o cigarro.",
+          "css": ".card {\n  font-family: arial;\n}\n.pm-tocar { display: inline-block; width: 1.5em; height: 1.5em; line-height: 1.5em; margin: 0 .2em; border-radius: 50%; background: #e5e7eb; color: #374151; font-size: .8em; text-align: center; }\n",
+          "source": "example",
+          "lang": "en",
+          "nivel": "iniciante",
+          "deck": "PerpetualMiner::Inglês",
+          "noteType": "Meu Inglês"
+        }
+      }
+    },
+    {
+      "nome": "Prévia no tipo da pessoa sem campo para a resposta é recusada",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki com tipos de nota da pessoa"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "nivel": "iniciante",
+          "tipoProprio": {
+            "nome": "Meu Inglês",
+            "mapa": {
+              "frase": "Pergunta"
+            }
+          }
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_mapping"
+        }
+      }
+    },
+    {
+      "nome": "Prévia no tipo da pessoa com a Frase e a resposta no mesmo campo é recusada",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki com tipos de nota da pessoa"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "nivel": "iniciante",
+          "tipoProprio": {
+            "nome": "Só um campo",
+            "mapa": {
+              "frase": "Texto",
+              "resposta": "Texto"
+            }
+          }
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_mapping"
+        }
+      }
+    },
+    {
+      "nome": "Prévia no tipo da pessoa com um campo que o tipo não tem",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki com tipos de nota da pessoa"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "nivel": "iniciante",
+          "tipoProprio": {
+            "nome": "Meu Inglês",
+            "mapa": {
+              "frase": "Pergunta",
+              "resposta": "Verso"
+            }
+          }
+        }
+      },
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "invalid_mapping"
+        }
+      }
+    },
+    {
+      "nome": "Prévia num tipo de nota que a pessoa apagou",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki com tipos de nota da pessoa"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "nivel": "iniciante",
+          "tipoProprio": {
+            "nome": "Apagado",
+            "mapa": {
+              "frase": "Pergunta",
+              "resposta": "Resposta"
+            }
+          }
+        }
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "note_type_missing"
+        }
+      }
+    },
+    {
+      "nome": "Prévia no tipo da pessoa com o Anki na tela de perfis",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": null,
+        "colecao": null
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-preview",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "nivel": "iniciante",
+          "tipoProprio": {
+            "nome": "Meu Inglês",
+            "mapa": {
+              "frase": "Pergunta",
+              "audio_da_frase": "Som",
+              "resposta": "Resposta"
+            }
+          }
+        }
+      },
+      "resposta": {
+        "status": 503,
+        "json": {
+          "error": "anki_card_preview_unavailable",
+          "detail": "collection_not_open"
+        }
+      }
+    },
+    {
+      "nome": "Criar um Envio no tipo de nota que a pessoa já tem: o mapeamento vai no pedido",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400000,
+              "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+            }
+          ],
+          "tipoProprio": {
+            "nome": "Meu Inglês",
+            "mapa": {
+              "frase": "Pergunta",
+              "audio_da_frase": "Som",
+              "resposta": "Resposta"
+            }
+          }
+        }
+      },
+      "resposta": {
+        "status": 201,
+        "json": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "status": "queued"
+        }
+      }
+    },
+    {
+      "nome": "Os tipos de nota com um corpo que não é JSON",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki com tipos de nota da pessoa"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/note-types",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "Criar um Envio no tipo da pessoa sem campo para a Frase é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400000,
+              "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+            }
+          ],
+          "tipoProprio": {
+            "nome": "Meu Inglês",
+            "mapa": {
+              "resposta": "Resposta"
+            }
+          }
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_mapping"
+        }
+      }
+    }
+  ]
+}
