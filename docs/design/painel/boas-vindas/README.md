@@ -43,21 +43,21 @@ Por isso a Conexão vem antes da mineração automática, e o status honesto (Q5
 **Layout:**
 - Fundo `bg`, marca Veio de 40 px com o cursor piscando no topo, centralizada.
 - Uma grade de duas colunas (máx. 900 px), que empilha em uma coluna abaixo de ~760 px:
-  - **Coluna da lista (230 px):** ilha `surface` de raio 20 com os 9 itens:
-    - Boas-vindas, os 7 passos e Tudo pronto;
+  - **Coluna da lista (230 px):** ilha `surface` de raio 20 com os 10 itens:
+    - Boas-vindas, os 8 passos e Tudo pronto;
     - cada passo tem uma marca: número, ✓ ouro quando feito, tracejado quando pulado;
     - o item atual usa `surface-2` com contorno `border-strong`, igual à nav do shell;
     - dá para clicar em qualquer item.
   - **Card do passo:** ilha `surface` de raio 20 com sombra.
-    - Linha de sobretítulo em maiúsculas: “Passo 4 de 7 · opcional”.
+    - Linha de sobretítulo em maiúsculas: “Passo 4 de 8 · opcional”.
     - Título 24/800.
     - O texto do passo.
     - O **controle real** num bloco `bg` de raio 14.
     - Rodapé com “Voltar” · “Agora não” (só nos opcionais) · “Continuar” (primário).
 
 **Telas:**
-1. **Abertura:** “Boas-vindas ao PerpetualMiner”, uma linha sobre o produto (a frase descritiva mora aqui e na loja; o popup não tem subtítulo) e a lista dos 7 passos com a etiqueta “opcional”. Botões “Pular a configuração” (fantasma) e “Começar” (primário).
-2. **Os 7 passos**, abaixo.
+1. **Abertura:** “Boas-vindas ao PerpetualMiner”, uma linha sobre o produto (a frase descritiva mora aqui e na loja; o popup não tem subtítulo) e a lista dos 8 passos com a etiqueta “opcional”. Botões “Pular a configuração” (fantasma) e “Começar” (primário).
+2. **Os 8 passos**, abaixo.
 3. **Tudo pronto:** o resumo de cada passo (feito · agora não · falta) e o botão “Abrir painel”, que abre o Painel em `#frases`.
 
 ## Os passos
@@ -72,7 +72,8 @@ A ordem é travada. Cada passo reusa uma função que já existe; nenhum cria fu
 | 4 | **Ligar a Conexão com o Anki** | Os passos da [F1](#conexão-com-o-anki-como-ligar-f1): pôr a Conexão no Anki (baixar o arquivo, abrir, responder Sim) e reiniciar o Anki, com a conferência sozinha. | a conexão está ligada |
 | 5 | **Configurar a IA dos cartões** · opcional | O card IA dos cartões de Configurações ([CFG-35](../../voz/README.md), [Configurações § IA dos cartões](../configuracoes/README.md#ia-dos-cartões)): as duas entradas em colunas do mesmo tamanho; a da chave e a do ChatGPT (#155) funcionam. | chave da OpenAI conferida |
 | 6 | **Ligar a mineração automática** · opcional | Os toggles EN/RU do popup, com o limite por dia editável (1–100). Com a conexão desligada, a nota de dependência aparece; ainda dá para ligar um idioma. | um idioma ligado |
-| 7 | **Adicionar a chave do Gemini** · opcional | O card Chave do Gemini de Configurações: sem chave, campo e “Onde conseguir a chave” recolhido; com chave, valor mascarado e “Trocar chave”. | chave salva |
+| 7 | **Escolher o nível do cartão** · opcional | [O passo do nível](passo-do-nivel.md) (#164): o Estilo do cartão e a prévia de cada idioma ligado. | níveis salvos |
+| 8 | **Adicionar a chave do Gemini** · opcional | O card Chave do Gemini de Configurações: sem chave, campo e “Onde conseguir a chave” recolhido; com chave, valor mascarado e “Trocar chave”. | chave salva |
 
 - Os passos se marcam **pelo estado real**. Se a pessoa já fez algo fora da página, o passo já aparece feito.
 - **Pular:**
@@ -84,8 +85,8 @@ A ordem é travada. Cada passo reusa uma função que já existe; nenhum cria fu
 
 - Enquanto a pessoa não chegar a **Tudo pronto**, aparece um lembrete. Isso inclui quem usou “Pular a configuração” ou fechou a aba.
 - O lembrete aparece em dois lugares:
-  - **no popup:** um cartão entre o cabeçalho e “Abrir painel” (acento a 45% + fundo com 5% de acento, com um anel de progresso): “Configuração pela metade · 2 de 7”, “Volte de onde parou” e o botão “Continuar configuração”;
-  - **em Frases:** uma faixa ouro no topo, “A configuração ficou pela metade: 2 de 7 passos.”, com os botões “Ocultar” e “Continuar configuração”.
+  - **no popup:** um cartão entre o cabeçalho e “Abrir painel” (acento a 45% + fundo com 5% de acento, com um anel de progresso): “Configuração pela metade · 2 de 8”, “Volte de onde parou” e o botão “Continuar configuração”;
+  - **em Frases:** uma faixa ouro no topo, “A configuração ficou pela metade: 2 de 8 passos.”, com os botões “Ocultar” e “Continuar configuração”.
 - “Continuar configuração” abre `#boas-vindas` no primeiro passo que falta.
 - “Ocultar” esconde o lembrete **de vez**, nos dois lugares.
 - Esse lembrete ocultável é o **item 9 da lista fechada** (“Configuração pela metade”).
@@ -99,13 +100,13 @@ O passo 4 da Boas-vindas e o card ONB-16 da área Conexão com o Anki montam **o
 
 Os passos, na ordem (o número na tela é a posição na lista):
 
-1. **Ter o Anki** (`ONB-18`, #146): a pergunta “Você já tem o Anki?”, com as duas respostas. **Não tenho** abre a página de download do Anki numa aba nova (o painel fica no passo; o Anki não tem endereço fixo de instalador por sistema, um arquivo por processador com a versão no nome) e diz o que fazer depois pelo sistema da pessoa (no Mac, “Arraste o Anki para a pasta Aplicativos e abra-o de lá.”; no Windows, o instalador; nos outros, “Depois de instalar, abra o Anki.”). **Já tenho** usa o abridor da Conexão (#147) para abrir o Anki sozinho quando a permissão `nativeMessaging` já está dada (“O Anki está abrindo…”, e a conferência de 15 s encontra a Conexão que o Anki abriu trouxe); sem a permissão, sem o abridor, ou sem ele abrir, o caminho manual de sempre (“Abra o Anki para continuar.”). A escolha fica só na tela: o que marca o passo é a Conexão respondendo, e antes dela a tela não diz nada do Anki — “não instalado”, “fechado” e “aberto sem a Conexão” dão o mesmo silêncio (nunca “não encontrado”).
+1. **Ter o Anki** (`ONB-18`, #146): a pergunta “Você já tem o Anki?”, com as duas respostas. **Não tenho** abre a página de download do Anki numa aba nova (o painel fica no passo; o Anki não tem endereço fixo de instalador por sistema) e diz o que fazer depois pelo sistema da pessoa (no Mac, “Arraste o Anki para a pasta Aplicativos e abra-o de lá.”; no Windows, o instalador; nos outros, “Depois de instalar, abra o Anki.”). **Já tenho** usa o abridor da Conexão (#147) para abrir o Anki sozinho quando a permissão `nativeMessaging` já está dada (“O Anki está abrindo…”, e a conferência de 15 s encontra a Conexão que o Anki abriu trouxe); sem a permissão, sem o abridor, ou sem ele abrir, o caminho manual de sempre (“Abra o Anki para continuar.”). A escolha fica só na tela: o que marca o passo é a Conexão respondendo, e antes dela a tela não diz nada do Anki — “não instalado”, “fechado” e “aberto sem a Conexão” dão o mesmo silêncio (nunca “não encontrado”).
 2. **Pôr a Conexão no Anki** (`ONB-16.passo1Titulo`): baixar › abrir › **Sim** › reiniciar. Antes de baixar, a animação do aviso (`ONB-19`, #146) mostra o que o próprio Anki pergunta ao abrir o arquivo, e de onde clicar: dois quadros que se alternam sozinhos — a janela “Instalar extensão do Anki” com o aviso “Importante: Como as extensões são programas baixados da internet, elas são potencialmente maliciosas.” (as palavras do próprio Anki em pt-BR) e o mesmo diálogo com o Sim marcado; com movimento reduzido, os quadros ficam parados, lado a lado. O botão **Baixar a Conexão com o Anki** é um link de download do `.ankiaddon` que vai dentro do pacote da extensão (`conexao/perpetualminer.ankiaddon`; sem permissão nova). Abrir o arquivo com o Anki fechado abre o Anki e instala (ensaio do dono). O Detalhes **O arquivo não abriu?** é a reserva: com o código do AnkiWeb (`PerpetualMiner.CODIGO_DO_ANKIWEB`, só depois do primeiro upload, #176), diz para colá-lo em Ferramentas › Complementos › Obter complementos; sem ele, diz que o código vem em breve. Nunca um número inventado.
 3. **Reiniciar o Anki** (`ONB-16.passo2Titulo`): este passo sempre existe (no Anki do Mac, o arquivo pediu reinício até com o Anki fechado). A extensão confere sozinha (a conferência de 15 s do `ConexaoAnki`); a linha de status diz **Conectando ao Anki…** e, quando a Conexão responde, **Achei o Anki · perfil · versão** (o perfil e a versão vêm do `/health` do complemento; sem perfil, ou sem versão, a parte falta). O Tentar de novo vive neste passo.
 
 4. **Abrir o Anki sozinho** (`ONB-17`, #147): logo depois de a Conexão responder, o card passa sozinho a este passo, e a linha “Achei o Anki · perfil · versão” continua nele. **Permitir abrir o Anki** pede ao Chrome a permissão opcional `nativeMessaging` (o aviso é do Chrome) e a extensão confere o abridor que a Conexão deixou no computador: só “achou o Anki?”, nada abre nem fecha. Achou: “O Anki abre sozinho quando um Envio precisar.” e o passo vira ✓. Com a permissão já dada, a conferência sai sem clique. **Agora não** fica guardado e o passo fica “agora não”: “Sem essa permissão, quando o Anki estiver fechado o Envio pede que você o abra.” (o mesmo texto quando o Chrome não dá a permissão). O abridor não achou o Anki, ou não respondeu: o que fazer (fechar e abrir o Anki, que refaz o abridor), **Tentar de novo** e o que o Chrome disse no Detalhes. Sem protótipo próprio: o desenho segue o card do passo, e as referências visuais esperam o dono.
 
-Enquanto a Conexão não respondeu, o status do passo 2 (Pôr a Conexão no Anki) diz **Esperando a Conexão**: antes dela a extensão não enxerga o Anki, e “não instalado”, “fechado” e “aberto sem a Conexão” dão o mesmo silêncio — o passo 1 não diz nada do Anki (e nem traz a linha da Conexão: o Tentar de novo mora no passo de reiniciar). Sem resposta **2 minutos** depois de a pessoa ver os passos pela primeira vez (ou de baixar o arquivo), o card mostra o checklist de 3 itens (**O Anki está aberto?** · **Você fechou o Anki e abriu de novo?** · **A Conexão com o Anki está ativada em Ferramentas › Complementos?**) e **Baixar de novo**, em qualquer passo; a conferência continua sozinha e o checklist sai quando a Conexão responde. Ligada, os três primeiros passos viram ✓, o Tentar de novo sai e o foco, se estava nele, vai para o título (do passo 4 da Boas-vindas, o do passo). O passo 4 da Boas-vindas fica feito pela Conexão ligada; o passo 4 dos passos da Conexão é à parte (“agora não” não deixa o passo 4 por fazer). Quem já viu a Conexão ligar e a vê cair volta a **Reiniciar o Anki**, o primeiro passo que falta de novo, com a linha da Conexão e o Tentar de novo — não ao primeiro passo, nem ao do abridor, que sem a Conexão não tem o que fazer.
+Enquanto a Conexão não respondeu, o status do passo 2 (Pôr a Conexão no Anki) diz **Esperando a Conexão**: antes dela “não instalado”, “fechado” e “aberto sem a Conexão” dão o mesmo silêncio, e o passo 1 não diz nada do Anki (nem traz a linha da Conexão: o Tentar de novo mora no passo de reiniciar). Sem resposta **2 minutos** depois de a pessoa ver os passos pela primeira vez (ou de baixar o arquivo), o card mostra o checklist de 3 itens (**O Anki está aberto?** · **Você fechou o Anki e abriu de novo?** · **A Conexão com o Anki está ativada em Ferramentas › Complementos?**) e **Baixar de novo** em qualquer passo; a conferência continua sozinha e o checklist sai quando a Conexão responde. Ligada, os três primeiros passos viram ✓, o Tentar de novo sai e o foco, se estava nele, vai para o título. O passo 4 da Boas-vindas fica feito pela Conexão ligada; o passo 4 dos passos da Conexão é à parte (“agora não” não deixa o passo 4 por fazer). Quem já viu a Conexão ligar e a vê cair volta a **Reiniciar o Anki**, o primeiro passo que falta de novo, com a linha da Conexão e o Tentar de novo.
 
 - **Passo 4 da Boas-vindas:** `ONB-08.corpo`, e o componente com a lista de passos **acima** do card do passo, sem Voltar · Continuar próprios (o card da Boas-vindas tem os seus).
 - **Área Conexão com o Anki, nunca conectada:** o card ONB-16, com a lista ao lado do card do passo; o desenho e os estados estão em [Conexão com o Anki § Estados](../anki/README.md#estados). Quem já tinha a área aberta sem conexão vê o mesmo passo da Boas-vindas.
@@ -117,9 +118,9 @@ Tudo segue V1–V10 e C1–C9. V10 permite o nome do produto no onboarding. Este
 
 | ID | estado | cópia |
 |---|---|---|
-| ONB-01 | Abertura (título + corpo) | Boas-vindas ao PerpetualMiner — Minere frases de vídeos, páginas e fotos de livros, e envie ao Anki como cartões. Sete passos rápidos deixam tudo pronto; os opcionais dá para pular. |
+| ONB-01 | Abertura (título + corpo) | Boas-vindas ao PerpetualMiner — Minere frases de vídeos, páginas e fotos de livros, e envie ao Anki como cartões. Oito passos rápidos deixam tudo pronto; os opcionais dá para pular. |
 | ONB-02 | Botões da abertura | Pular a configuração · Começar |
-| ONB-03 | Sobretítulo do passo | Passo 4 de 7 · opcional |
+| ONB-03 | Sobretítulo do passo | Passo 4 de 8 · opcional |
 | ONB-04 | Botões do passo | Voltar · Agora não · Continuar |
 | ONB-05 | Passo 1 | Num vídeo com legenda, aperte Alt+S. A frase vai para o histórico e já fica copiada. / Numa página ou PDF, selecione o texto e use o botão direito › Minerar com PerpetualMiner. / Ou cole uma frase aqui, como no popup: |
 | ONB-06 | Passo 2 | Escolha uma tecla ou um botão extra do mouse para minerar o texto selecionado, sem abrir o menu. |
