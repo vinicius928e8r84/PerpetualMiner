@@ -11,7 +11,7 @@ não diz não foi decidido. Spec: o [#138](https://github.com/vinicius928e8r84/P
 - **Um tipo de nota por idioma** (`PerpetualMiner Inglês`, `PerpetualMiner Russo`), com os nossos nomes de campos: o Envio não depende mais de o Anki ser “Básico/Frente/Verso”.
 - **Os campos nascem todos juntos.** Mudar os campos de um tipo de nota depois obriga o Anki a uma sincronização completa; por isso já nascem os dos níveis (Definição, Outro exemplo),
   os do inglês (Significado simples, Gatilho), os da morfologia do russo (Sílaba forte, Morfologia, Explicação das cores, Mesma raiz, Raiz), os das frentes (Dica, Frase com lacuna) e os da Criação
-  (Frase escrita, Escrito antes, Correção). O que o nível não usa fica vazio. O modelo de Cartão nasce como `Frase com áudio`; as outras frentes reescrevem esse modelo (#166, `frentes-do-cartao.md`; a Produção, o Ditado e a Criação são o #167 e o #168).
+  (Frase escrita, Escrito antes, Correção). O que o nível não usa fica vazio. O modelo de Cartão nasce como `Frase com áudio`; as outras frentes reescrevem esse modelo (#166, `frentes-do-cartao.md`; a Produção e o Ditado são o #167 (`frentes-do-cartao.md`); a Criação é o #168).
 - **O Cartão Iniciante**, nos dois idiomas: a Frase e o áudio na frente; no verso, a pronúncia, a literal e a natural em português (as cores ligam o pedaço da Frase ao pedaço da literal que o traduz),
   o contexto da cena, a Palavra com o áudio e a imagem. O russo parte do Cartão de russo de antes, explicado em português (`engine/prompts/ru_iniciante.txt`).
 - **Os Baralhos**: numa instalação nova (nenhum Baralho além do padrão do Anki) nascem `PerpetualMiner::Inglês` e `PerpetualMiner::Russo`; quem já tem Baralho fica com o seu e não ganha nenhum.
