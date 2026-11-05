@@ -92,23 +92,25 @@ test('o Avançado diz o nome do idioma no texto, e o Cartão dele é monolíngue
   await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'avancado', versao: 1 } } });
 });
 
-test('com os dois idiomas ligados, cada um tem o seu nível e o russo só escolhe o Iniciante', async ({ page, extensao, fakes }) => {
+test('com os dois idiomas ligados, cada um tem o seu nível e a sua prévia', async ({ page, extensao, fakes }) => {
   await abrirONivel(page, extensao, { automatica: OS_DOIS });
 
   await expect(grupo(page, 'Inglês')).toBeVisible();
   await expect(grupo(page, 'Russo')).toBeVisible();
   await expect(nivel(page, 'Russo', 'Iniciante')).toBeChecked();
-  await expect(nivel(page, 'Russo', 'Intermediário')).toBeDisabled();
-  await expect(nivel(page, 'Russo', 'Avançado')).toBeDisabled();
-  await expect(grupo(page, 'Russo')).toContainText('No russo, por enquanto só o Iniciante.');
   await expect(cartao(page, 'Russo')).toContainText('Я не мальчик!');
   await expect(cartao(page, 'Russo')).toContainText('Eu não sou um menino!');
 
   await escolher(page, 'Inglês', 'Avançado');
   await expect(cartao(page, 'Inglês')).toContainText(AVANCADO);
+  await expect(itemDaLista(page, 'Escolher o nível do cartão')).not.toHaveAccessibleName(/feito/);
+  await escolher(page, 'Russo', 'Intermediário');
+  // O Cartão do russo no Intermediário: o verso sem a Frase, com a Palavra e a definição em inglês.
+  await expect(cartao(page, 'Russo')).toContainText('To come or to arrive on foot');
+  await expect(cartao(page, 'Russo')).not.toContainText('Eu não sou um menino!');
   await expect(itemDaLista(page, 'Escolher o nível do cartão')).toHaveAccessibleName(/feito$/);
-  expect(pedidosDaPrevia(fakes)).toEqual(expect.arrayContaining([{ lang: 'ru', nivel: 'iniciante' }, { lang: 'en', nivel: 'avancado' }]));
-  await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'avancado', versao: 1 }, ru: { nivel: 'iniciante', versao: 0 } } });
+  expect(pedidosDaPrevia(fakes)).toEqual(expect.arrayContaining([{ lang: 'ru', nivel: 'iniciante' }, { lang: 'en', nivel: 'avancado' }, { lang: 'ru', nivel: 'intermediario' }]));
+  await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'avancado', versao: 1 }, ru: { nivel: 'intermediario', versao: 1 } } });
 });
 
 test('Tudo pronto resume o nível de cada idioma ligado', async ({ page, extensao }) => {

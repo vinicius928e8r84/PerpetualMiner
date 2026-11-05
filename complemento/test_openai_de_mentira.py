@@ -11,6 +11,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlsplit
 
+from complemento.test_cartao_russo_de_mentira import cartao_russo
 from complemento.test_imagens_de_mentira import png_de
 
 # O que cada comportamento faz com os dois pedidos que a Conexão faz ao conferir uma chave:
@@ -84,11 +85,9 @@ def _cartao_de_mentira(mensagens, prompt=""):
     texto_do_prompt = " ".join(prompt.split())
     partes = re.findall(r"(%s): \[" % "|".join(PARTES_DE_MENTIRA), texto_do_prompt) or list(PARTES_DE_MENTIRA)[:3] + ["Gist"]
     com_alinhamento = not prompt or "Alignment: 1 |" in texto_do_prompt
-    if re.search(r"[\u0400-\u04FF]", pedido):  # russo: a frase inteira é a frente
-        frase = pedido.split("\n")[0]
-        primeira = frase.split()[0]
-        return ("Front\n%s\n\nBack\nPronunciation: pronúncia de mentira\n\nLiteral: literal de mentira\n\nNatural: tradução de mentira\n\n"
-                "Gist: cena de mentira.\n\nAlignment:\n1 | %s | literal\n" % (frase, primeira))
+    russo = cartao_russo(pedido, texto_do_prompt)  # o pedido em russo: a frase inteira é a frente
+    if russo:
+        return russo
     alvo = re.search(r"Target keyword for this card: (.+)", pedido)
     linha = pedido.split("Input Format:\n")[-1].strip()
     palavra, frase = [parte.strip() for parte in linha.split(" : ", 1)]

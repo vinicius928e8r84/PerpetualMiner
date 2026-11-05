@@ -1,6 +1,6 @@
 'use strict';
 
-// Referência visual do Estilo do cartão (#162), nos Ajustes de envio: o nível de cada idioma (Iniciante, Intermediário, Avançado), com o
+// Referência visual do Estilo do cartão (#162; o russo com os três níveis, #163), nos Ajustes de envio: o nível de cada idioma (Iniciante, Intermediário, Avançado), com o
 // texto do nível. Não há protótipo desta seção: ela reusa o controle segmentado e as notas do campo Imagens (o
 // protótipo aprovado dos Ajustes de envio, `docs/design/painel/anki/prototipo-ajustes-envio.html`), e o dono compara estas telas com ele.
 // Desde o #164 cada card traz a prévia do Cartão do nível sob o controle (BRG-43); a mesma prévia está no passo do nível da Boas-vindas
@@ -51,9 +51,10 @@ test('o inglês no Intermediário: a prévia muda com o nível, antes de salvar'
   await expect(ilha(page)).toHaveScreenshot('ajustes-estilo-intermediario.png');
 });
 
-test('o russo, só com o Iniciante escolhível', async ({ page, extensao }) => {
+test('o russo, com os três níveis (#163) e o Avançado escolhido e ainda não salvo', async ({ page, extensao }) => {
   test.fixme(true, AGUARDA_O_DONO);
   await abrirOEstilo(page, extensao, { idioma: 'Russo' });
+  await estilo(page).locator('label', { hasText: 'Avançado' }).click();
 
   await expect(ilha(page)).toHaveScreenshot('ajustes-estilo-russo.png');
 });

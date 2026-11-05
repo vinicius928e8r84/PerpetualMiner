@@ -7,7 +7,7 @@ não diz não foi decidido. Spec: o [#138](https://github.com/vinicius928e8r84/P
 
 - **O estilo é dado**: `engine/estilos.json` diz, por idioma, o tipo de nota, o Baralho, como uma linha minerada se lê (`entrada`), **todos** os campos e,
   por nível, a língua da explicação, as partes do verso, as cores ligadas ou não e o prompt. Um idioma novo é uma entrada nova e um arquivo de prompt.
-  O Iniciante existe nos dois idiomas; o Intermediário e o Avançado do inglês entraram com o #162 e a morfologia do russo é o #163 (ver “Os níveis do inglês” abaixo).
+  O Iniciante existe nos dois idiomas; o Intermediário e o Avançado do inglês entraram com o #162 e os do russo, com a morfologia, com o #163 (ver “Os níveis do inglês” e “Os níveis do russo” abaixo).
 - **Um tipo de nota por idioma** (`PerpetualMiner Inglês`, `PerpetualMiner Russo`), com os nossos nomes de campos: o Envio não depende mais de o Anki ser “Básico/Frente/Verso”.
 - **Os campos nascem todos juntos.** Mudar os campos de um tipo de nota depois obriga o Anki a uma sincronização completa; por isso já nascem os dos níveis (Definição, Outro exemplo),
   os do inglês (Significado simples, Gatilho), os da morfologia do russo (Sílaba forte, Morfologia, Explicação das cores, Mesma raiz, Raiz), os das frentes (Dica, Frase com lacuna) e os da Criação
@@ -79,7 +79,7 @@ Não há tela nova: a pessoa vê o resultado no Anki (Ferramentas › Gerenciar 
 
 ## 7. Os níveis do inglês (#162)
 
-O Cartão do inglês ganhou o Intermediário e o Avançado (o russo só tem o Iniciante até o #163). O estilo continua dado (`engine/estilos.json`); o que muda é o prompt, as partes do verso e o campo de `nivel` no pedido do Envio.
+O Cartão do inglês ganhou o Intermediário e o Avançado (o russo ganhou os dele no #163, na seção 8). O estilo continua dado (`engine/estilos.json`); o que muda é o prompt, as partes do verso e o campo de `nivel` no pedido do Envio.
 
 | nível | prompt | verso (campos preenchidos) | cores |
 |---|---|---|---|
@@ -93,7 +93,26 @@ O Cartão do inglês ganhou o Intermediário e o Avançado (o russo só tem o In
 - **A imagem** continua no verso dos três níveis (a escolha Foto real · Gerada por IA dos Ajustes de envio vale em todos).
 - **A tela**: Ajustes de envio › Estilo do cartão (`painel-ajustes.js`, BRG-42), um controle segmentado por idioma; só grava em Salvar ajustes e vale a partir do Envio seguinte.
 
-## 8. A prévia do Cartão (#164)
+## 8. Os níveis do russo (#163)
+
+O Cartão do russo ganhou o Intermediário e o Avançado, com a morfologia. O estilo continua dado (`engine/estilos.json`); o prompt de cada nível é `ru_intermediario.txt` e `ru_avancado.txt`, a língua da explicação é o inglês nos dois, e o pedido do Envio leva `nivel` como no inglês.
+
+| nível | verso (campos preenchidos) | frente |
+|---|---|---|
+| Iniciante | como antes: Pronúncia, Tradução literal, Tradução natural, Contexto da cena, Palavra, Imagem | a Frase com o áudio; as cores vêm do alinhamento (a Frase e a literal) |
+| Intermediário | Pronúncia, Palavra, Sílaba forte, Definição (inglês), Explicação das cores, Outro exemplo, Imagem; **a Frase não se repete no verso** | a Frase com o áudio; as 4 cores da morfologia |
+| Avançado | as mesmas, mais as palavras da Mesma raiz | as mesmas 4 cores |
+
+- **As 4 cores** são fixas por tipo de pedaço, iguais nos dois níveis: prefixo (roxo), raiz (verde), sufixo (âmbar) e terminação de pessoa, tempo ou caso (vermelho). **Só as palavras com pedaço a explicar ganham cor**: o prompt devolve uma seção `Morphology:` com uma linha por palavra (`palavra | tipo:pedaço | …`) e a Conexão pinta a primeira ocorrência de cada uma na Frase. Uma palavra cujos pedaços não somam a palavra, letra por letra, fica sem cor e fora da Morfologia: nada é adivinhado. A frente não ganha acento (a sílaba forte vai só no verso).
+- **A explicação por cor** vem da seção `Colors:` (`tipo | pedaços | explicação`), uma linha por cor, na ordem prefixo, raiz, sufixo, terminação; o sufixo e a terminação levam as etiquetas de pessoa, tempo e aspecto e, num substantivo, adjetivo ou pronome, o caso (com a preposição que o pede).
+- **A Palavra** é a que o Cartão escolhe na Frase (linha `Word:`), e não as duas primeiras palavras da linha minerada, como no Iniciante: o áudio da Palavra fala essa. A Sílaba forte é a Palavra com o acento agudo na vogal tônica; a Pronúncia é a transliteração com a sílaba forte em maiúsculas.
+- **Campos que se gravam e o verso não mostra** (`guarda`): a **Morfologia** (`palavra = prefixo + raiz + sufixo…`, uma por linha) e a **Raiz**. A Criação (#168) usa a Raiz como radical. A Mesma raiz só se grava no Avançado.
+- **O verso sem a Frase**: o modelo de Cartão é um só para todos os níveis do russo, e o começo do verso (`{{FrontSide}}` e a linha) só aparece quando a Sílaba forte está vazia (`{{^Sílaba forte}}`): o Iniciante, que a deixa vazia, repete a Frase; os outros dois não. Conferido com o renderizador do Anki de verdade (`pip install anki`). O campo é escolhido pelos dados: o primeiro, na ordem do verso, que só os níveis com `repete_a_frase: false` preenchem.
+- **Leituras do worker, ainda não confirmadas pelo dono** (risco 14): o verso sem a Frase vale também no Avançado; a frente não ganha acento; só as palavras com pedaço a explicar ganham cor; a Pronúncia fica acima da Palavra (a ordem do verso do Iniciante é Pronúncia antes de Palavra e um modelo só ordena os três níveis); a definição do Avançado também é em inglês (a issue só pede a mesma coisa mais as palavras da mesma raiz).
+- **Tipo de nota que já existe** a Conexão não muda (só cria): o do russo criado pelo #161 fica com o verso do Iniciante (repete a Frase, não mostra Sílaba forte, Explicação das cores nem Mesma raiz) até a pessoa o apagar e a Conexão criar o novo; o Cartão novo grava os campos mesmo assim.
+- **A tela**: Ajustes de envio › Estilo do cartão (`painel-anki-estilo.js`) passa a ter os três níveis também no russo; a nota “No russo, por enquanto só o Iniciante.” saiu.
+
+## 9. A prévia do Cartão (#164)
 
 A Conexão mostra um Cartão como o Anki o desenha (`POST /anki/card-preview`, `previa_do_cartao.py`), para o passo do nível da Boas-vindas e para Ajustes de envio › Estilo do cartão. O desenho é do Anki (`Note.ephemeral_card(...).render_output()`, do 2.1.50 em diante, sem gravar nota): a Conexão só escolhe os campos.
 

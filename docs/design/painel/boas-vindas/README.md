@@ -72,7 +72,7 @@ A ordem é travada. Cada passo reusa uma função que já existe; nenhum cria fu
 | 4 | **Ligar a Conexão com o Anki** | Os passos da [F1](#conexão-com-o-anki-como-ligar-f1): pôr a Conexão no Anki (baixar o arquivo, abrir, responder Sim) e reiniciar o Anki, com a conferência sozinha. | a conexão está ligada |
 | 5 | **Configurar a IA dos cartões** · opcional | O card IA dos cartões de Configurações ([CFG-35](../../voz/README.md), [Configurações § IA dos cartões](../configuracoes/README.md#ia-dos-cartões)): as duas entradas em colunas do mesmo tamanho; a da chave e a do ChatGPT (#155) funcionam. | chave da OpenAI conferida |
 | 6 | **Ligar a mineração automática** · opcional | Os toggles EN/RU do popup, com o limite por dia editável (1–100). Com a conexão desligada, a nota de dependência aparece; ainda dá para ligar um idioma. | um idioma ligado |
-| 7 | **Escolher o nível do cartão** · opcional | [O passo do nível](passo-do-nivel.md) (#164): o Estilo do cartão e a prévia de cada idioma ligado. | níveis resolvidos |
+| 7 | **Escolher o nível do cartão** · opcional | [O passo do nível](passo-do-nivel.md) (#164): o Estilo do cartão e a prévia de cada idioma ligado. | níveis salvos |
 | 8 | **Adicionar a chave do Gemini** · opcional | O card Chave do Gemini de Configurações: sem chave, campo e “Onde conseguir a chave” recolhido; com chave, valor mascarado e “Trocar chave”. | chave salva |
 
 - Os passos se marcam **pelo estado real**. Se a pessoa já fez algo fora da página, o passo já aparece feito.

@@ -42,7 +42,8 @@ class PreviaNaColecaoDeVerdade(unittest.TestCase):
                     campos = previa_do_cartao.campos_do_exemplo(lang, nivel)
                     self.assertIn(texto_de(campos["Frase"]), texto_de(previa["front"]))
                     self.assertIn("pm-tocar", previa["front"])
-                    self.assertIn(texto_de(campos["Frase"]), texto_de(previa["back"]))
+                    # O verso repete a Frase, salvo o nível que diz que não (o Intermediário e o Avançado do russo).
+                    self.assertEqual(texto_de(campos["Frase"]) in texto_de(previa["back"]), estilos.estilo(lang, nivel).get("repete_a_frase", True))
                     self.assertIn(".card", previa["css"])
                     self.assertIn('<img src="data:image/svg+xml;base64,', previa["back"])
                     self.assertNotIn("[anki:play", previa["front"] + previa["back"])

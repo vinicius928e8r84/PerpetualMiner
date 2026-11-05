@@ -7,6 +7,6 @@ perfil aberto (o perfil fixo, como o Envio): por isso `muda`. Não é teste: fic
 MATRIZ_DA_PREVIA = {
     ("POST", "/anki/card-preview"): {
         "corpo": {"lang": "en", "nivel": "iniciante"}, "muda": True, "le_a_colecao": True, "le_o_perfil": False,
-        "recusas": [({}, 400, "invalid_request"), ({"lang": "fr"}, 400, "invalid_lang"), ({"lang": "ru", "nivel": "avancado"}, 400, "invalid_level")],
+        "recusas": [({}, 400, "invalid_request"), ({"lang": "fr"}, 400, "invalid_lang"), ({"lang": "ru", "nivel": "mestre"}, 400, "invalid_level")],
     },
 }

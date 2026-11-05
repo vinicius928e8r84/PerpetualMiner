@@ -1,8 +1,8 @@
 'use strict';
 
 // Conexão com o Anki · o estilo do Cartão nos Ajustes de envio (#162, Estilo do cartão): o nível de cada idioma (Iniciante,
-// Intermediário, Avançado), com o texto do nível. Só grava em Salvar ajustes; o Envio seguinte pede à Conexão o
-// nível salvo (`nivel` no `POST /jobs`, sem ele é o Iniciante). No russo só o Iniciante se escolhe, até o #163.
+// Intermediário, Avançado), com o texto do nível, nos dois idiomas (o russo desde o #163). Só grava em Salvar ajustes; o Envio seguinte pede
+// à Conexão o nível salvo (`nivel` no `POST /jobs`, sem ele é o Iniciante).
 //
 // Sob o controle fica a prévia do Cartão (#164, BRG-43): o Cartão de exemplo do nível que está na tela, desenhado pelo Anki, antes de salvar.
 //
@@ -116,23 +116,33 @@ test('o Avançado diz o nome do idioma no texto, e voltar ao Iniciante grava o I
   await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'iniciante', versao: 5 } } });
 });
 
-// Exceção de teste: sem-estado-guardado — só abre os cards e mostra os níveis desligados; nada é gravado.
-test('o russo só escolhe o Iniciante: o Intermediário e o Avançado ficam desligados e a tela diz por quê', async ({ page, extensao }) => {
+// Exceção de teste: sem-estado-guardado — só abre o card do russo e mostra os três níveis ligados; nada é gravado.
+test('o russo também escolhe os três níveis, sem aviso de "só o Iniciante"', async ({ page, extensao }) => {
   await abrirAjustes(page, extensao);
   await cabeca(page, 'Russo').click();
 
   await expect(nivel(page, 'Iniciante', 'Russo')).toBeChecked();
-  await expect(nivel(page, 'Intermediário', 'Russo')).toBeDisabled();
-  await expect(nivel(page, 'Avançado', 'Russo')).toBeDisabled();
-  await expect(formulario(page, 'Russo')).toContainText('No russo, por enquanto só o Iniciante.');
+  for (const nome of ['Iniciante', 'Intermediário', 'Avançado']) await expect(nivel(page, nome, 'Russo')).toBeEnabled();
+  await expect(formulario(page, 'Russo')).not.toContainText('só o Iniciante');
   await expect(estilo(page, 'Russo')).toHaveAccessibleDescription('Não entendo nada ou só algumas palavras');
-  // O inglês, no outro card, continua escolhível.
-  await cabeca(page, 'Inglês').click();
-  await expect(nivel(page, 'Avançado', 'Inglês')).toBeEnabled();
 });
 
-test('um nível gravado que o idioma não tem volta ao Iniciante: o russo com o Avançado gravado mostra o Iniciante', async ({ page, extensao }) => {
-  await abrirAjustes(page, extensao, { gravado: { [CHAVE]: { ...AJUSTES, ru: { ...AJUSTES.ru, nivel: 'avancado', versao: 2 } } } });
+test('escolher o Avançado no russo diz o idioma no texto e só grava no russo, em Salvar ajustes', async ({ page, extensao }) => {
+  await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });
+  await cabeca(page, 'Russo').click();
+
+  await escolher(page, 'Avançado', 'Russo');
+  await expect(estilo(page, 'Russo')).toHaveAccessibleDescription('Entendo o russo explicado em russo');
+  await expect(situacao(page, 'Russo')).toHaveText('Alterações não salvas');
+  await estadoFinal(extensao, { [CHAVE]: AJUSTES });
+
+  await salvar(page, 'Russo').click();
+  await expect(situacao(page, 'Russo')).toHaveText('Salvo');
+  await estadoFinal(extensao, { [CHAVE]: { en: { deckName: 'Inglês', versao: 0 }, ru: { deckName: 'Русский', nivel: 'avancado', versao: 1 } } });
+});
+
+test('um nível gravado que nenhum idioma tem volta ao Iniciante', async ({ page, extensao }) => {
+  await abrirAjustes(page, extensao, { gravado: { [CHAVE]: { ...AJUSTES, ru: { ...AJUSTES.ru, nivel: 'nativo', versao: 2 } } } });
   await cabeca(page, 'Russo').click();
 
   await expect(nivel(page, 'Iniciante', 'Russo')).toBeChecked();
@@ -177,6 +187,16 @@ test.describe('o Envio seguinte pede o nível salvo', () => {
     const [envio] = await enviosCriados(fakes, 1);
     expect('nivel' in envio.corpo).toBe(false);
     await estadoFinal(extensao, { pm_envio: { envios: [{ corpo: { lang: 'en' } }] } });
+  });
+
+  test('com o Intermediário salvo, o Envio em russo leva o nível e guarda o corpo', async ({ page, extensao, fakes }) => {
+    await extensao.gravarStorage({ frases: [RUSSA], [CHAVE]: { ...AJUSTES, ru: { ...AJUSTES.ru, nivel: 'intermediario', versao: 1 } } });
+    await abrirPainel(page, extensao);
+    await marcarEEnviar(page, [RUSSA.texto]);
+
+    const [envio] = await enviosCriados(fakes, 1);
+    expect([envio.corpo.lang, envio.corpo.nivel]).toEqual(['ru', 'intermediario']);
+    await estadoFinal(extensao, { pm_envio: { envios: [{ corpo: { lang: 'ru', nivel: 'intermediario' } }] } });
   });
 
   test('o nível de cada idioma é o dele: inglês no Avançado e russo no Iniciante mandam um Envio de cada', async ({ page, extensao, fakes }) => {

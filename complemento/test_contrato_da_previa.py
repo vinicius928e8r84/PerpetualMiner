@@ -30,13 +30,14 @@ class ContratoDaPrevia:
                 frase = texto_de(previa_do_cartao.campos_do_exemplo(lang, nivel)["Frase"])
                 self.assertIn(frase, texto_de(previa["front"]))
                 self.assertIn("pm-tocar", previa["front"])
-                self.assertNotIn(frase, texto_de(previa["back"].split("<hr id=answer>")[1]) if nivel != "iniciante" else "", "o verso do exemplo não repete a Frase")
+                # O verso repete a Frase, salvo o nível que diz que não (o Intermediário e o Avançado do russo, #163).
+                self.assertEqual(frase in texto_de(previa["back"]), estilos.estilo(lang, nivel).get("repete_a_frase", True), "a Frase no verso")
 
     def test_a_previa_de_cada_estilo_mostra_no_verso_as_partes_do_nivel_e_so_elas(self):
         for lang, nivel in ESTILOS:
             with self.subTest(lang=lang, nivel=nivel):
                 previa = previa_do_cartao.previa_do_exemplo(self.adaptador(SO_O_DEFAULT), lang, nivel)
-                verso = texto_de(previa["back"].split("<hr id=answer>")[1])
+                verso = texto_de(previa["back"].split("<hr id=answer>")[-1])
                 campos, nomes = previa_do_cartao.campos_do_exemplo(lang, nivel), estilos.idioma(lang)["campos"]
                 for parte in estilos.estilo(lang, nivel)["verso"]:
                     if parte not in ("imagem", "palavra"):

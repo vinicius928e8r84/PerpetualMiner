@@ -1,13 +1,13 @@
 'use strict';
 
-// O estilo do Cartão (#162, BRG-42): o nível de cada idioma, um controle segmentado Iniciante · Intermediário ·
-// Avançado. Sob o escolhido fica o texto dele (o do quiz de nível, com o idioma) e a prévia do Cartão desse nível (#164, `painel-anki-previa.js`), que
-// muda com a escolha, antes de salvar. No russo só o Iniciante se escolhe, até o #163. Dois lugares montam este campo: `painel-ajustes.js` (Ajustes de envio, que
-// grava o rascunho em Salvar ajustes) e o passo do nível da Boas-vindas (que grava ao escolher, por `aoEscolher`).
+// O estilo do Cartão (#162, BRG-42): o nível de cada idioma, um controle segmentado Iniciante · Intermediário · Avançado (os dois idiomas têm os três níveis, o russo
+// desde o #163). Sob o escolhido fica o texto dele (o do quiz de nível, com o idioma) e a prévia do Cartão desse nível (#164, `painel-anki-previa.js`), que muda com a
+// escolha, antes de salvar. Dois lugares montam este campo: `painel-ajustes.js` (Ajustes de envio, que grava o rascunho em Salvar ajustes) e o passo do nível da
+// Boas-vindas (que grava ao escolher, por `aoEscolher`).
 
 (function (raiz) {
   const { textoDaVoz, AjustesDeEnvio, IDIOMAS } = raiz;
-  const { NIVEIS, NIVEIS_ESCOLHIVEIS } = AjustesDeEnvio;
+  const { NIVEIS } = AjustesDeEnvio;
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
   const VOZ_DO_NIVEL = {
     iniciante: ['BRG-42.iniciante', 'BRG-42.textoIniciante'],
@@ -46,7 +46,6 @@
       radio.name = id;
       radio.value = nivel;
       radio.checked = rascunho.nivel === nivel;
-      radio.disabled = !NIVEIS_ESCOLHIVEIS[lang].includes(nivel);
       radio.addEventListener('change', () => {
         rascunho.nivel = nivel;
         preencher(lang, nivel, texto);
@@ -58,9 +57,7 @@
     grupo.setAttribute('role', 'radiogroup');
     grupo.setAttribute('aria-labelledby', rotulo.id);
     grupo.setAttribute('aria-describedby', texto.id);
-    const soIniciante = NIVEIS_ESCOLHIVEIS[lang].length < NIVEIS.length;
-    return elemento('div', 'ajustes-campo', rotulo, grupo, texto,
-      ...(soIniciante ? [elemento('span', 'ajustes-campo__ajuda', textoDaVoz('BRG-42.soIniciante'))] : []), previa.no);
+    return elemento('div', 'ajustes-campo', rotulo, grupo, texto, previa.no);
   }
 
   /** “Mais estilos em Ajustes de envio”: o onboarding só pergunta o nível, e o resto do estilo mora lá (#138). */

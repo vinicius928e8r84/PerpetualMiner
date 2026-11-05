@@ -35,7 +35,10 @@
     "definicao": "Definition",
     "significado_simples": "Simple meaning",
     "outro_exemplo": "Other example",
-    "gatilho": "Trigger"
+    "gatilho": "Trigger",
+    "silaba_forte": "Stress",
+    "mesma_raiz": "Same root",
+    "raiz": "Root"
   },
   "idiomas": {
     "en": {
@@ -131,7 +134,9 @@
         "definicao", "outro_exemplo", "dica", "lacuna", "frase_escrita", "escrito_antes", "correcao",
         "silaba_forte", "morfologia", "explicacao_das_cores", "mesma_raiz", "raiz"
       ],
-      "ordem_do_verso": ["pronuncia", "literal", "natural", "cena", "palavra", "imagem"],
+      "ordem_do_verso": [
+        "pronuncia", "literal", "natural", "cena", "palavra", "silaba_forte", "definicao", "explicacao_das_cores", "outro_exemplo", "mesma_raiz", "imagem"
+      ],
       "niveis": {
         "iniciante": {
           "prompt": "prompts/ru_iniciante.txt",
@@ -157,6 +162,88 @@
               "1 | Я | Eu",
               "2 | не | não",
               "3 | мальчик | menino"
+            ]
+          }
+        },
+        "intermediario": {
+          "prompt": "prompts/ru_intermediario.txt",
+          "explicacao": "en",
+          "verso": ["pronuncia", "palavra", "silaba_forte", "definicao", "explicacao_das_cores", "outro_exemplo", "imagem"],
+          "cores": false,
+          "morfologia": true,
+          "repete_a_frase": false,
+          "guarda": ["morfologia", "raiz"],
+          "exemplo": {
+            "texto": [
+              "Front",
+              "Она приходила вчера, но меня не было дома.",
+              "",
+              "Back",
+              "Word: приходила",
+              "",
+              "Stress: приходи́ла",
+              "",
+              "Pronunciation: pri-ha-DI-la",
+              "",
+              "Definition: To come or to arrive on foot; here it is the habitual or repeated past, \"she used to come\".",
+              "",
+              "Other example: Мама приходила домой поздно.",
+              "",
+              "Morphology:",
+              "приходила | prefix:при | root:ход | suffix:и | suffix:л | ending:а",
+              "вчера | root:вчер | ending:а",
+              "дома | root:дом | ending:а",
+              "",
+              "Colors:",
+              "prefix | при- | arrival, movement towards a place",
+              "suffix | -и-л- | verb stem and past tense; imperfective aspect",
+              "root | ход | the idea of walking, going",
+              "ending | -а | feminine singular: she (3rd person, past tense)",
+              "",
+              "Root: ход",
+              "",
+              "Same root: ходить (to walk), вход (entrance), выход (exit)"
+            ]
+          }
+        },
+        "avancado": {
+          "prompt": "prompts/ru_avancado.txt",
+          "explicacao": "en",
+          "verso": ["pronuncia", "palavra", "silaba_forte", "definicao", "explicacao_das_cores", "outro_exemplo", "mesma_raiz", "imagem"],
+          "cores": false,
+          "morfologia": true,
+          "repete_a_frase": false,
+          "guarda": ["morfologia", "raiz"],
+          "exemplo": {
+            "texto": [
+              "Front",
+              "Она приходила вчера, но меня не было дома.",
+              "",
+              "Back",
+              "Word: приходила",
+              "",
+              "Stress: приходи́ла",
+              "",
+              "Pronunciation: pri-ha-DI-la",
+              "",
+              "Definition: To come or to arrive on foot; here it is the habitual or repeated past, \"she used to come\".",
+              "",
+              "Other example: Мама приходила домой поздно.",
+              "",
+              "Morphology:",
+              "приходила | prefix:при | root:ход | suffix:и | suffix:л | ending:а",
+              "вчера | root:вчер | ending:а",
+              "дома | root:дом | ending:а",
+              "",
+              "Colors:",
+              "prefix | при- | arrival, movement towards a place",
+              "suffix | -и-л- | verb stem and past tense; imperfective aspect",
+              "root | ход | the idea of walking, going",
+              "ending | -а | feminine singular: she (3rd person, past tense)",
+              "",
+              "Root: ход",
+              "",
+              "Same root: ходить (to walk), вход (entrance), выход (exit)"
             ]
           }
         }
