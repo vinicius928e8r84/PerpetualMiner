@@ -1,0 +1,156 @@
+{
+  "exemplos": [
+    {
+      "nome": "falar a frase do quiz: a Conexão devolve o áudio",
+      "daExtensao": true,
+      "contexto": {
+        "voz": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/falar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "sotaque": "co.uk",
+          "texto": "Could you tell me where the nearest pharmacy is?"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "audio": "<áudio>"
+        }
+      }
+    },
+    {
+      "nome": "falar a frase do quiz com o Google recusando o pedido",
+      "contexto": {
+        "voz": "recusada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/falar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "sotaque": "co.uk",
+          "texto": "Could you tell me where the nearest pharmacy is?"
+        }
+      },
+      "resposta": {
+        "status": 502,
+        "json": {
+          "error": "tts_rejected"
+        }
+      }
+    },
+    {
+      "nome": "falar a frase do quiz com o Google fora do ar",
+      "contexto": {
+        "voz": "fora_do_ar"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/falar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "sotaque": "co.uk",
+          "texto": "Could you tell me where the nearest pharmacy is?"
+        }
+      },
+      "resposta": {
+        "status": 502,
+        "json": {
+          "error": "tts_unreachable"
+        }
+      }
+    },
+    {
+      "nome": "falar sem frase",
+      "contexto": {
+        "voz": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/falar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "sotaque": "co.uk",
+          "texto": ""
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "falar uma frase maior que o limite",
+      "contexto": {
+        "voz": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/falar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "sotaque": "co.uk",
+          "texto": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "falar com um sotaque que não é de um endereço do Google",
+      "contexto": {
+        "voz": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/falar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "sotaque": "evil.example/x",
+          "texto": "Could you tell me where the nearest pharmacy is?"
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "falar com um corpo que não é um objeto JSON",
+      "daExtensao": false,
+      "contexto": {
+        "voz": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/voz/falar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    }
+  ]
+}
