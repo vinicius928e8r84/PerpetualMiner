@@ -32,6 +32,7 @@ from datetime import datetime, timezone
 
 from . import baralhos, custos, tipo_de_nota, voz
 from .audio_do_cartao import FRASE_APAGADA, AudioDoCartao
+from .gravacao_de_json import apagar as _apagar, gravar_json as _gravar_json
 from .configuracao import OPENVERSE_BASE, VOZ_BASE
 from .imagem_do_cartao import ImagemDoCartao, ParaOEnvio
 from .limite_do_plano import LIMITE_DO_PLANO, LimiteDoPlano, espera_pelo_plano
@@ -101,23 +102,6 @@ def _ler_json(caminho, padrao):
             return json.load(arquivo)
     except (OSError, ValueError):
         return copy.deepcopy(padrao)
-
-
-def _gravar_json(caminho, dados):
-    os.makedirs(os.path.dirname(caminho), exist_ok=True)
-    provisorio = caminho + ".novo"
-    with open(provisorio, "w", encoding="utf-8") as arquivo:
-        json.dump(dados, arquivo, ensure_ascii=False, indent=2)
-    os.replace(provisorio, caminho)
-
-
-def _apagar(caminho):
-    """Apaga um arquivo do Envio (se existe); devolve se apagou."""
-    try:
-        os.remove(caminho)
-    except FileNotFoundError:
-        return False
-    return True
 
 
 def cartoes_da_frase(motor, lang, linha):
