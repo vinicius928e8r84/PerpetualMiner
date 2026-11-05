@@ -192,7 +192,7 @@ class SoAImagemFalha(unittest.TestCase):
     def conferir_cartao_sem_imagem(self, estado, notas, conexao, tentou_gerar=True):
         self.assertEqual(bool(conexao.openai.imagens), tentou_gerar)  # a imagem foi mesmo tentada: só ela falhou
         self.assertEqual((estado["status"], estado["successfulPhraseIds"], estado["failedPhraseIds"]), ("completed", [1760000000000], []))
-        self.assertEqual(estado["cards"]["1760000000000-0"], {"phraseId": 1760000000000, "status": "added", "error": None})
+        self.assertEqual(estado["cards"]["1760000000000-0"], {"phraseId": 1760000000000, "status": "added", "error": None, "guid": notas[0]["guid"]})
         self.assertEqual((len(notas), imagens(notas[0]["campos"]), so_a_imagem(notas[0]["midia"])), (1, [], {}))
 
     def test_a_geracao_recusada_e_sem_foto_nenhuma_o_cartao_vai_sem_imagem_e_conta_como_enviado(self):

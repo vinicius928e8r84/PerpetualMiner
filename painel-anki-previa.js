@@ -4,7 +4,7 @@
 // ao renderizador dele, `POST /anki/card-preview`), e esta página só o mostra, num quadro isolado: o HTML do Cartão vem de fora e o quadro não roda
 // script nenhum (`sandbox` sem `allow-scripts`) nem carrega nada que não seja `data:` (a política do documento). Frente e Verso são as duas faces; o Verso
 // traz a frente em cima, como o Anki depois de “Mostrar resposta”. Um componente só: Ajustes de envio › Estilo do cartão e o passo do nível da Boas-vindas
-// o montam, e o do primeiro Cartão (#173) pode pedir o de uma nota gravada.
+// o montam, e o primeiro Cartão da Boas-vindas (#173) mostra nele a nota que o Envio gravou (`mostrarNota`).
 
 (function (raiz) {
   const { textoDaVoz, Veio, ConexaoAnki, PedidoAoAnki, IDIOMAS } = raiz;
@@ -34,17 +34,17 @@
   function ler(lang, nivel) {
     const chave = `${lang}/${nivel}`;
     if (!lidas.has(chave)) {
-      const leitura = pedir(lang, nivel);
+      const leitura = pedir(PedidoAoAnki.previaDoCartao(lang, nivel));
       lidas.set(chave, leitura);
       leitura.then(({ estado }) => { if (estado !== ESTADO.PRONTA) lidas.delete(chave); });
     }
     return lidas.get(chave);
   }
 
-  async function pedir(lang, nivel) {
+  async function pedir(pedido) {
     let resposta;
     try {
-      resposta = await PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, PedidoAoAnki.previaDoCartao(lang, nivel));
+      resposta = await PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, pedido);
     } catch {
       return { estado: ESTADO.SEM_CONEXAO };
     }
@@ -57,11 +57,11 @@
 
   /**
    * A prévia de um idioma. `prefixo` separa os ids de quem a monta (a Boas-vindas e Ajustes de envio vivem na mesma página). Devolve `{ no, mostrar }`:
-   * `mostrar(nivel)` pede e desenha o exemplo do nível (um pedido que chega depois de outro mais novo é descartado).
+   * `mostrar(nivel)` pede e desenha o exemplo do nível; `mostrarNota(guid)`, o Cartão de uma nota gravada.
    */
   function montar({ prefixo, lang }) {
     const id = `${prefixo}-previa-${lang}`;
-    const estado = { nivel: null, face: 'back', previa: null, vez: 0 };
+    const estado = { exibicao: null, face: 'back', previa: null, vez: 0 };
 
     const titulo = elemento('span', 'previa__titulo', textoDaVoz('BRG-43.titulo'));
     titulo.id = `${id}-titulo`;
@@ -102,25 +102,34 @@
         tom: 'info',
         texto: textoDaVoz(`BRG-43.${estadoDoErro}`),
         fechavel: false,
-        ...(estadoDoErro !== ESTADO.ANTIGA && { acao: { rotulo: textoDaVoz('BRG-43.tentarDeNovo'), aoUsar: () => mostrar(estado.nivel) } }),
+        ...(estadoDoErro !== ESTADO.ANTIGA && { acao: { rotulo: textoDaVoz('BRG-43.tentarDeNovo'), aoUsar: () => exibir(estado.exibicao) } }),
       }));
     }
 
-    async function mostrar(nivel) {
+    /** Mostra `exibicao` (`{ legenda, ler }`; `ler()` devolve `{ estado, previa }`); um pedido que chega depois de outro mais novo é descartado. */
+    async function exibir(exibicao) {
       const vez = ++estado.vez;
-      estado.nivel = nivel;
-      legenda.textContent = textoDaVoz('BRG-43.legenda', { nivel: textoDaVoz(VOZ_DO_NIVEL[nivel]), idioma: NOME_DO_IDIOMA[lang].toLowerCase() });
+      estado.exibicao = exibicao;
+      legenda.textContent = exibicao.legenda;
       no.dataset.estado = ESTADO.CARREGANDO;
       palco.replaceChildren(elemento('p', 'previa__carregando', textoDaVoz('BRG-43.carregando')));
-      const { estado: resultado, previa } = await ler(lang, nivel);
+      const { estado: resultado, previa } = await exibicao.ler();
       if (vez !== estado.vez) return;
       no.dataset.estado = resultado;
       estado.previa = previa || null;
       if (resultado === ESTADO.PRONTA) desenharOCartao();
       else desenharUmErro(resultado);
+      return { estado: resultado, previa };
     }
 
-    return { no, mostrar };
+    const mostrar = nivel => exibir({
+      legenda: textoDaVoz('BRG-43.legenda', { nivel: textoDaVoz(VOZ_DO_NIVEL[nivel]), idioma: NOME_DO_IDIOMA[lang].toLowerCase() }),
+      ler: () => ler(lang, nivel),
+    });
+    /** O Cartão da nota que o Envio gravou (o primeiro Cartão da Boas-vindas, #173), pelo `guid`; a nota muda, então a leitura não fica guardada. */
+    const mostrarNota = guid => exibir({ legenda: textoDaVoz('BRG-43.legendaDaNota'), ler: () => pedir(PedidoAoAnki.previaDaNota(guid)) });
+
+    return { no, mostrar, mostrarNota };
   }
 
   raiz.PreviaDoCartao = Object.freeze({ ESTADO, montar });

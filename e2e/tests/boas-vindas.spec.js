@@ -49,7 +49,7 @@ test('atualizar a extensão não abre aba nenhuma', async ({ context, extensao }
   expect(abas.map(a => a.url).filter(url => url.includes('painel.html'))).toEqual([]);
 });
 
-test('a abertura lista os 8 passos com “opcional” e leva ao passo 1 com Começar', async ({ page, extensao }) => {
+test('a abertura lista os 9 passos e Começar leva ao passo 1', async ({ page, extensao }) => {
   await abrirBoasVindas(page, extensao);
 
   await expect(sobretitulo(page)).toHaveText('Boas-vindas');
@@ -64,14 +64,15 @@ test('a abertura lista os 8 passos com “opcional” e leva ao passo 1 com Come
     /^Ligar a mineração automática\s*opcional$/,
     /^Escolher o nível do cartão\s*opcional$/,
     /^Adicionar a chave do Gemini\s*opcional$/,
+    'Enviar o primeiro cartão',
   ]);
-  // A lista ao lado: os 10 itens, o atual marcado.
-  await expect(lista(page).getByRole('button')).toHaveCount(10);
+  // A lista ao lado: os 11 itens.
+  await expect(lista(page).getByRole('button')).toHaveCount(11);
   await expect(itemDaLista(page, 'Boas-vindas')).toHaveAttribute('aria-current', 'step');
 
   await botaoDoCard(page, 'Começar').click();
   await expect(page).toHaveURL(/#boas-vindas\/minerar$/);
-  await expect(sobretitulo(page)).toHaveText('Passo 1 de 8');
+  await expect(sobretitulo(page)).toHaveText('Passo 1 de 9');
   await expect(tituloDoCard(page)).toHaveText('Minerar a primeira frase');
   await expect(tituloDoCard(page)).toBeFocused();
   await expect(itemDaLista(page, 'Minerar a primeira frase')).toHaveAttribute('aria-current', 'step');
@@ -92,7 +93,7 @@ test('qualquer item da lista abre o seu passo; o opcional diz “opcional” no 
   await itemDaLista(page, 'Ligar a mineração automática').click();
 
   await expect(page).toHaveURL(/#boas-vindas\/automatica$/);
-  await expect(sobretitulo(page)).toHaveText('Passo 6 de 8 · opcional');
+  await expect(sobretitulo(page)).toHaveText('Passo 6 de 9 · opcional');
   await expect(tituloDoCard(page)).toHaveText('Ligar a mineração automática');
   await expect(botaoDoCard(page, 'Agora não')).toBeVisible();
 });
@@ -408,7 +409,7 @@ test('passo 5: o card IA dos cartões de Configurações; conferir a chave a gua
   fakes.anki.ligar();
   await abrirBoasVindas(page, extensao, 'ia');
 
-  await expect(sobretitulo(page)).toHaveText('Passo 5 de 8 · opcional');
+  await expect(sobretitulo(page)).toHaveText('Passo 5 de 9 · opcional');
   await expect(tituloDoCard(page)).toHaveText('Configurar a IA dos cartões');
   await expect(card(page)).toContainText('É ela que escreve o texto dos cartões. Dá para configurar depois, em Configurações.');
   await expect(card(page).getByRole('region', { name: 'Chave da OpenAI' })).toBeVisible();
@@ -550,7 +551,7 @@ test('Tudo pronto resume cada passo e Abrir painel leva a Frases', async ({ page
   await expect(sobretitulo(page)).toHaveText('Pronto');
   await expect(tituloDoCard(page)).toHaveText('Tudo pronto');
   const resumo = card(page).getByRole('listitem');
-  await expect(resumo).toHaveCount(8);
+  await expect(resumo).toHaveCount(9);
   await expect(resumo.nth(0)).toContainText('1 frase');
   await expect(resumo.nth(1)).toContainText('Alt+Q');
   await expect(resumo.nth(3)).toContainText('falta');

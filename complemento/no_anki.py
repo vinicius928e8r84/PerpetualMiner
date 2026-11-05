@@ -194,6 +194,17 @@ class ColecaoDoAnki:
         """A nota de `guid`: `{ baralho, tipo_de_nota, campos: { nome: valor } }`, ou None se a coleção não a tem."""
         return self._na_thread_principal(lambda colecao: cartoes_do_anki.nota_gravada(colecao, guid))
 
+    def abrir_no_navegador(self, guid):
+        """Abre o navegador do Anki na nota de `guid` (o “Abrir no Anki”, #173); False se a coleção não a tem."""
+        def abrir(colecao):
+            linhas = colecao.db.all("select id from notes where guid = ? limit 1", guid)
+            if not linhas:
+                return False
+            from aqt import dialogs  # só existe dentro do Anki
+            dialogs.open("Browser", self._mw, search=("nid:%d" % linhas[0][0],))
+            return True
+        return self._na_thread_principal(abrir)
+
     def arquivo_de_midia(self, nome, limite_de_bytes):
         """Os bytes do arquivo `nome` da pasta de mídia (até `limite_de_bytes` + 1), ou None se ele não está lá."""
         return self._na_thread_principal(lambda colecao: cartoes_do_anki.arquivo_de_midia(colecao, nome, limite_de_bytes))

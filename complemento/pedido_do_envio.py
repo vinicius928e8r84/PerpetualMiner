@@ -13,6 +13,8 @@ _ID_DO_ENVIO = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 # A reserva da voz (#174): uma lista de nomes de provedor, sem tamanho de abuso; a Conexão pula o nome que não conhece.
 _PROVEDOR_DA_VOZ = re.compile(r"^[a-z0-9_-]{1,32}$")
 MAXIMO_DE_RESERVAS = 8
+# A etiqueta que o Cartão da Frase de teste do primeiro Envio (#173) leva no Anki, para a pessoa achá-lo e apagá-lo.
+ETIQUETA_DE_TESTE = "perpetualminer-teste"
 
 
 def id_valido(job_id):
@@ -33,6 +35,19 @@ def impressao(pedido):
     return hashlib.sha256(_canonico(pedido).encode("utf-8")).hexdigest()
 
 
+def ids_unicos(valores):
+    vistos, ids = set(), []
+    for valor in valores or []:
+        try:
+            numero = int(valor)
+        except (TypeError, ValueError):
+            continue
+        if numero not in vistos:
+            vistos.add(numero)
+            ids.append(numero)
+    return ids
+
+
 def validar_pedido(corpo):
     """O pedido de `POST /jobs` normalizado, ou (status, erro) se ele não serve. Frases com o mesmo `phraseId` valem uma vez (a primeira)."""
     if not id_valido(corpo.get("jobId")):
@@ -45,6 +60,8 @@ def validar_pedido(corpo):
     nivel = corpo.get("nivel")
     if "nivel" in corpo and nivel not in estilos.niveis(corpo["lang"]):  # sem `nivel`, o Cartão sai no padrão (o Iniciante)
         return None, (400, "invalid_level")
+    if "teste" in corpo and type(corpo["teste"]) is not bool:
+        return None, (400, "invalid_request")
     entradas = corpo.get("entries")
     if not isinstance(entradas, list) or not entradas:
         return None, (400, "entries_required")
@@ -67,6 +84,7 @@ def validar_pedido(corpo):
         "deckName": deck.strip(),
         "imageSource": str(corpo.get("imageSource") or "1"),
         **({"nivel": nivel} if "nivel" in corpo else {}),
+        **({"teste": True} if corpo.get("teste") else {}),
         "tts": dict({chave: valor for chave, valor in tts.items() if isinstance(valor, str)},
                     **({"reserva": list(dict.fromkeys(reserva))} if "reserva" in tts else {})),
         "entries": limpas,

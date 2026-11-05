@@ -1,0 +1,153 @@
+{
+  "colecoes": {
+    "Anki com o primeiro Cartão": {
+      "baralhos": [
+        {
+          "nome": "Default"
+        },
+        {
+          "nome": "PerpetualMiner::Inglês",
+          "notas": [
+            {
+              "guid": "guid-do-primeiro",
+              "tipo": "Básico",
+              "frente": "She <b>gave up</b> smoking",
+              "verso": "give up"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "exemplos": [
+    {
+      "nome": "Abrir no Anki: o navegador abre na nota do primeiro Cartão (#173)",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki com o primeiro Cartão"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/browse",
+        "corpo": {
+          "guid": "guid-do-primeiro"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "nome": "Abrir no Anki de uma nota que a coleção não tem",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki com o primeiro Cartão"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/browse",
+        "corpo": {
+          "guid": "guid-que-nao-existe"
+        }
+      },
+      "resposta": {
+        "status": 404,
+        "json": {
+          "error": "note_not_found"
+        }
+      }
+    },
+    {
+      "nome": "Abrir no Anki sem dizer a nota",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki com o primeiro Cartão"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/browse",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "Abrir no Anki com o Anki na tela de perfis",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": null,
+        "colecao": null
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/browse",
+        "corpo": {
+          "guid": "guid-do-primeiro"
+        }
+      },
+      "resposta": {
+        "status": 503,
+        "json": {
+          "error": "anki_browse_unavailable",
+          "detail": "collection_not_open"
+        }
+      }
+    },
+    {
+      "nome": "Abrir no Anki com a coleção que quebra ao ler",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "coleção que quebra ao ler"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/browse",
+        "corpo": {
+          "guid": "guid-do-primeiro"
+        }
+      },
+      "resposta": {
+        "status": 500,
+        "json": {
+          "error": "internal_error"
+        }
+      }
+    },
+    {
+      "nome": "Abrir no Anki pedido com um corpo que não é um objeto JSON",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "Anki com o primeiro Cartão"
+      },
+      "pedido": {
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "metodo": "POST",
+        "caminho": "/anki/browse",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    }
+  ]
+}

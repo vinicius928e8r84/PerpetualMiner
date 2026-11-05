@@ -160,8 +160,8 @@ Todas POST, com a origem da extensão (levam as Frases e os custos da pessoa); o
 
 | Rota | Corpo | Resposta |
 |---|---|---|
-| `POST /jobs` | `{ jobId, lang, deckName, imageSource, tts, entries: [{ phraseId, line }] }` (até 4 MB; `jobId` é o `id` do Envio no painel, um UUID) | `201 { jobId, status }`. O mesmo corpo de novo é o mesmo Envio (`201`, nada gravado); outro corpo com o mesmo `jobId`, `409 job_conflict`. `400`: `invalid_job_id`, `invalid_lang`, `invalid_request` (sem Baralho), `entries_required` |
-| `POST /jobs/list` | `{}` | `{ jobs: [{ jobId, lang, status, createdAt, updatedAt, state }] }`; `state` tem o estado de cada Cartão em `cards` (`pending` · `text` · `added` · `duplicate` · `failed`, com o `error`) |
+| `POST /jobs` | `{ jobId, lang, deckName, imageSource, tts, teste?, entries: [{ phraseId, line }] }` (até 4 MB; `jobId` é o `id` do Envio no painel, um UUID; `teste: true`, o Envio da Frase de teste do primeiro Cartão (#173): a nota leva a etiqueta `perpetualminer-teste`) | `201 { jobId, status }`. O mesmo corpo de novo é o mesmo Envio (`201`, nada gravado); outro corpo com o mesmo `jobId`, `409 job_conflict`. `400`: `invalid_job_id`, `invalid_lang`, `invalid_request` (sem Baralho), `entries_required` |
+| `POST /jobs/list` | `{}` | `{ jobs: [{ jobId, lang, status, createdAt, updatedAt, state }] }`; `state` tem o estado de cada Cartão em `cards` (`pending` · `text` · `added` · `duplicate` · `failed`, com o `error`; o `added` leva o `guid` da nota) |
 | `POST /jobs/get` | `{ jobId }` | `{ job, state }`; `404 job_not_found` |
 | `POST /jobs/retry` | `{ jobId }` | `{ jobId, status }`: um Envio terminado volta à fila guardando os Cartões prontos; na fila ou andando, só diz o estado (nada gravado). `404 job_not_found` |
 | `POST /jobs/debug-bundle` | `{ jobId }` | o pedido, o estado, os custos, os arquivos do Envio e as linhas do log que o citam; nunca a chave. `404 job_not_found` |
