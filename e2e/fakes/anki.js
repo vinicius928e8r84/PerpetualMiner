@@ -14,8 +14,7 @@ const { diferencaDoContrato } = require('./diferenca-do-contrato');
 const { resumoDosCustos, linhaDeCustos } = require('./custos');
 const contrato = require('../../complemento/contrato/carregar');
 
-// Fake da Conexão com o Anki: responde na porta local dela (127.0.0.1:8766). Por padrão está ligada, com vocabulário vazio. Um teste a desliga
-// ou responde uma rota com `responder`.
+// Fake da Conexão com o Anki: responde na porta local dela (127.0.0.1:8766), ligada e com vocabulário vazio. Um teste a desliga ou responde uma rota com `responder`.
 //
 // O que o complemento responde vem de `complemento/contrato/exemplos.json` (e dos `exemplos-*.json`), o mesmo que os testes do complemento leem: o
 // fake responde o exemplo do pedido no contexto em que a Conexão está (`abrirPerfil`, `abrirColecao`, `responderOpenAI`…). Os testes de tela montam
@@ -24,7 +23,6 @@ const contrato = require('../../complemento/contrato/carregar');
 // (`teto.js`) e a prévia do Cartão (`previa.js`).
 //
 // Os Baralhos pedidos voltam na ordem pedida; o que o Anki não tem, `missing`. A chave da OpenAI aceita fica em `chaveNaConexao()`.
-//
 // Os Envios (`/jobs…`, `/analytics/jobs`, todas POST): `POST /jobs` cria um pelo `jobId` do painel (o mesmo corpo é o mesmo Envio; outro corpo, o
 // `409`). O teste move (`moverEnvio`) e termina (`concluirEnvio`) cada Envio; `definirFila(nome)` põe uma fila do contrato.
 
@@ -590,6 +588,7 @@ function criarFakeAnki() {
     /** O teto do mês (#160): `definir({ limite, gasto })`, `passarOTempoAte(dia)`, `guardado()`. */
     teto,
     voz,
+    previa,
     /** A frente do Cartão (#166, `frente.js`): `mexerNoTipoDeNota(lang)`, `guardadas()`. */
     frente,
     /** @estado-guardado Os Envios que a Conexão guardou (um por `POST /jobs`), não o pedido que chegou. */
