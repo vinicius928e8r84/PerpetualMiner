@@ -10,6 +10,10 @@
   ],
   "ignorar": [
     {
+      "glob": "LICENSE.md",
+      "motivo": "texto da licença AGPL-3.0, copiado como é"
+    },
+    {
       "glob": "package-lock.json",
       "motivo": "trava de pacotes, escrita pelo npm"
     },

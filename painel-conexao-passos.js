@@ -13,8 +13,7 @@
 //                 aberta, não só montada em um lugar escondido): é daí que contam os 2 minutos;
 //     `abridorResolvido`  o passo 4 já está resolvido (o card ONB-16 só vai ao Pronto depois dele).
 //
-// O código do AnkiWeb vem de `PerpetualMiner.CODIGO_DO_ANKIWEB` (nenhum até o primeiro
-// upload); quem o publicar define esse valor em `lib/` e nada mais muda aqui.
+// O código do AnkiWeb: `PerpetualMiner.AnkiWeb.codigo` (lib/ankiweb.js, #176).
 
 (function (raiz) {
   const PASSOS = [
@@ -247,7 +246,7 @@
       elemento('div', 'pc-animacao__quadros', dialogoDoAnki(false), dialogoDoAnki(true)),
       elemento('figcaption', 'pc-animacao__legenda', textoDaVoz('ONB-19.legenda')));
 
-    const codigo = raiz.CODIGO_DO_ANKIWEB ?? null;
+    const codigo = raiz.AnkiWeb?.codigo ?? null;
     const detalhes = Veio.montarDetalhes(
       codigo === null ? textoDaVoz('ONB-16.codigoEmBreve') : textoDaVoz('ONB-16.codigoDoAnkiWeb', { codigo }),
       document, textoDaVoz('ONB-16.arquivoNaoAbriu'));
