@@ -101,7 +101,7 @@ class TrocarAFrenteSoEditaOModelo(unittest.TestCase):
             antes = modelo_do(conexao)
             self.assertEqual(trocar(conexao, "en", "imagem_primeiro"), (400, {"error": "invalid_front"}))
             self.assertEqual(modelo_do(conexao), antes)
-        self.assertEqual(tipo_de_nota.FRENTES, ("frase_com_audio", "ouvir_primeiro", "lacuna", "criacao"))
+        self.assertEqual(tipo_de_nota.FRENTES, ("frase_com_audio", "ouvir_primeiro", "lacuna", "producao", "ditado", "criacao"))
 
     def test_trocar_para_a_criacao_so_reescreve_o_modelo_sem_nota_nova_nem_chamada_a_ia_a_voz_ou_as_fotos(self):
         with com_um_cartao_enviado() as conexao:

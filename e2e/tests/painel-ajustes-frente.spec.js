@@ -38,13 +38,13 @@ async function abrirAjustes(page, extensao, { gravado = {} } = {}) {
 }
 
 // Exceção de teste: sem-estado-guardado — só mostra a frente padrão e o texto dela; nada é gravado nem pedido.
-test('sem nada gravado, o inglês está na Frase com áudio e as quatro frentes se escolhem; Imagem primeiro não existe', async ({ page, extensao, fakes }) => {
+test('sem nada gravado, o inglês está na Frase com áudio e as seis frentes se escolhem; Imagem primeiro não existe', async ({ page, extensao, fakes }) => {
   await abrirAjustes(page, extensao);
 
   await expect(frente(page)).toBeVisible();
   await expect(opcao(page, 'Frase com áudio')).toBeChecked();
-  await expect(frente(page).getByRole('radio')).toHaveCount(4);
-  for (const nome of ['Frase com áudio', 'Ouvir primeiro', 'Lacuna', 'Criação']) await expect(opcao(page, nome)).toBeEnabled();
+  await expect(frente(page).getByRole('radio')).toHaveCount(6);
+  for (const nome of ['Frase com áudio', 'Ouvir primeiro', 'Lacuna', 'Produção', 'Ditado', 'Criação']) await expect(opcao(page, nome)).toBeEnabled();
   await expect(frente(page)).toHaveAccessibleDescription('A frase e o áudio na frente');
   await expect(formulario(page)).toContainText('Todos os cartões em inglês mudam na hora, sem custo');
   await expect(situacao(page)).toHaveText('Salvo');
@@ -86,6 +86,26 @@ test('escolher a Lacuna muda o texto e só vai à Conexão e ao storage em Salva
   await estadoFinal(extensao, { [CHAVE]: { en: { frente: 'lacuna', versao: 1 }, ru: { versao: 0 } } });
   await estadoFinalEm('a frente do inglês na Conexão', () => fakes.anki.frente.guardadas(), { en: 'lacuna' });
 });
+
+for (const [nome, id, texto] of [
+  ['Produção', 'producao', 'A frase em português na frente: escreva no idioma e o Anki compara'],
+  ['Ditado', 'ditado', 'Só o botão de tocar e um campo: escreva o que ouviu e o Anki mostra o que errou'],
+]) {
+  test(`escolher ${nome} mostra o texto dele e só vai à Conexão e ao storage em Salvar ajustes`, async ({ page, extensao, fakes }) => {
+    await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });
+
+    await escolher(page, nome);
+    await expect(opcao(page, nome)).toBeChecked();
+    await expect(frente(page)).toHaveAccessibleDescription(texto);
+    expect(pedidosDaFrente(fakes)).toEqual([]);
+
+    await salvar(page).click();
+    await expect(situacao(page)).toHaveText('Salvo');
+    expect(pedidosDaFrente(fakes)).toEqual([{ lang: 'en', frente: id }]);
+    await estadoFinal(extensao, { [CHAVE]: { en: { frente: id, versao: 1 }, ru: { versao: 0 } } });
+    await estadoFinalEm('a frente do inglês na Conexão', () => fakes.anki.frente.guardadas(), { en: id });
+  });
+}
 
 test('cada idioma tem a sua frente: Lacuna no inglês e Ouvir primeiro no russo, cada uma pedida uma vez', async ({ page, extensao, fakes }) => {
   await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });

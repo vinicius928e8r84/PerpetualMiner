@@ -19,6 +19,8 @@
     frase_com_audio: ['BRG-44.fraseComAudio', 'BRG-44.textoFraseComAudio'],
     ouvir_primeiro: ['BRG-44.ouvirPrimeiro', 'BRG-44.textoOuvirPrimeiro'],
     lacuna: ['BRG-44.lacuna', 'BRG-44.textoLacuna'],
+    producao: ['BRG-44.producao', 'BRG-44.textoProducao'],
+    ditado: ['BRG-44.ditado', 'BRG-44.textoDitado'],
     criacao: ['BRG-44.criacao', 'BRG-44.textoCriacao'],
   };
 

@@ -85,6 +85,52 @@
       }
     },
     {
+      "nome": "trocar a frente do inglês para a Produção",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-front",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "frente": "producao"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "nome": "trocar a frente do russo para o Ditado",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-front",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "ru",
+          "frente": "ditado"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true
+        }
+      }
+    },
+    {
       "nome": "voltar a frente do inglês para a Frase com áudio",
       "daExtensao": true,
       "contexto": {
