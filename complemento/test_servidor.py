@@ -772,10 +772,10 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
             with self.assertRaisesRegex(AssertionError, "tire a exceção"):
                 self.conferir_o_pedido_repetido(rotas, matriz, exemplos)
 
-    def test_as_rotas_que_mudam_sao_as_da_chave_do_chatgpt_do_item_de_login_do_perfil_e_do_envio(self):
+    def test_as_rotas_que_mudam_sao_as_que_guardam_algo_da_conexao(self):
         self.assertEqual(
             sorted(rota[1] for rota, regra in MATRIZ.items() if regra.get("muda")),
-            ["/abrir-com-o-computador", "/anki/card-front", "/anki/card-preview", "/anki/profile", "/anki/profiles", "/custos/teto/definir", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/modelo/escolher", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry", "/jobs/usar-a-chave"],
+            ["/abrir-com-o-computador", "/anki/card-front", "/anki/card-preview", "/anki/note-types", "/anki/profile", "/anki/profiles", "/custos/teto/definir", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/modelo/escolher", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry", "/jobs/usar-a-chave"],
         )
 
 

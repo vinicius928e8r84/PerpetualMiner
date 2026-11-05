@@ -177,6 +177,10 @@ class ColecaoDoAnki:
     def tipo_de_nota(self, nome):
         return self._gravando(lambda colecao: cartoes_do_anki.campos_do_tipo(colecao.models.by_name(nome)))
 
+    def tipos_de_nota(self):
+        """Todos os tipos de nota da coleção: `{ nome: [campos, na ordem] }` (#165, o mapeamento de “Usar um tipo que já tenho”)."""
+        return self._gravando(lambda colecao: {modelo["name"]: cartoes_do_anki.campos_do_tipo(modelo) for modelo in colecao.models.all()})
+
     def guids_existentes(self, guids):
         if not guids:
             return set()

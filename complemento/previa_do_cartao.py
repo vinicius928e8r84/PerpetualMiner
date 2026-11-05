@@ -13,7 +13,8 @@ import base64
 import mimetypes
 import re
 
-from . import tipo_de_nota
+from . import tipo_de_nota, tipo_proprio
+from .tipo_proprio import ROTAS_DO_TIPO_PROPRIO
 from .baralhos import ColecaoIndisponivel
 from .motor import estilos, nota_do_cartao
 
@@ -75,6 +76,20 @@ def previa_do_exemplo(colecao, lang, nivel):
     return saida and dict(saida, source="example", lang=lang, nivel=nivel, deck=idioma["baralho"], noteType=idioma["tipo_de_nota"])
 
 
+def previa_no_tipo_da_pessoa(colecao, lang, nivel, proprio):
+    """O Cartão de exemplo no tipo de nota da pessoa (#165), com os campos onde o mapeamento os põe: a prévia do que o Envio gravaria.
+    Nada é criado nem gravado. `(None, motivo)` se o tipo não está na coleção (`note_type_missing`) ou o mapa não serve a ele (`invalid_mapping`)."""
+    campos = colecao.tipo_de_nota(proprio["nome"])
+    if campos is None:
+        return None, "note_type_missing"
+    if tipo_proprio.recusa(proprio, campos):
+        return None, "invalid_mapping"
+    saida = _renderizado(colecao, proprio["nome"], tipo_proprio.campos_do_tipo_proprio(campos_do_exemplo(lang, nivel), lang, nivel, proprio["mapa"]))
+    if saida is None:
+        return None, "note_type_missing"
+    return dict(saida, source="example", lang=lang, nivel=nivel, deck=estilos.idioma(lang)["baralho"], noteType=proprio["nome"]), None
+
+
 def previa_da_nota(colecao, guid):
     """O Cartão de uma nota gravada, pelo `guid`; None se a coleção não tem a nota (ou o tipo de nota dela)."""
     nota = colecao.nota_gravada(guid)
@@ -93,13 +108,23 @@ def pedir(conexao, corpo):
         nivel = corpo.get("nivel", estilos.NIVEL_PADRAO)
         if nivel not in estilos.niveis(lang):
             return 400, {"error": "invalid_level"}
-        leitura = lambda: previa_do_exemplo(conexao.colecao, lang, nivel)  # noqa: E731
+        if "tipoProprio" in corpo:
+            proprio = tipo_proprio.forma(corpo["tipoProprio"])
+            if proprio is None or tipo_proprio.recusa(proprio, set(proprio["mapa"].values())):  # sem a Frase e a resposta em campos diferentes: nem se olha a coleção
+                return 400, {"error": "invalid_mapping"}
+            leitura = lambda: previa_no_tipo_da_pessoa(conexao.colecao, lang, nivel, proprio)  # noqa: E731
+        else:
+            leitura = lambda: previa_do_exemplo(conexao.colecao, lang, nivel)  # noqa: E731
     else:
         return 400, {"error": "invalid_request"}
     try:
         previa = leitura()
     except ColecaoIndisponivel as motivo:
         return 503, {"error": "anki_card_preview_unavailable", "detail": str(motivo)}
+    if isinstance(previa, tuple):  # a prévia no tipo da pessoa diz também por que não houve
+        previa, motivo = previa
+        if previa is None:
+            return (409, {"error": motivo}) if motivo == "invalid_mapping" else (404, {"error": motivo})
     if previa is None:
         return 404, {"error": "note_not_found" if guid else "note_type_missing"}
     return 200, previa
@@ -118,4 +143,4 @@ def abrir_no_anki(conexao, corpo):
     return (200, {"ok": True}) if achou else (404, {"error": "note_not_found"})
 
 
-ROTAS_DA_PREVIA = {("POST", "/anki/card-preview"): pedir, ("POST", "/anki/browse"): abrir_no_anki}
+ROTAS_DA_PREVIA = {("POST", "/anki/card-preview"): pedir, ("POST", "/anki/browse"): abrir_no_anki, **ROTAS_DO_TIPO_PROPRIO}
