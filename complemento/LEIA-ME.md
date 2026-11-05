@@ -130,7 +130,7 @@ Depois refaça o arquivo. Subir a `VERSAO` muda a `versao` dos exemplos de `cont
 
 `test_openai_de_mentira.py` não é teste: é a OpenAI de mentira (servidor local) no lugar da de verdade.
 
-O `package` do manifesto (`perpetualminer`) é provisório: vira o id do AnkiWeb na publicação.
+O `package` do manifesto (`perpetualminer`) é provisório: vira o id do AnkiWeb na publicação (passos do dono em [`docs/ankiweb/LEIA-ME.md`](../docs/ankiweb/LEIA-ME.md)).
 
 Os ensaios do item de login (“Abrir o Anki com o computador”, risco 5) e do abridor (“Abrir o Anki sozinho”, riscos 1 e 2 do #138) estão em
 [`docs/design/ensaios-do-dono-da-conexao.md`](../docs/design/ensaios-do-dono-da-conexao.md).
