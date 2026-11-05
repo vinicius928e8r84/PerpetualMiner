@@ -130,6 +130,38 @@ test('sem Frase minerada nem idioma ligado, a Frase de teste é em inglês', asy
   await estadoFinal(extensao, { pm_boas_vindas: { primeiroEnvio: { corpo: { lang: 'en', teste: true } } } });
 });
 
+test('a Frase mais recente em inglês sem Palavra não serve: o Envio usa a mais recente que vira Cartão', async ({ page, extensao, fakes }) => {
+  const semPalavra = { ...INGLESAS[1], id: MAIS_RECENTE.id + 20, keywords: [] };
+  await abrirOEnvio(page, extensao, { frases: [MAIS_RECENTE, semPalavra] });
+
+  const [envio] = await enviosCriados(fakes, 1);
+  expect(envio.entries.map(entrada => entrada.phraseId)).toEqual([MAIS_RECENTE.id]);
+  expect(envio.entries[0].line).toMatch(/^sack : /);
+  await estadoFinal(extensao, { pm_boas_vindas: { primeiroEnvio: { corpo: { jobId: envio.jobId } } } });
+});
+
+test('só Frases em inglês sem Palavra: o Envio é a Frase de teste', async ({ page, extensao, fakes }) => {
+  await abrirOEnvio(page, extensao, { frases: [INGLESAS[1], INGLESAS[2]] });
+
+  const [envio] = await enviosCriados(fakes, 1);
+  expect(envio.corpo).toMatchObject({ lang: 'en', teste: true });
+  expect(envio.entries[0].line).toMatch(/^give up : /);
+  await estadoFinal(extensao, { pm_boas_vindas: { primeiroEnvio: { corpo: { teste: true } } } });
+});
+
+test('um Envio sem Cartão nenhum solta o pedido congelado: Tentar de novo monta outro', async ({ page, extensao, fakes }) => {
+  await abrirOEnvio(page, extensao, { frases: [MAIS_RECENTE] });
+  const [envio] = await enviosCriados(fakes, 1);
+  fakes.anki.concluirEnvio(envio.jobId, { erro: 'cards_failed' });
+  await expect(passo(page).getByRole('alert')).toContainText('Este cartão não foi');
+  await estadoFinal(extensao, { pm_boas_vindas: { primeiroEnvio: { corpo: null } } });
+
+  await botao(page, 'Tentar de novo').click();
+
+  await expect.poll(() => fakes.anki.envios.length).toBe(2);
+  expect(fakes.anki.envios[1].jobId).not.toBe(envio.jobId);
+});
+
 test('a Frase minerada em russo manda o Envio em russo', async ({ page, extensao, fakes }) => {
   await abrirOEnvio(page, extensao, { frases: [INGLESAS[2], RUSSA_MAIS_NOVA] });
 

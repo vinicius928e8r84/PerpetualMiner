@@ -127,7 +127,9 @@
     /** O pedido do Envio, congelado: a Frase minerada mais recente ou a Frase de teste do idioma ligado. */
     async function montarCorpo() {
       const { frases = [] } = await chrome.storage.local.get({ frases: [] });
-      const minerada = frases.filter(frase => frase?.texto).reduce((mais, frase) => (!mais || Number(frase.id) > Number(mais.id) ? frase : mais), null);
+      // Só uma Frase que vira Cartão serve: no inglês a linha precisa da Palavra (`palavra : frase`), no russo qualquer uma.
+      const viraCartao = frase => frase?.texto && (ehRussa(frase) || (frase.keywords || []).some(palavra => palavra !== '|'));
+      const minerada = frases.filter(viraCartao).reduce((mais, frase) => (!mais || Number(frase.id) > Number(mais.id) ? frase : mais), null);
       const automatica = retrato.estado.automatica;
       const lang = minerada ? (ehRussa(minerada) ? 'ru' : 'en') : (!automatica.en && automatica.ru ? 'ru' : 'en');
       const ajustes = (await AjustesDeEnvio.ler())[lang];
@@ -179,7 +181,11 @@
           await Configuracao.guardarPrimeiroEnvio(() => ({ chegou: true, guid }));
           return minha === vez ? mostrarPronto({ corpo, guid }) : undefined;
         }
-        if (ETAPAS_DO_FIM.includes(estado.status)) return mostrarFalha(motivoDoEnvio(estado));
+        if (ETAPAS_DO_FIM.includes(estado.status)) {
+          // Uma linha sem Cartão nenhum (`cards_failed` sem erro de Cartão) falharia igual: o pedido congelado sai, e Tentar de novo monta outro.
+          if (estado.lastError === 'cards_failed' && !Object.values(estado.cards || {}).some(cartao => cartao.error)) await Configuracao.guardarPrimeiroEnvio(() => ({ corpo: null }));
+          return mostrarFalha(motivoDoEnvio(estado));
+        }
         await esperar(ESPERA_DA_LEITURA_MS);
         if (minha !== vez) return undefined;
       }
