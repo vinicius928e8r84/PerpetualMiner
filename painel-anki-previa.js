@@ -31,7 +31,8 @@
   }
 
   /** Pede o exemplo à Conexão (um pedido por estilo, repartido entre quem o mostra); devolve `{ estado, previa }`, nunca levanta. Só a leitura boa fica guardada. */
-  function ler(lang, nivel) {
+  function ler(lang, nivel, tipoProprio) {
+    if (tipoProprio) return pedir(lang, nivel, tipoProprio);   // no tipo de nota da pessoa (#165) o Cartão muda com o Anki dela: nada fica guardado
     const chave = `${lang}/${nivel}`;
     if (!lidas.has(chave)) {
       const leitura = pedir(lang, nivel);
@@ -41,10 +42,10 @@
     return lidas.get(chave);
   }
 
-  async function pedir(lang, nivel) {
+  async function pedir(lang, nivel, tipoProprio) {
     let resposta;
     try {
-      resposta = await PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, PedidoAoAnki.previaDoCartao(lang, nivel));
+      resposta = await PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, PedidoAoAnki.previaDoCartao(lang, nivel, tipoProprio));
     } catch {
       return { estado: ESTADO.SEM_CONEXAO };
     }
@@ -57,11 +58,12 @@
 
   /**
    * A prévia de um idioma. `prefixo` separa os ids de quem a monta (a Boas-vindas e Ajustes de envio vivem na mesma página). Devolve `{ no, mostrar }`:
-   * `mostrar(nivel)` pede e desenha o exemplo do nível (um pedido que chega depois de outro mais novo é descartado).
+   * `mostrar(nivel, tipoProprio)` pede e desenha o exemplo do nível (um pedido que chega depois de outro mais novo é descartado); com `tipoProprio`
+   * (`{ nome, mapa }`, #165), o exemplo no tipo de nota que a pessoa já tem, com as partes nos campos do mapa.
    */
   function montar({ prefixo, lang }) {
     const id = `${prefixo}-previa-${lang}`;
-    const estado = { nivel: null, face: 'back', previa: null, vez: 0 };
+    const estado = { nivel: null, tipoProprio: null, face: 'back', previa: null, vez: 0 };
 
     const titulo = elemento('span', 'previa__titulo', textoDaVoz('BRG-43.titulo'));
     titulo.id = `${id}-titulo`;
@@ -102,17 +104,18 @@
         tom: 'info',
         texto: textoDaVoz(`BRG-43.${estadoDoErro}`),
         fechavel: false,
-        ...(estadoDoErro !== ESTADO.ANTIGA && { acao: { rotulo: textoDaVoz('BRG-43.tentarDeNovo'), aoUsar: () => mostrar(estado.nivel) } }),
+        ...(estadoDoErro !== ESTADO.ANTIGA && { acao: { rotulo: textoDaVoz('BRG-43.tentarDeNovo'), aoUsar: () => mostrar(estado.nivel, estado.tipoProprio) } }),
       }));
     }
 
-    async function mostrar(nivel) {
+    async function mostrar(nivel, tipoProprio = null) {
       const vez = ++estado.vez;
       estado.nivel = nivel;
+      estado.tipoProprio = tipoProprio;
       legenda.textContent = textoDaVoz('BRG-43.legenda', { nivel: textoDaVoz(VOZ_DO_NIVEL[nivel]), idioma: NOME_DO_IDIOMA[lang].toLowerCase() });
       no.dataset.estado = ESTADO.CARREGANDO;
       palco.replaceChildren(elemento('p', 'previa__carregando', textoDaVoz('BRG-43.carregando')));
-      const { estado: resultado, previa } = await ler(lang, nivel);
+      const { estado: resultado, previa } = await ler(lang, nivel, tipoProprio);
       if (vez !== estado.vez) return;
       no.dataset.estado = resultado;
       estado.previa = previa || null;

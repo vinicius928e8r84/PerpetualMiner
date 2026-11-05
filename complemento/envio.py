@@ -30,7 +30,7 @@ import os
 import threading
 from datetime import datetime, timezone
 
-from . import baralhos, custos, tipo_de_nota, voz
+from . import baralhos, custos, voz
 from .audio_do_cartao import FRASE_APAGADA, AudioDoCartao
 from .configuracao import OPENVERSE_BASE, VOZ_BASE
 from .imagem_do_cartao import ImagemDoCartao, ParaOEnvio
@@ -39,6 +39,7 @@ from .login_do_chatgpt import RECUSOU, SAIU
 from .modelo_dos_cartoes import credencial
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento  # noqa: F401  (`envio.motor_do_complemento`)
 from .paradas_do_envio import Apagado, Interrompido  # noqa: F401  (`envio.Interrompido`)
+from .tipo_do_envio import TipoDoEnvio
 from .pedido_do_envio import id_que_serve_de_caminho, id_valido, impressao, validar_pedido, visao_do_pedido  # noqa: F401
 
 QUEUED, RUNNING, COMPLETED, PARTIAL, FAILED = "queued", "running", "completed", "partial", "failed"
@@ -399,7 +400,7 @@ def resolver(pedido, estado):
     return status, no_anki, falharam, duplicadas
 
 
-class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
+class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano, TipoDoEnvio):
     """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto, o áudio e a imagem e grava a nota."""
 
     def __init__(self, fila, colecao, cofre, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30),
@@ -493,13 +494,12 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
         if self.fila.estado_ou_refazer(job_id).get("wiped"):
             return
         config = configuracao_do_motor(self.motor, self.fila, pedido, None)
-        tipo = tipo_de_nota.definicao(pedido["lang"], pedido.get("nivel"))
         try:
-            nomes = self._com_a_colecao(job_id, lambda: tipo_de_nota.garantir(self.colecao, tipo))
+            nome, serve = self._o_tipo_do_envio(job_id, pedido)
         except Apagado:
             return
-        if nomes is None or not set(tipo["campos_do_cartao"]) <= set(nomes):
-            self.logger.warning("Envio %s: o tipo de nota %r não tem os campos do Cartão", job_id, tipo["nome"])
+        if not serve:
+            self.logger.warning("Envio %s: o tipo de nota %r não tem os campos do Cartão", job_id, nome)
             return self._terminar(job_id, pedido, SEM_TIPO_DE_NOTA)
         try:
             self._os_cartoes(job_id, pedido, config)
@@ -601,6 +601,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano):
         nota = self.motor.nota_do_cartao.campos_da_nota(
             conteudo, lang, nivel=pedido.get("nivel"), palavra=palavra, audio_da_frase=da_frase, audio_da_palavra=da_palavra, imagem=da_imagem)
         frentes = (nota["campo_da_frente"],) + self.motor.estilos.nomes_da_frente_de_antes()
+        tipo, frentes, nota = self._a_nota_no_tipo(pedido, tipo, frentes, nota)
         self._etapa(job_id, "send_to_anki")
         try:
             resultado = self._com_a_colecao(job_id, lambda: self.colecao.gravar_cartao(

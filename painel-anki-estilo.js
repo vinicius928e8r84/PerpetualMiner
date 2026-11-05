@@ -38,9 +38,10 @@
 
   /**
    * O campo Estilo do cartão do idioma `lang`; escolher um nível muda `rascunho.nivel` (e só isso: quem grava é quem montou o campo) e chama `aoEscolher(nivel)`.
-   * `prefixo` separa os ids de quem monta (Ajustes de envio e a Boas-vindas vivem na mesma página).
+   * `prefixo` separa os ids de quem monta (Ajustes de envio e a Boas-vindas vivem na mesma página). Em Ajustes de envio o campo traz também “Usar um tipo que já tenho”
+   * (#165, `painel-anki-tipo-proprio.js`), que muda `rascunho.tipoProprio`; a Boas-vindas só pergunta o nível.
    */
-  function campo(lang, rascunho, { prefixo = 'ajustes', aoEscolher } = {}) {
+  function campo(lang, rascunho, { prefixo = 'ajustes', aoEscolher, tipoProprio = prefixo === 'ajustes' } = {}) {
     const id = `${prefixo}-estilo-${lang}`;
     const rotulo = elemento('span', 'ajustes-campo__rotulo', textoDaVoz('BRG-42.titulo'));
     rotulo.id = `${id}-rotulo`;
@@ -49,6 +50,15 @@
     preencher(lang, rascunho.nivel, texto);
     const previa = raiz.PreviaDoCartao.montar({ prefixo, lang });
     previa.mostrar(rascunho.nivel);
+    previa.no.hidden = Boolean(rascunho.tipoProprio);   // com um tipo que a pessoa já tem, a prévia é a dele
+    const proprio = !tipoProprio ? null : raiz.TipoProprioDoCartao.montar({
+      lang, rascunho, nivelAtual: () => rascunho.nivel,
+      aoMudar: () => {
+        previa.no.hidden = Boolean(rascunho.tipoProprio);
+        const frente = document.getElementById(`ajustes-frente-${lang}-bloco`);
+        if (frente) frente.hidden = Boolean(rascunho.tipoProprio);
+      },
+    });
     const grupo = elemento('div', 'veio-segmentado', ...NIVEIS.map(nivel => {
       const radio = elemento('input', '');
       radio.type = 'radio';
@@ -59,6 +69,7 @@
         rascunho.nivel = nivel;
         preencher(lang, nivel, texto);
         previa.mostrar(nivel);
+        proprio?.mostrarNivel();
         aoEscolher?.(nivel);
       });
       return elemento('label', 'veio-segmentado__opcao', radio, elemento('span', '', textoDaVoz(VOZ_DO_NIVEL[nivel][0])));
@@ -66,7 +77,7 @@
     grupo.setAttribute('role', 'radiogroup');
     grupo.setAttribute('aria-labelledby', rotulo.id);
     grupo.setAttribute('aria-describedby', texto.id);
-    return elemento('div', 'ajustes-campo', rotulo, grupo, texto, previa.no);
+    return elemento('div', 'ajustes-campo', rotulo, grupo, texto, previa.no, ...(proprio ? [proprio.no] : []));
   }
 
   /** O campo Frente do idioma `lang`: escolher uma frente muda `rascunho.frente`; quem a troca no Anki é o Salvar ajustes (`painel-ajustes.js`). */
@@ -96,7 +107,10 @@
     grupo.setAttribute('role', 'radiogroup');
     grupo.setAttribute('aria-labelledby', rotulo.id);
     grupo.setAttribute('aria-describedby', texto.id);
-    return elemento('div', 'ajustes-campo', rotulo, grupo, texto, notaDaCriacao, nota);
+    const bloco = elemento('div', 'ajustes-campo', rotulo, grupo, texto, notaDaCriacao, nota);
+    bloco.id = `${id}-bloco`;
+    bloco.hidden = Boolean(rascunho.tipoProprio);   // o tipo que a pessoa já tem fica com a frente que ela já tem (#165)
+    return bloco;
   }
 
   /** Pede à Conexão que ponha a frente no modelo de Cartão do idioma; devolve null (trocou) ou o ID da Voz que diz por que não trocou. */
