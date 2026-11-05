@@ -9,7 +9,7 @@
 const { isDeepStrictEqual } = require('util');
 
 const CAMINHO = '/anki/card-front';
-const FRENTES = ['frase_com_audio', 'ouvir_primeiro', 'lacuna'];
+const FRENTES = ['frase_com_audio', 'ouvir_primeiro', 'lacuna', 'criacao'];
 
 /** `contrato`: os exemplos; `erro(caminho, erro)`: a resposta de erro do contrato; `colecao()`: a coleção de um exemplo aberta (undefined: nenhuma). */
 function criarFakeFrente({ contrato, erro, colecao }) {

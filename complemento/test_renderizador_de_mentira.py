@@ -1,8 +1,9 @@
 """O renderizador de modelos de Cartão que os adaptadores de coleção de mentira usam no lugar do Anki: o que os modelos da Conexão pedem
-(`{{Campo}}`, `{{#Campo}}…{{/Campo}}`, `{{^Campo}}…{{/Campo}}` e `{{FrontSide}}`), com o áudio como o Anki o escreve (`[sound:x]` vira
+(`{{Campo}}`, `{{text:Campo}}`, `{{#Campo}}…{{/Campo}}`, `{{^Campo}}…{{/Campo}}` e `{{FrontSide}}`), com o áudio como o Anki o escreve (`[sound:x]` vira
 `[anki:play:q:0]`). Não é teste: fica fora do `.ankiaddon` pelo nome. A prova do Anki de verdade é `test_previa_com_o_anki_real.py`.
 """
 
+import html
 import re
 
 _SECAO = re.compile(r"\{\{([#^])([^{}]+)\}\}(.*?)\{\{/\2\}\}", re.DOTALL)
@@ -27,8 +28,11 @@ def _lado(modelo, campos, lado, frente=None):
         return texto
 
     def campo(achou):
-        nome = achou.group(1)
-        return frente if nome == "FrontSide" else som(campos.get(nome, ""))
+        filtro, _, nome = achou.group(1).rpartition(":")  # `text:Palavra`: o filtro `text` tira o HTML e deixa o texto
+        if nome == "FrontSide":
+            return frente
+        valor = som(campos.get(nome, ""))
+        return html.unescape(re.sub(r"<[^>]*>", "", valor)) if filtro == "text" else valor
 
     return _CAMPO.sub(campo, secoes(modelo))
 

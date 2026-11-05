@@ -19,6 +19,7 @@
     frase_com_audio: ['BRG-44.fraseComAudio', 'BRG-44.textoFraseComAudio'],
     ouvir_primeiro: ['BRG-44.ouvirPrimeiro', 'BRG-44.textoOuvirPrimeiro'],
     lacuna: ['BRG-44.lacuna', 'BRG-44.textoLacuna'],
+    criacao: ['BRG-44.criacao', 'BRG-44.textoCriacao'],
   };
 
   function elemento(tag, classe, ...filhos) {
@@ -74,6 +75,9 @@
     const texto = elemento('span', 'ajustes-campo__ajuda', textoDaVoz(VOZ_DA_FRENTE[rascunho.frente][1]));
     texto.id = `${id}-texto`;
     const nota = elemento('span', 'ajustes-campo__ajuda', textoDaVoz('BRG-44.nota', { idioma: NOME_DO_IDIOMA[lang].toLowerCase() }));
+    const notaDaCriacao = elemento('span', 'ajustes-campo__ajuda', textoDaVoz('BRG-44.notaCriacao')); // o risco 7: no celular só o “✓ usou a palavra” funciona
+    notaDaCriacao.id = `${id}-nota-criacao`;
+    notaDaCriacao.hidden = rascunho.frente !== 'criacao';
     const grupo = elemento('div', 'veio-segmentado', ...FRENTES.map(frente => {
       const radio = elemento('input', '');
       radio.type = 'radio';
@@ -83,13 +87,14 @@
       radio.addEventListener('change', () => {
         rascunho.frente = frente;
         texto.textContent = textoDaVoz(VOZ_DA_FRENTE[frente][1]);
+        notaDaCriacao.hidden = frente !== 'criacao';
       });
       return elemento('label', 'veio-segmentado__opcao', radio, elemento('span', '', textoDaVoz(VOZ_DA_FRENTE[frente][0])));
     }));
     grupo.setAttribute('role', 'radiogroup');
     grupo.setAttribute('aria-labelledby', rotulo.id);
     grupo.setAttribute('aria-describedby', texto.id);
-    return elemento('div', 'ajustes-campo', rotulo, grupo, texto, nota);
+    return elemento('div', 'ajustes-campo', rotulo, grupo, texto, notaDaCriacao, nota);
   }
 
   /** Pede à Conexão que ponha a frente no modelo de Cartão do idioma; devolve null (trocou) ou o ID da Voz que diz por que não trocou. */

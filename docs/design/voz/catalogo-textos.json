@@ -830,14 +830,21 @@
   "BRG-44.fraseComAudio": "Frase com áudio",
   "BRG-44.ouvirPrimeiro": "Ouvir primeiro",
   "BRG-44.lacuna": "Lacuna",
+  "BRG-44.criacao": "Criação",
   "BRG-44.textoFraseComAudio": "A frase e o áudio na frente",
   "BRG-44.textoOuvirPrimeiro": "Só o botão de tocar na frente: ouça antes de ler",
   "BRG-44.textoLacuna": "A frase sem a palavra, com uma dica e sem áudio",
+  "BRG-44.textoCriacao": "Você escreve uma frase sua com a palavra e vê, no verso, o que escreveu",
+  "BRG-44.notaCriacao": "No AnkiMobile e no AnkiDroid só o “✓ usou a palavra” funciona: a frase que você escreve não fica guardada na nota",
   "BRG-44.nota": "Todos os cartões em {idioma} mudam na hora, sem custo",
   "BRG-44.naoMudou": "Os outros ajustes foram salvos, mas a frente não mudou: {motivo}.",
   "BRG-44.semConexao": "a Conexão com o Anki está desligada",
   "BRG-44.ankiOcupado": "o Anki não está pronto (sem perfil aberto, em outro perfil ou sincronizando)",
   "BRG-44.tipoMexido": "o tipo de nota em {idioma} foi alterado no Anki e a Conexão não mexe nele",
   "BRG-44.falhou": "a Conexão não conseguiu trocá-la",
-  "BRG-44.tentarDeNovo": "Tentar de novo"
+  "BRG-44.tentarDeNovo": "Tentar de novo",
+  "BRG-44.cartaoPedido": "Escreva uma frase sua com esta palavra",
+  "BRG-44.cartaoEscreveu": "Você escreveu",
+  "BRG-44.cartaoExemplo": "Exemplo",
+  "BRG-44.cartaoUsou": "✓ usou a palavra"
 }

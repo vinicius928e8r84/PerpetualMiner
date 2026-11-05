@@ -1,6 +1,6 @@
 'use strict';
 
-// Referência visual da Frente do Cartão (#166), nos Ajustes de envio › Estilo do cartão: Frase com áudio, Ouvir primeiro e Lacuna, cada uma com o
+// Referência visual da Frente do Cartão (#166, #168), nos Ajustes de envio › Estilo do cartão: Frase com áudio, Ouvir primeiro, Lacuna e Criação (com a nota do celular), cada uma com o
 // texto dela, e o aviso de quando a Conexão não trocou a frente. Não há protótipo desta seção: ela reusa o controle segmentado do Estilo do cartão
 // (#162) e as notas do campo Imagens (o protótipo aprovado dos Ajustes de envio, `docs/design/painel/anki/prototipo-ajustes-envio.html`), e o dono
 // compara estas telas com ele. Todas são PROPOSTAS (`test.fixme`, sem PNG na árvore) até a aprovação dele (CODING_STANDARDS regra 10). Aprovando:
@@ -49,6 +49,15 @@ test('o inglês na Lacuna, escolhida e ainda não salva', async ({ page, extensa
   await expect(ilha(page)).toHaveScreenshot('ajustes-frente-lacuna.png');
 });
 
+test('o inglês na Criação, escolhida e ainda não salva, com a nota de que no celular só o ✓ usou a palavra funciona', async ({ page, extensao }) => {
+  test.fixme(true, AGUARDA_O_DONO);
+  await abrirAFrente(page, extensao);
+  await escolher(page, 'Criação');
+  await expect(page.getByRole('status')).toHaveText('Alterações não salvas');
+
+  await expect(ilha(page)).toHaveScreenshot('ajustes-frente-criacao.png');
+});
+
 test('o russo tem a frente dele: Ouvir primeiro no russo, enquanto o inglês fica como está', async ({ page, extensao }) => {
   test.fixme(true, AGUARDA_O_DONO);
   await abrirAFrente(page, extensao, { idioma: 'Russo' });
@@ -68,7 +77,7 @@ test('a Conexão desligada: o resto foi salvo, a frente não mudou e a tela ofer
   await expect(ilha(page)).toHaveScreenshot('ajustes-frente-conexao-desligada.png');
 });
 
-test('na janela estreita as três frentes ficam legíveis', async ({ page, extensao }) => {
+test('na janela estreita as quatro frentes ficam legíveis', async ({ page, extensao }) => {
   test.fixme(true, AGUARDA_O_DONO);
   await abrirAFrente(page, extensao, { largura: 760 });
 

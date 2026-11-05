@@ -101,7 +101,15 @@ class TrocarAFrenteSoEditaOModelo(unittest.TestCase):
             antes = modelo_do(conexao)
             self.assertEqual(trocar(conexao, "en", "imagem_primeiro"), (400, {"error": "invalid_front"}))
             self.assertEqual(modelo_do(conexao), antes)
-        self.assertEqual(tipo_de_nota.FRENTES, ("frase_com_audio", "ouvir_primeiro", "lacuna"))
+        self.assertEqual(tipo_de_nota.FRENTES, ("frase_com_audio", "ouvir_primeiro", "lacuna", "criacao"))
+
+    def test_trocar_para_a_criacao_so_reescreve_o_modelo_sem_nota_nova_nem_chamada_a_ia_a_voz_ou_as_fotos(self):
+        with com_um_cartao_enviado() as conexao:
+            colecao = conexao.conexao.colecao
+            notas, cartoes, campos, fora = list(colecao.gravadas), colecao.cartoes_do_baralho("PerpetualMiner::Inglês"), colecao.tipo_de_nota(INGLES), chamadas_de_fora(conexao)
+            self.assertEqual(trocar(conexao, "en", "criacao"), (200, {"ok": True}))
+            self.assertEqual(modelo_do(conexao), tipo_de_nota.definicao("en", frente="criacao")["modelos"][0])
+            self.assertEqual((colecao.gravadas, colecao.cartoes_do_baralho("PerpetualMiner::Inglês"), colecao.tipo_de_nota(INGLES), chamadas_de_fora(conexao)), (notas, cartoes, campos, fora))
 
 
 if __name__ == "__main__":

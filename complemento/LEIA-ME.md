@@ -12,6 +12,7 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 | `no_anki.py` | A ligação com o `mw` do Anki: `perfil_aberto` (só com a coleção aberta; selecionado na janela de perfis é `null`), `ColecaoDoAnki` (o adaptador da coleção: lê e grava na thread principal, só no perfil marcado, que abre pelas funções de perfil do Anki) e `ao_carregar` |
 | `perfil.py`, `rotas_do_perfil.py` | O perfil fixo (#149): `user_files/perfil.json` guarda o da primeira conexão; os adaptadores só gravam nele (`OutroPerfil`, `PerfilSumiu`: o Envio espera); as rotas o listam, escolhem e abrem |
 | `rotas_da_frente.py` | A frente do Cartão (#166): `POST /anki/card-front` `{ lang, frente }` reescreve o modelo de Cartão do tipo de nota do idioma (`tipo_de_nota.trocar_a_frente`); nenhuma nota, nenhuma IA. `docs/design/frentes-do-cartao.md` |
+| `criacao_na_revisao.py`, `modelo_da_criacao.js` | A frente Criação (#168): o gancho da revisão que grava a frase escrita no campo “Frase escrita” (só no Anki do computador) e o script do modelo (o “✓ usou a palavra”) |
 | `inicio.py` | Ao carregar: prepara `user_files`, o log e sobe a Conexão. Nunca levanta erro |
 | `servidor.py` | O servidor HTTP e as rotas (`ROTAS`); só a extensão é atendida |
 | `rotas_da_chave.py`, `rotas_do_envio.py` | As rotas da chave (`/ia/openai/…`, `/ia/estado`) e do Envio (`/jobs/…`, `/analytics/jobs`) em `servidor.ROTAS` |
