@@ -158,7 +158,7 @@ class OIntermediarioEOAvancadoDoIngles(unittest.TestCase):
 
     def test_um_nivel_que_o_idioma_nao_tem_e_recusado_sem_criar_o_envio(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
-            for lang, nivel in (("ru", "intermediario"), ("ru", "avancado"), ("en", "mestre"), ("en", None), ("en", 2)):
+            for lang, nivel in (("ru", "mestre"), ("ru", None), ("en", "mestre"), ("en", None), ("en", 2)):
                 with self.subTest(lang=lang, nivel=nivel):
                     status, resposta = conexao.criar(dict(pedido(ID, FRASE, lang=lang), nivel=nivel))
                     self.assertEqual((status, resposta), (400, {"error": "invalid_level"}))
@@ -194,9 +194,28 @@ class OModeloDoCartaoServeATodosOsNiveis(unittest.TestCase):
         self.assertIn("Definição", avancado["campos_do_cartao"])
         self.assertNotIn("Definição", iniciante["campos_do_cartao"])
 
-    def test_o_tipo_de_nota_do_russo_continua_sem_as_partes_dos_outros_niveis_no_verso(self):
+    def test_o_verso_do_russo_so_traz_a_frente_quando_o_cartao_repete_a_frase(self):
         verso = tipo_de_nota.definicao("ru")["modelos"][0]["verso"]
-        self.assertNotIn("Definição", verso)
+        self.assertTrue(verso.startswith("{{^Sílaba forte}}{{FrontSide}}\n<hr id=answer>{{/Sílaba forte}}"))
+        self.assertNotIn("FrontSide", verso.split("{{/Sílaba forte}}", 1)[1])
+
+    def test_o_verso_do_ingles_traz_sempre_a_frente_porque_nenhum_nivel_dele_tira_a_frase(self):
+        self.assertTrue(tipo_de_nota.definicao("en")["modelos"][0]["verso"].startswith("{{FrontSide}}\n<hr id=answer>\n"))
+
+    def test_o_verso_do_russo_tem_as_partes_dos_tres_niveis_na_ordem_do_idioma(self):
+        verso = tipo_de_nota.definicao("ru")["modelos"][0]["verso"]
+        posicoes = [verso.index("{{#%s}}" % campo) for campo in (
+            "Pronúncia", "Tradução literal", "Tradução natural", "Contexto da cena", "Palavra", "Sílaba forte", "Definição", "Explicação das cores",
+            "Outro exemplo", "Mesma raiz", "Imagem")]
+        self.assertEqual(posicoes, sorted(posicoes))
+
+    def test_o_envio_do_russo_grava_a_morfologia_e_a_raiz_que_o_verso_nao_mostra(self):
+        com_o_nivel = tipo_de_nota.definicao("ru", "intermediario")["campos_do_cartao"]
+        self.assertTrue({"Morfologia", "Raiz", "Sílaba forte", "Explicação das cores"} <= set(com_o_nivel))
+        self.assertNotIn("Mesma raiz", com_o_nivel)
+        self.assertIn("Mesma raiz", tipo_de_nota.definicao("ru", "avancado")["campos_do_cartao"])
+        verso = tipo_de_nota.definicao("ru")["modelos"][0]["verso"]
+        self.assertFalse({"{{Morfologia}}", "{{Raiz}}"} & set(re.findall(r"\{\{[^#/^}]+\}\}", verso)))
 
 
 class RepetirNaoDobraNemMexeNoQueJaEstaLa(unittest.TestCase):

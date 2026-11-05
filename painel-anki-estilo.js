@@ -1,13 +1,13 @@
 'use strict';
 
-// O estilo do Cartão nos Ajustes de envio: o nível de cada idioma (#162, BRG-42), um controle segmentado Iniciante · Intermediário · Avançado, e a
-// frente (#166, BRG-43), outro: Frase com áudio · Ouvir primeiro · Lacuna. Sob o escolhido fica o texto dele (o do nível é o do quiz de nível, com o idioma). No
-// russo só o Iniciante se escolhe, até o #163. `painel-ajustes.js` põe estes campos no formulário de cada idioma; é ele quem grava o rascunho em Salvar
+// O estilo do Cartão nos Ajustes de envio: o nível de cada idioma (#162, BRG-42), um controle segmentado Iniciante · Intermediário · Avançado (os dois
+// idiomas têm os três, o russo desde o #163), e a frente (#166, BRG-43), outro: Frase com áudio · Ouvir primeiro · Lacuna. Sob o escolhido fica o texto dele
+// (o do nível é o do quiz de nível, com o idioma). `painel-ajustes.js` põe estes campos no formulário de cada idioma; é ele quem grava o rascunho em Salvar
 // ajustes e quem pede à Conexão a troca da frente.
 
 (function (raiz) {
   const { textoDaVoz, AjustesDeEnvio, IDIOMAS, ConexaoAnki } = raiz;
-  const { NIVEIS, NIVEIS_ESCOLHIVEIS, FRENTES } = AjustesDeEnvio;
+  const { NIVEIS, FRENTES } = AjustesDeEnvio;
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
   const VOZ_DO_NIVEL = {
     iniciante: ['BRG-42.iniciante', 'BRG-42.textoIniciante'],
@@ -47,7 +47,6 @@
       radio.name = id;
       radio.value = nivel;
       radio.checked = rascunho.nivel === nivel;
-      radio.disabled = !NIVEIS_ESCOLHIVEIS[lang].includes(nivel);
       radio.addEventListener('change', () => {
         rascunho.nivel = nivel;
         preencher(lang, nivel, texto);
@@ -57,9 +56,7 @@
     grupo.setAttribute('role', 'radiogroup');
     grupo.setAttribute('aria-labelledby', rotulo.id);
     grupo.setAttribute('aria-describedby', texto.id);
-    const soIniciante = NIVEIS_ESCOLHIVEIS[lang].length < NIVEIS.length;
-    return elemento('div', 'ajustes-campo', rotulo, grupo, texto,
-      ...(soIniciante ? [elemento('span', 'ajustes-campo__ajuda', textoDaVoz('BRG-42.soIniciante'))] : []));
+    return elemento('div', 'ajustes-campo', rotulo, grupo, texto);
   }
 
   /** O campo Frente do idioma `lang`: escolher uma frente muda `rascunho.frente`; quem a troca no Anki é o Salvar ajustes (`painel-ajustes.js`). */

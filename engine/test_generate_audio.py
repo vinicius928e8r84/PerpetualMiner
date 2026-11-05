@@ -36,6 +36,20 @@ class WhatACardSays(unittest.TestCase):
         dito = falado("give up : She gave up smoking [Context: Série - The Office - S01E01]")
         self.assertEqual([texto for texto, _, _ in dito], ["give up", "She gave up smoking"])
 
+    def test_a_russian_card_that_names_its_own_word_speaks_that_word_and_not_the_first_two_words_of_the_line(self):
+        texto = "Front\nОна приходила вчера.\n\nBack\nWord: приходила\n\nStress: приходи\u0301ла\n"
+        self.assertEqual(
+            falado("Она приходила вчера.", ru=True, card_text=texto),
+            [("приходила", "ru", "ru"), ("Она приходила вчера.", "ru", "ru")])
+        self.assertEqual(generate_audio.word_from_card_text(texto), "приходила")
+
+    def test_the_stress_mark_of_the_word_of_a_card_is_not_spoken(self):
+        self.assertEqual(generate_audio.word_from_card_text("Back\nWord: приходи\u0301ла\n"), "приходила")
+
+    def test_a_card_that_does_not_name_a_word_keeps_the_keyword_of_its_line(self):
+        self.assertIsNone(generate_audio.word_from_card_text("Front\nЯ не мальчик!\n\nBack\nPronunciation: ia ni MAL-tchik\n"))
+        self.assertEqual(falado("Я не мальчик!", ru=True, card_text="Front\nЯ не мальчик!\n\nBack\nPronunciation: ia\n")[0], ("Я не", "ru", "ru"))
+
 
 if __name__ == "__main__":
     unittest.main()

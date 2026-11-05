@@ -124,7 +124,7 @@ function criarFakeAnki() {
     if (recusa?.rede) return { abortar: true };
     if (recusa) return { status: recusa.status, json: { error: recusa.erro || 'job_failed' } };
     if (!ID_DO_ENVIO.test(corpo.jobId || '')) return erroDoContrato('/jobs', 'invalid_job_id');
-    if ('nivel' in corpo && !(corpo.lang === 'en' ? ['iniciante', 'intermediario', 'avancado'] : ['iniciante']).includes(corpo.nivel)) return erroDoContrato('/jobs', 'invalid_level');
+    if ('nivel' in corpo && !['iniciante', 'intermediario', 'avancado'].includes(corpo.nivel)) return erroDoContrato('/jobs', 'invalid_level');
     const { jobId } = corpo;
     const existente = envios.find(e => e.jobId === jobId);
     if (existente) {

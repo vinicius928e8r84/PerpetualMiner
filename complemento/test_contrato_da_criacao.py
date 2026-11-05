@@ -190,6 +190,18 @@ class ContratoDaCriacao:
         self.assertFalse(tipo_de_nota.trocar_a_frente(colecao, "en", "lacuna"))
         self.assertEqual(colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês"), modelos)
 
+    def test_no_russo_o_verso_sem_a_frase_so_vale_na_frente_frase_com_audio_porque_nas_outras_a_frase_ainda_nao_foi_vista(self):
+        colecao = self.com_notas_gravadas()
+        verso = lambda: colecao.modelos_do_tipo_de_nota("PerpetualMiner Russo")[0]["verso"]  # noqa: E731
+        self.assertIn("{{^Sílaba forte}}{{FrontSide}}", verso())
+        for frente in ("ouvir_primeiro", "lacuna"):
+            tipo_de_nota.trocar_a_frente(colecao, "ru", frente)
+            with self.subTest(frente=frente):
+                self.assertNotIn("{{^Sílaba forte}}", verso())
+                self.assertIn("{{Frase}}", verso())
+        tipo_de_nota.trocar_a_frente(colecao, "ru", tipo_de_nota.FRENTE_PADRAO)
+        self.assertIn("{{^Sílaba forte}}{{FrontSide}}", verso())
+
     def test_cada_idioma_tem_a_sua_frente(self):
         colecao = self.com_notas_gravadas()
         tipo_de_nota.trocar_a_frente(colecao, "en", "lacuna")

@@ -67,7 +67,8 @@ class AudioDoCartao:
         raise ultimo
 
     def _o_audio(self, job_id, pedido, config, cartao_id, guid, conteudo):
-        """O áudio da Palavra e o da Frase do Cartão: ({nome: bytes}, nome do da Frase, nome do da Palavra, a Palavra); levanta `ErroDaVoz`."""
+        """O áudio da Palavra e o da Frase do Cartão: ({nome: bytes}, nome do da Frase, nome do da Palavra, a Palavra); levanta `ErroDaVoz`.
+        A Palavra é a que o Cartão diz na linha dele (os níveis do russo com a morfologia) ou, sem ela, a da linha minerada."""
         phrase_id, posicao = cartao_id.rsplit("-", 1)
         linha = self.fila.linha_do_cartao(job_id, int(phrase_id))
         if linha is None:
@@ -85,4 +86,4 @@ class AudioDoCartao:
             except voz.ErroDaVoz as erro:
                 self.logger.warning("Envio %s: o áudio do Cartão %s não veio (%s)", job_id, cartao_id, erro.codigo)
                 raise
-        return arquivos, da_frase, da_palavra, trabalho.keyword
+        return arquivos, da_frase, da_palavra, self.motor.generate_audio.word_from_card_text(conteudo) or trabalho.keyword

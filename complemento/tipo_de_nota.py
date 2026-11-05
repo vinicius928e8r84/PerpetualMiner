@@ -26,6 +26,9 @@ CSS = """.card { font-family: arial, sans-serif; font-size: 22px; text-align: ce
 .exemplo { color: #6b7280; font-style: italic; margin: 10px 0; }
 .dica { color: #6b7280; font-size: 18px; margin: 10px 0; }
 .lacuna { font-weight: bold; color: #6b7280; }
+.silaba { font-size: 24px; margin: 4px 0 10px; }
+.cores { text-align: left; font-size: 18px; margin: 14px auto; max-width: 520px; line-height: 1.5; }
+.raiz { color: #6b7280; margin: 10px 0; }
 .imagem img { max-width: 100%; max-height: 320px; border-radius: 8px; }
 """
 
@@ -47,6 +50,9 @@ def _verso(idioma, partes):
         "palavra": lambda: _parte("palavra", nomes["palavra"], audio=(nomes["audio_da_palavra"],)),
         "definicao": lambda: _parte("definicao", nomes["definicao"]),
         "outro_exemplo": lambda: _parte("exemplo", nomes["outro_exemplo"]),
+        "silaba_forte": lambda: _parte("silaba", nomes["silaba_forte"]),
+        "explicacao_das_cores": lambda: _parte("cores", nomes["explicacao_das_cores"]),
+        "mesma_raiz": lambda: _parte("raiz", nomes["mesma_raiz"]),
         "imagem": lambda: _parte("imagem", nomes["imagem"]),
     }
     return "\n".join(blocos[parte]() for parte in partes if parte in blocos)
@@ -65,6 +71,17 @@ def _frente(frente, nomes):
     return '<div class="frase">{{%s}}</div>\n{{%s}}' % (frase, audio), "{{FrontSide}}"
 
 
+def _campo_do_verso_sem_a_frase(idioma, lang):
+    """O campo que só os níveis cujo verso não repete a Frase (`repete_a_frase: false`) preenchem, ou None se todos a repetem: o verso do
+    modelo só traz a frente (`{{FrontSide}}`) quando ele está vazio. O primeiro na ordem do verso, para ser o mesmo a cada vez."""
+    niveis = [estilos.estilo(lang, nivel) for nivel in estilos.niveis(lang)]
+    sem, com = [n for n in niveis if n.get("repete_a_frase") is False], [n for n in niveis if n.get("repete_a_frase") is not False]
+    if not sem:
+        return None
+    so_dos_sem = set.intersection(*(set(n["verso"]) for n in sem)) - set().union(*(set(n["verso"]) for n in com))
+    return next((idioma["campos"][parte] for parte in idioma.get("ordem_do_verso", []) if parte in so_dos_sem), None)
+
+
 def definicao(lang, nivel=None, frente=FRENTE_PADRAO):
     """O tipo de nota do idioma como a coleção o cria: `{ nome, campos: [nomes, na ordem], campos_do_cartao, modelos: [{ nome, frente, verso }], css }`.
     O verso do modelo é um só para todos os níveis do idioma: tem todas as partes que um verso pode ter (`ordem_do_verso`), cada uma só aparece se o
@@ -74,9 +91,14 @@ def definicao(lang, nivel=None, frente=FRENTE_PADRAO):
     nomes = idioma["campos"]
     if frente not in NOMES_DAS_FRENTES:
         raise KeyError(frente)
-    na_frente, no_comeco_do_verso = _frente(frente, nomes)
-    verso = no_comeco_do_verso + "\n<hr id=answer>\n" + _verso(idioma, idioma.get("ordem_do_verso") or estilos.estilo(lang)["verso"])  # um idioma sem a ordem tem o verso do nível padrão
-    escritos = ("frase", "audio_da_frase", "audio_da_palavra", "fonte") + tuple(estilo["verso"])  # o que o Envio sempre grava (a lacuna e a dica só às vezes): o tipo da pessoa tem de ter
+    na_frente, comeco_do_verso = _frente(frente, nomes)
+    frente_no_verso = comeco_do_verso + "\n<hr id=answer>"
+    marca = _campo_do_verso_sem_a_frase(idioma, lang)
+    if marca and frente == FRENTE_PADRAO:  # os níveis que não repetem a Frase deixam esse campo cheio, e o verso deles não tem a frente; nas outras frentes a Frase ainda não foi vista
+        frente_no_verso = "{{^%s}}%s{{/%s}}" % (marca, frente_no_verso, marca)
+    partes = idioma.get("ordem_do_verso") or estilos.estilo(lang)["verso"]  # um idioma sem a ordem tem o verso do nível padrão
+    verso = frente_no_verso + "\n" + _verso(idioma, partes)
+    escritos = ("frase", "audio_da_frase", "audio_da_palavra", "fonte") + tuple(estilo["verso"]) + tuple(estilo.get("guarda", []))  # o que o Envio sempre grava (a lacuna e a dica só às vezes): o tipo da pessoa tem de ter
     return {
         "nome": idioma["tipo_de_nota"], "campos": list(nomes.values()), "campos_do_cartao": [nomes[chave] for chave in escritos],
         "modelos": [{"nome": NOMES_DAS_FRENTES[frente], "frente": na_frente, "verso": verso}], "css": CSS}
