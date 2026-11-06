@@ -1,9 +1,9 @@
 """O Envio dentro da Conexão (#142): a fila, o estado de cada Cartão e o trabalho que os faz (a thread: `trabalhador.py`).
 
-Desenho: `docs/design/envio-no-complemento.md`. Os estados: `queued` →
+Desenho: `docs/design/envio-no-complemento.md`. Estados: `queued` →
 `running` (`generate_cards`, `wait_anki` ou `send_to_anki`) → `completed` | `partial` | `failed`; uma Frase está no Anki quando
 todos os Cartões dela estão (`settle`). O estado também é **por Cartão** (`cards`: `pending` → `text` → `added` | `duplicate`,
-ou `failed` com o `error`): a retomada não refaz nada pronto. Um Cartão é (`phraseId`, posição da Palavra), `<phraseId>-<n>`.
+ou `failed` com o `error`; `added` leva o `guid` da nota): a retomada não refaz nada pronto. Um Cartão é (`phraseId`, posição da Palavra), `<phraseId>-<n>`.
 
 Os arquivos em `user_files`, cada um gravado num temporário e trocado de uma vez:
 
@@ -14,8 +14,7 @@ Os arquivos em `user_files`, cada um gravado num temporário e trocado de uma ve
     custos/<jobId>/costs.jsonl  os custos, escritos pelo `cost_tracker` do motor (o Cartão no lugar da Palavra)
 
 A Palavra e a Frase só existem na linha do pedido (`entries[].line`) e no texto gerado, até o Cartão chegar ao Anki: a nota
-gravada tira o texto dele, a Frase inteira no Anki reduz a linha a `{ phraseId, noAnki }` e o Apagar tudo tira o resto
-(`apagar_as_frases`). Toda gravação passa por `_gravar_json` e `_apagar`, onde `test_envio_fronteiras.py` mata a Conexão.
+gravada tira o texto, a Frase inteira no Anki reduz a linha a `{ phraseId, noAnki }` e o Apagar tudo tira o resto (`apagar_as_frases`). Toda gravação passa por `_gravar_json` e `_apagar`, onde `test_envio_fronteiras.py` mata a Conexão.
 
 A rede (a OpenAI e a voz do Google, `audio_do_cartao.py`) é da thread de trabalho; cada nota é gravada pelo adaptador da
 coleção (`gravar_cartao`, na thread principal do Anki). Sem coleção, sincronizando ou ocupado, ele levanta `ColecaoIndisponivel`
@@ -32,6 +31,7 @@ from datetime import datetime, timezone
 
 from . import baralhos, custos, voz
 from .audio_do_cartao import FRASE_APAGADA, AudioDoCartao
+from .gravacao_de_json import apagar as _apagar, gravar_json as _gravar_json
 from .configuracao import OPENVERSE_BASE, VOZ_BASE
 from .imagem_do_cartao import ImagemDoCartao, ParaOEnvio
 from .limite_do_plano import LIMITE_DO_PLANO, LimiteDoPlano, espera_pelo_plano
@@ -40,7 +40,7 @@ from .modelo_dos_cartoes import credencial
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento  # noqa: F401  (`envio.motor_do_complemento`)
 from .paradas_do_envio import Apagado, Interrompido  # noqa: F401  (`envio.Interrompido`)
 from .tipo_do_envio import TipoDoEnvio
-from .pedido_do_envio import id_que_serve_de_caminho, id_valido, impressao, validar_pedido, visao_do_pedido  # noqa: F401
+from .pedido_do_envio import ETIQUETA_DE_TESTE, id_que_serve_de_caminho, id_valido, ids_unicos, impressao, validar_pedido, visao_do_pedido  # noqa: F401
 
 QUEUED, RUNNING, COMPLETED, PARTIAL, FAILED = "queued", "running", "completed", "partial", "failed"
 FIM = (COMPLETED, PARTIAL, FAILED)
@@ -66,7 +66,7 @@ PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", 
 
 
 def agora_local():
-    """O instante com o fuso do computador, a aba Custos filtra pelo dia de quem usa."""
+    """O instante com o fuso do computador (a aba Custos filtra pelo dia de quem usa)."""
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
@@ -83,42 +83,12 @@ def guid_do_cartao(job_id, cartao):
     return "pm" + hashlib.sha1(("%s\x1f%s" % (job_id, cartao)).encode("utf-8")).hexdigest()[:20]
 
 
-def ids_unicos(valores):
-    vistos, ids = set(), []
-    for valor in valores or []:
-        try:
-            numero = int(valor)
-        except (TypeError, ValueError):
-            continue
-        if numero not in vistos:
-            vistos.add(numero)
-            ids.append(numero)
-    return ids
-
-
 def _ler_json(caminho, padrao):
     try:
         with open(caminho, encoding="utf-8") as arquivo:
             return json.load(arquivo)
     except (OSError, ValueError):
         return copy.deepcopy(padrao)
-
-
-def _gravar_json(caminho, dados):
-    os.makedirs(os.path.dirname(caminho), exist_ok=True)
-    provisorio = caminho + ".novo"
-    with open(provisorio, "w", encoding="utf-8") as arquivo:
-        json.dump(dados, arquivo, ensure_ascii=False, indent=2)
-    os.replace(provisorio, caminho)
-
-
-def _apagar(caminho):
-    """Apaga um arquivo do Envio (se existe); devolve se apagou."""
-    try:
-        os.remove(caminho)
-    except FileNotFoundError:
-        return False
-    return True
 
 
 def cartoes_da_frase(motor, lang, linha):
@@ -528,7 +498,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano, TipoDoEnvio):
         Devolve o código que para o Envio, ou None."""
         guid = guid_do_cartao(job_id, cartao_id)
         if guid in self._com_a_colecao(job_id, lambda: self.colecao.guids_existentes([guid])):
-            self._cartao(job_id, cartao_id, status=ADICIONADO, error=None)
+            self._cartao(job_id, cartao_id, status=ADICIONADO, error=None, guid=guid)
             self.fila.cartao_chegou(job_id, cartao_id)
             return None
         self._conferir_o_teto(job_id)
@@ -605,7 +575,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano, TipoDoEnvio):
         self._etapa(job_id, "send_to_anki")
         try:
             resultado = self._com_a_colecao(job_id, lambda: self.colecao.gravar_cartao(
-                baralho, tipo, nota["campos"], nota["etiquetas"], guid,
+                baralho, tipo, nota["campos"], nota["etiquetas"] + [ETIQUETA_DE_TESTE] * bool(pedido.get("teste")), guid,
                 frentes, nota["frente_normalizada"], lambda valor: envio.normalize_front(valor, lang), arquivos))
         except baralhos.TipoDeNotaAusente:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=SEM_TIPO_DE_NOTA)
@@ -614,5 +584,5 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano, TipoDoEnvio):
         except Exception as erro:
             self.logger.error("Envio %s: o Anki não gravou o Cartão %s (%s)", job_id, cartao_id, type(erro).__name__)
             return self._cartao(job_id, cartao_id, status=FALHOU, error=FALHA_AO_GRAVAR)
-        self._cartao(job_id, cartao_id, status=resultado, error=None)
+        self._cartao(job_id, cartao_id, status=resultado, error=None, **({"guid": guid} if resultado == ADICIONADO else {}))
         self.fila.cartao_chegou(job_id, cartao_id)

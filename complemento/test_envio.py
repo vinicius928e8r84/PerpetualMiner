@@ -1,5 +1,5 @@
-"""O Envio dentro da Conexão, visto de fora: o servidor real com a thread de trabalho ligada, a coleção em memória e a
-OpenAI de mentira na fronteira HTTP. O teste confere o que atravessa o HTTP e o que fica guardado (a coleção, a pasta de dados).
+"""O Envio na Conexão, visto de fora: o servidor real com a thread de trabalho ligada, a coleção em memória e a
+OpenAI de mentira na fronteira HTTP. Confere o que atravessa o HTTP e o que fica guardado (coleção, pasta de dados).
 
     python3.9 complemento/test_envio.py
 """
@@ -16,6 +16,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from complemento.test_leitura_dos_arquivos import arquivos_da_pasta  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_servidor import ConexaoNoTeste, ler_o_contrato, semear_a_fila  # noqa: E402
 
@@ -64,13 +65,7 @@ class EnvioNoTeste(ConexaoNoTeste):
         raise AssertionError("o Envio não chegou lá: %s" % self.estado(job_id))
 
     def arquivos(self):
-        lidos = {}
-        for raiz, _, nomes in os.walk(self.pasta):
-            for nome in nomes:
-                caminho = os.path.join(raiz, nome)
-                with open(caminho, "rb") as arquivo:
-                    lidos[os.path.relpath(caminho, self.pasta)] = arquivo.read()
-        return lidos
+        return arquivos_da_pasta(self.pasta)
 
 
 def chats(openai):
@@ -90,7 +85,7 @@ class UmaFraseViraCartao(unittest.TestCase):
         self.assertIn("<b>", notas[0]["campos"]["Frase"])
         self.assertTrue(notas[0]["campos"]["Palavra"].startswith("gave up - /"))
         self.assertEqual(notas[0]["etiquetas"], ["perpetual_miner", "série", "the_office", "s01e01"])
-        self.assertEqual(list(estado["cards"].values()), [{"phraseId": 1760000000000, "status": "added", "error": None}])
+        self.assertEqual(list(estado["cards"].values()), [dict(phraseId=1760000000000, status="added", error=None, guid=notas[0]["guid"])])
         self.assertEqual(list(estado["cards"]), ["1760000000000-0"])
 
     def test_o_baralho_que_ainda_nao_existe_e_criado(self):

@@ -130,4 +130,17 @@ def pedir(conexao, corpo):
     return 200, previa
 
 
-ROTAS_DA_PREVIA = {("POST", "/anki/card-preview"): pedir, **ROTAS_DO_TIPO_PROPRIO}
+def abrir_no_anki(conexao, corpo):
+    """A rota `POST /anki/browse` (o “Abrir no Anki”, #173): `{ guid }` → `200 { ok: true }`, e o Anki abre o navegador dele na nota (a thread principal dele, `no_anki`).
+    `404 note_not_found` se a coleção não a tem; `503 anki_browse_unavailable` sem coleção aberta. Nada é gravado."""
+    guid = corpo.get("guid")
+    if not isinstance(guid, str) or not guid:
+        return 400, {"error": "invalid_request"}
+    try:
+        achou = conexao.colecao.abrir_no_navegador(guid)
+    except ColecaoIndisponivel as motivo:
+        return 503, {"error": "anki_browse_unavailable", "detail": str(motivo)}
+    return (200, {"ok": True}) if achou else (404, {"error": "note_not_found"})
+
+
+ROTAS_DA_PREVIA = {("POST", "/anki/card-preview"): pedir, ("POST", "/anki/browse"): abrir_no_anki, **ROTAS_DO_TIPO_PROPRIO}

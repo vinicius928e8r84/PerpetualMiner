@@ -5,7 +5,7 @@
 //
 // O ritmo é o da spec (#137): a pessoa responde, vê a certa por ~1 s e a próxima pergunta entra sozinha, sem relógio; o áudio da pergunta toca sozinho. O
 // áudio é a voz do Google do Cartão, pedida à Conexão (`POST /voz/falar`, no sotaque da Frase dos Ajustes de envio). Errar ou “Não sei” só mostram a certa.
-// Sem a festa (#171) e sem o ranking (#172). No fim vem o nível sugerido com a prévia do Cartão: “Usar este estilo” ou trocar o nível ali (`EstiloDoCartao`).
+// Sem a festa (#171). No fim vem o nível sugerido com a prévia do Cartão, e sob o resumo o ranking do grupo (#172, `painel-boas-vindas-ranking.js`): “Usar este estilo” ou trocar o nível ali (`EstiloDoCartao`).
 
 (function (raiz) {
   const { textoDaVoz, IDIOMAS } = raiz;
@@ -78,6 +78,7 @@
       estado.pausa = null;
       estado.audio?.pause();
       estado.audio = null;
+      estado.ranking?.parar();
     }
 
     /** Põe a pergunta na tela: o título dela recebe o foco, para o leitor de tela dizer a pergunta nova. */
@@ -177,6 +178,8 @@
 
     function mostrarOResultado({ nivel, semAlfabeto = false, acertos, perguntas, melhorSequencia, escuta }) {
       parar();
+      // O ranking é de quem fez o quiz: quem disse “Ainda não” no alfabeto não respondeu nada, e não entra.
+      estado.ranking = semAlfabeto ? null : raiz.RankingNaTela.montar({ lang, idioma, resultado: { nivel, acertos, perguntas, melhorSequencia } });
       progresso.textContent = '';
       sequencia.textContent = '';
       const rascunho = { nivel };
@@ -189,17 +192,20 @@
       });
       mostrar(textoDaVoz('ONB-22.titulo', { idioma }),
         elemento('p', 'quiz__resumo', resumo),
+        ...(estado.ranking ? [estado.ranking.no] : []),
         ...(semAlfabeto ? [] : [elemento('p', 'bv-nota', textoDaVoz('ONB-22.escutaNota'))]),
         elemento('p', 'bv-texto', textoDaVoz('ONB-22.trocar')),
         raiz.EstiloDoCartao.campo(lang, rascunho, { prefixo: 'bvq' }),
         elemento('div', 'quiz__acoes', usar),
         elemento('p', 'bv-nota', textoDaVoz('ONB-22.depois')));
+      estado.ranking?.iniciar();
     }
 
     function iniciar() {
       parar();
       estado.pontos = [];
       estado.sessao = null;
+      estado.ranking = null;
       if (lang === 'ru') mostrarOAlfabeto();
       else mostrarOPerfil(0);
     }

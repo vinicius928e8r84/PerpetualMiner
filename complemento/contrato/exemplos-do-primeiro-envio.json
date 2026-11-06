@@ -1,0 +1,38 @@
+{
+  "exemplos": [
+    {
+      "nome": "criar o Envio do primeiro Cartão com a Frase de teste (leva a etiqueta perpetualminer-teste no Anki, #173)",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400000,
+              "line": "give up : She gave up smoking [Context: Série - The Office - S01E01]"
+            }
+          ],
+          "teste": true
+        }
+      },
+      "resposta": {
+        "status": 201,
+        "json": {
+          "jobId": "9b2f4c1e-7a3d-4e5f-8b6a-1c2d3e4f5a6b",
+          "status": "queued"
+        }
+      }
+    }
+  ]
+}
