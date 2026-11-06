@@ -1,6 +1,9 @@
 """O que a Conexão com o Anki sabe de si, num lugar só."""
 
-VERSAO = "0.4.8"
+VERSAO = "0.4.9"
+# A Conexão se atualiza sozinha pelo AnkiWeb (#177, `atualizacao.py`)? Desligado: os termos do AnkiWeb sobre um complemento que se atualiza
+# sozinho ainda não foram conferidos (o dono confere antes de ligar). Só o código muda isto. Desligado, o "Atualizar agora" da extensão segue valendo.
+ATUALIZACAO_AUTOMATICA = False
 NOME_DO_LOGGER = "perpetualminer"
 
 ENDERECO = "127.0.0.1"

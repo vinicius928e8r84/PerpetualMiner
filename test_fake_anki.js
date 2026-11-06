@@ -49,6 +49,7 @@ function fakeNoContextoDe(exemplo) {
   if (exemplo.contexto.chatgpt) fakeDoExemplo.chatgpt.definir(exemplo.contexto.chatgpt);
   if (exemplo.contexto.modelo) fakeDoExemplo.modelo.definir(exemplo.contexto.modelo);
   if (exemplo.contexto.voz) fakeDoExemplo.voz.definir(exemplo.contexto.voz);
+  if (exemplo.contexto.atualizacao || exemplo.contexto.ankiweb) fakeDoExemplo.definirAtualizacao({ atualizacao: exemplo.contexto.atualizacao, ankiweb: exemplo.contexto.ankiweb });
   if (exemplo.contexto.hoje) fakeDoExemplo.teto.passarOTempoAte(exemplo.contexto.hoje);
   if (exemplo.contexto.tetoUsd) fakeDoExemplo.teto.definir({ limite: exemplo.contexto.tetoUsd });
   if (exemplo.contexto.perfis) fakeDoExemplo.definirPerfis(exemplo.contexto.perfis, { marcado: exemplo.contexto.perfilMarcado ?? null, aberto: exemplo.contexto.perfil });

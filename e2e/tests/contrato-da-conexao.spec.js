@@ -38,6 +38,7 @@ for (const exemplo of daExtensao) {
     if (exemplo.contexto.chatgpt) fakes.anki.chatgpt.definir(exemplo.contexto.chatgpt);
     if (exemplo.contexto.modelo) fakes.anki.modelo.definir(exemplo.contexto.modelo);
     if (exemplo.contexto.voz) fakes.anki.voz.definir(exemplo.contexto.voz);
+    if (exemplo.contexto.atualizacao || exemplo.contexto.ankiweb) fakes.anki.definirAtualizacao({ atualizacao: exemplo.contexto.atualizacao, ankiweb: exemplo.contexto.ankiweb });
     if (exemplo.contexto.hoje) fakes.anki.teto.passarOTempoAte(exemplo.contexto.hoje);
     if (exemplo.contexto.tetoUsd) fakes.anki.teto.definir({ limite: exemplo.contexto.tetoUsd });
     if (exemplo.contexto.perfis) fakes.anki.definirPerfis(exemplo.contexto.perfis, { marcado: exemplo.contexto.perfilMarcado ?? null, aberto: exemplo.contexto.perfil });
