@@ -18,7 +18,8 @@ NOMES_DAS_FRENTES = {
 FRENTES = tuple(NOMES_DAS_FRENTES)
 NOME_DO_MODELO = NOMES_DAS_FRENTES[FRENTE_PADRAO]
 # O que a frente Criação (#168) diz no Cartão: a cópia aprovada de BRG-44 (`docs/design/voz/catalogo-nivel.md`); `test_criacao_do_cartao.py` a confere.
-TEXTOS_DA_CRIACAO = {"pedido": "Escreva uma frase sua com esta palavra", "escreveu": "Você escreveu", "exemplo": "Exemplo", "usou": "✓ usou a palavra"}
+TEXTOS_DA_CRIACAO = {"pedido": "Escreva uma frase sua com esta palavra", "escreveu": "Você escreveu", "exemplo": "Exemplo", "usou": "✓ usou a palavra",
+                     "antes": "Da última vez você escreveu"}
 PASTA = os.path.dirname(os.path.abspath(__file__))
 # O que o gancho da revisão (`criacao_na_revisao.py`) escuta: o script do modelo manda a frase escrita com esta mensagem.
 MENSAGEM_DA_CRIACAO = "perpetualminer:criacao:"
@@ -40,7 +41,8 @@ CSS = """.card { font-family: arial, sans-serif; font-size: 22px; text-align: ce
 
 CSS_DA_CRIACAO = """.pedido { font-size: 18px; margin: 14px 0 6px; }
 #perpetualminer-escrita { width: 90%; max-width: 520px; font-size: 20px; padding: 6px; box-sizing: border-box; }
-.escreveu, .exemplo-da-criacao { margin: 12px auto; max-width: 520px; text-align: left; }
+.escreveu, .exemplo-da-criacao, .ultima-vez { margin: 12px auto; max-width: 520px; text-align: left; }
+.ultima-vez .antes { color: #6b7280; }
 .rotulo { color: #6b7280; font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; }
 .usou { color: #15803d; font-size: 16px; margin-top: 4px; }
 .nightMode .usou { color: #4ade80; }
@@ -108,7 +110,8 @@ def _script_da_criacao():
 def _criacao(nomes):
     """A frente Criação (#168). Frente: a Palavra com o áudio, a Dica e o campo onde a pessoa escreve a frase dela (o campo de digitação do Anki não serve
     para resposta livre: o script guarda o texto, “Anki Persistence”). Verso: o que ela escreveu com “✓ usou a palavra” (conferido pelo script, sem IA)
-    ao lado do exemplo (a Frase com o áudio). Os campos “Frase escrita” e “Raiz” chegam ao script como texto escondido: a frase gravada pela Conexão,
+    ao lado do exemplo (a Frase com o áudio); depois que a IA corrigiu a frase (#169), “Da última vez você escreveu … → correção”, dos campos “Escrito antes” e
+    “Correção”. Os campos “Frase escrita” e “Raiz” chegam ao script como texto escondido: a frase gravada pela Conexão,
     para quando a página não guardou nada, e o radical da Palavra."""
     textos = TEXTOS_DA_CRIACAO
     frente = (
@@ -120,6 +123,7 @@ def _criacao(nomes):
         '<div class="usou" id="perpetualminer-usou" hidden>%(usou)s</div></div>\n'
         '<div class="exemplo-da-criacao"><div class="rotulo">%(exemplo)s</div><div class="frase">{{%(frase)s}}</div>{{%(audio_da_frase)s}}</div>\n'
         '<span id="perpetualminer-palavra" hidden>{{text:%(palavra)s}}</span><span id="perpetualminer-raiz" hidden>%(raiz)s</span>'
+        '{{#%(correcao)s}}<div class="ultima-vez">%(antes)s <span class="antes">{{%(escrito_antes)s}}</span> → <b class="depois">{{%(correcao)s}}</b></div>{{/%(correcao)s}}\n'
         '<span id="perpetualminer-gravada" hidden>{{text:%(frase_escrita)s}}</span>\n' % dict(nomes, raiz="{{text:%s}}" % nomes["raiz"] if "raiz" in nomes else "", **textos)
         + _script_da_criacao())
     return frente, comeco_do_verso

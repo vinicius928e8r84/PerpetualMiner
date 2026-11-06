@@ -1,0 +1,130 @@
+{
+  "filas": {
+    "um Envio de um Cartão e da correção de uma frase da Criação": [
+      {
+        "job": {
+          "jobId": "f6a7b8c9-0d1e-4f2a-8b3c-4d5e6f7a8b9c",
+          "createdAt": "2026-10-14T09:00:00-03:00",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760443200001,
+              "line": "give up : She gave up smoking"
+            }
+          ]
+        },
+        "state": {
+          "jobId": "f6a7b8c9-0d1e-4f2a-8b3c-4d5e6f7a8b9c",
+          "status": "completed",
+          "stage": "completed",
+          "completedStages": [
+            "generate_cards",
+            "send_to_anki"
+          ],
+          "progress": {},
+          "successfulPhraseIds": [
+            1760443200001
+          ],
+          "failedPhraseIds": [],
+          "duplicatePhraseIds": [],
+          "lastError": null,
+          "updatedAt": "2026-10-14T09:05:00-03:00",
+          "cards": {
+            "1760443200001-0": {
+              "phraseId": 1760443200001,
+              "status": "added",
+              "error": null
+            }
+          }
+        },
+        "custos": [
+          {
+            "date": "2026-10-14",
+            "type": "tokens",
+            "model": "gpt-4o",
+            "input_tokens": 1000,
+            "output_tokens": 200,
+            "cost_usd": 0.0045,
+            "keyword": "1760443200001-0"
+          },
+          {
+            "date": "2026-10-14",
+            "type": "correction_tokens",
+            "model": "gpt-4o",
+            "input_tokens": 300,
+            "output_tokens": 40,
+            "cost_usd": 0.00115
+          }
+        ]
+      }
+    ]
+  },
+  "exemplos": [
+    {
+      "nome": "os custos de um Envio que corrigiu uma frase da Criação trazem a correção à parte do custo dos Cartões",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio de um Cartão e da correção de uma frase da Criação"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/analytics/jobs",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "all"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "jobs": [
+            {
+              "jobId": "f6a7b8c9-0d1e-4f2a-8b3c-4d5e6f7a8b9c",
+              "createdAt": "2026-10-14T09:00:00-03:00",
+              "updatedAt": "2026-10-14T09:05:00-03:00",
+              "lang": "en",
+              "deckName": "Inglês",
+              "imageSource": "1",
+              "status": "completed",
+              "stage": "completed",
+              "requestedCards": 1,
+              "successfulCards": 1,
+              "failedCards": 0,
+              "lastError": null,
+              "costs": {
+                "cardUsd": 0.0045,
+                "imageJudgeUsd": 0.0,
+                "imageGuardUsd": 0.0,
+                "imageGenerationUsd": 0.0,
+                "otherUsd": 0.0,
+                "correctionUsd": 0.00115,
+                "totalUsd": 0.00565
+              },
+              "images": {
+                "total": 0,
+                "real": 0,
+                "generated": 0,
+                "skipped": 0,
+                "failed": 0,
+                "generatedAttempted": 0,
+                "savingsUsd": 0.0,
+                "realPct": 0.0,
+                "generatedPct": 0.0,
+                "skippedPct": 0.0,
+                "failedPct": 0.0,
+                "generatedAttemptPct": 0.0
+              },
+              "matchedRecords": 2
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
