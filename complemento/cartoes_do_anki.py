@@ -95,3 +95,13 @@ def gravar_frase_escrita(colecao, guid, texto):
     nota[campo] = valor
     colecao.update_note(nota) if hasattr(colecao, "update_note") else nota.flush()  # `update_note` é o do Anki novo; `flush`, o dos mais antigos
     return True
+
+
+def abrir_no_navegador(colecao, mw, guid):
+    """Na thread principal. Abre o navegador do Anki na nota de `guid` (o “Abrir no Anki”, #173); False se a coleção não a tem."""
+    linhas = colecao.db.all("select id from notes where guid = ? limit 1", guid)
+    if not linhas:
+        return False
+    from aqt import dialogs  # só existe dentro do Anki
+    dialogs.open("Browser", mw, search=("nid:%d" % linhas[0][0],))
+    return True

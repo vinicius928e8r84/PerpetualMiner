@@ -68,6 +68,18 @@ class PreviaEmMemoria:
         nota = self._notas.get(guid)
         return dict(nota, campos=dict(nota["campos"])) if nota else None
 
+    def abrir_no_navegador(self, guid):
+        self._exigir_aberta()
+        if guid not in self._notas:
+            return False
+        self.navegador_aberto.append(guid)
+        return True
+
+    @property
+    def navegador_aberto(self):
+        """Os `guid` em que o “Abrir no Anki” abriu o navegador (#173)."""
+        return self.__dict__.setdefault("_navegador_aberto", [])
+
     def arquivo_de_midia(self, nome, limite_de_bytes):
         self._exigir_aberta()
         dados = self.midia.get(nome)

@@ -7,11 +7,16 @@
 // `test_fake_anki.js` e `contrato-da-conexao.spec.js` conferem as respostas contra os exemplos.
 
 const { isDeepStrictEqual } = require('util');
+const { criarNavegador } = require('./navegador');
 
 const CAMINHO = '/anki/card-preview';
 
+// O `guid` de uma nota gravada (#173) é de cada Envio: o exemplo vale para qualquer um.
+const semOGuid = corpo => (corpo && typeof corpo.guid === 'string' ? { ...corpo, guid: '<guid>' } : corpo);
+
 /** `contexto()` é o contexto de agora do fake (o perfil aberto); `exemplos` são os do contrato. */
 function criarPrevia({ contexto, exemplos }) {
+  const navegador = criarNavegador({ contexto, exemplos });   // o Abrir no Anki (#173) mora aqui: a prévia e ele são da nota gravada
   let tiposDefinidos = null;  // os tipos de nota da pessoa que o teste definiu (#165); sem eles, os do contrato
   const doContrato = status => exemplos().find(e => e.daExtensao && e.pedido.caminho === '/anki/note-types' && e.resposta.status === status);
   const tipos = () => (tiposDefinidos || doContrato(200).resposta.json.noteTypes).map(tipo => ({ name: tipo.name, fields: [...tipo.fields] }));
@@ -39,12 +44,13 @@ function criarPrevia({ contexto, exemplos }) {
   }
 
   function responder(metodo, caminho, corpo) {
+    if (metodo === 'POST' && caminho === '/anki/browse') return navegador.responder(metodo, caminho, corpo);
     if (metodo === 'POST' && caminho === '/anki/note-types') return osTiposDaPessoa();
     if (metodo !== 'POST' || caminho !== CAMINHO) return null;
     const naTelaDePerfis = contexto().perfil === null;
     if (corpo?.tipoProprio) return noTipoDaPessoa(corpo, naTelaDePerfis);
     const exemplo = exemplos().find(e => e.daExtensao && e.pedido.metodo === metodo && e.pedido.caminho === caminho
-      && isDeepStrictEqual(e.pedido.corpo, corpo) && (e.resposta.status === 503) === naTelaDePerfis);
+      && isDeepStrictEqual(semOGuid(e.pedido.corpo), semOGuid(corpo)) && (e.resposta.status === 503) === naTelaDePerfis);
     if (!exemplo) {
       throw new Error(`O contrato (complemento/contrato/exemplos-da-previa.json) não tem exemplo de POST ${CAMINHO} com o corpo ${JSON.stringify(corpo)}`
         + `${naTelaDePerfis ? ' com o Anki na tela de perfis' : ''}; escreva-o lá antes de o fake responder.`);
@@ -54,6 +60,7 @@ function criarPrevia({ contexto, exemplos }) {
 
   return {
     responder,
+    abertos: navegador.abertos,
     /** Os tipos de nota que o Anki da pessoa tem (`[{ name, fields }]`): `definir(tipos)` para o teste, `lista()` para ver. */
     tiposDeNota: { definir(lista) { tiposDefinidos = lista; }, lista: tipos },
   };

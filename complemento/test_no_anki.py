@@ -10,6 +10,7 @@ import sys
 import tempfile
 import threading
 import time
+import types
 import unittest
 from unittest.mock import patch
 
@@ -29,10 +30,21 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, Contra
     def setUp(self):
         self.anki = None
         self.addCleanup(lambda: self.anki and self.anki.encerrar())
+        self.janelas_abertas = []
+        aqt = types.ModuleType("aqt")
+        aqt.dialogs = types.SimpleNamespace(open=lambda nome, mw, search: self.janelas_abertas.append((nome, mw, search)))
+        patcher = patch.dict(sys.modules, {"aqt": aqt})
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def adaptador(self, descricao, perfis=("Usuário 1",), aberto=None):
         self.anki = AnkiComColecaoDeMentira(descricao, perfis, aberto)
         return no_anki.ColecaoDoAnki(self.anki)
+
+    def navegador_aberto(self, colecao):
+        """O `aqt.dialogs` de mentira guarda a busca (`nid:<id>`); o `guid` volta pela coleção."""
+        ids = [int(busca[0].split(":")[1]) for janela, _, busca in self.janelas_abertas if janela == "Browser"]
+        return [self.anki.col._sqlite.execute("select guid from notes where id = ?", (nid,)).fetchone()[0] for nid in ids]
 
     def adaptador_fechado(self, perfis=("Usuário 1",)):
         self.anki = AnkiComColecaoDeMentira(None, perfis)

@@ -14,8 +14,8 @@
 </head>
 <body>
 
-  <!-- Shell “Ilhas” (docs/design/painel/shell/): um endereço por área (painel-shell.js). -->
-  <!-- Boas-vindas (docs/design/painel/boas-vindas/): #boas-vindas[/<passo>] (painel-boas-vindas.js). -->
+  <!-- Shell “Ilhas” (docs/design/painel/shell/), painel-shell.js. -->
+  <!-- Boas-vindas (docs/design/painel/boas-vindas/), painel-boas-vindas.js. -->
   <div class="bv" id="boas-vindas" hidden>
     <div class="bv-topo">
       <img class="veio-marca" src="veio/icones/icone.svg" width="40" height="40" alt="PerpetualMiner">
@@ -103,7 +103,7 @@
           </div>
         </header>
 
-        <!-- O lembrete “Configuração pela metade” (ONB-15, painel-lembrete.js). -->
+        <!-- O lembrete “Configuração pela metade” (ONB-15). -->
         <aside class="frases-lembrete" id="frases-lembrete" aria-labelledby="frases-lembrete-texto" hidden>
           <span class="frases-lembrete__anel" id="frases-lembrete-anel"></span>
           <p class="frases-lembrete__texto" id="frases-lembrete-texto"></p>
@@ -115,7 +115,7 @@
           </div>
         </aside>
 
-        <!-- Os avisos persistentes da área (C1): frases apagadas ou mineradas, e o copiar que não deu. -->
+        <!-- Avisos persistentes da área (C1). -->
         <div class="frases-avisos" id="frases-avisos"></div>
 
         <div class="frases-filtros">
@@ -617,8 +617,10 @@
   <script src="painel-conexao-passos.js"></script>
   <script src="lib/ranking.js"></script>
   <script src="painel-boas-vindas-ranking.js"></script>
+  <script src="painel-boas-vindas-minerar.js"></script>
   <script src="painel-boas-vindas-quiz.js"></script>
   <script src="painel-boas-vindas-nivel.js"></script>
+  <script src="painel-boas-vindas-envio.js"></script>
   <script src="painel-boas-vindas.js"></script>
   <script src="painel-lembrete.js"></script>
   <script src="painel-chave.js"></script>

@@ -28,7 +28,7 @@
   "exemplos": [
     {
       "nome": "Prévia do Cartão de uma nota gravada, pelo guid (o primeiro Cartão do Envio, #173)",
-      "daExtensao": false,
+      "daExtensao": true,
       "contexto": {
         "perfil": "Usuário 1",
         "colecao": "Anki com uma nota gravada"

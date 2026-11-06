@@ -34,7 +34,7 @@ const CHAVE_DO_OUVIR = contrato.exemplos.find(e => e.pedido.corpo?.provedor === 
 
 // Um pedido é o mesmo para o contrato quando só o nome do Baralho muda: o resto do corpo (quantos Baralhos, `refresh`, `launch`) conta.
 const formaDoCorpo = corpo => JSON.parse(JSON.stringify(corpo ?? null), function (chave, valor) {
-  return chave === 'deckName' || chave === 'deck' ? '<baralho>' : chave === 'chave' ? '<chave>' : chave === 'profile' ? '<perfil>' : valor;
+  return chave === 'deckName' || chave === 'deck' ? '<baralho>' : chave === 'chave' ? '<chave>' : chave === 'profile' ? '<perfil>' : chave === 'guid' ? '<guid>' : valor;
 });
 const exemplosDa = pedido => contrato.exemplos.filter(e => exemploDaExtensao(e)
   && e.pedido.metodo === pedido.metodo && e.pedido.caminho === pedido.caminho

@@ -19,7 +19,7 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 | `tipo_de_nota.py` | O tipo de nota próprio de cada idioma (#161): nome, campos (**todos** desde o nascimento: mudar campos depois força uma sincronização completa no Anki), modelo e CSS, montados do `estilos.json`; `preparar(colecao)` cria os tipos e, numa instalação nova, os Baralhos `PerpetualMiner::Inglês` e `PerpetualMiner::Russo` (quem já tem Baralho fica com o seu). Só cria: nada que já existe é tocado. `inicio.py` o chama ao carregar e a cada perfil que abre |
 | `baralhos.py` | O que se lê da coleção: a lista de Baralhos, os números de cada um e o vocabulário, só pelo lado de leitura de um adaptador da coleção (o contrato do adaptador, de leitura e gravação, está no topo) |
 | `pedido_do_envio.py` | O pedido de `POST /jobs` (o que vale, a impressão do corpo) e o id do Envio; `envio.py` os reexporta |
-| `envio.py` | O Envio (#142): a fila, o estado de cada Cartão e o trabalho que gera o texto pelo motor e grava cada nota pelo adaptador (na thread principal do Anki), esperando o perfil fechado e a sincronização; o criar idempotente pelo `jobId` e a retomada sem refazer o que está pronto (`guid` fixo por Cartão). Desenho: `docs/design/envio-no-complemento.md`. `motor_do_envio.py`: o motor de cada pedido; `limite_do_plano.py`: a espera do plano do ChatGPT (#158) |
+| `envio.py` | O Envio (#142): a fila, o estado de cada Cartão e o trabalho que gera o texto e grava cada nota pelo adaptador (thread principal do Anki), esperando o perfil e a sincronização; o criar idempotente pelo `jobId`, a retomada sem refazer o pronto e o `guid` fixo por Cartão (#173). Desenho: `docs/design/envio-no-complemento.md`. `motor_do_envio.py`: o motor de cada pedido; `limite_do_plano.py`: o limite do plano (#158) |
 | `trabalhador.py` | A thread de trabalho do Envio: tira um Envio da fila de cada vez e o faz (`envio.Trabalho`); depois de subir, espera até 60 s o primeiro pedido de Envio antes de retomar o que ficou parado |
 | `imagem_do_cartao.py` | A imagem do Cartão (#144): foto do Openverse ou gerada; se falha, o Cartão vai sem. `imagem_qt.py`: o Qt do Anki. `docs/design/imagem-do-cartao.md` |
 | `voz.py` | A voz do Cartão (#143): o áudio pedido ao Google Tradutor como o gTTS 2.5 faz, só com a biblioteca padrão; `audio_do_cartao.py` o liga ao Envio. Página: `docs/design/audio-do-cartao.md` |
@@ -55,29 +55,29 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 ## Testes
 
 ```bash
-python3.9 complemento/test_servidor.py   # o servidor real e o contrato (+ `test_servidor_*.py`)
+python3.9 complemento/test_servidor.py  # o servidor real e o contrato (+ `test_servidor_*.py`)
 python3.9 complemento/test_servidor_erro_ao_atender.py  # os erros de um pedido
-python3.9 complemento/test_inicio.py     # a pasta de dados, a Conexão no ar
-python3.9 complemento/test_no_anki.py    # o adaptador do Anki (mw de mentira)
+python3.9 complemento/test_inicio.py  # a pasta de dados, a Conexão no ar
+python3.9 complemento/test_no_anki.py  # o adaptador do Anki (mw de mentira)
 python3.9 complemento/test_colecao_em_memoria.py  # o adaptador em memória e o contrato com o do Anki
-python3.9 complemento/test_pacote.py     # o .ankiaddon
+python3.9 complemento/test_pacote.py  # o .ankiaddon
 python3.9 complemento/test_item_de_login.py  # o item de login, numa pasta temporária
-python3.9 complemento/test_abridor.py        # o abridor escrito e registrado; roda o script do Mac
-python3.9 complemento/test_conserto.py       # o consertar (+ `test_conserto_*.py`)
+python3.9 complemento/test_abridor.py  # o abridor escrito e registrado; roda o script do Mac
+python3.9 complemento/test_conserto.py  # o consertar (+ `test_conserto_*.py`)
 python3.9 complemento/test_chave_da_openai.py  # a chave: o HTTP, o disco e o log
-python3.9 complemento/test_perfil_fixo.py   # o perfil fixo: a escolha, a espera, a tela de perfis (+ `test_no_anki_perfil.py`)
-python3.9 complemento/test_envio.py          # o Envio: a fila, o estado por Cartão, a espera, a retomada, os custos
-python3.9 complemento/test_envio_audio.py    # o áudio do Cartão: a voz de mentira, a mídia na coleção
-python3.9 complemento/test_envio_imagem.py   # a imagem do Cartão: Openverse e OpenAI falsos
+python3.9 complemento/test_perfil_fixo.py  # o perfil fixo: a escolha, a espera, a tela de perfis (+ `test_no_anki_perfil.py`)
+python3.9 complemento/test_envio.py  # o Envio: a fila, o estado por Cartão, a espera, a retomada, os custos
+python3.9 complemento/test_envio_audio.py  # o áudio do Cartão: a voz de mentira, a mídia na coleção
+python3.9 complemento/test_envio_imagem.py  # a imagem do Cartão: Openverse e OpenAI falsos
 python3.9 complemento/test_envio_fronteiras.py  # a Conexão morre em cada gravação
 python3.9 complemento/test_envio_tipo_de_nota.py  # o tipo de nota por idioma e o Cartão Iniciante, num Anki em inglês, num com Cartões antigos e um idioma novo por dados
 python3.9 complemento/test_inicio_preparo.py  # a coleção preparada ao carregar e a cada perfil que abre (+ `test_contrato_da_criacao.py`, nos dois adaptadores)
-python3.9 complemento/test_envio_apagar.py      # o Apagar tudo com o Anki fechado ou no Envio
-python3.9 complemento/test_passagem.py      # a passagem do Windows do dono, com uma Conexão de hoje de mentira (+ `test_passagem_cartoes.py`, `test_passagem_do_windows.py`)
+python3.9 complemento/test_envio_apagar.py  # o Apagar tudo com o Anki fechado ou no Envio
+python3.9 complemento/test_passagem.py  # a passagem do Windows do dono, com uma Conexão de hoje de mentira (+ `test_passagem_cartoes.py`, `test_passagem_do_windows.py`)
 python3.9 complemento/test_prompts_do_dono.py  # o arquivo do dono vale no lugar do prompt padrão; apagá-lo volta ao padrão
-python3.9 complemento/test_janela.py         # a janela e os avisos (Qt de mentira)
-python3.9 complemento/test_qt_do_anki.py     # o que se pede ao Qt do Anki
-python3.9 complemento/test_motor.py          # o motor como pacote `complemento.motor`
+python3.9 complemento/test_janela.py  # a janela e os avisos (Qt de mentira)
+python3.9 complemento/test_qt_do_anki.py  # o que se pede ao Qt do Anki
+python3.9 complemento/test_motor.py  # o motor como pacote `complemento.motor`
 python3.9 complemento/test_login_do_chatgpt.py  # e test_plano_do_chatgpt, test_imagem_pelo_plano
 ```
 

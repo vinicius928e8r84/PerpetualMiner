@@ -179,7 +179,7 @@ class ColecaoDoAnki:
         return self._na_thread_principal(self._se_pode_gravar(operacao))
 
     def gravar_frase_escrita(self, guid, texto):
-        """A frase da frente Criação (#168) no campo “Frase escrita” da nota de `guid`; devolve se gravou. Chamada **da thread principal** (o gancho da revisão já roda nela; pedir a ela de dentro dela travaria), por isso não usa `_gravando`."""
+        """A frase da frente Criação (#168) no campo “Frase escrita” da nota de `guid`; devolve se gravou. Da **thread principal** (o gancho da revisão já roda nela): não usa `_gravando`."""
         return self._se_pode_gravar(lambda colecao: cartoes_do_anki.gravar_frase_escrita(colecao, guid, texto))(self._colecao())
 
     def tipo_de_nota(self, nome):
@@ -205,6 +205,9 @@ class ColecaoDoAnki:
     def nota_gravada(self, guid):
         """A nota de `guid`: `{ baralho, tipo_de_nota, campos: { nome: valor } }`, ou None se a coleção não a tem."""
         return self._na_thread_principal(lambda colecao: cartoes_do_anki.nota_gravada(colecao, guid))
+
+    def abrir_no_navegador(self, guid):
+        return self._na_thread_principal(lambda colecao: cartoes_do_anki.abrir_no_navegador(colecao, self._mw, guid))
 
     def arquivo_de_midia(self, nome, limite_de_bytes):
         """Os bytes do arquivo `nome` da pasta de mídia (até `limite_de_bytes` + 1), ou None se ele não está lá."""
