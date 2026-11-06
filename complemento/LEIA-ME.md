@@ -55,29 +55,29 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 ## Testes
 
 ```bash
-python3.9 complemento/test_servidor.py   # o servidor real e o contrato (+ `test_servidor_*.py`)
+python3.9 complemento/test_servidor.py  # o servidor real e o contrato (+ `test_servidor_*.py`)
 python3.9 complemento/test_servidor_erro_ao_atender.py  # os erros de um pedido
-python3.9 complemento/test_inicio.py     # a pasta de dados, a Conexão no ar
-python3.9 complemento/test_no_anki.py    # o adaptador do Anki (mw de mentira)
+python3.9 complemento/test_inicio.py  # a pasta de dados, a Conexão no ar
+python3.9 complemento/test_no_anki.py  # o adaptador do Anki (mw de mentira)
 python3.9 complemento/test_colecao_em_memoria.py  # o adaptador em memória e o contrato com o do Anki
-python3.9 complemento/test_pacote.py     # o .ankiaddon
+python3.9 complemento/test_pacote.py  # o .ankiaddon
 python3.9 complemento/test_item_de_login.py  # o item de login, numa pasta temporária
-python3.9 complemento/test_abridor.py        # o abridor escrito e registrado; roda o script do Mac
-python3.9 complemento/test_conserto.py       # o consertar (+ `test_conserto_*.py`)
+python3.9 complemento/test_abridor.py  # o abridor escrito e registrado; roda o script do Mac
+python3.9 complemento/test_conserto.py  # o consertar (+ `test_conserto_*.py`)
 python3.9 complemento/test_chave_da_openai.py  # a chave: o HTTP, o disco e o log
-python3.9 complemento/test_perfil_fixo.py   # o perfil fixo: a escolha, a espera, a tela de perfis (+ `test_no_anki_perfil.py`)
-python3.9 complemento/test_envio.py          # o Envio: a fila, o estado por Cartão, a espera, a retomada, os custos
-python3.9 complemento/test_envio_audio.py    # o áudio do Cartão: a voz de mentira, a mídia na coleção
-python3.9 complemento/test_envio_imagem.py   # a imagem do Cartão: Openverse e OpenAI falsos
+python3.9 complemento/test_perfil_fixo.py  # o perfil fixo: a escolha, a espera, a tela de perfis (+ `test_no_anki_perfil.py`)
+python3.9 complemento/test_envio.py  # o Envio: a fila, o estado por Cartão, a espera, a retomada, os custos
+python3.9 complemento/test_envio_audio.py  # o áudio do Cartão: a voz de mentira, a mídia na coleção
+python3.9 complemento/test_envio_imagem.py  # a imagem do Cartão: Openverse e OpenAI falsos
 python3.9 complemento/test_envio_fronteiras.py  # a Conexão morre em cada gravação
 python3.9 complemento/test_envio_tipo_de_nota.py  # o tipo de nota por idioma e o Cartão Iniciante, num Anki em inglês, num com Cartões antigos e um idioma novo por dados
 python3.9 complemento/test_inicio_preparo.py  # a coleção preparada ao carregar e a cada perfil que abre (+ `test_contrato_da_criacao.py`, nos dois adaptadores)
-python3.9 complemento/test_envio_apagar.py      # o Apagar tudo com o Anki fechado ou no Envio
-python3.9 complemento/test_passagem.py      # a passagem do Windows do dono, com uma Conexão de hoje de mentira (+ `test_passagem_cartoes.py`, `test_passagem_do_windows.py`)
+python3.9 complemento/test_envio_apagar.py  # o Apagar tudo com o Anki fechado ou no Envio
+python3.9 complemento/test_passagem.py  # a passagem do Windows do dono, com uma Conexão de hoje de mentira (+ `test_passagem_cartoes.py`, `test_passagem_do_windows.py`)
 python3.9 complemento/test_prompts_do_dono.py  # o arquivo do dono vale no lugar do prompt padrão; apagá-lo volta ao padrão
-python3.9 complemento/test_janela.py         # a janela e os avisos (Qt de mentira)
-python3.9 complemento/test_qt_do_anki.py     # o que se pede ao Qt do Anki
-python3.9 complemento/test_motor.py          # o motor como pacote `complemento.motor`
+python3.9 complemento/test_janela.py  # a janela e os avisos (Qt de mentira)
+python3.9 complemento/test_qt_do_anki.py  # o que se pede ao Qt do Anki
+python3.9 complemento/test_motor.py  # o motor como pacote `complemento.motor`
 python3.9 complemento/test_login_do_chatgpt.py  # e test_plano_do_chatgpt, test_imagem_pelo_plano
 ```
 
