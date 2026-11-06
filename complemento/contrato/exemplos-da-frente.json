@@ -39,6 +39,29 @@
       }
     },
     {
+      "nome": "trocar a frente do inglês para a Criação: só o modelo muda, e a frase escrita é gravada pelo gancho da revisão, que não passa por HTTP",
+      "daExtensao": true,
+      "contexto": {
+        "perfil": "Usuário 1",
+        "colecao": "inglês com subbaralho"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/card-front",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "frente": "criacao"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true
+        }
+      }
+    },
+    {
       "nome": "trocar a frente do russo para o Ouvir primeiro",
       "daExtensao": true,
       "contexto": {

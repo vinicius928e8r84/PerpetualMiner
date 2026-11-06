@@ -1,0 +1,33 @@
+// As regras do Firestore do ranking do grupo (#172). Para o DONO publicar no console do Firebase (ou em firebase.json), junto das regras que já existem
+// (`usuarios/{uid}/...`): este é só o bloco novo, dentro de `match /databases/{database}/documents`. O repositório nunca publica regras.
+// O e2e (`e2e/fakes/google.js`) faz as mesmas conferências em memória; mudou uma, mude a outra e `docs/seguranca/ranking-do-grupo.md`.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ranking/{idioma}_{uid}: um documento por pessoa e idioma, só de quem topou aparecer.
+    match /ranking/{docId} {
+      // Ler: qualquer conta logada lê, mas só o que tem `topou: true`. A consulta do ranking pede `topou == true`; sem esse filtro a leitura é recusada.
+      allow read: if request.auth != null && resource.data.topou == true;
+
+      // Gravar: só o próprio documento, só de quem topou, só os campos que o ranking e os recortes de depois usam.
+      allow create, update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['uid', 'idioma', 'nome', 'foto', 'nivel', 'melhorSequencia', 'nota', 'acertos', 'perguntas', 'grupos', 'topou', 'em'])
+        && request.resource.data.keys().hasAll(['uid', 'idioma', 'nome', 'foto', 'nivel', 'melhorSequencia', 'nota', 'acertos', 'perguntas', 'grupos', 'topou', 'em'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.topou == true
+        && request.resource.data.idioma in ['en', 'ru']
+        && docId == request.resource.data.idioma + '_' + request.auth.uid
+        && request.resource.data.nivel in ['iniciante', 'intermediario', 'avancado']
+        && request.resource.data.nome is string && request.resource.data.nome.size() <= 100
+        && request.resource.data.foto is string && request.resource.data.foto.size() <= 600
+        && request.resource.data.melhorSequencia is int && request.resource.data.melhorSequencia >= 0 && request.resource.data.melhorSequencia <= 6
+        && request.resource.data.nota is int && request.resource.data.acertos is int && request.resource.data.perguntas is int
+        && request.resource.data.grupos is list && request.resource.data.em is int;
+
+      // Apagar (desmarcar): só o próprio documento.
+      allow delete: if request.auth != null && (resource == null || resource.data.uid == request.auth.uid);
+    }
+  }
+}
