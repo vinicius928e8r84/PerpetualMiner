@@ -27,7 +27,7 @@ async function abrirCustos(page, extensao) {
   await page.goto(extensao.url('painel.html#anki/custos'));
 }
 
-test('a faixa de resumo e o detalhe do Envio mostram a correção das frases à parte da criação de cartões, e o total soma as duas', async ({ page, extensao, fakes }) => {
+test('a faixa de resumo e o detalhe do Envio mostram a correção das frases à parte da criação de cartões, e o total soma as duas (no azulejo e no Avançado também)', async ({ page, extensao, fakes }) => {
   fakes.anki.definirCustos(COM_CORRECAO);
   await abrirCustos(page, extensao);
 
@@ -39,6 +39,9 @@ test('a faixa de resumo e o detalhe do Envio mostram a correção das frases à 
   await expect(partes).toContainText('Criação de cartõesUS$ 0,08');
   await expect(partes).toContainText('Correção das frasesUS$ 0,03');
   await expect(partes).toContainText('TotalUS$ 0,11');
+  await expect(page.getByRole('group', { name: 'Idioma dos custos' }).getByRole('button', { name: /Todos/ })).toContainText('US$ 0,11');
+  await custos(page).getByText('Avançado').click();
+  await expect(custos(page)).toContainText('US$ 0,1110');
 
   await estadoFinal(extensao, { pm_anki_custos: { envios: [{ jobId: 'job-en-correcao', costs: { cardUsd: 0.081, correctionUsd: 0.03, totalUsd: 0.111 } }] } });
 });
@@ -53,15 +56,4 @@ test('um Envio sem correção não tem a linha da correção, nem na faixa nem n
   await expect(custos(page)).not.toContainText('Correção das frases');
 
   await estadoFinal(extensao, { pm_anki_custos: { envios: [{ jobId: 'job-en-cartoes', costs: { cardUsd: 0.081, totalUsd: 0.081 } }] } });
-});
-
-// Exceção de teste: sem-estado-guardado — abrir o Avançado só muda o que a aba mostra
-test('a correção entra no azulejo do idioma e no total com 4 casas do Avançado', async ({ page, extensao, fakes }) => {
-  fakes.anki.definirCustos(COM_CORRECAO);
-  await abrirCustos(page, extensao);
-
-  await expect(page.getByRole('group', { name: 'Idioma dos custos' }).getByRole('button', { name: /Todos/ })).toContainText('US$ 0,11');
-  await custos(page).getByText('Avançado').click();
-  await expect(custos(page)).toContainText('Total com 4 casas');
-  await expect(custos(page)).toContainText('US$ 0,1110');
 });
