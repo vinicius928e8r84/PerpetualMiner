@@ -137,6 +137,16 @@
   --veio-destaque: 1.4s;
   /* A volta inteira da animação de dois quadros do passo da Conexão (ONB-19). */
   --veio-ciclo-dos-quadros: 4s;
+  /* O movimento da festa do quiz de nível (#171): o pulo da certa, o "+10" que sobe, o confete, e as portas da Revelação (cada uma enche em --veio-mov-porta, uma
+     depois da outra, com --veio-mov-entre-portas entre os começos). Só se mexe depois de um toque, e "menos movimento" tira tudo e deixa a cor. */
+  --veio-mov-pulo: 380ms;
+  --veio-mov-ponto: 800ms;
+  --veio-mov-confete: 1000ms;
+  --veio-mov-porta: 480ms;
+  --veio-mov-entre-portas: 650ms;
+  /* A mola passa um pouco do alvo e volta (o pulo e a porta cheia); a saída é rápida e assenta devagar (o que sobe e some). */
+  --veio-curva-mola: cubic-bezier(.34, 1.56, .64, 1);
+  --veio-curva-saida: cubic-bezier(.16, 1, .3, 1);
 }
 
 :root[data-tema="claro"],

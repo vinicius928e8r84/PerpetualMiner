@@ -146,7 +146,11 @@ rótulos da navegação do Painel; `peso-num` fica só para números),
 popup), `--veio-tam-contador` (o número grande do azulejo da mineração
 automática, “7/20”), `--veio-brilho-da-linha` e `--veio-raio-linha` (o brilho ouro e a ponta da
 linha que o overlay desenha sob o texto capturado), `--veio-ciclo-dos-quadros` (os 4 s da volta
-inteira da animação de dois quadros do aviso do Anki, ONB-19).
+inteira da animação de dois quadros do aviso do Anki, ONB-19), e o movimento da
+festa do quiz de nível (#171): `--veio-mov-pulo`, `--veio-mov-ponto`, `--veio-mov-confete`,
+`--veio-mov-porta` e `--veio-mov-entre-portas` (os tempos) com `--veio-curva-mola` (passa um
+pouco e volta) e `--veio-curva-saida` (rápida e assenta devagar). Movimento novo usa esses
+tokens e só começa depois de um toque; com movimento reduzido sai e fica só a cor.
 
 ### O overlay redefine as fontes
 
