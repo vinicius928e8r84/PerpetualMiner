@@ -1,5 +1,5 @@
-"""O Envio dentro da Conexão, visto de fora: o servidor real com a thread de trabalho ligada, a coleção em memória e a
-OpenAI de mentira na fronteira HTTP. O teste confere o que atravessa o HTTP e o que fica guardado (a coleção, a pasta de dados).
+"""O Envio na Conexão, visto de fora: o servidor real com a thread de trabalho ligada, a coleção em memória e a
+OpenAI de mentira na fronteira HTTP. Confere o que atravessa o HTTP e o que fica guardado (coleção, pasta de dados).
 
     python3.9 complemento/test_envio.py
 """
@@ -90,7 +90,7 @@ class UmaFraseViraCartao(unittest.TestCase):
         self.assertIn("<b>", notas[0]["campos"]["Frase"])
         self.assertTrue(notas[0]["campos"]["Palavra"].startswith("gave up - /"))
         self.assertEqual(notas[0]["etiquetas"], ["perpetual_miner", "série", "the_office", "s01e01"])
-        self.assertEqual(list(estado["cards"].values()), [{"phraseId": 1760000000000, "status": "added", "error": None}])
+        self.assertEqual(list(estado["cards"].values()), [dict(phraseId=1760000000000, status="added", error=None, guid=notas[0]["guid"])])
         self.assertEqual(list(estado["cards"]), ["1760000000000-0"])
 
     def test_o_baralho_que_ainda_nao_existe_e_criado(self):
