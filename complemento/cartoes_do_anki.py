@@ -1,9 +1,14 @@
 """O que a prévia do Cartão (#164) lê da coleção do Anki: o Cartão desenhado pelo renderizador dele, uma nota pelo `guid` e um arquivo da pasta de
 mídia. Cada função roda na thread principal do Anki, chamada pelo adaptador (`no_anki.ColecaoDoAnki`)."""
 
+import html
 import os
 
+from . import tipo_de_nota
 from .baralhos import TipoDeNotaAlterado, TipoDeNotaAusente
+from .motor import estilos
+
+LIMITE_DA_FRASE_ESCRITA = 2000  # caracteres: a frase de uma pessoa estudando, e o que o gancho da revisão aceita de uma página
 
 
 def campos_do_tipo(modelo):
@@ -67,4 +72,36 @@ def trocar_o_modelo(colecao, nome, modelo, css):
     cartao["name"], cartao["qfmt"], cartao["afmt"], tipo["css"] = modelo["nome"], modelo["frente"], modelo["verso"], css
     modelos = colecao.models
     (modelos.update_dict if hasattr(modelos, "update_dict") else modelos.save)(tipo)  # `update_dict` é o do Anki novo; `save`, o dos mais antigos
+    return True
+
+
+def gravar_frase_escrita(colecao, guid, texto):
+    """Na thread principal (o gancho da revisão da Criação, #168). Grava o `texto` no campo “Frase escrita” da nota de `guid`, só se a nota é de um tipo de
+    nota da Conexão que tem o campo; qualquer outra nota (a página de uma revisão manda a mensagem, e ela não é de confiança) fica como está. Devolve se gravou."""
+    texto = texto.strip()[:LIMITE_DA_FRASE_ESCRITA]
+    linhas = colecao.db.all("select id, mid from notes where guid = ?", guid)
+    if not linhas:
+        return False
+    nota_id, modelo_id = linhas[0]
+    tipo = colecao.models.get(modelo_id)
+    nossos = {estilos.idioma(lang)["tipo_de_nota"]: estilos.idioma(lang)["campos"]["frase_escrita"] for lang in estilos.idiomas()}
+    campo = nossos.get(tipo["name"]) if tipo else None
+    if campo is None or campo not in campos_do_tipo(tipo):
+        return False
+    nota = colecao.get_note(nota_id)
+    valor = html.escape(texto, quote=False).replace("\n", "<br>")
+    if nota[campo] == valor:
+        return False
+    nota[campo] = valor
+    colecao.update_note(nota) if hasattr(colecao, "update_note") else nota.flush()  # `update_note` é o do Anki novo; `flush`, o dos mais antigos
+    return True
+
+
+def abrir_no_navegador(colecao, mw, guid):
+    """Na thread principal. Abre o navegador do Anki na nota de `guid` (o “Abrir no Anki”, #173); False se a coleção não a tem."""
+    linhas = colecao.db.all("select id from notes where guid = ? limit 1", guid)
+    if not linhas:
+        return False
+    from aqt import dialogs  # só existe dentro do Anki
+    dialogs.open("Browser", mw, search=("nid:%d" % linhas[0][0],))
     return True

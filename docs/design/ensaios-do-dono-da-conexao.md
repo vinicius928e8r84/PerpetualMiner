@@ -12,6 +12,17 @@ O item de login **nunca foi testado** num Mac nem num Windows de verdade: os tes
 4. Desligue o interruptor: o arquivo some. O atalho do Anki que a pessoa mesma pôs na pasta (se houver) fica.
 5. Como o Anki é achado: o complemento usa `ANKI_LAUNCHER` (o abridor do Anki novo), depois o programa que roda o complemento, depois onde o instalador o põe; no Mac, `open -a Anki` se nada disso vale. Se o item não abrir o Anki certo, o aviso “não sabe onde o Anki está” (Windows) ou o conteúdo do `.plist` mostram o motivo.
 
+## Ensaio do dono: a frente Criação (risco 7 do #138, #168)
+
+O gancho da revisão e o padrão “Anki Persistence” **nunca foram testados num Anki real**: os testes usam a coleção em memória e uma página de mentira.
+
+1. Ajustes de envio › Estilo do cartão › Frente: escolha **Criação** no inglês e salve (a tela avisa que no celular só o “✓ usou a palavra” funciona). Envie um Cartão.
+2. No Anki do computador, estude o Cartão: a frente tem a Palavra com o áudio, a dica e “Escreva uma frase sua com esta palavra”, com um campo para escrever.
+3. Escreva uma frase com a Palavra (ou com outra forma dela) e mostre a resposta: o verso mostra “Você escreveu” com o que foi escrito e “✓ usou a palavra”, ao lado do exemplo. Escreva sem a Palavra: o texto aparece e o ✓ não.
+4. Abra o Cartão no navegador do Anki: o campo **Frase escrita** da nota tem a frase (se não tem, o gancho não rodou: veja o registro da Conexão).
+5. No AnkiMobile ou no AnkiDroid (depois de sincronizar): o verso mostra o que foi escrito e o ✓; o campo Frase escrita **não** muda (só o Anki do computador o grava).
+6. No russo (Intermediário ou Avançado): uma frase com outra forma da mesma raiz ganha o ✓.
+
 ## Ensaio do dono: Abrir o Anki sozinho (riscos 1 e 2 do #138)
 
 O abridor **não foi testado num Mac de verdade**. No Windows real (ensaio de 2026-10-10), o complemento escreveu e registrou o host;

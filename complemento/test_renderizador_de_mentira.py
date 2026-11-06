@@ -1,8 +1,9 @@
 """O renderizador de modelos de Cartão que os adaptadores de coleção de mentira usam no lugar do Anki: o que os modelos da Conexão pedem
-(`{{Campo}}`, `{{#Campo}}…{{/Campo}}`, `{{^Campo}}…{{/Campo}}` e `{{FrontSide}}`), com o áudio como o Anki o escreve (`[sound:x]` vira
+(`{{Campo}}`, `{{text:Campo}}`, `{{#Campo}}…{{/Campo}}`, `{{^Campo}}…{{/Campo}}` e `{{FrontSide}}`), com o áudio como o Anki o escreve (`[sound:x]` vira
 `[anki:play:q:0]`). Não é teste: fica fora do `.ankiaddon` pelo nome. A prova do Anki de verdade é `test_previa_com_o_anki_real.py`.
 """
 
+import html
 import re
 
 _SECAO = re.compile(r"\{\{([#^])([^{}]+)\}\}(.*?)\{\{/\2\}\}", re.DOTALL)
@@ -27,8 +28,11 @@ def _lado(modelo, campos, lado, frente=None):
         return texto
 
     def campo(achou):
-        nome = achou.group(1)
-        return frente if nome == "FrontSide" else som(campos.get(nome, ""))
+        filtro, _, nome = achou.group(1).rpartition(":")  # `text:Palavra`: o filtro `text` tira o HTML e deixa o texto
+        if nome == "FrontSide":
+            return frente
+        valor = som(campos.get(nome, ""))
+        return html.unescape(re.sub(r"<[^>]*>", "", valor)) if filtro == "text" else valor
 
     return _CAMPO.sub(campo, secoes(modelo))
 
@@ -63,6 +67,18 @@ class PreviaEmMemoria:
         self._exigir_aberta()
         nota = self._notas.get(guid)
         return dict(nota, campos=dict(nota["campos"])) if nota else None
+
+    def abrir_no_navegador(self, guid):
+        self._exigir_aberta()
+        if guid not in self._notas:
+            return False
+        self.navegador_aberto.append(guid)
+        return True
+
+    @property
+    def navegador_aberto(self):
+        """Os `guid` em que o “Abrir no Anki” abriu o navegador (#173)."""
+        return self.__dict__.setdefault("_navegador_aberto", [])
 
     def arquivo_de_midia(self, nome, limite_de_bytes):
         self._exigir_aberta()

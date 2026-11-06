@@ -159,7 +159,7 @@ class ColecaoEmMemoria(PreviaEmMemoria, ModelosEmMemoria):
         valores = [(nome, campos.get(nome, "")) for nome in nomes]
         self._baralhos.setdefault(baralho, []).append({"nota": self._proxima, "campos": valores, "tipo": 0, "intervalo": 0})
         self._guids.add(guid)
-        self._notas[guid] = {"baralho": baralho, "tipo_de_nota": tipo_de_nota, "campos": dict(valores)}
+        self._notas[guid] = {"baralho": baralho, "tipo_de_nota": tipo_de_nota, "campos": dict(valores), "id": self._proxima}
         self.gravadas.append({"baralho": baralho, "tipo": tipo_de_nota, "campos": dict(campos), "etiquetas": list(etiquetas), "guid": guid, "midia": guardada})
 
     def criar_tipo_de_nota(self, definicao):

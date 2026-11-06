@@ -1,7 +1,7 @@
 'use strict';
 
 (function (raiz) {
-  const { textoDaVoz, Atalhos, Veio, IDIOMAS, minerarFraseManual, Configuracao, ConexaoAnki, Conta, PassosDaConexao, MineracaoAutomatica, MineracaoDoDia, PassoDoNivel, AjustesDeEnvio } = raiz;
+  const { textoDaVoz, Atalhos, Veio, IDIOMAS, Configuracao, ConexaoAnki, Conta, PassosDaConexao, MineracaoAutomatica, MineracaoDoDia, PassoDoNivel, PassoDeMinerar, PassoDoPrimeiroEnvio, AjustesDeEnvio } = raiz;
   const { SITUACAO: CONEXAO } = ConexaoAnki;
 
   const ABERTURA = 'abertura';
@@ -11,7 +11,7 @@
   const DESTA_PAGINA = {
     minerar: {
       valor: e => textoDaVoz('PAI-05', { n: e.totalDeFrases }),
-      montar: montarPasso1,
+      montar: () => { passoDeMinerar = PassoDeMinerar.montar({ aoDefinirAtalho: () => irPara('atalho') }); return passoDeMinerar.no; },
     },
     atalho: {
       valor: e => Atalhos.rotuloDoAtalho(e.atalhoDeSelecao),
@@ -43,6 +43,18 @@
       valor: () => textoDaVoz('ONB-13.salva'),
       montar: montarPasso7,
     },
+    envio: {
+      valor: () => textoDaVoz('ONB-13.enviado'),
+      montar: () => {
+        passoDoEnvio = PassoDoPrimeiroEnvio.montar({
+          // A linha do Envio é a de Frases (painel.js), que lê a Palavra de `keywords`; a lista de Frases só o enche depois de carregar.
+          linhaDaFrase: frase => { keywords[frase.id] ??= frase.keywords; return linhaParaOAnki(frase); },
+          aoTrocarAChave: () => irPara('ia'),
+          aoConcluir: () => irPara(PRONTO),
+        });
+        return passoDoEnvio.no;
+      },
+    },
   };
   const PASSOS = Configuracao.PASSOS.map(passo => ({ ...passo, ...DESTA_PAGINA[passo.id] }));
   const TELAS = [ABERTURA, ...PASSOS.map(p => p.id), PRONTO];
@@ -60,7 +72,6 @@
     tela: ABERTURA,
     atalhos: { ...Atalhos.ATALHOS_PADRAO },
     configuracao: null,    // o retrato de Configuracao, depois da primeira leitura
-    minerando: false,
     automatica: null,      // o estado da mineração automática, do service worker
   };
 
@@ -73,13 +84,13 @@
   const porId = id => document.getElementById(id);
   const itensDaLista = new Map();   // tela → { botao, marca, situacao }
   const telas = new Map();          // tela → o corpo dela no card
-  let paragrafoDoVideo = null;      // o ONB-05.video do passo 1, com o atalho de legenda
-  let atalhoDoPasso1Desenhado;      // o rótulo que está nele, para não refazê-lo à toa
+  let passoDeMinerar = null;        // o passo 1 (painel-boas-vindas-minerar.js)
   let rodapeDesenhadoPara = null;   // a tela (e o Agora não) do rodapé na tela agora
   let passo4 = null;                // os passos da Conexão do passo 4 (painel-conexao-passos.js)
   let passo6 = null;                // as do passo 6: a nota, as linhas dos idiomas, a falha
   let ondeConseguirAChave = null;   // o “Onde conseguir a chave” (ONB-11) do passo do Gemini, só sem chave
   let passoDoNivel = null;          // o passo do nível (painel-boas-vindas-nivel.js)
+  let passoDoEnvio = null;          // o passo do primeiro Envio (painel-boas-vindas-envio.js)
 
   function iniciarBoasVindas() {
     montarLista();
@@ -186,85 +197,6 @@
       return item;
     }));
     return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-01.corpo')), lista);
-  }
-
-  function montarPasso1() {
-    paragrafoDoVideo = elemento('p', 'bv-texto');
-    const selecao = elemento('p', 'bv-texto', textoDaVoz('ONB-05.selecao'));
-
-    // A legenda marcada, parada: a linha ouro, a Palavra grifada e o chip.
-    const legenda = elemento('span', 'bv-ilustracao__legenda');
-    Veio.escreverFrase(legenda, textoDaVoz('ONB-05.exemplo'), textoDaVoz('ONB-05.exemploPalavra'));
-    const ilustracao = elemento('div', 'bv-ilustracao', legenda,
-      Veio.montarChipDaPalavra(textoDaVoz('ONB-05.exemploPalavra')));
-    ilustracao.setAttribute('aria-hidden', 'true');
-    // Uma tela de vídeo: escura nos dois temas, como o overlay.
-    ilustracao.dataset.tema = 'escuro';
-
-    const campo = elemento('input', 'veio-campo');
-    campo.type = 'text';
-    campo.id = 'bv-frase-rapida';
-    campo.autocomplete = 'off';
-    campo.placeholder = textoDaVoz('POP-03');
-    campo.setAttribute('aria-label', textoDaVoz('POP-03'));
-    campo.setAttribute('aria-describedby', 'bv-erro-rapida');
-    const botao = elemento('button', 'veio-botao veio-botao--secundario', textoDaVoz('POP-04'));
-    botao.type = 'submit';
-    const erro = elemento('div', 'bv-rapida__erro');
-    erro.id = 'bv-erro-rapida';
-    erro.setAttribute('role', 'alert');
-
-    const formulario = elemento('form', 'bv-rapida', elemento('div', 'bv-rapida__campo', campo, botao), erro);
-    formulario.noValidate = true;
-    formulario.addEventListener('submit', evento => {
-      evento.preventDefault();
-      minerarFraseRapida(campo, erro);
-    });
-    campo.addEventListener('input', () => limparErro(campo, erro));
-
-    const controle = elemento('div', 'bv-controle',
-      elemento('p', 'bv-nota', textoDaVoz('ONB-05.colar')), formulario);
-    return elemento('div', null, paragrafoDoVideo, selecao, ilustracao, controle);
-  }
-
-  /** “Num vídeo com legenda, aperte [Alt+S]. …”, com o atalho gravado num `kbd`; sem atalho, “Sem atalho” e Definir atalho (aqui, o passo 2). */
-  function desenharAtalhoDoPasso1() {
-    const rotulo = Atalhos.rotuloDoAtalho(estado.atalhos[Atalhos.ACOES.LEGENDA]);
-    // Só refaz quando o atalho muda: refazer o parágrafo tiraria o foco do Definir atalho.
-    if (rotulo === atalhoDoPasso1Desenhado) return;
-    atalhoDoPasso1Desenhado = rotulo;
-    const marcador = '\u0000';
-    const [antes, depois] = textoDaVoz('ONB-05.video', { atalho: marcador }).split(marcador);
-    const partes = [antes, Veio.montarTecla(rotulo, { seVazia: textoDaVoz('GLB-02.semAtalho') }), depois];
-    if (!rotulo) {
-      const definir = elemento('button', 'veio-botao veio-botao--link', textoDaVoz('GLB-02.definir'));
-      definir.type = 'button';
-      definir.addEventListener('click', () => irPara('atalho'));
-      partes.push(' ', definir);
-    }
-    paragrafoDoVideo.replaceChildren(...partes);
-  }
-
-  function minerarFraseRapida(campo, erro) {
-    const texto = campo.value.trim();
-    if (!texto || estado.minerando) return;
-    estado.minerando = true;
-    minerarFraseManual(texto).then(() => {
-      // POP-05: sem texto. O campo limpa e o passo fica feito pelo histórico.
-      estado.minerando = false;
-      campo.value = '';
-      limparErro(campo, erro);
-    }, () => {
-      // POP-06: o texto fica no campo, para tentar de novo.
-      estado.minerando = false;
-      erro.replaceChildren(elemento('p', 'bv-falha', Veio.iconeVeio('alerta'), textoDaVoz('POP-06')));
-      campo.setAttribute('aria-invalid', 'true');
-    });
-  }
-
-  function limparErro(campo, erro) {
-    erro.replaceChildren();
-    campo.removeAttribute('aria-invalid');
   }
 
   function montarPasso2() {
@@ -432,8 +364,10 @@
     desenharLista();
     // À vista é a tela aberta numa página que está na tela: o shell esconde a Boas-vindas em outras áreas.
     passo4.mostrar(tela === 'anki' && !porId('boas-vindas').hidden);
-    desenharAtalhoDoPasso1();
+    passoDeMinerar.desenhar(estado.atalhos);
     passoDoNivel.desenhar(estado.configuracao?.estado);
+    // Ao chegar ao último passo o Envio começa sozinho; sair dele para a leitura.
+    passoDoEnvio.desenhar(estado.configuracao, tela === 'envio' && !porId('boas-vindas').hidden);
     // Até a primeira leitura não se sabe se há chave: o Onde conseguir a chave espera, para não piscar.
     ondeConseguirAChave.hidden = !estado.configuracao || Boolean(estado.configuracao.estado.chave);
     desenharResumo();
@@ -482,7 +416,8 @@
         irPara(seguinte);
       }));
     }
-    botoes.push(botaoDoRodape('ONB-04.continuar', 'primario', () => irPara(seguinte)));
+    // O último passo termina em Concluir, dentro do card, quando o Cartão chega ao Anki.
+    if (tela !== 'envio') botoes.push(botaoDoRodape('ONB-04.continuar', 'primario', () => irPara(seguinte)));
     rodape.replaceChildren(...botoes);
   }
 

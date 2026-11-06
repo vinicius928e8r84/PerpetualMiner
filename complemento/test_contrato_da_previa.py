@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from complemento import baralhos, previa_do_cartao  # noqa: E402
 from complemento.motor import estilos  # noqa: E402
 from complemento.test_contrato_da_criacao import ANKI_EM_INGLES, SO_O_DEFAULT  # noqa: E402
+from complemento.test_contrato_do_navegador import ContratoDoNavegador  # noqa: E402
 
 ESTILOS = [(lang, nivel) for lang in ("en", "ru") for nivel in estilos.niveis(lang)]
 
@@ -22,7 +23,7 @@ def texto_de(cartao_html):
     return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", cartao_html))).strip()
 
 
-class ContratoDaPrevia:
+class ContratoDaPrevia(ContratoDoNavegador):
     def test_a_previa_de_cada_estilo_mostra_a_frase_com_o_botao_de_audio_na_frente(self):
         for lang, nivel in ESTILOS:
             with self.subTest(lang=lang, nivel=nivel):
@@ -142,3 +143,4 @@ class ContratoDaPrevia:
             previa_do_cartao.previa_do_exemplo(fechada, "en", "iniciante")
         with self.assertRaises(baralhos.ColecaoIndisponivel):
             previa_do_cartao.previa_da_nota(fechada, "guid-1")
+

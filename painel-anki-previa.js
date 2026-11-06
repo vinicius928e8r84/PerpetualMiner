@@ -42,10 +42,12 @@
     return lidas.get(chave);
   }
 
-  async function pedir(lang, nivel, tipoProprio) {
+  const pedir = (lang, nivel, tipoProprio) => pedirAoAnki(PedidoAoAnki.previaDoCartao(lang, nivel, tipoProprio));
+
+  async function pedirAoAnki(pedido) {
     let resposta;
     try {
-      resposta = await PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, PedidoAoAnki.previaDoCartao(lang, nivel, tipoProprio));
+      resposta = await PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, pedido);
     } catch {
       return { estado: ESTADO.SEM_CONEXAO };
     }
@@ -63,7 +65,7 @@
    */
   function montar({ prefixo, lang }) {
     const id = `${prefixo}-previa-${lang}`;
-    const estado = { nivel: null, tipoProprio: null, face: 'back', previa: null, vez: 0 };
+    const estado = { nivel: null, tipoProprio: null, nota: null, face: 'back', previa: null, vez: 0 };
 
     const titulo = elemento('span', 'previa__titulo', textoDaVoz('BRG-43.titulo'));
     titulo.id = `${id}-titulo`;
@@ -104,26 +106,37 @@
         tom: 'info',
         texto: textoDaVoz(`BRG-43.${estadoDoErro}`),
         fechavel: false,
-        ...(estadoDoErro !== ESTADO.ANTIGA && { acao: { rotulo: textoDaVoz('BRG-43.tentarDeNovo'), aoUsar: () => mostrar(estado.nivel, estado.tipoProprio) } }),
+        ...(estadoDoErro !== ESTADO.ANTIGA && { acao: { rotulo: textoDaVoz('BRG-43.tentarDeNovo'), aoUsar: () => (estado.nota ? mostrarNota(estado.nota) : mostrar(estado.nivel, estado.tipoProprio)) } }),
       }));
     }
 
-    async function mostrar(nivel, tipoProprio = null) {
+    /** Mostra a leitura `ler()` (`{ estado, previa }`) sob a `legenda`; um pedido que chega depois de outro mais novo é descartado. */
+    async function exibir(textoDaLegenda, ler) {
       const vez = ++estado.vez;
-      estado.nivel = nivel;
-      estado.tipoProprio = tipoProprio;
-      legenda.textContent = textoDaVoz('BRG-43.legenda', { nivel: textoDaVoz(VOZ_DO_NIVEL[nivel]), idioma: NOME_DO_IDIOMA[lang].toLowerCase() });
+      legenda.textContent = textoDaLegenda;
       no.dataset.estado = ESTADO.CARREGANDO;
       palco.replaceChildren(elemento('p', 'previa__carregando', textoDaVoz('BRG-43.carregando')));
-      const { estado: resultado, previa } = await ler(lang, nivel, tipoProprio);
-      if (vez !== estado.vez) return;
+      const { estado: resultado, previa } = await ler();
+      if (vez !== estado.vez) return undefined;
       no.dataset.estado = resultado;
       estado.previa = previa || null;
       if (resultado === ESTADO.PRONTA) desenharOCartao();
       else desenharUmErro(resultado);
+      return { estado: resultado, previa };
     }
 
-    return { no, mostrar };
+    function mostrar(nivel, tipoProprio = null) {
+      Object.assign(estado, { nivel, tipoProprio, nota: null });
+      return exibir(textoDaVoz('BRG-43.legenda', { nivel: textoDaVoz(VOZ_DO_NIVEL[nivel]), idioma: NOME_DO_IDIOMA[lang].toLowerCase() }), () => ler(lang, nivel, tipoProprio));
+    }
+
+    /** O Cartão da nota que o Envio gravou (o primeiro Cartão da Boas-vindas, #173), pelo `guid`; a nota muda, então a leitura não fica guardada. */
+    function mostrarNota(guid) {
+      estado.nota = guid;
+      return exibir(textoDaVoz('BRG-43.legendaDaNota'), () => pedirAoAnki(PedidoAoAnki.previaDaNota(guid)));
+    }
+
+    return { no, mostrar, mostrarNota };
   }
 
   raiz.PreviaDoCartao = Object.freeze({ ESTADO, montar });

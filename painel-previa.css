@@ -73,3 +73,61 @@
   gap: 4px;
   min-width: 0;
 }
+
+/* O passo do primeiro Envio da Boas-vindas (#173, painel-boas-vindas-envio.js): “Enviando…”, o Cartão enviado com o Baralho e a prévia, ou a falha. */
+.bv-envio {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.bv-envio__enviando,
+.bv-envio__ok {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.bv-envio__ok svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--veio-accent-text);
+}
+
+.bv-envio__falha {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-bg);
+}
+
+.bv-envio__titulo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--veio-danger);
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.bv-envio__titulo svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.bv-envio__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

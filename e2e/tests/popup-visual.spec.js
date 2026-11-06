@@ -136,14 +136,14 @@ test('carregando: esqueleto', async ({ page, extensao }) => {
 // O lembrete “Configuração pela metade” (ONB-14, #44): a instalação deixou a
 // configuração começada e a Boas-vindas ainda não chegou a Tudo pronto. As
 // frases, a Conexão com o Anki respondendo e o inglês ligado na mineração
-// automática são 3 dos 8 passos.
+// automática são 3 dos 9 passos.
 test.describe('configuração pela metade (ONB-14)', () => {
   test.use({ lembreteDaConfiguracao: true });
 
   test('o cartão com o anel, acima de Abrir painel', async ({ page, extensao }) => {
     await extensao.gravarStorage({ frases: FRASES, ...DIA_NORMAL });
     await abrirPopup(page, extensao);
-    await expect(page.getByRole('button', { name: /Configuração pela metade · 3 de 8/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Configuração pela metade · 3 de 9/ })).toBeVisible();
     await expect(page.locator('#ultimas li')).toHaveCount(5);
     await expect(page).toHaveScreenshot('popup-configuracao-pela-metade.png');
   });
@@ -151,7 +151,7 @@ test.describe('configuração pela metade (ONB-14)', () => {
   test('o cartão no tema claro', async ({ page, extensao }) => {
     await extensao.gravarStorage({ frases: FRASES, ...DIA_NORMAL });
     await abrirPopup(page, extensao, { tema: 'claro' });
-    await expect(page.getByRole('button', { name: /Configuração pela metade · 3 de 8/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Configuração pela metade · 3 de 9/ })).toBeVisible();
     await expect(page.locator('#ultimas li')).toHaveCount(5);
     await expect(page).toHaveScreenshot('popup-configuracao-pela-metade-claro.png');
   });
