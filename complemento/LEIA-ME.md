@@ -4,14 +4,14 @@ Python só com a biblioteca padrão (o Anki do Mac roda o 3.9, sem Flask nem req
 Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 (`GET /health`: `{ ok, versao, perfil }`, aberta ao cliente local), as leituras da coleção do Anki
 (`POST /anki/decks`, `/anki/stats/decks` e `/anki/vocabulary`) e a chave da OpenAI
-(`POST /ia/openai/chave` a confere e guarda; `POST /ia/estado` diz se há cópia), o Envio (`POST /jobs`, `/jobs/list`, `/jobs/get`, `/jobs/retry`, `/jobs/debug-bundle`, `/analytics/jobs`: cada Frase vira um Cartão na coleção, #142) e o perfil fixo (`POST /anki/profiles`, `/anki/profile`, `/anki/profile/open`, #149); o resto exige a origem da extensão e é POST (`contrato/LEIA-ME.md`).
+(`POST /ia/openai/chave` a guarda; `POST /ia/estado` diz se há cópia), o Envio (`POST /jobs`, `/jobs/list`, `/jobs/get`, `/jobs/retry`, `/jobs/debug-bundle`, `/analytics/jobs`: cada Frase vira um Cartão, #142) e o perfil fixo (`POST /anki/profiles`, `/anki/profile`, `/anki/profile/open`, #149); o resto exige a origem da extensão e é POST (`contrato/LEIA-ME.md`).
 
 | Arquivo | O que faz |
 |---|---|
 | `__init__.py` | O que o Anki importa. Fora do Anki (nos testes) não há `aqt`; nada acontece |
 | `no_anki.py` | A ligação com o `mw` do Anki: `perfil_aberto` (só com a coleção aberta; selecionado na janela de perfis é `null`), `ColecaoDoAnki` (o adaptador da coleção: lê e grava na thread principal, só no perfil marcado, que abre pelas funções de perfil do Anki) e `ao_carregar` |
 | `perfil.py`, `rotas_do_perfil.py` | O perfil fixo (#149): `user_files/perfil.json` guarda o da primeira conexão; os adaptadores só gravam nele (`OutroPerfil`, `PerfilSumiu`: o Envio espera); as rotas o listam, escolhem e abrem |
-| `tipo_proprio.py`, `tipo_do_envio.py` | Usar um tipo que já tenho (#165): `POST /anki/note-types` lista os tipos de nota da pessoa; `tipoProprio` `{ nome, mapa }` na prévia e no `POST /jobs` grava só notas nesse tipo (nunca o cria nem o muda). `docs/design/tipo-proprio.md` |
+| `tipo_proprio.py`, `tipo_do_envio.py` | Usar um tipo que já tenho (#165): `POST /anki/note-types` lista os tipos da pessoa; `tipoProprio` `{ nome, mapa }` na prévia e no `POST /jobs` grava só notas nesse tipo. `docs/design/tipo-proprio.md` |
 | `rotas_da_frente.py` | A frente do Cartão (#166): `POST /anki/card-front` `{ lang, frente }` reescreve o modelo de Cartão do tipo de nota do idioma (`tipo_de_nota.trocar_a_frente`); nenhuma nota, nenhuma IA. `docs/design/frentes-do-cartao.md` |
 | `inicio.py` | Ao carregar: prepara `user_files`, o log e sobe a Conexão. Nunca levanta erro |
 | `servidor.py` | O servidor HTTP e as rotas (`ROTAS`); só a extensão é atendida |
@@ -38,7 +38,7 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 | `conserto_do_anki.py` | O `consertar` do abridor (#152): fecha à força o Anki parado há 30 s e o reabre, ou liga a Conexão no `meta.json`; só o Anki anotado pelo complemento. Ensaio: `docs/design/ensaio-do-conserto.md` |
 | `passagem.py`, `passagem_das_copias.py`, `passagem_do_windows.py` | A passagem do Windows do dono (#178): ao carregar no Windows, `inicio.py` acha a Conexão de hoje na porta (`GET /health` com `bridge`), espera o Envio de agora, copia (sem mover) a chave, os custos, os prompts editados e o perfil, passa a fila, apaga o início automático e encerra o processo; só então a Conexão sobe. Sai numa versão seguinte (`passagem=None`). `passagem_do_windows.py` é o único que toca o sistema (executor injetado). `docs/design/passagem-do-windows.md` |
 | `registro.py` | O logger do complemento: todo erro vai para `user_files/logs/complemento.log` |
-| `pasta_de_dados.py` | `user_files/{fila,estado,custos,logs,chaves,prompts}`, que o Anki preserva nas atualizações (os do Envio, `envio.py`); `prompts` é do dono: um arquivo dele com o nome de um prompt vale no lugar do padrão (`motor_do_envio.prompt_do_dono`) |
+| `pasta_de_dados.py` | `user_files/{fila,estado,custos,logs,chaves,prompts}`, que o Anki preserva nas atualizações (`envio.py`); `prompts` é do dono: um arquivo com o nome de um prompt vale no lugar do padrão (`motor_do_envio.prompt_do_dono`) |
 | `configuracao.py` | Versão, porta e o ID da extensão |
 | `contrato/` | Os exemplos que o complemento e o fake do e2e leem, e como uma rota nova entra |
 | `empacotar.py` | Monta o `.ankiaddon` (e `conexao/perpetualminer.ankiaddon`, o do botão Baixar a Conexão com o Anki), com o motor de `engine/` em `motor/` |

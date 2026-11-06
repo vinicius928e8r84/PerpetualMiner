@@ -11,6 +11,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos, tipo_de_nota  # noqa: E402
+from complemento.test_contrato_do_gancho_da_criacao import ContratoDoGanchoDaCriacao  # noqa: E402
 
 # O que os níveis, a morfologia do russo, as frentes e a Criação vão usar (#138, “o nome exato dos campos é da construção”):
 # mudar os campos depois força uma sincronização completa no Anki, então todos nascem juntos.
@@ -27,7 +28,7 @@ ANKI_EM_INGLES = {"baralhos": [{"nome": "Default"}], "tiposDeNota": {"Basic": ["
 SO_O_DEFAULT = {"baralhos": [{"nome": "Default"}]}
 
 
-class ContratoDaCriacao:
+class ContratoDaCriacao(ContratoDoGanchoDaCriacao):
     def preparar(self, colecao):
         return tipo_de_nota.preparar(colecao)
 

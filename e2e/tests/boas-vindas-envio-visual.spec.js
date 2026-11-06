@@ -1,6 +1,6 @@
 'use strict';
 
-// Referência visual do primeiro Envio da Boas-vindas (#173, ONB-21): o Cartão pronto (com a Frase minerada e com a Frase de teste) e a falha. Não há
+// Referência visual do primeiro Envio da Boas-vindas (#173, ONB-23): o Cartão pronto (com a Frase minerada e com a Frase de teste) e a falha. Não há
 // protótipo deste passo: ele reusa o card de passo do protótipo aprovado da Boas-vindas (`docs/design/painel/boas-vindas/prototipo-onboarding.html`), a prévia do
 // Cartão de Ajustes de envio e o aviso de falha do Veio, e o dono compara estas telas com ele. Todas são PROPOSTAS (`test.fixme`, sem PNG na árvore) até
 // a aprovação dele (CODING_STANDARDS regra 10). Aprovando: tirar o `fixme` e `cd e2e && npx playwright test boas-vindas-envio-visual --update-snapshots`, e a

@@ -7,7 +7,7 @@ import os
 import threading
 import time
 
-from . import cartoes_do_anki, inicio, janela, registro
+from . import cartoes_do_anki, criacao_na_revisao, inicio, janela, registro
 from .baralhos import ColecaoIndisponivel, PerfilIlegivel, TipoDeNotaAusente
 from .configuracao import OPENAI_BASE, OPENVERSE_BASE, PORTA, VERSAO, VOZ_BASE
 
@@ -163,8 +163,8 @@ class ColecaoDoAnki:
     def cartoes_do_baralho(self, nome):
         return self._na_thread_principal(lambda colecao: _cartoes_do_baralho(colecao, nome))
 
-    def _gravando(self, operacao):
-        """A operação de gravação, na thread principal; a sincronização é conferida lá, na hora em que ela roda."""
+    def _se_pode_gravar(self, operacao):
+        """A `operacao` de gravação precedida das conferências, que rodam na hora em que ela roda (na thread principal)."""
         def sem_sincronizar(colecao):
             if self._fixo is not None:  # o perfil lido aqui, na hora de gravar: nenhuma troca de perfil cabe entre a conferência e a nota
                 self._fixo.conferir(self._mw.pm.name, self._mw.pm.profiles())
@@ -172,7 +172,15 @@ class ColecaoDoAnki:
                 raise ColecaoIndisponivel("anki_syncing")
             return operacao(colecao)
 
-        return self._na_thread_principal(sem_sincronizar)
+        return sem_sincronizar
+
+    def _gravando(self, operacao):
+        """A operação de gravação, na thread principal; a sincronização é conferida lá, na hora em que ela roda."""
+        return self._na_thread_principal(self._se_pode_gravar(operacao))
+
+    def gravar_frase_escrita(self, guid, texto):
+        """A frase da frente Criação (#168) no campo “Frase escrita” da nota de `guid`; devolve se gravou. Da **thread principal** (o gancho da revisão já roda nela): não usa `_gravando`."""
+        return self._se_pode_gravar(lambda colecao: cartoes_do_anki.gravar_frase_escrita(colecao, guid, texto))(self._colecao())
 
     def tipo_de_nota(self, nome):
         return self._gravando(lambda colecao: cartoes_do_anki.campos_do_tipo(colecao.models.by_name(nome)))
@@ -199,15 +207,7 @@ class ColecaoDoAnki:
         return self._na_thread_principal(lambda colecao: cartoes_do_anki.nota_gravada(colecao, guid))
 
     def abrir_no_navegador(self, guid):
-        """Abre o navegador do Anki na nota de `guid` (o “Abrir no Anki”, #173); False se a coleção não a tem."""
-        def abrir(colecao):
-            linhas = colecao.db.all("select id from notes where guid = ? limit 1", guid)
-            if not linhas:
-                return False
-            from aqt import dialogs  # só existe dentro do Anki
-            dialogs.open("Browser", self._mw, search=("nid:%d" % linhas[0][0],))
-            return True
-        return self._na_thread_principal(abrir)
+        return self._na_thread_principal(lambda colecao: cartoes_do_anki.abrir_no_navegador(colecao, self._mw, guid))
 
     def arquivo_de_midia(self, nome, limite_de_bytes):
         """Os bytes do arquivo `nome` da pasta de mídia (até `limite_de_bytes` + 1), ou None se ele não está lá."""
@@ -354,7 +354,8 @@ def _qt_do_anki(logger):
 
 def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_abrir_o_perfil,
                 abridor=inicio.ABRIDOR_DESTE_COMPUTADOR, ao_sincronizar=_ao_sincronizar, openai_base=OPENAI_BASE,
-                openverse_base=OPENVERSE_BASE, voz_base=VOZ_BASE, qt=None):
+                openverse_base=OPENVERSE_BASE, voz_base=VOZ_BASE, qt=None,
+                ao_receber_mensagem=criacao_na_revisao.ao_receber_mensagem):
     """O que o Anki faz ao importar o complemento: devolve a Conexão, ou None se ela não subiu.
 
     Depois de subir (ou não), põe o item “PerpetualMiner…” em Ferramentas e o botão Config (#175) pela fronteira `qt`
@@ -364,6 +365,7 @@ def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_
         ao_sincronizar(colecao)
     except Exception:  # sem os ganchos (um Anki que os mudou), o Envio só não sabe da sincronização: o Anki recusa e ele espera
         pass
+    criacao_na_revisao.ligar(colecao, ao_receber_mensagem)
     conexao = inicio.iniciar(
         pasta_do_complemento,
         lambda: perfil_aberto(mw),

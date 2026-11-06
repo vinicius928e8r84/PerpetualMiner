@@ -467,7 +467,7 @@ function criarFakeAnki() {
         || (versao !== estado.versaoDaChave && !(versao === estado.versaoDaChave - 1 && estado.contaDaChave === conta))) {
         return responderJson(route, 409, { error: 'legacy_key_mismatch' });
       }
-      // Já vinculado a esta conta é o mesmo pedido de novo (ou o replay da base anterior): 200 sem avançar a revisão.
+      // Já vinculado a esta conta é o mesmo pedido de novo (ou o replay da base velha): 200 sem avançar a revisão.
       if ((estado.contaDaChave === null || estado.chaveDaOpenAI === null) && estado.contaDaChave !== conta) mudarChave(chave, conta, em);
       return responderJson(route, 200, { ok: true });
     }
@@ -478,8 +478,8 @@ function criarFakeAnki() {
     if ((url.pathname.startsWith('/ia/chatgpt/') && req.method() === 'POST') || (url.pathname === '/auth/callback' && req.method() === 'GET')) {
       return chatgpt.naConexao(route, url, respostaDoContrato);
     }
-    if (url.pathname === '/voz/ouvir' && req.method() === 'POST') {
-      const { status, json } = voz.naConexao(dadosDoCorpo(corpoDoPedido) || {}, respostaDoContrato);
+    if (url.pathname.startsWith('/voz/') && req.method() === 'POST') {
+      const { status, json } = voz.naConexao(dadosDoCorpo(corpoDoPedido) || {}, respostaDoContrato, url.pathname);
       return responderJson(route, status, json);
     }
     if (url.pathname === '/ia/estado' && req.method() === 'POST') {
@@ -530,7 +530,7 @@ function criarFakeAnki() {
       if (falha) return responderJson(route, falha.status, { error: 'anki_stats_unavailable', detail: 'AnkiConnect timeout' });
       return responderJson(route, 200, numerosDosBaralhos(corpo));
     }
-    // O Envio e os custos: só POST, como no complemento (o GET de antes não existe mais).
+    // O Envio e os custos: só POST, como no complemento.
     const doEnvio = ['/jobs', '/jobs/list', '/jobs/get', '/jobs/retry', '/jobs/debug-bundle', '/jobs/apagar-frases', '/analytics/jobs'].includes(url.pathname);
     if (doEnvio && req.method() !== 'POST') return responderJson(route, 404, { error: 'not_found' });
     const pedidoDoEnvio = doEnvio ? dadosDoCorpo(corpoDoPedido) || {} : null;

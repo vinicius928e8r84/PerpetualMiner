@@ -1,6 +1,6 @@
 'use strict';
 
-// Boas-vindas · o primeiro Envio (#173, ONB-21): ao chegar ao último passo o Envio começa sozinho, com 1 Cartão (a Frase minerada mais recente, ou uma Frase de
+// Boas-vindas · o primeiro Envio (#173, ONB-23): ao chegar ao último passo o Envio começa sozinho, com 1 Cartão (a Frase minerada mais recente, ou uma Frase de
 // teste do idioma), e a tela mostra só “Enviando…” e depois o Cartão enviado, como o Anki o mostra, com o Baralho, Abrir no Anki e Concluir; na falha,
 // “Este cartão não foi”, o motivo, Tentar de novo e Trocar a chave. A configuração só termina quando o Cartão chega ao Anki. A Conexão com o Anki é
 // falsificada na fronteira HTTP (e2e/fakes/anki.js; o contrato `exemplos.json`, `exemplos-da-previa.json` e `exemplos-do-navegador.json`).

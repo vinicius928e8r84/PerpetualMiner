@@ -1,6 +1,6 @@
 'use strict';
 
-// O passo do primeiro Envio da Boas-vindas (#173, ONB-21, o último): ao chegar nele o Envio começa sozinho, sem clique, com 1 Cartão (a Frase minerada
+// O passo do primeiro Envio da Boas-vindas (#173, ONB-23, o último): ao chegar nele o Envio começa sozinho, sem clique, com 1 Cartão (a Frase minerada
 // mais recente ou, sem nenhuma, uma Frase de teste do idioma ligado na mineração automática). A tela mostra só “Enviando…” e depois “Cartão enviado ao Anki”,
 // sem etapas, custo nem estimativa, e o Cartão como o Anki o mostra (a prévia de uma nota gravada, `painel-anki-previa.js`) com o Baralho, Abrir no Anki e
 // Concluir. Na falha diz “Este cartão não foi”, o motivo e Tentar de novo / Trocar a chave. A configuração só termina quando o Cartão chega ao Anki
@@ -19,7 +19,7 @@
     en: `give up : She gave up smoking last year. ${CONTEXTO_DA_FRASE_DE_TESTE}`,
     ru: `приходила : Она приходила вчера. ${CONTEXTO_DA_FRASE_DE_TESTE}`,
   };
-  // O código de erro da Conexão (`lastError` do Envio ou `error` do Cartão) → a frase simples do motivo (ONB-21).
+  // O código de erro da Conexão (`lastError` do Envio ou `error` do Cartão) → a frase simples do motivo (ONB-23).
   const MOTIVOS = {
     openai_key_missing: 'motivoSemChave',
     openai_key_rejected: 'motivoChaveRecusada',
@@ -76,21 +76,21 @@
   function montar({ linhaDaFrase, aoTrocarAChave, aoConcluir }) {
     const lugar = elemento('div', 'bv-envio');
     lugar.setAttribute('aria-live', 'polite');
-    const no = elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-21.corpo')), lugar);
+    const no = elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-23.corpo')), lugar);
     const previas = new Map();   // lang → a prévia do Cartão (o quadro não é refeito à toa)
     let retrato = null;
     let vez = 0;                 // cada começo ou saída do passo troca a vez; o que sobra de uma vez antiga se descarta
 
     function mostrarEnviando() {
-      lugar.replaceChildren(elemento('p', 'bv-envio__enviando', textoDaVoz('ONB-21.enviando')));
+      lugar.replaceChildren(elemento('p', 'bv-envio__enviando', textoDaVoz('ONB-23.enviando')));
       lugar.dataset.estado = 'enviando';
     }
 
     function mostrarFalha(motivo) {
-      const botoes = [botao('primario', 'ONB-21.tentarDeNovo', executar)];
-      if (!SEM_TROCAR_A_CHAVE.includes(motivo)) botoes.push(botao('secundario', 'ONB-21.trocarAChave', aoTrocarAChave));
-      const titulo = elemento('h3', 'bv-envio__titulo', Veio.iconeVeio('alerta'), textoDaVoz('ONB-21.falhou'));
-      const falha = elemento('div', 'bv-envio__falha', titulo, elemento('p', 'bv-texto', textoDaVoz(`ONB-21.${motivo}`)), elemento('div', 'bv-envio__acoes', ...botoes));
+      const botoes = [botao('primario', 'ONB-23.tentarDeNovo', executar)];
+      if (!SEM_TROCAR_A_CHAVE.includes(motivo)) botoes.push(botao('secundario', 'ONB-23.trocarAChave', aoTrocarAChave));
+      const titulo = elemento('h3', 'bv-envio__titulo', Veio.iconeVeio('alerta'), textoDaVoz('ONB-23.falhou'));
+      const falha = elemento('div', 'bv-envio__falha', titulo, elemento('p', 'bv-texto', textoDaVoz(`ONB-23.${motivo}`)), elemento('div', 'bv-envio__acoes', ...botoes));
       falha.setAttribute('role', 'alert');
       lugar.replaceChildren(falha);
       lugar.dataset.estado = 'falhou';
@@ -107,10 +107,10 @@
       erroAoAbrir.setAttribute('role', 'alert');
       erroAoAbrir.hidden = true;
       const acoes = elemento('div', 'bv-envio__acoes');
-      if (guid) acoes.append(botao('secundario', 'ONB-21.abrirNoAnki', () => abrirNoAnki(guid, erroAoAbrir)));
-      acoes.append(botao('primario', 'ONB-21.concluir', aoConcluir));
-      const ok = elemento('p', 'bv-envio__ok', Veio.iconeVeio('certo'), textoDaVoz('ONB-21.enviado'), chip);
-      lugar.replaceChildren(ok, ...(corpo.teste ? [elemento('p', 'bv-nota', textoDaVoz('ONB-21.teste'))] : []), previa.no, erroAoAbrir, acoes);
+      if (guid) acoes.append(botao('secundario', 'ONB-23.abrirNoAnki', () => abrirNoAnki(guid, erroAoAbrir)));
+      acoes.append(botao('primario', 'ONB-23.concluir', aoConcluir));
+      const ok = elemento('p', 'bv-envio__ok', Veio.iconeVeio('certo'), textoDaVoz('ONB-23.enviado'), chip);
+      lugar.replaceChildren(ok, ...(corpo.teste ? [elemento('p', 'bv-nota', textoDaVoz('ONB-23.teste'))] : []), previa.no, erroAoAbrir, acoes);
       lugar.dataset.estado = 'enviado';
       const nivel = (await AjustesDeEnvio.ler().catch(() => null))?.[lang]?.nivel || 'iniciante';
       if (minha !== vez) return;
@@ -120,7 +120,7 @@
 
     async function abrirNoAnki(guid, erro) {
       const resposta = await chamar(PedidoAoAnki.abrirNoAnki(guid));
-      erro.replaceChildren(...(resposta.ok ? [] : [Veio.iconeVeio('alerta'), textoDaVoz('ONB-21.naoAbriu')]));
+      erro.replaceChildren(...(resposta.ok ? [] : [Veio.iconeVeio('alerta'), textoDaVoz('ONB-23.naoAbriu')]));
       erro.hidden = Boolean(resposta.ok);
     }
 
