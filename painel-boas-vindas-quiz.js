@@ -5,7 +5,7 @@
 //
 // O ritmo é o da spec (#137): a pessoa responde, vê a certa por ~1 s e a próxima pergunta entra sozinha, sem relógio; o áudio da pergunta toca sozinho. O
 // áudio é a voz do Google do Cartão, pedida à Conexão (`POST /voz/falar`, no sotaque da Frase dos Ajustes de envio). Errar ou “Não sei” só mostram a certa.
-// Sem a festa (#171). No fim vem o nível sugerido com a prévia do Cartão, e sob o resumo o ranking do grupo (#172, `painel-boas-vindas-ranking.js`): “Usar este estilo” ou trocar o nível ali (`EstiloDoCartao`).
+// A festa a cada acerto e a Revelação do nível são de `painel-boas-vindas-festa.js` (#171). No fim vem o nível sugerido com a prévia do Cartão, e sob o resumo o ranking do grupo (#172, `painel-boas-vindas-ranking.js`): “Usar este estilo” ou trocar o nível ali (`EstiloDoCartao`).
 
 (function (raiz) {
   const { textoDaVoz, IDIOMAS } = raiz;
@@ -62,12 +62,16 @@
   function montar({ lang, aoUsar, aoSair }) {
     const Quiz = raiz.QuizDeNivel;
     const idioma = NOME_DO_IDIOMA[lang].toLowerCase();
-    const estado = { pontos: [], sessao: null, pausa: null, audio: null, vez: 0 };
+    const estado = { pontos: [], sessao: null, pausa: null, audio: null, vez: 0, placar: 0, som: raiz.SomDoQuiz.criar() };
 
     const progresso = elemento('span', 'quiz__progresso');
     const sequencia = elemento('span', 'quiz__sequencia');
+    const placar = elemento('span', 'quiz__placar');
+    // O botão de som fica sempre à vista, em toda tela do quiz; tocá-lo liga ou desliga os sons e não toca nenhum.
+    const som = botao(textoDaVoz('ONB-21.som'), 'veio-botao--link quiz__som', () => som.setAttribute('aria-pressed', String(estado.som.alternar())));
+    som.setAttribute('aria-pressed', 'true');
     const sair = botao(textoDaVoz('ONB-21.sair'), 'veio-botao--link', () => { parar(); aoSair(); });
-    const cabecalho = elemento('div', 'quiz__cabecalho', progresso, sequencia, sair);
+    const cabecalho = elemento('div', 'quiz__cabecalho', progresso, sequencia, placar, som, sair);
     const palco = elemento('div', 'quiz__palco');
     const no = elemento('section', 'quiz', cabecalho, palco);
     no.setAttribute('aria-label', textoDaVoz('ONB-21.rotulo', { idioma }));
@@ -91,7 +95,13 @@
     }
 
     function escreverASequencia() {
+      const antes = sequencia.textContent;
       sequencia.textContent = textoDaVoz('ONB-21.sequencia', { n: estado.sessao.sequencia() });
+      if (antes && antes !== sequencia.textContent && estado.sessao.sequencia() > 0) raiz.FestaNaTela.saltar(sequencia);
+    }
+
+    function escreverOPlacar() {
+      placar.textContent = textoDaVoz('ONB-21.pontos', { n: estado.placar });
     }
 
     // O alfabeto (só o russo)
@@ -143,6 +153,7 @@
       if (!pergunta) return mostrarOResultado(estado.sessao.resultado());
       progresso.textContent = textoDaVoz('ONB-21.progresso', { n: pergunta.numero, total: pergunta.total });
       escreverASequencia();
+      escreverOPlacar();
       const feedback = elemento('p', 'quiz__feedback');
       feedback.setAttribute('role', 'status');
       const aviso = elemento('p', 'bv-falha quiz__aviso');
@@ -164,6 +175,13 @@
         if (!acertou && !pulou) alternativas[escolha].dataset.estado = 'errada';
         feedback.textContent = textoDaVoz(acertou ? 'ONB-21.acertou' : pulou ? 'ONB-21.naoSeiResposta' : 'ONB-21.errou');
         escreverASequencia();
+        if (acertou) {
+          const ganho = raiz.FestaNaTela.acertou({ quiz: no, certa: alternativas[certa], sequencia: estado.sessao.sequencia() });
+          estado.som.acerto(ganho.nota);
+          estado.placar += ganho.pontos;
+          escreverOPlacar();
+          raiz.FestaNaTela.saltar(placar);
+        } else if (pulou) estado.som.naoSei();
         estado.pausa = setTimeout(mostrarAPergunta, PAUSA_DA_RESPOSTA_MS);
       }
 
@@ -190,20 +208,28 @@
         const gravou = await aoUsar(rascunho.nivel);
         if (!gravou) usar.disabled = false;
       });
-      mostrar(textoDaVoz('ONB-22.titulo', { idioma }),
+      // A Revelação (#171): só depois de responder ao quiz; “Ainda não” no alfabeto não tem o que revelar. O resto do resultado entra depois da última porta.
+      const revelacao = semAlfabeto ? null : raiz.FestaNaTela.revelacao({ nivel, som: estado.som, quiz: no });
+      const corpo = [
         elemento('p', 'quiz__resumo', resumo),
         ...(estado.ranking ? [estado.ranking.no] : []),
         ...(semAlfabeto ? [] : [elemento('p', 'bv-nota', textoDaVoz('ONB-22.escutaNota'))]),
         elemento('p', 'bv-texto', textoDaVoz('ONB-22.trocar')),
         raiz.EstiloDoCartao.campo(lang, rascunho, { prefixo: 'bvq' }),
         elemento('div', 'quiz__acoes', usar),
-        elemento('p', 'bv-nota', textoDaVoz('ONB-22.depois')));
+        elemento('p', 'bv-nota', textoDaVoz('ONB-22.depois'))];
+      if (revelacao) {
+        revelacao.revelado.append(...corpo);
+        mostrar(textoDaVoz('ONB-22.titulo', { idioma }), revelacao.portas, revelacao.revelado);
+      } else mostrar(textoDaVoz('ONB-22.titulo', { idioma }), ...corpo);
       estado.ranking?.iniciar();
     }
 
     function iniciar() {
       parar();
       estado.pontos = [];
+      estado.placar = 0;
+      placar.textContent = '';
       estado.sessao = null;
       estado.ranking = null;
       if (lang === 'ru') mostrarOAlfabeto();

@@ -1,4 +1,4 @@
-/* O quiz de nível do passo do nível da Boas-vindas (#170, painel-boas-vindas-quiz.js). Sem festa (#171): só a cor da certa e da errada, sem movimento. */
+/* O quiz de nível do passo do nível da Boas-vindas (#170, painel-boas-vindas-quiz.js): a cor da certa e da errada; a festa (#171) está no fim deste arquivo. */
 .bv-nivel__corpo {
   display: flex;
   flex-direction: column;
@@ -172,4 +172,172 @@
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+/* A festa do quiz de nível (#171, painel-boas-vindas-festa.js): pulo, "+10", placar e confete a cada acerto, e a Revelação do nível. Os tempos e as curvas são os
+   tokens de movimento do Veio. Nada se mexe antes de um toque (tudo nasce de uma resposta), e com "menos movimento" só a cor muda: o que se mexe some. */
+.quiz {
+  position: relative;
+}
+
+.quiz__som[aria-pressed="false"] {
+  color: var(--veio-muted);
+  text-decoration: line-through;
+}
+
+.quiz__placar,
+.quiz__sequencia {
+  display: inline-block;
+}
+
+.quiz__placar[data-subiu],
+.quiz__sequencia[data-subiu] {
+  color: var(--veio-accent-text);
+  animation: quiz-pop var(--veio-mov-pulo) var(--veio-curva-mola);
+}
+
+.quiz__ganho {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  color: var(--veio-accent-text);
+  font-weight: var(--veio-peso-titulo);
+  pointer-events: none;
+  animation: quiz-subir var(--veio-mov-ponto) var(--veio-curva-saida) forwards;
+}
+
+.quiz__opcao {
+  position: relative;
+}
+
+.quiz__opcao[data-estado="certa"][data-pulo] {
+  animation: quiz-pulo var(--veio-mov-pulo) var(--veio-curva-mola);
+}
+
+.quiz__confete {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.quiz__pedaco {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: .5em;
+  height: .8em;
+  border-radius: var(--veio-raio-linha);
+  background: var(--veio-accent);
+  animation: quiz-confete var(--veio-mov-confete) var(--veio-curva-saida) var(--atraso, 0s) both;
+}
+
+.quiz__pedaco:nth-child(3n + 1) { background: var(--veio-success); }
+.quiz__pedaco:nth-child(3n + 2) { background: var(--veio-info); }
+.quiz__confete--revelacao {
+  position: fixed;
+  top: 40%;
+  right: 0;
+  left: 0;
+  z-index: 10;
+}
+
+/* A Revelação: as três portas, a de baixo à esquerda; enchem uma a uma até o nível. O resumo e o resto entram depois da última. */
+.quiz__portas {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  height: 96px;
+}
+
+.quiz__porta {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  justify-content: center;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--veio-border-strong);
+  border-radius: var(--veio-raio-input) var(--veio-raio-input) 0 0;
+  background: var(--veio-surface-2);
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+}
+
+.quiz__porta-nome {
+  position: relative;
+  padding-bottom: 6px;
+}
+
+.quiz__porta-enchimento {
+  position: absolute;
+  inset: 0;
+  background: var(--veio-accent-soft);
+  transform-origin: bottom;
+  transform: scaleY(0);
+}
+
+.quiz__porta[data-cheia] {
+  border-color: var(--veio-accent);
+  color: var(--veio-text);
+}
+
+.quiz__porta[data-cheia] .quiz__porta-enchimento {
+  transform: scaleY(1);
+  animation: quiz-encher var(--veio-mov-porta) var(--veio-curva-mola) calc(var(--ordem) * var(--veio-mov-entre-portas)) backwards;
+}
+
+.quiz__porta[data-alvo] {
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+}
+
+.quiz__revelado {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: quiz-entrar var(--veio-mov-porta) var(--veio-curva-saida) calc((var(--cheias) - 1) * var(--veio-mov-entre-portas) + var(--veio-mov-porta)) backwards;
+}
+
+@keyframes quiz-pulo {
+  40% { transform: scale(var(--pulo, 1.05)) translateY(-3px); }
+}
+
+@keyframes quiz-pop {
+  40% { transform: scale(1.25); }
+}
+
+@keyframes quiz-subir {
+  from { opacity: 0; transform: translateY(8px); }
+  20% { opacity: 1; }
+  to { opacity: 0; transform: translateY(-22px); }
+}
+
+@keyframes quiz-confete {
+  from { opacity: 1; transform: translate(0, 0) rotate(0); }
+  to { opacity: 0; transform: translate(calc(var(--dx) * 1em), calc(var(--dy) * 1em + 4em)) rotate(calc(var(--giro) * 1deg + 360deg)); }
+}
+
+@keyframes quiz-encher {
+  from { transform: scaleY(0); }
+}
+
+@keyframes quiz-entrar {
+  from { opacity: 0; transform: translateY(10px); }
+}
+
+/* Menos movimento: só a cor muda. Nada pula, sobe, cai nem enche; as portas aparecem já no nível, e o confete nem é criado. */
+@media (prefers-reduced-motion: reduce) {
+  .quiz__placar[data-subiu],
+  .quiz__sequencia[data-subiu],
+  .quiz__opcao[data-estado="certa"][data-pulo],
+  .quiz__porta[data-cheia] .quiz__porta-enchimento,
+  .quiz__revelado {
+    animation: none;
+  }
+
+  .quiz__ganho,
+  .quiz__confete {
+    display: none;
+  }
 }
