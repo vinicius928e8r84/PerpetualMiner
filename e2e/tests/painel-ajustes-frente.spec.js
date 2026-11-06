@@ -1,7 +1,7 @@
 'use strict';
 
 // Conexão com o Anki · a frente do Cartão nos Ajustes de envio (#166, Estilo do cartão › Frente): cada idioma tem a sua, Frase com áudio (o padrão),
-// Ouvir primeiro ou Lacuna. Salvar ajustes guarda a escolha e pede à Conexão `POST /anki/card-front`, que só reescreve o modelo de Cartão do tipo de
+// Ouvir primeiro, Lacuna ou Criação (#168). Salvar ajustes guarda a escolha e pede à Conexão `POST /anki/card-front`, que só reescreve o modelo de Cartão do tipo de
 // nota do idioma: nenhuma nota nova, nenhum custo. A frente Imagem primeiro não entra.
 //
 // A Conexão com o Anki é falsificada na fronteira HTTP (e2e/fakes/anki.js, o contrato `exemplos-da-frente.json`); o teste confere o que a pessoa vê,
@@ -27,6 +27,7 @@ const salvar = (page, idioma) => formulario(page, idioma).getByRole('button', { 
 const situacao = (page, idioma) => formulario(page, idioma).getByRole('status');
 const cabeca = (page, idioma) => page.locator('#ajustes-cards').getByRole('button', { name: idioma, exact: true });
 const aviso = page => page.locator('#ajustes-aviso');
+const notaDoCelular = page => formulario(page).getByText('No AnkiMobile e no AnkiDroid só o “✓ usou a palavra” funciona: a frase que você escreve não fica guardada na nota');
 const pedidosDaFrente = fakes => fakes.anki.requisicoes.filter(r => r.caminho === CAMINHO).map(r => r.dados);
 
 async function abrirAjustes(page, extensao, { gravado = {} } = {}) {
@@ -37,17 +38,36 @@ async function abrirAjustes(page, extensao, { gravado = {} } = {}) {
 }
 
 // Exceção de teste: sem-estado-guardado — só mostra a frente padrão e o texto dela; nada é gravado nem pedido.
-test('sem nada gravado, o inglês está na Frase com áudio e as cinco frentes se escolhem; Imagem primeiro não existe', async ({ page, extensao, fakes }) => {
+test('sem nada gravado, o inglês está na Frase com áudio e as seis frentes se escolhem; Imagem primeiro não existe', async ({ page, extensao, fakes }) => {
   await abrirAjustes(page, extensao);
 
   await expect(frente(page)).toBeVisible();
   await expect(opcao(page, 'Frase com áudio')).toBeChecked();
-  await expect(frente(page).getByRole('radio')).toHaveCount(5);
-  for (const nome of ['Frase com áudio', 'Ouvir primeiro', 'Lacuna', 'Produção', 'Ditado']) await expect(opcao(page, nome)).toBeEnabled();
+  await expect(frente(page).getByRole('radio')).toHaveCount(6);
+  for (const nome of ['Frase com áudio', 'Ouvir primeiro', 'Lacuna', 'Produção', 'Ditado', 'Criação']) await expect(opcao(page, nome)).toBeEnabled();
   await expect(frente(page)).toHaveAccessibleDescription('A frase e o áudio na frente');
   await expect(formulario(page)).toContainText('Todos os cartões em inglês mudam na hora, sem custo');
   await expect(situacao(page)).toHaveText('Salvo');
+  await expect(notaDoCelular(page)).toBeHidden();
   expect(pedidosDaFrente(fakes)).toEqual([]);
+});
+
+test('escolher a Criação avisa que no AnkiMobile e no AnkiDroid só o “✓ usou a palavra” funciona, e o aviso some ao voltar', async ({ page, extensao, fakes }) => {
+  await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });
+
+  await escolher(page, 'Criação');
+  await expect(opcao(page, 'Criação')).toBeChecked();
+  await expect(frente(page)).toHaveAccessibleDescription('Você escreve uma frase sua com a palavra e vê, no verso, o que escreveu');
+  await expect(notaDoCelular(page)).toBeVisible();
+  await escolher(page, 'Lacuna');
+  await expect(notaDoCelular(page)).toBeHidden();
+
+  await escolher(page, 'Criação');
+  await salvar(page).click();
+  await expect(situacao(page)).toHaveText('Salvo');
+  expect(pedidosDaFrente(fakes)).toEqual([{ lang: 'en', frente: 'criacao' }]);
+  await estadoFinal(extensao, { [CHAVE]: { en: { frente: 'criacao', versao: 1 }, ru: { versao: 0 } } });
+  await estadoFinalEm('a frente do inglês na Conexão', () => fakes.anki.frente.guardadas(), { en: 'criacao' });
 });
 
 test('escolher a Lacuna muda o texto e só vai à Conexão e ao storage em Salvar ajustes', async ({ page, extensao, fakes }) => {

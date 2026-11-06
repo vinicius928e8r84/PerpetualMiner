@@ -73,6 +73,9 @@ class NotaDeMentira:
             raise KeyError(nome)
         self._valores[nome] = valor
 
+    def __getitem__(self, nome):
+        return self._valores[nome]
+
     def valores(self):
         return list(self._valores.values())
 
@@ -128,6 +131,8 @@ class ColecaoDoAnkiDeMentira:
         self.db = types.SimpleNamespace(all=self._conferido(lambda sql, *args: [list(linha) for linha in self._sqlite.execute(sql, args)]))
         self.new_note = self._conferido(lambda modelo: NotaDeMentira(modelo["id"], modelo["nomes"], modelo))
         self.add_note = self._conferido(self._adicionar)
+        self.get_note = self._conferido(self._nota_gravada)
+        self.update_note = self._conferido(self._regravar)
         self.arquivos_de_midia = {}
         self._pasta_da_midia = tempfile.TemporaryDirectory()  # a pasta de mídia da coleção (`media.dir()`), de arquivos de verdade
         self.media = types.SimpleNamespace(
@@ -179,7 +184,7 @@ class ColecaoDoAnkiDeMentira:
         nomes = tuple(campo["name"] for campo in tipo["flds"])
         for modelo in tipo["tmpls"]:
             for citado in re.findall(r"\{\{[#^/]?([^{}]+)\}\}", modelo["qfmt"] + modelo["afmt"]):
-                citado = citado.rsplit(":", 1)[-1]
+                citado = citado.rpartition(":")[2]  # `text:Palavra`: o filtro vem antes do campo
                 if citado not in nomes and citado != "FrontSide":
                     raise ValueError("o modelo %r cita o campo %r, que o tipo não tem" % (modelo["name"], citado))
 
@@ -206,6 +211,20 @@ class ColecaoDoAnkiDeMentira:
             "insert into notes (mid, flds, guid, tags) values (?, ?, ?, ?)", (nota.modelo, "\x1f".join(nota.valores()), nota.guid, " ".join(nota.tags))
         )
         self._sqlite.execute("insert into cards (nid, did, odid, type, ivl) values (?, ?, 0, 0, 0)", (cursor.lastrowid, id_do_baralho))
+
+    def _nota_gravada(self, id_da_nota):
+        """`col.get_note` do Anki: a nota com os campos pelo nome (um que o tipo não tem é `KeyError`)."""
+        modelo, campos = self._sqlite.execute("select mid, flds from notes where id = ?", (id_da_nota,)).fetchone()
+        tipo = self._modelo_por_nome(self._modelo(modelo)["name"])
+        nota = NotaDeMentira(modelo, tipo["nomes"], tipo)
+        for nome, valor in zip(tipo["nomes"], campos.split("\x1f")):
+            nota[nome] = valor
+        nota.id = id_da_nota
+        return nota
+
+    def _regravar(self, nota):
+        """`col.update_note` do Anki: grava os campos da nota que já existe."""
+        self._sqlite.execute("update notes set flds = ? where id = ?", ("\x1f".join(nota.valores()), nota.id))
 
     def notas_gravadas(self):
         return [list(linha) for linha in self._sqlite.execute("select flds, guid, tags from notes where guid is not null order by id")]

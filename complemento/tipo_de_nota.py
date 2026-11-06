@@ -6,15 +6,22 @@ depois obriga o Anki a uma sincronização completa, então eles nascem juntos e
 um tipo de nota ou um Baralho que já existe não é tocado, e nada do que a pessoa já tem é renomeado, convertido nem apagado.
 """
 
+import os
+
 from .motor import estilos
 
 # As frentes do Cartão (#166): cada uma é o modelo de Cartão do tipo de nota do idioma. O tipo tem **um** modelo só (um Cartão por Frase) e trocar a
 # frente (`trocar_a_frente`) reescreve o modelo, sem tocar nas notas. O id é o que a extensão manda; o nome é o que o Anki mostra do modelo.
 FRENTE_PADRAO = "frase_com_audio"
 NOMES_DAS_FRENTES = {
-    FRENTE_PADRAO: "Frase com áudio", "ouvir_primeiro": "Ouvir primeiro", "lacuna": "Lacuna", "producao": "Produção", "ditado": "Ditado"}
+    FRENTE_PADRAO: "Frase com áudio", "ouvir_primeiro": "Ouvir primeiro", "lacuna": "Lacuna", "producao": "Produção", "ditado": "Ditado", "criacao": "Criação"}
 FRENTES = tuple(NOMES_DAS_FRENTES)
 NOME_DO_MODELO = NOMES_DAS_FRENTES[FRENTE_PADRAO]
+# O que a frente Criação (#168) diz no Cartão: a cópia aprovada de BRG-44 (`docs/design/voz/catalogo-nivel.md`); `test_criacao_do_cartao.py` a confere.
+TEXTOS_DA_CRIACAO = {"pedido": "Escreva uma frase sua com esta palavra", "escreveu": "Você escreveu", "exemplo": "Exemplo", "usou": "✓ usou a palavra"}
+PASTA = os.path.dirname(os.path.abspath(__file__))
+# O que o gancho da revisão (`criacao_na_revisao.py`) escuta: o script do modelo manda a frase escrita com esta mensagem.
+MENSAGEM_DA_CRIACAO = "perpetualminer:criacao:"
 CSS = """.card { font-family: arial, sans-serif; font-size: 22px; text-align: center; color: #1f2937; background-color: #ffffff; }
 .nightMode .card { color: #e5e7eb; background-color: #1f2937; }
 .frase { font-size: 26px; margin-bottom: 8px; }
@@ -30,6 +37,14 @@ CSS = """.card { font-family: arial, sans-serif; font-size: 22px; text-align: ce
 .raiz { color: #6b7280; margin: 10px 0; }
 .imagem img { max-width: 100%; max-height: 320px; border-radius: 8px; }
 """
+
+CSS_DA_CRIACAO = """.pedido { font-size: 18px; margin: 14px 0 6px; }
+#perpetualminer-escrita { width: 90%; max-width: 520px; font-size: 20px; padding: 6px; box-sizing: border-box; }
+.escreveu, .exemplo-da-criacao { margin: 12px auto; max-width: 520px; text-align: left; }
+.rotulo { color: #6b7280; font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; }
+.usou { color: #15803d; font-size: 16px; margin-top: 4px; }
+.nightMode .usou { color: #4ade80; }
+"""  # só na frente Criação: as outras ficam com o estilo de sempre
 
 
 def _parte(classe, *campos, audio=()):
@@ -65,6 +80,8 @@ def _frente(frente, nomes):
     mostra a Frase em português (a Tradução natural, ou o Contexto da cena nos níveis que não a têm) e o Ditado só o ▶. Como no Basic (digitando a resposta) do
     Anki, o verso repete a frente (com o `{{type:Frase}}`, que vira a comparação letra por letra) em vez de `{{FrontSide}}`."""
     frase, audio, lacuna, dica = nomes["frase"], nomes["audio_da_frase"], nomes["lacuna"], nomes["dica"]
+    if frente == "criacao":
+        return _criacao(nomes)
     if frente in ("producao", "ditado"):
         digitar = "{{type:%s}}" % frase
         if frente == "ditado":
@@ -79,6 +96,33 @@ def _frente(frente, nomes):
         return ('<div class="frase">{{#%s}}{{%s}}{{/%s}}{{^%s}}{{%s}}{{/%s}}</div>\n{{#%s}}<div class="dica cena">{{%s}}</div>{{/%s}}' % (
             lacuna, lacuna, lacuna, lacuna, frase, lacuna, dica, dica, dica), '<div class="frase">{{%s}}</div>\n{{%s}}' % (frase, audio))
     return '<div class="frase">{{%s}}</div>\n{{%s}}' % (frase, audio), "{{FrontSide}}"
+
+
+def _script_da_criacao():
+    """O script de `modelo_da_criacao.js`, sem as linhas só de comentário (o modelo leva o que roda)."""
+    with open(os.path.join(PASTA, "modelo_da_criacao.js"), encoding="utf-8") as arquivo:
+        linhas = [linha for linha in arquivo.read().splitlines() if not linha.lstrip().startswith("//")]
+    return "<script>\n%s\n</script>" % "\n".join(linhas)
+
+
+def _criacao(nomes):
+    """A frente Criação (#168). Frente: a Palavra com o áudio, a Dica e o campo onde a pessoa escreve a frase dela (o campo de digitação do Anki não serve
+    para resposta livre: o script guarda o texto, “Anki Persistence”). Verso: o que ela escreveu com “✓ usou a palavra” (conferido pelo script, sem IA)
+    ao lado do exemplo (a Frase com o áudio). Os campos “Frase escrita” e “Raiz” chegam ao script como texto escondido: a frase gravada pela Conexão,
+    para quando a página não guardou nada, e o radical da Palavra."""
+    textos = TEXTOS_DA_CRIACAO
+    frente = (
+        '<div class="palavra">{{%(palavra)s}} {{%(audio_da_palavra)s}}</div>\n{{#%(dica)s}}<div class="dica cena">{{%(dica)s}}</div>{{/%(dica)s}}\n'
+        '<div class="pedido">%(pedido)s</div>\n<textarea id="perpetualminer-escrita" rows="3" autocomplete="off"></textarea>\n' % dict(nomes, **textos)
+        + _script_da_criacao())
+    comeco_do_verso = (
+        '<div class="escreveu" id="perpetualminer-escreveu" hidden><div class="rotulo">%(escreveu)s</div><div id="perpetualminer-texto"></div>'
+        '<div class="usou" id="perpetualminer-usou" hidden>%(usou)s</div></div>\n'
+        '<div class="exemplo-da-criacao"><div class="rotulo">%(exemplo)s</div><div class="frase">{{%(frase)s}}</div>{{%(audio_da_frase)s}}</div>\n'
+        '<span id="perpetualminer-palavra" hidden>{{text:%(palavra)s}}</span><span id="perpetualminer-raiz" hidden>%(raiz)s</span>'
+        '<span id="perpetualminer-gravada" hidden>{{text:%(frase_escrita)s}}</span>\n' % dict(nomes, raiz="{{text:%s}}" % nomes["raiz"] if "raiz" in nomes else "", **textos)
+        + _script_da_criacao())
+    return frente, comeco_do_verso
 
 
 def _campo_do_verso_sem_a_frase(idioma, lang):
@@ -111,7 +155,7 @@ def definicao(lang, nivel=None, frente=FRENTE_PADRAO):
     escritos = ("frase", "audio_da_frase", "audio_da_palavra", "fonte") + tuple(estilo["verso"]) + tuple(estilo.get("guarda", []))  # o que o Envio sempre grava (a lacuna e a dica só às vezes): o tipo da pessoa tem de ter
     return {
         "nome": idioma["tipo_de_nota"], "campos": list(nomes.values()), "campos_do_cartao": [nomes[chave] for chave in escritos],
-        "modelos": [{"nome": NOMES_DAS_FRENTES[frente], "frente": na_frente, "verso": verso}], "css": CSS}
+        "modelos": [{"nome": NOMES_DAS_FRENTES[frente], "frente": na_frente, "verso": verso}], "css": CSS + (CSS_DA_CRIACAO if frente == "criacao" else "")}
 
 
 def garantir(colecao, tipo):

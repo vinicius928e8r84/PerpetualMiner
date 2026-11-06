@@ -41,6 +41,23 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, Contra
     def midia_guardada(self, colecao):
         return dict(self.anki.col.arquivos_de_midia)
 
+    def na_thread_principal(self, funcao):
+        """O gancho da revisão roda na thread principal do Anki, e a coleção do Anki de mentira anota o que a toca de fora dela."""
+        resultado, pronto = {}, threading.Event()
+
+        def rodar():
+            try:
+                resultado["valor"] = funcao()
+            except Exception as erro:
+                resultado["erro"] = erro
+            pronto.set()
+
+        self.anki.taskman.run_on_main(rodar)
+        self.assertTrue(pronto.wait(5))
+        if "erro" in resultado:
+            raise resultado["erro"]
+        return resultado["valor"]
+
     def sincronizar(self, colecao, sincronizando):
         (colecao.sincronizacao_comecou if sincronizando else colecao.sincronizacao_terminou)()
 
