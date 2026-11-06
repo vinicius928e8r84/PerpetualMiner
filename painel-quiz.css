@@ -106,3 +106,70 @@
   display: flex;
   gap: 12px;
 }
+
+/* O ranking do grupo sob o resultado (#172, painel-boas-vindas-ranking.js). */
+.ranking {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--veio-border);
+}
+
+.ranking__titulo,
+.ranking__subtitulo {
+  margin: 0;
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.ranking__palco {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ranking__topar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--veio-tam-corpo);
+}
+
+.ranking__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ranking__pessoa {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--veio-tam-corpo);
+}
+
+.ranking__foto {
+  display: grid;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  overflow: hidden;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-avatar-fundo);
+}
+
+.ranking__foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ranking__convite {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}

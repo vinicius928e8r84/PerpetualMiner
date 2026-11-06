@@ -19,6 +19,7 @@ function criarFakeGoogle() {
   let foraDoAr = false;          // todo pedido ao Firestore: 503
   let acessoRecusado = false;    // todo pedido ao Firestore: 403 PERMISSION_DENIED
   let sessaoExpirada = false;    // a renovação do token é recusada
+  let quemEstaLogado = 'uid-teste';   // a conta que o token do teste representa, para as regras do ranking
   let modoDoLogin = 'entrar';
   let perfil = { email: 'pessoa@teste.dev', name: 'Pessoa de Teste', picture: '' };
 
@@ -49,6 +50,9 @@ function criarFakeGoogle() {
     if (acessoRecusado) {
       return responderJson(route, 403, { error: { code: 403, status: 'PERMISSION_DENIED', message: 'Missing or insufficient permissions.' } });
     }
+
+    if (caminhoCompleto === ':runQuery' && metodo === 'POST') return consultarRanking(route, req);
+    if (caminhoCompleto.startsWith('/ranking/')) return tratarRanking(route, req, caminhoCompleto.slice(1), metodo);
 
     if (caminhoCompleto === ':batchWrite' && metodo === 'POST') {
       if (recusarEscritas) return responderJson(route, 503, { error: { message: 'indisponível' } });
@@ -101,6 +105,57 @@ function criarFakeGoogle() {
       return responderJson(route, 200, {});
     }
     return responderJson(route, 400, { error: { message: `não suportado: ${metodo} ${caminho}` } });
+  }
+
+  // O ranking do grupo (#172): as regras de `docs/seguranca/ranking-do-grupo.rules`, em memória. Quem lê só enxerga quem topou; quem grava só grava o próprio documento.
+  const recusa = route => responderJson(route, 403, { error: { code: 403, status: 'PERMISSION_DENIED', message: 'Missing or insufficient permissions.' } });
+  const CAMPOS_DO_RANKING = ['uid', 'idioma', 'nome', 'foto', 'nivel', 'melhorSequencia', 'nota', 'acertos', 'perguntas', 'grupos', 'topou', 'em'];
+
+  function documentoDoRankingValido(doc, id) {
+    return CAMPOS_DO_RANKING.every(c => c in doc) && Object.keys(doc).every(c => CAMPOS_DO_RANKING.includes(c))
+      && doc.uid === quemEstaLogado && doc.topou === true && ['en', 'ru'].includes(doc.idioma) && id === `${doc.idioma}_${quemEstaLogado}`
+      && ['iniciante', 'intermediario', 'avancado'].includes(doc.nivel)
+      && typeof doc.nome === 'string' && doc.nome.length <= 100 && typeof doc.foto === 'string' && doc.foto.length <= 600
+      && Number.isInteger(doc.melhorSequencia) && doc.melhorSequencia >= 0 && doc.melhorSequencia <= 6
+      && Number.isInteger(doc.nota) && Number.isInteger(doc.acertos) && Number.isInteger(doc.perguntas) && Array.isArray(doc.grupos) && Number.isInteger(doc.em);
+  }
+
+  function consultarRanking(route, req) {
+    const consulta = req.postDataJSON().structuredQuery || {};
+    const filtros = consulta.where?.compositeFilter?.filters || (consulta.where ? [consulta.where] : []);
+    const igual = {};
+    for (const { fieldFilter } of filtros) {
+      if (fieldFilter?.op === 'EQUAL') igual[fieldFilter.field.fieldPath] = camposParaObjeto({ v: fieldFilter.value }).v;
+    }
+    // Sem pedir só quem topou, a regra de leitura não vale para todos os resultados: o Firestore recusa a consulta inteira.
+    if (consulta.from?.[0]?.collectionId !== 'ranking' || igual.topou !== true) return recusa(route);
+    const achados = [...documentos]
+      .filter(([doc]) => /^ranking\/[^/]+$/.test(doc))
+      .map(([doc, fields]) => ({ doc, fields, dados: camposParaObjeto(fields) }))
+      .filter(({ dados }) => dados.topou === true && Object.entries(igual).every(([campo, valor]) => dados[campo] === valor))
+      .map(({ doc, fields }) => ({ document: { name: nomeDoCaminho(doc), fields }, readTime: '2026-11-06T00:00:00Z' }));
+    return responderJson(route, 200, achados.length ? achados : [{ readTime: '2026-11-06T00:00:00Z' }]);
+  }
+
+  function tratarRanking(route, req, caminho, metodo) {
+    const id = caminho.slice('ranking/'.length);
+    if (metodo === 'PATCH') {
+      const doc = camposParaObjeto(req.postDataJSON().fields || {});
+      if (!documentoDoRankingValido(doc, id)) return recusa(route);
+      documentos.set(caminho, req.postDataJSON().fields);
+      return responderJson(route, 200, { name: nomeDoCaminho(caminho), fields: documentos.get(caminho) });
+    }
+    if (metodo === 'DELETE') {
+      const existente = documentos.get(caminho);
+      if (existente && camposParaObjeto(existente).uid !== quemEstaLogado) return recusa(route);
+      documentos.delete(caminho);
+      return responderJson(route, 200, {});
+    }
+    // Ler um documento solto: só o de quem topou.
+    if (metodo === 'GET' && documentos.has(caminho) && camposParaObjeto(documentos.get(caminho)).topou === true) {
+      return responderJson(route, 200, { name: nomeDoCaminho(caminho), fields: documentos.get(caminho) });
+    }
+    return recusa(route);
   }
 
   /**
@@ -174,6 +229,18 @@ function criarFakeGoogle() {
     gravarFrases(uid, frases) {
       for (const frase of frases) documentos.set(`usuarios/${uid}/frases/${frase.id}`, objetoParaCampos(frase));
     },
+    /** @estado-guardado O ranking do grupo no idioma (`ranking/{idioma}_{uid}`), já convertido em objetos: só quem topou está lá. */
+    rankingDe(idioma) {
+      return [...documentos]
+        .filter(([doc]) => doc.startsWith(`ranking/${idioma}_`))
+        .map(([, fields]) => camposParaObjeto(fields));
+    },
+    /** Quem já topou aparecer no ranking, gravado por outra conta. */
+    gravarNoRanking(registros) {
+      for (const registro of registros) documentos.set(`ranking/${registro.idioma}_${registro.uid}`, objetoParaCampos(registro));
+    },
+    /** Qual conta o token do teste representa para as regras do ranking (padrão: a do login do fake, `uid-teste`). */
+    autenticarComo(uid) { quemEstaLogado = uid; },
     /** O que a próxima janela de login faz: 'entrar', 'janela' ou 'falhar'. */
     proximoLogin(modo) { modoDoLogin = modo; },
     /** O perfil que o Google devolve no login (nome, e-mail, foto). */

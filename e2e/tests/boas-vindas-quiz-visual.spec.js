@@ -100,6 +100,26 @@ test('o resultado: o nível sugerido com a prévia do Cartão e Usar este estilo
   await tela(page, 'quiz-resultado.png');
 });
 
+test('o resultado com o ranking do grupo: o X%, a caixa desmarcada, a lista e Chamar um amigo', async ({ page, extensao, fakes, relogioParado }) => {
+  test.fixme(true, AGUARDA_O_DONO);
+  await extensao.semearSessao();
+  fakes.google.gravarNoRanking([
+    { uid: 'ana', idioma: 'en', nome: 'Ana Souza', foto: '', nivel: 'iniciante', melhorSequencia: 1, nota: 33, acertos: 1, perguntas: 3, grupos: [], topou: true, em: 1 },
+    { uid: 'caio', idioma: 'en', nome: 'Caio Reis', foto: '', nivel: 'avancado', melhorSequencia: 6, nota: 2100, acertos: 6, perguntas: 6, grupos: [], topou: true, em: 1 },
+  ]);
+  const relogio = await abrir(page, extensao, relogioParado);
+  await grupo(page, 'Inglês').getByRole('button', { name: 'Não sei meu nível, quero descobrir' }).click();
+  await quiz(page, 'Inglês').getByRole('button', { name: 'Só dubladas ou com legenda em português' }).click();
+  await quiz(page, 'Inglês').getByRole('button', { name: 'Preciso traduzir quase tudo' }).click();
+  for (let i = 0; i < 3; i++) {
+    await quiz(page, 'Inglês').getByRole('button', { name: 'Não sei', exact: true }).click();
+    await relogio.avancar(1000);
+  }
+  await expect(quiz(page, 'Inglês').getByRole('listitem')).toHaveCount(2);
+
+  await tela(page, 'quiz-ranking.png');
+});
+
 test('a janela estreita empilha a lista sobre o card, com a pergunta inteira', async ({ page, extensao, relogioParado }) => {
   test.fixme(true, AGUARDA_O_DONO);
   await abrir(page, extensao, relogioParado, { largura: 520 });

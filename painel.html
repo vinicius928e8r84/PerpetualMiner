@@ -103,7 +103,7 @@
           </div>
         </header>
 
-        <!-- O lembrete “Configuração pela metade” (ONB-15, painel-lembrete.js). -->
+        <!-- O lembrete “Configuração pela metade” (ONB-15). -->
         <aside class="frases-lembrete" id="frases-lembrete" aria-labelledby="frases-lembrete-texto" hidden>
           <span class="frases-lembrete__anel" id="frases-lembrete-anel"></span>
           <p class="frases-lembrete__texto" id="frases-lembrete-texto"></p>
@@ -167,7 +167,7 @@
               <button class="veio-botao veio-botao--perigo-fantasma veio-botao--compacto" id="btn-delete-selected" type="button">
                 <span data-icone="apagar"></span><span data-voz="PAI-32.apagar"></span>
               </button>
-              <!-- Sem Conexão e nunca ligada: aria-disabled e tooltip (painel-envio.js). -->
+              <!-- Sem Conexão e nunca ligada: aria-disabled e tooltip. -->
               <span class="veio-com-dica">
                 <button class="veio-botao veio-botao--primario veio-botao--compacto" id="btn-send-anki" type="button">
                   <span data-icone="enviar"></span><span data-voz="PAI-32.enviar"></span>
@@ -186,7 +186,7 @@
           <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
         </div>
 
-        <!-- Paginação: “1–10 de 1.284” (PAI-07) à esquerda, « ‹ 1 de 129 › » à direita -->
+        <!-- Paginação: “1–10 de 1.284” (PAI-07) e « ‹ 1 de 129 › » -->
         <nav class="frases-paginas" id="frases-paginas" data-voz-aria="PAI-26.rotulo" hidden>
           <span class="frases-paginas__intervalo" id="paginas-intervalo"></span>
           <button class="veio-botao-icone" id="btn-first" type="button" data-voz-aria="PAI-26.primeira" data-voz-title="PAI-26.primeira"><span data-icone="primeira"></span></button>
@@ -219,7 +219,7 @@
           <span class="anki-ponto" aria-hidden="true"></span><span data-voz="BRG-02"></span>
         </div>
 
-        <!-- Nunca conectada: o card ONB-16 no lugar das abas (painel-anki-primeira-conexao.js). -->
+        <!-- Nunca conectada: o card ONB-16 no lugar das abas. -->
         <section class="anki-primeira-vez" id="anki-primeira-vez" aria-labelledby="anki-primeira-vez-titulo" hidden>
           <div class="apv-topo">
             <h2 class="apv-titulo" id="anki-primeira-vez-titulo"></h2>
@@ -615,6 +615,8 @@
   <script src="painel-conta.js"></script>
   <script src="painel-atalhos.js"></script>
   <script src="painel-conexao-passos.js"></script>
+  <script src="lib/ranking.js"></script>
+  <script src="painel-boas-vindas-ranking.js"></script>
   <script src="painel-boas-vindas-minerar.js"></script>
   <script src="painel-boas-vindas-quiz.js"></script>
   <script src="painel-boas-vindas-nivel.js"></script>
