@@ -170,7 +170,7 @@ Todas POST, com a origem da extensão (levam as Frases e os custos da pessoa); o
 `lastError` e o `error` de cada Cartão são códigos (`openai_key_missing`, `openai_key_rejected`, `openai_no_credit`,
 `openai_rate_limited`, `openai_unreachable`, `note_type_missing`, `anki_write_failed`…), nunca o texto da OpenAI.
 
-O login do ChatGPT (#155): [`entrar-com-o-chatgpt.md`](entrar-com-o-chatgpt.md). O modelo dos cartões (#157): [`o-modelo-dos-cartoes.md`](o-modelo-dos-cartoes.md). A voz, o Ouvir (#174) e a fala do quiz de nível (#170): [`voz.md`](voz.md). A prévia do Cartão (#164): [`previa-do-cartao.md`](previa-do-cartao.md).
+O login do ChatGPT (#155): [`entrar-com-o-chatgpt.md`](entrar-com-o-chatgpt.md). O modelo dos cartões (#157): [`o-modelo-dos-cartoes.md`](o-modelo-dos-cartoes.md). A voz, o Ouvir (#174) e a fala do quiz de nível (#170): [`voz.md`](voz.md). A prévia do Cartão (#164): [`previa-do-cartao.md`](previa-do-cartao.md). A atualização da Conexão pelo AnkiWeb (#177): [`a-atualizacao.md`](a-atualizacao.md).
 
 ## As rotas do perfil fixo (#149)
 

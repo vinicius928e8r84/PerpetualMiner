@@ -9,6 +9,7 @@ import time
 
 from . import cartoes_do_anki, criacao_na_revisao, inicio, janela, registro
 from .baralhos import ColecaoIndisponivel, PerfilIlegivel, TipoDeNotaAusente
+from .atualizacao_do_anki import AnkiWebDoAnki
 from .configuracao import OPENAI_BASE, OPENVERSE_BASE, PORTA, VERSAO, VOZ_BASE
 
 # Quanto a Conexão espera a thread principal do Anki ler a coleção antes de dizer que o Anki não respondeu.
@@ -20,11 +21,7 @@ BARALHO_PADRAO = 1  # o id do Baralho que todo Anki tem
 
 
 def perfil_aberto(mw):
-    """O nome do perfil que o Anki tem **aberto**, ou None.
-
-    `mw.pm.name` também vale com um perfil só selecionado na janela de perfis (o gerente o guarda
-    antes de abrir a coleção) e depois de fechado; só com a coleção carregada (`mw.col`) há perfil aberto.
-    """
+    """O nome do perfil **aberto** no Anki, ou None. `mw.pm.name` também vale com um perfil só selecionado ou já fechado: só com a coleção carregada (`mw.col`) há perfil aberto."""
     if getattr(mw, "col", None) is None:
         return None
     return getattr(getattr(mw, "pm", None), "name", None)
@@ -33,7 +30,7 @@ def perfil_aberto(mw):
 class ColecaoDoAnki:
     """O adaptador da coleção (o contrato, de leitura, de gravação e do perfil fixo, está em `baralhos.py`), sobre o `mw` do Anki.
 
-    A coleção do Anki não é para outras threads: toda leitura e toda gravação roda na thread principal
+    A coleção do Anki não é para outras threads: toda leitura e gravação roda na thread principal
     (`mw.taskman.run_on_main`), uma operação curta de cada vez, e só volta com o resultado; o que se faz com os
     Cartões (normalizar, contar, montar os campos) fica na thread da Conexão ou na do Envio. Durante uma sincronização
     (os ganchos `sync_will_start`/`sync_did_finish`, ligados por `ao_carregar`) nada se grava: `anki_syncing`.
@@ -179,7 +176,7 @@ class ColecaoDoAnki:
         return self._na_thread_principal(self._se_pode_gravar(operacao))
 
     def gravar_frase_escrita(self, guid, texto):
-        """A frase da frente Criação (#168) no campo “Frase escrita” da nota de `guid`; devolve se gravou. Da **thread principal** (o gancho da revisão já roda nela): não usa `_gravando`."""
+        """A frase da frente Criação (#168) no campo “Frase escrita” da nota de `guid`; devolve se gravou. Da thread principal (o gancho da revisão já roda nela): sem `_gravando`."""
         return self._se_pode_gravar(lambda colecao: cartoes_do_anki.gravar_frase_escrita(colecao, guid, texto))(self._colecao())
 
     def tipo_de_nota(self, nome):
@@ -222,7 +219,7 @@ class ColecaoDoAnki:
         return self._gravando(lambda colecao: cartoes_do_anki.modelos_do_tipo(colecao.models.by_name(nome)))
 
     def trocar_o_modelo(self, nome, modelo, css):
-        """Reescreve o único modelo de Cartão do tipo de nota e o estilo dele (a troca da frente, #166); devolve se mudou algo. As notas não são tocadas."""
+        """Reescreve o único modelo de Cartão do tipo de nota e o estilo dele (a troca da frente, #166); devolve se mudou algo (as notas não são tocadas)."""
         return self._gravando(lambda colecao: cartoes_do_anki.trocar_o_modelo(colecao, nome, modelo, css))
 
     def criar_baralhos_da_instalacao_nova(self, nomes):
@@ -376,6 +373,7 @@ def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_
         openai_base=openai_base,
         openverse_base=openverse_base,
         voz_base=voz_base,
+        anki_web=AnkiWebDoAnki(mw, pasta_do_complemento),
     )
     _por_no_menu(mw, conexao, os.path.basename(os.path.abspath(pasta_do_complemento)), qt)
     return conexao

@@ -9,7 +9,8 @@ import sys
 
 from . import abridor as abridores, item_de_login as itens_de_login, passagem as passagens, pasta_de_dados, registro, tipo_de_nota
 from .baralhos import ColecaoIndisponivel
-from .configuracao import OPENAI_BASE, OPENVERSE_BASE, ORIGENS_ACEITAS, PORTA, VERSAO, VOZ_BASE
+from .atualizacao import AnkiWebAusente, Atualizacao
+from .configuracao import ATUALIZACAO_AUTOMATICA, OPENAI_BASE, OPENVERSE_BASE, ORIGENS_ACEITAS, PORTA, VERSAO, VOZ_BASE
 from .servidor import Conexao
 
 ABRIDOR_DESTE_COMPUTADOR = object()
@@ -30,6 +31,8 @@ def iniciar(
     abridor=ABRIDOR_DESTE_COMPUTADOR,
     ao_abrir_o_perfil=None,
     passagem=PASSAGEM_DESTE_COMPUTADOR,
+    anki_web=None,
+    atualizacao_automatica=ATUALIZACAO_AUTOMATICA,
 ):
     """Prepara `user_files`, escreve o abridor e sobe a Conexão, com o adaptador da coleção que ela lê. Devolve a Conexão, ou None se ela não subiu.
 
@@ -41,6 +44,8 @@ def iniciar(
     A mesma função marca o perfil aberto quando ainda não há marcado.
     A `passagem` é a do Windows do dono (#178, `passagem.py`): a Conexão de hoje na porta é esperada, copiada e encerrada antes de esta subir.
     Omitida, a deste computador (só o Windows tem); `passagem=None` a desliga.
+    O `anki_web` é a fronteira da atualização pelo AnkiWeb (#177, `atualizacao.py`); sem ele (fora do Anki) não há de onde atualizar. Com
+    `atualizacao_automatica`, a Conexão consulta o AnkiWeb ao subir e a cada 6 h.
     """
     logger = registro.silencioso()
     try:
@@ -65,14 +70,21 @@ def iniciar(
             openverse_base=openverse_base,
             voz_base=voz_base,
             item_de_login=item_de_login,
+            atualizacao=Atualizacao(
+                arquivo=os.path.join(dados.raiz, "atualizacao.json"), anki_web=anki_web or AnkiWebAusente(), versao=VERSAO, logger=logger,
+                ligada=atualizacao_automatica),
         )
         _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger)
         if passagem is PASSAGEM_DESTE_COMPUTADOR:
             passagem = passagens.deste_computador(plataforma=sys.platform, ambiente=os.environ, porta=porta)
         if passagem is not None and passagem.pendente(conexao):
             conexao.iniciar_depois(lambda cancelado: passagem.fazer(conexao, cancelado))
+            conexao.atualizacao.iniciar()
             return conexao
-        return conexao if conexao.iniciar() else None
+        if not conexao.iniciar():
+            return None
+        conexao.atualizacao.iniciar()
+        return conexao
     except Exception:
         logger.exception("O complemento não conseguiu iniciar")
         return None
