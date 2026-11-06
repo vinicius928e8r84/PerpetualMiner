@@ -16,6 +16,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from complemento.test_leitura_dos_arquivos import arquivos_da_pasta  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_servidor import ConexaoNoTeste, ler_o_contrato, semear_a_fila  # noqa: E402
 
@@ -64,13 +65,7 @@ class EnvioNoTeste(ConexaoNoTeste):
         raise AssertionError("o Envio não chegou lá: %s" % self.estado(job_id))
 
     def arquivos(self):
-        lidos = {}
-        for raiz, _, nomes in os.walk(self.pasta):
-            for nome in nomes:
-                caminho = os.path.join(raiz, nome)
-                with open(caminho, "rb") as arquivo:
-                    lidos[os.path.relpath(caminho, self.pasta)] = arquivo.read()
-        return lidos
+        return arquivos_da_pasta(self.pasta)
 
 
 def chats(openai):
