@@ -1,5 +1,5 @@
 // As regras do Firestore do ranking do grupo (#172). Para o DONO publicar no console do Firebase (ou em firebase.json), junto das regras que já existem
-// (`usuarios/{uid}/...`): este é só o bloco novo, dentro de `match /databases/{database}/documents`. O repositório nunca publica regras.
+// (`usuarios/{uid}/...`): COPIE SÓ o `match /ranking/{docId}` para dentro do `match /databases/{database}/documents` que já existe; colar o arquivo inteiro no console trocaria as regras de `usuarios/{uid}` e quebraria a sincronização. O repositório nunca publica regras.
 // O e2e (`e2e/fakes/google.js`) faz as mesmas conferências em memória; mudou uma, mude a outra e `docs/seguranca/ranking-do-grupo.md`.
 
 rules_version = '2';

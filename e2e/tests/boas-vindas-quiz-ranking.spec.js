@@ -1,6 +1,6 @@
 'use strict';
 
-// Boas-vindas · o ranking do grupo no resultado do quiz de nível (#172, ONB-23): “Você foi melhor que X% de quem fez o quiz”, a caixa “Aparecer no ranking do grupo” e a lista de quem topou.
+// Boas-vindas · o ranking do grupo no resultado do quiz de nível (#172, ONB-24): “Você foi melhor que X% de quem fez o quiz”, a caixa “Aparecer no ranking do grupo” e a lista de quem topou.
 // O Firestore e o login são falsos na fronteira HTTP (e2e/fakes/google.js, que faz em memória as conferências de `docs/seguranca/ranking-do-grupo.rules`): o que ficou guardado
 // é a coleção `ranking` do fake (`fakes.google.rankingDe`). Nada da pessoa vai para lá sem ela marcar a caixa. O ranking “meio multiplayer” (global, grupos, média) fica fora.
 
@@ -48,7 +48,7 @@ test.describe('o ranking do grupo', () => {
 
     await expect(ranking.getByRole('listitem').filter({ hasText: '(você)' })).toHaveText('Pessoa de Teste (você) · Iniciante · melhor sequência: 2');
     await expect(ranking).toContainText('Você foi melhor que 33% de quem fez o quiz');
-    await expect(ranking).toContainText('Seu nome, sua foto, seu nível e sua melhor sequência aparecem só para quem também topou.');
+    await expect(ranking).toContainText('Seu nome, sua foto, seu nível e sua melhor sequência aparecem para quem usa o PerpetualMiner com conta Google.');
     await estadoFinalEm('o registro dela', () => registrosDe(fakes).find(r => r.uid === 'uid-teste'), {
       uid: 'uid-teste', idioma: 'en', nome: 'Pessoa de Teste', foto: '', nivel: 'iniciante', melhorSequencia: 2, nota: 67, acertos: 2, perguntas: 3, grupos: [], topou: true,
     });

@@ -1,6 +1,6 @@
 'use strict';
 
-// O ranking do grupo na tela (#172, ONB-23): sob o resultado do quiz de nível, para quem tem conta Google. Mostra “Você foi melhor que X% de quem fez o quiz”, a caixa “Aparecer no
+// O ranking do grupo na tela (#172, ONB-24): sob o resultado do quiz de nível, para quem tem conta Google. Mostra “Você foi melhor que X% de quem fez o quiz”, a caixa “Aparecer no
 // ranking do grupo”, a lista de quem topou e “Chamar um amigo”. Os dados e o Firestore são de `lib/ranking.js`.
 //
 // Nada da pessoa sai sem ela marcar a caixa, que começa desmarcada: marcar grava o registro dela, desmarcar o apaga, e a caixa só muda de estado quando a nuvem confirma
@@ -40,7 +40,7 @@
    */
   function montar({ lang, idioma, resultado }) {
     const palco = elemento('div', 'ranking__palco');
-    const no = elemento('section', 'ranking', elemento('h5', 'ranking__titulo', textoDaVoz('ONB-23.titulo')), palco);
+    const no = elemento('section', 'ranking', elemento('h5', 'ranking__titulo', textoDaVoz('ONB-24.titulo')), palco);
     let conta = null;
     let vez = 0;
 
@@ -61,10 +61,10 @@
     }
 
     function linha(pessoa) {
-      const nome = pessoa.nome || textoDaVoz('ONB-23.semNome');
+      const nome = pessoa.nome || textoDaVoz('ONB-24.semNome');
       const meu = pessoa.uid === conta.perfil.uid;
-      const texto = textoDaVoz('ONB-23.pessoa', {
-        nome: meu ? textoDaVoz('ONB-23.voce', { nome }) : nome,
+      const texto = textoDaVoz('ONB-24.pessoa', {
+        nome: meu ? textoDaVoz('ONB-24.voce', { nome }) : nome,
         nivel: textoDaVoz(VOZ_DO_NIVEL[pessoa.nivel] || VOZ_DO_NIVEL.iniciante), sequencia: pessoa.melhorSequencia,
       });
       return elemento('li', 'ranking__pessoa', foto(pessoa), elemento('span', null, texto));
@@ -72,10 +72,10 @@
 
     async function chamarUmAmigo(aviso) {
       try {
-        await navigator.clipboard.writeText(textoDaVoz('ONB-23.convite', { idioma }));
-        aviso.textContent = textoDaVoz('ONB-23.convidou');
+        await navigator.clipboard.writeText(textoDaVoz('ONB-24.convite', { idioma }));
+        aviso.textContent = textoDaVoz('ONB-24.convidou');
       } catch {
-        aviso.textContent = textoDaVoz('ONB-23.semConvite');
+        aviso.textContent = textoDaVoz('ONB-24.semConvite');
       }
       setTimeout(() => { aviso.textContent = ''; }, AVISO_DO_CONVITE_MS);
     }
@@ -101,42 +101,42 @@
           else await conta.nuvem.sair(lang);
         } catch {
           caixa.checked = !caixa.checked;
-          falha.textContent = textoDaVoz('ONB-23.falhaAoTopar');
+          falha.textContent = textoDaVoz('ONB-24.falhaAoTopar');
           falha.hidden = false;
           caixa.disabled = false;
           return;
         }
         iniciarALista();
       });
-      const rotulo = elemento('label', 'ranking__topar', caixa, elemento('span', null, textoDaVoz('ONB-23.topar')));
+      const rotulo = elemento('label', 'ranking__topar', caixa, elemento('span', null, textoDaVoz('ONB-24.topar')));
 
       const aviso = elemento('span', 'bv-nota');
       aviso.setAttribute('role', 'status');
       const lista = pessoas.length
         ? elemento('ol', 'ranking__lista', ...Ranking.ordenar(pessoas).map(linha))
-        : nota(textoDaVoz('ONB-23.vazia'));
+        : nota(textoDaVoz('ONB-24.vazia'));
       palco.replaceChildren(
-        x === null ? nota(textoDaVoz('ONB-23.primeira'), 'quiz__resumo') : nota(textoDaVoz('ONB-23.melhorQue', { x }), 'quiz__resumo'),
-        rotulo, nota(textoDaVoz(topou ? 'ONB-23.topouNota' : 'ONB-23.naoTopouNota')), falha,
-        elemento('h6', 'ranking__subtitulo', textoDaVoz('ONB-23.lista')), lista,
-        elemento('div', 'ranking__convite', botao(textoDaVoz('ONB-23.chamar'), () => chamarUmAmigo(aviso)), aviso),
+        x === null ? nota(textoDaVoz('ONB-24.primeira'), 'quiz__resumo') : nota(textoDaVoz('ONB-24.melhorQue', { x }), 'quiz__resumo'),
+        rotulo, nota(textoDaVoz(topou ? 'ONB-24.topouNota' : 'ONB-24.naoTopouNota')), falha,
+        elemento('h6', 'ranking__subtitulo', textoDaVoz('ONB-24.lista')), lista,
+        elemento('div', 'ranking__convite', botao(textoDaVoz('ONB-24.chamar'), () => chamarUmAmigo(aviso)), aviso),
       );
     }
 
     async function iniciarALista() {
       const minhaVez = ++vez;
-      palco.replaceChildren(nota(textoDaVoz('ONB-23.carregando')));
+      palco.replaceChildren(nota(textoDaVoz('ONB-24.carregando')));
       try {
         conta ||= await abrirAConta();
         if (minhaVez !== vez) return;
-        if (!conta) return palco.replaceChildren(nota(textoDaVoz('ONB-23.semConta')));
+        if (!conta) return palco.replaceChildren(nota(textoDaVoz('ONB-24.semConta')));
         const pessoas = await conta.nuvem.listar(lang);
         if (minhaVez === vez) mostrarOGrupo(pessoas);
       } catch {
         if (minhaVez !== vez) return;
-        const falha = nota(textoDaVoz('ONB-23.falhou'), 'bv-falha');
+        const falha = nota(textoDaVoz('ONB-24.falhou'), 'bv-falha');
         falha.setAttribute('role', 'alert');
-        palco.replaceChildren(falha, botao(textoDaVoz('ONB-23.tentarDeNovo'), iniciarALista));
+        palco.replaceChildren(falha, botao(textoDaVoz('ONB-24.tentarDeNovo'), iniciarALista));
       }
     }
 

@@ -24,7 +24,7 @@ Topar (caixa “Aparecer no ranking do grupo”, desmarcada de início) grava o 
 
 ## Limites
 
-- As regras limitam *quem* lê e *qual documento*, não *quais campos*: por isso o documento só tem o que o ranking mostra e o que os recortes pedem. `nota`, `acertos`, `perguntas`, `em` e `uid` também são legíveis por quem está logado, para quem topou; só aparecem na tela nome, foto, nível e melhor sequência.
+- As regras limitam *quem* lê e *qual documento*, não *quais campos*: por isso o documento só tem o que o ranking mostra e o que os recortes pedem. `nota`, `acertos`, `perguntas`, `em` e `uid` também são legíveis por quem está logado, para quem topou; só aparecem na tela nome, foto, nível e melhor sequência. O texto ao lado da caixa diz que isso aparece “para quem usa o PerpetualMiner com conta Google”, que é a verdade das regras.
 - Quem topou é visto por **toda** conta logada do projeto, não só por amigos: o “grupo” é quem usa a extensão. Os grupos de verdade são do ranking futuro.
 - Nome e foto vêm da conta Google na hora de topar; mudar o nome no Google não atualiza o ranking até desmarcar e marcar de novo. A foto só é mostrada se for um endereço `https`.
 - As regras acima são **P6-like, PENDING OWNER**: sem publicá-las, a coleção `ranking` é recusada (403) e a tela diz “Não deu para carregar o ranking”. Falta ao dono publicá-las e provar com a conta real: topar grava, desmarcar apaga, outra conta não grava o documento alheio, sem login nada se lê.
