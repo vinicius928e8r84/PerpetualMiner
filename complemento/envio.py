@@ -38,6 +38,7 @@ from .imagem_do_cartao import ImagemDoCartao, ParaOEnvio
 from .limite_do_plano import LIMITE_DO_PLANO, LimiteDoPlano, espera_pelo_plano
 from .login_do_chatgpt import RECUSOU, SAIU
 from .modelo_dos_cartoes import credencial
+from .palavras_do_cartao import com_as_palavras_fixas, esquecer, fixar_na_entrada, quantos_cartoes
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento  # noqa: F401
 from .paradas_do_envio import Apagado, Interrompido  # noqa: F401  (`envio.Interrompido`)
 from .tipo_do_envio import TipoDoEnvio
@@ -86,12 +87,6 @@ def _ler_json(caminho, padrao):
             return json.load(arquivo)
     except (OSError, ValueError):
         return copy.deepcopy(padrao)
-
-
-def cartoes_da_frase(motor, lang, linha):
-    """Quantos Cartões uma linha de mineração tem (um por Palavra, na ordem); 0 se a linha não se lê."""
-    entrada = motor.parser.parse_line(motor.estilos.estilo(lang)["entrada"], linha)
-    return 0 if entrada is None else len(motor.parser.get_card_jobs(entrada))
 
 
 class Fila:
@@ -182,7 +177,7 @@ class Fila:
                 for cartao, status in entrada["noAnki"].items():
                     cartoes[cartao] = {"phraseId": entrada["phraseId"], "status": status, "error": None}
             elif isinstance(entrada.get("line"), str):
-                for posicao in range(cartoes_da_frase(self.motor, pedido["lang"], entrada["line"])):
+                for posicao in range(quantos_cartoes(self.motor, pedido["lang"], entrada)):
                     cartoes[id_do_cartao(entrada["phraseId"], posicao)] = {"phraseId": entrada["phraseId"], "status": PENDENTE, "error": None}
         apagado = bool(pedido.get("wiped"))
         estado = {
@@ -228,6 +223,7 @@ class Fila:
                 return 201, {"jobId": job_id, "status": estado["status"]}
             criado_em = agora_local()
             gravado = dict(pedido, createdAt=criado_em, corpoSha256=marca)
+            gravado["entries"] = com_as_palavras_fixas(self.motor, pedido)
             # O pedido, depois o estado e por último a entrada na fila: é a confirmação.
             _gravar_json(self._arquivo_do_pedido(job_id), gravado)
             _gravar_json(self._arquivo_do_estado(job_id), self._estado_do_pedido(gravado))
@@ -309,7 +305,7 @@ class Fila:
                 return
             for entrada in pedido["entries"]:
                 if entrada["phraseId"] == frase and "line" in entrada:
-                    entrada.pop("line")
+                    esquecer(entrada)
                     entrada["noAnki"] = irmaos
                     _gravar_json(self._arquivo_do_pedido(job_id), pedido)
                     break
@@ -333,9 +329,9 @@ class Fila:
                 pedido = self.pedido(job_id)
                 if pedido is None:
                     continue
-                if any("line" in entrada for entrada in pedido.get("entries", [])) or not pedido.get("wiped"):
+                if any("line" in entrada or "keywords" in entrada for entrada in pedido.get("entries", [])) or not pedido.get("wiped"):
                     for entrada in pedido.get("entries", []):
-                        entrada.pop("line", None)
+                        esquecer(entrada)
                     pedido["wiped"] = True
                     _gravar_json(self._arquivo_do_pedido(job_id), pedido)
                 pasta = self.pasta_dos_textos(job_id)
@@ -540,6 +536,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
         entrada = self.motor.parser.parse_line(config["estilo"]["entrada"], linha)
         if entrada is None:
             return "invalid_card"
+        fixar_na_entrada(pedido, phrase_id, entrada)  # a Palavra é a do criar; o parser de agora só lê a frase e o contexto
         nome = lambda trabalho, posicao: id_do_cartao(phrase_id, posicao)  # noqa: E731
         falhas = {}
         for espera in (None,) + self.esperas_da_openai:
