@@ -13,7 +13,7 @@
     "ferramentas": {
       "descricao": "As ferramentas de scripts/: o executor dos grupos, o gancho do limite de tamanho dos arquivos e as receitas do mapa de features",
       "executor": "node",
-      "arquivos": ["scripts/test_testar.mjs", "scripts/ganchos/test_limite_de_tokens.js", ".agents/skills/verify-perpetualminer/scripts/test_receitas.js"]
+      "arquivos": ["scripts/test_testar.mjs", "scripts/ganchos/test_limite_de_tokens.js", "scripts/ganchos/test_configuracao_do_indice.js", ".agents/skills/verify-perpetualminer/scripts/test_receitas.js"]
     },
     "complemento": {
       "descricao": "O complemento do Anki; na biblioteca padrão, e o CI roda no Python 3.9 (o do Anki do Mac) e no 3.13",
