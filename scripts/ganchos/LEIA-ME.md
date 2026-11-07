@@ -16,6 +16,10 @@ Isso é `git config core.hooksPath scripts/ganchos`. O script não troca uma pas
 
 `limite-de-tokens.json` › `ignorar` (cada item tem o motivo): trava de pacotes (`*.lock`, `package-lock.json`, `pnpm-lock.yaml`), saída gerada (`dist/`, `build/`, `coverage/`, `*.min.*`, `*.map`, `docs/design/voz/catalogo-textos.json` e `catalogo.html`, regravados por `scripts/gerar-catalogo-da-voz.js`), binários (imagem, fonte, pacote compactado, áudio, vídeo, PDF; e qualquer arquivo com byte nulo no começo), código de terceiros (`node_modules/`, `vendor/`, `third_party/`) e arquivo com a marca das ferramentas de geração (`@generated`, `DO NOT EDIT`, `Code generated`, com essas maiúsculas e minúsculas) nas 5 primeiras linhas (`marcasDeGerado`). Um arquivo gerado de outro jeito entra por glob em `ignorar` (uma linha com o motivo), não por comentário.
 
+## A configuração também só aperta
+
+`limite-de-tokens.json` é lido do índice (o que será commitado), nunca da cópia de trabalho: uma edição não preparada não vale para o commit. E, como a linha de base, só aperta em relação ao `HEAD`: o gancho barra a configuração preparada que sobe `limiteDeBytes` ou `linhasDoCabecalho`, muda `linhaDeBase`, acrescenta glob em `ignorar` ou acrescenta marca em `marcasDeGerado`. Baixar o limite, tirar entrada e mudar só o `motivo` passam; um JSON quebrado no índice também barra. Afrouxar a configuração é decisão do dono, em PR próprio e revisado. Código em `configuracao-do-indice.js`.
+
 ## Arquivos que já eram grandes: a linha de base
 
 `linha-de-base-de-tamanho.json` lista cada arquivo que já passava do limite quando o gancho entrou, com o tamanho de então. Um arquivo da lista pode ser editado, mas não pode crescer: o teto dele é o menor entre o tamanho da lista e o tamanho que ele tem no último commit (`HEAD`). Qualquer outro arquivo tem de caber no limite.
