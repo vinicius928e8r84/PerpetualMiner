@@ -38,7 +38,7 @@ Each line is `scripts/drive.sh <run-id> <command>`; the filters are regexes (SKI
 - `ia-paste`: `configuracoes-ia.spec -g "colar a chave:|Enter no campo|Trocar chave abre o campo vazio"`
 - `ia-errors`: `configuracoes-ia.spec -g "a OpenAI responde|com a Conexão desligada, a faixa"`
 - `ia-copy`: `chave-autoridade.spec -g "R1:|R1 autoridade|L1:"`
-- `ia-storage`, `ia-session-isolation`: `configuracoes-ia.spec -g "o content script e o overlay"`
+- `ia-storage`, `ia-session-isolation`: `configuracoes-ia.spec -g "o content script e o overlay"` + the session tests of [conta.md](./conta.md): `configuracoes-conta.spec -g "Sessão expirou"` and `sincronizacao.spec` (`conta-session`)
 - `ia-account`: `chave-autoridade.spec -g "a conta traz mudança|K2:"` and `configuracoes-ia.spec -g "trocar para B|a chave de uma conta Google não sobe"`
 - `ia-account-isolation`: `chave-autoridade.spec -g "P1:|P1 legado|legado divergente|N1:"` and `configuracoes-ia.spec -g "PATCH recusado"`
 - `ia-optional`: `configuracoes-ia.spec -g "N2:|K3:|B1:"`
@@ -58,7 +58,7 @@ Reading the actual values:
 - Owner regressions: `chave-autoridade.spec.js` covers K1/K2 (independent profiles and exact main migration), N1, L1, R1 (abort/reload/late acceptance), same-suffix change/deletion, legacy P1 and F4. Check `fakes.anki.chaveNaConexao()`, `estadoDaChave()`, `fakes.google.chaveDaOpenAIDe(uid)` and `extensao.lerStorage('pm_chave_openai')`. `pm-segredos/chaves.getAll()` must have no secrets after completed migration/wipe.
 - Upgrade/delete/old version: `configuracoes-ia.spec.js -g 'K4-delete:|B1:'` checks old store/cache retention and no bearer without versioned state. `chave-autoridade.spec.js -g 'K1-delete:'` checks two profiles, a changed owner during confirmation and partial Apagar tudo; both cloud keys must remain unchanged. `chave-autoridade.spec.js -g 'O1:'` signs out through the native UI before Apagar chave/Apagar tudo and checks a cleared local owner/cache/legacy, unchanged cloud keys/phrases and the local-only modal.
 - Pending/auth outcomes: `configuracoes-ia.spec.js -g 'N2:|N3:|R2:|F1:|S1:|S4:|PATCH recusado|trocar para B'`. The key cloud seam is now the add-on: `fakes.anki.responderFirebase(status)`; Firestore fake still owns shared cloud records and write refusals. Never intercept browser key-REST requests that no longer exist.
-- Isolation: `configuracoes-ia.spec.js -g 'o content script e o overlay não alcançam a chave'`; session tests in `configuracoes-conta.spec.js`. Read the isolated world over CDP, not only page-world storage.
+- Isolation: `configuracoes-ia.spec.js -g 'o content script e o overlay não alcançam a chave'`; session tests in `configuracoes-conta.spec.js` (`Sessão expirou`) and `sincronizacao.spec.js`. Read the isolated world over CDP, not only page-world storage.
 - Server: `PYTHON=python3.9 node scripts/testar.mjs complemento`, also 3.13. Real HTTP tests cover owner CAS, two add-ons with shared external Firestore, refused uploads, HTTP timeout/restart/replay and credential secrecy. `contrato-da-conexao.spec.js` / `test_fake_anki.js` share exact contract examples with the real add-on.
 
 ## Gotchas
