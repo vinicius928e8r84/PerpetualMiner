@@ -74,11 +74,11 @@ Which spec and which `-g` prove which feature is in `features/<feature>.md`; the
 The ordinary specs talk to `fakes.anki`, a JavaScript copy of the Conexão. For a change to the key, the account or any route that carries state, also drive the real Python owner and its HTTP, outside Anki. `scripts/conexao-real.py` starts `complemento.servidor.Conexao` on a free port with the repo's fake OpenAI and Firestore, and writes `{porta, pasta}` to the file you name. It proves the real Python owner and HTTP, not Anki, OpenAI or Firestore.
 
 ```bash
-PRONTO=/tmp/conexao-<run-id>.json    # outside the run directory: drive.sh refuses a run whose evidence/ holds files
-python3.9 .agents/skills/verify-perpetualminer/scripts/conexao-real.py "$PWD" "$PRONTO" &   # also python3.13
-until [ -s "$PRONTO" ]; do sleep 0.2; done
+PRONTO=/tmp/conexao-<run-id>.json    # outside the run directory: drive.sh refuses files in evidence/
+python3.9 .agents/skills/verify-perpetualminer/scripts/conexao-real.py "$PWD" "$PRONTO" & PID=$!   # also python3.13
+until [ -s "$PRONTO" ] || ! kill -0 $PID; do sleep 0.2; done
 PM_CONEXAO_REAL="$PRONTO" .agents/skills/verify-perpetualminer/scripts/drive.sh <run-id> zz-scratch-<run-id>.spec
-kill %1; rm -rf "$PRONTO"    # the script's scratch folder (`conexao-real-*` in the temp dir) stays: remove it too
+kill $PID; rm -rf "$PRONTO"    # its scratch folder (`conexao-real-*` in the temp dir) stays: remove it
 ```
 
 The spec is a scratch one (`e2e/tests/zz-scratch-<run-id>.spec.js`, delete it before committing); it sends the panel's `127.0.0.1:8766` requests to that port:
