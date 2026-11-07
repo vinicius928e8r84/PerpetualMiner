@@ -9,6 +9,7 @@ const { criarPerfis } = require('./perfis');
 const { criarLimiteDoPlano } = require('./limite-do-plano');
 const { criarModelo } = require('./modelo-dos-cartoes');
 const { criarTeto } = require('./teto');
+const { legadoRecusado } = require('./legado-da-chave');
 const { criarAtualizacao } = require('./atualizacao');
 const { criarBaralhos } = require('./baralhos');
 const { criarPrevia } = require('./previa');
@@ -401,10 +402,7 @@ function criarFakeAnki() {
     if (url.pathname === '/ia/openai/legado' && req.method() === 'POST') {
       const { chave, conta, em, versao } = JSON.parse(req.postData());
       if (estado.contexto.cofre === 'sem_escrita') return responderJson(route, 500, { error: 'internal_error' });
-      if ((estado.chaveDaOpenAI || '') !== chave || (estado.contaDaChave && estado.contaDaChave !== conta)
-        || (versao !== estado.versaoDaChave && !(versao === estado.versaoDaChave - 1 && estado.contaDaChave === conta))) {
-        return responderJson(route, 409, { error: 'legacy_key_mismatch' });
-      }
+      if (legadoRecusado(estado, { chave, conta, versao })) return responderJson(route, 409, { error: 'legacy_key_mismatch' });
       // Já vinculado a esta conta é o mesmo pedido de novo (ou o replay da base velha): 200 sem avançar a revisão.
       if ((estado.contaDaChave === null || estado.chaveDaOpenAI === null) && estado.contaDaChave !== conta) mudarChave(chave, conta, em);
       return responderJson(route, 200, { ok: true });
