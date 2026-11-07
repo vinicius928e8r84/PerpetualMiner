@@ -4,6 +4,8 @@ Cada Envio guarda os registros do `cost_tracker` do motor em `custos/<jobId>/cos
 resumo são os que o painel lê: as chaves e as regras (o texto em `cardUsd`; o juiz e a triagem de imagem pela Palavra `[image_judge]`/`[image_guard]`;
 as imagens pelos registros `image` e `image_pipeline`), só com a biblioteca padrão. O Envio que o plano do ChatGPT escreveu
 leva `plan` (`cards`, `wouldCostUsd`: o que a chave teria cobrado, #159); sem Cartão do plano, a linha não tem a chave `plan`.
+A correção das frases da Criação (#169) é um registro à parte (`correction_tokens`): `costs.correctionUsd`, que entra no total; sem correção
+no período, `costs` não tem a chave.
 """
 
 import json
@@ -81,6 +83,7 @@ def resumir(lidos, dia_do_envio, de, ate):
     geradas_nos_registros = geradas_no_pipeline = 0.0
     no_pipeline = contados = 0
     do_plano, na_chave = set(), 0.0  # os Cartões que o plano fez (#159) e o que a chave teria cobrado por eles
+    corrigiu, correcao = False, 0.0  # a correção das frases da Criação (#169)
     for registro in lidos:
         if not _no_periodo(dia(registro.get("date") or registro.get("createdAt")) or dia_do_envio, de, ate):
             continue
@@ -89,6 +92,8 @@ def resumir(lidos, dia_do_envio, de, ate):
         if tipo == "tokens":
             palavra = str(registro.get("keyword") or "")
             custos["imageJudgeUsd" if palavra.startswith("[image_judge]") else "imageGuardUsd" if palavra.startswith("[image_guard]") else "cardUsd"] += custo
+        elif tipo == "correction_tokens":
+            corrigiu, correcao = True, correcao + custo
         elif tipo == "plan_tokens":
             do_plano.add(str(registro.get("keyword") or ""))
             na_chave += _custo(registro, "would_cost_usd")
@@ -113,6 +118,8 @@ def resumir(lidos, dia_do_envio, de, ate):
     if no_pipeline == 0 and dos_registros["total"]:
         imagens.update(dos_registros)
     custos["imageGenerationUsd"] = max(geradas_nos_registros, geradas_no_pipeline)
+    if corrigiu:
+        custos["correctionUsd"] = correcao
     custos["totalUsd"] = sum(valor for chave, valor in custos.items() if chave != "totalUsd")
     total = imagens["total"]
 

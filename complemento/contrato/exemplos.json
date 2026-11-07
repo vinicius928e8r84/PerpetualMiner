@@ -200,7 +200,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.4.10",
+          "versao": "0.4.11",
           "perfil": "Usuário 1"
         }
       }
@@ -220,7 +220,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.4.10",
+          "versao": "0.4.11",
           "perfil": null
         }
       }
@@ -259,7 +259,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.4.10",
+          "versao": "0.4.11",
           "perfil": "Usuário 1"
         }
       }
@@ -337,7 +337,7 @@
       }
     },
     {
-      "nome": "GET de qualquer outra rota sem origem é recusado",
+      "nome": "GET de outra rota sem origem é recusado",
       "daExtensao": false,
       "contexto": {
         "perfil": "Usuário 1"

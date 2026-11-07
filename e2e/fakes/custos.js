@@ -1,7 +1,7 @@
 'use strict';
 
 // Os custos do fake da Conexão: o resumo dos registros de um Envio e a linha da aba Custos (`POST /analytics/jobs`), com as
-// mesmas chaves de `complemento/custos.py`. Só os registros de texto; as imagens são do #144.
+// mesmas chaves de `complemento/custos.py`. Só os registros de texto (e a correção da Criação, #169); as imagens são do #144.
 
 /** O resumo dos registros de custo de um Envio, como `custos.resumir` do complemento (só os registros de texto). */
 function resumoDosCustos(registros, de, ate) {
@@ -9,6 +9,7 @@ function resumoDosCustos(registros, de, ate) {
   let contados = 0;
   const doPlano = new Set(); // os Cartões que o plano do ChatGPT fez (#159)
   let naChave = 0;
+  let correcao = null; // a correção das frases da Criação (#169): só tem a chave quando algum registro dela cai no período
   for (const registro of registros) {
     const dia = String(registro.date || '').slice(0, 10);
     if ((de && dia < de) || (ate && dia > ate)) continue;
@@ -16,9 +17,11 @@ function resumoDosCustos(registros, de, ate) {
     const palavra = String(registro.keyword || '');
     const campo = palavra.startsWith('[image_judge]') ? 'imageJudgeUsd' : palavra.startsWith('[image_guard]') ? 'imageGuardUsd' : 'cardUsd';
     if (registro.type === 'tokens') custos[campo] += registro.cost_usd || 0;
+    if (registro.type === 'correction_tokens') correcao = (correcao || 0) + (registro.cost_usd || 0);
     if (registro.type === 'plan_tokens') { doPlano.add(palavra); naChave += registro.would_cost_usd || 0; }
   }
-  custos.totalUsd = custos.cardUsd + custos.imageJudgeUsd + custos.imageGuardUsd + custos.imageGenerationUsd + custos.otherUsd;
+  if (correcao !== null) custos.correctionUsd = correcao;
+  custos.totalUsd = custos.cardUsd + custos.imageJudgeUsd + custos.imageGuardUsd + custos.imageGenerationUsd + custos.otherUsd + (custos.correctionUsd || 0);
   const arredondados = Object.fromEntries(Object.entries(custos).map(([chave, valor]) => [chave, Math.round(valor * 1e6) / 1e6]));
   const plano = doPlano.size ? { plan: { cards: doPlano.size, wouldCostUsd: Math.round(naChave * 1e6) / 1e6 } } : {};
   return { costs: arredondados, images: imagensZeradas(), matchedRecords: contados, ...plano };
@@ -42,6 +45,7 @@ function linhaDeCustos({
     imageGuardUsd: custos.triagem || 0,
     imageGenerationUsd: custos.geradas || 0,
     otherUsd: custos.outros || 0,
+    ...(custos.correcao ? { correctionUsd: custos.correcao } : {}), // a correção das frases da Criação (#169)
   };
   costs.totalUsd = Object.values(costs).reduce((a, b) => a + b, 0);
   const images = {

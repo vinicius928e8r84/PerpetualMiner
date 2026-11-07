@@ -71,7 +71,8 @@
     "log_dir": "log",
     "prompts": {
       "en_card": "prompts/en_card.txt",
-      "ru_card": "prompts/ru_card.txt"
+      "ru_card": "prompts/ru_card.txt",
+      "correcao_da_criacao": "prompts/correcao_da_criacao.txt"
     }
   }
 }
