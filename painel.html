@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="painel-teto.css">
   <link rel="stylesheet" href="painel-previa.css">
   <link rel="stylesheet" href="painel-quiz.css">
+  <link rel="stylesheet" href="painel-conexao-arraste.css">
 </head>
 <body>
 
@@ -69,7 +70,6 @@
         </div>
       </nav>
 
-      <!-- As descrições dos indicadores, para o leitor de tela. -->
       <span id="shell-total-descricao" hidden></span>
       <span id="shell-conexao-descricao" hidden></span>
     </aside>
@@ -140,12 +140,8 @@
           </label>
         </div>
 
-        <!--
-          A linha de seleção: sem seleção, o checkbox “Selecionar página”. Com
-          seleção, ela vira a barra contextual (PAI-32), que gruda no topo da ilha
-          ao rolar; o checkbox fica no começo dela, marcado ou misto, e o rótulo
-          passa a ser só do leitor de tela.
-        -->
+        <!-- A linha de seleção: sem seleção, o checkbox “Selecionar página”; com seleção, a barra contextual (PAI-32), que gruda
+             no topo da ilha ao rolar, com o checkbox no começo (marcado ou misto) e o rótulo só para o leitor de tela. -->
         <div class="frases-selecao" id="frases-selecao" hidden>
           <label class="frases-selecao__pagina">
             <input type="checkbox" class="veio-checkbox" id="sel-pagina" data-voz-aria="PAI-31">
@@ -612,6 +608,7 @@
   <script src="painel-shell.js"></script>
   <script src="painel-conta.js"></script>
   <script src="painel-atalhos.js"></script>
+  <script src="painel-conexao-arraste.js"></script>
   <script src="painel-conexao-passos.js"></script>
   <script src="lib/ranking.js"></script>
   <script src="painel-boas-vindas-ranking.js"></script>
