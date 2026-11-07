@@ -5,6 +5,7 @@ Configurações › Conta & sync is where a person signs in with Google, sees wh
 ## Sub-features
 
 - `conta-states`: the card, the chip and the closed row's summary say the same state for CFG-01…04 and CFG-06…08: Sincronizado (name, green dot, Sair da conta, the note), Sincronizando (while the cloud does not answer), Sem sincronizar (Tentar de novo and Detalhes), Nuvem recusou (Sair da conta becomes a normal button; Detalhes carries Firestore's message), Sessão expirou (Entrar goes to the login and syncs again), Sem conta, Login falhou (error in the card with Tentar de novo and Detalhes; the chip stays without an account).
+- `conta-nameless`: a profile with no name (CFG-10): the card, the closed row's summary and the chip say “Conta Google”.
 - `conta-first-upload`: signing in with phrases on this computer shows “Sincronizando N frases…” and uploads all of them; when that fails, only the card and the chip say “Não deu para sincronizar suas frases” and trying again uploads all.
 - `conta-partial`: “8 de 10 frases sincronizadas · 2 ficaram só neste computador”, and the chip “8 de 10 sincronizadas”; the count is of this computer's phrases, not the cloud's. Editing, mining or deleting during the upload does not lose the phrases still waiting, and a retry undoes no edit.
 - `conta-sign-in-out`: Entrar com Google uploads the phrases and shows the account; Sair da conta leaves the phrases on this computer (storage keeps no `pm_user_info`, no session). After signing out, the AI card offers local-only deletion of its key: [ia.md](./ia.md) › `ia-delete` (`O1:`).
@@ -22,6 +23,7 @@ Configurações › Conta & sync is where a person signs in with Google, sees wh
 Each line is `scripts/drive.sh <run-id> <command>`; the filters are regexes (SKILL.md § Drive), kept literal.
 
 - `conta-states`: `configuracoes-conta.spec -g "Sincronizado \(CFG-02\)|Sincronizando \(CFG-01\)|Sem sincronizar \(CFG-03\)|Nuvem recusou|Sessão expirou|Sem conta \(CFG-06\)|Login falhou"`
+- `conta-nameless`: `configuracoes-conta.spec -g "Perfil sem nome \(CFG-10\)"`
 - `conta-first-upload`: `configuracoes-conta.spec -g "Primeira subida"`
 - `conta-partial`: `configuracoes-conta.spec -g "Sync parcial"`
 - `conta-sign-in-out`: `configuracoes-conta.spec -g "entrar com Google sobe as frases"`. Observable: after Sair da conta `extensao.lerStorage(['pm_user_info', 'pm_firebase_auth'])` is empty, `extensao.lerSessao()` is null and `extensao.frases()` still has the phrases.
@@ -33,4 +35,4 @@ Each line is `scripts/drive.sh <run-id> <command>`; the filters are regexes (SKI
 - The Google login is the fake (`fakes.google`, `fakes.google.usarPerfil({ name, email })`, uid `uid-teste`); a spec that starts already signed in seeds the session with `extensao.semearSessao({ uid })`. The real Google consent screen and the Firebase rules (P6) are the owner's.
 - The session lives in extension-origin IndexedDB (`pm-sessao`), not in `chrome.storage`: read it with `extensao.lerSessao()`.
 - The Conexão's key replication to the account is not here; it is in [ia.md](./ia.md).
-- `configuracoes-conta.spec.js` also has layout, keyboard and reduced-motion tests for the cards of Configurações (not mapped here; run the whole file to see them).
+- `configuracoes-conta.spec.js` also has tests no ID above maps: the closed rows and their summaries, the chip link, the layout below ~560 px, keyboard and reduced-motion tests, “Sincronizado há 2 min”, cancelling the login and deleting a phrase with the cloud down. Run the whole file to see them.
