@@ -200,7 +200,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.4.11",
+          "versao": "0.4.12",
           "perfil": "Usuário 1"
         }
       }
@@ -220,7 +220,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.4.11",
+          "versao": "0.4.12",
           "perfil": null
         }
       }
@@ -259,7 +259,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.4.11",
+          "versao": "0.4.12",
           "perfil": "Usuário 1"
         }
       }
@@ -283,7 +283,7 @@
       }
     },
     {
-      "nome": "POST de uma rota que a Conexão não tem, com a origem da extensão",
+      "nome": "POST de rota que a Conexão não tem, com a origem da extensão",
       "daExtensao": true,
       "contexto": {
         "perfil": "Usuário 1"
