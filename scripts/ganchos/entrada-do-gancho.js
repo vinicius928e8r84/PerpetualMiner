@@ -7,7 +7,9 @@
 
 class ErroDeEntrada extends Error {
   constructor(onde, detalhe, linha, aproximada = false) {
-    super(`✗ ${onde}${linha ? `, ${aproximada ? 'perto da ' : ''}linha ${linha}` : ''}: ${detalhe}`);
+    const ondeNoArquivo = linha ? `${aproximada ? 'perto da ' : ''}linha ${linha}` : '';
+    super(`✗ ${onde}${ondeNoArquivo && `, ${ondeNoArquivo}`}: ${detalhe}`);
+    this.detalhe = ondeNoArquivo ? `${detalhe} (${ondeNoArquivo})` : detalhe;
     this.name = 'ErroDeEntrada';
   }
 }
@@ -26,12 +28,12 @@ function lerJson(texto, onde) {
     return JSON.parse(texto);
   } catch (erro) {
     const posicao = /position (\d+)/.exec(erro.message);
-    if (posicao) throw new ErroDeEntrada(onde, `JSON inválido (${erro.message})`, texto.slice(0, Number(posicao[1])).split('\n').length);
+    if (posicao) throw new ErroDeEntrada(onde, `não é um JSON válido (${erro.message})`, texto.slice(0, Number(posicao[1])).split('\n').length);
     // Sem a posição, a mensagem traz o trecho em volta do erro: a linha onde ele começa fica a uma ou duas do erro.
     const trecho = /, (?:\.\.\.)?"(.+?)"(?:\.\.\.)? is not valid JSON/s.exec(erro.message);
     const inicio = trecho ? texto.indexOf(trecho[1]) : -1;
     const linha = inicio < 0 ? null : texto.slice(0, inicio).split('\n').length;
-    throw new ErroDeEntrada(onde, `JSON inválido (${erro.message})`, linha, true);
+    throw new ErroDeEntrada(onde, `não é um JSON válido (${erro.message})`, linha, true);
   }
 }
 

@@ -13,7 +13,7 @@ const path = require('path');
 
 const CLI = path.join(__dirname, 'limite-de-tokens.js');
 const LINHA_DE_BASE = 'scripts/ganchos/linha-de-base-de-tamanho.json';
-const ARQUIVOS_DO_GANCHO = ['limite-de-tokens.js', 'mensagens-de-tamanho.js', 'entrada-do-gancho.js', 'limite-de-tokens.json'];
+const ARQUIVOS_DO_GANCHO = ['limite-de-tokens.js', 'mensagens-de-tamanho.js', 'entrada-do-gancho.js', 'globs.js', 'configuracao-do-indice.js', 'limite-de-tokens.json'];
 
 const pasta = prefixo => fs.mkdtempSync(path.join(os.tmpdir(), prefixo));
 const escrever = (raiz, caminho, conteudo) => {
@@ -51,7 +51,7 @@ function barraDizendo(r, ...trechos) {
 
     // JSON quebrado: a linha do erro e o arquivo.
     preparar('{\n  "arquivos": {\n    "a.js": 30000,\n  }\n}\n');
-    barraDizendo(rodar(raiz), LINHA_DE_BASE, 'linha 4', 'JSON inválido');
+    barraDizendo(rodar(raiz), LINHA_DE_BASE, 'linha 4', 'JSON válido');
 
     // Valor que não é número, texto que parece número, nulo e negativo: a linha do caminho.
     for (const valor of ['"30000"', 'null', '-1', '{}']) {
@@ -71,7 +71,7 @@ function barraDizendo(r, ...trechos) {
 
     // Arquivo vazio: JSON inválido também.
     preparar('');
-    barraDizendo(rodar(raiz), LINHA_DE_BASE, 'JSON inválido');
+    barraDizendo(rodar(raiz), LINHA_DE_BASE, 'JSON válido');
 
     // A base inválida só na cópia de trabalho, sem git add, não vale: o índice é que conta.
     preparar(baseValida({}));
@@ -117,7 +117,7 @@ function barraDizendo(r, ...trechos) {
     assert.ok(!r.stderr.includes('aviso:'), r.stderr);
 
     gravarConfiguracao('{\n  "limiteDeBytes": 20000,\n  "ignorar": [,\n}\n');
-    barraDizendo(rodar(raiz, cli), NOME, 'linha 3', 'JSON inválido');
+    barraDizendo(rodar(raiz, cli), NOME, 'linha 3', 'JSON válido');
 
     const comCampo = (campo, valor) => `${JSON.stringify({ ...configuracao, [campo]: valor }, null, 2)}\n`;
     for (const [campo, valor] of [['limiteDeBytes', '20000'], ['limiteDeBytes', 0], ['ignorar', {}], ['ignorar', [{ glob: 'a' }]],
@@ -139,6 +139,21 @@ function barraDizendo(r, ...trechos) {
   } finally {
     fs.rmSync(raiz, { recursive: true, force: true });
     fs.rmSync(scripts, { recursive: true, force: true });
+  }
+}
+
+// --- A configuração preparada com o formato errado barra o commit, com a linha ---
+{
+  const { raiz, git } = repositorio();
+  try {
+    const CONFIGURACAO = 'scripts/ganchos/limite-de-tokens.json';
+    const original = JSON.parse(fs.readFileSync(path.join(__dirname, 'limite-de-tokens.json'), 'utf8'));
+    escrever(raiz, CONFIGURACAO, `${JSON.stringify({ ...original, limiteDeBytes: '20000' }, null, 2)}\n`);
+    git('add', CONFIGURACAO);
+    const r = rodar(raiz);
+    barraDizendo(r, CONFIGURACAO, 'linha 2', '"limiteDeBytes"');
+  } finally {
+    fs.rmSync(raiz, { recursive: true, force: true });
   }
 }
 

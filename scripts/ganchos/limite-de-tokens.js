@@ -10,8 +10,9 @@
 // que já passavam do limite quando o gancho entrou estão em linha-de-base-de-tamanho.json: podem
 // ser editados, não podem crescer. A base lida é a do índice, e ela só desce em relação à do HEAD
 // (entrada nova ou maior barra o commit); o teto de cada um é o menor entre a base e o tamanho no
-// HEAD. Sem o arquivo da base o gancho é estrito (tudo acima do limite barra). Como usar e instalar:
-// LEIA-ME.md.
+// HEAD. Sem o arquivo da base o gancho é estrito (tudo acima do limite barra). A configuração
+// (limite-de-tokens.json) também vale pelo índice e só aperta em relação ao HEAD
+// (configuracao-do-indice.js). Como usar e instalar: LEIA-ME.md.
 //
 //   node scripts/ganchos/limite-de-tokens.js                          confere o que está preparado (o gancho)
 //   node scripts/ganchos/limite-de-tokens.js --atualizar-linha-de-base  baixa as entradas que encolheram
@@ -21,57 +22,13 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const { ErroDeEntrada, lerConfiguracaoDoTexto, lerLinhaDeBaseDoTexto, mensagemDeEntradaInvalida } = require('./entrada-do-gancho.js');
+const { ErroDeEntrada, lerLinhaDeBaseDoTexto, mensagemDeEntradaInvalida } = require('./entrada-do-gancho.js');
 const { mensagemDeAfrouxamento, mensagemDeErro, tokensDe } = require('./mensagens-de-tamanho.js');
-
-const ARQUIVO_DA_CONFIGURACAO = path.join(__dirname, 'limite-de-tokens.json');
+const { globParaRegex } = require('./globs.js');
+const { carregarConfiguracao, lerConfiguracao, mensagemDeConfiguracao } = require('./configuracao-do-indice.js');
 const LIMITE_DE_BYTES = 20000;
 const BYTES_LIDOS_PARA_BINARIO = 8000; // a mesma janela que o git usa para decidir se é binário
 
-
-function lerConfiguracao(arquivo = ARQUIVO_DA_CONFIGURACAO) {
-  const onde = `scripts/ganchos/${path.basename(arquivo)}`;
-  let texto;
-  try {
-    texto = fs.readFileSync(arquivo, 'utf8');
-  } catch (erro) {
-    throw new ErroDeEntrada(onde, `não foi possível ler o arquivo (${erro.code || erro.message})`);
-  }
-  return lerConfiguracaoDoTexto(texto, onde);
-}
-
-// --- Globs: `*.lock` (nome, em qualquer pasta), `dist/` (pasta, em qualquer lugar), `a/b/` (pasta
-// na raiz), `a/**/x.json` (caminho a partir da raiz); `{a,b}` vira alternativa. ---
-
-function expandirChaves(glob) {
-  const chaves = /\{([^{}]*)\}/.exec(glob);
-  if (!chaves) return [glob];
-  return chaves[1].split(',').flatMap(opcao => expandirChaves(glob.slice(0, chaves.index) + opcao + glob.slice(chaves.index + chaves[0].length)));
-}
-
-function corpoDoGlob(glob) {
-  let regex = '';
-  for (let i = 0; i < glob.length; i++) {
-    const c = glob[i];
-    if (c === '*' && glob[i + 1] === '*') {
-      if (glob[i + 2] === '/') { regex += '(?:.*/)?'; i += 2; } else { regex += '.*'; i += 1; }
-    } else if (c === '*') regex += '[^/]*';
-    else if (c === '?') regex += '[^/]';
-    else regex += c.replace(/[.+^$()|[\]\\]/g, '\\$&');
-  }
-  return regex;
-}
-
-function globParaRegex(glob) {
-  const alternativas = expandirChaves(glob).map(g => {
-    if (g.endsWith('/')) {
-      const pasta = g.slice(0, -1);
-      return pasta.includes('/') ? `^${corpoDoGlob(pasta)}/` : `(?:^|/)${corpoDoGlob(pasta)}/`;
-    }
-    return g.includes('/') ? `^${corpoDoGlob(g)}$` : `(?:^|/)${corpoDoGlob(g)}$`;
-  });
-  return new RegExp(alternativas.join('|'));
-}
 
 const emCache = new WeakMap();
 function regrasDeIgnorar(config) {
@@ -235,7 +192,7 @@ function tamanhosDoIndice(raiz) {
 
 // --- A linha de comando ---
 
-function conferirPreparados(raiz, config) {
+function conferirPreparados(raiz, config, problemasDaConfiguracao) {
   const preparados = arquivosPreparados(raiz);
   // A base vale pelo índice (o que será commitado), limitada pelo HEAD: nunca pela cópia de trabalho.
   const baseDoIndice = lerLinhaDeBase(raiz, config, '') || {};
@@ -249,9 +206,9 @@ function conferirPreparados(raiz, config) {
   const falhas = preparados
     .map(arquivo => avaliar(arquivo, config, linhaDeBase))
     .filter(achado => achado.estado === 'excede' || achado.estado === 'cresceu');
-  if (!falhas.length && !afrouxadas.length) return 0;
-  process.stderr.write(`Commit barrado: ${falhas.length + afrouxadas.length} problema(s) de tamanho (limite ${config.limiteDeBytes} bytes = ${tokensDe(config.limiteDeBytes, config.bytesPorToken)} tokens).\n\n`);
-  const mensagens = [...afrouxadas.map(a => mensagemDeAfrouxamento(a, baseDoHead, config)), ...falhas.map(f => mensagemDeErro(f, config))];
+  if (!falhas.length && !afrouxadas.length && !problemasDaConfiguracao.length) return 0;
+  process.stderr.write(`Commit barrado: ${falhas.length + afrouxadas.length + (problemasDaConfiguracao.length ? 1 : 0)} problema(s) de tamanho (limite ${config.limiteDeBytes} bytes = ${tokensDe(config.limiteDeBytes, config.bytesPorToken)} tokens).\n\n`);
+  const mensagens = [...(problemasDaConfiguracao.length ? [mensagemDeConfiguracao(problemasDaConfiguracao)] : []), ...afrouxadas.map(a => mensagemDeAfrouxamento(a, baseDoHead, config)), ...falhas.map(f => mensagemDeErro(f, config))];
   process.stderr.write(`${mensagens.join('\n\n')}\n`);
   return 1;
 }
@@ -289,11 +246,11 @@ function atualizarLinhaDeBaseDoIndice(raiz, config, doIndice) {
 }
 
 function principal(argumentos) {
-  const config = lerConfiguracao();
   const raiz = git(process.cwd(), ['rev-parse', '--show-toplevel']).trim();
+  const { config, problemas } = carregarConfiguracao(raiz, lerConfiguracao());
   if (argumentos.includes('--gerar-linha-de-base')) return gerarLinhaDeBase(raiz, config, tamanhosDoIndice(raiz));
   if (argumentos.includes('--atualizar-linha-de-base')) return atualizarLinhaDeBaseDoIndice(raiz, config, tamanhosDoIndice(raiz));
-  return conferirPreparados(raiz, config);
+  return conferirPreparados(raiz, config, problemas);
 }
 
 if (require.main === module) {
