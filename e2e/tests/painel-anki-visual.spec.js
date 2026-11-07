@@ -11,13 +11,13 @@
 const { test, expect, comOSistema, SISTEMAS } = require('../fixtures');
 
 // #145: a primeira conexão ganhou os passos do arquivo (sem terminal). As telas abaixo marcadas `test.fixme` são PROPOSTAS: o dono
-// ainda não aprovou o novo visual (CODING_STANDARDS regra 10), então as imagens novas não estão na árvore e as antigas estão no commit 59d3d04. Aprovando: tirar o `fixme` e
-// `npx playwright test painel-anki-visual --update-snapshots -g "nunca conectada"`.
+// ainda não aprovou o novo visual (CODING_STANDARDS regra 10), então as imagens novas não estão na árvore; as antigas, no commit 59d3d04. Aprovando: tirar o `fixme` e
+// `npx playwright test painel-anki-visual --update-snapshots -g "nunca conectada( no tema| na janela|, (con|na p|dois)|: o D)"`
 //
-// #160: o card Teto do mês entrou em Custos; as 8 telas de Custos abaixo são `test.fixme` até o dono aprovar.
+// #160: card Teto do mês em Custos; as 8 telas de Custos abaixo são `test.fixme` até o dono aprovar.
 //
-// #147: as telas do passo 3, Abrir o Anki sozinho (ONB-17), também são `test.fixme`.
-// Aprovando: tirar o `fixme` e `npx playwright test painel-anki-visual --update-snapshots -g "passo 3"`.
+// #147: as telas do passo 4 (Abrir o Anki sozinho, ONB-17) também são `test.fixme`.
+// Aprovando: sem o `fixme`, `npx playwright test painel-anki-visual --update-snapshots -g "passo 4"`.
 //
 // #146: a lista passou a ter 4 passos (Ter o Anki, ONB-18, é o 1º; o de baixar ganhou a animação do aviso, ONB-19). As telas do #146 (card do passo 1, a animação do aviso e os quadros parados) foram
 // aprovadas pelo dono (#236); Não tenho no Mac ganhou o desenho do #238 e espera o dono. As outras “nunca conectada”
@@ -117,7 +117,7 @@ test.fixme('nunca conectada no tema claro', async ({ page, extensao, fakes }) =>
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-clara.png');
 });
 
-test.fixme('nunca conectada, conectando depois de Tentar de novo: o passo 3 com o botão indisponível', async ({ page, extensao, fakes }) => {
+test.fixme('nunca conectada, conectando depois de Tentar de novo: Reiniciar o Anki com o botão indisponível', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirAnki(page, extensao, { jaConectou: false });
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
@@ -131,8 +131,7 @@ test.fixme('nunca conectada, conectando depois de Tentar de novo: o passo 3 com 
 
 test.fixme('nunca conectada, na primeira resposta: o momento Pronto, com as abas ainda de fora', async ({ page, extensao, fakes, relogioParado }) => {
   fakes.anki.desligar();
-  // O relógio da página é do teste: o Pronto fica na tela até ele andar. A pessoa já disse “Agora não” ao passo 3
-  // (#147): com ele resolvido, o Pronto vem logo que a Conexão responde.
+  // O relógio da página é do teste: o Pronto fica na tela até ele andar. Com o passo 4 (#147) já dito “Agora não”, o Pronto vem logo.
   await relogioParado({ em: AGORA });
   await extensao.gravarStorage({ pm_anki_ja_conectou: false, pm_abridor: { agoraNao: true } });
   await page.setViewportSize({ width: 1280, height: 1100 });
@@ -188,7 +187,7 @@ test.fixme('nunca conectada: o Detalhes “O arquivo não abriu?” aberto, com 
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-detalhes.png');
 });
 
-test.fixme('nunca conectada, dois minutos sem resposta: o passo 3 com o checklist e Baixar de novo', async ({ page, extensao, fakes, relogioParado }) => {
+test.fixme('nunca conectada, dois minutos sem resposta: Reiniciar o Anki com o checklist e Baixar de novo', async ({ page, extensao, fakes, relogioParado }) => {
   fakes.anki.desligar();
   // O relógio da página é do teste: os 2 minutos passam quando ele anda.
   const relogio = await relogioParado({ em: AGORA });
@@ -212,8 +211,8 @@ test.fixme('nunca conectada na janela estreita: a lista em cima do card', async 
   await expect(page).toHaveScreenshot('anki-primeira-conexao-estreita.png', { fullPage: false });
 });
 
-// O passo 3, Abrir o Anki sozinho (#147, ONB-17): logo depois de a Conexão responder pela primeira vez.
-async function abrirOPasso3(page, extensao, fakes, { largura = 1280, tema } = {}) {
+// O passo 4, Abrir o Anki sozinho (#147, ONB-17): logo depois de a Conexão responder pela primeira vez.
+async function abrirOPasso4(page, extensao, fakes, { largura = 1280, tema } = {}) {
   fakes.anki.desligar();
   await abrirAnki(page, extensao, { jaConectou: false, largura, gravado: tema ? { pm_tema: tema } : {} });
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
@@ -222,41 +221,41 @@ async function abrirOPasso3(page, extensao, fakes, { largura = 1280, tema } = {}
   await expect(page.locator('#apv-passo-titulo')).toHaveText('Abrir o Anki sozinho');
 }
 
-test.fixme('passo 3 da primeira conexão: Abrir o Anki sozinho, com Permitir abrir o Anki e Agora não', async ({ page, extensao, fakes }) => {
-  await abrirOPasso3(page, extensao, fakes);
+test.fixme('passo 4 da primeira conexão: Abrir o Anki sozinho, com Permitir abrir o Anki e Agora não', async ({ page, extensao, fakes }) => {
+  await abrirOPasso4(page, extensao, fakes);
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-abridor.png');
 });
 
-test.fixme('passo 3 esperando o aviso do Chrome', async ({ page, extensao, fakes }) => {
-  await abrirOPasso3(page, extensao, fakes);
+test.fixme('passo 4 esperando o aviso do Chrome', async ({ page, extensao, fakes }) => {
+  await abrirOPasso4(page, extensao, fakes);
   await page.getByRole('button', { name: 'Permitir abrir o Anki' }).click();
   await expect(page.locator('#apv-abridor-status')).toHaveText('Responda ao aviso do Chrome.');
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-abridor-pedindo.png', { animations: 'disabled' });
 });
 
-test.fixme('passo 3 no tema claro', async ({ page, extensao, fakes }) => {
-  await abrirOPasso3(page, extensao, fakes, { tema: 'claro' });
+test.fixme('passo 4 no tema claro', async ({ page, extensao, fakes }) => {
+  await abrirOPasso4(page, extensao, fakes, { tema: 'claro' });
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-abridor-clara.png');
 });
 
-test.fixme('passo 3 na janela estreita', async ({ page, extensao, fakes }) => {
-  await abrirOPasso3(page, extensao, fakes, { largura: 760 });
+test.fixme('passo 4 na janela estreita', async ({ page, extensao, fakes }) => {
+  await abrirOPasso4(page, extensao, fakes, { largura: 760 });
   await expect(page).toHaveScreenshot('anki-primeira-conexao-abridor-estreita.png', { fullPage: false });
 });
 
-test.describe('passo 3 com a permissão dada', () => {
+test.describe('passo 4 com a permissão dada', () => {
   test.use({ permissaoDoAbridor: true });
 
-  test.fixme('passo 3: o abridor não achou o Anki, com Tentar de novo e Agora não', async ({ page, extensao, fakes }) => {
+  test.fixme('passo 4: o abridor não achou o Anki, com Tentar de novo e Agora não', async ({ page, extensao, fakes }) => {
     fakes.abridor.definir('nao_achei');
-    await abrirOPasso3(page, extensao, fakes);
+    await abrirOPasso4(page, extensao, fakes);
     await expect(page.locator('#apv-abridor-status')).toHaveText(/^O abridor não achou o Anki/);
     await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-abridor-nao-achou.png');
   });
 
-  test.fixme('passo 3: o abridor não respondeu, com o Detalhes aberto', async ({ page, extensao, fakes }) => {
+  test.fixme('passo 4: o abridor não respondeu, com o Detalhes aberto', async ({ page, extensao, fakes }) => {
     fakes.abridor.desregistrar();
-    await abrirOPasso3(page, extensao, fakes);
+    await abrirOPasso4(page, extensao, fakes);
     await expect(page.locator('#apv-abridor-status')).toHaveText(/^O abridor não respondeu/);
     await page.locator('#apv-passos .pc-abridor').getByText('Detalhes', { exact: true }).click();
     await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-abridor-sem-resposta.png');
