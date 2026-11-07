@@ -14,6 +14,7 @@ from unittest import mock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import envio, motor_do_envio  # noqa: E402
+from complemento.palavras_do_cartao import cartoes_da_frase  # noqa: E402
 from complemento.test_imagens_de_mentira import JPEG_DE_MENTIRA, png_de  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
 
@@ -59,9 +60,9 @@ class OMotorComoPacote(unittest.TestCase):
 
     def test_uma_linha_com_duas_palavras_tem_dois_cartoes_e_a_linha_russa_um(self):
         motor = envio.motor_do_complemento()
-        self.assertEqual(envio.cartoes_da_frase(motor, "en", "keep running | run : They keep running"), 2)
-        self.assertEqual(envio.cartoes_da_frase(motor, "ru", "Я не мальчик! [Context: Série - Episódio 1]"), 1)
-        self.assertEqual(envio.cartoes_da_frase(motor, "en", ""), 0)
+        self.assertEqual(cartoes_da_frase(motor, "en", "keep running | run : They keep running"), 2)
+        self.assertEqual(cartoes_da_frase(motor, "ru", "Я не мальчик! [Context: Série - Episódio 1]"), 1)
+        self.assertEqual(cartoes_da_frase(motor, "en", ""), 0)
 
     def test_o_motor_de_audio_importa_sem_a_gtts_e_diz_o_que_o_cartao_fala_e_com_que_sotaque(self):
         with mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
