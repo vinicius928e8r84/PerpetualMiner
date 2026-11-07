@@ -26,7 +26,17 @@ RAIZ = os.path.dirname(AQUI)
 ARQUIVO_NO_PACOTE_DA_EXTENSAO = os.path.join(RAIZ, "conexao", "perpetualminer.ankiaddon")
 
 
+CODIGO_DO_ANKIWEB = "1108882947"
+
+
 class ArquivoDoComplemento(unittest.TestCase):
+
+    def test_o_codigo_do_ankiweb_do_painel_e_o_package_do_manifesto(self):
+        with open(os.path.join(RAIZ, "lib", "ankiweb.js"), encoding="utf-8") as arquivo:
+            self.assertIn("codigo: '%s'" % CODIGO_DO_ANKIWEB, arquivo.read())
+        with open(os.path.join(AQUI, "manifest.json"), encoding="utf-8") as arquivo:
+            self.assertEqual(json.load(arquivo)["package"], CODIGO_DO_ANKIWEB)
+
     def empacotado(self, pasta, mod=1700000000):
         destino = empacotar.empacotar(os.path.join(pasta, "perpetualminer.ankiaddon"), mod=mod)
         return zipfile.ZipFile(destino)
@@ -36,7 +46,7 @@ class ArquivoDoComplemento(unittest.TestCase):
             pacote = self.empacotado(pasta)
             manifesto = json.loads(pacote.read("manifest.json"))
             pacote.close()
-        self.assertEqual(manifesto["package"], "perpetualminer")
+        self.assertEqual(manifesto["package"], CODIGO_DO_ANKIWEB)
         self.assertEqual(manifesto["name"], "PerpetualMiner")
         self.assertEqual(manifesto["mod"], 1700000000)
         self.assertEqual(manifesto["min_point_version"], 50)
