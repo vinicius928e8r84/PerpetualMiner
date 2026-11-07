@@ -98,6 +98,39 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
 
         self.assertFalse(generate_cards._validate_keyword(partial_front, "exerts himself"))
 
+    def test_front_que_perde_uma_palavra_da_frase_original_e_recusado(self):
+        phrase = "He exerts himself on brands of his own, if at all."
+        dropped = GOOD_CARD.replace("He *exerts himself* on", "*exerts himself* on")
+
+        self.assertFalse(generate_cards._front_keeps_the_phrase(dropped, phrase))
+        self.assertTrue(generate_cards._front_keeps_the_phrase(GOOD_CARD, phrase))
+
+    def test_run_regenera_o_cartao_cujo_front_perdeu_uma_palavra_da_frase(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "Output").mkdir()
+            (root / "log").mkdir()
+            _write_prompts(root)
+            entry = MiningEntry(keywords=["exerts himself"], phrase="He exerts himself on brands of his own, if at all.")
+            dropped = GOOD_CARD.replace("He *exerts himself* on", "*exerts himself* on")
+            responses = [dropped, GOOD_CARD]
+            messages = []
+            original_call_model = generate_cards._call_model
+
+            def fake_call_model(base, key, system, message, *args, **kwargs):
+                messages.append(message)
+                return responses.pop(0)
+
+            generate_cards._call_model = fake_call_model
+            try:
+                saved = generate_cards.run([entry], _config(root))
+            finally:
+                generate_cards._call_model = original_call_model
+
+            self.assertEqual(len(messages), 2)
+            self.assertIn("every word", messages[1])
+            self.assertIn("Front: He *exerts himself* on", (root / "Output" / f"{saved[0]}.txt").read_text(encoding="utf-8"))
+
     def test_run_retries_keyword_mismatch_and_saves_corrected_card(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
