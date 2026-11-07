@@ -77,6 +77,28 @@ def record_plan_tokens(
     return would
 
 
+def record_correction(
+    log_dir: str | Path,
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    paid: bool = True,
+) -> float:
+    """Append the usage of the correction of a sentence the person wrote (#169), apart from the cards' own `tokens` records.
+    Returns USD cost; through the ChatGPT plan (`paid=False`) `cost_usd` is 0."""
+    price = PRICES.get(model, PRICES["gpt-4o"])
+    cost = (input_tokens * price["input"] + output_tokens * price["output"]) / 1000 if paid else 0.0
+    _append(log_dir, {
+        "date": date.today().isoformat(),
+        "type": "correction_tokens",
+        "model": model,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cost_usd": round(cost, 6),
+    })
+    return cost
+
+
 def record_image(
     log_dir: str | Path,
     model: str = "dall-e-3-1024",

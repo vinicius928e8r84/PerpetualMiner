@@ -22,6 +22,7 @@ O gancho da revisão e o padrão “Anki Persistence” **nunca foram testados n
 4. Abra o Cartão no navegador do Anki: o campo **Frase escrita** da nota tem a frase (se não tem, o gancho não rodou: veja o registro da Conexão).
 5. No AnkiMobile ou no AnkiDroid (depois de sincronizar): o verso mostra o que foi escrito e o ✓; o campo Frase escrita **não** muda (só o Anki do computador o grava).
 6. No russo (Intermediário ou Avançado): uma frase com outra forma da mesma raiz ganha o ✓.
+7. A correção (#169): escreva uma frase com um erro de propósito, mande outro Envio qualquer (a chave ou o login do ChatGPT ligados). No navegador do Anki, a nota tem **Escrito antes** (a sua frase) e **Correção**; estude o Cartão de novo: o verso mostra “Da última vez você escreveu … → …” (se o Cartão era de antes, a Conexão regrava o modelo ao gravar a primeira correção). Em Custos aparece “Correção das frases” com o custo. Mande outro Envio sem escrever nada: nada é corrigido de novo e o custo não muda.
 
 ## Ensaio do dono: Abrir o Anki sozinho (riscos 1 e 2 do #138)
 

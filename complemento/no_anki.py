@@ -8,6 +8,7 @@ import threading
 import time
 
 from . import cartoes_do_anki, criacao_na_revisao, inicio, janela, registro
+from .criacao_no_anki import CriacaoNoAnki
 from .baralhos import ColecaoIndisponivel, PerfilIlegivel, TipoDeNotaAusente
 from .atualizacao_do_anki import AnkiWebDoAnki
 from .configuracao import OPENAI_BASE, OPENVERSE_BASE, PORTA, VERSAO, VOZ_BASE
@@ -27,7 +28,7 @@ def perfil_aberto(mw):
     return getattr(getattr(mw, "pm", None), "name", None)
 
 
-class ColecaoDoAnki:
+class ColecaoDoAnki(CriacaoNoAnki):
     """O adaptador da coleção (o contrato, de leitura, de gravação e do perfil fixo, está em `baralhos.py`), sobre o `mw` do Anki.
 
     A coleção do Anki não é para outras threads: toda leitura e gravação roda na thread principal
@@ -174,10 +175,6 @@ class ColecaoDoAnki:
     def _gravando(self, operacao):
         """A operação de gravação, na thread principal; a sincronização é conferida lá, na hora em que ela roda."""
         return self._na_thread_principal(self._se_pode_gravar(operacao))
-
-    def gravar_frase_escrita(self, guid, texto):
-        """A frase da frente Criação (#168) no campo “Frase escrita” da nota de `guid`; devolve se gravou. Da thread principal (o gancho da revisão já roda nela): sem `_gravando`."""
-        return self._se_pode_gravar(lambda colecao: cartoes_do_anki.gravar_frase_escrita(colecao, guid, texto))(self._colecao())
 
     def tipo_de_nota(self, nome):
         return self._gravando(lambda colecao: cartoes_do_anki.campos_do_tipo(colecao.models.by_name(nome)))

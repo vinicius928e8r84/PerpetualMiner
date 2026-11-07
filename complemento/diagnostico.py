@@ -1,9 +1,14 @@
 """O pacote de diagnóstico de um Envio (`POST /jobs/debug-bundle`): o que a pessoa baixa em Custos › Avançado."""
 
 import os
+from datetime import datetime, timezone
 
 from . import custos
-from .envio import agora_utc, visao_do_pedido
+from .envio import visao_do_pedido
+
+
+def agora_utc():
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 def pacote_de_diagnostico(fila, job_id, versao, caminho_do_log):

@@ -27,17 +27,18 @@ import hashlib
 import json
 import os
 import threading
-from datetime import datetime, timezone
+from datetime import datetime
 
 from . import baralhos, custos, voz
 from .audio_do_cartao import FRASE_APAGADA, AudioDoCartao
+from .correcao_da_criacao import CorrecaoDaCriacao
 from .gravacao_de_json import apagar as _apagar, gravar_json as _gravar_json
 from .configuracao import OPENVERSE_BASE, VOZ_BASE
 from .imagem_do_cartao import ImagemDoCartao, ParaOEnvio
 from .limite_do_plano import LIMITE_DO_PLANO, LimiteDoPlano, espera_pelo_plano
 from .login_do_chatgpt import RECUSOU, SAIU
 from .modelo_dos_cartoes import credencial
-from .motor_do_envio import configuracao_do_motor, motor_do_complemento  # noqa: F401  (`envio.motor_do_complemento`)
+from .motor_do_envio import configuracao_do_motor, motor_do_complemento  # noqa: F401
 from .paradas_do_envio import Apagado, Interrompido  # noqa: F401  (`envio.Interrompido`)
 from .tipo_do_envio import TipoDoEnvio
 from .pedido_do_envio import ETIQUETA_DE_TESTE, id_que_serve_de_caminho, id_valido, ids_unicos, impressao, validar_pedido, visao_do_pedido  # noqa: F401
@@ -68,10 +69,6 @@ PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", 
 def agora_local():
     """O instante com o fuso do computador (a aba Custos filtra pelo dia de quem usa)."""
     return datetime.now().astimezone().isoformat(timespec="seconds")
-
-
-def agora_utc():
-    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 def id_do_cartao(phrase_id, posicao):
@@ -370,7 +367,7 @@ def resolver(pedido, estado):
     return status, no_anki, falharam, duplicadas
 
 
-class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano, TipoDoEnvio):
+class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, TipoDoEnvio):
     """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto, o áudio e a imagem e grava a nota."""
 
     def __init__(self, fila, colecao, cofre, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30),
@@ -490,6 +487,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, LimiteDoPlano, TipoDoEnvio):
             feitos = sum(1 for c in estado["cards"].values() if c["status"] in NO_ANKI)
             self._etapa(job_id, "generate_cards", progress={"done": feitos, "total": total})
             parada = self._um_cartao(job_id, pedido, config, cartao_id, cartao, parada) or parada
+        self._corrigir_as_frases(job_id, pedido, config, parada)
         self._etapa(job_id, "send_to_anki", concluida=True)
         self._terminar(job_id, pedido, parada)
 

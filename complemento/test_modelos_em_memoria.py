@@ -2,7 +2,6 @@
 (`{ nome, frente, verso, css }` dos tipos que a Conexão criou) lido e reescrito como `no_anki.ColecaoDoAnki` faz com o `models` do Anki. Não é teste: fica fora do
 `.ankiaddon` pelo nome."""
 
-import html
 import sys
 import os
 
@@ -37,12 +36,43 @@ class ModelosEmMemoria:
         campo = {estilos.idioma(lang)["tipo_de_nota"]: estilos.idioma(lang)["campos"]["frase_escrita"] for lang in estilos.idiomas()}.get(nota["tipo_de_nota"]) if nota else None
         if campo is None or campo not in self._tipos[nota["tipo_de_nota"]]:
             return False
-        valor = html.escape(texto.strip()[:cartoes_do_anki.LIMITE_DA_FRASE_ESCRITA], quote=False).replace("\n", "<br>")
+        valor = cartoes_do_anki.como_campo(texto.strip()[:cartoes_do_anki.LIMITE_DA_FRASE_ESCRITA])
         if nota["campos"].get(campo) == valor:
             return False
-        nota["campos"][campo] = valor
+        self._regravar_campos(nota, {campo: valor})
+        return True
+
+    def _regravar_campos(self, nota, valores):
+        nota["campos"].update(valores)
         for cartoes in self._baralhos.values():
             for cartao in cartoes:
                 if cartao["nota"] == nota["id"]:
-                    cartao["campos"] = [(nome, valor if nome == campo else antigo) for nome, antigo in cartao["campos"]]
+                    cartao["campos"] = [(nome, valores.get(nome, antigo)) for nome, antigo in cartao["campos"]]
+
+    def frases_a_corrigir(self, lang, limite):
+        """As notas do tipo do idioma com uma “Frase escrita” que a IA ainda não leu (#169), como `no_anki.ColecaoDoAnki.frases_a_corrigir`."""
+        self._exigir_gravavel()
+        idioma = estilos.idioma(lang)
+        campos = idioma["campos"]
+        nomes = self._tipos.get(idioma["tipo_de_nota"]) or []
+        if any(campos[chave] not in nomes for chave in ("frase", "palavra", "frase_escrita", "escrito_antes", "correcao")):
+            return []
+        achadas = []
+        for guid, nota in sorted(self._notas.items(), key=lambda item: item[1].get("id", 0)):
+            escrita = nota["campos"].get(campos["frase_escrita"], "")
+            if nota["tipo_de_nota"] == idioma["tipo_de_nota"] and cartoes_do_anki.a_frase_como_texto(escrita) and escrita != nota["campos"].get(campos["escrito_antes"], ""):
+                texto = lambda chave: cartoes_do_anki.a_frase_como_texto(nota["campos"].get(campos[chave]))  # noqa: E731
+                achadas.append({"guid": guid, "escrita": texto("frase_escrita"), "frase": texto("frase"), "palavra": texto("palavra")})
+                if len(achadas) >= limite:
+                    break
+        return achadas
+
+    def gravar_correcao(self, guid, escrita, correcao):
+        """A correção da IA (#169) nos campos “Escrito antes” e “Correção” da nota de `guid`, como `no_anki.ColecaoDoAnki.gravar_correcao`. Devolve se gravou."""
+        self._exigir_gravavel()
+        nota = self._notas.get(guid)
+        campos = next((estilos.idioma(lang)["campos"] for lang in estilos.idiomas() if nota and estilos.idioma(lang)["tipo_de_nota"] == nota["tipo_de_nota"]), None)
+        if campos is None or any(campos[chave] not in self._tipos[nota["tipo_de_nota"]] for chave in ("escrito_antes", "correcao")):
+            return False
+        self._regravar_campos(nota, {campos["escrito_antes"]: cartoes_do_anki.como_campo(escrita), campos["correcao"]: cartoes_do_anki.como_campo(correcao)})
         return True

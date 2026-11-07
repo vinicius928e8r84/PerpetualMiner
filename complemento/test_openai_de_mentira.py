@@ -12,6 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlsplit
 
 from complemento.test_cartao_russo_de_mentira import cartao_russo
+from complemento.test_correcao_de_mentira import CorrecaoDeMentira
 from complemento.test_imagens_de_mentira import png_de
 
 # O que cada comportamento faz com os dois pedidos que a Conexão faz ao conferir uma chave:
@@ -94,8 +95,7 @@ def _cartao_de_mentira(mensagens, prompt=""):
     palavra = alvo.group(1).strip() if alvo else palavra
     contexto = re.search(r"\[Contexto: (.+?)\]", frase)
     frase = re.sub(r"\s*\[Contexto: .+?\]", "", frase)
-    achada = re.search(re.escape(palavra), frase, re.IGNORECASE)  # a frase fica inteira, com a palavra como ela está escrita nela
-    frente = frase[:achada.start()] + "*%s*" % achada.group(0) + frase[achada.end():] if achada else "*%s* aqui" % palavra
+    frente = re.sub("(?i)" + re.escape(palavra), r"*\g<0>*", frase, 1) if palavra.lower() in frase.lower() else "*%s* aqui" % palavra
     fonte = "Source Context: %s\n\n" % contexto.group(1) if contexto else ""
     imagem = "Google Image Search Queries:\n1. %s\n2. %s photo\n\nImage: A %s, no text.\n" % (palavra, palavra, palavra)
     verso = "".join("%s: %s\n\n" % (parte, PARTES_DE_MENTIRA[parte]) for parte in partes)
@@ -109,7 +109,7 @@ def _palavra_do_pedido(mensagens):
     return alvo.group(1).strip() if alvo else pedido.split("Input Format:\n")[-1].split(" : ", 1)[0].strip()
 
 
-class OpenAIDeMentira:
+class OpenAIDeMentira(CorrecaoDeMentira):
     """`OpenAIDeMentira("aceita")` escuta numa porta livre; `base` é o endereço que a Conexão usa no lugar da OpenAI.
 
     A conferência da chave (`/v1/models`, `/v1/embeddings`) segue o `comportamento`. O texto dos Cartões
@@ -117,8 +117,9 @@ class OpenAIDeMentira:
     salvo para a Palavra que `recusar_o_chat_de` mandou recusar (`"*"`: todas). `chats` guarda (Authorization, corpo).
     O plano do ChatGPT: um `Bearer acesso-…` (o do login de mentira) recebe a lista do plano em `/v1/models`, e `/v1/responses`
     devolve o mesmo Cartão em stream de eventos; `respostas` guarda (Authorization, corpo), `recusa_das_respostas` = (status, código)
-    (ou uma função de quantos pedidos já chegaram que devolve isso, ou None) recusa antes do stream e `falha_no_stream` = código termina o stream com `response.failed`. O juiz de imagem pelo plano (#156) é
-    a `/v1/responses` com as instruções do juiz: ele entra em `juizes` como o do chat, e `recusa_do_juiz_do_plano` = (status, código) o recusa.
+    (ou uma função de quantos pedidos já chegaram que devolve isso, ou None) recusa antes do stream e `falha_no_stream` = código termina
+    o stream com `response.failed`. O juiz de imagem pelo plano (#156) é a `/v1/responses` das instruções do juiz: entra em `juizes`, e
+    `recusa_do_juiz_do_plano` = (status, código) o recusa.
     """
 
     def __init__(self, comportamento="aceita"):
@@ -209,6 +210,9 @@ class OpenAIDeMentira:
 
     def _chat(self, autorizacao, corpo):
         sistema = corpo["messages"][0]["content"]
+        correcao = self._correcao_pelo_chat(autorizacao, corpo, _erro)
+        if correcao:
+            return correcao
         if sistema.startswith("You are an expert visual selector"):
             return self._juiz(autorizacao, corpo)
         if sistema.startswith("You are a classifier"):
@@ -241,7 +245,7 @@ class OpenAIDeMentira:
             partes = corpo["input"][0]["content"]
             texto = json.dumps(self._veredito(autorizacao, partes[0]["text"], partes[1::2], [foto["image_url"] for foto in partes[2::2]]))
         else:
-            texto = _cartao_de_mentira([{"content": corpo["input"][-1]["content"]}], corpo["instructions"])
+            texto = self._texto_do_plano(autorizacao, corpo, _cartao_de_mentira)
         meio = len(texto) // 2
         eventos = [{"type": "response.created", "response": {"id": "resp_1", "status": "in_progress"}}]
         eventos += [{"type": "response.output_text.delta", "delta": pedaco} for pedaco in (texto[:meio], texto[meio:])]
