@@ -41,6 +41,16 @@ class LinhaDeMineracao(unittest.TestCase):
         self.assertEqual((entrada.phrase, entrada.context_source, entrada.keywords), ("Я не мальчик!", "Série", ["Я не"]))
         self.assertTrue(entrada.file_stem.startswith("я_не_мальчик!__"))
 
+    def test_a_palavra_antes_dos_dois_pontos_nao_entra_na_frase_russa(self):
+        entrada = parse_mining_line_ru("опоздали : Мы опоздали на последний автобус. [Contexto: Série - Episódio 1 - ]")
+        self.assertEqual((entrada.phrase, entrada.keywords, entrada.context_source), ("Мы опоздали на последний автобус.", ["опоздали"], "Série"))
+        sem_palavra = parse_mining_line_ru("Мы опоздали на последний автобус.")
+        self.assertEqual(entrada.file_stem, sem_palavra.file_stem)
+
+    def test_dois_pontos_dentro_da_frase_russa_sem_palavra_ficam_na_frase(self):
+        entrada = parse_mining_line_ru("Он сказал : привет всем")
+        self.assertEqual(entrada.phrase, "Он сказал : привет всем")
+
 
 if __name__ == "__main__":
     unittest.main()

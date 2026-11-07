@@ -167,6 +167,23 @@ def parse_mining_line(raw_line: str) -> Optional[MiningEntry]:
     )
 
 
+def _split_target_word(line: str):
+    """(first Palavra group, phrase) when `line` starts with `palavra : `, else (None, line).
+
+    The panel sends the Palavra only with words that occur in the phrase, so a prefix whose words are not all
+    in the rest is part of the phrase (a Russian sentence may contain ' : ').
+    """
+    prefix, sep, rest = line.partition(" : ")
+    if not sep or not prefix.strip() or not rest.strip():
+        return None, line
+    words = lambda text: re.findall(r"\w+", text.lower())
+    rest_words = set(words(rest))
+    groups = [g.strip() for g in prefix.split("|") if g.strip()]
+    if not groups or not all(w in rest_words for g in groups for w in words(g)):
+        return None, line
+    return groups[0], rest
+
+
 def parse_mining_line_ru(raw_line: str) -> Optional[MiningEntry]:
     """One Russian line: the whole line is the phrase (no keyword:phrase split), or None.
 
@@ -177,13 +194,14 @@ def parse_mining_line_ru(raw_line: str) -> Optional[MiningEntry]:
         return None
     # Capture the optional [Context: ...] block so the Russian prompt can build a Gist line, then remove it
     # from the phrase: the Russian model expects only the bare Russian phrase in Front (metadata triggers refusals).
-    _, context_source, context_title, context_detail = _split_context(line)
-    phrase = normalize_ru_phrase(line)
+    body, context_source, context_title, context_detail = _split_context(line)
+    target, body = _split_target_word(body)
+    phrase = normalize_ru_phrase(body)
     if not phrase:
         return None
     # Keep a short human-readable label, but use the full phrase for the stem.
     words = phrase.split()
-    keyword = " ".join(words[:2]) if len(words) >= 2 else words[0]
+    keyword = target or (" ".join(words[:2]) if len(words) >= 2 else words[0])
     return MiningEntry(
         keywords=[keyword],
         phrase=phrase,
