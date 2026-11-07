@@ -47,8 +47,8 @@
     dentro.append(caixa);
   }
 
-  /** O acerto: a certa pula (mais a cada acerto seguido), o confete sai dela e o “+pontos” sobe no canto do quiz. Devolve o `ganho` que a festa deu. */
-  function acertou({ quiz, certa, sequencia }) {
+  /** O acerto: a certa pula (mais a cada acerto seguido), o confete e o “+pontos” saem dela. Devolve o `ganho` que a festa deu. */
+  function acertou({ certa, sequencia }) {
     const ganho = raiz.FestaDoQuiz.doAcerto(sequencia);
     certa.style.setProperty('--pulo', ganho.pulo);
     certa.dataset.pulo = '';
@@ -57,7 +57,7 @@
       const pontos = elemento('span', 'quiz__ganho', textoDaVoz('ONB-21.ganhou', { n: ganho.pontos }));
       pontos.setAttribute('aria-hidden', 'true');
       pontos.addEventListener('animationend', () => pontos.remove());
-      quiz.append(pontos);
+      certa.append(pontos);
     }
     return ganho;
   }

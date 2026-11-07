@@ -6,7 +6,7 @@
 // `e2e/aprovados-visuais.json`. A captura congela as animações (`animations: 'disabled'` leva cada uma ao fim), e o confete, que some ao fim, só aparece na prova do comportamento.
 
 const { test, expect } = require('../fixtures');
-const { quiz, responderAParte1, responder, percorrer, abrirOQuiz } = require('../apoio-do-quiz');
+const { quiz, responderAParte1, responder, percorrer, abrirOQuiz, fraseDaPergunta, CERTA } = require('../apoio-do-quiz');
 
 const AGUARDA_O_DONO = 'a referência visual espera a aprovação do dono (regra 10)';
 const tela = (page, nome) => expect(page).toHaveScreenshot(nome, { fullPage: true, animations: 'disabled' });
@@ -16,8 +16,9 @@ test('o acerto: a certa marcada, a sequência e o placar', async ({ page, extens
   const relogio = await abrirOQuiz(page, extensao, relogioParado);
   await responderAParte1(page, 'Inglês', 'iniciante');
   await responder(page, 'Inglês', fakes, relogio, 'certo');
-  await quiz(page, 'Inglês').locator('.quiz__opcao').nth(0).click();
-  await expect(quiz(page, 'Inglês')).toContainText('Pontos: 20');
+  const certa = CERTA[await fraseDaPergunta(page, 'Inglês', fakes)];
+  await quiz(page, 'Inglês').locator('.quiz__opcao').getByText(certa, { exact: true }).click();
+  await expect(quiz(page, 'Inglês')).toContainText('Pontos: 30');
 
   await tela(page, 'quiz-festa-acerto.png');
 });
