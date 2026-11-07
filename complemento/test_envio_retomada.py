@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -102,6 +103,30 @@ class OEnvioQueOAnkiFechadoParou(unittest.TestCase):
         self.assertEqual((parcial["status"], len(parcial["failedPhraseIds"])), ("partial", 1))
         self.assertEqual(refeitos, ["keep running"])
         self.assertEqual((final["status"], len(colecao.gravadas)), ("completed", 3))
+
+
+class APalavraDoCartaoFicaComoOCriarDecidiu(unittest.TestCase):
+    def test_trocar_o_parser_entre_duas_voltas_nao_muda_a_palavra_do_cartao(self):
+        colecao = ColecaoEmMemoria(INGLES)
+        colecao.fechar()
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, colecao=colecao) as conexao:
+            conexao.criar(pedido(ID, "give up | quit : She gave up smoking"))
+            conexao.esperar(ID, lambda estado: estado["stage"] == "wait_anki")
+            parser = conexao.conexao.fila.motor.parser
+            le = parser.parse_line
+            le_ao_contrario = lambda entrada, linha: _com_as_palavras_ao_contrario(le(entrada, linha))  # noqa: E731
+            with mock.patch.object(parser, "parse_line", side_effect=le_ao_contrario):  # uma atualização do complemento muda o parser
+                colecao.abrir()
+                final = conexao.esperar(ID)
+            pedidas = palavras_pedidas(conexao.openai)
+        self.assertEqual((final["status"], final["lastError"]), ("completed", None))
+        self.assertEqual(pedidas, ["give up", "quit"])
+
+
+def _com_as_palavras_ao_contrario(entrada):
+    if entrada is not None:
+        entrada.keywords = list(reversed(entrada.keywords))
+    return entrada
 
 
 if __name__ == "__main__":

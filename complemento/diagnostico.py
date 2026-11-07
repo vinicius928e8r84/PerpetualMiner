@@ -28,7 +28,7 @@ def pacote_de_diagnostico(fila, job_id, versao, caminho_do_log):
         pass
     registros = fila.registros_de_custo(job_id)
     pedido = visao_do_pedido(fila.pedido(job_id))
-    pedido["entries"] = [{chave: valor for chave, valor in entrada.items() if chave != "line"} for entrada in pedido.get("entries", [])]
+    pedido["entries"] = [{chave: valor for chave, valor in entrada.items() if chave not in ("line", "keywords")} for entrada in pedido.get("entries", [])]
     return {
         "generatedAt": agora_utc(),
         "jobId": job_id,
