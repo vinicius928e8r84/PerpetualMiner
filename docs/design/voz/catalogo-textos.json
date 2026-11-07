@@ -968,5 +968,6 @@
   "ONB-24.convite": "Fiz o quiz de nível de {idioma} no PerpetualMiner. Instale a extensão e tente me superar.",
   "ONB-24.semConvite": "Não deu para copiar o convite.",
   "ONB-25.anki": "Anki",
-  "ONB-25.aplicativos": "Aplicativos"
+  "ONB-25.aplicativos": "Aplicativos",
+  "CFG-45.trocou": "A forma de pagar mudou e a nova não tem o {modelo}. O Envio passou para o Automático."
 }

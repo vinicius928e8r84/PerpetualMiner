@@ -55,3 +55,9 @@ README não pode crescer (o limite de tamanho dos arquivos). `scripts/voz-da-spe
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
 | ONB-25 | O desenho de arrastar o Anki para Aplicativos, no passo do Mac **(novo)** | status | (não existe) | Anki · Aplicativos | Dentro do passo Ter o Anki ([ONB-18](README.md)), só no Mac, depois do link Baixar o Anki e acima da frase “Arraste o Anki para a pasta Aplicativos e abra-o de lá.”: dois quadros alternados — o ícone do Anki ao lado da pasta Aplicativos e o ícone já dentro dela. Os nomes são os que o Mac mostra na janela do instalador. O desenho é só imagem; a frase do ONB-18 é o que o leitor de tela lê. Com movimento reduzido, ficam parados, lado a lado. |
+
+### Configurações: o modelo dos cartões, quando quem paga muda (#292)
+
+| ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
+|---|---|---|---|---|---|
+| CFG-45 | IA dos cartões: o modelo, a troca de quem paga **(novo)** | status | (não existe) | A forma de pagar mudou e a nova não tem o gpt-4.1. O Envio passou para o Automático. | A linha verde do Avançado ([CFG-44](README.md)), no lugar de “saiu do ar”, quando a escolha caiu porque o login do ChatGPT acabou ou entrou e a conta nova não tem o modelo. |
