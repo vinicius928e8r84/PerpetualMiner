@@ -179,6 +179,15 @@ def _validate_keyword(card_text: str, expected: str) -> bool:
     return exp in highlighted
 
 
+def _front_keeps_the_phrase(card_text: str, phrase: str) -> bool:
+    """The Front of an original phrase has all its words, in order (the marks and the case may change)."""
+    def words(text: str) -> List[str]:
+        return re.findall(r"\w+(?:['’]\w+)*", text.replace("*", "").casefold())
+
+    front = _extract_front_text(card_text)
+    return bool(front) and words(front) == words(phrase)
+
+
 def _normalize_keyword_for_validation(text: str) -> str:
     text = re.sub(r"\s+", " ", text)
     return text.strip(" \t\r\n:;,.\"'()[]{}*").casefold()
@@ -205,6 +214,14 @@ def _build_keyword_retry_message(user_message: str, keyword: str) -> str:
         f'The Back field MUST start with exactly "{keyword}" before the IPA.\n'
         f'The Front field MUST highlight the full expression as "*{keyword}*", not a subword inside it.\n'
         "Do not create a card for a subword inside the target expression."
+    )
+
+
+def _build_phrase_retry_message(user_message: str, phrase: str) -> str:
+    return (
+        f"{user_message}\n\n"
+        "Regenerate the card because the previous Front dropped or changed words of the original phrase.\n"
+        f"The Front field MUST be exactly this phrase, every word, with only the keyword between asterisks: {phrase}"
     )
 
 
@@ -309,9 +326,20 @@ def run(
             failures[stem] = "invalid_card"
             continue
 
-        if not whole_phrase and not _validate_keyword(card, job.keyword):
+        clean_phrase = _strip_inline_context(job.entry.phrase)
+        # A keyword the phrase has verbatim leaves the phrase whole; an inflected one is the model's to adapt (#254).
+        keeps_phrase = whole_phrase or job.is_generated or job.keyword.casefold() not in clean_phrase.casefold()
+
+        def card_ok(text: str) -> bool:
+            return _validate_keyword(text, job.keyword) and (keeps_phrase or _front_keeps_the_phrase(text, clean_phrase))
+
+        if not whole_phrase and not card_ok(card):
             LOGGER.warning("Keyword mismatch para '%s' - tentando regenerar uma vez.", label)
-            retry_response = call(_build_keyword_retry_message(user_message, job.keyword), label, stem)
+            retry_message = (
+                _build_keyword_retry_message(user_message, job.keyword)
+                if not _validate_keyword(card, job.keyword)
+                else _build_phrase_retry_message(user_message, clean_phrase))
+            retry_response = call(retry_message, label, stem)
             if not retry_response:
                 if stem not in failures:
                     LOGGER.error("Retry retornou resposta vazia para '%s' - pulando.", label)
@@ -319,7 +347,7 @@ def run(
                 continue
 
             card = _prepare_card(retry_response)
-            if not _validate_keyword(card, job.keyword):
+            if not card_ok(card):
                 LOGGER.error("Keyword mismatch persistente para '%s' - card nao sera salvo.", label)
                 failures[stem] = "keyword_mismatch"
                 continue
