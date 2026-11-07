@@ -6,7 +6,7 @@ Tudo roda numa pasta temporária: o script, o manifesto do host e o registro (a 
 Chrome no Mac; no Windows, um registro de mentira no lugar do `winreg`). O script do Mac roda de
 verdade (`sh`), com a mensagem que o Chrome manda, pelos exemplos do contrato
 (`contrato/exemplos.json` › `abridor`); o `open` do Mac é trocado por um programa que anota o que
-recebeu. O do Windows (PowerShell) só roda onde houver `pwsh`; aqui se confere o que fica no disco.
+recebeu. O do Windows (PowerShell) roda de verdade em `test_abridor_ps1.py`, onde houver `pwsh`; aqui se confere o que fica no disco.
 
 O que o Chrome e o Opera fazem com o host registrado (achar, chamar, abrir o Anki sem pergunta) só o
 dono vê, no ensaio dele (`complemento/LEIA-ME.md`, riscos 1 e 2 do #138).
@@ -357,35 +357,6 @@ class NoWindows(unittest.TestCase):
             ).escrever("Usuário 1")
         self.assertFalse(os.path.exists(self.pasta))
         self.assertEqual(self.registro.valores, {})
-
-
-@unittest.skipUnless(shutil.which("pwsh"), "o .ps1 só roda onde houver PowerShell (pwsh)")
-class OPs1NoPowerShell(unittest.TestCase):
-    """Onde há `pwsh`, o `.ps1` responde os exemplos do contrato (o Windows roda o PowerShell 5.1)."""
-
-    def test_o_ps1_responde_cada_exemplo_de_conferir_do_contrato(self):
-        with tempfile.TemporaryDirectory() as raiz:
-            anki = os.path.join(raiz, "anki.exe")
-            pasta = os.path.join(raiz, "abridor")
-            abridor.Abridor(
-                sistema="windows", pasta=pasta, programa=anki, onde_registrar={}, registro=RegistroDeMentira(),
-            ).escrever("Usuário 1")
-            for exemplo in DO_ABRIDOR["exemplos"]:
-                if exemplo["mensagem"] == {"acao": "abrir"}:
-                    continue  # abrir rodaria um programa: só o ensaio do dono
-                with self.subTest(exemplo["nome"]):
-                    if exemplo["contexto"]["anki"] in ANKI_NO_LUGAR:
-                        open(anki, "wb").close()
-                    elif os.path.exists(anki):
-                        os.remove(anki)
-                    corpo = json.dumps(exemplo["mensagem"], separators=(",", ":")).encode("utf-8")
-                    saida = subprocess.run(
-                        ["pwsh", "-NoProfile", "-NonInteractive", "-File", os.path.join(pasta, "abrir-o-anki.ps1")],
-                        input=struct.pack("<I", len(corpo)) + corpo, stdout=subprocess.PIPE, timeout=60, check=True,
-                    ).stdout
-                    tamanho, = struct.unpack_from("<I", saida, 0)
-                    self.assertEqual(len(saida), 4 + tamanho)
-                    self.assertEqual(json.loads(saida[4:].decode("utf-8")), exemplo["resposta"])
 
 
 class DesteComputador(unittest.TestCase):
