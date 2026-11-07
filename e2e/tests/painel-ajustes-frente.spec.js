@@ -129,6 +129,7 @@ test('a Produção só se escolhe no nível Iniciante: nos outros fica desabilit
   await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'avancado', versao: 1 }, ru: { versao: 0 } } });
 });
 
+// Exceção de teste: sem-estado-guardado — só abre a aba do russo e mostra o que já estava gravado; nada é salvo nem pedido.
 test('a Produção já salva num nível sem tradução continua escolhida e desabilitada, sem quebrar a tela', async ({ page, extensao }) => {
   await abrirAjustes(page, extensao, { gravado: { [CHAVE]: { ...AJUSTES, ru: { ...AJUSTES.ru, nivel: 'intermediario', frente: 'producao', versao: 3 } } } });
   await cabeca(page, 'Russo').click();
