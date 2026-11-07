@@ -61,7 +61,7 @@ python3.9 complemento/test_servidor_erro_ao_atender.py  # os erros de um pedido
 python3.9 complemento/test_inicio.py  # a pasta de dados, a Conexão no ar
 python3.9 complemento/test_no_anki.py  # o adaptador do Anki (mw de mentira)
 python3.9 complemento/test_colecao_em_memoria.py  # o adaptador em memória e o contrato com o do Anki
-python3.9 complemento/test_pacote.py  # o .ankiaddon
+python3.9 complemento/test_pacote.py  # o .ankiaddon e a VERSAO
 python3.9 complemento/test_item_de_login.py  # o item de login, numa pasta temporária
 python3.9 complemento/test_abridor.py  # o abridor escrito e registrado; roda o script do Mac
 python3.9 complemento/test_conserto.py  # o consertar (+ `test_conserto_*.py`)

@@ -23,6 +23,7 @@ const REGRAS = [
   require('./indice-de-arquivos'),
   require('./aprovacao-visual'),
   require('./relogio-fora-da-fixture'),
+  require('./versoes-publicadas'),
 ];
 
 const ARQUIVO_DA_LINHA_DE_BASE = 'scripts/regras/linha-de-base.json';
@@ -103,8 +104,8 @@ function excecaoNaLinha(texto, hoje) {
   return { regra: m[1], valida: true };
 }
 
-/** Os achados de todas as regras: { [regra]: { [arquivo]: [{ linha, detalhe }] } } e os erros de exceção. */
-function coletar(raiz, hoje) {
+/** Os achados de todas as regras: { [regra]: { [arquivo]: [{ linha, detalhe }] } } e os erros de exceção. `base` é o commit que as regras que comparam com a branch-alvo leem (ou null). */
+function coletar(raiz, hoje, base = null) {
   const arquivos = arquivosDoRepositorio(raiz);
   const porRegra = {};
   const errosDeExcecao = [];
@@ -122,7 +123,7 @@ function coletar(raiz, hoje) {
   for (const regra of REGRAS) {
     porRegra[regra.id] = {};
     for (const arquivo of arquivos.filter(regra.seAplica)) {
-      const achados = regra.verificar(arquivo, ler(arquivo), raiz).filter(achado => {
+      const achados = regra.verificar(arquivo, ler(arquivo), raiz, base).filter(achado => {
         acusadas.add(`${regra.id} ${arquivo}:${achado.linha}`);
         const excecao = excecaoNaLinha(comentariosDe(arquivo).get(achado.linha) || '', hoje);
         return !(excecao && excecao.regra === regra.id && excecao.valida);
@@ -213,7 +214,7 @@ function main(argv) {
   const hoje = new Date().toISOString().slice(0, 10);
   const caminhoDaBase = path.join(raiz, ARQUIVO_DA_LINHA_DE_BASE);
 
-  const { porRegra, errosDeExcecao } = coletar(raiz, hoje);
+  const { porRegra, errosDeExcecao } = coletar(raiz, hoje, base && base.teto);
   const agora = contagens(porRegra);
 
   if (opcoes.criar) {

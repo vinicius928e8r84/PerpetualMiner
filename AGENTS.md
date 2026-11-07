@@ -45,7 +45,7 @@ The Conexão keeps its data in the add-on's `user_files` (`complemento/pasta_de_
 | 6 True status | review |
 | 7 Storage writes | `gravacao-de-frases` (new write sites); a stale copy in an existing one: review |
 | 8 e2e tests | `e2e-funcao-interna` (unnamed exceptions; direct internals only, the stored state is the next rule); `e2e-estado-final` (a test that acts reads what was stored after acting and compares it); `relogio-fora-da-fixture` (the test clock is set up only by the `relogioParado` fixture); screen check per variant: review |
-| 9 Python tests | `teste-le-codigo` |
+| 9 Python tests | `teste-le-codigo`; `versoes-publicadas` (a `VERSAO` already in `complemento/versoes.json` on the base keeps its hash: a change of the add-on is a new key) |
 | 12 Every test runs in CI | `testes-no-portao` |
 | 13 The contract has every request and answer | `contrato-fechado` (a `fetch` straight to the Conexão); `test_contrato_fechado.js` and the end of `complemento/test_servidor.py` (an example for each request the extension builds and each status the server answers) |
 | 10 Visual references | review; `aprovacao-visual` (a reference PNG outside a `test.fixme` needs its entry in `e2e/aprovados-visuais.json`) |
