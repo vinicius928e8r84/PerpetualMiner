@@ -224,6 +224,32 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
             self.assertNotIn("exerts himself", "\n".join(logged.output))
             self.assertNotIn("toil", "\n".join(logged.output))
 
+    def test_o_cartao_principal_e_o_gerado_usam_o_mesmo_prompt_com_mensagens_diferentes(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "Output").mkdir()
+            (root / "log").mkdir()
+            _write_prompts(root)
+            entry = MiningEntry(keywords=["exerts himself", "toil"], phrase="He exerts himself on brands of his own, if at all.")
+            calls, original_call_model = {}, generate_cards._call_model
+
+            def fake_call_model(openai_base, api_key, system_prompt, user_message, model, log_dir, keyword):
+                calls.setdefault(keyword, (system_prompt, user_message))
+                return GOOD_CARD
+
+            generate_cards._call_model = fake_call_model
+            try:
+                generate_cards.run([entry], _config(root))
+            finally:
+                generate_cards._call_model = original_call_model
+
+            (main_system, main_message), (generated_system, generated_message) = calls["exerts himself"], calls["toil"]
+            self.assertEqual(main_system, "en prompt")
+            self.assertEqual(generated_system, main_system)
+            self.assertNotIn("SECONDARY keyword", main_message)
+            self.assertIn("SECONDARY keyword", generated_message)
+            self.assertNotEqual(generated_message, main_message)
+
 
 CARTAO_INICIANTE = """Anki Card
 Source Context: Série - The Office - S01E01
