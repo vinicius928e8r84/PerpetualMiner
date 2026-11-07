@@ -68,7 +68,8 @@ ARQUIVOS_DO_MOTOR = (
 
 
 def _entra_no_pacote(relativo):
-    return not any(parte.startswith(FORA_DO_PACOTE) for parte in relativo.split(os.sep))
+    # Nome que começa com ponto é de máquina (`.DS_Store` do Finder), não do complemento: não entra, nem muda o hash.
+    return not any(parte.startswith(".") or parte.startswith(FORA_DO_PACOTE) for parte in relativo.split(os.sep))
 
 
 def arquivos_do_pacote():

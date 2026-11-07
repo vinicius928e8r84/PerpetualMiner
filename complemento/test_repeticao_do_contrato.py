@@ -1,4 +1,4 @@
-"""A conferência de “o mesmo POST de novo” do contrato (`confere_a_repeticao`, de `test_servidor.py`): o que ela aceita e o que ela acusa.
+"""A conferência de “o mesmo POST de novo” do contrato (`confere_a_repeticao`, de `test_estado_guardado.py`): o que ela aceita e o que ela acusa.
 
     python3.9 complemento/test_repeticao_do_contrato.py
 """
@@ -9,7 +9,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_servidor import confere_a_repeticao  # noqa: E402
+from complemento.test_estado_guardado import confere_a_repeticao  # noqa: E402
 
 
 class RepeticaoDoContrato(unittest.TestCase):

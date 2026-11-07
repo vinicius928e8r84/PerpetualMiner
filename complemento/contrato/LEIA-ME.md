@@ -152,7 +152,7 @@ sem responder, é `503` com o `error` da rota e o `detail` (`collection_not_open
    (`ROTAS` em `servidor.py`).
 3. Rode `cd e2e && npx playwright test contrato-da-conexao`: ele falha até o fake responder.
    O fake responde pelo exemplo (`respostaDoContrato` em `e2e/fakes/anki.js`); só estados novos
-   (um `contexto` novo, uma fila) pedem código no fake.
+   (um `contexto` novo, uma fila) pedem código no fake; `node test_fake_anki.js` o confere.
 
 ## As rotas do Envio (#142)
 

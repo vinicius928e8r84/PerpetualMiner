@@ -1,0 +1,29 @@
+{
+  "exemplos": [
+    {
+      "nome": "Legado de uma chave guardada sem conta não vira de nenhuma conta",
+      "daExtensao": true,
+      "contexto": {
+        "chaveNaConexao": "9f3a",
+        "contaNaConexao": ""
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/openai/legado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "chave": "sk-proj-guardada-antes-9f3a",
+          "conta": "uid-teste",
+          "em": 100,
+          "versao": 0
+        }
+      },
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "legacy_key_mismatch"
+        }
+      }
+    }
+  ]
+}

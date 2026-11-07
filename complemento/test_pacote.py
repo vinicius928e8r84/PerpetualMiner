@@ -254,6 +254,19 @@ class VersaoDoComplemento(unittest.TestCase):
             with zipfile.ZipFile(empacotar.empacotar(os.path.join(pasta, "a.ankiaddon"))) as pacote:
                 self.assertNotIn("versoes.json", pacote.namelist())
 
+    def test_arquivo_oculto_solto_na_pasta_nao_entra_no_pacote_nem_muda_o_hash(self):
+        # O `.DS_Store` do Finder aparece na pasta do dono sem estar no git: mudaria o pacote e o hash e a falha pediria para subir a VERSAO.
+        with tempfile.TemporaryDirectory() as pasta:
+            copia = copiar_o_complemento(pasta)
+            script = "from complemento import empacotar; print(empacotar.hash_das_fontes()); print(empacotar.arquivos_do_pacote())"
+            antes = subprocess.run([sys.executable, "-c", script], cwd=pasta, capture_output=True, text=True, check=True).stdout
+            os.makedirs(os.path.join(copia, "contrato_novo"))
+            for oculto in (".DS_Store", os.path.join("contrato_novo", ".DS_Store"), ".vscode.json"):
+                with open(os.path.join(copia, oculto), "wb") as arquivo:
+                    arquivo.write(b"\0\0\0\1Bud1")
+            depois = subprocess.run([sys.executable, "-c", script], cwd=pasta, capture_output=True, text=True, check=True).stdout
+        self.assertEqual(antes, depois)
+
     def test_o_checkout_do_complemento_e_sempre_lf_para_o_hash_nao_mudar_no_windows(self):
         if shutil.which("git") is None or not os.path.exists(os.path.join(empacotar.PASTA, "..", ".git")):
             self.skipTest("sem git ou fora de um checkout")
