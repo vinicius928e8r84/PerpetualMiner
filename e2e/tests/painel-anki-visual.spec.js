@@ -19,8 +19,8 @@ const { test, expect, comOSistema, SISTEMAS } = require('../fixtures');
 // #147: as telas do passo 3, Abrir o Anki sozinho (ONB-17), também são `test.fixme`.
 // Aprovando: tirar o `fixme` e `npx playwright test painel-anki-visual --update-snapshots -g "passo 3"`.
 //
-// #146: a lista passou a ter 4 passos (Ter o Anki, ONB-18, é o 1º; o de baixar ganhou a animação do aviso, ONB-19). As quatro telas do #146 (o card do passo 1, Não tenho no Mac, a animação do aviso e os
-// quadros parados com menos movimento) foram aprovadas pelo dono (#236) e são referência. As outras “nunca conectada”
+// #146: a lista passou a ter 4 passos (Ter o Anki, ONB-18, é o 1º; o de baixar ganhou a animação do aviso, ONB-19). As telas do #146 (card do passo 1, a animação do aviso e os quadros parados) foram
+// aprovadas pelo dono (#236); Não tenho no Mac ganhou o desenho do #238 e espera o dono. As outras “nunca conectada”
 // (tema claro, conectando, Pronto, Detalhes, dois minutos, janela estreita) seguem propostas do #145.
 
 const AGORA = new Date('2026-09-18T12:00:00');
@@ -146,7 +146,7 @@ test.fixme('nunca conectada, na primeira resposta: o momento Pronto, com as abas
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-pronto.png');
 });
 
-test('nunca conectada: o passo Ter o Anki com a resposta Não tenho, no Mac', async ({ page, extensao, fakes }) => {
+test.fixme('nunca conectada: o passo Ter o Anki com a resposta Não tenho, no Mac', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirAnki(page, extensao, { jaConectou: false });
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();

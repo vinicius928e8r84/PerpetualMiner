@@ -49,3 +49,9 @@ README não pode crescer (o limite de tamanho dos arquivos). `scripts/voz-da-spe
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
 | BRG-51 | Custos: correção das frases **(novo)** | status | (não existe) | Correção das frases | O custo da IA corrigindo o que a pessoa escreveu na Criação, à parte da Criação de cartões (BRG-08): uma linha na faixa de resumo e no detalhe do Envio, só acima de zero, e o total soma tudo (#9, BRG-29). |
+
+### Boas-vindas e Conexão com o Anki: o desenho do Mac (#238)
+
+| ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
+|---|---|---|---|---|---|
+| ONB-25 | O desenho de arrastar o Anki para Aplicativos, no passo do Mac **(novo)** | status | (não existe) | Anki · Aplicativos | Dentro do passo Ter o Anki ([ONB-18](README.md)), só no Mac, depois do link Baixar o Anki e acima da frase “Arraste o Anki para a pasta Aplicativos e abra-o de lá.”: dois quadros alternados — o ícone do Anki ao lado da pasta Aplicativos e o ícone já dentro dela. Os nomes são os que o Mac mostra na janela do instalador. O desenho é só imagem; a frase do ONB-18 é o que o leitor de tela lê. Com movimento reduzido, ficam parados, lado a lado. |
