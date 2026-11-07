@@ -88,7 +88,7 @@ test('escolher a Lacuna muda o texto e só vai à Conexão e ao storage em Salva
 });
 
 for (const [nome, id, texto] of [
-  ['Produção', 'producao', 'A frase em português na frente: escreva no idioma e o Anki compara'],
+  ['Produção', 'producao', 'A frase em português na frente: escreva no idioma e o Anki compara. Só no nível Iniciante, o único que traz a tradução'],
   ['Ditado', 'ditado', 'Só o botão de tocar e um campo: escreva o que ouviu e o Anki mostra o que errou'],
 ]) {
   test(`escolher ${nome} mostra o texto dele e só vai à Conexão e ao storage em Salvar ajustes`, async ({ page, extensao, fakes }) => {
@@ -106,6 +106,38 @@ for (const [nome, id, texto] of [
     await estadoFinalEm('a frente do inglês na Conexão', () => fakes.anki.frente.guardadas(), { en: id });
   });
 }
+
+test('a Produção só se escolhe no nível Iniciante: nos outros fica desabilitada, e trocar o nível com ela escolhida volta à Frase com áudio', async ({ page, extensao, fakes }) => {
+  await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });
+  const nivel = nome => formulario(page).getByRole('radiogroup', { name: 'Estilo do cartão' }).locator('label', { hasText: nome });
+
+  await expect(opcao(page, 'Produção')).toBeEnabled();
+  await nivel('Intermediário').click();
+  await expect(opcao(page, 'Produção')).toBeDisabled();
+  await expect(opcao(page, 'Ditado')).toBeEnabled();
+  await nivel('Iniciante').click();
+  await escolher(page, 'Produção');
+  await expect(opcao(page, 'Produção')).toBeChecked();
+  await nivel('Avançado').click();
+  await expect(opcao(page, 'Produção')).toBeDisabled();
+  await expect(opcao(page, 'Frase com áudio')).toBeChecked();
+  await expect(frente(page)).toHaveAccessibleDescription('A frase e o áudio na frente');
+
+  await salvar(page).click();
+  await expect(situacao(page)).toHaveText('Salvo');
+  expect(pedidosDaFrente(fakes)).toEqual([]);
+  await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'avancado', versao: 1 }, ru: { versao: 0 } } });
+});
+
+// Exceção de teste: sem-estado-guardado — só abre a aba do russo e mostra o que já estava gravado; nada é salvo nem pedido.
+test('a Produção já salva num nível sem tradução continua escolhida e desabilitada, sem quebrar a tela', async ({ page, extensao }) => {
+  await abrirAjustes(page, extensao, { gravado: { [CHAVE]: { ...AJUSTES, ru: { ...AJUSTES.ru, nivel: 'intermediario', frente: 'producao', versao: 3 } } } });
+  await cabeca(page, 'Russo').click();
+
+  await expect(opcao(page, 'Produção', 'Russo')).toBeChecked();
+  await expect(opcao(page, 'Produção', 'Russo')).toBeDisabled();
+  await expect(frente(page, 'Russo')).toHaveAccessibleDescription(/Só no nível Iniciante/);
+});
 
 test('cada idioma tem a sua frente: Lacuna no inglês e Ouvir primeiro no russo, cada uma pedida uma vez', async ({ page, extensao, fakes }) => {
   await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });
