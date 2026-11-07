@@ -9,14 +9,24 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+const { ErroDeEntrada, lerConfiguracaoDoTexto } = require('./entrada-do-gancho.js');
+
 const ARQUIVO_DA_CONFIGURACAO = path.join(__dirname, 'limite-de-tokens.json');
 const CAMINHO_NO_REPOSITORIO = 'scripts/ganchos/limite-de-tokens.json';
 
+/** A cópia da configuração ao lado do gancho; ilegível ou inválida lança ErroDeEntrada (barra o commit). */
 function lerConfiguracao(arquivo = ARQUIVO_DA_CONFIGURACAO) {
-  return JSON.parse(fs.readFileSync(arquivo, 'utf8'));
+  const onde = `scripts/ganchos/${path.basename(arquivo)}`;
+  let texto;
+  try {
+    texto = fs.readFileSync(arquivo, 'utf8');
+  } catch (erro) {
+    throw new ErroDeEntrada(onde, `não foi possível ler o arquivo (${erro.code || erro.message})`);
+  }
+  return lerConfiguracaoDoTexto(texto, onde);
 }
 
-/** A configuração de uma versão do git (`:caminho` = índice, `HEAD:caminho`); `null` se o arquivo não existe nela. */
+/** A configuração de uma versão do git (`:caminho` = índice, `HEAD:caminho`); `null` se o arquivo não existe nela; inválida lança ErroDeEntrada. */
 function lerConfiguracaoDaVersao(raiz, versao) {
   let texto;
   try {
@@ -24,7 +34,7 @@ function lerConfiguracaoDaVersao(raiz, versao) {
   } catch {
     return null;
   }
-  return JSON.parse(texto);
+  return lerConfiguracaoDoTexto(texto, `${CAMINHO_NO_REPOSITORIO} (${versao === '' ? 'no índice' : `em ${versao}`})`);
 }
 
 const globsDe = config => (Array.isArray(config.ignorar) ? config.ignorar : []).map(regra => regra.glob);
@@ -57,7 +67,8 @@ function carregarConfiguracao(raiz, padrao) {
   try {
     doIndice = lerConfiguracaoDaVersao(raiz, '');
   } catch (erro) {
-    return { config: padrao, problemas: [`o arquivo preparado não é um JSON válido (${erro.message})`] };
+    if (!(erro instanceof ErroDeEntrada)) throw erro;
+    return { config: padrao, problemas: [`o arquivo preparado: ${erro.detalhe}`] };
   }
   if (!doIndice) return { config: padrao, problemas: [] };
   let doHead = null;
