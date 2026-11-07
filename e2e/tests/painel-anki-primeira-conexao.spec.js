@@ -535,14 +535,13 @@ test('Baixar a Conexão com o Anki entrega o arquivo que vai dentro do pacote da
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
-test('o Detalhes “O arquivo não abriu?” diz que o código do AnkiWeb vem em breve, sem inventar um número', async ({ page, extensao }) => {
+test('o Detalhes “O arquivo não abriu?” mostra o código real da página do AnkiWeb', async ({ page, extensao }) => {
   await abrir(page, extensao);
   await expect(card(page)).toBeVisible();
   await itemDaLista(page, 'Pôr a Conexão no Anki').click();
 
   await card(page).getByText('O arquivo não abriu?', { exact: true }).click();
-  await expect(card(page).locator('pre')).toHaveText('O código para colar em Ferramentas › Complementos › Obter complementos vem em breve.');
-  await expect(card(page).locator('pre')).not.toContainText(/\d/);
+  await expect(card(page).locator('pre')).toHaveText('No Anki, abra Ferramentas › Complementos › Obter complementos, cole o código 1108882947 e reinicie o Anki.');
 
   // O Detalhes é do passo do arquivo: no passo de reiniciar, ele sai.
   await card(page).getByRole('button', { name: 'Continuar' }).click();
