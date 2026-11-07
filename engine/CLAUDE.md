@@ -57,7 +57,7 @@ kw1 | kw2 | kw3 : phrase [Context: Source - Title - Detail]
 ```
 - `|` → one card per keyword
 - `keywords[0]`: original phrase (`en_card` prompt)
-- `keywords[1..N]`: invented sentence (`en_card` + context)
+- `keywords[1..N]`: invented sentence (same `en_card` prompt; `_build_message` adds the secondary-keyword rules)
 - `[Context: ...]` optional, parsed into `entry.context_source` / `entry.context_str`
 
 ## Card Format & Filenames
