@@ -7,7 +7,7 @@
 // nenhum atraso que o teste ainda pode sofrer alcança a pausa. Daí em diante o tempo só anda por `avancar`.
 //
 // Este arquivo é o único dono de `clock.install`/`pauseAt` nos testes: a regra `relogio-fora-da-fixture`
-// (scripts/regras/) recusa a montagem do relógio em qualquer outro arquivo de e2e/. Um teste usa a fixture
+// (scripts/regras/) recusa a montagem do relógio em qualquer outro arquivo de e2e/, também por apelido, desestruturação, colchetes ou `montarRelogio`. Um teste usa a fixture
 // `relogioParado` de e2e/fixtures.js; esperas de rede usam evento ou promessa (`waitForResponse`), nunca sono real.
 
 /** Menor margem entre a montagem e a pausa: dez vezes o prazo padrão de um teste (playwright.config.js). */
@@ -20,7 +20,7 @@ function margemDoTeste(prazo) {
 
 /**
  * A montagem em dois comandos: o relógio nasce em `desde` e, com `ate`, para ali. Existe para a fixture e para a
- * prova de e2e/tests/relogio-parado.spec.js, que monta as preparações antigas (o relógio que segue correndo, a
+ * prova de e2e/tests/relogio-parado.spec.js, o único arquivo que a chama (a regra recusa em qualquer outro), que monta as preparações antigas (o relógio que segue correndo, a
  * pausa de um segundo à frente) e as vê falhar; um teste não a chama, usa `relogioParado`.
  */
 async function montarRelogio(page, { desde, ate }) {
