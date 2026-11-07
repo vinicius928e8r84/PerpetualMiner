@@ -46,7 +46,7 @@ jobs:
       # A autoria: todo commit do PR (base..ponta da branch) tem como autor e committer o e-mail do
       # dono; o committer GitHub (noreply@github.com) passa em qualquer commit (scripts/ci/autoria.js).
       - name: Autoria dos commits
-        if: github.event_name == 'pull_request'
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
         run: node scripts/ci/autoria.js "origin/$BASE" "$HEAD"
         env:
           BASE: ${{ github.base_ref }}

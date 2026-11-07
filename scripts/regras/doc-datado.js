@@ -22,8 +22,12 @@ const seAplica = arquivo => arquivo.endsWith('.md') && (
 );
 
 const DE_ESTA_PR = /\b(?:nest[ae]|dest[ae]|ness[ae]|dess[ae]|est[ae]|ess[ae])\s+(?:PR|rodada)\b|\bthis\s+PR\b/gi;
-// Um número, no máximo uma palavra (e2e, Playwright, Node) e então "testes", "tests" ou "specs".
-const CONTAGEM_DE_TESTES = /(?<![=\w.,])\d[\d.,]*\+?\s+(?:[\w-]+\s+)?(?:tests?|testes|specs?)\b/gi;
+// Um inteiro (com milhar "1.200" ou "1,200"; "3.9" é versão, não conta), no máximo uma palavra (e2e,
+// Playwright, Node) e então "testes", "tests" ou "specs". "12 Every test" é o número de uma regra
+// e a palavra "every": um determinante no lugar da palavra não é contagem.
+const DETERMINANTE = 'every|each|all|any|no|the|this|that|these|those|such|a|an|one|cada|todo|todos|todas|qualquer';
+const CONTAGEM_DE_TESTES = new RegExp(
+  String.raw`(?<![=\w.,])\d+(?:[.,]\d{3})*\+?(?![.,]?\d)\s+(?:(?!(?:${DETERMINANTE})\b)[\w-]+\s+)?(?:tests?|testes|specs?)\b`, 'gi');
 
 function verificar(arquivo, fonte) {
   const achados = [];

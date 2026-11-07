@@ -138,8 +138,8 @@ assert.match(mensagem(commitsForaDaRegra([linha('abcdef0123', 'agente@exemplo.co
     env: { ...process.env, GIT_AUTHOR_NAME: 'n', GIT_AUTHOR_EMAIL: autor, GIT_COMMITTER_NAME: 'n', GIT_COMMITTER_EMAIL: autor },
   });
   const rodarAutoria = () => spawnSync('node', [path.join(__dirname, 'autoria.js'), 'main', 'HEAD'], { cwd: repoDeAutoria, encoding: 'utf8' });
-  const commitar = (autor, assunto) => {
-    fs.writeFileSync(path.join(repoDeAutoria, 'arquivo.txt'), `${assunto}\n`);
+  const commitar = (autor, assunto, arquivo = 'arquivo.txt') => {
+    fs.writeFileSync(path.join(repoDeAutoria, arquivo), `${assunto}\n`);
     gitA(autor, 'add', '-A');
     gitA(autor, 'commit', '-q', '-m', assunto);
   };
@@ -158,7 +158,35 @@ assert.match(mensagem(commitsForaDaRegra([linha('abcdef0123', 'agente@exemplo.co
       GIT_CONFIG_KEY_0: 'user.email', GIT_CONFIG_VALUE_0: EMAIL_DO_DONO, GIT_CONFIG_KEY_1: 'user.name', GIT_CONFIG_VALUE_1: 'n' },
   });
   assert.strictEqual(rodarAutoria().status, 0, 'o comando da mensagem refaz a autoria');
+  // Com um merge no meio: o comando refaz a autoria dos dois lados e do próprio merge.
+  gitA(EMAIL_DO_DONO, 'checkout', '-q', '-b', 'lateral', 'main');
+  commitar('agente@exemplo.com', 'lateral do agente', 'lateral.txt');
+  gitA(EMAIL_DO_DONO, 'checkout', '-q', 'ramo');
+  gitA('agente@exemplo.com', 'merge', '-q', '--no-ff', '--no-edit', 'lateral');
+  const comMerge = rodarAutoria();
+  assert.strictEqual(comMerge.status, 1, 'o merge e o lado de outro e-mail barram');
+  assert(comMerge.stdout.includes('lateral do agente') && /Merge branch/.test(comMerge.stdout), 'a mensagem nomeia o commit do lado e o merge');
+  execFileSync('git', ['rebase', '-q', '--rebase-merges', '--exec', 'git commit --amend --no-edit --reset-author', 'main'], {
+    cwd: repoDeAutoria,
+    env: { ...process.env, GIT_CONFIG_COUNT: '2',
+      GIT_CONFIG_KEY_0: 'user.email', GIT_CONFIG_VALUE_0: EMAIL_DO_DONO, GIT_CONFIG_KEY_1: 'user.name', GIT_CONFIG_VALUE_1: 'n' },
+  });
+  assert.strictEqual(rodarAutoria().status, 0, 'o comando da mensagem refaz a autoria também com merge');
+  assert(gitA(EMAIL_DO_DONO, 'log', '--merges', '--format=%H', 'main..HEAD').trim(), 'o merge continua no histórico');
+
+  // Uma ponta que o clone não tem (checkout raso): uma mensagem que manda conferir o fetch-depth, não o stack do Node.
+  const semPonta = spawnSync('node', [path.join(__dirname, 'autoria.js'), 'origin/main', 'HEAD'], { cwd: repoDeAutoria, encoding: 'utf8' });
+  assert.strictEqual(semPonta.status, 2, 'ponta ausente é erro de uso');
+  assert(/origin\/main/.test(semPonta.stdout) && /fetch-depth/.test(semPonta.stdout), 'a mensagem nomeia a ponta e o fetch-depth');
+  assert(!/at |node:internal/.test(semPonta.stderr), 'sem stack do Node');
   fs.rmSync(repoDeAutoria, { recursive: true, force: true });
+}
+
+// O passo de autoria roda mesmo quando um passo anterior falha, para o erro dela aparecer na mesma rodada.
+{
+  const regrasYml = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'regras.yml'), 'utf8');
+  const passo = regrasYml.split('- name: Autoria dos commits')[1].split('run:')[0];
+  assert(/if: \$\{\{ !cancelled\(\) && /.test(passo), 'o passo de autoria tem !cancelled()');
 }
 
 // Os checks obrigatórios: cada nome da lista sai de algum workflow. O erro real é o do #262/#263, em que o
