@@ -200,7 +200,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.4.9",
+          "versao": "0.4.10",
           "perfil": "Usuário 1"
         }
       }
@@ -220,7 +220,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.4.9",
+          "versao": "0.4.10",
           "perfil": null
         }
       }
@@ -259,7 +259,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.4.9",
+          "versao": "0.4.10",
           "perfil": "Usuário 1"
         }
       }
@@ -344,24 +344,6 @@
       },
       "pedido": {
         "metodo": "GET",
-        "caminho": "/nao-existe",
-        "origem": null
-      },
-      "resposta": {
-        "status": 403,
-        "json": {
-          "error": "origin_not_allowed"
-        }
-      }
-    },
-    {
-      "nome": "POST sem origem é recusado",
-      "daExtensao": false,
-      "contexto": {
-        "perfil": "Usuário 1"
-      },
-      "pedido": {
-        "metodo": "POST",
         "caminho": "/nao-existe",
         "origem": null
       },

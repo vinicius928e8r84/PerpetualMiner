@@ -1,0 +1,22 @@
+{
+  "exemplos": [
+    {
+      "nome": "POST sem origem é recusado",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Usuário 1"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/nao-existe",
+        "origem": null
+      },
+      "resposta": {
+        "status": 403,
+        "json": {
+          "error": "origin_not_allowed"
+        }
+      }
+    }
+  ]
+}
