@@ -20,7 +20,9 @@ def _strip_html(text: str) -> str:
     text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
     text = re.sub(r"<[^>]+>", " ", text)
     text = re.sub(r"\[sound:[^\]]+\]", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"&nbsp;", " ", text, flags=re.IGNORECASE)
     text = re.sub(r"\s+", " ", text)
+    text = re.sub(r" +([.,!?;:…»)])", r"\1", text)
     return text.strip()
 
 

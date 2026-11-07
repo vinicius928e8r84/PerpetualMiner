@@ -178,3 +178,23 @@ class BuildBackTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NormalizeFrontTextTests(unittest.TestCase):
+    def test_trecho_destacado_antes_da_pontuacao_casa_com_a_nota_antiga_simples(self):
+        novo = (
+            "<span>Some complete a sale</span>, some <b>forfeit</b> "
+            "<span>the impression gained</span>."
+        )
+        antigo = "Some complete a sale, some forfeit the impression gained."
+
+        self.assertEqual(
+            send_to_anki._normalize_front_text(novo, "en"),
+            send_to_anki._normalize_front_text(antigo, "en"),
+        )
+
+    def test_espaco_inseparavel_vira_espaco_comum(self):
+        self.assertEqual(
+            send_to_anki._normalize_front_text("a&nbsp;b\u00a0c", "en"),
+            "a b c",
+        )
