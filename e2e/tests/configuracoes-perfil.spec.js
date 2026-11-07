@@ -82,6 +82,56 @@ test('quando a Conexão não troca o perfil a tela diz e continua com o marcado 
   expect(fakes.anki.perfilMarcado()).toBe('Ana');
 });
 
+test.describe('quando a resposta da escolha do perfil não chega', () => {
+  /** O próximo `POST /anki/profile` perde a resposta (a conexão cai): com `aplicada` a Conexão chegou a marcar o perfil antes, sem `aplicada` não marcou. */
+  async function perderAResposta(context, fakes, { aplicada }) {
+    await context.route('**/anki/profile', async route => {
+      await context.unroute('**/anki/profile');
+      if (aplicada) await fakes.anki.tratar({ request: () => route.request(), fulfill: async () => {} });
+      await route.abort('connectionreset');
+    });
+  }
+
+  test('com o perfil marcado antes de a resposta se perder, a tela relê e mostra o escolhido, sem aviso de falha', async ({ page, extensao, context, fakes }) => {
+    fakes.anki.definirPerfis(['Ana', 'Beto'], { marcado: 'Ana', aberto: 'Ana' });
+    await abrirCard(page, extensao);
+    await perderAResposta(context, fakes, { aplicada: true });
+
+    await escolha(page).selectOption('Beto');
+
+    await expect(escolha(page)).toHaveValue('Beto');
+    await expect(escolha(page)).toBeEnabled();
+    await expect(aviso(page)).toHaveCount(0);
+    expect(fakes.anki.perfilMarcado()).toBe('Beto');
+  });
+
+  test('com o perfil que não chegou a ser marcado, a tela relê e só então diz que não trocou', async ({ page, extensao, context, fakes }) => {
+    fakes.anki.definirPerfis(['Ana', 'Beto'], { marcado: 'Ana', aberto: 'Ana' });
+    await abrirCard(page, extensao);
+    await perderAResposta(context, fakes, { aplicada: false });
+
+    await escolha(page).selectOption('Beto');
+
+    await expect(aviso(page)).toContainText('Não deu para trocar o perfil. Tente de novo.');
+    await expect(escolha(page)).toHaveValue('Ana');
+    expect(fakes.anki.perfilMarcado()).toBe('Ana');
+  });
+
+  test('sem conseguir reler depois, a tela não afirma troca nem recusa', async ({ page, extensao, context, fakes }) => {
+    fakes.anki.definirPerfis(['Ana', 'Beto'], { marcado: 'Ana', aberto: 'Ana' });
+    await abrirCard(page, extensao);
+    await expect(escolha(page)).toBeVisible();
+    fakes.anki.responder('POST', '/anki/profiles', () => ({ status: 500, json: { error: 'internal_error' } }));
+    await perderAResposta(context, fakes, { aplicada: true });
+
+    await escolha(page).selectOption('Beto');
+
+    await expect(linha(page)).toHaveCount(0);
+    await expect(page.getByText('Não deu para trocar o perfil')).toHaveCount(0);
+    expect(fakes.anki.perfilMarcado()).toBe('Beto');
+  });
+});
+
 test('sem a Conexão ligada a linha não aparece', async ({ page, extensao, fakes }) => {
   fakes.anki.definirPerfis(['Ana', 'Beto'], { marcado: 'Ana', aberto: 'Ana' });
   fakes.anki.desligar();
