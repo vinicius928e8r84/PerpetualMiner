@@ -59,7 +59,7 @@
     "e2e/tests/minerar-foto-visual.spec.js": 15,
     "e2e/tests/overlay-visual.spec.js": 11,
     "e2e/tests/painel-anki-baralhos-visual.spec.js": 11,
-    "e2e/tests/painel-anki-visual.spec.js": 6,
+    "e2e/tests/painel-anki-visual.spec.js": 5,
     "e2e/tests/painel-envio-visual.spec.js": 4,
     "e2e/tests/painel-frases-visual.spec.js": 23,
     "e2e/tests/painel-shell-visual.spec.js": 5,
