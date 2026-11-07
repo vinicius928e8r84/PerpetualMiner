@@ -22,7 +22,7 @@
     lista: null,         // os perfis do Anki; null enquanto a Conexão não os disse
     marcado: null,
     escolhendo: false,   // um pedido de escolha no ar
-    falha: null,         // o erro da escolha que a Conexão não fez
+    falha: null,         // { nome, erro }: a escolha que a Conexão não confirmou e o erro; a leitura seguinte decide se vale
     leitura: 0,          // só a leitura mais recente vale
   };
   let partes = null;     // o conteúdo do card, montado uma vez e atualizado no lugar
@@ -129,6 +129,8 @@
     const entendida = Array.isArray(dados?.profiles) && dados.profiles.every(nome => typeof nome === 'string');
     perfis.lista = entendida ? dados.profiles : null;
     perfis.marcado = entendida && typeof dados.marked === 'string' ? dados.marked : null;
+    // Uma resposta perdida pode ter vindo depois de a Conexão marcar: o que a leitura confirmou desfaz a falha que não aconteceu.
+    if (perfis.falha && perfis.marcado === perfis.falha.nome) perfis.falha = null;
     desenhar();
   }
 
@@ -141,7 +143,7 @@
     try {
       await pedirOPerfil(raiz.PedidoAoAnki.escolherOPerfil(nome));
     } catch (erro) {
-      perfis.falha = erro;
+      perfis.falha = { nome, erro };
     }
     perfis.escolhendo = false;
     await lerOsPerfis();
@@ -175,7 +177,7 @@
     }
     if (perfis.falha) {
       avisos.push(Veio.montarAviso({
-        texto: textoDaVoz('CFG-43.falha'), detalhes: perfis.falha.message, rotuloDeFechar: textoDaVoz('PAI-34'),
+        texto: textoDaVoz('CFG-43.falha'), detalhes: perfis.falha.erro.message, rotuloDeFechar: textoDaVoz('PAI-34'),
         aoFechar: () => { perfis.falha = null; },
       }));
     }
@@ -234,7 +236,7 @@
   /** A linha do perfil é refeita só quando muda o que ela mostra, para a lista aberta não piscar a cada conferência da Conexão. */
   function desenharOPerfil() {
     const aparece = aLinhaDoPerfilAparece();
-    const assinatura = JSON.stringify(aparece ? [perfis.lista, perfis.marcado, perfis.escolhendo, perfis.falha?.message ?? null] : null);
+    const assinatura = JSON.stringify(aparece ? [perfis.lista, perfis.marcado, perfis.escolhendo, perfis.falha?.erro.message ?? null] : null);
     if (assinatura === partes.assinaturaDoPerfil) return;
     partes.assinaturaDoPerfil = assinatura;
     const tinhaFoco = partes.perfil.some(no => no.contains(document.activeElement));

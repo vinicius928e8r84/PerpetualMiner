@@ -18,7 +18,7 @@ The Cartões only enter the Anki profile that was open on the first connection (
 
 Preconditions: `doctor.sh` green. The profiles live in the Anki fake (`fakes.anki.definirPerfis(lista, { marcado, aberto })`; `perfilMarcado()` and `perfilAberto()` say what the Conexão kept; `falharAEscolhaDoPerfil()`; `moverEnvio(jobId, { stage: 'wait_anki', esperando: { reason, profile, marked } })` puts the Envio in the waiting state). It is the extension against the contract (`complemento/contrato/exemplos-do-perfil.json`), **not** a real Anki closing and opening profiles.
 
-- **The row, picking, gone (`perfil-linha`, `perfil-escolher`, `perfil-sumiu`).** `drive.sh perfil configuracoes-perfil.spec`. Observable: the combobox `Perfil do Anki`, the aviso text, the request bodies (`{"profile":"Beto"}`) and `fakes.anki.perfilMarcado()`.
+- **The row, picking, gone (`perfil-linha`, `perfil-escolher`, `perfil-sumiu`).** `drive.sh perfil configuracoes-perfil.spec`. Observable: the combobox `Perfil do Anki`, the aviso text, the request bodies (`{"profile":"Beto"}`) and `fakes.anki.perfilMarcado()`. A lost answer (`context.route` aborting `POST /anki/profile` in `configuracoes-perfil.spec.js`) shows the re-read profile and no failure notice when the Conexão did mark it.
 - **The waiting card (`perfil-espera`, `perfil-envio-sumiu`).** `drive.sh perfil-envio painel-envio-perfil.spec`. Observable: the card text, the `Abrir Ana` button, the `POST /anki/profile/open` request and `fakes.anki.perfilAberto()`.
 - **The add-on side.** `python3.9 complemento/test_perfil_fixo.py` (the real server, in-memory collection) and `test_no_anki_perfil.py` (the order of Anki calls: `pm.load`, `onOpenProfile`, `unloadProfile`).
 
