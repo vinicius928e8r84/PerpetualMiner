@@ -14,7 +14,7 @@
 | Fotos | Cartão iniciante, Cartão de russo e o painel (Conexão com o Anki). Tire-as do Anki/painel reais, com frases de exemplo (nada pessoal). |
 | Arquivo | `conexao/perpetualminer.ankiaddon` |
 
-## Passo do dono (não é feito por agente)
+## Passo do dono (não é feito por agente; feito: o código é 1108882947)
 
 1. Suba `conexao/perpetualminer.ankiaddon` com a conta do dono. O AnkiWeb devolve o **código** (número) da página.
 2. No repositório, troque o `package` de `complemento/manifest.json` e o `codigo` de `lib/ankiweb.js` (`{ codigo: '<número>' }`) por esse número,
@@ -37,7 +37,7 @@ com a atualização automática do Anki desligada (`update_enabled`). **Está de
   a Conexão não consulta, não instala e desfaz a marca, e o diálogo normal do Anki volta (nunca pior que isso).
 - **O ensaio do dono** (com a Conexão instalada pelo AnkiWeb): ligar a chave, subir uma versão nova no AnkiWeb, abrir o Anki e conferir que nenhum diálogo de atualização aparece,
   que a versão nova entra e vale na abertura seguinte, e que o botão Reiniciar o Anki do Painel fecha e abre o Anki; com um Anki que mudou as funções internas, que o diálogo normal volta.
-- **Só funciona com o arquivo do AnkiWeb:** o id é o nome da pasta da Conexão no Anki (`addons21/<id>`), então uma Conexão instalada por arquivo com o `package` provisório
+- **Só funciona com o arquivo do AnkiWeb:** o id é o nome da pasta da Conexão no Anki (`addons21/<id>`), então uma Conexão instalada por arquivo com o `package` antigo
   (`perpetualminer`) não tem de onde atualizar.
 
 ## Riscos que seguem abertos
