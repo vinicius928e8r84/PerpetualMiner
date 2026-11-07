@@ -300,7 +300,7 @@
 }
 
 .quiz__porta[data-alvo] .quiz__porta-nome {
-  animation: quiz-tinta 1ms linear calc(var(--ordem) * var(--veio-mov-entre-portas) + var(--veio-mov-porta)) both;
+  animation: quiz-tinta var(--veio-mov-pulo) linear calc(var(--ordem) * var(--veio-mov-entre-portas) + var(--veio-mov-porta)) both;
 }
 
 /* A porta do nível acende em ouro quando termina de encher, e não antes: o nível não se vê até a última porta parar. */
