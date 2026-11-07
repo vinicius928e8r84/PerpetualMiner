@@ -7,7 +7,8 @@
 
 (function (raiz) {
   const { textoDaVoz, AjustesDeEnvio, IDIOMAS, ConexaoAnki } = raiz;
-  const { NIVEIS, FRENTES } = AjustesDeEnvio;
+  const { NIVEIS, FRENTES, frenteDisponivel } = AjustesDeEnvio;
+  const AO_MUDAR_O_NIVEL = new WeakMap();   // rascunho → quem mostra a frente dele: a frente depende do nível (a Produção só no Iniciante)
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
   const VOZ_DO_NIVEL = {
     iniciante: ['BRG-42.iniciante', 'BRG-42.textoIniciante'],
@@ -70,6 +71,7 @@
         preencher(lang, nivel, texto);
         previa.mostrar(nivel);
         proprio?.mostrarNivel();
+        AO_MUDAR_O_NIVEL.get(rascunho)?.(nivel);
         aoEscolher?.(nivel);
       });
       return elemento('label', 'veio-segmentado__opcao', radio, elemento('span', '', textoDaVoz(VOZ_DO_NIVEL[nivel][0])));
@@ -104,6 +106,20 @@
       });
       return elemento('label', 'veio-segmentado__opcao', radio, elemento('span', '', textoDaVoz(VOZ_DA_FRENTE[frente][0])));
     }));
+    const radios = [...grupo.querySelectorAll('input')];
+    // Sem a frente no nível escolhido o botão fica desabilitado; a que já estava escolhida volta à Frase com áudio, e uma já salva que o nível não comporta só aparece marcada.
+    const ajustarAoNivel = (voltar) => {
+      for (const radio of radios) radio.disabled = !frenteDisponivel(radio.value, rascunho.nivel);
+      const marcado = radios.find(radio => radio.checked);
+      if (voltar && marcado?.disabled) {
+        rascunho.frente = FRENTES[0];
+        radios.find(radio => radio.value === FRENTES[0]).checked = true;
+        texto.textContent = textoDaVoz(VOZ_DA_FRENTE[FRENTES[0]][1]);
+        notaDaCriacao.hidden = true;
+      }
+    };
+    ajustarAoNivel(false);
+    AO_MUDAR_O_NIVEL.set(rascunho, () => ajustarAoNivel(true));
     grupo.setAttribute('role', 'radiogroup');
     grupo.setAttribute('aria-labelledby', rotulo.id);
     grupo.setAttribute('aria-describedby', texto.id);
