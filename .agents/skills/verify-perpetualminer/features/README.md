@@ -37,6 +37,7 @@ Each feature file starts with an H1 and one paragraph of user-visible behavior, 
 - [The Card in the Anki](./anki-cartao.md): the note type per language the Conexão creates, the new Baralhos of a new install and the Beginner Card (front: Phrase and audio; back: pronunciation, literal and natural in Portuguese with linked colours, Word audio, image); only in the Anki, not on a screen (#161).
 - [The Custos tab with the key and with the plan](./anki-custos-plano.md): US$ spent with the key; with the ChatGPT plan the Cartões made, “Você economizou” and Gerenciar uso ↗; the Envio shows no value (#159).
 - [The monthly cap](./anki-teto-do-mes.md): US$ 10 by default, per computer; 80% warning in the Painel, the Envio pauses at 100% with Ver Custos and no value, the cap is adjusted in Custos (#160).
+- [The Mac drawing in Ter o Anki](./anki-desenho-do-mac.md): after Não tenho on a Mac, two frames of the Anki dragged to Aplicativos, above the sentence; still and side by side with reduced motion (#238).
 - [The Conexão version notice](./conexao-versao.md): the Conexão updates itself through AnkiWeb (off until the terms are checked); the Painel notice for too old, failed, updated and Reiniciar o Anki (#177).
 - [Open the Anki with the computer](./anki-no-login.md): Configurações › Conexão com o Anki, the login-item switch.
 - [The fixed Anki profile](./anki-perfil.md): Configurações › Conexão com o Anki, the row Perfil do Anki; the Envio that waits on another open profile with Abrir <perfil> (#149).

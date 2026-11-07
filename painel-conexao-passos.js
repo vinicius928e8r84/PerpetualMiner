@@ -28,11 +28,9 @@
   const PASSO_DO_ABRIDOR = 'abridor';
   const ARQUIVO_DA_CONEXAO = 'conexao/perpetualminer.ankiaddon';
   const NOME_DO_ARQUIVO = 'perpetualminer.ankiaddon';
-  // “Não tenho” (#146) leva à página de download do Anki, que existe sempre e mostra o arquivo de
-  // cada sistema. Não há endereço fixo de instalador por sistema: o Anki publica um por processador
-  // (`anki-<versão>-mac-apple.dmg` · `-mac-intel.dmg` · `-win-x64.msi` · `-win-arm64.msi`), e o nome
-  // carrega a versão; o download direto pelo processador é o #232.
-  // O que muda por sistema é o que fazer depois do download.
+  // “Não tenho” (#146) leva à página de download do Anki, que existe sempre e mostra o arquivo de cada
+  // sistema: não há endereço fixo de instalador (um por processador, com a versão no nome; o download
+  // direto é o #232). O que muda por sistema é o que fazer depois do download.
   const PAGINA_DO_ANKI = 'https://apps.ankiweb.net/';
   const DEPOIS_DO_DOWNLOAD = Object.freeze({
     mac: 'ONB-18.depoisNoMac',
@@ -250,8 +248,7 @@
     const detalhes = Veio.montarDetalhes(
       codigo === null ? textoDaVoz('ONB-16.codigoEmBreve') : textoDaVoz('ONB-16.codigoDoAnkiWeb', { codigo }),
       document, textoDaVoz('ONB-16.arquivoNaoAbriu'));
-    // A animação vem antes do botão: a pessoa vê o que o Anki vai perguntar antes de baixar o
-    // arquivo (“Antes de baixar…”, ONB-19 e docs/design/painel/boas-vindas/README.md § os passos).
+    // A animação vem antes do botão: a pessoa vê o que o Anki vai perguntar antes de baixar o arquivo.
     const doArquivo = elemento('div', 'pc-arquivo', aAnimacao, baixar, detalhes);
 
     // O passo Ter o Anki (#146): a pergunta, as duas respostas e o que a escolha mostra.
@@ -273,6 +270,8 @@
     baixarOAnki.rel = 'noopener';
     const depoisDoDownload = elemento('p', 'pc-anki__depois', textoDaVoz(depoisDoDownloadDestaPessoa()));
     const doDownloadDoAnki = elemento('div', 'pc-anki__download', baixarOAnki, depoisDoDownload);
+    // No Mac, o desenho de arrastar (ONB-25, #238) vem entre o link e a frase.
+    if (depoisDoDownloadDestaPessoa() === DEPOIS_DO_DOWNLOAD.mac) depoisDoDownload.before(raiz.DesenhoDoArraste.montar());
 
     const resultadoDoAnki = elemento('p', 'pc-anki__resultado');
     resultadoDoAnki.id = id('anki-resultado');

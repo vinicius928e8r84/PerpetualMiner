@@ -1,0 +1,118 @@
+/* O desenho de arrastar o Anki para Aplicativos, no passo do Mac (ONB-25, #238): o mesmo jeito da animação do aviso, dois quadros que se alternam sozinhos (o Anki ao lado da pasta e o Anki dentro dela); com movimento reduzido, parados. */
+.pc-arraste {
+  margin: 0;
+}
+
+.pc-arraste__quadros {
+  display: grid;
+  justify-items: start;
+}
+
+.pc-arraste__quadro {
+  grid-area: 1 / 1;
+  animation: pc-quadro var(--veio-ciclo-dos-quadros) steps(1, end) infinite;
+}
+
+.pc-arraste__quadro--solto {
+  opacity: 0;
+  animation-delay: calc(var(--veio-ciclo-dos-quadros) / 2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pc-arraste__quadros {
+    display: flex;
+    gap: 12px;
+  }
+
+  .pc-arraste__quadro {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* Numa janela estreita os dois quadros não cabem lado a lado: empilham. */
+@media (prefers-reduced-motion: reduce) and (max-width: 560px) {
+  .pc-arraste__quadros {
+    flex-direction: column;
+  }
+}
+
+/* A janela do instalador no desenho: o Anki, a seta e a pasta Aplicativos. */
+.pc-arraste__janela {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-bg);
+  box-shadow: var(--veio-sombra-ilha);
+}
+
+.pc-arraste__item {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.pc-arraste__nome {
+  font-size: var(--veio-tam-apoio);
+}
+
+.pc-arraste__icone,
+.pc-arraste__pasta {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 48px;
+  height: 40px;
+}
+
+.pc-arraste__icone {
+  border: 1px solid var(--veio-accent);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-accent);
+}
+
+/* O lugar de onde o Anki saiu: o contorno, sem o ícone. */
+.pc-arraste__icone--vago {
+  border: 1px dashed var(--veio-border);
+  background: transparent;
+}
+
+.pc-arraste__pasta {
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface-2);
+}
+
+.pc-arraste__miniatura {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-accent);
+}
+
+/* O quadro de onde o Anki chegou: a pasta com a marca de foco da Base. */
+.pc-arraste__quadro--solto .pc-arraste__pasta {
+  outline: 2px solid var(--veio-accent);
+  outline-offset: 2px;
+}
+
+/* A seta da arrastada, desenhada com bordas: uma haste e a ponta. */
+.pc-arraste__seta {
+  position: relative;
+  width: 28px;
+  height: 2px;
+  background: var(--veio-muted);
+}
+
+.pc-arraste__seta::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: -4px;
+  border-left: 7px solid var(--veio-muted);
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+}
