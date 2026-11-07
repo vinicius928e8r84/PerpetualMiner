@@ -48,6 +48,14 @@ class FrenteCriacao(unittest.TestCase):
         self.assertIn('<span id="perpetualminer-raiz" hidden>ход</span>', verso)
         self.assertIn('<span id="perpetualminer-gravada" hidden>Он приходит & уходит</span>', verso)
 
+    def test_o_verso_mostra_da_ultima_vez_voce_escreveu_e_a_correcao_so_depois_que_a_ia_corrigiu(self):
+        sem = cartao()["verso"]
+        com = cartao(campos=dict(CAMPOS, **{"Escrito antes": "I gave up suggar", "Correção": "I gave up sugar."}))["verso"]
+        self.assertNotIn("Da última vez você escreveu", sem)
+        self.assertNotIn("→", sem)
+        corrigido = re.search(r'<div class="ultima-vez">(.*?)</div>', com, re.S).group(1)
+        self.assertEqual(re.sub(r"<[^>]+>", "", corrigido), "Da última vez você escreveu I gave up suggar → I gave up sugar.")
+
     def test_o_verso_do_nivel_continua_depois_do_exemplo(self):
         verso = cartao()["verso"]
         self.assertIn("Ela parou de fumar.", verso.split('<hr id=answer>')[1])

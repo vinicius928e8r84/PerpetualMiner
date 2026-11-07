@@ -22,7 +22,7 @@ class ConfiguracaoDoMotor(unittest.TestCase):
             (config["anki"]["note_type"], config["anki"]["fields"], config["languages"]["ru"]["note_type"]),
             ("Básico", {"front": "Frente", "back": "Verso"}, "Básico"),
         )
-        self.assertEqual(config["paths"]["prompts"], {"en_card": "prompts/en_card.txt", "ru_card": "prompts/ru_card.txt"})
+        self.assertEqual(config["paths"]["prompts"], {"en_card": "prompts/en_card.txt", "ru_card": "prompts/ru_card.txt", "correcao_da_criacao": "prompts/correcao_da_criacao.txt"})
 
     def test_sem_chave_dada_a_chave_vem_do_ambiente(self):
         with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-do-ambiente"}):

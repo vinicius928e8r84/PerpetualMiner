@@ -29,7 +29,9 @@
     { chave: 'failed', rotulo: 'BRG-09.falhou', serie: 'falhou' },
   ];
 
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, Contexto, IDIOMAS, PrimeiraConexao, PedidoAoAnki, PlanoDosCustos } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, Contexto, IDIOMAS, PrimeiraConexao, PedidoAoAnki, PlanoDosCustos, SomaDosCustos } = raiz;
+  const { numero, partes } = SomaDosCustos;
+  const somar = envios => SomaDosCustos.somar(envios, ORIGENS);
   const { haQuanto } = Contexto;
   const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
@@ -325,44 +327,6 @@
     return vazio;
   }
 
-  function numero(valor) {
-    const n = Number(valor);
-    return Number.isFinite(n) ? n : 0;
-  }
-
-  /** As partes do custo de um envio; o total é a soma delas. */
-  function partes(envio) {
-    const custos = envio.costs || {};
-    const p = {
-      cartoes: numero(custos.cardUsd),
-      geradas: numero(custos.imageGenerationUsd),
-      escolha: numero(custos.imageJudgeUsd),
-      triagem: numero(custos.imageGuardUsd),
-      outros: numero(custos.otherUsd),
-    };
-    p.total = p.cartoes + p.geradas + p.escolha + p.triagem + p.outros;
-    return p;
-  }
-
-  function somar(envios) {
-    const soma = { cartoes: 0, geradas: 0, escolha: 0, triagem: 0, outros: 0, total: 0, economia: 0,
-      pedidas: 0, enviadas: 0, concluidos: 0, n: envios.length, imagens: 0 };
-    for (const origem of ORIGENS) soma[origem.chave] = 0;
-    for (const envio of envios) {
-      const p = partes(envio);
-      for (const chave of ['cartoes', 'geradas', 'escolha', 'triagem', 'outros', 'total']) soma[chave] += p[chave];
-      soma.economia += numero(envio.images?.savingsUsd);
-      soma.pedidas += numero(envio.requestedCards);
-      soma.enviadas += numero(envio.successfulCards);
-      if (envio.status === 'completed') soma.concluidos += 1;
-      for (const origem of ORIGENS) {
-        soma[origem.chave] += numero(envio.images?.[origem.chave]);
-        soma.imagens += numero(envio.images?.[origem.chave]);
-      }
-    }
-    return soma;
-  }
-
   function formatar(valor, casas) {
     return valor.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
   }
@@ -438,6 +402,7 @@
       item(textoDaVoz('BRG-08.criacaoDeCartoes'), dinheiro(soma.cartoes)),
       item(textoDaVoz('BRG-08.imagensGeradas'), dinheiro(soma.geradas)),
       item(textoDaVoz('BRG-08.economia'), dinheiro(soma.economia)),
+      ...(soma.correcao > 0 ? [item(textoDaVoz('BRG-51'), dinheiro(soma.correcao))] : []),
       item(textoDaVoz('BRG-29.frases'), textoDaVoz('BRG-29.deTotal', { n: soma.enviadas, total: soma.pedidas })),
       item(textoDaVoz('BRG-29.enviosConcluidos'), textoDaVoz('BRG-29.deTotal', { n: soma.concluidos, total: soma.n })));
     faixa.id = 'anki-custos-faixa';
@@ -566,6 +531,7 @@
       [textoDaVoz('BRG-29.escolhaETriagem'), p.escolha + p.triagem],
     ];
     if (p.outros > 0) linhas.push([textoDaVoz('BRG-29.outros'), p.outros]);
+    if (p.correcao > 0) linhas.push([textoDaVoz('BRG-51'), p.correcao]);
     const custos = elemento('dl', 'anki-partes', ...linhas.flatMap(([rotulo, valor]) =>
       [elemento('dt', null, rotulo), elemento('dd', null, dinheiro(valor))]));
     custos.append(elemento('dt', 'anki-partes__total', textoDaVoz('BRG-29.total')),

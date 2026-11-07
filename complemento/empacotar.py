@@ -35,6 +35,7 @@ ENGINE = os.path.normpath(os.path.join(PASTA, "..", "engine"))
 ARQUIVOS_DO_MOTOR = (
     "config.json",
     "config_loader.py",
+    "corrigir_frase.py",
     "cost_tracker.py",
     "extract_prompts.py",
     "generate_audio.py",
@@ -53,6 +54,7 @@ ARQUIVOS_DO_MOTOR = (
     "openai_http.py",
     "parser.py",
     "prompt_loader.py",
+    "prompts/correcao_da_criacao.txt",
     "prompts/en_card.txt",
     "prompts/en_avancado.txt",
     "prompts/en_iniciante.txt",

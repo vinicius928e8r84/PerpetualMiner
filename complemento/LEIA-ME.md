@@ -26,6 +26,7 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 | `janela.py`, `qt_do_anki.py`, `texto_da_janela.py` | A janela “PerpetualMiner…” em Ferramentas, o Config e os avisos do Envio (#175): `docs/design/dentro-do-anki.md` |
 | `diagnostico.py` | O diagnóstico de um Envio (`/jobs/debug-bundle`) |
 | `custos.py` | Os custos de cada Envio (`user_files/custos/<jobId>/costs.jsonl`, do `cost_tracker` do motor) nas linhas que a aba Custos lê |
+| `correcao_da_criacao.py` | A IA corrige a frase da Criação no fim do Envio (#169); nunca o derruba |
 | `motor/` | O motor de `engine/` (texto, voz e imagem): no `.ankiaddon`, `empacotar.py` copia os arquivos de `ARQUIVOS_DO_MOTOR` para cá; no repositório, `motor/__init__.py` aponta para `engine/` |
 | `normalizacao.py` | A lógica pura do vocabulário e dos números (na biblioteca padrão) |
 | `chaves.py` | O cofre das chaves: `user_files/chaves/openai.json`, só do dono (0600), gravado de uma vez; a chave inteira só sai daqui para o pedido que a gasta |
