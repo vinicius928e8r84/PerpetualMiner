@@ -14,6 +14,7 @@ const path = require('path');
 const regras = Object.fromEntries(require('./verificar').REGRAS.map(regra => [regra.id, regra]));
 const { excecaoNaLinha } = require('./verificar');
 const RAIZ = path.resolve(__dirname, '..', '..');
+const { repositorioDeTestes } = require('./apoio-de-testes');
 
 let total = 0;
 function acusa(id, arquivo, fonte, quantas, porque) {
@@ -323,15 +324,6 @@ acusa('contrato-fechado', 'lib/sincronizacao.js', "const r = await fetch(`${URL_
 acusa('contrato-fechado', 'background.js', "// fetch(`${BRIDGE_URL}/jobs`)\n", 0, 'um comentário');
 
 // Um repositório mínimo (só o que a regra lê: o cadastro, os arquivos e os workflows).
-function repositorioDeTestes(arquivos) {
-  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-portao-'));
-  execFileSync('git', ['init', '-q'], { cwd: pasta });
-  for (const [arquivo, texto] of Object.entries(arquivos)) {
-    fs.mkdirSync(path.dirname(path.join(pasta, arquivo)), { recursive: true });
-    fs.writeFileSync(path.join(pasta, arquivo), texto);
-  }
-  return pasta;
-}
 function achadosDoPortao(arquivos, arquivo) {
   const pasta = repositorioDeTestes(arquivos);
   try {
@@ -437,131 +429,6 @@ nulo(achadosDe(comOPortao({ 'scripts/testes.json': CADASTRO.replace('um script a
 nulo(achadosDe(comOPortao({ 'scripts/testes.json': CADASTRO.replace('test_*.py', 'prova_*.py') }), 'scripts/testes.json'), 1, 'grupo cujo padrão não casa com nada');
 nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': `${CHAMA_TUDO}      - run: node scripts/testar.mjs engine\n` }), '.github/workflows/testes.yml'), 1,
   'workflow que chama um grupo que o cadastro não tem');
-
-// Os erros reais: a SKILL.md de verificação carregou "41" como o tamanho da suíte e o CLAUDE.md ainda fala em "about 700 tests".
-acusa('doc-datado', '.agents/skills/verify-perpetualminer/SKILL.md', 'that the suite is collectable (41 specs listed by `playwright test --list`)\n', 1, 'contagem de specs (a SKILL.md antes do #226)');
-acusa('doc-datado', 'CLAUDE.md', 'the whole suite (about 700 tests) runs in CI\n', 1, 'contagem de tests (CLAUDE.md)');
-acusa('doc-datado', 'docs/instalar-extensao.md', 'São 12 testes de ponta a ponta.\n', 1, 'contagem em português');
-acusa('doc-datado', 'complemento/LEIA-ME.md', 'o servidor tem 3 e2e specs\n', 1, 'um e2e entre o número e a palavra');
-acusa('doc-datado', 'docs/design/README.md', 'Nesta rodada travo a variante; esta PR traz o painel e nessa rodada nada mais.\n', 3, 'esta PR / nesta rodada');
-acusa('doc-datado', 'CLAUDE.md', 'Neste PR o painel muda.\n', 1, 'o masculino: Neste PR');
-acusa('doc-datado', '.agents/skills/popup/SKILL.md', 'This PR adds the popup; in this PR nothing else.\n', 2, 'this PR');
-acusa('doc-datado', 'CLAUDE.md', 'one finding\nholds 236 older tests on its baseline\n', 1, 'a linha do achado é a certa');
-acusa('doc-datado', 'CLAUDE.md', [
-  'Run `HEADED=1 npm test` to see the browser; the doctor counts the specs (`playwright test --list`).',
-  'A suíte inteira roda no CI; os testes de cada grupo: `node scripts/testar.mjs --listar`.',
-  'Rode os specs da área; a prova de cada regra fica em test_regras.js (Python 3.9, 3.13).',
-  'Veja o PR no git log; a rodada de revisão fica no ticket.',
-].join('\n'), 0, 'comandos, variável com número, sem contagem');
-// Onde a regra vale: docs/ (menos docs/superpowers/), complemento/, CLAUDE.md e as skills, só em Markdown.
-const aplica = arquivo => regras['doc-datado'].seAplica(arquivo);
-for (const sim of ['CLAUDE.md', 'docs/instalar-extensao.md', 'docs/design/voz/README.md', 'complemento/LEIA-ME.md', 'complemento/contrato/LEIA-ME.md',
-  '.agents/skills/verify-perpetualminer/SKILL.md', '.agents/skills/verify-perpetualminer/features/ia.md']) {
-  assert.strictEqual(aplica(sim), true, `${sim} é conferido`);
-  total++;
-}
-for (const nao of ['docs/superpowers/specs/2026-06-nota.md', 'README.md', 'bridge/README.md', 'engine/CLAUDE.md', 'docs/design/painel/p.html', 'painel.js', 'complemento/servidor.py']) {
-  assert.strictEqual(aplica(nao), false, `${nao} não é conferido`);
-  total++;
-}
-
-// indice-de-arquivos: o arquivo novo sem linha na tabela "Files" e a linha que sobrou de um arquivo que saiu
-// (as omissões que a revisão do #183 e do #187 apontava à mão).
-{
-  const INDICE = [
-    '### Files', '', '| File | Role |', '|---|---|',
-    '| `manifest.json` | Permissions |',
-    '| `popup.html/js/css` | The popup |',
-    '| `lib/mineracao.js` | Mining |',
-    '| `veio/` | Shared identity |',
-    '',
-    '### Outra seção', '', '| `lib/fora-da-tabela.js` | não conta |', '',
-  ].join('\n');
-  const repo = fonteDoIndice => repositorioDeTestes({ 'CLAUDE.md': fonteDoIndice, 'manifest.json': '{}', 'popup.html': '', 'popup.js': '', 'popup.css': '',
-    'lib/mineracao.js': '', 'lib/abridor.js': '', 'lib/fora-da-tabela.js': '', 'veio/tokens.css': '', 'test_novo.js': '', 'README.md': '', '.gitignore': '' });
-  const pasta = repo(INDICE);
-  const doIndice = arquivo => regras['indice-de-arquivos'].verificar(arquivo, '', pasta);
-  nulo(doIndice('lib/abridor.js'), 1, 'arquivo de lib/ que a tabela não cita');
-  nulo(doIndice('lib/fora-da-tabela.js'), 1, 'citado só fora da seção Files não conta');
-  nulo(doIndice('lib/mineracao.js'), 0, 'arquivo citado');
-  for (const extensao of ['html', 'js', 'css']) nulo(doIndice(`popup.${extensao}`), 0, `popup.html/js/css cobre popup.${extensao}`);
-  assert.deepStrictEqual(['lib/abridor.js', 'complemento/servidor.py', 'test_novo.js', '.gitignore', 'README.md', 'scripts/regras/verificar.js', 'CLAUDE.md']
-    .map(arquivo => regras['indice-de-arquivos'].seAplica(arquivo)), [true, false, false, false, false, false, true]);
-  total++;
-  const linhaVelha = INDICE.replace('| `lib/mineracao.js` | Mining |', '| `lib/mineracao.js` | Mining |\n| `lib/removido.js` | Foi removido |');
-  const velhas = regras['indice-de-arquivos'].verificar('CLAUDE.md', linhaVelha, pasta);
-  nulo(velhas, 1, 'linha que cita um arquivo que não existe');
-  assert.strictEqual(velhas[0].linha, 8);
-  nulo(regras['indice-de-arquivos'].verificar('CLAUDE.md', INDICE, pasta), 0, 'a tabela certa não acusa');
-  total++;
-  fs.rmSync(pasta, { recursive: true, force: true });
-}
-
-// aprovacao-visual: o PNG novo de um --update-snapshots sem a aprovação do dono (regra 10 do CODING_STANDARDS),
-// o que espera num test.fixme e o que o livro já registra.
-{
-  const SPEC = [
-    "test('tela pronta', async ({ page }) => {", "  await expect(page).toHaveScreenshot('pronta.png');", '});',
-    "test('tela sem entrada', async ({ page }) => {", "  await expect(page).toHaveScreenshot('sem-entrada.png');", '});',
-    "test.fixme('proposta', async ({ page }) => {", "  await expect(page).toHaveScreenshot('proposta.png');", '});',
-    "test('outra', async ({ page }) => {", "  await expect(page).toHaveScreenshot('sem-data.png');", '});',
-  ].join('\n');
-  const livro = telas => JSON.stringify({ telas });
-  const pngs = Object.fromEntries(['pronta', 'sem-entrada', 'proposta', 'sem-data'].map(n => [`e2e/tests/x-visual.spec.js-snapshots/${n}-linux.png`, 'png']));
-  const achadosDoLivro = telas => {
-    const pasta = repositorioDeTestes({ ...pngs, 'e2e/aprovados-visuais.json': livro(telas) });
-    try {
-      return regras['aprovacao-visual'].verificar('e2e/tests/x-visual.spec.js', SPEC, pasta);
-    } finally {
-      fs.rmSync(pasta, { recursive: true, force: true });
-    }
-  };
-  const aprovada = { data: '2026-10-20', resposta: 'Lavish telas-julgar' };
-  const achados = nulo(achadosDoLivro({ 'x-visual': { 'pronta.png': aprovada, 'sem-data.png': { resposta: 'Lavish' } } }), 2, 'sem entrada e sem data; a pronta e a proposta em fixme passam');
-  assert.match(achados.map(a => a.detalhe).join('\n'), /sem-entrada\.png não tem entrada/);
-  assert.match(achados.map(a => a.detalhe).join('\n'), /sem-data\.png tem entrada .* sem data/);
-  nulo(achadosDoLivro({ 'x-visual': { 'pronta.png': aprovada, 'sem-entrada.png': aprovada, 'sem-data.png': aprovada } }), 0, 'todas aprovadas ou em fixme');
-  nulo(achadosDoLivro({}), 3, 'livro vazio: três sem entrada (a proposta em fixme não conta)');
-  assert.strictEqual(regras['aprovacao-visual'].seAplica('e2e/tests/popup-visual.spec.js'), true);
-  assert.strictEqual(regras['aprovacao-visual'].seAplica('e2e/tests/popup.spec.js'), false);
-  total += 2;
-}
-
-// relogio-fora-da-fixture: o relógio que cada teste montava (#209), e o jeito certo, pela fixture.
-// edc5a109 configuracoes-conta.spec.js: `install` sem pausa, o timer de 1,4 s corria antes da assertion.
-acusa('relogio-fora-da-fixture', 'e2e/tests/configuracoes-conta.spec.js', [
-  "test('Sincronizado há 2 min', async ({ page, extensao }) => {",
-  '  await page.clock.install();',
-  "  await page.clock.runFor('02:30');",
-  '});',
-].join('\n'), 1, 'o install sozinho deixa o relógio correndo (edc5a109)');
-// e426f7c: a pausa que mira um segundo à frente, recusada com 1.701 ms de atraso entre os comandos.
-const [pausaCurta] = acusa('relogio-fora-da-fixture', 'e2e/tests/conexao-na-tela.spec.js', [
-  'const agora = new Date();',
-  'await page.clock.install({ time: agora });',
-  'await page.clock.pauseAt(new Date(agora.getTime() + 1_000));',
-].join('\n'), 2, 'a montagem à mão, com a margem que o teste inventou (e426f7c)');
-assert.strictEqual(pausaCurta.linha, 2);
-total++;
-// O mesmo fora de e2e/tests/: nos apoios e no repouso, e em outra página (o segundo perfil).
-acusa('relogio-fora-da-fixture', 'e2e/repouso.js', 'await b.clock.install();\nawait b.clock.pauseAt(t);\n', 2, 'o apoio que monta o relógio');
-acusa('relogio-fora-da-fixture', 'e2e/tests/painel-anki-visual.spec.js', 'await page\n  .clock\n  .install({ time: AGORA });\n', 1, 'a chamada quebrada em linhas');
-// O jeito certo: a fixture; o avanço, o setFixedTime e um comentário que fala do install não são a montagem.
-acusa('relogio-fora-da-fixture', 'e2e/tests/chave-autoridade.spec.js', [
-  "test('K1', async ({ page, relogioParado }) => {",
-  "  // não use page.clock.install nem pauseAt aqui",
-  "  const relogio = await relogioParado({ em: new Date('2026-09-18T12:00:00') });",
-  '  await relogio.avancar(16000);',
-  '  await page.clock.runFor(1);',
-  '  await page.clock.setFixedTime(new Date());',
-  '});',
-].join('\n'), 0, 'a fixture, o avanço e o setFixedTime passam');
-// Só o dono monta o relógio, e a regra olha o e2e/ inteiro.
-assert.strictEqual(regras['relogio-fora-da-fixture'].seAplica('e2e/relogio-parado.js'), false);
-assert.strictEqual(regras['relogio-fora-da-fixture'].seAplica('e2e/repouso.js'), true);
-assert.strictEqual(regras['relogio-fora-da-fixture'].seAplica('e2e/tests/relogio-parado.spec.js'), true);
-assert.strictEqual(regras['relogio-fora-da-fixture'].seAplica('painel.js'), false);
-total += 4;
 
 const HOJE = '2026-10-04';
 assert.deepStrictEqual(excecaoNaLinha('  font-size: 9px; /* exceção tokens-veio até 2026-12-31, aprovada por Vinicius: imitação do badge */', HOJE),

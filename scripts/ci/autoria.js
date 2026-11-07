@@ -4,7 +4,7 @@
 // base..head tem como autor e committer o e-mail do dono. O committer `GitHub <noreply@github.com>`
 // (o que o site põe no que edita ou mescla) passa em qualquer commit. Uso: node scripts/ci/autoria.js <base> <head>
 
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 
 const EMAIL_DO_DONO = '48294278+vinicius928e8r84@users.noreply.github.com';
 const EMAIL_DO_GITHUB = 'noreply@github.com';
@@ -29,9 +29,19 @@ function mensagem(fora, base) {
   ].join('\n');
 }
 
+/** As pontas que o clone não tem: o checkout raso do CI não traz a base. */
+function pontasAusentes(pontas) {
+  return pontas.filter(ponta => spawnSync('git', ['rev-parse', '--verify', '--quiet', `${ponta}^{commit}`], { stdio: 'ignore' }).status !== 0);
+}
+
 function main([base, head]) {
   if (!base || !head) {
     console.log('uso: node scripts/ci/autoria.js <base> <head>');
+    return 2;
+  }
+  const ausentes = pontasAusentes([base, head]);
+  if (ausentes.length) {
+    console.log(`✗ ${ausentes.join(' e ')} não é um commit deste repositório; no CI, confira o fetch-depth do checkout (0 traz o histórico inteiro).`);
     return 2;
   }
   const saida = execFileSync('git', ['log', '--format=%H%x09%ae%x09%ce%x09%s', `${base}..${head}`], { encoding: 'utf8' });

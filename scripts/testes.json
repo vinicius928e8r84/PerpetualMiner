@@ -8,7 +8,7 @@
     "regras": {
       "descricao": "As provas das regras de revisão (scripts/regras/); quem as confere no repositório é `node scripts/regras/verificar.js`",
       "executor": "node",
-      "arquivos": ["scripts/regras/test_regras.js", "scripts/regras/test_versoes_publicadas.js"]
+      "arquivos": ["scripts/regras/test_regras.js", "scripts/regras/test_versoes_publicadas.js", "scripts/regras/test_doc_datado.js", "scripts/regras/test_relogio_fora_da_fixture.js", "scripts/regras/test_indice_e_aprovacao.js"]
     },
     "ferramentas": {
       "descricao": "As ferramentas de scripts/: o executor dos grupos, o gancho do limite de tamanho dos arquivos e as receitas do mapa de features",
