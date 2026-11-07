@@ -103,6 +103,13 @@ class TrocarAFrenteSoEditaOModelo(unittest.TestCase):
             self.assertEqual(modelo_do(conexao), antes)
         self.assertEqual(tipo_de_nota.FRENTES, ("frase_com_audio", "ouvir_primeiro", "lacuna", "producao", "ditado", "criacao"))
 
+    def test_a_producao_sem_traducao_natural_mostra_a_definicao_em_vez_do_contexto_da_cena(self):
+        for lang in ("en", "ru"):
+            frente = tipo_de_nota.definicao(lang, frente="producao")["modelos"][0]["frente"]
+            self.assertRegex(frente, r"\{\{\^Tradução natural\}\}\{\{Definição\}\}\{\{/Tradução natural\}\}")
+            self.assertNotIn("Contexto da cena", frente)
+            self.assertIn("{{type:Frase}}", frente)
+
     def test_trocar_para_a_criacao_so_reescreve_o_modelo_sem_nota_nova_nem_chamada_a_ia_a_voz_ou_as_fotos(self):
         with com_um_cartao_enviado() as conexao:
             colecao = conexao.conexao.colecao
