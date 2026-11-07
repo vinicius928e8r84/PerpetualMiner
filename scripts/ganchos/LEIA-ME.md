@@ -42,3 +42,7 @@ A mensagem do gancho traz o passo a passo do tipo do arquivo. Em resumo: um arqu
 ## Teste
 
 `node scripts/testar.mjs ferramentas`
+
+## Entrada inválida e falha do ambiente
+
+Se a linha de base preparada ou `limite-de-tokens.json` estiver ilegível, com JSON quebrado ou no formato errado (`arquivos` que não é um objeto de números, por exemplo), o gancho **barra o commit** e diz o arquivo e a linha (`Commit barrado: ...`); não deixa passar sem conferência. Uma linha de base quebrada que já está no `HEAD` vale como ausente, para o commit que a conserta passar. Só a falha do ambiente (`node` ausente, `git` indisponível) deixa o commit passar, com a linha `aviso: ...` no `stderr`.
