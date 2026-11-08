@@ -9,6 +9,7 @@ import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from unittest import mock
 
 import generate_cards
 import openai_http
@@ -259,6 +260,25 @@ class ResponderPeloPlano(unittest.TestCase):
             with self.assertRaises(openai_http.ErroDaOpenAI) as recusa:
                 openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "p", "m")
         self.assertEqual(recusa.exception.codigo, openai_http.IMAGEM_INVALIDA)
+
+    def test_o_plano_so_e_pedido_de_novo_pelo_erro_passageiro_e_quantas_vezes_se_pediu(self):
+        casos = [
+            ((503, {"error": {"code": "server_error"}}), openai_http.FORA_DO_AR, 3),
+            ((429, {"error": {"code": "rate_limit_exceeded"}}), openai_http.LIMITE_DE_USO, 3),
+            ((429, {"error": {"code": "subscription_sharing_usage_limit_exceeded"}}), openai_http.LIMITE_DO_PLANO, 1),
+            ((403, {"error": {"code": "subscription_sharing_user_not_eligible"}}), openai_http.PLANO_NAO_SERVE, 1),
+        ]
+        for resposta, codigo, pedidos in casos:
+            with self.subTest(codigo), mock.patch.object(openai_http, "ESPERA_ENTRE_TENTATIVAS", 0), PlanoDeMentira(resposta) as plano:
+                with self.assertRaises(openai_http.ErroDaOpenAI) as recusa:
+                    openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "p", "m", repeticoes=2)
+            self.assertEqual((recusa.exception.codigo, len(plano.pedidos)), (codigo, pedidos))
+
+    def test_o_plano_sem_repeticoes_pede_uma_vez_so(self):
+        with PlanoDeMentira((503, {"error": {"code": "server_error"}})) as plano:
+            with self.assertRaises(openai_http.ErroDaOpenAI):
+                openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "p", "m")
+        self.assertEqual(len(plano.pedidos), 1)
 
     def test_so_o_response_completed_e_sucesso(self):
         casos = [

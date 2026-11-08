@@ -117,9 +117,9 @@ class OpenAIDeMentira(CorrecaoDeMentira):
     salvo para a Palavra que `recusar_o_chat_de` mandou recusar (`"*"`: todas). `chats` guarda (Authorization, corpo).
     O plano do ChatGPT: um `Bearer acesso-…` (o do login de mentira) recebe a lista do plano em `/v1/models`, e `/v1/responses`
     devolve o mesmo Cartão em stream de eventos; `respostas` guarda (Authorization, corpo), `recusa_das_respostas` = (status, código)
-    (ou uma função de quantos pedidos já chegaram que devolve isso, ou None) recusa antes do stream e `falha_no_stream` = código termina
-    o stream com `response.failed`. O juiz de imagem pelo plano (#156) é a `/v1/responses` das instruções do juiz: entra em `juizes`, e
-    `recusa_do_juiz_do_plano` = (status, código) o recusa.
+    (ou uma função de quantos pedidos já chegaram, ou None) recusa antes do stream e `falha_no_stream` = código termina o stream
+    com `response.failed`. O juiz de imagem pelo plano (#156) é a `/v1/responses` das instruções do juiz: entra em `juizes`, e
+    `recusa_do_juiz_do_plano` (ou uma função, como a de cima) o recusa.
     """
 
     def __init__(self, comportamento="aceita"):
@@ -230,8 +230,8 @@ class OpenAIDeMentira(CorrecaoDeMentira):
         Com as instruções do juiz de imagem (#156), o texto do stream é o veredito em JSON."""
         self.respostas.append((autorizacao, corpo))
         eh_o_juiz = corpo["instructions"].startswith("You are an expert visual selector")
-        recusa_do_texto = self.recusa_das_respostas(len(self.respostas)) if callable(self.recusa_das_respostas) else self.recusa_das_respostas
-        recusa = (self.recusa_do_juiz_do_plano or self.recusas_do_chat.get("[juiz]")) if eh_o_juiz else recusa_do_texto
+        recusa_do_texto, do_juiz = (r(len(self.respostas)) if callable(r) else r for r in (self.recusa_das_respostas, self.recusa_do_juiz_do_plano))
+        recusa = (do_juiz or self.recusas_do_chat.get("[juiz]")) if eh_o_juiz else recusa_do_texto
         if recusa:
             status, codigo = recusa
             dados = json.dumps({"error": {"code": codigo, "message": "recusado para %s" % autorizacao}}).encode("utf-8")

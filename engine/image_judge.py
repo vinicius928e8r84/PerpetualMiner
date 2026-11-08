@@ -194,9 +194,16 @@ def rank_candidates(
 
     try:
         if plano:
-            raw, usage = openai_http.responder(
-                openai_base, plano["token"], plano["modelo"], _SYSTEM, _partes_da_responses(content), openai_http.TEMPO_DA_IMAGEM, formato_json=True)
-        else:
+            try:
+                raw, usage = openai_http.responder(
+                    openai_base, plano["token"], plano["modelo"], _SYSTEM, _partes_da_responses(content), openai_http.TEMPO_DA_IMAGEM,
+                    formato_json=True, repeticoes=openai_http.REPETICOES_DA_IMAGEM)
+            except openai_http.ErroDaOpenAI as exc:
+                if not (api_key and openai_http.passageira(exc.codigo, exc.status)):  # a plan that cannot go on (limit, account) stops the Envio
+                    raise
+                LOGGER.warning("image_judge plan judge failed (%s): the key judge decides keyword=%s", exc.codigo, label or keyword)
+                plano = None
+        if not plano:
             raw, usage = openai_http.completar(
                 openai_base,
                 api_key,
