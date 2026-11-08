@@ -195,5 +195,46 @@ class OPrimeiroLimiteDeUsoDoPlano(unittest.TestCase):
         self.assertEqual((estado["status"], estado["lastError"], notas, pedidos), ("failed", "chatgpt_not_eligible", [], ([], [], [])))
 
 
+class QuandoOJuizDoPlanoFalhaPorErroPassageiro(unittest.TestCase):
+    def test_com_chave_o_juiz_do_plano_que_falha_e_pedido_de_novo_e_a_foto_que_ele_escolhe_depois_entra_no_cartao(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+            conexao.openverse.fotos = FOTOS
+            conexao.openai.juiz = juiz_que_prefere(1)
+            conexao.openai.recusa_do_juiz_do_plano = lambda quantos: (503, "server_error") if quantos == 2 else None  # o texto foi o 1º pedido, o juiz o 2º e o 3º
+            acesso, estado, notas = enviar_com_o_plano(conexao)
+            pedidos, juizes = len(do_juiz(conexao)), [a for a, _, _ in conexao.openai.juizes]
+        arquivo, = imagens(notas[0]["campos"])
+        self.assertEqual((estado["status"], so_a_imagem(notas[0]["midia"]), pedidos, juizes), ("completed", {arquivo: png_de("foto-b")}, 2, [acesso]))
+
+    def test_com_chave_o_juiz_do_plano_que_continua_falhando_cai_para_o_juiz_da_chave_e_o_cartao_leva_a_foto_que_ele_escolhe(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+            conexao.openverse.fotos = FOTOS
+            conexao.openai.juiz = juiz_que_prefere(1)
+            conexao.openai.recusa_do_juiz_do_plano = (503, "server_error")
+            acesso, estado, notas = enviar_com_o_plano(conexao)
+            pedidos, juizes, geradas = len(do_juiz(conexao)), [a for a, _, _ in conexao.openai.juizes], list(conexao.openai.imagens)
+            log = conexao.log()
+        arquivo, = imagens(notas[0]["campos"])
+        self.assertEqual((estado["status"], so_a_imagem(notas[0]["midia"]), pedidos, juizes, geradas), ("completed", {arquivo: png_de("foto-b")}, 3, ["Bearer " + CHAVE], []))
+        self.assertIn("plan judge failed (openai_unreachable)", log)
+        self.assertNotIn(acesso[len("Bearer "):], log)
+
+    def test_sem_chave_o_juiz_do_plano_que_continua_falhando_deixa_o_cartao_sem_imagem_depois_de_repetir(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, chave=None) as conexao:
+            conexao.openverse.fotos = FOTOS
+            conexao.openai.recusa_do_juiz_do_plano = (503, "server_error")
+            _, estado, notas = enviar_com_o_plano(conexao)
+            pedidos, juizes = len(do_juiz(conexao)), list(conexao.openai.juizes)
+        self.assertEqual((estado["status"], imagens(notas[0]["campos"]), pedidos, juizes), ("completed", [], 3, []))
+
+    def test_o_limite_de_uso_do_plano_nao_e_repetido_nem_cai_para_a_chave(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+            conexao.openverse.fotos = FOTOS
+            conexao.openai.recusa_do_juiz_do_plano = (429, "subscription_sharing_usage_limit_exceeded")
+            _, estado, notas = enviar_com_o_plano(conexao)
+            pedidos, juizes = len(do_juiz(conexao)), list(conexao.openai.juizes)
+        self.assertEqual((estado["lastError"], notas, pedidos, juizes), ("chatgpt_usage_limit", [], 1, []))
+
+
 if __name__ == "__main__":
     unittest.main()
