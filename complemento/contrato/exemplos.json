@@ -200,7 +200,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.4.17",
+          "versao": "0.4.18",
           "perfil": "Usuário 1"
         }
       }
@@ -220,7 +220,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.4.17",
+          "versao": "0.4.18",
           "perfil": null
         }
       }
@@ -259,7 +259,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.4.17",
+          "versao": "0.4.18",
           "perfil": "Usuário 1"
         }
       }
