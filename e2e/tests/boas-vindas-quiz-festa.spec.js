@@ -97,9 +97,14 @@ test.describe('a festa do acerto', () => {
     await quiz(page, 'Inglês').locator('.quiz__opcao').nth(1).click(); // a certa da primeira pergunta (legenda) é a segunda alternativa
     await expect(certa).toHaveAttribute('data-pulo', '');
     await expect(certa.locator('.quiz__pedaco').first()).toBeAttached();
+    // A certa e o confete que nasce nela ficam acesos: o 45% do botão desligado é só das outras.
+    await expect(certa).toHaveCSS('opacity', '1');
+    await expect(quiz(page, 'Inglês').locator('.quiz__opcao:disabled:not([data-estado])').first()).toHaveCSS('opacity', '0.45');
     const primeiro = await certa.locator('.quiz__pedaco').count();
     await expect(quiz(page, 'Inglês').locator('.quiz__ganho')).toHaveText('+10');
     await expect(quiz(page, 'Inglês')).toContainText('Pontos: 10');
+    // O “+10” nasce na certa, junto do que a pessoa acabou de acertar, e não no canto do quiz.
+    await expect(certa.locator('.quiz__ganho')).toHaveCount(1);
     await relogio.avancar(1000);
 
     // O segundo acerto seguido vale mais e solta mais confete que o primeiro.
@@ -136,9 +141,43 @@ test.describe('a Revelação', () => {
     await expect(quiz(page, 'Inglês').locator('.quiz__porta[data-cheia]')).toHaveCount(2);
     await expect(quiz(page, 'Inglês').locator('.quiz__porta[data-alvo]')).toHaveText('Intermediário');
     await expect(quiz(page, 'Inglês').locator('.quiz__confete--revelacao .quiz__pedaco').first()).toBeAttached();
+    // Antes de encher, a porta do nível é igual às outras (nada de ouro à vista), e o confete ainda não aparece parado no meio da tela.
+    const [alvo, outra] = await portas.evaluateAll(lista => [lista[1], lista[2]].map(no => getComputedStyle(no).backgroundColor));
+    expect(alvo).toBe(outra);
+    await expect(quiz(page, 'Inglês').locator('.quiz__confete--revelacao .quiz__pedaco').first()).toHaveCSS('opacity', '0');
     await expect(quiz(page, 'Inglês').locator('.quiz__revelado .quiz__resumo')).toHaveText('5 de 6 certas · melhor sequência: 5 · escuta: 2 de 2');
     // O rufar e o acorde da Revelação foram mandados tocar (as notas de acerto vieram antes).
     expect((await sons(page)).notas.filter(n => n.tipo === 'triangle').length).toBeGreaterThanOrEqual(10);
+  });
+});
+
+test.describe('em 390 px', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('a Revelação cabe no quiz: nada passa da borda e o nome de cada porta fica dentro dela', async ({ page, extensao, fakes, relogioParado }) => {
+    // Exceção de teste: sem-estado-guardado — o que cabe na tela é só layout; nada é guardado até Usar este estilo.
+    const relogio = await abrirOQuiz(page, extensao, relogioParado);
+    await responderAParte1(page, 'Inglês', 'iniciante');
+    await percorrer(page, 'Inglês', fakes, relogio, ['certo', 'certo', 'certo', 'certo', 'certo', 'errado']);
+
+    const medidas = await quiz(page, 'Inglês').evaluate(no => {
+      const caixa = no.getBoundingClientRect();
+      const filhos = [...no.querySelectorAll('*:not(.quiz__confete, .quiz__confete *)')].map(f => f.getBoundingClientRect()).filter(r => r.width);
+      return {
+        passaDaDireita: Math.max(0, ...filhos.map(r => r.right - caixa.right)),
+        rolagem: no.scrollWidth - no.clientWidth,
+        portas: [...no.querySelectorAll('.quiz__porta')].map(porta => {
+          const nome = document.createRange();
+          nome.selectNodeContents(porta.querySelector('.quiz__porta-nome'));
+          const t = nome.getBoundingClientRect();
+          const p = porta.getBoundingClientRect();
+          return Math.min(t.left - p.left, p.right - t.right);
+        }),
+      };
+    });
+    expect(medidas.passaDaDireita).toBeLessThanOrEqual(0);
+    expect(medidas.rolagem).toBeLessThanOrEqual(0);
+    expect(Math.min(...medidas.portas)).toBeGreaterThanOrEqual(2);
   });
 });
 

@@ -144,6 +144,7 @@
   --veio-mov-confete: 1000ms;
   --veio-mov-porta: 480ms;
   --veio-mov-entre-portas: 650ms;
+  --veio-mov-brilho: 900ms;
   /* A mola passa um pouco do alvo e volta (o pulo e a porta cheia); a saída é rápida e assenta devagar (o que sobe e some). */
   --veio-curva-mola: cubic-bezier(.34, 1.56, .64, 1);
   --veio-curva-saida: cubic-bezier(.16, 1, .3, 1);
