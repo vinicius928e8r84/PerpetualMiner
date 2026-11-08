@@ -16,7 +16,7 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.4.16",
+          "versao": "0.4.18",
           "perfil": "Usuário 1",
           "atualizacao": {
             "estado": "instalada",
@@ -42,11 +42,11 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.4.16",
+          "versao": "0.4.18",
           "perfil": "Usuário 1",
           "atualizacao": {
             "estado": "falhou",
-            "versao": "0.4.16",
+            "versao": "0.4.18",
             "atualizada": null
           }
         }
@@ -68,12 +68,12 @@
         "status": 200,
         "json": {
           "ok": true,
-          "versao": "0.4.16",
+          "versao": "0.4.18",
           "perfil": "Usuário 1",
           "atualizacao": {
             "estado": "em_dia",
-            "versao": "0.4.16",
-            "atualizada": "0.4.16"
+            "versao": "0.4.18",
+            "atualizada": "0.4.18"
           }
         }
       }
@@ -115,7 +115,7 @@
         "status": 200,
         "json": {
           "estado": "em_dia",
-          "versao": "0.4.16",
+          "versao": "0.4.18",
           "atualizada": null
         }
       }
@@ -136,7 +136,7 @@
         "status": 200,
         "json": {
           "estado": "falhou",
-          "versao": "0.4.16",
+          "versao": "0.4.18",
           "atualizada": null
         }
       }

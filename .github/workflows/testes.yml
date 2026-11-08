@@ -89,10 +89,22 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
-      # O complemento usa só a biblioteca padrão: nada a instalar.
+      # O complemento usa só a biblioteca padrão: nada a instalar, só o pwsh, que roda o .ps1 do Conserto
+      # (test_conserto_arvore_windows.py). A imagem do GitHub já o traz; o runner próprio (CI_RUNS_ON) pode não ter.
+      - name: Instalar o pwsh (se faltar)
+        run: |
+          if ! command -v pwsh >/dev/null; then
+            wget -q "https://packages.microsoft.com/config/ubuntu/$(. /etc/os-release && echo "$VERSION_ID")/packages-microsoft-prod.deb"
+            sudo dpkg -i packages-microsoft-prod.deb
+            sudo apt-get update
+            sudo apt-get install -y powershell
+          fi
+          pwsh -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
+      # EXIGIR_PWSH=1: sem o pwsh os testes do .ps1 falham em vez de serem pulados.
       - run: node scripts/testar.mjs complemento
         env:
           PYTHON: python
+          EXIGIR_PWSH: '1'
 
   e2e:
     name: e2e (${{ matrix.fatia }}/8)
