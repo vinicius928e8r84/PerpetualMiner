@@ -56,6 +56,10 @@ test('ligada, o card passa ao passo 4, Abrir o Anki sozinho, sem pedir nada ao C
   await expect(statusDaConexao(page)).toHaveText(/^Achei o Anki · Usuário 1 · versão \d/);
   await expect(permitir(page)).toBeVisible();
   await expect(agoraNao(page)).toBeVisible();
+  // A região viva do status já está no DOM, sem texto e sem `hidden`: o que o abridor disser só troca o texto dela.
+  await expect(statusDoAbridor(page)).toHaveAttribute('aria-live', 'polite');
+  await expect(statusDoAbridor(page)).toBeEmpty();
+  await expect(statusDoAbridor(page)).not.toHaveAttribute('hidden', /.*/);
   // Um destaque só: no card ONB-16, o do passo é Permitir.
   await expect(page.locator('.veio-botao--primario:visible')).toHaveText(['Permitir abrir o Anki']);
   // O card fica: o Pronto espera a resposta deste passo.
@@ -200,6 +204,8 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
 
     const aviso = card(page).getByRole('alert');
     await expect(aviso).toBeVisible();
+    // O aviso é quem diz o problema: o status segue na árvore, mas sem texto, para o leitor não ler duas vezes.
+    await expect(statusDoAbridor(page)).toBeEmpty();
     await expect(aviso.locator('.veio-aviso__texto')).toHaveText('O abridor não achou o Anki neste computador. Feche o Anki e abra-o de novo: ao abrir, a Conexão com o Anki refaz o abridor.');
     await aviso.getByText('Detalhes', { exact: true }).click();
     await expect(aviso.locator('pre')).toHaveText('{"achou":false}');

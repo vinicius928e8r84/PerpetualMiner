@@ -278,7 +278,6 @@
     resultadoDoAnki.setAttribute('aria-live', 'polite');
     const blocoDoAnki = elemento('div', 'pc-anki', perguntaDoAnki, respostasDoAnki, doDownloadDoAnki, resultadoDoAnki);
     doDownloadDoAnki.hidden = true;
-    resultadoDoAnki.hidden = true;
 
     // A resposta do passo Ter o Anki, só na tela: `escolha` é `null` (a pergunta) ou uma `RESPOSTA`,
     // e `doAbridor` é o ID do que a resposta “Já tenho” mostrou por último (nenhum, enquanto não há o
@@ -296,18 +295,17 @@
       return resultado === Abridor.RESULTADO.ABRIU;
     }
 
-    // Uma conversa com o abridor por vez: cada `abrir` é um Anki aberto pelo sistema, e um clique duplo em
-    // “Já tenho” não pode abrir dois.
+    // Uma conversa com o abridor por vez: cada `abrir` é um Anki aberto, e o clique duplo não pode abrir dois.
     let conversandoComOAbridor = false;
 
-    /** “Já tenho”: com a permissão já dada, o abridor abre o Anki; sem ela (ou sem o abridor), o caminho manual. */
+    /** “Já tenho”: com a permissão dada, o abridor abre o Anki; sem ela (ou sem ele), o caminho manual. */
     async function responderJaTenho() {
       definirResposta(RESPOSTA.JA_TENHO);
       desenhar();
       if (conversandoComOAbridor) return;
       conversandoComOAbridor = true;
       const abriu = await oAbridorAbreOAnki().finally(() => { conversandoComOAbridor = false; });
-      // Enquanto o abridor falava, a pessoa podia ter mudado de resposta (ou a Conexão, respondido).
+      // Enquanto o abridor falava, a pessoa mudou de resposta (ou a Conexão respondeu).
       if (anki.escolha !== RESPOSTA.JA_TENHO) return;
       definirResposta(RESPOSTA.JA_TENHO, abriu ? 'ONB-18.abrindo' : 'ONB-18.manual');
       desenhar();
@@ -405,8 +403,7 @@
     function abrirPasso(passoId) {
       estado.escolha = passoId;
       desenhar();
-      // O foco vai ao título, para o leitor de tela ler o passo novo; o botão apertado pode
-      // ter saído (Voltar no primeiro, Continuar no último).
+      // O foco vai ao título, para o leitor ler o passo novo; o botão apertado pode ter saído.
       titulo.focus();
     }
 
@@ -488,6 +485,12 @@
       desenharAEspera();
     }
 
+    /** Região viva: nunca `hidden` (o leitor não fala o que chega com ela); vazia, só sai da vista. */
+    function falar(regiao, texto, lugar = regiao) {
+      lugar.textContent = texto || '';
+      regiao.classList.toggle('veio-so-leitor', !texto);
+    }
+
     /** O bloco do passo Ter o Anki: a pergunta, a escolha e o que ela mostrou por último. */
     function desenharOAnki(passoDoCard, pronto) {
       blocoDoAnki.hidden = pronto || passoDoCard.id !== PASSO_DO_ANKI;
@@ -495,22 +498,20 @@
       jaTenho.setAttribute('aria-pressed', String(anki.escolha === RESPOSTA.JA_TENHO));
       naoTenho.setAttribute('aria-pressed', String(anki.escolha === RESPOSTA.NAO_TENHO));
       doDownloadDoAnki.hidden = anki.escolha !== RESPOSTA.NAO_TENHO;
-      resultadoDoAnki.hidden = anki.doAbridor === null;
-      resultadoDoAnki.textContent = anki.doAbridor === null ? '' : textoDaVoz(anki.doAbridor);
+      falar(resultadoDoAnki, anki.doAbridor && textoDaVoz(anki.doAbridor));
     }
 
-    /** O bloco do abridor: só no passo 4, com a Conexão ligada (é ela que deixa o abridor no computador). */
+    /** O bloco do abridor: só no passo 4, com a Conexão ligada (ela deixa o abridor no computador). */
     function desenharOAbridor(passoDoCard, pronto, situacao) {
       const { fase } = abridor;
       blocoDoAbridor.hidden = passoDoCard.id !== PASSO_DO_ABRIDOR || fase === FASE.ANTES
         || (!pronto && situacao !== CONEXAO.LIGADA);
 
-      // C8: sem a permissão (por “Agora não” ou porque o Chrome não a deu), a linha diz o que acontece sem ela.
+      // C8: sem a permissão (“Agora não” ou recusa do Chrome), a linha diz o que acontece sem ela.
       const semPermissao = fase === FASE.PEDIR && (abridor.agoraNao || abridor.recusada);
       const textoAgora = TEXTO_DA_FASE[fase] ?? (semPermissao ? 'ONB-17.semPermissao' : null);
-      textoDoAbridor.textContent = textoAgora ? textoDaVoz(textoAgora) : '';
       const problema = fase === FASE.NAO_ACHOU || fase === FASE.SEM_ABRIDOR;
-      statusDoAbridor.hidden = !textoAgora || problema;
+      falar(statusDoAbridor, textoAgora && !problema && textoDaVoz(textoAgora), textoDoAbridor);
       pontoDoAbridor.dataset.estado = PONTO_DA_FASE[fase] ?? '';
 
       const pedir = fase === FASE.PEDIR || fase === FASE.PEDINDO;
@@ -520,7 +521,7 @@
       if (tentarOAbridor) tentarOAbridor.hidden = pronto || !problema;
       agoraNao.hidden = pronto || abridor.agoraNao || !(pedir || problema);
       acoesDoAbridor.hidden = permitir.hidden && agoraNao.hidden;
-      // O botão apertado saiu (Agora não, Permitir que achou o Anki): o foco não cai no fim da página.
+      // O botão apertado saiu (Agora não, Permitir): o foco não cai no fim da página.
       if (comFoco?.hidden && !blocoDoAbridor.hidden) (aoSairOBotao?.() ?? titulo).focus();
 
       // O erro é um aviso persistente da Base; desenhos iguais preservam o foco e o Detalhes aberto.
