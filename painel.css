@@ -1461,8 +1461,7 @@ body {
 }
 
 .pc-anki[hidden],
-.pc-anki__download[hidden],
-.pc-anki__resultado[hidden] {
+.pc-anki__download[hidden] {
   display: none;
 }
 
@@ -1621,7 +1620,6 @@ body {
 }
 
 .pc-abridor[hidden],
-.pc-abridor .bv-status[hidden],
 .pc-abridor__acoes[hidden],
 .pc-abridor__acoes .veio-botao[hidden] {
   display: none;

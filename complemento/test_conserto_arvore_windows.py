@@ -6,7 +6,8 @@ CPython (o filho, com a mesma linha de comando, que é quem ouve a porta da Cone
 
 Roda o `.ps1` do abridor de verdade, no `pwsh`, num mundo de mentira: `Get-Process`, `Get-CimInstance`, `Get-NetTCPConnection`,
 `Stop-Process`, `Start-Process` e `Invoke-WebRequest` são trocados por uma tabela de processos que o teste escreve; nenhum processo
-real é lido nem sinalizado. Onde não houver `pwsh`, os testes são pulados.
+real é lido nem sinalizado. Onde não houver `pwsh`, os testes são pulados, menos quando `EXIGIR_PWSH=1` (o CI): aí a falta
+do `pwsh` faz cada teste falhar, e o job não passa sem ter provado o `.ps1`.
 """
 
 import json
@@ -30,6 +31,7 @@ OUTRA_LINHA = '"%s" -c "import time; time.sleep(99999)"'
 LINHA_DO_LAUNCHER = '"%s" -b "C:\\pm283\\anki-base" -l pt_BR -p Teste-A' % LAUNCHER
 
 PWSH = shutil.which("pwsh")
+EXIGIR_PWSH = os.environ.get("EXIGIR_PWSH") == "1"
 
 # O prefácio do mundo de mentira. `$mundo` é a tabela (pid, ppid, caminho, linha de comando, criação, se ouve a porta, se
 # sai junto com o filho); cada cmdlet que lê ou sinaliza processo lê ou muda a tabela.
@@ -101,8 +103,12 @@ def anki_do_launcher(porta_no_filho=True):
     ]
 
 
-@unittest.skipUnless(PWSH, "o .ps1 só roda onde houver PowerShell (pwsh)")
+@unittest.skipUnless(PWSH or EXIGIR_PWSH, "o .ps1 só roda onde houver PowerShell (pwsh)")
 class AnkiDoLauncherNoWindows(unittest.TestCase):
+    def setUp(self):
+        if not PWSH:
+            self.fail("EXIGIR_PWSH=1, mas não há pwsh no PATH: o .ps1 do Conserto ficaria sem prova")
+
     def rodar(self, mundo, executavel=REDIRECIONADOR, chamadas="Consertar"):
         variaveis, funcoes = _modelo(executavel)
         anki_existe = tempfile.NamedTemporaryFile(suffix=".exe", delete=False)
@@ -217,6 +223,31 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
         resposta, feito = self.reparar(mundo, executavel=CPYTHON)
         self.assertEqual(resposta, {"situacao": "reiniciado"})
         self.assertEqual(feito["sinais"], [50])
+
+
+class SemPwshOCiNaoPassaEmSilencio(unittest.TestCase):
+    """O CI exige `pwsh` (`EXIGIR_PWSH=1`): pulado não é prova."""
+
+    def rodar_sem_pwsh(self, **ambiente):
+        pasta_vazia = tempfile.mkdtemp()
+        self.addCleanup(os.rmdir, pasta_vazia)
+        raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = {"PATH": pasta_vazia, **ambiente}
+        return subprocess.run(
+            [sys.executable, "-m", "unittest", "complemento.test_conserto_arvore_windows.AnkiDoLauncherNoWindows"],
+            cwd=raiz, env=env, capture_output=True, text=True,
+        )
+
+    def test_exigir_pwsh_sem_pwsh_falha_em_vez_de_pular(self):
+        resultado = self.rodar_sem_pwsh(EXIGIR_PWSH="1")
+        self.assertNotEqual(resultado.returncode, 0, resultado.stderr)
+        self.assertIn("EXIGIR_PWSH=1", resultado.stderr)
+        self.assertNotIn("skipped", resultado.stderr)
+
+    def test_sem_exigir_pwsh_e_sem_pwsh_os_testes_sao_pulados(self):
+        resultado = self.rodar_sem_pwsh()
+        self.assertEqual(resultado.returncode, 0, resultado.stderr)
+        self.assertIn("skipped", resultado.stderr)
 
 
 if __name__ == "__main__":

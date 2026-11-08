@@ -84,7 +84,7 @@
       const ponto = elemento('span', 'cfg-ponto');
       ponto.dataset.estado = 'ok';
       ponto.setAttribute('aria-hidden', 'true');
-      partes.push(elemento('p', 'cfg-status ia-modelo__trocou', ponto, textoDaVoz('CFG-44.trocou', { modelo: dados.trocou.de })));
+      partes.push(elemento('p', 'cfg-status ia-modelo__trocou', ponto, textoDaVoz(dados.trocou.porque === 'pagador' ? 'CFG-45.trocou' : 'CFG-44.trocou', { modelo: dados.trocou.de })));
     }
     return partes;
   }

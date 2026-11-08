@@ -150,6 +150,18 @@ for (const [cenario, de] of [['gpt-4.1-mini sai em 20/11', 'gpt-4.1-mini'], ['gp
   });
 }
 
+test('a troca de quem paga tem a sua linha verde: não diz que o modelo saiu do ar', async ({ page, extensao, fakes }) => {
+  await comAChave(extensao, fakes);
+  fakes.anki.modelo.definir('gpt-6-sol ficou sem lugar na troca de pagador');
+  await abrirIA(page, extensao, { abrir: false });
+
+  await expect(card(page).getByText('A forma de pagar mudou e a nova não tem o gpt-6-sol. O Envio passou para o Automático.')).toBeVisible();
+  await expect(linhaVerde(page)).toHaveCount(0);
+  await expect(avancado(page)).toHaveAttribute('open', '');
+
+  await estadoFinalEm('o modelo dos cartões na Conexão', () => fakes.anki.modelo.guardado(), { escolha: 'automatico', trocou: { de: 'gpt-6-sol', porque: 'pagador' } });
+});
+
 test('escolher outro modelo depois da troca apaga a linha verde', async ({ page, extensao, fakes }) => {
   await comAChave(extensao, fakes);
   fakes.anki.modelo.definir('gpt-4.1 sumiu da conta');

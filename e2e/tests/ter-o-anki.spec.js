@@ -62,7 +62,10 @@ test('o primeiro passo é Ter o Anki: a pergunta e as duas respostas, e nada do 
   // O silêncio: a tela não diz nada do Anki — nem “não encontrado”, nem instalado, nem aberto.
   await expect(card(page)).not.toContainText(/não encontrado|instalar o Anki antes/i);
   await expect(baixarOAnki(page)).toHaveCount(0);
-  await expect(resultadoDoAnki(page)).toBeHidden();
+  // A região do resultado já está no DOM, viva e sem texto: o clique só troca o texto dela, que o leitor de tela fala.
+  await expect(resultadoDoAnki(page)).toHaveAttribute('aria-live', 'polite');
+  await expect(resultadoDoAnki(page)).toBeEmpty();
+  await expect(resultadoDoAnki(page)).not.toHaveAttribute('hidden', /.*/);
   // E nem a linha da Conexão, que neste passo não tem o que fazer: o Tentar de novo mora no de reiniciar.
   await expect(statusDaConexao(page)).toBeHidden();
   await expect(card(page).getByRole('button', { name: 'Tentar de novo' })).toBeHidden();
@@ -86,7 +89,7 @@ test('“Não tenho” no Mac: o link leva à página de download do Anki, e o p
 
   await esperarOLinkDaPagina(page);
   await expect(card(page)).toContainText('Arraste o Anki para a pasta Aplicativos e abra-o de lá.');
-  await expect(resultadoDoAnki(page)).toBeHidden();
+  await expect(resultadoDoAnki(page)).toBeEmpty();
   await fotografar(page, 'ter-o-anki-mac.png');
   await estadoFinal(extensao, { pm_abridor: null });
 });
@@ -154,9 +157,16 @@ test('“Já tenho” sem a permissão do abridor: o caminho manual de sempre, s
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();
 
+  // Antes do clique a região já existe, viva e sem texto; o clique só muda o texto dela.
+  await expect(resultadoDoAnki(page)).toHaveAttribute('aria-live', 'polite');
+  await expect(resultadoDoAnki(page)).toBeEmpty();
+  await expect(resultadoDoAnki(page)).not.toHaveAttribute('hidden', /.*/);
+
   await jaTenho(page).click();
 
   await expect(resultadoDoAnki(page)).toHaveText('Abra o Anki para continuar.');
+  await expect(resultadoDoAnki(page)).toHaveAttribute('aria-live', 'polite');
+  await expect(resultadoDoAnki(page)).not.toHaveAttribute('hidden', /.*/);
   expect(fakes.abridor.pedidos()).toEqual([]);
   await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), false);
   await estadoFinal(extensao, { pm_abridor: null });

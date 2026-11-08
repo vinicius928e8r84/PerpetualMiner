@@ -249,14 +249,14 @@ test.describe('passo 4 com a permissão dada', () => {
   test.fixme('passo 4: o abridor não achou o Anki, com Tentar de novo e Agora não', async ({ page, extensao, fakes }) => {
     fakes.abridor.definir('nao_achei');
     await abrirOPasso4(page, extensao, fakes);
-    await expect(page.locator('#apv-abridor-status')).toHaveText(/^O abridor não achou o Anki/);
+    await expect(page.locator('.pc-abridor')).toContainText('O abridor não achou o Anki');
     await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-abridor-nao-achou.png');
   });
 
   test.fixme('passo 4: o abridor não respondeu, com o Detalhes aberto', async ({ page, extensao, fakes }) => {
     fakes.abridor.desregistrar();
     await abrirOPasso4(page, extensao, fakes);
-    await expect(page.locator('#apv-abridor-status')).toHaveText(/^O abridor não respondeu/);
+    await expect(page.locator('.pc-abridor')).toContainText('O abridor não respondeu');
     await page.locator('#apv-passos .pc-abridor').getByText('Detalhes', { exact: true }).click();
     await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-abridor-sem-resposta.png');
   });

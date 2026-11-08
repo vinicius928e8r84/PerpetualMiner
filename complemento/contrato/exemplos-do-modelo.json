@@ -71,6 +71,27 @@
         "gpt-6-sol"
       ],
       "saidas": {}
+    },
+    "gpt-6-sol ficou sem lugar na troca de pagador": {
+      "hoje": "2026-11-01",
+      "escolha": "automatico",
+      "trocou": {
+        "de": "gpt-6-sol",
+        "porque": "pagador"
+      },
+      "conta": [
+        "gpt-4o",
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-3.5-turbo",
+        "gpt-image-1",
+        "text-embedding-3-small"
+      ],
+      "plano": [
+        "gpt-6-luna",
+        "gpt-6-sol"
+      ],
+      "saidas": {}
     }
   },
   "exemplos": [
@@ -243,6 +264,38 @@
           "aviso": null,
           "trocou": {
             "de": "gpt-4.1"
+          }
+        }
+      }
+    },
+    {
+      "nome": "estado do modelo depois da troca de pagador: a linha conta que foi o pagador, não a saída",
+      "daExtensao": true,
+      "contexto": {
+        "modelo": "gpt-6-sol ficou sem lugar na troca de pagador",
+        "chaveNaConexao": "9f3a",
+        "chatgpt": "desconectada"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/modelo/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "paga": "chave",
+          "escolha": "automatico",
+          "modelos": [
+            "gpt-4o",
+            "gpt-4.1",
+            "gpt-4.1-mini"
+          ],
+          "aviso": null,
+          "trocou": {
+            "de": "gpt-6-sol",
+            "porque": "pagador"
           }
         }
       }

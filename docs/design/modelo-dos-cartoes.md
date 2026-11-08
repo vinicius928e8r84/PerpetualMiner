@@ -4,7 +4,7 @@ Fatia MÉDIA pelo [modelo](modelo-fatia-alta.md): não guarda nem registra crede
 [#154](../seguranca/chave-da-openai.md) e no [#155](login-do-chatgpt.md); aqui só se lê quem paga). O que entrega: no Avançado do
 card IA dos cartões, o “Modelo dos cartões” é um seletor com a lista da conta, e o padrão é **Automático**. O modelo nunca fica fixo
 no código: o Automático com o login é o primeiro da lista do plano, e com a chave é o do motor (`engine/config.json`; trocá-lo por um
-mais barato corre à parte, fora do escopo do ticket).
+mais barato corre à parte, fora do escopo do ticket), conferido contra a lista de saída: se o do motor já saiu, é o primeiro modelo que a conta da chave oferece (#292).
 
 ## 1. Dono único de cada dado
 
@@ -21,7 +21,7 @@ mais barato corre à parte, fora do escopo do ticket).
 - **Com a chave:** o seletor (Automático e os modelos de texto que veem foto que a conta tem) e, embaixo, “Pago pela sua chave”.
 - **Com o login:** a lista do plano e, embaixo, a linha do #155: “Usando o plano do ChatGPT · Gerenciar uso”.
 - **Antes da saída** de um modelo escolhido: o aviso âmbar com a data, **Trocar agora** (escolhe o Automático) e **Escolher outro** (leva ao seletor). O Avançado abre sozinho quando há aviso ou troca a contar, a menos que a pessoa o tenha fechado.
-- **Depois da troca:** a linha verde “O {modelo} saiu do ar. O Envio passou para o Automático.”, até a pessoa escolher outro modelo.
+- **Depois da troca:** a linha verde “O {modelo} saiu do ar. O Envio passou para o Automático.”, até a pessoa escolher outro modelo. Se o modelo caiu porque quem paga mudou (o login que acabou, ou entrou, e a conta nova não o tem), a linha é outra: “A forma de pagar mudou e a nova não tem o {modelo}. O Envio passou para o Automático.” A Conexão guarda quem pagava na escolha (`paga`) para saber.
 - **A lista da conta não veio** (a OpenAI fora do ar, o login que acabou): a linha “Não deu para ler os modelos da sua conta. Tente de novo.” com Tentar de novo, sem seletor.
 
 ## 3. Transições

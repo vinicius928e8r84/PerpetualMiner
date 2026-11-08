@@ -1,8 +1,9 @@
 """O modelo dos cartões (#157): qual modelo escreve o texto de cada Cartão, a lista que a conta oferece e a troca antes da saída.
 
 O desenho está em `docs/design/modelo-dos-cartoes.md`. A escolha da pessoa (`automatico` ou um modelo da lista) fica em
-`user_files/modelo-dos-cartoes.json`, junto com o que a Conexão trocou sozinha (`trocou`, a linha verde); nada ali é segredo.
-O Automático não fixa modelo nenhum no código: com o login é o primeiro da lista do plano, e com a chave é o do motor (`engine/config.json`).
+`user_files/modelo-dos-cartoes.json`, junto com quem pagava quando ela foi feita (`paga`) e o que a Conexão trocou sozinha (`trocou`, a linha verde); nada ali é segredo.
+O Automático não fixa modelo nenhum no código: com o login é o primeiro da lista do plano, e com a chave é o do motor (`engine/config.json`),
+conferido contra a mesma lista de saída (se o do motor já saiu, é o primeiro que a conta da chave oferece).
 A lista nossa, `modelos_da_ia.json`, viaja com a extensão (dentro da Conexão) e diz o que cada modelo faz e o dia em que sai do ar.
 
 Ler (`estado`) nunca grava: quem grava a troca é o Envio (`do_envio`), no primeiro Cartão depois de a escolha cair.
@@ -32,10 +33,12 @@ def lista_nossa():
 
 
 class ModeloDosCartoes:
-    """`hoje` devolve o dia (um `date`); `login` e `cofre` dizem quem paga; `lista` é a lista nossa (`lista_nossa()`)."""
+    """`hoje` devolve o dia (um `date`); `login` e `cofre` dizem quem paga; `lista` é a lista nossa (`lista_nossa()`);
+    `modelo_do_motor` devolve o `chat_model` do motor, o Automático com a chave."""
 
-    def __init__(self, arquivo, lista, hoje, logger, login, cofre, openai_base):
+    def __init__(self, arquivo, lista, hoje, logger, login, cofre, openai_base, modelo_do_motor):
         self._arquivo, self._hoje, self.logger = arquivo, hoje, logger
+        self._modelo_do_motor = modelo_do_motor
         self._login, self._cofre, self._openai_base = login, cofre, openai_base
         self._com_foto = [m["modelo"] for m in lista if m["texto"] and m["foto"]]
         self._saidas = {}
@@ -49,19 +52,20 @@ class ModeloDosCartoes:
 
     # -- o que fica guardado --
     def _ler(self):
+        """(a escolha, o que foi trocado, quem pagava quando ela foi feita: None num arquivo de antes de se guardar isso)."""
         try:
             with open(self._arquivo, encoding="utf-8") as arquivo:
                 guardado = json.load(arquivo)
-            escolha, trocou = guardado["escolha"], guardado.get("trocou")
+            escolha, trocou, paga = guardado["escolha"], guardado.get("trocou"), guardado.get("paga")
             if isinstance(escolha, str) and escolha and (trocou is None or isinstance(trocou.get("de"), str)):
-                return escolha, trocou
+                return escolha, trocou, paga if paga in (PLANO, CHAVE) else None
         except (OSError, ValueError, KeyError, AttributeError):
             pass
-        return AUTOMATICO, None
+        return AUTOMATICO, None, None
 
-    def _gravar(self, escolha, trocou):
+    def _gravar(self, escolha, trocou, paga):
         with self._tranca:
-            gravar_so_do_dono(self._arquivo, {"escolha": escolha, "trocou": trocou})
+            gravar_so_do_dono(self._arquivo, {"escolha": escolha, "trocou": trocou, "paga": paga})
 
     # -- o que a conta oferece --
     def _saiu(self, modelo):
@@ -76,6 +80,13 @@ class ModeloDosCartoes:
         ids = openai_api.modelos_da_conta(self._openai_base, chave)
         return self.disponiveis([modelo for modelo in self._com_foto if modelo in ids])
 
+    def automatico_da_chave(self, oferta):
+        """O modelo do texto do Automático com a chave: None (o do motor) enquanto ele não saiu do ar; senão o primeiro que a conta oferece
+        (None se a lista não veio ou está vazia: então nada é melhor que o do motor)."""
+        if not self._saiu(self._modelo_do_motor()):
+            return None
+        return oferta[0] if oferta else None
+
     def conta(self):
         """(quem paga, o que ela oferece): `plano` com o login, `chave` com a chave, `None` e `[]` sem nenhum dos dois."""
         try:
@@ -88,41 +99,46 @@ class ModeloDosCartoes:
             self.logger.warning("Modelo dos cartões: a lista da conta não veio")
             raise ModelosIndisponiveis()
 
-    def _resolver(self, escolha, oferta):
-        """(o que vale agora, de quem caiu): a escolha cai no dia da saída ou quando a conta deixa de oferecê-la (`oferta` None: não se sabe)."""
+    def _resolver(self, escolha, oferta, paga, quem_escolheu):
+        """(o que vale agora, o que trocou): a escolha cai no dia da saída ou quando a conta deixa de oferecê-la (`oferta` None: não se sabe).
+        `trocou` é `{ de }`, e leva `porque: pagador` quando a conta que não a oferece é outra que a de quando a pessoa escolheu."""
         if escolha == AUTOMATICO:
             return AUTOMATICO, None
-        if self._saiu(escolha) or (oferta is not None and escolha not in oferta):
-            return AUTOMATICO, escolha
+        if self._saiu(escolha):
+            return AUTOMATICO, {"de": escolha}
+        if oferta is not None and escolha not in oferta:
+            outro_pagador = quem_escolheu is not None and quem_escolheu != paga
+            return AUTOMATICO, dict({"de": escolha}, **({"porque": "pagador"} if outro_pagador else {}))
         return escolha, None
 
     # -- o que a extensão pede --
     def estado(self):
         """`{ paga, escolha, modelos, aviso, trocou }`: a escolha que vale hoje, a lista, o aviso antes da saída e o que foi trocado."""
         paga, oferta = self.conta()
-        escolha, trocou = self._ler()
-        efetivo, de = self._resolver(escolha, oferta if paga else None)
+        escolha, trocou, quem_escolheu = self._ler()
+        efetivo, trocada = self._resolver(escolha, oferta if paga else None, paga, quem_escolheu)
         saida = self._saidas.get(efetivo)
         aviso = {"modelo": efetivo, "saida": saida.isoformat()} if saida and self._hoje() < saida else None
-        return {"paga": paga, "escolha": efetivo, "modelos": oferta, "aviso": aviso, "trocou": {"de": de} if de else trocou}
+        return {"paga": paga, "escolha": efetivo, "modelos": oferta, "aviso": aviso, "trocou": trocada or trocou}
 
     def escolher(self, modelo):
         """Guarda a escolha (e apaga a linha do que foi trocado); (status, resposta) do contrato."""
         if not isinstance(modelo, str) or not modelo:
             return 400, {"error": "invalid_request"}
-        if modelo != AUTOMATICO and modelo not in self.conta()[1]:
+        paga, oferta = self.conta()
+        if modelo != AUTOMATICO and modelo not in oferta:
             return 404, {"error": "model_not_found"}
-        self._gravar(modelo, None)
+        self._gravar(modelo, None, paga)
         return 200, {"ok": True, "escolha": modelo}
 
     # -- o Envio --
-    def do_envio(self, oferta, automatico):
-        """O modelo do texto dos Cartões deste Envio: o da escolha, ou `automatico`; se a escolha caiu, guarda a troca e segue."""
-        escolha, _ = self._ler()
-        efetivo, de = self._resolver(escolha, oferta)
-        if de:
-            self._gravar(AUTOMATICO, {"de": de})
-            self.logger.info("Modelo dos cartões: %s saiu; o Envio passou para o Automático", de)
+    def do_envio(self, oferta, automatico, paga):
+        """O modelo do texto dos Cartões deste Envio (`paga` é quem o paga): o da escolha, ou `automatico`; se a escolha caiu, guarda a troca e segue."""
+        escolha, _, quem_escolheu = self._ler()
+        efetivo, trocada = self._resolver(escolha, oferta, paga, quem_escolheu)
+        if trocada:
+            self._gravar(AUTOMATICO, trocada, paga)
+            self.logger.info("Modelo dos cartões: %s não vale mais; o Envio passou para o Automático", trocada["de"])
         return automatico if efetivo == AUTOMATICO else efetivo
 
 
@@ -136,7 +152,7 @@ def _modelo_do_plano(login, token, plano, modelos):
     if "modelo" not in plano:
         oferta = _oferta_do_plano(login, token, modelos)
         plano["automatico"] = oferta[0]
-        plano["modelo"] = modelos.do_envio(oferta, oferta[0])
+        plano["modelo"] = modelos.do_envio(oferta, oferta[0], PLANO)
     return plano["modelo"]
 
 
@@ -160,7 +176,7 @@ def credencial(login, cofre, plano, modelos, so_a_chave=False):
             oferta = modelos.da_chave(chave)
         except openai_api.ErroDaChave:
             oferta = None  # a lista não veio: vale a escolha da pessoa, sem conferir se a conta ainda a tem
-        plano["modelo_da_chave"] = modelos.do_envio(oferta, None)
+        plano["modelo_da_chave"] = modelos.do_envio(oferta, modelos.automatico_da_chave(oferta), CHAVE)
     return {"openai_api_key": chave, "modelo_do_texto": plano["modelo_da_chave"]}
 
 
