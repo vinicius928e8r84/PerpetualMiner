@@ -101,11 +101,7 @@ def _classificar_do_plano(status, detalhe):
     return FORA_DO_AR if status >= 500 else (LIMITE_DE_USO if status == 429 else PEDIDO_RECUSADO)
 
 
-def responder(base, token, modelo, instrucoes, mensagem, tempo=TEMPO_PADRAO, formato_json=False):
-    """POST /v1/responses with the ChatGPT plan's access token: no `temperature`, the system prompt as `instructions`,
-    `store: false` and `stream: true` (the SIWC "Preview limitations"). `mensagem` is a text, or the parts of the user's message
-    (`input_text` and `input_image`, the image judge); `formato_json` asks for a JSON object by `text.format`. Returns (text, usage)
-    only after `response.completed`; anything else is `ErroDaOpenAI` with a code, never what the plan wrote."""
+def _responder_uma_vez(base, token, modelo, instrucoes, mensagem, tempo, formato_json):
     corpo = {"model": modelo, "instructions": instrucoes, "input": [{"role": "user", "content": mensagem}], "store": False, "stream": True}
     if formato_json:
         corpo["text"] = {"format": {"type": "json_object"}}
@@ -137,7 +133,24 @@ def responder(base, token, modelo, instrucoes, mensagem, tempo=TEMPO_PADRAO, for
     raise ErroDaOpenAI(FORA_DO_AR)  # the stream ended without `response.completed`
 
 
-def _passageira(codigo, status):
+def responder(base, token, modelo, instrucoes, mensagem, tempo=TEMPO_PADRAO, formato_json=False, repeticoes=0):
+    """POST /v1/responses with the ChatGPT plan's access token: no `temperature`, the system prompt as `instructions`,
+    `store: false` and `stream: true` (the SIWC "Preview limitations"). `mensagem` is a text, or the parts of the user's message
+    (`input_text` and `input_image`, the image judge); `formato_json` asks for a JSON object by `text.format`. Returns (text, usage)
+    only after `response.completed`; anything else is `ErroDaOpenAI` with a code, never what the plan wrote. A passing refusal
+    (`passageira`) is asked again `repeticoes` times."""
+    espera = ESPERA_ENTRE_TENTATIVAS
+    for tentativa in range(repeticoes + 1):
+        try:
+            return _responder_uma_vez(base, token, modelo, instrucoes, mensagem, tempo, formato_json)
+        except ErroDaOpenAI as recusa:
+            if tentativa == repeticoes or not passageira(recusa.codigo, recusa.status):
+                raise
+        time.sleep(espera)
+        espera *= 2
+
+
+def passageira(codigo, status):
     """A refusal worth asking again: the server or the network failed, or OpenAI asked to slow down (never the key or the billing)."""
     return codigo == FORA_DO_AR or codigo == LIMITE_DE_USO or status in (408, 409)
 
@@ -167,7 +180,7 @@ def _pedir(base, caminho, chave, corpo, tempo, repeticoes=0):
         try:
             return _pedir_uma_vez(base, caminho, chave, corpo, tempo)
         except ErroDaOpenAI as recusa:
-            if tentativa == repeticoes or not _passageira(recusa.codigo, recusa.status):
+            if tentativa == repeticoes or not passageira(recusa.codigo, recusa.status):
                 raise
         time.sleep(espera)
         espera *= 2

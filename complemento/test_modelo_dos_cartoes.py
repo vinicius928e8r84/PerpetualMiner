@@ -69,6 +69,33 @@ class OAutomatico(unittest.TestCase):
         self.assertEqual(usados, [modelo_do_motor()])
         self.assertEqual(visto, (200, {"paga": "chave", "escolha": "automatico", "modelos": ["gpt-4o", "gpt-4.1", "gpt-4.1-mini"], "aviso": None, "trocou": None}))
 
+    def test_o_automatico_da_chave_que_ja_saiu_do_ar_vai_para_o_primeiro_modelo_que_a_conta_oferece(self):
+        saiu = cenario("Automático", saidas={modelo_do_motor(): "2026-11-01"})
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, modelo=saiu) as conexao:
+            fim = enviar(conexao)
+            visto = estado(conexao)[1]
+            usados = modelos_pedidos(conexao)
+        self.assertEqual((fim["status"], usados), ("completed", ["gpt-4.1"]))
+        self.assertEqual((visto["escolha"], visto["modelos"]), ("automatico", ["gpt-4.1", "gpt-4.1-mini"]))
+
+    def test_a_troca_do_dia_nao_cai_de_volta_no_modelo_do_motor_que_tambem_saiu(self):
+        saiu = cenario("gpt-4.1-mini saiu hoje", saidas={"gpt-4.1-mini": "2026-11-20", modelo_do_motor(): "2026-11-20"})
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, modelo=saiu) as conexao:
+            fim = enviar(conexao)
+            visto = estado(conexao)[1]
+            usados = modelos_pedidos(conexao)
+        self.assertEqual((fim["status"], usados), ("completed", ["gpt-4.1"]))
+        self.assertEqual((visto["escolha"], visto["trocou"]), ("automatico", {"de": "gpt-4.1-mini"}))
+
+    def test_o_automatico_da_chave_sem_nenhum_modelo_na_conta_segue_com_o_do_motor(self):
+        sem_lista = cenario("Automático", saidas={modelo_do_motor(): "2026-11-01"})
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, modelo=sem_lista) as conexao:
+            conexao.openai.modelos_da_conta = None
+            conexao.openai.comportamento = "fora_do_ar"
+            fim = enviar(conexao)
+            usados = modelos_pedidos(conexao)
+        self.assertEqual((fim["status"], usados), ("completed", [modelo_do_motor()]))
+
     def test_sem_escolha_o_envio_com_o_login_usa_o_primeiro_modelo_da_lista_do_plano(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, modelo=cenario("Automático")) as conexao:
             entrar_e_voltar(conexao)
@@ -122,7 +149,7 @@ class EscolherOutroModelo(unittest.TestCase):
                 no_arquivo = guardado(conexao)
             with EnvioNoTeste(pasta, modelo=cenario("Automático", escolha="gpt-4.1")) as conexao:
                 depois = estado(conexao)[1]["escolha"]
-        self.assertEqual((no_arquivo, depois), ({"escolha": "gpt-4.1", "trocou": None}, "gpt-4.1"))
+        self.assertEqual((no_arquivo, depois), ({"escolha": "gpt-4.1", "trocou": None, "paga": "chave"}, "gpt-4.1"))
 
     def test_nem_o_estado_nem_a_escolha_levam_a_chave_ou_o_token_e_o_arquivo_nao_os_guarda(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, modelo=cenario("Automático")) as conexao:
@@ -157,7 +184,7 @@ class AntesEDepoisDaSaida(unittest.TestCase):
         self.assertEqual((fim["status"], fim["lastError"]), ("completed", None))
         self.assertEqual(usados, [modelo_do_motor()] * 2)
         self.assertEqual((visto["escolha"], visto["aviso"], visto["trocou"]), ("automatico", None, {"de": "gpt-4.1-mini"}))
-        self.assertEqual(no_arquivo, {"escolha": "automatico", "trocou": {"de": "gpt-4.1-mini"}})
+        self.assertEqual(no_arquivo, {"escolha": "automatico", "trocou": {"de": "gpt-4.1-mini"}, "paga": "chave"})
 
     def test_o_dia_chega_entre_dois_envios_o_primeiro_usa_o_modelo_e_o_segundo_ja_o_automatico(self):
         escolhido = cenario("gpt-4.1-mini sai em 20/11")
@@ -186,6 +213,45 @@ class AntesEDepoisDaSaida(unittest.TestCase):
             visto = estado(conexao)[1]
             usados = modelos_pedidos(conexao)
         self.assertEqual((fim["status"], usados), ("completed", [modelo_do_motor()]))
+        self.assertEqual((visto["escolha"], visto["trocou"]), ("automatico", {"de": "gpt-4.1"}))
+
+    def test_o_login_que_acabou_deixa_a_escolha_do_plano_sem_lugar_e_a_troca_diz_que_foi_o_pagador(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, modelo=cenario("Automático")) as conexao:
+            entrar_e_voltar(conexao)
+            escolher(conexao, "gpt-6-sol")
+            conexao.pedir("POST", "/ia/chatgpt/sair", corpo={})
+            visto = estado(conexao)[1]
+            fim = enviar(conexao)
+            usados = modelos_pedidos(conexao)
+            no_arquivo = guardado(conexao)
+        troca = {"de": "gpt-6-sol", "porque": "pagador"}
+        self.assertEqual((fim["status"], usados), ("completed", [modelo_do_motor()]))
+        self.assertEqual((visto["paga"], visto["escolha"], visto["trocou"]), ("chave", "automatico", troca))
+        self.assertEqual((no_arquivo["escolha"], no_arquivo["trocou"]), ("automatico", troca))
+
+    def test_entrar_com_o_login_deixa_a_escolha_da_chave_sem_lugar_e_a_troca_diz_que_foi_o_pagador(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, modelo=cenario("Automático")) as conexao:
+            escolher(conexao, "gpt-4.1")
+            entrar_e_voltar(conexao)
+            visto = estado(conexao)[1]
+            enviar(conexao)
+            usados = modelos_pedidos(conexao)
+        self.assertEqual((visto["paga"], visto["escolha"], visto["trocou"]), ("plano", "automatico", {"de": "gpt-4.1", "porque": "pagador"}))
+        self.assertEqual(usados, ["gpt-6-luna"])
+
+    def test_o_modelo_que_a_conta_nova_tambem_tem_continua_escolhido_na_troca_de_pagador(self):
+        com_o_mesmo = cenario("Automático", plano=["gpt-4.1", "gpt-6-luna"])
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, modelo=com_o_mesmo) as conexao:
+            escolher(conexao, "gpt-4.1")
+            entrar_e_voltar(conexao)
+            visto = estado(conexao)[1]
+        self.assertEqual((visto["paga"], visto["escolha"], visto["trocou"]), ("plano", "gpt-4.1", None))
+
+    def test_a_escolha_guardada_sem_o_pagador_que_a_fez_cai_como_saiu_do_ar(self):
+        antiga = cenario("gpt-4.1 sumiu da conta")
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, modelo=antiga) as conexao:
+            entrar_e_voltar(conexao)
+            visto = estado(conexao)[1]
         self.assertEqual((visto["escolha"], visto["trocou"]), ("automatico", {"de": "gpt-4.1"}))
 
     def test_Trocar_agora_e_escolher_o_automatico_antes_da_data_e_o_aviso_some(self):

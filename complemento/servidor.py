@@ -319,8 +319,10 @@ class Conexao:
         self.cofre = Cofre(dados.chaves)
         self.chatgpt = LoginDoChatGPT(dados.chaves, logger, base=chatgpt_base, api=openai_base)
         self.openai_base, self.voz_base = openai_base, voz_base
+        motor = motor or envio.motor_do_complemento()
         self.modelos = ModeloDosCartoes(os.path.join(dados.raiz, "modelo-dos-cartoes.json"), modelos_da_ia or lista_nossa(), hoje,
-                                        logger, self.chatgpt, self.cofre, openai_base)
+                                        logger, self.chatgpt, self.cofre, openai_base,
+                                        lambda: motor.config_loader.base_config()["openai"]["chat_model"])
         self.firestore_base = firestore_base
         # O item de login de “Abrir o Anki com o computador”; None onde o sistema não tem (nem Mac nem Windows).
         self.item_de_login = item_de_login
@@ -337,7 +339,7 @@ class Conexao:
         self.situacao_da_passagem = None
         self._cancelar = threading.Event()
         self._thread_da_passagem = None
-        self.fila = envio.Fila(dados, motor or envio.motor_do_complemento(), logger)
+        self.fila = envio.Fila(dados, motor, logger)
         self.teto = TetoDoMes(os.path.join(dados.raiz, "teto-do-mes.json"), self.fila, hoje)  # o teto do mês (#160)
         trabalho = envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(), chatgpt=self.chatgpt, modelos=self.modelos,
                                   espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai, espera_do_plano=espera_do_plano, voz_base=voz_base,
