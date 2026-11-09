@@ -14,6 +14,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from complemento import tipo_de_nota  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_contrato_da_criacao import SO_O_DEFAULT  # noqa: E402
 from complemento.test_envio import ID, OUTRO_ID, EnvioNoTeste, pedido  # noqa: E402
@@ -22,7 +23,7 @@ from complemento.test_envio_tipo_de_nota import cores_de  # noqa: E402
 FRASE_RUSSA = "Она приходила вчера [Context: Série - Episódio 1]"
 PALAVRA_DE_MENTIRA = "вчера"  # a última palavra da frase: o Cartão de mentira escolhe essa
 CAMPOS_DO_RUSSO_COM_MORFOLOGIA = sorted([
-    "Frase", "Áudio da frase", "Palavra", "Áudio da palavra", "Pronúncia", "Sílaba forte", "Definição", "Significado simples", "Explicação das cores", "Outro exemplo",
+    "Frase", "Áudio da frase", "Áudio da palavra", "Pronúncia", "Sílaba forte", "Definição", "Significado simples", "Explicação das cores", "Outro exemplo",
     "Morfologia", "Raiz", "Imagem", "Frase com lacuna", "Dica"])
 
 
@@ -43,14 +44,17 @@ class OIntermediarioEOAvancadoDoRusso(unittest.TestCase):
         self.assertEqual((estado["status"], sorted(campos)), ("completed", CAMPOS_DO_RUSSO_COM_MORFOLOGIA))
         self.assertIn("Morphology:", prompt)
         self.assertNotIn("Same root: [", prompt)
-        self.assertEqual((campos["Palavra"], campos["Raiz"]), (PALAVRA_DE_MENTIRA, "вч"))
+        self.assertEqual((campos["Sílaba forte"], campos["Raiz"]), ("в\u0301чера", "вч"))
+        self.assertNotIn("Palavra", campos)
         self.assertEqual((campos["Definição"], campos["Outro exemplo"]), ("definição de mentira", "outro exemplo de mentira"))
         self.assertEqual(campos["Morfologia"], "вчера = вч + ера")
         self.assertEqual([texto for _, texto in cores_de(campos["Explicação das cores"])], ["вч", "-ера"])
 
-    def test_a_frente_destaca_so_a_palavra_chave_e_o_resto_da_frase_fica_igual(self):
+    def test_a_frente_destaca_a_palavra_chave_e_pinta_os_pedacos_da_morfologia(self):
         _, campos, _ = enviar_o_russo("intermediario")
-        self.assertEqual(campos["Frase"], 'Она приходила <span style="color: #f59e0b; font-weight: bold;">вчера</span>')
+        self.assertIn('<span style="font-weight: bold; border-bottom: 3px solid #f59e0b;">', campos["Frase"])
+        self.assertEqual([texto for _, texto in cores_de(campos["Frase"])], ["вч", "ера"])
+        self.assertEqual(re.sub("<[^>]+>", "", campos["Frase"]), "Она приходила вчера")
         self.assertEqual(campos["Significado simples"], "significado simples de mentira")
 
     def test_o_avancado_e_monolingue_e_grava_as_palavras_da_mesma_raiz_sem_a_morfologia_nem_as_cores(self):
@@ -76,7 +80,7 @@ class OIntermediarioEOAvancadoDoRusso(unittest.TestCase):
         self.assertEqual(estado["status"], "completed")
         self.assertIn("Alignment: 1 |", prompt)
         self.assertFalse({"Morfologia", "Raiz", "Sílaba forte", "Explicação das cores", "Mesma raiz", "Definição"} & set(campos))
-        self.assertEqual(campos["Palavra"], "Она приходила")
+        self.assertNotIn("Palavra", campos)
 
     def test_o_pedido_do_russo_com_nivel_e_aceito_e_o_envio_guarda_o_nivel(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
@@ -86,6 +90,35 @@ class OIntermediarioEOAvancadoDoRusso(unittest.TestCase):
                     conexao.esperar(id_)
                     visto = json.loads(conexao.pedir("POST", "/jobs/get", corpo={"jobId": id_})[2])
                     self.assertEqual(visto["job"]["nivel"], nivel)
+
+
+class UmTipoDeNotaDoRussoDeAntesDoSignificadoSimples(unittest.TestCase):
+    """O tipo "PerpetualMiner Russo" das Conexões anteriores não tem o campo "Significado simples", e a Conexão nunca muda um tipo que já existe."""
+
+    def enviar(self, nivel):
+        antigo = tipo_de_nota.definicao("ru")
+        colecao = ColecaoEmMemoria(SO_O_DEFAULT)
+        colecao.criar_tipo_de_nota(dict(antigo, campos=[campo for campo in antigo["campos"] if campo != "Significado simples"]))
+        corpo = dict(pedido(ID, FRASE_RUSSA, lang="ru", baralho="PerpetualMiner::Russo"), nivel=nivel)
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, colecao=colecao) as conexao:
+            conexao.criar(corpo)
+            estado = conexao.esperar(ID)
+        return estado, colecao.gravadas[0]["campos"] if colecao.gravadas else None
+
+    def test_o_intermediario_e_o_avancado_gravam_e_o_significado_simples_vai_para_o_fim_da_definicao(self):
+        for nivel, simples in (("intermediario", "significado simples de mentira"), ("avancado", "простое объяснение")):
+            with self.subTest(nivel=nivel):
+                estado, campos = self.enviar(nivel)
+                self.assertEqual((estado["status"], estado["lastError"]), ("completed", None))
+                self.assertNotIn("Significado simples", campos)
+                self.assertTrue(campos["Definição"].endswith("<br>" + simples), campos["Definição"])
+
+    def test_trocar_a_frente_de_um_tipo_antigo_nao_cita_o_campo_que_ele_nao_tem(self):
+        antigo = tipo_de_nota.definicao("ru")
+        colecao = ColecaoEmMemoria(SO_O_DEFAULT)
+        colecao.criar_tipo_de_nota(dict(antigo, campos=[campo for campo in antigo["campos"] if campo != "Significado simples"]))
+        tipo_de_nota.trocar_a_frente(colecao, "ru", "ouvir_primeiro")
+        self.assertNotIn("Significado simples", colecao._cartoes_dos_tipos[antigo["nome"]]["verso"])
 
 
 if __name__ == "__main__":

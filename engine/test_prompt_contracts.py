@@ -295,6 +295,16 @@ class PromptsPorNivelTests(unittest.TestCase):
             self.assertNotIn(pedaco, prompt)
         self.assertIn("Root: [The root of the Word]", prompt)
 
+    def test_o_intermediario_do_russo_pede_a_definicao_de_dicionario_o_significado_simples_de_crianca_e_a_morfologia_das_duas_frases(self):
+        prompt = _prompt_do_nivel("ru", "intermediario")
+        for regra in (
+            "Definition: [English dictionary definition of the Word",
+            "Simple meaning: [The same meaning in very simple English words, as if explained to a 5-year-old]",
+            "word of the phrase AND of the Other example",
+            "the Word always first",
+        ):
+            self.assertIn(regra, prompt)
+
     def test_so_o_avancado_do_russo_pede_as_palavras_da_mesma_raiz(self):
         self.assertNotIn("Same root", _prompt_do_nivel("ru", "intermediario"))
         self.assertIn("Same root: [Three to five Russian words from the same root", _prompt_do_nivel("ru", "avancado"))

@@ -88,7 +88,8 @@ class OCartaoNovoSaiNoIniciante(unittest.TestCase):
         campos = notas[0]["campos"]
         self.assertEqual((estado["status"], notas[0]["tipo"], notas[0]["baralho"]), ("completed", "PerpetualMiner Russo", "PerpetualMiner::Russo"))
         self.assertEqual(re.sub("<[^>]+>", "", campos["Frase"]), "Я не мальчик!")
-        self.assertEqual((campos["Tradução natural"], campos["Palavra"]), ("tradução de mentira", "Я не"))
+        self.assertEqual(campos["Tradução natural"], "tradução de mentira")
+        self.assertNotIn("Palavra", campos)  # o Iniciante do russo não mostra a palavra do dicionário
         self.assertEqual([texto for _, texto in cores_de(campos["Frase"])], ["Я"])
 
     def test_a_imagem_do_cartao_vai_no_campo_proprio_e_a_foto_fica_na_midia_da_nota(self):

@@ -135,6 +135,7 @@
         "definicao", "outro_exemplo", "dica", "lacuna", "frase_escrita", "escrito_antes", "correcao",
         "silaba_forte", "morfologia", "explicacao_das_cores", "mesma_raiz", "raiz", "significado_simples"
       ],
+      "opcionais": {"significado_simples": "definicao"},
       "ordem_do_verso": [
         "pronuncia", "literal", "natural", "cena", "palavra", "silaba_forte", "definicao", "significado_simples", "outro_exemplo", "explicacao_das_cores", "mesma_raiz", "imagem"
       ],
@@ -142,7 +143,7 @@
         "iniciante": {
           "prompt": "prompts/ru_iniciante.txt",
           "explicacao": "pt",
-          "verso": ["pronuncia", "literal", "natural", "cena", "palavra", "imagem"],
+          "verso": ["pronuncia", "literal", "natural", "cena", "imagem"],
           "cores": true,
           "exemplo": {
             "palavra": "мальчик",
@@ -169,7 +170,7 @@
         "intermediario": {
           "prompt": "prompts/ru_intermediario.txt",
           "explicacao": "en",
-          "verso": ["pronuncia", "palavra", "silaba_forte", "definicao", "significado_simples", "outro_exemplo", "explicacao_das_cores", "imagem"],
+          "verso": ["pronuncia", "silaba_forte", "definicao", "significado_simples", "outro_exemplo", "explicacao_das_cores", "imagem"],
           "cores": false,
           "destaque": true,
           "morfologia": true,
@@ -197,6 +198,7 @@
               "приходила | prefix:при | root:ход | suffix:и | suffix:л | ending:а",
               "вчера | root:вчер | ending:а",
               "дома | root:дом | ending:а",
+              "Мама | root:мам | ending:а",
               "",
               "Colors:",
               "prefix | при- | arrival, movement towards a place",
@@ -213,7 +215,7 @@
         "avancado": {
           "prompt": "prompts/ru_avancado.txt",
           "explicacao": "ru",
-          "verso": ["palavra", "silaba_forte", "definicao", "significado_simples", "outro_exemplo", "mesma_raiz", "imagem"],
+          "verso": ["silaba_forte", "definicao", "significado_simples", "outro_exemplo", "mesma_raiz", "imagem"],
           "cores": false,
           "destaque": true,
           "morfologia": false,

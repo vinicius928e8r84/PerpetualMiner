@@ -8,7 +8,7 @@ from pathlib import Path
 import estilos
 
 PARTES_DO_INICIANTE = ["pronuncia", "literal", "natural", "cena", "palavra", "imagem"]
-PARTES_DO_RUSSO_COM_MORFOLOGIA = ["pronuncia", "palavra", "silaba_forte", "definicao", "significado_simples", "outro_exemplo", "explicacao_das_cores", "imagem"]
+PARTES_DO_RUSSO_COM_MORFOLOGIA = ["pronuncia", "silaba_forte", "definicao", "significado_simples", "outro_exemplo", "explicacao_das_cores", "imagem"]
 PARTES_SEM_CORES = ["cena", "palavra", "definicao", "outro_exemplo", "imagem"]  # o Intermediário e o Avançado do inglês
 
 
@@ -22,7 +22,8 @@ class OEstiloVemDosDados(unittest.TestCase):
         for lang in ("en", "ru"):
             with self.subTest(lang=lang):
                 estilo = estilos.estilo(lang)
-                self.assertEqual((estilo["explicacao"], estilo["cores"], estilo["verso"]), ("pt", True, PARTES_DO_INICIANTE))
+                partes = PARTES_DO_INICIANTE if lang == "en" else [parte for parte in PARTES_DO_INICIANTE if parte != "palavra"]  # o russo não mostra a palavra do dicionário
+                self.assertEqual((estilo["explicacao"], estilo["cores"], estilo["verso"]), ("pt", True, partes))
 
     def test_os_dois_idiomas_tem_o_iniciante_o_intermediario_e_o_avancado(self):
         for lang in ("en", "ru"):
@@ -46,7 +47,7 @@ class OEstiloVemDosDados(unittest.TestCase):
         self.assertEqual((intermediario["destaque"], avancado["destaque"]), (True, True))
         self.assertEqual((avancado["cores"], avancado["morfologia"], avancado["repete_a_frase"]), (False, False, False))
         self.assertEqual(avancado["guarda"], ["raiz"])
-        self.assertEqual(avancado["verso"], ["palavra", "silaba_forte", "definicao", "significado_simples", "outro_exemplo", "mesma_raiz", "imagem"])
+        self.assertEqual(avancado["verso"], ["silaba_forte", "definicao", "significado_simples", "outro_exemplo", "mesma_raiz", "imagem"])
 
     def test_so_o_avancado_do_russo_traz_as_palavras_da_mesma_raiz(self):
         self.assertNotIn("mesma_raiz", estilos.estilo("ru", "intermediario")["verso"])

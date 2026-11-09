@@ -198,7 +198,7 @@ class OCartaoIniciante(unittest.TestCase):
     def test_o_russo_leva_a_frase_inteira_e_a_palavra_que_o_pedido_deu(self):
         campos = nota(RUSSO, "ru", palavra="Я не")["campos"]
         self.assertEqual(re.sub("<[^>]+>", "", campos["Frase"]), "Я не мальчик!")
-        self.assertEqual(campos["Palavra"], "Я не")
+        self.assertNotIn("Palavra", campos)  # o Iniciante do russo não mostra a palavra do dicionário (a pessoa não busca i+1)
         self.assertEqual(campos["Tradução natural"], "Eu não sou um menino!")
 
     def test_o_audio_da_frase_e_o_da_palavra_e_a_imagem_vao_cada_um_no_seu_campo(self):
