@@ -16,7 +16,8 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import abridor, configuracao, inicio, item_de_login  # noqa: E402
+from complemento import abridor, atualizacao, configuracao, inicio, item_de_login  # noqa: E402
+from complemento.test_atualizacao import AnkiWebDeMentira  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_abridor import Pastas, RegistroDeMentira, abridor_do_mac, conversar  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
@@ -85,6 +86,27 @@ class AoCarregarNoAnki(unittest.TestCase):
                 parar(conexao)
         self.assertEqual(status, 200)
         self.assertEqual(corpo, {"ok": True, "versao": configuracao.VERSAO, "perfil": "Usuário 1"})
+
+    def test_a_conexao_instalada_pelo_ankiweb_se_marca_e_consulta_sozinha_por_padrao(self):
+        ankiweb = AnkiWebDeMentira()
+        with tempfile.TemporaryDirectory() as pasta:
+            conexao = inicio.iniciar(pasta, lambda: None, porta=0, abridor=None, anki_web=ankiweb)
+            try:
+                self.assertFalse(ankiweb.update_enabled, "o diálogo do Anki não aparece: a Conexão se atualiza sozinha")
+            finally:
+                parar(conexao)
+
+    def test_quem_cria_o_arquivo_sem_atualizacao_automatica_mantem_o_dialogo_do_anki(self):
+        ankiweb = AnkiWebDeMentira()
+        with tempfile.TemporaryDirectory() as pasta:
+            os.makedirs(os.path.join(pasta, "user_files"))
+            open(os.path.join(pasta, "user_files", atualizacao.ARQUIVO_DE_QUEM_DESLIGOU), "w").close()
+            conexao = inicio.iniciar(pasta, lambda: None, porta=0, abridor=None, anki_web=ankiweb)
+            try:
+                self.assertTrue(ankiweb.update_enabled)
+                self.assertEqual(ankiweb.consultas, [])
+            finally:
+                parar(conexao)
 
     def test_user_files_ganha_as_pastas_da_fila_do_estado_dos_custos_dos_logs_das_chaves_e_dos_prompts(self):
         with tempfile.TemporaryDirectory() as pasta:

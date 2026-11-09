@@ -10,9 +10,10 @@ mentira). Se `anki_web.pronto()` diz que as funções internas do Anki mudaram, 
 que tivesse posto: o diálogo normal do Anki volta. Qualquer erro de consulta ou de instalação vira "falhou" (a Conexão segue na versão
 de agora); nada aqui levanta erro.
 
-**Desligada por padrão** (`configuracao.ATUALIZACAO_AUTOMATICA`): os termos do AnkiWeb sobre um complemento que se atualiza sozinho
-ainda não foram conferidos pelo dono. Desligada, nada é consultado nem marcado sozinho; "Atualizar agora" (`verificar(a_pedido=True)`),
-que é um clique da pessoa, continua valendo.
+**Ligada por padrão** (`configuracao.ATUALIZACAO_AUTOMATICA`, decisão do dono). Quem não quer cria o arquivo `user_files/sem-atualizacao-automatica`
+(`ARQUIVO_DE_QUEM_DESLIGOU`; o Anki preserva `user_files`): a Conexão sobe desligada, desfaz a marca e o diálogo normal do Anki volta. Para
+todos, a chave vira `False` num arquivo novo do pacote. Desligada, nada é consultado nem marcado sozinho; "Atualizar agora"
+(`verificar(a_pedido=True)`), que é um clique da pessoa, continua valendo.
 
 O que fica em `user_files/atualizacao.json`: `marcou` (a marca é nossa), `instalada` (a versão que ficou no disco), `falha` (a última
 tentativa não deu certo) e `rodava` (a versão que rodava na última subida, de onde sai `atualizada`).
@@ -30,6 +31,8 @@ import time
 INTERVALO_S = 6 * 60 * 60
 # O Anki está abrindo quando a Conexão sobe: a primeira consulta espera um pouco para não disputar a abertura com ele.
 ESPERA_INICIAL_S = 20
+# Em `user_files`: a pessoa que não quer a atualização em silêncio cria este arquivo (vazio) e a Conexão sobe desligada.
+ARQUIVO_DE_QUEM_DESLIGOU = "sem-atualizacao-automatica"
 
 
 def _numeros(versao):
