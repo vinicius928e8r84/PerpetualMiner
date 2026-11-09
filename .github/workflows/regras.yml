@@ -36,6 +36,13 @@ jobs:
       - run: node scripts/regras/verificar.js
         env:
           REGRAS_BASE: ${{ github.event_name == 'push' && github.event.before || format('origin/{0}', github.base_ref) }}
+      # O limite de tamanho dos arquivos (scripts/ganchos/LEIA-ME.md), o mesmo do gancho pre-commit, sobre o
+      # que o PR (ou o push) mudou desde a mesma base das regras acima.
+      - name: Limite de tamanho dos arquivos
+        if: ${{ !cancelled() }}
+        run: node scripts/ganchos/limite-de-tokens.js --base "$REGRAS_BASE"
+        env:
+          REGRAS_BASE: ${{ github.event_name == 'push' && github.event.before || format('origin/{0}', github.base_ref) }}
       # O mapa de features da skill de verificação: mexeu numa superfície do usuário, atualiza
       # .agents/skills/verify-perpetualminer/features/ ou escreve "feature map unchanged" no corpo do PR.
       - name: Mapa de features
