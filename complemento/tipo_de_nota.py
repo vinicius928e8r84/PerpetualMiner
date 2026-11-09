@@ -32,6 +32,7 @@ CSS = """.card { font-family: arial, sans-serif; font-size: 22px; text-align: ce
 .cena { color: #6b7280; font-size: 18px; margin: 10px 0; }
 .palavra { margin: 14px 0; }
 .definicao { margin: 10px 0; }
+.simples { color: #6b7280; margin: 10px 0; }
 .exemplo { color: #6b7280; font-style: italic; margin: 10px 0; }
 .silaba { font-size: 24px; margin: 4px 0 10px; }
 .cores { text-align: left; font-size: 18px; margin: 14px auto; max-width: 520px; line-height: 1.5; }
@@ -66,7 +67,8 @@ def _verso(idioma, partes):
         "palavra": lambda: _parte("palavra", nomes["palavra"], audio=(nomes["audio_da_palavra"],)),
         "definicao": lambda: _parte("definicao", nomes["definicao"]),
         "outro_exemplo": lambda: _parte("exemplo", nomes["outro_exemplo"]),
-        "silaba_forte": lambda: _parte("silaba", nomes["silaba_forte"]),
+        "significado_simples": lambda: _parte("simples", nomes["significado_simples"]),
+        "silaba_forte": lambda: _parte("silaba", nomes["silaba_forte"], audio=(nomes["audio_da_palavra"],)),
         "explicacao_das_cores": lambda: _parte("cores", nomes["explicacao_das_cores"]),
         "mesma_raiz": lambda: _parte("raiz", nomes["mesma_raiz"]),
         "imagem": lambda: _parte("imagem", nomes["imagem"]),
@@ -140,11 +142,13 @@ def _campo_do_verso_sem_a_frase(idioma, lang):
     return next((idioma["campos"][parte] for parte in idioma.get("ordem_do_verso", []) if parte in so_dos_sem), None)
 
 
-def definicao(lang, nivel=None, frente=FRENTE_PADRAO):
+def definicao(lang, nivel=None, frente=FRENTE_PADRAO, sem=()):
     """O tipo de nota do idioma como a coleção o cria: `{ nome, campos: [nomes, na ordem], campos_do_cartao, modelos: [{ nome, frente, verso }], css }`.
     O verso do modelo é um só para todos os níveis do idioma: tem todas as partes que um verso pode ter (`ordem_do_verso`), cada uma só aparece se o
     campo dela tem texto, e o que o nível não usa fica vazio. `campos_do_cartao` são os que o Envio grava no `nivel` (o padrão, sem ele). A `frente`
-    (uma de `FRENTES`; `KeyError` se não é) escolhe a frente e o começo do verso do único modelo."""
+    (uma de `FRENTES`; `KeyError` se não é) escolhe a frente e o começo do verso do único modelo. `opcionais` são os campos que entraram depois da
+    publicação do tipo (`{campo: campo onde o texto vai se o tipo da pessoa não o tem}`): um tipo criado antes não os tem e a Conexão não o muda;
+    `sem` (nomes de campo) tira do verso as partes desses campos."""
     idioma, estilo = estilos.idioma(lang), estilos.estilo(lang, nivel)
     nomes = idioma["campos"]
     if frente not in NOMES_DAS_FRENTES:
@@ -154,11 +158,12 @@ def definicao(lang, nivel=None, frente=FRENTE_PADRAO):
     marca = _campo_do_verso_sem_a_frase(idioma, lang)
     if marca and frente == FRENTE_PADRAO:  # os níveis que não repetem a Frase deixam esse campo cheio, e o verso deles não tem a frente; nas outras frentes a Frase ainda não foi vista
         frente_no_verso = "{{^%s}}%s{{/%s}}" % (marca, frente_no_verso, marca)
-    partes = idioma.get("ordem_do_verso") or estilos.estilo(lang)["verso"]  # um idioma sem a ordem tem o verso do nível padrão
+    partes = [parte for parte in (idioma.get("ordem_do_verso") or estilos.estilo(lang)["verso"]) if nomes[parte] not in sem]  # um idioma sem a ordem tem o verso do nível padrão
     verso = frente_no_verso + "\n" + _verso(idioma, partes)
     escritos = ("frase", "audio_da_frase", "audio_da_palavra", "fonte") + tuple(estilo["verso"]) + tuple(estilo.get("guarda", []))  # o que o Envio sempre grava (a lacuna e a dica só às vezes): o tipo da pessoa tem de ter
     return {
         "nome": idioma["tipo_de_nota"], "campos": list(nomes.values()), "campos_do_cartao": [nomes[chave] for chave in escritos],
+        "opcionais": {nomes[chave]: nomes[onde] for chave, onde in idioma.get("opcionais", {}).items()},
         "modelos": [{"nome": NOMES_DAS_FRENTES[frente], "frente": na_frente, "verso": verso}], "css": CSS + (CSS_DA_CRIACAO if frente == "criacao" else "")}
 
 
@@ -174,6 +179,10 @@ def trocar_a_frente(colecao, lang, frente):
     nasce já com a frente. Devolve se mudou algo; repetir devolve False. Levanta `TipoDeNotaAlterado` se o tipo não tem só o nosso modelo: a pessoa
     mexeu nele, e a Conexão não o regrava; `ColecaoIndisponivel` como toda gravação."""
     tipo = definicao(lang, frente=frente)
+    existente = colecao.tipo_de_nota(tipo["nome"])
+    faltam = set(tipo["opcionais"]) - set(existente or tipo["campos"])
+    if faltam:  # um tipo de antes de um campo opcional: o verso novo não cita o campo que ele não tem
+        tipo = definicao(lang, frente=frente, sem=faltam)
     if colecao.criar_tipo_de_nota(tipo):
         return True
     return colecao.trocar_o_modelo(tipo["nome"], tipo["modelos"][0], tipo["css"])

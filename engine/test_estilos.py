@@ -8,7 +8,7 @@ from pathlib import Path
 import estilos
 
 PARTES_DO_INICIANTE = ["pronuncia", "literal", "natural", "cena", "palavra", "imagem"]
-PARTES_DO_RUSSO_COM_MORFOLOGIA = ["pronuncia", "palavra", "silaba_forte", "definicao", "explicacao_das_cores", "outro_exemplo", "imagem"]
+PARTES_DO_RUSSO_COM_MORFOLOGIA = ["pronuncia", "silaba_forte", "definicao", "significado_simples", "outro_exemplo", "explicacao_das_cores", "imagem"]
 PARTES_SEM_CORES = ["cena", "palavra", "definicao", "outro_exemplo", "imagem"]  # o Intermediário e o Avançado do inglês
 
 
@@ -22,7 +22,8 @@ class OEstiloVemDosDados(unittest.TestCase):
         for lang in ("en", "ru"):
             with self.subTest(lang=lang):
                 estilo = estilos.estilo(lang)
-                self.assertEqual((estilo["explicacao"], estilo["cores"], estilo["verso"]), ("pt", True, PARTES_DO_INICIANTE))
+                partes = PARTES_DO_INICIANTE if lang == "en" else [parte for parte in PARTES_DO_INICIANTE if parte != "palavra"]  # o russo não mostra a palavra do dicionário
+                self.assertEqual((estilo["explicacao"], estilo["cores"], estilo["verso"]), ("pt", True, partes))
 
     def test_os_dois_idiomas_tem_o_iniciante_o_intermediario_e_o_avancado(self):
         for lang in ("en", "ru"):
@@ -37,13 +38,16 @@ class OEstiloVemDosDados(unittest.TestCase):
         with self.assertRaises(KeyError):
             estilos.estilo("ru", "nativo")
 
-    def test_o_intermediario_e_o_avancado_do_russo_explicam_em_ingles_com_a_morfologia_sem_repetir_a_frase_no_verso(self):
+    def test_a_morfologia_e_do_intermediario_do_russo_e_o_avancado_e_monolingue_sem_ela(self):
         intermediario, avancado = estilos.estilo("ru", "intermediario"), estilos.estilo("ru", "avancado")
-        for estilo in (intermediario, avancado):
-            self.assertEqual((estilo["explicacao"], estilo["cores"], estilo["morfologia"], estilo["repete_a_frase"]), ("en", False, True, False))
-            self.assertEqual(estilo["guarda"], ["morfologia", "raiz"])
+        self.assertEqual((intermediario["explicacao"], avancado["explicacao"]), ("en", "ru"))
+        self.assertEqual((intermediario["cores"], intermediario["morfologia"], intermediario["repete_a_frase"]), (False, True, False))
+        self.assertEqual(intermediario["guarda"], ["palavra", "morfologia", "raiz"])
         self.assertEqual(intermediario["verso"], PARTES_DO_RUSSO_COM_MORFOLOGIA)
-        self.assertEqual(avancado["verso"], PARTES_DO_RUSSO_COM_MORFOLOGIA[:-1] + ["mesma_raiz", "imagem"])
+        self.assertEqual((intermediario["destaque"], avancado["destaque"]), (True, True))
+        self.assertEqual((avancado["cores"], avancado["morfologia"], avancado["repete_a_frase"]), (False, False, False))
+        self.assertEqual(avancado["guarda"], ["palavra", "raiz"])
+        self.assertEqual(avancado["verso"], ["silaba_forte", "definicao", "significado_simples", "outro_exemplo", "mesma_raiz", "imagem"])
 
     def test_so_o_avancado_do_russo_traz_as_palavras_da_mesma_raiz(self):
         self.assertNotIn("mesma_raiz", estilos.estilo("ru", "intermediario")["verso"])
