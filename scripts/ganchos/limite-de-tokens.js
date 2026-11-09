@@ -17,6 +17,8 @@
 //   node scripts/ganchos/limite-de-tokens.js                          confere o que está preparado (o gancho)
 //   node scripts/ganchos/limite-de-tokens.js --atualizar-linha-de-base  baixa as entradas que encolheram
 //   node scripts/ganchos/limite-de-tokens.js --gerar-linha-de-base      cria a linha de base (só se ainda não existe)
+//   node scripts/ganchos/limite-de-tokens.js --base <ref>               a mesma conferência no CI: o que a branch (HEAD)
+//                                                                       mudou desde <ref>, com <ref> no lugar do HEAD do gancho
 
 const { execFileSync } = require('child_process');
 const fs = require('fs');
@@ -87,9 +89,9 @@ function lerLinhaDeBase(raiz, config, versao) {
 }
 
 /** A base do último commit; se ela está inválida lá, vale como ausente, para o commit que a conserta poder passar. */
-function lerLinhaDeBaseDoHead(raiz, config) {
+function lerLinhaDeBaseDoHead(raiz, config, ref = 'HEAD') {
   try {
-    return lerLinhaDeBase(raiz, config, 'HEAD');
+    return lerLinhaDeBase(raiz, config, ref);
   } catch (erro) {
     if (erro instanceof ErroDeEntrada) return null;
     throw erro;
@@ -97,10 +99,10 @@ function lerLinhaDeBaseDoHead(raiz, config) {
 }
 
 /** O tamanho de cada caminho no HEAD (só os que existem lá). */
-function tamanhosNoHead(raiz, caminhos) {
+function tamanhosNoHead(raiz, caminhos, ref = 'HEAD') {
   const validos = caminhos.filter(c => !c.includes('\n'));
   if (!validos.length) return {};
-  const saida = git(raiz, ['cat-file', '--batch-check=%(objectsize)'], { input: `${validos.map(c => `HEAD:${c}`).join('\n')}\n` });
+  const saida = git(raiz, ['cat-file', '--batch-check=%(objectsize)'], { input: `${validos.map(c => `${ref}:${c}`).join('\n')}\n` });
   const tamanhos = {};
   saida.split('\n').forEach((linha, i) => { if (/^\d+$/.test(linha)) tamanhos[validos[i]] = Number(linha); });
   return tamanhos;
@@ -165,9 +167,14 @@ function tamanhosDosBlobs(raiz, oids) {
 
 const lerBlob = (raiz, oid) => git(raiz, ['cat-file', 'blob', oid], { encoding: 'buffer' });
 
-/** Os arquivos preparados (adicionados, copiados, modificados, renomeados), com o tamanho do blob do índice. */
-function arquivosPreparados(raiz) {
-  const saida = git(raiz, ['diff', '--cached', '--raw', '-z', '--no-abbrev', '--no-renames', '--diff-filter=ACMRT']);
+/**
+ * Os arquivos preparados (adicionados, copiados, modificados, renomeados), com o tamanho do blob do índice.
+ * Com `desde`, os que o HEAD mudou desde esse commit (o CI), com o tamanho do blob do HEAD.
+ */
+function arquivosPreparados(raiz, desde = null) {
+  const saida = git(raiz, desde
+    ? ['diff', '--raw', '-z', '--no-abbrev', '--no-renames', '--diff-filter=ACMRT', desde, 'HEAD']
+    : ['diff', '--cached', '--raw', '-z', '--no-abbrev', '--no-renames', '--diff-filter=ACMRT']);
   const pedacos = saida.split('\0');
   const achados = [];
   for (let i = 0; i + 1 < pedacos.length; i += 2) {
@@ -192,22 +199,28 @@ function tamanhosDoIndice(raiz) {
 
 // --- A linha de comando ---
 
-function conferirPreparados(raiz, config, problemasDaConfiguracao) {
-  const preparados = arquivosPreparados(raiz);
-  // A base vale pelo índice (o que será commitado), limitada pelo HEAD: nunca pela cópia de trabalho.
-  const baseDoIndice = lerLinhaDeBase(raiz, config, '') || {};
-  const baseDoHead = lerLinhaDeBaseDoHead(raiz, config);
+/**
+ * `comparacao` = { nova, velha, desde, titulo }: no gancho, a versão nova é o índice ('') e a velha o HEAD;
+ * no CI (--base), a nova é o HEAD da branch, a velha a ponta de <ref> e `desde` o merge-base, de onde se lê o que mudou.
+ */
+const NO_GANCHO = { nova: '', velha: 'HEAD', desde: null, titulo: 'Commit barrado' };
+
+function conferirPreparados(raiz, config, problemasDaConfiguracao, comparacao = NO_GANCHO) {
+  const preparados = arquivosPreparados(raiz, comparacao.desde);
+  // A base vale pela versão nova (o que será commitado), limitada pela velha: nunca pela cópia de trabalho.
+  const baseDoIndice = lerLinhaDeBase(raiz, config, comparacao.nova) || {};
+  const baseDoHead = lerLinhaDeBaseDoHead(raiz, config, comparacao.velha);
   const consultar = baseDoHead
     ? preparados.map(a => a.caminho).filter(c => c in baseDoIndice)
     : Object.keys(baseDoIndice);
-  const noHead = tamanhosNoHead(raiz, consultar);
+  const noHead = tamanhosNoHead(raiz, consultar, comparacao.velha);
   const afrouxadas = afrouxamentos(baseDoIndice, baseDoHead, noHead, config.limiteDeBytes);
   const linhaDeBase = limitarPeloHead(baseDoIndice, noHead, config.limiteDeBytes);
   const falhas = preparados
     .map(arquivo => avaliar(arquivo, config, linhaDeBase))
     .filter(achado => achado.estado === 'excede' || achado.estado === 'cresceu');
   if (!falhas.length && !afrouxadas.length && !problemasDaConfiguracao.length) return 0;
-  process.stderr.write(`Commit barrado: ${falhas.length + afrouxadas.length + (problemasDaConfiguracao.length ? 1 : 0)} problema(s) de tamanho (limite ${config.limiteDeBytes} bytes = ${tokensDe(config.limiteDeBytes, config.bytesPorToken)} tokens).\n\n`);
+  process.stderr.write(`${comparacao.titulo}: ${falhas.length + afrouxadas.length + (problemasDaConfiguracao.length ? 1 : 0)} problema(s) de tamanho (limite ${config.limiteDeBytes} bytes = ${tokensDe(config.limiteDeBytes, config.bytesPorToken)} tokens).\n\n`);
   const mensagens = [...(problemasDaConfiguracao.length ? [mensagemDeConfiguracao(problemasDaConfiguracao)] : []), ...afrouxadas.map(a => mensagemDeAfrouxamento(a, baseDoHead, config)), ...falhas.map(f => mensagemDeErro(f, config))];
   process.stderr.write(`${mensagens.join('\n\n')}\n`);
   return 1;
@@ -245,8 +258,27 @@ function atualizarLinhaDeBaseDoIndice(raiz, config, doIndice) {
   return 0;
 }
 
+/** O CI: a mesma conferência do gancho sobre o que a branch mudou desde `ref`. Uma `ref` que não existe é erro, não verde. */
+function conferirContraBase(raiz, ref) {
+  if (/^0+$/.test(ref)) { // o primeiro push de um ramo: sem base, como em scripts/regras/verificar.js
+    process.stdout.write('aviso: sem base de comparação (primeiro push); o limite de tamanho não foi conferido\n');
+    return 0;
+  }
+  const resolver = args => { try { return git(raiz, args, { stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return ''; } };
+  const teto = resolver(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]);
+  if (!teto) throw new ErroDeEntrada('--base', `${ref} não é um commit deste repositório; no CI, confira o fetch-depth e a base`);
+  const desde = resolver(['merge-base', 'HEAD', teto]) || teto;
+  const { config, problemas } = carregarConfiguracao(raiz, lerConfiguracao(), 'HEAD', teto);
+  return conferirPreparados(raiz, config, problemas, { nova: 'HEAD', velha: teto, desde, titulo: `Tamanho de arquivo acima do limite em relação a ${ref}` });
+}
+
 function principal(argumentos) {
   const raiz = git(process.cwd(), ['rev-parse', '--show-toplevel']).trim();
+  const i = argumentos.indexOf('--base');
+  if (i >= 0) {
+    if (!argumentos[i + 1] || argumentos[i + 1].startsWith('--')) throw new ErroDeEntrada('--base', 'precisa de um commit');
+    return conferirContraBase(raiz, argumentos[i + 1]);
+  }
   const { config, problemas } = carregarConfiguracao(raiz, lerConfiguracao());
   if (argumentos.includes('--gerar-linha-de-base')) return gerarLinhaDeBase(raiz, config, tamanhosDoIndice(raiz));
   if (argumentos.includes('--atualizar-linha-de-base')) return atualizarLinhaDeBaseDoIndice(raiz, config, tamanhosDoIndice(raiz));
@@ -254,6 +286,7 @@ function principal(argumentos) {
 }
 
 if (require.main === module) {
+  // Com --base (o CI), a pane do ambiente reprova em vez de passar: um verde sem conferência não serve.
   // Entrada inválida (configuração ou linha de base) barra o commit; uma pane do ambiente ou do próprio
   // gancho não pode travar o commit de ninguém: avisa e deixa passar.
   try {
@@ -261,6 +294,10 @@ if (require.main === module) {
   } catch (erro) {
     if (erro instanceof ErroDeEntrada) {
       process.stderr.write(mensagemDeEntradaInvalida(erro));
+      process.exit(1);
+    }
+    if (process.argv.includes('--base')) {
+      process.stderr.write(`erro: a conferência de tamanho falhou: ${erro.message}\n`);
       process.exit(1);
     }
     process.stderr.write(`aviso: a conferência de tamanho (scripts/ganchos/limite-de-tokens.js) falhou e foi pulada: ${erro.message}\n`);
