@@ -104,7 +104,7 @@
           passo.blocos.set(chave, bloco);
           mostrarOCampo(chave, bloco);
         }
-        bloco.salvo = salvo.nivel;
+        if (!bloco.quiz) bloco.salvo = salvo.nivel;   // com o quiz aberto o campo não é refeito: o nível de fora ainda vale na volta
         return bloco.grupo;
       });
       // Refazer a lista com os mesmos nós os tira da página e o foco cai no body: só troca quando a lista mudou.
