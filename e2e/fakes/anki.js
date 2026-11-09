@@ -352,9 +352,9 @@ function criarFakeAnki() {
     const req = daPorta.request();
     const url = new URL(req.url());
     const corpoDoPedido = req.postData();
-    // `dados`: o corpo JSON que a extensão mandou (null sem corpo ou se não é JSON); o pareamento (#192) tem o registro dele.
+    // `dados`: o corpo JSON enviado, ou null; o pareamento (#192) tem o registro dele.
     const doPareamento = url.pathname.startsWith('/pareamento/');
-    if (!doPareamento) requisicoes.push({ metodo: req.method(), caminho: url.pathname, busca: url.search, corpo: corpoDoPedido, dados: dadosDoCorpo(corpoDoPedido) });
+    if (doPareamento) pareamento.tentou(url.pathname); else requisicoes.push({ metodo: req.method(), caminho: url.pathname, busca: url.search, corpo: corpoDoPedido, dados: dadosDoCorpo(corpoDoPedido) });
 
     if (!estado.ligada) return daPorta.abort('connectionrefused');
     // A porta aceita e não responde: o pedido fica no ar até a página desistir.

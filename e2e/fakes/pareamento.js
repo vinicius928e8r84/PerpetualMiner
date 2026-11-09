@@ -23,6 +23,7 @@ function criarPareamento({ agora }) {
   const nonces = new Set();
   const mostrados = [];            // os códigos que o Anki mostrou, na ordem (com o hífen)
   const recebidos = [];            // cada pedido de pareamento: { caminho, corpo }
+  const tentados = [];             // cada caminho do pareamento que a extensão tentou, até com o Anki desligado
   let pendente = null;             // { codigo, vence, tentativas }
   let concluido = null;            // { codigo, cliente, segredo, vence }
   let semJanela = false;
@@ -154,6 +155,9 @@ function criarPareamento({ agora }) {
     antigo: () => { antigo = true; },
     /** O Anki não consegue abrir o diálogo (o Qt mudou): `comecar` responde `pairing_unavailable`. */
     semJanelaDoAnki: () => { semJanela = true; },
+    tentou: caminho => { tentados.push(caminho); },
+    /** @estado-guardado Os caminhos do pareamento que a extensão tentou, a Conexão ligada ou não (o `conferir` que antecede todo pedido privado). */
+    tentativas: () => [...tentados],
     /** @estado-guardado Cada pedido de pareamento que chegou: `{ caminho, corpo }`. */
     recebidos: () => recebidos.map(({ caminho, corpo }) => ({ caminho, corpo })),
     sessao: () => sessao,
