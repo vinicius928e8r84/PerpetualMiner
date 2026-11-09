@@ -44,6 +44,7 @@ test('S3: com uma chave nova a caminho, o outro lugar do card não diz que a Con
   await card(page).getByRole('button', { name: 'Trocar chave' }).click();
   await colarEConferir(page, OUTRA_CHAVE);
   await expect(card(page).getByRole('button', { name: 'Conferindo a chave…' })).toHaveAttribute('aria-disabled', 'true');
+  await expect.poll(() => typeof liberar).toBe('function');
 
   // O mesmo card na Boas-vindas, no mesmo documento: a chave que ele mostra ainda é a de antes e a Conexão não confirmou nenhuma.
   await page.goto(extensao.url('painel.html#boas-vindas/ia'));
