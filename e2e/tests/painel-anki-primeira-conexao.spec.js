@@ -541,7 +541,7 @@ test('o Detalhes “O arquivo não abriu?” mostra o código real da página do
   await itemDaLista(page, 'Pôr a Conexão no Anki').click();
 
   await card(page).getByText('O arquivo não abriu?', { exact: true }).click();
-  await expect(card(page).locator('pre')).toHaveText('No Anki, abra Ferramentas › Complementos › Obter complementos, cole o código 1108882947 e reinicie o Anki.');
+  await expect(card(page).locator('pre')).toHaveText('No Anki, abra Ferramentas › Extensões › Obter extensões, cole o código 1108882947 e reinicie o Anki.');
 
   // O Detalhes é do passo do arquivo: no passo de reiniciar, ele sai.
   await card(page).getByRole('button', { name: 'Continuar' }).click();
@@ -556,7 +556,7 @@ test('com o código do AnkiWeb publicado, o Detalhes o mostra', async ({ page, e
   await itemDaLista(page, 'Pôr a Conexão no Anki').click();
 
   await card(page).getByText('O arquivo não abriu?', { exact: true }).click();
-  await expect(card(page).locator('pre')).toHaveText('No Anki, abra Ferramentas › Complementos › Obter complementos, cole o código 123456789 e reinicie o Anki.');
+  await expect(card(page).locator('pre')).toHaveText('No Anki, abra Ferramentas › Extensões › Obter extensões, cole o código 123456789 e reinicie o Anki.');
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
@@ -607,7 +607,7 @@ test('dois minutos sem resposta: o checklist de 3 itens e “Baixar de novo”, 
   await expect(card(page).locator('.pc-checklist li')).toHaveText([
     'O Anki está aberto?',
     'Você fechou o Anki e abriu de novo?',
-    'A Conexão com o Anki está ativada em Ferramentas › Complementos?',
+    'A Conexão com o Anki está ativada em Ferramentas › Extensões?',
   ]);
   // Baixar de novo entrega o mesmo arquivo.
   const [arquivo] = await Promise.all([page.waitForEvent('download'), baixarDeNovo(page).click()]);
