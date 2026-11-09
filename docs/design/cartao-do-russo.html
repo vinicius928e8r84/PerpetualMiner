@@ -7,7 +7,7 @@
   PROPOSTA para o dono olhar (CODING_STANDARDS regra 10): como o Cartão do russo fica no Anki em cada nível. Não é uma tela da extensão.
   O HTML de cada frente e verso é o que o renderizador do Anki de verdade (`pip install anki`) devolve para a nota que a Conexão grava
   (`complemento/tipo_de_nota.py`, `engine/nota_do_cartao.py`) com o texto de exemplo abaixo; o CSS é o do tipo de nota. O ▶ é o lugar do áudio
-  e a imagem é um marcador. O Intermediário e o Avançado usam o mesmo texto: o Avançado só ganha a linha de palavras da mesma raiz.
+  e a imagem é um marcador. O Intermediário traz a morfologia (as quatro cores e a explicação delas, em inglês); o Avançado é monolingue: só russo, sem pronúncia, sem cores e sem morfologia, com a linha de palavras da mesma raiz.
 -->
 <style>
 body { font-family: system-ui, sans-serif; background: #f3f4f6; margin: 0; padding: 24px; color: #111827; }
@@ -64,16 +64,11 @@ figcaption { font-size: 12px; color: #6b7280; margin-bottom: 4px; }
 <div class="cores"><span style="color: #a855f7;">при-</span> – arrival, movement towards a place<br><span style="color: #22c55e;">ход</span> – the idea of walking, going<br><span style="color: #f59e0b;">-и-л-</span> – verb stem and past tense; imperfective aspect<br><span style="color: #ef4444;">-а</span> – feminine singular: she (3rd person, past tense)</div>
 <div class="exemplo">Мама приходила домой поздно.</div>
 
-<div class="imagem"><span class="imagem-de-exemplo">[a imagem do Cartão]</span></div></div></figure></div></section><section><h2>Avançado</h2><div class="par"><figure><figcaption>Frente</figcaption><div class="card"><div class="frase">Она <span style="color: #a855f7;">при</span><span style="color: #22c55e;">ход</span><span style="color: #f59e0b;">и</span><span style="color: #f59e0b;">л</span><span style="color: #ef4444;">а</span> <span style="color: #22c55e;">вчер</span><span style="color: #ef4444;">а</span>, но меня не было <span style="color: #22c55e;">дом</span><span style="color: #ef4444;">а</span>.</div>
+<div class="imagem"><span class="imagem-de-exemplo">[a imagem do Cartão]</span></div></div></figure></div></section><section><h2>Avançado</h2><div class="par"><figure><figcaption>Frente</figcaption><div class="card"><div class="frase">Она приходила вчера, но меня не было дома.</div>
 <span class="som">▶</span></div></figure><figure><figcaption>Verso</figcaption><div class="card">
-<div class="pronuncia">pri-ha-DI-la</div>
-
-
-
 <div class="palavra">приходила <span class="som">▶</span></div>
 <div class="silaba">приходи́ла</div>
 <div class="definicao">Приходить, то есть прибывать пешком; в прошедшем несовершенном это «она приходила обычно» или «она приходила и уходила».</div>
-<div class="cores"><span style="color: #a855f7;">при-</span> – приход, движение к какому-то месту<br><span style="color: #22c55e;">ход</span> – идея ходьбы, движения<br><span style="color: #f59e0b;">-и-л-</span> – основа глагола и прошедшее время; несовершенный вид<br><span style="color: #ef4444;">-а</span> – женский род, единственное число: она (3-е лицо, прошедшее время)</div>
 <div class="exemplo">Мама приходила домой поздно.</div>
 <div class="raiz">ходить (идти пешком), вход (место, где входят), выход (место, где выходят)</div>
 <div class="imagem"><span class="imagem-de-exemplo">[a imagem do Cartão]</span></div></div></figure></div></section>

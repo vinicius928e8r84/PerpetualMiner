@@ -53,11 +53,14 @@ class OIntermediarioEOAvancadoDoRusso(unittest.TestCase):
         self.assertEqual([texto for _, texto in cores_de(campos["Frase"])], ["вч", "ера"])
         self.assertEqual(re.sub("<[^>]+>", "", campos["Frase"]), "Она приходила вчера")
 
-    def test_o_avancado_grava_tambem_as_palavras_da_mesma_raiz(self):
+    def test_o_avancado_e_monolingue_e_grava_as_palavras_da_mesma_raiz_sem_a_morfologia_nem_as_cores(self):
         estado, campos, prompt = enviar_o_russo("avancado")
-        self.assertEqual((estado["status"], sorted(campos)), ("completed", sorted(CAMPOS_DO_RUSSO_COM_MORFOLOGIA + ["Mesma raiz"])))
+        self.assertEqual(estado["status"], "completed")
+        self.assertFalse({"Morfologia", "Explicação das cores", "Pronúncia"} & set(campos))
+        self.assertNotIn("Morphology:", prompt)
         self.assertIn("Same root: [Three to five Russian words", prompt)
-        self.assertEqual(campos["Mesma raiz"], "palavra da raiz (de mentira)")
+        self.assertEqual((campos["Definição"], campos["Mesma raiz"]), ("определение палки", "палочка (однокоренное слово)"))
+        self.assertEqual(cores_de(campos["Frase"]), [])
 
     def test_o_audio_da_palavra_e_o_da_palavra_do_cartao_e_nao_o_das_duas_primeiras_palavras_da_linha(self):
         colecao = ColecaoEmMemoria(SO_O_DEFAULT)

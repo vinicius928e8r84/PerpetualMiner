@@ -155,7 +155,7 @@ def campos_da_nota(
         valores["explicacao_das_cores"] = _explicacao_das_cores(content)
     for parte in estilo["verso"] + estilo.get("guarda", []):
         if parte == "palavra":
-            do_cartao = _valor_do_rotulo(content, ROTULO_DA_PALAVRA) if estilo.get("morfologia") else ""
+            do_cartao = _valor_do_rotulo(content, ROTULO_DA_PALAVRA) if estilo.get("morfologia") or "silaba_forte" in estilo["verso"] else ""
             valores[parte] = do_cartao or (_palavra_do_verso(content) if estilo["entrada"] == "palavras" else "") or palavra or ""
         elif parte == "imagem":
             valores[parte] = '<img src="%s">' % imagem if imagem else ""

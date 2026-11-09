@@ -259,7 +259,6 @@ class PromptsPorNivelTests(unittest.TestCase):
                 for regra in (
                     "Word: [The Russian word to learn, exactly as in the phrase]",
                     "Stress: [The Word with an acute accent on the stressed vowel]",
-                    "Pronunciation: [Simple transliteration of the Word",
                     "Definition: [",
                     "Other example: [One new short Russian sentence using the Word]",
                     "Keep the Russian phrase in Front exactly as provided",
@@ -270,9 +269,11 @@ class PromptsPorNivelTests(unittest.TestCase):
                 ):
                     self.assertIn(regra, prompt)
                 self.assertNotIn("Alignment:", prompt)
+        self.assertIn("Pronunciation: [Simple transliteration of the Word", _prompt_do_nivel("ru", "intermediario"))
+        self.assertNotIn("Pronunciation: [", _prompt_do_nivel("ru", "avancado"))
 
-    def test_os_dois_niveis_do_russo_pedem_os_pedacos_da_morfologia_com_as_quatro_cores_e_uma_explicacao_por_cor(self):
-        for nivel, lingua in (("intermediario", "English"), ("avancado", "Russian")):
+    def test_so_o_intermediario_do_russo_pede_os_pedacos_da_morfologia_com_as_quatro_cores_e_uma_explicacao_por_cor(self):
+        for nivel, lingua in (("intermediario", "English"),):
             with self.subTest(nivel=nivel):
                 prompt = _prompt_do_nivel("ru", nivel)
                 for regra in (
@@ -288,6 +289,12 @@ class PromptsPorNivelTests(unittest.TestCase):
                 ):
                     self.assertIn(regra, prompt)
 
+    def test_o_avancado_do_russo_nao_pede_a_morfologia_as_cores_nem_a_pronuncia_que_sao_do_intermediario(self):
+        prompt = _prompt_do_nivel("ru", "avancado")
+        for pedaco in ("Morphology:", "Colors:", "Pronunciation:", "[kind]:[piece]"):
+            self.assertNotIn(pedaco, prompt)
+        self.assertIn("Root: [The root of the Word]", prompt)
+
     def test_so_o_avancado_do_russo_pede_as_palavras_da_mesma_raiz(self):
         self.assertNotIn("Same root", _prompt_do_nivel("ru", "intermediario"))
         self.assertIn("Same root: [Three to five Russian words from the same root", _prompt_do_nivel("ru", "avancado"))
@@ -296,10 +303,10 @@ class PromptsPorNivelTests(unittest.TestCase):
         prompt = _prompt_do_nivel("ru", "avancado")
         self.assertEqual(estilos.estilo("ru", "avancado")["explicacao"], "ru")
         for regra in (
-            "every explanation (Definition and the Colors section) is written in Russian",
+            "every explanation (the Definition) is written in Russian",
             "No English and no Portuguese allowed in any explanation.",
             "Definition: [Precise definition of the Word, in Russian,",
-            "prefix | [pieces] | [what they do, in Russian]",
+            "This level is monolingual",
             "NEVER write an explanation in Portuguese or English",
         ):
             self.assertIn(regra, prompt)

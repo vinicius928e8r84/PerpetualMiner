@@ -37,14 +37,15 @@ class OEstiloVemDosDados(unittest.TestCase):
         with self.assertRaises(KeyError):
             estilos.estilo("ru", "nativo")
 
-    def test_o_intermediario_do_russo_explica_em_ingles_e_o_avancado_em_russo_os_dois_com_a_morfologia_sem_repetir_a_frase_no_verso(self):
+    def test_a_morfologia_e_do_intermediario_do_russo_e_o_avancado_e_monolingue_sem_ela(self):
         intermediario, avancado = estilos.estilo("ru", "intermediario"), estilos.estilo("ru", "avancado")
         self.assertEqual((intermediario["explicacao"], avancado["explicacao"]), ("en", "ru"))
-        for estilo in (intermediario, avancado):
-            self.assertEqual((estilo["cores"], estilo["morfologia"], estilo["repete_a_frase"]), (False, True, False))
-            self.assertEqual(estilo["guarda"], ["morfologia", "raiz"])
+        self.assertEqual((intermediario["cores"], intermediario["morfologia"], intermediario["repete_a_frase"]), (False, True, False))
+        self.assertEqual(intermediario["guarda"], ["morfologia", "raiz"])
         self.assertEqual(intermediario["verso"], PARTES_DO_RUSSO_COM_MORFOLOGIA)
-        self.assertEqual(avancado["verso"], PARTES_DO_RUSSO_COM_MORFOLOGIA[:-1] + ["mesma_raiz", "imagem"])
+        self.assertEqual((avancado["cores"], avancado["morfologia"], avancado["repete_a_frase"]), (False, False, False))
+        self.assertEqual(avancado["guarda"], ["raiz"])
+        self.assertEqual(avancado["verso"], ["palavra", "silaba_forte", "definicao", "outro_exemplo", "mesma_raiz", "imagem"])
 
     def test_so_o_avancado_do_russo_traz_as_palavras_da_mesma_raiz(self):
         self.assertNotIn("mesma_raiz", estilos.estilo("ru", "intermediario")["verso"])

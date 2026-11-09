@@ -149,7 +149,30 @@ Google Image Search Queries:
 Image: A woman arriving at a front door, no text.
 """
 
-RUSSO_AVANCADO = RUSSO_INTERMEDIARIO  # o Avançado pede os mesmos pedaços e mais a Same root
+RUSSO_AVANCADO = """## Anki Card
+
+Front
+Она приходила вчера, но меня не было дома.
+
+Back
+Word: приходила
+
+Stress: приходи\u0301ла
+
+Definition: Приходить, то есть прибывать пешком; здесь это привычное действие в прошлом: «она приходила обычно».
+
+Other example: Мама приходила домой поздно.
+
+Root: ход
+
+Same root: ходить (идти пешком), вход (место, где входят), выход (место, где выходят)
+
+Google Image Search Queries:
+1. person arriving home
+2. front door open
+
+Image: A woman arriving at a door, no text.
+"""  # o Avançado é monolingue: sem Pronúncia, sem morfologia e sem cores
 
 
 def cores_de(html):
@@ -223,11 +246,11 @@ class OCartaoDoRussoComMorfologia(unittest.TestCase):
         self.assertEqual(sem_html, "Она приходила вчера, но меня не было дома.")
         self.assertNotIn("\u0301", campos["Frase"])
 
-    def test_as_quatro_cores_sao_as_mesmas_no_intermediario_e_no_avancado(self):
-        intermediario = nota(RUSSO_INTERMEDIARIO, "ru", nivel="intermediario")["campos"]["Frase"]
-        avancado = nota(RUSSO_AVANCADO, "ru", nivel="avancado")["campos"]["Frase"]
-        self.assertEqual(intermediario, avancado)
-        self.assertEqual({cor for cor, _ in cores_de(avancado)}, set(CORES_DA_MORFOLOGIA.values()))
+    def test_o_avancado_nao_pinta_a_frente_e_nao_traz_a_morfologia_que_e_do_intermediario(self):
+        campos = nota(RUSSO_AVANCADO, "ru", nivel="avancado")["campos"]
+        self.assertEqual(campos["Frase"], "Она приходила вчера, но меня не было дома.")
+        self.assertEqual(cores_de(campos["Frase"]), [])
+        self.assertFalse({"Morfologia", "Explicação das cores", "Pronúncia"} & set(campos))
 
     def test_o_verso_traz_a_palavra_a_silaba_forte_a_pronuncia_a_definicao_em_ingles_e_outro_exemplo_e_nao_a_frase(self):
         campos = nota(RUSSO_INTERMEDIARIO, "ru", nivel="intermediario")["campos"]
@@ -254,9 +277,9 @@ class OCartaoDoRussoComMorfologia(unittest.TestCase):
         self.assertEqual(campos["Morfologia"], "приходила = при + ход + и + л + а<br>вчера = вчер + а<br>дома = дом + а")
 
     def test_so_o_avancado_grava_as_palavras_da_mesma_raiz(self):
-        self.assertNotIn("Mesma raiz", nota(RUSSO_AVANCADO, "ru", nivel="intermediario")["campos"])
+        self.assertNotIn("Mesma raiz", nota(RUSSO_INTERMEDIARIO, "ru", nivel="intermediario")["campos"])
         self.assertEqual(
-            nota(RUSSO_AVANCADO, "ru", nivel="avancado")["campos"]["Mesma raiz"], "ходить (to walk), вход (entrance), выход (exit)")
+            nota(RUSSO_AVANCADO, "ru", nivel="avancado")["campos"]["Mesma raiz"], "ходить (идти пешком), вход (место, где входят), выход (место, где выходят)")
 
     def test_a_palavra_do_cartao_vale_mais_que_a_do_pedido_que_so_leva_as_duas_primeiras_palavras_da_frase(self):
         campos = nota(RUSSO_INTERMEDIARIO, "ru", nivel="intermediario", palavra="Она приходила")["campos"]
