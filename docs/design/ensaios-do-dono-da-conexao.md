@@ -44,7 +44,7 @@ Não fechar #147 só com testes de Linux, um ✓ de `conferir` ou a abertura pel
 e confirmação do dono. O que só o ensaio mostra:
 
 1. Com o complemento novo no Anki (refaça o arquivo: `python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon`), abra o Anki
-   e um perfil. Em `user_files/abridor` (Ferramentas › Complementos › Ver arquivos) aparece o script; o log só diz “O abridor não foi escrito” se algo falhou.
+   e um perfil. Em `user_files/abridor` (Ferramentas › Extensões › Ver arquivos) aparece o script; o log só diz “O abridor não foi escrito” se algo falhou.
 2. Painel › Conexão com o Anki (nunca conectada) ou Boas-vindas › passo 4: depois de “Achei o Anki”, **Permitir abrir o Anki**. O Chrome
    mostra o aviso da permissão (“Comunicar-se com aplicativos nativos cooperativos”); responda Permitir. A tela deve dizer
    “O Anki abre sozinho quando um Envio precisar.” e o passo virar ✓. Nada abre nem fecha.

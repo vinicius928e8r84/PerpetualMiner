@@ -19,8 +19,30 @@ from complemento.test_pareamento_de_mentira import UM_CLIENTE_NOVO, comecar, con
 from complemento.test_servidor import ConexaoNoTeste  # noqa: E402
 
 
+class QtComCodigo(QtDeMentira):
+    """A fronteira com o Qt do Anki com o diálogo do código do pareamento e o botão Desconectar navegadores, anotados."""
+
+    def __init__(self):
+        super().__init__()
+        self.desconectar = None
+        self.codigos, self.fechados = [], 0   # o diálogo do código: (texto, rótulo de cancelar, ao_cancelar)
+
+    def abrir_janela(self, mw, ler_estado, desconectar=None):
+        self.desconectar = desconectar
+        super().abrir_janela(mw, ler_estado)
+
+    def mostrar_codigo(self, mw, texto, rotulo_de_cancelar, ao_cancelar):
+        self.codigos.append((texto, rotulo_de_cancelar, ao_cancelar))
+
+    def fechar_codigo(self, mw):
+        self.fechados += 1
+
+    def avisar_de_outra_thread(self, mw, texto):
+        self.avisos.append(texto)
+
+
 def ligado(conexao, perfil="Usuário 1"):
-    qt = QtDeMentira()
+    qt = QtComCodigo()
     janela.ligar(object(), a_janela(conexao, perfil=perfil), qt, "perpetualminer", conexao.logger)
     return qt
 
@@ -59,7 +81,7 @@ class OCodigoApareceNoAnki(unittest.TestCase):
         self.assertNotIn("K7M", repr(estado) + " ".join(qt.avisos))
 
     def test_sem_conexao_a_janela_nao_tem_onde_ligar_o_pareamento_e_nada_levanta(self):
-        qt = QtDeMentira()
+        qt = QtComCodigo()
         janela.ligar(object(), janela.Janela(None, lambda: None, "0.4.25", __import__("logging").getLogger("t")), qt, "perpetualminer", __import__("logging").getLogger("t"))
         self.assertEqual(qt.codigos, [])
 

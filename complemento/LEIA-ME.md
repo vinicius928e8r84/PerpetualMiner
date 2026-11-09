@@ -110,7 +110,7 @@ Depois refaça o arquivo. Subir a `VERSAO` muda a `versao` dos exemplos de `cont
 4. Com um perfil aberto, abra o painel › Conexão com o Anki: **Baralhos e termos** e **Vocabulário** mostram os
    números e as palavras dos Baralhos dos Ajustes de envio, e **Ajustes de envio** lista os Baralhos do Anki.
 5. Com a Mineração automática ligada, toque uma legenda num vídeo: ela é minerada e aparece em Frases.
-6. Confira `user_files` do complemento (Ferramentas › Complementos › Ver arquivos): as pastas `fila`,
+6. Confira `user_files` do complemento (Ferramentas › Extensões › Ver arquivos): as pastas `fila`,
    `estado`, `custos`, `logs` e `chaves` existem, e o log diz “Conexão ouvindo em 127.0.0.1:8766”.
 7. Em Configurações › IA dos cartões, cole uma chave da OpenAI de verdade (de um projeto com limite de gasto): a tela mostra
    “Chave conferida” com `••••••••` e os 4 últimos caracteres; `user_files/chaves/openai.json` guarda a cópia e o log não pode ter a chave.

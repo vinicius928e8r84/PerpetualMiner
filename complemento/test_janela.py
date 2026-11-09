@@ -91,7 +91,7 @@ class AJanelaDiz(unittest.TestCase):
         estado = janela.Janela(None, lambda: "Usuário 1", configuracao.VERSAO, registro.silencioso()).estado()
         self.assertEqual(
             (estado.conexao, estado.envio, estado.ultimo_erro),
-            ("Desligada. O motivo está no registro da pasta user_files (Ferramentas › Complementos › Ver arquivos).", None, None),
+            ("Desligada. O motivo está no registro da pasta user_files (Ferramentas › Extensões › Ver arquivos).", None, None),
         )
 
     def test_o_envio_no_meio_mostra_7_de_12_a_etapa_a_fracao_e_o_baralho_sem_o_separador_do_anki(self):
@@ -229,8 +229,6 @@ class QtDeMentira:
 
     def __init__(self):
         self.itens, self.configuracoes, self.avisos, self.janelas, self.tique = [], {}, [], [], None
-        self.desconectar = None
-        self.codigos, self.fechados = [], 0   # o diálogo do código do pareamento (#192): (texto, rótulo de cancelar, ao_cancelar)
 
     def item_do_menu(self, mw, texto, ao_clicar):
         item = types.SimpleNamespace(texto=texto, clicar=ao_clicar)
@@ -244,18 +242,8 @@ class QtDeMentira:
     def aviso(self, texto):
         self.avisos.append(texto)
 
-    def abrir_janela(self, mw, ler_estado, desconectar=None):
-        self.desconectar = desconectar
+    def abrir_janela(self, mw, ler_estado, *_):
         self.janelas.append(ler_estado())
-
-    def mostrar_codigo(self, mw, texto, rotulo_de_cancelar, ao_cancelar):
-        self.codigos.append((texto, rotulo_de_cancelar, ao_cancelar))
-
-    def fechar_codigo(self, mw):
-        self.fechados += 1
-
-    def avisar_de_outra_thread(self, mw, texto):
-        self.avisos.append(texto)
 
     def a_cada(self, mw, segundos, funcao):
         self.tique = funcao
@@ -309,7 +297,7 @@ class OItemNoMenuDoAnki(unittest.TestCase):
     def test_o_erro_do_qt_ao_abrir_a_janela_nunca_sai_para_o_anki(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, trabalhando=False) as conexao:
             qt = QtDeMentira()
-            qt.abrir_janela = lambda mw, ler_estado, desconectar=None: (_ for _ in ()).throw(RuntimeError("o Qt mudou"))
+            qt.abrir_janela = lambda mw, ler_estado, *_: (_ for _ in ()).throw(RuntimeError("o Qt mudou"))
             self.ligado(conexao, qt)
             qt.itens[0].clicar()
             registro = conexao.log()
@@ -378,6 +366,11 @@ class ACopiaDaJanelaEADaVoz(unittest.TestCase):
         meus = {id_: modelo for id_, modelo in texto_da_janela.TEXTOS.items() if id_.startswith("ANK-")}
         self.assertTrue(meus)
         self.assertEqual(tabela, meus)
+
+    def test_nenhum_texto_da_janela_chama_o_menu_do_anki_de_complementos(self):
+        # #237: o Anki em pt-BR chama o menu de Extensões; o mesmo critério do teste do catálogo da extensão.
+        com_complementos = {id_: modelo for id_, modelo in texto_da_janela.TEXTOS.items() if re.search(r"complemento", modelo, re.I)}
+        self.assertEqual(com_complementos, {})
 
     def test_cada_texto_reusado_do_envio_e_o_do_catalogo_da_voz_por_id(self):
         caminho = os.path.join(RAIZ, "docs", "design", "voz", "catalogo-textos.json")

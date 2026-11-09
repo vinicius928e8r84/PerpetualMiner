@@ -24,7 +24,7 @@ def codigo_do_ankiweb_da_extensao():
 
 
 class PaginaDoAnkiWeb(unittest.TestCase):
-    """O `package` do arquivo é o id da página no AnkiWeb (o que a pessoa cola em Obter complementos) e o
+    """O `package` do arquivo é o id da página no AnkiWeb (o que a pessoa cola em Obter extensões) e o
     painel mostra esse mesmo código: os três têm de dizer o mesmo número (#176)."""
 
     def manifesto_entregue(self):
