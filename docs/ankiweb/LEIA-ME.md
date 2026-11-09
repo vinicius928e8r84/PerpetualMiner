@@ -40,6 +40,7 @@ com a atualização automática do Anki desligada (`update_enabled`). **Está li
 - **O ensaio do dono** (com a Conexão instalada pelo AnkiWeb): subir uma versão nova no AnkiWeb (a 0.4.20 é a primeira com a chave ligada: quem vem de uma versão anterior ainda vê o diálogo do Anki nessa atualização), abrir o Anki e conferir que nenhum diálogo de atualização aparece,
   que a versão nova entra e vale na abertura seguinte, e que o botão Reiniciar o Anki do Painel fecha e abre o Anki; com um Anki que mudou as funções internas, que o diálogo normal volta.
   A 0.4.21 existe para isso: só o número da versão muda (nenhum comportamento), então enviá-la a quem está na 0.4.20 prova a troca silenciosa sem misturar outra mudança.
+  A 0.4.22 leva o Cartão do russo (#163): o Intermediário com a palavra-chave destacada e a morfologia depois do outro exemplo, o Avançado monolingue.
 - **Só funciona com o arquivo do AnkiWeb:** o id é o nome da pasta da Conexão no Anki (`addons21/<id>`), então uma Conexão instalada por arquivo com o `package` antigo
   (`perpetualminer`) não tem de onde atualizar.
 
