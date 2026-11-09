@@ -33,7 +33,7 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
      ONB-19 animation of the Anki's own warning (#146): two frames alternating by themselves — the warning the Anki
      shows when the file opens, and the same dialog with the Sim marked, where to click; still, side by side, with
      `prefers-reduced-motion: reduce`. The Detalhes “O arquivo não abriu?” (`Veio.montarDetalhes(…, rotulo)`) says the AnkiWeb code to paste in Ferramentas › Extensões ›
-     Obter complementos (`lib/ankiweb.js`, none until the first upload, #176) or that it comes soon: never an invented number.
+     Obter extensões (`lib/ankiweb.js`, none until the first upload, #176) or that it comes soon: never an invented number.
   3. **Reiniciar o Anki**: always there. The extension checks by itself (the shared 15 s `/health`); the status line says Conectando
      and then “Achei o Anki · perfil · versão” from `ConexaoAnki.saude()`; **Tentar de novo** lives here.
   4. **Abrir o Anki sozinho** (#147, ONB-17): when the Conexão answers, the card moves to it by itself (the connection's status line stays).

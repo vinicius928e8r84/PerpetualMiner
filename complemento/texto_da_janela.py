@@ -14,7 +14,7 @@ TEXTOS = {
     "ANK-02.titulo": "PerpetualMiner",
     "ANK-02.conexao": "Conexão com o Anki",
     "ANK-02.ligada": "Ligada",
-    "ANK-02.desligada": "Desligada. O motivo está no registro da pasta user_files (Ferramentas › Complementos › Ver arquivos).",
+    "ANK-02.desligada": "Desligada. O motivo está no registro da pasta user_files (Ferramentas › Extensões › Ver arquivos).",
     "ANK-02.versao": "Versão",
     "ANK-02.perfil": "Perfil",
     "ANK-02.semPerfil": "Nenhum perfil aberto",
