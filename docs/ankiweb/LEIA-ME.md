@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Título | `PerpetualMiner · Cartões de frases com IA` (também o nome na lista de Complementos do Anki; PT + EN no corpo) |
+| Título | `PerpetualMiner · Cartões de frases com IA` (também o nome na lista de Extensões do Anki; PT + EN no corpo) |
 | Description | o conteúdo de `pagina.html` |
 | Support Page | `https://github.com/vinicius928e8r84/PerpetualMiner/issues` (confira que abre sem login **antes** de a página ir ao ar: risco 13) |
 | Tags | `english`, `russian`, `mining` |
@@ -31,15 +31,16 @@ com a atualização automática do Anki desligada (`update_enabled`). **Está li
 - **Como desligar** (o caminho de recuperação): quem não quer cria o arquivo vazio `sem-atualizacao-automatica` em `user_files` da Conexão (o Anki preserva a pasta) e reabre o Anki:
   a Conexão sobe desligada, desfaz a marca e o diálogo normal do Anki volta. Para todos, o dono troca a chave por `False` e sobe uma versão nova (a chave é um arquivo do pacote). Em
   qualquer dos casos o botão Atualizar agora da extensão, que é um clique da pessoa, continua valendo.
-- **Os termos do AnkiWeb não foram conferidos por um agente.** A página de termos do AnkiWeb (`https://ankiweb.net/account/terms`) só é montada por JavaScript e o agente que fez o #177
-  não conseguiu lê-la; a conclusão sobre um complemento que se atualiza sozinho **não está registrada, nem a favor nem contra**. O dono decidiu ligar a atualização por padrão
-  (Conexão 0.4.20) assumindo esse risco; se os termos não a permitirem, a chave volta a `False` com uma versão nova.
+- **Os termos do AnkiWeb foram lidos** (09/11): nada proíbe uma extensão que se atualiza sozinha, a licença é a AGPL3 e o que vetam são clientes de terceiros. Ligar a atualização por
+  padrão (Conexão 0.4.20) não contraria os termos; a chave `ATUALIZACAO_AUTOMATICA` só volta a `False` por outro motivo.
 - **As funções internas do Anki** foram lidas no código do Anki 26.09 (`aqt/addons.py`: `fetch_update_info`, `AddonManager.get_updated_addons`, `download_and_install_addon`,
-  `AddonManager.addon_meta` e `write_addon_meta`), sem rodar um Anki de verdade. `AnkiWebDoAnki.pronto()` confere que elas existem antes de usá-las; se um Anki mudar um nome,
+  `AddonManager.addon_meta` e `write_addon_meta`) e **provadas num Anki real, o do Mac**: a troca da 0.4.20 para a 0.4.21 aconteceu em silêncio, sem diálogo.
+  `AnkiWebDoAnki.pronto()` confere que elas existem antes de usá-las; se um Anki mudar um nome,
   a Conexão não consulta, não instala e desfaz a marca, e o diálogo normal do Anki volta (nunca pior que isso).
-- **O ensaio do dono** (com a Conexão instalada pelo AnkiWeb): subir uma versão nova no AnkiWeb (a 0.4.20 é a primeira com a chave ligada: quem vem de uma versão anterior ainda vê o diálogo do Anki nessa atualização), abrir o Anki e conferir que nenhum diálogo de atualização aparece,
+- **O ensaio do dono** (feito no Anki do Mac: a troca 0.4.20 → 0.4.21 foi silenciosa; o roteiro, para repetir com a Conexão instalada pelo AnkiWeb): subir uma versão nova no AnkiWeb (a 0.4.20 é a primeira com a chave ligada: quem vem de uma versão anterior ainda vê o diálogo do Anki nessa atualização), abrir o Anki e conferir que nenhum diálogo de atualização aparece,
   que a versão nova entra e vale na abertura seguinte, e que o botão Reiniciar o Anki do Painel fecha e abre o Anki; com um Anki que mudou as funções internas, que o diálogo normal volta.
-  A 0.4.21 existe para isso: só o número da versão muda (nenhum comportamento), então enviá-la a quem está na 0.4.20 prova a troca silenciosa sem misturar outra mudança.
+  A 0.4.21 existiu para isso: só o número da versão muda (nenhum comportamento), então enviá-la a quem está na 0.4.20 prova a troca silenciosa sem misturar outra mudança.
+  A 0.4.22 leva o Cartão do russo (#163): o Intermediário com a palavra-chave destacada e a morfologia depois do outro exemplo, o Avançado monolingue.
 - **Só funciona com o arquivo do AnkiWeb:** o id é o nome da pasta da Conexão no Anki (`addons21/<id>`), então uma Conexão instalada por arquivo com o `package` antigo
   (`perpetualminer`) não tem de onde atualizar.
 
