@@ -14,6 +14,10 @@ const itemDaLista = (page, nome) => lista(page).getByRole('button', { name: nome
 const jaTenho = page => card(page).getByRole('button', { name: 'Já tenho' });
 const resultadoDoAnki = page => page.locator('#apv-anki-resultado');
 
+test.beforeEach(({ fakes }) => {
+  fakes.anki.desligar();
+});
+
 test.describe('com a permissão do abridor já dada', () => {
   test.use({ permissaoDoAbridor: true });
 
