@@ -969,5 +969,6 @@
   "ONB-24.semConvite": "Não deu para copiar o convite.",
   "ONB-25.anki": "Anki",
   "ONB-25.aplicativos": "Aplicativos",
-  "CFG-45.trocou": "A forma de pagar mudou e a nova não tem o {modelo}. O Envio passou para o Automático."
+  "CFG-45.trocou": "A forma de pagar mudou e a nova não tem o {modelo}. O Envio passou para o Automático.",
+  "ENV-22.demora": "O Anki segue sem responder. Se ele estiver na tela de perfis, abra o perfil; se estiver sincronizando, espere a sincronização terminar. O Envio continua sozinho."
 }
