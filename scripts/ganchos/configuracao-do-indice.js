@@ -59,13 +59,13 @@ function afrouxamentosDaConfiguracao(preparada, doHead) {
 
 /**
  * A configuração a valer: a do índice (a cópia do gancho, `padrao`, se o repositório não tem o arquivo) e o
- * que ela afrouxa em relação ao HEAD. Sem a do HEAD (a primeira) não há o que comparar.
+ * que ela afrouxa em relação ao HEAD (`nova` e `velha` trocam o índice e o HEAD pelas versões do CI). Sem a do HEAD (a primeira) não há o que comparar.
  * Um JSON quebrado no índice não pode desligar o gancho: vira problema, e vale `padrao`.
  */
-function carregarConfiguracao(raiz, padrao) {
+function carregarConfiguracao(raiz, padrao, nova = '', velha = 'HEAD') {
   let doIndice;
   try {
-    doIndice = lerConfiguracaoDaVersao(raiz, '');
+    doIndice = lerConfiguracaoDaVersao(raiz, nova);
   } catch (erro) {
     if (!(erro instanceof ErroDeEntrada)) throw erro;
     return { config: padrao, problemas: [`o arquivo preparado: ${erro.detalhe}`] };
@@ -73,7 +73,7 @@ function carregarConfiguracao(raiz, padrao) {
   if (!doIndice) return { config: padrao, problemas: [] };
   let doHead = null;
   try {
-    doHead = lerConfiguracaoDaVersao(raiz, 'HEAD');
+    doHead = lerConfiguracaoDaVersao(raiz, velha);
   } catch {
     // um HEAD quebrado não tem o que comparar: vale a do índice
   }

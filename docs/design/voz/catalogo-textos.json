@@ -771,12 +771,12 @@
   "ONB-16.baixar": "Baixar a Conexão com o Anki",
   "ONB-16.baixarDeNovo": "Baixar de novo",
   "ONB-16.arquivoNaoAbriu": "O arquivo não abriu?",
-  "ONB-16.codigoDoAnkiWeb": "No Anki, abra Ferramentas › Complementos › Obter complementos, cole o código {codigo} e reinicie o Anki.",
-  "ONB-16.codigoEmBreve": "O código para colar em Ferramentas › Complementos › Obter complementos vem em breve.",
+  "ONB-16.codigoDoAnkiWeb": "No Anki, abra Ferramentas › Extensões › Obter extensões, cole o código {codigo} e reinicie o Anki.",
+  "ONB-16.codigoEmBreve": "O código para colar em Ferramentas › Extensões › Obter extensões vem em breve.",
   "ONB-16.semResposta": "A Conexão com o Anki ainda não respondeu. Confira:",
   "ONB-16.confira1": "O Anki está aberto?",
   "ONB-16.confira2": "Você fechou o Anki e abriu de novo?",
-  "ONB-16.confira3": "A Conexão com o Anki está ativada em Ferramentas › Complementos?",
+  "ONB-16.confira3": "A Conexão com o Anki está ativada em Ferramentas › Extensões?",
   "ONB-16.esperando": "Esperando a Conexão",
   "ONB-16.achei": "Achei o Anki",
   "ONB-16.acheiVersao": "versão {versao}",
@@ -972,5 +972,6 @@
   "ONB-24.semConvite": "Não deu para copiar o convite.",
   "ONB-25.anki": "Anki",
   "ONB-25.aplicativos": "Aplicativos",
-  "CFG-45.trocou": "A forma de pagar mudou e a nova não tem o {modelo}. O Envio passou para o Automático."
+  "CFG-45.trocou": "A forma de pagar mudou e a nova não tem o {modelo}. O Envio passou para o Automático.",
+  "ENV-22.demora": "O Anki segue sem responder. Se ele estiver na tela de perfis, abra o perfil; se estiver sincronizando, espere a sincronização terminar. O Envio continua sozinho."
 }

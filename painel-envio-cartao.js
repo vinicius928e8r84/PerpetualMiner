@@ -17,6 +17,8 @@
     ['send_to_anki', 'enviandoAoAnki'],
   ];
   const FIM = { completed: 'concluido', partial: 'concluidoEmParte', failed: 'falhou' };
+  // Passado este tempo em `wait_anki` sem motivo de perfil, o cartão diz o que fazer (ENV-22, #246); o Envio segue esperando.
+  const ESPERA_ATE_ORIENTAR_MS = 5 * 60 * 1000;
   const IDIOMA_DO_LANG = { en: 'INGLES', ru: 'RUSSO' };
 
   function nomeDoIdioma(lang) {
@@ -216,7 +218,7 @@
       if (pedido?.acoes) cartao.append(montarAcoes(pedido.acoes));
       const atualizado = textoDaVoz('ENV-08.atualizado', { quando: Contexto.haQuanto(atualizadoEm) });
       const meta = elemento('div', 'envio-cartao__meta');
-      if (pedido && !pedido.acoes) {
+      if (pedido?.rotulo && !pedido.acoes) {
         const acao = botaoLink(pedido.rotulo, pedido.foco, pedido.aoUsar);
         if (pedido.emAndamento) acao.setAttribute('aria-disabled', 'true');
         meta.append(acao);
@@ -270,6 +272,9 @@
       }
       if (espera?.reason === 'profile_missing') {
         return { motivo: textoDaVoz('ENV-17.sumiu', { perfil: espera.marked }), rotulo: textoDaVoz('ENV-17.escolher'), foco: 'escolher-perfil', aoUsar: escolherOutroPerfil };
+      }
+      if (estado?.stage === 'wait_anki' && estado.status === 'running' && !espera && Date.now() - Date.parse(estado.updatedAt) >= ESPERA_ATE_ORIENTAR_MS) {
+        return { motivo: textoDaVoz('ENV-22.demora') };
       }
       const falhaAoContinuar = falhaAoRetomar(envio);
       // Tentar de novo no próprio cartão do Envio que ficou em parte ou não concluiu; Continuar envio só onde falta a pessoa agir antes.
