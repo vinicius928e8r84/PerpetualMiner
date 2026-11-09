@@ -20,6 +20,7 @@ Preconditions: `doctor.sh` green. The profiles live in the Anki fake (`fakes.ank
 
 - **The row, picking, gone (`perfil-linha`, `perfil-escolher`, `perfil-sumiu`).** `drive.sh perfil configuracoes-perfil.spec`. Observable: the combobox `Perfil do Anki`, the aviso text, the request bodies (`{"profile":"Beto"}`) and `fakes.anki.perfilMarcado()`. A lost answer (`context.route` aborting `POST /anki/profile` in `configuracoes-perfil.spec.js`) shows the re-read profile and no failure notice when the Conexão did mark it.
 - **The waiting card (`perfil-espera`, `perfil-envio-sumiu`).** `drive.sh perfil-envio painel-envio-perfil.spec`. Observable: the card text, the `Abrir Ana` button, the `POST /anki/profile/open` request and `fakes.anki.perfilAberto()`.
+- **The long wait (`espera-longa`, #246).** `drive.sh espera-longa painel-envio-copia.spec -g 246`. In `wait_anki` with no `esperando` reason, the card keeps “Esperando o Anki” and, once `updatedAt` is 5 min old, adds ENV-22 (what to do: open the profile or let the sync end) with no button. Observable: the card text; `moverEnvio(jobId, { stage: 'wait_anki', atualizadoEm })` sets the age.
 - **The add-on side.** `python3.9 complemento/test_perfil_fixo.py` (the real server, in-memory collection) and `test_no_anki_perfil.py` (the order of Anki calls: `pm.load`, `onOpenProfile`, `unloadProfile`).
 
 ## Gotchas

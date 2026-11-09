@@ -47,3 +47,7 @@ Tests: `e2e/tests/painel-envio-limite.spec.js` (the card, the three actions, the
 - **Driving it** (`drive.sh anki-plano-no-limite painel-envio-limite.spec`): `moverEnvio(jobId, { stage, cartoes, esperando: { reason: 'plan_limit' } })`;
   `guardarChaveNaConexao('9f3a')` gives Usar a minha chave a key. The visual reference `envio-limite-do-plano` waits for the owner (`test.fixme`, no PNG).
   A real plan at its limit is only the owner's rehearsal (#288).
+
+## A espera longa pelo Anki (#246)
+
+Em `wait_anki` sem motivo de perfil (`state.waiting`), passados 5 min (`ESPERA_ATE_ORIENTAR_MS` em `painel-envio-cartao.js`, contados de `updatedAt`, que a espera não reescreve), o cartão soma ENV-22 (o que fazer), só texto; o Envio não falha e a etapa segue “Esperando o Anki”.
