@@ -32,6 +32,7 @@ from datetime import datetime
 from . import baralhos, custos, voz
 from .audio_do_cartao import FRASE_APAGADA, AudioDoCartao
 from .correcao_da_criacao import CorrecaoDaCriacao
+from .envios_dos_custos import EnviosDosCustos
 from .gravacao_de_json import apagar as _apagar, gravar_json as _gravar_json
 from .configuracao import OPENVERSE_BASE, VOZ_BASE
 from .imagem_do_cartao import ImagemDoCartao, ParaOEnvio
@@ -68,7 +69,7 @@ PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", 
 
 
 def agora_local():
-    """O instante com o fuso do computador (a aba Custos filtra pelo dia de quem usa)."""
+    """O instante com o fuso do computador."""
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
@@ -89,7 +90,7 @@ def _ler_json(caminho, padrao):
         return copy.deepcopy(padrao)
 
 
-class Fila:
+class Fila(EnviosDosCustos):
     """A fila e o estado, únicos donos dos arquivos do Envio. Toda leitura-e-escrita passa pela tranca."""
 
     def __init__(self, dados, motor, logger=None):
@@ -137,7 +138,7 @@ class Fila:
             return _ler_json(self._arquivo_do_estado(job_id), {})
 
     def listar(self):
-        """Cada Envio da fila, na ordem; o `status` de cada item vem do estado (a fila não o tem)."""
+        """Cada Envio da fila, na ordem, com o `status` do estado."""
         with self.tranca:
             lista = []
             for item in self.ordem():
