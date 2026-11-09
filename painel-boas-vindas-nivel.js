@@ -85,25 +85,30 @@
       mostrarOCampo(chave, bloco);
     }
 
-    /** Um campo por idioma ligado; o de um idioma que continua ligado não é refeito (a prévia não pisca nem o quiz fecha), salvo se o nível salvo mudou por fora e não há quiz aberto. */
+    /** Um campo por idioma ligado; o de um idioma que continua ligado não é refeito (a prévia não pisca nem o quiz fecha), salvo se o nível salvo mudou por fora (nem na volta anterior nem na escolha daqui) e não há quiz aberto. */
     function desenhar(estado) {
       const ligados = IDIOMAS_DO_PASSO.filter(({ chave }) => estado?.automatica[chave]);
       semIdioma.hidden = !estado || ligados.length > 0;
-      campos.replaceChildren(...ligados.map(({ chave, idioma }) => {
+      const grupos = ligados.map(({ chave, idioma }) => {
         const salvo = AjustesDeEnvio.atual()[chave];
         let bloco = passo.blocos.get(chave);
-        if (!bloco || (!bloco.quiz && bloco.rascunho.nivel !== salvo.nivel)) {
+        // Só um nível salvo que nem o campo nem a última volta conheciam veio de fora; o eco da escolha daqui não refaz o campo (o foco fica no radio).
+        const veioDeFora = bloco && salvo.nivel !== bloco.salvo && salvo.nivel !== bloco.rascunho.nivel;
+        if (!bloco || (!bloco.quiz && veioDeFora)) {
           bloco?.quiz?.parar();
           const corpo = elemento('div', 'bv-nivel__corpo');
           const grupo = elemento('div', 'bv-nivel', elemento('h3', 'bv-nivel__idioma', idioma), corpo);
           grupo.setAttribute('role', 'group');
           grupo.setAttribute('aria-label', idioma);
-          bloco = { grupo, corpo, rascunho: { nivel: salvo.nivel }, quiz: null };
+          bloco = { grupo, corpo, rascunho: { nivel: salvo.nivel }, salvo: salvo.nivel, quiz: null };
           passo.blocos.set(chave, bloco);
           mostrarOCampo(chave, bloco);
         }
+        if (!bloco.quiz) bloco.salvo = salvo.nivel;   // com o quiz aberto o campo não é refeito: o nível de fora ainda vale na volta
         return bloco.grupo;
-      }));
+      });
+      // Refazer a lista com os mesmos nós os tira da página e o foco cai no body: só troca quando a lista mudou.
+      if (grupos.length !== campos.children.length || grupos.some((g, i) => g !== campos.children[i])) campos.replaceChildren(...grupos);
     }
 
     return { no, desenhar };

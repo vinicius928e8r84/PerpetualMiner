@@ -26,18 +26,18 @@
 ## A atualização em silêncio (#177) e o risco 6
 
 A Conexão sabe se atualizar sozinha pelo AnkiWeb (`complemento/atualizacao.py`): consulta pelo próprio id ao abrir o Anki e a cada 6 h, instala sem perguntar e se marca
-com a atualização automática do Anki desligada (`update_enabled`). **Está ligada por padrão** (`ATUALIZACAO_AUTOMATICA = True` em `complemento/configuracao.py`, a partir da Conexão 0.4.19).
+com a atualização automática do Anki desligada (`update_enabled`). **Está ligada por padrão** (`ATUALIZACAO_AUTOMATICA = True` em `complemento/configuracao.py`, a partir da Conexão 0.4.20).
 
 - **Como desligar** (o caminho de recuperação): quem não quer cria o arquivo vazio `sem-atualizacao-automatica` em `user_files` da Conexão (o Anki preserva a pasta) e reabre o Anki:
   a Conexão sobe desligada, desfaz a marca e o diálogo normal do Anki volta. Para todos, o dono troca a chave por `False` e sobe uma versão nova (a chave é um arquivo do pacote). Em
   qualquer dos casos o botão Atualizar agora da extensão, que é um clique da pessoa, continua valendo.
 - **Os termos do AnkiWeb não foram conferidos por um agente.** A página de termos do AnkiWeb (`https://ankiweb.net/account/terms`) só é montada por JavaScript e o agente que fez o #177
   não conseguiu lê-la; a conclusão sobre um complemento que se atualiza sozinho **não está registrada, nem a favor nem contra**. O dono decidiu ligar a atualização por padrão
-  (Conexão 0.4.19) assumindo esse risco; se os termos não a permitirem, a chave volta a `False` com uma versão nova.
+  (Conexão 0.4.20) assumindo esse risco; se os termos não a permitirem, a chave volta a `False` com uma versão nova.
 - **As funções internas do Anki** foram lidas no código do Anki 26.09 (`aqt/addons.py`: `fetch_update_info`, `AddonManager.get_updated_addons`, `download_and_install_addon`,
   `AddonManager.addon_meta` e `write_addon_meta`), sem rodar um Anki de verdade. `AnkiWebDoAnki.pronto()` confere que elas existem antes de usá-las; se um Anki mudar um nome,
   a Conexão não consulta, não instala e desfaz a marca, e o diálogo normal do Anki volta (nunca pior que isso).
-- **O ensaio do dono** (com a Conexão instalada pelo AnkiWeb): subir uma versão nova no AnkiWeb (a 0.4.19 é a primeira com a chave ligada: quem vem de uma versão anterior ainda vê o diálogo do Anki nessa atualização), abrir o Anki e conferir que nenhum diálogo de atualização aparece,
+- **O ensaio do dono** (com a Conexão instalada pelo AnkiWeb): subir uma versão nova no AnkiWeb (a 0.4.20 é a primeira com a chave ligada: quem vem de uma versão anterior ainda vê o diálogo do Anki nessa atualização), abrir o Anki e conferir que nenhum diálogo de atualização aparece,
   que a versão nova entra e vale na abertura seguinte, e que o botão Reiniciar o Anki do Painel fecha e abre o Anki; com um Anki que mudou as funções internas, que o diálogo normal volta.
 - **Só funciona com o arquivo do AnkiWeb:** o id é o nome da pasta da Conexão no Anki (`addons21/<id>`), então uma Conexão instalada por arquivo com o `package` antigo
   (`perpetualminer`) não tem de onde atualizar.

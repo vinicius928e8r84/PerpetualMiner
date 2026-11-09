@@ -39,6 +39,10 @@ Arquivos grandes que as regras do projeto mantêm inteiros (`CLAUDE.md`, `comple
 
 **Modo estrito:** apague `linha-de-base-de-tamanho.json`. Sem ele, tudo acima do limite barra o commit.
 
+## No CI
+
+O gancho só vale para quem o ligou, então `.github/workflows/regras.yml` roda a mesma conferência sobre o que o PR mudou: `node scripts/ganchos/limite-de-tokens.js --base <ref>` (a mesma base das regras: a ponta da branch-alvo no PR, o commit anterior no push). A versão nova é o `HEAD` da branch e a velha é `<ref>`: o limite, o que fica de fora, a linha de base que só desce e a configuração que só aperta valem do mesmo jeito. Uma `<ref>` que não existe, ou uma pane do ambiente, reprova (o gancho local deixa passar). Num primeiro push (base de zeros) não há com o que comparar: avisa e passa, como as regras.
+
 ## Dividir um arquivo
 
 A mensagem do gancho traz o passo a passo do tipo do arquivo. Em resumo: um arquivo por responsabilidade (código), por cenário (teste), por seção com um índice (documento), por coleção (dados); constantes, tipos e fixtures no próprio arquivo; cada arquivo novo abaixo do limite; imports e links corrigidos; `git add`.
