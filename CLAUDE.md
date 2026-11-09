@@ -89,7 +89,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `test_empacotar.js` | Node test of the Web Store package contents and of the store guide's host-permission block |
 | `test_quiz_de_nivel.js` | Node tests of the level quiz and, in `test_festa_do_quiz.js`, of its celebration |
 | `test_ranking.js` | Node test of `lib/ranking.js` |
-| `test_voz.js` | Node test (no browser) of the Voice catalog: `lib/voz/catalogo.js` against the README's IDs and texts and the snapshot `docs/design/voz/catalogo-textos.json` (a changed text stays red until `node scripts/gerar-catalogo-da-voz.js` rewrites it); `scripts/voz-da-spec.js` and `scripts/conferir-voz.js` do the reading and the comparing |
+| `test_voz.js` | Node test of the Voice catalog vs the README and the snapshot `catalogo-textos.json` (red until `node scripts/gerar-catalogo-da-voz.js`); `scripts/voz-da-spec.js` and `scripts/conferir-voz.js` read and compare |
+| `test_ids_da_voz.js` | Node test: no Voice ID is defined twice in `lib/voz/` |
 | `test_preview.js` | Node test of the preview: it runs `preview/montar.mjs --saida <tmp>` and checks that every file the extension uses (`arquivosDaExtensao`) and everything each page loads is in the output |
 | `scripts/regras/` | The review rules a script can check (`verificar.js`, one file per rule, `linha-de-base.json`, proofs in `test_*.js`), run locally and by `.github/workflows/regras.yml`. See `AGENTS.md` § Rules and what enforces them |
 | `scripts/testes.json`, `scripts/testar.mjs`, `scripts/grupos-de-teste.js`, `scripts/test_testar.mjs` | The test groups: `testes.json` says which files each group runs (`fora` lists test-named files that are not tests), `testar.mjs` runs a group (`node scripts/testar.mjs <group> [-- args]`, `--listar`) and is the only command the workflows call, `grupos-de-teste.js` resolves a group to its files, `yaml-de-workflow.js` reads a workflow, `test_testar.mjs` tests them |
