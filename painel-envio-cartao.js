@@ -157,16 +157,17 @@
   }
 
   /**
-   * `estadoDoJob(envio)` é o que a Conexão disse do Envio (ou null); `falhaAoRetomar(envio)`, a causa de um Continuar envio que não
+   * `estadoDoJob(envio)` é o que a Conexão disse do Envio (ou null); `desconhecido(envio)`, se ela respondeu sem conhecê-lo (Esquecer: `esquecerOEnvio`); `falhaAoRetomar(envio)`, a causa de um Continuar envio que não
    * deu; `tentarCriarDeNovo` e `continuarEnvio` são as ações do cartão; `redesenhar()` refaz os cartões. Devolve `montarCartao(envio)`.
    */
-  function criar({ estadoDoJob, falhaAoRetomar, tentarCriarDeNovo, continuarEnvio, redesenhar }) {
+  function criar({ estadoDoJob, desconhecido, esquecerOEnvio, falhaAoRetomar, tentarCriarDeNovo, continuarEnvio, redesenhar }) {
     /** O que o cartão diz: etapa, quanto da barra, se deu certo, e o técnico. */
     function situacaoDoEnvio(envio) {
       if (!envio.jobId) {
         if (!envio.falhaAoCriar) return { etapa: 'naFila', indice: 0, fracao: 0, pct: 0, tom: '', atualizadoEm: envio.criadoEm };
         return { etapa: 'naoComecou', fim: true, semEtapas: true, pct: 0, tom: 'erro', atualizadoEm: envio.criadoEm };
       }
+      if (desconhecido(envio)) return { etapa: 'naoEncontrado', fim: true, semEtapas: true, pct: 0, tom: 'erro', atualizadoEm: envio.criadoEm };
       const estado = estadoDoJob(envio) || { status: 'queued', stage: 'queued' };
       const atualizadoEm = estado.updatedAt ? Date.parse(estado.updatedAt) : envio.criadoEm;
       const fim = FIM[estado.status];
@@ -198,7 +199,7 @@
       // Enquanto o cartão espera a pessoa, a etapa e os segmentos ficam em tom calmo: quem fala é o motivo.
       if (pedidoDoCartao(envio, estado)) situacao.tom = 'calmo';
       const rotuloDaEtapa = elemento('span', `envio-cartao__etapa${situacao.tom ? ` envio-cartao__etapa--${situacao.tom}` : ''}`,
-        textoDaVoz(`ENV-07.${etapa}`));
+        textoDaVoz(etapa === 'naoEncontrado' ? 'ENV-22.etapa' : `ENV-07.${etapa}`));
       const topo = elemento('div', 'envio-cartao__topo', titulo, rotuloDaEtapa);
 
       cartao.append(topo, montarEtapas(situacao, titulo.id));
@@ -251,6 +252,8 @@
           rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'tentar', aoUsar: () => tentarCriarDeNovo(envio),
         };
       }
+      // A Conexão responde e não conhece o Envio (#245): quem decide é a pessoa, e o Envio não é dado por falho.
+      if (desconhecido(envio)) return { motivo: textoDaVoz('ENV-22.motivo'), rotulo: textoDaVoz('ENV-22.esquecer'), foco: 'esquecer', aoUsar: () => esquecerOEnvio(envio) };
       // O Anki fechou no meio: o que ficou em `waiting` é de antes, e quem fala é o Envio parado (#151).
       const parado = raiz.EnvioParado.pedido(envio, estado);
       if (parado) return parado;

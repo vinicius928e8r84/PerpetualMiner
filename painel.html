@@ -15,8 +15,8 @@
 </head>
 <body>
 
-  <!-- Shell “Ilhas” (docs/design/painel/shell/), painel-shell.js. -->
-  <!-- Boas-vindas (docs/design/painel/boas-vindas/), painel-boas-vindas.js. -->
+  <!-- Shell “Ilhas” (docs/design/painel/shell/). -->
+  <!-- Boas-vindas (docs/design/painel/boas-vindas/). -->
   <div class="bv" id="boas-vindas" hidden>
     <div class="bv-topo">
       <img class="veio-marca" src="veio/icones/icone.svg" width="40" height="40" alt="PerpetualMiner">
@@ -102,7 +102,7 @@
           </div>
         </header>
 
-        <!-- O lembrete “Configuração pela metade” (ONB-15). -->
+        <!-- Lembrete “Configuração pela metade” (ONB-15). -->
         <aside class="frases-lembrete" id="frases-lembrete" aria-labelledby="frases-lembrete-texto" hidden>
           <span class="frases-lembrete__anel" id="frases-lembrete-anel"></span>
           <p class="frases-lembrete__texto" id="frases-lembrete-texto"></p>
@@ -114,7 +114,7 @@
           </div>
         </aside>
 
-        <!-- Avisos persistentes da área (C1). -->
+        <!-- Avisos da área (C1). -->
         <div class="frases-avisos" id="frases-avisos"></div>
 
         <div class="frases-filtros">
@@ -141,7 +141,7 @@
         </div>
 
         <!-- A linha de seleção: sem seleção, o checkbox “Selecionar página”; com seleção, a barra contextual (PAI-32), que gruda
-             no topo da ilha ao rolar, com o checkbox no começo (marcado ou misto) e o rótulo só para o leitor de tela. -->
+             no topo ao rolar, com o checkbox no começo (marcado ou misto) e o rótulo só para o leitor de tela. -->
         <div class="frases-selecao" id="frases-selecao" hidden>
           <label class="frases-selecao__pagina">
             <input type="checkbox" class="veio-checkbox" id="sel-pagina" data-voz-aria="PAI-31">
@@ -162,7 +162,7 @@
               <button class="veio-botao veio-botao--perigo-fantasma veio-botao--compacto" id="btn-delete-selected" type="button">
                 <span data-icone="apagar"></span><span data-voz="PAI-32.apagar"></span>
               </button>
-              <!-- Sem Conexão e nunca ligada: aria-disabled e tooltip. -->
+              <!-- Sem Conexão, nunca ligada: aria-disabled e tooltip. -->
               <span class="veio-com-dica">
                 <button class="veio-botao veio-botao--primario veio-botao--compacto" id="btn-send-anki" type="button">
                   <span data-icone="enviar"></span><span data-voz="PAI-32.enviar"></span>
@@ -209,7 +209,7 @@
           </div>
         </div>
 
-        <!-- Conectando: a primeira conferência ainda não voltou (BRG-02). -->
+        <!-- Conectando: a 1ª conferência não voltou (BRG-02). -->
         <div class="anki-faixa-conectando" id="anki-conectando" role="status" hidden>
           <span class="anki-ponto" aria-hidden="true"></span><span data-voz="BRG-02"></span>
         </div>
@@ -310,7 +310,7 @@
 
         <div class="shell-aba" data-aba="ajustes" hidden>
           <p class="anki-nota" id="anki-ajustes-nota" data-voz="BRG-33.ajustes" hidden></p>
-          <!-- Ajustes de envio: um card por idioma; só grava em Salvar ajustes. -->
+          <!-- Ajustes de envio: um card por idioma. -->
           <div class="ajustes" id="ajustes">
             <div class="ajustes-aviso" id="ajustes-aviso"></div>
             <div class="shell-cards ajustes-cards" id="ajustes-cards" role="group" data-voz-aria="BRG-07.idiomas"></div>
@@ -631,6 +631,7 @@
   <script src="painel-envio-anki-fechado.js"></script>
   <script src="painel-envio-parado.js"></script>
   <script src="painel-envio-limite.js"></script>
+  <script src="painel-envio-apagar.js"></script>
   <script src="painel-envio.js"></script>
   <script src="painel-anki-primeira-conexao.js"></script>
   <script src="painel-anki-plano.js"></script>

@@ -5,13 +5,15 @@
   /** De quanto em quanto tempo a Conexão é perguntada sobre os Envios. */
   const INTERVALO = 2000;
 
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, IDIOMAS, ehRussa, AjustesDeEnvio, PedidoAoAnki, CartaoDoEnvio, EnvioComOAnkiFechado } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, EnvioApagarFrases, IDIOMAS, ehRussa, AjustesDeEnvio, PedidoAoAnki, CartaoDoEnvio, EnvioComOAnkiFechado } = raiz;
   const { ETAPAS, FIM, IDIOMA_DO_LANG, nomeDoIdioma, retomavel, botao, elemento } = CartaoDoEnvio;
   const { AREAS_DO_PAINEL } = Shell;
   const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
   const { montarCartao } = CartaoDoEnvio.criar({
     estadoDoJob,
+    desconhecido: envio => Boolean(envio.jobId) && desconhecidos.has(envio.jobId),
+    esquecerOEnvio,
     falhaAoRetomar: envio => envio.jobId && falhasAoRetomar.get(envio.jobId),
     tentarCriarDeNovo,
     continuarEnvio,
@@ -27,6 +29,7 @@
   const jobs = new Map();           // jobId → o último job lido de POST /jobs/list
   const falhasAoRetomar = new Map(); // jobId → a causa, quando Continuar envio não deu
   let criando = false;
+  const desconhecidos = new Set();  // jobIds que a Conexão respondeu sem conhecer (#245)
   const retomando = new Set();      // jobIds com um Continuar envio a caminho
   // Um Envio que não começou (ou que não deu para retomar) segura o resumo até a pessoa fechar o progresso.
   let desistiuDasPendencias = false;
@@ -53,7 +56,7 @@
     });
     ConexaoAnki.acompanhar(situacao => {
       mostrarConexao(situacao);
-      if (situacao !== CONEXAO.DESLIGADA) pedirAApagarAsFrases();
+      if (situacao !== CONEXAO.DESLIGADA) EnvioApagarFrases.pedir();
     });
     ankiFechado = EnvioComOAnkiFechado.criar({ aoLigar: enviar });
     // O resumo que esperou a Boas-vindas abre quando a pessoa chega ao painel.
@@ -201,8 +204,11 @@
       const porJob = new Map(lista.map(job => [job.jobId, job]));
       for (const envio of remessa?.envios || []) {
         if (!envio.jobId) continue;
-        // Um Envio que a Conexão não conhece mais conta como não concluído.
-        jobs.set(envio.jobId, porJob.get(envio.jobId) || { jobId: envio.jobId, status: 'failed', state: { status: 'failed', stage: 'failed' } });
+        // Sem a Conexão conhecer o Envio, o cartão oferece Esquecer (#245).
+        const job = porJob.get(envio.jobId);
+        desconhecidos[job ? 'delete' : 'add'](envio.jobId);
+        if (job) jobs.set(envio.jobId, job);
+        else jobs.delete(envio.jobId);
       }
       semNoticia = false;
     } catch {
@@ -219,6 +225,7 @@
   /** Terminou na Conexão, ou nem começou. */
   function terminou(envio) {
     if (!envio.jobId) return Boolean(envio.falhaAoCriar);
+    if (desconhecidos.has(envio.jobId)) return true;
     const estado = estadoDoJob(envio);
     return Boolean(estado && FIM[estado.status]);
   }
@@ -244,7 +251,7 @@
   async function apagarTudo() {
     encerrarOAcompanhamento();
     await new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios: [], apagarFrases: true } }, r));
-    return pedirAApagarAsFrases();
+    return EnvioApagarFrases.pedir();
   }
 
   /** O painel deixa de acompanhar os Envios e fecha o que mostrava deles; nada é gravado nem enviado. */
@@ -252,37 +259,18 @@
     remessa = null;
     desistiuDasPendencias = false;
     jobs.clear();
+    desconhecidos.clear();
     falhasAoRetomar.clear();
     pararDeAcompanhar();
     progresso?.fechar();
     if (resumo) responderResumo('descartar');
   }
 
-  let apagandoAsFrases = null;
-  /** Pede à Conexão o apagamento das Frases dela, se marcado; devolve se ela confirmou (ou nada havia a pedir). */
-  function pedirAApagarAsFrases() {
-    if (apagandoAsFrases) return apagandoAsFrases;
-    apagandoAsFrases = (async () => {
-      const gravado = (await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r)))[CHAVE_GRAVADA];
-      if (!gravado?.apagarFrases) return true;
-      try {
-        const resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, PedidoAoAnki.apagarFrasesDosEnvios());
-        if (!resposta.ok) return false;
-      } catch {
-        return false;
-      }
-      const envios = gravado.envios || [];
-      if (envios.length) await new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios } }, r));
-      else await new Promise(r => chrome.storage.local.remove(CHAVE_GRAVADA, r));
-      return true;
-    })().finally(() => { apagandoAsFrases = null; });
-    return apagandoAsFrases;
-  }
-
   async function esquecer() {
     remessa = null;
     desistiuDasPendencias = false;
     jobs.clear();
+    desconhecidos.clear();
     falhasAoRetomar.clear();
     pararDeAcompanhar();
     const apagarFrases = (await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r)))[CHAVE_GRAVADA]?.apagarFrases;
@@ -313,7 +301,7 @@
 
   /** O Envio espera uma ação da pessoa: não começou, ou o Continuar envio não deu. */
   function pendente(envio) {
-    return Boolean(envio.falhaAoCriar) || Boolean(envio.jobId && falhasAoRetomar.has(envio.jobId));
+    return Boolean(envio.falhaAoCriar) || Boolean(envio.jobId && (falhasAoRetomar.has(envio.jobId) || desconhecidos.has(envio.jobId)));
   }
 
   function desenharProgresso({ mesmoFechado = false } = {}) {
@@ -338,6 +326,20 @@
       assinaturas.set(chave, assinatura);
       if (focoDentro) cartao.querySelector(`[data-foco="${focoDentro}"]`)?.focus();
     }
+  }
+
+  /** Esquecer (ENV-22): o Envio sai do acompanhamento; as Frases ficam no histórico. */
+  async function esquecerOEnvio(envio) {
+    if (!remessa) return;
+    remessa.envios = remessa.envios.filter(e => e !== envio);
+    desconhecidos.delete(envio.jobId);
+    jobs.delete(envio.jobId);
+    assinaturas.delete(envio.id);
+    porId('modal-envio-lista').querySelector(`[data-envio="${envio.id}"]`)?.remove();
+    if (!remessa.envios.length) return progresso ? progresso.fechar() : esquecer();
+    await gravar();
+    desenharProgresso();
+    tentarAbrirResumo();
   }
 
   function tentarCriarDeNovo(envio) {
