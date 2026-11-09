@@ -15,10 +15,10 @@ import re
 from typing import Optional
 
 if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
-    from . import cost_tracker, openai_http
+    from . import cost_tracker, provedores
 else:
     import cost_tracker
-    import openai_http
+    import provedores
 
 _ABSTRACT_PATTERNS = [
     r"\b(to|at|in|on|of|for|with|by|from|into|onto|out of|up to)\b.*\b(someone|sb|sth)\b",
@@ -79,7 +79,7 @@ def should_generate_image(
     keyword: str,
     api_key: str,
     log_dir: str = "log",
-    openai_base: str = openai_http.OPENAI_BASE,
+    openai_base: Optional[str] = None,
     label: Optional[str] = None,
 ) -> bool:
     """`label` is what the cost record says the call was for (the word by default; the add-on passes the card's id)."""
@@ -90,17 +90,13 @@ def should_generate_image(
         return True
 
     try:
-        verdict, usage = openai_http.completar(
-            openai_base,
-            api_key,
-            "gpt-4o-mini",
-            [
-                {"role": "system", "content": _SYSTEM},
-                {"role": "user",   "content": keyword},
-            ],
+        verdict, usage = provedores.texto(
+            {"provedor": provedores.OPENAI, "segredo": api_key, "modelo": "gpt-4o-mini", "base": openai_base},
+            _SYSTEM,
+            keyword,
             temperatura=0,
             max_tokens=1,
-            repeticoes=openai_http.REPETICOES_DA_IMAGEM,
+            repeticoes=provedores.REPETICOES_DA_IMAGEM,
         )
 
         # Record the tiny cost
@@ -108,8 +104,8 @@ def should_generate_image(
             cost_tracker.record_tokens(
                 log_dir,
                 model="gpt-4o-mini",
-                input_tokens=usage.get("prompt_tokens") or 0,
-                output_tokens=usage.get("completion_tokens") or 0,
+                input_tokens=usage.get("entrada", 0),
+                output_tokens=usage.get("saida", 0),
                 keyword=f"[image_guard] {label or keyword}",
             )
 

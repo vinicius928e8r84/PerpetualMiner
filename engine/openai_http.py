@@ -11,6 +11,9 @@ a timeout or no answer), as the SDK did; the text call does not (the add-on wait
 
 A refusal becomes `ErroDaOpenAI(codigo)`; what OpenAI wrote in the refusal is never kept, because the
 message of a rejected key repeats parts of it.
+
+This module is the `openai` adapter of the provider layer (`provedores.py`): `texto()` and `imagem()` are the interface it
+fulfils, the rest is OpenAI's own protocol.
 """
 
 import json
@@ -206,3 +209,37 @@ def gerar_imagem(base, chave, modelo, prompt, tamanho, tempo=TEMPO_DA_IMAGEM):
     dados = _pedir(base, "/v1/images/generations", chave, {"model": modelo, "prompt": prompt, "n": 1, "size": tamanho}, tempo, REPETICOES_DA_IMAGEM)
     primeira = (dados.get("data") or [{}])[0]
     return primeira if isinstance(primeira, dict) else {}
+
+
+def _partes_da_responses(partes):
+    """The chat's parts as the Responses API's: `input_text` and `input_image`. `json_object` needs the word JSON in the input."""
+    convertidas = [
+        {"type": "input_image", "image_url": parte["image_url"]["url"]} if parte["type"] == "image_url" else {"type": "input_text", "text": parte["text"]}
+        for parte in partes
+    ]
+    convertidas[0]["text"] += "\nReply with the JSON verdict."
+    return convertidas
+
+
+def _uso(bruto, entrada, saida):
+    return {"entrada": bruto.get(entrada) or 0, "saida": bruto.get(saida) or 0} if bruto else {}
+
+
+def texto(cred, sistema, mensagem, json=False, temperatura=None, max_tokens=None, tempo=None, repeticoes=0):
+    """The provider layer's `texto` for OpenAI: the key's chat completions, or the ChatGPT plan's Responses API when `cred["via"]` is `plano`
+    (no `temperature` or `max_tokens` there; a list `mensagem` is converted to the Responses API's parts). Returns (text, {entrada, saida}):
+    `{}` when the answer had no usage and the key is the one paying."""
+    base, tempo = cred.get("base") or OPENAI_BASE, tempo or TEMPO_PADRAO
+    if cred.get("via") == "plano":
+        partes = _partes_da_responses(mensagem) if isinstance(mensagem, list) else mensagem
+        resposta, bruto = responder(base, cred["segredo"], cred["modelo"], sistema, partes, tempo, formato_json=json, repeticoes=repeticoes)
+        return resposta, {"entrada": bruto.get("input_tokens") or 0, "saida": bruto.get("output_tokens") or 0}
+    resposta, bruto = completar(
+        base, cred["segredo"], cred["modelo"], [{"role": "system", "content": sistema}, {"role": "user", "content": mensagem}],
+        temperatura=temperatura, tempo=tempo, formato_json=json, max_tokens=max_tokens, repeticoes=repeticoes)
+    return resposta, _uso(bruto, "prompt_tokens", "completion_tokens")
+
+
+def imagem(cred, prompt, tamanho):
+    """The provider layer's `imagem` for OpenAI: the first image of the answer, `{"b64_json": ...}` or `{"url": ...}` (`{}` if none)."""
+    return gerar_imagem(cred.get("base") or OPENAI_BASE, cred["segredo"], cred["modelo"], prompt, tamanho)

@@ -19,7 +19,8 @@ function criarFakeGemini() {
     const corpo = pedido.postDataJSON() || {};
     const imagem = corpo.contents?.[0]?.parts?.find(parte => parte.inlineData)?.inlineData;
     chamadas.push({
-      chave: new URL(pedido.url()).searchParams.get('key'),
+      chave: pedido.headers()['x-goog-api-key'] ?? null,
+      url: pedido.url(),
       mimeType: imagem?.mimeType ?? null,
     });
 

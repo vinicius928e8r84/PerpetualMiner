@@ -95,7 +95,7 @@ class ArquivoDoComplemento(unittest.TestCase):
             pacote = self.empacotado(pasta)
             nomes = pacote.namelist()
             pacote.close()
-        for nome in ("motor/__init__.py", "motor/generate_cards.py", "motor/openai_http.py", "motor/generate_audio.py", "motor/image_pipeline.py", "motor/google_images.py", "motor/config.json", "motor/prompts/en_card.txt", "motor/prompts/ru_card.txt"):
+        for nome in ("motor/__init__.py", "motor/generate_cards.py", "motor/openai_http.py", "motor/provedores.py", "motor/generate_audio.py", "motor/image_pipeline.py", "motor/google_images.py", "motor/config.json", "motor/prompts/en_card.txt", "motor/prompts/ru_card.txt"):
             self.assertIn(nome, nomes)
 
     def test_empacotar_numa_copia_limpa_cria_a_pasta_dist_e_o_arquivo(self):

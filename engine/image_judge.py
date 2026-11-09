@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import Any
 
 if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
-    from . import cost_tracker, openai_http
+    from . import cost_tracker, provedores
     from .image_utils import UnsupportedImageFormatError, supported_image_mime
 else:
     import cost_tracker
-    import openai_http
+    import provedores
     from image_utils import UnsupportedImageFormatError, supported_image_mime
 
 
@@ -64,8 +64,8 @@ def _record_cost(log_dir: str, model: str, usage: dict, keyword: str) -> None:
     cost_tracker.record_tokens(
         log_dir,
         model=model,
-        input_tokens=usage.get("prompt_tokens") or 0,
-        output_tokens=usage.get("completion_tokens") or 0,
+        input_tokens=usage.get("entrada", 0),
+        output_tokens=usage.get("saida", 0),
         keyword=keyword,
     )
 
@@ -75,16 +75,6 @@ def _image_data_url(path: Path) -> str:
     mime = supported_image_mime(data)
     raw = base64.b64encode(data).decode("ascii")
     return f"data:{mime};base64,{raw}"
-
-
-def _partes_da_responses(content: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """The chat's parts as the Responses API's: `input_text` and `input_image`. `json_object` needs the word JSON in the input."""
-    partes = [
-        {"type": "input_image", "image_url": parte["image_url"]["url"]} if parte["type"] == "image_url" else {"type": "input_text", "text": parte["text"]}
-        for parte in content
-    ]
-    partes[0]["text"] += "\nReply with the JSON verdict."
-    return partes
 
 
 def _card_brief(card_text: str) -> str:
@@ -139,7 +129,7 @@ def rank_candidates(
     card_text: str,
     candidates: list[dict[str, Any]],
     mode: str,
-    openai_base: str = openai_http.OPENAI_BASE,
+    openai_base: str | None = None,
     label: str | None = None,
     plano: dict[str, str] | None = None,
 ) -> dict[str, Any]:
@@ -195,29 +185,25 @@ def rank_candidates(
     try:
         if plano:
             try:
-                raw, usage = openai_http.responder(
-                    openai_base, plano["token"], plano["modelo"], _SYSTEM, _partes_da_responses(content), openai_http.TEMPO_DA_IMAGEM,
-                    formato_json=True, repeticoes=openai_http.REPETICOES_DA_IMAGEM)
-            except openai_http.ErroDaOpenAI as exc:
-                if not (api_key and openai_http.passageira(exc.codigo, exc.status)):  # a plan that cannot go on (limit, account) stops the Envio
+                raw, usage = provedores.texto(
+                    {"provedor": provedores.OPENAI, "via": "plano", "segredo": plano["token"], "modelo": plano["modelo"], "base": openai_base},
+                    _SYSTEM, content, tempo=provedores.TEMPO_DA_IMAGEM, json=True, repeticoes=provedores.REPETICOES_DA_IMAGEM)
+            except provedores.ErroDoProvedor as exc:
+                if not (api_key and provedores.passageira(exc.codigo, exc.status)):  # a plan that cannot go on (limit, account) stops the Envio
                     raise
                 LOGGER.warning("image_judge plan judge failed (%s): the key judge decides keyword=%s", exc.codigo, label or keyword)
                 plano = None
         if not plano:
-            raw, usage = openai_http.completar(
-                openai_base,
-                api_key,
-                model,
-                [
-                    {"role": "system", "content": _SYSTEM},
-                    {"role": "user", "content": content},
-                ],
+            raw, usage = provedores.texto(
+                {"provedor": provedores.OPENAI, "segredo": api_key, "modelo": model, "base": openai_base},
+                _SYSTEM,
+                content,
                 temperatura=0,
-                formato_json=True,
-                repeticoes=openai_http.REPETICOES_DA_IMAGEM,
+                json=True,
+                repeticoes=provedores.REPETICOES_DA_IMAGEM,
             )
-    except openai_http.ErroDaOpenAI as exc:
-        if exc.codigo != openai_http.IMAGEM_INVALIDA:
+    except provedores.ErroDoProvedor as exc:
+        if exc.codigo != provedores.IMAGEM_INVALIDA:
             raise
         LOGGER.warning(
             "image_judge invalid_image_format keyword=%s mode=%s candidates=%s",

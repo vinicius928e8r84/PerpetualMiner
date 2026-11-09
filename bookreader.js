@@ -364,10 +364,10 @@ To be or not to be, that is the question`;
   async function chamarGemini(chave, foto, sinal) {
     let resposta;
     try {
-      resposta = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(chave)}`, {
+      resposta = await fetch(GEMINI_URL, {
         method: 'POST',
         signal: sinal,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': chave },
         body: JSON.stringify({
           contents: [{ parts: [
             { inlineData: { mimeType: foto.tipo, data: foto.base64 } },
