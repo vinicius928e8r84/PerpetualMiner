@@ -252,14 +252,13 @@ class PromptsPorNivelTests(unittest.TestCase):
         self.assertNotIn("Trigger:", avancado)
         self.assertNotIn("Simple meaning:", avancado)
 
-    def test_os_dois_niveis_do_russo_pedem_a_palavra_a_silaba_forte_a_definicao_em_ingles_e_outro_exemplo_sem_repetir_a_frase_nem_pedir_o_alinhamento(self):
+    def test_os_dois_niveis_do_russo_pedem_a_palavra_a_silaba_forte_a_definicao_e_outro_exemplo_sem_repetir_a_frase_nem_pedir_o_alinhamento(self):
         for nivel in ("intermediario", "avancado"):
             with self.subTest(nivel=nivel):
                 prompt = _prompt_do_nivel("ru", nivel)
                 for regra in (
                     "Word: [The Russian word to learn, exactly as in the phrase]",
                     "Stress: [The Word with an acute accent on the stressed vowel]",
-                    "Pronunciation: [Simple transliteration of the Word",
                     "Definition: [",
                     "Other example: [One new short Russian sentence using the Word]",
                     "Keep the Russian phrase in Front exactly as provided",
@@ -269,29 +268,65 @@ class PromptsPorNivelTests(unittest.TestCase):
                     "The card therefore does not repeat the phrase on the back.",
                 ):
                     self.assertIn(regra, prompt)
-                self.assertIn("in English", prompt)
                 self.assertNotIn("Alignment:", prompt)
+        self.assertIn("Pronunciation: [Simple transliteration of the Word", _prompt_do_nivel("ru", "intermediario"))
+        self.assertNotIn("Pronunciation: [", _prompt_do_nivel("ru", "avancado"))
 
-    def test_os_dois_niveis_do_russo_pedem_os_pedacos_da_morfologia_com_as_quatro_cores_e_uma_explicacao_por_cor(self):
-        for nivel in ("intermediario", "avancado"):
+    def test_so_o_intermediario_do_russo_pede_os_pedacos_da_morfologia_com_as_quatro_cores_e_uma_explicacao_por_cor(self):
+        for nivel, lingua in (("intermediario", "English"),):
             with self.subTest(nivel=nivel):
                 prompt = _prompt_do_nivel("ru", nivel)
                 for regra in (
                     "Morphology: [Russian word] | [kind]:[piece] | [kind]:[piece] | [kind]:[piece]",
                     "There are four kinds of piece: prefix, root, suffix and ending.",
                     "the pieces written one after the other MUST spell the word exactly",
-                    "Colors: prefix | [pieces] | [what they do, in English] root | [pieces] | [what they mean, in English] "
-                    "suffix | [pieces] | [tense, aspect, person or other label, in English] "
-                    "ending | [pieces] | [person, number, gender or case, in English]",
+                    f"Colors: prefix | [pieces] | [what they do, in {lingua}] root | [pieces] | [what they mean, in {lingua}] "
+                    f"suffix | [pieces] | [tense, aspect, person or other label, in {lingua}] "
+                    f"ending | [pieces] | [person, number, gender or case, in {lingua}]",
                     "person (1st, 2nd, 3rd), number, gender, tense (past, present, future) and aspect (perfective or imperfective)",
                     "when a preposition governs the case, say so",
                     "Root: [The root of the Word]",
                 ):
                     self.assertIn(regra, prompt)
 
+    def test_o_avancado_do_russo_nao_pede_a_morfologia_as_cores_nem_a_pronuncia_que_sao_do_intermediario(self):
+        prompt = _prompt_do_nivel("ru", "avancado")
+        for pedaco in ("Morphology:", "Colors:", "Pronunciation:", "[kind]:[piece]"):
+            self.assertNotIn(pedaco, prompt)
+        self.assertIn("Root: [The root of the Word]", prompt)
+
+    def test_o_intermediario_do_russo_pede_a_definicao_de_dicionario_o_significado_simples_de_crianca_e_a_morfologia_das_duas_frases(self):
+        prompt = _prompt_do_nivel("ru", "intermediario")
+        for regra in (
+            "Definition: [English dictionary definition of the Word",
+            "Simple meaning: [The same meaning in very simple English words, as if explained to a 5-year-old]",
+            "word of the phrase AND of the Other example",
+            "the Word always first",
+        ):
+            self.assertIn(regra, prompt)
+
     def test_so_o_avancado_do_russo_pede_as_palavras_da_mesma_raiz(self):
         self.assertNotIn("Same root", _prompt_do_nivel("ru", "intermediario"))
         self.assertIn("Same root: [Three to five Russian words from the same root", _prompt_do_nivel("ru", "avancado"))
+
+    def test_o_avancado_do_russo_explica_em_russo_e_proibe_o_ingles_e_o_portugues_na_explicacao(self):
+        prompt = _prompt_do_nivel("ru", "avancado")
+        self.assertEqual(estilos.estilo("ru", "avancado")["explicacao"], "ru")
+        for regra in (
+            "every explanation (the Definition and the Simple meaning) is written in Russian",
+            "No English and no Portuguese allowed in any explanation.",
+            "Definition: [Precise definition of the Word, in Russian,",
+            "Simple meaning: [The same meaning in one simple Russian sentence with everyday words]",
+            "This level is monolingual",
+            "NEVER write an explanation in Portuguese or English",
+        ):
+            self.assertIn(regra, prompt)
+        self.assertNotIn("in English]", prompt)
+        self.assertNotIn("English definition", prompt)
+        exemplo = " ".join(estilos.estilo("ru", "avancado")["exemplo"]["texto"])
+        definicao = exemplo.split("Definition:")[1].split("Other example:")[0].replace("Simple meaning:", "")
+        self.assertRegex(definicao, "[а-яА-Я]{4}")
+        self.assertNotRegex(definicao, "[a-zA-Z]{4}")
 
     def test_a_explicacao_em_ingles_proibe_o_portugues(self):
         for lang in estilos.idiomas():

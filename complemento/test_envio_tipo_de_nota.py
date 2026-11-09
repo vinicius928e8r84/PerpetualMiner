@@ -88,7 +88,8 @@ class OCartaoNovoSaiNoIniciante(unittest.TestCase):
         campos = notas[0]["campos"]
         self.assertEqual((estado["status"], notas[0]["tipo"], notas[0]["baralho"]), ("completed", "PerpetualMiner Russo", "PerpetualMiner::Russo"))
         self.assertEqual(re.sub("<[^>]+>", "", campos["Frase"]), "Я не мальчик!")
-        self.assertEqual((campos["Tradução natural"], campos["Palavra"]), ("tradução de mentira", "Я не"))
+        self.assertEqual(campos["Tradução natural"], "tradução de mentira")
+        self.assertEqual(campos["Palavra"], "Я не")  # gravada (a Criação a usa); o verso do Iniciante não a mostra
         self.assertEqual([texto for _, texto in cores_de(campos["Frase"])], ["Я"])
 
     def test_a_imagem_do_cartao_vai_no_campo_proprio_e_a_foto_fica_na_midia_da_nota(self):
@@ -205,8 +206,8 @@ class OModeloDoCartaoServeATodosOsNiveis(unittest.TestCase):
     def test_o_verso_do_russo_tem_as_partes_dos_tres_niveis_na_ordem_do_idioma(self):
         verso = tipo_de_nota.definicao("ru")["modelos"][0]["verso"]
         posicoes = [verso.index("{{#%s}}" % campo) for campo in (
-            "Pronúncia", "Tradução literal", "Tradução natural", "Contexto da cena", "Palavra", "Sílaba forte", "Definição", "Explicação das cores",
-            "Outro exemplo", "Mesma raiz", "Imagem")]
+            "Pronúncia", "Tradução literal", "Tradução natural", "Contexto da cena", "Sílaba forte", "Definição", "Significado simples",
+            "Outro exemplo", "Explicação das cores", "Mesma raiz", "Imagem")]
         self.assertEqual(posicoes, sorted(posicoes))
 
     def test_o_envio_do_russo_grava_a_morfologia_e_a_raiz_que_o_verso_nao_mostra(self):
