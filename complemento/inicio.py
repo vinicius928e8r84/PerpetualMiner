@@ -9,7 +9,7 @@ import sys
 
 from . import abridor as abridores, item_de_login as itens_de_login, passagem as passagens, pasta_de_dados, registro, tipo_de_nota
 from .baralhos import ColecaoIndisponivel
-from .atualizacao import AnkiWebAusente, Atualizacao
+from .atualizacao import ARQUIVO_DE_QUEM_DESLIGOU, AnkiWebAusente, Atualizacao
 from .configuracao import ATUALIZACAO_AUTOMATICA, OPENAI_BASE, OPENVERSE_BASE, ORIGENS_ACEITAS, PORTA, VERSAO, VOZ_BASE
 from .servidor import Conexao
 
@@ -45,7 +45,7 @@ def iniciar(
     A `passagem` é a do Windows do dono (#178, `passagem.py`): a Conexão de hoje na porta é esperada, copiada e encerrada antes de esta subir.
     Omitida, a deste computador (só o Windows tem); `passagem=None` a desliga.
     O `anki_web` é a fronteira da atualização pelo AnkiWeb (#177, `atualizacao.py`); sem ele (fora do Anki) não há de onde atualizar. Com
-    `atualizacao_automatica`, a Conexão consulta o AnkiWeb ao subir e a cada 6 h.
+    `atualizacao_automatica`, a Conexão consulta o AnkiWeb ao subir e a cada 6 h, a menos que a pessoa tenha criado o `ARQUIVO_DE_QUEM_DESLIGOU`.
     """
     logger = registro.silencioso()
     try:
@@ -72,7 +72,7 @@ def iniciar(
             item_de_login=item_de_login,
             atualizacao=Atualizacao(
                 arquivo=os.path.join(dados.raiz, "atualizacao.json"), anki_web=anki_web or AnkiWebAusente(), versao=VERSAO, logger=logger,
-                ligada=atualizacao_automatica),
+                ligada=atualizacao_automatica and not os.path.exists(os.path.join(dados.raiz, ARQUIVO_DE_QUEM_DESLIGOU))),
         )
         _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger)
         if passagem is PASSAGEM_DESTE_COMPUTADOR:
