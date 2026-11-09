@@ -184,7 +184,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await jaTenho(page).click();
 
     await expect(resultadoDoAnki(page)).toHaveText('O Anki está abrindo…');
-    expect(fakes.abridor.pedidos()).toEqual([ABRIR]);
+    await expect.poll(() => fakes.abridor.pedidos()).toEqual([ABRIR]);
 
     // O Anki abriu e a Conexão com ele responde: o passo vira ✓ e o card anda sozinho ao passo do abridor.
     fakes.anki.ligar();

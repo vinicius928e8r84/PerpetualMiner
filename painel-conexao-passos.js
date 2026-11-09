@@ -279,33 +279,34 @@
     const blocoDoAnki = elemento('div', 'pc-anki', perguntaDoAnki, respostasDoAnki, doDownloadDoAnki, resultadoDoAnki);
     doDownloadDoAnki.hidden = true;
 
-    // A resposta do passo Ter o Anki, só na tela: `escolha` é `null` (a pergunta) ou uma `RESPOSTA`,
-    // e `doAbridor` é o ID do que a resposta “Já tenho” mostrou por último (nenhum, enquanto não há o
-    // que dizer). O que marca o passo é a Conexão respondendo, e a escolha volta à pergunta então.
+    // A resposta do passo Ter o Anki, só na tela: `escolha` é `null` ou uma `RESPOSTA`; `doAbridor` é o ID
+    // do que “Já tenho” mostrou por último. Quem marca o passo é a Conexão respondendo (a escolha volta à pergunta).
     const anki = { escolha: null, doAbridor: null };
     const definirResposta = (escolha, doAbridor = null) => Object.assign(anki, { escolha, doAbridor });
 
-    /**
-     * O abridor da Conexão abre o Anki agora? Sem a permissão já dada, `abrirOAnki` nem pergunta a ele
-     * (SEM_PERMISSAO); uma conversa que falha por dentro (o Chrome recusando a pergunta da permissão, por
-     * exemplo) é o caminho manual.
-     */
+    /** O abridor abre o Anki agora? */
     async function oAbridorAbreOAnki() {
       const { resultado } = await Abridor.abrirOAnki().catch(() => ({ resultado: null }));
       return resultado === Abridor.RESULTADO.ABRIU;
     }
 
-    // Uma conversa com o abridor por vez: cada `abrir` é um Anki aberto, e o clique duplo não pode abrir dois.
+    // Uma conversa por vez: cada `abrir` é um Anki aberto.
     let conversandoComOAbridor = false;
 
     /** “Já tenho”: com a permissão dada, o abridor abre o Anki; sem ela (ou sem ele), o caminho manual. */
     async function responderJaTenho() {
+      if (conversandoComOAbridor && anki.escolha === RESPOSTA.JA_TENHO) return;
       definirResposta(RESPOSTA.JA_TENHO);
       desenhar();
       if (conversandoComOAbridor) return;
       conversandoComOAbridor = true;
+      // Com a conversa no ar, a tela diz que o Anki abre até a resposta.
+      if (await Abridor.temPermissao().catch(() => false) && anki.escolha === RESPOSTA.JA_TENHO) {
+        definirResposta(RESPOSTA.JA_TENHO, 'ONB-18.abrindo');
+        desenhar();
+      }
       const abriu = await oAbridorAbreOAnki().finally(() => { conversandoComOAbridor = false; });
-      // Enquanto o abridor falava, a pessoa mudou de resposta (ou a Conexão respondeu).
+      // A pessoa mudou de resposta (ou a Conexão respondeu) enquanto ele falava.
       if (anki.escolha !== RESPOSTA.JA_TENHO) return;
       definirResposta(RESPOSTA.JA_TENHO, abriu ? 'ONB-18.abrindo' : 'ONB-18.manual');
       desenhar();

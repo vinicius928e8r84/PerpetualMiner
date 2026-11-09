@@ -14,6 +14,8 @@ _ID_DO_ENVIO = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 # A reserva da voz (#174): uma lista de nomes de provedor, sem tamanho de abuso; a Conexão pula o nome que não conhece.
 _PROVEDOR_DA_VOZ = re.compile(r"^[a-z0-9_-]{1,32}$")
 MAXIMO_DE_RESERVAS = 8
+# O teto de Frases de um Envio (#243): a mineração de uma sessão leva centenas; acima disto o pedido não é de uma pessoa (limite 5.a).
+MAXIMO_DE_FRASES = 500
 # A etiqueta que o Cartão da Frase de teste do primeiro Envio (#173) leva no Anki, para a pessoa achá-lo e apagá-lo.
 ETIQUETA_DE_TESTE = "perpetualminer-teste"
 
@@ -69,6 +71,8 @@ def validar_pedido(corpo):
     entradas = corpo.get("entries")
     if not isinstance(entradas, list) or not entradas:
         return None, (400, "entries_required")
+    if len(entradas) > MAXIMO_DE_FRASES:
+        return None, (413, "too_many_entries")
     limpas, vistas = [], set()
     for entrada in entradas:
         frase = entrada.get("phraseId") if isinstance(entrada, dict) else None
