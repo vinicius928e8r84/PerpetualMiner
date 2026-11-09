@@ -137,13 +137,14 @@
       ],
       "opcionais": {"significado_simples": "definicao"},
       "ordem_do_verso": [
-        "pronuncia", "literal", "natural", "cena", "palavra", "silaba_forte", "definicao", "significado_simples", "outro_exemplo", "explicacao_das_cores", "mesma_raiz", "imagem"
+        "pronuncia", "literal", "natural", "cena", "silaba_forte", "definicao", "significado_simples", "outro_exemplo", "explicacao_das_cores", "mesma_raiz", "imagem"
       ],
       "niveis": {
         "iniciante": {
           "prompt": "prompts/ru_iniciante.txt",
           "explicacao": "pt",
           "verso": ["pronuncia", "literal", "natural", "cena", "imagem"],
+          "guarda": ["palavra"],
           "cores": true,
           "exemplo": {
             "palavra": "мальчик",
@@ -175,7 +176,7 @@
           "destaque": true,
           "morfologia": true,
           "repete_a_frase": false,
-          "guarda": ["morfologia", "raiz"],
+          "guarda": ["palavra", "morfologia", "raiz"],
           "exemplo": {
             "texto": [
               "Front",
@@ -220,7 +221,7 @@
           "destaque": true,
           "morfologia": false,
           "repete_a_frase": false,
-          "guarda": ["raiz"],
+          "guarda": ["palavra", "raiz"],
           "exemplo": {
             "texto": [
               "Front",

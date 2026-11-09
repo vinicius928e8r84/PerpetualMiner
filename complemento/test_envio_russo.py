@@ -23,7 +23,7 @@ from complemento.test_envio_tipo_de_nota import cores_de  # noqa: E402
 FRASE_RUSSA = "Она приходила вчера [Context: Série - Episódio 1]"
 PALAVRA_DE_MENTIRA = "вчера"  # a última palavra da frase: o Cartão de mentira escolhe essa
 CAMPOS_DO_RUSSO_COM_MORFOLOGIA = sorted([
-    "Frase", "Áudio da frase", "Áudio da palavra", "Pronúncia", "Sílaba forte", "Definição", "Significado simples", "Explicação das cores", "Outro exemplo",
+    "Frase", "Áudio da frase", "Palavra", "Áudio da palavra", "Pronúncia", "Sílaba forte", "Definição", "Significado simples", "Explicação das cores", "Outro exemplo",
     "Morfologia", "Raiz", "Imagem", "Frase com lacuna", "Dica"])
 
 
@@ -45,7 +45,7 @@ class OIntermediarioEOAvancadoDoRusso(unittest.TestCase):
         self.assertIn("Morphology:", prompt)
         self.assertNotIn("Same root: [", prompt)
         self.assertEqual((campos["Sílaba forte"], campos["Raiz"]), ("в\u0301чера", "вч"))
-        self.assertNotIn("Palavra", campos)
+        self.assertEqual(campos["Palavra"], PALAVRA_DE_MENTIRA)
         self.assertEqual((campos["Definição"], campos["Outro exemplo"]), ("definição de mentira", "outro exemplo de mentira"))
         self.assertEqual(campos["Morfologia"], "вчера = вч + ера")
         self.assertEqual([texto for _, texto in cores_de(campos["Explicação das cores"])], ["вч", "-ера"])
@@ -80,7 +80,7 @@ class OIntermediarioEOAvancadoDoRusso(unittest.TestCase):
         self.assertEqual(estado["status"], "completed")
         self.assertIn("Alignment: 1 |", prompt)
         self.assertFalse({"Morfologia", "Raiz", "Sílaba forte", "Explicação das cores", "Mesma raiz", "Definição"} & set(campos))
-        self.assertNotIn("Palavra", campos)
+        self.assertEqual(campos["Palavra"], "Она приходила")
 
     def test_o_pedido_do_russo_com_nivel_e_aceito_e_o_envio_guarda_o_nivel(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
@@ -90,6 +90,24 @@ class OIntermediarioEOAvancadoDoRusso(unittest.TestCase):
                     conexao.esperar(id_)
                     visto = json.loads(conexao.pedir("POST", "/jobs/get", corpo={"jobId": id_})[2])
                     self.assertEqual(visto["job"]["nivel"], nivel)
+
+
+class APalavraDoRusso(unittest.TestCase):
+    """A Palavra é gravada nos três níveis (a frente Criação e o tipo que a pessoa já tem a usam), mas o verso do tipo novo a mostra uma vez só."""
+
+    def test_a_criacao_do_russo_mostra_a_palavra_nos_tres_niveis(self):
+        self.assertIn("{{Palavra}}", tipo_de_nota.definicao("ru", frente="criacao")["modelos"][0]["frente"])
+        for nivel in (None, "intermediario", "avancado"):
+            with self.subTest(nivel=nivel):
+                _, campos, _ = enviar_o_russo(nivel)
+                self.assertTrue(campos["Palavra"])
+                self.assertTrue(set(tipo_de_nota.definicao("ru", nivel)["campos_do_cartao"]) >= {"Palavra"})
+
+    def test_o_verso_do_russo_mostra_a_palavra_uma_vez_so_na_silaba_forte_com_o_audio(self):
+        verso = tipo_de_nota.definicao("ru")["modelos"][0]["verso"]
+        self.assertNotIn("{{Palavra}}", verso)
+        self.assertEqual(verso.count("{{Áudio da palavra}}"), 1)
+        self.assertIn("{{#Sílaba forte}}<div class=\"silaba\">{{Sílaba forte}} {{Áudio da palavra}}</div>{{/Sílaba forte}}", verso)
 
 
 class UmTipoDeNotaDoRussoDeAntesDoSignificadoSimples(unittest.TestCase):

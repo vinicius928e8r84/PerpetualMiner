@@ -42,11 +42,11 @@ class OEstiloVemDosDados(unittest.TestCase):
         intermediario, avancado = estilos.estilo("ru", "intermediario"), estilos.estilo("ru", "avancado")
         self.assertEqual((intermediario["explicacao"], avancado["explicacao"]), ("en", "ru"))
         self.assertEqual((intermediario["cores"], intermediario["morfologia"], intermediario["repete_a_frase"]), (False, True, False))
-        self.assertEqual(intermediario["guarda"], ["morfologia", "raiz"])
+        self.assertEqual(intermediario["guarda"], ["palavra", "morfologia", "raiz"])
         self.assertEqual(intermediario["verso"], PARTES_DO_RUSSO_COM_MORFOLOGIA)
         self.assertEqual((intermediario["destaque"], avancado["destaque"]), (True, True))
         self.assertEqual((avancado["cores"], avancado["morfologia"], avancado["repete_a_frase"]), (False, False, False))
-        self.assertEqual(avancado["guarda"], ["raiz"])
+        self.assertEqual(avancado["guarda"], ["palavra", "raiz"])
         self.assertEqual(avancado["verso"], ["silaba_forte", "definicao", "significado_simples", "outro_exemplo", "mesma_raiz", "imagem"])
 
     def test_so_o_avancado_do_russo_traz_as_palavras_da_mesma_raiz(self):
