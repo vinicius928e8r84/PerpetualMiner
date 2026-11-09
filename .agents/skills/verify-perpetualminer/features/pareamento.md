@@ -13,7 +13,7 @@ The Conexão com o Anki answers only a browser it has paired with (#192, owner's
 
 ## How to get to it (user POV)
 
-- Any Painel area with the Conexão on and no pairing: the notice shows by itself. The Anki side (dialog, tooltip, button) is only real in a real Anki (the owner's rehearsal).
+- Any Painel area, and the Boas-vindas (at the top of it, `#boas-vindas > #painel-pareamento`), with the Conexão on and no pairing: the notice shows by itself. The Anki side (dialog, tooltip, button) is only real in a real Anki (the owner's rehearsal).
 
 ## Driving it with the Playwright e2e harness
 

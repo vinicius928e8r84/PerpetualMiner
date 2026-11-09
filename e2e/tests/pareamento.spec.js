@@ -76,6 +76,19 @@ test('sem pareamento, a chave colada não sai: o card da IA diz que a Conexão n
   if (!conexaoDoTeste) expect(JSON.stringify(fakes.anki.requisicoes)).not.toContain('sk-proj-chave-que-nao-pode-sair');
 });
 
+test('na Boas-vindas, que esconde o resto do Painel, o aviso de conectar aparece no alto dela, e conecta de lá', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+  await page.goto(extensao.url('painel.html#boas-vindas'));
+  await expect(page.locator('#boas-vindas')).toBeVisible();
+  await expect(page.locator('#boas-vindas > #painel-pareamento')).toContainText('Conecte este navegador ao Anki');
+
+  await page.locator('#boas-vindas > #painel-pareamento').getByRole('button', { name: 'Conectar' }).click();
+  await campo(page).fill(await codigoNoAnki(fakes, conexaoDoTeste));
+  await confirmar(page).click();
+
+  await expect(faixa(page)).toHaveCount(0);
+  await estadoFinalEm('os navegadores que a Conexão tem pareados', () => quantosPareados(fakes, conexaoDoTeste), 1);
+});
+
 test('Conectar, o código do Anki e Confirmar: o navegador fica conectado, com a chave que ninguém lê, e as telas voltam a ler da Conexão', async ({ page, extensao, fakes, conexaoDoTeste }) => {
   fakes.anki.definirCustos([{ jobId: 'job-en', lang: 'en', createdAt: '2026-09-18T11:00:00', status: 'completed', pedidas: 12, custos: { cartoes: 0.081 } }]);
   await abrirPainel(page, extensao, '#anki/custos');

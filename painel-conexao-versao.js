@@ -292,8 +292,15 @@
       });
     }
     no.id = 'painel-pareamento';
-    document.querySelector('.shell-conteudo').prepend(no);
+    ponhaNoLugar(no);
     if (tinhaFoco) no.querySelector('input, button')?.focus();
+  }
+
+  /** O pareamento aparece onde a pessoa está: no alto do Painel, ou no alto da Boas-vindas (que esconde o resto do Painel). */
+  function ponhaNoLugar(no) {
+    const boasVindas = porId('boas-vindas');
+    if (boasVindas && !boasVindas.hidden) boasVindas.insertBefore(no, boasVindas.querySelector('.bv-grade'));
+    else document.querySelector('.shell-conteudo').prepend(no);
   }
 
   async function iniciar() {
@@ -304,6 +311,7 @@
     ConexaoAnki.acompanhar(desenhar);
     ConexaoAnki.acompanhar(desenharOPareamento);
     PareamentoComOAnki.aoMudar(desenharOPareamento);
+    addEventListener('hashchange', () => setTimeout(() => { const no = porId('painel-pareamento'); if (no) ponhaNoLugar(no); }));   // a Boas-vindas e o Painel trocam de lugar sem recarregar
   }
 
   raiz.ConexaoVersao = { iniciar };
