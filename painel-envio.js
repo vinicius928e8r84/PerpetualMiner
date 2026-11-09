@@ -31,7 +31,7 @@
   let criando = false;
   const desconhecidos = new Set();  // jobIds que a Conexão respondeu sem conhecer (#245)
   const retomando = new Set();      // jobIds com um Continuar envio a caminho
-  // Um Envio que não começou (ou que não deu para retomar) segura o resumo até a pessoa fechar o progresso.
+  // Um Envio que não começou (ou não retomou) segura o resumo até a pessoa fechar o progresso.
   let desistiuDasPendencias = false;
   let semNoticia = false;
   let conexaoDesligada = false;
@@ -65,7 +65,7 @@
     const gravado = await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r));
     if (!remessa && gravado[CHAVE_GRAVADA]?.envios?.some(e => e.jobId || e.corpo)) {
       remessa = gravado[CHAVE_GRAVADA];
-      // O painel fechou com um pedido sem resposta: o mesmo corpo de novo; a Conexão devolve o Envio que tem, ou o cria.
+      // Pedido sem resposta: o mesmo corpo de novo; a Conexão devolve o Envio que tem, ou o cria.
       const semResposta = remessa.envios.filter(e => !e.jobId && !e.falhaAoCriar && e.corpo);
       if (semResposta.length) {
         const estaRemessa = remessa;
@@ -122,7 +122,7 @@
       criando = false;
     }
     if (remessa !== estaRemessa) return;
-    // Fechado enquanto nada começou: não sobra envio para acompanhar.
+    // Fechado sem nada ter começado: não há o que acompanhar.
     if (!progresso && !remessa.envios.some(e => e.jobId)) return esquecer();
     desenharProgresso();
     acompanhar();
@@ -183,7 +183,7 @@
     relogio = null;
   }
 
-  /** Uma volta do acompanhamento: lê os Envios na Conexão, redesenha, e abre o resumo se acabaram. */
+  /** Uma volta: lê os Envios na Conexão, redesenha, e abre o resumo se acabaram. */
   async function conferirEnvios() {
     if (!remessa) return pararDeAcompanhar();
     if (remessa.envios.some(e => e.jobId && !terminou(e))) {
@@ -222,7 +222,7 @@
     return job ? { status: job.state?.status || job.status, ...job.state } : null;
   }
 
-  /** Terminou na Conexão, ou nem começou. */
+  /** Terminou, ou nem começou. */
   function terminou(envio) {
     if (!envio.jobId) return Boolean(envio.falhaAoCriar);
     if (desconhecidos.has(envio.jobId)) return true;
@@ -230,7 +230,7 @@
     return Boolean(estado && FIM[estado.status]);
   }
 
-  /** Grava os Envios que já têm um pedido montado (ainda sem resposta, criado ou que não começou). */
+  /** Grava os Envios que já têm um pedido montado. */
   async function gravar() {
     const aRemessa = remessa;
     if (!aRemessa) return;
@@ -254,7 +254,7 @@
     return EnvioApagarFrases.pedir();
   }
 
-  /** O painel deixa de acompanhar os Envios e fecha o que mostrava deles; nada é gravado nem enviado. */
+  /** O painel deixa de acompanhar os Envios e fecha o que mostrava; nada é gravado nem enviado. */
   function encerrarOAcompanhamento() {
     remessa = null;
     desistiuDasPendencias = false;
@@ -290,7 +290,7 @@
     assinaturas.clear();
     porId('modal-envio-lista').textContent = '';
     if (!remessa || criando) return;
-    // Um envio que nunca começou não fica acompanhado: não há o que esperar.
+    // Um envio que nunca começou não fica acompanhado.
     if (!remessa.envios.some(e => e.jobId)) return esquecer();
     // Fechou com o resto terminado e um erro à vista: o resumo abre e conta o que falhou.
     if (remessa.envios.every(terminou) && remessa.envios.some(pendente)) {
@@ -328,7 +328,7 @@
     }
   }
 
-  /** Esquecer (ENV-22): o Envio sai do acompanhamento; as Frases ficam no histórico. */
+  /** Esquecer (ENV-23): o Envio sai do acompanhamento; as Frases ficam no histórico. */
   async function esquecerOEnvio(envio) {
     if (!remessa) return;
     remessa.envios = remessa.envios.filter(e => e !== envio);
@@ -378,7 +378,7 @@
       if (!resposta.ok) throw new Error(`POST /jobs/retry ${jobId} → HTTP ${resposta.status}`);
       falhasAoRetomar.delete(jobId);
       const job = jobs.get(jobId);
-      // Como a Conexão ao retomar um Envio que terminou: o erro anterior sai. Um que anda (limite do plano) fica como está.
+      // Como a Conexão: o erro anterior sai. Um que anda (limite do plano) fica como está.
       if (retomavel(estadoDoJob({ jobId }))) jobs.set(jobId, { ...job, status: 'queued', state: { ...job?.state, status: 'queued', stage: 'queued', progress: {}, lastError: null, ankiError: null } });
       return true;
     } catch (erro) {
@@ -390,20 +390,21 @@
   /** O resumo abre quando nada anda e algum Envio chegou a começar. */
   function prontoParaResumo() {
     if (!remessa || criando || resumo) return false;
-    return remessa.envios.some(e => e.jobId) && remessa.envios.every(terminou);
+    return remessa.envios.some(e => e.jobId && !desconhecidos.has(e.jobId)) && remessa.envios.every(terminou);
   }
 
-  /** Outro modal na tela (o de progresso não conta: o resumo toma o lugar dele). */
+  /** Outro modal na tela (o de progresso não conta: o resumo toma o lugar). */
   function outroModalAberto() {
     const scrims = [...document.querySelectorAll('.veio-scrim:not([hidden])')]
       .filter(s => s.id !== 'modal-envio' && s.id !== 'modal-resumo');
     return scrims.length > 0;
   }
 
-  /** O desfecho de cada idioma: o que virou cartão agora, o que já estava lá e o que não entrou. */
+  /** O desfecho de cada idioma: o que virou cartão, o que já estava lá e o que não entrou. */
   function contagemPorIdioma() {
     const porLang = new Map();
     for (const envio of remessa.envios) {
+      if (desconhecidos.has(envio.jobId)) continue;
       if (!porLang.has(envio.lang)) {
         porLang.set(envio.lang, { lang: envio.lang, baralho: envio.baralho, total: 0, enviadas: [], duplicadas: [], falhas: 0 });
       }
@@ -430,7 +431,7 @@
     return AjustesDeEnvio.nomeDoBaralho(baralho || AjustesDeEnvio.atual()[lang].deckName);
   }
 
-  /** Um bloco por idioma: +N cartões, o baralho, o que já estava lá, o que não entrou e Tentar de novo. */
+  /** Um bloco por idioma: +N cartões, baralho, o que já estava lá, o que não entrou, Tentar de novo. */
   function montarBlocoDoIdioma(idioma) {
     const bloco = elemento('section', 'envio-resumo__baralho');
     bloco.setAttribute('role', 'group');
@@ -458,7 +459,11 @@
   function tentarAbrirResumo() {
     // A Boas-vindas é a página da primeira configuração: nada abre por cima dela.
     if (!AREAS_DO_PAINEL.includes(Shell.areaAtual())) return;
-    if (!prontoParaResumo() || outroModalAberto()) return;
+    if (outroModalAberto()) return;
+    if (!prontoParaResumo()) {
+      if (desconhecidos.size && remessa.envios.every(terminou) && !progresso && !desistiuDasPendencias) abrirProgresso();
+      return;
+    }
     if (remessa.envios.some(pendente) && !desistiuDasPendencias) {
       // O erro de um Envio não some dentro do resumo: o progresso volta com ele à vista.
       if (!progresso) abrirProgresso();
@@ -515,7 +520,7 @@
       await tentarDeNovoOIdioma(resposta.tentar);
       return;
     }
-    // Manter, Pronto, o × e o Esc: as enviadas e as que já estavam viram Enviada ao Anki (ENV-12, sem toast).
+    // Manter, Pronto, × e Esc: as enviadas e as que já estavam viram Enviada ao Anki (ENV-12, sem toast).
     await esquecer();
     if (resposta === 'apagar') {
       // Conta só as que ainda estão no histórico: alguma pode ter sido apagada no meio.
@@ -528,7 +533,7 @@
     }
   }
 
-  /** Tentar de novo (ENV-10), no bloco de um idioma: retoma os Envios em parte e recria os que não começaram. */
+  /** Tentar de novo (ENV-10), por idioma: retoma os em parte e recria os que não começaram. */
   function tentarDeNovoOIdioma(lang) {
     abrirProgresso();
     return recomecar(async () => {
@@ -540,7 +545,7 @@
     });
   }
 
-  /** Desligada e nunca ligada neste computador (sem abridor), Enviar ao Anki fica `aria-disabled`, e o tooltip diz por quê. */
+  /** Desligada e nunca ligada (sem abridor): Enviar ao Anki fica `aria-disabled`, com o tooltip. */
   function mostrarConexao(situacao) {
     conexaoDesligada = situacao === CONEXAO.DESLIGADA;
     const enviarAoAnki = porId('btn-send-anki');

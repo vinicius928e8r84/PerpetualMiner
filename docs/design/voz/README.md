@@ -211,7 +211,7 @@ O shell “Ilhas” do Painel: a sidebar, os títulos das áreas e o chip de con
 | ENV-19 | Envio no limite do plano **(novo)** | status | (não existe) | Limite de uso atingido · Faltam 7 cartões · Quando o plano liberar, o Envio continua sozinho. · Gerenciar uso · Usar a minha chave | No cartão (#158), com Gerenciar uso (principal), Usar a minha chave e Tentar de novo (ENV-03). Com 1: “Falta 1 cartão”. |
 | ENV-20 | Envio parado pelo plano **(novo)** | erro | (não existe) | O ChatGPT recusou o pedido por limite de uso. Logo depois de entrar, isso pode acontecer sem a cota ter acabado: veja em Gerenciar uso e tente de novo. | No cartão e no resumo (#156), com Gerenciar uso (CFG-35). Não diz que a cota acabou. |
 | ENV-21 | Envio pausado pelo teto do mês **(novo)** | status | (não existe) | Envio pausado: o teto do mês chegou. · Quando você subir o teto ou o mês virar, o Envio continua sozinho. · Ver Custos | No cartão (#160), com Ver Custos. Nunca diz valor. |
-| ENV-22 | Envio desconhecido **(novo)** | status | (não existe) | Não encontrado · A Conexão com o Anki não conhece este Envio. Ele pode ser de outra instalação, ou os dados dela foram apagados. · Esquecer | No cartão (#245). |
+| ENV-23 | Envio desconhecido **(novo)** | status | (não existe) | Não encontrado · A Conexão com o Anki não conhece este Envio. Ele pode ser de outra instalação, ou os dados dela foram apagados. · Esquecer | No cartão (#245). |
 
 ### Painel · Conexão com o Anki
 

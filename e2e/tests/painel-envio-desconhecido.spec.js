@@ -37,3 +37,15 @@ test('Esquecer tira o Envio do acompanhamento e deixa as Frases no histórico', 
   await estadoFinal(extensao, { pm_envio: null });
   await estadoFinal(extensao, { frases: INGLESAS });
 });
+
+test('fechar o progresso sem Esquecer não abre um resumo que decide “não entraram” para o Envio desconhecido', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: INGLESAS, pm_envio: { envios: [{ id: JOB_DE_OUTRA_INSTALACAO, lang: 'en', ids: INGLESAS.map(f => f.id), jobId: JOB_DE_OUTRA_INSTALACAO, criadoEm: AGORA.getTime() }] } });
+  await abrirPainel(page, extensao);
+  await expect(envio(page, 'Envio em inglês · 3 frases')).toContainText('Não encontrado');
+
+  await page.keyboard.press('Escape');
+
+  await expect(progresso(page)).toBeHidden();
+  await expect(resumo(page)).toBeHidden();
+  await estadoFinal(extensao, { pm_envio: { envios: [{ jobId: JOB_DE_OUTRA_INSTALACAO }] } });
+});

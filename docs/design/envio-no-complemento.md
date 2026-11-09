@@ -133,7 +133,7 @@ no bridge segue funcionando no bridge.
 - **c. Texto pago duas vezes** na janela entre a resposta da OpenAI e a gravação do texto, se o Anki for morto nela.
 - **d. Tipo de nota próprio (#161):** a Conexão cria o de cada idioma, então um Anki em inglês não falha; só um tipo com o nosso nome e sem os nossos campos dá `note_type_missing`.
 - **e. Áudio e imagem:** [áudio](audio-do-cartao.md), [imagem](imagem-do-cartao.md).
-- **f. Envio que a Conexão não conhece** (veio do bridge, ou a pasta de dados foi apagada): o cartão diz “Não encontrado” (ENV-22) e
+- **f. Envio que a Conexão não conhece** (veio do bridge, ou a pasta de dados foi apagada): o cartão diz “Não encontrado” (ENV-23) e
   oferece Esquecer, que o tira do acompanhamento sem tocar nas Frases (#245); o painel não decide `failed` por conta própria (§1).
 - **g. Sem limpeza dos Envios terminados:** os arquivos de estado e de custo de cada Envio ficam (os textos das Frases não: §3);
   a retenção fica para a retomada (#151), e um pedido gravado sem entrada na fila fica parado até o mesmo pedido voltar (o Apagar tudo o alcança: #248).

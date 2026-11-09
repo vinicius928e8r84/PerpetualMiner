@@ -51,7 +51,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-anki-estilo.js`, `painel-anki-previa.js`, `painel-anki-tipo-proprio.js`, `painel-previa.css` | Estilo do cartão in Ajustes de envio: level, preview, “Usar um tipo que já tenho” (#162, #164, #165) |
 | `painel-envio.js` | The Envio ao Anki: Enviar ao Anki in the Frases bar, the progress modal, the tracking in `pm_envio` and the summary (ENV-03…15). See `painel-anki` skill |
 | `painel-envio-anki-fechado.js` | `PerpetualMiner.EnvioComOAnkiFechado` — Enviar ao Anki with the Anki closed (#150): the ENV-16 notice, the pending Envio and the Consertar outcome (BRG-39). See “Envio ao Anki” in the `painel-anki` skill |
-| `painel-envio-cartao.js` | `CartaoDoEnvio`: an Envio's card in the progress modal, “Abrir <perfil>” (ENV-17), Esquecer (ENV-22) |
+| `painel-envio-cartao.js` | `CartaoDoEnvio`: an Envio's card in the progress modal, “Abrir <perfil>” (ENV-17), Esquecer (ENV-23) |
 | `painel-envio-apagar.js` | `EnvioApagarFrases`: the Apagar tudo request (CFG-17) |
 | `painel-envio-parado.js` | `EnvioParado`: the Envio stopped by a closed Anki (#151): ENV-18, Continuar envio |
 | `painel-envio-limite.js` | `EnvioNoLimite`: the Envio waiting for the ChatGPT plan's limit (#158): ENV-19, three actions |

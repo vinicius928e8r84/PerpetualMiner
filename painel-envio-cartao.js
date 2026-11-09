@@ -201,7 +201,7 @@
       // Enquanto o cartão espera a pessoa, a etapa e os segmentos ficam em tom calmo: quem fala é o motivo.
       if (pedidoDoCartao(envio, estado)) situacao.tom = 'calmo';
       const rotuloDaEtapa = elemento('span', `envio-cartao__etapa${situacao.tom ? ` envio-cartao__etapa--${situacao.tom}` : ''}`,
-        textoDaVoz(etapa === 'naoEncontrado' ? 'ENV-22.etapa' : `ENV-07.${etapa}`));
+        textoDaVoz(etapa === 'naoEncontrado' ? 'ENV-23.etapa' : `ENV-07.${etapa}`));
       const topo = elemento('div', 'envio-cartao__topo', titulo, rotuloDaEtapa);
 
       cartao.append(topo, montarEtapas(situacao, titulo.id));
@@ -255,7 +255,7 @@
         };
       }
       // A Conexão responde e não conhece o Envio (#245): quem decide é a pessoa, e o Envio não é dado por falho.
-      if (desconhecido(envio)) return { motivo: textoDaVoz('ENV-22.motivo'), rotulo: textoDaVoz('ENV-22.esquecer'), foco: 'esquecer', aoUsar: () => esquecerOEnvio(envio) };
+      if (desconhecido(envio)) return { motivo: textoDaVoz('ENV-23.motivo'), rotulo: textoDaVoz('ENV-23.esquecer'), foco: 'esquecer', aoUsar: () => esquecerOEnvio(envio) };
       // O Anki fechou no meio: o que ficou em `waiting` é de antes, e quem fala é o Envio parado (#151).
       const parado = raiz.EnvioParado.pedido(envio, estado);
       if (parado) return parado;
