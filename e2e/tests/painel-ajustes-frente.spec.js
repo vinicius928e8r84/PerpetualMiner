@@ -35,6 +35,8 @@ async function abrirAjustes(page, extensao, { gravado = {} } = {}) {
   await page.clock.setFixedTime(AGORA);
   await page.goto(extensao.url('painel.html#anki/ajustes'));
   await expect(formulario(page)).toBeVisible();
+  // A prévia do estilo vem da Conexão (um pedido assinado, que sai um pouco depois do formulário): o teste que a desliga espera por ela antes.
+  await expect(formulario(page).locator('.previa iframe')).toBeVisible();
 }
 
 // Exceção de teste: sem-estado-guardado — só mostra a frente padrão e o texto dela; nada é gravado nem pedido.

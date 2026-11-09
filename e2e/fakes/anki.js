@@ -352,7 +352,7 @@ function criarFakeAnki() {
     const req = daPorta.request();
     const url = new URL(req.url());
     const corpoDoPedido = req.postData();
-    // `dados`: o corpo JSON que a extensão mandou (null sem corpo ou se não é JSON). O pareamento (#192) tem o registro dele.
+    // `dados`: o corpo JSON que a extensão mandou (null sem corpo ou se não é JSON); o pareamento (#192) tem o registro dele.
     const doPareamento = url.pathname.startsWith('/pareamento/');
     if (!doPareamento) requisicoes.push({ metodo: req.method(), caminho: url.pathname, busca: url.search, corpo: corpoDoPedido, dados: dadosDoCorpo(corpoDoPedido) });
 
@@ -363,9 +363,9 @@ function criarFakeAnki() {
       const { status, json } = pareamento.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido)) || { status: 404, json: { error: 'not_found' } };
       return responderJson(daPorta, status, json);
     }
-    // O porteiro (#192): só a saúde e o retorno do login ficam abertos; o resto é de quem assina como um navegador pareado, e a resposta leva a prova.
+    // O porteiro (#192): abertos, a saúde, o login e o `/anki/status` da ponte antiga; o resto, assinado, e a resposta leva a prova.
     let route = daPorta;
-    if (req.method() !== 'GET' || !['/health', '/auth/callback'].includes(url.pathname)) {
+    if (req.method() !== 'GET' || !['/health', '/auth/callback', '/anki/status'].includes(url.pathname)) {
       const assinou = pareamento.verificar(req, url.pathname);
       if (assinou.erro) return responderJson(daPorta, 401, { error: assinou.erro });
       route = pareamento.comProva(daPorta, assinou);

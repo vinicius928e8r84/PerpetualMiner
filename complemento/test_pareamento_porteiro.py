@@ -189,6 +189,13 @@ class DesconectarOsNavegadores(unittest.TestCase):
 
 
 class AsFronteirasNaoMisturam(unittest.TestCase):
+    def test_o_pacote_do_complemento_nao_leva_o_pareamento_nem_os_helpers_de_teste(self):
+        from complemento import empacotar
+
+        nomes = empacotar.arquivos_do_pacote()
+        self.assertIn("pareamento.py", nomes)
+        self.assertEqual([n for n in nomes if "pareamento.json" in n or n.startswith("user_files") or n.startswith("test_")], [])
+
     def test_o_segredo_nao_aparece_no_log(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, pareado=False) as conexao:
             comecar(conexao)

@@ -90,4 +90,5 @@ que a janela reusa). Entrar no catálogo é dividi-lo, outro ticket.
    volta a “PerpetualMiner…”.
 4. Apague a chave (painel › Configurações) e mande outro Envio: a janela mostra o último erro com o código, e a chave não aparece em lugar nenhum do Anki.
 5. Com a porta 8766 ocupada (o Anki aberto com a Conexão de hoje rodando), o item abre a janela com “Desligada…”.
-6. Em nenhum passo o Anki abre o diálogo de erro dele culpando o complemento (se abrir, anote o texto), e não há selo fixo na barra do Anki.
+6. O pareamento (#192): no Painel, Conectar abre no Anki um diálogo com “Código para conectar o PerpetualMiner: XXX-XXX. Vale por 5 minutos” e **Cancelar** (um diálogo só, mesmo apertando Conectar de novo; ele aparece à frente); o código certo digitado no Painel fecha o diálogo e o Anki mostra o aviso “PerpetualMiner conectado”; Cancelar (ou o X) mata o código. Na janela **PerpetualMiner…**, **Desconectar navegadores** só vale com navegador conectado, e depois dele o Painel volta a pedir o código.
+7. Em nenhum passo o Anki abre o diálogo de erro dele culpando o complemento (se abrir, anote o texto), e não há selo fixo na barra do Anki.

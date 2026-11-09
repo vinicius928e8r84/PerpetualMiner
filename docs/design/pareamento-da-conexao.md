@@ -102,6 +102,8 @@ Falhas, sem exceção:
 - **L5. Incômodo, não vazamento:** um processo pode ocupar a 8766, e uma extensão maliciosa pode abrir o diálogo no Anki ou gastar as 5 tentativas
   de um código. A falha fica visível e nada vaza. Há um teto de um diálogo por vez.
 - **L6. Páginas abertas:** `GET /health` (versão e perfil) e o retorno do login do ChatGPT (`/auth/callback`, navegação, protegido por `state` e PKCE) seguem sem credencial.
+- **L7. Quem digita um código que não viu:** com o Anki fechado e um impostor na 8766, o Conectar “funciona” (o impostor responde ok) e nenhum diálogo aparece no Anki. Quem digita qualquer coisa, sem ter visto o código no Anki, pareia com o impostor, e a extensão não tem como saber. O passo “o código apareceu no Anki” é da pessoa; é ele que faz o código autenticar a Conexão.
+- **L8. A janela da leitura:** um pedido que só lê (sem chave, token nem Frases) reaproveita a sessão que a Conexão provou há menos de 20 s. Se ela cair e um impostor ocupar a porta nesse intervalo, ele vê o pedido assinado (a sessão e o nonce não servem em outra Conexão) e responde sem prova, que a extensão recusa. O pedido que leva a chave, o token, as Frases ou o UID pede um `conferir` novo antes.
 
 ## 6. Provas
 
