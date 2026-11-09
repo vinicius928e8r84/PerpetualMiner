@@ -49,11 +49,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-anki-baralhos.js` | `PerpetualMiner.Baralhos` — Baralhos e termos and Vocabulário in the Conexão com o Anki area (BRG-10…14, 19…21, 27, 34, 35, GLB-01). See “Baralhos e termos and Vocabulário” in the `painel-anki` skill |
 | `painel-ajustes.js` | The Ajustes de envio tab: one card per language, its form saved only on Salvar ajustes, the Baralho picked from the Anki's decks, and the stale-tab refusal (#35). See “Ajustes de envio” in the `painel-anki` skill |
 | `painel-anki-estilo.js`, `painel-anki-previa.js`, `painel-anki-tipo-proprio.js`, `painel-previa.css` | Estilo do cartão in Ajustes de envio: level, preview, “Usar um tipo que já tenho” (#162, #164, #165) |
-| `painel-envio.js` | The Envio ao Anki: Enviar ao Anki in the Frases bar, the progress modal, the tracking saved in `pm_envio` and the summary (ENV-03…15) that opens by itself in any area. See “Envio ao Anki” in the `painel-anki` skill |
+| `painel-envio.js` | The Envio ao Anki: Enviar ao Anki in the Frases bar, the progress modal, the tracking in `pm_envio` and the summary (ENV-03…15). See `painel-anki` skill |
 | `painel-envio-anki-fechado.js` | `PerpetualMiner.EnvioComOAnkiFechado` — Enviar ao Anki with the Anki closed (#150): the ENV-16 notice, the pending Envio and the Consertar outcome (BRG-39). See “Envio ao Anki” in the `painel-anki` skill |
-| `painel-envio-cartao.js` | `PerpetualMiner.CartaoDoEnvio`: one Envio's card in the progress modal + “Abrir <perfil>” (ENV-17) |
-| `painel-envio-parado.js` | `PerpetualMiner.EnvioParado`: the Envio stopped by a closed Anki (#151): ENV-18 and Continuar envio |
-| `painel-envio-limite.js` | `PerpetualMiner.EnvioNoLimite`: the Envio waiting for the ChatGPT plan's limit (#158): ENV-19 and its three actions |
+| `painel-envio-cartao.js` | `CartaoDoEnvio`: an Envio's card in the progress modal, “Abrir <perfil>” (ENV-17), Esquecer (ENV-23) |
+| `painel-envio-apagar.js` | `EnvioApagarFrases`: the Apagar tudo request (CFG-17) |
+| `painel-envio-parado.js` | `EnvioParado`: the Envio stopped by a closed Anki (#151): ENV-18, Continuar envio |
+| `painel-envio-limite.js` | `EnvioNoLimite`: the Envio waiting for the ChatGPT plan's limit (#158): ENV-19, three actions |
 | `painel-teto.js`, `painel-teto.css` | `TetoDoMes` and `EnvioNoTeto`: the monthly cap (#160): the 80% warning, the Custos card, the Envio band (ENV-21) |
 | `painel-conexao-versao.js` | The Conexão version notice (#177); feature map `conexao-versao` |
 | `bookreader.html/js/css` | Minerar de uma foto (ex-BookReader): book photos → Gemini Vision reads the marked passages → the person picks which phrases to mine. See “Minerar de uma foto” in the `minerar-foto` skill |
