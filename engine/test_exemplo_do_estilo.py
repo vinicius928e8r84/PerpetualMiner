@@ -30,11 +30,12 @@ class OCartaoDeExemploDeCadaEstilo(unittest.TestCase):
                 esperados = {nomes[parte] for parte in estilo["verso"]} | guardados | {nomes["frase"], nomes["audio_da_frase"], nomes["audio_da_palavra"], nomes["lacuna"], nomes["dica"]}  # a lacuna e a Dica da frente Lacuna (#166)
                 self.assertEqual(set(campos) - {nomes["fonte"]}, esperados)
 
-    def test_o_exemplo_leva_as_cores_do_alinhamento_ou_da_morfologia_so_nos_niveis_que_as_tem(self):
+    def test_o_exemplo_leva_as_cores_do_alinhamento_so_nos_niveis_que_as_tem_e_a_palavra_chave_destacada_nos_que_pedem(self):
         for lang, nivel, campos in self.exemplos():
             with self.subTest(lang=lang, nivel=nivel):
                 estilo = estilos.estilo(lang, nivel)
-                self.assertEqual(bool(cores_de(campos["Frase"])), bool(estilo["cores"] or estilo.get("morfologia")))
+                self.assertEqual(bool(cores_de(campos["Frase"])), bool(estilo["cores"]))
+                self.assertEqual("font-weight: bold;\">" in campos["Frase"], bool(estilo.get("destaque")))
 
 
 if __name__ == "__main__":

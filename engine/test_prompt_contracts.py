@@ -303,9 +303,10 @@ class PromptsPorNivelTests(unittest.TestCase):
         prompt = _prompt_do_nivel("ru", "avancado")
         self.assertEqual(estilos.estilo("ru", "avancado")["explicacao"], "ru")
         for regra in (
-            "every explanation (the Definition) is written in Russian",
+            "every explanation (the Definition and the Simple meaning) is written in Russian",
             "No English and no Portuguese allowed in any explanation.",
             "Definition: [Precise definition of the Word, in Russian,",
+            "Simple meaning: [The same meaning in one simple Russian sentence with everyday words]",
             "This level is monolingual",
             "NEVER write an explanation in Portuguese or English",
         ):
@@ -313,7 +314,7 @@ class PromptsPorNivelTests(unittest.TestCase):
         self.assertNotIn("in English]", prompt)
         self.assertNotIn("English definition", prompt)
         exemplo = " ".join(estilos.estilo("ru", "avancado")["exemplo"]["texto"])
-        definicao = exemplo.split("Definition:")[1].split("Other example:")[0]
+        definicao = exemplo.split("Definition:")[1].split("Other example:")[0].replace("Simple meaning:", "")
         self.assertRegex(definicao, "[а-яА-Я]{4}")
         self.assertNotRegex(definicao, "[a-zA-Z]{4}")
 

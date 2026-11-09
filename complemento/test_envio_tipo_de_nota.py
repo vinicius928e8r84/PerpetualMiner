@@ -205,8 +205,8 @@ class OModeloDoCartaoServeATodosOsNiveis(unittest.TestCase):
     def test_o_verso_do_russo_tem_as_partes_dos_tres_niveis_na_ordem_do_idioma(self):
         verso = tipo_de_nota.definicao("ru")["modelos"][0]["verso"]
         posicoes = [verso.index("{{#%s}}" % campo) for campo in (
-            "Pronúncia", "Tradução literal", "Tradução natural", "Contexto da cena", "Palavra", "Sílaba forte", "Definição", "Explicação das cores",
-            "Outro exemplo", "Mesma raiz", "Imagem")]
+            "Pronúncia", "Tradução literal", "Tradução natural", "Contexto da cena", "Palavra", "Sílaba forte", "Definição", "Significado simples",
+            "Outro exemplo", "Explicação das cores", "Mesma raiz", "Imagem")]
         self.assertEqual(posicoes, sorted(posicoes))
 
     def test_o_envio_do_russo_grava_a_morfologia_e_a_raiz_que_o_verso_nao_mostra(self):

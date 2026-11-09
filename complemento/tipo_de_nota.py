@@ -32,6 +32,7 @@ CSS = """.card { font-family: arial, sans-serif; font-size: 22px; text-align: ce
 .cena { color: #6b7280; font-size: 18px; margin: 10px 0; }
 .palavra { margin: 14px 0; }
 .definicao { margin: 10px 0; }
+.simples { color: #6b7280; margin: 10px 0; }
 .exemplo { color: #6b7280; font-style: italic; margin: 10px 0; }
 .silaba { font-size: 24px; margin: 4px 0 10px; }
 .cores { text-align: left; font-size: 18px; margin: 14px auto; max-width: 520px; line-height: 1.5; }
@@ -66,6 +67,7 @@ def _verso(idioma, partes):
         "palavra": lambda: _parte("palavra", nomes["palavra"], audio=(nomes["audio_da_palavra"],)),
         "definicao": lambda: _parte("definicao", nomes["definicao"]),
         "outro_exemplo": lambda: _parte("exemplo", nomes["outro_exemplo"]),
+        "significado_simples": lambda: _parte("simples", nomes["significado_simples"]),
         "silaba_forte": lambda: _parte("silaba", nomes["silaba_forte"]),
         "explicacao_das_cores": lambda: _parte("cores", nomes["explicacao_das_cores"]),
         "mesma_raiz": lambda: _parte("raiz", nomes["mesma_raiz"]),

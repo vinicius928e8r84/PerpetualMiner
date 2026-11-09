@@ -133,10 +133,10 @@
       "campos": [
         "frase", "audio_da_frase", "palavra", "audio_da_palavra", "pronuncia", "literal", "natural", "cena", "fonte", "imagem",
         "definicao", "outro_exemplo", "dica", "lacuna", "frase_escrita", "escrito_antes", "correcao",
-        "silaba_forte", "morfologia", "explicacao_das_cores", "mesma_raiz", "raiz"
+        "silaba_forte", "morfologia", "explicacao_das_cores", "mesma_raiz", "raiz", "significado_simples"
       ],
       "ordem_do_verso": [
-        "pronuncia", "literal", "natural", "cena", "palavra", "silaba_forte", "definicao", "explicacao_das_cores", "outro_exemplo", "mesma_raiz", "imagem"
+        "pronuncia", "literal", "natural", "cena", "palavra", "silaba_forte", "definicao", "significado_simples", "outro_exemplo", "explicacao_das_cores", "mesma_raiz", "imagem"
       ],
       "niveis": {
         "iniciante": {
@@ -169,8 +169,9 @@
         "intermediario": {
           "prompt": "prompts/ru_intermediario.txt",
           "explicacao": "en",
-          "verso": ["pronuncia", "palavra", "silaba_forte", "definicao", "explicacao_das_cores", "outro_exemplo", "imagem"],
+          "verso": ["pronuncia", "palavra", "silaba_forte", "definicao", "significado_simples", "outro_exemplo", "explicacao_das_cores", "imagem"],
           "cores": false,
+          "destaque": true,
           "morfologia": true,
           "repete_a_frase": false,
           "guarda": ["morfologia", "raiz"],
@@ -187,6 +188,8 @@
               "Pronunciation: pri-ha-DI-la",
               "",
               "Definition: To come or to arrive on foot; here it is the habitual or repeated past, \"she used to come\".",
+              "",
+              "Simple meaning: It is when a person walks to a place to be there. She did this again and again, many days.",
               "",
               "Other example: Мама приходила домой поздно.",
               "",
@@ -210,8 +213,9 @@
         "avancado": {
           "prompt": "prompts/ru_avancado.txt",
           "explicacao": "ru",
-          "verso": ["palavra", "silaba_forte", "definicao", "outro_exemplo", "mesma_raiz", "imagem"],
+          "verso": ["palavra", "silaba_forte", "definicao", "significado_simples", "outro_exemplo", "mesma_raiz", "imagem"],
           "cores": false,
+          "destaque": true,
           "morfologia": false,
           "repete_a_frase": false,
           "guarda": ["raiz"],
@@ -226,6 +230,8 @@
               "Stress: приходи́ла",
               "",
               "Definition: Приходить, то есть прибывать пешком; здесь это привычное, повторяющееся действие в прошлом: «она приходила обычно».",
+              "",
+              "Simple meaning: Это когда человек идёт к кому-то и бывает там, и так много раз.",
               "",
               "Other example: Мама приходила домой поздно.",
               "",

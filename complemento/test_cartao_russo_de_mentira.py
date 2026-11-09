@@ -25,7 +25,7 @@ def cartao_russo_com_morfologia(pedido):
     raiz, sufixo = palavra[:corte], palavra[corte:]
     morfologia = "%s | root:%s%s" % (palavra, raiz, " | suffix:%s" % sufixo if sufixo else "")
     cores = "root | %s | raiz de mentira" % raiz + ("\nsuffix | -%s | sufixo de mentira" % sufixo if sufixo else "")
-    return ("Front\n%s\n\nBack\nWord: %s\n\nStress: %s\u0301%s\n\nPronunciation: pronúncia de mentira\n\nDefinition: definição de mentira\n\n"
+    return ("Front\n%s\n\nBack\nWord: %s\n\nStress: %s\u0301%s\n\nPronunciation: pronúncia de mentira\n\nDefinition: definição de mentira\n\nSimple meaning: significado simples de mentira\n\n"
             "Other example: outro exemplo de mentira\n\nMorphology:\n%s\n\nColors:\n%s\n\nRoot: %s\n\n"
             "Google Image Search Queries:\n1. %s\n2. %s photo\n\nImage: A %s, no text.\n"
             % (frase, palavra, palavra[0], palavra[1:], morfologia, cores, raiz, "palavra", "palavra", "palavra"))
@@ -36,7 +36,7 @@ def cartao_russo_monolingue(pedido):
     frase = pedido.split("\n")[0]
     palavra = re.sub(r"\W+$", "", frase.split()[-1])
     raiz = palavra[:max(len(palavra) - 3, 1)]
-    return ("Front\n%s\n\nBack\nWord: %s\n\nStress: %s\u0301%s\n\nDefinition: определение палки\n\n"
+    return ("Front\n%s\n\nBack\nWord: %s\n\nStress: %s\u0301%s\n\nDefinition: определение палки\n\nSimple meaning: простое объяснение\n\n"
             "Other example: другой пример\n\nRoot: %s\n\nSame root: палочка (однокоренное слово)\n\n"
             "Google Image Search Queries:\n1. palavra\n2. palavra photo\n\nImage: A palavra, no text.\n"
             % (frase, palavra, palavra[0], palavra[1:], raiz))

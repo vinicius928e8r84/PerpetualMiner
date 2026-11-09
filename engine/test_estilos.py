@@ -8,7 +8,7 @@ from pathlib import Path
 import estilos
 
 PARTES_DO_INICIANTE = ["pronuncia", "literal", "natural", "cena", "palavra", "imagem"]
-PARTES_DO_RUSSO_COM_MORFOLOGIA = ["pronuncia", "palavra", "silaba_forte", "definicao", "explicacao_das_cores", "outro_exemplo", "imagem"]
+PARTES_DO_RUSSO_COM_MORFOLOGIA = ["pronuncia", "palavra", "silaba_forte", "definicao", "significado_simples", "outro_exemplo", "explicacao_das_cores", "imagem"]
 PARTES_SEM_CORES = ["cena", "palavra", "definicao", "outro_exemplo", "imagem"]  # o Intermediário e o Avançado do inglês
 
 
@@ -43,9 +43,10 @@ class OEstiloVemDosDados(unittest.TestCase):
         self.assertEqual((intermediario["cores"], intermediario["morfologia"], intermediario["repete_a_frase"]), (False, True, False))
         self.assertEqual(intermediario["guarda"], ["morfologia", "raiz"])
         self.assertEqual(intermediario["verso"], PARTES_DO_RUSSO_COM_MORFOLOGIA)
+        self.assertEqual((intermediario["destaque"], avancado["destaque"]), (True, True))
         self.assertEqual((avancado["cores"], avancado["morfologia"], avancado["repete_a_frase"]), (False, False, False))
         self.assertEqual(avancado["guarda"], ["raiz"])
-        self.assertEqual(avancado["verso"], ["palavra", "silaba_forte", "definicao", "outro_exemplo", "mesma_raiz", "imagem"])
+        self.assertEqual(avancado["verso"], ["palavra", "silaba_forte", "definicao", "significado_simples", "outro_exemplo", "mesma_raiz", "imagem"])
 
     def test_so_o_avancado_do_russo_traz_as_palavras_da_mesma_raiz(self):
         self.assertNotIn("mesma_raiz", estilos.estilo("ru", "intermediario")["verso"])

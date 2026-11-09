@@ -22,7 +22,7 @@ from complemento.test_envio_tipo_de_nota import cores_de  # noqa: E402
 FRASE_RUSSA = "Она приходила вчера [Context: Série - Episódio 1]"
 PALAVRA_DE_MENTIRA = "вчера"  # a última palavra da frase: o Cartão de mentira escolhe essa
 CAMPOS_DO_RUSSO_COM_MORFOLOGIA = sorted([
-    "Frase", "Áudio da frase", "Palavra", "Áudio da palavra", "Pronúncia", "Sílaba forte", "Definição", "Explicação das cores", "Outro exemplo",
+    "Frase", "Áudio da frase", "Palavra", "Áudio da palavra", "Pronúncia", "Sílaba forte", "Definição", "Significado simples", "Explicação das cores", "Outro exemplo",
     "Morfologia", "Raiz", "Imagem", "Frase com lacuna", "Dica"])
 
 
@@ -48,10 +48,10 @@ class OIntermediarioEOAvancadoDoRusso(unittest.TestCase):
         self.assertEqual(campos["Morfologia"], "вчера = вч + ера")
         self.assertEqual([texto for _, texto in cores_de(campos["Explicação das cores"])], ["вч", "-ера"])
 
-    def test_a_frente_pinta_so_a_palavra_com_pedaco_a_explicar_e_o_resto_da_frase_fica_igual(self):
+    def test_a_frente_destaca_so_a_palavra_chave_e_o_resto_da_frase_fica_igual(self):
         _, campos, _ = enviar_o_russo("intermediario")
-        self.assertEqual([texto for _, texto in cores_de(campos["Frase"])], ["вч", "ера"])
-        self.assertEqual(re.sub("<[^>]+>", "", campos["Frase"]), "Она приходила вчера")
+        self.assertEqual(campos["Frase"], 'Она приходила <span style="color: #f59e0b; font-weight: bold;">вчера</span>')
+        self.assertEqual(campos["Significado simples"], "significado simples de mentira")
 
     def test_o_avancado_e_monolingue_e_grava_as_palavras_da_mesma_raiz_sem_a_morfologia_nem_as_cores(self):
         estado, campos, prompt = enviar_o_russo("avancado")
@@ -60,7 +60,7 @@ class OIntermediarioEOAvancadoDoRusso(unittest.TestCase):
         self.assertNotIn("Morphology:", prompt)
         self.assertIn("Same root: [Three to five Russian words", prompt)
         self.assertEqual((campos["Definição"], campos["Mesma raiz"]), ("определение палки", "палочка (однокоренное слово)"))
-        self.assertEqual(cores_de(campos["Frase"]), [])
+        self.assertEqual(campos["Significado simples"], "простое объяснение")
 
     def test_o_audio_da_palavra_e_o_da_palavra_do_cartao_e_nao_o_das_duas_primeiras_palavras_da_linha(self):
         colecao = ColecaoEmMemoria(SO_O_DEFAULT)

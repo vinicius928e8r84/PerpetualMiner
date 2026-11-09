@@ -24,7 +24,7 @@ CAMPOS_DOS_DOIS = [
     "Frase escrita", "Escrito antes", "Correção",  # a frente Criação e a correção do próximo Envio
 ]
 CAMPOS_SO_DO_INGLES = ["Significado simples", "Gatilho"]  # o Cartão de inglês de hoje, que o Avançado continua
-CAMPOS_SO_DO_RUSSO = ["Sílaba forte", "Morfologia", "Explicação das cores", "Mesma raiz", "Raiz"]  # a morfologia do russo
+CAMPOS_SO_DO_RUSSO = ["Sílaba forte", "Morfologia", "Explicação das cores", "Mesma raiz", "Raiz", "Significado simples"]  # a morfologia do russo
 ANKI_EM_INGLES = {"baralhos": [{"nome": "Default"}], "tiposDeNota": {"Basic": ["Front", "Back"]}}
 SO_O_DEFAULT = {"baralhos": [{"nome": "Default"}]}
 

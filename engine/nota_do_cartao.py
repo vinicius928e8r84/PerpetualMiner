@@ -2,9 +2,10 @@
 
 The add-on writes what `campos_da_nota` returns into the note type of the language (`estilos.json`): each part of the card has
 its own field (the front is the Phrase, the audios and the image are fields too), and the style says which parts of the back
-are filled and whether the Alignment pairs colour the Phrase and the Literal line. A level with `morfologia` (the Russian
-Intermediate and Advanced, #163) colours the Phrase by the pieces of the words the model broke down instead (prefix, root, suffix and
-ending, one colour for each kind, the same at every level) and explains each colour on the back. The text of the card is the model's
+are filled and whether the Alignment pairs colour the Phrase and the Literal line. A level with `destaque` (the Russian
+Intermediate and Advanced, #163) highlights only the key word, in the Phrase and in the other example, in one colour. A level with `morfologia`
+(the Russian Intermediate) also stores the pieces of the words the model broke down and explains each kind (prefix, root, suffix and ending,
+one colour for each kind) in a block of the back, under the other example. The text of the card is the model's
 answer (`prompts/*.txt`); standard library only.
 """
 
@@ -96,23 +97,15 @@ def morfologia_do_texto(content: str) -> List[Tuple[str, List[Tuple[str, str]]]]
     return palavras
 
 
-def _pintar_a_frase(frase: str, palavras: List[Tuple[str, List[Tuple[str, str]]]]) -> str:
-    """The Phrase (HTML) with the first occurrence of each broken-down word coloured piece by piece; a word that is not in it is skipped."""
-    marcas: Dict[str, str] = {}
-    for palavra, pedacos in palavras:
-        achou = re.search(r"(?<!\w)%s(?!\w)" % re.escape(palavra), frase, re.IGNORECASE)
-        if not achou:
-            continue
-        texto, inicio, pintado = achou.group(0), 0, ""
-        for tipo, pedaco in pedacos:
-            pintado += '<span style="color: %s;">%s</span>' % (COR_DO_PEDACO[tipo], texto[inicio:inicio + len(pedaco)])
-            inicio += len(pedaco)
-        marca = chr(0xE000 + len(marcas))  # Private Use Area: no later word can match it
-        marcas[marca] = pintado
-        frase = frase[:achou.start()] + marca + frase[achou.end():]
-    for marca, pintado in marcas.items():
-        frase = frase.replace(marca, pintado)
-    return frase
+COR_DA_PALAVRA_CHAVE = "#f59e0b"
+
+
+def _destacar(texto: str, palavra: str) -> str:
+    """The text (HTML) with the first occurrence of the key word in one colour and bold; a text without the word is returned as it is."""
+    achou = re.search(r"(?<!\w)%s(?!\w)" % re.escape(palavra), texto, re.IGNORECASE) if palavra else None
+    if not achou:
+        return texto
+    return '%s<span style="color: %s; font-weight: bold;">%s</span>%s' % (texto[:achou.start()], COR_DA_PALAVRA_CHAVE, texto[achou.start():achou.end()], texto[achou.end():])
 
 
 def _explicacao_das_cores(content: str) -> str:
@@ -150,7 +143,6 @@ def campos_da_nota(
     para_comparar = valores["frase"]  # a cor parte as palavras: a busca de duplicatas compara a Frase sem ela
     palavras = morfologia_do_texto(content) if estilo.get("morfologia") else []
     if palavras:
-        valores["frase"] = _pintar_a_frase(valores["frase"], palavras)
         valores["morfologia"] = "<br>".join("%s = %s" % (p, " + ".join(parte for _, parte in pedacos)) for p, pedacos in palavras)
         valores["explicacao_das_cores"] = _explicacao_das_cores(content)
     for parte in estilo["verso"] + estilo.get("guarda", []):
@@ -170,6 +162,10 @@ def campos_da_nota(
     if lacuna:  # a frente Lacuna (#166): a Frase sem a Palavra e uma dica do verso; o resto da Frase fica no campo da Frase
         valores["lacuna"] = lacuna
         valores["dica"] = next((valores[parte] for parte in estilos.partes_da_dica() if valores.get(parte)), "")
+    if estilo.get("destaque"):  # só a palavra-chave, na Frase e no Outro exemplo: nenhuma outra cor
+        for chave in ("frase", "outro_exemplo"):
+            if valores.get(chave):
+                valores[chave] = _destacar(valores[chave], valores.get("palavra", ""))
     fonte = _FONTE_RE.search(content)
     valores["fonte"] = fonte.group(1).strip() if fonte else ""
     valores["audio_da_frase"] = "[sound:%s]" % audio_da_frase if audio_da_frase else ""

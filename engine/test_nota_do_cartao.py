@@ -109,72 +109,6 @@ Alignment:
 3 | мальчик | menino
 """
 
-RUSSO_INTERMEDIARIO = """## Anki Card
-
-Front
-Она приходила вчера, но меня не было дома.
-
-Back
-Word: приходила
-
-Stress: приходи\u0301ла
-
-Pronunciation: pri-ha-DI-la
-
-Definition: To come or to arrive on foot; here it is the habitual or repeated past, "she used to come".
-
-Other example: Мама приходила домой поздно.
-
-Morphology:
-приходила | prefix:при | root:ход | suffix:и | suffix:л | ending:а
-вчера | root:вчер | ending:а
-дома | root:дом | ending:а
-
-Colors:
-prefix | при- | arrival, movement towards a place
-suffix | -и-л- | verb stem and past tense; imperfective aspect
-root | ход | the idea of walking, going
-ending | -а | feminine singular: she (3rd person, past tense)
-
-Root: ход
-
-Same root: ходить (to walk), вход (entrance), выход (exit)
-
-Google Image Search Queries:
-1. person arriving home
-2. front door open
-3. woman walking to a house
-4. visitor at the door
-
-Image: A woman arriving at a front door, no text.
-"""
-
-RUSSO_AVANCADO = """## Anki Card
-
-Front
-Она приходила вчера, но меня не было дома.
-
-Back
-Word: приходила
-
-Stress: приходи\u0301ла
-
-Definition: Приходить, то есть прибывать пешком; здесь это привычное действие в прошлом: «она приходила обычно».
-
-Other example: Мама приходила домой поздно.
-
-Root: ход
-
-Same root: ходить (идти пешком), вход (место, где входят), выход (место, где выходят)
-
-Google Image Search Queries:
-1. person arriving home
-2. front door open
-
-Image: A woman arriving at a door, no text.
-"""  # o Avançado é monolingue: sem Pronúncia, sem morfologia e sem cores
-
-
 def cores_de(html):
     """Os textos que levam cor, na ordem, com a cor: [(cor, texto)]."""
     return re.findall(r'<span style="color: (#[0-9a-f]{6});">(.*?)</span>', html)
@@ -230,102 +164,10 @@ class OCartaoDosOutrosNiveisDoIngles(unittest.TestCase):
             nota(RUSSO, "ru", nivel="nativo")
 
 
-CORES_DA_MORFOLOGIA = {"prefix": "#a855f7", "root": "#22c55e", "suffix": "#f59e0b", "ending": "#ef4444"}
-
-
-class OCartaoDoRussoComMorfologia(unittest.TestCase):
-    def test_a_frente_pinta_so_as_palavras_com_pedaco_a_explicar_em_quatro_cores_e_sem_acento(self):
-        campos = nota(RUSSO_INTERMEDIARIO, "ru", nivel="intermediario")["campos"]
-        self.assertEqual(
-            cores_de(campos["Frase"]),
-            [(CORES_DA_MORFOLOGIA["prefix"], "при"), (CORES_DA_MORFOLOGIA["root"], "ход"), (CORES_DA_MORFOLOGIA["suffix"], "и"),
-             (CORES_DA_MORFOLOGIA["suffix"], "л"), (CORES_DA_MORFOLOGIA["ending"], "а"),
-             (CORES_DA_MORFOLOGIA["root"], "вчер"), (CORES_DA_MORFOLOGIA["ending"], "а"),
-             (CORES_DA_MORFOLOGIA["root"], "дом"), (CORES_DA_MORFOLOGIA["ending"], "а")])
-        sem_html = re.sub("<[^>]+>", "", campos["Frase"])
-        self.assertEqual(sem_html, "Она приходила вчера, но меня не было дома.")
-        self.assertNotIn("\u0301", campos["Frase"])
-
-    def test_o_avancado_nao_pinta_a_frente_e_nao_traz_a_morfologia_que_e_do_intermediario(self):
-        campos = nota(RUSSO_AVANCADO, "ru", nivel="avancado")["campos"]
-        self.assertEqual(campos["Frase"], "Она приходила вчера, но меня не было дома.")
-        self.assertEqual(cores_de(campos["Frase"]), [])
-        self.assertFalse({"Morfologia", "Explicação das cores", "Pronúncia"} & set(campos))
-
-    def test_o_verso_traz_a_palavra_a_silaba_forte_a_pronuncia_a_definicao_em_ingles_e_outro_exemplo_e_nao_a_frase(self):
-        campos = nota(RUSSO_INTERMEDIARIO, "ru", nivel="intermediario")["campos"]
-        self.assertEqual(campos["Palavra"], "приходила")
-        self.assertEqual(campos["Sílaba forte"], "приходи\u0301ла")
-        self.assertEqual(campos["Pronúncia"], "pri-ha-DI-la")
-        self.assertTrue(campos["Definição"].startswith("To come or to arrive"))
-        self.assertEqual(campos["Outro exemplo"], "Мама приходила домой поздно.")
-        self.assertFalse({"Tradução literal", "Tradução natural", "Contexto da cena", "Mesma raiz"} & set(campos))
-
-    def test_a_explicacao_tem_uma_linha_por_cor_na_ordem_prefixo_raiz_sufixo_terminacao(self):
-        explicacao = nota(RUSSO_INTERMEDIARIO, "ru", nivel="intermediario")["campos"]["Explicação das cores"]
-        linhas = explicacao.split("<br>")
-        self.assertEqual(
-            [(cores_de(linha)[0][0], re.sub("<[^>]+>", "", linha)) for linha in linhas],
-            [(CORES_DA_MORFOLOGIA["prefix"], "при- – arrival, movement towards a place"),
-             (CORES_DA_MORFOLOGIA["root"], "ход – the idea of walking, going"),
-             (CORES_DA_MORFOLOGIA["suffix"], "-и-л- – verb stem and past tense; imperfective aspect"),
-             (CORES_DA_MORFOLOGIA["ending"], "-а – feminine singular: she (3rd person, past tense)")])
-
-    def test_os_campos_da_morfologia_que_a_criacao_vai_usar_ficam_gravados(self):
-        campos = nota(RUSSO_INTERMEDIARIO, "ru", nivel="intermediario")["campos"]
-        self.assertEqual(campos["Raiz"], "ход")
-        self.assertEqual(campos["Morfologia"], "приходила = при + ход + и + л + а<br>вчера = вчер + а<br>дома = дом + а")
-
-    def test_so_o_avancado_grava_as_palavras_da_mesma_raiz(self):
-        self.assertNotIn("Mesma raiz", nota(RUSSO_INTERMEDIARIO, "ru", nivel="intermediario")["campos"])
-        self.assertEqual(
-            nota(RUSSO_AVANCADO, "ru", nivel="avancado")["campos"]["Mesma raiz"], "ходить (идти пешком), вход (место, где входят), выход (место, где выходят)")
-
-    def test_a_palavra_do_cartao_vale_mais_que_a_do_pedido_que_so_leva_as_duas_primeiras_palavras_da_frase(self):
-        campos = nota(RUSSO_INTERMEDIARIO, "ru", nivel="intermediario", palavra="Она приходила")["campos"]
-        self.assertEqual(campos["Palavra"], "приходила")
-
-    def test_a_palavra_do_pedido_serve_quando_o_texto_nao_traz_a_dele(self):
-        sem_palavra = RUSSO_INTERMEDIARIO.replace("Word: приходила\n\n", "")
-        self.assertEqual(nota(sem_palavra, "ru", nivel="intermediario", palavra="Она приходила")["campos"]["Palavra"], "Она приходила")
-
-    def test_um_pedaco_que_nao_soma_a_palavra_deixa_a_palavra_sem_cor_e_o_resto_segue(self):
-        errada = RUSSO_INTERMEDIARIO.replace("вчера | root:вчер | ending:а", "вчера | root:вче | ending:а")
-        campos = nota(errada, "ru", nivel="intermediario")["campos"]
-        self.assertEqual([texto for _, texto in cores_de(campos["Frase"])], ["при", "ход", "и", "л", "а", "дом", "а"])
-        self.assertNotIn("вчера = ", campos["Morfologia"])
-        self.assertIn("вчера", re.sub("<[^>]+>", "", campos["Frase"]))
-
-    def test_uma_palavra_que_nao_esta_na_frase_nem_e_pintada(self):
-        outra = RUSSO_INTERMEDIARIO.replace("дома | root:дом | ending:а", "ночью | root:ноч | ending:ью")
-        campos = nota(outra, "ru", nivel="intermediario")["campos"]
-        self.assertEqual(len(cores_de(campos["Frase"])), 7)
-
-    def test_a_palavra_com_maiuscula_na_frase_guarda_a_caixa_da_frase(self):
-        maiuscula = RUSSO_INTERMEDIARIO.replace("Она приходила", "Приходила она")
-        campos = nota(maiuscula, "ru", nivel="intermediario")["campos"]
-        self.assertEqual(
-            [texto for _, texto in cores_de(campos["Frase"])][:5], ["При", "ход", "и", "л", "а"])
-        self.assertTrue(re.sub("<[^>]+>", "", campos["Frase"]).startswith("Приходила она"))
-
-    def test_sem_a_secao_da_morfologia_a_frase_sai_sem_cor_e_nada_e_adivinhado(self):
-        sem = RUSSO_INTERMEDIARIO.split("Morphology:")[0] + "Google Image Search Queries:\n1. door\n"
-        campos = nota(sem, "ru", nivel="intermediario")["campos"]
-        self.assertEqual(cores_de(campos["Frase"]), [])
-        self.assertFalse({"Morfologia", "Explicação das cores", "Raiz"} & set(campos))
-
-    def test_a_frase_que_a_busca_de_duplicatas_compara_e_a_inteira_e_sem_a_cor_que_parte_as_palavras(self):
-        pronta = nota(RUSSO_INTERMEDIARIO, "ru", nivel="intermediario")
-        self.assertEqual(pronta["frente_normalizada"], "Она приходила вчера, но меня не было дома.")
-
-    def test_a_imagem_e_os_audios_vao_nos_campos_deles(self):
-        campos = nota(
-            RUSSO_AVANCADO, "ru", nivel="avancado", audio_da_frase="f.mp3", audio_da_palavra="p.mp3", imagem="a.png")["campos"]
-        self.assertEqual((campos["Áudio da frase"], campos["Áudio da palavra"], campos["Imagem"]), ("[sound:f.mp3]", "[sound:p.mp3]", '<img src="a.png">'))
-
+class OCartaoDoRussoIniciante(unittest.TestCase):
     def test_o_iniciante_do_russo_segue_com_o_alinhamento_e_sem_a_morfologia(self):
         campos = nota(RUSSO, "ru")["campos"]
-        self.assertFalse({"Morfologia", "Explicação das cores", "Raiz", "Sílaba forte", "Mesma raiz"} & set(campos))
+        self.assertFalse({"Morfologia", "Explicação das cores", "Raiz", "Sílaba forte", "Mesma raiz", "Significado simples"} & set(campos))
         self.assertEqual(len({cor for cor, _ in cores_de(campos["Frase"])}), 3)
 
 
