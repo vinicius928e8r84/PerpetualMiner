@@ -4,7 +4,7 @@ Fatia do mapa [#138](https://github.com/vinicius928e8r84/PerpetualMiner/issues/1
 
 - **O item** Ferramentas › PerpetualMiner…, que abre uma janela pequena (sem travar o Anki) com a Conexão com o Anki (Ligada, ou Desligada
   com onde achar o motivo), a versão, o perfil aberto, o Envio de agora (“7 de 12 cartões”, a etapa, a barra e o Baralho) e o último erro.
-- **O botão Config** de Ferramentas › Complementos abre a mesma janela, nunca a configuração em texto cru (o complemento não tem `config.json`).
+- **O botão Config** de Ferramentas › Extensões abre a mesma janela, nunca a configuração em texto cru (o complemento não tem `config.json`).
 - **Um aviso que some sozinho** no começo e no fim de cada Envio (“12 cartões enviados ao Baralho Inglês”) e **o rótulo do item** com a
   contagem enquanto envia (“PerpetualMiner · 7 de 12”).
 - **Sem selo fixo na barra do Anki** (a spec do #138 o deixa como acréscimo pequeno, se o dono quiser).
@@ -48,7 +48,7 @@ que a janela reusa). Entrar no catálogo é dividi-lo, outro ticket.
 | ANK-02.titulo | PerpetualMiner | o título da janela |
 | ANK-02.conexao | Conexão com o Anki | o rótulo da linha da Conexão |
 | ANK-02.ligada | Ligada | a Conexão respondendo no Anki |
-| ANK-02.desligada | Desligada. O motivo está no registro da pasta user_files (Ferramentas › Complementos › Ver arquivos). | a Conexão que não subiu (a porta ocupada, por exemplo): onde achar o motivo. “Complementos” só porque é o nome do menu do próprio Anki (#99) |
+| ANK-02.desligada | Desligada. O motivo está no registro da pasta user_files (Ferramentas › Extensões › Ver arquivos). | a Conexão que não subiu (a porta ocupada, por exemplo): onde achar o motivo. “Extensões” porque é o nome do menu do próprio Anki em pt-BR (#99, #237) |
 | ANK-02.versao | Versão | o rótulo da linha da versão |
 | ANK-02.perfil | Perfil | o rótulo da linha do perfil |
 | ANK-02.semPerfil | Nenhum perfil aberto | o Anki na janela de perfis, ou o perfil não se lê |
@@ -80,7 +80,7 @@ que a janela reusa). Entrar no catálogo é dividi-lo, outro ticket.
 1. Com o complemento novo no Anki (`python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon`, ou o botão Baixar a Conexão com o Anki),
    abra o Anki e um perfil: Ferramentas › **PerpetualMiner…** existe e abre a janela pequena. Ela diz Ligada, a versão, o perfil e “Nenhum Envio
    ainda” / “Nenhum erro”. O Anki segue usável com a janela aberta. Fechar a fecha.
-2. Ferramentas › Complementos › PerpetualMiner › **Config** abre a **mesma** janela, nunca a configuração em texto cru.
+2. Ferramentas › Extensões › PerpetualMiner › **Config** abre a **mesma** janela, nunca a configuração em texto cru.
 3. Mande um Envio de 12 Frases (passo 9 do `complemento/LEIA-ME.md`): aparece o aviso “Enviando 12 cartões ao Baralho …” e some sozinho; o item vira
    “PerpetualMiner · 7 de 12” enquanto envia; a janela aberta acompanha (a barra e o Baralho); no fim, o aviso “12 cartões enviados ao Baralho …” e o item
    volta a “PerpetualMiner…”.

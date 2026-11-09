@@ -91,7 +91,7 @@ class AJanelaDiz(unittest.TestCase):
         estado = janela.Janela(None, lambda: "Usuário 1", configuracao.VERSAO, registro.silencioso()).estado()
         self.assertEqual(
             (estado.conexao, estado.envio, estado.ultimo_erro),
-            ("Desligada. O motivo está no registro da pasta user_files (Ferramentas › Complementos › Ver arquivos).", None, None),
+            ("Desligada. O motivo está no registro da pasta user_files (Ferramentas › Extensões › Ver arquivos).", None, None),
         )
 
     def test_o_envio_no_meio_mostra_7_de_12_a_etapa_a_fracao_e_o_baralho_sem_o_separador_do_anki(self):
@@ -366,6 +366,11 @@ class ACopiaDaJanelaEADaVoz(unittest.TestCase):
         meus = {id_: modelo for id_, modelo in texto_da_janela.TEXTOS.items() if id_.startswith("ANK-")}
         self.assertTrue(meus)
         self.assertEqual(tabela, meus)
+
+    def test_nenhum_texto_da_janela_chama_o_menu_do_anki_de_complementos(self):
+        # #237: o Anki em pt-BR chama o menu de Extensões; o mesmo critério do teste do catálogo da extensão.
+        com_complementos = {id_: modelo for id_, modelo in texto_da_janela.TEXTOS.items() if re.search(r"complemento", modelo, re.I)}
+        self.assertEqual(com_complementos, {})
 
     def test_cada_texto_reusado_do_envio_e_o_do_catalogo_da_voz_por_id(self):
         caminho = os.path.join(RAIZ, "docs", "design", "voz", "catalogo-textos.json")
