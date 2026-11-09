@@ -67,7 +67,7 @@ function criarConexao({ navegadores = ['primeiro'], impostor = null, antiga = fa
     const cabecalhos = Object.fromEntries(Object.entries(opcoes.headers || {}).map(([nome, valor]) => [nome.toLowerCase(), valor]));
     conexao.vistos.push({ metodo, caminho, cabecalhos, corpo: opcoes.body });
     if (impostor) return impostor({ metodo, caminho, cabecalhos, corpo: opcoes.body });
-    if (antiga && caminho.startsWith('/pareamento/')) return resposta(404, { error: 'not_found' });
+    if (antiga) return caminho.startsWith('/pareamento/') ? resposta(404, { error: 'not_found' }) : resposta(200, { estado: 'instalada' });   // a de antes do pareamento atende pela origem
     const req = { method: () => metodo, postData: () => opcoes.body ?? null, headers: () => cabecalhos };
     const doPareamento = pareamento.responder(metodo, caminho, opcoes.body ? JSON.parse(opcoes.body) : null);
     if (doPareamento) return resposta(doPareamento.status, doPareamento.json);
@@ -228,6 +228,13 @@ async function main() {
     assert.strictEqual(pagina.PedidoAoAnki.ausenciaDaRota(lida.status), 'antiga');
     assert.ok(conexao.vistos.every(v => v.caminho === '/pareamento/conferir'), 'a Conexão antiga só viu o conferir');
     assert.strictEqual(pagina.Pareamento.estado(), 'antiga');
+    // O único pedido que sai para ela é o que a tira dela, sem assinatura e sem dado: Atualizar agora e Reiniciar o Anki.
+    for (const pedido of [pagina.PedidoAoAnki.atualizarAConexao(), pagina.PedidoAoAnki.reiniciarOAnki()]) {
+      conexao.vistos.length = 0;
+      const atualizada = await pagina.PedidoAoAnki.pedir(ENDERECO, pedido);
+      assert.strictEqual(atualizada.status, 200);
+      igual(conexao.vistos.map(v => [v.caminho, v.corpo, 'x-perpetualminer-assinatura' in v.cabecalhos]).filter(([c]) => c.startsWith('/atualizacao')), [[pedido.caminho, '{}', false]]);
+    }
   }
 
   // A Conexão subiu de novo (outra sessão): o primeiro pedido refaz o `conferir` sozinho, uma vez, e o pedido segue.

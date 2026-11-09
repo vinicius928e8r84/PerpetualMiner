@@ -103,6 +103,7 @@ Falhas, sem exceção:
   de um código. A falha fica visível e nada vaza. Há um teto de um diálogo por vez.
 - **L6. Páginas abertas:** `GET /health` (versão e perfil) e o retorno do login do ChatGPT (`/auth/callback`, navegação, protegido por `state` e PKCE) seguem sem credencial.
 - **L7. Quem digita um código que não viu:** com o Anki fechado e um impostor na 8766, o Conectar “funciona” (o impostor responde ok) e nenhum diálogo aparece no Anki. Quem digita qualquer coisa, sem ter visto o código no Anki, pareia com o impostor, e a extensão não tem como saber. O passo “o código apareceu no Anki” é da pessoa; é ele que faz o código autenticar a Conexão.
+- **L9. A Conexão que se diz antiga:** um impostor que responde 404 ao `conferir` recebe o Atualizar agora e o Reiniciar o Anki (`{}`), e nada mais. Ele não restarta o Anki de ninguém; no máximo mostra um aviso de atualização que a pessoa pode ignorar.
 - **L8. A janela da leitura:** um pedido que só lê (sem chave, token nem Frases) reaproveita a sessão que a Conexão provou há menos de 20 s. Se ela cair e um impostor ocupar a porta nesse intervalo, ele vê o pedido assinado (a sessão e o nonce não servem em outra Conexão) e responde sem prova, que a extensão recusa. O pedido que leva a chave, o token, as Frases ou o UID pede um `conferir` novo antes.
 
 ## 6. Provas
@@ -143,7 +144,7 @@ Decisões do código, para a revisão não as achar por acidente:
 - **`pareamento.json` não guarda `usadoEm`**: a Conexão não regrava o arquivo a cada pedido.
 - **A faixa do Painel mora em `painel-conexao-versao.js`**, junto do aviso de versão (os dois são “a Conexão ainda não é de confiança” e disputam o alto do Painel). O popup lê o
   estado (`ConexaoAnki.pareamento()`), mas não desenha nada: sem pareamento ele mostra o último que tinha.
-- **A Conexão antiga** (404 no `conferir`) cai no aviso de versão (BRG-50) seja qual for a versão que diz, porque nenhum pedido privado sai para ela.
+- **A Conexão antiga** (404 no `conferir`) cai no aviso de versão (BRG-50) seja qual for a versão que diz, e nenhum pedido privado sai para ela. **Só dois saem, sem assinatura e com corpo `{}`**: Atualizar agora e Reiniciar o Anki (`daConexaoAntiga` em `PedidoAoAnki`): sem eles a Conexão velha nunca sairia da versão velha, e eles não levam dado da pessoa.
 - **O pedido que leva dado da pessoa pede um `conferir` novo** (a chave, o token da conta, a chave legada, as Frases do Envio); a leitura reaproveita a sessão provada há menos de 20 s. A
   janela do L4 fica no tempo de um pedido local.
 - **Os pedidos assinados saem na ordem em que foram pedidos** (a conta é assíncrona, e o quiz de nível, por exemplo, lê “a última fala pedida”).

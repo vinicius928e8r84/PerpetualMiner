@@ -270,13 +270,18 @@ test.describe('quem não é a Conexão', () => {
 test.describe('uma Conexão de antes do pareamento', () => {
   test.use({ pareada: true });
 
-  test('o 404 no conferir dá o aviso de atualizar e nenhum pedido privado sai', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+  test('o 404 no conferir dá o aviso de atualizar e só o Atualizar agora sai para ela, sem assinatura nem dado', async ({ page, extensao, fakes, conexaoDoTeste }) => {
     test.skip(Boolean(conexaoDoTeste), 'a Conexão real tem o pareamento');
     fakes.anki.pareamento.antigo();
+    fakes.anki.definirAtualizacao({ ankiweb: 'com_versao_nova' });
     await abrirPainel(page, extensao, '#anki/custos');
 
     await expect(page.locator('#painel-conexao-versao')).toContainText('A Conexão com o Anki está desatualizada');
     await expect(faixa(page)).toHaveCount(0);
     await estadoFinalEm('os pedidos que a Conexão antiga recebeu', () => [...new Set(fakes.anki.requisicoes.map(r => r.caminho))], ['/health']);
+
+    await page.locator('#painel-conexao-versao').getByRole('button', { name: 'Atualizar agora' }).click();
+    await estadoFinalEm('os pedidos que a Conexão antiga recebeu', () => [...new Set(fakes.anki.requisicoes.map(r => r.caminho))].sort(), ['/atualizacao/agora', '/health']);
+    expect(fakes.anki.requisicoes.find(r => r.caminho === '/atualizacao/agora').corpo).toBe('{}');
   });
 });

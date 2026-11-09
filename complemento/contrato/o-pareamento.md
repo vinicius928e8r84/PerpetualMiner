@@ -40,6 +40,8 @@ Antes de escolher a rota, e sempre `401`: `pairing_required` (sem assinatura, ou
 repete uma vez) e `pairing_invalid` (assinatura errada, nonce repetido). Valem para toda rota: os exemplos usam `/ia/estado` (`assinatura`: `ausente`, `errada`, `sessaoVelha` no pedido), e
 `test_pareamento_porteiro.py` pede cada rota de `ROTAS`. Uma recusa não leva prova. O corpo grande demais ainda é `400 invalid_json`, antes da assinatura.
 
+A Conexão **de antes do pareamento** (404 no `conferir`) só recebe da extensão, sem assinatura, `POST /atualizacao/agora` e `/atualizacao/reiniciar` (corpo `{}`): são o jeito de ela sair da versão velha.
+
 ## No contrato e nos testes
 
 - `contexto` dos exemplos: `pareado: false` (a Conexão não conhece nenhum navegador; o padrão é o navegador `primeiro` de `navegadoresDeTeste`), `semTela` (o Anki não tem onde mostrar o código), `codigoPendente` (o Anki mostra

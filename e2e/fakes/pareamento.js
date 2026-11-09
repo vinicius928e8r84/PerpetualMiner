@@ -95,6 +95,7 @@ function criarPareamento({ agora }) {
 
   /** O porteiro (`_pedido_aceito`): `{ erro }` (401), ou `{ segredo, nonce }` do navegador que assinou. */
   function verificar(req, caminho) {
+    if (antigo) return { antigo: true };   // a Conexão de antes do pareamento atende pela origem, sem assinar
     const cabecalho = nome => req.headers()[nome.toLowerCase()];
     const cliente = cabecalho('X-PerpetualMiner-Cliente');
     const assinatura = cabecalho('X-PerpetualMiner-Assinatura');
@@ -110,7 +111,8 @@ function criarPareamento({ agora }) {
   }
 
   /** A mesma `route` com a prova da resposta: cada `fulfill` leva `X-PerpetualMiner-Prova` (status e corpo), como a Conexão responde. */
-  function comProva(route, { segredo, nonce }) {
+  function comProva(route, { segredo, nonce, antigo: semProva }) {
+    if (semProva) return route;
     return {
       request: () => route.request(),
       abort: codigo => route.abort(codigo),

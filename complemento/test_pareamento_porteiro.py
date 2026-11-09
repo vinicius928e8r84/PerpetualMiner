@@ -180,6 +180,24 @@ class DesconectarOsNavegadores(unittest.TestCase):
             trocado = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=cabecalhos_assinados(sessao, "POST", "/ia/estado", b"{}", cliente=OUTRO_CLIENTE, segredo=SEGREDO))[0]
         self.assertEqual((do_segundo, trocado), (200, 401))
 
+    def test_uma_linha_do_arquivo_com_segredo_que_nao_e_base64_nao_pareia_ninguem(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            with open(os.path.join(pasta, "pareamento.json"), "w", encoding="utf-8") as arquivo:
+                json.dump({"versao": 1, "clientes": [{"cliente": CLIENTE, "segredo": "isto não é base64!"}, "lixo", {"cliente": 7}]}, arquivo)
+            status, _, corpo = conexao.pedir("POST", "/ia/estado", corpo={})
+            quantos = conexao.conexao.pareamento.quantos()
+        self.assertEqual((status, json_de(corpo), quantos), (401, {"error": "pairing_required"}, 0))
+
+    def test_a_sessao_lembra_um_numero_limitado_de_nonces_e_esquece_os_mais_antigos(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            p = conexao.conexao.pareamento
+            sessao = p.sessao
+            for n in range(pareamento.NONCES_LEMBRADOS + 5):
+                cabecalhos = cabecalhos_assinados(sessao, "POST", "/ia/estado", b"{}", nonce="nonce-%08d" % n)
+                self.assertEqual(p.verificar("POST", "/ia/estado", b"{}", cabecalhos).status, 200)
+            lembrados = len(p._nonces)
+        self.assertEqual(lembrados, pareamento.NONCES_LEMBRADOS)
+
     def test_o_arquivo_estragado_e_um_pareamento_vazio_e_nao_um_erro(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             with open(os.path.join(pasta, "pareamento.json"), "w", encoding="utf-8") as arquivo:
