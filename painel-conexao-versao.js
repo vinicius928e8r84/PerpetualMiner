@@ -1,5 +1,7 @@
 'use strict';
 
+// O que a Conexão com o Anki precisa antes de ser de confiança, no alto do Painel: a versão (#177, BRG-50) e o pareamento deste navegador (#192, BRG-52).
+//
 // A versão da Conexão com o Anki no alto do Painel (#177, BRG-50). A Conexão se atualiza sozinha pelo AnkiWeb, em silêncio; a extensão lê a versão e
 // a atualização na resposta de saúde (`ConexaoAnki.saude()`) e só fala em três casos:
 //
@@ -14,11 +16,24 @@
 // `VERSAO_MINIMA` é a Conexão mais velha que esta extensão aceita: sobe quando uma função da extensão passa a precisar de uma rota ou de um comportamento
 // que as versões de antes não têm. Uma Conexão que não diz a versão é a de antes de a saúde dizê-la: velha demais.
 //
-// Carregado depois de lib/abridor.js, lib/abrir-o-anki.js e painel-shell.js.
+//
+// O pareamento (#192): a Conexão só atende quem a assina com um segredo que nasce nela e chega aqui uma vez (lib/pareamento.js; desenho em
+// docs/design/pareamento-da-conexao.md). Com a Conexão ligada e este navegador ainda sem pareamento:
+//
+//   a parear      o aviso “Conecte este navegador ao Anki” e Conectar → o Anki abre o diálogo com o código (ANK-05)
+//   o código      “Digite o código que apareceu no Anki”, o campo e Confirmar: certo, o navegador fica conectado; errado, diz quantas tentativas
+//                 restam; vencido (5 minutos, ou as 5 tentativas), volta ao Conectar com “O código venceu. Peça outro”
+//   não confirmada  a porta respondeu a saúde mas não provou ter o segredo deste navegador: “Algo na porta do Anki não se confirmou. Nada foi enviado”
+//                 e Tentar de novo; nenhum pedido privado sai enquanto for assim
+//
+// A Conexão antiga (sem o pareamento) não aparece no pareamento: é a velha demais acima. O estado é o de `ConexaoAnki.pareamento()`.
+//
+// Carregado depois de lib/abridor.js, lib/abrir-o-anki.js, lib/pareamento.js, lib/conexao-na-tela.js e painel-shell.js.
 
 (function (raiz) {
-  const { textoDaVoz, Veio, ConexaoAnki, PedidoAoAnki, Abridor, AbrirOAnki } = raiz;
+  const { textoDaVoz, Veio, ConexaoAnki, ConexaoNaTela, PareamentoComOAnki, PedidoAoAnki, Abridor, AbrirOAnki } = raiz;
   const { SITUACAO } = ConexaoAnki;
+  const { ESTADO } = PareamentoComOAnki;
   const VERSAO_MINIMA = [0, 4, 0];
   const CHAVE_DA_ATUALIZADA_VISTA = 'pm_conexao_atualizada_vista';
   /** Quanto o Anki tem para fechar (ele sincroniza ao fechar) antes de a extensão desistir de esperar a Conexão calar. */
@@ -61,7 +76,8 @@
     const saude = ConexaoAnki.situacao() === SITUACAO.LIGADA ? ConexaoAnki.saude() : null;
     if (!saude) return null;
     const atualizacao = saude.atualizacao;
-    if (!velhaDemais(saude.versao)) {
+    // A Conexão que não tem o pareamento (404 no `conferir`, #192) é velha demais seja qual for a versão que diz: nenhum pedido privado sai para ela.
+    if (!velhaDemais(saude.versao) && ConexaoAnki.pareamento() !== ESTADO.ANTIGA) {
       const nova = atualizacao?.atualizada;
       return nova && nova !== estado.fechada && (nova !== estado.vista || nova === estado.mostrada) ? { tipo: 'atualizada', versao: nova } : null;
     }
@@ -169,12 +185,125 @@
     desenhar();
   }
 
+  // --- o pareamento -------------------------------------------------------------------------------------------------------------
+
+  const conectando = {
+    fase: 'inicio',    // 'inicio' (Conectar) | 'codigo' (o campo e Confirmar)
+    mensagem: null,    // o que a última tentativa disse: { tipo: 'errado', n } | { tipo: 'venceu' } | { tipo: 'naoConfirmou' } | null
+    ocupado: false,    // um pedido à Conexão está no ar
+    assinatura: '',
+    desenhado: null,   // o tipo da visão que está na tela
+  };
+
+  function elemento(tag, classe, ...filhos) {
+    const no = document.createElement(tag);
+    if (classe) no.className = classe;
+    no.append(...filhos);
+    return no;
+  }
+
+  function dizer(mensagem) {
+    if (!mensagem) return '';
+    if (mensagem.tipo === 'errado') return textoDaVoz('BRG-52.errado', { n: mensagem.n });
+    return textoDaVoz(`BRG-52.${mensagem.tipo}`);
+  }
+
+  async function conectar() {
+    if (conectando.ocupado) return;
+    conectando.ocupado = true;
+    const resposta = await PareamentoComOAnki.comecar(ConexaoAnki.ENDERECO);
+    conectando.ocupado = false;
+    conectando.fase = resposta.ok ? 'codigo' : 'inicio';
+    conectando.mensagem = resposta.ok ? null : { tipo: 'naoConfirmou' };
+    desenharOPareamento();
+    if (resposta.ok) porId('painel-pareamento-campo')?.focus();
+  }
+
+  async function confirmar(campo) {
+    if (conectando.ocupado || !campo.value.trim()) return;
+    conectando.ocupado = true;
+    const resposta = await PareamentoComOAnki.concluir(ConexaoAnki.ENDERECO, campo.value);
+    conectando.ocupado = false;
+    if (resposta.ok) {
+      Object.assign(conectando, { fase: 'inicio', mensagem: null });
+      await ConexaoAnki.tentarDeNovo();   // pareado, a Conexão passa por “conectando” e volta ligada: quem lê dela refaz a leitura
+      Veio.mostrarToastDeSucesso(ConexaoNaTela.texto(SITUACAO.LIGADA));
+      return;
+    }
+    if (resposta.erro === 'errado') conectando.mensagem = { tipo: 'errado', n: resposta.restam };
+    else if (resposta.erro === 'venceu') Object.assign(conectando, { fase: 'inicio', mensagem: { tipo: 'venceu' } });
+    else conectando.mensagem = { tipo: 'naoConfirmou' };
+    desenharOPareamento();
+    porId('painel-pareamento-campo')?.focus();
+  }
+
+  /** O card do código: o campo e Confirmar. Refeito só quando a fase muda (a saúde de 15 s não apaga o que a pessoa digita). */
+  function montarOCodigo() {
+    const pergunta = elemento('p', null, textoDaVoz('BRG-52.digite'));
+    pergunta.id = 'painel-pareamento-pergunta';
+    const campo = elemento('input', 'veio-campo painel-pareamento__campo');
+    Object.assign(campo, { id: 'painel-pareamento-campo', type: 'text', autocomplete: 'off', spellcheck: false, maxLength: 16 });
+    campo.setAttribute('aria-labelledby', pergunta.id);
+    const botao = elemento('button', 'veio-botao veio-botao--primario veio-botao--compacto', textoDaVoz('BRG-52.confirmar'));
+    botao.type = 'button';
+    const resposta = elemento('p', 'anki-apoio');
+    resposta.id = 'painel-pareamento-resposta';
+    resposta.setAttribute('role', 'alert');
+    botao.addEventListener('click', () => confirmar(campo));
+    campo.addEventListener('keydown', evento => { if (evento.key === 'Enter') confirmar(campo); });
+    return elemento('section', 'anki-cartao painel-pareamento', pergunta, elemento('p', 'painel-pareamento__linha', campo, botao), resposta);
+  }
+
+  /** O que o pareamento mostra agora: `null`, ou `{ tipo }` conforme o estado dele. */
+  function visaoDoPareamento() {
+    if (ConexaoAnki.situacao() !== SITUACAO.LIGADA) return null;
+    const pareamento = ConexaoAnki.pareamento();
+    if (pareamento === ESTADO.NAO_CONFIRMADA) return { tipo: 'naoConfirmada' };
+    return pareamento === ESTADO.A_PAREAR ? { tipo: conectando.fase } : null;
+  }
+
+  function desenharOPareamento() {
+    const atual = visaoDoPareamento();
+    const assinatura = atual ? JSON.stringify([atual.tipo, conectando.mensagem]) : '';
+    if (assinatura === conectando.assinatura) return;
+    conectando.assinatura = assinatura;
+    const aberto = porId('painel-pareamento');
+    if (atual?.tipo === 'codigo' && conectando.desenhado === 'codigo' && aberto) {   // o código errado só muda a frase: o campo guarda o que a pessoa digitou
+      aberto.querySelector('#painel-pareamento-resposta').textContent = dizer(conectando.mensagem);
+      return;
+    }
+    const tinhaFoco = aberto?.contains(document.activeElement);
+    aberto?.remove();
+    conectando.desenhado = atual?.tipo ?? null;
+    if (!atual) return;
+    let no;
+    if (atual.tipo === 'codigo') {
+      no = montarOCodigo();
+      no.querySelector('#painel-pareamento-resposta').textContent = dizer(conectando.mensagem);
+    } else {
+      const naoConfirmada = atual.tipo === 'naoConfirmada';
+      no = Veio.montarAviso({
+        texto: naoConfirmada ? textoDaVoz('BRG-52.naoConfirmou') : dizer(conectando.mensagem) || textoDaVoz('BRG-52.conectar'),
+        tom: naoConfirmada || conectando.mensagem ? 'perigo' : 'info',
+        acao: naoConfirmada
+          ? { rotulo: textoDaVoz('BRG-50.tentarDeNovo'), aoUsar: () => ConexaoAnki.tentarDeNovo() }
+          : { rotulo: textoDaVoz('BRG-52.botao'), aoUsar: conectar },
+        fechavel: false,
+      });
+    }
+    no.id = 'painel-pareamento';
+    document.querySelector('.shell-conteudo').prepend(no);
+    if (tinhaFoco) no.querySelector('input, button')?.focus();
+  }
+
   async function iniciar() {
     try {
       estado.vista = (await chrome.storage.local.get({ [CHAVE_DA_ATUALIZADA_VISTA]: null }))[CHAVE_DA_ATUALIZADA_VISTA];
     } catch {
     }
     ConexaoAnki.acompanhar(desenhar);
+    ConexaoAnki.acompanhar(desenharOPareamento);
+    PareamentoComOAnki.aoMudar(desenharOPareamento);
   }
 
   raiz.ConexaoVersao = { iniciar };

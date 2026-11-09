@@ -229,6 +229,8 @@ class QtDeMentira:
 
     def __init__(self):
         self.itens, self.configuracoes, self.avisos, self.janelas, self.tique = [], {}, [], [], None
+        self.desconectar = None
+        self.codigos, self.fechados = [], 0   # o diálogo do código do pareamento (#192): (texto, rótulo de cancelar, ao_cancelar)
 
     def item_do_menu(self, mw, texto, ao_clicar):
         item = types.SimpleNamespace(texto=texto, clicar=ao_clicar)
@@ -242,8 +244,18 @@ class QtDeMentira:
     def aviso(self, texto):
         self.avisos.append(texto)
 
-    def abrir_janela(self, mw, ler_estado):
+    def abrir_janela(self, mw, ler_estado, desconectar=None):
+        self.desconectar = desconectar
         self.janelas.append(ler_estado())
+
+    def mostrar_codigo(self, mw, texto, rotulo_de_cancelar, ao_cancelar):
+        self.codigos.append((texto, rotulo_de_cancelar, ao_cancelar))
+
+    def fechar_codigo(self, mw):
+        self.fechados += 1
+
+    def avisar_de_outra_thread(self, mw, texto):
+        self.avisos.append(texto)
 
     def a_cada(self, mw, segundos, funcao):
         self.tique = funcao
@@ -297,7 +309,7 @@ class OItemNoMenuDoAnki(unittest.TestCase):
     def test_o_erro_do_qt_ao_abrir_a_janela_nunca_sai_para_o_anki(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, trabalhando=False) as conexao:
             qt = QtDeMentira()
-            qt.abrir_janela = lambda mw, ler_estado: (_ for _ in ()).throw(RuntimeError("o Qt mudou"))
+            qt.abrir_janela = lambda mw, ler_estado, desconectar=None: (_ for _ in ()).throw(RuntimeError("o Qt mudou"))
             self.ligado(conexao, qt)
             qt.itens[0].clicar()
             registro = conexao.log()

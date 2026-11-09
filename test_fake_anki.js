@@ -8,6 +8,7 @@ const assert = require('assert');
 const { isDeepStrictEqual } = require('util');
 const { criarFakeAnki, exemploDaExtensao, diferencaDoContrato } = require('./e2e/fakes/anki');
 const { criarFakeGoogle } = require('./e2e/fakes/google');
+const { cabecalhosAssinados } = require('./e2e/pareamento-de-teste');
 
 const fake = criarFakeAnki();
 assert.deepStrictEqual(fake.respostaDoContrato('GET', '/health').json.perfil, 'Usuário 1');
@@ -21,8 +22,13 @@ const contrato = require('./complemento/contrato/carregar');
 /** Entrega ao fake o pedido `metodo caminho` (com `corpo`, se tiver) como o Playwright o entregaria; devolve `{ status, json }` ou `{ abortado }`. */
 async function pedirAoFake(fakeDaConexao, metodo, caminho, corpo = null) {
   let entregue = null;
+  // Assinado como a extensão assina (#192), a menos que o fake nem conheça o navegador de teste (`pareado: false`) ou seja a saúde / o pareamento.
+  const texto = corpo === undefined || corpo === null ? null : JSON.stringify(corpo);
+  const aberto = (metodo === 'GET' && caminho === '/health') || caminho.startsWith('/pareamento/');
+  const cabecalhos = aberto ? {} : Object.fromEntries(Object.entries(
+    cabecalhosAssinados({ sessao: fakeDaConexao.pareamento.sessao(), metodo, caminho, corpo: texto ?? '' })).map(([nome, valor]) => [nome.toLowerCase(), valor]));
   await fakeDaConexao.tratar({
-    request: () => ({ method: () => metodo, url: () => `http://127.0.0.1:8766${caminho}`, postData: () => (corpo === undefined || corpo === null ? null : JSON.stringify(corpo)) }),
+    request: () => ({ method: () => metodo, url: () => `http://127.0.0.1:8766${caminho}`, postData: () => texto, headers: () => cabecalhos }),
     fulfill: resposta => { entregue = { status: resposta.status, json: JSON.parse(resposta.body) }; },
     abort: () => { entregue = { abortado: true }; },
   });
@@ -52,6 +58,7 @@ function fakeNoContextoDe(exemplo) {
   if (exemplo.contexto.atualizacao || exemplo.contexto.ankiweb) fakeDoExemplo.definirAtualizacao({ atualizacao: exemplo.contexto.atualizacao, ankiweb: exemplo.contexto.ankiweb });
   if (exemplo.contexto.hoje) fakeDoExemplo.teto.passarOTempoAte(exemplo.contexto.hoje);
   if (exemplo.contexto.tetoUsd) fakeDoExemplo.teto.definir({ limite: exemplo.contexto.tetoUsd });
+  fakeDoExemplo.pareamento.definirContexto(exemplo.contexto);
   if (exemplo.contexto.perfis) fakeDoExemplo.definirPerfis(exemplo.contexto.perfis, { marcado: exemplo.contexto.perfilMarcado ?? null, aberto: exemplo.contexto.perfil });
   return { fakeDoExemplo, google };
 }
@@ -63,6 +70,7 @@ function guardado({ fakeDoExemplo, google }) {
     nuvem: google.chaveDaOpenAIDe('uid-teste'), envios: JSON.parse(JSON.stringify(fakeDoExemplo.envios)),
     chatgpt: fakeDoExemplo.chatgpt.situacao(), modelo: fakeDoExemplo.modelo.guardado(), teto: fakeDoExemplo.teto.guardado(),
     perfilMarcado: fakeDoExemplo.perfilMarcado(), perfilAberto: fakeDoExemplo.perfilAberto(),
+    pareados: [...fakeDoExemplo.pareamento.pareados()],
   };
 }
 

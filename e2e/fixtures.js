@@ -24,6 +24,7 @@ const { criarFakeGemini } = require('./fakes/gemini');
 const { criarFakeGoogle } = require('./fakes/google');
 const { subirServidorDoLogin } = require('./fakes/login-google');
 const conexaoReal = require('./conexao-real');
+const { parearNoServiceWorker } = require('./pareamento-de-teste');
 const { pararRelogio } = require('./relogio-parado');
 
 const RAIZ_DA_EXTENSAO = path.resolve(__dirname, '..');
@@ -147,11 +148,13 @@ async function apagarPmBoasVindas(sw) {
 /**
  * O que um teste tem da extensão de um perfil já aberto: o service worker, o storage, a sessão semeada.
  * A instalação deixa a aba da Boas-vindas (fechada, salvo `manterAbaDaInstalacao`) e a configuração
- * começada (removida, salvo `lembreteDaConfiguracao`); veja as opções do fixture.
+ * começada (removida, salvo `lembreteDaConfiguracao`); veja as opções do fixture. `navegador` (`primeiro` ou `segundo`): o
+ * navegador de teste com que a extensão já nasce pareada.
  */
-async function prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConfiguracao }) {
+async function prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConfiguracao, navegador }) {
   const sw = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
   const id = new URL(sw.url()).host;
+  if (navegador) await parearNoServiceWorker(sw, navegador);   // a credencial do pareamento (#192), como o `concluir` a guardaria
 
   const abaDaInstalacao = await esperarAbaDaInstalacao(context, id);
   if (!manterAbaDaInstalacao) await abaDaInstalacao.close();
@@ -294,18 +297,27 @@ const test = base.extend({
     await use(({ page: alvo = page, em } = {}) => pararRelogio(alvo, { em, prazoDoTeste: testInfo.timeout }));
   },
 
-  extensao: async ({ context, manterAbaDaInstalacao, lembreteDaConfiguracao }, use) => {
-    await use(await prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConfiguracao }));
+  // A extensão já nasce pareada com a Conexão (#192): a credencial no IndexedDB e o navegador conhecido da Conexão (o fake, ou o complemento real).
+  // Quem testa o pareamento pede `test.use({ pareada: false })`: nem a extensão nem a Conexão conhecem nenhum navegador, e a pessoa começa de onde começa.
+  pareada: [true, { option: true }],
+
+  extensao: async ({ context, fakes, conexaoDoTeste, manterAbaDaInstalacao, lembreteDaConfiguracao, pareada }, use) => {
+    if (!pareada) {
+      fakes.anki.pareamento.desconectar();
+      await conexaoDoTeste?.enviar({ pareamento: 'desconectar' });
+    }
+    await use(await prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConfiguracao, navegador: pareada ? 'primeiro' : null }));
   },
 
   // Um segundo perfil do Chromium com a extensão, aberto como o primeiro (mesma rede falsificada, mesmo
   // abridor, mesma Conexão com o Anki): a cena de duas contas Google em dois perfis diante de uma Conexão só.
   // Não é uma segunda aba do mesmo perfil, que dividiria o armazenamento. `context` abre páginas dele;
   // `extensao` é o mesmo objeto que o teste já tem (semearSessao, lerStorage, …), mas do segundo perfil.
-  segundoPerfil: async ({ extensao, fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste, manterAbaDaInstalacao, lembreteDaConfiguracao }, use) => {
+  segundoPerfil: async ({ extensao, fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste, manterAbaDaInstalacao, lembreteDaConfiguracao, pareada }, use) => {
     const perfil = await abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste });
+    if (pareada) fakes.anki.pareamento.parear('segundo');   // cada perfil do Chrome tem o seu segredo
     try {
-      await use({ context: perfil.context, extensao: await prepararExtensao(perfil.context, { manterAbaDaInstalacao, lembreteDaConfiguracao }) });
+      await use({ context: perfil.context, extensao: await prepararExtensao(perfil.context, { manterAbaDaInstalacao, lembreteDaConfiguracao, navegador: pareada ? 'segundo' : null }) });
     } finally {
       await perfil.fechar();
     }
