@@ -352,7 +352,7 @@ test('passo 4: dois minutos sem resposta mostram o checklist e Baixar de novo, e
   await expect(card(page).locator('.pc-checklist li')).toHaveText([
     'O Anki está aberto?',
     'Você fechou o Anki e abriu de novo?',
-    'A Conexão com o Anki está ativada em Ferramentas › Complementos?',
+    'A Conexão com o Anki está ativada em Ferramentas › Extensões?',
   ]);
   await expect(card(page).getByRole('link', { name: 'Baixar de novo' })).toBeVisible();
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
