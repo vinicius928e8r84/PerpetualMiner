@@ -165,12 +165,14 @@ class AtualizacaoEmSilencio(unittest.TestCase):
         self.assertEqual(conexao.verificar()["estado"], "falhou")
         self.assertEqual((ankiweb.consultas, ankiweb.instalacoes), ([], []))
 
-    def test_desligada_por_padrao_nao_consulta_nem_se_marca_sozinha(self):
+    def test_a_atualizacao_automatica_vem_ligada_por_padrao(self):
+        self.assertTrue(configuracao.ATUALIZACAO_AUTOMATICA)
+
+    def test_desligada_nao_consulta_nem_se_marca_sozinha(self):
         conexao, ankiweb = montar(self.pasta, ligada=False)
         conexao.iniciar(espera_inicial_s=0)
         self.assertEqual(conexao.verificar()["estado"], "em_dia")
         self.assertEqual((ankiweb.consultas, ankiweb.instalacoes, ankiweb.update_enabled), ([], [], True))
-        self.assertFalse(configuracao.ATUALIZACAO_AUTOMATICA, "os termos do AnkiWeb ainda não foram conferidos pelo dono")
 
     def test_desligada_o_atualizar_agora_da_pessoa_ainda_consulta_e_instala_sem_se_marcar(self):
         conexao, ankiweb = montar(self.pasta, ligada=False)

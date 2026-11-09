@@ -1,6 +1,6 @@
 # The Conexão com o Anki version notice
 
-The Conexão com o Anki updates itself in silence through AnkiWeb (`complemento/atualizacao.py`, **off by default** until the owner checks the AnkiWeb terms: `ATUALIZACAO_AUTOMATICA`). The extension reads the version and the update from `GET /health` and speaks only in three cases, in a notice at the top of the Painel (#177, BRG-50).
+The Conexão com o Anki updates itself in silence through AnkiWeb (`complemento/atualizacao.py`, **on by default** (`ATUALIZACAO_AUTOMATICA`, add-on 0.4.19); a person turns it off by creating `user_files/sem-atualizacao-automatica`). The extension reads the version and the update from `GET /health` and speaks only in three cases, in a notice at the top of the Painel (#177, BRG-50).
 
 ## Sub-features
 
