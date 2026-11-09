@@ -192,3 +192,19 @@ test.describe('quando a prévia não vem', () => {
     await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'avancado', versao: 1 } } });
   });
 });
+
+test('escolher um nível não refaz o controle: o foco fica no radio e a seta seguinte salva o nível seguinte', async ({ page, extensao }) => {
+  await abrirONivel(page, extensao);
+  await expect(nivel(page, 'Inglês', 'Iniciante')).toBeChecked();
+  // Marca o controle de hoje: se o passo o refizer, a marca some junto com o nó.
+  await estilo(page, 'Inglês').evaluate(no => { no.dataset.mesmoNo = 'sim'; });
+
+  await nivel(page, 'Inglês', 'Iniciante').focus();
+  await page.keyboard.press('ArrowRight');
+  await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'intermediario', versao: 1 } } });
+  await expect(nivel(page, 'Inglês', 'Intermediário')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(nivel(page, 'Inglês', 'Avançado')).toBeFocused();
+  await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'avancado', versao: 2 } } });
+  await expect(estilo(page, 'Inglês')).toHaveAttribute('data-mesmo-no', 'sim');
+});
