@@ -16,6 +16,7 @@ from unittest import mock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import retencao_dos_envios, trabalhador  # noqa: E402
+from complemento.gravacao_de_json import gravar_json  # noqa: E402
 from complemento.test_envio import ID, LINHA, OUTRO_ID, PALAVRA, EnvioNoTeste, arquivos_sem_o_log, pedido  # noqa: E402
 
 PRAZO = timedelta(days=retencao_dos_envios.PRAZO_EM_DIAS)
@@ -33,8 +34,7 @@ def ler_estado(conexao, job_id):
 def mudar_estado(conexao, job_id, **campos):
     estado = ler_estado(conexao, job_id)
     estado.update(campos)
-    with open(arquivo_do_estado(conexao, job_id), "w", encoding="utf-8") as arquivo:
-        json.dump(estado, arquivo)
+    gravar_json(arquivo_do_estado(conexao, job_id), estado)  # inteiro de uma vez: a thread de trabalho lê o estado enquanto o teste o muda
 
 
 def terminado(conexao, job_id, linha=LINHA):
@@ -227,7 +227,7 @@ class QuandoARetencaoRoda(unittest.TestCase):
                 while os.path.exists(arquivo_do_estado(conexao, ID)) and time.monotonic() < fim:
                     time.sleep(0.02)
                 nomes = list(arquivos_sem_o_log(conexao))
-        self.assertEqual([nome for nome in nomes if ID in nome], [os.path.join("custos", ID, "costs.jsonl"), os.path.join("custos", ID, "ficha.json")])
+        self.assertEqual(sorted(nome for nome in nomes if ID in nome), [os.path.join("custos", ID, "costs.jsonl"), os.path.join("custos", ID, "ficha.json")])
 
     def test_depois_de_subir_a_rodada_volta_a_cada_seis_horas_na_mesma_thread_do_envio(self):
         trabalho = mock.Mock()
