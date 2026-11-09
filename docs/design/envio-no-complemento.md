@@ -128,7 +128,7 @@ no bridge segue funcionando no bridge.
 
 - **a. A origem não autentica (#192).** Um processo local que declara a origem da extensão pode criar Envios: gasta a chave e grava
   notas no Anki. É o limite das rotas da chave (`complemento/contrato/LEIA-ME.md`, “Quem o complemento atende”); o
-  pareamento entra antes da loja. Um corpo de 4 MB sem teto de Frases agrava isso (#243).
+  pareamento entra antes da loja. O criar recusa mais de 500 Frases (`413`, #243).
 - **b. Perfil fixo (#149):** a nota só entra no marcado; com outro aberto o Envio espera (`waiting`); na tela de perfis a Conexão o abre.
 - **c. Texto pago duas vezes** na janela entre a resposta da OpenAI e a gravação do texto, se o Anki for morto nela.
 - **d. Tipo de nota próprio (#161):** a Conexão cria o de cada idioma, então um Anki em inglês não falha; só um tipo com o nosso nome e sem os nossos campos dá `note_type_missing`.

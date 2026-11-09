@@ -98,6 +98,28 @@ test('as telas do Envio com a Conexão dentro do Anki só dizem o que o catálog
   expect(fakes.anki.enviosEm('ru')).toHaveLength(1);
 });
 
+test('a espera pelo Anki só diz o que fazer depois de 5 minutos, sem fazer o Envio falhar (#246)', async ({ page, extensao, fakes }) => {
+  // A página lê AGORA (abrirPainel); o Envio espera desde 4 e depois desde 6 minutos antes.
+  const haMinutos = n => new Date(AGORA.getTime() - n * 60 * 1000);
+  await extensao.gravarStorage({ frases: INGLESAS });
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, INGLESAS.map(f => f.texto));
+  const [ingles] = await enviosCriados(fakes, 1);
+  const cartao = envio(page, 'Envio em inglês · 3 frases');
+  const orientacao = 'O Anki segue sem responder. Se ele estiver na tela de perfis, abra o perfil; se estiver sincronizando, espere a sincronização terminar. O Envio continua sozinho.';
+
+  fakes.anki.moverEnvio(ingles.jobId, { stage: 'wait_anki', atualizadoEm: haMinutos(4) });
+  await expect(cartao).toContainText('Esperando o Anki');
+  await expect(cartao).not.toContainText(orientacao);
+
+  // Quatro minutos esperando viram seis, e o Envio segue na mesma etapa.
+  fakes.anki.moverEnvio(ingles.jobId, { stage: 'wait_anki', atualizadoEm: haMinutos(6) });
+  await expect(cartao).toContainText(orientacao);
+  await expect(cartao).toContainText('Esperando o Anki');
+  await expect(cartao.getByRole('button')).toHaveCount(0);
+  await copiaDoCatalogo(page, '#modal-envio');
+});
+
 test.describe('o Envio parado porque o Anki fechou (#151)', () => {
   test.use({ permissaoDoAbridor: true });
 

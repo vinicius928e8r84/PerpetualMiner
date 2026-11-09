@@ -61,3 +61,9 @@ README não pode crescer (o limite de tamanho dos arquivos). `scripts/voz-da-spe
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
 | CFG-45 | IA dos cartões: o modelo, a troca de quem paga **(novo)** | status | (não existe) | A forma de pagar mudou e a nova não tem o gpt-4.1. O Envio passou para o Automático. | A linha verde do Avançado ([CFG-44](README.md)), no lugar de “saiu do ar”, quando a escolha caiu porque o login do ChatGPT acabou ou entrou e a conta nova não tem o modelo. |
+
+### Envio: o que fazer quando a espera pelo Anki não acaba (#246)
+
+| ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
+|---|---|---|---|---|---|
+| ENV-22 | Esperando o Anki há mais de 5 min **(novo)** | status | (não existe) | O Anki segue sem responder. Se ele estiver na tela de perfis, abra o perfil; se estiver sincronizando, espere a sincronização terminar. O Envio continua sozinho. | No cartão do Envio (#246), sem botão e sem fazer o Envio falhar; só quando a espera não tem o motivo do perfil (ENV-17). |

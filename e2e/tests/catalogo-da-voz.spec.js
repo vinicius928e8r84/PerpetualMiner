@@ -82,19 +82,18 @@ test('os números do catálogo saem no formato PT-BR', async ({ page, extensao }
   });
 });
 
-// #99: na tela, o complemento do Anki se chama “Conexão com o Anki”; “complemento” só aparece nos nomes que o próprio
-// Anki dá ao menu dele (Ferramentas › Complementos › Obter complementos).
-test('nenhum texto do catálogo chama a Conexão com o Anki de complemento, fora do menu do próprio Anki', async ({ page, extensao }) => {
+// #99, #237: na tela, o complemento do Anki se chama “Conexão com o Anki”; “complemento” não aparece, e o menu do
+// próprio Anki é citado pelo nome que ele mostra em pt-BR (Ferramentas › Extensões › Obter extensões).
+test('nenhum texto do catálogo chama a Conexão com o Anki de complemento', async ({ page, extensao }) => {
   await page.goto(extensao.url('painel.html'));
 
   // Exceção de teste: catálogo (CLAUDE.md § Testing).
   const pedidos = await page.evaluate(PEDIR_TODOS_OS_TEXTOS);
 
-  const semOMenuDoAnki = modelo => modelo.replaceAll('Ferramentas › Complementos', '').replaceAll('Obter complementos', '');
-  const comComplemento = pedidos.filter(({ modelo }) => /complemento/i.test(semOMenuDoAnki(modelo)));
+  const comComplemento = pedidos.filter(({ modelo }) => /complemento/i.test(modelo));
   expect(comComplemento.map(({ id, modelo }) => `${id}: ${modelo}`)).toEqual([]);
   // A conferência alcança o catálogo: as entradas com o menu do Anki estão lá.
-  expect(pedidos.filter(({ modelo }) => semOMenuDoAnki(modelo) !== modelo).length).toBeGreaterThan(0);
+  expect(pedidos.filter(({ modelo }) => modelo.includes('Ferramentas › Extensões')).length).toBeGreaterThan(0);
 });
 
 test('o content script também detecta o idioma pela base compartilhada', async ({ page, paginas, extensao }) => {
