@@ -49,11 +49,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-anki-baralhos.js` | `PerpetualMiner.Baralhos` — Baralhos e termos and Vocabulário in the Conexão com o Anki area (BRG-10…14, 19…21, 27, 34, 35, GLB-01). See “Baralhos e termos and Vocabulário” in the `painel-anki` skill |
 | `painel-ajustes.js` | The Ajustes de envio tab: one card per language, its form saved only on Salvar ajustes, the Baralho picked from the Anki's decks, and the stale-tab refusal (#35). See “Ajustes de envio” in the `painel-anki` skill |
 | `painel-anki-estilo.js`, `painel-anki-previa.js`, `painel-anki-tipo-proprio.js`, `painel-previa.css` | Estilo do cartão in Ajustes de envio: level, preview, “Usar um tipo que já tenho” (#162, #164, #165) |
-| `painel-envio.js` | The Envio ao Anki: Enviar ao Anki in the Frases bar, the progress modal, the tracking saved in `pm_envio` and the summary (ENV-03…15) that opens by itself in any area. See “Envio ao Anki” in the `painel-anki` skill |
+| `painel-envio.js` | The Envio ao Anki: Enviar ao Anki in the Frases bar, the progress modal, the tracking in `pm_envio` and the summary (ENV-03…15). See `painel-anki` skill |
 | `painel-envio-anki-fechado.js` | `PerpetualMiner.EnvioComOAnkiFechado` — Enviar ao Anki with the Anki closed (#150): the ENV-16 notice, the pending Envio and the Consertar outcome (BRG-39). See “Envio ao Anki” in the `painel-anki` skill |
-| `painel-envio-cartao.js` | `PerpetualMiner.CartaoDoEnvio`: one Envio's card in the progress modal + “Abrir <perfil>” (ENV-17) |
-| `painel-envio-parado.js` | `PerpetualMiner.EnvioParado`: the Envio stopped by a closed Anki (#151): ENV-18 and Continuar envio |
-| `painel-envio-limite.js` | `PerpetualMiner.EnvioNoLimite`: the Envio waiting for the ChatGPT plan's limit (#158): ENV-19 and its three actions |
+| `painel-envio-cartao.js` | `CartaoDoEnvio`: an Envio's card in the progress modal, “Abrir <perfil>” (ENV-17), Esquecer (ENV-23) |
+| `painel-envio-apagar.js` | `EnvioApagarFrases`: the Apagar tudo request (CFG-17) |
+| `painel-envio-parado.js` | `EnvioParado`: the Envio stopped by a closed Anki (#151): ENV-18, Continuar envio |
+| `painel-envio-limite.js` | `EnvioNoLimite`: the Envio waiting for the ChatGPT plan's limit (#158): ENV-19, three actions |
 | `painel-teto.js`, `painel-teto.css` | `TetoDoMes` and `EnvioNoTeto`: the monthly cap (#160): the 80% warning, the Custos card, the Envio band (ENV-21) |
 | `painel-conexao-versao.js` | The Conexão version notice (#177); feature map `conexao-versao` |
 | `bookreader.html/js/css` | Minerar de uma foto (ex-BookReader): book photos → Gemini Vision reads the marked passages → the person picks which phrases to mine. See “Minerar de uma foto” in the `minerar-foto` skill |
@@ -88,7 +89,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `test_empacotar.js` | Node test of the Web Store package contents and of the store guide's host-permission block |
 | `test_quiz_de_nivel.js` | Node tests of the level quiz and, in `test_festa_do_quiz.js`, of its celebration |
 | `test_ranking.js` | Node test of `lib/ranking.js` |
-| `test_voz.js` | Node test (no browser) of the Voice catalog: `lib/voz/catalogo.js` against the README's IDs and texts and the snapshot `docs/design/voz/catalogo-textos.json` (a changed text stays red until `node scripts/gerar-catalogo-da-voz.js` rewrites it); `scripts/voz-da-spec.js` and `scripts/conferir-voz.js` do the reading and the comparing |
+| `test_voz.js` | Node test of the Voice catalog vs the README and the snapshot `catalogo-textos.json` (red until `node scripts/gerar-catalogo-da-voz.js`); `scripts/voz-da-spec.js` and `scripts/conferir-voz.js` read and compare |
+| `test_ids_da_voz.js` | Node test: no Voice ID is defined twice in `lib/voz/` |
 | `test_preview.js` | Node test of the preview: it runs `preview/montar.mjs --saida <tmp>` and checks that every file the extension uses (`arquivosDaExtensao`) and everything each page loads is in the output |
 | `scripts/regras/` | The review rules a script can check (`verificar.js`, one file per rule, `linha-de-base.json`, proofs in `test_*.js`), run locally and by `.github/workflows/regras.yml`. See `AGENTS.md` § Rules and what enforces them |
 | `scripts/testes.json`, `scripts/testar.mjs`, `scripts/grupos-de-teste.js`, `scripts/test_testar.mjs` | The test groups: `testes.json` says which files each group runs (`fora` lists test-named files that are not tests), `testar.mjs` runs a group (`node scripts/testar.mjs <group> [-- args]`, `--listar`) and is the only command the workflows call, `grupos-de-teste.js` resolves a group to its files, `yaml-de-workflow.js` reads a workflow, `test_testar.mjs` tests them |

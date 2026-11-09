@@ -120,7 +120,7 @@ no bridge segue funcionando no bridge.
 | 3 | complemento antigo (≤ 0.2.0) | as rotas do Envio dão `404 not_found`: ENV-03 com a causa `HTTP 404` em Detalhes; a lista dá 404 e o painel diz “sem notícias” (ENV-09). Nada muda no Anki. **Não pede a atualização** (C8): aceito em 5.i até o #177 |
 | 4 | bridge Flask na 8766 | a Conexão de hoje ganha as mesmas rotas POST e o criar idempotente pelo `jobId`, e faz o mesmo Cartão com o motor mudado. Ela grava pelo AnkiConnect, cujo `addNote` não aceita `guid`: lá, “nota gravada, estado não” vira `duplicate` na volta, não `added` (C4, limite 5.k) |
 | 5 | dois perfis **ou duas contas** numa Conexão | a nota só vai para o perfil marcado (#149, limite 5.b); a chave gasta é a única do cofre, de qualquer conta (C5, limite 5.j) |
-| 6 | quem vem da `main` | um Envio acompanhado em `pm_envio` com um `jobId` do bridge, lido de uma Conexão que não o conhece, conta como não concluído e o Continuar envio dele dá 404 (limite 5.f); nada é recriado sozinho. Um `pm_envio` antigo sem `corpo` segue funcionando |
+| 6 | quem vem da `main` | um Envio acompanhado em `pm_envio` com um `jobId` do bridge, lido de uma Conexão que não o conhece, mostra o cartão “Não encontrado” com Esquecer (limite 5.f, #245); nada é recriado sozinho. Um `pm_envio` antigo sem `corpo` segue funcionando |
 | 7 | resposta perdida ou painel fechado | o criar é idempotente pelo `jobId` e termina um criar interrompido; com o painel e o Chrome fechados o Envio continua; ao reabrir, o painel lê o progresso da Conexão |
 | 8 | pedido repetido | criar, tentar de novo e apagar as Frases repetidos respondem igual e não gravam nada: a regra do contrato pede duas vezes todo `POST` que responde 2xx (não só 200), com a thread de trabalho parada, e compara os arquivos; `MATRIZ` diz `muda: True` nas três rotas |
 
@@ -133,9 +133,8 @@ no bridge segue funcionando no bridge.
 - **c. Texto pago duas vezes** na janela entre a resposta da OpenAI e a gravação do texto, se o Anki for morto nela.
 - **d. Tipo de nota próprio (#161):** a Conexão cria o de cada idioma, então um Anki em inglês não falha; só um tipo com o nosso nome e sem os nossos campos dá `note_type_missing`.
 - **e. Áudio e imagem:** [áudio](audio-do-cartao.md), [imagem](imagem-do-cartao.md).
-- **f. Envio que a Conexão não conhece** (veio do bridge, ou a pasta de dados foi apagada): o painel o conta como não concluído e o
-  Continuar envio dá 404. O painel decide esse `failed` sozinho (I3 da revisão: #245), contra a §1; o estado “a Conexão não conhece este
-  Envio” com Esquecer fica para a retomada (#151).
+- **f. Envio que a Conexão não conhece** (veio do bridge, ou a pasta de dados foi apagada): o cartão diz “Não encontrado” (ENV-23) e
+  oferece Esquecer, que o tira do acompanhamento sem tocar nas Frases (#245); o painel não decide `failed` por conta própria (§1).
 - **g. Sem limpeza dos Envios terminados:** os arquivos de estado e de custo de cada Envio ficam (os textos das Frases não: §3);
   a retenção fica para a retomada (#151), e um pedido gravado sem entrada na fila fica parado até o mesmo pedido voltar (o Apagar tudo o alcança: #248).
 - **h. Custos de antes:** o histórico de custos do bridge não passa para o complemento (é a passagem, #115).

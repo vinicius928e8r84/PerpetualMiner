@@ -3,7 +3,7 @@
     "node": {
       "descricao": "Os testes de Node da raiz: mineração automática, sincronização, pacote da loja, o abridor visto da extensão e os fakes da Conexão com o Anki e do abridor",
       "executor": "node",
-      "arquivos": ["test_auto_keyword.js", "test_sync.js", "test_empacotar.js", "test_contrato_fechado.js", "test_abridor.js", "test_abrir_o_anki.js", "test_fake_anki.js", "test_fake_abridor.js", "test_voz.js", "test_quiz_de_nivel.js", "test_festa_do_quiz.js", "test_ranking.js", "complemento/test_modelo_da_criacao.js", "test_preview.js", "test_separar_teclas.js", "test_apagar_frases_pendente.js", "scripts/ci/test_ci.js"]
+      "arquivos": ["test_auto_keyword.js", "test_sync.js", "test_empacotar.js", "test_contrato_fechado.js", "test_abridor.js", "test_abrir_o_anki.js", "test_fake_anki.js", "test_fake_abridor.js", "test_voz.js", "test_ids_da_voz.js", "test_quiz_de_nivel.js", "test_festa_do_quiz.js", "test_ranking.js", "complemento/test_modelo_da_criacao.js", "test_preview.js", "test_separar_teclas.js", "test_apagar_frases_pendente.js", "scripts/ci/test_ci.js"]
     },
     "regras": {
       "descricao": "As provas das regras de revisão (scripts/regras/); quem as confere no repositório é `node scripts/regras/verificar.js`",
