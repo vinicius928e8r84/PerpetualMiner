@@ -95,7 +95,7 @@ O Cartão do inglês ganhou o Intermediário e o Avançado (o russo ganhou os de
 
 ## 8. Os níveis do russo (#163)
 
-O Cartão do russo ganhou o Intermediário e o Avançado, com a morfologia. O estilo continua dado (`engine/estilos.json`); o prompt de cada nível é `ru_intermediario.txt` e `ru_avancado.txt`, a língua da explicação é o inglês nos dois, e o pedido do Envio leva `nivel` como no inglês.
+O Cartão do russo ganhou o Intermediário e o Avançado, com a morfologia. O estilo continua dado (`engine/estilos.json`); o prompt de cada nível é `ru_intermediario.txt` e `ru_avancado.txt`, a língua da explicação é o inglês no Intermediário e o russo no Avançado (o texto do nível, “Entendo o russo explicado em russo”, BRG-42; decisão do dono), e o pedido do Envio leva `nivel` como no inglês.
 
 | nível | verso (campos preenchidos) | frente |
 |---|---|---|
@@ -108,7 +108,7 @@ O Cartão do russo ganhou o Intermediário e o Avançado, com a morfologia. O es
 - **A Palavra** é a que o Cartão escolhe na Frase (linha `Word:`), e não as duas primeiras palavras da linha minerada, como no Iniciante: o áudio da Palavra fala essa. A Sílaba forte é a Palavra com o acento agudo na vogal tônica; a Pronúncia é a transliteração com a sílaba forte em maiúsculas.
 - **Campos que se gravam e o verso não mostra** (`guarda`): a **Morfologia** (`palavra = prefixo + raiz + sufixo…`, uma por linha) e a **Raiz**. A Criação (#168) usa a Raiz como radical. A Mesma raiz só se grava no Avançado.
 - **O verso sem a Frase**: o modelo de Cartão é um só para todos os níveis do russo, e o começo do verso (`{{FrontSide}}` e a linha) só aparece quando a Sílaba forte está vazia (`{{^Sílaba forte}}`): o Iniciante, que a deixa vazia, repete a Frase; os outros dois não. Conferido com o renderizador do Anki de verdade (`pip install anki`). O campo é escolhido pelos dados: o primeiro, na ordem do verso, que só os níveis com `repete_a_frase: false` preenchem.
-- **Leituras do worker, ainda não confirmadas pelo dono** (risco 14): o verso sem a Frase vale também no Avançado; a frente não ganha acento; só as palavras com pedaço a explicar ganham cor; a Pronúncia fica acima da Palavra (a ordem do verso do Iniciante é Pronúncia antes de Palavra e um modelo só ordena os três níveis); a definição do Avançado também é em inglês (a issue só pede a mesma coisa mais as palavras da mesma raiz).
+- **Leituras do worker, ainda não confirmadas pelo dono** (risco 14): o verso sem a Frase vale também no Avançado; a frente não ganha acento; só as palavras com pedaço a explicar ganham cor; a Pronúncia fica acima da Palavra (a ordem do verso do Iniciante é Pronúncia antes de Palavra e um modelo só ordena os três níveis). A definição e a explicação das cores do Avançado são em russo (decisão do dono; antes eram em inglês).
 - **Tipo de nota que já existe** a Conexão não muda (só cria): o do russo criado pelo #161 fica com o verso do Iniciante (repete a Frase, não mostra Sílaba forte, Explicação das cores nem Mesma raiz) até a pessoa o apagar e a Conexão criar o novo; o Cartão novo grava os campos mesmo assim.
 - **A tela**: Ajustes de envio › Estilo do cartão (`painel-anki-estilo.js`) passa a ter os três níveis também no russo; a nota “No russo, por enquanto só o Iniciante.” saiu.
 

@@ -209,7 +209,7 @@
         },
         "avancado": {
           "prompt": "prompts/ru_avancado.txt",
-          "explicacao": "en",
+          "explicacao": "ru",
           "verso": ["pronuncia", "palavra", "silaba_forte", "definicao", "explicacao_das_cores", "outro_exemplo", "mesma_raiz", "imagem"],
           "cores": false,
           "morfologia": true,
@@ -227,7 +227,7 @@
               "",
               "Pronunciation: pri-ha-DI-la",
               "",
-              "Definition: To come or to arrive on foot; here it is the habitual or repeated past, \"she used to come\".",
+              "Definition: Приходить, то есть прибывать пешком; здесь это привычное, повторяющееся действие в прошлом: «она приходила обычно».",
               "",
               "Other example: Мама приходила домой поздно.",
               "",
@@ -237,14 +237,14 @@
               "дома | root:дом | ending:а",
               "",
               "Colors:",
-              "prefix | при- | arrival, movement towards a place",
-              "suffix | -и-л- | verb stem and past tense; imperfective aspect",
-              "root | ход | the idea of walking, going",
-              "ending | -а | feminine singular: she (3rd person, past tense)",
+              "prefix | при- | приход, движение к какому-то месту",
+              "suffix | -и-л- | основа глагола и прошедшее время; несовершенный вид",
+              "root | ход | идея ходьбы, движения",
+              "ending | -а | женский род, единственное число: она (3-е лицо, прошедшее время)",
               "",
               "Root: ход",
               "",
-              "Same root: ходить (to walk), вход (entrance), выход (exit)"
+              "Same root: ходить (идти пешком), вход (место, где входят), выход (место, где выходят)"
             ]
           }
         }
