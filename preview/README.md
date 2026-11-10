@@ -32,13 +32,19 @@ as imagens antes do commit; `node test_preview.js` falha se a landing pedir uma 
 
 ## O movimento da landing
 
-A página está inteira sem script e sem animação: `site.js` só acende as etapas do envio quando elas aparecem e toca a
-demonstração em três etapas quando ela aparece na tela (e de novo no Repetir), e o CSS do movimento (`landing-movimento.css`) vale só dentro de
-`prefers-reduced-motion: no-preference`. As regras, que
-são as de Emil Kowalski (<https://github.com/emilkowalski/skills>): só `transform` e `opacity` se mexem (nem
-desfoque: um `filter` na animação tira ela inteira do compositor); quem entra usa a saída forte da Veio
-(`--veio-curva-saida`); toque e ponteiro respondem em `--veio-transicao`; cada coisa entra uma vez só; hover só com
-ponteiro fino e só de cor; nada espera a animação para ser clicável.
+A página está inteira sem script, sem animação e no papel: `site.js` só acende as etapas do envio quando elas aparecem
+e toca a demonstração do `Alt + S` em três etapas quando ela está na tela e a página parou (e de novo no Repetir), e
+o CSS do movimento (`landing-movimento.css`) vale só na tela e dentro de `prefers-reduced-motion: no-preference`. Com
+"menos movimento" a demonstração passa pelas mesmas três etapas em corte seco: ela é a explicação do produto, e sem as
+etapas sobraria só o resultado. O tempo de cada etapa são os números no começo do trecho dela em `site.js`.
+
+O que se move é o que explica: a chamada (uma vez, na carga), a demonstração e as etapas do envio. As seções não entram
+ao rolar, os números não contam e as âncoras chegam direto. As regras, que são as de Emil Kowalski
+(<https://github.com/emilkowalski/skills>): só `transform` e `opacity` se mexem (nem desfoque, que tira a animação
+inteira do compositor, nem altura: as perguntas abrem na hora e só o texto da resposta aparece); quem entra usa a
+saída forte da Veio (`--veio-curva-saida`); toque e ponteiro respondem em `--veio-transicao`; a animação que acabou
+solta a camada dela (`animation-fill-mode: backwards`); hover só com ponteiro fino e só no que se clica (a seta do
+botão anda 3 px, o resto muda de cor); nada espera a animação para ser clicável.
 
 ## O que o preview mostra, e o que ele não mostra
 

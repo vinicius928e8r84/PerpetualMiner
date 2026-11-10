@@ -28,6 +28,9 @@
     // A demonstração, uma etapa de cada vez, cada uma com tempo de ler o passo dela: antes (a legenda na tela), tecla
     // (o Alt+S aparece sobre o vídeo e desce) e resultado (a frase minerada, em destaque). O CSS lê data-etapa, e
     // recomeçar no meio volta de onde cada coisa está. Com menos movimento as etapas são as mesmas, em corte seco.
+    // Quanto dura cada etapa, em ms: é o tempo de ler o passo dela (cerca de 250 ms por palavra) e olhar o vídeo.
+    const ANTES = 1600;
+    const ANTES_NO_REPETIR = 700;
     const TECLA = 1200;
     const RESULTADO = 2200;
     let marcados = [];
@@ -57,7 +60,7 @@
       espera = setTimeout(() => {
         if (document.hidden) return armar();
         desarmar();
-        tocar(1600);
+        tocar(ANTES);
       }, 400);
     };
     const desarmar = () => {
@@ -78,10 +81,10 @@
     aoVer.observe(demo.querySelector('.demo-tela'));
 
     repetir.hidden = false;
-    // Repetir não refaz a espera toda: a pessoa acabou de pedir e já está olhando.
+    // Repetir não refaz a espera toda: a pessoa acabou de pedir e já leu o primeiro passo.
     repetir.addEventListener('click', () => {
       desarmar();
-      tocar(700);
+      tocar(ANTES_NO_REPETIR);
     });
   });
 })();
