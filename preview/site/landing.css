@@ -19,6 +19,9 @@
   --site-mov-apoio: 500ms;
   --site-mov-enfeite: 400ms;
   position: relative;
+  /* Uma palavra ou um endereço que não cabe na linha quebra onde for preciso: inteiro, ele alargava a coluna e o
+     celular encolhia a página inteira para caber. */
+  overflow-wrap: break-word;
   background-image: radial-gradient(ellipse 60% 520px at 50% -60px, color-mix(in srgb, var(--veio-accent) 18%, transparent), transparent);
   background-repeat: no-repeat;
 }
@@ -100,6 +103,12 @@
 .landing kbd {
   font-family: var(--veio-fonte-mono);
   font-size: .9em;
+}
+
+/* Dentro de uma grade a coluna cresce até caber a palavra inteira, então ali o texto pode quebrar em qualquer ponto
+   (landing-secoes.css faz o mesmo no texto dos cartões). */
+.landing code {
+  overflow-wrap: anywhere;
 }
 
 .landing kbd {
@@ -469,7 +478,7 @@
 
 @media (max-width: 1000px) {
   .landing .hero {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 40px;
     padding-top: 48px;
     text-align: center;

@@ -78,6 +78,7 @@
   font-size: var(--veio-tam-card);
   color: var(--veio-muted);
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 /* Os três passos numa trilha: o fio de ouro passa por trás dos números. */
@@ -422,7 +423,7 @@
   .grade--tripla,
   .mosaico,
   .destaque {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .mosaico li,
