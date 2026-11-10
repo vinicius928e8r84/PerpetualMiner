@@ -12,7 +12,46 @@
   }
 
   .demo-repetir:hover {
-    border-color: var(--veio-accent);
+    background-color: color-mix(in srgb, var(--veio-accent) 24%, transparent);
+  }
+}
+
+/* A demonstração, uma etapa de cada vez (site.js marca data-etapa): antes, tecla, resultado, fim. Aqui está só o que
+   cada etapa mostra, e vale também para quem pediu menos movimento: sem as transições de baixo, cada etapa é um corte
+   seco para a seguinte. Só na tela: no papel fica o resultado. */
+@media screen {
+  .js .demo[data-etapa] .demo-passos li {
+    opacity: .55;
+  }
+
+  .js .demo[data-etapa="antes"] .demo-passos li:nth-child(1),
+  .js .demo[data-etapa="tecla"] .demo-passos li:nth-child(2),
+  .js .demo[data-etapa="resultado"] .demo-passos li:nth-child(3),
+  .js .demo[data-etapa="fim"] .demo-passos li {
+    opacity: 1;
+  }
+
+  .js .demo[data-etapa="tecla"] .demo-teclas {
+    opacity: 1;
+  }
+
+  .js .demo[data-etapa="tecla"] .demo-teclas kbd {
+    transform: translateY(2px) scale(.95);
+  }
+
+  .js .demo[data-etapa="tecla"] .demo-teclas kbd::after {
+    opacity: .45;
+  }
+
+  .js .demo-depois,
+  .js .demo-tela::after {
+    opacity: 0;
+  }
+
+  .js .demo:is([data-etapa="resultado"], [data-etapa="fim"]) .demo-depois,
+  .js .demo[data-etapa="resultado"] .demo-tela::before,
+  .js .demo:is([data-etapa="resultado"], [data-etapa="fim"]) .demo-tela::after {
+    opacity: 1;
   }
 }
 
@@ -43,31 +82,65 @@
     animation: site-entrar-tela 700ms var(--veio-curva-saida) 120ms both;
   }
 
-  /* A demonstração: as teclas descem, a captura de depois entra por cima e o anel acende junto com ela. */
-  .demo[data-tocando] .demo-depois {
-    animation: site-minerar 320ms var(--veio-curva-saida) var(--demo-inicio, 1700ms) both;
+  /* A demonstração entre uma etapa e a outra. Tudo aqui é transição, então o Repetir no meio do caminho volta de onde
+     cada coisa está, sem corte. Sair (160 ms) é mais rápido que entrar. Quem dá o tempo de ler cada etapa é o script. */
+  .js .demo-passos li {
+    transition: opacity 200ms var(--veio-curva-saida);
   }
 
-  .demo[data-tocando] .demo-tela::after {
-    animation: site-anel 900ms var(--veio-curva-saida) var(--demo-inicio, 1700ms) both;
+  /* Etapa 2: as teclas surgem sobre o vídeo e, 400 ms depois, descem (o S 80 ms depois do Alt) e ficam apertadas. */
+  .js .demo-teclas {
+    transform: translate(-50%, -50%) scale(.96);
+    transition: opacity 160ms var(--veio-curva-saida), transform 160ms var(--veio-curva-saida);
   }
 
-  .demo[data-tocando] .demo-teclas kbd {
-    animation: site-tecla 260ms var(--veio-curva-saida) calc(var(--demo-inicio, 1700ms) - 200ms) both;
+  .js .demo[data-etapa="tecla"] .demo-teclas {
+    transform: translate(-50%, -50%);
+    transition-duration: 200ms;
   }
 
-  .demo[data-tocando] .demo-teclas kbd::after {
-    animation: site-tecla-luz 260ms var(--veio-curva-saida) calc(var(--demo-inicio, 1700ms) - 200ms) both;
+  .js .demo-teclas kbd {
+    transition: transform 160ms var(--veio-curva-saida);
   }
 
-  .demo[data-tocando] .demo-teclas kbd + kbd,
-  .demo[data-tocando] .demo-teclas kbd + kbd::after {
-    animation-delay: calc(var(--demo-inicio, 1700ms) - 140ms);
+  .js .demo-teclas kbd::after {
+    transition: opacity 160ms var(--veio-curva-saida);
   }
 
-  /* Repetir não refaz a espera: a pessoa acabou de pedir. */
-  .demo[data-tocando="de-novo"] {
-    --demo-inicio: 500ms;
+  .js .demo[data-etapa="tecla"] .demo-teclas kbd,
+  .js .demo[data-etapa="tecla"] .demo-teclas kbd::after {
+    transition-delay: 400ms;
+  }
+
+  .js .demo[data-etapa="tecla"] .demo-teclas kbd + kbd,
+  .js .demo[data-etapa="tecla"] .demo-teclas kbd + kbd::after {
+    transition-delay: 480ms;
+  }
+
+  /* Etapa 3: as teclas saem (160 ms), só então a captura de depois entra (320 ms) e, depois dela, o destaque. */
+  .js .demo-depois {
+    filter: blur(2px);
+    transition: opacity 160ms var(--veio-curva-saida), filter 160ms var(--veio-curva-saida);
+  }
+
+  .js .demo:is([data-etapa="resultado"], [data-etapa="fim"]) .demo-depois {
+    filter: none;
+    transition-duration: 320ms;
+    transition-delay: 160ms;
+  }
+
+  .js .demo-tela::before {
+    transition: opacity 675ms var(--veio-curva-saida);
+  }
+
+  .js .demo-tela::after {
+    transition: opacity 160ms var(--veio-curva-saida);
+  }
+
+  .js .demo[data-etapa="resultado"] .demo-tela::before,
+  .js .demo:is([data-etapa="resultado"], [data-etapa="fim"]) .demo-tela::after {
+    transition-duration: 320ms;
+    transition-delay: 480ms;
   }
 
   /* As etapas do envio são a explicação: o fio corre e cada etapa acende quando ele chega (site.js marca data-visivel
@@ -133,26 +206,3 @@
   from { opacity: 0; transform: translateY(12px) scale(.98); }
 }
 
-@keyframes site-minerar {
-  from { opacity: 0; filter: blur(2px); }
-}
-
-@keyframes site-anel {
-  0% { opacity: 0; }
-  25% { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-@keyframes site-tecla {
-  45% { transform: translateY(2px) scale(.95); }
-}
-
-@keyframes site-tecla-luz {
-  45% { opacity: .45; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .demo-repetir {
-    display: none;
-  }
-}

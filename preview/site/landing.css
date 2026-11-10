@@ -253,7 +253,8 @@
   margin: 32px 0 20px;
 }
 
-/* A demonstração: duas capturas da mesma tela, antes e depois do Alt+S. Sem movimento, fica a de depois. */
+/* A demonstração: duas capturas da mesma tela, antes e depois do Alt+S, mostradas em três etapas. Sem script, e no
+   papel, fica a de depois com o resultado emoldurado, e os três passos escritos embaixo. */
 .demo {
   margin: 0;
 }
@@ -277,35 +278,105 @@
   inset: 0;
 }
 
-/* O anel de ouro que acende na hora em que a frase é minerada. */
+/* O destaque do resultado: a moldura de ouro fica onde o aviso e a legenda sublinhada aparecem, e a penumbra escurece
+   o resto do vídeo enquanto a etapa dura. As medidas são o lugar deles nas capturas de preview/capturar.mjs: se o
+   overlay mudar de lugar numa captura nova, mudam aqui. */
+.demo-tela::before,
 .demo-tela::after {
   content: "";
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 2px var(--veio-accent), inset 0 0 48px color-mix(in srgb, var(--veio-accent) 35%, transparent);
-  opacity: 0;
+  z-index: 1;
+  inset: 60.5% 12% 15%;
+  border-radius: var(--veio-raio-input);
   pointer-events: none;
 }
 
+.demo-tela::before {
+  box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--veio-bg) 55%, transparent);
+  opacity: 0;
+}
+
+.demo-tela::after {
+  box-shadow: 0 0 0 2px var(--veio-accent);
+}
+
 .demo figcaption {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 12px;
-  margin-top: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px 20px;
+  margin-top: 16px;
+}
+
+/* Os três passos da demonstração, escritos. Enquanto ela toca, o que está aceso é o que o vídeo mostra agora. */
+.demo-passos {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: etapa;
+  font-size: var(--veio-tam-card);
+  line-height: 1.45;
+  color: var(--veio-text);
+}
+
+.demo-passos li {
+  counter-increment: etapa;
+  position: relative;
+  margin: 0;
+  padding-left: 32px;
+}
+
+.demo-passos li::before {
+  content: counter(etapa);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--veio-accent);
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-accent-soft);
+  color: var(--veio-accent-text);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  font-weight: var(--veio-peso-num);
+}
+
+.demo-nota {
+  grid-column: 1 / -1;
+  margin: 0;
   font-size: var(--veio-tam-corpo);
   color: var(--veio-muted);
 }
 
+/* As teclas aparecem sobre o vídeo só na etapa em que são apertadas (landing-movimento.css). Parada, a página não as
+   mostra ali: o passo 2 já as escreve. */
 .demo-teclas {
+  position: absolute;
+  z-index: 2;
+  top: 36%;
+  left: 50%;
   display: inline-flex;
-  flex: none;
-  gap: 4px;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--site-fio);
+  border-radius: var(--veio-raio-card);
+  background: color-mix(in srgb, var(--veio-bg) 80%, transparent);
+  box-shadow: var(--veio-sombra-ilha);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  pointer-events: none;
 }
 
-.demo-teclas + span {
-  flex: 1 1 220px;
+.demo-teclas kbd {
+  padding: 6px 14px;
+  border-radius: var(--veio-raio-tecla-resumo);
+  font-size: var(--veio-tam-modal);
+  font-weight: var(--veio-peso-num);
 }
 
 .demo-teclas kbd::after {
@@ -318,17 +389,16 @@
 }
 
 .demo-repetir {
-  flex: none;
-  margin-left: auto;
-  padding: 6px 14px;
-  border: 1px solid var(--veio-border-strong);
+  min-height: 40px;
+  padding: 8px 20px;
+  border: 1px solid var(--veio-accent);
   border-radius: var(--veio-raio-pilula);
-  background: transparent;
-  color: var(--veio-text);
+  background: var(--veio-accent-soft);
+  color: var(--veio-accent-text);
   font: inherit;
-  font-weight: var(--veio-peso-rotulo);
+  font-weight: var(--veio-peso-titulo);
   cursor: pointer;
-  transition: transform var(--veio-transicao) var(--veio-curva-saida), border-color var(--veio-transicao) ease;
+  transition: transform var(--veio-transicao) var(--veio-curva-saida), background-color var(--veio-transicao) ease;
 }
 
 .demo-repetir:active {
@@ -437,6 +507,14 @@
 
   .landing .hero {
     padding-top: 28px;
+  }
+
+  .demo figcaption {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .demo-repetir {
+    justify-self: start;
   }
 
   .numeros {

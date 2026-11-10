@@ -32,8 +32,8 @@ as imagens antes do commit; `node test_preview.js` falha se a landing pedir uma 
 
 ## O movimento da landing
 
-A página está inteira sem script e sem animação: `site.js` só acende as etapas do envio quando elas aparecem e refaz a
-demonstração no Repetir, e o CSS do movimento (`landing-movimento.css`) vale só dentro de
+A página está inteira sem script e sem animação: `site.js` só acende as etapas do envio quando elas aparecem e toca a
+demonstração em três etapas quando ela aparece na tela (e de novo no Repetir), e o CSS do movimento (`landing-movimento.css`) vale só dentro de
 `prefers-reduced-motion: no-preference`. As regras, que
 são as de Emil Kowalski (<https://github.com/emilkowalski/skills>): só `transform` e `opacity` se mexem (o desfoque
 curto da entrada do título e da troca das capturas é a exceção, abaixo de 5 px); quem entra usa a saída forte da Veio
