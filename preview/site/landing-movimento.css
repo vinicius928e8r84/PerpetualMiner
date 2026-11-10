@@ -1,15 +1,8 @@
 /* A landing (/sobre/), o que responde e o que se move. Carregado por último: sem este arquivo a página é a mesma, parada. */
 
-/* Resposta ao ponteiro: só onde há ponteiro fino (o toque dispara hover falso). Cor muda; nada sai do lugar. */
+/* Resposta ao ponteiro: só onde há ponteiro fino (o toque dispara hover falso) e só no que se clica: a seta do botão,
+   o link e o Repetir. Os cartões não são link nem botão, então não respondem. */
 @media (hover: hover) and (pointer: fine) {
-  .landing .site-cartao {
-    transition: border-color var(--veio-transicao) ease;
-  }
-
-  .landing .site-cartao:hover {
-    border-color: var(--site-ouro-fio);
-  }
-
   .site-botao:hover .site-seta {
     transform: translateX(3px);
   }
@@ -88,8 +81,7 @@
     transform: translateY(12px);
     transition:
       opacity var(--site-mov-entrada) var(--veio-curva-saida) var(--atraso, 0ms),
-      transform var(--site-mov-entrada) var(--veio-curva-saida) var(--atraso, 0ms),
-      border-color var(--veio-transicao) ease;
+      transform var(--site-mov-entrada) var(--veio-curva-saida) var(--atraso, 0ms);
   }
 
   .js .captura[data-revelar="bloco"] {
