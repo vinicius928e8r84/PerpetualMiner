@@ -150,8 +150,15 @@
     transition: transform 1400ms linear 200ms;
   }
 
+  /* Em coluna (landing-secoes.css) o fio desce em vez de correr para a direita, no mesmo tempo. */
+  @media (max-width: 760px) {
+    .js .etapas::after {
+      transform: scaleY(0);
+    }
+  }
+
   .js .etapas[data-visivel]::after {
-    transform: scaleX(1);
+    transform: none;
   }
 
   .js .etapas li {

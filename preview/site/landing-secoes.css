@@ -459,7 +459,7 @@
     margin: 0 auto;
   }
 
-  /* As etapas em coluna, sem o fio. */
+  /* As etapas em coluna: o fio desce pelos pontos, do primeiro ao último (o de baixo fica a meia linha do fim). */
   .etapas {
     grid-template-columns: 1fr;
     gap: 14px;
@@ -468,7 +468,16 @@
 
   .etapas::before,
   .etapas::after {
-    display: none;
+    top: 32px;
+    right: auto;
+    bottom: calc(12px + var(--veio-tam-corpo) * 1.4);
+    left: 26px;
+    width: 2px;
+    height: auto;
+  }
+
+  .etapas::after {
+    transform-origin: top;
   }
 
   .etapas li {
