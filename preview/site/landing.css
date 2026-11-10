@@ -439,6 +439,13 @@
   transform: scale(.97);
 }
 
+/* No papel não há o que repetir. */
+@media print {
+  .demo-repetir {
+    display: none;
+  }
+}
+
 /* Os números */
 .numeros {
   display: grid;
