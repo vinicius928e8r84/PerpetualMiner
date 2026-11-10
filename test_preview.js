@@ -88,9 +88,10 @@ const extensao = path.join(saida, 'extensao');
   }
   assert(fs.readFileSync(path.join(saida, 'index.html'), 'utf8').includes('href="/sobre/"'), 'a capa devia levar ao /sobre/');
 
-  // Os protótipos da landing (preview/prototipos/) saem no site, cada um com tudo o que a página dele pede, sem
-  // nada de fora; e as páginas públicas não pedem nada de lá: protótipo não é produção.
-  for (const prototipo of fs.readdirSync(path.join('preview', 'prototipos'))) {
+  // Os protótipos da landing (preview/prototipos/), enquanto houver algum, saem no site, cada um com tudo o que a
+  // página dele pede, sem nada de fora; e as páginas públicas não pedem nada de lá: protótipo não é produção.
+  const pastaDosPrototipos = path.join('preview', 'prototipos');
+  for (const prototipo of fs.existsSync(pastaDosPrototipos) ? fs.readdirSync(pastaDosPrototipos) : []) {
     const pagina = fs.readFileSync(path.join(saida, 'prototipos', prototipo, 'index.html'), 'utf8');
     for (const pedido of [...pagina.matchAll(/\b(?:src|href)="(\/[^"#?]*)"/g)].map(m => m[1])) {
       const alvo = path.join(saida, pedido);
