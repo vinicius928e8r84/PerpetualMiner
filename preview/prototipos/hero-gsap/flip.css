@@ -1,0 +1,212 @@
+/* Variante 2, Flip. Eixo: a continuidade: a frase é um objeto só.
+   O que se mexe: na chamada, a frase voa da legenda do vídeo até a linha do histórico; no Como funciona, ela viaja
+   de um estado ao outro (a linha do histórico, a palavra marcada, o cartão) e o que a acompanha aparece e some.
+   O que não se mexe: o texto do passo e a tela pequena ao lado, que trocam na hora com a aba.
+   Esta folha só desenha os três estados; a viagem entre eles é do plugin Flip, por `transform`. */
+
+/* Onde a legenda está na captura do vídeo: a frase da chamada parte daqui. Não tem desenho; é só uma medida. */
+.fx-legenda {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* A linha do histórico vem logo abaixo da tela: a frase desce da legenda até ela sem passar por cima do comando. */
+.pg-historico-primeiro .pg-historico {
+  margin: 0 0 12px;
+}
+
+/* A frase voa por cima da tela: fica acima do anel e das teclas grandes. */
+.pg--flip .pg-frase {
+  position: relative;
+  z-index: 3;
+  transform-origin: 50% 50%;
+}
+
+.fx-cena {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  align-items: center;
+  gap: 56px;
+  margin-top: 28px;
+}
+
+.fx-cena .pg-pilha {
+  margin-top: 0;
+}
+
+/* O palco da frase. A frase mede a largura em `em` (--fx-em, a mesma nos três estados) e cada estado só muda o
+   tamanho da letra (--fx-letra-…) e o lugar: as quebras de linha são as mesmas, e a escala do Flip é uma só para os
+   dois lados. A altura que o palco precisa e o topo que centra cada estado vêm medidos do script (--fx-alto,
+   --fx-topo-…); sem eles, valem as porcentagens. */
+.fx-palco {
+  --fx-em: 21;
+  --fx-letra-0: 15px;
+  --fx-letra-1: 24px;
+  --fx-letra-2: 17px;
+  --fx-proporcao: .5625;
+  position: relative;
+  aspect-ratio: 16 / 9;
+  /* A largura é sempre a da coluna; com a altura medida, a proporção deixa de mandar. */
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--fx-alto, auto);
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-bg);
+  background-image: radial-gradient(ellipse 70% 60% at 50% 0, color-mix(in srgb, var(--veio-accent) 9%, transparent), transparent);
+  overflow: hidden;
+}
+
+.fx-objeto {
+  position: absolute;
+  /* Um plano próprio: as molduras ficam atrás da letra, e não atrás do palco. */
+  z-index: 0;
+  left: 50%;
+  width: calc(var(--fx-em) * 1em);
+  margin-left: calc(var(--fx-em) * -.5em);
+  font-family: var(--veio-fonte-frase);
+  line-height: var(--veio-altura-frase);
+  color: var(--veio-text);
+}
+
+/* Passo 1, a linha do histórico: pequena, dentro da moldura da linha. */
+.fx-cena[data-passo="0"] .fx-objeto {
+  top: var(--fx-topo-0, 38%);
+  font-size: var(--fx-letra-0);
+}
+
+/* Passo 2, a palavra: a frase cresce, sem moldura, e a palavra ganha o grifo. */
+.fx-cena[data-passo="1"] .fx-objeto {
+  top: var(--fx-topo-1, 34%);
+  font-size: var(--fx-letra-1);
+}
+
+/* Passo 3, o cartão: a frase assenta no alto do cartão, com as etapas do envio embaixo dela. */
+.fx-cena[data-passo="2"] .fx-objeto {
+  top: var(--fx-topo-2, 22%);
+  font-size: var(--fx-letra-2);
+}
+
+.fx-meta {
+  margin: 0 0 .35em;
+  font-family: var(--veio-fonte-mono);
+  font-size: .68em;
+  color: var(--veio-muted);
+}
+
+.fx-meta .pg-idioma {
+  margin-right: .6em;
+  font-size: inherit;
+}
+
+.fx-frase {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* A palavra que o cartão ensina. O grifo é uma peça à parte, atrás da letra: é ele que aparece, da esquerda. */
+.landing .fx-frase mark {
+  position: relative;
+  z-index: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+}
+
+.fx-grifo {
+  position: absolute;
+  inset: .08em -.18em;
+  z-index: -1;
+  border-radius: var(--veio-raio-losango);
+  background: var(--veio-kw-bg);
+  opacity: 0;
+  visibility: hidden;
+  transform-origin: 0 50%;
+}
+
+/* As molduras andam com a frase (são dela), e por isso crescem na mesma escala, sem entortar. */
+.fx-moldura {
+  position: absolute;
+  z-index: -1;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.fx-moldura--linha {
+  inset: -.8em -1em;
+  border: 1px solid var(--site-ouro-fio);
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-surface);
+}
+
+.fx-moldura--cartao {
+  /* Embaixo, o cartão desce até depois das etapas do envio (--fx-etapas é a altura delas, medida pelo script). */
+  inset: -1.3em -1.5em calc(-2.3em - var(--fx-etapas, 4em));
+  border: 1px solid var(--veio-accent);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface);
+  box-shadow: var(--veio-sombra);
+}
+
+/* As etapas do envio, dentro do cartão, embaixo da frase. Fora do fluxo: a caixa da frase é a mesma nos três estados. */
+.fx-objeto .pg-etapas {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  gap: .45em;
+  margin: 1em 0 0;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.fx-objeto .pg-etapas li {
+  padding: .2em .7em;
+  font-size: .62em;
+}
+
+/* Parado (com "menos movimento"): o passo aberto decide o que acompanha a frase. Em movimento, é o GSAP. */
+.fx-cena[data-passo="0"] .fx-moldura--linha,
+.fx-cena:not([data-passo="0"]) .fx-grifo,
+.fx-cena[data-passo="2"] .fx-moldura--cartao,
+.fx-cena[data-passo="2"] .pg-etapas {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* A tela de verdade do passo, pequena, embaixo do texto. */
+.fx-vista {
+  max-width: 280px;
+  margin-top: 20px;
+}
+
+.fx-vista .pg-recorte {
+  border-radius: var(--veio-raio-card);
+}
+
+.fx-vista figcaption {
+  margin-top: 8px;
+  font-size: var(--veio-tam-apoio);
+}
+
+@media (max-width: 900px) {
+  .fx-cena {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  /* Na coluna estreita a frase quebra mais cedo e a letra é menor. */
+  .fx-palco {
+    --fx-em: 13.5;
+    --fx-letra-0: 14px;
+    --fx-letra-1: 19px;
+    --fx-letra-2: 15.5px;
+    --fx-proporcao: .75;
+    aspect-ratio: 4 / 3;
+  }
+
+  .fx-moldura--cartao {
+    inset: -1.2em -1.3em calc(-2.2em - var(--fx-etapas, 7em));
+  }
+}

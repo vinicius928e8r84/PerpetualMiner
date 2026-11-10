@@ -1,0 +1,106 @@
+/* Variante 4, Cinética. Eixo: a personalidade: a tecla é a personagem e a letra se mexe.
+   O que se mexe: na chamada, as teclas grandes (entram, descem e soltam com mola) e a frase minerada, que chega
+   palavra por palavra; no Como funciona, o título de cada passo, o número e o gesto do passo, uma vez, quando ele
+   chega à tela.
+   O que não se mexe: o título da página, o texto e as capturas dos passos, que estão sempre lá. */
+
+/* As teclas são a personagem: maiores, e no meio do vídeo, acima de onde o aviso da extensão vai aparecer. */
+.pg--cinetica .pg-tecla-na-tela {
+  --pg-tecla-topo: 54%;
+}
+
+.pg--cinetica .pg-tecla-corpo {
+  gap: 10px;
+  padding: 12px 14px;
+  font-size: var(--veio-tam-display);
+}
+
+.landing .pg--cinetica .pg-tecla-corpo kbd {
+  padding: 6px 16px;
+  border-radius: var(--veio-raio-tecla-resumo);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--veio-accent), black 35%);
+  transform-origin: 50% 100%;
+}
+
+/* A frase minerada, maior: é ela que se lê chegando. */
+.pg--cinetica .pg-resultado {
+  font-size: var(--veio-tam-modal);
+  line-height: 1.35;
+}
+
+/* Cada palavra mora numa máscara: a caixa de fora corta (um recorte parado, que não muda a linha de base), a de
+   dentro sobe. O recorte deixa um respiro dos lados e embaixo, para não comer a perna das letras. */
+.ci-palavra {
+  display: inline-block;
+  clip-path: inset(-.1em -.08em -.12em);
+}
+
+.ci-letra {
+  display: inline-block;
+}
+
+/* A palavra que o cartão ensina. O grifo é uma peça à parte, atrás da letra: é ele que risca, da esquerda. */
+.landing .ci-frase mark,
+.landing .ci-especime mark {
+  position: relative;
+  z-index: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+}
+
+.ci-grifo {
+  position: absolute;
+  inset: .1em -.16em;
+  z-index: -1;
+  border-radius: var(--veio-raio-losango);
+  background: var(--veio-kw-bg);
+  transform-origin: 0 50%;
+}
+
+/* O Como funciona: os três passos empilhados, com o título em letra de cartaz. */
+.pg--cinetica .pg-passo h3 {
+  font-size: clamp(26px, 3vw, 38px);
+  letter-spacing: -.03em;
+  line-height: 1.1;
+  margin-bottom: 14px;
+}
+
+.ci-numero {
+  font-size: var(--veio-tam-modal);
+  transform-origin: 0 100%;
+}
+
+/* A frase de exemplo do passo 2: é nela que a palavra é marcada. */
+.pg-passo .ci-especime {
+  margin-top: 18px;
+  padding: 10px 14px;
+  border: 1px solid var(--site-ouro-fio);
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-surface);
+  font-family: var(--veio-fonte-frase);
+  font-size: var(--veio-tam-destaque);
+  line-height: var(--veio-altura-frase);
+  color: var(--veio-text);
+  overflow-wrap: anywhere;
+}
+
+.pg--cinetica .pg-atalho kbd {
+  transform-origin: 50% 100%;
+}
+
+@media (max-width: 640px) {
+  .pg--cinetica .pg-tecla-corpo {
+    gap: 8px;
+    padding: 8px 10px;
+    font-size: var(--veio-tam-pagina);
+  }
+
+  .landing .pg--cinetica .pg-tecla-corpo kbd {
+    padding: 3px 11px;
+  }
+
+  .pg--cinetica .pg-resultado {
+    font-size: var(--veio-tam-destaque);
+  }
+}

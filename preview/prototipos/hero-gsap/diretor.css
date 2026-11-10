@@ -1,0 +1,77 @@
+/* Variante 3, Diretor. Eixo: a rolagem dirige.
+   O que se mexe: a demonstração da chamada (a linha `pm-demo`) e, no Como funciona, a cena presa na tela: a câmera,
+   o fio e o texto do passo andam com a rolagem (a linha `pm-rolagem`), para a frente e para trás.
+   O que não se mexe: o resto da página, que rola como qualquer página. */
+
+.dr-cena[hidden] {
+  display: none;
+}
+
+.dr-cena {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  align-items: center;
+  gap: 56px;
+  margin: 0;
+}
+
+/* A cena que fica presa: a janela de um lado; do outro, o fio da rolagem e o passo de agora. Os três passos (e as
+   três legendas da janela) moram no mesmo lugar e se revezam: a cena tem a altura do maior e cabe em telas baixas. */
+.dr-cena {
+  padding-top: 28px;
+}
+
+.dr-camada {
+  position: absolute;
+  inset: 0;
+}
+
+.dr-legendas,
+.dr-passos {
+  display: grid;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dr-legendas {
+  margin-top: 12px;
+}
+
+.dr-legendas > *,
+.dr-passos > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.dr-roteiro {
+  position: relative;
+  padding-top: 18px;
+}
+
+.dr-fio {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  border-radius: var(--veio-raio-linha);
+  background: var(--veio-border);
+  overflow: hidden;
+}
+
+.dr-fio-cheio {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--veio-accent);
+  transform-origin: 0 50%;
+}
+
+@media (max-width: 900px) {
+  .dr-cena {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+}

@@ -1,0 +1,204 @@
+/* Variante 1, Maestro. Eixo: o tempo na mão de quem vê.
+   O que se mexe: a demonstração (a linha `pm-demo`), que a pessoa toca, pausa e arrasta pelo trilho; e, no Como
+   funciona, a câmera e os textos entre um passo e outro (a linha `pm-como`), até o rótulo da aba clicada.
+   O trilho é a linha desenhada: o fio enche com `scaleX` e o cursor anda com `translate`. */
+.ms-transporte {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.ms-tocar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--veio-border-strong);
+  border-radius: var(--veio-raio-pilula);
+  background: transparent;
+  color: var(--veio-text);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--veio-transicao) var(--veio-curva-saida), border-color var(--veio-transicao) ease;
+}
+
+.ms-tocar:active {
+  transform: scale(.97);
+}
+
+/* O ícone: o triângulo de tocar e, enquanto a linha toca, as duas barras de pausar. Troca na hora. */
+.ms-tocar span {
+  width: 12px;
+  height: 12px;
+  background: currentColor;
+  clip-path: polygon(15% 0, 100% 50%, 15% 100%);
+}
+
+.ms-tocar[data-tocando] span {
+  clip-path: polygon(8% 0, 38% 0, 38% 100%, 8% 100%, 8% 0, 62% 0, 92% 0, 92% 100%, 62% 100%, 62% 0);
+}
+
+.ms-trilho {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 36px;
+}
+
+.ms-fio {
+  position: absolute;
+  top: 11px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: var(--veio-raio-linha);
+  background: var(--veio-border-strong);
+  overflow: hidden;
+}
+
+.ms-cheio {
+  display: block;
+  height: 100%;
+  background: var(--veio-accent);
+  transform-origin: 0 50%;
+}
+
+/* As marcas das três etapas, cada uma onde o rótulo dela está na linha (o `left` vem do script, uma vez): o risco
+   no fio e o número embaixo. */
+.ms-marcas b {
+  position: absolute;
+  top: 22px;
+  transform: translateX(-50%);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  font-weight: var(--veio-peso-num);
+  line-height: 1;
+  color: var(--veio-muted);
+}
+
+.ms-marcas b::before {
+  content: "";
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  width: 2px;
+  height: 12px;
+  margin-left: -1px;
+  border-radius: var(--veio-raio-linha);
+  background: var(--veio-muted);
+}
+
+/* O carro tem a largura do trilho e anda de 0 a 100% dela: o cursor, na ponta esquerda dele, cruza o trilho inteiro
+   sem que o script precise medir nada. */
+.ms-carro {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ms-cursor {
+  position: absolute;
+  top: 6px;
+  left: -7px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-accent);
+  box-shadow: 0 0 0 3px var(--veio-surface);
+}
+
+/* O controle de verdade, invisível, por cima de tudo: arrastar de lado é dele, rolar a página continua da página. */
+.ms-barra {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+
+.ms-barra:focus-visible ~ .ms-carro .ms-cursor {
+  outline: 2px solid var(--veio-accent);
+  outline-offset: 3px;
+}
+
+@media (pointer: coarse) {
+  .ms-tocar {
+    width: 44px;
+    height: 44px;
+  }
+
+  .ms-trilho {
+    height: 44px;
+  }
+
+  .ms-fio {
+    top: 15px;
+  }
+
+  .ms-marcas b {
+    top: 26px;
+  }
+
+  .ms-cursor {
+    top: 10px;
+  }
+}
+
+/* O Como funciona: a janela e o texto do passo, lado a lado. */
+.ms-cena {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  align-items: center;
+  gap: 56px;
+  margin-top: 28px;
+}
+
+.ms-cena .pg-pilha {
+  margin-top: 0;
+}
+
+.ms-cena .ms-legendas {
+  margin-top: 12px;
+}
+
+/* As duas capturas, uma por cima da outra, na mesma janela. */
+.ms-camada {
+  position: absolute;
+  inset: 0;
+}
+
+/* Parado (com "menos movimento", e antes de o script chegar): o passo aberto decide o que a janela mostra. Em
+   movimento, quem escreve a opacidade e o plano da câmera é a linha `pm-como`. */
+.ms-cena:not([data-passo="0"]) .ms-camada--popup,
+.ms-cena[data-passo="0"] .ms-camada--painel {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.ms-cena[data-passo="1"] .ms-camada--painel img {
+  transform: var(--plano-1);
+}
+
+.ms-cena[data-passo="2"] .ms-camada--painel img {
+  transform: var(--plano-2);
+}
+
+@media (max-width: 900px) {
+  .ms-cena {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ms-tocar:hover {
+    border-color: var(--veio-accent);
+  }
+}

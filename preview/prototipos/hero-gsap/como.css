@@ -1,0 +1,273 @@
+/* O protótipo da chamada com GSAP: o que as variantes dividem no Como funciona (as abas da Maestro e da Flip, os
+   passos empilhados da Diretor e da Cinética, a janela de cada passo). A chamada está em base.css. Como lá, esta
+   folha desenha os estados parados: o movimento entre eles é do GSAP, só por `transform` e `opacity`. */
+.pg .pg-como {
+  padding-top: 120px;
+}
+
+.pg .pg-como h2 {
+  overflow-wrap: break-word;
+}
+
+/* As abas dos três passos (variantes Maestro e Flip). */
+.pg-abas {
+  position: relative;
+  margin-top: 28px;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-selecao);
+  background: var(--veio-surface);
+}
+
+.pg-lista {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+}
+
+.pg-aba {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 20px;
+  border: 0;
+  border-radius: var(--veio-raio-selecao);
+  background: none;
+  color: var(--veio-muted);
+  font: inherit;
+  font-size: var(--veio-tam-card);
+  font-weight: var(--veio-peso-rotulo);
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.pg-aba b {
+  font-family: var(--veio-fonte-mono);
+  font-weight: var(--veio-peso-num);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A janela de ouro: do tamanho de uma aba (as três têm a mesma largura), por cima da lista. Dentro dela, a cópia
+   acesa da lista inteira. O GSAP anda com a janela para um lado e com a cópia para o outro, o mesmo tanto. */
+.pg-abas-janela {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 16px) / 3);
+  border-radius: var(--veio-raio-selecao);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.pg-lista--acesa {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: -4px;
+  width: calc(300% + 16px);
+  box-sizing: border-box;
+}
+
+.pg-lista--acesa .pg-aba {
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+}
+
+/* Os painéis dos passos moram na mesma célula: a seção tem a altura do maior, e trocar de aba não empurra a página. */
+.pg-pilha {
+  display: grid;
+  margin-top: 28px;
+}
+
+.pg-pilha > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.pg-pilha > :not([data-aberto]) {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.pg-painel:focus-visible {
+  outline-offset: 8px;
+}
+
+/* A janela de cada passo é a mesma, 16 por 10; a captura dentro dela para no trecho que o passo conta. */
+.pg-vista {
+  margin: 0;
+  min-width: 0;
+}
+
+.pg-recorte {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-surface);
+}
+
+.pg-recorte img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: auto;
+  transform-origin: 0 0;
+  /* O plano vem escrito com a captura (conteudo.js), em --plano. Onde a câmera se move, quem escreve é o GSAP. */
+  transform: var(--plano, none);
+}
+
+/* O popup, na lista das últimas mineradas: é para onde a frase vai. */
+.pg-recorte.pg-recorte--popup img {
+  left: 50%;
+  width: min(100%, 400px);
+  transform: translate(-50%, -52%);
+}
+
+.pg-recorte .pg-sem-captura {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.pg-vista figcaption {
+  margin-top: 12px;
+  font-size: var(--veio-tam-corpo);
+  color: var(--veio-muted);
+}
+
+.pg .pg-passo h3 {
+  font-size: var(--veio-tam-hero);
+  font-weight: var(--veio-peso-display);
+  letter-spacing: var(--veio-tracking-display);
+  line-height: 1.2;
+  margin: 0 0 12px;
+  overflow-wrap: break-word;
+}
+
+.pg-passo p {
+  color: var(--veio-muted);
+  margin: 0;
+}
+
+/* Os três passos empilhados, cada um com a tela dele: é o Como funciona parado da variante Diretor (com "menos
+   movimento" e quando a cena não cabe na tela) e o desenho da variante Cinética. */
+.pg-empilhados {
+  display: grid;
+  gap: 56px;
+  list-style: none;
+  margin: 28px 0 0;
+  padding: 0;
+}
+
+.pg-empilhados[hidden] {
+  display: none;
+}
+
+.pg-empilhado {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  align-items: center;
+  gap: 56px;
+  margin: 0;
+}
+
+/* Lado a lado, a tela vem à esquerda; na ordem da leitura (e na coluna única), o texto do passo vem antes dela. */
+.pg-empilhado > .pg-vista {
+  order: -1;
+}
+
+.pg-numero {
+  display: inline-block;
+  margin-bottom: 8px;
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-card);
+  font-weight: var(--veio-peso-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--veio-accent-text);
+}
+
+.pg-etapas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  counter-reset: etapa;
+  margin: 20px 0 0;
+  padding: 0;
+}
+
+.pg-etapas li {
+  counter-increment: etapa;
+  margin: 0;
+  padding: 3px 10px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-surface-2);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  color: var(--veio-text);
+}
+
+.pg-etapas li::before {
+  content: counter(etapa) " ";
+  content: counter(etapa) " " / "";
+  color: var(--veio-accent-text);
+}
+
+@media (max-width: 900px) {
+  .pg .pg-como {
+    padding-top: 88px;
+  }
+
+  .pg-abas {
+    width: auto;
+  }
+
+  .pg-aba {
+    padding: 8px 6px;
+  }
+
+  .pg-empilhados {
+    gap: 44px;
+  }
+
+  .pg-empilhado {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .pg-empilhado > .pg-vista {
+    order: 0;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pg-aba:hover {
+    color: var(--veio-text);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button.pg-aba {
+    transition: transform var(--veio-transicao) var(--veio-curva-saida), color var(--veio-transicao) ease;
+  }
+
+  button.pg-aba:active {
+    transform: scale(.97);
+  }
+}

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protótipo · a chamada e o Como funciona com GSAP, em quatro variantes de movimento</title>
+<meta name="description" content="Quatro variantes de movimento da chamada e do bloco Como funciona da landing do PerpetualMiner, feitas com GSAP, atrás de um seletor: Maestro, Flip, Diretor e Cinética. Página de protótipo, fora da landing publicada.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#121110">
+<link rel="icon" href="/veio/icones/icone.svg" type="image/svg+xml">
+<link rel="preload" href="/veio/fontes/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/veio/tokens.css">
+<link rel="stylesheet" href="/site/site.css">
+<link rel="stylesheet" href="/site/landing.css">
+<link rel="stylesheet" href="/site/landing-secoes.css">
+<link rel="stylesheet" href="/prototipos/hero-gsap/base.css">
+<link rel="stylesheet" href="/prototipos/hero-gsap/como.css">
+<link rel="stylesheet" href="/prototipos/hero-gsap/maestro.css">
+<link rel="stylesheet" href="/prototipos/hero-gsap/flip.css">
+<link rel="stylesheet" href="/prototipos/hero-gsap/diretor.css">
+<link rel="stylesheet" href="/prototipos/hero-gsap/cinetica.css">
+<link rel="stylesheet" href="/prototipos/hero-gsap/seletor.css">
+</head>
+<!-- O protótipo da chamada (hero) e do bloco "Como funciona" com GSAP, pela skill emil-prototype: quatro variantes de
+     movimento atrás do seletor (o pill escuro lá embaixo, copiado de PICKER.md sem mexer), todas a partir da variante
+     Produto de ../hero/. Uma variante de cada vez, do tamanho real, com o topo da landing em cima e a seção seguinte
+     embaixo. O GSAP mora em gsap/, copiado para dentro do site com a licença ao lado: a página não pede nada de fora.
+     Nada da produção pede esta pasta; escolhida a variante, ela vai para preview/site/ e esta pasta é apagada.
+     Como ler: LEIA-ME.md. -->
+<body class="landing">
+<a class="site-pular" href="#conteudo">Pular para o conteúdo</a>
+<header class="site-topo">
+  <a class="site-marca" href="/sobre/">
+    <img class="veio-marca" src="/veio/icones/icone.svg" width="40" height="40" alt="">
+    <span class="veio-nome">Perpetual<b>Miner</b></span>
+  </a>
+  <nav aria-label="Páginas">
+    <a href="#como-funciona">Como funciona</a>
+    <a href="/sobre/#no-anki">No Anki</a>
+    <a href="/sobre/#instalar">Instalar</a>
+    <a href="/privacidade/">Privacidade</a>
+  </nav>
+</header>
+
+<main id="conteudo" class="pg-principal">
+  <div id="stage"></div>
+
+  <section id="o-que-minera" class="pg-coluna pg-vizinho" aria-labelledby="o-que-minera-titulo">
+    <p class="site-sobretitulo">O que ele minera</p>
+    <h2 id="o-que-minera-titulo">Do vídeo, da página e do livro de papel</h2>
+    <ul class="mosaico">
+      <li class="site-cartao mosaico-largo">
+        <h3>Legendas de vídeo</h3>
+        <p>O atalho guarda a linha que está na tela. Há leitores próprios para cinco players; nos outros, a extensão procura a legenda sobre o vídeo.</p>
+        <p class="site-fichas"><span>YouTube</span><span>Netflix</span><span>Prime Video</span><span>Max</span><span>Kinopoisk</span></p>
+      </li>
+      <li class="site-cartao">
+        <h3>Texto selecionado</h3>
+        <p>Em qualquer página ou PDF: selecione o trecho e use o botão direito › Minerar com PerpetualMiner. Quem prefere grava um atalho só para isso.</p>
+      </li>
+    </ul>
+  </section>
+</main>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">Maestro</button>
+  <button class="proto-picker-item">Flip</button>
+  <button class="proto-picker-item">Diretor</button>
+  <button class="proto-picker-item">Cinética</button>
+  <span class="proto-picker-divider" aria-hidden="true"></span>
+  <button class="proto-picker-item proto-picker-replay" aria-label="Replay animation (R)">↻</button>
+</nav>
+
+<div class="proto-dados" role="group" aria-label="Dataset">
+  <button type="button" data-dados="demo" aria-pressed="true">Demo data</button>
+  <button type="button" data-dados="worst" aria-pressed="false">Worst case</button>
+  <button type="button" data-dados="short" aria-pressed="false">Short</button>
+</div>
+
+<!-- A ficha da variante que está no palco: o eixo, a linha do tempo dela, o que se mexe e o que não, quando é a certa
+     e o que custa. Fechada por padrão, para não entrar na frente do que se julga. -->
+<details class="proto-ficha">
+  <summary>Sobre esta variante</summary>
+  <div data-ficha="pm-gsap-maestro">
+    <p><b>Maestro</b> · eixo: o tempo na mão de quem vê. GSAP: a linha do tempo, com rótulos.</p>
+    <p><i>Mexe:</i> a demonstração é a linha <code>pm-demo</code> (antes 2,6 s, tecla 1,4 s, resultado), e o trilho embaixo dela é a linha desenhada: dá para pausar, voltar e arrastar até qualquer quadro. No Como funciona, a aba leva a linha <code>pm-como</code> até o rótulo do passo, e a câmera vai junto, de onde estiver.</p>
+    <p><i>Não mexe:</i> a página não tem entrada; pelo teclado (Alt+S, setas nas abas) tudo é na hora.</p>
+    <p><i>É a certa quando</i> a pessoa precisa de tempo: quem não viu, volta o quadro. <i>Custa:</i> mais um controle na tela, e o Como funciona esconde dois dos três passos.</p>
+  </div>
+  <div data-ficha="pm-gsap-flip">
+    <p><b>Flip</b> · eixo: a continuidade. A frase é um objeto só. GSAP: o plugin Flip.</p>
+    <p><i>Mexe:</i> na chamada, a frase sai da legenda do vídeo e pousa na linha do histórico (0,65 s). No Como funciona ela é a linha do histórico, cresce para a palavra ser marcada e vira o cartão, sem corte (0,6 s por passo).</p>
+    <p><i>Não mexe:</i> o texto do passo e a tela pequena ao lado, que trocam na hora com a aba.</p>
+    <p><i>É a certa quando</i> o que se quer explicar é o caminho da frase, da legenda ao cartão. <i>Custa:</i> no Como funciona a frase e o cartão são desenhados, e as telas de verdade ficam pequenas.</p>
+  </div>
+  <div data-ficha="pm-gsap-diretor">
+    <p><b>Diretor</b> · eixo: a rolagem dirige. GSAP: o plugin ScrollTrigger, com pin e scrub.</p>
+    <p><i>Mexe:</i> a demonstração da chamada, no tempo, como na Produto. No Como funciona, a cena fica presa por 2,2 telas de rolagem e a linha <code>pm-rolagem</code> anda com ela: a câmera passa do popup ao painel e desliza até o envio, para a frente e para trás.</p>
+    <p><i>Não mexe:</i> o resto da página, que rola como qualquer página. Se a cena não cabe na tela, os três passos aparecem empilhados.</p>
+    <p><i>É a certa quando</i> a página é lida rolando, no telefone ou no computador, sem clicar em nada. <i>Custa:</i> a página fica 2,2 telas mais comprida, e é a variante mais pesada (mais 18 KB de ScrollTrigger).</p>
+  </div>
+  <div data-ficha="pm-gsap-cinetica">
+    <p><b>Cinética</b> · eixo: a personalidade. A tecla é a personagem e a letra se mexe. GSAP: só o núcleo, com a mola da Veio.</p>
+    <p><i>Mexe:</i> as teclas grandes entram com mola, o Alt desce e fica, o S bate, e a frase chega ao histórico palavra por palavra, com o grifo na palavra. No Como funciona, o título de cada passo sobe palavra por palavra quando o passo chega à tela, uma vez, e o passo faz o gesto dele.</p>
+    <p><i>Não mexe:</i> o título da página, o texto e as capturas dos passos, que estão sempre lá.</p>
+    <p><i>É a certa quando</i> o Alt+S tem de ficar na memória. <i>Custa:</i> é a mais expressiva das quatro; a mola e a onda de palavras cansam se aparecerem em mais lugares.</p>
+  </div>
+  <p class="proto-ficha-teclas">Teclas: 1 a 4 e ← → trocam de variante · R repete · Alt+S minera.</p>
+</details>
+
+<script src="/prototipos/hero-gsap/gsap/gsap.min.js"></script>
+<script src="/prototipos/hero-gsap/gsap/ScrollTrigger.min.js"></script>
+<script src="/prototipos/hero-gsap/gsap/Flip.min.js"></script>
+<script src="/prototipos/hero-gsap/conteudo.js"></script>
+<script src="/prototipos/hero-gsap/comum.js"></script>
+<script src="/prototipos/hero-gsap/variante.js"></script>
+<script src="/prototipos/hero-gsap/maestro.js"></script>
+<script src="/prototipos/hero-gsap/flip.js"></script>
+<script src="/prototipos/hero-gsap/diretor.js"></script>
+<script src="/prototipos/hero-gsap/cinetica.js"></script>
+<script src="/prototipos/hero-gsap/seletor.js"></script>
+</body>
+</html>

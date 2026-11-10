@@ -1,0 +1,588 @@
+/* O protótipo da chamada com GSAP: o que as quatro variantes dividem. A página empresta a Veio e as folhas da
+   landing de hoje (/site/site.css e /site/landing.css) para as variantes nascerem dentro do produto; a produção não
+   pede nada daqui. O desenho é o da variante Produto de ../hero/ (a tela da extensão primeiro, operada por quem
+   visita); cada variante tem a sua folha (maestro.css, flip.css, diretor.css, cinetica.css) para o que é só dela.
+
+   O CSS daqui desenha os estados parados (a etapa em que a demonstração está, a aba aberta). O movimento entre eles
+   é do GSAP, que só escreve `transform` e `opacity`: por isso nada que o GSAP move tem `transform` nem `transition`
+   nesta folha, e o que resta de CSS em movimento é a resposta ao toque (150 ms) e o convite das teclas. */
+
+/* O piso de uma página que se abre no telefone: sem o clarão cinza no toque (cada coisa tocável tem o seu :active),
+   sem letra inflada no telefone deitado. */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Os tempos próprios do protótipo, ao lado dos da landing (--site-mov-…, em /site/landing.css). O GSAP os lê daqui. */
+.landing {
+  /* As coisas pequenas que aparecem: a linha do histórico, as teclas na tela. */
+  --pg-mov-volta: 200ms;
+  /* A captura de depois entrando por cima da de antes: o mesmo tempo que a landing de hoje usa. */
+  --pg-mov-minerar: 320ms;
+  /* A cor da aba indo de uma à outra. */
+  --pg-mov-aba: 250ms;
+  /* O convite das teclas: espera antes do primeiro, e de quanto em quanto tempo volta. */
+  --pg-espera-convite: 2500ms;
+  --pg-ciclo-convite: 6000ms;
+}
+
+/* O palco ocupa a largura toda: a variante decide a coluna dela. */
+.landing main.pg-principal {
+  max-width: none;
+  padding: 0;
+}
+
+.pg-coluna {
+  box-sizing: border-box;
+  max-width: var(--site-largura);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+#stage {
+  /* Guarda a altura da primeira tela enquanto o palco está vazio entre uma variante e outra: o resto da página não pula. */
+  min-height: 100svh;
+}
+
+#stage > * {
+  display: block;
+}
+
+/* Controles não são texto: o toque demorado não seleciona o rótulo nem abre o menu do link, e o toque duplo não dá zoom neles. */
+.pg-teclas,
+.pg-repetir,
+.pg-aba,
+#stage .site-botao {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.landing .site-topo a,
+#stage .site-link {
+  touch-action: manipulation;
+}
+
+/* Sem o clarão do navegador, o link responde ao toque com a cor, na hora em que o dedo desce. */
+.landing .site-topo nav a:active,
+#stage .site-link:active {
+  color: var(--veio-accent-text);
+}
+
+/* Em 320 px o botão de instalar cabe numa linha só: a seta, que é enfeite, cede o lugar. */
+@media (max-width: 380px) {
+  #stage .site-botao {
+    padding-inline: 20px;
+  }
+
+  #stage .site-seta {
+    display: none;
+  }
+}
+
+/* O rótulo do botão que não cabe numa linha quebra centrado, para a pílula continuar inteira. */
+#stage .site-botao {
+  justify-content: center;
+  text-align: center;
+}
+
+/* A coluna das variantes. */
+.pg {
+  --pg-tam-titulo: clamp(30px, 3.5vw, 46px);
+  box-sizing: border-box;
+  max-width: var(--site-largura);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* A chamada: a tela primeiro, larga; o texto ao lado, mais estreito. No telefone, a tela em cima. */
+.pg .pg-chamada {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  align-items: center;
+  gap: 56px;
+  padding-top: 48px;
+}
+
+.pg-janela {
+  margin: 0;
+  border: 1px solid var(--site-ouro-fio);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-surface);
+  box-shadow: var(--veio-sombra), 0 0 90px -30px color-mix(in srgb, var(--veio-accent) 55%, transparent);
+  overflow: hidden;
+}
+
+.pg-tela {
+  position: relative;
+  overflow: hidden;
+}
+
+.pg-tela img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.pg-tela .pg-depois {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+}
+
+.pg-janela[data-minerada] .pg-depois {
+  opacity: 1;
+}
+
+.pg-janela figcaption {
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--veio-border);
+}
+
+/* O comando da demonstração: as teclas, a legenda da etapa de agora e o Repetir. Com um atalho de quatro teclas, ou
+   numa tela de 320 px, a legenda desce para a linha de baixo em vez de se espremer numa coluna de uma palavra. */
+.pg-comando {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  font-size: var(--veio-tam-corpo);
+  line-height: 1.45;
+  color: var(--veio-muted);
+}
+
+.pg-legenda {
+  flex: 1 1 18ch;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--veio-tam-card);
+}
+
+/* "2/3": em que etapa a demonstração está. Algarismos de largura fixa, para a legenda não dançar quando o número muda. */
+.pg-legenda b,
+.pg-quadro b {
+  margin-right: 6px;
+  font-family: var(--veio-fonte-mono);
+  font-weight: var(--veio-peso-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--veio-accent-text);
+  white-space: nowrap;
+}
+
+[data-etapa="tecla"] .pg-legenda,
+[data-minerada] .pg-legenda {
+  color: var(--veio-text);
+}
+
+/* O Repetir, sempre à vista ao lado da legenda: a demonstração volta ao primeiro quadro e toca de novo. */
+.pg-repetir {
+  flex: none;
+  min-height: 36px;
+  margin: 0 0 0 auto;
+  padding: 6px 14px;
+  border: 1px solid var(--veio-border-strong);
+  border-radius: var(--veio-raio-pilula);
+  background: transparent;
+  color: var(--veio-text);
+  font: inherit;
+  font-weight: var(--veio-peso-rotulo);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--veio-transicao) var(--veio-curva-saida), border-color var(--veio-transicao) ease;
+}
+
+.pg-repetir::before {
+  content: "↻";
+  content: "↻" / "";
+  margin-right: 6px;
+  color: var(--veio-accent-text);
+}
+
+.pg-repetir:active {
+  transform: scale(.97);
+}
+
+/* No dedo, o alvo tem a altura que o dedo pede. */
+@media (pointer: coarse) {
+  .pg-repetir {
+    min-height: 44px;
+  }
+}
+
+/* O botão com as teclas do atalho. É o atalho de verdade no teclado e o lugar de tocar no telefone. */
+.pg-teclas {
+  position: relative;
+  display: inline-flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  max-width: 100%;
+  gap: 4px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-surface);
+  color: inherit;
+  font: inherit;
+}
+
+button.pg-teclas {
+  cursor: pointer;
+  transition: transform var(--veio-transicao) var(--veio-curva-saida), border-color var(--veio-transicao) ease;
+}
+
+button.pg-teclas:active {
+  transform: scale(.97);
+}
+
+.pg-teclas kbd {
+  min-width: 1.4em;
+  padding: 3px 9px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* A tecla embaixo: muda na hora em que desce, sem transição. É resposta, não animação. */
+.landing kbd[data-embaixo],
+button.pg-teclas:active kbd {
+  border-color: var(--veio-accent);
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+}
+
+/* A etapa da tecla: as teclas acendem e ganham um halo. Estado, não animação: liga e desliga na hora. */
+[data-etapa="tecla"] .pg-teclas {
+  border-color: var(--veio-accent);
+  box-shadow: 0 0 0 4px var(--veio-accent-soft);
+}
+
+.landing [data-etapa="tecla"] .pg-teclas kbd {
+  border-color: var(--veio-accent);
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+}
+
+/* O atalho no meio do texto não se parte dentro de uma tecla; entre uma tecla e outra, só no <wbr> depois do +. */
+.pg-atalho {
+  white-space: nowrap;
+}
+
+/* As teclas grandes por cima da captura, na etapa da tecla, no lugar em que o aviso da extensão vai aparecer (a
+   base delas fica onde termina o aviso, 72% da altura da captura inteira, sem cobrir a legenda do vídeo): o olho já
+   está ali quando o resultado chega. A caixa de fora guarda o lugar; o corpo é o que o GSAP faz aparecer e descer. */
+.pg-tecla-na-tela {
+  position: absolute;
+  top: var(--pg-tecla-topo, 72%);
+  left: 50%;
+  z-index: 2;
+  width: max-content;
+  max-width: 92%;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+/* Fundo cheio, sem vidro: um desfoque atrás de uma coisa que se mexe custa um quadro inteiro a cada quadro. */
+.pg-tecla-corpo {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--veio-accent);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface);
+  box-shadow: var(--veio-sombra);
+  font-size: var(--veio-tam-hero);
+  opacity: 0;
+  visibility: hidden;
+  transform-origin: 50% 100%;
+}
+
+.landing .pg-tecla-corpo kbd {
+  padding: 4px 12px;
+  border-color: var(--veio-accent);
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+  font-weight: var(--veio-peso-num);
+}
+
+[data-etapa="tecla"] .pg-tecla-corpo {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Numa captura pequena as teclas encolhem com ela. */
+@media (max-width: 640px) {
+  .pg-tecla-corpo {
+    gap: 6px;
+    padding: 6px 8px;
+    font-size: var(--veio-tam-pagina);
+  }
+
+  .landing .pg-tecla-corpo kbd {
+    padding: 2px 9px;
+  }
+}
+
+/* O anel de ouro que acende na captura quando a frase é minerada (a linha do tempo o acende e apaga). */
+.pg-anel {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px var(--veio-accent), inset 0 0 64px color-mix(in srgb, var(--veio-accent) 35%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* O que a frase vira depois do atalho: uma linha do histórico. O lugar dela existe sempre (vazio, tracejado), e a
+   frase e o aviso de vazio ocupam a mesma célula: minerar não muda a altura de nada. */
+.pg-historico {
+  display: grid;
+  align-items: center;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--veio-border-strong);
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-bg);
+}
+
+.pg-janela[data-minerada] .pg-historico {
+  border-style: solid;
+  border-color: var(--site-ouro-fio);
+}
+
+.pg-vazio,
+.pg-resultado {
+  grid-area: 1 / 1;
+  margin: 0;
+}
+
+.pg-vazio {
+  font-size: var(--veio-tam-corpo);
+  color: var(--veio-muted);
+}
+
+.pg-janela[data-minerada] .pg-vazio {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.pg-resultado {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--veio-fonte-frase);
+  font-size: var(--veio-tam-frase);
+  line-height: var(--veio-altura-frase);
+  color: var(--veio-text);
+  opacity: 0;
+  visibility: hidden;
+}
+
+.pg-frase {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pg-idioma {
+  flex: none;
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  color: var(--veio-accent-text);
+}
+
+.pg-janela[data-minerada] .pg-resultado {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* As três etapas paradas, lado a lado: antes, a tecla, depois. É a demonstração com "menos movimento": nada depende
+   do tempo, tudo está na tela para ser lido. São miniaturas de apoio da tela grande, que está logo acima. */
+.pg-quadros {
+  display: grid;
+  grid-template-columns: minmax(0, 180px) auto minmax(0, 180px);
+  justify-content: start;
+  align-items: start;
+  gap: 16px 20px;
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+
+.pg-quadros[hidden] {
+  display: none;
+}
+
+.pg-quadro {
+  min-width: 0;
+  margin: 0;
+}
+
+.pg-quadro img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-input);
+}
+
+.pg-quadro p {
+  margin: 10px 0 0;
+  font-size: var(--veio-tam-apoio);
+  line-height: 1.45;
+  color: var(--veio-muted);
+}
+
+.pg-quadro--tecla {
+  display: grid;
+  justify-items: center;
+  max-width: 22ch;
+  text-align: center;
+}
+
+/* O quadro da etapa em que a demonstração está acende, na hora: é o que o Repetir percorre com "menos movimento". */
+[data-etapa="antes"] [data-quadro="antes"] img,
+[data-etapa="resultado"] [data-quadro="resultado"] img,
+[data-etapa="tecla"] [data-quadro="tecla"] .pg-teclas {
+  border-color: var(--veio-accent);
+}
+
+[data-etapa="antes"] [data-quadro="antes"] p,
+[data-etapa="tecla"] [data-quadro="tecla"] p,
+[data-etapa="resultado"] [data-quadro="resultado"] p {
+  color: var(--veio-text);
+}
+
+@media (max-width: 640px) {
+  .pg-quadros {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* A tecla e a legenda dela na mesma linha; com um atalho de quatro teclas, a legenda desce. */
+  .pg-quadro--tecla {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 12px;
+    max-width: none;
+    text-align: left;
+  }
+
+  .pg-quadro--tecla p {
+    flex: 1 1 14ch;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .pg-quadro img {
+    max-width: 220px;
+  }
+}
+
+/* O lugar de uma captura que não carregou: o texto que a descreve, no espaço que seria dela. */
+.pg-sem-captura {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 20px;
+  font-size: var(--veio-tam-corpo);
+  color: var(--veio-muted);
+}
+
+/* Quem lê a tela ouve o texto inteiro; quem vê, vê as palavras que a variante Cinética move uma a uma. */
+.pg-so-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* O texto da chamada. */
+.pg-texto .site-selo {
+  margin-bottom: 18px;
+}
+
+.pg h1 {
+  font-size: var(--pg-tam-titulo);
+  letter-spacing: -.03em;
+  line-height: 1.08;
+  margin: 0 0 18px;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+
+.pg-lead {
+  font-size: var(--veio-tam-destaque);
+  color: var(--veio-muted);
+  margin: 0;
+}
+
+.pg-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 28px;
+  margin: 26px 0 16px;
+}
+
+@media (max-width: 900px) {
+  .pg .pg-chamada {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 36px;
+    padding-top: 24px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.pg-teclas:hover,
+  .pg-repetir:hover {
+    border-color: var(--veio-accent);
+  }
+
+  .pg .site-link:hover {
+    text-decoration-color: var(--veio-accent);
+  }
+
+  .pg .site-botao:hover .site-seta {
+    transform: translateX(3px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* O convite: enquanto ninguém usou a demonstração, um anel sai das teclas, espera e sai de novo. São três vezes e
+     chega; no primeiro uso, para na hora. É animação de CSS de propósito: fica fora da thread da página, e uma
+     espera de seis segundos não é motivo para manter o relógio do GSAP acordado. */
+  button.pg-teclas::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border: 1px solid var(--veio-accent);
+    border-radius: inherit;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  #stage > :not([data-usada], [data-tocou]) button.pg-teclas::after {
+    animation: pg-convite var(--pg-ciclo-convite) var(--veio-curva-saida) var(--pg-espera-convite) 3;
+  }
+}
+
+/* O anel ocupa o primeiro sexto do ciclo; no resto, espera. */
+@keyframes pg-convite {
+  0% { opacity: .9; transform: scale(1); }
+  16% { opacity: 0; transform: scale(1.18, 1.5); }
+  100% { opacity: 0; transform: scale(1.18, 1.5); }
+}
+
+/* O vizinho de baixo, para as variantes serem julgadas com a página em volta: a seção seguinte da landing, parada. */
+.pg-vizinho {
+  padding-bottom: 160px;
+}
