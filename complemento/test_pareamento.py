@@ -19,7 +19,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import pareamento  # noqa: E402
+from complemento import pareamento, registro  # noqa: E402
 from complemento.test_pareamento_de_mentira import (  # noqa: E402
     CLIENTE, CODIGO, DESAFIO, OUTRO_CLIENTE, OUTRO_SEGREDO, SEGREDO, UM_CLIENTE_NOVO, VETOR, TelaDeMentira, arquivo_do_pareamento, bytes_de, cabecalhos_assinados,
     comecar, concluir, json_de, semear,
@@ -189,7 +189,7 @@ class ConcluirOPareamento(unittest.TestCase):
         relogio = [1000.0]
         with tempfile.TemporaryDirectory() as pasta:
             tela = TelaDeMentira()
-            p = pareamento.Pareamento(os.path.join(pasta, "pareamento.json"), logging.getLogger("teste"), relogio=lambda: relogio[0], na_tela=tela,
+            p = pareamento.Pareamento(os.path.join(pasta, "pareamento.json"), registro.silencioso(), relogio=lambda: relogio[0], na_tela=tela,
                                       sortear=lambda: CODIGO)
             try:
                 p.comecar()
@@ -222,6 +222,78 @@ class ConcluirOPareamento(unittest.TestCase):
             ]
             restam = concluir(conexao, codigo="AAA-AAA")[1]["restam"]
         self.assertEqual((recusas, restam), ([400, 400], 4))
+
+
+def esgotar(conexao, codigos=1):
+    """Gasta as 5 tentativas de `codigos` códigos seguidos, como um programa que só adivinha."""
+    for _ in range(codigos):
+        comecar(conexao)
+        for _ in range(pareamento.TENTATIVAS):
+            concluir(conexao, codigo="AAA-AAA")
+
+
+class OTetoDosCodigosNovos(unittest.TestCase):
+    """Cinco tentativas por código não fecham a força bruta se o código novo não tem teto (o review do #192): três códigos esgotados seguidos bloqueiam o seguinte."""
+
+    def test_o_quarto_codigo_depois_de_tres_esgotados_e_recusado_sem_abrir_o_dialogo(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, pareado=False) as conexao:
+            esgotar(conexao, 3)
+            abertos = len(conexao.tela.codigos)
+            status, _, corpo = comecar(conexao)
+            de_novo = comecar(conexao)[0]
+            mostrados = len(conexao.tela.codigos)
+            log = conexao.log()
+        self.assertEqual((status, json_de(corpo), de_novo), (429, {"error": "pairing_locked"}, 429))
+        self.assertEqual((abertos, mostrados), (3, 3))
+        self.assertIn("nenhum código novo por 15 minutos", log)
+
+    def test_dois_esgotados_ainda_deixam_pedir_outro_codigo_e_parear_zera_a_conta(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, pareado=False) as conexao:
+            esgotar(conexao, 2)
+            comecar(conexao)
+            pareou = concluir(conexao)[0]
+            esgotar(conexao, 2)
+            depois = comecar(conexao)[0]
+        self.assertEqual((pareou, depois), (200, 200))
+
+    def test_o_bloqueio_acaba_em_quinze_minutos_e_o_codigo_novo_volta_a_valer(self):
+        relogio = [1000.0]
+        with tempfile.TemporaryDirectory() as pasta:
+            tela = TelaDeMentira()
+            p = pareamento.Pareamento(os.path.join(pasta, "pareamento.json"), registro.silencioso(), relogio=lambda: relogio[0], na_tela=tela,
+                                      sortear=lambda: CODIGO)
+            try:
+                for _ in range(pareamento.CODIGOS_ESGOTADOS_PARA_BLOQUEAR):
+                    p.comecar()
+                    for _ in range(pareamento.TENTATIVAS):
+                        p.concluir("AAA-AAA", UM_CLIENTE_NOVO, "")
+                bloqueado = p.comecar()[0]
+                relogio[0] += pareamento.BLOQUEIO_S - 1
+                ainda = p.comecar()[0]
+                relogio[0] += 2
+                livre = p.comecar()[0]
+                certo = p.concluir("K7M-4PX", UM_CLIENTE_NOVO, "")[0]
+            finally:
+                p.parar()
+        self.assertEqual((bloqueado, ainda, livre, certo), (429, 429, 200, 200))
+
+    def test_com_um_codigo_ainda_valendo_pedir_de_novo_nao_e_bloqueio_nem_codigo_novo(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, pareado=False) as conexao:
+            comecar(conexao)
+            for _ in range(20):
+                self.assertEqual(comecar(conexao)[0], 200)
+            codigos = set(conexao.tela.codigos)
+            restam = concluir(conexao, codigo="AAA-AAA")[1]["restam"]
+        self.assertEqual((codigos, restam), ({"K7M-4PX"}, 4))
+
+    def test_o_bloqueio_vale_para_quem_pede_o_codigo_e_nao_para_o_codigo_que_ja_foi_usado(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, pareado=False) as conexao:
+            comecar(conexao)
+            concluir(conexao)
+            esgotar(conexao, 3)
+            bloqueado = comecar(conexao)[0]
+            segundo = concluir(conexao, cliente=OUTRO_CLIENTE)
+        self.assertEqual((bloqueado, segundo[0]), (429, 410))
 
 
 class ConferirAConexao(unittest.TestCase):

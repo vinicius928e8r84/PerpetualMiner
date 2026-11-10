@@ -9,51 +9,19 @@
 const { test, expect } = require('../fixtures');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 const { abrirPainel } = require('../apoio-do-envio');
+const { faixa, conectar, campo, confirmar, toasts, ponto, codigoNoAnki, quantosPareados, desconectarNoAnki, credencialGuardada, parearPelaTela } = require('../apoio-do-pareamento');
 
 test.use({ pareada: false });
-
-const faixa = page => page.locator('#painel-pareamento');
-const conectar = page => faixa(page).getByRole('button', { name: 'Conectar' });
-const campo = page => page.getByRole('textbox', { name: 'Digite o código que apareceu no Anki' });
-const confirmar = page => faixa(page).getByRole('button', { name: 'Confirmar' });
-const toasts = page => page.locator('.veio-toast');
-
-/** O código que o Anki mostra agora: na janela de mentira do fake, ou na do complemento real. */
-const codigoNoAnki = async (fakes, conexaoDoTeste) => (conexaoDoTeste ? (await conexaoDoTeste.enviar({ pareamento: 'codigo' })).codigo : fakes.anki.pareamento.codigoNoAnki());
-const quantosPareados = async (fakes, conexaoDoTeste) => (conexaoDoTeste ? (await conexaoDoTeste.enviar({ pareamento: 'navegadores' })).navegadores : fakes.anki.pareamento.pareados().size);
-const desconectarNoAnki = async (fakes, conexaoDoTeste) => (conexaoDoTeste ? conexaoDoTeste.enviar({ pareamento: 'desconectar' }) : fakes.anki.pareamento.desconectar());
-
-/** O que a extensão guardou do pareamento no IndexedDB do service worker: o navegador e se a chave deixa ler os bytes. */
-const credencialGuardada = extensao => extensao.serviceWorker.evaluate(() => new Promise((resolver, rejeitar) => {
-  const abertura = indexedDB.open('pm-pareamento', 1);
-  abertura.onerror = () => rejeitar(abertura.error);
-  abertura.onsuccess = () => {
-    const banco = abertura.result;
-    if (!banco.objectStoreNames.contains('conexao')) { banco.close(); return resolver(null); }
-    const leitura = banco.transaction('conexao', 'readonly').objectStore('conexao').get('credencial');
-    leitura.onsuccess = () => {
-      banco.close();
-      const guardada = leitura.result;
-      resolver(guardada ? { cliente: guardada.cliente, extraivel: guardada.chave.extractable, usos: guardada.chave.usages } : null);
-    };
-  };
-}));
-
-async function parearPelaTela(page, fakes, conexaoDoTeste) {
-  await conectar(page).click();
-  await expect(campo(page)).toBeVisible();
-  const codigo = await codigoNoAnki(fakes, conexaoDoTeste);
-  await campo(page).fill(codigo.toLowerCase());
-  await confirmar(page).click();
-  await expect(faixa(page)).toHaveCount(0);
-}
 
 test('sem pareamento, o Painel pede para conectar e nenhum pedido privado sai para a Conexão', async ({ page, extensao, fakes, conexaoDoTeste }) => {
   await abrirPainel(page, extensao, '#anki/custos');
 
   await expect(faixa(page)).toContainText('Conecte este navegador ao Anki');
   await expect(conectar(page)).toBeVisible();
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  // O ponto da Conexão só fica verde com a Conexão provada (desenho § 2): sem pareamento ele diz o que falta, e as telas não fingem erro.
+  await expect(ponto(page)).toHaveAttribute('data-estado', 'a_parear');
+  await expect(page.locator('#shell-conexao-descricao')).toHaveText('Conecte este navegador ao Anki');
+  await expect(page.getByText('Não deu para carregar os custos')).toHaveCount(0);
   await estadoFinalEm('os navegadores que a Conexão tem pareados', () => quantosPareados(fakes, conexaoDoTeste), 0);
   if (!conexaoDoTeste) {
     const caminhos = [...new Set(fakes.anki.requisicoes.map(r => r.caminho))];
@@ -82,6 +50,7 @@ test('na Boas-vindas, que esconde o resto do Painel, o aviso de conectar aparece
   await expect(page.locator('#boas-vindas > #painel-pareamento')).toContainText('Conecte este navegador ao Anki');
 
   await page.locator('#boas-vindas > #painel-pareamento').getByRole('button', { name: 'Conectar' }).click();
+  await expect(campo(page)).toBeVisible();
   await campo(page).fill(await codigoNoAnki(fakes, conexaoDoTeste));
   await confirmar(page).click();
 
@@ -104,6 +73,7 @@ test('Conectar, o código do Anki e Confirmar: o navegador fica conectado, com a
 
   await expect(faixa(page)).toHaveCount(0);
   await expect(toasts(page)).toContainText('Conexão com o Anki: ligada');
+  await expect(ponto(page)).toHaveAttribute('data-estado', 'ligada');
   // Pareado, a aba Custos lê da Conexão (o pedido saiu assinado e a resposta voltou provada).
   await page.getByRole('radio', { name: 'Custos' }).check();
   await expect(conexaoDoTeste ? page.getByText('Nenhum envio neste período.') : page.getByRole('listbox', { name: 'Envios recentes' })).toBeVisible();
@@ -137,6 +107,7 @@ test('o código errado diz quantas tentativas restam e guarda o que foi digitado
   await expect(faixa(page)).toContainText('Código errado. Restam 3 tentativas');
   await estadoFinalEm('os navegadores que a Conexão tem pareados', () => quantosPareados(fakes, conexaoDoTeste), 0);
 
+  await expect(campo(page)).toBeVisible();
   await campo(page).fill(await codigoNoAnki(fakes, conexaoDoTeste));
   await confirmar(page).click();
   await expect(faixa(page)).toHaveCount(0);
@@ -167,6 +138,7 @@ test('cinco códigos errados matam o código: o Painel volta ao Conectar com “
 test('o código que o Anki fechou com Cancelar não vale mais', async ({ page, extensao, fakes, conexaoDoTeste }) => {
   await abrirPainel(page, extensao, '#frases');
   await conectar(page).click();
+  await expect(campo(page)).toBeVisible();   // o `comecar` já chegou à Conexão: só então o código existe para ser lido
   const codigo = await codigoNoAnki(fakes, conexaoDoTeste);
   if (conexaoDoTeste) await conexaoDoTeste.enviar({ pareamento: 'cancelar' });
   else fakes.anki.pareamento.cancelarNoAnki();
@@ -182,6 +154,7 @@ test('o código que passou de 5 minutos não vale mais', async ({ page, extensao
   test.skip(Boolean(conexaoDoTeste), 'o relógio de 5 minutos da Conexão real é provado em complemento/test_pareamento.py');
   await abrirPainel(page, extensao, '#frases');
   await conectar(page).click();
+  await expect(campo(page)).toBeVisible();
   const codigo = fakes.anki.pareamento.codigoNoAnki();
   fakes.anki.pareamento.vencerOCodigo();
 
@@ -206,22 +179,28 @@ test('o Anki que não consegue mostrar o código: o Painel diz que a porta não 
 test.describe('depois de pareado', () => {
   test.use({ pareada: true });
 
-  test('Desconectar navegadores no Anki: a faixa volta, a credencial não é apagada e a chave da OpenAI da Conexão fica', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+  test('Desconectar navegadores no Anki: a porta deixa de se confirmar (nunca é a tela que oferece o pareamento sozinha), Conectar pareia de novo no mesmo navegador e a chave fica', async ({ page, extensao, fakes, conexaoDoTeste }) => {
     test.skip(Boolean(conexaoDoTeste), 'a chave da Conexão real tem o próprio caminho (chave-autoridade.spec.js); o desconectar real é provado em complemento/test_pareamento.py');
     fakes.anki.guardarChaveNaConexao('9f3a', 3, 'uid-teste', 100, false);
     await abrirPainel(page, extensao, '#anki/custos');
-    await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+    await expect(ponto(page)).toHaveAttribute('data-estado', 'ligada');
     await expect(faixa(page)).toHaveCount(0);
+    const antes = (await credencialGuardada(extensao))?.cliente;
 
     fakes.anki.pareamento.desconectar();
     await page.reload();
 
-    await expect(faixa(page)).toContainText('Conecte este navegador ao Anki');
-    expect((await credencialGuardada(extensao))?.cliente).toMatch(/^[0-9a-f-]{36}$/);   // a credencial fica: um 401 sem prova não desfaz o pareamento
+    // Um 401 sem prova também é o que um impostor responde: o Painel não convida a parear, diz que a porta não se confirmou e deixa a pessoa escolher.
+    await expect(faixa(page)).toContainText('Algo na porta do Anki não se confirmou. Nada foi enviado');
+    await expect(faixa(page).getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
+    await expect(ponto(page)).toHaveAttribute('data-estado', 'nao_confirmada');
+    expect(antes).toMatch(/^[0-9a-f-]{36}$/);
+    expect((await credencialGuardada(extensao))?.cliente).toBe(antes);   // a credencial fica: um 401 sem prova não desfaz o pareamento
     await estadoFinalEm('a chave da OpenAI que a Conexão guarda', () => fakes.anki.chaveNaConexao(), 'sk-proj-guardada-antes-9f3a');
-    // Parear de novo substitui o segredo daquele navegador.
+    // Pareia de novo por escolha, e a linha do mesmo navegador é substituída (o mesmo `cliente`), não somada.
     await parearPelaTela(page, fakes, conexaoDoTeste);
-    await estadoFinalEm('os navegadores que a Conexão tem pareados', () => fakes.anki.pareamento.pareados().size, 1);
+    await estadoFinalEm('os navegadores que a Conexão tem pareados', () => [...fakes.anki.pareamento.pareados().keys()], [antes]);
+    await expect(ponto(page)).toHaveAttribute('data-estado', 'ligada');
   });
 });
 
@@ -240,61 +219,12 @@ test('dois perfis do Chrome pareiam cada um o seu segredo, e o Desconectar do An
   await desconectarNoAnki(fakes, conexaoDoTeste);
   await page.reload();
   await outra.reload();
-  await expect(faixa(page)).toContainText('Conecte este navegador ao Anki');
-  await expect(faixa(outra)).toContainText('Conecte este navegador ao Anki');
+  await expect(faixa(page)).toContainText('Algo na porta do Anki não se confirmou. Nada foi enviado');
+  await expect(faixa(outra)).toContainText('Algo na porta do Anki não se confirmou. Nada foi enviado');
+  await parearPelaTela(page, fakes, conexaoDoTeste);
+  await parearPelaTela(outra, fakes, conexaoDoTeste);
+  await estadoFinalEm('os navegadores que a Conexão tem pareados', () => quantosPareados(fakes, conexaoDoTeste), 2);
+  expect([(await credencialGuardada(extensao)).cliente, (await credencialGuardada(segundoPerfil.extensao)).cliente]).toEqual([primeira.cliente, segunda.cliente]);
+  await desconectarNoAnki(fakes, conexaoDoTeste);
   await estadoFinalEm('os navegadores que a Conexão tem pareados', () => quantosPareados(fakes, conexaoDoTeste), 0);
-});
-
-test.describe('quem não é a Conexão', () => {
-  test.use({ pareada: true });
-  test.beforeEach(({ conexaoDoTeste }) => test.skip(Boolean(conexaoDoTeste), 'o impostor ocupa a porta no lugar do fake'));
-
-  /** Um impostor na 8766: responde a saúde como a Conexão e tudo o mais com 200 e `{}`, sem prova, e anota o que recebe. */
-  async function impostorNaPorta(context, fakes) {
-    const vistos = [];
-    await context.route(fakes.anki.padrao, async route => {
-      const req = route.request();
-      const caminho = new URL(req.url()).pathname;
-      vistos.push({ metodo: req.method(), caminho, corpo: req.postData() });
-      const corpo = caminho === '/health' ? { ok: true, versao: '9.9.9', perfil: 'Impostor' } : {};
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(corpo) });
-    });
-    return vistos;
-  }
-
-  test('o impostor na porta só vê o desafio: a chave digitada não sai, o Painel diz que a porta não se confirmou e a aba do ChatGPT não abre', async ({ page, context, extensao, fakes }) => {
-    const vistos = await impostorNaPorta(context, fakes);
-    await abrirPainel(page, extensao, '#configuracoes/ia');
-    await expect(faixa(page)).toContainText('Algo na porta do Anki não se confirmou. Nada foi enviado');
-    await expect(faixa(page).getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
-
-    await page.locator('#cfg-ia').getByRole('textbox', { name: 'Chave da OpenAI' }).fill('sk-proj-chave-que-nao-pode-vazar-1234');
-    await page.locator('#cfg-ia').getByRole('button', { name: 'Conferir e salvar' }).click();
-    await page.locator('#cfg-ia').getByRole('button', { name: 'Continuar com o ChatGPT' }).click();
-
-    await estadoFinalEm('o que o impostor da porta recebeu', () => [...new Set(vistos.map(v => v.caminho))].sort(), ['/health', '/pareamento/conferir']);
-    expect(JSON.stringify(vistos)).not.toContain('sk-proj-chave-que-nao-pode-vazar');
-    expect(context.pages().filter(p => p.url().startsWith('https://auth.openai.com'))).toHaveLength(0);
-    expect(fakes.anki.requisicoes).toEqual([]);
-    await estadoFinal(extensao, { pm_chave_openai: null });
-  });
-});
-
-test.describe('uma Conexão de antes do pareamento', () => {
-  test.use({ pareada: true });
-
-  test('o 404 no conferir dá o aviso de atualizar e só o Atualizar agora sai para ela, sem assinatura nem dado', async ({ page, extensao, fakes, conexaoDoTeste }) => {
-    test.skip(Boolean(conexaoDoTeste), 'a Conexão real tem o pareamento');
-    fakes.anki.pareamento.antigo();
-    fakes.anki.definirAtualizacao({ ankiweb: 'com_versao_nova' });
-    await abrirPainel(page, extensao, '#anki/custos');
-
-    await expect(page.locator('#painel-conexao-versao')).toContainText('A Conexão com o Anki está desatualizada');
-    await expect(faixa(page)).toHaveCount(0);
-    await estadoFinalEm('os pedidos que a Conexão antiga recebeu', () => [...new Set(fakes.anki.requisicoes.map(r => r.caminho))], ['/health']);
-
-    await page.locator('#painel-conexao-versao').getByRole('button', { name: 'Atualizar agora' }).click();
-    await estadoFinalEm('os pedidos que a Conexão antiga recebeu', () => [...new Set(fakes.anki.requisicoes.map(r => r.caminho))].sort(), ['/atualizacao/agora', '/health']);
-    expect(fakes.anki.requisicoes.find(r => r.caminho === '/atualizacao/agora').corpo).toBe('{}');
-  });
 });

@@ -163,16 +163,23 @@ def recusa_do_porteiro(status, erro, caminho):
     return status == 401 and erro in RECUSAS_DO_PORTEIRO and not caminho.startswith("/pareamento/")
 
 
-def preparar_o_pareamento(p, com_tela, codigo_pendente=None, codigo_usado_por=None):
-    """A janela do Anki de mentira no pareamento `p` (`com_tela=False`: o Anki não tem onde mostrar o código), o código que ela mostra agora e o
-    navegador que já o usou. Devolve a janela."""
+def preparar_o_pareamento(p, com_tela, contexto=None):
+    """A janela do Anki de mentira no pareamento `p` (`com_tela=False`: o Anki não tem onde mostrar o código) e o que o `contexto` de um exemplo do contrato
+    diz dele: `codigoPendente` (o código que a janela mostra agora), `codigoUsadoPor` (o navegador que já o usou) e `bloqueado` (três códigos gastaram as
+    tentativas seguidos). Devolve a janela."""
+    contexto = contexto or {}
     tela = TelaDeMentira()
     p.na_tela = tela if com_tela else None
-    if codigo_pendente:
-        p.sortear = lambda: codigo_pendente
+    if contexto.get("codigoPendente"):
+        p.sortear = lambda: contexto["codigoPendente"]
         p.comecar()
-        if codigo_usado_por:
-            p.concluir(codigo_pendente, codigo_usado_por, "Outro")
+        if contexto.get("codigoUsadoPor"):
+            p.concluir(contexto["codigoPendente"], contexto["codigoUsadoPor"], "Outro")
+    if contexto.get("bloqueado"):
+        for _ in range(pareamento.CODIGOS_ESGOTADOS_PARA_BLOQUEAR):
+            p.comecar()
+            for _ in range(pareamento.TENTATIVAS):
+                p.concluir("AAA-AAA", OUTRO_CLIENTE, "")
     return tela
 
 

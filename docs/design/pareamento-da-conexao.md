@@ -34,9 +34,9 @@ Do lado da extensão (o `ConexaoAnki` ganha a nuance; texto pela Voz, regra C8: 
 | estado | quando | o que a tela diz (texto proposto, entra pelo catálogo) |
 |---|---|---|
 | desligada | `/health` não responde (como hoje) | o mesmo de hoje |
-| a parear | `/health` OK, sem credencial guardada, ou `conferir` responde `401 pairing_required` | “Conecte este navegador ao Anki” + botão **Conectar** |
+| a parear | `/health` OK e **nenhuma credencial guardada** (este navegador nunca se pareou) | “Conecte este navegador ao Anki” + botão **Conectar** |
 | esperando o código | `comecar` respondeu; diálogo aberto no Anki | “Digite o código que apareceu no Anki” + campo + **Confirmar** |
-| ligada | `conferir` provado (HMAC certo) nesta subida da Conexão | o “Ligada” de hoje |
+| ligada | `conferir` provado (HMAC certo) nesta subida da Conexão | o “Ligada” de hoje. **O ponto da Conexão na barra lateral (e o texto dele) só diz ligada assim**: sem pareamento ele diz o texto de “a parear” e, com uma porta que não provou nada, o de “não confirmada” (`ConexaoAnki.apresentada()`) |
 | não confirmada | `/health` OK, mas `conferir` voltou sem prova válida (impostor, Conexão de outro usuário do computador, prova errada) | “Algo na porta do Anki não se confirmou. Nada foi enviado.” + Tentar de novo |
 | Conexão antiga | `conferir` → 404 (complemento sem pareamento, ou o bridge) | o aviso de atualizar que já existe (variantes 3/4); **nada privado é enviado** |
 
@@ -74,7 +74,7 @@ Falhas, sem exceção:
 - **Conexão cai entre o `conferir` e o pedido:** o pedido seguinte leva uma `sessao` que a nova subida não conhece → `401 session_expired` → `pedir`
   refaz o `conferir` uma vez e repete. Se no lugar entrou um impostor, ele não prova o `conferir` → “não confirmada”.
 - **Reverter:** só a pessoa, por dois caminhos: Desconectar navegadores no Anki (todos) ou parear de novo (substitui o daquele navegador).
-  A extensão **não** apaga a credencial por um `401` sem prova (um impostor não pode desparear ninguém); um pareamento novo a substitui.
+  A extensão **não** apaga a credencial por um `401` sem prova (um impostor não pode desparear ninguém); um pareamento novo a substitui (o mesmo `cliente`, a mesma linha).
 - **Sem período de graça:** a Conexão nova recusa pedido sem assinatura desde a primeira versão; a extensão nova recusa falar
   o privado com uma Conexão sem `/pareamento/conferir` (senão um impostor se passaria por “versão antiga” para receber tudo).
 
@@ -99,10 +99,14 @@ Falhas, sem exceção:
 - **L3. ACL do Windows:** `pareamento.json` herda a ACL da pasta, como a chave (limite já escrito em `docs/seguranca/chave-da-openai.md`).
 - **L4. Corrida de milissegundos:** a Conexão real cai logo depois de um `conferir` provado, e um impostor ocupa a porta antes do pedido com segredo.
   O `conferir` fresco antes de cada pedido com segredo deixa a janela no tempo de um pedido local.
-- **L5. Incômodo, não vazamento:** um processo pode ocupar a 8766, e uma extensão maliciosa pode abrir o diálogo no Anki ou gastar as 5 tentativas
-  de um código. A falha fica visível e nada vaza. Há um teto de um diálogo por vez.
+- **L5. Incômodo, não vazamento:** um processo pode ocupar a 8766, abrir o diálogo do código no Anki ou gastar as 5 tentativas de um código. A falha fica visível e nada
+  vaza. **Há teto para o código novo** (o review do #192 mediu 400 palpites por segundo sem ele, uns 4 % de acerto por dia): cinco tentativas valem por código, mas o
+  `comecar` só sorteia outro enquanto não houver `CODIGOS_ESGOTADOS_PARA_BLOQUEAR` (3) códigos seguidos que gastaram as tentativas sem que ninguém pareasse; depois disso
+  responde `429 pairing_locked` por 15 minutos, sem código e sem diálogo. São 15 palpites a cada 15 minutos, uns 1.400 por dia: 2 chances em um milhão por dia em 31^6.
+  O preço é um incômodo visível (quem insiste bloqueia o próprio Conectar por 15 minutos, e o Painel diz o texto aprovado “Algo na porta do Anki não se confirmou”). O diálogo é um
+  só por vez: o pedido repetido com ele à vista não o traz de novo, e o fechado é destruído (`deleteLater`).
 - **L6. Páginas abertas:** `GET /health` (versão e perfil) e o retorno do login do ChatGPT (`/auth/callback`, navegação, protegido por `state` e PKCE) seguem sem credencial.
-- **L7. Quem digita um código que não viu:** com o Anki fechado e um impostor na 8766, o Conectar “funciona” (o impostor responde ok) e nenhum diálogo aparece no Anki. Quem digita qualquer coisa, sem ter visto o código no Anki, pareia com o impostor, e a extensão não tem como saber. O passo “o código apareceu no Anki” é da pessoa; é ele que faz o código autenticar a Conexão.
+- **L7. Quem digita um código que não viu:** com o Anki fechado e um impostor na 8766, o Conectar “funciona” (o impostor responde ok) e nenhum diálogo aparece no Anki; quem digita qualquer coisa pareia com o impostor, e a extensão não tem como saber. O passo “o código apareceu no Anki” é da pessoa; é ele que faz o código autenticar a Conexão. **Quem já estava pareado** não cai nisso sozinho: o `401 pairing_required` sem prova (do impostor, e também da Conexão verdadeira depois do Desconectar ou de perder o registro) não leva a tela a pedir o pareamento; ela diz “Algo na porta do Anki não se confirmou. Nada foi enviado”, com Tentar de novo e, **por escolha da pessoa**, Conectar (o único caminho de volta). Só quem aperta esse Conectar e digita um código que nunca viu pareia com o impostor. Um registro revogado que sobrevivesse ao Desconectar não entra nesta fatia e não cobriria o registro perdido.
 - **L9. A Conexão que se diz antiga:** um impostor que responde 404 ao `conferir` recebe o Atualizar agora e o Reiniciar o Anki (`{}`), e nada mais. Ele não restarta o Anki de ninguém; no máximo mostra um aviso de atualização que a pessoa pode ignorar.
 - **L8. A janela da leitura:** um pedido que só lê (sem chave, token nem Frases) reaproveita a sessão que a Conexão provou há menos de 20 s. Se ela cair e um impostor ocupar a porta nesse intervalo, ele vê o pedido assinado (a sessão e o nonce não servem em outra Conexão) e responde sem prova, que a extensão recusa. O pedido que leva a chave, o token, as Frases ou o UID pede um `conferir` novo antes.
 
@@ -134,25 +138,19 @@ Decisões do código, para a revisão não as achar por acidente:
 
 - **O banco da credencial é `pm-pareamento`, não `pm-segredos`.** A migração e o Apagar tudo da chave da OpenAI apagam o banco `pm-segredos` inteiro (`lib/chave-da-openai.js`); a
   credencial do pareamento não é dado da pessoa e não pode sumir com ele.
-- **Um cabeçalho a mais, `X-PerpetualMiner-Sessao`.** É o que deixa a Conexão separar `session_expired` (assinado numa subida anterior) de `pairing_invalid` (assinatura errada) sem tentar
-  verificar a assinatura com uma sessão que ela já não conhece.
-- **O nonce repetido é recusado** (`pairing_invalid`), dentro da sessão, com os últimos 8192 lembrados. O nonce é sorteado de 128 bits por pedido.
-- **Cinco erros** matam o código: o quinto erro já responde `410 pairing_code_expired` (“O código venceu. Peça outro”), e o diálogo do Anki fecha. Quatro erros respondem `401
-  pairing_code_wrong` com `restam`.
+- **Um cabeçalho a mais, `X-PerpetualMiner-Sessao`:** separa `session_expired` (assinado numa subida anterior) de `pairing_invalid` (assinatura errada).
+- **O nonce repetido é recusado** (`pairing_invalid`) na sessão, com os últimos 8192 lembrados; o nonce é de 128 bits.
+- **Cinco erros** matam o código: o quinto já responde `410 pairing_code_expired` (“O código venceu. Peça outro”) e o diálogo do Anki fecha; os quatro primeiros, `401 pairing_code_wrong` com `restam`.
 - **`concluir` repetido** devolve o mesmo segredo só enquanto o código usado vale, o navegador é o mesmo **e** a linha dele ainda está em `pareamento.json` (depois do Desconectar, não); começar um
   código novo esquece o anterior.
-- **`pareamento.json` não guarda `usadoEm`**: a Conexão não regrava o arquivo a cada pedido.
-- **A faixa do Painel mora em `painel-conexao-versao.js`**, junto do aviso de versão (os dois são “a Conexão ainda não é de confiança” e disputam o alto do Painel). O popup lê o
-  estado (`ConexaoAnki.pareamento()`), mas não desenha nada: sem pareamento ele mostra o último que tinha.
+- **A faixa do Painel mora em `painel-conexao-versao.js`**, junto do aviso de versão. O popup lê o estado (`ConexaoAnki.pareamento()`), mas não desenha nada.
 - **A Conexão antiga** (404 no `conferir`) cai no aviso de versão (BRG-50) seja qual for a versão que diz, e nenhum pedido privado sai para ela. **Só dois saem, sem assinatura e com corpo `{}`**: Atualizar agora e Reiniciar o Anki (`daConexaoAntiga` em `PedidoAoAnki`): sem eles a Conexão velha nunca sairia da versão velha, e eles não levam dado da pessoa.
-- **O pedido que leva dado da pessoa pede um `conferir` novo** (a chave, o token da conta, a chave legada, as Frases do Envio); a leitura reaproveita a sessão provada há menos de 20 s. A
-  janela do L4 fica no tempo de um pedido local.
-- **Os pedidos assinados saem na ordem em que foram pedidos** (a conta é assíncrona, e o quiz de nível, por exemplo, lê “a última fala pedida”).
+- **O pedido que leva dado da pessoa pede um `conferir` novo** (a chave, o token, a chave legada, as Frases); a leitura reaproveita a sessão provada há menos de 20 s.
+- **O ponto da Conexão só fica verde com a Conexão provada** (a revisão do #192): `ConexaoAnki.apresentada()` é a situação como a tela a diz (`ligada`, ou `a_parear` / `nao_confirmada`);
+  o shell, o texto dele e as abas de Custos e de Baralhos e termos a usam. As outras telas seguem a situação do `/health` e ganham 401 do `pedir` nos pedidos que fazem.
+- **Quem já estava pareado e recebe `401 pairing_required` sem prova vê “não confirmada”, não “a parear”** (a revisão do #192; L7). Parear de novo é um segundo botão, Conectar.
+- **O teto do código novo** (L5): três códigos esgotados seguidos bloqueiam o seguinte por 15 minutos (`429 pairing_locked`).
 - **Texto**: o único texto novo do Painel é o BRG-52 (os que o dono aprovou); o do Anki é o ANK-05 e o botão do ANK-02. “Algo na porta do Anki não se confirmou” também serve quando o Anki não
   consegue abrir o diálogo (não há texto aprovado para isso).
 
-## 8. Limites desta fatia (o que a prova real ainda tem de dizer)
-
-O CI prova o protocolo com o servidor real e o Chromium real, mas o diálogo, o tooltip e o botão do Anki são de mentira (`TelaDeMentira`, o `aqt` de `test_qt_do_anki_pareamento.py`). A prova
-real (um Anki de verdade, Mac e Windows, o impostor e o cliente forjado) tem o roteiro em `docs/design/pareamento-da-conexao.md` § 6 e a pasta de provas do PR. Seguem fora: as regras do
-Firestore (P6), a retenção dos Envios (#243), um “Desconectar” no Painel e o período de graça.
+Seguem fora desta fatia: as regras do Firestore (P6), a retenção dos Envios (#243), um “Desconectar” no Painel e o período de graça. O diálogo, o tooltip e o botão do Anki só têm prova de mentira no CI (§ 6).

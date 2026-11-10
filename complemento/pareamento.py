@@ -32,9 +32,13 @@ from .chaves import gravar_so_do_dono
 VALIDADE_DO_CODIGO_S = 5 * 60
 TENTATIVAS = 5
 MAXIMO_DE_NAVEGADORES = 5
-# Seis caracteres de um alfabeto sem os que se confundem (0 O 1 I L): 31^6, uns 30 bits, que 5 tentativas não alcançam.
+# Seis caracteres de um alfabeto sem os que se confundem (0 O 1 I L): 31^6, uns 30 bits. Cinco tentativas por código não bastam para fechá-lo: um
+# programa local pode pedir um código novo atrás do outro. Por isso, depois de CODIGOS_ESGOTADOS_PARA_BLOQUEAR códigos que gastaram as 5 tentativas sem
+# que ninguém tenha pareado, a Conexão não sorteia outro por BLOQUEIO_S: no máximo 15 palpites a cada 15 minutos (uns 1.400 por dia, 2 em um milhão).
 ALFABETO = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 TAMANHO_DO_CODIGO = 6
+CODIGOS_ESGOTADOS_PARA_BLOQUEAR = 3
+BLOQUEIO_S = 15 * 60
 # Quantos nonces a sessão lembra: o mais antigo sai primeiro.
 NONCES_LEMBRADOS = 8192
 
@@ -109,6 +113,8 @@ class Pareamento:
         self._concluido = None     # { codigo, cliente, segredo, vence }: o último código usado, para o `concluir` repetido
         self._nonces = OrderedDict()
         self._relogio_de_vencer = None
+        self._esgotados = 0        # os códigos seguidos que gastaram as tentativas; o pareamento que dá certo zera
+        self._bloqueado_ate = None
 
     # --- os navegadores guardados -------------------------------------------------------------------------------------------
 
@@ -209,6 +215,8 @@ class Pareamento:
                 return 503, {"error": "pairing_unavailable"}
             pendente = self._pendente_valido()
             if pendente is None:
+                if self._bloqueado_ate is not None and self._relogio() < self._bloqueado_ate:
+                    return 429, {"error": "pairing_locked"}   # nenhum código novo, nenhum diálogo: quem insiste só gasta o tempo dele
                 codigo = self.sortear()
                 self._concluido = None   # um código novo: a pessoa recomeçou, e a resposta perdida do anterior já não se repete
                 pendente = self._pendente = {"codigo": codigo, "vence": self._relogio() + VALIDADE_DO_CODIGO_S, "tentativas": 0}
@@ -220,6 +228,12 @@ class Pareamento:
                 self._pendente = None
                 return 503, {"error": "pairing_unavailable"}
         return 200, {"ok": True}
+
+    def _esgotou_um_codigo(self):
+        self._esgotados += 1
+        if self._esgotados >= CODIGOS_ESGOTADOS_PARA_BLOQUEAR:
+            self._esgotados, self._bloqueado_ate = 0, self._relogio() + BLOQUEIO_S
+            self._logger.warning("Pareamento: %d códigos gastaram as tentativas; nenhum código novo por %d minutos", CODIGOS_ESGOTADOS_PARA_BLOQUEAR, BLOQUEIO_S // 60)
 
     def concluir(self, codigo, cliente, nome):
         """A pessoa digitou `codigo` no painel. Certo: grava o segredo do `cliente` e o devolve, uma vez. Devolve (status, json)."""
@@ -238,6 +252,7 @@ class Pareamento:
                 pendente["tentativas"] += 1
                 if pendente["tentativas"] >= TENTATIVAS:
                     self._acabar_o_pendente()
+                    self._esgotou_um_codigo()
                     return 410, {"error": "pairing_code_expired"}
                 return 401, {"error": "pairing_code_wrong", "restam": TENTATIVAS - pendente["tentativas"]}
             segredo = base64.b64encode(secrets.token_bytes(32)).decode("ascii")
@@ -245,6 +260,7 @@ class Pareamento:
             clientes.append({"cliente": cliente, "segredo": segredo, "nome": nome, "criadoEm": _agora_iso()})
             self._gravar(clientes[-MAXIMO_DE_NAVEGADORES:])   # o cliente só existe depois de gravado
             self._concluido = {"codigo": pendente["codigo"], "cliente": cliente, "segredo": segredo, "vence": pendente["vence"]}
+            self._esgotados, self._bloqueado_ate = 0, None
             self._acabar_o_pendente()
         self._logger.info("Pareamento: um navegador foi conectado")
         if self.na_tela is not None:

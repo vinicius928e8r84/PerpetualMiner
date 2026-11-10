@@ -258,8 +258,9 @@
   function visaoDoPareamento() {
     if (ConexaoAnki.situacao() !== SITUACAO.LIGADA) return null;
     const pareamento = ConexaoAnki.pareamento();
-    if (pareamento === ESTADO.NAO_CONFIRMADA) return { tipo: 'naoConfirmada' };
-    return pareamento === ESTADO.A_PAREAR ? { tipo: conectando.fase } : null;
+    if (pareamento !== ESTADO.A_PAREAR && pareamento !== ESTADO.NAO_CONFIRMADA) return null;
+    if (conectando.fase === 'codigo') return { tipo: 'codigo' };
+    return { tipo: pareamento === ESTADO.NAO_CONFIRMADA ? 'naoConfirmada' : 'inicio' };
   }
 
   function desenharOPareamento() {
@@ -283,13 +284,20 @@
     } else {
       const naoConfirmada = atual.tipo === 'naoConfirmada';
       no = Veio.montarAviso({
-        texto: naoConfirmada ? textoDaVoz('BRG-52.naoConfirmou') : dizer(conectando.mensagem) || textoDaVoz('BRG-52.conectar'),
+        texto: dizer(conectando.mensagem) || textoDaVoz(naoConfirmada ? 'BRG-52.naoConfirmou' : 'BRG-52.conectar'),
         tom: naoConfirmada || conectando.mensagem ? 'perigo' : 'info',
         acao: naoConfirmada
           ? { rotulo: textoDaVoz('BRG-50.tentarDeNovo'), aoUsar: () => ConexaoAnki.tentarDeNovo() }
           : { rotulo: textoDaVoz('BRG-52.botao'), aoUsar: conectar },
         fechavel: false,
       });
+      // Quem já estava pareado e vê a porta não se confirmar escolhe parear de novo (a Conexão perdeu o registro, ou foi desconectada no Anki): nunca é a tela que o oferece sozinha.
+      if (naoConfirmada) {
+        const de_novo = elemento('button', 'veio-botao veio-botao--contorno', textoDaVoz('BRG-52.botao'));
+        de_novo.type = 'button';
+        de_novo.addEventListener('click', conectar);
+        no.querySelector('.veio-aviso__acoes').append(de_novo);
+      }
     }
     no.id = 'painel-pareamento';
     ponhaNoLugar(no);

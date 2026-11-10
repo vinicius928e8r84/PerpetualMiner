@@ -60,11 +60,14 @@ class QtDoAnki:
 
     def _desenhar_o_codigo(self, mw, texto, rotulo_de_cancelar, ao_cancelar):
         if self._codigo is not None:
+            # O mesmo diálogo, de novo: quem pede o código sem parar não rouba o foco da pessoa a cada pedido.
+            dialogo = self._codigo["dialogo"]
             self._codigo["texto"].setText(texto)
-            self._codigo["dialogo"].show()
-            self._codigo["dialogo"].raise_()
-            self._codigo["dialogo"].activateWindow()
             self._codigo["ao_cancelar"] = ao_cancelar
+            if not dialogo.isVisible():
+                dialogo.show()
+                dialogo.raise_()
+                dialogo.activateWindow()
             return
         from aqt.qt import QDialog, QLabel, QPushButton, Qt, QVBoxLayout, qconnect
 
@@ -84,6 +87,7 @@ class QtDoAnki:
 
         def terminou(*_):
             self._codigo = None
+            dialogo.deleteLater()   # um QDialog(mw) fechado seguiria filho do Anki para sempre
             if not estado["fechado_por_nos"]:
                 estado["ao_cancelar"]()
 

@@ -151,11 +151,10 @@ class ConexaoNoTeste:
         espera_do_teto=60,
         pareado=True,
         tela=True,
-        codigo_pendente=None,
-        codigo_usado_por=None,
+        estado_do_pareamento=None,
     ):
         self.perfil = perfil
-        self._com_tela, self._codigo_pendente, self._codigo_usado_por = tela, codigo_pendente, codigo_usado_por
+        self._com_tela, self._estado_do_pareamento = tela, estado_do_pareamento or {}
         self.situacao_do_chatgpt = chatgpt  # `conectada` (o arquivo do login já existe), `entrando`, `recusou` ou `nao_serve` (a tentativa)
         self.falha_no_perfil = falha_no_perfil
         self.pasta = pasta
@@ -228,7 +227,7 @@ class ConexaoNoTeste:
             de_mentira.__enter__()
         if self.cofre_sem_escrita:
             os.chmod(self.chaves, 0o500)  # gravar a cópia da chave falha: a Conexão responde o erro interno
-        self.tela = preparar_o_pareamento(self.conexao.pareamento, self._com_tela, self._codigo_pendente, self._codigo_usado_por)
+        self.tela = preparar_o_pareamento(self.conexao.pareamento, self._com_tela, self._estado_do_pareamento)
         assert self.conexao.iniciar(), "a porta de teste devia estar livre"
         if self.situacao_do_chatgpt in ("entrando", "recusou", "nao_serve"):
             situar_o_login(self.conexao, self.servidor_de_login, self.situacao_do_chatgpt)
@@ -306,8 +305,7 @@ def conexao_do_exemplo(pasta, exemplo):
         ankiweb=contexto.get("ankiweb"),
         pareado=contexto.get("pareado", True),
         tela=not contexto.get("semTela", False),
-        codigo_pendente=contexto.get("codigoPendente"),
-        codigo_usado_por=contexto.get("codigoUsadoPor"),
+        estado_do_pareamento=contexto,
     ) as conexao:
         if 'chaveNaNuvem' in contexto:
             conexao.firestore.documentos['uid-teste'] = {

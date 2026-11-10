@@ -43,6 +43,7 @@ class AqtComPecas:
                 if quebra_ao_abrir:
                     raise RuntimeError("o Qt mudou")
                 self.finished, self.visivel, self.mostradas, self.titulo = Sinal(), False, 0, None
+                self.trazidas, self.ativadas, self.apagado = 0, 0, 0
                 aqui.dialogos.append(self)
 
             def setWindowTitle(self, titulo):
@@ -63,10 +64,13 @@ class AqtComPecas:
                 return self.visivel
 
             def raise_(self):
-                pass
+                self.trazidas += 1
 
             def activateWindow(self):
-                pass
+                self.ativadas += 1
+
+            def deleteLater(self):
+                self.apagado += 1
 
         class Rotulo:
             def __init__(self, texto=""):
@@ -138,15 +142,24 @@ def registro_na_memoria():
 
 
 class ODialogoDoCodigo(unittest.TestCase):
-    def test_o_dialogo_mostra_o_texto_do_catalogo_e_e_um_so_mesmo_pedido_de_novo(self):
+    def test_o_dialogo_mostra_o_texto_do_catalogo_e_e_um_so_mesmo_pedido_de_novo_sem_roubar_o_foco(self):
         with AqtComPecas() as aqt:
             qt, mw = qt_do_anki.QtDoAnki(logging.getLogger("t")), anki_de_mentira()
             qt.mostrar_codigo(mw, "Código para conectar o PerpetualMiner: K7M-4PX. Vale por 5 minutos", "Cancelar", lambda: None)
             qt.mostrar_codigo(mw, "Código para conectar o PerpetualMiner: K7M-4PX. Vale por 5 minutos", "Cancelar", lambda: None)
         dialogo = aqt.dialogos[0]
-        self.assertEqual((len(aqt.dialogos), dialogo.titulo, dialogo.mostradas, dialogo.visivel), (1, "PerpetualMiner", 2, True))
+        self.assertEqual((len(aqt.dialogos), dialogo.titulo, dialogo.visivel), (1, "PerpetualMiner", True))
+        self.assertEqual((dialogo.mostradas, dialogo.trazidas, dialogo.ativadas), (1, 1, 1))   # o pedido repetido, com o diálogo à vista, não o traz de novo
         self.assertEqual([r.texto for r in aqt.rotulos], ["Código para conectar o PerpetualMiner: K7M-4PX. Vale por 5 minutos"])
         self.assertEqual([b.texto for b in aqt.botoes], ["Cancelar"])
+
+    def test_cada_dialogo_fechado_e_destruido_e_o_pedido_seguinte_abre_outro_a_frente(self):
+        with AqtComPecas() as aqt:
+            qt, mw = qt_do_anki.QtDoAnki(logging.getLogger("t")), anki_de_mentira()
+            for _ in range(3):
+                qt.mostrar_codigo(mw, "texto", "Cancelar", lambda: None)
+                qt.fechar_codigo(mw)
+        self.assertEqual(([d.apagado for d in aqt.dialogos], [d.trazidas for d in aqt.dialogos]), ([1, 1, 1], [1, 1, 1]))
 
     def test_cancelar_fecha_o_dialogo_e_avisa_o_pareamento_uma_vez(self):
         cancelados = []

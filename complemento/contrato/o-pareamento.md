@@ -11,7 +11,7 @@ Todas POST, com a origem da extensão e sem assinatura. `nome`, no `concluir`, �
 
 | Rota | Corpo | Resposta |
 |---|---|---|
-| `POST /pareamento/comecar` | `{}` | `200 { ok }`: o Anki abre um diálogo com o código de 6 caracteres (vale 5 minutos, 5 tentativas). **O código nunca volta em resposta HTTP**, nem entra em arquivo ou log. `503 pairing_unavailable`: o Anki não tem onde mostrá-lo |
+| `POST /pareamento/comecar` | `{}` | `200 { ok }`: o Anki abre um diálogo com o código de 6 caracteres (vale 5 minutos, 5 tentativas). **O código nunca volta em resposta HTTP**, nem entra em arquivo ou log. `503 pairing_unavailable`: o Anki não tem onde mostrá-lo; `429 pairing_locked`: três códigos seguidos gastaram as 5 tentativas, e outro só daqui a 15 minutos (sem diálogo) |
 | `POST /pareamento/concluir` | `{ codigo, cliente, nome? }` | `200 { cliente, segredo }`: grava o navegador (`user_files/pareamento.json`, só do dono, até 5) e entrega o segredo **uma vez**; o mesmo pedido de novo (a resposta se perdeu) devolve o mesmo segredo. `401 pairing_code_wrong { restam }`; `410 pairing_code_expired` (venceu, cancelado, sem código, ou o quinto erro); `409 pairing_code_used` (outro navegador usou o código); `400 invalid_request` |
 | `POST /pareamento/conferir` | `{ cliente, desafio }` | `200 { sessao, prova }` com `prova = HMAC(segredo, "pm1\nservidor\n" ‖ desafio ‖ "\n" ‖ sessao)`; `401 pairing_required` (a Conexão não conhece o navegador, e não dá prova nenhuma); `400 invalid_request` |
 
@@ -38,7 +38,7 @@ A extensão só entrega a resposta a quem pediu se a prova confere. Os rótulos 
 
 Antes de escolher a rota, e sempre `401`: `pairing_required` (sem assinatura, ou navegador que a Conexão não conhece), `session_expired` (assinado numa subida anterior: a extensão refaz o `conferir` e
 repete uma vez) e `pairing_invalid` (assinatura errada, nonce repetido). Valem para toda rota: os exemplos usam `/ia/estado` (`assinatura`: `ausente`, `errada`, `sessaoVelha` no pedido), e
-`test_pareamento_porteiro.py` pede cada rota de `ROTAS`. Uma recusa não leva prova. O corpo grande demais ainda é `400 invalid_json`, antes da assinatura.
+`test_pareamento_porteiro.py` pede cada rota de `ROTAS`. Uma recusa não leva prova, e por isso quem já estava pareado a lê como “a porta não se confirmou”, nunca como um convite a parear de novo. O corpo grande demais ainda é `400 invalid_json`, antes da assinatura.
 
 A Conexão **de antes do pareamento** (404 no `conferir`) só recebe da extensão, sem assinatura, `POST /atualizacao/agora` e `/atualizacao/reiniciar` (corpo `{}`): são o jeito de ela sair da versão velha.
 

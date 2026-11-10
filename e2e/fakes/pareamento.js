@@ -13,6 +13,8 @@ const { assinaturaDoPedido, provaDaResposta, provaDoServidor, NAVEGADORES } = re
 
 const TENTATIVAS = 5;
 const VALIDADE_MS = 5 * 60 * 1000;
+const ESGOTADOS_PARA_BLOQUEAR = 3;   // como complemento/pareamento.py: três códigos que gastaram as tentativas bloqueiam o seguinte
+const BLOQUEIO_MS = 15 * 60 * 1000;
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const CLIENTE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const NONCE = /^[A-Za-z0-9_-]{8,64}$/;
@@ -25,6 +27,8 @@ function criarPareamento({ agora }) {
   const recebidos = [];            // cada pedido de pareamento: { caminho, corpo }
   const tentados = [];             // cada caminho do pareamento que a extensão tentou, até com o Anki desligado
   let pendente = null;             // { codigo, vence, tentativas }
+  let esgotados = 0;
+  let bloqueadoAte = null;
   let concluido = null;            // { codigo, cliente, segredo, vence }
   let semJanela = false;
   let antigo = false;
@@ -42,6 +46,7 @@ function criarPareamento({ agora }) {
   function comecar() {
     if (semJanela) return { status: 503, json: { error: 'pairing_unavailable' } };
     if (!codigoPendente()) {
+      if (bloqueadoAte && agora().getTime() < bloqueadoAte) return { status: 429, json: { error: 'pairing_locked' } };
       concluido = null;
       pendente = { codigo: sortearDe(), vence: new Date(agora().getTime() + VALIDADE_MS), tentativas: 0 };
     }
@@ -65,12 +70,16 @@ function criarPareamento({ agora }) {
       vivo.tentativas += 1;
       if (vivo.tentativas >= TENTATIVAS) {
         pendente = null;
+        esgotados += 1;
+        if (esgotados >= ESGOTADOS_PARA_BLOQUEAR) [esgotados, bloqueadoAte] = [0, agora().getTime() + BLOQUEIO_MS];
         return { status: 410, json: { error: 'pairing_code_expired' } };
       }
       return { status: 401, json: { error: 'pairing_code_wrong', restam: TENTATIVAS - vivo.tentativas } };
     }
     const segredo = crypto.randomBytes(32).toString('base64');
     navegadores.set(cliente, segredo);
+    esgotados = 0;
+    bloqueadoAte = null;
     concluido = { codigo: vivo.codigo, cliente, segredo, vence: vivo.vence };
     pendente = null;
     return { status: 200, json: { cliente, segredo } };
@@ -129,11 +138,15 @@ function criarPareamento({ agora }) {
     responder, verificar, comProva,
     /** O `contexto` de um exemplo do contrato: `pareado: false` (a Conexão não conhece nenhum navegador), `semTela`, `codigoPendente` (o Anki está mostrando
      * este código) e `codigoUsadoPor` (outro navegador já o usou). */
-    definirContexto({ pareado = true, semTela = false, codigoPendente, codigoUsadoPor } = {}) {
+    definirContexto({ pareado = true, semTela = false, codigoPendente, codigoUsadoPor, bloqueado = false } = {}) {
       if (!pareado) { navegadores.clear(); concluido = null; }
       if (semTela) semJanela = true;
       if (codigoPendente) { sortearDe = () => codigoPendente; comecar(); }
       if (codigoUsadoPor) concluir({ codigo: mostrar(pendente.codigo), cliente: codigoUsadoPor, nome: 'Outro' });
+      for (let n = 0; bloqueado && n < ESGOTADOS_PARA_BLOQUEAR; n += 1) {   // três códigos que gastaram as tentativas
+        comecar();
+        for (let t = 0; t < TENTATIVAS; t += 1) concluir({ codigo: 'AAA-AAA', cliente: NAVEGADORES.segundo.cliente });
+      }
     },
     /** O navegador já está pareado com esta Conexão (o segredo vem do contrato ou do pareamento que o teste fez). */
     parear: (navegador = 'primeiro') => navegadores.set(NAVEGADORES[navegador].cliente, NAVEGADORES[navegador].segredo),

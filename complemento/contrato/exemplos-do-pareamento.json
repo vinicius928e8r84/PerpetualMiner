@@ -121,6 +121,26 @@
       }
     },
     {
+      "nome": "começar depois de três códigos que gastaram as tentativas: nenhum código novo por 15 minutos",
+      "daExtensao": true,
+      "contexto": {
+        "pareado": false,
+        "bloqueado": true
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/comecar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 429,
+        "json": {
+          "error": "pairing_locked"
+        }
+      }
+    },
+    {
       "nome": "concluir com o código certo grava o navegador e entrega o segredo, uma vez",
       "daExtensao": true,
       "contexto": {
