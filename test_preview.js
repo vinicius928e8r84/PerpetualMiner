@@ -62,6 +62,29 @@ const extensao = path.join(saida, 'extensao');
   }
   assert(fs.readFileSync(path.join(saida, 'index.html'), 'utf8').includes('href="/sobre/"'), 'a capa devia levar ao /sobre/');
 
+  // Os protótipos soltos (preview/prototipos/), enquanto houver algum: a capa leva a cada um, a página dele só carrega
+  // o que está na pasta dele (nada de fora, nada da extensão), e nenhuma página da extensão carrega nada de lá.
+  const pastaDosSoltos = path.join('preview', 'prototipos');
+  for (const solto of fs.existsSync(pastaDosSoltos) ? fs.readdirSync(pastaDosSoltos) : []) {
+    const pasta = path.join(saida, 'prototipos', solto);
+    const pagina = fs.readFileSync(path.join(pasta, 'index.html'), 'utf8');
+    const pedidos = [...pagina.matchAll(/\b(?:src|href)="([^"#?]+)"/g)].map(m => m[1]).filter(pedido => !pedido.startsWith('data:'));
+    assert(pedidos.length > 0, `o protótipo ${solto} devia carregar os arquivos dele`);
+    for (const pedido of pedidos) {
+      assert(!/^(?:[a-z]+:)?\/\//i.test(pedido) && !pedido.startsWith('/') && !pedido.includes('..'), `o protótipo ${solto} carrega ${pedido}, de fora da pasta dele`);
+      assert(fs.existsSync(path.join(pasta, pedido)), `o protótipo ${solto} carrega ${pedido}, que não está na pasta dele`);
+    }
+    for (const arquivo of fs.readdirSync(pasta).filter(nome => /\.(?:js|css)$/.test(nome))) {
+      const fonte = fs.readFileSync(path.join(pasta, arquivo), 'utf8');
+      assert(!/https?:\/\/(?!www\.w3\.org\/)[\w.-]+\/[^\s'"`)]*\.(?:js|css|woff2?|png|jpe?g|svg)/i.test(fonte), `${solto}/${arquivo} pede um arquivo de fora`);
+      assert(!/\b(?:fetch|XMLHttpRequest|sendBeacon|WebSocket|EventSource|localStorage|sessionStorage|indexedDB)\b/.test(fonte), `${solto}/${arquivo} fala com a rede ou guarda algo no navegador`);
+    }
+    assert(fs.readFileSync(path.join(saida, 'index.html'), 'utf8').includes(`href="/prototipos/${solto}/"`), `a capa devia levar ao protótipo ${solto}`);
+  }
+  for (const pagina of paginas) {
+    assert(!fs.readFileSync(path.join(extensao, pagina), 'utf8').includes('prototipos/'), `${pagina} não devia carregar nada de preview/prototipos`);
+  }
+
   fs.rmSync(saida, { recursive: true, force: true });
   console.log(`ok: ${arquivos.length} arquivos da extensão e ${paginas.length} páginas no preview`);
 })().catch(erro => { console.error(erro); process.exit(1); });

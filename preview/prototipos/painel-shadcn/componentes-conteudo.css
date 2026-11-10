@@ -1,0 +1,222 @@
+/* Os componentes que mostram conteúdo: Alert, Empty, Avatar, Pagination, Accordion e Item. */
+
+/* ---------- Alert ---------- */
+.alerta {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 0.125rem 0.5rem;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+
+.alerta > .ic {
+  margin-top: 0.125rem;
+}
+
+.alerta__titulo {
+  grid-column: 2;
+  font-weight: 500;
+}
+
+.alerta__texto {
+  grid-column: 2;
+  color: var(--muted-foreground);
+}
+
+.alerta__acoes {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  display: flex;
+  gap: 0.375rem;
+  align-self: center;
+}
+
+.alerta--perigo {
+  border-color: color-mix(in oklab, var(--destructive) 40%, transparent);
+  background: color-mix(in oklab, var(--destructive) 6%, var(--card));
+}
+
+.alerta--perigo > .ic,
+.alerta--perigo .alerta__titulo {
+  color: var(--perigo-texto);
+}
+
+.alerta--aviso {
+  border-color: color-mix(in oklab, var(--aviso) 40%, transparent);
+  background: color-mix(in oklab, var(--aviso) 6%, var(--card));
+}
+
+.alerta--aviso > .ic {
+  color: var(--aviso);
+}
+
+/* ---------- Empty ---------- */
+.vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2.5rem 1.5rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-xl);
+  text-align: center;
+}
+
+.vazio__icone {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-lg);
+  background: var(--muted);
+}
+
+.vazio__icone .ic {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.vazio__titulo {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.vazio__texto {
+  max-width: 26rem;
+  margin-top: 0.25rem;
+  color: var(--muted-foreground);
+  text-wrap: balance;
+}
+
+.vazio__acoes {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ---------- Avatar ---------- */
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  border-radius: var(--radius-lg);
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.avatar--conta {
+  background: linear-gradient(135deg, var(--marca-escura), var(--marca));
+  color: oklch(0.22 0.04 70);
+}
+
+.avatar--g {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 0.9375rem;
+}
+
+/* ---------- Pagination ---------- */
+.paginas {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.paginas__intervalo {
+  margin-right: auto;
+  color: var(--muted-foreground);
+}
+
+.paginas__atual {
+  padding: 0 0.5rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ---------- Accordion · Collapsible ---------- */
+.recolhivel > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.25rem;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  list-style: none;
+  cursor: pointer;
+}
+
+.recolhivel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.recolhivel > summary .ic {
+  color: var(--muted-foreground);
+  transition: transform var(--tempo);
+}
+
+.recolhivel[open] > summary .ic--seta {
+  transform: rotate(90deg);
+}
+
+.recolhivel > summary small {
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+/* ---------- Item ---------- */
+.item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: none;
+  text-align: left;
+}
+
+.item--contorno {
+  border-color: var(--border);
+}
+
+button.item {
+  cursor: pointer;
+  transition: background-color var(--tempo);
+}
+
+button.item:hover {
+  background: color-mix(in oklab, var(--muted) 60%, transparent);
+}
+
+.item[aria-selected='true'],
+.item[aria-current='true'] {
+  background: var(--muted);
+}
+
+.item__conteudo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.item__titulo {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item__descricao {
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+}

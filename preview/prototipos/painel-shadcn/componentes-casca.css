@@ -1,0 +1,283 @@
+/* A casca do painel: a Sidebar na variante inset (com o trilho de ícones) e o cabeçalho da página. */
+
+/* ---------- Sidebar (variante inset) ---------- */
+.estrutura {
+  display: flex;
+  min-height: 100svh;
+  background: var(--sidebar);
+}
+
+.lateral {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  width: var(--lateral-largura);
+  height: 100svh;
+  flex: none;
+  padding: 0.5rem;
+  color: var(--sidebar-foreground);
+  transition: width 200ms ease;
+}
+
+.lateral__topo,
+.lateral__pe {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+}
+
+.lateral__meio {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.lateral__grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+}
+
+.lateral__rotulo {
+  display: flex;
+  align-items: center;
+  height: 2rem;
+  padding: 0 0.5rem;
+  color: color-mix(in oklab, var(--sidebar-foreground) 70%, transparent);
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: opacity 200ms, margin 200ms;
+}
+
+.lateral__botao {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  color: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  transition: background-color var(--tempo), color var(--tempo);
+}
+
+.lateral__botao:hover {
+  background: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+}
+
+.lateral__botao[aria-current='page'] {
+  background: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+  font-weight: 500;
+}
+
+.lateral__botao:focus-visible {
+  border-color: var(--sidebar-ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--sidebar-ring) 50%, transparent);
+}
+
+.lateral__botao > span:not([class]) {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lateral__contagem {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.lateral__botao--g {
+  height: 3rem;
+}
+
+.lateral__quem {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.lateral__quem b {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lateral__quem small {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.marca {
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2rem;
+  padding: 0 0.25rem;
+  font-size: 0.9375rem;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.marca svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
+  border-radius: 0.375rem;
+}
+
+.marca b {
+  font-weight: 700;
+}
+
+/* A lateral recolhida ao trilho de ícones. */
+[data-lateral='trilho'] .lateral {
+  width: calc(var(--lateral-trilho) + 1rem);
+}
+
+[data-lateral='trilho'] .lateral__rotulo {
+  margin-top: -2rem;
+  opacity: 0;
+}
+
+[data-lateral='trilho'] .lateral__botao {
+  width: 2rem;
+  padding: 0 0.4375rem;
+}
+
+[data-lateral='trilho'] .lateral__botao > :not(.ic):not(.avatar),
+[data-lateral='trilho'] .marca span {
+  display: none;
+}
+
+[data-lateral='trilho'] .lateral__botao--g {
+  height: 2rem;
+  padding: 0;
+}
+
+[data-lateral='trilho'] .lateral__botao .ponto {
+  display: block;
+  position: absolute;
+  margin: -0.75rem 0 0 1rem;
+  box-shadow: 0 0 0 2px var(--sidebar);
+}
+
+.miolo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0.5rem 0.5rem 0.5rem 0;
+  border-radius: var(--radius-xl);
+  background: var(--background);
+  box-shadow: var(--sombra-sm);
+}
+
+.dark .miolo {
+  box-shadow: var(--contorno);
+}
+
+.topo {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: var(--topo-altura);
+  flex: none;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: color-mix(in oklab, var(--background) 88%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.topo__titulo {
+  font-size: 1rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topo__migalha {
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.topo__acoes {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.topo__busca {
+  justify-content: flex-start;
+  width: 14rem;
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+
+.topo__busca .tecla {
+  margin-left: auto;
+}
+
+@media (max-width: 767px) {
+  .lateral {
+    display: none;
+  }
+
+  .miolo {
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .topo {
+    border-radius: 0;
+  }
+
+  .topo__busca {
+    width: 2rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  /* O texto some da vista, mas continua sendo o nome do botão para o leitor de tela. */
+  .topo__busca > :not(.ic) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .topo__migalha,
+  .topo__seta {
+    display: none;
+  }
+}

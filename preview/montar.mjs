@@ -99,7 +99,7 @@ const TITULOS = {
   'auditoria/auditoria-front.html': 'Auditoria do front',
 };
 
-function capa({ telas, prototipos, temVitrine, temVeio, git }) {
+function capa({ telas, prototipos, soltos, temVitrine, temVeio, git }) {
   const linha = (href, titulo, detalhe) =>
     `      <li><a href="${href}"><span>${titulo}</span><small>${detalhe}</small></a></li>`;
 
@@ -169,7 +169,13 @@ ${temVitrine ? linha('/vitrine.html', 'Vitrine: tokens, escala de tipo, raios, c
   <ul>
 ${prototipos.map(rel => linha(`/design/${rel}${rel.includes('identidade') ? '?variant=F' : ''}`, TITULOS[rel] || rel, rel.split('/')[0])).join('\n')}
   </ul>
-
+${soltos.length ? `
+  <h2>Protótipos soltos</h2>
+  <div class="aviso">Ideias para olhar e mexer, fora da extensão: nenhuma tela de verdade carrega estas pastas.</div>
+  <ul>
+${soltos.map(solto => linha(`/prototipos/${solto.pasta}/`, solto.titulo, 'protótipo')).join('\n')}
+  </ul>
+` : ''}
   <p class="rodape">${git}</p>
 </main>
 </body>
@@ -236,17 +242,30 @@ async function montar() {
   const prototipos = await acharPrototipos();
   if (prototipos.length) await copiar(path.join(RAIZ, 'docs', 'design'), path.join(DESTINO, 'design'));
 
+  // Os protótipos soltos (preview/prototipos/<pasta>/index.html): páginas à parte, que nada da extensão carrega.
+  const soltos = [];
+  const pastaDosSoltos = path.join(RAIZ, 'preview', 'prototipos');
+  if (await existe(pastaDosSoltos)) {
+    await copiar(pastaDosSoltos, path.join(DESTINO, 'prototipos'));
+    for (const pasta of (await fs.readdir(pastaDosSoltos)).sort()) {
+      const pagina = path.join(pastaDosSoltos, pasta, 'index.html');
+      if (!(await existe(pagina))) continue;
+      const titulo = (await fs.readFile(pagina, 'utf8')).match(/<title>([^<]*)<\/title>/);
+      soltos.push({ pasta, titulo: titulo ? titulo[1] : pasta });
+    }
+  }
+
   const git = [
     process.env.VERCEL_GIT_COMMIT_REF && `branch ${process.env.VERCEL_GIT_COMMIT_REF}`,
     process.env.VERCEL_GIT_COMMIT_SHA && `commit ${process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7)}`,
     process.env.VERCEL_GIT_COMMIT_MESSAGE && process.env.VERCEL_GIT_COMMIT_MESSAGE.split('\n')[0],
   ].filter(Boolean).join(' · ') || 'build local';
 
-  await fs.writeFile(path.join(DESTINO, 'index.html'), capa({ telas, prototipos, temVitrine, temVeio, git }));
+  await fs.writeFile(path.join(DESTINO, 'index.html'), capa({ telas, prototipos, soltos, temVitrine, temVeio, git }));
 
   console.log(`preview montado em ${path.relative(process.cwd(), DESTINO)}`);
   console.log(`  telas: ${telas.map(t => t.arquivo).join(', ') || 'nenhuma'}`);
-  console.log(`  vitrine: ${temVitrine ? 'sim' : 'não'} · protótipos: ${prototipos.length}`);
+  console.log(`  vitrine: ${temVitrine ? 'sim' : 'não'} · protótipos: ${prototipos.length} · soltos: ${soltos.length}`);
 }
 
 const TIPOS_MIME = {

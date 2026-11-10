@@ -1,0 +1,407 @@
+/* Os componentes que abrem por cima da tela: Tooltip, Dropdown Menu, Dialog, Alert Dialog, Sheet, Command e Toast.
+   O comportamento de cada um está em camadas.js. */
+
+/* ---------- Tooltip ---------- */
+.dica {
+  position: fixed;
+  z-index: 80;
+  max-width: 18rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-md);
+  background: var(--foreground);
+  color: var(--background);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  pointer-events: none;
+  animation: surgir 120ms ease-out;
+}
+
+.dica .tecla {
+  height: 1rem;
+  margin-left: 0.375rem;
+  background: color-mix(in oklab, var(--background) 20%, transparent);
+  color: inherit;
+}
+
+@keyframes surgir {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+/* ---------- Dropdown Menu · Popover ---------- */
+.menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 10rem;
+  max-width: min(22rem, calc(100vw - 1rem));
+  padding: 0.25rem;
+  border-radius: var(--radius-lg);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--contorno), var(--sombra-md);
+  animation: surgir 120ms ease-out;
+  transform-origin: top;
+}
+
+.menu__rotulo {
+  padding: 0.25rem 0.375rem;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.menu__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.3125rem 0.375rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: default;
+}
+
+.menu__item > .ic {
+  color: var(--muted-foreground);
+}
+
+.menu__item small {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+.menu__item:hover,
+.menu__item:focus-visible {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  box-shadow: none;
+}
+
+.menu__item--perigo,
+.menu__item--perigo > .ic {
+  color: var(--perigo-texto);
+}
+
+.menu__item--perigo:hover,
+.menu__item--perigo:focus-visible {
+  background: color-mix(in oklab, var(--destructive) 12%, transparent);
+  color: var(--perigo-texto);
+}
+
+.menu__atalho {
+  margin-left: auto;
+  padding-left: 1rem;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+}
+
+.menu__separador {
+  height: 1px;
+  margin: 0.25rem -0.25rem;
+  background: var(--border);
+}
+
+/* ---------- Dialog · Alert Dialog ---------- */
+.veu {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: var(--veu);
+  backdrop-filter: blur(4px);
+  animation: aparecer 150ms ease-out;
+  overflow-y: auto;
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+}
+
+.dialogo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: min(100%, 28rem);
+  padding: 1rem;
+  border-radius: var(--radius-xl);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--contorno), var(--sombra-lg);
+  animation: surgir 150ms ease-out;
+}
+
+.dialogo--largo {
+  width: min(100%, 34rem);
+}
+
+.dialogo__topo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding-right: 2rem;
+}
+
+.dialogo__titulo {
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+}
+
+.dialogo__descricao {
+  color: var(--muted-foreground);
+}
+
+.dialogo__fechar {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
+.dialogo__corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.dialogo__pe {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin: 0 -1rem -1rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  background: color-mix(in oklab, var(--muted) 50%, transparent);
+}
+
+.dialogo__pe > .empurra {
+  margin-right: auto;
+}
+
+/* ---------- Sheet ---------- */
+.veu--gaveta {
+  place-items: stretch end;
+  padding: 0;
+  overflow: hidden;
+}
+
+.veu--gaveta-esquerda {
+  place-items: stretch start;
+}
+
+.gaveta {
+  display: flex;
+  flex-direction: column;
+  width: min(100vw - 3rem, 26rem);
+  height: 100%;
+  border-left: 1px solid var(--border);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--sombra-lg);
+  animation: deslizar 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.veu--gaveta-esquerda .gaveta {
+  width: min(100vw - 3rem, 18rem);
+  border-right: 1px solid var(--border);
+  border-left: 0;
+  background: var(--sidebar);
+  animation-name: deslizar-esquerda;
+}
+
+@keyframes deslizar {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes deslizar-esquerda {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+.gaveta__topo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 1rem 3rem 1rem 1rem;
+}
+
+.gaveta__titulo {
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.5rem;
+}
+
+.gaveta__descricao {
+  color: var(--muted-foreground);
+}
+
+.gaveta__corpo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0 1rem 1rem;
+  overflow-y: auto;
+}
+
+.gaveta__pe {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ---------- Command ---------- */
+.veu--comando {
+  place-items: start center;
+  padding-top: 14vh;
+}
+
+.comando {
+  width: min(100%, 32rem);
+  padding: 0.25rem;
+  border-radius: var(--radius-xl);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--contorno), var(--sombra-lg);
+  animation: surgir 150ms ease-out;
+}
+
+.comando__busca {
+  margin: 0.25rem 0.25rem 0;
+}
+
+.comando__lista {
+  max-height: 20rem;
+  margin-top: 0.25rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.comando__grupo {
+  padding: 0.25rem;
+}
+
+.comando__grupo + .comando__grupo {
+  border-top: 1px solid var(--border);
+}
+
+.comando__titulo {
+  padding: 0.375rem 0.5rem;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.comando__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 2rem;
+  padding: 0.375rem 0.5rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  text-align: left;
+  cursor: default;
+}
+
+.comando__item > .ic {
+  color: var(--muted-foreground);
+}
+
+.comando__item > span:first-of-type {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comando__item[aria-selected='true'] {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.comando__vazio {
+  padding: 1.5rem;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.comando__pe {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem 0.375rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+/* ---------- Toast (Sonner) ---------- */
+.avisos {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(22rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.aviso {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  font-size: 0.8125rem;
+  box-shadow: var(--sombra-lg);
+  pointer-events: auto;
+  animation: subir 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.aviso > .ic {
+  color: var(--sucesso);
+}
+
+.aviso--erro > .ic {
+  color: var(--perigo-texto);
+}
+
+.aviso--saindo {
+  opacity: 0;
+  transform: translateY(0.5rem);
+  transition: opacity 180ms, transform 180ms;
+}
+
+@keyframes subir {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+}
