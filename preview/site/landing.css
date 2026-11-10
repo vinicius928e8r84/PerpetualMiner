@@ -13,9 +13,8 @@
   --site-ouro-fio: color-mix(in srgb, var(--veio-accent) 32%, var(--veio-border));
   --site-vidro: color-mix(in srgb, var(--veio-surface) 72%, transparent);
   --site-fio: color-mix(in srgb, var(--veio-text) 8%, transparent);
-  /* O movimento. Quem entra usa a saída forte da Veio (--veio-curva-saida); o que se move já na tela, o vaivém.
+  /* O movimento. Quem entra usa a saída forte da Veio (--veio-curva-saida).
      Só transform e opacity se mexem; resposta a toque e a ponteiro fica em --veio-transicao. */
-  --site-curva-vaivem: cubic-bezier(.77, 0, .175, 1);
   --site-mov-entrada: 600ms;
   --site-mov-apoio: 500ms;
   --site-mov-enfeite: 400ms;

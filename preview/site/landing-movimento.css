@@ -94,15 +94,6 @@
   .js [data-revelar="grupo"] > :nth-child(3) { --atraso: 125ms; }
   .js [data-revelar="grupo"] > :nth-child(n + 4) { --atraso: 165ms; }
 
-  .js .passos--trilha::after {
-    transform: scaleX(0);
-    transition: transform 900ms var(--site-curva-vaivem) 150ms;
-  }
-
-  .js .passos--trilha[data-visivel]::after {
-    transform: scaleX(1);
-  }
-
   /* As etapas do envio são a explicação: o fio corre e cada etapa acende quando ele chega. */
   .js .etapas::after {
     transform: scaleX(0);
