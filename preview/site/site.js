@@ -67,12 +67,15 @@
       clearTimeout(espera);
       removeEventListener('scroll', armar);
     };
-    const aoVer = new IntersectionObserver(([entrada]) => {
+    const aoVer = new IntersectionObserver(entradas => {
       if (terminou) return aoVer.disconnect();
-      if (entrada.intersectionRatio >= 0.6) {
+      const visivel = entradas[entradas.length - 1].intersectionRatio;
+      if (visivel >= 0.6) {
+        // Já tocando (a pessoa rolou um pouco e voltou, sem a demonstração sair da tela): segue de onde está.
+        if (marcados.length) return;
         addEventListener('scroll', armar, { passive: true });
         armar();
-      } else if (entrada.intersectionRatio < 0.3) {
+      } else if (visivel < 0.3) {
         desarmar();
         parar();
         demo.removeAttribute('data-etapa');
