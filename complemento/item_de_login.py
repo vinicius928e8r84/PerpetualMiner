@@ -5,8 +5,8 @@ pasta Inicializar. Ligar escreve o item, desligar o apaga; nada mais é tocado, 
 roda nada na hora (o Mac só lê os LaunchAgents ao entrar, e o Windows só roda a Inicializar ao entrar).
 
 Só a biblioteca padrão: o `.lnk` do Windows é escrito byte a byte (MS-SHLLINK), porque o Python do
-Anki não tem COM nem se pode contar com o PowerShell. Fica só com o alvo (`LinkInfo`) e a pasta de
-trabalho: é o mínimo que o Windows resolve.
+Anki não tem COM nem se pode contar com o PowerShell. Leva a lista do alvo (`LinkTargetIDList`), o alvo (`LinkInfo`) e a pasta de
+trabalho: sem a lista o Windows recusa o atalho (“não há aplicativos associados”).
 
 O item nunca foi testado num Mac nem num Windows de verdade: os testes conferem o que fica no
 disco, e o ensaio do dono confere o que o sistema faz com ele (`complemento/LEIA-ME.md`).
@@ -125,6 +125,7 @@ def _plist_do_mac(comando):
 # ─── O atalho do Windows (MS-SHLLINK) ──────────────────────────────────────────
 
 _CLSID_DO_ATALHO = bytes.fromhex("0114020000000000c000000000000046")
+_TEM_LISTA_DO_ALVO = 0x01
 _TEM_LINK_INFO = 0x02
 _TEM_PASTA_DE_TRABALHO = 0x10
 _EM_UNICODE = 0x80
@@ -132,15 +133,41 @@ _DISCO_FIXO = 3
 
 
 def _atalho_do_windows(alvo):
+    lista = _lista_do_alvo(alvo)
+    flags = _TEM_LINK_INFO | _TEM_PASTA_DE_TRABALHO | _EM_UNICODE | (_TEM_LISTA_DO_ALVO if lista else 0)
     cabecalho = struct.pack(
         "<I16sIIQQQIIIHHII",
-        0x4C, _CLSID_DO_ATALHO, _TEM_LINK_INFO | _TEM_PASTA_DE_TRABALHO | _EM_UNICODE,
+        0x4C, _CLSID_DO_ATALHO, flags,
         0x20, 0, 0, 0,  # atributos (arquivo) e as três datas, sem valor
         0, 0, 1,        # tamanho do alvo e ícone sem valor; janela normal
         0, 0, 0, 0,     # tecla de atalho e reservados
     )
     pasta_de_trabalho = ntpath.dirname(alvo)
-    return cabecalho + _link_info(alvo) + _texto_do_atalho(pasta_de_trabalho) + b"\x00\x00\x00\x00"
+    return cabecalho + lista + _link_info(alvo) + _texto_do_atalho(pasta_de_trabalho) + b"\x00\x00\x00\x00"
+
+
+_MEU_COMPUTADOR = bytes.fromhex("e04fd020ea3a6910a2d808002b30309d")
+
+
+def _lista_do_alvo(alvo):
+    """`LinkTargetIDList` (Meu Computador, a unidade, as pastas, o arquivo): o Windows não abre um `.lnk` que só tem o `LinkInfo`.
+
+    Vazia (sem a lista) quando o alvo não começa por uma letra de unidade (caminho de rede).
+    """
+    unidade, resto = ntpath.splitdrive(alvo)
+    if len(unidade) != 2 or unidade[1] != ":":
+        return b""
+    partes = [parte for parte in resto.split("\\") if parte]
+    itens = [struct.pack("<HBB", 20, 0x1F, 0x50) + _MEU_COMPUTADOR]
+    itens.append(struct.pack("<HB", 25, 0x2F) + (unidade + "\\").encode("cp1252", "replace").ljust(22, b"\x00"))
+    for posicao, parte in enumerate(partes):
+        eh_arquivo = posicao == len(partes) - 1
+        nome = parte.encode("cp1252", "replace") + b"\x00"
+        if len(nome) % 2:
+            nome += b"\x00"
+        itens.append(struct.pack("<HBBIHHH", 14 + len(nome), 0x32 if eh_arquivo else 0x31, 0, 0, 0x21, 0, 0x20 if eh_arquivo else 0x10) + nome)
+    lista = b"".join(itens) + b"\x00\x00"
+    return struct.pack("<H", len(lista)) + lista
 
 
 def _link_info(alvo):
