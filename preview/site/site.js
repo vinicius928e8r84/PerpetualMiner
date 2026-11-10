@@ -1,10 +1,10 @@
 'use strict';
 
-// O movimento da landing (/sobre/), por cima de uma página que já está inteira sem ele: o que entra ao rolar
-// e o Repetir da demonstração. Nada aqui fala com a rede nem guarda coisa alguma.
+// O movimento da landing (/sobre/), por cima de uma página que já está inteira sem ele: as etapas do envio, que
+// acendem quando aparecem, e o Repetir da demonstração. Nada aqui fala com a rede nem guarda coisa alguma.
 //
 // Carregado no <head>, sem `defer`, só para marcar a página com `js` antes da primeira pintura: é essa classe que
-// deixa o CSS esconder o que vai entrar ao rolar, então sem script nada fica escondido.
+// deixa o CSS apagar as etapas que vão acender, então sem script nada fica apagado.
 
 (function () {
   if (!('IntersectionObserver' in window)) return;

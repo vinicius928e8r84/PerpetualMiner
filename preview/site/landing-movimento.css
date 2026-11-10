@@ -70,31 +70,8 @@
     --demo-inicio: 500ms;
   }
 
-  /* O que entra ao rolar, uma vez só (site.js marca data-visivel). Os grupos entram em onda, com o intervalo encolhendo. */
-  .js [data-revelar="bloco"],
-  .js [data-revelar="grupo"] > * {
-    opacity: 0;
-    transform: translateY(12px);
-    transition:
-      opacity var(--site-mov-entrada) var(--veio-curva-saida) var(--atraso, 0ms),
-      transform var(--site-mov-entrada) var(--veio-curva-saida) var(--atraso, 0ms);
-  }
-
-  .js .captura[data-revelar="bloco"] {
-    transform: translateY(16px) scale(.985);
-  }
-
-  .js [data-revelar="bloco"][data-visivel],
-  .js [data-revelar="grupo"][data-visivel] > * {
-    opacity: 1;
-    transform: none;
-  }
-
-  .js [data-revelar="grupo"] > :nth-child(2) { --atraso: 70ms; }
-  .js [data-revelar="grupo"] > :nth-child(3) { --atraso: 125ms; }
-  .js [data-revelar="grupo"] > :nth-child(n + 4) { --atraso: 165ms; }
-
-  /* As etapas do envio são a explicação: o fio corre e cada etapa acende quando ele chega. */
+  /* As etapas do envio são a explicação: o fio corre e cada etapa acende quando ele chega (site.js marca data-visivel
+     quando elas aparecem, uma vez só). */
   .js .etapas::after {
     transform: scaleX(0);
     transition: transform 1400ms linear 200ms;
