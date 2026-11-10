@@ -176,20 +176,10 @@
   .etapas li:nth-child(4) { --etapa: 3; }
   .etapas li:nth-child(5) { --etapa: 4; }
 
-  @supports selector(::details-content) {
-    .perguntas details {
-      interpolate-size: allow-keywords;
-    }
-
-    .perguntas details::details-content {
-      block-size: 0;
-      overflow: clip;
-      transition: block-size 200ms var(--veio-curva-saida), content-visibility 200ms allow-discrete;
-    }
-
-    .perguntas details[open]::details-content {
-      block-size: auto;
-    }
+  /* As perguntas abrem e fecham na hora: animar a altura refazia o layout da página a cada quadro e dava um salto de
+     20 px no fim. O que se move é só o texto da resposta, que aparece. */
+  .perguntas details[open] p {
+    animation: site-entrar-resposta 200ms var(--veio-curva-saida) backwards;
   }
 }
 
@@ -211,5 +201,9 @@
 
 @keyframes site-entrar-tela {
   from { opacity: 0; transform: translateY(12px) scale(.98); }
+}
+
+@keyframes site-entrar-resposta {
+  from { opacity: 0; transform: translateY(-4px); }
 }
 
