@@ -41,9 +41,15 @@ body {
   text-decoration: none;
 }
 
-.site-topo nav a:hover,
 .site-topo nav a[aria-current] {
   color: var(--veio-accent-text);
+}
+
+/* Hover só onde há ponteiro fino: no toque ele gruda no link até o toque seguinte. */
+@media (hover: hover) and (pointer: fine) {
+  .site-topo nav a:hover {
+    color: var(--veio-accent-text);
+  }
 }
 
 main {
@@ -92,8 +98,10 @@ a {
   text-underline-offset: 3px;
 }
 
-a:hover {
-  color: var(--veio-text);
+@media (hover: hover) and (pointer: fine) {
+  a:hover {
+    color: var(--veio-text);
+  }
 }
 
 .site-lead {
