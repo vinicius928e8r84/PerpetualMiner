@@ -7,7 +7,9 @@ Em andamento, na fila, pausado e esperando o Anki, o plano ou o teto nunca saem:
 
 Sai, nesta ordem (morrer no meio deixa só o que a próxima rodada termina: ela acha o Envio pela fila, pelos pedidos soltos em `fila/` e pelos estados soltos em
 `estado/`; o estado é o último porque, sem ele, o pedido refaria um Envio `queued`): a entrada em `fila/fila.json`, o pedido `fila/<jobId>.json`,
-a pasta `estado/<jobId>/` e o estado `estado/<jobId>.json`. Nenhum caminho é seguido por link: um link no lugar da pasta sai sozinho, sem tocar no que ele aponta.
+a pasta `estado/<jobId>/` e o estado `estado/<jobId>.json`. Se `estado/<jobId>` é um link para outra pasta (link simbólico ou junção do Windows), só o link sai e a pasta de destino nunca é lida nem apagada; a conferência é
+pelo caminho real, que vale em qualquer Python (`os.path.islink` não vê a junção). Uma subpasta de verdade dentro de `estado/<jobId>/` o Envio não sabe apagar:
+ele fica, com um aviso no registro a cada rodada, e a retenção nunca termina de sair com ele.
 **Nunca** apaga nem reescreve `custos/<jobId>/costs.jsonl`: a aba Custos continua somando o que somava. Como a linha dela vem do pedido e do estado, antes de
 apagar a retenção grava em `custos/<jobId>/ficha.json` o que a linha diz fora os custos (`custos.ficha_do_envio`: idioma, baralho, status, contagens; nunca a Palavra nem a Frase),
 e `Fila.envios_dos_custos` junta esses Envios à fila para a aba Custos e o teto do mês. Quem pede a rodada é a thread de trabalho (`trabalhador.py`), ao subir e a cada 6 h.
@@ -54,9 +56,15 @@ def _ids(fila):
     return [job_id for index, job_id in enumerate(ids) if id_que_serve_de_caminho(job_id) and job_id not in ids[:index]]
 
 
+def _e_link(fila, job_id):
+    """Se `estado/<jobId>` leva para outro lugar (link simbólico ou junção): o caminho real não é o da pasta dentro de `estado/`."""
+    pasta = os.path.realpath(fila.pasta_dos_textos(job_id))
+    return os.path.normcase(pasta) != os.path.normcase(os.path.join(os.path.realpath(fila.dados.estado), job_id))
+
+
 def _texto_pago(fila, job_id):
     pasta = fila.pasta_dos_textos(job_id)
-    return os.path.isdir(pasta) and not os.path.islink(pasta) and any(nome.endswith(".txt") for nome in os.listdir(pasta))
+    return os.path.isdir(pasta) and not _e_link(fila, job_id) and any(nome.endswith(".txt") for nome in os.listdir(pasta))
 
 
 def venceu(fila, job_id, agora):
@@ -73,6 +81,16 @@ def venceu(fila, job_id, agora):
     return not _texto_pago(fila, job_id)
 
 
+def _tirar_o_link(caminho):
+    """Tira só a entrada: `os.remove` para o link simbólico, `os.rmdir` para a junção do Windows (que ele não tira); nenhum dos dois entra no destino."""
+    try:
+        os.remove(caminho)
+    except FileNotFoundError:
+        pass
+    except OSError:
+        os.rmdir(caminho)
+
+
 def _apagar_o_envio(fila, job_id):
     pedido = fila.pedido(job_id)
     if pedido is not None:  # sem ele (a rodada que morreu depois do pedido), a ficha que já está é a boa
@@ -82,8 +100,8 @@ def _apagar_o_envio(fila, job_id):
         gravar_json(fila._arquivo_da_fila(), {"jobs": [item for item in ordem if not (isinstance(item, dict) and item.get("jobId") == job_id)]})
     apagar(fila._arquivo_do_pedido(job_id))
     pasta = fila.pasta_dos_textos(job_id)
-    if os.path.islink(pasta):
-        apagar(pasta)  # só o link: o que ele aponta pode estar fora do `user_files`
+    if _e_link(fila, job_id):
+        _tirar_o_link(pasta)  # só o link: o que ele aponta pode estar fora do `user_files`
     elif os.path.isdir(pasta):
         for nome in sorted(os.listdir(pasta)):
             apagar(os.path.join(pasta, nome))

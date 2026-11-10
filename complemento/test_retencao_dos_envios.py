@@ -240,7 +240,8 @@ class UmErroDeDisco(unittest.TestCase):
             registro = " ".join(str(chamada) for chamada in fila.logger.method_calls)
             estado_ficou = os.path.exists(arquivo_do_estado(conexao, ID))
         self.assertEqual(primeira, [OUTRO_ID])
-        self.assertIn("IsADirectoryError", registro)
+        self.assertIn(ID, registro)  # o tipo do erro muda de sistema para sistema (IsADirectoryError no Linux, PermissionError no Mac e no Windows)
+        self.assertIn("warning", registro)
         self.assertTrue(estado_ficou)
 
     def test_a_ficha_que_nao_grava_deixa_o_envio_inteiro_no_lugar(self):
@@ -278,6 +279,41 @@ class UmLinkNoLugarDaPasta(unittest.TestCase):
         self.assertEqual(depois, [])
         self.assertFalse(os.path.lexists(fila.pasta_dos_textos(ID)))
         self.assertEqual([linha["jobId"] for linha in linhas], [ID])
+
+    def test_a_juncao_que_o_islink_nao_ve_tambem_sai_sozinha(self):
+        with tempfile.TemporaryDirectory() as pasta, tempfile.TemporaryDirectory() as fora, EnvioNoTeste(pasta) as conexao:
+            terminado(conexao, ID)
+            envelhecer(conexao, ID, 40)
+            fila = conexao.conexao.fila
+            with open(os.path.join(fora, "marca.txt"), "w", encoding="utf-8") as arquivo:
+                arquivo.write("do usuário, fora da Conexão")
+            os.rmdir(fila.pasta_dos_textos(ID))
+            try:
+                os.symlink(fora, fila.pasta_dos_textos(ID), target_is_directory=True)
+            except (OSError, NotImplementedError, AttributeError):
+                self.skipTest("este sistema não cria link simbólico")
+            with mock.patch("os.path.islink", return_value=False):  # como no Windows com uma junção, no Python 3.9 e 3.13
+                apagados = retencao_dos_envios.reter(fila)
+            sobrou = sorted(os.listdir(fora))
+        self.assertEqual(apagados, [ID])
+        self.assertEqual(sobrou, ["marca.txt"])
+        self.assertFalse(os.path.lexists(fila.pasta_dos_textos(ID)))
+
+    def test_o_link_para_uma_pasta_com_texto_pago_nao_e_lido_e_o_envio_sai(self):
+        with tempfile.TemporaryDirectory() as pasta, tempfile.TemporaryDirectory() as fora, EnvioNoTeste(pasta) as conexao:
+            terminado(conexao, ID)
+            envelhecer(conexao, ID, 40)
+            fila = conexao.conexao.fila
+            with open(os.path.join(fora, "1-0.txt"), "w", encoding="utf-8") as arquivo:
+                arquivo.write("texto de outra pasta")
+            os.rmdir(fila.pasta_dos_textos(ID))
+            try:
+                os.symlink(fora, fila.pasta_dos_textos(ID), target_is_directory=True)
+            except (OSError, NotImplementedError, AttributeError):
+                self.skipTest("este sistema não cria link simbólico")
+            apagados = retencao_dos_envios.reter(fila)
+            sobrou = os.listdir(fora)
+        self.assertEqual((apagados, sobrou), ([ID], ["1-0.txt"]))
 
 
 class QuandoARetencaoRoda(unittest.TestCase):
