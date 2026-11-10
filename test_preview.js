@@ -3,8 +3,9 @@
 // O preview monta o que as telas da extensão carregam a partir do manifest e das
 // páginas, não de uma lista escrita à mão: toda página da extensão chega ao preview com
 // cada script, estilo e imagem que ela pede. Roda `preview/montar.mjs` numa pasta
-// temporária. `node test_preview.js`. Confere também as páginas públicas do app: `/sobre/` e a
-// política de privacidade em `/privacidade/` e `/privacy/`, que o consentimento OAuth do Google pede.
+// temporária. `node test_preview.js`. Confere também as páginas públicas do app: `/sobre/` (a landing, com
+// as capturas de `preview/site/capturas/`) e a política de privacidade em `/privacidade/` e `/privacy/`, que
+// o consentimento OAuth do Google pede.
 
 const assert = require('assert');
 const { execFileSync } = require('child_process');
@@ -43,22 +44,38 @@ const extensao = path.join(saida, 'extensao');
   assert(fs.readFileSync(path.join(extensao, 'painel.html'), 'utf8').includes('/preview-chrome-simulado.js'));
   assert(!fs.readFileSync('painel.html', 'utf8').includes('preview-chrome-simulado'));
 
+  // O vídeo simulado é uma página de fora da extensão: leva o simulador e os scripts de conteúdo do manifest, na ordem.
+  const video = fs.readFileSync(path.join(extensao, 'video-simulado.html'), 'utf8');
+  const scriptsDoVideo = [...video.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
+  const scriptsDeConteudo = JSON.parse(fs.readFileSync('manifest.json', 'utf8')).content_scripts.flatMap(entrada => entrada.js);
+  assert.deepStrictEqual(scriptsDoVideo, ['/preview-chrome-simulado.js', ...scriptsDeConteudo]);
+  assert(video.includes('<video'), 'sem vídeo na página, a extensão não procura legenda');
+
   // As páginas públicas: a política sai nos dois endereços, a página inicial a leva num link, e o que elas
   // carregam (a Veio e a folha do site) está no site, sem nada de fora.
   const privacidade = fs.readFileSync(path.join(saida, 'privacidade', 'index.html'), 'utf8');
   assert.strictEqual(fs.readFileSync(path.join(saida, 'privacy', 'index.html'), 'utf8'), privacidade);
   assert(privacidade.includes('Política de privacidade') && privacidade.includes('Uso limitado'));
   const sobre = fs.readFileSync(path.join(saida, 'sobre', 'index.html'), 'utf8');
-  assert(sobre.includes('href="/privacidade/"'), 'a página inicial devia levar à política');
+  for (const endereco of ['/privacidade/', '/privacy/']) {
+    assert(sobre.includes(`href="${endereco}"`), `a landing devia levar à política em ${endereco}`);
+  }
   for (const [nome, html] of [['privacidade', privacidade], ['sobre', sobre]]) {
     assert(!/<script/i.test(html), `${nome}: página pública sem script`);
-    const pedidos = [...html.matchAll(/\b(?:src|href)="(\/[^"#?]*)"/g)].map(m => m[1]);
+    const pedidos = [...html.matchAll(/\b(?:src|srcset|href)="(\/[^"#?]*)"/g)].map(m => m[1]);
     for (const pedido of pedidos) {
       const alvo = path.join(saida, pedido);
       assert(fs.existsSync(alvo) || fs.existsSync(path.join(alvo, 'index.html')), `${nome} carrega ${pedido}, que não está no site`);
     }
     const externos = [...html.matchAll(/\b(?:src|href)="(https?:\/\/[^"]+)"/g)].map(m => m[1]);
     assert(!externos.some(url => /fonts\.(googleapis|gstatic)/.test(url)), `${nome}: fonte de fora`);
+    assert(!/\b(?:src|srcset)="https?:/.test(html), `${nome}: imagem de fora`);
+  }
+  // As capturas da landing: toda imagem que `preview/capturar.mjs` deixou na pasta aparece na página.
+  const capturas = fs.readdirSync(path.join(saida, 'site', 'capturas'));
+  assert(capturas.length > 0, 'a landing devia ter capturas');
+  for (const captura of capturas) {
+    assert(sobre.includes(`"/site/capturas/${captura}"`), `a landing não mostra a captura ${captura}`);
   }
   assert(fs.readFileSync(path.join(saida, 'index.html'), 'utf8').includes('href="/sobre/"'), 'a capa devia levar ao /sobre/');
 

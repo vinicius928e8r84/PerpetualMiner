@@ -75,6 +75,8 @@
     // e Frases mostram o lembrete “Configuração pela metade” (ONB-14, ONB-15).
     pm_boas_vindas: { agoraNao: [], concluida: false },
   };
+  // Quem tira as capturas da landing (`preview/capturar.mjs`) troca parte destes dados antes de a página carregar.
+  Object.assign(dados, window.PREVIEW_DADOS);
 
   /** Copia o valor, como o storage do Chrome faz ao devolver o que guardou. */
   const copiar = valor => (valor === undefined ? undefined : JSON.parse(JSON.stringify(valor)));
@@ -183,6 +185,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     const faixa = document.createElement('div');
+    faixa.id = 'preview-faixa';
     faixa.textContent = 'Preview: dados de exemplo, fora do Chrome. Botões que dependem do navegador não funcionam.';
     faixa.style.cssText = [
       'position:fixed', 'z-index:2147483647', 'left:0', 'right:0', 'bottom:0',

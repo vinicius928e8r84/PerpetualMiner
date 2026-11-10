@@ -3,59 +3,252 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PerpetualMiner · minere frases do que você assiste e lê</title>
-<meta name="description" content="PerpetualMiner é uma extensão de navegador para estudo de idiomas: minera frases de legendas, de textos e de fotos de livros, guarda tudo num painel e envia ao Anki como cartões.">
+<title>PerpetualMiner · a frase da legenda vira cartão do Anki</title>
+<meta name="description" content="PerpetualMiner é uma extensão do Chrome para quem estuda inglês ou russo: minera frases de legendas, de textos e de fotos de livros, guarda tudo num painel e envia ao Anki como cartões com tradução, áudio e imagem.">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:title" content="PerpetualMiner · a frase da legenda vira cartão do Anki">
+<meta property="og:description" content="Extensão do Chrome para quem estuda inglês ou russo: minera frases de legendas, de textos e de fotos de livros e envia ao Anki como cartões com tradução, áudio e imagem.">
 <link rel="icon" href="/veio/icones/icone.svg" type="image/svg+xml">
+<link rel="preload" href="/veio/fontes/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/veio/tokens.css">
 <link rel="stylesheet" href="/site/site.css">
 </head>
-<body>
+<!-- A landing do app. Tudo o que ela afirma sai do que a extensão e a Conexão com o Anki fazem hoje: mudou o
+     produto, mude o texto na mesma PR. As telas são imagens de capturas/, tiradas por `node preview/capturar.mjs`. -->
+<body class="landing">
+<a class="site-pular" href="#conteudo">Pular para o conteúdo</a>
 <header class="site-topo">
   <a class="site-marca" href="/sobre/">
     <img class="veio-marca" src="/veio/icones/icone.svg" width="40" height="40" alt="">
     <span class="veio-nome">Perpetual<b>Miner</b></span>
   </a>
   <nav aria-label="Páginas">
-    <a href="/sobre/" aria-current="page">Sobre</a>
+    <a href="#como-funciona">Como funciona</a>
+    <a href="#instalar">Instalar</a>
     <a href="/privacidade/">Privacidade</a>
     <a href="https://github.com/vinicius928e8r84/PerpetualMiner">Código</a>
   </nav>
 </header>
 
-<main>
-  <h1>Minere frases do que você assiste e lê.</h1>
-  <p class="site-lead">O PerpetualMiner é uma extensão de navegador para quem estuda idiomas. Ela pega a frase que está na tela, guarda num painel de estudos e, se você quiser, transforma em cartão do Anki.</p>
+<main id="conteudo">
+  <section class="hero" aria-labelledby="titulo">
+    <div class="hero-texto">
+      <p class="site-sobretitulo">Extensão do Chrome · inglês e russo</p>
+      <h1 id="titulo">A frase da legenda vira cartão do Anki.</h1>
+      <p class="site-lead">O PerpetualMiner minera frases do que você assiste e lê: a legenda que está na tela, o texto que você selecionou numa página, os trechos marcados na foto de um livro. Depois, a Conexão com o Anki transforma cada frase em cartão, com tradução, áudio e imagem.</p>
+      <div class="hero-acoes">
+        <a class="site-botao" href="#instalar">Ver como instalar</a>
+        <a href="https://github.com/vinicius928e8r84/PerpetualMiner">Código no GitHub</a>
+      </div>
+      <p class="site-nota">Software livre, sob a licença AGPL-3.0. Ainda não está na Chrome Web Store: por enquanto, a instalação é pela pasta do repositório.</p>
+    </div>
+    <figure class="captura">
+      <img src="/site/capturas/legenda.jpg" width="960" height="720" alt="Um vídeo com a legenda “The quiet harbor woke before the gulls did.” sublinhada em dourado. Acima dela, o aviso da extensão: “Frase minerada e copiada”, em inglês. No canto, o botão da extensão com o contador 7/20 da mineração automática.">
+      <figcaption>O overlay da extensão sobre um vídeo simulado: Alt+S minerou a legenda e copiou a frase.</figcaption>
+    </figure>
+  </section>
 
-  <div class="site-acoes">
-    <a href="/privacidade/">Política de privacidade</a>
-    <a href="https://github.com/vinicius928e8r84/PerpetualMiner">Ver o código no GitHub</a>
-  </div>
+  <section id="como-funciona" aria-labelledby="como-funciona-titulo">
+    <p class="site-sobretitulo">Como funciona</p>
+    <h2 id="como-funciona-titulo">Três passos, do vídeo ao baralho</h2>
+    <ol class="passos">
+      <li>
+        <h3>Minere a frase</h3>
+        <p>Num vídeo com legenda, aperte <kbd>Alt</kbd>+<kbd>S</kbd>. A frase vai para o histórico e já fica copiada. O atalho é seu: troque por outra tecla ou por um botão extra do mouse.</p>
+      </li>
+      <li>
+        <h3>Escolha a palavra</h3>
+        <p>No painel, cada frase guarda o idioma e de onde veio. Marque na frase a palavra que o cartão vai ensinar; com o Anki ligado, a extensão pode sugerir uma.</p>
+      </li>
+      <li>
+        <h3>Envie ao Anki</h3>
+        <p>Selecione as frases e use Enviar ao Anki. A Conexão com o Anki cria um cartão para cada uma, e o painel mostra o andamento do envio.</p>
+      </li>
+    </ol>
+    <figure class="captura">
+      <picture>
+        <source media="(max-width: 640px)" srcset="/site/capturas/painel-estreito.png" width="960" height="1440">
+        <img src="/site/capturas/painel.png" width="2400" height="1500" loading="lazy" alt="O painel da extensão, na lista Frases mineradas: filtros por fonte e idioma, busca, e frases em inglês e em russo com a palavra grifada e a fonte de cada uma. Duas frases estão selecionadas e a barra mostra Editar contexto, Exportar .txt, Apagar e Enviar ao Anki.">
+      </picture>
+      <figcaption>O painel, com frases de exemplo: duas selecionadas, prontas para Enviar ao Anki.</figcaption>
+    </figure>
+  </section>
 
-  <h2>O que ele faz</h2>
-  <ul>
-    <li><strong>Minera legendas.</strong> Em um vídeo com legenda, um atalho (Alt+S, por padrão) guarda a linha que está na tela. A Mineração automática, que vem desligada, guarda as linhas sozinha até um limite diário que você define.</li>
-    <li><strong>Minera texto selecionado.</strong> Selecione um trecho em qualquer página e use o menu do botão direito.</li>
-    <li><strong>Minera uma foto de livro.</strong> Você escolhe a foto e a extensão lê os trechos marcados, com a sua chave do Gemini.</li>
-    <li><strong>Guarda tudo num painel.</strong> As frases, com o idioma e de onde vieram, ficam no seu navegador. Se você entrar com a conta Google, elas acompanham a conta e aparecem em outros computadores.</li>
-    <li><strong>Envia ao Anki.</strong> Com a Conexão com o Anki, um complemento do Anki que roda no seu próprio computador, cada frase vira um cartão com explicação, áudio e imagem.</li>
-  </ul>
-
-  <h2>O que você precisa saber</h2>
-  <div class="site-cartao">
-    <ul>
-      <li>Tudo funciona sem criar conta. Entrar com o Google, a chave do Gemini, a chave da OpenAI (ou o seu plano do ChatGPT) e o Anki são opcionais.</li>
-      <li>O PerpetualMiner não tem anúncios, não vende dados e não tem rastreadores.</li>
-      <li>Os idiomas de estudo, hoje, são inglês e russo.</li>
+  <section id="o-que-minera" aria-labelledby="o-que-minera-titulo">
+    <p class="site-sobretitulo">O que ele minera</p>
+    <h2 id="o-que-minera-titulo">Do vídeo, da página e do livro de papel</h2>
+    <ul class="grade">
+      <li class="site-cartao">
+        <h3>Legendas de vídeo</h3>
+        <p>O atalho guarda a linha que está na tela. Há leitores próprios para YouTube, Netflix, Prime Video, Max e Kinopoisk; nos outros players, a extensão procura a legenda sobre o vídeo.</p>
+      </li>
+      <li class="site-cartao">
+        <h3>Texto selecionado</h3>
+        <p>Em qualquer página ou PDF: selecione o trecho e use o botão direito › Minerar com PerpetualMiner. Quem prefere grava um atalho só para isso.</p>
+      </li>
+      <li class="site-cartao">
+        <h3>Foto de livro</h3>
+        <p>Marque os trechos no papel, fotografe a página e escolha quais frases minerar. Quem lê a foto é o Gemini, com a sua chave.</p>
+      </li>
+      <li class="site-cartao">
+        <h3>Frases coladas ou importadas</h3>
+        <p>Cole frases, uma por linha, ou importe um arquivo .txt pelo painel. No popup, dá para minerar uma frase escrita na hora.</p>
+      </li>
     </ul>
-  </div>
-  <p>O que a extensão guarda, o que sai do seu computador e para quem está na <a href="/privacidade/">política de privacidade</a>.</p>
 
-  <h2>Instalar e acompanhar</h2>
-  <p>O código é aberto (licença AGPL-3.0). O guia de instalação, os problemas conhecidos e o que vem a seguir estão no <a href="https://github.com/vinicius928e8r84/PerpetualMiner">repositório do projeto</a>; dúvidas e pedidos vão na <a href="https://github.com/vinicius928e8r84/PerpetualMiner/issues">página de issues</a>.</p>
+    <div class="destaque">
+      <div>
+        <h3>Mineração automática</h3>
+        <p>Com a Conexão com o Anki ligada, as legendas com uma palavra que você ainda não conhece são mineradas sozinhas, até um limite por dia. É a Conexão que diz quais palavras você já conhece, pelo seu baralho.</p>
+        <p>Ela liga por idioma, no popup, e vem desligada. O contador de hoje aparece no ícone da extensão.</p>
+      </div>
+      <figure class="captura captura--popup">
+        <img src="/site/capturas/popup.png" width="680" height="1200" loading="lazy" alt="O popup da extensão: o botão Abrir painel, a mineração automática com o inglês ligado em 7 de 20 frases hoje e o russo desligado, o campo para colar ou escrever uma frase e a lista das últimas mineradas.">
+        <figcaption>O popup, com dados de exemplo.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="no-anki" aria-labelledby="no-anki-titulo">
+    <p class="site-sobretitulo">No Anki</p>
+    <h2 id="no-anki-titulo">Cada frase vira um cartão completo</h2>
+    <p class="site-intro">A Conexão com o Anki é um complemento que roda dentro do Anki, no seu computador. Ela recebe as frases da extensão e grava os cartões na sua coleção.</p>
+    <ul class="grade">
+      <li class="site-cartao">
+        <h3>O que vai no cartão</h3>
+        <p>Na frente, a frase. No verso do cartão iniciante: a pronúncia, a tradução literal, a tradução natural, o contexto da cena e a imagem, com o áudio da frase e o da palavra.</p>
+      </li>
+      <li class="site-cartao">
+        <h3>Três níveis por idioma</h3>
+        <p>Iniciante, Intermediário e Avançado, em inglês e em russo. O Iniciante traz tradução literal e natural; os outros dois, definição e outro exemplo.</p>
+      </li>
+      <li class="site-cartao">
+        <h3>No seu baralho</h3>
+        <p>Cada idioma tem o seu tipo de nota e o seu baralho. Você escolhe o baralho de cada idioma, e dá para usar um tipo de nota que você já tem.</p>
+      </li>
+      <li class="site-cartao">
+        <h3>Prévia antes de enviar</h3>
+        <p>Os ajustes de envio mostram o cartão desenhado pelo próprio Anki. Uma frase que já está no baralho não é gravada de novo.</p>
+      </li>
+    </ul>
+
+    <h3 class="subtitulo">Voz e imagens</h3>
+    <ul class="grade grade--dupla">
+      <li class="site-cartao">
+        <h4>Áudio da palavra e da frase</h4>
+        <p>A voz é a do Google Tradutor, no sotaque que você escolher: Estados Unidos, Reino Unido, Austrália e outros no inglês. Se o Google falhar, a voz de reserva é a da OpenAI, pela sua chave.</p>
+      </li>
+      <li class="site-cartao">
+        <h4>Imagem do cartão</h4>
+        <p>Foto real, buscada entre fotos de licença aberta e escolhida pela IA, ou imagem gerada por IA. Se a imagem falhar, o cartão entra no Anki sem ela.</p>
+      </li>
+    </ul>
+  </section>
+
+  <section id="idiomas" aria-labelledby="idiomas-titulo">
+    <p class="site-sobretitulo">Idiomas</p>
+    <h2 id="idiomas-titulo">Inglês e russo</h2>
+    <p class="site-intro">São os dois idiomas de estudo de hoje. O idioma de cada frase é detectado pelo texto, e cada um tem os seus ajustes de envio, o seu baralho e os seus níveis de cartão. A extensão fala português, e o cartão iniciante explica em português.</p>
+  </section>
+
+  <section id="dados" aria-labelledby="dados-titulo">
+    <p class="site-sobretitulo">Seus dados</p>
+    <h2 id="dados-titulo">O que é seu fica com você</h2>
+    <ul class="grade grade--tripla">
+      <li class="site-cartao">
+        <h3>No seu navegador</h3>
+        <p>As frases, os atalhos e a chave do Gemini ficam no armazenamento do navegador. Tudo funciona sem criar conta.</p>
+      </li>
+      <li class="site-cartao">
+        <h3>No seu computador</h3>
+        <p>A Conexão com o Anki conversa com a extensão por <code>127.0.0.1</code>, o seu próprio computador. É ela que guarda a chave da OpenAI e a fila de envios.</p>
+      </li>
+      <li class="site-cartao">
+        <h3>Na nuvem, só se você quiser</h3>
+        <p>Entrar com o Google é opcional e serve para ter as suas frases em qualquer computador. Sem conta, elas ficam só neste.</p>
+      </li>
+    </ul>
+    <p class="site-intro">Sem anúncios, sem rastreadores e sem análise de uso. Ao criar um cartão, a frase vai aos serviços que fazem o texto, o áudio e a imagem: a <a href="/privacidade/">política de privacidade</a> diz o que sai do seu computador, e para quem.</p>
+  </section>
+
+  <section id="custo" aria-labelledby="custo-titulo">
+    <p class="site-sobretitulo">Quanto custa</p>
+    <h2 id="custo-titulo">O PerpetualMiner é livre. A IA é a sua</h2>
+    <ul class="grade grade--tripla">
+      <li class="site-cartao">
+        <h3>Software livre</h3>
+        <p>A extensão e a Conexão com o Anki têm o código aberto, sob a licença AGPL-3.0, sem plano pago e sem anúncios.</p>
+      </li>
+      <li class="site-cartao">
+        <h3>Minerar não usa IA</h3>
+        <p>Legendas, seleção e frases coladas vão direto para o seu histórico. Só duas coisas usam IA: ler uma foto e criar os cartões.</p>
+      </li>
+      <li class="site-cartao">
+        <h3>Você paga ao provedor</h3>
+        <p>Os cartões usam a sua chave da OpenAI ou a sua conta do ChatGPT; a foto, a sua chave do Gemini. A aba Custos mostra o gasto de cada envio, e o teto do mês, que vem em US$ 10, pausa o envio ao chegar nele.</p>
+      </li>
+    </ul>
+  </section>
+
+  <section id="instalar" aria-labelledby="instalar-titulo">
+    <p class="site-sobretitulo">Instalar</p>
+    <h2 id="instalar-titulo">Como instalar hoje</h2>
+    <p class="site-intro">O PerpetualMiner ainda não está na Chrome Web Store. Por enquanto, ele é carregado no Chrome a partir da pasta do repositório.</p>
+    <ol class="passos passos--instalar">
+      <li>
+        <h3>Baixe o código</h3>
+        <p>Clone o repositório numa pasta do computador:</p>
+        <pre><code>git clone https://github.com/<wbr>vinicius928e8r84/<wbr>PerpetualMiner.git</code></pre>
+      </li>
+      <li>
+        <h3>Ligue o Modo do desenvolvedor</h3>
+        <p>No Chrome, abra <code>chrome://extensions</code> e ligue o Modo do desenvolvedor, no canto superior direito.</p>
+      </li>
+      <li>
+        <h3>Carregue a pasta</h3>
+        <p>Clique em Carregar sem compactação e escolha a pasta que tem o <code>manifest.json</code>. Uma aba de Boas-vindas abre sozinha e guia o resto: o atalho, a conta, a Conexão com o Anki e a IA dos cartões.</p>
+      </li>
+    </ol>
+    <p class="site-intro">Precisa do Chrome 110 ou mais novo e, para os cartões, do Anki 2.1.50 ou mais novo no mesmo computador. A Conexão com o Anki é entregue pela própria extensão, e também está no <a href="https://ankiweb.net/shared/info/1108882947">AnkiWeb</a>. O <a href="https://github.com/vinicius928e8r84/PerpetualMiner/blob/main/docs/instalar-extensao.md">guia de instalação</a> do repositório traz o passo a passo completo, com a atualização automática e o Opera.</p>
+  </section>
+
+  <section id="perguntas" aria-labelledby="perguntas-titulo">
+    <p class="site-sobretitulo">Perguntas frequentes</p>
+    <h2 id="perguntas-titulo">Antes de instalar</h2>
+    <div class="perguntas">
+      <details>
+        <summary>Preciso do Anki para usar?</summary>
+        <p>Para minerar, não. Sem a Conexão com o Anki, dá para minerar à vontade; o que fica indisponível é Enviar ao Anki e a mineração automática.</p>
+      </details>
+      <details>
+        <summary>Preciso criar uma conta?</summary>
+        <p>Não. Entrar com o Google é opcional e serve para sincronizar as suas frases entre os seus computadores.</p>
+      </details>
+      <details>
+        <summary>Em quais sites funciona?</summary>
+        <p>A mineração de legendas tem leitores próprios para YouTube, Netflix, Prime Video, Max e Kinopoisk e, nos outros players, procura a legenda sobre o vídeo. A seleção de texto funciona em qualquer página e em PDF.</p>
+      </details>
+      <details>
+        <summary>Dá para usar sem pagar por IA?</summary>
+        <p>Sim. Minerar, organizar as frases no painel e exportá-las para um arquivo .txt não usam chave nenhuma. A IA só entra para ler fotos e para criar os cartões.</p>
+      </details>
+      <details>
+        <summary>Já está na Chrome Web Store?</summary>
+        <p>Ainda não. Enquanto isso, a instalação é pela pasta do repositório, como em <a href="#instalar">Como instalar hoje</a>.</p>
+      </details>
+      <details>
+        <summary>Como apago os meus dados?</summary>
+        <p>Em Configurações › Zona de perigo, o Apagar tudo remove as frases do navegador, da fila da Conexão com o Anki e, com conta, da nuvem. A <a href="/privacidade/">política de privacidade</a> diz o que cada caminho apaga.</p>
+      </details>
+    </div>
+  </section>
 </main>
 
 <footer class="site-rodape">
-  <p>PerpetualMiner · <a href="/privacidade/">Política de privacidade</a> · <a href="https://github.com/vinicius928e8r84/PerpetualMiner">GitHub</a></p>
+  <p>PerpetualMiner · software livre sob a <a href="https://github.com/vinicius928e8r84/PerpetualMiner/blob/main/LICENSE.md">AGPL-3.0</a></p>
+  <p><a href="/privacidade/">Política de privacidade</a> (também em <a href="/privacy/">/privacy/</a>) · <a href="https://github.com/vinicius928e8r84/PerpetualMiner">Código no GitHub</a> · <a href="https://github.com/vinicius928e8r84/PerpetualMiner/issues">Dúvidas e pedidos</a></p>
 </footer>
 </body>
 </html>

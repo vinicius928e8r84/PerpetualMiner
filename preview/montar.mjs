@@ -13,11 +13,13 @@
 //
 //   node preview/montar.mjs                    # monta em preview/dist
 //   node preview/montar.mjs --servir           # monta e serve em http://127.0.0.1:4173
-//   node preview/montar.mjs --saida <pasta>    # monta noutra pasta (test_preview.js)
+//   node preview/montar.mjs --saida <pasta>    # monta noutra pasta (test_preview.js, capturar.mjs)
 //
 // Além do preview, o site leva as duas páginas públicas do app, que o consentimento
-// OAuth do Google pede: `/sobre/` (a página inicial) e `/privacidade/` (a política,
-// também em `/privacy/`). Elas moram em `preview/site/` e não dependem da extensão.
+// OAuth do Google pede: `/sobre/` (a landing, que é a página inicial do app) e
+// `/privacidade/` (a política, também em `/privacy/`). Elas moram em `preview/site/` e
+// não dependem da extensão: as telas que a landing mostra são imagens de
+// `preview/site/capturas/`, que `preview/capturar.mjs` tira deste mesmo preview.
 
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
@@ -44,6 +46,12 @@ const TELAS = [
 ];
 
 /**
+ * O vídeo simulado (`preview/video-simulado.html`): uma página de fora da extensão, que recebe os
+ * scripts de conteúdo do manifest como toda página recebe no Chrome. É onde o preview mostra o overlay.
+ */
+const VIDEO_SIMULADO = { arquivo: 'video-simulado.html', titulo: 'Overlay num vídeo simulado', largura: 'Alt+S minera a legenda' };
+
+/**
  * O que não está no manifest nem nas páginas, mas a tela entrega: o arquivo da
  * Conexão, que `PassosDaConexao` oferece num link de download.
  */
@@ -67,6 +75,12 @@ function injetarSimulador(html) {
   const marca = '<script src="/preview-chrome-simulado.js"></script>';
   if (html.includes('</head>')) return html.replace('</head>', `  ${marca}\n</head>`);
   return `${marca}\n${html}`;
+}
+
+/** Põe no fim da página os scripts de conteúdo, na ordem do manifest. */
+function injetarScriptsDeConteudo(html, scripts) {
+  const marcas = scripts.map(script => `  <script src="${script}"></script>`).join('\n');
+  return html.replace('</body>', `${marcas}\n</body>`);
 }
 
 /** Os protótipos de `docs/design`, para a lista da capa. */
@@ -150,7 +164,7 @@ ${temVeio ? '    <img class="veio-marca" src="/veio/icones/icone.svg" width="40"
 
   <h2>O app</h2>
   <ul>
-${linha('/sobre/', 'PerpetualMiner: página inicial do app', 'o que é e o que faz')}
+${linha('/sobre/', 'PerpetualMiner: a landing do app', 'o que é, como funciona e como instalar')}
 ${linha('/privacidade/', 'Política de privacidade', 'também em /privacy')}
   </ul>
 
@@ -204,6 +218,11 @@ async function montar() {
     const origem = path.join(RAIZ, nome);
     if (await existe(origem)) await copiar(origem, path.join(DESTINO, 'extensao', nome));
   }
+  const manifesto = JSON.parse(await lerTexto('manifest.json'));
+  const scriptsDeConteudo = manifesto.content_scripts.flatMap(entrada => entrada.js);
+  const video = await lerTexto(path.join('preview', VIDEO_SIMULADO.arquivo));
+  await fs.writeFile(path.join(DESTINO, 'extensao', VIDEO_SIMULADO.arquivo), injetarScriptsDeConteudo(injetarSimulador(video), scriptsDeConteudo));
+  telas.push(VIDEO_SIMULADO);
   for (const pasta of PASTAS_DE_APOIO) {
     const origem = path.join(RAIZ, pasta);
     if (await existe(origem)) await copiar(origem, path.join(DESTINO, 'extensao', pasta));
@@ -227,6 +246,7 @@ async function montar() {
 
   await fs.mkdir(path.join(DESTINO, 'site'), { recursive: true });
   await fs.copyFile(path.join(RAIZ, 'preview', 'site', 'site.css'), path.join(DESTINO, 'site', 'site.css'));
+  await copiar(path.join(RAIZ, 'preview', 'site', 'capturas'), path.join(DESTINO, 'site', 'capturas'));
   for (const { arquivo, enderecos } of PAGINAS_PUBLICAS) {
     for (const endereco of enderecos) {
       await copiar(path.join(RAIZ, 'preview', 'site', arquivo), path.join(DESTINO, endereco, 'index.html'));
@@ -256,6 +276,7 @@ const TIPOS_MIME = {
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
   '.woff2': 'font/woff2',
 };
 

@@ -1,4 +1,4 @@
-/* As páginas públicas do app (sobre e privacidade): só a Veio, sem fonte nem script de fora. */
+/* As páginas públicas do app (a landing em /sobre/ e a política de privacidade): só a Veio, sem fonte nem script de fora. */
 body {
   margin: 0;
   background: var(--veio-bg);
@@ -30,11 +30,13 @@ body {
 
 .site-topo nav {
   display: flex;
-  gap: 20px;
+  flex-wrap: wrap;
+  gap: 0 20px;
   font-size: var(--veio-tam-corpo);
 }
 
 .site-topo nav a {
+  padding: 6px 0;
   color: var(--veio-muted);
   text-decoration: none;
 }
@@ -130,33 +132,6 @@ a:hover {
   margin-bottom: 0;
 }
 
-.site-acoes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: 24px 0;
-}
-
-.site-acoes a {
-  display: inline-block;
-  padding: 10px 18px;
-  border-radius: var(--veio-raio-input);
-  border: 1px solid var(--veio-border-strong);
-  color: var(--veio-text);
-  text-decoration: none;
-  font-weight: var(--veio-peso-rotulo);
-}
-
-.site-acoes a:first-child {
-  background: var(--veio-accent);
-  border-color: var(--veio-accent);
-  color: var(--veio-accent-ink);
-}
-
-.site-acoes a:hover {
-  border-color: var(--veio-accent);
-}
-
 table {
   width: 100%;
   border-collapse: collapse;
@@ -202,5 +177,410 @@ th {
 
   h2 {
     font-size: var(--veio-tam-modal);
+  }
+}
+
+/* A landing (/sobre/): a mesma Veio numa coluna larga. Os tamanhos de título que a escala da extensão não tem ficam aqui. */
+.landing {
+  --site-tam-titulo: clamp(34px, 4.6vw, 58px);
+  --site-tam-secao: clamp(26px, 3.4vw, 36px);
+  --site-tam-lead: clamp(17px, 1.5vw, 19px);
+  --site-largura: 1120px;
+  --site-entre-secoes: 104px;
+  background-image: radial-gradient(ellipse 70% 540px at 50% 0, var(--veio-accent-soft), transparent);
+  background-repeat: no-repeat;
+}
+
+.landing .site-topo,
+.landing main,
+.landing .site-rodape {
+  max-width: var(--site-largura);
+}
+
+.landing main {
+  padding-top: 0;
+  padding-bottom: var(--site-entre-secoes);
+}
+
+.site-pular {
+  position: absolute;
+  left: 12px;
+  top: -80px;
+  padding: 10px 16px;
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+  font-weight: var(--veio-peso-rotulo);
+  text-decoration: none;
+}
+
+.site-pular:focus {
+  top: 12px;
+}
+
+.landing section {
+  padding-top: var(--site-entre-secoes);
+}
+
+.landing h2 {
+  font-size: var(--site-tam-secao);
+  font-weight: var(--veio-peso-display);
+  letter-spacing: var(--veio-tracking-display);
+  line-height: 1.15;
+  margin: 0 0 16px;
+  text-wrap: balance;
+}
+
+.landing h3,
+.landing h4 {
+  font-size: var(--veio-tam-destaque);
+  font-weight: var(--veio-peso-titulo);
+  line-height: 1.35;
+  color: var(--veio-text);
+  margin: 0 0 8px;
+}
+
+.landing code,
+.landing kbd {
+  font-family: var(--veio-fonte-mono);
+  font-size: .9em;
+}
+
+.landing kbd {
+  padding: 2px 6px;
+  border: 1px solid var(--veio-border-strong);
+  border-radius: var(--veio-raio-tecla);
+  background: var(--veio-surface-2);
+  color: var(--veio-text);
+}
+
+.landing pre {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-bg);
+  color: var(--veio-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.site-sobretitulo {
+  font-size: var(--veio-tam-legenda);
+  font-weight: var(--veio-peso-legenda);
+  letter-spacing: var(--veio-tracking-legenda);
+  text-transform: uppercase;
+  color: var(--veio-accent-text);
+  margin: 0 0 12px;
+}
+
+.site-intro {
+  max-width: 70ch;
+  color: var(--veio-muted);
+  margin: 0;
+}
+
+.site-nota {
+  font-size: var(--veio-tam-corpo);
+  color: var(--veio-muted);
+  margin: 0;
+}
+
+.site-botao {
+  display: inline-block;
+  padding: 14px 28px;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-accent);
+  box-shadow: inset 0 1px 0 var(--veio-brilho), var(--veio-brilho-da-linha);
+  color: var(--veio-accent-ink);
+  font-weight: var(--veio-peso-titulo);
+  text-decoration: none;
+}
+
+.site-botao:hover {
+  color: var(--veio-accent-ink);
+  filter: brightness(1.08);
+}
+
+.landing .hero {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 56px;
+  padding-top: 64px;
+}
+
+.hero h1 {
+  font-size: var(--site-tam-titulo);
+  line-height: 1.08;
+  margin: 0 0 20px;
+  text-wrap: balance;
+}
+
+.hero .site-lead {
+  font-size: var(--site-tam-lead);
+  margin: 0;
+}
+
+.hero-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 28px;
+  margin: 32px 0 20px;
+}
+
+.captura {
+  margin: 0;
+}
+
+.captura img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-painel);
+  box-shadow: var(--veio-sombra);
+}
+
+.captura figcaption {
+  margin-top: 14px;
+  font-size: var(--veio-tam-corpo);
+  color: var(--veio-muted);
+  text-align: center;
+}
+
+.passos,
+.grade {
+  display: grid;
+  gap: 16px;
+  list-style: none;
+  margin: 32px 0 0;
+  padding: 0;
+}
+
+.passos {
+  grid-template-columns: repeat(3, 1fr);
+  counter-reset: passo;
+}
+
+.passos + .captura,
+.passos + .site-intro,
+.grade + .site-intro {
+  margin-top: 40px;
+}
+
+.passos li {
+  counter-increment: passo;
+  margin: 0;
+  padding: 24px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface);
+}
+
+.passos li::before {
+  content: counter(passo);
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 16px;
+  border: 1px solid var(--veio-accent);
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-accent-soft);
+  color: var(--veio-accent-text);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-num);
+}
+
+.passos p,
+.grade p,
+.destaque p,
+.perguntas p {
+  font-size: var(--veio-tam-card);
+  color: var(--veio-muted);
+  margin: 0;
+}
+
+.passos--instalar {
+  grid-template-columns: 1fr;
+  max-width: 760px;
+}
+
+.passos--instalar li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 20px;
+}
+
+.passos--instalar li::before {
+  grid-row: span 3;
+  margin-bottom: 0;
+}
+
+.passos--instalar li > * {
+  grid-column: 2;
+}
+
+.grade {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.grade--dupla {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.grade--tripla {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.grade .site-cartao {
+  margin: 0;
+  padding: 22px;
+}
+
+.landing .subtitulo {
+  font-size: var(--veio-tam-hero);
+  margin: 56px 0 0;
+}
+
+.subtitulo + .grade {
+  margin-top: 20px;
+}
+
+.destaque {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  align-items: center;
+  gap: 48px;
+  margin-top: 16px;
+  padding: 40px 48px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-surface);
+}
+
+.landing .destaque h3 {
+  font-size: var(--veio-tam-hero);
+  margin-bottom: 12px;
+}
+
+.destaque p {
+  max-width: 54ch;
+  font-size: var(--veio-tam-destaque);
+}
+
+.destaque p + p {
+  margin-top: 12px;
+}
+
+.captura--popup img {
+  border-radius: var(--veio-raio-card);
+}
+
+.perguntas {
+  max-width: 760px;
+  margin-top: 28px;
+  border-top: 1px solid var(--veio-border);
+}
+
+.perguntas details {
+  border-bottom: 1px solid var(--veio-border);
+}
+
+.perguntas summary {
+  padding: 18px 4px;
+  font-weight: var(--veio-peso-titulo);
+  cursor: pointer;
+}
+
+.perguntas summary::marker {
+  color: var(--veio-accent-text);
+}
+
+.perguntas p {
+  max-width: 64ch;
+  margin: 0 4px 20px;
+}
+
+.landing .site-rodape {
+  padding-top: 28px;
+  border-top: 1px solid var(--veio-border);
+}
+
+.landing .site-rodape p {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 1000px) {
+  .grade {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .landing .hero {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    padding-top: 48px;
+    text-align: center;
+  }
+
+  .hero h1,
+  .hero .site-lead,
+  .site-nota {
+    max-width: 60ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero h1 {
+    max-width: 16ch;
+  }
+
+  .hero-acoes {
+    justify-content: center;
+  }
+
+  .hero .captura {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .landing {
+    --site-entre-secoes: 72px;
+  }
+
+  .landing .hero {
+    padding-top: 32px;
+  }
+
+  .passos,
+  .grade,
+  .grade--tripla,
+  .destaque {
+    grid-template-columns: 1fr;
+  }
+
+  .passos--instalar li {
+    display: block;
+  }
+
+  .passos--instalar li::before {
+    margin-bottom: 16px;
+  }
+
+  .destaque {
+    gap: 28px;
+    padding: 24px;
+  }
+
+  .captura--popup {
+    width: 100%;
+    max-width: 340px;
+    margin: 0 auto;
   }
 }
