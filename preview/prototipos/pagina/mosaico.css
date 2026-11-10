@@ -1,0 +1,583 @@
+/* Protótipo "Mosaico": a página inteira em peças, numa grade de 12 colunas. Denso de propósito: cada peça diz uma coisa
+   só e cabe num relance. O movimento está em mosaico-movimento.css. */
+.mosaico {
+  --ms-largura: 1240px;
+  --ms-vao: 14px;
+  --ms-tam-titulo: clamp(34px, 5vw, 64px);
+  position: relative;
+  background-image: radial-gradient(ellipse 60% 520px at 50% -60px, color-mix(in srgb, var(--veio-accent) 18%, transparent), transparent);
+  background-repeat: no-repeat;
+}
+
+/* A malha de pontos atrás da chamada, que some para os lados e para baixo. */
+.mosaico::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: -1;
+  height: 640px;
+  background-image: radial-gradient(circle at 1px 1px, var(--pp-fio) 1px, transparent 0);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(ellipse 70% 80% at 50% 0, black, transparent);
+  pointer-events: none;
+}
+
+.ms-topo,
+.mosaico main,
+.ms-rodape {
+  box-sizing: border-box;
+  max-width: var(--ms-largura);
+  margin: 0 auto;
+  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+}
+
+.ms-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
+}
+
+.ms-topo nav {
+  display: none;
+  gap: 22px;
+  font-size: var(--veio-tam-corpo);
+}
+
+.ms-topo nav a {
+  padding: 6px 0;
+  color: var(--veio-muted);
+  text-decoration: none;
+}
+
+.ms-chamada {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  padding-block: clamp(28px, 4.4vw, 52px) clamp(20px, 2.4vw, 28px);
+  text-align: center;
+}
+
+.ms-selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 10px;
+  border: 1px solid var(--pp-fio);
+  border-radius: var(--veio-raio-pilula);
+  background: var(--pp-vidro);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+}
+
+.ms-selo span {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-accent);
+  box-shadow: 0 0 0 3px var(--veio-accent-soft);
+}
+
+.ms-chamada h1 span {
+  display: block;
+}
+
+.ms-chamada h1 {
+  font-size: var(--ms-tam-titulo);
+  letter-spacing: -.04em;
+  line-height: 1.02;
+}
+
+.ms-lead {
+  max-width: 56ch;
+  font-size: clamp(16px, 1.5vw, 19px);
+  color: var(--veio-muted);
+}
+
+.ms-acoes {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.ms-faixa {
+  padding-top: 32px;
+  scroll-margin-top: 64px;
+}
+
+.ms-faixa > .pp-rotulo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+
+/* O fio que segue o rótulo da faixa até a borda. */
+.ms-faixa > .pp-rotulo::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--pp-fio);
+}
+
+.ms-grade {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--ms-vao);
+}
+
+.ms-grade + .ms-grade {
+  margin-top: var(--ms-vao);
+}
+
+.ms-peca {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-column: span 12;
+  align-content: start;
+  gap: 12px;
+  overflow: hidden;
+  padding: 20px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-surface);
+  box-shadow: inset 0 1px 0 var(--pp-fio);
+}
+
+.ms-peca > p:not([class]),
+.ms-peca--envio p,
+.ms-fecho p:not([class]) {
+  font-size: var(--veio-tam-card);
+  line-height: 1.55;
+  color: var(--veio-muted);
+}
+
+.ms-peca b {
+  color: var(--veio-text);
+  font-weight: var(--veio-peso-titulo);
+}
+
+/* A luz que acompanha o ponteiro dentro da peça (mosaico.js a põe e a move): enfeite, atrás do conteúdo. */
+.ms-luz {
+  position: absolute;
+  left: -180px;
+  top: -180px;
+  z-index: -1;
+  width: 360px;
+  height: 360px;
+  border-radius: var(--veio-raio-pilula);
+  background: radial-gradient(circle, color-mix(in srgb, var(--veio-accent) 13%, transparent), transparent 65%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* As peças que são uma tela: a captura vai de borda a borda e a legenda fica embaixo. */
+.ms-peca.ms-peca--tela {
+  padding: 0;
+}
+
+.ms-peca--envio > div {
+  display: grid;
+  gap: 8px;
+}
+
+.ms-demo,
+.ms-captura {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0;
+  height: 100%;
+}
+
+/* A demonstração (demo.css) enche a peça: no filme, a captura cobre a área toda, ancorada na legenda. */
+html:not(.demo-filme) .ms-demo .pp-demo-tela {
+  align-content: start;
+  padding: 14px 14px 0;
+}
+
+.demo-filme .ms-demo .pp-demo-tela {
+  min-height: 200px;
+}
+
+.demo-filme .ms-demo .pp-demo-tela img,
+.ms-captura img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 100%;
+}
+
+.ms-captura img {
+  object-position: 0 0;
+}
+
+.ms-peca figcaption {
+  padding: 14px 20px;
+  border-top: 1px solid var(--veio-border);
+  font-size: var(--veio-tam-corpo);
+  color: var(--veio-muted);
+}
+
+.ms-numeros {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 12px;
+  margin: 0;
+}
+
+.ms-numeros dt {
+  font-family: var(--veio-fonte-mono);
+  font-size: clamp(32px, 4.2vw, 56px);
+  font-weight: var(--veio-peso-num);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--veio-accent-text);
+}
+
+.ms-numeros dd {
+  margin: 6px 0 0;
+  font-size: var(--veio-tam-apoio);
+  line-height: 1.4;
+  color: var(--veio-muted);
+}
+
+/* As linhas de uma peça: o nome à esquerda e o que ele quer dizer à direita. Na tela mais estreita, um sobre o outro. */
+.ms-linhas li {
+  display: grid;
+  gap: 2px 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--pp-fio);
+  font-size: var(--veio-tam-card);
+  line-height: 1.5;
+}
+
+.ms-linhas span {
+  color: var(--veio-muted);
+}
+
+.ms-peca--auto {
+  grid-template-rows: auto auto auto minmax(180px, 1fr);
+}
+
+.ms-recorte {
+  overflow: hidden;
+  min-height: 180px;
+  max-height: 340px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+}
+
+.ms-recorte img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 14%;
+}
+
+/* As etapas de um envio: o fio liga os pontos e se enche de ouro, e cada etapa acende quando o fio chega nela. */
+.ms-etapas {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-rotulo);
+  line-height: 1.4;
+}
+
+.ms-etapas li {
+  position: relative;
+  padding-left: 28px;
+}
+
+.ms-etapas li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-accent);
+  box-shadow: 0 0 0 4px var(--veio-surface), 0 0 0 5px var(--pp-ouro-fio);
+}
+
+.ms-idiomas {
+  display: grid;
+  gap: 10px;
+}
+
+.ms-idiomas li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.ms-sigla {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--pp-ouro-fio);
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-accent-soft);
+  color: var(--veio-accent-text);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-num);
+}
+
+.ms-peca--custo {
+  background:
+    radial-gradient(ellipse 80% 90% at 100% 0, color-mix(in srgb, var(--veio-accent) 12%, transparent), transparent 70%),
+    var(--veio-surface);
+}
+
+.ms-teto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  font-size: var(--veio-tam-corpo);
+  color: var(--veio-muted);
+}
+
+.ms-teto .pp-valor {
+  font-size: clamp(28px, 4vw, 52px);
+  font-weight: var(--veio-peso-num);
+  line-height: 1;
+  color: var(--veio-accent-text);
+}
+
+.ms-teto span + span {
+  flex: 1 1 160px;
+}
+
+.mosaico .pp-perguntas {
+  display: block;
+  padding-block: 4px;
+  border-top-color: var(--veio-border);
+}
+
+.mosaico .pp-perguntas details:last-child {
+  border-bottom: 0;
+}
+
+.ms-fecho {
+  gap: 24px;
+  padding: 28px 20px;
+  border-color: var(--pp-ouro-fio);
+  background:
+    radial-gradient(ellipse 70% 100% at 50% 0, color-mix(in srgb, var(--veio-accent) 12%, transparent), transparent 70%),
+    var(--veio-surface);
+}
+
+.ms-fecho > div {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+}
+
+.ms-fecho h2 {
+  font-size: clamp(28px, 3.6vw, 42px);
+  letter-spacing: -.03em;
+  line-height: 1.1;
+}
+
+.ms-passos {
+  display: grid;
+  gap: 14px;
+  counter-reset: passo;
+  font-size: var(--veio-tam-card);
+  color: var(--veio-muted);
+}
+
+.ms-passos li {
+  position: relative;
+  padding-left: 42px;
+  counter-increment: passo;
+}
+
+.ms-passos li::before {
+  content: counter(passo);
+  position: absolute;
+  left: 0;
+  top: -3px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--veio-accent);
+  border-radius: var(--veio-raio-pilula);
+  color: var(--veio-accent-text);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-num);
+}
+
+.ms-rodape {
+  margin-top: 56px;
+  padding-block: 28px calc(48px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--veio-border);
+}
+
+@media (max-width: 420px) {
+  .ms-topo .veio-nome {
+    font-size: var(--veio-tam-destaque);
+  }
+}
+
+@media (min-width: 420px) {
+  .ms-linhas li {
+    grid-template-columns: 104px minmax(0, 1fr);
+  }
+
+  .ms-numeros {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Duas peças por linha; as telas e as peças largas ocupam a linha inteira. */
+@media (min-width: 700px) {
+  .ms-l4,
+  .ms-l5,
+  .ms-l6 {
+    grid-column: span 6;
+  }
+
+  .ms-l4:last-child:nth-child(odd) {
+    grid-column: span 12;
+  }
+
+  .ms-peca {
+    padding: 22px;
+  }
+
+  .mosaico .pp-perguntas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 36px;
+    align-items: start;
+    padding-block: 4px;
+  }
+
+  .mosaico .pp-perguntas details:nth-last-child(2) {
+    border-bottom: 0;
+  }
+
+  .ms-peca--envio,
+  .ms-fecho {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: center;
+    gap: 24px 40px;
+  }
+
+  .ms-fecho {
+    padding: 40px;
+  }
+
+  .ms-fecho .pp-nota {
+    grid-column: 1 / -1;
+  }
+
+  /* O topo em pílula de vidro, que acompanha a rolagem. Só onde ele cabe numa linha. */
+  .ms-topo {
+    position: sticky;
+    top: 12px;
+    z-index: 10;
+    width: calc(100% - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+    margin-top: 12px;
+    padding: 8px 8px 8px 12px;
+    border: 1px solid var(--pp-fio);
+    border-radius: var(--veio-raio-pilula);
+    background: var(--pp-vidro);
+    backdrop-filter: blur(14px) saturate(1.4);
+  }
+
+  .ms-topo nav {
+    display: flex;
+  }
+
+  .ms-faixa {
+    scroll-margin-top: 72px;
+  }
+}
+
+@media (min-width: 1000px) {
+  .ms-l4 { grid-column: span 4; }
+  .ms-l5 { grid-column: span 5; }
+  .ms-l7 { grid-column: span 7; }
+  .ms-l8 { grid-column: span 8; }
+
+  .ms-l4:last-child:nth-child(odd) {
+    grid-column: span 4;
+  }
+
+  .ms-a2 {
+    grid-row: span 2;
+  }
+
+  /* As etapas deitadas, com o fio por trás dos pontos. */
+  .ms-etapas {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    text-align: center;
+  }
+
+  .ms-etapas::before,
+  .ms-etapas::after {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background: var(--veio-border);
+  }
+
+  .ms-etapas::after {
+    background: var(--veio-accent);
+    transform-origin: left;
+  }
+
+  .ms-etapas li {
+    z-index: 1;
+    padding: 28px 6px 0;
+  }
+
+  .ms-etapas li::before {
+    top: 0;
+    left: 50%;
+    margin-left: -7px;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .ms-topo {
+    background: var(--veio-surface);
+    backdrop-filter: none;
+  }
+}
+
+/* Resposta ao ponteiro: só onde há ponteiro fino. A borda muda de cor e a luz aparece; nada sai do lugar. */
+@media (hover: hover) and (pointer: fine) {
+  .ms-topo nav a:hover {
+    color: var(--veio-accent-text);
+  }
+
+  .ms-peca {
+    transition: border-color var(--veio-transicao) ease;
+  }
+
+  .ms-peca:hover {
+    border-color: var(--pp-ouro-fio);
+  }
+
+  .ms-peca:hover .ms-luz {
+    opacity: 1;
+  }
+}

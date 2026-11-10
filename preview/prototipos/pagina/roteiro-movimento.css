@@ -1,0 +1,162 @@
+/* Protótipo "Roteiro", o que se move. Carregado por último e só para quem não pediu menos movimento: sem este arquivo
+   a página é a mesma, com as trocas secas. Só transform e opacity se mexem (o desfoque curto do título é a exceção).
+
+   A abertura entra uma vez, em onda: o título puxa (0 ms), o texto e a frase seguem (80 e 160 ms), as ações fecham
+   (220 ms), o rótulo e a nota só aparecem; a linha de ouro se desenha quando a frase assenta, que é a frase sendo minerada.
+   Na história quem rola é a pessoa: o texto não se anima, e o palco responde ao ato em que ela está. */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.roteiro) {
+    scroll-behavior: smooth;
+  }
+
+  .rt-abertura h1 {
+    animation: rt-titulo 600ms var(--veio-curva-saida) both;
+  }
+
+  .rt-abertura .rt-lead {
+    animation: rt-subir 500ms var(--veio-curva-saida) 80ms both;
+  }
+
+  .rt-frase {
+    animation: rt-subir 500ms var(--veio-curva-saida) 160ms both;
+  }
+
+  .rt-frase::after {
+    animation: rt-linha 600ms var(--veio-curva-saida) 520ms both;
+  }
+
+  .rt-acoes {
+    --rt-de: 6px;
+    animation: rt-subir 500ms var(--veio-curva-saida) 220ms both;
+  }
+
+  .rt-abertura .pp-rotulo {
+    animation: rt-aparecer 400ms var(--veio-curva-saida) both;
+  }
+
+  .rt-abertura .pp-nota {
+    animation: rt-aparecer 400ms var(--veio-curva-saida) 280ms both;
+  }
+
+  /* O palco: a tela de cima aparece sobre a de baixo, e a do painel desliza da frase até a barra do envio. */
+  .js .rt-cena {
+    transition: opacity 200ms ease, transform 700ms var(--pp-curva-vaivem);
+  }
+
+  /* Entrar leva mais que sair: quem volta um ato já decidiu, e a tela de cima sai depressa. */
+  .js :is([data-minerar="feita"], [data-minerar="passada"]) .rt-cena--depois,
+  .js :is([data-ato="3"], [data-ato="4"], [data-ato="5"]) :is(.rt-cena--depois, .rt-cena--painel),
+  .js [data-ato="5"] .rt-cena--popup {
+    transition-duration: 350ms, 700ms;
+  }
+
+  /* A cena do Alt+S, que roteiro.js só começa com a pessoa parada no ato 2 (400 ms sem rolar), em dois tempos:
+     as teclas aparecem no meio do vídeo e ficam apertadas por 1,1 s (tempo de ler as duas); só então a tela minerada
+     entra, em 320 ms, com o anel de ouro. As teclas saem mais depressa do que entraram. */
+  .js .rt-teclas {
+    transition: opacity 150ms ease, transform 150ms var(--veio-curva-saida);
+  }
+
+  .js [data-minerar="tecla"] .rt-teclas {
+    transition: opacity 200ms var(--veio-curva-saida), transform 200ms var(--veio-curva-saida);
+  }
+
+  .js #ato-2 h2 kbd {
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  }
+
+  .js [data-ato="2"][data-minerar="feita"] .rt-cena--depois {
+    transition: opacity 320ms var(--veio-curva-saida);
+  }
+
+  .js [data-ato="2"][data-minerar="feita"] .rt-tela::after {
+    animation: rt-anel 900ms var(--veio-curva-saida) both;
+  }
+
+  /* As etapas do envio são a explicação: o fio desce em tempo constante e cada etapa acende quando ele chega. Uma vez. */
+  .js .rt-etapas::after {
+    transform: scaleY(0);
+    transition: transform 1400ms linear 200ms;
+  }
+
+  .js [data-visto] .rt-etapas::after {
+    transform: scaleY(1);
+  }
+
+  .js .rt-etapas li {
+    transition: color 300ms ease calc(200ms + var(--rt-etapa) * 350ms);
+  }
+
+  .js .rt-etapas li::before {
+    transition: background-color 300ms ease calc(200ms + var(--rt-etapa) * 350ms);
+  }
+
+  .rt-etapas li:nth-child(1) { --rt-etapa: 0; }
+  .rt-etapas li:nth-child(2) { --rt-etapa: 1; }
+  .rt-etapas li:nth-child(3) { --rt-etapa: 2; }
+  .rt-etapas li:nth-child(4) { --rt-etapa: 3; }
+  .rt-etapas li:nth-child(5) { --rt-etapa: 4; }
+
+  /* A ficha e o fecho entram ao rolar, uma vez, cada seção inteira de uma vez (sem onda dentro dela). */
+  .js [data-revelar] {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 600ms var(--veio-curva-saida), transform 600ms var(--veio-curva-saida);
+  }
+
+  .js [data-revelar][data-visivel] {
+    opacity: 1;
+    transform: none;
+  }
+
+  @media (min-width: 900px) {
+    .js .rt-trilho-fio::after {
+      transition: transform 500ms var(--pp-curva-vaivem);
+    }
+
+    /* Onde o navegador sabe, o fio do trilho acompanha a rolagem ponto a ponto, em vez de saltar de ato em ato. */
+    @supports (animation-timeline: view()) {
+      .js .rt-historia {
+        timeline-scope: --rt-atos;
+      }
+
+      .js .rt-atos {
+        view-timeline: --rt-atos block;
+      }
+
+      .js .rt-trilho-fio::after {
+        transition: none;
+        animation: rt-encher linear both;
+        animation-timeline: --rt-atos;
+        animation-range: contain 0% contain 100%;
+      }
+    }
+  }
+}
+
+@keyframes rt-titulo {
+  from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
+}
+
+@keyframes rt-subir {
+  from { opacity: 0; transform: translateY(var(--rt-de, 8px)); }
+}
+
+@keyframes rt-aparecer {
+  from { opacity: 0; }
+}
+
+@keyframes rt-linha {
+  from { transform: scaleX(0); }
+}
+
+@keyframes rt-anel {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes rt-encher {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}

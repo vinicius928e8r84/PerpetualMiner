@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PerpetualMiner · a frase da legenda vira cartão do Anki</title>
+<meta name="description" content="PerpetualMiner é uma extensão do Chrome para quem estuda inglês ou russo: minera frases de legendas, de textos e de fotos de livros e envia ao Anki como cartões com tradução, áudio e imagem.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#121110">
+<link rel="icon" href="/veio/icones/icone.svg" type="image/svg+xml">
+<link rel="preload" href="/veio/fontes/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/veio/tokens.css">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="demo.css">
+<link rel="stylesheet" href="abas.css">
+<script src="abas.js"></script>
+<script src="demo.js"></script>
+</head>
+<!-- Protótipo "Abas" da nova landing: uma tela só, do jeito do painel da extensão. A coluna de abas troca o que a ilha
+     de conteúdo mostra, e a página não rola (só a ilha, quando o assunto não cabe). Sem script, as seções ficam uma
+     embaixo da outra e as abas são links para elas. O que ela afirma é o que site/sobre.html afirma. -->
+<body class="abas">
+<a class="pp-pular" href="#conteudo">Pular para o conteúdo</a>
+<div class="ab-janela" data-janela>
+  <header class="ab-coluna">
+    <a class="pp-marca" href="#inicio" aria-label="PerpetualMiner, início">
+      <img class="veio-marca" src="/veio/icones/icone.svg" width="40" height="40" alt="">
+      <span class="veio-nome">Perpetual<b>Miner</b></span>
+    </a>
+    <nav class="ab-trilho" aria-label="Seções" data-trilho>
+      <span class="ab-marcador" aria-hidden="true"></span>
+      <div class="ab-abas" data-abas>
+        <a href="#inicio">Início</a>
+        <a href="#minerar">Minerar</a>
+        <a href="#no-anki">No Anki</a>
+        <a href="#idiomas">Idiomas</a>
+        <a href="#dados">Seus dados</a>
+        <a href="#custo">Custo</a>
+        <a href="#perguntas">Perguntas</a>
+        <a href="#instalar">Instalar</a>
+      </div>
+    </nav>
+    <a class="pp-botao pp-botao--curto ab-instalar" href="https://chromewebstore.google.com/detail/perpetualminer/ohpoogiccjmdgilgegholdidgfhjkadf">Instalar<span> na Chrome Web Store</span></a>
+  </header>
+
+  <main id="conteudo" class="ab-ilha" data-ilha>
+    <section id="inicio" class="ab-painel ab-painel--inicio">
+      <div class="ab-texto">
+        <p class="pp-rotulo">Extensão do Chrome · inglês e russo</p>
+        <h1>A frase da legenda vira <span class="pp-brilho">cartão do Anki.</span></h1>
+        <p class="ab-lead">O PerpetualMiner minera frases do que você assiste e lê. Depois, a Conexão com o Anki transforma cada frase em cartão, com tradução, áudio e imagem.</p>
+        <p class="ab-acoes">
+          <a class="pp-botao" href="https://chromewebstore.google.com/detail/perpetualminer/ohpoogiccjmdgilgegholdidgfhjkadf">Instalar na Chrome Web Store <span class="pp-seta" aria-hidden="true">→</span></a>
+          <a class="pp-link" href="#minerar">O que ele minera</a>
+        </p>
+        <p class="pp-nota">Para o Chrome do computador. Minerar funciona sem conta e sem o Anki.</p>
+      </div>
+      <figure class="pp-demo ab-demo" data-demo>
+        <div class="pp-demo-tela">
+          <img src="/site/capturas/legenda-antes.jpg" width="960" height="720" alt="Antes: um vídeo com a legenda “The quiet harbor woke before the gulls did.” na tela.">
+          <img class="pp-demo-depois" src="/site/capturas/legenda.jpg" width="960" height="720" alt="Depois do Alt+S: a legenda sublinhada em dourado e o aviso da extensão, “Frase minerada e copiada”.">
+          <span class="pp-demo-teclas" aria-hidden="true"><kbd>Alt</kbd>+<kbd>S</kbd></span>
+        </div>
+        <figcaption>
+          <ol class="pp-demo-passos" aria-label="A demonstração, passo a passo">
+            <li>A legenda está na tela</li>
+            <li><span>Você aperta <kbd>Alt</kbd>+<kbd>S</kbd></span></li>
+            <li>A frase é minerada e copiada</li>
+          </ol>
+          <button class="pp-demo-repetir" type="button" data-demo-repetir hidden><span aria-hidden="true">↻</span> Repetir</button>
+        </figcaption>
+      </figure>
+      <ol class="ab-passos">
+        <li><b>Minere a frase.</b> Num vídeo com legenda, aperte <kbd>Alt</kbd>+<kbd>S</kbd>. O atalho é seu: troque por outra tecla ou por um botão do mouse.</li>
+        <li><b>Escolha a palavra.</b> No painel, marque na frase a palavra que o cartão vai ensinar.</li>
+        <li><b>Envie ao Anki.</b> A Conexão com o Anki cria um cartão para cada frase, e o painel mostra o andamento.</li>
+      </ol>
+    </section>
+
+    <section id="minerar" class="ab-painel">
+      <p class="pp-rotulo">O que ele minera</p>
+      <h2>Do vídeo, da página e do livro de papel</h2>
+      <div class="ab-dupla">
+        <ul class="ab-cartoes">
+          <li>
+            <h3>Legendas de vídeo</h3>
+            <p>O atalho guarda a linha que está na tela. Há leitores próprios para cinco players; nos outros, a extensão procura a legenda sobre o vídeo.</p>
+            <p class="pp-fichas"><span>YouTube</span><span>Netflix</span><span>Prime Video</span><span>Max</span><span>Kinopoisk</span></p>
+          </li>
+          <li>
+            <h3>Texto selecionado</h3>
+            <p>Em qualquer página ou PDF: selecione o trecho e use o botão direito › Minerar com PerpetualMiner.</p>
+          </li>
+          <li>
+            <h3>Foto de livro</h3>
+            <p>Marque os trechos no papel, fotografe a página e escolha quais frases minerar. Quem lê a foto é o Gemini, com a sua chave.</p>
+          </li>
+          <li>
+            <h3>Frases coladas ou importadas</h3>
+            <p>Cole frases, uma por linha, ou importe um arquivo .txt pelo painel.</p>
+          </li>
+        </ul>
+        <div class="ab-destaque">
+          <h3>Mineração automática</h3>
+          <p>Com a Conexão com o Anki ligada, as legendas com uma palavra que você ainda não conhece são mineradas sozinhas, até um limite por dia. Liga por idioma, no popup, e vem desligada.</p>
+          <div class="ab-recorte">
+            <img src="/site/capturas/popup.png" width="680" height="1200" loading="lazy" alt="O popup da extensão: a mineração automática com o inglês ligado em 7 de 20 frases hoje e o russo desligado.">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="no-anki" class="ab-painel">
+      <p class="pp-rotulo">No Anki</p>
+      <h2>Cada frase vira um cartão completo</h2>
+      <div class="ab-dupla">
+        <div class="ab-texto">
+          <p class="ab-intro">A Conexão com o Anki é um complemento que roda dentro do Anki, no seu computador. Ela recebe as frases, prepara o texto, o áudio e a imagem de cada uma e grava os cartões na sua coleção.</p>
+          <ol class="ab-etapas" aria-label="As etapas de um envio, como o painel as mostra">
+            <li>Criando cartões</li>
+            <li>Gerando áudio</li>
+            <li>Escolhendo imagens</li>
+            <li>Enviando ao Anki</li>
+            <li>Concluído</li>
+          </ol>
+        </div>
+        <figure class="ab-captura">
+          <img src="/site/capturas/painel-estreito.png" width="960" height="1440" loading="lazy" alt="O painel da extensão, na lista Frases mineradas: duas frases selecionadas e a barra com Editar contexto, Exportar .txt, Apagar e Enviar ao Anki.">
+        </figure>
+      </div>
+      <ul class="ab-cartoes ab-cartoes--quatro">
+        <li><h3>O que vai no cartão</h3><p>Na frente, a frase. No verso do iniciante: a pronúncia, a tradução literal e a natural, o contexto da cena e a imagem, com o áudio da frase e o da palavra.</p></li>
+        <li><h3>Três níveis por idioma</h3><p>Iniciante, Intermediário e Avançado. Os dois últimos trazem definição e outro exemplo.</p></li>
+        <li><h3>No seu baralho</h3><p>Você escolhe o baralho de cada idioma. Uma frase que já está nele não é gravada de novo.</p></li>
+        <li><h3>Voz e imagem</h3><p>A voz do Google Tradutor, no sotaque que você escolher. Foto de licença aberta escolhida pela IA, ou imagem gerada por IA.</p></li>
+      </ul>
+    </section>
+
+    <section id="idiomas" class="ab-painel">
+      <p class="pp-rotulo">Idiomas</p>
+      <h2>Inglês e russo</h2>
+      <p class="ab-intro">São os dois idiomas de estudo de hoje. O idioma de cada frase é detectado pelo texto, e cada um tem os seus ajustes de envio, o seu baralho e os seus níveis de cartão. A extensão fala português, e o cartão iniciante explica em português.</p>
+      <ul class="ab-cartoes ab-idiomas">
+        <li><span class="ab-sigla" aria-hidden="true">EN</span><h3>Inglês</h3><p lang="en">The quiet <mark>harbor</mark> woke before the gulls did.</p></li>
+        <li><span class="ab-sigla" aria-hidden="true">RU</span><h3>Russo</h3><p lang="ru">Не всё то <mark>золото</mark>, что блестит.</p></li>
+      </ul>
+    </section>
+
+    <section id="dados" class="ab-painel">
+      <p class="pp-rotulo">Seus dados</p>
+      <h2>O que é seu fica com você</h2>
+      <ul class="ab-cartoes ab-cartoes--tres">
+        <li><h3>No seu navegador</h3><p>As frases, os atalhos e a chave do Gemini ficam no armazenamento do navegador. Tudo funciona sem criar conta.</p></li>
+        <li><h3>No seu computador</h3><p>A Conexão com o Anki conversa com a extensão por <code>127.0.0.1</code>, o seu próprio computador. É ela que guarda a chave da OpenAI e a fila de envios.</p></li>
+        <li><h3>Na nuvem, só se você quiser</h3><p>Entrar com o Google é opcional e serve para ter as suas frases em qualquer computador. Sem conta, elas ficam só neste.</p></li>
+      </ul>
+      <p class="ab-intro">Sem anúncios, sem rastreadores e sem análise de uso. Ao criar um cartão, a frase vai aos serviços que fazem o texto, o áudio e a imagem: a <a href="/privacidade/">política de privacidade</a> diz o que sai do seu computador, e para quem.</p>
+    </section>
+
+    <section id="custo" class="ab-painel">
+      <p class="pp-rotulo">Quanto custa</p>
+      <h2>A IA é a sua, e o gasto fica à vista</h2>
+      <ul class="ab-cartoes ab-cartoes--tres">
+        <li><h3>Minerar não usa IA</h3><p>Legendas, seleção e frases coladas vão direto para o seu histórico. Só duas coisas usam IA: ler uma foto e criar os cartões.</p></li>
+        <li><h3>Você paga ao provedor</h3><p>Os cartões usam a sua chave da OpenAI ou a sua conta do ChatGPT; a foto, a sua chave do Gemini. A cobrança é entre você e eles.</p></li>
+        <li><h3>Teto do mês</h3><p class="ab-teto pp-valor">US$ 10</p><p>A aba Custos mostra o gasto de cada envio. O teto do mês pausa o envio ao chegar nele.</p></li>
+      </ul>
+    </section>
+
+    <section id="perguntas" class="ab-painel">
+      <p class="pp-rotulo">Perguntas frequentes</p>
+      <h2>Antes de instalar</h2>
+      <div class="pp-perguntas">
+        <details>
+          <summary>Preciso do Anki para usar?</summary>
+          <p>Para minerar, não. Sem a Conexão com o Anki, dá para minerar à vontade; o que fica indisponível é Enviar ao Anki e a mineração automática.</p>
+        </details>
+        <details>
+          <summary>Preciso criar uma conta?</summary>
+          <p>Não. Entrar com o Google é opcional e serve para sincronizar as suas frases entre os seus computadores.</p>
+        </details>
+        <details>
+          <summary>Em quais sites funciona?</summary>
+          <p>A mineração de legendas tem leitores próprios para YouTube, Netflix, Prime Video, Max e Kinopoisk e, nos outros players, procura a legenda sobre o vídeo. A seleção de texto funciona em qualquer página e em PDF.</p>
+        </details>
+        <details>
+          <summary>Dá para usar sem pagar por IA?</summary>
+          <p>Sim. Minerar, organizar as frases no painel e exportá-las para um arquivo .txt não usam chave nenhuma.</p>
+        </details>
+        <details>
+          <summary>Como recebo as atualizações?</summary>
+          <p>Sozinhas. O Chrome atualiza a extensão pela Chrome Web Store, e a Conexão com o Anki se atualiza pelo AnkiWeb quando o Anki abre.</p>
+        </details>
+        <details>
+          <summary>Como apago os meus dados?</summary>
+          <p>Em Configurações › Zona de perigo, o Apagar tudo remove as frases do navegador, da fila da Conexão com o Anki e, com conta, da nuvem.</p>
+        </details>
+      </div>
+    </section>
+
+    <section id="instalar" class="ab-painel">
+      <p class="pp-rotulo">Instalar</p>
+      <h2>Como instalar</h2>
+      <p class="ab-intro">O PerpetualMiner está na Chrome Web Store. São três passos, e o primeiro é este botão.</p>
+      <p><a class="pp-botao" href="https://chromewebstore.google.com/detail/perpetualminer/ohpoogiccjmdgilgegholdidgfhjkadf">Instalar na Chrome Web Store <span class="pp-seta" aria-hidden="true">→</span></a></p>
+      <ol class="ab-passos">
+        <li><b>Abra a página da loja</b> no Chrome do computador.</li>
+        <li><b>Clique em Usar no Chrome</b> e confirme em Adicionar extensão.</li>
+        <li><b>Siga a Boas-vindas</b>, que abre sozinha e guia o atalho, a conta, a Conexão com o Anki e a IA dos cartões.</li>
+      </ol>
+      <p class="pp-nota">Precisa do Chrome 110 ou mais novo e, para os cartões, do Anki 2.1.50 ou mais novo no mesmo computador. A Conexão com o Anki está no <a href="https://ankiweb.net/shared/info/1108882947">AnkiWeb</a>.</p>
+    </section>
+
+    <footer class="pp-rodape ab-rodape">
+      <p>PerpetualMiner · <a href="/privacidade/">Política de privacidade</a> (também em <a href="/privacy/">/privacy/</a>) · <a href="https://github.com/vinicius928e8r84/PerpetualMiner/issues">Dúvidas e pedidos</a></p>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,352 @@
+/* Os protótipos da nova landing (preview/prototipos/pagina/): o que as três variantes dividem. Só a Veio, sem fonte
+   nem script de fora. O que a escala da extensão não tem (o ouro em degradê, o vidro, o vaivém) é derivado dos tokens
+   aqui, como em site/landing.css. Cada variante tem a sua folha (roteiro.css, mosaico.css, abas.css). */
+:root {
+  --pp-ouro-claro: color-mix(in oklab, var(--veio-accent), white 55%);
+  --pp-ouro-fundo: color-mix(in oklab, var(--veio-accent), black 20%);
+  --pp-ouro-fio: color-mix(in srgb, var(--veio-accent) 32%, var(--veio-border));
+  --pp-vidro: color-mix(in srgb, var(--veio-surface) 72%, transparent);
+  --pp-fio: color-mix(in srgb, var(--veio-text) 8%, transparent);
+  /* Quem entra usa a saída forte da Veio (--veio-curva-saida); o que se move já na tela, o vaivém. */
+  --pp-curva-vaivem: cubic-bezier(.77, 0, .175, 1);
+}
+
+html {
+  /* O toque tem a resposta dele no :active; o clarão cinza do navegador sai. */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--veio-bg);
+  color: var(--veio-text);
+  font-family: var(--veio-fonte-ui);
+  font-size: var(--veio-tam-destaque);
+  line-height: 1.6;
+  /* Uma palavra mais larga que a coluna (as do russo chegam a 24 letras) quebra em vez de vazar. */
+  overflow-wrap: break-word;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+figure,
+blockquote {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+h1,
+h2 {
+  font-weight: var(--veio-peso-display);
+  text-wrap: balance;
+}
+
+h3 {
+  font-size: var(--veio-tam-destaque);
+  font-weight: var(--veio-peso-titulo);
+  line-height: 1.35;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: var(--veio-accent-text);
+  text-underline-offset: 3px;
+}
+
+code,
+kbd {
+  font-family: var(--veio-fonte-mono);
+  font-size: .9em;
+}
+
+kbd {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid var(--veio-border-strong);
+  border-radius: var(--veio-raio-tecla);
+  background: var(--veio-surface-2);
+  color: var(--veio-text);
+}
+
+mark {
+  padding: 0 3px;
+  border-radius: var(--veio-raio-losango);
+  background: var(--veio-kw-bg);
+  color: var(--veio-kw-fg);
+}
+
+/* Controle não é conteúdo: o toque longo não seleciona o rótulo, e o toque duplo não dá zoom nele. */
+button,
+summary,
+.pp-botao,
+.pp-marca {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Quem aceita mais contraste troca o vidro por superfície cheia e o fio quase invisível pela borda forte. */
+@media (prefers-contrast: more) {
+  :root {
+    --pp-vidro: var(--veio-surface);
+    --pp-fio: var(--veio-border-strong);
+    --pp-ouro-fio: var(--veio-accent);
+  }
+}
+
+.pp-pular {
+  position: absolute;
+  left: 12px;
+  top: -80px;
+  z-index: 30;
+  padding: 10px 16px;
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+  font-weight: var(--veio-peso-rotulo);
+  text-decoration: none;
+}
+
+.pp-pular:focus {
+  top: 12px;
+}
+
+.pp-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--veio-text);
+  font-size: var(--veio-tam-modal);
+  text-decoration: none;
+}
+
+.pp-marca img {
+  width: 32px;
+  height: 32px;
+}
+
+/* Se o botão ao lado crescer, quem cede é o nome, com reticências; o ícone e o botão ficam inteiros. */
+.pp-marca .veio-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-rotulo {
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  font-weight: var(--veio-peso-num);
+  letter-spacing: var(--veio-tracking-legenda);
+  text-transform: uppercase;
+  color: var(--veio-accent-text);
+}
+
+.pp-nota {
+  font-size: var(--veio-tam-corpo);
+  color: var(--veio-muted);
+}
+
+/* O ouro em degradê. Sem recorte de fundo no texto, fica o ouro liso. */
+.pp-brilho {
+  color: var(--veio-accent-text);
+}
+
+@supports (background-clip: text) {
+  .pp-brilho {
+    background: linear-gradient(100deg, var(--pp-ouro-claro), var(--veio-accent) 48%, var(--pp-ouro-fundo));
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+@media (forced-colors: active) {
+  .pp-brilho {
+    background: none;
+    color: CanvasText;
+  }
+}
+
+.pp-botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 26px;
+  border-radius: var(--veio-raio-pilula);
+  background: linear-gradient(180deg, var(--pp-ouro-claro) -60%, var(--veio-accent) 55%);
+  box-shadow: inset 0 1px 0 var(--veio-brilho), 0 10px 32px -10px color-mix(in srgb, var(--veio-accent) 70%, transparent);
+  color: var(--veio-accent-ink);
+  font-weight: var(--veio-peso-titulo);
+  line-height: 1.3;
+  text-decoration: none;
+  transition: transform var(--veio-transicao) var(--veio-curva-saida);
+}
+
+.pp-botao:active {
+  transform: scale(.97);
+}
+
+.pp-botao--curto {
+  flex: none;
+  padding: 8px 16px;
+  font-size: var(--veio-tam-corpo);
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 var(--veio-brilho);
+}
+
+/* Na tela mais estreita o botão de instalar cabe numa linha só. */
+@media (max-width: 360px) {
+  .pp-botao:not(.pp-botao--curto) {
+    gap: 6px;
+    padding-inline: 16px;
+    font-size: var(--veio-tam-card);
+  }
+}
+
+.pp-seta {
+  display: inline-block;
+  transition: transform var(--veio-transicao) var(--veio-curva-saida);
+}
+
+.pp-link {
+  color: var(--veio-text);
+  font-weight: var(--veio-peso-rotulo);
+  text-decoration-color: var(--veio-border-strong);
+}
+
+.pp-fichas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pp-fichas > * {
+  padding: 3px 10px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-surface-2);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  color: var(--veio-text);
+}
+
+.pp-valor {
+  font-family: var(--veio-fonte-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--veio-text);
+  white-space: nowrap;
+}
+
+/* As perguntas: o sinal de mais vira um xis quando a pergunta abre. O texto alternativo vazio cala o leitor de tela. */
+.pp-perguntas {
+  border-top: 1px solid var(--veio-border);
+}
+
+.pp-perguntas details {
+  border-bottom: 1px solid var(--veio-border);
+}
+
+.pp-perguntas summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 4px;
+  font-weight: var(--veio-peso-titulo);
+  list-style: none;
+  cursor: pointer;
+}
+
+.pp-perguntas summary::-webkit-details-marker {
+  display: none;
+}
+
+.pp-perguntas summary:active {
+  color: var(--veio-accent-text);
+}
+
+.pp-perguntas summary::after {
+  content: "+";
+  content: "+" / "";
+  flex: none;
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-modal);
+  font-weight: 400;
+  line-height: 1;
+  color: var(--veio-accent-text);
+  transition: transform 200ms var(--veio-curva-saida);
+}
+
+.pp-perguntas details[open] summary::after {
+  transform: rotate(45deg);
+}
+
+.pp-perguntas p {
+  max-width: 64ch;
+  margin: 0 4px 18px;
+  font-size: var(--veio-tam-card);
+  color: var(--veio-muted);
+}
+
+.pp-rodape {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.pp-rodape a {
+  color: var(--veio-muted);
+}
+
+/* Resposta ao ponteiro: só onde há ponteiro fino (o toque dispara hover falso). Cor muda; nada sai do lugar. */
+@media (hover: hover) and (pointer: fine) {
+  a:hover {
+    color: var(--veio-text);
+  }
+
+  .pp-botao:hover {
+    color: var(--veio-accent-ink);
+  }
+
+  .pp-botao:hover .pp-seta {
+    transform: translateX(3px);
+  }
+
+  .pp-link:hover {
+    text-decoration-color: var(--veio-accent);
+  }
+}
+
+/* A pergunta abre e fecha pela altura (não há equivalente em transform), curta, e só onde o navegador sabe. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports selector(::details-content) {
+    .pp-perguntas details {
+      interpolate-size: allow-keywords;
+    }
+
+    .pp-perguntas details::details-content {
+      block-size: 0;
+      overflow: clip;
+      transition: block-size 200ms var(--veio-curva-saida), content-visibility 200ms allow-discrete;
+    }
+
+    .pp-perguntas details[open]::details-content {
+      block-size: auto;
+    }
+  }
+}

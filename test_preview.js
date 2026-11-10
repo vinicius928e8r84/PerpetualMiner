@@ -5,7 +5,7 @@
 // cada script, estilo e imagem que ela pede. Roda `preview/montar.mjs` numa pasta
 // temporária. `node test_preview.js`. Confere também as páginas públicas do app: `/sobre/` (a landing, com
 // as capturas de `preview/site/capturas/`) e a política de privacidade em `/privacidade/` e `/privacy/`, que
-// o consentimento OAuth do Google pede.
+// o consentimento OAuth do Google pede. E os protótipos da nova landing, em `/prototipos/pagina/`.
 
 const assert = require('assert');
 const { execFileSync } = require('child_process');
@@ -87,6 +87,34 @@ const extensao = path.join(saida, 'extensao');
     assert(sobre.includes(`"/site/capturas/${captura}"`), `a landing não mostra a captura ${captura}`);
   }
   assert(fs.readFileSync(path.join(saida, 'index.html'), 'utf8').includes('href="/sobre/"'), 'a capa devia levar ao /sobre/');
+
+  // Os protótipos da nova landing (preview/prototipos/pagina/): saem no site, a capa leva a eles e a produção não
+  // os carrega. Valem para eles as regras da landing: o que pedem está no site, nada vem de fora e os scripts não
+  // falam com a rede nem guardam nada.
+  const emEstudo = path.join(saida, 'prototipos', 'pagina');
+  assert(fs.readFileSync(path.join(saida, 'index.html'), 'utf8').includes('href="/prototipos/pagina/"'), 'a capa devia levar aos protótipos de página');
+  for (const [nome, html] of [['privacidade', privacidade], ['sobre', sobre]]) {
+    assert(!html.includes('prototipos/'), `${nome}: a produção não carrega nada dos protótipos`);
+  }
+  const variantes = [...fs.readFileSync(path.join(emEstudo, 'index.html'), 'utf8').matchAll(/quadro\('([^']+\.html)'/g)].map(m => m[1]);
+  assert.deepStrictEqual(variantes, ['roteiro.html', 'mosaico.html', 'abas.html'], 'o seletor devia montar as três variantes');
+  for (const pagina of ['index.html', ...variantes]) {
+    const html = fs.readFileSync(path.join(emEstudo, pagina), 'utf8');
+    // O `src="${arquivo}"` do seletor é o molde do quadro, não um pedido: os arquivos dele são as variantes, acima.
+    const pedidos = [...html.matchAll(/\b(?:src|srcset|href)="([^"#?:$]+)"/g)].map(m => m[1]);
+    for (const pedido of pedidos) {
+      const alvo = pedido.startsWith('/') ? path.join(saida, pedido) : path.join(emEstudo, pedido);
+      assert(fs.existsSync(alvo), `${pagina} (protótipo) carrega ${pedido}, que não está no site`);
+    }
+    assert(!/\b(?:src|srcset)="(?:https?:)?\/\//.test(html), `${pagina} (protótipo): imagem ou script de fora`);
+    assert(!/<link\b[^>]*href="(?:https?:)?\/\//.test(html), `${pagina} (protótipo): folha ou fonte de fora`);
+    if (pagina !== 'index.html') assert(html.includes(`href="https://chromewebstore.google.com/detail/perpetualminer/${idDaExtensao}"`), `${pagina} devia levar à extensão na Chrome Web Store`);
+    if (pagina !== 'index.html') assert(html.includes('href="/privacidade/"'), `${pagina} devia levar à política de privacidade`);
+  }
+  for (const script of fs.readdirSync(emEstudo).filter(nome => nome.endsWith('.js'))) {
+    const usa = fs.readFileSync(path.join(emEstudo, script), 'utf8').match(/\b(fetch|XMLHttpRequest|sendBeacon|WebSocket|EventSource|cookie|localStorage|sessionStorage|indexedDB)\b/);
+    assert(!usa, `${script} (protótipo) não fala com a rede nem guarda nada, e usa ${usa}`);
+  }
 
   fs.rmSync(saida, { recursive: true, force: true });
   console.log(`ok: ${arquivos.length} arquivos da extensão e ${paginas.length} páginas no preview`);

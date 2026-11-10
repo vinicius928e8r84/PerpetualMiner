@@ -1,0 +1,546 @@
+/* Protótipo "Abas": uma tela só, do jeito do painel da extensão (a coluna e a ilha de conteúdo). Com script a página
+   não rola: as abas trocam o que a ilha mostra, e só a ilha rola quando o assunto não cabe. Sem script, as seções
+   ficam uma embaixo da outra. Quase nada se move aqui, de propósito: o marcador desliza, a seção entra curta, e pelo
+   teclado nem isso. */
+.abas {
+  --ab-tam-titulo: clamp(32px, 4.2vw, 56px);
+  --ab-tam-secao: clamp(26px, 3vw, 38px);
+  background-image: radial-gradient(ellipse 60% 420px at 70% -80px, color-mix(in srgb, var(--veio-accent) 14%, transparent), transparent);
+  background-repeat: no-repeat;
+}
+
+.ab-janela {
+  box-sizing: border-box;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.ab-coluna {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+}
+
+.ab-trilho {
+  position: relative;
+  grid-area: 2 / 1 / auto / -1;
+}
+
+.ab-instalar {
+  grid-area: 1 / 2;
+}
+
+.ab-abas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+}
+
+.ab-abas a {
+  padding: 12px;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-card);
+  font-weight: var(--veio-peso-rotulo);
+  text-decoration: none;
+  white-space: nowrap;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition: transform var(--veio-transicao) var(--veio-curva-saida);
+}
+
+/* O toque responde na hora em que o dedo pousa; a troca de aba vem ao soltar. */
+.ab-abas a:active {
+  transform: scale(.97);
+}
+
+.ab-abas a[aria-selected="true"] {
+  color: var(--veio-text);
+}
+
+.ab-marcador {
+  display: none;
+}
+
+.ab-instalar span {
+  display: none;
+}
+
+.ab-painel {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  max-width: 1040px;
+  padding-block: 36px;
+  scroll-margin-top: 12px;
+}
+
+.ab-painel[hidden] {
+  display: none;
+}
+
+.ab-painel h1 {
+  font-size: var(--ab-tam-titulo);
+  letter-spacing: -.035em;
+  line-height: 1.04;
+}
+
+.ab-painel h2 {
+  font-size: var(--ab-tam-secao);
+  letter-spacing: -.03em;
+  line-height: 1.1;
+}
+
+.ab-texto {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.ab-lead {
+  font-size: clamp(16px, 1.4vw, 18px);
+  color: var(--veio-muted);
+}
+
+.ab-intro {
+  max-width: 68ch;
+  color: var(--veio-muted);
+}
+
+.ab-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 24px;
+}
+
+/* A demonstração (demo.css) numa moldura: no filme, a tela ganha a borda de ouro e a sombra. */
+.demo-filme .ab-demo .pp-demo-tela {
+  border: 1px solid var(--pp-ouro-fio);
+  border-radius: var(--veio-raio-card);
+  box-shadow: var(--veio-sombra);
+}
+
+.ab-demo figcaption {
+  font-size: var(--veio-tam-corpo);
+}
+
+.ab-passos {
+  display: grid;
+  gap: 14px;
+  counter-reset: passo;
+  font-size: var(--veio-tam-card);
+  color: var(--veio-muted);
+}
+
+.ab-passos li {
+  position: relative;
+  padding-left: 40px;
+  counter-increment: passo;
+}
+
+.ab-passos li::before {
+  content: counter(passo);
+  position: absolute;
+  left: 0;
+  top: -3px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--veio-accent);
+  border-radius: var(--veio-raio-pilula);
+  color: var(--veio-accent-text);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-num);
+}
+
+.ab-painel b {
+  color: var(--veio-text);
+  font-weight: var(--veio-peso-titulo);
+}
+
+.ab-dupla,
+.ab-cartoes {
+  display: grid;
+  gap: 12px;
+}
+
+.ab-dupla {
+  gap: 20px;
+}
+
+.ab-cartoes > li,
+.ab-destaque {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-bg);
+}
+
+.ab-cartoes p,
+.ab-destaque p {
+  font-size: var(--veio-tam-card);
+  line-height: 1.55;
+  color: var(--veio-muted);
+}
+
+.ab-destaque {
+  border-color: var(--pp-ouro-fio);
+}
+
+.ab-recorte {
+  height: 210px;
+  overflow: hidden;
+  margin-top: 6px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-input);
+}
+
+.ab-recorte img,
+.ab-captura img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 14%;
+}
+
+.ab-captura {
+  height: 260px;
+  overflow: hidden;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+}
+
+.ab-captura img {
+  object-position: 50% 46%;
+}
+
+/* As etapas de um envio, de cima para baixo, como o painel as mostra. */
+.ab-etapas {
+  display: grid;
+  gap: 10px;
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-rotulo);
+}
+
+.ab-etapas li {
+  position: relative;
+  padding-left: 28px;
+}
+
+.ab-etapas li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-accent);
+  box-shadow: 0 0 0 4px var(--veio-surface), 0 0 0 5px var(--pp-ouro-fio);
+}
+
+.ab-idiomas li {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 14px;
+}
+
+.ab-sigla {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--pp-ouro-fio);
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-accent-soft);
+  color: var(--veio-accent-text);
+  font-family: var(--veio-fonte-mono);
+  font-weight: var(--veio-peso-num);
+}
+
+.ab-idiomas p {
+  font-size: var(--veio-tam-destaque);
+  color: var(--veio-text);
+}
+
+.ab-cartoes .ab-teto {
+  font-size: clamp(24px, 2.2vw, 30px);
+  font-weight: var(--veio-peso-num);
+  line-height: 1.1;
+  color: var(--veio-accent-text);
+}
+
+.ab-rodape {
+  padding-block: 24px;
+  border-top: 1px solid var(--veio-border);
+}
+
+/* Com script: a página vira uma tela só. A altura acompanha a parte visível da janela (dvh), e puxar além do fim não
+   arrasta a página atrás. */
+html.js:has(.abas) {
+  overscroll-behavior: none;
+}
+
+.js .abas {
+  overflow: hidden;
+}
+
+/* O script espera o HTML inteiro para trocar as abas. Até lá, só aparece a seção que o endereço pede (abas.js a anota
+   em data-aba-inicial antes de o corpo chegar; sem endereço, o Início): a primeira pintura já é a tela certa, e nada
+   pula. Uma seção nova entra nesta lista. */
+.js:not([data-abas]) .ab-painel {
+  display: none;
+}
+
+.js[data-aba-inicial="inicio"]:not([data-abas]) #inicio,
+.js[data-aba-inicial="minerar"]:not([data-abas]) #minerar,
+.js[data-aba-inicial="no-anki"]:not([data-abas]) #no-anki,
+.js[data-aba-inicial="idiomas"]:not([data-abas]) #idiomas,
+.js[data-aba-inicial="dados"]:not([data-abas]) #dados,
+.js[data-aba-inicial="custo"]:not([data-abas]) #custo,
+.js[data-aba-inicial="perguntas"]:not([data-abas]) #perguntas,
+.js[data-aba-inicial="instalar"]:not([data-abas]) #instalar {
+  display: grid;
+}
+
+.js .ab-janela {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100vh;
+  height: 100dvh;
+  padding: 0;
+}
+
+.js .ab-coluna {
+  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* No celular as abas são uma faixa que rola de lado; o marcador é o traço de ouro sob a aba da vez. */
+.js .ab-trilho {
+  overflow-x: auto;
+  margin-inline: -16px;
+  padding-inline: 4px 28px;
+  box-shadow: inset 0 -1px 0 var(--pp-fio);
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.js .ab-trilho::-webkit-scrollbar {
+  display: none;
+}
+
+.js .ab-abas {
+  flex-wrap: nowrap;
+  width: max-content;
+}
+
+.js .ab-marcador {
+  display: block;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100px;
+  height: 2px;
+  background: var(--veio-accent);
+  transform-origin: left;
+}
+
+.js .ab-ilha {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(16px, env(safe-area-inset-left, 0px));
+}
+
+.js .ab-painel {
+  padding-block: 24px 40px;
+}
+
+.js .ab-rodape {
+  padding-bottom: 88px;
+}
+
+@media (min-width: 640px) {
+  .ab-cartoes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .abas .pp-perguntas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 36px;
+    align-items: start;
+  }
+}
+
+@media (min-width: 900px) {
+  .ab-instalar span {
+    display: inline;
+  }
+
+  .ab-painel--inicio {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    align-items: center;
+    gap: 28px 40px;
+  }
+
+  .ab-painel--inicio .ab-passos,
+  .ab-passos {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+
+  .ab-painel--inicio .ab-passos {
+    grid-column: 1 / -1;
+    padding-top: 24px;
+    border-top: 1px solid var(--pp-fio);
+  }
+
+  .ab-dupla {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    align-items: start;
+  }
+
+  .ab-cartoes--tres {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* A coluna em pé, como a do painel da extensão: a marca em cima, as abas no meio e o botão de instalar embaixo. */
+  .js .ab-janela {
+    grid-template-columns: 256px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .js .ab-coluna,
+  .js .ab-ilha {
+    border: 1px solid var(--veio-border);
+    border-radius: var(--veio-raio-painel);
+    background: var(--veio-surface);
+    box-shadow: var(--veio-sombra-ilha), inset 0 1px 0 var(--pp-fio);
+  }
+
+  .js .ab-coluna {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 22px;
+    padding: 20px 12px 12px;
+  }
+
+  .js .ab-coluna .pp-marca {
+    padding-inline: 8px;
+  }
+
+  .js .ab-trilho {
+    flex: 1;
+    overflow: hidden auto;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .js .ab-abas {
+    display: grid;
+    gap: 2px;
+    width: auto;
+  }
+
+  .js .ab-abas a {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 14px;
+    border-radius: var(--veio-raio-input);
+  }
+
+  .js .ab-marcador {
+    inset: 0 0 auto;
+    width: auto;
+    height: 44px;
+    border: 1px solid var(--veio-border-strong);
+    border-radius: var(--veio-raio-input);
+    background: var(--veio-surface-2);
+    box-sizing: border-box;
+  }
+
+  .js .ab-instalar {
+    display: block;
+    padding: 12px 8px;
+    text-align: center;
+  }
+
+  .js .ab-ilha {
+    padding: 0 clamp(24px, 4vw, 56px);
+    background:
+      radial-gradient(ellipse 60% 320px at 80% 0, color-mix(in srgb, var(--veio-accent) 9%, transparent), transparent 70%),
+      var(--veio-surface);
+  }
+
+  .js .ab-painel {
+    padding-block: clamp(28px, 5vh, 52px) 32px;
+  }
+
+  .js .ab-rodape {
+    padding-bottom: 72px;
+  }
+}
+
+@media (min-width: 1180px) {
+  .ab-cartoes--quatro {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ab-abas a:hover {
+    color: var(--veio-text);
+  }
+}
+
+/* O movimento, só para quem não pediu menos movimento. O marcador desliza até a aba clicada (resposta ao gesto, com a
+   saída forte) e a seção nova entra curta, vinda do lado para onde a pessoa foi. Pelo teclado (data-seco) a troca é
+   seca: quem anda de aba em aba pelas setas não espera animação nenhuma. */
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-pronto]:not([data-seco]) .ab-marcador {
+    transition: transform 250ms var(--veio-curva-saida);
+  }
+
+  .js :not([data-seco]) > .ab-ilha > .ab-painel {
+    transition: opacity 200ms var(--veio-curva-saida), transform 200ms var(--veio-curva-saida);
+
+    @starting-style {
+      opacity: 0;
+      transform: translate(var(--ab-dx, 8px), var(--ab-dy, 0));
+    }
+  }
+
+  .js [data-sentido="tras"] .ab-painel {
+    --ab-dx: -8px;
+  }
+
+  @media (min-width: 900px) {
+    .js .ab-painel {
+      --ab-dx: 0;
+      --ab-dy: 8px;
+    }
+
+    .js [data-sentido="tras"] .ab-painel {
+      --ab-dx: 0;
+      --ab-dy: -8px;
+    }
+  }
+}

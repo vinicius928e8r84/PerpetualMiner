@@ -1,0 +1,725 @@
+/* Protótipo "Roteiro": rolagem guiada. Uma coluna de atos e um palco preso, onde as telas reais trocam conforme o ato
+   (roteiro.js põe data-ato na história). No celular o palco gruda no topo e os atos passam por baixo dele.
+   Quem se move: o palco, o trilho, as teclas e as etapas. O texto dos atos é levado pela rolagem e não se anima. */
+.roteiro {
+  --rt-topo: calc(52px + env(safe-area-inset-top, 0px));
+  --rt-largura: 1180px;
+  --rt-tam-titulo: clamp(40px, 7.2vw, 92px);
+  --rt-tam-ato: clamp(28px, 3.4vw, 44px);
+  --rt-tam-lead: clamp(17px, 1.5vw, 20px);
+  background-image: radial-gradient(ellipse 70% 480px at 30% -80px, color-mix(in srgb, var(--veio-accent) 16%, transparent), transparent);
+  background-repeat: no-repeat;
+}
+
+.rt-topo {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-sizing: border-box;
+  height: var(--rt-topo);
+  padding: env(safe-area-inset-top, 0px) max(20px, env(safe-area-inset-right, 0px)) 0 max(20px, env(safe-area-inset-left, 0px));
+  background: var(--pp-vidro);
+  backdrop-filter: blur(14px) saturate(1.4);
+  box-shadow: 0 1px 0 var(--pp-fio);
+}
+
+/* Onde a pessoa está na história: só aparece dentro dela. */
+.rt-onde {
+  font-size: var(--veio-tam-apoio);
+  font-weight: var(--veio-peso-rotulo);
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--veio-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+[data-na-historia] .rt-onde {
+  opacity: 1;
+}
+
+.rt-abertura,
+.rt-ficha,
+.rt-fecho,
+.rt-rodape {
+  box-sizing: border-box;
+  max-width: var(--rt-largura);
+  margin: 0 auto;
+  padding-inline: max(20px, env(safe-area-inset-left, 0px)) max(20px, env(safe-area-inset-right, 0px));
+}
+
+/* A abertura ocupa a primeira tela: a menor altura que a janela tem, para nada ficar cortado no celular. */
+.rt-abertura {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: clamp(16px, 2.6svh, 24px);
+  min-height: calc(100svh - var(--rt-topo));
+  padding-block: clamp(20px, 5svh, 40px) clamp(24px, 6svh, 56px);
+}
+
+.rt-abertura h1 {
+  max-width: 13ch;
+  font-size: var(--rt-tam-titulo);
+  letter-spacing: -.045em;
+  line-height: .98;
+}
+
+.rt-lead {
+  max-width: 58ch;
+  font-size: var(--rt-tam-lead);
+  color: var(--veio-muted);
+}
+
+/* A frase que a página acompanha, como a legenda na tela: a linha de ouro é a que o overlay desenha ao minerar. */
+.rt-frase {
+  position: relative;
+  padding-bottom: 12px;
+  font-size: clamp(20px, 2.5vw, 32px);
+  font-weight: var(--veio-peso-rotulo);
+  letter-spacing: -.015em;
+  line-height: 1.3;
+}
+
+.rt-frase::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 3px;
+  border-radius: var(--veio-raio-linha);
+  background: var(--veio-accent);
+  box-shadow: var(--veio-brilho-da-linha);
+  transform-origin: left;
+}
+
+.rt-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 28px;
+  margin-top: 8px;
+}
+
+/* A história. Sem script, as telas ficam em fila antes dos atos; com ele, viram o palco. */
+.rt-historia {
+  box-sizing: border-box;
+  max-width: var(--rt-largura);
+  margin: 0 auto;
+}
+
+.rt-tela {
+  display: grid;
+  gap: 12px;
+  padding: 0 20px;
+}
+
+.rt-cena {
+  width: 100%;
+  border-radius: var(--veio-raio-card);
+}
+
+/* As duas que carregam só ao chegar perto dizem a proporção aqui também: o lugar delas já está guardado. */
+.rt-cena--painel {
+  aspect-ratio: 960 / 1440;
+}
+
+.rt-cena--popup {
+  aspect-ratio: 680 / 1200;
+}
+
+.rt-trilho,
+.rt-teclas {
+  display: none;
+}
+
+/* O Repetir da cena do Alt+S, bem à vista no ato 2 (roteiro.js o mostra). */
+.rt-repetir {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid var(--veio-accent);
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-accent-soft);
+  color: var(--veio-text);
+  font: inherit;
+  font-size: var(--veio-tam-card);
+  font-weight: var(--veio-peso-titulo);
+  cursor: pointer;
+  transition: transform var(--veio-transicao) var(--veio-curva-saida), background-color var(--veio-transicao) ease;
+}
+
+.rt-repetir:active {
+  transform: scale(.97);
+}
+
+.rt-credito {
+  padding: 10px 20px 0;
+  text-align: center;
+}
+
+.rt-ato {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  padding: 28px 20px;
+}
+
+.rt-ato h2 {
+  font-size: var(--rt-tam-ato);
+  letter-spacing: -.03em;
+  line-height: 1.08;
+}
+
+.rt-ato h2 kbd {
+  font-size: .72em;
+  vertical-align: .12em;
+}
+
+.rt-ato > p:not(.pp-rotulo),
+.rt-tambem {
+  max-width: 52ch;
+  color: var(--veio-muted);
+}
+
+.rt-tambem {
+  display: grid;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--pp-fio);
+  font-size: var(--veio-tam-card);
+}
+
+.rt-tambem b,
+.rt-ficha b,
+.rt-passos b {
+  color: var(--veio-text);
+  font-weight: var(--veio-peso-titulo);
+}
+
+/* As etapas de um envio, de cima para baixo: o fio desce e cada ponto acende quando ele chega. */
+.rt-etapas {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-rotulo);
+}
+
+.rt-etapas::before,
+.rt-etapas::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: var(--veio-border);
+}
+
+.rt-etapas::after {
+  background: var(--veio-accent);
+  transform-origin: top;
+}
+
+.rt-etapas li {
+  position: relative;
+  z-index: 1;
+  padding-left: 30px;
+}
+
+.rt-etapas li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-accent);
+  box-shadow: 0 0 0 4px var(--veio-bg);
+}
+
+.js .rt-palco {
+  position: sticky;
+  top: var(--rt-topo);
+  z-index: 5;
+  padding: 6px 16px 0;
+  background: var(--veio-bg);
+}
+
+/* A borda de baixo do palco some em vez de cortar o texto que passa por baixo. */
+.js .rt-palco::after {
+  content: "";
+  position: absolute;
+  inset: 100% 0 auto;
+  height: 28px;
+  background: linear-gradient(var(--veio-bg), transparent);
+  pointer-events: none;
+}
+
+.js .rt-tela {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--pp-ouro-fio);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface);
+  box-shadow: var(--veio-sombra);
+}
+
+/* As telas empilhadas: cada uma cobre a moldura inteira, então a de cima entra sem a de baixo sair (não há buraco
+   no meio da troca). O translate é em % da própria altura: escolhe o trecho da captura que o ato mostra. */
+.js .rt-cena {
+  position: absolute;
+  inset: 0 0 auto;
+  border-radius: 0;
+  transform: translateY(var(--rt-corte, 0%));
+}
+
+.js .rt-cena--antes,
+.js .rt-cena--depois {
+  --rt-corte: -16.6%;
+}
+
+.js .rt-cena--painel {
+  --rt-corte: -57%;
+}
+
+.js :is([data-ato="4"], [data-ato="5"]) .rt-cena--painel {
+  --rt-corte: -28%;
+}
+
+.js .rt-cena--popup {
+  --rt-corte: -14%;
+}
+
+.js .rt-cena:not(.rt-cena--antes) {
+  opacity: 0;
+}
+
+/* A tela minerada só entra quando a cena do Alt+S chega ao fim (data-minerar="feita"), ou quando a pessoa já passou dela. */
+.js :is([data-minerar="feita"], [data-minerar="passada"]) .rt-cena--depois,
+.js :is([data-ato="3"], [data-ato="4"], [data-ato="5"]) :is(.rt-cena--depois, .rt-cena--painel),
+.js [data-ato="5"] .rt-cena--popup {
+  opacity: 1;
+}
+
+/* As teclas da cena, grandes e no meio do vídeo: é para o palco que o olho está voltado. */
+.js .rt-teclas {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 1px solid var(--pp-ouro-fio);
+  border-radius: var(--veio-raio-card);
+  background: color-mix(in srgb, var(--veio-bg) 84%, transparent);
+  box-shadow: var(--veio-sombra);
+  font-weight: var(--veio-peso-titulo);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.95);
+  pointer-events: none;
+}
+
+.js .rt-teclas kbd {
+  padding: 6px 14px;
+  border-color: var(--veio-accent);
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+  font-size: clamp(16px, 2.2vw, 22px);
+  font-weight: var(--veio-peso-num);
+}
+
+.js [data-minerar="tecla"] .rt-teclas {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.js [data-minerar="tecla"] #ato-2 h2 kbd {
+  border-color: var(--veio-accent);
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+}
+
+/* O anel de ouro que acende na hora em que a frase é minerada. */
+.js .rt-tela::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px var(--veio-accent), inset 0 0 48px color-mix(in srgb, var(--veio-accent) 35%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* No celular o trilho é a fila de traços do topo do palco, como nos stories: um por ato, e o toque leva a ele. */
+.js .rt-trilho {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+}
+
+.js .rt-trilho-fio {
+  display: none;
+}
+
+.js .rt-trilho a {
+  display: grid;
+  align-items: center;
+  height: 24px;
+  touch-action: manipulation;
+}
+
+.js .rt-trilho a:active::before {
+  background: var(--veio-accent);
+}
+
+.js .rt-trilho a::before {
+  content: "";
+  height: 3px;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-border);
+  transition: background-color 300ms ease;
+}
+
+.js .rt-trilho a[aria-current]::before,
+.js .rt-trilho a:has(~ a[aria-current])::before {
+  background: var(--veio-accent);
+}
+
+.js .rt-palco {
+  display: grid;
+}
+
+.js .rt-trilho {
+  grid-row: 1;
+}
+
+.js .rt-credito {
+  display: none;
+}
+
+.js .rt-ato {
+  min-height: calc(100svh - var(--rt-topo) - 62.5vw - 30px);
+  padding-block: 36px 28px;
+  scroll-margin-top: calc(var(--rt-topo) + 62.5vw + 20px);
+}
+
+.js .rt-etapas li {
+  color: var(--veio-muted);
+}
+
+.js .rt-etapas li::before {
+  background: var(--veio-border-strong);
+}
+
+.js [data-visto] .rt-etapas li {
+  color: var(--veio-text);
+}
+
+.js [data-visto] .rt-etapas li::before {
+  background: var(--veio-accent);
+}
+
+/* A ficha: o que o roteiro não contou, em seções curtas de duas colunas. */
+.rt-ficha {
+  margin-top: 72px;
+}
+
+.rt-ficha section {
+  display: grid;
+  gap: 16px;
+  padding-block: 40px;
+  border-top: 1px solid var(--pp-fio);
+}
+
+.rt-ficha h2 {
+  font-size: var(--rt-tam-ato);
+  letter-spacing: -.03em;
+  line-height: 1.08;
+}
+
+.rt-ficha ul {
+  display: grid;
+  gap: 14px;
+  max-width: 64ch;
+  color: var(--veio-muted);
+}
+
+.rt-ficha [lang] {
+  color: var(--veio-text);
+}
+
+.rt-fecho {
+  display: grid;
+  justify-items: center;
+  gap: 22px;
+  margin-top: 40px;
+  padding-block: 88px;
+  border-top: 1px solid var(--pp-ouro-fio);
+  background: radial-gradient(ellipse 60% 70% at 50% 0, color-mix(in srgb, var(--veio-accent) 14%, transparent), transparent 70%);
+  text-align: center;
+  scroll-margin-top: var(--rt-topo);
+}
+
+.rt-fecho h2 {
+  font-size: clamp(36px, 6vw, 76px);
+  letter-spacing: -.04em;
+  line-height: 1;
+}
+
+.rt-passos {
+  display: grid;
+  gap: 16px;
+  max-width: 920px;
+  margin-top: 20px;
+  counter-reset: passo;
+  font-size: var(--veio-tam-card);
+  color: var(--veio-muted);
+  text-align: left;
+}
+
+.rt-passos li {
+  position: relative;
+  padding-left: 42px;
+  counter-increment: passo;
+}
+
+.rt-passos li::before {
+  content: counter(passo);
+  position: absolute;
+  left: 0;
+  top: -3px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--veio-accent);
+  border-radius: var(--veio-raio-pilula);
+  color: var(--veio-accent-text);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-num);
+}
+
+.rt-fecho .pp-nota {
+  max-width: 70ch;
+}
+
+.rt-rodape {
+  padding-block: 28px calc(48px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--veio-border);
+}
+
+@media (max-width: 560px) {
+  .rt-topo .veio-nome {
+    display: none;
+  }
+}
+
+/* No celular o palco preso fica logo abaixo do topo: o topo vai quase cheio, para o texto não aparecer por trás dele. */
+@media (max-width: 899px) {
+  .js .rt-topo {
+    background: color-mix(in srgb, var(--veio-bg) 94%, transparent);
+  }
+}
+
+/* Tela baixa (celular deitado): o palco não cabe preso, então segue a rolagem. */
+@media (max-height: 480px) and (max-width: 899px) {
+  .js .rt-palco {
+    position: static;
+  }
+}
+
+/* Com largura: os atos à esquerda, cada um com uma tela de altura, e o palco preso à direita com o trilho ao lado. */
+@media (min-width: 900px) {
+  /* A abertura em duas colunas: o texto à esquerda e, à direita, a frase que a página acompanha, grande como uma legenda. */
+  .rt-abertura {
+    grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+    column-gap: 72px;
+  }
+
+  .rt-abertura > * {
+    grid-column: 1;
+  }
+
+  .rt-abertura h1 {
+    max-width: none;
+    font-size: clamp(40px, 4.9vw, 68px);
+    letter-spacing: -.04em;
+    line-height: 1.02;
+  }
+
+  .rt-abertura h1 span {
+    display: block;
+  }
+
+  .rt-abertura .rt-frase {
+    grid-area: 1 / 2 / span 5;
+    align-self: center;
+    font-size: clamp(28px, 3.3vw, 48px);
+    line-height: 1.18;
+    letter-spacing: -.025em;
+  }
+
+  .rt-historia {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: 0 96px;
+    padding-inline: 32px;
+  }
+
+  .rt-atos {
+    grid-area: 1 / 1;
+  }
+
+  .rt-palco {
+    grid-area: 1 / 2;
+    align-self: start;
+  }
+
+  .rt-ato {
+    padding-inline: 0;
+  }
+
+  .js .rt-palco {
+    display: grid;
+    align-content: center;
+    height: calc(100svh - var(--rt-topo));
+    padding: 0;
+    background: none;
+  }
+
+  .js .rt-palco::after {
+    content: none;
+  }
+
+  .js .rt-tela {
+    aspect-ratio: 4 / 3;
+    border-radius: var(--veio-raio-painel);
+    box-shadow: var(--veio-sombra), 0 0 90px -30px color-mix(in srgb, var(--veio-accent) 55%, transparent);
+  }
+
+  .js .rt-cena--antes,
+  .js .rt-cena--depois {
+    --rt-corte: 0%;
+  }
+
+  .js .rt-cena--painel {
+    --rt-corte: -50%;
+  }
+
+  .js :is([data-ato="4"], [data-ato="5"]) .rt-cena--painel {
+    --rt-corte: -22%;
+  }
+
+  .js .rt-cena--popup {
+    --rt-corte: -10.4%;
+  }
+
+  .js .rt-credito {
+    display: block;
+    grid-row: auto;
+  }
+
+  /* O trilho em pé, entre os atos e o palco: cinco pontos e o fio que os liga. */
+  .js .rt-trilho {
+    position: absolute;
+    left: -60px;
+    top: 50%;
+    grid-auto-flow: row;
+    grid-auto-rows: 24px;
+    gap: 28px;
+    width: 24px;
+    margin-top: -118px;
+  }
+
+  .js .rt-trilho-fio {
+    display: block;
+    position: absolute;
+    left: 11px;
+    top: 12px;
+    bottom: 12px;
+    width: 2px;
+    background: var(--veio-border);
+  }
+
+  .js .rt-trilho-fio::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--veio-accent);
+    transform: scaleY(0);
+    transform-origin: top;
+  }
+
+  /* O fio cheio até o ato da vez. Com movimento, e onde o navegador sabe, ele acompanha a rolagem (roteiro-movimento.css). */
+  .js [data-ato="2"] .rt-trilho-fio::after { transform: scaleY(.25); }
+  .js [data-ato="3"] .rt-trilho-fio::after { transform: scaleY(.5); }
+  .js [data-ato="4"] .rt-trilho-fio::after { transform: scaleY(.75); }
+  .js [data-ato="5"] .rt-trilho-fio::after { transform: scaleY(1); }
+
+  .js .rt-trilho a {
+    position: relative;
+    justify-items: center;
+  }
+
+  .js .rt-trilho a::before {
+    width: 10px;
+    height: 10px;
+    box-shadow: 0 0 0 4px var(--veio-bg);
+  }
+
+  .js .rt-trilho a[aria-current]::before {
+    box-shadow: 0 0 0 4px var(--veio-bg), 0 0 0 5px var(--veio-accent);
+  }
+
+  .js .rt-ato {
+    align-content: center;
+    min-height: calc(86svh - var(--rt-topo));
+    padding-block: 0;
+    scroll-margin-top: var(--rt-topo);
+  }
+
+  .rt-ficha section {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    gap: 32px;
+    padding-block: 56px;
+  }
+
+  .rt-passos {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .rt-topo {
+    background: var(--veio-surface);
+    backdrop-filter: none;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .rt-trilho a:hover::before {
+    background: var(--veio-accent);
+  }
+
+  .rt-repetir:hover {
+    background: color-mix(in srgb, var(--veio-accent) 26%, transparent);
+  }
+}

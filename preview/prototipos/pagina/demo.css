@@ -1,0 +1,228 @@
+/* A demonstração do Alt+S das variantes Mosaico e Abas, feita para ser vista por quem está desatento.
+
+   Parada (sem script, ou com "menos movimento") são passos legíveis: as duas capturas lado a lado, antes e depois, e a
+   lista dos três passos acesa. Com script e movimento vira um filme curto (demo.js marca a página com `demo-filme`
+   antes da primeira pintura, para nada mudar de lugar depois, e anda o data-passo): só começa com a tela à vista e a
+   página parada, e os passos vêm um de cada vez, com tempo de leitura:
+     passo 1, de 0 a 1,8 s: a legenda na tela, e nada se mexe (é o tempo de achar a cena e ler a linha);
+     passo 2, de 1,8 a 3,0 s: as teclas aparecem grandes sobre o vídeo e ficam apertadas (1,2 s para ler duas teclas);
+     passo 3, aos 3,0 s: a captura minerada entra em 320 ms com o anel de ouro, que aos 3,9 s assenta num brilho baixo.
+   A lista ao lado diz em que passo está, e o Repetir fica sempre à vista. Só opacity e transform se mexem (e 2 px de
+   desfoque na troca das capturas). */
+.pp-demo {
+  display: grid;
+  gap: 12px;
+}
+
+.pp-demo-tela {
+  position: relative;
+  display: grid;
+  gap: 8px;
+}
+
+.pp-demo-tela img {
+  width: 100%;
+  border-radius: var(--veio-raio-input);
+}
+
+.pp-demo-teclas {
+  display: none;
+}
+
+.pp-demo figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+/* Os três passos, numerados. No filme, o da vez fica em ouro, os que já passaram ficam claros e os que faltam, apagados. */
+.pp-demo-passos {
+  flex: 1 1 240px;
+  display: grid;
+  gap: 6px;
+  counter-reset: passo-da-demo;
+  font-size: var(--veio-tam-card);
+  line-height: 1.4;
+}
+
+.pp-demo-passos li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  counter-increment: passo-da-demo;
+}
+
+.pp-demo-passos li::before {
+  content: counter(passo-da-demo);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--veio-accent);
+  border-radius: var(--veio-raio-pilula);
+  color: var(--veio-accent-text);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  font-weight: var(--veio-peso-num);
+}
+
+.pp-demo-repetir {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  margin-left: auto;
+  padding: 0 18px;
+  border: 1px solid var(--veio-accent);
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-accent-soft);
+  color: var(--veio-text);
+  font: inherit;
+  font-size: var(--veio-tam-card);
+  font-weight: var(--veio-peso-titulo);
+  cursor: pointer;
+  transition: transform var(--veio-transicao) var(--veio-curva-saida), background-color var(--veio-transicao) ease;
+}
+
+.pp-demo-repetir:active {
+  transform: scale(.97);
+}
+
+/* No filme o Repetir já ocupa o lugar dele antes de o script o ligar: a legenda não se mexe quando ele chega. */
+.demo-filme .pp-demo-repetir {
+  display: inline-flex;
+}
+
+@media (min-width: 520px) {
+  html:not(.demo-filme) .pp-demo-tela {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* O filme: as duas capturas uma sobre a outra, e as teclas no meio do vídeo. */
+.demo-filme .pp-demo .pp-demo-tela {
+  display: block;
+  overflow: hidden;
+}
+
+.demo-filme .pp-demo .pp-demo-tela img {
+  border-radius: 0;
+}
+
+.demo-filme .pp-demo .pp-demo-depois {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  opacity: 0;
+  filter: blur(2px);
+}
+
+.pp-demo[data-passo="3"] .pp-demo-depois {
+  opacity: 1;
+  filter: none;
+  transition: opacity 320ms var(--veio-curva-saida), filter 320ms var(--veio-curva-saida);
+}
+
+/* O anel de ouro que acende na hora em que a frase é minerada. */
+.demo-filme .pp-demo .pp-demo-tela::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px var(--veio-accent), inset 0 0 48px color-mix(in srgb, var(--veio-accent) 35%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pp-demo[data-passo="3"] .pp-demo-tela::after {
+  animation: pp-demo-anel 900ms var(--veio-curva-saida) both;
+}
+
+/* As teclas, grandes e no meio do vídeo: é para lá que o olho já está voltado. Entram de 95% (nada nasce do zero),
+   ficam apertadas enquanto o passo 2 dura e saem mais depressa do que entraram. */
+.demo-filme .pp-demo .pp-demo-teclas {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 1px solid var(--pp-ouro-fio);
+  border-radius: var(--veio-raio-card);
+  background: color-mix(in srgb, var(--veio-bg) 84%, transparent);
+  box-shadow: var(--veio-sombra);
+  font-weight: var(--veio-peso-titulo);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.95);
+  transition: opacity 150ms ease, transform 150ms var(--veio-curva-saida);
+  pointer-events: none;
+}
+
+.pp-demo-teclas kbd {
+  padding: 6px 14px;
+  border-color: var(--veio-accent);
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+  font-size: clamp(16px, 2.2vw, 22px);
+  font-weight: var(--veio-peso-num);
+}
+
+.pp-demo[data-passo="2"] .pp-demo-teclas {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  transition: opacity 200ms var(--veio-curva-saida), transform 200ms var(--veio-curva-saida);
+}
+
+.demo-filme .pp-demo .pp-demo-passos li {
+  color: var(--veio-muted);
+  transition: color 200ms ease;
+}
+
+.demo-filme .pp-demo .pp-demo-passos li::before {
+  border-color: var(--veio-border-strong);
+  color: var(--veio-muted);
+  transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+}
+
+.pp-demo:is([data-passo="1"], [data-passo="2"], [data-passo="3"]) .pp-demo-passos li:nth-child(1),
+.pp-demo:is([data-passo="2"], [data-passo="3"]) .pp-demo-passos li:nth-child(2),
+.pp-demo[data-passo="3"] .pp-demo-passos li:nth-child(3) {
+  color: var(--veio-text);
+}
+
+.pp-demo:is([data-passo="1"], [data-passo="2"], [data-passo="3"]) .pp-demo-passos li:nth-child(1)::before,
+.pp-demo:is([data-passo="2"], [data-passo="3"]) .pp-demo-passos li:nth-child(2)::before,
+.pp-demo[data-passo="3"] .pp-demo-passos li:nth-child(3)::before {
+  border-color: var(--veio-accent);
+  color: var(--veio-accent-text);
+}
+
+.pp-demo[data-passo="1"] .pp-demo-passos li:nth-child(1),
+.pp-demo[data-passo="2"] .pp-demo-passos li:nth-child(2),
+.pp-demo[data-passo="3"] .pp-demo-passos li:nth-child(3) {
+  font-weight: var(--veio-peso-titulo);
+}
+
+.pp-demo[data-passo="1"] .pp-demo-passos li:nth-child(1)::before,
+.pp-demo[data-passo="2"] .pp-demo-passos li:nth-child(2)::before,
+.pp-demo[data-passo="3"] .pp-demo-passos li:nth-child(3)::before {
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+}
+
+/* O anel acende e assenta num brilho baixo, que fica: de relance, a tela minerada não se confunde com a de antes. */
+@keyframes pp-demo-anel {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  100% { opacity: .4; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pp-demo-repetir:hover {
+    background: color-mix(in srgb, var(--veio-accent) 26%, transparent);
+  }
+}

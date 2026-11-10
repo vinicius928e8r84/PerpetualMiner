@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="description" content="O seletor dos três protótipos da nova landing do PerpetualMiner: Roteiro, Mosaico e Abas.">
+<meta name="color-scheme" content="dark">
+<title>Nova landing do PerpetualMiner · três protótipos de página</title>
+<!-- O seletor dos protótipos da nova landing (skill emil-prototype). Mostra uma variante por vez, em tamanho real, num
+     quadro que ocupa a janela inteira: cada variante é uma página de verdade (roteiro.html, mosaico.html, abas.html) e
+     abre sozinha também. A pílula de baixo é a do PICKER.md da skill, copiada como está (marcação, estilos e teclas):
+     o desenho dela não é decisão deste projeto. Nada do site carrega esta pasta. -->
+<style>
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: #121110;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+}
+
+#stage iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* PICKER.md, como está. */
+.proto-picker {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(10, 10, 10, 0.82);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  backdrop-filter: blur(12px) saturate(1.4);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 8px 24px rgba(0, 0, 0, 0.24),
+    0 2px 6px rgba(0, 0, 0, 0.12);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.proto-picker-highlight {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  will-change: transform;
+}
+
+/* The slide is enabled only after first paint (data-ready), so load doesn't animate. */
+.proto-picker[data-ready] .proto-picker-highlight {
+  transition:
+    transform 250ms cubic-bezier(0.23, 1, 0.32, 1),
+    width 250ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proto-picker[data-ready] .proto-picker-highlight { transition: none; }
+}
+
+.proto-picker-item {
+  position: relative; /* sits above the highlight */
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font: inherit;
+  cursor: pointer;
+  transition: color 150ms ease-out;
+}
+
+.proto-picker-item:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.proto-picker-item:active {
+  transform: scale(0.97);
+}
+
+.proto-picker-item:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.4);
+  outline-offset: 2px;
+}
+
+.proto-picker-item[data-active] {
+  color: #fff;
+}
+
+.proto-picker-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.proto-picker-replay {
+  padding: 0 10px;
+  font-size: 14px;
+}
+
+.proto-picker[data-position="top"] {
+  bottom: auto;
+  top: 24px;
+}
+
+/* A ficha do estudo: fora da pílula, que não muda. Diz qual variante é a recomendada (a da estrela) e por quê, e traz
+   a tabela das três. É moldura do estudo, como a pílula: vidro escuro e fonte do sistema, nada da Veio. */
+.proto-ficha {
+  position: fixed;
+  bottom: 68px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483646;
+  box-sizing: border-box;
+  max-width: calc(100vw - 24px);
+  border-radius: 14px;
+  background: rgba(10, 10, 10, 0.9);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  backdrop-filter: blur(12px) saturate(1.4);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 8px 24px rgba(0, 0, 0, 0.24);
+  color: rgba(255, 255, 255, 0.72);
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.proto-ficha summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1;
+  white-space: nowrap;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.proto-ficha summary::-webkit-details-marker {
+  display: none;
+}
+
+.proto-ficha summary:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.4);
+  outline-offset: 2px;
+  border-radius: 14px;
+}
+
+.proto-ficha[open] {
+  width: 720px;
+}
+
+.proto-ficha[open] summary {
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.proto-ficha[open] summary::after {
+  content: "fechar";
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.proto-ficha-corpo {
+  max-height: min(60vh, 460px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 14px 14px;
+}
+
+.proto-ficha p {
+  margin: 0 0 10px;
+}
+
+.proto-ficha b {
+  color: #fff;
+  font-weight: 600;
+}
+
+.proto-ficha table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.proto-ficha th,
+.proto-ficha td {
+  padding: 7px 8px 7px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+  vertical-align: top;
+}
+
+.proto-ficha th {
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.proto-ficha kbd {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font: inherit;
+}
+
+@media (max-width: 640px) {
+  .proto-ficha thead {
+    display: none;
+  }
+
+  .proto-ficha td {
+    display: block;
+    padding: 2px 0;
+    border: 0;
+  }
+
+  .proto-ficha td:first-child {
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<details class="proto-ficha">
+  <summary>★ recomendada · por quê</summary>
+  <div class="proto-ficha-corpo">
+    <p><b>Recomendo o Roteiro.</b> O produto é um gesto com consequência: <kbd>Alt</kbd>+<kbd>S</kbd> numa legenda, e a frase volta como cartão do Anki. É a única das três que mostra isso na ordem em que acontece, com as telas reais trocando no palco enquanto a pessoa rola. Landing se vê poucas vezes, e é aí que o movimento que explica paga o que custa. O preço: é a página mais longa, e dados, custo e perguntas ficam depois da história.</p>
+    <table>
+      <thead>
+        <tr><th>Variante</th><th>Eixo</th><th>Quando é a escolha certa</th><th>O que ela custa</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><b>1 · Roteiro</b></td><td>Narrativa: rolagem guiada, palco preso, uma ideia por tela.</td><td>Quem chega não sabe o que é minerar uma frase, e a história explica em cinco atos.</td><td>A mais longa. Quem só quer o custo ou as perguntas rola até o fim.</td></tr>
+        <tr><td><b>2 · Mosaico</b></td><td>Densidade: grade de peças, a página inteira de relance.</td><td>Quem já usa o Anki e quer conferir o que a extensão faz, numa tela larga.</td><td>Sem ordem de leitura: treze peças disputam o olho. No celular vira uma fila comprida.</td></tr>
+        <tr><td><b>3 · Abas</b></td><td>Interação: uma tela só, navegação por abas, como o painel da extensão.</td><td>Quem volta atrás de uma resposta (custo, dados, instalar) e chega nela em um toque.</td><td>Sete oitavos do conteúdo ficam atrás de um clique. É a que menos parece uma landing.</td></tr>
+      </tbody>
+    </table>
+    <p style="margin: 10px 0 0">Teclas: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> ou <kbd>←</kbd> <kbd>→</kbd> trocam de variante, <kbd>R</kbd> refaz a entrada. O endereço guarda a escolha (<kbd>?v=2</kbd>).</p>
+  </div>
+</details>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">Roteiro&nbsp;★</button>
+  <button class="proto-picker-item">Mosaico</button>
+  <button class="proto-picker-item">Abas</button>
+  <span class="proto-picker-divider" aria-hidden="true"></span>
+  <button class="proto-picker-item proto-picker-replay" aria-label="Replay animation (R)">↻</button>
+</nav>
+
+<script>
+'use strict';
+
+// Cada variante é uma página; "montar" é pôr no palco um quadro novo com ela, o que refaz a entrada.
+const quadro = (arquivo, nome) => () => `<iframe src="${arquivo}" title="Variante ${nome}"></iframe>`;
+const variants = [quadro('roteiro.html', 'Roteiro'), quadro('mosaico.html', 'Mosaico'), quadro('abas.html', 'Abas')];
+
+// PICKER.md › Reference wiring, como está.
+const stage = document.getElementById('stage');
+const picker = document.querySelector('.proto-picker');
+const highlight = picker.querySelector('.proto-picker-highlight');
+const items = [...picker.querySelectorAll('.proto-picker-item:not(.proto-picker-replay)')];
+const replay = picker.querySelector('.proto-picker-replay');
+let current = 0;
+
+function moveHighlight() {
+  const el = items[current];
+  highlight.style.width = el.offsetWidth + 'px';
+  highlight.style.transform = `translateX(${el.offsetLeft}px)`;
+}
+
+function mount(i) {
+  stage.innerHTML = '';
+  // Clear first, render next frame, so entrance animations re-run.
+  requestAnimationFrame(() => { stage.innerHTML = variants[i](); });
+}
+
+function setActive(i) {
+  if (i < 0 || i >= variants.length) return;
+  current = i;
+  items.forEach((el, j) => {
+    el.toggleAttribute('data-active', j === i);
+    if (j === i) el.setAttribute('aria-current', 'true');
+    else el.removeAttribute('aria-current');
+  });
+  moveHighlight();
+  const url = new URL(location);
+  url.searchParams.set('v', i + 1);
+  history.replaceState(null, '', url);
+  mount(i);
+}
+
+items.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
+replay?.addEventListener('click', () => mount(current));
+window.addEventListener('resize', moveHighlight);
+
+document.addEventListener('keydown', (e) => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const num = parseInt(e.key, 10);
+  if (num >= 1 && num <= variants.length) setActive(num - 1);
+  else if (e.key === 'ArrowRight') setActive((current + 1) % variants.length);
+  else if (e.key === 'ArrowLeft') setActive((current - 1 + variants.length) % variants.length);
+  else if (e.key === 'r' || e.key === 'R') mount(current);
+});
+
+setActive((parseInt(new URLSearchParams(location.search).get('v'), 10) || 1) - 1);
+// Enable the slide only after first paint, so load doesn't animate.
+requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute('data-ready', '')));
+
+// O que o quadro pede a mais, sem tocar na fiação acima: as teclas apertadas dentro da variante chegam ao seletor
+// (menos as que ela mesma usou, como as setas nas abas), e os links que saem dela abrem na janela, não no quadro.
+new MutationObserver(() => {
+  const iframe = stage.querySelector('iframe');
+  iframe?.addEventListener('load', () => {
+    const pagina = iframe.contentDocument;
+    pagina.querySelectorAll('a[href]:not([href^="#"])').forEach(link => { link.target = '_top'; });
+    iframe.contentWindow.addEventListener('keydown', (e) => {
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: e.key }));
+    });
+  });
+}).observe(stage, { childList: true });
+</script>
+<!-- O teste de pior caso (skill break-ui): não faz nada sem `?dados` no endereço. -->
+<script src="pior-caso.js"></script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+/* Protótipo "Mosaico", o que se move. Carregado por último e só para quem não pediu menos movimento: sem este arquivo
+   a página é a mesma, parada. Só transform e opacity se mexem (o desfoque curto do título é a exceção). A
+   demonstração do Alt+S tem a folha dela (demo.css).
+
+   A chamada entra uma vez: o título puxa, o texto e as ações seguem perto, o selo só aparece. Cada grade entra em onda
+   quando chega à tela, com o intervalo encolhendo (0, 70, 125, 165 ms): a peça é quem entra, e o que está dentro dela
+   já está lá. Os números não contam e as linhas não entram uma a uma: são para ler, não para assistir. */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.mosaico) {
+    scroll-behavior: smooth;
+  }
+
+  .ms-chamada h1 {
+    animation: ms-titulo 600ms var(--veio-curva-saida) both;
+  }
+
+  .ms-lead {
+    animation: ms-subir 500ms var(--veio-curva-saida) 80ms both;
+  }
+
+  .ms-acoes {
+    --ms-de: 6px;
+    animation: ms-subir 500ms var(--veio-curva-saida) 140ms both;
+  }
+
+  .ms-selo {
+    animation: ms-aparecer 400ms var(--veio-curva-saida) both;
+  }
+
+  .js .ms-grade[data-revelar] > *,
+  .js .ms-peca[data-revelar] {
+    opacity: 0;
+    transform: translateY(14px) scale(.985);
+    transition:
+      opacity 600ms var(--veio-curva-saida) var(--ms-atraso, 0ms),
+      transform 600ms var(--veio-curva-saida) var(--ms-atraso, 0ms),
+      border-color var(--veio-transicao) ease;
+  }
+
+  .js .ms-grade[data-visivel] > *,
+  .js .ms-peca[data-visivel] {
+    opacity: 1;
+    transform: none;
+  }
+
+  .js .ms-grade > :nth-child(2) { --ms-atraso: 70ms; }
+  .js .ms-grade > :nth-child(3) { --ms-atraso: 125ms; }
+  .js .ms-grade > :nth-child(n + 4) { --ms-atraso: 165ms; }
+
+  /* A primeira grade já está na tela ao abrir: espera a chamada puxar antes de entrar. */
+  .js #minerar .ms-grade:first-of-type > :nth-child(1) { --ms-atraso: 180ms; }
+  .js #minerar .ms-grade:first-of-type > :nth-child(2) { --ms-atraso: 250ms; }
+  .js #minerar .ms-grade:first-of-type > :nth-child(3) { --ms-atraso: 305ms; }
+
+  /* As etapas do envio são a explicação: o fio corre em tempo constante e cada etapa acende quando ele chega. */
+  .js .ms-etapas::after {
+    transform: scaleX(0);
+    transition: transform 1400ms linear 500ms;
+  }
+
+  .js [data-visivel] .ms-etapas::after {
+    transform: scaleX(1);
+  }
+
+  .js .ms-etapas li {
+    color: var(--veio-muted);
+    transition: color 300ms ease calc(500ms + var(--ms-etapa) * 350ms);
+  }
+
+  .js .ms-etapas li::before {
+    background: var(--veio-border-strong);
+    transition: background-color 300ms ease calc(500ms + var(--ms-etapa) * 350ms);
+  }
+
+  .js [data-visivel] .ms-etapas li {
+    color: var(--veio-text);
+  }
+
+  .js [data-visivel] .ms-etapas li::before {
+    background: var(--veio-accent);
+  }
+
+  .ms-etapas li:nth-child(1) { --ms-etapa: 0; }
+  .ms-etapas li:nth-child(2) { --ms-etapa: 1; }
+  .ms-etapas li:nth-child(3) { --ms-etapa: 2; }
+  .ms-etapas li:nth-child(4) { --ms-etapa: 3; }
+  .ms-etapas li:nth-child(5) { --ms-etapa: 4; }
+
+  .ms-luz {
+    transition: opacity 250ms ease;
+  }
+}
+
+@keyframes ms-titulo {
+  from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
+}
+
+@keyframes ms-subir {
+  from { opacity: 0; transform: translateY(var(--ms-de, 8px)); }
+}
+
+@keyframes ms-aparecer {
+  from { opacity: 0; }
+}
