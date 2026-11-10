@@ -18,10 +18,6 @@
 
 /* O movimento, só para quem não pediu menos movimento. Sem ele (e sem script) a página já está inteira. */
 @media (prefers-reduced-motion: no-preference) {
-  html:has(.landing) {
-    scroll-behavior: smooth;
-  }
-
   /* A chamada entra uma vez: o título puxa, o resto segue perto, o selo e a nota só aparecem. */
   .hero h1 {
     animation: site-entrar-titulo var(--site-mov-entrada) var(--veio-curva-saida) both;
