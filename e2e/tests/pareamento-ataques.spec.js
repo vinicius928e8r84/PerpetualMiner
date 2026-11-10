@@ -55,8 +55,9 @@ test.describe('quem não é a Conexão', () => {
     await expect(faixa(page)).toContainText(NAO_CONFIRMOU);
     await expect(faixa(page)).not.toContainText('Conecte este navegador ao Anki');
     await expect(ponto(page)).toHaveAttribute('data-estado', 'nao_confirmada');
-    // Parear de novo é uma escolha da pessoa (o segundo botão), e a tela não pede o código antes dela.
+    // Quem já está pareado nunca é levado ao código por um 401 sem prova: nem o campo, nem o Conectar.
     await expect(campo(page)).toHaveCount(0);
+    await expect(conectar(page)).toHaveCount(0);
     await estadoFinalEm('o que o impostor da porta recebeu', () => [...new Set(vistos.map(v => v.caminho))].sort(), ['/health', '/pareamento/conferir']);
     expect((await credencialGuardada(extensao)).cliente).toBe(antes);   // e a credencial não se apaga por um 401 sem prova
   });
@@ -91,7 +92,7 @@ test.describe('quem pede código sem parar', () => {
 test.describe('uma Conexão de antes do pareamento', () => {
   test.use({ pareada: true });
 
-  test('o 404 no conferir dá o aviso de atualizar, o ponto não fica verde e só o Atualizar agora sai para ela, sem assinatura nem dado', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+  test('o 404 no conferir dá o aviso de atualizar, sem botão, o ponto não fica verde e nada sai para ela além do conferir', async ({ page, extensao, fakes, conexaoDoTeste }) => {
     test.skip(Boolean(conexaoDoTeste), 'a Conexão real tem o pareamento');
     fakes.anki.pareamento.antigo();
     fakes.anki.definirAtualizacao({ ankiweb: 'com_versao_nova' });
@@ -100,10 +101,7 @@ test.describe('uma Conexão de antes do pareamento', () => {
     await expect(page.locator('#painel-conexao-versao')).toContainText('A Conexão com o Anki está desatualizada');
     await expect(faixa(page)).toHaveCount(0);
     await expect(ponto(page)).toHaveAttribute('data-estado', 'nao_confirmada');
+    await expect(page.locator('#painel-conexao-versao').getByRole('button')).toHaveCount(0);   // nem o Atualizar agora: nenhum pedido sem assinatura sai (L9)
     await estadoFinalEm('os pedidos que a Conexão antiga recebeu', () => [...new Set(fakes.anki.requisicoes.map(r => r.caminho))], ['/health']);
-
-    await page.locator('#painel-conexao-versao').getByRole('button', { name: 'Atualizar agora' }).click();
-    await estadoFinalEm('os pedidos que a Conexão antiga recebeu', () => [...new Set(fakes.anki.requisicoes.map(r => r.caminho))].sort(), ['/atualizacao/agora', '/health']);
-    expect(fakes.anki.requisicoes.find(r => r.caminho === '/atualizacao/agora').corpo).toBe('{}');
   });
 });

@@ -24,9 +24,10 @@
 //   o código      “Digite o código que apareceu no Anki”, o campo e Confirmar: certo, o navegador fica conectado; errado, diz quantas tentativas
 //                 restam; vencido (5 minutos, ou as 5 tentativas), volta ao Conectar com “O código venceu. Peça outro”
 //   não confirmada  a porta respondeu a saúde mas não provou ter o segredo deste navegador: “Algo na porta do Anki não se confirmou. Nada foi enviado”
-//                 e Tentar de novo; nenhum pedido privado sai enquanto for assim
+//                 e Tentar de novo; nenhum pedido privado sai enquanto for assim, e quem já tem credencial nunca é levado a digitar um código por isso
 //
-// A Conexão antiga (sem o pareamento) não aparece no pareamento: é a velha demais acima. O estado é o de `ConexaoAnki.pareamento()`.
+// A Conexão antiga (sem o pareamento) não aparece no pareamento: é a velha demais acima, só com o texto: nada é enviado a ela, nem o Atualizar agora nem o
+// Reiniciar o Anki. O estado é o de `ConexaoAnki.pareamento()`.
 //
 // Carregado depois de lib/abridor.js, lib/abrir-o-anki.js, lib/pareamento.js, lib/conexao-na-tela.js e painel-shell.js.
 
@@ -137,18 +138,21 @@
   /** O texto e o botão de uma visão. */
   function falaDa({ tipo, versao }) {
     const versaoDita = versao || textoDaVoz('BRG-50.versaoAnterior');
+    // A Conexão de antes do pareamento não recebe nada da extensão (nem o Atualizar agora, nem o Reiniciar: nenhum pedido sem assinatura sai): ela se atualiza pelo AnkiWeb e a pessoa reinicia o Anki.
+    const semBotao = ConexaoAnki.pareamento() === ESTADO.ANTIGA;
+    const comBotao = acao => (semBotao ? {} : { acao });
     if (estado.pedido === 'atualizando') return { texto: textoDaVoz('BRG-50.atualizando'), tom: 'info' };
     if (estado.pedido === 'reiniciando') return { texto: textoDaVoz('BRG-50.reiniciando'), tom: 'info' };
     switch (tipo) {
       case 'velha':
-        return { texto: textoDaVoz('BRG-50.velha'), tom: 'perigo', acao: { rotulo: textoDaVoz('BRG-50.atualizarAgora'), aoUsar: atualizarAgora } };
+        return { texto: textoDaVoz('BRG-50.velha'), tom: 'perigo', ...comBotao({ rotulo: textoDaVoz('BRG-50.atualizarAgora'), aoUsar: atualizarAgora }) };
       case 'falhou':
-        return { texto: textoDaVoz('BRG-50.falhou', { versao: versaoDita }), tom: 'perigo', acao: { rotulo: textoDaVoz('BRG-50.tentarDeNovo'), aoUsar: atualizarAgora } };
+        return { texto: textoDaVoz('BRG-50.falhou', { versao: versaoDita }), tom: 'perigo', ...comBotao({ rotulo: textoDaVoz('BRG-50.tentarDeNovo'), aoUsar: atualizarAgora }) };
       case 'reiniciar':
         return {
           texto: estado.erroDoReinicio ? textoDaVoz(`BRG-50.${estado.erroDoReinicio}`) : textoDaVoz('BRG-50.atualizadaReiniciar', { versao }),
           tom: 'info',
-          acao: estado.erroDoReinicio === 'semAbridor' ? null : { rotulo: textoDaVoz('BRG-50.reiniciar'), aoUsar: reiniciarOAnki },
+          acao: semBotao || estado.erroDoReinicio === 'semAbridor' ? null : { rotulo: textoDaVoz('BRG-50.reiniciar'), aoUsar: reiniciarOAnki },
         };
       default:
         return { texto: textoDaVoz('BRG-50.atualizada', { versao }), tom: 'info', fechavel: true };
@@ -259,8 +263,8 @@
     if (ConexaoAnki.situacao() !== SITUACAO.LIGADA) return null;
     const pareamento = ConexaoAnki.pareamento();
     if (pareamento !== ESTADO.A_PAREAR && pareamento !== ESTADO.NAO_CONFIRMADA) return null;
-    if (conectando.fase === 'codigo') return { tipo: 'codigo' };
-    return { tipo: pareamento === ESTADO.NAO_CONFIRMADA ? 'naoConfirmada' : 'inicio' };
+    if (pareamento === ESTADO.NAO_CONFIRMADA) return { tipo: 'naoConfirmada' };   // quem já tem credencial nunca é levado a digitar um código por um 401 sem prova (L7)
+    return { tipo: conectando.fase === 'codigo' ? 'codigo' : 'inicio' };
   }
 
   function desenharOPareamento() {
@@ -291,13 +295,6 @@
           : { rotulo: textoDaVoz('BRG-52.botao'), aoUsar: conectar },
         fechavel: false,
       });
-      // Quem já estava pareado e vê a porta não se confirmar escolhe parear de novo (a Conexão perdeu o registro, ou foi desconectada no Anki): nunca é a tela que o oferece sozinha.
-      if (naoConfirmada) {
-        const de_novo = elemento('button', 'veio-botao veio-botao--contorno', textoDaVoz('BRG-52.botao'));
-        de_novo.type = 'button';
-        de_novo.addEventListener('click', conectar);
-        no.querySelector('.veio-aviso__acoes').append(de_novo);
-      }
     }
     no.id = 'painel-pareamento';
     ponhaNoLugar(no);

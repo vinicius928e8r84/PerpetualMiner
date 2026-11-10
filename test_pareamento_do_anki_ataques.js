@@ -43,7 +43,7 @@ async function main() {
       await assert.rejects(pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA()), /prova/, nome);
       assert.strictEqual(pagina.Pareamento.estado(), 'nao_confirmada', nome);
       conexao.fetch = original;
-      await pagina.Pareamento.provar(ENDERECO, { fresco: true });   // a Conexão de verdade volta e prova
+      await pagina.Pareamento.provar(ENDERECO);   // a Conexão de verdade volta e prova
     }
     assert.strictEqual(pagina.Pareamento.estado(), 'pareada');
   }
@@ -58,12 +58,11 @@ async function main() {
     assert.strictEqual(pagina.PedidoAoAnki.ausenciaDaRota(lida.status), 'antiga');
     assert.ok(conexao.vistos.every(v => v.caminho === '/pareamento/conferir'), 'a Conexão antiga só viu o conferir');
     assert.strictEqual(pagina.Pareamento.estado(), 'antiga');
-    // O único pedido que sai para ela é o que a tira dela, sem assinatura e sem dado: Atualizar agora e Reiniciar o Anki.
+    // Nem o que a tiraria dela sai: o Atualizar agora e o Reiniciar o Anki iriam sem assinatura, e um impostor também diz 404 (L9 fora do desenho).
     for (const pedido of [pagina.PedidoAoAnki.atualizarAConexao(), pagina.PedidoAoAnki.reiniciarOAnki()]) {
       conexao.vistos.length = 0;
-      const atualizada = await pagina.PedidoAoAnki.pedir(ENDERECO, pedido);
-      assert.strictEqual(atualizada.status, 200);
-      igual(conexao.vistos.map(v => [v.caminho, v.corpo, 'x-perpetualminer-assinatura' in v.cabecalhos]).filter(([c]) => c.startsWith('/atualizacao')), [[pedido.caminho, '{}', false]]);
+      assert.strictEqual((await pagina.PedidoAoAnki.pedir(ENDERECO, pedido)).status, 404);
+      igual(conexao.vistos.map(v => v.caminho), ['/pareamento/conferir'], `${pedido.caminho}: a Conexão antiga só viu o conferir`);
     }
   }
 
@@ -76,12 +75,24 @@ async function main() {
     await parearComChaveGuardada(pagina);
     await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA());   // a sessão está provada
     conexao.pareamento.desconectar();
-    const lida = await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA(), {});
-    igual([lida.status, (await lerJson(lida)).error], [401, 'pairing_required']);
+    await assert.rejects(pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA()), /não provou/);   // o `conferir` volta 401 sem prova e nenhum pedido privado sai
     assert.strictEqual(pagina.Pareamento.estado(), 'nao_confirmada');
-    assert.ok(await pagina.Pareamento.lerACredencial(), 'um 401 sem prova não desfaz o pareamento: só um pareamento novo o substitui');
-    assert.strictEqual((await pagina.Pareamento.provar(ENDERECO, { fresco: true })).estado, 'nao_confirmada', 'o conferir também: sem prova, nada de parear sozinho');
-    await assert.rejects(pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA()), /não provou/);   // e nenhum pedido privado sai
+    assert.ok(await pagina.Pareamento.lerACredencial(), 'um 401 sem prova não desfaz o pareamento');
+    assert.strictEqual((await pagina.Pareamento.provar(ENDERECO)).estado, 'nao_confirmada', 'o conferir também: sem prova, nada de parear sozinho');
+  }
+
+
+  // O `conferir` prova e o pedido seguinte volta 401 `pairing_required` sem prova (a Conexão perdeu o registro no meio, ou entrou um impostor): "não confirmada" também.
+  {
+    const conexao = criarConexao();
+    const pagina = carregarAPagina(conexao);
+    await parearComChaveGuardada(pagina);
+    const original = conexao.fetch;
+    conexao.fetch = async (url, opcoes) => (new URL(url).pathname === '/ia/estado' ? resposta(401, { error: 'pairing_required' }) : original(url, opcoes));
+    const lida = await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA());
+    assert.strictEqual(lida.status, 401);
+    assert.strictEqual(pagina.Pareamento.estado(), 'nao_confirmada');
+    assert.ok(await pagina.Pareamento.lerACredencial());
   }
 
 
@@ -90,10 +101,10 @@ async function main() {
     const conexao = criarConexao({ impostor: async ({ caminho }) => (caminho === '/health' ? resposta(200, { ok: true, versao: '9.9.9', perfil: 'X' }) : resposta(401, { error: 'pairing_required' })) });
     const pagina = carregarAPagina(conexao);
     await parearComChaveGuardada(pagina);
-    assert.strictEqual((await pagina.Pareamento.provar(ENDERECO, { fresco: true })).estado, 'nao_confirmada');
+    assert.strictEqual((await pagina.Pareamento.provar(ENDERECO)).estado, 'nao_confirmada');
     await assert.rejects(pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.chaveDaOpenAI('sk-proj-x')), /não provou/);
     igual([...new Set(conexao.vistos.map(v => v.caminho))], ['/pareamento/conferir']);
-    // Parear de novo, por escolha da pessoa, substitui a linha do mesmo navegador (o mesmo `cliente`).
+    // O módulo parear de novo substitui a linha do mesmo navegador (o mesmo `cliente`); o Painel não oferece isso a quem já está pareado (L7).
     const antes = (await pagina.Pareamento.lerACredencial()).cliente;
     const real = criarConexao({ navegadores: [] });
     conexao.fetch = real.fetch;

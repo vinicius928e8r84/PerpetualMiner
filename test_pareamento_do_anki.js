@@ -91,33 +91,39 @@ async function main() {
   }
 
 
-  // A Conexão subiu de novo (outra sessão): o primeiro pedido refaz o `conferir` sozinho, uma vez, e o pedido segue.
+  // A Conexão subiu entre o `conferir` e o pedido (outra sessão): o pedido volta `session_expired`, o `conferir` é refeito e o pedido segue, uma vez.
   {
     const conexao = criarConexao();
     const pagina = carregarAPagina(conexao);
     await parearComChaveGuardada(pagina);
-    await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA());
+    const antiga = criarConexao();
     const nova = criarConexao();   // outra subida: outra sessão, mesmos navegadores
-    conexao.fetch = nova.fetch;
+    let provouNaAntiga = false;
+    conexao.fetch = (url, opcoes) => {
+      const ehConferir = new URL(url).pathname === '/pareamento/conferir';
+      if (ehConferir && !provouNaAntiga) {   // só o primeiro `conferir` chegou à subida de antes
+        provouNaAntiga = true;
+        return antiga.fetch(url, opcoes);
+      }
+      return nova.fetch(url, opcoes);
+    };
     const lida = await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA());
     assert.strictEqual(lida.status, 200);
     igual(nova.vistos.map(v => v.caminho), ['/ia/estado', '/pareamento/conferir', '/ia/estado'], 'session_expired, conferir e o pedido de novo');
   }
 
 
-  // O pedido que leva a chave, o token ou as Frases pede um `conferir` novo; a leitura reaproveita a sessão provada há pouco.
+  // Nenhuma sessão é reaproveitada: cada pedido assinado, de leitura ou não, prova a Conexão de novo antes de sair (L8 fora do desenho).
   {
     const conexao = criarConexao();
     const pagina = carregarAPagina(conexao);
     await parearComChaveGuardada(pagina);
-    await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA());
-    await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA());
     const conferencias = () => conexao.vistos.filter(v => v.caminho === '/pareamento/conferir').length;
-    const antes = conferencias();
-    await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA());
-    assert.strictEqual(conferencias(), antes, 'a leitura reaproveita a sessão');
-    await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.chaveDaOpenAI('sk-proj-x'));
-    assert.strictEqual(conferencias(), antes + 1, 'a chave pede um conferir novo');
+    for (const pedido of [pagina.PedidoAoAnki.estadoDaIA(), pagina.PedidoAoAnki.estadoDaIA(), pagina.PedidoAoAnki.chaveDaOpenAI('sk-proj-x')]) {
+      const antes = conferencias();
+      await pagina.PedidoAoAnki.pedir(ENDERECO, pedido);
+      assert.strictEqual(conferencias(), antes + 1, `${pedido.caminho}: um conferir novo antes do pedido`);
+    }
   }
 
 

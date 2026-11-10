@@ -179,7 +179,7 @@ test('o Anki que não consegue mostrar o código: o Painel diz que a porta não 
 test.describe('depois de pareado', () => {
   test.use({ pareada: true });
 
-  test('Desconectar navegadores no Anki: a porta deixa de se confirmar (nunca é a tela que oferece o pareamento sozinha), Conectar pareia de novo no mesmo navegador e a chave fica', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+  test('Desconectar navegadores no Anki: a porta deixa de se confirmar, a tela não oferece o código a quem já estava pareado (um 401 sem prova também é o de um impostor) e a chave fica', async ({ page, extensao, fakes, conexaoDoTeste }) => {
     test.skip(Boolean(conexaoDoTeste), 'a chave da Conexão real tem o próprio caminho (chave-autoridade.spec.js); o desconectar real é provado em complemento/test_pareamento.py');
     fakes.anki.guardarChaveNaConexao('9f3a', 3, 'uid-teste', 100, false);
     await abrirPainel(page, extensao, '#anki/custos');
@@ -190,21 +190,20 @@ test.describe('depois de pareado', () => {
     fakes.anki.pareamento.desconectar();
     await page.reload();
 
-    // Um 401 sem prova também é o que um impostor responde: o Painel não convida a parear, diz que a porta não se confirmou e deixa a pessoa escolher.
+    // Um 401 sem prova também é o que um impostor responde: o Painel não convida a parear, nem por um segundo botão; diz que a porta não se confirmou.
     await expect(faixa(page)).toContainText('Algo na porta do Anki não se confirmou. Nada foi enviado');
     await expect(faixa(page).getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
     await expect(ponto(page)).toHaveAttribute('data-estado', 'nao_confirmada');
     expect(antes).toMatch(/^[0-9a-f-]{36}$/);
     expect((await credencialGuardada(extensao))?.cliente).toBe(antes);   // a credencial fica: um 401 sem prova não desfaz o pareamento
     await estadoFinalEm('a chave da OpenAI que a Conexão guarda', () => fakes.anki.chaveNaConexao(), 'sk-proj-guardada-antes-9f3a');
-    // Pareia de novo por escolha, e a linha do mesmo navegador é substituída (o mesmo `cliente`), não somada.
-    await parearPelaTela(page, fakes, conexaoDoTeste);
-    await estadoFinalEm('os navegadores que a Conexão tem pareados', () => [...fakes.anki.pareamento.pareados().keys()], [antes]);
-    await expect(ponto(page)).toHaveAttribute('data-estado', 'ligada');
+    await expect(conectar(page)).toHaveCount(0);
+    await expect(campo(page)).toHaveCount(0);
+    await estadoFinalEm('os navegadores que a Conexão tem pareados', () => fakes.anki.pareamento.pareados().size, 0);
   });
 });
 
-test('dois perfis do Chrome pareiam cada um o seu segredo, e o Desconectar do Anki pede o código aos dois', async ({ page, extensao, segundoPerfil, fakes, conexaoDoTeste }) => {
+test('dois perfis do Chrome pareiam cada um o seu segredo, e o Desconectar do Anki deixa os dois sem se confirmar', async ({ page, extensao, segundoPerfil, fakes, conexaoDoTeste }) => {
   const outra = await segundoPerfil.context.newPage();
   await abrirPainel(page, extensao, '#frases');
   await outra.goto(segundoPerfil.extensao.url('painel.html#frases'));
@@ -221,10 +220,8 @@ test('dois perfis do Chrome pareiam cada um o seu segredo, e o Desconectar do An
   await outra.reload();
   await expect(faixa(page)).toContainText('Algo na porta do Anki não se confirmou. Nada foi enviado');
   await expect(faixa(outra)).toContainText('Algo na porta do Anki não se confirmou. Nada foi enviado');
-  await parearPelaTela(page, fakes, conexaoDoTeste);
-  await parearPelaTela(outra, fakes, conexaoDoTeste);
-  await estadoFinalEm('os navegadores que a Conexão tem pareados', () => quantosPareados(fakes, conexaoDoTeste), 2);
-  expect([(await credencialGuardada(extensao)).cliente, (await credencialGuardada(segundoPerfil.extensao)).cliente]).toEqual([primeira.cliente, segunda.cliente]);
-  await desconectarNoAnki(fakes, conexaoDoTeste);
+  await expect(conectar(page)).toHaveCount(0);
+  await expect(conectar(outra)).toHaveCount(0);
   await estadoFinalEm('os navegadores que a Conexão tem pareados', () => quantosPareados(fakes, conexaoDoTeste), 0);
+  expect([(await credencialGuardada(extensao)).cliente, (await credencialGuardada(segundoPerfil.extensao)).cliente]).toEqual([primeira.cliente, segunda.cliente]);   // a credencial fica nos dois
 });

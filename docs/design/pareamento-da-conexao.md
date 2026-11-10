@@ -98,7 +98,7 @@ Falhas, sem exceção:
 - **L2. Administrador/root e escuta do loopback:** fora do alcance. O `S` passa pelo loopback uma vez, no `concluir`.
 - **L3. ACL do Windows:** `pareamento.json` herda a ACL da pasta, como a chave (limite já escrito em `docs/seguranca/chave-da-openai.md`).
 - **L4. Corrida de milissegundos:** a Conexão real cai logo depois de um `conferir` provado, e um impostor ocupa a porta antes do pedido com segredo.
-  O `conferir` fresco antes de cada pedido com segredo deixa a janela no tempo de um pedido local.
+  O `conferir` fresco antes de cada pedido assinado deixa a janela no tempo de um pedido local.
 - **L5. Incômodo, não vazamento:** um processo pode ocupar a 8766, abrir o diálogo do código no Anki ou gastar as 5 tentativas de um código. A falha fica visível e nada
   vaza. **Há teto para o código novo** (o review do #192 mediu 400 palpites por segundo sem ele, uns 4 % de acerto por dia): cinco tentativas valem por código, mas o
   `comecar` só sorteia outro enquanto não houver `CODIGOS_ESGOTADOS_PARA_BLOQUEAR` (3) códigos seguidos que gastaram as tentativas sem que ninguém pareasse; depois disso
@@ -106,9 +106,7 @@ Falhas, sem exceção:
   O preço é um incômodo visível (quem insiste bloqueia o próprio Conectar por 15 minutos, e o Painel diz o texto aprovado “Algo na porta do Anki não se confirmou”). O diálogo é um
   só por vez: o pedido repetido com ele à vista não o traz de novo, e o fechado é destruído (`deleteLater`).
 - **L6. Páginas abertas:** `GET /health` (versão e perfil) e o retorno do login do ChatGPT (`/auth/callback`, navegação, protegido por `state` e PKCE) seguem sem credencial.
-- **L7. Quem digita um código que não viu:** com o Anki fechado e um impostor na 8766, o Conectar “funciona” (o impostor responde ok) e nenhum diálogo aparece no Anki; quem digita qualquer coisa pareia com o impostor, e a extensão não tem como saber. O passo “o código apareceu no Anki” é da pessoa; é ele que faz o código autenticar a Conexão. **Quem já estava pareado** não cai nisso sozinho: o `401 pairing_required` sem prova (do impostor, e também da Conexão verdadeira depois do Desconectar ou de perder o registro) não leva a tela a pedir o pareamento; ela diz “Algo na porta do Anki não se confirmou. Nada foi enviado”, com Tentar de novo e, **por escolha da pessoa**, Conectar (o único caminho de volta). Só quem aperta esse Conectar e digita um código que nunca viu pareia com o impostor. Um registro revogado que sobrevivesse ao Desconectar não entra nesta fatia e não cobriria o registro perdido.
-- **L9. A Conexão que se diz antiga:** um impostor que responde 404 ao `conferir` recebe o Atualizar agora e o Reiniciar o Anki (`{}`), e nada mais. Ele não restarta o Anki de ninguém; no máximo mostra um aviso de atualização que a pessoa pode ignorar.
-- **L8. A janela da leitura:** um pedido que só lê (sem chave, token nem Frases) reaproveita a sessão que a Conexão provou há menos de 20 s. Se ela cair e um impostor ocupar a porta nesse intervalo, ele vê o pedido assinado (a sessão e o nonce não servem em outra Conexão) e responde sem prova, que a extensão recusa. O pedido que leva a chave, o token, as Frases ou o UID pede um `conferir` novo antes.
+- **L7. Quem digita um código que não viu:** com o Anki fechado e um impostor na 8766, o Conectar “funciona” (o impostor responde ok) e nenhum diálogo aparece no Anki; quem digita qualquer coisa pareia com o impostor, e a extensão não tem como saber. O passo “o código apareceu no Anki” é da pessoa; é ele que faz o código autenticar a Conexão. Isto vale para o navegador que **nunca** se pareou. **Quem já tem credencial nunca é levado a digitar um código por um `401` sem prova** (um impostor o responde): a tela diz “Algo na porta do Anki não se confirmou. Nada foi enviado”, com Tentar de novo e sem Conectar, e a credencial não se apaga. O preço, ainda sem caminho de volta nesta fatia: depois do Desconectar navegadores (ou de a Conexão perder o registro) o navegador pareado segue “não confirmado”; a decisão de como ele volta é do dono.
 
 ## 6. Provas
 
@@ -144,11 +142,11 @@ Decisões do código, para a revisão não as achar por acidente:
 - **`concluir` repetido** devolve o mesmo segredo só enquanto o código usado vale, o navegador é o mesmo **e** a linha dele ainda está em `pareamento.json` (depois do Desconectar, não); começar um
   código novo esquece o anterior.
 - **A faixa do Painel mora em `painel-conexao-versao.js`**, junto do aviso de versão. O popup lê o estado (`ConexaoAnki.pareamento()`), mas não desenha nada.
-- **A Conexão antiga** (404 no `conferir`) cai no aviso de versão (BRG-50) seja qual for a versão que diz, e nenhum pedido privado sai para ela. **Só dois saem, sem assinatura e com corpo `{}`**: Atualizar agora e Reiniciar o Anki (`daConexaoAntiga` em `PedidoAoAnki`): sem eles a Conexão velha nunca sairia da versão velha, e eles não levam dado da pessoa.
-- **O pedido que leva dado da pessoa pede um `conferir` novo** (a chave, o token, a chave legada, as Frases); a leitura reaproveita a sessão provada há menos de 20 s.
+- **A Conexão antiga** (404 no `conferir`) cai no aviso de versão (BRG-50) seja qual for a versão que diz, e **nada** sai para ela, nem o Atualizar agora nem o Reiniciar o Anki: o aviso fica só com o texto, a Conexão antiga se atualiza pelo AnkiWeb e a pessoa reinicia o Anki. Um impostor que diz 404 não recebe pedido nenhum.
+- **Todo pedido assinado pede um `conferir` novo** antes de sair (leitura ou não): nenhuma sessão provada é reaproveitada.
 - **O ponto da Conexão só fica verde com a Conexão provada** (a revisão do #192): `ConexaoAnki.apresentada()` é a situação como a tela a diz (`ligada`, ou `a_parear` / `nao_confirmada`);
   o shell, o texto dele e as abas de Custos e de Baralhos e termos a usam. As outras telas seguem a situação do `/health` e ganham 401 do `pedir` nos pedidos que fazem.
-- **Quem já estava pareado e recebe `401 pairing_required` sem prova vê “não confirmada”, não “a parear”** (a revisão do #192; L7). Parear de novo é um segundo botão, Conectar.
+- **Quem já estava pareado e recebe `401 pairing_required` sem prova vê “não confirmada”, não “a parear”, e não há Conectar** (a revisão do #192; L7).
 - **O teto do código novo** (L5): três códigos esgotados seguidos bloqueiam o seguinte por 15 minutos (`429 pairing_locked`).
 - **Texto**: o único texto novo do Painel é o BRG-52 (os que o dono aprovou); o do Anki é o ANK-05 e o botão do ANK-02. “Algo na porta do Anki não se confirmou” também serve quando o Anki não
   consegue abrir o diálogo (não há texto aprovado para isso).
