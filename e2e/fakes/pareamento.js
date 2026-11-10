@@ -9,7 +9,7 @@
 // o que um impostor na porta teria visto: nada além de assinaturas.
 
 const crypto = require('crypto');
-const { assinaturaDoPedido, provaDaResposta, provaDoServidor, NAVEGADORES } = require('../pareamento-de-teste');
+const { assinaturaDoPedido, provaDaResposta, provaDoServidor, provaDaRevogacao, NAVEGADORES } = require('../pareamento-de-teste');
 
 const TENTATIVAS = 5;
 const VALIDADE_MS = 5 * 60 * 1000;
@@ -26,6 +26,7 @@ function criarPareamento({ agora }) {
   const mostrados = [];            // os códigos que o Anki mostrou, na ordem (com o hífen)
   const recebidos = [];            // cada pedido de pareamento: { caminho, corpo }
   const tentados = [];             // cada caminho do pareamento que a extensão tentou, até com o Anki desligado
+  const revogados = new Map();     // o que o Desconectar navegadores tirou: `cliente` → segredo (só prova a revogação no `conferir`)
   let pendente = null;             // { codigo, vence, tentativas }
   let esgotados = 0;
   let bloqueadoAte = null;
@@ -78,6 +79,7 @@ function criarPareamento({ agora }) {
     }
     const segredo = crypto.randomBytes(32).toString('base64');
     navegadores.set(cliente, segredo);
+    revogados.delete(cliente);
     esgotados = 0;
     bloqueadoAte = null;
     concluido = { codigo: vivo.codigo, cliente, segredo, vence: vivo.vence };
@@ -90,6 +92,7 @@ function criarPareamento({ agora }) {
     if (typeof cliente !== 'string' || !CLIENTE.test(cliente) || typeof desafio !== 'string' || !/^[A-Za-z0-9_+/=-]{16,128}$/.test(desafio)) {
       return { status: 400, json: { error: 'invalid_request' } };
     }
+    if (revogados.has(cliente)) return { status: 401, json: { error: 'pairing_revoked', prova: provaDaRevogacao(revogados.get(cliente), desafio) } };
     if (!navegadores.has(cliente)) return { status: 401, json: { error: 'pairing_required' } };
     return { status: 200, json: { sessao, prova: provaDoServidor(navegadores.get(cliente), desafio, sessao) } };
   }
@@ -136,10 +139,11 @@ function criarPareamento({ agora }) {
 
   return {
     responder, verificar, comProva,
-    /** O `contexto` de um exemplo do contrato: `pareado: false` (a Conexão não conhece nenhum navegador), `semTela`, `codigoPendente` (o Anki está mostrando
+    /** O `contexto` de um exemplo do contrato: `pareado: false` (a Conexão não conhece nenhum navegador), `desconectado` (o Desconectar navegadores já foi apertado), `semTela`, `codigoPendente` (o Anki está mostrando
      * este código) e `codigoUsadoPor` (outro navegador já o usou). */
-    definirContexto({ pareado = true, semTela = false, codigoPendente, codigoUsadoPor, bloqueado = false } = {}) {
+    definirContexto({ pareado = true, desconectado = false, semTela = false, codigoPendente, codigoUsadoPor, bloqueado = false } = {}) {
       if (!pareado) { navegadores.clear(); concluido = null; }
+      if (desconectado) this.desconectar();
       if (semTela) semJanela = true;
       if (codigoPendente) { sortearDe = () => codigoPendente; comecar(); }
       if (codigoUsadoPor) concluir({ codigo: mostrar(pendente.codigo), cliente: codigoUsadoPor, nome: 'Outro' });
@@ -152,8 +156,8 @@ function criarPareamento({ agora }) {
     parear: (navegador = 'primeiro') => navegadores.set(NAVEGADORES[navegador].cliente, NAVEGADORES[navegador].segredo),
     /** @estado-guardado Os navegadores que a Conexão tem pareados (`cliente` → segredo em base64): o que `pareamento.json` guardaria. */
     pareados: () => new Map(navegadores),
-    /** "Desconectar navegadores" na janela do Anki: a lista esvazia, e cada navegador pede o código de novo. */
-    desconectar: () => { navegadores.clear(); concluido = null; },
+    /** "Desconectar navegadores" na janela do Anki: a lista esvazia, a Conexão guarda os segredos revogados e o `conferir` de cada navegador prova a revogação. */
+    desconectar: () => { for (const [cliente, segredo] of navegadores) revogados.set(cliente, segredo); navegadores.clear(); concluido = null; },
     /** @estado-guardado O código que o Anki mostra agora (com o hífen, `K7M-4PX`), ou null: o que a pessoa lê na tela do Anki. */
     codigoNoAnki: () => (codigoPendente() ? mostrar(pendente.codigo) : null),
     /** @estado-guardado Os códigos que o Anki mostrou até agora, na ordem. */

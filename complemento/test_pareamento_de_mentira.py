@@ -165,7 +165,7 @@ def recusa_do_porteiro(status, erro, caminho):
 
 def preparar_o_pareamento(p, com_tela, contexto=None):
     """A janela do Anki de mentira no pareamento `p` (`com_tela=False`: o Anki não tem onde mostrar o código) e o que o `contexto` de um exemplo do contrato
-    diz dele: `codigoPendente` (o código que a janela mostra agora), `codigoUsadoPor` (o navegador que já o usou) e `bloqueado` (três códigos gastaram as
+    diz dele: `codigoPendente` (o código que a janela mostra agora), `codigoUsadoPor` (o navegador que já o usou), `desconectado` (o Desconectar navegadores já foi apertado) e `bloqueado` (três códigos gastaram as
     tentativas seguidos). Devolve a janela."""
     contexto = contexto or {}
     tela = TelaDeMentira()
@@ -175,6 +175,8 @@ def preparar_o_pareamento(p, com_tela, contexto=None):
         p.comecar()
         if contexto.get("codigoUsadoPor"):
             p.concluir(contexto["codigoPendente"], contexto["codigoUsadoPor"], "Outro")
+    if contexto.get("desconectado"):   # o Desconectar navegadores já foi apertado: o navegador de teste está revogado
+        p.desconectar()
     if contexto.get("bloqueado"):
         for _ in range(pareamento.CODIGOS_ESGOTADOS_PARA_BLOQUEAR):
             p.comecar()

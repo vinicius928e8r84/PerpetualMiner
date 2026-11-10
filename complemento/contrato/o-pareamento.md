@@ -13,7 +13,7 @@ Todas POST, com a origem da extensão e sem assinatura. `nome`, no `concluir`, �
 |---|---|---|
 | `POST /pareamento/comecar` | `{}` | `200 { ok }`: o Anki abre um diálogo com o código de 6 caracteres (vale 5 minutos, 5 tentativas). **O código nunca volta em resposta HTTP**, nem entra em arquivo ou log. `503 pairing_unavailable`: o Anki não tem onde mostrá-lo; `429 pairing_locked`: três códigos seguidos gastaram as 5 tentativas, e outro só daqui a 15 minutos (sem diálogo) |
 | `POST /pareamento/concluir` | `{ codigo, cliente, nome? }` | `200 { cliente, segredo }`: grava o navegador (`user_files/pareamento.json`, só do dono, até 5) e entrega o segredo **uma vez**; o mesmo pedido de novo (a resposta se perdeu) devolve o mesmo segredo. `401 pairing_code_wrong { restam }`; `410 pairing_code_expired` (venceu, cancelado, sem código, ou o quinto erro); `409 pairing_code_used` (outro navegador usou o código); `400 invalid_request` |
-| `POST /pareamento/conferir` | `{ cliente, desafio }` | `200 { sessao, prova }` com `prova = HMAC(segredo, "pm1\nservidor\n" ‖ desafio ‖ "\n" ‖ sessao)`; `401 pairing_required` (a Conexão não conhece o navegador, e não dá prova nenhuma); `400 invalid_request` |
+| `POST /pareamento/conferir` | `{ cliente, desafio }` | `200 { sessao, prova }` com `prova = HMAC(segredo, "pm1\nservidor\n" ‖ desafio ‖ "\n" ‖ sessao)`; `401 pairing_required` (a Conexão não conhece o navegador, e não dá prova nenhuma); `401 pairing_revoked { prova }` (a pessoa o desconectou no Anki; `prova = HMAC(segredo antigo, "pm1\nrevogado\n" ‖ desafio)`, que só a Conexão que guardou o segredo revogado dá, e só ela faz a extensão apagar a credencial e voltar ao Conectar); `400 invalid_request` |
 
 `cliente` é um UUID que a extensão sorteia; `desafio`, 16 a 128 caracteres de base64/hex que ela sorteia a cada `conferir`; `sessao` nasce a cada subida da Conexão (só na memória).
 
@@ -32,7 +32,7 @@ HMAC-SHA256(segredo, "pm1\nresposta\n" + sessao + "\n" + nonce + "\n" + status +
 ```
 
 A extensão só entrega a resposta a quem pediu se a prova confere. Os rótulos `pedido`, `resposta` e `servidor` separam os usos. O vetor comum às duas linguagens está em `exemplos-do-pareamento.json`
-(`vetorDeAssinatura`): `complemento/test_pareamento.py` e `test_pareamento_do_anki.js` o conferem.
+(`vetorDeAssinatura`, e `vetorDaRevogacao` para a prova da revogação): `complemento/test_pareamento.py`, `test_pareamento_revogado.py` e `test_pareamento_do_anki.js` os conferem.
 
 ## As recusas do porteiro
 
@@ -40,12 +40,12 @@ Antes de escolher a rota, e sempre `401`: `pairing_required` (sem assinatura, ou
 repete uma vez) e `pairing_invalid` (assinatura errada, nonce repetido). Valem para toda rota: os exemplos usam `/ia/estado` (`assinatura`: `ausente`, `errada`, `sessaoVelha` no pedido), e
 `test_pareamento_porteiro.py` pede cada rota de `ROTAS`. Uma recusa não leva prova, e por isso quem já estava pareado a lê como “a porta não se confirmou”, nunca como um convite a parear de novo. O corpo grande demais ainda é `400 invalid_json`, antes da assinatura.
 
-A Conexão **de antes do pareamento** (404 no `conferir`) só recebe da extensão, sem assinatura, `POST /atualizacao/agora` e `/atualizacao/reiniciar` (corpo `{}`): são o jeito de ela sair da versão velha.
+A Conexão **de antes do pareamento** (404 no `conferir`) não recebe da extensão pedido nenhum além da saúde e do `conferir`, nem `POST /atualizacao/agora` nem `/atualizacao/reiniciar`: ela se atualiza pelo AnkiWeb.
 
 ## No contrato e nos testes
 
 - `contexto` dos exemplos: `pareado: false` (a Conexão não conhece nenhum navegador; o padrão é o navegador `primeiro` de `navegadoresDeTeste`), `semTela` (o Anki não tem onde mostrar o código), `codigoPendente` (o Anki mostra
-  este código) e `codigoUsadoPor` (outro navegador já o usou). `navegadoresDeTeste` guarda o `cliente` e o `segredo` dos dois navegadores de teste, que o e2e e os testes do complemento usam.
+  este código), `codigoUsadoPor` (outro navegador já o usou) e `desconectado` (o Desconectar navegadores já foi apertado: o navegador de teste está revogado). `navegadoresDeTeste` guarda o `cliente` e o `segredo` dos dois navegadores de teste, que o e2e e os testes do complemento usam.
 - O harness de `test_servidor.py` assina por padrão todo exemplo que traz a origem da extensão (`pedir_como_o_exemplo`); o fake do e2e verifica a assinatura de todo pedido e assina toda resposta
   (`e2e/fakes/pareamento.js`); `PM_CONEXAO=real` roda os mesmos fluxos contra o servidor de verdade.
 - Respostas com `"<segredo>"`, `"<prova>"` (32 bytes em base64) e `"<sessão>"` (32 hexadecimais) no JSON mudam a cada pareamento e a cada subida.

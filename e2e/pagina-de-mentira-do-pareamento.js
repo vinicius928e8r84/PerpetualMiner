@@ -41,6 +41,7 @@ function criarIndexedDB() {
             t.objectStore = () => ({
               put: (valor, chave) => { const p = pedido(() => { dados.set(chave, valor); return chave; }); setTimeout(() => t.oncomplete?.(), 2); return p; },
               get: chave => { const p = pedido(() => dados.get(chave)); setTimeout(() => t.oncomplete?.(), 2); return p; },
+              delete: chave => { const p = pedido(() => { dados.delete(chave); return undefined; }); setTimeout(() => t.oncomplete?.(), 2); return p; },
             });
             return t;
           },

@@ -18,6 +18,11 @@
     "corpo": "{\"deck\":\"Inglês\",\"lang\":\"en\"}",
     "assinatura": "1xt1QHxqs+ws/+74kdpYF6jEiKepvyA3H9BNO79Lc1Q="
   },
+  "vetorDaRevogacao": {
+    "segredo": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+    "desafio": "desafio-de-exemplo-0123456789abcdef",
+    "prova": "Odx606Q5BVHD0vr5i6Cnfy+FV1Aq8Sl88+tbEXEcJdE="
+  },
   "exemplos": [
     {
       "nome": "conferir: o navegador pareado recebe a sessão e a prova de que a Conexão tem o segredo dele",
@@ -59,6 +64,29 @@
         "status": 401,
         "json": {
           "error": "pairing_required"
+        }
+      }
+    },
+    {
+      "nome": "conferir: o navegador que a pessoa desconectou no Anki recebe 401 e a prova da revogação, que só a Conexão que o desconectou sabe dar",
+      "daExtensao": true,
+      "contexto": {
+        "desconectado": true
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/conferir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "cliente": "11111111-2222-4333-8444-555555555555",
+          "desafio": "desafio-de-exemplo-0123456789abcdef"
+        }
+      },
+      "resposta": {
+        "status": 401,
+        "json": {
+          "error": "pairing_revoked",
+          "prova": "<prova>"
         }
       }
     },

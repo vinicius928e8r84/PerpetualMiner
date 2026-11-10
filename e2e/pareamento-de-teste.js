@@ -20,6 +20,7 @@ function assinaturaDoPedido(segredo, { sessao, nonce, metodo, caminho, corpo = '
 
 const provaDaResposta = (segredo, { sessao, nonce, status, corpo }) => hmac(segredo, `pm1\nresposta\n${sessao}\n${nonce}\n${status}\n${sha256(corpo)}`);
 const provaDoServidor = (segredo, desafio, sessao) => hmac(segredo, `pm1\nservidor\n${desafio}\n${sessao}`);
+const provaDaRevogacao = (segredo, desafio) => hmac(segredo, `pm1\nrevogado\n${desafio}`);
 
 /** Os cabeçalhos com que a extensão assina um pedido de `navegador` à Conexão na `sessao`. */
 function cabecalhosAssinados({ sessao, metodo, caminho, corpo = '', navegador = 'primeiro', nonce = crypto.randomBytes(8).toString('hex') }) {
@@ -79,4 +80,4 @@ async function pedirDaPagina(page, { metodo, caminho, corpo }, navegador = 'prim
   }, { metodo, caminho, texto, cabecalhos });
 }
 
-module.exports = { NAVEGADORES, assinaturaDoPedido, provaDaResposta, provaDoServidor, cabecalhosAssinados, parearNoServiceWorker, pedirDaPagina };
+module.exports = { NAVEGADORES, assinaturaDoPedido, provaDaResposta, provaDoServidor, provaDaRevogacao, cabecalhosAssinados, parearNoServiceWorker, pedirDaPagina };

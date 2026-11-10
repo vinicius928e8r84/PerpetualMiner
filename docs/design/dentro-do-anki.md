@@ -60,7 +60,7 @@ que a janela reusa). Entrar no catálogo é dividi-lo, outro ticket.
 | ANK-02.semErro | Nenhum erro | o Envio mais recente que terminou, terminou bem (ou nenhum terminou) |
 | ANK-02.falhou | {n} {n\|cartão não entrou\|cartões não entraram} no Baralho {baralho} · {codigo} | o código do Envio mais recente que terminou com erro, sem frase nova (C8: as falhas novas ainda não têm cópia própria; o código nunca é a chave nem texto da OpenAI) |
 | ANK-02.fechar | Fechar | o botão que fecha a janela |
-| ANK-02.desconectar | Desconectar navegadores | o botão da janela que desfaz o pareamento (#192): esvazia a lista de navegadores conectados; a Conexão deixa de aceitar cada um (como um navegador já pareado volta a parear é decisão pendente do dono, #192). Desligado enquanto nenhum navegador está conectado (C8: a janela diz o estado verdadeiro) |
+| ANK-02.desconectar | Desconectar navegadores | o botão da janela que desfaz o pareamento (#192): esvazia a lista de navegadores conectados; a Conexão guarda o segredo de cada um só para provar que o desconectou, e cada navegador volta a pedir o código (#192). Desligado enquanto nenhum navegador está conectado (C8: a janela diz o estado verdadeiro) |
 | ANK-03.comecou | Enviando {total} {total\|cartão\|cartões} ao Baralho {baralho} | o aviso que some sozinho quando um Envio começa |
 | ANK-03.terminou | {n} {n\|cartão enviado\|cartões enviados} ao Baralho {baralho} | o aviso que some sozinho quando um Envio termina; se for o caso, segue “ · N já estava lá” (ENV-10.jaEstavam) e “ · N não entrou” (ENV-10.naoEntraram) |
 | ANK-03.naoTerminou | O Envio ao Baralho {baralho} não terminou | o aviso do fim de um Envio que não pôs nenhum Cartão no Anki; o motivo fica no último erro da janela |

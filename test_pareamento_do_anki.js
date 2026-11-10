@@ -8,7 +8,7 @@
 const assert = require('assert');
 const { webcrypto } = require('crypto');
 
-const { NAVEGADORES, assinaturaDoPedido } = require('./e2e/pareamento-de-teste');
+const { NAVEGADORES, assinaturaDoPedido, provaDaRevogacao } = require('./e2e/pareamento-de-teste');
 const contrato = require('./complemento/contrato/carregar');
 const { ENDERECO, comoValores, criarConexao, resposta, carregarAPagina, lerJson, igual, parear, parearComChaveGuardada } = require('./e2e/pagina-de-mentira-do-pareamento');
 
@@ -21,6 +21,10 @@ async function main() {
     const feita = await Pareamento.contas.assinaturaDoPedido(chave, { sessao: vetor.sessao, nonce: vetor.nonce, metodo: vetor.metodo, caminho: vetor.caminho, corpo: new TextEncoder().encode(vetor.corpo) });
     assert.strictEqual(feita, vetor.assinatura, 'a extensão assina como o complemento');
     assert.strictEqual(assinaturaDoPedido(vetor.segredo, { sessao: vetor.sessao, nonce: vetor.nonce, metodo: vetor.metodo, caminho: vetor.caminho, corpo: vetor.corpo }), vetor.assinatura, 'o fake do e2e assina como o complemento');
+    const revogacao = contrato.vetorDaRevogacao;
+    const chaveRevogada = await webcrypto.subtle.importKey('raw', Buffer.from(revogacao.segredo, 'base64'), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    assert.strictEqual(await Pareamento.contas.provaDaRevogacao(chaveRevogada, revogacao.desafio), revogacao.prova, 'a extensão confere a prova da revogação como o complemento a dá');
+    assert.strictEqual(provaDaRevogacao(revogacao.segredo, revogacao.desafio), revogacao.prova, 'o fake do e2e a dá como o complemento');
   }
 
 

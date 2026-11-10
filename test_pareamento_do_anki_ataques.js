@@ -67,18 +67,55 @@ async function main() {
   }
 
 
-  // "Desconectar navegadores" no Anki: a Conexão não conhece mais o navegador. Um 401 sem prova também é o que um impostor responde, então quem já estava pareado
-  // **não** é levado a parear de novo sozinho: a tela diz que a porta não se confirmou, e a credencial não se apaga por isso.
+  // "Desconectar navegadores" no Anki: a Conexão guarda o segredo revogado e o `conferir` do navegador responde `pairing_revoked` com a prova da revogação. Só essa prova
+  // apaga a credencial e volta ao Conectar; o navegador pareia de novo, com outro `cliente`, e a Conexão volta a provar.
   {
     const conexao = criarConexao();
     const pagina = carregarAPagina(conexao);
     await parearComChaveGuardada(pagina);
-    await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA());   // a sessão está provada
+    await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA());
+    const antes = (await pagina.Pareamento.lerACredencial()).cliente;
     conexao.pareamento.desconectar();
-    await assert.rejects(pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA()), /não provou/);   // o `conferir` volta 401 sem prova e nenhum pedido privado sai
-    assert.strictEqual(pagina.Pareamento.estado(), 'nao_confirmada');
-    assert.ok(await pagina.Pareamento.lerACredencial(), 'um 401 sem prova não desfaz o pareamento');
-    assert.strictEqual((await pagina.Pareamento.provar(ENDERECO)).estado, 'nao_confirmada', 'o conferir também: sem prova, nada de parear sozinho');
+    const lida = await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA());
+    igual([lida.status, (await lerJson(lida)).error], [401, 'pairing_required']);   // nenhum pedido privado saiu
+    assert.strictEqual(pagina.Pareamento.estado(), 'a_parear');
+    assert.strictEqual(await pagina.Pareamento.lerACredencial(), null, 'a prova da revogação apaga a credencial');
+    conexao.pareamento.sortearCodigo('K7M4PX');
+    await pagina.Pareamento.comecar(ENDERECO);
+    igual(await pagina.Pareamento.concluir(ENDERECO, 'K7M-4PX'), { ok: true });
+    assert.notStrictEqual((await pagina.Pareamento.lerACredencial()).cliente, antes, 'um navegador novo para a Conexão');
+    assert.strictEqual((await pagina.Pareamento.provar(ENDERECO)).estado, 'pareada');
+  }
+
+
+  // Um 401 `pairing_revoked` que não traz a prova da revogação (um impostor o responde) não apaga nada nem leva ao código: "não confirmada".
+  for (const [nome, corpo] of [
+    ['sem prova', { error: 'pairing_revoked' }],
+    ['com a prova de outro segredo', { error: 'pairing_revoked', prova: 'AAAA'.repeat(10) + 'AAA=' }],
+  ]) {
+    const conexao = criarConexao({ impostor: async ({ caminho }) => (caminho === '/health' ? resposta(200, { ok: true, versao: '9.9.9', perfil: 'X' }) : resposta(401, corpo)) });
+    const pagina = carregarAPagina(conexao);
+    await parearComChaveGuardada(pagina);
+    assert.strictEqual((await pagina.Pareamento.provar(ENDERECO)).estado, 'nao_confirmada', nome);
+    assert.ok(await pagina.Pareamento.lerACredencial(), `${nome}: a credencial fica`);
+  }
+
+
+  // A prova da revogação de um desafio não vale para outro: um impostor que viu uma resposta não a repete.
+  {
+    const conexao = criarConexao();
+    const pagina = carregarAPagina(conexao);
+    await parearComChaveGuardada(pagina);
+    conexao.pareamento.desconectar();
+    const velha = await conexao.fetch(`${ENDERECO}/pareamento/conferir`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'chrome-extension://x' },
+      body: JSON.stringify({ cliente: (await pagina.Pareamento.lerACredencial()).cliente, desafio: 'desafio-que-o-impostor-viu-0123456789' }),
+    });
+    const repetida = { error: 'pairing_revoked', prova: (await velha.json()).prova };
+    const impostor = criarConexao({ impostor: async ({ caminho }) => (caminho === '/health' ? resposta(200, { ok: true, versao: '9.9.9', perfil: 'X' }) : resposta(401, repetida)) });
+    conexao.fetch = impostor.fetch;
+    assert.strictEqual((await pagina.Pareamento.provar(ENDERECO)).estado, 'nao_confirmada');
+    assert.ok(await pagina.Pareamento.lerACredencial());
   }
 
 

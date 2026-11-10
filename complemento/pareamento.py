@@ -5,6 +5,9 @@ extensão uma única vez (a resposta do `concluir`) e nunca mais trafega: cada p
 resposta volta assinada (`desenho em docs/design/pareamento-da-conexao.md`). Só a biblioteca padrão.
 
     segredo S          `user_files/pareamento.json`, até 5 navegadores, só do dono (0600), gravado de uma vez
+    revogados          o Desconectar navegadores guarda ali (até 20) os segredos que revogou: eles não assinam mais nada, só provam ao `conferir` que
+                       a Conexão desconectou aquele navegador (`401 pairing_revoked` com a prova da revogação), e só essa resposta provada faz a extensão
+                       esquecer a credencial e voltar a pedir o código; um 401 sem prova (um impostor também o responde) não faz nada disso
     código C           só na memória, 5 minutos, 5 tentativas; nunca em arquivo, log nem resposta HTTP
     sessão             nasce a cada subida da Conexão, só na memória: um pedido assinado numa subida não vale na outra
     nonce de cada pedido   não se repete dentro da sessão
@@ -32,6 +35,7 @@ from .chaves import gravar_so_do_dono
 VALIDADE_DO_CODIGO_S = 5 * 60
 TENTATIVAS = 5
 MAXIMO_DE_NAVEGADORES = 5
+MAXIMO_DE_REVOGADOS = 20
 # Seis caracteres de um alfabeto sem os que se confundem (0 O 1 I L): 31^6, uns 30 bits. Cinco tentativas por código não bastam para fechá-lo: um
 # programa local pode pedir um código novo atrás do outro. Por isso, depois de CODIGOS_ESGOTADOS_PARA_BLOQUEAR códigos que gastaram as 5 tentativas sem
 # que ninguém tenha pareado, a Conexão não sorteia outro por BLOQUEIO_S: no máximo 15 palpites a cada 15 minutos (uns 1.400 por dia, 2 em um milhão).
@@ -78,6 +82,11 @@ def prova_do_servidor(segredo, desafio, sessao):
     return _hmac(segredo, "pm1\nservidor\n%s\n%s" % (desafio, sessao))
 
 
+def prova_da_revogacao(segredo, desafio):
+    """A prova do `conferir` de um navegador desconectado: só quem guardou o segredo dele a dá, e o `desafio` é da extensão (não se repete)."""
+    return _hmac(segredo, "pm1\nrevogado\n%s" % desafio)
+
+
 def sortear_o_codigo():
     return "".join(secrets.choice(ALFABETO) for _ in range(TAMANHO_DO_CODIGO))
 
@@ -118,17 +127,18 @@ class Pareamento:
 
     # --- os navegadores guardados -------------------------------------------------------------------------------------------
 
-    def _ler(self):
+    def _ler(self, campo="clientes"):
+        """As linhas válidas de `campo` (`clientes` ou `revogados`) do arquivo."""
         try:
             with open(self._arquivo, encoding="utf-8") as arquivo:
                 dados = json.load(arquivo)
         except (OSError, ValueError):
             return []
-        clientes = dados.get("clientes") if isinstance(dados, dict) else None
-        if not isinstance(clientes, list):
+        linhas = dados.get(campo) if isinstance(dados, dict) else None
+        if not isinstance(linhas, list):
             return []
         validos = []
-        for linha in clientes:
+        for linha in linhas:
             if isinstance(linha, dict) and isinstance(linha.get("cliente"), str) and isinstance(linha.get("segredo"), str):
                 try:
                     base64.b64decode(linha["segredo"], validate=True)
@@ -137,13 +147,15 @@ class Pareamento:
                 validos.append(linha)
         return validos
 
-    def _gravar(self, clientes):
-        gravar_so_do_dono(self._arquivo, {"versao": 1, "clientes": clientes})
+    def _gravar(self, clientes, revogados=None):
+        """Grava os navegadores; sem `revogados`, os que já estavam no arquivo ficam."""
+        revogados = self._ler("revogados") if revogados is None else revogados
+        gravar_so_do_dono(self._arquivo, {"versao": 1, "clientes": clientes, "revogados": revogados})
 
-    def _segredo_de(self, cliente):
+    def _segredo_de(self, cliente, campo="clientes"):
         if not isinstance(cliente, str):
             return None
-        for linha in self._ler():
+        for linha in self._ler(campo):
             if hmac.compare_digest(linha["cliente"].encode("utf-8"), cliente.encode("utf-8")):
                 return base64.b64decode(linha["segredo"])
         return None
@@ -153,10 +165,16 @@ class Pareamento:
         return len(self._ler())
 
     def desconectar(self):
-        """“Desconectar navegadores”: esvazia a lista. Os Envios, a chave e o resto ficam. Devolve quantos saíram."""
+        """“Desconectar navegadores”: esvazia a lista e guarda os segredos que saíram (`revogados`, até 20), para o `conferir` de cada um dizer que foi
+        desconectado. Os Envios, a chave e o resto ficam. Devolve quantos saíram."""
         with self._tranca:
-            saiu = len(self._ler())
-            self._gravar([])
+            saindo = self._ler()
+            agora = _agora_iso()
+            saindo_ids = {linha["cliente"] for linha in saindo}
+            revogados = [linha for linha in self._ler("revogados") if linha["cliente"] not in saindo_ids]
+            revogados += [{"cliente": s["cliente"], "segredo": s["segredo"], "revogadoEm": agora} for s in saindo]
+            saiu = len(saindo)
+            self._gravar([], revogados[-MAXIMO_DE_REVOGADOS:])
             self._concluido = None
             self._nonces.clear()
         self._logger.info("Pareamento: %d navegador(es) desconectado(s)", saiu)
@@ -258,7 +276,8 @@ class Pareamento:
             segredo = base64.b64encode(secrets.token_bytes(32)).decode("ascii")
             clientes = [linha for linha in self._ler() if linha["cliente"] != cliente]
             clientes.append({"cliente": cliente, "segredo": segredo, "nome": nome, "criadoEm": _agora_iso()})
-            self._gravar(clientes[-MAXIMO_DE_NAVEGADORES:])   # o cliente só existe depois de gravado
+            revogados = [linha for linha in self._ler("revogados") if linha["cliente"] != cliente]   # pareado de novo, já não está revogado
+            self._gravar(clientes[-MAXIMO_DE_NAVEGADORES:], revogados)   # o cliente só existe depois de gravado
             self._concluido = {"codigo": pendente["codigo"], "cliente": cliente, "segredo": segredo, "vence": pendente["vence"]}
             self._esgotados, self._bloqueado_ate = 0, None
             self._acabar_o_pendente()
@@ -271,10 +290,14 @@ class Pareamento:
         return 200, {"cliente": cliente, "segredo": segredo}
 
     def conferir(self, cliente, desafio):
-        """A prova da Conexão: `{ sessao, prova }`. Quem não é um navegador pareado recebe 401, sem prova nenhuma."""
+        """A prova da Conexão: `{ sessao, prova }`. Quem não é um navegador pareado recebe 401, sem prova nenhuma; o que o Desconectar navegadores
+        tirou recebe `401 pairing_revoked` com a prova da revogação, que só a Conexão que o desconectou sabe dar."""
         segredo = self._segredo_de(cliente)
         if segredo is None:
-            return 401, {"error": "pairing_required"}
+            revogado = self._segredo_de(cliente, "revogados")
+            if revogado is None:
+                return 401, {"error": "pairing_required"}
+            return 401, {"error": "pairing_revoked", "prova": prova_da_revogacao(revogado, desafio)}
         return 200, {"sessao": self.sessao, "prova": prova_do_servidor(segredo, desafio, self.sessao)}
 
     # --- o porteiro ----------------------------------------------------------------------------------------------------------
