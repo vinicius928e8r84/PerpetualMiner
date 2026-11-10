@@ -204,6 +204,45 @@ class UmErroDeDisco(unittest.TestCase):
         self.assertEqual((segunda, sobrou), ([ID], []))
         self.assertEqual(sorted(linha["jobId"] for linha in linhas), sorted([ID, OUTRO_ID]))
 
+    def test_o_estado_que_ficou_para_tras_porque_o_apagar_falhou_sai_na_proxima_rodada(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+            terminado(conexao, ID)
+            envelhecer(conexao, ID, 40)
+            fila = conexao.conexao.fila
+            fila.logger = mock.Mock()
+            apagar = retencao_dos_envios.apagar
+
+            def antivirus_trava_o_estado(caminho):
+                if caminho == fila._arquivo_do_estado(ID):
+                    raise PermissionError(13, "arquivo em uso", caminho)
+                return apagar(caminho)
+
+            with mock.patch.object(retencao_dos_envios, "apagar", antivirus_trava_o_estado):
+                primeira = retencao_dos_envios.reter(fila)
+            sobrou = sorted(nome for nome in arquivos_sem_o_log(conexao) if nome.startswith(("fila" + os.sep + ID, "estado" + os.sep + ID)))
+            segunda = retencao_dos_envios.reter(fila)
+            depois = sorted(nome for nome in arquivos_sem_o_log(conexao) if nome.startswith(("fila" + os.sep + ID, "estado" + os.sep + ID)))
+            linhas = linhas_dos_custos(conexao)
+        self.assertEqual((primeira, sobrou), ([], [os.path.join("estado", ID + ".json")]))
+        self.assertEqual((segunda, depois), ([ID], []))
+        self.assertEqual([linha["jobId"] for linha in linhas], [ID])
+
+    def test_uma_pasta_dentro_da_pasta_do_estado_nao_derruba_a_rodada_nem_os_outros(self):
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+            terminado(conexao, ID)
+            terminado(conexao, OUTRO_ID)
+            envelhecer(conexao, ID, 40)
+            envelhecer(conexao, OUTRO_ID, 40)
+            fila = conexao.conexao.fila
+            fila.logger = mock.Mock()
+            os.makedirs(os.path.join(fila.pasta_dos_textos(ID), "sub"))
+            primeira = retencao_dos_envios.reter(fila)
+            registro = " ".join(str(chamada) for chamada in fila.logger.method_calls)
+            estado_ficou = os.path.exists(arquivo_do_estado(conexao, ID))
+        self.assertEqual(primeira, [OUTRO_ID])
+        self.assertIn("IsADirectoryError", registro)
+        self.assertTrue(estado_ficou)
+
     def test_a_ficha_que_nao_grava_deixa_o_envio_inteiro_no_lugar(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             terminado(conexao, ID)
@@ -214,6 +253,31 @@ class UmErroDeDisco(unittest.TestCase):
             depois = arquivos_sem_o_log(conexao)
         self.assertEqual(apagados, [])
         self.assertEqual(depois, antes)
+
+
+class UmLinkNoLugarDaPasta(unittest.TestCase):
+    def test_o_link_para_uma_pasta_de_fora_sai_sozinho_e_o_que_ele_aponta_fica(self):
+        with tempfile.TemporaryDirectory() as pasta, tempfile.TemporaryDirectory() as fora, EnvioNoTeste(pasta) as conexao:
+            terminado(conexao, ID)
+            envelhecer(conexao, ID, 40)
+            fila = conexao.conexao.fila
+            for nome in ("1-0.txt", "outro.json", "qualquer"):
+                with open(os.path.join(fora, nome), "w", encoding="utf-8") as arquivo:
+                    arquivo.write("do usuário, fora da Conexão")
+            os.rmdir(fila.pasta_dos_textos(ID))  # a pasta vazia que o Envio deixa
+            try:
+                os.symlink(fora, fila.pasta_dos_textos(ID), target_is_directory=True)
+            except (OSError, NotImplementedError, AttributeError):
+                self.skipTest("este sistema não cria link simbólico")
+            apagados = retencao_dos_envios.reter(fila)
+            sobrou = sorted(os.listdir(fora))
+            depois = [nome for nome in arquivos_sem_o_log(conexao) if nome.startswith(("fila" + os.sep + ID, "estado" + os.sep + ID))]
+            linhas = linhas_dos_custos(conexao)
+        self.assertEqual(apagados, [ID])
+        self.assertEqual(sobrou, ["1-0.txt", "outro.json", "qualquer"])
+        self.assertEqual(depois, [])
+        self.assertFalse(os.path.lexists(fila.pasta_dos_textos(ID)))
+        self.assertEqual([linha["jobId"] for linha in linhas], [ID])
 
 
 class QuandoARetencaoRoda(unittest.TestCase):
