@@ -55,10 +55,12 @@
     // Começa só com a demonstração na tela e a página parada há 400 ms: quem está rolando não está olhando. Se ela
     // sair da tela antes do fim, volta ao começo e toca de novo quando a pessoa parar nela.
     let espera = 0;
+    const entrando = () => demo.getAnimations().some(animacao => animacao.playState !== 'finished');
     const armar = () => {
       clearTimeout(espera);
       espera = setTimeout(() => {
-        if (document.hidden) return armar();
+        // Com a aba escondida, ou com a demonstração ainda entrando junto com a chamada, espera mais um pouco.
+        if (document.hidden || entrando()) return armar();
         desarmar();
         tocar(ANTES);
       }, 400);
