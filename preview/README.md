@@ -32,7 +32,7 @@ as imagens antes do commit; `node test_preview.js` falha se a landing pedir uma 
 
 ## O movimento da landing
 
-A página está inteira sem script e sem animação: `site.js` só marca o que entra ao rolar, conta os números e refaz a
+A página está inteira sem script e sem animação: `site.js` só marca o que entra ao rolar e refaz a
 demonstração no Repetir, e o CSS do movimento (`landing-movimento.css`) vale só dentro de
 `prefers-reduced-motion: no-preference`. As regras, que
 são as de Emil Kowalski (<https://github.com/emilkowalski/skills>): só `transform` e `opacity` se mexem (o desfoque
