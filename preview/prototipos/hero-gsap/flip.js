@@ -74,8 +74,8 @@
         .fromTo(frase,
           { x: () => this.voo.x, y: () => this.voo.y, scale: () => this.voo.scale },
           { x: 0, y: 0, scale: 1, duration: 0.65, ease: P.curva('--site-curva-vaivem') }, decolagem)
-        // O idioma não viaja: é da linha do histórico, e aparece quando a frase pousa.
-        .fromTo(this.querySelector('.pg-resultado .pg-idioma'), { opacity: 0 }, { opacity: 1, duration: P.tempo('--pg-mov-volta') }, `${decolagem}+=0.55`);
+        // O idioma não viaja: é da linha do histórico, e aparece quando a frase está pousando.
+        .fromTo(this.querySelector('.pg-resultado .pg-idioma'), { opacity: 0 }, { opacity: 1, duration: P.tempo('--pg-mov-volta') }, 'resultado+=0.65');
     }
 
     /** De onde a frase sai: medido com ela no lugar dela, sem o `transform` de um voo anterior. */
