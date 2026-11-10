@@ -55,8 +55,9 @@
   }
 }
 
-/* O movimento, só para quem não pediu menos movimento. Sem ele (e sem script) a página já está inteira. */
-@media (prefers-reduced-motion: no-preference) {
+/* O movimento, só na tela e só para quem não pediu menos movimento. Sem ele (e sem script, e no papel) a página já
+   está inteira: quem imprime não recebe as etapas apagadas à espera da vez. */
+@media screen and (prefers-reduced-motion: no-preference) {
   /* A chamada entra uma vez: o título puxa, o resto segue perto, o selo e a nota só aparecem. */
   .hero h1 {
     animation: site-entrar-titulo var(--site-mov-entrada) var(--veio-curva-saida) both;
