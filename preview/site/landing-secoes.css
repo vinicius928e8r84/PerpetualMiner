@@ -407,6 +407,11 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
+  /* A grade de três continua com três: em duas colunas sobrava um cartão sozinho na linha de baixo. */
+  .grade--tripla {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
   .landing .fecho {
     grid-template-columns: 1fr;
   }
