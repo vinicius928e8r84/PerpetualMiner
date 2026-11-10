@@ -113,17 +113,6 @@
   color: var(--veio-text);
 }
 
-.landing pre {
-  margin: 12px 0 0;
-  padding: 12px 14px;
-  border: 1px solid var(--veio-border);
-  border-radius: var(--veio-raio-input);
-  background: var(--veio-bg);
-  color: var(--veio-text);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
 .landing mark {
   padding: 0 3px;
   border-radius: var(--veio-raio-losango);

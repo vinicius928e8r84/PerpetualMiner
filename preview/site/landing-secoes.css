@@ -389,6 +389,10 @@
   font-size: var(--veio-tam-card);
 }
 
+.fecho-acao {
+  margin: 28px 0 0;
+}
+
 .landing .site-rodape {
   padding-top: 28px;
   border-top: 1px solid var(--veio-border);

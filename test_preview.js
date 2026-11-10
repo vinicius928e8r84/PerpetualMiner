@@ -60,6 +60,10 @@ const extensao = path.join(saida, 'extensao');
   for (const endereco of ['/privacidade/', '/privacy/']) {
     assert(sobre.includes(`href="${endereco}"`), `a landing devia levar à política em ${endereco}`);
   }
+  // O botão de instalar leva ao item da extensão na Chrome Web Store: o mesmo ID que a Conexão com o Anki atende.
+  const { origemDaExtensao } = JSON.parse(fs.readFileSync('complemento/contrato/exemplos.json', 'utf8'));
+  const idDaExtensao = origemDaExtensao.replace('chrome-extension://', '');
+  assert(sobre.includes(`href="https://chromewebstore.google.com/detail/perpetualminer/${idDaExtensao}"`), 'a landing devia levar à extensão na Chrome Web Store');
   for (const [nome, html] of [['privacidade', privacidade], ['sobre', sobre]]) {
     // A política não tem script; a landing, só o do movimento dela. Nenhum escrito na página, nenhum de fora.
     const scripts = [...html.matchAll(/<script\b([^>]*)>/gi)].map(m => (m[1].match(/\bsrc="([^"]*)"/) || [])[1] || '(escrito na página)');
