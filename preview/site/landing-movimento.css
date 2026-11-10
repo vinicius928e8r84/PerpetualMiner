@@ -58,29 +58,31 @@
 /* O movimento, só na tela e só para quem não pediu menos movimento. Sem ele (e sem script, e no papel) a página já
    está inteira: quem imprime não recebe as etapas apagadas à espera da vez. */
 @media screen and (prefers-reduced-motion: no-preference) {
-  /* A chamada entra uma vez: o título puxa, o resto segue perto, o selo e a nota só aparecem. */
+  /* A chamada entra uma vez: o título puxa, o resto segue perto, o selo e a nota só aparecem. O preenchimento é
+     `backwards`, não `both`: os keyframes só têm o começo, e com `both` a animação nunca termina e a camada dela fica
+     viva a visita inteira. */
   .hero h1 {
-    animation: site-entrar-titulo var(--site-mov-entrada) var(--veio-curva-saida) both;
+    animation: site-entrar-titulo var(--site-mov-entrada) var(--veio-curva-saida) backwards;
   }
 
   .hero .site-lead {
-    animation: site-entrar-apoio var(--site-mov-apoio) var(--veio-curva-saida) 80ms both;
+    animation: site-entrar-apoio var(--site-mov-apoio) var(--veio-curva-saida) 80ms backwards;
   }
 
   .hero-acoes {
-    animation: site-entrar-acoes var(--site-mov-apoio) var(--veio-curva-saida) 140ms both;
+    animation: site-entrar-acoes var(--site-mov-apoio) var(--veio-curva-saida) 140ms backwards;
   }
 
   .site-selo {
-    animation: site-aparecer var(--site-mov-enfeite) var(--veio-curva-saida) both;
+    animation: site-aparecer var(--site-mov-enfeite) var(--veio-curva-saida) backwards;
   }
 
   .hero .site-nota {
-    animation: site-aparecer var(--site-mov-enfeite) var(--veio-curva-saida) 200ms both;
+    animation: site-aparecer var(--site-mov-enfeite) var(--veio-curva-saida) 200ms backwards;
   }
 
   .demo {
-    animation: site-entrar-tela 700ms var(--veio-curva-saida) 120ms both;
+    animation: site-entrar-tela 700ms var(--veio-curva-saida) 120ms backwards;
   }
 
   /* A demonstração entre uma etapa e a outra. Tudo aqui é transição, então o Repetir no meio do caminho volta de onde
