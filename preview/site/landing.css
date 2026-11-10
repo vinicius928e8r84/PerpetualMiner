@@ -365,20 +365,26 @@
 }
 
 /* As teclas aparecem sobre o vídeo só na etapa em que são apertadas (landing-movimento.css). Parada, a página não as
-   mostra ali: o passo 2 já as escreve. */
+   mostra ali: o passo 2 já as escreve. Centradas pelas margens, com a largura do que têm dentro: um atalho de mais
+   teclas quebra em linhas em vez de sair da tela. */
 .demo-teclas {
   position: absolute;
   z-index: 2;
   top: 36%;
-  left: 50%;
-  display: inline-flex;
+  right: 12px;
+  left: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
+  width: fit-content;
+  margin: 0 auto;
   padding: 12px 14px;
   border: 1px solid var(--site-fio);
   border-radius: var(--veio-raio-card);
   background: color-mix(in srgb, var(--veio-bg) 80%, transparent);
   box-shadow: var(--veio-sombra-ilha);
-  transform: translate(-50%, -50%);
+  transform: translateY(-50%);
   opacity: 0;
   pointer-events: none;
 }

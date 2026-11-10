@@ -93,12 +93,12 @@
 
   /* Etapa 2: as teclas surgem sobre o vídeo e, 400 ms depois, descem (o S 80 ms depois do Alt) e ficam apertadas. */
   .js .demo-teclas {
-    transform: translate(-50%, -50%) scale(.96);
+    transform: translateY(-50%) scale(.96);
     transition: opacity 160ms var(--veio-curva-saida), transform 160ms var(--veio-curva-saida);
   }
 
   .js .demo[data-etapa="tecla"] .demo-teclas {
-    transform: translate(-50%, -50%);
+    transform: translateY(-50%);
     transition-duration: 200ms;
   }
 
