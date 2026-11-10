@@ -6,9 +6,12 @@ por baixo), e a marca é o `update_enabled` do `meta.json` (`AddonManager.addon_
 isso existe antes de qualquer uso: se uma versão do Anki mudar um nome, a Conexão não usa nada e desfaz a marca (`atualizacao.py`).
 """
 
+import logging
 import os
 import re
 import threading
+
+from .configuracao import NOME_DO_LOGGER
 
 LIMITE_DO_REINICIO_S = 10
 
@@ -52,8 +55,19 @@ class AnkiWebDoAnki:
 
     def instalar(self, id_):
         addons = self._modulo()
+        # O Anki faz o backup de `user_files` renomeando a pasta; no Windows o rename falha com o log aberto (#370).
+        # Fechado o stream, o handler reabre o arquivo sozinho na próxima linha (`FileHandler.emit`).
+        self._soltar_os_logs()
         _, resultado = addons.download_and_install_addon(self._mw.addonManager, addons.HttpClient(), id_)
         return isinstance(resultado, addons.InstallOk)
+
+    def _soltar_os_logs(self):
+        """Fecha o arquivo de cada handler do logger da Conexão que grava dentro de `user_files`."""
+        raiz = os.path.join(self._pasta, "user_files") + os.sep
+        for handler in list(logging.getLogger(NOME_DO_LOGGER).handlers):
+            arquivo = getattr(handler, "baseFilename", None)
+            if arquivo and os.path.abspath(arquivo).startswith(raiz):
+                handler.close()
 
     def versao_instalada(self):
         """A `VERSAO` do `configuracao.py` que a instalação acabou de pôr na pasta (a Conexão que roda ainda é a de antes)."""

@@ -321,6 +321,48 @@ class PeloAnkiDeMentira(unittest.TestCase):
         self.assertEqual(self.aqt_addons.baixados, [12345678])
         self.assertEqual(self.anki.versao_instalada(), "0.9.0")
 
+    def test_o_log_aberto_em_user_files_nao_segura_o_backup_do_anki_e_volta_a_gravar_depois(self):
+        # No Windows o Anki renomeia `user_files` e o rename falha com o log da Conexão aberto (#370).
+        from complemento import registro
+
+        logs = os.path.join(self.complemento, "user_files", "logs")
+        os.makedirs(logs)
+        logger = registro.criar(logs)
+        self.addCleanup(lambda: [logger.removeHandler(h) or h.close() for h in list(logger.handlers)])
+        logger.info("antes")
+        abertos_na_hora_do_backup = []
+
+        def instalar_como_no_windows(gerente, cliente, id_):
+            abertos_na_hora_do_backup.extend(h for h in logger.handlers if getattr(h, "stream", None) is not None)
+            return id_, self.aqt_addons.resultado
+
+        sys.modules["aqt.addons"].download_and_install_addon = instalar_como_no_windows
+        self.assertTrue(self.anki.instalar(12345678))
+        self.assertEqual(abertos_na_hora_do_backup, [])
+        logger.info("depois")
+        with open(os.path.join(logs, "complemento.log"), encoding="utf-8") as lido:
+            texto = lido.read()
+        self.assertIn("antes", texto)
+        self.assertIn("depois", texto)
+
+    def test_o_log_volta_a_gravar_mesmo_quando_a_instalacao_levanta(self):
+        from complemento import registro
+
+        logs = os.path.join(self.complemento, "user_files", "logs")
+        os.makedirs(logs)
+        logger = registro.criar(logs)
+        self.addCleanup(lambda: [logger.removeHandler(h) or h.close() for h in list(logger.handlers)])
+
+        def quebra(*a):
+            raise PermissionError("rename")
+
+        sys.modules["aqt.addons"].download_and_install_addon = quebra
+        with self.assertRaises(PermissionError):
+            self.anki.instalar(12345678)
+        logger.info("depois do erro")
+        with open(os.path.join(logs, "complemento.log"), encoding="utf-8") as lido:
+            self.assertIn("depois do erro", lido.read())
+
     def test_uma_instalacao_que_o_anki_recusou_nao_conta(self):
         sys.modules["aqt.addons"].download_and_install_addon = lambda *a: (12345678, "erro do Anki")
         self.assertFalse(self.anki.instalar(12345678))
