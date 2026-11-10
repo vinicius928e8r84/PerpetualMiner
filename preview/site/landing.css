@@ -2,10 +2,22 @@
    o movimento em landing-movimento.css; a base das duas páginas públicas é site.css. O que a escala da extensão não
    tem (títulos grandes, o ouro em degradê, o vidro) é derivado dos tokens aqui, sem cor solta. */
 .landing {
-  --site-tam-titulo: clamp(38px, 5.2vw, 66px);
-  --site-tam-secao: clamp(28px, 3.6vw, 42px);
-  --site-tam-lead: clamp(17px, 1.5vw, 19px);
-  --site-tam-numero: clamp(40px, 5vw, 60px);
+  /* As letras seguem o tamanho de fonte que a pessoa escolheu no navegador. Os tamanhos da Veio são em px, porque as
+     telas da extensão têm tamanho fixo; a landing redefine em rem os que usa, com o mesmo valor na fonte padrão de
+     16 px. Nos tamanhos que acompanham a largura, o termo (1rem - 16px) vale zero na fonte padrão e cresce com ela. */
+  --veio-tam-display: 2rem;
+  --veio-tam-hero: 1.5rem;
+  --veio-tam-pagina: 1.375rem;
+  --veio-tam-modal: 1.25rem;
+  --veio-tam-destaque: 1rem;
+  --veio-tam-card: .9375rem;
+  --veio-tam-corpo: .84375rem;
+  --veio-tam-apoio: .78125rem;
+  --veio-tam-legenda: .71875rem;
+  --site-tam-titulo: clamp(2.375rem, 5.2vw + (1rem - 16px) * 3.25, 4.125rem);
+  --site-tam-secao: clamp(1.75rem, 3.6vw + (1rem - 16px) * 2.2, 2.625rem);
+  --site-tam-lead: clamp(1.0625rem, 1.5vw + (1rem - 16px) * 1.125, 1.1875rem);
+  --site-tam-numero: clamp(2.5rem, 5vw + (1rem - 16px) * 3.125, 3.75rem);
   --site-largura: 1120px;
   --site-entre-secoes: 120px;
   --site-ouro-claro: color-mix(in oklab, var(--veio-accent), white 55%);
