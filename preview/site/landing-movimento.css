@@ -120,12 +120,10 @@
 
   /* Etapa 3: as teclas saem (160 ms), só então a captura de depois entra (320 ms) e, depois dela, o destaque. */
   .js .demo-depois {
-    filter: blur(2px);
-    transition: opacity 160ms var(--veio-curva-saida), filter 160ms var(--veio-curva-saida);
+    transition: opacity 160ms var(--veio-curva-saida);
   }
 
   .js .demo:is([data-etapa="resultado"], [data-etapa="fim"]) .demo-depois {
-    filter: none;
     transition-duration: 320ms;
     transition-delay: 160ms;
   }
@@ -185,7 +183,7 @@
 }
 
 @keyframes site-entrar-titulo {
-  from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
+  from { opacity: 0; transform: translateY(12px); }
 }
 
 @keyframes site-entrar-apoio {
