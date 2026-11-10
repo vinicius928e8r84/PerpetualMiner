@@ -14,6 +14,10 @@
 //   node preview/montar.mjs                    # monta em preview/dist
 //   node preview/montar.mjs --servir           # monta e serve em http://127.0.0.1:4173
 //   node preview/montar.mjs --saida <pasta>    # monta noutra pasta (test_preview.js)
+//
+// Além do preview, o site leva as duas páginas públicas do app, que o consentimento
+// OAuth do Google pede: `/sobre/` (a página inicial) e `/privacidade/` (a política,
+// também em `/privacy/`). Elas moram em `preview/site/` e não dependem da extensão.
 
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
@@ -44,6 +48,12 @@ const TELAS = [
  * Conexão, que `PassosDaConexao` oferece num link de download.
  */
 const PASTAS_DE_APOIO = ['conexao'];
+
+/** As páginas públicas de `preview/site/`: o arquivo de origem e os endereços em que ele sai (cada um é uma pasta com `index.html`). */
+const PAGINAS_PUBLICAS = [
+  { arquivo: 'sobre.html', enderecos: ['sobre'] },
+  { arquivo: 'privacidade.html', enderecos: ['privacidade', 'privacy'] },
+];
 
 const existe = async alvo => fs.access(alvo).then(() => true, () => false);
 
@@ -138,6 +148,12 @@ ${temVeio ? '    <img class="veio-marca" src="/veio/icones/icone.svg" width="40"
   <h1>Preview do front</h1>
   <p>Como esta branch fica na tela. Gerado a cada push pelo Vercel.</p>
 
+  <h2>O app</h2>
+  <ul>
+${linha('/sobre/', 'PerpetualMiner: página inicial do app', 'o que é e o que faz')}
+${linha('/privacidade/', 'Política de privacidade', 'também em /privacy')}
+  </ul>
+
   <h2>Telas da extensão</h2>
   <div class="aviso">Fora do Chrome não existe <code>chrome.*</code>, então o preview injeta um simulador com dados de exemplo: o visual é o de verdade, o conteúdo é inventado e o que depende do navegador (login, atalho, envio ao Anki) não funciona.</div>
   <ul>
@@ -208,6 +224,14 @@ async function montar() {
   const vitrine = path.join(RAIZ, 'e2e', 'vitrine');
   const temVitrine = await existe(path.join(vitrine, 'vitrine.html'));
   if (temVitrine) await copiar(vitrine, DESTINO);
+
+  await fs.mkdir(path.join(DESTINO, 'site'), { recursive: true });
+  await fs.copyFile(path.join(RAIZ, 'preview', 'site', 'site.css'), path.join(DESTINO, 'site', 'site.css'));
+  for (const { arquivo, enderecos } of PAGINAS_PUBLICAS) {
+    for (const endereco of enderecos) {
+      await copiar(path.join(RAIZ, 'preview', 'site', arquivo), path.join(DESTINO, endereco, 'index.html'));
+    }
+  }
 
   const prototipos = await acharPrototipos();
   if (prototipos.length) await copiar(path.join(RAIZ, 'docs', 'design'), path.join(DESTINO, 'design'));

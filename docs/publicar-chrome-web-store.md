@@ -89,7 +89,7 @@ Cole nos campos correspondentes (a loja pede uma por permissão).
 
 | Permissão | Justificativa |
 |---|---|
-| `storage` | Guarda no navegador (`storage.local`) as frases mineradas, as configurações, os atalhos, a chave do Gemini informada pela pessoa, os 4 últimos caracteres da chave da OpenAI informada pela pessoa (a chave inteira fica no IndexedDB da extensão, que os scripts de conteúdo não alcançam, e numa cópia da Conexão com o Anki do próprio computador) e a sessão da conta. Usa também o `storage.sync` para as marcas de exclusão de frases (só o identificador da frase e a data), que o próprio navegador sincroniza entre os computadores da pessoa. |
+| `storage` | Guarda no navegador (`storage.local`) as frases mineradas, as configurações, os atalhos, a chave do Gemini informada pela pessoa, os 4 últimos caracteres da chave da OpenAI (a chave inteira fica na Conexão com o Anki do computador e, com conta Google, numa cópia em texto na conta, em `usuarios/{uid}/segredos/openai`) e a sessão da conta (no IndexedDB). Usa também o `storage.sync` para as marcas de exclusão de frases (só o identificador da frase e a data), que o próprio navegador sincroniza entre os computadores da pessoa. |
 | `unlimitedStorage` | O histórico de frases e os caches de vocabulário crescem com o uso contínuo e passam do limite padrão de 10 MB do armazenamento local. |
 | `alarms` | Mantém a mineração automática e seus contadores atualizados na virada do dia, inclusive nas páginas já abertas. |
 | `contextMenus` | Cria o item "Minerar com PerpetualMiner" no menu de clique direito sobre texto selecionado. |
@@ -113,11 +113,13 @@ Cole nos campos correspondentes (a loja pede uma por permissão).
 Marque como **coletados**:
 - **Informações de identificação pessoal** (nome, e-mail, foto do perfil Google): só se a pessoa entrar na conta.
 - **Conteúdo do site** (texto de legendas e de seleções, título da página): as frases que a pessoa minera.
-- **Informações de autenticação**: tokens da sessão do Google/Firebase e a chave da OpenAI informada pela pessoa, guardados no navegador (a chave também numa cópia da Conexão com o Anki do computador, que a usa para fazer os cartões).
+- **Informações de autenticação**: tokens da sessão do Google/Firebase no navegador, e a chave da OpenAI da pessoa, que fica na Conexão com o Anki (usada para fazer os cartões) e, com conta Google, numa cópia na nuvem.
 
 Não marque histórico de navegação, localização, atividade do usuário nem dados financeiros/de saúde. Marque as três declarações: não vendo dados; não uso para fins alheios à finalidade única; não uso para avaliar crédito.
 
 ### Política de privacidade
+
+> **Substituído** pela página pública `/privacidade/` (`preview/site/privacidade.html`), que é a que vale; o rascunho abaixo está desatualizado e fica só de histórico.
 
 A loja exige uma **URL pública** (o repositório é privado, então hospede o texto abaixo numa página pública, como um site seu, GitHub Pages ou um gist público, e cole o endereço).
 
@@ -149,8 +151,6 @@ Você pode apagar as frases a qualquer momento no painel (individualmente ou "Ap
 Contato
 <e-mail de contato>
 ```
-
-Confira o texto contra o que a Conexão com o Anki faz no seu computador antes de publicar: ela chama serviços de terceiros (voz e imagens) que não são da extensão, e a política acima só os cita de passagem.
 
 ## 6. Aba "Distribuição" e envio
 

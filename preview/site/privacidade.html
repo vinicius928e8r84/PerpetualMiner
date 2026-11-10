@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Política de privacidade · PerpetualMiner</title>
+<meta name="description" content="Quais dados a extensão PerpetualMiner e a Conexão com o Anki tratam, o que sai do seu computador, para quem, e como apagar.">
+<link rel="icon" href="/veio/icones/icone.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/veio/tokens.css">
+<link rel="stylesheet" href="/site/site.css">
+</head>
+<body>
+<header class="site-topo">
+  <a class="site-marca" href="/sobre/">
+    <img class="veio-marca" src="/veio/icones/icone.svg" width="40" height="40" alt="">
+    <span class="veio-nome">Perpetual<b>Miner</b></span>
+  </a>
+  <nav aria-label="Páginas">
+    <a href="/sobre/">Sobre</a>
+    <a href="/privacidade/" aria-current="page">Privacidade</a>
+    <a href="https://github.com/vinicius928e8r84/PerpetualMiner">Código</a>
+  </nav>
+</header>
+
+<main>
+  <h1>Política de privacidade</h1>
+  <p class="site-data">Última atualização: 10 de novembro de 2026</p>
+  <p class="site-lead">O PerpetualMiner é uma extensão de navegador para estudo de idiomas e, opcionalmente, a Conexão com o Anki, um complemento do Anki que roda no seu computador. Esta página diz quais dados eles tratam, o que sai do seu computador, para quem, e como apagar.</p>
+
+  <div class="site-cartao">
+    <p><strong>Em resumo</strong></p>
+    <ul>
+      <li>Suas frases ficam no seu navegador. Só vão para a nuvem se você entrar com a conta Google.</li>
+      <li>O PerpetualMiner não tem servidor próprio, anúncios, rastreadores nem análise de uso, e não vende nem compartilha seus dados.</li>
+      <li>Os recursos opcionais (foto, Anki, conta, ranking) enviam dados a serviços de terceiros, e cada um está descrito abaixo.</li>
+    </ul>
+  </div>
+
+  <h2>1. O que fica no seu navegador</h2>
+  <p>Sem nenhuma conta, a extensão guarda no armazenamento local do navegador:</p>
+  <ul>
+    <li>as frases que você minera: o texto da legenda ou da seleção, o idioma, de onde veio (o tipo da fonte, o título do vídeo ou da página e um detalhe, como o episódio), a palavra que o cartão ensina e a data;</li>
+    <li>suas configurações, seus atalhos, o tema, os contadores da Mineração automática e o seu progresso nas Boas-vindas;</li>
+    <li>a chave da API do Gemini, se você a informar;</li>
+    <li>um resumo da chave da OpenAI (só os 4 últimos caracteres, para a tela mostrar qual chave está em uso). A chave inteira não fica no navegador, e sim na Conexão com o Anki (seção 5).</li>
+  </ul>
+  <p>Quando você apaga uma frase, o identificador dela e a data da exclusão vão para o armazenamento sincronizado do navegador (Chrome Sync, ou o equivalente do seu navegador, se você o usa), para que a exclusão valha nos seus outros computadores. Não há texto de frase nesse registro.</p>
+  <p>Os scripts da extensão rodam em todos os sites, porque o vídeo pode estar em qualquer um. O que eles leem:</p>
+  <ul>
+    <li><strong>A legenda do vídeo</strong>, quando você aciona o atalho e, se você ligar a Mineração automática (vem desligada), a cada instante enquanto o vídeo roda, até o limite diário. Para achar a legenda, o script examina o texto dos elementos de texto (<code>span</code>, <code>div</code> e <code>p</code>) que aparecem sobre o vídeo. Junto com a frase ele lê o nome do site, o título do vídeo e, quando a página tem, o canal e o episódio, para dar a origem da frase.</li>
+    <li><strong>O texto que você seleciona</strong>, quando você usa o atalho ou o menu do botão direito. Junto vão o endereço da página e o título dela (<code>document.title</code>, ou o título da aba no menu). Se a página não tem título, o endereço dela é gravado no lugar, e vai para a nuvem junto com a frase, se você tiver conta.</li>
+  </ul>
+  <p>Eles não leem nem guardam outro conteúdo da página, e a extensão não registra seu histórico de navegação.</p>
+
+  <h2>2. Conta Google (opcional)</h2>
+  <p>Entrar com o Google serve para sincronizar as suas frases entre os seus computadores. O pedido ao Google usa os escopos <code>openid</code>, <code>email</code> e <code>profile</code>, e a extensão recebe seu nome, e-mail e foto de perfil.</p>
+  <h3>Como esses dados são usados</h3>
+  <ul>
+    <li>O nome, o e-mail e a foto aparecem no painel, para mostrar com qual conta você entrou, e ficam guardados no navegador enquanto você estiver conectado. Não são usados para publicidade, para marketing nem para qualquer outro fim.</li>
+    <li>O login é feito pelo Firebase Authentication, do Google, que mantém o registro da sua conta (identificador, e-mail, nome e foto) para reconhecer você nas próximas vezes.</li>
+    <li>Depois de entrar, cada frase que você minera, inclusive as da Mineração automática, é enviada ao Firestore do projeto Firebase do PerpetualMiner, num caminho vinculado ao identificador da sua conta, para que você as veja em outros computadores. Também vão os registros de frases apagadas (identificador e data).</li>
+    <li>Se você tiver informado uma chave da OpenAI, uma cópia dela vai para o mesmo caminho da sua conta, para chegar sozinha à Conexão com o Anki dos seus outros computadores (seção 5).</li>
+    <li>O e-mail não é gravado no Firestore. O nome e a foto só vão para lá se você entrar no ranking (seção 3).</li>
+  </ul>
+  <p>Quem administra o projeto Firebase do PerpetualMiner tem, tecnicamente, acesso a esse banco. Esses dados não são lidos nem usados para nada além de fazer a sincronização funcionar. A chave da OpenAI é guardada como texto, sem criptografia ponta a ponta: crie a chave num projeto da OpenAI com limite de gasto, e revogue-a lá se quiser desligá-la de verdade.</p>
+  <p>As frases que já estavam no navegador sobem para a nuvem na primeira vez em que você entra. Sem entrar na conta, nada é enviado à nuvem do PerpetualMiner; a exceção é o registro de frases apagadas, que o próprio navegador pode sincronizar (seção 1).</p>
+
+  <h3>Uso limitado dos dados de usuário do Google</h3>
+  <p>O uso e a transferência, para qualquer outro aplicativo, de informações recebidas das APIs do Google pelo PerpetualMiner obedecem à <a href="https://developers.google.com/terms/api-services-user-data-policy">Política de Dados do Usuário dos Serviços de API do Google</a>, incluindo os requisitos de Uso Limitado. Em particular:</p>
+  <ul>
+    <li>os dados do Google (nome, e-mail e foto) são usados só para entrar e para os recursos que você vê na extensão: sincronizar as suas próprias frases e, se você escolher, aparecer no ranking do grupo (seção 3);</li>
+    <li>não são transferidos a terceiros, a não ser para operar esses recursos (o Firebase e o Firestore, do próprio Google), se a lei exigir, ou, no ranking, quando você mesmo marca a caixa: nome, foto e identificador da conta (<code>uid</code>) passam a poder ser lidos por outras pessoas que usam o PerpetualMiner com uma conta;</li>
+    <li>não são usados para publicidade, nem vendidos;</li>
+    <li>nenhuma pessoa lê esses dados, a não ser com a sua permissão, por segurança, para cumprir a lei ou para resolver um problema que você relatou.</li>
+  </ul>
+
+  <h2>3. Ranking do grupo (opcional)</h2>
+  <p>No fim do quiz de nível, quem tem conta Google vê a caixa “Aparecer no ranking do grupo”, que vem desmarcada. Se você marcar, a extensão grava no Firestore, numa coleção comum, um registro seu por idioma com o nome e a foto da sua conta Google, o identificador da conta (<code>uid</code>), seu nível, seu resultado e sua melhor sequência de acertos. Esse registro pode ser lido por qualquer pessoa que use o PerpetualMiner com uma conta. Desmarcar a caixa, na mesma tela, apaga o registro; o “Apagar tudo” não mexe nele. Quem não marca não grava nada.</p>
+
+  <h2>4. Minerar de uma foto (opcional)</h2>
+  <p>A foto que você escolhe é enviada à API do Gemini, do Google, com a chave que você informou, para ler os trechos marcados. Nada passa por servidor do PerpetualMiner. O tratamento pelo Google segue os termos da API do Gemini.</p>
+
+  <h2>5. Conexão com o Anki (opcional)</h2>
+  <p>A Conexão com o Anki roda dentro do Anki, no seu computador. A extensão conversa com ela por <code>127.0.0.1</code> (o seu próprio computador), e essa conversa não sai da máquina. A Conexão guarda no seu computador, na pasta de dados do complemento, a fila de envios, o estado de cada cartão, os custos de cada envio (o valor gasto, sem o texto das frases), os registros do que aconteceu e as chaves. Os cartões vão para a sua coleção do Anki; se você sincroniza o Anki com o AnkiWeb, isso é por conta do Anki, não do PerpetualMiner.</p>
+  <h3>A chave da OpenAI</h3>
+  <p>Quem guarda a chave é a Conexão, num arquivo que só o seu usuário lê (em sistemas do tipo Unix; no Windows vale a permissão da pasta do Anki). Se você entrou com a conta Google, uma cópia vai também para a sua conta na nuvem, como descrito na seção 2.</p>
+  <h3>Para onde a Conexão envia dados ao criar um cartão</h3>
+  <p>É a Conexão, e não o PerpetualMiner, que fala com estes serviços, quando você pede um envio ao Anki:</p>
+  <div class="site-tabela">
+    <table>
+      <thead>
+        <tr><th>Serviço</th><th>O que recebe</th><th>Para quê</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>OpenAI</td>
+          <td>A frase, a palavra e o contexto (fonte, título do vídeo ou da página, detalhe); os termos da imagem; as imagens candidatas, para escolher a melhor; e, na Criação, a frase que você escreveu para corrigir. Com a chave, a cobrança vai para a sua conta na OpenAI. Com “Entrar com o ChatGPT”, os pedidos usam o seu plano; o login é feito no site da OpenAI e as credenciais ficam só no seu computador.</td>
+          <td>Escrever o texto do cartão, corrigir frases, escolher e gerar a imagem e, se o áudio do Google falhar ou você pedir para ouvir, falar o texto.</td>
+        </tr>
+        <tr>
+          <td>Google Tradutor</td>
+          <td>O texto da palavra e da frase, em pedaços curtos. O Google também vê o endereço IP do seu computador.</td>
+          <td>O áudio do cartão.</td>
+        </tr>
+        <tr>
+          <td>Openverse</td>
+          <td>Termos de busca derivados do cartão. O Openverse também vê o endereço IP do seu computador.</td>
+          <td>Procurar fotos reais com licença aberta para a imagem do cartão.</td>
+        </tr>
+        <tr>
+          <td>Sites que hospedam as fotos</td>
+          <td>O pedido de download da foto escolhida, que mostra o endereço IP do seu computador ao site que a hospeda.</td>
+          <td>Baixar a foto para o cartão.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>A Conexão também fala com outros serviços em outras situações: com a OpenAI, para conferir a chave que você cola e listar os modelos; com o Google Tradutor ou a OpenAI, para tocar o áudio no botão Ouvir e no quiz; com <code>auth.openai.com</code>, para entrar com o ChatGPT; com o Firestore, para guardar e buscar a cópia da chave da OpenAI da sua conta, usando a sessão da conta que a extensão lhe passa; e com o AnkiWeb, para ver se há versão nova da Conexão (ao abrir o Anki e a cada 6 horas, enquanto a atualização automática estiver ligada). Esses serviços tratam o que recebem segundo as políticas deles. O PerpetualMiner não recebe uma cópia.</p>
+  <p>A Conexão apaga sozinha, 30 dias depois de terminarem, os envios que já acabaram.</p>
+
+  <h2>6. O que o PerpetualMiner não faz</h2>
+  <ul>
+    <li>Não vende nem compartilha seus dados com terceiros, além dos serviços descritos acima, que só recebem o necessário para o recurso que você usou.</li>
+    <li>Não usa dados para publicidade, para avaliar crédito nem para qualquer fim alheio ao estudo de idiomas.</li>
+    <li>Não coleta histórico de navegação e não tem análise de uso nem rastreadores.</li>
+    <li>Não carrega código remoto: todo o código da extensão está no pacote instalado.</li>
+  </ul>
+
+  <h2>7. Por quanto tempo guardamos, e como apagar</h2>
+  <p>Os dados ficam até você apagá-los. Para isso você tem estes caminhos:</p>
+  <ul>
+    <li><strong>Apagar uma frase</strong>, no painel: tira a frase do navegador e, com conta, da nuvem.</li>
+    <li><strong>Apagar tudo</strong>, em Configurações › Zona de perigo: apaga todas as frases do navegador, da fila da Conexão e, com conta, da nuvem, em todos os computadores. Apaga também a chave da OpenAI, da Conexão e da sua conta. Os registros de frases apagadas (identificador e data) continuam, só para a exclusão valer em todos os computadores. Não apaga o seu registro no ranking, a chave do Gemini nem a sessão da conta. Os custos dos envios, que não trazem o texto das frases, ficam no seu computador.</li>
+    <li><strong>A chave do Gemini</strong> fica no navegador até você trocá-la, em Configurações, ou desinstalar a extensão. <strong>A chave da OpenAI</strong> pode ser apagada em Configurações. Apagar uma chave não a revoga: para desligá-la de verdade, revogue-a no site do serviço.</li>
+    <li><strong>Sair da conta</strong>: encerra a sessão neste computador. As frases continuam neste computador e na nuvem.</li>
+    <li><strong>Desmarcar o ranking</strong>, na tela do resultado do quiz de nível: apaga o seu registro do ranking.</li>
+    <li><strong>Desinstalar a extensão</strong>: apaga o que o navegador guarda dela. O que já está na nuvem e na Conexão fica até você usar “Apagar tudo”, por isso use-o antes de desinstalar.</li>
+  </ul>
+  <p>Para pedir a exclusão do registro da sua conta e de tudo o que estiver na nuvem, ou para pedir acesso ou correção dos seus dados, fale conosco pelo contato abaixo. Não escreva dados pessoais no pedido: diga só que quer apagar os dados, e combinamos como confirmar que a conta é sua.</p>
+
+  <h2>8. Crianças</h2>
+  <p>O PerpetualMiner não é dirigido a menores de 13 anos, e não coletamos dados de menores de 13 anos de propósito. Se você acha que uma criança entrou na conta, fale conosco para apagarmos os dados.</p>
+
+  <h2>9. Mudanças nesta política</h2>
+  <p>Quando esta política mudar, a data de “Última atualização” no topo muda junto. Se o uso dos dados do Google mudar, avisaremos as pessoas que usam o app antes de a mudança valer. As versões anteriores ficam no histórico do <a href="https://github.com/vinicius928e8r84/PerpetualMiner/commits/main/preview/site/privacidade.html">repositório</a>.</p>
+
+  <h2>10. Contato</h2>
+  <p>O responsável pelos dados é o dono do projeto PerpetualMiner (no GitHub, <code>vinicius928e8r84</code>). Por ora, o contato é a <a href="https://github.com/vinicius928e8r84/PerpetualMiner/issues">página de issues do repositório</a>. Um e-mail de contato será acrescentado a esta página.</p>
+</main>
+
+<footer class="site-rodape">
+  <p>PerpetualMiner · <a href="/sobre/">Sobre</a> · <a href="https://github.com/vinicius928e8r84/PerpetualMiner">GitHub</a></p>
+</footer>
+</body>
+</html>

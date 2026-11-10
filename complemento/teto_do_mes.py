@@ -68,7 +68,7 @@ class TetoDoMes:
         desde = datetime(primeiro.year, primeiro.month, 1).timestamp()
         total = 0.0
         with self.fila.tranca:
-            for item in self.fila.ordem():
+            for item in self.fila.envios_dos_custos():
                 arquivo = os.path.join(self.fila.pasta_dos_custos(item["jobId"]), "costs.jsonl")
                 try:
                     if os.path.getmtime(arquivo) < desde:
