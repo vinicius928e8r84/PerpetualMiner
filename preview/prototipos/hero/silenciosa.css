@@ -1,0 +1,171 @@
+/* Variante 1, Silenciosa. Eixo: o movimento, levado a quase zero.
+   O que se mexe: o botão cede ao toque (scale .97) e a cor responde ao ponteiro. Mais nada: a demonstração são três
+   quadros parados (antes, a tecla, depois), e o atalho de verdade acende a tecla e o quadro do resultado na hora.
+   Sem sombra, sem brilho, sem malha no fundo: fios de 1 px e a coluna do texto. */
+.landing:has(pm-hero-silenciosa) {
+  background-image: none;
+}
+
+.landing:has(pm-hero-silenciosa)::before {
+  display: none;
+}
+
+.ph-sil {
+  --ph-sil-tam-titulo: clamp(32px, 4.6vw, 48px);
+  --ph-sil-tam-secao: clamp(24px, 3vw, 32px);
+  box-sizing: border-box;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.ph-sil .ph-sil-chamada {
+  padding-top: 72px;
+}
+
+.ph-sil-selo {
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  color: var(--veio-muted);
+  margin: 0 0 20px;
+}
+
+.ph-sil h1 {
+  font-size: var(--ph-sil-tam-titulo);
+  letter-spacing: -.03em;
+  line-height: 1.1;
+  margin: 0 0 20px;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+
+.ph-sil h1 span {
+  color: var(--veio-accent-text);
+}
+
+.ph-sil-lead {
+  max-width: 60ch;
+  font-size: var(--site-tam-lead);
+  color: var(--veio-muted);
+  margin: 0;
+}
+
+.ph-sil-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 28px;
+  margin: 28px 0 16px;
+}
+
+/* O botão sem o degradê e sem o halo: a cor do ouro e mais nada. */
+.ph-sil .site-botao {
+  background: var(--veio-accent);
+  box-shadow: none;
+}
+
+.ph-sil-demo {
+  margin: 56px 0 0;
+}
+
+.ph-sil .ph-sil-como {
+  padding-top: 96px;
+}
+
+.ph-sil h2 {
+  font-size: var(--ph-sil-tam-secao);
+  overflow-wrap: break-word;
+}
+
+/* Os passos numa lista com fios: o número, o título e o texto na mesma linha de base. */
+.ph-sil-passos {
+  list-style: none;
+  counter-reset: passo;
+  margin: 32px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--veio-border);
+}
+
+.ph-sil-passos li {
+  counter-increment: passo;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 11fr) minmax(0, 20fr);
+  align-items: baseline;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--veio-border);
+}
+
+.ph-sil-passos li::before {
+  content: counter(passo);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-corpo);
+  font-variant-numeric: tabular-nums;
+  color: var(--veio-accent-text);
+}
+
+.ph-sil .ph-sil-passos h3 {
+  margin: 0;
+  overflow-wrap: break-word;
+}
+
+.ph-sil-passos p {
+  font-size: var(--veio-tam-card);
+  color: var(--veio-muted);
+  margin: 0;
+}
+
+.ph-sil-captura {
+  margin: 48px 0 0;
+}
+
+.ph-sil-captura img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+}
+
+.ph-sil-captura figcaption {
+  margin-top: 14px;
+  font-size: var(--veio-tam-corpo);
+  color: var(--veio-muted);
+}
+
+@media (max-width: 640px) {
+  .ph-sil .ph-sil-chamada {
+    padding-top: 36px;
+  }
+
+  .ph-sil .ph-sil-como {
+    padding-top: 72px;
+  }
+
+  .ph-sil-passos li {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .ph-sil-passos p {
+    grid-column: 2;
+  }
+
+}
+
+/* Na tela larga a captura do painel tem a janela dela, 16 por 10: uma captura refeita noutra proporção é cortada
+   pelo alto em vez de esticar a seção. No telefone a captura em pé é a de propósito, e fica inteira. */
+@media (min-width: 641px) {
+  .ph-sil-captura img {
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    object-position: 50% 0;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ph-sil .site-link:hover {
+    text-decoration-color: var(--veio-accent);
+  }
+}
+

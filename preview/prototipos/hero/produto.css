@@ -1,0 +1,445 @@
+/* Variante 4, Produto (a Produto-primeiro). Eixo: o modelo de interação.
+   A tela da extensão vem antes do título e é o visitante quem a opera: nada roda sozinho. O Como funciona são três
+   abas que trocam na hora.
+   O que se mexe: a resposta ao toque, a frase minerada entrando (no toque e na sequência; pelo teclado é na hora),
+   a cor da aba deslizando de uma para a outra e, enquanto ninguém tocou em nada, um convite discreto nas teclas. */
+.ph-pro {
+  --ph-pro-tam-titulo: clamp(30px, 3.5vw, 46px);
+  /* A cor da aba indo de uma à outra. */
+  --ph-pro-mov-aba: 250ms;
+  /* O convite das teclas: espera antes do primeiro, e de quanto em quanto tempo volta. */
+  --ph-pro-espera-convite: 2500ms;
+  --ph-pro-ciclo-convite: 6000ms;
+  box-sizing: border-box;
+  max-width: var(--site-largura);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* A tela primeiro, larga; o texto ao lado, mais estreito. No telefone, a tela em cima. */
+.ph-pro .ph-pro-chamada {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  align-items: center;
+  gap: 56px;
+  padding-top: 48px;
+}
+
+.ph-pro-janela {
+  margin: 0;
+  border: 1px solid var(--site-ouro-fio);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-surface);
+  box-shadow: var(--veio-sombra), 0 0 90px -30px color-mix(in srgb, var(--veio-accent) 55%, transparent);
+  overflow: hidden;
+}
+
+.ph-pro-tela {
+  position: relative;
+  overflow: hidden;
+}
+
+.ph-pro-tela img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.ph-pro-tela img:nth-of-type(2) {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+}
+
+.ph-pro-janela[data-minerada] .ph-pro-tela img:nth-of-type(2) {
+  opacity: 1;
+}
+
+.ph-pro-janela figcaption {
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--veio-border);
+}
+
+/* O que a frase vira depois do atalho: uma linha do histórico. O lugar dela existe sempre (vazio, tracejado), e a
+   frase e o aviso de vazio ocupam a mesma célula: minerar não muda a altura de nada. */
+.ph-pro-historico {
+  display: grid;
+  align-items: center;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--veio-border-strong);
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-bg);
+}
+
+.ph-pro-janela[data-minerada] .ph-pro-historico {
+  border-style: solid;
+  border-color: var(--site-ouro-fio);
+}
+
+.ph-pro-vazio,
+.ph-pro-resultado {
+  grid-area: 1 / 1;
+  margin: 0;
+}
+
+.ph-pro-vazio {
+  font-size: var(--veio-tam-corpo);
+  color: var(--veio-muted);
+}
+
+.ph-pro-janela[data-minerada] .ph-pro-vazio {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.ph-pro-resultado {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--veio-fonte-frase);
+  font-size: var(--veio-tam-frase);
+  line-height: var(--veio-altura-frase);
+  color: var(--veio-text);
+  opacity: 0;
+  visibility: hidden;
+}
+
+.ph-pro-resultado span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ph-pro-idioma {
+  flex: none;
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  color: var(--veio-accent-text);
+}
+
+.ph-pro-janela[data-minerada] .ph-pro-resultado {
+  opacity: 1;
+  visibility: visible;
+}
+
+.ph-pro-texto .site-selo {
+  margin-bottom: 18px;
+}
+
+.ph-pro h1 {
+  font-size: var(--ph-pro-tam-titulo);
+  letter-spacing: -.03em;
+  line-height: 1.08;
+  margin: 0 0 18px;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+
+.ph-pro-lead {
+  font-size: var(--veio-tam-destaque);
+  color: var(--veio-muted);
+  margin: 0;
+}
+
+.ph-pro-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 28px;
+  margin: 26px 0 16px;
+}
+
+/* O Como funciona: as abas e o painel do passo aberto. */
+.ph-pro .ph-pro-como {
+  padding-top: 120px;
+}
+
+.ph-pro .ph-pro-como h2 {
+  overflow-wrap: break-word;
+}
+
+.ph-pro-abas {
+  position: relative;
+  margin-top: 28px;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-selecao);
+  background: var(--veio-surface);
+}
+
+.ph-pro-lista {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+}
+
+.ph-aba {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 20px;
+  border: 0;
+  border-radius: var(--veio-raio-selecao);
+  background: none;
+  color: var(--veio-muted);
+  font: inherit;
+  font-size: var(--veio-tam-card);
+  font-weight: var(--veio-peso-rotulo);
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.ph-aba b {
+  font-family: var(--veio-fonte-mono);
+  font-weight: var(--veio-peso-num);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A mesma lista, acesa, por cima da outra e recortada na aba aberta: o fundo e a letra mudam juntos porque são
+   uma coisa só sendo descoberta, não duas cores andando cada uma no seu tempo. */
+.ph-pro-lista--acesa {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ph-pro-lista--acesa .ph-aba {
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+}
+
+.ph-pro-painel {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  align-items: center;
+  gap: 56px;
+  margin-top: 28px;
+}
+
+.ph-pro-painel[hidden] {
+  display: none;
+}
+
+.ph-pro-painel:focus-visible {
+  outline-offset: 8px;
+}
+
+.ph-pro-vista {
+  margin: 0;
+  min-width: 0;
+}
+
+/* A janela de cada passo é a mesma, 16 por 10; a captura dentro dela para no trecho que o passo conta. */
+.ph-pro-recorte {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-surface);
+}
+
+.ph-pro-recorte img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: auto;
+  transform-origin: 0 0;
+}
+
+/* O popup, na lista das últimas mineradas: é para onde a frase vai. */
+.ph-pro-recorte.ph-pro-recorte--popup img {
+  left: 50%;
+  width: min(100%, 400px);
+  transform: translate(-50%, -52%);
+}
+
+/* O painel, no plano que o passo conta. O plano vem escrito com a captura (conteudo.js), em --plano. */
+.ph-pro-recorte img {
+  transform: var(--plano, none);
+}
+
+.ph-pro-recorte .ph-sem-captura {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.ph-pro-vista figcaption {
+  margin-top: 12px;
+  font-size: var(--veio-tam-corpo);
+  color: var(--veio-muted);
+}
+
+.ph-pro .ph-pro-passo h3 {
+  font-size: var(--veio-tam-hero);
+  font-weight: var(--veio-peso-display);
+  letter-spacing: var(--veio-tracking-display);
+  line-height: 1.2;
+  margin: 0 0 12px;
+  overflow-wrap: break-word;
+}
+
+.ph-pro-passo p {
+  color: var(--veio-muted);
+  margin: 0;
+}
+
+.ph-pro-etapas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  counter-reset: etapa;
+  margin: 20px 0 0;
+  padding: 0;
+}
+
+.ph-pro-etapas li {
+  counter-increment: etapa;
+  margin: 0;
+  padding: 3px 10px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-surface-2);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  color: var(--veio-text);
+}
+
+.ph-pro-etapas li::before {
+  content: counter(etapa) " ";
+  content: counter(etapa) " " / "";
+  color: var(--veio-accent-text);
+}
+
+@media (max-width: 900px) {
+  .ph-pro .ph-pro-chamada {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 36px;
+    padding-top: 24px;
+  }
+
+  .ph-pro .ph-pro-como {
+    padding-top: 88px;
+  }
+
+  .ph-pro-abas {
+    width: auto;
+  }
+
+  .ph-aba {
+    padding: 8px 6px;
+  }
+
+  .ph-pro-painel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ph-aba:hover {
+    color: var(--veio-text);
+  }
+
+  .ph-pro .site-link:hover {
+    text-decoration-color: var(--veio-accent);
+  }
+
+  .ph-pro .site-botao:hover .site-seta {
+    transform: translateX(3px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ph-aba {
+    transition: transform var(--veio-transicao) var(--veio-curva-saida), color var(--veio-transicao) ease;
+  }
+
+  button.ph-aba:active {
+    transform: scale(.97);
+  }
+
+  /* O recorte anda de uma aba à outra: já está na tela e se move nela, então vaivém. Só depois da primeira pintura. */
+  .ph-pro-lista--acesa[data-pronta] {
+    transition: clip-path var(--ph-pro-mov-aba) var(--site-curva-vaivem);
+  }
+
+  /* No toque e na sequência, a captura de depois entra por cima e a linha do histórico sobe um pouco. Pelo teclado, nada disso:
+     quem aperta o atalho de verdade vê tudo no lugar na hora, como na extensão. */
+  .ph-pro-janela[data-origem="toque"] .ph-pro-tela img:nth-of-type(2),
+  .ph-pro-janela[data-origem="auto"] .ph-pro-tela img:nth-of-type(2) {
+    transition: opacity var(--ph-mov-minerar) var(--veio-curva-saida);
+  }
+
+  .ph-pro-janela:not([data-minerada]) .ph-pro-resultado {
+    transform: translateY(6px);
+  }
+
+  /* A linha do histórico vem depois da tela, não junto: primeiro a frase é minerada no vídeo, depois ela chega ao
+     histórico. Uma coisa de cada vez, na ordem em que acontecem. */
+  .ph-pro-janela[data-origem="toque"] .ph-pro-resultado,
+  .ph-pro-janela[data-origem="auto"] .ph-pro-resultado {
+    transition:
+      opacity var(--ph-mov-volta) var(--veio-curva-saida) var(--ph-mov-minerar),
+      transform var(--ph-mov-volta) var(--veio-curva-saida) var(--ph-mov-minerar),
+      visibility 0s var(--ph-mov-minerar);
+  }
+
+  /* O aviso de vazio sai enquanto a frase entra, no mesmo tempo: é uma troca no mesmo lugar. */
+  .ph-pro-janela[data-origem="toque"] .ph-pro-vazio,
+  .ph-pro-janela[data-origem="auto"] .ph-pro-vazio {
+    transition: opacity var(--ph-mov-volta) var(--veio-curva-saida) var(--ph-mov-minerar), visibility 0s calc(var(--ph-mov-volta) + var(--ph-mov-minerar));
+  }
+
+  .ph-pro-janela[data-origem="volta"] .ph-pro-tela img:nth-of-type(2),
+  .ph-pro-janela[data-origem="volta"] .ph-pro-resultado {
+    transition: opacity var(--ph-mov-volta) var(--veio-curva-saida), visibility 0s var(--ph-mov-volta);
+  }
+
+  .ph-pro-janela[data-origem="volta"] .ph-pro-vazio {
+    transition: opacity var(--ph-mov-volta) var(--veio-curva-saida);
+  }
+
+  /* O convite: enquanto ninguém usou a demonstração, um anel sai das teclas, espera e sai de novo. São três vezes e
+     chega; no primeiro uso, para na hora. */
+  .ph-pro .ph-teclas {
+    position: relative;
+  }
+
+  .ph-pro .ph-teclas::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border: 1px solid var(--veio-accent);
+    border-radius: inherit;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .ph-pro:not(:has(.ph-pro-janela[data-origem])) .ph-teclas::after {
+    animation: ph-pro-convite var(--ph-pro-ciclo-convite) var(--veio-curva-saida) var(--ph-pro-espera-convite) 3;
+  }
+}
+
+/* O anel ocupa o primeiro sexto do ciclo; no resto, espera. */
+@keyframes ph-pro-convite {
+  0% { opacity: .9; transform: scale(1); }
+  16% { opacity: 0; transform: scale(1.18, 1.5); }
+  100% { opacity: 0; transform: scale(1.18, 1.5); }
+}

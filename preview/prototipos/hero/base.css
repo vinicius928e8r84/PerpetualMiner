@@ -1,0 +1,418 @@
+/* O protótipo da chamada: o que as quatro variantes dividem. A página empresta a Veio e as folhas da landing de hoje
+   (/site/site.css e /site/landing.css) para as variantes nascerem dentro do produto; a produção não pede nada daqui.
+   Cada variante tem a sua folha (silenciosa.css, editorial.css, cinema.css, produto.css) e só mexe no que está dentro
+   do elemento dela. */
+
+/* O piso de uma página que se abre no telefone: sem o clarão cinza no toque (cada coisa tocável tem o seu :active),
+   sem letra inflada no telefone deitado. */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* O palco ocupa a largura toda: a variante decide a coluna dela. */
+.landing main.ph-principal {
+  max-width: none;
+  padding: 0;
+}
+
+.ph-coluna {
+  box-sizing: border-box;
+  max-width: var(--site-largura);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+#stage {
+  /* Guarda a altura da primeira tela enquanto o palco está vazio entre uma variante e outra: o resto da página não pula. */
+  min-height: 100svh;
+}
+
+#stage > * {
+  display: block;
+}
+
+/* Controles não são texto: o toque demorado não seleciona o rótulo nem abre o menu do link, e o toque duplo não dá zoom neles. */
+.ph-teclas,
+.ph-repetir,
+.ph-aba,
+#stage .site-botao {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.landing .site-topo a,
+#stage .site-link {
+  touch-action: manipulation;
+}
+
+/* Sem o clarão do navegador, o link responde ao toque com a cor, na hora em que o dedo desce. */
+.landing .site-topo nav a:active,
+#stage .site-link:active {
+  color: var(--veio-accent-text);
+}
+
+/* Em 320 px o botão de instalar cabe numa linha só: a seta, que é enfeite, cede o lugar. */
+@media (max-width: 380px) {
+  #stage .site-botao {
+    padding-inline: 20px;
+  }
+
+  #stage .site-seta {
+    display: none;
+  }
+}
+
+/* O comando da demonstração: as teclas, a legenda da etapa de agora e o Repetir. Com um atalho de quatro teclas, ou
+   numa tela de 320 px, a legenda desce para a linha de baixo em vez de se espremer numa coluna de uma palavra. */
+.ph-comando {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  font-size: var(--veio-tam-corpo);
+  line-height: 1.45;
+  color: var(--veio-muted);
+}
+
+.ph-legenda {
+  flex: 1 1 18ch;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--veio-tam-card);
+}
+
+/* "2/3": em que etapa a demonstração está. Algarismos de largura fixa, para a legenda não dançar quando o número muda. */
+.ph-legenda b,
+.ph-quadro b {
+  margin-right: 6px;
+  font-family: var(--veio-fonte-mono);
+  font-weight: var(--veio-peso-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--veio-accent-text);
+  white-space: nowrap;
+}
+
+[data-etapa="tecla"] .ph-legenda,
+[data-minerada] .ph-legenda {
+  color: var(--veio-text);
+}
+
+/* O Repetir, sempre à vista ao lado da legenda: refaz a sequência do começo. */
+.ph-repetir {
+  flex: none;
+  min-height: 36px;
+  margin: 0 0 0 auto;
+  padding: 6px 14px;
+  border: 1px solid var(--veio-border-strong);
+  border-radius: var(--veio-raio-pilula);
+  background: transparent;
+  color: var(--veio-text);
+  font: inherit;
+  font-weight: var(--veio-peso-rotulo);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--veio-transicao) var(--veio-curva-saida), border-color var(--veio-transicao) ease;
+}
+
+.ph-repetir::before {
+  content: "↻";
+  content: "↻" / "";
+  margin-right: 6px;
+  color: var(--veio-accent-text);
+}
+
+.ph-repetir:active {
+  transform: scale(.97);
+}
+
+/* No dedo, o alvo tem a altura que o dedo pede. */
+@media (pointer: coarse) {
+  .ph-repetir {
+    min-height: 44px;
+  }
+}
+
+/* A etapa da tecla, na sequência: as teclas acendem e ganham um halo. Estado, não animação: liga e desliga na hora. */
+[data-etapa="tecla"] .ph-teclas {
+  border-color: var(--veio-accent);
+  box-shadow: 0 0 0 4px var(--veio-accent-soft);
+}
+
+.landing [data-etapa="tecla"] .ph-teclas kbd {
+  border-color: var(--veio-accent);
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+}
+
+/* As teclas grandes por cima da captura, na etapa da tecla, no lugar em que o aviso da extensão vai aparecer (a
+   base delas fica onde termina o aviso, 72% da altura da captura inteira, sem cobrir a legenda do vídeo): o olho já
+   está ali quando o resultado chega. Só na sequência; quem apertou o atalho de verdade não precisa delas. */
+.ph-tecla-na-tela {
+  position: absolute;
+  top: var(--ph-tecla-topo, 72%);
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: 92%;
+  padding: 10px 12px;
+  border: 1px solid var(--veio-accent);
+  border-radius: var(--veio-raio-card);
+  background: var(--site-vidro);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+  box-shadow: var(--veio-sombra);
+  font-size: var(--veio-tam-modal);
+  opacity: 0;
+  transform: translate(-50%, -100%) scale(.96);
+  transform-origin: 50% 100%;
+  pointer-events: none;
+}
+
+.landing .ph-tecla-na-tela kbd {
+  padding: 4px 12px;
+  border-color: var(--veio-accent);
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+  font-weight: var(--veio-peso-num);
+}
+
+[data-etapa="tecla"][data-origem="auto"] .ph-tecla-na-tela {
+  opacity: 1;
+  transform: translate(-50%, -100%);
+}
+
+/* Numa captura pequena as teclas encolhem com ela. */
+@media (max-width: 640px) {
+  .ph-tecla-na-tela {
+    gap: 6px;
+    padding: 6px 8px;
+    font-size: var(--veio-tam-destaque);
+  }
+
+  .landing .ph-tecla-na-tela kbd {
+    padding: 2px 9px;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .ph-tecla-na-tela {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--veio-surface);
+  }
+}
+
+/* O anel de ouro que acende na captura quando a frase é minerada (comum.js o acende e apaga). */
+.ph-anel {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px var(--veio-accent), inset 0 0 64px color-mix(in srgb, var(--veio-accent) 35%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* As três etapas paradas, lado a lado: antes, a tecla, depois. É a demonstração da Silenciosa e, com "menos
+   movimento", a de todas: nada depende do tempo, tudo está na tela para ser lido. */
+.ph-quadros {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px 20px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ph-quadro {
+  min-width: 0;
+  margin: 0;
+}
+
+.ph-quadro img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+}
+
+.ph-quadro p {
+  margin: 10px 0 0;
+  font-size: var(--veio-tam-corpo);
+  line-height: 1.45;
+  color: var(--veio-muted);
+}
+
+.ph-quadro--tecla {
+  display: grid;
+  justify-items: center;
+  max-width: 22ch;
+  text-align: center;
+}
+
+/* O quadro do resultado, quando o atalho de verdade é apertado: a borda e a legenda acendem, na hora. */
+[data-minerada] .ph-quadro--resultado img {
+  border-color: var(--veio-accent);
+}
+
+[data-minerada] .ph-quadro--resultado p {
+  color: var(--veio-text);
+}
+
+/* Em tira: as miniaturas de apoio de uma tela que já está grande na página. */
+.ph-quadros--tira {
+  grid-template-columns: minmax(0, 180px) auto minmax(0, 180px);
+  justify-content: start;
+  align-items: start;
+  flex: 1 1 100%;
+}
+
+.ph-quadros--tira .ph-quadro img {
+  border-radius: var(--veio-raio-input);
+}
+
+.ph-quadros--tira .ph-quadro p {
+  font-size: var(--veio-tam-apoio);
+}
+
+@media (max-width: 640px) {
+  .ph-quadros,
+  .ph-quadros--tira {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* A tecla e a legenda dela na mesma linha; com um atalho de quatro teclas, a legenda desce. */
+  .ph-quadro--tecla {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 12px;
+    max-width: none;
+    text-align: left;
+  }
+
+  .ph-quadro--tecla p {
+    flex: 1 1 14ch;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .ph-quadros--tira .ph-quadro img {
+    max-width: 220px;
+  }
+}
+
+/* O botão com as teclas do atalho. É o atalho de verdade no teclado e o lugar de tocar no telefone. */
+.ph-teclas {
+  display: inline-flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  max-width: 100%;
+  gap: 4px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-surface);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: transform var(--veio-transicao) var(--veio-curva-saida), border-color var(--veio-transicao) ease;
+}
+
+.ph-teclas:active {
+  transform: scale(.97);
+}
+
+.ph-teclas kbd {
+  min-width: 1.4em;
+  padding: 3px 9px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* A tecla embaixo: muda na hora em que desce, sem transição. É resposta, não animação. */
+.landing kbd[data-embaixo],
+.ph-teclas:active kbd {
+  border-color: var(--veio-accent);
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+}
+
+/* O atalho no meio do texto não se parte dentro de uma tecla; entre uma tecla e outra, só no <wbr> depois do +. */
+.ph-atalho {
+  white-space: nowrap;
+}
+
+/* O lugar de uma captura que não carregou: o texto que a descreve, no espaço que seria dela. */
+.ph-sem-captura {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 20px;
+  font-size: var(--veio-tam-corpo);
+  color: var(--veio-muted);
+}
+
+/* O rótulo do botão que não cabe numa linha quebra centrado, para a pílula continuar inteira. */
+#stage .site-botao {
+  justify-content: center;
+  text-align: center;
+}
+
+/* Quem lê a tela ouve o estado da demonstração; quem vê, vê onde a variante o mostra. */
+.ph-so-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ph-teclas:hover,
+  .ph-repetir:hover {
+    border-color: var(--veio-accent);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* As teclas na tela entram depressa (aparecem e assentam) e saem mais depressa ainda, quando o resultado chega. */
+  .ph-tecla-na-tela {
+    transition: opacity var(--veio-transicao) var(--veio-curva-saida), transform var(--veio-transicao) var(--veio-curva-saida);
+  }
+
+  [data-etapa="tecla"][data-origem="auto"] .ph-tecla-na-tela {
+    transition-duration: var(--ph-mov-volta);
+  }
+}
+
+/* O vizinho de baixo, para as variantes serem julgadas com a página em volta: a seção seguinte da landing, parada. */
+.ph-vizinho {
+  padding-bottom: 160px;
+}
+
+/* Os tempos próprios do protótipo, ao lado dos da landing (--site-mov-…, em /site/landing.css). */
+.landing {
+  /* A demonstração voltando ao começo (no Repetir), e as coisas pequenas que aparecem: a linha do histórico, as teclas na tela. */
+  --ph-mov-volta: 200ms;
+  /* A captura de depois entrando por cima da de antes: o mesmo tempo que a landing de hoje usa. */
+  --ph-mov-minerar: 320ms;
+  /* O anel de ouro que acende e apaga. */
+  --ph-mov-anel: 900ms;
+}
+
+@keyframes ph-aparecer {
+  from { opacity: 0; }
+}

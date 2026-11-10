@@ -113,7 +113,7 @@ const TITULOS = {
   'auditoria/auditoria-front.html': 'Auditoria do front',
 };
 
-function capa({ telas, prototipos, temVitrine, temVeio, git }) {
+function capa({ telas, prototipos, temVitrine, temVeio, temPrototiposDaLanding, git }) {
   const linha = (href, titulo, detalhe) =>
     `      <li><a href="${href}"><span>${titulo}</span><small>${detalhe}</small></a></li>`;
 
@@ -166,7 +166,7 @@ ${temVeio ? '    <img class="veio-marca" src="/veio/icones/icone.svg" width="40"
   <ul>
 ${linha('/sobre/', 'PerpetualMiner: a landing do app', 'o que é, como funciona e como instalar')}
 ${linha('/privacidade/', 'Política de privacidade', 'também em /privacy')}
-  </ul>
+${temPrototiposDaLanding ? `${linha('/prototipos/hero/', 'Protótipo da landing: a chamada e o Como funciona, em quatro variantes', 'teclas 1 a 4 trocam, R repete')}\n` : ''}  </ul>
 
   <h2>Telas da extensão</h2>
   <div class="aviso">Fora do Chrome não existe <code>chrome.*</code>, então o preview injeta um simulador com dados de exemplo: o visual é o de verdade, o conteúdo é inventado e o que depende do navegador (login, atalho, envio ao Anki) não funciona.</div>
@@ -256,6 +256,10 @@ async function montar() {
     }
   }
 
+  // Os protótipos da landing (preview/prototipos/), cada um na sua pasta: páginas à parte, que a landing não pede.
+  const temPrototiposDaLanding = await existe(path.join(RAIZ, 'preview', 'prototipos'));
+  if (temPrototiposDaLanding) await copiar(path.join(RAIZ, 'preview', 'prototipos'), path.join(DESTINO, 'prototipos'));
+
   const prototipos = await acharPrototipos();
   if (prototipos.length) await copiar(path.join(RAIZ, 'docs', 'design'), path.join(DESTINO, 'design'));
 
@@ -265,7 +269,7 @@ async function montar() {
     process.env.VERCEL_GIT_COMMIT_MESSAGE && process.env.VERCEL_GIT_COMMIT_MESSAGE.split('\n')[0],
   ].filter(Boolean).join(' · ') || 'build local';
 
-  await fs.writeFile(path.join(DESTINO, 'index.html'), capa({ telas, prototipos, temVitrine, temVeio, git }));
+  await fs.writeFile(path.join(DESTINO, 'index.html'), capa({ telas, prototipos, temVitrine, temVeio, temPrototiposDaLanding, git }));
 
   console.log(`preview montado em ${path.relative(process.cwd(), DESTINO)}`);
   console.log(`  telas: ${telas.map(t => t.arquivo).join(', ') || 'nenhuma'}`);

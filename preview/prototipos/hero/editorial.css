@@ -1,0 +1,380 @@
+/* Variante 2, Editorial. Eixo: a tipografia.
+   A frase minerada é a imagem da chamada, composta grande; o título ocupa a largura toda; fios e legendas em mono
+   fazem o resto. O que se mexe: a chamada entra em três tempos (título, texto, espécime), a linha de ouro se risca
+   por baixo da frase quando o atalho é apertado, e cada capítulo do Como funciona entra uma vez ao rolar. */
+.landing:has(pm-hero-editorial) {
+  background-image: none;
+}
+
+.landing:has(pm-hero-editorial)::before {
+  display: none;
+}
+
+.ph-edi {
+  --ph-edi-tam-titulo: clamp(40px, 8.4vw, 112px);
+  --ph-edi-tam-frase: clamp(26px, 3.7vw, 50px);
+  --ph-edi-tam-numero: clamp(56px, 9vw, 128px);
+  --ph-edi-tam-capitulo: clamp(22px, 2.4vw, 30px);
+  box-sizing: border-box;
+  max-width: var(--site-largura);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.ph-edi .ph-edi-chamada {
+  padding-top: 56px;
+}
+
+/* O cabeço da página, como o de uma revista: o nome de um lado, o assunto do outro, um fio por baixo. */
+.ph-edi-cabeco {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 24px;
+  margin: 0 0 40px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--veio-border);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  letter-spacing: var(--veio-tracking-legenda);
+  text-transform: uppercase;
+  color: var(--veio-muted);
+}
+
+.ph-edi h1 {
+  font-size: var(--ph-edi-tam-titulo);
+  letter-spacing: -.045em;
+  line-height: .98;
+  margin: 0;
+  overflow-wrap: break-word;
+}
+
+.ph-edi-grade {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 64px;
+  margin-top: 64px;
+  padding-top: 28px;
+  border-top: 1px solid var(--veio-border);
+}
+
+.ph-edi-lead {
+  font-size: var(--site-tam-lead);
+  color: var(--veio-muted);
+  margin: 0;
+}
+
+.ph-edi-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 28px;
+  margin: 28px 0 16px;
+}
+
+/* O espécime: a frase composta como numa página de tipos. */
+.ph-edi-especime {
+  margin: 0;
+  min-width: 0;
+}
+
+.ph-edi-fonte,
+.ph-edi-fig p,
+.ph-edi-prancha figcaption {
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  line-height: 1.6;
+  color: var(--veio-muted);
+  margin: 0;
+}
+
+.ph-edi-fonte {
+  letter-spacing: var(--veio-tracking-legenda);
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.ph-edi-fig b,
+.ph-edi-prancha b {
+  margin-right: 8px;
+  font-weight: var(--veio-peso-num);
+  color: var(--veio-accent-text);
+  white-space: nowrap;
+}
+
+.ph-edi-frase {
+  position: relative;
+  margin: 14px 0 0;
+}
+
+.ph-edi-frase p {
+  font-family: var(--veio-fonte-frase);
+  font-size: var(--ph-edi-tam-frase);
+  font-weight: var(--veio-peso-titulo);
+  letter-spacing: -.02em;
+  line-height: 1.22;
+  margin: 0;
+  /* Uma palavra de vinte letras não cabe numa linha estreita: quebra no meio, e só quando não há outro jeito. */
+  overflow-wrap: anywhere;
+}
+
+/* A frase está escrita duas vezes, uma em cima da outra: a de baixo crua, a de cima minerada (a linha de ouro e a
+   palavra grifada). Minerar é descobrir a de cima da esquerda para a direita, e assim o risco e o grifo andam juntos. */
+.ph-edi-frase mark {
+  padding: 0;
+  background: none;
+  color: inherit;
+}
+
+.ph-edi-frase .ph-edi-frase-minerada {
+  position: absolute;
+  inset: 0;
+  text-decoration: underline;
+  text-decoration-color: var(--veio-accent);
+  text-decoration-thickness: .07em;
+  text-underline-offset: .16em;
+  clip-path: inset(0 100% -.3em 0);
+}
+
+.ph-edi-frase-minerada mark {
+  color: var(--veio-accent-text);
+}
+
+.ph-edi-especime[data-minerada] .ph-edi-frase-minerada {
+  clip-path: inset(0 0 -.3em 0);
+}
+
+.ph-edi-especime figcaption {
+  margin-top: 28px;
+}
+
+/* A Fig. 1: a tela de verdade, pequena, ao lado da frase que ela mostra. */
+.ph-edi-fig {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  align-items: end;
+  gap: 16px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--veio-border);
+}
+
+.ph-edi-fig-tela {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-input);
+}
+
+.ph-edi-fig-tela img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.ph-edi-fig-tela img + img {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+}
+
+.ph-edi-especime[data-minerada] .ph-edi-fig-tela img + img {
+  opacity: 1;
+}
+
+/* O Como funciona, em capítulos: o número enorme, o texto e a prancha. */
+.ph-edi .ph-edi-como {
+  padding-top: 140px;
+}
+
+.ph-edi-cabeca {
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--veio-border);
+}
+
+.ph-edi .ph-edi-cabeca h2 {
+  max-width: 18ch;
+  margin: 0;
+  overflow-wrap: break-word;
+}
+
+.ph-edi-capitulos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ph-edi-capitulo {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 4fr) minmax(0, 6fr);
+  align-items: start;
+  gap: 32px;
+  margin: 0;
+  padding: 48px 0;
+  border-bottom: 1px solid var(--veio-border);
+}
+
+.ph-edi-numero {
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--ph-edi-tam-numero);
+  font-weight: var(--veio-peso-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.06em;
+  line-height: .8;
+  color: var(--veio-accent-text);
+}
+
+.ph-edi .ph-edi-corpo h3 {
+  font-size: var(--ph-edi-tam-capitulo);
+  font-weight: var(--veio-peso-display);
+  letter-spacing: -.02em;
+  line-height: 1.15;
+  margin: 0 0 14px;
+  overflow-wrap: break-word;
+}
+
+.ph-edi-corpo p {
+  max-width: 44ch;
+  color: var(--veio-muted);
+  margin: 0;
+}
+
+.ph-edi-prancha {
+  margin: 0;
+  min-width: 0;
+}
+
+/* As pranchas têm todas a mesma janela, 4 por 3; o que muda é o trecho da captura que cada uma mostra. */
+.ph-edi-prancha img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+}
+
+.ph-edi-prancha--2 img {
+  object-position: 50% 100%;
+}
+
+.ph-edi-prancha--3 img {
+  object-position: 50% 62%;
+}
+
+.ph-edi-prancha figcaption {
+  margin-top: 12px;
+}
+
+@media (max-width: 860px) {
+  .ph-edi .ph-edi-chamada {
+    padding-top: 28px;
+  }
+
+  /* Letra menor pede menos aperto entre as letras. */
+  .ph-edi h1 {
+    letter-spacing: -.035em;
+    line-height: 1.02;
+  }
+
+  .ph-edi-cabeco {
+    margin-bottom: 28px;
+  }
+
+  .ph-edi-grade {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 48px;
+    margin-top: 36px;
+  }
+
+  .ph-edi .ph-edi-como {
+    padding-top: 88px;
+  }
+
+  .ph-edi-capitulo {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    padding: 36px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .ph-edi-fig {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ph-edi .site-link:hover {
+    text-decoration-color: var(--veio-accent);
+  }
+
+  .ph-edi .site-botao:hover .site-seta {
+    transform: translateX(3px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* A chamada entra uma vez: o título puxa, o texto e o espécime seguem, com o intervalo encolhendo. O cabeço só aparece. */
+  .ph-edi h1 {
+    animation: ph-edi-titulo var(--site-mov-entrada) var(--veio-curva-saida) both;
+  }
+
+  .ph-edi-cabeco {
+    animation: ph-aparecer var(--site-mov-enfeite) var(--veio-curva-saida) both;
+  }
+
+  .ph-edi-texto {
+    animation: ph-edi-apoio var(--site-mov-apoio) var(--veio-curva-saida) 90ms both;
+  }
+
+  .ph-edi-especime {
+    animation: ph-edi-apoio var(--site-mov-apoio) var(--veio-curva-saida) 150ms both;
+  }
+
+  /* O risco: a frase minerada se descobre da esquerda para a direita. Já está na tela e se move nela: vaivém.
+     Pelo teclado não há transição nenhuma (regra abaixo, fora deste bloco, vale sempre). */
+  .ph-edi-especime[data-origem="auto"] .ph-edi-frase-minerada,
+  .ph-edi-especime[data-origem="toque"] .ph-edi-frase-minerada {
+    transition: clip-path var(--site-mov-entrada) var(--site-curva-vaivem);
+  }
+
+  .ph-edi-especime[data-origem="auto"] .ph-edi-fig-tela img + img,
+  .ph-edi-especime[data-origem="toque"] .ph-edi-fig-tela img + img {
+    transition: opacity var(--ph-mov-minerar) var(--veio-curva-saida) 280ms;
+  }
+
+  /* A volta ao começo, sozinha: some junto, mais depressa do que entrou. */
+  .ph-edi-especime[data-origem="volta"] .ph-edi-frase-minerada {
+    opacity: 0;
+    transition: opacity var(--ph-mov-volta) var(--veio-curva-saida), clip-path 0s var(--ph-mov-volta);
+  }
+
+  .ph-edi-especime[data-origem="volta"] .ph-edi-fig-tela img + img {
+    transition: opacity var(--ph-mov-volta) var(--veio-curva-saida);
+  }
+
+  /* Cada capítulo entra inteiro, uma vez: uma entrada por caixa, sem escalonar o que está dentro. */
+  .ph-edi-capitulo[data-revelar] {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity var(--site-mov-entrada) var(--veio-curva-saida), transform var(--site-mov-entrada) var(--veio-curva-saida);
+  }
+
+  .ph-edi-capitulo[data-visivel] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ph-edi-titulo {
+  from { opacity: 0; transform: translateY(14px); }
+}
+
+@keyframes ph-edi-apoio {
+  from { opacity: 0; transform: translateY(8px); }
+}

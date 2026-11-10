@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protótipo · a chamada e o Como funciona da landing, em quatro variantes</title>
+<meta name="description" content="Quatro variantes da chamada e do bloco Como funciona da landing do PerpetualMiner, atrás de um seletor: Silenciosa, Editorial, Cinema e Produto. Página de protótipo, fora da landing publicada.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#121110">
+<link rel="icon" href="/veio/icones/icone.svg" type="image/svg+xml">
+<link rel="preload" href="/veio/fontes/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/veio/tokens.css">
+<link rel="stylesheet" href="/site/site.css">
+<link rel="stylesheet" href="/site/landing.css">
+<link rel="stylesheet" href="/site/landing-secoes.css">
+<link rel="stylesheet" href="/prototipos/hero/base.css">
+<link rel="stylesheet" href="/prototipos/hero/silenciosa.css">
+<link rel="stylesheet" href="/prototipos/hero/editorial.css">
+<link rel="stylesheet" href="/prototipos/hero/cinema.css">
+<link rel="stylesheet" href="/prototipos/hero/produto.css">
+<link rel="stylesheet" href="/prototipos/hero/seletor.css">
+</head>
+<!-- O protótipo da chamada (hero) e do bloco "Como funciona" da nova landing, pela skill emil-prototype: quatro
+     variantes de verdade atrás do seletor (o pill escuro lá embaixo, copiado de PICKER.md sem mexer). Uma variante de
+     cada vez, do tamanho real, com o topo da landing em cima e a seção seguinte embaixo. Nada da produção pede esta
+     pasta; escolhida a variante, ela vai para preview/site/ e esta pasta é apagada. Como ler: LEIA-ME.md. -->
+<body class="landing">
+<a class="site-pular" href="#conteudo">Pular para o conteúdo</a>
+<header class="site-topo">
+  <a class="site-marca" href="/sobre/">
+    <img class="veio-marca" src="/veio/icones/icone.svg" width="40" height="40" alt="">
+    <span class="veio-nome">Perpetual<b>Miner</b></span>
+  </a>
+  <nav aria-label="Páginas">
+    <a href="#como-funciona">Como funciona</a>
+    <a href="/sobre/#no-anki">No Anki</a>
+    <a href="/sobre/#instalar">Instalar</a>
+    <a href="/privacidade/">Privacidade</a>
+  </nav>
+</header>
+
+<main id="conteudo" class="ph-principal">
+  <div id="stage"></div>
+
+  <section id="o-que-minera" class="ph-coluna ph-vizinho" aria-labelledby="o-que-minera-titulo">
+    <p class="site-sobretitulo">O que ele minera</p>
+    <h2 id="o-que-minera-titulo">Do vídeo, da página e do livro de papel</h2>
+    <ul class="mosaico">
+      <li class="site-cartao mosaico-largo">
+        <h3>Legendas de vídeo</h3>
+        <p>O atalho guarda a linha que está na tela. Há leitores próprios para cinco players; nos outros, a extensão procura a legenda sobre o vídeo.</p>
+        <p class="site-fichas"><span>YouTube</span><span>Netflix</span><span>Prime Video</span><span>Max</span><span>Kinopoisk</span></p>
+      </li>
+      <li class="site-cartao">
+        <h3>Texto selecionado</h3>
+        <p>Em qualquer página ou PDF: selecione o trecho e use o botão direito › Minerar com PerpetualMiner. Quem prefere grava um atalho só para isso.</p>
+      </li>
+    </ul>
+  </section>
+</main>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">Silenciosa</button>
+  <button class="proto-picker-item">Editorial</button>
+  <button class="proto-picker-item">Cinema</button>
+  <button class="proto-picker-item">Produto ★</button>
+  <span class="proto-picker-divider" aria-hidden="true"></span>
+  <button class="proto-picker-item proto-picker-replay" aria-label="Replay animation (R)">↻</button>
+</nav>
+
+<div class="proto-dados" role="group" aria-label="Dataset">
+  <button type="button" data-dados="demo" aria-pressed="true">Demo data</button>
+  <button type="button" data-dados="worst" aria-pressed="false">Worst case</button>
+  <button type="button" data-dados="short" aria-pressed="false">Short</button>
+</div>
+
+<!-- A ficha da variante que está no palco: o eixo, o que se mexe e o que não, quando é a certa e o que custa.
+     Fechada por padrão, para não entrar na frente do que se julga. A ★ do seletor é a recomendada, e a ficha diz por quê. -->
+<details class="proto-ficha">
+  <summary>Sobre esta variante</summary>
+  <div data-ficha="pm-hero-silenciosa">
+    <p><b>Silenciosa</b> · eixo: o movimento, levado a quase zero.</p>
+    <p><i>Mexe:</i> o botão cede ao toque e a cor responde ao ponteiro. Mais nada.</p>
+    <p><i>Não mexe:</i> nada entra, nada roda sozinho. A demonstração são três quadros parados (antes, a tecla, depois); o Alt+S de verdade acende a tecla e o resultado na hora.</p>
+    <p><i>É a certa quando</i> a página é lida com pressa, como ferramenta. <i>Custa:</i> é a menos memorável, e o produto não acontece na frente de quem olha.</p>
+  </div>
+  <div data-ficha="pm-hero-editorial">
+    <p><b>Editorial</b> · eixo: a tipografia. A frase minerada é a imagem.</p>
+    <p><i>Mexe:</i> a chamada entra em três tempos; a demonstração vai em três etapas (2,6 s, 1,4 s, resultado) e risca a linha de ouro sob a frase; cada capítulo entra uma vez ao rolar.</p>
+    <p><i>Não mexe:</i> os números e as pranchas dentro do capítulo (uma entrada por caixa), e nada pelo teclado.</p>
+    <p><i>É a certa quando</i> o que vende é a frase e a língua, não a tela. <i>Custa:</i> come altura, e as telas do produto ficam pequenas.</p>
+  </div>
+  <div data-ficha="pm-hero-cinema">
+    <p><b>Cinema</b> (Cinematográfica) · eixo: a narrativa em movimento.</p>
+    <p><i>Mexe:</i> a sala acende; a demonstração em três etapas, com as teclas grandes na tela e o anel de ouro no resultado; no Como funciona, a câmera corta e desliza entre as capturas conforme a rolagem.</p>
+    <p><i>Não mexe:</i> o título (entra com a sala, não por cima dela), a luz da sala, e o texto dos passos, que só muda de cor.</p>
+    <p><i>É a certa quando</i> a primeira impressão tem de ficar na memória. <i>Custa:</i> é a mais movimentada e a mais cara de manter (os planos da câmera dependem da captura), e pede rolagem longa.</p>
+  </div>
+  <div data-ficha="pm-hero-produto">
+    <p><b>Produto</b> (Produto-primeiro) · eixo: o modelo de interação. Quem opera é o visitante.</p>
+    <p><i>Mexe:</i> a resposta ao toque; a frase minerada entrando e, logo depois, a linha do histórico; a cor da aba deslizando; um convite nas teclas, três vezes. Se ninguém tocar, a demonstração toca sozinha uma vez, em três etapas.</p>
+    <p><i>Não mexe:</i> a troca de aba e o atalho pelo teclado (na hora), e a página não tem entrada.</p>
+    <p><i>É a certa quando</i> o produto é um gesto e a melhor explicação é fazê-lo. <i>Custa:</i> no telefone o botão de instalar vem depois da demonstração, e a página abre sem espetáculo.</p>
+    <p><b>★ Recomendada.</b> O PerpetualMiner é um atalho de teclado, e esta página é lida no computador por quem vai instalá-lo: apertar Alt+S aqui ensina mais do que assistir. Quem não aperta ainda vê a demonstração, devagar e em etapas.</p>
+  </div>
+  <p class="proto-ficha-teclas">Teclas: 1 a 4 e ← → trocam de variante · R repete a entrada · Alt+S minera.</p>
+</details>
+
+<script src="/prototipos/hero/conteudo.js"></script>
+<script src="/prototipos/hero/comum.js"></script>
+<script src="/prototipos/hero/silenciosa.js"></script>
+<script src="/prototipos/hero/editorial.js"></script>
+<script src="/prototipos/hero/cinema.js"></script>
+<script src="/prototipos/hero/produto.js"></script>
+<script src="/prototipos/hero/seletor.js"></script>
+</body>
+</html>

@@ -88,6 +88,21 @@ const extensao = path.join(saida, 'extensao');
   }
   assert(fs.readFileSync(path.join(saida, 'index.html'), 'utf8').includes('href="/sobre/"'), 'a capa devia levar ao /sobre/');
 
+  // Os protótipos da landing (preview/prototipos/) saem no site, cada um com tudo o que a página dele pede, sem
+  // nada de fora; e as páginas públicas não pedem nada de lá: protótipo não é produção.
+  for (const prototipo of fs.readdirSync(path.join('preview', 'prototipos'))) {
+    const pagina = fs.readFileSync(path.join(saida, 'prototipos', prototipo, 'index.html'), 'utf8');
+    for (const pedido of [...pagina.matchAll(/\b(?:src|href)="(\/[^"#?]*)"/g)].map(m => m[1])) {
+      const alvo = path.join(saida, pedido);
+      assert(fs.existsSync(alvo) || fs.existsSync(path.join(alvo, 'index.html')), `o protótipo ${prototipo} carrega ${pedido}, que não está no site`);
+    }
+    assert(!/\b(?:src|srcset)="https?:/.test(pagina), `o protótipo ${prototipo} carrega algo de fora`);
+    assert(fs.readFileSync(path.join(saida, 'index.html'), 'utf8').includes(`href="/prototipos/${prototipo}/"`), `a capa devia levar ao protótipo ${prototipo}`);
+  }
+  for (const [nome, html] of [['privacidade', privacidade], ['sobre', sobre]]) {
+    assert(!html.includes('/prototipos/'), `${nome}: a página publicada não pede nada dos protótipos`);
+  }
+
   fs.rmSync(saida, { recursive: true, force: true });
   console.log(`ok: ${arquivos.length} arquivos da extensão e ${paginas.length} páginas no preview`);
 })().catch(erro => { console.error(erro); process.exit(1); });

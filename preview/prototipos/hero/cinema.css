@@ -1,0 +1,453 @@
+/* Variante 3, Cinema (a Cinematográfica). Eixo: a narrativa em movimento.
+   A chamada é uma tela de cinema numa sala escura: o quadro em 16 por 9, do tamanho que a janela deixa, com o título
+   por cima do céu da captura e a luz dela vazando para a sala. A demonstração roda sozinha uma vez, em três etapas.
+   O Como funciona é um roteiro: o quadro fica preso e a câmera corta da legenda para o painel e desliza dentro dele,
+   do cartão da frase até o Enviar ao Anki.
+   O que se mexe: a sala acendendo e o rodapé atrás dela, a troca antes/depois com o anel, e a câmera. */
+.landing:has(pm-hero-cinema) {
+  background-image: none;
+}
+
+.landing:has(pm-hero-cinema)::before {
+  display: none;
+}
+
+.ph-cin {
+  /* O título mede a tela, não a janela: cqw é a largura da sala. */
+  --ph-cin-tam-titulo: clamp(26px, 6cqw, 72px);
+  /* A tela em 16 por 9 que cabe na primeira dobra, com o topo e o rodapé da chamada. */
+  --ph-cin-largura: min(100% - 40px, clamp(640px, (100svh - 300px) * 1.7778, 1280px));
+  --ph-cin-tam-numero: clamp(40px, 5vw, 64px);
+  /* A câmera andando de um plano ao outro: mais longa que uma entrada, porque é o que explica. */
+  --ph-cin-mov-camera: 700ms;
+  /* A sombra por cima da captura, para o título se ler sobre o céu. É o fundo da página, não uma cor nova. */
+  --ph-cin-veu: color-mix(in srgb, var(--veio-bg) 78%, transparent);
+  /* A luz da sala passa da largura da tela; o corte impede que ela alargue a página. */
+  overflow-x: clip;
+}
+
+/* A chamada: a sala (o quadro, o letreiro por cima, o comando no canto) e, embaixo, o rodapé com o texto e o botão. */
+.ph-cin .ph-cin-chamada {
+  width: var(--ph-cin-largura);
+  margin: 0 auto;
+  padding: 20px 0 0;
+}
+
+.ph-cin-sala {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  container-type: inline-size;
+}
+
+/* A luz da sala: o ouro do sol e o azul do céu da captura vazando por trás da tela. São dois degradês parados,
+   nas cores da Veio; nenhum desfoque, que numa área deste tamanho custaria caro para pintar. */
+.ph-cin-sala::before {
+  content: "";
+  position: absolute;
+  inset: -6% -10% -14%;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 46% 60% at 30% 46%, color-mix(in srgb, var(--veio-accent) 22%, transparent), transparent 70%),
+    radial-gradient(ellipse 50% 62% at 72% 40%, color-mix(in srgb, var(--veio-info) 18%, transparent), transparent 70%);
+  pointer-events: none;
+}
+
+.ph-cin-palco,
+.ph-cin-letreiro {
+  grid-area: 1 / 1;
+}
+
+.ph-cin-palco {
+  /* No corte de 16 por 9 preso embaixo, o aviso da extensão termina a 63% da altura: as teclas acendem logo acima. */
+  --ph-tecla-topo: 63%;
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--site-ouro-fio);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-surface);
+}
+
+/* A captura cobre o quadro, presa embaixo: a legenda, o aviso e o botão da extensão nunca saem do corte. */
+.ph-cin-palco img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 100%;
+}
+
+.ph-cin-depois {
+  opacity: 0;
+}
+
+.ph-cin-chamada[data-minerada] .ph-cin-depois {
+  opacity: 1;
+}
+
+.ph-cin-palco::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, var(--ph-cin-veu), transparent 46%);
+  pointer-events: none;
+}
+
+.ph-cin-letreiro {
+  position: relative;
+  z-index: 2;
+  align-self: start;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 5cqw 24px 0;
+  text-align: center;
+  pointer-events: none;
+}
+
+.ph-cin-letreiro .site-selo {
+  margin-bottom: 18px;
+}
+
+.ph-cin h1 {
+  font-size: var(--ph-cin-tam-titulo);
+  letter-spacing: -.035em;
+  line-height: 1.04;
+  margin: 0;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+
+/* O rodapé da chamada: o comando da demonstração (as teclas, a legenda da etapa, o Repetir) logo abaixo da tela;
+   depois o botão, e o texto por último. */
+.ph-cin-rodape {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px 40px;
+  padding: 20px 4px 0;
+}
+
+.ph-cin-comando {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.ph-cin-acoes {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 28px;
+  min-width: 0;
+}
+
+.ph-cin-lead,
+.ph-cin-rodape .site-nota {
+  flex: 1 1 100%;
+}
+
+.ph-cin-lead {
+  max-width: 70ch;
+  font-size: var(--site-tam-lead);
+  color: var(--veio-muted);
+  margin: 0;
+}
+
+/* O Como funciona: o quadro preso de um lado, os três passos rolando do outro. */
+.ph-cin .ph-cin-como {
+  max-width: var(--site-largura);
+  margin: 0 auto;
+  padding: 140px 20px 0;
+}
+
+.ph-cin .ph-cin-cabeca h2 {
+  margin: 0;
+  overflow-wrap: break-word;
+}
+
+.ph-cin-roteiro {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  align-items: start;
+  gap: 56px;
+  margin-top: 16px;
+}
+
+.ph-cin-quadro {
+  position: sticky;
+  top: max(84px, 50vh - 230px);
+  top: max(84px, 50svh - 230px);
+  padding: 24px 0;
+}
+
+.ph-cin-janela {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  border: 1px solid var(--site-ouro-fio);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-surface);
+  box-shadow: var(--veio-sombra);
+}
+
+.ph-cin-plano,
+.ph-cin-camera {
+  position: absolute;
+  inset: 0;
+}
+
+.ph-cin-plano {
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 100%;
+}
+
+/* A câmera é uma folha do tamanho da janela com a captura do painel dentro: mover a folha é mover a câmera.
+   Os planos são poucos e fixos, um por cena, e vêm escritos com a captura (conteudo.js): chegam aqui em --plano-1,
+   2 e 3, postos uma vez na própria folha. Quem se move a cada quadro é o transform, não a variável. */
+.ph-cin-camera {
+  transform-origin: 0 0;
+  transform: var(--plano-1);
+}
+
+.ph-cin-camera img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Cena 2, a palavra: o cartão da primeira frase, com harbor grifada. */
+.ph-cin-como[data-cena="2"] .ph-cin-camera {
+  transform: var(--plano-2);
+}
+
+/* Cena 3, o envio: a mesma captura, a câmera sobe até a barra da seleção e o Enviar ao Anki. */
+.ph-cin-como[data-cena="3"] .ph-cin-camera {
+  transform: var(--plano-3);
+}
+
+.ph-cin-como:not([data-cena="1"]) .ph-cin-plano {
+  opacity: 0;
+}
+
+/* A claquete: três traços, o da cena de agora em ouro. */
+.ph-cin-claquete {
+  display: flex;
+  gap: 6px;
+  margin: 16px 0 0;
+}
+
+.ph-cin-claquete span {
+  width: 28px;
+  height: 3px;
+  border-radius: var(--veio-raio-linha);
+  background: var(--veio-border);
+}
+
+.ph-cin-como[data-cena="1"] .ph-cin-claquete span:nth-child(1),
+.ph-cin-como[data-cena="2"] .ph-cin-claquete span:nth-child(2),
+.ph-cin-como[data-cena="3"] .ph-cin-claquete span:nth-child(3) {
+  background: var(--veio-accent);
+}
+
+.ph-cin-cenas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ph-cin-cenas li {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 72vh;
+  min-height: 72svh;
+  margin: 0;
+}
+
+/* O passo que não é o de agora fica mais baixo pela cor, não pela opacidade: continua legível para quem lê adiantado. */
+.ph-cin-numero {
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--ph-cin-tam-numero);
+  font-weight: var(--veio-peso-num);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--veio-border-strong);
+}
+
+.ph-cin .ph-cin-cenas h3 {
+  font-size: var(--veio-tam-hero);
+  font-weight: var(--veio-peso-display);
+  letter-spacing: var(--veio-tracking-display);
+  line-height: 1.2;
+  color: var(--veio-muted);
+  margin: 16px 0 10px;
+  overflow-wrap: break-word;
+}
+
+.ph-cin-como[data-cena="1"] li:nth-child(1) .ph-cin-numero,
+.ph-cin-como[data-cena="2"] li:nth-child(2) .ph-cin-numero,
+.ph-cin-como[data-cena="3"] li:nth-child(3) .ph-cin-numero {
+  color: var(--veio-accent-text);
+}
+
+.ph-cin .ph-cin-como[data-cena="1"] li:nth-child(1) h3,
+.ph-cin .ph-cin-como[data-cena="2"] li:nth-child(2) h3,
+.ph-cin .ph-cin-como[data-cena="3"] li:nth-child(3) h3 {
+  color: var(--veio-text);
+}
+
+.ph-cin-cenas p {
+  max-width: 44ch;
+  color: var(--veio-muted);
+  margin: 0;
+}
+
+/* O título que não cabe no céu da captura sai de cima do quadro (cinema.js mede e marca a sala). */
+.ph-cin-sala[data-letreiro-fora] .ph-cin-palco,
+.ph-cin-sala[data-letreiro-fora] .ph-cin-letreiro {
+  grid-area: auto;
+}
+
+.ph-cin-sala[data-letreiro-fora] .ph-cin-letreiro {
+  order: -1;
+  padding: 8px 0 28px;
+}
+
+.ph-cin-sala[data-letreiro-fora] .ph-cin-palco::after {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  /* No telefone o título sai de cima da captura: o quadro fica inteiro, 4 por 3, e o letreiro vem antes dele. */
+  .ph-cin {
+    --ph-cin-tam-titulo: clamp(32px, 9.5cqw, 52px);
+    --ph-cin-largura: calc(100% - 40px);
+  }
+
+  .ph-cin .ph-cin-chamada {
+    padding-top: 28px;
+  }
+
+  .ph-cin-palco,
+  .ph-cin-letreiro {
+    grid-area: auto;
+  }
+
+  .ph-cin-letreiro {
+    order: -1;
+    padding: 0 0 28px;
+  }
+
+  .ph-cin-palco {
+    --ph-tecla-topo: 72%;
+    aspect-ratio: 4 / 3;
+  }
+
+  .ph-cin-palco::after {
+    display: none;
+  }
+
+  .ph-cin-rodape {
+    padding: 14px 0 0;
+  }
+
+
+  .ph-cin .ph-cin-como {
+    padding-top: 88px;
+  }
+
+  /* O quadro preso no alto, os passos passando por baixo dele. */
+  .ph-cin-roteiro {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .ph-cin-quadro {
+    top: 0;
+    z-index: 2;
+    padding: 12px 0 14px;
+    background: linear-gradient(180deg, var(--veio-bg) 92%, transparent);
+  }
+
+  .ph-cin-janela {
+    box-shadow: none;
+  }
+
+  .ph-cin-claquete {
+    margin-top: 12px;
+  }
+
+  .ph-cin-cenas li {
+    justify-content: flex-start;
+    min-height: 56vh;
+    min-height: 56svh;
+    padding-top: 28px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ph-cin .site-link:hover {
+    text-decoration-color: var(--veio-accent);
+  }
+
+  .ph-cin .site-botao:hover .site-seta {
+    transform: translateX(3px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* A entrada, uma vez. A sala acende inteira (a tela com o título já nela): uma entrada por caixa, o título não
+     entra de novo por cima. O rodapé segue perto. */
+  .ph-cin-sala {
+    animation: ph-cin-acender var(--ph-cin-mov-camera) var(--veio-curva-saida) both;
+  }
+
+  .ph-cin-rodape {
+    animation: ph-cin-apoio var(--site-mov-apoio) var(--veio-curva-saida) 90ms both;
+  }
+
+  /* A frase minerada entra por cima, com um desfoque curto para as duas capturas se lerem como uma só mudando.
+     Pelo teclado não há transição: quem aperta o atalho de verdade vê a troca na hora. */
+  .ph-cin-chamada[data-origem="auto"] .ph-cin-depois,
+  .ph-cin-chamada[data-origem="toque"] .ph-cin-depois {
+    transition: opacity var(--ph-mov-minerar) var(--veio-curva-saida), filter var(--ph-mov-minerar) var(--veio-curva-saida);
+  }
+
+  .ph-cin-chamada:not([data-minerada]) .ph-cin-depois {
+    filter: blur(2px);
+  }
+
+  .ph-cin-chamada[data-origem="volta"] .ph-cin-depois {
+    transition: opacity var(--ph-mov-volta) var(--veio-curva-saida);
+  }
+
+  /* A câmera e o corte andam juntos, no mesmo tempo e na mesma curva: é um objeto só mudando de plano. */
+  .ph-cin-camera {
+    transition: transform var(--ph-cin-mov-camera) var(--site-curva-vaivem);
+  }
+
+  .ph-cin-plano {
+    transition: opacity var(--ph-cin-mov-camera) var(--site-curva-vaivem);
+  }
+
+  /* O passo de agora muda de cor depressa: é estado, não espetáculo. */
+  .ph-cin-numero,
+  .ph-cin .ph-cin-cenas h3 {
+    transition: color var(--ph-mov-volta) ease;
+  }
+}
+
+@keyframes ph-cin-acender {
+  from { opacity: 0; transform: scale(1.015); }
+}
+
+@keyframes ph-cin-apoio {
+  from { opacity: 0; transform: translateY(8px); }
+}
