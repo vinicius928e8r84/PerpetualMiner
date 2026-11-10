@@ -8,7 +8,7 @@ pull request sai uma URL própria, comentada pelo bot do Vercel no PR.
 | `montar.mjs` | Monta `preview/dist` a partir do repo: as telas da extensão, o vídeo simulado, a vitrine da Base Veio e os protótipos de `docs/design`. Node puro, sem dependência. |
 | `chrome-simulado.js` | O `chrome.*` de mentira que as cópias das telas carregam no preview, com dados de exemplo. |
 | `video-simulado.html` | Um player de mentira com uma legenda. `montar.mjs` põe nele os scripts de conteúdo do manifest, como o Chrome põe em toda página: é onde o preview mostra o overlay (o botão flutuante e, com `Alt + S`, o aviso de frase minerada). |
-| `site/` | As páginas públicas do app: `sobre.html` (a landing, em `/sobre/`), `privacidade.html` (a política de privacidade, em `/privacidade/` e `/privacy/`), `site.css` e `capturas/` (as telas que a landing mostra). HTML estático da Veio, sem script, fonte nem imagem de fora. É o que a tela de consentimento OAuth do Google pede como "página inicial" e "link da política de privacidade". Mudou o que a extensão ou a Conexão fazem? Mude o texto de `sobre.html` na mesma PR; se mudou o que fazem com os dados, também `privacidade.html` e a data de "Última atualização". |
+| `site/` | As páginas públicas do app: `sobre.html` (a landing, em `/sobre/`), `privacidade.html` (a política de privacidade, em `/privacidade/` e `/privacy/`), `site.css` (a base das duas), `landing*.css` e `site.js` (a landing e o movimento dela) e `capturas/` (as telas que a landing mostra). HTML estático da Veio, sem fonte, imagem nem script de fora: a política não tem script, e o da landing é pequeno, local e não fala com a rede. É o que a tela de consentimento OAuth do Google pede como "página inicial" e "link da política de privacidade". Mudou o que a extensão ou a Conexão fazem? Mude o texto de `sobre.html` na mesma PR; se mudou o que fazem com os dados, também `privacidade.html` e a data de "Última atualização". |
 | `capturar.mjs` | Tira as imagens de `site/capturas/` das telas do preview, no Chromium do Playwright de `e2e/`. Elas vão para o Git, porque o Vercel monta o site sem navegador. |
 | `dist/` | A saída. Não vai para o Git. |
 
@@ -24,10 +24,21 @@ node preview/capturar.mjs          # refaz as capturas da landing (precisa de `c
 
 A landing não desenha tela nenhuma: mostra fotos das telas de verdade, como o preview as monta. `capturar.mjs` monta o
 preview numa pasta temporária, abre o vídeo simulado, o painel e o popup no Chromium e grava as imagens em
-`site/capturas/`. As frases são de exemplo (nada pessoal, nenhuma série nem marca de streaming), a configuração aparece
+`site/capturas/`. O vídeo sai em duas imagens, antes e depois do `Alt + S`: a demonstração da chamada passa de uma
+para a outra. As frases são de exemplo (nada pessoal, nenhuma série nem marca de streaming), a configuração aparece
 terminada e a Conexão com o Anki aparece ligada: a saúde dela é respondida pelo exemplo de
 `complemento/contrato/exemplos.json`, e nenhum outro pedido sai. Rode de novo quando uma dessas telas mudar e confira
 as imagens antes do commit; `node test_preview.js` falha se a landing pedir uma imagem que não existe ou deixar uma sem uso.
+
+## O movimento da landing
+
+A página está inteira sem script e sem animação: `site.js` só marca o que entra ao rolar, conta os números e refaz a
+demonstração no Repetir, e o CSS do movimento (`landing-movimento.css`) vale só dentro de
+`prefers-reduced-motion: no-preference`. As regras, que
+são as de Emil Kowalski (<https://github.com/emilkowalski/skills>): só `transform` e `opacity` se mexem (o desfoque
+curto da entrada do título e da troca das capturas é a exceção, abaixo de 5 px); quem entra usa a saída forte da Veio
+(`--veio-curva-saida`); toque e ponteiro respondem em `--veio-transicao`; cada coisa entra uma vez só; hover só com
+ponteiro fino e só de cor; nada espera a animação para ser clicável.
 
 ## O que o preview mostra, e o que ele não mostra
 

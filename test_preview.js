@@ -52,7 +52,7 @@ const extensao = path.join(saida, 'extensao');
   assert(video.includes('<video'), 'sem vídeo na página, a extensão não procura legenda');
 
   // As páginas públicas: a política sai nos dois endereços, a página inicial a leva num link, e o que elas
-  // carregam (a Veio e a folha do site) está no site, sem nada de fora.
+  // carregam (a Veio, a folha do site e, na landing, o script do movimento) está no site, sem nada de fora.
   const privacidade = fs.readFileSync(path.join(saida, 'privacidade', 'index.html'), 'utf8');
   assert.strictEqual(fs.readFileSync(path.join(saida, 'privacy', 'index.html'), 'utf8'), privacidade);
   assert(privacidade.includes('Política de privacidade') && privacidade.includes('Uso limitado'));
@@ -61,7 +61,9 @@ const extensao = path.join(saida, 'extensao');
     assert(sobre.includes(`href="${endereco}"`), `a landing devia levar à política em ${endereco}`);
   }
   for (const [nome, html] of [['privacidade', privacidade], ['sobre', sobre]]) {
-    assert(!/<script/i.test(html), `${nome}: página pública sem script`);
+    // A política não tem script; a landing, só o do movimento dela. Nenhum escrito na página, nenhum de fora.
+    const scripts = [...html.matchAll(/<script\b([^>]*)>/gi)].map(m => (m[1].match(/\bsrc="([^"]*)"/) || [])[1] || '(escrito na página)');
+    assert.deepStrictEqual(scripts, nome === 'sobre' ? ['/site/site.js'] : [], `${nome}: script que não devia estar na página`);
     const pedidos = [...html.matchAll(/\b(?:src|srcset|href)="(\/[^"#?]*)"/g)].map(m => m[1]);
     for (const pedido of pedidos) {
       const alvo = path.join(saida, pedido);
@@ -71,6 +73,9 @@ const extensao = path.join(saida, 'extensao');
     assert(!externos.some(url => /fonts\.(googleapis|gstatic)/.test(url)), `${nome}: fonte de fora`);
     assert(!/\b(?:src|srcset)="https?:/.test(html), `${nome}: imagem de fora`);
   }
+  const movimento = fs.readFileSync(path.join(saida, 'site', 'site.js'), 'utf8');
+  const proibido = movimento.match(/\b(fetch|XMLHttpRequest|sendBeacon|WebSocket|EventSource|cookie|localStorage|sessionStorage|indexedDB)\b/);
+  assert(!proibido, `o script da landing não fala com a rede nem guarda nada, e usa ${proibido}`);
   // As capturas da landing: toda imagem que `preview/capturar.mjs` deixou na pasta aparece na página.
   const capturas = fs.readdirSync(path.join(saida, 'site', 'capturas'));
   assert(capturas.length > 0, 'a landing devia ter capturas');

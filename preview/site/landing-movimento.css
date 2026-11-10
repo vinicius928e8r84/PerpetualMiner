@@ -1,0 +1,202 @@
+/* A landing (/sobre/), o que responde e o que se move. Carregado por último: sem este arquivo a página é a mesma, parada. */
+
+/* Resposta ao ponteiro: só onde há ponteiro fino (o toque dispara hover falso). Cor muda; nada sai do lugar. */
+@media (hover: hover) and (pointer: fine) {
+  .landing .site-cartao {
+    transition: border-color var(--veio-transicao) ease;
+  }
+
+  .landing .site-cartao:hover {
+    border-color: var(--site-ouro-fio);
+  }
+
+  .site-botao:hover .site-seta {
+    transform: translateX(3px);
+  }
+
+  .site-link:hover {
+    text-decoration-color: var(--veio-accent);
+  }
+
+  .demo-repetir:hover {
+    border-color: var(--veio-accent);
+  }
+}
+
+/* O movimento, só para quem não pediu menos movimento. Sem ele (e sem script) a página já está inteira. */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.landing) {
+    scroll-behavior: smooth;
+  }
+
+  /* A chamada entra uma vez: o título puxa, o resto segue perto, o selo e a nota só aparecem. */
+  .hero h1 {
+    animation: site-entrar-titulo var(--site-mov-entrada) var(--veio-curva-saida) both;
+  }
+
+  .hero .site-lead {
+    animation: site-entrar-apoio var(--site-mov-apoio) var(--veio-curva-saida) 80ms both;
+  }
+
+  .hero-acoes {
+    animation: site-entrar-acoes var(--site-mov-apoio) var(--veio-curva-saida) 140ms both;
+  }
+
+  .site-selo {
+    animation: site-aparecer var(--site-mov-enfeite) var(--veio-curva-saida) both;
+  }
+
+  .hero .site-nota {
+    animation: site-aparecer var(--site-mov-enfeite) var(--veio-curva-saida) 200ms both;
+  }
+
+  .demo {
+    animation: site-entrar-tela 700ms var(--veio-curva-saida) 120ms both;
+  }
+
+  /* A demonstração: as teclas descem, a captura de depois entra por cima e o anel acende junto com ela. */
+  .demo[data-tocando] .demo-depois {
+    animation: site-minerar 320ms var(--veio-curva-saida) var(--demo-inicio, 1700ms) both;
+  }
+
+  .demo[data-tocando] .demo-tela::after {
+    animation: site-anel 900ms var(--veio-curva-saida) var(--demo-inicio, 1700ms) both;
+  }
+
+  .demo[data-tocando] .demo-teclas kbd {
+    animation: site-tecla 260ms var(--veio-curva-saida) calc(var(--demo-inicio, 1700ms) - 200ms) both;
+  }
+
+  .demo[data-tocando] .demo-teclas kbd::after {
+    animation: site-tecla-luz 260ms var(--veio-curva-saida) calc(var(--demo-inicio, 1700ms) - 200ms) both;
+  }
+
+  .demo[data-tocando] .demo-teclas kbd + kbd,
+  .demo[data-tocando] .demo-teclas kbd + kbd::after {
+    animation-delay: calc(var(--demo-inicio, 1700ms) - 140ms);
+  }
+
+  /* Repetir não refaz a espera: a pessoa acabou de pedir. */
+  .demo[data-tocando="de-novo"] {
+    --demo-inicio: 500ms;
+  }
+
+  /* O que entra ao rolar, uma vez só (site.js marca data-visivel). Os grupos entram em onda, com o intervalo encolhendo. */
+  .js [data-revelar="bloco"],
+  .js [data-revelar="grupo"] > * {
+    opacity: 0;
+    transform: translateY(12px);
+    transition:
+      opacity var(--site-mov-entrada) var(--veio-curva-saida) var(--atraso, 0ms),
+      transform var(--site-mov-entrada) var(--veio-curva-saida) var(--atraso, 0ms),
+      border-color var(--veio-transicao) ease;
+  }
+
+  .js .captura[data-revelar="bloco"] {
+    transform: translateY(16px) scale(.985);
+  }
+
+  .js [data-revelar="bloco"][data-visivel],
+  .js [data-revelar="grupo"][data-visivel] > * {
+    opacity: 1;
+    transform: none;
+  }
+
+  .js [data-revelar="grupo"] > :nth-child(2) { --atraso: 70ms; }
+  .js [data-revelar="grupo"] > :nth-child(3) { --atraso: 125ms; }
+  .js [data-revelar="grupo"] > :nth-child(n + 4) { --atraso: 165ms; }
+
+  .js .passos--trilha::after {
+    transform: scaleX(0);
+    transition: transform 900ms var(--site-curva-vaivem) 150ms;
+  }
+
+  .js .passos--trilha[data-visivel]::after {
+    transform: scaleX(1);
+  }
+
+  /* As etapas do envio são a explicação: o fio corre e cada etapa acende quando ele chega. */
+  .js .etapas::after {
+    transform: scaleX(0);
+    transition: transform 1400ms linear 200ms;
+  }
+
+  .js .etapas[data-visivel]::after {
+    transform: scaleX(1);
+  }
+
+  .js .etapas li {
+    opacity: .38;
+    transition: opacity 300ms var(--veio-curva-saida) calc(200ms + var(--etapa) * 350ms);
+  }
+
+  .js .etapas[data-visivel] li {
+    opacity: 1;
+  }
+
+  .etapas li:nth-child(1) { --etapa: 0; }
+  .etapas li:nth-child(2) { --etapa: 1; }
+  .etapas li:nth-child(3) { --etapa: 2; }
+  .etapas li:nth-child(4) { --etapa: 3; }
+  .etapas li:nth-child(5) { --etapa: 4; }
+
+  @supports selector(::details-content) {
+    .perguntas details {
+      interpolate-size: allow-keywords;
+    }
+
+    .perguntas details::details-content {
+      block-size: 0;
+      overflow: clip;
+      transition: block-size 200ms var(--veio-curva-saida), content-visibility 200ms allow-discrete;
+    }
+
+    .perguntas details[open]::details-content {
+      block-size: auto;
+    }
+  }
+}
+
+@keyframes site-entrar-titulo {
+  from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
+}
+
+@keyframes site-entrar-apoio {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+@keyframes site-entrar-acoes {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+@keyframes site-aparecer {
+  from { opacity: 0; }
+}
+
+@keyframes site-entrar-tela {
+  from { opacity: 0; transform: translateY(12px) scale(.98); }
+}
+
+@keyframes site-minerar {
+  from { opacity: 0; filter: blur(2px); }
+}
+
+@keyframes site-anel {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes site-tecla {
+  45% { transform: translateY(2px) scale(.95); }
+}
+
+@keyframes site-tecla-luz {
+  45% { opacity: .45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-repetir {
+    display: none;
+  }
+}

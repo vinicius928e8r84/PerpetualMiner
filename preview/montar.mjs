@@ -245,8 +245,11 @@ async function montar() {
   if (temVitrine) await copiar(vitrine, DESTINO);
 
   await fs.mkdir(path.join(DESTINO, 'site'), { recursive: true });
-  await fs.copyFile(path.join(RAIZ, 'preview', 'site', 'site.css'), path.join(DESTINO, 'site', 'site.css'));
-  await copiar(path.join(RAIZ, 'preview', 'site', 'capturas'), path.join(DESTINO, 'site', 'capturas'));
+  // O que as páginas públicas carregam (as folhas, o script da landing e as capturas) fica em `/site/`.
+  const paginas = new Set(PAGINAS_PUBLICAS.map(pagina => pagina.arquivo));
+  for (const apoio of await fs.readdir(path.join(RAIZ, 'preview', 'site'))) {
+    if (!paginas.has(apoio)) await copiar(path.join(RAIZ, 'preview', 'site', apoio), path.join(DESTINO, 'site', apoio));
+  }
   for (const { arquivo, enderecos } of PAGINAS_PUBLICAS) {
     for (const endereco of enderecos) {
       await copiar(path.join(RAIZ, 'preview', 'site', arquivo), path.join(DESTINO, endereco, 'index.html'));

@@ -1,0 +1,481 @@
+/* A landing (/sobre/), seção por seção: as capturas, os passos, as grades, o destaque, as etapas, as perguntas e o fecho.
+   Os tokens próprios da página (--site-…) estão em landing.css. */
+.captura {
+  margin: 0;
+}
+
+.captura img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-painel);
+  box-shadow: var(--veio-sombra);
+}
+
+.captura figcaption {
+  margin-top: 14px;
+  font-size: var(--veio-tam-corpo);
+  color: var(--veio-muted);
+  text-align: center;
+}
+
+.passos,
+.grade,
+.mosaico {
+  display: grid;
+  gap: 16px;
+  list-style: none;
+  margin: 36px 0 0;
+  padding: 0;
+}
+
+.passos {
+  grid-template-columns: repeat(3, 1fr);
+  counter-reset: passo;
+}
+
+.passos + .captura {
+  margin-top: 56px;
+}
+
+.passos + .site-intro,
+.grade + .site-intro {
+  margin-top: 40px;
+}
+
+.passos li {
+  counter-increment: passo;
+  margin: 0;
+  padding: 24px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface);
+}
+
+.passos li::before {
+  content: counter(passo);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 16px;
+  border: 1px solid var(--veio-accent);
+  border-radius: var(--veio-raio-pilula);
+  background: color-mix(in srgb, var(--veio-accent) 14%, var(--veio-bg));
+  color: var(--veio-accent-text);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-num);
+}
+
+.passos p,
+.grade p,
+.mosaico p,
+.destaque p,
+.perguntas p {
+  font-size: var(--veio-tam-card);
+  color: var(--veio-muted);
+  margin: 0;
+}
+
+/* Os três passos numa trilha: o fio passa por trás dos números e se enche de ouro quando a seção aparece. */
+.passos--trilha {
+  position: relative;
+  gap: 40px;
+}
+
+.passos--trilha li {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.passos--trilha::before,
+.passos--trilha::after {
+  content: "";
+  position: absolute;
+  top: 16px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--veio-border);
+}
+
+.passos--trilha::after {
+  background: linear-gradient(90deg, var(--veio-accent), var(--site-ouro-fio));
+  transform-origin: left;
+}
+
+.passos--instalar {
+  grid-template-columns: 1fr;
+  max-width: 760px;
+}
+
+.passos--instalar li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 20px;
+  background: var(--veio-bg);
+}
+
+.passos--instalar li::before {
+  grid-row: span 3;
+  margin-bottom: 0;
+}
+
+.passos--instalar li > * {
+  grid-column: 2;
+}
+
+.grade {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.grade--dupla {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.grade--tripla {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.mosaico {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.mosaico li {
+  grid-column: span 2;
+}
+
+.mosaico .mosaico-largo {
+  grid-column: span 3;
+}
+
+.landing .site-cartao {
+  margin: 0;
+  padding: 24px;
+  border-radius: var(--veio-raio-painel);
+  box-shadow: inset 0 1px 0 var(--site-fio);
+}
+
+.site-fichas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.landing .site-fichas {
+  margin-top: 18px;
+}
+
+.site-fichas span {
+  padding: 3px 10px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-surface-2);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  color: var(--veio-text);
+}
+
+.landing .subtitulo {
+  font-size: var(--veio-tam-hero);
+  letter-spacing: var(--veio-tracking-display);
+  margin: 64px 0 0;
+}
+
+.subtitulo + .grade {
+  margin-top: 20px;
+}
+
+.destaque {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  align-items: center;
+  gap: 56px;
+  margin-top: 16px;
+  padding: 48px 56px;
+  border: 1px solid var(--site-ouro-fio);
+  border-radius: var(--veio-raio-painel);
+  background:
+    radial-gradient(ellipse 60% 90% at 100% 0, color-mix(in srgb, var(--veio-accent) 12%, transparent), transparent 70%),
+    var(--veio-surface);
+  box-shadow: inset 0 1px 0 var(--site-fio);
+}
+
+.landing .destaque h3 {
+  font-size: var(--site-tam-secao);
+  font-weight: var(--veio-peso-display);
+  letter-spacing: -.03em;
+  line-height: 1.1;
+  margin-bottom: 16px;
+}
+
+.destaque p:not(.site-sobretitulo) {
+  max-width: 54ch;
+  font-size: var(--veio-tam-destaque);
+}
+
+.destaque p + p:not(:first-of-type) {
+  margin-top: 12px;
+}
+
+.destaque .site-sobretitulo {
+  font-size: var(--veio-tam-legenda);
+  color: var(--veio-accent-text);
+  margin-bottom: 14px;
+}
+
+.captura--popup img {
+  border-radius: var(--veio-raio-card);
+}
+
+/* As etapas de um envio: o fio liga os pontos e se enche de ouro, e cada etapa acende quando o fio chega nela. */
+.etapas {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  list-style: none;
+  margin: 40px 0 0;
+  padding: 28px 16px 24px;
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-surface);
+  box-shadow: inset 0 1px 0 var(--site-fio);
+}
+
+.etapas::before,
+.etapas::after {
+  content: "";
+  position: absolute;
+  top: 34px;
+  left: calc(16px + (100% - 32px) / 10);
+  right: calc(16px + (100% - 32px) / 10);
+  height: 2px;
+  background: var(--veio-border);
+}
+
+.etapas::after {
+  background: var(--veio-accent);
+  transform-origin: left;
+}
+
+.etapas li {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: 30px 8px 0;
+  font-size: var(--veio-tam-corpo);
+  font-weight: var(--veio-peso-rotulo);
+  line-height: 1.4;
+  text-align: center;
+}
+
+.etapas li::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-accent);
+  box-shadow: 0 0 0 4px var(--veio-surface), 0 0 0 5px var(--site-ouro-fio);
+}
+
+.site-idioma {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px 14px;
+}
+
+.site-sigla {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--site-ouro-fio);
+  border-radius: var(--veio-raio-input);
+  background: var(--veio-accent-soft);
+  color: var(--veio-accent-text);
+  font-family: var(--veio-fonte-mono);
+  font-weight: var(--veio-peso-num);
+}
+
+.landing .site-idioma h3 {
+  margin: 0;
+}
+
+.landing .site-idioma p {
+  font-size: var(--veio-tam-destaque);
+  color: var(--veio-text);
+}
+
+.perguntas {
+  max-width: 760px;
+  margin-top: 28px;
+  border-top: 1px solid var(--veio-border);
+}
+
+.perguntas details {
+  border-bottom: 1px solid var(--veio-border);
+}
+
+.perguntas summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 4px;
+  font-weight: var(--veio-peso-titulo);
+  list-style: none;
+  cursor: pointer;
+}
+
+.perguntas summary::-webkit-details-marker {
+  display: none;
+}
+
+/* O sinal de mais vira um xis quando a pergunta abre. O texto alternativo vazio cala o leitor de tela. */
+.perguntas summary::after {
+  content: "+";
+  content: "+" / "";
+  flex: none;
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-modal);
+  font-weight: 400;
+  line-height: 1;
+  color: var(--veio-accent-text);
+  transition: transform 200ms var(--veio-curva-saida);
+}
+
+.perguntas details[open] summary::after {
+  transform: rotate(45deg);
+}
+
+.perguntas p {
+  max-width: 64ch;
+  margin: 0 4px 20px;
+}
+
+/* O fecho: como instalar, no painel que encerra a página. O texto fica à esquerda e os passos à direita. */
+.landing .fecho {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  grid-template-rows: auto 1fr;
+  gap: 24px 56px;
+  margin-top: var(--site-entre-secoes);
+  padding: 56px;
+  border: 1px solid var(--site-ouro-fio);
+  border-radius: var(--veio-raio-painel);
+  background:
+    radial-gradient(ellipse 70% 100% at 50% 0, color-mix(in srgb, var(--veio-accent) 12%, transparent), transparent 70%),
+    var(--veio-surface);
+  box-shadow: inset 0 1px 0 var(--site-fio);
+}
+
+.fecho .passos {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  margin: 0;
+}
+
+.fecho .site-intro {
+  font-size: var(--veio-tam-card);
+}
+
+.landing .site-rodape {
+  padding-top: 28px;
+  border-top: 1px solid var(--veio-border);
+}
+
+.landing .site-rodape p {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 1000px) {
+  .grade {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .landing .fecho {
+    grid-template-columns: 1fr;
+  }
+
+  .fecho .passos {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .passos,
+  .grade,
+  .grade--tripla,
+  .mosaico,
+  .destaque {
+    grid-template-columns: 1fr;
+  }
+
+  .mosaico li,
+  .mosaico .mosaico-largo {
+    grid-column: auto;
+  }
+
+  .passos--trilha {
+    gap: 28px;
+  }
+
+  .passos--trilha::before,
+  .passos--trilha::after {
+    display: none;
+  }
+
+  .passos--instalar li {
+    display: block;
+  }
+
+  .passos--instalar li::before {
+    margin-bottom: 16px;
+  }
+
+  .destaque,
+  .landing .fecho {
+    gap: 28px;
+    padding: 24px;
+  }
+
+  .captura--popup {
+    width: 100%;
+    max-width: 340px;
+    margin: 0 auto;
+  }
+
+  /* As etapas em coluna, sem o fio. */
+  .etapas {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 22px 20px;
+  }
+
+  .etapas::before,
+  .etapas::after {
+    display: none;
+  }
+
+  .etapas li {
+    padding: 0 0 0 30px;
+    text-align: left;
+  }
+
+  .etapas li::before {
+    top: 3px;
+    left: 0;
+    margin-left: 0;
+  }
+}

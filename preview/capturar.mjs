@@ -72,9 +72,11 @@ const DADOS = {
   pm_anki_ja_conectou: true,
 };
 
+/** O botão flutuante entra no player até 1 s depois de a página abrir. */
+const esperarOBotao = pagina => pagina.locator('perpetualminer-overlay .pm-botao').waitFor();
+
 async function minerarALegenda(pagina) {
-  // O botão flutuante entra no player até 1 s depois de a página abrir.
-  await pagina.locator('perpetualminer-overlay .pm-botao').waitFor();
+  await esperarOBotao(pagina);
   await pagina.keyboard.press('Alt+KeyS');
   const aviso = pagina.locator('perpetualminer-overlay .pm-chip');
   await aviso.waitFor();
@@ -91,9 +93,11 @@ async function selecionarDuasFrases(pagina) {
 
 /**
  * Cada imagem: a tela do preview, a janela (em px de CSS; a imagem sai com o dobro) e o que fazer antes da foto.
- * A do vídeo é JPEG: o degradê do vídeo simulado pesa várias vezes mais em PNG.
+ * As do vídeo são JPEG: o degradê do vídeo simulado pesa várias vezes mais em PNG. São duas, da mesma janela, antes e
+ * depois do Alt+S: a landing passa de uma para a outra na demonstração da chamada.
  */
 const CAPTURAS = [
+  { arquivo: 'legenda-antes.jpg', tela: 'video-simulado.html', janela: { width: 480, height: 360 }, antes: esperarOBotao },
   { arquivo: 'legenda.jpg', tela: 'video-simulado.html', janela: { width: 480, height: 360 }, antes: minerarALegenda },
   { arquivo: 'painel.png', tela: 'painel.html#frases', janela: { width: 1200, height: 750 }, antes: selecionarDuasFrases },
   { arquivo: 'painel-estreito.png', tela: 'painel.html#frases', janela: { width: 480, height: 720 }, antes: selecionarDuasFrases },
