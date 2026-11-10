@@ -4,7 +4,8 @@
 // acendem quando aparecem, e a demonstração do Alt+S, em três etapas. Nada aqui fala com a rede nem guarda coisa alguma.
 //
 // Carregado no <head>, sem `defer`, só para marcar a página com `js` antes da primeira pintura: é essa classe que
-// deixa o CSS apagar as etapas que vão acender, então sem script nada fica apagado.
+// deixa o CSS apagar as etapas do envio que vão acender e pôr a demonstração no começo, então sem script nada fica
+// apagado e a demonstração mostra o resultado.
 
 (function () {
   if (!('IntersectionObserver' in window)) return;
