@@ -19,10 +19,14 @@ body {
   gap: 12px 24px;
 }
 
+/* A marca, os links do topo e o link da chamada têm 44 px de altura para o dedo. A margem negativa devolve o que o
+   padding acrescentou, então nada muda de lugar. */
 .site-marca {
   display: flex;
   align-items: center;
   gap: 12px;
+  margin: -6px 0;
+  padding: 6px 0;
   color: var(--veio-text);
   text-decoration: none;
   font-size: var(--veio-tam-pagina);
@@ -36,7 +40,8 @@ body {
 }
 
 .site-topo nav a {
-  padding: 6px 0;
+  margin: -5px 0;
+  padding: 11px 0;
   color: var(--veio-muted);
   text-decoration: none;
 }

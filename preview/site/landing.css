@@ -211,6 +211,8 @@
 }
 
 .site-link {
+  margin: -9px 0;
+  padding: 9px 0;
   color: var(--veio-text);
   font-weight: var(--veio-peso-rotulo);
   text-decoration-color: var(--veio-border-strong);
@@ -389,7 +391,7 @@
 }
 
 .demo-repetir {
-  min-height: 40px;
+  min-height: 44px;
   padding: 8px 20px;
   border: 1px solid var(--veio-accent);
   border-radius: var(--veio-raio-pilula);
