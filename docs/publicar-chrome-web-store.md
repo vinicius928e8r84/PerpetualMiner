@@ -119,6 +119,8 @@ Não marque histórico de navegação, localização, atividade do usuário nem 
 
 ### Política de privacidade
 
+> **Substituído** pela página pública `/privacidade/` (`preview/site/privacidade.html`), que é a que vale; o rascunho abaixo está desatualizado e fica só de histórico.
+
 A loja exige uma **URL pública** (o repositório é privado, então hospede o texto abaixo numa página pública, como um site seu, GitHub Pages ou um gist público, e cole o endereço).
 
 ```
@@ -149,8 +151,6 @@ Você pode apagar as frases a qualquer momento no painel (individualmente ou "Ap
 Contato
 <e-mail de contato>
 ```
-
-Confira o texto contra o que a Conexão com o Anki faz no seu computador antes de publicar: ela chama serviços de terceiros (voz e imagens) que não são da extensão, e a política acima só os cita de passagem.
 
 ## 6. Aba "Distribuição" e envio
 
