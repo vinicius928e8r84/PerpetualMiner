@@ -1,0 +1,220 @@
+/* Protótipo "Compasso": tipografia cinética. A página é uma coluna só, de letra grande, e quem se move é a letra
+   (compasso.js, SplitText): versos que sobem de trás de uma máscara, palavras no ritmo da fala, etapas uma por tempo.
+   As telas são apoio: abrem como uma cortina (a moldura fica parada; o conteúdo dela sobe).
+
+   Antes de entrar, o que vai entrar espera transparente (`opacity`, e não `visibility`: quem ouve a página lê os
+   títulos do mesmo jeito). O texto corrido, os botões e as listas nunca esperam: um salto para qualquer ponto da
+   página encontra o que ler e onde clicar. */
+.cp-abertura {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: clamp(18px, 3svh, 30px);
+  min-height: calc(100svh - var(--pg-topo));
+  padding-block: clamp(24px, 6svh, 56px);
+}
+
+/* O título e a frase ocupam a coluna inteira: divididos em versos ou não, a caixa deles é a mesma. */
+.cp-abertura :is(h1, .cp-frase),
+.compasso .pg-fecho h2 {
+  justify-self: stretch;
+}
+
+.cp-abertura h1 {
+  font-size: clamp(44px, 8.4vw, 108px);
+  letter-spacing: -.05em;
+  line-height: .96;
+}
+
+.cp-frase {
+  font-size: clamp(22px, 3.4vw, 44px);
+  letter-spacing: -.025em;
+  line-height: 1.2;
+}
+
+/* A máscara de cada verso e de cada palavra (o SplitText as cria com `overflow: clip`): a folga é para o corte não
+   comer o pé do "g" nem a cedilha, numa entrelinha apertada. A folga não pode mudar a altura do título: a da palavra
+   se desfaz na própria margem; a do verso (um bloco, e margens de blocos vizinhos se fundem) sai toda por cima, e o
+   `top` devolve o verso ao lugar. */
+.cp-verso-mask,
+.cp-palavra-mask {
+  padding-block: .14em;
+}
+
+.cp-palavra-mask {
+  margin-block: -.14em;
+}
+
+.cp-verso-mask {
+  top: .14em;
+  margin-top: -.28em;
+}
+
+/* Um ato: o número grande, o texto e a figura. */
+.cp-ato {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  padding-block: clamp(44px, 9svh, 96px);
+  border-top: 1px solid var(--pp-fio);
+  scroll-margin-top: var(--pg-topo);
+}
+
+/* O número é enfeite (o rótulo do ato já o diz): grande e apagado, no tom da borda. */
+.cp-ato > .cp-numero {
+  overflow: hidden;
+  font-family: var(--veio-fonte-mono);
+  font-size: clamp(56px, 8vw, 112px);
+  font-weight: var(--veio-peso-num);
+  letter-spacing: -.06em;
+  line-height: .9;
+  color: var(--veio-border-strong);
+}
+
+.cp-numero span {
+  display: block;
+}
+
+.cp-texto {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.cp-texto h2 {
+  font-size: clamp(30px, 4.2vw, 56px);
+  letter-spacing: -.04em;
+  line-height: 1.02;
+}
+
+.cp-texto > p:not(.pp-rotulo) {
+  max-width: 52ch;
+  color: var(--veio-muted);
+}
+
+.cp-tambem {
+  padding-top: 16px;
+  border-top: 1px solid var(--pp-fio);
+}
+
+/* Os passos e o Repetir ficam logo abaixo da tela da demonstração: quem a vê tem os dois à vista. */
+.cp-passos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  padding-top: 14px;
+}
+
+/* A figura: a moldura fica; a cortina (e a imagem dentro dela, ao contrário) é o que o GSAP move. */
+.cp-figura {
+  position: relative;
+  margin: 0;
+}
+
+.cp-figura:has(> .cp-cortina) {
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--pp-ouro-fio);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface);
+}
+
+.cp-cortina,
+.cp-video {
+  height: 100%;
+}
+
+.cp-cortina img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cp-figura--painel img {
+  object-position: 50% 80%;
+}
+
+.cp-figura--popup img {
+  object-position: 50% 25%;
+}
+
+/* A legenda do ato 1 é letra, e não captura: um vídeo de faz de conta e a linha, no tamanho de ler de longe. */
+.cp-video {
+  display: grid;
+  align-content: end;
+  justify-items: center;
+  box-sizing: border-box;
+  padding: 0 6% 11%;
+  background:
+    radial-gradient(ellipse 60% 55% at 30% 38%, color-mix(in srgb, var(--veio-accent) 34%, transparent), transparent),
+    linear-gradient(var(--veio-surface-2) 46%, var(--veio-bg) 46.4%);
+}
+
+.cp-legenda {
+  padding: .25em .6em;
+  background: var(--veio-bg);
+  color: var(--veio-text);
+  font-size: clamp(17px, 2.5vw, 30px);
+  font-weight: var(--veio-peso-rotulo);
+  letter-spacing: -.015em;
+  line-height: 1.3;
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* As etapas do envio, grandes: são a figura do ato 4. */
+.cp-etapas {
+  font-size: clamp(19px, 2.6vw, 30px);
+  font-weight: var(--veio-peso-titulo);
+  letter-spacing: -.02em;
+}
+
+.cp-etapas ol {
+  gap: .7em;
+}
+
+.cp-etapas::before,
+.cp-etapas .pg-etapas-fio {
+  left: .32em;
+  top: .7em;
+  bottom: .7em;
+}
+
+.cp-etapas li {
+  padding-left: 1.5em;
+}
+
+.cp-etapas li::before {
+  top: .32em;
+  width: .7em;
+  height: .7em;
+}
+
+/* No filme do Alt+S desta variante as teclas sobem de trás da borda da placa: ela é a máscara delas. */
+.filme .compasso .pg-demo-teclas {
+  overflow: hidden;
+}
+
+.cp-credito {
+  padding-top: 8px;
+  text-align: center;
+}
+
+/* O que espera a vez de entrar. `cp-pronta` chega com a primeira timeline; `data-visto`, quando o ato é revelado. */
+.filme:not(.cp-pronta) .cp-abertura :is(h1, .cp-frase, .pg-lead),
+.filme [data-ato]:not([data-visto]) :is(h2, .cp-numero, .cp-figura:not(.cp-figura--demo)) {
+  opacity: 0;
+}
+
+@media (min-width: 900px) {
+  .cp-ato {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 5.5fr) minmax(0, 5fr);
+    gap: 0 40px;
+    align-items: start;
+  }
+
+  .cp-figura {
+    align-self: center;
+  }
+}

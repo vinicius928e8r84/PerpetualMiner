@@ -1,0 +1,180 @@
+/* A demonstração do Alt+S das três variantes com GSAP, feita para ser vista por quem está desatento.
+
+   Parada (sem script, ou com "menos movimento") são passos legíveis: as duas capturas lado a lado, antes e depois, e a
+   lista dos três passos. Com script e movimento (cabeca.js marca a página com `filme` antes da primeira pintura, para
+   nada mudar de lugar depois) vira um filme curto que o GSAP rege (comum.js › filmeAltS): só começa com a tela à vista
+   e a página parada, e os passos vêm um de cada vez, com tempo de leitura.
+
+   O estado de cada passo está aqui, pelo `data-passo` do dono da demonstração (0 a legenda, 1 e 2 os passos, 3 a
+   frase minerada). O GSAP só anima a passagem de um para o outro e, no fim, apaga o que escreveu: a página volta a
+   depender só deste arquivo. Com "menos movimento" o Repetir anda pelos mesmos passos, em cortes secos. */
+.pg-demo-tela {
+  position: relative;
+}
+
+.pg-demo-camera {
+  display: grid;
+  gap: 8px;
+}
+
+.pg-demo-camera img {
+  width: 100%;
+}
+
+.pg-demo-antes,
+.pg-demo-cortina {
+  overflow: hidden;
+  border-radius: var(--veio-raio-input);
+}
+
+.pg-demo-teclas,
+.pg-demo-anel {
+  display: none;
+}
+
+@media (min-width: 520px) {
+  html:not(.filme) .pg-demo-camera {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Parada, durante o Repetir: a captura de depois espera apagada até o passo 3. */
+html:not(.filme) :is([data-passo="1"], [data-passo="2"]) .pg-demo-cortina {
+  opacity: .3;
+}
+
+/* Os três passos, numerados. O da vez fica com o número cheio de ouro (e não em negrito: a letra mais larga empurraria
+   a linha); no filme, os que ainda não vieram ficam apagados. */
+.pg-demo-passos {
+  display: grid;
+  gap: 6px;
+  counter-reset: passo-da-demo;
+  font-size: var(--veio-tam-card);
+  line-height: 1.4;
+}
+
+.pg-demo-passos li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  counter-increment: passo-da-demo;
+}
+
+.pg-demo-passos li::before {
+  content: counter(passo-da-demo);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--veio-accent);
+  border-radius: var(--veio-raio-pilula);
+  color: var(--veio-accent-text);
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  font-weight: var(--veio-peso-num);
+}
+
+.filme [data-passo="0"] .pg-demo-passos li,
+.filme [data-passo="1"] .pg-demo-passos li:nth-child(n + 2),
+.filme [data-passo="2"] .pg-demo-passos li:nth-child(3) {
+  color: var(--veio-muted);
+}
+
+.filme [data-passo="0"] .pg-demo-passos li::before,
+.filme [data-passo="1"] .pg-demo-passos li:nth-child(n + 2)::before,
+.filme [data-passo="2"] .pg-demo-passos li:nth-child(3)::before {
+  border-color: var(--veio-border-strong);
+  color: var(--veio-muted);
+}
+
+[data-passo="1"] .pg-demo-passos li:nth-child(1)::before,
+[data-passo="2"] .pg-demo-passos li:nth-child(2)::before,
+[data-passo="3"] .pg-demo-passos li:nth-child(3)::before {
+  background: var(--veio-accent);
+  color: var(--veio-accent-ink);
+}
+
+/* O filme: as duas capturas uma sobre a outra, e as teclas no meio do vídeo. */
+.filme .pg-demo-tela {
+  overflow: hidden;
+  border: 1px solid var(--pp-ouro-fio);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface);
+  box-shadow: var(--veio-sombra);
+}
+
+.filme .pg-demo-camera {
+  display: block;
+  position: relative;
+  transform-origin: 50% 78%;
+}
+
+.filme .pg-demo-antes,
+.filme .pg-demo-cortina {
+  border-radius: 0;
+}
+
+.filme .pg-demo-cortina {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.filme [data-passo="3"] .pg-demo-cortina {
+  opacity: 1;
+}
+
+/* As teclas, grandes e no meio do vídeo: é para lá que o olho já está voltado. O lugar delas é do `translate`; o
+   `transform` fica livre para o GSAP (a escala da entrada e o aperto). */
+.filme .pg-demo-teclas {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  translate: -50% -50%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-sizing: border-box;
+  /* Um atalho de quatro teclas não cabe numa linha do celular: a placa não passa da tela, e as teclas dobram. */
+  width: max-content;
+  max-width: calc(100% - 16px);
+  padding: 14px 18px;
+  border: 1px solid var(--pp-ouro-fio);
+  border-radius: var(--veio-raio-card);
+  background: color-mix(in srgb, var(--veio-bg) 86%, transparent);
+  box-shadow: var(--veio-sombra);
+  font-size: clamp(18px, 3vw, 26px);
+  font-weight: var(--veio-peso-titulo);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.filme [data-passo="2"] .pg-demo-teclas {
+  opacity: 1;
+}
+
+.pg-demo-teclas kbd {
+  padding: 8px 16px;
+  border-color: var(--veio-accent);
+  border-radius: var(--veio-raio-tecla-resumo);
+  background: var(--veio-accent);
+  box-shadow: 0 4px 0 var(--pp-ouro-fundo);
+  color: var(--veio-accent-ink);
+  font-size: clamp(22px, 4.4vw, 38px);
+  font-weight: var(--veio-peso-num);
+  line-height: 1.2;
+}
+
+/* O anel de ouro que acende na hora em que a frase é minerada. */
+.filme .pg-demo-anel {
+  display: block;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px var(--veio-accent), inset 0 0 48px color-mix(in srgb, var(--veio-accent) 35%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}

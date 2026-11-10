@@ -5,7 +5,7 @@
 // cada script, estilo e imagem que ela pede. Roda `preview/montar.mjs` numa pasta
 // temporária. `node test_preview.js`. Confere também as páginas públicas do app: `/sobre/` (a landing, com
 // as capturas de `preview/site/capturas/`) e a política de privacidade em `/privacidade/` e `/privacy/`, que
-// o consentimento OAuth do Google pede. E os protótipos da nova landing, em `/prototipos/pagina/`.
+// o consentimento OAuth do Google pede. E os protótipos da nova landing, em `/prototipos/pagina/` e `/prototipos/pagina-gsap/`.
 
 const assert = require('assert');
 const { execFileSync } = require('child_process');
@@ -88,32 +88,54 @@ const extensao = path.join(saida, 'extensao');
   }
   assert(fs.readFileSync(path.join(saida, 'index.html'), 'utf8').includes('href="/sobre/"'), 'a capa devia levar ao /sobre/');
 
-  // Os protótipos da nova landing (preview/prototipos/pagina/): saem no site, a capa leva a eles e a produção não
-  // os carrega. Valem para eles as regras da landing: o que pedem está no site, nada vem de fora e os scripts não
-  // falam com a rede nem guardam nada.
-  const emEstudo = path.join(saida, 'prototipos', 'pagina');
-  assert(fs.readFileSync(path.join(saida, 'index.html'), 'utf8').includes('href="/prototipos/pagina/"'), 'a capa devia levar aos protótipos de página');
+  // Os protótipos da nova landing (preview/prototipos/pagina/ e, com GSAP, pagina-gsap/): saem no site, a capa leva a
+  // eles e a produção não os carrega. Valem para eles as regras da landing: o que pedem está no site, nada vem de fora
+  // e os scripts não falam com a rede nem guardam nada.
   for (const [nome, html] of [['privacidade', privacidade], ['sobre', sobre]]) {
     assert(!html.includes('prototipos/'), `${nome}: a produção não carrega nada dos protótipos`);
   }
-  const variantes = [...fs.readFileSync(path.join(emEstudo, 'index.html'), 'utf8').matchAll(/quadro\('([^']+\.html)'/g)].map(m => m[1]);
-  assert.deepStrictEqual(variantes, ['roteiro.html', 'mosaico.html', 'abas.html'], 'o seletor devia montar as três variantes');
-  for (const pagina of ['index.html', ...variantes]) {
-    const html = fs.readFileSync(path.join(emEstudo, pagina), 'utf8');
-    // O `src="${arquivo}"` do seletor é o molde do quadro, não um pedido: os arquivos dele são as variantes, acima.
-    const pedidos = [...html.matchAll(/\b(?:src|srcset|href)="([^"#?:$]+)"/g)].map(m => m[1]);
-    for (const pedido of pedidos) {
-      const alvo = pedido.startsWith('/') ? path.join(saida, pedido) : path.join(emEstudo, pedido);
-      assert(fs.existsSync(alvo), `${pagina} (protótipo) carrega ${pedido}, que não está no site`);
+  const ESTUDOS = [
+    { pasta: 'pagina', variantes: ['roteiro.html', 'mosaico.html', 'abas.html'] },
+    { pasta: 'pagina-gsap', variantes: ['palco.html', 'travessia.html', 'compasso.html'] },
+  ];
+  /** Os arquivos de uma pasta e das pastas dentro dela, como caminhos a partir dela. */
+  const todosOsArquivos = (pasta, prefixo = '') => fs.readdirSync(path.join(pasta, prefixo), { withFileTypes: true })
+    .flatMap(item => (item.isDirectory() ? todosOsArquivos(pasta, path.join(prefixo, item.name)) : [path.join(prefixo, item.name)]));
+  for (const { pasta, variantes: esperadas } of ESTUDOS) {
+    const emEstudo = path.join(saida, 'prototipos', pasta);
+    assert(fs.readFileSync(path.join(saida, 'index.html'), 'utf8').includes(`href="/prototipos/${pasta}/"`), `a capa devia levar aos protótipos de ${pasta}`);
+    const variantes = [...fs.readFileSync(path.join(emEstudo, 'index.html'), 'utf8').matchAll(/quadro\('([^']+\.html)'/g)].map(m => m[1]);
+    assert.deepStrictEqual(variantes, esperadas, `o seletor de ${pasta} devia montar as três variantes`);
+    for (const pagina of ['index.html', ...variantes]) {
+      const html = fs.readFileSync(path.join(emEstudo, pagina), 'utf8');
+      // O `src="${arquivo}"` do seletor é o molde do quadro, não um pedido: os arquivos dele são as variantes, acima.
+      const pedidos = [...html.matchAll(/\b(?:src|srcset|href)="([^"#?:$]+)"/g)].map(m => m[1]);
+      for (const pedido of pedidos) {
+        const alvo = pedido.startsWith('/') ? path.join(saida, pedido) : path.join(emEstudo, pedido);
+        assert(fs.existsSync(alvo), `${pasta}/${pagina} (protótipo) carrega ${pedido}, que não está no site`);
+      }
+      assert(!/\b(?:src|srcset)="(?:https?:)?\/\//.test(html), `${pasta}/${pagina} (protótipo): imagem ou script de fora`);
+      assert(!/<link\b[^>]*href="(?:https?:)?\/\//.test(html), `${pasta}/${pagina} (protótipo): folha ou fonte de fora`);
+      if (pagina !== 'index.html') assert(html.includes(`href="https://chromewebstore.google.com/detail/perpetualminer/${idDaExtensao}"`), `${pasta}/${pagina} devia levar à extensão na Chrome Web Store`);
+      if (pagina !== 'index.html') assert(html.includes('href="/privacidade/"'), `${pasta}/${pagina} devia levar à política de privacidade`);
     }
-    assert(!/\b(?:src|srcset)="(?:https?:)?\/\//.test(html), `${pagina} (protótipo): imagem ou script de fora`);
-    assert(!/<link\b[^>]*href="(?:https?:)?\/\//.test(html), `${pagina} (protótipo): folha ou fonte de fora`);
-    if (pagina !== 'index.html') assert(html.includes(`href="https://chromewebstore.google.com/detail/perpetualminer/${idDaExtensao}"`), `${pagina} devia levar à extensão na Chrome Web Store`);
-    if (pagina !== 'index.html') assert(html.includes('href="/privacidade/"'), `${pagina} devia levar à política de privacidade`);
+    // Todos os scripts da pasta, os copiados de terceiros (vendor/) também.
+    for (const script of todosOsArquivos(emEstudo).filter(nome => nome.endsWith('.js'))) {
+      const usa = fs.readFileSync(path.join(emEstudo, script), 'utf8').match(/\b(fetch|XMLHttpRequest|sendBeacon|WebSocket|EventSource|cookie|localStorage|sessionStorage|indexedDB)\b/);
+      assert(!usa, `${pasta}/${script} (protótipo) não fala com a rede nem guarda nada, e usa ${usa}`);
+    }
   }
-  for (const script of fs.readdirSync(emEstudo).filter(nome => nome.endsWith('.js'))) {
-    const usa = fs.readFileSync(path.join(emEstudo, script), 'utf8').match(/\b(fetch|XMLHttpRequest|sendBeacon|WebSocket|EventSource|cookie|localStorage|sessionStorage|indexedDB)\b/);
-    assert(!usa, `${script} (protótipo) não fala com a rede nem guarda nada, e usa ${usa}`);
+  // O GSAP entra copiado (o site não pede nada para fora), com a licença ao lado e o aviso de direitos de cada arquivo
+  // como veio: a licença proíbe tirar.
+  const gsap = path.join(saida, 'prototipos', 'pagina-gsap', 'vendor', 'gsap');
+  assert(fs.readFileSync(path.join(gsap, 'LICENCA.txt'), 'utf8').includes('Standard "No Charge" GSAP License'), 'o GSAP devia ter o texto da licença ao lado');
+  const copiados = fs.readdirSync(gsap).filter(nome => nome.endsWith('.js'));
+  assert(copiados.includes('gsap.min.js'), 'o GSAP devia estar copiado em vendor/gsap');
+  for (const arquivo of copiados) {
+    const cabecalho = fs.readFileSync(path.join(gsap, arquivo), 'utf8').slice(0, 300);
+    assert(/@license Copyright \d{4}, GreenSock/.test(cabecalho) && cabecalho.includes('https://gsap.com/standard-license'), `${arquivo}: o aviso de direitos do GSAP saiu do arquivo`);
+    const usado = ESTUDOS[1].variantes.some(pagina => fs.readFileSync(path.join(saida, 'prototipos', 'pagina-gsap', pagina), 'utf8').includes(`src="vendor/gsap/${arquivo}"`));
+    assert(usado, `${arquivo} está copiado e nenhuma variante o carrega`);
   }
 
   fs.rmSync(saida, { recursive: true, force: true });

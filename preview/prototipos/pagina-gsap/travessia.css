@@ -1,0 +1,403 @@
+/* Protótipo "Travessia": continuidade. A frase é um objeto só, que viaja da legenda ao painel e do painel ao cartão
+   (travessia.js, Flip). Cada cena é uma estação (a tela) e os atos que ela ilustra; a estação fica presa pelo
+   navegador (sticky) enquanto os atos passam: no celular gruda no topo, no computador fica ao lado do texto.
+
+   A frase que viaja é HTML por cima das capturas. Cada vaga cobre o lugar onde a captura mostra a frase, na mesma
+   posição e no mesmo tamanho, medidos na imagem (as frações --x, --y, --w, --h e --f, mais abaixo). Mudou a captura?
+   Meça de novo. Sem `filme` (sem script ou com "menos movimento") as vagas não existem: vale o que a captura mostra. */
+.tv-historia {
+  display: grid;
+  gap: 56px;
+  padding-block: 8px 24px;
+}
+
+.tv-cena {
+  display: grid;
+  gap: 20px;
+}
+
+/* A estação. O recorte de cada captura é dito em frações da janela dela: --z o zoom (1 = a largura da janela),
+   --ox e --oy o canto da imagem, e --r quantas janelas de altura a imagem tem com zoom 1. */
+.tv-estacao {
+  position: sticky;
+  top: calc(var(--pg-topo) + 8px);
+  z-index: 2;
+  margin: 0;
+  container-type: inline-size;
+  --z: 1;
+  --ox: 0;
+  --oy: 0;
+}
+
+/* O chão da estação presa: o texto dos atos passa por baixo dela e some antes de encostar. */
+.tv-estacao::before {
+  content: "";
+  position: absolute;
+  inset: -8px calc(-1 * var(--pg-borda)) -20px;
+  z-index: -1;
+  background: linear-gradient(var(--veio-bg) calc(100% - 20px), transparent);
+}
+
+/* A estação onde a frase está fica por cima das outras: na volta, as palavras saem de cima da estação seguinte. */
+.tv-estacao--com-a-frase {
+  z-index: 3;
+}
+
+.tv-janela {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  border: 1px solid var(--pp-ouro-fio);
+  border-radius: var(--veio-raio-card);
+  background: var(--veio-surface);
+  box-shadow: var(--veio-sombra);
+}
+
+.tv-captura {
+  position: absolute;
+  left: calc(var(--ox) * 100%);
+  top: calc(var(--oy) * 100%);
+  width: calc(var(--z) * 100%);
+  max-width: none;
+}
+
+/* Parada, a demonstração são as duas capturas lado a lado (demo.css): a janela do vídeo não recorta nada. */
+html:not(.filme) .tv-estacao--video .tv-janela {
+  overflow: visible;
+  aspect-ratio: auto;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.filme .tv-estacao--video .pg-demo-camera {
+  position: absolute;
+  left: calc(var(--ox) * 100%);
+  top: calc(var(--oy) * 100%);
+  width: calc(var(--z) * 100%);
+}
+
+/* O vídeo (960×720), com o pé dele (a legenda) na janela. */
+.tv-estacao--video {
+  --r: 1.2;
+  --z: 1.3;
+  --ox: -.15;
+  --oy: -.56;
+}
+
+/* O painel (960×1440): do Enviar ao Anki até a frase com a palavra grifada. */
+.tv-estacao--painel {
+  --r: 2.4;
+  --z: 1.5;
+  --ox: -.375;
+  --oy: -1.8;
+}
+
+/* O popup (680×1200): a mineração automática. */
+.tv-estacao--popup {
+  --r: 2.8235;
+  --oy: -.4;
+}
+
+/* Uma vaga: onde a frase pousa. Fica fora da janela (que recorta), para as palavras voarem inteiras até ela. */
+.tv-estacao > .tv-vaga {
+  display: none;
+}
+
+.filme .tv-estacao > .tv-vaga {
+  position: absolute;
+  left: calc((var(--ox) + var(--z) * var(--x)) * 100%);
+  top: calc((var(--oy) + var(--z) * var(--r) * var(--y)) * 100%);
+  z-index: 1;
+  display: grid;
+  align-content: center;
+  box-sizing: border-box;
+  width: calc(var(--z) * var(--w) * 100%);
+  min-height: calc(var(--z) * var(--r) * var(--h) * 100%);
+  font-size: calc(var(--z) * var(--f) * 1cqw);
+}
+
+/* A legenda do vídeo: a caixa escura de 136 a 823 px, de 532 a 585 px. */
+.tv-vaga--legenda {
+  --x: .1417;
+  --y: .7389;
+  --w: .7167;
+  --h: .075;
+  --f: 2.95;
+  --tv-tampa: #06090c;
+  color: #fff;
+  font-weight: var(--veio-peso-rotulo);
+  line-height: 1.25;
+  text-align: center;
+}
+
+/* A frase no painel: de 326 a 600 px, de 936 a 1072 px, sobre o fundo do card selecionado. */
+.tv-vaga--painel {
+  --x: .3396;
+  --y: .65;
+  --w: .285;
+  --h: .0945;
+  --f: 2.95;
+  --tv-tampa: #1d1912;
+  line-height: 1.6;
+}
+
+/* A legenda cresce para cima, como legenda: a vaga dela é presa pelo pé. */
+.filme .tv-estacao > .tv-vaga--legenda {
+  top: auto;
+  bottom: calc((1 - var(--oy) - var(--z) * var(--r) * (var(--y) + var(--h))) * 100%);
+}
+
+/* Pousada, uma frase comprida demais para a vaga é cortada com reticências (duas linhas na legenda, três no painel),
+   em vez de escorrer por cima da captura. No voo não: cortar esconderia as palavras no caminho. */
+.tv-vaga--legenda {
+  --tv-linhas: 2;
+}
+
+.tv-vaga--painel {
+  --tv-linhas: 3;
+}
+
+.tv-estacao > .tv-vaga .tv-frase--pousada {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--tv-linhas);
+  line-clamp: var(--tv-linhas);
+  overflow: hidden;
+}
+
+/* A tampa cobre a frase que a captura traz. Sai quando a frase viajante já passou por ali: a captura volta a mostrar a dela. */
+.tv-tampa {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--tv-tampa);
+}
+
+/* A frase que viaja: cada palavra é uma caixa, para o Flip levar uma a uma sem deformar. */
+.tv-frase {
+  display: block;
+  letter-spacing: -.01em;
+}
+
+.tv-palavra {
+  position: relative;
+  display: inline-block;
+}
+
+/* A palavra que o cartão vai ensinar ganha o grifo quando a frase chega ao painel. */
+.tv-palavra--chave::before {
+  content: "";
+  position: absolute;
+  inset: 6% -6%;
+  z-index: -1;
+  border-radius: var(--veio-raio-losango);
+  background: var(--veio-kw-bg);
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+:is(.tv-vaga--painel, .tv-vaga--cartao) .tv-palavra--chave::before {
+  opacity: 1;
+}
+
+/* O cartão do Anki, em esquema: a frente com a frase e o verso com o que a Conexão prepara. */
+.tv-cartao {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--veio-border-strong);
+  border-radius: var(--veio-raio-painel);
+  background: var(--veio-surface);
+  box-shadow: var(--veio-sombra);
+}
+
+.tv-cartao-frente {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--veio-border);
+  font-size: clamp(17px, 2.1vw, 24px);
+  font-weight: var(--veio-peso-rotulo);
+  line-height: 1.3;
+  text-align: center;
+}
+
+.filme .tv-vaga--cartao {
+  position: relative;
+  display: block;
+}
+
+.filme .tv-vaga--cartao .tv-molde {
+  visibility: hidden;
+}
+
+.tv-vaga--cartao .tv-frase {
+  position: absolute;
+  inset: 0;
+}
+
+.tv-cartao-verso {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-legenda);
+  color: var(--veio-muted);
+}
+
+/* Cada linha do verso: o nome do campo e, embaixo, o traço do que a Conexão escreve nele. O nome fica sempre legível;
+   o traço é o que o envio desenha, da esquerda para a direita. */
+.tv-cartao-verso li {
+  display: grid;
+  gap: 5px;
+}
+
+.tv-cartao-verso i {
+  height: 8px;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-surface-2);
+  transform-origin: left;
+}
+
+.tv-cartao-verso .tv-cartao-imagem i {
+  height: 40px;
+  border-radius: var(--veio-raio-icone);
+}
+
+.tv-cartao-verso .tv-cartao-audio i {
+  width: 56px;
+  height: 16px;
+  background: var(--veio-accent-soft);
+}
+
+.tv-cartao-anel {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px var(--veio-accent), 0 0 40px -8px color-mix(in srgb, var(--veio-accent) 60%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tv-ato {
+  padding-block: 12px 28px;
+  scroll-margin-top: calc(var(--pg-topo) + 62.5vw + 28px);
+}
+
+.tv-tambem {
+  padding-top: 16px;
+  border-top: 1px solid var(--pp-fio);
+}
+
+.tv-credito {
+  text-align: center;
+}
+
+/* Tela baixa (celular deitado): a estação não cabe presa, então segue a rolagem. */
+@media (max-height: 480px) and (max-width: 899px) {
+  .tv-estacao {
+    position: relative;
+    top: auto;
+  }
+
+  .tv-estacao::before {
+    content: none;
+  }
+}
+
+/* Com "menos movimento" a demonstração são duas capturas, altas demais para ficarem presas num celular: a estação
+   do vídeo segue a rolagem, entre o ato 1 e o ato 2, com os passos e o Repetir logo abaixo dela. */
+@media (max-width: 899px) {
+  html:not(.filme) .tv-estacao--video {
+    position: relative;
+    top: auto;
+  }
+
+  html:not(.filme) .tv-estacao--video::before {
+    content: none;
+  }
+
+  html:not(.filme) .tv-cena--video .tv-atos {
+    display: contents;
+  }
+
+  html:not(.filme) #ato-1 {
+    order: -1;
+  }
+}
+
+/* Com largura: os atos à esquerda e a estação presa à direita, no meio da janela. */
+@media (min-width: 900px) {
+  .tv-historia {
+    gap: 40px;
+    padding-block: 24px 40px;
+  }
+
+  .tv-cena {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: 0 88px;
+    align-items: start;
+  }
+
+  .tv-atos {
+    grid-area: 1 / 1;
+  }
+
+  .tv-estacao {
+    grid-area: 1 / 2;
+    top: max(calc(var(--pg-topo) + 24px), calc(50svh - 190px));
+  }
+
+  .tv-estacao::before {
+    content: none;
+  }
+
+  .tv-janela {
+    aspect-ratio: 4 / 3;
+    border-radius: var(--veio-raio-painel);
+  }
+
+  .tv-estacao--video {
+    --r: 1;
+    --z: 1;
+    --ox: 0;
+    --oy: 0;
+  }
+
+  .tv-estacao--painel {
+    --r: 2;
+    --z: 1.25;
+    --ox: -.2;
+    --oy: -1.05;
+  }
+
+  .tv-estacao--popup {
+    --r: 2.353;
+    --oy: -.245;
+  }
+
+  .tv-cartao {
+    gap: 24px;
+    padding: 32px;
+  }
+
+  .tv-cartao-frente {
+    padding-block: 12px 28px;
+    font-size: clamp(22px, 2.4vw, 30px);
+  }
+
+  .tv-cartao-verso {
+    gap: 16px 24px;
+  }
+
+  .tv-cartao-verso .tv-cartao-imagem i {
+    height: 72px;
+  }
+
+  .tv-ato {
+    align-content: center;
+    min-height: 72svh;
+    padding-block: 0;
+    scroll-margin-top: var(--pg-topo);
+  }
+}

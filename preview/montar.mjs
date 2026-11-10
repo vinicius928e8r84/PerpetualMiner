@@ -113,7 +113,7 @@ const TITULOS = {
   'auditoria/auditoria-front.html': 'Auditoria do front',
 };
 
-function capa({ telas, prototipos, temVitrine, temVeio, temPaginasEmEstudo, git }) {
+function capa({ telas, prototipos, temVitrine, temVeio, temPaginasEmEstudo, temPaginasComGsap, git }) {
   const linha = (href, titulo, detalhe) =>
     `      <li><a href="${href}"><span>${titulo}</span><small>${detalhe}</small></a></li>`;
 
@@ -165,7 +165,7 @@ ${temVeio ? '    <img class="veio-marca" src="/veio/icones/icone.svg" width="40"
   <h2>O app</h2>
   <ul>
 ${linha('/sobre/', 'PerpetualMiner: a landing do app', 'o que é, como funciona e como instalar')}
-${linha('/privacidade/', 'Política de privacidade', 'também em /privacy')}${temPaginasEmEstudo ? `\n${linha('/prototipos/pagina/', 'Nova landing: três protótipos de página', 'Roteiro, Mosaico e Abas')}` : ''}
+${linha('/privacidade/', 'Política de privacidade', 'também em /privacy')}${temPaginasEmEstudo ? `\n${linha('/prototipos/pagina/', 'Nova landing: três protótipos de página', 'Roteiro, Mosaico e Abas')}` : ''}${temPaginasComGsap ? `\n${linha('/prototipos/pagina-gsap/', 'Nova landing com GSAP: três protótipos de movimento', 'Palco, Travessia e Compasso')}` : ''}
   </ul>
 
   <h2>Telas da extensão</h2>
@@ -260,6 +260,7 @@ async function montar() {
   const paginasEmEstudo = path.join(RAIZ, 'preview', 'prototipos');
   const temPaginasEmEstudo = await existe(paginasEmEstudo);
   if (temPaginasEmEstudo) await copiar(paginasEmEstudo, path.join(DESTINO, 'prototipos'));
+  const temPaginasComGsap = await existe(path.join(paginasEmEstudo, 'pagina-gsap'));
 
   const prototipos = await acharPrototipos();
   if (prototipos.length) await copiar(path.join(RAIZ, 'docs', 'design'), path.join(DESTINO, 'design'));
@@ -270,7 +271,7 @@ async function montar() {
     process.env.VERCEL_GIT_COMMIT_MESSAGE && process.env.VERCEL_GIT_COMMIT_MESSAGE.split('\n')[0],
   ].filter(Boolean).join(' · ') || 'build local';
 
-  await fs.writeFile(path.join(DESTINO, 'index.html'), capa({ telas, prototipos, temVitrine, temVeio, temPaginasEmEstudo, git }));
+  await fs.writeFile(path.join(DESTINO, 'index.html'), capa({ telas, prototipos, temVitrine, temVeio, temPaginasEmEstudo, temPaginasComGsap, git }));
 
   console.log(`preview montado em ${path.relative(process.cwd(), DESTINO)}`);
   console.log(`  telas: ${telas.map(t => t.arquivo).join(', ') || 'nenhuma'}`);

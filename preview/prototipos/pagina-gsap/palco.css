@@ -1,0 +1,283 @@
+/* Protótipo "Palco": o tempo é da rolagem. A história é um palco preso do tamanho da janela, e rolar é andar na linha
+   do tempo dela (palco.js, ScrollTrigger com scrub).
+
+   Duas arrumações. Parada (sem script, com "menos movimento", ou quando o texto não cabe no palco): cada cena é a tela
+   dela e, ao lado ou embaixo, os atos que ela ilustra. Presa (`palco-preso`, que cabeca.js põe antes da primeira
+   pintura): as três cenas ficam uma sobre a outra no mesmo lugar, e os cinco atos também. Quem prende o palco é o
+   `position: sticky` do navegador, no compositor; o GSAP só move o que está dentro dele. */
+.pl-trilha {
+  box-sizing: border-box;
+  max-width: var(--pg-largura);
+  margin-inline: auto;
+  padding-inline: var(--pg-borda) max(20px, env(safe-area-inset-right, 0px));
+}
+
+.pl-palco {
+  display: grid;
+  gap: 56px;
+}
+
+.pl-cena {
+  display: grid;
+  gap: 24px;
+}
+
+.pl-tela {
+  margin: 0;
+}
+
+/* Parada, a captura alta mostra o trecho que os atos dela comentam. */
+.pl-captura {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--veio-raio-card);
+}
+
+.pl-cena--painel .pl-captura {
+  object-position: 50% 80%;
+}
+
+.pl-cena--popup .pl-captura {
+  object-position: 50% 25%;
+}
+
+.pl-ato {
+  scroll-margin-top: calc(var(--pg-topo) + 16px);
+}
+
+.pl-trilho {
+  display: none;
+}
+
+.pl-credito {
+  padding-top: 16px;
+  text-align: center;
+}
+
+/* Parada e estreita, a tela do vídeo fica entre o ato 1 e o ato 2: quem vê a demonstração tem os passos e o Repetir
+   logo abaixo dela. Quando ela é um filme (uma tela só, e não as duas capturas), gruda no topo enquanto o ato 2 passa. */
+@media (max-width: 899px) {
+  html:not(.palco-preso) #ato-1 {
+    order: -1;
+  }
+
+  .filme:not(.palco-preso) .pl-cena--video .pl-tela {
+    position: sticky;
+    top: calc(var(--pg-topo) + 8px);
+    z-index: 2;
+    outline: 8px solid var(--veio-bg);
+  }
+}
+
+@media (min-width: 900px) {
+  .pl-cena {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    column-gap: 72px;
+  }
+
+  .pl-tela {
+    grid-area: 1 / 2 / span 2;
+    align-self: start;
+    position: sticky;
+    top: calc(var(--pg-topo) + 24px);
+  }
+
+  .pl-ato {
+    grid-column: 1;
+    padding-block: 24px;
+  }
+}
+
+/* O palco preso. A trilha é o comprimento da história (uma janela e pouco por ato); o palco gruda abaixo do topo. */
+.palco-preso .pl-trilha {
+  max-width: none;
+  height: 640svh;
+  padding: 0;
+}
+
+.palco-preso .pl-palco {
+  position: sticky;
+  top: var(--pg-topo);
+  box-sizing: border-box;
+  height: calc(100svh - var(--pg-topo));
+  overflow: hidden;
+  grid-template: "trilho" 24px "tela" auto "texto" minmax(0, 1fr) / minmax(0, 1fr);
+  gap: 8px;
+  padding: 4px 16px 12px;
+}
+
+.palco-preso .pl-cena {
+  display: contents;
+}
+
+/* As três telas no mesmo lugar, com a mesma moldura: a de cima entra por dentro dela, sem a de baixo sair. */
+.palco-preso .pl-tela {
+  grid-area: tela;
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--pp-ouro-fio);
+  border-radius: var(--veio-raio-card);
+}
+
+/* No celular alto sobra palco: a tela cresce. */
+@media (min-height: 700px) {
+  .palco-preso .pl-tela {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+/* A moldura é mais baixa que o vídeo: fica o pé dele, onde a legenda está. */
+.palco-preso .pg-demo-camera {
+  position: absolute;
+  inset: auto 0 0;
+}
+
+/* A captura inteira, que o GSAP sobe e desce por dentro da moldura. Até ele pôr cada uma no lugar, não aparecem. */
+.palco-preso .pl-captura {
+  position: absolute;
+  inset: 0 0 auto;
+  aspect-ratio: auto;
+  object-fit: fill;
+  border-radius: 0;
+}
+
+.palco-preso:not(.palco-pronto) :is(.pl-captura, .pl-trilho-fio i) {
+  visibility: hidden;
+}
+
+/* Os cinco atos no mesmo lugar. Só o da vez recebe o ponteiro: os outros estão transparentes por cima dele. */
+.palco-preso .pl-ato {
+  grid-area: texto;
+  align-self: start;
+  gap: 10px;
+  padding: 0;
+  pointer-events: none;
+}
+
+.palco-preso .pl-ato:not(#ato-1) {
+  opacity: 0;
+}
+
+.palco-preso [data-ato="1"] #ato-1,
+.palco-preso [data-ato="2"] #ato-2,
+.palco-preso [data-ato="3"] #ato-3,
+.palco-preso [data-ato="4"] #ato-4,
+.palco-preso [data-ato="5"] #ato-5 {
+  pointer-events: auto;
+}
+
+.palco-preso .pl-ato h2 {
+  font-size: clamp(24px, 6.4vw, 30px);
+}
+
+.palco-preso .pl-ato > p:not(.pp-rotulo) {
+  font-size: var(--veio-tam-card);
+  line-height: 1.5;
+}
+
+/* O trilho: uma barra que a rolagem enche, cortada em cinco trechos do tamanho que cada ato ocupa na linha do tempo
+   (palco.js › FIM). Cada trecho é o link do ato. */
+.palco-preso .pl-trilho {
+  grid-area: trilho;
+  position: relative;
+  display: grid;
+  grid-template-columns: 17fr 26fr 18fr 26fr 13fr;
+}
+
+.pl-trilho-fio {
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 3px;
+  margin-top: -1.5px;
+  overflow: hidden;
+  border-radius: var(--veio-raio-pilula);
+  background: var(--veio-border);
+}
+
+.pl-trilho-fio i {
+  display: block;
+  height: 100%;
+  background: var(--veio-accent);
+  transform-origin: left;
+}
+
+.pl-trilho a {
+  position: relative;
+  touch-action: manipulation;
+}
+
+.pl-trilho a + a::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 50%;
+  width: 4px;
+  height: 9px;
+  margin-top: -4.5px;
+  background: var(--veio-bg);
+}
+
+@media (min-width: 900px) {
+  .palco-preso .pl-palco {
+    grid-template: "texto trilho tela" minmax(0, 1fr) / minmax(0, 5fr) 24px minmax(0, 6fr);
+    align-items: center;
+    gap: 0 44px;
+    padding: 24px max(32px, calc((100% - var(--pg-largura)) / 2 + 32px));
+  }
+
+  .palco-preso .pl-tela {
+    position: relative;
+    top: auto;
+    align-self: center;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--veio-raio-painel);
+  }
+
+  .palco-preso .pl-ato {
+    align-self: center;
+    gap: 16px;
+  }
+
+  .palco-preso .pl-ato h2 {
+    font-size: var(--pg-tam-ato);
+  }
+
+  .palco-preso .pl-ato > p:not(.pp-rotulo) {
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  /* O trilho em pé, entre o texto e a tela. */
+  .palco-preso .pl-trilho {
+    grid-template-columns: none;
+    grid-template-rows: 17fr 26fr 18fr 26fr 13fr;
+    height: min(320px, 70%);
+  }
+
+  .pl-trilho-fio {
+    inset: 0 auto 0 50%;
+    width: 3px;
+    height: auto;
+    margin: 0 0 0 -1.5px;
+  }
+
+  .pl-trilho-fio i {
+    transform-origin: top;
+  }
+
+  .pl-trilho a + a::before {
+    left: 50%;
+    top: -2px;
+    width: 9px;
+    height: 4px;
+    margin: 0 0 0 -4.5px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pl-trilho a:hover {
+    background: var(--veio-accent-soft);
+  }
+}
