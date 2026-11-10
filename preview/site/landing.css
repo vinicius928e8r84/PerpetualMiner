@@ -214,6 +214,11 @@
   transform: scale(.97);
 }
 
+/* O rótulo do botão tem duas versões: a inteira e, em tela estreita, a curta, que cabe numa linha (mais abaixo). */
+.site-rotulo-curto {
+  display: none;
+}
+
 .site-seta {
   display: inline-block;
   transition: transform var(--veio-transicao) var(--veio-curva-saida);
@@ -548,5 +553,16 @@
   .numeros li:nth-child(even) {
     padding-right: 0;
     padding-left: 20px;
+  }
+}
+
+/* Até 400 px "Instalar na Chrome Web Store" não cabe numa linha dentro do fecho: fica o rótulo curto. */
+@media (max-width: 400px) {
+  .site-rotulo-largo {
+    display: none;
+  }
+
+  .site-rotulo-curto {
+    display: inline;
   }
 }
