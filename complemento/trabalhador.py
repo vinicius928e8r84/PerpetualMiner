@@ -3,13 +3,17 @@
 import threading
 import time
 
+from . import retencao_dos_envios
 from .paradas_do_envio import Interrompido
+
+# De quanto em quanto tempo a thread de trabalho apaga os Envios terminados que passaram do prazo (#243, `retencao_dos_envios.py`); também ao subir.
+RETENCAO_A_CADA_S = 6 * 60 * 60
 
 
 class Trabalhador:
     """A thread de trabalho: tira um Envio da fila de cada vez. Nenhum erro dela sai do logger."""
 
-    def __init__(self, trabalho, intervalo=1.0, contato=None, espera_do_contato=0.0):
+    def __init__(self, trabalho, intervalo=1.0, contato=None, espera_do_contato=0.0, retencao_a_cada_s=RETENCAO_A_CADA_S):
         self.trabalho = trabalho
         self.fila = trabalho.fila
         self.parar = trabalho.parar
@@ -18,7 +22,16 @@ class Trabalhador:
         # que ficou parado: um Apagar tudo feito com o Anki fechado chega antes de a Conexão gastar a chave com as Frases apagadas.
         self.contato = contato
         self.espera_do_contato = espera_do_contato
+        self.retencao_a_cada_s = retencao_a_cada_s
+        self._proxima_retencao = None
         self._thread = None
+
+    def _reter_se_for_a_hora(self):
+        agora = time.monotonic()
+        if self._proxima_retencao is not None and agora < self._proxima_retencao:
+            return
+        self._proxima_retencao = agora + self.retencao_a_cada_s
+        retencao_dos_envios.reter(self.fila)
 
     def _esperar_a_extensao(self):
         if self.contato is None or self.espera_do_contato <= 0:
@@ -35,10 +48,12 @@ class Trabalhador:
 
     def _rodar(self):
         logger = self.trabalho.logger
+        self._reter_se_for_a_hora()  # nada gasta: não espera a extensão
         self._esperar_a_extensao()
         while not self.parar.is_set():
             job_id = None
             try:
+                self._reter_se_for_a_hora()
                 job_id = self.fila.reservar_o_proximo()
                 if job_id is None:
                     self.fila.mudou.wait(self.intervalo)
