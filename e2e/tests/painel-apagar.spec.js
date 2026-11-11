@@ -5,6 +5,7 @@
 // "Apagar tudo" esperava essa gravação e nunca chegava ao DELETE.
 
 const { test, expect } = require('../fixtures');
+const { estadoFinalEm } = require('../estado-final');
 
 const PRIMEIRA = 'The ferry left before the fog had lifted.';
 const SEGUNDA = 'Her notebook was full of borrowed recipes.';
@@ -56,4 +57,23 @@ test('com a conta conectada, "Apagar tudo" no painel apaga todas as frases da nu
 
   await expect.poll(() => fakes.google.frasesDe('uid-tudo')).toEqual([]);
   expect(fakes.google.apagadasDe('uid-tudo').sort()).toEqual(mineradas.map(m => String(m.frase.id)).sort());
+});
+
+// O `chrome.storage.sync` aceita 512 itens, e cada frase apagada é um (`pm_del_{id}`): uma gravação que passava disso
+// era recusada inteira, em silêncio, e nenhum tombstone ficava. Agora ficam os das frases mais novas que cabem.
+test('apagar 520 frases de uma vez deixa no sync do Chrome o tombstone das 500 mais novas', async ({ page, extensao }) => {
+  const frases = Array.from({ length: 520 }, (_, i) => ({
+    id: 1_700_000_000_000 + i, texto: `The lighthouse keeper counted wave number ${i + 1}.`,
+    data: new Date().toLocaleDateString('pt-BR'), streaming: 'manual', idioma: 'Inglês',
+  }));
+  await extensao.gravarStorage({ frases });
+  await page.goto(extensao.url('painel.html'));
+  await page.getByRole('checkbox', { name: 'Selecionar página' }).check();
+  await page.getByRole('button', { name: 'Selecionar todas as 520 frases' }).click();
+  await page.locator('#btn-delete-selected').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 520 frases' }).click();
+  await expect(page.locator('#shell-total')).toHaveText('0');
+
+  const noSync = async () => Object.keys(await extensao.serviceWorker.evaluate(() => chrome.storage.sync.get(null))).sort();
+  await estadoFinalEm('os tombstones no sync do Chrome', noSync, frases.slice(20).map(f => `pm_del_${f.id}`).sort());
 });
