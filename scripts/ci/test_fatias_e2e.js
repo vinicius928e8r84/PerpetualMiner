@@ -27,6 +27,17 @@ const maiorSpec = Math.max(...specs.map(spec => arquivo.duracoes[spec]));
 const maiorFatia = Math.max(...arquivo.fatias.map(segundos));
 assert(maiorFatia <= Math.max(maiorSpec, (total / NUMERO_DE_FATIAS) * 1.1), `fatia mais lenta ${maiorFatia}s, média ${(total / NUMERO_DE_FATIAS).toFixed(0)}s, maior spec ${maiorSpec}s`);
 
+// O Playwright e este script enxergam os mesmos arquivos: o `testMatch` do Playwright é só `*.spec.js` (senão um
+// `zz.test.js` rodaria no Playwright sem estar em fatia nenhuma), e nenhum arquivo de e2e/tests parece teste sem ser `.spec.js`.
+const configuracao = fs.readFileSync(path.join(RAIZ, 'e2e', 'playwright.config.js'), 'utf8');
+assert(/testMatch:\s*'\*\*\/\*\.spec\.js'/.test(configuracao), "e2e/playwright.config.js precisa de testMatch: '**/*.spec.js'");
+const quePareceTeste = (function listar(pasta, prefixo = '') {
+  return fs.readdirSync(pasta, { withFileTypes: true }).flatMap(entrada => (entrada.isDirectory()
+    ? listar(path.join(pasta, entrada.name), `${prefixo}${entrada.name}/`)
+    : (/\.(spec|test)\.[cm]?[jt]sx?$/.test(entrada.name) && !/\.spec\.js$/.test(entrada.name) ? [`${prefixo}${entrada.name}`] : [])));
+})(path.join(RAIZ, 'e2e', 'tests'));
+assert.deepStrictEqual(quePareceTeste, [], 'um arquivo de e2e/tests que parece teste mas não termina em .spec.js não roda no CI: renomeie para .spec.js');
+
 // O workflow: a matriz tem uma entrada por fatia, o nome do check diz quantas são, e o job pede a lista desta fatia.
 const workflow = fs.readFileSync(path.join(RAIZ, '.github', 'workflows', 'testes.yml'), 'utf8');
 const matriz = /^\s*fatia: \[([\d, ]+)\]\s*$/m.exec(workflow);
