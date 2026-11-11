@@ -67,7 +67,7 @@ class UmEnvioTerminadoEVelho(unittest.TestCase):
                          [os.path.join("estado", ID + ".json"), os.path.join("fila", ID + ".json")])
         self.assertEqual([nome for nome in depois if nome.startswith(("fila" + os.sep + ID, "estado" + os.sep + ID))], [])
         self.assertEqual(json.loads(depois[os.path.join("fila", "fila.json")]), {"jobs": []})
-        self.assertEqual(na_fila, [])
+        self.assertEqual([job["jobId"] for job in na_fila], [ID])  # só a ficha com os ids das Frases enviadas (#372); a fila em si está vazia, acima
         self.assertEqual(
             {nome: dados for nome, dados in depois.items() if nome.startswith("custos" + os.sep) and not nome.endswith("ficha.json")},
             {nome: dados for nome, dados in antes.items() if nome.startswith("custos" + os.sep)})

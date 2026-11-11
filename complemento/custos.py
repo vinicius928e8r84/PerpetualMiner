@@ -164,6 +164,8 @@ def ficha_do_envio(item, pedido, estado):
         "lang": pedido.get("lang") or item.get("lang") or "unknown", "deckName": pedido.get("deckName", ""), "imageSource": pedido.get("imageSource", ""),
         "status": status, "stage": estado.get("stage") or status,
         "requestedCards": pedidas, "successfulCards": enviadas, "failedCards": falharam, "lastError": estado.get("lastError"),
+        # Só ids (#372): depois da retenção a extensão ainda marca estas Frases como enviadas, sem reenviar e pagar de novo.
+        "successfulPhraseIds": sorted(set(estado.get("successfulPhraseIds") or [])),
     }
 
 
@@ -181,7 +183,7 @@ def linhas(fila, de, ate, lang):
             continue
         resumo = resumir(lidos, do_envio, de, ate)
         resultado.append({
-            "jobId": job_id, **ficha, "costs": resumo["costs"], "images": resumo["images"], "matchedRecords": resumo["matchedRecords"],
+            "jobId": job_id, **{campo: valor for campo, valor in ficha.items() if campo != "successfulPhraseIds"}, "costs": resumo["costs"], "images": resumo["images"], "matchedRecords": resumo["matchedRecords"],
             **({"plan": resumo["plan"]} if "plan" in resumo else {}),
         })
     return sorted(resultado, key=lambda linha: linha["createdAt"] or "", reverse=True)
