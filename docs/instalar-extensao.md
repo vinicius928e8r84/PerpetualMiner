@@ -130,3 +130,5 @@ Se nada mudar: veja o log (linha `ERRO`), confira `git -C <pasta-do-clone> log -
 - **Parar as atualizações**: no Mac, `launchctl unload ~/Library/LaunchAgents/com.perpetualminer.atualizar.plist`; no WSL, remova a linha do `crontab -e`; no Windows, desative a tarefa.
 - **Voltar a uma versão anterior**: `git -C ~/PerpetualMiner-ext checkout <commit-ou-tag>` (o script então recusa atualizar, porque o clone deixa de estar na `main`, e a pasta fica parada nessa versão; a extensão se recarrega sozinha com os arquivos antigos). Para retomar: `git checkout main`.
 - **Remover a extensão**: em `chrome://extensions` / `opera://extensions`, **Remover** no cartão do PerpetualMiner. As frases guardadas localmente somem junto; as sincronizadas na conta continuam na nuvem.
+
+Prova descartável do passo 2 (PR só de documentação); não mesclar.
