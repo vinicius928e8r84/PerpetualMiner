@@ -4,7 +4,7 @@
   const CHAVE_BARALHOS = 'pm_anki_baralhos';
   const CHAVE_VOCABULARIO = 'pm_anki_vocabulario';
   const FONTE_ARQUIVO = raiz.VocabularioDaMineracao.FONTE_ARQUIVO;
-  // Os itens do vocabulário que a lista desenha; a busca e os filtros estreitam.
+  // Os itens do vocabulário que a lista desenha.
   const MOSTRAR_NO_MAXIMO = 200;
 
   const IDIOMAS_DOS_AZULEJOS = [
@@ -23,7 +23,7 @@
     ['mature', 'BRG-35.maduros'],
     ['mixed', 'BRG-35.mistos'],
   ];
-  // O `status` de um item da API na tela: o texto e o tom do selo.
+  // O `status` de um item na tela: o texto e o tom do selo.
   const STATUS_DO_ITEM = {
     mature: { texto: 'BRG-35.maduro', selo: 'veio-selo--ok' },
     recent: { texto: 'BRG-35.recente', selo: 'veio-selo--info' },
@@ -31,13 +31,13 @@
     new: { texto: 'BRG-35.novo', selo: '' },
     seen: { texto: 'BRG-35.visto', selo: '' },
   };
-  // O `type` de um item da API na tela: na lista e no topo do detalhe.
+  // O `type` de um item na tela: na lista e no detalhe.
   const TIPO_DO_ITEM = {
     word: { lista: 'BRG-35.palavra', detalhe: 'BRG-35.tipoPalavra' },
     term: { lista: 'BRG-35.termo', detalhe: 'BRG-35.tipoTermo' },
   };
   const tipoDoItem = item => TIPO_DO_ITEM[item.type] || TIPO_DO_ITEM.word;
-  // As três séries de maturidade, na ordem e com a cor (a exceção de dataviz do Veio).
+  // As três séries de maturidade, na ordem e com a cor (dataviz do Veio).
   const MATURIDADE = [
     { chave: 'maduros', rotulo: 'BRG-34.maduros' },
     { chave: 'recentes', rotulo: 'BRG-34.recentes' },
@@ -223,7 +223,7 @@
   /** O que a aba mostra agora: a mesma regra nas duas abas. */
   function vista({ dados, carregando, erro }) {
     if (desligada() && dados) return 'antiga';
-    if (ConexaoAnki.ultimaResposta() === null) return 'esqueleto';
+    if (ConexaoAnki.ultimaResposta() === null || ConexaoAnki.apresentada() !== ConexaoAnki.situacao()) return 'esqueleto';   // espera a prova (#192)
     if (desligada()) return 'nada';
     if (carregando || (!dados && !erro)) return 'carregando';
     if (erro) return 'erro';
@@ -244,8 +244,7 @@
     return elemento('div', 'anki-antigo', seloDoDadoAntigo(quando, motivo), ...(motivo === 'anki' ? [raiz.AbrirOAnki.montarBotao()] : []));
   }
 
-  // Cada lugar da tela guarda o último nó que desenhou e com o quê: enquanto
-  // isso não muda, o mesmo nó volta, e o foco e o Detalhes aberto ficam.
+  // Cada lugar da tela guarda o último nó que desenhou e com o quê: sem mudar, o mesmo nó volta e o foco e o Detalhes ficam.
   const desenhados = new Map();
 
   function oMesmo(lugar, chave, fabricar) {
@@ -465,7 +464,7 @@
     const vocabulario = estado.vocabulario;
     const qual = vista(vocabulario);
     const comDados = qual === 'dados' || qual === 'antiga';
-    // A chave do selo é a idade dita, e não o momento: renovada a leitura, “há 2 h” vira “há 4 h”.
+    // A chave do selo é a idade dita, não o momento: “há 2 h” vira “há 4 h”.
     const idade = haQuanto(momentoDosDados(vocabulario));
     mostrar(porId('anki-vocabulario-topo'),
       qual === 'antiga' || (qual === 'dados' && vocabulario.ankiFechado)

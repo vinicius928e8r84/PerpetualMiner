@@ -4,7 +4,8 @@
 `estado()` é o que a janela mostra e `passo()` o rótulo do item e os avisos novos. Nada daqui lê o cofre das chaves nem o pedido
 das Frases: a chave da OpenAI, a Palavra e a Frase não têm por onde chegar à tela do Anki.
 
-O Qt fica atrás de uma fronteira de cinco chamadas (`ligar`), implementada em `qt_do_anki.py`; os testes põem outra no lugar.
+O Qt fica atrás de uma fronteira de chamadas (`ligar`), implementada em `qt_do_anki.py`; os testes põem outra no lugar. O pareamento (#192) também
+passa por ela: o código que a pessoa digita no painel aparece num diálogo do Anki (`NaTelaDoAnki`), e a janela tem o botão Desconectar navegadores.
 Todo callback que o Anki chama passa por `protegido`: um erro vai ao registro e nunca sai para o Anki, que abriria o diálogo
 de erro culpando o complemento.
 """
@@ -18,7 +19,7 @@ ENVIOS_LIDOS = 20
 # De quanto em quanto tempo o item confere o Envio, em segundos.
 INTERVALO_S = 1.5
 
-Estado = namedtuple("Estado", "conexao versao perfil envio ultimo_erro")
+Estado = namedtuple("Estado", "conexao versao perfil envio ultimo_erro navegadores")
 EnvioNaJanela = namedtuple("EnvioNaJanela", "progresso etapa feitos total baralho")
 
 _ETAPAS = {
@@ -148,7 +149,29 @@ class Janela:
             perfil=self._perfil(),
             envio=agora.na_janela() if agora else None,
             ultimo_erro=terminado.erro() if terminado else None,
+            navegadores=self._navegadores(),
         )
+
+    def pareamento_na_tela(self, na_tela):
+        """Dá ao pareamento da Conexão onde mostrar o código; sem Conexão (ela não subiu) não há o que parear."""
+        if self._conexao is not None:
+            self._conexao.pareamento.na_tela = na_tela
+
+    def _navegadores(self):
+        """Quantos navegadores estão conectados (pareados); 0 se a Conexão não subiu ou o arquivo não se lê."""
+        if self._conexao is None:
+            return 0
+        try:
+            return self._conexao.pareamento.quantos()
+        except Exception as erro:
+            self._registrar("os navegadores conectados", erro)
+            return 0
+
+    def desconectar_navegadores(self):
+        """O botão Desconectar navegadores: cada navegador pede o código de novo. Devolve quantos saíram."""
+        if self._conexao is None:
+            return 0
+        return self._conexao.pareamento.desconectar()
 
     def passo(self):
         """(o rótulo do item, os avisos novos): o que o item tem de dizer agora e o que ainda não foi anunciado."""
@@ -186,12 +209,32 @@ def protegido(funcao, logger, o_que):
     return chamada
 
 
+class NaTelaDoAnki:
+    """A janela do Anki para o pareamento (`pareamento.Pareamento.na_tela`): o diálogo do código, o fechamento dele e o aviso de conectado.
+
+    Quem chama é a thread do servidor, então cada chamada ao Qt vai pela fronteira `qt`, que a leva à thread principal do Anki."""
+
+    def __init__(self, mw, qt):
+        self._mw, self._qt = mw, qt
+
+    def mostrar_codigo(self, codigo, validade_s, ao_cancelar):
+        self._qt.mostrar_codigo(self._mw, texto_da_janela.texto("ANK-05.codigo", codigo=codigo), texto_da_janela.texto("ANK-05.cancelar"), ao_cancelar)
+
+    def fechar_codigo(self):
+        self._qt.fechar_codigo(self._mw)
+
+    def conectou(self):
+        self._qt.avisar_de_outra_thread(self._mw, texto_da_janela.texto("ANK-05.conectado"))
+
+
 def ligar(mw, janela, qt, modulo, logger):
     """Põe no Anki o item de Ferramentas, o botão Config do complemento `modulo` e a conferência do Envio, pela fronteira `qt`.
 
     O item e o Config abrem a mesma janela. Só o Config é opcional: se o Anki não o aceita, o item e a conferência ficam. Se o item
-    não entra, `ligar` levanta e quem chamou (`no_anki`) registra o erro e segue sem a janela."""
-    abrir = protegido(lambda: qt.abrir_janela(mw, janela.estado), logger, "abrir a janela")
+    não entra, `ligar` levanta e quem chamou (`no_anki`) registra o erro e segue sem a janela. Com a Conexão no ar, o código do
+    pareamento ganha onde aparecer (`NaTelaDoAnki`)."""
+    janela.pareamento_na_tela(NaTelaDoAnki(mw, qt))
+    abrir = protegido(lambda: qt.abrir_janela(mw, janela.estado, janela.desconectar_navegadores), logger, "abrir a janela")
     item = qt.item_do_menu(mw, texto_da_janela.texto("ANK-01.parado"), abrir)
     try:
         qt.acao_de_configuracao(mw, modulo, abrir)

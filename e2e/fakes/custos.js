@@ -34,6 +34,25 @@ function imagensZeradas() {
   };
 }
 
+/** As linhas de Custos do período e do idioma pedidos (`POST /analytics/jobs`), como `JobAnalytics.jobs`: as que o teste definiu (`definidas`) ou as dos Envios da fila. */
+function linhasDosCustosDaFila({ definidas, envios, registrosDeCusto }, corpo) {
+  const { lang = 'all', from: de, to: ate } = corpo || {};
+  const doPeriodo = linha => (lang === 'all' || linha.lang === lang) && (!de || String(linha.createdAt).slice(0, 10) >= de) && (!ate || String(linha.createdAt).slice(0, 10) <= ate);
+  if (definidas) return definidas.filter(doPeriodo);
+  return envios.filter(doPeriodo).map(envio => {
+    const resumo = resumoDosCustos(registrosDeCusto.get(envio.jobId) || [], de, ate);
+    const pedidas = new Set(envio.entries.map(e => e.phraseId)).size;
+    const enviadas = envio.state.successfulPhraseIds.length;
+    const falharam = ['failed', 'partial'].includes(envio.state.status) ? Math.max(envio.state.failedPhraseIds.length, pedidas - enviadas) : envio.state.failedPhraseIds.length;
+    return {
+      jobId: envio.jobId, createdAt: envio.createdAt, updatedAt: envio.state.updatedAt, lang: envio.lang,
+      deckName: envio.corpo.deckName || '', imageSource: envio.corpo.imageSource || '', status: envio.state.status, stage: envio.state.stage,
+      requestedCards: pedidas, successfulCards: enviadas, failedCards: falharam, lastError: envio.state.lastError,
+      costs: resumo.costs, images: resumo.images, matchedRecords: resumo.matchedRecords, ...(resumo.plan ? { plan: resumo.plan } : {}),
+    };
+  }).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+
 /** Um Envio da aba Custos no formato das linhas do contrato (`POST /analytics/jobs`). `plano`: { cartoes, economia }. */
 function linhaDeCustos({
   jobId, lang = 'en', createdAt, status = 'completed', stage, pedidas = 1, enviadas, lastError = null,
@@ -80,4 +99,4 @@ function linhaDeCustos({
   };
 }
 
-module.exports = { resumoDosCustos, linhaDeCustos };
+module.exports = { resumoDosCustos, linhaDeCustos, linhasDosCustosDaFila };

@@ -17,6 +17,7 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos, configuracao, no_anki  # noqa: E402
+from complemento.test_pareamento_de_mentira import ao_carregar_pareado, pedir_como_a_extensao  # noqa: E402
 from complemento.test_anki_de_mentira import AnkiComColecaoDeMentira, AnkiDeMentira  # noqa: E402
 from complemento.test_colecao_em_memoria import DESCRICAO, ContratoDoAdaptadorDaColecao  # noqa: E402
 from complemento.test_contrato_da_criacao import ContratoDaCriacao  # noqa: E402
@@ -190,13 +191,8 @@ def perfil_na_saude(porta):
 
 
 def ler_pelo_http(porta, caminho, corpo):
-    pedido = http.client.HTTPConnection("127.0.0.1", porta, timeout=5)
-    try:
-        pedido.request("POST", caminho, body=json.dumps(corpo), headers={"Origin": configuracao.ORIGENS_ACEITAS[0], "Content-Type": "application/json"})
-        resposta = pedido.getresponse()
-        return resposta.status, json.loads(resposta.read())
-    finally:
-        pedido.close()
+    status, _, lido = pedir_como_a_extensao(porta, "POST", caminho, corpo)
+    return status, json.loads(lido)
 
 
 class SemRegistroReal:
@@ -211,7 +207,7 @@ class BaralhosLidosDoAnki(SemRegistroReal, unittest.TestCase):
     def conectar(self, anki):
         pasta = tempfile.TemporaryDirectory()
         self.addCleanup(pasta.cleanup)
-        conexao = no_anki.ao_carregar(anki, pasta.name, porta=0, abridor=None)
+        conexao = ao_carregar_pareado(anki, pasta.name, porta=0, abridor=None)
         self.addCleanup(conexao.parar)
         self.addCleanup(anki.encerrar)
         return conexao
@@ -244,7 +240,7 @@ class PerfilQueOAnkiTemAberto(SemRegistroReal, unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta, patch(
             "complemento.inicio.abridores.deste_computador", side_effect=AssertionError("host real proibido")
         ) as fabrica:
-            conexao = no_anki.ao_carregar(AnkiDeMentira(), pasta, porta=0, abridor=None)
+            conexao = ao_carregar_pareado(AnkiDeMentira(), pasta, porta=0, abridor=None)
             try:
                 self.assertIsNotNone(conexao)
                 self.assertIsNone(perfil_na_saude(conexao.porta))
@@ -256,7 +252,7 @@ class PerfilQueOAnkiTemAberto(SemRegistroReal, unittest.TestCase):
     def test_a_saude_so_diz_o_perfil_com_a_colecao_aberta_e_volta_a_null_ao_fechar(self):
         anki = AnkiDeMentira()
         with tempfile.TemporaryDirectory() as pasta:
-            conexao = no_anki.ao_carregar(anki, pasta, porta=0, abridor=None)
+            conexao = ao_carregar_pareado(anki, pasta, porta=0, abridor=None)
             try:
                 anki.selecionar_na_janela_de_perfis("Maria")
                 na_janela = perfil_na_saude(conexao.porta)
@@ -272,7 +268,7 @@ class PerfilQueOAnkiTemAberto(SemRegistroReal, unittest.TestCase):
         anki = AnkiDeMentira()
         anki.abrir("João")
         with tempfile.TemporaryDirectory() as pasta:
-            conexao = no_anki.ao_carregar(anki, pasta, porta=0, abridor=None)
+            conexao = ao_carregar_pareado(anki, pasta, porta=0, abridor=None)
             try:
                 pedido = http.client.HTTPConnection("127.0.0.1", conexao.porta, timeout=5)
                 pedido.request("GET", "/health")
