@@ -54,20 +54,29 @@ class AnkiWebDoAnki:
         return bool(self._mw.addonManager.get_updated_addons(informacoes))
 
     def instalar(self, id_):
-        addons = self._modulo()
-        # O Anki faz o backup de `user_files` renomeando a pasta; no Windows o rename falha com o log aberto (#370).
-        # Fechado o stream, o handler reabre o arquivo sozinho na próxima linha (`FileHandler.emit`).
-        self._soltar_os_logs()
-        _, resultado = addons.download_and_install_addon(self._mw.addonManager, addons.HttpClient(), id_)
+        # O Anki faz o backup de `user_files` renomeando a pasta, depois do download; no Windows o rename falha com o log aberto (#370).
+        # Até o fim da instalação os handlers de arquivo ficam fechados e mudos: uma linha gravada no meio do download não os reabre.
+        mudos = self._calar_os_logs()
+        try:
+            addons = self._modulo()
+            _, resultado = addons.download_and_install_addon(self._mw.addonManager, addons.HttpClient(), id_)
+        finally:
+            for handler, filtro in mudos:
+                handler.removeFilter(filtro)
         return isinstance(resultado, addons.InstallOk)
 
-    def _soltar_os_logs(self):
-        """Fecha o arquivo de cada handler do logger da Conexão que grava dentro de `user_files`."""
+    def _calar_os_logs(self):
+        """Fecha o arquivo de cada handler do logger da Conexão que grava em `user_files` e o cala; devolve (handler, filtro) para religar."""
         raiz = os.path.join(self._pasta, "user_files") + os.sep
+        mudos = []
         for handler in list(logging.getLogger(NOME_DO_LOGGER).handlers):
             arquivo = getattr(handler, "baseFilename", None)
             if arquivo and os.path.abspath(arquivo).startswith(raiz):
+                filtro = lambda registro: False  # noqa: E731
+                handler.addFilter(filtro)
                 handler.close()
+                mudos.append((handler, filtro))
+        return mudos
 
     def versao_instalada(self):
         """A `VERSAO` do `configuracao.py` que a instalação acabou de pôr na pasta (a Conexão que roda ainda é a de antes)."""

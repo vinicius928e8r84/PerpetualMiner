@@ -333,6 +333,7 @@ class PeloAnkiDeMentira(unittest.TestCase):
         abertos_na_hora_do_backup = []
 
         def instalar_como_no_windows(gerente, cliente, id_):
+            logger.info("durante o download, como um Envio em curso faria")
             abertos_na_hora_do_backup.extend(h for h in logger.handlers if getattr(h, "stream", None) is not None)
             return id_, self.aqt_addons.resultado
 
@@ -344,6 +345,7 @@ class PeloAnkiDeMentira(unittest.TestCase):
             texto = lido.read()
         self.assertIn("antes", texto)
         self.assertIn("depois", texto)
+        self.assertNotIn("durante o download", texto)
 
     def test_o_log_volta_a_gravar_mesmo_quando_a_instalacao_levanta(self):
         from complemento import registro
