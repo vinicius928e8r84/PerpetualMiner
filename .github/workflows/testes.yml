@@ -15,11 +15,13 @@ name: Testes
 # falha quando um teste fica sem grupo, um grupo sem job aqui ou um teste roda por fora do executor.
 #
 # Para gastar menos minutos sem perder proteção: uma nova execução na mesma PR cancela a
-# anterior; a e2e (91% dos minutos) só começa depois que Node, motor e complemento passam; e
-# numa PR que mexe só em documentação as fatias e2e terminam sem rodar nada (os passos são
-# pulados, não os jobs, para o nome e o resultado de cada fatia continuarem aparecendo). O push
+# anterior; e numa PR que mexe só em documentação as fatias e2e terminam sem rodar nada (os
+# passos são pulados, não os jobs, para o nome e o resultado de cada fatia continuarem
+# aparecendo; cada fatia decide isso no primeiro passo, scripts/ci/classificar.sh). O push
 # na main faz o mesmo: roda os jobs rápidos e as fatias e2e terminam sem rodar (a PR já passou
 # por elas; isso basta quando a main estiver protegida para só entrar atualizada, AMB-02 b).
+# Todos os jobs começam juntos: a e2e não espera os testes rápidos nem os do complemento, que
+# seguravam a fase mais longa por 4,8 minutos para poupar minutos de job que não custam nada.
 on:
   pull_request:
   push:
@@ -36,33 +38,15 @@ concurrency:
 
 jobs:
   # Os grupos rápidos e pequenos num job só (cada um custava 1 minuto cobrado por 6 a 18 s de trabalho).
-  # Também decide se as fatias e2e têm o que rodar: numa PR, só se ela muda mais que documentação;
-  # no push na main, nunca (os rápidos rodam inteiros).
   rapidos:
     name: Testes rápidos
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 10
-    outputs:
-      rodar_e2e: ${{ steps.classificar.outputs.rodar_e2e }}
     steps:
       - uses: actions/checkout@v5
-        with:
-          # O commit de merge da PR e os dois pais: HEAD^1 é a ponta da branch-alvo.
-          fetch-depth: 2
       - uses: actions/setup-node@v5
         with:
           node-version: 24
-      - id: classificar
-        run: |
-          if [ "${{ github.event_name }}" = pull_request ]; then
-            # Se não der para ver o que mudou, a suíte roda.
-            so_documentacao=$(node scripts/ci/so-documentacao.js HEAD^1 HEAD) || so_documentacao=false
-            if [ "$so_documentacao" = true ]; then rodar=false; else rodar=true; fi
-          else
-            rodar=false
-          fi
-          echo "rodar_e2e=$rodar" >> "$GITHUB_OUTPUT"
-          echo "rodar_e2e=$rodar"
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -108,28 +92,32 @@ jobs:
 
   e2e:
     name: e2e (${{ matrix.fatia }}/8)
-    # Só depois que os testes rápidos passam: um erro de Node não gasta ~35 minutos de e2e.
-    needs: [rapidos, complemento]
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     # Um worker por runner de 2 núcleos: com dois, o Chromium de cada teste disputa o
     # processador e os testes sensíveis a tempo (relógios, transições) falham sem motivo.
     # Uma fatia leva de 5 a 12 minutos num runner livre; 40 deixa passar um runner carregado e ainda impede que uma travada gaste 45.
     timeout-minutes: 40
     env:
-      RODAR: ${{ needs.rapidos.outputs.rodar_e2e != 'false' }}
+      # Na dúvida a fatia roda; o passo "Classificar a mudança" troca por false (PR só de documentação, push na main).
+      RODAR: 'true'
     strategy:
       fail-fast: false
       matrix:
         fatia: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v5
-        if: env.RODAR == 'true'
+        with:
+          # O commit de merge da PR e os dois pais: HEAD^1 é a ponta da branch-alvo.
+          fetch-depth: 2
+      # O Node só é preciso na PR; no push na main as fatias terminam depois do primeiro passo.
       - uses: actions/setup-node@v5
-        if: env.RODAR == 'true'
+        if: github.event_name == 'pull_request'
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: e2e/package-lock.json
+      - name: Classificar a mudança
+        run: sh scripts/ci/classificar.sh
       - run: npm ci
         if: env.RODAR == 'true'
         working-directory: e2e
@@ -138,8 +126,11 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-ubuntu-24.04-${{ hashFiles('e2e/package-lock.json') }}
-      - run: npx playwright install --with-deps chromium
+      # Sem --with-deps: ele roda `apt` em toda fatia para instalar fontes que o Chromium dos testes não enxerga
+      # (e2e/fontconfig), e a imagem já traz as bibliotecas. O teto de 5 minutos impede que uma rede ruim segure o job.
+      - run: npx playwright install chromium
         if: env.RODAR == 'true'
+        timeout-minutes: 5
         working-directory: e2e
       # A DejaVu é a única fonte que o Chromium dos testes enxerga (e2e/fontconfig).
       - if: env.RODAR == 'true'
@@ -165,20 +156,22 @@ jobs:
   # checks que a proteção da main exige (scripts/ci/checks-obrigatorios.json).
   e2e-conexao-real:
     name: e2e com a Conexão real
-    needs: [rapidos, complemento]
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 20
     env:
-      RODAR: ${{ needs.rapidos.outputs.rodar_e2e != 'false' }}
+      RODAR: 'true'
     steps:
       - uses: actions/checkout@v5
-        if: env.RODAR == 'true'
+        with:
+          fetch-depth: 2
       - uses: actions/setup-node@v5
-        if: env.RODAR == 'true'
+        if: github.event_name == 'pull_request'
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: e2e/package-lock.json
+      - name: Classificar a mudança
+        run: sh scripts/ci/classificar.sh
       - uses: actions/setup-python@v6
         if: env.RODAR == 'true'
         with:
@@ -191,8 +184,10 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-ubuntu-24.04-${{ hashFiles('e2e/package-lock.json') }}
-      - run: npx playwright install --with-deps chromium
+      # Sem --with-deps, como na fatia e2e acima.
+      - run: npx playwright install chromium
         if: env.RODAR == 'true'
+        timeout-minutes: 5
         working-directory: e2e
       - if: env.RODAR == 'true'
         run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
