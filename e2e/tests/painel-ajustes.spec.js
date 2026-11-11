@@ -1,10 +1,7 @@
 'use strict';
 
-// Ajustes de envio por idioma (#35, docs/design/painel/anki/prototipo-ajustes-envio.html, variante A).
-// Um card por idioma, recolhível: fechado, diz o baralho e a fonte de imagem gravados; aberto, traz o
-// formulário (Baralho, Imagens com a nota de custo, o sotaque do áudio no Avançado) e só grava em
-// Salvar ajustes. O Baralho é uma escolha entre os do Anki; sem a lista, um campo de texto. Editável
-// com a Conexão desligada.
+// Conexão com o Anki · Ajustes de envio por idioma (#35, prototipo-ajustes-envio.html, variante A):
+// um card por idioma, recolhível; só grava em Salvar ajustes; editável com a Conexão desligada.
 //
 // Fecha bugs de #9 (gravação silenciosa, aba desatualizada, padrão divergente).
 // O Baralho padrão é o que a Conexão cria (#366).
@@ -62,7 +59,7 @@ test('sem nada gravado: os cards dizem o Baralho padrão e a foto real; o do Ing
   await expect(cards(page)).toContainText('Baralho e imagens usados em cada envio em inglês.');
   await expect(baralho(page)).toHaveValue(DEN);
   await expect(baralho(page)).toHaveAccessibleDescription(`Em branco, volta para “${DEN}”.`);
-  await expect(imagens(page, 'Foto real (Google)')).toBeChecked();
+  await expect(imagens(page, 'Foto do Openverse')).toBeChecked();
   await expect(formulario(page)).toContainText('Quando não acha uma foto boa, gera uma por IA, e aí tem custo.');
   await expect(situacao(page)).toHaveText('Salvo');
   // Nada fica gravado só por abrir.
