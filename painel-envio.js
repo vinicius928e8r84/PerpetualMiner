@@ -5,8 +5,8 @@
   /** De quanto em quanto tempo a Conexão é perguntada sobre os Envios. */
   const INTERVALO = 2000;
 
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, EnvioApagarFrases, IDIOMAS, ehRussa, AjustesDeEnvio, PedidoAoAnki, CartaoDoEnvio, EnvioComOAnkiFechado } = raiz;
-  const { ETAPAS, FIM, IDIOMA_DO_LANG, nomeDoIdioma, retomavel, botao, elemento } = CartaoDoEnvio;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, EnvioApagarFrases, ehRussa, AjustesDeEnvio, PedidoAoAnki, CartaoDoEnvio, EnvioComOAnkiFechado } = raiz;
+  const { ETAPAS, FIM, nomeDoIdioma, retomavel } = CartaoDoEnvio;
   const { AREAS_DO_PAINEL } = Shell;
   const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
@@ -22,6 +22,7 @@
 
   let doPainel = null;
   let ankiFechado = null;
+  let aguardandoOAbridor = null; // o Envio sem começo que espera o abridor (#367)
   // A remessa acompanhada: { envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar, corpo }] } (`pm_envio` leva também
   // `apagarFrases: true` até o Apagar tudo ser confirmado). `corpo`, o pedido, é gravado antes do primeiro POST e reenviado igual:
   // o `jobId` é o `id`, então é o mesmo Envio na Conexão (docs/design/envio-no-complemento.md).
@@ -58,7 +59,7 @@
       mostrarConexao(situacao);
       if (situacao !== CONEXAO.DESLIGADA) EnvioApagarFrases.pedir();
     });
-    ankiFechado = EnvioComOAnkiFechado.criar({ aoLigar: enviar });
+    ankiFechado = EnvioComOAnkiFechado.criar({ aoLigar: aoLigarOAnki });
     // O resumo que esperou a Boas-vindas abre quando a pessoa chega ao painel.
     for (const area of AREAS_DO_PAINEL) Shell.aoEntrarNaArea(area, tentarAbrirResumo);
 
@@ -83,6 +84,13 @@
       }
       acompanhar();
     }
+  }
+
+  /** A Conexão respondeu: o Envio que esperava reenvia o mesmo corpo (mesmo jobId); senão é um Enviar. */
+  function aoLigarOAnki(ids) {
+    const envio = aguardandoOAbridor;
+    aguardandoOAbridor = null;
+    return envio?.ids === ids && remessa?.envios.includes(envio) ? recomecar(() => criarEnvio(envio)) : enviar(ids);
   }
 
   /** `ids`: as Frases que um Enviar com o Anki fechado guardou; sem eles, a seleção de agora. */
@@ -128,7 +136,12 @@
     acompanhar();
   }
 
-  /** `POST /jobs` de um Envio; se não começa, a causa fica no cartão (ENV-03). */
+  /** Sem resposta ao `POST /jobs`. */
+  function semRespostaAoCriar(envio) {
+    return !envio.jobId && Boolean(envio.falhaAoCriar?.semResposta);
+  }
+
+  /** `POST /jobs` de um Envio; a causa de não começar fica no cartão (ENV-03). */
   async function criarEnvio(envio) {
     const aRemessaDoEnvio = remessa;
     envio.falhaAoCriar = null;
@@ -342,8 +355,17 @@
     tentarAbrirResumo();
   }
 
-  function tentarCriarDeNovo(envio) {
+  /**
+   * Tentar de novo de um Envio que não começou. Sem resposta ao POST, a Conexão é conferida antes: fora do ar, com o computador
+   * já conectado, o abridor é chamado e o mesmo pedido sai quando ela responder (#367).
+   */
+  async function tentarCriarDeNovo(envio) {
     if (criando) return;
+    if (semRespostaAoCriar(envio) && await ConexaoAnki.conferir() === CONEXAO.DESLIGADA && ConexaoAnki.jaConectou()) {
+      if (!remessa?.envios.includes(envio)) return;
+      aguardandoOAbridor = envio;
+      return ankiFechado.pedir(envio.ids);
+    }
     return recomecar(() => criarEnvio(envio));
   }
 
@@ -426,36 +448,6 @@
     return ['en', 'ru'].filter(lang => porLang.has(lang)).map(lang => porLang.get(lang));
   }
 
-  /** O nome do baralho sem o `::` do Anki: os níveis ficam separados por ›. */
-  function nomeDoBaralho({ lang, baralho }) {
-    return AjustesDeEnvio.nomeDoBaralho(baralho || AjustesDeEnvio.atual()[lang].deckName);
-  }
-
-  /** Um bloco por idioma: +N cartões, baralho, o que já estava lá, o que não entrou, Tentar de novo. */
-  function montarBlocoDoIdioma(idioma) {
-    const bloco = elemento('section', 'envio-resumo__baralho');
-    bloco.setAttribute('role', 'group');
-    const titulo = elemento('h3', 'envio-resumo__idioma', IDIOMAS[IDIOMA_DO_LANG[idioma.lang]]);
-    titulo.id = `envio-resumo-${idioma.lang}`;
-    bloco.setAttribute('aria-labelledby', titulo.id);
-    bloco.append(
-      titulo,
-      elemento('p', 'envio-resumo__cartoes', textoDaVoz('ENV-10.cartoes', { n: idioma.enviadas.length })),
-    );
-    const baralho = nomeDoBaralho(idioma);
-    if (baralho) bloco.append(elemento('p', 'envio-resumo__nome', textoDaVoz('ENV-10.noBaralho', { baralho })));
-    if (idioma.duplicadas.length) {
-      bloco.append(elemento('p', 'envio-resumo__linha', textoDaVoz('ENV-10.jaEstavam', { n: idioma.duplicadas.length })));
-    }
-    if (idioma.falhas) {
-      bloco.append(elemento('p', 'envio-resumo__linha envio-resumo__linha--erro', textoDaVoz('ENV-10.naoEntraram', { n: idioma.falhas })), ...CartaoDoEnvio.linhasDoPlano(idioma.codigo));
-      const tentar = botao(textoDaVoz('ENV-10.tentarDeNovo'), 'tentar', () => responderResumo({ tentar: idioma.lang }));
-      tentar.prepend(Veio.iconeVeio('atualizar'));
-      bloco.append(tentar);
-    }
-    return bloco;
-  }
-
   function tentarAbrirResumo() {
     // A Boas-vindas é a página da primeira configuração: nada abre por cima dela.
     if (!AREAS_DO_PAINEL.includes(Shell.areaAtual())) return;
@@ -478,7 +470,7 @@
     const total = idiomas.reduce((soma, i) => soma + i.total, 0);
     porId('modal-resumo-titulo').textContent = textoDaVoz(falhas ? 'ENV-10.tituloEmParte' : 'ENV-10.titulo');
     porId('modal-resumo-detalhe').textContent = textoDaVoz('ENV-10.detalhe', { n: total, baralhos: idiomas.length });
-    porId('modal-resumo-baralhos').replaceChildren(...idiomas.map(montarBlocoDoIdioma));
+    porId('modal-resumo-baralhos').replaceChildren(...idiomas.map(idioma => CartaoDoEnvio.montarBlocoDoResumo(idioma, lang => responderResumo({ tentar: lang }))));
 
     // Tirar do histórico vale só para as enviadas que ainda estão lá.
     const aTirar = doPainel.frasesPorId(enviadas).length;
