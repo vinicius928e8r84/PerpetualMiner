@@ -50,8 +50,9 @@ class EnviosDosCustos:
                 ids = ficha.get("successfulPhraseIds") if ficha else None
                 if item["jobId"] in na_fila or not isinstance(ids, list) or not ids:
                     continue
-                estado = {"jobId": item["jobId"], "status": ficha["status"], "stage": ficha["stage"], "updatedAt": ficha["updatedAt"],
-                          "successfulPhraseIds": ids, "failedPhraseIds": [], "duplicatePhraseIds": []}
-                lista.append({"jobId": item["jobId"], "lang": ficha["lang"], "createdAt": ficha["createdAt"], "status": ficha["status"],
+                # Sempre `completed`: um `partial` ofereceria Continuar envio, e o /jobs/retry de um Envio apagado dá 404.
+                estado = {"jobId": item["jobId"], "status": "completed", "stage": "completed", "updatedAt": ficha["updatedAt"],
+                          "successfulPhraseIds": ids, "failedPhraseIds": [], "duplicatePhraseIds": ficha.get("duplicatePhraseIds") or []}
+                lista.append({"jobId": item["jobId"], "lang": ficha["lang"], "createdAt": ficha["createdAt"], "status": "completed",
                               "updatedAt": ficha["updatedAt"], "state": estado})
             return lista
