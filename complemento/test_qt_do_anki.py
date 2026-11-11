@@ -36,6 +36,7 @@ class AqtDeMentira:
             def __init__(self, *_):
                 self.finished = Sinal()
                 self.visivel, self.mostradas, self.trazidas, self.ativadas = False, 0, 0, 0
+                self.largura, self.redimensionamentos = 420, []
                 self.ajustes = []  # os textos dos rótulos no momento em que a janela pediu o tamanho certo
                 aqui.dialogos.append(self)
 
@@ -53,6 +54,17 @@ class AqtDeMentira:
             def adjustSize(self):
                 aqui.eventos.append("adjustSize")
                 self.ajustes.append([rotulo.texto for rotulo in aqui.rotulos])
+                self.largura = 420  # o Qt volta ao tamanho que o texto pede
+
+            def width(self):
+                return self.largura
+
+            def resize(self, largura, altura):
+                self.largura = largura
+                self.redimensionamentos.append((largura, altura))
+
+            def minimumSizeHint(self):
+                return types.SimpleNamespace(height=lambda: 100)
 
             def raise_(self):
                 self.trazidas += 1
@@ -87,6 +99,9 @@ class AqtDeMentira:
         class Layout(_Qualquer):
             def __init__(self, *_):
                 pass
+
+            def totalHeightForWidth(self, largura):
+                return 150
 
             def activate(self):
                 aqui.eventos.append("activate")
@@ -175,6 +190,19 @@ class AFronteiraComOQtDoAnki(unittest.TestCase):
             atual[0] = base._replace(ultimo_erro="falhou")
             aqt.relogios[0].timeout.ligados[0]()
         self.assertEqual((antes, len(aqt.dialogos[0].ajustes)), (1, 2))
+
+    def test_a_janela_mais_larga_que_o_texto_pede_continua_com_a_largura_da_pessoa_quando_o_texto_do_envio_muda(self):
+        with AqtDeMentira() as aqt:
+            qt = qt_do_anki.QtDoAnki(registro.silencioso())
+            base = janela.Janela(None, lambda: "Usuário 1", configuracao.VERSAO, registro.silencioso()).estado()
+            atual = [base]
+            qt.abrir_janela(object(), lambda: atual[0])
+            dialogo = aqt.dialogos[0]
+            dialogo.largura = 700  # a pessoa alargou a janela
+            atual[0] = base._replace(ultimo_erro="falhou")
+            aqt.relogios[0].timeout.ligados[0]()
+        self.assertEqual(dialogo.width(), 700)
+        self.assertEqual(dialogo.redimensionamentos[-1], (700, 150))
 
 
 if __name__ == "__main__":

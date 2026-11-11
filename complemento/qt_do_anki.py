@@ -113,8 +113,11 @@ class QtDoAnki:
             medida = (conexao.text(), versao.text(), perfil.text(), envio.text(), erro.text(), baralho.text(), atual is not None)
             if medida != ultima_medida[0]:  # só quando o texto muda: medir a cada ciclo desfaz o tamanho que a pessoa deu à janela
                 ultima_medida[0] = medida
+                largura = dialogo.width()
                 layout.activate()  # sem refazer o layout, o adjustSize() mede o texto anterior e a janela corta por um ciclo
                 dialogo.adjustSize()
+                if largura > dialogo.width():  # o adjustSize() volta à largura do texto: a que a pessoa deu à janela fica
+                    dialogo.resize(largura, max(dialogo.minimumSizeHint().height(), layout.totalHeightForWidth(largura)))
 
         mostrar_protegido = janela.protegido(mostrar, self._logger, "atualizar a janela")
         relogio = QTimer(dialogo)
