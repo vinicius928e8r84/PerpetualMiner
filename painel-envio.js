@@ -22,6 +22,7 @@
 
   let doPainel = null;
   let ankiFechado = null;
+  let aguardandoOAbridor = null; // o Envio sem começo que espera o abridor (#367)
   // A remessa acompanhada: { envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar, corpo }] } (`pm_envio` leva também
   // `apagarFrases: true` até o Apagar tudo ser confirmado). `corpo`, o pedido, é gravado antes do primeiro POST e reenviado igual:
   // o `jobId` é o `id`, então é o mesmo Envio na Conexão (docs/design/envio-no-complemento.md).
@@ -58,7 +59,7 @@
       mostrarConexao(situacao);
       if (situacao !== CONEXAO.DESLIGADA) EnvioApagarFrases.pedir();
     });
-    ankiFechado = EnvioComOAnkiFechado.criar({ aoLigar: enviar });
+    ankiFechado = EnvioComOAnkiFechado.criar({ aoLigar: aoLigarOAnki });
     // O resumo que esperou a Boas-vindas abre quando a pessoa chega ao painel.
     for (const area of AREAS_DO_PAINEL) Shell.aoEntrarNaArea(area, tentarAbrirResumo);
 
@@ -85,12 +86,18 @@
     }
   }
 
+  /** A Conexão respondeu: o Envio que esperava reenvia o mesmo corpo (mesmo jobId); senão é um Enviar. */
+  function aoLigarOAnki(ids) {
+    const envio = aguardandoOAbridor;
+    aguardandoOAbridor = null;
+    return envio?.ids === ids && remessa?.envios.includes(envio) ? recomecar(() => criarEnvio(envio)) : enviar(ids);
+  }
+
   /** `ids`: as Frases que um Enviar com o Anki fechado guardou; sem eles, a seleção de agora. */
   async function enviar(ids) {
     if (criando || !doPainel) return;
-    // Uma frase que já está na remessa não vai de novo: quem não começou tem o Tentar de novo dele. Exceção: o Envio cujo POST
-    // ficou sem resposta (a Conexão pode ter caído depois) não segura as frases; um Enviar novo toma o lugar dele (#367).
-    const acompanhadas = new Set((remessa?.envios || []).filter(e => !semRespostaAoCriar(e)).flatMap(e => e.ids));
+    // Uma frase que já está na remessa não vai de novo: quem não começou tem o Tentar de novo dele.
+    const acompanhadas = new Set((remessa?.envios || []).flatMap(e => e.ids));
     const novas = (ids ? doPainel.frasesPorId(ids) : doPainel.selecionadas()).filter(f => !acompanhadas.has(f.id));
     if (conexaoDesligada && novas.length) return ConexaoAnki.jaConectou() ? ankiFechado.pedir(novas.map(f => f.id)) : undefined;
     if (novas.length === 0) {
@@ -107,10 +114,6 @@
     criando = true;
     desistiuDasPendencias = false;
     remessa = remessa || { envios: [] };
-    const reenviadas = new Set(novas.map(f => f.id));
-    remessa.envios = remessa.envios.filter(e => !(semRespostaAoCriar(e) && e.ids.some(id => reenviadas.has(id))));
-    porId('modal-envio-lista').textContent = '';
-    assinaturas.clear();
     remessa.envios.push(...envios);
     const estaRemessa = remessa;
     // ENV-05 é silêncio: o modal aberto na hora é a resposta.
@@ -133,12 +136,12 @@
     acompanhar();
   }
 
-  /** O Envio não começou porque a Conexão não respondeu ao `POST /jobs`. */
+  /** Sem resposta ao `POST /jobs`. */
   function semRespostaAoCriar(envio) {
     return !envio.jobId && Boolean(envio.falhaAoCriar?.semResposta);
   }
 
-  /** `POST /jobs` de um Envio; se não começa, a causa fica no cartão (ENV-03). */
+  /** `POST /jobs` de um Envio; a causa de não começar fica no cartão (ENV-03). */
   async function criarEnvio(envio) {
     const aRemessaDoEnvio = remessa;
     envio.falhaAoCriar = null;
@@ -353,13 +356,14 @@
   }
 
   /**
-   * Tentar de novo de um Envio que não começou. Se o POST ficou sem resposta, a Conexão é conferida antes: fora do ar, com o
-   * computador já conectado alguma vez, o pedido vai ao abridor como um Enviar com o Anki fechado (#367).
+   * Tentar de novo de um Envio que não começou. Sem resposta ao POST, a Conexão é conferida antes: fora do ar, com o computador
+   * já conectado, o abridor é chamado e o mesmo pedido sai quando ela responder (#367).
    */
   async function tentarCriarDeNovo(envio) {
     if (criando) return;
     if (semRespostaAoCriar(envio) && await ConexaoAnki.conferir() === CONEXAO.DESLIGADA && ConexaoAnki.jaConectou()) {
       if (!remessa?.envios.includes(envio)) return;
+      aguardandoOAbridor = envio;
       return ankiFechado.pedir(envio.ids);
     }
     return recomecar(() => criarEnvio(envio));
