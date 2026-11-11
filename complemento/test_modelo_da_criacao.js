@@ -62,6 +62,9 @@ assert.strictEqual(usou('I want to give up sugar.', INGLES), true, 'a Palavra co
 assert.strictEqual(usou('She gives up easily.', INGLES), true, 'a Palavra flexionada (give → gives)');
 assert.strictEqual(usou('GIVE UP now!', INGLES), true, 'maiúsculas e pontuação não contam');
 assert.strictEqual(usou('She is giving up on it.', INGLES), true, 'pelo radical (giving)');
+const COM_PRONUNCIA = { palavra: 'give up – /ɡeɪv ʌp/' };
+assert.strictEqual(usou('I give up, this puzzle is too hard.', COM_PRONUNCIA), true, 'a Palavra que traz a pronúncia: o IPA não conta');
+assert.strictEqual(usou('I like sugar.', COM_PRONUNCIA), false, 'com a pronúncia, a frase sem a Palavra continua sem ✓');
 assert.strictEqual(usou('I like sugar.', INGLES), false, 'a frase sem a Palavra');
 assert.strictEqual(usou('Never give in.', INGLES), false, 'só uma das palavras da Palavra');
 assert.strictEqual(usou('She runs every morning.', { palavra: 'running' }), true, 'a consoante dobrada não atrapalha o radical');
