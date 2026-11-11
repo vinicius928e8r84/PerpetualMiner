@@ -107,8 +107,7 @@ body {
   font-weight: var(--veio-peso-num);
 }
 
-/* O ponto de estado: o da Conexão com o Anki na sidebar e o da conta no card
-   Conta & sync. Um desenho só, com os estados de cada um. */
+/* O ponto de estado: o da Conexão na sidebar e o da conta em Conta & sync. Um desenho só. */
 .shell-ponto,
 .cfg-ponto,
 .bv-ponto {
@@ -123,6 +122,7 @@ body {
 .bv-ponto[data-estado="ligada"],
 .cfg-ponto[data-estado="ok"] { background: var(--veio-success); }
 .shell-ponto[data-estado="desligada"],
+.shell-ponto[data-estado="nao_confirmada"],
 .bv-ponto[data-estado="desligada"],
 .cfg-ponto[data-estado="erro"] { background: var(--veio-danger); }
 .shell-ponto[data-estado="conectando"],

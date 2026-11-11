@@ -14,7 +14,7 @@ Mudar só um lado quebra um teste, que diz o exemplo.
 O contrato também é **fechado**, nos dois sentidos: nenhum pedido nem resposta fica sem exemplo.
 
 - **Os pedidos da extensão**: todo pedido nasce de um construtor de `PerpetualMiner.PedidoAoAnki` (`lib/pedido-ao-anki.js`:
-  `saude`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`, `chaveDaOpenAI`, `apagarChaveDaOpenAI`, `estadoDaIA`, `trocarAFrente`, e os do Envio: `criarEnvio`, `ouvirAVoz`, `falarAFrase`, `listarEnvios`, `verEnvio`, `tentarEnvioDeNovo`, `usarAChaveNoEnvio`, `pacoteDeDiagnostico`, `apagarFrasesDosEnvios`, `custosDosEnvios`), e `PedidoAoAnki.variantes` os lista. `node test_contrato_fechado.js`
+  `saude`, `comecarOPareamento`, `concluirOPareamento`, `conferirOPareamento`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`, `chaveDaOpenAI`, `apagarChaveDaOpenAI`, `estadoDaIA`, `trocarAFrente`, e os do Envio: `criarEnvio`, `ouvirAVoz`, `falarAFrase`, `listarEnvios`, `verEnvio`, `tentarEnvioDeNovo`, `usarAChaveNoEnvio`, `pacoteDeDiagnostico`, `apagarFrasesDosEnvios`, `custosDosEnvios`), e `e2e/variantes-do-pedido-ao-anki.js` os lista. `node test_contrato_fechado.js`
   pede ao construtor cada variante e exige um exemplo `daExtensao`
   de cada uma, que o fake do e2e então responde. O nome do Baralho não conta para achar o exemplo; quantos Baralhos, `refresh` e
   `launch` contam. A regra `contrato-fechado` (`node scripts/regras/verificar.js`) acusa um `fetch` direto a uma rota da Conexão.
@@ -100,32 +100,14 @@ Por isso (decisão do dono, opção B):
    autorização). Sem `Origin`, ou com a de outra extensão ou site, é 403
    (`origin_not_allowed`). Por isso rota que gasta a chave ou lê dado da pessoa (a chave, os custos, o
    vocabulário, os Envios) é **POST**, nunca GET.
-3. **O `Origin` não é autenticação.** Uma extensão com a permissão `webRequest` e `extraHeaders` pode pôr esse
-   cabeçalho, e um programa local também. **Limite aceito pelo dono no PR #190, a ser reforçado pelo ticket #192
-   (credencial de pareamento, confirmada no Anki) antes do lançamento:** hoje um processo local que declara a
-   origem da extensão lê o vocabulário pelas rotas privadas. `test_servidor.py` mostra isso com um cliente fora do navegador
-   e passa a exigir a credencial quando o #192 entrar. Na Opção B, a Conexão é o único dono local da chave;
-   a extensão não guarda uma segunda cópia nem restaura a apagada. As rotas `POST /ia/openai/chave`,
-   `/ia/openai/chave/apagar`, `/ia/estado`, `/ia/openai/legado` e `/ia/openai/sincronizar` têm o mesmo limite.
-   Nenhuma resposta HTTP devolve a chave inteira, mas isso **não é autenticação do cliente nem do listener**:
-   um cliente local com Origin forjado lê máscara/UID/revisão, grava uma chave aceita pela OpenAI ou apaga o dono;
-   esse apagamento pode seguir à conta no próximo sync. A migração exige prova exata do valor já guardado.
-   Uma chave sem conta (inclusive `conta: ''`) não é vinculada/exportada só por pedir sync: requer nova confirmação explícita.
-   A sincronização recebe UID e bearer transitórios e fala com o Firestore, cujas regras devem restringir cada UID (P6).
-   **Known limit #192:** um listener impostor na porta de loopback pode receber o bearer e ler, gravar e apagar os dados desse UID,
-   inclusive sua chave na nuvem. Um cliente local pode forjar Origin; regras own-UID não autenticam esse cliente.
-   É preciso confiar nos processos locais até o pareamento autenticar **ambos os lados**, antes do lançamento.
-   As mudanças chegam às instalações de teste que seguem a `main`; a Chrome Web Store só recebe esta versão depois
-   do #192 e do P6. O pareamento não está implementado/certificado; o teste HTTP P1 nomeia a recusa de exportação sem vínculo.
-   **Known limit: legado não migrado.** Com a Conexão divergente **ou vazia**, a prova recusada pode reenviar a chave
-   legada inteira ao loopback a cada saúde (~15 s) enquanto o painel permanece aberto. O segredo continua no navegador,
-   aumentando a janela de captura por um listener impostor; a Conexão vazia não o recupera automaticamente.
-   O bearer só é enviado após `/ia/estado` responder no formato versionado completo. Uma Conexão sem essa rota (404) não
-   recebe bearer: sem pendência não gera erro da chave; com pendência exige atualização. Isso verifica protocolo,
-   não autentica um listener impostor que imite o formato (#192).
-4. A primeira rota de leitura sensível (os Baralhos, os números e o vocabulário) seguiu a regra do 2: são POST
-   com a origem da extensão, e o limite do 3 está nomeado em um teste. O reforço com um token de pareamento (a
-   extensão o recebe por um POST e o manda nos pedidos) é o #192 e não foi feito.
+3. **O `Origin` não é autenticação, e o pareamento (#192) é.** Uma extensão com `webRequest` e `extraHeaders` pode pôr esse cabeçalho, e um programa local também. Por isso o `Origin` continua exigido
+   (barra as páginas), mas **toda rota que não é a saúde nem o pareamento exige a assinatura de um navegador pareado** (`servidor._pedido_aceito`, o porteiro, antes de escolher a rota; sem ela, `401`), e toda
+   resposta volta com a prova de quem tem o segredo: uma Conexão impostora na porta não a dá e não recebe nenhum pedido privado. O segredo nasce na Conexão e chega à extensão uma vez, depois que a pessoa
+   digita no Painel o código que só o Anki dela mostrou. O desenho, as rotas e os cabeçalhos: [`o-pareamento.md`](o-pareamento.md). Nenhuma resposta HTTP devolve a chave inteira da OpenAI; a migração exige prova
+   exata do valor já guardado; uma chave sem conta (inclusive `conta: ''`) não é vinculada/exportada só por pedir sync. A sincronização recebe UID e bearer transitórios e fala com o Firestore, cujas regras devem
+   restringir cada UID (P6). **Limites:** um programa que roda como a própria pessoa lê `user_files` e o perfil do navegador (nenhum pareamento local fecha isso), a ACL do Windows é a da pasta, e o legado não migrado
+   reenvia a chave antiga (a Conexão vazia ou divergente) enquanto o Painel está aberto, agora só depois de provar a Conexão.
+4. A primeira rota de leitura sensível (os Baralhos, os números e o vocabulário) seguiu a regra do 2: são POST com a origem da extensão, e agora com a assinatura do 3.
 
 Rota nova que deva responder sem origem entra em `ROTAS_ABERTAS` (`servidor.py`) só com essa decisão.
 
@@ -147,7 +129,7 @@ sem responder, é `503` com o `error` da rota e o `detail` (`collection_not_open
 
 1. Escreva os exemplos dela aqui (o caso feliz, cada erro que a extensão trata e, se muda
    com a situação do Anki, um por `contexto`), **antes** de escrever a rota. Se a extensão a pede, dê-lhe um construtor em
-   `lib/pedido-ao-anki.js` (e as variantes dele em `variantes`): `node test_contrato_fechado.js` exige um exemplo de cada.
+   `lib/pedido-ao-anki.js` (e as variantes dele em `e2e/variantes-do-pedido-ao-anki.js`): `node test_contrato_fechado.js` exige um exemplo de cada.
 2. Rode `python3 complemento/test_servidor.py`: o exemplo novo falha até a rota existir
    (`ROTAS` em `servidor.py`).
 3. Rode `cd e2e && npx playwright test contrato-da-conexao`: ele falha até o fake responder.
@@ -170,7 +152,7 @@ Todas POST, com a origem da extensão (levam as Frases e os custos da pessoa); o
 `lastError` e o `error` de cada Cartão são códigos (`openai_key_missing`, `openai_key_rejected`, `openai_no_credit`,
 `openai_rate_limited`, `openai_unreachable`, `note_type_missing`, `anki_write_failed`…), nunca o texto da OpenAI.
 
-O login do ChatGPT (#155): [`entrar-com-o-chatgpt.md`](entrar-com-o-chatgpt.md). O modelo dos cartões (#157): [`o-modelo-dos-cartoes.md`](o-modelo-dos-cartoes.md). A voz, o Ouvir (#174) e a fala do quiz de nível (#170): [`voz.md`](voz.md). A prévia do Cartão (#164): [`previa-do-cartao.md`](previa-do-cartao.md). A atualização da Conexão pelo AnkiWeb (#177): [`a-atualizacao.md`](a-atualizacao.md).
+O login do ChatGPT (#155): [`entrar-com-o-chatgpt.md`](entrar-com-o-chatgpt.md). O modelo dos cartões (#157): [`o-modelo-dos-cartoes.md`](o-modelo-dos-cartoes.md). A voz, o Ouvir (#174) e a fala do quiz de nível (#170): [`voz.md`](voz.md). A prévia do Cartão (#164): [`previa-do-cartao.md`](previa-do-cartao.md). A atualização da Conexão pelo AnkiWeb (#177): [`a-atualizacao.md`](a-atualizacao.md). O pareamento, quem pode pedir (#192): [`o-pareamento.md`](o-pareamento.md).
 
 ## As rotas do perfil fixo (#149)
 

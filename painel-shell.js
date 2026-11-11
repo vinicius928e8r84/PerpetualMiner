@@ -49,6 +49,7 @@
     aplicarEndereco();
     lerResumosGravados();
     ConexaoAnki.acompanhar(mostrarConexao);
+    raiz.PareamentoComOAnki?.aoMudar(() => mostrarConexao(ConexaoAnki.situacao()));   // um pedido que descobre a porta sem prova muda o ponto na hora
     ConexaoAnki.iniciar({ aCada: ConexaoAnki.INTERVALO });
   }
 
@@ -255,8 +256,9 @@
 
   /** O ponto, o texto e a faixa F1 da sidebar mostram a situação que o ConexaoAnki diz. */
   function mostrarConexao(situacao) {
-    const status = ConexaoNaTela.texto(situacao);
-    ConexaoNaTela.pintarPonto($('.shell-ponto'), situacao);
+    const apresentada = ConexaoAnki.apresentada();   // “ligada” só com a Conexão provada (#192)
+    const status = ConexaoNaTela.texto(apresentada);
+    ConexaoNaTela.pintarPonto($('.shell-ponto'), apresentada);
     $('.shell-item[data-area="anki"]').title = status;
     porId('shell-conexao-descricao').textContent = status;
 
