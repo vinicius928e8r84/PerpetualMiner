@@ -60,7 +60,7 @@ function loadBackground(storage = {}) {
 function vocabulary({ words = [], terms = [], wordInfo = {}, termInfo = {} } = {}) {
   return {
     cacheVersion: 2,
-    deckName: 'CIMV',
+    deckName: 'PerpetualMiner::Inglês',
     createdAt: Date.now(),
     words,
     terms,
@@ -89,7 +89,7 @@ async function englishKeywords(text, vocab = vocabulary({ words: BASE_KNOWN_WORD
 function russianVocabulary({ words = [], terms = [], wordInfo = {}, termInfo = {} } = {}) {
   return {
     ...vocabulary({ words, terms, wordInfo, termInfo }),
-    deckName: 'RUSSIAN',
+    deckName: 'PerpetualMiner::Russo',
   };
 }
 

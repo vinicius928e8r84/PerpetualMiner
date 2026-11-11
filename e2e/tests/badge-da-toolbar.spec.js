@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('fs');
+const DRU = 'PerpetualMiner::Russo';
 const path = require('path');
 
 const { test, expect } = require('../fixtures');
@@ -160,7 +161,7 @@ test('cada mineração automática soma um no badge', async ({ page, paginas, ex
   await extensao.gravarStorage({
     pm_auto_keyword_vocab_ru: {
       cacheVersion: 2,
-      deckName: 'RUSSIAN',
+      deckName: DRU,
       createdAt: Date.now(),
       words: [], terms: [], wordInfo: {}, termInfo: {},
     },

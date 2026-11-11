@@ -1,6 +1,7 @@
 'use strict';
 
 const { test, expect, botaoFlutuante, tocarVideo } = require('../fixtures');
+const DRU = 'PerpetualMiner::Russo';
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 
 const FRASE_RUSSA = 'Я улыбаюсь';
@@ -13,7 +14,7 @@ test('a frase no limite atualiza o popup e a aba mesmo com a gravação do diagn
     pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 3 } },
     pm_auto_miner_daily: { date: hoje, en: { count: 0 }, ru: { count: 2 } },
     pm_auto_keyword_vocab_ru: {
-      cacheVersion: 2, deckName: 'RUSSIAN', createdAt: Date.now(),
+      cacheVersion: 2, deckName: DRU, createdAt: Date.now(),
       words: [], terms: [], wordInfo: {}, termInfo: {},
     },
   });
