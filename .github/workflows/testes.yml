@@ -197,7 +197,7 @@ jobs:
       - if: env.RODAR == 'true'
         run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
       - if: env.RODAR == 'true'
-        run: xvfb-run --auto-servernum node scripts/testar.mjs e2e -- conexao-real --workers=1
+        run: xvfb-run --auto-servernum node scripts/testar.mjs e2e -- conexao-real pareamento.spec pareamento-ataques --workers=1
         env:
           PM_CONEXAO: real
           PYTHON: python

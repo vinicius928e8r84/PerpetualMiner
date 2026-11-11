@@ -13,6 +13,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import no_anki  # noqa: E402
+from complemento.test_pareamento_de_mentira import ao_carregar_pareado, pedir_como_a_extensao  # noqa: E402
 from complemento.test_anki_de_mentira import AnkiComColecaoDeMentira  # noqa: E402
 from complemento.test_colecao_em_memoria import DESCRICAO  # noqa: E402
 from complemento.test_no_anki import SemRegistroReal, ler_pelo_http  # noqa: E402
@@ -27,7 +28,7 @@ class OPerfilFixoNoAnki(SemRegistroReal, unittest.TestCase):
             os.makedirs(os.path.join(pasta.name, "user_files"))
             with open(os.path.join(pasta.name, "user_files", "perfil.json"), "w", encoding="utf-8") as arquivo:
                 json.dump({"perfil": marcado}, arquivo)
-        conexao = no_anki.ao_carregar(
+        conexao = ao_carregar_pareado(
             anki, pasta.name, porta=0, abridor=None, ao_sincronizar=lambda colecao: None,
             ao_abrir_o_perfil=(ganchos.append if ganchos is not None else lambda funcao: None),
         )
@@ -124,7 +125,7 @@ class OPerfilFixoNoAnki(SemRegistroReal, unittest.TestCase):
             os.makedirs(os.path.join(pasta, "user_files"))
             with open(os.path.join(pasta, "user_files", "perfil.json"), "w", encoding="utf-8") as arquivo:
                 json.dump({"perfil": "Ana"}, arquivo)
-            conexao = no_anki.ao_carregar(anki, pasta, porta=0, abridor=None, ao_sincronizar=lambda colecao: None, openai_base=openai.base)
+            conexao = ao_carregar_pareado(anki, pasta, porta=0, abridor=None, ao_sincronizar=lambda colecao: None, openai_base=openai.base)
             try:
                 conexao.cofre.guardar("openai", "sk-proj-chave-do-anki-0000")
                 ler_pelo_http(conexao.porta, "/jobs", {"jobId": job, "lang": "en", "deckName": "Inglês",

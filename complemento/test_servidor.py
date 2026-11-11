@@ -19,7 +19,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from complemento.test_atualizacao import MATRIZ_DA_ATUALIZACAO, atualizacao_do_exemplo  # noqa: E402
 from complemento import baralhos, configuracao, envio, item_de_login, pasta_de_dados, registro, servidor  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
+from complemento.test_contexto_da_conexao import chave_guardada_antes, item_de_login_do_contexto  # noqa: E402
 from complemento.test_matriz_da_previa import MATRIZ_DA_PREVIA  # noqa: E402
+from complemento.test_matriz_do_pareamento import MATRIZ_DO_PAREAMENTO  # noqa: E402
 from complemento.test_fila_de_mentira import semear_a_fila  # noqa: E402,F401
 from complemento.test_imagens_de_mentira import OpenverseDeMentira  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira  # noqa: E402
@@ -28,6 +30,7 @@ from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira, situar_o_login
 from complemento.test_modelos_de_mentira import preparar_o_cenario  # noqa: E402
 from complemento.test_comparar_com_o_contrato import igual_ao_do_contrato  # noqa: E402
 from complemento.test_estado_guardado import confere_a_repeticao, estado_guardado  # noqa: E402,F401
+from complemento.test_pareamento_de_mentira import cabecalhos_assinados, pedir_como_o_exemplo, preparar_o_pareamento, recusa_do_porteiro, semear  # noqa: E402
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
@@ -46,6 +49,8 @@ def registrar_a_resposta(metodo, caminho, status, corpo):
         erro = json.loads(corpo).get("error")
     except (ValueError, AttributeError):
         erro = None
+    if recusa_do_porteiro(status, erro, caminho):
+        return
     RESPONDIDOS.add((metodo, caminho.split("?", 1)[0], status, erro))
 
 
@@ -104,40 +109,12 @@ def deve_repetir(exemplo):
     return exemplo["pedido"]["metodo"] == "POST" and sucesso(exemplo["resposta"]["status"])
 
 
-def _item_de_login_do_contexto(pasta, situacao):
-    """O item de login na situação que o contrato diz (`itemDeLogin`): numa pasta do teste, nunca na do computador."""
-    comando = ["/usr/bin/open", "/Applications/Anki.app"]
-    if situacao == "indisponivel":
-        return None
-    if situacao == "sem_anki":
-        return item_de_login.ItemDeLogin(sistema="mac", pasta=os.path.join(pasta, "agentes"), comando=None)
-    if situacao == "falha":
-        ocupada = os.path.join(pasta, "ocupada")
-        with open(ocupada, "wb") as arquivo:
-            arquivo.write(b"x")
-        return item_de_login.ItemDeLogin(sistema="mac", pasta=os.path.join(ocupada, "agentes"), comando=comando)
-    item = item_de_login.ItemDeLogin(sistema="mac", pasta=os.path.join(pasta, "agentes"), comando=comando)
-    if situacao == "ligado":
-        item.ligar()
-    return item
-
-
-def _chave_guardada_antes(chave, versao, apagada, conta, em, nao_enviada):
-    """O `chaves/openai.json` ao subir, ou None (vale o último caso: conta, versão, chave)."""
-    antes = "sk-proj-guardada-antes-" + chave if chave else ""
-    if conta is not None:
-        return {"chave": antes, "versao": versao, "conta": conta, "em": em, "naoEnviada": nao_enviada}
-    if versao:
-        return {"versao": versao, "chave": "" if apagada else (antes or None)}
-    return None if chave is None else {"chave": "sk-proj-guardada-antes-" + chave}
-
-
 class ConexaoNoTeste:
     """A Conexão real numa porta livre, com o perfil que o teste escolher e uma OpenAI de mentira.
 
     `chave_na_conexao`: os 4 últimos caracteres de uma chave que a Conexão já guardava antes de o teste começar.
     `colecao`: o adaptador da coleção do Anki.
-    `item`: o item de login de “Abrir o Anki com o computador” (`_item_de_login_do_contexto`).
+    `item`: o item de login de “Abrir o Anki com o computador” (`item_de_login_do_contexto`).
     `adaptador_de_imagem`: converte imagem no lugar do Qt do Anki.
     `trabalhando`: a thread do Envio ligada (`test_envio.py`; `espera_do_contato`: quanto ela espera a extensão, 0 aqui); desligada, os Envios ficam na fila.
     """
@@ -172,17 +149,21 @@ class ConexaoNoTeste:
         atualizacao=None,
         ankiweb=None,
         espera_do_teto=60,
+        pareado=True,
+        tela=True,
+        estado_do_pareamento=None,
     ):
         self.perfil = perfil
+        self._com_tela, self._estado_do_pareamento = tela, estado_do_pareamento or {}
         self.situacao_do_chatgpt = chatgpt  # `conectada` (o arquivo do login já existe), `entrando`, `recusou` ou `nao_serve` (a tentativa)
         self.falha_no_perfil = falha_no_perfil
         self.pasta = pasta
-        self.item = _item_de_login_do_contexto(pasta, item)
+        self.item = item_de_login_do_contexto(pasta, item)
         self.dados = pasta_de_dados.PastaDeDados(raiz=pasta, **{nome: os.path.join(pasta, nome) for nome in ("fila", "estado", "custos", "logs", "chaves")})
         self.logs, self.chaves = self.dados.logs, self.dados.chaves
         for pasta_ in self.dados[1:]:
             os.makedirs(pasta_, exist_ok=True)
-        antes = _chave_guardada_antes(chave_na_conexao, versao_na_conexao, chave_apagada, conta_na_conexao, hora_na_conexao, nao_enviada)
+        antes = chave_guardada_antes(chave_na_conexao, versao_na_conexao, chave_apagada, conta_na_conexao, hora_na_conexao, nao_enviada)
         if antes is not None:
             with open(os.path.join(self.chaves, "openai.json"), "w", encoding="utf-8") as arquivo:
                 json.dump(antes, arquivo)
@@ -206,6 +187,8 @@ class ConexaoNoTeste:
         if teto is not None:
             with open(os.path.join(pasta, "teto-do-mes.json"), "w", encoding="utf-8") as arquivo:
                 json.dump({"limitUsd": teto}, arquivo)  # o teto do mês (#160) que a pessoa já tinha posto
+        if pareado:
+            semear(os.path.join(pasta, "pareamento.json"))  # o navegador de teste já se pareou: `pedir` assina como ele
         self.logger = registro.criar(self.logs)
         self.conexao = servidor.Conexao(
             atualizacao=atualizacao_do_exemplo(pasta, atualizacao, ankiweb, self.logger),
@@ -244,6 +227,7 @@ class ConexaoNoTeste:
             de_mentira.__enter__()
         if self.cofre_sem_escrita:
             os.chmod(self.chaves, 0o500)  # gravar a cópia da chave falha: a Conexão responde o erro interno
+        self.tela = preparar_o_pareamento(self.conexao.pareamento, self._com_tela, self._estado_do_pareamento)
         assert self.conexao.iniciar(), "a porta de teste devia estar livre"
         if self.situacao_do_chatgpt in ("entrando", "recusou", "nao_serve"):
             situar_o_login(self.conexao, self.servidor_de_login, self.situacao_do_chatgpt)
@@ -258,10 +242,11 @@ class ConexaoNoTeste:
         for handler in list(self.logger.handlers):
             handler.close()
 
-    def pedir(self, metodo, caminho, origem=ORIGEM, cabecalhos=None, corpo=None, corpo_bruto=None):
-        """`corpo` é um JSON (dict) ou, para o pedido quebrado, os bytes que seguem; `corpo_bruto` é o texto ou os bytes como vierem."""
+    def pedir(self, metodo, caminho, origem=ORIGEM, cabecalhos=None, corpo=None, corpo_bruto=None, assinar=True):
+        """`corpo` é um JSON (dict) ou, para o pedido quebrado, os bytes que seguem; `corpo_bruto` é o texto ou os bytes como vierem.
+        Assinado como o navegador de teste pareado (`assinar=False`: como quem não se pareou); `cabecalhos` vêm por cima."""
         pedido = http.client.HTTPConnection("127.0.0.1", self.conexao.porta, timeout=30)
-        enviados = dict(cabecalhos or {})
+        enviados = {}
         if origem is not None:
             enviados["Origin"] = origem
         if corpo is not None:
@@ -272,6 +257,9 @@ class ConexaoNoTeste:
         if corpo_bruto is not None:
             enviados["Content-Type"] = "application/json"
             corpo_bruto = corpo_bruto.encode("utf-8") if isinstance(corpo_bruto, str) else corpo_bruto
+        if assinar:
+            enviados.update(cabecalhos_assinados(self.conexao.pareamento.sessao, metodo, caminho.split("?", 1)[0], corpo_bruto or b""))
+        enviados.update(cabecalhos or {})
         try:
             pedido.request(metodo, caminho, body=corpo_bruto, headers=enviados)
             resposta = pedido.getresponse()
@@ -315,6 +303,9 @@ def conexao_do_exemplo(pasta, exemplo):
         teto=contexto.get("tetoUsd"),
         atualizacao=contexto.get("atualizacao"),
         ankiweb=contexto.get("ankiweb"),
+        pareado=contexto.get("pareado", True),
+        tela=not contexto.get("semTela", False),
+        estado_do_pareamento=contexto,
     ) as conexao:
         if 'chaveNaNuvem' in contexto:
             conexao.firestore.documentos['uid-teste'] = {
@@ -332,16 +323,10 @@ class ContratoDaConexao(unittest.TestCase):
                     self.skipTest("quem é root, ou o Windows, grava onde a pasta é só de leitura")
                 with conexao_do_exemplo(pasta, exemplo) as conexao:
                     pedido = exemplo["pedido"]
-                    status, _, corpo = conexao.pedir(
-                        pedido["metodo"], pedido["caminho"], pedido["origem"],
-                        corpo=pedido.get("corpo"), corpo_bruto=pedido.get("corpoBruto"),
-                    )
+                    status, _, corpo = pedir_como_o_exemplo(conexao, pedido)
                     repetir = deve_repetir(exemplo)
                     guardado = estado_guardado(conexao) if repetir else None
-                    segundo = conexao.pedir(
-                        pedido["metodo"], pedido["caminho"], pedido["origem"],
-                        corpo=pedido.get("corpo"), corpo_bruto=pedido.get("corpoBruto"),
-                    ) if repetir else None
+                    segundo = pedir_como_o_exemplo(conexao, pedido) if repetir else None
                     guardado_depois = estado_guardado(conexao) if repetir else None
                 self.assertEqual(status, exemplo["resposta"]["status"])
                 self.assertTrue(
@@ -482,6 +467,7 @@ MATRIZ = {
     ("POST", "/voz/ouvir"): {"corpo": {"lang": "en", "provedor": "google", "sotaque": "com"}, **SEM_LEITURA, "recusas": [({}, 400, "invalid_request")]},
 }
 
+MATRIZ.update(MATRIZ_DO_PAREAMENTO)  # o pareamento (#192)
 MATRIZ.update(MATRIZ_DA_PREVIA)  # a prévia do Cartão (#164): em arquivo à parte, que o limite de tamanho não deixa este crescer
 MATRIZ.update(MATRIZ_DA_ATUALIZACAO)  # a atualização pelo AnkiWeb (#177), também
 
@@ -600,8 +586,7 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
         ]
 
     def pedir_o_exemplo(self, conexao, exemplo, corpo=None):
-        pedido = exemplo["pedido"]
-        status, _, lido = conexao.pedir(pedido["metodo"], pedido["caminho"], pedido["origem"], corpo=corpo if corpo is not None else pedido.get("corpo"))
+        status, _, lido = pedir_como_o_exemplo(conexao, exemplo["pedido"], corpo)
         return status, json.loads(lido)
 
     def revisao(self, conexao):
@@ -747,7 +732,7 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
     def test_as_rotas_que_mudam_sao_as_que_guardam_algo_da_conexao(self):
         self.assertEqual(
             sorted(rota[1] for rota, regra in MATRIZ.items() if regra.get("muda")),
-            ["/abrir-com-o-computador", "/anki/card-front", "/anki/card-preview", "/anki/note-types", "/anki/profile", "/anki/profiles", "/atualizacao/agora", "/custos/teto/definir", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/modelo/escolher", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry", "/jobs/usar-a-chave"],
+            ["/abrir-com-o-computador", "/anki/card-front", "/anki/card-preview", "/anki/note-types", "/anki/profile", "/anki/profiles", "/atualizacao/agora", "/custos/teto/definir", "/ia/chatgpt/entrar", "/ia/chatgpt/sair", "/ia/modelo/escolher", "/ia/openai/chave", "/ia/openai/chave/apagar", "/ia/openai/legado", "/ia/openai/sincronizar", "/jobs", "/jobs/apagar-frases", "/jobs/retry", "/jobs/usar-a-chave", "/pareamento/concluir"],
         )
 
 
