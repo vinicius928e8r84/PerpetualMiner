@@ -562,13 +562,6 @@ function setupListeners() {
 
 }
 
-
-
-
-
-
-
-
 // Uma linha que quebra: Fonte · idioma · ordem em selects, a busca no texto e
 // no Título (lista fechada, item 1) e o toggle “Ocultar enviadas e exportadas”.
 
@@ -1193,7 +1186,7 @@ async function tentarApagarDaNuvemDeNovo() {
 let avisoDaChaveNoApagarTudo = null;
 async function apagarChaveNoApagarTudo() {
   try {
-    await ChaveDaOpenAI.apagar({ comConta: Boolean(usuarioLogado), mesmoSemChave: true, todas: true });
+    await ChaveDaOpenAI.apagar();
     await sincronizarAChave();
     avisoDaChaveNoApagarTudo?.remove();
     avisoDaChaveNoApagarTudo = null;
