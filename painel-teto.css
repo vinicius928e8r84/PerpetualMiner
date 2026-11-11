@@ -17,3 +17,19 @@
   font-weight: var(--veio-peso-num);
   text-align: right;
 }
+
+/* Conectar este navegador ao Anki (painel-conexao-versao.js, #192): o campo do código e o Confirmar numa linha, o campo com a largura de poucos caracteres. */
+.painel-pareamento__linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.painel-pareamento__campo {
+  width: 160px;
+  font-family: var(--veio-fonte-mono);
+  font-weight: var(--veio-peso-num);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
