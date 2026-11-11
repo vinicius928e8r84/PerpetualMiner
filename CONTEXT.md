@@ -38,6 +38,10 @@ _Avoid_: Anki Bridge, Bridge, AnkiConnect, serviço residente, servidor local, C
 O script pequeno que a Conexão com o Anki deixa no computador para a extensão abrir o Anki fechado; a extensão só o chama com a permissão que a pessoa deu em “Abrir o Anki sozinho”.
 _Avoid_: host, native host, launcher
 
+**Pareamento**:
+O vínculo de um navegador com a Conexão com o Anki: a pessoa digita no Painel o código que só o Anki dela mostrou, e dali em diante a Conexão só atende os pedidos que esse navegador assina (e o navegador só aceita as respostas que a Conexão prova). Na tela: “Conectar este navegador ao Anki”; desfaz-se no Anki, em “Desconectar navegadores”.
+_Avoid_: Token, senha, login, autorização
+
 **Envio**:
 Uma remessa de frases de um único idioma ao Anki pela Conexão com o Anki; enviar frases de dois idiomas gera dois envios.
 _Avoid_: Job, lote

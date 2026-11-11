@@ -7,6 +7,13 @@
  * escreve é UTC com `Z`) e `"<áudio>"`, um áudio em base64 que não é vazio (o do Ouvir, #174). Devolve o que difere, para a mensagem do teste, ou null se iguais.
  */
 function diferencaDoContrato(obtido, esperado, caminho = '') {
+  // Do pareamento (#192): `<segredo>` e `<prova>` são 32 bytes em base64; `<sessão>`, 32 caracteres hexadecimais.
+  if (esperado === '<segredo>' || esperado === '<prova>') {
+    return typeof obtido === 'string' && /^[A-Za-z0-9+/]{43}=$/.test(obtido) ? null : `${caminho}: ${JSON.stringify(obtido)} não são 32 bytes em base64`;
+  }
+  if (esperado === '<sessão>') {
+    return typeof obtido === 'string' && /^[0-9a-f]{32}$/.test(obtido) ? null : `${caminho}: ${JSON.stringify(obtido)} não é uma sessão`;
+  }
   if (esperado === '<url de autorização>') {
     return typeof obtido === 'string' && obtido.startsWith('https://auth.openai.com/api/accounts/authorize?client_id=dynamic_agent_client&') ? null : `${caminho}: ${JSON.stringify(obtido)} não é a URL de autorização`;
   }
