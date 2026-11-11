@@ -25,7 +25,7 @@ class AqtDeMentira:
     """O `aqt` do Anki, só o que `qt_do_anki.py` importa, anotando o que o complemento pede a ele."""
 
     def __init__(self):
-        self.tooltips, self.dialogos, self.relogios, self.formularios = [], [], [], []
+        self.tooltips, self.dialogos, self.relogios, self.formularios, self.rotulos, self.eventos = [], [], [], [], [], []
         aqui = self
 
         class Sinal:
@@ -36,7 +36,7 @@ class AqtDeMentira:
             def __init__(self, *_):
                 self.finished = Sinal()
                 self.visivel, self.mostradas, self.trazidas, self.ativadas = False, 0, 0, 0
-                self.ajustes = []  # quantos textos o formulário tinha quando a janela pediu o tamanho certo
+                self.ajustes = []  # os textos dos rótulos no momento em que a janela pediu o tamanho certo
                 aqui.dialogos.append(self)
 
             def show(self):
@@ -51,7 +51,8 @@ class AqtDeMentira:
                 return self.visivel
 
             def adjustSize(self):
-                self.ajustes.append(len(aqui.formularios[0].linhas) if aqui.formularios else 0)
+                aqui.eventos.append("adjustSize")
+                self.ajustes.append([rotulo.texto for rotulo in aqui.rotulos])
 
             def raise_(self):
                 self.trazidas += 1
@@ -72,9 +73,27 @@ class AqtDeMentira:
             def addRow(self, *campos):
                 self.linhas.append(campos)
 
+        class Rotulo(_Qualquer):
+            def __init__(self, *_):
+                self.texto = ""
+                aqui.rotulos.append(self)
+
+            def setText(self, texto):
+                self.texto = texto
+
+            def text(self):
+                return self.texto
+
+        class Layout(_Qualquer):
+            def __init__(self, *_):
+                pass
+
+            def activate(self):
+                aqui.eventos.append("activate")
+
         class Relogio(_Qualquer):
             def __init__(self, *_):
-                self.rodando = False
+                self.rodando, self.timeout = False, Sinal()
                 aqui.relogios.append(self)
 
             def start(self):
@@ -85,8 +104,8 @@ class AqtDeMentira:
 
         qt = types.SimpleNamespace(
             QDialog=Dialogo, QTimer=Relogio, Qt=_Qualquer(), qconnect=lambda sinal, funcao: sinal.ligados.append(funcao) if isinstance(sinal, Sinal) else None,
-            QFormLayout=Formulario,
-            **{nome: (lambda *_: _Qualquer()) for nome in ("QLabel", "QProgressBar", "QPushButton", "QVBoxLayout")})
+            QFormLayout=Formulario, QLabel=Rotulo, QVBoxLayout=Layout,
+            **{nome: (lambda *_: _Qualquer()) for nome in ("QProgressBar", "QPushButton")})
         utils = types.SimpleNamespace(tooltip=lambda texto, period=None: self.tooltips.append((texto, period)))
         self.modulos = {"aqt": types.SimpleNamespace(qt=qt, utils=utils), "aqt.qt": qt, "aqt.utils": utils}
 
@@ -134,13 +153,28 @@ class AFronteiraComOQtDoAnki(unittest.TestCase):
         self.assertEqual((len(aqt.dialogos), len(aqt.relogios)), (1, 1))
         self.assertEqual((dialogo.visivel, dialogo.mostradas, dialogo.trazidas, dialogo.ativadas), (True, 3, 2, 2))
 
-    def test_a_janela_deixa_os_campos_crescerem_e_pede_o_tamanho_certo_depois_de_escrever_os_textos_para_nao_cortar_a_segunda_linha(self):
+    def test_a_janela_deixa_os_campos_crescerem_e_refaz_o_layout_e_pede_o_tamanho_so_depois_de_escrever_todos_os_textos(self):
         with AqtDeMentira() as aqt:
             qt = qt_do_anki.QtDoAnki(registro.silencioso())
             estado = janela.Janela(None, lambda: "Usuário 1", configuracao.VERSAO, registro.silencioso()).estado
             qt.abrir_janela(object(), estado)
         self.assertIsNotNone(aqt.formularios[0].politica)
-        self.assertEqual(aqt.dialogos[0].ajustes, [len(aqt.formularios[0].linhas)])
+        self.assertEqual(aqt.eventos, ["activate", "adjustSize"])
+        textos = aqt.dialogos[0].ajustes[0]
+        self.assertEqual([t for t in textos if not t], [""])  # só o rótulo do Baralho, sem Envio, fica vazio
+
+    def test_a_janela_so_pede_o_tamanho_quando_o_texto_muda_para_nao_desfazer_o_que_a_pessoa_redimensionou(self):
+        with AqtDeMentira() as aqt:
+            qt = qt_do_anki.QtDoAnki(registro.silencioso())
+            base = janela.Janela(None, lambda: "Usuário 1", configuracao.VERSAO, registro.silencioso()).estado()
+            atual = [base]
+            qt.abrir_janela(object(), lambda: atual[0])
+            aqt.relogios[0].timeout.ligados[0]()
+            aqt.relogios[0].timeout.ligados[0]()
+            antes = len(aqt.dialogos[0].ajustes)
+            atual[0] = base._replace(ultimo_erro="falhou")
+            aqt.relogios[0].timeout.ligados[0]()
+        self.assertEqual((antes, len(aqt.dialogos[0].ajustes)), (1, 2))
 
 
 if __name__ == "__main__":

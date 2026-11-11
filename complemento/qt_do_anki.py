@@ -92,6 +92,8 @@ class QtDoAnki:
         qconnect(fechar.clicked, dialogo.close)
         layout.addWidget(fechar)
 
+        ultima_medida = [None]
+
         def mostrar():
             if not dialogo.isVisible():
                 return  # fechada, a janela não lê a Conexão
@@ -108,7 +110,11 @@ class QtDoAnki:
                 barra.setValue(atual.feitos)
                 baralho.setText(texto_da_janela.texto("ANK-02.baralho", baralho=atual.baralho))
             erro.setText(estado.ultimo_erro or texto_da_janela.texto("ANK-02.semErro"))
-            dialogo.adjustSize()  # o texto que quebra em duas linhas pede altura: sem isto a janela fica no tamanho do texto anterior e corta
+            medida = (conexao.text(), versao.text(), perfil.text(), envio.text(), erro.text(), baralho.text(), atual is not None)
+            if medida != ultima_medida[0]:  # só quando o texto muda: medir a cada ciclo desfaz o tamanho que a pessoa deu à janela
+                ultima_medida[0] = medida
+                layout.activate()  # sem refazer o layout, o adjustSize() mede o texto anterior e a janela corta por um ciclo
+                dialogo.adjustSize()
 
         mostrar_protegido = janela.protegido(mostrar, self._logger, "atualizar a janela")
         relogio = QTimer(dialogo)
