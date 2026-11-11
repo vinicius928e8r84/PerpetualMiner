@@ -67,3 +67,9 @@ README não pode crescer (o limite de tamanho dos arquivos). `scripts/voz-da-spe
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
 | ENV-22 | Esperando o Anki há mais de 5 min **(novo)** | status | (não existe) | O Anki segue sem responder. Se ele estiver na tela de perfis, abra o perfil; se estiver sincronizando, espere a sincronização terminar. O Envio continua sozinho. | No cartão do Envio (#246), sem botão e sem fazer o Envio falhar; só quando a espera não tem o motivo do perfil (ENV-17). |
+
+### A Conexão com o Anki: conectar este navegador (#192)
+
+| ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
+|---|---|---|---|---|---|
+| BRG-52 | Conectar este navegador ao Anki **(novo)** | status | (não existe) | Conecte este navegador ao Anki · Conectar · Digite o código que apareceu no Anki · Confirmar · Código errado. Restam 4 tentativas · O código venceu. Peça outro · Algo na porta do Anki não se confirmou. Nada foi enviado | No alto do Painel, em qualquer área, com a Conexão ligada e este navegador ainda sem pareamento (#192, opção A do dono, 09/11): o aviso com Conectar; o Anki abre um diálogo com o código (ANK-05, `docs/design/dentro-do-anki.md`), e o card troca para o campo e Confirmar. “Resta 1 tentativa” no singular. O código errado não limpa o campo; o código que venceu, ou que gastou as 5 tentativas, volta ao Conectar (“Peça outro”). “Algo na porta do Anki não se confirmou” serve também quando o Anki não consegue abrir o diálogo, e o mesmo texto, com Tentar de novo ([BRG-50](README.md)), é a porta que respondeu a saúde sem provar ter o segredo deste navegador (impostor, ou a Conexão de outro usuário do computador). A Conexão antiga, sem o pareamento, cai em BRG-50. |

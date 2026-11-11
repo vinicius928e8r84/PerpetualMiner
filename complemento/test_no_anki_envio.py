@@ -14,6 +14,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import no_anki  # noqa: E402
+from complemento.test_pareamento_de_mentira import ao_carregar_pareado, pedir_como_a_extensao  # noqa: E402
 from complemento.test_colecao_em_memoria import DESCRICAO  # noqa: E402
 from complemento.test_imagens_de_mentira import OpenverseDeMentira, png_de  # noqa: E402
 from complemento.test_no_anki import AnkiComColecaoDeMentira, SemRegistroReal, ler_pelo_http  # noqa: E402
@@ -30,7 +31,7 @@ class EnvioGravadoNoAnki(SemRegistroReal, unittest.TestCase):
         self.addCleanup(anki.encerrar)
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai, VozDeMentira() as voz, \
                 OpenverseDeMentira({"keep going": ["rua-1"]}) as openverse:
-            conexao = no_anki.ao_carregar(
+            conexao = ao_carregar_pareado(
                 anki, pasta, porta=0, abridor=None, ao_sincronizar=lambda colecao: None, openai_base=openai.base,
                 openverse_base=openverse.base, voz_base=voz.base)
             try:

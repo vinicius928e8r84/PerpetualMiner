@@ -35,6 +35,8 @@ async function abrirAjustes(page, extensao, { gravado = {} } = {}) {
   await page.clock.setFixedTime(AGORA);
   await page.goto(extensao.url('painel.html#anki/ajustes'));
   await expect(formulario(page)).toBeVisible();
+  // A prévia do estilo vem da Conexão (um pedido assinado, que sai um pouco depois do formulário): o teste que a desliga espera por ela antes.
+  await expect(formulario(page).locator('.previa iframe')).toBeVisible();
 }
 
 // Exceção de teste: sem-estado-guardado — só mostra a frente padrão e o texto dela; nada é gravado nem pedido.
@@ -206,6 +208,8 @@ test.describe('quando a Conexão não troca a frente', () => {
 
   test('com o Anki sem perfil aberto a tela diz que o Anki não está pronto e nada muda na Conexão', async ({ page, extensao, fakes }) => {
     await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });
+    // A lista dos Baralhos é lida duas vezes ao abrir (ao entrar na área e quando a Conexão fica ligada); o Anki só fica sem coleção depois das duas.
+    await expect.poll(() => fakes.anki.requisicoes.filter(r => r.caminho === '/anki/decks').length).toBe(2);
     fakes.anki.abrirColecao(null);
 
     await escolher(page, 'Lacuna');
