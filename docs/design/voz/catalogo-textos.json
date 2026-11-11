@@ -346,7 +346,7 @@
   "BRG-07.baralho": "Baralho",
   "BRG-07.baralhoEmBranco": "Em branco, volta para “{baralho}”.",
   "BRG-07.imagens": "Imagens",
-  "BRG-07.fotoReal": "Foto real (Google)",
+  "BRG-07.fotoReal": "Foto do Openverse",
   "BRG-07.geradaPorIa": "Gerada por IA",
   "BRG-07.notaFotoReal": "Quando não acha uma foto boa, gera uma por IA, e aí tem custo.",
   "BRG-07.notaGeradaPorIa": "Toda imagem é gerada por IA e entra nos custos.",
