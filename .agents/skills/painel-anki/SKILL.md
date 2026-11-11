@@ -134,7 +134,7 @@ The `#anki/ajustes` tab is variant A · Cartões of `docs/design/painel/anki/pro
 picked it over the locked C): one card per language, closed or open like the Configurações cards (one open at a time,
 the English one first; the header button `aria-expanded` is the control). A closed card says what is *stored* — the deck,
 its `::` levels as ›, and “· foto real” / “· gerada por IA”. Open, it holds the language's form: **Baralho**, **Imagens**
-(a segmented control, Foto real (Google) · Gerada por IA, with the cost note under it), the dashed Avançado with the audio
+(a segmented control, Foto do Openverse · Gerada por IA, with the cost note under it), the dashed Avançado with the audio
 accents, and **Salvar ajustes** with a status beside it (“Salvo”, or “Alterações não salvas” with Salvar in gold).
 Nothing is written until Salvar ajustes; saving writes only that card's language and shows the BRG-07 toast. Each
 language's draft survives opening and closing the cards. With the Conexão off the tab stays editable, with the BRG-33

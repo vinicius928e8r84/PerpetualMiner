@@ -603,7 +603,7 @@ function ajNote(){return off()?'<div class="note"><div class="grow">Os ajustes c
 function ajFields(k){
   const p=S.presets[k];
   return `<div class="field"><label for="d-${k}">Baralho</label><input class="input" id="d-${k}" data-p="${k}.deck" value="${p.deck}"><small>Em branco, volta para “${k==='en'?'English Mining':'RUSSIAN'}”.</small></div>
-   <div class="field"><label for="i-${k}">Imagens</label><select class="input" id="i-${k}" data-p="${k}.img"><option value="real"${p.img==='real'?' selected':''}>Foto real (Google)</option><option value="gen"${p.img==='gen'?' selected':''}>Gerada por IA</option></select>
+   <div class="field"><label for="i-${k}">Imagens</label><select class="input" id="i-${k}" data-p="${k}.img"><option value="real"${p.img==='real'?' selected':''}>Foto do Openverse</option><option value="gen"${p.img==='gen'?' selected':''}>Gerada por IA</option></select>
    <small>${p.img==='real'?'Quando não acha uma foto boa, gera uma por IA, e aí tem custo.':'Toda imagem é gerada por IA e entra nos custos.'}</small></div>`;
 }
 
@@ -663,7 +663,7 @@ const B={
   return `<div class="B-col">${ajNote()}<p class="B-sub" style="margin-bottom:8px">Baralho e imagens usados em cada envio.</p>
    <table class="matrix"><thead><tr><th></th><th><span class="lang-pill">EN</span>Inglês</th><th><span class="lang-pill">RU</span>Russo</th></tr></thead><tbody>
     <tr><th>Baralho</th>${['en','ru'].map(k=>`<td><input class="input" data-p="${k}.deck" value="${P[k].deck}" aria-label="Baralho ${LANG[k]}"></td>`).join('')}</tr>
-    <tr><th>Imagens</th>${['en','ru'].map(k=>`<td><select class="input" data-p="${k}.img" aria-label="Imagens ${LANG[k]}"><option value="real"${P[k].img==='real'?' selected':''}>Foto real (Google)</option><option value="gen"${P[k].img==='gen'?' selected':''}>Gerada por IA</option></select></td>`).join('')}</tr>
+    <tr><th>Imagens</th>${['en','ru'].map(k=>`<td><select class="input" data-p="${k}.img" aria-label="Imagens ${LANG[k]}"><option value="real"${P[k].img==='real'?' selected':''}>Foto do Openverse</option><option value="gen"${P[k].img==='gen'?' selected':''}>Gerada por IA</option></select></td>`).join('')}</tr>
    </tbody></table>
    <p class="desc">Foto real: quando não acha uma foto boa, gera uma por IA, e aí tem custo. Baralho em branco volta para o padrão.</p>
    <button class="btn primary" data-save>Salvar ajustes</button>${advAjustes()}</div>`;

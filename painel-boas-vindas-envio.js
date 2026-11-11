@@ -110,7 +110,10 @@
       if (guid) acoes.append(botao('secundario', 'ONB-23.abrirNoAnki', () => abrirNoAnki(guid, erroAoAbrir)));
       acoes.append(botao('primario', 'ONB-23.concluir', aoConcluir));
       const ok = elemento('p', 'bv-envio__ok', Veio.iconeVeio('certo'), textoDaVoz('ONB-23.enviado'), chip);
-      lugar.replaceChildren(ok, ...(corpo.teste ? [elemento('p', 'bv-nota', textoDaVoz('ONB-23.teste'))] : []), previa.no, erroAoAbrir, acoes);
+      // Quem já minerou, mas sem Palavra marcada, não "ainda não minerou": o aviso diz o que falta.
+      const { frases = [] } = corpo.teste ? await chrome.storage.local.get({ frases: [] }) : {};
+      const jaMinerou = frases.some(frase => frase?.texto);
+      lugar.replaceChildren(ok, ...(corpo.teste ? [elemento('p', 'bv-nota', textoDaVoz(jaMinerou ? 'ONB-23.testeSemPalavra' : 'ONB-23.teste'))] : []), previa.no, erroAoAbrir, acoes);
       lugar.dataset.estado = 'enviado';
       const nivel = (await AjustesDeEnvio.ler().catch(() => null))?.[lang]?.nivel || 'iniciante';
       if (minha !== vez) return;
