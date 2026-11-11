@@ -118,6 +118,7 @@ class Pareamento:
         self.sortear = sortear
         self.sessao = secrets.token_hex(16)
         self._tranca = threading.RLock()
+        self._tranca_do_arquivo = threading.RLock()   # só o arquivo: nenhuma leitura fica aberta durante a troca (no Windows o `os.replace` falha), e a janela do Anki nunca roda sob ela
         self._pendente = None      # { codigo, vence, tentativas }
         self._concluido = None     # { codigo, cliente, segredo, vence }: o último código usado, para o `concluir` repetido
         self._nonces = OrderedDict()
@@ -130,7 +131,7 @@ class Pareamento:
     def _ler(self, campo="clientes"):
         """As linhas válidas de `campo` (`clientes` ou `revogados`) do arquivo."""
         try:
-            with open(self._arquivo, encoding="utf-8") as arquivo:
+            with self._tranca_do_arquivo, open(self._arquivo, encoding="utf-8") as arquivo:
                 dados = json.load(arquivo)
         except (OSError, ValueError):
             return []
@@ -149,8 +150,9 @@ class Pareamento:
 
     def _gravar(self, clientes, revogados=None):
         """Grava os navegadores; sem `revogados`, os que já estavam no arquivo ficam."""
-        revogados = self._ler("revogados") if revogados is None else revogados
-        gravar_so_do_dono(self._arquivo, {"versao": 1, "clientes": clientes, "revogados": revogados})
+        with self._tranca_do_arquivo:
+            revogados = self._ler("revogados") if revogados is None else revogados
+            gravar_so_do_dono(self._arquivo, {"versao": 1, "clientes": clientes, "revogados": revogados})
 
     def _segredo_de(self, cliente, campo="clientes"):
         if not isinstance(cliente, str):
