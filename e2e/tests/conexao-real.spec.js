@@ -9,6 +9,7 @@ const { test, expect } = require('../fixtures');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 const contrato = require('../../complemento/contrato/exemplos.json');
 const { exemploDaExtensao, diferencaDoContrato } = require('../fakes/anki');
+const { pedirDaPagina } = require('../pareamento-de-teste');
 
 // A Conexão de verdade confere a chave em dois pedidos à OpenAI de mentira: dê-lhe mais que os 5 s dos testes com fake.
 const PRAZO_DA_CONEXAO_MS = 20000;
@@ -61,13 +62,7 @@ for (const exemplo of soDaColecao) {
     await conexaoDoTeste.enviar({ colecao: contrato.colecoes[exemplo.contexto.colecao] });
     await page.goto(extensao.url('manifest.json'), { waitUntil: 'domcontentloaded' });
 
-    const resposta = await page.evaluate(async ({ metodo, caminho, corpo }) => {
-      const r = await fetch(`http://127.0.0.1:8766${caminho}`, {
-        method: metodo,
-        ...(corpo !== undefined && { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }),
-      });
-      return { status: r.status, json: await r.json() };
-    }, exemplo.pedido);
+    const resposta = await pedirDaPagina(page, exemplo.pedido);   // assinado como a extensão (#192)
 
     expect(resposta.status).toBe(exemplo.resposta.status);
     expect(diferencaDoContrato(resposta.json, exemplo.resposta.json)).toBeNull();

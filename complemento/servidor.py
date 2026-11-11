@@ -16,15 +16,16 @@ import threading
 from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import baralhos, chatgpt_oficial, envio, trabalhador
+from . import chatgpt_oficial, envio, trabalhador
 from .chaves import Cofre
 from .login_do_chatgpt import LoginDoChatGPT
+from .pareamento import CABECALHO_DA_PROVA, Pareamento, prova_da_resposta
 from .paginas_do_navegador import PAGINAS, ROTAS_DO_CHATGPT, responder_a_pagina
 from .rotas_da_chave import (
     apagar_chave_da_openai, estado_da_ia, guardar_chave_da_openai, sincronizar_chave_da_openai, vincular_legado_da_openai,
 )
 from .configuracao import ENDERECO, OPENAI_BASE, OPENVERSE_BASE, VOZ_BASE
-from .item_de_login import AnkiNaoEncontrado
+from .colecao_vazia import SemColecao
 from .modelo_dos_cartoes import ModeloDosCartoes, lista_nossa
 from .teto_do_mes import TetoDoMes
 from .perfil import PerfilFixo
@@ -37,6 +38,8 @@ from .rotas_da_voz import ROTAS_DA_VOZ
 from .rotas_do_envio import ROTAS_DO_ENVIO
 from .rotas_do_modelo import ROTAS_DO_MODELO
 from .rotas_do_teto import ROTAS_DO_TETO
+from .rotas_do_pareamento import ROTAS_DO_PAREAMENTO
+from .rotas_do_item_de_login import ROTAS_DO_ITEM_DE_LOGIN
 from .rotas_do_perfil import abrir_o_perfil_marcado, escolher_o_perfil, listar_os_perfis
 
 # Um pedido maior que isto não é da extensão: a leitura mais pesada (os Baralhos pedidos) cabe em poucos KB.
@@ -55,34 +58,6 @@ def _saude(conexao, corpo):
     if atualizacao is not None:
         saude["atualizacao"] = atualizacao
     return 200, saude
-
-
-def _estado_do_item_de_login(conexao, corpo):
-    item = conexao.item_de_login
-    return 200, {"ok": True, "ligado": item is not None and item.ligado()}
-
-
-def _abrir_com_o_computador(conexao, corpo):
-    """Escreve (`ligado: true`) ou apaga (`ligado: false`) o item de login que abre o Anki com o computador."""
-    ligado = corpo.get("ligado")
-    if not isinstance(ligado, bool):
-        return 400, {"error": "invalid_request"}
-    item = conexao.item_de_login
-    if item is None:
-        return 501, {"error": "login_item_unsupported"}
-    try:
-        if ligado:
-            item.ligar()
-        else:
-            item.desligar()
-    except AnkiNaoEncontrado:
-        conexao.logger.warning("Abrir o Anki com o computador: não se sabe onde o Anki está")
-        return 500, {"error": "anki_not_found"}
-    except OSError:
-        conexao.logger.exception("Abrir o Anki com o computador: não deu para %s o item de login", "escrever" if ligado else "apagar")
-        return 500, {"error": "login_item_failed"}
-    conexao.logger.info("Abrir o Anki com o computador: %s", "ligado" if item.ligado() else "desligado")
-    return 200, {"ok": True, "ligado": item.ligado()}
 
 
 ROTAS = {
@@ -106,19 +81,23 @@ ROTAS = {
     **ROTAS_DA_VOZ,
     **ROTAS_DA_FRENTE,
     **ROTAS_DA_PREVIA,
-    ("POST", "/abrir-com-o-computador/estado"): _estado_do_item_de_login,
-    ("POST", "/abrir-com-o-computador"): _abrir_com_o_computador,
+    **ROTAS_DO_ITEM_DE_LOGIN,
     **ROTAS_DO_ENVIO,
+    # O pareamento (#192): por elas o navegador chega a ter o segredo que assina os pedidos das outras.
+    **ROTAS_DO_PAREAMENTO,
 }
 
 # As rotas que respondem sem a origem da extensão. Rota nova não entra aqui sem decisão do dono:
 # o que gasta a chave ou lê dado da pessoa é POST e exige a origem.
 ROTAS_ABERTAS = frozenset([("GET", "/health")]) | frozenset(PAGINAS)
+# As rotas que dispensam a assinatura de um navegador pareado: as do próprio pareamento. Rota nova não entra aqui sem decisão do dono.
+ROTAS_SEM_ASSINATURA = frozenset(ROTAS_DO_PAREAMENTO)
 
 
 class _Atendente(BaseHTTPRequestHandler):
     server_version = "PerpetualMiner"
     sys_version = ""
+    _assinado = None   # o navegador pareado que assinou o pedido de agora (`pareamento.Verificacao`); a resposta leva a prova dele
 
     @property
     def conexao(self):
@@ -150,48 +129,73 @@ class _Atendente(BaseHTTPRequestHandler):
         if dados is not None:
             self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(corpo)))
+        self.send_header("Cache-Control", "no-store")
         if origem:
             self.send_header("Access-Control-Allow-Origin", origem)
+            self.send_header("Access-Control-Expose-Headers", CABECALHO_DA_PROVA)
             self.send_header("Vary", "Origin")
+        if self._assinado is not None:
+            # A prova de que quem respondeu tem o segredo do navegador que pediu: a extensão a confere antes de usar a resposta.
+            self.send_header(CABECALHO_DA_PROVA, prova_da_resposta(self._assinado.segredo, self.conexao.pareamento.sessao, self._assinado.nonce, status, corpo))
         for nome, valor in (extras or {}).items():
             self.send_header(nome, valor)
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(corpo)
 
-    def _pedido_aceito(self, caminho):
-        """Só a extensão pode pedir, pela origem dela. A exceção é a saúde: o Chrome manda o GET de uma
-        página da extensão sem `Origin` e nada diferencia uma extensão da outra, então `GET /health`
-        fica aberto a quem pedir (só diz a versão e o perfil). Tudo o mais exige a origem da extensão.
-        O `Origin` não é autenticação: o `fetch` de uma página comum não escolhe esse cabeçalho, mas uma
-        extensão com `webRequest` e `extraHeaders` pode pô-lo, e um programa local também. Antes da primeira
-        rota que usa a chave ou lê dado privado, isso tem de ser testado e reforçado (ver contrato/LEIA-ME.md)."""
+    def _pedido_aceito(self, caminho, corpo):
+        """O porteiro, num lugar só e antes de escolher a rota: `None` se o pedido segue; senão `(status, erro)`.
+
+        Só a extensão pede, pela origem dela; a exceção é `GET /health` (e o retorno do login), que o Chrome manda sem `Origin`. Mas o `Origin`
+        não é autenticação (uma extensão com `extraHeaders`, ou um programa local, o põe): tudo o mais, a rota que não existe inclusive, exige a
+        assinatura de um navegador pareado (`pareamento.py`, `contrato/LEIA-ME.md`). Só o pareamento e o preflight a dispensam. `corpo` são os
+        bytes que a assinatura cobre (`None`: passou do limite)."""
         origem = self.headers.get("Origin")
-        if origem is not None:
-            return origem in self.conexao.origens_aceitas
-        return (self.command, caminho) in ROTAS_ABERTAS
+        aberta = (self.command, caminho) in ROTAS_ABERTAS
+        if (origem is None and not aberta) or (origem is not None and origem not in self.conexao.origens_aceitas):
+            return 403, "origin_not_allowed"
+        if corpo is None:
+            return 400, "invalid_json"
+        if aberta or self.command == "OPTIONS" or (self.command, caminho) in ROTAS_SEM_ASSINATURA:
+            return None
+        verificacao = self.conexao.pareamento.verificar(self.command, caminho, corpo, self.headers)
+        if verificacao.status != 200:
+            return verificacao.status, verificacao.erro
+        self._assinado = verificacao
+        return None
 
     def _ler_o_corpo(self, limite):
-        """O JSON do pedido (`{}` sem corpo), ou None se o corpo não é um objeto JSON ou passa do `limite`."""
+        """Os bytes do pedido (`b""` sem corpo), ou None se o tamanho não vale ou passa do `limite`."""
         try:
             tamanho = int(self.headers.get("Content-Length") or 0)
         except ValueError:
             return None
         if tamanho <= 0:
-            return {}
+            return b""
         if tamanho > limite:
             return None
+        return self.rfile.read(tamanho)
+
+    @staticmethod
+    def _json_do_corpo(bruto):
+        """O JSON do pedido (`{}` sem corpo), ou None se o corpo não é um objeto JSON."""
+        if not bruto:
+            return {}
         try:
-            corpo = json.loads(self.rfile.read(tamanho).decode("utf-8"))
+            corpo = json.loads(bruto.decode("utf-8"))
         except (UnicodeDecodeError, ValueError):
             return None
         return corpo if isinstance(corpo, dict) else None
 
     def _atender(self):
         caminho = self.path.split("?", 1)[0]
-        if not self._pedido_aceito(caminho):
-            return self._responder(403, {"error": "origin_not_allowed"})
+        self._assinado = None
         origem = self.headers.get("Origin")
+        bruto = self._ler_o_corpo(LIMITES_POR_ROTA.get((self.command, caminho), LIMITE_DO_CORPO))
+        recusa = self._pedido_aceito(caminho, bruto)
+        if recusa is not None:
+            status, erro = recusa
+            return self._responder(status, {"error": erro}, origem=origem if status != 403 else None)
         if self.command == "OPTIONS":
             extras = {
                 "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
@@ -207,7 +211,7 @@ class _Atendente(BaseHTTPRequestHandler):
         rota = ROTAS.get((self.command, caminho))
         if rota is None:
             return self._responder(404, {"error": "not_found"}, origem=origem)
-        corpo = self._ler_o_corpo(LIMITES_POR_ROTA.get((self.command, caminho), LIMITE_DO_CORPO))
+        corpo = self._json_do_corpo(bruto)
         if corpo is None:
             return self._responder(400, {"error": "invalid_json"}, origem=origem)
         try:
@@ -243,29 +247,6 @@ class _Servidor(ThreadingHTTPServer):
             self.conexao.logger.info("O pedido de %s não terminou: o cliente fechou a conexão", client_address)
             return
         self.conexao.logger.exception("Erro ao atender %s", client_address)
-
-
-class _SemColecao:
-    """A coleção de uma Conexão que nasceu sem adaptador: nada a ler nem a gravar (o Envio espera)."""
-
-    def perfis(self):
-        return []
-
-    def perfil_aberto(self):
-        return None
-
-    def fixar_o_perfil(self, fixo):
-        pass
-
-    def entrar_no_perfil_fixo(self):
-        return False
-
-    trocar_para_o_perfil_fixo = entrar_no_perfil_fixo
-
-    def nomes_dos_baralhos(self, *_):
-        raise baralhos.ColecaoIndisponivel("collection_unavailable")
-
-    cartoes_do_baralho = tipo_de_nota = guids_existentes = adicionar_nota = gravar_cartao = nomes_dos_baralhos
 
 
 class Conexao:
@@ -308,7 +289,7 @@ class Conexao:
         self.origens_aceitas = tuple(origens_aceitas)
         self.versao = versao
         self.perfil_aberto = perfil_aberto
-        self.colecao = colecao or _SemColecao()
+        self.colecao = colecao or SemColecao()
         self.logger = logger
         self.dados = dados
         # O perfil fixo (#149): o marcado fica em `user_files/perfil.json`, e o adaptador da coleção só grava nele.
@@ -317,6 +298,8 @@ class Conexao:
         # Chamado depois de a pessoa escolher outro perfil: o que depende do marcado (o abridor) se refaz. Quem monta a Conexão o troca.
         self.ao_mudar_o_perfil = lambda: None
         self.cofre = Cofre(dados.chaves)
+        # Os navegadores pareados (#192); a janela do Anki (`na_tela`) vem de `janela.ligar`, e sem ela o código não tem onde aparecer.
+        self.pareamento = Pareamento(os.path.join(dados.raiz, "pareamento.json"), logger)
         self.chatgpt = LoginDoChatGPT(dados.chaves, logger, base=chatgpt_base, api=openai_base)
         self.openai_base, self.voz_base = openai_base, voz_base
         motor = motor or envio.motor_do_complemento()
@@ -394,6 +377,7 @@ class Conexao:
 
     def parar(self):
         self._cancelar.set()
+        self.pareamento.parar()
         self.atualizacao.parar()
         if self._thread_da_passagem is not None:
             self._thread_da_passagem.join(timeout=5)

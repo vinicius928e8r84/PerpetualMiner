@@ -61,15 +61,16 @@ class LeituraDaColecao(unittest.TestCase):
                     filtros = json.loads(corpo)["filters"]
                     self.assertEqual((status, filtros["limit"], filtros["offset"]), (200, baralhos.LIMITE_PADRAO, 0))
 
-    def test_limite_conhecido_um_cliente_fora_do_navegador_que_declara_a_origem_da_extensao_recebe_o_vocabulario(self):
-        """Documenta o que o contrato (LEIA-ME, “Quem o complemento atende”, item 3) já diz: o `Origin` não é
-        autenticação. Um programa local, ou uma extensão que consiga pôr esse cabeçalho, lê os Baralhos como a extensão.
-        Sem a origem, ou com a de outro site ou de outra extensão, nada é lido (os exemplos do contrato). O reforço
-        (uma credencial de pareamento) é o ticket #192, antes do lançamento; quando entrar, este teste passa a exigir a credencial."""
+    def test_um_cliente_fora_do_navegador_que_declara_a_origem_da_extensao_sem_a_assinatura_nao_recebe_o_vocabulario(self):
+        """O limite que o contrato aceitava (LEIA-ME, “Quem o complemento atende”, item 3) acabou com o pareamento (#192): o `Origin` não é
+        autenticação, e quem só o declara (um programa local, uma extensão com `extraHeaders`) recebe 401 em vez dos Baralhos. Assinado
+        como o navegador pareado, a mesma leitura responde. Sem a origem, ou com a de outro site, 403."""
         with tempfile.TemporaryDirectory() as pasta, self.com_a_colecao(pasta) as conexao:
-            status, _, corpo = conexao.pedir("POST", "/anki/vocabulary", origem=ORIGEM, corpo={"deck": "Inglês", "lang": "en"})
+            forjado = conexao.pedir("POST", "/anki/vocabulary", origem=ORIGEM, corpo={"deck": "Inglês", "lang": "en"}, assinar=False)
+            pareado = conexao.pedir("POST", "/anki/vocabulary", origem=ORIGEM, corpo={"deck": "Inglês", "lang": "en"})
             sem_a_origem = conexao.pedir("POST", "/anki/vocabulary", origem=None, corpo={"deck": "Inglês", "lang": "en"})[0]
-        self.assertEqual((status, json.loads(corpo)["totalWords"], sem_a_origem), (200, 12, 403))
+        self.assertEqual((forjado[0], json.loads(forjado[2])), (401, {"error": "pairing_required"}))
+        self.assertEqual((pareado[0], json.loads(pareado[2])["totalWords"], sem_a_origem), (200, 12, 403))
 
     def test_o_vocabulario_filtra_pela_situacao_do_cartao(self):
         with tempfile.TemporaryDirectory() as pasta, self.com_a_colecao(pasta) as conexao:
