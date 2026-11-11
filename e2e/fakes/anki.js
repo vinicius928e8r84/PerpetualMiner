@@ -15,7 +15,8 @@ const { criarBaralhos } = require('./baralhos');
 const { criarPrevia } = require('./previa');
 const { cartoesDoEstado } = require('./navegador');
 const { diferencaDoContrato } = require('./diferenca-do-contrato');
-const { resumoDosCustos, linhaDeCustos } = require('./custos');
+const { resumoDosCustos, linhaDeCustos, linhasDosCustosDaFila } = require('./custos');
+const { criarPareamento } = require('./pareamento');
 const contrato = require('../../complemento/contrato/carregar');
 
 // Fake da Conexão com o Anki: responde na porta local dela (127.0.0.1:8766), ligada e com vocabulário vazio. Um teste a desliga ou responde uma rota com `responder`.
@@ -77,6 +78,8 @@ function criarFakeAnki() {
     filaDaChave: Promise.resolve(),
     chaveDaOpenAI: null, // a cópia da chave que a Conexão guarda (a inteira: só o teste a vê)
   };
+  const pareamento = criarPareamento({ agora: () => estado.agora() }); // os navegadores pareados e o código que o Anki mostra (#192)
+  pareamento.parear('primeiro'); // a Conexão do teste já conhece o primeiro navegador de teste; `pareamento.desconectar()` a deixa como a de quem nunca se pareou
   const perfis = criarPerfis(() => estado.contexto);
   const modelo = criarModelo(() => contextoDeAgora()); // o modelo dos cartões (#157)
   const teto = criarTeto({ registros: () => [...estado.registrosDeCusto.values()].flat(), linhas: () => estado.custos, agora: () => estado.agora() });
@@ -161,24 +164,7 @@ function criarFakeAnki() {
   /** O pedido de um Envio como a Conexão o guarda (o corpo, mais `createdAt`). */
   const pedidoGuardado = envio => ({ ...envio.corpo, createdAt: envio.createdAt });
 
-  /** As linhas de Custos do período e do idioma pedidos (`POST /analytics/jobs`), como `JobAnalytics.jobs`. */
-  function linhasDosCustos(corpo) {
-    const { lang = 'all', from: de, to: ate } = corpo || {};
-    const doPeriodo = linha => (lang === 'all' || linha.lang === lang) && (!de || String(linha.createdAt).slice(0, 10) >= de) && (!ate || String(linha.createdAt).slice(0, 10) <= ate);
-    if (estado.custos) return estado.custos.filter(doPeriodo);
-    return envios.filter(doPeriodo).map(envio => {
-      const resumo = resumoDosCustos(estado.registrosDeCusto.get(envio.jobId) || [], de, ate);
-      const pedidas = new Set(envio.entries.map(e => e.phraseId)).size;
-      const enviadas = envio.state.successfulPhraseIds.length;
-      const falharam = ['failed', 'partial'].includes(envio.state.status) ? Math.max(envio.state.failedPhraseIds.length, pedidas - enviadas) : envio.state.failedPhraseIds.length;
-      return {
-        jobId: envio.jobId, createdAt: envio.createdAt, updatedAt: envio.state.updatedAt, lang: envio.lang,
-        deckName: envio.corpo.deckName || '', imageSource: envio.corpo.imageSource || '', status: envio.state.status, stage: envio.state.stage,
-        requestedCards: pedidas, successfulCards: enviadas, failedCards: falharam, lastError: envio.state.lastError,
-        costs: resumo.costs, images: resumo.images, matchedRecords: resumo.matchedRecords, ...(resumo.plan ? { plan: resumo.plan } : {}),
-      };
-    }).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-  }
+  const linhasDosCustos = corpo => linhasDosCustosDaFila({ definidas: estado.custos, envios, registrosDeCusto: estado.registrosDeCusto }, corpo);
 
   /** `POST /jobs/debug-bundle`: o pacote de diagnóstico como o complemento o monta (o fake não tem arquivos nem log). */
   function pacoteDeDiagnostico(jobId) {
@@ -362,16 +348,28 @@ function criarFakeAnki() {
     return resposta;
   }
 
-  async function tratar(route) {
-    const req = route.request();
+  async function tratar(daPorta) {
+    const req = daPorta.request();
     const url = new URL(req.url());
     const corpoDoPedido = req.postData();
-    // `dados`: o corpo JSON que a extensão mandou (null sem corpo ou se não é JSON).
-    requisicoes.push({ metodo: req.method(), caminho: url.pathname, busca: url.search, corpo: corpoDoPedido, dados: dadosDoCorpo(corpoDoPedido) });
+    // `dados`: o corpo JSON enviado, ou null; o pareamento (#192) tem o registro dele.
+    const doPareamento = url.pathname.startsWith('/pareamento/');
+    if (doPareamento) pareamento.tentou(url.pathname); else requisicoes.push({ metodo: req.method(), caminho: url.pathname, busca: url.search, corpo: corpoDoPedido, dados: dadosDoCorpo(corpoDoPedido) });
 
-    if (!estado.ligada) return route.abort('connectionrefused');
+    if (!estado.ligada) return daPorta.abort('connectionrefused');
     // A porta aceita e não responde: o pedido fica no ar até a página desistir.
     if (estado.muda) return new Promise(() => {});
+    if (doPareamento) {
+      const { status, json } = pareamento.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido)) || { status: 404, json: { error: 'not_found' } };
+      return responderJson(daPorta, status, json);
+    }
+    // O porteiro (#192): abertos, a saúde, o login e o `/anki/status` da ponte antiga; o resto, assinado, e a resposta leva a prova.
+    let route = daPorta;
+    if (req.method() !== 'GET' || !['/health', '/auth/callback', '/anki/status'].includes(url.pathname)) {
+      const assinou = pareamento.verificar(req, url.pathname);
+      if (assinou.erro) return responderJson(daPorta, 401, { error: assinou.erro });
+      route = pareamento.comProva(daPorta, assinou);
+    }
 
     const personalizada = estado.rotas.get(`${req.method()} ${url.pathname}`);
     if (personalizada) {
@@ -519,6 +517,8 @@ function criarFakeAnki() {
     padrao: /^http:\/\/(127\.0\.0\.1|localhost):8766\//,
     tratar,
     requisicoes,
+    /** O pareamento (#192, `pareamento.js`): `codigoNoAnki()`, `desconectar()`, `vencerOCodigo()`, `recebidos()`, `pareados()`. */
+    pareamento,
     chatgpt,
     /** O modelo dos cartões (#157, `modelo-dos-cartoes.js`): `definir(cenario)`, `passarOTempoAte(dia)`, `guardado()`. */
     modelo,

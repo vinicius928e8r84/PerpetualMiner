@@ -33,7 +33,7 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
      ONB-19 animation of the Anki's own warning (#146): two frames alternating by themselves — the warning the Anki
      shows when the file opens, and the same dialog with the Sim marked, where to click; still, side by side, with
      `prefers-reduced-motion: reduce`. The Detalhes “O arquivo não abriu?” (`Veio.montarDetalhes(…, rotulo)`) says the AnkiWeb code to paste in Ferramentas › Extensões ›
-     Obter complementos (`lib/ankiweb.js`, none until the first upload, #176) or that it comes soon: never an invented number.
+     Obter extensões (`lib/ankiweb.js`, none until the first upload, #176) or that it comes soon: never an invented number.
   3. **Reiniciar o Anki**: always there. The extension checks by itself (the shared 15 s `/health`); the status line says Conectando
      and then “Achei o Anki · perfil · versão” from `ConexaoAnki.saude()`; **Tentar de novo** lives here.
   4. **Abrir o Anki sozinho** (#147, ONB-17): when the Conexão answers, the card moves to it by itself (the connection's status line stays).
@@ -134,7 +134,7 @@ The `#anki/ajustes` tab is variant A · Cartões of `docs/design/painel/anki/pro
 picked it over the locked C): one card per language, closed or open like the Configurações cards (one open at a time,
 the English one first; the header button `aria-expanded` is the control). A closed card says what is *stored* — the deck,
 its `::` levels as ›, and “· foto real” / “· gerada por IA”. Open, it holds the language's form: **Baralho**, **Imagens**
-(a segmented control, Foto real (Google) · Gerada por IA, with the cost note under it), the dashed Avançado with the audio
+(a segmented control, Foto do Openverse · Gerada por IA, with the cost note under it), the dashed Avançado with the audio
 accents, and **Salvar ajustes** with a status beside it (“Salvo”, or “Alterações não salvas” with Salvar in gold).
 Nothing is written until Salvar ajustes; saving writes only that card's language and shows the BRG-07 toast. Each
 language's draft survives opening and closing the cards. With the Conexão off the tab stays editable, with the BRG-33

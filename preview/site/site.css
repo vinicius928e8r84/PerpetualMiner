@@ -1,0 +1,206 @@
+/* As páginas públicas do app (sobre e privacidade): só a Veio, sem fonte nem script de fora. */
+body {
+  margin: 0;
+  background: var(--veio-bg);
+  color: var(--veio-text);
+  font-family: var(--veio-fonte-ui);
+  font-size: var(--veio-tam-destaque);
+  line-height: 1.65;
+}
+
+.site-topo {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 20px 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.site-marca {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--veio-text);
+  text-decoration: none;
+  font-size: var(--veio-tam-pagina);
+}
+
+.site-topo nav {
+  display: flex;
+  gap: 20px;
+  font-size: var(--veio-tam-corpo);
+}
+
+.site-topo nav a {
+  color: var(--veio-muted);
+  text-decoration: none;
+}
+
+.site-topo nav a:hover,
+.site-topo nav a[aria-current] {
+  color: var(--veio-accent-text);
+}
+
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 20px 72px;
+}
+
+h1 {
+  font-size: var(--veio-tam-display);
+  font-weight: var(--veio-peso-display);
+  letter-spacing: var(--veio-tracking-display);
+  line-height: 1.2;
+  margin: 0 0 12px;
+}
+
+h2 {
+  font-size: var(--veio-tam-hero);
+  font-weight: var(--veio-peso-titulo);
+  line-height: 1.3;
+  margin: 44px 0 10px;
+}
+
+h3 {
+  font-size: var(--veio-tam-destaque);
+  font-weight: var(--veio-peso-titulo);
+  color: var(--veio-accent-text);
+  margin: 24px 0 6px;
+}
+
+p,
+ul {
+  margin: 0 0 14px;
+}
+
+ul {
+  padding-left: 22px;
+}
+
+li {
+  margin-bottom: 6px;
+}
+
+a {
+  color: var(--veio-accent-text);
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: var(--veio-text);
+}
+
+.site-lead {
+  font-size: var(--veio-tam-card);
+  color: var(--veio-muted);
+}
+
+.site-data {
+  font-family: var(--veio-fonte-mono);
+  font-size: var(--veio-tam-apoio);
+  color: var(--veio-muted);
+}
+
+.site-cartao {
+  background: var(--veio-surface);
+  border: 1px solid var(--veio-border);
+  border-radius: var(--veio-raio-card);
+  padding: 16px 20px;
+  margin: 20px 0;
+}
+
+.site-cartao p:last-child,
+.site-cartao ul:last-child {
+  margin-bottom: 0;
+}
+
+.site-aviso {
+  background: var(--veio-accent-soft);
+  border: 1px solid var(--veio-accent);
+  border-radius: var(--veio-raio-card);
+  padding: 14px 20px;
+  margin: 20px 0;
+}
+
+.site-aviso p:last-child {
+  margin-bottom: 0;
+}
+
+.site-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.site-acoes a {
+  display: inline-block;
+  padding: 10px 18px;
+  border-radius: var(--veio-raio-input);
+  border: 1px solid var(--veio-border-strong);
+  color: var(--veio-text);
+  text-decoration: none;
+  font-weight: var(--veio-peso-rotulo);
+}
+
+.site-acoes a:first-child {
+  background: var(--veio-accent);
+  border-color: var(--veio-accent);
+  color: var(--veio-accent-ink);
+}
+
+.site-acoes a:hover {
+  border-color: var(--veio-accent);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--veio-tam-corpo);
+  margin: 0 0 14px;
+}
+
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--veio-border);
+}
+
+th {
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-legenda);
+  letter-spacing: var(--veio-tracking-legenda);
+  text-transform: uppercase;
+}
+
+.site-tabela {
+  overflow-x: auto;
+}
+
+.site-rodape {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 20px 48px;
+  color: var(--veio-muted);
+  font-size: var(--veio-tam-apoio);
+}
+
+.site-rodape a {
+  color: var(--veio-muted);
+}
+
+@media (max-width: 520px) {
+  h1 {
+    font-size: var(--veio-tam-hero);
+  }
+
+  h2 {
+    font-size: var(--veio-tam-modal);
+  }
+}

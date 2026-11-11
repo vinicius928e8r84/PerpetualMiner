@@ -135,8 +135,8 @@ no bridge segue funcionando no bridge.
 - **e. Áudio e imagem:** [áudio](audio-do-cartao.md), [imagem](imagem-do-cartao.md).
 - **f. Envio que a Conexão não conhece** (veio do bridge, ou a pasta de dados foi apagada): o cartão diz “Não encontrado” (ENV-23) e
   oferece Esquecer, que o tira do acompanhamento sem tocar nas Frases (#245); o painel não decide `failed` por conta própria (§1).
-- **g. Sem limpeza dos Envios terminados:** os arquivos de estado e de custo de cada Envio ficam (os textos das Frases não: §3);
-  a retenção fica para a retomada (#151), e um pedido gravado sem entrada na fila fica parado até o mesmo pedido voltar (o Apagar tudo o alcança: #248).
+- **g. Retenção (#243):** o Envio terminado há 30 dias perde fila e estado (`retencao_dos_envios.py`), os custos ficam (`ficha.json` guarda a linha da aba);
+  na dúvida fica. Pedido sem entrada na fila: parado até o mesmo pedido voltar (o Apagar tudo o alcança: #248).
 - **h. Custos de antes:** o histórico de custos do bridge não passa para o complemento (é a passagem, #115).
 - **i. Falhas novas sem cópia própria** (C8): a tela diz “não começou” / “não entrou” com o código em Detalhes, não o que fazer,
   até o #173 (a chave), o #161 (o tipo de nota) e o #177 (atualizar a Conexão).

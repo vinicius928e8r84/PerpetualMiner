@@ -3,7 +3,8 @@
 // O preview monta o que as telas da extensão carregam a partir do manifest e das
 // páginas, não de uma lista escrita à mão: toda página da extensão chega ao preview com
 // cada script, estilo e imagem que ela pede. Roda `preview/montar.mjs` numa pasta
-// temporária. `node test_preview.js`.
+// temporária. `node test_preview.js`. Confere também as páginas públicas do app: `/sobre/` e a
+// política de privacidade em `/privacidade/` e `/privacy/`, que o consentimento OAuth do Google pede.
 
 const assert = require('assert');
 const { execFileSync } = require('child_process');
@@ -41,6 +42,25 @@ const extensao = path.join(saida, 'extensao');
 
   assert(fs.readFileSync(path.join(extensao, 'painel.html'), 'utf8').includes('/preview-chrome-simulado.js'));
   assert(!fs.readFileSync('painel.html', 'utf8').includes('preview-chrome-simulado'));
+
+  // As páginas públicas: a política sai nos dois endereços, a página inicial a leva num link, e o que elas
+  // carregam (a Veio e a folha do site) está no site, sem nada de fora.
+  const privacidade = fs.readFileSync(path.join(saida, 'privacidade', 'index.html'), 'utf8');
+  assert.strictEqual(fs.readFileSync(path.join(saida, 'privacy', 'index.html'), 'utf8'), privacidade);
+  assert(privacidade.includes('Política de privacidade') && privacidade.includes('Uso limitado'));
+  const sobre = fs.readFileSync(path.join(saida, 'sobre', 'index.html'), 'utf8');
+  assert(sobre.includes('href="/privacidade/"'), 'a página inicial devia levar à política');
+  for (const [nome, html] of [['privacidade', privacidade], ['sobre', sobre]]) {
+    assert(!/<script/i.test(html), `${nome}: página pública sem script`);
+    const pedidos = [...html.matchAll(/\b(?:src|href)="(\/[^"#?]*)"/g)].map(m => m[1]);
+    for (const pedido of pedidos) {
+      const alvo = path.join(saida, pedido);
+      assert(fs.existsSync(alvo) || fs.existsSync(path.join(alvo, 'index.html')), `${nome} carrega ${pedido}, que não está no site`);
+    }
+    const externos = [...html.matchAll(/\b(?:src|href)="(https?:\/\/[^"]+)"/g)].map(m => m[1]);
+    assert(!externos.some(url => /fonts\.(googleapis|gstatic)/.test(url)), `${nome}: fonte de fora`);
+  }
+  assert(fs.readFileSync(path.join(saida, 'index.html'), 'utf8').includes('href="/sobre/"'), 'a capa devia levar ao /sobre/');
 
   fs.rmSync(saida, { recursive: true, force: true });
   console.log(`ok: ${arquivos.length} arquivos da extensão e ${paginas.length} páginas no preview`);

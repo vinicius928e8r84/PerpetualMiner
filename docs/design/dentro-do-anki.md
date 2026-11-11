@@ -4,7 +4,7 @@ Fatia do mapa [#138](https://github.com/vinicius928e8r84/PerpetualMiner/issues/1
 
 - **O item** Ferramentas › PerpetualMiner…, que abre uma janela pequena (sem travar o Anki) com a Conexão com o Anki (Ligada, ou Desligada
   com onde achar o motivo), a versão, o perfil aberto, o Envio de agora (“7 de 12 cartões”, a etapa, a barra e o Baralho) e o último erro.
-- **O botão Config** de Ferramentas › Complementos abre a mesma janela, nunca a configuração em texto cru (o complemento não tem `config.json`).
+- **O botão Config** de Ferramentas › Extensões abre a mesma janela, nunca a configuração em texto cru (o complemento não tem `config.json`).
 - **Um aviso que some sozinho** no começo e no fim de cada Envio (“12 cartões enviados ao Baralho Inglês”) e **o rótulo do item** com a
   contagem enquanto envia (“PerpetualMiner · 7 de 12”).
 - **Sem selo fixo na barra do Anki** (a spec do #138 o deixa como acréscimo pequeno, se o dono quiser).
@@ -48,7 +48,7 @@ que a janela reusa). Entrar no catálogo é dividi-lo, outro ticket.
 | ANK-02.titulo | PerpetualMiner | o título da janela |
 | ANK-02.conexao | Conexão com o Anki | o rótulo da linha da Conexão |
 | ANK-02.ligada | Ligada | a Conexão respondendo no Anki |
-| ANK-02.desligada | Desligada. O motivo está no registro da pasta user_files (Ferramentas › Complementos › Ver arquivos). | a Conexão que não subiu (a porta ocupada, por exemplo): onde achar o motivo. “Complementos” só porque é o nome do menu do próprio Anki (#99) |
+| ANK-02.desligada | Desligada. O motivo está no registro da pasta user_files (Ferramentas › Extensões › Ver arquivos). | a Conexão que não subiu (a porta ocupada, por exemplo): onde achar o motivo. “Extensões” porque é o nome do menu do próprio Anki em pt-BR (#99, #237) |
 | ANK-02.versao | Versão | o rótulo da linha da versão |
 | ANK-02.perfil | Perfil | o rótulo da linha do perfil |
 | ANK-02.semPerfil | Nenhum perfil aberto | o Anki na janela de perfis, ou o perfil não se lê |
@@ -60,10 +60,14 @@ que a janela reusa). Entrar no catálogo é dividi-lo, outro ticket.
 | ANK-02.semErro | Nenhum erro | o Envio mais recente que terminou, terminou bem (ou nenhum terminou) |
 | ANK-02.falhou | {n} {n\|cartão não entrou\|cartões não entraram} no Baralho {baralho} · {codigo} | o código do Envio mais recente que terminou com erro, sem frase nova (C8: as falhas novas ainda não têm cópia própria; o código nunca é a chave nem texto da OpenAI) |
 | ANK-02.fechar | Fechar | o botão que fecha a janela |
+| ANK-02.desconectar | Desconectar navegadores | o botão da janela que desfaz o pareamento (#192): esvazia a lista de navegadores conectados; a Conexão guarda o segredo de cada um só para provar que o desconectou, e cada navegador volta a pedir o código (#192). Desligado enquanto nenhum navegador está conectado (C8: a janela diz o estado verdadeiro) |
 | ANK-03.comecou | Enviando {total} {total\|cartão\|cartões} ao Baralho {baralho} | o aviso que some sozinho quando um Envio começa |
 | ANK-03.terminou | {n} {n\|cartão enviado\|cartões enviados} ao Baralho {baralho} | o aviso que some sozinho quando um Envio termina; se for o caso, segue “ · N já estava lá” (ENV-10.jaEstavam) e “ · N não entrou” (ENV-10.naoEntraram) |
 | ANK-03.naoTerminou | O Envio ao Baralho {baralho} não terminou | o aviso do fim de um Envio que não pôs nenhum Cartão no Anki; o motivo fica no último erro da janela |
 | ANK-04.esperando | Esperando o Envio de agora terminar | a linha da Conexão, no lugar de Ligada, enquanto a passagem do Windows do dono espera o Envio da Conexão de hoje terminar (#178, `docs/design/passagem-do-windows.md`) |
+| ANK-05.codigo | Código para conectar o PerpetualMiner: {codigo}. Vale por 5 minutos | o texto do diálogo que o Anki abre quando a pessoa aperta Conectar no painel (#192). `{codigo}` são 6 caracteres como `K7M-4PX`; o diálogo é um só por vez, vale 5 minutos e some com o Cancelar, com o código certo ou quando vence |
+| ANK-05.cancelar | Cancelar | o botão do diálogo do código: o código morre, e o painel pede outro se a pessoa insistir |
+| ANK-05.conectado | PerpetualMiner conectado | o aviso que some sozinho (tooltip do Anki) quando o código certo conecta o navegador |
 
 ## Provado e não provado
 
@@ -80,10 +84,11 @@ que a janela reusa). Entrar no catálogo é dividi-lo, outro ticket.
 1. Com o complemento novo no Anki (`python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon`, ou o botão Baixar a Conexão com o Anki),
    abra o Anki e um perfil: Ferramentas › **PerpetualMiner…** existe e abre a janela pequena. Ela diz Ligada, a versão, o perfil e “Nenhum Envio
    ainda” / “Nenhum erro”. O Anki segue usável com a janela aberta. Fechar a fecha.
-2. Ferramentas › Complementos › PerpetualMiner › **Config** abre a **mesma** janela, nunca a configuração em texto cru.
+2. Ferramentas › Extensões › PerpetualMiner › **Config** abre a **mesma** janela, nunca a configuração em texto cru.
 3. Mande um Envio de 12 Frases (passo 9 do `complemento/LEIA-ME.md`): aparece o aviso “Enviando 12 cartões ao Baralho …” e some sozinho; o item vira
    “PerpetualMiner · 7 de 12” enquanto envia; a janela aberta acompanha (a barra e o Baralho); no fim, o aviso “12 cartões enviados ao Baralho …” e o item
    volta a “PerpetualMiner…”.
 4. Apague a chave (painel › Configurações) e mande outro Envio: a janela mostra o último erro com o código, e a chave não aparece em lugar nenhum do Anki.
 5. Com a porta 8766 ocupada (o Anki aberto com a Conexão de hoje rodando), o item abre a janela com “Desligada…”.
-6. Em nenhum passo o Anki abre o diálogo de erro dele culpando o complemento (se abrir, anote o texto), e não há selo fixo na barra do Anki.
+6. O pareamento (#192): no Painel, Conectar abre no Anki um diálogo com “Código para conectar o PerpetualMiner: XXX-XXX. Vale por 5 minutos” e **Cancelar** (um diálogo só, mesmo apertando Conectar de novo; ele aparece à frente); o código certo digitado no Painel fecha o diálogo e o Anki mostra o aviso “PerpetualMiner conectado”; Cancelar (ou o X) mata o código. Na janela **PerpetualMiner…**, **Desconectar navegadores** só vale com navegador conectado, e depois dele o Painel volta a pedir o código.
+7. Em nenhum passo o Anki abre o diálogo de erro dele culpando o complemento (se abrir, anote o texto), e não há selo fixo na barra do Anki.

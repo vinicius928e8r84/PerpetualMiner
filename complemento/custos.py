@@ -141,33 +141,47 @@ def resumir(lidos, dia_do_envio, de, ate):
     return resumo
 
 
+ARQUIVO_DA_FICHA = "ficha.json"
+_CAMPOS_DA_FICHA = ("createdAt", "updatedAt", "lang", "deckName", "imageSource", "status", "stage", "requestedCards", "successfulCards", "failedCards", "lastError")
+
+
+def ficha_valida(ficha):
+    return isinstance(ficha, dict) and all(campo in ficha for campo in _CAMPOS_DA_FICHA) and isinstance(ficha["lang"], str)
+
+
+def ficha_do_envio(item, pedido, estado):
+    """O que a linha da aba Custos diz de um Envio fora os custos: de onde vêm o idioma, o baralho, o status e as contagens (só números e ids, nunca a Palavra nem a Frase).
+    Quando a retenção apaga o Envio (`retencao_dos_envios.py`), isto fica em `custos/<jobId>/ficha.json` e a linha continua a mesma."""
+    criado_em = pedido.get("createdAt") or item.get("createdAt")
+    status = estado.get("status") or "unknown"
+    pedidas = len({entrada.get("phraseId") for entrada in pedido.get("entries", [])})
+    enviadas = len(set(estado.get("successfulPhraseIds") or []))
+    falharam = len(set(estado.get("failedPhraseIds") or []))
+    if status in ("failed", "partial"):
+        falharam = max(falharam, pedidas - enviadas)
+    return {
+        "createdAt": criado_em, "updatedAt": estado.get("updatedAt") or item.get("updatedAt") or criado_em,
+        "lang": pedido.get("lang") or item.get("lang") or "unknown", "deckName": pedido.get("deckName", ""), "imageSource": pedido.get("imageSource", ""),
+        "status": status, "stage": estado.get("stage") or status,
+        "requestedCards": pedidas, "successfulCards": enviadas, "failedCards": falharam, "lastError": estado.get("lastError"),
+    }
+
+
 def linhas(fila, de, ate, lang):
-    """Uma linha por Envio do período e do idioma, do mais novo ao mais velho."""
+    """Uma linha por Envio do período e do idioma, do mais novo ao mais velho: os da fila e os que a retenção apagou."""
     resultado = []
-    for item in fila.ordem():
+    for item in fila.envios_dos_custos():
         job_id = item["jobId"]
-        pedido, estado = fila.pedido(job_id) or {}, fila.estado(job_id)
-        criado_em = pedido.get("createdAt") or item.get("createdAt")
-        idioma = pedido.get("lang") or item.get("lang") or "unknown"
-        status = estado.get("status") or "unknown"
+        ficha = item.get("ficha") or ficha_do_envio(item, fila.pedido(job_id) or {}, fila.estado(job_id))
         lidos = fila.registros_de_custo(job_id)
-        do_envio = dia(criado_em)
-        if lang != "all" and idioma != lang:
+        do_envio = dia(ficha["createdAt"])
+        if lang != "all" and ficha["lang"] != lang:
             continue
         if not _no_periodo(do_envio, de, ate) and not any(_no_periodo(dia(r.get("date") or r.get("createdAt")) or do_envio, de, ate) for r in lidos):
             continue
         resumo = resumir(lidos, do_envio, de, ate)
-        pedidas = len({entrada.get("phraseId") for entrada in pedido.get("entries", [])})
-        enviadas = len(set(estado.get("successfulPhraseIds") or []))
-        falharam = len(set(estado.get("failedPhraseIds") or []))
-        if status in ("failed", "partial"):
-            falharam = max(falharam, pedidas - enviadas)
         resultado.append({
-            "jobId": job_id, "createdAt": criado_em, "updatedAt": estado.get("updatedAt") or item.get("updatedAt") or criado_em,
-            "lang": idioma, "deckName": pedido.get("deckName", ""), "imageSource": pedido.get("imageSource", ""),
-            "status": status, "stage": estado.get("stage") or status,
-            "requestedCards": pedidas, "successfulCards": enviadas, "failedCards": falharam, "lastError": estado.get("lastError"),
-            "costs": resumo["costs"], "images": resumo["images"], "matchedRecords": resumo["matchedRecords"],
+            "jobId": job_id, **ficha, "costs": resumo["costs"], "images": resumo["images"], "matchedRecords": resumo["matchedRecords"],
             **({"plan": resumo["plan"]} if "plan" in resumo else {}),
         })
     return sorted(resultado, key=lambda linha: linha["createdAt"] or "", reverse=True)

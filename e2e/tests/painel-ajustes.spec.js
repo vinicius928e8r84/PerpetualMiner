@@ -1,11 +1,7 @@
 'use strict';
 
-// Conexão com o Anki · Ajustes de envio por idioma (#35, docs/design/painel/anki/prototipo-ajustes-envio.html,
-// variante A · Cartões). Um card por idioma, recolhível como os de Configurações: fechado, diz o
-// baralho e a fonte de imagem gravados; aberto, traz o formulário do idioma (Baralho, Imagens, com a
-// nota de custo; o sotaque do áudio no Avançado) e só grava em Salvar ajustes. O Baralho é uma
-// escolha entre os baralhos que o Anki tem; sem a lista, um campo de texto. Continua editável com a
-// Conexão desligada.
+// Conexão com o Anki · Ajustes de envio por idioma (#35, prototipo-ajustes-envio.html, variante A):
+// um card por idioma, recolhível; só grava em Salvar ajustes; editável com a Conexão desligada.
 //
 // Fecha dois bugs de #9: o envio gravava os ajustes em silêncio e uma aba
 // desatualizada sobrescrevia os ajustes mais novos; e, do lado do front, os
@@ -63,7 +59,7 @@ test('sem nada gravado: os cards dizem o Baralho padrão e a foto real; o do Ing
   await expect(cards(page)).toContainText('Baralho e imagens usados em cada envio em inglês.');
   await expect(baralho(page)).toHaveValue('CIMV');
   await expect(baralho(page)).toHaveAccessibleDescription('Em branco, volta para “CIMV”.');
-  await expect(imagens(page, 'Foto real (Google)')).toBeChecked();
+  await expect(imagens(page, 'Foto do Openverse')).toBeChecked();
   await expect(formulario(page)).toContainText('Quando não acha uma foto boa, gera uma por IA, e aí tem custo.');
   await expect(situacao(page)).toHaveText('Salvo');
   // Nada fica gravado só por abrir.
