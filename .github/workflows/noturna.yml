@@ -95,11 +95,11 @@ jobs:
           PYTHON: python
 
   # Vermelha: abre a issue da noturna (ou comenta na que já está aberta). Verde: comenta e fecha a aberta.
-  # Cancelada ou pulada: não mexe em nada. Só a main escreve issue: numa PR, ou num disparo manual de outra branch, não.
+  # Um job cortado pelo timeout-minutes termina cancelled e conta como vermelha; cancelar a execução à mão (cancelled()) ou pular não mexe em nada. Só a main escreve issue: numa PR, ou num disparo manual de outra branch, não.
   avisar:
     name: Issue da noturna
     needs: [e2e, e2e-conexao-real]
-    if: ${{ always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 5
     permissions:

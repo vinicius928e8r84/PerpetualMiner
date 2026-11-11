@@ -2,9 +2,9 @@
 
 // A issue única da suíte noturna (.github/workflows/noturna.yml, job "Issue da noturna"). Uso:
 //   node scripts/ci/issue-da-noturna.js <url da execução> <resultado das fatias> <resultado da Conexão real>
-// Os resultados são os de `needs.<job>.result`. Vermelha (alguma falhou): abre a issue com o rótulo `noturna`, ou comenta
+// Os resultados são os de `needs.<job>.result`. Vermelha (alguma falhou ou foi cortada pelo teto de tempo, `cancelled`): abre a issue com o rótulo `noturna`, ou comenta
 // na que já está aberta, para haver uma só enquanto a main não voltar. Verde (todas passaram): comenta e fecha a aberta.
-// Cancelada, pulada ou sem resultado: não mexe em nada. Se o `gh` falha, o passo reprova.
+// Pulada ou sem resultado: não mexe em nada. Se o `gh` falha, o passo reprova.
 
 const { execFileSync } = require('child_process');
 
@@ -13,7 +13,9 @@ const TITULO = 'Suíte noturna vermelha na main';
 
 /** 'vermelha', 'verde' ou 'nada', pelos resultados dos jobs da noturna. */
 function decidir(resultados) {
-  if (resultados.some(r => r === 'failure' || r === 'timed_out')) return 'vermelha';
+  // `cancelled` conta como vermelha: o `timeout-minutes` corta o job e ele termina cancelled, que é a travada que a noturna procura.
+  // O cancelamento manual da execução não chega aqui (o job do workflow tem `!cancelled()`).
+  if (resultados.some(r => r === 'failure' || r === 'timed_out' || r === 'cancelled')) return 'vermelha';
   if (resultados.length > 0 && resultados.every(r => r === 'success')) return 'verde';
   return 'nada';
 }

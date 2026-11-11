@@ -17,7 +17,8 @@ assert.strictEqual(decidir(['success', 'success']), 'verde');
 assert.strictEqual(decidir(['success', 'failure']), 'vermelha');
 assert.strictEqual(decidir(['failure', 'failure']), 'vermelha');
 assert.strictEqual(decidir(['cancelled', 'failure']), 'vermelha', 'uma fatia cancelada não esconde a que falhou');
-assert.strictEqual(decidir(['success', 'cancelled']), 'nada');
+assert.strictEqual(decidir(['success', 'cancelled']), 'vermelha', 'um job cortado pelo teto de tempo termina cancelled: é uma travada, não um nada');
+assert.strictEqual(decidir(['cancelled', 'cancelled']), 'vermelha');
 assert.strictEqual(decidir(['skipped', 'success']), 'nada');
 assert.strictEqual(decidir(['success', '']), 'nada', 'resultado ausente');
 assert.strictEqual(decidir([]), 'nada');
@@ -82,9 +83,19 @@ const valor = (args, opcao) => args[args.indexOf(opcao) + 1];
   assert.deepStrictEqual(rodar({ fatias: 'success', conexaoReal: 'success' }).escritas, [], 'verde sem issue');
 }
 
-// Cancelada ou pulada: nem lista as issues.
+// Cancelada (o teto de tempo corta o job e ele termina cancelled): é vermelha, abre a issue ou comenta na aberta.
 {
-  const r = rodar({ fatias: 'cancelled', conexaoReal: 'success', aberta: 7 });
+  const r = rodar({ fatias: 'cancelled', conexaoReal: 'success' });
+  assert.strictEqual(r.status, 0, r.saida);
+  assert.deepStrictEqual(r.escritas.map(a => a[1]), ['create'], 'uma noite que travou abre a issue');
+  assert(valor(r.escritas[0], '--body').includes('as fatias da e2e: cancelled'));
+  const comAberta = rodar({ fatias: 'success', conexaoReal: 'cancelled', aberta: 7 });
+  assert.deepStrictEqual(comAberta.escritas.map(a => [a[1], a[2]]), [['comment', '7']]);
+}
+
+// Pulada ou sem resultado: nem lista as issues. (O cancelamento manual da execução nem chega aqui: o job tem `!cancelled()`.)
+{
+  const r = rodar({ fatias: 'skipped', conexaoReal: 'success', aberta: 7 });
   assert.strictEqual(r.status, 0, r.saida);
   assert.deepStrictEqual(r.todas, [], 'não chama o gh');
 }
