@@ -194,13 +194,13 @@ class VersaoDoComplemento(unittest.TestCase):
         hoje = empacotar.hash_das_fontes()
         if configuracao.VERSAO not in registradas:
             self.fail(
-                "a VERSAO %s não está em complemento/versoes.json: registre-a com o hash das fontes, %s"
+                "a VERSAO %s não está em complemento/versoes.json: a versão é dada no merge (python3 complemento/versao_no_merge.py na main; o hash seria %s)"
                 % (configuracao.VERSAO, hoje)
             )
         self.assertEqual(
             registradas[configuracao.VERSAO], hoje,
-            "as fontes do complemento mudaram e a VERSAO continua %s: suba a VERSAO em complemento/configuracao.py "
-            "e registre-a em complemento/versoes.json com o hash %s" % (configuracao.VERSAO, hoje),
+            "as fontes do complemento mudaram e a VERSAO continua %s: a versão é dada no merge (python3 complemento/versao_no_merge.py "
+            "na main; numa branch, PM_VERSAO_BASE=origin/main pula isto; o hash seria %s)" % (configuracao.VERSAO, hoje),
         )
 
     def rodar_numa_copia(self, mudar):
@@ -219,7 +219,7 @@ class VersaoDoComplemento(unittest.TestCase):
 
         resultado = self.rodar_numa_copia(acrescentar_um_comentario)
         self.assertNotEqual(resultado.returncode, 0)
-        self.assertIn("suba a VERSAO", resultado.stderr)
+        self.assertIn("versao_no_merge.py", resultado.stderr)
 
     def test_subir_a_versao_sem_registrar_o_hash_falha_dizendo_o_hash(self):
         def subir(copia):
@@ -347,20 +347,20 @@ class ArquivoQueVaiNoPacoteDaExtensao(unittest.TestCase):
     def test_o_arquivo_da_extensao_instala_o_complemento_de_hoje(self):
         self.assertTrue(
             os.path.isfile(ARQUIVO_NO_PACOTE_DA_EXTENSAO),
-            "falta conexao/perpetualminer.ankiaddon: python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon",
+            "falta conexao/perpetualminer.ankiaddon: python3 complemento/versao_no_merge.py na main",
         )
         with zipfile.ZipFile(ARQUIVO_NO_PACOTE_DA_EXTENSAO) as entregue, tempfile.TemporaryDirectory() as pasta:
             de_hoje = zipfile.ZipFile(empacotar.empacotar(os.path.join(pasta, "hoje.ankiaddon")))
             self.assertEqual(
                 sorted(entregue.namelist()), sorted(de_hoje.namelist()),
-                "o arquivo da extensão tem outros arquivos: python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon",
+                "o arquivo da extensão tem outros arquivos: python3 complemento/versao_no_merge.py na main",
             )
             for nome in entregue.namelist():
                 if nome == "manifest.json":
                     continue
                 self.assertEqual(
                     entregue.read(nome), de_hoje.read(nome),
-                    nome + " mudou: python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon",
+                    nome + " mudou: python3 complemento/versao_no_merge.py na main",
                 )
             manifesto = json.loads(entregue.read("manifest.json"))
             esperado = json.loads(de_hoje.read("manifest.json"))

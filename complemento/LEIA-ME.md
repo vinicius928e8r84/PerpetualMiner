@@ -95,13 +95,13 @@ dentro do pacote da loja (sem permissão nova). A versão e o arquivo são dados
 `versoes-publicadas` a barra). Na main, com a árvore limpa:
 
 ```bash
-python3 complemento/versao_no_merge.py   # --acima-de 0.4.33 reserva números que PRs abertas já levam
+python3 complemento/versao_no_merge.py   # pula os números de versoes-reservadas.json
 git push origin main
 ```
 
 Mudou um byte do pacote? Sobe a `VERSAO` (o número depois do maior do `versoes.json`) e o troca nos exemplos de `contrato/`,
 registra o hash, refaz o arquivo, roda os testes e faz o commit `Conexão X.Y.Z: versão dada no merge`; senão, não faz nada.
-`test_pacote.py` os cobra na main e nesse commit (numa PR que não mexe na versão, pula).
+`test_pacote.py` os cobra na main e nesse commit; numa branch, `testar.mjs` o pula.
 
 ## Ensaio do dono, no Mac
 

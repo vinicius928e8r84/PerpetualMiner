@@ -31,7 +31,7 @@ DATA_FIXA = (1980, 1, 1, 0, 0, 0)  # o menor que o zip aceita
 PERMISSOES_FIXAS = 0o100644 << 16
 SISTEMA_FIXO = 3  # Unix: é o que dá as permissões acima, igual em qualquer máquina
 ARQUIVO_DA_EXTENSAO = os.path.join(PASTA, "..", "conexao", "perpetualminer.ankiaddon")
-FORA_DO_PACOTE = ("test_", "empacotar.py", "__pycache__", "user_files", "contrato", "LEIA-ME.md", "versoes.json", "versao_no_merge.py")
+FORA_DO_PACOTE = ("test_", "empacotar.py", "__pycache__", "user_files", "contrato", "LEIA-ME.md", "versoes.json", "versoes-reservadas.json", "versao_no_merge.py")
 RAIZ = os.path.normpath(os.path.join(PASTA, ".."))
 ENGINE = os.path.normpath(os.path.join(PASTA, "..", "engine"))
 # O que o Envio usa do motor (só a biblioteca padrão; o áudio e a imagem entram com o #143 e o #144).
@@ -81,6 +81,9 @@ def versao_vem_no_merge():
     if not base:
         return False
     try:
+        # Desde onde a branch saiu: a base pode ter andado (e dado versão) depois.
+        saiu = subprocess.run(["git", "-C", RAIZ, "merge-base", base, "HEAD"], capture_output=True, text=True)
+        base = saiu.stdout.strip() if saiu.returncode == 0 else base
         antes = subprocess.run(["git", "-C", RAIZ, "show", base + ":complemento/configuracao.py"], capture_output=True, text=True)
         iguais = subprocess.run(
             ["git", "-C", RAIZ, "diff", "--quiet", base, "--", "complemento/versoes.json", "conexao/perpetualminer.ankiaddon"],

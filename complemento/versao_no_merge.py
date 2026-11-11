@@ -12,7 +12,8 @@ barra); depois de cada merge, quem junta roda este script na main, com a árvore
 3. roda os testes do complemento; se algum falha, desfaz tudo e sai com erro;
 4. faz UM commit, `Conexão X.Y.Z: versão dada no merge`, e não empurra: quem juntou empurra.
 
-`--acima-de` reserva os números que PRs abertas já carregam. O resultado é o que o fluxo antigo (subir a versão à mão, registrar
+`versoes-reservadas.json` lista os números que PRs abertas já carregam (o script nunca os dá, e a regra só deixa uma PR
+escrevê-los à mão enquanto estiverem ali; esvazie a lista quando elas mesclarem); `--acima-de` reserva mais um, de passagem. O resultado é o que o fluxo antigo (subir a versão à mão, registrar
 o hash e refazer o arquivo) dava para a mesma versão: `test_versao_no_merge.py` compara byte a byte.
 """
 
@@ -33,6 +34,7 @@ from complemento import empacotar  # noqa: E402
 
 CONFIGURACAO = os.path.join(PASTA, "configuracao.py")
 VERSOES = os.path.join(PASTA, "versoes.json")
+RESERVADAS = os.path.join(PASTA, "versoes-reservadas.json")
 EXEMPLOS = sorted(glob.glob(os.path.join(PASTA, "contrato", "*.json")))
 PACOTE = os.path.normpath(empacotar.ARQUIVO_DA_EXTENSAO)
 # O que a versão muda; o resto da árvore tem de estar commitado, porque o hash vale para o que está no disco.
@@ -60,6 +62,10 @@ def ler(caminho):
 def escrever(caminho, texto):
     with open(caminho, "w", encoding="utf-8", newline="") as arquivo:
         arquivo.write(texto)
+
+
+def reservadas():
+    return json.loads(ler(RESERVADAS)) if os.path.exists(RESERVADAS) else []
 
 
 def git(*argumentos):
@@ -101,7 +107,7 @@ def main(argv):
         print("nada a fazer: a VERSAO %s já registra as fontes de hoje" % atual)
         return 0
 
-    nova = proxima(list(registradas) + [atual], opcoes.acima_de)
+    nova = proxima(list(registradas) + [atual] + reservadas(), opcoes.acima_de)
     escrever(CONFIGURACAO, LINHA_DA_VERSAO.sub('VERSAO = "%s"' % nova, ler(CONFIGURACAO), count=1))
     for exemplo in EXEMPLOS:
         escrever(exemplo, ler(exemplo).replace('"%s"' % atual, '"%s"' % nova))
@@ -117,10 +123,12 @@ def main(argv):
             print("os testes do complemento falharam com a versão %s: nada foi commitado e a árvore voltou ao que era" % nova, file=sys.stderr)
             return 1
 
-    git("add", "--", *relativos(ARQUIVOS_DA_VERSAO))
-    git(
+    arquivos = relativos(ARQUIVOS_DA_VERSAO)
+    git("add", "--", *arquivos)
+    git(  # só estes arquivos: o que mais estiver no índice fica de fora do commit
         "commit", "-q", "-m", ASSUNTO % nova,
         "-m", "Versão dada pelo complemento/versao_no_merge.py depois do merge (era %s).\nHash das fontes: %s" % (atual, hash_novo),
+        "--", *arquivos,
     )
     print("%s: %s\nempurre-o para a main." % (git("log", "-1", "--format=%h %s"), hash_novo))
     return 0

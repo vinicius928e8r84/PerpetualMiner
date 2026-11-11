@@ -62,6 +62,7 @@ def repositorio(pasta):
     shutil.copy(os.path.join(RAIZ, "conexao", "perpetualminer.ankiaddon"), os.path.join(pasta, "conexao"))
     for oculto in (".gitattributes", ".gitignore"):
         shutil.copy(os.path.join(RAIZ, oculto), pasta)
+    escrever(pasta, "complemento/versoes-reservadas.json", "[]\n")
     git(pasta, "init", "-q", "-b", "main")
     git(pasta, "config", "user.email", "versao@teste")
     git(pasta, "config", "user.name", "versao")
@@ -193,6 +194,25 @@ class QuemMudouOCodigoRecebeAProximaVersao(Casa):
         self.assertEqual(dar_a_versao(self.repo, "--acima-de", "0.4.40").returncode, 0)
         self.assertIn('VERSAO = "0.4.41"', ler(self.repo, "complemento/configuracao.py"))
 
+    def test_os_numeros_reservados_nunca_sao_dados_sem_precisar_de_bandeira(self):
+        escrever(self.repo, "complemento/versoes-reservadas.json", '["0.4.28", "0.4.32", "0.4.33", "0.4.34"]\n')
+        mudar_o_codigo(self.repo)
+        git(self.repo, "commit", "-qam", "uma PR de Conexão, com PRs abertas que já levam número")
+        self.assertEqual(dar_a_versao(self.repo).returncode, 0)
+        self.assertIn('VERSAO = "0.4.35"', ler(self.repo, "complemento/configuracao.py"))
+
+    def test_o_commit_de_versao_leva_so_os_arquivos_da_versao_mesmo_com_outro_no_indice(self):
+        mudar_o_codigo(self.repo)
+        git(self.repo, "commit", "-qam", "uma PR de Conexão")
+        escrever(self.repo, "README.md", "de carona\n")
+        git(self.repo, "add", "README.md")
+        self.assertEqual(dar_a_versao(self.repo).returncode, 0)
+        self.assertEqual(set(git(self.repo, "show", "--name-only", "--format=", "HEAD").splitlines()), set(ARQUIVOS_DA_VERSAO))
+        self.assertEqual(git(self.repo, "status", "--porcelain"), "A  README.md")
+
+    def test_o_arquivo_das_reservadas_nao_entra_no_pacote(self):
+        self.assertNotIn("versoes-reservadas.json", empacotar.arquivos_do_pacote())
+
     def test_os_numeros_comparam_como_numeros_e_nao_como_texto(self):
         self.assertEqual(versao_no_merge.proxima(["0.4.9", "0.4.10", "0.3.30"]), "0.4.11")
         self.assertEqual(versao_no_merge.proxima(["0.4.9"], acima_de="0.4.12"), "0.4.13")
@@ -253,8 +273,8 @@ class AVersaoVemNoMerge(Casa):
         self.uma_pr_de_codigo()
         resultado = self.rodar(*self.TESTES)
         self.assertNotEqual(resultado.returncode, 0)
-        self.assertIn("suba a VERSAO", resultado.stderr)
-        self.assertIn("python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon", resultado.stderr)
+        self.assertIn("python3 complemento/versao_no_merge.py na main", resultado.stderr)
+        self.assertNotIn("suba a VERSAO", resultado.stderr)
 
     def test_pr_que_ja_leva_numero_continua_conferida(self):
         self.uma_pr_de_codigo()
@@ -265,6 +285,18 @@ class AVersaoVemNoMerge(Casa):
         self.assertNotEqual(resultado.returncode, 0)
         self.assertIn("a VERSAO 9.9.9 não está em complemento/versoes.json", resultado.stderr)
 
+    def test_a_main_que_andou_e_deu_versao_depois_da_branch_nao_tira_a_dispensa(self):
+        git(self.repo, "checkout", "-q", "-b", "pr")
+        self.uma_pr_de_codigo()
+        git(self.repo, "checkout", "-q", "main")
+        caminho = "complemento/configuracao.py"
+        escrever(self.repo, caminho, ler(self.repo, caminho).replace(configuracao.VERSAO, "9.9.9"))
+        git(self.repo, "commit", "-qam", "a main deu uma versão")
+        git(self.repo, "checkout", "-q", "pr")
+        resultado = self.rodar(*self.TESTES, PM_VERSAO_BASE="main")
+        self.assertEqual(resultado.returncode, 0, resultado.stderr)
+        self.assertEqual(resultado.stderr.count("... skipped"), 2, resultado.stderr)
+
     def test_pr_que_so_refaz_o_arquivo_da_extensao_continua_conferida(self):
         self.uma_pr_de_codigo()
         subprocess.run(
@@ -274,7 +306,7 @@ class AVersaoVemNoMerge(Casa):
         git(self.repo, "commit", "-qam", "refez o arquivo à mão")
         resultado = self.rodar(*self.TESTES, PM_VERSAO_BASE="HEAD~2")
         self.assertNotEqual(resultado.returncode, 0)
-        self.assertIn("suba a VERSAO", resultado.stderr)
+        self.assertIn("versao_no_merge.py", resultado.stderr)
 
 
 if __name__ == "__main__":

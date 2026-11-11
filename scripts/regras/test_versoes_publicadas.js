@@ -84,6 +84,7 @@ try {
 // números que as PRs abertas já escreveram passam; fora de PR (a main, o commit de versão empurrado) a regra não pergunta.
 const CONFIGURACAO = 'complemento/configuracao.py';
 const PACOTE = 'conexao/perpetualminer.ankiaddon';
+const RESERVADAS = 'complemento/versoes-reservadas.json';
 const configuracao = versao => `"""Config."""\n\nVERSAO = "${versao}"\nOUTRA = 1\n`;
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-versao-no-merge-'));
 const g = (...args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: 'pipe' }).trim();
@@ -99,6 +100,7 @@ try {
   gravar(CONFIGURACAO, configuracao('0.4.27'));
   gravar(ARQUIVO, versoes({ '0.4.26': 'aaaa', '0.4.27': 'bbbb' }));
   gravar(PACOTE, 'zip-antigo');
+  gravar(RESERVADAS, '["0.4.28", "0.4.32", "0.4.33", "0.4.34"]\n');
   registrar('a main');
   const principal = g('rev-parse', 'HEAD');
   const voltar = () => g('checkout', '-q', '-f', '-B', 'pr', principal);
@@ -135,13 +137,25 @@ try {
   mudar({ pacote: 'zip-novo' });
   barrado([PACOTE], 'só o arquivo da extensão');
 
-  // As PRs abertas que já carregam número (#381 = 0.4.28, #387 = 0.4.32, #389 = 0.4.33) seguem como estão.
+  // As PRs abertas que já carregam número (#381 = 0.4.28, #387 = 0.4.32, #389 = 0.4.33, #363 = 0.4.34) seguem como estão:
+  // só os números da lista de complemento/versoes-reservadas.json, não um teto.
+  for (const reservada of ['0.4.28', '0.4.32', '0.4.33', '0.4.34']) {
+    voltar();
+    mudar({ versao: reservada, chaves: { [reservada]: 'cccc' }, pacote: 'zip-novo' });
+    assert.deepStrictEqual(achados(), [], `o número ${reservada}, que a PR aberta já escreveu, passa`);
+  }
+  for (const solta of ['0.4.29', '0.4.31', '0.4.35']) {
+    voltar();
+    mudar({ versao: solta, chaves: { [solta]: 'cccc' }, pacote: 'zip-novo' });
+    barrado(['`VERSAO`'], `o número ${solta} não está na lista`);
+  }
   voltar();
-  mudar({ versao: '0.4.33', chaves: { '0.4.33': 'cccc' }, pacote: 'zip-novo' });
-  assert.deepStrictEqual(achados(), [], 'o número que a PR aberta já escreveu passa');
+  mudar({ versao: '0.4.28', chaves: { '0.4.28': 'cccc', '0.4.29': 'dddd' } });
+  barrado([ARQUIVO], 'uma reservada junto com uma que não é');
   voltar();
-  mudar({ versao: '0.4.34', chaves: { '0.4.34': 'cccc' }, pacote: 'zip-novo' });
-  barrado(['`VERSAO`'], 'um número novo à mão, acima dos que já estavam escritos');
+  gravar(RESERVADAS, '["0.4.28", "0.4.32", "0.4.33", "0.4.34", "0.4.50"]\n');
+  mudar({ versao: '0.4.50', chaves: { '0.4.50': 'cccc' } });
+  barrado(['`VERSAO`'], 'a PR amplia a lista; vale a da base');
 
   // O commit de versão (versao_no_merge.py), mesmo que chegue por uma PR.
   voltar();
@@ -151,6 +165,13 @@ try {
   gravar(CONFIGURACAO, configuracao('0.5.1'));
   registrar('Conexão 0.5.1: ajuste feito à mão');
   barrado(['`VERSAO`'], 'um commit à mão junto com o de versão');
+
+  // O assunto do commit de versão não basta: ele só pode tocar os arquivos da versão.
+  voltar();
+  mudar({ versao: '0.5.0', chaves: { '0.5.0': 'cccc' }, pacote: 'zip-novo' });
+  gravar('README.md', 'de carona\n');
+  registrar('Conexão 0.5.0: versão dada no merge');
+  barrado(['`VERSAO`'], 'um commit com o assunto da versão que leva outro arquivo');
 
   // De ponta a ponta, pelo verificar.js, com a mensagem que o autor da PR lê.
   voltar();
