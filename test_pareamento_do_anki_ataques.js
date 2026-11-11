@@ -67,6 +67,18 @@ async function main() {
   }
 
 
+  // Conexão antiga (404 no `conferir`) diante de um navegador SEM credencial (quem vem da main): o aviso de versão, não o convite a conectar, e nada além do `conferir` sai.
+  {
+    const conexao = criarConexao({ antiga: true, navegadores: [] });
+    const pagina = carregarAPagina(conexao);
+    assert.strictEqual((await pagina.Pareamento.provar(ENDERECO)).estado, 'antiga');
+    const lida = await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.chaveDaOpenAI('sk-proj-x'));
+    assert.strictEqual(pagina.PedidoAoAnki.ausenciaDaRota(lida.status), 'antiga');
+    igual([...new Set(conexao.vistos.map(v => v.caminho))], ['/pareamento/conferir'], 'a Conexão antiga só viu o conferir');
+    assert.ok(!JSON.stringify(conexao.vistos).includes('sk-proj-x'));
+  }
+
+
   // "Desconectar navegadores" no Anki: a Conexão guarda o segredo revogado e o `conferir` do navegador responde `pairing_revoked` com a prova da revogação. Só essa prova
   // apaga a credencial e volta ao Conectar; o navegador pareia de novo, com outro `cliente`, e a Conexão volta a provar.
   {

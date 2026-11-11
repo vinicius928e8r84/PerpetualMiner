@@ -26,7 +26,7 @@ test('sem pareamento, o Painel pede para conectar e nenhum pedido privado sai pa
   if (!conexaoDoTeste) {
     const caminhos = [...new Set(fakes.anki.requisicoes.map(r => r.caminho))];
     expect(caminhos).toEqual(['/health']);
-    expect(fakes.anki.pareamento.recebidos()).toEqual([]);
+    expect([...new Set(fakes.anki.pareamento.recebidos().map(r => r.caminho))]).toEqual(['/pareamento/conferir']);   // só o conferir de um navegador que ninguém conhece, para saber se a Conexão é a antiga
   }
   expect(await credencialGuardada(extensao)).toBeNull();
 });
@@ -91,7 +91,7 @@ test('Conectar, o código do Anki e Confirmar: o navegador fica conectado, com a
     expect(tudoNoStorage).not.toContain(segredo);
     expect(JSON.stringify(fakes.anki.requisicoes)).not.toContain(segredo);
     // O código nunca foi pedido nem devolvido por HTTP: o Painel só o mandou ao `concluir`.
-    expect(fakes.anki.pareamento.recebidos().map(r => r.caminho).slice(0, 2)).toEqual(['/pareamento/comecar', '/pareamento/concluir']);
+    expect(fakes.anki.pareamento.recebidos().map(r => r.caminho).filter(caminho => caminho !== '/pareamento/conferir').slice(0, 2)).toEqual(['/pareamento/comecar', '/pareamento/concluir']);
   }
 });
 

@@ -105,3 +105,21 @@ test.describe('uma Conexão de antes do pareamento', () => {
     await estadoFinalEm('os pedidos que a Conexão antiga recebeu', () => [...new Set(fakes.anki.requisicoes.map(r => r.caminho))], ['/health']);
   });
 });
+
+test.describe('uma Conexão de antes do pareamento, diante de quem nunca se pareou', () => {
+  test.use({ pareada: false });
+
+  test('quem vem da main vê o aviso de versão, não o convite a conectar, e só o conferir chega a ela', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+    test.skip(Boolean(conexaoDoTeste), 'a Conexão real tem o pareamento');
+    fakes.anki.pareamento.antigo();
+    fakes.anki.definirAtualizacao({ ankiweb: 'com_versao_nova' });
+    await abrirPainel(page, extensao, '#anki/custos');
+
+    await expect(page.locator('#painel-conexao-versao')).toContainText('A Conexão com o Anki está desatualizada');
+    await expect(page.locator('#painel-conexao-versao').getByRole('button')).toHaveCount(0);
+    await expect(faixa(page)).toHaveCount(0);
+    await expect(conectar(page)).toHaveCount(0);
+    await estadoFinalEm('os pedidos de pareamento que a Conexão antiga recebeu', () => [...new Set(fakes.anki.pareamento.recebidos().map(r => r.caminho))], ['/pareamento/conferir']);
+    await estadoFinalEm('os pedidos que a Conexão antiga recebeu', () => [...new Set(fakes.anki.requisicoes.map(r => r.caminho))], ['/health']);
+  });
+});

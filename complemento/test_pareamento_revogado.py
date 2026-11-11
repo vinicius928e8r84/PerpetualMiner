@@ -5,6 +5,7 @@ desconectou (`401 pairing_revoked` com a prova da revogação). O segredo revoga
 """
 
 import base64
+import json
 import os
 import stat
 import sys
@@ -99,6 +100,21 @@ class OConferirDeQuemFoiDesconectado(unittest.TestCase):
             primeiro, ultimo = conferir(conexao, cliente=clientes[0])[1], conferir(conexao, cliente=clientes[-1])[1]
             guardados = len(arquivo_do_pareamento(conexao)["revogados"])
         self.assertEqual((guardados, primeiro, ultimo["error"]), (pareamento.MAXIMO_DE_REVOGADOS, {"error": "pairing_required"}, "pairing_revoked"))
+
+    def test_o_sexto_pareamento_despeja_o_mais_antigo_como_revogado_e_o_conferir_dele_prova_a_revogacao(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, pareado=False) as conexao:
+            clientes = ["%08x-0000-4000-8000-000000000000" % n for n in range(pareamento.MAXIMO_DE_NAVEGADORES + 1)]
+            segredos = {}
+            for cliente in clientes:
+                comecar(conexao)
+                segredos[cliente] = json_de(json.dumps(concluir(conexao, cliente=cliente)[1]))["segredo"]
+            despejado = conferir(conexao, cliente=clientes[0])
+            ultimo = conferir(conexao, cliente=clientes[-1])
+            dados = arquivo_do_pareamento(conexao)
+        self.assertEqual((despejado[0], despejado[1]["error"]), (401, "pairing_revoked"))
+        self.assertEqual(despejado[1]["prova"], pareamento.prova_da_revogacao(base64.b64decode(segredos[clientes[0]]), DESAFIO))
+        self.assertEqual(ultimo[0], 200)
+        self.assertEqual(([linha["cliente"] for linha in dados["clientes"]], [linha["cliente"] for linha in dados["revogados"]]), (clientes[1:], clientes[:1]))
 
     def test_o_pareamento_de_quem_nao_foi_desconectado_nao_toca_nos_revogados(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:

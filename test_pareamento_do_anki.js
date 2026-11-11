@@ -34,7 +34,8 @@ async function main() {
     const pagina = carregarAPagina(conexao);
     const lida = await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA());
     igual([lida.status, await lerJson(lida)], [401, { error: 'pairing_required' }]);
-    igual(conexao.vistos, [], 'sem credencial a extensão não manda nada à Conexão');
+    igual(conexao.vistos.map(v => v.caminho), ['/pareamento/conferir'], 'sem credencial a Conexão só vê o conferir, de um cliente que ninguém tem, e nenhum cabeçalho de assinatura');
+    assert.ok(!Object.keys(conexao.vistos[0].cabecalhos).some(nome => nome.startsWith('x-perpetualminer')));
     assert.strictEqual(pagina.Pareamento.estado(), 'a_parear');
     const saude = await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.saude());
     assert.strictEqual(saude.status, 200, 'a saúde segue aberta');

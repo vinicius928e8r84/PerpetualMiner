@@ -277,7 +277,9 @@ class Pareamento:
             clientes = [linha for linha in self._ler() if linha["cliente"] != cliente]
             clientes.append({"cliente": cliente, "segredo": segredo, "nome": nome, "criadoEm": _agora_iso()})
             revogados = [linha for linha in self._ler("revogados") if linha["cliente"] != cliente]   # pareado de novo, já não está revogado
-            self._gravar(clientes[-MAXIMO_DE_NAVEGADORES:], revogados)   # o cliente só existe depois de gravado
+            despejados = clientes[:-MAXIMO_DE_NAVEGADORES]   # o mais antigo sai quando passa de 5, e sai revogado: o `conferir` dele prova, e ele volta ao Conectar
+            revogados += [{"cliente": s["cliente"], "segredo": s["segredo"], "revogadoEm": _agora_iso()} for s in despejados]
+            self._gravar(clientes[-MAXIMO_DE_NAVEGADORES:], revogados[-MAXIMO_DE_REVOGADOS:])   # o cliente só existe depois de gravado
             self._concluido = {"codigo": pendente["codigo"], "cliente": cliente, "segredo": segredo, "vence": pendente["vence"]}
             self._esgotados, self._bloqueado_ate = 0, None
             self._acabar_o_pendente()
