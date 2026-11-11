@@ -69,6 +69,7 @@ class QtDoAnki:
         dialogo.setMinimumWidth(420)
         layout = QVBoxLayout(dialogo)
         formulario = QFormLayout()
+        formulario.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)  # o campo ocupa a largura da janela e o texto quebra nela
         layout.addLayout(formulario)
 
         def linha(rotulo):
@@ -107,6 +108,7 @@ class QtDoAnki:
                 barra.setValue(atual.feitos)
                 baralho.setText(texto_da_janela.texto("ANK-02.baralho", baralho=atual.baralho))
             erro.setText(estado.ultimo_erro or texto_da_janela.texto("ANK-02.semErro"))
+            dialogo.adjustSize()  # o texto que quebra em duas linhas pede altura: sem isto a janela fica no tamanho do texto anterior e corta
 
         mostrar_protegido = janela.protegido(mostrar, self._logger, "atualizar a janela")
         relogio = QTimer(dialogo)

@@ -25,7 +25,7 @@ class AqtDeMentira:
     """O `aqt` do Anki, só o que `qt_do_anki.py` importa, anotando o que o complemento pede a ele."""
 
     def __init__(self):
-        self.tooltips, self.dialogos, self.relogios = [], [], []
+        self.tooltips, self.dialogos, self.relogios, self.formularios = [], [], [], []
         aqui = self
 
         class Sinal:
@@ -36,6 +36,7 @@ class AqtDeMentira:
             def __init__(self, *_):
                 self.finished = Sinal()
                 self.visivel, self.mostradas, self.trazidas, self.ativadas = False, 0, 0, 0
+                self.ajustes = []  # quantos textos o formulário tinha quando a janela pediu o tamanho certo
                 aqui.dialogos.append(self)
 
             def show(self):
@@ -49,11 +50,27 @@ class AqtDeMentira:
             def isVisible(self):
                 return self.visivel
 
+            def adjustSize(self):
+                self.ajustes.append(len(aqui.formularios[0].linhas) if aqui.formularios else 0)
+
             def raise_(self):
                 self.trazidas += 1
 
             def activateWindow(self):
                 self.ativadas += 1
+
+        class Formulario(_Qualquer):
+            FieldGrowthPolicy = _Qualquer()
+
+            def __init__(self, *_):
+                self.politica, self.linhas = None, []
+                aqui.formularios.append(self)
+
+            def setFieldGrowthPolicy(self, politica):
+                self.politica = politica
+
+            def addRow(self, *campos):
+                self.linhas.append(campos)
 
         class Relogio(_Qualquer):
             def __init__(self, *_):
@@ -68,7 +85,8 @@ class AqtDeMentira:
 
         qt = types.SimpleNamespace(
             QDialog=Dialogo, QTimer=Relogio, Qt=_Qualquer(), qconnect=lambda sinal, funcao: sinal.ligados.append(funcao) if isinstance(sinal, Sinal) else None,
-            **{nome: (lambda *_: _Qualquer()) for nome in ("QFormLayout", "QLabel", "QProgressBar", "QPushButton", "QVBoxLayout")})
+            QFormLayout=Formulario,
+            **{nome: (lambda *_: _Qualquer()) for nome in ("QLabel", "QProgressBar", "QPushButton", "QVBoxLayout")})
         utils = types.SimpleNamespace(tooltip=lambda texto, period=None: self.tooltips.append((texto, period)))
         self.modulos = {"aqt": types.SimpleNamespace(qt=qt, utils=utils), "aqt.qt": qt, "aqt.utils": utils}
 
@@ -115,6 +133,14 @@ class AFronteiraComOQtDoAnki(unittest.TestCase):
         dialogo = aqt.dialogos[0]
         self.assertEqual((len(aqt.dialogos), len(aqt.relogios)), (1, 1))
         self.assertEqual((dialogo.visivel, dialogo.mostradas, dialogo.trazidas, dialogo.ativadas), (True, 3, 2, 2))
+
+    def test_a_janela_deixa_os_campos_crescerem_e_pede_o_tamanho_certo_depois_de_escrever_os_textos_para_nao_cortar_a_segunda_linha(self):
+        with AqtDeMentira() as aqt:
+            qt = qt_do_anki.QtDoAnki(registro.silencioso())
+            estado = janela.Janela(None, lambda: "Usuário 1", configuracao.VERSAO, registro.silencioso()).estado
+            qt.abrir_janela(object(), estado)
+        self.assertIsNotNone(aqt.formularios[0].politica)
+        self.assertEqual(aqt.dialogos[0].ajustes, [len(aqt.formularios[0].linhas)])
 
 
 if __name__ == "__main__":
