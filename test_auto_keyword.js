@@ -156,6 +156,10 @@ async function baralhoGravadoQueNaoRespondeNaoViraVocabularioVazio() {
   };
   const storage = { ankiBridgePresets: { en: { deckName: 'CIMV' } } };
   const context = loadBackground(storage);
+  // O pedido sai assinado por um navegador pareado; aqui a assinatura não é o assunto, só o que vai ao fetch.
+  context.PerpetualMiner.PareamentoComOAnki = {
+    pedirAssinado: async (endereco, pedido, opcoes, enviar) => enviar(endereco, pedido, JSON.stringify(pedido.corpo), opcoes),
+  };
   context.fetch = async (_url, opcoes) => {
     const { deck } = JSON.parse(opcoes.body);
     pedidos.push(deck);
