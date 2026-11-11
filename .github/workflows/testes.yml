@@ -83,6 +83,9 @@ jobs:
         python: ['3.9', '3.13']
     steps:
       - uses: actions/checkout@v5
+        with:
+          # O commit de merge da PR e os dois pais: HEAD^1 é a ponta da branch-alvo (PM_VERSAO_BASE abaixo).
+          fetch-depth: 2
       - uses: actions/setup-node@v5
         with:
           node-version: 24
@@ -101,10 +104,13 @@ jobs:
           fi
           pwsh -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
       # EXIGIR_PWSH=1: sem o pwsh os testes do .ps1 falham em vez de serem pulados.
+      # PM_VERSAO_BASE: numa PR que não mexe na versão, o hash e o .ankiaddon só são conferidos na main e no commit de
+      # versão (complemento/versao_no_merge.py; complemento/empacotar.py `versao_vem_no_merge`).
       - run: node scripts/testar.mjs complemento
         env:
           PYTHON: python
           EXIGIR_PWSH: '1'
+          PM_VERSAO_BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
 
   e2e:
     name: e2e (${{ matrix.fatia }}/8)

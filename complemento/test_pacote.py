@@ -26,6 +26,7 @@ RAIZ = os.path.dirname(AQUI)
 ARQUIVO_NO_PACOTE_DA_EXTENSAO = os.path.join(RAIZ, "conexao", "perpetualminer.ankiaddon")
 
 
+PULA_NA_PR = unittest.skipIf(empacotar.versao_vem_no_merge(), empacotar.DADA_NO_MERGE)
 CODIGO_DO_ANKIWEB = "1108882947"
 
 
@@ -186,6 +187,7 @@ class VersaoDoComplemento(unittest.TestCase):
     """`versoes.json` guarda o hash das fontes do pacote (comentários inclusos: são bytes que o Anki instala) por `VERSAO`.
     Mudou o código sem subir a versão, o teste falha; subiu a versão, ela entra no arquivo com o hash novo."""
 
+    @PULA_NA_PR
     def test_as_fontes_de_hoje_sao_as_que_a_versao_do_complemento_registrou(self):
         with open(os.path.join(AQUI, "versoes.json"), encoding="utf-8") as arquivo:
             registradas = json.load(arquivo)
@@ -287,9 +289,8 @@ class HoraDoEmpacotamento(unittest.TestCase):
         self.copia = copiar_o_complemento(self.pasta)
         os.makedirs(os.path.join(self.pasta, "conexao"))
         self.entregue = os.path.join(self.pasta, "conexao", "perpetualminer.ankiaddon")
-        shutil.copy(ARQUIVO_NO_PACOTE_DA_EXTENSAO, self.entregue)
-        with zipfile.ZipFile(self.entregue) as pacote:
-            self.mod_entregue = json.loads(pacote.read("manifest.json"))["mod"]
+        self.mod_entregue = 1700000000  # do código de hoje: o arquivo da extensão pode estar atrás dele numa PR
+        empacotar.empacotar(self.entregue, mod=self.mod_entregue)
 
     def empacotar(self, nome, **variaveis):
         ambiente = {k: v for k, v in os.environ.items() if k != "SOURCE_DATE_EPOCH"}
@@ -340,9 +341,9 @@ class HoraDoEmpacotamento(unittest.TestCase):
 
 class ArquivoQueVaiNoPacoteDaExtensao(unittest.TestCase):
     """A extensão entrega o `.ankiaddon` num link de download (`conexao/perpetualminer.ankiaddon`, sem
-    permissão nova). Ele não pode ficar para trás do código do complemento: quem mexe aqui o refaz com
-    `python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon`."""
+    permissão nova). Ele não pode ficar para trás do código do complemento na main: `versao_no_merge.py` o refaz."""
 
+    @PULA_NA_PR
     def test_o_arquivo_da_extensao_instala_o_complemento_de_hoje(self):
         self.assertTrue(
             os.path.isfile(ARQUIVO_NO_PACOTE_DA_EXTENSAO),

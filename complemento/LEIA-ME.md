@@ -46,7 +46,8 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 | `configuracao.py` | Versão, porta e o ID da extensão |
 | `contrato/` | Os exemplos que o complemento e o fake do e2e leem, e como uma rota nova entra |
 | `empacotar.py` | Monta o `.ankiaddon` (e `conexao/perpetualminer.ankiaddon`, o do botão Baixar), com o motor de `engine/` em `motor/` |
-| `versoes.json` | O hash das fontes do pacote por `VERSAO` (fora do `.ankiaddon`); `test_pacote.py` falha se as fontes mudam e a `VERSAO` não |
+| `versoes.json` | O hash das fontes do pacote por `VERSAO` (fora do `.ankiaddon`); `test_pacote.py` falha na main se as fontes mudam e a `VERSAO` não |
+| `versao_no_merge.py` | Dá a versão depois do merge (fora do `.ankiaddon`) |
 
 ## Regras que o código assume
 
@@ -90,18 +91,17 @@ Rode todos também no `python3.12` e no `3.13` (`uv python install 3.9 3.13`).
 ## O arquivo que a extensão entrega
 
 A primeira conexão (passo “Pôr a Conexão no Anki”, #145) é um link de download de `conexao/perpetualminer.ankiaddon`, que vai
-dentro do pacote da loja (sem permissão nova). Mudou o código do complemento? Refaça o arquivo:
+dentro do pacote da loja (sem permissão nova). A versão e o arquivo são dados depois de cada merge, não na PR (a regra
+`versoes-publicadas` a barra). Na main, com a árvore limpa:
 
 ```bash
-python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon
+python3 complemento/versao_no_merge.py   # --acima-de 0.4.33 reserva números que PRs abertas já levam
+git push origin main
 ```
 
-`test_pacote.py` falha se o arquivo estiver atrás do código (o `LEIA-ME.md` e os testes não entram nele). Refeito sem mudar o
-código, dá os mesmos bytes.
-
-Mudou o código do pacote (qualquer byte)? Suba a `VERSAO` em `configuracao.py` (a não lançada fica) e registre-a em
-`versoes.json` com o hash que `test_pacote.py` mostra ao falhar (`python3 -c "from complemento import empacotar; print(empacotar.hash_das_fontes())"`).
-Depois refaça o arquivo. Subir a `VERSAO` muda a `versao` dos exemplos de `contrato/`.
+Mudou um byte do pacote? Sobe a `VERSAO` (o número depois do maior do `versoes.json`) e o troca nos exemplos de `contrato/`,
+registra o hash, refaz o arquivo, roda os testes e faz o commit `Conexão X.Y.Z: versão dada no merge`; senão, não faz nada.
+`test_pacote.py` os cobra na main e nesse commit (numa PR que não mexe na versão, pula).
 
 ## Ensaio do dono, no Mac
 
