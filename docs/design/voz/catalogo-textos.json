@@ -836,6 +836,7 @@
   "ONB-23.enviando": "Enviando…",
   "ONB-23.enviado": "Cartão enviado ao Anki",
   "ONB-23.teste": "Você ainda não minerou nenhuma frase, então este é um cartão de teste. Ele tem a etiqueta perpetualminer-teste no Anki, para você apagá-lo quando quiser.",
+  "ONB-23.testeSemPalavra": "A sua frase ainda não tem a Palavra marcada, então este é um cartão de teste. Ele tem a etiqueta perpetualminer-teste no Anki, para você apagá-lo quando quiser.",
   "ONB-23.abrirNoAnki": "Abrir no Anki",
   "ONB-23.concluir": "Concluir",
   "ONB-23.naoAbriu": "Não deu para abrir o Anki. Tente de novo.",
