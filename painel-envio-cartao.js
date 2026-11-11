@@ -311,7 +311,7 @@
       bloco.append(elemento('p', 'envio-resumo__linha', textoDaVoz('ENV-10.jaEstavam', { n: idioma.duplicadas.length })));
     }
     if (idioma.falhas) {
-      bloco.append(elemento('p', 'envio-resumo__linha envio-resumo__linha--erro', textoDaVoz('ENV-10.naoEntraram', { n: idioma.falhas })), ...CartaoDoEnvio.linhasDoPlano(idioma.codigo));
+      bloco.append(elemento('p', 'envio-resumo__linha envio-resumo__linha--erro', textoDaVoz('ENV-10.naoEntraram', { n: idioma.falhas })), ...linhasDoPlano(idioma.codigo));
       const tentar = botao(textoDaVoz('ENV-10.tentarDeNovo'), 'tentar', () => aoTentar(idioma.lang));
       tentar.prepend(Veio.iconeVeio('atualizar'));
       bloco.append(tentar);
