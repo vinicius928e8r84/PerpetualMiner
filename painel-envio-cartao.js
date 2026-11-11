@@ -289,6 +289,36 @@
     return { montarCartao };
   }
 
+  /** O nome do baralho sem o `::` do Anki: os níveis ficam separados por ›. */
+  function nomeDoBaralho({ lang, baralho }) {
+    return raiz.AjustesDeEnvio.nomeDoBaralho(baralho || raiz.AjustesDeEnvio.atual()[lang].deckName);
+  }
+
+  /** Um bloco por idioma: +N cartões, baralho, o que já estava lá, o que não entrou, Tentar de novo. */
+  function montarBlocoDoResumo(idioma, aoTentar) {
+    const bloco = elemento('section', 'envio-resumo__baralho');
+    bloco.setAttribute('role', 'group');
+    const titulo = elemento('h3', 'envio-resumo__idioma', IDIOMAS[IDIOMA_DO_LANG[idioma.lang]]);
+    titulo.id = `envio-resumo-${idioma.lang}`;
+    bloco.setAttribute('aria-labelledby', titulo.id);
+    bloco.append(
+      titulo,
+      elemento('p', 'envio-resumo__cartoes', textoDaVoz('ENV-10.cartoes', { n: idioma.enviadas.length })),
+    );
+    const baralho = nomeDoBaralho(idioma);
+    if (baralho) bloco.append(elemento('p', 'envio-resumo__nome', textoDaVoz('ENV-10.noBaralho', { baralho })));
+    if (idioma.duplicadas.length) {
+      bloco.append(elemento('p', 'envio-resumo__linha', textoDaVoz('ENV-10.jaEstavam', { n: idioma.duplicadas.length })));
+    }
+    if (idioma.falhas) {
+      bloco.append(elemento('p', 'envio-resumo__linha envio-resumo__linha--erro', textoDaVoz('ENV-10.naoEntraram', { n: idioma.falhas })), ...linhasDoPlano(idioma.codigo));
+      const tentar = botao(textoDaVoz('ENV-10.tentarDeNovo'), 'tentar', () => aoTentar(idioma.lang));
+      tentar.prepend(Veio.iconeVeio('atualizar'));
+      bloco.append(tentar);
+    }
+    return bloco;
+  }
+
   // #372: o que de um Envio terminado não virou cartão. A ficha que a retenção deixa não se retoma, então o Tentar de novo do resumo
   // monta um Envio novo só com essas Frases (`recriar`; `criar` é o POST /jobs).
   const comoNumeros = lista => new Set((lista || []).map(Number));
@@ -313,5 +343,5 @@
     await criar(novo);
   }
 
-  raiz.CartaoDoEnvio = Object.freeze({ ETAPAS, FIM, IDIOMA_DO_LANG, nomeDoIdioma, retomavel, botao, elemento, linhasDoPlano, criar, conjuntos, recriar });
+  raiz.CartaoDoEnvio = Object.freeze({ ETAPAS, FIM, IDIOMA_DO_LANG, nomeDoIdioma, retomavel, botao, elemento, linhasDoPlano, montarBlocoDoResumo, criar, conjuntos, recriar });
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});
