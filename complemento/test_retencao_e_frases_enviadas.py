@@ -43,7 +43,9 @@ class AListaDepoisDaRetencao(unittest.TestCase):
     def test_um_envio_parcial_retido_volta_como_terminado_para_nao_oferecer_continuar_que_da_404(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             terminado(conexao, ID)
-            mudar_estado(conexao, ID, status="partial", stage="partial", lastError="openai_rate_limited")
+            todas = ler_estado(conexao, ID)["successfulPhraseIds"]
+            mudar_estado(conexao, ID, status="partial", stage="partial", lastError="openai_rate_limited",
+                         successfulPhraseIds=todas, failedPhraseIds=[todas[0] + 1])
             envelhecer(conexao, ID, 31)
             retencao_dos_envios.reter(conexao.conexao.fila)
             lista = json.loads(conexao.pedir("POST", "/jobs/list", corpo={})[2])["jobs"]

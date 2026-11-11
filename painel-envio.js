@@ -413,9 +413,7 @@
       idioma.total += envio.ids.length;
       const estado = envio.jobId ? estadoDoJob(envio) || {} : {};
       idioma.codigo ||= estado.lastError;
-      const sucesso = new Set((estado.successfulPhraseIds || []).map(Number));
-      const falha = new Set((estado.failedPhraseIds || []).map(Number));
-      const dup = new Set((estado.duplicatePhraseIds || []).map(Number));
+      const { sucesso, falha, dup } = CartaoDoEnvio.conjuntos(estado);
       for (const id of envio.ids) {
         // Na dúvida, a frase fica: uma que a Conexão dá também como falha não é apagada.
         if (!sucesso.has(Number(id)) || falha.has(Number(id))) idioma.falhas += 1;
@@ -537,10 +535,12 @@
   function tentarDeNovoOIdioma(lang) {
     abrirProgresso();
     return recomecar(async () => {
-      for (const envio of remessa.envios) {
+      for (const envio of [...remessa.envios]) {
         if (envio.lang !== lang) continue;
+        const estado = estadoDoJob(envio);
         if (!envio.jobId) await criarEnvio(envio);
-        else if (retomavel(estadoDoJob(envio))) await retomar(envio.jobId);
+        else if (retomavel(estado)) await retomar(envio.jobId);
+        else if (estado && terminou(envio)) await CartaoDoEnvio.recriar(remessa, envio, estado, criarEnvio);
       }
     });
   }

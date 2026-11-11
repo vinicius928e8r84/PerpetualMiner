@@ -289,5 +289,29 @@
     return { montarCartao };
   }
 
-  raiz.CartaoDoEnvio = Object.freeze({ ETAPAS, FIM, IDIOMA_DO_LANG, nomeDoIdioma, retomavel, botao, elemento, linhasDoPlano, criar });
+  // #372: o que de um Envio terminado não virou cartão. A ficha que a retenção deixa não se retoma, então o Tentar de novo do resumo
+  // monta um Envio novo só com essas Frases (`recriar`; `criar` é o POST /jobs).
+  const comoNumeros = lista => new Set((lista || []).map(Number));
+
+  function conjuntos(estado) {
+    return { sucesso: comoNumeros(estado.successfulPhraseIds), falha: comoNumeros(estado.failedPhraseIds), dup: comoNumeros(estado.duplicatePhraseIds) };
+  }
+
+  /** Na dúvida, a Frase fica entre as que não entraram: uma que a Conexão dá também como falha não é dada como enviada. */
+  function naoEntrou(envio, estado) {
+    const { sucesso, falha } = conjuntos(estado);
+    return envio.ids.filter(id => !sucesso.has(Number(id)) || falha.has(Number(id)));
+  }
+
+  async function recriar(remessa, envio, estado, criar) {
+    const resto = naoEntrou(envio, estado);
+    if (!resto.length) return;
+    const novo = { id: crypto.randomUUID(), lang: envio.lang, ids: resto, jobId: null, criadoEm: Date.now(), falhaAoCriar: null };
+    // O Envio antigo fica só com o que entrou: o resumo seguinte não conta de novo o que já passou.
+    envio.ids = envio.ids.filter(id => !resto.includes(id));
+    remessa.envios.push(novo);
+    await criar(novo);
+  }
+
+  raiz.CartaoDoEnvio = Object.freeze({ ETAPAS, FIM, IDIOMA_DO_LANG, nomeDoIdioma, retomavel, botao, elemento, linhasDoPlano, criar, conjuntos, recriar });
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});
