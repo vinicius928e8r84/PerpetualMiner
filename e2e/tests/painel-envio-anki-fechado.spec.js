@@ -55,6 +55,29 @@ test.describe('com a permissão do abridor', () => {
     await estadoFinal(extensao, { pm_envio: { envios: [{ ids: [SACK.id], jobId: job.jobId }] } });
   });
 
+  test('Tentar de novo num Envio que não começou, com o Anki já fechado, chama o abridor e o Envio sai sem ficar um cartão parado', async ({ page, extensao, fakes }) => {
+    await extensao.gravarStorage({ frases: INGLESAS, pm_anki_ja_conectou: true });
+    fakes.anki.recusarEnvios('en', { rede: true });
+    await abrirPainel(page, extensao);
+    await marcar(page, SACK.texto).check();
+    await enviarAoAnki(page).click();
+    const cartao = progresso(page).getByRole('group', { name: /^Envio em inglês/ });
+    await expect(cartao).toContainText('Não começou');
+    expect(aberturas(fakes)).toEqual([]);
+
+    // O Anki fechou sem o painel ter visto: o Tentar de novo confere a Conexão e chama o abridor.
+    fakes.anki.desligar();
+    await cartao.getByRole('button', { name: 'Tentar de novo' }).click();
+    await expect.poll(() => aberturas(fakes)).toEqual([ABRIR]);
+
+    fakes.anki.aceitarEnvios('en');
+    fakes.anki.ligar();
+    const [job] = await enviosCriados(fakes, 1);
+    expect(job.entries.map(e => e.phraseId)).toEqual([SACK.id]);
+    await expect(faixa(page)).toBeHidden({ timeout: 10_000 });
+    await estadoFinal(extensao, { pm_envio: { envios: [{ ids: [SACK.id], jobId: job.jobId }] } });
+  });
+
   test('o abridor que não consegue abrir o Anki deixa a faixa “Abra o Anki para enviar”, e abrir à mão envia', async ({ page, extensao, fakes }) => {
     fakes.abridor.definir('achei_sem_abrir');
     await prepararComOAnkiFechado(page, extensao, fakes);
