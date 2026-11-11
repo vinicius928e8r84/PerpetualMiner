@@ -600,7 +600,7 @@ test('com a Conexão desligada e a última leitura de outro Baralho, a mineraç�
 
   await tocarALegenda(page, FRASE_RUSSA);
 
-  await expect.poll(() => fakes.anki.requisicoes.some(r => r.caminho === '/anki/vocabulary')).toBe(true);
+  await expect.poll(() => fakes.anki.pareamento.tentativas()).toContain('/pareamento/conferir'); // #192
   await page.waitForTimeout(1000);
   await expect(tituloDaPilula(page, MIN_06)).toBeHidden();
   expect(await textosGravados(extensao)).toEqual([]);

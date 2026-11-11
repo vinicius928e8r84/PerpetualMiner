@@ -194,8 +194,7 @@ test('IA dos cartões com conta: a chave vai junto com a conta Google, com Troca
   await expect(page).toHaveScreenshot('ia-conferida-com-conta.png', { animations: 'disabled' });
 });
 
-// #142 / #248: o Apagar tudo quando a Conexão não responde e ainda guarda as Frases dela. O dono decidiu que a tela de
-// hoje é a referência, sem aviso novo (#269, 2026-10-26).
+// #142 / #248: Apagar tudo com a Conexão sem responder: a tela de hoje é a referência (#269).
 test('Apagar tudo com a Conexão sem responder: a falha local de hoje, sem aviso novo', async ({ page, extensao, fakes }) => {
   await semearComoNoPrototipo(extensao, fakes);
   fakes.anki.falharApagarFrases();
@@ -203,6 +202,7 @@ test('Apagar tudo com a Conexão sem responder: a falha local de hoje, sem aviso
   await page.locator('#cfg-perigo').getByRole('button', { name: /^Apagar todas as/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: /^Apagar .* frases$/ }).click();
 
+  await expect(page.getByText('Todas as frases foram apagadas')).toBeVisible();
   await expect(page).toHaveScreenshot('apagar-tudo-falha-frases-na-conexao.png', { animations: 'disabled' });
 });
 

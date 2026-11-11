@@ -14,6 +14,7 @@
 const { test, expect } = require('../fixtures');
 const contrato = require('../../complemento/contrato/carregar');
 const { exemploDaExtensao, diferencaDoContrato } = require('../fakes/anki');
+const { pedirDaPagina } = require('../pareamento-de-teste');
 
 const daExtensao = contrato.exemplos.filter(exemploDaExtensao);
 
@@ -41,18 +42,14 @@ for (const exemplo of daExtensao) {
     if (exemplo.contexto.atualizacao || exemplo.contexto.ankiweb) fakes.anki.definirAtualizacao({ atualizacao: exemplo.contexto.atualizacao, ankiweb: exemplo.contexto.ankiweb });
     if (exemplo.contexto.hoje) fakes.anki.teto.passarOTempoAte(exemplo.contexto.hoje);
     if (exemplo.contexto.tetoUsd) fakes.anki.teto.definir({ limite: exemplo.contexto.tetoUsd });
+    fakes.anki.pareamento.definirContexto(exemplo.contexto);
     if (exemplo.contexto.perfis) fakes.anki.definirPerfis(exemplo.contexto.perfis, { marcado: exemplo.contexto.perfilMarcado ?? null, aberto: exemplo.contexto.perfil });
     // O seam é o HTTP: uma página do produto poderia alterar o contexto
     // semeado. Um recurso estático mantém a origem sem executar o painel/popup.
     await page.goto(extensao.url('manifest.json'), { waitUntil: 'domcontentloaded' });
 
-    const resposta = await page.evaluate(async ({ metodo, caminho, corpo }) => {
-      const r = await fetch(`http://127.0.0.1:8766${caminho}`, {
-        method: metodo,
-        ...(corpo !== undefined && { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }),
-      });
-      return { status: r.status, json: await r.json() };
-    }, exemplo.pedido);
+    // Assinado como a extensão assina (#192): a Conexão só atende o pedido de um navegador pareado, fora a saúde e o pareamento.
+    const resposta = await pedirDaPagina(page, exemplo.pedido);
 
     const mensagem = `O fake (e2e/fakes/anki.js) e o contrato (complemento/contrato/exemplos.json) se separaram no exemplo "${exemplo.nome}". `
       + 'Se a mudança é de propósito, atualize o exemplo; os testes do complemento leem o mesmo arquivo.';

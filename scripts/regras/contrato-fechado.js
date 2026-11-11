@@ -3,7 +3,7 @@
 // O que a extensão pede à Conexão com o Anki tem de ter exemplo no contrato
 // (complemento/contrato/exemplos.json), que o complemento e o fake do e2e leem. Foi o #190: Atualizar
 // pedia os dois Baralhos e o contrato só tinha o de Inglês. Todo pedido à Conexão nasce de um construtor
-// de `PerpetualMiner.PedidoAoAnki` (lib/pedido-ao-anki.js), que lista os pedidos (`variantes`) para o teste do
+// de `PerpetualMiner.PedidoAoAnki` (lib/pedido-ao-anki.js); `e2e/variantes-do-pedido-ao-anki.js` lista os pedidos para o teste do
 // contrato (`node test_contrato_fechado.js`) conferir um exemplo de cada um. Esta regra acusa o `fetch`
 // direto a uma rota da Conexão: ou a rota tem exemplo e o pedido deve passar pelo construtor, ou a rota
 // ainda não está no contrato e entra nele antes de a extensão pedi-la.

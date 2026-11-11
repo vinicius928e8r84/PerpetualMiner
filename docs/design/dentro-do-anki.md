@@ -60,10 +60,14 @@ que a janela reusa). Entrar no catálogo é dividi-lo, outro ticket.
 | ANK-02.semErro | Nenhum erro | o Envio mais recente que terminou, terminou bem (ou nenhum terminou) |
 | ANK-02.falhou | {n} {n\|cartão não entrou\|cartões não entraram} no Baralho {baralho} · {codigo} | o código do Envio mais recente que terminou com erro, sem frase nova (C8: as falhas novas ainda não têm cópia própria; o código nunca é a chave nem texto da OpenAI) |
 | ANK-02.fechar | Fechar | o botão que fecha a janela |
+| ANK-02.desconectar | Desconectar navegadores | o botão da janela que desfaz o pareamento (#192): esvazia a lista de navegadores conectados; a Conexão guarda o segredo de cada um só para provar que o desconectou, e cada navegador volta a pedir o código (#192). Desligado enquanto nenhum navegador está conectado (C8: a janela diz o estado verdadeiro) |
 | ANK-03.comecou | Enviando {total} {total\|cartão\|cartões} ao Baralho {baralho} | o aviso que some sozinho quando um Envio começa |
 | ANK-03.terminou | {n} {n\|cartão enviado\|cartões enviados} ao Baralho {baralho} | o aviso que some sozinho quando um Envio termina; se for o caso, segue “ · N já estava lá” (ENV-10.jaEstavam) e “ · N não entrou” (ENV-10.naoEntraram) |
 | ANK-03.naoTerminou | O Envio ao Baralho {baralho} não terminou | o aviso do fim de um Envio que não pôs nenhum Cartão no Anki; o motivo fica no último erro da janela |
 | ANK-04.esperando | Esperando o Envio de agora terminar | a linha da Conexão, no lugar de Ligada, enquanto a passagem do Windows do dono espera o Envio da Conexão de hoje terminar (#178, `docs/design/passagem-do-windows.md`) |
+| ANK-05.codigo | Código para conectar o PerpetualMiner: {codigo}. Vale por 5 minutos | o texto do diálogo que o Anki abre quando a pessoa aperta Conectar no painel (#192). `{codigo}` são 6 caracteres como `K7M-4PX`; o diálogo é um só por vez, vale 5 minutos e some com o Cancelar, com o código certo ou quando vence |
+| ANK-05.cancelar | Cancelar | o botão do diálogo do código: o código morre, e o painel pede outro se a pessoa insistir |
+| ANK-05.conectado | PerpetualMiner conectado | o aviso que some sozinho (tooltip do Anki) quando o código certo conecta o navegador |
 
 ## Provado e não provado
 
@@ -86,4 +90,5 @@ que a janela reusa). Entrar no catálogo é dividi-lo, outro ticket.
    volta a “PerpetualMiner…”.
 4. Apague a chave (painel › Configurações) e mande outro Envio: a janela mostra o último erro com o código, e a chave não aparece em lugar nenhum do Anki.
 5. Com a porta 8766 ocupada (o Anki aberto com a Conexão de hoje rodando), o item abre a janela com “Desligada…”.
-6. Em nenhum passo o Anki abre o diálogo de erro dele culpando o complemento (se abrir, anote o texto), e não há selo fixo na barra do Anki.
+6. O pareamento (#192): no Painel, Conectar abre no Anki um diálogo com “Código para conectar o PerpetualMiner: XXX-XXX. Vale por 5 minutos” e **Cancelar** (um diálogo só, mesmo apertando Conectar de novo; ele aparece à frente); o código certo digitado no Painel fecha o diálogo e o Anki mostra o aviso “PerpetualMiner conectado”; Cancelar (ou o X) mata o código. Na janela **PerpetualMiner…**, **Desconectar navegadores** só vale com navegador conectado, e depois dele o Painel volta a pedir o código.
+7. Em nenhum passo o Anki abre o diálogo de erro dele culpando o complemento (se abrir, anote o texto), e não há selo fixo na barra do Anki.

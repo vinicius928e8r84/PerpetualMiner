@@ -104,7 +104,7 @@ test.describe('o resultado', () => {
     await quiz(page, 'Inglês').locator('label', { hasText: 'Avançado' }).click();
     await expect(quiz(page, 'Inglês').locator('.previa')).toContainText('Exemplo do Avançado em inglês, como o Anki mostra.');
     await expect(quiz(page, 'Inglês').locator('.previa').frameLocator('iframe').locator('body')).toContainText('To stop doing or trying something');
-    expect(pedidosDaPrevia(fakes)).toEqual(expect.arrayContaining([{ lang: 'en', nivel: 'intermediario' }, { lang: 'en', nivel: 'avancado' }]));
+    await expect.poll(() => pedidosDaPrevia(fakes)).toEqual(expect.arrayContaining([{ lang: 'en', nivel: 'intermediario' }, { lang: 'en', nivel: 'avancado' }]));
     expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
 
     await usarOEstilo(page, 'Inglês');
@@ -152,7 +152,7 @@ test.describe('quando o áudio não vem', () => {
     fakes.anki.ligar();
     await quiz(page, 'Inglês').getByRole('button', { name: 'Ouvir de novo' }).click();
     await expect(quiz(page, 'Inglês').locator('.quiz__aviso')).toBeHidden();
-    expect(dizeres(fakes).at(-1)).toEqual({ lang: 'en', sotaque: 'co.uk', texto: 'Could you tell me where the nearest pharmacy is?' });
+    await expect.poll(() => dizeres(fakes).at(-1)).toEqual({ lang: 'en', sotaque: 'co.uk', texto: 'Could you tell me where the nearest pharmacy is?' });
     await quiz(page, 'Inglês').getByRole('button', { name: 'Não sei', exact: true }).click();
     await expect(quiz(page, 'Inglês').locator('.quiz__opcao[data-estado="certa"]')).toHaveCount(1);
     // Exceção de teste: sem-estado-guardado — o aviso do áudio é só o que aparece na tela; nada é guardado até Usar este estilo.
