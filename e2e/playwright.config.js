@@ -6,6 +6,9 @@ const { defineConfig } = require('@playwright/test');
 // extensão só carrega num perfil persistente.
 module.exports = defineConfig({
   testDir: './tests',
+  // Só `*.spec.js`: é o que scripts/ci/fatias-e2e.js põe nas fatias do CI (o padrão do Playwright aceitaria também `*.test.js`).
+  // Spec novo, renomeado ou apagado: `node scripts/ci/fatias-e2e.js --gerar`.
+  testMatch: '**/*.spec.js',
   timeout: 30_000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

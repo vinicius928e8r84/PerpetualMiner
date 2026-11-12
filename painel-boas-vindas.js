@@ -41,7 +41,7 @@
     },
     chave: {
       valor: () => textoDaVoz('ONB-13.salva'),
-      montar: montarPasso7,
+      montar: montarPassoDaChave,
     },
     envio: {
       valor: () => textoDaVoz('ONB-13.enviado'),
@@ -322,7 +322,7 @@
   }
 
   /** O card Chave do Gemini de Configurações (painel-chave.js) e, sem chave, onde consegui-la. */
-  function montarPasso7() {
+  function montarPassoDaChave() {
     const cartao = elemento('div', 'cfg-corpo bv-cartao');
     raiz.ChaveDoGemini.montar(cartao, { prefixo: 'bv' });
     ondeConseguirAChave = elemento('details', 'bv-onde',

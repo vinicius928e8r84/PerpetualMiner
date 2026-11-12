@@ -50,7 +50,7 @@ class ALiberacaoDaPorta(unittest.TestCase):
     def test_libera_a_porta_so_depois_de_tudo_copiado_e_a_conexao_nova_sobe_nela(self):
         with tempfile.TemporaryDirectory() as pasta, uma_conexao_de_hoje(pasta) as antiga:
             antiga.terminar(ID, [10])
-            with NaPassagem(pasta, antiga, colecao=ColecaoEmMemoria({"baralhos": []}, perfis=("Usuário 1", "Ingles - Vinicius")), trabalhando=False) as nova:
+            with NaPassagem(pasta, antiga, colecao=ColecaoEmMemoria({"baralhos": []}, perfis=("Usuário 1", "Ingles - Ana")), trabalhando=False) as nova:
                 porta = antiga.porta
                 self.assertTrue(nova.passagem.pendente(nova.conexao))
                 nova.passar()
@@ -60,7 +60,7 @@ class ALiberacaoDaPorta(unittest.TestCase):
         self.assertEqual(na_hora_de_parar["chave"], CHAVE_DO_DONO)
         self.assertEqual(len(na_hora_de_parar["custos"]), 1)
         self.assertEqual(na_hora_de_parar["prompts"], [os.path.join("prompts", "en_card.txt")])
-        self.assertEqual(na_hora_de_parar["perfil"], "Ingles - Vinicius")
+        self.assertEqual(na_hora_de_parar["perfil"], "Ingles - Ana")
         self.assertIn(OUTRO_ID, na_hora_de_parar["fila"])
         self.assertTrue(na_hora_de_parar["inicio_apagado"])
         self.assertTrue(no_ar)

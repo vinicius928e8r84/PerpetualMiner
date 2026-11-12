@@ -1,0 +1,44 @@
+#!/bin/sh
+# Gancho pre-push do repositório (ligado por `node scripts/ganchos/instalar.mjs`; veja LEIA-ME.md).
+# Barra o push de uma branch que o CI barraria: as regras de revisão (`node scripts/regras/verificar.js`) e a autoria
+# dos commits (`node scripts/ci/autoria.js`), as duas contra a ponta de `origin/main`, como no workflow Regras.
+# `git push --no-verify` pula; o CI confere igual.
+remoto="$1"
+raiz=$(git rev-parse --show-toplevel) || exit 0
+if ! command -v node >/dev/null 2>&1; then
+  echo "aviso: node não encontrado; a conferência de regras e de autoria foi pulada" >&2
+  exit 0
+fi
+base=
+for candidata in "$remoto/main" origin/main; do
+  if git rev-parse --verify --quiet "refs/remotes/$candidata^{commit}" >/dev/null; then
+    base="$candidata"
+    break
+  fi
+done
+if [ -z "$base" ]; then
+  echo "aviso: sem $remoto/main nem origin/main para comparar (git fetch origin main); a conferência de regras e de autoria foi pulada" >&2
+  exit 0
+fi
+zeros=0000000000000000000000000000000000000000
+cabeca=$(git rev-parse HEAD 2>/dev/null)
+barrado=0
+while read -r ref_local sha_local ref_remota _; do
+  # Apagar uma branch, empurrar uma tag ou a própria main não é uma PR a conferir.
+  [ "$sha_local" = "$zeros" ] && continue
+  case "$ref_local" in refs/heads/*) ;; *) continue ;; esac
+  [ "$ref_remota" = refs/heads/main ] && continue
+  echo "pre-push: $ref_local contra $base"
+  if [ "$sha_local" = "$cabeca" ]; then
+    (cd "$raiz" && node scripts/regras/verificar.js --base "$base") || barrado=1
+  else
+    # As regras leem a cópia de trabalho; só serve para quem está com a branch aberta.
+    echo "aviso: $ref_local não é o HEAD; as regras de revisão foram puladas (a autoria é conferida)" >&2
+  fi
+  (cd "$raiz" && node scripts/ci/autoria.js "$base" "$sha_local") || barrado=1
+done
+if [ "$barrado" -ne 0 ]; then
+  echo "Push barrado: conserte o que está acima (o CI barraria igual) ou use git push --no-verify." >&2
+  exit 1
+fi
+exit 0

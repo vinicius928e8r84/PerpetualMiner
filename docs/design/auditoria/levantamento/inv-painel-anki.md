@@ -1,6 +1,6 @@
 # Inventário: painel.html — área Anki Bridge (Presets, Custos, Baralhos e termos, Vocabulário)
 
-Repo: `/mnt/c/Users/sadvi/Desktop/MineradorLegendas` (somente leitura, nenhum arquivo foi alterado).
+Repo: `/mnt/c/Users/<usr>/Desktop/MineradorLegendas` (somente leitura, nenhum arquivo foi alterado).
 Arquivos: `painel.html` (617 l.), `painel.css` (2040 l.), `painel.js` (2739 l.), e `bridge/server.py`, `bridge/analytics.py`, `bridge/anki_session.py` (lidos só para entender contratos).
 Fora do escopo (outro agente): shell do painel, "Frases mineradas", modais Editar Metadados, Adição em Massa e Envio ao Anki (`#bridge-progress-modal`). Menciono o modal apenas quando um controle desta área o abre.
 

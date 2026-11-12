@@ -2,6 +2,12 @@
 
 `pre-commit` barra o commit de um arquivo preparado (staged) com mais de **20.000 bytes** (5.000 tokens, a 4 bytes por token). Lê o conteúdo do índice, não da cópia de trabalho, só dos arquivos adicionados, copiados, modificados ou renomeados.
 
+`pre-push` barra o push de uma branch que o CI barraria: roda `node scripts/regras/verificar.js --base origin/main` e `node scripts/ci/autoria.js origin/main <ponta>`, os mesmos comandos do workflow Regras (8 das 12 falhas de `Regras` numa semana eram de autoria ou do verificador, cada uma custando um ciclo de CI). Leva uns 2 segundos. Não confere o mapa de features (depende do corpo da PR) nem o limite de tamanho (é o `pre-commit`). Detalhes:
+
+- Compara com `<remoto>/main`, senão `origin/main`, como estiver no clone (`git fetch origin main` para ficar em dia); sem nenhum dos dois, avisa e deixa passar.
+- As regras leem a cópia de trabalho, então só rodam quando a ponta empurrada é o `HEAD` (senão avisa e confere só a autoria). Mudança não commitada entra na conta.
+- Apagar branch, tag e `main` não conferem nada. Para pular de propósito: `git push --no-verify` (o CI confere igual).
+
 ## Ligar
 
 O `npm ci` de `e2e/` liga sozinho (script `prepare`). Num clone que já existe, uma vez:
@@ -10,7 +16,7 @@ O `npm ci` de `e2e/` liga sozinho (script `prepare`). Num clone que já existe, 
 node scripts/ganchos/instalar.mjs
 ```
 
-Isso é `git config core.hooksPath scripts/ganchos`. O script não troca uma pasta de ganchos que o clone já tenha configurado (local, global ou do sistema), não faz nada no CI e lista os ganchos de `.git/hooks` que deixam de rodar (copie-os para `scripts/ganchos/` se quiser mantê-los).
+Isso é `git config core.hooksPath scripts/ganchos`, e vale para os dois ganchos. O script não troca uma pasta de ganchos que o clone já tenha configurado (local, global ou do sistema), não faz nada no CI e lista os ganchos de `.git/hooks` que deixam de rodar (copie-os para `scripts/ganchos/` se quiser mantê-los).
 
 ## O que fica de fora
 
