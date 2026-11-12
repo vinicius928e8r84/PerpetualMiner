@@ -103,6 +103,8 @@ class AqtComPecas:
                 return lambda *_, **__: None
 
         class Layout:
+            FieldGrowthPolicy = _Enum()  # o `QFormLayout` real tem; a janela pede a política de crescimento do campo
+
             def __init__(self, *_):
                 pass
 

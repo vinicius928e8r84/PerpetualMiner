@@ -131,6 +131,7 @@ class QtDoAnki:
         dialogo.setMinimumWidth(420)
         layout = QVBoxLayout(dialogo)
         formulario = QFormLayout()
+        formulario.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)  # o campo ocupa a largura da janela e o texto quebra nela
         layout.addLayout(formulario)
 
         def linha(rotulo):
@@ -158,6 +159,8 @@ class QtDoAnki:
         qconnect(fechar.clicked, dialogo.close)
         layout.addWidget(fechar)
 
+        ultima_medida = [None]
+
         def mostrar():
             if not dialogo.isVisible():
                 return  # fechada, a janela não lê a Conexão
@@ -174,6 +177,14 @@ class QtDoAnki:
                 barra.setValue(atual.feitos)
                 baralho.setText(texto_da_janela.texto("ANK-02.baralho", baralho=atual.baralho))
             erro.setText(estado.ultimo_erro or texto_da_janela.texto("ANK-02.semErro"))
+            medida = (conexao.text(), versao.text(), perfil.text(), envio.text(), erro.text(), baralho.text(), atual is not None)
+            if medida != ultima_medida[0]:  # só quando o texto muda: medir a cada ciclo desfaz o tamanho que a pessoa deu à janela
+                ultima_medida[0] = medida
+                largura = dialogo.width()
+                layout.activate()  # sem refazer o layout, o adjustSize() mede o texto anterior e a janela corta por um ciclo
+                dialogo.adjustSize()
+                if largura > dialogo.width():  # o adjustSize() volta à largura do texto: a que a pessoa deu à janela fica
+                    dialogo.resize(largura, max(dialogo.minimumSizeHint().height(), layout.totalHeightForWidth(largura)))
             if desconectar_botao is not None:
                 desconectar_botao.setEnabled(estado.navegadores > 0)  # C8: sem navegador conectado não há o que desconectar
 
