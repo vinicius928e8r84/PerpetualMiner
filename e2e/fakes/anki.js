@@ -451,17 +451,17 @@ function criarFakeAnki() {
     if (url.pathname === '/anki/vocabulary') {
       const falha = estado.falhaDoVocabulario;
       if (falha?.rede) return route.abort('connectionrefused');
-      if (falha) return responderJson(route, falha.status, { error: 'anki_vocabulary_unavailable', detail: 'AnkiConnect timeout' });
+      if (falha) return responderJson(route, falha.status, { error: 'anki_vocabulary_unavailable', detail: 'collection_not_open' });
       return responderJson(route, 200, vocabulario(corpo));
     }
     if (url.pathname === '/anki/decks') {
-      if (!estado.baralhosDoAnki) return responderJson(route, 503, { error: 'anki_decks_unavailable', detail: 'AnkiConnect timeout' });
+      if (!estado.baralhosDoAnki) return responderJson(route, 503, { error: 'anki_decks_unavailable', detail: 'collection_not_open' });
       return responderJson(route, 200, { decks: estado.baralhosDoAnki });
     }
     if (url.pathname === '/anki/stats/decks') {
       const falha = estado.falhaDosBaralhos;
       if (falha?.rede) return route.abort('connectionrefused');
-      if (falha) return responderJson(route, falha.status, { error: 'anki_stats_unavailable', detail: 'AnkiConnect timeout' });
+      if (falha) return responderJson(route, falha.status, { error: 'anki_stats_unavailable', detail: 'collection_not_open' });
       return responderJson(route, 200, numerosDosBaralhos(corpo));
     }
     // O Envio e os custos: só POST, como no complemento.

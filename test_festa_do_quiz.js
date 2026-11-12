@@ -4,10 +4,20 @@
 // do nível. Roda sem navegador: `node test_festa_do_quiz.js`. O que a pessoa vê e ouve é do e2e (`boas-vindas-quiz-festa.spec.js`).
 
 const assert = require('assert');
+const fs = require('fs');
+const vm = require('vm');
 
 globalThis.PerpetualMiner = {};
+require('./lib/quiz-de-nivel.js');
 require('./lib/festa-do-quiz.js');
-const { FestaDoQuiz } = globalThis.PerpetualMiner;
+const { FestaDoQuiz, QuizDeNivel } = globalThis.PerpetualMiner;
+
+// Os níveis são os do quiz, e só dele: a festa carregada com outra lista usa essa lista (nenhuma cópia própria).
+const comOutrosNiveis = { PerpetualMiner: { QuizDeNivel: { NIVEIS: { A: 'basico', B: 'fluente' } } } };
+vm.runInNewContext(fs.readFileSync('./lib/festa-do-quiz.js', 'utf8'), comOutrosNiveis);
+assert.deepStrictEqual(JSON.parse(JSON.stringify(comOutrosNiveis.PerpetualMiner.FestaDoQuiz.portas('fluente'))),
+  [{ nivel: 'basico', cheia: true }, { nivel: 'fluente', cheia: true }]);
+assert.deepStrictEqual(FestaDoQuiz.portas(QuizDeNivel.NIVEIS.INTERMEDIARIO).map(p => p.cheia), [true, true, false]);
 
 const acertos = [1, 2, 3, 4, 5, 6, 7, 8, 9, 20].map(FestaDoQuiz.doAcerto);
 
