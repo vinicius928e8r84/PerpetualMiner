@@ -3,7 +3,7 @@
     "node": {
       "descricao": "Os testes de Node da raiz: mineração automática, sincronização, pacote da loja, o abridor visto da extensão e os fakes da Conexão com o Anki e do abridor",
       "executor": "node",
-      "arquivos": ["test_auto_keyword.js", "test_sync.js", "test_empacotar.js", "test_contrato_fechado.js", "test_pareamento_do_anki.js", "test_pareamento_do_anki_ataques.js", "test_abridor.js", "test_abrir_o_anki.js", "test_fake_anki.js", "test_fake_abridor.js", "test_voz.js", "test_ids_da_voz.js", "test_quiz_de_nivel.js", "test_festa_do_quiz.js", "test_ranking.js", "complemento/test_modelo_da_criacao.js", "test_preview.js", "test_separar_teclas.js", "test_apagar_frases_pendente.js", "scripts/ci/test_ci.js"]
+      "arquivos": ["test_auto_keyword.js", "test_sync.js", "test_empacotar.js", "test_contrato_fechado.js", "test_pareamento_do_anki.js", "test_pareamento_do_anki_ataques.js", "test_abridor.js", "test_abrir_o_anki.js", "test_fake_anki.js", "test_fake_abridor.js", "test_voz.js", "test_ids_da_voz.js", "test_quiz_de_nivel.js", "test_festa_do_quiz.js", "test_ranking.js", "complemento/test_modelo_da_criacao.js", "test_preview.js", "test_separar_teclas.js", "test_apagar_frases_pendente.js", "scripts/ci/test_*.js"]
     },
     "regras": {
       "descricao": "As provas das regras de revisão (scripts/regras/); quem as confere no repositório é `node scripts/regras/verificar.js`",
@@ -11,9 +11,9 @@
       "arquivos": ["scripts/regras/test_regras.js", "scripts/regras/test_versoes_publicadas.js", "scripts/regras/test_doc_datado.js", "scripts/regras/test_relogio_fora_da_fixture.js", "scripts/regras/test_indice_e_aprovacao.js"]
     },
     "ferramentas": {
-      "descricao": "As ferramentas de scripts/: o executor dos grupos, o gancho do limite de tamanho dos arquivos e as receitas do mapa de features",
+      "descricao": "As ferramentas de scripts/: o executor dos grupos, os ganchos (o limite de tamanho dos arquivos e o pre-push) e as receitas do mapa de features",
       "executor": "node",
-      "arquivos": ["scripts/test_testar.mjs", "scripts/ganchos/test_limite_de_tokens.js", "scripts/ganchos/test_limite_de_tokens_entrada.js", "scripts/ganchos/test_limite_de_tokens_ci.js", "scripts/ganchos/test_configuracao_do_indice.js", ".agents/skills/verify-perpetualminer/scripts/test_receitas.js"]
+      "arquivos": ["scripts/test_testar.mjs", "scripts/ganchos/test_limite_de_tokens.js", "scripts/ganchos/test_limite_de_tokens_entrada.js", "scripts/ganchos/test_limite_de_tokens_ci.js", "scripts/ganchos/test_configuracao_do_indice.js", ".agents/skills/verify-perpetualminer/scripts/test_receitas.js", "scripts/ganchos/test_pre_push.js"]
     },
     "complemento": {
       "descricao": "O complemento do Anki; na biblioteca padrão, e o CI roda no Python 3.9 (o do Anki do Mac) e no 3.13",
@@ -29,7 +29,7 @@
       "precisa": "pip install -r engine/requirements.txt"
     },
     "e2e": {
-      "descricao": "A extensão desempacotada no Chromium (Playwright); o CI roda em 8 fatias: -- --shard=N/8",
+      "descricao": "A extensão desempacotada no Chromium (Playwright); o CI roda em 8 fatias de specs montadas pela duração (scripts/ci/fatias-e2e.json): -- $(node scripts/ci/fatias-e2e.js N)",
       "executor": "playwright",
       "pasta": "e2e",
       "pesado": true,

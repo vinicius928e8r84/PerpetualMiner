@@ -1,6 +1,6 @@
 # BookReader: UI inventory (read-only audit)
 
-Repo: `/mnt/c/Users/sadvi/Desktop/MineradorLegendas`. Files: `bookreader.html` (214 lines), `bookreader.js` (581), `bookreader.css` (610). Only one commit touches them (`7c4464c Initial commit`). No repo files were modified.
+Repo: `/mnt/c/Users/<usr>/Desktop/MineradorLegendas`. Files: `bookreader.html` (214 lines), `bookreader.js` (581), `bookreader.css` (610). Only one commit touches them (`7c4464c Initial commit`). No repo files were modified.
 
 > **Scope correction:** BookReader is **not a reader**. It has no pagination, font size, theme, TOC or text-selection UI. It is a **photo → Gemini Vision → list of hand-marked passages → save to history** tool. The name "BookReader" doesn't describe it (see Terminology).
 
