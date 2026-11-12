@@ -10,13 +10,13 @@
 //                                           (unittest e Playwright: `-- --shard=1/8`, um spec)
 //   node scripts/testar.mjs --listar        os grupos e os arquivos que cada um roda
 
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const { arquivosDoGrupo, dicaDeModulo, escolherPython, lerRegistro } = require('./grupos-de-teste.js');
+const { arquivosDoGrupo, baseDaVersao, dicaDeModulo, escolherPython, lerRegistro } = require('./grupos-de-teste.js');
 const { arquivosDoRepositorio } = require('./regras/comum.js');
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -82,6 +82,11 @@ async function main(argv) {
     const deFora = Object.keys(registro.grupos).filter(nome => registro.grupos[nome].pesado);
     if (deFora.length) console.log(`(sem ${deFora.join(', ')}: pesado; rode \`node scripts/testar.mjs ${deFora[0]}\`)`);
   }
+
+  // Numa branch de trabalho, o hash e o .ankiaddon do complemento não são cobrados: a versão é dada no merge.
+  const git = (...args) => spawnSync('git', args, { cwd: RAIZ, encoding: 'utf8' });
+  const baseDaPr = baseDaVersao(process.env, git('rev-parse', '--abbrev-ref', 'HEAD').stdout.trim(), git('rev-parse', '--verify', '--quiet', 'origin/main').status === 0);
+  if (baseDaPr) process.env.PM_VERSAO_BASE = baseDaPr;
 
   const falhas = [];
   for (const nome of escolhidos) {

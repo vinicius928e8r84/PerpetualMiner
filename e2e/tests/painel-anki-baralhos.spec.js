@@ -1,15 +1,15 @@
 'use strict';
 
-// Conexão com o Anki (#34): Baralhos e termos e Vocabulário, na
+// Conexão com o Anki (#34): Baralhos e termos, Vocabulário, na
 // arrumação C · Por idioma (docs/design/painel/anki/). A Conexão é o fake da
-// fronteira HTTP (fakes/anki.js), com os baralhos dos Ajustes de envio padrão
-// (CIMV em inglês, RUSSIAN em russo). Os testes afirmam o que a pessoa vê e o
-// que fica gravado.
+// fronteira HTTP (fakes/anki.js), com os baralhos padrão dos Ajustes de envio.
+// Os testes afirmam o que se vê e o que fica gravado.
 //
 // Um bug de #9 fecha aqui, com o teste que falhava antes: o Vocabulário ficava preso em “Aguardando…” quando as
 // estatísticas falhavam. O Reparar Anki saiu da extensão (#152): quem conserta é o abridor (painel-conserto.spec.js).
 
 const { test, expect } = require('../fixtures');
+const DEN = 'PerpetualMiner::Inglês', DRU = 'PerpetualMiner::Russo';
 const { fotografar } = require('../evidencias-mineracao');
 const { estadoFinal } = require('../estado-final');
 
@@ -47,8 +47,8 @@ async function abrirAnki(page, extensao, hash, { jaConectou = true } = {}) {
 }
 
 test.beforeEach(({ fakes }) => {
-  fakes.anki.definirBaralho('CIMV', BARALHO_EN);
-  fakes.anki.definirBaralho('RUSSIAN', BARALHO_RU);
+  fakes.anki.definirBaralho(DEN, BARALHO_EN);
+  fakes.anki.definirBaralho(DRU, BARALHO_RU);
   fakes.anki.definirVocabulario('en', VOCABULARIO_EN);
   fakes.anki.definirVocabulario('ru', VOCABULARIO_RU);
 });
@@ -58,10 +58,10 @@ test('baralhos: azulejos Inglês · Russo com as palavras; o escolhido mostra o 
 
   const azulejos = azulejosDosBaralhos(page).getByRole('button');
   await expect(azulejos).toHaveCount(2);
-  await expect(azulejos.nth(0)).toContainText('EN · CIMV');
+  await expect(azulejos.nth(0)).toContainText('EN · PerpetualMiner::Inglês');
   await expect(azulejos.nth(0)).toContainText('Inglês');
   await expect(azulejos.nth(0)).toContainText('3.412 palavras');
-  await expect(azulejos.nth(1)).toContainText('RU · RUSSIAN');
+  await expect(azulejos.nth(1)).toContainText('RU · PerpetualMiner::Russo');
   await expect(azulejos.nth(1)).toContainText('612 palavras');
   await expect(azulejos.nth(0)).toHaveAttribute('aria-pressed', 'true');
 
@@ -80,12 +80,12 @@ test('baralhos: azulejos Inglês · Russo com as palavras; o escolhido mostra o 
   await azulejos.nth(1).click();
   await expect(azulejos.nth(1)).toHaveAttribute('aria-pressed', 'true');
   await expect(azulejos.nth(0)).toHaveAttribute('aria-pressed', 'false');
-  await expect(baralhos(page).locator('.anki-baralho')).toContainText('Russo · RUSSIAN');
+  await expect(baralhos(page).locator('.anki-baralho')).toContainText('Russo · PerpetualMiner::Russo');
   await expect(numeros).toContainText('Cartões480');
 
   // O caminho de hoje: os dois baralhos dos Ajustes de envio numa leitura só. Entrar na área não pede à Conexão que abra o Anki.
   const leitura = pedidos(fakes, '/anki/stats/decks')[0].dados;
-  expect(leitura.decks).toEqual([{ deckName: 'CIMV', lang: 'en' }, { deckName: 'RUSSIAN', lang: 'ru' }]);
+  expect(leitura.decks).toEqual([{ deckName: DEN, lang: 'en' }, { deckName: DRU, lang: 'ru' }]);
   expect(leitura).not.toHaveProperty('launch');
   expect(pedidos(fakes, '/anki/vocabulary').every(r => !('launch' in r.dados))).toBe(true);
 });
@@ -146,7 +146,7 @@ test('vocabulário: azulejos com o total de itens, lista × detalhe e as setas e
   await abrirAnki(page, extensao, '#anki/vocabulario');
 
   const azulejos = azulejosDoVocabulario(page).getByRole('button');
-  await expect(azulejos.nth(0)).toContainText('EN · CIMV');
+  await expect(azulejos.nth(0)).toContainText('EN · PerpetualMiner::Inglês');
   await expect(azulejos.nth(0)).toContainText('5 itens');
   await expect(azulejos.nth(1)).toContainText('2 itens');
   await expect(vocabulario(page).getByText('5 itens em inglês · mostrando 5')).toBeVisible();
@@ -389,7 +389,7 @@ test('trocar o Baralho com o Anki fechado: o Baralho novo não herda a idade do 
   for (const chave of ['pm_anki_baralhos', 'pm_anki_vocabulario']) {
     expect(await lerGravado(extensao, chave)).toMatchObject({ dadosDe: duasHorasDepois.getTime(), ankiFechado: true });
   }
-  expect((await lerGravado(extensao, 'pm_anki_baralhos')).nomes).toEqual({ en: 'Mining EN', ru: 'RUSSIAN' });
+  expect((await lerGravado(extensao, 'pm_anki_baralhos')).nomes).toEqual({ en: 'Mining EN', ru: DRU });
 });
 
 test('o último dado que a própria Conexão guardou (stale) segue com “Não deu para atualizar agora”, sem o Anki fechado', async ({ page, extensao, fakes }) => {
@@ -399,8 +399,8 @@ test('o último dado que a própria Conexão guardou (stale) segue com “Não d
       stale: true,
       source: 'ankiconnect',
       decks: [
-        { deckName: 'CIMV', lang: 'en', cards: 10, uniqueTermTokens: 77, vocabulary: { phraseVocabulary: 77 }, new: 1, learning: 0, young: 2, mature: 7 },
-        { deckName: 'RUSSIAN', lang: 'ru', cards: 5, uniqueTermTokens: 12, vocabulary: { phraseVocabulary: 12 }, new: 1, learning: 0, young: 1, mature: 3 },
+        { deckName: DEN, lang: 'en', cards: 10, uniqueTermTokens: 77, vocabulary: { phraseVocabulary: 77 }, new: 1, learning: 0, young: 2, mature: 7 },
+        { deckName: DRU, lang: 'ru', cards: 5, uniqueTermTokens: 12, vocabulary: { phraseVocabulary: 12 }, new: 1, learning: 0, young: 1, mature: 3 },
       ],
     },
   }));
@@ -486,8 +486,8 @@ test('a Conexão que responde antes dos Ajustes de envio não impede a primeira 
   await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
   await expect(baralhos(page).locator('.shell-aviso')).toHaveCount(0);
   const leituras = pedidos(fakes, '/anki/stats/decks');
-  expect(leituras.map(r => r.dados)).toEqual([{ decks: [{ deckName: 'CIMV', lang: 'en' }, { deckName: 'RUSSIAN', lang: 'ru' }] }]);
-  await estadoFinal(extensao, { pm_anki_baralhos: { nomes: { en: 'CIMV', ru: 'RUSSIAN' }, dados: { decks: [{ deckName: 'CIMV', cards: 2140 }, { deckName: 'RUSSIAN', cards: 480 }] } } });
+  expect(leituras.map(r => r.dados)).toEqual([{ decks: [{ deckName: DEN, lang: 'en' }, { deckName: DRU, lang: 'ru' }] }]);
+  await estadoFinal(extensao, { pm_anki_baralhos: { nomes: { en: DEN, ru: DRU }, dados: { decks: [{ deckName: DEN, cards: 2140 }, { deckName: DRU, cards: 480 }] } } });
 });
 
 test('salvar outro baralho nos Ajustes de envio lê os baralhos e o vocabulário dele', async ({ page, extensao, fakes }) => {
@@ -505,8 +505,8 @@ test('salvar outro baralho nos Ajustes de envio lê os baralhos e o vocabulário
   // O Baralho novo ficou gravado nos Ajustes e nas duas leituras que as abas guardam.
   await estadoFinal(extensao, {
     ankiBridgePresets: { en: { deckName: 'Mining EN' } },
-    pm_anki_baralhos: { nomes: { en: 'Mining EN', ru: 'RUSSIAN' }, dados: { decks: [{ deckName: 'Mining EN', cards: 2140, uniqueTermTokens: 99 }, { deckName: 'RUSSIAN', cards: 480 }] } },
-    pm_anki_vocabulario: { nomes: { en: 'Mining EN', ru: 'RUSSIAN' } },
+    pm_anki_baralhos: { nomes: { en: 'Mining EN', ru: DRU }, dados: { decks: [{ deckName: 'Mining EN', cards: 2140, uniqueTermTokens: 99 }, { deckName: DRU, cards: 480 }] } },
+    pm_anki_vocabulario: { nomes: { en: 'Mining EN', ru: DRU } },
   });
 });
 
@@ -522,7 +522,7 @@ test('↻ Atualizar lê de novo os baralhos (abrindo o Anki se precisar) e o voc
   expect(ultima.refresh).toBe(true);
   expect(ultima.launch).toBe(true);
   // A leitura de depois de Atualizar é a que fica gravada: o vocabulário novo, com o baralho de sempre.
-  await estadoFinal(extensao, { pm_anki_vocabulario: { nomes: { en: 'CIMV', ru: 'RUSSIAN' }, dados: { en: { deckName: 'CIMV', total: 6 } } } });
+  await estadoFinal(extensao, { pm_anki_vocabulario: { nomes: { en: DEN, ru: DRU }, dados: { en: { deckName: DEN, total: 6 } } } });
 });
 
 test('azulejos, filtros e lista têm nome e foco visível', async ({ page, extensao }) => {

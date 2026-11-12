@@ -17,6 +17,7 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import abridor, atualizacao, configuracao, inicio, item_de_login  # noqa: E402
+from complemento.test_pareamento_de_mentira import iniciar_pareado, pedir_como_a_extensao  # noqa: E402
 from complemento.test_atualizacao import AnkiWebDeMentira  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_abridor import Pastas, RegistroDeMentira, abridor_do_mac, conversar  # noqa: E402
@@ -36,13 +37,8 @@ def saude(porta):
 
 
 def _post(porta, caminho, corpo):
-    pedido = http.client.HTTPConnection("127.0.0.1", porta, timeout=5)
-    try:
-        pedido.request("POST", caminho, body=json.dumps(corpo), headers={"Origin": ORIGEM, "Content-Type": "application/json"})
-        resposta = pedido.getresponse()
-        return resposta.status, json.loads(resposta.read())
-    finally:
-        pedido.close()
+    status, _, lido = pedir_como_a_extensao(porta, "POST", caminho, corpo)
+    return status, json.loads(lido)
 
 
 def pedir_a_chave(porta, chave):
@@ -138,12 +134,12 @@ class AoCarregarNoAnki(unittest.TestCase):
     def test_a_chave_que_a_extensao_manda_fica_em_user_files_chaves_e_a_conexao_a_reconhece_ao_reiniciar(self):
         chave = "sk-proj-DeTesteDoInicio0123456789-f00d"
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira("aceita") as openai:
-            conexao = inicio.iniciar(pasta, lambda: None, porta=0, openai_base=openai.base, abridor=None)
+            conexao = iniciar_pareado(pasta, lambda: None, porta=0, openai_base=openai.base, abridor=None)
             try:
                 enviada = pedir_a_chave(conexao.porta, chave)
             finally:
                 parar(conexao)
-            conexao = inicio.iniciar(pasta, lambda: None, porta=0, openai_base=openai.base, abridor=None)
+            conexao = iniciar_pareado(pasta, lambda: None, porta=0, openai_base=openai.base, abridor=None)
             try:
                 estado = estado_da_ia(conexao.porta)
             finally:
@@ -168,12 +164,9 @@ class AoCarregarNoAnki(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta:
             agentes = os.path.join(pasta, "agentes")
             item = item_de_login.ItemDeLogin(sistema="mac", pasta=agentes, comando=["/usr/bin/open", "-a", "Anki"])
-            conexao = inicio.iniciar(pasta, lambda: None, porta=0, item_de_login=item, abridor=None)
+            conexao = iniciar_pareado(pasta, lambda: None, porta=0, item_de_login=item, abridor=None)
             try:
-                pedido = http.client.HTTPConnection("127.0.0.1", conexao.porta, timeout=5)
-                pedido.request("POST", "/abrir-com-o-computador", body='{"ligado": true}', headers={"Origin": ORIGEM})
-                status = pedido.getresponse().status
-                pedido.close()
+                status = pedir_como_a_extensao(conexao.porta, "POST", "/abrir-com-o-computador", {"ligado": True})[0]
             finally:
                 parar(conexao)
             escritos = os.listdir(agentes)
@@ -231,7 +224,7 @@ class AoCarregarNoAnki(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raiz:
             pastas = Pastas(raiz)
             colecao = ColecaoEmMemoria(perfis=("Maria", "Joana"))
-            conexao = inicio.iniciar(
+            conexao = iniciar_pareado(
                 os.path.join(raiz, "complemento"), lambda: "Maria", porta=0, colecao=colecao, abridor=abridor_do_mac(pastas),
             )
             try:

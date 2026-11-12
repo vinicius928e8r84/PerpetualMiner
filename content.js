@@ -1,5 +1,3 @@
-// content.js
-
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
 // deste arquivo, pelo manifest: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
 const { detectarIdioma, Atalhos, Overlay, textoDaVoz, IDIOMAS, MineracaoDoDia, Mineracao } = PerpetualMiner;
@@ -56,7 +54,7 @@ chrome.runtime.onMessage.addListener((message) => {
 // e avançar). O botão só é tomado quando há o que minerar: numa página sem
 // legenda ou sem seleção, ele continua fazendo o que sempre fez.
 document.addEventListener('mousedown', (e) => {
-  if (Atalhos.correspondeAoAtalho(_atalhos.legenda, e) && obterLegendaAtual()) {
+  if (Atalhos.correspondeAoAtalho(_atalhos.legenda, e) && lerLegenda()?.texto) {
     _tomarOBotao(e);
     minerarLegenda(e);
     return;
@@ -278,11 +276,12 @@ function containerDoPlayer(video) {
 }
 
 function processarAutoMinerLegenda() {
+    // Sem idioma ligado nada é lido.
+    if (!MineracaoDoDia.idiomasLigados(_autoMinerState).length) return;
     const legenda = lerLegenda();
     const texto = legenda?.texto || '';
     acompanharIdiomaDaLegenda(texto);
     if (!autoMinerAtivoNaPagina(texto)) return;
-    if (!texto) return;
     const normalizado = normalizarTextoAutoMiner(texto);
     if (!normalizado || normalizado === _autoMinerLastSentText) return;
 
@@ -330,10 +329,6 @@ function autoMinerAtivoNaPagina(legenda = '') {
     if (!legenda) return false;
     const lang = codigoDoIdioma(detectarIdioma(legenda));
     return MineracaoDoDia.podeMinerarAgora(_autoMinerState, lang);
-}
-
-function obterLegendaAtual() {
-    return lerLegenda()?.texto || '';
 }
 
 /**

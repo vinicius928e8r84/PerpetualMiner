@@ -254,3 +254,26 @@ test('Apagar tudo enquanto o pedido de um Envio espera a Conexão: a resposta qu
   expect((await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
   expect(JSON.stringify(await extensao.lerStorage())).not.toContain('hit the sack');
 });
+
+// O painel lê `pm_envio` de novo depois de a Conexão responder, como o service worker: a cópia de antes do pedido não tem o Envio que nasceu no meio.
+test('a confirmação do Apagar tudo que chega depois de outra aba criar um Envio tira só a marca: o Envio novo continua guardado', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ pm_envio: { envios: [], apagarFrases: true } });
+  // O `POST /jobs/apagar-frases` fica esperando até o teste soltar.
+  let pedidos = 0;
+  let soltar;
+  const solto = new Promise(r => { soltar = r; });
+  fakes.anki.responder('POST', '/jobs/apagar-frases', async () => {
+    pedidos += 1;
+    await solto;
+    return { status: 200, json: { ok: true } };
+  });
+  await abrirPainel(page, extensao);
+  await expect.poll(() => pedidos).toBe(1);
+
+  // Outra aba cria um Envio enquanto o pedido espera: a marca fica, como `gravar` de painel-envio.js a mantém.
+  const novo = { id: 'envio-de-outra-aba', lang: 'en', ids: [SACK.id], baralho: 'CIMV', jobId: 'envio-de-outra-aba', criadoEm: AGORA.getTime(), falhaAoCriar: null };
+  await extensao.gravarStorage({ pm_envio: { envios: [novo], apagarFrases: true } });
+  soltar();
+
+  await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio).toStrictEqual({ envios: [novo] });
+});

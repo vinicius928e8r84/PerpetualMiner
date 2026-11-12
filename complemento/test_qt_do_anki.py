@@ -25,7 +25,7 @@ class AqtDeMentira:
     """O `aqt` do Anki, só o que `qt_do_anki.py` importa, anotando o que o complemento pede a ele."""
 
     def __init__(self):
-        self.tooltips, self.dialogos, self.relogios = [], [], []
+        self.tooltips, self.dialogos, self.relogios, self.formularios, self.rotulos, self.eventos = [], [], [], [], [], []
         aqui = self
 
         class Sinal:
@@ -36,6 +36,8 @@ class AqtDeMentira:
             def __init__(self, *_):
                 self.finished = Sinal()
                 self.visivel, self.mostradas, self.trazidas, self.ativadas = False, 0, 0, 0
+                self.largura, self.redimensionamentos = 420, []
+                self.ajustes = []  # os textos dos rótulos no momento em que a janela pediu o tamanho certo
                 aqui.dialogos.append(self)
 
             def show(self):
@@ -49,15 +51,64 @@ class AqtDeMentira:
             def isVisible(self):
                 return self.visivel
 
+            def adjustSize(self):
+                aqui.eventos.append("adjustSize")
+                self.ajustes.append([rotulo.texto for rotulo in aqui.rotulos])
+                self.largura = 420  # o Qt volta ao tamanho que o texto pede
+
+            def width(self):
+                return self.largura
+
+            def resize(self, largura, altura):
+                self.largura = largura
+                self.redimensionamentos.append((largura, altura))
+
+            def minimumSizeHint(self):
+                return types.SimpleNamespace(height=lambda: 100)
+
             def raise_(self):
                 self.trazidas += 1
 
             def activateWindow(self):
                 self.ativadas += 1
 
+        class Formulario(_Qualquer):
+            FieldGrowthPolicy = _Qualquer()
+
+            def __init__(self, *_):
+                self.politica, self.linhas = None, []
+                aqui.formularios.append(self)
+
+            def setFieldGrowthPolicy(self, politica):
+                self.politica = politica
+
+            def addRow(self, *campos):
+                self.linhas.append(campos)
+
+        class Rotulo(_Qualquer):
+            def __init__(self, *_):
+                self.texto = ""
+                aqui.rotulos.append(self)
+
+            def setText(self, texto):
+                self.texto = texto
+
+            def text(self):
+                return self.texto
+
+        class Layout(_Qualquer):
+            def __init__(self, *_):
+                pass
+
+            def totalHeightForWidth(self, largura):
+                return 150
+
+            def activate(self):
+                aqui.eventos.append("activate")
+
         class Relogio(_Qualquer):
             def __init__(self, *_):
-                self.rodando = False
+                self.rodando, self.timeout = False, Sinal()
                 aqui.relogios.append(self)
 
             def start(self):
@@ -68,7 +119,8 @@ class AqtDeMentira:
 
         qt = types.SimpleNamespace(
             QDialog=Dialogo, QTimer=Relogio, Qt=_Qualquer(), qconnect=lambda sinal, funcao: sinal.ligados.append(funcao) if isinstance(sinal, Sinal) else None,
-            **{nome: (lambda *_: _Qualquer()) for nome in ("QFormLayout", "QLabel", "QProgressBar", "QPushButton", "QVBoxLayout")})
+            QFormLayout=Formulario, QLabel=Rotulo, QVBoxLayout=Layout,
+            **{nome: (lambda *_: _Qualquer()) for nome in ("QProgressBar", "QPushButton")})
         utils = types.SimpleNamespace(tooltip=lambda texto, period=None: self.tooltips.append((texto, period)))
         self.modulos = {"aqt": types.SimpleNamespace(qt=qt, utils=utils), "aqt.qt": qt, "aqt.utils": utils}
 
@@ -115,6 +167,42 @@ class AFronteiraComOQtDoAnki(unittest.TestCase):
         dialogo = aqt.dialogos[0]
         self.assertEqual((len(aqt.dialogos), len(aqt.relogios)), (1, 1))
         self.assertEqual((dialogo.visivel, dialogo.mostradas, dialogo.trazidas, dialogo.ativadas), (True, 3, 2, 2))
+
+    def test_a_janela_deixa_os_campos_crescerem_e_refaz_o_layout_e_pede_o_tamanho_so_depois_de_escrever_todos_os_textos(self):
+        with AqtDeMentira() as aqt:
+            qt = qt_do_anki.QtDoAnki(registro.silencioso())
+            estado = janela.Janela(None, lambda: "Usuário 1", configuracao.VERSAO, registro.silencioso()).estado
+            qt.abrir_janela(object(), estado)
+        self.assertIsNotNone(aqt.formularios[0].politica)
+        self.assertEqual(aqt.eventos, ["activate", "adjustSize"])
+        textos = aqt.dialogos[0].ajustes[0]
+        self.assertEqual([t for t in textos if not t], [""])  # só o rótulo do Baralho, sem Envio, fica vazio
+
+    def test_a_janela_so_pede_o_tamanho_quando_o_texto_muda_para_nao_desfazer_o_que_a_pessoa_redimensionou(self):
+        with AqtDeMentira() as aqt:
+            qt = qt_do_anki.QtDoAnki(registro.silencioso())
+            base = janela.Janela(None, lambda: "Usuário 1", configuracao.VERSAO, registro.silencioso()).estado()
+            atual = [base]
+            qt.abrir_janela(object(), lambda: atual[0])
+            aqt.relogios[0].timeout.ligados[0]()
+            aqt.relogios[0].timeout.ligados[0]()
+            antes = len(aqt.dialogos[0].ajustes)
+            atual[0] = base._replace(ultimo_erro="falhou")
+            aqt.relogios[0].timeout.ligados[0]()
+        self.assertEqual((antes, len(aqt.dialogos[0].ajustes)), (1, 2))
+
+    def test_a_janela_mais_larga_que_o_texto_pede_continua_com_a_largura_da_pessoa_quando_o_texto_do_envio_muda(self):
+        with AqtDeMentira() as aqt:
+            qt = qt_do_anki.QtDoAnki(registro.silencioso())
+            base = janela.Janela(None, lambda: "Usuário 1", configuracao.VERSAO, registro.silencioso()).estado()
+            atual = [base]
+            qt.abrir_janela(object(), lambda: atual[0])
+            dialogo = aqt.dialogos[0]
+            dialogo.largura = 700  # a pessoa alargou a janela
+            atual[0] = base._replace(ultimo_erro="falhou")
+            aqt.relogios[0].timeout.ligados[0]()
+        self.assertEqual(dialogo.width(), 700)
+        self.assertEqual(dialogo.redimensionamentos[-1], (700, 150))
 
 
 if __name__ == "__main__":
