@@ -11,18 +11,20 @@
   const { ConexaoAnki, PedidoAoAnki } = raiz;
   let apagando = null;
 
+  const lerGravado = async () => (await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r)))[CHAVE_GRAVADA];
+
   function pedir() {
     if (apagando) return apagando;
     apagando = (async () => {
-      const gravado = (await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r)))[CHAVE_GRAVADA];
-      if (!gravado?.apagarFrases) return true;
+      if (!(await lerGravado())?.apagarFrases) return true;
       try {
         const resposta = await PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, PedidoAoAnki.apagarFrasesDosEnvios());
         if (!resposta.ok) return false;
       } catch {
         return false;
       }
-      const envios = gravado.envios || [];
+      // Lido de novo depois da resposta: um Envio criado enquanto o pedido esperava (nesta aba ou em outra) fica.
+      const envios = (await lerGravado())?.envios || [];
       if (envios.length) await new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios } }, r));
       else await new Promise(r => chrome.storage.local.remove(CHAVE_GRAVADA, r));
       return true;
