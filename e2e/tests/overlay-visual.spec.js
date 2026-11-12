@@ -14,6 +14,7 @@
 // A marca entra em 150 ms: a foto espera a entrada terminar.
 
 const { test, expect } = require('../fixtures');
+const DRU = 'PerpetualMiner::Russo';
 
 // O player tem o tamanho do player do protótipo (1118 × 630): lado a lado com
 // ele, a pílula aparece na mesma escala, e não maior porque o player é menor.
@@ -163,7 +164,7 @@ test('MIN-06: a mineração automática, a mesma marca mais apagada, com o idiom
   await extensao.gravarStorage({
     pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } },
     pm_auto_miner_daily: { date: hoje, en: { count: 0 }, ru: { count: 4 } },
-    pm_auto_keyword_vocab_ru: { cacheVersion: 2, deckName: 'RUSSIAN', createdAt: Date.now(), words: [], terms: [], wordInfo: {}, termInfo: {} },
+    pm_auto_keyword_vocab_ru: { cacheVersion: 2, deckName: DRU, createdAt: Date.now(), words: [], terms: [], wordInfo: {}, termInfo: {} },
   });
   await abrirPlayer(page, paginas);
   // Um vídeo tocando de verdade: a mineração automática só olha legenda de vídeo que não está pausado.

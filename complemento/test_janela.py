@@ -242,7 +242,7 @@ class QtDeMentira:
     def aviso(self, texto):
         self.avisos.append(texto)
 
-    def abrir_janela(self, mw, ler_estado):
+    def abrir_janela(self, mw, ler_estado, *_):
         self.janelas.append(ler_estado())
 
     def a_cada(self, mw, segundos, funcao):
@@ -297,7 +297,7 @@ class OItemNoMenuDoAnki(unittest.TestCase):
     def test_o_erro_do_qt_ao_abrir_a_janela_nunca_sai_para_o_anki(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, trabalhando=False) as conexao:
             qt = QtDeMentira()
-            qt.abrir_janela = lambda mw, ler_estado: (_ for _ in ()).throw(RuntimeError("o Qt mudou"))
+            qt.abrir_janela = lambda mw, ler_estado, *_: (_ for _ in ()).throw(RuntimeError("o Qt mudou"))
             self.ligado(conexao, qt)
             qt.itens[0].clicar()
             registro = conexao.log()

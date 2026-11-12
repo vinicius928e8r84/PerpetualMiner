@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const { ehArquivoDeTeste, padraoComoRegex, escolherPython, dicaDeModulo } = require('./grupos-de-teste.js');
+const { ehArquivoDeTeste, padraoComoRegex, escolherPython, dicaDeModulo, baseDaVersao } = require('./grupos-de-teste.js');
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const testar = (...args) => spawnSync('node', [path.join(RAIZ, 'scripts', 'testar.mjs'), ...args], { cwd: RAIZ, encoding: 'utf8' });
@@ -108,5 +108,14 @@ assert.throws(() => lerRegistro(pasta), erro => /não é um JSON válido \(erro 
 fs.writeFileSync(path.join(pasta, 'scripts', 'testes.json'), '{ "fora": [] }');
 assert.throws(() => lerRegistro(pasta), /não tem o objeto "grupos"/);
 fs.rmSync(pasta, { recursive: true, force: true });
+
+
+// Numa branch de trabalho o complemento não cobra a versão (é dada no merge); na main, no CI e com a variável posta, nada muda.
+assert.equal(baseDaVersao({}, 'fm/uma-tarefa', true), 'origin/main');
+assert.equal(baseDaVersao({}, 'main', true), null);
+assert.equal(baseDaVersao({}, 'HEAD', true), null);
+assert.equal(baseDaVersao({ CI: 'true' }, 'fm/uma-tarefa', true), null);
+assert.equal(baseDaVersao({ PM_VERSAO_BASE: '' }, 'fm/uma-tarefa', true), null);
+assert.equal(baseDaVersao({}, 'fm/uma-tarefa', false), null);
 
 console.log('testar tests passed');

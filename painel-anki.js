@@ -5,7 +5,7 @@
   const CHAVE_QUATRO_CASAS = 'pm_anki_quatro_casas';
   const CHAVE_IDS = 'pm_anki_ids_dos_envios';
 
-  // Os idiomas da API (`lang`) e o código que cada azulejo mostra (BRG-28).
+  // Os idiomas da API e o código de cada azulejo (BRG-28).
   const IDIOMAS_DOS_AZULEJOS = [
     { idioma: 'all', codigo: 'BRG-28.codigoTodos' },
     { idioma: 'en', codigo: 'BRG-28.codigoEn' },
@@ -13,15 +13,14 @@
   ];
   const CODIGO_DO_IDIOMA = Object.fromEntries(IDIOMAS_DOS_AZULEJOS.map(({ idioma, codigo }) => [idioma, codigo]));
   const NOME_DO_IDIOMA = { en: 'INGLES', ru: 'RUSSO' };
-  // O que cada `status` da API vira na tela: o tom do ponto na lista, o selo do
-  // detalhe e se o envio pode ser continuado. O que não está aqui está andando.
+  // O `status` da API na tela: o tom do ponto, o selo e se o envio se retoma. O que falta aqui anda.
   const STATUS_DO_ENVIO = {
     completed: { tom: 'ok', selo: 'veio-selo--ok', retomavel: false },
     partial: { tom: 'parte', selo: 'veio-selo--parte', retomavel: true },
     failed: { tom: 'erro', selo: 'veio-selo--erro', retomavel: true },
   };
   const ANDANDO = { tom: 'andando', selo: 'veio-selo--info', retomavel: false };
-  // As 4 origens das imagens, na ordem e com a cor da série (exceção de dataviz do Veio).
+  // As 4 origens das imagens, na ordem e com a cor da série.
   const ORIGENS = [
     { chave: 'real', rotulo: 'BRG-09.fotoReal', serie: 'real' },
     { chave: 'generated', rotulo: 'BRG-09.geradaPorIa', serie: 'gerada' },
@@ -105,8 +104,8 @@
   }
 
   const situacaoDaConexao = () => ConexaoAnki.situacao();
-  /** A Conexão já respondeu, ligada ou desligada, nesta página. */
-  const jaRespondeu = () => ConexaoAnki.ultimaResposta() !== null;
+  /** Já respondeu aqui, e provada (#192): a porta que só responde a saúde não conta. */
+  const jaRespondeu = () => ConexaoAnki.ultimaResposta() !== null && ConexaoAnki.apresentada() === situacaoDaConexao();
 
   // A situação da última notificação: ler os custos é decidido contra ela.
   let anterior = CONEXAO.CONECTANDO;
@@ -118,7 +117,7 @@
     desenhar();
   }
 
-  /** Confere a Conexão e, ligada, lê os custos de novo (Tentar de novo do BRG-04). */
+  /** Confere a Conexão e, ligada, lê os custos (Tentar de novo, BRG-04). */
   async function atualizar() {
     const situacao = await ConexaoAnki.conferir();
     if (situacao === CONEXAO.LIGADA) ler();
@@ -659,7 +658,7 @@
   raiz.Anki = {
     aoAtualizar,
     atualizar: atualizarTudo,
-    // Os pedaços da área que Baralhos e termos e o Vocabulário também desenham.
+    // Os pedaços que Baralhos e termos e o Vocabulário também desenham.
     pecas: { esqueleto, linhaDeEspera, seloDoDadoAntigo },
   };
   document.addEventListener('DOMContentLoaded', iniciar);

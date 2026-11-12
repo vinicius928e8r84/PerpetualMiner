@@ -58,7 +58,12 @@ async function responderAParte1(page, idioma, nivel) {
 async function fraseDaPergunta(page, idioma, fakes) {
   const cabeca = (await pergunta(page, idioma).textContent()).trim();
   if (cabeca !== 'Ouça e escolha o que foi dito') return (await quiz(page, idioma).locator('.quiz__frase').textContent()).trim();
-  await expect.poll(() => dizeres(fakes).length, { message: 'a pergunta de áudio pediu a fala à Conexão' }).toBeGreaterThan(0);
+  // A última fala pedida é a desta pergunta quando a certa dela está entre as alternativas da tela: um pedido assinado (#192) chega um pouco depois do que
+  // a pergunta anterior deixou, e a frase da anterior ainda ficaria como a última.
+  await expect.poll(async () => {
+    const certa = CERTA[dizeres(fakes).at(-1)?.texto];
+    return Boolean(certa) && await quiz(page, idioma).locator('.quiz__opcao').getByText(certa, { exact: true }).count() > 0;
+  }, { message: 'a pergunta de áudio pediu a fala à Conexão' }).toBe(true);
   return dizeres(fakes).at(-1).texto;
 }
 

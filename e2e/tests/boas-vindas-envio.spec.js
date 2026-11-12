@@ -146,6 +146,10 @@ test('só Frases em inglês sem Palavra: o Envio é a Frase de teste', async ({ 
   const [envio] = await enviosCriados(fakes, 1);
   expect(envio.corpo).toMatchObject({ lang: 'en', teste: true });
   expect(envio.entries[0].line).toMatch(/^give up : /);
+  chegarAoAnki(fakes, envio);
+
+  await expect(passo(page)).toContainText('A sua frase ainda não tem a Palavra marcada, então este é um cartão de teste.');
+  await expect(passo(page)).not.toContainText('Você ainda não minerou nenhuma frase');
   await estadoFinal(extensao, { pm_boas_vindas: { primeiroEnvio: { corpo: { teste: true } } } });
 });
 
