@@ -5,6 +5,7 @@
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -15,7 +16,7 @@ import zipfile
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(AQUI))
 
-from complemento import configuracao, empacotar, versao_no_merge  # noqa: E402
+from complemento import empacotar, versao_no_merge  # noqa: E402
 from complemento.test_pacote import CONFERE_A_VERSAO, copiar_o_complemento  # noqa: E402
 
 RAIZ = os.path.dirname(AQUI)
@@ -68,7 +69,22 @@ def repositorio(pasta):
     git(pasta, "config", "user.name", "versao")
     git(pasta, "add", ".")
     git(pasta, "commit", "-q", "-m", "a main")
+    dar_a_versao_pendente(pasta)
     return pasta
+
+
+def dar_a_versao_pendente(pasta):
+    """Uma árvore com código de PR em andamento (hoje, a que roda estes testes) tem versão pendente; a main de que os
+    testes partem é a que já a recebeu, num commit só com o resto."""
+    resultado = dar_a_versao(pasta)
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    if git(pasta, "rev-list", "--count", "HEAD") != "1":
+        git(pasta, "reset", "-q", "--soft", "HEAD~1")
+        git(pasta, "commit", "-q", "--amend", "--no-edit")
+
+
+def versao_de(pasta):
+    return re.search(r'^VERSAO = "([^"]+)"', ler(pasta, "complemento/configuracao.py"), re.M).group(1)
 
 
 def proxima_depois(versao):
@@ -96,7 +112,7 @@ class QuemMudouOCodigoRecebeAProximaVersao(Casa):
         mudar_o_codigo(self.repo)
         git(self.repo, "commit", "-qam", "uma PR de Conexão")
         antes = git(self.repo, "rev-list", "--count", "HEAD")
-        velha = configuracao.VERSAO
+        velha = versao_de(self.repo)
         nova = proxima_depois(velha)
         resultado = dar_a_versao(self.repo)
         self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
@@ -125,9 +141,9 @@ class QuemMudouOCodigoRecebeAProximaVersao(Casa):
     def test_o_hash_registrado_e_o_das_fontes_e_o_arquivo_da_extensao_leva_a_hora_pedida(self):
         mudar_o_codigo(self.repo)
         git(self.repo, "commit", "-qam", "uma PR de Conexão")
+        nova = proxima_depois(versao_de(self.repo))
         dar_a_versao(self.repo)
         registradas = json.loads(ler(self.repo, "complemento/versoes.json"))
-        nova = proxima_depois(configuracao.VERSAO)
         hash_das_fontes = subprocess.run(
             [sys.executable, "-c", "from complemento import empacotar; print(empacotar.hash_das_fontes())"],
             cwd=self.repo, capture_output=True, text=True, check=True,
@@ -139,7 +155,7 @@ class QuemMudouOCodigoRecebeAProximaVersao(Casa):
     def test_o_pacote_e_o_mesmo_que_o_fluxo_de_hoje_gera_para_a_mesma_versao_byte_a_byte(self):
         mudar_o_codigo(self.repo)
         git(self.repo, "commit", "-qam", "uma PR de Conexão")
-        velha = configuracao.VERSAO
+        velha = versao_de(self.repo)
         nova = proxima_depois(velha)
         with tempfile.TemporaryDirectory() as outra:
             # O fluxo de hoje, à mão: sobe a VERSAO, troca o número nos exemplos, registra o hash e refaz o arquivo.
@@ -279,7 +295,7 @@ class AVersaoVemNoMerge(Casa):
     def test_pr_que_ja_leva_numero_continua_conferida(self):
         self.uma_pr_de_codigo()
         caminho = "complemento/configuracao.py"
-        escrever(self.repo, caminho, ler(self.repo, caminho).replace(configuracao.VERSAO, "9.9.9"))
+        escrever(self.repo, caminho, ler(self.repo, caminho).replace(versao_de(self.repo), "9.9.9"))
         git(self.repo, "commit", "-qam", "uma PR com número")
         resultado = self.rodar(*self.TESTES, PM_VERSAO_BASE="HEAD~2")
         self.assertNotEqual(resultado.returncode, 0)
@@ -290,7 +306,7 @@ class AVersaoVemNoMerge(Casa):
         self.uma_pr_de_codigo()
         git(self.repo, "checkout", "-q", "main")
         caminho = "complemento/configuracao.py"
-        escrever(self.repo, caminho, ler(self.repo, caminho).replace(configuracao.VERSAO, "9.9.9"))
+        escrever(self.repo, caminho, ler(self.repo, caminho).replace(versao_de(self.repo), "9.9.9"))
         git(self.repo, "commit", "-qam", "a main deu uma versão")
         git(self.repo, "checkout", "-q", "pr")
         resultado = self.rodar(*self.TESTES, PM_VERSAO_BASE="main")
