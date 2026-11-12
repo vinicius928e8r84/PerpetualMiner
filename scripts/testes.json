@@ -29,7 +29,7 @@
       "precisa": "pip install -r engine/requirements.txt"
     },
     "e2e": {
-      "descricao": "A extensão desempacotada no Chromium (Playwright); o CI roda em 8 fatias: -- --shard=N/8",
+      "descricao": "A extensão desempacotada no Chromium (Playwright); o CI roda em 8 fatias de specs montadas pela duração (scripts/ci/fatias-e2e.json): -- $(node scripts/ci/fatias-e2e.js N)",
       "executor": "playwright",
       "pasta": "e2e",
       "pesado": true,
