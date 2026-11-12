@@ -12,14 +12,16 @@ testes, os exemplos do contrato, `user_files`, o cache, o LEIA-ME e o `versoes.j
 O motor de texto vem de `engine/` (`ARQUIVOS_DO_MOTOR`) e entra como a pasta `motor/` do pacote, ao lado do
 `motor/__init__.py` deste repositório (ver `motor/__init__.py`).
 
-A extensão entrega este arquivo num link de download (`conexao/perpetualminer.ankiaddon`, no pacote da loja):
-mudou o código do complemento, refaça-o com `python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon`
-(`test_pacote.py` falha enquanto ele estiver para trás).
+A extensão entrega este arquivo num link de download (`conexao/perpetualminer.ankiaddon`, no pacote da loja).
+A versão e este arquivo são dados na hora do merge por `python3 complemento/versao_no_merge.py`, num commit só;
+`test_pacote.py` falha na main (e no commit de versão) enquanto o arquivo estiver para trás do código.
 """
 
 import hashlib
 import json
 import os
+import re
+import subprocess
 import sys
 import time
 import zipfile
@@ -29,7 +31,8 @@ DATA_FIXA = (1980, 1, 1, 0, 0, 0)  # o menor que o zip aceita
 PERMISSOES_FIXAS = 0o100644 << 16
 SISTEMA_FIXO = 3  # Unix: é o que dá as permissões acima, igual em qualquer máquina
 ARQUIVO_DA_EXTENSAO = os.path.join(PASTA, "..", "conexao", "perpetualminer.ankiaddon")
-FORA_DO_PACOTE = ("test_", "empacotar.py", "__pycache__", "user_files", "contrato", "LEIA-ME.md", "versoes.json")
+FORA_DO_PACOTE = ("test_", "empacotar.py", "__pycache__", "user_files", "contrato", "LEIA-ME.md", "versoes.json", "versoes-reservadas.json", "versao_no_merge.py")
+RAIZ = os.path.normpath(os.path.join(PASTA, ".."))
 ENGINE = os.path.normpath(os.path.join(PASTA, "..", "engine"))
 # O que o Envio usa do motor (só a biblioteca padrão; o áudio e a imagem entram com o #143 e o #144).
 ARQUIVOS_DO_MOTOR = (
@@ -65,6 +68,34 @@ ARQUIVOS_DO_MOTOR = (
     "prompts/ru_intermediario.txt",
     "send_to_anki.py",
 )
+
+
+DADA_NO_MERGE = "a versão é dada no merge (versao_no_merge.py): esta PR não mexe nela; a main e o commit de versão conferem"
+
+
+def versao_vem_no_merge():
+    """Verdadeiro numa PR que não mexe na versão (`PM_VERSAO_BASE` é a ponta da branch-alvo, só no CI da PR): a `VERSAO`, o
+    `versoes.json` e o `.ankiaddon` ficam como na base, porque a versão é dada no merge (`versao_no_merge.py`) e os testes
+    que cobram o pacote e o hash valem na main e no commit de versão. Uma PR que já leva número volta a ser conferida."""
+    base = os.environ.get("PM_VERSAO_BASE")
+    if not base:
+        return False
+    try:
+        # Desde onde a branch saiu: a base pode ter andado (e dado versão) depois.
+        saiu = subprocess.run(["git", "-C", RAIZ, "merge-base", base, "HEAD"], capture_output=True, text=True)
+        base = saiu.stdout.strip() if saiu.returncode == 0 else base
+        antes = subprocess.run(["git", "-C", RAIZ, "show", base + ":complemento/configuracao.py"], capture_output=True, text=True)
+        iguais = subprocess.run(
+            ["git", "-C", RAIZ, "diff", "--quiet", base, "--", "complemento/versoes.json", "conexao/perpetualminer.ankiaddon"],
+            capture_output=True,
+        )
+    except OSError:
+        return False
+    versao_antes = re.search(r'^VERSAO = "([^"]+)"', antes.stdout, re.M)
+    with open(os.path.join(PASTA, "configuracao.py"), encoding="utf-8") as arquivo:
+        versao_de_hoje = re.search(r'^VERSAO = "([^"]+)"', arquivo.read(), re.M)
+    return bool(antes.returncode == 0 and iguais.returncode == 0 and versao_antes and versao_de_hoje
+                and versao_antes.group(1) == versao_de_hoje.group(1))
 
 
 def _entra_no_pacote(relativo):

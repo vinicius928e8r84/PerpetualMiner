@@ -40,6 +40,7 @@ Each feature file starts with an H1 and one paragraph of user-visible behavior, 
 - [The monthly cap](./anki-teto-do-mes.md): US$ 10 by default, per computer; 80% warning in the Painel, the Envio pauses at 100% with Ver Custos and no value, the cap is adjusted in Custos (#160).
 - [The Mac drawing in Ter o Anki](./anki-desenho-do-mac.md): after Não tenho on a Mac, two frames of the Anki dragged to Aplicativos, above the sentence; still and side by side with reduced motion (#238).
 - [The Conexão version notice](./conexao-versao.md): the Conexão updates itself through AnkiWeb (off until the terms are checked); the Painel notice for too old, failed, updated and Reiniciar o Anki (#177).
+- [Conectar este navegador ao Anki](./pareamento.md): the pairing of the browser with the Conexão (#192): the code in the Anki typed in the Painel, signed requests and answers, the impostor, Desconectar navegadores.
 - [Open the Anki with the computer](./anki-no-login.md): Configurações › Conexão com o Anki, the login-item switch.
 - [The fixed Anki profile](./anki-perfil.md): Configurações › Conexão com o Anki, the row Perfil do Anki; the Envio that waits on another open profile with Abrir <perfil> (#149).
 - [The Estilo do cartão](./anki-estilo.md): Ajustes de envio › Estilo do cartão, the level of each language (Iniciante, Intermediário, Avançado), the Cartão preview under the control and the Envio asking for the saved level (#162, #164), and its front (Frase com áudio, Ouvir primeiro, Lacuna, Produção, Ditado), swapped in the Anki by the Conexão on save (#166, #167).

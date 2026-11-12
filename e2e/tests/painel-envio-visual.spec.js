@@ -35,7 +35,8 @@ test.beforeEach(({ fakes }) => {
 });
 
 async function abrirFrases(page, extensao) {
-  await extensao.gravarStorage({ frases: FRASES });
+  // As referências mostram o Baralho de quem já escolheu CIMV e RUSSIAN, não o padrão de uma pessoa nova (#366).
+  await extensao.gravarStorage({ frases: FRASES, ankiBridgePresets: { en: { deckName: 'CIMV' }, ru: { deckName: 'RUSSIAN' } } });
   await page.clock.setFixedTime(AGORA);
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(extensao.url('painel.html#frases'));

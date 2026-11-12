@@ -10,6 +10,7 @@
 // gravado (a Frase), com a aba aberta desde antes.
 
 const { test, expect } = require('../fixtures');
+const DRU = 'PerpetualMiner::Russo';
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 
 const FRASE_RUSSA = 'Я улыбаюсь';
@@ -61,7 +62,7 @@ test('ontem no limite, o alarme da virada do dia: a aba aberta volta a minerar',
     // O vocabulário do Anki em cache, sem nenhuma palavra conhecida: a frase russa
     // tem um item novo só, então a mineração automática a aceita.
     pm_auto_keyword_vocab_ru: {
-      cacheVersion: 2, deckName: 'RUSSIAN', createdAt: Date.now(),
+      cacheVersion: 2, deckName: DRU, createdAt: Date.now(),
       words: [], terms: [], wordInfo: {}, termInfo: {},
     },
   });
@@ -104,7 +105,7 @@ test('a aba trata um estado de ontem no limite como zero, mesmo antes do alarme'
     pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 3 } },
     pm_auto_miner_daily: { date: diaDe(new Date(ontem)), en: { count: 0 }, ru: { count: 3 } },
     pm_auto_keyword_vocab_ru: {
-      cacheVersion: 2, deckName: 'RUSSIAN', createdAt: Date.now(),
+      cacheVersion: 2, deckName: DRU, createdAt: Date.now(),
       words: [], terms: [], wordInfo: {}, termInfo: {},
     },
   });

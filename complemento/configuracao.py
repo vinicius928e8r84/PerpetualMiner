@@ -1,6 +1,6 @@
 """O que a Conexão com o Anki sabe de si, num lugar só."""
 
-VERSAO = "0.4.24"
+VERSAO = "0.4.27"
 # A Conexão se atualiza sozinha pelo AnkiWeb (#177, `atualizacao.py`)? Ligado por padrão (decisão do dono). Quem não quer cria o arquivo
 # `user_files/sem-atualizacao-automatica` (`atualizacao.ARQUIVO_DE_QUEM_DESLIGOU`); trocar para False aqui desliga para todos, e o "Atualizar
 # agora" da extensão segue valendo em qualquer dos dois.

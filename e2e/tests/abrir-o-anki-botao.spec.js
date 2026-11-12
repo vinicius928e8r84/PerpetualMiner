@@ -6,6 +6,7 @@
 // nativo e o Playwright não o alcança (como em abrir-o-anki-sozinho.spec.js): a permissão dada vem do fixture.
 
 const { test, expect } = require('../fixtures');
+const DEN = 'PerpetualMiner::Inglês';
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 const contrato = require('../../complemento/contrato/exemplos.json');
 const { leituraDoVocabulario: leitura } = require('../leitura-do-vocabulario');
@@ -25,7 +26,7 @@ const abrirOAnki = lugar => lugar.getByRole('button', { name: /^Abrir o Anki$|^A
 const NAO_ABRIU = 'Não deu para abrir o Anki. Abra-o você mesmo.';
 
 test.beforeEach(({ fakes }) => {
-  fakes.anki.definirBaralho('CIMV', BARALHO_EN);
+  fakes.anki.definirBaralho(DEN, BARALHO_EN);
   fakes.anki.definirVocabulario('en', VOCABULARIO_EN);
 });
 
@@ -123,7 +124,7 @@ test.describe('com a permissão do abridor', () => {
       pm_anki_ja_conectou: true,
       pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 15 } },
       pm_auto_miner_daily: { date: dia, en: { count: 12 }, ru: { count: 0 } },
-      pm_auto_keyword_vocab_en: leitura('CIMV', ontem.getTime()),
+      pm_auto_keyword_vocab_en: leitura(DEN, ontem.getTime()),
     });
     await page.goto(extensao.url('popup.html'));
     await expect(page.getByText('Vocabulário de ontem, 14:02')).toBeVisible();
@@ -133,7 +134,7 @@ test.describe('com a permissão do abridor', () => {
     await expect.poll(() => aberturas(fakes)).toEqual([ABRIR]);
     fakes.anki.ligar();
     await expect(page.locator('#selo-vocabulario')).toBeHidden({ timeout: 10_000 });
-    await estadoFinal(extensao, { pm_auto_keyword_vocab_en: { deckName: 'CIMV' } });
+    await estadoFinal(extensao, { pm_auto_keyword_vocab_en: { deckName: DEN } });
   });
 
   test('o popup sem nenhuma leitura: o azulejo que espera o Anki tem Abrir o Anki', async ({ page, extensao, fakes }) => {
@@ -179,7 +180,7 @@ test.describe('sem a permissão do abridor', () => {
     await extensao.gravarStorage({
       pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 15 } },
       pm_auto_miner_daily: { date: dia, en: { count: 0 }, ru: { count: 0 } },
-      pm_auto_keyword_vocab_en: leitura('CIMV', ontem.getTime()),
+      pm_auto_keyword_vocab_en: leitura(DEN, ontem.getTime()),
     });
     await page.goto(extensao.url('popup.html'));
     await expect(page.locator('#selo-vocabulario')).toBeVisible();

@@ -1,10 +1,11 @@
 'use strict';
 
-// O overlay na página (#40): um componente Veio só, em Shadow DOM — o botão
-// flutuante e a pílula de feedback, que espera a resposta do service worker e
-// só diz o que foi confirmado. A marca sobre o texto (#41) está em overlay-marca.spec.js.
+// O overlay na página (#40): um componente Veio em Shadow DOM — o botão
+// flutuante e a pílula de feedback, que espera o service worker e só diz o
+// confirmado. A marca sobre o texto (#41) está em overlay-marca.spec.js.
 
 const fs = require('fs');
+const DRU = 'PerpetualMiner::Russo';
 const path = require('path');
 const { test, expect } = require('../fixtures');
 const { leituraDoVocabulario } = require('../leitura-do-vocabulario');
@@ -532,7 +533,7 @@ test('a mineração automática minera uma linha: MIN-06 na pílula, com o idiom
     // O vocabulário do Anki em cache, sem nenhuma palavra conhecida: a frase russa
     // tem um item novo só, então a mineração automática a aceita.
     pm_auto_keyword_vocab_ru: {
-      cacheVersion: 2, deckName: 'RUSSIAN', createdAt: Date.now(),
+      cacheVersion: 2, deckName: DRU, createdAt: Date.now(),
       words: [], terms: [], wordInfo: {}, termInfo: {},
     },
   });
@@ -574,7 +575,7 @@ const DOIS_DIAS = 2 * 24 * 3600_000;
 const mineracaoEmRussoComVocabulario = idadeMs => ({
   pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } },
   pm_auto_miner_daily: { date: hoje(), en: { count: 0 }, ru: { count: 0 } },
-  pm_auto_keyword_vocab_ru: leituraDoVocabulario('RUSSIAN', Date.now() - idadeMs),
+  pm_auto_keyword_vocab_ru: leituraDoVocabulario(DRU, Date.now() - idadeMs),
 });
 
 test('com a Conexão desligada, a mineração automática minera pela última leitura do vocabulário, de dois dias atrás', async ({ page, paginas, extensao, fakes }) => {
@@ -600,7 +601,7 @@ test('com a Conexão desligada e a última leitura de outro Baralho, a mineraç�
 
   await tocarALegenda(page, FRASE_RUSSA);
 
-  await expect.poll(() => fakes.anki.requisicoes.some(r => r.caminho === '/anki/vocabulary')).toBe(true);
+  await expect.poll(() => fakes.anki.pareamento.tentativas()).toContain('/pareamento/conferir'); // #192
   await page.waitForTimeout(1000);
   await expect(tituloDaPilula(page, MIN_06)).toBeHidden();
   expect(await textosGravados(extensao)).toEqual([]);

@@ -8,8 +8,14 @@ const assert = require('assert');
 
 globalThis.PerpetualMiner = {};
 require('./lib/sincronizacao.js');
+require('./lib/quiz-de-nivel.js');
 require('./lib/ranking.js');
 const { Ranking, Sincronizacao } = globalThis.PerpetualMiner;
+
+// A ordem dos níveis na nota é a do quiz, e só dele: o ranking carregado com outra lista ordena por ela (nenhuma cópia própria).
+const comOutrosNiveis = { PerpetualMiner: { Sincronizacao, QuizDeNivel: { NIVEIS: { A: 'basico', B: 'fluente' } } } };
+require('vm').runInNewContext(require('fs').readFileSync('./lib/ranking.js', 'utf8'), comOutrosNiveis);
+assert.strictEqual(comOutrosNiveis.PerpetualMiner.Ranking.nota({ nivel: 'fluente', acertos: 0, perguntas: 3 }), 1000);
 
 const resultado = (nivel, acertos, perguntas, melhorSequencia) => ({ nivel, acertos, perguntas, melhorSequencia });
 

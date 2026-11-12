@@ -1,0 +1,392 @@
+{
+  "navegadoresDeTeste": {
+    "primeiro": {
+      "cliente": "11111111-2222-4333-8444-555555555555",
+      "segredo": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="
+    },
+    "segundo": {
+      "cliente": "99999999-8888-4777-8666-555555555555",
+      "segredo": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8="
+    }
+  },
+  "vetorDeAssinatura": {
+    "segredo": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+    "sessao": "s3ss4o",
+    "nonce": "n0nc3",
+    "metodo": "POST",
+    "caminho": "/anki/vocabulary",
+    "corpo": "{\"deck\":\"Inglês\",\"lang\":\"en\"}",
+    "assinatura": "1xt1QHxqs+ws/+74kdpYF6jEiKepvyA3H9BNO79Lc1Q="
+  },
+  "vetorDaRevogacao": {
+    "segredo": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+    "desafio": "desafio-de-exemplo-0123456789abcdef",
+    "prova": "Odx606Q5BVHD0vr5i6Cnfy+FV1Aq8Sl88+tbEXEcJdE="
+  },
+  "exemplos": [
+    {
+      "nome": "conferir: o navegador pareado recebe a sessão e a prova de que a Conexão tem o segredo dele",
+      "daExtensao": true,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/conferir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "cliente": "11111111-2222-4333-8444-555555555555",
+          "desafio": "desafio-de-exemplo-0123456789abcdef"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "sessao": "<sessão>",
+          "prova": "<prova>"
+        }
+      }
+    },
+    {
+      "nome": "conferir: um navegador que a Conexão não conhece recebe 401 e nenhuma prova",
+      "daExtensao": true,
+      "contexto": {
+        "pareado": false
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/conferir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "cliente": "11111111-2222-4333-8444-555555555555",
+          "desafio": "desafio-de-exemplo-0123456789abcdef"
+        }
+      },
+      "resposta": {
+        "status": 401,
+        "json": {
+          "error": "pairing_required"
+        }
+      }
+    },
+    {
+      "nome": "conferir: o navegador que a pessoa desconectou no Anki recebe 401 e a prova da revogação, que só a Conexão que o desconectou sabe dar",
+      "daExtensao": true,
+      "contexto": {
+        "desconectado": true
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/conferir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "cliente": "11111111-2222-4333-8444-555555555555",
+          "desafio": "desafio-de-exemplo-0123456789abcdef"
+        }
+      },
+      "resposta": {
+        "status": 401,
+        "json": {
+          "error": "pairing_revoked",
+          "prova": "<prova>"
+        }
+      }
+    },
+    {
+      "nome": "conferir sem o desafio é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/conferir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "cliente": "11111111-2222-4333-8444-555555555555"
+        }
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "começar mostra o código no Anki e não o devolve",
+      "daExtensao": true,
+      "contexto": {
+        "pareado": false
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/comecar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "nome": "começar sem a janela do Anki não tem onde mostrar o código",
+      "daExtensao": true,
+      "contexto": {
+        "pareado": false,
+        "semTela": true
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/comecar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 503,
+        "json": {
+          "error": "pairing_unavailable"
+        }
+      }
+    },
+    {
+      "nome": "começar depois de três códigos que gastaram as tentativas: nenhum código novo por 15 minutos",
+      "daExtensao": true,
+      "contexto": {
+        "pareado": false,
+        "bloqueado": true
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/comecar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 429,
+        "json": {
+          "error": "pairing_locked"
+        }
+      }
+    },
+    {
+      "nome": "concluir com o código certo grava o navegador e entrega o segredo, uma vez",
+      "daExtensao": true,
+      "contexto": {
+        "pareado": false,
+        "codigoPendente": "K7M4PX"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/concluir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "codigo": "K7M-4PX",
+          "cliente": "11111111-2222-4333-8444-555555555555",
+          "nome": "Chrome"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "cliente": "11111111-2222-4333-8444-555555555555",
+          "segredo": "<segredo>"
+        }
+      }
+    },
+    {
+      "nome": "concluir com o código errado diz quantas tentativas restam",
+      "daExtensao": true,
+      "contexto": {
+        "pareado": false,
+        "codigoPendente": "K7M4PX"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/concluir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "codigo": "AAA-AAA",
+          "cliente": "11111111-2222-4333-8444-555555555555",
+          "nome": "Chrome"
+        }
+      },
+      "resposta": {
+        "status": 401,
+        "json": {
+          "error": "pairing_code_wrong",
+          "restam": 4
+        }
+      }
+    },
+    {
+      "nome": "concluir sem código pendente (venceu, foi cancelado ou nunca começou)",
+      "daExtensao": true,
+      "contexto": {
+        "pareado": false
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/concluir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "codigo": "K7M-4PX",
+          "cliente": "11111111-2222-4333-8444-555555555555",
+          "nome": "Chrome"
+        }
+      },
+      "resposta": {
+        "status": 410,
+        "json": {
+          "error": "pairing_code_expired"
+        }
+      }
+    },
+    {
+      "nome": "concluir com um código que outro navegador já usou",
+      "daExtensao": true,
+      "contexto": {
+        "pareado": false,
+        "codigoPendente": "K7M4PX",
+        "codigoUsadoPor": "99999999-8888-4777-8666-555555555555"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/concluir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "codigo": "K7M-4PX",
+          "cliente": "11111111-2222-4333-8444-555555555555",
+          "nome": "Chrome"
+        }
+      },
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "pairing_code_used"
+        }
+      }
+    },
+    {
+      "nome": "concluir sem o código é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/concluir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "nome": "sem a assinatura de um navegador pareado, nenhuma rota privada atende",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {},
+        "assinatura": "ausente"
+      },
+      "resposta": {
+        "status": 401,
+        "json": {
+          "error": "pairing_required"
+        }
+      }
+    },
+    {
+      "nome": "com a assinatura errada, nenhuma rota privada atende",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {},
+        "assinatura": "errada"
+      },
+      "resposta": {
+        "status": 401,
+        "json": {
+          "error": "pairing_invalid"
+        }
+      }
+    },
+    {
+      "nome": "assinado numa subida anterior da Conexão, o pedido pede um conferir novo",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/estado",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {},
+        "assinatura": "sessaoVelha"
+      },
+      "resposta": {
+        "status": 401,
+        "json": {
+          "error": "session_expired"
+        }
+      }
+    },
+    {
+      "nome": "começar com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/comecar",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "concluir com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/concluir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    },
+    {
+      "nome": "conferir com um corpo que não é JSON é recusado",
+      "daExtensao": false,
+      "contexto": {},
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/pareamento/conferir",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
+    }
+  ]
+}

@@ -8,6 +8,9 @@ const { responderJson } = require('./http');
 
 const RAIZ_DOS_DOCUMENTOS = 'projects/perpetualminer-4c219/databases/(default)/documents';
 const URL_DOS_DOCUMENTOS = `https://firestore.googleapis.com/v1/${RAIZ_DOS_DOCUMENTOS}`;
+// A entrada do Google recusa a URL com mais de 16 KB antes de o Firestore ler o pedido: 400 com uma página HTML
+// (medido no projeto de verdade: 16.381 bytes passam, 16.421 não).
+const LIMITE_DA_URL = 16 * 1024;
 
 function criarFakeGoogle() {
   const documentos = new Map();   // 'usuarios/uid/frases/123' → fields
@@ -46,6 +49,9 @@ function criarFakeGoogle() {
     const caminhoCompleto = decodeURIComponent(url.origin + url.pathname).replace(URL_DOS_DOCUMENTOS, '');
     const metodo = req.method();
 
+    if (req.url().length > LIMITE_DA_URL) {
+      return route.fulfill({ status: 400, contentType: 'text/html; charset=UTF-8', body: '<!DOCTYPE html><title>Error 400 (Bad Request)!!1</title>' });
+    }
     if (foraDoAr) return responderJson(route, 503, { error: { code: 503, status: 'UNAVAILABLE', message: 'The service is currently unavailable.' } });
     if (acessoRecusado) {
       return responderJson(route, 403, { error: { code: 403, status: 'PERMISSION_DENIED', message: 'Missing or insufficient permissions.' } });

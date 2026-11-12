@@ -3,9 +3,9 @@
 const { test, expect } = require('../fixtures');
 const { AGORA, INGLESAS, RUSSA, SACK, ARM, LATE, abrirPainel, cartao, marcar, enviarAoAnki, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados, pedirConferenciaDaConexao } = require('../apoio-do-envio');
 
-// veio/tokens.css zera toda transição com movimento reduzido. O cartão é desenhado de novo
-// assim que o Envio ganha o jobId; num elemento que já saiu da página o estilo calculado vem vazio
-// (NaN), então se espera o valor, não o elemento.
+// veio/tokens.css zera toda transição com movimento reduzido. O cartão é redesenhado
+// quando o Envio ganha o jobId; num elemento que saiu da página o estilo calculado
+// vem vazio (NaN), então espera-se o valor.
 async function transicaoCurta(locator) {
   await expect(locator).toBeAttached();
   await expect.poll(() => locator.evaluate(el => parseFloat(getComputedStyle(el).transitionDuration)))
@@ -299,7 +299,7 @@ test('bug #9: as duplicatas do Anki aparecem como “já estavam no Anki”, nã
   await expect(resumo(page)).toHaveAccessibleName('Envio concluído');
   await expect(resumo(page)).toContainText('3 frases · 1 baralho');
   await expect(baralho(page, 'Inglês')).toContainText('+2 cartões');
-  await expect(baralho(page, 'Inglês')).toContainText('no baralho CIMV');
+  await expect(baralho(page, 'Inglês')).toContainText('no baralho PerpetualMiner › Inglês');
   await expect(baralho(page, 'Inglês')).toContainText('1 já estava lá');
   await expect(baralho(page, 'Inglês')).not.toContainText('não entr');
   await expect(resumo(page)).toContainText('Tirar as 2 enviadas do histórico?');
