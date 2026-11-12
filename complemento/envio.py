@@ -137,16 +137,6 @@ class Fila(EnviosDosCustos):
         with self.tranca:
             return _ler_json(self._arquivo_do_estado(job_id), {})
 
-    def listar(self):
-        """Cada Envio da fila, na ordem, com o `status` do estado."""
-        with self.tranca:
-            lista = []
-            for item in self.ordem():
-                estado = self.estado(item["jobId"])
-                lista.append(dict(
-                    item, status=estado.get("status", QUEUED), updatedAt=estado.get("updatedAt", item.get("createdAt")), state=estado))
-            return lista
-
     def item_da_fila(self, job_id):
         return next((item for item in self.ordem() if item.get("jobId") == job_id), None)
 
