@@ -60,7 +60,7 @@ class NaPassagem:
         time.sleep(0.005)
 
     def novo_arquivos(self):
-        return sorted(n for n in self.novo.arquivos() if not n.startswith("logs"))
+        return sorted(n for n in self.novo.arquivos() if not n.startswith("logs") and n != "pareamento.json")
 
     def fotografar(self):
         """O que já está guardado aqui no instante em que a Conexão de hoje é encerrada."""

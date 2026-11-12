@@ -63,7 +63,7 @@ test('com o inglês ligado, o passo mostra o Iniciante e a prévia do Cartão; e
   await expect(cartao(page, 'Inglês')).not.toContainText(INICIANTE);
 
   await expect(itemDaLista(page, 'Escolher o nível do cartão')).toHaveAccessibleName(/feito$/);
-  expect(pedidosDaPrevia(fakes)).toEqual([{ lang: 'en', nivel: 'iniciante' }, { lang: 'en', nivel: 'intermediario' }]);
+  await expect.poll(() => pedidosDaPrevia(fakes)).toEqual([{ lang: 'en', nivel: 'iniciante' }, { lang: 'en', nivel: 'intermediario' }]);
   // Só o nível do inglês foi salvo; o russo não foi tocado (versão 0, o Iniciante).
   await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'intermediario', versao: 1 }, ru: { nivel: 'iniciante', versao: 0 } } });
 });
@@ -109,7 +109,7 @@ test('com os dois idiomas ligados, cada um tem o seu nível e a sua prévia', as
   await expect(cartao(page, 'Russo')).toContainText('To come or to arrive on foot');
   await expect(cartao(page, 'Russo')).not.toContainText('Eu não sou um menino!');
   await expect(itemDaLista(page, 'Escolher o nível do cartão')).toHaveAccessibleName(/feito$/);
-  expect(pedidosDaPrevia(fakes)).toEqual(expect.arrayContaining([{ lang: 'ru', nivel: 'iniciante' }, { lang: 'en', nivel: 'avancado' }, { lang: 'ru', nivel: 'intermediario' }]));
+  await expect.poll(() => pedidosDaPrevia(fakes)).toEqual(expect.arrayContaining([{ lang: 'ru', nivel: 'iniciante' }, { lang: 'en', nivel: 'avancado' }, { lang: 'ru', nivel: 'intermediario' }]));
   await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'avancado', versao: 1 }, ru: { nivel: 'intermediario', versao: 1 } } });
 });
 
