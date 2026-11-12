@@ -5,6 +5,7 @@
 // estado desconhecido, e a tela não afirma o fechado. O que fica gravado diz o mesmo (`ankiFechado: false`).
 
 const { test, expect } = require('../fixtures');
+const DEN = 'PerpetualMiner::Inglês';
 
 const AGORA = new Date('2026-09-18T12:00:00');
 const BARALHO_EN = { palavras: 3412, cartoes: 2140, termos: 1870, porCartao: 1.62, novos: 310, aprendendo: 20, recentes: 400, maduros: 1410 };
@@ -13,7 +14,7 @@ const VOCABULARIO_EN = [{ word: 'barely', maduros: 6 }, { word: 'eerie', novos: 
 const lerGravado = async (extensao, chave) => (await extensao.lerStorage(chave))[chave];
 
 test.beforeEach(({ fakes }) => {
-  fakes.anki.definirBaralho('CIMV', BARALHO_EN);
+  fakes.anki.definirBaralho(DEN, BARALHO_EN);
   fakes.anki.definirVocabulario('en', VOCABULARIO_EN);
 });
 

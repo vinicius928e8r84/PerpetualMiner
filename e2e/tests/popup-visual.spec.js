@@ -11,6 +11,7 @@
 // O popup tem 340 px de largura e teto de 600 px, como no balão do ícone.
 
 const { test, expect } = require('../fixtures');
+const DEN = 'PerpetualMiner::Inglês';
 const { leituraDoVocabulario: leitura } = require('../leitura-do-vocabulario');
 
 // O Contexto diz o dia da frase (PAI-11): o relógio fica parado no dia delas.
@@ -86,7 +87,7 @@ test('Conexão com o Anki desligada, com a leitura de ontem: o azulejo segue con
     frases: FRASES,
     ...DIA_NORMAL,
     pm_anki_ja_conectou: true,
-    pm_auto_keyword_vocab_en: leitura('CIMV', new Date('2026-09-17T14:02:00').getTime()),
+    pm_auto_keyword_vocab_en: leitura(DEN, new Date('2026-09-17T14:02:00').getTime()),
   });
   await abrirPopup(page, extensao);
   await expect(page.getByText('Vocabulário de ontem, 14:02')).toBeVisible();

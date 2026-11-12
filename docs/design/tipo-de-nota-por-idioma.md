@@ -24,7 +24,7 @@ não diz não foi decidido. Spec: o [#138](https://github.com/vinicius928e8r84/P
 | os Baralhos nossos | a coleção do Anki | nenhum | criados a quem já tem Baralho |
 | os Cartões e Baralhos antigos (o “Básico” do dono) | a coleção do Anki, da pessoa | nenhum | renomeados, convertidos ou apagados pela Conexão |
 | o estilo (idioma × nível) | `engine/estilos.json`, no pacote da Conexão | nenhum | lido da extensão: o nível vem no pedido do Envio (`nivel`, #162); a prévia (#164) lê o estilo do mesmo arquivo |
-| o Baralho de cada Envio | a extensão (Ajustes de envio, `deckName` do pedido) | a Conexão, só dentro do Envio | decidido pela Conexão: o padrão da extensão segue `CIMV`/`RUSSIAN` até um ticket seguinte |
+| o Baralho de cada Envio | a extensão (Ajustes de envio, `deckName` do pedido) | a Conexão, só dentro do Envio | decidido pela Conexão: o padrão da extensão é `PerpetualMiner::Inglês`/`PerpetualMiner::Russo`, os Baralhos que a Conexão cria (#366) |
 
 ## 2. Estados
 
@@ -62,7 +62,7 @@ Não há tela nova: a pessoa vê o resultado no Anki (Ferramentas › Gerenciar 
 
 ## 5. Limites aceitos
 
-- O Baralho que a extensão usa por padrão continua `CIMV`/`RUSSIAN` (`lib/ajustes-de-envio.js`); apontá-lo para os Baralhos novos é de um ticket seguinte (Boas-vindas e Ajustes de envio, #164 e #173). Mudar o padrão hoje trocaria o Baralho do dono, sem que ele escolhesse.
+- O Baralho padrão da extensão é `PerpetualMiner::Inglês`/`PerpetualMiner::Russo` (`lib/ajustes-de-envio.js`, #366): os que a Conexão cria. Quem já gravou outro (o dono, `CIMV`/`RUSSIAN`) o mantém.
 - A Conexão não avalia o conteúdo de um tipo que a pessoa já nomeou como o nosso (só confere os campos que grava): ela o deixa como está.
 - A lista de Baralhos dos Ajustes de envio (`/anki/decks`) esconde só o nome “Default”: num Anki em português o “Padrão” aparece na lista. É de antes desta fatia.
 - A voz de um idioma novo (`tts.profiles` do `config.json`) segue a escrita do texto (cirílico ou não): um terceiro idioma por dados fala com a voz do inglês até a voz também ser dado.

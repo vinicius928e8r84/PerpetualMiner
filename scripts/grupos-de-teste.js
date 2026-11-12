@@ -91,7 +91,17 @@ function dicaDeModulo(nome, grupo, saidaDeErro, python) {
     + (precisa ? `; o grupo precisa de: ${precisa}` : '') + preparo;
 }
 
+/**
+ * A base de `PM_VERSAO_BASE` (complemento/empacotar.py `versao_vem_no_merge`): numa branch de trabalho a versão é dada no merge,
+ * então o hash e o `.ankiaddon` só são conferidos na main. O CI de uma PR passa a sua (HEAD^1), o da main não passa nenhuma.
+ * `ramo` é o da árvore ('HEAD' solta); null quando não há o que pular.
+ */
+function baseDaVersao(env, ramo, temOrigemMain) {
+  if (env.PM_VERSAO_BASE !== undefined || env.CI || !temOrigemMain) return null;
+  return ramo && ramo !== 'main' && ramo !== 'HEAD' ? 'origin/main' : null;
+}
+
 module.exports = {
   ARQUIVO_DO_REGISTRO, ehArquivoDeTeste, padraoComoRegex, padroesDoGrupo, arquivosDoGrupo, lerRegistro, grupoDoArquivo,
-  escolherPython, dicaDeModulo,
+  escolherPython, dicaDeModulo, baseDaVersao,
 };
