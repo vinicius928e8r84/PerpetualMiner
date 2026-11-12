@@ -5,6 +5,7 @@ Configurações › Conta & sync is where a person signs in with Google, sees wh
 ## Sub-features
 
 - `conta-states`: the card, the chip and the closed row's summary say the same state for CFG-01…04 and CFG-06…08: Sincronizado (name, green dot, Sair da conta, the note), Sincronizando (while the cloud does not answer), Sem sincronizar (Tentar de novo and Detalhes), Nuvem recusou (Sair da conta becomes a normal button; Detalhes carries Firestore's message), Sessão expirou (Entrar goes to the login and syncs again), Sem conta, Login falhou (error in the card with Tentar de novo and Detalhes; the chip stays without an account).
+- `conta-clock`: “Sincronizado há N min” (CFG-02) counts from the last time the panel became in sync. Coming back to the panel tab only checks the OpenAI key with the Conexão; it does not restart the clock.
 - `conta-nameless`: a profile with no name (CFG-10): the card, the closed row's summary and the chip say “Conta Google”.
 - `conta-first-upload`: signing in with phrases on this computer shows “Sincronizando N frases…” and uploads all of them; when that fails, only the card and the chip say “Não deu para sincronizar suas frases” and trying again uploads all.
 - `conta-partial`: “8 de 10 frases sincronizadas · 2 ficaram só neste computador”, and the chip “8 de 10 sincronizadas”; the count is of this computer's phrases, not the cloud's. Editing, mining or deleting during the upload does not lose the phrases still waiting, and a retry undoes no edit.
@@ -23,6 +24,7 @@ Configurações › Conta & sync is where a person signs in with Google, sees wh
 Each line is `scripts/drive.sh <run-id> <command>`; the filters are regexes (SKILL.md § Drive), kept literal.
 
 - `conta-states`: `configuracoes-conta.spec -g "Sincronizado \(CFG-02\)|Sincronizando \(CFG-01\)|Sem sincronizar \(CFG-03\)|Nuvem recusou|Sessão expirou|Sem conta \(CFG-06\)|Login falhou"`
+- `conta-clock`: `configuracoes-conta-relogio.spec` (the clock is stopped by `relogioParado`; the spec fires the `visibilitychange` Chrome would fire). Observable: after 2 min 30 s, the return to the tab and 1 more minute, the chip says `Sincronizado há 3 min`.
 - `conta-nameless`: `configuracoes-conta.spec -g "Perfil sem nome \(CFG-10\)"`
 - `conta-first-upload`: `configuracoes-conta.spec -g "Primeira subida"`
 - `conta-partial`: `configuracoes-conta.spec -g "Sync parcial"`

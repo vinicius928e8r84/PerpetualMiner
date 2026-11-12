@@ -29,7 +29,7 @@ class APassagemCopiaSemMoverNada(unittest.TestCase):
         self.addCleanup(antiga.parar)
         antiga.terminar(ID, [10])
         antes = antiga.fotografia()
-        nova = NaPassagem(pasta.name, antiga, colecao=ColecaoEmMemoria({"baralhos": []}, perfis=("Usuário 1", "Ingles - Vinicius"), perfil_aberto="Usuário 1"))
+        nova = NaPassagem(pasta.name, antiga, colecao=ColecaoEmMemoria({"baralhos": []}, perfis=("Usuário 1", "Ingles - Ana"), perfil_aberto="Usuário 1"))
         nova.__enter__()
         self.addCleanup(nova.__exit__, None, None, None)
         self.antes, self.antiga, self.nova = antes, antiga, nova.passar()
@@ -88,7 +88,7 @@ class APassagemCopiaSemMoverNada(unittest.TestCase):
 
     def test_o_perfil_da_configuracao_de_hoje_vira_o_perfil_marcado_e_so_ele_e_aproveitado(self):
         nova = self.passar()
-        self.assertEqual(nova.conexao.perfil_fixo.marcado(), "Ingles - Vinicius")
+        self.assertEqual(nova.conexao.perfil_fixo.marcado(), "Ingles - Ana")
         self.assertEqual(sorted(n for n in nova.novo.arquivos() if n.startswith(("perfil", "config"))), ["perfil.json"])
 
     def test_um_perfil_que_o_anki_nao_tem_nao_e_marcado(self):
@@ -148,7 +148,7 @@ class OsCartoesDeAntesFicamComoEstao(unittest.TestCase):
             {"nome": "CIMV", "notas": [{"frente": "She <b>gave up</b> smoking[sound:antigo.mp3]", "verso": "gave up - /x/"}]},
             {"nome": "RUSSIAN", "notas": [{"frente": "Я не мальчик![sound:antigo.mp3]", "verso": "eu não sou menino"}]},
         ]}
-        colecao = ColecaoEmMemoria(antigos, perfis=("Usuário 1", "Ingles - Vinicius"), perfil_aberto="Ingles - Vinicius")
+        colecao = ColecaoEmMemoria(antigos, perfis=("Usuário 1", "Ingles - Ana"), perfil_aberto="Ingles - Ana")
         with tempfile.TemporaryDirectory() as pasta, ConexaoAntigaDeMentira(pasta) as antiga:
             antiga.envio(ID, "queued", [(10, LINHA)], baralho="CIMV")
             antiga.envio(OUTRO_ID, "queued", [(20, "Я не мальчик! [Context: Série - Episódio 1]")], lang="ru", baralho="RUSSIAN")
