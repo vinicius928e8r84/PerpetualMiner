@@ -12,8 +12,8 @@ const CODIGO = [/^e2e\//, /^\.github\//, /^scripts\//, /^lib\//, /^veio\//, /^co
 
 // A suíte e2e lê estes arquivos de documentação (docs/design/voz/README.md em
 // catalogo-da-voz.spec.js, os assets da marca em base-veio.spec.js, as imagens da loja em
-// e2e/loja/): mudá-los muda o que ela confere.
-const LIDOS_PELA_SUITE = [/^docs\/design\/voz\//, /^docs\/design\/identidade-veio\//, /^docs\/loja\//];
+// e2e/loja/, o cartão do russo em cartao-do-russo-visual.spec.js): mudá-los muda o que ela confere.
+const LIDOS_PELA_SUITE = [/^docs\/design\/voz\//, /^docs\/design\/identidade-veio\//, /^docs\/loja\//, /^docs\/design\/cartao-do-russo\.html$/];
 
 // O que é documentação, e só com estas extensões: texto em qualquer pasta, e em docs/ também as
 // imagens e os protótipos em HTML que ilustram o texto. `.agents/` e `.claude/` guardam scripts

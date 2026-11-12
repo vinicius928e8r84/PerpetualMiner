@@ -1,6 +1,6 @@
 # Inventário UI — painel.html: shell + "Frases mineradas" + modais
 
-Repo: `/mnt/c/Users/sadvi/Desktop/MineradorLegendas` (HEAD `42994e0`). Auditoria somente leitura.
+Repo: `/mnt/c/Users/<usr>/Desktop/MineradorLegendas` (HEAD `42994e0`). Auditoria somente leitura.
 Arquivos: `painel.html` (617 l.), `painel.css` (2040 l.), `painel.js` (2739 l.). Comparado com `popup.html/js`, `bookreader.html/js`, `background.js`, `bridge/server.py`.
 
 Legenda de status: **working** = funciona · **broken** = tem handler mas comportamento errado/enganoso · **orphan** = sem handler ou handler aponta p/ elemento inexistente · **dead** = nunca aparece / caminho inalcançável / sobrescrito.
