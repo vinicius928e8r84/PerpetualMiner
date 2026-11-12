@@ -103,8 +103,11 @@
 
   function mostrarSincronizacao(situacao, dados = {}) {
     if (!COMO_APARECE[situacao]) throw new Error(`Situação de sincronização desconhecida: ${situacao}`);
+    // O relógio de “Sincronizado há N min” só recomeça quando o painel volta a ficar em dia: mostrar de novo o
+    // mesmo estado (a chave da OpenAI conferida ao voltar à aba) não é uma sincronização nova.
+    const jaEmDiaDesde = estado.sincronizacao?.situacao === SITUACOES.SINCRONIZADO ? estado.sincronizacao.sincronizadoEm : null;
     estado.sincronizacao = { ...dados, situacao };
-    if (situacao === SITUACOES.SINCRONIZADO) estado.sincronizacao.sincronizadoEm = Date.now();
+    if (situacao === SITUACOES.SINCRONIZADO) estado.sincronizacao.sincronizadoEm = jaEmDiaDesde ?? Date.now();
     desenhar();
   }
 

@@ -95,7 +95,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     # Um worker por runner de 2 núcleos: com dois, o Chromium de cada teste disputa o
     # processador e os testes sensíveis a tempo (relógios, transições) falham sem motivo.
-    # Uma fatia leva de 5 a 12 minutos num runner livre; 40 deixa passar um runner carregado e ainda impede que uma travada gaste 45.
+    # Uma fatia leva uns 5 minutos num runner livre; 40 deixa passar um runner carregado e ainda impede que uma travada gaste 45.
     timeout-minutes: 40
     env:
       # Na dúvida a fatia roda; o passo "Classificar a mudança" troca por false (PR só de documentação, push na main).
@@ -135,8 +135,10 @@ jobs:
       # A DejaVu é a única fonte que o Chromium dos testes enxerga (e2e/fontconfig).
       - if: env.RODAR == 'true'
         run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+      # Os specs desta fatia: scripts/ci/fatias-e2e.json, montadas pela duração de cada spec (o --shard do Playwright
+      # divide pelo número de testes, e uma fatia levava 9 minutos enquanto outra levava 3).
       - if: env.RODAR == 'true'
-        run: xvfb-run --auto-servernum node scripts/testar.mjs e2e -- --workers=1 --shard=${{ matrix.fatia }}/8
+        run: xvfb-run --auto-servernum node scripts/testar.mjs e2e -- --workers=1 $(node scripts/ci/fatias-e2e.js ${{ matrix.fatia }})
       # Quem falhou e passou na repetição (retries em e2e/playwright.config.js) aparece
       # como aviso e no resumo do job, para a repetição não esconder a instabilidade.
       - name: Testes instáveis
