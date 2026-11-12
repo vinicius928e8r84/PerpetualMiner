@@ -47,7 +47,7 @@
     var escritas = palavras(frase);
     var radicalDado = normalizar(raiz).replace(/[^\p{L}\p{N}]/gu, '');
     if (radicalDado.length >= 2 && escritas.some(function (escrita) { return escrita.indexOf(radicalDado) !== -1; })) return true;
-    var procuradas = palavras(palavra);
+    var procuradas = palavras(String(palavra || '').split(/\s+[\u2013\u2014-]\s+\//)[0]); // o campo traz a pronúncia depois da Palavra (“give up – /ɡeɪv ʌp/”)
     if (!procuradas.length) return false;
     var radicais = escritas.map(radical);
     return procuradas.every(function (procurada) {
