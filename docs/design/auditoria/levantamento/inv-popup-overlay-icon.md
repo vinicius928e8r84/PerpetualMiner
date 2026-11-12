@@ -1,6 +1,6 @@
 # UI inventory: popup, in-page overlay, toolbar icon
 
-Repo: `/mnt/c/Users/sadvi/Desktop/MineradorLegendas` (HEAD 42994e0). This was a read-only audit; no repo files were changed.
+Repo: `/mnt/c/Users/<usr>/Desktop/MineradorLegendas` (HEAD 42994e0). This was a read-only audit; no repo files were changed.
 
 Status legend: **working** = wired and functional · **broken** = wired but misbehaves · **orphan** = no handler, or a handler/asset with nothing attached · **dead** = never shown or never reached.
 

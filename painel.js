@@ -2,7 +2,7 @@
 
 // A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
 // deste arquivo, pelo painel.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
-const { ehRussa, IDIOMAS, textoDaVoz, Atalhos, AjustesDeEnvio, Mineracao } = PerpetualMiner;
+const { ehRussa, detectarIdioma, IDIOMAS, textoDaVoz, Atalhos, AjustesDeEnvio, Mineracao } = PerpetualMiner;
 // O nome da Fonte e o dia da frase, os mesmos do popup (lib/contexto.js).
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
 // A lista de Frases é montada com os componentes da Base Veio (veio/componentes.js).
@@ -816,7 +816,7 @@ function montarCartao(f) {
  */
 function escreverPalavras(no, f) {
   const ativas = new Set((keywords[f.id] || []).filter(w => w !== '|'));
-  escreverFraseClicavel(no, tokenizarFrase(f.texto || '').map((tok, idx) => tok.isWord
+  escreverFraseClicavel(no, Mineracao.tokenizar(f.texto || '').map((tok, idx) => tok.isWord
     ? {
       texto: tok.text,
       palavra: true,
@@ -981,7 +981,7 @@ function toggleWord(id, wordIdx, wordClean) {
     newLastSeg = [];
   } else {
     // Reconstrói em ordem de aparição na frase
-    const tokens = tokenizarFrase(frase.texto);
+    const tokens = Mineracao.tokenizar(frase.texto);
     newLastSeg = tokens
       .map((t, i) => (t.isWord && selected.has(`${t.clean}@${i}`)) ? `${t.clean}@${i}` : null)
       .filter(Boolean);
@@ -1073,7 +1073,11 @@ function terminarEdicaoDeTexto(salvar) {
 function salvarTextoFrase(id, novoTexto) {
   const idx = todasFrases.findIndex(f => f.id === id);
   if (idx < 0) return;
-  todasFrases[idx] = { ...todasFrases[idx], texto: novoTexto };
+  // A Palavra que saiu do texto sai da frase, a que ficou ganha a posição nova, e o idioma é o do texto novo.
+  const palavras = Mineracao.palavrasQueFicam(keywords[id], novoTexto);
+  if (palavras.length) keywords[id] = palavras;
+  else delete keywords[id];
+  todasFrases[idx] = { ...todasFrases[idx], texto: novoTexto, idioma: detectarIdioma(novoTexto), keywords: palavras };
   chrome.storage.local.set({ frases: todasFrases });
   salvarFraseFirestore(todasFrases[idx]);
   aplicarFiltro();
@@ -1408,13 +1412,6 @@ function salvarContextoDeUmaFrase(id, { fonte, titulo, detalhe }) {
     aplicarFiltro();
   });
   salvarFraseFirestore(todasFrases[idx]);
-}
-
-function tokenizarFrase(texto) {
-  return (texto.match(/[\p{L}\p{N}]+(?:[-'][\p{L}\p{N}]+)*|[^\p{L}\p{N}]/gu) || []).map(tok => {
-    const isWord = /[\p{L}\p{N}]/u.test(tok);
-    return { text: tok, isWord, clean: isWord ? tok.toLowerCase() : null };
-  });
 }
 
 // [Minerar frases ▾] no cabeçalho abre o menu Colar · Arquivo .txt · Foto.
@@ -1804,7 +1801,7 @@ function palavrasDoTxt(frase) {
 function linhaDoTxt(frase) {
   const texto = frase.texto.replace(/\s+/g, ' ').trim();
   const palavra = palavrasDoTxt(frase).split(' | ')
-    .filter(grupo => palavrasNoTexto(grupo, texto))
+    .filter(grupo => Mineracao.palavrasNoTexto(grupo, texto))
     .join(' | ');
   // Um “ : ” no texto, ou um “ :” no fim dele, seria lido como o fim da Palavra.
   const precisaDoPrefixoVazio = `${texto} `.includes(' : ') || texto.startsWith(':');
@@ -1860,7 +1857,7 @@ function lerLinhaDoTxt(linha) {
       const depois  = resto.slice(separador + 3).trim();
       // “palavra : [Contexto: …]”: a Palavra sem frase não é uma linha que dê para ler.
       if (ctx && !depois) return null;
-      const achadas = palavrasNoTexto(prefixo, depois);
+      const achadas = Mineracao.palavrasNoTexto(prefixo, depois);
       if (achadas) { texto = depois; palavras = achadas; }
     }
   }
@@ -1888,31 +1885,6 @@ function lerContextoDoTxt(texto) {
     return { fonte: limpo(partes[0]), titulo: limpo(partes[1]), detalhe: limpo(partes[2]) };
   }
   return { fonte: limpo(partes[0]), titulo: limpo(partes.slice(1, -1).join(' - ')), detalhe: limpo(partes.at(-1)) };
-}
-
-/**
- * As Palavras de volta com a posição na frase (`word@índice`, `|` entre os
- * grupos), ou `null` se alguma não está no texto. Uma palavra repetida no
- * texto volta na primeira vez que aparece depois da anterior do mesmo grupo.
- */
-function palavrasNoTexto(prefixo, texto) {
-  const grupos = prefixo.split('|')
-    .map(g => g.trim().split(/\s+/).filter(Boolean).map(w => w.toLowerCase()))
-    .filter(g => g.length > 0);
-  if (grupos.length === 0 || !texto) return null;
-  const tokens = tokenizarFrase(texto);
-  const palavras = [];
-  for (const grupo of grupos) {
-    if (palavras.length > 0) palavras.push('|');
-    let depoisDe = 0;
-    for (const palavra of grupo) {
-      const i = tokens.findIndex((t, idx) => idx >= depoisDe && t.isWord && t.clean === palavra);
-      if (i < 0) return null;
-      palavras.push(`${palavra}@${i}`);
-      depoisDe = i + 1;
-    }
-  }
-  return palavras;
 }
 
 function sanitizarCampo(val) {

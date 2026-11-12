@@ -31,6 +31,7 @@ assert.strictEqual(soDocumentacao([]), false);
 assert.strictEqual(soDocumentacao(['docs/design/voz/README.md']), false);
 assert.strictEqual(soDocumentacao(['docs/design/identidade-veio/assets/veio.svg']), false);
 assert.strictEqual(soDocumentacao(['docs/loja/pequena.png']), false);
+assert.strictEqual(soDocumentacao(['docs/design/cartao-do-russo.html']), false, 'e2e/tests/cartao-do-russo-visual.spec.js fotografa esta página');
 
 // Nada que a suíte, o CI ou a extensão usam passa por documentação, nem com extensão de texto.
 assert.strictEqual(soDocumentacao(['e2e/pages/fixture.md']), false);
