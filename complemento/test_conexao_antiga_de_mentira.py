@@ -23,7 +23,7 @@ def _gravar(caminho, texto):
 
 
 class ConexaoAntigaDeMentira:
-    def __init__(self, pasta, perfil="Ingles - Vinicius", chave="sk-proj-chave-do-dono-0001", prompts=None):
+    def __init__(self, pasta, perfil="Ingles - Ana", chave="sk-proj-chave-do-dono-0001", prompts=None):
         self.raiz = os.path.join(pasta, "projeto")
         self.motor = os.path.join(self.raiz, "engine")
         self.jobs = os.path.join(self.raiz, "bridge", "runtime", "jobs")

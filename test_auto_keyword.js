@@ -60,7 +60,7 @@ function loadBackground(storage = {}) {
 function vocabulary({ words = [], terms = [], wordInfo = {}, termInfo = {} } = {}) {
   return {
     cacheVersion: 2,
-    deckName: 'CIMV',
+    deckName: 'PerpetualMiner::Inglês',
     createdAt: Date.now(),
     words,
     terms,
@@ -89,7 +89,7 @@ async function englishKeywords(text, vocab = vocabulary({ words: BASE_KNOWN_WORD
 function russianVocabulary({ words = [], terms = [], wordInfo = {}, termInfo = {} } = {}) {
   return {
     ...vocabulary({ words, terms, wordInfo, termInfo }),
-    deckName: 'RUSSIAN',
+    deckName: 'PerpetualMiner::Russo',
   };
 }
 
@@ -147,6 +147,38 @@ async function russianManualSaveDoesNotAutoKeyword() {
   assert.ok(!Object.prototype.hasOwnProperty.call(frase, 'autoKeyword'), 'Manual Russian save should not mark autoKeyword');
 }
 
+async function baralhoGravadoQueNaoRespondeNaoViraVocabularioVazio() {
+  // A pessoa gravou o Baralho CIMV; a Conexão não o lê (503) e o Baralho padrão novo nem existe (200, vazio).
+  const pedidos = [];
+  const respostas = {
+    CIMV: { ok: false, status: 503, json: async () => ({}) },
+    'PerpetualMiner::Inglês': { ok: true, status: 200, json: async () => ({ words: [], source: 'anki' }) },
+  };
+  const storage = { ankiBridgePresets: { en: { deckName: 'CIMV' } } };
+  const context = loadBackground(storage);
+  // O pedido sai assinado por um navegador pareado; aqui a assinatura não é o assunto, só o que vai ao fetch.
+  context.PerpetualMiner.PareamentoComOAnki = {
+    pedirAssinado: async (endereco, pedido, opcoes, enviar) => enviar(endereco, pedido, JSON.stringify(pedido.corpo), opcoes),
+  };
+  context.fetch = async (_url, opcoes) => {
+    const { deck } = JSON.parse(opcoes.body);
+    pedidos.push(deck);
+    return respostas[deck];
+  };
+
+  const semLeitura = await context.getAutoKeywordVocabulary('en');
+  assert.strictEqual(semLeitura.available, false, 'sem leitura boa, o vocabulário não está disponível');
+  assert.deepStrictEqual(pedidos, ['CIMV'], 'só o Baralho gravado é pedido, nunca o padrão no lugar dele');
+  assert.ok(!('pm_auto_keyword_vocab_en' in storage), 'nada vazio vai para o cache');
+
+  // Com uma leitura boa e vencida daquele Baralho, a falha devolve essa leitura e não a troca.
+  const velha = { ...vocabulary({ words: ['gruel'] }), deckName: 'CIMV', createdAt: 1 };
+  storage.pm_auto_keyword_vocab_en = velha;
+  const renovado = await context.getAutoKeywordVocabulary('en');
+  assert.ok(renovado.words.has('gruel'), 'a última leitura boa continua valendo');
+  assert.strictEqual(storage.pm_auto_keyword_vocab_en, velha, 'o cache segue com a leitura boa');
+}
+
 async function run() {
   assert.strictEqual(
     display(await englishKeywords('Its dependence on rain left it exposed to the depredations of drought.')),
@@ -176,6 +208,7 @@ async function run() {
   const capped = await englishKeywords('Weaning children required gruel around the clock.');
   assert.strictEqual(capped.filter(item => item === '|').length, 1, 'normal English auto keyword is capped at two groups');
 
+  await baralhoGravadoQueNaoRespondeNaoViraVocabularioVazio();
   await russianAutoMinerStorage();
   await russianManualSaveDoesNotAutoKeyword();
 }

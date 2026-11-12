@@ -26,6 +26,7 @@ RAIZ = os.path.dirname(AQUI)
 ARQUIVO_NO_PACOTE_DA_EXTENSAO = os.path.join(RAIZ, "conexao", "perpetualminer.ankiaddon")
 
 
+PULA_NA_PR = unittest.skipIf(empacotar.versao_vem_no_merge(), empacotar.DADA_NO_MERGE)
 CODIGO_DO_ANKIWEB = "1108882947"
 
 
@@ -186,19 +187,20 @@ class VersaoDoComplemento(unittest.TestCase):
     """`versoes.json` guarda o hash das fontes do pacote (comentários inclusos: são bytes que o Anki instala) por `VERSAO`.
     Mudou o código sem subir a versão, o teste falha; subiu a versão, ela entra no arquivo com o hash novo."""
 
+    @PULA_NA_PR
     def test_as_fontes_de_hoje_sao_as_que_a_versao_do_complemento_registrou(self):
         with open(os.path.join(AQUI, "versoes.json"), encoding="utf-8") as arquivo:
             registradas = json.load(arquivo)
         hoje = empacotar.hash_das_fontes()
         if configuracao.VERSAO not in registradas:
             self.fail(
-                "a VERSAO %s não está em complemento/versoes.json: registre-a com o hash das fontes, %s"
+                "a VERSAO %s não está em complemento/versoes.json: a versão é dada no merge (python3 complemento/versao_no_merge.py na main; o hash seria %s)"
                 % (configuracao.VERSAO, hoje)
             )
         self.assertEqual(
             registradas[configuracao.VERSAO], hoje,
-            "as fontes do complemento mudaram e a VERSAO continua %s: suba a VERSAO em complemento/configuracao.py "
-            "e registre-a em complemento/versoes.json com o hash %s" % (configuracao.VERSAO, hoje),
+            "as fontes do complemento mudaram e a VERSAO continua %s: a versão é dada no merge (python3 complemento/versao_no_merge.py "
+            "na main; numa branch, PM_VERSAO_BASE=origin/main pula isto; o hash seria %s)" % (configuracao.VERSAO, hoje),
         )
 
     def rodar_numa_copia(self, mudar):
@@ -217,7 +219,7 @@ class VersaoDoComplemento(unittest.TestCase):
 
         resultado = self.rodar_numa_copia(acrescentar_um_comentario)
         self.assertNotEqual(resultado.returncode, 0)
-        self.assertIn("suba a VERSAO", resultado.stderr)
+        self.assertIn("versao_no_merge.py", resultado.stderr)
 
     def test_subir_a_versao_sem_registrar_o_hash_falha_dizendo_o_hash(self):
         def subir(copia):
@@ -287,9 +289,8 @@ class HoraDoEmpacotamento(unittest.TestCase):
         self.copia = copiar_o_complemento(self.pasta)
         os.makedirs(os.path.join(self.pasta, "conexao"))
         self.entregue = os.path.join(self.pasta, "conexao", "perpetualminer.ankiaddon")
-        shutil.copy(ARQUIVO_NO_PACOTE_DA_EXTENSAO, self.entregue)
-        with zipfile.ZipFile(self.entregue) as pacote:
-            self.mod_entregue = json.loads(pacote.read("manifest.json"))["mod"]
+        self.mod_entregue = 1700000000  # do código de hoje: o arquivo da extensão pode estar atrás dele numa PR
+        empacotar.empacotar(self.entregue, mod=self.mod_entregue)
 
     def empacotar(self, nome, **variaveis):
         ambiente = {k: v for k, v in os.environ.items() if k != "SOURCE_DATE_EPOCH"}
@@ -340,26 +341,26 @@ class HoraDoEmpacotamento(unittest.TestCase):
 
 class ArquivoQueVaiNoPacoteDaExtensao(unittest.TestCase):
     """A extensão entrega o `.ankiaddon` num link de download (`conexao/perpetualminer.ankiaddon`, sem
-    permissão nova). Ele não pode ficar para trás do código do complemento: quem mexe aqui o refaz com
-    `python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon`."""
+    permissão nova). Ele não pode ficar para trás do código do complemento na main: `versao_no_merge.py` o refaz."""
 
+    @PULA_NA_PR
     def test_o_arquivo_da_extensao_instala_o_complemento_de_hoje(self):
         self.assertTrue(
             os.path.isfile(ARQUIVO_NO_PACOTE_DA_EXTENSAO),
-            "falta conexao/perpetualminer.ankiaddon: python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon",
+            "falta conexao/perpetualminer.ankiaddon: python3 complemento/versao_no_merge.py na main",
         )
         with zipfile.ZipFile(ARQUIVO_NO_PACOTE_DA_EXTENSAO) as entregue, tempfile.TemporaryDirectory() as pasta:
             de_hoje = zipfile.ZipFile(empacotar.empacotar(os.path.join(pasta, "hoje.ankiaddon")))
             self.assertEqual(
                 sorted(entregue.namelist()), sorted(de_hoje.namelist()),
-                "o arquivo da extensão tem outros arquivos: python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon",
+                "o arquivo da extensão tem outros arquivos: python3 complemento/versao_no_merge.py na main",
             )
             for nome in entregue.namelist():
                 if nome == "manifest.json":
                     continue
                 self.assertEqual(
                     entregue.read(nome), de_hoje.read(nome),
-                    nome + " mudou: python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon",
+                    nome + " mudou: python3 complemento/versao_no_merge.py na main",
                 )
             manifesto = json.loads(entregue.read("manifest.json"))
             esperado = json.loads(de_hoje.read("manifest.json"))

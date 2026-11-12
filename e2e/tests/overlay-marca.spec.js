@@ -7,6 +7,7 @@
 // é o do idioma da captura.
 
 const { test, expect } = require('../fixtures');
+const DRU = 'PerpetualMiner::Russo';
 
 const LEGENDA = 'The quiet harbor woke before the gulls did.';
 const OUTRA_LEGENDA = 'A second line arrives on screen.';
@@ -319,7 +320,7 @@ const MINERACAO_AUTOMATICA_EM_RU = {
   // O vocabulário do Anki em cache, sem nenhuma palavra conhecida: a frase russa
   // tem um item novo só, então a mineração automática a aceita.
   pm_auto_keyword_vocab_ru: {
-    cacheVersion: 2, deckName: 'RUSSIAN', createdAt: Date.now(),
+    cacheVersion: 2, deckName: DRU, createdAt: Date.now(),
     words: [], terms: [], wordInfo: {}, termInfo: {},
   },
 };
