@@ -3,10 +3,11 @@
 // Popup · Cockpit (#38): o popup refeito na Veio, variante A do protótipo
 // travado (docs/design/popup/prototipo-popup.html?variant=A).
 //
-// O popup abre aqui como uma aba (`popup.html`), a mesma página que o Chrome põe
-// no balão do ícone. Os testes afirmam o que a pessoa vê e o que fica gravado.
+// O popup abre aqui como aba (`popup.html`), a página do balão do ícone.
+// Os testes afirmam o que se vê e o que fica gravado.
 
 const { test, expect } = require('../fixtures');
+const DEN = 'PerpetualMiner::Inglês', DRU = 'PerpetualMiner::Russo';
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 const { leituraDoVocabulario: leitura } = require('../leitura-do-vocabulario');
 
@@ -526,7 +527,7 @@ test('com a Conexão desligada e uma leitura de ontem, o azulejo segue contando 
     en: { ligado: true, limite: 20, hoje: 12 },
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
-  await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura('CIMV', ontemAs1402()) });
+  await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura(DEN, ontemAs1402()) });
   await page.goto(extensao.url('popup.html'));
 
   await expect(selo(page)).toHaveText('Vocabulário de ontem, 14:02');
@@ -542,8 +543,8 @@ test('o selo do popup diz o dia e a hora da leitura mais antiga entre os idiomas
     ru: { ligado: true, limite: 15, hoje: 1 },
   });
   await extensao.gravarStorage({
-    pm_auto_keyword_vocab_en: leitura('CIMV', Date.now() - 60_000),
-    pm_auto_keyword_vocab_ru: leitura('RUSSIAN', ontemAs1402()),
+    pm_auto_keyword_vocab_en: leitura(DEN, Date.now() - 60_000),
+    pm_auto_keyword_vocab_ru: leitura(DRU, ontemAs1402()),
   });
   await page.goto(extensao.url('popup.html'));
   await expect(selo(page)).toHaveText('Vocabulário de ontem, 14:02');
@@ -561,7 +562,7 @@ test('com a Conexão respondendo e o Anki aberto, nem o selo nem o esperando apa
     en: { ligado: true, limite: 20, hoje: 2 },
     ru: { ligado: true, limite: 15, hoje: 0 },
   });
-  await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura('CIMV', ontemAs1402(), { source: 'ankiconnect' }) });
+  await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura(DEN, ontemAs1402(), { source: 'ankiconnect' }) });
   await page.goto(extensao.url('popup.html'));
   await expect.poll(() => fakes.anki.requisicoes.some(r => r.caminho === '/health')).toBe(true);
   await expect(page.locator('.popup-azulejo')).toHaveCount(2);
@@ -577,7 +578,7 @@ test('com a Conexão respondendo mas o Anki fechado (leitura do arquivo), o selo
   });
   // Lida agora do arquivo, mas com os dados de ontem às 14:02: a leitura de antes de o Anki fechar.
   await extensao.gravarStorage({
-    pm_auto_keyword_vocab_en: leitura('CIMV', Date.now() - 60_000, { source: 'collection.anki2', dadosDe: ontemAs1402(), ankiFechado: true }),
+    pm_auto_keyword_vocab_en: leitura(DEN, Date.now() - 60_000, { source: 'collection.anki2', dadosDe: ontemAs1402(), ankiFechado: true }),
   });
   const gravada = (await extensao.lerStorage('pm_auto_keyword_vocab_en')).pm_auto_keyword_vocab_en;
   await page.goto(extensao.url('popup.html'));
@@ -597,12 +598,12 @@ test('o Anki abre de novo: a leitura passa a ser do Anki e o selo some', async (
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
   await extensao.gravarStorage({
-    pm_auto_keyword_vocab_en: leitura('CIMV', Date.now() - 60_000, { source: 'collection.anki2', dadosDe: ontemAs1402(), ankiFechado: true }),
+    pm_auto_keyword_vocab_en: leitura(DEN, Date.now() - 60_000, { source: 'collection.anki2', dadosDe: ontemAs1402(), ankiFechado: true }),
   });
   await page.goto(extensao.url('popup.html'));
   await expect(selo(page)).toHaveText('Vocabulário de ontem, 14:02');
 
-  await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura('CIMV', Date.now(), { source: 'ankiconnect' }) });
+  await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura(DEN, Date.now(), { source: 'ankiconnect' }) });
   await expect(selo(page)).toBeHidden();
 });
 
@@ -612,7 +613,7 @@ test('com a Conexão respondendo e o Anki aberto sem o AnkiConnect (leitura do a
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
   await extensao.gravarStorage({
-    pm_auto_keyword_vocab_en: leitura('CIMV', Date.now() - 60_000, { source: 'collection.anki2', dadosDe: ontemAs1402(), ankiFechado: false }),
+    pm_auto_keyword_vocab_en: leitura(DEN, Date.now() - 60_000, { source: 'collection.anki2', dadosDe: ontemAs1402(), ankiFechado: false }),
   });
   await page.goto(extensao.url('popup.html'));
   await expect.poll(() => fakes.anki.requisicoes.some(r => r.caminho === '/health')).toBe(true);
@@ -629,8 +630,8 @@ test('o selo do popup usa a leitura mais antiga dos idiomas ligados, mesmo a de 
   const anteontem = new Date(ontemAs1402());
   anteontem.setDate(anteontem.getDate() - 1);
   await extensao.gravarStorage({
-    pm_auto_keyword_vocab_en: leitura('CIMV', anteontem.getTime(), { source: 'ankiconnect' }),
-    pm_auto_keyword_vocab_ru: leitura('RUSSIAN', Date.now() - 60_000, { source: 'collection.anki2', dadosDe: ontemAs1402(), ankiFechado: true }),
+    pm_auto_keyword_vocab_en: leitura(DEN, anteontem.getTime(), { source: 'ankiconnect' }),
+    pm_auto_keyword_vocab_ru: leitura(DRU, Date.now() - 60_000, { source: 'collection.anki2', dadosDe: ontemAs1402(), ankiFechado: true }),
   });
   await page.goto(extensao.url('popup.html'));
   await expect.poll(() => fakes.anki.requisicoes.some(r => r.caminho === '/health')).toBe(true);
@@ -663,7 +664,7 @@ test('uma leitura de outro Baralho não vale: o azulejo espera o Anki, e a leitu
   await expect(esperando(page, 'en')).toBeVisible();
   await expect(selo(page)).toBeHidden();
 
-  await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura('CIMV', ontemAs1402()) });
+  await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura(DEN, ontemAs1402()) });
   await expect(selo(page)).toHaveText('Vocabulário de ontem, 14:02');
   await expect(esperando(page, 'en')).toBeHidden();
 });
