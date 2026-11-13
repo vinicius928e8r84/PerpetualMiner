@@ -8,7 +8,7 @@ const { execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { EMAIL_DO_DONO, coautoresDeFora, commitsForaDaRegra, mensagem } = require('./autoria.js');
+const { EMAIL_DO_DONO, coautoresDeFora, semCoautoresDeFora, commitsForaDaRegra, mensagem } = require('./autoria.js');
 
 const linha = (sha, autor, committer, assunto = 'x') => [sha, autor, committer, assunto].join('\t');
 assert.deepStrictEqual(commitsForaDaRegra([linha('a1', EMAIL_DO_DONO, EMAIL_DO_DONO), '']), [], 'autor e committer do dono');
@@ -32,17 +32,34 @@ assert.deepStrictEqual(coautoresDeFora(`a\n\nco-authored-by: Um <um@exemplo.com>
 assert.deepStrictEqual(coautoresDeFora(`a\n\nCo-authored-by: Claude <noreply@anthropic.com> <${EMAIL_DO_DONO}>\n`), [`Claude <noreply@anthropic.com> <${EMAIL_DO_DONO}>`],
   'o e-mail do dono ao lado de outro não livra a linha');
 assert.deepStrictEqual(coautoresDeFora('a\n\ntexto colado\u2028Co-authored-by: Um <um@exemplo.com>\ntexto\rCo-authored-by: Dois <dois@exemplo.com>\n'), [],
-  'só \\n separa as linhas, como no sed do conserto: depois de um U+2028 ou de um \\r solto não começa outra');
+  'só \\n separa as linhas: depois de um U+2028 ou de um \\r solto não começa outra');
 assert.deepStrictEqual(coautoresDeFora('a\n\nCo-authored-by: Um <um@exemplo.com>\u2028resto\n'), ['Um <um@exemplo.com>\u2028resto'],
   'a linha que começa com Co-authored-by conta inteira, com o que vier depois de um U+2028');
 assert.deepStrictEqual(coautoresDeFora('Co-authored-by: Um <um@exemplo.com>\n\ncorpo\n'), [], 'a primeira linha é o assunto, não um trailer');
 assert.deepStrictEqual(coautoresDeFora('assunto\nCo-authored-by: Um <um@exemplo.com>\n'), ['Um <um@exemplo.com>'], 'da segunda linha em diante conta');
+assert.deepStrictEqual(coautoresDeFora(`a\n\nCo-authored-by: <${EMAIL_DO_DONO}>\n <um@exemplo.com>\nCo-authored-by: Dois\n\t<dois@exemplo.com>\n \nfim\n`),
+  [`<${EMAIL_DO_DONO}> <um@exemplo.com>`, 'Dois <dois@exemplo.com>'], 'a linha de continuação (começa com espaço ou tabulação) entra no valor, como no git');
+// O filtro do conserto tira o que a conferência acusa, com as linhas de continuação, e mais nada.
+{
+  const comTudo = `Co-authored-by: Assunto <a@exemplo.com>\n\ncorpo\r\n#1\nCo-authored-by em prosa\n  Co-authored-by: recuado <r@exemplo.com>\n\n`
+    + `Co-Authored-By: Um <um@exemplo.com>\nCo-authored-by: n <${EMAIL_DO_DONO}>\nco-authored-by : Dois\n <dois@exemplo.com>\n\tmais\nfim\u2028Co-authored-by: Tres <t@exemplo.com>\n`;
+  const limpa = semCoautoresDeFora(comTudo);
+  assert.strictEqual(limpa, `Co-authored-by: Assunto <a@exemplo.com>\n\ncorpo\r\n#1\nCo-authored-by em prosa\n  Co-authored-by: recuado <r@exemplo.com>\n\n`
+    + `Co-authored-by: n <${EMAIL_DO_DONO}>\nfim\u2028Co-authored-by: Tres <t@exemplo.com>\n`, 'saem só os co-autores de fora; o assunto, o corpo, a prosa e o do dono ficam');
+  assert.deepStrictEqual(coautoresDeFora(comTudo), ['Um <um@exemplo.com>', 'Dois <dois@exemplo.com> mais'], 'os que a conferência acusa nessa mensagem');
+  assert.deepStrictEqual(coautoresDeFora(limpa), [], 'depois do filtro a conferência não acusa nada');
+  // Pela linha de comando, como o conserto chama: os bytes que não são da linha tirada saem como entraram (aqui, um latin1 que não é UTF-8).
+  const bytes = Buffer.concat([Buffer.from('assunto\n\nsa\xfade\n', 'latin1'), Buffer.from('Co-Authored-By: Zé <ze@exemplo.com>\n continua\nação\n', 'utf8')]);
+  const filtro = spawnSync('node', [path.join(__dirname, 'sem-coautor.js')], { input: bytes });
+  assert.strictEqual(filtro.status, 0, String(filtro.stderr));
+  assert.deepStrictEqual(filtro.stdout, Buffer.concat([Buffer.from('assunto\n\nsa\xfade\n', 'latin1'), Buffer.from('ação\n', 'utf8')]), 'o filtro não mexe nos outros bytes');
+}
 assert.deepStrictEqual(coautoresDeFora('Tira o Co-authored-by: Claude <noreply@anthropic.com> das mensagens\n\n  Co-authored-by: citado <c@exemplo.com>\n'), [],
   'só a linha que começa com Co-authored-by conta');
 {
   const texto = mensagem(commitsForaDaRegra([comMensagem('abcdef0123', `um assunto\n\n${DO_AGENTE}\n`)]), 'origin/main');
   assert.match(texto, /abcdef0 um assunto \(autor [^,]+, committer [^,]+, co-autor Claude <noreply@anthropic\.com>\)/, 'a mensagem nomeia o commit e o co-autor');
-  assert(texto.includes("git -c commit.cleanup=whitespace rebase --rebase-merges --exec 'git log -1 --no-show-signature --format=%B | sed -e 1b -e /^[Cc][Oo]-[Aa][Uu][Tt][Hh][Oo][Rr][Ee][Dd]-[Bb][Yy][[:blank:]]*:/d | git commit --amend --reset-author -F -' origin/main"),
+  assert(texto.includes("git -c commit.cleanup=whitespace rebase --rebase-merges --exec 'git log -1 --no-show-signature --format=%B | node scripts/ci/sem-coautor.js | git commit --amend --reset-author -F -' origin/main"),
     'com co-autor, o comando também tira as linhas dele');
 }
 
@@ -104,12 +121,12 @@ assert.deepStrictEqual(coautoresDeFora('Tira o Co-authored-by: Claude <noreply@a
   const assinado = rodarAutoria();
   assert.strictEqual(assinado.status, 0, `a linha da assinatura não entra na conta: ${assinado.stdout}`);
 
-  // Autor e committer do dono e co-autores de outro e-mail na mensagem: barra, e o comando que a mensagem dá tira só essas linhas.
+  // Autor e committer do dono e co-autores de outro e-mail na mensagem (um deles em duas linhas): barra, e o comando que a mensagem dá tira só essas linhas.
   // (Os co-autores são de exemplo.com porque um gancho commit-msg da máquina pode tirar o trailer de um agente conhecido antes de o commit existir.)
   fs.writeFileSync(path.join(repoDeAutoria, 'coautor.txt'), 'x\n');
   gitA(EMAIL_DO_DONO, 'add', '-A');
   gitA(EMAIL_DO_DONO, 'commit', '-q', '-m', 'com co-autor', '-m', 'O corpo fica.\n#425 também fica.\nCo-authored-by em prosa também fica.',
-    '-m', 'Co-Authored-By: Agente <agente@exemplo.com>\nco-authored-by : Outra <outra@exemplo.com>');
+    '-m', `Co-Authored-By: Agente <agente@exemplo.com>\nCo-authored-by: n <${EMAIL_DO_DONO}>\nco-authored-by : Outra\n <outra@exemplo.com>`);
   const comCoautor = rodarAutoria();
   assert.strictEqual(comCoautor.status, 1, `um co-autor de outro e-mail barra: ${comCoautor.stdout}`);
   assert(/com co-autor \(.*, co-autor Agente <agente@exemplo\.com>, co-autor Outra <outra@exemplo\.com>\)/.test(comCoautor.stdout)
@@ -118,15 +135,29 @@ assert.deepStrictEqual(coautoresDeFora('Tira o Co-authored-by: Claude <noreply@a
   const [, opcoes, refazer] = /git (-c \S+ )rebase --rebase-merges --exec '([^']+)' main/.exec(comCoautor.stdout);
   // Quem roda o conserto tem commit.cleanup=strip, que tira de uma mensagem regravada as linhas que começam com #.
   gitA(EMAIL_DO_DONO, 'config', 'commit.cleanup', 'strip');
-  execFileSync('git', [...opcoes.trim().split(' '), 'rebase', '-q', '--rebase-merges', '--exec', refazer, 'main'], {
-    cwd: repoDeAutoria,
+  const rodarConserto = () => spawnSync('git', [...opcoes.trim().split(' '), 'rebase', '-q', '--rebase-merges', '--exec', refazer, 'main'], {
+    cwd: repoDeAutoria, encoding: 'utf8',
     env: { ...process.env, GIT_CONFIG_COUNT: '2',
       GIT_CONFIG_KEY_0: 'user.email', GIT_CONFIG_VALUE_0: EMAIL_DO_DONO, GIT_CONFIG_KEY_1: 'user.name', GIT_CONFIG_VALUE_1: 'n' },
   });
+  // Numa base que ainda não tem o scripts/ci/sem-coautor.js, o conserto para no primeiro commit e nenhuma mensagem muda.
+  const pontaBarrada = gitA(EMAIL_DO_DONO, 'rev-parse', 'HEAD');
+  assert.notStrictEqual(rodarConserto().status, 0, 'sem o filtro na base, o rebase para');
+  gitA(EMAIL_DO_DONO, 'rebase', '--abort');
+  assert.strictEqual(gitA(EMAIL_DO_DONO, 'rev-parse', 'HEAD'), pontaBarrada, 'e a branch fica como estava');
+  // Com a base em dia (a main traz a conferência e o filtro), o comando conserta.
+  gitA(EMAIL_DO_DONO, 'checkout', '-q', 'main');
+  fs.mkdirSync(path.join(repoDeAutoria, 'scripts', 'ci'), { recursive: true });
+  for (const arquivo of ['autoria.js', 'sem-coautor.js']) fs.copyFileSync(path.join(__dirname, arquivo), path.join(repoDeAutoria, 'scripts', 'ci', arquivo));
+  gitA(EMAIL_DO_DONO, 'add', '-A');
+  gitA(EMAIL_DO_DONO, 'commit', '-q', '-m', 'a conferência e o filtro');
+  gitA(EMAIL_DO_DONO, 'checkout', '-q', 'ramo');
+  const conserto = rodarConserto();
+  assert.strictEqual(conserto.status, 0, `o comando da mensagem roda até o fim: ${conserto.stderr}`);
   assert.strictEqual(rodarAutoria().status, 0, 'o comando da mensagem tira os co-autores');
   assert.strictEqual(gitA(EMAIL_DO_DONO, 'log', '-1', '--no-show-signature', '--format=%B').trim(),
-    'com co-autor\n\nO corpo fica.\n#425 também fica.\nCo-authored-by em prosa também fica.',
-    'o assunto, o corpo, a linha com # e a prosa ficam; a linha da assinatura não entra na mensagem');
+    `com co-autor\n\nO corpo fica.\n#425 também fica.\nCo-authored-by em prosa também fica.\n\nCo-authored-by: n <${EMAIL_DO_DONO}>`,
+    'o assunto, o corpo, a linha com #, a prosa e o dono como co-autor ficam; a linha da assinatura não entra na mensagem');
   assert.strictEqual(gitA(EMAIL_DO_DONO, 'log', '-1', '--no-show-signature', '--format=%s', 'HEAD~1').trim(), 'Co-authored-by: No assunto <assunto@exemplo.com>',
     'o assunto de um commit nunca é tirado');
   assert(gitA(EMAIL_DO_DONO, 'log', '--merges', '--no-show-signature', '--format=%H', 'main..HEAD').trim(), 'o merge continua no histórico');

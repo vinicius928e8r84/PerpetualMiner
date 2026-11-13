@@ -6,7 +6,7 @@
 
 - Compara com `<remoto>/main`, senão `origin/main`, como estiver no clone (`git fetch origin main` para ficar em dia); sem nenhum dos dois, avisa e deixa passar. Com a base velha, os commits que a `main` ganhou depois entram na conta como se fossem da branch, e os mais antigos dela trazem autor ou co-autor que a autoria barra: se a lista do erro tem commit que já está na `main`, é a base.
 - As regras leem a cópia de trabalho, então só rodam quando a ponta empurrada é o `HEAD` (senão avisa e confere só a autoria). Mudança não commitada entra na conta.
-- A autoria é de cada commit da branch: autor e committer com o e-mail do dono, e nenhuma linha `Co-authored-by:` abaixo do assunto com outro e-mail (a de um agente, por exemplo). A mensagem do erro traz o comando que refaz a autoria e tira essas linhas.
+- A autoria é de cada commit da branch: autor e committer com o e-mail do dono, e nenhuma linha `Co-authored-by:` abaixo do assunto com outro e-mail (a de um agente, por exemplo). A mensagem do erro traz o comando que refaz a autoria e tira essas linhas; ele usa `scripts/ci/sem-coautor.js`, e numa base que ainda não o tem o rebase para sem mudar nada (`git rebase --abort`, `git fetch origin main` e de novo).
 - Apagar branch, tag e `main` não conferem nada. Para pular de propósito: `git push --no-verify` (o CI confere igual).
 
 ## Ligar
