@@ -204,7 +204,7 @@ Phrases are synced to Firestore under `usuarios/{uid}/frases/{frase.id}` when th
 
 Authentication in `painel.js` uses `chrome.identity.launchWebAuthFlow` (OAuth2 with Google) — **no Firebase Auth SDK**. Stored credentials are described under Firebase auth session in Storage Schema; see `criarSessao`'s doc comment for token renewal and revocation.
 
-Pending capture uploads (including token-refresh failures) are handled by `salvarFrase` / `sincronizarComFirestore` in `background.js`; see their comments for the save/queue invariant. This queue does not track every panel edit. `carregar` in `lib/sincronizacao.js` owns retries; the queue's stored shape is in Storage Schema.
+A capture is saved locally, then sent by `salvarFrase` / `sincronizarComFirestore` in `background.js`; a failed upload leaves no record. There is no retry queue: `carregar` in `lib/sincronizacao.js` uploads the local phrases the cloud lacks.
 
 `criarSincronizacao` owns deletion, tombstones and a pending Apagar tudo; the panel clears its visible/local history and delegates cloud work to the module, while the popup does not delete. For tombstone storage and the offline wipe's account/cutoff rules, read the module's doc comments. The Firestore field-path escaping requirement is documented at `tombstoneFirestore`.
 
@@ -236,7 +236,7 @@ Other storage keys:
 - `pm_tema` — `'escuro'` (the default, and what an absent key means) or `'claro'`: the theme chosen on this computer. It is local on purpose and never syncs. `veio/tema.js` mirrors it into `localStorage` under the same name, which is read before the first paint so a light page never flashes dark; `chrome.storage` stays the truth and corrects the mirror
 - Firebase auth session — `{ uid, idToken, refreshToken, expiresAt }` in extension-origin IndexedDB `pm-sessao` › `sessao` › `firebase`, outside the content scripts' reach. `pm_firebase_auth` in `chrome.storage.local` is legacy only: migrated and removed by the service worker/panel
 - `pm_user_info` — `{ uid, email, displayName, photoURL }` — Google user profile
-- `pm_pending_sync` — `string[]` of phrase IDs awaiting Firestore retry
+- `pm_pending_sync` — gone (old versions wrote phrase IDs nobody read); `aoInstalar` removes it
 - `pm_deleted_ids` — `string[]` of deleted phrase IDs whose Firestore DELETE hasn't succeeded yet
 - `pm_atalho_legenda` — the “Minerar legenda” shortcut. Absent → the default Alt+S; `null` → no caption shortcut
 - `pm_atalho` — the “Minerar seleção” shortcut; `null` or absent → none (the default). Both use `{ type: 'keyboard'|'mouse', code, button, altKey, ctrlKey, shiftKey, label }`
@@ -266,7 +266,7 @@ The capture shortcuts and the floating button only react to trusted events (`eve
 
 ### Write Serialization (background.js)
 
-Every read-modify-write of `frases` and `pm_pending_sync` in the service worker goes through `naFilaDeGravacao`, so concurrent saves (e.g. BookReader saving many passages at once) never overwrite each other. Phrase ids are assigned inside that queue and are unique even within the same millisecond.
+Every read-modify-write of `frases` in the service worker goes through `naFilaDeGravacao`, so concurrent saves (e.g. BookReader saving many passages at once) never overwrite each other. Phrase ids are assigned inside that queue and are unique even within the same millisecond.
 
 Not covered by the queue:
 - The auto-miner duplicate check reads `frases` outside the queue before calling `salvarFrase`, so two identical auto candidates arriving together can both be saved (a duplicate, never a lost phrase).

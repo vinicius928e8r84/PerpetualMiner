@@ -157,6 +157,14 @@ test.describe('quem atualizou a extensão', () => {
     expect((await extensao.lerStorage('pm_boas_vindas')).pm_boas_vindas).toBeUndefined();
   });
 
+  test('a atualização tira a lista pm_pending_sync que versões antigas gravavam', async ({ extensao }) => {
+    await extensao.gravarStorage({ pm_pending_sync: ['1', '2'], frases: [{ id: 1, texto: 'Fica.', idioma: 'Inglês' }] });
+    // Exceção de teste: chrome-nativo (CLAUDE.md § Testing). Mesmo motivo do teste acima.
+    await extensao.serviceWorker.evaluate(() => aoInstalar({ reason: 'update', previousVersion: '0.4.27' }));
+    expect(await extensao.lerStorage(['pm_pending_sync'])).toEqual({});
+    expect((await extensao.frases()).map(f => f.texto)).toEqual(['Fica.']);
+  });
+
   test('nunca começou a Boas-vindas, então não vê lembrete', async ({ page, context, extensao }) => {
     await abrirFrases(page, extensao);
     const popup = await context.newPage();
