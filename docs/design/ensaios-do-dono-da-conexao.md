@@ -4,7 +4,14 @@ Movidos de `complemento/LEIA-ME.md` (que não pode passar de 20.000 bytes); o te
 
 ## Ensaio do dono: Abrir o Anki com o computador (risco 5)
 
-O item de login **nunca foi testado** num Mac nem num Windows de verdade: os testes só conferem o arquivo escrito. No ensaio:
+Os testes só conferem o arquivo escrito. O que um computador de verdade já mostrou:
+
+| Sistema | Visto | Não visto |
+|---|---|---|
+| Windows 11 (2026-11-13) | A Conexão escreveu o atalho na pasta Inicializar; a pessoa saiu da sessão e entrou; o Windows rodou o atalho e o Anki abriu sozinho (#371). No mesmo login, um atalho sem a lista do alvo, na mesma pasta, não rodou. Desligar apagou o atalho. O duplo clique abre um alvo em pasta de nome com acento, grego ou japonês | Reiniciar o computador; o Gerenciador de Tarefas › Inicializar; o Anki do instalador (o alvo era o Anki 25.09.4 de uma pasta de teste); o nome fora do ASCII num login |
+| macOS 15.6 (2026-11-13, Anki 24.11) | Ligar escreve o LaunchAgent e o `plutil -lint` o aceita; desligar o apaga | **Sair da sessão e entrar: nunca foi feito.** O aviso de “itens de segundo plano” também não |
+
+O que falta, no ensaio:
 
 1. Painel › Configurações › Conexão com o Anki: ligue **Abrir o Anki com o computador**.
 2. **Mac:** o arquivo `~/Library/LaunchAgents/com.perpetualminer.abrir-o-anki.plist` existe; o macOS pode avisar “itens de segundo plano adicionados” (Ajustes › Geral › Itens de Início); saia da sessão e entre: o Anki abre sozinho? (`launchctl list | grep perpetualminer` mostra o item.)
