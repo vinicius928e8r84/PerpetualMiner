@@ -13,6 +13,7 @@ import struct
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -37,6 +38,14 @@ def ler_lista_do_alvo(conteudo):
         posicao += quanto
     assert posicao + 2 == len(lista), "a lista termina no terminador"
     return itens
+
+
+def atalho_das_conexoes_0_4_21_a_0_4_24(alvo):
+    """O `.lnk` que essas Conexões gravavam: o de hoje sem o `LinkTargetIDList` (só o `LinkInfo` e a pasta), que o Windows recusa."""
+    atual = item_de_login._atalho_do_windows(alvo)
+    flags, = struct.unpack_from("<I", atual, 20)
+    tamanho, = struct.unpack_from("<H", atual, 0x4C)
+    return atual[:20] + struct.pack("<I", flags & ~0x01) + atual[24:0x4C] + atual[0x4C + 2 + tamanho :]
 
 
 def ler_atalho(conteudo):
@@ -208,6 +217,91 @@ class NoWindows(unittest.TestCase):
             item.desligar()
             restou = os.listdir(pasta)
         self.assertEqual(restou, ["Anki.lnk"])
+
+
+class ReescreverSeDifere(unittest.TestCase):
+    """#401: o item que já existe e difere do que a Conexão escreveria agora é trocado; o igual e o que falta ficam como estão."""
+
+    def windows(self, pasta, comando=ANKI_DO_WINDOWS):
+        return item_de_login.ItemDeLogin(sistema="windows", pasta=pasta, comando=comando)
+
+    def gravar(self, item, conteudo):
+        with open(item.caminho, "wb") as arquivo:
+            arquivo.write(conteudo)
+
+    def ler(self, item):
+        with open(item.caminho, "rb") as arquivo:
+            return arquivo.read()
+
+    def test_o_atalho_quebrado_das_conexoes_0_4_21_a_0_4_24_vira_o_atalho_com_a_lista_do_alvo(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            item = self.windows(pasta)
+            self.gravar(item, atalho_das_conexoes_0_4_21_a_0_4_24(ANKI_DO_WINDOWS))
+            trocou = item.reescrever_se_difere()
+            conteudo = self.ler(item)
+            restou = os.listdir(pasta)
+            tipos = [tipo for tipo, _ in ler_lista_do_alvo(conteudo)]
+            alvo = ler_atalho(conteudo)[0]
+        self.assertEqual((trocou, restou, alvo), (True, ["Anki (PerpetualMiner).lnk"], ANKI_DO_WINDOWS))
+        self.assertEqual(tipos[0], 0x1F)
+
+    def test_o_atalho_que_ja_e_o_de_hoje_nao_e_regravado(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            item = self.windows(pasta)
+            item.ligar()
+            os.utime(item.caminho, (1, 1))
+            trocou = item.reescrever_se_difere()
+            feito_em = os.stat(item.caminho).st_mtime
+            restou = os.listdir(pasta)
+        self.assertEqual((trocou, feito_em, restou), (False, 1, ["Anki (PerpetualMiner).lnk"]))
+
+    def test_sem_item_nenhum_e_criado(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            pasta = os.path.join(raiz, "Startup")
+            trocou = self.windows(pasta).reescrever_se_difere()
+            existe = os.path.exists(pasta)
+        self.assertEqual((trocou, existe), (False, False))
+
+    def test_sem_saber_onde_o_anki_esta_o_item_que_ha_fica_como_esta(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            item = self.windows(pasta, comando=None)
+            self.gravar(item, b"antigo")
+            trocou = item.reescrever_se_difere()
+            conteudo = self.ler(item)
+        self.assertEqual((trocou, conteudo), (False, b"antigo"))
+
+    def test_o_atalho_com_outro_nome_que_a_pessoa_pos_na_pasta_nao_e_tocado(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            da_pessoa = os.path.join(pasta, "Anki.lnk")
+            with open(da_pessoa, "wb") as arquivo:
+                arquivo.write(b"da pessoa")
+            trocou = self.windows(pasta).reescrever_se_difere()
+            restou = sorted(os.listdir(pasta))
+            with open(da_pessoa, "rb") as arquivo:
+                conteudo = arquivo.read()
+        self.assertEqual((trocou, restou, conteudo), (False, ["Anki.lnk"], b"da pessoa"))
+
+    def test_no_mac_o_launchagent_de_outro_lugar_do_anki_e_trocado(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            item_de_login.ItemDeLogin(sistema="mac", pasta=pasta, comando=["/usr/bin/open", "-a", "Anki"]).ligar()
+            item = item_de_login.ItemDeLogin(sistema="mac", pasta=pasta, comando=ANKI_DO_MAC)
+            trocou = item.reescrever_se_difere()
+            depois = item.reescrever_se_difere()
+            with open(item.caminho, "rb") as arquivo:
+                comando = plistlib.load(arquivo)["ProgramArguments"]
+        self.assertEqual((trocou, depois, comando), (True, False, ANKI_DO_MAC))
+
+    def test_uma_falha_de_escrita_levanta_o_erro_do_sistema_e_deixa_o_item_como_estava(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            item = self.windows(pasta)
+            antigo = atalho_das_conexoes_0_4_21_a_0_4_24(ANKI_DO_WINDOWS)
+            self.gravar(item, antigo)
+            with patch("complemento.item_de_login.os.replace", side_effect=OSError("disco cheio")):
+                with self.assertRaises(OSError):
+                    item.reescrever_se_difere()
+            restou = os.listdir(pasta)
+            conteudo = self.ler(item)
+        self.assertEqual((restou, conteudo), (["Anki (PerpetualMiner).lnk"], antigo))
 
 
 class SistemaDoItem(unittest.TestCase):

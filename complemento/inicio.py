@@ -104,10 +104,22 @@ def _preparar_a_colecao(conexao, logger):
         logger.info("A coleção foi preparada: tipos de nota criados %s, Baralhos criados %s", sorted(l for l, c in feito["tipos"].items() if c), feito["baralhos"])
 
 
+def _atualizar_o_item_de_login(item, logger):
+    """O item de login que já existe passa a ser o que esta Conexão escreveria (#401). Falha vai ao log; nada aqui derruba a Conexão."""
+    if item is None:
+        return
+    try:
+        if item.reescrever_se_difere():
+            logger.info("O item de login de “Abrir o Anki com o computador” foi reescrito: %s", item.caminho)
+    except Exception as erro:
+        logger.warning("O item de login não foi conferido: %s", erro)
+
+
 def _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger):
     """Marca o perfil aberto na primeira conexão (#149) e escreve o abridor com o perfil marcado, agora e a cada perfil que abre
     (`ao_abrir_o_perfil`); a Conexão o reescreve também quando a pessoa escolhe outro perfil. Nada aqui derruba a Conexão."""
     def reagir():
+        _atualizar_o_item_de_login(conexao.item_de_login, logger)
         try:
             marcado = conexao.perfil_fixo.marcar_se_falta(conexao.perfil_aberto())
         except Exception as erro:  # sem marca, o Envio só espera: o resto segue
