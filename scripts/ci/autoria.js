@@ -2,7 +2,7 @@
 
 // A autoria que o portão confere em todo PR (.github/workflows/regras.yml) e o gancho pre-push antes de o push sair:
 // cada commit de base..head tem como autor e committer o e-mail do dono, e nenhuma linha `Co-authored-by:` da
-// mensagem dá o commit a outro e-mail. O committer `GitHub <noreply@github.com>` (o que o site põe no que edita ou
+// mensagem, abaixo do assunto, dá o commit a outro e-mail. O committer `GitHub <noreply@github.com>` (o que o site põe no que edita ou
 // mescla) passa em qualquer commit. Uso: node scripts/ci/autoria.js <base> <head>
 
 const { execFileSync, spawnSync } = require('child_process');
@@ -12,17 +12,23 @@ const EMAIL_DO_GITHUB = 'noreply@github.com';
 // Um registro por commit (`git log -z`): sha, autor, committer e assunto separados por tabulação; depois de \x1f, a mensagem inteira.
 const FORMATO_DO_LOG = '%H%x09%ae%x09%ce%x09%s%x1f%B';
 const REFAZER_A_AUTORIA = 'git commit --amend --no-edit --reset-author';
-// Refaz a autoria e regrava a mensagem sem as linhas de co-autor (as mesmas que coautoresDeFora lê). Sem aspas por dentro,
-// para o comando da mensagem valer igual no sh, no Git Bash e no PowerShell.
-const REFAZER_SEM_COAUTOR = 'git log -1 --no-show-signature --format=%B | grep -vi ^co-authored-by[[:blank:]]*: | git commit --amend --reset-author -F -';
+// Refaz a autoria e regrava a mensagem sem as linhas de co-autor: as mesmas que coautoresDeFora lê (a primeira linha
+// fica, e cada letra vai nas duas caixas porque o sed do macOS não tem a opção de ignorar a caixa). Sem aspas por
+// dentro, para o comando da mensagem valer igual no sh, no Git Bash e no PowerShell.
+const REFAZER_SEM_COAUTOR = 'git log -1 --no-show-signature --format=%B'
+  + ' | sed -e 1b -e /^[Cc][Oo]-[Aa][Uu][Tt][Hh][Oo][Rr][Ee][Dd]-[Bb][Yy][[:blank:]]*:/d'
+  + ' | git commit --amend --reset-author -F -';
+// O rebase que regrava mensagens: com o commit.cleanup=strip de quem roda, as linhas que começam com # sairiam delas.
+const REBASE_QUE_REGRAVA = 'git -c commit.cleanup=whitespace rebase';
 
 /**
  * Os co-autores de fora: o valor de cada linha `Co-authored-by: Nome <e-mail>` (em qualquer caixa) com algum e-mail
- * que não é o do dono. Sem `<…>`, o valor inteiro é o e-mail. Linha é o que o grep do conserto chama de linha: só \n
- * separa (um \r solto ou um U+2028 no meio do texto não começam outra).
+ * que não é o do dono. Sem `<…>`, o valor inteiro é o e-mail. A primeira linha é o assunto e não conta (para o git o
+ * título nunca é trailer). Linha é o que o sed do conserto chama de linha: só \n separa (um \r solto ou um U+2028 no
+ * meio do texto não começam outra).
  */
 function coautoresDeFora(mensagem) {
-  return mensagem.split('\n')
+  return mensagem.split('\n').slice(1)
     .map(linha => /^co-authored-by[ \t]*:(.*)$/is.exec(linha))
     .filter(Boolean)
     .map(([, valor]) => valor.trim())
@@ -43,14 +49,15 @@ function commitsForaDaRegra(registros) {
 
 /** A mensagem do erro: os commits e o comando que refaz a autoria (e tira as linhas de co-autor, quando são elas que barram). */
 function mensagem(fora, base) {
-  const refazer = fora.some(({ coautores }) => coautores.length > 0) ? REFAZER_SEM_COAUTOR : REFAZER_A_AUTORIA;
+  const [rebase, refazer] = fora.some(({ coautores }) => coautores.length > 0)
+    ? [REBASE_QUE_REGRAVA, REFAZER_SEM_COAUTOR] : ['git rebase', REFAZER_A_AUTORIA];
   return [
     `✗ ${fora.length} commit(s) sem a autoria do dono (autor, committer e todo Co-authored-by ${EMAIL_DO_DONO}):`,
     ...fora.map(({ sha, autor, committer, assunto, coautores }) =>
       `    ${sha.slice(0, 7)} ${assunto} (autor ${autor}, committer ${committer}${coautores.map(coautor => `, co-autor ${coautor}`).join('')})`),
     '  Conserto: refaça a autoria da branch e envie de novo:',
     `    git config user.email ${EMAIL_DO_DONO}`,
-    `    git rebase --rebase-merges --exec '${refazer}' ${base}`,
+    `    ${rebase} --rebase-merges --exec '${refazer}' ${base}`,
     '    git push --force-with-lease',
   ].join('\n');
 }
