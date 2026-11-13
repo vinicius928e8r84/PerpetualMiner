@@ -56,9 +56,9 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   inside the Boas-vindas the card has only outlines and the host's Continuar is the primary. The status is a `role="status"` region that
   stays in the DOM (the 1 s clock only redraws the checklist).
   The Conferência line (“Confere sozinho a cada 15 s · última vez há N s”, “Conferindo agora…” while a check is out) follows the
-  shared checks; see the doc comments in `painel-anki-primeira-conexao.js` for its subscription and timer lifecycle. See the
-  [Anki area states](../../../docs/design/painel/anki/README.md#estados) for the **Pronto** moment, its status during a new check and focus when the controls or card leave.
-  Tests: `e2e/tests/painel-anki-primeira-conexao.spec.js` (behaviour, download, checklist), `ter-o-anki.spec.js` (the first step, the animation), `abrir-o-anki-sozinho.spec.js` (the opener step, fake opener), `boas-vindas.spec.js` (step 4),
+  shared checks. The card's phase and step 4 are the machines of `painel-anki-primeira-conexao-estado.js` (`node test_primeira_conexao.js`). See the
+  [Anki area states](../../../docs/design/painel/anki/README.md#estados) for the **Pronto** moment and the Conexão dropping in step 4.
+  Tests: `painel-anki-primeira-conexao.spec.js` (behaviour, download, checklist), `ter-o-anki.spec.js` (first step), `abrir-o-anki-sozinho.spec.js` (the opener step), `boas-vindas.spec.js` (step 4),
   `complemento/test_pacote.py` and `test_empacotar.js` (the file inside the package).
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
   selo (“Anki fechado. Mostrando dados de há 2 h.”, with the code in Detalhes) and the period controls set to that reading's
