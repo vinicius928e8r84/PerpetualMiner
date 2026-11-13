@@ -33,7 +33,6 @@ const ACAO = /\.(?:click|dblclick|fill|press|pressSequentially|check|uncheck|sel
 // De onde o teste lê o que ficou guardado: o storage da extensão e as conferências do helper. O que o fake guardou
 // entra pelos leitores que ele marca com `@estado-guardado` (`leitoresDosFakes`).
 const LEITURA_FIXA = /\b(?:lerStorage|estadoFinal\w*)\s*\(|\.frases\s*\(|\bchrome\.storage\.local\.get\b/g;
-const ASSERCAO_PROPRIA = /\bestadoFinal\w*\s*\(/g;
 
 const leitoresPorRaiz = new Map();
 /** Os nomes dos leitores que os fakes (e2e/fakes/) marcam com `@estado-guardado` no comentário. */

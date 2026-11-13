@@ -4,7 +4,6 @@
 
 const assert = require('assert');
 const fs = require('fs');
-const path = require('path');
 
 const regras = Object.fromEntries(require('./verificar').REGRAS.map(regra => [regra.id, regra]));
 const { repositorioDeTestes } = require('./apoio-de-testes');

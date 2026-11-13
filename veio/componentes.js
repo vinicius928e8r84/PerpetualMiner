@@ -60,8 +60,7 @@
     pdf: ['<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>', '<path d="M14 3v6h6"/>'],
     livro: ['<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14z"/>'],
     manual: ['<path d="M12 5v14M5 12h14"/>'],
-    // Minerar de uma foto: a foto na fila e o ler das marcações.
-    foto: ['<rect x="3" y="3" width="18" height="18" rx="3"/>', '<circle cx="8.5" cy="8.5" r="1.5"/>', '<path d="m21 15-5-5L5 21"/>'],
+    // Minerar de uma foto: o ler das marcações.
     ler: ['<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>', '<path d="M7 12h10"/>'],
     // As áreas do Painel, na sidebar e no trilho.
     frases: ['<path d="M4 6h16M4 12h16M4 18h10"/>'],
@@ -90,11 +89,10 @@
     legenda: ['<rect x="3" y="5" width="18" height="14" rx="2"/>', '<path d="M7 14h4M13 14h4M7 10h10"/>'],
     selecao: ['<path d="M4 6h16M4 12h10M4 18h7"/>'],
     automatica: ['<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>'],
-    alerta: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 7.5v5.5M12 16.5v.01"/>'],
     // O aviso que só informa (tom `info`): o “i”, sem alarme.
     info: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 16.5V11M12 7.5v.01"/>'],
-    // O menu Minerar frases: Colar (a prancheta), Foto (a câmera) e o ↗ de
-    // “abre numa aba nova”.
+    // O menu Minerar frases: Colar (a prancheta), Foto (a câmera, que é também a foto
+    // sem miniatura da fila de Minerar de uma foto) e o ↗ de “abre numa aba nova”.
     colar: ['<rect x="8" y="2" width="8" height="4" rx="1"/>', '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>'],
     foto: ['<path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>', '<circle cx="12" cy="13" r="3.5"/>'],
     externo: ['<path d="M7 17 17 7M9 7h8v8"/>'],
