@@ -110,6 +110,14 @@ class TrocarAFrenteSoEditaOModelo(unittest.TestCase):
             self.assertNotIn("Contexto da cena", frente)
             self.assertIn("{{type:Frase}}", frente)
 
+    def test_abrir_o_perfil_nao_regrava_o_tipo_da_pessoa_que_nao_tem_so_o_nosso_modelo(self):
+        colecao = ColecaoEmMemoria(SO_O_DEFAULT)
+        tipo_de_nota.preparar(colecao)
+        colecao._cartoes_dos_tipos.pop(INGLES)  # um tipo da pessoa, sem o modelo da Conexão
+        antes = colecao.modelos_do_tipo_de_nota(INGLES)
+        tipo_de_nota.preparar(colecao)
+        self.assertEqual(colecao.modelos_do_tipo_de_nota(INGLES), antes)
+
     def test_trocar_para_a_criacao_so_reescreve_o_modelo_sem_nota_nova_nem_chamada_a_ia_a_voz_ou_as_fotos(self):
         with com_um_cartao_enviado() as conexao:
             colecao = conexao.conexao.colecao

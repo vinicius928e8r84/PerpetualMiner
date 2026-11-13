@@ -64,9 +64,6 @@ class CorrecaoDaCriacao:
         a troca da frente faz (`tipo_de_nota.trocar_a_frente`). Só se o tipo de nota ainda tem o nosso modelo Criação sozinho; a pessoa que o mexeu, ou que
         trocou de frente, fica como está."""
         try:
-            nome = tipo_de_nota.definicao(lang, frente="criacao")["nome"]
-            modelos = self.colecao.modelos_do_tipo_de_nota(nome)
-            if modelos and len(modelos) == 1 and modelos[0]["nome"] == tipo_de_nota.NOMES_DAS_FRENTES["criacao"]:
-                tipo_de_nota.trocar_a_frente(self.colecao, lang, "criacao")
+            tipo_de_nota.atualizar_a_criacao(self.colecao, lang)
         except Exception as erro:  # a correção já está na nota; o verso é o que falhou
             self.logger.warning("Envio %s: o verso da Criação não foi atualizado (%s)", job_id, type(erro).__name__)
