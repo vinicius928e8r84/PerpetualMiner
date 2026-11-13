@@ -212,6 +212,11 @@ assert.deepStrictEqual(coautoresDeFora('Tira o Co-authored-by: Claude <noreply@a
   assert.strictEqual(rodarAutoria().status, 0, 'o comando da mensagem tira o co-autor');
   assert.strictEqual(gitA(EMAIL_DO_DONO, 'log', '-1', '--format=%B').trim(), 'com co-autor\n\nO corpo fica.', 'o assunto e o corpo ficam');
   assert(gitA(EMAIL_DO_DONO, 'log', '--merges', '--format=%H', 'main..HEAD').trim(), 'o merge continua no histórico');
+  // As mensagens somadas passam de 1 MB (o teto de saída padrão do Node): a conferência lê tudo e responde.
+  fs.writeFileSync(path.join(repoDeAutoria, 'longa.txt'), `mensagem longa\n\n${`${'x'.repeat(100000)}\n`.repeat(12)}`);
+  gitA(EMAIL_DO_DONO, 'commit', '-q', '--allow-empty', '-F', 'longa.txt');
+  const comLonga = rodarAutoria();
+  assert.strictEqual(comLonga.status, 0, `mensagens de mais de 1 MB não derrubam a conferência: ${comLonga.stderr.slice(0, 300)}`);
 
   // Uma ponta que o clone não tem (checkout raso): uma mensagem que manda conferir o fetch-depth, não o stack do Node.
   const semPonta = spawnSync('node', [path.join(__dirname, 'autoria.js'), 'origin/main', 'HEAD'], { cwd: repoDeAutoria, encoding: 'utf8' });

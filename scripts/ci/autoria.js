@@ -61,7 +61,8 @@ function main([base, head]) {
     console.log(`✗ ${ausentes.join(' e ')} não é um commit deste repositório; no CI, confira o fetch-depth do checkout (0 traz o histórico inteiro).`);
     return 2;
   }
-  const saida = execFileSync('git', ['log', '-z', `--format=${FORMATO_DO_LOG}`, `${base}..${head}`], { encoding: 'utf8' });
+  // Sem teto de saída: as mensagens inteiras de uma branch longa passam do 1 MB que o Node dá por padrão.
+  const saida = execFileSync('git', ['log', '-z', `--format=${FORMATO_DO_LOG}`, `${base}..${head}`], { encoding: 'utf8', maxBuffer: Infinity });
   const fora = commitsForaDaRegra(saida.split('\0'));
   if (fora.length) {
     console.log(mensagem(fora, base));
