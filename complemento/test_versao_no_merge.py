@@ -92,6 +92,16 @@ def proxima_depois(versao):
     return ".".join(resto + [str(int(patch) + 1)])
 
 
+def a_frente(pasta, quantas):
+    """O número `quantas` versões depois da maior que o `versoes.json` da cópia já registra: os testes de números
+    reservados não dependem de qual é a versão da main de hoje (cada commit de versão a muda)."""
+    registradas = json.loads(ler(pasta, "complemento/versoes.json"))
+    versao = max(registradas, key=versao_no_merge.como_tupla)
+    for _ in range(quantas):
+        versao = proxima_depois(versao)
+    return versao
+
+
 def dar_a_versao(pasta, *argumentos, **extras):
     return subprocess.run(
         [sys.executable, os.path.join(pasta, "complemento", "versao_no_merge.py"), "--sem-testes", *argumentos],
@@ -196,45 +206,51 @@ class QuemMudouOCodigoRecebeAProximaVersao(Casa):
 
     def test_a_sequencia_continua_do_maior_numero_de_versoes_json(self):
         registradas = json.loads(ler(self.repo, "complemento/versoes.json"))
-        registradas["0.4.33"] = "f" * 64  # a PR que chegou antes e já leva o seu número
+        adiante = a_frente(self.repo, 5)
+        registradas[adiante] = "f" * 64  # a PR que chegou antes e já leva o seu número
         escrever(self.repo, "complemento/versoes.json", json.dumps(registradas, indent=2) + "\n")
         mudar_o_codigo(self.repo)
         git(self.repo, "commit", "-qam", "uma PR com número")
         resultado = dar_a_versao(self.repo)
         self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
-        self.assertIn('VERSAO = "0.4.34"', ler(self.repo, "complemento/configuracao.py"))
+        self.assertIn('VERSAO = "%s"' % proxima_depois(adiante), ler(self.repo, "complemento/configuracao.py"))
 
     def test_acima_de_reserva_os_numeros_que_as_prs_abertas_ja_levam(self):
         mudar_o_codigo(self.repo)
         git(self.repo, "commit", "-qam", "uma PR de Conexão")
-        self.assertEqual(dar_a_versao(self.repo, "--acima-de", "0.4.40").returncode, 0)
-        self.assertIn('VERSAO = "0.4.41"', ler(self.repo, "complemento/configuracao.py"))
+        teto = a_frente(self.repo, 12)
+        self.assertEqual(dar_a_versao(self.repo, "--acima-de", teto).returncode, 0)
+        self.assertIn('VERSAO = "%s"' % proxima_depois(teto), ler(self.repo, "complemento/configuracao.py"))
 
     def test_os_numeros_reservados_nunca_sao_dados_sem_precisar_de_bandeira(self):
-        escrever(self.repo, "complemento/versoes-reservadas.json", '["0.4.28", "0.4.32", "0.4.33", "0.4.34"]\n')
+        reservadas = [a_frente(self.repo, quantas) for quantas in (1, 5, 6, 7)]
+        escrever(self.repo, "complemento/versoes-reservadas.json", json.dumps(reservadas) + "\n")
         mudar_o_codigo(self.repo)
         git(self.repo, "commit", "-qam", "uma PR de Conexão, com PRs abertas que já levam número")
         self.assertEqual(dar_a_versao(self.repo).returncode, 0)
-        self.assertIn('VERSAO = "0.4.35"', ler(self.repo, "complemento/configuracao.py"))
+        self.assertEqual(versao_de(self.repo), proxima_depois(reservadas[-1]))
 
     def test_versao_da_a_uma_pr_o_numero_reservado_que_ela_prometeu(self):
-        escrever(self.repo, "complemento/versoes-reservadas.json", '["0.4.28", "0.4.32", "0.4.33", "0.4.34"]\n')
+        reservadas = [a_frente(self.repo, quantas) for quantas in (1, 5, 6, 7)]
+        prometida = reservadas[-1]
+        escrever(self.repo, "complemento/versoes-reservadas.json", json.dumps(reservadas) + "\n")
         mudar_o_codigo(self.repo)
-        git(self.repo, "commit", "-qam", "uma PR de Conexão que prometeu a 0.4.34")
-        resultado = dar_a_versao(self.repo, "--versao", "0.4.34")
+        git(self.repo, "commit", "-qam", "uma PR de Conexão que prometeu a %s" % prometida)
+        resultado = dar_a_versao(self.repo, "--versao", prometida)
         self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
-        self.assertIn('VERSAO = "0.4.34"', ler(self.repo, "complemento/configuracao.py"))
-        self.assertIn("0.4.34", json.loads(ler(self.repo, "complemento/versoes.json")))
-        self.assertEqual(git(self.repo, "log", "-1", "--format=%s"), "Conexão 0.4.34: versão dada no merge")
+        self.assertIn('VERSAO = "%s"' % prometida, ler(self.repo, "complemento/configuracao.py"))
+        self.assertIn(prometida, json.loads(ler(self.repo, "complemento/versoes.json")))
+        self.assertEqual(git(self.repo, "log", "-1", "--format=%s"), "Conexão %s: versão dada no merge" % prometida)
 
     def test_versao_recusa_um_numero_que_ninguem_reservou_e_nao_muda_nada(self):
-        escrever(self.repo, "complemento/versoes-reservadas.json", '["0.4.28"]\n')
+        reservada, sem_reserva = a_frente(self.repo, 1), a_frente(self.repo, 7)
+        escrever(self.repo, "complemento/versoes-reservadas.json", json.dumps([reservada]) + "\n")
         mudar_o_codigo(self.repo)
         git(self.repo, "commit", "-qam", "uma PR de Conexão")
         antes = git(self.repo, "rev-parse", "HEAD")
-        resultado = dar_a_versao(self.repo, "--versao", "0.4.34")
+        resultado = dar_a_versao(self.repo, "--versao", sem_reserva)
         self.assertNotEqual(resultado.returncode, 0)
-        self.assertIn("0.4.34", resultado.stderr)
+        self.assertIn(sem_reserva, resultado.stderr)
         self.assertEqual(git(self.repo, "rev-parse", "HEAD"), antes)
         self.assertEqual(git(self.repo, "status", "--porcelain"), "")
 
