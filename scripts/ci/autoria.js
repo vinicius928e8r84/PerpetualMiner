@@ -18,10 +18,13 @@ const REFAZER_SEM_COAUTOR = 'git log -1 --no-show-signature --format=%B | grep -
 
 /**
  * Os co-autores de fora: o valor de cada linha `Co-authored-by: Nome <e-mail>` (em qualquer caixa) com algum e-mail
- * que não é o do dono. Sem `<…>`, o valor inteiro é o e-mail.
+ * que não é o do dono. Sem `<…>`, o valor inteiro é o e-mail. Linha é o que o grep do conserto chama de linha: só \n
+ * separa (um \r solto ou um U+2028 no meio do texto não começam outra).
  */
 function coautoresDeFora(mensagem) {
-  return [...mensagem.matchAll(/^co-authored-by[ \t]*:(.*)$/gim)]
+  return mensagem.split('\n')
+    .map(linha => /^co-authored-by[ \t]*:(.*)$/is.exec(linha))
+    .filter(Boolean)
     .map(([, valor]) => valor.trim())
     .filter(valor => {
       const emails = [...valor.matchAll(/<([^<>]*)>/g)].map(([, email]) => email.trim());

@@ -31,6 +31,10 @@ assert.deepStrictEqual(coautoresDeFora(`a\n\nco-authored-by: Um <um@exemplo.com>
   ['Um <um@exemplo.com>', 'dois@exemplo.com'], 'qualquer caixa, CRLF, sem colchetes e fora do último parágrafo; o do dono fica de fora');
 assert.deepStrictEqual(coautoresDeFora(`a\n\nCo-authored-by: Claude <noreply@anthropic.com> <${EMAIL_DO_DONO}>\n`), [`Claude <noreply@anthropic.com> <${EMAIL_DO_DONO}>`],
   'o e-mail do dono ao lado de outro não livra a linha');
+assert.deepStrictEqual(coautoresDeFora('a\n\ntexto colado\u2028Co-authored-by: Um <um@exemplo.com>\ntexto\rCo-authored-by: Dois <dois@exemplo.com>\n'), [],
+  'só \\n separa as linhas, como no grep do conserto: depois de um U+2028 ou de um \\r solto não começa outra');
+assert.deepStrictEqual(coautoresDeFora('a\n\nCo-authored-by: Um <um@exemplo.com>\u2028resto\n'), ['Um <um@exemplo.com>\u2028resto'],
+  'a linha que começa com Co-authored-by conta inteira, com o que vier depois de um U+2028');
 assert.deepStrictEqual(coautoresDeFora('Tira o Co-authored-by: Claude <noreply@anthropic.com> das mensagens\n\n  Co-authored-by: citado <c@exemplo.com>\n'), [],
   'só a linha que começa com Co-authored-by conta');
 {
