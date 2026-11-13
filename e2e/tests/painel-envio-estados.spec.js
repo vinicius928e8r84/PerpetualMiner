@@ -142,3 +142,54 @@ test('as Frases do Envio foram apagadas na Conexão por outro navegador: o cart�
   // As Frases deste navegador ficam no histórico; o painel não acompanha mais o Envio.
   await estadoFinal(extensao, { pm_envio: null, frases: INGLESAS });
 });
+
+// O Envio na Conexão também é uma máquina (`complemento/estado_do_envio.py`): do apagado não se sai, e o Tentar de novo dele é recusado
+// (`409 job_wiped`). Antes a Conexão respondia 200 sem mudar nada, e o painel dava o Envio por retomado.
+test('as Frases de um Envio que não concluiu são apagadas na Conexão sem o painel saber: a Conexão recusa o Tentar de novo do resumo e a Frase vai num Envio novo', async ({ page, extensao, fakes }) => {
+  await abrirPainel(page, extensao);
+  await marcar(page, SACK.texto).check();
+  await enviarAoAnki(page).click();
+  const [job] = await enviosCriados(fakes, 1);
+  fakes.anki.moverEnvio(job.jobId, { stage: 'generate_cards', cartoes: { [`${SACK.id}-0`]: 'failed' } });
+  fakes.anki.concluirEnvio(job.jobId, { erro: 'openai_rate_limited' });
+  await expect(resumo(page)).toBeVisible({ timeout: 10_000 });
+
+  fakes.anki.silenciar('/jobs/list');   // o painel não lê mais o estado: o apagado ele só descobre pela recusa
+  fakes.anki.apagarAsFrases();
+  await baralho(page, 'Inglês').getByRole('button', { name: 'Tentar de novo' }).click();
+
+  const [, novo] = await enviosCriados(fakes, 2);
+  expect(novo.entries.map(e => e.phraseId)).toEqual([SACK.id]);
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/retry').map(r => r.dados?.jobId)).toEqual([job.jobId]);
+  await expect(progresso(page)).not.toContainText('Não deu para retomar o envio');
+  await estadoFinalEm('os Envios que o painel acompanha', async () => (await extensao.lerStorage('pm_envio')).pm_envio.envios.map(e => [e.jobId, e.ids]),
+    [[job.jobId, []], [novo.jobId, [SACK.id]]]);
+});
+
+const custos = page => page.locator('#anki-custos');
+// A aba lê o mês corrente pelo relógio de verdade: os dois Envios são de agora.
+const naAbaCustos = () => [
+  { jobId: 'job-en-falhou', lang: 'en', createdAt: new Date().toISOString(), status: 'failed', pedidas: 3, custos: { cartoes: 0.011 }, lastError: 'openai_rate_limited' },
+  { jobId: 'job-ru-apagado', lang: 'ru', createdAt: new Date().toISOString(), status: 'failed', pedidas: 2, custos: { cartoes: 0 }, lastError: 'frases_apagadas' },
+];
+
+test('na aba Custos, o Envio com as Frases apagadas diz isso e não oferece Continuar envio; o que a Conexão recusa depois do clique também, sem “Envio retomado”', async ({ page, extensao, fakes }) => {
+  fakes.anki.definirCustos(naAbaCustos());
+  fakes.anki.responder('POST', '/jobs/retry', () => ({ status: 409, json: { error: 'job_wiped' } }));   // apagado depois de a aba ler
+  await page.goto(extensao.url('painel.html#anki/custos'));
+  const opcoes = custos(page).getByRole('listbox', { name: 'Envios recentes' }).getByRole('option');
+
+  await opcoes.filter({ hasText: 'Envio em russo' }).click();
+  const apagado = page.getByRole('region', { name: 'Envio em russo · 2 frases' });
+  await expect(apagado).toContainText('As frases deste Envio foram apagadas da Conexão com o Anki.');
+  await expect(apagado.getByRole('button', { name: 'Continuar envio' })).toHaveCount(0);
+
+  await opcoes.filter({ hasText: 'Envio em inglês' }).click();
+  const falhou = page.getByRole('region', { name: 'Envio em inglês · 3 frases' });
+  await falhou.getByRole('button', { name: 'Continuar envio' }).click();
+  await expect(falhou).toContainText('As frases deste Envio foram apagadas da Conexão com o Anki.');
+  await expect(falhou.getByRole('button', { name: 'Continuar envio' })).toHaveCount(0);
+  await expect(falhou).not.toContainText('Não deu para retomar o envio');
+  await expect(page.locator('.veio-toast')).toHaveCount(0);
+  await estadoFinalEm('os pedidos de retomar que chegaram à Conexão', () => fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/retry').map(r => r.dados?.jobId), ['job-en-falhou']);
+});

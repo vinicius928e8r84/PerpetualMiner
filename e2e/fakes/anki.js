@@ -19,7 +19,7 @@ const { resumoDosCustos, linhaDeCustos, linhasDosCustosDaFila } = require('./cus
 const { criarPareamento } = require('./pareamento');
 const contrato = require('../../complemento/contrato/carregar');
 
-// Fake da Conexão com o Anki: responde na porta local dela (127.0.0.1:8766), ligada e com vocabulário vazio. Um teste a desliga ou responde uma rota com `responder`.
+// Fake da Conexão com o Anki: responde na porta dela (127.0.0.1:8766), ligada e com vocabulário vazio. Um teste a desliga ou responde uma rota com `responder`.
 //
 // O que o complemento responde vem de `complemento/contrato/exemplos.json` (e dos `exemplos-*.json`), o mesmo que os testes do complemento leem: o
 // fake responde o exemplo do pedido no contexto em que a Conexão está (`abrirPerfil`, `abrirColecao`, `responderOpenAI`…). Os testes de tela montam os
@@ -137,17 +137,18 @@ function criarFakeAnki() {
     const { jobId } = corpo;
     const existente = envios.find(e => e.jobId === jobId);
     if (existente) {
-      if (!isDeepStrictEqual(semHora(existente.corpo), corpo)) return erroDoContrato('/jobs', 'job_conflict');
+      // Como a Conexão: compara com o corpo do criar.
+      if (!isDeepStrictEqual(existente.criadoCom || semHora(existente.corpo), corpo)) return erroDoContrato('/jobs', 'job_conflict');
       return { status: 201, json: { jobId, status: existente.state.status } };
     }
     modelo.aoComecarUmEnvio();
-    envios.push({ jobId, lang: corpo.lang, entries: corpo.entries || [], corpo, createdAt: estado.agora().toISOString(), state: novoEstado({ jobId }) });
+    envios.push({ jobId, lang: corpo.lang, entries: corpo.entries || [], corpo, criadoCom: corpo, createdAt: estado.agora().toISOString(), state: novoEstado({ jobId }) });
     return { status: 201, json: { jobId, status: 'queued' } };
   }
 
   const listarEnvios = () => ({ jobs: envios.map(e => ({ jobId: e.jobId, lang: e.lang, status: e.state.status, createdAt: e.createdAt, updatedAt: e.state.updatedAt, state: e.state })) });
 
-  /** `POST /jobs/apagar-frases`: de todo Envio somem as linhas das Frases (ficam os `phraseId`); um Envio na fila ou andando vai a `failed` com `wiped`. Repetido, não muda nada. */
+  /** `POST /jobs/apagar-frases`: de todo Envio somem as linhas das Frases (ficam os `phraseId`); o que andava vai a `failed` com `wiped`. */
   function apagarAsFrases() {
     for (const envio of envios) {
       envio.corpo = { ...envio.corpo, entries: envio.corpo.entries.map(({ line, ...entrada }) => entrada) };
@@ -194,8 +195,9 @@ function criarFakeAnki() {
     }
     const envio = envios.find(e => e.jobId === jobId);
     if (!envio) return erroDoContrato('/jobs/retry', 'job_not_found');
-    // Na fila ou andando, ou com as Frases apagadas, a Conexão só diz o estado: nada muda.
-    if (['queued', 'running'].includes(envio.state.status) || envio.state.wiped) return { status: 200, json: { jobId, status: envio.state.status } };
+    // Apagado, a Conexão recusa; na fila ou andando, só diz o estado.
+    if (envio.state.wiped) return erroDoContrato('/jobs/retry', 'job_wiped');
+    if (['queued', 'running'].includes(envio.state.status)) return { status: 200, json: { jobId, status: envio.state.status } };
     const cards = Object.fromEntries(Object.entries(envio.state.cards || {}).map(([stem, cartao]) =>
       [stem, cartao.status === 'failed' ? { ...cartao, status: 'pending', error: null } : cartao]));
     envio.state = { ...envio.state, status: 'queued', stage: 'queued', progress: {}, lastError: null, cards, updatedAt: estado.agora().toISOString() };
@@ -524,7 +526,7 @@ function criarFakeAnki() {
     modelo,
     /** O teto do mês (#160): `definir({ limite, gasto })`, `passarOTempoAte(dia)`, `guardado()`. */
     teto,
-    /** A atualização da Conexão pelo AnkiWeb (#177, `atualizacao.js`): `definir({ versao, versaoNova })`, `reinicios()`; o AnkiWeb e o que ficou guardado são o `ankiweb` e o `atualizacao` do contexto (`definirAtualizacao`). */
+    /** A atualização da Conexão pelo AnkiWeb (#177, `atualizacao.js`): `definir({ versao, versaoNova })`, `reinicios()`; o contexto: `definirAtualizacao`. */
     atualizacao,
     voz,
     previa,
@@ -615,7 +617,7 @@ function criarFakeAnki() {
     responder(metodo, caminho, gerar) { estado.rotas.set(`${metodo} ${caminho}`, gerar); },
     pararDeResponder(metodo, caminho) { estado.rotas.delete(`${metodo} ${caminho}`); },
 
-    /** Os Envios que a aba Custos lê (POST /analytics/jobs), em termos de gente; o fake os entrega no formato do contrato (`totalUsd` inclui o `otherUsd`). */
+    /** Os Envios que a aba Custos lê (POST /analytics/jobs), em termos de gente; o fake os entrega no formato do contrato. */
     definirCustos(lista) {
       estado.custos = lista.map(linhaDeCustos);
     },

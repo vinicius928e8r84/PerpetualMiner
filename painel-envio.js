@@ -29,9 +29,8 @@
   let doPainel = null;
   let ankiFechado = null;
   let aguardandoOAbridor = null; // o Envio sem começo que espera o abridor (#367)
-  // A remessa acompanhada: { envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar, corpo }] } (`pm_envio` leva também
-  // `apagarFrases: true` até o Apagar tudo ser confirmado). `corpo`, o pedido, é gravado antes do primeiro POST e reenviado igual:
-  // o `jobId` é o `id`, então é o mesmo Envio na Conexão (docs/design/envio-no-complemento.md).
+  // A remessa acompanhada: { envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar, corpo }] }. `corpo`, o pedido, é gravado
+  // antes do primeiro POST e reenviado igual: o `jobId` é o `id`, o mesmo Envio na Conexão (docs/design/envio-no-complemento.md).
   let remessa = null;
   const jobs = new Map();           // jobId → o último job lido de POST /jobs/list
   const falhasAoRetomar = new Map(); // jobId → a causa, quando Continuar envio não deu
@@ -79,7 +78,7 @@
     }
   }
 
-  /** A fase `criando`: um pedido por Envio, gravado a cada um (recarregar no meio não deixa um órfão). Devolve se a remessa ainda é a mesma. */
+  /** A fase `criando`: um pedido por Envio, gravado a cada um (recarregar não deixa órfão). Devolve se a remessa ainda é a mesma. */
   async function criarOsEnvios(envios, sobrou = () => true) {
     const estaRemessa = remessa;
     despachar(EVENTO.CRIAR);
@@ -242,10 +241,10 @@
   }
   /** Terminou, ou nem começou. */
   const terminou = envio => SituacaoDoEnvio.terminou(situacaoDe(envio));
-  /** A Conexão não o conhece, ou as Frases dele foram apagadas nela: o resumo não o conta, e o cartão oferece Esquecer. */
+  /** A Conexão não o conhece, ou apagou as Frases dele: o resumo não o conta, e o cartão oferece Esquecer. */
   const foraDoResumo = envio => SituacaoDoEnvio.foraDoResumo(situacaoDe(envio));
 
-  /** Grava os Envios que já têm um pedido montado. O Apagar tudo ainda não confirmado continua marcado; vindo enquanto se lia, nada é gravado. */
+  /** Grava os Envios que já têm pedido. O Apagar tudo não confirmado continua marcado; vindo enquanto se lia, nada é gravado. */
   async function gravar() {
     const aRemessa = remessa;
     if (!aRemessa) return;
@@ -255,10 +254,7 @@
 
   // ─── Apagar tudo (CFG-17) ───
 
-  /**
-   * O painel deixa de acompanhar os Envios (as Frases deles não existem mais: sem resumo, sem o que reenviar) e a Conexão apaga as
-   * dela (`POST /jobs/apagar-frases`) e para os Envios; em `pm_envio` fica só a marca do pedido, que sai de novo quando ela responder.
-   */
+  /** O painel deixa de acompanhar os Envios e a Conexão apaga as Frases dela (`POST /jobs/apagar-frases`); em `pm_envio` fica só a marca do pedido, até ela responder. */
   async function apagarTudo() {
     encerrarOAcompanhamento();
     await gravado.mudar(EnvioGravado.EVENTO.APAGAR_TUDO);
@@ -355,10 +351,7 @@
     tentarAbrirResumo();
   }
 
-  /**
-   * Tentar de novo de um Envio que não começou. Sem resposta ao POST, a Conexão é conferida antes: fora do ar, com o computador
-   * já conectado, o abridor é chamado e o mesmo pedido sai quando ela responder (#367).
-   */
+  /** Tentar de novo de um Envio que não começou. Sem resposta ao POST, a Conexão é conferida: fora do ar, o abridor é chamado e o pedido sai quando ela responder (#367). */
   async function tentarCriarDeNovo(envio) {
     if (!FaseDaRemessa.aceita(fase, EVENTO.CRIAR)) return;
     if (semRespostaAoCriar(envio) && await ConexaoAnki.conferir() === CONEXAO.DESLIGADA && ConexaoAnki.jaConectou()) {
@@ -400,9 +393,14 @@
     const { jobId } = envio;
     try {
       const resposta = await pedir(PedidoAoAnki.tentarEnvioDeNovo(jobId));
-      if (!resposta.ok) throw new Error(`POST /jobs/retry ${jobId} → HTTP ${resposta.status}`);
-      falhasAoRetomar.delete(jobId);
       const job = jobs.get(jobId);
+      falhasAoRetomar.delete(jobId);
+      // 409: as Frases dele foram apagadas na Conexão.
+      if (resposta.status === 409) {
+        jobs.set(jobId, { ...job, state: { ...job?.state, wiped: true } });
+        return false;
+      }
+      if (!resposta.ok) throw new Error(`POST /jobs/retry ${jobId} → HTTP ${resposta.status}`);
       // Como a Conexão: o erro anterior sai. Um que anda (limite do plano) fica como está.
       if (SituacaoDoEnvio.retomavel(situacaoDe(envio))) jobs.set(jobId, { ...job, status: 'queued', state: { ...job?.state, status: 'queued', stage: 'queued', progress: {}, lastError: null, ankiError: null } });
       return true;
@@ -510,10 +508,10 @@
     return recomecar(async () => {
       for (const envio of [...remessa.envios]) {
         if (envio.lang !== lang || foraDoResumo(envio)) continue;
-        const estado = estadoDoJob(envio);
         if (!envio.jobId) await criarEnvio(envio);
         else if (SituacaoDoEnvio.retomavel(situacaoDe(envio))) await retomar(envio);
-        else if (estado && terminou(envio)) await CartaoDoEnvio.recriar(remessa, envio, estado, criarEnvio);
+        const estado = estadoDoJob(envio);   // retomada recusada: vai num Envio novo
+        if (estado && terminou(envio) && !SituacaoDoEnvio.retomavel(situacaoDe(envio))) await CartaoDoEnvio.recriar(remessa, envio, estado, criarEnvio);
       }
     });
   }

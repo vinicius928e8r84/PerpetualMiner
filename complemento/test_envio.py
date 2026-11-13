@@ -600,7 +600,7 @@ class OApagarTudo(unittest.TestCase):
         self.assertEqual([nome for nome in arquivos if nome.endswith(".txt")], [])
         self.assertEqual(sorted(c["status"] for c in estado["cards"].values()), ["pending", "pending"])
 
-    def test_tentar_de_novo_um_envio_apagado_responde_o_estado_e_nao_grava_nada_em_qualquer_status(self):
+    def test_tentar_de_novo_um_envio_apagado_e_recusado_sem_gravar_em_qualquer_status(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.openai.recusar_o_chat_de("run", 429, "rate_limit_exceeded")
             conexao.criar(pedido(ID, "keep running | run : They keep running", "give up : She gave up smoking"))
@@ -608,11 +608,11 @@ class OApagarTudo(unittest.TestCase):
             apagar_as_frases(conexao)
             antes = arquivos_sem_o_log(conexao)
             pedidos = len(chats(conexao.openai))
-            resposta = json.loads(conexao.pedir("POST", "/jobs/retry", corpo={"jobId": ID})[2])
+            resposta = conexao.pedir("POST", "/jobs/retry", corpo={"jobId": ID})
             time.sleep(0.2)
             depois = arquivos_sem_o_log(conexao)
             final = len(chats(conexao.openai))
-        self.assertEqual(resposta, {"jobId": ID, "status": "partial"})
+        self.assertEqual((resposta[0], json.loads(resposta[2])), (409, {"error": "job_wiped"}))
         self.assertEqual((antes, pedidos), (depois, final))
 
     def test_o_pedido_orfao_sem_estado_e_sem_fila_tambem_perde_a_frase(self):

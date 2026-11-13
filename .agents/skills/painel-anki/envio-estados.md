@@ -22,5 +22,10 @@ Three pure pieces, no screen, proven without a browser by `node test_estado_do_e
   `proximo(gravado, evento)` over `acompanhar`, `esquecer`, `apagarTudo`, `confirmou`. `confirmou` reads again after the Conexão answered, so
   an Envio created while the Apagar tudo waited stays.
 
+The Conexão's side of the same Envio is its own machine, `complemento/estado_do_envio.py` (the recorded state: `queued → running ⇄ esperando →
+completed | partial | failed → queued`, and `apagado`, terminal; the stored format did not change: `esperando` is `running` with `waiting`, `apagado`
+is `wiped`). Every writer goes through the gate `Fila.mudar`; a retry of an `apagado` Envio answers `409 job_wiped`, which the panel reads as "wiped" (the summary re-creates what did not enter, Custos drops Continuar envio, the Boas-vindas drops the frozen request). Proven by
+`python3.9 complemento/test_estado_do_envio.py`.
+
 Left as it was: the 7-segment bar still reads the Envio's `stage`, which the Conexão records per Cartão (the bar goes back to stage 2 on each
 Cartão). Showing `n de total` Cartões changes the approved visual references, so it waits for the owner.

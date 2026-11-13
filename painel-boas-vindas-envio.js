@@ -158,6 +158,11 @@
       if (['failed', 'partial'].includes(criado.json.status)) {
         const outra = await chamar(PedidoAoAnki.tentarEnvioDeNovo(corpo.jobId));
         if (minha !== vez) return undefined;
+        if (outra.status === 409) {
+          // As Frases dele foram apagadas na Conexão, e do apagado não se sai: o pedido congelado sai, e Tentar de novo monta outro.
+          await Configuracao.guardarPrimeiroEnvio(() => ({ corpo: null }));
+          return minha === vez ? mostrarFalha(OUTRO) : undefined;
+        }
         if (!outra.ok) return mostrarFalha(DA_CONEXAO);
       }
 

@@ -1,0 +1,68 @@
+{
+  "filas": {
+    "um Envio com as Frases apagadas": [
+      {
+        "job": {
+          "jobId": "a4b5c6d7-8e9f-4a0b-9c1d-2e3f4a5b6c7d",
+          "createdAt": "2026-10-12T10:00:00-03:00",
+          "lang": "en",
+          "deckName": "Inglês",
+          "imageSource": "1",
+          "tts": {
+            "wordTld": "com",
+            "phraseTld": "co.uk"
+          },
+          "entries": [
+            {
+              "phraseId": 1760270400001
+            }
+          ],
+          "wiped": true
+        },
+        "state": {
+          "jobId": "a4b5c6d7-8e9f-4a0b-9c1d-2e3f4a5b6c7d",
+          "status": "failed",
+          "stage": "failed",
+          "completedStages": [],
+          "progress": {},
+          "successfulPhraseIds": [],
+          "failedPhraseIds": [],
+          "duplicatePhraseIds": [],
+          "lastError": "frases_apagadas",
+          "updatedAt": "2026-10-12T10:02:00-03:00",
+          "cards": {
+            "1760270400001-0": {
+              "phraseId": 1760270400001,
+              "status": "pending",
+              "error": null
+            }
+          },
+          "wiped": true
+        }
+      }
+    ]
+  },
+  "exemplos": [
+    {
+      "nome": "tentar de novo um Envio com as Frases apagadas (o Apagar tudo o parou) é recusado: do apagado não se sai, e nada é gravado",
+      "daExtensao": true,
+      "contexto": {
+        "fila": "um Envio com as Frases apagadas"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/jobs/retry",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "jobId": "a4b5c6d7-8e9f-4a0b-9c1d-2e3f4a5b6c7d"
+        }
+      },
+      "resposta": {
+        "status": 409,
+        "json": {
+          "error": "job_wiped"
+        }
+      }
+    }
+  ]
+}

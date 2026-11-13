@@ -84,7 +84,7 @@ Russo (`aria-pressed`, each with its total and number of Envios), whose choice f
 strip (BRG-08/29); Origem das imagens of the period (the 4 BRG-09 bars, %, count); **Envios recentes × detalhe**: a
 `listbox` (↑ ↓ Home End choose) and the chosen Envio's detail (ENV-08 title, the selo — Concluído, Concluído em parte ·
 N de M frases, Não concluído, or Enviando… · the ENV-07 stage —, “N não entrou” and Detalhes with `lastError`, the cost
-per part and the total, the Envio's image bar, and Continuar envio only for `partial`/`failed`, which `POST`s
+per part and the total, the image bar, and Continuar envio only for `partial`/`failed` unwiped, which `POST`s
 `/jobs/retry` (`{ jobId }`) and shows the ENV-14 toast). States: loading is BRG-25 with the skeleton; an error is **not** the
 loading look (#9): “Custo indisponível” (BRG-03) and the persistent BRG-04 aviso with Tentar de novo and Detalhes; empty
 is BRG-22 with “Ver tudo” (switches to Tudo).
