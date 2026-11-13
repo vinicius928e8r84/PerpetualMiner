@@ -63,7 +63,6 @@
     frases: FRASES,
     pm_atalho: { type: 'mouse', button: 3, code: null, altKey: true, ctrlKey: false, shiftKey: false, label: 'Alt+Botão voltar' },
     pm_deleted_ids: [],
-    pm_pending_sync: [],
     pm_migrated: true,
     pm_auto_miner_state_view: { ...ESTADO_AUTO_MINER, updatedAt: Date.now() },
     pm_auto_miner_settings: ESTADO_AUTO_MINER.settings,

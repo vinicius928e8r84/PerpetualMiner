@@ -126,27 +126,23 @@ async function carregarFrases(storage, { atuais = [] } = {}) {
 }
 
 /**
- * A captura (content.js → background.js): grava no local e marca como pendente
- * ANTES de tentar a nuvem; se a nuvem aceita, tira a marca.
+ * A captura (content.js → background.js): grava no local ANTES de tentar a nuvem.
+ * Uma falha da nuvem não deixa registro: o `carregar` do painel sobe o que só está no local.
  * @param {boolean} opts.syncFails    — a nuvem recusa
  * @param {boolean} opts.syncInFlight — o envio ainda não completou (frase só no local)
  */
 async function capturarFrase(storage, texto, { syncFails = false, syncInFlight = false } = {}) {
   const frase = { texto, data: '06/04/2026', streaming: 'youtube', id: Date.now() + (++_phraseCounter), idioma: 'Inglês' };
-  const { frases = [], pm_pending_sync = [] } = getLocal(storage, { frases: [], pm_pending_sync: [] });
-  setLocal(storage, { frases: [frase, ...frases], pm_pending_sync: [...new Set([...pm_pending_sync, String(frase.id)])] });
+  const { frases = [] } = getLocal(storage, { frases: [] });
+  setLocal(storage, { frases: [frase, ...frases] });
 
-  if (!syncFails && !syncInFlight) {
-    await de(storage).nuvem.gravarFrase(frase);
-    const { pm_pending_sync: ps } = getLocal(storage, { pm_pending_sync: [] });
-    setLocal(storage, { pm_pending_sync: ps.filter(id => id !== String(frase.id)) });
-  }
+  if (!syncFails && !syncInFlight) await de(storage).nuvem.gravarFrase(frase);
   return frase;
 }
 
 /**
  * Adição manual pelo painel (salvarMultiAdd/importarArquivoTxt): salva no local e
- * tenta a nuvem, sem pm_pending_sync. A falha é recuperada na próxima abertura do painel.
+ * tenta a nuvem. A falha é recuperada na próxima abertura do painel.
  */
 async function adicionarFraseManual(storage, texto, { syncFails = false } = {}) {
   const frase = { texto, data: '06/04/2026', streaming: 'manual', id: Date.now() + (++_phraseCounter), idioma: 'Inglês' };
@@ -168,9 +164,8 @@ function fraseVisivel(frases, texto) {
 function idNoFirestore(id) {
   return String(id) in firestore;
 }
-function idNoPendingSync(storage, id) {
-  const { pm_pending_sync = [] } = getLocal(storage, { pm_pending_sync: [] });
-  return pm_pending_sync.includes(String(id));
+function idNoLocal(storage, id) {
+  return getLocal(storage, { frases: [] }).frases.some(f => String(f.id) === String(id));
 }
 /** Os ids marcados em pm_del_{id} no chrome.storage.sync. */
 async function lerTombstoneSync() {
@@ -221,7 +216,7 @@ await (async () => {
   const frase = await capturarFrase(storageLocalB, 'Pendente no B', { syncFails: true });
 
   assert(!idNoFirestore(frase.id),                'frase NÃO está no Firestore (sync falhou)');
-  assert(idNoPendingSync(storageLocalB, frase.id),'frase está em pm_pending_sync do B');
+  assert(idNoLocal(storageLocalB, frase.id),     'frase está no local do B');
 
   await nuvemEmMemoria().gravarFrase(frase); // coloca no Firestore manualmente para simular que chegou
   await deletarFrase(storageLocalA, frase.id);
@@ -234,7 +229,7 @@ await (async () => {
 
   assert(!idNoFirestore(frase.id),               'frase NÃO foi re-subida ao Firestore por B');
   assert(!fraseVisivel(visB, 'Pendente no B'),   'frase NÃO aparece no painel do B');
-  assert(!idNoPendingSync(storageLocalB, frase.id), 'pm_pending_sync limpo (sem leak)');
+  assert(!idNoLocal(storageLocalB, frase.id),    'frase tirada do local do B (sem leak)');
   info(`Tombstone size: ${(await lerTombstoneSync()).size}`);
 })();
 
@@ -424,7 +419,7 @@ head('CENÁRIO 14 — Adição manual (painel): sync falha, recupera na próxima
 sep();
 await (async () => {
   resetState();
-  // Simula salvarMultiAdd: salva local, Firestore falha (sem pm_pending_sync)
+  // Simula salvarMultiAdd: salva local, Firestore falha
   const frase = await adicionarFraseManual(storageLocalA, 'Manual phrase', { syncFails: true });
 
   assert(!idNoFirestore(frase.id),               'frase não está no Firestore (sync falhou)');
@@ -601,7 +596,7 @@ await (async () => {
   assert(getLocal(storageLocalA, { frases: [] }).frases.find(f => f.id === marcadaLa.id).exportadaTxt === true, 'e é aplicada ao local');
 })();
 
-head('CENÁRIO 23 — Frase que não sobe fica na lista e na fila de retry (nunca some do computador)');
+head('CENÁRIO 23 — Frase que não sobe fica na lista e no computador (nunca some)');
 sep();
 await (async () => {
   resetState();
@@ -614,11 +609,11 @@ await (async () => {
   assert(fraseVisivel(resultado.frases, 'Nuvem recusa'),      'a frase continua na lista');
   assert(resultado.falhaNasOrfas?.quantas === 1,              'a falha é contada (falhaNasOrfas)');
   assert(resultado.desteComputador === 1,                     'desteComputador conta as frases locais');
-  assert(idNoPendingSync(storageLocalA, frase.id),            'continua em pm_pending_sync');
+  assert(idNoLocal(storageLocalA, frase.id),                  'continua no local');
 
   const depois = await carregarFrases(storageLocalA);
-  assert(fraseVisivel(depois, 'Nuvem recusa') && idNoFirestore(frase.id) && !idNoPendingSync(storageLocalA, frase.id),
-    'na próxima abertura sobe e sai da fila');
+  assert(fraseVisivel(depois, 'Nuvem recusa') && idNoFirestore(frase.id),
+    'na próxima abertura sobe');
 })();
 
 head('CENÁRIO 24 — Uma edição feita enquanto a nuvem responde sobrevive (a lista da tela é lida no fim)');
@@ -661,7 +656,7 @@ await (async () => {
   assert(getLocal(storageLocalA, { pm_deleted_ids: [] }).pm_deleted_ids.length === 0, 'e limpou pm_deleted_ids');
 })();
 
-head('CENÁRIO 27 — Subir frases de uma vez: tira da fila de retry; a falha é devolvida');
+head('CENÁRIO 27 — Subir frases de uma vez: a falha é devolvida e nada some do computador');
 sep();
 await (async () => {
   resetState();
@@ -669,8 +664,8 @@ await (async () => {
   nuvemFalha.gravarFrases = true;
   const erro = await de(storageLocalA).sinc.subirFrases([f1]);
   nuvemFalha.gravarFrases = false;
-  assert(erro instanceof Error && !idNoFirestore(f1.id) && idNoPendingSync(storageLocalA, f1.id), 'a falha é devolvida e a fila fica');
-  assert(await de(storageLocalA).sinc.subirFrases([f1]) === null && idNoFirestore(f1.id) && !idNoPendingSync(storageLocalA, f1.id), 'ao subir, sai da fila');
+  assert(erro instanceof Error && !idNoFirestore(f1.id) && idNoLocal(storageLocalA, f1.id), 'a falha é devolvida e a frase fica no local');
+  assert(await de(storageLocalA).sinc.subirFrases([f1]) === null && idNoFirestore(f1.id) && idNoLocal(storageLocalA, f1.id), 'ao subir, chega à nuvem e continua no local');
 })();
 
 const DOCS = 'https://firestore.googleapis.com/v1/projects/perpetualminer-4c219/databases/(default)/documents';

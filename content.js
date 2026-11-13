@@ -3,7 +3,6 @@
 const { detectarIdioma, Atalhos, Overlay, textoDaVoz, IDIOMAS, MineracaoDoDia, Mineracao } = PerpetualMiner;
 
 const AUTO_MINER_POLL_MS = 700;
-const AUTO_MINER_LAST_EVENT_KEY = MineracaoDoDia.CHAVES.ultimoEvento;
 const SUBTITLE_UI_TEXT = [
     'audio', 'áudio', 'caption', 'captions', 'configurações', 'detalhes',
     'episódio', 'episode', 'episodes', 'fullscreen', 'idioma', 'legenda',
@@ -23,7 +22,6 @@ let _autoMinerState = null;
 let _autoMinerLastText = '';
 let _autoMinerLastSentText = '';
 let _autoMinerStableSince = 0;
-let _autoMinerLastEvent = null;
 /** O idioma da legenda na tela (ou da última captura), `'en'`/`'ru'`: o do contador do botão. */
 let _idiomaDaLegenda = null;
 
@@ -308,7 +306,7 @@ function processarAutoMinerLegenda() {
             _autoMinerState = response.state;
             atualizarAutoMinerBadge();
         }
-        registrarAutoMinerEvento(response, normalizado, idioma);
+        registrarAutoMinerEvento(response, normalizado);
         if (response.action === 'saved') mostrarNotificacaoAutoMiner(normalizado, idioma, response, lugarDaLegenda(legenda));
     });
 }
@@ -460,21 +458,15 @@ function idiomaDoContador() {
     return ligados.length === 1 ? ligados[0] : null;
 }
 
-function registrarAutoMinerEvento(response, texto, idioma) {
-    if (!response?.action) return;
-    _autoMinerLastEvent = {
-        action: response.action,
-        reason: response.reason || response.evaluation?.reason || '',
-        texto,
-        idioma,
-        at: Date.now(),
-    };
-    if (response.action === 'saved') _autoMinerLastEvent.reason = 'saved';
-    chrome.storage.local.set({ [AUTO_MINER_LAST_EVENT_KEY]: _autoMinerLastEvent });
-    if (response.action === 'skip') {
-        atualizarAutoMinerBadge();
-        console.debug('[PerpetualMiner Auto]', _autoMinerLastEvent.reason, texto);
-    }
+/**
+ * A resposta de uma legenda avaliada. O diagnóstico (`pm_auto_miner_last_event`)
+ * é gravado só pelo service worker, que tem a avaliação inteira; aqui só o que a
+ * página mostra: o contador e o motivo no console.
+ */
+function registrarAutoMinerEvento(response, texto) {
+    if (response?.action !== 'skip') return;
+    atualizarAutoMinerBadge();
+    console.debug('[PerpetualMiner Auto]', response.reason || response.evaluation?.reason || '', texto);
 }
 
 // MIN-06: a mesma marca, mais apagada, ou a pílula se a legenda já trocou. A

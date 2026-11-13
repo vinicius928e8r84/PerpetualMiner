@@ -11,7 +11,7 @@ Configurações › Conta & sync is where a person signs in with Google, sees wh
 - `conta-partial`: “8 de 10 frases sincronizadas · 2 ficaram só neste computador”, and the chip “8 de 10 sincronizadas”; the count is of this computer's phrases, not the cloud's. Editing, mining or deleting during the upload does not lose the phrases still waiting, and a retry undoes no edit.
 - `conta-sign-in-out`: Entrar com Google uploads the phrases and shows the account; Sair da conta leaves the phrases on this computer (storage keeps no `pm_user_info`, no session). After signing out, the AI card offers local-only deletion of its key: [ia.md](./ia.md) › `ia-delete` (`O1:`).
 - `conta-delete-cloud`: with the account connected, a phrase deleted in the panel leaves the cloud and stays as a tombstone; Apagar tudo (Configurações › Zona de perigo) deletes every phrase from the cloud and tombstones each id. The offline copy of the tombstones in `chrome.storage.sync` (`pm_del_{id}`, 512 items at most) keeps the newest 500.
-- `conta-session`: the Firebase session renews its token when mining with under two minutes left and keeps Contexto and Palavra in the cloud; a session that does not renew keeps the mined phrase on the computer and in the retry queue; signing out during a renewal does not restore the account, and the next mining stays on this computer.
+- `conta-session`: the Firebase session renews its token when mining with under two minutes left and keeps Contexto and Palavra in the cloud; a session that does not renew keeps the mined phrase on the computer (the next panel load uploads it); signing out during a renewal does not restore the account, and the next mining stays on this computer.
 
 ## How to get to it (user POV)
 

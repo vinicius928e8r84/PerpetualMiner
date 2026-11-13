@@ -75,14 +75,13 @@ test('sair durante uma renovação não restaura a conta; a próxima mineração
     const minerada = frases.find(f => f.texto === nova);
     expect(minerada).toBeDefined();
     expect(frases).toHaveLength(2);
-    await expect.poll(async () => (await extensao.lerStorage({ pm_pending_sync: [] })).pm_pending_sync).toContain(String(minerada.id));
     expect(await extensao.lerStorage(['pm_firebase_auth', 'pm_user_info'])).toEqual({});
     expect(await extensao.lerSessao()).toBeNull();
     expect(fakes.google.frasesDe(uid)).toEqual([]);
     expect(fakes.google.requisicoes.filter(r => r.url.includes('firestore.googleapis.com'))).toEqual([]);
     await guardarEvidencia(page, 'logout-mineracao-local', {
       credenciaisGravadas: await extensao.lerStorage(['pm_firebase_auth', 'pm_user_info']),
-      armazenamento: await extensao.lerStorage(['frases', 'pm_pending_sync']),
+      armazenamento: await extensao.lerStorage(['frases']),
       frasesNaNuvem: fakes.google.frasesDe(uid),
       requisicoes: fakes.google.requisicoes.map(r => ({ metodo: r.metodo, url: r.url.split('?')[0] })),
     });
@@ -107,7 +106,6 @@ test('minerar com menos de dois minutos de sessão renova o token e preserva Con
       keywords: [expect.stringMatching(/^gulls@/)], autoKeyword: true,
     }),
   ]);
-  await expect.poll(async () => (await extensao.lerStorage({ pm_pending_sync: [] })).pm_pending_sync).toEqual([]);
   const renovadas = await extensao.lerSessao();
   expect(renovadas).toMatchObject({ uid, idToken: 'token-renovado', refreshToken: 'refresh-renovado' });
   expect(renovadas.expiresAt).toBeGreaterThan(Date.now() + 50 * 60_000);
@@ -121,12 +119,12 @@ test('minerar com menos de dois minutos de sessão renova o token e preserva Con
   await guardarEvidencia(page, 'sessao-renovada-frase-sincronizada', {
     conta: await page.locator('#shell-chip').innerText(),
     tokenRenovado: renovadas.idToken === 'token-renovado',
-    armazenamento: await extensao.lerStorage(['frases', 'pm_pending_sync']),
+    armazenamento: await extensao.lerStorage(['frases']),
     frasesNaNuvem: fakes.google.frasesDe(uid),
   });
 });
 
-test('a sessão que não renova mantém a frase minerada no computador e na fila de retry', async ({ page, extensao, fakes }) => {
+test('a sessão que não renova mantém a frase minerada no computador, sem gravar fila de retry', async ({ page, extensao, fakes }) => {
   const uid = 'uid-expirada';
   await extensao.semearSessao({ uid, displayName: 'Ana Souza', expirada: true });
   fakes.google.expirarSessao();
@@ -136,17 +134,18 @@ test('a sessão que não renova mantém a frase minerada no computador e na fila
   const [frase] = await extensao.frases();
   expect(frase.texto).toBe(texto);
   expect(fakes.google.frasesDe(uid)).toEqual([]);
-  expect((await extensao.lerStorage({ pm_pending_sync: [] })).pm_pending_sync).toEqual([String(frase.id)]);
+  expect(await extensao.lerStorage(['pm_pending_sync'])).toEqual({});
 
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(extensao.url('painel.html#configuracoes/conta'));
   await expect(page.locator('#shell-chip-estado')).toHaveText('Sessão expirou');
   await expect(page.locator('#shell-total')).toHaveText('1');
   await expect(page.locator('#cfg-conta').getByRole('button', { name: 'Entrar', exact: true })).toBeVisible();
-  expect((await extensao.lerStorage({ pm_pending_sync: [] })).pm_pending_sync).toEqual([String(frase.id)]);
+  expect((await extensao.frases()).map(f => f.texto)).toEqual([texto]);
+  expect(await extensao.lerStorage(['pm_pending_sync'])).toEqual({});
   await guardarEvidencia(page, 'sessao-expirada-frase-pendente', {
     conta: await page.locator('#shell-chip').innerText(),
-    armazenamento: await extensao.lerStorage(['frases', 'pm_pending_sync']),
+    armazenamento: await extensao.lerStorage(['frases']),
     frasesNaNuvem: fakes.google.frasesDe(uid),
   });
 });
