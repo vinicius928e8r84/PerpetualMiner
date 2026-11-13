@@ -68,6 +68,12 @@ README não pode crescer (o limite de tamanho dos arquivos). `scripts/voz-da-spe
 |---|---|---|---|---|---|
 | ENV-22 | Esperando o Anki há mais de 5 min **(novo)** | status | (não existe) | O Anki segue sem responder. Se ele estiver na tela de perfis, abra o perfil; se estiver sincronizando, espere a sincronização terminar. O Envio continua sozinho. | No cartão do Envio (#246), sem botão e sem fazer o Envio falhar; só quando a espera não tem o motivo do perfil (ENV-17). |
 
+### Envio: os estados que o cartão não dizia
+
+| ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
+|---|---|---|---|---|---|
+| ENV-24 | Envio sendo pedido, e Envio com as Frases apagadas **(novo)** | status | Na fila · (sem motivo) | Enviando o pedido · As frases deste Envio foram apagadas da Conexão com o Anki. | No cartão do Envio. “Enviando o pedido” no lugar da etapa enquanto a Conexão não respondeu ao pedido de criar (antes dizia “Na fila” sem ninguém ter recebido o Envio), sem “etapa 1 de 7”. A segunda frase é o motivo do Envio que parou porque o Apagar tudo de outro navegador apagou as Frases dele na Conexão: a ação é Esquecer ([ENV-23](README.md)), nunca Tentar de novo. |
+
 ### A Conexão com o Anki: conectar este navegador (#192)
 
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |

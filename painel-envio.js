@@ -1,18 +1,24 @@
 'use strict';
 
+// O Envio ao Anki no painel: guarda os fatos (a remessa, o que a Conexão disse de cada Envio) e manda os eventos. O que cada Envio é
+// agora e em que fase a remessa está são as duas máquinas de `painel-envio-estado.js`; `pm_envio` é gravado por `lib/envio-gravado.js`.
+
 (function (raiz) {
-  const CHAVE_GRAVADA = 'pm_envio';
   /** De quanto em quanto tempo a Conexão é perguntada sobre os Envios. */
   const INTERVALO = 2000;
 
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, EnvioApagarFrases, ehRussa, AjustesDeEnvio, PedidoAoAnki, CartaoDoEnvio, EnvioComOAnkiFechado } = raiz;
-  const { ETAPAS, FIM, nomeDoIdioma, retomavel } = CartaoDoEnvio;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, EnvioApagarFrases, ehRussa, AjustesDeEnvio, PedidoAoAnki, CartaoDoEnvio, EnvioComOAnkiFechado, SituacaoDoEnvio, FaseDaRemessa, EnvioGravado } = raiz;
+  const { ETAPAS, nomeDoIdioma } = CartaoDoEnvio;
+  const { FASE, EVENTO } = FaseDaRemessa;
   const { AREAS_DO_PAINEL } = Shell;
   const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
+  const gravado = EnvioGravado.criar(chrome.storage.local);
+  /** Todo pedido da remessa tem prazo: uma Conexão que aceita o pedido e não responde não segura a fase. */
+  const pedir = pedido => PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, pedido, { signal: AbortSignal.timeout(FaseDaRemessa.PRAZO_DO_PEDIDO_MS) });
   const { montarCartao } = CartaoDoEnvio.criar({
+    situacaoDe,
     estadoDoJob,
-    desconhecido: envio => Boolean(envio.jobId) && desconhecidos.has(envio.jobId),
     esquecerOEnvio,
     falhaAoRetomar: envio => envio.jobId && falhasAoRetomar.get(envio.jobId),
     tentarCriarDeNovo,
@@ -29,7 +35,7 @@
   let remessa = null;
   const jobs = new Map();           // jobId → o último job lido de POST /jobs/list
   const falhasAoRetomar = new Map(); // jobId → a causa, quando Continuar envio não deu
-  let criando = false;
+  let fase = FASE.PARADA;           // parada → criando → acompanhando → resumo → parada
   const desconhecidos = new Set();  // jobIds que a Conexão respondeu sem conhecer (#245)
   const retomando = new Set();      // jobIds com um Continuar envio a caminho
   // Um Envio que não começou (ou não retomou) segura o resumo até a pessoa fechar o progresso.
@@ -39,6 +45,7 @@
   let relogio = null;
   let progresso = null;             // o modal de progresso aberto ({ fechar })
   let resumo = null;                // o modal do resumo aberto
+  const despachar = (tipo, dados) => { fase = FaseDaRemessa.proxima(fase, { tipo, ...dados }); };
   let respostaDoResumo = null;      // 'apagar' | 'descartar' | { tentar: lang } | null (Manter)
   const assinaturas = new Map();    // id do Envio → o que o cartão mostra agora
 
@@ -52,7 +59,7 @@
     porId('btn-resumo-apagar').addEventListener('click', () => responderResumo('apagar'));
     // O Apagar tudo em outra aba grava só a marca: esta aba também deixa de acompanhar os Envios.
     chrome.storage.onChanged.addListener((mudancas, area) => {
-      const nova = mudancas[CHAVE_GRAVADA]?.newValue;
+      const nova = mudancas[EnvioGravado.CHAVE]?.newValue;
       if (area === 'local' && nova?.apagarFrases && !nova.envios?.length && remessa) encerrarOAcompanhamento();
     });
     ConexaoAnki.acompanhar(situacao => {
@@ -63,27 +70,31 @@
     // O resumo que esperou a Boas-vindas abre quando a pessoa chega ao painel.
     for (const area of AREAS_DO_PAINEL) Shell.aoEntrarNaArea(area, tentarAbrirResumo);
 
-    const gravado = await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r));
-    if (!remessa && gravado[CHAVE_GRAVADA]?.envios?.some(e => e.jobId || e.corpo)) {
-      remessa = gravado[CHAVE_GRAVADA];
+    const guardada = await gravado.ler();
+    if (!remessa && guardada?.envios?.some(e => e.jobId || e.corpo)) {
+      remessa = guardada;
       // Pedido sem resposta: o mesmo corpo de novo; a Conexão devolve o Envio que tem, ou o cria.
-      const semResposta = remessa.envios.filter(e => !e.jobId && !e.falhaAoCriar && e.corpo);
-      if (semResposta.length) {
-        const estaRemessa = remessa;
-        criando = true;
-        try {
-          for (const envio of semResposta) {
-            // O Apagar tudo no meio encerra a remessa: nada mais sai.
-            if (remessa !== estaRemessa) break;
-            await criarEnvio(envio);
-            await gravar();
-          }
-        } finally {
-          criando = false;
-        }
-      }
+      await criarOsEnvios(remessa.envios.filter(e => !e.jobId && !e.falhaAoCriar && e.corpo));
       acompanhar();
     }
+  }
+
+  /** A fase `criando`: um pedido por Envio, gravado a cada um (recarregar no meio não deixa um órfão). Devolve se a remessa ainda é a mesma. */
+  async function criarOsEnvios(envios, sobrou = () => true) {
+    const estaRemessa = remessa;
+    despachar(EVENTO.CRIAR);
+    try {
+      for (const envio of envios) {
+        // O Apagar tudo no meio encerra a remessa: nada mais sai.
+        if (remessa !== estaRemessa) break;
+        await criarEnvio(envio);
+        await gravar();
+      }
+    } finally {
+      // Depois do Apagar tudo a fase já é outra (parada, ou a de uma remessa nova): este fim não é dela.
+      if (remessa === estaRemessa) despachar(EVENTO.CRIOU, { sobrou: sobrou() });
+    }
+    return remessa === estaRemessa;
   }
 
   /** A Conexão respondeu: o Envio que esperava reenvia o mesmo corpo (mesmo jobId); senão é um Enviar. */
@@ -95,7 +106,7 @@
 
   /** `ids`: as Frases que um Enviar com o Anki fechado guardou; sem eles, a seleção de agora. */
   async function enviar(ids) {
-    if (criando || !doPainel) return;
+    if (!doPainel || !FaseDaRemessa.aceita(fase, EVENTO.CRIAR)) return;
     // Uma frase que já está na remessa não vai de novo: quem não começou tem o Tentar de novo dele.
     const acompanhadas = new Set((remessa?.envios || []).flatMap(e => e.ids));
     const novas = (ids ? doPainel.frasesPorId(ids) : doPainel.selecionadas()).filter(f => !acompanhadas.has(f.id));
@@ -111,27 +122,14 @@
       .filter(lang => porLang[lang].length)
       .map(lang => ({ id: crypto.randomUUID(), lang, ids: porLang[lang], jobId: null, criadoEm: Date.now(), falhaAoCriar: null }));
 
-    criando = true;
     desistiuDasPendencias = false;
     remessa = remessa || { envios: [] };
     remessa.envios.push(...envios);
-    const estaRemessa = remessa;
     // ENV-05 é silêncio: o modal aberto na hora é a resposta.
     abrirProgresso();
-    try {
-      // Gravado a cada Envio criado: recarregar no meio não deixa um órfão.
-      for (const envio of envios) {
-        // O Apagar tudo no meio encerra a remessa: nada mais sai.
-        if (remessa !== estaRemessa) break;
-        await criarEnvio(envio);
-        await gravar();
-      }
-    } finally {
-      criando = false;
-    }
-    if (remessa !== estaRemessa) return;
     // Fechado sem nada ter começado: não há o que acompanhar.
-    if (!progresso && !remessa.envios.some(e => e.jobId)) return esquecer();
+    if (!await criarOsEnvios(envios, () => Boolean(progresso) || remessa.envios.some(e => e.jobId))) return;
+    if (fase === FASE.PARADA) return esquecer();
     desenharProgresso();
     acompanhar();
   }
@@ -171,7 +169,7 @@
     if (remessa !== aRemessaDoEnvio) return;
     let resposta;
     try {
-      resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, PedidoAoAnki.criarEnvio(envio.corpo));
+      resposta = await pedir(PedidoAoAnki.criarEnvio(envio.corpo));
     } catch (erro) {
       envio.falhaAoCriar = { semResposta: true, causa: `POST /jobs → ${erro.message || erro}` };
       return;
@@ -211,7 +209,7 @@
 
   async function lerJobs() {
     try {
-      const resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, PedidoAoAnki.listarEnvios());
+      const resposta = await pedir(PedidoAoAnki.listarEnvios());
       if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
       const lista = (await resposta.json()).jobs || [];
       const porJob = new Map(lista.map(job => [job.jobId, job]));
@@ -235,24 +233,24 @@
     return job ? { status: job.state?.status || job.status, ...job.state } : null;
   }
 
-  /** Terminou, ou nem começou. */
-  function terminou(envio) {
-    if (!envio.jobId) return Boolean(envio.falhaAoCriar);
-    if (desconhecidos.has(envio.jobId)) return true;
-    const estado = estadoDoJob(envio);
-    return Boolean(estado && FIM[estado.status]);
+  /** O que o Envio é agora (`SituacaoDoEnvio`): o cartão o desenha, e o resto daqui pergunta a ela. */
+  function situacaoDe(envio) {
+    return SituacaoDoEnvio.situacaoDoEnvio(envio, estadoDoJob(envio), {
+      desconhecido: desconhecidos.has(envio.jobId),
+      ankiFechado: ConexaoAnki.situacao() === CONEXAO.DESLIGADA && ConexaoAnki.jaConectou(),
+    });
   }
+  /** Terminou, ou nem começou. */
+  const terminou = envio => SituacaoDoEnvio.terminou(situacaoDe(envio));
+  /** A Conexão não o conhece, ou as Frases dele foram apagadas nela: o resumo não o conta, e o cartão oferece Esquecer. */
+  const foraDoResumo = envio => SituacaoDoEnvio.foraDoResumo(situacaoDe(envio));
 
-  /** Grava os Envios que já têm um pedido montado. */
+  /** Grava os Envios que já têm um pedido montado. O Apagar tudo ainda não confirmado continua marcado; vindo enquanto se lia, nada é gravado. */
   async function gravar() {
     const aRemessa = remessa;
     if (!aRemessa) return;
     const envios = aRemessa.envios.filter(e => e.jobId || e.falhaAoCriar || e.corpo);
-    // O Apagar tudo ainda não confirmado continua marcado, mesmo com um Envio novo.
-    const apagarFrases = (await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r)))[CHAVE_GRAVADA]?.apagarFrases;
-    // O Apagar tudo enquanto se lia: o que ele gravou fica, e estas Frases não voltam a `pm_envio`.
-    if (remessa !== aRemessa) return;
-    return new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios, ...(apagarFrases ? { apagarFrases: true } : {}) } }, r));
+    return gravado.mudar(EnvioGravado.EVENTO.ACOMPANHAR, { envios, seAinda: () => remessa === aRemessa });
   }
 
   // ─── Apagar tudo (CFG-17) ───
@@ -263,36 +261,35 @@
    */
   async function apagarTudo() {
     encerrarOAcompanhamento();
-    await new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios: [], apagarFrases: true } }, r));
+    await gravado.mudar(EnvioGravado.EVENTO.APAGAR_TUDO);
     return EnvioApagarFrases.pedir();
   }
 
   /** O painel deixa de acompanhar os Envios e fecha o que mostrava; nada é gravado nem enviado. */
   function encerrarOAcompanhamento() {
-    remessa = null;
-    desistiuDasPendencias = false;
-    jobs.clear();
-    desconhecidos.clear();
-    falhasAoRetomar.clear();
-    pararDeAcompanhar();
+    despachar(EVENTO.APAGAR_TUDO);
+    largarARemessa();
     progresso?.fechar();
     if (resumo) responderResumo('descartar');
   }
 
-  async function esquecer() {
+  function largarARemessa() {
     remessa = null;
     desistiuDasPendencias = false;
     jobs.clear();
     desconhecidos.clear();
     falhasAoRetomar.clear();
     pararDeAcompanhar();
-    const apagarFrases = (await new Promise(r => chrome.storage.local.get({ [CHAVE_GRAVADA]: null }, r)))[CHAVE_GRAVADA]?.apagarFrases;
-    if (apagarFrases) return new Promise(r => chrome.storage.local.set({ [CHAVE_GRAVADA]: { envios: [], apagarFrases: true } }, r));
-    return new Promise(r => chrome.storage.local.remove(CHAVE_GRAVADA, r));
+  }
+
+  /** Nada mais é acompanhado (a fase já é `parada`): o guardado sai, menos a marca de um Apagar tudo por confirmar. */
+  function esquecer() {
+    largarARemessa();
+    return gravado.mudar(EnvioGravado.EVENTO.ESQUECER);
   }
 
   function abrirProgresso() {
-    if (resumo) return;
+    if (fase === FASE.RESUMO) return;
     desenharProgresso({ mesmoFechado: true });
     if (progresso) return;
     progresso = Veio.abrirModal(porId('modal-envio'), { aoFechar: aoFecharProgresso });
@@ -302,9 +299,12 @@
     progresso = null;
     assinaturas.clear();
     porId('modal-envio-lista').textContent = '';
-    if (!remessa || criando) return;
+    if (!remessa || fase !== FASE.ACOMPANHANDO) return;
     // Um envio que nunca começou não fica acompanhado.
-    if (!remessa.envios.some(e => e.jobId)) return esquecer();
+    if (!remessa.envios.some(e => e.jobId)) {
+      despachar(EVENTO.ESQUECER);
+      return esquecer();
+    }
     // Fechou com o resto terminado e um erro à vista: o resumo abre e conta o que falhou.
     if (remessa.envios.every(terminou) && remessa.envios.some(pendente)) {
       desistiuDasPendencias = true;
@@ -312,9 +312,9 @@
     }
   }
 
-  /** O Envio espera uma ação da pessoa: não começou, ou o Continuar envio não deu. */
+  /** O Envio espera uma ação da pessoa: não começou, o Continuar envio não deu, ou só resta Esquecer. */
   function pendente(envio) {
-    return Boolean(envio.falhaAoCriar) || Boolean(envio.jobId && (falhasAoRetomar.has(envio.jobId) || desconhecidos.has(envio.jobId)));
+    return Boolean(envio.falhaAoCriar) || Boolean(envio.jobId && (falhasAoRetomar.has(envio.jobId) || foraDoResumo(envio)));
   }
 
   function desenharProgresso({ mesmoFechado = false } = {}) {
@@ -349,7 +349,7 @@
     jobs.delete(envio.jobId);
     assinaturas.delete(envio.id);
     porId('modal-envio-lista').querySelector(`[data-envio="${envio.id}"]`)?.remove();
-    if (!remessa.envios.length) return progresso ? progresso.fechar() : esquecer();
+    if (!remessa.envios.length) return progresso ? progresso.fechar() : aoFecharProgresso();
     await gravar();
     desenharProgresso();
     tentarAbrirResumo();
@@ -360,7 +360,7 @@
    * já conectado, o abridor é chamado e o mesmo pedido sai quando ela responder (#367).
    */
   async function tentarCriarDeNovo(envio) {
-    if (criando) return;
+    if (!FaseDaRemessa.aceita(fase, EVENTO.CRIAR)) return;
     if (semRespostaAoCriar(envio) && await ConexaoAnki.conferir() === CONEXAO.DESLIGADA && ConexaoAnki.jaConectou()) {
       if (!remessa?.envios.includes(envio)) return;
       aguardandoOAbridor = envio;
@@ -371,12 +371,14 @@
 
   /** Recomeça Envios: nada novo é criado no meio, e depois tudo volta a ser acompanhado. */
   async function recomecar(passo) {
-    criando = true;
+    if (!FaseDaRemessa.aceita(fase, EVENTO.CRIAR)) return;
+    const estaRemessa = remessa;
+    despachar(EVENTO.CRIAR);
     desistiuDasPendencias = false;
     try {
       await passo();
     } finally {
-      criando = false;
+      if (remessa === estaRemessa) despachar(EVENTO.CRIOU, { sobrou: true });
     }
     await gravar();
     desenharProgresso();
@@ -388,20 +390,21 @@
     if (retomando.has(envio.jobId)) return;
     retomando.add(envio.jobId);
     desistiuDasPendencias = false;
-    const ok = await retomar(envio.jobId).finally(() => retomando.delete(envio.jobId));
+    const ok = await retomar(envio).finally(() => retomando.delete(envio.jobId));
     if (ok) Veio.mostrarToastDeSucesso(textoDaVoz('ENV-14.sucesso'));
     desenharProgresso();
     acompanhar();
   }
 
-  async function retomar(jobId) {
+  async function retomar(envio) {
+    const { jobId } = envio;
     try {
-      const resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, PedidoAoAnki.tentarEnvioDeNovo(jobId));
+      const resposta = await pedir(PedidoAoAnki.tentarEnvioDeNovo(jobId));
       if (!resposta.ok) throw new Error(`POST /jobs/retry ${jobId} → HTTP ${resposta.status}`);
       falhasAoRetomar.delete(jobId);
       const job = jobs.get(jobId);
       // Como a Conexão: o erro anterior sai. Um que anda (limite do plano) fica como está.
-      if (retomavel(estadoDoJob({ jobId }))) jobs.set(jobId, { ...job, status: 'queued', state: { ...job?.state, status: 'queued', stage: 'queued', progress: {}, lastError: null, ankiError: null } });
+      if (SituacaoDoEnvio.retomavel(situacaoDe(envio))) jobs.set(jobId, { ...job, status: 'queued', state: { ...job?.state, status: 'queued', stage: 'queued', progress: {}, lastError: null, ankiError: null } });
       return true;
     } catch (erro) {
       falhasAoRetomar.set(jobId, String(erro.message || erro));
@@ -411,8 +414,8 @@
 
   /** O resumo abre quando nada anda e algum Envio chegou a começar. */
   function prontoParaResumo() {
-    if (!remessa || criando || resumo) return false;
-    return remessa.envios.some(e => e.jobId && !desconhecidos.has(e.jobId)) && remessa.envios.every(terminou);
+    if (!remessa || fase !== FASE.ACOMPANHANDO) return false;
+    return remessa.envios.some(e => e.jobId && !foraDoResumo(e)) && remessa.envios.every(terminou);
   }
 
   /** Outro modal na tela (o de progresso não conta: o resumo toma o lugar). */
@@ -422,36 +425,12 @@
     return scrims.length > 0;
   }
 
-  /** O desfecho de cada idioma: o que virou cartão, o que já estava lá e o que não entrou. */
-  function contagemPorIdioma() {
-    const porLang = new Map();
-    for (const envio of remessa.envios) {
-      if (desconhecidos.has(envio.jobId)) continue;
-      if (!porLang.has(envio.lang)) {
-        porLang.set(envio.lang, { lang: envio.lang, baralho: envio.baralho, total: 0, enviadas: [], duplicadas: [], falhas: 0 });
-      }
-      const idioma = porLang.get(envio.lang);
-      idioma.baralho = idioma.baralho || envio.baralho;
-      idioma.total += envio.ids.length;
-      const estado = envio.jobId ? estadoDoJob(envio) || {} : {};
-      idioma.codigo ||= estado.lastError;
-      const { sucesso, falha, dup } = CartaoDoEnvio.conjuntos(estado);
-      for (const id of envio.ids) {
-        // Na dúvida, a frase fica: uma que a Conexão dá também como falha não é apagada.
-        if (!sucesso.has(Number(id)) || falha.has(Number(id))) idioma.falhas += 1;
-        else if (dup.has(Number(id))) idioma.duplicadas.push(id);
-        else idioma.enviadas.push(id);
-      }
-    }
-    return ['en', 'ru'].filter(lang => porLang.has(lang)).map(lang => porLang.get(lang));
-  }
-
   function tentarAbrirResumo() {
     // A Boas-vindas é a página da primeira configuração: nada abre por cima dela.
     if (!AREAS_DO_PAINEL.includes(Shell.areaAtual())) return;
     if (outroModalAberto()) return;
     if (!prontoParaResumo()) {
-      if (desconhecidos.size && remessa.envios.every(terminou) && !progresso && !desistiuDasPendencias) abrirProgresso();
+      if (remessa?.envios.some(foraDoResumo) && remessa.envios.every(terminou) && !progresso && !desistiuDasPendencias) abrirProgresso();
       return;
     }
     if (remessa.envios.some(pendente) && !desistiuDasPendencias) {
@@ -461,7 +440,7 @@
     }
     if (progresso) progresso.fechar();
 
-    const idiomas = contagemPorIdioma();
+    const idiomas = SituacaoDoEnvio.contagemPorIdioma(remessa.envios, situacaoDe, estadoDoJob);
     const enviadas = idiomas.flatMap(i => i.enviadas);
     const duplicadas = idiomas.flatMap(i => i.duplicadas);
     const falhas = idiomas.reduce((soma, i) => soma + i.falhas, 0);
@@ -492,6 +471,7 @@
 
     respostaDoResumo = null;
     const escolhas = { enviadas, duplicadas };
+    despachar(EVENTO.RESUMIR);
     resumo = Veio.abrirModal(porId('modal-resumo'), { aoFechar: () => aoFecharResumo(escolhas) });
   }
 
@@ -506,6 +486,7 @@
     respostaDoResumo = null;
 
     if (resposta === 'descartar') return; // o Apagar tudo (aqui ou em outra aba): as Frases do resumo não existem mais
+    despachar(EVENTO.RESPONDER, { tentar: Boolean(resposta?.tentar) });
     if (resposta?.tentar) {
       await tentarDeNovoOIdioma(resposta.tentar);
       return;
@@ -528,10 +509,10 @@
     abrirProgresso();
     return recomecar(async () => {
       for (const envio of [...remessa.envios]) {
-        if (envio.lang !== lang) continue;
+        if (envio.lang !== lang || foraDoResumo(envio)) continue;
         const estado = estadoDoJob(envio);
         if (!envio.jobId) await criarEnvio(envio);
-        else if (retomavel(estado)) await retomar(envio.jobId);
+        else if (SituacaoDoEnvio.retomavel(situacaoDe(envio))) await retomar(envio);
         else if (estado && terminou(envio)) await CartaoDoEnvio.recriar(remessa, envio, estado, criarEnvio);
       }
     });

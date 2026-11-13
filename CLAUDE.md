@@ -49,12 +49,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `painel-anki-baralhos.js` | `PerpetualMiner.Baralhos` — Baralhos e termos and Vocabulário in the Conexão com o Anki area (BRG-10…14, 19…21, 27, 34, 35, GLB-01). See “Baralhos e termos and Vocabulário” in the `painel-anki` skill |
 | `painel-ajustes.js` | The Ajustes de envio tab: one card per language, its form saved only on Salvar ajustes, the Baralho picked from the Anki's decks, and the stale-tab refusal (#35). See “Ajustes de envio” in the `painel-anki` skill |
 | `painel-anki-estilo.js`, `painel-anki-previa.js`, `painel-anki-tipo-proprio.js`, `painel-previa.css` | Estilo do cartão in Ajustes de envio: level, preview, “Usar um tipo que já tenho” (#162, #164, #165) |
-| `painel-envio.js` | The Envio ao Anki: Enviar ao Anki in the Frases bar, the progress modal, the tracking in `pm_envio` and the summary (ENV-03…15). See `painel-anki` skill |
+| `painel-envio.js`, `painel-envio-estado.js` | The Envio ao Anki (ENV-03…15): progress modal, summary; its state machines `SituacaoDoEnvio`, `FaseDaRemessa`. See `painel-anki` skill |
 | `painel-envio-anki-fechado.js` | `PerpetualMiner.EnvioComOAnkiFechado` — Enviar ao Anki with the Anki closed (#150): the ENV-16 notice, the pending Envio and the Consertar outcome (BRG-39). See “Envio ao Anki” in the `painel-anki` skill |
-| `painel-envio-cartao.js` | `CartaoDoEnvio`: an Envio's card in the progress modal, “Abrir <perfil>” (ENV-17), Esquecer (ENV-23) |
+| `painel-envio-cartao.js` | `CartaoDoEnvio`: an Envio's card, “Abrir <perfil>” (ENV-17), Esquecer (ENV-23) |
 | `painel-envio-apagar.js` | `EnvioApagarFrases`: the Apagar tudo request (CFG-17) |
 | `painel-envio-parado.js` | `EnvioParado`: the Envio stopped by a closed Anki (#151): ENV-18, Continuar envio |
-| `painel-envio-limite.js` | `EnvioNoLimite`: the Envio waiting for the ChatGPT plan's limit (#158): ENV-19, three actions |
+| `painel-envio-limite.js` | `EnvioNoLimite`: the Envio waiting for the ChatGPT plan's limit (#158): ENV-19 |
 | `painel-teto.js`, `painel-teto.css` | `TetoDoMes` and `EnvioNoTeto`: the monthly cap (#160): the 80% warning, the Custos card, the Envio band (ENV-21) |
 | `painel-conexao-versao.js`, `painel-conexao-versao-estado.js` | Painel-top notices: the Conexão version (#177; `AvisoDaVersao`; map `conexao-versao`) and the pairing (#192, BRG-52; map `pareamento`) |
 | `bookreader.html/js/css` | Minerar de uma foto (ex-BookReader): book photos → Gemini Vision reads the marked passages → the person picks which phrases to mine. See “Minerar de uma foto” in the `minerar-foto` skill |
@@ -70,7 +70,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `lib/ajustes-de-envio.js` | `PerpetualMiner.AjustesDeEnvio` — the Ajustes de envio in one place: the Baralho padrão of each language, the stored shape of `ankiBridgePresets`, the per-language save that refuses a stale version, and `acompanhar`. Loaded by the panel and the service worker: one default deck everywhere |
 | `lib/mineracao.js` | `PerpetualMiner.Mineracao` and `PerpetualMiner.minerarFraseManual` — shared mining requests and selection context. See the module's doc comments for the API, confirmation and title-compatibility contracts |
 | `lib/mineracao-do-dia.js` | `PerpetualMiner.MineracaoDoDia` — shared automatic-mining day rules and storage/message channel names. See the module's doc comments for normalization and the day-query API |
-| `lib/apagar-frases-pendente.js` | `PerpetualMiner.ApagarFrasesPendente`: resends a pending Apagar tudo every 30 s |
+| `lib/apagar-frases-pendente.js`, `lib/envio-gravado.js` | Resends a pending Apagar tudo every 30 s; `EnvioGravado` writes `pm_envio` |
 | `lib/pedido-ao-anki.js` | `PerpetualMiner.PedidoAoAnki` — the only way the extension asks the Conexão com o Anki: one builder per request; `pedir(endereco, pedido, opcoes)` sends only what a builder made and signs it (`lib/pareamento.js`), except `saude` and the pairing. `e2e/variantes-do-pedido-ao-anki.js` lists every request for `node test_contrato_fechado.js`. Loaded by the service worker, the panel and the popup |
 | `lib/pareamento.js` | `PerpetualMiner.PareamentoComOAnki` — this browser's pairing with the Conexão (#192): the HMAC credential (non-extractable `CryptoKey`, IndexedDB `pm-pareamento`), the `conferir` proof, request signatures and answer proofs. Design: `docs/design/pareamento-da-conexao.md` |
 | `lib/abridor.js` | `PerpetualMiner.Abridor` — the Conexão's opener seen from the extension (#147): the host `com.perpetualminer.abridor`, the optional `nativeMessaging`, `conferirOAnki()`, `abrirOAnki()`, `consertarOAnki()` (#152) and the step's “Agora não” (`pm_abridor`). Results and the hidden `abridor.html` frame: the header comment. Loaded by the panel and the popup |

@@ -8,7 +8,7 @@
 //
 // O pedido do Envio é congelado em `pm_boas_vindas.primeiroEnvio.corpo` antes de ir: repetir o passo (ou recarregar a página, ou voltar a ele depois de trocar
 // a chave) pede o mesmo Envio à Conexão, que não cria outro Cartão (o `guid` da nota é do Envio) nem outro Baralho. Só a imagem falhar não é falha: o Cartão
-// vai sem ela e conta como enviado (a Conexão). `painel-boas-vindas.js` o põe na lista de passos.
+// vai sem ela e conta como enviado (a Conexão). `painel-boas-vindas.js` o põe na lista de passos. Carregado depois de painel-envio-estado.js.
 
 (function (raiz) {
   const { textoDaVoz, Veio, AjustesDeEnvio, ConexaoAnki, PedidoAoAnki, Configuracao, ehRussa } = raiz;
@@ -19,23 +19,10 @@
     en: `give up : She gave up smoking last year. ${CONTEXTO_DA_FRASE_DE_TESTE}`,
     ru: `приходила : Она приходила вчера. ${CONTEXTO_DA_FRASE_DE_TESTE}`,
   };
-  // O código de erro da Conexão (`lastError` do Envio ou `error` do Cartão) → a frase simples do motivo (ONB-23).
-  const MOTIVOS = {
-    openai_key_missing: 'motivoSemChave',
-    openai_key_rejected: 'motivoChaveRecusada',
-    openai_no_credit: 'motivoSemCredito',
-    openai_rate_limited: 'motivoOpenAI',
-    openai_unreachable: 'motivoOpenAI',
-    generation_error: 'motivoOpenAI',
-    empty_response: 'motivoOpenAI',
-    chatgpt_signed_out: 'motivoChatGPT',
-    chatgpt_not_eligible: 'motivoChatGPT',
-    chatgpt_rejected: 'motivoChatGPT',
-    note_type_missing: 'motivoTipoDeNota',
-    anki_write_failed: 'motivoAnki',
-  };
-  // Trocar a chave só ajuda quando o motivo é a chave (ou não se sabe qual é).
-  const SEM_TROCAR_A_CHAVE = ['motivoConexao', 'motivoOpenAI', 'motivoTipoDeNota', 'motivoAnki'];
+  // O motivo de uma falha: a frase (ONB-23) e se Trocar a chave pode resolver. O de um código da Conexão sai da tabela dos motivos, a mesma do painel.
+  const { doCodigo } = raiz.SituacaoDoEnvio;
+  const DA_CONEXAO = { fala: 'ONB-23.motivoConexao', chave: false };
+  const OUTRO = doCodigo(null);
 
   const esperar = ms => new Promise(resolver => setTimeout(resolver, ms));
 
@@ -66,7 +53,7 @@
   /** O motivo do Envio que não chegou: o erro do Cartão, ou o do Envio (código da Conexão, nunca o texto da OpenAI). */
   function motivoDoEnvio(estado) {
     const doCartao = Object.values(estado.cards || {}).find(cartao => cartao.status === 'failed' && cartao.error)?.error;
-    return MOTIVOS[doCartao || estado.lastError] || 'motivoOutro';
+    return doCodigo(doCartao || estado.lastError);
   }
 
   /**
@@ -86,11 +73,11 @@
       lugar.dataset.estado = 'enviando';
     }
 
-    function mostrarFalha(motivo) {
+    function mostrarFalha({ fala, chave }) {
       const botoes = [botao('primario', 'ONB-23.tentarDeNovo', executar)];
-      if (!SEM_TROCAR_A_CHAVE.includes(motivo)) botoes.push(botao('secundario', 'ONB-23.trocarAChave', aoTrocarAChave));
+      if (chave) botoes.push(botao('secundario', 'ONB-23.trocarAChave', aoTrocarAChave));
       const titulo = elemento('h3', 'bv-envio__titulo', Veio.iconeVeio('alerta'), textoDaVoz('ONB-23.falhou'));
-      const falha = elemento('div', 'bv-envio__falha', titulo, elemento('p', 'bv-texto', textoDaVoz(`ONB-23.${motivo}`)), elemento('div', 'bv-envio__acoes', ...botoes));
+      const falha = elemento('div', 'bv-envio__falha', titulo, elemento('p', 'bv-texto', textoDaVoz(fala)), elemento('div', 'bv-envio__acoes', ...botoes));
       falha.setAttribute('role', 'alert');
       lugar.replaceChildren(falha);
       lugar.dataset.estado = 'falhou';
@@ -162,22 +149,22 @@
           primeiro = { corpo };
         }
       } catch {
-        return minha === vez ? mostrarFalha('motivoOutro') : undefined;
+        return minha === vez ? mostrarFalha(OUTRO) : undefined;
       }
       const { corpo } = primeiro;
       const criado = await chamar(PedidoAoAnki.criarEnvio(corpo));
       if (minha !== vez) return undefined;
-      if (!criado.ok) return mostrarFalha(criado.semResposta || criado.status >= 500 ? 'motivoConexao' : 'motivoOutro');
+      if (!criado.ok) return mostrarFalha(criado.semResposta || criado.status >= 500 ? DA_CONEXAO : OUTRO);
       if (['failed', 'partial'].includes(criado.json.status)) {
         const outra = await chamar(PedidoAoAnki.tentarEnvioDeNovo(corpo.jobId));
         if (minha !== vez) return undefined;
-        if (!outra.ok) return mostrarFalha('motivoConexao');
+        if (!outra.ok) return mostrarFalha(DA_CONEXAO);
       }
 
       for (;;) {
         const lido = await chamar(PedidoAoAnki.verEnvio(corpo.jobId));
         if (minha !== vez) return undefined;
-        if (!lido.ok) return mostrarFalha('motivoConexao');
+        if (!lido.ok) return mostrarFalha(DA_CONEXAO);
         const { state: estado } = lido.json;
         if (estado.status === 'completed') {
           const guid = Object.values(estado.cards || {}).find(cartao => cartao.guid)?.guid || null;

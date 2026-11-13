@@ -358,7 +358,7 @@ function criarFakeAnki() {
 
     if (!estado.ligada) return daPorta.abort('connectionrefused');
     // A porta aceita e não responde: o pedido fica no ar até a página desistir.
-    if (estado.muda) return new Promise(() => {});
+    if (estado.muda === true || estado.muda === url.pathname) return new Promise(() => {});
     if (doPareamento) {
       const { status, json } = pareamento.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido)) || { status: 404, json: { error: 'not_found' } };
       return responderJson(daPorta, status, json);
@@ -584,8 +584,9 @@ function criarFakeAnki() {
     chaveNaConexao() { return estado.chaveDaOpenAI; },
     /** As respostas do contrato a um pedido (com o corpo, se tiver), para o teste que confere o fake contra os exemplos. */
     respostaDoContrato,
-    /** A porta aceita a conexão e nunca responde (o /health travado). */
-    silenciar() { estado.muda = true; },
+    apagarAsFrases,
+    /** A porta aceita e não responde; com `caminho`, só nele. */
+    silenciar(caminho = true) { estado.muda = caminho; },
     voltarAFalar() { estado.muda = false; },
     /**
      * O vocabulário do baralho de um idioma: cada item é uma string (uma palavra
@@ -614,7 +615,7 @@ function criarFakeAnki() {
     responder(metodo, caminho, gerar) { estado.rotas.set(`${metodo} ${caminho}`, gerar); },
     pararDeResponder(metodo, caminho) { estado.rotas.delete(`${metodo} ${caminho}`); },
 
-    /** Os Envios que a aba Custos lê (POST /analytics/jobs), em termos de gente; o fake os entrega no formato do contrato, com o total somado como lá (`totalUsd` inclui o `otherUsd`). */
+    /** Os Envios que a aba Custos lê (POST /analytics/jobs), em termos de gente; o fake os entrega no formato do contrato (`totalUsd` inclui o `otherUsd`). */
     definirCustos(lista) {
       estado.custos = lista.map(linhaDeCustos);
     },
@@ -629,7 +630,7 @@ function criarFakeAnki() {
         estado.registrosDeCusto.set(job.jobId, custos);
       }
     },
-    /** POST /analytics/jobs falha: `{ status: 503 }` responde com erro, `{ rede: true }` derruba. */
+    /** POST /analytics/jobs falha: `{ status: 503 }`, ou `{ rede: true }`. */
     falharCustos(falha = { status: 503 }) { estado.falhaDosCustos = falha; },
     voltarCustos() { estado.falhaDosCustos = null; },
     /** POST /jobs/apagar-frases sem resposta (`{ rede: true }`); `voltarApagarFrases()` o faz responder de novo. */
@@ -641,7 +642,7 @@ function criarFakeAnki() {
 
     /** @estado-guardado Os `guid` abertos no Anki (#173). */
     abertosNoAnki() { return [...previa.abertos]; },
-    /** O próximo `POST /jobs` desse idioma falha: `{ status: 500 }` responde com erro, `{ rede: true }` derruba a conexão. Vale até `aceitarEnvios(lang)`. */
+    /** O próximo `POST /jobs` desse idioma falha (`{ status: 500 }`, ou `{ rede: true }`: a conexão cai), até `aceitarEnvios(lang)`. */
     recusarEnvios(lang, recusa = { status: 500 }) { estado.recusas.set(lang, recusa); },
     /** O próximo `POST /jobs` cria o Envio na Conexão e a resposta se perde: o painel não sabe que ele existe. */
     perderARespostaDoEnvio() { estado.perdaDoEnvio = true; },

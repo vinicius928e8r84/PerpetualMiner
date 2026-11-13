@@ -1,0 +1,116 @@
+'use strict';
+
+// O Envio ao Anki como máquina de estados (`painel-envio-estado.js`): o que a tela diz nos estados que antes mentiam. O pedido sem resposta
+// (“criando”, com prazo), o motivo de um Envio que não concluiu (a tabela dos motivos) e o Envio com as Frases apagadas na Conexão
+// (“apagado”: sem Tentar de novo). A lista dos estados e das transições, sem navegador: `node test_estado_do_envio.js`.
+
+const { test, expect } = require('../fixtures');
+const { estadoFinal, estadoFinalEm } = require('../estado-final');
+const { AGORA, INGLESAS, SACK, ARM, abrirPainel, marcar, enviarAoAnki, progresso, resumo, envio, baralho, enviosCriados } = require('../apoio-do-envio');
+
+const pedidosDeCriar = fakes => fakes.anki.requisicoes.filter(r => r.caminho === '/jobs');
+const ingles = page => envio(page, /^Envio em inglês/);
+
+test.beforeEach(async ({ extensao, fakes }) => {
+  fakes.anki.usarRelogio(() => AGORA);
+  await extensao.gravarStorage({ frases: INGLESAS, pm_anki_ja_conectou: true });
+});
+
+test('a Conexão aceita o pedido do Envio e não responde: o cartão não diz “Na fila”, o prazo vence em “Não começou” com Tentar de novo, e o Enviar ao Anki segue vivo', async ({ page, extensao, fakes }) => {
+  test.setTimeout(90_000);
+  await abrirPainel(page, extensao);
+  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await marcar(page, SACK.texto).check();
+
+  fakes.anki.silenciar('/jobs');   // a Conexão responde à saúde e ao pareamento, e o pedido de criar fica no ar
+  await enviarAoAnki(page).click();
+  // Ninguém recebeu o Envio ainda: ele não está na fila de ninguém, nem numa etapa.
+  await expect(ingles(page)).toContainText('Enviando o pedido');
+  await expect(ingles(page)).not.toContainText('Na fila');
+  await expect(ingles(page)).not.toContainText('etapa');
+  await expect(ingles(page).getByRole('button')).toHaveCount(0);
+
+  // O prazo vence: o Envio não começou, e a pessoa tem o que fazer.
+  await expect(ingles(page)).toContainText('Não começou', { timeout: 30_000 });
+  await expect(ingles(page)).toContainText('A Conexão com o Anki não respondeu. Confira se ela está ligada.');
+  expect(fakes.anki.envios).toHaveLength(0);
+
+  // A Conexão volta a responder: o Tentar de novo do cartão manda o mesmo pedido, e o Envio começa.
+  fakes.anki.voltarAFalar();
+  await ingles(page).getByRole('button', { name: 'Tentar de novo' }).click();
+  const [criado] = await enviosCriados(fakes, 1);
+  await expect(ingles(page)).toContainText('Na fila');
+
+  // Um segundo Enviar ao Anki, com outra Frase, também sai (antes, só recarregando a página).
+  await page.locator('#modal-envio-fechar').click();
+  await expect(progresso(page)).toBeHidden();
+  await marcar(page, SACK.texto).uncheck();
+  await marcar(page, ARM.texto).check();
+  await enviarAoAnki(page).click();
+  const [, segundo] = await enviosCriados(fakes, 2);
+  expect(segundo.entries.map(e => e.phraseId)).toEqual([ARM.id]);
+  await estadoFinalEm('os Envios que o painel acompanha', async () => (await extensao.lerStorage('pm_envio')).pm_envio.envios.map(e => [e.jobId, e.ids, e.falhaAoCriar]),
+    [[criado.jobId, [SACK.id], null], [segundo.jobId, [ARM.id], null]]);
+});
+
+test('a chave recusada: o resumo diz o motivo e oferece Trocar a chave, além do Tentar de novo', async ({ page, extensao, fakes }) => {
+  await abrirPainel(page, extensao);
+  await marcar(page, SACK.texto).check();
+  await enviarAoAnki(page).click();
+  const [job] = await enviosCriados(fakes, 1);
+  fakes.anki.moverEnvio(job.jobId, { stage: 'generate_cards', cartoes: { [`${SACK.id}-0`]: 'failed' } });
+  fakes.anki.concluirEnvio(job.jobId, { erro: 'openai_key_rejected' });
+
+  await expect(resumo(page)).toBeVisible({ timeout: 10_000 });
+  await expect(baralho(page, 'Inglês')).toContainText('1 não entrou');
+  await expect(baralho(page, 'Inglês')).toContainText('A OpenAI não aceitou a chave.');
+  await expect(baralho(page, 'Inglês').getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
+  await baralho(page, 'Inglês').getByRole('button', { name: 'Trocar a chave' }).click();
+  await expect(resumo(page)).toBeHidden();
+  await expect(page).toHaveURL(/#configuracoes\/ia$/);
+  // O resumo fechou sem Tentar de novo: a Frase que não entrou segue no histórico, sem marca de enviada, e nada fica acompanhado.
+  await estadoFinal(extensao, { pm_envio: null, frases: INGLESAS });
+});
+
+test('a chave recusada num Envio, com outro ainda andando: o cartão dele diz o motivo e leva a Trocar a chave', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: [...INGLESAS, { id: 1_700_000_000_002, texto: 'Я улыбаюсь каждое утро.', data: '18/09/2026', streaming: 'netflix', idioma: 'Russo' }] });
+  await abrirPainel(page, extensao);
+  await marcar(page, SACK.texto).check();
+  await marcar(page, 'Я улыбаюсь каждое утро.').check();
+  await enviarAoAnki(page).click();
+  const [doIngles, doRusso] = await enviosCriados(fakes, 2);
+  fakes.anki.moverEnvio(doRusso.jobId, { stage: 'generate_cards' });
+  fakes.anki.concluirEnvio(doIngles.jobId, { erro: 'openai_key_rejected' });
+
+  await expect(ingles(page)).toContainText('Não concluído', { timeout: 10_000 });
+  await expect(ingles(page)).toContainText('A OpenAI não aceitou a chave.');
+  await expect(ingles(page).getByRole('button', { name: 'Trocar a chave' })).toBeVisible();
+  await expect(ingles(page).getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
+  await estadoFinalEm('o Envio em inglês na Conexão', () => doIngles.state.lastError, 'openai_key_rejected');
+});
+
+test('as Frases do Envio foram apagadas na Conexão por outro navegador: o cartão diz isso e só oferece Esquecer; nenhum Tentar de novo sai, e nada fica em laço', async ({ page, extensao, fakes }) => {
+  await abrirPainel(page, extensao);
+  await marcar(page, SACK.texto).check();
+  await marcar(page, ARM.texto).check();
+  await enviarAoAnki(page).click();
+  const [job] = await enviosCriados(fakes, 1);
+  fakes.anki.moverEnvio(job.jobId, { stage: 'generate_cards', cartoes: { [`${SACK.id}-0`]: 'added', [`${ARM.id}-0`]: 'pending' } });
+  await expect(ingles(page)).toContainText('Criando cartões', { timeout: 10_000 });
+
+  fakes.anki.apagarAsFrases();   // o Apagar tudo de outro perfil do Chrome, na mesma Conexão
+
+  await expect(ingles(page)).toContainText('Não concluído', { timeout: 10_000 });
+  await expect(ingles(page)).toContainText('As frases deste Envio foram apagadas da Conexão com o Anki.');
+  await expect(ingles(page).getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
+  // O resumo não abre para contar o que não há como retomar: o progresso fica, com o Esquecer.
+  await page.waitForTimeout(4_500);   // duas voltas do acompanhamento
+  await expect(resumo(page)).toBeHidden();
+  await expect(progresso(page)).toBeVisible();
+
+  await ingles(page).getByRole('button', { name: 'Esquecer' }).click();
+  await expect(progresso(page)).toBeHidden();
+  await estadoFinalEm('os pedidos de retomar que chegaram à Conexão', () => fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/retry').length, 0);
+  // As Frases deste navegador ficam no histórico; o painel não acompanha mais o Envio.
+  await estadoFinal(extensao, { pm_envio: null, frases: INGLESAS });
+});
