@@ -57,7 +57,7 @@ test('com a sessão semeada, a frase minerada chega ao Firestore da conta', asyn
   await page.keyboard.press('Alt+KeyS');
 
   await expect.poll(() => fakes.google.frasesDe('uid-sync').map(f => f.texto)).toContain(LEGENDA);
-  await expect.poll(async () => (await extensao.lerStorage({ pm_pending_sync: [] })).pm_pending_sync).toEqual([]);
+  expect((await extensao.frases()).map(f => f.texto)).toEqual([LEGENDA]);
 });
 
 test('a Palavra é detectada pelo vocabulário que a Conexão com o Anki devolve', async ({ page, paginas, extensao, fakes }) => {

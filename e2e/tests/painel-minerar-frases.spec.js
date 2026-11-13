@@ -293,7 +293,6 @@ test('com a conta, as frases coladas sobem para a nuvem', async ({ page, extensa
   await expect(toasts(page)).toHaveText('2 frases mineradas');
   const naNuvem = fakes.google.frasesDe('uid-minerar').map(f => f.texto).sort();
   expect(naNuvem).toEqual(['Break a leg.', 'Keep me posted.']);
-  expect((await extensao.lerStorage({ pm_pending_sync: [] })).pm_pending_sync).toEqual([]);
 });
 
 test('a nuvem falhou: fica o aviso persistente ADD-06 com Tentar de novo, sem Detalhes e sem toast de sucesso', async ({ page, extensao, fakes }) => {
@@ -326,7 +325,7 @@ test('a nuvem falhou: fica o aviso persistente ADD-06 com Tentar de novo, sem De
   await expect(avisos(page).getByRole('alert')).toHaveCount(0);
   expect(fakes.google.frasesDe('uid-add06').map(f => f.texto).sort()).toEqual(['Break a leg.', 'Keep me posted.']);
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
-  expect((await extensao.lerStorage({ pm_pending_sync: [] })).pm_pending_sync).toEqual([]);
+  expect((await extensao.frases()).map(f => f.texto).sort()).toEqual(['Break a leg.', 'Keep me posted.']);
 });
 
 test('Arquivo .txt abre o modal na aba certa, com a área de escolher o arquivo', async ({ page, extensao }) => {

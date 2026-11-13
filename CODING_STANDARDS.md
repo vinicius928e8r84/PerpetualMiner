@@ -31,7 +31,7 @@ A surface not in this table (the panel shell, sync, storage, the service worker)
 
 ## Storage
 
-7. **Reading and rewriting `frases` or `pm_pending_sync`:** in the service worker, always through `naFilaDeGravacao` (source: `CLAUDE.md` § Write Serialization). On a page, read the current state again after every `await`, before writing; never write back a snapshot taken before an upload or a call to the Conexão. The page half is a reviewer rule, not written in `CLAUDE.md`; its motivation is the same section's "Not covered by the queue" (the panel and `lib/sincronizacao.js` write outside the queue, so a stale snapshot loses phrases).
+7. **Reading and rewriting `frases`:** in the service worker, always through `naFilaDeGravacao` (source: `CLAUDE.md` § Write Serialization). On a page, read the current state again after every `await`, before writing; never write back a snapshot taken before an upload or a call to the Conexão. The page half is a reviewer rule, not written in `CLAUDE.md`; its motivation is the same section's "Not covered by the queue" (the panel and `lib/sincronizacao.js` write outside the queue, so a stale snapshot loses phrases).
 
 ## Tests
 

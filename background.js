@@ -116,9 +116,13 @@ chrome.runtime.onInstalled.addListener(aoInstalar);
  * pela metade” no popup e em Frases até ela chegar a Tudo pronto (item 9,
  * lib/configuracao.js). Quem atualiza nunca passou pela Boas-vindas: sem a
  * chave, não vê lembrete.
+ *
+ * Também tira `pm_pending_sync`, a lista que versões antigas gravavam a cada
+ * frase e que nunca foi lida para reenviar nada.
  */
 async function aoInstalar(detalhes) {
   registrarMenuDeContexto();
+  await chrome.storage.local.remove('pm_pending_sync').catch(() => {});
   if (detalhes?.reason === 'install') {
     // A aba abre mesmo com o disco recusando: sem a chave, só falta o lembrete.
     await chrome.storage.local.set({ pm_boas_vindas: { agoraNao: [], concluida: false } }).catch(() => {});
@@ -209,7 +213,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// Toda leitura-modificação-escrita de `frases` e `pm_pending_sync` passa por esta
+// Toda leitura-modificação-escrita de `frases` passa por esta
 // fila. Sem ela, gravações concorrentes (ex.: várias frases de uma foto) leem
 // o mesmo histórico e cada escrita apaga as frases gravadas pelas outras.
 let filaDeGravacao = Promise.resolve();
@@ -225,21 +229,6 @@ function naFilaDeGravacao(tarefa) {
 function proximoIdDeFrase(historico) {
   const maiorId = historico.reduce((maior, frase) => Math.max(maior, Number(frase.id) || 0), 0);
   return Math.max(Date.now(), maiorId + 1);
-}
-
-function marcarPendenteDeSync(id) {
-  return naFilaDeGravacao(async () => {
-    const { pm_pending_sync } = await chromeGet({ pm_pending_sync: [] });
-    await chromeSet({ pm_pending_sync: [...new Set([...pm_pending_sync, String(id)])] });
-  });
-}
-
-function desmarcarPendenteDeSync(id) {
-  return naFilaDeGravacao(async () => {
-    const { pm_pending_sync } = await chromeGet({ pm_pending_sync: [] });
-    const updated = pm_pending_sync.filter(pendente => pendente !== String(id));
-    if (updated.length !== pm_pending_sync.length) await chromeSet({ pm_pending_sync: updated });
-  });
 }
 
 async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', extras = {},
@@ -261,17 +250,13 @@ async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', e
     novaFrase.autoKeyword = true;
   }
 
-  // Grava a frase e o retry na mesma escrita local, antes de tentar a nuvem.
-  // Uma falha na nuvem (inclusive na renovação do token) deixa o retry
-  // registrado; apenas o upload confirmado o retira.
+  // Grava a frase no local antes de tentar a nuvem. Uma falha na nuvem (inclusive
+  // na renovação do token) não perde nada: quem sobe o que ficou só no local é o
+  // `carregar` de lib/sincronizacao.js, que compara o histórico com a nuvem.
   await naFilaDeGravacao(async () => {
-    const data = await chromeGet({ frases: [], pm_pending_sync: [] });
+    const data = await chromeGet({ frases: [] });
     novaFrase.id = proximoIdDeFrase(data.frases);
-    const pending = new Set([...data.pm_pending_sync, String(novaFrase.id)]);
-    await chromeSet({
-      frases:          [novaFrase, ...data.frases],
-      pm_pending_sync: [...pending],
-    });
+    await chromeSet({ frases: [novaFrase, ...data.frases] });
   });
 
   // Se o usuário estiver logado, sincroniza com o Firestore em background
@@ -298,12 +283,9 @@ async function sincronizarComFirestore(frase) {
     const nuvem = await nuvemDaConta();
     if (!nuvem) return;
     await nuvem.gravarFrase(frase);
-    // Sucesso: garante que não está na fila de pending
-    desmarcarPendenteDeSync(frase.id);
   } catch (err) {
+    // Offline ou erro de rede: a frase já está no local, e o próximo carregamento do painel a sobe.
     console.warn('[Firestore] Sync falhou:', err?.message);
-    // Offline ou erro de rede: marca para retry no próximo carregamento do painel
-    marcarPendenteDeSync(frase.id);
   }
 }
 
