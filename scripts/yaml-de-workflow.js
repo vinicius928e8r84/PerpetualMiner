@@ -21,9 +21,12 @@ function escalar(texto) {
   return valor.trim();
 }
 
-/** Transforma o texto do workflow em objetos e listas; cada mapa guarda a linha de cada chave. */
+/**
+ * Transforma o texto do workflow em objetos e listas; cada mapa guarda a linha de cada chave.
+ * O fim de linha pode ser CRLF: é como o arquivo chega num clone com `core.autocrlf=true`, o padrão do Git for Windows.
+ */
 function lerYaml(texto) {
-  const linhas = texto.split('\n').map((conteudo, i) => ({ conteudo, numero: i + 1 }));
+  const linhas = texto.split(/\r?\n/).map((conteudo, i) => ({ conteudo, numero: i + 1 }));
   let posicao = 0;
   const util = linha => linha.conteudo.trim() !== '' && !linha.conteudo.trim().startsWith('#');
   const proxima = () => {

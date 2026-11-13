@@ -83,6 +83,22 @@ r = empurrar('origin', 'v-teste');
 assert.strictEqual(r.status, 0, saida(r));
 assert(!/pre-push:/.test(saida(r)), saida(r));
 
+// Um clone com core.autocrlf=true (o padrão do Git for Windows), em que os workflows e o cadastro chegam com CRLF: a branch
+// certa sobe igual. Antes o verificador lia o workflow com CRLF pela metade e o gancho barrava todo push no Windows.
+{
+  const comCRLF = path.join(pasta, 'trabalho-crlf');
+  git(pasta, 'clone', '-q', '-c', 'core.autocrlf=true', remoto, comCRLF);
+  assert(fs.readFileSync(path.join(comCRLF, '.github', 'workflows', 'testes.yml'), 'utf8').includes('\r\n'), 'o workflow do clone tem CRLF');
+  git(comCRLF, 'config', 'core.hooksPath', path.join(__dirname));
+  git(comCRLF, 'checkout', '-q', '-b', 'certa-crlf', 'origin/main');
+  fs.writeFileSync(path.join(comCRLF, 'docs', 'pre-push-crlf.md'), 'texto\r\n');
+  git(comCRLF, 'add', '-A');
+  git(comCRLF, 'commit', '-q', '-m', 'muda docs/pre-push-crlf.md');
+  r = spawnSync('git', ['push', 'origin', 'certa-crlf'], { cwd: comCRLF, encoding: 'utf8', env: env() });
+  assert.strictEqual(r.status, 0, saida(r));
+  assert(noRemoto('certa-crlf') && /regras ok/.test(saida(r)) && /autoria ok/.test(saida(r)), saida(r));
+}
+
 // Sem origin/main para comparar: avisa e deixa passar (como o pre-commit quando falta o ambiente).
 git(trabalho, 'checkout', '-q', '-b', 'sem-base', 'main');
 commitar('docs/pre-push-sem-base.md', 'texto\n');
