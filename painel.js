@@ -1755,7 +1755,7 @@ function mostrarAvisoForaDaNuvem(erro) {
     texto: textoDaVoz('ADD-06.aviso', { n: idsMineradosForaDaNuvem.size }),
     acao: { rotulo: textoDaVoz('ADD-06.tentarDeNovo'), aoUsar: tentarSubirDeNovo },
     // Sem “Detalhes” aqui (decisão do dono): a causa já vai para o card Conta & sync.
-    // Fechar só tira o aviso: elas seguem em pm_pending_sync, e o próximo carregamento tenta de novo.
+    // Fechar só tira o aviso: elas seguem só no computador, e o próximo carregamento tenta de novo.
     aoFechar: () => idsMineradosForaDaNuvem.clear(),
   });
 }
