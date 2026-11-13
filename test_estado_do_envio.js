@@ -118,9 +118,9 @@ const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
   for (const codigo of ['openai_rate_limited', 'openai_unreachable', 'generation_error', 'empty_response']) {
     assert.deepStrictEqual(linha(codigo), ['ONB-23.motivoOpenAI', 'ONB-23.motivoOpenAI', AJUDA.TENTAR, false], codigo);
   }
-  for (const codigo of ['chatgpt_signed_out', 'chatgpt_rejected']) {
-    assert.deepStrictEqual(linha(codigo), ['ONB-23.motivoChatGPT', null, AJUDA.TENTAR, true], codigo);
-  }
+  assert.deepStrictEqual(linha('chatgpt_rejected'), ['ONB-23.motivoChatGPT', null, AJUDA.TENTAR, true]);
+  // O login que acabou não se resolve tentando de novo: a pessoa escolhe quem paga no card da IA.
+  assert.deepStrictEqual(linha('chatgpt_signed_out'), ['ONB-23.motivoChatGPT', 'CFG-46.noEnvio', AJUDA.ESCOLHER_QUEM_PAGA, true]);
   assert.deepStrictEqual(linha('chatgpt_not_eligible'), ['ONB-23.motivoChatGPT', 'CFG-35.erroChatgptNaoServe', AJUDA.USAR_A_CHAVE, true]);
   assert.deepStrictEqual(linha('chatgpt_usage_limit'), ['ONB-23.motivoOutro', 'ENV-20.limite', AJUDA.GERENCIAR_USO, true]);
   assert.deepStrictEqual(linha('note_type_missing'), ['ONB-23.motivoTipoDeNota', 'ONB-23.motivoTipoDeNota', AJUDA.TENTAR, false]);

@@ -89,6 +89,34 @@ test('a chave recusada num Envio, com outro ainda andando: o cartão dele diz o 
   await estadoFinalEm('o Envio em inglês na Conexão', () => doIngles.state.lastError, 'openai_key_rejected');
 });
 
+test('o login do ChatGPT acabou no meio do Envio: o cartão e o resumo dizem isso e levam ao card da IA, onde a pessoa escolhe; o cartão não oferece Tentar de novo', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: [...INGLESAS, { id: 1_700_000_000_002, texto: 'Я улыбаюсь каждое утро.', data: '18/09/2026', streaming: 'netflix', idioma: 'Russo' }] });
+  await abrirPainel(page, extensao);
+  await marcar(page, SACK.texto).check();
+  await marcar(page, 'Я улыбаюсь каждое утро.').check();
+  await enviarAoAnki(page).click();
+  const [doIngles, doRusso] = await enviosCriados(fakes, 2);
+  fakes.anki.chatgpt.definir('acabou');
+  fakes.anki.moverEnvio(doRusso.jobId, { stage: 'generate_cards' });
+  fakes.anki.concluirEnvio(doIngles.jobId, { erro: 'chatgpt_signed_out' });
+
+  const ACABOU = 'O login do ChatGPT acabou. Entre de novo ou use a chave: o Envio não troca sozinho.';
+  await expect(ingles(page)).toContainText('Não concluído', { timeout: 10_000 });
+  await expect(ingles(page)).toContainText(ACABOU);
+  await expect(ingles(page).getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
+
+  fakes.anki.concluirEnvio(doRusso.jobId, { erro: 'chatgpt_signed_out' });
+  await expect(resumo(page)).toBeVisible({ timeout: 10_000 });
+  await expect(baralho(page, 'Inglês')).toContainText(ACABOU);
+  await baralho(page, 'Inglês').getByRole('button', { name: 'Abrir IA dos cartões' }).click();
+  await expect(resumo(page)).toBeHidden();
+  await expect(page).toHaveURL(/#configuracoes\/ia$/);
+  await expect(page.locator('#cfg-ia').getByRole('alert')).toContainText('Conta do ChatGPT: O login do ChatGPT acabou.');
+
+  await estadoFinalEm('o Envio em inglês na Conexão', () => doIngles.state.lastError, 'chatgpt_signed_out');
+  await estadoFinalEm('o login do ChatGPT na Conexão', () => fakes.anki.chatgpt.situacao(), 'acabou');
+});
+
 test('as Frases do Envio foram apagadas na Conexão por outro navegador: o cartão diz isso e só oferece Esquecer; nenhum Tentar de novo sai, e nada fica em laço', async ({ page, extensao, fakes }) => {
   await abrirPainel(page, extensao);
   await marcar(page, SACK.texto).check();

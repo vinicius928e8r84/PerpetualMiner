@@ -38,7 +38,7 @@ from .configuracao import OPENVERSE_BASE, VOZ_BASE
 from .imagem_do_cartao import ImagemDoCartao, ParaOEnvio
 from .limite_do_plano import LIMITE_DO_PLANO, LimiteDoPlano, espera_pelo_plano
 from .login_do_chatgpt import RECUSOU, SAIU
-from .modelo_dos_cartoes import credencial
+from .modelo_dos_cartoes import PARADO, credencial
 from .palavras_do_cartao import com_as_palavras_fixas, esquecer, fixar_na_entrada, quantos_cartoes
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento  # noqa: F401
 from .paradas_do_envio import Apagado, Interrompido  # noqa: F401  (`envio.Interrompido`)
@@ -497,11 +497,11 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
                 return None
             while True:
                 pela_chave = self.fila.estado(job_id).get("usingKey", False)
-                chave = credencial(self.chatgpt, self.cofre, self.plano, self.modelos, pela_chave)  # o plano, a chave, None ou um código
-                if not isinstance(chave, dict):
-                    return SEM_CHAVE if chave is None else chave if chave in PARA_O_ENVIO else self._cartao(job_id, cartao_id, status=FALHOU, error=chave)
-                falha = self._gerar_o_texto(job_id, pedido, dict(config, **chave), cartao_id, cartao["phraseId"], linha)
-                chave = None
+                paga = credencial(self.chatgpt, self.cofre, self.plano, self.modelos, pela_chave)  # o plano, a chave, ou parado
+                if paga.quem == PARADO:
+                    return paga.motivo if paga.motivo in PARA_O_ENVIO + (SEM_CHAVE,) else self._cartao(job_id, cartao_id, status=FALHOU, error=paga.motivo)
+                falha = self._gerar_o_texto(job_id, pedido, dict(config, **paga.config), cartao_id, cartao["phraseId"], linha)
+                paga = None
                 if self.fila.estado(job_id).get("wiped"):
                     with self.fila.tranca:
                         _apagar(arquivo)  # o Apagar tudo veio no meio do pedido: o texto que chegou depois sai

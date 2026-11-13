@@ -56,6 +56,12 @@ README não pode crescer (o limite de tamanho dos arquivos). `scripts/voz-da-spe
 |---|---|---|---|---|---|
 | ONB-25 | O desenho de arrastar o Anki para Aplicativos, no passo do Mac **(novo)** | status | (não existe) | Anki · Aplicativos | Dentro do passo Ter o Anki ([ONB-18](README.md)), só no Mac, depois do link Baixar o Anki e acima da frase “Arraste o Anki para a pasta Aplicativos e abra-o de lá.”: dois quadros alternados — o ícone do Anki ao lado da pasta Aplicativos e o ícone já dentro dela. Os nomes são os que o Mac mostra na janela do instalador. O desenho é só imagem; a frase do ONB-18 é o que o leitor de tela lê. Com movimento reduzido, ficam parados, lado a lado. |
 
+### Configurações: o login do ChatGPT que acabou
+
+| ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
+|---|---|---|---|---|---|
+| CFG-46 | Login do ChatGPT que acabou **(novo)** | erro | (sem aviso) | O login do ChatGPT acabou. Entre de novo para seguir pelo plano, ou use a chave da OpenAI. · O login do ChatGPT acabou. Entre de novo ou use a chave: o Envio não troca sozinho. · Abrir IA dos cartões | A primeira, na faixa “Conta do ChatGPT:” do card da IA ([CFG-35](README.md)), com Usar a chave; Continuar com o ChatGPT entra de novo. A segunda, o motivo no cartão e no resumo do Envio que parou por isso, com o botão que leva ao card. |
+
 ### Configurações: o modelo dos cartões, quando quem paga muda (#292)
 
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |

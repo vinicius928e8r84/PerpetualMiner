@@ -31,7 +31,8 @@ function criarModelo(contextoDeAgora) {
   function conta() {
     const { chatgpt, chaveNaConexao, openai } = contextoDeAgora();
     if (chatgpt === 'conectada') return { paga: 'plano', modelos: estado.cenario.plano.filter(m => !saiu(m)) };
-    if (chaveNaConexao === null || chaveNaConexao === undefined) return { paga: null, modelos: [] };
+    // Com o login acabado ninguém paga, mesmo com a chave guardada: a pessoa ainda não escolheu.
+    if (chatgpt === 'acabou' || chaveNaConexao === null || chaveNaConexao === undefined) return { paga: null, modelos: [] };
     if (openai === 'fora_do_ar') return null;
     const daChave = LISTA_NOSSA.filter(m => m.texto && m.foto && estado.cenario.conta.includes(m.modelo)).map(m => m.modelo);
     return { paga: 'chave', modelos: daChave.filter(m => !saiu(m)) };

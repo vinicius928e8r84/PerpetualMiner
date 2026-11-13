@@ -65,8 +65,8 @@
     const { noPainel, ajuda } = SituacaoDoEnvio.doCodigo(codigo);
     return noPainel ? { motivo: textoDaVoz(noPainel), ajuda } : null;
   }
-  // A ajuda que leva ao card da IA: a chave recusada, sem crédito ou que falta (Trocar a chave), e a conta que o plano não atende (Usar a chave, #156).
-  const ROTULO_DA_CHAVE = { [AJUDA.TROCAR_A_CHAVE]: 'ONB-23.trocarAChave', [AJUDA.USAR_A_CHAVE]: 'CFG-35.erroChatgptUsarChave' };
+  // A ajuda que leva ao card da IA: a chave recusada, sem crédito ou que falta (Trocar a chave), a conta que o plano não atende (Usar a chave, #156) e o login que acabou.
+  const ROTULO_DA_CHAVE = { [AJUDA.TROCAR_A_CHAVE]: 'ONB-23.trocarAChave', [AJUDA.USAR_A_CHAVE]: 'CFG-35.erroChatgptUsarChave', [AJUDA.ESCOLHER_QUEM_PAGA]: 'CFG-46.abrir' };
   const gerenciarUso = ajuda => (ajuda === AJUDA.GERENCIAR_USO ? textoDaVoz('CFG-35.chatgptGerenciar') : null);
 
   /** “Usar a chave” e “Trocar a chave”: fecha o modal do Envio que está aberto e leva ao card da IA, que põe o foco no campo da chave. */

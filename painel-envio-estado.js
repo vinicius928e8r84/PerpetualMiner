@@ -94,12 +94,12 @@
     return ['en', 'ru'].filter(lang => porLang.has(lang)).map(lang => porLang.get(lang));
   }
 
-  const AJUDA = Object.freeze({ TENTAR: 'tentar', TROCAR_A_CHAVE: 'trocarAChave', USAR_A_CHAVE: 'usarAChave', GERENCIAR_USO: 'gerenciarUso' });
+  const AJUDA = Object.freeze({ TENTAR: 'tentar', TROCAR_A_CHAVE: 'trocarAChave', USAR_A_CHAVE: 'usarAChave', ESCOLHER_QUEM_PAGA: 'escolherQuemPaga', GERENCIAR_USO: 'gerenciarUso' });
   const daVoz = id => (id && !id.includes('.') ? `ONB-23.${id}` : id);
   /** Uma linha da tabela: `fala` (a frase, na Boas-vindas), `noPainel` (a do cartão e do resumo; null: nada a dizer), `ajuda` (a ação do painel) e `chave` (na Boas-vindas, Trocar a chave pode resolver). */
   const motivo = (fala, ajuda, { noPainel = fala, chave = ajuda !== AJUDA.TENTAR } = {}) => Object.freeze({ fala: daVoz(fala), noPainel: daVoz(noPainel), ajuda, chave });
   const DA_OPENAI = motivo('motivoOpenAI', AJUDA.TENTAR);
-  // O login do ChatGPT que acabou ou foi recusado: o painel não diz o motivo, e só resta tentar de novo.
+  // O plano do ChatGPT que recusou o pedido: o painel não diz o motivo, e só resta tentar de novo.
   const DO_CHATGPT = motivo('motivoChatGPT', AJUDA.TENTAR, { noPainel: null, chave: true });
   // Sem motivo conhecido: Trocar a chave aparece na Boas-vindas porque pode ser ela.
   const SEM_MOTIVO = motivo('motivoOutro', AJUDA.TENTAR, { noPainel: null, chave: true });
@@ -112,7 +112,8 @@
     openai_unreachable: DA_OPENAI,
     generation_error: DA_OPENAI,
     empty_response: DA_OPENAI,
-    chatgpt_signed_out: DO_CHATGPT,
+    // O login acabou: o Envio para e não gasta a chave sozinho, nem no Tentar de novo; a pessoa escolhe no card da IA (entrar de novo, ou a chave).
+    chatgpt_signed_out: motivo('motivoChatGPT', AJUDA.ESCOLHER_QUEM_PAGA, { noPainel: 'CFG-46.noEnvio' }),
     chatgpt_rejected: DO_CHATGPT,
     // A conta que o plano não atende leva à chave; o limite de uso (o primeiro 429 logo depois de entrar também chega assim), a Gerenciar uso (#156).
     chatgpt_not_eligible: motivo('motivoChatGPT', AJUDA.USAR_A_CHAVE, { noPainel: 'CFG-35.erroChatgptNaoServe' }),

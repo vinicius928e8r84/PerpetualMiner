@@ -86,7 +86,7 @@ class AURLDeAutorizacao(unittest.TestCase):
         self.assertRegex(parametros["ext_agent_host_id"], r"^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
         self.assertRegex(parametros["code_challenge"], r"^[A-Za-z0-9_-]{43}$")
         self.assertGreaterEqual(min(len(parametros["state"]), len(parametros["nonce"])), 32)
-        self.assertEqual(depois, {"conectada": False, "entrando": True, "falha": None})
+        self.assertEqual(depois, {"conectada": False, "entrando": True, "falha": None, "acabou": None})
 
     def test_cada_tentativa_tem_state_desafio_e_nonce_novos_e_o_mesmo_id_deste_computador(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
@@ -98,7 +98,7 @@ class AURLDeAutorizacao(unittest.TestCase):
 
     def test_sem_login_o_estado_e_desconectada(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            self.assertEqual(estado(conexao), {"conectada": False, "entrando": False, "falha": None})
+            self.assertEqual(estado(conexao), {"conectada": False, "entrando": False, "falha": None, "acabou": None})
 
 
 class ORetorno(unittest.TestCase):
@@ -114,7 +114,7 @@ class ORetorno(unittest.TestCase):
                 guardado = json.load(arquivo)
             emitidos = list(conexao.servidor_de_login.emitidos)
         self.assertEqual(status, 200)
-        self.assertEqual(depois, {"conectada": True, "entrando": False, "falha": None})
+        self.assertEqual(depois, {"conectada": True, "entrando": False, "falha": None, "acabou": None})
         desafio = base64.urlsafe_b64encode(hashlib.sha256(troca["code_verifier"].encode("ascii")).digest()).rstrip(b"=").decode("ascii")
         self.assertEqual(desafio, parametros["code_challenge"])
         self.assertEqual(
@@ -144,7 +144,7 @@ class ORetorno(unittest.TestCase):
             meio = (estado(conexao), len(trocas(conexao)))
             voltar(conexao, consulta)
             fim = estado(conexao)
-        self.assertEqual(meio, ({"conectada": False, "entrando": True, "falha": None}, 0))
+        self.assertEqual(meio, ({"conectada": False, "entrando": True, "falha": None, "acabou": None}, 0))
         self.assertTrue(fim["conectada"])
 
     def test_o_retorno_sem_tentativa_ou_com_a_tentativa_expirada_nao_troca_nada(self):
@@ -154,7 +154,7 @@ class ORetorno(unittest.TestCase):
             entrar_e_voltar(conexao)
             depois = estado(conexao)
             self.assertEqual(trocas(conexao), [])
-        self.assertEqual(depois, {"conectada": False, "entrando": False, "falha": None})
+        self.assertEqual(depois, {"conectada": False, "entrando": False, "falha": None, "acabou": None})
 
     def test_o_retorno_so_vale_no_endereco_de_loopback_da_conexao(self):
         # Um site que aponta o próprio nome para 127.0.0.1 (DNS rebinding) chega à porta com outro `Host`.
@@ -198,7 +198,7 @@ class OQueNaoViraLogin(unittest.TestCase):
     def test_recusar_no_chatgpt_nao_guarda_nada_e_o_estado_diz_a_recusa(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             entrar_e_voltar(conexao, erro="access_denied")
-            self.assertEqual(estado(conexao), {"conectada": False, "entrando": False, "falha": "chatgpt_access_denied"})
+            self.assertEqual(estado(conexao), {"conectada": False, "entrando": False, "falha": "chatgpt_access_denied", "acabou": None})
             self.assertEqual((trocas(conexao), os.path.exists(arquivo_do_login(conexao))), ([], False))
 
     def test_sem_o_uso_do_plano_autorizado_nada_e_guardado(self):
@@ -214,7 +214,7 @@ class OQueNaoViraLogin(unittest.TestCase):
                 conexao.servidor_de_login.troca = troca
                 entrar_e_voltar(conexao)
                 [pedido_da_troca] = trocas(conexao)
-                self.assertEqual(estado(conexao), {"conectada": False, "entrando": False, "falha": "chatgpt_login_failed"})
+                self.assertEqual(estado(conexao), {"conectada": False, "entrando": False, "falha": "chatgpt_login_failed", "acabou": None})
                 self.assertFalse(os.path.exists(arquivo_do_login(conexao)))
                 log = conexao.log()
                 self.assertNotIn(MARCA, log)
@@ -236,7 +236,7 @@ class OQueNaoViraLogin(unittest.TestCase):
             entrar_e_voltar(conexao)
             recomecou = estado(conexao)["falha"]
         self.assertEqual((primeira, segunda["falha"], segunda["conectada"]), ("chatgpt_login_failed", "chatgpt_not_eligible", False))
-        self.assertEqual(conectada, {"conectada": True, "entrando": False, "falha": None})
+        self.assertEqual(conectada, {"conectada": True, "entrando": False, "falha": None, "acabou": None})
         self.assertEqual(recomecou, "chatgpt_login_failed")
 
     def test_um_id_token_com_outro_nonce_e_recusado(self):
@@ -264,7 +264,7 @@ class Sair(unittest.TestCase):
         self.assertEqual(respostas, [{"ok": True, "revogada": True}] * 2)
         self.assertEqual(revogados, [guardado["refresh_token"]])
         self.assertEqual((revogacao["token_type_hint"], revogacao["client_id"]), ("refresh_token", guardado["client_id"]))
-        self.assertEqual((depois, existe), ({"conectada": False, "entrando": False, "falha": None}, False))
+        self.assertEqual((depois, existe), ({"conectada": False, "entrando": False, "falha": None, "acabou": None}, False))
         self.assertEqual(de_novo["ext_agent_host_id"], primeiro["ext_agent_host_id"])
 
     def test_sair_sem_a_revogacao_confirmada_apaga_assim_mesmo_e_diz_que_nao_confirmou(self):

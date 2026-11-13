@@ -12,14 +12,18 @@ Ler (`estado`) nunca grava: quem grava a troca é o Envio (`do_envio`), no prime
 import json
 import os
 import threading
+from collections import namedtuple
 from datetime import date
 
 from . import openai_api
 from .chaves import gravar_so_do_dono
-from .login_do_chatgpt import ErroDoPlano
+from .login_do_chatgpt import ACABOU, CONECTADA, SAIU, SEM_LOGIN, ErroDoPlano
 
 AUTOMATICO = "automatico"
-PLANO, CHAVE = "plano", "chave"
+# Quem paga o texto de um Cartão (`quem_paga`): o plano do ChatGPT, a chave da OpenAI, ou ninguém (parado, com o motivo).
+PLANO, CHAVE, PARADO = "plano", "chave", "parado"
+SEM_CHAVE = "openai_key_missing"
+Pagador = namedtuple("Pagador", "quem config motivo")  # `config`: o que o motor recebe para pedir o texto (None no parado)
 LISTA_NOSSA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "modelos_da_ia.json")
 
 
@@ -88,14 +92,17 @@ class ModeloDosCartoes:
         return oferta[0] if oferta else None
 
     def conta(self):
-        """(quem paga, o que ela oferece): `plano` com o login, `chave` com a chave, `None` e `[]` sem nenhum dos dois."""
+        """(quem paga, o que ela oferece): `plano` com o login, `chave` com a chave, `None` e `[]` sem nenhum dos dois, ou com o login
+        acabado (ninguém paga até a pessoa escolher)."""
         try:
             token = self._login.token()
             if token:
                 return PLANO, self.disponiveis(self._login.modelos(token))
             chave = self._cofre.ler("openai")
             return (CHAVE, self.da_chave(chave)) if chave else (None, [])
-        except (ErroDoPlano, openai_api.ErroDaChave):
+        except (ErroDoPlano, openai_api.ErroDaChave) as erro:
+            if getattr(erro, "codigo", None) == SAIU:
+                return None, []
             self.logger.warning("Modelo dos cartões: a lista da conta não veio")
             raise ModelosIndisponiveis()
 
@@ -156,28 +163,41 @@ def _modelo_do_plano(login, token, plano, modelos):
     return plano["modelo"]
 
 
+def quem_paga(login, motivo, pela_chave, tem_chave):
+    """Quem paga o texto do próximo Cartão: `(PLANO | CHAVE | PARADO, o motivo do parado)`. `login` e `motivo` são a `situacao()` do
+    login; `pela_chave`, a escolha da pessoa neste Envio (Usar a minha chave, #158). O login que acabou para o Envio mesmo com a chave
+    guardada: do parado só se sai por escolha (entrar de novo; sair do login; Usar a minha chave), nunca sozinho, nem no Tentar de novo."""
+    if not pela_chave and login == ACABOU:
+        return PARADO, motivo
+    if not pela_chave and login == CONECTADA:
+        return PLANO, None
+    return (CHAVE, None) if tem_chave else (PARADO, SEM_CHAVE)
+
+
 def credencial(login, cofre, plano, modelos, so_a_chave=False):
-    """Com que o Envio pede o texto do próximo Cartão, lido antes de cada pedido e só para ele: com o login do ChatGPT, o token
-    (renovado) e o modelo (`plano_do_chatgpt`); sem ele, a chave do cofre e o modelo do texto (None: o do motor); None sem nenhum
-    dos dois; o código (texto) quando o plano não serve agora. O modelo é lido uma vez por Envio, o do plano e o da chave cada um à parte (ficam em `plano`). O Envio nunca
-    troca o plano pela chave sozinho (o login que acabou para o Envio) nem para por causa de um modelo que caiu: troca para o Automático.
-    A pessoa troca por Usar a minha chave (`so_a_chave`, #158): então o login nem é lido."""
-    try:
-        token = login.token() if login is not None and not so_a_chave else None
-        if token:
-            return {"openai_api_key": None, "plano_do_chatgpt": {"token": token, "modelo": _modelo_do_plano(login, token, plano, modelos)}}
-    except ErroDoPlano as erro:
-        return erro.codigo
+    """O `Pagador` do texto do próximo Cartão, lido antes de cada pedido e só para ele (`quem_paga`). Pelo plano, `config` leva o token
+    (renovado) e o modelo (`plano_do_chatgpt`); pela chave, a chave do cofre e o modelo do texto (None: o do motor); parado, só o
+    `motivo`: falta a chave, o login acabou, ou o plano não serve agora (o código de `ErroDoPlano`). O modelo é lido uma vez por Envio,
+    o do plano e o da chave cada um à parte (ficam em `plano`); um modelo que caiu não para o Envio: troca para o Automático."""
     chave = cofre.ler("openai")
-    if not chave:
-        return None
+    quem, motivo = quem_paga(*(login.situacao() if login is not None else (SEM_LOGIN, None)), so_a_chave, bool(chave))
+    if quem == PLANO:
+        try:
+            token = login.token()
+            if not token:  # a pessoa saiu do login entre as duas leituras: a escolha foi dela
+                return credencial(None, cofre, plano, modelos, so_a_chave)
+            return Pagador(PLANO, {"openai_api_key": None, "plano_do_chatgpt": {"token": token, "modelo": _modelo_do_plano(login, token, plano, modelos)}}, None)
+        except ErroDoPlano as erro:
+            return Pagador(PARADO, None, erro.codigo)
+    if quem == PARADO:
+        return Pagador(PARADO, None, motivo)
     if "modelo_da_chave" not in plano:  # o da chave fica à parte do do plano: o Envio pode passar de um para o outro (#158)
         try:
             oferta = modelos.da_chave(chave)
         except openai_api.ErroDaChave:
             oferta = None  # a lista não veio: vale a escolha da pessoa, sem conferir se a conta ainda a tem
         plano["modelo_da_chave"] = modelos.do_envio(oferta, modelos.automatico_da_chave(oferta), CHAVE)
-    return {"openai_api_key": chave, "modelo_do_texto": plano["modelo_da_chave"]}
+    return Pagador(CHAVE, {"openai_api_key": chave, "modelo_do_texto": plano["modelo_da_chave"]}, None)
 
 
 def credencial_da_imagem(login, cofre, plano, modelos, so_a_chave=False):

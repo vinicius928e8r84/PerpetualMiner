@@ -6,6 +6,7 @@ What the card of an Envio says in the corners: the request with no answer, the k
 
 - `envio-pedindo` while `POST /jobs` has no answer the card says `Enviando o pedido`, with no `etapa` and no `Na fila`; after 10 s it is `Não começou` with `A Conexão com o Anki não respondeu. Confira se ela está ligada.` and **Tentar de novo**; Enviar ao Anki with another Frase still works.
 - `envio-motivo` an Envio that ended on `openai_key_rejected` says `A OpenAI não aceitou a chave.` with **Trocar a chave**, on the card (another Envio still running) and in the summary block (with **Tentar de novo**).
+- `envio-login-acabou` an Envio that ended on `chatgpt_signed_out` says `O login do ChatGPT acabou. Entre de novo ou use a chave: o Envio não troca sozinho.` with **Abrir IA dos cartões** (no Tentar de novo on the card); the AI card then shows the ended login (`ia-chatgpt-acabou` in [ia.md](./ia.md)).
 - `envio-apagado` an Envio the Conexão stopped with `frases_apagadas` says `As frases deste Envio foram apagadas da Conexão com o Anki.` with only **Esquecer**; no `POST /jobs/retry` leaves, no summary opens for it.
 
 ## How to get to it (user POV)
@@ -21,5 +22,5 @@ Preconditions: `doctor.sh` green. `fakes.anki.silenciar('/jobs')` makes only tha
 
 ## Gotchas
 
-- `Enviando o pedido` and the wiped-Frases sentence are ENV-24, copy still to be approved by the owner.
+- `Enviando o pedido` and the wiped-Frases sentence are ENV-24, and the ended-login sentences are CFG-46: copy still to be approved by the owner.
 - The step bar still follows `stage`, recorded per Cartão: it goes back on each Cartão. Changing it changes approved visual references.

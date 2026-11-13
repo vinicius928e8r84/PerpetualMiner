@@ -11,7 +11,9 @@ Three pure pieces, no screen, proven without a browser by `node test_estado_do_e
   asks it `terminou`, `retomavel` and `foraDoResumo`. A new state enters there, with its line in the test, not as one more `if` in the card.
 - **Why an Envio did not conclude: `SituacaoDoEnvio.doCodigo(lastError)`.** One table for the card, the summary block and the Boas-vindas
   (`painel-boas-vindas-envio.js`): the sentence (`fala`; `noPainel` when the panel says it differently, `null` when it says nothing) and the help
-  (`AJUDA`: Tentar de novo, Trocar a chave, Usar a chave, Gerenciar uso). A code the Conexão starts sending gets its line there.
+  (`AJUDA`: Tentar de novo, Trocar a chave, Usar a chave, Gerenciar uso, and `escolherQuemPaga` for `chatgpt_signed_out`: the ChatGPT login
+  ended, the Conexão never pays with the key on its own (`complemento/test_quem_paga.py`), so the card leads to the AI card instead of offering
+  Tentar de novo). A code the Conexão starts sending gets its line there.
 - **What the remessa is doing: `FaseDaRemessa.proxima(fase, evento)`.** `parada → criando → acompanhando → resumo → parada`; Apagar tudo takes any
   phase to `parada`; an event the phase does not accept changes nothing (`aceita`). Every request of the remessa (`POST /jobs`, `/jobs/retry`,
   `/jobs/list`) has `PRAZO_DO_PEDIDO_MS`: a Conexão that accepts and never answers ends in “Não começou” with Tentar de novo, and Enviar ao
