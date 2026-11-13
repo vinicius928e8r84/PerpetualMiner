@@ -10,7 +10,7 @@ const os = require('os');
 const path = require('path');
 const { soDocumentacao, arquivosMudados } = require('./so-documentacao.js');
 const { instaveis, resumo } = require('./instaveis.js');
-const { EMAIL_DO_DONO, commitsForaDaRegra, mensagem } = require('./autoria.js');
+const { EMAIL_DO_DONO, coautoresDeFora, commitsForaDaRegra, mensagem } = require('./autoria.js');
 const { ARQUIVO_DA_LISTA, checksDosWorkflows, checksQueFaltam } = require('./checks-obrigatorios.js');
 
 assert.strictEqual(soDocumentacao(['CLAUDE.md']), true);
@@ -131,6 +131,24 @@ assert.deepStrictEqual(commitsForaDaRegra([linha('a6', EMAIL_DO_DONO, EMAIL_DO_D
 assert.match(mensagem(commitsForaDaRegra([linha('abcdef0123', 'agente@exemplo.com', EMAIL_DO_DONO, 'um assunto')]), 'origin/main'),
   /abcdef0 um assunto[^]*git rebase --rebase-merges --exec 'git commit --amend --no-edit --reset-author' origin\/main/, 'a mensagem dá o comando');
 
+// O co-autor (#425): uma linha `Co-authored-by:` com outro e-mail também tira o commit do dono, com autor e committer certos.
+const comMensagem = (sha, mensagemDoCommit) => `${linha(sha, EMAIL_DO_DONO, EMAIL_DO_DONO, 'um assunto')}\x1f${mensagemDoCommit}`;
+const DO_AGENTE = 'Co-Authored-By: Claude <noreply@anthropic.com>';
+assert.deepStrictEqual(commitsForaDaRegra([comMensagem('b1', 'um assunto\n\ncorpo\n')]), [], 'mensagem sem co-autor');
+assert.deepStrictEqual(commitsForaDaRegra([comMensagem('b2', `um assunto\n\n${DO_AGENTE}\n`)]).map(c => [c.sha, c.coautores]),
+  [['b2', ['Claude <noreply@anthropic.com>']]], 'o trailer do agente barra, com autor e committer do dono');
+assert.deepStrictEqual(commitsForaDaRegra([comMensagem('b3', `um assunto\n\nCo-authored-by: vinicius928e8r84 <${EMAIL_DO_DONO}>\n`)]), [], 'o dono como co-autor passa');
+assert.deepStrictEqual(coautoresDeFora(`a\n\nco-authored-by: Um <um@exemplo.com>\r\nCO-AUTHORED-BY : dois@exemplo.com\n\nmais texto\nCo-authored-by: n <${EMAIL_DO_DONO}>\n`),
+  ['Um <um@exemplo.com>', 'dois@exemplo.com'], 'qualquer caixa, CRLF, sem colchetes e fora do último parágrafo; o do dono fica de fora');
+assert.deepStrictEqual(coautoresDeFora('Tira o Co-authored-by: Claude <noreply@anthropic.com> das mensagens\n\n  Co-authored-by: citado <c@exemplo.com>\n'), [],
+  'só a linha que começa com Co-authored-by conta');
+{
+  const texto = mensagem(commitsForaDaRegra([comMensagem('abcdef0123', `um assunto\n\n${DO_AGENTE}\n`)]), 'origin/main');
+  assert.match(texto, /abcdef0 um assunto \(autor [^,]+, committer [^,]+, co-autor Claude <noreply@anthropic\.com>\)/, 'a mensagem nomeia o commit e o co-autor');
+  assert(texto.includes("git rebase --rebase-merges --exec 'git log -1 --format=%B | grep -vi ^co-authored-by | git commit --amend --reset-author -F -' origin/main"),
+    'com co-autor, o comando também tira as linhas dele');
+}
+
 // Sobre um repositório de verdade, pelo mesmo comando que o workflow roda.
 {
   const repoDeAutoria = fs.mkdtempSync(path.join(os.tmpdir(), 'autoria-'));
@@ -173,6 +191,26 @@ assert.match(mensagem(commitsForaDaRegra([linha('abcdef0123', 'agente@exemplo.co
       GIT_CONFIG_KEY_0: 'user.email', GIT_CONFIG_VALUE_0: EMAIL_DO_DONO, GIT_CONFIG_KEY_1: 'user.name', GIT_CONFIG_VALUE_1: 'n' },
   });
   assert.strictEqual(rodarAutoria().status, 0, 'o comando da mensagem refaz a autoria também com merge');
+  assert(gitA(EMAIL_DO_DONO, 'log', '--merges', '--format=%H', 'main..HEAD').trim(), 'o merge continua no histórico');
+
+  // Autor e committer do dono e um co-autor de outro e-mail na mensagem: barra, e o comando que a mensagem dá tira só essa linha.
+  // (O co-autor é `agente@exemplo.com` porque um gancho commit-msg da máquina pode tirar o trailer de um agente conhecido antes de o commit existir.)
+  commitar(EMAIL_DO_DONO, 'antes do co-autor', 'antes.txt');
+  fs.writeFileSync(path.join(repoDeAutoria, 'coautor.txt'), 'x\n');
+  gitA(EMAIL_DO_DONO, 'add', '-A');
+  gitA(EMAIL_DO_DONO, 'commit', '-q', '-m', 'com co-autor', '-m', 'O corpo fica.', '-m', 'Co-Authored-By: Agente <agente@exemplo.com>');
+  const comCoautor = rodarAutoria();
+  assert.strictEqual(comCoautor.status, 1, `um co-autor de outro e-mail barra: ${comCoautor.stdout}`);
+  assert(/com co-autor \(.*co-autor Agente <agente@exemplo\.com>\)/.test(comCoautor.stdout) && !comCoautor.stdout.includes('antes do co-autor'),
+    `a mensagem nomeia só o commit do co-autor: ${comCoautor.stdout}`);
+  const [, refazer] = /git rebase --rebase-merges --exec '([^']+)' main/.exec(comCoautor.stdout);
+  execFileSync('git', ['rebase', '-q', '--rebase-merges', '--exec', refazer, 'main'], {
+    cwd: repoDeAutoria,
+    env: { ...process.env, GIT_CONFIG_COUNT: '2',
+      GIT_CONFIG_KEY_0: 'user.email', GIT_CONFIG_VALUE_0: EMAIL_DO_DONO, GIT_CONFIG_KEY_1: 'user.name', GIT_CONFIG_VALUE_1: 'n' },
+  });
+  assert.strictEqual(rodarAutoria().status, 0, 'o comando da mensagem tira o co-autor');
+  assert.strictEqual(gitA(EMAIL_DO_DONO, 'log', '-1', '--format=%B').trim(), 'com co-autor\n\nO corpo fica.', 'o assunto e o corpo ficam');
   assert(gitA(EMAIL_DO_DONO, 'log', '--merges', '--format=%H', 'main..HEAD').trim(), 'o merge continua no histórico');
 
   // Uma ponta que o clone não tem (checkout raso): uma mensagem que manda conferir o fetch-depth, não o stack do Node.

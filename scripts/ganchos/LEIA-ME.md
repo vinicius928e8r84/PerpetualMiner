@@ -6,6 +6,7 @@
 
 - Compara com `<remoto>/main`, senão `origin/main`, como estiver no clone (`git fetch origin main` para ficar em dia); sem nenhum dos dois, avisa e deixa passar.
 - As regras leem a cópia de trabalho, então só rodam quando a ponta empurrada é o `HEAD` (senão avisa e confere só a autoria). Mudança não commitada entra na conta.
+- A autoria é de cada commit da branch: autor e committer com o e-mail do dono, e nenhuma linha `Co-authored-by:` na mensagem com outro e-mail (a de um agente, por exemplo). A mensagem do erro traz o comando que refaz a autoria e tira essas linhas.
 - Apagar branch, tag e `main` não conferem nada. Para pular de propósito: `git push --no-verify` (o CI confere igual).
 
 ## Ligar
