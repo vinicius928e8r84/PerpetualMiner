@@ -5,7 +5,7 @@ One request per keyword (not batched) to prevent keyword hallucination.
   - keywords[0] -> uses the original phrase from the input
   - keywords[1..N] -> explicit instruction to invent a new sentence
 
-OpenAI is called over plain HTTP (`openai_http`), and progress goes to the `perpetualminer.motor` logger,
+The model is asked through the provider layer (`provedores`, plain HTTP), and progress goes to the `perpetualminer.motor` logger,
 never to stdout: the module runs inside the Anki add-on (`complemento/motor`).
 """
 
@@ -16,12 +16,12 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set
 
 if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
-    from . import cost_tracker, openai_http
+    from . import cost_tracker, provedores
     from .parser import CardJob, get_card_jobs, parse_mining_file
     from .prompt_loader import load_prompt
 else:
     import cost_tracker
-    import openai_http
+    import provedores
     from parser import CardJob, get_card_jobs, parse_mining_file
     from prompt_loader import load_prompt
 
@@ -128,14 +128,14 @@ def _record_chat_cost(log_dir: str, model: str, usage: dict, keyword: str) -> No
     cost_tracker.record_tokens(
         log_dir,
         model=model,
-        input_tokens=usage.get("prompt_tokens", 0) or 0,
-        output_tokens=usage.get("completion_tokens", 0) or 0,
+        input_tokens=usage.get("entrada", 0),
+        output_tokens=usage.get("saida", 0),
         keyword=keyword,
     )
 
 
 def _call_model(
-    openai_base: str,
+    openai_base: Optional[str],
     api_key: str,
     system_prompt: str,
     user_message: str,
@@ -143,16 +143,8 @@ def _call_model(
     log_dir: str,
     keyword: str,
 ) -> Optional[str]:
-    text, usage = openai_http.completar(
-        openai_base,
-        api_key,
-        model,
-        [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message},
-        ],
-        temperatura=0.2,
-    )
+    cred = {"provedor": provedores.OPENAI, "segredo": api_key, "modelo": model, "base": openai_base}
+    text, usage = provedores.texto(cred, system_prompt, user_message, temperatura=0.2)
     _record_chat_cost(log_dir, model, usage, keyword)
     return text or None
 
@@ -241,7 +233,7 @@ def run(
     entries,
     config: dict,
     *,
-    openai_base: str = openai_http.OPENAI_BASE,
+    openai_base: Optional[str] = None,
     skip_existing: bool = False,
     failures: Optional[Dict[str, str]] = None,
     card_stem: Optional[Callable[[CardJob, int], str]] = None,
@@ -250,7 +242,7 @@ def run(
     """Generate one card .txt per CardJob via local prompts + chat completions.
 
     `skip_existing`: a card whose .txt is already there is not asked again (it was paid for).
-    `failures`: when given, gets `{stem: code}` for each card that was not saved (an `openai_http` code,
+    `failures`: when given, gets `{stem: code}` for each card that was not saved (a code of the provider layer,
     or `empty_response`, `invalid_card`, `keyword_mismatch`, `generation_error`).
     `card_stem(job, index)`: names each card (`index` is the keyword's position in its entry) instead of the
     keyword-and-phrase stem; the Anki add-on uses `<phraseId>-<n>`. A named card is also what the log and the cost
@@ -264,7 +256,7 @@ def run(
     plan = config.get("plano_do_chatgpt")  # {token, modelo}: the text goes through the ChatGPT plan instead of the key
     log_dir = config["paths"]["log_dir"]
     lang = config.get("lang", "en")
-    model = config.get("modelo_do_texto") or config["openai"].get("chat_model", "gpt-4o")  # the Conexão's choice (#157), else the engine's
+    model = provedores.modelo_do_texto(config)
     failures = failures if failures is not None else {}
 
     all_jobs: List[tuple] = []
@@ -286,12 +278,11 @@ def run(
             if plan:
                 # The ChatGPT plan (#155): the Responses API with the plan's model and token. No USD cost per card; the usage is logged
                 # with what the key would have charged (#159).
-                text, usage = openai_http.responder(openai_base, plan["token"], plan["modelo"], system_prompt, message)
-                cost_tracker.record_plan_tokens(
-                    log_dir, plan["modelo"], model, usage.get("input_tokens", 0) or 0, usage.get("output_tokens", 0) or 0, label)
+                text, usage = provedores.texto(provedores.credencial_do_texto(config, openai_base), system_prompt, message)
+                cost_tracker.record_plan_tokens(log_dir, plan["modelo"], model, usage["entrada"], usage["saida"], label)
                 return text or None
             return _call_model(openai_base, api_key, system_prompt, message, model, log_dir, label)
-        except openai_http.ErroDaOpenAI as exc:
+        except provedores.ErroDoProvedor as exc:
             LOGGER.error("Modelo falhou para '%s': %s", label, exc)
             failures[stem] = exc.codigo
         except Exception as exc:

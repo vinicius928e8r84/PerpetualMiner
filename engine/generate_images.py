@@ -22,10 +22,11 @@ from pathlib import Path
 from typing import Callable, List, Optional
 
 if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
-    from . import openai_http
+    from . import openai_http, provedores
     from .config_loader import load_config
 else:
     import openai_http
+    import provedores
     from config_loader import load_config
 
 LOGGER = logging.getLogger("perpetualminer.motor")  # inside the Anki add-on nothing goes to stdout
@@ -35,7 +36,7 @@ FAILURES_LOG = "image_generation_failures.jsonl"
 
 def _failure_reason(exc: Exception) -> str:
     """Short label for why a generation failed: model_unavailable or generation_error."""
-    if isinstance(exc, openai_http.ErroDaOpenAI) and exc.status == 404:
+    if isinstance(exc, provedores.ErroDoProvedor) and exc.status == 404:
         return "model_unavailable"
     return "generation_error"
 
@@ -88,13 +89,8 @@ def _save_from_response(item: dict, dest: Path) -> bool:
 
 def _generate(config: dict, prompt: str) -> dict:
     """Ask the Images API for one image: the answer's first item (`{}` if none)."""
-    return openai_http.gerar_imagem(
-        config.get("openai_base", openai_http.OPENAI_BASE),
-        config["openai_api_key"],
-        config["openai"]["image_model"],
-        prompt,
-        config["openai"]["image_size"],
-    )
+    cred = {"provedor": provedores.OPENAI, "segredo": config["openai_api_key"], "modelo": config["openai"]["image_model"], "base": config.get("openai_base")}
+    return provedores.imagem(cred, prompt, config["openai"]["image_size"])
 
 
 def generate_one(config: dict, stem: str, prompt: str, dest: Optional[Path] = None) -> bool:

@@ -1,6 +1,6 @@
 """Dá a versão da Conexão com o Anki na hora do merge, num commit só.
 
-    python3 complemento/versao_no_merge.py [--acima-de 0.4.33] [--sem-testes | --testes "comando"]
+    python3 complemento/versao_no_merge.py [--acima-de 0.4.33 | --versao 0.4.34] [--sem-testes | --testes "comando"]
 
 Uma PR não mexe na `VERSAO`, no `versoes.json` nem no `conexao/perpetualminer.ankiaddon` (a regra `versoes-publicadas` a
 barra); depois de cada merge, quem junta roda este script na main, com a árvore limpa:
@@ -13,7 +13,8 @@ barra); depois de cada merge, quem junta roda este script na main, com a árvore
 4. faz UM commit, `Conexão X.Y.Z: versão dada no merge`, e não empurra: quem juntou empurra.
 
 `versoes-reservadas.json` lista os números que PRs abertas já carregam (o script nunca os dá, e a regra só deixa uma PR
-escrevê-los à mão enquanto estiverem ali; esvazie a lista quando elas mesclarem); `--acima-de` reserva mais um, de passagem. O resultado é o que o fluxo antigo (subir a versão à mão, registrar
+escrevê-los à mão enquanto estiverem ali; esvazie a lista quando elas mesclarem); `--acima-de` reserva mais um, de passagem.
+`--versao X.Y.Z` cumpre a reserva: dá exatamente esse número (a PR que o prometeu), que tem de estar na lista e ainda não estar no `versoes.json`. O resultado é o que o fluxo antigo (subir a versão à mão, registrar
 o hash e refazer o arquivo) dava para a mesma versão: `test_versao_no_merge.py` compara byte a byte.
 """
 
@@ -90,6 +91,7 @@ def comando_dos_testes():
 def main(argv):
     leitor = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     leitor.add_argument("--acima-de", metavar="VERSAO", help="o número não pode ser menor ou igual a este (PRs abertas que já o levam)")
+    leitor.add_argument("--versao", metavar="VERSAO", help="dá exatamente este número, que tem de estar em versoes-reservadas.json e fora do versoes.json (a PR que o prometeu)")
     testes = leitor.add_mutually_exclusive_group()
     testes.add_argument("--sem-testes", action="store_true", help="não roda os testes do complemento (só os testes deste script usam)")
     testes.add_argument("--testes", metavar="COMANDO", help="outro comando de testes, no lugar de todos os do complemento")
@@ -107,7 +109,13 @@ def main(argv):
         print("nada a fazer: a VERSAO %s já registra as fontes de hoje" % atual)
         return 0
 
-    nova = proxima(list(registradas) + [atual] + reservadas(), opcoes.acima_de)
+    if opcoes.versao:
+        if opcoes.versao not in reservadas() or opcoes.versao in registradas:
+            print("--versao %s: o número tem de estar em versoes-reservadas.json e ainda não estar no versoes.json" % opcoes.versao, file=sys.stderr)
+            return 2
+        nova = opcoes.versao
+    else:
+        nova = proxima(list(registradas) + [atual] + reservadas(), opcoes.acima_de)
     escrever(CONFIGURACAO, LINHA_DA_VERSAO.sub('VERSAO = "%s"' % nova, ler(CONFIGURACAO), count=1))
     for exemplo in EXEMPLOS:
         escrever(exemplo, ler(exemplo).replace('"%s"' % atual, '"%s"' % nova))

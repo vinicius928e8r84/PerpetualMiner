@@ -217,6 +217,37 @@ class QuemMudouOCodigoRecebeAProximaVersao(Casa):
         self.assertEqual(dar_a_versao(self.repo).returncode, 0)
         self.assertIn('VERSAO = "0.4.35"', ler(self.repo, "complemento/configuracao.py"))
 
+    def test_versao_da_a_uma_pr_o_numero_reservado_que_ela_prometeu(self):
+        escrever(self.repo, "complemento/versoes-reservadas.json", '["0.4.28", "0.4.32", "0.4.33", "0.4.34"]\n')
+        mudar_o_codigo(self.repo)
+        git(self.repo, "commit", "-qam", "uma PR de Conexão que prometeu a 0.4.34")
+        resultado = dar_a_versao(self.repo, "--versao", "0.4.34")
+        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
+        self.assertIn('VERSAO = "0.4.34"', ler(self.repo, "complemento/configuracao.py"))
+        self.assertIn("0.4.34", json.loads(ler(self.repo, "complemento/versoes.json")))
+        self.assertEqual(git(self.repo, "log", "-1", "--format=%s"), "Conexão 0.4.34: versão dada no merge")
+
+    def test_versao_recusa_um_numero_que_ninguem_reservou_e_nao_muda_nada(self):
+        escrever(self.repo, "complemento/versoes-reservadas.json", '["0.4.28"]\n')
+        mudar_o_codigo(self.repo)
+        git(self.repo, "commit", "-qam", "uma PR de Conexão")
+        antes = git(self.repo, "rev-parse", "HEAD")
+        resultado = dar_a_versao(self.repo, "--versao", "0.4.34")
+        self.assertNotEqual(resultado.returncode, 0)
+        self.assertIn("0.4.34", resultado.stderr)
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), antes)
+        self.assertEqual(git(self.repo, "status", "--porcelain"), "")
+
+    def test_versao_recusa_um_numero_que_o_versoes_json_ja_registra(self):
+        registradas = json.loads(ler(self.repo, "complemento/versoes.json"))
+        velha = max(registradas, key=versao_no_merge.como_tupla)
+        escrever(self.repo, "complemento/versoes-reservadas.json", json.dumps([velha]) + "\n")
+        mudar_o_codigo(self.repo)
+        git(self.repo, "commit", "-qam", "uma PR de Conexão")
+        resultado = dar_a_versao(self.repo, "--versao", velha)
+        self.assertNotEqual(resultado.returncode, 0)
+        self.assertIn(velha, resultado.stderr)
+
     def test_o_commit_de_versao_leva_so_os_arquivos_da_versao_mesmo_com_outro_no_indice(self):
         mudar_o_codigo(self.repo)
         git(self.repo, "commit", "-qam", "uma PR de Conexão")

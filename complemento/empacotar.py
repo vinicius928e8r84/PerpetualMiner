@@ -57,6 +57,7 @@ ARQUIVOS_DO_MOTOR = (
     "openai_http.py",
     "parser.py",
     "prompt_loader.py",
+    "provedores.py",
     "prompts/correcao_da_criacao.txt",
     "prompts/en_card.txt",
     "prompts/en_avancado.txt",
