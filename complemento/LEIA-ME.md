@@ -95,7 +95,7 @@ dentro do pacote da loja (sem permissão nova). A versão e o arquivo são dados
 `versoes-publicadas` a barra). Na main, com a árvore limpa:
 
 ```bash
-python3 complemento/versao_no_merge.py   # pula os números de versoes-reservadas.json
+python3 complemento/versao_no_merge.py [--versao 0.4.34]   # pula as reservadas; --versao dá uma
 git push origin main
 ```
 
