@@ -87,6 +87,31 @@ class ContratoDaCriacao(ContratoDaCorrecao, ContratoDoGanchoDaCriacao):
         self.assertEqual(colecao.tipo_de_nota("PerpetualMiner Inglês"), ["Frase", "Meu campo"])
         self.assertEqual(resultado["tipos"], {"en": False, "ru": True})
 
+    def com_a_criacao_de_antes(self):
+        """Um tipo Criação instalado por uma Conexão anterior: a frente escolhida e depois um verso que o modelo de hoje já não tem."""
+        colecao = self.adaptador(SO_O_DEFAULT)
+        self.preparar(colecao)
+        tipo_de_nota.trocar_a_frente(colecao, "en", "criacao")
+        [modelo] = colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")
+        colecao.trocar_o_modelo("PerpetualMiner Inglês", dict(modelo, verso=modelo["verso"] + "<!-- modelo antigo -->"), tipo_de_nota.CSS)
+        return colecao
+
+    def test_abrir_o_perfil_leva_o_modelo_novo_a_um_tipo_criacao_ja_instalado_e_intacto(self):
+        colecao = self.com_a_criacao_de_antes()
+        campos = colecao.tipo_de_nota("PerpetualMiner Inglês")
+        resultado = self.preparar(colecao)
+        self.assertEqual(colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês"), tipo_de_nota.definicao("en", frente="criacao")["modelos"])
+        self.assertEqual(colecao.tipo_de_nota("PerpetualMiner Inglês"), campos)
+        self.assertEqual(resultado, {"tipos": {"en": False, "ru": False}, "baralhos": []})
+        self.assertFalse(tipo_de_nota.atualizar_a_criacao(colecao, "en"))  # repetir não muda nada
+
+    def test_um_tipo_que_a_pessoa_trocou_de_frente_fica_como_esta_ao_abrir_o_perfil(self):
+        colecao = self.com_a_criacao_de_antes()
+        tipo_de_nota.trocar_a_frente(colecao, "en", "lacuna")
+        antes = colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")
+        self.preparar(colecao)
+        self.assertEqual(colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês"), antes)
+
     def test_um_anki_em_ingles_ganha_os_nossos_tipos_e_o_basic_dele_nao_e_tocado(self):
         colecao = self.adaptador(ANKI_EM_INGLES)
         self.preparar(colecao)

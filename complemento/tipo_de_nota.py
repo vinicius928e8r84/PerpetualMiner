@@ -3,11 +3,13 @@
 Os nomes, os campos e as partes do verso vêm do `estilos.json` (`motor/estilos.py`): um idioma novo entra por dados. Os campos são
 **todos** os que o idioma vai usar (os níveis, a morfologia do russo, as frentes e a Criação): mudar os campos de um tipo de nota
 depois obriga o Anki a uma sincronização completa, então eles nascem juntos e o que o nível não usa fica vazio. A Conexão só **cria**:
-um tipo de nota ou um Baralho que já existe não é tocado, e nada do que a pessoa já tem é renomeado, convertido nem apagado.
+um tipo de nota ou um Baralho que já existe não é tocado, e nada do que a pessoa já tem é renomeado, convertido nem apagado. A única exceção é o modelo
+do Cartão Criação intacto, que acompanha a Conexão (`atualizar_a_criacao`, #390).
 """
 
 import os
 
+from .baralhos import TipoDeNotaAlterado
 from .motor import estilos
 
 # As frentes do Cartão (#166): cada uma é o modelo de Cartão do tipo de nota do idioma. O tipo tem **um** modelo só (um Cartão por Frase) e trocar a
@@ -188,10 +190,26 @@ def trocar_a_frente(colecao, lang, frente):
     return colecao.trocar_o_modelo(tipo["nome"], tipo["modelos"][0], tipo["css"])
 
 
+def atualizar_a_criacao(colecao, lang):
+    """Regrava o modelo do Cartão Criação (frente, verso e estilo) se o que a Conexão entrega mudou (#390). Só se o tipo de nota do idioma ainda tem o nosso
+    modelo Criação sozinho: a pessoa que o mexeu, ou que trocou de frente, fica como está. Nenhuma nota nem campo é tocado. Devolve se regravou."""
+    nome = definicao(lang, frente="criacao")["nome"]
+    modelos = colecao.modelos_do_tipo_de_nota(nome)
+    if not (modelos and len(modelos) == 1 and modelos[0]["nome"] == NOMES_DAS_FRENTES["criacao"]):
+        return False
+    try:
+        return trocar_a_frente(colecao, lang, "criacao")
+    except TipoDeNotaAlterado:  # mexido entre a leitura e a gravação
+        return False
+
+
 def preparar(colecao):
     """Deixa a coleção pronta para o Envio: o tipo de nota de cada idioma (criado se falta) e, numa instalação nova (nenhum Baralho além
-    do “Default”), o Baralho de cada idioma. Repetir não cria nada de novo. Devolve `{ tipos: { idioma: criado }, baralhos: [criados] }`;
+    do “Default”), o Baralho de cada idioma. Um tipo Criação já instalado e intacto recebe o modelo novo da Conexão (`atualizar_a_criacao`, #390). Repetir não cria nada de novo. Devolve `{ tipos: { idioma: criado }, baralhos: [criados] }`;
     levanta `ColecaoIndisponivel` se a coleção não está aberta, sincroniza ou está noutro perfil que o marcado."""
     tipos = {lang: colecao.criar_tipo_de_nota(definicao(lang)) for lang in estilos.idiomas()}
+    for lang, criado in tipos.items():
+        if not criado:
+            atualizar_a_criacao(colecao, lang)
     criados = colecao.criar_baralhos_da_instalacao_nova([estilos.idioma(lang)["baralho"] for lang in estilos.idiomas()])
     return {"tipos": tipos, "baralhos": criados}
