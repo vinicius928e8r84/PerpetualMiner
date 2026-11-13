@@ -22,6 +22,23 @@ ANKI_DO_MAC = ["/usr/bin/open", "/Applications/Anki.app"]
 ANKI_DO_WINDOWS = r"C:\Users\Maria\AppData\Local\Programs\Anki\anki.exe"
 
 
+def ler_lista_do_alvo(conteudo):
+    """Os itens do `LinkTargetIDList` de um `.lnk`: (tipo, bytes depois do tipo) de cada um, até o terminador."""
+    flags, = struct.unpack_from("<I", conteudo, 20)
+    assert flags & 0x01, "sem LinkTargetIDList o Windows diz que não há aplicativo para o atalho"
+    tamanho, = struct.unpack_from("<H", conteudo, 0x4C)
+    lista = conteudo[0x4C + 2 : 0x4C + 2 + tamanho]
+    itens, posicao = [], 0
+    while True:
+        quanto, = struct.unpack_from("<H", lista, posicao)
+        if quanto == 0:
+            break
+        itens.append((lista[posicao + 2], lista[posicao + 3 : posicao + quanto]))
+        posicao += quanto
+    assert posicao + 2 == len(lista), "a lista termina no terminador"
+    return itens
+
+
 def ler_atalho(conteudo):
     """O alvo e a pasta de trabalho de um `.lnk` (MS-SHLLINK), lidos como o Windows os lê."""
     tamanho_do_cabecalho, = struct.unpack_from("<I", conteudo, 0)
@@ -33,6 +50,7 @@ def ler_atalho(conteudo):
     posicao = 0x4C
     if flags & 0x01:  # LinkTargetIDList
         tamanho, = struct.unpack_from("<H", conteudo, posicao)
+        lista_do_alvo = conteudo[posicao + 2 : posicao + 2 + tamanho]
         posicao += 2 + tamanho
     inicio_do_link_info = posicao
     (tamanho_do_link_info, tamanho_do_cabecalho_do_link_info, _, _, base_ansi, _, _, base_unicode, _) = struct.unpack_from(
@@ -139,6 +157,18 @@ class NoWindows(unittest.TestCase):
         self.assertEqual(alvo, ANKI_DO_WINDOWS)
         self.assertEqual(alvo_ansi, ANKI_DO_WINDOWS)
         self.assertEqual(textos, {"pasta": r"C:\Users\Maria\AppData\Local\Programs\Anki"})
+
+    def test_o_atalho_leva_a_lista_do_alvo_que_o_windows_exige_para_abrir_o_anki(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            item_de_login.ItemDeLogin(sistema="windows", pasta=pasta, comando=ANKI_DO_WINDOWS).ligar()
+            with open(os.path.join(pasta, "Anki (PerpetualMiner).lnk"), "rb") as arquivo:
+                itens = ler_lista_do_alvo(arquivo.read())
+        tipos = [tipo for tipo, _ in itens]
+        nomes = [corpo[11:].split(b"\x00")[0].decode() for tipo, corpo in itens[2:]]
+        self.assertEqual(tipos, [0x1F, 0x2F] + [0x31] * 6 + [0x32])
+        self.assertEqual(itens[0][1], b"\x50" + bytes.fromhex("e04fd020ea3a6910a2d808002b30309d"))
+        self.assertTrue(itens[1][1].startswith(b"C:\\\x00"))
+        self.assertEqual(nomes, ["Users", "Maria", "AppData", "Local", "Programs", "Anki", "anki.exe"])
 
     def test_o_alvo_com_acento_chega_inteiro_pelo_texto_unicode_do_atalho(self):
         alvo_com_acento = r"C:\Users\João\AppData\Local\Programs\Anki\anki.exe"
