@@ -20,7 +20,15 @@ const REFAZER_SEM_COAUTOR = 'git log -1 --no-show-signature --format=%B | node s
 const REBASE_QUE_REGRAVA = 'git -c commit.cleanup=whitespace rebase';
 
 // Só ASCII nas expressões daqui para baixo: a mensagem lida como UTF-8 (a conferência) e byte a byte (o sem-coautor.js) dá o mesmo.
-const aparar = texto => texto.replace(/^[ \t\r]+|[ \t\r]+$/g, '');
+const BRANCOS = ' \t\r';
+/** O texto sem espaço, tabulação e \r nas pontas (num laço: a expressão equivalente retrocede ao quadrado numa linha com muitos espaços). */
+function aparar(texto) {
+  let de = 0;
+  let ate = texto.length;
+  while (de < ate && BRANCOS.includes(texto[de])) de++;
+  while (ate > de && BRANCOS.includes(texto[ate - 1])) ate--;
+  return texto.slice(de, ate);
+}
 
 /**
  * As linhas de co-autor da mensagem, [{ de, ate, valor }] (índices em `linhas`): cada `Co-authored-by: valor`, em

@@ -39,6 +39,12 @@ assert.deepStrictEqual(coautoresDeFora('Co-authored-by: Um <um@exemplo.com>\n\nc
 assert.deepStrictEqual(coautoresDeFora('assunto\nCo-authored-by: Um <um@exemplo.com>\n'), ['Um <um@exemplo.com>'], 'da segunda linha em diante conta');
 assert.deepStrictEqual(coautoresDeFora(`a\n\nCo-authored-by: <${EMAIL_DO_DONO}>\n <um@exemplo.com>\nCo-authored-by: Dois\n\t<dois@exemplo.com>\n \nfim\n`),
   [`<${EMAIL_DO_DONO}> <um@exemplo.com>`, 'Dois <dois@exemplo.com>'], 'a linha de continuação (começa com espaço ou tabulação) entra no valor, como no git');
+{
+  // Uma linha de co-autor com 300 mil espaços no meio é lida num instante (aparada por expressão regular, levava minutos).
+  const inicio = Date.now();
+  assert.deepStrictEqual(coautoresDeFora(`a\n\nCo-authored-by: Um${' '.repeat(300000)}x <um@exemplo.com> \t\r\n`), [`Um${' '.repeat(300000)}x <um@exemplo.com>`]);
+  assert(Date.now() - inicio < 5000, `a linha longa levou ${Date.now() - inicio} ms`);
+}
 // O filtro do conserto tira o que a conferência acusa, com as linhas de continuação, e mais nada.
 {
   const comTudo = `Co-authored-by: Assunto <a@exemplo.com>\n\ncorpo\r\n#1\nCo-authored-by em prosa\n  Co-authored-by: recuado <r@exemplo.com>\n\n`
