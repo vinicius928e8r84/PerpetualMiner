@@ -12,15 +12,21 @@ const EMAIL_DO_GITHUB = 'noreply@github.com';
 // Um registro por commit (`git log -z`): sha, autor, committer e assunto separados por tabulação; depois de \x1f, a mensagem inteira.
 const FORMATO_DO_LOG = '%H%x09%ae%x09%ce%x09%s%x1f%B';
 const REFAZER_A_AUTORIA = 'git commit --amend --no-edit --reset-author';
-// Refaz a autoria e regrava a mensagem sem as linhas de co-autor. Sem aspas por dentro, para o comando da mensagem
-// valer igual no sh, no Git Bash e no PowerShell.
-const REFAZER_SEM_COAUTOR = 'git log -1 --format=%B | grep -vi ^co-authored-by | git commit --amend --reset-author -F -';
+// Refaz a autoria e regrava a mensagem sem as linhas de co-autor (as mesmas que coautoresDeFora lê). Sem aspas por dentro,
+// para o comando da mensagem valer igual no sh, no Git Bash e no PowerShell.
+const REFAZER_SEM_COAUTOR = 'git log -1 --no-show-signature --format=%B | grep -vi ^co-authored-by[[:blank:]]*: | git commit --amend --reset-author -F -';
 
-/** Os co-autores de fora: o valor de cada linha `Co-authored-by: Nome <e-mail>` (em qualquer caixa) cujo e-mail não é o do dono. */
+/**
+ * Os co-autores de fora: o valor de cada linha `Co-authored-by: Nome <e-mail>` (em qualquer caixa) com algum e-mail
+ * que não é o do dono. Sem `<…>`, o valor inteiro é o e-mail.
+ */
 function coautoresDeFora(mensagem) {
   return [...mensagem.matchAll(/^co-authored-by[ \t]*:(.*)$/gim)]
     .map(([, valor]) => valor.trim())
-    .filter(valor => (/<([^<>]*)>$/.exec(valor) || [null, valor])[1].trim() !== EMAIL_DO_DONO);
+    .filter(valor => {
+      const emails = [...valor.matchAll(/<([^<>]*)>/g)].map(([, email]) => email.trim());
+      return (emails.length ? emails : [valor]).some(email => email !== EMAIL_DO_DONO);
+    });
 }
 
 /** Os commits fora da regra: [{ sha, assunto, autor, committer, coautores }], de registros no FORMATO_DO_LOG (a mensagem é opcional). */
@@ -62,7 +68,8 @@ function main([base, head]) {
     return 2;
   }
   // Sem teto de saída: as mensagens inteiras de uma branch longa passam do 1 MB que o Node dá por padrão.
-  const saida = execFileSync('git', ['log', '-z', `--format=${FORMATO_DO_LOG}`, `${base}..${head}`], { encoding: 'utf8', maxBuffer: Infinity });
+  // --no-show-signature: com log.showSignature ligado, a linha da assinatura viria antes de cada registro.
+  const saida = execFileSync('git', ['log', '-z', '--no-show-signature', `--format=${FORMATO_DO_LOG}`, `${base}..${head}`], { encoding: 'utf8', maxBuffer: Infinity });
   const fora = commitsForaDaRegra(saida.split('\0'));
   if (fora.length) {
     console.log(mensagem(fora, base));
