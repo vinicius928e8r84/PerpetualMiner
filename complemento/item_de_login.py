@@ -9,8 +9,8 @@ Anki não tem COM nem se pode contar com o PowerShell. Leva a lista do alvo (`Li
 alvo (`LinkInfo`) e a pasta de trabalho: sem a lista o Windows recusa o atalho (“não há aplicativos
 associados”).
 
-O item nunca foi testado num Mac nem num Windows de verdade: os testes conferem o que fica no
-disco, e o ensaio do dono confere o que o sistema faz com ele (`complemento/LEIA-ME.md`).
+Os testes conferem o que fica no disco; o que o sistema faz com o item (abrir o Anki no login) só um
+computador de verdade mostra: o que já foi visto e o que falta está em `docs/design/ensaios-do-dono-da-conexao.md`.
 """
 
 import ntpath
@@ -148,6 +148,7 @@ def _atalho_do_windows(alvo):
 
 
 _MEU_COMPUTADOR = bytes.fromhex("e04fd020ea3a6910a2d808002b30309d")
+_NOME_EM_UNICODE = 0x04  # no tipo do item de pasta (0x31) ou de arquivo (0x32): o nome está em UTF-16, não na página ANSI
 
 
 def _lista_do_alvo(alvo):
@@ -163,10 +164,17 @@ def _lista_do_alvo(alvo):
     itens.append(struct.pack("<HB", 25, 0x2F) + (unidade + "\\").encode("cp1252", "replace").ljust(22, b"\x00"))
     for posicao, parte in enumerate(partes):
         eh_arquivo = posicao == len(partes) - 1
-        nome = parte.encode("cp1252", "replace") + b"\x00"
-        if len(nome) % 2:
-            nome += b"\x00"
-        itens.append(struct.pack("<HBBIHHH", 14 + len(nome), 0x32 if eh_arquivo else 0x31, 0, 0, 0x21, 0, 0x20 if eh_arquivo else 0x10) + nome)
+        tipo = 0x32 if eh_arquivo else 0x31
+        if parte.isascii():
+            nome = parte.encode("ascii") + b"\x00"
+            if len(nome) % 2:
+                nome += b"\x00"
+        else:
+            # Fora do ASCII o nome vai em UTF-16: em bytes da página ANSI o Windows não acha a pasta cujo nome ela não guarda (“João” só
+            # cabe na cp1252, “Ωμέγα” nem nela), e o atalho não abre.
+            tipo |= _NOME_EM_UNICODE
+            nome = (parte + "\x00").encode("utf-16-le")
+        itens.append(struct.pack("<HBBIHHH", 14 + len(nome), tipo, 0, 0, 0x21, 0, 0x20 if eh_arquivo else 0x10) + nome)
     lista = b"".join(itens) + b"\x00\x00"
     return struct.pack("<H", len(lista)) + lista
 
