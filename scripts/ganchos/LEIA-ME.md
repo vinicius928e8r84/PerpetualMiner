@@ -4,8 +4,9 @@
 
 `pre-push` barra o push de uma branch que o CI barraria: roda `node scripts/regras/verificar.js --base origin/main` e `node scripts/ci/autoria.js origin/main <ponta>`, os mesmos comandos do workflow Regras (8 das 12 falhas de `Regras` numa semana eram de autoria ou do verificador, cada uma custando um ciclo de CI). Leva uns 2 segundos. Não confere o mapa de features (depende do corpo da PR) nem o limite de tamanho (é o `pre-commit`). Detalhes:
 
-- Compara com `<remoto>/main`, senão `origin/main`, como estiver no clone (`git fetch origin main` para ficar em dia); sem nenhum dos dois, avisa e deixa passar.
+- Compara com `<remoto>/main`, senão `origin/main`, como estiver no clone (`git fetch origin main` para ficar em dia); sem nenhum dos dois, avisa e deixa passar. Com a base velha, os commits que a `main` ganhou depois entram na conta como se fossem da branch, e os mais antigos dela trazem autor ou co-autor que a autoria barra: se a lista do erro tem commit que já está na `main`, é a base.
 - As regras leem a cópia de trabalho, então só rodam quando a ponta empurrada é o `HEAD` (senão avisa e confere só a autoria). Mudança não commitada entra na conta.
+- A autoria é de cada commit da branch: autor e committer com o e-mail do dono, e nenhuma linha `Co-authored-by:` abaixo do assunto com outro e-mail (a de um agente, por exemplo). Para citar uma linha dessas numa mensagem, recue-a: no começo da linha ela conta, mesmo dentro de um bloco de código. A mensagem do erro traz o comando que refaz a autoria e tira essas linhas; ele usa `scripts/ci/sem-coautor.js`, e numa base que ainda não o tem o rebase para sem mudar nada (`git rebase --abort`, `git fetch origin main` e de novo).
 - Apagar branch, tag e `main` não conferem nada. Para pular de propósito: `git push --no-verify` (o CI confere igual).
 
 ## Ligar
