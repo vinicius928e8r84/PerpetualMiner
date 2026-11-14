@@ -1,38 +1,26 @@
 # O passo do nível do cartão (#164)
 
-O passo 7 da [Boas-vindas](README.md), depois da mineração automática (é ela que diz quais idiomas estão ligados). Opcional. A cópia é `ONB-20` e `BRG-43`
-([`lib/voz/catalogo-nivel.js`](../../../../lib/voz/catalogo-nivel.js), spec em [`catalogo-nivel.md`](../../voz/catalogo-nivel.md)).
+O passo 7 da [Boas-vindas](README.md), depois da mineração automática (é ela que diz quais idiomas estão ligados). Opcional. A cópia é `ONB-20` e `BRG-43` ([`lib/voz/catalogo-nivel.js`](../../../../lib/voz/catalogo-nivel.js), spec em [`catalogo-nivel.md`](../../voz/catalogo-nivel.md)). Fatia fechada: o código é `painel-boas-vindas-nivel.js`, `painel-boas-vindas-quiz.js` e `lib/quiz-de-nivel.js`; esta página guarda só as decisões e os limites.
 
-- **O que mostra**: para cada idioma ligado, um grupo com o nome do idioma, o controle **Estilo do cartão** de Ajustes de envio (Iniciante · Intermediário · Avançado, com o
-  texto do nível) e a **prévia do Cartão** do nível escolhido (Frente · Verso), desenhada pelo Anki (`POST /anki/card-preview`, o exemplo do estilo). Sob os grupos, o link
-  **Mais estilos em Ajustes de envio** (`#anki/ajustes`): o onboarding só pergunta o nível.
-- **Escolher salva na hora**, em `ankiBridgePresets` (só o `nivel` daquele idioma; o resto fica como está), pelo mesmo `AjustesDeEnvio.salvar` de Ajustes de envio. A prévia muda
-  com a escolha. Nada é gravado ao entrar no passo.
-- **Feito quando** todo idioma ligado tem o nível salvo (os Ajustes de envio dele, `versao` > 0). Sem idioma ligado o passo não se marca:
-  diz “Nenhum idioma está ligado…” e leva a **Ligar a mineração automática** (passo 6). Tudo pronto mostra “Inglês: Intermediário”.
+- **O onboarding só pergunta o nível**: o controle **Estilo do cartão** de Ajustes de envio e a prévia do Cartão; o resto fica em Ajustes de envio (o link **Mais estilos** leva a `#anki/ajustes`).
+- **Escolher salva na hora**, em `ankiBridgePresets` (só o `nivel` daquele idioma), pelo mesmo `AjustesDeEnvio.salvar` de Ajustes de envio. Nada é gravado ao entrar no passo.
+- **Feito quando** todo idioma ligado tem o nível salvo (`versao` > 0). Sem idioma ligado o passo não se marca: diz “Nenhum idioma está ligado…” e leva a **Ligar a mineração automática** (passo 6).
 - **Sem a prévia** (Conexão fora, antiga ou com erro) o controle segue valendo e se salva; a prévia diz o que falta (BRG-43) e tem **Tentar de novo**.
-- Sem protótipo próprio: reusa o card do passo e o controle de Ajustes de envio; as referências visuais são propostas (`boas-vindas-nivel-visual.spec.js`, `test.fixme`) até o dono olhar.
 
 ## O quiz de nível (#170)
 
-Para quem não sabe o nível, cada idioma ligado traz **Não sei meu nível, quero descobrir** (`ONB-21`) sob o controle. O quiz, de cerca de 1 minuto, ocupa o lugar do controle
-(`painel-boas-vindas-quiz.js`; a regra e as perguntas, como dados, são de `lib/quiz-de-nivel.js`); as perguntas vêm prontas por idioma, sem IA e sem custo.
+Para quem não sabe o nível: **Não sei meu nível, quero descobrir** (`ONB-21`), de cerca de 1 minuto, ocupa o lugar do controle. As perguntas vêm prontas por idioma, sem IA e sem custo.
 
-- **No russo** vem antes “Você já lê o alfabeto russo?”: “Ainda não” dá o Iniciante, direto no resultado, sem quiz.
-- **Parte 1**: duas perguntas sobre o que a pessoa já faz (séries, uma notícia), de 3 alternativas que valem 0, 1 ou 2; soma 0 ou 1 aponta o Iniciante, de 2 a 4, o Intermediário ou o Avançado.
-- **Parte 2**: de 3 a 6 perguntas de 4 alternativas, sempre com “Não sei”: só o áudio (a escuta), a Frase como legenda e o teste do verso (a explicação de uma palavra, no idioma). Duas de cada tipo.
-- **A regra dos dois portões** (#134): Intermediário = as 2 de legenda certas; Avançado = também as 2 do verso. A escuta aparece no resultado e não muda o estilo.
-  Quem a parte 1 aponta Iniciante começa pela legenda (legenda, escuta, legenda: 3 perguntas; se acertou as duas, entram verso, escuta, verso: 6). Quem aponta Intermediário ou Avançado
-  começa pelo verso (3; acertou as duas, é o Avançado; errou uma, entram legenda, escuta, legenda: 6).
-- **O ritmo** (#137): sem relógio. A pessoa responde, vê a certa marcada por ~1 s e a próxima entra sozinha; o áudio toca sozinho. Errar ou “Não sei” só mostram a certa, sem buzina.
-  A sequência sobe a cada acerto; “Não sei” a pausa e o chute errado a zera.
-- **O áudio** é a voz do Google do Cartão, dita pela Conexão (`POST /voz/falar`, no sotaque da Frase dos Ajustes de envio; `complemento/contrato/voz.md`). Sem a Conexão, ou com uma antiga, a pergunta diz o que falta
-  (`ONB-21.audioSemConexao`, `audioAntiga`) e segue respondível; **Ouvir de novo** tenta outra vez.
-- **O resultado** (`ONB-22`): o nível sugerido com a prévia do Cartão (o mesmo `EstiloDoCartao.campo`), um resumo (acertos, melhor sequência, escuta), **Usar este estilo** ou trocar o nível ali, e a nota de que dá para trocar depois
-  em Ajustes de envio › Estilo do cartão. Usar o estilo grava o nível pelo mesmo caminho do passo; sair do quiz não grava nada.
-- **A festa** (#171, #137 C): a cada acerto, som curto, pulo da certa, a sequência que sobe uma nota, confete, “+10”, “+20”… e o placar “Pontos: N”. Tudo cresce com a sequência até um teto (pontos até 50, confete até 14 pedaços); o confete grande é da Revelação. Errar mostra a certa, sem som, confete nem pontos; “Não sei” toca um tom baixo e neutro.
-- **A Revelação** (#137 B): ao fim do quiz, as três portas enchem uma a uma com rufar e param no nível (a dele em ouro, as de cima vazias); então vêm o acorde e o confete grande, e só depois o resumo (acertos, melhor sequência, escuta), a prévia e o resto. Quem disse “Ainda não” no alfabeto não tem Revelação.
-- **O som**: feito na hora com o WebAudio. O botão **Som** (`ONB-21.som`) fica à vista em toda tela do quiz e liga ou desliga tudo (só da tela aberta, nada é guardado). Nada toca antes do primeiro toque.
-- **Menos movimento**: só a cor muda. Sem pulo, sem “+10”, sem confete; as portas aparecem já no nível.
-- **Movimento**: os tempos e as curvas novos são os tokens do Veio (`--veio-mov-pulo`, `--veio-mov-ponto`, `--veio-mov-confete`, `--veio-mov-porta`, `--veio-mov-entre-portas`, `--veio-curva-mola`, `--veio-curva-saida`).
-- **Fora daqui**: o ranking do grupo (#172). As referências visuais são propostas (`boas-vindas-quiz-visual.spec.js` e `boas-vindas-quiz-festa-visual.spec.js`, `test.fixme`) até o dono olhar, e ele as compara com os protótipos do #134 e do #137.
+- **A regra dos dois portões** (#134): Intermediário = as 2 de legenda certas; Avançado = também as 2 do verso. A escuta aparece no resultado e não muda o estilo. A parte 1 (o que a pessoa já faz: soma 0 ou 1 aponta o Iniciante, de 2 a 4 o Intermediário ou o Avançado) decide por onde a parte 2 começa. No russo, quem diz “Ainda não” ao alfabeto vai direto ao Iniciante, sem quiz.
+- **Sem relógio** (#137): a pessoa responde, vê a certa por ~1 s e a próxima entra sozinha. Errar ou “Não sei” só mostram a certa, sem buzina; “Não sei” pausa a sequência e o chute errado a zera.
+- **O áudio** é a voz do Google do Cartão, dita pela Conexão (`POST /voz/falar`, no sotaque da Frase dos Ajustes de envio). Sem a Conexão, ou com uma antiga, a pergunta diz o que falta (`ONB-21.audioSemConexao`, `audioAntiga`) e segue respondível.
+- **Usar este estilo** grava o nível pelo mesmo caminho do passo (`ONB-22`); sair do quiz não grava nada.
+- **A festa e a Revelação** (#171, #137): som, confete e pontos crescem com a sequência até um teto; a Revelação enche as três portas até o nível. Errar não dá som, confete nem pontos. Quem disse “Ainda não” no alfabeto não tem Revelação.
+- **O som** é feito na hora com o WebAudio; o botão **Som** (`ONB-21.som`) liga e desliga tudo, só da tela aberta (nada é guardado), e nada toca antes do primeiro toque.
+- **Menos movimento**: só a cor muda, sem pulo, “+10” nem confete; as portas aparecem já no nível. Os tempos e curvas são tokens do Veio (`--veio-mov-*`, `--veio-curva-*`).
+
+## Limites
+
+- Sem protótipo próprio: reusa o card do passo e o controle de Ajustes de envio.
+- Fora daqui: o ranking do grupo (#172).
+- As referências visuais (`boas-vindas-nivel-visual.spec.js`, `boas-vindas-quiz-visual.spec.js`, `boas-vindas-quiz-festa-visual.spec.js`) são propostas (`test.fixme`) até o dono olhar; ele as compara com os protótipos do #134 e do #137.

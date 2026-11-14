@@ -2,7 +2,7 @@
 
 Página do [modelo de fatia ALTA](modelo-fatia-alta.md): o estado vive em mais de um processo (o arquivo `perfil.json` e o script do abridor,
 que o Native Messaging lê) e a Conexão passa a fechar e abrir perfis do Anki da pessoa. Os Cartões só entram no perfil que ficou marcado na
-primeira conexão. Texto, sem código; o código é `complemento/perfil.py`, `no_anki.py`, `rotas_do_perfil.py`, `inicio.py` e `envio.py`.
+primeira conexão. Fatia fechada: o código é `complemento/perfil.py`, `no_anki.py`, `rotas_do_perfil.py`, `inicio.py` e `envio.py`; esta página guarda só as decisões e os limites.
 
 ## 1. Dono único
 
@@ -48,13 +48,8 @@ o `perfil.json` da Conexão; a extensão não guarda perfil. 6. **Quem vem da `m
 - `state.waiting` leva nomes de perfis e eles entram no pacote de diagnóstico, como o `deckName` (a decidir; é issue).
 - Não migra o perfil da configuração antiga (#120).
 
-## 6. Provas
+## 6. O que não está provado
 
-Com fronteiras falsas: `test_perfil_fixo` (a lista, a escolha, o arquivo ilegível, o Envio que espera, entra e abre), `test_no_anki_perfil` (a ordem
-`pm.load`, `onOpenProfile`, `unloadProfile`, `showProfileManager` num `mw` de mentira, com modal aberto, outra janela ativa e o fechamento adiado),
-`test_no_anki` e `test_colecao_em_memoria` (o contrato do adaptador), `test_inicio` (o abridor com o marcado, ou sem `-p`), `test_servidor` (os exemplos do contrato).
-e2e: `configuracoes-perfil`, `painel-envio-perfil`. As telas novas são `test.fixme` até o dono aprovar.
-
-**O que isso não prova:** as funções de perfil do Anki (`pm.load`, `onOpenProfile`, `unloadProfile`, o Excluir/Renomear aberto) só rodaram num `mw` de
+as funções de perfil do Anki (`pm.load`, `onOpenProfile`, `unloadProfile`, o Excluir/Renomear aberto) só rodaram num `mw` de
 mentira, lidas no aqt 26.9.3. A prova no caminho real é o ensaio do dono (#269, passo 8b de `complemento/LEIA-ME.md`, que inclui o duplo clique
 e o modal com um perfil de teste), em Mac e Windows, e o `-p` no Anki mais antigo suportado.
