@@ -40,7 +40,7 @@ from .rotas_do_modelo import ROTAS_DO_MODELO
 from .rotas_do_teto import ROTAS_DO_TETO
 from .rotas_do_pareamento import ROTAS_DO_PAREAMENTO
 from .rotas_do_item_de_login import ROTAS_DO_ITEM_DE_LOGIN
-from .rotas_do_perfil import abrir_o_perfil_marcado, escolher_o_perfil, listar_os_perfis
+from .rotas_do_perfil import abrir_o_perfil_marcado, anki_responde, escolher_o_perfil, listar_os_perfis
 
 # Um pedido maior que isto não é da extensão: a leitura mais pesada (os Baralhos pedidos) cabe em poucos KB.
 LIMITE_DO_CORPO = 64 * 1024
@@ -68,6 +68,8 @@ ROTAS = {
     ("POST", "/anki/profiles"): listar_os_perfis,
     ("POST", "/anki/profile"): escolher_o_perfil,
     ("POST", "/anki/profile/open"): abrir_o_perfil_marcado,
+    # A pergunta do abridor que conserta sozinho (#152): sem assinatura.
+    ("POST", "/anki/responde"): anki_responde,
     # A chave da OpenAI: POST com a origem da extensão, e nenhuma resposta devolve a chave inteira.
     ("POST", "/ia/openai/chave"): guardar_chave_da_openai,
     ("POST", "/ia/openai/chave/apagar"): apagar_chave_da_openai,
@@ -90,8 +92,9 @@ ROTAS = {
 # As rotas que respondem sem a origem da extensão. Rota nova não entra aqui sem decisão do dono:
 # o que gasta a chave ou lê dado da pessoa é POST e exige a origem.
 ROTAS_ABERTAS = frozenset([("GET", "/health")]) | frozenset(PAGINAS)
-# As rotas que dispensam a assinatura de um navegador pareado: as do próprio pareamento. Rota nova não entra aqui sem decisão do dono.
-ROTAS_SEM_ASSINATURA = frozenset(ROTAS_DO_PAREAMENTO)
+# As rotas que dispensam a assinatura de um navegador pareado: as do pareamento e a pergunta do abridor (`anki_responde`, sem dado).
+# Rota nova não entra aqui sem decisão do dono.
+ROTAS_SEM_ASSINATURA = frozenset(ROTAS_DO_PAREAMENTO) | frozenset([("POST", "/anki/responde")])
 
 
 class _Atendente(BaseHTTPRequestHandler):

@@ -264,12 +264,12 @@ class NoMac(unittest.TestCase):
         self.assertEqual(self.mundo.consertar(), {"situacao": "sumiu"})
         self.assertEqual(self.mundo.passos(), [])
 
-    def test_pergunta_a_conexao_pela_rota_que_so_responde_com_a_thread_principal_do_anki(self):
+    def test_pergunta_a_conexao_pela_rota_que_so_responde_com_a_thread_principal_do_anki_e_nao_pede_assinatura(self):
         self.mundo.conexao_responde_em(0)
         self.mundo.consertar()
         curl = [linha for linha in self.mundo.eventos() if linha.startswith("curl ")][0]
         self.assertIn("-X POST", curl)
-        self.assertIn("http://127.0.0.1:8766/anki/profiles", curl)
+        self.assertIn("http://127.0.0.1:8766/anki/responde", curl)
         self.assertIn("Origin: chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf", curl)
 
     def test_o_script_responde_cada_exemplo_do_contrato(self):

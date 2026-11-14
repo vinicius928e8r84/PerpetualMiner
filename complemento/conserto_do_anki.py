@@ -24,8 +24,10 @@ o Anki que **trava de verdade**: todo processo que ouve a porta da Conexão tem 
 `Get-NetTCPConnection`), senão é `conexao_fora` e nada é morto (também quando outro programa divide a porta com o Anki), e a força
 vai só aos pids que ouvem a porta, não a todo processo que roda o programa do Anki. E só se abre o Anki depois que ao menos um
 processo recebeu o sinal (no Windows, `CloseMainWindow()` devolveu verdadeiro): se nenhum recebeu porque o Anki já tinha saído, é
-`fechou`. Perguntar se a Conexão responde é pedir a lista de perfis (`POST /anki/profiles`), que só volta com a thread principal do
-Anki viva: o `/health` responde mesmo com o Anki travado.
+`fechou`. Perguntar se a Conexão responde é `POST /anki/responde`, que só volta com a thread principal do Anki viva (o `/health` responde
+mesmo com o Anki travado). O script não é um navegador pareado e não assina: por isso a rota é uma das que dispensam a assinatura, e só diz
+`{"ok": true}` (nada de perfil, nada muda). Pedir a lista de perfis (`/anki/profiles`) não serve: sem assinatura é 401 para qualquer Anki,
+e o Anki saudável seria fechado à força.
 
 O `meta.json` só tem uma marca mexida, a `disabled` do topo: o resto fica como estava. O de antes fica em
 `user_files/abridor/meta.json.antes`, e a troca é de uma vez (escreve ao lado e troca). Fechar o Anki **antes** de mexer no
@@ -69,7 +71,7 @@ class Conserto:
 
     @property
     def url(self):
-        return "http://%s:%d/anki/profiles" % (ENDERECO, self.porta)
+        return "http://%s:%d/anki/responde" % (ENDERECO, self.porta)
 
     @property
     def origem(self):
@@ -120,7 +122,7 @@ donos_da_conexao() {
   [ -n "$donos" ] && echo $donos
 }
 agora() { "$DATE" +%s; }
-# A lista de perfis só volta com a thread principal do Anki viva (o /health responde mesmo com o Anki travado).
+# Só volta 200 com a thread principal do Anki viva (o /health responde mesmo com o Anki travado).
 conexao_responde() {
   "$CURL" -s -f -m 3 -o /dev/null -X POST -H "Origin: $ORIGEM" -H 'Content-Type: application/json' -d '{}' "$URL" </dev/null >/dev/null 2>&1
 }
@@ -266,7 +268,7 @@ function ProcessosDoAnki {
   return @($doPrograma) + @(FilhosDoAnki $doPrograma $todos)
 }
 function AnkiRodando { return (@(ProcessosDoAnki).Count -gt 0) }
-# A lista de perfis só volta com a thread principal do Anki viva (o /health responde mesmo com o Anki travado).
+# Só volta 200 com a thread principal do Anki viva (o /health responde mesmo com o Anki travado).
 function ConexaoResponde {
   try {
     $resposta = Invoke-WebRequest -Uri $url -Method Post -Body '{}' -ContentType 'application/json' -Headers @{ Origin = $origem } -UseBasicParsing -TimeoutSec 3

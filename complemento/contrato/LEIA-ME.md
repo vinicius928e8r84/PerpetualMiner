@@ -111,6 +111,8 @@ Por isso (decisão do dono, opção B):
 
 Rota nova que deva responder sem origem entra em `ROTAS_ABERTAS` (`servidor.py`) só com essa decisão.
 
+A única rota privada que dispensa a assinatura além do pareamento é `POST /anki/responde` (`ROTAS_SEM_ASSINATURA`): o abridor que conserta sozinho (`conserto_do_anki.py`) pergunta por ela se a thread principal do Anki vive, e um script não é um navegador pareado. Exige a origem da extensão, não lê nem muda dado nenhum e responde só `{ ok: true }` (`503` com o Anki sem responder). `complemento/test_conserto_conexao_real.py` roda o script do Mac com o `curl` de verdade contra o servidor real.
+
 ## As rotas de leitura da coleção
 
 Todas POST, com `Content-Type: application/json`, e só a extensão é atendida. Um corpo que não é um objeto JSON,
