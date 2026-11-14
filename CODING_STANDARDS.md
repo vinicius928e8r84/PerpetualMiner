@@ -4,7 +4,7 @@ What the reviewer enforces on a change. Each rule points to where it is explaine
 
 ## Open the surface's skill first
 
-`CLAUDE.md` keeps the file table and the rules that cross surfaces; the architecture of each surface lives in a project skill (`.claude/skills/<name>/SKILL.md`). When the diff touches a surface, open its skill before you review or change it, even if you are not "changing" the surface itself (a rename in a shared file, a copy edit, a test): the skill says what the surface shows, the IDs it implements, what it stores and which test holds its visual reference.
+`CLAUDE.md` has the cross-surface rules; files: `docs/arquivos/`; the architecture of each surface lives in a project skill (`.claude/skills/<name>/SKILL.md`). When the diff touches a surface, open its skill before you review or change it, even if you are not "changing" the surface itself (a rename in a shared file, a copy edit, a test): the skill says what the surface shows, the IDs it implements, what it stores and which test holds its visual reference.
 
 | The diff touches | Open |
 |------|------|
